@@ -76,14 +76,16 @@ bdaddr_t *strtoba(char *str)
 
 int ba2str(bdaddr_t *ba, char *str)
 {
+	uint8_t b[6];
+
+	baswap((bdaddr_t *)b, ba);
 	return sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
-	        ba->b[0], ba->b[1], ba->b[2], 
-		ba->b[3], ba->b[4], ba->b[5]);
+	        b[0], b[1], b[2], b[3], b[4], b[5]);
 }
 
 int str2ba(char *str, bdaddr_t *ba)
 {
-	uint8_t *b = (void *) ba;
+	uint8_t b[6];
 	char *ptr = str;
 	int i;
 
@@ -93,6 +95,7 @@ int str2ba(char *str, bdaddr_t *ba)
 			ptr = ":00:00:00:00:00";
 		ptr++;
 	}
+	baswap(ba, (bdaddr_t *)b);
 	return 0;
 }
 
