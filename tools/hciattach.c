@@ -758,7 +758,13 @@ struct uart_t uart[] = {
 	/* COM One Platinium Bluetooth PC Card */
 	{ "comone",   0xffff, 0x0101, HCI_UART_BCSP, 115200, 115200, 0,        bcsp },
 
-        { NULL, 0 }
+	/* TDK Bluetooth PC Card and IBM Bluetooth PC Card II */
+	{ "tdk",      0x0105, 0x4254, HCI_UART_BCSP, 115200, 115200, 0,        bcsp },
+
+	/* Socket Bluetooth CF Card (Rev G) */
+	{ "socket",   0x0104, 0x0096, HCI_UART_BCSP, 230400, 230400, 0,        bcsp },
+
+	{ NULL, 0 }
 };
 
 struct uart_t * get_by_id(int m_id, int p_id)
