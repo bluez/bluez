@@ -64,6 +64,7 @@ struct frame {
 #define FILT_AVDTP	0x0200
 
 #define FILT_CAPI	0x00010000
+#define FILT_CSR	0x1000000f
 
 #define STRUCT_OFFSET(type, member)  ((uint8_t *)&(((type *)NULL)->member) - \
                                      (uint8_t *)((type *)NULL))
@@ -71,17 +72,20 @@ struct frame {
 #define STRUCT_END(type, member)     (STRUCT_OFFSET(type, member) + \
                                      sizeof(((type *)NULL)->member))
 
+#define DEFAULT_COMPID	65535
+
 struct parser_t {
 	unsigned long flags;
 	unsigned long filter;
-	unsigned int defpsm;
+	unsigned short defpsm;
+	unsigned short defcompid;
 	int state;
 };
 
 extern struct parser_t parser;
 
 void init_parser(unsigned long flags, unsigned long filter, 
-	unsigned int assume_psm);
+		unsigned short defpsm, unsigned short defcompid);
 
 static inline int p_filter(unsigned long f)
 {
@@ -172,6 +176,7 @@ void hcrp_dump(int level, struct frame *frm);
 void avdtp_dump(int level, struct frame *frm);
 
 void capi_dump(int level, struct frame *frm);
+void csr_dump(int level, struct frame *frm);
 
 static inline void parse(struct frame *frm)
 {

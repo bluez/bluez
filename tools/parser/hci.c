@@ -39,6 +39,13 @@
 
 #include "parser.h"
 
+static uint16_t manufacturer = DEFAULT_COMPID;
+
+static inline uint16_t get_manufacturer(void)
+{
+	return (manufacturer == DEFAULT_COMPID ? parser.defcompid : manufacturer);
+}
+
 static char *event_map[] = {
 	"Unknown",
 	"Inquiry Complete",
@@ -329,30 +336,50 @@ static inline void command_dump(int level, struct frame *frm)
 	frm->ptr += HCI_COMMAND_HDR_SIZE;
 	frm->len -= HCI_COMMAND_HDR_SIZE;
 
+	if (ogf == OGF_VENDOR_CMD && ocf == 0 && get_manufacturer() == 10) {
+		csr_dump(level + 1, frm);
+		return;
+	}
+
 	raw_dump(level, frm);
 }
 
 static inline void event_dump(int level, struct frame *frm)
 {
 	hci_event_hdr *hdr = frm->ptr;
+	uint8_t event = hdr->evt;
 
 	if (p_filter(FILT_HCI))
 		return;
 
 	p_indent(level, frm);
 
-	if (hdr->evt <= EVENT_NUM)
+	if (hdr->evt <= EVENT_NUM) {
 		printf("HCI Event: %s (0x%2.2x) plen %d\n",
 			event_map[hdr->evt], hdr->evt, hdr->plen);
-	else if (hdr->evt == EVT_TESTING)
+	} else if (hdr->evt == EVT_TESTING) {
 		printf("HCI Event: Testing (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
-	else if (hdr->evt == EVT_VENDOR)
+	} else if (hdr->evt == EVT_VENDOR) {
 		printf("HCI Event: Vendor (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
-	else
+		if (get_manufacturer() == 10) {
+			frm->ptr += HCI_EVENT_HDR_SIZE;
+			frm->len -= HCI_EVENT_HDR_SIZE;
+			csr_dump(level + 1, frm);
+			return;
+		}
+	} else
 		printf("HCI Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
 
 	frm->ptr += HCI_EVENT_HDR_SIZE;
 	frm->len -= HCI_EVENT_HDR_SIZE;
+
+	if (event == EVT_CMD_COMPLETE) {
+		evt_cmd_complete *cc = frm->ptr;
+		if (cc->opcode == cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_LOCAL_VERSION)) {
+			read_local_version_rp *rp = frm->ptr + EVT_CMD_COMPLETE_SIZE;
+			manufacturer = rp->manufacturer;
+		}
+	}
 
 	raw_dump(level, frm);
 }

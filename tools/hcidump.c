@@ -65,6 +65,7 @@ enum {
 static int  device;
 static int  snap_len = SNAP_LEN;
 static int  defpsm = 0;
+static int  defcompid = DEFAULT_COMPID;
 static int  mode = PARSE;
 static long flags;
 static long filter;
@@ -332,6 +333,7 @@ static void usage(void)
 	"  -i, --device=hci_dev       HCI device\n"
 	"  -s, --snap-len=len         Snap len (in bytes)\n"
 	"  -p, --psm=psm              Default PSM\n"
+	"  -m, --manufacturer=compid  Default manufacturer\n"
 	"  -w, --save-dump=file       Save dump to a file\n"
 	"  -r, --read-dump=file       Read dump from a file\n"
 	"  -t, --ts                   Display time stamps\n"
@@ -347,19 +349,20 @@ static void usage(void)
 }
 
 static struct option main_options[] = {
-	{ "device",	1, 0, 'i' },
-	{ "snap-len",	1, 0, 's' },
-	{ "psm",	1, 0, 'p' },
-	{ "save-dump",	1, 0, 'w' },
-	{ "read-dump",	1, 0, 'r' },
-	{ "ts",		0, 0, 't' },
-	{ "ascii",	0, 0, 'a' },
-	{ "hex",	0, 0, 'x' },
-	{ "ext",	0, 0, 'X' },
-	{ "raw",	0, 0, 'R' },
-	{ "cmtp",	1, 0, 'C' },
-	{ "hcrp",	1, 0, 'H' },
-	{ "help",	0, 0, 'h' },
+	{ "device",		1, 0, 'i' },
+	{ "snap-len",		1, 0, 's' },
+	{ "psm",		1, 0, 'p' },
+	{ "manufacturer",	1, 0, 'm' },
+	{ "save-dump",		1, 0, 'w' },
+	{ "read-dump",		1, 0, 'r' },
+	{ "ts",			0, 0, 't' },
+	{ "ascii",		0, 0, 'a' },
+	{ "hex",		0, 0, 'x' },
+	{ "ext",		0, 0, 'X' },
+	{ "raw",		0, 0, 'R' },
+	{ "cmtp",		1, 0, 'C' },
+	{ "hcrp",		1, 0, 'H' },
+	{ "help",		0, 0, 'h' },
 	{ 0 }
 };
 
@@ -369,7 +372,7 @@ int main(int argc, char *argv[])
 
 	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:s:p:w:r:taxXRC:H:h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:s:p:m:w:r:taxXRC:H:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			device = atoi(optarg + 3);
@@ -381,6 +384,10 @@ int main(int argc, char *argv[])
 
 		case 'p': 
 			defpsm = atoi(optarg);
+			break;
+
+		case 'm':
+			defcompid = atoi(optarg);
 			break;
 
 		case 'w':
@@ -441,7 +448,7 @@ int main(int argc, char *argv[])
 
 	switch (mode) {
 	case PARSE:
-		init_parser(flags, filter, defpsm);
+		init_parser(flags, filter, defpsm, defcompid);
 		process_frames(device, open_socket(device), -1);
 		break;
 
@@ -450,7 +457,7 @@ int main(int argc, char *argv[])
 		break;
 
 	case READ:
-		init_parser(flags, filter, defpsm);
+		init_parser(flags, filter, defpsm, defcompid);
 		read_dump(open_file(dump_file, mode));
 		break;
 	}

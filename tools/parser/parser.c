@@ -38,15 +38,17 @@
 
 struct parser_t parser;
 
-void init_parser(unsigned long flags, unsigned long filter, unsigned int defpsm)
+void init_parser(unsigned long flags, unsigned long filter,
+		unsigned short defpsm, unsigned short defcompid)
 {
 	if ((flags & DUMP_RAW) && !(flags & DUMP_TYPE_MASK))
 		flags |= DUMP_HEX;
 
-	parser.flags  = flags;
-	parser.filter = filter;
-	parser.defpsm = defpsm;
-	parser.state  = 0;
+	parser.flags     = flags;
+	parser.filter    = filter;
+	parser.defpsm    = defpsm;
+	parser.defcompid = defcompid;
+	parser.state     = 0;
 }
 
 #define PROTO_TABLE_SIZE 20
