@@ -1,10 +1,10 @@
 Maxim Krasnyansky <maxk@qualcomm.com>
 	Original author.
-	Primary maintainer.
 
 Marcel Holtmann <marcel@holtmann.org>
+	Primary maintainer.
 	Various patches, fixes and other contributions.
 
 Stephen Crane <steve.crane@rococosoft.com>
-	Support for hci_{read, write}_class_of_dev() and other HCI functions.
-
+	Support for many HCI functions.
+	Memory leak fixes and SDP API cleanups.
