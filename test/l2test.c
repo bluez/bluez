@@ -71,8 +71,8 @@ long data_size = 672;
 bdaddr_t bdaddr;
 unsigned short psm = 10;
 
-/* Default number of blocks to send */
-int num_blocks = -1; // Infinite
+/* Default number of frames to send */
+int num_frames = -1; // Infinite
 
 int master = 0;
 int auth = 0;
@@ -251,7 +251,7 @@ void do_listen( void (*handler)(int sk) )
 
 		handler(s1);
 
-		syslog(LOG_INFO, "Disconnect\n");
+		syslog(LOG_INFO, "Disconnect. %m\n");
 		exit(0);
 	}
 }
@@ -342,13 +342,13 @@ void send_mode(int s)
 	uint32_t seq;
 	int i;
 
-	syslog(LOG_INFO,"Sending ...");
+	syslog(LOG_INFO, "Sending ...");
 
 	for(i=6; i < data_size; i++)
 		buf[i]=0x7f;
 
 	seq = 0;
-	while ((num_blocks == -1) || (num_blocks-- > 0)) {
+	while ((num_frames == -1) || (num_frames-- > 0)) {
 		*(uint32_t *) buf = htobl(seq++);
 		*(uint16_t *)(buf+4) = htobs(data_size);
 		
@@ -357,6 +357,12 @@ void send_mode(int s)
 			exit(1);
 		}
 	}
+
+	syslog(LOG_INFO, "Closing channel ...");
+	if (shutdown(s, SHUT_RDWR) < 0)
+		syslog(LOG_INFO, "Close failed. %m.");
+	else
+		syslog(LOG_INFO, "Done");
 }
 
 void reconnect_mode(char *svr)
@@ -410,7 +416,7 @@ void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-S bdaddr] [-P psm]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
-		"\t[-N num] send num blocks (default = infinite)\n"
+		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-D] use connectionless channel (datagram)\n"
 		"\t[-A] request authentication\n"
@@ -508,7 +514,7 @@ int main(int argc ,char *argv[])
 			break;
 
 		case 'N':
-			num_blocks = atoi(optarg);
+			num_frames = atoi(optarg);
 			break;
 
 		default:
