@@ -63,7 +63,7 @@ static struct frame * add_handle(uint16_t handle)
 	register handle_info *t = handle_table;
 	register int i;
 
-	for (i=0; i<HANDLE_TABLE_SIZE; i++)
+	for (i = 0; i < HANDLE_TABLE_SIZE; i++)
 		if (!t[i].handle) {
 			t[i].handle = handle;
 			return &t[i].frm;
@@ -76,7 +76,7 @@ static struct frame * get_frame(uint16_t handle)
 	register handle_info *t = handle_table;
 	register int i;
 
-	for (i=0; i<HANDLE_TABLE_SIZE; i++)
+	for (i = 0; i < HANDLE_TABLE_SIZE; i++)
 		if (t[i].handle == handle)
 			return &t[i].frm;
 
@@ -88,7 +88,7 @@ static void add_cid(int in, uint16_t cid, uint16_t psm)
 	register cid_info *table = cid_table[in];
 	register int i;
 
-	for (i=0; i<CID_TABLE_SIZE; i++)
+	for (i = 0; i < CID_TABLE_SIZE; i++)
 		if (!table[i].cid || table[i].cid == cid) {
 			table[i].cid = cid;
 			table[i].psm = psm;
@@ -106,10 +106,10 @@ static void del_cid(int in, uint16_t dcid, uint16_t scid)
 		cid[1] = scid;
 	} else {
 		cid[0] = scid;
-		cid[1] = dcid;	
+		cid[1] = dcid;
 	}
 
-	for (t=0; t<2; t++) {	
+	for (t = 0; t < 2; t++) {
 		for (i=0; i<CID_TABLE_SIZE; i++)
 			if (cid_table[t][i].cid == cid[t]) {
 				cid_table[t][i].cid = 0;
@@ -123,7 +123,7 @@ static uint16_t get_psm(int in, uint16_t cid)
 	register cid_info *table = cid_table[in];
 	register int i;
 	
-	for (i=0; i<CID_TABLE_SIZE; i++)
+	for (i = 0; i < CID_TABLE_SIZE; i++)
 		if (table[i].cid == cid)
 			return table[i].psm;
 	return parser.defpsm;
@@ -133,8 +133,7 @@ static inline void command_rej(int level, struct frame *frm)
 {
 	l2cap_cmd_rej *h = frm->ptr;
 
-	printf("Command rej: reason %d\n", 
-			btohs(h->reason));
+	printf("Command rej: reason %d\n", btohs(h->reason));
 }
 
 static inline void conn_req(int level, struct frame *frm)
@@ -146,8 +145,8 @@ static inline void conn_req(int level, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Connect req: psm %d scid 0x%4.4x\n", 
-			btohs(h->psm), btohs(h->scid));
+	printf("Connect req: psm %d scid 0x%4.4x\n",
+				btohs(h->psm), btohs(h->scid));
 }
 
 static inline void conn_rsp(int level, struct frame *frm)
@@ -162,8 +161,8 @@ static inline void conn_rsp(int level, struct frame *frm)
 		return;
 
 	printf("Connect rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n",
-			btohs(h->dcid), btohs(h->scid),
-			btohs(h->result), btohs(h->status));
+				btohs(h->dcid), btohs(h->scid),
+				btohs(h->result), btohs(h->status));
 }
 
 static uint32_t conf_opt_val(uint8_t *ptr, uint8_t len)
@@ -171,12 +170,10 @@ static uint32_t conf_opt_val(uint8_t *ptr, uint8_t len)
 	switch (len) {
 	case 1:
 		return *ptr;
-
-        case 2:
-                return btohs(get_unaligned((uint16_t *)ptr));
-
-        case 4:
-                return btohl(get_unaligned((uint32_t *)ptr));
+	case 2:
+		return btohs(get_unaligned((uint16_t *)ptr));
+	case 4:
+		return btohl(get_unaligned((uint32_t *)ptr));
 	}
 	return 0;
 }
@@ -334,7 +331,7 @@ static void l2cap_parse(int level, struct frame *frm)
 				break;
 
 			case L2CAP_CONF_REQ:
-				conf_req(level, hdr, frm);		
+				conf_req(level, hdr, frm);
 				break;
 
 			case L2CAP_CONF_RSP:
@@ -354,7 +351,7 @@ static void l2cap_parse(int level, struct frame *frm)
 				break;
 
 			case L2CAP_ECHO_RSP:
-				echo_rsp(level, hdr, frm);	
+				echo_rsp(level, hdr, frm);
 				break;
 
 			case L2CAP_INFO_REQ:
@@ -390,7 +387,9 @@ static void l2cap_parse(int level, struct frame *frm)
 	} else {
 		/* Connection oriented channel */
 		uint16_t psm = get_psm(!frm->in, cid);
-	
+
+		frm->cid = cid;
+
 		if (!p_filter(FILT_L2CAP)) {
 			p_indent(level, frm);
 			printf("L2CAP(d): cid 0x%x len %d [psm %d]\n", 
@@ -401,23 +400,23 @@ static void l2cap_parse(int level, struct frame *frm)
 		switch (psm) {
 		case 0x01:
 			if (!p_filter(FILT_SDP))
-				sdp_dump(level+1, frm);
+				sdp_dump(level + 1, frm);
 			else
-				raw_dump(level+1, frm);
+				raw_dump(level + 1, frm);
 			break;
 
 		case 0x03:
 			if (!p_filter(FILT_RFCOMM))
 				rfcomm_dump(level, frm);
 			else
-				raw_dump(level+1, frm);
+				raw_dump(level + 1, frm);
 			break;
 
 		case 0x0f:
 			if (!p_filter(FILT_BNEP))
 				bnep_dump(level, frm);
 			else
-				raw_dump(level+1, frm);
+				raw_dump(level + 1, frm);
 			break;
 
 		case 0x11:
@@ -425,14 +424,14 @@ static void l2cap_parse(int level, struct frame *frm)
 			if (!p_filter(FILT_HIDP))
 				hidp_dump(level, frm);
 			else
-				raw_dump(level+1, frm);
+				raw_dump(level + 1, frm);
 			break;
 
 		case 4099:
 			if (!p_filter(FILT_CMTP))
 				cmtp_dump(level, frm);
 			else
-				raw_dump(level+1, frm);
+				raw_dump(level + 1, frm);
 			break;
 
 		default:
@@ -479,6 +478,8 @@ void l2cap_dump(int level, struct frame *frm)
 		fr->ptr = fr->data;
 		fr->in  = frm->in;
 		fr->ts  = frm->ts;
+		fr->handle = frm->handle;
+		fr->cid    = frm->cid;
 	} else {
 		if (!(fr = get_frame(frm->handle))) {
 			fprintf(stderr, "Not enough connection handles\n");

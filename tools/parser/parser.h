@@ -28,8 +28,9 @@ struct frame {
 	int	data_len;
 	void	*ptr;
 	int	len;
-	int 	in;
+	int	in;
 	int	handle;
+	int	cid;
 	long	flags;
 	struct	timeval ts;
 };

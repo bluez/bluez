@@ -21,7 +21,7 @@
 
 /* 	
 	CMTP parser.
-	Copyright (C) 2002 Marcel Holtmann <marcel@holtmann.org>
+	Copyright (C) 2002-2004 Marcel Holtmann <marcel@holtmann.org>
 */
 
 /*
@@ -43,7 +43,111 @@
 #include "parser.h"
 
 
-char *bst2str(uint8_t bst)
+#define TABLE_SIZE 10
+
+static struct {
+	uint16_t handle;
+	uint16_t cid;
+	struct frame msg[16];
+} table[TABLE_SIZE];
+
+static void add_segment(uint8_t bid, struct frame *frm, int len)
+{
+	uint16_t handle = frm->handle, cid = frm->cid;
+	struct frame *msg;
+	void *data;
+	int i, pos = -1;
+
+	if (bid > 15)
+		return;
+
+	for (i = 0; i < TABLE_SIZE; i++) {
+		if (table[i].handle == handle && table[i].cid == cid) {
+			pos = i;
+			break;
+		}
+
+		if (pos < 0 && !table[i].handle && !table[i].cid)
+			pos = i;
+	}
+
+	if (pos < 0)
+		return;
+
+	table[pos].handle = handle;
+	table[pos].cid    = cid;
+	msg = &table[pos].msg[bid];
+
+	data = malloc(msg->data_len + len);
+	if (!data)
+		return;
+
+	if (msg->data_len > 0)
+		memcpy(data, msg->data, msg->data_len);
+
+	memcpy(data + msg->data_len, frm->ptr, len);
+	free(msg->data);
+	msg->data = data;
+	msg->data_len += len;
+	msg->ptr = msg->data;
+	msg->len = msg->data_len;
+	msg->in  = frm->in;
+	msg->ts  = frm->ts;
+	msg->handle = handle;
+	msg->cid    = cid;
+}
+
+static void free_segment(uint8_t bid, struct frame *frm)
+{
+	uint16_t handle = frm->handle, cid = frm->cid;
+	struct frame *msg;
+	int i, len = 0, pos = -1;
+
+	if (bid > 15)
+		return;
+
+	for (i = 0; i < TABLE_SIZE; i++)
+		if (table[i].handle == handle && table[i].cid == cid) {
+			pos = i;
+			break;
+		}
+
+	if (pos < 0)
+		return;
+
+	msg = &table[pos].msg[bid];
+
+	if (msg->data)
+		free(msg->data);
+
+	msg->data = NULL;
+	msg->data_len = 0;
+
+	for (i = 0; i < 16; i++)
+		len += table[pos].msg[i].data_len;
+
+	if (!len) {
+		table[pos].handle = 0;
+		table[pos].cid = 0;
+	}
+}
+
+static struct frame *get_segment(uint8_t bid, struct frame *frm)
+{
+	uint16_t handle = frm->handle, cid = frm->cid;
+	int i;
+
+	if (bid > 15)
+		return NULL;
+
+	for (i = 0; i < TABLE_SIZE; i++)
+		if (table[i].handle == handle && table[i].cid == cid)
+			return &table[i].msg[bid];
+
+	return NULL;
+}
+
+static char *bst2str(uint8_t bst)
 {
 	switch (bst) {
 	case 0x00:
@@ -61,6 +165,7 @@ char *bst2str(uint8_t bst)
 
 void cmtp_dump(int level, struct frame *frm)
 {
+	struct frame *msg;
 	uint8_t hdr_size;
 	uint8_t head;
 	uint8_t bst, bid, nlb;
@@ -75,12 +180,6 @@ void cmtp_dump(int level, struct frame *frm)
 		nlb = (head & 0xc0) >> 6;
 
 		switch (nlb) {
-		default:
-		case 0x00:
-		case 0x03:
-			hdr_size = 1;
-			len = 0;
-			break;
 		case 0x01:
 			hdr_size = 2;
 			len = *(uint8_t *)(frm->ptr + 1);
@@ -88,6 +187,10 @@ void cmtp_dump(int level, struct frame *frm)
 		case 0x02:
 			hdr_size = 3;
 			len = *(uint8_t *)(frm->ptr + 1) + (*(uint8_t *)(frm->ptr + 2) * 256);
+			break;
+		default:
+			hdr_size = 1;
+			len = 0;
 			break;
 		}
 
@@ -98,12 +201,26 @@ void cmtp_dump(int level, struct frame *frm)
 		frm->ptr += hdr_size;
 		frm->len -= hdr_size;
 
-		if (len > 0) {
-			raw_ndump(level, frm, len);
+		switch (bst) {
+		case 0x00:
+			add_segment(bid, frm, len);
+			msg = get_segment(bid, frm);
+			if (!msg)
+				break;
 
-			frm->ptr += len;
-			frm->len -= len;
+			raw_dump(level, msg);
+
+			free_segment(bid, frm);
+			break;
+		case 0x01:
+			add_segment(bid, frm, len);
+			break;
+		default:
+			free_segment(bid, frm);
+			break;
 		}
 
+		frm->ptr += len;
+		frm->len -= len;
 	}
 }
