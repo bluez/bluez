@@ -54,6 +54,7 @@ rm -rf $RPM_BUILD_ROOT
 
 /usr/include/bluetooth/*
 /usr/lib/libbluetooth*
+/usr/lib/pkgconfig/bluez.pc
 
 %doc AUTHORS COPYING INSTALL ChangeLog NEWS README
 
