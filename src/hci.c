@@ -1619,3 +1619,13 @@ int hci_read_afh_map(int dd, uint16_t handle, uint8_t *mode, uint8_t *map, int t
 	memcpy(map, rp.map, 10);
 	return 0;
 }
+
+int hci_local_name(int dd, int len, char *name, int to)
+{
+	return hci_read_local_name(dd, len, name, to);
+}
+
+int hci_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)
+{
+	return hci_read_remote_name(dd, bdaddr, len, name, to);
+}
