@@ -45,31 +45,48 @@ typedef struct {
 } cid_info;
 #define CID_TABLE_SIZE	20
 
-static cid_info scid_table[CID_TABLE_SIZE];
-static cid_info dcid_table[CID_TABLE_SIZE];
+static cid_info cid_table[2][CID_TABLE_SIZE];
 
-#define SCID scid_table
-#define DCID dcid_table
+#define SCID cid_table[0]
+#define DCID cid_table[1]
 
-static void add_cid(cid_info *table, __u16 cid)
+static void add_cid(int in, __u16 cid, __u16 psm)
 {
+	register cid_info *table = cid_table[in];
 	register int i;
+
 	for (i=0; i<CID_TABLE_SIZE; i++)
-		if (!table[i].cid)
+		if (!table[i].cid) {
 			table[i].cid = cid;
+			table[i].psm = psm;
+		}
 }
 
-static void del_cid(cid_info *table, __u16 cid)
+static void del_cid(int in, __u16 dcid, __u16 scid)
 {
-	register int i;
-	for (i=0; i<CID_TABLE_SIZE; i++)
-		if (table[i].cid == cid)
-			table[i].cid = 0;
+	register int t, i;
+	__u16 cid[2];
+
+	if (!in) {
+		cid[0] = dcid;
+		cid[1] = scid;
+	} else {
+		cid[0] = scid;
+		cid[1] = dcid;	
+	}
+
+	for (t=0; t<2; t++) {	
+		for (i=0; i<CID_TABLE_SIZE; i++)
+			if (cid_table[t][i].cid == cid[t])
+				cid_table[t][i].cid = 0;
+	}
 }
 
-static __u16 get_psm(cid_info *table, __u16 cid)
+static __u16 get_psm(int in, __u16 cid)
 {
+	register cid_info *table = cid_table[in];
 	register int i;
+	
 	for (i=0; i<CID_TABLE_SIZE; i++)
 		if (table[i].cid == cid)
 			return table[i].psm;
@@ -89,17 +106,19 @@ static inline void conn_req(int level, struct frame *frm)
 	printf("Connect req: psm %d scid 0x%4.4x\n", 
 			btohs(h->psm), btohs(h->scid));
 
-	//add_cid(SCID, scid);
+	add_cid(frm->in, btohs(h->scid), btohs(h->psm));
 }
 
 static inline void conn_rsp(int level, struct frame *frm)
 {
 	l2cap_conn_rsp *h = frm->ptr;
+	__u16 psm;
 	printf("Connect rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n",
 			btohs(h->dcid), btohs(h->scid),
 			btohs(h->result), btohs(h->status));
 
-	//add_cid(DCID, dcid);
+	if ((psm = get_psm(!frm->in, btohs(h->scid))))
+		add_cid(frm->in, btohs(h->dcid), psm);
 }
 
 static __u32 conf_opt_val(__u8 *ptr, __u8 len)
@@ -173,8 +192,8 @@ static inline void disconn_rsp(int level, struct frame *frm)
 	l2cap_disconn_rsp *h = frm->ptr;
 	printf("Disconn rsp: dcid 0x%4.4x scid 0x%4.4x\n",
 			btohs(h->dcid), btohs(h->scid));
-	//del_cid(DCID, dcid);
-	//del_cid(SCID, scid);
+
+	del_cid(frm->in, btohs(h->dcid), btohs(h->scid));
 }
 
 static inline void echo_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
@@ -278,20 +297,18 @@ void l2cap_dump(int level, struct frame *frm)
 			frm->len -= hdr->len;
 		}
 	} else {
-		printf("L2CAP(d): cid 0x%x len %d\n", cid, dlen);
+		__u16 psm = get_psm(!frm->in, cid); 
+		
+		printf("L2CAP(d): cid 0x%x len %d [psm %d]\n",
+				cid, dlen, psm);
 
-		/*
-		if (frm->in)
-			psm = get_psm(DCID, cid);
-		else
-			psm = get_psm(SCID, cid);
-		
+		/* FIXME: 
+		 * Add protocol handlers (RFCOMM, SDP) here */
+	
 		switch (psm) {
-		case RFCOMM:
-		case SDP:
+		default:
+			raw_dump(level, frm);
+			break;
 		}
-		*/ 
-		
-		raw_dump(level, frm);
 	}
 }
