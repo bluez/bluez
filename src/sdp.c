@@ -41,6 +41,8 @@
 #include <syslog.h>
 #include <sys/un.h>
 #include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -1008,7 +1010,9 @@ static void attr_print_func(void *value, void *userData)
 
 void sdp_print_service_attr(sdp_list_t *svcAttrList)
 {
+	SDPDBG("Printing service attr list %p\n", svcAttrList);
 	sdp_list_foreach(svcAttrList, attr_print_func, NULL);
+	SDPDBG("Printed service attr list %p\n", svcAttrList);
 }
 #endif
 
