@@ -14,3 +14,7 @@ install-data-local:
 		$(INSTALL_DATA) $(srcdir)/bluetooth $(DESTDIR)$(pcmciadir)
 	[ -f $(DESTDIR)$(pcmciadir)/bluetooth.conf ] || \
 		$(INSTALL_DATA) $(srcdir)/bluetooth.conf $(DESTDIR)$(pcmciadir)
+
+uninstall-local:
+	@rm -f $(DESTDIR)$(pcmciadir)/bluetooth
+	@rm -f $(DESTDIR)$(pcmciadir)/bluetooth.conf

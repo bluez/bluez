@@ -13,3 +13,7 @@ install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/default
 	[ -f $(DESTDIR)$(sysconfdir)/default/bluetooth ] || \
 		$(INSTALL_DATA) $(srcdir)/bluetooth.default $(DESTDIR)$(sysconfdir)/default/bluetooth
+
+uninstall-local:
+	@rm -f $(DESTDIR)$(sysconfdir)/init.d/bluetooth
+	@rm -f $(DESTDIR)$(sysconfdir)/default/bluetooth

@@ -45,3 +45,7 @@ install-data-local:
 	[ -f $(DESTDIR)$(pin_FILE) ]  || \
 		echo "BlueZ" > $(DESTDIR)$(pin_FILE); \
 		chmod 600 $(DESTDIR)$(pin_FILE)
+
+uninstall-local:
+	@rm -f $(DESTDIR)$(conf_FILE)
+	@rm -f $(DESTDIR)$(pin_FILE)
