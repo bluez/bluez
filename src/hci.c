@@ -734,7 +734,7 @@ int hci_create_connection(int dd, const bdaddr_t *ba, uint16_t ptype, uint16_t c
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, ba);
 	cp.pkt_type       = ptype;
-	cp.pscan_rep_mode = 0x01;
+	cp.pscan_rep_mode = 0x02;
 	cp.clock_offset   = clkoffset;
 	cp.role_switch    = rswitch;
 
@@ -847,7 +847,7 @@ int hci_read_remote_name(int dd, const bdaddr_t *ba, int len, char *name, int to
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, ba);
-	cp.pscan_rep_mode = 0x01;
+	cp.pscan_rep_mode = 0x02;
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
