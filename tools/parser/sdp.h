@@ -83,6 +83,9 @@
 #define SDP_UUID_IMAGING_AUTOMATIC_ARCHIVE             0x111c /* BIP */
 #define SDP_UUID_IMAGING_REFERENCED_OBJECTS            0x111d /* BIP */
 #define SDP_UUID_HUMAN_INTERFACE_DEVICE                0x1124 /* HID */
+#define SDP_UUID_HARDCOPY_CABLE_REPLACE                0x1125 /* HCRP */
+#define SDP_UUID_HCR_PRINT                             0x1126 /* HCRP */
+#define SDP_UUID_HCR_SCAN                              0x1127 /* HCRP */
 #define SDP_UUID_COMMON_ISDN_ACCESS                    0x1128 /* CIP */
 #define SDP_UUID_PNP_INFORMATION                       0x1200
 #define SDP_UUID_GENERIC_NETWORKING                    0x1201

@@ -89,6 +89,9 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_IMAGING,                  "Imaging"      }, /* BIP */
 	{ SDP_UUID_IMAGING_RESPONDER,        "ImagingResp"  }, /* BIP */
 	{ SDP_UUID_HUMAN_INTERFACE_DEVICE,   "HID"          }, /* HID */
+	{ SDP_UUID_HARDCOPY_CABLE_REPLACE,   "HCRP",        }, /* HCRP */
+	{ SDP_UUID_HCR_PRINT,                "HCRPrint",    }, /* HCRP */
+	{ SDP_UUID_HCR_SCAN,                 "HCRScan",     }, /* HCRP */
 	{ SDP_UUID_COMMON_ISDN_ACCESS,       "CIP"          }, /* CIP */
 	{ SDP_UUID_PNP_INFORMATION,          "PNPInfo"      },
 	{ SDP_UUID_GENERIC_NETWORKING,       "Networking"   },
