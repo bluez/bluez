@@ -256,6 +256,10 @@ char *bt_compidtostr(int compid)
 		return "Hitachi Ltd";
 	case 42:
 		return "Symbol Technologies, Inc.";
+	case 43:
+		return "Tenovis";
+	case 44:
+		return "Macronix International Co. Ltd.";
 	case 65535:
 		return "internal use";
 	default:
