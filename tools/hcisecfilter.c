@@ -15,7 +15,7 @@ int main(void)
 	memset((void *)&type_mask, 0, sizeof(type_mask));
 	hci_set_bit(HCI_EVENT_PKT, &type_mask);
 	
-	printf("Type mask: { 0x%lx }\n", type_mask); 
+	printf("Type mask: { 0x%x }\n", type_mask); 
 
 	// Events
 	memset((void *)event_mask, 0, sizeof(event_mask));
@@ -36,7 +36,7 @@ int main(void)
 	hci_set_bit(EVT_READ_REMOTE_VERSION_COMPLETE,  event_mask);
 	hci_set_bit(EVT_REMOTE_NAME_REQ_COMPLETE,      event_mask);
 
-	printf("Event mask: { 0x%lx, 0x%lx }\n", event_mask[0], event_mask[1]); 
+	printf("Event mask: { 0x%x, 0x%x }\n", event_mask[0], event_mask[1]); 
 
 	// OGF_LINK_CTL
 	memset((void *) ocf_mask, 0, sizeof(ocf_mask));
@@ -45,7 +45,7 @@ int main(void)
 	hci_set_bit(OCF_READ_REMOTE_FEATURES, ocf_mask);
 	hci_set_bit(OCF_READ_REMOTE_VERSION,  ocf_mask);
 
-	printf("OGF_LINK_CTL: { 0x%lx, 0x%lx, 0x%lx, 0x%lx }\n",
+	printf("OGF_LINK_CTL: { 0x%x, 0x%x, 0x%x, 0x%x }\n",
 			ocf_mask[0], ocf_mask[1], ocf_mask[2], ocf_mask[3]); 
 
 	// OGF_LINK_POLICY
@@ -53,7 +53,7 @@ int main(void)
 	hci_set_bit(OCF_ROLE_DISCOVERY,   ocf_mask);
 	hci_set_bit(OCF_READ_LINK_POLICY, ocf_mask);
 
-	printf("OGF_LINK_POLICY: { 0x%lx, 0x%lx, 0x%lx, 0x%lx }\n",
+	printf("OGF_LINK_POLICY: { 0x%x, 0x%x, 0x%x, 0x%x }\n",
 			ocf_mask[0], ocf_mask[1], ocf_mask[2], ocf_mask[3]);
 
 	// OGF_HOST_CTL
@@ -65,7 +65,7 @@ int main(void)
 	hci_set_bit(OCF_READ_VOICE_SETTING, ocf_mask);
 	hci_set_bit(OCF_READ_TRANSMIT_POWER_LEVEL, ocf_mask);
 
-	printf("OGF_HOST_CTL: { 0x%lx, 0x%lx, 0x%lx, 0x%lx }\n",
+	printf("OGF_HOST_CTL: { 0x%x, 0x%x, 0x%x, 0x%x }\n",
 			ocf_mask[0], ocf_mask[1], ocf_mask[2], ocf_mask[3]); 
 
 	// OGF_INFO_PARAM
@@ -76,7 +76,7 @@ int main(void)
 	hci_set_bit(OCF_READ_BD_ADDR, ocf_mask);
 	hci_set_bit(OCF_READ_BD_ADDR, ocf_mask);
 
-	printf("OGF_INFO_PARAM: { 0x%lx, 0x%lx, 0x%lx, 0x%lx}\n", 
+	printf("OGF_INFO_PARAM: { 0x%x, 0x%x, 0x%x, 0x%x}\n", 
 			ocf_mask[0], ocf_mask[1], ocf_mask[2], ocf_mask[3]); 
 
 	// OGF_INFO_PARAM
@@ -86,6 +86,8 @@ int main(void)
 	hci_set_bit(OCF_GET_LINK_QUALITY, ocf_mask);
 	hci_set_bit(OCF_READ_RSSI, ocf_mask);
 
-	printf("OGF_STATUS_PARAM: { 0x%lx, 0x%lx, 0x%lx, 0x%lx}\n", 
+	printf("OGF_STATUS_PARAM: { 0x%x, 0x%x, 0x%x, 0x%x}\n", 
 			ocf_mask[0], ocf_mask[1], ocf_mask[2], ocf_mask[3]); 
+
+	return 0;
 }

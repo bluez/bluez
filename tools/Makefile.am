@@ -6,7 +6,7 @@ sbin_PROGRAMS = hciattach hciconfig hid2hci
 
 bin_PROGRAMS = hcitool l2ping sdptool ciptool
 
-noinst_PROGRAMS = ppporc
+noinst_PROGRAMS = ppporc hcisecfilter
 
 hciconfig_SOURCES = hciconfig.c csr.h csr.c
 
