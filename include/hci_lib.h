@@ -64,6 +64,8 @@ int hci_devinfo(int dev_id, struct hci_dev_info *di);
 int hci_devba(int dev_id, bdaddr_t *ba);
 int hci_devid(char *str);
 
+// deprecated: preserve compatibility
+int hci_local_name(int dd, int len, char *name, int to);
 int hci_read_local_name(int dd, int len, char *name, int to);
 int hci_write_local_name(int dd, char *name, int to);
 int hci_read_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to);

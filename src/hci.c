@@ -755,6 +755,11 @@ int hci_disconnect(int dd, uint16_t handle, uint8_t reason, int to)
         return 0;
 }
 
+int hci_local_name(int dd, int len, char *name, int to)
+{
+	return hci_read_local_name(dd, len, name, to);
+}
+
 int hci_read_local_name(int dd, int len, char *name, int to)
 {
 	read_local_name_rp rp;
@@ -781,19 +786,19 @@ int hci_read_local_name(int dd, int len, char *name, int to)
 
 int hci_write_local_name(int dd, char *name, int to)
 {
-  change_local_name_cp cp;
-  struct hci_request rq;
+	change_local_name_cp cp;
+	struct hci_request rq;
 
-  strncpy(cp.name, name, sizeof(cp.name));
-  memset(&rq, 0, sizeof(rq));
-  rq.ogf = OGF_HOST_CTL;
-  rq.ocf = OCF_CHANGE_LOCAL_NAME;
-  rq.cparam = &cp;
-  rq.clen = CHANGE_LOCAL_NAME_CP_SIZE;
+	strncpy(cp.name, name, sizeof(cp.name));
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_HOST_CTL;
+	rq.ocf = OCF_CHANGE_LOCAL_NAME;
+	rq.cparam = &cp;
+	rq.clen = CHANGE_LOCAL_NAME_CP_SIZE;
 	
-  if (hci_send_req(dd, &rq, to) < 0)
-	 return -1;
-  return 0;
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+	return 0;
 }
 
 int hci_read_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
@@ -942,56 +947,56 @@ int hci_read_class_of_dev(int dd, uint8_t *cls, int to)
 
 int hci_write_class_of_dev(int dd, uint32_t cls, int to)
 {
-  write_class_of_dev_cp cp;
-  struct hci_request rq;
+	write_class_of_dev_cp cp;
+	struct hci_request rq;
 
-  memset(&rq, 0, sizeof(rq));
-  cp.dev_class[0] = cls & 0xff;
-  cp.dev_class[1] = (cls >> 8) & 0xff;
-  cp.dev_class[2] = (cls >> 16) & 0xff;
-  rq.ogf = OGF_HOST_CTL;
-  rq.ocf = OCF_WRITE_CLASS_OF_DEV;
-  rq.cparam = &cp;
-  rq.clen = WRITE_CLASS_OF_DEV_CP_SIZE;
-  return hci_send_req(dd, &rq, 1000);
+	memset(&rq, 0, sizeof(rq));
+	cp.dev_class[0] = cls & 0xff;
+	cp.dev_class[1] = (cls >> 8) & 0xff;
+	cp.dev_class[2] = (cls >> 16) & 0xff;
+	rq.ogf = OGF_HOST_CTL;
+	rq.ocf = OCF_WRITE_CLASS_OF_DEV;
+	rq.cparam = &cp;
+	rq.clen = WRITE_CLASS_OF_DEV_CP_SIZE;
+	return hci_send_req(dd, &rq, 1000);
 }
 
 int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to)
 {
-  read_current_iac_lap_rp rp;
-  struct hci_request rq;
-  
-  memset(&rq, 0, sizeof(rq));
-  rq.ogf = OGF_HOST_CTL;
-  rq.ocf = OCF_READ_CURRENT_IAC_LAP;
-  rq.rparam = &rp;
-  rq.rlen = READ_CURRENT_IAC_LAP_RP_SIZE;
-  if (0 > hci_send_req(dd, &rq, to))
-	 return -1;
-  if (rp.status) {
-	 errno = EIO;
-	 return -1;
-  }
-  *num_iac = rp.num_current_iac;
-  memcpy(lap, rp.lap, 3*rp.num_current_iac);
-  return 0;
+	read_current_iac_lap_rp rp;
+	struct hci_request rq;
+	
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_HOST_CTL;
+	rq.ocf = OCF_READ_CURRENT_IAC_LAP;
+	rq.rparam = &rp;
+	rq.rlen = READ_CURRENT_IAC_LAP_RP_SIZE;
+	if (0 > hci_send_req(dd, &rq, to))
+		return -1;
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+	*num_iac = rp.num_current_iac;
+	memcpy(lap, rp.lap, 3*rp.num_current_iac);
+	return 0;
 }
 
 int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
 {
-  write_current_iac_lap_cp cp;
-  struct hci_request rq;
-  
-  memset(&cp, 0, sizeof(cp));
-  cp.num_current_iac = num_iac;
-  memcpy(&cp.lap, lap, 3*num_iac);
-  
-  memset(&rq, 0, sizeof(rq));
-  rq.ogf = OGF_HOST_CTL;
-  rq.ocf = OCF_WRITE_CURRENT_IAC_LAP;
-  rq.cparam = &cp;
-  rq.clen = WRITE_CURRENT_IAC_LAP_CP_SIZE;
-  if (0 > hci_send_req(dd, &rq, to))
-	 return -1;
-  return 0;
+	write_current_iac_lap_cp cp;
+	struct hci_request rq;
+	
+	memset(&cp, 0, sizeof(cp));
+	cp.num_current_iac = num_iac;
+	memcpy(&cp.lap, lap, 3*num_iac);
+	
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_HOST_CTL;
+	rq.ocf = OCF_WRITE_CURRENT_IAC_LAP;
+	rq.cparam = &cp;
+	rq.clen = WRITE_CURRENT_IAC_LAP_CP_SIZE;
+	if (0 > hci_send_req(dd, &rq, to))
+		return -1;
+	return 0;
 }
