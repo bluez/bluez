@@ -4,7 +4,7 @@
 %define rel      %{?CUSTOM_RELEASE} %{!?CUSTOM_RELEASE:%RELEASE}
 %define prefix   /usr
 
-Summary: BlueZ libraries
+Summary: Bluetooth libraries
 Name: bluez-libs
 Version: %ver
 Release: %rel
@@ -21,7 +21,7 @@ BuildRequires: glibc >= 2.2.4
 BuildRequires: glib-devel >= 1.2
 
 %description
-Official Linux Bluetooth protocol stack libraries (bluez-libs).
+Bluetooth libraries.
 
 The BLUETOOTH trademarks are owned by Bluetooth SIG, Inc., U.S.A.
 
