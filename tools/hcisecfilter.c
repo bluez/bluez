@@ -77,4 +77,14 @@ int main(void)
 
 	printf("OGF_INFO_PARAM: { 0x%lx, 0x%lx, 0x%lx, 0x%lx}\n", 
 			ocf_mask[0], ocf_mask[1], ocf_mask[2], ocf_mask[3]); 
+
+	// OGF_INFO_PARAM
+	memset((void *) ocf_mask, 0, sizeof(ocf_mask));
+	hci_set_bit(OCF_READ_FAILED_CONTACT_COUNTER, ocf_mask);
+	hci_set_bit(OCF_RESET_FAILED_CONTACT_COUNTER, ocf_mask);
+	hci_set_bit(OCF_GET_LINK_QUALITY, ocf_mask);
+	hci_set_bit(OCF_READ_RSSI, ocf_mask);
+
+	printf("OGF_STATUS_PARAM: { 0x%lx, 0x%lx, 0x%lx, 0x%lx}\n", 
+			ocf_mask[0], ocf_mask[1], ocf_mask[2], ocf_mask[3]); 
 }
