@@ -82,7 +82,7 @@ case "$1" in
 	killall $DUND_NAME > /dev/null 2>&1 || true
 	echo -n " $DUND_NAME"
 	if [ -x "$RFCOMM_EXEC" ] ; then
-		$RFCOMM_EXEC release all
+		$RFCOMM_EXEC release all > /dev/null 2>&1 || true
 		echo -n " $RFCOMM_NAME"
 	fi
 	killall $HIDD_NAME > /dev/null 2>&1 || true
