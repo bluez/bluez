@@ -206,6 +206,22 @@ typedef struct {
 /* Host Controller and Baseband */
 #define OGF_HOST_CTL	0x03
 #define OCF_RESET		0x0003
+
+#define OCF_READ_INQ_ACTIVITY	0x001D
+typedef struct {
+	uint8_t 	status;
+	uint16_t 	interval;
+	uint16_t 	window;
+} __attribute__ ((packed)) read_inq_activity_rp;
+#define READ_INQ_ACTIVITY_RP_SIZE 5
+
+#define OCF_WRITE_INQ_ACTIVITY	0x001E
+typedef struct {
+	uint16_t 	interval;
+	uint16_t 	window;
+} __attribute__ ((packed)) write_inq_activity_cp;
+#define WRITE_INQ_ACTIVITY_CP_SIZE 4
+
 #define OCF_READ_AUTH_ENABLE	0x001F
 #define OCF_WRITE_AUTH_ENABLE	0x0020
 	#define AUTH_DISABLED		0x00
