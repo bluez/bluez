@@ -28,16 +28,16 @@
 #include <unistd.h>
 #include <termios.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/uio.h>
 #include <errno.h>
 #include <string.h>
 #include <pwd.h>
 #include <getopt.h>
 
-#include <asm/types.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/uio.h>
+#include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>

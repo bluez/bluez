@@ -23,14 +23,6 @@
  * $Id$
  */
 
-#include <sys/resource.h>
-
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-
-#include <asm/unaligned.h>
-
 struct frame {
 	void	*data;
 	int	data_len;
@@ -104,34 +96,38 @@ static inline void p_indent(int level, struct frame *f)
 
 /* get_uXX functions do byte swaping */
 
-static inline __u8 get_u8(struct frame *frm)
+/* use memmove to prevent gcc from using builtin memcpy */
+#define get_unaligned(p) \
+	({ __typeof__(*(p)) t; memmove(&t, (p), sizeof(t)); t; })
+
+static inline uint8_t get_u8(struct frame *frm)
 {
-	__u8 *u8_ptr = frm->ptr;
+	uint8_t *u8_ptr = frm->ptr;
 	frm->ptr += 1;
 	frm->len -= 1;
 	return *u8_ptr;
 }
 
-static inline __u16 get_u16(struct frame *frm)
+static inline uint16_t get_u16(struct frame *frm)
 {
-	__u16 *u16_ptr = frm->ptr;
+	uint16_t *u16_ptr = frm->ptr;
 	frm->ptr += 2;
 	frm->len -= 2;
 	return ntohs(get_unaligned(u16_ptr));
 }
 
-static inline __u32 get_u32(struct frame *frm)
+static inline uint32_t get_u32(struct frame *frm)
 {
-	__u32 *u32_ptr = frm->ptr;
+	uint32_t *u32_ptr = frm->ptr;
 	frm->ptr += 4;
 	frm->len -= 4;
 	return ntohl(get_unaligned(u32_ptr));
 }
 
-static inline __u64 get_u64(struct frame *frm)
+static inline uint64_t get_u64(struct frame *frm)
 {
-	__u64 *u64_ptr = frm->ptr;
-	__u64 u64 = get_unaligned(u64_ptr), tmp;
+	uint64_t *u64_ptr = frm->ptr;
+	uint64_t u64 = get_unaligned(u64_ptr), tmp;
 	frm->ptr += 8;
 	frm->len -= 8;
 	tmp = ntohl(u64 & 0xffffffff);
@@ -139,7 +135,7 @@ static inline __u64 get_u64(struct frame *frm)
 	return u64;
 }
 
-static inline void get_u128(struct frame *frm, __u64 *l, __u64 *h)
+static inline void get_u128(struct frame *frm, uint64_t *l, uint64_t *h)
 {
 	*h = get_u64(frm);
 	*l = get_u64(frm);

@@ -34,9 +34,8 @@
 #include <errno.h>
 #include <string.h>
 
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <asm/types.h> 
+#include <sys/socket.h>
 #include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
@@ -150,11 +149,11 @@ static inline char* get_attr_id_name(int attr_id)
 	return 0;
 }
 
-static inline __u8 parse_de_hdr(struct frame *frm, int* n)
+static inline uint8_t parse_de_hdr(struct frame *frm, int* n)
 {
-	__u8	de_hdr = get_u8(frm);
-	__u8	de_type = de_hdr >> 3;
-	__u8	siz_idx = de_hdr & 0x07;
+	uint8_t	de_hdr = get_u8(frm);
+	uint8_t	de_type = de_hdr >> 3;
+	uint8_t	siz_idx = de_hdr & 0x07;
 
 	/* Get the number of bytes */
 	if (sdp_siz_idx_lookup_table[siz_idx].addl_bits) {
@@ -175,9 +174,9 @@ static inline __u8 parse_de_hdr(struct frame *frm, int* n)
 	return de_type;
 }
 
-static inline void print_int(__u8 de_type, int level, int n, struct frame *frm)
+static inline void print_int(uint8_t de_type, int level, int n, struct frame *frm)
 {
-	__u64 val, val2;
+	uint64_t val, val2;
 
 	switch(de_type) {
 	case SDP_DE_UINT:
@@ -223,7 +222,7 @@ static inline void print_int(__u8 de_type, int level, int n, struct frame *frm)
 
 static inline void print_uuid(int n, struct frame *frm)
 {
-	__u32 uuid = 0;
+	uint32_t uuid = 0;
 	char* s;
 
 	switch(n) {
@@ -270,7 +269,7 @@ static inline void print_string(int n, struct frame *frm, const char *name)
 	frm->len -= n;
 }
 
-static inline void print_des(__u8 de_type, int level, int n, struct frame *frm, int *split)
+static inline void print_des(uint8_t de_type, int level, int n, struct frame *frm, int *split)
 {
 	int len = frm->len;
 	while (len - frm->len < n )
@@ -280,7 +279,7 @@ static inline void print_des(__u8 de_type, int level, int n, struct frame *frm, 
 static inline void print_de(int level, struct frame *frm, int *split)
 {
 	int  n;
-	__u8 de_type = parse_de_hdr(frm, &n);
+	uint8_t de_type = parse_de_hdr(frm, &n);
 
 	switch(de_type) {
 	case SDP_DE_NULL:
@@ -342,8 +341,8 @@ static inline void print_srv_srch_pat(int level, struct frame *frm)
 
 static inline void print_attr_id_list(int level, struct frame *frm)
 {
-	__u16 attr_id;
-	__u32 attr_id_range;
+	uint16_t attr_id;
+	uint32_t attr_id_range;
 	int len = frm->len;
 	int n1, n2;
 
@@ -380,7 +379,7 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 
 static inline void print_attr_list(int level, struct frame *frm)
 {
-	__u16 attr_id;
+	uint16_t attr_id;
 	int   n1, n2, split;
 	int   len = frm->len;
 
@@ -439,7 +438,7 @@ static inline void print_attr_lists(int level, struct frame *frm, int len)
 }
 
 
-static inline void err_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
+static inline void err_rsp(int level, uint16_t tid, uint16_t len, struct frame *frm)
 {
 	printf("SDP Error Rsp: tid 0x%x len 0x%x\n", tid, len);
 
@@ -453,7 +452,7 @@ static inline void err_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
 }
 
 
-static inline void ss_req(int level, __u16 tid, __u16 len, struct frame *frm)
+static inline void ss_req(int level, uint16_t tid, uint16_t len, struct frame *frm)
 {
 	printf("SDP SS Req: tid 0x%x len 0x%x\n", tid, len);
 
@@ -465,11 +464,11 @@ static inline void ss_req(int level, __u16 tid, __u16 len, struct frame *frm)
 	printf("max 0x%x\n", get_u16(frm));
 }
 
-static inline void ss_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
+static inline void ss_rsp(int level, uint16_t tid, uint16_t len, struct frame *frm)
 {
 	register int i;
-	__u16 cur_srv_rec_cnt = get_u16(frm); /* Parse CurrentServiceRecordCount */
-	__u16 tot_srv_rec_cnt = get_u16(frm); /* Parse TotalServiceRecordCount */
+	uint16_t cur_srv_rec_cnt = get_u16(frm); /* Parse CurrentServiceRecordCount */
+	uint16_t tot_srv_rec_cnt = get_u16(frm); /* Parse TotalServiceRecordCount */
 
 	printf("SDP SS Rsp: tid 0x%x len 0x%x\n", tid, len);
 
@@ -486,7 +485,7 @@ static inline void ss_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
 	printf("\n");
 }
 
-static inline void sa_req(int level, __u16 tid, __u16 len, struct frame *frm)
+static inline void sa_req(int level, uint16_t tid, uint16_t len, struct frame *frm)
 {
 	printf("SDP SA Req: tid 0x%x len 0x%x\n", tid, len);
 
@@ -502,7 +501,7 @@ static inline void sa_req(int level, __u16 tid, __u16 len, struct frame *frm)
 	print_attr_id_list(level, frm);
 }
 
-static inline void sa_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
+static inline void sa_rsp(int level, uint16_t tid, uint16_t len, struct frame *frm)
 {
 	printf("SDP SA Rsp: tid 0x%x len 0x%x\n", tid, len);
 
@@ -514,7 +513,7 @@ static inline void sa_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
 	print_attr_list(level, frm);
 }
 
-static inline void ssa_req(int level, __u16 tid, __u16 len, struct frame *frm)
+static inline void ssa_req(int level, uint16_t tid, uint16_t len, struct frame *frm)
 {
 	printf("SDP SSA Req: tid 0x%x len 0x%x\n", tid, len);
 
@@ -529,7 +528,7 @@ static inline void ssa_req(int level, __u16 tid, __u16 len, struct frame *frm)
 	print_attr_id_list(level, frm);
 }
 
-static inline void ssa_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
+static inline void ssa_rsp(int level, uint16_t tid, uint16_t len, struct frame *frm)
 {
 	int cnt;
 	printf("SDP SSA Rsp: tid 0x%x len 0x%x\n", tid, len);
@@ -546,8 +545,8 @@ static inline void ssa_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
 void sdp_dump(int level, struct frame *frm)
 {
 	sdp_pdu_hdr *hdr = frm->ptr;
- 	__u16 tid = ntohs(hdr->tid);
-	__u16 len = ntohs(hdr->len);
+ 	uint16_t tid = ntohs(hdr->tid);
+	uint16_t len = ntohs(hdr->len);
 
 	frm->ptr += SDP_PDU_HDR_SIZE;
 	frm->len -= SDP_PDU_HDR_SIZE;

@@ -31,7 +31,7 @@
 #include <ctype.h>
 
 #include <sys/types.h>
-#include <asm/types.h>
+#include <netinet/in.h>
 
 #include "parser.h"
 

@@ -29,9 +29,9 @@
 #include <errno.h>
 #include <string.h>
 
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <asm/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -223,9 +223,9 @@ char *cmd_status_map[] = {
 static inline void command_dump(int level, struct frame *frm)
 {
 	hci_command_hdr *hdr = frm->ptr;
-	__u16 opcode = btohs(hdr->opcode);
-	__u16 ogf = cmd_opcode_ogf(opcode);
-	__u16 ocf = cmd_opcode_ocf(opcode);
+	uint16_t opcode = btohs(hdr->opcode);
+	uint16_t ogf = cmd_opcode_ogf(opcode);
+	uint16_t ocf = cmd_opcode_ocf(opcode);
 	char *cmd;
 
 	if (p_filter(FILT_HCI))
@@ -307,9 +307,9 @@ static inline void event_dump(int level, struct frame *frm)
 static inline void acl_dump(int level, struct frame *frm)
 {
 	hci_acl_hdr *hdr = (void *) frm->ptr;
-	__u16 handle = btohs(hdr->handle);
-	__u16 dlen = btohs(hdr->dlen);
-	__u8 flags = acl_flags(handle);
+	uint16_t handle = btohs(hdr->handle);
+	uint16_t dlen = btohs(hdr->dlen);
+	uint8_t flags = acl_flags(handle);
 
 	if (!p_filter(FILT_HCI)) {
 		p_indent(level, frm);
@@ -332,7 +332,7 @@ static inline void acl_dump(int level, struct frame *frm)
 static inline void sco_dump(int level, struct frame *frm)
 {
 	hci_sco_hdr *hdr = (void *) frm->ptr;
-	__u16 handle = btohs(hdr->handle);
+	uint16_t handle = btohs(hdr->handle);
 
 	if (!p_filter(FILT_SCO)) {
 		p_indent(level, frm);
@@ -348,7 +348,7 @@ static inline void sco_dump(int level, struct frame *frm)
 
 void hci_dump(int level, struct frame *frm)
 {
-	__u8 type = *(__u8 *)frm->ptr; 
+	uint8_t type = *(uint8_t *)frm->ptr; 
 
 	frm->ptr++; frm->len--;
 	

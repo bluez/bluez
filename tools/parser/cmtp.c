@@ -34,16 +34,16 @@
 #include <errno.h>
 #include <string.h>
 
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <asm/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 
 #include "parser.h"
 
 
-char *bst2str(__u8 bst)
+char *bst2str(uint8_t bst)
 {
 	switch (bst) {
 	case 0x00:
@@ -61,14 +61,14 @@ char *bst2str(__u8 bst)
 
 void cmtp_dump(int level, struct frame *frm)
 {
-	__u8 hdr_size;
-	__u8 head;
-	__u8 bst, bid, nlb;
-	__u16 len;
+	uint8_t hdr_size;
+	uint8_t head;
+	uint8_t bst, bid, nlb;
+	uint16_t len;
 
 	while (frm->len > 0) {
 
-		head = *(__u8 *)frm->ptr;
+		head = *(uint8_t *)frm->ptr;
 
 		bst = (head & 0x03);
 		bid = (head & 0x3c) >> 2;
@@ -83,11 +83,11 @@ void cmtp_dump(int level, struct frame *frm)
 			break;
 		case 0x01:
 			hdr_size = 2;
-			len = *(__u8 *)(frm->ptr + 1);
+			len = *(uint8_t *)(frm->ptr + 1);
 			break;
 		case 0x02:
 			hdr_size = 3;
-			len = *(__u8 *)(frm->ptr + 1) + (*(__u8 *)(frm->ptr + 2) * 256);
+			len = *(uint8_t *)(frm->ptr + 1) + (*(uint8_t *)(frm->ptr + 2) * 256);
 			break;
 		}
 

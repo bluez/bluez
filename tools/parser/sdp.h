@@ -135,9 +135,9 @@
 /* SDP structures */
 
 typedef struct {
-	__u8  pid;
-	__u16 tid;
-	__u16 len;
+	uint8_t  pid;
+	uint16_t tid;
+	uint16_t len;
 } __attribute__ ((packed)) sdp_pdu_hdr;
 #define SDP_PDU_HDR_SIZE	5
 

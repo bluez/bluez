@@ -34,9 +34,9 @@
 #include <errno.h>
 #include <string.h>
 
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <asm/types.h>
+#include <sys/socket.h>
+#include <asm/byteorder.h>
 
 #include <bluetooth/bluetooth.h>
 
@@ -51,12 +51,12 @@ static char *cr_str[] = {
 #define CR_STR(mcc_head) cr_str[mcc_head->type.cr]
 #define GET_DLCI(addr) ((addr.server_chn << 1) | (addr.d & 1))
 
-void print_rfcomm_hdr(long_frame_head* head, __u8 *ptr, int len)
+void print_rfcomm_hdr(long_frame_head* head, uint8_t *ptr, int len)
 {
 	address_field  addr  = head->addr;
-	__u8           ctr   = head->control;
-	__u16          ilen  = head->length.bits.len;
-	__u8           ctr_type,pf,dlci,fcs;
+	uint8_t           ctr   = head->control;
+	uint16_t          ilen  = head->length.bits.len;
+	uint8_t           ctr_type,pf,dlci,fcs;
 
 	dlci     = GET_DLCI(addr);
 	pf       = GET_PF(ctr);
@@ -71,7 +71,7 @@ void print_mcc(mcc_long_frame_head* mcc_head)
 	printf("mcc_len %d\n", mcc_head->length.bits.len);
 }
 
-static inline void mcc_test(int level, __u8 *ptr, int len, 
+static inline void mcc_test(int level, uint8_t *ptr, int len, 
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
@@ -79,7 +79,7 @@ static inline void mcc_test(int level, __u8 *ptr, int len,
 	print_rfcomm_hdr(head, ptr, len);
 	print_mcc(mcc_head);
 }
-static inline void mcc_fcon(int level, __u8 *ptr, int len, 
+static inline void mcc_fcon(int level, uint8_t *ptr, int len, 
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
@@ -88,7 +88,7 @@ static inline void mcc_fcon(int level, __u8 *ptr, int len,
 	print_mcc(mcc_head);
 }
 
-static inline void mcc_fcoff(int level, __u8 *ptr, int len, 
+static inline void mcc_fcoff(int level, uint8_t *ptr, int len, 
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
@@ -97,7 +97,7 @@ static inline void mcc_fcoff(int level, __u8 *ptr, int len,
 	print_mcc(mcc_head);
 }
 
-static inline void mcc_msc(int level, __u8 *ptr, int len, 
+static inline void mcc_msc(int level, uint8_t *ptr, int len, 
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
@@ -124,7 +124,7 @@ static inline void mcc_msc(int level, __u8 *ptr, int len,
 		printf("\n");
 }
 
-static inline void mcc_rpn(int level, __u8 *ptr, int len,
+static inline void mcc_rpn(int level, uint8_t *ptr, int len,
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
@@ -152,10 +152,10 @@ static inline void mcc_rpn(int level, __u8 *ptr, int len,
 		rpn->rpn_val.rtr_input, rpn->rpn_val.rtr_output,
 		rpn->rpn_val.rtc_input, rpn->rpn_val.rtc_output,
 		rpn->rpn_val.xon, rpn->rpn_val.xoff,
-		btohs(*(__u16 *)&(rpn->rpn_val.pm)));
+		btohs(*(uint16_t *)&(rpn->rpn_val.pm)));
 }
 
-static inline void mcc_rls(int level, __u8 *ptr, int len,
+static inline void mcc_rls(int level, uint8_t *ptr, int len,
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
@@ -167,7 +167,7 @@ static inline void mcc_rls(int level, __u8 *ptr, int len,
 	printf("dlci %d error: %d", GET_DLCI(rls->dlci), rls->error);
 }
 
-static inline void mcc_pn(int level, __u8 *ptr, int len,
+static inline void mcc_pn(int level, uint8_t *ptr, int len,
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
@@ -185,7 +185,7 @@ static inline void mcc_pn(int level, __u8 *ptr, int len,
 		pn->credits);
 }
 
-static inline void mcc_nsc(int level, __u8 *ptr, int len,
+static inline void mcc_nsc(int level, uint8_t *ptr, int len,
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
@@ -205,7 +205,7 @@ static inline void mcc_frame(int level, struct frame *frm, long_frame_head *head
 {
         mcc_short_frame_head *mcc_short_head_p = frm->ptr;
         mcc_long_frame_head mcc_head;
-        __u8 hdr_size;
+        uint8_t hdr_size;
 
         if ( mcc_short_head_p->length.ea == EA ) {
                 mcc_head.type       = mcc_short_head_p->type;
@@ -276,7 +276,7 @@ static inline void uih_frame(int level, struct frame *frm, long_frame_head *head
 
 void rfcomm_dump(int level, struct frame *frm)
 {
-	__u8 hdr_size, ctr_type;
+	uint8_t hdr_size, ctr_type;
 	short_frame_head *short_head_p = (void *) frm->ptr;
 	long_frame_head head;
 

@@ -34,9 +34,9 @@
 #include <errno.h>
 #include <string.h>
 
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <asm/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -67,11 +67,11 @@ static char *get_macaddr(struct frame *frm)
 
 static void bnep_control(int level, struct frame *frm, int header_length)
 {
-	__u8 uuid_size;
+	uint8_t uuid_size;
 	int i, length;
 	char *s;
-	__u32 uuid = 0;
-	__u8 type = get_u8(frm);
+	uint32_t uuid = 0;
+	uint8_t type = get_u8(frm);
 
 	p_indent(++level, frm);
 	switch (type) {
@@ -163,9 +163,9 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 
 static void bnep_eval_extension(int level, struct frame *frm)
 {
-	__u8 type = get_u8(frm);
+	uint8_t type = get_u8(frm);
 	int extension = type & 0x80;
-	__u8 length = get_u8(frm);
+	uint8_t length = get_u8(frm);
 
 	p_indent(level, frm);
 	switch (type & 0x7f) {
@@ -241,8 +241,8 @@ static void ip_dump(int level, struct frame *frm)
 
 void bnep_dump(int level, struct frame *frm)
 {
-	__u8 type = get_u8(frm);
-	__u16 proto = 0x0000;
+	uint8_t type = get_u8(frm);
+	uint16_t proto = 0x0000;
 	int extension = type & 0x80;
 
 	p_indent(level, frm);

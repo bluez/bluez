@@ -29,9 +29,9 @@
 #include <errno.h>
 #include <string.h>
 
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <asm/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -40,7 +40,7 @@
 #include "parser.h"
 
 typedef struct {
-	__u16 handle;
+	uint16_t handle;
 	struct frame frm;
 } handle_info;
 #define HANDLE_TABLE_SIZE 10
@@ -48,8 +48,8 @@ typedef struct {
 static handle_info handle_table[HANDLE_TABLE_SIZE];
 
 typedef struct {
-	__u16 cid;
-	__u16 psm;
+	uint16_t cid;
+	uint16_t psm;
 } cid_info;
 #define CID_TABLE_SIZE	20
 
@@ -58,7 +58,7 @@ static cid_info cid_table[2][CID_TABLE_SIZE];
 #define SCID cid_table[0]
 #define DCID cid_table[1]
 
-static struct frame * add_handle(__u16 handle)
+static struct frame * add_handle(uint16_t handle)
 {
 	register handle_info *t = handle_table;
 	register int i;
@@ -71,7 +71,7 @@ static struct frame * add_handle(__u16 handle)
 	return NULL;
 }
 
-static struct frame * get_frame(__u16 handle)
+static struct frame * get_frame(uint16_t handle)
 {
 	register handle_info *t = handle_table;
 	register int i;
@@ -83,7 +83,7 @@ static struct frame * get_frame(__u16 handle)
 	return add_handle(handle);
 }
 
-static void add_cid(int in, __u16 cid, __u16 psm)
+static void add_cid(int in, uint16_t cid, uint16_t psm)
 {
 	register cid_info *table = cid_table[in];
 	register int i;
@@ -96,10 +96,10 @@ static void add_cid(int in, __u16 cid, __u16 psm)
 		}
 }
 
-static void del_cid(int in, __u16 dcid, __u16 scid)
+static void del_cid(int in, uint16_t dcid, uint16_t scid)
 {
 	register int t, i;
-	__u16 cid[2];
+	uint16_t cid[2];
 
 	if (!in) {
 		cid[0] = dcid;
@@ -118,7 +118,7 @@ static void del_cid(int in, __u16 dcid, __u16 scid)
 	}
 }
 
-static __u16 get_psm(int in, __u16 cid)
+static uint16_t get_psm(int in, uint16_t cid)
 {
 	register cid_info *table = cid_table[in];
 	register int i;
@@ -153,7 +153,7 @@ static inline void conn_req(int level, struct frame *frm)
 static inline void conn_rsp(int level, struct frame *frm)
 {
 	l2cap_conn_rsp *h = frm->ptr;
-	__u16 psm;
+	uint16_t psm;
 
 	if ((psm = get_psm(!frm->in, btohs(h->scid))))
 		add_cid(frm->in, btohs(h->dcid), psm);
@@ -166,17 +166,17 @@ static inline void conn_rsp(int level, struct frame *frm)
 			btohs(h->result), btohs(h->status));
 }
 
-static __u32 conf_opt_val(__u8 *ptr, __u8 len)
+static uint32_t conf_opt_val(uint8_t *ptr, uint8_t len)
 {
 	switch (len) {
 	case 1:
 		return *ptr;
 
         case 2:
-                return btohs(*(__u16 *)ptr);
+                return btohs(*(uint16_t *)ptr);
 
         case 4:
-                return btohl(*(__u32 *)ptr);
+                return btohl(*(uint32_t *)ptr);
 	}
 	return 0;
 }
@@ -299,9 +299,9 @@ static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 static void l2cap_parse(int level, struct frame *frm)
 {
 	l2cap_hdr *hdr = (void *)frm->ptr;
-	__u16 dlen = btohs(hdr->len);
-	__u16 cid  = btohs(hdr->cid);
-	__u16 psm;
+	uint16_t dlen = btohs(hdr->len);
+	uint16_t cid  = btohs(hdr->cid);
+	uint16_t psm;
 
 	frm->ptr += L2CAP_HDR_SIZE;
 	frm->len -= L2CAP_HDR_SIZE;
@@ -372,8 +372,8 @@ static void l2cap_parse(int level, struct frame *frm)
 					hdr->code, hdr->ident, btohs(hdr->len));
 				raw_dump(level, frm);
 			}
-			frm->ptr += hdr->len;
-			frm->len -= hdr->len;
+			frm->ptr += btohs(hdr->len);
+			frm->len -= btohs(hdr->len);
 		}
 	} else if (cid == 0x2) {
 		/* Connectionless channel */
@@ -381,7 +381,7 @@ static void l2cap_parse(int level, struct frame *frm)
 		if (p_filter(FILT_L2CAP))
 			return;
 
-		psm = btohs(*(__u16*)frm->ptr);
+		psm = btohs(*(uint16_t*)frm->ptr);
 		frm->len -= 2;
 
 		p_indent(level, frm);
@@ -389,7 +389,7 @@ static void l2cap_parse(int level, struct frame *frm)
 		raw_dump(level, frm);
 	} else {
 		/* Connection oriented channel */
-		__u16 psm = get_psm(!frm->in, cid);
+		uint16_t psm = get_psm(!frm->in, cid);
 	
 		if (!p_filter(FILT_L2CAP)) {
 			p_indent(level, frm);
@@ -441,7 +441,7 @@ void l2cap_dump(int level, struct frame *frm)
 {
 	struct frame *fr;
 	l2cap_hdr *hdr;
-	__u16 dlen;
+	uint16_t dlen;
 
 	if (frm->flags & ACL_START) {
 		hdr  = frm->ptr;
