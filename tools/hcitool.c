@@ -447,7 +447,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 		}
 		cc = 1;
 	} else
-		handle = cr->conn_info->handle;
+		handle = htobs(cr->conn_info->handle);
 
 	printf("\tBD Address:  %s\n", argv[0]);
 
@@ -721,7 +721,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (hci_disconnect(dd, cr->conn_info->handle, HCI_OE_USER_ENDED_CONNECTION, 100) < 0)
+	if (hci_disconnect(dd, htobs(cr->conn_info->handle), HCI_OE_USER_ENDED_CONNECTION, 100) < 0)
 		perror("Disconnect failed");
 
 	close(dd);
@@ -827,6 +827,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	struct hci_request rq;
 	read_rssi_rp rp;
 	bdaddr_t bdaddr;
+	uint16_t handle;
 	int opt, dd;
 
 	for_each_opt(opt, rssi_options, NULL) {
@@ -871,10 +872,12 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
+	handle = htobs(cr->conn_info->handle);
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_STATUS_PARAM;
 	rq.ocf    = OCF_READ_RSSI;
-	rq.cparam = &cr->conn_info->handle;
+	rq.cparam = &handle;
 	rq.clen   = 2;
 	rq.rparam = &rp;
 	rq.rlen   = READ_RSSI_RP_SIZE;
@@ -911,6 +914,7 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 	struct hci_request rq;
 	get_link_quality_rp rp;
 	bdaddr_t bdaddr;
+	uint16_t handle;
 	int opt, dd;
 
 	for_each_opt(opt, lq_options, NULL) {
@@ -955,10 +959,12 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
+	handle = htobs(cr->conn_info->handle);
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_STATUS_PARAM;
 	rq.ocf    = OCF_GET_LINK_QUALITY;
-	rq.cparam = &cr->conn_info->handle;
+	rq.cparam = &handle;
 	rq.clen   = 2;
 	rq.rparam = &rp;
 	rq.rlen   = GET_LINK_QUALITY_RP_SIZE;
@@ -1041,7 +1047,7 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 		perror("Get connection info failed");
 		exit(1);
 	}
-	cp.handle = cr->conn_info->handle;
+	cp.handle = htobs(cr->conn_info->handle);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
@@ -1131,7 +1137,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	cp.handle   = cr->conn_info->handle;
+	cp.handle   = htobs(cr->conn_info->handle);
 	cp.pkt_type = ptype;
 
 	memset(&rq, 0, sizeof(rq));
@@ -1170,6 +1176,7 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 	read_link_supervision_timeout_rp rp;
 	write_link_supervision_timeout_cp cp;
 	bdaddr_t bdaddr;
+	uint16_t handle;
 	int opt, dd;
 
 	for_each_opt(opt, lst_options, NULL) {
@@ -1214,11 +1221,13 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
+	handle = htobs(cr->conn_info->handle);
+
 	if (argc == 1) {
 		memset(&rq, 0, sizeof(rq));
 		rq.ogf    = OGF_HOST_CTL;
 		rq.ocf    = OCF_READ_LINK_SUPERVISION_TIMEOUT;
-		rq.cparam = &cr->conn_info->handle;
+		rq.cparam = &handle;
 		rq.clen   = 2;
 		rq.rparam = &rp;
 		rq.rlen   = READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE;
@@ -1239,7 +1248,7 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 		else
 			printf("Link supervision timeout never expires\n");
 	} else {
-		cp.handle      = cr->conn_info->handle;
+		cp.handle      = htobs(cr->conn_info->handle);
 		cp.link_sup_to = strtol(argv[1], NULL, 10);
 
 		memset(&rq, 0, sizeof(rq));
@@ -1320,7 +1329,7 @@ static void cmd_auth(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	cp.handle = cr->conn_info->handle;
+	cp.handle = htobs(cr->conn_info->handle);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
@@ -1402,7 +1411,7 @@ static void cmd_enc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	cp.handle = cr->conn_info->handle;
+	cp.handle = htobs(cr->conn_info->handle);
 	cp.encrypt = (argc > 1) ? atoi(argv[1]) : 1;
 
 	memset(&rq, 0, sizeof(rq));
