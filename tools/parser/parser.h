@@ -27,8 +27,8 @@
 #ifndef __PARSER_H
 #define __PARSER_H
 
+#include <sys/time.h>
 #include <bluetooth/bluetooth.h>
-
 #include <netinet/in.h>
 
 struct frame {
