@@ -84,7 +84,7 @@ void inline command_dump(void *ptr, int len)
 {
 	hci_command_hdr *hdr = ptr;
 	__u16 opcode = __le16_to_cpu(hdr->opcode);
-	printf("  ogf: 0x%x ofc 0x%x plen: %d\n", 
+	printf("  ogf: 0x%x ocf 0x%x plen: %d\n", 
 		cmd_opcode_ogf(opcode), cmd_opcode_ocf(opcode), hdr->plen);
 }
 
