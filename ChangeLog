@@ -1,3 +1,14 @@
+ver 2.9:
+	Retry SDP connect if busy in the CUPS backend.
+	Use packet type and allow role switch in hcitool.
+	Use the functions from the USB library for hid2hci.
+	Add Broadcom firmware loader.
+	Add EPoX endian quirk for buggy keyboards.
+	Update the autoconf/automake scripts.
+
+	Note:
+	This version needs at least bluez-libs-2.9
+
 ver 2.8:
 	Use LIBS and LDADD instead of LDFLAGS.
 	Use HIDP subclass field for HID boot protocol.
