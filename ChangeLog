@@ -1,5 +1,11 @@
+ver 2.0-pre12:
+	Removed max link key limit. Keys never expire.
+	Link key database is always updated. Reread PIN on SIGHUP (hcid).
+	Bluetooth script starts SDPd, if installed.
+	Other minor fixes.
+
 ver 2.0-pre11:
-	Improved link key managment and more verbose logging (hcid).
+	Improved link key management and more verbose logging (hcid).
 	Fixed scan command (hcitool).
 
 ver 2.0-pre10:
