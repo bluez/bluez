@@ -397,6 +397,7 @@ static struct {
 	char *name;
 	int  flag;
 } filters[] = {
+	{ "lmp",	FILT_LMP	},
 	{ "hci",	FILT_HCI	},
 	{ "sco",	FILT_SCO	},
 	{ "l2cap",	FILT_L2CAP	},

@@ -37,6 +37,7 @@ struct frame {
 	void	*ptr;
 	int	len;
 	int	in;
+	int	master;
 	int	handle;
 	int	cid;
 	int	num;
@@ -58,16 +59,17 @@ struct frame {
 #define DUMP_TYPE_MASK	(DUMP_ASCII | DUMP_HEX | DUMP_EXT)
 
 /* Parser filter */
-#define FILT_HCI	0x0001
-#define FILT_SCO	0x0002
-#define FILT_L2CAP	0x0004
-#define FILT_RFCOMM	0x0008
-#define FILT_SDP	0x0010
-#define FILT_BNEP	0x0020
-#define FILT_CMTP	0x0040
-#define FILT_HIDP	0x0080
-#define FILT_HCRP	0x0100
-#define FILT_AVDTP	0x0200
+#define FILT_LMP	0x0001
+#define FILT_HCI	0x0002
+#define FILT_SCO	0x0004
+#define FILT_L2CAP	0x0008
+#define FILT_RFCOMM	0x0010
+#define FILT_SDP	0x0020
+#define FILT_BNEP	0x0040
+#define FILT_CMTP	0x0080
+#define FILT_HIDP	0x0100
+#define FILT_HCRP	0x0200
+#define FILT_AVDTP	0x0400
 
 #define FILT_OBEX	0x00010000
 #define FILT_CAPI	0x00020000
@@ -173,6 +175,7 @@ void ext_dump(int level, struct frame *frm, int num);
 void raw_dump(int level, struct frame *frm);
 void raw_ndump(int level, struct frame *frm, int num);
 
+void lmp_dump(int level, struct frame *frm);
 void hci_dump(int level, struct frame *frm);
 void l2cap_dump(int level, struct frame *frm);
 void rfcomm_dump(int level, struct frame *frm);
