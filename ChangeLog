@@ -1,3 +1,11 @@
+ver 2.14:
+	Add function for reading the RSSI.
+	Add function for reading the link quality.
+	Add function for reading the transmit power level.
+	Add functions for the link supervision timeout.
+	Remove deprecated functions.
+	Update AM_PATH_BLUEZ macro.
+
 ver 2.13:
 	Add Device ID and HID attribute definitions.
 	Update the UUID constants and its translations.
