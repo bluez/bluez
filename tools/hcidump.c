@@ -44,13 +44,14 @@
 #include "parser.h"
 
 /* Default options */
-int snap_len  = 1 + HCI_ACL_HDR_SIZE + L2CAP_HDR_SIZE + 40;
+#define SNAP_LEN (1 + HCI_ACL_HDR_SIZE + L2CAP_HDR_SIZE + L2CAP_CMD_HDR_SIZE + 60)
+int snap_len = SNAP_LEN;
 
 void usage(void)
 {
 	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
 	printf("Usage:\n");
-	printf("\thcidump <-i hciX> [-h]\n");
+	printf("\thcidump <-i hciX> [-ah]\n");
 }
 
 void process_frames(int dev, int fd)
@@ -61,8 +62,8 @@ void process_frames(int dev, int fd)
 	struct iovec  iv;
 	int len, in;
 
-	if (snap_len < 20)
-		snap_len = 20;	
+	if (snap_len < SNAP_LEN)
+		snap_len = SNAP_LEN;
 
 	if (!(data = malloc(snap_len))) {
 		perror("Can't allocate data buffer");

@@ -23,11 +23,13 @@
  * $Id$
  */
 
-#define indent(l) printf("%*c", (l*2), ' ')
+#define DUMP_WIDTH	20
 
 #define DUMP_HEX	0x01
 #define DUMP_ASCII	0x02
 #define DUMP_TYPE_MASK	(DUMP_HEX | DUMP_ASCII)
+
+#define indent(l) printf("%*c", (l*2), ' ')
 
 void init_parser(long flags);
 #define	parse(data, len) hci_dump(0, data, len)

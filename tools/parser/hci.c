@@ -46,7 +46,7 @@ static inline void command_dump(void *ptr, int len)
 	ptr += HCI_COMMAND_HDR_SIZE;
 	len -= HCI_COMMAND_HDR_SIZE;
 
-	printf("Command: ogf 0x%x ocf 0x%x plen %d\n",
+	printf("HCI Command: ogf 0x%x ocf 0x%x plen %d\n",
 		cmd_opcode_ogf(opcode), cmd_opcode_ocf(opcode), hdr->plen);
 	raw_dump(1, ptr, len);
 }
@@ -58,7 +58,7 @@ static inline void event_dump(void *ptr, int len)
 	ptr += HCI_EVENT_HDR_SIZE;
 	len -= HCI_EVENT_HDR_SIZE;
 
-	printf("Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
+	printf("HCI Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
 	raw_dump(1, ptr, len);
 }
 
@@ -67,13 +67,19 @@ static inline void acl_dump(void *ptr, int len)
 	hci_acl_hdr *hdr = ptr;
 	__u16 handle = __le16_to_cpu(hdr->handle);
 	__u16 dlen = __le16_to_cpu(hdr->dlen);
-
-	printf("ACL data: handle 0x%x flags 0x%x dlen %d\n",
-		acl_handle(handle), acl_flags(handle), dlen);
+	__u8 flags = acl_flags(handle);
+	
+	printf("ACL data: handle 0x%4.4x flags 0x%2.2x dlen %d\n",
+		acl_handle(handle), flags, dlen);
 	
 	ptr += HCI_ACL_HDR_SIZE;
 	len -= HCI_ACL_HDR_SIZE;
-	l2cap_dump(1, ptr, len, acl_flags(handle));
+
+	if (flags & ACL_START) {
+		l2cap_dump(1, ptr, len, flags);
+	} else {
+		raw_dump(1, ptr, len);
+	}
 }
 
 void hci_dump(int level, __u8 *data, int len)

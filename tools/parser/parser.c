@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <sys/types.h>
 #include <asm/types.h>
@@ -43,38 +44,36 @@ void init_parser(long flags)
 
 static inline void hex_dump(int level, unsigned char *buf, int len)
 {
-	register unsigned char *ptr;
-	register int i;
-	char line[100];
+	register int i,n;
 
-	ptr = line; *ptr = 0; 
-	for (i=0; i<len; i++) {
-		ptr += sprintf(ptr, "%2.2X ", buf[i]);
-		if (i && !((i+1)%20)) {
-			indent(level); printf("%s\n", line);
-			ptr = line; *ptr = 0;
+	for (i=0, n=1; i<len; i++, n++) {
+		if (n == 1)
+			indent(level);
+		printf("%2.2X ", buf[i]);
+		if (n == DUMP_WIDTH) {
+			printf("\n");
+			n = 0;
 		}
 	}
-	if (line[0])
-		indent(level); printf("%s\n", line);
+	if (i && n!=1)
+		printf("\n");
 }
 
 static inline void ascii_dump(int level, unsigned char *buf, int len)
 {
-	register unsigned char *ptr;
-	register int i;
-	char line[100];
+	register int i,n;
 
-	ptr = line; *ptr = 0; 
-	for (i=0; i<len; i++) {
-		ptr += sprintf(ptr, "%1c", buf[i]);
-		if (i && !((i+1)%20)) {
-			indent(level); printf("%s\n", line);
-			ptr = line; *ptr = 0;
+	for (i=0, n=1; i<len; i++, n++) {
+		if (n == 1)
+			indent(level);
+		printf("%1c ", isprint(buf[i]) ? buf[1] : '.');
+		if (n == DUMP_WIDTH) {
+			printf("\n");
+			n = 0;
 		}
 	}
-	if (line[0])
-		indent(level); printf("%s\n", line);
+	if (i && n!=1)
+		printf("\n");
 }
 
 void raw_dump(int level, unsigned char *buf, int len)
