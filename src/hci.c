@@ -1491,7 +1491,7 @@ int hci_write_afh_mode(int dd, uint8_t mode, int to)
 	return 0;
 }
 
-int hci_read_transmit_power_level(int dd, uint16_t handle, uint8_t type, uint8_t *level, int to)
+int hci_read_transmit_power_level(int dd, uint16_t handle, uint8_t type, int8_t *level, int to)
 {
 	read_transmit_power_level_cp cp;
 	read_transmit_power_level_rp rp;
