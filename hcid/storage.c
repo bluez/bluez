@@ -28,66 +28,21 @@
  *  $Id$
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
 #include <errno.h>
+#include <sys/socket.h>
 
-char *expand_name(char *dst, int size, char *str, int dev_id);
+#include <bluetooth/bluetooth.h>
 
-char *get_host_name(void);
+#include "hcid.h"
 
-void init_title(int argc, char *argv[], char *env[], const char *name);
-void set_title(const char *ftm, ...);
+#define DEVPATH "/etc/bluetooth/devices"
 
-/* IO cancelation */
-extern volatile sig_atomic_t __io_canceled;
-
-static inline void io_init(void)
+int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name)
 {
-	__io_canceled = 0;
-}
-
-static inline void io_cancel(void)
-{
-	__io_canceled = 1;
-}
-
-/* Read exactly len bytes (Signal safe)*/
-static inline int read_n(int fd, void *buf, int len)
-{
-	register int w, t = 0;
-
-	while (!__io_canceled && len > 0) {
-		if ((w = read(fd, buf, len)) < 0) {
-			if (errno == EINTR || errno == EAGAIN)
-				continue;
-			return -1;
-		}
-		if (!w)
-			return 0;
-		len -= w;
-		buf += w;
-		t += w;
-	}
-
-	return t;
-}
-
-/* Write exactly len bytes (Signal safe)*/
-static inline int write_n(int fd, void *buf, int len)
-{
-	register int w, t = 0;
-
-	while (!__io_canceled && len > 0) {
-		if ((w = write(fd, buf, len)) < 0) {
-			if (errno == EINTR || errno == EAGAIN)
-				continue;
-			return -1;
-		}
-		if (!w)
-			return 0;
-		len -= w;
-		buf += w;
-		t += w;
-	}
-
-	return t;
+	return -EIO;
 }

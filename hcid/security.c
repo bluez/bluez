@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -380,7 +380,18 @@ reject:
 	return;
 }
 
-gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+static void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_remote_name_req_complete *evt = ptr;
+	bdaddr_t *dba = &evt->bdaddr;
+
+	if (!evt->status)
+		return;
+
+	write_device_name(sba, dba, evt->name);
+}
+
+static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
 	struct hci_dev_info *di = (void *) data;
@@ -414,6 +425,12 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	dev = g_io_channel_unix_get_fd(chan);
 
 	ioctl(dev, HCIGETDEVINFO, (void *) di);
+
+	switch (eh->evt) {
+	case EVT_REMOTE_NAME_REQ_COMPLETE:
+		remote_name_information(dev, &di->bdaddr, ptr);
+		break;
+	}
 
 	if (hci_test_bit(HCI_SECMGR, &di->flags))
 		return TRUE;
@@ -459,6 +476,7 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_PIN_CODE_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_NOTIFY, &flt);
+	hci_filter_set_event(EVT_REMOTE_NAME_REQ_COMPLETE, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		syslog(LOG_ERR, "Can't set filter on hci%d. %s(%d)", 
 				hdev, strerror(errno), errno);

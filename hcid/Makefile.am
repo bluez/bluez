@@ -18,7 +18,7 @@ dbus_hcid_libs    =
 dbus_hcid_cflags  =
 endif
 
-hcid_SOURCES = main.c security.c hcid.h lib.c lib.h parser.h parser.y lexer.l kword.h kword.c glib-ectomy.h glib-ectomy.c $(dbus_hcid_sources)
+hcid_SOURCES = main.c security.c storage.c hcid.h lib.c lib.h parser.h parser.y lexer.l kword.h kword.c glib-ectomy.h glib-ectomy.c $(dbus_hcid_sources)
 
 LIBS = $(dbus_hcid_libs) @BLUEZ_LIBS@
 

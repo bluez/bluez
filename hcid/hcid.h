@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@
 #include <sys/types.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
 
 #include "glib-ectomy.h"
 
@@ -99,9 +100,6 @@ int read_config(char *file);
 
 struct device_opts *alloc_device_opts(char *ref);
 
-gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data);
-gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data);
-
 void init_security_data(void);
 void start_security_manager(int hdev);
 void stop_security_manager(int hdev);
@@ -111,3 +109,5 @@ void toggle_pairing(int enable);
 void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci);
 gboolean hcid_dbus_init(void);
 #endif
+
+int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name);

@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -63,9 +63,6 @@ struct device_opts *parser_device;
 static struct device_list *device_list = NULL;
 
 static GMainLoop *event_loop;
-
-gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data);
-gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data);
 
 static void usage(void)
 {
@@ -406,7 +403,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 	}
 }
 
-gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[HCI_MAX_FRAME_SIZE], *ptr;
 	evt_stack_internal *si;
