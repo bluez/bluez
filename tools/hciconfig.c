@@ -356,6 +356,7 @@ void cmd_features(int ctl, int hdev, char *opt)
 void cmd_name(int ctl, int hdev, char *opt)
 {
 	int s = hci_open_dev(hdev);
+
 	if (s < 0) {
 		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
 		exit(1);
@@ -993,6 +994,7 @@ struct {
 	{ "name",	cmd_name,	"[name]",	"Get/Set local name" },
 	{ "class",	cmd_class,	"[class]",	"Get/Set class of device" },
 	{ "voice",	cmd_voice,	"[voice]",	"Get/Set voice setting" },
+	{ "iac",	cmd_iac,	"[iac]",	"Get/Set inquiry access code" },
 	{ "inqparms",	cmd_inq_parms,	"[win:int]",	"Get/Set inquiry scan window and interval" },
 	{ "pageparms",	cmd_page_parms,	"[win:int]",	"Get/Set page scan window and interval" },
 	{ "pageto",	cmd_page_to,	"[to]",		"Get/Set page timeout" },
@@ -1001,7 +1003,6 @@ struct {
 	{ "features",	cmd_features,	0,		"Display device features" },
 	{ "version",	cmd_version,	0,		"Display version information" },
 	{ "revision",	cmd_revision,	0,		"Display revision information" },
-        { "iac",	cmd_iac,	"[iac]",	"Get/Set inquiry access code" },
 	{ NULL, NULL, 0 }
 };
 
