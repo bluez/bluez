@@ -92,6 +92,7 @@ static void add_cid(int in, __u16 cid, __u16 psm)
 		if (!table[i].cid || table[i].cid == cid) {
 			table[i].cid = cid;
 			table[i].psm = psm;
+			break;
 		}
 }
 
@@ -110,8 +111,10 @@ static void del_cid(int in, __u16 dcid, __u16 scid)
 
 	for (t=0; t<2; t++) {	
 		for (i=0; i<CID_TABLE_SIZE; i++)
-			if (cid_table[t][i].cid == cid[t])
+			if (cid_table[t][i].cid == cid[t]) {
 				cid_table[t][i].cid = 0;
+				break;
+			}
 	}
 }
 
