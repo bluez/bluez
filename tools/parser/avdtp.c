@@ -85,9 +85,9 @@ static char *mt2str(uint8_t hdr)
 	switch (hdr & 0x03) {
 	case 0x00:
 		return "cmd";
-	case 0x08:
+	case 0x02:
 		return "rsp";
-	case 0x0c:
+	case 0x03:
 		return "rej";
 	default:
 		return "rfa";
