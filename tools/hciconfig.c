@@ -486,7 +486,7 @@ void cmd_class(int ctl, int hdev, char *opt)
 		exit(1);
 	}
 	if (opt) {
-		uint32_t cod = htobl(strtoul(opt, NULL, 16));
+		uint32_t cod = strtoul(opt, NULL, 16);
 		if (0 > hci_write_class_of_dev(s, cod, 1000)) {
 			printf("Can't write local class of device on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
