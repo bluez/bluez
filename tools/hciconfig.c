@@ -66,14 +66,14 @@ static void print_dev_list(int ctl, int flags)
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
-	if (ioctl(ctl, HCIGETDEVLIST, (void *) dl)) {
+	if (ioctl(ctl, HCIGETDEVLIST, (void *) dl) < 0) {
 		perror("Can't get device list");
 		exit(1);
 	}
 
 	for (i = 0; i< dl->dev_num; i++) {
 		di.dev_id = (dr+i)->dev_id;
-		if (ioctl(ctl, HCIGETDEVINFO, (void *) &di))
+		if (ioctl(ctl, HCIGETDEVINFO, (void *) &di) < 0)
 			continue;
 		print_dev_info(ctl, &di);
 	}
@@ -128,11 +128,11 @@ static void cmd_scan(int ctl, int hdev, char *opt)
 
 	dr.dev_id  = hdev;
 	dr.dev_opt = SCAN_DISABLED;
-	if( !strcmp(opt, "iscan") )
+	if (!strcmp(opt, "iscan"))
 		dr.dev_opt = SCAN_INQUIRY;
-	else if( !strcmp(opt, "pscan") )
+	else if (!strcmp(opt, "pscan"))
 		dr.dev_opt = SCAN_PAGE;
-	else if( !strcmp(opt, "piscan") )
+	else if (!strcmp(opt, "piscan"))
 		dr.dev_opt = SCAN_PAGE | SCAN_INQUIRY;
 
 	if (ioctl(ctl, HCISETSCAN, (unsigned long) &dr) < 0) {
@@ -240,11 +240,9 @@ static void cmd_secmgr(int ctl, int hdev, char *opt)
 
 static void cmd_up(int ctl, int hdev, char *opt)
 {
-	int ret;
-
 	/* Start HCI device */
-	if( (ret = ioctl(ctl, HCIDEVUP, hdev)) < 0 ) {
-		if( errno == EALREADY )
+	if (ioctl(ctl, HCIDEVUP, hdev) < 0) {
+		if (errno == EALREADY)
 			return;
 		fprintf(stderr, "Can't init device hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
@@ -366,7 +364,7 @@ static void cmd_scomtu(int ctl, int hdev, char *opt)
 	*((uint16_t *)&dr.dev_opt + 1) = mtu;
 	*((uint16_t *)&dr.dev_opt + 0) = mpkt;
 	
-	if (ioctl(ctl, HCISETSCOMTU, (unsigned long)&dr) < 0) {
+	if (ioctl(ctl, HCISETSCOMTU, (unsigned long) &dr) < 0) {
 		fprintf(stderr, "Can't set SCO mtu on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 		exit(1);
@@ -1215,7 +1213,7 @@ int main(int argc, char **argv, char **env)
 	}
 
 	while (argc > 0) {
-		for (i=0; command[i].cmd; i++) {
+		for (i = 0; command[i].cmd; i++) {
 			if (strncmp(command[i].cmd, *argv, 5))
 				continue;
 
