@@ -86,7 +86,7 @@ void process_frames(int dev, int fd)
 		msg.msg_control = ctrl;
 		msg.msg_controllen = 100;
 
-		if( (len = recvmsg(fd, &msg, 0)) < 0 ){
+		if ((len = recvmsg(fd, &msg, 0)) < 0) {
 			perror("Receive failed");
 			exit(1);
 		}
@@ -94,11 +94,11 @@ void process_frames(int dev, int fd)
 		/* Process control message */
 		in = 0;
 		cmsg = CMSG_FIRSTHDR(&msg);
-		while( cmsg ){
-			switch(cmsg->cmsg_type){
-				case HCI_CMSG_DIR:
-					in = *((int *)CMSG_DATA(cmsg));
-					break;
+		while (cmsg) {
+			switch (cmsg->cmsg_type) {
+			case HCI_CMSG_DIR:
+				in = *((int *)CMSG_DATA(cmsg));
+				break;
 			}
 			cmsg = CMSG_NXTHDR(&msg, cmsg);
 		}
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
 	flags = 0;
 	
 	while ((opt=getopt(argc, argv,"i:s:ha")) != EOF) {
-		switch(opt) {
+		switch (opt) {
 		case 'i':
 			dev = atoi(optarg+3);
 			break;
@@ -149,13 +149,13 @@ int main(int argc, char *argv[])
 	}
 
 	/* Create HCI socket */
-	if( (s=socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0 ) {
+	if ((s=socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		perror("Can't create HCI socket");
 		exit(1);
 	}
 	
 	opt = 1;
-	if( setsockopt(s, SOL_HCI, HCI_DATA_DIR, &opt, sizeof(opt)) < 0 ) {
+	if (setsockopt(s, SOL_HCI, HCI_DATA_DIR, &opt, sizeof(opt)) < 0) {
 		perror("Can't enable data direction info");
 		exit(1);
 	}
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
 	/* Bind socket to the HCI device */
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = dev;
-	if( bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0 ) {
+	if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		printf("Can't attach to device hci%d. %s(%d)\n", 
 					dev, strerror(errno), errno);
 		exit(1);
