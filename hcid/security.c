@@ -414,6 +414,11 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	dev = g_io_channel_unix_get_fd(chan);
 
+	ioctl(dev, HCIGETDEVINFO, (void *) di);
+
+	if (hci_test_bit(HCI_SECMGR, &di->flags))
+		return TRUE;
+
 	switch (eh->evt) {
 	case EVT_PIN_CODE_REQ:
 		pin_code_request(dev, &di->bdaddr, (bdaddr_t *) ptr);
