@@ -1,5 +1,7 @@
 ver 2.0-pre7:
 	Bluetooth libraries and header files is now a separate package.
+	New build environment uses automake and libtool.
+	Massive header files cleanup.
 
 ver 2.0-pre6:
 	API cleanup and additions.
