@@ -432,7 +432,7 @@ void avdtp_dump(int level, struct frame *frm)
 		sid = hdr & 0x08 ? 0x00 : get_u8(frm);
 
 		printf("AVDTP(s): %s %s: transaction %d\n",
-			sid & 0x08 ? pt2str(hdr) : si2str(sid), mt2str(hdr), hdr >> 4);
+			hdr & 0x08 ? pt2str(hdr) : si2str(sid), mt2str(hdr), hdr >> 4);
 
 		switch (sid & 0x7f) {
 		case 0x01:
