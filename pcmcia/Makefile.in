@@ -83,6 +83,8 @@ VERSION = @VERSION@
 YACC = @YACC@
 
 pcmciadir = /etc/pcmcia
+
+EXTRA_DIST = bluetooth bluetooth.conf
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
 DIST_COMMON =  Makefile.am Makefile.in

@@ -4,7 +4,7 @@
 
 sbin_PROGRAMS = hcid
 
-hcid_SOURCES = main.c security.c hcid.h lib.c lib.h parser.y lexer.l kword.c
+hcid_SOURCES = main.c security.c hcid.h lib.c lib.h parser.h parser.y lexer.l kword.h kword.c
 hcid_LDADD   = @GLIB_LDFLAGS@
 
 INCLUDES = @GLIB_CFLAGS@

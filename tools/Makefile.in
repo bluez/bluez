@@ -89,6 +89,8 @@ bin_PROGRAMS = hcitool l2ping
 man_MANS = hciattach.8 l2ping.8
 
 noinst_PROGRAMS = l2test scotest
+
+EXTRA_DIST = $(man_MANS)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
 PROGRAMS =  $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)

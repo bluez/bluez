@@ -5,6 +5,12 @@ dnl Process this file with autoconf to produce a configure script.
 dnl
 AC_INIT()
 
+dnl Guess host type.
+AC_CANONICAL_SYSTEM
+AC_CANONICAL_HOST
+
+AM_INIT_AUTOMAKE(bluez-utils, 2.0)
+
 AC_SUBST(DISTRO)
 AC_SUBST(PCMCIA)
 
@@ -14,12 +20,6 @@ AC_SUBST(GLIB_LDFLAGS)
 CFLAGS="-Wall -g -O2"
 
 AC_PREFIX_DEFAULT()
-
-dnl Guess host type.
-AC_CANONICAL_SYSTEM
-AC_CANONICAL_HOST
-
-AM_INIT_AUTOMAKE(bluez-utils, 1.0)
 
 dnl Check for programs.
 AC_PROG_CC

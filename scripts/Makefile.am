@@ -4,6 +4,8 @@
 
 bin_SCRIPTS = bluepin
 
+EXTRA_DIST  = bluepin bluetooth.rc.rh bluetooth.rc.deb
+
 install-data-local: @DISTRO@
 
 unknown:

@@ -82,7 +82,7 @@ PCMCIA = @PCMCIA@
 VERSION = @VERSION@
 YACC = @YACC@
 
-EXTRA_DIST = ChangeLog README CREDITS
+EXTRA_DIST = ChangeLog README
 
 SUBDIRS = hcid tools scripts pcmcia
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4

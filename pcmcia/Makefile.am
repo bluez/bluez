@@ -2,7 +2,9 @@
 #  $Id$
 #
 
-pcmciadir = /etc/pcmcia
+pcmciadir  = /etc/pcmcia
+
+EXTRA_DIST = bluetooth bluetooth.conf
 
 install-data-local: @PCMCIA@
 

@@ -83,6 +83,8 @@ VERSION = @VERSION@
 YACC = @YACC@
 
 bin_SCRIPTS = bluepin
+
+EXTRA_DIST = bluepin bluetooth.rc.rh bluetooth.rc.deb
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
 SCRIPTS =  $(bin_SCRIPTS)
