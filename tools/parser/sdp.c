@@ -361,7 +361,7 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 	printf("aid(s)");
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
-		while (len - frm->len < n1 ) {
+		while (len - frm->len <= n1 ) {
 			/* Print AttributeID */
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT) {
 				switch(n2) {
@@ -373,7 +373,7 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 					attr_id_range = get_u32(frm);
 					printf(" 0x%x--0x%x",
 							(attr_id_range >> 16),
-							(attr_id_range & 0x00FF));
+							(attr_id_range & 0xFFFF));
 					break;
 				}
 			} else {
@@ -582,8 +582,7 @@ void sdp_dump(int level, struct frame *frm)
 		return;
 	}
 
-	if (hdr->pid != SDP_ERROR_RSP)
-	{
+	if (hdr->pid != SDP_ERROR_RSP) {
 		/* Parse ContinuationState */
 		if (*(__u8*) frm->ptr)	{
 			p_indent(++level, frm->in);

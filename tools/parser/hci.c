@@ -47,7 +47,7 @@ char *event_map[] = {
 	"Disconn Complete",
 	"Auth Complete",
 	"Remote Name Req Complete",
-	"Encryp Change",
+	"Encrypt Change",
 	"Change Connection Link Key Complete",
 	"Master Link Key Complete",
 	"Read Remote Supported Features",
@@ -329,6 +329,23 @@ static inline void acl_dump(int level, struct frame *frm)
 		raw_dump(level, frm);
 }
 
+static inline void sco_dump(int level, struct frame *frm)
+{
+	hci_sco_hdr *hdr = (void *) frm->ptr;
+	__u16 handle = __le16_to_cpu(hdr->handle);
+
+	if (!p_filter(FILT_SCO)) {
+		p_indent(level, frm->in);
+		printf("SCO data: handle 0x%4.4x dlen %d\n",
+			acl_handle(handle), hdr->dlen);
+		level++;
+
+		frm->ptr += HCI_SCO_HDR_SIZE;
+		frm->len -= HCI_SCO_HDR_SIZE;
+		raw_dump(level, frm);
+	}
+}
+
 void hci_dump(int level, struct frame *frm)
 {
 	__u8 type = *(__u8 *)frm->ptr; 
@@ -348,6 +365,10 @@ void hci_dump(int level, struct frame *frm)
 		acl_dump(level, frm);
 		break;
 
+	case HCI_SCODATA_PKT:
+		sco_dump(level, frm);
+		break;
+		
 	default:
 		if (p_filter(FILT_HCI))
 			break;

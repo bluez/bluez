@@ -233,9 +233,9 @@ static struct argp_option options[] = {
 	{"snap-len", 	's', "len",  0, "Snap len (in bytes)", 1 },
 	{"save-dump",	'w', "file", 0, "Save dump to a file", 2 },
 	{"read-dump",	'r', "file", 0, "Read dump from a file", 2 },
-	{"hex", 	'h', 0,  0, "Dump data in hex", 3 },
+	{"hex", 	'x', 0,  0, "Dump data in hex", 3 },
 	{"ascii", 	'a', 0,  0, "Dump data in ascii", 3 },
-	{"raw", 	'R', 0,  0, "Raw mode", 3 },
+	{"raw", 	'R', 0,  0, "Raw mode", 4 },
 	{ 0 }
 };
 
@@ -245,6 +245,7 @@ static struct {
 } filters[] = {
 	{ "hci",    FILT_HCI    },
 	{ "l2cap",  FILT_L2CAP  },
+	{ "sco",    FILT_SCO    },
 	{ "rfcomm", FILT_RFCOMM },
 	{ "sdp",    FILT_SDP    },
 	{ 0 }
@@ -271,7 +272,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			device = atoi(arg+3);
 			break;
 
-		case 'h':
+		case 'x':
 			flags |= DUMP_HEX;
 			break;
 

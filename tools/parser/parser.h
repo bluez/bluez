@@ -41,10 +41,11 @@ struct frame {
 #define DUMP_TYPE_MASK	(DUMP_HEX | DUMP_ASCII)
 
 /* Parser filter */
-#define FILT_HCI	0x01
-#define FILT_L2CAP	0x02
-#define FILT_RFCOMM	0x04
-#define FILT_SDP	0x08
+#define FILT_HCI	0x0001
+#define FILT_L2CAP	0x0002
+#define FILT_RFCOMM	0x0004
+#define FILT_SDP	0x0008
+#define FILT_SCO	0x0010
 
 struct parser_t {
 	unsigned long flags;
