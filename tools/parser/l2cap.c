@@ -39,6 +39,43 @@
 
 #include "parser.h"
 
+typedef struct {
+	__u16 cid;
+	__u16 psm;
+} cid_info;
+#define CID_TABLE_SIZE	20
+
+static cid_info scid_table[CID_TABLE_SIZE];
+static cid_info dcid_table[CID_TABLE_SIZE];
+
+#define SCID scid_table
+#define DCID dcid_table
+
+static void add_cid(cid_info *table, __u16 cid)
+{
+	register int i;
+	for (i=0; i<CID_TABLE_SIZE; i++)
+		if (!table[i].cid)
+			table[i].cid = cid;
+}
+
+static void del_cid(cid_info *table, __u16 cid)
+{
+	register int i;
+	for (i=0; i<CID_TABLE_SIZE; i++)
+		if (table[i].cid == cid)
+			table[i].cid = 0;
+}
+
+static __u16 get_psm(cid_info *table, __u16 cid)
+{
+	register int i;
+	for (i=0; i<CID_TABLE_SIZE; i++)
+		if (table[i].cid == cid)
+			return table[i].psm;
+	return 0;
+}
+
 static inline void command_rej(int level, struct frame *frm)
 {
 	l2cap_cmd_rej *h = frm->ptr;
@@ -51,6 +88,8 @@ static inline void conn_req(int level, struct frame *frm)
 	l2cap_conn_req *h = frm->ptr;
 	printf("Connect req: psm %d scid 0x%4.4x\n", 
 			btohs(h->psm), btohs(h->scid));
+
+	//add_cid(SCID, scid);
 }
 
 static inline void conn_rsp(int level, struct frame *frm)
@@ -59,6 +98,8 @@ static inline void conn_rsp(int level, struct frame *frm)
 	printf("Connect rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n",
 			btohs(h->dcid), btohs(h->scid),
 			btohs(h->result), btohs(h->status));
+
+	//add_cid(DCID, dcid);
 }
 
 static __u32 conf_opt_val(__u8 *ptr, __u8 len)
@@ -132,6 +173,8 @@ static inline void disconn_rsp(int level, struct frame *frm)
 	l2cap_disconn_rsp *h = frm->ptr;
 	printf("Disconn rsp: dcid 0x%4.4x scid 0x%4.4x\n",
 			btohs(h->dcid), btohs(h->scid));
+	//del_cid(DCID, dcid);
+	//del_cid(SCID, scid);
 }
 
 static inline void echo_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
@@ -236,6 +279,19 @@ void l2cap_dump(int level, struct frame *frm)
 		}
 	} else {
 		printf("L2CAP(d): cid 0x%x len %d\n", cid, dlen);
+
+		/*
+		if (frm->in)
+			psm = get_psm(DCID, cid);
+		else
+			psm = get_psm(SCID, cid);
+		
+		switch (psm) {
+		case RFCOMM:
+		case SDP:
+		}
+		*/ 
+		
 		raw_dump(level, frm);
 	}
 }
