@@ -97,7 +97,7 @@ uint32_t get_proto(uint16_t handle, uint16_t psm)
 	return (pos < 0) ? 0 : proto_table[pos].proto;
 }
 
-static inline void hex_dump(int level, struct frame *frm, int num)
+void hex_dump(int level, struct frame *frm, int num)
 {
 	unsigned char *buf = frm->ptr;
 	register int i,n;
@@ -118,7 +118,7 @@ static inline void hex_dump(int level, struct frame *frm, int num)
 		printf("\n");
 }
 
-static inline void ascii_dump(int level, struct frame *frm, int num)
+void ascii_dump(int level, struct frame *frm, int num)
 {
 	unsigned char *buf = frm->ptr;
 	register int i,n;

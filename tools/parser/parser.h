@@ -54,6 +54,8 @@ struct frame {
 #define FILT_CMTP	0x0040
 #define FILT_HIDP	0x0080
 
+#define FILT_CAPI	0x00010000
+
 #define STRUCT_OFFSET(type, member)  ((uint8_t *)&(((type *)NULL)->member) - \
                                      (uint8_t *)((type *)NULL))
 
@@ -148,8 +150,11 @@ char *get_uuid_name(int uuid);
 void set_proto(uint16_t handle, uint16_t psm, uint32_t proto);
 uint32_t get_proto(uint16_t handle, uint16_t psm);
 
+void ascii_dump(int level, struct frame *frm, int num);
+void hex_dump(int level, struct frame *frm, int num);
 void raw_dump(int level, struct frame *frm);
 void raw_ndump(int level, struct frame *frm, int num);
+
 void hci_dump(int level, struct frame *frm);
 void l2cap_dump(int level, struct frame *frm);
 void rfcomm_dump(int level, struct frame *frm);
@@ -157,6 +162,8 @@ void sdp_dump(int level, struct frame *frm);
 void bnep_dump(int level, struct frame *frm);
 void cmtp_dump(int level, struct frame *frm);
 void hidp_dump(int level, struct frame *frm);
+
+void capi_dump(int level, struct frame *frm);
 
 static inline void parse(struct frame *frm)
 {

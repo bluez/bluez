@@ -29,9 +29,9 @@
  */
 
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <errno.h>
 #include <string.h>
 
 #include <sys/types.h>
@@ -166,49 +166,41 @@ static char *bst2str(uint8_t bst)
 void cmtp_dump(int level, struct frame *frm)
 {
 	struct frame *msg;
-	uint8_t hdr_size;
-	uint8_t head;
-	uint8_t bst, bid, nlb;
+	uint8_t hdr, bid;
 	uint16_t len;
 
 	while (frm->len > 0) {
 
-		head = *(uint8_t *)frm->ptr;
+		hdr = get_u8(frm);
+		bid = (hdr & 0x3c) >> 2;
 
-		bst = (head & 0x03);
-		bid = (head & 0x3c) >> 2;
-		nlb = (head & 0xc0) >> 6;
-
-		switch (nlb) {
+		switch ((hdr & 0xc0) >> 6) {
 		case 0x01:
-			hdr_size = 2;
-			len = *(uint8_t *)(frm->ptr + 1);
+			len = get_u8(frm);
 			break;
 		case 0x02:
-			hdr_size = 3;
-			len = *(uint8_t *)(frm->ptr + 1) + (*(uint8_t *)(frm->ptr + 2) * 256);
+			len = htons(get_u16(frm));
 			break;
 		default:
-			hdr_size = 1;
 			len = 0;
 			break;
 		}
 
 		p_indent(level, frm);
 
-		printf("CMTP: %s: id %d len %d\n", bst2str(bst), bid, len);
+		printf("CMTP: %s: id %d len %d\n", bst2str(hdr & 0x03), bid, len);
 
-		frm->ptr += hdr_size;
-		frm->len -= hdr_size;
-
-		switch (bst) {
+		switch (hdr & 0x03) {
 		case 0x00:
 			add_segment(bid, frm, len);
 			msg = get_segment(bid, frm);
 			if (!msg)
 				break;
 
-			raw_dump(level, msg);
+			if (!p_filter(FILT_CAPI))
+				capi_dump(level + 1, msg);
+			else
+				raw_dump(level, msg);
 
 			free_segment(bid, frm);
 			break;
