@@ -98,15 +98,19 @@ void avdtp_dump(int level, struct frame *frm)
 {
 	uint8_t hdr, sid = 0xff, nsp;
 
-	hdr = get_u8(frm);
-
-	nsp = (hdr & 0x0c) == 0x04 ? get_u8(frm) : 0;
-	sid = hdr & 0x08 ? 0x00 : get_u8(frm);
-
 	p_indent(level, frm);
 
-	printf("AVDTP(s): %s %s: transaction %d\n",
-		sid & 0x08 ? pt2str(hdr) : si2str(sid), mt2str(hdr), hdr >> 4);
+	if (frm->num < 2) {
+		hdr = get_u8(frm);
+
+		nsp = (hdr & 0x0c) == 0x04 ? get_u8(frm) : 0;
+		sid = hdr & 0x08 ? 0x00 : get_u8(frm);
+
+		printf("AVDTP(s): %s %s: transaction %d\n",
+			sid & 0x08 ? pt2str(hdr) : si2str(sid), mt2str(hdr), hdr >> 4);
+	} else {
+		printf("AVDTP(m): \n");
+	}
 
 	raw_dump(level, frm);
 }
