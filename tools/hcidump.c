@@ -45,8 +45,9 @@
 #include <bluetooth/l2cap.h>
 #include <bluetooth/hci_lib.h>
 
-#include "parser.h"
 #include "hcidump.h"
+#include "parser.h"
+#include "sdp.h"
 
 /* Default options */
 static int  device;
@@ -73,14 +74,15 @@ static void process_frames(int dev, int sock, int file)
 		perror("Can't allocate data buffer");
 		exit(1);
 	}
+
 	dh = (void *) buf;
 	frm.data = buf + DUMP_HDR_SIZE;
-	
+
 	if (!(ctrl = malloc(100))) {
 		perror("Can't allocate control buffer");
 		exit(1);
 	}
-	
+
 	printf("device: hci%d snap_len: %d filter: 0x%lx\n", 
 		dev, snap_len, filter); 
 
@@ -120,7 +122,7 @@ static void process_frames(int dev, int sock, int file)
 
 		switch (mode) {
 		case WRITE:
-			/* Save dump */	
+			/* Save dump */
 			dh->len = htobs(frm.data_len);
 			dh->in  = frm.in;
 			dh->ts_sec  = htobl(frm.ts.tv_sec);
@@ -149,12 +151,12 @@ static void read_dump(int file)
 		perror("Can't allocate data buffer");
 		exit(1);
 	}
-	
+
 	while (1) {
 		if ((err = read_n(file, (void *) &dh, DUMP_HDR_SIZE)) < 0)
 			goto failed;
 		if (!err) return;
-		
+
 		frm.data_len = btohs(dh.len);
 
 		if ((err = read_n(file, frm.data, frm.data_len)) < 0)
@@ -166,7 +168,7 @@ static void read_dump(int file)
 		frm.in  = dh.in;
 		frm.ts.tv_sec  = btohl(dh.ts_sec);
 		frm.ts.tv_usec = btohl(dh.ts_usec);
-		
+
 		parse(&frm);
 	}
 
@@ -202,7 +204,7 @@ static int open_socket(int dev)
 		perror("Can't create HCI socket");
 		exit(1);
 	}
-	
+
 	opt = 1;
 	if (setsockopt(s, SOL_HCI, HCI_DATA_DIR, &opt, sizeof(opt)) < 0) {
 		perror("Can't enable data direction info");
@@ -239,23 +241,23 @@ static struct {
 	char *name;
 	int  flag;
 } filters[] = {
-	{ "hci",    FILT_HCI    },
-	{ "l2cap",  FILT_L2CAP  },
-	{ "sco",    FILT_SCO    },
-	{ "rfcomm", FILT_RFCOMM },
-	{ "sdp",    FILT_SDP    },
-	{ "bnep",   FILT_BNEP	},
-	{ "cmtp",   FILT_CMTP	},
-	{ "hidp",   FILT_HIDP   },
+	{ "hci",	FILT_HCI	},
+	{ "sco",	FILT_SCO	},
+	{ "l2cap",	FILT_L2CAP	},
+	{ "rfcomm",	FILT_RFCOMM	},
+	{ "sdp",	FILT_SDP	},
+	{ "bnep",	FILT_BNEP	},
+	{ "cmtp",	FILT_CMTP	},
+	{ "hidp",	FILT_HIDP	},
 	{ 0 }
 };
 
 static void parse_filter(int argc, char **argv)
 {
 	int i,n;
-	
-	for (i=0; i<argc; i++) {
-		for (n=0; filters[n].name; n++) {
+
+	for (i = 0; i < argc; i++) {
+		for (n = 0; filters[n].name; n++) {
 			if (!strcmp(filters[n].name, argv[i])) {
 				filter |= filters[n].flag;
 				break;
@@ -269,30 +271,32 @@ static void usage(void)
 	printf(
 	"Usage: hcidump [OPTION...] [filter]\n"
 	"  -i, --device=hci_dev       HCI device\n"
-	"  -p, --psm=psm              Default PSM\n"
 	"  -s, --snap-len=len         Snap len (in bytes)\n"
-	"  -r, --read-dump=file       Read dump from a file\n"
+	"  -p, --psm=psm              Default PSM\n"
 	"  -w, --save-dump=file       Save dump to a file\n"
-	"  -a, --ascii                Dump data in ascii\n"
-	"  -x, --hex                  Dump data in hex\n"
-	"  -R, --raw                  Raw mode\n"
+	"  -r, --read-dump=file       Read dump from a file\n"
 	"  -t, --ts                   Display time stamps\n"
+	"  -x, --hex                  Dump data in hex\n"
+	"  -a, --ascii                Dump data in ascii\n"
+	"  -R, --raw                  Raw mode\n"
+	"  -C, --cmtp=psm             PSM for CMTP\n"
 	"  -?, --help                 Give this help list\n"
 	"      --usage                Give a short usage message\n"
 	);
 }
 
 static struct option main_options[] = {
-	{"device",	1,0, 'i' },
-	{"snap-len", 	1,0, 's' },
-	{"psm", 	1,0, 'p' },
-	{"save-dump",	1,0, 'w' },
-	{"read-dump",	1,0, 'r' },
-	{"ts", 		0,0, 't' },
-	{"hex", 	0,0, 'x' },
-	{"ascii", 	0,0, 'a' },
-	{"raw", 	0,0, 'R' },
-	{"help", 	0,0, 'h' },
+	{ "device",	1, 0, 'i' },
+	{ "snap-len",	1, 0, 's' },
+	{ "psm",	1, 0, 'p' },
+	{ "save-dump",	1, 0, 'w' },
+	{ "read-dump",	1, 0, 'r' },
+	{ "ts",		0, 0, 't' },
+	{ "hex",	0, 0, 'x' },
+	{ "ascii",	0, 0, 'a' },
+	{ "raw",	0, 0, 'R' },
+	{ "cmtp",	1, 0, 'C' },
+	{ "help",	0, 0, 'h' },
 	{ 0 }
 };
 
@@ -302,18 +306,10 @@ int main(int argc, char *argv[])
 
 	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
 
-        while ((opt=getopt_long(argc, argv, "i:s:p:r:w:xathR", main_options, NULL)) != -1) {
-                switch(opt) {
+	while ((opt=getopt_long(argc, argv, "i:s:p:w:r:txaRC:h", main_options, NULL)) != -1) {
+		switch(opt) {
 		case 'i':
 			device = atoi(optarg+3);
-			break;
-
-		case 'x':
-			flags |= DUMP_HEX;
-			break;
-
-		case 'a': 
-			flags |= DUMP_ASCII;
 			break;
 
 		case 's': 
@@ -324,12 +320,9 @@ int main(int argc, char *argv[])
 			defpsm = atoi(optarg);
 			break;
 
-		case 't': 
-			flags |= DUMP_TSTAMP;
-			break;
-
-		case 'R': 
-			flags |= DUMP_RAW;
+		case 'w':
+			mode = WRITE;
+			dump_file = strdup(optarg);
 			break;
 
 		case 'r':
@@ -337,22 +330,36 @@ int main(int argc, char *argv[])
 			dump_file = strdup(optarg);
 			break;
 
-		case 'w':
-			mode = WRITE;
-			dump_file = strdup(optarg);
+		case 't': 
+			flags |= DUMP_TSTAMP;
 			break;
 
-                case 'h':
-                default:
-                        usage();
-                        exit(0);
-                }
-        }
+		case 'x':
+			flags |= DUMP_HEX;
+			break;
 
-        argc -= optind;
-        argv += optind;
-        optind = 0;
+		case 'a': 
+			flags |= DUMP_ASCII;
+			break;
 
+		case 'R': 
+			flags |= DUMP_RAW;
+			break;
+
+		case 'C': 
+			set_proto(0, atoi(optarg), SDP_UUID_CMTP);
+			break;
+
+		case 'h':
+		default:
+			usage();
+			exit(0);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
 
 	if (argc > 0)
 		parse_filter(argc, argv);
@@ -376,5 +383,6 @@ int main(int argc, char *argv[])
 		read_dump(open_file(dump_file, mode));
 		break;
 	}
+
 	return 0;
 }
