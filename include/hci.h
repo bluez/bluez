@@ -139,7 +139,7 @@ enum {
 #define LMP_TACCURACY	0x10
 #define LMP_RSWITCH	0x20
 #define LMP_HOLD	0x40
-#define LMP_SNIF	0x80
+#define LMP_SNIFF	0x80
 
 #define LMP_PARK	0x01
 #define LMP_RSSI	0x02
@@ -153,6 +153,7 @@ enum {
 #define LMP_CVSD	0x01
 #define LMP_PSCHEME	0x02
 #define LMP_PCONTROL	0x04
+#define LMP_TRSP_SCO	0x08
 
 /* Link policies */
 #define HCI_LP_RSWITCH	0x0001

@@ -53,7 +53,7 @@ typedef struct {
 
 static char *hci_bit2str(hci_map *m, unsigned int val) 
 {
-	char *str = malloc(50);
+	char *str = malloc(120);
 	char *ptr = str;
 
 	if (!str)
@@ -285,6 +285,71 @@ char *lmp_vertostr(unsigned int ver)
 int lmp_strtover(char *str, unsigned int *ver)
 {
 	return hci_str2uint(ver_map, str, ver);
+}
+
+/* LMP features mapping */
+hci_map lmp_features_map[][9] = {
+	{	/* byte 0 */
+		{ "<3-slot packets>",   LMP_3SLOT    },
+		{ "<5-slot packets>",   LMP_5SLOT    },
+		{ "<encryption>",       LMP_ENCRYPT  },
+		{ "<slot offset>",      LMP_SOFFSET  },
+		{ "<timing accuracy>",  LMP_TACCURACY},
+		{ "<role switch>",      LMP_RSWITCH  },
+		{ "<hold mode>",        LMP_HOLD     },
+		{ "<sniff mode>",       LMP_SNIFF    },
+		{ NULL }
+	},
+	{	/* byte 1 */
+		{ "<park mode>",        LMP_PARK     },
+		{ "<RSSI>",             LMP_RSSI     },
+		{ "<channel quality>",  LMP_QUALITY  },
+		{ "<SCO link>",         LMP_SCO      },
+		{ "<HV2 packets>",      LMP_HV2      },
+		{ "<HV3 packets>",      LMP_HV3      },
+		{ "<u-law log>",        LMP_ULAW     },
+		{ "<A-law log>",        LMP_ALAW     },
+		{ NULL }
+	},
+	{	/* byte 2 */
+		{ "<CVSD>",             LMP_CVSD     },
+		{ "<paging scheme>",    LMP_PSCHEME  },
+		{ "<power control>",    LMP_PCONTROL },
+		{ "<transparent SCO>",  LMP_TRSP_SCO },
+		{ NULL }
+	},
+	{{ NULL }}
+};
+
+char *lmp_featurestostr(uint8_t *features, char *pref, int width)
+{
+	char *ptr, *str = malloc(400);
+	int i, w;
+
+	if (!str)
+		return NULL;
+
+	ptr = str; *ptr = 0;
+
+	if (pref)
+		ptr += sprintf(ptr, "%s", pref);
+
+	for(i=0, w=0; lmp_features_map[i][0].str; i++) {
+		hci_map *m;
+
+		m = lmp_features_map[i];
+		while (m->str) {
+			if ((unsigned int) m->val & (unsigned int) features[i])
+				ptr += sprintf(ptr, "%s ", m->str);
+			m++;
+
+			w = (w + 1) & width;
+			if (!w)
+				ptr += sprintf(ptr, "\n%s", pref);
+		}
+	}
+	
+	return str;
 }
 
 /* HCI functions that do not require open device */
