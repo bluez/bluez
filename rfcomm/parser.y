@@ -59,7 +59,9 @@ struct rfcomm_opts *opts;
 
 %%
 
-config		: statement | config statement
+config		:
+		| statement
+		| config statement
 		;
 
 statement	: section '{' rfcomm_options '}'
