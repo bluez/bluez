@@ -236,7 +236,7 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 {
 	pin_code_reply_cp pr;
 	struct sigaction sa;
-	char addr[12], str[255], *pin, name[20];
+	char addr[18], str[255], *pin, name[20];
 	FILE *pipe;
 	int ret, len;
 
