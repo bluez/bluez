@@ -2,7 +2,7 @@
 #  $Id$
 #
 
-SUBDIRS = include src
+SUBDIRS := include src
 
 DISTCLEANFILES = conftest.c conftest
 
