@@ -824,7 +824,7 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 		break;
 
 	default:
-		printf("\tUnsuported manufacturer\n");
+		printf("\tUnsupported manufacturer\n");
 		break;
 	}
 	return;
