@@ -34,6 +34,8 @@
 #include <sys/uio.h>
 #include <errno.h>
 #include <string.h>
+#include <pwd.h>
+#include <getopt.h>
 
 #include <asm/types.h>
 
@@ -42,9 +44,6 @@
 #include <bluetooth/l2cap.h>
 #include <bluetooth/hci_lib.h>
 
-#include <pwd.h>
-#include <argp.h>
-    
 #include "parser.h"
 #include "hcidump.h"
 
@@ -233,22 +232,6 @@ static int open_socket(int dev)
 	return s;
 }
 
-const char *argp_program_version = "HCIDump "VERSION;
-const char *argp_program_bug_address = "<bluez-users@lists.sf.net>";
-     
-static struct argp_option options[] = {
-	{"device", 	'i', "hci_dev", 0, "HCI device", 0  },
-	{"snap-len", 	's', "len",  0, "Snap len (in bytes)", 1 },
-	{"psm", 	'p', "psm",  0, "Default PSM",         1 },
-	{"save-dump",	'w', "file", 0, "Save dump to a file", 2 },
-	{"read-dump",	'r', "file", 0, "Read dump from a file", 2 },
-	{"ts", 		't', 0,  0, "Display time stamps", 2 },
-	{"hex", 	'x', 0,  0, "Dump data in hex", 3 },
-	{"ascii", 	'a', 0,  0, "Dump data in ascii", 3 },
-	{"raw", 	'R', 0,  0, "Raw mode", 4 },
-	{ 0 }
-};
-
 static struct {
 	char *name;
 	int  flag;
@@ -262,13 +245,13 @@ static struct {
 	{ 0 }
 };
 
-static void parse_filter(struct argp_state *state)
+static void parse_filter(int argc, char **argv)
 {
 	int i,n;
 	
-	for (i=state->next; i<state->argc; i++) {
+	for (i=0; i<argc; i++) {
 		for (n=0; filters[n].name; n++) {
-			if (!strcmp(filters[n].name, state->argv[i])) {
+			if (!strcmp(filters[n].name, argv[i])) {
 				filter |= filters[n].flag;
 				break;
 			}
@@ -276,11 +259,48 @@ static void parse_filter(struct argp_state *state)
 	}
 }
 
-static error_t parse_opt(int key, char *arg, struct argp_state *state)
+static void usage(void)
 {
-	switch (key) {
+	printf(
+	"Usage: hcidump [OPTION...] [filter]\n"
+	"  -i, --device=hci_dev       HCI device\n"
+	"  -p, --psm=psm              Default PSM\n"
+	"  -s, --snap-len=len         Snap len (in bytes)\n"
+	"  -r, --read-dump=file       Read dump from a file\n"
+	"  -w, --save-dump=file       Save dump to a file\n"
+	"  -a, --ascii                Dump data in ascii\n"
+	"  -x, --hex                  Dump data in hex\n"
+	"  -R, --raw                  Raw mode\n"
+	"  -t, --ts                   Display time stamps\n"
+	"  -?, --help                 Give this help list\n"
+	"      --usage                Give a short usage message\n"
+	);
+}
+
+static struct option main_options[] = {
+	{"device",	1,0, 'i' },
+	{"snap-len", 	1,0, 's' },
+	{"psm", 	1,0, 'p' },
+	{"save-dump",	1,0, 'w' },
+	{"read-dump",	1,0, 'r' },
+	{"ts", 		0,0, 't' },
+	{"hex", 	0,0, 'x' },
+	{"ascii", 	0,0, 'a' },
+	{"raw", 	0,0, 'R' },
+	{"help", 	0,0, 'h' },
+	{ 0 }
+};
+
+int main(int argc, char *argv[])
+{
+	int opt;
+
+	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
+
+        while ((opt=getopt_long(argc, argv, "i:s:p:r:w:xath", main_options, NULL)) != -1) {
+                switch(opt) {
 		case 'i':
-			device = atoi(arg+3);
+			device = atoi(optarg+3);
 			break;
 
 		case 'x':
@@ -292,11 +312,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			break;
 
 		case 's': 
-			snap_len = atoi(arg);
+			snap_len = atoi(optarg);
 			break;
 
 		case 'p': 
-			defpsm = atoi(arg);
+			defpsm = atoi(optarg);
 			break;
 
 		case 't': 
@@ -309,36 +329,28 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 		case 'r':
 			mode = READ;
-			dump_file = strdup(arg);
+			dump_file = strdup(optarg);
 			break;
 
 		case 'w':
 			mode = WRITE;
-			dump_file = strdup(arg);
+			dump_file = strdup(optarg);
 			break;
 
-		case ARGP_KEY_ARGS:
-			parse_filter(state);
-			break;
+                case 'h':
+                default:
+                        usage();
+                        exit(0);
+                }
+        }
 
-		default:
-			return ARGP_ERR_UNKNOWN;
-	}
-	return 0;
-}
-     
-static struct argp arg_parser = { 
-	options, 
-	parse_opt, 
-	"[filter]",
-	"HCIDump - HCI packet analyzer ver " VERSION
-};
+        argc -= optind;
+        argv += optind;
+        optind = 0;
 
-int main(int argc, char *argv[])
-{
-	argp_parse(&arg_parser, argc, argv, 0, NULL, NULL);
-	
-	printf("HCIDump - HCI packet analyzer ver %s.\n", VERSION);
+
+	if (argc > 0)
+		parse_filter(argc, argv);
 
 	/* Default settings */
 	if (!filter)
