@@ -643,7 +643,7 @@ typedef struct {
 	bdaddr_t	bdaddr;
 	uint8_t 	role;
 } __attribute__ ((packed)) evt_role_change;
-#define EVT_ROLE_CHANGE_SIZE 1
+#define EVT_ROLE_CHANGE_SIZE 8
 
 #define EVT_PIN_CODE_REQ        0x16
 typedef struct {
