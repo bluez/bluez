@@ -1,3 +1,14 @@
+ver 2.14:
+	Make use of additional connection information.
+	Use library function for reading the RSSI.
+	Use library function for reading the link quality.
+	Use library function for reading the transmit power level.
+	Use library functions for the link supervision timeout.
+	Add tool for changing the device address.
+
+	Note:
+	This version needs at least bluez-libs-2.14
+
 ver 2.13:
 	Use file permission 0600 for the link key file.
 	Add support for HID attribute descriptions.
