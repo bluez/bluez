@@ -1,35 +1,34 @@
 BlueZ - Bluetooth protocol stack for Linux
-Copyright (C) 2000-2001 Qualcomm Incorporated
 
-Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
+Copyright (C) 2000-2001  Qualcomm Incorporated
+Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
+Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
 
 Bluetooth utilities
 
-1. Compilation and Installation.
 
-In order to compile Bluetooth utilies you need following software packages:
-  - Linux kernel 2.4.X source code 
-  - GCC compiler
-  - Lexical Analyzer (flex, lex)
-  - YACC (yacc, bison, byacc)
+1. Compilation and installation.
+
+In order to compile Bluetooth utilities you need following software packages:
+	- Linux Bluetooth protocol stack (BlueZ)
+	- GCC compiler
+	- Lexical Analyzer (flex, lex)
+	- YACC (yacc, bison, byacc)
 
 To configure run:
-  ./configure
+	./configure --prefix=/usr --sysconfdir=/etc
  
 Configure automatically searches for all required components and packages. 
 
 To compile and install run:
-  make install
+	make install
 
-2.0 Information
+
+2. Information
 
 Mailing lists:
-	bluez-announce@lists.sourceforge.net - BlueZ announcements
-	bluez-users@lists.sourceforge.net    - BlueZ general questions and discussions
-	bluez-devel@lists.sourceforge.net    - BlueZ development 
-	bluez-commit@lists.sourceforge.net   - BlueZ commits to the CVS repository
+	bluez-users@lists.sourceforge.net - BlueZ general questions and discussions
+	bluez-devel@lists.sourceforge.net - BlueZ development 
 
 For additional information about the project visit BlueZ web site:
-	http://bluez.sf.net 
- 
-Maxim Krasnyansky <maxk@qualcomm.com> 
+	http://www.bluez.org
