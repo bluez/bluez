@@ -173,63 +173,67 @@ void l2cap_dump(int level, struct frame *frm)
 
 	indent(level); 
 	if (cid == 0x1) {
-		l2cap_cmd_hdr *hdr = frm->ptr;
+		while (frm->len >= L2CAP_CMD_HDR_SIZE) {
+			l2cap_cmd_hdr *hdr = frm->ptr;
 
-		frm->ptr += L2CAP_CMD_HDR_SIZE;
-		frm->len -= L2CAP_CMD_HDR_SIZE;
+			frm->ptr += L2CAP_CMD_HDR_SIZE;
+			frm->len -= L2CAP_CMD_HDR_SIZE;
 
-		printf("L2CAP(s): "); 
+			printf("L2CAP(s): "); 
 
-		switch (hdr->code) {
-		case L2CAP_COMMAND_REJ:
-			command_rej(level, frm);
-			break;
+			switch (hdr->code) {
+			case L2CAP_COMMAND_REJ:
+				command_rej(level, frm);
+				break;
 			
-		case L2CAP_CONN_REQ:
-			conn_req(level, frm);
-			break;
+			case L2CAP_CONN_REQ:
+				conn_req(level, frm);
+				break;
 	
-		case L2CAP_CONN_RSP:
-			conn_rsp(level, frm);
-			break;
+			case L2CAP_CONN_RSP:
+				conn_rsp(level, frm);
+				break;
 
-		case L2CAP_CONF_REQ:
-			conf_req(level, hdr, frm);		
-			break;
+			case L2CAP_CONF_REQ:
+				conf_req(level, hdr, frm);		
+				break;
 
-		case L2CAP_CONF_RSP:
-			conf_rsp(level, hdr, frm);
-			break;
+			case L2CAP_CONF_RSP:
+				conf_rsp(level, hdr, frm);
+				break;
 
-		case L2CAP_DISCONN_REQ:
-			disconn_req(level, frm);
-			break;
+			case L2CAP_DISCONN_REQ:
+				disconn_req(level, frm);
+				break;
 
-		case L2CAP_DISCONN_RSP:
-			disconn_rsp(level, frm);
-			break;
+			case L2CAP_DISCONN_RSP:
+				disconn_rsp(level, frm);
+				break;
 	
-		case L2CAP_ECHO_REQ:
-			echo_req(level, hdr, frm);
-			break;
+			case L2CAP_ECHO_REQ:
+				echo_req(level, hdr, frm);
+				break;
 
-		case L2CAP_ECHO_RSP:
-			echo_rsp(level, hdr, frm);	
-			break;
+			case L2CAP_ECHO_RSP:
+				echo_rsp(level, hdr, frm);	
+				break;
 
-		case L2CAP_INFO_REQ:
-			info_req(level, hdr, frm);
-			break;
+			case L2CAP_INFO_REQ:
+				info_req(level, hdr, frm);
+				break;
 
-		case L2CAP_INFO_RSP:
-			info_rsp(level, hdr, frm);
-			break;
+			case L2CAP_INFO_RSP:
+				info_rsp(level, hdr, frm);
+				break;
 
-		default:
-			printf("code 0x%2.2x ident %d len %d\n", 
-				hdr->code, hdr->ident, btohs(hdr->len));
-			raw_dump(level, frm);
-		}		
+			default:
+				printf("code 0x%2.2x ident %d len %d\n", 
+					hdr->code, hdr->ident, btohs(hdr->len));
+				raw_dump(level, frm);
+			}
+			frm->ptr += hdr->len;
+			frm->len -= hdr->len;
+		}
 	} else {
 		printf("L2CAP(d): cid 0x%x len %d\n", cid, dlen);
 		raw_dump(level, frm);
