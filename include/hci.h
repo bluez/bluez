@@ -821,6 +821,20 @@ typedef struct {
 } __attribute__ ((packed)) read_afh_map_rp;
 #define READ_AFH_MAP_RP_SIZE 14
 
+#define OCF_READ_CLOCK			0x0007
+typedef struct {
+	uint16_t	handle;
+	uint8_t		which_clock;
+} __attribute__ ((packed)) read_clock_cp;
+#define READ_CLOCK_CP_SIZE 3
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint32_t	clock;
+	uint16_t	accuracy;
+} __attribute__ ((packed)) read_clock_rp;
+#define READ_CLOCK_RP_SIZE 9
+
 /* Testing commands */
 #define OGF_TESTING_CMD		0x3e
 

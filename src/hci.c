@@ -1620,6 +1620,37 @@ int hci_read_afh_map(int dd, uint16_t handle, uint8_t *mode, uint8_t *map, int t
 	return 0;
 }
 
+int hci_read_clock(int dd, uint16_t handle, uint8_t which, uint32_t *clock, uint16_t *accuracy, int to)
+{
+	read_clock_cp cp;
+	read_clock_rp rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle      = handle;
+	cp.which_clock = which;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ocf    = OCF_READ_CLOCK;
+	rq.cparam = &cp;
+	rq.clen   = READ_CLOCK_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = READ_CLOCK_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*clock    = rp.clock;
+	*accuracy = rp.accuracy;
+	return 0;
+}
+
 int hci_local_name(int dd, int len, char *name, int to)
 {
 	return hci_read_local_name(dd, len, name, to);

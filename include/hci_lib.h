@@ -96,6 +96,7 @@ int hci_set_afh_classification(int dd, uint8_t *map, int to);
 int hci_read_link_quality(int dd, uint16_t handle, uint8_t *link_quality, int to);
 int hci_read_rssi(int dd, uint16_t handle, int8_t *rssi, int to);
 int hci_read_afh_map(int dd, uint16_t handle, uint8_t *mode, uint8_t *map, int to);
+int hci_read_clock(int dd, uint16_t handle, uint8_t which, uint32_t *clock, uint16_t *accuracy, int to);
 
 int hci_local_name(int dd, int len, char *name, int to);
 int hci_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to);
