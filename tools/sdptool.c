@@ -1562,6 +1562,124 @@ end:
 	return ret;
 }
 
+static int add_audio_source(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, l2cap, avdtp, a2src;
+	sdp_profile_desc_t profile[1];
+	sdp_list_t *aproto, *proto[2];
+	sdp_record_t record;
+	sdp_data_t *psm, *version;
+	uint16_t lp = 0x0019, ver = 0x0100;
+	int ret = 0;
+
+	memset((void *)&record, 0, sizeof(sdp_record_t));
+	record.handle = 0xffffffff;
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(0, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&a2src, AUDIO_SOURCE_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &a2src);
+	sdp_set_service_classes(&record, svclass_id);
+
+	sdp_uuid16_create(&profile[0].uuid, ADVANCED_AUDIO_PROFILE_ID);
+	profile[0].version = 0x0100;
+	pfseq = sdp_list_append(0, &profile[0]);
+	sdp_set_profile_descs(&record, pfseq);
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap);
+	psm = sdp_data_alloc(SDP_UINT16, &lp);
+	proto[0] = sdp_list_append(proto[0], psm);
+	apseq = sdp_list_append(0, proto[0]);
+
+	sdp_uuid16_create(&avdtp, AVDTP_UUID);
+	proto[1] = sdp_list_append(0, &avdtp);
+	version = sdp_data_alloc(SDP_UINT16, &ver);
+	proto[1] = sdp_list_append(proto[1], version);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(0, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	sdp_set_info_attr(&record, "Audio Source", 0, 0);
+
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		ret = -1;
+		goto done;
+	}
+
+	printf("Audio source service registered\n");
+
+done:
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+	return ret;
+}
+
+static int add_audio_sink(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, l2cap, avdtp, a2snk;
+	sdp_profile_desc_t profile[1];
+	sdp_list_t *aproto, *proto[2];
+	sdp_record_t record;
+	sdp_data_t *psm, *version;
+	uint16_t lp = 0x0019, ver = 0x0100;
+	int ret = 0;
+
+	memset((void *)&record, 0, sizeof(sdp_record_t));
+	record.handle = 0xffffffff;
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(0, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&a2snk, AUDIO_SINK_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &a2snk);
+	sdp_set_service_classes(&record, svclass_id);
+
+	sdp_uuid16_create(&profile[0].uuid, ADVANCED_AUDIO_PROFILE_ID);
+	profile[0].version = 0x0100;
+	pfseq = sdp_list_append(0, &profile[0]);
+	sdp_set_profile_descs(&record, pfseq);
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap);
+	psm = sdp_data_alloc(SDP_UINT16, &lp);
+	proto[0] = sdp_list_append(proto[0], psm);
+	apseq = sdp_list_append(0, proto[0]);
+
+	sdp_uuid16_create(&avdtp, AVDTP_UUID);
+	proto[1] = sdp_list_append(0, &avdtp);
+	version = sdp_data_alloc(SDP_UINT16, &ver);
+	proto[1] = sdp_list_append(proto[1], version);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(0, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	sdp_set_info_attr(&record, "Audio Sink", 0, 0);
+
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		ret = -1;
+		goto done;
+	}
+
+	printf("Audio sink service registered\n");
+
+done:
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+	return ret;
+}
+
 struct {
 	char     *name;
 	uint16_t class;
@@ -1583,6 +1701,9 @@ struct {
 	{ "HID",   HID_SVCLASS_ID,            add_hid   },
 	{ "CIP",   CIP_SVCLASS_ID,            add_cip   },
 	{ "CTP",   CORDLESS_TELEPHONY_SVCLASS_ID, add_ctp },
+
+	{ "A2SRC", AUDIO_SOURCE_SVCLASS_ID,   add_audio_source },
+	{ "A2SNK", AUDIO_SINK_SVCLASS_ID,     add_audio_sink   },
 
 	{ 0 }
 };
