@@ -886,7 +886,9 @@ int hci_write_local_name(int dd, const char *name, int to)
 	change_local_name_cp cp;
 	struct hci_request rq;
 
+	memset(&cp, 0, sizeof(cp));
 	strncpy(cp.name, name, sizeof(cp.name));
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_CHANGE_LOCAL_NAME;
@@ -895,10 +897,11 @@ int hci_write_local_name(int dd, const char *name, int to)
 
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
+
 	return 0;
 }
 
-int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr, uint16_t clkoffset, int len, char *name, int to)
+int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr, uint8_t pscan_rep_mode, uint16_t clkoffset, int len, char *name, int to)
 {
 	evt_remote_name_req_complete rn;
 	remote_name_req_cp cp;
@@ -906,7 +909,7 @@ int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr, uint1
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
-	cp.pscan_rep_mode = 0x02;
+	cp.pscan_rep_mode = pscan_rep_mode;
 	cp.clock_offset   = clkoffset;
 
 	memset(&rq, 0, sizeof(rq));
@@ -933,7 +936,27 @@ int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr, uint1
 
 int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)
 {
-	return hci_read_remote_name_with_clock_offset(dd, bdaddr, 0x0000, len, name, to);
+	return hci_read_remote_name_with_clock_offset(dd, bdaddr, 0x02, 0x0000, len, name, to);
+}
+
+int hci_read_remote_name_cancel(int dd, const bdaddr_t *bdaddr, int to)
+{
+	remote_name_req_cancel_cp cp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_REMOTE_NAME_REQ_CANCEL;
+	rq.cparam = &cp;
+	rq.clen   = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	return 0;
 }
 
 int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)

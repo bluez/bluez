@@ -395,6 +395,12 @@ typedef struct {
 } __attribute__ ((packed)) remote_name_req_cp;
 #define REMOTE_NAME_REQ_CP_SIZE 10
 
+#define OCF_REMOTE_NAME_REQ_CANCEL	0x001A
+typedef struct {
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) remote_name_req_cancel_cp;
+#define REMOTE_NAME_REQ_CANCEL_CP_SIZE 6
+
 #define OCF_READ_REMOTE_FEATURES	0x001B
 typedef struct {
 	uint16_t	handle;
