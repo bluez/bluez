@@ -77,6 +77,8 @@ static int uart_speed(int s)
 		return B460800;
 	case 921600:
 		return B921600;
+	case 1000000:
+		return B1000000;
 	default:
 		return B57600;
 	}
@@ -233,17 +235,87 @@ static int digi(int fd, struct uart_t *u, struct termios *ti)
  */
 static int bcsp(int fd, struct uart_t *u, struct termios *ti)
 {
-	ti->c_cflag &= ~CBAUD;
-	ti->c_cflag |= B115200 | CS8 | CLOCAL | PARENB;
-	ti->c_cflag &= ~(PARODD|CRTSCTS);
+	unsigned char byte, bcsph[4], bcspp[4],
+		bcsp_sync_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xda,0xdc,0xed,0xed,0xc0},
+		bcsp_sync_resp_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xac,0xaf,0xef,0xee,0xc0},
+		bcsp_conf_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xad,0xef,0xac,0xed,0xc0},
+		bcsp_conf_resp_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xde,0xad,0xd0,0xd0,0xc0},
+		bcspsync[4] = {0xda, 0xdc, 0xed, 0xed},
+		bcspsyncresp[4] = {0xac,0xaf,0xef,0xee},
+		bcspconf[4] = {0xad,0xef,0xac,0xed},
+		bcspconfresp[4] = {0xde,0xad,0xd0,0xd0};
+	int sync_sent = 0;
 
-	ti->c_oflag = 0;   /* turn off output processing */
-	ti->c_lflag = 0;   /* no local modes */
+	if (set_speed(fd, ti, u->speed) < 0) {
+		perror("Can't set default baud rate");
+		return -1;
+	}
+
+	ti->c_cflag |= PARENB;
+	ti->c_cflag &= ~(PARODD);
 
 	if (tcsetattr(fd, TCSANOW, ti) < 0) {
 		perror("Can't set port settings");
 		return -1;
 	}
+
+	/* State = shy */
+
+	while (1) {
+		do {
+			read(fd, &byte, 1);
+		} while(byte != 0xC0);
+		
+		do {
+			read(fd, &bcsph[0], 1);
+		} while(bcsph[0] == 0xC0);
+		
+		read(fd, &bcsph[1], 3);
+		if (((bcsph[0] + bcsph[1] + bcsph[2]) & 0xFF) != (unsigned char)~bcsph[3])
+		      continue;
+		if (bcsph[1] != 0x41 || bcsph[2] != 0x00)
+		      continue;
+		
+		read(fd, &bcspp, 4);
+		if (!memcmp(bcspp, bcspsync, 4)) {
+			write(fd, &bcsp_sync_resp_pkt,10);
+			if (!sync_sent) {
+				write(fd, &bcsp_sync_pkt, 10); /* muzzled = false */
+				sync_sent = 1;
+			}
+		} else if (!memcmp(bcspp, bcspsyncresp, 4))
+			break;
+	}
+
+	/* State = curious */
+
+	write(fd, &bcsp_conf_pkt, 10);
+	while (1) {
+		do {
+			read(fd, &byte, 1);
+		} while(byte != 0xC0);
+
+		do {
+			read(fd, &bcsph[0], 1);
+		} while(bcsph[0] == 0xC0);
+
+		read(fd, &bcsph[1], 3);
+		if (((bcsph[0] + bcsph[1] + bcsph[2]) & 0xFF) != (unsigned char)~bcsph[3])
+			continue;
+
+		if (bcsph[1] != 0x41 || bcsph[2] != 0x00)
+			continue;
+
+		read(fd, &bcspp, 4);
+		if (!memcmp(bcspp, bcspsync, 4))
+			write(fd, &bcsp_sync_resp_pkt, 10);
+		else if (!memcmp(bcspp, bcspconf, 4))
+			write(fd, &bcsp_conf_resp_pkt, 10);
+		else if (!memcmp(bcspp, bcspconfresp,  4))
+			break;
+	}
+
+	/* State = garrulous */
 
 	return 0;
 }
@@ -763,7 +835,7 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_alarm;
 	sigaction(SIGALRM, &sa, NULL);
 
-	/* 5 seconds should be enought for intialization */
+	/* 5 seconds should be enough for intialization */
 	alarm(to);
 	
 	n = init_uart(dev, u);
