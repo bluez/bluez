@@ -192,6 +192,7 @@ int do_connect(char *svr)
 	}
 
 	/* Get default options */
+	memset(&opts, 0, sizeof(opts));
 	opt = sizeof(opts);
 	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
 		syslog(LOG_ERR, "Can't get default L2CAP options. %s(%d)", strerror(errno), errno);
@@ -236,6 +237,7 @@ int do_connect(char *svr)
 		return -1;
 	}
 
+	memset(&opts, 0, sizeof(opts));
 	opt = sizeof(opts);
 	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
 		syslog(LOG_ERR, "Can't get L2CAP options. %s(%d)", strerror(errno), errno);

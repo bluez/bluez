@@ -146,9 +146,9 @@ static int do_connect(int ctl, int dev_id, bdaddr_t *src, bdaddr_t *dst, unsigne
 		exit(1);
 	}
 
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, src);
-	addr.l2_psm = 0;
 
 	if (bind(sk, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		perror("Can't bind L2CAP socket");
@@ -156,7 +156,9 @@ static int do_connect(int ctl, int dev_id, bdaddr_t *src, bdaddr_t *dst, unsigne
 		exit(1);
 	}
 
+	memset(&opts, 0, sizeof(opts));
 	size = sizeof(opts);
+
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, &size) < 0) {
 		perror("Can't get L2CAP options");
 		close(sk);
@@ -173,6 +175,7 @@ static int do_connect(int ctl, int dev_id, bdaddr_t *src, bdaddr_t *dst, unsigne
 		exit(1);
 	}
 
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, dst);
 	addr.l2_psm = htobs(psm);

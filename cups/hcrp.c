@@ -187,9 +187,9 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		return 1;
 	}
 
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, src);
-	addr.l2_psm = 0;
 
 	if (bind(ctrl_sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("ERROR: Can't bind socket");
@@ -197,6 +197,7 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		return 1;
 	}
 
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, dst);
 	addr.l2_psm = htobs(ctrl_psm);
@@ -213,9 +214,9 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		return 1;
 	}
 
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, src);
-	addr.l2_psm = 0;
 
 	if (bind(data_sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("ERROR: Can't bind socket");
@@ -224,6 +225,7 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		return 1;
 	}
 
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, dst);
 	addr.l2_psm = htobs(data_psm);
@@ -235,6 +237,7 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		return 1;
 	}
 
+	memset(&opts, 0, sizeof(opts));
 	size = sizeof(opts);
 
 	if (getsockopt(data_sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, &size) < 0) {

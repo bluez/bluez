@@ -139,9 +139,10 @@ static int do_listen(void)
 		return -1;
 	}
 
+	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
-	l2a.l2_psm    = htobs(BNEP_PSM);
-	l2a.l2_bdaddr = src_addr;
+	bacpy(&l2a.l2_bdaddr, &src_addr);
+	l2a.l2_psm = htobs(BNEP_PSM);
 
 	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
 		syslog(LOG_ERR, "Bind failed. %s(%d)", strerror(errno), errno);
@@ -149,6 +150,7 @@ static int do_listen(void)
 	}
 
 	/* Setup L2CAP options according to BNEP spec */
+	memset(&l2o, 0, sizeof(l2o));
 	olen = sizeof(l2o);
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen) < 0) {
 		syslog(LOG_ERR, "Failed to get L2CAP options. %s(%d)",
@@ -272,23 +274,24 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 	}
 
 	/* Setup L2CAP options according to BNEP spec */
+	memset(&l2o, 0, sizeof(l2o));
 	olen = sizeof(l2o);
 	getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen);
 	l2o.imtu = l2o.omtu = BNEP_MTU;
 	setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o));
 
+	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
-
-	/* Set local address */
-	l2a.l2_psm = 0;
-	l2a.l2_bdaddr = src_addr;
+	bacpy(&l2a.l2_bdaddr, &src_addr);
 
 	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a)))
 		syslog(LOG_ERR, "Bind failed. %s(%d)", 
 				strerror(errno), errno);
 
+	memset(&l2a, 0, sizeof(l2a));
+	l2a.l2_family = AF_BLUETOOTH;
+	bacpy(&l2a.l2_bdaddr, bdaddr);
 	l2a.l2_psm = htobs(BNEP_PSM);
-	l2a.l2_bdaddr = *bdaddr;
 
 	if (!connect(sk, (struct sockaddr *) &l2a, sizeof(l2a)) && 
 			!bnep_create_connection(sk, role, service, netdev)) {

@@ -98,6 +98,7 @@ static int sco_connect(bdaddr_t *src, bdaddr_t *dst, uint16_t *handle, uint16_t 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
 	bacpy(&addr.sco_bdaddr, src);
+
 	if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		close(s);
 		return -1;
@@ -106,18 +107,23 @@ static int sco_connect(bdaddr_t *src, bdaddr_t *dst, uint16_t *handle, uint16_t 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
 	bacpy(&addr.sco_bdaddr, dst);
+
 	if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) < 0 ){
 		close(s);
 		return -1;
 	}
 
+	memset(&conn, 0, sizeof(conn));
 	size = sizeof(conn);
+
 	if (getsockopt(s, SOL_SCO, SCO_CONNINFO, &conn, &size) < 0) {
 		close(s);
 		return -1;
 	}
 
+	memset(&opts, 0, sizeof(opts));
 	size = sizeof(opts);
+
 	if (getsockopt(s, SOL_SCO, SCO_OPTIONS, &opts, &size) < 0) {
 		close(s);
 		return -1;

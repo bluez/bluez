@@ -318,6 +318,7 @@ static inline void handle_request(int sk, char *data, int len)
 
 	if (sa.l2_family == AF_BLUETOOTH) { 
 		struct l2cap_options lo;
+		memset(&lo, 0, sizeof(lo));
 		size = sizeof(lo);
 		getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &lo, &size);
 		req.bdaddr = sa.l2_bdaddr;

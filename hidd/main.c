@@ -72,21 +72,23 @@ static int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm)
 	if ((sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0)
 		return -1;
 
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family  = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, src);
-	addr.l2_psm = 0;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);
 		return -1;
 	}
 
+	memset(&opts, 0, sizeof(opts));
 	opts.imtu = HIDP_DEFAULT_MTU;
 	opts.omtu = HIDP_DEFAULT_MTU;
 	opts.flush_to = 0xffff;
 
 	setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts));
 
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family  = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, dst);
 	addr.l2_psm = htobs(psm);
@@ -108,6 +110,7 @@ static int l2cap_listen(const bdaddr_t *bdaddr, unsigned short psm, int lm, int 
 	if ((sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0)
 		return -1;
 
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, bdaddr);
 	addr.l2_psm = htobs(psm);
@@ -119,6 +122,7 @@ static int l2cap_listen(const bdaddr_t *bdaddr, unsigned short psm, int lm, int 
 
 	setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm));
 
+	memset(&opts, 0, sizeof(opts));
 	opts.imtu = HIDP_DEFAULT_MTU;
 	opts.omtu = HIDP_DEFAULT_MTU;
 	opts.flush_to = 0xffff;
@@ -258,8 +262,23 @@ static int create_device(int ctl, int csk, int isk, uint8_t subclass, int nosdp,
 		err = get_hid_device_info(&src, &dst, &req);
 		if (err < 0)
 			goto error;
-	} else
-		req.subclass = 0xc0;
+	} else {
+		struct l2cap_conninfo conn;
+		socklen_t size;
+		uint8_t class[3];
+
+		memset(&conn, 0, sizeof(conn));
+		size = sizeof(conn);
+		if (getsockopt(csk, SOL_L2CAP, L2CAP_CONNINFO, &conn, &size) < 0)
+			memset(class, 0, 3);
+		else
+			memcpy(class, conn.dev_class, 3);
+
+		if (class[1] == 0x25 && (class[2] == 0x00 || class[2] == 0x01))
+			req.subclass = class[0];
+		else
+			req.subclass = 0xc0;
+	}
 
 	if (subclass != 0x00)
 		req.subclass = subclass;
