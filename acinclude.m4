@@ -65,6 +65,46 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 	AC_SUBST(BLUEZ_LIBS)
 ])
 
+AC_DEFUN(AC_PATH_USB, [
+	AC_ARG_WITH(usb, [  --with-usb=DIR          USB library is installed in DIR], [
+		if (test "$withval" = "yes"); then
+			usb_includes=/usr/include
+			usb_libraries=/usr/lib
+		else
+			usb_includes=$withval/include
+			usb_libraries=$withval/lib
+		fi
+	])
+
+	USB_INCLUDES=""
+	USB_LDFLAGS=""
+	USB_LIBS=""
+
+	ac_save_CFLAGS=$CFLAGS
+	test -n "$usb_includes" && CFLAGS="$CFLAGS -I$usb_includes"
+
+	ac_save_LDFLAGS=$LDFLAGS
+	test -n "$usb_libraries" && LDFLAGS="$LDFLAGS -L$usb_libraries"
+
+	AC_CHECK_HEADER(usb.h,,
+		AC_MSG_ERROR(USB header files not found))
+
+	AC_CHECK_LIB(usb, usb_open,
+		USB_LIBS="$USB_LIBS -lusb",
+		AC_MSG_ERROR(USB library not found))
+
+	CFLAGS=$ac_save_CFLAGS
+	test -n "$usb_includes" && USB_INCLUDES="-I$usb_includes"
+
+	LDFLAGS=$ac_save_LDFLAGS
+	test -n "$usb_libraries" && USB_LDFLAGS="-L$usb_libraries"
+	test -n "$usb_libraries" && USB_LIBS="-L$usb_libraries $USB_LIBS"
+
+	AC_SUBST(USB_INCLUDES)
+	AC_SUBST(USB_LDFLAGS)
+	AC_SUBST(USB_LIBS)
+])
+
 AC_DEFUN([AC_PATH_DBUS], [
 	AC_ARG_ENABLE(dbus, [  --enable-dbus           enable D-BUS support], [
 		dbus_enable=$enableval
