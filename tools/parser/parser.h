@@ -89,7 +89,7 @@ static inline void p_indent(int level, struct frame *f)
 	
 	if (!parser.state) {
 		if (parser.flags & DUMP_TSTAMP)
-			printf("%ld.%ld ", f->ts.tv_sec, f->ts.tv_usec);
+			printf("%8lu.%06lu ", f->ts.tv_sec, f->ts.tv_usec);
 		printf("%c ", (f->in ? '>' : '<'));
 		parser.state = 1;
 	} else 
