@@ -210,6 +210,34 @@ typedef struct {
 #define OGF_HOST_CTL	0x03
 #define OCF_RESET		0x0003
 
+#define OCF_READ_PAGE_TIMEOUT	0x0017
+typedef struct {
+	uint8_t 	status;
+	uint16_t 	timeout;
+} __attribute__ ((packed)) read_page_timeout_rp;
+#define READ_PAGE_TIMEOUT_RP_SIZE 3
+
+#define OCF_WRITE_PAGE_TIMEOUT	0x0018
+typedef struct {
+	uint16_t 	timeout;
+} __attribute__ ((packed)) write_page_timeout_cp;
+#define WRITE_PAGE_TIMEOUT_CP_SIZE 2
+
+#define OCF_READ_PAGE_ACTIVITY	0x001B
+typedef struct {
+	uint8_t 	status;
+	uint16_t 	interval;
+	uint16_t 	window;
+} __attribute__ ((packed)) read_page_activity_rp;
+#define READ_PAGE_ACTIVITY_RP_SIZE 5
+
+#define OCF_WRITE_PAGE_ACTIVITY	0x001C
+typedef struct {
+	uint16_t 	interval;
+	uint16_t 	window;
+} __attribute__ ((packed)) write_page_activity_cp;
+#define WRITE_PAGE_ACTIVITY_CP_SIZE 4
+
 #define OCF_READ_INQ_ACTIVITY	0x001D
 typedef struct {
 	uint8_t 	status;
