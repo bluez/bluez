@@ -356,10 +356,14 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 		while (len - frm->len <= n1 ) {
 			/* Print AttributeID */
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT) {
+				char *name;
 				switch(n2) {
 				case 2:
 					attr_id = get_u16(frm);
-					printf(" 0x%04x (%s)", attr_id, get_attr_id_name(attr_id));
+					name = get_attr_id_name(attr_id);
+					if (!name)
+						name = "unknown";
+					printf(" 0x%04x (%s)", attr_id, name);
 					break;
 				case 4:
 					attr_id_range = get_u32(frm);
@@ -389,8 +393,7 @@ static inline void print_attr_list(int level, struct frame *frm)
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
 		while (len - frm->len < n1 ) {
 			/* Print AttributeID */
-			if ((parse_de_hdr(frm, &n2) == SDP_DE_UINT) &&
-				 			(n2 == sizeof(attr_id))) {
+			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT && n2 == sizeof(attr_id)) {
 				char *name;
 				attr_id = get_u16(frm);
 				p_indent(level, 0);
@@ -398,11 +401,7 @@ static inline void print_attr_list(int level, struct frame *frm)
 				if (!name)
 					name = "unknown";
 				printf("aid 0x%04x (%s)\n", attr_id, name);
-
-				if (attr_id == SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST)
-					split = 0;
-				else
-					split = 1;
+				split = (attr_id != SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST);
 				
 				/* Print AttributeValue */
 				p_indent(level + 1, 0);
@@ -428,7 +427,7 @@ static inline void print_attr_lists(int level, struct frame *frm, int len)
 	int   cnt = 0;
 
 	if (parse_de_hdr(frm, &n) == SDP_DE_SEQ) {
-	printf(" len 0x%x frm->len 0x%x n 0x%x\n", len, frm->len, n);
+//	printf(" len 0x%x frm->len 0x%x n 0x%x\n", len, frm->len, n);
 		while (len - frm->len < n ) {
 			p_indent(level, 0);
 			printf("srv rec #%d\n", cnt++);
