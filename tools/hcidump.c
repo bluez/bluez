@@ -302,6 +302,7 @@ static struct {
 	{ "cmtp",	FILT_CMTP	},
 	{ "hidp",	FILT_HIDP	},
 	{ "hcrp",	FILT_HCRP	},
+	{ "avdtp",	FILT_AVDTP	},
 	{ "capi",	FILT_CAPI	},
 	{ 0 }
 };

@@ -58,6 +58,7 @@ struct frame {
 #define FILT_CMTP	0x0040
 #define FILT_HIDP	0x0080
 #define FILT_HCRP	0x0100
+#define FILT_AVDTP	0x0200
 
 #define FILT_CAPI	0x00010000
 
@@ -168,6 +169,7 @@ void bnep_dump(int level, struct frame *frm);
 void cmtp_dump(int level, struct frame *frm);
 void hidp_dump(int level, struct frame *frm);
 void hcrp_dump(int level, struct frame *frm);
+void avdtp_dump(int level, struct frame *frm);
 
 void capi_dump(int level, struct frame *frm);
 
