@@ -82,75 +82,99 @@ static float tv2fl(struct timeval tv)
 
 static int do_connect(char *svr)
 {
-	struct sockaddr_rc rem_addr, loc_addr;
+	struct sockaddr_rc addr;
 	struct rfcomm_conninfo conn;
-	int s, opt;
+	socklen_t optlen;
+	int sk;
 
-	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM)) < 0) {
-		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
+	/* Create socket */
+	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't create socket: %s (%d)",
+							strerror(errno), errno);
 		return -1;
 	}
 
 	/* Enable SO_LINGER */
 	if (linger) {
 		struct linger l = { .l_onoff = 1, .l_linger = linger };
-		if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+
+		if (setsockopt(sk, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
 			syslog(LOG_ERR, "Can't enable SO_LINGER: %s (%d)",
-				strerror(errno), errno);
-			return -1;
+							strerror(errno), errno);
+			goto error;
 		}
 	}
 
-	memset(&loc_addr, 0, sizeof(loc_addr));
-	loc_addr.rc_family = AF_BLUETOOTH;
-	bacpy(&loc_addr.rc_bdaddr, &bdaddr);
-	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
-		exit(1);
+	/* Bind to local address */
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, &bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
-	memset(&rem_addr, 0, sizeof(rem_addr));
-	rem_addr.rc_family = AF_BLUETOOTH;
-	str2ba(svr, &rem_addr.rc_bdaddr);
-	rem_addr.rc_channel = channel;
-	if (connect(s, (struct sockaddr *) &rem_addr, sizeof(rem_addr)) < 0) {
-		syslog(LOG_ERR, "Can't connect: %s (%d)", strerror(errno), errno);
-		close(s);
-		return -1;
+	/* Connect to remote device */
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	str2ba(svr, &addr.rc_bdaddr);
+	addr.rc_channel = channel;
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		syslog(LOG_ERR, "Can't connect: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
+	/* Get connection information */
 	memset(&conn, 0, sizeof(conn));
-	opt = sizeof(conn);
-	if (getsockopt(s, SOL_RFCOMM, RFCOMM_CONNINFO, &conn, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get RFCOMM connection information: %s (%d)", strerror(errno), errno);
-		close(s);
-		//return -1;
+	optlen = sizeof(conn);
+
+	if (getsockopt(sk, SOL_RFCOMM, RFCOMM_CONNINFO, &conn, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get RFCOMM connection information: %s (%d)",
+							strerror(errno), errno);
+		//goto error;
 	}
 
 	syslog(LOG_INFO, "Connected [handle %d, class 0x%02x%02x%02x]",
 		conn.hci_handle,
 		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
-	return s;
+	return sk;
+
+error:
+	close(sk);
+	return -1;
 }
 
 static void do_listen(void (*handler)(int sk))
 {
-	struct sockaddr_rc loc_addr, rem_addr;
-	int s, s1, opt;
+	struct sockaddr_rc addr;
+	struct rfcomm_conninfo conn;
+	socklen_t optlen;
+	int sk, nsk, opt;
 	char ba[18];
 
-	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM)) < 0) {
-		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
+	/* Create socket */
+	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't create socket: %s (%d)",
+							strerror(errno), errno);
 		exit(1);
 	}
 
-	loc_addr.rc_family = AF_BLUETOOTH;
-	bacpy(&loc_addr.rc_bdaddr, &bdaddr);
-	loc_addr.rc_channel = channel;
-	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
-		exit(1);
+	/* Bind to local address */
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, &bdaddr);
+	addr.rc_channel = channel;
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	/* Set link mode */
@@ -164,63 +188,90 @@ static void do_listen(void (*handler)(int sk))
 	if (secure)
 		opt |= RFCOMM_LM_SECURE;
 
-	if (opt && setsockopt(s, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0) {
-		syslog(LOG_ERR, "Can't set RFCOMM link mode: %s (%d)", strerror(errno), errno);
-		exit(1);
+	if (opt && setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0) {
+		syslog(LOG_ERR, "Can't set RFCOMM link mode: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
-	if (listen(s, 10)) {
-		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)", strerror(errno), errno);
-		exit(1);
+	/* Listen for connections */
+	if (listen(sk, 10)) {
+		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	syslog(LOG_INFO,"Waiting for connection on channel %d ...", channel);
 
 	while(1) {
-		opt = sizeof(rem_addr);
-		if ((s1 = accept(s, (struct sockaddr *) &rem_addr, &opt)) < 0) {
-			syslog(LOG_ERR,"Accept failed: %s (%d)", strerror(errno), errno);
-			exit(1);
+		memset(&addr, 0, sizeof(addr));
+		optlen = sizeof(addr);
+
+		nsk = accept(sk, (struct sockaddr *) &addr, &optlen);
+		if (nsk < 0) {
+			syslog(LOG_ERR,"Accept failed: %s (%d)",
+							strerror(errno), errno);
+			goto error;
 		}
 		if (fork()) {
 			/* Parent */
-			close(s1);
+			close(nsk);
 			continue;
 		}
 		/* Child */
+		close(sk);
 
-		close(s);
+		/* Get connection information */
+		memset(&conn, 0, sizeof(conn));
+		optlen = sizeof(conn);
 
-		ba2str(&rem_addr.rc_bdaddr, ba);
-		syslog(LOG_INFO, "Connect from %s", ba);
+		if (getsockopt(nsk, SOL_RFCOMM, RFCOMM_CONNINFO, &conn, &optlen) < 0) {
+			syslog(LOG_ERR, "Can't get RFCOMM connection information: %s (%d)",
+							strerror(errno), errno);
+			//close(nsk);
+			//goto error;
+		}
+
+		ba2str(&addr.rc_bdaddr, ba);
+		syslog(LOG_INFO, "Connect from %s [handle %d, class 0x%02x%02x%02x]",
+			ba, conn.hci_handle,
+			conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
 		/* Enable SO_LINGER */
 		if (linger) {
 			struct linger l = { .l_onoff = 1, .l_linger = linger };
-			if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+
+			if (setsockopt(nsk, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
 				syslog(LOG_ERR, "Can't enable SO_LINGER: %s (%d)",
-					strerror(errno), errno);
-				exit(1);
+							strerror(errno), errno);
+				close(nsk);
+				goto error;
 			}
 		}
 
-		handler(s1);
+		handler(nsk);
 
 		syslog(LOG_INFO, "Disconnect: %m");
 		exit(0);
 	}
+
+	return;
+
+error:
+	close(sk);
+	exit(1);
 }
 
-static void dump_mode(int s)
+static void dump_mode(int sk)
 {
 	int len;
 
 	syslog(LOG_INFO, "Receiving ...");
-	while ((len = read(s, buf, data_size)) > 0)
+	while ((len = read(sk, buf, data_size)) > 0)
 		syslog(LOG_INFO, "Recevied %d bytes", len);
 }
 
-static void recv_mode(int s)
+static void recv_mode(int sk)
 {
 	struct timeval tv_beg,tv_end,tv_diff;
 	long total;
@@ -237,7 +288,7 @@ static void recv_mode(int s)
 			//uint16_t l;
 			int r;
 
-			if ((r = recv(s, buf, data_size, 0)) <= 0) {
+			if ((r = recv(sk, buf, data_size, 0)) <= 0) {
 				if (r < 0)
 					syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
@@ -271,12 +322,12 @@ static void recv_mode(int s)
 
 		timersub(&tv_end,&tv_beg,&tv_diff);
 
-		syslog(LOG_INFO,"%ld bytes in %.2f sec, %.2f kB/s",total,
+		syslog(LOG_INFO,"%ld bytes in %.2f sec, %.2f kB/s", total,
 			tv2fl(tv_diff), (float)(total / tv2fl(tv_diff) ) / 1024.0);
 	}
 }
 
-static void send_mode(int s)
+static void send_mode(int sk)
 {
 	uint32_t seq;
 	int i;
@@ -292,14 +343,15 @@ static void send_mode(int s)
 		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
 		
-		if (send(s, buf, data_size, 0) <= 0) {
-			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
+		if (send(sk, buf, data_size, 0) <= 0) {
+			syslog(LOG_ERR, "Send failed: %s (%d)",
+							strerror(errno), errno);
 			exit(1);
 		}
 	}
 
 	syslog(LOG_INFO, "Closing channel ...");
-	if (shutdown(s, SHUT_RDWR) < 0)
+	if (shutdown(sk, SHUT_RDWR) < 0)
 		syslog(LOG_INFO, "Close failed: %m");
 	else
 		syslog(LOG_INFO, "Done");
@@ -308,24 +360,26 @@ static void send_mode(int s)
 static void reconnect_mode(char *svr)
 {
 	while(1) {
-		int s = do_connect(svr);
-		close(s);
+		int sk = do_connect(svr);
+		close(sk);
 	}
 }
 
 static void multi_connect_mode(char *svr)
 {
 	while (1) {
-		int i, s;
+		int i, sk;
+
 		for (i = 0; i < 10; i++) {
 			if (fork()) continue;
 
 			/* Child */
-			s = do_connect(svr);
+			sk = do_connect(svr);
 			usleep(500);
-			close(s);
+			close(sk);
 			exit(0);
 		}
+
 		sleep(2);
 	}
 }
@@ -357,10 +411,8 @@ static void usage(void)
 
 int main(int argc ,char *argv[])
 {
-	int opt, mode, s, need_addr;
 	struct sigaction sa;
-
-	mode = RECV; need_addr = 0;
+	int opt, sk, mode = RECV, need_addr = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
@@ -471,10 +523,10 @@ int main(int argc ,char *argv[])
 			break;
 
 		case CRECV:
-			s = do_connect(argv[optind]);
-			if (s < 0)
+			sk = do_connect(argv[optind]);
+			if (sk < 0)
 				exit(1);
-			recv_mode(s);
+			recv_mode(sk);
 			break;
 
 		case DUMP:
@@ -482,10 +534,10 @@ int main(int argc ,char *argv[])
 			break;
 
 		case SEND:
-			s = do_connect(argv[optind]);
-			if (s < 0)
+			sk = do_connect(argv[optind]);
+			if (sk < 0)
 				exit(1);
-			send_mode(s);
+			send_mode(sk);
 			break;
 
 		case LSEND:
@@ -501,10 +553,10 @@ int main(int argc ,char *argv[])
 			break;
 
 		case CONNECT:
-			s = do_connect(argv[optind]);
-			if (s < 0)
+			sk = do_connect(argv[optind]);
+			if (sk < 0)
 				exit(1);
-			dump_mode(s);
+			dump_mode(sk);
 			break;
 	}
 
