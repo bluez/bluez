@@ -414,9 +414,11 @@ void print_dev_info(int ctl, struct hci_dev_info *di)
 		print_link_policy(di);
 		print_link_mode(di);
 
-		cmd_name(ctl, di->dev_id, NULL);
-		cmd_class(ctl, di->dev_id, NULL);
-		cmd_version(ctl, di->dev_id, NULL);
+		if (di->flags & (1 << HCI_UP)) {
+			cmd_name(ctl, di->dev_id, NULL);
+			cmd_class(ctl, di->dev_id, NULL);
+			cmd_version(ctl, di->dev_id, NULL);
+		}
 	}
 		
 	printf("\n");
