@@ -395,6 +395,19 @@ typedef struct {
 } __attribute__ ((packed)) write_voice_setting_cp;
 #define WRITE_VOICE_SETTING_CP_SIZE 2
 
+#define OCF_READ_TRANSMIT_POWER_LEVEL 0x002D
+typedef struct {
+	uint16_t	handle;
+	uint8_t		type;
+} __attribute__ ((packed)) read_transmit_power_level_cp;
+#define READ_TRANSMIT_POWER_LEVEL_CP_SIZE 3
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	int8_t		level;
+} __attribute__ ((packed)) read_transmit_power_level_rp;
+#define READ_TRANSMIT_POWER_LEVEL_RP_SIZE 4
+
 #define OCF_HOST_BUFFER_SIZE	0x0033
 typedef struct {
 	uint16_t 	acl_mtu;
