@@ -1,0 +1,89 @@
+dnl
+dnl  $Id$
+dnl
+dnl Process this file with autoconf to produce a configure script.
+dnl
+AC_INIT()
+
+AC_SUBST(DISTRO)
+AC_SUBST(PCMCIA)
+
+AC_SUBST(GLIB_CFLAGS)
+AC_SUBST(GLIB_LDFLAGS)
+
+AC_PREFIX_DEFAULT()
+
+dnl Guess host type.
+AC_CANONICAL_SYSTEM
+AC_CANONICAL_HOST
+
+AM_INIT_AUTOMAKE(bluez-utils, 1.0)
+
+dnl Check for programs.
+AC_PROG_CC
+AC_PROG_AWK
+AC_PROG_INSTALL
+AC_CHECK_TOOL(LD, ld, ld)
+AC_CHECK_TOOL(AR, ar, ar)
+
+AC_PROG_YACC
+AM_PROG_LEX
+
+AC_ARG_WITH(bluez-libs,
+	--with-bluez-libs=DIR  BlueZ libraries and header files,
+	[
+	    BLUEZ_INCDIR="$withval"/include
+	    BLUEZ_LIBDIR="$withval"/src/.libs
+	],[
+	    BLUEZ_INCDIR='../libs/include ../bluez-libs*/include /usr/include/bluetooth'
+	    BLUEZ_LIBDIR='../libs/src/.libs ../bluez-libs*/src/.libs /usr/lib'
+	]
+)
+
+AC_SEARCH_HEADERS(bluetooth.h, $BLUEZ_INCDIR,,
+	AC_MSG_ERROR(Bluetooth headers not found.
+		Please install bluez-libs package.)
+)
+
+AC_SEARCH_LIB(bluetooth, hci_open_dev, $BLUEZ_LIBDIR,,
+        AC_MSG_ERROR(Bluetooth library not found.
+		Please compile and install bluez-libs package.)
+)
+
+AC_ARG_WITH(glib,
+	--with-glib=DIR  GLib libraries and header files,
+	[
+	    GLIB_CFLAGS="-I$withval"
+	    GLIB_LDFLAGS="-L$withval/.libs -lglib"
+	],[
+	    AC_MSG_RESULT("checking for GLib ...")
+            AC_CHECK_PROG(GLIB, glib-config, yes, [not found])
+            if test "$GLIB" = "yes"; then
+		GLIB_CFLAGS="`glib-config --cflags`"
+		GLIB_LDFLAGS="`glib-config --libs`"
+	    else
+		AC_MSG_ERROR(GLib not found)
+	    fi
+	]
+)
+
+dnl Check for programs.
+AC_PROG_INSTALL
+
+dnl Check for distro type.
+DISTRO=unknown
+
+if test "$cross_compiling" != yes; then
+   AC_TEST_FILE(/etc/redhat-release,   DISTRO=redhat)
+   AC_TEST_FILE(/etc/mandrake-release, DISTRO=redhat)
+   AC_TEST_FILE(/etc/debian_version,   DISTRO=debian)
+fi
+
+dnl Check for PCMCIA 
+if test "$cross_compiling" != yes; then
+   AC_TEST_DIR(/etc/pcmcia, PCMCIA=pcmcia, PCMCIA=)
+fi
+
+AC_ADD_DIRLEVEL(CFLAGS CPPFLAGS LDFLAGS LIBS)
+
+AC_OUTPUT(Makefile hcid/Makefile tools/Makefile scripts/Makefile pcmcia/Makefile)

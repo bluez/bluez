@@ -1,0 +1,20 @@
+ver 2.0-pre7:
+	Bluetooth utilities is now a separate package.
+
+ver 2.0-pre6:
+	Improved hcitool.
+	l2test minor output fixes.
+	hciattach opt to display list of supported devices.
+
+ver 2.0-pre2:
+	Additional HCI library functions.
+	Improved CSR baud rate initialization.
+	PCMCIA scripts fixes and enhancements.
+	Documentation update.
+	
+ver 2.0-pre1:
+	New UART initialization utility.
+	Hot plugging support for UART based PCMCIA devices.
+	SCO testing utility.
+	New authentication utility (bluepin).
+	Minor fixes and improvements.

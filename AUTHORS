@@ -1,0 +1,22 @@
+Maxim Krasnyansky <maxk@qualcomm.com>
+	Original author.
+	Primary maintainer.
+
+Ilguiz Latypov <ilatypov@superbt.com>
+	Patches. Suggestions.
+
+Jan Beutel <j.beutel@ieee.org>
+	Documentation maintainer.
+	BlueZ HowTo.
+
+Jean Tourrilhes <jt@hpl.hp.com>
+	CSR and BrainBoxes specific UART initialization.
+
+Thomas Moser <Thomas.Moser@tmoser.ch>
+	Silicon Wave UART initialization.
+
+Marcel Holtmann <marcel@rvs.uni-bielefeld.de>
+	Various patches, fixes and other contributions.
+
+Nils Faerber <nils@kernelconcepts.de>
+	Man pages.

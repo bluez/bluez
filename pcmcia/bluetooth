@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# bluetooth
+#
+# Initialize a PCMCIA Bluetooth device
+# Written by Maxim Krasnyanskiy <maxk@qualcomm.com>
+#
+# $1 - socket
+# $2 - device
+# 
+
+LOG="/usr/bin/logger -i -t bluetooth -p daemon.notice"
+
+IDENT="/sbin/cardctl ident $1"
+
+# Check if card is really a Bluetooth card
+if ! $IDENT | grep -i 'bluetooth' > /dev/null 2>&1; then
+	$LOG "$2 is not a Bluetooth device"
+	exit
+fi
+
+ID=`$IDENT | awk '/.*id/{print $2 $3}'`
+TYPE=`$IDENT | awk '/.*func/{print $2}'`
+
+$LOG "Bluetooth device id $ID type $TYPE $2"
+
+case "$TYPE" in
+	# Serial device
+	2)
+		/sbin/hciattach $DEVICE $ID
+		;;
+esac
+
+unset LOG IDENT ID TYPE

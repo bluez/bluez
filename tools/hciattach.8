@@ -1,0 +1,102 @@
+.TH HCIATTACH 8 "Jan 22 2002" BlueZ "Linux System Administration"
+.SH NAME
+hciattach \- attach serial devices via UART HCI to BlueZ stack
+.SH SYNOPSIS
+.B hciattach
+<
+.I tty
+> <
+.I type
+|
+.I id
+> [
+.I speed
+] [
+.I flow
+]
+.SH DESCRIPTION
+.LP
+Hciattach is used to attach a serial UART to the Bluetooth stack as HCI
+transport interface.
+.SH OPTIONS
+.TP
+.I <tty>
+This specifies the serial device to attach. A leading
+.B /dev
+can be omitted. Examples:
+.B /dev/ttyS1
+.B ttyS2
+.TP
+.I <type | id>
+The
+.B type
+or
+.B id
+of the Bluetooth device that is to be attached, i.e. vendor or other device
+specific identifier. Currently supported types are
+.RS
+.TP
+.B type
+.B description
+.TP
+any
+Unspecified HCI_UART interface, no vendor specific options
+.TP
+ericsson
+Ericsson based modules
+.TP
+digi
+Digianswer based cards
+.TP
+xircom
+Xircom PCMCIA cards: Credit Card Adapter and Real Port Adapter
+.TP
+csr
+CSR Casira serial adapter or BrainBoxes serial dongle (BL642)
+.TP
+bboxes
+BrainBoxes PCMCIA card (BL620)
+.TP
+swave
+Silicon Wave kits
+.RE
+
+Supported IDs are (manufacturer id, product id)
+.RS
+.TP
+0x0105, 0x080a
+Xircom PCMCIA cards: Credit Card Adapter and Real Port Adapter
+.TP
+0x0160, 0x0002
+BrainBoxes PCMCIA card (BL620)
+.RE
+
+.TP
+.I <speed>
+The
+.B speed
+specifies the UART speed to use. Baudrates higher than 115.200bps require
+vendor specific initializations that are not implemented for all types of
+devices. In general the following speeds are supported:
+
+.B 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600
+
+Supported vendor devices are automatically initialised to their respective
+best settings.
+.TP
+.I <flow>
+If the keyword
+.B flow
+is appended to the list of options then hardware flow control is forced on
+the serial link (
+.B CRTSCTS
+). All above mentioned device types have
+.B flow
+set by default. To force no flow control use
+.B noflow
+instead.
+
+.SH AUTHORS
+Written by Maxim Krasnyansky <maxk@qualcomm.com>
+.PP
+man page by Nils Faerber <nils@kernelconcepts.de>

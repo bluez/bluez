@@ -1,0 +1,49 @@
+.TH L2PING 8 "Jan 22 2002" BlueZ "Linux System Administration"
+.SH NAME
+l2ping \- Send L2CAP echo request and receive answer
+.SH SYNOPSIS
+.B l2ping
+[
+.I -S source addr
+] [
+.I -s size
+] [
+.I -c count
+] [
+.I -f
+] <
+.I bd_addr
+>
+.SH DESCRIPTION
+.LP
+L2ping sends a L2CAP echo request to the Bluetooth MAC address
+.B bd_addr
+given in dotted hex notation.
+.SH OPTIONS
+.TP
+.I -S source addr
+Select address to be used as source address for the request.
+.TP
+.I -s size
+The
+.B size
+of the data packets to be sent.
+.TP
+.I -c count
+Send
+.B count
+number of packets then exit.
+.TP
+.I -f
+Kind of flood ping. Use with care! It reduces the delay time between packets
+to 0.
+.TP
+.I bd_addr
+The Bluetooth MAC address to be pinged in dotted hex notation like
+.B 01:02:03:ab:cd:ef
+or
+.B 01:EF:cd:aB:02:03
+.SH AUTHORS
+Written by Maxim Krasnyansky <maxk@qualcomm.com>
+.PP
+man page by Nils Faerber <nils@kernelconcepts.de>
