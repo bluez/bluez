@@ -45,7 +45,6 @@ int dun_kill_all_connections(void);
 int dun_open_connection(int sk, char *pppd, char **pppd_opts, int wait);
 
 /* SDP functions */
-int  dun_sdp_register(uint8_t channel);
+int  dun_sdp_register(uint8_t channel, int mrouter);
 void dun_sdp_unregister(void);
-int  dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel);
-
+int  dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel, int mrouter);

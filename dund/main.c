@@ -72,6 +72,7 @@ static int  persist;
 static int  use_sdp = 1;
 static int  encrypt;
 static int  master;
+static int  mrouter;
 static int  search_duration = 10;
 static uint use_cache;
 
@@ -97,16 +98,32 @@ enum {
 	KILL
 } modes;
 
+static int create_connection(char *dst, bdaddr_t *bdaddr, int mrouter);
+
 static int do_listen(void)
 {
 	struct sockaddr_rc sa;
 	int sk;
 
+	if (mrouter) {
+		if (!cache.valid)
+			return -1;
+
+		if (create_connection(cache.dst, &cache.bdaddr, mrouter) < 0) {
+			syslog(LOG_ERR, "Cannot connect to mRouter device. %s(%d)",
+								strerror(errno), errno);
+			return -1;
+		}
+	}
+
 	if (!channel)
 		channel = DUN_DEFAULT_CHANNEL;
 
 	if (use_sdp)
-		dun_sdp_register(channel);
+		dun_sdp_register(channel, mrouter);
+
+	if (mrouter)
+		syslog(LOG_INFO, "Waiting for mRouter callback on channel %d", channel);
 
 	/* Create RFCOMM socket */
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
@@ -145,8 +162,14 @@ static int do_listen(void)
 			syslog(LOG_ERR, "Fork failed. %s(%d)", strerror(errno), errno);
 		default:
 			close(nsk);
+			if (mrouter) {
+				close(sk);
+				terminate = 1;
+			}
 			continue;
 		}
+
+		close(sk);
 
 		if (msdun && ms_dun(nsk, 1, msdun) < 0) {
 			syslog(LOG_ERR, "MSDUN failed. %s(%d)", strerror(errno), errno);
@@ -178,7 +201,7 @@ static int do_listen(void)
  *   1  - non critical error
  *   0  - success
  */
-static int create_connection(char *dst, bdaddr_t *bdaddr)
+static int create_connection(char *dst, bdaddr_t *bdaddr, int mrouter)
 {
 	struct sockaddr_rc sa;
 	int sk, err = 0, ch;
@@ -188,13 +211,13 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 		ch = cache.channel;
 
 	} else if (!channel) {
-		syslog(LOG_INFO, "Searching for %s on %s", "LAP", dst);
+		syslog(LOG_INFO, "Searching for %s on %s", mrouter ? "SP" : "LAP", dst);
 
-		if (dun_sdp_search(&src_addr, bdaddr, &ch) <= 0)
+		if (dun_sdp_search(&src_addr, bdaddr, &ch, mrouter) <= 0)
 			return 0;
 	} else
 		ch = channel;
-	
+
 	syslog(LOG_INFO, "Connecting to %s channel %d", dst, ch);
 
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
@@ -216,6 +239,12 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 	sa.rc_bdaddr  = *bdaddr;
 
 	if (!connect(sk, (struct sockaddr *) &sa, sizeof(sa)) ) {
+		if (mrouter) {
+			sleep(1);
+			close(sk);
+			return 0;
+		}
+
 		syslog(LOG_INFO, "Connection established");
 
 		if (msdun && ms_dun(sk, 0, msdun) < 0) {
@@ -271,7 +300,7 @@ static int do_connect(void)
 
 		if (cache.valid) {
 			/* Use cached bdaddr */
-			r = create_connection(cache.dst, &cache.bdaddr);
+			r = create_connection(cache.dst, &cache.bdaddr, 0);
 			if (r < 0) {
 				terminate = 1;
 				break;
@@ -294,7 +323,7 @@ static int do_connect(void)
 			char dst[40];
 			ba2str(&ii[i].bdaddr, dst);
 			
-			r = create_connection(dst, &ii[i].bdaddr);
+			r = create_connection(dst, &ii[i].bdaddr, 0);
 			if (r < 0) {
 				terminate = 1;
 				break;
@@ -351,19 +380,21 @@ static struct option main_lopts[] = {
 	{ "cache",    0, 0, 'C' },
 	{ "pppd",     1, 0, 'd' },
 	{ "msdun",    2, 0, 'X' },
+	{ "mrouter",  1, 0, 'm' },
 	{ 0, 0, 0, 0 }
 };
 
 static char main_sopts[] = "hsc:k:Kr:S:lnp::DQ::EMP:C::P:X";
 
 static char main_help[] = 
-	"LAP (LAN Access over PPP) daemon version " VERSION " \n"
+	"Bluetooth LAP (LAN Access over PPP) daemon version " VERSION " \n"
 	"Usage:\n"
 	"\tdund <options> [pppd options]\n"
 	"Options:\n"
 	"\t--show --list -l          Show active LAP connections\n"
 	"\t--listen -s               Listen for LAP connections\n"
 	"\t--connect -c <bdaddr>     Create LAP connection\n"
+	"\t--mrouter -m <bdaddr>     Create mRouter connection\n"
 	"\t--search -Q[duration]     Search and connect\n"
 	"\t--kill -k <bdaddr>        Kill LAP connection\n"
 	"\t--killall -K              Kill all LAP connections\n"
@@ -467,6 +498,12 @@ int main(int argc, char **argv)
 				msdun = 10;
 			break;
 
+		case 'm':
+			mode = LISTEN;
+			dst  = strdup(optarg);
+			mrouter = 1;
+			break;
+
 		case 'h':
 		default:
 			printf(main_help);
@@ -533,7 +570,7 @@ int main(int argc, char **argv)
 	}
 
 	openlog("dund", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
-	syslog(LOG_INFO, "Bluetooth DUN daemon");
+	syslog(LOG_INFO, "Bluetooth DUN daemon version %s", VERSION);
 
 	if (src) {
 		src_dev = hci_devid(src);

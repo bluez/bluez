@@ -55,7 +55,7 @@ void dun_sdp_unregister(void)
 	sdp_close(session);
 }
 
-int dun_sdp_register(uint8_t channel)
+int dun_sdp_register(uint8_t channel, int mrouter)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
 	uuid_t root_uuid, l2cap, rfcomm, dun;
@@ -92,16 +92,16 @@ int dun_sdp_register(uint8_t channel)
 	aproto   = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
 
-	sdp_uuid16_create(&dun, LAN_ACCESS_SVCLASS_ID);
+	sdp_uuid16_create(&dun, mrouter ? SERIAL_PORT_SVCLASS_ID : LAN_ACCESS_SVCLASS_ID);
 	svclass = sdp_list_append(NULL, &dun);
 	sdp_set_service_classes(record, svclass);
 
-	sdp_uuid16_create(&profile[0].uuid, LAN_ACCESS_PROFILE_ID);
+	sdp_uuid16_create(&profile[0].uuid, mrouter ? SERIAL_PORT_PROFILE_ID : LAN_ACCESS_PROFILE_ID);
 	profile[0].version = 0x0100;
 	pfseq = sdp_list_append(NULL, &profile[0]);
 	sdp_set_profile_descs(record, pfseq);
 		
-	sdp_set_info_attr(record, "LAN Access Point", NULL, NULL);
+	sdp_set_info_attr(record, mrouter ? "mRouter" : "LAN Access Point", NULL, NULL);
 
 	status = sdp_record_register(session, record, 0);
 	if (status) {
@@ -112,7 +112,7 @@ int dun_sdp_register(uint8_t channel)
 	return 0;
 }
 
-int dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel)
+int dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel, int mrouter)
 {
 	sdp_session_t *s;
 	sdp_list_t *srch, *attrs, *rsp;
@@ -127,7 +127,7 @@ int dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel)
 		return -1;
 	}
 
-	sdp_uuid16_create(&svclass, LAN_ACCESS_SVCLASS_ID);
+	sdp_uuid16_create(&svclass, mrouter ? SERIAL_PORT_SVCLASS_ID : LAN_ACCESS_SVCLASS_ID);
 	srch  = sdp_list_append(NULL, &svclass);
 
 	attr  = SDP_ATTR_PROTO_DESC_LIST;
