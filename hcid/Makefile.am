@@ -13,6 +13,10 @@ endif
 hcid_SOURCES = main.c security.c hcid.h lib.c lib.h parser.h parser.y lexer.l kword.h kword.c glib-ectomy.h glib-ectomy.c $(dbus_hcid_sources)
 hcid_CONFIG  = hcid.conf
 
+LDFLAGS = @BLUEZ_LIBS@
+
+INCLUDES = @BLUEZ_INCLUDES@
+
 man_MANS = hcid.8 hcid.conf.5
 
 YFLAGS   = -d

@@ -9,6 +9,10 @@ bin_PROGRAMS = rfcomm
 rfcomm_SOURCES = main.c parser.h parser.y lexer.l kword.h kword.c
 rfcomm_CONFIG  = rfcomm.conf
 
+LDFLAGS = @BLUEZ_LIBS@
+
+INCLUDES = @BLUEZ_INCLUDES@
+
 man_MANS = rfcomm.1
 
 YFLAGS = -d

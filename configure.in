@@ -33,51 +33,17 @@ AC_PROG_INSTALL
 AC_PROG_YACC
 AM_PROG_LEX
 
-AC_ARG_WITH(bluez-libs,
-	--with-bluez-libs=DIR     BlueZ libraries,
-	BLUEZ_LIBDIR="$withval",
-	BLUEZ_LIBDIR='../libs/src /usr/lib'
-)
+AC_ARG_WITH(bluez, [  --with-bluez=DIR        BlueZ library is installed in DIR], [
+	bluez_includes=$withval/include
+	bluez_libraries=$withval/lib
+])
 
-AC_ARG_WITH(bluez-includes,
-	--with-bluez-includes=DIR BlueZ header files,
-	BLUEZ_INCDIR="$withval",
-	BLUEZ_INCDIR='../libs/include /usr/include'
-)
+AC_PATH_BLUEZ
 
-AC_ARG_ENABLE(dbus,
-	--enable-dbus		  use D-BUS,
+AC_ARG_ENABLE(dbus, [  --enable-dbus           use D-BUS],
 	BLUEZ_DBUS="$enableval",
 	BLUEZ_DBUS="no"
 )
-
-AC_SEARCH_HEADERS(bluetooth/bluetooth.h, $BLUEZ_INCDIR,,
-	AC_MSG_ERROR(Bluetooth headers not found.
-		Please compile and install bluez-libs package.)
-)
-
-AC_SEARCH_LIB(bluetooth, hci_open_dev, $BLUEZ_LIBDIR,,
-	AC_MSG_ERROR(Bluetooth library not found.
-		Please compile and install bluez-libs package.)
-)
-
-AC_SUBST(DISTRO)
-AC_SUBST(PCMCIA)
-
-DISTRO=unknown
-
-if test "$cross_compiling" != yes; then
-	AC_TEST_FILE(/etc/redhat-release,   DISTRO=redhat)
-	AC_TEST_FILE(/etc/mandrake-release, DISTRO=redhat)
-	AC_TEST_FILE(/etc/debian_version,   DISTRO=debian)
-fi
-
-AC_ARG_ENABLE(pcmcia,
-    --enable-pcmcia           Always install PCMCIA support files,
-    [PCMCIA=pcmcia],
-    [ if test "$cross_compiling" != yes; then
-           AC_TEST_DIR(/etc/pcmcia, PCMCIA=pcmcia, PCMCIA=)
-    fi ])
 
 if test x"$BLUEZ_DBUS" == "xyes"; then
 	PKG_CHECK_MODULES(DBUS, dbus-1, have_dbus=yes, have_dbus=no)

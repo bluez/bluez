@@ -30,6 +30,15 @@
 #ifndef SDPD_H
 #define SDPD_H
 
+#define SDPINF(fmt, arg...) syslog(LOG_INFO, fmt "\n", ## arg)
+#define SDPERR(fmt, arg...) syslog(LOG_ERR, "%s: " fmt "\n", __func__ , ## arg)
+
+#ifdef SDP_DEBUG
+#define SDPDBG(fmt, arg...) syslog(LOG_DEBUG, "%s: " fmt "\n", __func__ , ## arg)
+#else
+#define SDPDBG(fmt...)
+#endif
+
 typedef struct request {
 	bdaddr_t bdaddr;
 	int      local;

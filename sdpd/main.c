@@ -34,23 +34,29 @@
 /*
  * $Id$
  */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
 #include <signal.h>
+#include <syslog.h>
 #include <getopt.h>
 #include <sys/un.h>
 #include <sys/select.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/sdp_internal.h>
 
 #include "sdpd.h"
 
