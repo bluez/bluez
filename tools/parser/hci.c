@@ -426,6 +426,13 @@ static inline void sco_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void vendor_dump(int level, struct frame *frm)
+{
+	p_indent(level, frm);
+	printf("Vendor data: len %d\n", frm->len);
+	raw_dump(level, frm);
+}
+
 void hci_dump(int level, struct frame *frm)
 {
 	uint8_t type = *(uint8_t *)frm->ptr; 
@@ -447,6 +454,10 @@ void hci_dump(int level, struct frame *frm)
 
 	case HCI_SCODATA_PKT:
 		sco_dump(level, frm);
+		break;
+
+	case HCI_VENDOR_PKT:
+		vendor_dump(level, frm);
 		break;
 
 	default:

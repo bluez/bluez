@@ -257,7 +257,7 @@ static int open_file(char *file, int mode)
 	return f;
 }
 
-static int open_socket(int dev)
+static int open_socket(int dev, unsigned long flags)
 {
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
@@ -283,8 +283,14 @@ static int open_socket(int dev)
 
 	/* Setup filter */
 	hci_filter_clear(&flt);
-	hci_filter_all_ptypes(&flt);
-	hci_filter_all_events(&flt);
+	if (flags & DUMP_BPA) {
+		hci_filter_set_ptype(HCI_VENDOR_PKT, &flt);
+		hci_filter_set_event(EVT_VENDOR, &flt);
+	} else {
+		hci_filter_all_ptypes(&flt);
+		hci_filter_all_events(&flt);
+		hci_filter_clear_ptype(HCI_VENDOR_PKT, &flt);
+	}
 	if (setsockopt(sk, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		perror("Can't set HCI filter");
 		exit(1);
@@ -436,6 +442,7 @@ static void usage(void)
 	"  -x, --hex                  Dump data in hex\n"
 	"  -X, --ext                  Dump data in hex and ascii\n"
 	"  -R, --raw                  Raw mode\n"
+	"  -B, --bpa                  BPA mode\n"
 	"  -C, --cmtp=psm             PSM for CMTP\n"
 	"  -H, --hcrp=psm             PSM for HCRP\n"
 	"  -O, --obex=channel         Channel for OBEX\n"
@@ -458,6 +465,7 @@ static struct option main_options[] = {
 	{ "hex",		0, 0, 'x' },
 	{ "ext",		0, 0, 'X' },
 	{ "raw",		0, 0, 'R' },
+	{ "bpa",		0, 0, 'B' },
 	{ "cmtp",		1, 0, 'C' },
 	{ "hcrp",		1, 0, 'H' },
 	{ "obex",		1, 0, 'O' },
@@ -473,7 +481,7 @@ int main(int argc, char *argv[])
 
 	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRBC:H:O:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			device = atoi(optarg + 3);
@@ -547,6 +555,10 @@ int main(int argc, char *argv[])
 			flags |= DUMP_RAW;
 			break;
 
+		case 'B':
+			flags |= DUMP_BPA;
+			break;
+
 		case 'C': 
 			set_proto(0, atoi(optarg), 0, SDP_UUID_CMTP);
 			break;
@@ -580,7 +592,7 @@ int main(int argc, char *argv[])
 	switch (mode) {
 	case PARSE:
 		init_parser(flags, filter, defpsm, defcompid);
-		process_frames(device, open_socket(device), -1);
+		process_frames(device, open_socket(device, flags), -1);
 		break;
 
 	case READ:
@@ -589,7 +601,7 @@ int main(int argc, char *argv[])
 		break;
 
 	case WRITE:
-		process_frames(device, open_socket(device), open_file(dump_file, mode));
+		process_frames(device, open_socket(device, flags), open_file(dump_file, mode));
 		break;
 
 	case RECEIVE:
@@ -598,7 +610,7 @@ int main(int argc, char *argv[])
 		break;
 
 	case SEND:
-		process_frames(device, open_socket(device), open_connection(dump_addr, dump_port));
+		process_frames(device, open_socket(device, flags), open_connection(dump_addr, dump_port));
 		break;
 	}
 
