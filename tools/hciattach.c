@@ -764,6 +764,9 @@ struct uart_t uart[] = {
 	/* Socket Bluetooth CF Card (Rev G) */
 	{ "socket",   0x0104, 0x0096, HCI_UART_BCSP, 230400, 230400, 0,        bcsp },
 
+	/* 3Com Bluetooth Card (Version 3.0) */
+	{ "3com",     0x0101, 0x0041, HCI_UART_H4,   115200, 115200, FLOW_CTL, csr  },
+
 	{ NULL, 0 }
 };
 
