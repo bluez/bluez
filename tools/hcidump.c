@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
 
 	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:s:p:m:w:r:taxXRC:H:h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:s:p:m:w:r:taxXRC:H:O:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			device = atoi(optarg + 3);
