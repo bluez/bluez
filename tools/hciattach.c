@@ -547,6 +547,9 @@ struct uart_t uart[] = {
 	/* Inventel BlueBird Module */
 	{ "inventel", 0x0000, 0x0000, HCI_UART_H4, 115200, FLOW_CTL, NULL },
 
+	/* COM One Platinium Bluetooth PC Card */
+	{ "comone",   0xffff, 0x0101, HCI_UART_H4, 115200, FLOW_CTL, NULL },
+
         { NULL, 0 }
 };
 
