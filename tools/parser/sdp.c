@@ -205,7 +205,7 @@ static inline void print_int(__u8 de_type, int level, int n, struct frame *frm)
 		break;
 	case 16:/* 128-bit */
 		get_u128(frm, &val, &val2);
-		printf(" 0x%llx%llx", val, val2);
+		printf(" 0x%llx%llx", val2, val);
 		return;
 	default: /* syntax error */
 		printf(" err");
@@ -225,12 +225,15 @@ static inline void print_uuid(int n, struct frame *frm)
 	switch(n) {
 	case 2: /* 16-bit UUID */
 		uuid = get_u16(frm);
+		s = "uuid-16";
 		break;
 	case 4: /* 32_bit UUID */
 		uuid = get_u32(frm);
+		s = "uuid-32";
 		break;
 	case 16: /* 128-bit UUID */
 		uuid = get_u32(frm);
+		s = "uuid-128";
 		frm->ptr += 12;
 		frm->len -= 12;
 		break;
@@ -241,8 +244,8 @@ static inline void print_uuid(int n, struct frame *frm)
 		return;
 	}
 
-	printf(" 0x%04x", uuid);
-	if ((s = get_uuid_name(uuid)) != 0)
+	printf(" %s 0x%04x", s, uuid);
+	if ((s = get_uuid_name(uuid)))
 		printf(" (%s)", s);
 }
 
@@ -382,9 +385,13 @@ static inline void print_attr_list(int level, struct frame *frm)
 			/* Print AttributeID */
 			if ((parse_de_hdr(frm, &n2) == SDP_DE_UINT) &&
 				 			(n2 == sizeof(attr_id))) {
+				char *name;
 				attr_id = get_u16(frm);
 				p_indent(level, 0);
-				printf("aid 0x%04x (%s)\n", attr_id, get_attr_id_name(attr_id));
+				name = get_attr_id_name(attr_id);
+				if (!name)
+					name = "unknown";
+				printf("aid 0x%04x (%s)\n", attr_id, name);
 
 				if (attr_id == SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST)
 					split = 0;
