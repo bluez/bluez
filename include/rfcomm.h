@@ -49,22 +49,21 @@ struct sockaddr_rc {
 /* RFCOMM TTY support */
 #define RFCOMM_MAX_DEV  256
 
-#define RFCOMMSETMODE		_IOW('R', 200, int)
-#define RFCOMMCREATEDEV		_IOW('R', 201, int)
-#define RFCOMMRELEASEDEV	_IOW('R', 202, int)
+#define RFCOMMCREATEDEV		_IOW('R', 200, int)
+#define RFCOMMRELEASEDEV	_IOW('R', 201, int)
 #define RFCOMMGETDEVLIST	_IOR('R', 210, int)
 #define RFCOMMGETDEVINFO	_IOR('R', 211, int)
 
-struct rfcomm_dev_create_req {
+struct rfcomm_dev_req {
 	int16_t      dev_id;
+	uint32_t     flags;
 	bdaddr_t     src;
 	bdaddr_t     dst;
 	uint8_t      channel;
 };
-
-struct rfcomm_dev_release_req {
-	int16_t      dev_id;
-};
+#define RFCOMM_REUSE_DLC      0
+#define RFCOMM_RELEASE_ONHUP  1
+#define RFCOMM_HANGUP_NOW     2
 
 struct rfcomm_dev_info {
 	int16_t      id;
