@@ -323,6 +323,7 @@ static void bcsp_tshy_sig_alarm(int sig)
 		alarm(1);
 		return;
 	}
+	tcflush(serial_fd, TCIOFLUSH);
 	fprintf(stderr, "BCSP initialization timed out\n");
 	exit(1);
 }
@@ -337,6 +338,7 @@ static void bcsp_tconf_sig_alarm(int sig)
 		alarm(1);
 		return;
 	}
+	tcflush(serial_fd, TCIOFLUSH);
 	fprintf(stderr, "BCSP initialization timed out\n");
 	exit(1);
 }
