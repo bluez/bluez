@@ -76,7 +76,7 @@ AC_DEFUN([AC_PATH_USB], [
 	AC_CHECK_HEADER(usb.h,, AC_MSG_ERROR(USB header files not found))
 
 	USB_LIBS=""
-	if (test "${prefix}" = "${bluez_prefix}"); then
+	if (test "${prefix}" = "${usb_prefix}"); then
 		test -d "${libdir}" && USB_LIBS="$USB_LIBS -L${libdir}"
 	else
 		test -d "${usb_prefix}/lib64" && USB_LIBS="$USB_LIBS -L${usb_prefix}/lib64"
@@ -124,7 +124,7 @@ AC_DEFUN([AC_PATH_DBUS], [
 	AC_CHECK_HEADER(dbus/dbus.h,, dbus_enable=no)
 
 	DBUS_LIBS=""
-	if (test "${prefix}" = "${bluez_prefix}"); then
+	if (test "${prefix}" = "${dbus_prefix}"); then
 		test -d "${libdir}" && DBUS_LIBS="$DBUS_LIBS -L${libdir}"
 	else
 		test -d "${dbus_prefix}/lib64" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib64"
@@ -162,7 +162,7 @@ AC_DEFUN([AC_PATH_CUPS], [
 
 	AC_MSG_CHECKING(for CUPS backend directory)
 
-	if (test "${prefix}" = "${bluez_prefix}"); then
+	if (test "${prefix}" = "${cups_prefix}"); then
 		if (test -d "${libdir}/cups/backend"); then
 			CUPS_BACKEND_DIR="${libdir}/cups/backend"
 		else
