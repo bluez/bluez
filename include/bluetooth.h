@@ -36,9 +36,9 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <string.h>
 #include <endian.h>
 #include <byteswap.h>
-#include <string.h>
 
 #ifndef AF_BLUETOOTH
 #define AF_BLUETOOTH	31
@@ -128,6 +128,11 @@ bdaddr_t *strtoba(const char *str);
 char *batostr(const bdaddr_t *ba);
 int ba2str(const bdaddr_t *ba, char *str);
 int str2ba(const char *str, bdaddr_t *ba);
+
+int baprintf(const char *format, ...);
+int bafprintf(FILE *stream, const char *format, ...);
+int basprintf(char *str, const char *format, ...);
+int basnprintf(char *str, size_t size, const char *format, ...);
 
 int bt_error(uint16_t code);
 char *bt_compidtostr(int id);
