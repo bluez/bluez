@@ -61,6 +61,7 @@ int hci_disconnect(int dd, uint16_t handle, uint8_t reason, int to);
 
 inquiry_info *hci_inquiry(int dev_id, int len, int *num_rsp, uint8_t *lap, long flags);
 int hci_devinfo(int dev_id, struct hci_dev_info *di);
+int hci_devba(int dev_id, bdaddr_t *ba);
 
 int hci_local_name(int dd, int len, char *name, int to);
 int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to);

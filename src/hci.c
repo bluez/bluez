@@ -369,6 +369,22 @@ int hci_devinfo(int dev_id, struct hci_dev_info *di)
 	return err;
 }
 
+int hci_devba(int dev_id, bdaddr_t *ba)
+{
+	struct hci_dev_info di;
+
+	if (hci_devinfo(dev_id, &di))
+		return -1;
+
+	if (!hci_test_bit(HCI_UP, &di.flags)) {
+		errno = ENETDOWN;
+		return -1;
+	}
+
+	bacpy(ba, &di.bdaddr);
+	return 0;
+}
+
 inquiry_info *hci_inquiry(int dev_id, int len, int *num_rsp, uint8_t *lap, long flags)
 {
 	struct hci_inquiry_req *ir;
