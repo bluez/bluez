@@ -54,11 +54,13 @@ struct l2cap_options {
 	uint16_t omtu;
 	uint16_t imtu;
 	uint16_t flush_to;
+	uint8_t  mode;
 };
 
 #define L2CAP_CONNINFO	0x02
 struct l2cap_conninfo {
 	uint16_t hci_handle;
+	uint8_t  dev_class[3];
 };
 
 #define L2CAP_LM	0x03
@@ -68,20 +70,6 @@ struct l2cap_conninfo {
 #define L2CAP_LM_TRUSTED	0x0008
 #define L2CAP_LM_RELIABLE	0x0010
 #define L2CAP_LM_SECURE		0x0020
-
-#define L2CAP_QOS	0x04
-struct l2cap_qos {
-	uint16_t service_type;
-	uint32_t token_rate;
-	uint32_t token_bucket_size;
-	uint32_t peak_bandwidth;
-	uint32_t latency;
-	uint32_t delay_variation;
-};
-
-#define L2CAP_SERV_NO_TRAFFIC	0x00
-#define L2CAP_SERV_BEST_EFFORT	0x01
-#define L2CAP_SERV_GUARANTEED	0x02
 
 /* L2CAP command codes */
 #define L2CAP_COMMAND_REJ	0x01
@@ -156,8 +144,10 @@ typedef struct {
 } __attribute__ ((packed)) l2cap_conf_rsp;
 #define L2CAP_CONF_RSP_SIZE 6
 
-#define L2CAP_CONF_SUCCESS	0x00
-#define L2CAP_CONF_UNACCEPT	0x01
+#define L2CAP_CONF_SUCCESS	0x0000
+#define L2CAP_CONF_UNACCEPT	0x0001
+#define L2CAP_CONF_REJECT	0x0002
+#define L2CAP_CONF_UNKNOWN	0x0003
 
 typedef struct {
 	uint8_t		type;
@@ -169,6 +159,7 @@ typedef struct {
 #define L2CAP_CONF_MTU		0x01
 #define L2CAP_CONF_FLUSH_TO	0x02
 #define L2CAP_CONF_QOS		0x03
+#define L2CAP_CONF_RFC		0x04
 #define L2CAP_CONF_RFC_MODE	0x04
 
 #define L2CAP_CONF_MAX_SIZE	22
