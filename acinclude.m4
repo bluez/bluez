@@ -25,7 +25,7 @@ AC_DEFUN([AC_PREFIX_BLUEZ], [
 ])
 
 AC_DEFUN([AC_PATH_BLUEZ], [
-	AC_ARG_WITH(bluez, [  --with-bluez=DIR        BlueZ library is installed in DIR], [
+	AC_ARG_WITH(bluez, AC_HELP_STRING([--with-bluez=DIR], [BlueZ library is installed in DIR]), [
 		if (test "${withval}" = "yes"); then
 			bluez_prefix=${prefix}
 		else
@@ -62,7 +62,7 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 ])
 
 AC_DEFUN([AC_PATH_USB], [
-	AC_ARG_WITH(usb, [  --with-usb=DIR          USB library is installed in DIR], [
+	AC_ARG_WITH(usb, AC_HELP_STRING([--with-usb=DIR], [USB library is installed in DIR]), [
 		if (test "$withval" = "yes"); then
 			usb_prefix=${prefix}
 		else
@@ -98,12 +98,12 @@ AC_DEFUN([AC_PATH_USB], [
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
-	AC_ARG_ENABLE(dbus, [  --enable-dbus           enable D-BUS support], [
+	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
 		dbus_enable=${enableval}
 		dbus_prefix=${prefix}
 	])
 
-	AC_ARG_WITH(dbus, [  --with-dbus=DIR         D-BUS library is installed in DIR], [
+	AC_ARG_WITH(dbus, AC_HELP_STRING([--with-dbus=DIR], [D-BUS library is installed in DIR]), [
 		if (test "${withval}" = "yes"); then
 			dbus_prefix=${prefix}
 		else
@@ -148,12 +148,12 @@ AC_DEFUN([AC_PATH_DBUS], [
 ])
 
 AC_DEFUN([AC_PATH_CUPS], [
-	AC_ARG_ENABLE(cups, [  --enable-cups           enable CUPS support], [
+	AC_ARG_ENABLE(cups, AC_HELP_STRING([--enable-cups], [enable CUPS support]), [
 		cups_enable=${enableval}
 		cups_prefix=${prefix}
 	])
 
-	AC_ARG_WITH(cups, [  --with-cups=DIR         CUPS is installed in DIR], [
+	AC_ARG_WITH(cups, AC_HELP_STRING([--with-cups=DIR], [CUPS is installed in DIR]), [
 		if (test "${withval}" = "yes"); then
 			cups_prefix=${prefix}
 		else
