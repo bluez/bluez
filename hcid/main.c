@@ -227,7 +227,8 @@ static void configure_device(int hdev)
 	/* Set device name */
 	if (device_opts->name) {
 		change_local_name_cp cp;
-		expand_name(cp.name, device_opts->name, hdev);
+		memset(cp.name, 0, sizeof(cp.name));
+		expand_name(cp.name, sizeof(cp.name), device_opts->name, hdev);
 
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
 			CHANGE_LOCAL_NAME_CP_SIZE, (void *) &cp);

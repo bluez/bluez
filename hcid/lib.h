@@ -30,7 +30,7 @@
 
 #include <errno.h>
 
-char *expand_name(char *dst, char *str, int dev_id);
+char *expand_name(char *dst, int size, char *str, int dev_id);
 
 char *get_host_name(void);
 

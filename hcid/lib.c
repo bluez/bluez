@@ -53,7 +53,7 @@ volatile sig_atomic_t __io_canceled;
  * Device name expansion 
  * 	%d - device id
  */
-char *expand_name(char *dst, char *str, int dev_id)
+char *expand_name(char *dst, int size, char *str, int dev_id)
 {
 	register int sp, np, olen;
 	char *opt, buf[10];
@@ -62,7 +62,7 @@ char *expand_name(char *dst, char *str, int dev_id)
 		return NULL;
 
 	sp = np = 0;
-	while (str[sp]) {
+	while (np < size - 1 && str[sp]) {
 		switch (str[sp]) {
 		case '%':
 			opt = NULL;
@@ -88,7 +88,8 @@ char *expand_name(char *dst, char *str, int dev_id)
 			if (opt) {
 				/* substitute */
 				olen = strlen(opt);
-				memcpy(dst + np, opt, olen);
+				if (np + olen < size - 1)
+					memcpy(dst + np, opt, olen);
 				np += olen;
 			}
 			sp += 2;
