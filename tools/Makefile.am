@@ -2,17 +2,16 @@
 #  $Id$
 #
 
-manfiles = hid2hci.8
-
 if HID2HCI
 xbindir = $(sbindir)
-xmandir = $(mandir)
 
 xbin_PROGRAMS = hid2hci
 
 hid2hci_LDADD = @USB_LIBS@
 
-xman_MANS = $(manfiles)
+hid2hci_manfiles = hid2hci.8
+else
+hid2hci_manfiles =
 endif
 
 sbin_PROGRAMS = hciattach hciconfig
@@ -37,8 +36,8 @@ ppporc_LDADD = @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @USB_CFLAGS@
 
-man_MANS = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1
+man_MANS = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 $(hid2hci_manfiles)
 
-EXTRA_DIST = $(man_MANS) $(manfiles)
+EXTRA_DIST = $(man_MANS) hid2hci.8
 
 MAINTAINERCLEANFILES = Makefile.in
