@@ -141,7 +141,7 @@ char *hci_dtypetostr(int type)
 	case HCI_VHCI:
 		return "VHCI";
 	case HCI_USB:
-		return "USB ";
+		return "USB";
 	case HCI_PCCARD:
 		return "PCCARD";
 	case HCI_UART:
