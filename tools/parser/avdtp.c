@@ -90,7 +90,7 @@ static char *mt2str(uint8_t hdr)
 	case 0x03:
 		return "rej";
 	default:
-		return "rfa";
+		return "rfd";
 	}
 }
 
@@ -106,7 +106,7 @@ void avdtp_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 
 	printf("AVDTP(s): %s %s: transaction %d\n",
-		sid & 0x08 ? pt2str(hdr) : si2str(sid), mt2str(hdr), hdr >> 8);
+		sid & 0x08 ? pt2str(hdr) : si2str(sid), mt2str(hdr), hdr >> 4);
 
 	raw_dump(level, frm);
 }
