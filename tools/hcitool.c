@@ -468,7 +468,8 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	}
 
 	if (hci_read_remote_features(dd, handle, features, 20000) == 0) {
-		printf("\tFeatures:\n%s\n",
+		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n%s\n",
+				features[0], features[1], features[2], features[3],
 				lmp_featurestostr(features, "\t\t", 3));
 	}
 

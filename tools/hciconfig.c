@@ -98,7 +98,9 @@ void print_dev_features(struct hci_dev_info *di, int format)
 			di->features[0], di->features[1],
 			di->features[2], di->features[3] );
 	} else {
-		printf("\tFeatures:\n%s\n", 
+		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n%s\n", 
+			di->features[0], di->features[1],
+			di->features[2], di->features[3],
 			lmp_featurestostr(di->features, "\t\t", 3));
 	}
 }
