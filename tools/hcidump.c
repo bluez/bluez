@@ -283,15 +283,8 @@ static int open_socket(int dev, unsigned long flags)
 
 	/* Setup filter */
 	hci_filter_clear(&flt);
-	if (flags & DUMP_BPA) {
-		hci_filter_set_ptype(HCI_VENDOR_PKT, &flt);
-		hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
-		hci_filter_set_event(EVT_VENDOR, &flt);
-	} else {
-		hci_filter_all_ptypes(&flt);
-		hci_filter_all_events(&flt);
-		hci_filter_clear_ptype(HCI_VENDOR_PKT, &flt);
-	}
+	hci_filter_all_ptypes(&flt);
+	hci_filter_all_events(&flt);
 	if (setsockopt(sk, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		perror("Can't set HCI filter");
 		exit(1);
@@ -410,6 +403,8 @@ static struct {
 	{ "avdtp",	FILT_AVDTP	},
 	{ "obex",	FILT_OBEX	},
 	{ "capi",	FILT_CAPI	},
+	{ "csr",	FILT_CSR	},
+	{ "dga",	FILT_DGA	},
 	{ 0 }
 };
 
@@ -443,8 +438,7 @@ static void usage(void)
 	"  -a, --ascii                Dump data in ascii\n"
 	"  -x, --hex                  Dump data in hex\n"
 	"  -X, --ext                  Dump data in hex and ascii\n"
-	"  -R, --raw                  Raw mode\n"
-	"  -B, --bpa                  BPA mode\n"
+	"  -R, --raw                  Dump raw data\n"
 	"  -C, --cmtp=psm             PSM for CMTP\n"
 	"  -H, --hcrp=psm             PSM for HCRP\n"
 	"  -O, --obex=channel         Channel for OBEX\n"
@@ -468,7 +462,6 @@ static struct option main_options[] = {
 	{ "hex",		0, 0, 'x' },
 	{ "ext",		0, 0, 'X' },
 	{ "raw",		0, 0, 'R' },
-	{ "bpa",		0, 0, 'B' },
 	{ "cmtp",		1, 0, 'C' },
 	{ "hcrp",		1, 0, 'H' },
 	{ "obex",		1, 0, 'O' },
@@ -485,7 +478,7 @@ int main(int argc, char *argv[])
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRBC:H:O:Vh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:Vh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			device = atoi(optarg + 3);
@@ -557,12 +550,6 @@ int main(int argc, char *argv[])
 
 		case 'R': 
 			flags |= DUMP_RAW;
-			break;
-
-		case 'B':
-			flags |= DUMP_BPA;
-			if (defcompid == DEFAULT_COMPID)
-				defcompid = 12;
 			break;
 
 		case 'C': 

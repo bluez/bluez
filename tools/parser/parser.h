@@ -74,7 +74,7 @@ struct frame {
 #define FILT_OBEX	0x00010000
 #define FILT_CAPI	0x00020000
 #define FILT_CSR	0x1000000a
-#define FILT_BPA	0x1000000f
+#define FILT_DGA	0x1000000c
 
 #define STRUCT_OFFSET(type, member)  ((uint8_t *)&(((type *)NULL)->member) - \
                                      (uint8_t *)((type *)NULL))
