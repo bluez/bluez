@@ -23,3 +23,6 @@ Nils Faerber <nils@kernelconcepts.de>
 
 Martin Leopold <martin@leopold.dk>
 	Various patches and fixes.
+
+Stephen Crane <steve.crane@rococosoft.com>
+	Support for human readable class of device display.
