@@ -112,16 +112,30 @@ enum {
 #define HCI_UNKNOWN_PKT		0xff
 
 /* HCI Packet types */
-#define HCI_DM1 	0x0008
-#define HCI_DM3 	0x0400
-#define HCI_DM5 	0x4000
-#define HCI_DH1 	0x0010
-#define HCI_DH3 	0x0800
-#define HCI_DH5 	0x8000
+#define HCI_2DH1	0x0002
+#define HCI_3DH1	0x0004
+#define HCI_DM1		0x0008
+#define HCI_DH1		0x0010
+#define HCI_2DH3	0x0100
+#define HCI_3DH3	0x0200
+#define HCI_DM3		0x0400
+#define HCI_DH3		0x0800
+#define HCI_2DH5	0x1000
+#define HCI_3DH5	0x2000
+#define HCI_DM5		0x4000
+#define HCI_DH5		0x8000
 
 #define HCI_HV1		0x0020
 #define HCI_HV2		0x0040
 #define HCI_HV3		0x0080
+
+#define HCI_EV3		0x0008
+#define HCI_EV4		0x0010
+#define HCI_EV5		0x0020
+#define HCI_2EV3	0x0040
+#define HCI_3EV3	0x0080
+#define HCI_2EV5	0x0100
+#define HCI_3EV5	0x0200
 
 #define SCO_PTYPE_MASK	(HCI_HV1 | HCI_HV2 | HCI_HV3)
 #define ACL_PTYPE_MASK	(~SCO_PTYPE_MASK)
@@ -204,6 +218,8 @@ enum {
 #define LMP_TRSP_SCO	0x08
 #define LMP_BCAST_ENC	0x80
 
+#define LMP_EDR_ACL_2M	0x02
+#define LMP_EDR_ACL_3M	0x04
 #define LMP_ENH_ISCAN	0x08
 #define LMP_ILACE_ISCAN	0x10
 #define LMP_ILACE_PSCAN	0x20
@@ -214,9 +230,14 @@ enum {
 #define LMP_EV5		0x02
 #define LMP_AFH_CAP_SLV	0x08
 #define LMP_AFH_CLS_SLV	0x10
+#define LMP_EDR_3SLOT	0x80
 
+#define LMP_EDR_5SLOT	0x01
 #define LMP_AFH_CAP_MST	0x08
 #define LMP_AFH_CLS_MST	0x10
+#define LMP_EDR_ESCO_2M	0x20
+#define LMP_EDR_ESCO_3M	0x40
+#define LMP_EDR_3S_ESCO	0x80
 
 #define LMP_EXT_FEAT	0x80
 

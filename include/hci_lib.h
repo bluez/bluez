@@ -96,6 +96,8 @@ char *hci_dtypetostr(int type);
 char *hci_dflagstostr(uint32_t flags);
 char *hci_ptypetostr(unsigned int ptype);
 int   hci_strtoptype(char *str, unsigned int *val);
+char *hci_scoptypetostr(unsigned int ptype);
+int   hci_strtoscoptype(char *str, unsigned int *val);
 char *hci_lptostr(unsigned int ptype);
 int   hci_strtolp(char *str, unsigned int *val);
 char *hci_lmtostr(unsigned int ptype);

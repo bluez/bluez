@@ -200,15 +200,35 @@ char *hci_dflagstostr(uint32_t flags)
 
 /* HCI packet type mapping */
 static hci_map pkt_type_map[] = {
-	{ "DM1", HCI_DM1 },
-	{ "DM3", HCI_DM3 },
-	{ "DM5", HCI_DM5 },
-	{ "DH1", HCI_DH1 },
-	{ "DH3", HCI_DH3 },
-	{ "DH5", HCI_DH5 },
-	{ "HV1", HCI_HV1 },
-	{ "HV2", HCI_HV2 },
-	{ "HV3", HCI_HV3 },
+	{ "DM1",   HCI_DM1  },
+	{ "DM3",   HCI_DM3  },
+	{ "DM5",   HCI_DM5  },
+	{ "DH1",   HCI_DH1  },
+	{ "DH3",   HCI_DH3  },
+	{ "DH5",   HCI_DH5  },
+	{ "HV1",   HCI_HV1  },
+	{ "HV2",   HCI_HV2  },
+	{ "HV3",   HCI_HV3  },
+	{ "2-DH1", HCI_2DH1 },
+	{ "2-DH3", HCI_2DH3 },
+	{ "2-DH5", HCI_2DH5 },
+	{ "3-DH1", HCI_3DH1 },
+	{ "3-DH3", HCI_3DH3 },
+	{ "3-DH5", HCI_3DH5 },
+	{ NULL }
+};
+
+static hci_map sco_ptype_map[] = {
+	{ "HV1",   0x0001   },
+	{ "HV2",   0x0002   },
+	{ "HV3",   0x0004   },
+	{ "EV3",   HCI_EV3  },
+	{ "EV4",   HCI_EV4  },
+	{ "EV5",   HCI_EV5  },
+	{ "2-EV3", HCI_2EV3 },
+	{ "2-EV5", HCI_2EV5 },
+	{ "3-EV3", HCI_3EV3 },
+	{ "3-EV5", HCI_3EV5 },
 	{ NULL }
 };
 
@@ -220,6 +240,16 @@ char *hci_ptypetostr(unsigned int ptype)
 int hci_strtoptype(char *str, unsigned int *val)
 {
 	return hci_str2bit(pkt_type_map, str, val);
+}
+
+char *hci_scoptypetostr(unsigned int ptype)
+{
+	return hci_bit2str(sco_ptype_map, ptype);
+}
+
+int hci_strtoscoptype(char *str, unsigned int *val)
+{
+	return hci_str2bit(sco_ptype_map, str, val);
 }
 
 /* Link policy mapping */
@@ -342,6 +372,8 @@ static hci_map lmp_features_map[8][9] = {
 		{ NULL }
 	},
 	{	/* Byte 3 */
+		{ "<EDR ACL 2 Mbps>",	LMP_EDR_ACL_2M	},	/* Bit 1 */
+		{ "<EDR ACL 3 Mbps>",	LMP_EDR_ACL_3M	},	/* Bit 2 */
 		{ "<enhanced iscan>",	LMP_ENH_ISCAN	},	/* Bit 3 */
 		{ "<interlaced iscan>",	LMP_ILACE_ISCAN	},	/* Bit 4 */
 		{ "<interlaced pscan>",	LMP_ILACE_PSCAN	},	/* Bit 5 */
@@ -354,11 +386,16 @@ static hci_map lmp_features_map[8][9] = {
 		{ "<EV5 packets>",	LMP_EV5		},	/* Bit 1 */
 		{ "<AFH cap. slave>",	LMP_AFH_CAP_SLV	},	/* Bit 3 */
 		{ "<AFH class. slave>",	LMP_AFH_CLS_SLV	},	/* Bit 4 */
+		{ "<3-slot EDR ACL>",	LMP_EDR_3SLOT	},	/* Bit 7 */
 		{ NULL }
 	},
 	{	/* Byte 5 */
+		{ "<5-slot EDR ACL>",	LMP_EDR_5SLOT	},	/* Bit 0 */
 		{ "<AFH cap. master>",	LMP_AFH_CAP_MST	},	/* Bit 3 */
 		{ "<AFH class. master>",LMP_AFH_CLS_MST	},	/* Bit 4 */
+		{ "<EDR eSCO 2 Mbps>",	LMP_EDR_ESCO_2M	},	/* Bit 5 */
+		{ "<EDR eSCO 3 Mbps>",	LMP_EDR_ESCO_3M	},	/* Bit 6 */
+		{ "<3-slot EDR eSCO>",	LMP_EDR_3S_ESCO	},	/* Bit 7 */
 		{ NULL }
 	},
 	{	/* Byte 6 */
