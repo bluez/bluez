@@ -104,7 +104,6 @@ AC_DEFUN([AC_PATH_DBUS], [
 		if (test "${withval}" != "yes"); then
 			dbus_prefix=${withval}
 		fi
-		dbus_enable=yes
 	])
 
 	ac_save_CPPFLAGS=$CPPFLAGS
@@ -141,6 +140,13 @@ AC_DEFUN([AC_PATH_DBUS], [
 ])
 
 AC_DEFUN([AC_PATH_EXTRA], [
+	dbus_enable=${dbus_found}
+	test_enable=no
+	cups_enable=no
+	pcmcia_enable=no
+	hid2hci_enable=${usb_found}
+	bcm203x_enable=no
+
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options]), [
 		dbus_enable=${enableval}
 		test_enable=${enableval}
