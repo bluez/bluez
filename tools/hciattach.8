@@ -3,7 +3,7 @@
 hciattach \- attach serial devices via UART HCI to BlueZ stack
 .SH SYNOPSIS
 .B hciattach
-<
+[ -n ] [ -p ] [ -t timeout ] <
 .I tty
 > <
 .I type
@@ -19,6 +19,15 @@ hciattach \- attach serial devices via UART HCI to BlueZ stack
 Hciattach is used to attach a serial UART to the Bluetooth stack as HCI
 transport interface.
 .SH OPTIONS
+.TP
+.BI -n
+Don't detach from controlling terminal.
+.TP
+.BI -p
+Print the PID when detaching.
+.TP
+.BI -t timeout
+Specify an initialization timeout.  (Default is 5 seconds.)
 .TP
 .I <tty>
 This specifies the serial device to attach. A leading
@@ -102,4 +111,4 @@ instead.
 .SH AUTHORS
 Written by Maxim Krasnyansky <maxk@qualcomm.com>
 .PP
-man page by Nils Faerber <nils@kernelconcepts.de>
+Manual page by Nils Faerber <nils@kernelconcepts.de>

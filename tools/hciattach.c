@@ -815,7 +815,7 @@ static void usage(void)
 {
 	printf("hciattach - HCI UART driver initialization utility\n");
 	printf("Usage:\n");
-	printf("\thciattach <tty> <type | id> [speed] [flow]\n");
+	printf("\thciattach [-n] [-p] [-t timeout] <tty> <type | id> [speed] [flow]\n");
 	printf("\thciattach -l\n");
 }
 
