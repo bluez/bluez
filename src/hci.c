@@ -369,7 +369,7 @@ int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg
 	if (s < 0)
 		return -1;
 
-	dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
+	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 	if (!dl) {
 		close(s);
 		return -1;
