@@ -25,7 +25,7 @@ start_serial() {
     IRQ=`setserial /dev/$DEVICE | sed -e 's/.*IRQ: //'`
     setserial /dev/$DEVICE irq 0 ; setserial /dev/$DEVICE irq $IRQ
  
-    /sbin/hciattach $DEVICE $MANFID > /tmp/pcmcia
+    /usr/sbin/hciattach $DEVICE $MANFID
 }
 stop_serial() {
     do_fuser -k -HUP /dev/$DEVICE > /dev/null
