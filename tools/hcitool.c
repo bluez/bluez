@@ -959,7 +959,8 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
 	bdaddr_t bdaddr;
-	uint8_t type, level;
+	uint8_t type;
+	int8_t level;
 	int opt, dd;
 
 	for_each_opt(opt, tpl_options, NULL) {
