@@ -1,0 +1,88 @@
+.\" $Header$
+.\"
+.\"	transcript compatibility for postscript use.
+.\"
+.\"	synopsis:  .P! <file.ps>
+.\"
+.de P!
+.fl
+\!!1 setgray
+.fl
+\\&.\"
+.fl
+\!!0 setgray
+.fl			\" force out current output buffer
+\!!save /psv exch def currentpoint translate 0 0 moveto
+\!!/showpage{}def
+.fl			\" prolog
+.sy sed -e 's/^/!/' \\$1\" bring in postscript file
+\!!psv restore
+.
+.de pF
+.ie     \\*(f1 .ds f1 \\n(.f
+.el .ie \\*(f2 .ds f2 \\n(.f
+.el .ie \\*(f3 .ds f3 \\n(.f
+.el .ie \\*(f4 .ds f4 \\n(.f
+.el .tm ? font overflow
+.ft \\$1
+..
+.de fP
+.ie     !\\*(f4 \{\
+.	ft \\*(f4
+.	ds f4\"
+'	br \}
+.el .ie !\\*(f3 \{\
+.	ft \\*(f3
+.	ds f3\"
+'	br \}
+.el .ie !\\*(f2 \{\
+.	ft \\*(f2
+.	ds f2\"
+'	br \}
+.el .ie !\\*(f1 \{\
+.	ft \\*(f1
+.	ds f1\"
+'	br \}
+.el .tm ? font underflow
+..
+.ds f1\"
+.ds f2\"
+.ds f3\"
+.ds f4\"
+'\" t 
+.ta 8n 16n 24n 32n 40n 48n 56n 64n 72n  
+.TH "sdpd" "8" 
+.SH "NAME" 
+sdpd \(em SDP daemon 
+.SH "SYNOPSIS" 
+.PP 
+\fBsdpd\fR [\fIoptions\fR]  
+.SH "DESCRIPTION" 
+.PP 
+\fBsdpd\fR allows Bluetooth devices 
+connected to the host to advertise via SDP the Bluetooth services 
+available. 
+ 
+.SH "OPTIONS" 
+.IP "\fB-n\fP" 10 
+Don't detach from the controlling terminal. 
+ 
+.SH "BUGS" 
+.PP 
+None yet known. 
+.SH "AUTHOR" 
+.PP 
+Maxim Krasnyansky <maxk@qualcomm.com>,  
+Stephen Crane <steve.crane@rococosoft.com>. Man page written 
+by Edd Dumbill <ejad@debian.org>. 
+ 
+.PP 
+Based on work done by Guruprasad Krishnamurthy 
+<guruprasad.krishnamurthy@nokia.com>, Dmitry Kasatkin 
+<dmitry.kasatkin@nokia.com> and Manel Guerrero Zapata 
+<manel.guerrero-zapata@nokia.com>. 
+ 
+.SH "SEE ALSO" 
+.PP 
+sdptool(1)
+.\" created by instant / docbook-to-man, Thu 15 Jan 2004, 21:01 
