@@ -86,6 +86,19 @@ enum {
 #error "Unknown byte order"
 #endif
 
+/* Bluetooth unaligned access */
+#if defined(__i386__)
+#define bt_get_unaligned(ptr) (*(ptr))
+#define bt_put_unaligned(val, ptr) ((void)( *(ptr) = (val) ))
+#else
+#define bt_get_unaligned(ptr) \
+	({ __typeof__(*(ptr)) __tmp; memcpy(&__tmp, (ptr), sizeof(*(ptr))); __tmp; })
+#define bt_put_unaligned(val, ptr) \
+	({ __typeof__(*(ptr)) __tmp = (val); \
+	memcpy((ptr), &__tmp, sizeof(*(ptr))); \
+	(void)0; })
+#endif
+
 /* BD Address */
 typedef struct {
 	uint8_t b[6];
