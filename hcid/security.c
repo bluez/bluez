@@ -352,24 +352,6 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 }
 
-static void init_security_data(void)
-{
-	static int initialized = 0;
-
-	if (initialized)
-		return;
-	initialized = 1;
-	
-	/* Set local PIN code */
-	if (hcid.security == HCID_SEC_AUTO) {
-		if (read_pin_code() < 0) {
-			strcpy(hcid.pin_code, "bluez");
-			hcid.pin_len = 5;
-		}
-	}
-	return;
-}
-
 void start_security_manager(int hdev)
 {
 	GIOChannel *chan = io_chan[hdev];
@@ -381,8 +363,6 @@ void start_security_manager(int hdev)
 		return;
 	
 	syslog(LOG_INFO, "Starting security manager %d", hdev);
-
-	init_security_data();
 
 	if ((dev = hci_open_dev(hdev)) < 0) {
 		syslog(LOG_ERR, "Can't open device hci%d. %s(%d)",
@@ -437,4 +417,14 @@ void stop_security_manager(int hdev)
 
 	close(g_io_channel_unix_get_fd(chan));
 	io_chan[hdev] = NULL;
+}
+
+void init_security_data(void)
+{
+	/* Set local PIN code */
+	if (read_pin_code() < 0) {
+		strcpy(hcid.pin_code, "BlueZ");
+		hcid.pin_len = 5;
+	}
+	return;
 }

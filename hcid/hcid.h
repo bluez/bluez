@@ -82,6 +82,7 @@ int read_config(char *file);
 gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data);
 gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data);
 
+void init_security_data(void);
 void start_security_manager(int hdev);
 void stop_security_manager(int hdev);
 void flush_link_keys(void);

@@ -264,6 +264,8 @@ static void sig_hup(int sig)
 	if (read_config(hcid.config_file) < 0)
 		syslog(LOG_ERR, "Config reload failed");
 
+	init_security_data();
+
 	init_all_devices(hcid.sock);
 }
 
@@ -364,17 +366,17 @@ int main(int argc, char *argv[], char *env[])
 	
 	while ((opt=getopt(argc,argv,"f:n")) != EOF) {
 		switch(opt) {
-			case 'n':
-				daemon = 0;
-				break;
+		case 'n':
+			daemon = 0;
+			break;
 
-			case 'f':
-				hcid.config_file = strdup(optarg);
-				break;
+		case 'f':
+			hcid.config_file = strdup(optarg);
+			break;
 
-			default:
-				usage();
-				exit(1);
+		default:
+			usage();
+			exit(1);
 		}
 	}
 
@@ -439,6 +441,8 @@ int main(int argc, char *argv[], char *env[])
 
 	if (read_config(hcid.config_file) < 0)
 		syslog(LOG_ERR, "Config load failed");
+
+	init_security_data();
 
 	/* Create event loop */
 	event_loop = g_main_new(FALSE);
