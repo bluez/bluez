@@ -1,3 +1,17 @@
+ver 2.8:
+	Use LIBS and LDADD instead of LDFLAGS.
+	Use HIDP subclass field for HID boot protocol.
+	Set olen before calling getsockopt() in pand.
+	Restore signals for dev-up script.
+	Add PID file support for pand.
+	Add size parameter to expand_name() in hcid.
+	Add support for audio source and audio sink SDP records.
+	Add support for HID virtual cable unplug.
+	Add support for AmbiCom BT2000C card.
+
+	Note:
+	This version needs at least bluez-libs-2.8
+
 ver 2.7:
 	Add support for getting the AFH channel map.
 	Add support for AFH mode.
