@@ -3,15 +3,31 @@ dnl  $Id$
 dnl
 dnl Process this file with autoconf to produce a configure script.
 dnl
-AC_INIT()
 
-AM_MAINTAINER_MODE
+AC_PREREQ(2.50)
+AC_INIT()
 
 AM_INIT_AUTOMAKE(bluez-utils, 2.6)
 
+AM_MAINTAINER_MODE
+
 AC_PREFIX_DEFAULT(/usr)
 
+if test "$prefix" = "NONE"; then
+	dnl no prefix and no sysconfdir, so default to /etc
+	if test "$sysconfdir" = '${prefix}/etc'; then
+		AC_SUBST([sysconfdir], ['/etc'])
+	fi
+
+	dnl no prefix and no mandir, so use ${prefix}/share/man as default
+	if test "$mandir" = '${prefix}/man'; then
+		AC_SUBST([mandir], ['${prefix}/share/man'])
+	fi
+fi
+
 CFLAGS="-Wall -g -O2"
+
+AC_LANG_C
 
 AC_PROG_CC
 AC_PROG_INSTALL
