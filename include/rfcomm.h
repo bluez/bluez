@@ -1,6 +1,7 @@
 /* 
-   RFCOMM implementation for Linux Bluetooth stack (BlueZ).
-   Copyright (C) 2002 Maxim Krasnyansky <maxk@qualcomm.com>
+   RFCOMM protocol definition for Linux Bluetooth stack (BlueZ).
+   Copyright (C) 2002-2003 Maxim Krasnyansky <maxk@qualcomm.com>
+   Copyright (C) 2002-2003 Marcel Holtmann <marcel@holtmann.org>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License version 2 as
@@ -79,7 +80,6 @@ struct rfcomm_dev_list_req {
 	uint16_t     dev_num;
 	struct       rfcomm_dev_info dev_info[0];
 };
-
 
 #ifdef __cplusplus
 }
