@@ -935,6 +935,9 @@ static void usage(void)
 	for (i=0; command[i].cmd; i++)
 		printf("\t%-4s\t%s\n", command[i].cmd,
 		command[i].doc);
+	printf("\n"
+		"For more information on the usage of each command use:\n"
+		"\thcitool <command> --help\n" );
 }
 
 static struct option main_options[] = {
