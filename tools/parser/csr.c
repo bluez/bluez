@@ -113,7 +113,7 @@ void csr_dump(int level, struct frame *frm)
 		}
 
 		p_indent(level, frm);
-		printf("CSR: type 0x%2.2x\n", type);
+		printf("CSR: Debug (type 0x%2.2x)\n", type);
 	} else {
 		p_indent(level, frm);
 		printf("CSR: %s (channel %d)%s\n", cid2str(cid), cid, frag2str(desc));
