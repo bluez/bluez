@@ -833,6 +833,9 @@ struct uart_t uart[] = {
 	/* 3Com Bluetooth Card (Version 3.0) */
 	{ "3com",     0x0101, 0x0041, HCI_UART_H4,   115200, 115200, FLOW_CTL, csr  },
 
+	/* AmbiCom BT2000C Bluetooth PC/CF Card */
+	{ "bt2000c",  0x022d, 0x2000, HCI_UART_H4,    57600, 460800, FLOW_CTL, csr  },
+
 	{ NULL, 0 }
 };
 
