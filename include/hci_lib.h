@@ -68,6 +68,7 @@ int hci_devid(char *str);
 int hci_local_name(int dd, int len, char *name, int to);
 int hci_read_local_name(int dd, int len, char *name, int to);
 int hci_write_local_name(int dd, char *name, int to);
+int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to);
 int hci_read_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to);
 int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to);
 int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to);

@@ -801,6 +801,11 @@ int hci_write_local_name(int dd, char *name, int to)
 	return 0;
 }
 
+int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
+{
+	return hci_read_remote_name(dd, ba, len, name, to);
+}
+
 int hci_read_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
 {
 	evt_remote_name_req_complete rn;
