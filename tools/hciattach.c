@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -33,21 +33,18 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <fcntl.h>
 #include <syslog.h>
-#include <errno.h>
-#include <time.h>
 #include <termios.h>
-#include <fcntl.h>
-
+#include <time.h>
+#include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/types.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -845,6 +842,8 @@ struct uart_t uart[] = {
 	/* Zoom Bluetooth PCMCIA Card */
 	{ "zoom",     0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        bcsp  },
 
+	/* Sitecom CN-504 PCMCIA Card */
+	{ "sitecom",  0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        bcsp  },
 	{ NULL, 0 }
 };
 
