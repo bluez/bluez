@@ -36,6 +36,7 @@ PAND_ENABLE=false
 HCID_CONFIG="/etc/bluetooth/hcid.conf"
 RFCOMM_CONFIG="/etc/bluetooth/rfcomm.conf"
 
+HIDD_OPTIONS=""
 DUND_OPTIONS=""
 PAND_OPTIONS=""
 
@@ -53,11 +54,11 @@ case "$1" in
 		echo -n " $SDPD_NAME"
 	fi
 	if $HIDD_ENABLE && [ -x "$HIDD_EXEC" ] ; then
-		$HIDD_EXEC --tohci
+		$HIDD_EXEC $HIDD_OPTIONS
 		echo -n " $HIDD_NAME"
 	fi
 	if $HID2HCI_ENABLE && [ -x "$HID2HCI_EXEC" ] ; then
-		$HID2HCI_EXEC
+		$HID2HCI_EXEC --tohci
 		echo -n " $HID2HCI_NAME"
 	fi
 	if $RFCOMM_ENABLE && [ -x "$RFCOMM_EXEC" -a -f "$RFCOMM_CONFIG" ] ; then
