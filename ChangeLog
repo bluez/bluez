@@ -1,3 +1,8 @@
+ver 2.12:
+	Correct kernel interface for CMTP and HIDP support.
+	Add service classes and profile ids for WAP.
+	Add simple AM_PATH_BLUEZ macro.
+
 ver 2.11:
 	Initial support for the kernel security manager.
 	Use bit zero for vendor packets in the filter type bitmask.
