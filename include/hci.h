@@ -378,7 +378,7 @@ typedef struct {
 	uint16_t	 handle;
 	uint16_t	 pkt_type;
 } __attribute__ ((packed)) set_conn_ptype_cp;
-#define SET_CONN_PKT_TYPE_CP_SIZE 4
+#define SET_CONN_PTYPE_CP_SIZE 4
 
 #define OCF_AUTH_REQUESTED	0x0011
 typedef struct {
