@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -33,17 +33,11 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <signal.h>
-#include <fcntl.h>
 #include <errno.h>
 #include <ctype.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <getopt.h>
-
-#include <termios.h>
-#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -53,56 +47,54 @@
 
 #include "csr.h"
 
-extern int optind,opterr,optopt;
-extern char *optarg;
-
 static struct hci_dev_info di;
 static int all;
 
-void print_dev_hdr(struct hci_dev_info *di);
-void print_dev_info(int ctl, struct hci_dev_info *di);
+static void print_dev_hdr(struct hci_dev_info *di);
+static void print_dev_info(int ctl, struct hci_dev_info *di);
 
-void print_dev_list(int ctl, int flags)
+static void print_dev_list(int ctl, int flags)
 {
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
 	int i;
 
-	if( !(dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t))) ) {
+	if (!(dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t)))) {
 		perror("Can't allocate memory");
 		exit(1);
 	}
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
-	if( ioctl(ctl, HCIGETDEVLIST, (void*)dl) ) {
+	if (ioctl(ctl, HCIGETDEVLIST, (void *) dl)) {
 		perror("Can't get device list");
 		exit(1);
 	}
-	for(i=0; i< dl->dev_num; i++) {
+
+	for (i = 0; i< dl->dev_num; i++) {
 		di.dev_id = (dr+i)->dev_id;
-		if( ioctl(ctl, HCIGETDEVINFO, (void*)&di) )
+		if (ioctl(ctl, HCIGETDEVINFO, (void *) &di))
 			continue;
 		print_dev_info(ctl, &di);
 	}
 }
 
-void print_pkt_type(struct hci_dev_info *di)
+static void print_pkt_type(struct hci_dev_info *di)
 {
 	printf("\tPacket type: %s\n", hci_ptypetostr(di->pkt_type));
 }
 
-void print_link_policy(struct hci_dev_info *di)
+static void print_link_policy(struct hci_dev_info *di)
 {
 	printf("\tLink policy: %s\n", hci_lptostr(di->link_policy));
 }
 
-void print_link_mode(struct hci_dev_info *di)
+static void print_link_mode(struct hci_dev_info *di)
 {
 	printf("\tLink mode: %s\n", hci_lmtostr(di->link_mode));
 }
 
-void print_dev_features(struct hci_dev_info *di, int format)
+static void print_dev_features(struct hci_dev_info *di, int format)
 {
 	if (!format) {
 		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n", 
@@ -120,17 +112,17 @@ void print_dev_features(struct hci_dev_info *di, int format)
 	}
 }
 
-void cmd_rstat(int ctl, int hdev, char *opt)
+static void cmd_rstat(int ctl, int hdev, char *opt)
 {
 	/* Reset HCI device stat counters */
-	if( ioctl(ctl, HCIDEVRESTAT, hdev) < 0 ) {
-		printf("Can't reset stats counters hci%d. %s(%d)\n", hdev, 
-				strerror(errno), errno);
+	if (ioctl(ctl, HCIDEVRESTAT, hdev) < 0) {
+		fprintf(stderr, "Can't reset stats counters hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 }
 
-void cmd_scan(int ctl, int hdev, char *opt)
+static void cmd_scan(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr;
 
@@ -143,18 +135,20 @@ void cmd_scan(int ctl, int hdev, char *opt)
 	else if( !strcmp(opt, "piscan") )
 		dr.dev_opt = SCAN_PAGE | SCAN_INQUIRY;
 
-	if( ioctl(ctl, HCISETSCAN, (unsigned long)&dr) < 0 ) {
-		printf("Can't set scan mode on hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+	if (ioctl(ctl, HCISETSCAN, (unsigned long) &dr) < 0) {
+		fprintf(stderr, "Can't set scan mode on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 }
 
-void cmd_iac(int ctl, int hdev, char *opt)
+static void cmd_iac(int ctl, int hdev, char *opt)
 {
 	int s = hci_open_dev(hdev);
 
 	if (s < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 	if (opt) {
@@ -193,7 +187,7 @@ void cmd_iac(int ctl, int hdev, char *opt)
 	close(s);
 }
 
-void cmd_auth(int ctl, int hdev, char *opt)
+static void cmd_auth(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr;
 
@@ -204,12 +198,13 @@ void cmd_auth(int ctl, int hdev, char *opt)
 		dr.dev_opt = AUTH_DISABLED;
 
 	if (ioctl(ctl, HCISETAUTH, (unsigned long) &dr) < 0) {
-		printf("Can't set auth on hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't set auth on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 }
 
-void cmd_encrypt(int ctl, int hdev, char *opt)
+static void cmd_encrypt(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr;
 
@@ -220,12 +215,13 @@ void cmd_encrypt(int ctl, int hdev, char *opt)
 		dr.dev_opt = ENCRYPT_DISABLED;
 
 	if (ioctl(ctl, HCISETENCRYPT, (unsigned long) &dr) < 0) {
-		printf("Can't set encrypt on hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't set encrypt on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 }
 
-void cmd_secmgr(int ctl, int hdev, char *opt)
+static void cmd_secmgr(int ctl, int hdev, char *opt)
 {
 	int val, s = hci_open_dev(hdev);
 
@@ -235,13 +231,14 @@ void cmd_secmgr(int ctl, int hdev, char *opt)
 		val = 0;
 
 	if (ioctl(s, HCISETSECMGR, val) < 0) {
-		printf("Can't set security manager on hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't set security manager on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 	close(s);
 }
 
-void cmd_up(int ctl, int hdev, char *opt)
+static void cmd_up(int ctl, int hdev, char *opt)
 {
 	int ret;
 
@@ -249,42 +246,47 @@ void cmd_up(int ctl, int hdev, char *opt)
 	if( (ret = ioctl(ctl, HCIDEVUP, hdev)) < 0 ) {
 		if( errno == EALREADY )
 			return;
-		printf("Can't init device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't init device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 	cmd_scan(ctl, hdev, "piscan");
 }
 
-void cmd_down(int ctl, int hdev, char *opt)
+static void cmd_down(int ctl, int hdev, char *opt)
 {
 	/* Stop HCI device */
 	if (ioctl(ctl, HCIDEVDOWN, hdev) < 0) {
-		printf("Can't down device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't down device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 }
 
-void cmd_reset(int ctl, int hdev, char *opt)
+static void cmd_reset(int ctl, int hdev, char *opt)
 {
-	/* Reset HCI device
-	if( ioctl(ctl, HCIDEVRESET, hdev) < 0 ){
-	   printf("Reset failed hci%d. %s(%d)\n", hdev, strerror(errno), errno);
-	   exit(1);
+	/* Reset HCI device */
+#if 0
+	if (ioctl(ctl, HCIDEVRESET, hdev) < 0 ){
+		fprintf(stderr, "Reset failed for device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
 	}
-	*/
+#endif
 	cmd_down(ctl, hdev, "down");
 	cmd_up(ctl, hdev, "up");
 }
 
-void cmd_ptype(int ctl, int hdev, char *opt)
+static void cmd_ptype(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr;
 
 	dr.dev_id = hdev;
 
 	if (hci_strtoptype(opt, &dr.dev_opt)) {
-		if (ioctl(ctl, HCISETPTYPE, (unsigned long)&dr) < 0) {
-			printf("Can't set pkttype on hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		if (ioctl(ctl, HCISETPTYPE, (unsigned long) &dr) < 0) {
+			fprintf(stderr, "Can't set pkttype on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
@@ -293,16 +295,16 @@ void cmd_ptype(int ctl, int hdev, char *opt)
 	}
 }
 
-void cmd_lp(int ctl, int hdev, char *opt)
+static void cmd_lp(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr;
 
 	dr.dev_id = hdev;
 
 	if (hci_strtolp(opt, &dr.dev_opt)) {
-		if (ioctl(ctl, HCISETLINKPOL, (unsigned long)&dr) < 0) {
-			printf("Can't set link policy on hci%d. %s(%d)\n", 
-					hdev, strerror(errno), errno);
+		if (ioctl(ctl, HCISETLINKPOL, (unsigned long) &dr) < 0) {
+			fprintf(stderr, "Can't set link policy on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
@@ -311,16 +313,16 @@ void cmd_lp(int ctl, int hdev, char *opt)
 	}
 }
 
-void cmd_lm(int ctl, int hdev, char *opt)
+static void cmd_lm(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr;
 
 	dr.dev_id = hdev;
 
 	if (hci_strtolm(opt, &dr.dev_opt)) {
-		if (ioctl(ctl, HCISETLINKMODE, (unsigned long)&dr) < 0) {
-			printf("Can't set default link mode on hci%d. %s(%d)\n", 
-					hdev, strerror(errno), errno);
+		if (ioctl(ctl, HCISETLINKMODE, (unsigned long) &dr) < 0) {
+			fprintf(stderr, "Can't set default link mode on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
@@ -329,7 +331,7 @@ void cmd_lm(int ctl, int hdev, char *opt)
 	}
 }
 
-void cmd_aclmtu(int ctl, int hdev, char *opt)
+static void cmd_aclmtu(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr = { dev_id: hdev };
 	uint16_t mtu, mpkt;
@@ -343,14 +345,14 @@ void cmd_aclmtu(int ctl, int hdev, char *opt)
 	*((uint16_t *)&dr.dev_opt + 1) = mtu;
 	*((uint16_t *)&dr.dev_opt + 0) = mpkt;
 
-	if (ioctl(ctl, HCISETACLMTU, (unsigned long)&dr) < 0) {
-		printf("Can't set ACL mtu on hci%d. %s(%d)\n", 
-				hdev, strerror(errno), errno);
+	if (ioctl(ctl, HCISETACLMTU, (unsigned long) &dr) < 0) {
+		fprintf(stderr, "Can't set ACL mtu on hci%d: %s(%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 }
 
-void cmd_scomtu(int ctl, int hdev, char *opt)
+static void cmd_scomtu(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr = { dev_id: hdev };
 	uint16_t mtu, mpkt;
@@ -365,38 +367,39 @@ void cmd_scomtu(int ctl, int hdev, char *opt)
 	*((uint16_t *)&dr.dev_opt + 0) = mpkt;
 	
 	if (ioctl(ctl, HCISETSCOMTU, (unsigned long)&dr) < 0) {
-		printf("Can't set SCO mtu on hci%d. %s(%d)\n", 
-				hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't set SCO mtu on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 }
 
-void cmd_features(int ctl, int hdev, char *opt)
+static void cmd_features(int ctl, int hdev, char *opt)
 {
 	print_dev_hdr(&di);
 	print_dev_features(&di, 1);
 }
 
-void cmd_name(int ctl, int hdev, char *opt)
+static void cmd_name(int ctl, int hdev, char *opt)
 {
 	int s = hci_open_dev(hdev);
 
 	if (s < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 	if (opt) {
-		if (hci_write_local_name(s, opt, 1000) < 0) {
-			printf("Can't change local name on hci%d. %s(%d)\n", 
-				hdev, strerror(errno), errno);
+		if (hci_write_local_name(s, opt, 2000) < 0) {
+			fprintf(stderr, "Can't change local name on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
 		char name[248];
 		int i;
 		if (hci_read_local_name(s, sizeof(name), name, 1000) < 0) {
-			printf("Can't read local name on hci%d. %s(%d)\n", 
-				hdev, strerror(errno), errno);
+			fprintf(stderr, "Can't read local name on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 		for (i = 0; i < 248 && name[i]; i++)
@@ -540,7 +543,7 @@ static char *get_minor_device_name(int major, int minor)
 	return "Unknown (reserved) minor device class";
 }
 
-void cmd_class(int ctl, int hdev, char *opt)
+static void cmd_class(int ctl, int hdev, char *opt)
 {
 	static char *services[] = { "Positioning",
 					"Networking",
@@ -561,21 +564,22 @@ void cmd_class(int ctl, int hdev, char *opt)
 	int s = hci_open_dev(hdev);
 
 	if (s < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 	if (opt) {
 		uint32_t cod = strtoul(opt, NULL, 16);
-		if (hci_write_class_of_dev(s, cod, 1000) < 0) {
-			printf("Can't write local class of device on hci%d. %s(%d)\n", 
-				hdev, strerror(errno), errno);
+		if (hci_write_class_of_dev(s, cod, 2000) < 0) {
+			fprintf(stderr, "Can't write local class of device on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
 		uint8_t cls[3];
 		if (hci_read_class_of_dev(s, cls, 1000) < 0) {
-			printf("Can't read class of device on hci%d. %s(%d)\n", 
-				hdev, strerror(errno), errno);
+			fprintf(stderr, "Can't read class of device on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 		print_dev_hdr(&di);
@@ -601,7 +605,7 @@ void cmd_class(int ctl, int hdev, char *opt)
 	}
 }
 
-void cmd_voice(int ctl, int hdev, char *opt)
+static void cmd_voice(int ctl, int hdev, char *opt)
 {
 	static char *icf[] = { "Linear", "u-Law", "A-Law", "Reserved" };
 	static char *idf[] = { "1's complement", "2's complement", "Sign-Magnitude", "Reserved" };
@@ -610,22 +614,23 @@ void cmd_voice(int ctl, int hdev, char *opt)
 	int s = hci_open_dev(hdev);
 
 	if (s < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 	if (opt) {
 		uint16_t vs = htobs(strtoul(opt, NULL, 16));
-		if (0 > hci_write_voice_setting(s, vs, 1000)) {
-			printf("Can't write voice setting on hci%d. %s(%d)\n",
-				hdev, strerror(errno), errno);
+		if (hci_write_voice_setting(s, vs, 2000) < 0) {
+			fprintf(stderr, "Can't write voice setting on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
 		uint16_t vs;
 		uint8_t ic;
-		if (0 > hci_read_voice_setting(s, &vs, 1000)) {
-			printf("Can't read voice setting on hci%d. %s(%d)\n",
-				hdev, strerror(errno), errno);
+		if (hci_read_voice_setting(s, &vs, 1000) < 0) {
+			fprintf(stderr, "Can't read voice setting on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 		vs = htobs(vs);
@@ -643,46 +648,48 @@ void cmd_voice(int ctl, int hdev, char *opt)
 	}
 }
 
-void cmd_version(int ctl, int hdev, char *opt)
+static void cmd_version(int ctl, int hdev, char *opt)
 {
 	struct hci_version ver;
 	int dd;
 
 	dd = hci_open_dev(hdev);
 	if (dd < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
 	if (hci_read_local_version(dd, &ver, 1000) < 0) {
-		printf("Can't read version info hci%d. %s(%d)\n", 
-			hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't read version info hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
 	print_dev_hdr(&di);
-	printf( "\tHCI Ver: %s (0x%x) HCI Rev: 0x%x LMP Ver: %s (0x%x) LMP Subver: 0x%x\n"
+	printf("\tHCI Ver: %s (0x%x) HCI Rev: 0x%x LMP Ver: %s (0x%x) LMP Subver: 0x%x\n"
 		"\tManufacturer: %s (%d)\n",
-		hci_vertostr(ver.hci_ver), ver.hci_ver, ver.hci_rev, 
-		lmp_vertostr(ver.lmp_ver), ver.lmp_ver, ver.lmp_subver, 
+		hci_vertostr(ver.hci_ver), ver.hci_ver, ver.hci_rev,
+		lmp_vertostr(ver.lmp_ver), ver.lmp_ver, ver.lmp_subver,
 		bt_compidtostr(ver.manufacturer), ver.manufacturer);
 }
 
-void cmd_inq_mode(int ctl, int hdev, char *opt)
+static void cmd_inq_mode(int ctl, int hdev, char *opt)
 {
 	int dd;
 
 	dd = hci_open_dev(hdev);
 	if (dd < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
 	if (opt) {
 		uint8_t mode = atoi(opt);
 
-		if (hci_write_inquiry_mode(dd, mode, 1000) < 0) {
-			printf("Can't set inquiry mode on hci%d. %s(%d)\n",
+		if (hci_write_inquiry_mode(dd, mode, 2000) < 0) {
+			fprintf(stderr, "Can't set inquiry mode on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);
 		}
@@ -690,8 +697,8 @@ void cmd_inq_mode(int ctl, int hdev, char *opt)
 		uint8_t mode;
 
 		if (hci_read_inquiry_mode(dd, &mode, 1000) < 0) {
-			printf("Can't read inquiry mode on hci%d. %s(%d)\n", 
-							hdev, strerror(errno), errno);
+			fprintf(stderr, "Can't read inquiry mode on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 
@@ -701,12 +708,14 @@ void cmd_inq_mode(int ctl, int hdev, char *opt)
 	}
 }
 
-void cmd_inq_parms(int ctl, int hdev, char *opt)
+static void cmd_inq_parms(int ctl, int hdev, char *opt)
 {
 	struct hci_request rq;
 	int s;
+
 	if ((s = hci_open_dev(hdev)) < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
@@ -735,8 +744,8 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 		if (interval < 0x12 || interval > 0x1000)
 			printf("Warning: inquiry interval out of range!\n");
 
-		if (hci_send_req(s, &rq, 1000) < 0) {
-			printf("Can't set inquiry parameters name on hci%d. %s(%d)\n",
+		if (hci_send_req(s, &rq, 2000) < 0) {
+			fprintf(stderr, "Can't set inquiry parameters name on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);
 		}
@@ -750,12 +759,12 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 		rq.rlen = READ_INQ_ACTIVITY_RP_SIZE;
 
 		if (hci_send_req(s, &rq, 1000) < 0) {
-			printf("Can't read inquiry parameters on hci%d. %s(%d)\n", 
-							hdev, strerror(errno), errno);
+			fprintf(stderr, "Can't read inquiry parameters on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 		if (rp.status) {
-			printf("Read inquiry parameters on hci%d returned status %d\n", 
+			printf("Read inquiry parameters on hci%d returned status %d\n",
 							hdev, rp.status);
 			exit(1);
 		}
@@ -768,12 +777,14 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 	}
 }
 
-void cmd_page_parms(int ctl, int hdev, char *opt)
+static void cmd_page_parms(int ctl, int hdev, char *opt)
 {
 	struct hci_request rq;
 	int s;
+
 	if ((s = hci_open_dev(hdev)) < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
@@ -802,8 +813,8 @@ void cmd_page_parms(int ctl, int hdev, char *opt)
 		if (interval < 0x12 || interval > 0x1000)
 			printf("Warning: page interval out of range!\n");
 
-		if (hci_send_req(s, &rq, 1000) < 0) {
-			printf("Can't set page parameters name on hci%d. %s(%d)\n",
+		if (hci_send_req(s, &rq, 2000) < 0) {
+			fprintf(stderr, "Can't set page parameters name on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);
 		}
@@ -817,12 +828,12 @@ void cmd_page_parms(int ctl, int hdev, char *opt)
 		rq.rlen = READ_PAGE_ACTIVITY_RP_SIZE;
 
 		if (hci_send_req(s, &rq, 1000) < 0) {
-			printf("Can't read page parameters on hci%d. %s(%d)\n", 
-							hdev, strerror(errno), errno);
+			fprintf(stderr, "Can't read page parameters on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 		if (rp.status) {
-			printf("Read page parameters on hci%d returned status %d\n", 
+			printf("Read page parameters on hci%d returned status %d\n",
 							hdev, rp.status);
 			exit(1);
 		}
@@ -835,12 +846,14 @@ void cmd_page_parms(int ctl, int hdev, char *opt)
 	}
 }
 
-void cmd_page_to(int ctl, int hdev, char *opt)
+static void cmd_page_to(int ctl, int hdev, char *opt)
 {
 	struct hci_request rq;
 	int s;
+
 	if ((s = hci_open_dev(hdev)) < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
@@ -865,8 +878,8 @@ void cmd_page_to(int ctl, int hdev, char *opt)
 		if (timeout < 0x01 || timeout > 0xFFFF)
 			printf("Warning: page timeout out of range!\n");
 
-		if (hci_send_req(s, &rq, 1000) < 0) {
-			printf("Can't set page timeout on hci%d. %s(%d)\n",
+		if (hci_send_req(s, &rq, 2000) < 0) {
+			fprintf(stderr, "Can't set page timeout on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);
 		}
@@ -880,12 +893,12 @@ void cmd_page_to(int ctl, int hdev, char *opt)
 		rq.rlen = READ_PAGE_TIMEOUT_RP_SIZE;
 
 		if (hci_send_req(s, &rq, 1000) < 0) {
-			printf("Can't read page timeout on hci%d. %s(%d)\n", 
-							hdev, strerror(errno), errno);
+			fprintf(stderr, "Can't read page timeout on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 		if (rp.status) {
-			printf("Read page timeout on hci%d returned status %d\n", 
+			printf("Read page timeout on hci%d returned status %d\n",
 							hdev, rp.status);
 			exit(1);
 		}
@@ -897,21 +910,22 @@ void cmd_page_to(int ctl, int hdev, char *opt)
 	}
 }
 
-void cmd_afh_mode(int ctl, int hdev, char *opt)
+static void cmd_afh_mode(int ctl, int hdev, char *opt)
 {
 	int dd;
 
 	dd = hci_open_dev(hdev);
 	if (dd < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
 	if (opt) {
 		uint8_t mode = atoi(opt);
 
-		if (hci_write_afh_mode(dd, mode, 1000) < 0) {
-			printf("Can't set AFH mode on hci%d. %s(%d)\n",
+		if (hci_write_afh_mode(dd, mode, 2000) < 0) {
+			fprintf(stderr, "Can't set AFH mode on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);
 		}
@@ -919,8 +933,8 @@ void cmd_afh_mode(int ctl, int hdev, char *opt)
 		uint8_t mode;
 
 		if (hci_read_afh_mode(dd, &mode, 1000) < 0) {
-			printf("Can't read AFH mode on hci%d. %s(%d)\n", 
-							hdev, strerror(errno), errno);
+			fprintf(stderr, "Can't read AFH mode on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 			exit(1);
 		}
 
@@ -943,7 +957,7 @@ static void print_rev_ericsson(int dd)
 	rq.rlen   = sizeof(buf);
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
-		printf("\nCan't read revision info. %s(%d)\n", strerror(errno), errno);
+		printf("\nCan't read revision info: %s (%d)\n", strerror(errno), errno);
 		return;
 	}
 
@@ -989,7 +1003,7 @@ static void print_rev_digianswer(int dd)
 	rq.rlen   = sizeof(buf);
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
-		printf("\nCan't read revision info. %s(%d)\n", strerror(errno), errno);
+		printf("\nCan't read revision info: %s (%d)\n", strerror(errno), errno);
 		return;
 	}
 
@@ -1016,13 +1030,14 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 
 	dd = hci_open_dev(hdev);
 	if (dd < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		return;
 	}
 
 	if (hci_read_local_version(dd, &ver, 1000) < 0) {
-		printf("Can't read version info hci%d. %s(%d)\n",
-			hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't read version info for hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
 		return;
 	}
 
@@ -1051,7 +1066,7 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 	return;
 }
 
-void print_dev_hdr(struct hci_dev_info *di)
+static void print_dev_hdr(struct hci_dev_info *di)
 {
 	static int hdr = -1;
 	char addr[18];
@@ -1068,7 +1083,7 @@ void print_dev_hdr(struct hci_dev_info *di)
 		di->sco_mtu, di->sco_pkts);
 }
 
-void print_dev_info(int ctl, struct hci_dev_info *di)
+static void print_dev_info(int ctl, struct hci_dev_info *di)
 {
 	struct hci_dev_stats *st = &di->stat;
 
@@ -1098,7 +1113,7 @@ void print_dev_info(int ctl, struct hci_dev_info *di)
 	printf("\n");
 }
 
-struct {
+static struct {
 	char *cmd;
 	void (*func)(int ctl, int hdev, char *opt);
 	char *opt;
@@ -1138,7 +1153,7 @@ struct {
 	{ NULL, NULL, 0 }
 };
 
-void usage(void)
+static void usage(void)
 {
 	int i;
 
@@ -1194,7 +1209,7 @@ int main(int argc, char **argv, char **env)
 	di.dev_id = atoi(argv[0] + 3);
 	argc--; argv++;
 
-	if (ioctl(ctl, HCIGETDEVINFO, (void*)&di)) {
+	if (ioctl(ctl, HCIGETDEVINFO, (void *) &di)) {
 		perror("Can't get device info");
 		exit(1);
 	}

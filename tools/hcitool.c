@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -33,28 +33,16 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <signal.h>
-#include <fcntl.h>
 #include <errno.h>
-#include <ctype.h>
-
-#include <termios.h>
-#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <getopt.h>
-#include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
-
-extern int optind,opterr,optopt;
-extern char *optarg;
 
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, NULL)) != -1)
 
@@ -62,7 +50,7 @@ static void usage(void);
 
 static int dev_info(int s, int dev_id, long arg)
 {
-	struct hci_dev_info di = {dev_id: dev_id};
+	struct hci_dev_info di = { dev_id: dev_id };
 	char addr[18];
 
 	if (ioctl(s, HCIGETDEVINFO, (void *) &di))
@@ -155,11 +143,11 @@ static void hex_dump(char *pref, int width, unsigned char *buf, int len)
 /* Display local devices */
 
 static struct option dev_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{0, 0, 0, 0 }
 };
 
-static char *dev_help = 
+static char *dev_help =
 	"Usage:\n"
 	"\tdev\n";
 
@@ -181,14 +169,14 @@ static void cmd_dev(int dev_id, int argc, char **argv)
 /* Inquiry */
 
 static struct option inq_options[] = {
-	{"help",	0,0, 'h'},
-	{"length",	1,0, 'l'},
-	{"numrsp",	1,0, 'n'},
-	{"flush",	0,0, 'f'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ "length",	1, 0, 'l' },
+	{ "numrsp",	1, 0, 'n' },
+	{ "flush",	0, 0, 'f' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *inq_help = 
+static char *inq_help =
 	"Usage:\n"
 	"\tinq [--length=N] maximum inquiry duration in 1.28 s units\n"
 	"\t    [--numrsp=N] specify maximum number of inquiry responses\n"
@@ -246,14 +234,14 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 /* Device scanning */
 
 static struct option scan_options[] = {
-	{"help",	0,0, 'h'},
-	{"length",	1,0, 'l'},
-	{"numrsp",	1,0, 'n'},
-	{"flush",	0,0, 'f'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ "length",	1, 0, 'l' },
+	{ "numrsp",	1, 0, 'n' },
+	{ "flush",	0, 0, 'f' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *scan_help = 
+static char *scan_help =
 	"Usage:\n"
 	"\tscan [--length=N] [--numrsp=N] [--flush]\n";
 
@@ -326,8 +314,8 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 /* Remote name */
 
 static struct option name_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
 static char *name_help =
@@ -380,11 +368,11 @@ static void cmd_name(int dev_id, int argc, char **argv)
 /* Info about remote device */
 
 static struct option info_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *info_help = 
+static char *info_help =
 	"Usage:\n"
 	"\tinfo <bdaddr>\n";
 
@@ -494,11 +482,11 @@ static void cmd_info(int dev_id, int argc, char **argv)
 /* Send arbitrary HCI commands */
 
 static struct option cmd_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *cmd_help = 
+static char *cmd_help =
 	"Usage:\n"
 	"\tcmd <ogf> <ocf> [parameters]\n"
 	"Example:\n"
@@ -584,11 +572,11 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 /* Display active connections */
 
 static struct option con_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *con_help = 
+static char *con_help =
 	"Usage:\n"
 	"\tcon\n";
 
@@ -611,13 +599,13 @@ static void cmd_con(int dev_id, int argc, char **argv)
 /* Create connection */
 
 static struct option cc_options[] = {
-	{"help",	0,0, 'h'},
-	{"role",	1,0, 'r'},
-	{"ptype",	1,0, 'p'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ "role",	1, 0, 'r' },
+	{ "ptype",	1, 0, 'p' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *cc_help = 
+static char *cc_help =
 	"Usage:\n"
 	"\tcc [--role=m|s] [--ptype=pkt_types] <bdaddr>\n"
 	"Example:\n"
@@ -682,11 +670,11 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 /* Close connection */
 
 static struct option dc_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *dc_help = 
+static char *dc_help =
 	"Usage:\n"
 	"\tdc <bdaddr>\n";
 
@@ -749,11 +737,11 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 /* Role switch */
 
 static struct option sr_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *sr_help = 
+static char *sr_help =
 	"Usage:\n"
 	"\tsr <bdaddr> <role>\n";
 
@@ -816,11 +804,11 @@ static void cmd_sr(int dev_id, int argc, char **argv)
 /* Read RSSI */
 
 static struct option rssi_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *rssi_help = 
+static char *rssi_help =
 	"Usage:\n"
 	"\trssi <bdaddr>\n";
 
@@ -904,11 +892,11 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 /* Get link quality */
 
 static struct option lq_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *lq_help = 
+static char *lq_help =
 	"Usage:\n"
 	"\tlq <bdaddr>\n";
 
@@ -992,11 +980,11 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 /* Get transmit power level */
 
 static struct option tpl_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *tpl_help = 
+static char *tpl_help =
 	"Usage:\n"
 	"\ttpl <bdaddr> [type]\n";
 
@@ -1081,11 +1069,11 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 /* Get AFH channel map */
 
 static struct option afh_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *afh_help = 
+static char *afh_help =
 	"Usage:\n"
 	"\tafh <bdaddr>\n";
 
@@ -1162,11 +1150,11 @@ static void cmd_afh(int dev_id, int argc, char **argv)
 /* Set connection packet type */
 
 static struct option cpt_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *cpt_help = 
+static char *cpt_help =
 	"Usage:\n"
 	"\tcpt <bdaddr> <packet_types>\n";
 
@@ -1246,11 +1234,11 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 /* Get/Set link supervision timeout */
 
 static struct option lst_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *lst_help = 
+static char *lst_help =
 	"Usage:\n"
 	"\tlst <bdaddr> [new value in slots]\n";
 
@@ -1355,11 +1343,11 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 /* Request authentication */
 
 static struct option auth_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *auth_help = 
+static char *auth_help =
 	"Usage:\n"
 	"\tauth <bdaddr>\n";
 
@@ -1423,11 +1411,11 @@ static void cmd_auth(int dev_id, int argc, char **argv)
 /* Activate encryption */
 
 static struct option enc_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *enc_help = 
+static char *enc_help =
 	"Usage:\n"
 	"\tenc <bdaddr> [encrypt enable]\n";
 
@@ -1494,11 +1482,11 @@ static void cmd_enc(int dev_id, int argc, char **argv)
 /* Change connection link key */
 
 static struct option key_options[] = {
-	{"help",	0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
-static char *key_help = 
+static char *key_help =
 	"Usage:\n"
 	"\tkey <bdaddr>\n";
 
@@ -1606,9 +1594,9 @@ static void usage(void)
 }
 
 static struct option main_options[] = {
-	{"help",	0,0, 'h'},
-	{"device",	1,0, 'i'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ "device",	1, 0, 'i' },
+	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char **argv)
