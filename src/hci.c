@@ -800,7 +800,7 @@ int hci_write_local_name(int dd, const char *name, int to)
 	rq.ocf = OCF_CHANGE_LOCAL_NAME;
 	rq.cparam = &cp;
 	rq.clen = CHANGE_LOCAL_NAME_CP_SIZE;
-	
+
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 	return 0;
@@ -819,6 +819,7 @@ int hci_read_remote_name(int dd, const bdaddr_t *ba, int len, char *name, int to
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, ba);
+	cp.pscan_rep_mode = 0x01;
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
@@ -847,10 +848,10 @@ int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 	evt_read_remote_features_complete rp;
 	read_remote_features_cp cp;
 	struct hci_request rq;
-	
+
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = handle;
-	
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
 	rq.ocf    = OCF_READ_REMOTE_FEATURES;
@@ -859,15 +860,15 @@ int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 	rq.clen   = READ_REMOTE_FEATURES_CP_SIZE;
 	rq.rparam = &rp;
 	rq.rlen   = EVT_READ_REMOTE_FEATURES_COMPLETE_SIZE;
-	
+
 	if (hci_send_req(dd, &rq, to) < 0)
 	        return -1;
-	
+
 	if (rp.status) {
 	        errno = EIO;
 	        return -1;
 	}
-	
+
 	memcpy(features, rp.features, 8);
 	return 0;
 }
@@ -877,10 +878,10 @@ int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, in
 	evt_read_remote_version_complete rp;
 	read_remote_version_cp cp;
 	struct hci_request rq;
-	
+
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = handle;
-	
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
 	rq.ocf    = OCF_READ_REMOTE_VERSION;
@@ -889,15 +890,15 @@ int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, in
 	rq.clen   = READ_REMOTE_VERSION_CP_SIZE;
 	rq.rparam = &rp;
 	rq.rlen   = EVT_READ_REMOTE_VERSION_COMPLETE_SIZE;
-	
+
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
-	
+
 	if (rp.status) {
 		errno = EIO;
 		return -1;
 	}
-	
+
 	ver->manufacturer = btohs(rp.manufacturer);
 	ver->lmp_ver      = rp.lmp_ver;
 	ver->lmp_subver   = btohs(rp.lmp_subver);
@@ -928,7 +929,6 @@ int hci_read_local_version(int dd, struct hci_version *ver, int to)
 	ver->hci_rev    = btohs(rp.hci_rev);
 	ver->lmp_ver    = rp.lmp_ver;
 	ver->lmp_subver = btohs(rp.lmp_subver);
-
 	return 0;
 }
 
