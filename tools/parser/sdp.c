@@ -240,6 +240,7 @@ static inline void print_uuid(int n, struct frame *frm, uint16_t *psm, uint8_t *
 {
 	uint32_t uuid = 0;
 	char* s;
+	int i;
 
 	switch(n) {
 	case 2: /* 16-bit UUID */
@@ -251,11 +252,15 @@ static inline void print_uuid(int n, struct frame *frm, uint16_t *psm, uint8_t *
 		s = "uuid-32";
 		break;
 	case 16: /* 128-bit UUID */
-		uuid = get_u32(frm);
-		s = "uuid-128";
-		frm->ptr += 12;
-		frm->len -= 12;
-		break;
+		printf(" uuid-128 ");
+		for (i = 0; i < 16; i++) {
+			printf("%02x", ((unsigned char *) frm->ptr)[i]);
+			if (i == 3 || i == 5 || i == 7 || i == 9)
+				printf("-");
+		}
+		frm->ptr += 16;
+		frm->len -= 16;
+		return;
 	default: /* syntax error */
 		printf(" *err*");
 		frm->ptr += n;
