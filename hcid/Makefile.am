@@ -23,7 +23,7 @@ INCLUDES = @BLUEZ_INCLUDES@ @DBUS_INCLUDES@ $(dbus_hcid_cflags)
 
 man_MANS = hcid.8 hcid.conf.5
 
-YFLAGS = -d
+AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 

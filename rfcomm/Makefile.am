@@ -15,7 +15,7 @@ INCLUDES = @BLUEZ_INCLUDES@
 
 man_MANS = rfcomm.1
 
-YFLAGS = -d
+AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
