@@ -923,3 +923,42 @@ int hci_class_of_dev(int dd, uint8_t *class, int to)
 	return 0;
 }
 
+int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to)
+{
+  read_current_iac_lap_rp rp;
+  struct hci_request rq;
+  
+  memset(&rq, 0, sizeof(rq));
+  rq.ogf = OGF_HOST_CTL;
+  rq.ocf = OCF_READ_CURRENT_IAC_LAP;
+  rq.rparam = &rp;
+  rq.rlen = READ_CURRENT_IAC_LAP_RP_SIZE;
+  if (0 > hci_send_req(dd, &rq, to))
+	 return -1;
+  if (rp.status) {
+	 errno = EIO;
+	 return -1;
+  }
+  *num_iac = rp.num_current_iac;
+  memcpy(lap, rp.lap, 3*rp.num_current_iac);
+  return 0;
+}
+
+int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
+{
+  write_current_iac_lap_cp cp;
+  struct hci_request rq;
+  
+  memset(&cp, 0, sizeof(cp));
+  cp.num_current_iac = num_iac;
+  memcpy(&cp.lap, lap, 3*num_iac);
+  
+  memset(&rq, 0, sizeof(rq));
+  rq.ogf = OGF_HOST_CTL;
+  rq.ocf = OCF_WRITE_CURRENT_IAC_LAP;
+  rq.cparam = &cp;
+  rq.clen = WRITE_CURRENT_IAC_LAP_CP_SIZE;
+  if (0 > hci_send_req(dd, &rq, to))
+	 return -1;
+  return 0;
+}

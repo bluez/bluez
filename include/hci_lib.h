@@ -70,6 +70,8 @@ int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to);
 int hci_read_local_version(int dd, struct hci_version *ver, int to);
 int hci_class_of_dev(int dd, uint8_t *class, int to);
+int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to);
+int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to);
 
 int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg);
 int hci_get_route(bdaddr_t *bdaddr);

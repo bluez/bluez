@@ -329,6 +329,22 @@ typedef struct {
 } __attribute__ ((packed)) host_buffer_size_cp;
 #define HOST_BUFFER_SIZE_CP_SIZE 7
 
+#define MAX_IAC_LAP 0x40
+#define OCF_READ_CURRENT_IAC_LAP 0x0039
+typedef struct {
+  uint8_t status;
+  uint8_t num_current_iac;
+  uint8_t lap[3][MAX_IAC_LAP];
+} __attribute__ ((packed)) read_current_iac_lap_rp;
+#define READ_CURRENT_IAC_LAP_RP_SIZE 2+3*MAX_IAC_LAP
+
+#define OCF_WRITE_CURRENT_IAC_LAP 0x003A
+typedef struct {
+  uint8_t num_current_iac;
+  uint8_t lap[3][MAX_IAC_LAP];
+} __attribute__ ((packed)) write_current_iac_lap_cp;
+#define WRITE_CURRENT_IAC_LAP_CP_SIZE 1+3*MAX_IAC_LAP
+
 /* Link Control */
 #define OGF_LINK_CTL	0x01 
 #define OCF_CREATE_CONN		0x0005
