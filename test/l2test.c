@@ -71,6 +71,9 @@ long data_size = 672;
 bdaddr_t bdaddr;
 unsigned short psm = 10;
 
+/* Default number of blocks to send */
+int num_blocks = -1; // Infinite
+
 int master = 0;
 int auth = 0;
 int encrypt = 0;
@@ -324,7 +327,7 @@ void send_mode(int s)
 		buf[i]=0x7f;
 
 	seq = 0;
-	while (1) {
+	while ((num_blocks == -1) || (num_blocks-- > 0)) {
 		*(uint32_t *) buf = htobl(seq++);
 		*(uint16_t *)(buf+4) = htobs(data_size);
 		
@@ -386,6 +389,7 @@ void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-S bdaddr] [-P psm]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
+		"\t[-N num] send num blocks (default = infinite)\n"
 		"\t[-D] use connectionless channel (datagram)\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
@@ -402,7 +406,7 @@ int main(int argc ,char *argv[])
 
 	mode = RECV; need_addr = 0;
 	
-	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:MAED")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:N:MAED")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -475,6 +479,10 @@ int main(int argc ,char *argv[])
 
 		case 'D':
 			socktype = SOCK_DGRAM;
+			break;
+
+		case 'N':
+			num_blocks = atoi(optarg);
 			break;
 
 		default:
