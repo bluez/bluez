@@ -272,6 +272,8 @@ char *bt_compidtostr(int compid)
 		return "Synopsys";
 	case 50:
 		return "Red-M (Communications) Ltd";
+	case 51:
+		return "Commil Ltd";
 	case 65535:
 		return "internal use";
 	default:
