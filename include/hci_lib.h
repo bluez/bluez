@@ -62,6 +62,7 @@ int hci_disconnect(int dd, int hndl, int res, int to);
 inquiry_info *hci_inquiry(int dev_id, int len, int *num_rsp, uint8_t *lap, long flags);
 int hci_devinfo(int dev_id, struct hci_dev_info *di);
 
+int hci_local_name(int dd, int len, char *name, int to);
 int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to);
 int hci_read_remote_features(int dd, int hndl, uint8_t *features, int to);
 int hci_read_remote_version(int dd, int hndl, struct hci_version *ver, int to);

@@ -503,6 +503,29 @@ int hci_disconnect(int dd, int hndl, int res, int to)
         return 0;
 }
 
+int hci_local_name(int dd, int len, char *name, int to)
+{
+	read_local_name_rp rp;
+	struct hci_request rq;
+
+	rq.ogf = OGF_HOST_CTL;
+	rq.ocf = OCF_READ_LOCAL_NAME;
+	rq.rparam = &rp;
+	rq.rlen = READ_LOCAL_NAME_RP_SIZE;
+         
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	rp.name[247] = '\0';
+	strncpy(name, rp.name, len);
+	return 0;
+}
+
 int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
 {
 	evt_remote_name_req_complete rn;
