@@ -732,7 +732,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (hci_disconnect(dd, htobs(cr->conn_info->handle), HCI_OE_USER_ENDED_CONNECTION, 100) < 0)
+	if (hci_disconnect(dd, htobs(cr->conn_info->handle), HCI_OE_USER_ENDED_CONNECTION, 10000) < 0)
 		perror("Disconnect failed");
 
 	close(dd);
@@ -752,9 +752,8 @@ static char *sr_help =
 
 static void cmd_sr(int dev_id, int argc, char **argv)
 {
-	struct hci_request rq;
-	switch_role_cp cp;
-	evt_role_change rp;
+	bdaddr_t bdaddr;
+	uint8_t role;
 	int opt, dd;
 
 	for_each_opt(opt, sr_options, NULL) {
@@ -772,21 +771,21 @@ static void cmd_sr(int dev_id, int argc, char **argv)
 		return;
 	}
 
-	str2ba(argv[0], &cp.bdaddr);
+	str2ba(argv[0], &bdaddr);
 	switch (argv[1][0]) {
 	case 'm':
-		cp.role = 0;
+		role = 0;
 		break;
 	case 's':
-		cp.role = 1;
+		role = 1;
 		break;
 	default:
-		cp.role = atoi(argv[1]);
+		role = atoi(argv[1]);
 		break;
 	}
 
 	if (dev_id < 0) {
-		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &cp.bdaddr);
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 		if (dev_id < 0) {
 			fprintf(stderr, "Not connected.\n");
 			exit(1);
@@ -799,22 +798,8 @@ static void cmd_sr(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_POLICY;
-	rq.ocf    = OCF_SWITCH_ROLE;
-	rq.cparam = &cp;
-	rq.clen   = SWITCH_ROLE_CP_SIZE;
-	rq.rparam = &rp;
-	rq.rlen   = EVT_ROLE_CHANGE_SIZE;
-	rq.event  = EVT_ROLE_CHANGE;
-
-	if (hci_send_req(dd, &rq, 300) < 0) {
+	if (hci_switch_role(dd, &bdaddr, role, 10000) < 0) {
 		perror("Switch role request failed");
-		exit(1);
-	}
-
-	if (rp.status) {
-		fprintf(stderr, "Switch role cmd failed (0x%2.2X)\n", rp.status);
 		exit(1);
 	}
 
@@ -1388,9 +1373,6 @@ static char *auth_help =
 static void cmd_auth(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
-	struct hci_request rq;
-	auth_requested_cp cp;
-	evt_auth_complete rp;
 	bdaddr_t bdaddr;
 	int opt, dd;
 
@@ -1436,18 +1418,7 @@ static void cmd_auth(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	cp.handle = htobs(cr->conn_info->handle);
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_AUTH_REQUESTED;
-	rq.cparam = &cp;
-	rq.clen   = AUTH_REQUESTED_CP_SIZE;
-	rq.rparam = &rp;
-	rq.rlen   = EVT_AUTH_COMPLETE_SIZE;
-	rq.event  = EVT_AUTH_COMPLETE;
-
-	if (hci_send_req(dd, &rq, 25000) < 0) {
+	if (hci_authenticate_link(dd, htobs(cr->conn_info->handle), 25000) < 0) {
 		perror("HCI authentication request failed");
 		exit(1);
 	}
@@ -1470,10 +1441,8 @@ static char *enc_help =
 static void cmd_enc(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
-	struct hci_request rq;
-	set_conn_encrypt_cp cp;
-	evt_encrypt_change rp;
 	bdaddr_t bdaddr;
+	uint8_t encrypt;
 	int opt, dd;
 
 	for_each_opt(opt, enc_options, NULL) {
@@ -1518,19 +1487,9 @@ static void cmd_enc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	cp.handle = htobs(cr->conn_info->handle);
-	cp.encrypt = (argc > 1) ? atoi(argv[1]) : 1;
+	encrypt = (argc > 1) ? atoi(argv[1]) : 1;
 
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_SET_CONN_ENCRYPT;
-	rq.cparam = &cp;
-	rq.clen   = SET_CONN_ENCRYPT_CP_SIZE;
-	rq.rparam = &rp;
-	rq.rlen   = EVT_ENCRYPT_CHANGE_SIZE;
-	rq.event  = EVT_ENCRYPT_CHANGE;
-
-	if (hci_send_req(dd, &rq, 25000) < 0) {
+	if (hci_encrypt_link(dd, htobs(cr->conn_info->handle), encrypt, 25000) < 0) {
 		perror("HCI set encryption request failed");
 		exit(1);
 	}
