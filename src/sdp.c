@@ -74,6 +74,8 @@ static struct tupla Protocol[] = {
 	{ WSP_UUID,     "WSP"     },
 	{ BNEP_UUID,    "BNEP"    },
 	{ HIDP_UUID,    "HIDP"    },
+	{ AVCTP_UUID,   "AVCTP"   },
+	{ AVDTP_UUID,   "AVDTP"   },
 	{ CMTP_UUID,    "CMTP"    },
 	{ 0 }
 };
@@ -91,6 +93,8 @@ static struct tupla ServiceClass[] = {
 	{ IRMC_SYNC_CMD_SVCLASS_ID,     "IrMCSync Command" },
 	{ HEADSET_SVCLASS_ID,           "Headset" },
 	{ CORDLESS_TELEPHONY_SVCLASS_ID,"Cordless Telephony" },
+	{ AUDIO_SOURCE_SVCLASS_ID,      "Audio Source" },
+	{ AUDIO_SINK_SVCLASS_ID,        "Audio Sink" },
 	{ INTERCOM_SVCLASS_ID,          "Intercom" },
 	{ FAX_SVCLASS_ID,               "Fax" },
 	{ HEADSET_AGW_SVCLASS_ID,       "Headset Audio Gateway" },
@@ -118,6 +122,7 @@ static struct tupla Profile[] = {
 	{ IRMC_SYNC_CMD_PROFILE_ID,      "IrMCSync Command" },
 	{ HEADSET_PROFILE_ID,            "Headset" },
 	{ CORDLESS_TELEPHONY_PROFILE_ID, "Cordless Telephony" },
+	{ ADVANCED_AUDIO_PROFILE_ID,     "Advanced Audio" },
 	{ INTERCOM_PROFILE_ID,           "Intercom" },
 	{ FAX_PROFILE_ID,                "Fax" },
 	{ HEADSET_AGW_PROFILE_ID,        "Headset Audio Gateway" },
