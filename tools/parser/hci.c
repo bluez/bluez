@@ -37,6 +37,7 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 
 #include "parser.h"
 
@@ -396,6 +397,248 @@ static char *opcode2str(uint16_t opcode)
 	return cmd;
 }
 
+static char *role2str(uint8_t role)
+{
+	switch (role) {
+	case 0x00:
+		return "Master";
+	case 0x01:
+		return "Slave";
+	default:
+		return "Unknown";
+	}
+}
+
+static char *mode2str(uint8_t mode)
+{
+	switch (mode) {
+	case 0x00:
+		return "Active";
+	case 0x01:
+		return "Hold";
+	case 0x02:
+		return "Sniff";
+	case 0x03:
+		return "Park";
+	default:
+		return "Unknown";
+	}
+}
+
+static inline void generic_command_dump(int level, struct frame *frm)
+{
+	uint16_t handle = btohs(htons(get_u16(frm)));
+
+	p_indent(level, frm);
+	printf("handle %d\n", handle);
+
+	raw_dump(level, frm);
+}
+
+static inline void inquiry_dump(int level, struct frame *frm)
+{
+	inquiry_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("lap 0x%2.2x%2.2x%2.2x len %d num %d\n",
+		cp->lap[2], cp->lap[1], cp->lap[0], cp->length, cp->num_rsp);
+}
+
+static inline void periodic_inquiry_dump(int level, struct frame *frm)
+{
+	periodic_inquiry_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("max %d min %d lap 0x%2.2x%2.2x%2.2x len %d num %d\n",
+		btohs(cp->max_period), btohs(cp->min_period),
+		cp->lap[2], cp->lap[1], cp->lap[0], cp->length, cp->num_rsp);
+}
+
+static inline void create_conn_dump(int level, struct frame *frm)
+{
+	create_conn_cp *cp = frm->ptr;
+	uint16_t ptype = btohs(cp->pkt_type);
+	uint16_t clkoffset = btohs(cp->clock_offset);
+	char addr[18], *str;
+
+	p_indent(level, frm);
+	ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s ptype 0x%4.4x rswitch 0x%2.2x clkoffset 0x%4.4x%s\n",
+		addr, ptype, cp->role_switch,
+		clkoffset & 0x7fff, clkoffset & 0x8000 ? " (valid)" : "");
+
+	str = hci_ptypetostr(ptype);
+	if (str) {
+		p_indent(level, frm);
+		printf("Packet type: %s\n", str);
+		free(str);
+	}
+}
+
+static inline void disconnect_dump(int level, struct frame *frm)
+{
+	disconnect_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d reason 0x%2.2x\n", btohs(cp->handle), cp->reason);
+
+	p_indent(level, frm);
+	printf("Reason: %s\n", status2str(cp->reason));
+}
+
+static inline void add_sco_dump(int level, struct frame *frm)
+{
+	add_sco_cp *cp = frm->ptr;
+	uint16_t ptype = btohs(cp->pkt_type);
+	char *str;
+
+	p_indent(level, frm);
+	printf("handle %d ptype 0x%4.4x\n", btohs(cp->handle), ptype);
+
+	str = hci_ptypetostr(ptype);
+	if (str) {
+		p_indent(level, frm);
+		printf("Packet type: %s\n", str);
+		free(str);
+	}
+}
+
+static inline void accept_conn_req_dump(int level, struct frame *frm)
+{
+	accept_conn_req_cp *cp = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s role 0x%2.2x\n", addr, cp->role);
+
+	p_indent(level, frm);
+	printf("Role: %s\n", role2str(cp->role));
+}
+
+static inline void reject_conn_req_dump(int level, struct frame *frm)
+{
+	reject_conn_req_cp *cp = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s reason 0x%2.2x\n", addr, cp->reason);
+
+	p_indent(level, frm);
+	printf("Reason: %s\n", status2str(cp->reason));
+}
+
+static inline void pin_code_reply_dump(int level, struct frame *frm)
+{
+	pin_code_reply_cp *cp = frm->ptr;
+	char addr[18], pin[17];
+
+	p_indent(level, frm);
+	ba2str(&cp->bdaddr, addr);
+	memset(pin, 0, sizeof(pin));
+	memcpy(pin, cp->pin_code, cp->pin_len);
+	printf("bdaddr %s len %d pin \'%s\'\n", addr, cp->pin_len, pin);
+}
+
+static inline void link_key_reply_dump(int level, struct frame *frm)
+{
+	link_key_reply_cp *cp = frm->ptr;
+	char addr[18];
+	int i;
+
+	p_indent(level, frm);
+	ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s\n", addr);
+
+	p_indent(level, frm);
+	printf("Link key: ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", cp->link_key[i]);
+	printf("\n");
+}
+
+static inline void pin_code_neg_reply_dump(int level, struct frame *frm)
+{
+	bdaddr_t *bdaddr = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	ba2str(bdaddr, addr);
+	printf("bdaddr %s\n", addr);
+}
+
+static inline void set_conn_encrypt_dump(int level, struct frame *frm)
+{
+	set_conn_encrypt_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d encrypt 0x%2.2x\n", btohs(cp->handle), cp->encrypt);
+}
+
+static inline void remote_name_req_dump(int level, struct frame *frm)
+{
+	remote_name_req_cp *cp = frm->ptr;
+	uint16_t clkoffset = btohs(cp->clock_offset);
+	char addr[18];
+
+	p_indent(level, frm);
+	ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s clkoffset 0x%4.4x%s\n",
+		addr, clkoffset & 0x7fff, clkoffset & 0x8000 ? " (valid)" : "");
+}
+
+static inline void write_link_policy_dump(int level, struct frame *frm)
+{
+	write_link_policy_cp *cp = frm->ptr;
+	uint16_t policy = btohs(cp->policy);
+	char *str;
+
+	p_indent(level, frm);
+	printf("handle %d policy 0x%2.2x\n", btohs(cp->handle), policy);
+
+	str = hci_lptostr(policy);
+	if (str) {
+		p_indent(level, frm);
+		printf("Link policy: %s\n", str);
+		free(str);
+	}
+}
+
+static inline void change_local_name_dump(int level, struct frame *frm)
+{
+	change_local_name_cp *cp = frm->ptr;
+	char name[249];
+	int i;
+
+	memset(name, 0, sizeof(name));
+	for (i = 0; i < 248 && cp->name[i]; i++)
+		if (isprint(cp->name[i]))
+			name[i] = cp->name[i];
+		else
+			name[i] = '.';
+
+	p_indent(level, frm);
+	printf("name \'%s\'\n", name);
+}
+
+static inline void write_class_of_dev_dump(int level, struct frame *frm)
+{
+	write_class_of_dev_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("class 0x%2.2x%2.2x%2.2x\n",
+		cp->dev_class[2], cp->dev_class[1], cp->dev_class[0]);
+}
+
+static inline void write_voice_setting_dump(int level, struct frame *frm)
+{
+	write_voice_setting_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("voice setting 0x%4.4x\n", btohs(cp->voice_setting));
+}
+
 static inline void command_dump(int level, struct frame *frm)
 {
 	hci_command_hdr *hdr = frm->ptr;
@@ -419,6 +662,89 @@ static inline void command_dump(int level, struct frame *frm)
 		return;
 	}
 
+	switch (ogf) {
+	case OGF_LINK_CTL:
+		switch (ocf) {
+		case OCF_INQUIRY:
+			inquiry_dump(level + 1, frm);
+			return;
+		case OCF_PERIODIC_INQUIRY:
+			periodic_inquiry_dump(level + 1, frm);
+			return;
+		case OCF_INQUIRY_CANCEL:
+		case OCF_EXIT_PERIODIC_INQUIRY:
+			return;
+		case OCF_CREATE_CONN:
+			create_conn_dump(level + 1, frm);
+			return;
+		case OCF_DISCONNECT:
+			disconnect_dump(level + 1, frm);
+			return;
+		case OCF_ADD_SCO:
+		case OCF_SET_CONN_PTYPE:
+			add_sco_dump(level + 1, frm);
+			break;
+		case OCF_ACCEPT_CONN_REQ:
+			accept_conn_req_dump(level + 1, frm);
+			return;
+		case OCF_REJECT_CONN_REQ:
+			reject_conn_req_dump(level + 1, frm);
+			return;
+		case OCF_PIN_CODE_REPLY:
+			pin_code_reply_dump(level + 1, frm);
+			return;
+		case OCF_LINK_KEY_REPLY:
+			link_key_reply_dump(level + 1, frm);
+			return;
+		case OCF_PIN_CODE_NEG_REPLY:
+		case OCF_LINK_KEY_NEG_REPLY:
+			pin_code_neg_reply_dump(level + 1, frm);
+			return;
+		case OCF_SET_CONN_ENCRYPT:
+			set_conn_encrypt_dump(level + 1, frm);
+			return;
+		case OCF_AUTH_REQUESTED:
+		case OCF_CHANGE_CONN_LINK_KEY:
+		case OCF_READ_REMOTE_FEATURES:
+		case OCF_READ_REMOTE_VERSION:
+		case OCF_READ_CLOCK_OFFSET:
+			generic_command_dump(level + 1, frm);
+			return;
+		case OCF_REMOTE_NAME_REQ:
+			remote_name_req_dump(level + 1, frm);
+			return;
+		}
+
+	case OGF_LINK_POLICY:
+		switch (ocf) {
+		case OCF_EXIT_SNIFF_MODE:
+		case OCF_EXIT_PARK_MODE:
+		case OCF_ROLE_DISCOVERY:
+		case OCF_READ_LINK_POLICY:
+			generic_command_dump(level + 1, frm);
+			return;
+		case OCF_SWITCH_ROLE:
+			accept_conn_req_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_LINK_POLICY:
+			write_link_policy_dump(level + 1, frm);
+			return;
+		}
+
+	case OGF_HOST_CTL:
+		switch (ocf) {
+		case OCF_CHANGE_LOCAL_NAME:
+			change_local_name_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_CLASS_OF_DEV:
+			write_class_of_dev_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_VOICE_SETTING:
+			write_voice_setting_dump(level + 1, frm);
+			return;
+		}
+	}
+
 	raw_dump(level, frm);
 }
 
@@ -428,6 +754,27 @@ static inline void status_response_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x\n", status);
+
+	if (status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(status));
+	}
+
+	raw_dump(level, frm);
+}
+
+static inline void bdaddr_response_dump(int level, struct frame *frm)
+{
+	uint8_t status = get_u8(frm);
+	bdaddr_t *bdaddr = frm->ptr;
+	char addr[18];
+
+	frm->ptr += sizeof(bdaddr_t);
+	frm->len -= sizeof(bdaddr_t);
+
+	p_indent(level, frm);
+	ba2str(bdaddr, addr);
+	printf("status 0x%2.2x bdaddr %s\n", status, addr);
 
 	if (status > 0) {
 		p_indent(level, frm);
@@ -453,6 +800,120 @@ static inline void generic_response_dump(int level, struct frame *frm)
 	raw_dump(level, frm);
 }
 
+static inline void read_local_name_dump(int level, struct frame *frm)
+{
+	read_local_name_rp *rp = frm->ptr;
+	char name[249];
+	int i;
+
+	memset(name, 0, sizeof(name));
+	for (i = 0; i < 248 && rp->name[i]; i++)
+		if (isprint(rp->name[i]))
+			name[i] = rp->name[i];
+		else
+			name[i] = '.';
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x name \'%s\'\n", rp->status, name);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_class_of_dev_dump(int level, struct frame *frm)
+{
+	read_class_of_dev_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x class 0x%2.2x%2.2x%2.2x\n", rp->status,
+		rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_voice_setting_dump(int level, struct frame *frm)
+{
+	read_voice_setting_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x voice setting 0x%4.4x\n",
+		rp->status, btohs(rp->voice_setting));
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_local_version_dump(int level, struct frame *frm)
+{
+	read_local_version_rp *rp = frm->ptr;
+	uint16_t manufacturer = btohs(rp->manufacturer);
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x\n", rp->status);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		p_indent(level, frm);
+		printf("HCI Version: %s (0x%x) LMP Revision: 0x%x\n",
+			hci_vertostr(rp->hci_ver), rp->hci_ver,
+			btohs(rp->hci_rev));
+		p_indent(level, frm);
+		printf("LMP Version: %s (0x%x) LMP Subversion: 0x%x\n",
+			lmp_vertostr(rp->lmp_ver), rp->lmp_ver,
+			btohs(rp->lmp_subver));
+		p_indent(level, frm);
+		printf("Manufacturer: %s (%d)\n",
+			bt_compidtostr(manufacturer), manufacturer);
+	}
+}
+
+static inline void read_local_features_dump(int level, struct frame *frm)
+{
+	read_local_features_rp *rp = frm->ptr;
+	int i;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x\n", rp->status);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		p_indent(level, frm);
+		printf("Features:");
+		for (i = 0; i < 8; i++)
+			printf(" 0x%2.2x", rp->features[i]);
+		printf("\n");
+	}
+}
+
+static inline void read_buffer_size_dump(int level, struct frame *frm)
+{
+	read_buffer_size_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x\n", rp->status);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		p_indent(level, frm);
+		printf("ACL MTU %d:%d SCO MTU %d:%d\n",
+			btohs(rp->acl_mtu), btohs(rp->acl_max_pkt),
+			rp->sco_mtu, btohs(rp->sco_max_pkt));
+	}
+}
+
 static inline void cmd_complete_dump(int level, struct frame *frm)
 {
 	evt_cmd_complete *evt = frm->ptr;
@@ -468,14 +929,37 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 	frm->len -= EVT_CMD_COMPLETE_SIZE;
 
 	switch (ogf) {
+	case OGF_LINK_CTL:
+		switch (ocf) {
+		case OCF_PIN_CODE_REPLY:
+		case OCF_LINK_KEY_REPLY:
+		case OCF_PIN_CODE_NEG_REPLY:
+		case OCF_LINK_KEY_NEG_REPLY:
+			bdaddr_response_dump(level, frm);
+			return;
+		}
+
+	case OGF_LINK_POLICY:
+		switch (ocf) {
+		case OCF_WRITE_LINK_POLICY:
+			generic_response_dump(level, frm);
+			return;
+		}
+
 	case OGF_HOST_CTL:
 		switch (ocf) {
 		case OCF_READ_LOCAL_NAME:
+			read_local_name_dump(level, frm);
+			return;
+		case OCF_READ_CLASS_OF_DEV:
+			read_class_of_dev_dump(level, frm);
+			return;
+		case OCF_READ_VOICE_SETTING:
+			read_voice_setting_dump(level, frm);
+			return;
 		case OCF_READ_PAGE_TIMEOUT:
 		case OCF_READ_PAGE_ACTIVITY:
 		case OCF_READ_INQ_ACTIVITY:
-		case OCF_READ_CLASS_OF_DEV:
-		case OCF_READ_VOICE_SETTING:
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
 		case OCF_READ_CURRENT_IAC_LAP:
@@ -483,28 +967,29 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_INQUIRY_MODE:
 		case OCF_READ_AFH_MODE:
 			status_response_dump(level, frm);
-			break;
-
-		default:
-			raw_dump(level, frm);
-			break;
+			return;
+		case OCF_CHANGE_LOCAL_NAME:
+		case OCF_WRITE_CLASS_OF_DEV:
+		case OCF_WRITE_VOICE_SETTING:
+			status_response_dump(level, frm);
+			return;
 		}
-		break;
 
 	case OGF_INFO_PARAM:
 		switch (ocf) {
 		case OCF_READ_LOCAL_VERSION:
+			read_local_version_dump(level, frm);
+			return;
 		case OCF_READ_LOCAL_FEATURES:
+			read_local_features_dump(level, frm);
+			return;
 		case OCF_READ_BUFFER_SIZE:
+			read_buffer_size_dump(level, frm);
+			return;
 		case OCF_READ_BD_ADDR:
-			status_response_dump(level, frm);
-			break;
-
-		default:
-			raw_dump(level, frm);
-			break;
+			bdaddr_response_dump(level, frm);
+			return;
 		}
-		break;
 
 	case OGF_STATUS_PARAM:
 		switch (ocf) {
@@ -515,18 +1000,11 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_AFH_MAP:
 		case OCF_READ_CLOCK:
 			status_response_dump(level, frm);
-			break;
-
-		default:
-			raw_dump(level, frm);
-			break;
+			return;
 		}
-		break;
-
-	default:
-		raw_dump(level, frm);
-		break;
 	}
+
+	raw_dump(level, frm);
 }
 
 static inline void cmd_status_dump(int level, struct frame *frm)
@@ -559,7 +1037,7 @@ static inline void inq_result_dump(int level, struct frame *frm)
 
 		p_indent(level, frm);
 		printf("bdaddr %s clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x\n",
-			addr, info->clock_offset, info->dev_class[2],
+			addr, btohs(info->clock_offset), info->dev_class[2],
 			info->dev_class[1], info->dev_class[0]);
 
 		frm->ptr += INQUIRY_INFO_SIZE;
@@ -653,6 +1131,162 @@ static inline void encrypt_change_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void read_remote_features_complete_dump(int level, struct frame *frm)
+{
+	evt_read_remote_features_complete *evt = frm->ptr;
+	int i;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d\n", evt->status, btohs(evt->handle));
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		p_indent(level, frm);
+		printf("Features:");
+		for (i = 0; i < 8; i++)
+			printf(" 0x%2.2x", evt->features[i]);
+		printf("\n");
+	}
+}
+
+static inline void read_remote_version_complete_dump(int level, struct frame *frm)
+{
+	evt_read_remote_version_complete *evt = frm->ptr;
+	uint16_t manufacturer = btohs(evt->manufacturer);
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d\n", evt->status, btohs(evt->handle));
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		p_indent(level, frm);
+		printf("LMP Version: %s (0x%x) LMP Subversion: 0x%x\n",
+			lmp_vertostr(evt->lmp_ver), evt->lmp_ver,
+			btohs(evt->lmp_subver));
+		p_indent(level, frm);
+		printf("Manufacturer: %s (%d)\n",
+			bt_compidtostr(manufacturer), manufacturer);
+	}
+}
+
+static inline void role_change_dump(int level, struct frame *frm)
+{
+	evt_role_change *evt = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	ba2str(&evt->bdaddr, addr);
+	printf("status 0x%2.2x bdaddr %s role 0x%2.2x\n",
+		evt->status, addr, evt->role);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		p_indent(level, frm);
+		printf("Role: %s\n", role2str(evt->role));
+	}
+}
+
+static inline void num_comp_pkts_dump(int level, struct frame *frm)
+{
+	uint8_t num = get_u8(frm);
+	int i;
+
+	p_indent(level, frm);
+	printf("handle%s", num > 1 ? "s" : "");
+	for (i = 0; i < num; i++) {
+		uint16_t handle = btohs(htons(get_u16(frm)));
+		printf(" %d", handle);
+	}
+	printf("\n");
+}
+
+static inline void mode_change_dump(int level, struct frame *frm)
+{
+	evt_mode_change *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d mode 0x%2.2x interval %d\n",
+		evt->status, btohs(evt->handle), evt->mode, btohs(evt->interval));
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		p_indent(level, frm);
+		printf("Mode: %s\n", mode2str(evt->mode));
+	}
+}
+
+static inline void pin_code_req_dump(int level, struct frame *frm)
+{
+	evt_pin_code_req *evt = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	ba2str(&evt->bdaddr, addr);
+	printf("bdaddr %s\n", addr);
+}
+
+static inline void link_key_notify_dump(int level, struct frame *frm)
+{
+	evt_link_key_notify *evt = frm->ptr;
+	char addr[18];
+	int i;
+
+	p_indent(level, frm);
+	ba2str(&evt->bdaddr, addr);
+	printf("bdaddr %s type 0x%2.2x\n", addr, evt->key_type);
+
+	p_indent(level, frm);
+	printf("Link key: ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", evt->link_key[i]);
+	printf("\n");
+}
+
+static inline void read_clock_offset_complete_dump(int level, struct frame *frm)
+{
+	evt_read_clock_offset_complete *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d clkoffset 0x%4.4x\n",
+		evt->status, btohs(evt->handle), btohs(evt->clock_offset));
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	}
+}
+
+static inline void conn_ptype_changed_dump(int level, struct frame *frm)
+{
+	evt_conn_ptype_changed *evt = frm->ptr;
+	uint16_t ptype = btohs(evt->ptype);
+	char *str;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d ptype 0x%4.4x\n",
+		evt->status, btohs(evt->handle), ptype);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		str = hci_ptypetostr(ptype);
+		if (str) {
+			p_indent(level, frm);
+			printf("Packet type: %s\n", str);
+			free(str);
+		}
+	}
+}
+
 static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 {
 	uint8_t num = get_u8(frm);
@@ -666,7 +1300,7 @@ static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 
 		ba2str(&info->bdaddr, addr);
 		printf("bdaddr %s clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
-			addr, info->clock_offset, info->dev_class[2],
+			addr, btohs(info->clock_offset), info->dev_class[2],
 			info->dev_class[1], info->dev_class[0], info->rssi);
 
 		frm->ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
@@ -720,48 +1354,68 @@ static inline void event_dump(int level, struct frame *frm)
 	case EVT_CMD_COMPLETE:
 		cmd_complete_dump(level + 1, frm);
 		break;
-
 	case EVT_CMD_STATUS:
 		cmd_status_dump(level + 1, frm);
 		break;
-
 	case EVT_INQUIRY_COMPLETE:
 		status_response_dump(level + 1, frm);
 		break;
-
 	case EVT_INQUIRY_RESULT:
 		inq_result_dump(level + 1, frm);
 		break;
-
 	case EVT_CONN_COMPLETE:
 		conn_complete_dump(level + 1, frm);
 		break;
-
 	case EVT_CONN_REQUEST:
 		conn_request_dump(level + 1, frm);
 		break;
-
 	case EVT_DISCONN_COMPLETE:
 		disconn_complete_dump(level + 1, frm);
 		break;
-
 	case EVT_AUTH_COMPLETE:
 	case EVT_CHANGE_CONN_LINK_KEY_COMPLETE:
 		generic_response_dump(level + 1, frm);
 		break;
-
 	case EVT_REMOTE_NAME_REQ_COMPLETE:
 		remote_name_req_complete_dump(level + 1, frm);
 		break;
-
 	case EVT_ENCRYPT_CHANGE:
 		encrypt_change_dump(level + 1, frm);
 		break;
-
+	case EVT_READ_REMOTE_FEATURES_COMPLETE:
+		read_remote_features_complete_dump(level + 1, frm);
+		break;
+	case EVT_READ_REMOTE_VERSION_COMPLETE:
+		read_remote_version_complete_dump(level + 1, frm);
+		break;
+	case EVT_QOS_SETUP_COMPLETE:
+		generic_response_dump(level + 1, frm);
+		break;
+	case EVT_ROLE_CHANGE:
+		role_change_dump(level + 1, frm);
+		break;
+	case EVT_NUM_COMP_PKTS:
+		num_comp_pkts_dump(level + 1, frm);
+		break;
+	case EVT_MODE_CHANGE:
+		mode_change_dump(level + 1, frm);
+		break;
+	case EVT_PIN_CODE_REQ:
+	case EVT_LINK_KEY_REQ:
+		pin_code_req_dump(level + 1, frm);
+		break;
+	case EVT_LINK_KEY_NOTIFY:
+		link_key_notify_dump(level + 1, frm);
+		break;
+	case EVT_READ_CLOCK_OFFSET_COMPLETE:
+		read_clock_offset_complete_dump(level + 1, frm);
+		break;
+	case EVT_CONN_PTYPE_CHANGED:
+		conn_ptype_changed_dump(level + 1, frm);
+		break;
 	case EVT_INQUIRY_RESULT_WITH_RSSI:
 		inq_result_with_rssi_dump(level + 1, frm);
 		break;
-
 	default:
 		raw_dump(level, frm);
 		break;
