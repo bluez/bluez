@@ -294,9 +294,9 @@ void multi_connect_mode(char *svr)
 
 void usage(void)
 {
-	printf("l2test - L2CAP testing\n"
+	printf("rctest - RFCOMM testing\n"
 		"Usage:\n");
-	printf("\tl2test <mode> [options] [bdaddr]\n");
+	printf("\trctest <mode> [options] [bdaddr]\n");
 	printf("Modes:\n"
 		"\t-r listen and receive\n"
 		"\t-w listen and send\n"
@@ -310,7 +310,6 @@ void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-S bdaddr] [-P channel]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
-		"\t[-D] use connectionless channel (datagram)\n"
 		"\t[-E] request encryption\n"
 		"\t[-E] request encryption\n"
 	       	"\t[-M] become master\n");
@@ -418,7 +417,7 @@ int main(int argc ,char *argv[])
 	sa.sa_flags   = SA_NOCLDSTOP;
 	sigaction(SIGCHLD, &sa, NULL);
 
-	openlog("l2test", LOG_PERROR | LOG_PID, LOG_LOCAL0);
+	openlog("rctest", LOG_PERROR | LOG_PID, LOG_LOCAL0);
 
 	switch( mode ){
 		case RECV:
