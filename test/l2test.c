@@ -662,10 +662,8 @@ static void usage(void)
 
 int main(int argc ,char *argv[])
 {
-	int opt, mode, s, need_addr;
 	struct sigaction sa;
-
-	mode = RECV; need_addr = 0;
+	int opt, sk, mode = RECV, need_addr = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
@@ -807,10 +805,10 @@ int main(int argc ,char *argv[])
 			break;
 
 		case CRECV:
-			s = do_connect(argv[optind]);
-			if (s < 0)
+			sk = do_connect(argv[optind]);
+			if (sk < 0)
 				exit(1);
-			recv_mode(s);
+			recv_mode(sk);
 			break;
 
 		case DUMP:
@@ -818,10 +816,10 @@ int main(int argc ,char *argv[])
 			break;
 
 		case SEND:
-			s = do_connect(argv[optind]);
-			if (s < 0)
+			sk = do_connect(argv[optind]);
+			if (sk < 0)
 				exit(1);
-			send_mode(s);
+			send_mode(sk);
 			break;
 
 		case LSEND:
@@ -841,10 +839,10 @@ int main(int argc ,char *argv[])
 			break;
 
 		case SENDDUMP:
-			s = do_connect(argv[optind]);
-			if (s < 0)
+			sk = do_connect(argv[optind]);
+			if (sk < 0)
 				exit(1);
-			senddump_mode(s);
+			senddump_mode(sk);
 			break;
 
 		case LSENDDUMP:
