@@ -23,10 +23,13 @@
  * $Id$
  */
 
+#include <sys/resource.h>
+
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <asm/types.h>
 #include <netinet/in.h>
+
+#include <asm/unaligned.h>
 
 struct frame {
 	void	*data;
@@ -113,7 +116,7 @@ static inline __u16 get_u16(struct frame *frm)
 	__u16 *u16_ptr = frm->ptr;
 	frm->ptr += 2;
 	frm->len -= 2;
-	return ntohs(*u16_ptr);
+	return ntohs(get_unaligned(u16_ptr));
 }
 
 static inline __u32 get_u32(struct frame *frm)
@@ -121,7 +124,7 @@ static inline __u32 get_u32(struct frame *frm)
 	__u32 *u32_ptr = frm->ptr;
 	frm->ptr += 4;
 	frm->len -= 4;
-	return ntohl(*u32_ptr);
+	return ntohl(get_unaligned(u32_ptr));
 }
 
 char *get_uuid_name(int uuid);
