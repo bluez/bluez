@@ -297,6 +297,8 @@ char *bt_compidtostr(int compid)
 		return "Gennum Corporation";
 	case 60:
 		return "Research In Motion";
+	case 61:
+		return "IPextreme, Inc.";
 	case 65535:
 		return "internal use";
 	default:
