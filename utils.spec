@@ -29,6 +29,9 @@ Bluetooth utilities (bluez-utils):
 	- hciconfig
 	- hcid
 	- sdpd
+	- dund
+	- pand
+	- hidd
 	- sdptool
 	- ciptool
 	- l2ping
@@ -60,7 +63,8 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-, root, root)
 
-/etc/rc.d/init.d/bluetooth
+/etc/init.d/bluetooth
+/etc/default/bluetooth
 /usr/bin/hcitool
 /usr/bin/l2ping
 /usr/bin/bluepin
@@ -69,6 +73,9 @@ rm -rf $RPM_BUILD_ROOT
 /usr/sbin/hciconfig
 /usr/sbin/hcid
 /usr/sbin/sdpd
+/usr/bin/dund
+/usr/bin/pand
+/usr/bin/hidd
 /usr/bin/sdptool
 /usr/bin/ciptool
 %{_mandir}/man8/hciattach.8.gz
@@ -76,6 +83,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man5/hcid.conf.5.gz
 %{_mandir}/man8/hcid.8.gz
 %{_mandir}/man8/sdpd.8.gz
+%{_mandir}/man1/dund.1.gz
+%{_mandir}/man1/pand.1.gz
 %{_mandir}/man1/hcitool.1.gz
 %{_mandir}/man1/sdptool.1.gz
 %{_mandir}/man1/ciptool.1.gz
