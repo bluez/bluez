@@ -57,12 +57,12 @@ void usage(void)
 
 void process_frames(int dev, int sock, int file)
 {
-	char *buf, *data, *ctrl;
 	struct cmsghdr *cmsg;
 	struct msghdr msg;
 	struct iovec  iv;
 	struct dump_hdr *dh;
-	int len, in;
+	struct frame frm;
+	char *buf, *ctrl;
 
 	if (snap_len < SNAP_LEN)
 		snap_len = SNAP_LEN;
@@ -72,7 +72,7 @@ void process_frames(int dev, int sock, int file)
 		exit(1);
 	}
 	dh = (void *) buf;
-	data = buf + DUMP_HDR_SIZE;
+	frm.data = buf + DUMP_HDR_SIZE;
 	
 	if (!(ctrl = malloc(100))) {
 		perror("Can't allocate control buffer");
@@ -82,7 +82,7 @@ void process_frames(int dev, int sock, int file)
 	printf("device: hci%d snap_len: %d filter: none\n", dev, snap_len); 
 
 	while (1) {
-		iv.iov_base = data;
+		iv.iov_base = frm.data;
 		iv.iov_len  = snap_len;
 
 		msg.msg_iov = &iv;
@@ -90,18 +90,18 @@ void process_frames(int dev, int sock, int file)
 		msg.msg_control = ctrl;
 		msg.msg_controllen = 100;
 
-		if ((len = recvmsg(sock, &msg, 0)) < 0) {
+		if ((frm.data_len = recvmsg(sock, &msg, 0)) < 0) {
 			perror("Receive failed");
 			exit(1);
 		}
 
 		/* Process control message */
-		in = 0;
+		frm.in = 0;
 		cmsg = CMSG_FIRSTHDR(&msg);
 		while (cmsg) {
 			switch (cmsg->cmsg_type) {
 			case HCI_CMSG_DIR:
-				in = *((int *)CMSG_DATA(cmsg));
+				frm.in = *((int *)CMSG_DATA(cmsg));
 				break;
 			}
 			cmsg = CMSG_NXTHDR(&msg, cmsg);
@@ -109,19 +109,14 @@ void process_frames(int dev, int sock, int file)
 
 		if (file == -1) {
 			/* Parse and print */
-			struct frame frm;
-
-			frm.data = frm.ptr = data;
-			frm.data_len = frm.len = len;
-			frm.in = in;
-			frm.flags = 0;
-			
+			frm.ptr = frm.data;
+			frm.len = frm.data_len;
 			parse(&frm);
 		} else {
 			/* Save dump */	
-			dh->len = __cpu_to_le16(len);
-			dh->in  = in;
-			if (write_n(file, data, len + DUMP_HDR_SIZE) < 0) {
+			dh->len = __cpu_to_le16(frm.data_len);
+			dh->in  = frm.in;
+			if (write_n(file, buf, frm.data_len + DUMP_HDR_SIZE) < 0) {
 				perror("Write error");
 				exit(1);
 			}
@@ -132,32 +127,28 @@ void process_frames(int dev, int sock, int file)
 void read_dump(int file)
 {
 	struct dump_hdr dh;
-	char *data;
+	struct frame frm;
 	int err;
 
-	if (!(data = malloc(HCI_MAX_FRAME_SIZE))) {
+	if (!(frm.data = malloc(HCI_MAX_FRAME_SIZE))) {
 		perror("Can't allocate data buffer");
 		exit(1);
 	}
 	
 	while (1) {
-		struct frame frm;
-		int len;
-
 		if ((err = read_n(file, (void *) &dh, DUMP_HDR_SIZE)) < 0)
 			goto failed;
 		if (!err) return;
 		
-		len = __le16_to_cpu(dh.len);
+		frm.data_len = __le16_to_cpu(dh.len);
 
-		if ((err = read_n(file, data, len)) < 0)
+		if ((err = read_n(file, frm.data, frm.data_len)) < 0)
 			goto failed;
 		if (!err) return;
 
-		frm.data = frm.ptr = data;
-		frm.data_len = frm.len = len;
-		frm.in = dh.in;
-		frm.flags = 0;
+		frm.ptr = frm.data;
+		frm.len = frm.data_len;
+		frm.in  = dh.in;
 		
 		parse(&frm);
 	}

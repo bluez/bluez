@@ -78,6 +78,9 @@ static inline void ascii_dump(int level, unsigned char *buf, int len)
 
 void raw_dump(int level, struct frame *frm)
 {
+	if (!frm->len)
+		return;
+
 	switch (parser_flags & DUMP_TYPE_MASK) {
 	case DUMP_HEX:
 		hex_dump(level, frm->ptr, frm->len);
