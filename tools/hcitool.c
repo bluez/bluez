@@ -394,6 +394,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	char name[248];
 	unsigned char features[8];
 	struct hci_version version;
+	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
 	int opt, dd, cc = 0;
 
@@ -425,6 +426,11 @@ static void cmd_info(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
+	if (hci_devinfo(dev_id, &di) < 0) {
+		perror("Can't get device info");
+		exit(1);
+	}
+
 	printf("Requesting information ...\n");
 
 	dd = hci_open_dev(dev_id);
@@ -443,7 +449,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
 	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		if (hci_create_connection(dd, &bdaddr, htobs(HCI_DM1 | HCI_DH1), 0, 0, &handle, 25000) < 0) {
+		if (hci_create_connection(dd, &bdaddr, htobs(di.pkt_type & ACL_PTYPE_MASK), 0, 0x01, &handle, 25000) < 0) {
 			perror("Can't create connection");
 			close(dd);
 			exit(1);
@@ -618,7 +624,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 	uint16_t handle;
 	uint8_t role;
 
-	role = 0;
+	role = 0x01;
 	ptype = HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5;
 
 	for_each_opt(opt, cc_options, NULL) {
