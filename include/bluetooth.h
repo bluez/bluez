@@ -93,10 +93,10 @@ enum {
 #define bt_put_unaligned(val, ptr) ((void)( *(ptr) = (val) ))
 #else
 #define bt_get_unaligned(ptr) \
-	({ __typeof__(*(ptr)) __tmp; memcpy(&__tmp, (ptr), sizeof(*(ptr))); __tmp; })
+	({ __typeof__(*(ptr)) __tmp; memmove(&__tmp, (ptr), sizeof(*(ptr))); __tmp; })
 #define bt_put_unaligned(val, ptr) \
 	({ __typeof__(*(ptr)) __tmp = (val); \
-	memcpy((ptr), &__tmp, sizeof(*(ptr))); \
+	memmove((ptr), &__tmp, sizeof(*(ptr))); \
 	(void)0; })
 #endif
 
