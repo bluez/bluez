@@ -65,7 +65,7 @@ static int dev_info(int s, int dev_id, long arg)
 	struct hci_dev_info di = {dev_id: dev_id};
 	char addr[18];
 
-	if (ioctl(s, HCIGETDEVINFO, (void*) &di))
+	if (ioctl(s, HCIGETDEVINFO, (void *) &di))
 		return 0;
 
 	ba2str(&di.bdaddr, addr);
@@ -91,12 +91,12 @@ static int conn_list(int s, int dev_id, long arg)
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(s, HCIGETCONNLIST, (void*)cl)) {
+	if (ioctl(s, HCIGETCONNLIST, (void *) cl)) {
 		perror("Can't get connection list");
 		exit(1);
 	}
 
-	for (i=0; i < cl->conn_num; i++, ci++) {
+	for (i = 0; i < cl->conn_num; i++, ci++) {
 		char addr[18];
 		ba2str(&ci->bdaddr, addr);
 		printf("\t%s %s %s handle %d state %d lm %s\n",
@@ -105,6 +105,7 @@ static int conn_list(int s, int dev_id, long arg)
 			addr, ci->handle, ci->state,
 			hci_lmtostr(ci->link_mode));
 	}
+
 	return 0;
 }
 
@@ -122,14 +123,15 @@ static int find_conn(int s, int dev_id, long arg)
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(s, HCIGETCONNLIST, (void*)cl)) {
+	if (ioctl(s, HCIGETCONNLIST, (void *) cl)) {
 		perror("Can't get connection list");
 		exit(1);
 	}
 
-	for (i=0; i < cl->conn_num; i++, ci++)
-		if (!bacmp((bdaddr_t *)arg, &ci->bdaddr))
+	for (i = 0; i < cl->conn_num; i++, ci++)
+		if (!bacmp((bdaddr_t *) arg, &ci->bdaddr))
 			return 1;
+
 	return 0;
 }
 
@@ -137,7 +139,7 @@ static void hex_dump(char *pref, int width, unsigned char *buf, int len)
 {
 	register int i,n;
 
-	for (i=0, n=1; i<len; i++, n++) {
+	for (i = 0, n = 1; i < len; i++, n++) {
 		if (n == 1)
 			printf("%s", pref);
 		printf("%2.2X ", buf[i]);
@@ -165,7 +167,7 @@ static void cmd_dev(int dev_id, int argc, char **argv)
 {
 	int opt;
 	for_each_opt(opt, dev_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(dev_help);
 			return;
@@ -199,12 +201,12 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 	char addr[18];
 	int i, opt;
 
-	length  = 8;  /* ~10 seconds */
+	length  = 8;	/* ~10 seconds */
 	num_rsp = 100;
-	flags = 0;
+	flags   = 0;
 
 	for_each_opt(opt, inq_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		case 'l':
 			length = atoi(optarg);
 			break;
@@ -263,12 +265,12 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	char name[248];
 	int i, opt, dd;
 
-	length  = 8;  /* ~10 seconds */
+	length  = 8;	/* ~10 seconds */
 	num_rsp = 100;
-	flags = 0;
+	flags   = 0;
 
 	for_each_opt(opt, scan_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		case 'l':
 			length = atoi(optarg);
 			break;
@@ -339,7 +341,7 @@ static void cmd_name(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, name_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(name_help);
 			return;
@@ -373,7 +375,6 @@ static void cmd_name(int dev_id, int argc, char **argv)
 		printf("%s\n", name);
 
 	close(dd);
-
 }
 
 /* Info about remote device */
@@ -399,7 +400,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	int opt, dd, cc = 0;
 
 	for_each_opt(opt, info_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(info_help);
 			return;
@@ -449,7 +450,9 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
 	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		if (hci_create_connection(dd, &bdaddr, htobs(di.pkt_type & ACL_PTYPE_MASK), 0, 0x01, &handle, 25000) < 0) {
+		if (hci_create_connection(dd, &bdaddr,
+					htobs(di.pkt_type & ACL_PTYPE_MASK),
+					0, 0x01, &handle, 25000) < 0) {
 			perror("Can't create connection");
 			close(dd);
 			exit(1);
@@ -466,15 +469,18 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	if (hci_read_remote_version(dd, handle, &version, 20000) == 0) {
 		printf("\tLMP Version: %s (0x%x) LMP Subversion: 0x%x\n"
 			"\tManufacturer: %s (%d)\n",
-			lmp_vertostr(version.lmp_ver), version.lmp_ver, version.lmp_subver, 
-			bt_compidtostr(version.manufacturer), version.manufacturer);
+			lmp_vertostr(version.lmp_ver),
+			version.lmp_ver,
+			version.lmp_subver,
+			bt_compidtostr(version.manufacturer),
+			version.manufacturer);
 	}
 
 	if (hci_read_remote_features(dd, handle, features, 20000) == 0) {
 		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n%s\n",
-				features[0], features[1], features[2], features[3],
-				features[4], features[5], features[6], features[7],
-				lmp_featurestostr(features, "\t\t", 63));
+			features[0], features[1], features[2], features[3],
+			features[4], features[5], features[6], features[7],
+			lmp_featurestostr(features, "\t\t", 63));
 	}
 
 	if (cc) {
@@ -508,7 +514,7 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 	uint8_t ogf;
 
 	for_each_opt(opt, cmd_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(cmd_help);
 			return;
@@ -573,7 +579,6 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 	hex_dump("  ", 20, ptr, len); fflush(stdout);
 
 	hci_close_dev(dd);
-	return;
 }
 
 /* Display active connections */
@@ -592,7 +597,7 @@ static void cmd_con(int dev_id, int argc, char **argv)
 	int opt;
 
 	for_each_opt(opt, con_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(con_help);
 			return;
@@ -630,7 +635,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 	ptype = HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5;
 
 	for_each_opt(opt, cc_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		case 'p':
 			hci_strtoptype(optarg, &ptype);
 			break;
@@ -668,7 +673,8 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (hci_create_connection(dd, &bdaddr, htobs(ptype), 0, role, &handle, 25000) < 0)
+	if (hci_create_connection(dd, &bdaddr, htobs(ptype),
+					0, role, &handle, 25000) < 0)
 		perror("Can't create connection");
 	hci_close_dev(dd);
 }
@@ -691,7 +697,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, dc_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(dc_help);
 			return;
@@ -732,7 +738,8 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (hci_disconnect(dd, htobs(cr->conn_info->handle), HCI_OE_USER_ENDED_CONNECTION, 10000) < 0)
+	if (hci_disconnect(dd, htobs(cr->conn_info->handle),
+				HCI_OE_USER_ENDED_CONNECTION, 10000) < 0)
 		perror("Disconnect failed");
 
 	close(dd);
@@ -757,7 +764,7 @@ static void cmd_sr(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, sr_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(sr_help);
 			return;
@@ -827,7 +834,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, rssi_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(rssi_help);
 			return;
@@ -884,7 +891,8 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	}
 
 	if (rp.status) {
-		printf("Read RSSI returned (error) status 0x%2.2X\n", rp.status);
+		printf("Read RSSI returned (error) status 0x%2.2X\n",
+				rp.status);
 		exit(1);
 	}
 	printf("RSSI return value: %d\n", rp.rssi);
@@ -914,7 +922,7 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, lq_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(lq_help);
 			return;
@@ -971,7 +979,7 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 	}
 
 	if (rp.status) {
-		fprintf(stderr, "HCI get_link_quality cmd failed (0x%2.2X)\n", 
+		fprintf(stderr, "HCI get_link_quality cmd failed (0x%2.2X)\n",
 				rp.status);
 		exit(1);
 	}
@@ -1002,7 +1010,7 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, tpl_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(tpl_help);
 			return;
@@ -1091,7 +1099,7 @@ static void cmd_afh(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, afh_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(afh_help);
 			return;
@@ -1148,7 +1156,7 @@ static void cmd_afh(int dev_id, int argc, char **argv)
 	}
 
 	if (rp.status) {
-		fprintf(stderr, "HCI read_afh_map cmd failed (0x%2.2X)\n", 
+		fprintf(stderr, "HCI read_afh_map cmd failed (0x%2.2X)\n",
 				rp.status);
 		exit(1);
 	}
@@ -1187,7 +1195,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	int opt, dd, ptype;
 
 	for_each_opt(opt, cpt_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(cpt_help);
 			return;
@@ -1272,7 +1280,7 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, lst_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(lst_help);
 			return;
@@ -1377,7 +1385,7 @@ static void cmd_auth(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, auth_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(auth_help);
 			return;
@@ -1446,7 +1454,7 @@ static void cmd_enc(int dev_id, int argc, char **argv)
 	int opt, dd;
 
 	for_each_opt(opt, enc_options, NULL) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(enc_help);
 			return;
@@ -1535,7 +1543,7 @@ static void usage(void)
 		"\t--help\tDisplay help\n"
 		"\t-i dev\tHCI device\n");
 	printf("Commands:\n");
-	for (i=0; command[i].cmd; i++)
+	for (i = 0; command[i].cmd; i++)
 		printf("\t%-4s\t%s\n", command[i].cmd,
 		command[i].doc);
 	printf("\n"
@@ -1544,8 +1552,8 @@ static void usage(void)
 }
 
 static struct option main_options[] = {
-	{"help",		0,0, 'h'},
-	{"device",		1,0, 'i'},
+	{"help",	0,0, 'h'},
+	{"device",	1,0, 'i'},
 	{0, 0, 0, 0}
 };
 
@@ -1555,7 +1563,7 @@ int main(int argc, char **argv)
 	bdaddr_t ba;
 
 	while ((opt=getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
-		switch(opt) {
+		switch (opt) {
 		case 'i':
 			dev_id = hci_devid(optarg);
 			if (dev_id < 0) {
@@ -1585,7 +1593,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	for (i=0; command[i].cmd; i++) {
+	for (i = 0; command[i].cmd; i++) {
 		if (strncmp(command[i].cmd, argv[0], 3))
 			continue;
 		command[i].func(dev_id, argc, argv);
