@@ -1,3 +1,8 @@
+ver 2.3:
+	Fix hci_for_each_dev() for big endian machines.
+	Support for voice settings.
+	RPM package.
+
 ver 2.2:
 	Updated RFCOMM header file.
 	Additional HCI command and event defines.
