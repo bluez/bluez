@@ -51,12 +51,13 @@ struct sockaddr_sco {
 /* set/get sockopt defines */
 #define SCO_OPTIONS	0x01
 struct sco_options {
-	uint16_t mtu;
+	uint16_t	mtu;
 };
 
 #define SCO_CONNINFO	0x02
 struct sco_conninfo {
-	uint16_t hci_handle;
+	uint16_t	hci_handle;
+	uint8_t		dev_class[3];
 };
 
 #ifdef __cplusplus

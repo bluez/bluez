@@ -50,6 +50,12 @@ struct sockaddr_rc {
 };
 
 /* RFCOMM socket options */
+#define RFCOMM_CONNINFO	0x02
+struct rfcomm_conninfo {
+	uint16_t	hci_handle;
+	uint8_t		dev_class[3];
+};
+
 #define RFCOMM_LM	0x03
 #define RFCOMM_LM_MASTER	0x0001
 #define RFCOMM_LM_AUTH		0x0002

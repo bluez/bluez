@@ -51,16 +51,16 @@ struct sockaddr_l2 {
 /* L2CAP socket options */
 #define L2CAP_OPTIONS	0x01
 struct l2cap_options {
-	uint16_t omtu;
-	uint16_t imtu;
-	uint16_t flush_to;
-	uint8_t  mode;
+	uint16_t	omtu;
+	uint16_t	imtu;
+	uint16_t	flush_to;
+	uint8_t		mode;
 };
 
 #define L2CAP_CONNINFO	0x02
 struct l2cap_conninfo {
-	uint16_t hci_handle;
-	uint8_t  dev_class[3];
+	uint16_t	hci_handle;
+	uint8_t		dev_class[3];
 };
 
 #define L2CAP_LM	0x03
