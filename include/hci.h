@@ -213,6 +213,7 @@ enum {
 #define HCI_LM_AUTH	0x0002
 #define HCI_LM_ENCRYPT	0x0004
 #define HCI_LM_TRUSTED	0x0008
+#define HCI_LM_RELIABLE	0x0010
 
 /* -----  HCI Commands ----- */
 /* OGF & OCF values */

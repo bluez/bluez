@@ -64,6 +64,7 @@ struct l2cap_conninfo {
 #define L2CAP_LM_AUTH		0x0002
 #define L2CAP_LM_ENCRYPT	0x0004
 #define L2CAP_LM_TRUSTED	0x0008
+#define L2CAP_LM_RELIABLE	0x0010
 
 #define L2CAP_QOS	0x04
 struct l2cap_qos {
