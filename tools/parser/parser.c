@@ -66,7 +66,7 @@ static inline void ascii_dump(int level, unsigned char *buf, int len)
 	for (i=0, n=1; i<len; i++, n++) {
 		if (n == 1)
 			indent(level);
-		printf("%1c ", isprint(buf[i]) ? buf[1] : '.');
+		printf("%1c ", isprint(buf[i]) ? buf[i] : '.');
 		if (n == DUMP_WIDTH) {
 			printf("\n");
 			n = 0;
