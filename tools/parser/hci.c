@@ -428,6 +428,14 @@ static inline void sco_dump(int level, struct frame *frm)
 
 static inline void vendor_dump(int level, struct frame *frm)
 {
+	if (p_filter(FILT_HCI))
+		return;
+
+	if (get_manufacturer() == 12) {
+		bpa_dump(level, frm);
+		return;
+	}
+
 	p_indent(level, frm);
 	printf("Vendor data: len %d\n", frm->len);
 	raw_dump(level, frm);

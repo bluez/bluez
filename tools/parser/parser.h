@@ -67,7 +67,8 @@ struct frame {
 
 #define FILT_OBEX	0x00010000
 #define FILT_CAPI	0x00020000
-#define FILT_CSR	0x1000000f
+#define FILT_CSR	0x1000000a
+#define FILT_BPA	0x1000000f
 
 #define STRUCT_OFFSET(type, member)  ((uint8_t *)&(((type *)NULL)->member) - \
                                      (uint8_t *)((type *)NULL))
@@ -181,6 +182,7 @@ void avdtp_dump(int level, struct frame *frm);
 void obex_dump(int level, struct frame *frm);
 void capi_dump(int level, struct frame *frm);
 void csr_dump(int level, struct frame *frm);
+void bpa_dump(int level, struct frame *frm);
 
 static inline void parse(struct frame *frm)
 {
