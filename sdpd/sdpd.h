@@ -61,7 +61,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp);
 int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp);
 
 typedef struct {
-	long timestamp;
+	uint32_t timestamp;
 	union {
 		uint16_t maxBytesSent;
 		uint16_t lastIndexSent;
@@ -73,7 +73,7 @@ typedef struct {
 sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate);
 void sdp_cstate_cache_init(void);
 void sdp_cstate_clean_buf(void);
-long sdp_cstate_alloc_buf(sdp_buf_t *buf);
+uint32_t sdp_cstate_alloc_buf(sdp_buf_t *buf);
 
 void sdp_svcdb_reset(void);
 void sdp_svcdb_collect_all(int sock);
@@ -85,6 +85,6 @@ int sdp_record_remove(uint32_t handle);
 sdp_list_t *sdp_get_record_list();
 uint32_t sdp_next_handle(void);
 
-long sdp_get_time();
+uint32_t sdp_get_time();
 
 #endif

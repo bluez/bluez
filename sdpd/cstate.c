@@ -36,7 +36,9 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <sys/time.h>
+#include <sys/socket.h>
 
+#include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -46,7 +48,7 @@ typedef struct _sdp_cstate_list sdp_cstate_list_t;
 
 struct _sdp_cstate_list {
 	sdp_cstate_list_t *next;
-	long timestamp;
+	uint32_t timestamp;
 	sdp_buf_t buf;
 };
 
@@ -63,7 +65,7 @@ sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate)
 	return 0;
 }
 
-long sdp_cstate_alloc_buf(sdp_buf_t *buf)
+uint32_t sdp_cstate_alloc_buf(sdp_buf_t *buf)
 {
 	sdp_cstate_list_t *cstate = (sdp_cstate_list_t *)malloc(sizeof(sdp_cstate_list_t));
 	char *data = (char *)malloc(buf->data_size);
@@ -84,7 +86,7 @@ long sdp_cstate_alloc_buf(sdp_buf_t *buf)
  * seconds. Used for updating the service db state
  * attribute of the service record of the SDP server
  */
-long sdp_get_time()
+uint32_t sdp_get_time()
 {
 	/*
 	 * To handle failure in gettimeofday, so an old
@@ -93,5 +95,5 @@ long sdp_get_time()
 	static struct timeval tm;
 
 	gettimeofday(&tm, NULL);
-	return tm.tv_sec;
+	return (uint32_t) tm.tv_sec;
 }

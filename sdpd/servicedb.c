@@ -146,8 +146,8 @@ void sdp_svcdb_set_collectable(sdp_record_t *record, int sock)
 void sdp_record_add(sdp_record_t *rec)
 {
 #ifdef SDP_DEBUG
-	SDPDBG("Adding rec : 0x%lx\n", (long)rec);
-	SDPDBG("with handle : 0x%lx\n", (long)rec->handle);
+	SDPDBG("Adding rec : 0x%lx\n", (long) rec);
+	SDPDBG("with handle : 0x%x\n", rec->handle);
 #endif
 	service_db = sdp_list_insert_sorted(service_db, rec, record_sort);
 }

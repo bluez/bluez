@@ -238,7 +238,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 	sdp_cont_state_t *cstate = NULL;
 	char *pCacheBuffer = NULL;
 	int handleSize = 0;
-	long cStateId = -1;
+	uint32_t cStateId = 0;
 	short rsp_count = 0;
 	short *pTotalRecordCount, *pCurrentRecordCount;
 	int mtu;
@@ -331,7 +331,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 	}
 
 	/* under both the conditions below, the rsp buffer is not built yet */
-	if (cstate || cStateId != -1) {
+	if (cstate || cStateId > 0) {
 		short lastIndex = 0;
 
 		if (cstate) {
