@@ -219,7 +219,9 @@ static void cmd_con(int dev_id, char **opt, int nopt)
 static void cmd_cc(int dev_id, char **opt, int nopt)
 {
 	bdaddr_t bdaddr;
-	int dd, ptype, role;
+	int ptype, dd;
+	uint16_t handle;
+	uint8_t role;
 
 	if (nopt < 1)
 		return;
@@ -250,7 +252,7 @@ static void cmd_cc(int dev_id, char **opt, int nopt)
 	else
 		role = 0;
 	
-	hci_create_connection(dd, &bdaddr, ptype, role, 1000);
+	hci_create_connection(dd, &bdaddr, ptype, role, 0, &handle, 1000);
 
 	hci_close_dev(dd);
 }
@@ -291,7 +293,7 @@ static void cmd_dc(int dev_id, char **opt, int nopt)
                 exit(1);
         }
 
-	hci_disconnect(dd, cr->conn_info->handle, 0, 100);
+	hci_disconnect(dd, cr->conn_info->handle, 0x13, 100);
 
 	close(dd);
 	free(cr);
