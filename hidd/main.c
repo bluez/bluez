@@ -257,7 +257,8 @@ static char *hidp_state[] = {
 
 static char *hidp_flagstostr(uint32_t flags)
 {
-	static char str[100] = "";
+	static char str[100];
+	str[0] = 0;
 
 	strcat(str, "[");
 
