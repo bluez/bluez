@@ -212,7 +212,7 @@ void recv_mode(int s)
 							strerror(errno), errno);
 				return;	
 			}
-
+#if 0
 			/* Check sequence */
 			sq = btohl(*(uint32_t *)buf);
 			if (seq != sq) {
@@ -233,7 +233,7 @@ void recv_mode(int s)
 				if (buf[i] != 0x7f)
 					syslog(LOG_INFO, "data missmatch: byte %d 0x%2.2x", i, buf[i]);
 			}
-
+#endif
 			total += r;
 		}
 		gettimeofday(&tv_end,NULL);
