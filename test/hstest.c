@@ -189,8 +189,8 @@ int main(int argc, char *argv[])
 	vs = htobs(vs);
 	fprintf(stderr, "Voice setting: 0x%04x\n", vs);
 	close(dd);
-	if (vs != 0x0040) {
-		fprintf(stderr, "The voice setting must be 0x0040\n");
+	if (vs != 0x0060) {
+		fprintf(stderr, "The voice setting must be 0x0060\n");
 		return -1;
 	}
 

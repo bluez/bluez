@@ -17,4 +17,4 @@ fi
 BDADDR=$1
 CHANNEL=$2
 
-$HSTEST record - $BDADDR $CHANNEL | $SOX -t raw -r 8000 -c 1 -s -b - -t ossdsp -r 44100 -c 2 -s -w /dev/dsp polyphase vol 5.0 2> /dev/null
+$HSTEST record - $BDADDR $CHANNEL | $SOX -t raw -r 8000 -c 1 -s -w - -t ossdsp -r 44100 -c 2 -s -w /dev/dsp polyphase vol 5.0 2> /dev/null

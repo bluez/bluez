@@ -19,4 +19,4 @@ FILE=$1
 BDADDR=$2
 CHANNEL=$3
 
-$MPG123 -q -s "$FILE" | $SOX -t raw -r 44100 -c 2 -s -w - -t raw -r 8000 -c 1 -s -b - | $HSTEST play - $BDADDR $CHANNEL
+$MPG123 -q -s "$FILE" | $SOX -t raw -r 44100 -c 2 -s -w - -t raw -r 8000 -c 1 -s -w - | $HSTEST play - $BDADDR $CHANNEL
