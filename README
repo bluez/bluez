@@ -7,7 +7,7 @@ Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
 Bluetooth utilities
 
 
-1. Compilation and installation.
+1. Compilation and installation
 
 In order to compile Bluetooth utilities you need following software packages:
 	- Linux Bluetooth protocol stack (BlueZ)
@@ -27,8 +27,8 @@ To compile and install run:
 2. Information
 
 Mailing lists:
-	bluez-users@lists.sourceforge.net - BlueZ general questions and discussions
-	bluez-devel@lists.sourceforge.net - BlueZ development 
+	bluez-users@lists.sf.net - BlueZ general questions and discussions
+	bluez-devel@lists.sf.net - BlueZ development 
 
 For additional information about the project visit BlueZ web site:
 	http://www.bluez.org
