@@ -256,6 +256,21 @@ typedef struct {
 } __attribute__ ((packed)) write_inq_activity_cp;
 #define WRITE_INQ_ACTIVITY_CP_SIZE 4
 
+#define OCF_READ_LINK_SUPERVISION_TIMEOUT	0x0036
+typedef struct {
+	uint8_t		status;
+	uint16_t 	handle;
+	uint16_t 	link_sup_to;
+} __attribute__ ((packed)) read_link_supervision_timeout_rp;
+#define READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE 5
+
+#define OCF_WRITE_LINK_SUPERVISION_TIMEOUT	0x0037
+typedef struct {
+	uint16_t 	handle;
+	uint16_t 	link_sup_to;
+} __attribute__ ((packed)) write_link_supervision_timeout_cp;
+#define WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE 4
+
 #define OCF_READ_AUTH_ENABLE	0x001F
 #define OCF_WRITE_AUTH_ENABLE	0x0020
 	#define AUTH_DISABLED		0x00
@@ -667,6 +682,14 @@ typedef struct {
 	uint8_t 	key_type;
 } __attribute__ ((packed)) evt_link_key_notify;
 #define EVT_LINK_KEY_NOTIFY_SIZE 23
+
+#define EVT_CONN_PTYPE_CHANGED	0x1D
+typedef struct {
+	uint8_t 	status;
+	uint16_t 	handle;
+	uint16_t 	ptype;
+} __attribute__ ((packed)) evt_conn_ptype_changed;
+#define EVT_CONN_PTYPE_CHANGED_SIZE 5
 
 #define EVT_READ_REMOTE_FEATURES_COMPLETE 0x0B
 typedef struct {
