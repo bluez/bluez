@@ -544,6 +544,9 @@ struct uart_t uart[] = {
 	/* Sphinx Electronics PICO Card */
 	{ "picocard", 0x025e, 0x1000, HCI_UART_H4, 115200, FLOW_CTL, NULL },
 
+	/* Inventel BlueBird Module */
+	{ "inventel", 0x0000, 0x0000, HCI_UART_H4, 115200, FLOW_CTL, NULL },
+
         { NULL, 0 }
 };
 
