@@ -301,15 +301,12 @@ static inline void acl_dump(struct frame *frm)
 	printf("ACL data: handle 0x%4.4x flags 0x%2.2x dlen %d\n",
 		acl_handle(handle), flags, dlen);
 	
-	frm->ptr += HCI_ACL_HDR_SIZE;
-	frm->len -= HCI_ACL_HDR_SIZE;
-	frm->flags = flags;
+	frm->ptr  += HCI_ACL_HDR_SIZE;
+	frm->len  -= HCI_ACL_HDR_SIZE;
+	frm->flags  = flags;
+	frm->handle = acl_handle(handle);
 	
-	if (flags & ACL_START) {
-		l2cap_dump(1, frm);
-	} else {
-		raw_dump(1, frm);
-	}
+	l2cap_dump(1, frm);
 }
 
 void hci_dump(int level, struct frame *frm)

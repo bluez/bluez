@@ -35,6 +35,7 @@ struct frame {
 	void *ptr;
 	int  len;
 	int  in;
+	int  handle;
 	long flags;
 };
 
@@ -43,6 +44,7 @@ void init_parser(long flags);
 void raw_dump(int level, struct frame *frm);
 void hci_dump(int level, struct frame *frm);
 void l2cap_dump(int level, struct frame *frm);
+void rfcomm_dump(int level, struct frame *frm);
 
 static inline void indent(int level)
 {
