@@ -37,7 +37,7 @@ extern "C" {
 #define RFCOMM_PSM 3
 
 #define RFCOMM_CONN_TIMEOUT (HZ * 30)
-#define RFCOMM_DISC_TIMEOUT (HZ * 5)
+#define RFCOMM_DISC_TIMEOUT (HZ * 20)
 
 /* RFCOMM socket address */
 struct sockaddr_rc {
