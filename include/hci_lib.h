@@ -96,6 +96,10 @@ static inline void hci_filter_set_ptype(int t, struct hci_filter *f)
 {
 	hci_set_bit((t & HCI_FLT_TYPE_BITS), &f->type_mask);
 }
+static inline void hci_filter_all_ptypes(struct hci_filter *f)
+{
+	memset((void *)&f->type_mask, 0xff, sizeof(f->type_mask));
+}
 static inline void hci_filter_set_event(int e, struct hci_filter *f)
 {
 	hci_set_bit((e & HCI_FLT_EVENT_BITS), &f->event_mask);
