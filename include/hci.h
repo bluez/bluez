@@ -691,6 +691,23 @@ typedef struct {
 } __attribute__ ((packed)) write_inquiry_mode_rp;
 #define WRITE_INQUIRY_MODE_RP_SIZE 1
 
+#define OCF_READ_AFH_MODE		0x0048
+typedef struct {
+	uint8_t		status;
+	uint8_t		mode;
+} __attribute__ ((packed)) read_afh_mode_rp;
+#define READ_AFH_MODE_RP_SIZE 2
+
+#define OCF_WRITE_AFH_MODE		0x0049
+typedef struct {
+	uint8_t		mode;
+} __attribute__ ((packed)) write_afh_mode_cp;
+#define WRITE_AFH_MODE_CP_SIZE 1
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) write_afh_mode_rp;
+#define WRITE_AFH_MODE_RP_SIZE 1
+
 /* Informational Parameters */
 #define OGF_INFO_PARAM		0x04
 
@@ -734,14 +751,14 @@ typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
 	uint8_t		counter;
-} __attribute__ ((packed)) read_failed_contact_counter_rp; 
+} __attribute__ ((packed)) read_failed_contact_counter_rp;
 #define READ_FAILED_CONTACT_COUNTER_RP_SIZE 4
 
 #define OCF_RESET_FAILED_CONTACT_COUNTER	0x0002
 typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
-} __attribute__ ((packed)) reset_failed_contact_counter_rp; 
+} __attribute__ ((packed)) reset_failed_contact_counter_rp;
 #define RESET_FAILED_CONTACT_COUNTER_RP_SIZE 4
 
 #define OCF_GET_LINK_QUALITY		0x0003
@@ -749,7 +766,7 @@ typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
 	uint8_t		link_quality;
-} __attribute__ ((packed)) get_link_quality_rp; 
+} __attribute__ ((packed)) get_link_quality_rp;
 #define GET_LINK_QUALITY_RP_SIZE 4
 
 #define OCF_READ_RSSI			0x0005
@@ -757,8 +774,17 @@ typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
 	int8_t		rssi;
-} __attribute__ ((packed)) read_rssi_rp; 
+} __attribute__ ((packed)) read_rssi_rp;
 #define READ_RSSI_RP_SIZE 4
+
+#define OCF_READ_AFH_MAP		0x0006
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		mode;
+	uint8_t		map[10];
+} __attribute__ ((packed)) read_afh_map_rp;
+#define READ_AFH_MAP_RP_SIZE 14
 
 /* Testing commands */
 #define OGF_TESTING_CMD		0x3e
