@@ -9,6 +9,6 @@ bin_PROGRAMS  = hcitool l2ping
 
 man_MANS      = hciattach.8 l2ping.8
 
-noinst_PROGRAMS	= l2test scotest rctest
+noinst_PROGRAMS	= ppporc l2test scotest rctest
 
 EXTRA_DIST    = $(man_MANS)
