@@ -285,6 +285,8 @@ char *bt_compidtostr(int compid)
 		return "Terax";
 	case 57:
 		return "Integrated System Solution Corp.";
+	case 58:
+		return "Matsushita Electric Industrial Co., Ltd.";
 	case 65535:
 		return "internal use";
 	default:
