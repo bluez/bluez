@@ -272,7 +272,7 @@ static inline void command_dump(int level, struct frame *frm)
 		break;
 	}
 
-	p_indent(level, frm->in);
+	p_indent(level, frm);
 
 	printf("HCI Command: %s(0x%2.2x|0x%4.4x) plen %d\n", 
 		cmd, ogf, ocf, hdr->plen);
@@ -290,7 +290,7 @@ static inline void event_dump(int level, struct frame *frm)
 	if (p_filter(FILT_HCI))
 		return;
 
-	p_indent(level, frm->in);
+	p_indent(level, frm);
 
 	if (hdr->evt <= EVENT_NUM)
 		printf("HCI Event: %s(0x%2.2x) plen %d\n",
@@ -312,7 +312,7 @@ static inline void acl_dump(int level, struct frame *frm)
 	__u8 flags = acl_flags(handle);
 
 	if (!p_filter(FILT_HCI)) {
-		p_indent(level, frm->in);
+		p_indent(level, frm);
 		printf("ACL data: handle 0x%4.4x flags 0x%2.2x dlen %d\n",
 			acl_handle(handle), flags, dlen);
 		level++;
@@ -335,7 +335,7 @@ static inline void sco_dump(int level, struct frame *frm)
 	__u16 handle = __le16_to_cpu(hdr->handle);
 
 	if (!p_filter(FILT_SCO)) {
-		p_indent(level, frm->in);
+		p_indent(level, frm);
 		printf("SCO data: handle 0x%4.4x dlen %d\n",
 			acl_handle(handle), hdr->dlen);
 		level++;
@@ -373,7 +373,7 @@ void hci_dump(int level, struct frame *frm)
 		if (p_filter(FILT_HCI))
 			break;
 
-		p_indent(level, frm->in);
+		p_indent(level, frm);
 		printf("Unknown: type 0x%2.2x len %d\n", type, frm->len);
 		raw_dump(level, frm);
 		break;

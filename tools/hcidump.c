@@ -51,8 +51,8 @@
 static int  device;
 static int  snap_len = SNAP_LEN;
 static int  mode = PARSE;
-static long flags; 
-static long filter; 
+static long flags;
+static long filter;
 static char *dump_file;
 
 static void process_frames(int dev, int sock, int file)
@@ -104,6 +104,9 @@ static void process_frames(int dev, int sock, int file)
 			case HCI_CMSG_DIR:
 				frm.in = *((int *)CMSG_DATA(cmsg));
 				break;
+			case HCI_CMSG_TSTAMP:
+				frm.ts = *((struct timeval *)CMSG_DATA(cmsg));
+				break;
 			}
 			cmsg = CMSG_NXTHDR(&msg, cmsg);
 		}
@@ -123,6 +126,8 @@ static void process_frames(int dev, int sock, int file)
 			/* Save dump */	
 			dh->len = __cpu_to_le16(frm.data_len);
 			dh->in  = frm.in;
+			dh->ts_sec  = __cpu_to_le32(frm.ts.tv_sec);
+			dh->ts_usec = __cpu_to_le32(frm.ts.tv_usec);
 			if (write_n(file, buf, frm.data_len + DUMP_HDR_SIZE) < 0) {
 				perror("Write error");
 				exit(1);
@@ -162,6 +167,8 @@ static void read_dump(int file)
 		frm.ptr = frm.data;
 		frm.len = frm.data_len;
 		frm.in  = dh.in;
+		frm.ts.tv_sec  = __le32_to_cpu(dh.ts_sec);
+		frm.ts.tv_usec = __le32_to_cpu(dh.ts_usec);
 		
 		parse(&frm);
 	}
@@ -205,6 +212,12 @@ static int open_socket(int dev)
 		exit(1);
 	}
 
+	opt = 1;
+	if (setsockopt(s, SOL_HCI, HCI_TIME_STAMP, &opt, sizeof(opt)) < 0) {
+		perror("Can't enable time stamp");
+		exit(1);
+	}
+
 	/* Setup filter */
 	flt.type_mask  = ~0;      // All packet types
 	flt.event_mask[0] = ~0L;  // All events
@@ -233,6 +246,7 @@ static struct argp_option options[] = {
 	{"snap-len", 	's', "len",  0, "Snap len (in bytes)", 1 },
 	{"save-dump",	'w', "file", 0, "Save dump to a file", 2 },
 	{"read-dump",	'r', "file", 0, "Read dump from a file", 2 },
+	{"ts", 		't', 0,  0, "Display time stamps", 2 },
 	{"hex", 	'x', 0,  0, "Dump data in hex", 3 },
 	{"ascii", 	'a', 0,  0, "Dump data in ascii", 3 },
 	{"raw", 	'R', 0,  0, "Raw mode", 4 },
@@ -282,6 +296,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 		case 's': 
 			snap_len = atoi(arg);
+			break;
+
+		case 't': 
+			flags |= DUMP_TSTAMP;
 			break;
 
 		case 'R': 

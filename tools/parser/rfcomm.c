@@ -203,7 +203,7 @@ static inline void mcc_frame(int level, struct frame *frm, long_frame_head *head
         frm->ptr += hdr_size;
         frm->len -= hdr_size;
 
-	p_indent(level, frm->in); 
+	p_indent(level, frm); 
 	printf("RFCOMM(s): ");
 
 	switch (mcc_head.type.type) {
@@ -247,7 +247,7 @@ static inline void uih_frame(int level, struct frame *frm, long_frame_head *head
 	if (!head->addr.server_chn) {
 		mcc_frame(level, frm, head); 
 	} else {
-		p_indent(level, frm->in);
+		p_indent(level, frm);
 		printf("RFCOMM(d): UIH: ");
 		print_rfcomm_hdr(head, frm->ptr, frm->len);
 		printf("\n");
@@ -281,7 +281,7 @@ void rfcomm_dump(int level, struct frame *frm)
 	if (ctr_type == UIH) {
 		uih_frame(level, frm, &head); 
 	} else {
-		p_indent(level, frm->in); 
+		p_indent(level, frm); 
 		printf("RFCOMM(s): ");
 
 		switch (ctr_type) {

@@ -313,7 +313,7 @@ static void l2cap_parse(int level, struct frame *frm)
 			frm->len -= L2CAP_CMD_HDR_SIZE;
 
 			if (!p_filter(FILT_L2CAP)) {
-				p_indent(level, frm->in);
+				p_indent(level, frm);
 				printf("L2CAP(s): ");
 			}
 
@@ -381,7 +381,7 @@ static void l2cap_parse(int level, struct frame *frm)
 		psm = btohs(*(__u16*)frm->ptr);
 		frm->len -= 2;
 
-		p_indent(level, frm->in);
+		p_indent(level, frm);
 		printf("L2CAP(c): cid 0x%x len %d psm %d\n", cid, dlen, psm);
 		raw_dump(level, frm);
 	} else {
@@ -389,7 +389,7 @@ static void l2cap_parse(int level, struct frame *frm)
 		__u16 psm = get_psm(!frm->in, cid);
 	
 		if (!p_filter(FILT_L2CAP)) {
-			p_indent(level, frm->in);
+			p_indent(level, frm);
 			printf("L2CAP(d): cid 0x%x len %d [psm %d]\n", 
 				cid, dlen, psm);
 			level++;
@@ -453,6 +453,7 @@ void l2cap_dump(int level, struct frame *frm)
 		fr->len = frm->len;
 		fr->ptr = fr->data;
 		fr->in  = frm->in;
+		fr->ts  = frm->ts;
 	} else {
 		if (!(fr = get_frame(frm->handle))) {
 			fprintf(stderr, "Not enough connetion handles\n");

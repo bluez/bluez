@@ -24,13 +24,14 @@
  */
 
 struct frame {
-	void *data;
-	int  data_len;
-	void *ptr;
-	int  len;
-	int  in;
-	int  handle;
-	long flags;
+	void	*data;
+	int	data_len;
+	void	*ptr;
+	int	len;
+	int 	in;
+	int	handle;
+	long	flags;
+	struct	timeval ts;
 };
 
 /* Parser flags */
@@ -39,6 +40,7 @@ struct frame {
 #define DUMP_HEX	0x01
 #define DUMP_ASCII	0x02
 #define DUMP_TYPE_MASK	(DUMP_HEX | DUMP_ASCII)
+#define DUMP_TSTAMP	0x04
 
 /* Parser filter */
 #define FILT_HCI	0x0001
@@ -62,7 +64,7 @@ static inline int p_filter(unsigned long f)
 	return !(parser.filter & f);
 }
 
-static inline void p_indent(int level, int in)
+static inline void p_indent(int level, struct frame *f)
 {
 	if (level < 0) {
 		parser.state = 0;
@@ -70,7 +72,10 @@ static inline void p_indent(int level, int in)
 	}
 	
 	if (!parser.state) {
-		printf("%c ", (in ? '>' : '<'));
+		if (parser.flags & DUMP_TSTAMP)
+			printf("%ld.%ld ", f->ts.tv_sec, f->ts.tv_usec);
+		
+		printf("%c ", (f->in ? '>' : '<'));
 		parser.state = 1;
 	} else 
 		printf("  ");

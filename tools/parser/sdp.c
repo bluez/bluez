@@ -329,7 +329,7 @@ static inline void print_srv_srch_pat(int level, struct frame *frm)
 	int n1;
 	int n2;
 
-	p_indent(level, frm->in);
+	p_indent(level, frm);
 	printf("pat");
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
@@ -357,7 +357,7 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 	int   n2;
 	int   len = frm->len;
 
-	p_indent(level, frm->in);
+	p_indent(level, frm);
 	printf("aid(s)");
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
@@ -552,7 +552,7 @@ void sdp_dump(int level, struct frame *frm)
 	frm->ptr += SDP_PDU_HDR_SIZE;
 	frm->len -= SDP_PDU_HDR_SIZE;
 
-	p_indent(level, frm->in);
+	p_indent(level, frm);
 
 	switch (hdr->pid) {
 	case SDP_ERROR_RSP:
@@ -585,7 +585,7 @@ void sdp_dump(int level, struct frame *frm)
 	if (hdr->pid != SDP_ERROR_RSP) {
 		/* Parse ContinuationState */
 		if (*(__u8*) frm->ptr)	{
-			p_indent(++level, frm->in);
+			p_indent(++level, frm);
 			printf("cont ");
 			raw_dump(0, frm);
 		}
