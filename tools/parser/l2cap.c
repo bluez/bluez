@@ -38,6 +38,7 @@
 #include <bluetooth/l2cap.h>
 
 #include "parser.h"
+#include "sdp.h"
 
 typedef struct {
 	uint16_t handle;
@@ -51,7 +52,7 @@ typedef struct {
 	uint16_t cid;
 	uint16_t psm;
 } cid_info;
-#define CID_TABLE_SIZE	20
+#define CID_TABLE_SIZE 20
 
 static cid_info cid_table[2][CID_TABLE_SIZE];
 
@@ -110,7 +111,7 @@ static void del_cid(int in, uint16_t dcid, uint16_t scid)
 	}
 
 	for (t = 0; t < 2; t++) {
-		for (i=0; i<CID_TABLE_SIZE; i++)
+		for (i = 0; i < CID_TABLE_SIZE; i++)
 			if (cid_table[t][i].cid == cid[t]) {
 				cid_table[t][i].cid = 0;
 				break;
@@ -122,7 +123,7 @@ static uint16_t get_psm(int in, uint16_t cid)
 {
 	register cid_info *table = cid_table[in];
 	register int i;
-	
+
 	for (i = 0; i < CID_TABLE_SIZE; i++)
 		if (table[i].cid == cid)
 			return table[i].psm;
@@ -183,10 +184,10 @@ static void conf_opt(int level, void *ptr, int len)
 	p_indent(level, 0);
 	while (len > 0) {
 		l2cap_conf_opt *h = ptr;
-	
+
 		ptr += L2CAP_CONF_OPT_SIZE + h->len;
 		len -= L2CAP_CONF_OPT_SIZE + h->len;
-		
+
 		switch (h->type) {
 		case L2CAP_CONF_MTU:
 			printf("MTU %d ", conf_opt_val(h->val, h->len));
@@ -237,7 +238,7 @@ static inline void disconn_req(int level, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Disconn req: dcid 0x%4.4x scid 0x%4.4x\n", 
+	printf("Disconn req: dcid 0x%4.4x scid 0x%4.4x\n",
 			btohs(h->dcid), btohs(h->scid));
 }
 
@@ -258,8 +259,7 @@ static inline void echo_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Echo req: dlen %d\n", 
-			btohs(cmd->len));
+	printf("Echo req: dlen %d\n", btohs(cmd->len));
 	raw_dump(level, frm);
 }
 
@@ -268,8 +268,7 @@ static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Echo rsp: dlen %d\n", 
-			btohs(cmd->len));
+	printf("Echo rsp: dlen %d\n", btohs(cmd->len));
 	raw_dump(level, frm);
 }
 
@@ -278,8 +277,7 @@ static inline void info_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Info req: dlen %d\n", 
-			btohs(cmd->len));
+	printf("Info req: dlen %d\n", btohs(cmd->len));
 	raw_dump(level, frm);
 }
 
@@ -288,8 +286,7 @@ static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Info rsp: dlen %d\n", 
-			btohs(cmd->len));
+	printf("Info rsp: dlen %d\n", btohs(cmd->len));
 	raw_dump(level, frm);
 }
 
@@ -387,12 +384,13 @@ static void l2cap_parse(int level, struct frame *frm)
 	} else {
 		/* Connection oriented channel */
 		uint16_t psm = get_psm(!frm->in, cid);
+		uint32_t proto;
 
 		frm->cid = cid;
 
 		if (!p_filter(FILT_L2CAP)) {
 			p_indent(level, frm);
-			printf("L2CAP(d): cid 0x%x len %d [psm %d]\n", 
+			printf("L2CAP(d): cid 0x%x len %d [psm %d]\n",
 				cid, dlen, psm);
 			level++;
 		}
@@ -427,18 +425,24 @@ static void l2cap_parse(int level, struct frame *frm)
 				raw_dump(level + 1, frm);
 			break;
 
-		case 4099:
-			if (!p_filter(FILT_CMTP))
-				cmtp_dump(level, frm);
-			else
-				raw_dump(level + 1, frm);
-			break;
-
 		default:
-			if (p_filter(FILT_L2CAP))
+			proto = get_proto(frm->handle, psm);
+
+			switch (proto) {
+			case SDP_UUID_CMTP:
+				if (!p_filter(FILT_CMTP))
+					cmtp_dump(level, frm);
+				else
+					raw_dump(level + 1, frm);
 				break;
 
-			raw_dump(level, frm);
+			default:
+				if (p_filter(FILT_L2CAP))
+					break;
+
+				raw_dump(level, frm);
+				break;
+			}
 			break;
 		}
 	}
@@ -492,7 +496,7 @@ void l2cap_dump(int level, struct frame *frm)
 			raw_dump(level, frm);
 			return;
 		}
-		
+
 		if (frm->len > (fr->data_len - fr->len)) {
 			/* Bad fragment */
 			raw_dump(level, frm);

@@ -256,6 +256,7 @@ static inline void print_uuid(int n, struct frame *frm, uint16_t *psm)
 	}
 
 	if (psm && *psm > 0 && *psm != 0xffff) {
+		set_proto(frm->handle, *psm, uuid);
 		*psm = 0xffff;
 	}
 

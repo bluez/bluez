@@ -49,6 +49,54 @@ void init_parser(unsigned long flags, unsigned long filter,
 	parser.state  = 0;
 }
 
+#define PROTO_TABLE_SIZE 20
+
+static struct {
+	uint16_t handle;
+	uint16_t psm;
+	uint32_t proto;
+} proto_table[PROTO_TABLE_SIZE];
+
+void set_proto(uint16_t handle, uint16_t psm, uint32_t proto)
+{
+	int i, pos = -1;
+
+	if (psm < 0x1000)
+		return;
+
+	for (i = 0; i < PROTO_TABLE_SIZE; i++) {
+		if (proto_table[i].handle == handle && proto_table[i].psm == psm) {
+			pos = i;
+			break;
+		}
+
+		if (pos < 0 && !proto_table[i].handle && !proto_table[i].psm)
+			pos = i;
+	}
+
+	if (pos < 0)
+		return;
+
+	proto_table[pos].handle = handle;
+	proto_table[pos].psm    = psm;
+	proto_table[pos].proto  = proto;
+}
+
+uint32_t get_proto(uint16_t handle, uint16_t psm)
+{
+	int i, pos = -1;
+
+	for (i = 0; i < PROTO_TABLE_SIZE; i++) {
+		if (proto_table[i].handle == handle && proto_table[i].psm == psm)
+			return proto_table[i].proto;
+
+		if (!proto_table[i].handle && proto_table[i].psm == psm)
+			pos = i;
+	}
+
+	return (pos < 0) ? 0 : proto_table[pos].proto;
+}
+
 static inline void hex_dump(int level, struct frame *frm, int num)
 {
 	unsigned char *buf = frm->ptr;
@@ -57,7 +105,7 @@ static inline void hex_dump(int level, struct frame *frm, int num)
 	if ((num < 0) || (num > frm->len))
 		num = frm->len;
 
-	for (i=0, n=1; i<num; i++, n++) {
+	for (i = 0, n = 1; i < num; i++, n++) {
 		if (n == 1)
 			p_indent(level, frm);
 		printf("%2.2X ", buf[i]);
@@ -78,7 +126,7 @@ static inline void ascii_dump(int level, struct frame *frm, int num)
 	if ((num < 0) || (num > frm->len))
 		num = frm->len;
 
-	for (i=0, n=1; i<num; i++, n++) {
+	for (i = 0, n = 1; i < num; i++, n++) {
 		if (n == 1)
 			p_indent(level, frm);
 		printf("%1c ", isprint(buf[i]) ? buf[i] : '.');

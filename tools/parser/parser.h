@@ -46,10 +46,10 @@ struct frame {
 
 /* Parser filter */
 #define FILT_HCI	0x0001
-#define FILT_L2CAP	0x0002
-#define FILT_RFCOMM	0x0004
-#define FILT_SDP	0x0008
-#define FILT_SCO	0x0010
+#define FILT_SCO	0x0002
+#define FILT_L2CAP	0x0004
+#define FILT_RFCOMM	0x0008
+#define FILT_SDP	0x0010
 #define FILT_BNEP	0x0020
 #define FILT_CMTP	0x0040
 #define FILT_HIDP	0x0080
@@ -144,6 +144,9 @@ static inline void get_u128(struct frame *frm, uint64_t *l, uint64_t *h)
 }
 
 char *get_uuid_name(int uuid);
+
+void set_proto(uint16_t handle, uint16_t psm, uint32_t proto);
+uint32_t get_proto(uint16_t handle, uint16_t psm);
 
 void raw_dump(int level, struct frame *frm);
 void raw_ndump(int level, struct frame *frm, int num);
