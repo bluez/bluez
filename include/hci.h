@@ -363,13 +363,6 @@ typedef struct {
 } __attribute__ ((packed)) write_current_iac_lap_cp;
 #define WRITE_CURRENT_IAC_LAP_CP_SIZE 1+3*MAX_IAC_LAP
 
-#define OCF_WRITE_SUPERVISION_TIMEOUT	0x0037
-typedef struct {
-	uint16_t 	handle;
-	uint16_t	timeout;	/* in 0.625 ms units */
-} __attribute__ ((packed)) write_supervision_timeout_cp;
-#define WRITE_SUPERVISION_TIMEOUT_CP_SIZE 4
-
 /* Link Control */
 #define OGF_LINK_CTL	0x01 
 #define OCF_CREATE_CONN		0x0005
