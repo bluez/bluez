@@ -78,6 +78,7 @@ section		: WORD
 			{
 				opts = NULL;
 			}
+		;
 
 rfcomm		: RFCOMM
 			{
