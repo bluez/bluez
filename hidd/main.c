@@ -234,6 +234,42 @@ static void run_server(int ctl, int csk, int isk, int timeout)
 	}
 }
 
+static char *hidp_state[] = {
+	"unknown",
+	"connected",
+	"open",
+	"bound",
+	"listening",
+	"connecting",
+	"connecting",
+	"config",
+	"disconnecting",
+	"closed"
+};
+
+static void do_show(int ctl)
+{
+	struct hidp_connlist_req req;
+	struct hidp_conninfo ci[16];
+	char addr[18];
+	int i;
+
+	req.cnum = 16;
+	req.ci   = ci;
+
+	if (ioctl(ctl, HIDPGETCONNLIST, &req) < 0) {
+		perror("Can't get connection list");
+		close(ctl);
+		exit(1);
+	}
+
+	for (i = 0; i < req.cnum; i++) {
+		ba2str(&ci[i].bdaddr, addr);
+		printf("%s %s [%04x:%04x] %s\n", addr, ci[i].name,
+			ci[i].vendor, ci[i].product, hidp_state[ci[i].state]);
+	}
+}
+
 static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, int timeout)
 {
 	int csk, isk, err;
@@ -309,6 +345,46 @@ static void do_search(int ctl, bdaddr_t *bdaddr, int timeout)
 	}
 }
 
+static void do_kill(int ctl, bdaddr_t *bdaddr, uint32_t flags)
+{
+	struct hidp_conndel_req req;
+	struct hidp_connlist_req cl;
+	struct hidp_conninfo ci[16];
+	int i;
+
+	if (!bacmp(bdaddr, BDADDR_ALL)) {
+		cl.cnum = 16;
+		cl.ci   = ci;
+
+		if (ioctl(ctl, HIDPGETCONNLIST, &cl) < 0) {
+			perror("Can't get connection list");
+			close(ctl);
+			exit(1);
+		}
+
+		for (i = 0; i < cl.cnum; i++) {
+			bacpy(&req.bdaddr, &ci[i].bdaddr);
+			req.flags = flags;
+
+			if (ioctl(ctl, HIDPCONNDEL, &req) < 0) {
+				perror("Can't release connection");
+				close(ctl);
+				exit(1);
+			}
+		}
+
+	} else {
+		bacpy(&req.bdaddr, bdaddr);
+		req.flags = flags;
+
+		if (ioctl(ctl, HIDPCONNDEL, &req) < 0) {
+			perror("Can't release connection");
+			close(ctl);
+			exit(1);
+		}
+	}
+}
+
 static void usage(void)
 {
 	printf("hidd - Bluetooth HID daemon\n\n");
@@ -328,6 +404,9 @@ static void usage(void)
 		"\t--server             Start HID server\n"
 		"\t--search             Search for HID devices\n"
 		"\t--connect <bdaddr>   Connect remote HID device\n"
+		"\t--kill <bdaddr>      Terminate HID connection\n"
+		"\t--killall            Terminate all connections\n"
+		"\t--show               List current HID connections\n"
 		"\n");
 }
 
@@ -336,10 +415,18 @@ static struct option main_options[] = {
 	{ "nodaemon",	0, 0, 'n' },
 	{ "timeout",	1, 0, 't' },
 	{ "device",	1, 0, 'i' },
+	{ "show",	0, 0, 'l' },
+	{ "list",	0, 0, 'l' },
 	{ "server",	0, 0, 'd' },
 	{ "listen",	0, 0, 'd' },
 	{ "search",	0, 0, 's' },
+	{ "create",	1, 0, 'c' },
 	{ "connect",	1, 0, 'c' },
+	{ "disconnect",	1, 0, 'k' },
+	{ "terminate",	1, 0, 'k' },
+	{ "release",	1, 0, 'k' },
+	{ "kill",	1, 0, 'k' },
+	{ "killall",	1, 0, 'K' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -354,7 +441,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:nt:dsc:h", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:nt:ldsc:k:Kh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (!strncasecmp(optarg, "hci", 3))
@@ -368,6 +455,9 @@ int main(int argc, char *argv[])
 		case 't':
 			timeout = atoi(optarg);
 			break;
+		case 'l':
+			mode = 0;
+			break;
 		case 'd':
 			mode = 1;
 			break;
@@ -377,6 +467,14 @@ int main(int argc, char *argv[])
 		case 'c':
 			str2ba(optarg, &dev);
 			mode = 3;
+			break;
+		case 'k':
+			str2ba(optarg, &dev);
+			mode = 4;
+			break;
+		case 'K':
+			bacpy(&dev, BDADDR_ALL);
+			mode = 4;
 			break;
 		case 'h':
 			usage();
@@ -422,9 +520,15 @@ int main(int argc, char *argv[])
 		close(ctl);
 		exit(0);
 
+	case 4:
+		do_kill(ctl, &dev, 0);
+		close(ctl);
+		exit(0);
+
 	default:
-		usage();
-		exit(1);
+		do_show(ctl);
+		close(ctl);
+		exit(0);
 	}
 
 	if (daemon) {
