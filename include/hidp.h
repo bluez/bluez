@@ -79,7 +79,7 @@ struct hidp_conninfo {
 };
 
 struct hidp_connlist_req {
-	uint16_t cnum;
+	uint32_t cnum;
 	struct hidp_conninfo *ci;
 };
 

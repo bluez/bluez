@@ -63,7 +63,7 @@ struct cmtp_conninfo {
 };
 
 struct cmtp_connlist_req {
-	uint16_t cnum;
+	uint32_t cnum;
 	struct cmtp_conninfo *ci;
 };
 
