@@ -62,6 +62,7 @@ int main(void)
 	hci_set_bit(OCF_READ_ENCRYPT_MODE, ocf_mask);
 	hci_set_bit(OCF_READ_LOCAL_NAME, ocf_mask);
 	hci_set_bit(OCF_READ_CLASS_OF_DEV, ocf_mask);
+	hci_set_bit(OCF_READ_VOICE_SETTING, ocf_mask);
 
 	printf("OGF_HOST_CTL: { 0x%lx, 0x%lx, 0x%lx, 0x%lx }\n",
 			ocf_mask[0], ocf_mask[1], ocf_mask[2], ocf_mask[3]); 
