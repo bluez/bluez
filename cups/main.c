@@ -49,10 +49,6 @@ int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short
 int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies);
 int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned short data_psm, int fd, int copies);
 
-static void list_devices(void)
-{
-}
-
 /*
  *  Usage: printer-uri job-id user title copies options [file]
  *
@@ -82,7 +78,7 @@ int main(int argc, char *argv[])
 #endif /* HAVE_SIGSET */
 
 	if (argc == 1) {
-		list_devices();
+		puts("network bluetooth \"Unknown\" \"Bluetooth printer\"");
 		return 0;
 	}
 
