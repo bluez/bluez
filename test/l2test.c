@@ -257,6 +257,7 @@ static void do_listen(void (*handler)(int sk))
 {
 	struct sockaddr_l2 loc_addr, rem_addr;
 	struct l2cap_options opts;
+	struct l2cap_conninfo conn;
 	int s, s1, opt;
 	char ba[18];
 
@@ -332,15 +333,26 @@ static void do_listen(void (*handler)(int sk))
 
 		close(s);
 
+		memset(&opts, 0, sizeof(opts));
 		opt = sizeof(opts);
 		if (getsockopt(s1, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
 			syslog(LOG_ERR, "Can't get L2CAP options: %s (%d)", strerror(errno), errno);
+			close(s1);
+			exit(1);
+		}
+
+		memset(&conn, 0, sizeof(conn));
+		opt = sizeof(conn);
+		if (getsockopt(s1, SOL_L2CAP, L2CAP_CONNINFO, &conn, &opt) < 0) {
+			syslog(LOG_ERR, "Can't get L2CAP connection information: %s (%d)", strerror(errno), errno);
+			close(s1);
 			exit(1);
 		}
 
 		ba2str(&rem_addr.l2_bdaddr, ba);
-		syslog(LOG_INFO, "Connect from %s [imtu %d, omtu %d, flush_to %d]\n",
-					ba, opts.imtu, opts.omtu, opts.flush_to);
+		syslog(LOG_INFO, "Connect from %s [imtu %d, omtu %d, flush_to %d, mode %d, handle %d, class 0x%02x%02x%02x]\n",
+			ba, opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
+			conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
 		/* Enable SO_LINGER */
 		if (linger) {
