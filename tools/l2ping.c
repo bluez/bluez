@@ -51,9 +51,6 @@
 #include <resolv.h>
 #include <netdb.h>
 
-#include <asm/types.h>
-#include <asm/byteorder.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 
@@ -134,7 +131,7 @@ static void ping(char *svr)
 		/* Build command header */
 		cmd->code  = L2CAP_ECHO_REQ;
 		cmd->ident = id;
-		cmd->len   = __cpu_to_le16(size);
+		cmd->len   = htobs(size);
 
 		gettimeofday(&tv_send, NULL);
 
@@ -171,7 +168,7 @@ static void ping(char *svr)
 				exit(1);
 			}
 
-			cmd->len = __le16_to_cpu(cmd->len);
+			cmd->len = btohs(cmd->len);
 
 			/* Check for our id */
 			if( cmd->ident != id )
