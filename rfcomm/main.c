@@ -94,7 +94,7 @@ static char *rfcomm_flagstostr(uint32_t flags)
 
 static void print_dev_info(struct rfcomm_dev_info *di)
 {
-	char src[18], dst[18], addr[100];
+	char src[18], dst[18], addr[40];
 
 	ba2str(&di->src, src); ba2str(&di->dst, dst);
 
@@ -133,7 +133,7 @@ static void print_dev_list(int ctl, int flags)
 		print_dev_info(di + i);
 }
 
-static int create_dev(int ctl, int dev, int flags, bdaddr_t *bdaddr, int argc, char **argv)
+static int create_dev(int ctl, int dev, uint32_t flags, bdaddr_t *bdaddr, int argc, char **argv)
 {
 	struct rfcomm_dev_req req;
 	int err;
@@ -197,7 +197,7 @@ static int create_all(int ctl)
 	return 0;
 }
 
-static int release_dev(int ctl, int dev, int flags)
+static int release_dev(int ctl, int dev, uint32_t flags)
 {
 	struct rfcomm_dev_req req;
 	int err;
@@ -239,22 +239,92 @@ static int release_all(int ctl)
 
 static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv)
 {
+	struct sockaddr_rc laddr, raddr;
+	struct rfcomm_dev_req req;
 	struct sigaction sa;
 	struct pollfd p;
-	char devname[MAXPATHLEN];
-	int fd;
+	char dst[18], devname[MAXPATHLEN];
+	int sk, fd, alen;
 
-	if (create_dev(ctl, dev, 0, bdaddr, argc, argv) < 0)
+	laddr.rc_family = AF_BLUETOOTH;
+	bacpy(&laddr.rc_bdaddr, bdaddr);
+	laddr.rc_channel = 0;
+
+	if (argc < 2) {
+		if (rfcomm_read_config(rfcomm_config_file) < 0) {
+			perror("Can't open RFCOMM config file");
+			return;
+		}
+
+		raddr.rc_family = AF_BLUETOOTH;
+		bacpy(&raddr.rc_bdaddr, &rfcomm_opts[dev].bdaddr);
+		raddr.rc_channel = rfcomm_opts[dev].channel;
+
+		if (bacmp(&req.dst, BDADDR_ANY) == 0) {
+			fprintf(stderr, "Can't find a config entry for rfcomm%d\n", dev);
+			return;
+		}
+		
+	} else {
+		raddr.rc_family = AF_BLUETOOTH;
+		str2ba(argv[1], &raddr.rc_bdaddr);
+
+		if (argc > 2)
+			raddr.rc_channel = atoi(argv[2]);
+		else
+			raddr.rc_channel = 1;
+	}
+
+	if ((sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) < 0) {
+		perror("Can't create RFCOMM socket");
 		return;
+	}
+
+	if (bind(sk, (struct sockaddr *)&laddr, sizeof(laddr)) < 0) {
+		perror("Can't bind RFCOMM socket");
+		close(sk);
+		return;
+	}
+
+	if (connect(sk, (struct sockaddr *)&raddr, sizeof(raddr)) < 0) {
+		perror("Can't connect RFCOMM socket");
+		close(sk);
+		return;
+	}
+
+	alen = sizeof(laddr);
+	if (getsockname(sk, (struct sockaddr *)&laddr, &alen) < 0) {
+		perror("Can't get RFCOMM socket name");
+		close(sk);
+                return;
+	}
+
+	memset(&req, 0, sizeof(req));
+	req.dev_id = dev;
+	req.flags = (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP);
+
+	bacpy(&req.src, &laddr.rc_bdaddr);
+	bacpy(&req.dst, &raddr.rc_bdaddr);
+        req.channel = raddr.rc_channel;
+
+	if ((dev = ioctl(sk, RFCOMMCREATEDEV, &req)) < 0) {
+		perror("Can't create RFCOMM TTY");
+		close(sk);
+		return;
+	}
 
 	snprintf(devname, MAXPATHLEN - 1, "/dev/rfcomm%d", dev);
 	if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
 		snprintf(devname, MAXPATHLEN - 1, "/dev/bluetooth/rfcomm/%d", dev);
 		if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
 			perror("Can't open RFCOMM device");
-			goto release;
+			return;
 		}
 	}
+
+	ba2str(&req.dst, dst);
+	printf("Connected %s to %s on channel %d\n", devname, dst, req.channel);
+	printf("Press CTRL-C for hangup\n");
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags   = SA_NOCLDSTOP;
@@ -270,17 +340,17 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	sigaction(SIGHUP, &sa, NULL);
 
 	p.fd = fd;
-	p.events = POLLHUP;
+	p.events = POLLERR | POLLHUP;
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		poll(&p, 1, 100);
+		if (poll(&p, 1, 100))
+			break;
 	}
 
-	close(fd);
+	printf("Disconnected\n");
 
-release:
-	release_dev(ctl, dev, 0);
+	close(fd);
 }
 
 static void cmd_create(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv)
