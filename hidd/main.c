@@ -151,7 +151,7 @@ static int l2cap_accept(int sk, bdaddr_t *bdaddr)
 	return nsk;
 }
 
-static int create_device(int ctl, int csk, int isk, int timeout)
+static int create_device(int ctl, int csk, int isk, uint8_t subclass, int timeout)
 {
 	struct hidp_connadd_req req;
 	struct sockaddr_l2 addr;
@@ -186,6 +186,9 @@ static int create_device(int ctl, int csk, int isk, int timeout)
 	if (err < 0)
 		goto error;
 
+	if (subclass != 0x00)
+		req.subclass = subclass;
+
 	ba2str(&dst, bda);
 	syslog(LOG_INFO, "New HID device %s (%s)", bda, req.name);
 
@@ -201,7 +204,7 @@ error:
 	return err;
 }
 
-static void run_server(int ctl, int csk, int isk, int timeout)
+static void run_server(int ctl, int csk, int isk, uint8_t subclass, int timeout)
 {
 	struct pollfd p[2];
 	short events;
@@ -227,7 +230,7 @@ static void run_server(int ctl, int csk, int isk, int timeout)
 			ncsk = l2cap_accept(csk, NULL);
 			nisk = l2cap_accept(isk, NULL);
 
-			err = create_device(ctl, ncsk, nisk, timeout);
+			err = create_device(ctl, ncsk, nisk, subclass, timeout);
 			if (err < 0)
 				syslog(LOG_ERR, "HID create error %d (%s)",
 						errno, strerror(errno));
@@ -275,7 +278,7 @@ static void do_show(int ctl)
 	}
 }
 
-static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, int timeout)
+static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, int timeout)
 {
 	int csk, isk, err;
 
@@ -294,7 +297,7 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, int timeout)
 		exit(1);
 	}
 
-	err = create_device(ctl, csk, isk, timeout);
+	err = create_device(ctl, csk, isk, subclass, timeout);
 	if (err < 0) {
 		fprintf(stderr, "HID create error %d (%s)\n",
 						errno, strerror(errno));
@@ -306,7 +309,7 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, int timeout)
 	}
 }
 
-static void do_search(int ctl, bdaddr_t *bdaddr, int timeout)
+static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int timeout)
 {
 	inquiry_info *info = NULL;
 	bdaddr_t src, dst;
@@ -337,7 +340,7 @@ static void do_search(int ctl, bdaddr_t *bdaddr, int timeout)
 			ba2str(&dst, addr);
 
 			printf("\tConnecting to device %s\n", addr);
-			do_connect(ctl, &src, &dst, timeout);
+			do_connect(ctl, &src, &dst, subclass, timeout);
 		}
 	}
 
@@ -401,6 +404,7 @@ static void usage(void)
 	printf("Options:\n"
 		"\t-i <hciX|bdaddr>     Local HCI device or BD Address\n"
 		"\t-t <timeout>         Set idle timeout (in minutes)\n"
+		"\t-b <subclass>        Overwrite the boot mode subclass\n"
 		"\t-n, --nodaemon       Don't fork daemon to background\n"
 		"\t-h, --help           Display help\n"
 		"\n");
@@ -419,6 +423,7 @@ static void usage(void)
 static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "nodaemon",	0, 0, 'n' },
+	{ "subclass",	1, 0, 'b' },
 	{ "timeout",	1, 0, 't' },
 	{ "device",	1, 0, 'i' },
 	{ "show",	0, 0, 'l' },
@@ -442,6 +447,7 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	bdaddr_t bdaddr, dev;
 	uint32_t flags = 0;
+	uint8_t subclass = 0x00;
 	char addr[18];
 	int log_option = LOG_NDELAY | LOG_PID;
 	int opt, fd, ctl, csk, isk;
@@ -449,7 +455,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:nt:ldsc:k:Ku:h", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:nt:b:ldsc:k:Ku:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (!strncasecmp(optarg, "hci", 3))
@@ -462,6 +468,12 @@ int main(int argc, char *argv[])
 			break;
 		case 't':
 			timeout = atoi(optarg);
+			break;
+		case 'b':
+			if (!strncasecmp(optarg, "0x", 2))
+				subclass = (uint8_t) strtol(optarg, NULL, 16);
+			else
+				subclass = atoi(optarg);
 			break;
 		case 'l':
 			mode = 0;
@@ -524,12 +536,12 @@ int main(int argc, char *argv[])
 		break;
 
 	case 2:
-		do_search(ctl, &bdaddr, timeout);
+		do_search(ctl, &bdaddr, subclass, timeout);
 		close(ctl);
 		exit(0);
 
 	case 3:
-		do_connect(ctl, &bdaddr, &dev, timeout);
+		do_connect(ctl, &bdaddr, &dev, subclass, timeout);
 		close(ctl);
 		exit(0);
 
@@ -577,7 +589,7 @@ int main(int argc, char *argv[])
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
-	run_server(ctl, csk, isk, timeout);
+	run_server(ctl, csk, isk, subclass, timeout);
 
 	syslog(LOG_INFO, "Exit");
 
