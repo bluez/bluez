@@ -54,22 +54,18 @@ AC_SEARCH_LIB(bluetooth, hci_open_dev, $BLUEZ_LIBDIR,,
 		Please compile and install bluez-libs package.)
 )
 
-AC_ARG_WITH(glib,
-	--with-glib=DIR  GLib libraries and header files,
-	[
-	    GLIB_CFLAGS="-I$withval"
-	    GLIB_LDFLAGS="-L$withval/.libs -lglib"
-	],[
-	    AC_MSG_RESULT("checking for GLib ...")
-            AC_CHECK_PROG(GLIB, glib-config, yes, [not found])
-            if test "$GLIB" = "yes"; then
-		GLIB_CFLAGS="`glib-config --cflags`"
-		GLIB_LDFLAGS="`glib-config --libs`"
-	    else
-		AC_MSG_ERROR(GLib not found)
-	    fi
-	]
+AC_ARG_WITH(glib-config,
+        --with-glib-config=program  glib-config location,
+        GLIB_CONFIG="$withval",
+        [
+                AC_PATH_PROGS(GLIB_CONFIG, glib-config, no)
+                if test "$GLIB_CONFIG" = "no"; then
+                        AC_MSG_ERROR(GLib not found)
+                fi
+        ]
 )
+GLIB_CFLAGS="`$GLIB_CONFIG --cflags`"
+GLIB_LDFLAGS="`$GLIB_CONFIG --libs`"
 
 dnl Check for distro type.
 DISTRO=unknown
