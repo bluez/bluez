@@ -282,7 +282,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	if (dev_id < 0) {
 		dev_id = hci_get_route(&bdaddr);
 		if (dev_id < 0) {
-			perror("Device is not available.");
+			perror("Device is not available");
 			exit(1);
 		}
 	}
@@ -290,7 +290,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	printf("Scanning ...\n");
 	num_rsp = hci_inquiry(dev_id, length, num_rsp, NULL, &info, flags);
 	if (num_rsp < 0) {
-		perror("Inquiry failed.");
+		perror("Inquiry failed");
 		exit(1);
 	}
 
