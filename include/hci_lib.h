@@ -69,7 +69,8 @@ int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to);
 int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to);
 int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to);
 int hci_read_local_version(int dd, struct hci_version *ver, int to);
-int hci_class_of_dev(int dd, uint8_t *class, int to);
+int hci_read_class_of_dev(int dd, uint8_t *cls, int to);
+int hci_write_class_of_dev(int dd, uint32_t cls, int to);
 int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to);
 int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to);
 
