@@ -86,7 +86,8 @@ typedef struct {
 	uint8_t b[6];
 } __attribute__((packed)) bdaddr_t;
 
-#define BDADDR_ANY ((bdaddr_t *)"\000\000\000\000\000")
+#define BDADDR_ANY   (&(bdaddr_t) {{0, 0, 0, 0, 0, 0}})
+#define BDADDR_LOCAL (&(bdaddr_t) {{0, 0, 0, 0xff, 0xff, 0xff}})
 
 /* Copy, swap, convert BD Address */
 static inline int bacmp(bdaddr_t *ba1, bdaddr_t *ba2)
