@@ -1,3 +1,7 @@
+ver 2.4:
+	Added const qualifiers to appropriate function arguments.
+	Minor fixes.
+
 ver 2.3:
 	Fix hci_for_each_dev() for big endian machines.
 	Support for voice settings.
