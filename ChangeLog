@@ -1,3 +1,8 @@
+ver 2.10:
+	Fix and extend the unaligned access macros.
+	Make compiling with debug information optional.
+	Don't override CFLAGS from configure.
+
 ver 2.9:
 	Add L2CAP info type and info result definitions.
 	Add value for L2CAP_CONF_RFC_MODE.

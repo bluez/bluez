@@ -5,7 +5,7 @@ dnl
 AC_PREREQ(2.50)
 AC_INIT()
 
-AM_INIT_AUTOMAKE(bluez-libs, 2.9)
+AM_INIT_AUTOMAKE(bluez-libs, 2.10)
 AM_CONFIG_HEADER(config.h)
 
 AM_MAINTAINER_MODE
