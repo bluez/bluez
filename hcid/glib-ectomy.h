@@ -24,6 +24,11 @@ typedef const void *gconstpointer;
 typedef size_t gsize;
 typedef ssize_t gssize;
 
+#ifndef SSIZE_MAX
+#define SSIZE_MAX	INT_MAX
+#endif
+
+
 typedef struct _GIOChannel {
 	int fd;
 } GIOChannel;
