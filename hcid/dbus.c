@@ -16,12 +16,12 @@ static DBusConnection *connection;
 
 #define TIMEOUT (30 * 1000)		// 30 seconds
 
-#define SERVICE_NAME "org.handhelds.gpe.bluez"
-#define INTERFACE_NAME SERVICE_NAME ".PinAgent"
+#define SERVICE_NAME "org.bluez.PinAgent"
+#define INTERFACE_NAME SERVICE_NAME
 #define REQUEST_NAME "PinRequest"
-#define PATH_NAME "/org/handhelds/gpe/bluez/PinAgent"
+#define PATH_NAME "/org/bluez/PinAgent"
 
-#define WRONG_ARGS_ERROR "org.handhelds.gpe.bluez.Error.WrongArgs"
+#define WRONG_ARGS_ERROR "org.bluez.Error.WrongArgs"
 
 struct pin_request
 {
