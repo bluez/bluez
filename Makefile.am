@@ -2,7 +2,7 @@
 #  $Id$
 #
 
-SUBDIRS := hcid tools rfcomm sdpd dund pand hidd test scripts pcmcia
+SUBDIRS := hcid tools rfcomm sdpd dund pand hidd cups test scripts pcmcia
 
 DISTCLEANFILES = conftest.c conftest
 

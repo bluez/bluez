@@ -15,14 +15,18 @@ AC_DEFUN(AC_PREFIX_BLUEZ, [
 		if test "$mandir" = '${prefix}/man'; then
 			AC_SUBST([mandir], ['${prefix}/share/man'])
 		fi
+
+		bluez_prefix="$ac_default_prefix"
+	else
+		bluez_prefix="$prefix"
 	fi
 ])
 
 AC_DEFUN(AC_PATH_BLUEZ, [
 	AC_ARG_WITH(bluez, [  --with-bluez=DIR        BlueZ library is installed in DIR], [
 		if (test "$withval" = "yes"); then
-			bluez_includes=/usr/include
-			bluez_libraries=/usr/lib
+			bluez_includes=$bluez_prefix/include
+			bluez_libraries=$bluez_prefix/lib
 		else
 			bluez_includes=$withval/include
 			bluez_libraries=$withval/lib
@@ -62,15 +66,14 @@ AC_DEFUN(AC_PATH_BLUEZ, [
 ])
 
 AC_DEFUN(AC_PATH_DBUS, [
-	AC_ARG_ENABLE(dbus, [  --enable-dbus           enable D-BUS support],
-		dbus_enable=$enableval,
-		dbus_enable=no
-	)
+	AC_ARG_ENABLE(dbus, [  --enable-dbus           enable D-BUS support], [
+		dbus_enable=$enableval
+	])
 
 	AC_ARG_WITH(dbus, [  --with-dbus=DIR         D-BUS library is installed in DIR], [
 		if (test "$withval" = "yes"); then
-			dbus_includes=/usr/include
-			dbus_libraries=/usr/lib
+			dbus_includes=$bluez_prefix/include
+			dbus_libraries=$bluez_prefix/lib
 		else
 			dbus_includes=$withval/include
 			dbus_libraries=$withval/lib
@@ -86,7 +89,7 @@ AC_DEFUN(AC_PATH_DBUS, [
 	if test -n "$dbus_includes"; then 
 		CFLAGS="$CFLAGS -I$dbus_includes -I$dbus_includes/dbus-1.0"
 	else
-		CFLAGS="$CFLAGS -I/usr/include/dbus-1.0"
+		CFLAGS="$CFLAGS -I$bluez_prefix/include/dbus-1.0 -I/usr/include/dbus-1.0"
 	fi
 	CFLAGS="$CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE"
 
@@ -95,7 +98,7 @@ AC_DEFUN(AC_PATH_DBUS, [
 		CFLAGS="$CFLAGS -I$dbus_libraries/dbus-1.0/include"
 		LDFLAGS="$LDFLAGS -L$dbus_libraries"
 	else
-		CFLAGS="$CFLAGS -I/usr/lib/dbus-1.0/include"
+		CFLAGS="$CFLAGS -I$bluez_prefix/include/dbus-1.0 -I/usr/lib/dbus-1.0/include"
 	fi
 
 	if test "$dbus_enable" = "yes"; then
@@ -111,7 +114,7 @@ AC_DEFUN(AC_PATH_DBUS, [
 	if test -n "$dbus_includes"; then
 		DBUS_INCLUDES="-I$dbus_includes -I$dbus_includes/dbus-1.0"
 	else
-		DBUS_INCLUDES="-I/usr/include/dbus-1.0"
+		DBUS_INCLUDES="-I$bluez_prefix/include/dbus-1.0 -I/usr/include/dbus-1.0"
 	fi
 
 	LDFLAGS=$ac_save_LDFLAGS
@@ -120,7 +123,7 @@ AC_DEFUN(AC_PATH_DBUS, [
 		DBUS_LDFLAGS="-L$dbus_libraries"
 		DBUS_LIBS="-L$dbus_libraries $DBUS_LIBS"
 	else
-		DBUS_INCLUDES="$DBUS_INCLUDES -I/usr/lib/dbus-1.0/include"
+		DBUS_INCLUDES="$DBUS_INCLUDES -I$bluez_prefix/include/dbus-1.0 -I/usr/lib/dbus-1.0/include"
 	fi
 
 	AC_SUBST(DBUS_INCLUDES)
@@ -128,4 +131,42 @@ AC_DEFUN(AC_PATH_DBUS, [
 	AC_SUBST(DBUS_LIBS)
 
 	AM_CONDITIONAL(DBUS, test "$dbus_enable" = "yes")
+])
+
+AC_DEFUN(AC_PATH_CUPS, [
+	AC_ARG_ENABLE(cups, [  --enable-cups           enable CUPS support], [
+		cups_enable=$enableval
+		cups_prefix=/usr
+	])
+
+	AC_ARG_WITH(cups, [  --with-cups=DIR         CUPS is installed in DIR], [
+		if (test "$withval" = "yes"); then
+			cups_prefix=/usr
+		else
+			cups_prefix=$withval
+		fi
+		cups_enable=yes
+	])
+
+	CUPS_BACKEND_DIR=""
+
+	if test "$cups_enable" = "yes"; then
+		AC_MSG_CHECKING(for CUPS backend directory)
+
+		if (test -d "$cups_prefix/lib/cups/backend"); then
+			CUPS_BACKEND_DIR="$cups_prefix/lib/cups/backend"
+		else
+			cups_enable=no
+		fi
+
+		if test "$cups_enable" = "yes"; then
+			AC_MSG_RESULT($CUPS_BACKEND_DIR)
+		else
+			AC_MSG_RESULT($cups_enable)
+		fi
+	fi
+
+	AC_SUBST(CUPS_BACKEND_DIR)
+
+	AM_CONDITIONAL(CUPS, test "$cups_enable" = "yes")
 ])
