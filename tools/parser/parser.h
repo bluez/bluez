@@ -57,7 +57,8 @@ struct frame {
 #define FILT_RFCOMM	0x0004
 #define FILT_SDP	0x0008
 #define FILT_SCO	0x0010
-#define FILT_BNEP       0x0020
+#define FILT_BNEP	0x0020
+#define FILT_CMTP	0x0040
 
 #define STRUCT_OFFSET(type, member)  ((uint8_t *)&(((type *)NULL)->member) - \
                                      (uint8_t *)((type *)NULL))
@@ -136,6 +137,7 @@ void l2cap_dump(int level, struct frame *frm);
 void rfcomm_dump(int level, struct frame *frm);
 void sdp_dump(int level, struct frame *frm);
 void bnep_dump(int level, struct frame *frm);
+void cmtp_dump(int level, struct frame *frm);
 
 static inline void parse(struct frame *frm)
 {

@@ -242,6 +242,7 @@ static struct {
 	{ "rfcomm", FILT_RFCOMM },
 	{ "sdp",    FILT_SDP    },
 	{ "bnep",   FILT_BNEP	},
+	{ "cmtp",   FILT_CMTP	},
 	{ 0 }
 };
 

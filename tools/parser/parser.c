@@ -54,7 +54,7 @@ static inline void hex_dump(int level, struct frame *frm, int num)
 	unsigned char *buf = frm->ptr;
 	register int i,n;
 
-	if (num == -1)
+	if ((num < 0) || (num > frm->len))
 		num = frm->len;
 
 	for (i=0, n=1; i<num; i++, n++) {
@@ -75,7 +75,7 @@ static inline void ascii_dump(int level, struct frame *frm, int num)
 	unsigned char *buf = frm->ptr;
 	register int i,n;
 
-	if (num == -1)
+	if ((num < 0) || (num > frm->len))
 		num = frm->len;
 
 	for (i=0, n=1; i<num; i++, n++) {
