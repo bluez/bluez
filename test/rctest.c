@@ -3,7 +3,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -32,20 +32,13 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <syslog.h>
-#include <string.h>
 #include <errno.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <syslog.h>
 #include <signal.h>
-
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <resolv.h>
-#include <netdb.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -94,7 +87,7 @@ static int do_connect(char *svr)
 	int s, opt;
 
 	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM)) < 0) {
-		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
 		return -1;
 	}
 
@@ -102,7 +95,7 @@ static int do_connect(char *svr)
 	if (linger) {
 		struct linger l = { .l_onoff = 1, .l_linger = linger };
 		if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
-			syslog(LOG_ERR, "Can't enable SO_LINGER. %s(%d)",
+			syslog(LOG_ERR, "Can't enable SO_LINGER: %s (%d)",
 				strerror(errno), errno);
 			return -1;
 		}
@@ -112,7 +105,7 @@ static int do_connect(char *svr)
 	loc_addr.rc_family = AF_BLUETOOTH;
 	bacpy(&loc_addr.rc_bdaddr, &bdaddr);
 	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -121,7 +114,7 @@ static int do_connect(char *svr)
 	str2ba(svr, &rem_addr.rc_bdaddr);
 	rem_addr.rc_channel = channel;
 	if (connect(s, (struct sockaddr *) &rem_addr, sizeof(rem_addr)) < 0) {
-		syslog(LOG_ERR, "Can't connect. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't connect: %s (%d)", strerror(errno), errno);
 		close(s);
 		return -1;
 	}
@@ -129,7 +122,7 @@ static int do_connect(char *svr)
 	memset(&conn, 0, sizeof(conn));
 	opt = sizeof(conn);
 	if (getsockopt(s, SOL_RFCOMM, RFCOMM_CONNINFO, &conn, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get RFCOMM connection information. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't get RFCOMM connection information: %s (%d)", strerror(errno), errno);
 		close(s);
 		//return -1;
 	}
@@ -148,7 +141,7 @@ static void do_listen(void (*handler)(int sk))
 	char ba[18];
 
 	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM)) < 0) {
-		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -156,7 +149,7 @@ static void do_listen(void (*handler)(int sk))
 	bacpy(&loc_addr.rc_bdaddr, &bdaddr);
 	loc_addr.rc_channel = channel;
 	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -172,12 +165,12 @@ static void do_listen(void (*handler)(int sk))
 		opt |= RFCOMM_LM_SECURE;
 
 	if (setsockopt(s, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0) {
-		syslog(LOG_ERR, "Can't set RFCOMM link mode. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set RFCOMM link mode: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	if (listen(s, 10)) {
-		syslog(LOG_ERR,"Can not listen on the socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -186,7 +179,7 @@ static void do_listen(void (*handler)(int sk))
 	while(1) {
 		opt = sizeof(rem_addr);
 		if ((s1 = accept(s, (struct sockaddr *) &rem_addr, &opt)) < 0) {
-			syslog(LOG_ERR,"Accept failed. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR,"Accept failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
 		if (fork()) {
@@ -205,7 +198,7 @@ static void do_listen(void (*handler)(int sk))
 		if (linger) {
 			struct linger l = { .l_onoff = 1, .l_linger = linger };
 			if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
-				syslog(LOG_ERR, "Can't enable SO_LINGER. %s(%d)",
+				syslog(LOG_ERR, "Can't enable SO_LINGER: %s (%d)",
 					strerror(errno), errno);
 				exit(1);
 			}
@@ -213,7 +206,7 @@ static void do_listen(void (*handler)(int sk))
 
 		handler(s1);
 
-		syslog(LOG_INFO, "Disconnect");
+		syslog(LOG_INFO, "Disconnect: %m");
 		exit(0);
 	}
 }
@@ -246,13 +239,13 @@ static void recv_mode(int s)
 
 			if ((r = recv(s, buf, data_size, 0)) <= 0) {
 				if (r < 0)
-					syslog(LOG_ERR, "Read failed. %s(%d)",
+					syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
 				return;	
 			}
 #if 0
 			/* Check sequence */
-			sq = btohl(*(uint32_t *)buf);
+			sq = btohl(*(uint32_t *) buf);
 			if (seq != sq) {
 				syslog(LOG_INFO, "seq missmatch: %d -> %d", seq, sq);
 				seq = sq;
@@ -260,14 +253,14 @@ static void recv_mode(int s)
 			seq++;
 			
 			/* Check length */
-			l = btohs(*(uint16_t *)(buf+4));
+			l = btohs(*(uint16_t *) (buf + 4));
 			if (r != l) {
 				syslog(LOG_INFO, "size missmatch: %d -> %d", r, l);
 				continue;
 			}
 			
 			/* Verify data */	
-			for (i=6; i < r; i++) {
+			for (i = 6; i < r; i++) {
 				if (buf[i] != 0x7f)
 					syslog(LOG_INFO, "data missmatch: byte %d 0x%2.2x", i, buf[i]);
 			}
@@ -290,24 +283,24 @@ static void send_mode(int s)
 
 	syslog(LOG_INFO,"Sending ...");
 
-	for(i=6; i < data_size; i++)
-		buf[i]=0x7f;
+	for (i = 6; i < data_size; i++)
+		buf[i] = 0x7f;
 
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
 		*(uint32_t *) buf = htobl(seq);
-		*(uint16_t *)(buf+4) = htobs(data_size);
+		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
 		
 		if (send(s, buf, data_size, 0) <= 0) {
-			syslog(LOG_ERR, "Send failed. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
 	}
 
 	syslog(LOG_INFO, "Closing channel ...");
 	if (shutdown(s, SHUT_RDWR) < 0)
-		syslog(LOG_INFO, "Close failed. %m.");
+		syslog(LOG_INFO, "Close failed: %m");
 	else
 		syslog(LOG_INFO, "Done");
 }

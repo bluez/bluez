@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -33,21 +33,13 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <syslog.h>
-#include <string.h>
 #include <errno.h>
 #include <ctype.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <syslog.h>
 #include <signal.h>
 #include <sys/time.h>
-#include <sys/select.h>
-
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <resolv.h>
-#include <netdb.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -55,7 +47,7 @@
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 
-#define NIBBLE_TO_ASCII(c)      ((c) < 0x0a ? (c) + 0x30 : (c) + 0x57)
+#define NIBBLE_TO_ASCII(c)  ((c) < 0x0a ? (c) + 0x30 : (c) + 0x57)
 
 /* Test modes */
 enum {
@@ -121,7 +113,7 @@ static char *ltoh(unsigned long c, char* s)
 	c1     = c & 0x0f;
 	*(s++) = NIBBLE_TO_ASCII (c1);
 	*s     = 0;
-	return (s);
+	return s;
 }
 
 static char *ctoh(char c, char* s)
@@ -133,7 +125,7 @@ static char *ctoh(char c, char* s)
 	c1     = c & 0x0f;
 	*(s++) = NIBBLE_TO_ASCII (c1);
 	*s     = 0;
-	return (s);
+	return s;
 }
 
 static void hexdump(char *s, unsigned long l)
@@ -180,7 +172,7 @@ static int do_connect(char *svr)
 	int s, opt;
 
 	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0) {
-		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
 		return -1;
 	}
 
@@ -188,7 +180,7 @@ static int do_connect(char *svr)
 	loc_addr.l2_family = AF_BLUETOOTH;
 	bacpy(&loc_addr.l2_bdaddr, &bdaddr);
 	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -196,7 +188,7 @@ static int do_connect(char *svr)
 	memset(&opts, 0, sizeof(opts));
 	opt = sizeof(opts);
 	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get default L2CAP options. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't get default L2CAP options: %s (%d)", strerror(errno), errno);
 		return -1;	
 	}
 
@@ -204,7 +196,7 @@ static int do_connect(char *svr)
 	opts.omtu = omtu;
 	opts.imtu = imtu;
 	if (setsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, opt) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP options. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)", strerror(errno), errno);
 		return -1;
 	}
 
@@ -212,7 +204,7 @@ static int do_connect(char *svr)
 	if (linger) {
 		struct linger l = { .l_onoff = 1, .l_linger = linger };
 		if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
-			syslog(LOG_ERR, "Can't enable SO_LINGER. %s(%d)",
+			syslog(LOG_ERR, "Can't enable SO_LINGER: %s (%d)",
 				strerror(errno), errno);
 			return -1;
 		}
@@ -221,19 +213,19 @@ static int do_connect(char *svr)
 	/* Set link mode */
 	opt = 0;
 	if (reliable)
-		 opt |= L2CAP_LM_RELIABLE;
+		opt |= L2CAP_LM_RELIABLE;
 
 	if (setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP link mode. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set L2CAP link mode: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	memset(&rem_addr, 0, sizeof(rem_addr));
 	rem_addr.l2_family = AF_BLUETOOTH;
-	baswap(&rem_addr.l2_bdaddr, strtoba(svr));
+	str2ba(svr, &rem_addr.l2_bdaddr);
 	rem_addr.l2_psm = htobs(psm);
 	if (connect(s, (struct sockaddr *) &rem_addr, sizeof(rem_addr)) < 0 ) {
-		syslog(LOG_ERR, "Can't connect. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't connect: %s (%d)", strerror(errno), errno);
 		close(s);
 		return -1;
 	}
@@ -241,7 +233,7 @@ static int do_connect(char *svr)
 	memset(&opts, 0, sizeof(opts));
 	opt = sizeof(opts);
 	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get L2CAP options. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't get L2CAP options: %s (%d)", strerror(errno), errno);
 		close(s);
 		return -1;
 	}
@@ -249,7 +241,7 @@ static int do_connect(char *svr)
 	memset(&conn, 0, sizeof(conn));
 	opt = sizeof(conn);
 	if (getsockopt(s, SOL_L2CAP, L2CAP_CONNINFO, &conn, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get L2CAP connection information. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't get L2CAP connection information: %s (%d)", strerror(errno), errno);
 		close(s);
 		return -1;
 	}
@@ -269,15 +261,15 @@ static void do_listen(void (*handler)(int sk))
 	char ba[18];
 
 	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0) {
-		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	loc_addr.l2_family = AF_BLUETOOTH;
 	bacpy(&loc_addr.l2_bdaddr, &bdaddr);
-	loc_addr.l2_psm    = htobs(psm);
+	loc_addr.l2_psm = htobs(psm);
 	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -295,21 +287,21 @@ static void do_listen(void (*handler)(int sk))
 		opt |= L2CAP_LM_SECURE;
 
 	if (setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP link mode. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set L2CAP link mode: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	/* Get default options */
 	opt = sizeof(opts);
 	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get default L2CAP options. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't get default L2CAP options: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	/* Set new options */
 	opts.imtu = imtu;
 	if (setsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, opt) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP options. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -319,7 +311,7 @@ static void do_listen(void (*handler)(int sk))
 	}
 
 	if (listen(s, 10)) {
-		syslog(LOG_ERR,"Can not listen on the socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -328,10 +320,10 @@ static void do_listen(void (*handler)(int sk))
 	while(1) {
 		opt = sizeof(rem_addr);
 		if ((s1 = accept(s, (struct sockaddr *) &rem_addr, &opt)) < 0) {
-			syslog(LOG_ERR,"Accept failed. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR,"Accept failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
-		if( fork() ) {
+		if (fork()) {
 			/* Parent */
 			close(s1);
 			continue;
@@ -342,7 +334,7 @@ static void do_listen(void (*handler)(int sk))
 
 		opt = sizeof(opts);
 		if (getsockopt(s1, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
-			syslog(LOG_ERR, "Can't get L2CAP options. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Can't get L2CAP options: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
 
@@ -354,7 +346,7 @@ static void do_listen(void (*handler)(int sk))
 		if (linger) {
 			struct linger l = { .l_onoff = 1, .l_linger = linger };
 			if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
-				syslog(LOG_ERR, "Can't enable SO_LINGER. %s(%d)",
+				syslog(LOG_ERR, "Can't enable SO_LINGER: %s (%d)",
 					strerror(errno), errno);
 				exit(1);
 			}
@@ -362,7 +354,7 @@ static void do_listen(void (*handler)(int sk))
 
 		handler(s1);
 
-		syslog(LOG_INFO, "Disconnect. %m");
+		syslog(LOG_INFO, "Disconnect: %m");
 		exit(0);
 	}
 }
@@ -378,7 +370,7 @@ static void dump_mode(int s)
 
 		FD_ZERO(&rset);
 		FD_SET(s, &rset);
-		
+
 		if (select(s + 1, &rset, NULL, NULL, NULL) < 0)
 			return;
 
@@ -392,7 +384,7 @@ static void dump_mode(int s)
 					syslog(LOG_INFO, "L2CAP Error ECOMM - clearing error and continuing.\n");
 					optl = sizeof(opt);
 					if (getsockopt(s, SOL_SOCKET, SO_ERROR, &opt, &optl ) < 0) { // Clear error
-						syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s(%d)\n",
+						syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s (%d)\n",
 							strerror(errno), errno);
 						return;
 					}
@@ -420,12 +412,12 @@ static void recv_mode(int s)
 
 	seq = 0;
 	while (1) {
-		gettimeofday(&tv_beg,NULL);
+		gettimeofday(&tv_beg, NULL);
 		total = 0;
 		while (total < data_size) {
 			uint32_t sq;
 			uint16_t l;
-			int i,r;
+			int i, r;
 
 			if ((r = recv(s, buf, data_size, 0)) <= 0) {
 				if (r < 0) {
@@ -433,8 +425,8 @@ static void recv_mode(int s)
 						syslog(LOG_INFO, "L2CAP Error ECOMM - clearing error and continuing.\n");
 						optl = sizeof(opt);
 						if (getsockopt(s, SOL_SOCKET, SO_ERROR, &opt, &optl ) < 0) { // Clear error
-							syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s(%d)\n",
-							       strerror(errno), errno);
+							syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s (%d)\n",
+								strerror(errno), errno);
 							return;
 						}
 						continue;
@@ -447,7 +439,7 @@ static void recv_mode(int s)
 			}
 
 			/* Check sequence */
-			sq = btohl(*(uint32_t *)buf);
+			sq = btohl(*(uint32_t *) buf);
 			if (seq != sq) {
 				syslog(LOG_INFO, "seq missmatch: %d -> %d", seq, sq);
 				seq = sq;
@@ -455,25 +447,25 @@ static void recv_mode(int s)
 			seq++;
 
 			/* Check length */
-			l = btohs(*(uint16_t *)(buf+4));
+			l = btohs(*(uint16_t *) (buf + 4));
 			if (r != l) {
 				syslog(LOG_INFO, "size missmatch: %d -> %d", r, l);
 				continue;
 			}
 
 			/* Verify data */
-			for (i=6; i < r; i++) {
+			for (i = 6; i < r; i++) {
 				if (buf[i] != 0x7f)
 					syslog(LOG_INFO, "data missmatch: byte %d 0x%2.2x", i, buf[i]);
 			}
 
 			total += r;
 		}
-		gettimeofday(&tv_end,NULL);
+		gettimeofday(&tv_end, NULL);
 
-		timersub(&tv_end,&tv_beg,&tv_diff);
+		timersub(&tv_end, &tv_beg, &tv_diff);
 
-		syslog(LOG_INFO,"%ld bytes in %.2f sec, %.2f kB/s",total,
+		syslog(LOG_INFO,"%ld bytes in %.2f sec, %.2f kB/s", total,
 			tv2fl(tv_diff), (float)(total / tv2fl(tv_diff) ) / 1024.0);
 	}
 }
@@ -485,24 +477,24 @@ static void send_mode(int s)
 
 	syslog(LOG_INFO, "Sending ...");
 
-	for(i = 6; i < data_size; i++)
+	for (i = 6; i < data_size; i++)
 		buf[i] = 0x7f;
 
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
 		*(uint32_t *) buf = htobl(seq);
-		*(uint16_t *)(buf+4) = htobs(data_size);
+		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
 
 		if (send(s, buf, data_size, 0) <= 0) {
-			syslog(LOG_ERR, "Send failed. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
 	}
 
 	syslog(LOG_INFO, "Closing channel ...");
 	if (shutdown(s, SHUT_RDWR) < 0)
-		syslog(LOG_INFO, "Close failed. %m.");
+		syslog(LOG_INFO, "Close failed: %m");
 	else
 		syslog(LOG_INFO, "Done");
 }
@@ -514,17 +506,17 @@ static void senddump_mode(int s)
 
 	syslog(LOG_INFO, "Sending ...");
 
-	for(i = 6; i < data_size; i++)
+	for (i = 6; i < data_size; i++)
 		buf[i] = 0x7f;
 
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
 		*(uint32_t *) buf = htobl(seq);
-		*(uint16_t *)(buf+4) = htobs(data_size);
+		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
 
 		if (send(s, buf, data_size, 0) <= 0) {
-			syslog(LOG_ERR, "Send failed. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
 	}
