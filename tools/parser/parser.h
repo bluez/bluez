@@ -44,11 +44,12 @@ struct frame {
 /* Parser flags */
 #define DUMP_WIDTH	20
 
-#define DUMP_HEX	0x01
-#define DUMP_ASCII	0x02
-#define DUMP_TYPE_MASK	(DUMP_HEX | DUMP_ASCII)
-#define DUMP_TSTAMP	0x04
+#define DUMP_ASCII	0x01
+#define DUMP_HEX	0x02
+#define DUMP_EXT	0x04
 #define DUMP_RAW	0x08
+#define DUMP_TSTAMP	0x10
+#define DUMP_TYPE_MASK	(DUMP_ASCII | DUMP_HEX | DUMP_EXT)
 
 /* Parser filter */
 #define FILT_HCI	0x0001
@@ -156,6 +157,7 @@ uint32_t get_proto(uint16_t handle, uint16_t psm);
 
 void ascii_dump(int level, struct frame *frm, int num);
 void hex_dump(int level, struct frame *frm, int num);
+void ext_dump(int level, struct frame *frm, int num);
 void raw_dump(int level, struct frame *frm);
 void raw_ndump(int level, struct frame *frm, int num);
 

@@ -97,31 +97,10 @@ uint32_t get_proto(uint16_t handle, uint16_t psm)
 	return (pos < 0) ? 0 : proto_table[pos].proto;
 }
 
-void hex_dump(int level, struct frame *frm, int num)
-{
-	unsigned char *buf = frm->ptr;
-	register int i,n;
-
-	if ((num < 0) || (num > frm->len))
-		num = frm->len;
-
-	for (i = 0, n = 1; i < num; i++, n++) {
-		if (n == 1)
-			p_indent(level, frm);
-		printf("%2.2X ", buf[i]);
-		if (n == DUMP_WIDTH) {
-			printf("\n");
-			n = 0;
-		}
-	}
-	if (i && n!=1)
-		printf("\n");
-}
-
 void ascii_dump(int level, struct frame *frm, int num)
 {
 	unsigned char *buf = frm->ptr;
-	register int i,n;
+	register int i, n;
 
 	if ((num < 0) || (num > frm->len))
 		num = frm->len;
@@ -135,8 +114,59 @@ void ascii_dump(int level, struct frame *frm, int num)
 			n = 0;
 		}
 	}
-	if (i && n!=1)
+	if (i && n != 1)
 		printf("\n");
+}
+
+void hex_dump(int level, struct frame *frm, int num)
+{
+	unsigned char *buf = frm->ptr;
+	register int i, n;
+
+	if ((num < 0) || (num > frm->len))
+		num = frm->len;
+
+	for (i = 0, n = 1; i < num; i++, n++) {
+		if (n == 1)
+			p_indent(level, frm);
+		printf("%2.2X ", buf[i]);
+		if (n == DUMP_WIDTH) {
+			printf("\n");
+			n = 0;
+		}
+	}
+	if (i && n != 1)
+		printf("\n");
+}
+
+void ext_dump(int level, struct frame *frm, int num)
+{
+	unsigned char *buf = frm->ptr;
+	register int i, n = 0, size;
+
+	if ((num < 0) || (num > frm->len))
+		num = frm->len;
+
+	while (num > 0) {
+		p_indent(level, frm);
+		printf("%04x: ", n);
+
+		size = num > 16 ? 16 : num;
+
+		for (i = 0; i < size; i++)
+			printf("%02x ", buf[i]);
+		for (i = 0; i < 16 - size; i++)
+			printf("   ");
+		printf("  ");
+
+		for (i = 0; i < size; i++)
+			printf("%1c", isprint(buf[i]) ? buf[i] : '.');
+		printf("\n");
+
+		buf  += size;
+		num  -= size;
+		n    += size;
+	}
 }
 
 void raw_ndump(int level, struct frame *frm, int num)
@@ -153,6 +183,9 @@ void raw_ndump(int level, struct frame *frm, int num)
 		hex_dump(level, frm, num);
 		break;
 
+	case DUMP_EXT:
+		ext_dump(level, frm, num);
+		break;
 	}
 }
 

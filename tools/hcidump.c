@@ -335,8 +335,9 @@ static void usage(void)
 	"  -w, --save-dump=file       Save dump to a file\n"
 	"  -r, --read-dump=file       Read dump from a file\n"
 	"  -t, --ts                   Display time stamps\n"
-	"  -x, --hex                  Dump data in hex\n"
 	"  -a, --ascii                Dump data in ascii\n"
+	"  -x, --hex                  Dump data in hex\n"
+	"  -X, --ext                  Dump data in hex and ascii\n"
 	"  -R, --raw                  Raw mode\n"
 	"  -C, --cmtp=psm             PSM for CMTP\n"
 	"  -H, --hcrp=psm             PSM for HCRP\n"
@@ -352,8 +353,9 @@ static struct option main_options[] = {
 	{ "save-dump",	1, 0, 'w' },
 	{ "read-dump",	1, 0, 'r' },
 	{ "ts",		0, 0, 't' },
-	{ "hex",	0, 0, 'x' },
 	{ "ascii",	0, 0, 'a' },
+	{ "hex",	0, 0, 'x' },
+	{ "ext",	0, 0, 'X' },
 	{ "raw",	0, 0, 'R' },
 	{ "cmtp",	1, 0, 'C' },
 	{ "hcrp",	1, 0, 'H' },
@@ -367,7 +369,7 @@ int main(int argc, char *argv[])
 
 	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:s:p:w:r:txaRC:H:h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:s:p:w:r:taxXRC:H:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			device = atoi(optarg + 3);
@@ -395,12 +397,16 @@ int main(int argc, char *argv[])
 			flags |= DUMP_TSTAMP;
 			break;
 
+		case 'a': 
+			flags |= DUMP_ASCII;
+			break;
+
 		case 'x':
 			flags |= DUMP_HEX;
 			break;
 
-		case 'a': 
-			flags |= DUMP_ASCII;
+		case 'X':
+			flags |= DUMP_EXT;
 			break;
 
 		case 'R': 
