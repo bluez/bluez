@@ -1438,7 +1438,7 @@ int hci_read_link_supervision_timeout(int dd, uint16_t handle, uint16_t *timeout
 	struct hci_request rq;
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_READ_LINK_SUPERVISION_TIMEOUT;
 	rq.cparam = &handle;
 	rq.clen   = 2;
@@ -1468,7 +1468,7 @@ int hci_write_link_supervision_timeout(int dd, uint16_t handle, uint16_t timeout
 	cp.link_sup_to = timeout;
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_WRITE_LINK_SUPERVISION_TIMEOUT;
 	rq.cparam = &cp;
 	rq.clen   = WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE;
