@@ -43,6 +43,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include "csr.h"
+
 extern int optind,opterr,optopt;
 extern char *optarg;
 
@@ -268,7 +270,7 @@ void cmd_aclmtu(int ctl, int hdev, char *opt)
 
 	*((uint16_t *)&dr.dev_opt + 1) = mtu;
 	*((uint16_t *)&dr.dev_opt + 0) = mpkt;
-	
+
 	if (ioctl(ctl, HCISETACLMTU, (unsigned long)&dr) < 0) {
 		printf("Can't set ACL mtu on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
@@ -608,21 +610,21 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 			printf("Invalid argument format\n");
 			exit(1);
 		}
-			
+
 		rq.ogf = OGF_HOST_CTL;
 		rq.ocf = OCF_WRITE_INQ_ACTIVITY;
 		rq.cparam = &cp;
 		rq.clen = WRITE_INQ_ACTIVITY_CP_SIZE;
-		
+
 		cp.window = htobs((uint16_t)window);
 		cp.interval = htobs((uint16_t)interval);
-		
+
 		if (window < 0x12 || window > 0x1000)
 			printf("Warning: inquiry window out of range!\n");
-		
+
 		if (interval < 0x12 || interval > 0x1000)
 			printf("Warning: inquiry interval out of range!\n");
-		
+
 		if (hci_send_req(s, &rq, 1000) < 0) {
 			printf("Can't set inquiry parameters name on hci%d. %s(%d)\n",
 						hdev, strerror(errno), errno);
@@ -631,12 +633,12 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 	} else {
 		uint16_t window, interval;
 		read_inq_activity_rp rp;
-		
+
 		rq.ogf = OGF_HOST_CTL;
 		rq.ocf = OCF_READ_INQ_ACTIVITY;
 		rq.rparam = &rp;
 		rq.rlen = READ_INQ_ACTIVITY_RP_SIZE;
-		      
+
 		if (hci_send_req(s, &rq, 1000) < 0) {
 			printf("Can't read inquiry parameters on hci%d. %s(%d)\n", 
 							hdev, strerror(errno), errno);
@@ -648,7 +650,7 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 			exit(1);
 		}
 		print_dev_hdr(&di);
-		
+
 		window   = btohs(rp.window);
 		interval = btohs(rp.interval);
 		printf("\tInquiry interval: %u slots (%.2f ms), window: %u slots (%.2f ms)\n",
@@ -675,21 +677,21 @@ void cmd_page_parms(int ctl, int hdev, char *opt)
 			printf("Invalid argument format\n");
 			exit(1);
 		}
-			
+
 		rq.ogf = OGF_HOST_CTL;
 		rq.ocf = OCF_WRITE_PAGE_ACTIVITY;
 		rq.cparam = &cp;
 		rq.clen = WRITE_PAGE_ACTIVITY_CP_SIZE;
-		
+
 		cp.window = htobs((uint16_t)window);
 		cp.interval = htobs((uint16_t)interval);
-		
+
 		if (window < 0x12 || window > 0x1000)
 			printf("Warning: page window out of range!\n");
-		
+
 		if (interval < 0x12 || interval > 0x1000)
 			printf("Warning: page interval out of range!\n");
-		
+
 		if (hci_send_req(s, &rq, 1000) < 0) {
 			printf("Can't set page parameters name on hci%d. %s(%d)\n",
 						hdev, strerror(errno), errno);
@@ -698,12 +700,12 @@ void cmd_page_parms(int ctl, int hdev, char *opt)
 	} else {
 		uint16_t window, interval;
 		read_page_activity_rp rp;
-		
+
 		rq.ogf = OGF_HOST_CTL;
 		rq.ocf = OCF_READ_PAGE_ACTIVITY;
 		rq.rparam = &rp;
 		rq.rlen = READ_PAGE_ACTIVITY_RP_SIZE;
-		      
+
 		if (hci_send_req(s, &rq, 1000) < 0) {
 			printf("Can't read page parameters on hci%d. %s(%d)\n", 
 							hdev, strerror(errno), errno);
@@ -715,12 +717,12 @@ void cmd_page_parms(int ctl, int hdev, char *opt)
 			exit(1);
 		}
 		print_dev_hdr(&di);
-		
+
 		window   = btohs(rp.window);
 		interval = btohs(rp.interval);
 		printf("\tPage interval: %u slots (%.2f ms), window: %u slots (%.2f ms)\n",
 				interval, (float)interval * 0.625, window, (float)window * 0.625);
-        }
+	}
 }
 
 void cmd_page_to(int ctl, int hdev, char *opt)
@@ -742,17 +744,17 @@ void cmd_page_to(int ctl, int hdev, char *opt)
 			printf("Invalid argument format\n");
 			exit(1);
 		}
-			
+
 		rq.ogf = OGF_HOST_CTL;
 		rq.ocf = OCF_WRITE_PAGE_TIMEOUT;
 		rq.cparam = &cp;
 		rq.clen = WRITE_PAGE_TIMEOUT_CP_SIZE;
-		
+
 		cp.timeout = htobs((uint16_t)timeout);
-		
+
 		if (timeout < 0x01 || timeout > 0xFFFF)
 			printf("Warning: page timeout out of range!\n");
-		
+
 		if (hci_send_req(s, &rq, 1000) < 0) {
 			printf("Can't set page timeout on hci%d. %s(%d)\n",
 						hdev, strerror(errno), errno);
@@ -761,12 +763,12 @@ void cmd_page_to(int ctl, int hdev, char *opt)
 	} else {
 		uint16_t timeout;
 		read_page_timeout_rp rp;
-		
+
 		rq.ogf = OGF_HOST_CTL;
 		rq.ocf = OCF_READ_PAGE_TIMEOUT;
 		rq.rparam = &rp;
 		rq.rlen = READ_PAGE_TIMEOUT_RP_SIZE;
-		      
+
 		if (hci_send_req(s, &rq, 1000) < 0) {
 			printf("Can't read page timeout on hci%d. %s(%d)\n", 
 							hdev, strerror(errno), errno);
@@ -782,7 +784,7 @@ void cmd_page_to(int ctl, int hdev, char *opt)
 		timeout = btohs(rp.timeout);
 		printf("\tPage timeout: %u slots (%.2f ms)\n",
 				timeout, (float)timeout * 0.625);
-        }
+	}
 }
 
 static void print_rev_ericsson(int dd)
@@ -791,12 +793,12 @@ static void print_rev_ericsson(int dd)
 	unsigned char buf[102];
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = 0x3f;
-	rq.ocf = 0x000f;
+	rq.ogf    = 0x3f;
+	rq.ocf    = 0x000f;
 	rq.cparam = NULL;
-	rq.clen = 0;
+	rq.clen   = 0;
 	rq.rparam = &buf;
-	rq.rlen = sizeof(buf);
+	rq.rlen   = sizeof(buf);
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
 		printf("\n Can't read revision info. %s(%d)\n", strerror(errno), errno);
@@ -806,40 +808,28 @@ static void print_rev_ericsson(int dd)
 	printf("\t%s\n", buf + 1);
 }
 
-static struct {
-	char  *str;
-	uint16_t rev;
-} csr_map[] = {
-	{ "HCI 11.2 (bc01b)",	114 },
-	{ "HCI 11.3 (bc01b)",   115 },
-	{ "HCI 12.1 (bc01b)",	119 },
-	{ "HCI 12.3 (bc01b)",	134 },
-	{ "HCI 12.7 (bc01b)",	188 },
-	{ "HCI 12.8 (bc01b)",	218 },
-	{ "HCI 12.9 (bc01b)",	283 },
-	{ "HCI 13.10 (bc01b)",	309 },
-	{ "HCI 13.11 (bc01b)",	351 },
-	{ "HCI 16.4 (bc01b)",	523 },
-	{ "HCI 14.3 (bc02x)",	272 },
-	{ "HCI 14.6 (bc02x)",	336 },
-	{ "HCI 14.7 (bc02x)",	373 },
-	{ "HCI 14.8 (bc02x)",	487 },
-	{ "HCI 15.3 (bc02x)",	443 },
-	{ "HCI 16.4 (bc02x)",	525 },
-	{ NULL }
-};
-
-static void print_rev_csr(uint16_t rev)
+static void print_rev_csr(int dd, uint16_t rev)
 {
-	int i;
+	uint16_t buildid, chipver, chiprev, maxkeylen, mapsco;
 
-	for (i = 0; csr_map[i].str; i++)
-		if (csr_map[i].rev == rev) {
-			printf("\t%s\n", csr_map[i].str);
-			return;
-		}
+	if (csr_read_varid_uint16(dd, 0, CSR_VARID_BUILDID, &buildid) < 0) {
+		printf("\t%s\n", csr_buildidtostr(rev));
+		return;
+	}
 
-	printf("\tUnknown firmware\n");
+	printf("\t%s\n", csr_buildidtostr(buildid));
+
+	if (!csr_read_varid_uint16(dd, 1, CSR_VARID_CHIPVER, &chipver)) {
+		if (csr_read_varid_uint16(dd, 2, CSR_VARID_CHIPREV, &chiprev) < 0)
+			chiprev = 0;
+		printf("\tChip version: %s\n", csr_chipvertostr(chipver, chiprev));
+	}
+
+	if (!csr_read_varid_uint16(dd, 3, CSR_VARID_MAX_CRYPT_KEY_LENGTH, &maxkeylen))
+		printf("\tMax key size: %d bit\n", maxkeylen * 8);
+
+	if (!csr_read_pskey_uint16(dd, 4, CSR_PSKEY_HOSTIO_MAP_SCO_PCM, &mapsco))
+		printf("\tSCO mapping:  %s\n", mapsco ? "PCM" : "HCI");
 }
 
 static void print_rev_avm(uint16_t rev)
@@ -870,7 +860,7 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 		print_rev_ericsson(dd);
 		break;
 	case 10:
-		print_rev_csr(ver.hci_rev);
+		print_rev_csr(dd, ver.hci_rev);
 		break;
 	case 31:
 		print_rev_avm(ver.hci_rev);
@@ -890,13 +880,13 @@ void print_dev_hdr(struct hci_dev_info *di)
 	if (hdr == di->dev_id)
 		return;
 	hdr = di->dev_id;
-	
+
 	baswap(&bdaddr, &di->bdaddr);
 
 	printf("%s:\tType: %s\n", di->name, hci_dtypetostr(di->type) );
 	printf("\tBD Address: %s ACL MTU: %d:%d  SCO MTU: %d:%d\n",
-	       batostr(&bdaddr), di->acl_mtu, di->acl_pkts,
-	       di->sco_mtu, di->sco_pkts);
+		batostr(&bdaddr), di->acl_mtu, di->acl_pkts,
+		di->sco_mtu, di->sco_pkts);
 }
 
 void print_dev_info(int ctl, struct hci_dev_info *di)
@@ -908,10 +898,10 @@ void print_dev_info(int ctl, struct hci_dev_info *di)
 	printf("\t%s\n", hci_dflagstostr(di->flags) );
 
 	printf("\tRX bytes:%d acl:%d sco:%d events:%d errors:%d\n",
-	       st->byte_rx, st->acl_rx, st->sco_rx, st->evt_rx, st->err_rx);
+		st->byte_rx, st->acl_rx, st->sco_rx, st->evt_rx, st->err_rx);
 
 	printf("\tTX bytes:%d acl:%d sco:%d commands:%d errors:%d\n",
-	       st->byte_tx, st->acl_tx, st->sco_tx, st->cmd_tx, st->err_tx);
+		st->byte_tx, st->acl_tx, st->sco_tx, st->cmd_tx, st->err_tx);
 
 	if (all) {
 		print_dev_features(di, 0);
@@ -925,7 +915,7 @@ void print_dev_info(int ctl, struct hci_dev_info *di)
 			cmd_version(ctl, di->dev_id, NULL);
 		}
 	}
-		
+
 	printf("\n");
 }
 
@@ -1033,7 +1023,7 @@ int main(int argc, char **argv, char **env)
 			if (command[i].opt) {
 				argc--; argv++;
 			}
-			
+
 			command[i].func(ctl, di.dev_id, *argv);
 			cmd = 1;
 			break;

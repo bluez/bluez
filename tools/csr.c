@@ -1,0 +1,347 @@
+/*
+ *
+ *  CSR BlueCore specific functions
+ *
+ *  Copyright (C) 2003  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
+
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/socket.h>
+
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+
+#include "csr.h"
+
+
+static struct {
+	uint16_t id;
+	char *str;
+} csr_map[] = {
+	{  111,	"HCI 11.0"	},
+	{  112,	"HCI 11.1"	},
+	{  114,	"HCI 11.2"	},
+	{  115,	"HCI 11.3"	},
+	{  117,	"HCI 12.0"	},
+	{  119,	"HCI 12.1"	},
+	{  133,	"HCI 12.2"	},
+	{  134,	"HCI 12.3"	},
+	{  162,	"HCI 12.4"	},
+	{  165,	"HCI 12.5"	},
+	{  169,	"HCI 12.6"	},
+	{  188,	"HCI 12.7"	},
+	{  218,	"HCI 12.8"	},
+	{  283,	"HCI 12.9"	},
+	{  203,	"HCI 13.2"	},
+	{  204,	"HCI 13.2"	},
+	{  210,	"HCI 13.3"	},
+	{  211,	"HCI 13.3"	},
+	{  213,	"HCI 13.4"	},
+	{  214,	"HCI 13.4"	},
+	{  225,	"HCI 13.5"	},
+	{  226,	"HCI 13.5"	},
+	{  237,	"HCI 13.6"	},
+	{  238,	"HCI 13.6"	},
+	{  242,	"HCI 14.0"	},
+	{  243,	"HCI 14.0"	},
+	{  244,	"HCI 14.0"	},
+	{  245,	"HCI 14.0"	},
+	{  254,	"HCI 13.7"	},
+	{  255,	"HCI 13.7"	},
+	{  264,	"HCI 14.1"	},
+	{  265,	"HCI 14.1"	},
+	{  267,	"HCI 14.2"	},
+	{  268,	"HCI 14.2"	},
+	{  272,	"HCI 14.3"	},
+	{  273,	"HCI 14.3"	},
+	{  274,	"HCI 13.8"	},
+	{  275,	"HCI 13.8"	},
+	{  286,	"HCI 13.9"	},
+	{  287,	"HCI 13.9"	},
+	{  309,	"HCI 13.10"	},
+	{  310,	"HCI 13.10"	},
+	{  313,	"HCI 14.4"	},
+	{  314,	"HCI 14.4"	},
+	{  323,	"HCI 14.5"	},
+	{  324,	"HCI 14.5"	},
+	{  336,	"HCI 14.6"	},
+	{  337,	"HCI 14.6"	},
+	{  351,	"HCI 13.11"	},
+	{  352,	"HCI 13.11"	},
+	{  362,	"HCI 15.0"	},
+	{  363,	"HCI 15.0"	},
+	{  364,	"HCI 15.0"	},
+	{  365,	"HCI 15.0"	},
+	{  373,	"HCI 14.7"	},
+	{  374,	"HCI 14.7"	},
+	{  379,	"HCI 15.1"	},
+	{  380,	"HCI 15.1"	},
+	{  381,	"HCI 15.1"	},
+	{  382,	"HCI 15.1"	},
+	{  392,	"HCI 15.2"	},
+	{  393,	"HCI 15.2"	},
+	{  394,	"HCI 15.2"	},
+	{  395,	"HCI 15.2"	},
+	{  436,	"HCI 16.0"	},
+	{  437,	"HCI 16.0"	},
+	{  438,	"HCI 16.0"	},
+	{  439,	"HCI 16.0"	},
+	{  443,	"HCI 15.3"	},
+	{  444,	"HCI 15.3"	},
+	{  465,	"HCI 16.1"	},
+	{  466,	"HCI 16.1"	},
+	{  467,	"HCI 16.1"	},
+	{  468,	"HCI 16.1"	},
+	{  487,	"HCI 14.8"	},
+	{  488,	"HCI 14.8"	},
+	{  492,	"HCI 16.2"	},
+	{  493,	"HCI 16.2"	},
+	{  495,	"HCI 16.2"	},
+	{  496,	"HCI 16.2"	},
+	{  502,	"HCI 16.1.1"	},
+	{  503,	"HCI 16.1.1"	},
+	{  504,	"HCI 16.1.1"	},
+	{  505,	"HCI 16.1.1"	},
+	{  506,	"HCI 16.1.2"	},
+	{  507,	"HCI 16.1.2"	},
+	{  508,	"HCI 16.1.2"	},
+	{  509,	"HCI 16.1.2"	},
+	{  516,	"HCI 16.3"	},
+	{  517,	"HCI 16.3"	},
+	{  518,	"HCI 16.3"	},
+	{  519,	"HCI 16.3"	},
+	{  523,	"HCI 16.4"	},
+	{  524,	"HCI 16.4"	},
+	{  525,	"HCI 16.4"	},
+	{  526,	"HCI 16.4"	},
+	{  553,	"HCI 15.3"	},
+	{  554,	"HCI 15.3"	},
+	{  562,	"HCI 16.5"	},
+	{  563,	"HCI 16.5"	},
+	{  564,	"HCI 16.5"	},
+	{  565,	"HCI 16.5"	},
+	{  593,	"HCI 17.0"	},
+	{  594,	"HCI 17.0"	},
+	{  595,	"HCI 17.0"	},
+	{  599,	"HCI 17.0"	},
+	{  600,	"HCI 17.0"	},
+	{  608,	"HCI 13.10.1"	},
+	{  609,	"HCI 13.10.1"	},
+	{  613,	"HCI 17.1"	},
+	{  614,	"HCI 17.1"	},
+	{  615,	"HCI 17.1"	},
+	{  616,	"HCI 17.1"	},
+	{  618,	"HCI 17.1"	},
+	{  624,	"HCI 17.2"	},
+	{  625,	"HCI 17.2"	},
+	{  626,	"HCI 17.2"	},
+	{  627,	"HCI 17.2"	},
+	{  637,	"HCI 16.6"	},
+	{  638,	"HCI 16.6"	},
+	{  639,	"HCI 16.6"	},
+	{  640,	"HCI 16.6"	},
+	{  642,	"HCI 13.10.2"	},
+	{  643,	"HCI 13.10.2"	},
+	{  644,	"HCI 13.10.3"	},
+	{  645,	"HCI 13.10.3"	},
+	{  668,	"HCI 13.10.4"	},
+	{  669,	"HCI 13.10.4"	},
+	{  681,	"HCI 16.7"	},
+	{  682,	"HCI 16.7"	},
+	{  683,	"HCI 16.7"	},
+	{  684,	"HCI 16.7"	},
+	{  704,	"HCI 16.8"	},
+	{  718,	"HCI 16.4.1"	},
+	{  719,	"HCI 16.4.1"	},
+	{  720,	"HCI 16.4.1"	},
+	{  721,	"HCI 16.4.1"	},
+	{  722,	"HCI 16.7.1"	},
+	{  723,	"HCI 16.7.1"	},
+	{  724,	"HCI 16.7.1"	},
+	{  725,	"HCI 16.7.1"	},
+	{  731,	"HCI 16.7.2"	},
+	{  732,	"HCI 16.7.2"	},
+	{  733,	"HCI 16.7.2"	},
+	{  734,	"HCI 16.7.2"	},
+	{  735,	"HCI 16.4.2"	},
+	{  736,	"HCI 16.4.2"	},
+	{  737,	"HCI 16.4.2"	},
+	{  738,	"HCI 16.4.2"	},
+	{  750,	"HCI 16.7.3"	},
+	{  751,	"HCI 16.7.3"	},
+	{  752,	"HCI 16.7.3"	},
+	{  753,	"HCI 16.7.3"	},
+	{  760,	"HCI 16.7.4"	},
+	{  761,	"HCI 16.7.4"	},
+	{  762,	"HCI 16.7.4"	},
+	{  763,	"HCI 16.7.4"	},
+	{  770,	"HCI 16.9"	},
+	{  771,	"HCI 16.9"	},
+	{  772,	"HCI 16.9"	},
+	{  773,	"HCI 16.9"	},
+	{  774,	"HCI 17.3"	},
+	{  775,	"HCI 17.3"	},
+	{  776,	"HCI 17.3"	},
+	{  777,	"HCI 17.3"	},
+	{  781,	"HCI 16.7.5"	},
+	{  786,	"HCI 16.10"	},
+	{  787,	"HCI 16.10"	},
+	{  788,	"HCI 16.10"	},
+	{  789,	"HCI 16.10"	},
+	{  791,	"HCI 16.4.3"	},
+	{  792,	"HCI 16.4.3"	},
+	{  793,	"HCI 16.4.3"	},
+	{  794,	"HCI 16.4.3"	},
+	{  798,	"HCI 16.11"	},
+	{  799,	"HCI 16.11"	},
+	{  800,	"HCI 16.11"	},
+	{  801,	"HCI 16.11"	},
+	{  806,	"HCI 16.7.5"	},
+	{  807,	"HCI 16.12"	},
+	{  808,	"HCI 16.12"	},
+	{  809,	"HCI 16.12"	},
+	{  810,	"HCI 16.12"	},
+	{  817,	"HCI 16.13"	},
+	{  818,	"HCI 16.13"	},
+	{  819,	"HCI 16.13"	},
+	{  820,	"HCI 16.13"	},
+	{  823,	"HCI 13.10.5"	},
+	{  824,	"HCI 13.10.5"	},
+	{  826,	"HCI 16.14"	},
+	{  827,	"HCI 16.14"	},
+	{  828,	"HCI 16.14"	},
+	{  829,	"HCI 16.14"	},
+	{  843,	"HCI 17.3.1"	},
+	{  856,	"HCI 17.3.2"	},
+	{  857,	"HCI 17.3.2"	},
+	{  858,	"HCI 17.3.2"	},
+	{    0, }
+};
+
+char *csr_buildidtostr(uint16_t id)
+{
+	static char str[12];
+	int i;
+
+	for (i = 0; csr_map[i].id; i++)
+		if (csr_map[i].id == id)
+			return csr_map[i].str;
+
+	snprintf(str, 11, "Build %d", id);
+	return str;
+}
+
+char *csr_chipvertostr(uint16_t ver, uint16_t rev)
+{
+	switch (ver) {
+	case 0x00:
+		return "BlueCore01a";
+	case 0x01:
+		if (rev == 0x64)
+			return "BlueCore01b (ES)";
+		else
+			return "BlueCore01b";
+	case 0x02:
+		if (rev == 0x89)
+			return "BlueCore02 (ES2)";
+		else
+			return "BlueCore02";
+	default:
+		return "Unknown";
+	}
+}
+
+int csr_read_varid_uint16(int dd, uint16_t seqnum, uint16_t varid, uint16_t *value)
+{
+	unsigned char cmd[] = { 0x00, 0x00, 0x09, 0x00,
+				seqnum & 0xff, seqnum >> 8, varid & 0xff, varid >> 8, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+	unsigned char cp[254], rp[254];
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp[0] = 0xc2;
+	memcpy(cp + 1, cmd, sizeof(cmd));
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_VENDOR_CMD;
+	rq.ocf    = 0x00;
+	rq.event  = EVT_VENDOR;
+	rq.cparam = cp;
+	rq.clen   = sizeof(cmd) + 1;
+	rq.rparam = rp;
+	rq.rlen   = sizeof(rp);
+
+	if (hci_send_req(dd, &rq, 2000) < 0)
+		return -1;
+
+	if (rp[0] != 0xc2) {
+		errno = EIO;
+		return -1;
+	}
+
+	if ((rp[9] + (rp[10] << 8)) != 0)
+		return -1;
+
+	*value = rp[11] + (rp[12] << 8);
+
+	return 0;
+}
+
+int csr_read_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t *value)
+{
+	unsigned char cmd[] = { 0x00, 0x00, 0x09, 0x00,
+				seqnum & 0xff, seqnum >> 8, 0x03, 0x70, 0x00, 0x00,
+				pskey & 0xff, pskey >> 8, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+	unsigned char cp[254], rp[254];
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp[0] = 0xc2;
+	memcpy(cp + 1, cmd, sizeof(cmd));
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_VENDOR_CMD;
+	rq.ocf    = 0x00;
+	rq.event  = EVT_VENDOR;
+	rq.cparam = cp;
+	rq.clen   = sizeof(cmd) + 1;
+	rq.rparam = rp;
+	rq.rlen   = sizeof(rp);
+
+	if (hci_send_req(dd, &rq, 2000) < 0)
+		return -1;
+
+	if (rp[0] != 0xc2) {
+		errno = EIO;
+		return -1;
+	}
+
+	if ((rp[9] + (rp[10] << 8)) != 0)
+		return -1;
+
+	*value = rp[17] + (rp[18] << 8);
+
+	return 0;
+}
