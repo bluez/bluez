@@ -15,4 +15,4 @@ redhat:
 
 debian:
 	$(mkinstalldirs) $(DESTDIR)/etc/init.d
-	$(INSTALL) -m 755 $(srcdir)/bluetooth.rc.rh $(DESTDIR)/etc/init.d/bluetooth
+	$(INSTALL) -m 755 $(srcdir)/bluetooth.rc.deb $(DESTDIR)/etc/init.d/bluetooth

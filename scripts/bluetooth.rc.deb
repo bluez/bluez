@@ -1,0 +1,60 @@
+#! /bin/sh
+#
+# bluetooth    Bluetooth subsystem starting and stopping
+#
+# Edd Dumbill <edd@usefulinc.com>
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/sbin/hcid
+HCIATTACH=/sbin/hciattach
+UART_CONF=/etc/bluetooth/uart
+NAME=hcid
+DESC=bluez-utils
+
+test -f $DAEMON || exit 0
+test -f $HCIATTACH || exit 0
+
+set -e
+
+start_uarts() 
+{
+    [ -f $HCIATTACH -a -f $UART_CONF ] || return
+    grep -v '^#' $UART_CONF | while read i; do
+        $HCIATTACH $i
+    done
+}
+
+stop_uarts()
+{
+    killall hciattach > /dev/null 2>&1 || true
+}
+
+case "$1" in
+  start)
+	echo -n "Starting $DESC: "
+	$DAEMON
+	echo "$NAME."
+	start_uarts || true
+	;;
+  stop)
+	echo -n "Stopping $DESC: "
+	killall $NAME || true
+	echo "$NAME."
+	stop_uarts
+	;;
+  restart|force-reload)
+	echo -n "Restarting $DESC: "
+	killall $NAME || true
+	sleep 1
+	$DAEMON
+	echo "$NAME."
+	;;
+  *)
+	N=/etc/init.d/bluez-utils
+	# echo "Usage: $N {start|stop|restart|reload|force-reload}" >&2
+	echo "Usage: $N {start|stop|restart|force-reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0
