@@ -52,7 +52,9 @@ enum {
 	RECONNECT,
 	MULTY,
 	DUMP,
-	CONNECT
+	CONNECT,
+	CRECV,
+	LSEND
 };
 
 unsigned char *buf;
@@ -287,13 +289,10 @@ void recv_mode(int s)
 	}
 }
 
-void send_mode(char *svr)
+void send_mode(int s)
 {
 	uint32_t seq;
-	int s, i;
-
-	if( (s = do_connect(svr)) < 0 )
-		exit(1);
+	int i;
 
 	syslog(LOG_INFO,"Sending ...");
 
@@ -355,12 +354,15 @@ void usage(void)
 		"Usage:\n");
 	printf("\tl2test <mode> [options] [bdaddr]\n");
 	printf("Modes:\n"
-		"\t-r receive (server)\n"
-		"\t-d dump (server)\n"
-		"\t-n silent connect (client)\n"
-		"\t-c reconnect (client)\n"
-		"\t-m multiple connects (client)\n"
-		"\t-s send (client)\n");
+		"\t-r listen and receive\n"
+		"\t-w listen and send\n"
+		"\t-d listen and dump incomming data\n"
+		"\t-s connect and send\n"
+		"\t-u connect and receive\n"
+		"\t-n connect and be silent\n"
+		"\t-c connect, disconnect, connect, ...\n"
+		"\t-m multiple connects\n");
+
 	printf("Options:\n"
 		"\t[-b bytes] [-S bdaddr] [-P psm]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
@@ -374,10 +376,12 @@ extern char *optarg;
 
 int main(int argc ,char *argv[])
 {
+	int opt, mode, s, need_addr;
 	struct sigaction sa;
-	int opt, mode = RECV;
 
-	while ((opt=getopt(argc,argv,"rdscmnb:P:I:O:S:MAE")) != EOF) {
+	mode = RECV; need_addr = 0;
+	
+	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:MAE")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -385,6 +389,16 @@ int main(int argc ,char *argv[])
 		
 		case 's':
 			mode = SEND;
+			need_addr = 1;
+			break;
+
+		case 'w':
+			mode = LSEND;
+			break;
+
+		case 'u':
+			mode = CRECV;
+			need_addr = 1;
 			break;
 
 		case 'd':
@@ -393,14 +407,17 @@ int main(int argc ,char *argv[])
 
 		case 'c':
 			mode = RECONNECT;
+			need_addr = 1;
 			break;
 
 		case 'n':
 			mode = CONNECT;
+			need_addr = 1;
 			break;
 
 		case 'm':
 			mode = MULTY;
+			need_addr = 1;
 			break;
 
 		case 'b':
@@ -441,7 +458,7 @@ int main(int argc ,char *argv[])
 		}
 	}
 
-	if (!(argc - optind) && (mode!=RECV && mode !=DUMP)) {
+	if (need_addr && !(argc - optind)) {
 		usage();
 		exit(1);
 	}
@@ -463,12 +480,26 @@ int main(int argc ,char *argv[])
 			do_listen(recv_mode);
 			break;
 
+		case CRECV:
+			s = do_connect(argv[optind]);
+			if (s < 0)
+				exit(1);
+			recv_mode(s);
+			break;
+
 		case DUMP:
 			do_listen(dump_mode);
 			break;
 
 		case SEND:
-			send_mode(argv[optind]);
+			s = do_connect(argv[optind]);
+			if (s < 0)
+				exit(1);
+			send_mode(s);
+			break;
+
+		case LSEND:
+			do_listen(send_mode);
 			break;
 
 		case RECONNECT:
