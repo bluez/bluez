@@ -31,15 +31,69 @@
 extern "C" {
 #endif
 
+/* RFCOMM defaults */
+#define RFCOMM_DEFAULT_MTU  127
+
 #define RFCOMM_PSM 3
 
 #define RFCOMM_CONN_TIMEOUT (HZ * 30)
 #define RFCOMM_DISC_TIMEOUT (HZ * 5)
 
+/* RFCOMM socket address */
 struct sockaddr_rc {
 	sa_family_t rc_family;
 	bdaddr_t    rc_bdaddr;
 	int         rc_channel;
 };
+
+/* RFCOMM TTY support */
+#define RFCOMM_MAX_DEV  256
+
+#define RFCOMM_UNKNOWN  0
+#define RFCOMM_CONNECT  1
+#define RFCOMM_BIND     2
+
+#define RFCOMMCONNECT		_IOW('R', 201, int)
+#define RFCOMMDISCONNECT	_IOW('R', 202, int)
+#define RFCOMMBIND		_IOW('R', 203, int)
+#define RFCOMMRELEASE		_IOW('R', 204, int)
+
+#define RFCOMMGETDEVLIST	_IOR('R', 211, int)
+#define RFCOMMGETDEVINFO	_IOR('R', 212, int)
+
+struct rfcomm_dev_conn_req {
+	uint16_t dev_id;
+	bdaddr_t src;
+	bdaddr_t dst;
+	uint8_t  chn;
+};
+
+struct rfcomm_dev_disc_req {
+	uint16_t dev_id;
+};
+
+struct rfcomm_dev_data_req {
+	uint16_t dev_id;
+	uint32_t dev_opt;
+};
+
+struct rfcomm_dev_list_req {
+	uint16_t dev_num;
+	struct rfcomm_dev_data_req dev_req[0];
+};
+
+struct rfcomm_dev_info_req {
+	uint16_t dev_id;
+	uint8_t  type;
+	uint32_t flags;
+	uint16_t state;
+	bdaddr_t src;
+	bdaddr_t dst;
+	uint8_t  chn;
+};
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __RFCOMM_H */
