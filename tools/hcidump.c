@@ -319,7 +319,7 @@ static void parse_filter(int argc, char **argv)
 
 	for (i = 0; i < argc; i++) {
 		for (n = 0; filters[n].name; n++) {
-			if (!strcmp(filters[n].name, argv[i])) {
+			if (!strcasecmp(filters[n].name, argv[i])) {
 				filter |= filters[n].flag;
 				break;
 			}
