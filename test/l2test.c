@@ -35,6 +35,7 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/select.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -236,8 +237,24 @@ void dump_mode(int s)
 	int len;
 
 	syslog(LOG_INFO, "Receiving ...");
-	while ((len = read(s, buf, data_size)) > 0)
+	while (1) {
+		fd_set rset;
+	
+		FD_ZERO(&rset);
+		FD_SET(s, &rset);
+		
+		if (select(s + 1, &rset, NULL, NULL, NULL) < 0)
+			return;
+
+		if (!FD_ISSET(s, &rset))
+			continue;
+
+		len = read(s, buf, data_size);
+		if (len <= 0)
+			return;
+
 		syslog(LOG_INFO, "Recevied %d bytes\n", len);
+	}
 }
 
 void recv_mode(int s)
