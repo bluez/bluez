@@ -219,40 +219,40 @@ static void capabilities(int level, struct frame *frm)
 			case 0:
 				tmp = get_u8(frm);
 				p_indent(level + 1, frm);
-				if (tmp & 0x10)
-					printf("16kHz ");
-				if (tmp & 0x20)
-					printf("32kHz ");
-				if (tmp & 0x40)
-					printf("44.1kHz ");
 				if (tmp & 0x80)
+					printf("16kHz ");
+				if (tmp & 0x40)
+					printf("32kHz ");
+				if (tmp & 0x20)
+					printf("44.1kHz ");
+				if (tmp & 0x10)
 					printf("48kHz ");
 				printf("\n");
 				p_indent(level + 1, frm);
-				if (tmp & 0x01)
-					printf("Mono ");
-				if (tmp & 0x02)
-					printf("DualChannel ");
-				if (tmp & 0x04)
-					printf("Stereo ");
 				if (tmp & 0x08)
+					printf("Mono ");
+				if (tmp & 0x04)
+					printf("DualChannel ");
+				if (tmp & 0x02)
+					printf("Stereo ");
+				if (tmp & 0x01)
 					printf("JointStereo ");
 				printf("\n");
 				tmp = get_u8(frm);
 				p_indent(level + 1, frm);
-				if (tmp & 0x10)
-					printf("4 ");
-				if (tmp & 0x20)
-					printf("8 ");
-				if (tmp & 0x40)
-					printf("12 ");
 				if (tmp & 0x80)
+					printf("4 ");
+				if (tmp & 0x40)
+					printf("8 ");
+				if (tmp & 0x20)
+					printf("12 ");
+				if (tmp & 0x10)
 					printf("16 ");
 				printf("Blocks\n");
 				p_indent(level + 1, frm);
-				if (tmp & 0x04)
-					printf("4 ");
 				if (tmp & 0x08)
+					printf("4 ");
+				if (tmp & 0x04)
 					printf("8 ");
 				printf("Subbands\n");
 				p_indent(level + 1, frm);
