@@ -260,6 +260,8 @@ char *bt_compidtostr(int compid)
 		return "Tenovis";
 	case 44:
 		return "Macronix International Co. Ltd.";
+	case 45:
+		return "GCT Semiconductor";
 	case 65535:
 		return "internal use";
 	default:
