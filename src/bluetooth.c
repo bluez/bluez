@@ -266,6 +266,12 @@ char *bt_compidtostr(int compid)
 		return "Norwood Systems";
 	case 47:
 		return "MewTel Technology Inc.";
+	case 48:
+		return "ST Microelectronics";
+	case 49:
+		return "Synopsys";
+	case 50:
+		return "Red-M (Communications) Ltd";
 	case 65535:
 		return "internal use";
 	default:
