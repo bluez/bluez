@@ -249,8 +249,11 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 
 	snprintf(devname, MAXPATHLEN - 1, "/dev/rfcomm%d", dev);
 	if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
-		perror("Can't open RFCOMM device");
-		goto release;
+		snprintf(devname, MAXPATHLEN - 1, "/dev/bluetooth/rfcomm/%d", dev);
+		if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
+			perror("Can't open RFCOMM device");
+			goto release;
+		}
 	}
 
 	memset(&sa, 0, sizeof(sa));
