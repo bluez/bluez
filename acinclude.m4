@@ -90,7 +90,7 @@ AC_DEFUN( AC_SEARCH_LIB,
 	LDFLAGS="-L$path -l$1"
 	AC_TRY_LINK_FUNC($2,
 	    [ 
-	       LIBS="$LIBS -L$p -l$1"
+	       LIBS="$LIBS -L$path -l$1"
      	       ac_lib_found=yes
 	       break
 	    ]

@@ -35,10 +35,10 @@ AC_ARG_WITH(bluez-libs,
 	--with-bluez-libs=DIR  BlueZ libraries and header files,
 	[
 	    BLUEZ_INCDIR="$withval"/include
-	    BLUEZ_LIBDIR="$withval"/src/.libs
+	    BLUEZ_LIBDIR="$withval"/src
 	],[
 	    BLUEZ_INCDIR='../libs/include ../bluez-libs*/include /usr/include/bluetooth'
-	    BLUEZ_LIBDIR='../libs/src/.libs ../bluez-libs*/src/.libs /usr/lib'
+	    BLUEZ_LIBDIR='../libs/src ../bluez-libs*/src /usr/lib'
 	]
 )
 
