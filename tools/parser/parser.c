@@ -37,13 +37,15 @@
 
 struct parser_t parser;
 
-void init_parser(unsigned long flags, unsigned long filter)
+void init_parser(unsigned long flags, unsigned long filter,
+	unsigned int defpsm)
 {
 	if ((flags & DUMP_RAW) && !(flags & DUMP_TYPE_MASK))
 		flags |= DUMP_HEX;
 
 	parser.flags  = flags;
 	parser.filter = filter;
+	parser.defpsm = defpsm;
 	parser.state  = 0;
 }
 

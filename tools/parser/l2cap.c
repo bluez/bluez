@@ -126,7 +126,7 @@ static __u16 get_psm(int in, __u16 cid)
 	for (i=0; i<CID_TABLE_SIZE; i++)
 		if (table[i].cid == cid)
 			return table[i].psm;
-	return 0;
+	return parser.defpsm;
 }
 
 static inline void command_rej(int level, struct frame *frm)

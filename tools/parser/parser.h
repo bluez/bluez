@@ -23,6 +23,11 @@
  * $Id$
  */
 
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <asm/types.h>
+#include <netinet/in.h>
+
 struct frame {
 	void	*data;
 	int	data_len;
@@ -51,15 +56,24 @@ struct frame {
 #define FILT_SCO	0x0010
 #define FILT_BNEP       0x0020
 
+
+#define STRUCT_OFFSET(type, member)  ((uint8_t *)&(((type *)NULL)->member) - \
+                                     (uint8_t *)((type *)NULL))
+
+#define STRUCT_END(type, member)     (STRUCT_OFFSET(type, member) + \
+                                     sizeof(((type *)NULL)->member))
+
 struct parser_t {
 	unsigned long flags;
 	unsigned long filter;
+	unsigned int defpsm;
 	int state;
 };
 
 extern struct parser_t parser;
 
-void init_parser(unsigned long flags, unsigned long filter);
+void init_parser(unsigned long flags, unsigned long filter, 
+	unsigned int assume_psm);
 
 static inline int p_filter(unsigned long f)
 {
@@ -85,10 +99,33 @@ static inline void p_indent(int level, struct frame *f)
 		printf("%*c", (level*2), ' ');
 }
 
-inline __u8 get_u8(struct frame *frm);
-inline __u16 get_u16(struct frame *frm);
-inline __u32 get_u32(struct frame *frm);
-inline char* get_uuid_name(int uuid);
+/* get_uXX functions do byte swaping */
+
+static inline __u8 get_u8(struct frame *frm)
+{
+	__u8 *u8_ptr = frm->ptr;
+	frm->ptr += 1;
+	frm->len -= 1;
+	return *u8_ptr;
+}
+
+static inline __u16 get_u16(struct frame *frm)
+{
+	__u16 *u16_ptr = frm->ptr;
+	frm->ptr += 2;
+	frm->len -= 2;
+	return ntohs(*u16_ptr);
+}
+
+static inline __u32 get_u32(struct frame *frm)
+{
+	__u32 *u32_ptr = frm->ptr;
+	frm->ptr += 4;
+	frm->len -= 4;
+	return ntohl(*u32_ptr);
+}
+
+char *get_uuid_name(int uuid);
 
 void raw_dump(int level, struct frame *frm);
 void hci_dump(int level, struct frame *frm);

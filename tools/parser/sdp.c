@@ -127,41 +127,13 @@ sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
         { SDP_ATTR_ID_IPV6_SUBNET,                       "IPv6Subnet"         }  /* PAN */
 };
 
-inline __u8 get_u8(struct frame *frm)
-{
-	__u8 *u8_ptr = frm->ptr;
-	frm->ptr += 1;
-	frm->len -= 1;
-	return *u8_ptr;
-}
-
-inline __u16 get_u16(struct frame *frm)
-{
-	__u16 *u16_ptr = frm->ptr;
-	frm->ptr += 2;
-	frm->len -= 2;
-	return ntohs(*u16_ptr);
-}
-
-inline __u32 get_u32(struct frame *frm)
-{
-	__u32 *u32_ptr = frm->ptr;
-	frm->ptr += 4;
-	frm->len -= 4;
-	return ntohl(*u32_ptr);
-}
-
-
-inline char* get_uuid_name(int uuid)
+char* get_uuid_name(int uuid)
 {
 	int i;
 
-	for (i = 0; i < SDP_UUID_NAM_LOOKUP_TABLE_SIZE; i++)
-	{
+	for (i = 0; i < SDP_UUID_NAM_LOOKUP_TABLE_SIZE; i++) {
 		if (sdp_uuid_nam_lookup_table[i].uuid == uuid)
-		{
 			return sdp_uuid_nam_lookup_table[i].name;
-		}
 	}
 
 	return 0;
