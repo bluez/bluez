@@ -2,13 +2,13 @@
 #  $Id$
 #
 
-pcmciadir  = $(sysconfdir)/pcmcia
+pcmciadir = $(sysconfdir)/pcmcia
 
 EXTRA_DIST = bluetooth bluetooth.conf
 
-install-data-local: @PCMCIA@
-
-pcmcia:
+install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(pcmciadir)
-	$(INSTALL) -m 755 $(srcdir)/bluetooth $(DESTDIR)$(pcmciadir)
-	$(INSTALL) -m 644 $(srcdir)/bluetooth.conf $(DESTDIR)$(pcmciadir)
+	[ -f $(DESTDIR)$(pcmciadir)/bluetooth ] || \
+		$(INSTALL_DATA) $(srcdir)/bluetooth $(DESTDIR)$(pcmciadir)
+	[ -f $(DESTDIR)$(pcmciadir)/bluetooth.conf ] || \
+		$(INSTALL_DATA) $(srcdir)/bluetooth.conf $(DESTDIR)$(pcmciadir)
