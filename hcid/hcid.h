@@ -97,7 +97,7 @@ extern struct hcid_opts hcid;
 
 int read_config(char *file);
 
-struct device_opts *alloc_device_opts(char *addr);
+struct device_opts *alloc_device_opts(char *ref);
 
 gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data);
 gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data);

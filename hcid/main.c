@@ -78,6 +78,7 @@ static inline void init_device_defaults(struct device_opts *device_opts)
 {
 	memset(device_opts, 0, sizeof(*device_opts));
 	device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
+	device_opts->name = strdup("BlueZ");
 }
 
 struct device_opts *alloc_device_opts(char *ref)
@@ -95,7 +96,8 @@ struct device_opts *alloc_device_opts(char *ref)
 	device->next = device_list;
 	device_list = device;
 
-	init_device_defaults(&device->opts);
+	memcpy(&device->opts, &default_device, sizeof(struct device_opts));
+	device->opts.name = strdup(default_device.name);
 
 	return &device->opts;
 }

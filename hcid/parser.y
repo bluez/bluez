@@ -183,7 +183,7 @@ device_opt:
   | K_NAME dev_name	{
 				if (parser_device->name)
 					free(parser_device->name);
-				parser_device->name = $2;
+				parser_device->name = strdup($2);
 			}
 
   | K_CLASS NUM		{
