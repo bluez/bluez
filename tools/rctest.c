@@ -66,7 +66,7 @@ long data_size = 127;
 
 /* Default addr and channel */
 bdaddr_t bdaddr;
-unsigned short channel = 10;
+uint8_t  channel = 10;
 
 int master = 0;
 int auth = 0;
@@ -99,7 +99,7 @@ int do_connect(char *svr)
 	memset(&rem_addr, 0, sizeof(rem_addr));
 	rem_addr.rc_family = AF_BLUETOOTH;
 	baswap(&rem_addr.rc_bdaddr, strtoba(svr));
-	rem_addr.rc_channel = htobs(channel);
+	rem_addr.rc_channel = channel;
 	if( connect(s, (struct sockaddr *)&rem_addr, sizeof(rem_addr)) < 0 ){
 		syslog(LOG_ERR, "Can't connect. %s(%d)", strerror(errno), errno);
 		close(s);
@@ -124,7 +124,7 @@ void do_listen( void (*handler)(int sk) )
 
 	loc_addr.rc_family = AF_BLUETOOTH;
 	loc_addr.rc_bdaddr = bdaddr;
-	loc_addr.rc_channel    = htobs(channel);
+	loc_addr.rc_channel = channel;
 	if( bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0 ) {
 		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
 		exit(1);
