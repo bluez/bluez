@@ -3,28 +3,34 @@
 # Bluetooth PIN helper
 # Written by Maxim Krasnyansky <maxk@qualcomm.com>
 #
+import sys, os, string, popen2
 
-import sys, os, string
+# X Display initialization.
+# Find running X Server and parse it's arguments.
+# Set enviroment variables DISPLAY and XAUTHORITY
+# using info extracted from X Server args.
+#
+def set_display():
+	disp = ":0"	
+	auth = ""
+	ps   = "/bin/ps -C X --format args --no-headers"
 
-#
-# FIXME:
-#
-# We have to find actual user and proper X display here. And if 
-# it's not available (no one's logged in) we should lookup some
-# file for predefined PINs.
-#
-# For now we just assume that we have access to local X display
-# and whoever is logged in there will get a window pop.
-#
+	r,w = popen2.popen2(ps)
+	arg = string.split(r.read())
+	for i in range(1, len(arg)):
+		if arg[i][0] != '-':
+			disp = arg[i]
+		elif arg[i] == "-auth":
+			auth = arg[i+1]
+			break
 
-os.environ['DISPLAY'] = ':0'
+	os.environ['DISPLAY']    = disp 
+	os.environ['XAUTHORITY'] = auth
 
-# For X Window display access blueping has to find a user and use 
-# his(her) .Xauthority file. 
-# os.environ['XAUTHORITY'] = '/home/maxk/.Xauthority'
+# Set X display before initializing GTK
+set_display()
 
 from gtk import *
-#import GdkImlib, GtkExtra
 
 # Dialog Class
 DLG_OK = 1
@@ -113,6 +119,10 @@ def dialog(title, mesg, args, modal = FALSE):
 	return dlg.result
 
 def main(*args):
+	if len(sys.argv) < 2:
+		print "ERR"
+		sys.exit()
+	
 	dir    = sys.argv[1]
 	bdaddr = sys.argv[2]
 
