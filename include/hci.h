@@ -971,7 +971,7 @@ typedef struct {
 	uint8_t		pscan_period_mode;
 	uint8_t		dev_class[3];
 	uint16_t	clock_offset;
-	uint8_t		rssi;
+	int8_t		rssi;
 } __attribute__ ((packed)) inquiry_info_with_rssi;
 #define INQUIRY_INFO_WITH_RSSI_SIZE 14
 
