@@ -2,12 +2,9 @@
 #  $Id$
 #
 
-lib_LTLIBRARIES = libbluetooth.la libsdp.la
+lib_LTLIBRARIES = libbluetooth.la
 
 libbluetooth_la_SOURCES = bluetooth.c hci.c sdp.c
-libbluetooth_la_LDFLAGS = -version-info 1:7:0
-
-libsdp_la_SOURCES =
-libsdp_la_LDFLAGS = -version-info 2:2:0
+libbluetooth_la_LDFLAGS = -version-info 1:8:0
 
 INCLUDES = -I$(top_builddir)/include
