@@ -91,6 +91,7 @@ sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
         { SDP_UUID_PANU,                     "PANU"         }, /* PAN */
         { SDP_UUID_NAP,                      "NAP"          }, /* PAN */
         { SDP_UUID_GN,                       "GN"           }, /* PAN */
+	{ SDP_UUID_CMTP,                     "CMTP"         }, /* CIP */
 	{ SDP_UUID_PNP_INFORMATION,          "PNPInfo"      },
 	{ SDP_UUID_GENERIC_NETWORKING,       "Networking"   },
 	{ SDP_UUID_GENERIC_FILE_TRANSFER,    "FileTrnsf"    },
