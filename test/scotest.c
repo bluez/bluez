@@ -60,22 +60,23 @@ enum {
 	DUMP
 };
 
-unsigned char *buf;
+static unsigned char *buf;
 
 /* Default data size */
-long data_size = 672;
+static long data_size = 672;
 
-bdaddr_t bdaddr;
+static bdaddr_t bdaddr;
 
-float tv2fl(struct timeval tv)
+static float tv2fl(struct timeval tv)
 {
 	return (float)tv.tv_sec + (float)(tv.tv_usec/1000000.0);
 }
 
-int do_connect(char *svr)
+static int do_connect(char *svr)
 {
 	struct sockaddr_sco rem_addr, loc_addr;
-	int s;
+	struct sco_conninfo conn;
+	int s, opt;
 
 	if( (s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)) < 0 ) {
 		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
@@ -98,43 +99,53 @@ int do_connect(char *svr)
 		return -1;
 	}
 
-	syslog(LOG_INFO, "Connected\n");
+	memset(&conn, 0, sizeof(conn));
+	opt = sizeof(conn);
+	if (getsockopt(s, SOL_L2CAP, SCO_CONNINFO, &conn, &opt) < 0) {
+		syslog(LOG_ERR, "Can't get SCO connection information. %s(%d)", strerror(errno), errno);
+		close(s);
+		return -1;
+	}
+
+	syslog(LOG_INFO, "Connected [handle %d, class 0x%02x%02x%02x]",
+		conn.hci_handle,
+		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
 	return s;
 }
 
-void do_listen( void (*handler)(int sk) )
+static void do_listen(void (*handler)(int sk))
 {
 	struct sockaddr_sco loc_addr, rem_addr;
 	int  s, s1, opt;
 	bdaddr_t ba;
 
-	if( (s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)) < 0 ) {
+	if ((s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)) < 0) {
 		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	loc_addr.sco_family = AF_BLUETOOTH;
 	loc_addr.sco_bdaddr = bdaddr;
-	if( bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0 ) {
+	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
 
-	if( listen(s, 10) ) {
+	if (listen(s, 10)) {
 		syslog(LOG_ERR,"Can not listen on the socket. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	syslog(LOG_INFO,"Waiting for connection ...");
 
-	while(1) {
+	while (1) {
 		opt = sizeof(rem_addr);
-		if( (s1 = accept(s, (struct sockaddr *)&rem_addr, &opt)) < 0 ) {
+		if ((s1 = accept(s, (struct sockaddr *)&rem_addr, &opt)) < 0) {
 			syslog(LOG_ERR,"Accept failed. %s(%d)", strerror(errno), errno);
 			exit(1);
 		}
-		if( fork() ) {
+		if (fork()) {
 			/* Parent */
 			close(s1);
 			continue;
@@ -153,7 +164,7 @@ void do_listen( void (*handler)(int sk) )
 	}
 }
 
-void dump_mode(int s)
+static void dump_mode(int s)
 {
 	int len;
 
@@ -162,7 +173,7 @@ void dump_mode(int s)
 		syslog(LOG_INFO, "Recevied %d bytes\n", len);
 }
 
-void recv_mode(int s)
+static void recv_mode(int s)
 {
 	struct timeval tv_beg,tv_end,tv_diff;
 	long total;
@@ -194,7 +205,7 @@ void recv_mode(int s)
 	}
 }
 
-void send_mode(char *svr)
+static void send_mode(char *svr)
 {
 	struct sco_options so;
 	uint32_t seq;
@@ -216,7 +227,7 @@ void send_mode(char *svr)
 	
 	syslog(LOG_INFO,"Sending ...");
 
-	for (i=6; i < so.mtu; i++)
+	for (i = 6; i < so.mtu; i++)
 		buf[i]=0x7f;
 
 	seq = 0;
@@ -234,11 +245,11 @@ void send_mode(char *svr)
 	}
 }
 
-void reconnect_mode(char *svr)
+static void reconnect_mode(char *svr)
 {
-	while(1){
+	while (1) {
 		int s;
-		if( (s = do_connect(svr)) < 0 ){
+		if ((s = do_connect(svr)) < 0) {
 			syslog(LOG_ERR, "Can't connect to the server. %s(%d)", strerror(errno), errno);
 			exit(1);
 		}
@@ -248,15 +259,16 @@ void reconnect_mode(char *svr)
 	}
 }
 
-void multy_connect_mode(char *svr)
+static void multy_connect_mode(char *svr)
 {
-	while(1){
+	while (1) {
 		int i, s;
-		for(i=0; i<10; i++){
-			if( fork() ) continue;
+		for (i = 0; i < 10; i++){
+			if (fork())
+				continue;
 
 			/* Child */
-			if( (s = do_connect(svr)) < 0 ){
+			if ((s = do_connect(svr)) < 0) {
 				syslog(LOG_ERR, "Can't connect to the server. %s(%d)", strerror(errno), errno);
 			}
 			close(s);
@@ -266,7 +278,7 @@ void multy_connect_mode(char *svr)
 	}
 }
 
-void usage(void)
+static void usage(void)
 {
 	printf("scotest - SCO testing\n"
 		"Usage:\n");

@@ -176,6 +176,7 @@ int do_connect(char *svr)
 {
 	struct sockaddr_l2 rem_addr, loc_addr;
 	struct l2cap_options opts;
+	struct l2cap_conninfo conn;
 	int s, opt;
 
 	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0) {
@@ -245,8 +246,17 @@ int do_connect(char *svr)
 		return -1;
 	}
 
-	syslog(LOG_INFO, "Connected [imtu %d, omtu %d, flush_to %d]\n",
-	       opts.imtu, opts.omtu, opts.flush_to);
+	memset(&conn, 0, sizeof(conn));
+	opt = sizeof(conn);
+	if (getsockopt(s, SOL_L2CAP, L2CAP_CONNINFO, &conn, &opt) < 0) {
+		syslog(LOG_ERR, "Can't get L2CAP connection information. %s(%d)", strerror(errno), errno);
+		close(s);
+		return -1;
+	}
+
+	syslog(LOG_INFO, "Connected [imtu %d, omtu %d, flush_to %d, mode %d, handle %d, class 0x%02x%02x%02x]",
+		opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
+		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
 	return s;
 }

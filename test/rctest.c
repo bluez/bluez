@@ -90,7 +90,8 @@ float tv2fl(struct timeval tv)
 int do_connect(char *svr)
 {
 	struct sockaddr_rc rem_addr, loc_addr;
-	int s;
+	struct rfcomm_conninfo conn;
+	int s, opt;
 
 	if( (s = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM)) < 0 ) {
 		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
@@ -125,7 +126,17 @@ int do_connect(char *svr)
 		return -1;
 	}
 
-	syslog(LOG_INFO, "Connected");
+	memset(&conn, 0, sizeof(conn));
+	opt = sizeof(conn);
+	if (getsockopt(s, SOL_L2CAP, RFCOMM_CONNINFO, &conn, &opt) < 0) {
+		syslog(LOG_ERR, "Can't get RFCOMM connection information. %s(%d)", strerror(errno), errno);
+		close(s);
+		//return -1;
+	}
+
+	syslog(LOG_INFO, "Connected [handle %d, class 0x%02x%02x%02x]",
+		conn.hci_handle,
+		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
 	return s;
 }
