@@ -73,6 +73,7 @@ unsigned short psm = 10;
 int master = 0;
 int auth = 0;
 int encrypt = 0;
+int socktype = SOCK_SEQPACKET;
 
 float tv2fl(struct timeval tv)
 {
@@ -85,7 +86,7 @@ int do_connect(char *svr)
 	struct l2cap_options opts;
 	int s, opt;
 
-	if( (s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0 ) {
+	if( (s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0 ) {
 		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
 		return -1;
 	}
@@ -141,7 +142,7 @@ void do_listen( void (*handler)(int sk) )
 	int  s, s1, opt;
 	bdaddr_t ba;
 
-	if( (s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0 ) {
+	if( (s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0 ) {
 		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
@@ -154,8 +155,19 @@ void do_listen( void (*handler)(int sk) )
 		exit(1);
 	}
 
-	if( listen(s, 10) ) {
-		syslog(LOG_ERR,"Can not listen on the socket. %s(%d)", strerror(errno), errno);
+	/* Set link mode */
+	opt = 0;
+	if (master)
+		 opt |= L2CAP_LM_MASTER;
+
+	if (auth)
+		 opt |= L2CAP_LM_AUTH;
+
+	if (encrypt)
+		 opt |= L2CAP_LM_ENCRYPT;
+
+	if (setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
+		syslog(LOG_ERR, "Can't set L2CAP link mode. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -173,20 +185,13 @@ void do_listen( void (*handler)(int sk) )
 		exit(1);
 	}
 
+	if (socktype == SOCK_DGRAM) {
+		handler(s);
+		return;
+	}
 
-	/* Set link mode */
-	opt = 0;
-	if (master)
-		 opt |= L2CAP_LM_MASTER;
-
-	if (auth)
-		 opt |= L2CAP_LM_AUTH;
-
-	if (encrypt)
-		 opt |= L2CAP_LM_ENCRYPT;
-
-	if (setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP link mode. %s(%d)", strerror(errno), errno);
+	if( listen(s, 10) ) {
+		syslog(LOG_ERR,"Can not listen on the socket. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -228,7 +233,7 @@ void dump_mode(int s)
 {
 	int len;
 
-	syslog(LOG_INFO,"Receiving ...");
+	syslog(LOG_INFO, "Receiving ...");
 	while ((len = read(s, buf, data_size)) > 0)
 		syslog(LOG_INFO, "Recevied %d bytes\n", len);
 }
@@ -366,7 +371,8 @@ void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-S bdaddr] [-P psm]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
-		"\t[-A] request authentication\n"
+		"\t[-D] use connectionless channel (datagram)\n"
+		"\t[-E] request encryption\n"
 		"\t[-E] request encryption\n"
 	       	"\t[-M] become master\n");
 }
@@ -381,7 +387,7 @@ int main(int argc ,char *argv[])
 
 	mode = RECV; need_addr = 0;
 	
-	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:MAE")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:MAED")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -450,6 +456,10 @@ int main(int argc ,char *argv[])
 
 		case 'E':
 			encrypt = 1;
+			break;
+
+		case 'D':
+			socktype = SOCK_DGRAM;
 			break;
 
 		default:
