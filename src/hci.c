@@ -354,6 +354,59 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 
 /* HCI functions that do not require open device */
 
+int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg)
+{
+	struct hci_dev_list_req *dl;
+	struct hci_dev_req *dr;
+	int dev_id = -1;
+	int s, i;
+
+	s = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (s < 0)
+		return -1;
+
+	dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
+	if (!dl) {
+		close(s);
+		return -1;
+	}
+	
+	dl->dev_num = HCI_MAX_DEV;
+	dr = dl->dev_req;
+
+	if (ioctl(s, HCIGETDEVLIST, (void *)dl))
+		goto done;
+	
+	for (i=0; i < dl->dev_num; i++, dr++) {
+		if (hci_test_bit(flag, &dr->dev_opt))
+			if (!func || func(s, dr->dev_id, arg)) {
+				dev_id = dr->dev_id;
+				break;
+			}
+	}
+
+done:	
+	close(s);
+	free(dl);
+	return dev_id;
+}
+
+static int __other_bdaddr(int s, int dev_id, long arg)
+{
+	struct hci_dev_info di = {dev_id: dev_id};
+	if (ioctl(s, HCIGETDEVINFO, (void*) &di))
+		return 0;
+	return bacmp((bdaddr_t *)arg, &di.bdaddr);
+}
+
+int hci_get_route(bdaddr_t *bdaddr)
+{
+	if (bdaddr)
+		return hci_for_each_dev(HCI_UP, __other_bdaddr, (long) bdaddr);
+	else
+		return hci_for_each_dev(HCI_UP, NULL, 0);
+}
+
 int hci_devinfo(int dev_id, struct hci_dev_info *di)
 {
 	int s, err;
@@ -385,22 +438,33 @@ int hci_devba(int dev_id, bdaddr_t *ba)
 	return 0;
 }
 
-inquiry_info *hci_inquiry(int dev_id, int len, int *num_rsp, uint8_t *lap, long flags)
+int hci_inquiry(int dev_id, int len, int nrsp, uint8_t *lap, inquiry_info **ii, long flags)
 {
 	struct hci_inquiry_req *ir;
-	char *buf, *ptr;
-	int s, err, size;
+	void *buf;
+	int s, err;
 
-	if (!*num_rsp)
-		*num_rsp = 200; // enough ?
+	if (nrsp <= 0)
+		nrsp = 200; // enough ?
 
-	size = sizeof(*ir) + (sizeof(inquiry_info) * (*num_rsp));
-	if (!(buf = malloc(size)))
-		return NULL;
+	if (dev_id < 0 && (dev_id = hci_get_route(NULL)) < 0) {
+		errno = ENODEV;
+		return -1;
+	}	
 
-	ir = (void *)buf;
+	s = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (s < 0)
+		return -1;
+
+	buf = malloc(sizeof(*ir) + (sizeof(inquiry_info) * (nrsp)));
+	if (!buf) {
+		close(s);
+		return -1;
+	}
+
+	ir = buf;
 	ir->dev_id  = dev_id;
-	ir->num_rsp = *num_rsp;
+	ir->num_rsp = nrsp;
 	ir->length  = len;
 	ir->flags   = flags;
 
@@ -412,28 +476,23 @@ inquiry_info *hci_inquiry(int dev_id, int len, int *num_rsp, uint8_t *lap, long 
 		ir->lap[2] = 0x9e;
 	}
 
-	if ((s = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0)
-		goto failed;
-	if (ioctl(s, HCIINQUIRY, (unsigned long)buf) < 0)
-		goto failed;
-
-	size = sizeof(inquiry_info) * ir->num_rsp;
-	if (!(ptr = malloc(size)))
-		goto failed;
-
-	memcpy(ptr, buf + sizeof(*ir), size);
-	*num_rsp = ir->num_rsp;
-
-	free(buf);
+	err = ioctl(s, HCIINQUIRY, (unsigned long) buf);
 	close(s);
-	return (void *) ptr;
 
-failed:
-	err = errno;
+	if (!err) {
+		int size = sizeof(inquiry_info) * ir->num_rsp;
+
+		if (!*ii) 
+			*ii = (void *) malloc(size);
+
+		if (*ii) {
+			memcpy((void *) *ii, buf + sizeof(*ir), size);
+			err = ir->num_rsp;
+		} else
+			err = -1;
+	}
 	free(buf);
-	close(s);
-	errno = err;
-	return NULL;
+	return err;
 }
 
 /* Open HCI device. 
@@ -838,3 +897,4 @@ int hci_class_of_dev(int dd, uint8_t *class, int to)
 	memcpy(class, rp.dev_class, 3);
 	return 0;
 }
+
