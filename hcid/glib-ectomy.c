@@ -161,6 +161,8 @@ void       g_main_loop_run        (GMainLoop    *loop)
 		}
 
 	}
+
+	free(ufds);
 }
 
 void       g_main_loop_quit       (GMainLoop    *loop)
