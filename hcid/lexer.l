@@ -107,7 +107,7 @@ bdaddr		{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}
 
 {kword}	{
 	int kw = find_keyword(cfg_keyword, yytext);
-	if( kw != -1 )	
+	if( kw != -1 )
 		return kw;
 
 	yylval.str = yytext;
@@ -120,13 +120,13 @@ bdaddr		{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}
 }
 
 {string} {
-	if(yyleng > sizeof(str_buf)-1){
+	if(yyleng > sizeof(str_buf) - 1){
 		yyerror("string too long");
 		return 0;
 	}
 
-	strncpy(str_buf, yytext+1, yyleng-2);
-	str_buf[yyleng-2] = '\0';
+	strncpy(str_buf, yytext + 1, yyleng - 2);
+	str_buf[yyleng - 2] = '\0';
 
 	yylval.str = str_buf;
 	return STRING;
@@ -148,7 +148,7 @@ bdaddr		{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}
 
 %%
 
-int yywrap(void) 
+int yywrap(void)
 {
 	return 1;
 }

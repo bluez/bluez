@@ -48,7 +48,7 @@
 
 static DBusConnection *connection;
 
-#define TIMEOUT (30 * 1000)		// 30 seconds
+#define TIMEOUT (30 * 1000)		/* 30 seconds */
 
 #define SERVICE_NAME "org.bluez.PinAgent"
 #define INTERFACE_NAME SERVICE_NAME
@@ -57,8 +57,7 @@ static DBusConnection *connection;
 
 #define WRONG_ARGS_ERROR "org.bluez.Error.WrongArgs"
 
-struct pin_request
-{
+struct pin_request {
 	int dev;
 	bdaddr_t bda;
 };

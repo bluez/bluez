@@ -81,7 +81,7 @@ static struct link_key *__get_link_key(int f, bdaddr_t *sba, bdaddr_t *dba)
 	static struct link_key k;
 	struct link_key *key = NULL;
 	int r;
-	
+
 	while ((r = read_n(f, &k, sizeof(k)))) {
 		if (r < 0) {
 			syslog(LOG_ERR, "Link key database read failed. %s(%d)",
@@ -191,7 +191,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	bacpy(&key.dba, dba);
 	key.type = evt->key_type;
 	key.time = time(0);
-	
+
 	save_link_key(&key);
 }
 
@@ -245,7 +245,7 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Can't fork PIN helper. %s(%d)", 
+			syslog(LOG_ERR, "Can't fork PIN helper. %s(%d)",
 					strerror(errno), errno);
 		default:
 			return;
@@ -261,9 +261,8 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 	//hci_remote_name(dev, &ci->bdaddr, sizeof(name), name, 0);
 
 	ba2str(&ci->bdaddr, addr);
-	sprintf(str, "%s %s %s \'%s\'", hcid.pin_helper, 
-			ci->out ? "out" : "in", 
-			addr, name);
+	sprintf(str, "%s %s %s \'%s\'", hcid.pin_helper,
+			ci->out ? "out" : "in", addr, name);
 
 	setenv("PATH", "/bin:/usr/bin:/usr/local/bin", 1);
 
@@ -276,7 +275,7 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 	if (!pipe) {
 		syslog(LOG_ERR, "Can't exec PIN helper. %s(%d)", strerror(errno), errno);
 		goto reject;
-	}	
+	}
 
 	pin = fgets(str, sizeof(str), pipe);
 	ret = pclose(pipe);
@@ -291,7 +290,7 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 
 	pin += 4;
 	len  = strlen(pin);
-	
+
 	memset(&pr, 0, sizeof(pr));
 	bacpy(&pr.bdaddr, &ci->bdaddr);
 	memcpy(pr.pin_code, pin, len);
@@ -364,14 +363,14 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 				PIN_CODE_REPLY_CP_SIZE, &pr);
 		} else {
 			/* Outgoing connection */
-		
+
 			/* Let PIN helper handle that */ 
 			request_pin(dev, ci);
 		}
 	} else {
 		/* Let PIN helper handle that */ 
 		request_pin(dev, ci);
-	}	
+	}
 	free(cr);
 	return;
 
@@ -395,7 +394,7 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		free(data);
 		return FALSE;
 	}
-	
+
 	if ((err = g_io_channel_read(chan, buf, sizeof(buf), &len))) {
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
@@ -469,20 +468,20 @@ void start_security_manager(int hdev)
 
 	di = malloc(sizeof(*di));
 	if (!di) {
-		syslog(LOG_ERR, "Can't allocate device info buffer. %s(%d)", 
+		syslog(LOG_ERR, "Can't allocate device info buffer. %s(%d)",
 				strerror(errno), errno);
 		close(dev);
 		return;
 	}
-	
+
 	di->dev_id = hdev;
 	if (ioctl(dev, HCIGETDEVINFO, (void *)di)) {
-		syslog(LOG_ERR, "Can't get device info. %s(%d)", 
+		syslog(LOG_ERR, "Can't get device info. %s(%d)",
 				strerror(errno), errno);
 		close(dev);
 		return;
 	}
-	
+
 	chan = g_io_channel_unix_new(dev);
 	g_io_add_watch(chan, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 			io_security_event, (void *) di);

@@ -34,7 +34,7 @@ struct kword {
 };
 extern int lineno;
 
-extern struct kword cfg_keyword[]; 
+extern struct kword cfg_keyword[];
 extern struct kword sec_param[];
 extern struct kword pair_param[];
 

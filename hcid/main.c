@@ -87,7 +87,7 @@ struct device_opts *alloc_device_opts(char *ref)
 
 	device = malloc(sizeof(struct device_list));
 	if (!device) {
-		syslog(LOG_INFO, "Can't allocate devlist opts buffer. %s(%d)", 
+		syslog(LOG_INFO, "Can't allocate devlist opts buffer. %s(%d)",
 			strerror(errno), errno);
 		exit(1);
 	}
@@ -190,7 +190,7 @@ static void configure_device(int hdev)
 	/* Set scan mode */
 	dr.dev_opt = device_opts->scan;
 	if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
-		syslog(LOG_ERR, "Can't set scan mode on hci%d. %s(%d)\n", 
+		syslog(LOG_ERR, "Can't set scan mode on hci%d. %s(%d)\n",
 				hdev, strerror(errno), errno);
 	}
 
@@ -201,7 +201,7 @@ static void configure_device(int hdev)
 		dr.dev_opt = AUTH_DISABLED;
 
 	if (ioctl(s, HCISETAUTH, (unsigned long) &dr) < 0) {
-		syslog(LOG_ERR, "Can't set auth on hci%d. %s(%d)\n", 
+		syslog(LOG_ERR, "Can't set auth on hci%d. %s(%d)\n",
 				hdev, strerror(errno), errno);
 	}
 
@@ -212,7 +212,7 @@ static void configure_device(int hdev)
 		dr.dev_opt = ENCRYPT_DISABLED;
 
 	if (ioctl(s, HCISETENCRYPT, (unsigned long) &dr) < 0) {
-		syslog(LOG_ERR, "Can't set encrypt on hci%d. %s(%d)\n", 
+		syslog(LOG_ERR, "Can't set encrypt on hci%d. %s(%d)\n",
 				hdev, strerror(errno), errno);
 	}
 
@@ -250,7 +250,7 @@ static void init_device(int hdev)
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Fork failed. Can't init device hci%d. %s(%d)\n", 
+			syslog(LOG_ERR, "Fork failed. Can't init device hci%d. %s(%d)\n",
 					hdev, strerror(errno), errno);
 		default:
 			return;
@@ -259,7 +259,8 @@ static void init_device(int hdev)
 	set_title("hci%d init", hdev);
 
 	if ((s = hci_open_dev(hdev)) < 0) {
-		syslog(LOG_ERR, "Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't open device hci%d. %s(%d)\n",
+					hdev, strerror(errno), errno);
 		exit(1);
 	}
 
@@ -277,7 +278,7 @@ static void init_device(int hdev)
 	if (device_opts->pkt_type) {
 		dr.dev_opt = device_opts->pkt_type;
 		if (ioctl(s, HCISETPTYPE, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set packet type on hci%d. %s(%d)\n", 
+			syslog(LOG_ERR, "Can't set packet type on hci%d. %s(%d)\n",
 				hdev, strerror(errno), errno);
 		}
 	}
@@ -286,7 +287,7 @@ static void init_device(int hdev)
 	if (device_opts->link_mode) {
 		dr.dev_opt = device_opts->link_mode;
 		if (ioctl(s, HCISETLINKMODE, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set link mode on hci%d. %s(%d)\n", 
+			syslog(LOG_ERR, "Can't set link mode on hci%d. %s(%d)\n",
 				hdev, strerror(errno), errno);
 		}
 	}
@@ -295,7 +296,7 @@ static void init_device(int hdev)
 	if (device_opts->link_policy) {
 		dr.dev_opt = device_opts->link_policy;
 		if (ioctl(s, HCISETLINKPOL, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set link policy on hci%d. %s(%d)\n", 
+			syslog(LOG_ERR, "Can't set link policy on hci%d. %s(%d)\n",
 				hdev, strerror(errno), errno);
 		}
 	}
@@ -420,7 +421,7 @@ gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
 
-		syslog(LOG_ERR, "Read from control socket failed. %s(%d)", 
+		syslog(LOG_ERR, "Read from control socket failed. %s(%d)",
 				strerror(errno), errno);
 		g_main_quit(event_loop);
 		return FALSE;
@@ -471,7 +472,7 @@ int main(int argc, char *argv[], char *env[])
 	hcid.key_file    = strdup(HCID_KEY_FILE);
 
 	init_defaults();
-	
+
 	while ((opt = getopt(argc, argv, "f:n")) != EOF) {
 		switch (opt) {
 		case 'n':

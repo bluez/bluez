@@ -51,7 +51,7 @@ volatile sig_atomic_t __io_canceled;
 
 /* 
  * Device name expansion 
- * 	%d - device id
+ *   %d - device id
  */
 char *expand_name(char *dst, int size, char *str, int dev_id)
 {
@@ -76,7 +76,7 @@ char *expand_name(char *dst, int size, char *str, int dev_id)
 			case 'h':
 				opt = hcid.host_name;
 				break;
-			
+
 			case '%':
 				dst[np++] = str[sp++];
 				/* fall through */
@@ -115,14 +115,14 @@ char *get_host_name(void)
 	if (!gethostname(name, sizeof(name)-1)) {
 		name[sizeof(name)-1] = 0;
 		return strdup(name);
-	} 
+	}
 	return strdup("noname");
 }
 
 /* Functions to manipulate program title */
 extern char **environ;
 char	*title_start;	/* start of the proc title space */
-char	*title_end;     /* end of the proc title space */
+char	*title_end;	/* end of the proc title space */
 int	title_size;
 
 void init_title(int argc, char *argv[], char *envp[], const char *name)
@@ -152,11 +152,11 @@ void init_title(int argc, char *argv[], char *envp[], const char *name)
 	 *  Determine how much space we can use for set_title.  
 	 *  Use all contiguous argv and envp pointers starting at argv[0]
 		 */
-	for (i=0; i<argc; i++)
+	for (i  =0; i < argc; i++)
 		if (!i || title_end == argv[i])
 			title_end = argv[i] + strlen(argv[i]) + 1;
 
-	for (i=0; envp[i]; i++)
+	for (i = 0; envp[i]; i++)
 		if (title_end == envp[i])
 			title_end = envp[i] + strlen(envp[i]) + 1;
 
@@ -170,7 +170,7 @@ void set_title(const char *fmt, ...)
 	char buf[255];
 	va_list ap;
 
-	memset(title_start,0,title_size);
+	memset(title_start, 0, title_size);
 
 	/* print the argument string */
 	va_start(ap, fmt);

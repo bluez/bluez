@@ -1,74 +1,80 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <string.h>
 #include <limits.h>
 
 #include "glib-ectomy.h"
 
-GIOError    g_io_channel_read   (GIOChannel    *channel, 
-			         gchar         *buf, 
-			         gsize          count,
-			         gsize         *bytes_read)
+GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count, gsize *bytes_read)
 {
 	int fd = channel->fd;
 	gssize result;
-	
-  if (count > SSIZE_MAX) /* At least according to the Debian manpage for read */
-    count = SSIZE_MAX;
 
- retry:
-  result = read (fd, buf, count);
- 
-  if (result < 0)
-    {
-      *bytes_read = 0;
+	/* At least according to the Debian manpage for read */
+	if (count > SSIZE_MAX)
+		count = SSIZE_MAX;
 
-      switch (errno)
-        {
+retry:
+	result = read (fd, buf, count);
+
+	if (result < 0) {
+		*bytes_read = 0;
+
+		switch (errno) {
 #ifdef EINTR
-          case EINTR:
-            goto retry;
+		case EINTR:
+			goto retry;
 #endif
 #ifdef EAGAIN
-          case EAGAIN:
-            return G_IO_STATUS_AGAIN;
+		case EAGAIN:
+			return G_IO_STATUS_AGAIN;
 #endif
-          default:
-            return G_IO_STATUS_ERROR;
-        }
-    }
+		default:
+			return G_IO_STATUS_ERROR;
+		}
+	}
 
-  *bytes_read = result;
+	*bytes_read = result;
 
-  return (result > 0) ? G_IO_STATUS_NORMAL : G_IO_STATUS_EOF;
+	return (result > 0) ? G_IO_STATUS_NORMAL : G_IO_STATUS_EOF;
 }
 
-void      g_io_channel_close    (GIOChannel    *channel)
+void g_io_channel_close(GIOChannel *channel)
 {
-	int fd = channel->fd;
+	if (!channel)
+		return;
 
-	close(fd);
+	close(channel->fd);
 
 	memset(channel, 0, sizeof(channel));
 	free(channel);
 }
 
-GIOChannel* g_io_channel_unix_new    (int         fd)
+GIOChannel *g_io_channel_unix_new(int fd)
 {
-	GIOChannel *channel = malloc(sizeof(GIOChannel));
+	GIOChannel *channel;
+
+	channel = malloc(sizeof(GIOChannel));
+	if (!channel)
+		return NULL;
+
 	channel->fd = fd;
+
 	return channel;
 }
 
-gint        g_io_channel_unix_get_fd (GIOChannel *channel)
+gint g_io_channel_unix_get_fd(GIOChannel *channel)
 {
 	return channel->fd;
 }
-
-
 
 struct watch {
 	guint id;
@@ -82,25 +88,19 @@ struct watch {
 
 static struct watch watch_head = { .id = 0, .next = 0 };
 
-void  g_io_remove_watch (guint id)
+void g_io_remove_watch(guint id)
 {
-  struct watch *w, *p;
+	struct watch *w, *p;
 
-  for (p = &watch_head, w = watch_head.next; w; w = w->next)
-    {
-      if (w->id == id)
-	{
-	  p->next = w->next;
-	  free (w);
-	  return;
-	}
-    }
+	for (p = &watch_head, w = watch_head.next; w; w = w->next)
+		if (w->id == id) {
+			p->next = w->next;
+			free (w);
+			return;
+		}
 }
 
-guint     g_io_add_watch        (GIOChannel      *channel,
-				 GIOCondition     condition,
-				 GIOFunc          func,
-				 gpointer         user_data)
+guint g_io_add_watch(GIOChannel *channel, GIOCondition condition, GIOFunc func, gpointer user_data)
 {
 	struct watch *watch = malloc(sizeof(struct watch));
 
@@ -116,20 +116,27 @@ guint     g_io_add_watch        (GIOChannel      *channel,
 	return watch->id;
 }
 
-GMainLoop *g_main_loop_new        (GMainContext *context,
-			    	   gboolean      is_running)
+GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running)
 {
-	GMainLoop *ml = malloc(sizeof(GMainLoop));
+	GMainLoop *ml;
+
+	ml = malloc(sizeof(GMainLoop));
+	if (!ml)
+		return NULL;
 
 	ml->bail = 0;
 
 	return ml;
 }
 
-void       g_main_loop_run        (GMainLoop    *loop)
+void g_main_loop_run(GMainLoop *loop)
 {
 	int open_max = sysconf(_SC_OPEN_MAX);
-	struct pollfd *ufds = malloc(open_max * sizeof(struct pollfd));
+	struct pollfd *ufds;
+
+	ufds = malloc(open_max * sizeof(struct pollfd));
+	if (!ufds)
+		return;
 
 	while (!loop->bail) {
 		int nfds, rc, i;
@@ -142,43 +149,37 @@ void       g_main_loop_run        (GMainLoop    *loop)
 			ufds[nfds].revents = 0;
 			nfds++;
 		}
-		
+
 		rc = poll(ufds, nfds, -1);
-
-		if (rc < 0 && (errno == EINTR))
+		if (rc < 0)
 			continue;
 
-		if (rc < 0) {
-			perror("poll");
-			continue;
-		}
-		
 		p = &watch_head;
 		w = watch_head.next;
 		i = 0;
+
 		while (w) {
 			if (ufds[i].revents) {
 				gboolean keep = w->func(w->channel, ufds[i].revents, w->user_data);
 				if (!keep) {
-					 p->next = w->next;
-					 memset(w, 0, sizeof(*w));
-					 w = p->next;
-					 i++;
-					 continue;
+					p->next = w->next;
+					memset(w, 0, sizeof(*w));
+					w = p->next;
+					i++;
+					continue;
 				}
-			}	
-		
+			}
+
 			p = w;
 			w = w->next;
 			i++;
 		}
-
 	}
 
 	free(ufds);
 }
 
-void       g_main_loop_quit       (GMainLoop    *loop)
+void g_main_loop_quit(GMainLoop *loop)
 {
 	loop->bail = 1;
 }

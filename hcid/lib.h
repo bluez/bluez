@@ -53,7 +53,7 @@ static inline void io_cancel(void)
 /* Read exactly len bytes (Signal safe)*/
 static inline int read_n(int fd, void *buf, int len)
 {
-	register int t = 0, w;
+	register int w, t = 0;
 
 	while (!__io_canceled && len > 0) {
 		if ((w = read(fd, buf, len)) < 0) {
@@ -74,7 +74,7 @@ static inline int read_n(int fd, void *buf, int len)
 /* Write exactly len bytes (Signal safe)*/
 static inline int write_n(int fd, void *buf, int len)
 {
-	register int t = 0, w;
+	register int w, t = 0;
 
 	while (!__io_canceled && len > 0) {
 		if ((w = write(fd, buf, len)) < 0) {
