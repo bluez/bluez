@@ -707,7 +707,7 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_ADD_SCO:
 		case OCF_SET_CONN_PTYPE:
 			add_sco_dump(level + 1, frm);
-			break;
+			return;
 		case OCF_ACCEPT_CONN_REQ:
 			accept_conn_req_dump(level + 1, frm);
 			return;
