@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 
 	fd_set rfds;
 	struct timeval timeout;
-	unsigned char buf[2048];
+	unsigned char buf[2048], *p;
 	int maxfd, sel, rlen, wlen;
 
 	bdaddr_t local;
@@ -274,7 +274,15 @@ int main(int argc, char *argv[])
 					switch (mode) {
 					case PLAY:
 						rlen = read(fd, buf, rlen);
-						wlen = write(sd, buf, rlen);
+
+						wlen = 0; 
+						p = buf;
+						while (rlen > sco_mtu) {
+						        wlen += write(sd, p, sco_mtu);
+						        rlen -= sco_mtu;
+						        p += sco_mtu;
+						}
+						wlen += write(sd, p, rlen);
 						break;
 					case RECORD:
 						wlen = write(fd, buf, rlen);
