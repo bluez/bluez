@@ -522,6 +522,47 @@ void cmd_class(int ctl, int hdev, char *opt)
 	}
 }
 
+void cmd_voice(int ctl, int hdev, char *opt)
+{
+	static char *icf[] = { "Linear", "u-Law", "A-Law", "Reserved" };
+	static char *idf[] = { "1's complement", "2's complement", "Sign-Magnitude", "Reserved" };
+	static char *iss[] = { "8 bit", "16 bit" };
+	static char *acf[] = { "CVSD", "u-Law", "A-Law", "Reserved" };
+	int s = hci_open_dev(hdev);
+
+	if (s < 0) {
+		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		exit(1);
+	}
+	if (opt) {
+		uint16_t vs = htobl(strtoul(opt, NULL, 16));
+		if (0 > hci_write_voice_setting(s, vs, 1000)) {
+			printf("Can't write voice setting on hci%d. %s(%d)\n",
+				hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		uint16_t vs;
+		uint8_t ic;
+		if (0 > hci_read_voice_setting(s, &vs, 1000)) {
+			printf("Can't read voice setting on hci%d. %s(%d)\n",
+				hdev, strerror(errno), errno);
+			exit(1);
+		}
+		ic = (vs & 0x0300) >> 8;
+		print_dev_hdr(&di);
+		printf("\tVoice setting: 0x%04x%s\n", vs,
+			((vs & 0x03fc) == 0x0060) ? " (Default Condition)" : "");
+		printf("\tInput Coding: %s\n", icf[ic]);
+		printf("\tInput Data Format: %s\n", idf[(vs & 0xc0) >> 6]);
+		if (!ic) {
+			printf("\tInput Sample Size: %s\n", iss[(vs & 0x20) >> 5]);
+			printf("\t# of bits padding at MSB: %d\n", (vs & 0x1c) >> 2);
+		}
+		printf("\tAir Coding Format: %s\n", acf[vs & 0x03]);
+	}
+}
+
 void cmd_version(int ctl, int hdev, char *opt)
 {
 	struct hci_version ver;
@@ -859,6 +900,7 @@ struct {
 	{ "lp",		cmd_lp,		"[policy]",	"Get/Set default link policy" },
 	{ "name",	cmd_name,	"[name]",	"Get/Set local name" },
 	{ "class",	cmd_class,	"[class]",	"Get/Set class of device" },
+	{ "voice",	cmd_voice,	"[voice]",	"Get/Set voice setting" },
 	{ "inqparms",	cmd_inq_parms,	"[win:int]",	"Get/Set inquiry scan window and interval" },
 	{ "pageparms",	cmd_page_parms,	"[win:int]",	"Get/Set page scan window and interval" },
 	{ "pageto",	cmd_page_to,	"[to]",		"Get/Set page timeout" },
