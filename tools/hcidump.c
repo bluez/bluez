@@ -1,53 +1,62 @@
-/* 
-	HCIDump - HCI packet analyzer	
-	Copyright (C) 2000-2001 Maxim Krasnyansky <maxk@qualcomm.com>
-
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation;
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-	OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-	RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-	NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-	USE OR PERFORMANCE OF THIS SOFTWARE.
-
-	ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-	TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
-*/
-
 /*
- * $Id$
+ *
+ *  Bluetooth packet analyzer - HCIdump
+ *
+ *  Copyright (C) 2000-2002  Maxim Krasnyansky <maxk@qualcomm.com>
+ *  Copyright (C) 2003-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *
+ *  $Id$
  */
 
 #include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <string.h>
-#include <pwd.h>
 #include <getopt.h>
+#include <pwd.h>
 
 #include <sys/types.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <sys/uio.h>
 #include <sys/stat.h>
 #include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
-#include <bluetooth/l2cap.h>
 #include <bluetooth/hci_lib.h>
 
-#include "hcidump.h"
 #include "parser.h"
 #include "sdp.h"
+
+
+#define SNAP_LEN HCI_MAX_FRAME_SIZE
+
+/* Modes */
+enum {
+	PARSE,
+	READ,
+	WRITE
+};
 
 /* Default options */
 static int  device;
@@ -57,6 +66,49 @@ static int  mode = PARSE;
 static long flags;
 static long filter;
 static char *dump_file;
+
+struct dump_hdr {
+	uint16_t	len;
+	uint8_t		in;
+	uint8_t		pad;
+	uint32_t	ts_sec;
+	uint32_t	ts_usec;
+} __attribute__ ((packed));
+#define DUMP_HDR_SIZE (sizeof(struct dump_hdr))
+
+static inline int read_n(int fd, char *buf, int len)
+{
+	register int t = 0, w;
+
+	while (len > 0) {
+		if ((w = read(fd, buf, len)) < 0) {
+			if( errno == EINTR || errno == EAGAIN )
+				continue;
+			return -1;
+		}
+		if (!w)
+			return 0;
+		len -= w; buf += w; t += w;
+	}
+	return t;
+}
+
+static inline int write_n(int fd, char *buf, int len)
+{
+	register int t = 0, w;
+
+	while (len > 0) {
+		if ((w = write(fd, buf, len)) < 0) {
+			if( errno == EINTR || errno == EAGAIN )
+				continue;
+			return -1;
+		}
+		if (!w)
+			return 0;
+		len -= w; buf += w; t += w;
+	}
+	return t;
+}
 
 static void process_frames(int dev, int sock, int file)
 {
