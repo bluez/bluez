@@ -44,6 +44,7 @@
 #include "kword.h"
 
 static char *rfcomm_config_file = NULL;
+static int rfcomm_raw_tty = 0;
 
 extern int optind, opterr, optopt;
 extern char *optarg;
@@ -325,10 +326,12 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 		}
 	}
 
-	tcflush(fd, TCIOFLUSH);
+	if (rfcomm_raw_tty) {
+		tcflush(fd, TCIOFLUSH);
 
-	cfmakeraw(&ti);
-	tcsetattr(fd, TCSANOW, &ti);
+		cfmakeraw(&ti);
+		tcsetattr(fd, TCSANOW, &ti);
+	}
 
 	close(sk);
 
@@ -368,32 +371,14 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	struct sockaddr_rc laddr, raddr;
 	struct rfcomm_dev_req req;
 	struct termios ti;
+	struct sigaction sa;
+	struct pollfd p;
 	char dst[18], devname[MAXPATHLEN];
 	int sk, nsk, fd, alen;
-	int i;
-
-	if (argc < 3) {
-		fprintf(stderr, "No command specified\n");
-		return;
-	}
 
 	laddr.rc_family = AF_BLUETOOTH;
 	bacpy(&laddr.rc_bdaddr, bdaddr);
-
-	if (strncmp(argv[1], "exec", 4) == 0) {
-		laddr.rc_channel = 1;
-		argc -= 2;
-		argv += 2;
-	} else if (strncmp(argv[2], "exec", 4) == 0) {
-		laddr.rc_channel = atoi(argv[1]);
-		argc -= 3;
-		argv += 3;
-	} else {
-		fprintf(stderr, "Unknown syntax\n");
-		return;
-	}
-
-	argv[argc] = NULL;
+	laddr.rc_channel = (argc < 2) ? 1 : atoi(argv[1]);
 
 	if ((sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) < 0) {
 		perror("Can't create RFCOMM socket");
@@ -444,27 +429,43 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 		}
 	}
 
-	tcflush(fd, TCIOFLUSH);
+	if (rfcomm_raw_tty) {
+		tcflush(fd, TCIOFLUSH);
 
-	cfmakeraw(&ti);
-	tcsetattr(fd, TCSANOW, &ti);
+		cfmakeraw(&ti);
+		tcsetattr(fd, TCSANOW, &ti);
+	}
 
 	close(sk);
 	close(nsk);
 
 	ba2str(&req.dst, dst);
 	printf("Connection from %s to %s\n", dst, devname);
+	printf("Press CTRL-C for hangup\n");
 
-	for (i = 1; i < argc; i++)
-		if (strcmp(argv[i], "%d") == 0)
-			argv[i] = devname;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags   = SA_NOCLDSTOP;
+	sa.sa_handler = SIG_IGN;
+	sigaction(SIGCHLD, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
 
-	printf("Executing ");
-	for (i = 0; i < argc; i++)
-		printf("%s%s", (i == 0) ? "\"" : " ", argv[i]);
-	printf("\"\n");
+	sa.sa_handler = sig_term;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT,  &sa, NULL);
 
-	execvp(argv[0], argv);
+	sa.sa_handler = sig_hup;
+	sigaction(SIGHUP, &sa, NULL);
+
+	p.fd = fd;
+	p.events = POLLERR | POLLHUP;
+
+	while (!__io_canceled) {
+		p.revents = 0;
+		if (poll(&p, 1, 100))
+			break;
+	}
+
+	printf("Disconnected\n");
 
 	close(fd);
 }
@@ -545,6 +546,7 @@ static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "device",	1, 0, 'i' },
 	{ "config",	1, 0, 'f' },
+	{ "raw",	0, 0, 'r' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -556,7 +558,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:f:ah", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:f:rah", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strncmp(optarg, "hci", 3) == 0)
@@ -567,6 +569,9 @@ int main(int argc, char *argv[])
 
 		case 'f':
 			rfcomm_config_file = strdup(optarg);
+			break;
+		case 'r':
+			rfcomm_raw_tty = 1;
 			break;
 
 		case 'a':

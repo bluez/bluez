@@ -57,12 +57,17 @@ available Bluetooth device.
 .BI show " <dev>"
 Display the information about the specified device.
 .TP
-.BI conn " <dev> [bdaddr] [channel]"
+.BI connect " <dev> [bdaddr] [channel]"
 Connect the RFCOMM device to the remote Bluetooth device on the
 specified channel. If no channel is specified, it will use the
 channel number 1. If also the Bluetooth address is left out, it
 tries to read the data from the config file. This command can
 be terminated with the key sequence CTRL-C.
+.TP 
+.BI listen " <dev> [channel]"
+Listen on a specified RFCOMM channel for incoming connections.
+If no channel is specified, it will use the channel number 1.
+This command can be terminated with the key sequence CTRL-C.
 .TP
 .BI bind " <dev> [bdaddr] [channel]"
 This binds the RFCOMM device to a remote Bluetooth device. The
