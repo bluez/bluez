@@ -1215,7 +1215,7 @@ int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
 	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_WRITE_CURRENT_IAC_LAP;
 	rq.cparam = &cp;
-	rq.clen   = WRITE_CURRENT_IAC_LAP_CP_SIZE;
+	rq.clen   = num_iac * 3 + 1;
 
 	return hci_send_req(dd, &rq, to);
 }

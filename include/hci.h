@@ -688,14 +688,14 @@ typedef struct {
 typedef struct {
 	uint8_t		status;
 	uint8_t		num_current_iac;
-	uint8_t		lap[3][MAX_IAC_LAP];
+	uint8_t		lap[MAX_IAC_LAP][3];
 } __attribute__ ((packed)) read_current_iac_lap_rp;
 #define READ_CURRENT_IAC_LAP_RP_SIZE 2+3*MAX_IAC_LAP
 
 #define OCF_WRITE_CURRENT_IAC_LAP	0x003A
 typedef struct {
 	uint8_t		num_current_iac;
-	uint8_t		lap[3][MAX_IAC_LAP];
+	uint8_t		lap[MAX_IAC_LAP][3];
 } __attribute__ ((packed)) write_current_iac_lap_cp;
 #define WRITE_CURRENT_IAC_LAP_CP_SIZE 1+3*MAX_IAC_LAP
 
