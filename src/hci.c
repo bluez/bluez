@@ -593,10 +593,12 @@ int hci_local_name(int dd, int len, char *name, int to)
 	read_local_name_rp rp;
 	struct hci_request rq;
 
-	rq.ogf = OGF_HOST_CTL;
-	rq.ocf = OCF_READ_LOCAL_NAME;
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_LOCAL_NAME;
+	rq.cparam = NULL;
+	rq.clen   = 0;
 	rq.rparam = &rp;
-	rq.rlen = READ_LOCAL_NAME_RP_SIZE;
+	rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
          
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
@@ -620,8 +622,8 @@ int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, ba);
 
-	rq.ogf = OGF_LINK_CTL;
-	rq.ocf = OCF_REMOTE_NAME_REQ;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_REMOTE_NAME_REQ;
 	rq.cparam = &cp;
 	rq.clen   = REMOTE_NAME_REQ_CP_SIZE;
 	rq.event  = EVT_REMOTE_NAME_REQ_COMPLETE;
@@ -706,13 +708,12 @@ int hci_read_local_version(int dd, struct hci_version *ver, int to)
 	read_local_version_rp rp;
 	struct hci_request rq;
 
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_INFO_PARAM;
-	rq.ocf = OCF_READ_LOCAL_VERSION;
+	rq.ogf    = OGF_INFO_PARAM;
+	rq.ocf    = OCF_READ_LOCAL_VERSION;
 	rq.cparam = NULL;
-	rq.clen = 0;
+	rq.clen   = 0;
 	rq.rparam = &rp;
-	rq.rlen = READ_LOCAL_VERSION_RP_SIZE;
+	rq.rlen   = READ_LOCAL_VERSION_RP_SIZE;
 
 	if (hci_send_req(dd, &rq, 1000) < 0)
 		return -1;
