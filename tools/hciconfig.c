@@ -785,11 +785,66 @@ void cmd_page_to(int ctl, int hdev, char *opt)
         }
 }
 
+static void print_rev_ericsson(int dd)
+{
+	struct hci_request rq;
+	unsigned char buf[102];
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = 0x3f;
+	rq.ocf = 0x000f;
+	rq.cparam = NULL;
+	rq.clen = 0;
+	rq.rparam = &buf;
+	rq.rlen = sizeof(buf);
+
+	if (hci_send_req(dd, &rq, 1000) < 0) {
+		printf("\n Can't read revision info. %s(%d)\n", strerror(errno), errno);
+		return;
+	}
+
+	printf("\t%s\n", buf + 1);
+}
+
+static struct {
+	char  *str;
+	uint16_t rev;
+} csr_map[] = {
+	{ "HCI 11.2 (bc01b)",	114 },
+	{ "HCI 11.3 (bc01b)",   115 },
+	{ "HCI 12.1 (bc01b)",	119 },
+	{ "HCI 12.3 (bc01b)",	134 },
+	{ "HCI 12.7 (bc01b)",	188 },
+	{ "HCI 12.8 (bc01b)",	218 },
+	{ "HCI 12.9 (bc01b)",	283 },
+	{ "HCI 13.10 (bc01b)",	309 },
+	{ "HCI 13.11 (bc01b)",	351 },
+	{ "HCI 16.4 (bc01b)",	523 },
+	{ "HCI 14.3 (bc02x)",	272 },
+	{ "HCI 14.6 (bc02x)",	336 },
+	{ "HCI 14.7 (bc02x)",	373 },
+	{ "HCI 14.8 (bc02x)",	487 },
+	{ "HCI 15.3 (bc02x)",	443 },
+	{ "HCI 16.4 (bc02x)",	525 },
+	{ NULL }
+};
+
+static void print_rev_csr(uint16_t rev)
+{
+	int i;
+
+	for (i = 0; csr_map[i].str; i++)
+		if (csr_map[i].rev == rev) {
+			printf("\t%s\n", csr_map[i].str);
+			return;
+		}
+
+	printf("\tUnknown firmware\n");
+}
+
 static void cmd_revision(int ctl, int hdev, char *opt)
 {
 	struct hci_version ver;
-	struct hci_request rq;
-	unsigned char buf[102];
 	int dd;
 
 	dd = hci_open_dev(hdev);
@@ -807,23 +862,11 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 	print_dev_hdr(&di);
 	switch (ver.manufacturer) {
 	case 0:
-		memset(&rq, 0, sizeof(rq));
-		rq.ogf = 0x3f;
-		rq.ocf = 0x000f;
-		rq.cparam = NULL;
-		rq.clen = 0;
-		rq.rparam = &buf;
-		rq.rlen = sizeof(buf);
-
-		if (hci_send_req(dd, &rq, 1000) < 0) {
-			printf("\n Can't read revision info. %s(%d)\n",
-				strerror(errno), errno);
-			return;
-		}
-
-		printf("\t%s\n", buf + 1);
+		print_rev_ericsson(dd);
 		break;
-
+	case 10:
+		print_rev_csr(ver.hci_rev);
+		break;
 	default:
 		printf("\tUnsupported manufacturer\n");
 		break;
