@@ -214,7 +214,7 @@ static void conf_opt(int level, void *ptr, int len)
 			if (h->len > 0)
 				printf("%d ", get_val(h->val, h->len));
 			break;
-		case 0x04:
+		case L2CAP_CONF_RFC_MODE:
 			printf("Mode ");
 			if (h->len > 0)
 				printf("%d (%s) ", *h->val, mode2str(*h->val));
