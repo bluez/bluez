@@ -9,7 +9,7 @@ dnl Guess host type.
 AC_CANONICAL_SYSTEM
 AC_CANONICAL_HOST
 
-AM_INIT_AUTOMAKE(bluez-utils, 2.0)
+AM_INIT_AUTOMAKE(bluez-utils, 2.1)
 
 AC_SUBST(DISTRO)
 AC_SUBST(PCMCIA)
@@ -84,4 +84,4 @@ AC_ARG_ENABLE(pcmcia,
            AC_TEST_DIR(/etc/pcmcia, PCMCIA=pcmcia, PCMCIA=)
     fi ])
 
-AC_OUTPUT(Makefile hcid/Makefile tools/Makefile scripts/Makefile pcmcia/Makefile)
+AC_OUTPUT(Makefile hcid/Makefile tools/Makefile rfcomm/Makefile scripts/Makefile pcmcia/Makefile)
