@@ -503,7 +503,7 @@ static struct option main_lopts[] = {
 static char main_sopts[] = "hsc:k:Kr:i:S:lnp::DQ::EMC::P:z";
 
 static char main_help[] = 
-	"PAN daemon version " VERSION " \n"
+	"Bluetooth PAN daemon version " VERSION " \n"
 	"Usage:\n"
 	"\tpand <options>\n"
 	"Options:\n"
@@ -678,7 +678,7 @@ int main(int argc, char **argv)
 	}
 
 	openlog("pand", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
-	syslog(LOG_INFO, "Bluetooth PAN daemon");
+	syslog(LOG_INFO, "Bluetooth PAN daemon version %s", VERSION);
 
 	if (src) {
 		src_dev = hci_devid(src);
