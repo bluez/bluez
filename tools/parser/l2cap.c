@@ -173,10 +173,10 @@ static uint32_t conf_opt_val(uint8_t *ptr, uint8_t len)
 		return *ptr;
 
         case 2:
-                return btohs(*(uint16_t *)ptr);
+                return btohs(get_unaligned((uint16_t *)ptr));
 
         case 4:
-                return btohl(*(uint32_t *)ptr);
+                return btohl(get_unaligned((uint32_t *)ptr));
 	}
 	return 0;
 }
@@ -381,7 +381,7 @@ static void l2cap_parse(int level, struct frame *frm)
 		if (p_filter(FILT_L2CAP))
 			return;
 
-		psm = btohs(*(uint16_t*)frm->ptr);
+		psm = btohs(get_unaligned((uint16_t*)frm->ptr));
 		frm->len -= 2;
 
 		p_indent(level, frm);
@@ -454,7 +454,7 @@ void l2cap_dump(int level, struct frame *frm)
 		}
 
 		if (!(fr = get_frame(frm->handle))) {
-			fprintf(stderr, "Not enough connetion handles\n");
+			fprintf(stderr, "Not enough connection handles\n");
 			raw_dump(level, frm);
 			return;
 		}
@@ -473,7 +473,7 @@ void l2cap_dump(int level, struct frame *frm)
 		fr->ts  = frm->ts;
 	} else {
 		if (!(fr = get_frame(frm->handle))) {
-			fprintf(stderr, "Not enough connetion handles\n");
+			fprintf(stderr, "Not enough connection handles\n");
 			raw_dump(level, frm);
 			return;
 		}
