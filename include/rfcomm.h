@@ -39,7 +39,7 @@ extern "C" {
 struct sockaddr_rc {
 	sa_family_t rc_family;
 	bdaddr_t    rc_bdaddr;
-	int         rc_port;
+	int         rc_channel;
 };
 
 #endif /* __RFCOMM_H */
