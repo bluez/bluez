@@ -165,6 +165,79 @@ static uint32_t get_val(uint8_t *ptr, uint8_t len)
 	return 0;
 }
 
+static char *reason2str(uint16_t reason)
+{
+	switch (reason) {
+	case 0x0000:
+		return "Command not understood";
+	case 0x0001:
+		return "Signalling MTU exceeded";
+	case 0x0002:
+		return "Invalid CID in request";
+	default:
+		return "Reserved";
+	}
+}
+
+static char *connresult2str(uint16_t result)
+{
+	switch (result) {
+	case 0x0000:
+		return "Connection successful";
+	case 0x0001:
+		return "Connection pending";
+	case 0x0002:
+		return "Connection refused - PSM not supported";
+	case 0x0003:
+		return "Connection refused - security block";
+	case 0x0004:
+		return "Connection refused - no resources available";
+	default:
+		return "Reserved";
+	}
+}
+
+static char *status2str(uint16_t status)
+{
+	switch (status) {
+	case 0x0000:
+		return "No futher information available";
+	case 0x0001:
+		return "Authentication pending";
+	case 0x0002:
+		return "Authorization pending";
+	default:
+		return "Reserved";
+	}
+}
+
+static char *confresult2str(uint16_t result)
+{
+	switch (result) {
+	case 0x0000:
+		return "Success";
+	case 0x0001:
+		return "Failure - unacceptable parameters";
+	case 0x0002:
+		return "Failure - rejected (no reason provided)";
+	case 0x0003:
+		return "Failure - unknown options";
+	default:
+		return "Reserved";
+	}
+}
+static char *inforesult2str(uint16_t result)
+{
+	switch (result) {
+	case 0x0000:
+		return "Success";
+	case 0x0001:
+		return "Not supported";
+	default:
+		return "Reserved";
+	}
+}
+
 static char *type2str(uint8_t type)
 {
 	switch (type) {
@@ -196,39 +269,64 @@ static char *mode2str(uint8_t mode)
 static inline void command_rej(int level, struct frame *frm)
 {
 	l2cap_cmd_rej *h = frm->ptr;
+	uint16_t reason = btohs(h->reason);
+	uint32_t cid;
 
-	printf("Command rej: reason %d\n", btohs(h->reason));
+	printf("Command rej: reason %d", reason);
+
+	switch (reason) {
+	case 0x0001:
+		printf(" mtu %d\n", get_val(frm->ptr + L2CAP_CMD_REJ_SIZE, 2));
+		break;
+	case 0x0002:
+		cid = get_val(frm->ptr + L2CAP_CMD_REJ_SIZE, 4);
+		printf(" dcid 0x%4.4x scid 0x%4.4x\n", cid & 0xffff, cid >> 16);
+		break;
+	default:
+		printf("\n");
+		break;
+	}
+
+	if (parser.flags & DUMP_VERBOSE) {
+		p_indent(level + 1, frm);
+		printf("%s\n", reason2str(reason));
+	}
 }
 
 static inline void conn_req(int level, struct frame *frm)
 {
 	l2cap_conn_req *h = frm->ptr;
+	uint16_t psm = btohs(h->psm);
+	uint16_t scid = btohs(h->scid);
 
-	add_cid(frm->in, btohs(h->scid), btohs(h->psm));
+	add_cid(frm->in, scid, psm);
 
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Connect req: psm %d scid 0x%4.4x\n",
-				btohs(h->psm), btohs(h->scid));
+	printf("Connect req: psm %d scid 0x%4.4x\n", psm, scid);
 }
 
 static inline void conn_rsp(int level, struct frame *frm)
 {
 	l2cap_conn_rsp *h = frm->ptr;
+	uint16_t scid = btohs(h->scid);
+	uint16_t dcid = btohs(h->dcid);
+	uint16_t result = btohs(h->result);
+	uint16_t status = btohs(h->status);
 	uint16_t psm;
 
 	switch (h->result) {
 	case L2CAP_CR_SUCCESS:
-		if ((psm = get_psm(!frm->in, btohs(h->scid))))
-			add_cid(frm->in, btohs(h->dcid), psm);
+		if ((psm = get_psm(!frm->in, scid)))
+			add_cid(frm->in, dcid, psm);
 		break;
 
 	case L2CAP_CR_PEND:
 		break;
 
 	default:
-		del_cid(frm->in, btohs(h->dcid), btohs(h->scid));
+		del_cid(frm->in, dcid, scid);
 		break;
 	}
 
@@ -236,8 +334,17 @@ static inline void conn_rsp(int level, struct frame *frm)
 		return;
 
 	printf("Connect rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n",
-				btohs(h->dcid), btohs(h->scid),
-				btohs(h->result), btohs(h->status));
+		dcid, scid, result, status);
+
+	if (parser.flags & DUMP_VERBOSE) {
+		p_indent(level + 1, frm);
+		printf("%s", connresult2str(result));
+
+		if (result == 0x0001)
+			printf(" - %s\n", status2str(status));
+		else
+			printf("\n");
+	}
 }
 
 static void conf_opt(int level, void *ptr, int len)
@@ -298,24 +405,32 @@ static inline void conf_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Config req: dcid 0x%4.4x flags 0x%4.4x clen %d\n",
+	printf("Config req: dcid 0x%4.4x flags 0x%2.2x clen %d\n",
 			btohs(h->dcid), btohs(h->flags), clen);
+
 	if (clen)
-		conf_opt(level, h->data, clen);
+		conf_opt(level + 1, h->data, clen);
 }
 
 static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	l2cap_conf_rsp *h = frm->ptr;
+	uint16_t result = btohs(h->result);
 	int clen = btohs(cmd->len) - L2CAP_CONF_RSP_SIZE;
 
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Config rsp: scid 0x%4.4x flags 0x%4.4x result %d clen %d\n",
-			btohs(h->scid), btohs(h->flags), btohs(h->result), clen);
+	printf("Config rsp: scid 0x%4.4x flags 0x%2.2x result %d clen %d\n",
+			btohs(h->scid), btohs(h->flags), result, clen);
+
+	if (parser.flags & DUMP_VERBOSE) {
+		p_indent(level + 1, frm);
+		printf("%s\n", confresult2str(result));
+	}
+
 	if (clen)
-		conf_opt(level, h->data, clen);
+		conf_opt(level + 1, h->data, clen);
 }
 
 static inline void disconn_req(int level, struct frame *frm)
@@ -332,7 +447,10 @@ static inline void disconn_req(int level, struct frame *frm)
 static inline void disconn_rsp(int level, struct frame *frm)
 {
 	l2cap_disconn_rsp *h = frm->ptr;
-	del_cid(frm->in, btohs(h->dcid), btohs(h->scid));
+	uint16_t dcid = btohs(h->dcid);
+	uint16_t scid = btohs(h->scid);
+
+	del_cid(frm->in, dcid, scid);
 
 	if (p_filter(FILT_L2CAP))
 		return;
@@ -362,6 +480,7 @@ static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 static void info_opt(int level, int type, void *ptr, int len)
 {
 	p_indent(level, 0);
+
 	switch (type) {
 	case 0x0001:
 		printf("Connectionless MTU %d\n", get_val(ptr, len));
@@ -388,14 +507,22 @@ static inline void info_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	l2cap_info_rsp *h = frm->ptr;
+	uint16_t type = btohs(h->type);
+	uint16_t result = btohs(h->result);
 	int ilen = btohs(cmd->len) - L2CAP_INFO_RSP_SIZE;
 
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Info rsp: type %d result %d\n", btohs(h->type), btohs(h->result));
+	printf("Info rsp: type %d result %d\n", type, result);
+
+	if (parser.flags & DUMP_VERBOSE) {
+		p_indent(level + 1, frm);
+		printf("%s\n", inforesult2str(result));
+	}
+
 	if (ilen)
-		info_opt(level, btohs(h->type), h->data, ilen);
+		info_opt(level + 1, type, h->data, ilen);
 }
 
 static void l2cap_parse(int level, struct frame *frm)
