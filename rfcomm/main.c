@@ -250,7 +250,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	struct sigaction sa;
 	struct pollfd p;
 	char dst[18], devname[MAXPATHLEN];
-	int sk, fd, alen;
+	int sk, fd, alen, try = 3;
 
 	laddr.rc_family = AF_BLUETOOTH;
 	bacpy(&laddr.rc_bdaddr, bdaddr);
@@ -270,7 +270,6 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 			fprintf(stderr, "Can't find a config entry for rfcomm%d\n", dev);
 			return;
 		}
-
 	} else {
 		raddr.rc_family = AF_BLUETOOTH;
 		str2ba(argv[1], &raddr.rc_bdaddr);
@@ -322,7 +321,11 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	snprintf(devname, MAXPATHLEN - 1, "/dev/rfcomm%d", dev);
 	if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
 		snprintf(devname, MAXPATHLEN - 1, "/dev/bluetooth/rfcomm/%d", dev);
-		if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
+		while ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
+			if (try--) {
+				sleep(1);
+				continue;
+			}
 			perror("Can't open RFCOMM device");
 			close(sk);
 			return;
@@ -377,7 +380,7 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	struct sigaction sa;
 	struct pollfd p;
 	char dst[18], devname[MAXPATHLEN];
-	int sk, nsk, fd, alen;
+	int sk, nsk, fd, alen, try = 3;
 
 	laddr.rc_family = AF_BLUETOOTH;
 	bacpy(&laddr.rc_bdaddr, bdaddr);
@@ -425,7 +428,11 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	snprintf(devname, MAXPATHLEN - 1, "/dev/rfcomm%d", dev);
 	if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
 		snprintf(devname, MAXPATHLEN - 1, "/dev/bluetooth/rfcomm/%d", dev);
-		if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
+		while ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
+			if (try--) {
+				sleep(1);
+				continue;
+			}
 			perror("Can't open RFCOMM device");
 			close(sk);
 			return;
