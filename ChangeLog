@@ -1,3 +1,12 @@
+ver 2.13:
+	Use file permission 0600 for the link key file.
+	Add support for HID attribute descriptions.
+	Add support for Device ID attributes.
+	Various whitespace cleanups.
+
+	Note:
+	This version needs at least bluez-libs-2.13
+
 ver 2.12:
 	Inherit the device specific options from the default.
 	Use --device for selecting the source device.
