@@ -1265,7 +1265,7 @@ static int add_simaccess(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
-	printf("Handsfree service registered\n");
+	printf("SIM Access service registered\n");
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
