@@ -271,7 +271,7 @@ static void conf_opt(int level, void *ptr, int len)
 				printf(" 0x%02x (%s)", *(h->val + 1), type2str(*(h->val + 1)));
 			break;
 
-		case L2CAP_CONF_RFC_MODE:
+		case L2CAP_CONF_RFC:
 			printf("Mode");
 			if (h->len > 0)
 				printf(" 0x02%x (%s)", *h->val, mode2str(*h->val));
