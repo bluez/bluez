@@ -27,6 +27,7 @@ Martin Leopold <martin@leopold.dk>
 
 Stephen Crane <steve.crane@rococosoft.com>
 	Support for human readable class of device display.
+	SDP server and sdptool fixes.
 
 Wolfgang Heidrich <wolfgang.heidrich@esk.fhg.de>
 	Support for displaying link quality (hcitool).
