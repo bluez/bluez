@@ -1506,6 +1506,74 @@ static void cmd_enc(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
+/* Change connection link key */
+
+static struct option key_options[] = {
+	{"help",	0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *key_help = 
+	"Usage:\n"
+	"\tkey <bdaddr>\n";
+
+static void cmd_key(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	bdaddr_t bdaddr;
+	int opt, dd;
+
+	for_each_opt(opt, key_options, NULL) {
+		switch (opt) {
+		default:
+			printf(key_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(key_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+
+	if (hci_change_link_key(dd, htobs(cr->conn_info->handle), 25000) < 0) {
+		perror("Changing link key failed");
+		exit(1);
+	}
+
+	close(dd);
+	free(cr);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
@@ -1529,6 +1597,7 @@ static struct {
 	{ "lst",  cmd_lst,  "Set/display link supervision timeout" },
 	{ "auth", cmd_auth, "Request authentication"               },
 	{ "enc",  cmd_enc,  "Set connection encryption"            },
+	{ "key",  cmd_key,  "Change connection link key"           },
 	{ NULL, NULL, 0 }
 };
 
