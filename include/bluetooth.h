@@ -88,7 +88,7 @@ enum {
 #endif
 
 /* Bluetooth unaligned access */
-#if defined(__i386__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__) || defined(__s390__)
 #define bt_get_unaligned(ptr) (*(ptr))
 #define bt_put_unaligned(val, ptr) ((void)( *(ptr) = (val) ))
 #else
