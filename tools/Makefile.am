@@ -22,7 +22,9 @@ ciptool_LDADD = @BLUEZ_LIBS@
 
 ppporc_LDADD = @BLUEZ_LIBS@
 
-AM_CFLAGS = @BLUEZ_CFLAGS@
+hid2hci_LDADD = @USB_LIBS@
+
+AM_CFLAGS = @BLUEZ_CFLAGS@ @USB_CFLAGS@
 
 man_MANS = hciattach.8 hciconfig.8 hid2hci.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1
 

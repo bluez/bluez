@@ -33,49 +33,23 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <stdint.h>
-#include <dirent.h>
 #include <string.h>
 #include <getopt.h>
 #include <sys/ioctl.h>
 
-static char usbpath[PATH_MAX + 1] = "/proc/bus/usb";
+#include <usb.h>
 
-struct usb_device_descriptor {
-	uint8_t  bLength;
-	uint8_t  bDescriptorType;
-	uint16_t bcdUSB;
-	uint8_t  bDeviceClass;
-	uint8_t  bDeviceSubClass;
-	uint8_t  bDeviceProtocol;
-	uint8_t  bMaxPacketSize0;
-	uint16_t idVendor;
-	uint16_t idProduct;
-	uint16_t bcdDevice;
-	uint8_t  iManufacturer;
-	uint8_t  iProduct;
-	uint8_t  iSerialNumber;
-	uint8_t  bNumConfigurations;
-} __attribute__ ((packed));
+#ifndef usb_get_busses
+struct usb_bus *usb_get_busses(void)
+{
+	return usb_busses;
+}
+#endif
 
-struct usb_ctrltransfer {
-	uint8_t  bRequestType;
-	uint8_t  bRequest;
-	uint16_t wValue;
-	uint16_t wIndex;
-	uint16_t wLength;
-
-	uint32_t timeout;	/* in milliseconds */
-	void *data;		/* pointer to data */
-};
-
-#define IOCTL_USB_CONTROL	_IOWR('U', 0, struct usb_ctrltransfer)
-
-#define USB_RECIP_DEVICE	0x00
-#define USB_TYPE_VENDOR		0x40
-#define USB_DIR_OUT		0x00
+#ifndef USB_DIR_OUT
+#define USB_DIR_OUT	0x00
+#endif
 
 static char devpath[PATH_MAX + 1] = "/dev";
 
@@ -127,34 +101,21 @@ struct device_id {
 };
 
 struct device_info {
-	uint16_t busnum;
-	uint16_t devnum;
+	struct usb_device *dev;
 	struct device_id *id;
 };
 
-static int switch_hidproxy(struct device_info *dev)
+static int switch_hidproxy(struct device_info *devinfo)
 {
-	struct usb_ctrltransfer ctrl;
-	char devname[PATH_MAX + 1];
-	int fd, err;
+	struct usb_dev_handle *udev;
+	int err;
 
-	snprintf(devname, PATH_MAX, "%s/%03d/%03d",
-					usbpath, dev->busnum, dev->devnum);
+	udev = usb_open(devinfo->dev);
+	if (!udev)
+		return -errno;
 
-	fd = open(devname, O_RDWR);
-	if (fd < 0)
-		return fd;
-
-	ctrl.bRequestType = USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_DEVICE;
-	ctrl.bRequest     = 0;
-	ctrl.wValue       = dev->id->mode;
-	ctrl.wIndex       = 0;
-	ctrl.wLength      = 0;
-
-	ctrl.data    = NULL;
-	ctrl.timeout = 10000;
-
-	err = ioctl(fd, IOCTL_USB_CONTROL, &ctrl);
+	err = usb_control_msg(udev, USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_DEVICE,
+				0, devinfo->id->mode, 0, NULL, 0, 10000);
 
 	if (err == 0) {
 		err = -1;
@@ -164,7 +125,7 @@ static int switch_hidproxy(struct device_info *dev)
 			err = 0;
 	}
 
-	close(fd);
+	usb_close(udev);
 
 	return err;
 }
@@ -197,7 +158,7 @@ static int send_report(int fd, const unsigned char *buf, size_t size)
 	return err;
 }
 
-static int switch_logitech(struct device_info *dev)
+static int switch_logitech(struct device_info *devinfo)
 {
 	char devname[PATH_MAX + 1];
 	int i, fd, err = -1;
@@ -223,8 +184,8 @@ static int switch_logitech(struct device_info *dev)
 
 		memset(&dinfo, 0, sizeof(dinfo));
 		err = ioctl(fd, HIDIOCGDEVINFO, &dinfo);
-		if (err < 0 || dinfo.busnum != dev->busnum ||
-				dinfo.devnum != dev->devnum) {
+		if (err < 0 || dinfo.busnum != atoi(devinfo->dev->bus->dirname) ||
+				dinfo.devnum != atoi(devinfo->dev->filename)) {
 			close(fd);
 			continue;
 		}
@@ -281,67 +242,29 @@ static struct device_id *match_device(int mode, uint16_t vendor, uint16_t produc
 	return NULL;
 }
 
-static int find_devices(int mode, struct device_info *dev, size_t size)
+static int find_devices(int mode, struct device_info *devinfo, size_t size)
 {
-	DIR *busdir, *devdir;
-	struct dirent *entry;
-	struct usb_device_descriptor desc;
+	struct usb_bus *bus;
+	struct usb_device *dev;
 	struct device_id *id;
-	int fd, len, busnum, devnum, count = 0;
-	char buspath[PATH_MAX + 1];
-	char devname[PATH_MAX + 1];
+	int count = 0;
 
-	if (!(busdir = opendir(usbpath)))
-		return -1;
+	usb_find_busses();
+	usb_find_devices();
 
-	while ((entry = readdir(busdir))) {
-		if (entry->d_name[0] == '.')
-			continue;
-
-		if (!strchr("0123456789",
-				entry->d_name[strlen(entry->d_name) - 1]))
-			continue;
-
-		busnum = atoi(entry->d_name);
-		snprintf(buspath, PATH_MAX, "%s/%s", usbpath, entry->d_name);
-		if (!(devdir = opendir(buspath)))
-			continue;
-
-		while ((entry = readdir(devdir))) {
-			if (entry->d_name[0] == '.')
-				continue;
-
-			if (!strchr("0123456789",
-					entry->d_name[strlen(entry->d_name) - 1]))
-				continue;
-
-			devnum = atoi(entry->d_name);
-			snprintf(devname, PATH_MAX, "%s/%s",
-							buspath, entry->d_name);
-
-			if ((fd = open(devname, O_RDONLY)) < 0)
-				continue;
-
-			len = read(fd, &desc, sizeof(desc));
-			if (len < 0 || len != sizeof(desc))
-				continue;
-
-			id = match_device(mode, desc.idVendor, desc.idProduct);
+	for (bus = usb_get_busses(); bus; bus = bus->next)
+		for (dev = bus->devices; dev; dev = dev->next) {
+			id = match_device(mode, dev->descriptor.idVendor,
+						dev->descriptor.idProduct);
 			if (!id)
 				continue;
 
 			if (count < size) {
-				dev[count].busnum  = busnum;
-				dev[count].devnum  = devnum;
-				dev[count].id = id;
+				devinfo[count].dev = dev;
+				devinfo[count].id = id;
 				count++;
 			}
 		}
-
-		closedir(devdir);
-	}
-
-	closedir(busdir);
 
 	return count;
 }
@@ -356,6 +279,7 @@ static void usage(void)
 
 	printf("Options:\n"
 		"\t-h, --help           Display help\n"
+		"\t-q, --quiet          Don't display any messages\n"
 		"\t-0, --tohci          Switch to HCI mode (default)\n"
 		"\t-1, --tohid          Switch to HID mode\n"
 		"\n");
@@ -363,6 +287,7 @@ static void usage(void)
 
 static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
+	{ "quiet",	0, 0, 'q' },
 	{ "tohci",	0, 0, '0' },
 	{ "tohid",	0, 0, '1' },
 	{ 0, 0, 0, 0 }
@@ -371,15 +296,18 @@ static struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	struct device_info dev[16];
-	int i, opt, num, mode = HCI;
+	int i, opt, num, quiet = 0, mode = HCI;
 
-	while ((opt = getopt_long(argc, argv, "+01h", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+01qh", main_options, NULL)) != -1) {
 		switch (opt) {
 		case '0':
 			mode = HCI;
 			break;
 		case '1':
 			mode = HID;
+			break;
+		case 'q':
+			quiet = 1;
 			break;
 		case 'h':
 			usage();
@@ -393,24 +321,31 @@ int main(int argc, char *argv[])
 	argv += optind;
 	optind = 0;
 
+	usb_init();
+
 	num = find_devices(mode, dev, sizeof(dev) / sizeof(dev[0]));
 	if (num <= 0) {
-		fprintf(stderr, "No devices in %s mode found\n",
-						mode ? "HID" : "HCI");
+		if (!quiet)
+			fprintf(stderr, "No devices in %s mode found\n",
+							mode ? "HID" : "HCI");
 		exit(1);
 	}
 
 	for (i = 0; i < num; i++) {
 		struct device_id *id = dev[i].id;
 
-		printf("Switching device %04x:%04x to %s mode ",
-			id->vendor, id->product, mode ? "HID" : "HCI");
+		if (!quiet)
+			printf("Switching device %04x:%04x to %s mode ",
+				id->vendor, id->product, mode ? "HID" : "HCI");
 		fflush(stdout);
 
-		if (id->func(&dev[i]) < 0)
-			printf("failed (%s)\n", strerror(errno));
-		else
-			printf("was successful\n");
+		if (id->func(&dev[i]) < 0) {
+			if (!quiet)
+				printf("failed (%s)\n", strerror(errno));
+		} else {
+			if (!quiet)
+				printf("was successful\n");
+		}
 	}
 
 	return 0;
