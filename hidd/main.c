@@ -411,7 +411,7 @@ static void do_kill(int ctl, bdaddr_t *bdaddr, uint32_t flags)
 
 static void usage(void)
 {
-	printf("hidd - Bluetooth HID daemon\n\n");
+	printf("hidd - Bluetooth HID daemon version %s\n\n", VERSION);
 
 	printf("Usage:\n"
 		"\thidd [options] [commands]\n"
