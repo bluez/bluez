@@ -84,7 +84,7 @@ static char *get_macaddr(struct frame *frm)
   return str;
 }
 
-static void bnep_control(int level, struct frame *frm)
+static void bnep_control(int level, struct frame *frm , int header_length)
 {
   __u8 uuid_size;
   int i, length;
@@ -171,7 +171,9 @@ static void bnep_control(int level, struct frame *frm)
     printf("Filter MultAddr Rsp: res 0x%04x\n", get_u16(frm));
     break;     
   default:
-    printf("ERROR: Unknown Type: type 0x%02x\n", type);
+    printf("ERROR: Unknown control header Type: 0x%02x Length: 0x%02x\n", type, header_length);
+	frm->ptr += header_length - 1;
+	frm->len -= header_length - 1;
     return;
   }
 }
@@ -182,22 +184,22 @@ static __u16 bnep_data(int level, struct frame *frm, __u8 type)
   
   switch (type & 0x7f) {
   case BNEP_COMPRESSED_ETHERNET:
-    printf("Compressed: ");
+    printf("Compressed ");
     break;
   case BNEP_GENERAL_ETHERNET:
-    printf("General: ");
+    printf("General ethernet ");
     printf("Dst %s ", get_macaddr(frm));
     printf("Src %s ", get_macaddr(frm));
     break;
   case BNEP_COMPRESSED_ETHERNET_DEST_ONLY:
-    printf("DstOnly: Dst %s ", get_macaddr(frm));
+    printf("Destination only: Dst %s ", get_macaddr(frm));
     break;
   case BNEP_COMPRESSED_ETHERNET_SOURCE_ONLY:
-    printf("SrcOnly: Src %s ", get_macaddr(frm));
+    printf("Source only: Src %s ", get_macaddr(frm));
     break;
   }
   proto = get_u16(frm);
-  printf("[0x%02x]\n", proto);
+  printf("Protocol: 0x%02x\n", proto);
   return proto;
 }
 
@@ -210,14 +212,17 @@ static void bnep_eval_extension(int level, struct frame *frm)
   p_indent(level, frm);
   switch (type & 0x7f) {
   case BNEP_EXTENSION_CONTROL:
-    printf("Ext(c): ");
-    bnep_control(level, frm);
+    printf("BNEP Ext(c): ");
+    bnep_control(level, frm , length);
     break;
   default:
-    printf("ERROR: Unknown Ext Type: type 0x%02x len 0x%02x\n", 
+    printf("BNEP Ext(c): Unknown extension type 0x%02x len 0x%02x\n", 
 	   type & 0x7f, length);
-    hex_ndump(level+1, frm, length);
+    //hex_ndump(level+1, frm, length);
+	frm->ptr += length;
+	frm->len -= length;    
   }
+  
   if (extension) {
     bnep_eval_extension(level, frm);
   }
@@ -270,11 +275,13 @@ static void ip_dump(int level, struct frame *frm)
   default:
     printf("Unknown Protocol: 0x%02x\n", ip->ip_p);
     raw_dump(level, frm);
+
   }
 }
 
 void bnep_dump(int level, struct frame *frm)
 {
+  __u8 tmp_8;
   __u8 type = get_u8(frm);
   __u16 proto = 0x0000;
   int extension = type & 0x80;
@@ -283,7 +290,7 @@ void bnep_dump(int level, struct frame *frm)
   switch (type & 0x7f) {
   case BNEP_CONTROL:
     printf("BNEP(c): ");
-    bnep_control(level, frm);
+    bnep_control(level, frm , -1);
     break;
   case BNEP_COMPRESSED_ETHERNET:
   case BNEP_GENERAL_ETHERNET:
@@ -293,19 +300,67 @@ void bnep_dump(int level, struct frame *frm)
     proto = bnep_data(level, frm, type);
     break;
   default:
-    printf("ERROR: Unknown Type: type 0x%02x ext %s\n", 
+    printf("BNEP(d): Unknown packet type: 0x%02x ext %s\n", 
 	   type & 0x7f, extension ? "0x1" : "0x0");
     return;
   }
-  if (extension) {
+
+  //Extension info
+  if (extension)
     bnep_eval_extension(++level, frm);
-  }
+
+  //Control packet => No payload info
+  if ((type & 0x7f) == BNEP_CONTROL) 
+   return;
+   
+  p_indent(level, frm); 
   if (proto == 0x8100) { /* 802.1p */
-    p_indent(level, frm);
-    printf("802.1p Header: 0x%02x, ", get_u16(frm));
-    printf("EtherType: 0x%02x\n", get_u16(frm));
+    printf("BNEP(d): 802.1p Header: 0x%02x " , get_u16(frm));
+    printf("Ethernet protocol: 0x%02x\n" , get_u16(frm));
+  }
+  
+  
+  if (proto == 0x8100) {
+	  if (frm -> len < 56) {
+		  printf("BNEP: Packet contains no payload\n");
+		  return;
+	  }	  
+
+	  frm->ptr += 56;
+	  frm->len -= 56;
+  } 
+  else {	 
+	  if (frm -> len < 60) {
+		  printf("BNEP: Packet contains no payload\n");
+		  return;
+	  }	  
+
+	  frm->ptr += 60;
+	  frm->len -= 60;
   }
 
+  printf("BNEP: Payload length: %d (0x%x)\n" , frm->len , frm->len);
+  tmp_8 = get_u8(frm);
+
+  p_indent(level, frm);
+  if (tmp_8 != 0) {
+	  p_indent(level, frm);
+	  printf("BNEP: First byte: %d (not equal zero => skip payload analyse) \n" , tmp_8);
+	  return;	
+  }
+  else {
+	  int expected_value = 0;
+	  int pattern_counter = 0;
+	  do {
+		  pattern_counter++;
+		  expected_value = pattern_counter % 256;
+		  tmp_8 = get_u8(frm);
+	  } while (expected_value == tmp_8);
+
+	  printf("BNEP: Last checked byte: %d pattern size: %d (0x%x)\n" , tmp_8 , pattern_counter , pattern_counter);
+  }
+
+/*
   switch (proto) {
   case ETHERTYPE_ARP:
     p_indent(++level, frm);
@@ -325,5 +380,6 @@ void bnep_dump(int level, struct frame *frm)
   default:
     raw_dump(level, frm);
   }
+*/  
 }
 
