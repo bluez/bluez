@@ -286,7 +286,7 @@ void sdp_set_url_attr(sdp_record_t *rec, const char *clientExecURL, const char *
  *    sdp_list_t *rsp_list
  *      This variable is set on a successful return if there are
  *      non-zero service handles. It is a singly linked list of
- *      service records (sdp_record_t)
+ *      service record handles (uint16_t)
  */
 int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search_list, uint16_t max_rec_num, sdp_list_t **rsp_list);
 
