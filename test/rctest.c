@@ -150,23 +150,21 @@ void do_listen( void (*handler)(int sk) )
 		exit(1);
 	}
 
-#if 0
 	/* Set link mode */
 	opt = 0;
 	if (master)
-		 opt |= L2CAP_LM_MASTER;
+		 opt |= RFCOMM_LM_MASTER;
 
 	if (auth)
-		 opt |= L2CAP_LM_AUTH;
+		 opt |= RFCOMM_LM_AUTH;
 
 	if (encrypt)
-		 opt |= L2CAP_LM_ENCRYPT;
+		 opt |= RFCOMM_LM_ENCRYPT;
 
-	if (setsockopt(s, SOL_RFCOMM, L2CAP_LM, &opt, sizeof(opt)) < 0) {
+	if (setsockopt(s, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP link mode. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
-#endif
 
 	if( listen(s, 10) ) {
 		syslog(LOG_ERR,"Can not listen on the socket. %s(%d)", strerror(errno), errno);
