@@ -551,7 +551,6 @@ int main(int argc, char **argv)
 
 		case 'Q':
 			mode = CONNECT;
-			dst  = NULL;
 			if (optarg)
 				search_duration = atoi(optarg);
 			break;
@@ -565,7 +564,6 @@ int main(int argc, char **argv)
 		case 'K':
 			mode = KILL;
 			detach = 0;
-			dst  = NULL;
 			break;
 
 		case 'S':
@@ -700,6 +698,7 @@ int main(int argc, char **argv)
 		strncpy(cache.dst, dst, sizeof(cache.dst) - 1);
 		str2ba(dst, &cache.bdaddr);
 		cache.valid = 1;
+		free(dst);
 	}
 
 	switch (mode) {

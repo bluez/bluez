@@ -63,6 +63,7 @@ int bnep_sdp_register(uint16_t role)
 	uuid_t root_uuid, pan, l2cap, bnep;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *proto[2];
+	sdp_data_t *v, *p;
 	uint16_t psm = 15, version = 0x0100;
 	int status;
 
@@ -84,15 +85,18 @@ int bnep_sdp_register(uint16_t role)
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
 	sdp_set_browse_groups(record, root);
+	sdp_list_free(root, 0);
 
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
 	proto[0] = sdp_list_append(NULL, &l2cap);
-	proto[0] = sdp_list_append(proto[0], sdp_data_alloc(SDP_UINT16, &psm));
+	p = sdp_data_alloc(SDP_UINT16, &psm);
+	proto[0] = sdp_list_append(proto[0], p);
 	apseq    = sdp_list_append(NULL, proto[0]);
 
 	sdp_uuid16_create(&bnep, BNEP_UUID);
 	proto[1] = sdp_list_append(NULL, &bnep);
-	proto[1] = sdp_list_append(proto[1], sdp_data_alloc(SDP_UINT16, &version));
+	v = sdp_data_alloc(SDP_UINT16, &version);
+	proto[1] = sdp_list_append(proto[1], v);
 
 	/* Supported protocols */
 	{
@@ -118,6 +122,12 @@ int bnep_sdp_register(uint16_t role)
 	
 	aproto   = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
+	sdp_list_free(proto[0], NULL);
+	sdp_list_free(proto[1], NULL);
+	sdp_list_free(apseq, NULL);
+	sdp_list_free(aproto, NULL);
+	sdp_data_free(p);
+	sdp_data_free(v);
 
 	switch (role) {
 	case BNEP_SVC_NAP:
@@ -150,11 +160,13 @@ int bnep_sdp_register(uint16_t role)
 		sdp_uuid16_create(&pan, PANU_SVCLASS_ID);
 		svclass = sdp_list_append(NULL, &pan);
 		sdp_set_service_classes(record, svclass);
+		sdp_list_free(svclass, 0);
 
 		sdp_uuid16_create(&profile[0].uuid, PANU_PROFILE_ID);
 		profile[0].version = 0x0100;
 		pfseq = sdp_list_append(NULL, &profile[0]);
 		sdp_set_profile_descs(record, pfseq);
+		sdp_list_free(pfseq, 0);
 
 		sdp_set_info_attr(record, "PAN User", NULL, NULL);
 		break;
