@@ -42,16 +42,9 @@
 #include <bluetooth/l2cap.h>
 
 #include "parser.h"
-
-/* Modes */
-enum {
-	DUMP,
-	READ,
-	WRITE,
-};
+#include "hcidump.h"
 
 /* Default options */
-#define SNAP_LEN (1 + HCI_ACL_HDR_SIZE + L2CAP_HDR_SIZE + L2CAP_CMD_HDR_SIZE + 60)
 int snap_len = SNAP_LEN;
 int mode = DUMP;
 
@@ -62,22 +55,25 @@ void usage(void)
 	printf("\thcidump <-i hciX> [-ah]\n");
 }
 
-void process_frames(int dev, int fd)
+void process_frames(int dev, int sock, int file)
 {
-	char *data, *ctrl;
+	char *data, *ctrl, *frame;
 	struct cmsghdr *cmsg;
 	struct msghdr msg;
 	struct iovec  iv;
+	struct dump_hdr *dh;
 	int len, in;
 
 	if (snap_len < SNAP_LEN)
 		snap_len = SNAP_LEN;
 
-	if (!(data = malloc(snap_len))) {
+	if (!(data = malloc(snap_len + DUMP_HDR_SIZE))) {
 		perror("Can't allocate data buffer");
 		exit(1);
 	}
-
+	dh = (void *) data;
+	frame = data + DUMP_HDR_SIZE;
+	
 	if (!(ctrl = malloc(100))) {
 		perror("Can't allocate control buffer");
 		exit(1);
@@ -86,7 +82,7 @@ void process_frames(int dev, int fd)
 	printf("device: hci%d snap_len: %d filter: none\n", dev, snap_len); 
 
 	while (1) {
-		iv.iov_base = data;
+		iv.iov_base = frame;
 		iv.iov_len  = snap_len;
 
 		msg.msg_iov = &iv;
@@ -94,7 +90,7 @@ void process_frames(int dev, int fd)
 		msg.msg_control = ctrl;
 		msg.msg_controllen = 100;
 
-		if ((len = recvmsg(fd, &msg, 0)) < 0) {
+		if ((len = recvmsg(sock, &msg, 0)) < 0) {
 			perror("Receive failed");
 			exit(1);
 		}
@@ -111,25 +107,63 @@ void process_frames(int dev, int fd)
 			cmsg = CMSG_NXTHDR(&msg, cmsg);
 		}
 
-		/* Print data direction */
-		printf("%c ", (in ? '>' : '<')); 
-
-		parse(data, len);
-
-		fflush(stdout);
+		if (file == -1) {
+			/* Parse and print */	
+			parse(in, frame, len);
+		} else {
+			/* Save dump */	
+			dh->len = __cpu_to_le16(len);
+			dh->in  = in;
+			if (write_n(file, data, len + DUMP_HDR_SIZE) < 0) {
+				perror("Write error");
+				exit(1);
+			}
+		}
 	}
+}
+
+void read_dump(int file)
+{
+	struct dump_hdr dh;
+	char *data;
+	int err;
+
+	if (!(data = malloc(HCI_MAX_FRAME_SIZE))) {
+		perror("Can't allocate data buffer");
+		exit(1);
+	}
+	
+	while (1) {
+		int len;
+
+		if ((err = read_n(file, (void *) &dh, DUMP_HDR_SIZE)) < 0)
+			goto failed;
+		if (!err) return;
+		
+		len = __le16_to_cpu(dh.len);
+
+		if ((err = read_n(file, data, len)) < 0)
+			goto failed;
+		if (!err) return;
+
+		parse(dh.in, data, len);
+	}
+
+failed:
+	perror("Read failed");
+	exit(1);
 }
 
 int open_file(char *file, int mode)
 {
-	int fi, flags;
+	int f, flags;
 
 	if (mode == WRITE)
-		flags = O_WRONLY | O_CREATE | O_APPEND;
+		flags = O_WRONLY | O_CREAT | O_APPEND;
 	else
 		flags = O_RDONLY;
 
-	if ((f = open(file, flags) < 0) {
+	if ((f = open(file, flags)) < 0) {
 		perror("Can't open output file");
 		exit(1);
 	}
@@ -178,8 +212,9 @@ int main(int argc, char *argv[])
 {
 	extern int optind, opterr, optopt;
 	extern char *optarg;
-	int s, f, dev;
-	long flags;	
+	int  dev, opt;
+	long flags;
+	char *file = NULL;
 
 	dev = 0;
 	flags = 0;
@@ -222,20 +257,17 @@ int main(int argc, char *argv[])
 
 	switch (mode) {
 	case DUMP:
-		s = open_socket(dev);
 		init_parser(flags);
-		process_frames(dev, s);
+		process_frames(dev, open_socket(dev), -1);
 		break;
 
 	case WRITE:
-		s = open_socket(dev);
-		f = open_file(file, mode);
-		write_frames(s, f);
+		process_frames(dev, open_socket(dev), open_file(file, mode));
 		break;
 
 	case READ:
-		f = open_file(file, mode);
-		read_frames(f);
+		init_parser(flags);
+		read_dump(open_file(file, mode));
 		break;
 	}
 	return 0;

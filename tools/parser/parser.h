@@ -32,8 +32,14 @@
 #define indent(l) printf("%*c", (l*2), ' ')
 
 void init_parser(long flags);
-#define	parse(data, len) hci_dump(0, data, len)
 
 void raw_dump(int level, __u8 *data, int len);
 void hci_dump(int level, __u8 *data, int len);
 void l2cap_dump(int level, __u8 *data, int len, __u8 flags);
+
+static inline void parse(int in, char *data, int len)
+{
+	printf("%c ", (in ? '>' : '<')); 
+	hci_dump(0, data, len);
+	fflush(stdout);
+}
