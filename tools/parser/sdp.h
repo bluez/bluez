@@ -52,6 +52,7 @@
 #define SDP_UUID_HARDCOPY_CONTROL_CHANNEL              0x0012 /* HCRP */
 #define SDP_UUID_HARDCOPY_DATA_CHANNEL                 0x0014 /* HCRP */
 #define SDP_UUID_HARDCOPY_NOTIFICATION                 0x0016 /* HCRP */
+#define SDP_UUID_AVDTP                                 0x0019 /* AVDTP */
 #define SDP_UUID_CMTP                                  0x001B /* CIP */
 #define SDP_UUID_L2CAP                                 0x0100
 
@@ -68,6 +69,9 @@
 #define SDP_UUID_IR_MC_SYNC_COMMAND                    0x1107
 #define SDP_UUID_HEADSET                               0x1108
 #define SDP_UUID_CORDLESS_TELEPHONY                    0x1109
+#define SDP_UUID_AUDIO_SOURCE                          0x110a /* A2DP */
+#define SDP_UUID_AUDIO_SINK                            0x110b /* A2DP */
+#define SDP_UUID_ADVANCED_AUDIO                        0x110d /* A2DP */
 #define SDP_UUID_INTERCOM                              0x1110
 #define SDP_UUID_FAX                                   0x1111
 #define SDP_UUID_HEADSET_AUDIO_GATEWAY                 0x1112
@@ -85,6 +89,8 @@
 #define SDP_UUID_GENERIC_FILE_TRANSFER                 0x1202
 #define SDP_UUID_GENERIC_AUDIO                         0x1203
 #define SDP_UUID_GENERIC_TELEPHONY                     0x1204
+#define SDP_UUID_VIDEO_SOURCE                          0x1303 /* VDP */
+#define SDP_UUID_VIDEO_SINK                            0x1304 /* VDP */
 
 /* Bluetooth assigned numbers for Attribute IDs */
 #define SDP_ATTR_ID_SERVICE_RECORD_HANDLE              0x0000

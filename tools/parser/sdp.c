@@ -63,6 +63,7 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_L2CAP,                    "L2CAP"        },
 	{ SDP_UUID_BNEP,                     "BNEP"         }, /* PAN */
 	{ SDP_UUID_HIDP,                     "HIDP"         }, /* HID */
+	{ SDP_UUID_AVDTP,                    "AVDTP"        }, /* AVDTP */
 	{ SDP_UUID_CMTP,                     "CMTP"         }, /* CIP */
 	{ SDP_UUID_SERVICE_DISCOVERY_SERVER, "SDServer"     },
 	{ SDP_UUID_BROWSE_GROUP_DESCRIPTOR,  "BrwsGrpDesc"  },
@@ -76,6 +77,9 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_IR_MC_SYNC_COMMAND,       "IRMCSyncCmd"  },
 	{ SDP_UUID_HEADSET,                  "Headset"      },
 	{ SDP_UUID_CORDLESS_TELEPHONY,       "CordlessTel"  },
+	{ SDP_UUID_AUDIO_SOURCE,             "AudioSource"  }, /* A2DP */
+	{ SDP_UUID_AUDIO_SINK,               "AudioSink"    }, /* A2DP */
+	{ SDP_UUID_ADVANCED_AUDIO,           "AdvAudio"     }, /* A2DP */
 	{ SDP_UUID_INTERCOM,                 "Intercom"     },
 	{ SDP_UUID_FAX,                      "Fax"          },
 	{ SDP_UUID_HEADSET_AUDIO_GATEWAY,    "AG"           },
@@ -90,7 +94,9 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_GENERIC_NETWORKING,       "Networking"   },
 	{ SDP_UUID_GENERIC_FILE_TRANSFER,    "FileTrnsf"    },
 	{ SDP_UUID_GENERIC_AUDIO,            "Audio"        },
-	{ SDP_UUID_GENERIC_TELEPHONY,        "Telephony"    }
+	{ SDP_UUID_GENERIC_TELEPHONY,        "Telephony"    },
+	{ SDP_UUID_VIDEO_SOURCE,             "VideoSource"  }, /* VDP */
+	{ SDP_UUID_VIDEO_SINK,               "VideoSink"    }  /* VDP */
 };
 
 static sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
