@@ -8,7 +8,7 @@ bluetooth_SOURCES = main.c sdp.c spp.c hcrp.c
 
 LIBS = @BLUEZ_LIBS@
 
-INCLUDES = @BLUEZ_INCLUDES@
+AM_CFLAGS = @BLUEZ_CFLAGS@
 
 if CUPS
 install-data-local: bluetooth

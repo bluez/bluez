@@ -19,7 +19,7 @@ hcid_CONFIG  = hcid.conf
 
 LIBS = $(dbus_hcid_libs) @BLUEZ_LIBS@
 
-INCLUDES = @BLUEZ_INCLUDES@ @DBUS_INCLUDES@ $(dbus_hcid_cflags)
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(dbus_hcid_cflags)
 
 man_MANS = hcid.8 hcid.conf.5
 

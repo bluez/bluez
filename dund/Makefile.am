@@ -8,7 +8,7 @@ dund_SOURCES = main.c dun.c dund.h sdp.c lib.h msdun.c
 
 LIBS = @BLUEZ_LIBS@
 
-INCLUDES = @BLUEZ_INCLUDES@
+AM_CFLAGS = @BLUEZ_CFLAGS@
 
 man_MANS = dund.1
 

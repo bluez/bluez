@@ -8,4 +8,4 @@ hidd_SOURCES = main.c hidd.h sdp.c
 
 LIBS = @BLUEZ_LIBS@
 
-INCLUDES = @BLUEZ_INCLUDES@
+AM_CFLAGS = @BLUEZ_CFLAGS@

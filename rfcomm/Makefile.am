@@ -11,7 +11,7 @@ rfcomm_CONFIG  = rfcomm.conf
 
 LIBS = @BLUEZ_LIBS@
 
-INCLUDES = @BLUEZ_INCLUDES@
+AM_CFLAGS = @BLUEZ_CFLAGS@
 
 man_MANS = rfcomm.1
 

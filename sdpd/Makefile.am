@@ -8,7 +8,7 @@ sdpd_SOURCES = main.c request.c service.c cstate.c servicedb.c sdpd.h
 
 LIBS = @BLUEZ_LIBS@
 
-INCLUDES = @BLUEZ_INCLUDES@
+AM_CFLAGS = @BLUEZ_CFLAGS@
 
 man_MANS = sdpd.8
 
