@@ -516,11 +516,11 @@ void cmd_class(int ctl, int hdev, char *opt)
 		} else
 			printf("Unspecified");
 		printf("\n\tDevice Class: ");
-		if (cls[1] > sizeof(major_devices))
+		if ((cls[1] & 0x1f) > sizeof(major_devices))
 			printf("Invalid Device Class!\n");
 		else
-			printf("%s, %s\n", major_devices[cls[1]], 
-				get_minor_device_name(cls[1], cls[0] / 4));
+			printf("%s, %s\n", major_devices[cls[1] & 0x1f], 
+				get_minor_device_name(cls[1] & 0x1f, cls[0] >> 2));
 	}
 }
 
