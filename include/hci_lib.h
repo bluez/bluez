@@ -88,6 +88,8 @@ int hci_encrypt_link(int dd, uint16_t handle, uint8_t encrypt, int to);
 int hci_switch_role(int dd, bdaddr_t *bdaddr, uint8_t role, int to);
 int hci_park_mode(int dd, uint16_t handle, uint16_t max_interval, uint16_t min_interval, int to);
 int hci_exit_park_mode(int dd, uint16_t handle, int to);
+int hci_read_inquiry_mode(int dd, uint8_t *mode, int to);
+int hci_write_inquiry_mode(int dd, uint8_t mode, int to);
 
 int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg);
 int hci_get_route(bdaddr_t *bdaddr);
