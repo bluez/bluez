@@ -27,6 +27,8 @@
 #ifndef __PARSER_H
 #define __PARSER_H
 
+#include <bluetooth/bluetooth.h>
+
 struct frame {
 	void	*data;
 	int	data_len;
@@ -106,10 +108,6 @@ static inline void p_indent(int level, struct frame *f)
 
 /* get_uXX functions do byte swaping */
 
-/* use memmove to prevent gcc from using builtin memcpy */
-#define get_unaligned(p) \
-	({ __typeof__(*(p)) t; memmove(&t, (p), sizeof(t)); t; })
-
 static inline uint8_t get_u8(struct frame *frm)
 {
 	uint8_t *u8_ptr = frm->ptr;
@@ -123,7 +121,7 @@ static inline uint16_t get_u16(struct frame *frm)
 	uint16_t *u16_ptr = frm->ptr;
 	frm->ptr += 2;
 	frm->len -= 2;
-	return ntohs(get_unaligned(u16_ptr));
+	return ntohs(bt_get_unaligned(u16_ptr));
 }
 
 static inline uint32_t get_u32(struct frame *frm)
@@ -131,13 +129,13 @@ static inline uint32_t get_u32(struct frame *frm)
 	uint32_t *u32_ptr = frm->ptr;
 	frm->ptr += 4;
 	frm->len -= 4;
-	return ntohl(get_unaligned(u32_ptr));
+	return ntohl(bt_get_unaligned(u32_ptr));
 }
 
 static inline uint64_t get_u64(struct frame *frm)
 {
 	uint64_t *u64_ptr = frm->ptr;
-	uint64_t u64 = get_unaligned(u64_ptr), tmp;
+	uint64_t u64 = bt_get_unaligned(u64_ptr), tmp;
 	frm->ptr += 8;
 	frm->len -= 8;
 	tmp = ntohl(u64 & 0xffffffff);

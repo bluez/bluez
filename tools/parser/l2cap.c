@@ -137,9 +137,9 @@ static uint32_t get_val(uint8_t *ptr, uint8_t len)
 	case 1:
 		return *ptr;
 	case 2:
-		return btohs(get_unaligned((uint16_t *) ptr));
+		return btohs(bt_get_unaligned((uint16_t *) ptr));
 	case 4:
-		return btohl(get_unaligned((uint32_t *) ptr));
+		return btohl(bt_get_unaligned((uint32_t *) ptr));
 	}
 	return 0;
 }
@@ -420,7 +420,7 @@ static void l2cap_parse(int level, struct frame *frm)
 		if (p_filter(FILT_L2CAP))
 			return;
 
-		psm = btohs(get_unaligned((uint16_t*)frm->ptr));
+		psm = btohs(bt_get_unaligned((uint16_t*)frm->ptr));
 		frm->len -= 2;
 
 		p_indent(level, frm);
