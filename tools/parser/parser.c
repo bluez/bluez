@@ -1,22 +1,22 @@
 /* 
-	HCIDump - HCI packet analyzer	
-	Copyright (C) 2000-2001 Maxim Krasnyansky <maxk@qualcomm.com>
+   HCIDump - HCI packet analyzer	
+   Copyright (C) 2000-2001 Maxim Krasnyansky <maxk@qualcomm.com>
 
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation;
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License version 2 as
+   published by the Free Software Foundation;
 
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-	OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-	RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-	NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-	USE OR PERFORMANCE OF THIS SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+   IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
+   OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
+   RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+   NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
+   USE OR PERFORMANCE OF THIS SOFTWARE.
 
-	ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-	TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
+   ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
+   TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
 */
 
 /*
@@ -49,12 +49,15 @@ void init_parser(unsigned long flags, unsigned long filter,
 	parser.state  = 0;
 }
 
-static inline void hex_dump(int level, struct frame *frm)
+static inline void hex_dump(int level, struct frame *frm, int num)
 {
 	unsigned char *buf = frm->ptr;
 	register int i,n;
 
-	for (i=0, n=1; i<frm->len; i++, n++) {
+	if (num == -1)
+		num = frm->len;
+
+	for (i=0, n=1; i<num; i++, n++) {
 		if (n == 1)
 			p_indent(level, frm);
 		printf("%2.2X ", buf[i]);
@@ -67,12 +70,15 @@ static inline void hex_dump(int level, struct frame *frm)
 		printf("\n");
 }
 
-static inline void ascii_dump(int level, struct frame *frm)
+static inline void ascii_dump(int level, struct frame *frm, int num)
 {
 	unsigned char *buf = frm->ptr;
 	register int i,n;
 
-	for (i=0, n=1; i<frm->len; i++, n++) {
+	if (num == -1)
+		num = frm->len;
+
+	for (i=0, n=1; i<num; i++, n++) {
 		if (n == 1)
 			p_indent(level, frm);
 		printf("%1c ", isprint(buf[i]) ? buf[i] : '.');
@@ -85,19 +91,24 @@ static inline void ascii_dump(int level, struct frame *frm)
 		printf("\n");
 }
 
-void raw_dump(int level, struct frame *frm)
+void raw_ndump(int level, struct frame *frm, int num)
 {
 	if (!frm->len)
 		return;
 
 	switch (parser.flags & DUMP_TYPE_MASK) {
 	case DUMP_ASCII:
-		ascii_dump(level, frm);
+		ascii_dump(level, frm, num);
 		break;
 
 	case DUMP_HEX:
-		hex_dump(level, frm);
+		hex_dump(level, frm, num);
 		break;
 
 	}
+}
+
+void raw_dump(int level, struct frame *frm)
+{
+	raw_ndump(level, frm, -1);
 }

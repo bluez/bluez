@@ -130,6 +130,7 @@ static inline __u32 get_u32(struct frame *frm)
 char *get_uuid_name(int uuid);
 
 void raw_dump(int level, struct frame *frm);
+void raw_ndump(int level, struct frame *frm, int num);
 void hci_dump(int level, struct frame *frm);
 void l2cap_dump(int level, struct frame *frm);
 void rfcomm_dump(int level, struct frame *frm);
