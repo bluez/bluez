@@ -2,8 +2,8 @@
 #  $Id$
 #
 
-SUBDIRS = hcid tools rfcomm sdpd dund pand hidd cups test scripts pcmcia extra
+SUBDIRS = config hcid tools rfcomm sdpd dund pand hidd cups alsa test scripts pcmcia extra
 
 MAINTAINERCLEANFILES = Makefile.in \
-	aclocal.m4 configure config.h.in \
-	missing install-sh mkinstalldirs
+	aclocal.m4 configure config.h.in config.sub config.guess \
+	ltmain.sh missing install-sh mkinstalldirs

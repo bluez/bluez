@@ -20,6 +20,12 @@ AC_PROG_INSTALL
 AC_PROG_YACC
 AM_PROG_LEX
 
+m4_define([_LT_AC_TAGCONFIG], [])
+m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
+
+AC_DISABLE_STATIC
+AC_PROG_LIBTOOL
+
 AC_PATH_BLUEZ
 AC_PATH_OPENOBEX
 AC_PATH_ALSA
@@ -28,4 +34,4 @@ AC_PATH_DBUS
 
 AC_ARG_BLUEZ
 
-AC_OUTPUT(Makefile hcid/Makefile tools/Makefile rfcomm/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile test/Makefile scripts/Makefile pcmcia/Makefile extra/Makefile)
+AC_OUTPUT(Makefile config/Makefile hcid/Makefile tools/Makefile rfcomm/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile alsa/Makefile test/Makefile scripts/Makefile pcmcia/Makefile extra/Makefile)

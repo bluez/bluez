@@ -137,8 +137,8 @@ AC_DEFUN([AC_PATH_ALSA], [
 	ALSA_CFLAGS=""
 	test -d "${alsa_prefix}/include" && ALSA_CFLAGS="$ALSA_CFLAGS -I${alsa_prefix}/include"
 
-	CPPFLAGS="$CPPFLAGS $ALSA_CFLAGS"
-	AC_CHECK_HEADER(alsa/version.h, alsa_found=yes, alsa_found=no)
+	CPPFLAGS="$CPPFLAGS $ALSA_CFLAGS -include alsa/asoundlib.h"
+	AC_CHECK_HEADER(alsa/pcm_ioplug.h, alsa_found=yes, alsa_found=no)
 
 	ALSA_LIBS=""
 	if (test "${prefix}" = "${alsa_prefix}"); then
@@ -149,7 +149,7 @@ AC_DEFUN([AC_PATH_ALSA], [
 	fi
 
 	LDFLAGS="$LDFLAGS $ALSA_LIBS"
-	AC_CHECK_LIB(asound, snd_ctl_open, ALSA_LIBS="$ALSA_LIBS -lasound", alsa_found=no)
+	AC_CHECK_LIB(asound, snd_pcm_ioplug_create, ALSA_LIBS="$ALSA_LIBS -lasound", alsa_found=no)
 
 	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS
