@@ -33,7 +33,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <asm/byteorder.h>
 
 #include <bluetooth/bluetooth.h>
 

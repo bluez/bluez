@@ -27,6 +27,8 @@
 #ifndef __RFCOMM_H
 #define __RFCOMM_H
 
+#include <endian.h>
+
 #define RFCOMM_PSM 3
 
 #define TRUE  1
@@ -112,7 +114,7 @@
 #define MCC_CMD 1	 /* Multiplexer command */
 #define MCC_RSP 0	 /* Multiplexer response */
 
-#ifdef __LITTLE_ENDIAN_BITFIELD
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 
 typedef struct parameter_mask{
 	uint8_t bit_rate:1;
@@ -151,7 +153,7 @@ typedef struct rpn_values{
 	parameter_mask pm;
 } __attribute__ ((packed)) rpn_values;
 
-#elif defined(__BIG_ENDIAN_BITFIELD)
+#elif __BYTE_ORDER == __BIG_ENDIAN
 
 typedef struct parameter_mask{ 
 	uint8_t res1:1;
@@ -195,15 +197,15 @@ typedef struct rpn_values{
 	parameter_mask pm;
 } __attribute__ ((packed)) rpn_values;
 
-#else  /* __XXX_BITFIELD */
-#error Processor endianness unknown!
+#else
+#error "Unknown byte order"
 #endif
 
 /* Typedefinitions of stuctures used for creating and parsing packets, for a
  * further description of the structures please se the bluetooth core
  * specification part F:1 and the ETSI TS 07.10 specification  */
 
-#ifdef __LITTLE_ENDIAN_BITFIELD
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 
 typedef struct address_field {
 	uint8_t ea:1;
@@ -349,7 +351,7 @@ typedef struct nsc_msg {
 	uint8_t fcs;
 } __attribute__ ((packed)) nsc_msg;
 
-#elif defined(__BIG_ENDIAN_BITFIELD)
+#elif __BYTE_ORDER == __BIG_ENDIAN
 
 typedef struct address_field {
 	uint8_t server_chn:5;
@@ -489,8 +491,9 @@ typedef struct nsc_msg {
 	uint8_t fcs;
 } __attribute__ ((packed)) nsc_msg;
 
-#else /* __XXX_ENDIAN */
+#else
+#error "Unknown byte order"
 #error Processor endianness unknown!
-#endif /* __XXX_ENDIAN */
+#endif
 
 #endif /* __RFCOMM_H */
