@@ -370,10 +370,11 @@ void cmd_version(int ctl, int hdev, char *opt)
 	}
 
 	print_dev_hdr(&di);
-	printf( "\tHCI Ver: 0x%x HCI Rev: 0x%x LMP Ver: 0x%x LMP Subver: 0x%x\n"
-		"\tManufacturer: %d\n",
-		ver.hci_ver, ver.hci_rev, ver.lmp_ver, ver.lmp_subver, 
-		ver.manufacturer);
+	printf( "\tHCI Ver: %s (0x%x) HCI Rev: 0x%x LMP Ver: %s (0x%x) LMP Subver: 0x%x\n"
+		"\tManufacturer: %s (%d)\n",
+		hci_vertostr(ver.hci_ver), ver.hci_ver, ver.hci_rev, 
+		lmp_vertostr(ver.lmp_ver), ver.lmp_ver, ver.lmp_subver, 
+		bt_compidtostr(ver.manufacturer), ver.manufacturer);
 }
 
 void cmd_inq_parms(int ctl, int hdev, char *opt)
