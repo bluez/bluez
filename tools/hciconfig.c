@@ -959,7 +959,7 @@ static void print_rev_ericsson(int dd)
 	unsigned char buf[102];
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = 0x3f;
+	rq.ogf    = OGF_VENDOR_CMD;
 	rq.ocf    = 0x000f;
 	rq.cparam = NULL;
 	rq.clen   = 0;
@@ -967,7 +967,7 @@ static void print_rev_ericsson(int dd)
 	rq.rlen   = sizeof(buf);
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
-		printf("\n Can't read revision info. %s(%d)\n", strerror(errno), errno);
+		printf("\nCan't read revision info. %s(%d)\n", strerror(errno), errno);
 		return;
 	}
 
@@ -996,6 +996,28 @@ static void print_rev_csr(int dd, uint16_t rev)
 
 	if (!csr_read_pskey_uint16(dd, 4, CSR_PSKEY_HOSTIO_MAP_SCO_PCM, &mapsco))
 		printf("\tSCO mapping:  %s\n", mapsco ? "PCM" : "HCI");
+}
+
+static void print_rev_digianswer(int dd)
+{
+	struct hci_request rq;
+	unsigned char req[] = { 0x07 };
+	unsigned char buf[102];
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_VENDOR_CMD;
+	rq.ocf    = 0x000e;
+	rq.cparam = req;
+	rq.clen   = sizeof(req);
+	rq.rparam = &buf;
+	rq.rlen   = sizeof(buf);
+
+	if (hci_send_req(dd, &rq, 1000) < 0) {
+		printf("\nCan't read revision info. %s(%d)\n", strerror(errno), errno);
+		return;
+	}
+
+	printf("\t%s\n", buf + 1);
 }
 
 static void print_rev_broadcom(uint16_t hci_rev, uint16_t lmp_subver)
@@ -1036,6 +1058,9 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 		break;
 	case 10:
 		print_rev_csr(dd, ver.hci_rev);
+		break;
+	case 12:
+		print_rev_digianswer(dd);
 		break;
 	case 15:
 		print_rev_broadcom(ver.hci_rev, ver.lmp_subver);
