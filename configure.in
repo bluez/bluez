@@ -10,9 +10,7 @@ AM_CONFIG_HEADER(config.h)
 
 AM_MAINTAINER_MODE
 
-AC_PREFIX_DEFAULT(/usr)
-
-CFLAGS="-Wall -g -O2"
+AC_INIT_BLUEZ
 
 AC_LANG_C
 
@@ -23,5 +21,7 @@ m4_define([_LT_AC_TAGCONFIG], [])
 m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 
 AC_PROG_LIBTOOL
+
+AC_ARG_BLUEZ
 
 AC_OUTPUT(Makefile include/Makefile src/Makefile bluez.pc)
