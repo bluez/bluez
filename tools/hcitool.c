@@ -302,7 +302,9 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	for (i = 0; i < num_rsp; i++) {
 		memset(name, 0, sizeof(name));
 		if (hci_read_remote_name_with_clock_offset(dd, &(info+i)->bdaddr,
-				(info+i)->clock_offset | 0x8000, sizeof(name), name, 100000) < 0)
+				(info+i)->pscan_rep_mode,
+				(info+i)->clock_offset | 0x8000,
+				sizeof(name), name, 100000) < 0)
 			strcpy(name, "n/a");
 		ba2str(&(info+i)->bdaddr, addr);
 		printf("\t%s\t%s\n", addr, name);
