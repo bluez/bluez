@@ -56,20 +56,20 @@ int hci_close_dev(int dd);
 int hci_send_cmd(int dd, uint16_t ogf, uint16_t ocf, uint8_t plen, void *param);
 int hci_send_req(int dd, struct hci_request *req, int timeout);
 
-int hci_create_connection(int dd, bdaddr_t *ba, uint16_t ptype, uint16_t clkoffset, uint8_t rswitch, uint16_t *handle, int to);
+int hci_create_connection(int dd, const bdaddr_t *ba, uint16_t ptype, uint16_t clkoffset, uint8_t rswitch, uint16_t *handle, int to);
 int hci_disconnect(int dd, uint16_t handle, uint8_t reason, int to);
 
-int hci_inquiry(int dev_id, int len, int num_rsp, uint8_t *lap, inquiry_info **ii, long flags);
+int hci_inquiry(int dev_id, int len, int num_rsp, const uint8_t *lap, inquiry_info **ii, long flags);
 int hci_devinfo(int dev_id, struct hci_dev_info *di);
 int hci_devba(int dev_id, bdaddr_t *ba);
-int hci_devid(char *str);
+int hci_devid(const char *str);
 
 // deprecated: preserve compatibility
 int hci_local_name(int dd, int len, char *name, int to);
 int hci_read_local_name(int dd, int len, char *name, int to);
-int hci_write_local_name(int dd, char *name, int to);
-int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to);
-int hci_read_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to);
+int hci_write_local_name(int dd, const char *name, int to);
+int hci_remote_name(int dd, const bdaddr_t *ba, int len, char *name, int to);
+int hci_read_remote_name(int dd, const bdaddr_t *ba, int len, char *name, int to);
 int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to);
 int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to);
 int hci_read_local_version(int dd, struct hci_version *ver, int to);
@@ -79,6 +79,8 @@ int hci_read_voice_setting(int dd, uint16_t *vs, int to);
 int hci_write_voice_setting(int dd, uint16_t vs, int to);
 int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to);
 int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to);
+int hci_authenticate_link(int dd, uint16_t handle, int to);
+int hci_encrypt_link(int dd, uint16_t handle, int on, int to);
 
 int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg);
 int hci_get_route(bdaddr_t *bdaddr);

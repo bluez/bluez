@@ -91,20 +91,20 @@ typedef struct {
 #define BDADDR_LOCAL (&(bdaddr_t) {{0, 0, 0, 0xff, 0xff, 0xff}})
 
 /* Copy, swap, convert BD Address */
-static inline int bacmp(bdaddr_t *ba1, bdaddr_t *ba2)
+static inline int bacmp(const bdaddr_t *ba1, const bdaddr_t *ba2)
 {
 	return memcmp(ba1, ba2, sizeof(bdaddr_t));
 }
-static inline void bacpy(bdaddr_t *dst, bdaddr_t *src)
+static inline void bacpy(bdaddr_t *dst, const bdaddr_t *src)
 {
 	memcpy(dst, src, sizeof(bdaddr_t));
 }
 
-void baswap(bdaddr_t *dst, bdaddr_t *src);
-bdaddr_t *strtoba(char *str);
-char     *batostr(bdaddr_t *ba);
-int  ba2str(bdaddr_t *ba, char *str);
-int  str2ba(char *str, bdaddr_t *ba);
+void baswap(bdaddr_t *dst, const bdaddr_t *src);
+bdaddr_t *strtoba(const char *str);
+char     *batostr(const bdaddr_t *ba);
+int  ba2str(const bdaddr_t *ba, char *str);
+int  str2ba(const char *str, bdaddr_t *ba);
 
 int  bt_error(uint16_t code);
 char *bt_compidtostr(int id);

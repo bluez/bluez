@@ -823,7 +823,7 @@ typedef struct {
 	uint16_t	event;
 	uint16_t	proto;
 	uint16_t	subproto;
-	uint8_t 	incomming;
+	uint8_t 	incoming;
 } __attribute__ ((packed)) evt_si_security;
 
 #define EVT_TESTING	0xfe

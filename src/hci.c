@@ -419,7 +419,7 @@ int hci_get_route(bdaddr_t *bdaddr)
 		return hci_for_each_dev(HCI_UP, NULL, 0);
 }
 
-int hci_devid(char *str)
+int hci_devid(const char *str)
 {
 	bdaddr_t ba;
 	int id = -1;
@@ -467,7 +467,7 @@ int hci_devba(int dev_id, bdaddr_t *ba)
 	return 0;
 }
 
-int hci_inquiry(int dev_id, int len, int nrsp, uint8_t *lap, inquiry_info **ii, long flags)
+int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info **ii, long flags)
 {
 	struct hci_inquiry_req *ir;
 	void *buf;
@@ -697,7 +697,7 @@ done:
 	return 0;
 }
 
-int hci_create_connection(int dd, bdaddr_t *ba, uint16_t ptype, uint16_t clkoffset, uint8_t rswitch, uint16_t *handle, int to)
+int hci_create_connection(int dd, const bdaddr_t *ba, uint16_t ptype, uint16_t clkoffset, uint8_t rswitch, uint16_t *handle, int to)
 {
         evt_conn_complete rp;
         create_conn_cp cp;
@@ -788,7 +788,7 @@ int hci_read_local_name(int dd, int len, char *name, int to)
 	return 0;
 }
 
-int hci_write_local_name(int dd, char *name, int to)
+int hci_write_local_name(int dd, const char *name, int to)
 {
 	change_local_name_cp cp;
 	struct hci_request rq;
@@ -805,12 +805,12 @@ int hci_write_local_name(int dd, char *name, int to)
 	return 0;
 }
 
-int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
+int hci_remote_name(int dd, const bdaddr_t *ba, int len, char *name, int to)
 {
 	return hci_read_remote_name(dd, ba, len, name, to);
 }
 
-int hci_read_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
+int hci_read_remote_name(int dd, const bdaddr_t *ba, int len, char *name, int to)
 {
 	evt_remote_name_req_complete rn;
 	remote_name_req_cp cp;
@@ -1045,5 +1045,32 @@ int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
 	rq.ocf = OCF_WRITE_CURRENT_IAC_LAP;
 	rq.cparam = &cp;
 	rq.clen = WRITE_CURRENT_IAC_LAP_CP_SIZE;
+	return hci_send_req(dd, &rq, to);
+}
+
+int hci_authenticate_link(int dd, uint16_t handle, int to)
+{
+	auth_requested_cp cp;
+	struct hci_request rq;
+
+	cp.handle = handle;
+	rq.ogf = OGF_LINK_CTL;
+	rq.ocf = OCF_AUTH_REQUESTED;
+	rq.cparam = &cp;
+	rq.clen = AUTH_REQUESTED_CP_SIZE;
+	return hci_send_req(dd, &rq, to);
+}
+
+int hci_encrypt_link(int dd, uint16_t handle, int on, int to)
+{
+	set_conn_encrypt_cp cp;
+	struct hci_request rq;
+
+	cp.handle = handle;
+	cp.encrypt = on;
+	rq.ogf = OGF_LINK_CTL;
+	rq.ocf = OCF_SET_CONN_ENCRYPT;
+	rq.cparam = &cp;
+	rq.clen = SET_CONN_ENCRYPT_CP_SIZE;
 	return hci_send_req(dd, &rq, to);
 }

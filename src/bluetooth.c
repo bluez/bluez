@@ -35,16 +35,16 @@
 #include <bluetooth.h>
 #include <hci.h>
 
-void baswap(bdaddr_t *dst, bdaddr_t *src)
+void baswap(bdaddr_t *dst, const bdaddr_t *src)
 {
-	register unsigned char * d = (unsigned char *)dst;
-	register unsigned char * s = (unsigned char *)src;
+	register unsigned char *d = (unsigned char *)dst;
+	register const unsigned char *s = (const unsigned char *)src;
 	register int i;
 	for(i=0; i<6; i++)
 		d[i] = s[5-i];
 }
 
-char *batostr(bdaddr_t *ba)
+char *batostr(const bdaddr_t *ba)
 {
 	char *str = malloc(18);
 	if (!str)
@@ -56,9 +56,9 @@ char *batostr(bdaddr_t *ba)
 	return str;
 }
 
-bdaddr_t *strtoba(char *str)
+bdaddr_t *strtoba(const char *str)
 {
-	char *ptr = str;
+	const char *ptr = str;
 	int i;
 
 	uint8_t *ba = malloc(sizeof(bdaddr_t));
@@ -74,7 +74,7 @@ bdaddr_t *strtoba(char *str)
 	return (bdaddr_t *) ba;
 }
 
-int ba2str(bdaddr_t *ba, char *str)
+int ba2str(const bdaddr_t *ba, char *str)
 {
 	uint8_t b[6];
 
@@ -83,10 +83,10 @@ int ba2str(bdaddr_t *ba, char *str)
 	        b[0], b[1], b[2], b[3], b[4], b[5]);
 }
 
-int str2ba(char *str, bdaddr_t *ba)
+int str2ba(const char *str, bdaddr_t *ba)
 {
 	uint8_t b[6];
-	char *ptr = str;
+	const char *ptr = str;
 	int i;
 
 	for (i=0; i < 6; i++) {
