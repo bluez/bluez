@@ -129,6 +129,7 @@ static __u16 get_psm(int in, __u16 cid)
 static inline void command_rej(int level, struct frame *frm)
 {
 	l2cap_cmd_rej *h = frm->ptr;
+
 	printf("Command rej: reason %d\n", 
 			btohs(h->reason));
 }
@@ -136,22 +137,30 @@ static inline void command_rej(int level, struct frame *frm)
 static inline void conn_req(int level, struct frame *frm)
 {
 	l2cap_conn_req *h = frm->ptr;
-	printf("Connect req: psm %d scid 0x%4.4x\n", 
-			btohs(h->psm), btohs(h->scid));
 
 	add_cid(frm->in, btohs(h->scid), btohs(h->psm));
+
+	if (p_filter(FILT_L2CAP))
+		return;
+
+	printf("Connect req: psm %d scid 0x%4.4x\n", 
+			btohs(h->psm), btohs(h->scid));
 }
 
 static inline void conn_rsp(int level, struct frame *frm)
 {
 	l2cap_conn_rsp *h = frm->ptr;
 	__u16 psm;
-	printf("Connect rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n",
-			btohs(h->dcid), btohs(h->scid),
-			btohs(h->result), btohs(h->status));
 
 	if ((psm = get_psm(!frm->in, btohs(h->scid))))
 		add_cid(frm->in, btohs(h->dcid), psm);
+
+	if (p_filter(FILT_L2CAP))
+		return;
+
+	printf("Connect rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n",
+			btohs(h->dcid), btohs(h->scid),
+			btohs(h->result), btohs(h->status));
 }
 
 static __u32 conf_opt_val(__u8 *ptr, __u8 len)
@@ -171,7 +180,7 @@ static __u32 conf_opt_val(__u8 *ptr, __u8 len)
 
 static void conf_opt(int level, void *ptr, int len)
 {
-	indent(level);
+	p_indent(level, 0);
 	while (len > 0) {
 		l2cap_conf_opt *h = ptr;
 	
@@ -197,25 +206,37 @@ static inline void conf_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	l2cap_conf_req *h = frm->ptr;
 	int clen = btohs(cmd->len) - L2CAP_CONF_REQ_SIZE;
+
+	if (p_filter(FILT_L2CAP))
+		return;
+
 	printf("Config req: dcid 0x%4.4x flags 0x%4.4x clen %d\n",
 			btohs(h->dcid), btohs(h->flags), clen);
 	if (clen)
-		conf_opt(level+1, h->data, clen);
+		conf_opt(level, h->data, clen);
 }
 
 static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	l2cap_conf_rsp *h = frm->ptr;
 	int clen = btohs(cmd->len) - L2CAP_CONF_RSP_SIZE;
+
+	if (p_filter(FILT_L2CAP))
+		return;
+
 	printf("Config rsp: scid 0x%4.4x flags 0x%4.4x result %d clen %d\n",
 			btohs(h->scid), btohs(h->flags), btohs(h->result), clen);
 	if (clen)
-		conf_opt(level+1, h->data, clen);
+		conf_opt(level, h->data, clen);
 }
 
 static inline void disconn_req(int level, struct frame *frm)
 {
 	l2cap_disconn_req *h = frm->ptr;
+
+	if (p_filter(FILT_L2CAP))
+		return;
+
 	printf("Disconn req: dcid 0x%4.4x scid 0x%4.4x\n", 
 			btohs(h->dcid), btohs(h->scid));
 }
@@ -223,14 +244,20 @@ static inline void disconn_req(int level, struct frame *frm)
 static inline void disconn_rsp(int level, struct frame *frm)
 {
 	l2cap_disconn_rsp *h = frm->ptr;
+	del_cid(frm->in, btohs(h->dcid), btohs(h->scid));
+
+	if (p_filter(FILT_L2CAP))
+		return;
+
 	printf("Disconn rsp: dcid 0x%4.4x scid 0x%4.4x\n",
 			btohs(h->dcid), btohs(h->scid));
-
-	del_cid(frm->in, btohs(h->dcid), btohs(h->scid));
 }
 
 static inline void echo_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
+	if (p_filter(FILT_L2CAP))
+		return;
+
 	printf("Echo req: dlen %d\n", 
 			btohs(cmd->len));
 	raw_dump(level, frm);
@@ -238,6 +265,9 @@ static inline void echo_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 
 static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
+	if (p_filter(FILT_L2CAP))
+		return;
+
 	printf("Echo rsp: dlen %d\n", 
 			btohs(cmd->len));
 	raw_dump(level, frm);
@@ -245,6 +275,9 @@ static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 
 static inline void info_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
+	if (p_filter(FILT_L2CAP))
+		return;
+
 	printf("Info req: dlen %d\n", 
 			btohs(cmd->len));
 	raw_dump(level, frm);
@@ -252,6 +285,9 @@ static inline void info_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 
 static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
+	if (p_filter(FILT_L2CAP))
+		return;
+
 	printf("Info rsp: dlen %d\n", 
 			btohs(cmd->len));
 	raw_dump(level, frm);
@@ -262,20 +298,24 @@ static void l2cap_parse(int level, struct frame *frm)
 	l2cap_hdr *hdr = (void *)frm->ptr;
 	__u16 dlen = btohs(hdr->len);
 	__u16 cid  = btohs(hdr->cid);
+	__u16 psm;
 
 	frm->ptr += L2CAP_HDR_SIZE;
 	frm->len -= L2CAP_HDR_SIZE;
 
-	indent(level);
 	if (cid == 0x1) {
 		/* Signaling channel */
+
 		while (frm->len >= L2CAP_CMD_HDR_SIZE) {
 			l2cap_cmd_hdr *hdr = frm->ptr;
 
 			frm->ptr += L2CAP_CMD_HDR_SIZE;
 			frm->len -= L2CAP_CMD_HDR_SIZE;
 
-			printf("L2CAP(s): ");
+			if (!p_filter(FILT_L2CAP)) {
+				p_indent(level, frm->in);
+				printf("L2CAP(s): ");
+			}
 
 			switch (hdr->code) {
 			case L2CAP_COMMAND_REJ:
@@ -323,6 +363,8 @@ static void l2cap_parse(int level, struct frame *frm)
 				break;
 
 			default:
+				if (p_filter(FILT_L2CAP))
+					break;
 				printf("code 0x%2.2x ident %d len %d\n", 
 					hdr->code, hdr->ident, btohs(hdr->len));
 				raw_dump(level, frm);
@@ -332,28 +374,46 @@ static void l2cap_parse(int level, struct frame *frm)
 		}
 	} else if (cid == 0x2) {
 		/* Connectionless channel */
-		__u16 psm = btohs(*(__u16*)frm->ptr);
+
+		if (p_filter(FILT_L2CAP))
+			return;
+
+		psm = btohs(*(__u16*)frm->ptr);
 		frm->len -= 2;
 
+		p_indent(level, frm->in);
 		printf("L2CAP(c): cid 0x%x len %d psm %d\n", cid, dlen, psm);
-
 		raw_dump(level, frm);
 	} else {
 		/* Connection oriented channel */
 		__u16 psm = get_psm(!frm->in, cid);
-		
-		printf("L2CAP(d): cid 0x%x len %d [psm %d]\n", cid, dlen, psm);
+	
+		if (!p_filter(FILT_L2CAP)) {
+			p_indent(level, frm->in);
+			printf("L2CAP(d): cid 0x%x len %d [psm %d]\n", 
+				cid, dlen, psm);
+			level++;
+		}
 
 		switch (psm) {
 		case 0x01:
+			if (p_filter(FILT_SDP))
+				break;
+	
 			sdp_dump(level+1, frm);
 			break;
 
 		case 0x03:
-			rfcomm_dump(level+1, frm);
+			if (p_filter(FILT_RFCOMM))
+				break;
+	
+			rfcomm_dump(level, frm);
 			break;
 
 		default:
+			if (p_filter(FILT_L2CAP))
+				break;
+
 			raw_dump(level, frm);
 			break;
 		}
@@ -392,6 +452,7 @@ void l2cap_dump(int level, struct frame *frm)
 		fr->data_len = dlen + L2CAP_HDR_SIZE;
 		fr->len = frm->len;
 		fr->ptr = fr->data;
+		fr->in  = frm->in;
 	} else {
 		if (!(fr = get_frame(frm->handle))) {
 			fprintf(stderr, "Not enough connetion handles\n");

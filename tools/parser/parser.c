@@ -35,13 +35,13 @@
 
 #include "parser.h"
 
-long parser_flags;
-long parser_filter;
+struct parser_t parser;
 
-void init_parser(long flags, long filter)
+void init_parser(unsigned long flags, unsigned long filter)
 {
-	parser_flags  = flags;
-	parser_filter = parser_filter; 
+	parser.flags  = flags;
+	parser.filter = filter;
+	parser.state  = 0;
 }
 
 static inline void hex_dump(int level, unsigned char *buf, int len)
@@ -50,7 +50,7 @@ static inline void hex_dump(int level, unsigned char *buf, int len)
 
 	for (i=0, n=1; i<len; i++, n++) {
 		if (n == 1)
-			indent(level);
+			p_indent(level, 0);
 		printf("%2.2X ", buf[i]);
 		if (n == DUMP_WIDTH) {
 			printf("\n");
@@ -67,7 +67,7 @@ static inline void ascii_dump(int level, unsigned char *buf, int len)
 
 	for (i=0, n=1; i<len; i++, n++) {
 		if (n == 1)
-			indent(level);
+			p_indent(level, 0);
 		printf("%1c ", isprint(buf[i]) ? buf[i] : '.');
 		if (n == DUMP_WIDTH) {
 			printf("\n");
@@ -83,7 +83,7 @@ void raw_dump(int level, struct frame *frm)
 	if (!frm->len)
 		return;
 
-	switch (parser_flags & DUMP_TYPE_MASK) {
+	switch (parser.flags & DUMP_TYPE_MASK) {
 	case DUMP_HEX:
 		hex_dump(level, frm->ptr, frm->len);
 		break;
@@ -93,4 +93,3 @@ void raw_dump(int level, struct frame *frm)
 		break;
 	}
 }
-

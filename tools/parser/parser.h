@@ -46,7 +46,37 @@ struct frame {
 #define FILT_RFCOMM	0x04
 #define FILT_SDP	0x08
 
-void init_parser(long flags, long filter);
+struct parser_t {
+	unsigned long flags;
+	unsigned long filter;
+	int state;
+};
+
+extern struct parser_t parser;
+
+void init_parser(unsigned long flags, unsigned long filter);
+
+static inline int p_filter(unsigned long f)
+{
+	return !(parser.filter & f);
+}
+
+static inline void p_indent(int level, int in)
+{
+	if (level < 0) {
+		parser.state = 0;
+		return;
+	}
+	
+	if (!parser.state) {
+		printf("%c ", (in ? '>' : '<'));
+		parser.state = 1;
+	} else 
+		printf("  ");
+
+	if (level)
+		printf("%*c", (level*2), ' ');
+}
 
 void raw_dump(int level, struct frame *frm);
 void hci_dump(int level, struct frame *frm);
@@ -54,14 +84,9 @@ void l2cap_dump(int level, struct frame *frm);
 void rfcomm_dump(int level, struct frame *frm);
 void sdp_dump(int level, struct frame *frm);
 
-static inline void indent(int level)
-{
-	printf("%*c", (level*2), ' ');
-}
-
 static inline void parse(struct frame *frm)
 {
-	printf("%c ", (frm->in ? '>' : '<')); 
+	p_indent(-1, 0);
 	hci_dump(0, frm);
 	fflush(stdout);
 }

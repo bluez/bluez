@@ -79,7 +79,8 @@ static void process_frames(int dev, int sock, int file)
 		exit(1);
 	}
 	
-	printf("device: hci%d snap_len: %d filter: none\n", dev, snap_len); 
+	printf("device: hci%d snap_len: %d filter: 0x%lx\n", 
+		dev, snap_len, filter); 
 
 	while (1) {
 		iv.iov_base = frm.data;
@@ -307,16 +308,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	return 0;
 }
      
-static struct argp parser = { 
+static struct argp arg_parser = { 
 	options, 
 	parse_opt, 
-	"",
+	"[filter]",
 	"HCIDump - HCI packet analyzer ver " VERSION
 };
 
 int main(int argc, char *argv[])
 {
-	argp_parse(&parser, argc, argv, 0, NULL, NULL);
+	argp_parse(&arg_parser, argc, argv, 0, NULL, NULL);
 	
 	printf("HCIDump - HCI packet analyzer ver %s.\n", VERSION);
 
