@@ -886,6 +886,11 @@ static void print_rev_csr(int dd, uint16_t rev)
 		printf("\tSCO mapping:  %s\n", mapsco ? "PCM" : "HCI");
 }
 
+static void print_rev_broadcom(uint16_t hci_rev, uint16_t lmp_subver)
+{
+	printf("\tFirmware %d.%d.%03d\n", hci_rev, lmp_subver >> 8, lmp_subver & 0xff);
+}
+
 static void print_rev_avm(uint16_t rev)
 {
 	printf("\tFirmware 03.%d.%d\n", rev >> 8, rev & 0xff);
@@ -916,6 +921,9 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 		break;
 	case 10:
 		print_rev_csr(dd, ver.hci_rev);
+		break;
+	case 15:
+		print_rev_broadcom(ver.hci_rev, ver.lmp_subver);
 		break;
 	case 31:
 		print_rev_avm(ver.hci_rev);
