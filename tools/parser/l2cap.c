@@ -52,6 +52,7 @@ static handle_info handle_table[HANDLE_TABLE_SIZE];
 typedef struct {
 	uint16_t cid;
 	uint16_t psm;
+	uint16_t num;
 } cid_info;
 #define CID_TABLE_SIZE 20
 
@@ -96,22 +97,34 @@ static struct frame *get_frame(uint16_t handle)
 static void add_cid(int in, uint16_t cid, uint16_t psm)
 {
 	register cid_info *table = cid_table[in];
-	register int i;
+	register int i, pos = -1;
+	uint16_t num = 1;
+
+	if (in) {
+		for (i = 0; i < PSM_TABLE_SIZE; i++)
+			if (psm_table[i].psm == psm)
+				num = psm_table[i].num;
+	} else {
+		for (i = 0; i < PSM_TABLE_SIZE; i++) {
+			if (psm_table[i].psm == psm) {
+				pos = i;
+				break;
+			} else if (pos < 0 && !psm_table[i].psm)
+				pos = i;
+		}
+
+		if (pos >= 0) {
+			psm_table[pos].psm = psm;
+			psm_table[pos].num++;
+			num = psm_table[pos].num;
+		}
+	}
 
 	for (i = 0; i < CID_TABLE_SIZE; i++)
 		if (!table[i].cid || table[i].cid == cid) {
 			table[i].cid = cid;
 			table[i].psm = psm;
-			break;
-		}
-
-	if (in)
-		return;
-
-	for (i = 0; i < PSM_TABLE_SIZE; i++)
-		if (!psm_table[i].psm || psm_table[i].psm == psm) {
-			psm_table[i].psm = psm;
-			psm_table[i].num++;
+			table[i].num = num;
 			break;
 		}
 }
@@ -160,13 +173,13 @@ static uint16_t get_psm(int in, uint16_t cid)
 	return parser.defpsm;
 }
 
-static uint16_t get_num(uint16_t psm)
+static uint16_t get_num(int in, uint16_t cid)
 {
-	register psm_info *table = psm_table;
+	register cid_info *table = cid_table[in];
 	register int i;
 
-	for (i = 0; i < PSM_TABLE_SIZE; i++)
-		if (table[i].psm == psm)
+	for (i = 0; i < CID_TABLE_SIZE; i++)
+		if (table[i].cid == cid)
 			return table[i].num;
 	return 0;
 }
@@ -473,7 +486,7 @@ static void l2cap_parse(int level, struct frame *frm)
 		uint32_t proto;
 
 		frm->cid = cid;
-		frm->num = get_num(psm);
+		frm->num = get_num(!frm->in, cid);
 
 		if (!p_filter(FILT_L2CAP)) {
 			p_indent(level, frm);
