@@ -1063,7 +1063,7 @@ void print_dev_hdr(struct hci_dev_info *di)
 	ba2str(&di->bdaddr, addr);
 
 	printf("%s:\tType: %s\n", di->name, hci_dtypetostr(di->type) );
-	printf("\tBD Address: %s ACL MTU: %d:%d  SCO MTU: %d:%d\n",
+	printf("\tBD Address: %s ACL MTU: %d:%d SCO MTU: %d:%d\n",
 		addr, di->acl_mtu, di->acl_pkts,
 		di->sco_mtu, di->sco_pkts);
 }
