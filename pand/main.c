@@ -136,6 +136,7 @@ static int do_listen(void)
 	}
 
 	/* Setup L2CAP options according to BNEP spec */
+	olen = sizeof(l2o);
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen) < 0) {
 		syslog(LOG_ERR, "Failed to get L2CAP options. %s(%d)",
 				strerror(errno), errno);
@@ -257,6 +258,7 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 	}
 
 	/* Setup L2CAP options according to BNEP spec */
+	olen = sizeof(l2o);
 	getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen);
 	l2o.imtu = l2o.omtu = BNEP_MTU;
 	setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o));
