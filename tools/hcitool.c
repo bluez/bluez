@@ -1211,11 +1211,8 @@ static char *lst_help =
 static void cmd_lst(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
-	struct hci_request rq;
-	read_link_supervision_timeout_rp rp;
-	write_link_supervision_timeout_cp cp;
 	bdaddr_t bdaddr;
-	uint16_t handle;
+	uint16_t timeout;
 	int opt, dd;
 
 	for_each_opt(opt, lst_options, NULL) {
@@ -1260,43 +1257,23 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	handle = htobs(cr->conn_info->handle);
-
 	if (argc == 1) {
-		memset(&rq, 0, sizeof(rq));
-		rq.ogf    = OGF_HOST_CTL;
-		rq.ocf    = OCF_READ_LINK_SUPERVISION_TIMEOUT;
-		rq.cparam = &handle;
-		rq.clen   = 2;
-		rq.rparam = &rp;
-		rq.rlen   = READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE;
-
-		if (hci_send_req(dd, &rq, 100) < 0) {
+		if (hci_read_link_supervision_timeout(dd, htobs(cr->conn_info->handle), &timeout, 1000) < 0) {
 			perror("HCI read_link_supervision_timeout request failed");
 			exit(1);
 		}
 
-		if (rp.status) {
-			fprintf(stderr, "HCI read_link_supervision_timeout failed (0x%2.2X)\n", 
-				rp.status);
-			exit(1);
-		}
-		if (rp.link_sup_to)
+		timeout = btohs(timeout);
+
+		if (timeout)
 			printf("Link supervision timeout: %u slots (%.2f msec)\n",
-				rp.link_sup_to, (float)rp.link_sup_to * 0.625);
+				timeout, (float) timeout * 0.625);
 		else
 			printf("Link supervision timeout never expires\n");
 	} else {
-		cp.handle      = htobs(cr->conn_info->handle);
-		cp.link_sup_to = strtol(argv[1], NULL, 10);
+		timeout = btohs(strtol(argv[1], NULL, 10));
 
-		memset(&rq, 0, sizeof(rq));
-		rq.ogf    = OGF_HOST_CTL;
-		rq.ocf    = OCF_WRITE_LINK_SUPERVISION_TIMEOUT;
-		rq.cparam = &cp;
-		rq.clen   = WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE;
-
-		if (hci_send_req(dd, &rq, 100) < 0) {
+		if (hci_write_link_supervision_timeout(dd, htobs(cr->conn_info->handle), timeout, 1000) < 0) {
 			perror("HCI write_link_supervision_timeout request failed");
 			exit(1);
 		}
