@@ -1387,3 +1387,54 @@ int hci_write_inquiry_mode(int dd, uint8_t mode, int to)
 
 	return 0;
 }
+
+int hci_read_afh_mode(int dd, uint8_t *mode, int to)
+{
+	read_afh_mode_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_AFH_MODE;
+	rq.rparam = &rp;
+	rq.rlen   = READ_AFH_MODE_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*mode = rp.mode;
+	return 0;
+}
+
+int hci_write_afh_mode(int dd, uint8_t mode, int to)
+{
+	write_afh_mode_cp cp;
+	write_afh_mode_rp rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.mode = mode;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_AFH_MODE;
+	rq.cparam = &cp;
+	rq.clen   = WRITE_AFH_MODE_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = WRITE_AFH_MODE_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
