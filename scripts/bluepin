@@ -141,7 +141,7 @@ def main(*args):
 	if dir == "out":
 		mesg = "Outgoing connection to "
 	else:
-		mesg = "Incomming connection from "
+		mesg = "Incoming connection from "
 	
 	mesg = mesg + name + "[" + bdaddr + "]"
 
