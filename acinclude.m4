@@ -20,8 +20,13 @@ AC_DEFUN(AC_PREFIX_BLUEZ, [
 
 AC_DEFUN(AC_PATH_BLUEZ, [
 	AC_ARG_WITH(bluez, [  --with-bluez=DIR        BlueZ library is installed in DIR], [
-		bluez_includes=$withval/include
-		bluez_libraries=$withval/lib
+		if (test "$withval" = "yes"); then
+			bluez_includes=/usr/include
+			bluez_libraries=/usr/lib
+		else
+			bluez_includes=$withval/include
+			bluez_libraries=$withval/lib
+		fi
 	])
 
 	BLUEZ_INCLUDES=""
@@ -63,8 +68,13 @@ AC_DEFUN(AC_PATH_DBUS, [
 	)
 
 	AC_ARG_WITH(dbus, [  --with-dbus=DIR         D-BUS library is installed in DIR], [
-		dbus_includes=$withval/include
-		dbus_libraries=$withval/lib
+		if (test "$withval" = "yes"); then
+			dbus_includes=/usr/include
+			dbus_libraries=/usr/lib
+		else
+			dbus_includes=$withval/include
+			dbus_libraries=$withval/lib
+		fi
 		dbus_enable=yes
 	])
 
