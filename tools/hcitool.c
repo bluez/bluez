@@ -817,6 +817,91 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
+/* Read RSSI */
+
+static struct option rssi_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *rssi_help = 
+	"Usage:\n"
+	"\trssi <bdaddr>\n";
+
+static void cmd_rssi(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	struct hci_request rq;	
+	read_rssi_rp rp;
+	bdaddr_t bdaddr;
+	int opt, dd;
+
+	for_each_opt(opt, rssi_options, NULL) {
+		switch(opt) {
+		default:
+			printf(rssi_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(rssi_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+ 
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+        	return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+	
+	rq.ogf = OGF_STATUS_PARAM;
+	rq.ocf = OCF_READ_RSSI;
+	rq.cparam = &cr->conn_info->handle;
+	rq.clen = 2;
+	rq.rparam = &rp;
+	rq.rlen = READ_RSSI_RP_SIZE;
+	
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		printf("Can't read RSSI hci%d. %s(%d)\n", 
+			dd, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (rp.status) {
+		printf("Read RSSI on hci%d returned (error) status 0x%2.2X\n",
+			dd, rp.status);
+		exit(1);
+	}
+	printf( "\tRSSI return value: %d\n", rp.rssi);
+	
+	close(dd);
+	free(cr);
+}
+
 struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
@@ -832,6 +917,7 @@ struct {
 	{ "con",  cmd_con,  "Display active connections"         },
 	{ "cc",   cmd_cc,   "Create connection to remote device" },
 	{ "dc",	  cmd_dc,   "Disconnect from remote device"      },
+	{ "rssi", cmd_rssi, "Display connection RSSI"            },
 	{ NULL, NULL, 0}
 };
 
