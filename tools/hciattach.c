@@ -640,7 +640,7 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 static int swave(int fd, struct uart_t *u, struct termios *ti)
 {
 	struct timespec tm = {0, 500000};
-	char cmd[9], rsp[100];
+	char cmd[10], rsp[100];
 	int r;
 
 	// Silicon Wave set baud rate command
