@@ -161,6 +161,7 @@ static void configure_device(int hdev)
 {
 	struct device_opts *device_opts;
 	struct hci_dev_req dr;
+	struct hci_dev_info di;
 	int s;
 
 	/* Do configuration in the separate process */
@@ -181,6 +182,13 @@ static void configure_device(int hdev)
 						hdev, strerror(errno), errno);
 		exit(1);
 	}
+
+	di.dev_id = hdev;
+	if (ioctl(s, HCIGETDEVINFO, (void *) &di) < 0)
+		exit(1);
+
+	if (hci_test_bit(HCI_RAW, &di.flags))
+		exit(0);
 
 	dr.dev_id   = hdev;
 	device_opts = get_device_opts(s, hdev);
@@ -241,6 +249,7 @@ static void init_device(int hdev)
 {
 	struct device_opts *device_opts;
 	struct hci_dev_req dr;
+	struct hci_dev_info di;
 	int s;
 
 	/* Do initialization in the separate process */
@@ -268,6 +277,13 @@ static void init_device(int hdev)
 						hdev, strerror(errno), errno);
 		exit(1);
 	}
+
+	di.dev_id = hdev;
+	if (ioctl(s, HCIGETDEVINFO, (void *) &di) < 0)
+		exit(1);
+
+	if (hci_test_bit(HCI_RAW, &di.flags))
+		exit(0);
 
 	dr.dev_id   = hdev;
 	device_opts = get_device_opts(s, hdev);
@@ -326,12 +342,10 @@ static void init_all_devices(int ctl)
 		if (hcid.auto_init)
 			init_device(dr->dev_id);
 
-		if (hcid.auto_init && hci_test_bit(HCI_UP, &dr->dev_opt) &&
-					!hci_test_bit(HCI_RAW, &dr->dev_opt))
+		if (hcid.auto_init && hci_test_bit(HCI_UP, &dr->dev_opt))
 			configure_device(dr->dev_id);
 
-		if (hcid.security && hci_test_bit(HCI_UP, &dr->dev_opt) &&
-					!hci_test_bit(HCI_RAW, &dr->dev_opt))
+		if (hcid.security && hci_test_bit(HCI_UP, &dr->dev_opt))
 			start_security_manager(dr->dev_id);
 	}
 

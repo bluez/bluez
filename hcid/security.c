@@ -427,6 +427,9 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 
 	ioctl(dev, HCIGETDEVINFO, (void *) di);
 
+	if (hci_test_bit(HCI_RAW, &di->flags))
+		return TRUE;
+
 	switch (eh->evt) {
 	case EVT_REMOTE_NAME_REQ_COMPLETE:
 		remote_name_information(dev, &di->bdaddr, ptr);
