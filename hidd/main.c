@@ -99,11 +99,11 @@ static int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm)
 	return sk;
 }
 
-static int l2cap_listen(const bdaddr_t *bdaddr, unsigned short psm, int backlog)
+static int l2cap_listen(const bdaddr_t *bdaddr, unsigned short psm, int lm, int backlog)
 {
 	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
-	int sk, lm = L2CAP_LM_MASTER;
+	int sk;
 
 	if ((sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0)
 		return -1;
@@ -442,6 +442,7 @@ static struct option main_options[] = {
 	{ "subclass",	1, 0, 'b' },
 	{ "timeout",	1, 0, 't' },
 	{ "device",	1, 0, 'i' },
+	{ "master",	0, 0, 'M' },
 	{ "show",	0, 0, 'l' },
 	{ "list",	0, 0, 'l' },
 	{ "server",	0, 0, 'd' },
@@ -467,11 +468,11 @@ int main(int argc, char *argv[])
 	char addr[18];
 	int log_option = LOG_NDELAY | LOG_PID;
 	int opt, fd, ctl, csk, isk;
-	int mode = 0, daemon = 1, timeout = 30;
+	int mode = 0, daemon = 1, timeout = 30, lm = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:nt:b:ldsc:k:Ku:h", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:nt:b:Mldsc:k:Ku:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (!strncasecmp(optarg, "hci", 3))
@@ -490,6 +491,9 @@ int main(int argc, char *argv[])
 				subclass = (uint8_t) strtol(optarg, NULL, 16);
 			else
 				subclass = atoi(optarg);
+			break;
+		case 'M':
+			lm |= L2CAP_LM_MASTER;
 			break;
 		case 'l':
 			mode = 0;
@@ -535,14 +539,14 @@ int main(int argc, char *argv[])
 
 	switch (mode) {
 	case 1:
-		csk = l2cap_listen(&bdaddr, L2CAP_PSM_HIDP_CTRL, 10);
+		csk = l2cap_listen(&bdaddr, L2CAP_PSM_HIDP_CTRL, lm, 10);
 		if (csk < 0) {
 			perror("Can't listen on HID control channel");
 			close(ctl);
 			exit(1);
 		}
 
-		isk = l2cap_listen(&bdaddr, L2CAP_PSM_HIDP_INTR, 10);
+		isk = l2cap_listen(&bdaddr, L2CAP_PSM_HIDP_INTR, lm, 10);
 		if (isk < 0) {
 			perror("Can't listen on HID interrupt channel");
 			close(ctl);
