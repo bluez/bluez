@@ -1,3 +1,12 @@
+ver 2.7:
+	Fix display of decoded LMP features.
+	Update company identifiers.
+	Add AFH related types.
+	Add first bits from EDR prototyping specification.
+	Add support for inquiry with RSSI.
+	Add HCRP related SDP functions.
+	Add HIDP header file.
+
 ver 2.6:
 	Use R2 for default value of pscan_rep_mode.
 	Add new company identifiers.
