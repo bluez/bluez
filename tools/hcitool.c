@@ -223,7 +223,7 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 	for (i = 0; i < num_rsp; i++) {
 		ba2str(&(info+i)->bdaddr, addr);
 		printf("\t%s\tclock offset: 0x%4.4x\tclass: 0x%2.2x%2.2x%2.2x\n",
-			addr, (info+i)->clock_offset,
+			addr, btohs((info+i)->clock_offset),
 			(info+i)->dev_class[2], 
 			(info+i)->dev_class[1], 
 			(info+i)->dev_class[0]);
@@ -302,7 +302,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	for (i = 0; i < num_rsp; i++) {
 		memset(name, 0, sizeof(name));
 		if (hci_read_remote_name_with_clock_offset(dd, &(info+i)->bdaddr,
-				htobs((info+i)->clock_offset), sizeof(name), name, 100000) < 0)
+				(info+i)->clock_offset | 0x8000, sizeof(name), name, 100000) < 0)
 			strcpy(name, "n/a");
 		ba2str(&(info+i)->bdaddr, addr);
 		printf("\t%s\t%s\n", addr, name);
