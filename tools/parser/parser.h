@@ -23,12 +23,6 @@
  * $Id$
  */
 
-#define DUMP_WIDTH	20
-
-#define DUMP_HEX	0x01
-#define DUMP_ASCII	0x02
-#define DUMP_TYPE_MASK	(DUMP_HEX | DUMP_ASCII)
-
 struct frame {
 	void *data;
 	int  data_len;
@@ -39,7 +33,20 @@ struct frame {
 	long flags;
 };
 
-void init_parser(long flags);
+/* Parser flags */
+#define DUMP_WIDTH	20
+
+#define DUMP_HEX	0x01
+#define DUMP_ASCII	0x02
+#define DUMP_TYPE_MASK	(DUMP_HEX | DUMP_ASCII)
+
+/* Parser filter */
+#define FILT_HCI	0x01
+#define FILT_L2CAP	0x02
+#define FILT_RFCOMM	0x04
+#define FILT_SDP	0x08
+
+void init_parser(long flags, long filter);
 
 void raw_dump(int level, struct frame *frm);
 void hci_dump(int level, struct frame *frm);

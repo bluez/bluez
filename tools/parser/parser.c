@@ -35,11 +35,13 @@
 
 #include "parser.h"
 
-static long parser_flags;
+long parser_flags;
+long parser_filter;
 
-void init_parser(long flags)
+void init_parser(long flags, long filter)
 {
-	parser_flags = flags;
+	parser_flags  = flags;
+	parser_filter = parser_filter; 
 }
 
 static inline void hex_dump(int level, unsigned char *buf, int len)

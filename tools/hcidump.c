@@ -50,8 +50,9 @@
 /* Default options */
 static int  device;
 static int  snap_len = SNAP_LEN;
-static int  mode  = PARSE;
+static int  mode = PARSE;
 static long flags; 
+static long filter; 
 static char *dump_file;
 
 static void process_frames(int dev, int sock, int file)
@@ -237,6 +238,31 @@ static struct argp_option options[] = {
 	{ 0 }
 };
 
+static struct {
+	char *name;
+	int  flag;
+} filters[] = {
+	{ "hci",    FILT_HCI    },
+	{ "l2cap",  FILT_L2CAP  },
+	{ "rfcomm", FILT_RFCOMM },
+	{ "sdp",    FILT_SDP    },
+	{ 0 }
+};
+
+static void parse_filter(struct argp_state *state)
+{
+	int i,n;
+	
+	for (i=state->next; i<state->argc; i++) {
+		for (n=0; filters[n].name; n++) {
+			if (!strcmp(filters[n].name, state->argv[i])) {
+				filter |= filters[n].flag;
+				break;
+			}
+		}
+	}
+}
+
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
 {
 	switch (key) {
@@ -271,6 +297,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			dump_file = strdup(arg);
 			break;
 
+		case ARGP_KEY_ARGS:
+			parse_filter(state);
+			break;
+
 		default:
 			return ARGP_ERR_UNKNOWN;
 	}
@@ -290,10 +320,14 @@ int main(int argc, char *argv[])
 	
 	printf("HCIDump - HCI packet analyzer ver %s.\n", VERSION);
 
+	/* Default settings */
+	if (!filter)
+		filter = ~0L;
+
 	switch (mode) {
 	case RAW:
 	case PARSE:
-		init_parser(flags);
+		init_parser(flags, filter);
 		process_frames(device, open_socket(device), -1);
 		break;
 
@@ -302,7 +336,7 @@ int main(int argc, char *argv[])
 		break;
 
 	case READ:
-		init_parser(flags);
+		init_parser(flags, filter);
 		read_dump(open_file(dump_file, mode));
 		break;
 	}
