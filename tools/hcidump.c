@@ -37,6 +37,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
@@ -183,7 +184,7 @@ static int open_file(char *file, int mode)
 	else
 		flags = O_RDONLY;
 
-	if ((f = open(file, flags)) < 0) {
+	if ((f = open(file, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
 		perror("Can't open output file");
 		exit(1);
 	}
