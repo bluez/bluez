@@ -289,6 +289,8 @@ char *bt_compidtostr(int compid)
 		return "Matsushita Electric Industrial Co., Ltd.";
 	case 59:
 		return "Gennum Corporation";
+	case 60:
+		return "Research In Motion";
 	case 65535:
 		return "internal use";
 	default:
