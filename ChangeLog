@@ -1,5 +1,11 @@
 ver 2.0-pre7:
 	Bluetooth utilities is now a separate package.
+	New build environment uses automake.
+	Moved all config files and security data to /etc/bluetooth.
+	Various cleanups.
+
+	Note:
+	Please move your /etc/hcid.conf to /etc/bluetooth
 
 ver 2.0-pre6:
 	Improved hcitool.
