@@ -216,129 +216,253 @@ enum {
 #define HCI_LM_RELIABLE	0x0010
 
 /* -----  HCI Commands ----- */
-/* OGF & OCF values */
 
-/* Informational Parameters */
-#define OGF_INFO_PARAM	0x04
+/* Link Control */
+#define OGF_LINK_CTL		0x01
 
-#define OCF_READ_LOCAL_VERSION	0x0001
+#define OCF_INQUIRY			0x0001
 typedef struct {
-	uint8_t 	status;
-	uint8_t 	hci_ver;
-	uint16_t	hci_rev;
-	uint8_t 	lmp_ver;
-	uint16_t	manufacturer;
-	uint16_t	lmp_subver;
-} __attribute__ ((packed)) read_local_version_rp;
-#define READ_LOCAL_VERSION_RP_SIZE 9
+	uint8_t		lap[3];
+	uint8_t		length;		/* 1.28s units */
+	uint8_t		num_rsp;
+} __attribute__ ((packed)) inquiry_cp;
+#define INQUIRY_CP_SIZE 5
 
-#define OCF_READ_LOCAL_FEATURES	0x0003
-typedef struct {
-	uint8_t 	status;
-	uint8_t 	features[8];
-} __attribute__ ((packed)) read_local_features_rp;
-
-#define OCF_READ_BUFFER_SIZE	0x0005
 typedef struct {
 	uint8_t		status;
-	uint16_t	acl_mtu;
-	uint8_t 	sco_mtu;
-	uint16_t 	acl_max_pkt;
-	uint16_t	sco_max_pkt;
-} __attribute__ ((packed)) read_buffer_size_rp;
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) status_bdaddr_rp;
+#define STATUS_BDADDR_RP_SIZE 7
 
-#define OCF_READ_BD_ADDR	0x0009
+#define OCF_INQUIRY_CANCEL		0x0002
+
+#define OCF_PERIODIC_INQUIRY		0x0003
+typedef struct {
+	uint16_t	max_period;	/* 1.28s units */
+	uint16_t	min_period;	/* 1.28s units */
+	uint8_t		lap[3];
+	uint8_t		length;		/* 1.28s units */
+	uint8_t		num_rsp;
+} __attribute__ ((packed)) periodic_inquiry_cp;
+#define PERIODIC_INQUIRY_CP_SIZE 9
+
+#define OCF_EXIT_PERIODIC_INQUIRY	0x0004
+
+#define OCF_CREATE_CONN			0x0005
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint16_t	pkt_type;
+	uint8_t		pscan_rep_mode;
+	uint8_t		pscan_mode;
+	uint16_t	clock_offset;
+	uint8_t		role_switch;
+} __attribute__ ((packed)) create_conn_cp;
+#define CREATE_CONN_CP_SIZE 13
+
+#define OCF_DISCONNECT			0x0006
+typedef struct {
+	uint16_t	handle;
+	uint8_t		reason;
+} __attribute__ ((packed)) disconnect_cp;
+#define DISCONNECT_CP_SIZE 3
+
+#define OCF_ADD_SCO			0x0007
+typedef struct {
+	uint16_t	handle;
+	uint16_t	pkt_type;
+} __attribute__ ((packed)) add_sco_cp;
+#define ADD_SCO_CP_SIZE 4
+
+#define OCF_ACCEPT_CONN_REQ		0x0009
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		role;
+} __attribute__ ((packed)) accept_conn_req_cp;
+#define ACCEPT_CONN_REQ_CP_SIZE	7
+
+#define OCF_REJECT_CONN_REQ		0x000a
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		reason;
+} __attribute__ ((packed)) reject_conn_req_cp;
+#define REJECT_CONN_REQ_CP_SIZE	7
+
+#define OCF_LINK_KEY_REPLY		0x000B
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		link_key[16];
+} __attribute__ ((packed)) link_key_reply_cp;
+#define LINK_KEY_REPLY_CP_SIZE 22
+
+#define OCF_LINK_KEY_NEG_REPLY		0x000C
+
+#define OCF_PIN_CODE_REPLY		0x000D
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		pin_len;
+	uint8_t		pin_code[16];
+} __attribute__ ((packed)) pin_code_reply_cp;
+#define PIN_CODE_REPLY_CP_SIZE 23
+
+#define OCF_PIN_CODE_NEG_REPLY		0x000E
+
+#define OCF_SET_CONN_PTYPE		0x000F
+typedef struct {
+	uint16_t	 handle;
+	uint16_t	 pkt_type;
+} __attribute__ ((packed)) set_conn_ptype_cp;
+#define SET_CONN_PTYPE_CP_SIZE 4
+
+#define OCF_AUTH_REQUESTED		0x0011
+typedef struct {
+	uint16_t	 handle;
+} __attribute__ ((packed)) auth_requested_cp;
+#define AUTH_REQUESTED_CP_SIZE 2
+
+#define OCF_SET_CONN_ENCRYPT		0x0013
+typedef struct {
+	uint16_t	handle;
+	uint8_t		encrypt;
+} __attribute__ ((packed)) set_conn_encrypt_cp;
+#define SET_CONN_ENCRYPT_CP_SIZE 3
+
+#define OCF_REMOTE_NAME_REQ		0x0019
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		pscan_rep_mode;
+	uint8_t		pscan_mode;
+	uint16_t	clock_offset;
+} __attribute__ ((packed)) remote_name_req_cp;
+#define REMOTE_NAME_REQ_CP_SIZE 10
+
+#define OCF_READ_REMOTE_FEATURES	0x001B
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) read_remote_features_cp;
+#define READ_REMOTE_FEATURES_CP_SIZE 2
+
+#define OCF_READ_REMOTE_VERSION		0x001D
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) read_remote_version_cp;
+#define READ_REMOTE_VERSION_CP_SIZE 2
+
+#define OCF_READ_CLOCK_OFFSET		0x001F
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) read_clock_offset_cp;
+#define READ_CLOCK_OFFSET_CP_SIZE 2
+
+/* Link Policy */
+#define OGF_LINK_POLICY		0x02
+
+#define OCF_HOLD_MODE			0x0001
+typedef struct {
+	uint16_t	handle;
+	uint16_t	max_interval;
+	uint16_t	min_interval;
+} __attribute__ ((packed)) hold_mode_cp;
+#define HOLD_MODE_CP_SIZE 6
+
+#define OCF_SNIFF_MODE			0x0003
+typedef struct {
+	uint16_t	handle;
+	uint16_t	max_interval;
+	uint16_t	min_interval;
+	uint16_t	attempt;
+	uint16_t	timeout;
+} __attribute__ ((packed)) sniff_mode_cp;
+#define SNIFF_MODE_CP_SIZE 10
+
+#define OCF_EXIT_SNIFF_MODE		0x0004
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) exit_sniff_mode_cp;
+#define EXIT_SNIFF_MODE_CP_SIZE 2
+
+#define OCF_PARK_MODE			0x0005
+typedef struct {
+	uint16_t	handle;
+	uint16_t	max_interval;
+	uint16_t	min_interval;
+} __attribute__ ((packed)) park_mode_cp;
+#define PARK_MODE_CP_SIZE 6
+
+#define OCF_EXIT_PARK_MODE		0x0006
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) exit_park_mode_cp;
+#define EXIT_PARK_MODE_CP_SIZE 2
+
+#define OCF_QOS_SETUP			0x0007
+typedef struct {
+	uint8_t		service_type;		/* 1 = best effort */
+	uint32_t	token_rate;		/* Byte per seconds */
+	uint32_t	peak_bandwidth;		/* Byte per seconds */
+	uint32_t	latency;		/* Microseconds */
+	uint32_t	delay_variation;	/* Microseconds */
+} __attribute__ ((packed)) hci_qos;
+#define HCI_QOS_CP_SIZE 17
+typedef struct {
+	uint16_t 	handle;
+	uint8_t 	flags;			/* Reserved */
+	hci_qos 	qos;
+} __attribute__ ((packed)) qos_setup_cp;
+#define QOS_SETUP_CP_SIZE (3 + HCI_QOS_CP_SIZE)
+
+#define OCF_ROLE_DISCOVERY		0x0009
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) role_discovery_cp;
+#define ROLE_DISCOVERY_CP_SIZE 2
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		role;
+} __attribute__ ((packed)) role_discovery_rp;
+#define ROLE_DISCOVERY_RP_SIZE 4
+
+#define OCF_SWITCH_ROLE			0x000B
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		role;
+} __attribute__ ((packed)) switch_role_cp;
+#define SWITCH_ROLE_CP_SIZE 7
+
+#define OCF_READ_LINK_POLICY		0x000C
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) read_link_policy_cp;
+#define READ_LINK_POLICY_CP_SIZE 2
 typedef struct {
 	uint8_t 	status;
-	bdaddr_t	bdaddr;
-} __attribute__ ((packed)) read_bd_addr_rp;
+	uint16_t	handle;
+	uint16_t	policy;
+} __attribute__ ((packed)) read_link_policy_rp;
+#define READ_LINK_POLICY_RP_SIZE 5
+
+#define OCF_WRITE_LINK_POLICY		0x000D
+typedef struct {
+	uint16_t	handle;
+	uint16_t	policy;
+} __attribute__ ((packed)) write_link_policy_cp;
+#define WRITE_LINK_POLICY_CP_SIZE 4
+typedef struct {
+	uint8_t 	status;
+	uint16_t	handle;
+} __attribute__ ((packed)) write_link_policy_rp;
+#define WRITE_LINK_POLICY_RP_SIZE 3
 
 /* Host Controller and Baseband */
-#define OGF_HOST_CTL	0x03
-#define OCF_RESET		0x0003
+#define OGF_HOST_CTL		0x03
 
-#define OCF_READ_PAGE_TIMEOUT	0x0017
+#define OCF_RESET			0x0003
+
+#define OCF_SET_EVENT_FLT		0x0005
 typedef struct {
-	uint8_t 	status;
-	uint16_t 	timeout;
-} __attribute__ ((packed)) read_page_timeout_rp;
-#define READ_PAGE_TIMEOUT_RP_SIZE 3
-
-#define OCF_WRITE_PAGE_TIMEOUT	0x0018
-typedef struct {
-	uint16_t 	timeout;
-} __attribute__ ((packed)) write_page_timeout_cp;
-#define WRITE_PAGE_TIMEOUT_CP_SIZE 2
-
-#define OCF_READ_PAGE_ACTIVITY	0x001B
-typedef struct {
-	uint8_t 	status;
-	uint16_t 	interval;
-	uint16_t 	window;
-} __attribute__ ((packed)) read_page_activity_rp;
-#define READ_PAGE_ACTIVITY_RP_SIZE 5
-
-#define OCF_WRITE_PAGE_ACTIVITY	0x001C
-typedef struct {
-	uint16_t 	interval;
-	uint16_t 	window;
-} __attribute__ ((packed)) write_page_activity_cp;
-#define WRITE_PAGE_ACTIVITY_CP_SIZE 4
-
-#define OCF_READ_INQ_ACTIVITY	0x001D
-typedef struct {
-	uint8_t 	status;
-	uint16_t 	interval;
-	uint16_t 	window;
-} __attribute__ ((packed)) read_inq_activity_rp;
-#define READ_INQ_ACTIVITY_RP_SIZE 5
-
-#define OCF_WRITE_INQ_ACTIVITY	0x001E
-typedef struct {
-	uint16_t 	interval;
-	uint16_t 	window;
-} __attribute__ ((packed)) write_inq_activity_cp;
-#define WRITE_INQ_ACTIVITY_CP_SIZE 4
-
-#define OCF_READ_LINK_SUPERVISION_TIMEOUT	0x0036
-typedef struct {
-	uint8_t		status;
-	uint16_t 	handle;
-	uint16_t 	link_sup_to;
-} __attribute__ ((packed)) read_link_supervision_timeout_rp;
-#define READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE 5
-
-#define OCF_WRITE_LINK_SUPERVISION_TIMEOUT	0x0037
-typedef struct {
-	uint16_t 	handle;
-	uint16_t 	link_sup_to;
-} __attribute__ ((packed)) write_link_supervision_timeout_cp;
-#define WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE 4
-
-#define OCF_READ_AUTH_ENABLE	0x001F
-#define OCF_WRITE_AUTH_ENABLE	0x0020
-	#define AUTH_DISABLED		0x00
-	#define AUTH_ENABLED		0x01
-
-#define OCF_READ_ENCRYPT_MODE	0x0021
-#define OCF_WRITE_ENCRYPT_MODE	0x0022
-	#define ENCRYPT_DISABLED	0x00
-	#define ENCRYPT_P2P		0x01
-	#define ENCRYPT_BOTH		0x02
-
-#define OCF_WRITE_CA_TIMEOUT  	0x0016	
-#define OCF_WRITE_PG_TIMEOUT  	0x0018
-
-#define OCF_WRITE_SCAN_ENABLE 	0x001A
-	#define SCAN_DISABLED		0x00
-	#define SCAN_INQUIRY		0x01
-	#define SCAN_PAGE		0x02
-
-#define OCF_SET_EVENT_FLT	0x0005
-typedef struct {
-	uint8_t 	flt_type;
-	uint8_t 	cond_type;
-	uint8_t 	condition[0];
+	uint8_t		flt_type;
+	uint8_t		cond_type;
+	uint8_t		condition[0];
 } __attribute__ ((packed)) set_event_flt_cp;
 #define SET_EVENT_FLT_CP_SIZE 2
 
@@ -346,56 +470,118 @@ typedef struct {
 #define FLT_CLEAR_ALL	0x00
 #define FLT_INQ_RESULT	0x01
 #define FLT_CONN_SETUP	0x02
-
 /* CONN_SETUP Condition types */
 #define CONN_SETUP_ALLOW_ALL	0x00
 #define CONN_SETUP_ALLOW_CLASS	0x01
 #define CONN_SETUP_ALLOW_BDADDR	0x02
-
 /* CONN_SETUP Conditions */
 #define CONN_SETUP_AUTO_OFF	0x01
 #define CONN_SETUP_AUTO_ON	0x02
 
-#define OCF_CHANGE_LOCAL_NAME	0x0013
+#define OCF_CHANGE_LOCAL_NAME		0x0013
 typedef struct {
-	uint8_t 	name[248];
+	uint8_t		name[248];
 } __attribute__ ((packed)) change_local_name_cp;
 #define CHANGE_LOCAL_NAME_CP_SIZE 248 
 
-#define OCF_READ_LOCAL_NAME	0x0014
+#define OCF_READ_LOCAL_NAME		0x0014
 typedef struct {
-	uint8_t	status;
-	uint8_t 	name[248];
+	uint8_t		status;
+	uint8_t		name[248];
 } __attribute__ ((packed)) read_local_name_rp;
 #define READ_LOCAL_NAME_RP_SIZE 249 
 
-#define OCF_READ_CLASS_OF_DEV	0x0023
+#define OCF_WRITE_CA_TIMEOUT		0x0016
+#define OCF_WRITE_PG_TIMEOUT		0x0018
+
+#define OCF_READ_PAGE_TIMEOUT		0x0017
 typedef struct {
-	uint8_t	status;
-	uint8_t 	dev_class[3];
+	uint8_t		status;
+	uint16_t	timeout;
+} __attribute__ ((packed)) read_page_timeout_rp;
+#define READ_PAGE_TIMEOUT_RP_SIZE 3
+
+#define OCF_WRITE_PAGE_TIMEOUT		0x0018
+typedef struct {
+	uint16_t	timeout;
+} __attribute__ ((packed)) write_page_timeout_cp;
+#define WRITE_PAGE_TIMEOUT_CP_SIZE 2
+
+#define OCF_WRITE_SCAN_ENABLE		0x001A
+	#define SCAN_DISABLED		0x00
+	#define SCAN_INQUIRY		0x01
+	#define SCAN_PAGE		0x02
+
+#define OCF_READ_PAGE_ACTIVITY		0x001B
+typedef struct {
+	uint8_t		status;
+	uint16_t	interval;
+	uint16_t	window;
+} __attribute__ ((packed)) read_page_activity_rp;
+#define READ_PAGE_ACTIVITY_RP_SIZE 5
+
+#define OCF_WRITE_PAGE_ACTIVITY		0x001C
+typedef struct {
+	uint16_t	interval;
+	uint16_t	window;
+} __attribute__ ((packed)) write_page_activity_cp;
+#define WRITE_PAGE_ACTIVITY_CP_SIZE 4
+
+#define OCF_READ_INQ_ACTIVITY		0x001D
+typedef struct {
+	uint8_t		status;
+	uint16_t	interval;
+	uint16_t	window;
+} __attribute__ ((packed)) read_inq_activity_rp;
+#define READ_INQ_ACTIVITY_RP_SIZE 5
+
+#define OCF_WRITE_INQ_ACTIVITY		0x001E
+typedef struct {
+	uint16_t	interval;
+	uint16_t	window;
+} __attribute__ ((packed)) write_inq_activity_cp;
+#define WRITE_INQ_ACTIVITY_CP_SIZE 4
+
+#define OCF_READ_AUTH_ENABLE		0x001F
+
+#define OCF_WRITE_AUTH_ENABLE		0x0020
+	#define AUTH_DISABLED		0x00
+	#define AUTH_ENABLED		0x01
+
+#define OCF_READ_ENCRYPT_MODE		0x0021
+
+#define OCF_WRITE_ENCRYPT_MODE		0x0022
+	#define ENCRYPT_DISABLED	0x00
+	#define ENCRYPT_P2P		0x01
+	#define ENCRYPT_BOTH		0x02
+
+#define OCF_READ_CLASS_OF_DEV		0x0023
+typedef struct {
+	uint8_t		status;
+	uint8_t		dev_class[3];
 } __attribute__ ((packed)) read_class_of_dev_rp;
 #define READ_CLASS_OF_DEV_RP_SIZE 4 
 
-#define OCF_WRITE_CLASS_OF_DEV	0x0024
+#define OCF_WRITE_CLASS_OF_DEV		0x0024
 typedef struct {
-	uint8_t 	dev_class[3];
+	uint8_t		dev_class[3];
 } __attribute__ ((packed)) write_class_of_dev_cp;
 #define WRITE_CLASS_OF_DEV_CP_SIZE 3
 
-#define OCF_READ_VOICE_SETTING	0x0025
+#define OCF_READ_VOICE_SETTING		0x0025
 typedef struct {
-	uint8_t	status;
+	uint8_t		status;
 	uint16_t	voice_setting;
 } __attribute__ ((packed)) read_voice_setting_rp;
 #define READ_VOICE_SETTING_RP_SIZE 3
 
-#define OCF_WRITE_VOICE_SETTING	0x0026
+#define OCF_WRITE_VOICE_SETTING		0x0026
 typedef struct {
 	uint16_t	voice_setting;
 } __attribute__ ((packed)) write_voice_setting_cp;
 #define WRITE_VOICE_SETTING_CP_SIZE 2
 
-#define OCF_READ_TRANSMIT_POWER_LEVEL 0x002D
+#define OCF_READ_TRANSMIT_POWER_LEVEL	0x002D
 typedef struct {
 	uint16_t	handle;
 	uint8_t		type;
@@ -408,307 +594,123 @@ typedef struct {
 } __attribute__ ((packed)) read_transmit_power_level_rp;
 #define READ_TRANSMIT_POWER_LEVEL_RP_SIZE 4
 
-#define OCF_HOST_BUFFER_SIZE	0x0033
+#define OCF_HOST_BUFFER_SIZE		0x0033
 typedef struct {
-	uint16_t 	acl_mtu;
-	uint8_t 	sco_mtu;
-	uint16_t 	acl_max_pkt;
+	uint16_t	acl_mtu;
+	uint8_t		sco_mtu;
+	uint16_t	acl_max_pkt;
 	uint16_t	sco_max_pkt;
 } __attribute__ ((packed)) host_buffer_size_cp;
 #define HOST_BUFFER_SIZE_CP_SIZE 7
 
-#define MAX_IAC_LAP 0x40
-#define OCF_READ_CURRENT_IAC_LAP 0x0039
+#define OCF_READ_LINK_SUPERVISION_TIMEOUT	0x0036
 typedef struct {
-  uint8_t status;
-  uint8_t num_current_iac;
-  uint8_t lap[3][MAX_IAC_LAP];
+	uint8_t		status;
+	uint16_t	handle;
+	uint16_t	link_sup_to;
+} __attribute__ ((packed)) read_link_supervision_timeout_rp;
+#define READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE 5
+
+#define OCF_WRITE_LINK_SUPERVISION_TIMEOUT	0x0037
+typedef struct {
+	uint16_t	handle;
+	uint16_t	link_sup_to;
+} __attribute__ ((packed)) write_link_supervision_timeout_cp;
+#define WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE 4
+
+#define MAX_IAC_LAP 0x40
+#define OCF_READ_CURRENT_IAC_LAP	0x0039
+typedef struct {
+	uint8_t		status;
+	uint8_t		num_current_iac;
+	uint8_t		lap[3][MAX_IAC_LAP];
 } __attribute__ ((packed)) read_current_iac_lap_rp;
 #define READ_CURRENT_IAC_LAP_RP_SIZE 2+3*MAX_IAC_LAP
 
-#define OCF_WRITE_CURRENT_IAC_LAP 0x003A
+#define OCF_WRITE_CURRENT_IAC_LAP	0x003A
 typedef struct {
-  uint8_t num_current_iac;
-  uint8_t lap[3][MAX_IAC_LAP];
+	uint8_t		num_current_iac;
+	uint8_t		lap[3][MAX_IAC_LAP];
 } __attribute__ ((packed)) write_current_iac_lap_cp;
 #define WRITE_CURRENT_IAC_LAP_CP_SIZE 1+3*MAX_IAC_LAP
 
-/* Link Control */
-#define OGF_LINK_CTL	0x01 
+/* Informational Parameters */
+#define OGF_INFO_PARAM		0x04
 
-#define OCF_CREATE_CONN		0x0005
+#define OCF_READ_LOCAL_VERSION		0x0001
 typedef struct {
+	uint8_t		status;
+	uint8_t		hci_ver;
+	uint16_t	hci_rev;
+	uint8_t		lmp_ver;
+	uint16_t	manufacturer;
+	uint16_t	lmp_subver;
+} __attribute__ ((packed)) read_local_version_rp;
+#define READ_LOCAL_VERSION_RP_SIZE 9
+
+#define OCF_READ_LOCAL_FEATURES		0x0003
+typedef struct {
+	uint8_t		status;
+	uint8_t		features[8];
+} __attribute__ ((packed)) read_local_features_rp;
+
+#define OCF_READ_BUFFER_SIZE		0x0005
+typedef struct {
+	uint8_t		status;
+	uint16_t	acl_mtu;
+	uint8_t		sco_mtu;
+	uint16_t	acl_max_pkt;
+	uint16_t	sco_max_pkt;
+} __attribute__ ((packed)) read_buffer_size_rp;
+
+#define OCF_READ_BD_ADDR		0x0009
+typedef struct {
+	uint8_t		status;
 	bdaddr_t	bdaddr;
-	uint16_t 	pkt_type;
-	uint8_t 	pscan_rep_mode;
-	uint8_t 	pscan_mode;
-	uint16_t 	clock_offset;
-	uint8_t 	role_switch;
-} __attribute__ ((packed)) create_conn_cp;
-#define CREATE_CONN_CP_SIZE 13
-
-#define OCF_ACCEPT_CONN_REQ	0x0009
-typedef struct {
-	bdaddr_t	bdaddr;
-	uint8_t 	role;
-} __attribute__ ((packed)) accept_conn_req_cp;
-#define ACCEPT_CONN_REQ_CP_SIZE	7
-
-#define OCF_REJECT_CONN_REQ	0x000a
-typedef struct {
-	bdaddr_t	bdaddr;
-	uint8_t 	reason;
-} __attribute__ ((packed)) reject_conn_req_cp;
-#define REJECT_CONN_REQ_CP_SIZE	7
-
-#define OCF_DISCONNECT	0x0006
-typedef struct {
-	uint16_t 	handle;
-	uint8_t 	reason;
-} __attribute__ ((packed)) disconnect_cp;
-#define DISCONNECT_CP_SIZE 3
-
-#define OCF_ADD_SCO	0x0007
-typedef struct {
-	uint16_t 	handle;
-	uint16_t 	pkt_type;
-} __attribute__ ((packed)) add_sco_cp;
-#define ADD_SCO_CP_SIZE 4
-
-#define OCF_INQUIRY		0x0001
-typedef struct {
-	uint8_t 	lap[3];
-	uint8_t 	length;
-	uint8_t		num_rsp;
-} __attribute__ ((packed)) inquiry_cp;
-#define INQUIRY_CP_SIZE 5
-
-typedef struct {
-	uint8_t 	status;
-	bdaddr_t	bdaddr;
-} __attribute__ ((packed)) status_bdaddr_rp;
-#define STATUS_BDADDR_RP_SIZE 7
-
-#define OCF_INQUIRY_CANCEL	0x0002
-
-#define OCF_PERIODIC_INQUIRY	0x0003
-typedef struct {
-	uint16_t 	max_period;	/* 1.28s units */
-	uint16_t 	min_period;	/* 1.28s units */
-	uint8_t 	lap[3];
-	uint8_t 	length;		/* 1.28s units */
-	uint8_t		num_rsp;
-} __attribute__ ((packed)) periodic_inquiry_cp;
-#define PERIODIC_INQUIRY_CP_SIZE 9
-
-#define OCF_EXIT_PERIODIC_INQUIRY	0x0004
-
-#define OCF_LINK_KEY_REPLY	0x000B
-#define OCF_LINK_KEY_NEG_REPLY	0x000C
-typedef struct {
-	bdaddr_t	bdaddr;
-	uint8_t 	link_key[16];
-} __attribute__ ((packed)) link_key_reply_cp;
-#define LINK_KEY_REPLY_CP_SIZE 22
-
-#define OCF_PIN_CODE_REPLY	0x000D
-#define OCF_PIN_CODE_NEG_REPLY	0x000E
-typedef struct {
-	bdaddr_t	bdaddr;
-	uint8_t 	pin_len;
-	uint8_t 	pin_code[16];
-} __attribute__ ((packed)) pin_code_reply_cp;
-#define PIN_CODE_REPLY_CP_SIZE 23
-
-#define OCF_SET_CONN_PTYPE	0x000F
-typedef struct {
-	uint16_t	 handle;
-	uint16_t	 pkt_type;
-} __attribute__ ((packed)) set_conn_ptype_cp;
-#define SET_CONN_PTYPE_CP_SIZE 4
-
-#define OCF_AUTH_REQUESTED	0x0011
-typedef struct {
-	uint16_t	 handle;
-} __attribute__ ((packed)) auth_requested_cp;
-#define AUTH_REQUESTED_CP_SIZE 2
-
-#define OCF_SET_CONN_ENCRYPT	0x0013
-typedef struct {
-	uint16_t	handle;
-	uint8_t 	encrypt;
-} __attribute__ ((packed)) set_conn_encrypt_cp;
-#define SET_CONN_ENCRYPT_CP_SIZE 3
-
-#define OCF_REMOTE_NAME_REQ	0x0019
-typedef struct {
-	bdaddr_t	bdaddr;
-	uint8_t 	pscan_rep_mode;
-	uint8_t 	pscan_mode;
-	uint16_t	clock_offset;
-} __attribute__ ((packed)) remote_name_req_cp;
-#define REMOTE_NAME_REQ_CP_SIZE 10
-
-#define OCF_READ_REMOTE_FEATURES 0x001B
-typedef struct {
-	uint16_t	handle;
-} __attribute__ ((packed)) read_remote_features_cp;
-#define READ_REMOTE_FEATURES_CP_SIZE 2
-
-#define OCF_READ_REMOTE_VERSION 0x001D
-typedef struct {
-	uint16_t	handle;
-} __attribute__ ((packed)) read_remote_version_cp;
-#define READ_REMOTE_VERSION_CP_SIZE 2
-
-#define OCF_READ_CLOCK_OFFSET	0x001F
-typedef struct {
-	uint16_t	handle;
-} __attribute__ ((packed)) read_clock_offset_cp;
-#define READ_CLOCK_OFFSET_CP_SIZE 2
-
-/* Link Policy */
-#define OGF_LINK_POLICY	0x02
-
-#define OCF_HOLD_MODE		0x0001
-typedef struct {
-	uint16_t	handle;
-	uint16_t	max_interval;
-	uint16_t	min_interval;
-} __attribute__ ((packed)) hold_mode_cp;
-#define HOLD_MODE_CP_SIZE 6
-
-#define OCF_SNIFF_MODE		0x0003
-typedef struct {
-	uint16_t	handle;
-	uint16_t	max_interval;
-	uint16_t	min_interval;
-	uint16_t	attempt;
-	uint16_t	timeout;
-} __attribute__ ((packed)) sniff_mode_cp;
-#define SNIFF_MODE_CP_SIZE 10
-
-#define OCF_EXIT_SNIFF_MODE	0x0004
-typedef struct {
-	uint16_t	handle;
-} __attribute__ ((packed)) exit_sniff_mode_cp;
-#define EXIT_SNIFF_MODE_CP_SIZE 2
-
-#define OCF_PARK_MODE		0x0005
-typedef struct {
-	uint16_t	handle;
-	uint16_t	max_interval;
-	uint16_t	min_interval;
-} __attribute__ ((packed)) park_mode_cp;
-#define PARK_MODE_CP_SIZE 6
-
-#define OCF_EXIT_PARK_MODE	0x0006
-typedef struct {
-	uint16_t	handle;
-} __attribute__ ((packed)) exit_park_mode_cp;
-#define EXIT_PARK_MODE_CP_SIZE 2
-
-typedef struct {
-	uint8_t 	service_type;		/* 1 = best effort */
-	uint32_t	token_rate;		/* Byte per seconds */
-	uint32_t	peak_bandwidth;		/* Byte per seconds */
-	uint32_t	latency;		/* Microseconds */
-	uint32_t	delay_variation;	/* Microseconds */
-} __attribute__ ((packed)) hci_qos;
-#define HCI_QOS_CP_SIZE 17
-
-#define OCF_QOS_SETUP	0x0007
-typedef struct {
-	uint16_t 	handle;
-	uint8_t 	flags;			/* Reserved */
-	hci_qos 	qos;
-} __attribute__ ((packed)) qos_setup_cp;
-#define QOS_SETUP_CP_SIZE (3 + HCI_QOS_CP_SIZE)
-
-#define OCF_ROLE_DISCOVERY	0x0009
-typedef struct {
-	uint16_t	handle;
-} __attribute__ ((packed)) role_discovery_cp;
-#define ROLE_DISCOVERY_CP_SIZE 2
-typedef struct {
-	uint8_t 	status;
-	uint16_t	handle;
-	uint8_t 	role;
-} __attribute__ ((packed)) role_discovery_rp;
-#define ROLE_DISCOVERY_RP_SIZE 4
-
-#define OCF_READ_LINK_POLICY	0x000C
-typedef struct {
-	uint16_t	handle;
-} __attribute__ ((packed)) read_link_policy_cp;
-#define READ_LINK_POLICY_CP_SIZE 2
-typedef struct {
-	uint8_t 	status;
-	uint16_t	handle;
-	uint16_t	policy;
-} __attribute__ ((packed)) read_link_policy_rp;
-#define READ_LINK_POLICY_RP_SIZE 5
-
-#define OCF_SWITCH_ROLE	0x000B
-typedef struct {
-	bdaddr_t	bdaddr;
-	uint8_t 	role;
-} __attribute__ ((packed)) switch_role_cp;
-#define SWITCH_ROLE_CP_SIZE 7
-
-#define OCF_WRITE_LINK_POLICY	0x000D
-typedef struct {
-	uint16_t	handle;
-	uint16_t	policy;
-} __attribute__ ((packed)) write_link_policy_cp;
-#define WRITE_LINK_POLICY_CP_SIZE 4
-typedef struct {
-	uint8_t 	status;
-	uint16_t	handle;
-} __attribute__ ((packed)) write_link_policy_rp;
-#define WRITE_LINK_POLICY_RP_SIZE 3
+} __attribute__ ((packed)) read_bd_addr_rp;
 
 /* Status params */
-#define OGF_STATUS_PARAM 	0x05
+#define OGF_STATUS_PARAM	0x05
 
-#define OCF_READ_FAILED_CONTACT_COUNTER   0x0001
+#define OCF_READ_FAILED_CONTACT_COUNTER		0x0001
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
-	uint8_t 	counter;
+	uint8_t		counter;
 } __attribute__ ((packed)) read_failed_contact_counter_rp; 
 #define READ_FAILED_CONTACT_COUNTER_RP_SIZE 4
- 
-#define OCF_RESET_FAILED_CONTACT_COUNTER  0x0002
+
+#define OCF_RESET_FAILED_CONTACT_COUNTER	0x0002
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
 } __attribute__ ((packed)) reset_failed_contact_counter_rp; 
-#define OCF_RESET_FAILED_CONTACT_COUNTER_RP_SIZE 4
- 
-#define OCF_GET_LINK_QUALITY   0x0003
+#define RESET_FAILED_CONTACT_COUNTER_RP_SIZE 4
+
+#define OCF_GET_LINK_QUALITY		0x0003
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
-	uint8_t 	link_quality;
+	uint8_t		link_quality;
 } __attribute__ ((packed)) get_link_quality_rp; 
 #define GET_LINK_QUALITY_RP_SIZE 4
- 
-#define OCF_READ_RSSI  0x0005
+
+#define OCF_READ_RSSI			0x0005
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
-	int8_t  	rssi;
+	int8_t		rssi;
 } __attribute__ ((packed)) read_rssi_rp; 
 #define READ_RSSI_RP_SIZE 4
- 
+
 /* Testing commands */
-#define OGF_TESTING_CMD	0x3e
+#define OGF_TESTING_CMD		0x3e
 
 /* Vendor specific commands */
-#define OGF_VENDOR_CMD	0x3f
+#define OGF_VENDOR_CMD		0x3f
 
 /* ---- HCI Events ---- */
+
 #define EVT_INQUIRY_COMPLETE 	0x01
 
 #define EVT_INQUIRY_RESULT 	0x02
