@@ -506,7 +506,7 @@ int main(int argc, char *argv[], char *env[])
 
 	/* Start logging to syslog and stderr */
 	openlog("hcid", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
-	syslog(LOG_INFO, "HCI daemon ver %s started", VERSION);
+	syslog(LOG_INFO, "Bluetooth HCI daemon");
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;

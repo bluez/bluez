@@ -40,7 +40,6 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#define DBUS_API_SUBJECT_TO_CHANGE
 #include <dbus/dbus.h>
 
 #include "glib-ectomy.h"
