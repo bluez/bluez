@@ -46,33 +46,6 @@
 #define HCR_PROFILE_ID		0x1125
 #define HCR_PRINT_SVCLASS_ID	0x1126
 
-#define SDP_ATTR_ADD_PROTO_DESC_LIST	0x000d
-
-static int sdp_get_add_access_protos(const sdp_record_t *rec, sdp_list_t **pap)
-{
-	sdp_data_t *pdlist, *curr;
-	sdp_list_t *ap = 0;
-
-	pdlist = sdp_data_get(rec, SDP_ATTR_ADD_PROTO_DESC_LIST);
-	if (pdlist == NULL) {
-		errno = ENODATA;
-		return -1;
-	}
-
-	pdlist = pdlist->val.dataseq;
-
-	for (; pdlist; pdlist = pdlist->next) {
-		sdp_list_t *pds = 0;
-		for (curr = pdlist->val.dataseq; curr; curr = curr->next)
-			pds = sdp_list_append(pds, curr->val.dataseq);
-		ap = sdp_list_append(ap, pds);
-	}
-
-	*pap = ap;
-
-	return 0;
-}
-
 int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short *data_psm)
 {
 	sdp_list_t *srch, *attrs, *rsp;
