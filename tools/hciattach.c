@@ -230,14 +230,74 @@ static int digi(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
+static int texas(int fd, struct uart_t *u, struct termios *ti)
+{
+	struct timespec tm = {0, 50000};
+	char cmd[10];
+	unsigned char resp[100];		/* Response */
+	int n;
+
+	memset(resp,'\0', 100);
+
+	/* Switch to default Texas baudrate*/
+	if (set_speed(fd, ti, 115200) < 0) {
+		perror("Can't set default baud rate");
+		return -1;
+	}
+
+	/* It is possible to get software version with manufacturer specific 
+	   HCI command HCI_VS_TI_Version_Number. But the only thing you get more
+	   is if this is point-to-point or point-to-multipoint module */
+
+	/* Get Manufacturer and LMP version */
+	cmd[0] = HCI_COMMAND_PKT;
+	cmd[1] = 0x01;
+	cmd[2] = 0x10;
+	cmd[3] = 0x00;	
+
+	do {
+		n = write(fd, cmd, 4);
+		if (n < 0) {
+			perror("Failed to write init command (READ_LOCAL_VERSION_INFORMATION)");
+			return -1;
+		}
+		if (n < 4) {
+			fprintf(stderr, "Wanted to write 4 bytes, could only write %d. Stop\n", n);
+			return -1;
+		}
+
+		/* Read reply. */
+		if (read_hci_event(fd, resp, 100) < 0) {
+			perror("Failed to read init response (READ_LOCAL_VERSION_INFORMATION)");
+			return -1;
+		}
+
+		/* Wait for command complete event for our Opcode */
+	} while (resp[4] != cmd[1] && resp[5] != cmd[2]);
+
+	/* Verify manufacturer */
+	if ((resp[11] & 0xFF) != 0x0d)
+		fprintf(stderr,"WARNING : module's manufacturer is not Texas Instrument\n");
+
+	/* Print LMP version */
+	fprintf(stderr, "Texas module LMP version : 0x%02x\n", resp[10] & 0xFF);
+
+	/* Print LMP subversion */
+	fprintf(stderr, "Texas module LMP sub-version : 0x%02x%02x\n", resp[14] & 0xFF, resp[13] & 0xFF);
+	
+	nanosleep(&tm, NULL);
+	return 0;
+}
+
 static int read_check(int fd, void *buf, int count)
 {
 	int res;
 	
-	do{
+	do {
 		res = read(fd, buf, count);
 		if (res != -1) {
-			buf += res; count -= res;
+			buf += res; 
+			count -= res;
 		}
 	} while (count && (errno == 0 || errno == EINTR));
 	
@@ -704,6 +764,7 @@ struct uart_t uart[] = {
 	{ "any",      0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, NULL },
 	{ "ericsson", 0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, ericsson },
 	{ "digi",     0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, digi },
+	{ "texas",    0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, texas},
 
 	{ "bcsp",     0x0000, 0x0000, HCI_UART_BCSP, 115200, 0,        bcsp },
 
