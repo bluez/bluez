@@ -150,7 +150,7 @@ static int read_hci_event(int fd, unsigned char* buf, int size)
 static int ericsson(int fd, struct uart_t *u, struct termios *ti)
 {
 	struct timespec tm = {0, 50000};
-	char cmd[10];
+	char cmd[5];
 
 	cmd[0] = HCI_COMMAND_PKT;
 	cmd[1] = 0x09;
@@ -194,7 +194,7 @@ static int ericsson(int fd, struct uart_t *u, struct termios *ti)
 static int digi(int fd, struct uart_t *u, struct termios *ti)
 {
 	struct timespec tm = {0, 50000};
-	char cmd[10];
+	char cmd[5];
 
 	/* DigiAnswer set baud rate command */
 	cmd[0] = HCI_COMMAND_PKT;
@@ -227,7 +227,7 @@ static int digi(int fd, struct uart_t *u, struct termios *ti)
 static int texas(int fd, struct uart_t *u, struct termios *ti)
 {
 	struct timespec tm = {0, 50000};
-	char cmd[10];
+	char cmd[4];
 	unsigned char resp[100];		/* Response */
 	int n;
 
@@ -241,7 +241,7 @@ static int texas(int fd, struct uart_t *u, struct termios *ti)
 	cmd[0] = HCI_COMMAND_PKT;
 	cmd[1] = 0x01;
 	cmd[2] = 0x10;
-	cmd[3] = 0x00;	
+	cmd[3] = 0x00;
 
 	do {
 		n = write(fd, cmd, 4);
@@ -632,7 +632,7 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 static int swave(int fd, struct uart_t *u, struct termios *ti)
 {
 	struct timespec tm = {0, 500000};
-	char cmd[10], rsp[100];
+	char cmd[9], rsp[100];
 	int r;
 
 	// Silicon Wave set baud rate command
@@ -671,7 +671,7 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 	}
 
 	/* Send initialization command */
-	if (write(fd, cmd, 10) != 5) {
+	if (write(fd, cmd, 9) != 9) {
 		perror("Failed to write init command");
 		return -1;
 	}
@@ -729,6 +729,61 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
+/*
+ * ST Microelectronics specific initialization
+ * Marcel Holtmann <marcel@holtmann.org>
+ */
+static int st(int fd, struct uart_t *u, struct termios *ti)
+{
+	struct timespec tm = {0, 50000};
+	char cmd[5];
+
+	/* ST Microelectronics set baud rate command */
+	cmd[0] = HCI_COMMAND_PKT;
+	cmd[1] = 0x46;			// OCF = Hci_Cmd_ST_Set_Uart_Baud_Rate
+	cmd[2] = 0xfc;			// OGF = Vendor specific
+	cmd[3] = 0x01;
+
+	switch (u->speed) {
+	case 9600:
+		cmd[4] = 0x09;
+		break;
+	case 19200:
+		cmd[4] = 0x0b;
+		break;
+	case 38400:
+		cmd[4] = 0x0d;
+		break;
+	case 57600:
+		cmd[4] = 0x0e;
+		break;
+	case 115200:
+		cmd[4] = 0x10;
+		break;
+	case 230400:
+		cmd[4] = 0x12;
+		break;
+	case 460800:
+		cmd[4] = 0x13;
+		break;
+	case 921600:
+		cmd[4] = 0x14;
+		break;
+	default:
+		cmd[4] = 0x10;
+		u->speed = 57600;
+		break;
+	}
+
+	/* Send initialization command */
+	if (write(fd, cmd, 5) != 5) {
+		perror("Failed to write init command");
+		return -1;
+	}
+	nanosleep(&tm, NULL);
+	return 0;
+}
+
 struct uart_t uart[] = {
 	{ "any",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
 	{ "ericsson", 0x0000, 0x0000, HCI_UART_H4,   57600,  115200, FLOW_CTL, ericsson },
@@ -748,6 +803,9 @@ struct uart_t uart[] = {
 
 	/* Silicon Wave kits */
 	{ "swave",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, swave },
+
+	/* ST Microelectronics minikits based on STLC2410/STLC2415 */
+	{ "st",       0x0000, 0x0000, HCI_UART_H4,    57600, 115200, FLOW_CTL, st },
 
 	/* Sphinx Electronics PICO Card */
 	{ "picocard", 0x025e, 0x1000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
