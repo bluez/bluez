@@ -30,6 +30,9 @@
 #ifndef SDPD_H
 #define SDPD_H
 
+#define sdp_get_unaligned bt_get_unaligned
+#define sdp_put_unaligned bt_put_unaligned
+
 #define SDPINF(fmt, arg...) syslog(LOG_INFO, fmt "\n", ## arg)
 #define SDPERR(fmt, arg...) syslog(LOG_ERR, "%s: " fmt "\n", __func__ , ## arg)
 
