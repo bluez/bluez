@@ -3,7 +3,7 @@
  *  Bluetooth packet analyzer - Common parser functions
  *
  *  Copyright (C) 2000-2002  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2003-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2003-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify

@@ -2,7 +2,7 @@
  *
  *  Bluetooth packet analyzer - CMTP parser
  *
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
