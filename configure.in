@@ -23,4 +23,4 @@ m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 
 AC_PROG_LIBTOOL
 
-AC_OUTPUT(Makefile include/Makefile src/Makefile)
+AC_OUTPUT(Makefile include/Makefile src/Makefile bluez.pc)
