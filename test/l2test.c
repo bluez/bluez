@@ -79,6 +79,7 @@ int auth = 0;
 int encrypt = 0;
 int socktype = SOCK_SEQPACKET;
 int linger = 0;
+int reliable = 0;
 
 float tv2fl(struct timeval tv)
 {
@@ -91,7 +92,7 @@ int do_connect(char *svr)
 	struct l2cap_options opts;
 	int s, opt;
 
-	if( (s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0 ) {
+	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0) {
 		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
 		return -1;
 	}
@@ -99,14 +100,14 @@ int do_connect(char *svr)
 	memset(&loc_addr, 0, sizeof(loc_addr));
 	loc_addr.l2_family = AF_BLUETOOTH;
 	loc_addr.l2_bdaddr = bdaddr;
-	if( bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0 ) {
+	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	/* Get default options */
 	opt = sizeof(opts);
-	if( getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0 ) {
+	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
 		syslog(LOG_ERR, "Can't get default L2CAP options. %s(%d)", strerror(errno), errno);
 		return -1;	
 	}
@@ -114,7 +115,7 @@ int do_connect(char *svr)
 	/* Set new options */
 	opts.omtu = omtu;
 	opts.imtu = imtu;
-	if( setsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, opt) < 0 ) {
+	if (setsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, opt) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP options. %s(%d)", strerror(errno), errno);
 		return -1;
 	}
@@ -129,18 +130,28 @@ int do_connect(char *svr)
 		}
 	}
 
+	/* Set link mode */
+	opt = 0;
+	if (reliable)
+		 opt |= L2CAP_LM_RELIABLE;
+
+	if (setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
+		syslog(LOG_ERR, "Can't set L2CAP link mode. %s(%d)", strerror(errno), errno);
+		exit(1);
+	}
+
 	memset(&rem_addr, 0, sizeof(rem_addr));
 	rem_addr.l2_family = AF_BLUETOOTH;
 	baswap(&rem_addr.l2_bdaddr, strtoba(svr));
 	rem_addr.l2_psm = htobs(psm);
-	if( connect(s, (struct sockaddr *)&rem_addr, sizeof(rem_addr)) < 0 ){
+	if (connect(s, (struct sockaddr *)&rem_addr, sizeof(rem_addr)) < 0 ) {
 		syslog(LOG_ERR, "Can't connect. %s(%d)", strerror(errno), errno);
 		close(s);
 		return -1;
 	}
 
 	opt = sizeof(opts);
-	if( getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0 ){
+	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
 		syslog(LOG_ERR, "Can't get L2CAP options. %s(%d)", strerror(errno), errno);
 		close(s);
 		return -1;
@@ -159,7 +170,7 @@ void do_listen( void (*handler)(int sk) )
 	int  s, s1, opt;
 	bdaddr_t ba;
 
-	if( (s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0 ) {
+	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0) {
 		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
@@ -167,13 +178,16 @@ void do_listen( void (*handler)(int sk) )
 	loc_addr.l2_family = AF_BLUETOOTH;
 	loc_addr.l2_bdaddr = bdaddr;
 	loc_addr.l2_psm    = htobs(psm);
-	if( bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0 ) {
+	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	/* Set link mode */
 	opt = 0;
+	if (reliable)
+		opt |= L2CAP_LM_RELIABLE;
+
 	if (master)
 		 opt |= L2CAP_LM_MASTER;
 
@@ -207,7 +221,7 @@ void do_listen( void (*handler)(int sk) )
 		return;
 	}
 
-	if( listen(s, 10) ) {
+	if (listen(s, 10)) {
 		syslog(LOG_ERR,"Can not listen on the socket. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
@@ -216,7 +230,7 @@ void do_listen( void (*handler)(int sk) )
 
 	while(1) {
 		opt = sizeof(rem_addr);
-		if( (s1 = accept(s, (struct sockaddr *)&rem_addr, &opt)) < 0 ) {
+		if ((s1 = accept(s, (struct sockaddr *)&rem_addr, &opt)) < 0) {
 			syslog(LOG_ERR,"Accept failed. %s(%d)", strerror(errno), errno);
 			exit(1);
 		}
@@ -230,7 +244,7 @@ void do_listen( void (*handler)(int sk) )
 		close(s);
 
 		opt = sizeof(opts);
-		if( getsockopt(s1, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0 ) {
+		if (getsockopt(s1, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
 			syslog(LOG_ERR, "Can't get L2CAP options. %s(%d)", strerror(errno), errno);
 			exit(1);
 		}
@@ -259,6 +273,7 @@ void do_listen( void (*handler)(int sk) )
 void dump_mode(int s)
 {
 	int len;
+	int opt, optl;
 
 	syslog(LOG_INFO, "Receiving ...");
 	while (1) {
@@ -274,8 +289,23 @@ void dump_mode(int s)
 			continue;
 
 		len = read(s, buf, data_size);
-		if (len <= 0)
+		if (len <= 0) {
+			if (len < 0) {
+				if (reliable && (errno == ECOMM)) {
+					syslog(LOG_INFO, "L2CAP Error ECOMM - clearing error and continuing.\n");
+					optl = sizeof(opt);
+					if (getsockopt(s, SOL_SOCKET, SO_ERROR, &opt, &optl ) < 0) { // Clear error
+						syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s(%d)\n",
+						       strerror(errno), errno);
+						return;
+					}
+					continue;
+				} else {
+					syslog(LOG_ERR, "Read error: %s(%d)\n", strerror(errno), errno);
+				}
+			}
 			return;
+		}
 
 		syslog(LOG_INFO, "Recevied %d bytes\n", len);
 	}
@@ -286,6 +316,7 @@ void recv_mode(int s)
 	struct timeval tv_beg,tv_end,tv_diff;
 	long total;
 	uint32_t seq;
+	int opt, optl;
 
 	syslog(LOG_INFO,"Receiving ...");
 
@@ -299,10 +330,22 @@ void recv_mode(int s)
 			int i,r;
 
 			if ((r = recv(s, buf, data_size, 0)) <= 0) {
-				if (r < 0)
-					syslog(LOG_ERR, "Read failed. %s(%d)",
-							strerror(errno), errno);
-				return;	
+				if (r < 0) {
+					if (reliable && (errno == ECOMM)) {
+						syslog(LOG_INFO, "L2CAP Error ECOMM - clearing error and continuing.\n");
+						optl = sizeof(opt);
+						if (getsockopt(s, SOL_SOCKET, SO_ERROR, &opt, &optl ) < 0) { // Clear error
+							syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s(%d)\n",
+							       strerror(errno), errno);
+							return;
+						}
+						continue;
+					} else {
+						syslog(LOG_ERR, "Read failed. %s(%d)",
+						       strerror(errno), errno);
+					}
+				}
+				return;
 			}
 
 			/* Check sequence */
@@ -385,7 +428,7 @@ void multi_connect_mode(char *svr)
 {
 	while (1) {
 		int i, s;
-		for (i=0; i<10; i++) {
+		for (i = 0; i < 10; i++) {
 			if (fork()) continue;
 
 			/* Child */
@@ -418,6 +461,7 @@ void usage(void)
 	       	"\t[-I imtu] [-O omtu]\n"
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
+		"\t[-R] reliable mode\n"
 		"\t[-D] use connectionless channel (datagram)\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
@@ -434,7 +478,7 @@ int main(int argc ,char *argv[])
 
 	mode = RECV; need_addr = 0;
 	
-	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:N:MAEDL:")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:N:RMAEDL:")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -495,6 +539,10 @@ int main(int argc ,char *argv[])
 
 		case 'L':
 			linger = atoi(optarg);
+			break;
+
+		case 'R':
+			reliable = 1;
 			break;
 
 		case 'M':
