@@ -253,7 +253,12 @@ static inline void uih_frame(int level, struct frame *frm, long_frame_head *head
 		p_indent(level, frm);
 		printf("RFCOMM(d): UIH: ");
 		print_rfcomm_hdr(head, frm->ptr, frm->len);
-		printf("\n");
+		if (GET_PF(head->control)) {
+			printf("credits %d\n", *(uint8_t *)(frm->ptr));
+			frm->ptr++;
+			frm->len--;
+		} else
+			printf("\n");
 
 		frm->len--;
 		raw_dump(level, frm);
