@@ -33,3 +33,13 @@ CLEANFILES = lexer.c parser.c parser.h
 EXTRA_DIST = $(man_MANS) $(conf_DATA) dbus.c
 
 MAINTAINERCLEANFILES = Makefile.in
+
+pinfile = $(confdir)/pin
+
+install-data-local:
+	[ -f $(DESTDIR)$(pinfile) ] || \
+		echo "BlueZ" > $(DESTDIR)$(pinfile); \
+		chmod 600 $(DESTDIR)$(pinfile)
+
+uninstall-local:
+	@rm -f $(DESTDIR)$(pinfile)
