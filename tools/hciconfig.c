@@ -344,8 +344,157 @@ void cmd_name(int ctl, int hdev, char *opt)
 	}
 }
 
+/* 
+ * see http://www.bluetooth.org/assigned-numbers/baseband.htm --- all
+ * strings are reproduced verbatim
+ */
+static char *get_minor_device_name(int major, int minor)
+{
+	switch(major) {
+	case 0:/* misc */
+		return "";
+	case 1:/* computer */
+		switch(minor) {
+		case 0:
+			return "Uncategorized";
+		case 1:
+			return "Desktop workstation";
+		case 2:
+			return "Server";
+		case 3:
+			return "Laptop";
+		case 4:
+			return "Handheld";
+		case 5:
+			return "Palm";
+		case 6:
+			return "Wearable";
+		}
+		break;
+	case 2:/* phone */
+		switch(minor) {
+		case 0:
+			return "Uncategorized";
+		case 1:
+			return "Cellular";
+		case 2:
+			return "Cordless";
+		case 3:
+			return "Smart phone";
+		case 4:
+			return "Wired modem or voice gateway";
+		case 5:
+			return "Common ISDN Access";
+		case 6:
+			return "Sim Card Reader";
+		}
+		break;
+	case 3:/* lan access */
+		if (minor == 0)
+			return "Uncategorized";
+		switch(minor / 8) {
+		case 0:
+			return "Fully available";
+		case 1:
+			return "1-17% utilized";
+		case 2:
+			return "17-33% utilized";
+		case 3:
+			return "33-50% utilized";
+		case 4:
+			return "50-67% utilized";
+		case 5:
+			return "67-83% utilized";
+		case 6:
+			return "83-99% utilized";
+		case 7:
+			return "No service available";
+		}
+		break;
+	case 4:/* audio/video */
+		switch(minor) {
+		case 0:
+			return "Uncategorized";
+		case 1:
+			return "Device conforms to the Headset profile";
+		case 2:
+			return "Hands-free";
+			/* 3 is reserved */
+		case 4:
+			return "Microphone";
+		case 5:
+			return "Loudspeaker";
+		case 6:
+			return "Headphones";
+		case 7:
+			return "Portable Audio";
+		case 8:
+			return "Car Audio";
+		case 9:
+			return "Set-top box";
+		case 10:
+			return "HiFi Audio Device";
+		case 11:
+			return "VCR";
+		case 12:
+			return "Video Camera";
+		case 13:
+			return "Camcorder";
+		case 14:
+			return "Video Monitor";
+		case 15:
+			return "Video Display and Loudspeaker";
+		case 16:
+			return "Video Conferencing";
+			/* 17 is reserved */
+		case 18:
+			return "Gaming/Toy";
+		}
+		break;
+	case 5:/* peripheral */
+		switch(minor) {
+		case 16:
+			return "Keyboard";
+		case 32:
+			return "Pointing device";
+		case 64:
+			return "Combo keyboard/pointing device";
+		}
+		break;
+	case 6:/* imaging */
+		if (minor & 4)
+			return "Display";
+		if (minor & 8)
+			return "Camera";
+		if (minor & 16)
+			return "Scanner";
+		if (minor & 32)
+			return "Printer";
+		break;
+	case 63:/* uncategorised */
+		return "";
+	}
+	return "Unknown (reserved) minor device class";
+}
+
 void cmd_class(int ctl, int hdev, char *opt)
 {
+	static char *services[] = { "Positioning",
+					"Networking",
+					"Rendering",
+					"Capturing",
+					"Object Transfer",
+					"Audio",
+					"Telephony",
+					"Information" };
+	static char *major_devices[] = { "Miscellaneous",
+					"Computer",
+					"Phone",
+					"LAN Access",
+					"Audio/Video",
+					"Peripheral",
+					"Imaging",
+					"Uncategorized" };
 	struct hci_request rq;
 	int s;
 
@@ -393,6 +542,25 @@ void cmd_class(int ctl, int hdev, char *opt)
 		print_dev_hdr(&di);
 		printf("\tClass: 0x%02x%02x%02x\n", 
 			rp.dev_class[2], rp.dev_class[1], rp.dev_class[0]);
+		printf("\tService Classes: ");
+		if (rp.dev_class[2]) {
+			int first = 1;
+			for(s=0; s < 8; s++)
+				if (rp.dev_class[2] & (2 << s)) {
+					if (!first)
+						printf(", ");
+					printf(services[s]);
+					first = 0;
+				}
+		} else
+			printf("Unspecified");
+		printf("\n\tDevice Class: ");
+		if (rp.dev_class[1] > sizeof(major_devices))
+			printf("Invalid Device Class!\n");
+		else
+			printf("%s/%s\n", major_devices[rp.dev_class[1]], 
+				get_minor_device_name(rp.dev_class[1], 
+					rp.dev_class[0] / 4));
 	}
 }
 
