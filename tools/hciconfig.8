@@ -1,0 +1,212 @@
+.TH HCICONFIG 1 "Nov 11 2002" BlueZ "Linux System Administration"
+.SH NAME
+hciconfig \- configure Bluetooth devices
+.SH SYNOPSIS
+.B hciconfig -h
+.br
+.B hciconfig [-a]
+.br
+.B hciconfig [-a] <hciX> [command [command parameters]]
+
+.SH DESCRIPTION
+.LP
+.B
+hciconfig
+is used to configure Bluetooth devices. <hciX> is the name of a Bluetooth
+device installed in the system. If <hciX> is not given,
+.B
+hciconfig
+prints name and basic information about all the Bluetooth devices installed in
+the system. If <hciX> is given but no command is given,
+it prints basic information on device <hciX> only. Basic information is 
+interface type, BD address, ACL MTU, SCO MTU, flags (up, init, running, raw,
+page scan enabled, inquiry scan enabled, inquiry, authentication enabled,
+encryption enabled).
+.SH OPTIONS
+.TP
+.BI -h
+Gives a list of possible commands
+.TP
+.BI -a
+Other than the basic info, print features, packet type, link policy, link mode,
+name, class, version.
+.SH COMMANDS
+.TP
+.BI up
+Open and initialize HCI device
+.TP
+.BI down
+Close HCI device
+.TP
+.BI reset
+Reset HCI device
+.TP
+.BI rstat
+Reset statistic counters
+.TP
+.BI auth
+Enable authentication
+.TP
+.BI noauth
+Disable authentication
+.TP
+.BI encrypt
+Enable encryption
+.TP
+.BI noencrypt
+Disable encryption
+.TP
+.BI piscan
+Enable page and inquiry scan
+.TP
+.BI noscan
+Disable page and inquiry scan
+.TP
+.BI iscan
+Enable inquiry scan, disable page scan
+.TP
+.BI pscan
+Enable page scan, disable inquiry scan
+.TP
+.BI ptype " [type]"
+With no
+.I
+type
+, displays the current packet types. Otherwise, all the packet types specified
+by
+.I
+type
+are set.
+.I
+type
+is a comma-separated list of packet types, where the possible packet types are
+.BR DM1 ,
+.BR DM3 ,
+.BR DM5 ,
+.BR DH1 ,
+.BR DH3 ,
+.BR DH5 ,
+.BR HV1 ,
+.BR HV2 ,
+.BR HV3 .
+.TP
+.BI name " [name]"
+With no
+.IR name ,
+prints local name. Otherwise, sets local name to
+.IR name .
+.TP
+.BI class " [class]"
+With no
+.IR class ,
+prints class of device. Otherwise, sets class of device to
+.IR class .
+.I
+class
+is a 24-bit hex number describing the class of device, as specified in section
+1.2 of the Bluetooth Assigned Numers document.
+.TP
+.BI inqparms " [win:int]"
+With no
+.IR win:int ,
+prints inquiry scan window and interval. Otherwise, sets inquiry scan window
+to
+.I win
+slots and inquiry scan interval to
+.I int
+slots.
+.TP
+.BI pageparms " [win:int]"
+With no
+.IR win:int ,
+prints page scan window and interval. Otherwise, sets page scan window to
+.I
+win
+slots and page scan interval to
+.I 
+int
+slots.
+.TP
+.BI pageto " [to]"
+With no
+.IR to ,
+prints page timeout. Otherwise, sets page timeout
+to
+.I
+to
+slots.
+.TP
+.BI aclmtu " <mtu:pkt>"
+Sets ACL MTU to
+to
+.I
+mtu
+bytes and ACL buffer size to
+.I
+pkt
+packets.
+.TP
+.BI scomtu " <mtu:pkt>"
+Sets SCO MTU to
+to
+.I mtu
+bytes and SCO buffer size to
+.I pkt
+packets.
+.TP
+.BI features
+Display device features
+.TP
+.BI version
+Display version information
+.TP
+.BI revision
+Display revision information
+.TP
+.BI lm " [mode]"
+With no
+.I
+mode
+, prints link mode.
+.B
+MASTER
+or
+.B
+SLAVE
+mean, respectively, to ask to become master or to remain slave when a
+connection request comes in. The additional keyword
+.B
+ACCEPT
+means that baseband  connections will be accepted even if there are no
+listening
+.I AF_BLUETOOTH
+sockets.
+.I mode
+is
+.B
+NONE
+or a comma-separated list of keywords, where possible keywords are
+.B 
+MASTER
+and
+.B "ACCEPT" .
+.B
+NONE
+sets link policy to the default behaviour of remaining slave and not accepting
+baseband connections when there are no listening
+.I AF_BLUETOOTH
+sockets. If
+.B
+MASTER
+is present, the device will ask to become master if a connection request comes
+in. If
+.B
+ACCEPT
+is present, the device will accept baseband connections even when there are no
+listening
+.I AF_BLUETOOTH
+sockets
+.SH AUTHORS
+Written by Maxim Krasnyansky <maxk@qualcomm.com>
+.PP
+man page by Fabrizio Gennari <fabrizio.gennari@philips.com>
