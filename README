@@ -1,0 +1,33 @@
+BlueZ - Bluetooth protocol stack for Linux
+Copyright (C) 2000-2001 Qualcomm Incorporated
+
+Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
+
+Bluetooth Libraries
+
+1. Compilation and Installation.
+
+In order to compile Bluetooth libraries you need following software packages:
+  - Linux kernel 2.4.X source code 
+  - GCC compiler
+
+To configure run:
+  ./configure
+ 
+Configure automatically searches for all required components and packages. 
+
+To compile and install run:
+  make install
+
+2.0 Information
+
+Mailing lists:
+	bluez-users@lists.sourceforge.net    - BlueZ general questions and discussions
+	bluez-devel@lists.sourceforge.net    - BlueZ development 
+	bluez-commit@lists.sourceforge.net   - BlueZ commits to the CVS repository
+	bluez-announce@lists.sourceforge.net - BlueZ announcements
+
+For additional information about the project visit BlueZ web site:
+	http://bluez.sf.net 
+ 
+Maxim Krasnyansky <maxk@qualcomm.com> 

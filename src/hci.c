@@ -1,0 +1,624 @@
+/* 
+   BlueZ - Bluetooth protocol stack for Linux
+   Copyright (C) 2000-2001 Qualcomm Incorporated
+
+   Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License version 2 as
+   published by the Free Software Foundation;
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+   IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+   CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+   ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+   COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+   SOFTWARE IS DISCLAIMED.
+*/
+
+/*
+ * $Id$
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <syslog.h>
+#include <errno.h>
+#include <termios.h>
+#include <fcntl.h>
+
+#include <sys/param.h>
+#include <sys/uio.h>
+#include <sys/poll.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <asm/types.h>
+
+#include <bluetooth.h>
+#include <hci.h>
+#include <hci_lib.h>
+
+typedef struct {
+	char  *str; unsigned int val;
+} hci_map;
+
+static char * hci_uint2str(hci_map *m, unsigned int val) 
+{
+	static char str[50];
+	char *ptr = str;
+
+	*ptr = 0;
+	while (m->str) {
+		if ((unsigned int) m->val & val)
+			ptr += sprintf(ptr, "%s ", m->str);
+		m++;
+	} 	
+	return str;
+}
+
+int hci_str2uint(hci_map *map, char *str, unsigned int *val)
+{
+	char *t, *ptr;
+	hci_map *m;
+	int set;
+
+	if (!str)
+		return 0;
+
+	str = ptr = strdup(str);
+	*val = set = 0;
+
+	while ((t=strsep(&ptr, ","))) {
+		for (m=map; m->str; m++) {
+			if (!strcasecmp(m->str,t)) {
+				*val |= (unsigned int) m->val;
+				set = 1;
+			}
+		}
+	} 	
+	free(str);
+
+	return set;
+}
+
+char *hci_dtypetostr(int type)
+{
+	switch (type) {
+	case HCI_VHCI:
+		return "VHCI";
+	case HCI_USB:
+		return "USB ";
+	case HCI_PCCARD:
+		return "PCCARD";
+	case HCI_UART:
+		return "UART";
+	default:
+		return "UKNW";
+	}
+}
+
+/* HCI dev flags mapping */
+hci_map dev_flags_map[] = {
+	{ "UP",      HCI_UP      },
+	{ "INIT",    HCI_INIT    },
+	{ "RUNNING", HCI_RUNNING },
+	{ "RAW",     HCI_RAW     },
+	{ "PSCAN",   HCI_PSCAN   },
+	{ "ISCAN",   HCI_ISCAN   },
+	{ "IQUIRY",  HCI_INQUIRY },
+	{ "AUTH",    HCI_AUTH    },
+	{ "ENCRYPT", HCI_ENCRYPT },
+	{ NULL }
+};
+char *hci_dflagstostr(uint32_t flags)
+{
+	static char str[50]; 
+	char *ptr = str;
+	hci_map *m = dev_flags_map;
+
+	*ptr = 0;
+
+	if (!hci_test_bit(HCI_UP, &flags))
+		ptr += sprintf(ptr, "DOWN ");
+
+	while (m->str) {
+		if (hci_test_bit(m->val, &flags))
+			ptr += sprintf(ptr, "%s ", m->str);
+		m++;
+	} 	
+	return str;
+}
+
+/* HCI packet type mapping */
+hci_map pkt_type_map[] = {
+	{ "DM1", HCI_DM1 },
+	{ "DM3", HCI_DM3 },
+	{ "DM5", HCI_DM5 },
+	{ "DH1", HCI_DH1 },
+	{ "DH3", HCI_DH3 },
+	{ "DH5", HCI_DH5 },
+	{ "HV1", HCI_HV1 },
+	{ "HV2", HCI_HV2 },
+	{ "HV3", HCI_HV3 },
+	{ NULL }
+};
+char *hci_ptypetostr(unsigned int ptype)
+{
+	return hci_uint2str(pkt_type_map, ptype);
+}
+int hci_strtoptype(char *str, unsigned int *val)
+{
+	return hci_str2uint(pkt_type_map, str, val);
+}
+
+/* Link policy mapping */
+hci_map link_policy_map[] = {
+	{ "NONE",    0 },
+	{ "RSWITCH", HCI_LP_RSWITCH },
+	{ "HOLD",    HCI_LP_HOLD    },
+	{ "SNIFF",   HCI_LP_SNIFF   },
+	{ "PARK",    HCI_LP_PARK    },
+	{ NULL }
+};
+char *hci_lptostr(unsigned int lp)
+{
+	return hci_uint2str(link_policy_map, lp);
+}
+int hci_strtolp(char *str, unsigned int *val)
+{
+	return hci_str2uint(link_policy_map, str, val);
+}
+
+/* Link mode mapping */
+hci_map link_mode_map[] = {
+	{ "NONE",    0 },
+	{ "ACCEPT",  HCI_LM_ACCEPT },
+	{ "MASTER",  HCI_LM_MASTER },
+	{ "AUTH",    HCI_LM_AUTH   },
+	{ "ENCRYPT", HCI_LM_ENCRYPT},
+	{ "TRUSTED", HCI_LM_TRUSTED},
+	{ NULL }
+};
+char *hci_lmtostr(unsigned int lm)
+{
+	static char str[50];
+
+	str[0] = 0;
+	if (!(lm & HCI_LM_MASTER))
+		strcpy(str, "SLAVE ");
+
+	strcat(str, hci_uint2str(link_mode_map, lm));
+	return str;
+}
+int hci_strtolm(char *str, unsigned int *val)
+{
+	return hci_str2uint(link_mode_map, str, val);
+}
+
+/* HCI functions that do not require open device */
+
+int hci_devinfo(int dev_id, struct hci_dev_info *di)
+{
+	int s, err;
+
+	s = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (s < 0)
+		return s;
+
+	di->dev_id = dev_id;
+	err = ioctl(s, HCIGETDEVINFO, (void *) di);
+	close(s);
+
+	return err;
+}
+
+inquiry_info *hci_inquiry(int dev_id, int len, int *num_rsp, uint8_t *lap, long flags)
+{
+	struct hci_inquiry_req *ir;
+	char *buf, *ptr;
+	int s, err, size;
+
+	if (!*num_rsp)
+		*num_rsp = 200; // enough ?
+
+	size = sizeof(*ir) + (sizeof(inquiry_info) * (*num_rsp));
+	if (!(buf = malloc(size)))
+		return NULL;
+
+	ir = (void *)buf;
+	ir->dev_id  = dev_id;
+	ir->num_rsp = *num_rsp;
+	ir->length  = len;
+	ir->flags   = flags;
+
+	if (lap) {
+		memcpy(ir->lap, lap, 3);
+	} else {
+		ir->lap[0] = 0x33;
+		ir->lap[1] = 0x8b;
+		ir->lap[2] = 0x9e;
+	}
+
+	if ((s = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0)
+		goto failed;
+	if (ioctl(s, HCIINQUIRY, (unsigned long)buf) < 0)
+		goto failed;
+
+	size = sizeof(inquiry_info) * ir->num_rsp;
+	if (!(ptr = malloc(size)))
+		goto failed;
+
+	memcpy(ptr, buf + sizeof(*ir), size);
+	*num_rsp = ir->num_rsp;
+
+	free(buf);
+	close(s);
+	return (void *) ptr;
+
+failed:
+	err = errno;
+	free(buf);
+	close(s);
+	errno = err;
+	return NULL;
+}
+
+/* Open HCI device. 
+ * Returns device descriptor (dd). */
+int hci_open_dev(int dev_id)
+{
+	struct sockaddr_hci a;
+	int dd, err;
+
+	/* Create HCI socket */
+	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (dd < 0)
+		return dd;
+	
+	/* Bind socket to the HCI device */
+	a.hci_family = AF_BLUETOOTH;
+	a.hci_dev = dev_id;
+	if (bind(dd, (struct sockaddr *)&a, sizeof(a)) < 0)
+		goto failed;
+
+	return dd;
+
+failed:
+	err = errno;
+	close(dd);
+	errno = err;
+	return -1;
+}
+
+int hci_close_dev(int dd)
+{
+	return close(dd);
+}
+
+/* HCI functions that require open device
+ * dd - Device descriptor returned by hci_dev_open. */
+
+int hci_send_cmd(int dd, uint16_t ogf, uint16_t ocf, uint8_t plen, void *param)
+{
+	uint8_t type = HCI_COMMAND_PKT;
+	hci_command_hdr hc;
+	struct iovec iv[3];
+	int ivn;
+
+	hc.opcode = htobs(cmd_opcode_pack(ogf, ocf));
+	hc.plen= plen;
+
+	iv[0].iov_base = &type;
+	iv[0].iov_len  = 1;
+	iv[1].iov_base = &hc;
+	iv[1].iov_len  = HCI_COMMAND_HDR_SIZE;
+	ivn = 2;
+
+	if (plen) {
+		iv[2].iov_base = param;
+		iv[2].iov_len  = plen;
+		ivn = 3;
+	}
+
+	while (writev(dd, iv, ivn) < 0) {
+		if (errno == EAGAIN || errno == EINTR)
+			continue;
+		return -1;
+	}
+	return 0;
+}
+
+int hci_send_req(int dd, struct hci_request *r, int to)
+{
+	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr;
+	uint16_t opcode = htobs(cmd_opcode_pack(r->ogf, r->ocf));
+	struct hci_filter nf, of;
+	hci_event_hdr *hdr;
+	int err, len, try;
+
+	len = sizeof(of);
+	if (getsockopt(dd, SOL_HCI, HCI_FILTER, &of, &len) < 0)
+		return -1;
+
+	hci_filter_clear(&nf);
+	hci_filter_set_ptype(HCI_EVENT_PKT,  &nf);
+	hci_filter_set_event(EVT_CMD_STATUS, &nf);
+	hci_filter_set_event(EVT_CMD_COMPLETE, &nf);
+	hci_filter_set_event(r->event, &nf);
+	hci_filter_set_opcode(opcode, &nf);
+	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &nf, sizeof(nf)) < 0)
+		return -1;
+
+	if (hci_send_cmd(dd, r->ogf, r->ocf, r->clen, r->cparam) < 0)
+		goto failed;
+
+	try = 10;
+	while (try--) {
+		evt_cmd_complete *cc;
+		evt_cmd_status   *cs;
+	
+		if (to) {
+			struct pollfd p;
+			int n;
+
+			p.fd = dd; p.events = POLLIN;
+			while ((n = poll(&p, 1, to)) < 0) {
+				if (errno == EAGAIN || errno == EINTR)
+					continue;
+				goto failed;
+			}
+
+			if (!n) {
+				errno = ETIMEDOUT;
+				goto failed;
+			}
+			
+			to -= 10;
+			if (to < 0) to = 0;
+
+		}
+
+		while ((len = read(dd, buf, sizeof(buf))) < 0) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			goto failed;
+		}
+
+		hdr = (void *)(buf + 1);
+		ptr = buf + (1 + HCI_EVENT_HDR_SIZE);
+		len -= (1 + HCI_EVENT_HDR_SIZE);
+
+		switch (hdr->evt) {
+		case EVT_CMD_STATUS:
+			cs = (void *)ptr;
+	
+			if (cs->opcode != opcode)
+				continue;
+			
+			if (cs->status) {
+				errno = EIO;
+				goto failed;
+			}
+			break;
+
+		case EVT_CMD_COMPLETE:
+			cc = (void *)ptr;
+
+			if (cc->opcode != opcode)
+				continue;
+	
+			ptr += EVT_CMD_COMPLETE_SIZE;
+			len -= EVT_CMD_COMPLETE_SIZE;
+
+			r->rlen = MIN(len, r->rlen);
+			memcpy(r->rparam, ptr, r->rlen);
+			goto done;
+
+		default:
+			if (hdr->evt != r->event)
+				break;
+	
+			r->rlen = MIN(len, r->rlen);
+			memcpy(r->rparam, ptr, r->rlen);
+			goto done;
+		}
+	}
+	errno = ETIMEDOUT;
+
+failed:
+	err = errno;
+	setsockopt(dd, SOL_HCI, HCI_FILTER, &of, sizeof(of));
+	errno = err;
+	return -1;
+
+done:
+	setsockopt(dd, SOL_HCI, HCI_FILTER, &of, sizeof(of));
+	return 0;
+}
+
+int hci_create_connection(int dd, bdaddr_t *ba, int ptype, int rswitch, int to)
+{
+        evt_conn_complete rp;
+        create_conn_cp cp;
+        struct hci_request rq;
+
+        memset(&cp, 0, sizeof(cp));
+        bacpy(&cp.bdaddr, ba);
+        cp.pkt_type    = ptype;
+	cp.role_switch = rswitch;
+
+        rq.ogf    = OGF_LINK_CTL;
+        rq.ocf    = OCF_CREATE_CONN;
+        rq.event  = EVT_CONN_COMPLETE;
+        rq.cparam = &cp;
+        rq.clen   = CREATE_CONN_CP_SIZE;
+        rq.rparam = &rp;
+        rq.rlen   = EVT_CONN_COMPLETE_SIZE;
+
+        if (hci_send_req(dd, &rq, to) < 0)
+                return -1;
+
+        if (rp.status) {
+                errno = EIO;
+                return -1;
+        }
+
+        return rp.handle;
+}
+
+int hci_disconnect(int dd, int hndl, int res, int to)
+{
+        evt_disconn_complete rp;
+        disconnect_cp cp;
+        struct hci_request rq;
+
+        memset(&cp, 0, sizeof(cp));
+        cp.handle = hndl;
+        cp.reason = res;
+
+        rq.ogf    = OGF_LINK_CTL;
+        rq.ocf    = OCF_DISCONNECT;
+        rq.event  = EVT_DISCONN_COMPLETE;
+        rq.cparam = &cp;
+        rq.clen   = DISCONNECT_CP_SIZE;
+        rq.rparam = &rp;
+        rq.rlen   = EVT_DISCONN_COMPLETE_SIZE;
+
+        if (hci_send_req(dd, &rq, to) < 0)
+                return -1;
+
+        if (rp.status) {
+                errno = EIO;
+                return -1;
+        }
+        return 0;
+}
+
+int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
+{
+	evt_remote_name_req_complete rn;
+	remote_name_req_cp cp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, ba);
+
+	rq.ogf = OGF_LINK_CTL;
+	rq.ocf = OCF_REMOTE_NAME_REQ;
+	rq.cparam = &cp;
+	rq.clen   = REMOTE_NAME_REQ_CP_SIZE;
+	rq.event  = EVT_REMOTE_NAME_REQ_COMPLETE;
+	rq.rparam = &rn;
+	rq.rlen   = EVT_REMOTE_NAME_REQ_COMPLETE_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rn.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	rn.name[247] = '\0';
+	strncpy(name, rn.name, len);
+	return 0;
+}
+
+int hci_read_remote_features(int dd, int hndl, uint8_t *features, int to)
+{
+	evt_read_remote_features_complete rp;
+	read_remote_features_cp cp;
+	struct hci_request rq;
+	
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = hndl;
+	
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_READ_REMOTE_FEATURES;
+	rq.event  = EVT_READ_REMOTE_FEATURES_COMPLETE;
+	rq.cparam = &cp;
+	rq.clen   = READ_REMOTE_FEATURES_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_READ_REMOTE_FEATURES_COMPLETE_SIZE;
+	
+	if (hci_send_req(dd, &rq, to) < 0)
+	        return -1;
+	
+	if (rp.status) {
+	        errno = EIO;
+	        return -1;
+	}
+	
+	memcpy(features, rp.features, 8);
+	return 0;
+}
+
+int hci_read_remote_version(int dd, int hndl, struct hci_version *ver, int to)
+{
+	evt_read_remote_version_complete rp;
+	read_remote_version_cp cp;
+	struct hci_request rq;
+	
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = hndl;
+	
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_READ_REMOTE_VERSION;
+	rq.event  = EVT_READ_REMOTE_VERSION_COMPLETE;
+	rq.cparam = &cp;
+	rq.clen   = READ_REMOTE_VERSION_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_READ_REMOTE_VERSION_COMPLETE_SIZE;
+	
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+	
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+	
+	ver->manufacturer = btohs(rp.manufacturer);
+	ver->lmp_ver      = rp.lmp_ver;
+	ver->lmp_subver   = btohs(rp.lmp_subver);
+	return 0;
+}
+
+int hci_read_local_version(int dd, struct hci_version *ver, int to)
+{
+	read_local_version_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_INFO_PARAM;
+	rq.ocf = OCF_READ_LOCAL_VERSION;
+	rq.cparam = NULL;
+	rq.clen = 0;
+	rq.rparam = &rp;
+	rq.rlen = READ_LOCAL_VERSION_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, 1000) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	ver->manufacturer = btohs(rp.manufacturer);
+	ver->hci_ver    = rp.lmp_ver;
+	ver->hci_rev    = btohs(rp.hci_rev);
+	ver->lmp_ver    = rp.lmp_ver;
+	ver->lmp_subver = btohs(rp.lmp_subver);
+
+	return 0;
+}

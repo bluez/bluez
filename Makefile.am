@@ -1,0 +1,5 @@
+#
+#  $Id$
+#
+
+SUBDIRS = include src

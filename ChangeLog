@@ -1,0 +1,18 @@
+ver 2.0-pre7:
+	Bluetooth libraries and header files is now a separate package.
+
+ver 2.0-pre6:
+	API cleanup and additions.
+
+ver 2.0-pre4:
+	HCI filter enhancements.
+
+ver 2.0-pre3:
+	Cleanup.
+
+ver 2.0-pre2:
+	Additional HCI library functions.
+	Documentation update.
+	
+ver 2.0-pre1:
+	Minor fixes and improvements.

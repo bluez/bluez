@@ -1,0 +1,21 @@
+dnl
+dnl  $Id$
+dnl
+dnl Process this file with autoconf to produce a configure script.
+dnl
+AC_INIT()
+AM_INIT_AUTOMAKE(bluez-libs, 2.0)
+
+AC_PREFIX_DEFAULT(/usr)
+
+AC_SUBST(LD)
+AC_SUBST(AR)
+
+AC_PROG_CC
+AC_PROG_RANLIB
+AC_PROG_INSTALL
+AC_PROG_LIBTOOL
+#AC_CHECK_TOOL(LD, ld, ld)
+#AC_CHECK_TOOL(AR, ar, ar)
+
+AC_OUTPUT(Makefile include/Makefile src/Makefile)
