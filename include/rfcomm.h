@@ -64,6 +64,7 @@ struct rfcomm_dev_req {
 #define RFCOMM_REUSE_DLC      0
 #define RFCOMM_RELEASE_ONHUP  1
 #define RFCOMM_HANGUP_NOW     2
+#define RFCOMM_TTY_ATTACHED   3
 
 struct rfcomm_dev_info {
 	int16_t      id;
