@@ -397,10 +397,11 @@ static void l2cap_parse(int level, struct frame *frm)
 		frm->len -= 2;
 
 		p_indent(level, frm);
-		printf("L2CAP(c): cid 0x%x len %d psm %d\n", cid, dlen, psm);
+		printf("L2CAP(c): len %d psm %d\n", dlen, psm);
 		raw_dump(level, frm);
 	} else {
 		/* Connection oriented channel */
+
 		uint16_t psm = get_psm(!frm->in, cid);
 		uint32_t proto;
 
@@ -408,7 +409,7 @@ static void l2cap_parse(int level, struct frame *frm)
 
 		if (!p_filter(FILT_L2CAP)) {
 			p_indent(level, frm);
-			printf("L2CAP(d): cid 0x%x len %d [psm %d]\n",
+			printf("L2CAP(d): cid 0x%4.4x len %d [psm %d]\n",
 				cid, dlen, psm);
 			level++;
 		}
