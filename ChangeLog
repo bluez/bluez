@@ -1,3 +1,10 @@
+ver 2.2:
+	Support for voice settings (hciconfig).
+	Minor hcitool fixes.
+	Added Headset testing tool.
+	Updated man pages.
+	RPM package.
+
 ver 2.1:
 	Improved BCSP initialization (hciattach).
 	Support for displaying link quality (hcitool).
