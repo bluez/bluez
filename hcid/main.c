@@ -20,6 +20,7 @@
    ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
    TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
 */
+
 /*
  * $Id$
  */
@@ -50,7 +51,9 @@
 #include "lib.h"
 
 struct hcid_opts hcid;
-struct device_opts devi;
+struct device_opts default_device;
+struct device_opts *parser_device;
+static struct device_list *device_list = NULL;
 
 static GMainLoop *event_loop;
 
@@ -64,8 +67,93 @@ static void usage(void)
 	printf("\thcid [-n not_daemon] [-f config file]\n");
 }
 
+static inline void init_device_defaults(struct device_opts *device_opts)
+{
+	memset(device_opts, 0, sizeof(*device_opts));
+	device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
+}
+
+struct device_opts *alloc_device_opts(char *ref)
+{
+	struct device_list *device;
+
+	device = malloc(sizeof(struct device_list));
+	if (!device) {
+		syslog(LOG_INFO, "Can't allocate devlist opts buffer. %s(%d)", 
+			strerror(errno), errno);
+		exit(1);
+	}
+
+	device->ref = ref;
+	device->next = device_list;
+	device_list = device;
+
+	init_device_defaults(&device->opts);
+
+	return &device->opts;
+}
+
+static void free_device_opts(void)
+{
+	struct device_list *device, *next;
+
+	if (default_device.name) {
+		free(default_device.name);
+		default_device.name = NULL;
+	}
+
+	for (device = device_list; device; device = next) {
+		free(device->ref);
+		if (device->opts.name)
+			free(device->opts.name);
+		next = device->next;
+		free(device);
+	}
+
+	device_list = NULL;
+}
+
+static inline struct device_opts *find_device_opts(char *ref)
+{
+	struct device_list *device;
+
+	for (device = device_list; device; device = device->next)
+		if (!strcmp(ref, device->ref))
+			return &device->opts;
+
+	return NULL;
+}
+
+static struct device_opts *get_device_opts(int sock, int hdev)
+{
+	struct device_opts *device_opts = NULL;
+	struct hci_dev_info di;
+
+	/* First try to get BD_ADDR based settings ... */
+	di.dev_id = hdev;
+	if (!ioctl(sock, HCIGETDEVINFO, (void *) &di)) {
+		char addr[18];
+		ba2str(&di.bdaddr, addr);
+		device_opts = find_device_opts(addr);
+	}
+
+	/* ... then try HCI based settings ... */
+	if (!device_opts) {
+		char ref[8];
+		snprintf(ref, sizeof(ref) - 1, "hci%d", hdev);
+		device_opts = find_device_opts(ref);
+	}
+
+	/* ... and last use the default settings. */
+	if (!device_opts)
+		device_opts = &default_device;
+
+	return device_opts;
+}
+
 static void configure_device(int hdev)
 {
+	struct device_opts *device_opts;
 	struct hci_dev_req dr;
 	int s;
 
@@ -87,51 +175,52 @@ static void configure_device(int hdev)
 		exit(1);
 	}
 
-	dr.dev_id  = hdev;
+	dr.dev_id   = hdev;
+	device_opts = get_device_opts(s, hdev);
 
 	/* Set scan mode */
-	dr.dev_opt = devi.scan;
-	if (ioctl(s, HCISETSCAN, (unsigned long)&dr) < 0) {
+	dr.dev_opt = device_opts->scan;
+	if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
 		syslog(LOG_ERR, "Can't set scan mode on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 	}
 
 	/* Set authentication */
-	if (devi.auth)
+	if (device_opts->auth)
 		dr.dev_opt = AUTH_ENABLED;
 	else
 		dr.dev_opt = AUTH_DISABLED;
 
-	if (ioctl(s, HCISETAUTH, (unsigned long)&dr) < 0) {
+	if (ioctl(s, HCISETAUTH, (unsigned long) &dr) < 0) {
 		syslog(LOG_ERR, "Can't set auth on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 	}
 
 	/* Set encryption */
-	if (devi.encrypt)
+	if (device_opts->encrypt)
 		dr.dev_opt = ENCRYPT_P2P;
 	else
 		dr.dev_opt = ENCRYPT_DISABLED;
 
-	if (ioctl(s, HCISETENCRYPT, (unsigned long)&dr) < 0) {
+	if (ioctl(s, HCISETENCRYPT, (unsigned long) &dr) < 0) {
 		syslog(LOG_ERR, "Can't set encrypt on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 	}
 
-        /* Set device class */
-	if (devi.class) {
-		uint32_t class = htobl(devi.class);
+	/* Set device class */
+	if (device_opts->class) {
+		uint32_t class = htobl(device_opts->class);
 		write_class_of_dev_cp cp;
-                
+
 		memcpy(cp.dev_class, &class, 3);
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
 			WRITE_CLASS_OF_DEV_CP_SIZE, (void *) &cp);
 	}
 
 	/* Set device name */
-	if (devi.name) {
+	if (device_opts->name) {
 		change_local_name_cp cp;
-		expand_name(cp.name, devi.name, hdev);
+		expand_name(cp.name, device_opts->name, hdev);
 
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
 			CHANGE_LOCAL_NAME_CP_SIZE, (void *) &cp);
@@ -142,6 +231,7 @@ static void configure_device(int hdev)
 
 static void init_device(int hdev)
 {
+	struct device_opts *device_opts;
 	struct hci_dev_req dr;
 	int s;
 
@@ -170,30 +260,31 @@ static void init_device(int hdev)
 		exit(1);
 	}
 
-	dr.dev_id  = hdev;
+	dr.dev_id   = hdev;
+	device_opts = get_device_opts(s, hdev);
 
 	/* Set packet type */
-	if (devi.pkt_type) {
-		dr.dev_opt = devi.pkt_type;
-		if (ioctl(s, HCISETPTYPE, (unsigned long)&dr) < 0) {
+	if (device_opts->pkt_type) {
+		dr.dev_opt = device_opts->pkt_type;
+		if (ioctl(s, HCISETPTYPE, (unsigned long) &dr) < 0) {
 			syslog(LOG_ERR, "Can't set packet type on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 		}
 	}
 
 	/* Set link mode */
-	if (devi.link_mode) {
-		dr.dev_opt = devi.link_mode;
-		if (ioctl(s, HCISETLINKMODE, (unsigned long)&dr) < 0) {
+	if (device_opts->link_mode) {
+		dr.dev_opt = device_opts->link_mode;
+		if (ioctl(s, HCISETLINKMODE, (unsigned long) &dr) < 0) {
 			syslog(LOG_ERR, "Can't set link mode on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 		}
 	}
 
 	/* Set link policy */
-	if (devi.link_policy) {
-		dr.dev_opt = devi.link_policy;
-		if (ioctl(s, HCISETLINKPOL, (unsigned long)&dr) < 0) {
+	if (device_opts->link_policy) {
+		dr.dev_opt = device_opts->link_policy;
+		if (ioctl(s, HCISETLINKPOL, (unsigned long) &dr) < 0) {
 			syslog(LOG_ERR, "Can't set link policy on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 		}
@@ -216,13 +307,13 @@ static void init_all_devices(int ctl)
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
-	if (ioctl(ctl, HCIGETDEVLIST, (void*)dl)) {
+	if (ioctl(ctl, HCIGETDEVLIST, (void *) dl) < 0) {
 		syslog(LOG_INFO, "Can't get device list. %s(%d)",
 			strerror(errno), errno);
 		exit(1);
 	}
 
-	for (i=0; i < dl->dev_num; i++, dr++) {
+	for (i = 0; i < dl->dev_num; i++, dr++) {
 		if (hcid.auto_init)
 			init_device(dr->dev_id);
 
@@ -232,7 +323,7 @@ static void init_all_devices(int ctl)
 		if (hcid.security && hci_test_bit(HCI_UP, &dr->dev_opt))
 			start_security_manager(dr->dev_id);
 	}
-	
+
 	free(dl);
 }
 
@@ -241,10 +332,7 @@ static void init_defaults(void)
 	hcid.auto_init = 0;
 	hcid.security  = 0;
 
-	devi.pkt_type = 0;
-	devi.scan = SCAN_PAGE | SCAN_INQUIRY;
-	devi.auth = 0;
-	devi.encrypt = 0;
+	init_device_defaults(&default_device);
 }
 
 static void sig_usr1(int sig)
@@ -265,7 +353,9 @@ static void sig_term(int sig)
 static void sig_hup(int sig)
 {
 	syslog(LOG_INFO, "Reloading config file");
+
 	init_defaults();
+
 	if (read_config(hcid.config_file) < 0)
 		syslog(LOG_ERR, "Config reload failed");
 
@@ -346,7 +436,7 @@ gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 }
 
-extern int optind,opterr,optopt;
+extern int optind, opterr, optopt;
 extern char *optarg;
 
 int main(int argc, char *argv[], char *env[])
@@ -361,18 +451,18 @@ int main(int argc, char *argv[], char *env[])
 
 	/* Default HCId settings */
 	hcid.config_file = HCID_CONFIG_FILE;
-	hcid.host_name = get_host_name();
-	hcid.security  = HCID_SEC_AUTO;
-	hcid.pairing   = HCID_PAIRING_MULTI;
+	hcid.host_name   = get_host_name();
+	hcid.security    = HCID_SEC_AUTO;
+	hcid.pairing     = HCID_PAIRING_MULTI;
 
-	hcid.pin_file   = strdup(HCID_PIN_FILE);
-	hcid.pin_helper = strdup(HCID_PIN_HELPER);
-	hcid.key_file   = strdup(HCID_KEY_FILE);
+	hcid.pin_file    = strdup(HCID_PIN_FILE);
+	hcid.pin_helper  = strdup(HCID_PIN_HELPER);
+	hcid.key_file    = strdup(HCID_KEY_FILE);
 
 	init_defaults();
 	
-	while ((opt=getopt(argc,argv,"f:n")) != EOF) {
-		switch(opt) {
+	while ((opt = getopt(argc, argv, "f:n")) != EOF) {
+		switch (opt) {
 		case 'n':
 			daemon = 0;
 			break;
@@ -402,8 +492,8 @@ int main(int argc, char *argv[], char *env[])
 	}
 
 	umask(0077);
-	
-        init_title(argc, argv, env, "hcid: ");
+
+	init_title(argc, argv, env, "hcid: ");
 	set_title("initializing");
 
 	/* Start logging to syslog and stderr */
@@ -443,7 +533,7 @@ int main(int argc, char *argv[], char *env[])
 
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = HCI_DEV_NONE;
-	if (bind(hcid.sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+	if (bind(hcid.sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind HCI socket. %s(%d)\n", strerror(errno), errno);
 		exit(1);
 	}
@@ -466,6 +556,8 @@ int main(int argc, char *argv[], char *env[])
 
 	/* Start event processor */
 	g_main_run(event_loop);
+
+	free_device_opts();
 
 	syslog(LOG_INFO, "Exit.");
 	return 0;

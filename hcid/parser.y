@@ -24,7 +24,7 @@
 
 /*
  * $Id$
- */ 
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,7 +45,7 @@
 int cfg_error(const char *fmt, ...);
 
 int yyparse(void);
-int yylex(void);	
+int yylex(void);
 int yyerror(char *s); 
 
 %}
@@ -61,25 +61,40 @@ int yyerror(char *s);
 %token K_PINHELP
 %token K_YES K_NO
 
-%token <str> WORD PATH STRING LIST
+%token <str> WORD PATH STRING LIST HCI BDADDR
 %token <num> NUM
 
 %type  <num> bool pkt_type link_mode link_policy sec_mode pair_mode
-%type  <str> dev_name
+%type  <str> dev_name hci bdaddr
 
 %%
 config: statement | config statement;
 statement: 
   K_OPTIONS hcid_options
- 
-  | K_DEVICE device_options
+
+  | device device_options
 
   | WORD	{
 			cfg_error("Invalid statement '%s'", $1);
 		}
+
   | error	{
 			yyclearin; yyerrok;
 		}
+  ;
+
+device:
+  K_DEVICE		{
+				parser_device = &default_device;
+			}
+
+  | K_DEVICE hci	{
+				parser_device = alloc_device_opts($2);
+			}
+
+  | K_DEVICE bdaddr	{
+				parser_device = alloc_device_opts($2);
+			}
   ;
 
 hcid_options: '{' hcid_opts '}';
@@ -109,7 +124,7 @@ hcid_opt:
   ;
 
 sec_mode:
-   WORD		{	
+  WORD		{
 			int opt = find_keyword(sec_param, $1);
 			if (opt < 0) {
 				cfg_error("Unknown security mode '%s'", $1);
@@ -118,11 +133,13 @@ sec_mode:
 				$$ = opt;
 		}
 
-  | K_NO	{ 	$$ = HCID_SEC_NONE; 	}
+  | K_NO	{
+			$$ = HCID_SEC_NONE;
+		}
   ;
 
 pair_mode:
-   WORD		{	
+  WORD		{
 			int opt = find_keyword(pair_param, $1);
 			if (opt < 0) {
 				cfg_error("Unknown pairing mode '%s'", $1);
@@ -137,47 +154,47 @@ device_options: '{' device_opts '}';
 device_opts: | device_opt ';' | error ';' | device_opts device_opt ';';
 device_opt:
   K_PTYPE pkt_type	{
-				devi.pkt_type = $2;
+				parser_device->pkt_type = $2;
 			}
 
   | K_LM link_mode	{
-				devi.link_mode = $2;
+				parser_device->link_mode = $2;
 			}
 
   | K_LP link_policy	{
-				devi.link_policy = $2;
+				parser_device->link_policy = $2;
 			}
 
-  | K_NAME dev_name	{  
-				if (devi.name)
-					free(devi.name);
-				devi.name = $2;
+  | K_NAME dev_name	{
+				if (parser_device->name)
+					free(parser_device->name);
+				parser_device->name = $2;
 			}
 
   | K_CLASS NUM		{
-				devi.class = $2;
+				parser_device->class = $2;
 			}
 
   | K_AUTH bool		{
-				devi.auth = $2;
+				parser_device->auth = $2;
 			}
 
   | K_ENCRYPT bool	{
-				devi.encrypt = $2;
+				 parser_device->encrypt = $2;
 			}
 
   | K_ISCAN bool	{
 				if ($2)
-					devi.scan |=  SCAN_INQUIRY;
+					parser_device->scan |=  SCAN_INQUIRY;
 				else
-					devi.scan &= ~SCAN_INQUIRY;
+					parser_device->scan &= ~SCAN_INQUIRY;
 			}
 
   | K_PSCAN bool	{
 				if ($2)
-					devi.scan |=  SCAN_PAGE;
+					parser_device->scan |=  SCAN_PAGE;
 				else
-					devi.scan &= ~SCAN_PAGE;
+					parser_device->scan &= ~SCAN_PAGE;
 			}
 
   | WORD		{
@@ -187,7 +204,7 @@ device_opt:
   ;
 
 dev_name:
-  WORD		{  
+  WORD		{
 			$$ = strdup($1);
 		}
 
@@ -196,8 +213,20 @@ dev_name:
 		}
   ;
 
+hci:
+  HCI		{
+			$$ = strdup($1);
+		}
+  ;
+
+bdaddr:
+  BDADDR	{
+			$$ = strdup($1);
+		}
+  ;
+
 pkt_type:
-  WORD 	 	{
+  WORD		{
 			int opt;
 			if (!hci_strtoptype($1, &opt))
 				cfg_error("Unknown packet type '%s'", $1);
@@ -209,11 +238,11 @@ pkt_type:
 			if (!hci_strtoptype($1, &opt))
 				cfg_error("Unknown packet type '%s'", $1);
 			$$ = opt;
-  		}
+		}
   ;
 
 link_mode:
-  WORD 	 	{
+  WORD		{
 			int opt;
 			if (!hci_strtolm($1, &opt))
 				cfg_error("Unknown link mode '%s'", $1);
@@ -225,11 +254,11 @@ link_mode:
 			if (!hci_strtolm($1, &opt))
 				cfg_error("Unknown link mode '%s'", $1);
 			$$ = opt;
-  		}
+		}
   ;
 
 link_policy:
-  WORD 	 	{
+  WORD		{
 			int opt;
 			if (!hci_strtolp($1, &opt))
 				cfg_error("Unknown link policy '%s'", $1);
@@ -241,7 +270,7 @@ link_policy:
 			if (!hci_strtolp($1, &opt))
 				cfg_error("Unknown link policy '%s'", $1);
 			$$ = opt;
-  		}
+		}
   ;
 
 bool: K_YES { $$ = 1; } | K_NO  { $$ = 0; };
@@ -276,13 +305,13 @@ int read_config(char *file)
 
 	if( !(yyin = fopen(file,"r")) ){
 		syslog(LOG_ERR,"Can not open %s", file);
-		return -1;      
+		return -1;
 	}
 
 	lineno = 1;
 	yyparse();
 
 	fclose(yyin);
-  
-	return 0;     
+
+	return 0;
 }

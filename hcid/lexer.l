@@ -24,7 +24,7 @@
 
 /*
  * $Id$
- */ 
+ */
 
 #include <string.h>
 
@@ -44,16 +44,19 @@ int yyerror(char *str);
 
 hex		0x[0-9a-zA-Z]+
 num		[0-9]+
-kword		[A-Za-z0-9\_\-]+	
+kword		[A-Za-z0-9\_\-]+
 word		[A-Za-z0-9\-\_+=\!\$\#\%\&\*\^\@@\\\~\.]+
 wordnm		{word}:{num}
 list		({word}\,*)+
 comment		\#.*\n
-fname		[A-Za-z0-9\_\.\-]+	
+fname		[A-Za-z0-9\_\.\-]+
 path		(\/{fname})+
 string		\".*\"
+hci		hci[0-9]+
+hextuple	[0-9a-zA-Z][0-9a-zA-Z]
+bdaddr		{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}
 
-%x OPTION PARAM  
+%x OPTION PARAM
 
 %%
 [ \t] {
@@ -68,6 +71,16 @@ string		\".*\"
 
 \n {
 	lineno++;
+}
+
+{hci} {
+	yylval.str = yytext;
+	return HCI;
+}
+
+{bdaddr} {
+	yylval.str = yytext;
+	return BDADDR;
 }
 
 {hex} {

@@ -20,15 +20,16 @@
    ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
    TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
 */
+
 /*
  * $Id$
  */
 
 #include <sys/types.h>
 
-#include "glib-ectomy.h"
-
 #include <bluetooth/bluetooth.h>
+
+#include "glib-ectomy.h"
 
 #define HCID_CONFIG_FILE "/etc/bluetooth/hcid.conf"
 #define HCID_PIN_FILE    "/etc/bluetooth/pin"
@@ -36,7 +37,7 @@
 #define HCID_PIN_HELPER  "/bin/bluepin"
 
 struct device_opts {
-	char  *name;
+	char    *name;
 	uint32_t class;
 	uint16_t pkt_type;
 	uint16_t scan;
@@ -44,15 +45,23 @@ struct device_opts {
 	uint16_t link_policy;
 	uint16_t auth;
 	uint16_t encrypt;
-};   
-extern struct device_opts devi;
+};
+
+extern struct device_opts default_device;
+extern struct device_opts *parser_device;
+
+struct device_list {
+	char *ref;			/* HCI device or Bluetooth address */
+	struct device_list *next;
+	struct device_opts opts;
+};
 
 struct link_key {
 	bdaddr_t sba;
 	bdaddr_t dba;
-	uint8_t	 key[16];
-	uint8_t	 type;
-	time_t	 time;
+	uint8_t  key[16];
+	uint8_t  type;
+	time_t   time;
 };
 
 struct hcid_opts {
@@ -83,6 +92,8 @@ extern struct hcid_opts hcid;
 #define HCID_PAIRING_ONCE	2
 
 int read_config(char *file);
+
+struct device_opts *alloc_device_opts(char *addr);
 
 gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data);
 gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data);
