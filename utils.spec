@@ -18,10 +18,8 @@ BuildRoot: /var/tmp/%{name}-%{PACKAGE_VERSION}-root
 URL: http://bluez.sourceforge.net
 Docdir: %{prefix}/usr/share/doc
 Requires: glibc >= 2.2.4
-Requires: glib >= 1.2
 Requires: bluez-libs >= 2.0
 BuildRequires: glibc >= 2.2.4
-BuildRequires: glib-devel >= 1.2
 BuildRequires: bluez-libs >= 2.0
 
 %description
@@ -71,6 +69,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man8/hciconfig.8.gz
 %{_mandir}/man1/hcitool.1.gz
 %{_mandir}/man1/l2ping.1.gz
+%{_mandir}/man1/rfcomm.1.gz
 %{_sysconfdir}/bluetooth/*
 %{_sysconfdir}/pcmcia/bluetooth.conf
 %{_sysconfdir}/pcmcia/bluetooth

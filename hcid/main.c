@@ -44,7 +44,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#include <glib.h>
+#include "glib-ectomy.h"
 
 #include "hcid.h"
 #include "lib.h"

@@ -26,7 +26,7 @@
 
 #include <sys/types.h>
 
-#include <glib.h>
+#include "glib-ectomy.h"
 
 #include <bluetooth/bluetooth.h>
 

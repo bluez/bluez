@@ -4,11 +4,9 @@
 
 sbin_PROGRAMS = hcid
 
-hcid_SOURCES = main.c security.c hcid.h lib.c lib.h parser.h parser.y lexer.l kword.h kword.c
+hcid_SOURCES = main.c security.c hcid.h lib.c lib.h parser.h parser.y lexer.l kword.h kword.c glib-ectomy.h glib-ectomy.c
 hcid_CONFIG  = hcid.conf
-hcid_LDADD   = @GLIB_LDFLAGS@
 
-INCLUDES = @GLIB_CFLAGS@
 YFLAGS   = -d
 
 CLEANFILES = lexer.c parser.c parser.h

@@ -16,9 +16,6 @@ AM_INIT_AUTOMAKE(bluez-utils, 2.2)
 AC_SUBST(DISTRO)
 AC_SUBST(PCMCIA)
 
-AC_SUBST(GLIB_CFLAGS)
-AC_SUBST(GLIB_LDFLAGS)
-
 CFLAGS="-Wall -g -O2"
 
 AC_PREFIX_DEFAULT()
@@ -56,19 +53,6 @@ AC_SEARCH_LIB(bluetooth, hci_open_dev, $BLUEZ_LIBDIR,,
         AC_MSG_ERROR(Bluetooth library not found.
 		Please compile and install bluez-libs package.)
 )
-
-AC_ARG_WITH(glib-config,
-        --with-glib-config=prog   glib-config location,
-        GLIB_CONFIG="$withval",
-        [
-                AC_PATH_PROGS(GLIB_CONFIG, glib-config, no)
-                if test "$GLIB_CONFIG" = "no"; then
-                        AC_MSG_ERROR(GLib not found)
-                fi
-        ]
-)
-GLIB_CFLAGS="`$GLIB_CONFIG --cflags`"
-GLIB_LDFLAGS="`$GLIB_CONFIG --libs`"
 
 dnl Check for distro type.
 DISTRO=unknown

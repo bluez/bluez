@@ -46,7 +46,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#include <glib.h>
+#include "glib-ectomy.h"
 
 #include "hcid.h"
 #include "lib.h"
@@ -107,6 +107,9 @@ static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
 static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct link_key *key = get_link_key(sba, dba);
+
+	syslog(LOG_INFO, "link_key_request (sba=%s, dba=%s)\n",
+	       batostr(sba), batostr(dba));
 
 	if (key) {
 		/* Link key found */
@@ -170,6 +173,8 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	bdaddr_t *dba = &evt->bdaddr;
 	struct link_key key;
 	
+	syslog(LOG_INFO, "link_key_notify (sba=%s)\n", batostr(sba));
+
 	memcpy(key.key, evt->link_key, 16);
 	bacpy(&key.sba, sba);
 	bacpy(&key.dba, dba);
@@ -289,6 +294,9 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	struct hci_conn_info_req *cr;
 	struct hci_conn_info *ci;
 	
+	syslog(LOG_INFO, "pin_code_request (sba=%s, dba=%s)\n",
+	       batostr(sba), batostr(dba));
+
 	cr = malloc(sizeof(*cr) + sizeof(*ci));
 	if (!cr)
 		return;
@@ -350,12 +358,7 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	hci_event_hdr *eh;
 	GIOError err;
 
-	if (cond & G_IO_NVAL) {
-		free(data);
-		return FALSE;
-	}
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
+	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
 		g_io_channel_close(chan);
 		free(data);
 		return FALSE;
@@ -365,6 +368,7 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
 		g_io_channel_close(chan);
+		free(data);
 		return FALSE;
 	}
 
@@ -458,6 +462,9 @@ void stop_security_manager(int hdev)
 
 	syslog(LOG_INFO, "Stoping security manager %d", hdev);
 
+	/* this is a bit sneaky. closing the fd will cause the event
+	   loop to call us right back with G_IO_NVAL set, at which
+	   point we will see it and clean things up */
 	close(g_io_channel_unix_get_fd(chan));
 	io_chan[hdev] = NULL;
 }
