@@ -122,6 +122,8 @@ static inline void mcc_rpn(int level, uint8_t *ptr, int len,
 	printf("RPN %s: ", CR_STR(mcc_head));
 	print_rfcomm_hdr(head, ptr, len);
 	print_mcc(mcc_head);
+
+	p_indent(level, 0);
 	printf("dlci %d ", GET_DLCI(rpn->dlci));
 
 	/* Assuming that rpn_val is _declared_ as a member of rpn_msg... */
@@ -130,13 +132,13 @@ static inline void mcc_rpn(int level, uint8_t *ptr, int len,
 		return;
 	}
 
-	printf(" br: %d db: %d sb: %d p: %d pt: %d xi: %d xo: %d\n",
+	printf("br %d db %d sb %d p %d pt %d xi %d xo %d\n",
 		rpn->rpn_val.bit_rate, rpn->rpn_val.data_bits, 
 		rpn->rpn_val.stop_bit, rpn->rpn_val.parity,
 		rpn->rpn_val.parity_type, rpn->rpn_val.xon_input,
 		rpn->rpn_val.xon_output);
 	p_indent(level, 0);
-	printf(" rtri: %d rtro: %d rtci: %d rtco: %d xon: %d xoff: %d pm: %04x\n",
+	printf("rtri %d rtro %d rtci %d rtco %d xon %d xoff %d pm 0x%04x\n",
 		rpn->rpn_val.rtr_input, rpn->rpn_val.rtr_output,
 		rpn->rpn_val.rtc_input, rpn->rpn_val.rtc_output,
 		rpn->rpn_val.xon, rpn->rpn_val.xoff,
@@ -164,11 +166,11 @@ static inline void mcc_pn(int level, uint8_t *ptr, int len,
 	print_mcc(mcc_head);
 
 	p_indent(level, 0);
-	printf("dlci %d frame_type %d credit_flow %d pri %d ack_timer %d "
-		"frame_size %d max_retrans %d credits %d\n",
-		pn->dlci, pn->frame_type, pn->credit_flow, pn->prior,
-		pn->ack_timer, btohs(pn->frame_size), pn->max_nbrof_retrans, 
-		pn->credits);
+	printf("dlci %d frame_type %d credit_flow %d pri %d ack_timer %d\n",
+		pn->dlci, pn->frame_type, pn->credit_flow, pn->prior, pn->ack_timer);
+	p_indent(level, 0);
+	printf("frame_size %d max_retrans %d credits %d\n",
+		btohs(pn->frame_size), pn->max_nbrof_retrans, pn->credits);
 }
 
 static inline void mcc_nsc(int level, uint8_t *ptr, int len,
