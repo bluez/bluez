@@ -51,7 +51,7 @@ struct uart_t {
 	int  m_id;
 	int  p_id;
 	int  proto;
-	int  start_speed;
+	int  init_speed;
 	int  speed;
 	int  flags;
 	int  (*init) (int fd, struct uart_t *u, struct termios *ti);
@@ -577,15 +577,15 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 
 	if (u->speed > 1500000) {
 		fprintf(stderr, "Speed %d too high. Remaining at %d baud\n", 
-			u->speed, u->start_speed);
-		u->speed = u->start_speed;
+			u->speed, u->init_speed);
+		u->speed = u->init_speed;
 	} else if (u->speed != 57600 && uart_speed(u->speed) == B57600) {
 		/* Unknown speed. Why oh why can't we just pass an int to the kernel? */
 		fprintf(stderr, "Speed %d unrecognised. Remaining at %d baud\n",
-			u->speed, u->start_speed);
-		u->speed = u->start_speed;
+			u->speed, u->init_speed);
+		u->speed = u->init_speed;
 	}
-	if (u->speed == u->start_speed)
+	if (u->speed == u->init_speed)
 		return 0;
 
 	/* Now, create the command that will set the UART speed */
@@ -814,7 +814,7 @@ int init_uart(char *dev, struct uart_t *u, int send_break)
 	}
 
 	/* Set initial baudrate */
-	if (set_speed(fd, &ti, u->start_speed) < 0) {
+	if (set_speed(fd, &ti, u->init_speed) < 0) {
 		perror("Can't set initial baud rate");
 		return -1;
 	}
@@ -866,7 +866,7 @@ int main(int argc, char *argv[])
 	struct uart_t *u = NULL;
 	int detach, printpid, opt, i, n;
 	int to = 5; 
-	int start_speed = 0;
+	int init_speed = 0;
 	int send_break = 0;
 	pid_t pid;
 	struct sigaction sa;
@@ -894,7 +894,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 's':
-			start_speed = atoi(optarg);
+			init_speed = atoi(optarg);
 			break;
 
 		case 'l':
@@ -963,10 +963,10 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	/* If user specified a starting speed, use that instead of
+	/* If user specified a initial speed, use that instead of
 	   the hardware's default */
-	if (start_speed)
-		u->start_speed = start_speed;
+	if (init_speed)
+		u->init_speed = init_speed;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
