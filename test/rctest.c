@@ -164,7 +164,7 @@ static void do_listen(void (*handler)(int sk))
 	if (secure)
 		opt |= RFCOMM_LM_SECURE;
 
-	if (setsockopt(s, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0) {
+	if (opt && setsockopt(s, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0) {
 		syslog(LOG_ERR, "Can't set RFCOMM link mode: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}

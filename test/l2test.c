@@ -286,7 +286,7 @@ static void do_listen(void (*handler)(int sk))
 	if (secure)
 		opt |= L2CAP_LM_SECURE;
 
-	if (setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
+	if (opt && setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP link mode: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
