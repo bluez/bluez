@@ -198,12 +198,12 @@ void cmd_auth(int ctl, int hdev, char *opt)
 	struct hci_dev_req dr;
 
 	dr.dev_id = hdev;
-	if( !strcmp(opt, "auth") )
+	if (!strcmp(opt, "auth"))
 		dr.dev_opt = AUTH_ENABLED;
 	else
 		dr.dev_opt = AUTH_DISABLED;
 
-	if( ioctl(ctl, HCISETAUTH, (unsigned long)&dr) < 0 ) {
+	if (ioctl(ctl, HCISETAUTH, (unsigned long) &dr) < 0) {
 		printf("Can't set auth on hci%d. %s(%d)\n", hdev, strerror(errno), errno);
 		exit(1);
 	}
@@ -214,15 +214,31 @@ void cmd_encrypt(int ctl, int hdev, char *opt)
 	struct hci_dev_req dr;
 
 	dr.dev_id = hdev;
-	if( !strcmp(opt, "encrypt") )
+	if (!strcmp(opt, "encrypt"))
 		dr.dev_opt = ENCRYPT_P2P;
 	else
 		dr.dev_opt = ENCRYPT_DISABLED;
 
-	if( ioctl(ctl, HCISETENCRYPT, (unsigned long)&dr) < 0 ) {
+	if (ioctl(ctl, HCISETENCRYPT, (unsigned long) &dr) < 0) {
 		printf("Can't set encrypt on hci%d. %s(%d)\n", hdev, strerror(errno), errno);
 		exit(1);
 	}
+}
+
+void cmd_secmgr(int ctl, int hdev, char *opt)
+{
+	int val, s = hci_open_dev(hdev);
+
+	if (!strcmp(opt, "secmgr"))
+		val = 1;
+	else
+		val = 0;
+
+	if (ioctl(s, HCISETSECMGR, val) < 0) {
+		printf("Can't set security manager on hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		exit(1);
+	}
+	close(s);
 }
 
 void cmd_up(int ctl, int hdev, char *opt)
@@ -236,7 +252,7 @@ void cmd_up(int ctl, int hdev, char *opt)
 		printf("Can't init device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
 		exit(1);
 	}
-	cmd_scan(ctl,  hdev, "piscan");
+	cmd_scan(ctl, hdev, "piscan");
 }
 
 void cmd_down(int ctl, int hdev, char *opt)
@@ -1119,6 +1135,8 @@ struct {
 	{ "noauth",	cmd_auth,	0,		"Disable Authentication" },
 	{ "encrypt",	cmd_encrypt,	0,		"Enable Encryption" },
 	{ "noencrypt",	cmd_encrypt,	0,		"Disable Encryption" },
+	{ "secmgr",	cmd_secmgr,	0,		"Enable Security Manager" },
+	{ "nosecmgr",	cmd_secmgr,	0,		"Disable Security Manager" },
 	{ "piscan",	cmd_scan,	0,		"Enable Page and Inquiry scan" },
 	{ "noscan",	cmd_scan,	0,		"Disable scan" },
 	{ "iscan",	cmd_scan,	0,		"Enable Inquiry scan" },

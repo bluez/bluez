@@ -25,7 +25,7 @@ encryption enabled).
 .SH OPTIONS
 .TP
 .BI -h
-Gives a list of possible commands
+Gives a list of possible commands.
 .TP
 .BI -a
 Other than the basic info, print features, packet type, link policy, link mode,
@@ -33,40 +33,46 @@ name, class, version.
 .SH COMMANDS
 .TP
 .BI up
-Open and initialize HCI device
+Open and initialize HCI device.
 .TP
 .BI down
-Close HCI device
+Close HCI device.
 .TP
 .BI reset
-Reset HCI device
+Reset HCI device.
 .TP
 .BI rstat
-Reset statistic counters
+Reset statistic counters.
 .TP
 .BI auth
-Enable authentication
+Enable authentication (sets device to security mode 3).
 .TP
 .BI noauth
-Disable authentication
+Disable authentication.
 .TP
 .BI encrypt
-Enable encryption
+Enable encryption (sets device to security mode 3).
 .TP
 .BI noencrypt
-Disable encryption
+Disable encryption.
+.TP
+.BI secmgr
+Enable security manager (current kernel support is limited).
+.TP
+.BI nosecmgr
+Disable security manager.
 .TP
 .BI piscan
-Enable page and inquiry scan
+Enable page and inquiry scan.
 .TP
 .BI noscan
-Disable page and inquiry scan
+Disable page and inquiry scan.
 .TP
 .BI iscan
-Enable inquiry scan, disable page scan
+Enable inquiry scan, disable page scan.
 .TP
 .BI pscan
-Enable page scan, disable inquiry scan
+Enable page scan, disable inquiry scan.
 .TP
 .BI ptype " [type]"
 With no
@@ -182,13 +188,13 @@ bytes and SCO buffer size to
 packets.
 .TP
 .BI features
-Display device features
+Display device features.
 .TP
 .BI version
-Display version information
+Display version information.
 .TP
 .BI revision
-Display revision information
+Display revision information.
 .TP
 .BI lm " [mode]"
 With no
@@ -232,8 +238,8 @@ ACCEPT
 is present, the device will accept baseband connections even when there are no
 listening
 .I AF_BLUETOOTH
-sockets
+sockets.
 .SH AUTHORS
-Written by Maxim Krasnyansky <maxk@qualcomm.com>
+Written by Maxim Krasnyansky <maxk@qualcomm.com> and Marcel Holtmann <marcel@holtmann.org>
 .PP
 man page by Fabrizio Gennari <fabrizio.gennari@philips.com>
