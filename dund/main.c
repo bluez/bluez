@@ -45,9 +45,9 @@
 #include <sys/poll.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/rfcomm.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/rfcomm.h>
 
 #include "dund.h"
 #include "lib.h"
@@ -369,7 +369,7 @@ static struct option main_lopts[] = {
 	{ "kill",     1, 0, 'k' },
 	{ "killall",  0, 0, 'K' },
 	{ "channel",  1, 0, 'P' },
-	{ "source",   1, 0, 'S' },
+	{ "device",   1, 0, 'i' },
 	{ "nosdp",    0, 0, 'D' },
 	{ "list",     0, 0, 'l' },
 	{ "show",     0, 0, 'l' },
@@ -384,7 +384,7 @@ static struct option main_lopts[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:S:lnp::DQ::EMP:C::P:X";
+static char main_sopts[] = "hsc:k:Kr:i:lnp::DQ::EMP:C::P:X";
 
 static char main_help[] = 
 	"Bluetooth LAP (LAN Access over PPP) daemon version " VERSION " \n"
@@ -399,7 +399,7 @@ static char main_help[] =
 	"\t--kill -k <bdaddr>        Kill LAP connection\n"
 	"\t--killall -K              Kill all LAP connections\n"
 	"\t--channel -P <channel>    RFCOMM channel\n"
-	"\t--source -S <bdaddr>      Source bdaddr\n"
+	"\t--device -i <bdaddr>      Source bdaddr\n"
 	"\t--nosdp -D                Disable SDP\n"
 	"\t--nodetach -n             Do not become a daemon\n"
 	"\t--persist -p[interval]    Persist mode\n"
@@ -453,7 +453,7 @@ int main(int argc, char **argv)
 			channel = atoi(optarg);
 			break;
 
-		case 'S':
+		case 'i':
 			src = strdup(optarg);
 			break;
 
