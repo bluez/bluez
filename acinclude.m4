@@ -2,8 +2,22 @@ dnl
 dnl  $Id$
 dnl
 
-AC_DEFUN([AC_PREFIX_BLUEZ], [
+AC_DEFUN([AC_PROG_CC_PIE], [
+	AC_CACHE_CHECK([whether ${CC-cc} accepts -fPIE], ac_cv_prog_cc_pie, [
+		echo 'void f(){}' > conftest.c
+		if test -z "`${CC-cc} -fPIE -pie -c conftest.c 2>&1`"; then
+			ac_cv_prog_cc_pie=yes
+		else
+			ac_cv_prog_cc_pie=no
+		fi
+		rm -rf conftest*
+	])
+])
+
+AC_DEFUN([AC_INIT_BLUEZ], [
 	AC_PREFIX_DEFAULT(/usr)
+
+	CFLAGS="-Wall -O2"
 
 	if (test "${prefix}" = "NONE"); then
 		dnl no prefix and no sysconfdir, so default to /etc
@@ -149,7 +163,9 @@ AC_DEFUN([AC_PATH_DBUS], [
 	AC_SUBST(DBUS_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_EXTRA], [
+AC_DEFUN([AC_ARG_BLUEZ], [
+	pie_enable=no
+	debug_enable=no
 	dbus_enable=${dbus_found}
 	test_enable=no
 	cups_enable=no
@@ -160,6 +176,8 @@ AC_DEFUN([AC_PATH_EXTRA], [
 	bcm203x_enable=no
 
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options]), [
+		pie_enable=${enableval}
+		debug_enable=${enableval}
 		dbus_enable=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
@@ -168,6 +186,14 @@ AC_DEFUN([AC_PATH_EXTRA], [
 		bluepin_enable=${enableval}
 		hid2hci_enable=${enableval}
 		bcm203x_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie], [enable position independent executables option]), [
+		pie_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
+		debug_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
@@ -201,6 +227,15 @@ AC_DEFUN([AC_PATH_EXTRA], [
 	AC_ARG_ENABLE(bcm203x, AC_HELP_STRING([--enable-bcm203x], [install Broadcom 203x firmware loader]), [
 		bcm203x_enable=${enableval}
 	])
+
+	if (test "${pie_enable}" = "yes" && test "${ac_cv_prog_cc_pie}" = "yes"); then
+		CFLAGS="$CFLAGS -fPIE"
+		LDFLAGS="$LDFLAGS -pie"
+	fi
+
+	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
+		CFLAGS="$CFLAGS -g"
+	fi
 
 	AM_CONDITIONAL(DBUS, test "${dbus_enable}" = "yes" && test "${dbus_found}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")

@@ -10,13 +10,12 @@ AM_CONFIG_HEADER(config.h)
 
 AM_MAINTAINER_MODE
 
-AC_PREFIX_BLUEZ
-
-CFLAGS="-Wall -g -O2"
+AC_INIT_BLUEZ
 
 AC_LANG_C
 
 AC_PROG_CC
+AC_PROG_CC_PIE
 AC_PROG_INSTALL
 AC_PROG_YACC
 AM_PROG_LEX
@@ -24,6 +23,7 @@ AM_PROG_LEX
 AC_PATH_BLUEZ
 AC_PATH_USB
 AC_PATH_DBUS
-AC_PATH_EXTRA
+
+AC_ARG_BLUEZ
 
 AC_OUTPUT(Makefile hcid/Makefile tools/Makefile rfcomm/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile test/Makefile scripts/Makefile pcmcia/Makefile extra/Makefile)
