@@ -578,7 +578,7 @@ int main(int argc, char **argv)
 	}
 
 	openlog("pand", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
-	syslog(LOG_INFO, "PAN daemon ver %s", VERSION);
+	syslog(LOG_INFO, "Bluetooth PAN daemon");
 
 	if (src) {
 		src_dev = hci_devid(src);

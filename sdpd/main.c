@@ -419,7 +419,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	SDPINF("sdpd v%s started", VERSION);
+	SDPINF("Bluetooth SDP daemon");
 
 	signal(SIGINT,  sig_term);
 	signal(SIGTERM, sig_term);

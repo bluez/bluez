@@ -533,7 +533,7 @@ int main(int argc, char **argv)
 	}
 
 	openlog("dund", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
-	syslog(LOG_INFO, "DUN daemon ver %s", VERSION);
+	syslog(LOG_INFO, "Bluetooth DUN daemon");
 
 	if (src) {
 		src_dev = hci_devid(src);
