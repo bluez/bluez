@@ -49,7 +49,7 @@
 
 #include "hidd.h"
 
-int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, uint8_t *subclass, struct hidp_connadd_req *req)
+int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req)
 {
 	uint32_t range = 0x0000ffff;
 	sdp_session_t *s;
@@ -124,10 +124,8 @@ int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, uint8_t *subclass, struct 
 	pdlist = sdp_data_get(rec, 0x0201);
 	req->parser = pdlist ? pdlist->val.uint16 : 0x0100;
 
-	if (subclass) {
-		pdlist = sdp_data_get(rec, 0x0202);
-		*subclass = pdlist ? pdlist->val.uint8 : 0;
-	}
+	pdlist = sdp_data_get(rec, 0x0202);
+	req->subclass = pdlist ? pdlist->val.uint8 : 0;
 
 	pdlist = sdp_data_get(rec, 0x0203);
 	req->country = pdlist ? pdlist->val.uint8 : 0;

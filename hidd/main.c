@@ -156,7 +156,6 @@ static int create_device(int ctl, int csk, int isk, int timeout)
 	struct hidp_connadd_req req;
 	struct sockaddr_l2 addr;
 	socklen_t addrlen;
-	uint8_t subclass;
 	bdaddr_t src, dst;
 	char bda[18];
 	int err;
@@ -183,14 +182,14 @@ static int create_device(int ctl, int csk, int isk, int timeout)
 	req.flags     = 0;
 	req.idle_to   = timeout * 60;
 
-	err = get_hid_device_info(&src, &dst, &subclass, &req);
+	err = get_hid_device_info(&src, &dst, &req);
 	if (err < 0)
 		goto error;
 
 	ba2str(&dst, bda);
 	syslog(LOG_INFO, "New HID device %s (%s)", bda, req.name);
 
-	if (subclass == 0x40) {
+	if (req.subclass & 0x40) {
 	}
 
 	err = ioctl(ctl, HIDPCONNADD, &req);
