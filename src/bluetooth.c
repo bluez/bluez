@@ -105,62 +105,61 @@ int bt_error(uint16_t code)
 	switch (code) {
 	case 0:
 		return 0;
-	case 0x01:
+	case HCI_UNKNOWN_COMMAND:
 		return EBADRQC;
-	case 0x02:
+	case HCI_NO_CONNECTION:
 		return ENOTCONN;
-	case 0x03:
+	case HCI_HARDWARE_FAILURE:
 		return EIO;
-	case 0x04:
+	case HCI_PAGE_TIMEOUT:
 		return EHOSTDOWN;
-	case 0x05:
+	case HCI_AUTHENTICATION_FAILURE:
 		return EACCES;
-	case 0x06:
+	case HCI_KEY_MISSING:
 		return EINVAL;
-	case 0x07:
+	case HCI_MEMORY_FULL:
 		return ENOMEM;
-	case 0x08:
+	case HCI_CONNECTION_TIMEOUT:
 		return ETIMEDOUT;
-	case 0x09:
+	case HCI_MAX_NUMBER_OF_CONNECTIONS:
+	case HCI_MAX_NUMBER_OF_SCO_CONNECTIONS:
 		return EMLINK;
-	case 0x0a:
-		return EMLINK;
-	case 0x0b:
+	case HCI_ACL_CONNECTION_EXISTS:
 		return EALREADY;
-	case 0x0c:
+	case HCI_COMMAND_DISALLOWED:
 		return EBUSY;
-	case 0x0d:
-	case 0x0e:
-	case 0x0f:
+	case HCI_REJECTED_LIMITED_RESOURCES:
+	case HCI_REJECTED_SECURITY:
+	case HCI_REJECTED_PERSONAL:
 		return ECONNREFUSED;
-	case 0x10:
+	case HCI_HOST_TIMEOUT:
 		return ETIMEDOUT;
-	case 0x11:
-	case 0x27:
-	case 0x29:
-	case 0x20:
+	case HCI_UNSUPPORTED_FEATURE:
+	case HCI_QOS_NOT_SUPPORTED:
+	case HCI_PAIRING_NOT_SUPPORTED:
+	case HCI_UNSUPPORTED_LMP_PARAMETER_VALUE:
 		return EOPNOTSUPP;
-	case 0x12:
+	case HCI_INVALID_PARAMETERS:
 		return EINVAL;
-	case 0x13:
-	case 0x14:
-	case 0x15:
+	case HCI_OE_USER_ENDED_CONNECTION:
+	case HCI_OE_LOW_RESOURCES:
+	case HCI_OE_POWER_OFF:
 		return ECONNRESET;
-	case 0x16:
+	case HCI_CONNECTION_TERMINATED:
 		return ECONNABORTED;
-	case 0x17:
+	case HCI_REPEATED_ATTEMPTS:
 		return ELOOP;
-	case 0x18:
+	case HCI_PAIRING_NOT_ALLOWED:
 		return EACCES;
-	case 0x1a:
+	case HCI_UNSUPPORTED_REMOTE_FEATURE:
 		return EPROTONOSUPPORT;
-	case 0x1b:
+	case HCI_SCO_OFFSET_REJECTED:
 		return ECONNREFUSED;
-	case 0x19:
-	case 0x1e:
-	case 0x23:
-	case 0x24:
-	case 0x25:
+	case HCI_UNKNOWN_LMP_PDU:
+	case HCI_INVALID_LMP_PARAMETERS:
+	case HCI_LMP_ERROR_TRANSACTION_COLLISION:
+	case HCI_LMP_PDU_NOT_ALLOWED:
+	case HCI_ENCRYPTION_MODE_NOT_ACCEPTED:
 		return EPROTO;
 	default:
 		return ENOSYS;
