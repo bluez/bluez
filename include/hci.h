@@ -504,7 +504,7 @@ typedef struct {
 #define READ_REMOTE_VERSION_CP_SIZE 2
 
 /* Link Policy */
-#define OGF_LINK_POLICY	 0x02   
+#define OGF_LINK_POLICY	0x02   
 
 typedef struct {
 	uint8_t 	service_type;		/* 1 = best effort */
@@ -600,6 +600,12 @@ typedef struct {
 } __attribute__ ((packed)) read_rssi_rp; 
 #define READ_RSSI_RP_SIZE 4
  
+/* Testing commands */
+#define OGF_TESTING_CMD	0x3e
+
+/* Vendor specific commands */
+#define OGF_VENDOR_CMD	0x3f
+
 /* ---- HCI Events ---- */
 #define EVT_INQUIRY_COMPLETE 	0x01
 
@@ -776,6 +782,10 @@ typedef struct {
 	uint16_t	subproto;
 	uint8_t 	incomming;
 } __attribute__ ((packed)) evt_si_security;
+
+#define EVT_TESTING	0xfe
+
+#define EVT_VENDOR	0xff
 
 /* --------  HCI Packet structures  -------- */
 #define HCI_TYPE_LEN	1
