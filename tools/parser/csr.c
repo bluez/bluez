@@ -38,6 +38,35 @@
 #define CSR_U16(frm) (btohs(htons(get_u16(frm))))
 #define CSR_U32(frm) (btohl(htonl(get_u32(frm))))
 
+static char *type2str(uint16_t type)
+{
+	switch (type) {
+	case 0x0000:
+		return "Get req";
+	case 0x0001:
+		return "Get rsp";
+	case 0x0002:
+		return "Set req";
+	default:
+		return "Reserved";
+	}
+}
+
+static inline void bccmd_dump(int level, struct frame *frm)
+{
+	uint16_t type, length, seqno, varid, status;
+
+	type   = CSR_U16(frm);
+	length = CSR_U16(frm);
+	seqno  = CSR_U16(frm);
+	varid  = CSR_U16(frm);
+	status = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("BCCMD: %s: len %d seqno %d varid 0x%4.4x status %d\n",
+			type2str(type), length, seqno, varid, status);
+}
+
 static char *cid2str(uint8_t cid)
 {
 	switch (cid & 0x3f) {
@@ -101,7 +130,13 @@ void csr_dump(int level, struct frame *frm)
 
 	cid = desc & 0x3f;
 
-	if (cid == 20) {
+	switch (cid) {
+	case 2:
+		bccmd_dump(level, frm);
+		level++;
+		break;
+
+	case 20:
 		type = CSR_U8(frm);
 
 		if (!p_filter(FILT_LMP)) {
@@ -137,9 +172,12 @@ void csr_dump(int level, struct frame *frm)
 
 		p_indent(level, frm);
 		printf("CSR: Debug (type 0x%2.2x)\n", type);
-	} else {
+		break;
+
+	default:
 		p_indent(level, frm);
 		printf("CSR: %s (channel %d)%s\n", cid2str(cid), cid, frag2str(desc));
+		break;
 	}
 
 	raw_dump(level, frm);
