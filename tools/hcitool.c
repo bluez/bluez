@@ -886,6 +886,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	struct hci_conn_info_req *cr;
 	struct hci_request rq;
 	set_conn_ptype_cp  cp;
+	evt_conn_ptype_changed rp;
 	bdaddr_t bdaddr;
 	int opt, dd, ptype;
 
@@ -936,14 +937,124 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	cp.pkt_type = ptype;
 
 	memset(&rq, 0, sizeof(rq));	
-	rq.ogf = OGF_STATUS_PARAM;
-	rq.ocf = OCF_READ_RSSI;
+	rq.ogf = OGF_LINK_CTL;
+	rq.ocf = OCF_SET_CONN_PTYPE;
 	rq.cparam = &cp;
 	rq.clen   = SET_CONN_PTYPE_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_CONN_PTYPE_CHANGED_SIZE;
+	rq.event  = EVT_CONN_PTYPE_CHANGED;
 	
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		perror("Packet type change failed");
 		exit(1);
+	}
+
+	close(dd);
+	free(cr);
+}
+
+/* Get/Set Link Supervision Timeout */
+
+static struct option link_supervision_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *link_supervision_help = 
+	"Usage:\n"
+	"\tlst <bdaddr> [new value in slots]\n";
+
+static void cmd_link_sup_to(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	struct hci_request rq;	
+	read_link_supervision_timeout_rp rp;
+	write_link_supervision_timeout_cp cp;
+	bdaddr_t bdaddr;
+	int opt, dd;
+
+	for_each_opt(opt, link_supervision_options, NULL) {
+		switch(opt) {
+		default:
+			printf(link_supervision_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(link_supervision_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+ 
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+        	return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+	
+	if (argc == 1) {
+		memset(&rq, 0, sizeof(rq));	
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_READ_LINK_SUPERVISION_TIMEOUT;
+		rq.cparam = &cr->conn_info->handle;
+		rq.clen = 2;
+		rq.rparam = &rp;
+		rq.rlen = READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE;
+	
+		if (hci_send_req(dd, &rq, 100) < 0) {
+			perror("HCI read_link_supervision_timeout request failed");
+			exit(1);
+		}
+
+		if (rp.status) {
+			fprintf(stderr, "HCI read_link_supervision_timeout failed (0x%2.2X)\n", 
+				rp.status);
+			exit(1);
+		}
+		if (rp.link_sup_to)
+			printf("Link supervision timeout: %u slots (%.2f msec)\n",
+				rp.link_sup_to, (float)rp.link_sup_to * 0.625);
+		else
+			printf("Link supervision timeout never expires\n");
+	}
+	else {
+		cp.handle      = cr->conn_info->handle;
+		cp.link_sup_to = strtol(argv[1], NULL, 10);
+
+		memset(&rq, 0, sizeof(rq));	
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_WRITE_LINK_SUPERVISION_TIMEOUT;
+		rq.cparam = &cp;
+		rq.clen = WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE;
+	
+		if (hci_send_req(dd, &rq, 100) < 0) {
+			perror("HCI write_link_supervision_timeout request failed");
+			exit(1);
+		}
 	}
 
 	close(dd);
@@ -967,6 +1078,7 @@ struct {
 	{ "cpt",  cmd_cpt,  "Change connection packet type"      },
 	{ "rssi", cmd_rssi, "Display connection RSSI"            },
 	{ "lq",   cmd_link_quality, "Display link quality"       },
+	{ "lst",  cmd_link_sup_to, "Set/display link supervision timeout"       },
 	{ NULL, NULL, 0}
 };
 
