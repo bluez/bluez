@@ -6,18 +6,18 @@ sbin_PROGRAMS = hcid
 
 if DBUS
 dbus_hcid_sources = dbus.c
-dbus_hcid_ldflags = @DBUS_LIBS@
+dbus_hcid_libs    = @DBUS_LIBS@
 dbus_hcid_cflags  = -DENABLE_DBUS -DDBUS_API_SUBJECT_TO_CHANGE
 else
 dbus_hcid_sources =
-dbus_hcid_ldflags =
+dbus_hcid_libs    =
 dbus_hcid_cflags  =
 endif
 
 hcid_SOURCES = main.c security.c hcid.h lib.c lib.h parser.h parser.y lexer.l kword.h kword.c glib-ectomy.h glib-ectomy.c $(dbus_hcid_sources)
 hcid_CONFIG  = hcid.conf
 
-LDFLAGS = $(dbus_hcid_ldflags) @BLUEZ_LIBS@
+LIBS = $(dbus_hcid_libs) @BLUEZ_LIBS@
 
 INCLUDES = @BLUEZ_INCLUDES@ @DBUS_INCLUDES@ $(dbus_hcid_cflags)
 

@@ -6,7 +6,7 @@ noinst_PROGRAMS = bluetooth
 
 bluetooth_SOURCES = main.c sdp.c spp.c hcrp.c
 
-LDFLAGS = @BLUEZ_LIBS@
+LIBS = @BLUEZ_LIBS@
 
 INCLUDES = @BLUEZ_INCLUDES@
 
