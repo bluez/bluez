@@ -1,3 +1,17 @@
+ver 2.5:
+	hcitool changes:
+		Support for requesting authentication.
+		Support for setting connection encryption.
+		Fix some endian problems.
+	hciconfig changes:
+		Show revision information for Broadcom devices.
+		Replace unprintable characters in device name.
+	hcid changes:
+		Add D-Bus support for PIN request.
+		Report an error on PIN helper failure.
+		Fix some 64-bit problems.
+	Update bluepin script for GTK2.
+
 ver 2.4:
 	hcitool changes:
 		Increase number of inquiry responses.

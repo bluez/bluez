@@ -1,6 +1,10 @@
 Maxim Krasnyansky <maxk@qualcomm.com>
 	Original author.
+
+Marcel Holtmann <marcel@holtmann.org>
 	Primary maintainer.
+	Various patches, fixes and other contributions.
+	RFCOMM configuration utility.
 
 Ilguiz Latypov <ilatypov@superbt.com>
 	Patches. Suggestions.
@@ -14,10 +18,6 @@ Jean Tourrilhes <jt@hpl.hp.com>
 
 Thomas Moser <Thomas.Moser@tmoser.ch>
 	Silicon Wave UART initialization.
-
-Marcel Holtmann <marcel@holtmann.org>
-	Various patches, fixes and other contributions.
-	RFCOMM configuration utility.
 
 Nils Faerber <nils@kernelconcepts.de>
 	Man pages.
@@ -33,3 +33,6 @@ Wolfgang Heidrich <wolfgang.heidrich@esk.fhg.de>
 
 Fabrizio Gennari <fabrizio.gennari@philips.com>
 	Support for link supervision timeout (hcitool).
+
+Philip Blundell <pb@nexus.co.uk>
+	D-Bus PIN helper support.
