@@ -170,6 +170,16 @@ static struct attrib_def browse_attrib_names[] = {
 	{ 0x200, "GroupID", NULL, 0 },
 };
 
+/* Name of the various Device ID attributes. See Device Id spec. */
+static struct attrib_def did_attrib_names[] = {
+	{ 0x200, "SpecificationID", NULL, 0 },
+	{ 0x201, "VendorID", NULL, 0 },
+	{ 0x202, "ProductID", NULL, 0 },
+	{ 0x203, "Version", NULL, 0 },
+	{ 0x204, "PrimaryRecord", NULL, 0 },
+	{ 0x205, "VendorIDSource", NULL, 0 },
+};
+
 /* Name of the various PAN attributes. See BT assigned numbers */
 /* Note : those need to be double checked - Jean II */
 static struct attrib_def pan_attrib_names[] = {
@@ -262,7 +272,8 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1129, "VideoConferencingGW (VCP)", NULL, 0 },
 	{ 0x112d, "SIM Access (SAP)", NULL, 0 },
 	/* ... */
-	{ 0x1200, "PnPInformation", NULL, 0 },
+	{ 0x1200, "PnPInformation",
+		did_attrib_names, sizeof(did_attrib_names)/sizeof(struct attrib_def) },
 	{ 0x1201, "GenericNetworking", NULL, 0 },
 	{ 0x1202, "GenericFileTransfer", NULL, 0 },
 	{ 0x1203, "GenericAudio",
@@ -1143,7 +1154,7 @@ static int add_handsfree(sdp_session_t *session, svc_info_t *si)
 	apseq = sdp_list_append(apseq, proto[1]);
 
 	features = sdp_data_alloc(SDP_UINT16, &u16);
-	sdp_attr_add(&record, SDP_SUPPORTED_FEATURES, features);
+	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
 	aproto = sdp_list_append(0, apseq);
 	sdp_set_access_protos(&record, aproto);
@@ -1205,7 +1216,7 @@ static int add_simaccess(sdp_session_t *session, svc_info_t *si)
 	apseq = sdp_list_append(apseq, proto[1]);
 
 	features = sdp_data_alloc(SDP_UINT16, &u16);
-	sdp_attr_add(&record, SDP_SUPPORTED_FEATURES, features);
+	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
 	aproto = sdp_list_append(0, apseq);
 	sdp_set_access_protos(&record, aproto);
@@ -1589,7 +1600,7 @@ static int add_ctp(sdp_session_t *session, svc_info_t *si)
 	aproto = sdp_list_append(0, apseq);
 	sdp_set_access_protos(&record, aproto);
 
-	sdp_attr_add(&record, SDP_EXTERNAL_NETWORK, network);
+	sdp_attr_add(&record, SDP_ATTR_EXTERNAL_NETWORK, network);
 
 	sdp_set_info_attr(&record, "Cordless Telephony", 0, 0);
 
@@ -1731,6 +1742,8 @@ struct {
 	uint16_t	class;
 	int		(*add)(sdp_session_t *sess, svc_info_t *si);
 } service[] = {
+	{ "DID",	PNP_INFO_SVCLASS_ID,		NULL,		},
+
 	{ "SP",		SERIAL_PORT_SVCLASS_ID,		add_sp		},
 	{ "DUN",	DIALUP_NET_SVCLASS_ID,		add_dun		},
 	{ "LAN",	LAN_ACCESS_SVCLASS_ID,		add_lan		},
@@ -2074,7 +2087,7 @@ static int cmd_search(int argc, char **argv)
 	} else {
 		/* Convert class name to an UUID */
 
-		for (i=0; service[i].name; i++)
+		for (i = 0; service[i].name; i++)
 			if (strcasecmp(context.svc, service[i].name) == 0) {
 				class = service[i].class;
 				break;
