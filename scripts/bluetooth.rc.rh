@@ -16,7 +16,7 @@ prog="Bluetooth"
 
 UART_CONF="/etc/bluetooth/uart"
 
-start_uarts() 
+start_uarts()
 {
 	[ -f /sbin/hciattach -a -f $UART_CONF ] || return
 	grep -v '^#' $UART_CONF | while read i; do
@@ -33,16 +33,26 @@ start()
 {
         echo -n $"Starting $prog: "
         daemon /sbin/hcid
+
+	if [ -x /usr/sbin/sdpd ]; then
+		daemon /usr/sbin/sdpd
+	fi
+
 	start_uarts
-	touch  /var/lock/subsys/bluetooth
+	touch /var/lock/subsys/bluetooth
         echo
 }
 
 stop() 
 {
         echo -n $"Shutting down $prog: "
-	stop_uarts
 	killproc hcid
+
+	if [ -x /usr/sbin/sdpd ]; then
+		killproc sdpd
+	fi
+
+	stop_uarts
 	rm -f  /var/lock/subsys/bluetooth
         echo
 }
