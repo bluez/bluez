@@ -1,37 +1,36 @@
-/* 
-	HCIDump - HCI packet analyzer	
-	Copyright (C) 2000-2001 Maxim Krasnyansky <maxk@qualcomm.com>
-
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation;
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-	OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-	RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-	NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-	USE OR PERFORMANCE OF THIS SOFTWARE.
-
-	ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-	TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
-*/
-
-/* 	
-	RFCOMM parser.
-	Copyright (C) 2001 Wayne Lee <waynelee@qualcomm.com>
-*/
-
 /*
- * $Id$
+ *
+ *  Bluetooth packet analyzer - RFCOMM parser
+ *
+ *  Copyright (C) 2001-2002  Wayne Lee <waynelee@qualcomm.com>
+ *  Copyright (C) 2003-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *
+ *  $Id$
  */
 
-#define RFCOMM_PSM 	3
+#ifndef __RFCOMM_H
+#define __RFCOMM_H
 
-#define TRUE	1
-#define FALSE	0
+#define RFCOMM_PSM 3
+
+#define TRUE  1
+#define FALSE 0
 
 #define RFCOMM_MAX_CONN 10
 #define BT_NBR_DATAPORTS RFCOMM_MAX_CONN
@@ -110,8 +109,6 @@
 #define CTRL_CHAN 0	/* The control channel is defined as DLCI 0 in rfcomm */
 #define MCC_CMD 1	 /* Multiplexer command */
 #define MCC_RSP 0	 /* Multiplexer response */
-
-/****************** TYPE DEFINITION SECTION *********************************/
 
 #ifdef __LITTLE_ENDIAN_BITFIELD
 
@@ -199,10 +196,6 @@ typedef struct rpn_values{
 #else  /* __XXX_BITFIELD */
 #error Processor endianness unknown!
 #endif
-
-/****************************************************************************/
-
-/****************** TYPE DEFINITION SECTION *********************************/
 
 /* Typedefinitions of stuctures used for creating and parsing packets, for a
    further description of the structures please se the bluetooth core
@@ -498,4 +491,4 @@ typedef struct nsc_msg {
 #error Processor endianness unknown!
 #endif /* __XXX_ENDIAN */
 
-/****************************************************************************/
+#endif /* __RFCOMM_H */

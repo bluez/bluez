@@ -1,32 +1,33 @@
-/* 
-	HCIDump - HCI packet analyzer	
-	Copyright (C) 2000-2001 Maxim Krasnyansky <maxk@qualcomm.com>
-
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation;
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-	OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-	RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-	NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-	USE OR PERFORMANCE OF THIS SOFTWARE.
-
-	ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-	TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
-*/
-
 /*
- * $Id$
+ *
+ *  Bluetooth packet analyzer - HCI parser
+ *
+ *  Copyright (C) 2000-2002  Maxim Krasnyansky <maxk@qualcomm.com>
+ *  Copyright (C) 2003-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *
+ *  $Id$
  */
 
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <errno.h>
 #include <string.h>
 
 #include <sys/types.h>
@@ -38,7 +39,8 @@
 
 #include "parser.h"
 
-char *event_map[] = {
+
+static char *event_map[] = {
 	"Unknown",
 	"Inquiry Complete",
 	"Inquiry Result",
@@ -73,9 +75,9 @@ char *event_map[] = {
 	"Page Scan Mode Change",
 	"Page Scan Repetition Mode Change"
 };
-#define EVENT_NUM	32
+#define EVENT_NUM 32
 
-char *cmd_linkctl_map[] = {
+static char *cmd_linkctl_map[] = {
 	"Unknown",
 	"Inquiry",
 	"Inquiry Cancel",
@@ -109,9 +111,9 @@ char *cmd_linkctl_map[] = {
 	"Unknown",
 	"Read Clock offset"
 };
-#define CMD_LINKCTL_NUM	31
+#define CMD_LINKCTL_NUM 31
 
-char *cmd_linkpol_map[] = {
+static char *cmd_linkpol_map[] = {
 	"Unknown",
 	"Hold Mode",
 	"Unknown",
@@ -129,7 +131,7 @@ char *cmd_linkpol_map[] = {
 };
 #define CMD_LINKPOL_NUM 13
 
-char *cmd_hostctl_map[] = {
+static char *cmd_hostctl_map[] = {
 	"Unknown",
 	"Set Event Mask",
 	"Unknown",
@@ -196,7 +198,7 @@ char *cmd_hostctl_map[] = {
 };
 #define CMD_HOSTCTL_NUM 62
 
-char *cmd_info_map[] = {
+static char *cmd_info_map[] = {
 	"Unknown",
 	"Read Local Version Information",
 	"Unknown",
@@ -210,7 +212,7 @@ char *cmd_info_map[] = {
 };
 #define CMD_INFO_NUM 9
 
-char *cmd_status_map[] = {
+static char *cmd_status_map[] = {
 	"Unknown",
 	"Read Failed Contact Counter",
 	"Reset Failed Contact Counter",
@@ -329,9 +331,9 @@ static inline void acl_dump(int level, struct frame *frm)
 			acl_handle(handle), flags, dlen);
 		level++;
 	}
-		
-	frm->ptr  += HCI_ACL_HDR_SIZE;
-	frm->len  -= HCI_ACL_HDR_SIZE;
+
+	frm->ptr += HCI_ACL_HDR_SIZE;
+	frm->len -= HCI_ACL_HDR_SIZE;
 	frm->flags  = flags;
 	frm->handle = acl_handle(handle);
 
@@ -363,7 +365,7 @@ void hci_dump(int level, struct frame *frm)
 	uint8_t type = *(uint8_t *)frm->ptr; 
 
 	frm->ptr++; frm->len--;
-	
+
 	switch (type) {
 	case HCI_COMMAND_PKT:
 		command_dump(level, frm);
@@ -380,7 +382,7 @@ void hci_dump(int level, struct frame *frm)
 	case HCI_SCODATA_PKT:
 		sco_dump(level, frm);
 		break;
-		
+
 	default:
 		if (p_filter(FILT_HCI))
 			break;

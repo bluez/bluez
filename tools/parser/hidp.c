@@ -1,31 +1,26 @@
-/* 
-	HCIDump - HCI packet analyzer	
-	Copyright (C) 2000-2001 Maxim Krasnyansky <maxk@qualcomm.com>
-
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation;
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-	OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-	RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-	NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-	USE OR PERFORMANCE OF THIS SOFTWARE.
-
-	ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-	TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
-*/
-
-/* 	
-	HIDP parser.
-	Copyright (C) 2003 Marcel Holtmann <marcel@holtmann.org>
-*/
-
 /*
- * $Id$
+ *
+ *  Bluetooth packet analyzer - HIDP parser
+ *
+ *  Copyright (C) 2003-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *
+ *  $Id$
  */
 
 #include <stdio.h>
@@ -35,14 +30,12 @@
 #include <string.h>
 
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-
-#include <bluetooth/bluetooth.h>
 
 #include "parser.h"
 
-char *type2str(uint8_t head)
+
+static char *type2str(uint8_t head)
 {
 	switch (head & 0xf0) {
 	case 0x00:
@@ -70,7 +63,7 @@ char *type2str(uint8_t head)
 	}
 }
 
-char *result2str(uint8_t head)
+static char *result2str(uint8_t head)
 {
 	switch (head & 0x0f) {
 	case 0x00:
@@ -92,7 +85,7 @@ char *result2str(uint8_t head)
 	}
 }
 
-char *operation2str(uint8_t head)
+static char *operation2str(uint8_t head)
 {
 	switch (head & 0x0f) {
 	case 0x00:
@@ -112,7 +105,7 @@ char *operation2str(uint8_t head)
 	}
 }
 
-char *report2str(uint8_t head)
+static char *report2str(uint8_t head)
 {
 	switch (head & 0x03) {
 	case 0x00:
@@ -128,7 +121,7 @@ char *report2str(uint8_t head)
 	}
 }
 
-char *protocol2str(uint8_t head)
+static char *protocol2str(uint8_t head)
 {
 	switch (head & 0x01) {
 	case 0x00:
@@ -142,27 +135,27 @@ char *protocol2str(uint8_t head)
 
 void hidp_dump(int level, struct frame *frm)
 {
-	uint8_t head;
+	uint8_t hdr;
 	char *param;
 
-	head = *(uint8_t *)frm->ptr;
+	hdr = get_u8(frm);
 
-	switch (head & 0xf0) {
+	switch (hdr & 0xf0) {
 	case 0x00:
-		param = result2str(head);
+		param = result2str(hdr);
 		break;
 	case 0x10:
-		param = operation2str(head);
+		param = operation2str(hdr);
 		break;
 	case 0x60:
 	case 0x70:
-		param = protocol2str(head);
+		param = protocol2str(hdr);
 		break;
 	case 0x40:
 	case 0x50:
-	case 0xa0:	
+	case 0xa0:
 	case 0xb0:
-		param = report2str(head);
+		param = report2str(hdr);
 		break;
 	default:
 		param = "";
@@ -171,10 +164,7 @@ void hidp_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 
-	printf("HIDP: %s: %s\n", type2str(head), param);
-
-	frm->ptr++;
-	frm->len--;
+	printf("HIDP: %s: %s\n", type2str(hdr), param);
 
 	raw_dump(level, frm);
 }
