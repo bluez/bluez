@@ -195,6 +195,8 @@ AC_DEFUN([AC_PATH_CUPS], [
 
 		if (test -d "$cups_prefix/lib/cups/backend"); then
 			CUPS_BACKEND_DIR="$cups_prefix/lib/cups/backend"
+		elif (test -d "$libdir/cups/backend"); then
+			CUPS_BACKEND_DIR="$libdir/cups/backend"
 		else
 			cups_enable=no
 		fi
