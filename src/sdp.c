@@ -2565,11 +2565,6 @@ static int copy_cstate(char *pdata, const sdp_cstate_t *cstate)
  *     This variable is set on a successful return if there are
  *     non-zero service handles. It is a singly linked list of
  *     service records (sdp_record_t *)
- *
- *   uint16_t *handleCount
- *     This is a pointer to a 16 bit integer, which is set to 
- *     indicate the number of service record handles present in
- *     rec_list
  */
 int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 			uint16_t max_rec_num, sdp_list_t **rsp)
