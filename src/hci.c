@@ -755,7 +755,7 @@ int hci_disconnect(int dd, uint16_t handle, uint8_t reason, int to)
         return 0;
 }
 
-int hci_local_name(int dd, int len, char *name, int to)
+int hci_read_local_name(int dd, int len, char *name, int to)
 {
 	read_local_name_rp rp;
 	struct hci_request rq;
@@ -779,7 +779,24 @@ int hci_local_name(int dd, int len, char *name, int to)
 	return 0;
 }
 
-int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
+int hci_write_local_name(int dd, char *name, int to)
+{
+  change_local_name_cp cp;
+  struct hci_request rq;
+
+  strncpy(cp.name, name, sizeof(cp.name));
+  memset(&rq, 0, sizeof(rq));
+  rq.ogf = OGF_HOST_CTL;
+  rq.ocf = OCF_CHANGE_LOCAL_NAME;
+  rq.cparam = &cp;
+  rq.clen = CHANGE_LOCAL_NAME_CP_SIZE;
+	
+  if (hci_send_req(dd, &rq, to) < 0)
+	 return -1;
+  return 0;
+}
+
+int hci_read_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
 {
 	evt_remote_name_req_complete rn;
 	remote_name_req_cp cp;
