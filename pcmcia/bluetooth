@@ -2,33 +2,58 @@
 #
 # bluetooth
 #
-# Initialize a PCMCIA Bluetooth device
+# PCMCIA Bluetooth device initialization
 # Written by Maxim Krasnyanskiy <maxk@qualcomm.com>
 #
-# $1 - socket
-# $2 - device
-# 
+# This script requires new cardmgr and expects following
+# environment variables FUNCTION, VENDORID, CARDNAME
+#
 
-LOG="/usr/bin/logger -i -t bluetooth -p daemon.notice"
+#
+# $Id$
+#
 
-IDENT="/sbin/cardctl ident $1"
+if [ -r ./shared ]; then . ./shared ; else . /etc/pcmcia/shared ; fi
 
-# Check if card is really a Bluetooth card
-if ! $IDENT | grep -i 'bluetooth' > /dev/null 2>&1; then
-	$LOG "$2 is not a Bluetooth device"
-	exit
-fi
+# Get device attributes
+get_info $DEVICE
 
-ID=`$IDENT | awk '/.*id/{print $2 $3}'`
-TYPE=`$IDENT | awk '/.*func/{print $2}'`
+#
+# Serial devices
+#
+start_serial() {
+    /sbin/hciattach $DEVICE $VENDORID
+}
+stop_serial() {
+    return
+}
+suspend_serial() {
+    do_fuser -k -HUP /dev/$DEVICE > /dev/null
+}
+resume_serial() {
+    start_serial
+}
 
-$LOG "Bluetooth device id $ID type $TYPE $2"
+start=
+stop=
+suspend=
+resume=
+check=
+cksum=
 
-case "$TYPE" in
-	# Serial device
-	2)
-		/sbin/hciattach $DEVICE $ID
-		;;
+case "$FUNCTION" in
+2)  # Serial
+    if ! echo $CARDNAME | grep -i 'bluetooth' > /dev/null 2>&1; then
+       exit
+    fi
+
+    start=start_serial
+    stop=stop_serial
+    suspend=suspend_serial
+    resume=resume_serial
+    ;;
 esac
 
-unset LOG IDENT ID TYPE
+eval \$$ACTION
+
+exit 0
