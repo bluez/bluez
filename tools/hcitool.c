@@ -296,6 +296,64 @@ static void cmd_scan(int dev_id, char **opt, int nopt)
 	free(info);
 }
 
+static void cmd_info(int dev_id, char **opt, int nopt)
+{
+	bdaddr_t bdaddr;
+	uint16_t handle;
+	int dd;
+	char name[248];
+	unsigned char features[8];
+	struct hci_version version;
+
+	if (nopt < 1)
+		return;
+
+	baswap(&bdaddr, strtoba(opt[0]));
+
+	if (dev_id < 0) {
+		dev_id = get_route(&bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Device is not available.\n");
+			exit(1);
+		}
+	}
+
+	printf("Requesting information ...\n");
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	printf("\tBD Address:  %s\n", opt[0]);
+
+	if (hci_create_connection(dd, &bdaddr, 0x0008 | 0x0010, 0, 0, &handle, 25000) < 0) {
+		close(dd);
+		exit(1);
+	}
+
+	if (hci_remote_name(dd, &bdaddr, sizeof(name), name, 25000) == 0)
+		printf("\tDevice Name: %s\n", name);
+
+	if (hci_read_remote_version(dd, handle, &version, 20000) == 0) {
+		printf("\tLMP Version: %s (0x%x) LMP Subversion: 0x%x\n"
+			"\tManufacturer: %s (%d)\n",
+			lmp_vertostr(version.lmp_ver), version.lmp_ver, version.lmp_subver, 
+			bt_compidtostr(version.manufacturer), version.manufacturer);
+	}
+
+	if (hci_read_remote_features(dd, handle, features, 20000) == 0) {
+		printf("\tFeatures:\n%s\n",
+				lmp_featurestostr(features, "\t\t", 3));
+	}
+
+	hci_disconnect(dd, handle, 0x13, 10000);
+
+	close(dd);
+
+}
+
 static void cmd_rev(int dev_id, char **opt, int nopt)
 {
         if (dev_id < 0)
@@ -402,13 +460,14 @@ struct {
 	char *opt;
 	char *doc;
 } command[] = {
-	{ "dev",  cmd_dev,  0,          "Display local devices"       },
-	{ "rev",  cmd_rev,  0,          "Display revison information" },
-	{ "inq",  cmd_inq,  "[length] [flush]", "Inquire remote devices"     },
-	{ "scan", cmd_scan, "[length] [flush]", "Scan for remote devices"     },
-	{ "con",  cmd_con,  0,          "Display active connections" },
+	{ "dev",  cmd_dev,  0,                            "Display local devices"              },
+	{ "rev",  cmd_rev,  0,                            "Display revison information"        },
+	{ "inq",  cmd_inq,  "[length] [flush]",           "Inquire remote devices"             },
+	{ "scan", cmd_scan, "[length] [flush]",           "Scan for remote devices"            },
+	{ "info", cmd_info, "<bdaddr>",                   "Get information from remote device" },
+	{ "con",  cmd_con,  0,                            "Display active connections"         },
 	{ "cc",   cmd_cc,   "<bdaddr> [pkt type] [role]", "Create connection to remote device" },
-	{ "dc",	  cmd_dc,   "<bdaddr>", "Disconnect from remote device" },
+	{ "dc",	  cmd_dc,   "<bdaddr>",                   "Disconnect from remote device"      },
 	{ NULL, NULL, 0}
 };
 
