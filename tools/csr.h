@@ -31,6 +31,9 @@
 #define CSR_VARID_CHIPREV		0x281b
 #define CSR_VARID_MAX_CRYPT_KEY_LENGTH	0x282c
 
+#define CSR_VARID_PANIC_ARG		0x6805
+#define CSR_VARID_FAULT_ARG		0x6806
+
 #define CSR_PSKEY_HOSTIO_MAP_SCO_PCM	0x01ab
 
 char *csr_buildidtostr(uint16_t id);
