@@ -92,45 +92,61 @@ char *cmd_linkctl_map[] = {
 	"PIN Code Request Reply",
 	"PIN Code Request Negative Reply",
 	"Change Connection Packet Type",
+	"Unknown",
 	"Authentication Requested",
+	"Unknown",
 	"Set Connection Encryption",
+	"Unknown",
 	"Change Connection Link Key",
+	"Unknown",
 	"Master Link Key",
+	"Unknown",
 	"Remote Name Request",
+	"Unknown",
 	"Read Remote Supported Features",
+	"Unknown",
 	"Read Remote Version Information",
+	"Unknown",
 	"Read Clock offset"
 };
-#define CMD_LINKCTL_NUM	23
+#define CMD_LINKCTL_NUM	31
 
 char *cmd_linkpol_map[] = {
 	"Unknown",
 	"Hold Mode",
+	"Unknown",
 	"Sniff Mode",
 	"Exit Sniff Mode",
 	"Park Mode",
 	"Exit Park Mode",
 	"QoS Setup",
+	"Unknown",
 	"Role Discovery",
+	"Unknown",
 	"Switch Role",
 	"Read Link Policy Settings",
 	"Write Link Policy Settings"
 };
-#define CMD_LINKPOL_NUM 10
+#define CMD_LINKPOL_NUM 13
 
 char *cmd_hostctl_map[] = {
 	"Unknown",
-	"Hold Mode",
-	"Sniff Mode",
-	"Exit Sniff Mode",
 	"Set Event Mask",
+	"Unknown",
 	"Reset",
+	"Unknown",
 	"Set Event Filter",
+	"Unknown",
+	"Unknown",
 	"Flush",
 	"Read PIN Type ",
 	"Write PIN Type",
 	"Create New Unit Key",
+	"Unknown",
 	"Read Stored Link Key",
+	"Unknown",
+	"Unknown",
+	"Unknown",
 	"Write Stored Link Key",
 	"Delete Stored Link Key",
 	"Change Local Name",
@@ -162,8 +178,11 @@ char *cmd_hostctl_map[] = {
 	"Read Transmit Power Level",
 	"Read SCO Flow Control Enable",
 	"Write SCO Flow Control Enable",
+	"Unknown",
 	"Set Host Controller To Host Flow Control",
+	"Unknown",
 	"Host Buffer Size",
+	"Unknown",
 	"Host Number of Completed Packets",
 	"Read Link Supervision Timeout",
 	"Write Link Supervision Timeout",
@@ -175,23 +194,28 @@ char *cmd_hostctl_map[] = {
 	"Read Page Scan Mode",
 	"Write Page Scan Mode"
 };
-#define CMD_HOSTCTL_NUM 51
+#define CMD_HOSTCTL_NUM 62
 
 char *cmd_info_map[] = {
 	"Unknown",
 	"Read Local Version Information",
+	"Unknown",
 	"Read Local Supported Features",
+	"Unknown",
 	"Read Buffer Size",
+	"Unknown",
 	"Read Country Code",
+	"Unknown",
 	"Read BD ADDR"
 };
-#define CMD_INFO_NUM 5
+#define CMD_INFO_NUM 9
 
 char *cmd_status_map[] = {
 	"Unknown",
 	"Read Failed Contact Counter",
 	"Reset Failed Contact Counter",
 	"Get Link Quality",
+	"Unknown",
 	"Read RSSI"
 };
 #define CMD_STATUS_NUM 5
