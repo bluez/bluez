@@ -93,6 +93,7 @@ int hci_read_inquiry_mode(int dd, uint8_t *mode, int to);
 int hci_write_inquiry_mode(int dd, uint8_t mode, int to);
 int hci_read_afh_mode(int dd, uint8_t *mode, int to);
 int hci_write_afh_mode(int dd, uint8_t mode, int to);
+int hci_set_afh_classification(int dd, uint8_t *map, int to);
 int hci_read_afh_map(int dd, uint16_t handle, uint8_t *mode, uint8_t *map, int to);
 
 int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg);

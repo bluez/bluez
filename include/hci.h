@@ -694,6 +694,16 @@ typedef struct {
 } __attribute__ ((packed)) write_current_iac_lap_cp;
 #define WRITE_CURRENT_IAC_LAP_CP_SIZE 1+3*MAX_IAC_LAP
 
+#define OCF_SET_AFH_CLASSIFICATION	0x003F
+typedef struct {
+	uint8_t		map[10];
+} __attribute__ ((packed)) set_afh_classification_cp;
+#define SET_AFH_CLASSIFICATION_CP_SIZE 10
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) set_afh_classification_rp;
+#define SET_AFH_CLASSIFICATION_RP_SIZE 1
+
 #define OCF_READ_INQUIRY_MODE		0x0044
 typedef struct {
 	uint8_t		status;

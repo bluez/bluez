@@ -1439,6 +1439,34 @@ int hci_write_afh_mode(int dd, uint8_t mode, int to)
 	return 0;
 }
 
+int hci_set_afh_classification(int dd, uint8_t *map, int to)
+{
+	set_afh_classification_cp cp;
+	set_afh_classification_rp rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.map, map, 10);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_SET_AFH_CLASSIFICATION;
+	rq.cparam = &cp;
+	rq.clen   = SET_AFH_CLASSIFICATION_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = SET_AFH_CLASSIFICATION_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
 int hci_read_afh_map(int dd, uint16_t handle, uint8_t *mode, uint8_t *map, int to)
 {
 	read_afh_map_rp rp;
