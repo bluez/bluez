@@ -4,7 +4,7 @@
 
 SUBDIRS = include src
 
-EXTRA_DIST = ChangeLog libs.spec
+EXTRA_DIST = libs.spec
 
 DISTCLEANFILES = bluez.pc
 
