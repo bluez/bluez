@@ -1,25 +1,34 @@
 /*
  *
- *  Programm for testing AT commands over Bluetooth RFCOMM
+ *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2001-2002  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2001-2004  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
  *
+ *
+ *  $Id$
  */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <errno.h>
@@ -34,8 +43,6 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
-
-
 
 static int at_command(int fd, char *cmd, int to)
 {
@@ -76,7 +83,6 @@ static int at_command(int fd, char *cmd, int to)
 	return 0;
 }
 
-
 static int open_device(char *device)
 {
 	int fd;
@@ -96,7 +102,6 @@ static int open_device(char *device)
 	return fd;
 }
 
-
 static int open_socket(bdaddr_t *bdaddr, uint8_t channel)
 {
 	struct sockaddr_rc remote_addr, local_addr;
@@ -105,7 +110,7 @@ static int open_socket(bdaddr_t *bdaddr, uint8_t channel)
 	if ((s = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) < 0) {
 		printf("Can't create socket. %s (%d)\n", strerror(errno), errno);
 		return -1;
-        }
+	}
 
 	memset(&local_addr, 0, sizeof(local_addr));
 	local_addr.rc_family = AF_BLUETOOTH;
@@ -129,12 +134,10 @@ static int open_socket(bdaddr_t *bdaddr, uint8_t channel)
 	return s;
 }
 
-
 static void usage(void)
 {
 	printf("Usage:\n\tattest <device> | <bdaddr> [channel]\n");
 }
-
 
 int main(int argc, char *argv[])
 {

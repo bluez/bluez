@@ -1,24 +1,34 @@
 /*
  *
- *  Bluetooth Headset Test utility
+ *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2002  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
  *  published by the Free Software Foundation;
  *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
  *
+ *
+ *  $Id$
  */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <errno.h>
@@ -38,13 +48,11 @@
 #include <bluetooth/sco.h>
 #include <bluetooth/rfcomm.h>
 
-
 static volatile int terminate = 0;
 
 static void sig_term(int sig) {
 	terminate = 1;
 }
-
 
 static int rfcomm_connect(bdaddr_t *src, bdaddr_t *dst, uint8_t channel)
 {
@@ -124,7 +132,6 @@ static int sco_connect(bdaddr_t *src, bdaddr_t *dst, uint16_t *handle, uint16_t 
 	return s;
 }
 
-
 static void usage(void)
 {
 	printf("Usage:\n"
@@ -154,7 +161,6 @@ int main(int argc, char *argv[])
 	int dd, rd, sd, fd;
 	uint16_t sco_handle, sco_mtu, vs;
 
-
 	switch (argc) {
 	case 4:
 		str2ba(argv[3], &bdaddr);
@@ -182,7 +188,6 @@ int main(int argc, char *argv[])
 
 	filename = argv[2];
 
-
 	hci_devba(0, &local);
 	dd = hci_open_dev(0);
 	hci_read_voice_setting(dd, &vs, 1000);
@@ -193,7 +198,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "The voice setting must be 0x0060\n");
 		return -1;
 	}
-
 
 	if (strcmp(filename, "-") == 0) {
 		switch (mode) {
@@ -213,7 +217,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
 	sa.sa_handler = sig_term;
@@ -224,14 +227,12 @@ int main(int argc, char *argv[])
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
-
 	if ((rd = rfcomm_connect(&local, &bdaddr, channel)) < 0) {
 		perror("Can't connect RFCOMM channel");
 		return -1;
 	}
 
 	fprintf(stderr, "RFCOMM channel connected\n");
-
 
 	if ((sd = sco_connect(&local, &bdaddr, &sco_handle, &sco_mtu)) < 0) {
 		perror("Can't connect SCO audio channel");
@@ -240,7 +241,6 @@ int main(int argc, char *argv[])
 	}
 
 	fprintf(stderr, "SCO audio channel connected (handle %d, mtu %d)\n", sco_handle, sco_mtu);
-	
 
 	if (mode == RECORD)
 		write(rd, "RING\r\n", 6);
