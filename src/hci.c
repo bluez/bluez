@@ -970,6 +970,43 @@ int hci_write_class_of_dev(int dd, uint32_t cls, int to)
 	return hci_send_req(dd, &rq, 1000);
 }
 
+int hci_read_voice_setting(int dd, uint16_t *vs, int to)
+{
+	read_voice_setting_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_VOICE_SETTING;
+	rq.rparam = &rp;
+	rq.rlen   = READ_VOICE_SETTING_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+        *vs = rp.voice_setting;
+        return 0;
+}
+
+int hci_write_voice_setting(int dd, uint16_t vs, int to)
+{
+	write_voice_setting_cp cp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	cp.voice_setting = vs;
+	rq.ogf = OGF_HOST_CTL;
+	rq.ocf = OCF_WRITE_VOICE_SETTING;
+	rq.cparam = &cp;
+	rq.clen = WRITE_VOICE_SETTING_CP_SIZE;
+	return hci_send_req(dd, &rq, 1000);
+}
+
 int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to)
 {
 	read_current_iac_lap_rp rp;

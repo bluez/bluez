@@ -338,6 +338,19 @@ typedef struct {
 } __attribute__ ((packed)) write_class_of_dev_cp;
 #define WRITE_CLASS_OF_DEV_CP_SIZE 3
 
+#define OCF_READ_VOICE_SETTING	0x0025
+typedef struct {
+	uint8_t	status;
+	uint16_t	voice_setting;
+} __attribute__ ((packed)) read_voice_setting_rp;
+#define READ_VOICE_SETTING_RP_SIZE 3
+
+#define OCF_WRITE_VOICE_SETTING	0x0026
+typedef struct {
+	uint16_t	voice_setting;
+} __attribute__ ((packed)) write_voice_setting_cp;
+#define WRITE_VOICE_SETTING_CP_SIZE 2
+
 #define OCF_HOST_BUFFER_SIZE	0x0033
 typedef struct {
 	uint16_t 	acl_mtu;

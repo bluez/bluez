@@ -75,6 +75,8 @@ int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, in
 int hci_read_local_version(int dd, struct hci_version *ver, int to);
 int hci_read_class_of_dev(int dd, uint8_t *cls, int to);
 int hci_write_class_of_dev(int dd, uint32_t cls, int to);
+int hci_read_voice_setting(int dd, uint16_t *vs, int to);
+int hci_write_voice_setting(int dd, uint16_t vs, int to);
 int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to);
 int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to);
 
