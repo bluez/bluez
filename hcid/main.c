@@ -66,64 +66,30 @@ static void usage(void)
 	printf("\thcid [-n not_daemon] [-f config file]\n");
 }
 
-static void init_device(int hdev)
+static void configure_device(int hdev)
 {
 	struct hci_dev_req dr;
 	int s;
 
-	/* Do initialization in the separate process */
+	/* Do configuration in the separate process */
 	switch (fork()) {
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Fork failed. Can't init device hci%d. %s(%d)\n", 
+			syslog(LOG_ERR, "Fork failed. Can't init device hci%d. %s(%d)\n",
 					hdev, strerror(errno), errno);
 		default:
 			return;
 	}
 
-	set_title("hci%d init", hdev);
+	set_title("hci%d config", hdev);
 
 	if ((s = hci_open_dev(hdev)) < 0) {
 		syslog(LOG_ERR, "Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
 		exit(1);
 	}
 
-	/* Start HCI device */
-	if (ioctl(s, HCIDEVUP, hdev) < 0 && errno != EALREADY) {
-		syslog(LOG_ERR, "Can't init device hci%d. %s(%d)\n", hdev, 
-				strerror(errno), errno);
-		exit(1);
-	}
-
 	dr.dev_id  = hdev;
-
-	/* Set packet type */
-	if (devi.pkt_type) {
-		dr.dev_opt = devi.pkt_type;
-		if (ioctl(s, HCISETPTYPE, (unsigned long)&dr) < 0) {
-			syslog(LOG_ERR, "Can't set packet type on hci%d. %s(%d)\n", 
-				hdev, strerror(errno), errno);
-		}
-	}
-
-	/* Set link mode */
-	if (devi.link_mode) {
-		dr.dev_opt = devi.link_mode;
-		if (ioctl(s, HCISETLINKMODE, (unsigned long)&dr) < 0) {
-			syslog(LOG_ERR, "Can't set link mode on hci%d. %s(%d)\n", 
-				hdev, strerror(errno), errno);
-		}
-	}
-
-	/* Set link policy */
-	if (devi.link_policy) {
-		dr.dev_opt = devi.link_policy;
-		if (ioctl(s, HCISETLINKPOL, (unsigned long)&dr) < 0) {
-			syslog(LOG_ERR, "Can't set link policy on hci%d. %s(%d)\n", 
-				hdev, strerror(errno), errno);
-		}
-	}
 
 	/* Set scan mode */
 	dr.dev_opt = devi.scan;
@@ -176,6 +142,68 @@ static void init_device(int hdev)
 	exit(0);
 }
 
+static void init_device(int hdev)
+{
+	struct hci_dev_req dr;
+	int s;
+
+	/* Do initialization in the separate process */
+	switch (fork()) {
+		case 0:
+			break;
+		case -1:
+			syslog(LOG_ERR, "Fork failed. Can't init device hci%d. %s(%d)\n", 
+					hdev, strerror(errno), errno);
+		default:
+			return;
+	}
+
+	set_title("hci%d init", hdev);
+
+	if ((s = hci_open_dev(hdev)) < 0) {
+		syslog(LOG_ERR, "Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	dr.dev_id  = hdev;
+
+	/* Set packet type */
+	if (devi.pkt_type) {
+		dr.dev_opt = devi.pkt_type;
+		if (ioctl(s, HCISETPTYPE, (unsigned long)&dr) < 0) {
+			syslog(LOG_ERR, "Can't set packet type on hci%d. %s(%d)\n", 
+				hdev, strerror(errno), errno);
+		}
+	}
+
+	/* Set link mode */
+	if (devi.link_mode) {
+		dr.dev_opt = devi.link_mode;
+		if (ioctl(s, HCISETLINKMODE, (unsigned long)&dr) < 0) {
+			syslog(LOG_ERR, "Can't set link mode on hci%d. %s(%d)\n", 
+				hdev, strerror(errno), errno);
+		}
+	}
+
+	/* Set link policy */
+	if (devi.link_policy) {
+		dr.dev_opt = devi.link_policy;
+		if (ioctl(s, HCISETLINKPOL, (unsigned long)&dr) < 0) {
+			syslog(LOG_ERR, "Can't set link policy on hci%d. %s(%d)\n", 
+				hdev, strerror(errno), errno);
+		}
+	}
+
+	/* Start HCI device */
+	if (ioctl(s, HCIDEVUP, hdev) < 0 && errno != EALREADY) {
+		syslog(LOG_ERR, "Can't init device hci%d. %s(%d)\n", hdev, 
+				strerror(errno), errno);
+		exit(1);
+	}
+
+	exit(0);
+}
+
 static void init_all_devices(int ctl)
 {
 	struct hci_dev_list_req *dl;
@@ -191,7 +219,7 @@ static void init_all_devices(int ctl)
 	dr = dl->dev_req;
 
 	if (ioctl(ctl, HCIGETDEVLIST, (void*)dl)) {
-		syslog(LOG_INFO, "Can't get device list. %s(%d)", 
+		syslog(LOG_INFO, "Can't get device list. %s(%d)",
 			strerror(errno), errno);
 		exit(1);
 	}
@@ -199,6 +227,9 @@ static void init_all_devices(int ctl)
 	for (i=0; i < dl->dev_num; i++, dr++) {
 		if (hcid.auto_init)
 			init_device(dr->dev_id);
+
+		if (hcid.auto_init && (dr->dev_opt & (1<<HCI_UP)))
+			configure_device(dr->dev_id);
 
 		if (hcid.security && (dr->dev_opt & (1<<HCI_UP)))
 			start_security_manager(dr->dev_id);
@@ -258,6 +289,8 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 
 	case HCI_DEV_UP:
 		syslog(LOG_INFO, "HCI dev %d up", sd->dev_id);
+		if (hcid.auto_init)
+			configure_device(sd->dev_id);
 		if (hcid.security)
 			start_security_manager(sd->dev_id);
 		break;
