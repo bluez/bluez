@@ -11,9 +11,10 @@ import sys, os, string, popen2
 # using info extracted from X Server args.
 #
 def set_display():
-	disp = ":0"	
+	disp = ":0"
 	auth = ""
-	ps   = "/bin/ps -C X --format args --no-headers"
+	proc = "-C X -C XFree86"
+	ps   = "/bin/ps " + proc + " --format args --no-headers"
 
 	r,w = popen2.popen2(ps)
 	arg = string.split(r.read())
