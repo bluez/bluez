@@ -76,6 +76,9 @@ Sets the PSM value for the CAPI Message Transport Protocol
 .TP
 .BR -H ", " "\-\^\-hcrp"
 Sets the PSM value for the Hardcopy Control Channel
+.TP
+.BR -O ", " "\-\^\-obex"
+Sets the RFCOMM channel value for the Object Exchange protocol
 .SH FILTERS
 .B
 filter
@@ -89,7 +92,8 @@ is a space-separated list of packet categories: available categories are
 .IR cmtp ,
 .IR hidp ,
 .IR hcrp ,
-.IR avdtp
+.IR avdtp ,
+.IR obex
 and
 .IR capi .
 If filters are used, only packets belonging to the specified categories are

@@ -308,6 +308,7 @@ static struct {
 	{ "hidp",	FILT_HIDP	},
 	{ "hcrp",	FILT_HCRP	},
 	{ "avdtp",	FILT_AVDTP	},
+	{ "obex",	FILT_OBEX	},
 	{ "capi",	FILT_CAPI	},
 	{ 0 }
 };
@@ -343,6 +344,7 @@ static void usage(void)
 	"  -R, --raw                  Raw mode\n"
 	"  -C, --cmtp=psm             PSM for CMTP\n"
 	"  -H, --hcrp=psm             PSM for HCRP\n"
+	"  -O, --obex=channel         Channel for OBEX\n"
 	"  -?, --help                 Give this help list\n"
 	"      --usage                Give a short usage message\n"
 	);
@@ -362,6 +364,7 @@ static struct option main_options[] = {
 	{ "raw",		0, 0, 'R' },
 	{ "cmtp",		1, 0, 'C' },
 	{ "hcrp",		1, 0, 'H' },
+	{ "obex",		1, 0, 'O' },
 	{ "help",		0, 0, 'h' },
 	{ 0 }
 };
@@ -426,6 +429,10 @@ int main(int argc, char *argv[])
 
 		case 'H':
 			set_proto(0, atoi(optarg), 0, SDP_UUID_HARDCOPY_CONTROL_CHANNEL);
+			break;
+
+		case 'O':
+			set_proto(0, 0, atoi(optarg), SDP_UUID_OBEX);
 			break;
 
 		case 'h':
