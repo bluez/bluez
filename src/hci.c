@@ -55,7 +55,8 @@
 #include <bluetooth/hci_lib.h>
 
 typedef struct {
-	char  *str; unsigned int val;
+	char *str;
+	unsigned int val;
 } hci_map;
 
 static char *hci_bit2str(hci_map *m, unsigned int val) 
@@ -255,11 +256,11 @@ int hci_strtoscoptype(char *str, unsigned int *val)
 
 /* Link policy mapping */
 static hci_map link_policy_map[] = {
-	{ "NONE",    0 },
-	{ "RSWITCH", HCI_LP_RSWITCH },
-	{ "HOLD",    HCI_LP_HOLD    },
-	{ "SNIFF",   HCI_LP_SNIFF   },
-	{ "PARK",    HCI_LP_PARK    },
+	{ "NONE",	0		},
+	{ "RSWITCH",	HCI_LP_RSWITCH	},
+	{ "HOLD",	HCI_LP_HOLD	},
+	{ "SNIFF",	HCI_LP_SNIFF	},
+	{ "PARK",	HCI_LP_PARK	},
 	{ NULL }
 };
 
@@ -275,12 +276,14 @@ int hci_strtolp(char *str, unsigned int *val)
 
 /* Link mode mapping */
 static hci_map link_mode_map[] = {
-	{ "NONE",    0 },
-	{ "ACCEPT",  HCI_LM_ACCEPT },
-	{ "MASTER",  HCI_LM_MASTER },
-	{ "AUTH",    HCI_LM_AUTH   },
-	{ "ENCRYPT", HCI_LM_ENCRYPT},
-	{ "TRUSTED", HCI_LM_TRUSTED},
+	{ "NONE",	0		},
+	{ "ACCEPT",	HCI_LM_ACCEPT	},
+	{ "MASTER",	HCI_LM_MASTER	},
+	{ "AUTH",	HCI_LM_AUTH	},
+	{ "ENCRYPT",	HCI_LM_ENCRYPT	},
+	{ "TRUSTED",	HCI_LM_TRUSTED	},
+	{ "RELIABLE",	HCI_LM_RELIABLE	},
+	{ "SECURE",	HCI_LM_SECURE	},
 	{ NULL }
 };
 
@@ -847,11 +850,6 @@ int hci_disconnect(int dd, uint16_t handle, uint8_t reason, int to)
 	return 0;
 }
 
-int hci_local_name(int dd, int len, char *name, int to)
-{
-	return hci_read_local_name(dd, len, name, to);
-}
-
 int hci_read_local_name(int dd, int len, char *name, int to)
 {
 	read_local_name_rp rp;
@@ -891,11 +889,6 @@ int hci_write_local_name(int dd, const char *name, int to)
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 	return 0;
-}
-
-int hci_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)
-{
-	return hci_read_remote_name(dd, bdaddr, len, name, to);
 }
 
 int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)

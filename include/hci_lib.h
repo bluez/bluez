@@ -67,10 +67,8 @@ int hci_devba(int dev_id, bdaddr_t *bdaddr);
 int hci_devid(const char *str);
 
 /* deprecated: preserve compatibility */
-int hci_local_name(int dd, int len, char *name, int to);
 int hci_read_local_name(int dd, int len, char *name, int to);
 int hci_write_local_name(int dd, const char *name, int to);
-int hci_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to);
 int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to);
 int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to);
 int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to);
@@ -102,18 +100,18 @@ int hci_get_route(bdaddr_t *bdaddr);
 char *hci_dtypetostr(int type);
 char *hci_dflagstostr(uint32_t flags);
 char *hci_ptypetostr(unsigned int ptype);
-int   hci_strtoptype(char *str, unsigned int *val);
+int hci_strtoptype(char *str, unsigned int *val);
 char *hci_scoptypetostr(unsigned int ptype);
-int   hci_strtoscoptype(char *str, unsigned int *val);
+int hci_strtoscoptype(char *str, unsigned int *val);
 char *hci_lptostr(unsigned int ptype);
-int   hci_strtolp(char *str, unsigned int *val);
+int hci_strtolp(char *str, unsigned int *val);
 char *hci_lmtostr(unsigned int ptype);
-int   hci_strtolm(char *str, unsigned int *val);
+int hci_strtolm(char *str, unsigned int *val);
 
 char *hci_vertostr(unsigned int ver);
-int   hci_strtover(char *str, unsigned int *ver);
+int hci_strtover(char *str, unsigned int *ver);
 char *lmp_vertostr(unsigned int ver);
-int   lmp_strtover(char *str, unsigned int *ver);
+int lmp_strtover(char *str, unsigned int *ver);
 
 char *lmp_featurestostr(uint8_t *features, char *pref, int width);
 
