@@ -39,6 +39,7 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
+#include <bluetooth/l2cap.h>
 
 #define HEXDUMP		0
 #define ANALYZE		1
@@ -79,17 +80,64 @@ void hex_dump(char *pref, unsigned char *buf, int len)
 		printf("%s%s\n", pref, line);
 }
 
+void inline command_dump(void *ptr, int len)
+{
+	hci_command_hdr *hdr = ptr;
+	__u16 opcode = __le16_to_cpu(hdr->opcode);
+	printf("  ogf: 0x%x ofc 0x%x plen: %d\n", 
+		cmd_opcode_ogf(opcode), cmd_opcode_ocf(opcode), hdr->plen);
+}
+
 void inline event_dump(void *ptr, int len)
 {
 	hci_event_hdr *hdr = ptr;
 	printf("  code: 0x%x plen: %d\n", hdr->evt, hdr->plen);
 }
 
+void inline l2cap_dump(void *ptr, int len)
+{
+	l2cap_hdr *hdr = ptr;
+	__u16 dlen = __le16_to_cpu(hdr->len);
+	__u16 cid  = __le16_to_cpu(hdr->cid);
+
+	printf("    L2CAP: cid: 0x%x len: %d\n", cid, dlen);
+
+	ptr += L2CAP_HDR_SIZE;
+	if (cid == 0x1) {
+		l2cap_cmd_hdr *hdr = ptr;
+		__u16 len = __le16_to_cpu(hdr->len);
+		printf("    signaling: code: 0x%x ident: %d len: %d\n", 
+				hdr->code, hdr->ident, len);
+	}
+}
+
+void inline acl_dump(void *ptr, int len)
+{
+	hci_acl_hdr *hdr = ptr;
+	__u16 handle = __le16_to_cpu(hdr->handle);
+	__u16 dlen = __le16_to_cpu(hdr->dlen);
+
+	printf("  handle: 0x%x flags: 0x%x dlen: %d\n",
+		acl_handle(handle), acl_flags(handle), dlen);
+	
+	ptr += HCI_ACL_HDR_SIZE;
+	len -= HCI_ACL_HDR_SIZE;
+	l2cap_dump(ptr, len);
+}
+
 void analyze(int type, unsigned char *ptr, int len)
 {
 	switch( type ){
+		case HCI_COMMAND_PKT:
+			command_dump(ptr, len);
+			break;
+
 		case HCI_EVENT_PKT:
 			event_dump(ptr, len);
+			break;
+
+		case HCI_ACLDATA_PKT:
+			acl_dump(ptr, len);
 			break;
 	}
 }
@@ -99,7 +147,7 @@ extern char *optarg;
 
 int main(int argc, char *argv[])
 {
-	char data[4096], ctrl[100], *ptr;
+	char data[HCI_MAX_FRAME_SIZE], ctrl[100], *ptr;
 	int s, len, type, opt, dev, in;
 	struct sockaddr_hci addr;
 	struct cmsghdr *cmsg;
