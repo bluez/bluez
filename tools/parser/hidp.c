@@ -174,7 +174,7 @@ void hidp_dump(int level, struct frame *frm)
 	printf("HIDP: %s: %s\n", type2str(head), param);
 
 	frm->ptr++;
-	frm->len++;
+	frm->len--;
 
 	raw_dump(level, frm);
 }
