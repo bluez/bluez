@@ -1,3 +1,13 @@
+ver 2.6:
+	Change default prefix to /usr.
+	Add manpages for hcid and hcid.conf.
+	Add the sdpd server daemon.
+	Add the sdptool utility.
+	Add the ciptool utility.
+
+	Note:
+	This version needs at least bluez-libs-2.6
+
 ver 2.5:
 	hcitool changes:
 		Support for requesting authentication.
