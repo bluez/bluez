@@ -40,7 +40,7 @@ struct parser_t parser;
 void init_parser(unsigned long flags, unsigned long filter)
 {
 	if ((flags & DUMP_RAW) && !(flags & DUMP_TYPE_MASK))
-		flags &= DUMP_HEX;
+		flags |= DUMP_HEX;
 
 	parser.flags  = flags;
 	parser.filter = filter;
