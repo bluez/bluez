@@ -45,9 +45,7 @@
 #include "parser.h"
 #include "sdp.h"
 
-static inline void print_de(int, struct frame*, int *split);
-
-sdp_siz_idx_lookup_table_t sdp_siz_idx_lookup_table[] = {
+static sdp_siz_idx_lookup_table_t sdp_siz_idx_lookup_table[] = {
 	{ 0, 1  }, /* Size index = 0 */
 	{ 0, 2  }, /*              1 */
 	{ 0, 4  }, /*              2 */
@@ -58,7 +56,7 @@ sdp_siz_idx_lookup_table_t sdp_siz_idx_lookup_table[] = {
 	{ 1, 4  }, /*              7 */
 };
 
-sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
+static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_SDP,                      "SDP"          },
 	{ SDP_UUID_UDP,                      "UDP"          },
 	{ SDP_UUID_RFCOMM,                   "RFCOMM"       },
@@ -103,7 +101,7 @@ sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_GENERIC_TELEPHONY,        "Telephony"    }
 };
 
-sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
+static sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
 	{ SDP_ATTR_ID_SERVICE_RECORD_HANDLE,             "SrvRecHndl"         },
 	{ SDP_ATTR_ID_SERVICE_CLASS_ID_LIST,             "SrvClassIDList"     },
 	{ SDP_ATTR_ID_SERVICE_RECORD_STATE,              "SrvRecState"        },
@@ -156,11 +154,11 @@ static inline char* get_attr_id_name(int attr_id)
 	return 0;
 }
 
-static inline uint8_t parse_de_hdr(struct frame *frm, int* n)
+static inline uint8_t parse_de_hdr(struct frame *frm, int *n)
 {
-	uint8_t	de_hdr = get_u8(frm);
-	uint8_t	de_type = de_hdr >> 3;
-	uint8_t	siz_idx = de_hdr & 0x07;
+	uint8_t de_hdr = get_u8(frm);
+	uint8_t de_type = de_hdr >> 3;
+	uint8_t siz_idx = de_hdr & 0x07;
 
 	/* Get the number of bytes */
 	if (sdp_siz_idx_lookup_table[siz_idx].addl_bits) {
@@ -181,7 +179,7 @@ static inline uint8_t parse_de_hdr(struct frame *frm, int* n)
 	return de_type;
 }
 
-static inline void print_int(uint8_t de_type, int level, int n, struct frame *frm)
+static inline void print_int(uint8_t de_type, int level, int n, struct frame *frm, uint16_t *psm)
 {
 	uint64_t val, val2;
 
@@ -203,6 +201,9 @@ static inline void print_int(uint8_t de_type, int level, int n, struct frame *fr
 		break;
 	case 2: /* 16-bit */
 		val = get_u16(frm);
+		if (psm && de_type == SDP_DE_UINT)
+			if (*psm == 0)
+				*psm = val;
 		break;
 	case 4: /* 32-bit */
 		val = get_u32(frm);
@@ -227,7 +228,7 @@ static inline void print_int(uint8_t de_type, int level, int n, struct frame *fr
 	printf(" 0x%llx", val);
 }
 
-static inline void print_uuid(int n, struct frame *frm)
+static inline void print_uuid(int n, struct frame *frm, uint16_t *psm)
 {
 	uint32_t uuid = 0;
 	char* s;
@@ -254,6 +255,10 @@ static inline void print_uuid(int n, struct frame *frm)
 		return;
 	}
 
+	if (psm && *psm > 0 && *psm != 0xffff) {
+		*psm = 0xffff;
+	}
+
 	printf(" %s 0x%04x", s, uuid);
 	if ((s = get_uuid_name(uuid)))
 		printf(" (%s)", s);
@@ -265,7 +270,7 @@ static inline void print_string(int n, struct frame *frm, const char *name)
 
 	printf(" %s", name);
 	if ((s = malloc(n + 1))) {
-	        strncpy(s, frm->ptr, n);
+		strncpy(s, frm->ptr, n);
 		s[n] = '\0';
 		printf(" \"%s\"", s);
 		free(s);
@@ -276,38 +281,40 @@ static inline void print_string(int n, struct frame *frm, const char *name)
 	frm->len -= n;
 }
 
-static inline void print_des(uint8_t de_type, int level, int n, struct frame *frm, int *split)
+static inline void print_de(int, struct frame *frm, int *split, uint16_t *psm);
+
+static inline void print_des(uint8_t de_type, int level, int n, struct frame *frm, int *split, uint16_t *psm)
 {
 	int len = frm->len;
-	while (len - frm->len < n && frm->len > 0) 
-		print_de(level, frm, split);
+	while (len - frm->len < n && frm->len > 0)
+		print_de(level, frm, split, psm);
 }
 
-static inline void print_de(int level, struct frame *frm, int *split)
+static inline void print_de(int level, struct frame *frm, int *split, uint16_t *psm)
 {
-	int  n;
+	int n;
 	uint8_t de_type = parse_de_hdr(frm, &n);
 
-	switch(de_type) {
+	switch (de_type) {
 	case SDP_DE_NULL:
 		printf(" null");
 		break;
 	case SDP_DE_UINT:
 	case SDP_DE_INT:
 	case SDP_DE_BOOL:
-		print_int(de_type, level, n, frm);
+		print_int(de_type, level, n, frm, psm);
 		break;
 	case SDP_DE_UUID:
 		if (split) {
 			/* Split output by uuids.
 			 * Used for printing Protocol Desc List */
-	       		if (*split) {
+			if (*split) {
 				printf("\n");
 				p_indent(level, NULL);
 			}
 			++*split;
 		}
-		print_uuid(n, frm);
+		print_uuid(n, frm, psm);
 		break;
 	case SDP_DE_URL:
 	case SDP_DE_STRING:
@@ -315,12 +322,12 @@ static inline void print_de(int level, struct frame *frm, int *split)
 		break;
 	case SDP_DE_SEQ:
 		printf(" <");
-		print_des(de_type, level, n, frm, split);
+		print_des(de_type, level, n, frm, split, psm);
 		printf(" >");
 		break;
 	case SDP_DE_ALT:
 		printf(" [");
-		print_des(de_type, level, n, frm, split);
+		print_des(de_type, level, n, frm, split, psm);
 		printf(" ]");
 		break;
 	}
@@ -334,10 +341,10 @@ static inline void print_srv_srch_pat(int level, struct frame *frm)
 	printf("pat");
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
-	        len = frm->len;
+		len = frm->len;
 		while (len - frm->len < n1 && frm->len > 0) {
 			if (parse_de_hdr(frm,&n2) == SDP_DE_UUID) {
-				print_uuid(n2, frm);
+				print_uuid(n2, frm, NULL);
 			} else {
 				printf("\nERROR: Unexpected syntax (UUID)\n");
 				raw_dump(level, frm);
@@ -361,7 +368,7 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 	printf("aid(s)");
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
-	        len = frm->len;
+		len = frm->len;
 		while (len - frm->len < n1 && frm->len > 0) {
 			/* Print AttributeID */
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT) {
@@ -395,11 +402,11 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 
 static inline void print_attr_list(int level, struct frame *frm)
 {
-	uint16_t attr_id;
+	uint16_t attr_id, psm;
 	int len, n1, n2, split;
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
-	        len = frm->len;
+		len = frm->len;
 		while (len - frm->len < n1 && frm->len > 0) {
 			/* Print AttributeID */
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT && n2 == sizeof(attr_id)) {
@@ -411,10 +418,12 @@ static inline void print_attr_list(int level, struct frame *frm)
 					name = "unknown";
 				printf("aid 0x%04x (%s)\n", attr_id, name);
 				split = (attr_id != SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST);
-				
+				psm = 0;
+
 				/* Print AttributeValue */
 				p_indent(level + 1, 0);
-				print_de(level + 1, frm, split ? NULL: &split);
+				print_de(level + 1, frm, split ? NULL: &split,
+					attr_id == SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST ? &psm : NULL);
 				printf("\n");
 			} else {
 				printf("\nERROR: Unexpected syntax\n");

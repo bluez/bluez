@@ -145,7 +145,7 @@ typedef struct {
 	uint16_t tid;
 	uint16_t len;
 } __attribute__ ((packed)) sdp_pdu_hdr;
-#define SDP_PDU_HDR_SIZE	5
+#define SDP_PDU_HDR_SIZE 5
 
 /* Data element size index lookup table */
 typedef struct {
