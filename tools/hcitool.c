@@ -146,7 +146,7 @@ static void hex_dump(char *pref, int width, unsigned char *buf, int len)
 /* Display local devices */
 
 static struct option dev_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -265,7 +265,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		case 'l':
 			length = atoi(optarg);
 			break;
-		
+
 		case 'n':
 			num_rsp = atoi(optarg);
 			break;
@@ -317,7 +317,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 /* Remote name */
 
 static struct option name_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -699,7 +699,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 			exit(1);
 		}
 	}
- 
+
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		perror("HCI device open failed");
@@ -849,7 +849,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 			exit(1);
 		}
 	}
- 
+
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		perror("HCI device open failed");
@@ -866,7 +866,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 		perror("Get connection info failed");
 		exit(1);
 	}
-	
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_STATUS_PARAM;
 	rq.ocf    = OCF_READ_RSSI;
@@ -933,7 +933,7 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 			exit(1);
 		}
 	}
- 
+
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		perror("HCI device open failed");
@@ -958,7 +958,7 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 	rq.clen   = 2;
 	rq.rparam = &rp;
 	rq.rlen   = GET_LINK_QUALITY_RP_SIZE;
-	
+
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		perror("HCI get_link_quality request failed");
 		exit(1);
@@ -1020,7 +1020,7 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 			exit(1);
 		}
 	}
- 
+
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		perror("HCI device open failed");
@@ -1046,7 +1046,7 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 	rq.clen   = READ_TRANSMIT_POWER_LEVEL_CP_SIZE;
 	rq.rparam = &rp;
 	rq.rlen   = READ_TRANSMIT_POWER_LEVEL_RP_SIZE;
-	
+
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		perror("HCI read transmit power level request failed");
 		exit(1);
@@ -1109,7 +1109,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 			exit(1);
 		}
 	}
- 
+
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		perror("HCI device open failed");
@@ -1192,7 +1192,7 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 			exit(1);
 		}
 	}
- 
+
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		perror("HCI device open failed");
@@ -1234,8 +1234,7 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 				rp.link_sup_to, (float)rp.link_sup_to * 0.625);
 		else
 			printf("Link supervision timeout never expires\n");
-	}
-	else {
+	} else {
 		cp.handle      = cr->conn_info->handle;
 		cp.link_sup_to = strtol(argv[1], NULL, 10);
 
@@ -1337,7 +1336,90 @@ static void cmd_auth(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
-struct {
+/* Activate encryption */
+
+static struct option enc_options[] = {
+	{"help",	0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *enc_help = 
+	"Usage:\n"
+	"\tenc <bdaddr> [encrypt enable]\n";
+
+static void cmd_enc(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	struct hci_request rq;
+	set_conn_encrypt_cp cp;
+	evt_encrypt_change rp;
+	bdaddr_t bdaddr;
+	int opt, dd;
+
+	for_each_opt(opt, enc_options, NULL) {
+		switch(opt) {
+		default:
+			printf(enc_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(enc_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+
+	cp.handle = cr->conn_info->handle;
+	cp.encrypt = (argc > 1) ? atoi(argv[1]) : 1;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_SET_CONN_ENCRYPT;
+	rq.cparam = &cp;
+	rq.clen   = SET_CONN_ENCRYPT_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_ENCRYPT_CHANGE_SIZE;
+	rq.event  = EVT_ENCRYPT_CHANGE;
+
+	if (hci_send_req(dd, &rq, 25000) < 0) {
+		perror("HCI set encryption request failed");
+		exit(1);
+	}
+
+	close(dd);
+	free(cr);
+}
+
+static struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
 	char *doc;
@@ -1358,6 +1440,7 @@ struct {
 	{ "tpl",  cmd_tpl,  "Display transmit power level"         },
 	{ "lst",  cmd_lst,  "Set/display link supervision timeout" },
 	{ "auth", cmd_auth, "Request authentication"               },
+	{ "enc",  cmd_enc,  "Set connection encryption"            },
 	{ NULL, NULL, 0 }
 };
 
