@@ -18,7 +18,6 @@ URL: http://bluez.sourceforge.net
 Docdir: %{prefix}/share/doc
 Requires: glibc >= 2.2.4
 BuildRequires: glibc >= 2.2.4
-BuildRequires: glib-devel >= 1.2
 
 %description
 Bluetooth libraries.
@@ -55,6 +54,7 @@ rm -rf $RPM_BUILD_ROOT
 
 /usr/include/bluetooth/*
 /usr/lib/libbluetooth*
+/usr/lib/libsdp*
 
 %doc AUTHORS COPYING INSTALL ChangeLog NEWS README
 
