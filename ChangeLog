@@ -1,3 +1,11 @@
+ver 2.15:
+	Use better way for unaligned access.
+	Remove sdp_internal.h and its usage.
+	Add deprecated functions for reading the name.
+	Add function for reading the clock.
+	Add function for reading the local Bluetooth address.
+	Add function for reading the local supported features.
+
 ver 2.14:
 	Add function for reading the RSSI.
 	Add function for reading the link quality.
