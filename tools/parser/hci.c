@@ -267,6 +267,14 @@ static inline void command_dump(int level, struct frame *frm)
 			cmd = "Unknown";
 		break;
 
+	case OGF_TESTING_CMD:
+		cmd = "Testing";
+		break;
+
+	case OGF_VENDOR_CMD:
+		cmd = "Vendor";
+		break;
+
 	default:
 		cmd = "Unknown";
 		break;
@@ -295,6 +303,10 @@ static inline void event_dump(int level, struct frame *frm)
 	if (hdr->evt <= EVENT_NUM)
 		printf("HCI Event: %s(0x%2.2x) plen %d\n",
 			event_map[hdr->evt], hdr->evt, hdr->plen);
+	else if (hdr->evt == EVT_TESTING)
+		printf("HCI Event: Testing(0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
+	else if (hdr->evt == EVT_VENDOR)
+		printf("HCI Event: Vendor(0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
 	else
 		printf("HCI Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
 
