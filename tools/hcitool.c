@@ -56,12 +56,13 @@ static void usage(void);
 static int dev_info(int s, int dev_id, long arg)
 {
 	struct hci_dev_info di = {dev_id: dev_id};
-	bdaddr_t bdaddr;
+	char addr[18];
+
 	if (ioctl(s, HCIGETDEVINFO, (void*) &di))
 		return 0;
 
-	baswap(&bdaddr, &di.bdaddr);
-	printf("\t%s\t%s\n", di.name, batostr(&bdaddr));
+	ba2str(&di.bdaddr, addr);
+	printf("\t%s\t%s\n", di.name, addr);
 	return 0;
 }
 
@@ -89,12 +90,12 @@ static int conn_list(int s, int dev_id, long arg)
 	}
 
 	for (i=0; i < cl->conn_num; i++, ci++) {
-		bdaddr_t bdaddr;
-		baswap(&bdaddr, &ci->bdaddr);
+		char addr[18];
+		ba2str(&ci->bdaddr, addr);
 		printf("\t%s %s %s handle %d state %d lm %s\n",
 			ci->out ? "<" : ">",
 			ci->type == ACL_LINK ? "ACL" : "SCO",
-			batostr(&bdaddr), ci->handle, ci->state,
+			addr, ci->handle, ci->state,
 			hci_lmtostr(ci->link_mode));
 	}
 	return 0;
@@ -188,7 +189,7 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 {
 	int num_rsp, length, flags;
 	inquiry_info *info = NULL;
-	bdaddr_t bdaddr;
+	char addr[18];
 	int i, opt;
 
 	length  = 8;  /* ~10 seconds */
@@ -223,9 +224,9 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 	}
 
 	for (i = 0; i < num_rsp; i++) {
-		baswap(&bdaddr, &(info+i)->bdaddr);
+		ba2str(&(info+i)->bdaddr, addr);
 		printf("\t%s\tclock offset: 0x%4.4x\tclass: 0x%2.2x%2.2x%2.2x\n",
-			batostr(&bdaddr), (info+i)->clock_offset,
+			addr, (info+i)->clock_offset,
 			(info+i)->dev_class[2], 
 			(info+i)->dev_class[1], 
 			(info+i)->dev_class[0]);
@@ -251,7 +252,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 {
 	inquiry_info *info = NULL;
 	int num_rsp, length, flags;
-	bdaddr_t bdaddr;
+	char addr[18];
 	char name[248];
 	int i, opt, dd;
 
@@ -280,7 +281,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	}
 
 	if (dev_id < 0) {
-		dev_id = hci_get_route(&bdaddr);
+		dev_id = hci_get_route(NULL);
 		if (dev_id < 0) {
 			perror("Device is not available");
 			exit(1);
@@ -305,8 +306,8 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		memset(name, 0, sizeof(name));
 		if (hci_read_remote_name(dd, &(info+i)->bdaddr, sizeof(name), name, 100000) < 0)
 			strcpy(name, "n/a");
-		baswap(&bdaddr, &(info+i)->bdaddr);
-		printf("\t%s\t%s\n", batostr(&bdaddr), name);
+		ba2str(&(info+i)->bdaddr, addr);
+		printf("\t%s\t%s\n", addr, name);
 	}
 
 	close(dd);
@@ -345,7 +346,7 @@ static void cmd_name(int dev_id, int argc, char **argv)
 		return;
 	}
 
-	baswap(&bdaddr, strtoba(argv[0]));
+	str2ba(argv[0], &bdaddr);
 
 	if (dev_id < 0) {
 		dev_id = hci_get_route(&bdaddr);

@@ -227,8 +227,7 @@ int read_pin_code(void)
 static void call_pin_helper(int dev, struct hci_conn_info *ci)
 {
 	pin_code_reply_cp pr;
-	char str[255], *pin, name[20];
-	bdaddr_t ba;
+	char addr[12], str[255], *pin, name[20];
 	FILE *pipe;
 	int len;
 	
@@ -252,10 +251,10 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 	name[0] = 0;
 	//hci_remote_name(dev, &ci->bdaddr, sizeof(name), name, 0);
 
-	baswap(&ba, &ci->bdaddr);
+	ba2str(&ci->bdaddr, addr);
 	sprintf(str, "%s %s %s \'%s\'", hcid.pin_helper, 
 			ci->out ? "out" : "in", 
-			batostr(&ba), name);
+			addr, name);
 
 	setenv("PATH", "/bin:/usr/bin:/usr/local/bin", 1);
 

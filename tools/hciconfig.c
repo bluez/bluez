@@ -875,17 +875,17 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 void print_dev_hdr(struct hci_dev_info *di)
 {
 	static int hdr = -1;
-	bdaddr_t bdaddr;
+	char addr[18];
 
 	if (hdr == di->dev_id)
 		return;
 	hdr = di->dev_id;
 
-	baswap(&bdaddr, &di->bdaddr);
+	ba2str(&di->bdaddr, addr);
 
 	printf("%s:\tType: %s\n", di->name, hci_dtypetostr(di->type) );
 	printf("\tBD Address: %s ACL MTU: %d:%d  SCO MTU: %d:%d\n",
-		batostr(&bdaddr), di->acl_mtu, di->acl_pkts,
+		addr, di->acl_mtu, di->acl_pkts,
 		di->sco_mtu, di->sco_pkts);
 }
 

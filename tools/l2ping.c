@@ -77,6 +77,7 @@ static void ping(char *svr)
 	struct sockaddr_l2 addr;
 	struct sigaction sa;
 	char buf[2048];
+	char str[18];
 	int s, i, opt, lost;
 	uint8_t id;
 
@@ -97,7 +98,7 @@ static void ping(char *svr)
 		exit(1);
         }
 
-	baswap(&addr.l2_bdaddr, strtoba(svr));
+	str2ba(svr, &addr.l2_bdaddr);
 	if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		perror("Can't connect.");
 		exit(1);
@@ -109,9 +110,9 @@ static void ping(char *svr)
 		perror("Can't get local address.");
 		exit(1);
 	}
-	baswap(&bdaddr, &addr.l2_bdaddr);
+	ba2str(&addr.l2_bdaddr, str);
 
-	printf("Ping: %s from %s (data size %d) ...\n", svr, batostr(&bdaddr), size);
+	printf("Ping: %s from %s (data size %d) ...\n", svr, str, size);
 
 	/* Initialize buffer */
 	for(i = L2CAP_CMD_HDR_SIZE; i < sizeof(buf); i++)
@@ -231,7 +232,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'S':
-			baswap(&bdaddr, strtoba(optarg));
+			str2ba(optarg, &bdaddr);
 			break;
 
 		default:
