@@ -50,7 +50,7 @@
 /* Default options */
 static int  device;
 static int  snap_len = SNAP_LEN;
-static int  mode  = DUMP;
+static int  mode  = PARSE;
 static long flags; 
 static char *dump_file;
 
@@ -106,12 +106,18 @@ static void process_frames(int dev, int sock, int file)
 			cmsg = CMSG_NXTHDR(&msg, cmsg);
 		}
 
-		if (file == -1) {
-			/* Parse and print */
-			frm.ptr = frm.data;
-			frm.len = frm.data_len;
-			parse(&frm);
-		} else {
+		frm.ptr = frm.data;
+		frm.len = frm.data_len;
+
+		switch (mode) {
+		case RAW:
+			/* Print raw dump */
+      			printf("%c ", (frm.in ? '>' : '<')); 
+			raw_dump(0, &frm);
+			fflush(stdout);
+			break;
+
+		case WRITE:
 			/* Save dump */	
 			dh->len = __cpu_to_le16(frm.data_len);
 			dh->in  = frm.in;
@@ -119,6 +125,12 @@ static void process_frames(int dev, int sock, int file)
 				perror("Write error");
 				exit(1);
 			}
+			break;
+
+		default:
+			/* Parse and print */
+			parse(&frm);
+			break;
 		}
 	}
 }
@@ -221,6 +233,7 @@ static struct argp_option options[] = {
 	{"read-dump",	'r', "file", 0, "Read dump from a file", 2 },
 	{"hex", 	'h', 0,  0, "Dump data in hex", 3 },
 	{"ascii", 	'a', 0,  0, "Dump data in ascii", 3 },
+	{"raw", 	'R', 0,  0, "Raw mode", 3 },
 	{ 0 }
 };
 
@@ -243,6 +256,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			snap_len = atoi(arg);
 			break;
 
+		case 'R': 
+			flags |= DUMP_HEX;
+			mode = RAW;
+			break;
+
 		case 'r':
 			mode = READ;
 			dump_file = strdup(arg);
@@ -252,7 +270,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			mode = WRITE;
 			dump_file = strdup(arg);
 			break;
-		
+
 		default:
 			return ARGP_ERR_UNKNOWN;
 	}
@@ -273,7 +291,8 @@ int main(int argc, char *argv[])
 	printf("HCIDump - HCI packet analyzer ver %s.\n", VERSION);
 
 	switch (mode) {
-	case DUMP:
+	case RAW:
+	case PARSE:
 		init_parser(flags);
 		process_frames(device, open_socket(device), -1);
 		break;
