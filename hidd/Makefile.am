@@ -2,7 +2,7 @@
 #  $Id$
 #
 
-noinst_PROGRAMS = hidd
+bin_PROGRAMS = hidd
 
 hidd_SOURCES = main.c hidd.h sdp.c
 
