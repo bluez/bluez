@@ -55,6 +55,7 @@
 #define SDP_UUID_HTTP                                  0x000C
 #define SDP_UUID_WSP                                   0x000E
 #define SDP_UUID_BNEP                                  0x000F /* PAN */
+#define SDP_UUID_HIDP                                  0x0011 /* HID */
 #define SDP_UUID_CMTP                                  0x001B /* CIP */
 #define SDP_UUID_L2CAP                                 0x0100
 
@@ -77,6 +78,7 @@
 #define SDP_UUID_PANU                                  0x1115 /* PAN */
 #define SDP_UUID_NAP                                   0x1116 /* PAN */
 #define SDP_UUID_GN                                    0x1117 /* PAN */
+#define SDP_UUID_HUMAN_INTERFACE_DEVICE                0x1124 /* HID */
 #define SDP_UUID_COMMON_ISDN_ACCESS                    0x1128 /* CIP */
 #define SDP_UUID_PNP_INFORMATION                       0x1200
 #define SDP_UUID_GENERIC_NETWORKING                    0x1201

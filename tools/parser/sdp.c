@@ -72,6 +72,8 @@ sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_WSP,                      "WSP"          },
 	{ SDP_UUID_L2CAP,                    "L2CAP"        },
 	{ SDP_UUID_BNEP,                     "BNEP"         }, /* PAN */
+	{ SDP_UUID_HIDP,                     "HIDP"         }, /* HID */
+	{ SDP_UUID_CMTP,                     "CMTP"         }, /* CIP */
 	{ SDP_UUID_SERVICE_DISCOVERY_SERVER, "SDServer"     },
 	{ SDP_UUID_BROWSE_GROUP_DESCRIPTOR,  "BrwsGrpDesc"  },
 	{ SDP_UUID_PUBLIC_BROWSE_GROUP,      "PubBrwsGrp"   },
@@ -90,7 +92,8 @@ sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_PANU,                     "PANU"         }, /* PAN */
 	{ SDP_UUID_NAP,                      "NAP"          }, /* PAN */
 	{ SDP_UUID_GN,                       "GN"           }, /* PAN */
-	{ SDP_UUID_CMTP,                     "CMTP"         }, /* CIP */
+	{ SDP_UUID_HUMAN_INTERFACE_DEVICE,   "HID"          }, /* HID */
+	{ SDP_UUID_COMMON_ISDN_ACCESS,       "CIP"          }, /* CIP */
 	{ SDP_UUID_PNP_INFORMATION,          "PNPInfo"      },
 	{ SDP_UUID_GENERIC_NETWORKING,       "Networking"   },
 	{ SDP_UUID_GENERIC_FILE_TRANSFER,    "FileTrnsf"    },
