@@ -387,7 +387,7 @@ void usage(void)
 		"\t[-b bytes] [-S bdaddr] [-P psm]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
 		"\t[-D] use connectionless channel (datagram)\n"
-		"\t[-E] request encryption\n"
+		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 	       	"\t[-M] become master\n");
 }
