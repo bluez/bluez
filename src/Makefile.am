@@ -10,4 +10,4 @@ libbluetooth_la_LDFLAGS = -version-info 1:4:0
 libsdp_la_SOURCES =
 libsdp_la_LDFLAGS = -version-info 2:2:0
 
-INCLUDES = -I$(top_srcdir)/include
+INCLUDES = -I$(top_builddir)/include

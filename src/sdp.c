@@ -38,13 +38,13 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 
-#include <bluetooth.h>
-#include <hci.h>
-#include <hci_lib.h>
-#include <l2cap.h>
-#include <sdp.h>
-#include <sdp_lib.h>
-#include <sdp_internal.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+#include <bluetooth/l2cap.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
+#include <bluetooth/sdp_internal.h>
 
 #define BASE_UUID "00000000-0000-1000-8000-00805F9B34FB"
 
