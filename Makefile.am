@@ -8,5 +8,5 @@ DISTCLEANFILES = conftest.c conftest bluez.pc
 
 EXTRA_DIST = ChangeLog libs.spec
 
-install-data-local:
-	$(INSTALL) -D -m 755 $(top_builddir)/bluez.pc $(DESTDIR)$(libdir)/pkgconfig/bluez.pc
+install-data-local: bluez.pc
+	$(INSTALL) -D -m 644 $(top_builddir)/bluez.pc $(DESTDIR)$(libdir)/pkgconfig/bluez.pc
