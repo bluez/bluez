@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 /* L2CAP defaults */
-#define L2CAP_DEFAULT_MTU 	672
+#define L2CAP_DEFAULT_MTU	672
 #define L2CAP_DEFAULT_FLUSH_TO	0xFFFF
 
 #define L2CAP_CONN_TIMEOUT 	(HZ * 40)
@@ -54,7 +54,7 @@ struct l2cap_options {
 	uint16_t flush_to;
 };
 
-#define L2CAP_CONNINFO  0x02
+#define L2CAP_CONNINFO	0x02
 struct l2cap_conninfo {
 	uint16_t hci_handle;
 };

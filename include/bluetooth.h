@@ -37,23 +37,23 @@ extern "C" {
 #include <endian.h>
 #include <byteswap.h>
 #include <string.h>
-	
+
 #ifndef AF_BLUETOOTH
 #define AF_BLUETOOTH	31
 #define PF_BLUETOOTH	AF_BLUETOOTH
 #endif
 
-#define BTPROTO_L2CAP   0
-#define BTPROTO_HCI     1
-#define BTPROTO_SCO   	2
+#define BTPROTO_L2CAP	0
+#define BTPROTO_HCI	1
+#define BTPROTO_SCO	2
 #define BTPROTO_RFCOMM	3
 #define BTPROTO_BNEP	4
 #define BTPROTO_CMTP	5
 
-#define SOL_HCI     0
-#define SOL_L2CAP   6
-#define SOL_SCO     17
-#define SOL_RFCOMM  18
+#define SOL_HCI		0
+#define SOL_L2CAP	6
+#define SOL_SCO		17
+#define SOL_RFCOMM	18
 
 /* Connection and socket states */
 enum {

@@ -34,10 +34,10 @@ extern "C" {
 #endif
 
 /* SCO defaults */
-#define SCO_DEFAULT_MTU 	500
+#define SCO_DEFAULT_MTU		500
 #define SCO_DEFAULT_FLUSH_TO	0xFFFF
 
-#define SCO_CONN_TIMEOUT 	(HZ * 40)
+#define SCO_CONN_TIMEOUT	(HZ * 40)
 #define SCO_DISCONN_TIMEOUT 	(HZ * 2)
 #define SCO_CONN_IDLE_TIMEOUT	(HZ * 60)
 
@@ -48,12 +48,12 @@ struct sockaddr_sco {
 };
 
 /* set/get sockopt defines */
-#define SCO_OPTIONS  0x01
+#define SCO_OPTIONS	0x01
 struct sco_options {
 	uint16_t mtu;
 };
 
-#define SCO_CONNINFO  0x02
+#define SCO_CONNINFO	0x02
 struct sco_conninfo {
 	uint16_t hci_handle;
 };
