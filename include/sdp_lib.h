@@ -426,8 +426,8 @@ void sdp_uuid_print(const uuid_t *uuid);
 
 #define MAX_LEN_UUID_STR 37
 #define MAX_LEN_PROTOCOL_UUID_STR 8
-#define MAX_LEN_SERVICECLASS_UUID_STR 24
-#define MAX_LEN_PROFILEDESCRIPTOR_UUID_STR 22
+#define MAX_LEN_SERVICECLASS_UUID_STR 28
+#define MAX_LEN_PROFILEDESCRIPTOR_UUID_STR 28
 
 int sdp_uuid2strn(const uuid_t *uuid, char *str, size_t n);
 int sdp_proto_uuid2strn(const uuid_t *uuid, char *str, size_t n);
