@@ -177,9 +177,8 @@ static inline uint8_t parse_de_hdr(struct frame *frm, int *n)
 		case 8:
 			*n = get_u64(frm); break;
 		}
-	} else {
+	} else
 		*n = sdp_siz_idx_lookup_table[siz_idx].num_bytes;
-	}
 
 	return de_type;
 }
@@ -293,9 +292,9 @@ static inline void print_string(int n, struct frame *frm, const char *name)
 		s[n] = '\0';
 		printf(" \"%s\"", s);
 		free(s);
-	} else {
+	} else
 		perror("Can't allocate string buffer");
-	}
+
 	frm->ptr += n;
 	frm->len -= n;
 }
@@ -376,7 +375,6 @@ static inline void print_srv_srch_pat(int level, struct frame *frm)
 	}
 }
 
-
 static inline void print_attr_id_list(int level, struct frame *frm)
 {
 	uint16_t attr_id;
@@ -453,23 +451,22 @@ static inline void print_attr_list(int level, struct frame *frm)
 				break;
 			}
 		}
-		printf("\n");
 	} else {
 		printf("\nERROR: Unexpected syntax\n");
 		raw_dump(level, frm);
 	}
 }
 
-
-static inline void print_attr_lists(int level, struct frame *frm, int len)
+static inline void print_attr_lists(int level, struct frame *frm)
 {
 	int n, cnt = 0;
+	int count = frm->len;
 
 	if (parse_de_hdr(frm, &n) == SDP_DE_SEQ) {
-		while (len - frm->len < n && frm->len > 0) {
+		while (count - frm->len < n && frm->len > 0) {
 			p_indent(level, 0);
-			printf("srv rec #%d\n", cnt++);
-			print_attr_list(level+1, frm);
+			printf("record #%d\n", cnt++);
+			print_attr_list(level + 2, frm);
 		}
 	} else {
 		printf("\nERROR: Unexpected syntax\n");
@@ -477,159 +474,237 @@ static inline void print_attr_lists(int level, struct frame *frm, int len)
 	}
 }
 
-
-static inline void err_rsp(int level, uint16_t tid, uint16_t len, struct frame *frm)
+static inline void print_cont_state(int level, unsigned char *buf)
 {
-	printf("SDP Error Rsp: tid 0x%x len 0x%x\n", tid, len);
+	uint8_t cont = buf[0];
+	int i;
 
-	p_indent(++level, 0);
-	printf("ec 0x%x info ", get_u16(frm));
-	if (frm->len > 0) {
-		raw_dump(0, frm);
-	} else {
-		printf("none\n");
-	}
-}
-
-
-static inline void ss_req(int level, uint16_t tid, uint16_t len, struct frame *frm)
-{
-	printf("SDP SS Req: tid 0x%x len 0x%x\n", tid, len);
-
-	/* Parse ServiceSearchPattern */
-	print_srv_srch_pat(++level, frm);
-
-	/* Parse MaximumServiceRecordCount */
 	p_indent(level, 0);
-	printf("max 0x%x\n", get_u16(frm));
-}
-
-static inline void ss_rsp(int level, uint16_t tid, uint16_t len, struct frame *frm)
-{
-	register int i;
-	uint16_t tot_srv_rec_cnt = get_u16(frm); /* Parse TotalServiceRecordCount */
-	uint16_t cur_srv_rec_cnt = get_u16(frm); /* Parse CurrentServiceRecordCount */
-
-	printf("SDP SS Rsp: tid 0x%x len 0x%x\n", tid, len);
-
-	p_indent(++level, 0);
-	printf("tot 0x%x cur 0x%x", tot_srv_rec_cnt, cur_srv_rec_cnt);
-
-	/* Parse service record handle(s) */
-	if (cur_srv_rec_cnt > 0) {
-		printf(" hndl");
-		for (i = 0; i < cur_srv_rec_cnt; i++) {
-			printf(" 0x%x", get_u32(frm));
-		}
-	}
+	printf("cont");
+	for (i = 0; i < cont + 1; i++)
+		printf(" %2.2X", buf[i]);
 	printf("\n");
 }
 
-static inline void sa_req(int level, uint16_t tid, uint16_t len, struct frame *frm)
+static char *pid2str(uint8_t pid)
 {
-	printf("SDP SA Req: tid 0x%x len 0x%x\n", tid, len);
-
-	/* Parse ServiceRecordHandle */
-	p_indent(++level, 0);
-	printf("hndl 0x%x\n", get_u32(frm));
-
-	/* Parse MaximumAttributeByteCount */
-	p_indent(level, 0);
-	printf("max 0x%x\n", get_u16(frm));
-
-	/* Parse ServiceSearchPattern */
-	print_attr_id_list(level, frm);
+	switch (pid) {
+	case SDP_ERROR_RSP:
+		return "Error Rsp";
+	case SDP_SERVICE_SEARCH_REQ:
+		return "SS Req";
+	case SDP_SERVICE_SEARCH_RSP:
+		return "SS Rsp";
+	case SDP_SERVICE_ATTR_REQ:
+		return "SA Req";
+	case SDP_SERVICE_ATTR_RSP:
+		return "SA Rsp";
+	case SDP_SERVICE_SEARCH_ATTR_REQ:
+		return "SSA Req";
+	case SDP_SERVICE_SEARCH_ATTR_RSP:
+		return "SSA Rsp";
+	default:
+		return "Unknown";
+	}
 }
 
-static inline void sa_rsp(int level, uint16_t tid, uint16_t len, struct frame *frm)
+#define FRAME_TABLE_SIZE 10
+
+static struct frame frame_table[FRAME_TABLE_SIZE];
+
+static int add_frame(struct frame *frm, int count)
 {
-	printf("SDP SA Rsp: tid 0x%x len 0x%x\n", tid, len);
+	register struct frame *fr;
+	register unsigned char *data;
+	register int i, len = 0, pos = -1;
 
-	/* Parse AttributeByteCount */
-	p_indent(++level, 0);
-	printf("cnt 0x%x\n", get_u16(frm));
+	for (i = 0; i < FRAME_TABLE_SIZE; i++) {
+		if (frame_table[i].handle == frm->handle &&
+				frame_table[i].cid == frm->cid) {
+			pos = i;
+			len = frame_table[i].data_len;
+			break;
+		}
+		if (pos < 0 && !frame_table[i].handle)
+			pos = i;
+	}
 
-	/* Parse AttributeList */
-	print_attr_list(level, frm);
+	if (pos < 0 || count <= 0)
+		return -EIO;
+
+	data = malloc(len + count);
+	if (!data)
+		return -ENOMEM;
+
+	fr = &frame_table[pos];
+
+	if (len > 0) {
+		memcpy(data, fr->data, len);
+		memcpy(data + len, frm->ptr, count);
+	} else
+		memcpy(data, frm->ptr, count);
+
+	if (fr->data)
+		free(fr->data);
+
+	fr->data = data;
+	fr->data_len = len + count;
+	fr->len = fr->data_len;
+	fr->ptr = fr->data;
+	fr->in  = frm->in;
+	fr->ts  = frm->ts;
+	fr->handle  = frm->handle;
+	fr->cid     = frm->cid;
+	fr->num     = frm->num;
+	fr->channel = frm->channel;
+
+	return pos;
 }
 
-static inline void ssa_req(int level, uint16_t tid, uint16_t len, struct frame *frm)
+static struct frame *get_frame(struct frame *frm, int count)
 {
-	printf("SDP SSA Req: tid 0x%x len 0x%x\n", tid, len);
+	register int pos;
 
-	/* Parse ServiceSearchPattern */
-	print_srv_srch_pat(++level, frm);
+	pos = add_frame(frm, count);
+	if (pos < 0)
+		return frm;
 
-	/* Parse MaximumAttributeByteCount */
-	p_indent(level, 0);
-	printf("max 0x%x\n", get_u16(frm));
+	frame_table[pos].handle = 0;
 
-	/* Parse AttributeList */
-	print_attr_id_list(level, frm);
-}
-
-static inline void ssa_rsp(int level, uint16_t tid, uint16_t len, struct frame *frm)
-{
-	int cnt;
-	printf("SDP SSA Rsp: tid 0x%x len 0x%x\n", tid, len);
-
-	/* Parse AttributeByteCount */
-	p_indent(++level, 0);
-	cnt = get_u16(frm);
-	printf("cnt 0x%x\n", cnt);
-
-	/* Parse AttributeLists */
-	print_attr_lists(level, frm, cnt);
+	return &frame_table[pos];
 }
 
 void sdp_dump(int level, struct frame *frm)
 {
 	sdp_pdu_hdr *hdr = frm->ptr;
- 	uint16_t tid = ntohs(hdr->tid);
+	uint16_t tid = ntohs(hdr->tid);
 	uint16_t len = ntohs(hdr->len);
+	uint16_t total, count;
+	uint8_t cont;
 
 	frm->ptr += SDP_PDU_HDR_SIZE;
 	frm->len -= SDP_PDU_HDR_SIZE;
 
 	p_indent(level, frm);
+	printf("SDP %s: tid 0x%x len 0x%x\n", pid2str(hdr->pid), tid, len);
 
 	switch (hdr->pid) {
 	case SDP_ERROR_RSP:
-		err_rsp(level, tid, len, frm);
+		p_indent(level + 1, frm);
+		printf("code 0x%x info ", get_u16(frm));
+		if (frm->len > 0)
+			hex_dump(0, frm, frm->len);
+		else
+			printf("none\n");
 		break;
-	case SDP_SERVICE_SEARCH_REQ:
-		ss_req(level, tid, len, frm);
-		break;
-	case SDP_SERVICE_SEARCH_RSP:
-		ss_rsp(level, tid, len, frm);
-		break;
-	case SDP_SERVICE_ATTR_REQ:
-		sa_req(level, tid, len, frm);
-		break;
-	case SDP_SERVICE_ATTR_RSP:
-		sa_rsp(level, tid, len, frm);
-		break;
-	case SDP_SERVICE_SEARCH_ATTR_REQ:
-		ssa_req(level, tid, len, frm);
-		break;
-	case SDP_SERVICE_SEARCH_ATTR_RSP:
-		ssa_rsp(level, tid, len, frm);
-		break;
-	default:
-		printf("ERROR: Unknown PDU ID: 0x%x\n", hdr->pid);
-		raw_dump(++level, frm);
-		return;
-	}
 
-	if (hdr->pid != SDP_ERROR_RSP) {
+	case SDP_SERVICE_SEARCH_REQ:
+		/* Parse ServiceSearchPattern */
+		print_srv_srch_pat(level + 1, frm);
+
+		/* Parse MaximumServiceRecordCount */
+		p_indent(level + 1, frm);
+		printf("max %d\n", get_u16(frm));
+
 		/* Parse ContinuationState */
-		int i;
-		unsigned char *buf = frm->ptr;
-		p_indent(++level, frm);
-		printf("cont ");
-		for (i=0; i < frm->len; i++) {
-			printf("%2.2X ", buf[i]);
+		print_cont_state(level + 1, frm->ptr);
+		break;
+
+	case SDP_SERVICE_SEARCH_RSP:
+		/* Parse TotalServiceRecordCount */
+		total = get_u16(frm);
+
+		/* Parse CurrentServiceRecordCount */
+		count = get_u16(frm);
+		p_indent(level + 1, frm);
+		if (count < total)
+			printf("count %d of %d\n", count, total);
+		else
+			printf("count %d\n", count);
+
+		/* Parse service record handle(s) */
+		if (count > 0) {
+			int i;
+			p_indent(level + 1, frm);
+			printf("handle%s", count > 1 ? "s" : "");
+			for (i = 0; i < count; i++)
+				printf(" 0x%x", get_u32(frm));
+			printf("\n");
 		}
-		printf("\n");
+
+		/* Parse ContinuationState */
+		print_cont_state(level + 1, frm->ptr);
+		break;
+
+	case SDP_SERVICE_ATTR_REQ:
+		/* Parse ServiceRecordHandle */
+		p_indent(level + 1, frm);
+		printf("handle 0x%x\n", get_u32(frm));
+
+		/* Parse MaximumAttributeByteCount */
+		p_indent(level + 1, frm);
+		printf("max %d\n", get_u16(frm));
+
+		/* Parse ServiceSearchPattern */
+		print_attr_id_list(level + 1, frm);
+
+		/* Parse ContinuationState */
+		print_cont_state(level + 1, frm->ptr);
+		break;
+
+	case SDP_SERVICE_ATTR_RSP:
+		/* Parse AttributeByteCount */
+		count = get_u16(frm);
+		p_indent(level + 1, frm);
+		printf("count %d\n", count);
+
+		/* Parse ContinuationState */
+		cont = *(unsigned char *)(frm->ptr + count);
+
+		if (cont == 0) {
+			/* Parse AttributeList */
+			print_attr_list(level + 1, get_frame(frm, count));
+		} else
+			add_frame(frm, count);
+
+		print_cont_state(level + 1, frm->ptr + count);
+		break;
+
+	case SDP_SERVICE_SEARCH_ATTR_REQ:
+		/* Parse ServiceSearchPattern */
+		print_srv_srch_pat(level + 1, frm);
+
+		/* Parse MaximumAttributeByteCount */
+		p_indent(level + 1, frm);
+		printf("max %d\n", get_u16(frm));
+
+		/* Parse AttributeList */
+		print_attr_id_list(level + 1, frm);
+
+		/* Parse ContinuationState */
+		print_cont_state(level + 1, frm->ptr);
+		break;
+
+	case SDP_SERVICE_SEARCH_ATTR_RSP:
+		/* Parse AttributeByteCount */
+		count = get_u16(frm);
+		p_indent(level + 1, frm);
+		printf("count %d\n", count);
+
+		/* Parse ContinuationState */
+		cont = *(unsigned char *)(frm->ptr + count);
+
+		if (cont == 0) {
+			/* Parse AttributeLists */
+			print_attr_lists(level + 1, get_frame(frm, count));
+		} else
+			add_frame(frm, count);
+
+		print_cont_state(level + 1, frm->ptr + count);
+		break;
+
+	default:
+		raw_dump(level + 1, frm);
+		break;
 	}
 }
