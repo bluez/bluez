@@ -89,9 +89,10 @@ enum {
 	KILL
 } modes;
 
-static void run_devup(char *dev, char *dst)
+static void run_devup(char *dev, char *dst, int sk, int nsk)
 {
 	char *argv[4], prog[40];
+	struct sigaction sa;
 
 	sprintf(prog, "%s/%s", PAND_CONFIG_DIR, PAND_DEVUP_CMD);
 
@@ -100,6 +101,17 @@ static void run_devup(char *dev, char *dst)
 
 	if (fork())
 		return;
+
+	if (sk >= 0)
+		close(sk);
+
+	if (nsk >= 0)
+		close(nsk);
+	
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = SIG_DFL;
+	sigaction(SIGCHLD, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
 
 	argv[0] = prog;
 	argv[1] = dev;
@@ -190,7 +202,7 @@ static int do_listen(void)
 
 			syslog(LOG_INFO, "New connection from %s %s", str, netdev);
 
-			run_devup(netdev, str);
+			run_devup(netdev, str, sk, nsk);
 		} else {
 			syslog(LOG_ERR, "Connection failed. %s(%d)",
 					strerror(errno), errno);
@@ -281,7 +293,7 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 
 		syslog(LOG_INFO, "%s connected", netdev);
 
-		run_devup(netdev, dst);
+		run_devup(netdev, dst, sk, -1);
 
 		if (persist) {
 			w4_hup(sk);
