@@ -1,23 +1,30 @@
 /*
-  pand - Bluetooth PAN daemon for BlueZ
-  Copyright (C) 2002 Maxim Krasnyansky <maxk@qualcomm.com>
-
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License, version 2, as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
-*/
-
-/*
- * $Id$
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
+ *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
+ *
+ *
+ *  $Id$
  */
 
 #ifdef HAVE_CONFIG_H
@@ -45,8 +52,8 @@
 
 #include "pand.h"
 
-static uint16_t role = BNEP_SVC_PANU;   // Local role (ie service)
-static uint16_t service = BNEP_SVC_NAP; // Remote service
+static uint16_t role = BNEP_SVC_PANU;	/* Local role (ie service) */
+static uint16_t service = BNEP_SVC_NAP;	/* Remote service */
 
 static int  detach = 1;
 static int  persist;
@@ -106,7 +113,7 @@ static int do_listen(void)
 	if (use_sdp)
 		bnep_sdp_register(role);
 
-	// Create L2CAP socket and bind it to PSM BNEP
+	/* Create L2CAP socket and bind it to PSM BNEP */
 	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (sk < 0) {
 		syslog(LOG_ERR, "Cannot create L2CAP socket. %s(%d)",
@@ -290,7 +297,7 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 		} else
 			cache.valid--;
 	}
-	
+
 	return r;
 }
 
@@ -460,17 +467,17 @@ int main(int argc, char **argv)
 			detach = 0;
 			dst  = strdup(optarg);
 			break;
-	
+
 		case 'K':
 			mode = KILL;
 			detach = 0;
 			dst  = NULL;
 			break;
-			
+
 		case 'S':
 			src = strdup(optarg);
 			break;
-	
+
 		case 'r':
 			bnep_str2svc(optarg, &role);
 			break;
@@ -494,7 +501,7 @@ int main(int argc, char **argv)
 		case 'i':
 			strcpy(netdev, optarg);
 			break;
-		
+
 		case 'n':
 			detach = 0;
 			break;
@@ -536,7 +543,7 @@ int main(int argc, char **argv)
 	case KILL:
 		do_kill(dst);
 		return 0;
-	
+
 	case NONE:
 		printf(main_help);
 		return 0;
@@ -589,7 +596,7 @@ int main(int argc, char **argv)
 		str2ba(dst, &cache.bdaddr);
 		cache.valid = 1;
 	}
-	
+
 	switch (mode) {
 	case CONNECT:
 		do_connect();

@@ -1,23 +1,30 @@
 /*
-  dund - Bluetooth LAN/DUN daemon for BlueZ
-  Copyright (C) 2002 Maxim Krasnyansky <maxk@qualcomm.com>
-	
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License, version 2, as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
-*/
-
-/*
- * $Id$
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
+ *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
+ *
+ *
+ *  $Id$
  */
 
 #ifdef HAVE_CONFIG_H
@@ -101,7 +108,7 @@ static int do_listen(void)
 	if (use_sdp)
 		dun_sdp_register(channel);
 
-	// Create RFCOMM socket
+	/* Create RFCOMM socket */
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sk < 0) {
 		syslog(LOG_ERR, "Cannot create RFCOMM socket. %s(%d)",
@@ -179,7 +186,7 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 	if (use_cache && cache.valid && cache.channel) {
 		/* Use cached channel */
 		ch = cache.channel;
-	
+
 	} else if (!channel) {
 		syslog(LOG_INFO, "Searching for %s on %s", "LAP", dst);
 
@@ -404,21 +411,21 @@ int main(int argc, char **argv)
 			detach = 0;
 			dst  = strdup(optarg);
 			break;
-	
+
 		case 'K':
 			mode = KILL;
 			detach = 0;
 			dst  = NULL;
 			break;
-	
+
 		case 'P':
 			channel = atoi(optarg);
 			break;
-			
+
 		case 'S':
 			src = strdup(optarg);
 			break;
-	
+
 		case 'D':
 			use_sdp = 0;
 			break;
@@ -515,7 +522,7 @@ int main(int argc, char **argv)
 		int fd;
 
 		if (fork()) exit(0);
-		
+
 		/* Direct stdin,stdout,stderr to '/dev/null' */
 		fd = open("/dev/null", O_RDWR);
 		dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
