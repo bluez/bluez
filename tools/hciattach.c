@@ -842,6 +842,9 @@ struct uart_t uart[] = {
 	/* AmbiCom BT2000C Bluetooth PC/CF Card */
 	{ "bt2000c",  0x022d, 0x2000, HCI_UART_H4,    57600, 460800, FLOW_CTL, csr  },
 
+	/* Zoom Bluetooth PCMCIA Card */
+	{ "zoom",     0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        bcsp  },
+
 	{ NULL, 0 }
 };
 
