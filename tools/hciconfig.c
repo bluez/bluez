@@ -545,8 +545,8 @@ void cmd_class(int ctl, int hdev, char *opt)
 		printf("\tService Classes: ");
 		if (rp.dev_class[2]) {
 			int first = 1;
-			for(s=0; s < 8; s++)
-				if (rp.dev_class[2] & (2 << s)) {
+			for(s=0; s < sizeof(services); s++)
+				if (rp.dev_class[2] & (1 << s)) {
 					if (!first)
 						printf(", ");
 					printf(services[s]);
@@ -558,7 +558,7 @@ void cmd_class(int ctl, int hdev, char *opt)
 		if (rp.dev_class[1] > sizeof(major_devices))
 			printf("Invalid Device Class!\n");
 		else
-			printf("%s/%s\n", major_devices[rp.dev_class[1]], 
+			printf("%s, %s\n", major_devices[rp.dev_class[1]], 
 				get_minor_device_name(rp.dev_class[1], 
 					rp.dev_class[0] / 4));
 	}
