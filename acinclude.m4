@@ -122,6 +122,42 @@ AC_DEFUN([AC_PATH_OPENOBEX], [
 	AC_SUBST(OPENOBEX_LIBS)
 ])
 
+AC_DEFUN([AC_PATH_ALSA], [
+	alsa_prefix=${prefix}
+
+	AC_ARG_WITH(alsa, AC_HELP_STRING([--with-alsa=DIR], [ALSA library is installed in DIR]), [
+		if (test "${withval}" != "yes"); then
+			alsa_prefix=${withval}
+		fi
+	])
+
+	ac_save_CPPFLAGS=$CPPFLAGS
+	ac_save_LDFLAGS=$LDFLAGS
+
+	ALSA_CFLAGS=""
+	test -d "${alsa_prefix}/include" && ALSA_CFLAGS="$ALSA_CFLAGS -I${alsa_prefix}/include"
+
+	CPPFLAGS="$CPPFLAGS $ALSA_CFLAGS"
+	AC_CHECK_HEADER(alsa/version.h, alsa_found=yes, alsa_found=no)
+
+	ALSA_LIBS=""
+	if (test "${prefix}" = "${alsa_prefix}"); then
+		test -d "${libdir}" && ALSA_LIBS="$ALSA_LIBS -L${libdir}"
+	else
+		test -d "${alsa_prefix}/lib64" && ALSA_LIBS="$ALSA_LIBS -L${alsa_prefix}/lib64"
+		test -d "${alsa_prefix}/lib" && ALSA_LIBS="$ALSA_LIBS -L${alsa_prefix}/lib"
+	fi
+
+	LDFLAGS="$LDFLAGS $ALSA_LIBS"
+	AC_CHECK_LIB(asound, snd_ctl_open, ALSA_LIBS="$ALSA_LIBS -lasound", alsa_found=no)
+
+	CPPFLAGS=$ac_save_CPPFLAGS
+	LDFLAGS=$ac_save_LDFLAGS
+
+	AC_SUBST(ALSA_CFLAGS)
+	AC_SUBST(ALSA_LIBS)
+])
+
 AC_DEFUN([AC_PATH_USB], [
 	usb_prefix=${prefix}
 
@@ -206,6 +242,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	debug_enable=no
 	pie_enable=no
 	obex_enable=${openobex_found}
+	alsa_enable=no
 	dbus_enable=${dbus_found}
 	test_enable=no
 	cups_enable=no
@@ -225,6 +262,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		obex_enable=${enableval}
+		alsa_enable=${enableval}
 		dbus_enable=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
@@ -239,10 +277,14 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		obex_enable=${enableval}
 	])
 
+	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
+		alsa_enable=${enableval}
+	])
+
 	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
 		dbus_enable=${enableval}
 	])
-		
+
 	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
 		test_enable=${enableval}
 	])
@@ -250,7 +292,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(cups, AC_HELP_STRING([--enable-cups], [install CUPS backend support]), [
 		cups_enable=${enableval}
 	])
-		
+
 	AC_ARG_ENABLE(pcmcia, AC_HELP_STRING([--enable-pcmcia], [install PCMCIA configuration files ]), [
 		pcmcia_enable=${enableval}
 	])
@@ -281,6 +323,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
+	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
 	AM_CONDITIONAL(DBUS, test "${dbus_enable}" = "yes" && test "${dbus_found}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
