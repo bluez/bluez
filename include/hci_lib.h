@@ -66,7 +66,6 @@ int hci_devinfo(int dev_id, struct hci_dev_info *di);
 int hci_devba(int dev_id, bdaddr_t *bdaddr);
 int hci_devid(const char *str);
 
-/* deprecated: preserve compatibility */
 int hci_read_local_name(int dd, int len, char *name, int to);
 int hci_write_local_name(int dd, const char *name, int to);
 int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to);
@@ -83,7 +82,6 @@ int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to);
 int hci_authenticate_link(int dd, uint16_t handle, int to);
 int hci_encrypt_link(int dd, uint16_t handle, uint8_t encrypt, int to);
 int hci_change_link_key(int dd, uint16_t handle, int to);
-/* role == 0 is master, 1 is slave */
 int hci_switch_role(int dd, bdaddr_t *bdaddr, uint8_t role, int to);
 int hci_park_mode(int dd, uint16_t handle, uint16_t max_interval, uint16_t min_interval, int to);
 int hci_exit_park_mode(int dd, uint16_t handle, int to);
