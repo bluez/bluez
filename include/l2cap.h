@@ -48,7 +48,7 @@ struct sockaddr_l2 {
 	bdaddr_t	l2_bdaddr;
 };
 
-/* Socket options */
+/* L2CAP socket options */
 #define L2CAP_OPTIONS	0x01
 struct l2cap_options {
 	uint16_t omtu;

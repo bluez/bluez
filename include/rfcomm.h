@@ -49,6 +49,14 @@ struct sockaddr_rc {
 	uint8_t		rc_channel;
 };
 
+/* RFCOMM socket options */
+#define RFCOMM_LM	0x03
+#define RFCOMM_LM_MASTER	0x0001
+#define RFCOMM_LM_AUTH		0x0002
+#define RFCOMM_LM_ENCRYPT	0x0004
+#define RFCOMM_LM_TRUSTED	0x0008
+#define RFCOMM_LM_RELIABLE	0x0010
+
 /* RFCOMM TTY support */
 #define RFCOMM_MAX_DEV	256
 
