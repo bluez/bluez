@@ -88,10 +88,10 @@ bin_PROGRAMS = hcitool l2ping
 
 man_MANS = hciattach.8 l2ping.8
 
-CLEANFILES = l2test.o l2test
+noinst_PROGRAMS = l2test scotest
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
-PROGRAMS =  $(bin_PROGRAMS) $(sbin_PROGRAMS)
+PROGRAMS =  $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 
 
 DEFS = @DEFS@ -I. -I$(srcdir) 
@@ -108,6 +108,16 @@ l2ping_OBJECTS =  l2ping.o
 l2ping_LDADD = $(LDADD)
 l2ping_DEPENDENCIES = 
 l2ping_LDFLAGS = 
+l2test_SOURCES = l2test.c
+l2test_OBJECTS =  l2test.o
+l2test_LDADD = $(LDADD)
+l2test_DEPENDENCIES = 
+l2test_LDFLAGS = 
+scotest_SOURCES = scotest.c
+scotest_OBJECTS =  scotest.o
+scotest_LDADD = $(LDADD)
+scotest_DEPENDENCIES = 
+scotest_LDFLAGS = 
 hciattach_SOURCES = hciattach.c
 hciattach_OBJECTS =  hciattach.o
 hciattach_LDADD = $(LDADD)
@@ -134,9 +144,9 @@ DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 TAR = gtar
 GZIP_ENV = --best
 DEP_FILES =  .deps/hciattach.P .deps/hciconfig.P .deps/hcitool.P \
-.deps/l2ping.P
-SOURCES = hcitool.c l2ping.c hciattach.c hciconfig.c
-OBJECTS = hcitool.o l2ping.o hciattach.o hciconfig.o
+.deps/l2ping.P .deps/l2test.P .deps/scotest.P
+SOURCES = hcitool.c l2ping.c l2test.c scotest.c hciattach.c hciconfig.c
+OBJECTS = hcitool.o l2ping.o l2test.o scotest.o hciattach.o hciconfig.o
 
 all: all-redirect
 .SUFFIXES:
@@ -173,6 +183,15 @@ uninstall-binPROGRAMS:
 	list='$(bin_PROGRAMS)'; for p in $$list; do \
 	  rm -f $(DESTDIR)$(bindir)/`echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'`; \
 	done
+
+mostlyclean-noinstPROGRAMS:
+
+clean-noinstPROGRAMS:
+	-test -z "$(noinst_PROGRAMS)" || rm -f $(noinst_PROGRAMS)
+
+distclean-noinstPROGRAMS:
+
+maintainer-clean-noinstPROGRAMS:
 
 mostlyclean-sbinPROGRAMS:
 
@@ -222,6 +241,14 @@ hcitool: $(hcitool_OBJECTS) $(hcitool_DEPENDENCIES)
 l2ping: $(l2ping_OBJECTS) $(l2ping_DEPENDENCIES)
 	@rm -f l2ping
 	$(LINK) $(l2ping_LDFLAGS) $(l2ping_OBJECTS) $(l2ping_LDADD) $(LIBS)
+
+l2test: $(l2test_OBJECTS) $(l2test_DEPENDENCIES)
+	@rm -f l2test
+	$(LINK) $(l2test_LDFLAGS) $(l2test_OBJECTS) $(l2test_LDADD) $(LIBS)
+
+scotest: $(scotest_OBJECTS) $(scotest_DEPENDENCIES)
+	@rm -f scotest
+	$(LINK) $(scotest_LDFLAGS) $(scotest_OBJECTS) $(scotest_LDADD) $(LIBS)
 
 hciattach: $(hciattach_OBJECTS) $(hciattach_DEPENDENCIES)
 	@rm -f hciattach
@@ -370,7 +397,7 @@ install-am: all-am
 install: install-am
 uninstall-am: uninstall-binPROGRAMS uninstall-sbinPROGRAMS uninstall-man
 uninstall: uninstall-am
-all-am: Makefile $(PROGRAMS) $(MANS) all-local
+all-am: Makefile $(PROGRAMS) $(MANS)
 all-redirect: all-am
 install-strip:
 	$(MAKE) $(AM_MAKEFLAGS) AM_INSTALL_PROGRAM_FLAGS=-s install
@@ -382,31 +409,32 @@ installdirs:
 mostlyclean-generic:
 
 clean-generic:
-	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-rm -f Makefile $(CONFIG_CLEAN_FILES)
 	-rm -f config.cache config.log stamp-h stamp-h[0-9]*
 
 maintainer-clean-generic:
-mostlyclean-am:  mostlyclean-binPROGRAMS mostlyclean-sbinPROGRAMS \
-		mostlyclean-compile mostlyclean-tags mostlyclean-depend \
-		mostlyclean-generic
+mostlyclean-am:  mostlyclean-binPROGRAMS mostlyclean-noinstPROGRAMS \
+		mostlyclean-sbinPROGRAMS mostlyclean-compile \
+		mostlyclean-tags mostlyclean-depend mostlyclean-generic
 
 mostlyclean: mostlyclean-am
 
-clean-am:  clean-binPROGRAMS clean-sbinPROGRAMS clean-compile clean-tags \
-		clean-depend clean-generic mostlyclean-am
+clean-am:  clean-binPROGRAMS clean-noinstPROGRAMS clean-sbinPROGRAMS \
+		clean-compile clean-tags clean-depend clean-generic \
+		mostlyclean-am
 
 clean: clean-am
 
-distclean-am:  distclean-binPROGRAMS distclean-sbinPROGRAMS \
-		distclean-compile distclean-tags distclean-depend \
-		distclean-generic clean-am
+distclean-am:  distclean-binPROGRAMS distclean-noinstPROGRAMS \
+		distclean-sbinPROGRAMS distclean-compile distclean-tags \
+		distclean-depend distclean-generic clean-am
 
 distclean: distclean-am
 
 maintainer-clean-am:  maintainer-clean-binPROGRAMS \
+		maintainer-clean-noinstPROGRAMS \
 		maintainer-clean-sbinPROGRAMS maintainer-clean-compile \
 		maintainer-clean-tags maintainer-clean-depend \
 		maintainer-clean-generic distclean-am
@@ -417,6 +445,8 @@ maintainer-clean: maintainer-clean-am
 
 .PHONY: mostlyclean-binPROGRAMS distclean-binPROGRAMS clean-binPROGRAMS \
 maintainer-clean-binPROGRAMS uninstall-binPROGRAMS install-binPROGRAMS \
+mostlyclean-noinstPROGRAMS distclean-noinstPROGRAMS \
+clean-noinstPROGRAMS maintainer-clean-noinstPROGRAMS \
 mostlyclean-sbinPROGRAMS distclean-sbinPROGRAMS clean-sbinPROGRAMS \
 maintainer-clean-sbinPROGRAMS uninstall-sbinPROGRAMS \
 install-sbinPROGRAMS mostlyclean-compile distclean-compile \
@@ -426,15 +456,10 @@ clean-tags maintainer-clean-tags distdir mostlyclean-depend \
 distclean-depend clean-depend maintainer-clean-depend info-am info \
 dvi-am dvi check check-am installcheck-am installcheck install-exec-am \
 install-exec install-data-am install-data install-am install \
-uninstall-am uninstall all-local all-redirect all-am all installdirs \
+uninstall-am uninstall all-redirect all-am all installdirs \
 mostlyclean-generic distclean-generic clean-generic \
 maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 
-
-all-local: l2test
-
-l2test: l2test.o
-	$(LINK) l2test.o $(LDFLAGS) $(LIBS)
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

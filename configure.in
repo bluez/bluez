@@ -82,9 +82,12 @@ if test "$cross_compiling" != yes; then
 fi
 
 dnl Check for PCMCIA 
-if test "$cross_compiling" != yes; then
-   AC_TEST_DIR(/etc/pcmcia, PCMCIA=pcmcia, PCMCIA=)
-fi
+AC_ARG_ENABLE(pcmcia,
+    --enable-pcmcia Always install PCMCIA support files,
+    [PCMCIA=pcmcia],
+    [ if test "$cross_compiling" != yes; then
+           AC_TEST_DIR(/etc/pcmcia, PCMCIA=pcmcia, PCMCIA=)
+    fi ])
 
 AC_ADD_DIRLEVEL(CFLAGS CPPFLAGS LDFLAGS LIBS)
 
