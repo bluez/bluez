@@ -608,7 +608,7 @@ static void cmd_class(int ctl, int hdev, char *opt)
 		if ((cls[1] & 0x1f) > sizeof(*major_devices))
 			printf("Invalid Device Class!\n");
 		else
-			printf("%s, %s\n", major_devices[cls[1] & 0x1f], 
+			printf("%s, %s\n", major_devices[cls[1] & 0x1f],
 				get_minor_device_name(cls[1] & 0x1f, cls[0] >> 2));
 	}
 }
@@ -743,8 +743,8 @@ static void cmd_inq_parms(int ctl, int hdev, char *opt)
 		rq.cparam = &cp;
 		rq.clen = WRITE_INQ_ACTIVITY_CP_SIZE;
 
-		cp.window = htobs((uint16_t)window);
-		cp.interval = htobs((uint16_t)interval);
+		cp.window = htobs((uint16_t) window);
+		cp.interval = htobs((uint16_t) interval);
 
 		if (window < 0x12 || window > 0x1000)
 			printf("Warning: inquiry window out of range!\n");
@@ -812,8 +812,8 @@ static void cmd_page_parms(int ctl, int hdev, char *opt)
 		rq.cparam = &cp;
 		rq.clen = WRITE_PAGE_ACTIVITY_CP_SIZE;
 
-		cp.window = htobs((uint16_t)window);
-		cp.interval = htobs((uint16_t)interval);
+		cp.window = htobs((uint16_t) window);
+		cp.interval = htobs((uint16_t) interval);
 
 		if (window < 0x12 || window > 0x1000)
 			printf("Warning: page window out of range!\n");
@@ -881,7 +881,7 @@ static void cmd_page_to(int ctl, int hdev, char *opt)
 		rq.cparam = &cp;
 		rq.clen = WRITE_PAGE_TIMEOUT_CP_SIZE;
 
-		cp.timeout = htobs((uint16_t)timeout);
+		cp.timeout = htobs((uint16_t) timeout);
 
 		if (timeout < 0x01 || timeout > 0xFFFF)
 			printf("Warning: page timeout out of range!\n");
