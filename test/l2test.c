@@ -76,8 +76,8 @@ static long data_size = 0;
 static bdaddr_t bdaddr;
 static unsigned short psm = 10;
 
-/* Default number of frames to send */
-static int num_frames = -1; // Infinite
+/* Default number of frames to send (-1 = infinite) */
+static int num_frames = -1;
 
 static int master = 0;
 static int auth = 0;
@@ -166,46 +166,58 @@ static void hexdump(char *s, unsigned long l)
 
 static int do_connect(char *svr)
 {
-	struct sockaddr_l2 rem_addr, loc_addr;
+	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
 	struct l2cap_conninfo conn;
-	int s, opt;
+	socklen_t optlen;
+	int sk, opt;
 
-	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0) {
-		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
+	/* Create socket */
+	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't create socket: %s (%d)",
+							strerror(errno), errno);
 		return -1;
 	}
 
-	memset(&loc_addr, 0, sizeof(loc_addr));
-	loc_addr.l2_family = AF_BLUETOOTH;
-	bacpy(&loc_addr.l2_bdaddr, &bdaddr);
-	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
-		exit(1);
+	/* Bind to local address */
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, &bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	/* Get default options */
 	memset(&opts, 0, sizeof(opts));
-	opt = sizeof(opts);
-	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get default L2CAP options: %s (%d)", strerror(errno), errno);
-		return -1;	
+	optlen = sizeof(opts);
+
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get default L2CAP options: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	/* Set new options */
 	opts.omtu = omtu;
 	opts.imtu = imtu;
-	if (setsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, opt) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)", strerror(errno), errno);
-		return -1;
+
+	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
+		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	/* Enable SO_LINGER */
 	if (linger) {
 		struct linger l = { .l_onoff = 1, .l_linger = linger };
-		if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+
+		if (setsockopt(sk, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
 			syslog(LOG_ERR, "Can't enable SO_LINGER: %s (%d)",
-				strerror(errno), errno);
+							strerror(errno), errno);
 			return -1;
 		}
 	}
@@ -215,63 +227,82 @@ static int do_connect(char *svr)
 	if (reliable)
 		opt |= L2CAP_LM_RELIABLE;
 
-	if (setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP link mode: %s (%d)", strerror(errno), errno);
-		exit(1);
+	if (setsockopt(sk, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
+		syslog(LOG_ERR, "Can't set L2CAP link mode: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
-	memset(&rem_addr, 0, sizeof(rem_addr));
-	rem_addr.l2_family = AF_BLUETOOTH;
-	str2ba(svr, &rem_addr.l2_bdaddr);
-	rem_addr.l2_psm = htobs(psm);
-	if (connect(s, (struct sockaddr *) &rem_addr, sizeof(rem_addr)) < 0 ) {
-		syslog(LOG_ERR, "Can't connect: %s (%d)", strerror(errno), errno);
-		close(s);
-		return -1;
+	/* Connect to remote device */
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	str2ba(svr, &addr.l2_bdaddr);
+	addr.l2_psm = htobs(psm);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0 ) {
+		syslog(LOG_ERR, "Can't connect: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
+	/* Get current options */
 	memset(&opts, 0, sizeof(opts));
-	opt = sizeof(opts);
-	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get L2CAP options: %s (%d)", strerror(errno), errno);
-		close(s);
-		return -1;
+	optlen = sizeof(opts);
+
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get L2CAP options: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
+	/* Get connection information */
 	memset(&conn, 0, sizeof(conn));
-	opt = sizeof(conn);
-	if (getsockopt(s, SOL_L2CAP, L2CAP_CONNINFO, &conn, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get L2CAP connection information: %s (%d)", strerror(errno), errno);
-		close(s);
-		return -1;
+	optlen = sizeof(conn);
+
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &conn, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get L2CAP connection information: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
-	syslog(LOG_INFO, "Connected [imtu %d, omtu %d, flush_to %d, mode %d, handle %d, class 0x%02x%02x%02x]",
+	syslog(LOG_INFO, "Connected [imtu %d, omtu %d, flush_to %d, "
+				"mode %d, handle %d, class 0x%02x%02x%02x]",
 		opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
 		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
-	return s;
+	return sk;
+
+error:
+	close(sk);
+	return -1;
 }
 
 static void do_listen(void (*handler)(int sk))
 {
-	struct sockaddr_l2 loc_addr, rem_addr;
+	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
 	struct l2cap_conninfo conn;
-	int s, s1, opt;
+	socklen_t optlen;
+	int sk, nsk, opt;
 	char ba[18];
 
-	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0) {
-		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
+	/* Create socket */
+	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't create socket: %s (%d)",
+							strerror(errno), errno);
 		exit(1);
 	}
 
-	loc_addr.l2_family = AF_BLUETOOTH;
-	bacpy(&loc_addr.l2_bdaddr, &bdaddr);
-	loc_addr.l2_psm = htobs(psm);
-	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
-		exit(1);
+	/* Bind to local address */
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, &bdaddr);
+	addr.l2_psm = htobs(psm);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	/* Set link mode */
@@ -287,138 +318,166 @@ static void do_listen(void (*handler)(int sk))
 	if (secure)
 		opt |= L2CAP_LM_SECURE;
 
-	if (opt && setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP link mode: %s (%d)", strerror(errno), errno);
-		exit(1);
+	if (opt && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
+		syslog(LOG_ERR, "Can't set L2CAP link mode: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	/* Get default options */
-	opt = sizeof(opts);
-	if (getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get default L2CAP options: %s (%d)", strerror(errno), errno);
-		exit(1);
+	memset(&opts, 0, sizeof(opts));
+	optlen = sizeof(opts);
+
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get default L2CAP options: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	/* Set new options */
 	opts.imtu = imtu;
-	if (setsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, opt) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)", strerror(errno), errno);
-		exit(1);
+
+	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
+		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	if (socktype == SOCK_DGRAM) {
-		handler(s);
+		handler(sk);
 		return;
 	}
 
-	if (listen(s, 10)) {
-		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)", strerror(errno), errno);
-		exit(1);
+	/* Listen for connections */
+	if (listen(sk, 10)) {
+		syslog(LOG_ERR, "Can not listen on the socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
-	syslog(LOG_INFO,"Waiting for connection on psm %d ...", psm);
+	syslog(LOG_INFO, "Waiting for connection on psm %d ...", psm);
 
 	while(1) {
-		opt = sizeof(rem_addr);
-		if ((s1 = accept(s, (struct sockaddr *) &rem_addr, &opt)) < 0) {
-			syslog(LOG_ERR,"Accept failed: %s (%d)", strerror(errno), errno);
-			exit(1);
+		memset(&addr, 0, sizeof(addr));
+		optlen = sizeof(addr);
+
+		nsk = accept(sk, (struct sockaddr *) &addr, &optlen);
+		if (nsk < 0) {
+			syslog(LOG_ERR, "Accept failed: %s (%d)",
+							strerror(errno), errno);
+			goto error;
 		}
 		if (fork()) {
 			/* Parent */
-			close(s1);
+			close(nsk);
 			continue;
 		}
 		/* Child */
+		close(sk);
 
-		close(s);
-
+		/* Get current options */
 		memset(&opts, 0, sizeof(opts));
-		opt = sizeof(opts);
-		if (getsockopt(s1, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0) {
-			syslog(LOG_ERR, "Can't get L2CAP options: %s (%d)", strerror(errno), errno);
-			close(s1);
-			exit(1);
+		optlen = sizeof(opts);
+
+		if (getsockopt(nsk, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen) < 0) {
+			syslog(LOG_ERR, "Can't get L2CAP options: %s (%d)",
+							strerror(errno), errno);
+			close(nsk);
+			goto error;
 		}
 
+		/* Get connection information */
 		memset(&conn, 0, sizeof(conn));
-		opt = sizeof(conn);
-		if (getsockopt(s1, SOL_L2CAP, L2CAP_CONNINFO, &conn, &opt) < 0) {
-			syslog(LOG_ERR, "Can't get L2CAP connection information: %s (%d)", strerror(errno), errno);
-			close(s1);
-			exit(1);
+		optlen = sizeof(conn);
+
+		if (getsockopt(nsk, SOL_L2CAP, L2CAP_CONNINFO, &conn, &optlen) < 0) {
+			syslog(LOG_ERR, "Can't get L2CAP connection information: %s (%d)",
+							strerror(errno), errno);
+			close(nsk);
+			goto error;
 		}
 
-		ba2str(&rem_addr.l2_bdaddr, ba);
-		syslog(LOG_INFO, "Connect from %s [imtu %d, omtu %d, flush_to %d, mode %d, handle %d, class 0x%02x%02x%02x]\n",
+		ba2str(&addr.l2_bdaddr, ba);
+		syslog(LOG_INFO, "Connect from %s [imtu %d, omtu %d, flush_to %d, "
+				"	mode %d, handle %d, class 0x%02x%02x%02x]",
 			ba, opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
 			conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
 		/* Enable SO_LINGER */
 		if (linger) {
 			struct linger l = { .l_onoff = 1, .l_linger = linger };
-			if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+
+			if (setsockopt(nsk, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
 				syslog(LOG_ERR, "Can't enable SO_LINGER: %s (%d)",
-					strerror(errno), errno);
-				exit(1);
+							strerror(errno), errno);
+				close(nsk);
+				goto error;
 			}
 		}
 
-		handler(s1);
+		handler(nsk);
 
 		syslog(LOG_INFO, "Disconnect: %m");
 		exit(0);
 	}
+
+	return;
+
+error:
+	close(sk);
+	exit(1);
 }
 
-static void dump_mode(int s)
+static void dump_mode(int sk)
 {
-	int len;
-	int opt, optl;
+	socklen_t optlen;
+	int opt, len;
 
 	syslog(LOG_INFO, "Receiving ...");
 	while (1) {
 		fd_set rset;
 
 		FD_ZERO(&rset);
-		FD_SET(s, &rset);
+		FD_SET(sk, &rset);
 
-		if (select(s + 1, &rset, NULL, NULL, NULL) < 0)
+		if (select(sk + 1, &rset, NULL, NULL, NULL) < 0)
 			return;
 
-		if (!FD_ISSET(s, &rset))
+		if (!FD_ISSET(sk, &rset))
 			continue;
 
-		len = read(s, buf, data_size);
+		len = read(sk, buf, data_size);
 		if (len <= 0) {
 			if (len < 0) {
 				if (reliable && (errno == ECOMM)) {
-					syslog(LOG_INFO, "L2CAP Error ECOMM - clearing error and continuing.\n");
-					optl = sizeof(opt);
-					if (getsockopt(s, SOL_SOCKET, SO_ERROR, &opt, &optl ) < 0) { // Clear error
-						syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s (%d)\n",
+					syslog(LOG_INFO, "L2CAP Error ECOMM - clearing error and continuing.");
+					optlen = sizeof(opt);
+					if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &opt, &optlen) < 0) {
+						syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s (%d)",
 							strerror(errno), errno);
 						return;
 					}
 					continue;
 				} else {
-					syslog(LOG_ERR, "Read error: %s(%d)\n", strerror(errno), errno);
+					syslog(LOG_ERR, "Read error: %s(%d)",
+							strerror(errno), errno);
 				}
 			}
 			return;
 		}
 
-		syslog(LOG_INFO, "Recevied %d bytes\n", len);
+		syslog(LOG_INFO, "Recevied %d bytes", len);
 		hexdump(buf,len);
 	}
 }
 
-static void recv_mode(int s)
+static void recv_mode(int sk)
 {
 	struct timeval tv_beg,tv_end,tv_diff;
 	long total;
 	uint32_t seq;
-	int opt, optl;
+	socklen_t optlen;
+	int opt;
 
 	syslog(LOG_INFO,"Receiving ...");
 
@@ -431,19 +490,19 @@ static void recv_mode(int s)
 			uint16_t l;
 			int i, r;
 
-			if ((r = recv(s, buf, data_size, 0)) <= 0) {
+			if ((r = recv(sk, buf, data_size, 0)) <= 0) {
 				if (r < 0) {
 					if (reliable && (errno == ECOMM)) {
 						syslog(LOG_INFO, "L2CAP Error ECOMM - clearing error and continuing.\n");
-						optl = sizeof(opt);
-						if (getsockopt(s, SOL_SOCKET, SO_ERROR, &opt, &optl ) < 0) { // Clear error
-							syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s (%d)\n",
+						optlen = sizeof(opt);
+						if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &opt, &optlen) < 0) {
+							syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s (%d)",
 								strerror(errno), errno);
 							return;
 						}
 						continue;
 					} else {
-						syslog(LOG_ERR, "Read failed. %s(%d)",
+						syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
 					}
 				}
@@ -482,7 +541,7 @@ static void recv_mode(int s)
 	}
 }
 
-static void send_mode(int s)
+static void send_mode(int sk)
 {
 	uint32_t seq;
 	int i;
@@ -498,20 +557,20 @@ static void send_mode(int s)
 		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
 
-		if (send(s, buf, data_size, 0) <= 0) {
+		if (send(sk, buf, data_size, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
 	}
 
 	syslog(LOG_INFO, "Closing channel ...");
-	if (shutdown(s, SHUT_RDWR) < 0)
+	if (shutdown(sk, SHUT_RDWR) < 0)
 		syslog(LOG_INFO, "Close failed: %m");
 	else
 		syslog(LOG_INFO, "Done");
 }
 
-static void senddump_mode(int s)
+static void senddump_mode(int sk)
 {
 	uint32_t seq;
 	int i;
@@ -527,13 +586,13 @@ static void senddump_mode(int s)
 		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
 
-		if (send(s, buf, data_size, 0) <= 0) {
+		if (send(sk, buf, data_size, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
 	}
 
-	dump_mode(s);
+	dump_mode(sk);
 }
 
 static void reconnect_mode(char *svr)
