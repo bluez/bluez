@@ -48,11 +48,11 @@
 int action = ANALYZE;
 
 char * hci_pkt_type[] = {
-	"Unknown ",
-	"Command ",
+	"Unknown",
+	"Command",
 	"ACL Data",
 	"SCO Data",
-	"Event   "
+	"Event"
 };
 
 void usage(void)
@@ -84,14 +84,14 @@ void inline command_dump(void *ptr, int len)
 {
 	hci_command_hdr *hdr = ptr;
 	__u16 opcode = __le16_to_cpu(hdr->opcode);
-	printf("  ogf: 0x%x ocf 0x%x plen: %d\n", 
+	printf("ogf 0x%x ocf 0x%x plen %d\n", 
 		cmd_opcode_ogf(opcode), cmd_opcode_ocf(opcode), hdr->plen);
 }
 
 void inline event_dump(void *ptr, int len)
 {
 	hci_event_hdr *hdr = ptr;
-	printf("  code: 0x%x plen: %d\n", hdr->evt, hdr->plen);
+	printf("code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
 }
 
 void inline l2cap_dump(void *ptr, int len)
@@ -100,13 +100,13 @@ void inline l2cap_dump(void *ptr, int len)
 	__u16 dlen = __le16_to_cpu(hdr->len);
 	__u16 cid  = __le16_to_cpu(hdr->cid);
 
-	printf("    L2CAP: cid: 0x%x len: %d\n", cid, dlen);
+	printf("    L2CAP: cid 0x%x len %d\n", cid, dlen);
 
 	ptr += L2CAP_HDR_SIZE;
 	if (cid == 0x1) {
 		l2cap_cmd_hdr *hdr = ptr;
 		__u16 len = __le16_to_cpu(hdr->len);
-		printf("    signaling: code: 0x%x ident: %d len: %d\n", 
+		printf("    signaling: code 0x%x ident %d len %d\n", 
 				hdr->code, hdr->ident, len);
 	}
 }
@@ -117,7 +117,7 @@ void inline acl_dump(void *ptr, int len)
 	__u16 handle = __le16_to_cpu(hdr->handle);
 	__u16 dlen = __le16_to_cpu(hdr->dlen);
 
-	printf("  handle: 0x%x flags: 0x%x dlen: %d\n",
+	printf("handle 0x%x flags 0x%x dlen %d\n",
 		acl_handle(handle), acl_flags(handle), dlen);
 	
 	ptr += HCI_ACL_HDR_SIZE;
@@ -139,6 +139,10 @@ void analyze(int type, unsigned char *ptr, int len)
 		case HCI_ACLDATA_PKT:
 			acl_dump(ptr, len);
 			break;
+
+		default:
+			printf("\n");
+			break;
 	}
 }
 
@@ -150,6 +154,7 @@ int main(int argc, char *argv[])
 	char data[HCI_MAX_FRAME_SIZE], ctrl[100], *ptr;
 	int s, len, type, opt, dev, in;
 	struct sockaddr_hci addr;
+	struct hci_filter flt;
 	struct cmsghdr *cmsg;
 	struct msghdr msg;
 	struct iovec  iv;
@@ -184,6 +189,15 @@ int main(int argc, char *argv[])
 	opt = 1;
 	if( setsockopt(s, SOL_HCI, HCI_DATA_DIR, &opt, sizeof(opt)) < 0 ) {
 		perror("Can't enable data direction info");
+		exit(1);
+	}
+
+	/* Setup filter */
+	flt.type_mask  = ~0;      // All packet types
+	flt.event_mask[0] = ~0L;  // All events
+	flt.event_mask[1] = ~0L;
+	if (setsockopt(s, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
+		perror("Can't set HCI filter");
 		exit(1);
 	}
 
@@ -228,15 +242,19 @@ int main(int argc, char *argv[])
 		if( type < 0 || type > 4 )
 			type = 0;
 
-		printf("%c %s(0x%2.2x), len %d\n", 
-			(in ? '>' : '<'), hci_pkt_type[type], (__u8)type, len);
-
-		switch( action ){
+		switch (action) {
 			case ANALYZE:
+				printf("%c %s: ", (in ? '>' : '<'), 
+					hci_pkt_type[type] );
+
 				analyze(type, ptr, len);
 				break;
 
 			case HEXDUMP:
+				printf("%c type 0x%2.2x len %d\n", 
+					(in ? '>' : '<'), 
+					(__u8) type, len);
+
 				hex_dump("  ", ptr, len);
 				break;
 		}
