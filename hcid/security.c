@@ -227,10 +227,11 @@ int read_pin_code(void)
 static void call_pin_helper(int dev, struct hci_conn_info *ci)
 {
 	pin_code_reply_cp pr;
+	struct sigaction sa;
 	char addr[12], str[255], *pin, name[20];
 	FILE *pipe;
-	int len;
-	
+	int ret, len;
+
 	/* Run PIN helper in the separate process */
 	switch (fork()) {
 		case 0:
@@ -258,6 +259,11 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 
 	setenv("PATH", "/bin:/usr/bin:/usr/local/bin", 1);
 
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NOCLDSTOP;
+	sa.sa_handler = SIG_DFL;
+	sigaction(SIGCHLD, &sa, NULL);
+
 	pipe = popen(str, "r");
 	if (!pipe) {
 		syslog(LOG_ERR, "Can't exec PIN helper. %s(%d)", strerror(errno), errno);
@@ -265,15 +271,15 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 	}	
 
 	pin = fgets(str, sizeof(str), pipe);
-	pclose(pipe);
+	ret = pclose(pipe);
 
 	if (!pin || strlen(pin) < 5)
-		goto reject;
+		goto nopin;
 
 	strtok(pin, "\n\r");
 
 	if (strncmp("PIN:", pin, 4))
-		goto reject;
+		goto nopin;
 
 	pin += 4;
 	len  = strlen(pin);
@@ -285,6 +291,10 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
 			PIN_CODE_REPLY_CP_SIZE, &pr);
 	exit(0);
+
+nopin:
+	if (!pin || strncmp("ERR", pin, 3))
+		syslog(LOG_ERR, "PIN helper exited abnormally with code %d", ret);
 
 reject:
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
