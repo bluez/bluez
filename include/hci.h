@@ -421,6 +421,7 @@ typedef struct {
 
 /* Link Control */
 #define OGF_LINK_CTL	0x01 
+
 #define OCF_CREATE_CONN		0x0005
 typedef struct {
 	bdaddr_t	bdaddr;
@@ -554,6 +555,36 @@ typedef struct {
 
 /* Link Policy */
 #define OGF_LINK_POLICY	0x02   
+
+#define OCF_SNIFF_MODE		0x0003
+typedef struct {
+	uint16_t	handle;
+	uint16_t	interval_max;
+	uint16_t	interval_min;
+	uint16_t	attempt_window;
+	uint16_t	timeout;
+} __attribute__ ((packed)) sniff_mode_cp;
+#define SNIFF_MODE_CP_SIZE 10
+
+#define OCF_EXIT_SNIFF_MODE	0x0004
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) exit_sniff_mode_cp;
+#define EXIT_SNIFF_MODE_CP_SIZE 2
+
+#define OCF_PARK_MODE		0x0005
+typedef struct {
+	uint16_t	handle;
+	uint16_t	beacon_max;
+	uint16_t	beacon_min;
+} __attribute__ ((packed)) park_mode_cp;
+#define PARK_MODE_CP_SIZE 6
+
+#define OCF_EXIT_PARK_MODE	0x0006
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) exit_park_mode_cp;
+#define EXIT_PARK_MODE_CP_SIZE 2
 
 typedef struct {
 	uint8_t 	service_type;		/* 1 = best effort */
@@ -726,6 +757,15 @@ typedef struct {
 	hci_qos 	qos;
 } __attribute__ ((packed)) evt_qos_setup_complete;
 #define EVT_QOS_SETUP_COMPLETE_SIZE (4 + HCI_QOS_CP_SIZE)
+
+#define EVT_MODE_CHANGE		0x14
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		mode;
+	uint16_t	interval;
+} __attribute__ ((packed)) evt_mode_change;
+#define EVT_MODE_CHANGE_SIZE 6
 
 #define EVT_QOS_VIOLATION	0x1E
 typedef struct {
