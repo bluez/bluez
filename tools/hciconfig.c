@@ -259,7 +259,10 @@ void cmd_aclmtu(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr = { dev_id: hdev };
 	uint16_t mtu, mpkt;
-	
+
+	if (!opt)
+		return;
+
 	if (sscanf(opt, "%4hu:%4hu", &mtu, &mpkt) != 2)
 		return;
 
@@ -277,7 +280,10 @@ void cmd_scomtu(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr = { dev_id: hdev };
 	uint16_t mtu, mpkt;
-	
+
+	if (!opt)
+		return;
+
 	if (sscanf(opt, "%4hu:%4hu", &mtu, &mpkt) != 2)
 		return;
 
