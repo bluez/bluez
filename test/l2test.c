@@ -70,7 +70,7 @@ static int imtu = 672;
 static int omtu = 0;
 
 /* Default data size */
-static long data_size = 672;
+static long data_size = 0;
 
 /* Default addr and psm */
 static bdaddr_t bdaddr;
@@ -707,6 +707,13 @@ int main(int argc ,char *argv[])
 	if (need_addr && !(argc - optind)) {
 		usage();
 		exit(1);
+	}
+
+	if (!data_size) {
+		if (imtu > data_size)
+			data_size = imtu;
+		if (omtu > data_size)
+			data_size = omtu;
 	}
 
 	if (!(buf = malloc(data_size))) {
