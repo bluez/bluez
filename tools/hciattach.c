@@ -84,12 +84,18 @@ static int uart_speed(int s)
 		return B230400;
 	case 460800:
 		return B460800;
+	case 500000:
+		return B500000;
+	case 576000:
+		return B576000;
 	case 921600:
 		return B921600;
 	case 1000000:
 		return B1000000;
 	case 1152000:
 		return B1152000;
+	case 1500000:
+		return B1500000;
 	default:
 		return B57600;
 	}
@@ -932,7 +938,7 @@ static void usage(void)
 {
 	printf("hciattach - HCI UART driver initialization utility\n");
 	printf("Usage:\n");
-	printf("\thciattach [-n] [-p] [-b] [-t timeout] [-s initial_speed] <tty> <type | id> [speed] [flow]\n");
+	printf("\thciattach [-n] [-p] [-b] [-t timeout] [-s initial_speed] <tty> <type | id> [speed] [flow|noflow]\n");
 	printf("\thciattach -l\n");
 }
 
