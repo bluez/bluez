@@ -51,7 +51,7 @@ case "$1" in
 	echo -n "Stopping $DESC:"
 	if [ -x $RFCOMM ] ; then
 		echo -n " rfcomm"
-		$RFCOMM unbind all
+		$RFCOMM release all
 	fi
 	echo -n " sdpd"
 	killall $SDPD > /dev/null 2>&1 || true
