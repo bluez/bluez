@@ -389,7 +389,7 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 	memset(&rq, 0, sizeof(rq));
 
 	if (opt) {
-		uint16_t window, interval;
+		unsigned int window, interval;
 		write_inq_activity_cp cp;
 
 		if (sscanf(opt,"%4u/%4u", &window, &interval)!=2) {
@@ -402,8 +402,8 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 		rq.cparam = &cp;
 		rq.clen = WRITE_INQ_ACTIVITY_CP_SIZE;
 		
-		cp.window = htobs(window);
-		cp.interval = htobs(interval);
+		cp.window = htobs((uint16_t)window);
+		cp.interval = htobs((uint16_t)interval);
 		
 		if (window < 0x12 || window > 0x1000)
 			printf("Warning: inquiry window out of range!\n");

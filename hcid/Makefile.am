@@ -7,8 +7,8 @@ sbin_PROGRAMS = hcid
 hcid_SOURCES = main.c security.c hcid.h lib.c lib.h parser.y lexer.l kword.c
 hcid_LDADD   = @GLIB_LDFLAGS@
 
-CFLAGS += @GLIB_CFLAGS@
-YFLAGS += -d
+AM_CFLAGS = @GLIB_CFLAGS@
+YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
