@@ -5,7 +5,8 @@
 # PCMCIA Bluetooth device initialization
 # Written by Maxim Krasnyanskiy <maxk@qualcomm.com>
 #
-# This script requires cardmgr 3.2.1 or later
+# This script requires new cardmgr and expects following
+# environment variables FUNCTION, VENDORID, CARDNAME
 #
 
 #
@@ -24,13 +25,13 @@ start_serial() {
     IRQ=`setserial /dev/$DEVICE | sed -e 's/.*IRQ: //'`
     setserial /dev/$DEVICE irq 0 ; setserial /dev/$DEVICE irq $IRQ
  
-    /sbin/hciattach $DEVICE $MANFID
+    /sbin/hciattach $DEVICE $MANFID > /tmp/pcmcia
 }
 stop_serial() {
-    return
+    do_fuser -k -HUP /dev/$DEVICE > /dev/null
 }
 suspend_serial() {
-    do_fuser -k -HUP /dev/$DEVICE > /dev/null
+    stop_serial
 }
 resume_serial() {
     start_serial
