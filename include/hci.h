@@ -86,6 +86,8 @@ enum {
 #define HCISETPTYPE     _IOW('H', 224, int)
 #define HCISETLINKPOL   _IOW('H', 225, int)
 #define HCISETLINKMODE  _IOW('H', 226, int)
+#define HCISETACLMTU    _IOW('H', 227, int)
+#define HCISETSCOMTU    _IOW('H', 228, int)
 
 #define HCIINQUIRY      _IOR('H', 240, int)
 
@@ -723,11 +725,11 @@ struct hci_dev_info {
 	uint32_t link_mode;
 
 	uint16_t acl_mtu;
-	uint16_t acl_max;
+	uint16_t acl_pkts;
 	uint16_t sco_mtu;
-	uint16_t sco_max;
+	uint16_t sco_pkts;
 
-	struct hci_dev_stats stat;
+	struct   hci_dev_stats stat;
 };
 
 struct hci_conn_info {
