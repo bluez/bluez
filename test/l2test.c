@@ -376,7 +376,7 @@ void usage(void)
 	printf("Modes:\n"
 		"\t-r listen and receive\n"
 		"\t-w listen and send\n"
-		"\t-d listen and dump incomming data\n"
+		"\t-d listen and dump incoming data\n"
 		"\t-s connect and send\n"
 		"\t-u connect and receive\n"
 		"\t-n connect and be silent\n"
