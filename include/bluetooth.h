@@ -36,6 +36,7 @@ extern "C" {
 #include <stdint.h>
 #include <endian.h>
 #include <byteswap.h>
+#include <string.h>
 	
 #ifndef AF_BLUETOOTH
 #define AF_BLUETOOTH	31
