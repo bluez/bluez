@@ -124,6 +124,8 @@ sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
 	{ SDP_ATTR_ID_SERVICE_DATABASE_STATE,            "SrvDBState"         },
 	{ SDP_ATTR_ID_SERVICE_VERSION,                   "SrvVersion"         },
 	{ SDP_ATTR_ID_SECURITY_DESCRIPTION,              "SecurityDescription"}, /* PAN */
+	{ SDP_ATTR_ID_SUPPORTED_DATA_STORES_LIST,	 "SuppDataStoresList" }, /* Synchronization */
+	{ SDP_ATTR_ID_SUPPORTED_FORMATS_LIST,		 "SuppFormatsList"    }, /* OBEX Object Push */
 	{ SDP_ATTR_ID_NET_ACCESS_TYPE,                   "NetAccessType"      }, /* PAN */
 	{ SDP_ATTR_ID_MAX_NET_ACCESS_RATE,               "MaxNetAccessRate"   }, /* PAN */
 	{ SDP_ATTR_ID_IPV4_SUBNET,                       "IPv4Subnet"         }, /* PAN */
