@@ -660,7 +660,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (hci_create_connection(dd, &bdaddr, htobs(ptype), 0, role, &handle, 1000) < 0)
+	if (hci_create_connection(dd, &bdaddr, htobs(ptype), 0, role, &handle, 25000) < 0)
 		perror("Can't create connection");
 	hci_close_dev(dd);
 }
