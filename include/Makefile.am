@@ -10,9 +10,10 @@ include_HEADERS = \
 
 noinst_HEADERS = sdp_internal.h
 
+MAINTAINERCLEANFILES = Makefile.in
 
 all-local:
-	@if [ ! -e bluetooth ] ; then ln -s $(top_srcdir)/include bluetooth ; fi
+	@if [ ! -e bluetooth ] ; then $(LN_S) $(top_srcdir)/include bluetooth ; fi
 
 clean-local:
 	@rm -f bluetooth
