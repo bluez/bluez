@@ -655,7 +655,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (0 > hci_create_connection(dd, &bdaddr, ptype, 0, role, &handle, 1000))
+	if (hci_create_connection(dd, &bdaddr, ptype, 0, role, &handle, 1000) < 0)
 		perror("Can't create connection");
 	hci_close_dev(dd);
 }
@@ -719,7 +719,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (0 > hci_disconnect(dd, cr->conn_info->handle, HCI_OE_USER_ENDED_CONNECTION, 100))
+	if (hci_disconnect(dd, cr->conn_info->handle, HCI_OE_USER_ENDED_CONNECTION, 100) < 0)
 		perror("Disconnect failed");
 
 	close(dd);
