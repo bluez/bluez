@@ -34,6 +34,10 @@
 
 #include "parser.h"
 
+#define CSR_U8(frm)  (get_u8(frm))
+#define CSR_U16(frm) (btohs(htons(get_u16(frm))))
+#define CSR_U32(frm) (btohl(htonl(get_u32(frm))))
+
 static char *cid2str(uint8_t cid)
 {
 	switch (cid & 0x3f) {
@@ -91,23 +95,42 @@ static char *frag2str(uint8_t frag)
 void csr_dump(int level, struct frame *frm)
 {
 	uint8_t desc, cid, type;
+	uint16_t handle, master, addr;
 
-	desc = get_u8(frm);
+	desc = CSR_U8(frm);
 
 	cid = desc & 0x3f;
 
 	if (cid == 20) {
-		type = get_u8(frm);
+		type = CSR_U8(frm);
 
 		if (!p_filter(FILT_LMP)) {
 			switch (type) {
-			case 0x10:
-				frm->master = 1;
+			case 0x0f:
+				frm->handle =  ((uint8_t *) frm->ptr)[17];
+				frm->master = 0;
+				frm->len--;
 				lmp_dump(level, frm);
 				return;
-			case 0x0f:
-				frm->master = 0;
+			case 0x10:
+				frm->handle = ((uint8_t *) frm->ptr)[17];
+				frm->master = 1;
+				frm->len--;
 				lmp_dump(level, frm);
+				return;
+			case 0x12:
+				handle = CSR_U16(frm);
+				master = CSR_U16(frm);
+				addr = CSR_U16(frm);
+				p_indent(level, frm);
+				printf("FHS: handle %d addr %d (%s)\n", handle,
+					addr, master ? "master" : "slave");
+				if (!master)
+					raw_dump(level, frm);
+				return;
+			case 0x7b:
+				p_indent(level, frm);
+				printf("LMP(r): duplicate (same SEQN)\n");
 				return;
 			}
 		}

@@ -478,13 +478,18 @@ void lmp_dump(int level, struct frame *frm)
 		opcode += tmp << 7;
 	}
 
-	printf("LMP(%c): %s(%c): ", frm->master ? 'm' : 's',
+	printf("LMP(%c): %s(%c): ", frm->master ? 's' : 'r',
 				opcode2str(opcode), tid ? 's' : 'm');
 
 	if (opcode > 123)
-		printf("op code %d/%d\n", opcode & 0x7f, opcode >> 7);
+		printf("op code %d/%d", opcode & 0x7f, opcode >> 7);
 	else
-		printf("op code %d\n", opcode);
+		printf("op code %d", opcode);
+
+	if (frm->handle > 17)
+		printf(" handle %d\n", frm->handle);
+	else
+		printf("\n");
 
 	if (!(parser.flags & DUMP_VERBOSE)) {
 		raw_dump(level, frm);
