@@ -1616,6 +1616,68 @@ end:
 	return ret;
 }
 
+static int add_panu(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, ftrn_uuid, l2cap_uuid, bnep_uuid;
+	sdp_profile_desc_t profile[1];
+	sdp_list_t *aproto, *proto[2];
+	sdp_record_t record;
+	uint16_t lp = 0x000f, ver = 0x0100;
+	sdp_data_t *psm, *version;
+	int ret = 0;
+
+	memset((void *)&record, 0, sizeof(sdp_record_t));
+	record.handle = 0xffffffff;
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+	sdp_list_free(root, NULL);
+
+	sdp_uuid16_create(&ftrn_uuid, PANU_SVCLASS_ID);
+	svclass_id = sdp_list_append(NULL, &ftrn_uuid);
+	sdp_set_service_classes(&record, svclass_id);
+	sdp_list_free(svclass_id, NULL);
+
+	sdp_uuid16_create(&profile[0].uuid, PANU_PROFILE_ID);
+	profile[0].version = 0x0100;
+	pfseq = sdp_list_append(NULL, &profile[0]);
+	sdp_set_profile_descs(&record, pfseq);
+	sdp_list_free(pfseq, NULL);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto[0] = sdp_list_append(NULL, &l2cap_uuid);
+	psm = sdp_data_alloc(SDP_UINT16, &lp);
+	proto[0] = sdp_list_append(proto[0], psm);
+	apseq = sdp_list_append(NULL, proto[0]);
+
+	sdp_uuid16_create(&bnep_uuid, BNEP_UUID);
+	proto[1] = sdp_list_append(NULL, &bnep_uuid);
+	version = sdp_data_alloc(SDP_UINT16, &ver);
+	proto[1] = sdp_list_append(proto[1], version);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(NULL, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	sdp_set_info_attr(&record, "PAN User", NULL, NULL);
+
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		ret = -1;
+		goto end;
+	}
+	printf("PANU service registered\n");
+end:
+	sdp_data_free(version);
+	sdp_data_free(psm);
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+	return ret;
+}
+
 static int add_ctp(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
@@ -1810,6 +1872,7 @@ struct {
 
 	{ "NAP",	NAP_SVCLASS_ID,			add_nap		},
 	{ "GN",		GN_SVCLASS_ID,			add_gn		},
+	{ "PANU",	PANU_SVCLASS_ID,		add_panu	},
 
 	{ "HID",	HID_SVCLASS_ID,			NULL		},
 	{ "CIP",	CIP_SVCLASS_ID,			NULL		},
