@@ -396,8 +396,15 @@ void sdp_data_printf(sdp_data_t *sdpdata,
 	case SDP_TEXT_STR8:
 	case SDP_TEXT_STR16:
 	case SDP_TEXT_STR32:
-		printf("%.*sText : \"%s\"\n", indent, indent_spaces,
-		       sdpdata->val.str);
+		if (sdpdata->unitSize > strlen(sdpdata->val.str)) {
+			int i;
+			printf("%.*sData :", indent, indent_spaces);
+			for (i = 0; i < sdpdata->unitSize; i++)
+				printf(" %02x", (unsigned char) sdpdata->val.str[i]);
+			printf("\n");
+		} else
+			printf("%.*sText : \"%s\"\n", indent, indent_spaces,
+			       sdpdata->val.str);
 		break;
 	case SDP_URL_STR8:
 	case SDP_URL_STR16:
