@@ -436,7 +436,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
 	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		if (hci_create_connection(dd, &bdaddr, HCI_DM1 | HCI_DH1, 0, 0, &handle, 25000) < 0) {
+		if (hci_create_connection(dd, &bdaddr, htobs(HCI_DM1 | HCI_DH1), 0, 0, &handle, 25000) < 0) {
 			perror("Can't create connection");
 			close(dd);
 			exit(1);
@@ -653,7 +653,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (hci_create_connection(dd, &bdaddr, ptype, 0, role, &handle, 1000) < 0)
+	if (hci_create_connection(dd, &bdaddr, htobs(ptype), 0, role, &handle, 1000) < 0)
 		perror("Can't create connection");
 	hci_close_dev(dd);
 }
