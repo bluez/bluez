@@ -82,6 +82,8 @@ int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to);
 int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to);
 int hci_authenticate_link(int dd, uint16_t handle, int to);
 int hci_encrypt_link(int dd, uint16_t handle, int on, int to);
+// role == 0 is master, 1 is slave
+int hci_switch_role(int dd, bdaddr_t peer, int role, int to);
 
 int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg);
 int hci_get_route(bdaddr_t *bdaddr);
