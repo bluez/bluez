@@ -219,6 +219,8 @@ static int switch_logitech(struct device_info *devinfo)
 static struct device_id device_list[] = {
 	{ HCI, 0x0a12, 0x1000, switch_hidproxy },
 	{ HID, 0x0a12, 0x0001, switch_hidproxy },
+	{ HCI, 0x0458, 0x1000, switch_hidproxy },
+	{ HID, 0x0458, 0x003f, switch_hidproxy },
 	{ HCI, 0x05ac, 0x1000, switch_hidproxy },
 	{ HID, 0x05ac, 0x8203, switch_hidproxy },
 	{ HCI, 0x046d, 0xc703, switch_logitech },
