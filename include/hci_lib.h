@@ -69,6 +69,7 @@ int hci_devid(const char *str);
 int hci_read_local_name(int dd, int len, char *name, int to);
 int hci_write_local_name(int dd, const char *name, int to);
 int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to);
+int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr, uint16_t clkoffset, int len, char *name, int to);
 int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to);
 int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to);
 int hci_read_clock_offset(int dd, uint16_t handle, uint16_t *clkoffset, int to);

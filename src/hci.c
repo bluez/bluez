@@ -898,7 +898,7 @@ int hci_write_local_name(int dd, const char *name, int to)
 	return 0;
 }
 
-int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)
+int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr, uint16_t clkoffset, int len, char *name, int to)
 {
 	evt_remote_name_req_complete rn;
 	remote_name_req_cp cp;
@@ -907,6 +907,7 @@ int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, in
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
 	cp.pscan_rep_mode = 0x02;
+	cp.clock_offset   = clkoffset;
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
@@ -928,6 +929,11 @@ int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, in
 	rn.name[247] = '\0';
 	strncpy(name, rn.name, len);
 	return 0;
+}
+
+int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)
+{
+	return hci_read_remote_name_with_clock_offset(dd, bdaddr, 0x0000, len, name, to);
 }
 
 int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
