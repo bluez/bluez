@@ -41,9 +41,10 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/l2cap.h>
 
+#include "parser.h"
+
 /* Default options */
 int snap_len  = 1 + HCI_ACL_HDR_SIZE + L2CAP_HDR_SIZE + 40;
-int dump_type = 0;
 
 void usage(void)
 {
@@ -52,127 +53,27 @@ void usage(void)
 	printf("\thcidump <-i hciX> [-h]\n");
 }
 
-void raw_dump(char *pref, unsigned char *buf, int len)
-{
-	register char *ptr;
-	register int i;
-	char line[100];
-
-	if (!dump_type)
-		return;
-
-	ptr = line; *ptr = 0; 
-	for (i=0; i<len; i++) {
-		ptr += sprintf(ptr, " %2.2X", buf[i]);
-		if (i && !((i+1)%20)) {
-			printf("%s%s\n", pref, line);
-			ptr = line; *ptr = 0;
-		}
-	}
-	if (line[0])
-		printf("%s%s\n", pref, line);
-}
-
-static inline void command_dump(void *ptr, int len)
-{
-	hci_command_hdr *hdr = ptr;
-	__u16 opcode = __le16_to_cpu(hdr->opcode);
-
-	ptr += HCI_COMMAND_HDR_SIZE;
-	len -= HCI_COMMAND_HDR_SIZE;
-
-	printf("Command: ogf 0x%x ocf 0x%x plen %d\n", 
-		cmd_opcode_ogf(opcode), cmd_opcode_ocf(opcode), hdr->plen);
-	raw_dump(" ", ptr, len);
-}
-
-static inline void event_dump(void *ptr, int len)
-{
-	hci_event_hdr *hdr = ptr;
-	
-	ptr += HCI_EVENT_HDR_SIZE;
-	len -= HCI_EVENT_HDR_SIZE;
-
-	printf("Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
-	raw_dump(" ", ptr, len);
-}
-
-static inline void l2cap_dump(void *ptr, int len)
-{
-	l2cap_hdr *hdr = ptr;
-	__u16 dlen = __le16_to_cpu(hdr->len);
-	__u16 cid  = __le16_to_cpu(hdr->cid);
-
-	ptr += L2CAP_HDR_SIZE;
-	len -= L2CAP_HDR_SIZE;
-
-	if (cid == 0x1) {
-		l2cap_cmd_hdr *hdr = ptr;
-		__u16 len = __le16_to_cpu(hdr->len);
-
-		ptr += L2CAP_CMD_HDR_SIZE;
-		len -= L2CAP_CMD_HDR_SIZE;
-
-		printf("  L2CAP signaling: code 0x%2.2x ident %d len %d\n", 
-				hdr->code, hdr->ident, len);
-		raw_dump(" ", ptr, len);
-	} else {
-		printf("  L2CAP data: cid 0x%x len %d\n", cid, dlen);
-		raw_dump(" ", ptr, len);
-	}
-}
-
-static inline void acl_dump(void *ptr, int len)
-{
-	hci_acl_hdr *hdr = ptr;
-	__u16 handle = __le16_to_cpu(hdr->handle);
-	__u16 dlen = __le16_to_cpu(hdr->dlen);
-
-	printf("ACL data: handle 0x%x flags 0x%x dlen %d\n",
-		acl_handle(handle), acl_flags(handle), dlen);
-	
-	ptr += HCI_ACL_HDR_SIZE;
-	len -= HCI_ACL_HDR_SIZE;
-	l2cap_dump(ptr, len);
-}
-
-static inline void analyze(int type, unsigned char *ptr, int len)
-{
-	switch( type ){
-		case HCI_COMMAND_PKT:
-			command_dump(ptr, len);
-			break;
-
-		case HCI_EVENT_PKT:
-			event_dump(ptr, len);
-			break;
-
-		case HCI_ACLDATA_PKT:
-			acl_dump(ptr, len);
-			break;
-
-		default:
-			printf("Unknown: type 0x%2.2x len %d\n", 
-					(__u8) type, len);
-
-			raw_dump("  ", ptr, len);
-			break;
-	}
-}
-
 void process_frames(int dev, int fd)
 {
-	char data[HCI_MAX_FRAME_SIZE], ctrl[100], *ptr;
+	char *data, *ctrl;
 	struct cmsghdr *cmsg;
 	struct msghdr msg;
 	struct iovec  iv;
-	int len, type, in;
+	int len, in;
 
-	if (snap_len > sizeof(data))
-		snap_len = sizeof(data);
-	else if (snap_len < 20)
+	if (snap_len < 20)
 		snap_len = 20;	
 
+	if (!(data = malloc(snap_len))) {
+		perror("Can't allocate data buffer");
+		exit(1);
+	}
+
+	if (!(ctrl = malloc(100))) {
+		perror("Can't allocate control buffer");
+		exit(1);
+	}
+	
 	printf("device: hci%d snap_len: %d filter: none\n", dev, snap_len); 
 
 	while (1) {
@@ -182,7 +83,7 @@ void process_frames(int dev, int fd)
 		msg.msg_iov = &iv;
 		msg.msg_iovlen = 1;
 		msg.msg_control = ctrl;
-		msg.msg_controllen = sizeof(ctrl);
+		msg.msg_controllen = 100;
 
 		if( (len = recvmsg(fd, &msg, 0)) < 0 ){
 			perror("Receive failed");
@@ -201,45 +102,48 @@ void process_frames(int dev, int fd)
 			cmsg = CMSG_NXTHDR(&msg, cmsg);
 		}
 
-		ptr = data;
-		type = *ptr++; len--;
-
 		/* Print data direction */
 		printf("%c ", (in ? '>' : '<')); 
 
-		analyze(type, ptr, len);
+		parse(data, len);
 
 		fflush(stdout);
 	}
 }
 
-extern int optind,opterr,optopt;
-extern char *optarg;
-
 int main(int argc, char *argv[])
 {
+	extern int optind, opterr, optopt;
+	extern char *optarg;
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
 	int s, opt, dev;
+	long flags;	
 
 	dev = 0;
-	while( (opt=getopt(argc, argv,"i:s:h")) != EOF ) {
+	flags = 0;
+	
+	while ((opt=getopt(argc, argv,"i:s:ha")) != EOF) {
 		switch(opt) {
-			case 'i':
-				dev = atoi(optarg+3);
-				break;
+		case 'i':
+			dev = atoi(optarg+3);
+			break;
 
-			case 'h':
-				dump_type = 1;
-				break;
+		case 'h':
+			flags |= DUMP_HEX;
+			break;
 
-			case 's':
-				snap_len = atoi(optarg);
-				break;
+		case 'a':
+			flags |= DUMP_ASCII;
+			break;
 
-			default:
-				usage();
-				exit(1);
+		case 's':
+			snap_len = atoi(optarg);
+			break;
+
+		default:
+			usage();
+			exit(1);
 		}
 	}
 
@@ -275,6 +179,7 @@ int main(int argc, char *argv[])
 
 	printf("HCIDump - HCI packet analyzer ver %s.\n", VERSION);
 
+	init_parser(flags);
 	process_frames(dev, s);	
 
 	close(s);
