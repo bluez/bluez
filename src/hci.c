@@ -1150,7 +1150,7 @@ int hci_switch_role(int dd, bdaddr_t peer, int role, int to)
 	return 0;
 }
 
-int hci_park_mode (int dd, uint16_t handle, uint16_t max_interval, uint16_t min_interval, int to)
+int hci_park_mode(int dd, uint16_t handle, uint16_t max_interval, uint16_t min_interval, int to)
 {
 	park_mode_cp cp;
 	evt_mode_change rp;

@@ -84,6 +84,8 @@ int hci_authenticate_link(int dd, uint16_t handle, int to);
 int hci_encrypt_link(int dd, uint16_t handle, int on, int to);
 // role == 0 is master, 1 is slave
 int hci_switch_role(int dd, bdaddr_t peer, int role, int to);
+int hci_park_mode(int dd, uint16_t handle, uint16_t max_interval, uint16_t min_interval, int to);
+int hci_exit_park_mode(int dd, uint16_t handle, int to);
 
 int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg);
 int hci_get_route(bdaddr_t *bdaddr);
