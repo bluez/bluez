@@ -51,6 +51,7 @@
 /* Default options */
 static int  device;
 static int  snap_len = SNAP_LEN;
+static int  defpsm = 0;
 static int  mode = PARSE;
 static long flags;
 static long filter;
@@ -238,6 +239,7 @@ const char *argp_program_bug_address = "<bluez-users@lists.sf.net>";
 static struct argp_option options[] = {
 	{"device", 	'i', "hci_dev", 0, "HCI device", 0  },
 	{"snap-len", 	's', "len",  0, "Snap len (in bytes)", 1 },
+	{"psm", 	'p', "psm",  0, "Default PSM",         1 },
 	{"save-dump",	'w', "file", 0, "Save dump to a file", 2 },
 	{"read-dump",	'r', "file", 0, "Read dump from a file", 2 },
 	{"ts", 		't', 0,  0, "Display time stamps", 2 },
@@ -293,6 +295,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			snap_len = atoi(arg);
 			break;
 
+		case 'p': 
+			defpsm = atoi(arg);
+			break;
+
 		case 't': 
 			flags |= DUMP_TSTAMP;
 			break;
@@ -340,7 +346,7 @@ int main(int argc, char *argv[])
 
 	switch (mode) {
 	case PARSE:
-		init_parser(flags, filter);
+		init_parser(flags, filter, defpsm);
 		process_frames(device, open_socket(device), -1);
 		break;
 
@@ -349,7 +355,7 @@ int main(int argc, char *argv[])
 		break;
 
 	case READ:
-		init_parser(flags, filter);
+		init_parser(flags, filter, defpsm);
 		read_dump(open_file(dump_file, mode));
 		break;
 	}
