@@ -779,7 +779,7 @@ static int st(int fd, struct uart_t *u, struct termios *ti)
 		break;
 	default:
 		cmd[4] = 0x10;
-		u->speed = 57600;
+		u->speed = 115200;
 		break;
 	}
 
