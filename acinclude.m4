@@ -152,6 +152,8 @@ AC_DEFUN([AC_PATH_EXTRA], [
 	test_enable=no
 	cups_enable=no
 	pcmcia_enable=no
+	initscripts_enable=no
+	bluepin_enable=no
 	hid2hci_enable=${usb_found}
 	bcm203x_enable=no
 
@@ -160,6 +162,8 @@ AC_DEFUN([AC_PATH_EXTRA], [
 		test_enable=${enableval}
 		cups_enable=${enableval}
 		pcmcia_enable=${enableval}
+		initscripts_enable=${enableval}
+		bluepin_enable=${enableval}
 		hid2hci_enable=${enableval}
 		bcm203x_enable=${enableval}
 	])
@@ -180,6 +184,14 @@ AC_DEFUN([AC_PATH_EXTRA], [
 		pcmcia_enable=${enableval}
 	])
 
+	AC_ARG_ENABLE(initscripts, AC_HELP_STRING([--enable-initscripts], [install Bluetooth boot scripts]), [
+		initscripts_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(bluepin, AC_HELP_STRING([--enable-bluepin], [install Python based PIN helper utility]), [
+		bluepin_enable=${enableval}
+	])
+
 	AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci], [install HID mode switching utility]), [
 		hid2hci_enable=${enableval}
 	])
@@ -192,6 +204,8 @@ AC_DEFUN([AC_PATH_EXTRA], [
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(PCMCIA, test "${pcmcia_enable}" = "yes")
+	AM_CONDITIONAL(INITSCRIPTS, test "${initscripts_enable}" = "yes")
+	AM_CONDITIONAL(BLUEPIN, test "${bluepin_enable}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(BCM203X, test "${bcm203x_enable}" = "yes" && test "${usb_found}" = "yes")
 ])
