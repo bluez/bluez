@@ -167,7 +167,7 @@ static int do_connect(int ctl, int dev_id, bdaddr_t *src, bdaddr_t *dst, unsigne
 
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, dst);
-	addr.l2_psm = psm;
+	addr.l2_psm = htobs(psm);
 
 	if (connect(sk, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		perror("Can't connect L2CAP socket");
@@ -279,9 +279,9 @@ static void cmd_create(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 
 	if (argc < 3) {
 		if (!get_psm(&src, &dst, &psm))
-			psm = htobs(4099);
+			psm = 4099;
 	} else
-		psm = htobs(atoi(argv[2]));
+		psm = atoi(argv[2]);
 
 	do_connect(ctl, dev_id, &src, &dst, psm, 0);
 }
@@ -347,9 +347,9 @@ static void cmd_loopback(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 
 	if (argc < 3) {
 		if (!get_psm(&src, &dst, &psm))
-			psm = htobs(4099);
+			psm = 4099;
 	} else
-		psm = htobs(atoi(argv[2]));
+		psm = atoi(argv[2]);
 
 	sk = do_connect(ctl, dev_id, &src, &dst, psm, (1 << CMTP_LOOPBACK));
 
