@@ -3,7 +3,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -32,20 +32,13 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <syslog.h>
-#include <string.h>
 #include <errno.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <syslog.h>
 #include <signal.h>
-
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <resolv.h>
-#include <netdb.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -78,31 +71,31 @@ static int do_connect(char *svr)
 	struct sco_conninfo conn;
 	int s, opt;
 
-	if( (s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)) < 0 ) {
-		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
+	if ((s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)) < 0) {
+		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
 		return -1;
 	}
 
 	memset(&loc_addr, 0, sizeof(loc_addr));
 	loc_addr.sco_family = AF_BLUETOOTH;
-	loc_addr.sco_bdaddr = bdaddr;
-	if( bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0 ) {
-		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
+	bacpy(&loc_addr.sco_bdaddr, &bdaddr);
+	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	memset(&rem_addr, 0, sizeof(rem_addr));
 	rem_addr.sco_family = AF_BLUETOOTH;
-	baswap(&rem_addr.sco_bdaddr, strtoba(svr));
-	if( connect(s, (struct sockaddr *)&rem_addr, sizeof(rem_addr)) < 0 ){
-		syslog(LOG_ERR, "Can't connect. %s(%d)", strerror(errno), errno);
+	str2ba(svr, &rem_addr.sco_bdaddr);
+	if (connect(s, (struct sockaddr *) &rem_addr, sizeof(rem_addr)) < 0) {
+		syslog(LOG_ERR, "Can't connect: %s (%d)", strerror(errno), errno);
 		return -1;
 	}
 
 	memset(&conn, 0, sizeof(conn));
 	opt = sizeof(conn);
 	if (getsockopt(s, SOL_SCO, SCO_CONNINFO, &conn, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get SCO connection information. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't get SCO connection information: %s (%d)", strerror(errno), errno);
 		close(s);
 		return -1;
 	}
@@ -118,22 +111,22 @@ static void do_listen(void (*handler)(int sk))
 {
 	struct sockaddr_sco loc_addr, rem_addr;
 	int  s, s1, opt;
-	bdaddr_t ba;
+	char ba[18];
 
 	if ((s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)) < 0) {
-		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	loc_addr.sco_family = AF_BLUETOOTH;
 	loc_addr.sco_bdaddr = bdaddr;
 	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	if (listen(s, 10)) {
-		syslog(LOG_ERR,"Can not listen on the socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
@@ -141,8 +134,8 @@ static void do_listen(void (*handler)(int sk))
 
 	while (1) {
 		opt = sizeof(rem_addr);
-		if ((s1 = accept(s, (struct sockaddr *)&rem_addr, &opt)) < 0) {
-			syslog(LOG_ERR,"Accept failed. %s(%d)", strerror(errno), errno);
+		if ((s1 = accept(s, (struct sockaddr *) &rem_addr, &opt)) < 0) {
+			syslog(LOG_ERR,"Accept failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
 		if (fork()) {
@@ -154,12 +147,12 @@ static void do_listen(void (*handler)(int sk))
 
 		close(s);
 
-		baswap(&ba, &rem_addr.sco_bdaddr);
-		syslog(LOG_INFO, "Connect from %s\n", batostr(&ba));
+		ba2str(&rem_addr.sco_bdaddr, ba);
+		syslog(LOG_INFO, "Connect from %s", ba);
 
 		handler(s1);
 
-		syslog(LOG_INFO, "Disconnect\n");
+		syslog(LOG_INFO, "Disconnect");
 		exit(0);
 	}
 }
@@ -183,25 +176,25 @@ static void recv_mode(int s)
 
 	seq = 0;
 	while (1) {
-		gettimeofday(&tv_beg,NULL);
+		gettimeofday(&tv_beg, NULL);
 		total = 0;
 		while (total < data_size) {
 			int r;
 			if ((r = recv(s, buf, data_size, 0)) <= 0) {
 				if (r < 0)
-					syslog(LOG_ERR, "Read failed. %s(%d)",
+					syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
 				return;	
 			}
 			total += r;
 		}
-		gettimeofday(&tv_end,NULL);
+		gettimeofday(&tv_end, NULL);
 
-		timersub(&tv_end,&tv_beg,&tv_diff);
+		timersub(&tv_end, &tv_beg, &tv_diff);
 
-		syslog(LOG_INFO,"%ld bytes in %.2fm speed %.2f kb",total,
-		       tv2fl(tv_diff) / 60.0,
-		       (float)( total / tv2fl(tv_diff) ) / 1024.0 );
+		syslog(LOG_INFO,"%ld bytes in %.2fm speed %.2f kb", total,
+			tv2fl(tv_diff) / 60.0,
+			(float)( total / tv2fl(tv_diff) ) / 1024.0 );
 	}
 }
 
@@ -212,33 +205,32 @@ static void send_mode(char *svr)
 	int s, i, opt;
 
 	if ((s = do_connect(svr)) < 0) {
-		syslog(LOG_ERR, "Can't connect to the server. %s(%d)", 
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Can't connect to the server: %s (%d)",
+						strerror(errno), errno);
 		exit(1);
 	}
 
 	opt = sizeof(so);
 	if (getsockopt(s, SOL_SCO, SCO_OPTIONS, &so, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get SCO options. %s(%d)", 
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Can't get SCO options: %s (%d)",
+						strerror(errno), errno);
 		exit(1);
 	}	
 
-	
 	syslog(LOG_INFO,"Sending ...");
 
 	for (i = 6; i < so.mtu; i++)
-		buf[i]=0x7f;
+		buf[i] = 0x7f;
 
 	seq = 0;
 	while (1) {
-		*(uint32_t *)buf = htobl(seq);
-		*(uint16_t *)(buf+4) = htobs(data_size);
+		*(uint32_t *) buf = htobl(seq);
+		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
-		
+
 		if (send(s, buf, so.mtu, 0) <= 0) {
-			syslog(LOG_ERR, "Send failed. %s(%d)", 
-					strerror(errno), errno);
+			syslog(LOG_ERR, "Send failed: %s (%d)",
+						strerror(errno), errno);
 			exit(1);
 		}
 		usleep(1);
@@ -250,7 +242,8 @@ static void reconnect_mode(char *svr)
 	while (1) {
 		int s;
 		if ((s = do_connect(svr)) < 0) {
-			syslog(LOG_ERR, "Can't connect to the server. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Can't connect to the server: %s (%d)",
+						strerror(errno), errno);
 			exit(1);
 		}
 		close(s);
@@ -269,7 +262,8 @@ static void multy_connect_mode(char *svr)
 
 			/* Child */
 			if ((s = do_connect(svr)) < 0) {
-				syslog(LOG_ERR, "Can't connect to the server. %s(%d)", strerror(errno), errno);
+				syslog(LOG_ERR, "Can't connect to the server: %s (%d)",
+						strerror(errno), errno);
 			}
 			close(s);
 			exit(0);
@@ -291,9 +285,6 @@ static void usage(void)
 		"\t-s send (client)\n");
 }
 
-extern int optind,opterr,optopt;
-extern char *optarg;
-
 int main(int argc ,char *argv[])
 {
 	struct sigaction sa;
@@ -304,7 +295,7 @@ int main(int argc ,char *argv[])
 		case 'r':
 			mode = RECV;
 			break;
-		
+
 		case 's':
 			mode = SEND;
 			break;
@@ -331,7 +322,7 @@ int main(int argc ,char *argv[])
 		}
 	}
 
-	if (!(argc - optind) && (mode!=RECV && mode !=DUMP)) {
+	if (!(argc - optind) && (mode != RECV && mode != DUMP)) {
 		usage();
 		exit(1);
 	}
@@ -369,6 +360,7 @@ int main(int argc ,char *argv[])
 			multy_connect_mode(argv[optind]);
 			break;
 	}
+
 	syslog(LOG_INFO, "Exit");
 
 	closelog();
