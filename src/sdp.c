@@ -2069,14 +2069,14 @@ int sdp_uuid128_to_uuid(uuid_t *uuid)
 	uint128_t *b = sdp_create_base_uuid();
 	uint128_t *u = &uuid->value.uuid128;
 	uint32_t data;
-	
+
 	if (uuid->type != SDP_UUID128)
 		return 1;
-	
+
 	for (i = 4; i < sizeof(b->data); i++)
 		if (b->data[i] != u->data[i])
 			return 0;
-	
+
 	memcpy(&data, u->data, 4);
 	data = htonl(data);
 	if (data <= 0xffff) {
@@ -2095,8 +2095,14 @@ int sdp_uuid128_to_uuid(uuid_t *uuid)
 int sdp_uuid_to_proto(uuid_t *uuid)
 {
 	uuid_t u = *uuid;
-	if (sdp_uuid128_to_uuid(&u) && u.type == SDP_UUID16)
-		return u.value.uuid16;
+	if (sdp_uuid128_to_uuid(&u)) {
+		switch (u.type) {
+		case SDP_UUID16:
+			return u.value.uuid16;
+		case SDP_UUID32:
+			return u.value.uuid32;
+		}
+	}
 	return 0;
 }
 
