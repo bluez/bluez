@@ -318,7 +318,7 @@ int read_config(char *file)
 {
 	extern FILE *yyin;
 
-	if( !(yyin = fopen(file,"r")) ){
+	if (!(yyin = fopen(file, "r"))) {
 		syslog(LOG_ERR,"Can not open %s", file);
 		return -1;
 	}
