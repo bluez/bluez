@@ -914,7 +914,7 @@ int hci_read_local_version(int dd, struct hci_version *ver, int to)
 	rq.rparam = &rp;
 	rq.rlen   = READ_LOCAL_VERSION_RP_SIZE;
 
-	if (hci_send_req(dd, &rq, 1000) < 0)
+	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 
 	if (rp.status) {
@@ -967,7 +967,7 @@ int hci_write_class_of_dev(int dd, uint32_t cls, int to)
 	rq.ocf = OCF_WRITE_CLASS_OF_DEV;
 	rq.cparam = &cp;
 	rq.clen = WRITE_CLASS_OF_DEV_CP_SIZE;
-	return hci_send_req(dd, &rq, 1000);
+	return hci_send_req(dd, &rq, to);
 }
 
 int hci_read_voice_setting(int dd, uint16_t *vs, int to)
@@ -1004,7 +1004,7 @@ int hci_write_voice_setting(int dd, uint16_t vs, int to)
 	rq.ocf = OCF_WRITE_VOICE_SETTING;
 	rq.cparam = &cp;
 	rq.clen = WRITE_VOICE_SETTING_CP_SIZE;
-	return hci_send_req(dd, &rq, 1000);
+	return hci_send_req(dd, &rq, to);
 }
 
 int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to)
@@ -1017,14 +1017,17 @@ int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to)
 	rq.ocf = OCF_READ_CURRENT_IAC_LAP;
 	rq.rparam = &rp;
 	rq.rlen = READ_CURRENT_IAC_LAP_RP_SIZE;
-	if (0 > hci_send_req(dd, &rq, to))
+
+	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
+
 	if (rp.status) {
 		errno = EIO;
 		return -1;
 	}
+
 	*num_iac = rp.num_current_iac;
-	memcpy(lap, rp.lap, 3*rp.num_current_iac);
+	memcpy(lap, rp.lap, rp.num_current_iac * 3);
 	return 0;
 }
 
@@ -1035,14 +1038,12 @@ int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
 	
 	memset(&cp, 0, sizeof(cp));
 	cp.num_current_iac = num_iac;
-	memcpy(&cp.lap, lap, 3*num_iac);
+	memcpy(&cp.lap, lap, num_iac * 3);
 	
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf = OGF_HOST_CTL;
 	rq.ocf = OCF_WRITE_CURRENT_IAC_LAP;
 	rq.cparam = &cp;
 	rq.clen = WRITE_CURRENT_IAC_LAP_CP_SIZE;
-	if (0 > hci_send_req(dd, &rq, to))
-		return -1;
-	return 0;
+	return hci_send_req(dd, &rq, to);
 }
