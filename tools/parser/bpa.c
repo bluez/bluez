@@ -38,8 +38,8 @@
 #include "parser.h"
 
 #define BPA_U8(frm)  (get_u8(frm))
-#define BPA_U16(frm) (htobs(htons(get_u16(frm))))
-#define BPA_U32(frm) (htobl(htonl(get_u32(frm))))
+#define BPA_U16(frm) (btohs(htons(get_u16(frm))))
+#define BPA_U32(frm) (btohl(htonl(get_u32(frm))))
 
 void bpa_dump(int level, struct frame *frm)
 {
