@@ -2,8 +2,6 @@
 #  $Id$
 #
 
-mandir = $(prefix)/share/man
-
 sbin_PROGRAMS = hcid
 
 if ENABLE_DBUS

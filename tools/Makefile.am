@@ -2,8 +2,6 @@
 #  $Id$
 #
 
-mandir = $(prefix)/share/man
-
 sbin_PROGRAMS = hciattach hciconfig
 
 bin_PROGRAMS = hcitool l2ping sdptool ciptool
