@@ -426,7 +426,7 @@ static struct option main_options[] = {
 	{ "terminate",	1, 0, 'k' },
 	{ "release",	1, 0, 'k' },
 	{ "kill",	1, 0, 'k' },
-	{ "killall",	1, 0, 'K' },
+	{ "killall",	0, 0, 'K' },
 	{ 0, 0, 0, 0 }
 };
 
