@@ -857,6 +857,7 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 	print_dev_hdr(&di);
 	switch (ver.manufacturer) {
 	case 0:
+	case 48:
 		print_rev_ericsson(dd);
 		break;
 	case 10:
