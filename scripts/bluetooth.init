@@ -20,7 +20,7 @@ DUND_NAME=dund
 HCID_EXEC="`which $HCID_NAME || true`"
 SDPD_EXEC="`which $SDPD_NAME || true`"
 HIDD_EXEC="`which $HIDD_NAME || true`"
-HID2HCI_EXEC="`which $HIDD_NAME || true`"
+HID2HCI_EXEC="`which $HID2HCI_NAME || true`"
 RFCOMM_EXEC="`which $RFCOMM_NAME || true`"
 PAND_EXEC="`which $PAND_NAME || true`"
 DUND_EXEC="`which $DUND_NAME || true`"
@@ -54,15 +54,15 @@ case "$1" in
 		echo -n " $SDPD_NAME"
 	fi
 	if $HIDD_ENABLE && [ -x "$HIDD_EXEC" ] ; then
-		$HIDD_EXEC $HIDD_OPTIONS --server
+		$HIDD_EXEC $HIDD_OPTIONS --server || true
 		echo -n " $HIDD_NAME"
 	fi
 	if $HID2HCI_ENABLE && [ -x "$HID2HCI_EXEC" ] ; then
-		$HID2HCI_EXEC --tohci
+		$HID2HCI_EXEC --tohci > /dev/null 2>&1 || true
 		echo -n " $HID2HCI_NAME"
 	fi
 	if $RFCOMM_ENABLE && [ -x "$RFCOMM_EXEC" -a -f "$RFCOMM_CONFIG" ] ; then
-		$RFCOMM_EXEC -f $RFCOMM_CONFIG bind all
+		$RFCOMM_EXEC -f $RFCOMM_CONFIG bind all || true
 		echo -n " $RFCOMM_NAME"
 	fi
 	if $DUND_ENABLE && [ -x "$DUND_EXEC" -a -n "$DUND_OPTIONS" ] ; then
@@ -77,19 +77,19 @@ case "$1" in
 	;;
   stop)
 	echo -n "Stopping $DESC:"
-	killall $PAND_EXEC > /dev/null 2>&1 || true
+	killall $PAND_NAME > /dev/null 2>&1 || true
 	echo -n " $PAND_NAME"
-	killall $DUND_EXEC > /dev/null 2>&1 || true
+	killall $DUND_NAME > /dev/null 2>&1 || true
 	echo -n " $DUND_NAME"
 	if [ -x "$RFCOMM_EXEC" ] ; then
 		$RFCOMM_EXEC release all
 		echo -n " $RFCOMM_NAME"
 	fi
-	killall $HIDD_EXEC > /dev/null 2>&1 || true
+	killall $HIDD_NAME > /dev/null 2>&1 || true
 	echo -n " $HIDD_NAME"
-	killall $SDPD_EXEC > /dev/null 2>&1 || true
+	killall $SDPD_NAME > /dev/null 2>&1 || true
 	echo -n " $SDPD_NAME"
-	killall $HCID_EXEC > /dev/null 2>&1 || true
+	killall $HCID_NAME > /dev/null 2>&1 || true
 	echo -n " $HCID_NAME"
 	echo "."
 	;;
