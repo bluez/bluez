@@ -85,6 +85,43 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 	AC_SUBST(BLUEZ_LIBS)
 ])
 
+AC_DEFUN([AC_PATH_OPENOBEX], [
+	openobex_prefix=${prefix}
+
+	AC_ARG_WITH(openobex, AC_HELP_STRING([--with-openobex=DIR], [OpenOBEX library is installed in DIR]), [
+		if (test "${withval}" != "yes"); then
+			openobex_prefix=${withval}
+		fi
+	])
+
+	ac_save_CPPFLAGS=$CPPFLAGS
+	ac_save_LDFLAGS=$LDFLAGS
+
+	OPENOBEX_CFLAGS=""
+	test -d "${openobex_prefix}/include" && OPENOBEX_CFLAGS="$OPENOBEX_CFLAGS -I${openobex_prefix}/include"
+
+	CPPFLAGS="$CPPFLAGS $OPENOBEX_CFLAGS"
+	AC_CHECK_HEADER(openobex/obex.h, openobex_found=yes, openobex_found=no)
+
+	OPENOBEX_LIBS=""
+	if (test "${prefix}" = "${openobex_prefix}"); then
+		test -d "${libdir}" && OPENOBEX_LIBS="$OPENOBEX_LIBS -L${libdir}"
+	else
+		test -d "${openobex_prefix}/lib64" && OPENOBEX_LIBS="$OPENOBEX_LIBS -L${openobex_prefix}/lib64"
+		test -d "${openobex_prefix}/lib" && OPENOBEX_LIBS="$OPENOBEX_LIBS -L${openobex_prefix}/lib"
+	fi
+
+	LDFLAGS="$LDFLAGS $OPENOBEX_LIBS"
+	AC_CHECK_LIB(openobex, OBEX_Init, OPENOBEX_LIBS="$OPENOBEX_LIBS -lopenobex", openobex_found=no)
+	AC_CHECK_LIB(openobex, BtOBEX_TransportConnect, AC_DEFINE(HAVE_BTOBEX_TRANSPORT_CONNECT, 1, [Define to 1 if you have the BtOBEX_TransportConnect() function.]))
+
+	CPPFLAGS=$ac_save_CPPFLAGS
+	LDFLAGS=$ac_save_LDFLAGS
+
+	AC_SUBST(OPENOBEX_CFLAGS)
+	AC_SUBST(OPENOBEX_LIBS)
+])
+
 AC_DEFUN([AC_PATH_USB], [
 	usb_prefix=${prefix}
 
@@ -168,6 +205,7 @@ AC_DEFUN([AC_PATH_DBUS], [
 AC_DEFUN([AC_ARG_BLUEZ], [
 	debug_enable=no
 	pie_enable=no
+	obex_enable=${openobex_found}
 	dbus_enable=${dbus_found}
 	test_enable=no
 	cups_enable=no
@@ -186,6 +224,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	])
 
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
+		obex_enable=${enableval}
 		dbus_enable=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
@@ -194,6 +233,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		bluepin_enable=${enableval}
 		hid2hci_enable=${enableval}
 		bcm203x_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
+		obex_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
@@ -237,6 +280,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		LDFLAGS="$LDFLAGS -pie"
 	fi
 
+	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(DBUS, test "${dbus_enable}" = "yes" && test "${dbus_found}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
