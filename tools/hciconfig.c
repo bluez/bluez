@@ -488,6 +488,135 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
         }
 }
 
+void cmd_page_parms(int ctl, int hdev, char *opt)
+{
+	struct hci_request rq;
+	int s;
+	if ((s = hci_open_dev(hdev)) < 0) {
+		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	memset(&rq, 0, sizeof(rq));
+
+	if (opt) {
+		unsigned int window, interval;
+		write_page_activity_cp cp;
+
+		if (sscanf(opt,"%4u:%4u", &window, &interval) != 2) {
+			printf("Invalid argument format\n");
+			exit(1);
+		}
+			
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_WRITE_PAGE_ACTIVITY;
+		rq.cparam = &cp;
+		rq.clen = WRITE_PAGE_ACTIVITY_CP_SIZE;
+		
+		cp.window = htobs((uint16_t)window);
+		cp.interval = htobs((uint16_t)interval);
+		
+		if (window < 0x12 || window > 0x1000)
+			printf("Warning: page window out of range!\n");
+		
+		if (interval < 0x12 || interval > 0x1000)
+			printf("Warning: page interval out of range!\n");
+		
+		if (hci_send_req(s, &rq, 1000) < 0) {
+			printf("Can't set page parameters name on hci%d. %s(%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		uint16_t window, interval;
+		read_page_activity_rp rp;
+		
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_READ_PAGE_ACTIVITY;
+		rq.rparam = &rp;
+		rq.rlen = READ_PAGE_ACTIVITY_RP_SIZE;
+		      
+		if (hci_send_req(s, &rq, 1000) < 0) {
+			printf("Can't read page parameters on hci%d. %s(%d)\n", 
+							hdev, strerror(errno), errno);
+			exit(1);
+		}
+		if (rp.status) {
+			printf("Read page parameters on hci%d returned status %d\n", 
+							hdev, rp.status);
+			exit(1);
+		}
+		print_dev_hdr(&di);
+		
+		window   = btohs(rp.window);
+		interval = btohs(rp.interval);
+		printf("\tPage interval: %u slots (%.2f ms), window: %u slots (%.2f ms)\n",
+				interval, (float)interval * 0.625, window, (float)window * 0.625);
+        }
+}
+
+void cmd_page_to(int ctl, int hdev, char *opt)
+{
+	struct hci_request rq;
+	int s;
+	if ((s = hci_open_dev(hdev)) < 0) {
+		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	memset(&rq, 0, sizeof(rq));
+
+	if (opt) {
+		unsigned int timeout;
+		write_page_timeout_cp cp;
+
+		if (sscanf(opt,"%4u", &timeout) != 1) {
+			printf("Invalid argument format\n");
+			exit(1);
+		}
+			
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_WRITE_PAGE_TIMEOUT;
+		rq.cparam = &cp;
+		rq.clen = WRITE_PAGE_TIMEOUT_CP_SIZE;
+		
+		cp.timeout = htobs((uint16_t)timeout);
+		
+		if (timeout < 0x01 || timeout > 0xFFFF)
+			printf("Warning: page timeout out of range!\n");
+		
+		if (hci_send_req(s, &rq, 1000) < 0) {
+			printf("Can't set page timeout on hci%d. %s(%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		uint16_t timeout;
+		read_page_timeout_rp rp;
+		
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_READ_PAGE_TIMEOUT;
+		rq.rparam = &rp;
+		rq.rlen = READ_PAGE_TIMEOUT_RP_SIZE;
+		      
+		if (hci_send_req(s, &rq, 1000) < 0) {
+			printf("Can't read page timeout on hci%d. %s(%d)\n", 
+							hdev, strerror(errno), errno);
+			exit(1);
+		}
+		if (rp.status) {
+			printf("Read page timeout on hci%d returned status %d\n", 
+							hdev, rp.status);
+			exit(1);
+		}
+		print_dev_hdr(&di);
+		
+		timeout = btohs(rp.timeout);
+		printf("\tPage timeout: %u slots (%.2f ms)\n",
+				timeout, (float)timeout * 0.625);
+        }
+}
+
 void print_dev_hdr(struct hci_dev_info *di)
 {
 	static int hdr = -1;
@@ -559,6 +688,8 @@ struct {
 	{ "name",   cmd_name,    "[name]",   "Get/Set local name" },
 	{ "class",  cmd_class,   "[class]",  "Get/Set class of device" },
 	{ "inqparms",cmd_inq_parms, "[win:int]","Get/Set inquiry scan window and interval" },
+	{ "pageparms",cmd_page_parms, "[win:int]","Get/Set page scan window and interval" },
+	{ "ptimeo", cmd_page_to, "[to]",     "Get/Set page timeout" },
 	{ "aclmtu", cmd_aclmtu, "<mtu:pkt>","Set ACL MTU and number of packets" },
 	{ "scomtu", cmd_scomtu, "<mtu:pkt>","Set SCO MTU and number of packets" },
 	{ "version",	cmd_version, 0,  "Display version information" },
