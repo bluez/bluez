@@ -2,7 +2,7 @@ dnl
 dnl  $Id$
 dnl
 
-AC_DEFUN(AC_PREFIX_BLUEZ, [
+AC_DEFUN([AC_PREFIX_BLUEZ], [
 	AC_PREFIX_DEFAULT(/usr)
 
 	if test "$prefix" = "NONE"; then
@@ -22,7 +22,7 @@ AC_DEFUN(AC_PREFIX_BLUEZ, [
 	fi
 ])
 
-AC_DEFUN(AC_PATH_BLUEZ, [
+AC_DEFUN([AC_PATH_BLUEZ], [
 	AC_ARG_WITH(bluez, [  --with-bluez=DIR        BlueZ library is installed in DIR], [
 		if (test "$withval" = "yes"); then
 			bluez_includes=$bluez_prefix/include
@@ -65,7 +65,7 @@ AC_DEFUN(AC_PATH_BLUEZ, [
 	AC_SUBST(BLUEZ_LIBS)
 ])
 
-AC_DEFUN(AC_PATH_DBUS, [
+AC_DEFUN([AC_PATH_DBUS], [
 	AC_ARG_ENABLE(dbus, [  --enable-dbus           enable D-BUS support], [
 		dbus_enable=$enableval
 	])
@@ -133,7 +133,7 @@ AC_DEFUN(AC_PATH_DBUS, [
 	AM_CONDITIONAL(DBUS, test "$dbus_enable" = "yes")
 ])
 
-AC_DEFUN(AC_PATH_CUPS, [
+AC_DEFUN([AC_PATH_CUPS], [
 	AC_ARG_ENABLE(cups, [  --enable-cups           enable CUPS support], [
 		cups_enable=$enableval
 		cups_prefix=/usr
