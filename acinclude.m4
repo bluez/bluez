@@ -166,8 +166,8 @@ AC_DEFUN([AC_PATH_DBUS], [
 ])
 
 AC_DEFUN([AC_ARG_BLUEZ], [
-	pie_enable=no
 	debug_enable=no
+	pie_enable=no
 	dbus_enable=${dbus_found}
 	test_enable=no
 	cups_enable=no
