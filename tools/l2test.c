@@ -292,10 +292,8 @@ void send_mode(char *svr)
 	uint32_t seq;
 	int s, i;
 
-	if( (s = do_connect(svr)) < 0 ){
-		syslog(LOG_ERR, "Can't connect to the server. %s(%d)", strerror(errno), errno);
+	if( (s = do_connect(svr)) < 0 )
 		exit(1);
-	}
 
 	syslog(LOG_INFO,"Sending ...");
 
@@ -318,10 +316,9 @@ void reconnect_mode(char *svr)
 {
 	while(1){
 		int s;
-		if( (s = do_connect(svr)) < 0 ){
-			syslog(LOG_ERR, "Can't connect to the server. %s(%d)", strerror(errno), errno);
+		if( (s = do_connect(svr)) < 0 )
 			exit(1);
-		}
+		
 		close(s);
 
 		usleep(10);
@@ -331,11 +328,8 @@ void reconnect_mode(char *svr)
 void connect_mode(char *svr)
 {
 	int s;
-	if ((s = do_connect(svr)) < 0) {
-		syslog(LOG_ERR, "Can't connect to the server. %s(%d)", 
-				strerror(errno), errno);
+	if ((s = do_connect(svr)) < 0)
 		exit(1);
-	}
 	sleep(99999999);
 }
 
@@ -347,9 +341,7 @@ void multy_connect_mode(char *svr)
 			if( fork() ) continue;
 
 			/* Child */
-			if( (s = do_connect(svr)) < 0 ){
-				syslog(LOG_ERR, "Can't connect to the server. %s(%d)", strerror(errno), errno);
-			}
+			s = do_connect(svr);
 			close(s);
 			exit(0);
 		}
@@ -361,14 +353,20 @@ void usage(void)
 {
 	printf("l2test - L2CAP testing\n"
 		"Usage:\n");
-	printf("\tl2test <mode> [-b bytes] [-S bd_addr] [-P psm] [-I imtu] [-O omtu] [-M] [bd_addr]\n");
+	printf("\tl2test <mode> [options] [bdaddr]\n");
 	printf("Modes:\n"
+		"\t-r receive (server)\n"
 		"\t-d dump (server)\n"
 		"\t-n silent connect (client)\n"
 		"\t-c reconnect (client)\n"
 		"\t-m multiple connects (client)\n"
-		"\t-r receive (server)\n"
 		"\t-s send (client)\n");
+	printf("Options:\n"
+		"\t[-b bytes] [-S bdaddr] [-P psm]\n"
+	       	"\t[-I imtu] [-O omtu]\n"
+		"\t[-A] request authentication\n"
+		"\t[-E] request encryption\n"
+	       	"\t[-M] become master\n");
 }
 
 extern int optind,opterr,optopt;
