@@ -104,6 +104,7 @@ AC_DEFUN([AC_PATH_DBUS], [
 		if (test "${withval}" != "yes"); then
 			dbus_prefix=${withval}
 		fi
+		dbus_enable=yes
 	])
 
 	ac_save_CPPFLAGS=$CPPFLAGS
