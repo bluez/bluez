@@ -330,6 +330,14 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		}
 	}
 
+	if (dev_id < 0) {
+		dev_id = hci_get_route(&bdaddr);
+		if (dev_id < 0) {
+			perror("Device is not available.");
+			exit(1);
+		}
+	}
+
 	printf("Scanning ...\n");
 	num_rsp = hci_inquiry(dev_id, length, num_rsp, NULL, &info, flags);
 	if (num_rsp < 0) {
@@ -337,15 +345,22 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		free(info);
+		exit(1);
+	}
+
 	for (i = 0; i < num_rsp; i++) {
-		dd = hci_open_dev(dev_id);
 		memset(name, 0, sizeof(name));
 		if (hci_remote_name(dd, &(info+i)->bdaddr, sizeof(name), name, 100000) < 0)
 			strcpy(name, "n/a");
-		close(dd);
 		baswap(&bdaddr, &(info+i)->bdaddr);
-                printf("\t%s\t%s\n", batostr(&bdaddr), name);
+		printf("\t%s\t%s\n", batostr(&bdaddr), name);
 	}
+
+	close(dd);
 	free(info);
 }
 
