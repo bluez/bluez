@@ -33,6 +33,7 @@
 extern "C" {
 #endif
 
+/* CMTP defaults */
 #define CMTP_MINIMUM_MTU 152
 #define CMTP_DEFAULT_MTU 672
 
