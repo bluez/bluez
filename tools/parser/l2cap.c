@@ -60,7 +60,7 @@ static cid_info cid_table[2][CID_TABLE_SIZE];
 #define SCID cid_table[0]
 #define DCID cid_table[1]
 
-static struct frame * add_handle(uint16_t handle)
+static struct frame *add_handle(uint16_t handle)
 {
 	register handle_info *t = handle_table;
 	register int i;
@@ -73,7 +73,7 @@ static struct frame * add_handle(uint16_t handle)
 	return NULL;
 }
 
-static struct frame * get_frame(uint16_t handle)
+static struct frame *get_frame(uint16_t handle)
 {
 	register handle_info *t = handle_table;
 	register int i;
@@ -131,6 +131,19 @@ static uint16_t get_psm(int in, uint16_t cid)
 	return parser.defpsm;
 }
 
+static uint32_t get_val(uint8_t *ptr, uint8_t len)
+{
+	switch (len) {
+	case 1:
+		return *ptr;
+	case 2:
+		return btohs(get_unaligned((uint16_t *) ptr));
+	case 4:
+		return btohl(get_unaligned((uint32_t *) ptr));
+	}
+	return 0;
+}
+
 static char *mode2str(uint8_t mode)
 {
 	switch (mode) {
@@ -181,19 +194,6 @@ static inline void conn_rsp(int level, struct frame *frm)
 				btohs(h->result), btohs(h->status));
 }
 
-static uint32_t conf_opt_val(uint8_t *ptr, uint8_t len)
-{
-	switch (len) {
-	case 1:
-		return *ptr;
-	case 2:
-		return btohs(get_unaligned((uint16_t *)ptr));
-	case 4:
-		return btohl(get_unaligned((uint32_t *)ptr));
-	}
-	return 0;
-}
-
 static void conf_opt(int level, void *ptr, int len)
 {
 	p_indent(level, 0);
@@ -205,10 +205,10 @@ static void conf_opt(int level, void *ptr, int len)
 
 		switch (h->type) {
 		case L2CAP_CONF_MTU:
-			printf("MTU %d ", conf_opt_val(h->val, h->len));
+			printf("MTU %d ", get_val(h->val, h->len));
 			break;
 		case L2CAP_CONF_FLUSH_TO:
-			printf("FlushTO %d ", conf_opt_val(h->val, h->len));
+			printf("FlushTO %d ", get_val(h->val, h->len));
 			break;
 		case 0x04:
 			printf("Mode %d (%s)", *h->val, mode2str(*h->val));
@@ -290,22 +290,43 @@ static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	raw_dump(level, frm);
 }
 
+static void info_opt(int level, int type, void *ptr, int len)
+{
+	p_indent(level, 0);
+	switch (type) {
+	case 0x0001:
+		printf("Connectionless MTU %d\n", get_val(ptr, len));
+		break;
+	case 0x0002:
+		printf("Extended feature mask 0x%4.4x\n", get_val(ptr, len));
+		break;
+	default:
+		printf("Unknown (len %d)\n", len);
+		break;
+	}
+}
+
 static inline void info_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
+	l2cap_info_req *h = frm->ptr;
+
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Info req: dlen %d\n", btohs(cmd->len));
-	raw_dump(level, frm);
+	printf("Info req: type %d\n", btohs(h->type));
 }
 
 static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
+	l2cap_info_rsp *h = frm->ptr;
+	int ilen = btohs(cmd->len) - L2CAP_INFO_REQ_SIZE;
+
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Info rsp: dlen %d\n", btohs(cmd->len));
-	raw_dump(level, frm);
+	printf("Info rsp: type %d result %d\n", btohs(h->type), btohs(h->result));
+	if (ilen)
+		info_opt(level, btohs(h->type), h->data, ilen);
 }
 
 static void l2cap_parse(int level, struct frame *frm)
