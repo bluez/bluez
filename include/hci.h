@@ -342,7 +342,7 @@ typedef struct {
 #define OCF_INQUIRY		0x0001
 typedef struct {
 	uint8_t 	lap[3];
-	uint8_t 	lenght;
+	uint8_t 	length;
 	uint8_t		num_rsp;
 } __attribute__ ((packed)) inquiry_cp;
 #define INQUIRY_CP_SIZE 5
@@ -555,7 +555,7 @@ typedef struct {
 #define EVT_NUM_COMP_PKTS	0x13
 typedef struct {
 	uint8_t		num_hndl;
-	/* variable lenght part */
+	/* variable length part */
 } __attribute__ ((packed)) evt_num_comp_pkts;
 #define EVT_NUM_COMP_PKTS_SIZE 1
 
