@@ -33,6 +33,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 

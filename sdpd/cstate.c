@@ -33,6 +33,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <malloc.h>
 #include <sys/time.h>
 

@@ -31,11 +31,12 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <syslog.h>
-#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
