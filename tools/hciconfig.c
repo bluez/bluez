@@ -32,6 +32,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 #include <getopt.h>
 
 #include <termios.h>
@@ -369,11 +370,15 @@ void cmd_name(int ctl, int hdev, char *opt)
 		}
 	} else {
 		char name[248];
+		int i;
 		if (hci_read_local_name(s, sizeof(name), name, 1000) < 0) {
 			printf("Can't read local name on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 			exit(1);
 		}
+		for (i = 0; i < 248 && name[i]; i++)
+			if (!isprint(name[i]))
+				name[i] = '.';
 		print_dev_hdr(&di);
 		printf("\tName: '%s'\n", name);
 	}
