@@ -2,4 +2,4 @@
 #  $Id$
 #
 
-SUBDIRS := hcid tools rfcomm scripts pcmcia
+SUBDIRS := hcid tools rfcomm test scripts pcmcia
