@@ -262,6 +262,10 @@ char *bt_compidtostr(int compid)
 		return "Macronix International Co. Ltd.";
 	case 45:
 		return "GCT Semiconductor";
+	case 46:
+		return "Norwood Systems";
+	case 47:
+		return "MewTel Technology Inc.";
 	case 65535:
 		return "internal use";
 	default:
