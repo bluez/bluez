@@ -443,7 +443,7 @@ static char *get_minor_device_name(int major, int minor)
 			return "Keyboard";
 		case 32:
 			return "Pointing device";
-		case 64:
+		case 48:
 			return "Combo keyboard/pointing device";
 		}
 		break;
