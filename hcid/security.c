@@ -107,9 +107,10 @@ static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
 static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct link_key *key = get_link_key(sba, dba);
+	char sa[18], da[18];
 
-	syslog(LOG_INFO, "link_key_request (sba=%s, dba=%s)\n",
-	       batostr(sba), batostr(dba));
+	ba2str(sba, sa); ba2str(dba, da);
+	syslog(LOG_INFO, "link_key_request (sba=%s, dba=%s)\n", sa, da);
 
 	if (key) {
 		/* Link key found */
@@ -127,8 +128,8 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 
 static void save_link_key(struct link_key *key)
 {
-	char sa[40], da[40];
 	struct link_key *exist;
+	char sa[18], da[18];
 	int f, err;
 
 	f = open(hcid.key_file, O_RDWR | O_CREAT, 0);
@@ -172,8 +173,10 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
 	struct link_key key;
-	
-	syslog(LOG_INFO, "link_key_notify (sba=%s)\n", batostr(sba));
+        char sa[18];
+
+	ba2str(sba, sa);
+	syslog(LOG_INFO, "link_key_notify (sba=%s)\n", sa);
 
 	memcpy(key.key, evt->link_key, 16);
 	bacpy(&key.sba, sba);
@@ -293,9 +296,10 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct hci_conn_info_req *cr;
 	struct hci_conn_info *ci;
-	
-	syslog(LOG_INFO, "pin_code_request (sba=%s, dba=%s)\n",
-	       batostr(sba), batostr(dba));
+	char sa[18], da[18];
+
+	ba2str(sba, sa); ba2str(dba, da);
+	syslog(LOG_INFO, "pin_code_request (sba=%s, dba=%s)\n", sa, da);
 
 	cr = malloc(sizeof(*cr) + sizeof(*ci));
 	if (!cr)
@@ -313,9 +317,8 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	if (pairing == HCID_PAIRING_ONCE) {
 		struct link_key *key = get_link_key(sba, dba);
 		if (key) {
-			char ba[40];
-			ba2str(dba, ba);
-			syslog(LOG_WARNING, "PIN code request for already paired device %s", ba);
+			ba2str(dba, da);
+			syslog(LOG_WARNING, "PIN code request for already paired device %s", da);
 			goto reject;
 		}
 	} else if (pairing == HCID_PAIRING_NONE)
