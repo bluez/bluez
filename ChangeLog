@@ -1,3 +1,11 @@
+ver 2.0:
+	BCSP initialization (hciattach).
+	Minor hciconfig fixes.	
+
+ver 2.0-pre13:
+	Support for multiple pairing modes.
+	Link key database handling fixes.
+
 ver 2.0-pre12:
 	Removed max link key limit. Keys never expire.
 	Link key database is always updated. Reread PIN on SIGHUP (hcid).
