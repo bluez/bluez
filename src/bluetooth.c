@@ -281,6 +281,10 @@ char *bt_compidtostr(int compid)
 		return "Renesas Technology Corp.";
 	case 55:
 		return "Mobilian Corporation";
+	case 56:
+		return "Terax";
+	case 57:
+		return "Integrated System Solution Corp.";
 	case 65535:
 		return "internal use";
 	default:
