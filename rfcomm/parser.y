@@ -161,7 +161,7 @@ int rfcomm_read_config(char *filename)
 		snprintf(file, MAXPATHLEN, "%s/.bluetooth/rfcomm.conf", getenv("HOME"));
 
 		if ((getuid() == 0) || (access(file, R_OK) < 0))
-			snprintf(file, MAXPATHLEN, "/etc/bluetooth/rfcomm.conf");
+			snprintf(file, MAXPATHLEN, "%s/rfcomm.conf", CONFIGDIR);
 	}
 
 	if (!(yyin = fopen(file, "r")))

@@ -34,10 +34,10 @@
 
 #include "glib-ectomy.h"
 
-#define HCID_CONFIG_FILE "/etc/bluetooth/hcid.conf"
-#define HCID_PIN_FILE    "/etc/bluetooth/pin"
-#define HCID_KEY_FILE    "/etc/bluetooth/link_key"
-#define HCID_PIN_HELPER  "/bin/bluepin"
+#define HCID_CONFIG_FILE CONFIGDIR "/hcid.conf"
+#define HCID_PIN_FILE    CONFIGDIR "/pin"
+#define HCID_KEY_FILE    CONFIGDIR "/link_key"
+#define HCID_PIN_HELPER  "/usr/bin/bluepin"
 
 struct device_opts {
 	char    *name;
