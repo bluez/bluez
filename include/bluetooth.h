@@ -103,7 +103,8 @@ char     *batostr(bdaddr_t *ba);
 int  ba2str(bdaddr_t *ba, char *str);
 int  str2ba(char *str, bdaddr_t *ba);
 
-int  bterr(uint16_t code);
+int  bt_error(uint16_t code);
+char *bt_compidtostr(int id);
 
 #ifdef __cplusplus
 }

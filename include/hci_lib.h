@@ -77,6 +77,11 @@ int   hci_strtolp(char *str, unsigned int *val);
 char *hci_lmtostr(unsigned int ptype);
 int   hci_strtolm(char *str, unsigned int *val);
 
+char *hci_vertostr(unsigned int ver);
+int   hci_strtover(char *str, unsigned int *ver);
+char *lmp_vertostr(unsigned int ver);
+int   lmp_strtover(char *str, unsigned int *ver);
+
 static inline void hci_set_bit(int nr, void *addr)
 {
         *((uint32_t *) addr + (nr >> 5)) |= (1 << (nr & 31));

@@ -51,7 +51,7 @@ typedef struct {
 	char  *str; unsigned int val;
 } hci_map;
 
-static char * hci_uint2str(hci_map *m, unsigned int val) 
+static char *hci_bit2str(hci_map *m, unsigned int val) 
 {
 	static char str[50];
 	char *ptr = str;
@@ -65,7 +65,7 @@ static char * hci_uint2str(hci_map *m, unsigned int val)
 	return str;
 }
 
-int hci_str2uint(hci_map *map, char *str, unsigned int *val)
+static int hci_str2bit(hci_map *map, char *str, unsigned int *val)
 {
 	char *t, *ptr;
 	hci_map *m;
@@ -82,6 +82,46 @@ int hci_str2uint(hci_map *map, char *str, unsigned int *val)
 			if (!strcasecmp(m->str,t)) {
 				*val |= (unsigned int) m->val;
 				set = 1;
+			}
+		}
+	} 	
+	free(str);
+
+	return set;
+}
+
+static char *hci_uint2str(hci_map *m, unsigned int val) 
+{
+	static char str[50];
+	char *ptr = str;
+
+	*ptr = 0;
+	while (m->str) {
+		if ((unsigned int) m->val == val) {
+			ptr += sprintf(ptr, "%s", m->str);
+			break;
+		}
+		m++;
+	} 	
+	return str;
+}
+
+static int hci_str2uint(hci_map *map, char *str, unsigned int *val)
+{
+	char *t, *ptr;
+	hci_map *m;
+	int set = 0;
+
+	if (!str)
+		return 0;
+
+	str = ptr = strdup(str);
+
+	while ((t=strsep(&ptr, ","))) {
+		for (m=map; m->str; m++) {
+			if (!strcasecmp(m->str,t)) {
+				*val = (unsigned int) m->val; set = 1;
+				break;
 			}
 		}
 	} 	
@@ -153,11 +193,11 @@ hci_map pkt_type_map[] = {
 };
 char *hci_ptypetostr(unsigned int ptype)
 {
-	return hci_uint2str(pkt_type_map, ptype);
+	return hci_bit2str(pkt_type_map, ptype);
 }
 int hci_strtoptype(char *str, unsigned int *val)
 {
-	return hci_str2uint(pkt_type_map, str, val);
+	return hci_str2bit(pkt_type_map, str, val);
 }
 
 /* Link policy mapping */
@@ -171,11 +211,11 @@ hci_map link_policy_map[] = {
 };
 char *hci_lptostr(unsigned int lp)
 {
-	return hci_uint2str(link_policy_map, lp);
+	return hci_bit2str(link_policy_map, lp);
 }
 int hci_strtolp(char *str, unsigned int *val)
 {
-	return hci_str2uint(link_policy_map, str, val);
+	return hci_str2bit(link_policy_map, str, val);
 }
 
 /* Link mode mapping */
@@ -196,12 +236,38 @@ char *hci_lmtostr(unsigned int lm)
 	if (!(lm & HCI_LM_MASTER))
 		strcpy(str, "SLAVE ");
 
-	strcat(str, hci_uint2str(link_mode_map, lm));
+	strcat(str, hci_bit2str(link_mode_map, lm));
 	return str;
 }
 int hci_strtolm(char *str, unsigned int *val)
 {
-	return hci_str2uint(link_mode_map, str, val);
+	return hci_str2bit(link_mode_map, str, val);
+}
+
+/* Version mapping */
+hci_map ver_map[] = {
+	{ "1.0b",    0x00 },
+	{ "1.1",     0x01 },
+	{ NULL }
+};
+char *hci_vertostr(unsigned int ver)
+{
+	char *str = hci_uint2str(ver_map, ver);
+	return *str ? str : "n/a";
+}
+int hci_strtover(char *str, unsigned int *ver)
+{
+	return hci_str2uint(ver_map, str, ver);
+}
+
+char *lmp_vertostr(unsigned int ver)
+{
+	char *str = hci_uint2str(ver_map, ver);
+	return *str ? str : "n/a";
+}
+int lmp_strtover(char *str, unsigned int *ver)
+{
+	return hci_str2uint(ver_map, str, ver);
 }
 
 /* HCI functions that do not require open device */
