@@ -182,7 +182,7 @@ static void cmd_inq(int dev_id, char **opt, int nopt)
 	if (nopt >= 1)
 		length = atoi(opt[0]);
 	else
-		length = 10; /* 10 seconds */
+		length = 8; /* ~ 10 seconds */
 
 	flags = 0;
 	if (nopt >= 2)
