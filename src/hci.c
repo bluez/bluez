@@ -399,12 +399,25 @@ static int __other_bdaddr(int s, int dev_id, long arg)
 	return bacmp((bdaddr_t *)arg, &di.bdaddr);
 }
 
+static int __same_bdaddr(int s, int dev_id, long arg)
+{
+	struct hci_dev_info di = {dev_id: dev_id};
+	if (ioctl(s, HCIGETDEVINFO, (void*) &di))
+		return 0;
+	return !bacmp((bdaddr_t *)arg, &di.bdaddr);
+}
+
 int hci_get_route(bdaddr_t *bdaddr)
 {
 	if (bdaddr)
 		return hci_for_each_dev(HCI_UP, __other_bdaddr, (long) bdaddr);
 	else
 		return hci_for_each_dev(HCI_UP, NULL, 0);
+}
+
+int hci_devid(bdaddr_t *bdaddr)
+{
+	return hci_for_each_dev(HCI_UP, __same_bdaddr, (long) bdaddr);
 }
 
 int hci_devinfo(int dev_id, struct hci_dev_info *di)
