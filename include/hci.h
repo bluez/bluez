@@ -122,10 +122,10 @@ enum {
 #define ACL_PTYPE_MASK	(~SCO_PTYPE_MASK)
 
 /* ACL flags */
-#define ACL_CONT		0x0001
-#define ACL_START		0x0002
-#define ACL_ACTIVE_BCAST	0x0010
-#define ACL_PICO_BCAST		0x0020
+#define ACL_CONT		0x01
+#define ACL_START		0x02
+#define ACL_ACTIVE_BCAST	0x04
+#define ACL_PICO_BCAST		0x08
 
 /* Baseband links */
 #define SCO_LINK	0x00
