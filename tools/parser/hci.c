@@ -3,7 +3,7 @@
  *  Bluetooth packet analyzer - HCI parser
  *
  *  Copyright (C) 2000-2002  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2003-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2003-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -46,7 +47,7 @@ static inline uint16_t get_manufacturer(void)
 	return (manufacturer == DEFAULT_COMPID ? parser.defcompid : manufacturer);
 }
 
-static char *event_map[] = {
+static char *event_str[] = {
 	"Unknown",
 	"Inquiry Complete",
 	"Inquiry Result",
@@ -96,7 +97,7 @@ static char *event_map[] = {
 };
 #define EVENT_NUM 43
 
-static char *cmd_linkctl_map[] = {
+static char *cmd_linkctl_str[] = {
 	"Unknown",
 	"Inquiry",
 	"Inquiry Cancel",
@@ -143,7 +144,7 @@ static char *cmd_linkctl_map[] = {
 };
 #define CMD_LINKCTL_NUM 42
 
-static char *cmd_linkpol_map[] = {
+static char *cmd_linkpol_str[] = {
 	"Unknown",
 	"Hold Mode",
 	"Unknown",
@@ -164,7 +165,7 @@ static char *cmd_linkpol_map[] = {
 };
 #define CMD_LINKPOL_NUM 16
 
-static char *cmd_hostctl_map[] = {
+static char *cmd_hostctl_str[] = {
 	"Unknown",
 	"Set Event Mask",
 	"Unknown",
@@ -242,7 +243,7 @@ static char *cmd_hostctl_map[] = {
 };
 #define CMD_HOSTCTL_NUM 73
 
-static char *cmd_info_map[] = {
+static char *cmd_info_str[] = {
 	"Unknown",
 	"Read Local Version Information",
 	"Read Local Supported Commands",
@@ -256,7 +257,7 @@ static char *cmd_info_map[] = {
 };
 #define CMD_INFO_NUM 9
 
-static char *cmd_status_map[] = {
+static char *cmd_status_str[] = {
 	"Unknown",
 	"Read Failed Contact Counter",
 	"Reset Failed Contact Counter",
@@ -268,49 +269,113 @@ static char *cmd_status_map[] = {
 };
 #define CMD_STATUS_NUM 7
 
-static inline void command_dump(int level, struct frame *frm)
+static char *error_code_str[] = {
+	"Success",
+	"Unknown HCI Command",
+	"Unknown Connection Identifier",
+	"Hardware Failure",
+	"Page Timeout",
+	"Authentication Failure",
+	"PIN or Key Missing",
+	"Memory Capacity Exceeded",
+	"Connection Timeout",
+	"Connection Limit Exceeded",
+	"Synchronous Connection to a Device Exceeded",
+	"ACL Connection Already Exists",
+	"Command Disallowed",
+	"Connection Rejected due to Limited Resources",
+	"Connection Rejected due to Security Reasons",
+	"Connection Rejected due to Unacceptable BD_ADDR",
+	"Connection Accept Timeout Exceeded",
+	"Unsupported Feature or Parameter Value",
+	"Invalid HCI Command Parameters",
+	"Remote User Teminated Connection",
+	"Remote Device Terminated Connection due to Low Resources",
+	"Remote Device Terminated Connection due to Power Off",
+	"Connection Terminated by Local Host",
+	"Pairing Not Allowed",
+	"Unknown LMP PDU",
+	"Unsupported Remote Feature / Unsupported LMP Feature",
+	"SCO Offset Rejected",
+	"SCO Interval Rejected",
+	"SCO Air Mode Rejected",
+	"Invalid LMP Parameters",
+	"Unspecified Error",
+	"Unsupported LMP Parameter Value",
+	"Role Change Not Allowed",
+	"LMP Response Timeout",
+	"LMP Error Transaction Collision",
+	"LMP PDU Not Allowed",
+	"Encryption Mode Not Acceptable",
+	"Link Key Can Not be Changed",
+	"Requested QoS Not Supported",
+	"Instant Passed",
+	"Pairing with Unit Key Not Allowed",
+	"Different Transaction Collision",
+	"Reserved",
+	"QoS Unacceptable Parameter",
+	"QoS Rejected",
+	"Channel Classification Not Supported",
+	"Insufficient Security",
+	"Parameter out of Mandatory Range",
+	"Reserved",
+	"Role Switch Pending",
+	"Reserved",
+	"Reserved Slot Violation",
+	"Role Switch Failed"
+};
+#define ERROR_CODE_NUM 53
+
+static char *status2str(uint8_t status)
 {
-	hci_command_hdr *hdr = frm->ptr;
-	uint16_t opcode = btohs(hdr->opcode);
+	char *str;
+
+	if (status <= ERROR_CODE_NUM)
+		str = error_code_str[status];
+	else
+		str = "Unknown";
+
+	return str;
+}
+
+static char *opcode2str(uint16_t opcode)
+{
 	uint16_t ogf = cmd_opcode_ogf(opcode);
 	uint16_t ocf = cmd_opcode_ocf(opcode);
 	char *cmd;
 
-	if (p_filter(FILT_HCI))
-		return;
-
 	switch (ogf) {
 	case OGF_INFO_PARAM:
 		if (ocf <= CMD_INFO_NUM)
-			cmd = cmd_info_map[ocf];
+			cmd = cmd_info_str[ocf];
 		else
 			cmd = "Unknown";
 		break;
 
 	case OGF_HOST_CTL:
 		if (ocf <= CMD_HOSTCTL_NUM)
-			cmd = cmd_hostctl_map[ocf];
+			cmd = cmd_hostctl_str[ocf];
 		else
 			cmd = "Unknown";
 		break;
 
 	case OGF_LINK_CTL:
 		if (ocf <= CMD_LINKCTL_NUM)
-			cmd = cmd_linkctl_map[ocf];
+			cmd = cmd_linkctl_str[ocf];
 		else
 			cmd = "Unknown";
 		break;
 
 	case OGF_LINK_POLICY:
 		if (ocf <= CMD_LINKPOL_NUM)
-			cmd = cmd_linkpol_map[ocf];
+			cmd = cmd_linkpol_str[ocf];
 		else
 			cmd = "Unknown";
 		break;
 
 	case OGF_STATUS_PARAM:
 		if (ocf <= CMD_STATUS_NUM)
-			cmd = cmd_status_map[ocf];
+			cmd = cmd_status_str[ocf];
 		else
 			cmd = "Unknown";
 		break;
@@ -328,10 +393,23 @@ static inline void command_dump(int level, struct frame *frm)
 		break;
 	}
 
+	return cmd;
+}
+
+static inline void command_dump(int level, struct frame *frm)
+{
+	hci_command_hdr *hdr = frm->ptr;
+	uint16_t opcode = btohs(hdr->opcode);
+	uint16_t ogf = cmd_opcode_ogf(opcode);
+	uint16_t ocf = cmd_opcode_ocf(opcode);
+
+	if (p_filter(FILT_HCI))
+		return;
+
 	p_indent(level, frm);
 
 	printf("HCI Command: %s (0x%2.2x|0x%4.4x) plen %d\n", 
-		cmd, ogf, ocf, hdr->plen);
+		opcode2str(opcode), ogf, ocf, hdr->plen);
 
 	frm->ptr += HCI_COMMAND_HDR_SIZE;
 	frm->len -= HCI_COMMAND_HDR_SIZE;
@@ -344,6 +422,258 @@ static inline void command_dump(int level, struct frame *frm)
 	raw_dump(level, frm);
 }
 
+static inline void status_response_dump(int level, struct frame *frm)
+{
+	uint8_t status = get_u8(frm);
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x\n", status);
+
+	if (status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(status));
+	}
+
+	raw_dump(level, frm);
+}
+
+static inline void generic_response_dump(int level, struct frame *frm)
+{
+	uint8_t status = get_u8(frm);
+	uint16_t handle = btohs(htons(get_u16(frm)));
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d\n", status, handle);
+
+	if (status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(status));
+	}
+
+	raw_dump(level, frm);
+}
+
+static inline void cmd_complete_dump(int level, struct frame *frm)
+{
+	evt_cmd_complete *evt = frm->ptr;
+	uint16_t opcode = btohs(evt->opcode);
+	uint16_t ogf = cmd_opcode_ogf(opcode);
+	uint16_t ocf = cmd_opcode_ocf(opcode);
+
+	p_indent(level, frm);
+	printf("%s (0x%2.2x|0x%4.4x) ncmd %d\n",
+		opcode2str(opcode), ogf, ocf, evt->ncmd);
+
+	frm->ptr += EVT_CMD_COMPLETE_SIZE;
+	frm->len -= EVT_CMD_COMPLETE_SIZE;
+
+	switch (ogf) {
+	case OGF_HOST_CTL:
+		switch (ocf) {
+		case OCF_READ_LOCAL_NAME:
+		case OCF_READ_PAGE_TIMEOUT:
+		case OCF_READ_PAGE_ACTIVITY:
+		case OCF_READ_INQ_ACTIVITY:
+		case OCF_READ_CLASS_OF_DEV:
+		case OCF_READ_VOICE_SETTING:
+		case OCF_READ_TRANSMIT_POWER_LEVEL:
+		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
+		case OCF_READ_CURRENT_IAC_LAP:
+		case OCF_SET_AFH_CLASSIFICATION:
+		case OCF_READ_INQUIRY_MODE:
+		case OCF_READ_AFH_MODE:
+			status_response_dump(level, frm);
+			break;
+
+		default:
+			raw_dump(level, frm);
+			break;
+		}
+		break;
+
+	case OGF_INFO_PARAM:
+		switch (ocf) {
+		case OCF_READ_LOCAL_VERSION:
+		case OCF_READ_LOCAL_FEATURES:
+		case OCF_READ_BUFFER_SIZE:
+		case OCF_READ_BD_ADDR:
+			status_response_dump(level, frm);
+			break;
+
+		default:
+			raw_dump(level, frm);
+			break;
+		}
+		break;
+
+	case OGF_STATUS_PARAM:
+		switch (ocf) {
+		case OCF_READ_FAILED_CONTACT_COUNTER:
+		case OCF_RESET_FAILED_CONTACT_COUNTER:
+		case OCF_READ_LINK_QUALITY:
+		case OCF_READ_RSSI:
+		case OCF_READ_AFH_MAP:
+		case OCF_READ_CLOCK:
+			status_response_dump(level, frm);
+			break;
+
+		default:
+			raw_dump(level, frm);
+			break;
+		}
+		break;
+
+	default:
+		raw_dump(level, frm);
+		break;
+	}
+}
+
+static inline void cmd_status_dump(int level, struct frame *frm)
+{
+	evt_cmd_status *evt = frm->ptr;
+	uint16_t opcode = btohs(evt->opcode);
+
+	p_indent(level, frm);
+	printf("%s (0x%2.2x|0x%4.4x) status 0x%2.2x ncmd %d\n",
+		opcode2str(opcode),
+		cmd_opcode_ogf(opcode), cmd_opcode_ocf(opcode),
+		evt->status, evt->ncmd);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	}
+}
+
+static inline void inq_result_dump(int level, struct frame *frm)
+{
+	uint8_t num = get_u8(frm);
+	int i;
+
+	for (i = 0; i < num; i++) {
+		inquiry_info *info = frm->ptr;
+		char addr[18];
+
+		ba2str(&info->bdaddr, addr);
+
+		p_indent(level, frm);
+		printf("bdaddr %s clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x\n",
+			addr, info->clock_offset, info->dev_class[2],
+			info->dev_class[1], info->dev_class[0]);
+
+		frm->ptr += INQUIRY_INFO_SIZE;
+		frm->len -= INQUIRY_INFO_SIZE;
+	}
+}
+
+static inline void conn_complete_dump(int level, struct frame *frm)
+{
+	evt_conn_complete *evt = frm->ptr;
+	char addr[18];
+
+	ba2str(&evt->bdaddr, addr);
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d bdaddr %s type %s encrypt 0x%2.2x\n",
+		evt->status, btohs(evt->handle), addr,
+		evt->link_type == 1 ? "ACL" : "SCO", evt->encr_mode);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	}
+}
+
+static inline void conn_request_dump(int level, struct frame *frm)
+{
+	evt_conn_request *evt = frm->ptr;
+	char addr[18];
+
+	ba2str(&evt->bdaddr, addr);
+
+	p_indent(level, frm);
+	printf("bdaddr %s class 0x%2.2x%2.2x%2.2x type %s\n",
+		addr, evt->dev_class[2], evt->dev_class[1],
+		evt->dev_class[0], evt->link_type == 1 ? "ACL" : "SCO");
+}
+
+static inline void disconn_complete_dump(int level, struct frame *frm)
+{
+	evt_disconn_complete *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d reason 0x%2.2x\n",
+		evt->status, btohs(evt->handle), evt->reason);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else if (evt->reason > 0) {
+		p_indent(level, frm);
+		printf("Reason: %s\n", status2str(evt->reason));
+	}
+}
+
+static inline void remote_name_req_complete_dump(int level, struct frame *frm)
+{
+	evt_remote_name_req_complete *evt = frm->ptr;
+	char addr[18], name[249];
+	int i;
+
+	ba2str(&evt->bdaddr, addr);
+
+	memset(name, 0, sizeof(name));
+	for (i = 0; i < 248 && evt->name[i]; i++)
+		if (isprint(evt->name[i]))
+			name[i] = evt->name[i];
+		else
+			name[i] = '.';
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x bdaddr %s name '%s'\n", evt->status, addr, name);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	}
+}
+
+static inline void encrypt_change_dump(int level, struct frame *frm)
+{
+	evt_encrypt_change *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d encrypt 0x%2.2x\n",
+		evt->status, btohs(evt->handle), evt->encrypt);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	}
+}
+
+static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
+{
+	uint8_t num = get_u8(frm);
+	int i;
+
+	for (i = 0; i < num; i++) {
+		inquiry_info_with_rssi *info = frm->ptr;
+		char addr[18];
+
+		p_indent(level, frm);
+
+		ba2str(&info->bdaddr, addr);
+		printf("bdaddr %s clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
+			addr, info->clock_offset, info->dev_class[2],
+			info->dev_class[1], info->dev_class[0], info->rssi);
+
+		frm->ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
+		frm->len -= INQUIRY_INFO_WITH_RSSI_SIZE;
+	}
+}
+
 static inline void event_dump(int level, struct frame *frm)
 {
 	hci_event_hdr *hdr = frm->ptr;
@@ -354,9 +684,9 @@ static inline void event_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 
-	if (hdr->evt <= EVENT_NUM) {
+	if (event <= EVENT_NUM) {
 		printf("HCI Event: %s (0x%2.2x) plen %d\n",
-			event_map[hdr->evt], hdr->evt, hdr->plen);
+			event_str[hdr->evt], hdr->evt, hdr->plen);
 	} else if (hdr->evt == EVT_TESTING) {
 		printf("HCI Event: Testing (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
 	} else if (hdr->evt == EVT_VENDOR) {
@@ -381,7 +711,61 @@ static inline void event_dump(int level, struct frame *frm)
 		}
 	}
 
-	raw_dump(level, frm);
+	if (!(parser.flags & DUMP_VERBOSE)) {
+		raw_dump(level, frm);
+		return;
+	}
+
+	switch (event) {
+	case EVT_CMD_COMPLETE:
+		cmd_complete_dump(level + 1, frm);
+		break;
+
+	case EVT_CMD_STATUS:
+		cmd_status_dump(level + 1, frm);
+		break;
+
+	case EVT_INQUIRY_COMPLETE:
+		status_response_dump(level + 1, frm);
+		break;
+
+	case EVT_INQUIRY_RESULT:
+		inq_result_dump(level + 1, frm);
+		break;
+
+	case EVT_CONN_COMPLETE:
+		conn_complete_dump(level + 1, frm);
+		break;
+
+	case EVT_CONN_REQUEST:
+		conn_request_dump(level + 1, frm);
+		break;
+
+	case EVT_DISCONN_COMPLETE:
+		disconn_complete_dump(level + 1, frm);
+		break;
+
+	case EVT_AUTH_COMPLETE:
+	case EVT_CHANGE_CONN_LINK_KEY_COMPLETE:
+		generic_response_dump(level + 1, frm);
+		break;
+
+	case EVT_REMOTE_NAME_REQ_COMPLETE:
+		remote_name_req_complete_dump(level + 1, frm);
+		break;
+
+	case EVT_ENCRYPT_CHANGE:
+		encrypt_change_dump(level + 1, frm);
+		break;
+
+	case EVT_INQUIRY_RESULT_WITH_RSSI:
+		inq_result_with_rssi_dump(level + 1, frm);
+		break;
+
+	default:
+		raw_dump(level, frm);
+		break;
+	}
 }
 
 static inline void acl_dump(int level, struct frame *frm)
@@ -393,7 +777,7 @@ static inline void acl_dump(int level, struct frame *frm)
 
 	if (!p_filter(FILT_HCI)) {
 		p_indent(level, frm);
-		printf("ACL data: handle 0x%4.4x flags 0x%2.2x dlen %d\n",
+		printf("ACL data: handle %d flags 0x%2.2x dlen %d\n",
 			acl_handle(handle), flags, dlen);
 		level++;
 	}
@@ -416,7 +800,7 @@ static inline void sco_dump(int level, struct frame *frm)
 
 	if (!p_filter(FILT_SCO)) {
 		p_indent(level, frm);
-		printf("SCO data: handle 0x%4.4x dlen %d\n",
+		printf("SCO data: handle %d dlen %d\n",
 			acl_handle(handle), hdr->dlen);
 		level++;
 
@@ -443,7 +827,7 @@ static inline void vendor_dump(int level, struct frame *frm)
 
 void hci_dump(int level, struct frame *frm)
 {
-	uint8_t type = *(uint8_t *)frm->ptr; 
+	uint8_t type = *(uint8_t *)frm->ptr;
 
 	frm->ptr++; frm->len--;
 
