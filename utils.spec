@@ -44,7 +44,6 @@ The BLUETOOTH trademarks are owned by Bluetooth SIG, Inc., U.S.A.
 rm -rf $RPM_BUILD_ROOT
 
 %setup -q
-#%patch0 -p1 
 
 %build
 CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=%{prefix} --mandir=%{_mandir} --sysconfdir=%{_sysconfdir}
