@@ -67,6 +67,7 @@ int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to);
 int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to);
 int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to);
 int hci_read_local_version(int dd, struct hci_version *ver, int to);
+int hci_class_of_dev(int dd, uint8_t *class, int to);
 
 char *hci_dtypetostr(int type);
 char *hci_dflagstostr(uint32_t flags);
