@@ -1,3 +1,15 @@
+ver 2.10:
+	Use a define for the configuration directory.
+	Fix string initialization for flags translation.
+	Check for usb_get_busses() and usb_interrupt_read().
+	Add optional support for compiling with PIE.
+	Make installation of the init scripts optional.
+	Make compiling with debug information optional.
+	Don't override CFLAGS from configure.
+
+	Note:
+	This version needs at least bluez-libs-2.10
+
 ver 2.9:
 	Retry SDP connect if busy in the CUPS backend.
 	Use packet type and allow role switch in hcitool.
