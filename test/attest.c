@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2001-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2001-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -33,11 +33,10 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <termios.h>
-#include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -85,11 +84,13 @@ static int at_command(int fd, char *cmd, int to)
 
 static int open_device(char *device)
 {
-	int fd;
 	struct termios ti;
+	int fd;
 
-	if ((fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK)) < 0) {
-		printf("Can't open serial port. %s (%d)\n", strerror(errno), errno);
+	fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	if (fd < 0) {
+		fprintf(stderr, "Can't open serial port: %s (%d)\n",
+							strerror(errno), errno);
 		return -1;
 	}
 
@@ -104,34 +105,40 @@ static int open_device(char *device)
 
 static int open_socket(bdaddr_t *bdaddr, uint8_t channel)
 {
-	struct sockaddr_rc remote_addr, local_addr;
-	int s;
+	struct sockaddr_rc addr;
+	int sk;
 
-	if ((s = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) < 0) {
-		printf("Can't create socket. %s (%d)\n", strerror(errno), errno);
+	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0) {
+		fprintf(stderr, "Can't create socket: %s (%d)\n",
+							strerror(errno), errno);
 		return -1;
 	}
 
-	memset(&local_addr, 0, sizeof(local_addr));
-	local_addr.rc_family = AF_BLUETOOTH;
-	bacpy(&local_addr.rc_bdaddr, BDADDR_ANY);
-	if (bind(s, (struct sockaddr *)&local_addr, sizeof(local_addr)) < 0) {
-		printf("Can't bind socket. %s (%d)\n", strerror(errno), errno);
-		close(s);
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		fprintf(stderr, "Can't bind socket: %s (%d)\n",
+							strerror(errno), errno);
+		close(sk);
 		return -1;
 	}
 
-	memset(&remote_addr, 0, sizeof(remote_addr));
-	remote_addr.rc_family = AF_BLUETOOTH;
-	bacpy(&remote_addr.rc_bdaddr, bdaddr);
-	remote_addr.rc_channel = channel;
-	if (connect(s, (struct sockaddr *)&remote_addr, sizeof(remote_addr)) < 0) {
-		printf("Can't connect. %s (%d)\n", strerror(errno), errno);
-		close(s);
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, bdaddr);
+	addr.rc_channel = channel;
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		fprintf(stderr, "Can't connect: %s (%d)\n",
+							strerror(errno), errno);
+		close(sk);
 		return -1;
 	}
 
-	return s;
+	return sk;
 }
 
 static void usage(void)

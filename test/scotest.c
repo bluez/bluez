@@ -67,106 +67,155 @@ static float tv2fl(struct timeval tv)
 
 static int do_connect(char *svr)
 {
-	struct sockaddr_sco rem_addr, loc_addr;
+	struct sockaddr_sco addr;
 	struct sco_conninfo conn;
-	int s, opt;
+	socklen_t optlen;
+	int sk;
 
-	if ((s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)) < 0) {
-		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
+	/* Create socket */
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't create socket: %s (%d)",
+							strerror(errno), errno);
 		return -1;
 	}
 
-	memset(&loc_addr, 0, sizeof(loc_addr));
-	loc_addr.sco_family = AF_BLUETOOTH;
-	bacpy(&loc_addr.sco_bdaddr, &bdaddr);
-	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
-		exit(1);
+	/* Bind to local address */
+	memset(&addr, 0, sizeof(addr));
+	addr.sco_family = AF_BLUETOOTH;
+	bacpy(&addr.sco_bdaddr, &bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
-	memset(&rem_addr, 0, sizeof(rem_addr));
-	rem_addr.sco_family = AF_BLUETOOTH;
-	str2ba(svr, &rem_addr.sco_bdaddr);
-	if (connect(s, (struct sockaddr *) &rem_addr, sizeof(rem_addr)) < 0) {
-		syslog(LOG_ERR, "Can't connect: %s (%d)", strerror(errno), errno);
-		return -1;
+	/* Connect to remote device */
+	memset(&addr, 0, sizeof(addr));
+	addr.sco_family = AF_BLUETOOTH;
+	str2ba(svr, &addr.sco_bdaddr);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		syslog(LOG_ERR, "Can't connect: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
+	/* Get connection information */
 	memset(&conn, 0, sizeof(conn));
-	opt = sizeof(conn);
-	if (getsockopt(s, SOL_SCO, SCO_CONNINFO, &conn, &opt) < 0) {
-		syslog(LOG_ERR, "Can't get SCO connection information: %s (%d)", strerror(errno), errno);
-		close(s);
-		return -1;
+	optlen = sizeof(conn);
+
+	if (getsockopt(sk, SOL_SCO, SCO_CONNINFO, &conn, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get SCO connection information: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	syslog(LOG_INFO, "Connected [handle %d, class 0x%02x%02x%02x]",
 		conn.hci_handle,
 		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
-	return s;
+	return sk;
+
+error:
+	close(sk);
+	return -1;
 }
 
 static void do_listen(void (*handler)(int sk))
 {
-	struct sockaddr_sco loc_addr, rem_addr;
-	int  s, s1, opt;
+	struct sockaddr_sco addr;
+	struct sco_conninfo conn;
+	socklen_t optlen;
+	int sk, nsk;
 	char ba[18];
 
-	if ((s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)) < 0) {
-		syslog(LOG_ERR, "Can't create socket: %s (%d)", strerror(errno), errno);
+	/* Create socket */
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't create socket: %s (%d)",
+							strerror(errno), errno);
 		exit(1);
 	}
 
-	loc_addr.sco_family = AF_BLUETOOTH;
-	loc_addr.sco_bdaddr = bdaddr;
-	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket: %s (%d)", strerror(errno), errno);
-		exit(1);
+	/* Bind to local address */
+	memset(&addr, 0, sizeof(addr));
+	addr.sco_family = AF_BLUETOOTH;
+	bacpy(&addr.sco_bdaddr, &bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
-	if (listen(s, 10)) {
-		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)", strerror(errno), errno);
-		exit(1);
+	/* Listen for connections */
+	if (listen(sk, 10)) {
+		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 	syslog(LOG_INFO,"Waiting for connection ...");
 
 	while (1) {
-		opt = sizeof(rem_addr);
-		if ((s1 = accept(s, (struct sockaddr *) &rem_addr, &opt)) < 0) {
-			syslog(LOG_ERR,"Accept failed: %s (%d)", strerror(errno), errno);
-			exit(1);
+		memset(&addr, 0, sizeof(addr));
+		optlen = sizeof(addr);
+
+		nsk = accept(sk, (struct sockaddr *) &addr, &optlen);
+		if (nsk < 0) {
+			syslog(LOG_ERR,"Accept failed: %s (%d)",
+							strerror(errno), errno);
+			goto error;
 		}
 		if (fork()) {
 			/* Parent */
-			close(s1);
+			close(nsk);
 			continue;
 		}
 		/* Child */
+		close(sk);
 
-		close(s);
+		/* Get connection information */
+		memset(&conn, 0, sizeof(conn));
+		optlen = sizeof(conn);
 
-		ba2str(&rem_addr.sco_bdaddr, ba);
-		syslog(LOG_INFO, "Connect from %s", ba);
+		if (getsockopt(nsk, SOL_SCO, SCO_CONNINFO, &conn, &optlen) < 0) {
+			syslog(LOG_ERR, "Can't get SCO connection information: %s (%d)",
+							strerror(errno), errno);
+			close(nsk);
+			goto error;
+		}
 
-		handler(s1);
+		ba2str(&addr.sco_bdaddr, ba);
+		syslog(LOG_INFO, "Connect from %s [handle %d, class 0x%02x%02x%02x]",
+			ba, conn.hci_handle,
+			conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
+
+		handler(nsk);
 
 		syslog(LOG_INFO, "Disconnect");
 		exit(0);
 	}
+
+	return;
+
+error:
+	close(sk);
+	exit(1);
 }
 
-static void dump_mode(int s)
+static void dump_mode(int sk)
 {
 	int len;
 
 	syslog(LOG_INFO,"Receiving ...");
-	while ((len = read(s, buf, data_size)) > 0)
-		syslog(LOG_INFO, "Recevied %d bytes\n", len);
+	while ((len = read(sk, buf, data_size)) > 0)
+		syslog(LOG_INFO, "Recevied %d bytes", len);
 }
 
-static void recv_mode(int s)
+static void recv_mode(int sk)
 {
 	struct timeval tv_beg,tv_end,tv_diff;
 	long total;
@@ -180,7 +229,7 @@ static void recv_mode(int s)
 		total = 0;
 		while (total < data_size) {
 			int r;
-			if ((r = recv(s, buf, data_size, 0)) <= 0) {
+			if ((r = recv(sk, buf, data_size, 0)) <= 0) {
 				if (r < 0)
 					syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
@@ -202,20 +251,20 @@ static void send_mode(char *svr)
 {
 	struct sco_options so;
 	uint32_t seq;
-	int s, i, opt;
+	int sk, i, opt;
 
-	if ((s = do_connect(svr)) < 0) {
+	if ((sk = do_connect(svr)) < 0) {
 		syslog(LOG_ERR, "Can't connect to the server: %s (%d)",
-						strerror(errno), errno);
+							strerror(errno), errno);
 		exit(1);
 	}
 
 	opt = sizeof(so);
-	if (getsockopt(s, SOL_SCO, SCO_OPTIONS, &so, &opt) < 0) {
+	if (getsockopt(sk, SOL_SCO, SCO_OPTIONS, &so, &opt) < 0) {
 		syslog(LOG_ERR, "Can't get SCO options: %s (%d)",
-						strerror(errno), errno);
+							strerror(errno), errno);
 		exit(1);
-	}	
+	}
 
 	syslog(LOG_INFO,"Sending ...");
 
@@ -228,11 +277,12 @@ static void send_mode(char *svr)
 		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
 
-		if (send(s, buf, so.mtu, 0) <= 0) {
+		if (send(sk, buf, so.mtu, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed: %s (%d)",
-						strerror(errno), errno);
+							strerror(errno), errno);
 			exit(1);
 		}
+
 		usleep(1);
 	}
 }
@@ -240,13 +290,15 @@ static void send_mode(char *svr)
 static void reconnect_mode(char *svr)
 {
 	while (1) {
-		int s;
-		if ((s = do_connect(svr)) < 0) {
+		int sk;
+
+		if ((sk = do_connect(svr)) < 0) {
 			syslog(LOG_ERR, "Can't connect to the server: %s (%d)",
-						strerror(errno), errno);
+							strerror(errno), errno);
 			exit(1);
 		}
-		close(s);
+
+		close(sk);
 
 		sleep(5);
 	}
@@ -255,19 +307,22 @@ static void reconnect_mode(char *svr)
 static void multy_connect_mode(char *svr)
 {
 	while (1) {
-		int i, s;
+		int i, sk;
+
 		for (i = 0; i < 10; i++){
 			if (fork())
 				continue;
 
 			/* Child */
-			if ((s = do_connect(svr)) < 0) {
+			sk = do_connect(svr);
+			if (sk < 0) {
 				syslog(LOG_ERR, "Can't connect to the server: %s (%d)",
-						strerror(errno), errno);
+							strerror(errno), errno);
 			}
-			close(s);
+			close(sk);
 			exit(0);
 		}
+
 		sleep(19);
 	}
 }
