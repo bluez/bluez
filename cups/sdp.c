@@ -40,12 +40,6 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#define HCRP_CTRL_UUID		0x0012
-#define HCRP_DATA_UUID		0x0014
-
-#define HCR_PROFILE_ID		0x1125
-#define HCR_PRINT_SVCLASS_ID	0x1126
-
 int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short *data_psm)
 {
 	sdp_list_t *srch, *attrs, *rsp;
