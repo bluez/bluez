@@ -137,6 +137,50 @@ void cmd_scan(int ctl, int hdev, char *opt)
 	}
 }
 
+void cmd_iac(int ctl, int hdev, char *opt)
+{
+	int s = hci_open_dev(hdev);
+
+	if (s < 0) {
+		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		exit(1);
+	}
+	if (opt) {
+		int l = strtoul(opt, 0, 16);
+		uint8_t lap[3];
+		if (l < 0x9e8b00 || l > 0x9e8b3f) {
+			printf("Invalid access code 0x%x\n", l);
+			exit(1);
+		}
+		lap[0] = (l & 0xff);
+		lap[1] = (l >> 8) & 0xff;
+		lap[2] = (l >> 16) & 0xff;
+		if (hci_write_current_iac_lap(s, 1, lap, 1000) < 0) {
+			printf("Failed to set IAC on hci%d: %s\n", hdev, strerror(errno));
+			exit(1);
+		}
+	} else {
+		uint8_t lap[3 * MAX_IAC_LAP];
+		int i, j;
+		uint8_t n;
+		if (hci_read_current_iac_lap(s, &n, lap, 1000) < 0) {
+			printf("Failed to read IAC from hci%d: %s\n", hdev, strerror(errno));
+			exit(1);
+		}
+		print_dev_hdr(&di);
+		printf("\tIAC: ");
+		for (i = 0; i < n; i++) {
+			printf("0x");
+			for (j = 3; j--; )
+				printf("%02x", lap[j + 3*i]);
+			if (i < n-1)
+				printf(", ");
+		}
+		printf("\n");
+	}
+	close(s);
+}
+
 void cmd_auth(int ctl, int hdev, char *opt)
 {
 	struct hci_dev_req dr;
@@ -913,6 +957,7 @@ void print_dev_info(int ctl, struct hci_dev_info *di)
 		if (hci_test_bit(HCI_UP, &di->flags)) {
 			cmd_name(ctl, di->dev_id, NULL);
 			cmd_class(ctl, di->dev_id, NULL);
+			cmd_iac(ctl, di->dev_id, NULL);
 			cmd_version(ctl, di->dev_id, NULL);
 		}
 	}
@@ -952,6 +997,7 @@ struct {
 	{ "features",	cmd_features,	0,		"Display device features" },
 	{ "version",	cmd_version,	0,		"Display version information" },
 	{ "revision",	cmd_revision,	0,		"Display revision information" },
+        { "iac",	cmd_iac,	"[iac]",	"Get/Set inquiry access code" },
 	{ NULL, NULL, 0 }
 };
 
