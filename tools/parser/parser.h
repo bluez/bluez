@@ -37,6 +37,7 @@ struct frame {
 	int	in;
 	int	handle;
 	int	cid;
+	int 	channel;
 	long	flags;
 	struct	timeval ts;
 };
@@ -63,7 +64,7 @@ struct frame {
 #define FILT_HCRP	0x0100
 #define FILT_AVDTP	0x0200
 
-#define FILT_CAPI	0x00010000
+#define FILT_CAPI	0x00020000
 #define FILT_CSR	0x1000000f
 
 #define STRUCT_OFFSET(type, member)  ((uint8_t *)&(((type *)NULL)->member) - \
@@ -156,8 +157,8 @@ static inline void get_u128(struct frame *frm, uint64_t *l, uint64_t *h)
 
 char *get_uuid_name(int uuid);
 
-void set_proto(uint16_t handle, uint16_t psm, uint32_t proto);
-uint32_t get_proto(uint16_t handle, uint16_t psm);
+void set_proto(uint16_t handle, uint16_t psm, uint8_t channel, uint32_t proto);
+uint32_t get_proto(uint16_t handle, uint16_t psm, uint8_t channel);
 
 void ascii_dump(int level, struct frame *frm, int num);
 void hex_dump(int level, struct frame *frm, int num);

@@ -38,6 +38,7 @@
 
 #include "parser.h"
 #include "rfcomm.h"
+#include "sdp.h"
 
 static char *cr_str[] = {
 	"RSP",
@@ -247,6 +248,8 @@ static inline void mcc_frame(int level, struct frame *frm, long_frame_head *head
 
 static inline void uih_frame(int level, struct frame *frm, long_frame_head *head)
 {
+	uint32_t proto;
+
 	if (!head->addr.server_chn) {
 		mcc_frame(level, frm, head); 
 	} else {
@@ -261,7 +264,18 @@ static inline void uih_frame(int level, struct frame *frm, long_frame_head *head
 			printf("\n");
 
 		frm->len--;
-		raw_dump(level, frm);
+		frm->channel = head->addr.server_chn;
+
+		proto = get_proto(frm->handle, 0, frm->channel);
+
+		switch (proto) {
+		default:
+			if (p_filter(FILT_RFCOMM))
+				break;
+
+			raw_dump(level, frm);
+			break;
+		}
 	}
 }
 

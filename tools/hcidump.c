@@ -421,11 +421,11 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'C': 
-			set_proto(0, atoi(optarg), SDP_UUID_CMTP);
+			set_proto(0, atoi(optarg), 0, SDP_UUID_CMTP);
 			break;
 
 		case 'H':
-			set_proto(0, atoi(optarg), SDP_UUID_HARDCOPY_CONTROL_CHANNEL);
+			set_proto(0, atoi(optarg), 0, SDP_UUID_HARDCOPY_CONTROL_CHANNEL);
 			break;
 
 		case 'h':

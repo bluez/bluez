@@ -479,7 +479,7 @@ static void l2cap_parse(int level, struct frame *frm)
 			break;
 
 		default:
-			proto = get_proto(frm->handle, psm);
+			proto = get_proto(frm->handle, psm, 0);
 
 			switch (proto) {
 			case SDP_UUID_CMTP:
@@ -542,8 +542,9 @@ void l2cap_dump(int level, struct frame *frm)
 		fr->ptr = fr->data;
 		fr->in  = frm->in;
 		fr->ts  = frm->ts;
-		fr->handle = frm->handle;
-		fr->cid    = frm->cid;
+		fr->handle  = frm->handle;
+		fr->cid     = frm->cid;
+		fr->channel = frm->channel;
 	} else {
 		if (!(fr = get_frame(frm->handle))) {
 			fprintf(stderr, "Not enough connection handles\n");

@@ -179,7 +179,7 @@ static inline uint8_t parse_de_hdr(struct frame *frm, int *n)
 	return de_type;
 }
 
-static inline void print_int(uint8_t de_type, int level, int n, struct frame *frm, uint16_t *psm)
+static inline void print_int(uint8_t de_type, int level, int n, struct frame *frm, uint16_t *psm, uint8_t *channel)
 {
 	uint64_t val, val2;
 
@@ -198,6 +198,9 @@ static inline void print_int(uint8_t de_type, int level, int n, struct frame *fr
 	switch(n) {
 	case 1: /* 8-bit */
 		val = get_u8(frm);
+		if (channel && de_type == SDP_DE_UINT)
+			if (*channel == 0)
+				*channel = val;
 		break;
 	case 2: /* 16-bit */
 		val = get_u16(frm);
@@ -228,7 +231,7 @@ static inline void print_int(uint8_t de_type, int level, int n, struct frame *fr
 	printf(" 0x%llx", val);
 }
 
-static inline void print_uuid(int n, struct frame *frm, uint16_t *psm)
+static inline void print_uuid(int n, struct frame *frm, uint16_t *psm, uint8_t *channel)
 {
 	uint32_t uuid = 0;
 	char* s;
@@ -256,8 +259,13 @@ static inline void print_uuid(int n, struct frame *frm, uint16_t *psm)
 	}
 
 	if (psm && *psm > 0 && *psm != 0xffff) {
-		set_proto(frm->handle, *psm, uuid);
+		set_proto(frm->handle, *psm, 0, uuid);
 		*psm = 0xffff;
+	}
+
+	if (channel && *channel > 0 && *channel != 0xff) {
+		set_proto(frm->handle, *psm, *channel, uuid);
+		*channel = 0xff;
 	}
 
 	printf(" %s 0x%04x", s, uuid);
@@ -282,16 +290,16 @@ static inline void print_string(int n, struct frame *frm, const char *name)
 	frm->len -= n;
 }
 
-static inline void print_de(int, struct frame *frm, int *split, uint16_t *psm);
+static inline void print_de(int, struct frame *frm, int *split, uint16_t *psm, uint8_t *channel);
 
-static inline void print_des(uint8_t de_type, int level, int n, struct frame *frm, int *split, uint16_t *psm)
+static inline void print_des(uint8_t de_type, int level, int n, struct frame *frm, int *split, uint16_t *psm, uint8_t *channel)
 {
 	int len = frm->len;
 	while (len - frm->len < n && frm->len > 0)
-		print_de(level, frm, split, psm);
+		print_de(level, frm, split, psm, channel);
 }
 
-static inline void print_de(int level, struct frame *frm, int *split, uint16_t *psm)
+static inline void print_de(int level, struct frame *frm, int *split, uint16_t *psm, uint8_t *channel)
 {
 	int n;
 	uint8_t de_type = parse_de_hdr(frm, &n);
@@ -303,7 +311,7 @@ static inline void print_de(int level, struct frame *frm, int *split, uint16_t *
 	case SDP_DE_UINT:
 	case SDP_DE_INT:
 	case SDP_DE_BOOL:
-		print_int(de_type, level, n, frm, psm);
+		print_int(de_type, level, n, frm, psm, channel);
 		break;
 	case SDP_DE_UUID:
 		if (split) {
@@ -315,7 +323,7 @@ static inline void print_de(int level, struct frame *frm, int *split, uint16_t *
 			}
 			++*split;
 		}
-		print_uuid(n, frm, psm);
+		print_uuid(n, frm, psm, channel);
 		break;
 	case SDP_DE_URL:
 	case SDP_DE_STRING:
@@ -323,12 +331,12 @@ static inline void print_de(int level, struct frame *frm, int *split, uint16_t *
 		break;
 	case SDP_DE_SEQ:
 		printf(" <");
-		print_des(de_type, level, n, frm, split, psm);
+		print_des(de_type, level, n, frm, split, psm, channel);
 		printf(" >");
 		break;
 	case SDP_DE_ALT:
 		printf(" [");
-		print_des(de_type, level, n, frm, split, psm);
+		print_des(de_type, level, n, frm, split, psm, channel);
 		printf(" ]");
 		break;
 	}
@@ -345,7 +353,7 @@ static inline void print_srv_srch_pat(int level, struct frame *frm)
 		len = frm->len;
 		while (len - frm->len < n1 && frm->len > 0) {
 			if (parse_de_hdr(frm,&n2) == SDP_DE_UUID) {
-				print_uuid(n2, frm, NULL);
+				print_uuid(n2, frm, NULL, NULL);
 			} else {
 				printf("\nERROR: Unexpected syntax (UUID)\n");
 				raw_dump(level, frm);
@@ -404,6 +412,7 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 static inline void print_attr_list(int level, struct frame *frm)
 {
 	uint16_t attr_id, psm;
+	uint8_t channel;
 	int len, n1, n2, split;
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
@@ -420,11 +429,13 @@ static inline void print_attr_list(int level, struct frame *frm)
 				printf("aid 0x%04x (%s)\n", attr_id, name);
 				split = (attr_id != SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST);
 				psm = 0;
+				channel = 0;
 
 				/* Print AttributeValue */
 				p_indent(level + 1, 0);
 				print_de(level + 1, frm, split ? NULL: &split,
-					attr_id == SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST ? &psm : NULL);
+					attr_id == SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST ? &psm : NULL,
+					attr_id == SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST ? &channel : NULL);
 				printf("\n");
 			} else {
 				printf("\nERROR: Unexpected syntax\n");
