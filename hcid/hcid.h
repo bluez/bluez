@@ -59,6 +59,7 @@ struct hcid_opts {
 	char   *host_name;
 	int     auto_init;
 	int     security;
+	int     pairing;
 
 	char   *config_file;
 
@@ -77,6 +78,10 @@ extern struct hcid_opts hcid;
 #define HCID_SEC_AUTO	1
 #define HCID_SEC_USER	2
 
+#define HCID_PAIRING_NONE	0
+#define HCID_PAIRING_MULTI	1
+#define HCID_PAIRING_ONCE	2
+
 int read_config(char *file);
 
 gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data);
@@ -85,4 +90,4 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data);
 void init_security_data(void);
 void start_security_manager(int hdev);
 void stop_security_manager(int hdev);
-void flush_link_keys(void);
+void toggle_pairing(int enable);

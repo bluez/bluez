@@ -249,7 +249,12 @@ static void init_defaults(void)
 
 static void sig_usr1(int sig)
 {
-	flush_link_keys();
+	toggle_pairing(0);
+}
+
+static void sig_usr2(int sig)
+{
+	toggle_pairing(1);
 }
 
 static void sig_term(int sig)
@@ -357,6 +362,8 @@ int main(int argc, char *argv[], char *env[])
 	/* Default HCId settings */
 	hcid.config_file = HCID_CONFIG_FILE;
 	hcid.host_name = get_host_name();
+	hcid.security  = HCID_SEC_AUTO;
+	hcid.pairing   = HCID_PAIRING_MULTI;
 
 	hcid.pin_file   = strdup(HCID_PIN_FILE);
 	hcid.pin_helper = strdup(HCID_PIN_HELPER);
@@ -412,6 +419,8 @@ int main(int argc, char *argv[], char *env[])
 	sigaction(SIGHUP, &sa, NULL);
 	sa.sa_handler = sig_usr1;
 	sigaction(SIGUSR1, &sa, NULL);
+	sa.sa_handler = sig_usr2;
+	sigaction(SIGUSR2, &sa, NULL);
 
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL);

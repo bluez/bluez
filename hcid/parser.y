@@ -56,7 +56,7 @@ int yyerror(char *s);
 }
 
 %token K_OPTIONS K_DEVICE
-%token K_AUTOINIT K_SECURITY
+%token K_AUTOINIT K_SECURITY K_PAIRING
 %token K_PTYPE K_NAME K_CLASS K_LM K_LP K_AUTH K_ENCRYPT K_ISCAN K_PSCAN
 %token K_PINHELP
 %token K_YES K_NO
@@ -64,7 +64,7 @@ int yyerror(char *s);
 %token <str> WORD PATH STRING LIST
 %token <num> NUM
 
-%type  <num> bool pkt_type link_mode link_policy sec_mode
+%type  <num> bool pkt_type link_mode link_policy sec_mode pair_mode
 %type  <str> dev_name
 
 %%
@@ -93,6 +93,10 @@ hcid_opt:
 				hcid.security = $2;
 			}
 
+  | K_PAIRING pair_mode	{
+				hcid.pairing = $2;
+			}
+
   | K_PINHELP  PATH	{
 				if (hcid.pin_helper)
 					free(hcid.pin_helper);
@@ -116,6 +120,18 @@ sec_mode:
 
   | K_NO	{ 	$$ = HCID_SEC_NONE; 	}
   ;
+
+pair_mode:
+   WORD		{	
+			int opt = find_keyword(pair_param, $1);
+			if (opt < 0) {
+				cfg_error("Unknown pairing mode '%s'", $1);
+				$$ = 0;
+			} else
+				$$ = opt;
+		}
+  ;
+
 
 device_options: '{' device_opts '}'
 device_opts: | device_opt ';' | error ';' | device_opts device_opt ';';

@@ -37,6 +37,7 @@ struct kword cfg_keyword[] = {
    { "device",   K_DEVICE	}, 
    { "autoinit", K_AUTOINIT	}, 
    { "security", K_SECURITY	}, 
+   { "pairing",  K_PAIRING	}, 
    { "pkt_type", K_PTYPE	}, 
    { "lm", 	 K_LM		}, 
    { "lp", 	 K_LP		}, 
@@ -59,6 +60,13 @@ struct kword sec_param[] = {
    { "none",	 HCID_SEC_NONE	},
    { "auto",	 HCID_SEC_AUTO	},
    { "user",	 HCID_SEC_USER	},
+   { NULL , 0 }
+};
+
+struct kword pair_param[] = {
+   { "none",	 HCID_PAIRING_NONE	},
+   { "multi",	 HCID_PAIRING_MULTI	},
+   { "once",	 HCID_PAIRING_ONCE	},
    { NULL , 0 }
 };
 

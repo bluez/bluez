@@ -53,29 +53,27 @@
 
 static GIOChannel *io_chan[HCI_MAX_DEV];
 
-/* Link Key handling */
+static int pairing;
 
-void flush_link_keys(void)
+void toggle_pairing(int enable)
 {
-	syslog(LOG_INFO, "Flushing link key database");
-	truncate(hcid.key_file, 0);
+	if (enable)
+		pairing = hcid.pairing;
+	else
+		pairing = 0;
+
+	syslog(LOG_INFO, "Pairing %s", pairing ? "enabled" : "disabled");
 }
 
+/* Link Key handling */
+
 /* This function is not reentrable */
-static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
+static struct link_key *__get_link_key(int f, bdaddr_t *sba, bdaddr_t *dba)
 {
 	static struct link_key k;
 	struct link_key *key = NULL;
-	int f, r;
-
-	f = open(hcid.key_file, O_RDONLY);
-	if (f < 0) {
-		if (errno != ENOENT)
-			syslog(LOG_ERR, "Link key database open failed. %s(%d)",
-					strerror(errno), errno);
-		return NULL;
-	}
-
+	int r;
+	
 	while ((r = read_n(f, &k, sizeof(k)))) {
 		if (r < 0) {
 			syslog(LOG_ERR, "Link key database read failed. %s(%d)",
@@ -88,7 +86,20 @@ static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
 			break;
 		}
 	}
-	
+	return key;
+}
+
+static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
+{
+	struct link_key *key = NULL;
+	int f;
+
+	f = open(hcid.key_file, O_RDONLY);
+	if (f >= 0)
+		key = __get_link_key(f, sba, dba);
+	else if (errno != ENOENT)
+		syslog(LOG_ERR, "Link key database open failed. %s(%d)",
+				strerror(errno), errno);
 	close(f);
 	return key;
 }
@@ -114,24 +125,43 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 static void save_link_key(struct link_key *key)
 {
 	char sa[40], da[40];
-	int f;
+	struct link_key *exist;
+	int f, err;
 
-	f = open(hcid.key_file, O_WRONLY | O_CREAT | O_APPEND, 0);
+	f = open(hcid.key_file, O_RDWR | O_CREAT, 0);
 	if (f < 0) {
 		syslog(LOG_ERR, "Link key database open failed. %s(%d)",
 				strerror(errno), errno);
 		return;
 	}
 
+	/* Check if key already exist */
+	exist = __get_link_key(f, &key->sba, &key->dba);
+
+	err = 0;
+
+	if (exist) {
+		off_t o = lseek(f, 0, SEEK_CUR);
+		err = lseek(f, o - sizeof(*key), SEEK_SET);
+	} else
+		err = fcntl(f, F_SETFL, O_APPEND);
+
+	if (err < 0) {
+		syslog(LOG_ERR, "Link key database seek failed. %s(%d)",
+				strerror(errno), errno);
+		goto failed;
+	}
+	
 	if (write_n(f, key, sizeof(*key)) < 0) {
 		syslog(LOG_ERR, "Link key database write failed. %s(%d)",
 				strerror(errno), errno);
 	}
 
-	close(f);
-
 	ba2str(&key->sba, sa); ba2str(&key->dba, da);
-	syslog(LOG_INFO, "Saving link key %s %s", sa, da);
+	syslog(LOG_INFO, "%s link key %s %s", exist ? "Replacing" : "Saving", sa, da);
+
+failed:
+	close(f);
 }
 
 static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
@@ -254,7 +284,7 @@ reject:
 	exit(0);
 }
 
-static void pin_code_request(int dev, bdaddr_t *ba)
+static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct hci_conn_info_req *cr;
 	struct hci_conn_info *ci;
@@ -263,25 +293,32 @@ static void pin_code_request(int dev, bdaddr_t *ba)
 	if (!cr)
 		return;
 
-	bacpy(&cr->bdaddr, ba);
+	bacpy(&cr->bdaddr, dba);
 	cr->type = ACL_LINK;
 	if (ioctl(dev, HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		syslog(LOG_ERR, "Can't get conn info %s(%d)",
 					strerror(errno), errno);
-		/* Reject PIN */
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, ba);
-
-		free(cr);
-		return;
+		goto reject;
 	}
 	ci = cr->conn_info;
+
+	if (pairing == HCID_PAIRING_ONCE) {
+		struct link_key *key = get_link_key(sba, dba);
+		if (key) {
+			char ba[40];
+			ba2str(dba, ba);
+			syslog(LOG_WARNING, "PIN code request for already paired device %s", ba);
+			goto reject;
+		}
+	} else if (pairing == HCID_PAIRING_NONE)
+		goto reject;
 
 	if (hcid.security == HCID_SEC_AUTO) {
 		if (!ci->out) {
 			/* Incomming connection */
 			pin_code_reply_cp pr;
 			memset(&pr, 0, sizeof(pr));
-			bacpy(&pr.bdaddr, ba);
+			bacpy(&pr.bdaddr, dba);
 			memcpy(pr.pin_code, hcid.pin_code, hcid.pin_len);
 			pr.pin_len = hcid.pin_len;
 			hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
@@ -297,6 +334,12 @@ static void pin_code_request(int dev, bdaddr_t *ba)
 		call_pin_helper(dev, ci);
 	}	
 	free(cr);
+	return;
+
+reject:
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
+	free(cr);
+	return;
 }
 
 gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -337,7 +380,7 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	switch (eh->evt) {
 	case EVT_PIN_CODE_REQ:
-		pin_code_request(dev, (bdaddr_t *) ptr);
+		pin_code_request(dev, &di->bdaddr, (bdaddr_t *) ptr);
 		break;
 
 	case EVT_LINK_KEY_REQ:
@@ -426,5 +469,7 @@ void init_security_data(void)
 		strcpy(hcid.pin_code, "BlueZ");
 		hcid.pin_len = 5;
 	}
+
+	pairing = hcid.pairing;
 	return;
 }
