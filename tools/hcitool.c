@@ -397,6 +397,61 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	free(info);
 }
 
+/* Remote name */
+
+static struct option name_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *name_help =
+	"Usage:\n"
+	"\tname <bdaddr>\n";
+
+static void cmd_name(int dev_id, int argc, char **argv)
+{
+	bdaddr_t bdaddr;
+	char name[248];
+	int opt, dd;
+
+	for_each_opt(opt, name_options, NULL) {
+		switch(opt) {
+		default:
+			printf(name_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(name_help);
+		return;
+	}
+
+	baswap(&bdaddr, strtoba(argv[0]));
+
+	if (dev_id < 0) {
+		dev_id = get_route(&bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Device is not available.\n");
+			exit(1);
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+        if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	if (hci_remote_name(dd, &bdaddr, sizeof(name), name, 25000) == 0)
+		printf("%s\n", name);
+
+	close(dd);
+
+}
+
 /* Info about remote device */
 
 static struct option info_options[] = {
@@ -771,6 +826,7 @@ struct {
 	{ "rev",  cmd_rev,  "Display revison information"        },
 	{ "inq",  cmd_inq,  "Inquire remote devices"             },
 	{ "scan", cmd_scan, "Scan for remote devices"            },
+	{ "name", cmd_name, "Get name from remote device"        },
 	{ "info", cmd_info, "Get information from remote device" },
 	{ "cmd",  cmd_cmd,  "Submit arbitrary HCI commands"      },
 	{ "con",  cmd_con,  "Display active connections"         },
