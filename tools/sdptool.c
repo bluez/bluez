@@ -892,7 +892,8 @@ static void print_service_attr(sdp_record_t *rec)
 	if (sdp_get_access_protos(rec, &proto) == 0) {
 		printf("Protocol Descriptor List:\n");
 		sdp_list_foreach(proto, print_access_protos, 0);
-		sdp_list_free(proto, (sdp_free_func_t)sdp_data_free);
+		sdp_list_foreach(proto, (sdp_list_func_t)sdp_list_free, 0);
+		sdp_list_free(proto, 0);
 	}
 	if (sdp_get_lang_attr(rec, &list) == 0) {
 		printf("Language Base Attr List:\n");
