@@ -2,7 +2,7 @@
 #  $Id$
 #
 
-SUBDIRS = hcid tools rfcomm sdpd dund pand hidd cups test scripts pcmcia
+SUBDIRS = hcid tools rfcomm sdpd dund pand hidd cups test scripts pcmcia extra
 
 EXTRA_DIST = utils.spec
 

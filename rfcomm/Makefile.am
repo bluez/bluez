@@ -4,10 +4,11 @@
 
 confdir = $(sysconfdir)/bluetooth
 
+conf_DATA = rfcomm.conf
+
 bin_PROGRAMS = rfcomm
 
 rfcomm_SOURCES = main.c parser.h parser.y lexer.l kword.h kword.c
-rfcomm_CONFIG  = rfcomm.conf
 
 LIBS = @BLUEZ_LIBS@
 
@@ -19,11 +20,6 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) $(rfcomm_CONFIG)
+EXTRA_DIST = $(man_MANS) $(conf_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in
-
-install-data-local:
-	$(mkinstalldirs) $(DESTDIR)$(confdir)
-	[ -f $(DESTDIR)$(confdir)/$(rfcomm_CONFIG) ] || \
-		$(INSTALL_DATA) $(srcdir)/$(rfcomm_CONFIG) $(DESTDIR)$(confdir)/$(rfcomm_CONFIG)

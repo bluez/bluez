@@ -2,11 +2,15 @@
 #  $Id$
 #
 
-noinst_PROGRAMS	= l2test scotest rctest attest hstest
+if TEST
+bin_PROGRAMS = l2test rctest
 
-LIBS = @BLUEZ_LIBS@
+noinst_PROGRAMS	= scotest attest hstest
+
+LDADD = @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
+endif
 
 EXTRA_DIST = hsplay hsmicro
 

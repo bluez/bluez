@@ -76,8 +76,8 @@ AC_DEFUN([AC_PATH_USB], [
 	USB_CFLAGS=""
 	test -d "${usb_prefix}/include" && USB_CFLAGS="$USB_CFLAGS -I${usb_prefix}/include"
 
-	CPPFLAGS="$CPPFLAGS $USB_CFLAGS" 
-	AC_CHECK_HEADER(usb.h,, AC_MSG_ERROR(USB header files not found))
+	CPPFLAGS="$CPPFLAGS $USB_CFLAGS"
+	AC_CHECK_HEADER(usb.h, usb_enable=yes, usb_enable=no)
 
 	USB_LIBS=""
 	if (test "${prefix}" = "${usb_prefix}"); then
@@ -88,7 +88,7 @@ AC_DEFUN([AC_PATH_USB], [
 	fi
 
 	LDFLAGS="$LDFLAGS $USB_LIBS"
-	AC_CHECK_LIB(usb, usb_open, USB_LIBS="$USB_LIBS -lusb", AC_MSG_ERROR(USB library not found))
+	AC_CHECK_LIB(usb, usb_open, USB_LIBS="$USB_LIBS -lusb", usb_enable=no)
 
 	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS
@@ -147,48 +147,30 @@ AC_DEFUN([AC_PATH_DBUS], [
 	AM_CONDITIONAL(DBUS, test "${dbus_enable}" = "yes")
 ])
 
-AC_DEFUN([AC_PATH_CUPS], [
-	AC_ARG_ENABLE(cups, AC_HELP_STRING([--enable-cups], [enable CUPS support]), [
+AC_DEFUN([AC_PATH_EXTRA], [
+	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
+		test_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(cups, AC_HELP_STRING([--enable-cups], [install CUPS backend support]), [
 		cups_enable=${enableval}
-		cups_prefix=${prefix}
+	])
+		
+	AC_ARG_ENABLE(pcmcia, AC_HELP_STRING([--enable-pcmcia], [install PCMCIA configuration files ]), [
+		pcmcia_enable=${enableval}
 	])
 
-	AC_ARG_WITH(cups, AC_HELP_STRING([--with-cups=DIR], [CUPS is installed in DIR]), [
-		if (test "${withval}" = "yes"); then
-			cups_prefix=${prefix}
-		else
-			cups_prefix=${withval}
-		fi
-		cups_enable=yes
+	AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci], [install HID mode switching utility]), [
+		hid2hci_enable=${enableval}
 	])
 
-	CUPS_BACKEND_DIR=""
+	AC_ARG_ENABLE(bcm203x, AC_HELP_STRING([--enable-bcm203x], [install Broadcom 203x firmware loader]), [
+		bcm203x_enable=${enableval}
+	])
 
-	AC_MSG_CHECKING(for CUPS backend directory)
-
-	if (test "${prefix}" = "${cups_prefix}"); then
-		if (test -d "${libdir}/cups/backend"); then
-			CUPS_BACKEND_DIR="${libdir}/cups/backend"
-		else
-			cups_enable=no
-		fi
-	else
-		if (test -d "${cups_prefix}/lib64/cups/backend"); then
-			CUPS_BACKEND_DIR="${cups_prefix}/lib64/cups/backend"
-		elif (test -d "${cups_prefix}/lib/cups/backend"); then
-			CUPS_BACKEND_DIR="${cups_prefix}/lib/cups/backend"
-		else
-			cups_enable=no
-		fi
-	fi
-
-	if test "${cups_enable}" = "yes"; then
-		AC_MSG_RESULT($CUPS_BACKEND_DIR)
-	else
-		AC_MSG_RESULT($cups_enable)
-	fi
-
-	AC_SUBST(CUPS_BACKEND_DIR)
-
+	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
+	AM_CONDITIONAL(PCMCIA, test "${pcmcia_enable}" = "yes")
+	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_enable}" = "yes")
+	AM_CONDITIONAL(BCM203X, test "${bcm203x_enable}" = "yes" && test "${usb_enable}" = "yes")
 ])

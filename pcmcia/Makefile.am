@@ -2,19 +2,14 @@
 #  $Id$
 #
 
+datafiles = bluetooth bluetooth.conf
+
+if PCMCIA
 pcmciadir = $(sysconfdir)/pcmcia
 
-EXTRA_DIST = bluetooth bluetooth.conf
+pcmcia_DATA = $(datafiles)
+endif
+
+EXTRA_DIST = $(datafiles)
 
 MAINTAINERCLEANFILES = Makefile.in
-
-install-data-local:
-	$(mkinstalldirs) $(DESTDIR)$(pcmciadir)
-	[ -f $(DESTDIR)$(pcmciadir)/bluetooth ] || \
-		$(INSTALL_DATA) $(srcdir)/bluetooth $(DESTDIR)$(pcmciadir)
-	[ -f $(DESTDIR)$(pcmciadir)/bluetooth.conf ] || \
-		$(INSTALL_DATA) $(srcdir)/bluetooth.conf $(DESTDIR)$(pcmciadir)
-
-uninstall-local:
-	@rm -f $(DESTDIR)$(pcmciadir)/bluetooth
-	@rm -f $(DESTDIR)$(pcmciadir)/bluetooth.conf
