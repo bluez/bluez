@@ -30,7 +30,7 @@ and if
 -r
 option is not set, data is read from the first available Bluetooth device.
 .TP
-.BI -s " <len>" "\fR,\fP \-\^\-snap-len=" "<len>"
+.BI -l " <len>" "\fR,\fP \-\^\-snap-len=" "<len>"
 Sets max length of processed packets to
 .IR len .
 .TP
@@ -55,8 +55,16 @@ Data is not read from a Bluetooth device, but from file
 file
 is crated with option
 .BR -w .
+.TP 
+.BI -s " <host>" "\fR,\fP \-\^\-send-dump=" "<host>"
+Parse output is not printed to screen, instead data read from device is send to host
+.IR host .
+.TP 
+.BI -n " <host>" "\fR,\fP \-\^\-recv-dump=" "<host>"
+Data is not read from a Bluetooth device, but from host
+.IR host .
 .TP
-.BR -t ", " "\-\^\-ts"
+.BR -t ", " "\-\^\-timestamp"
 Prepend a time stamp to every packet.
 .TP
 .BR -a ", " "\-\^\-ascii"

@@ -43,7 +43,9 @@
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 #include <sys/stat.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -52,13 +54,16 @@
 #include "parser.h"
 #include "sdp.h"
 
-#define SNAP_LEN HCI_MAX_FRAME_SIZE
+#define SNAP_LEN 	HCI_MAX_FRAME_SIZE
+#define DEFAULT_PORT	10839;
 
 /* Modes */
 enum {
 	PARSE,
 	READ,
-	WRITE
+	WRITE,
+	RECEIVE,
+	SEND
 };
 
 /* Default options */
@@ -70,6 +75,8 @@ static int  mode = PARSE;
 static long flags;
 static long filter;
 static char *dump_file;
+static in_addr_t dump_addr = INADDR_LOOPBACK;
+static in_port_t dump_port = DEFAULT_PORT;
 
 struct dump_hdr {
 	uint16_t	len;
@@ -178,7 +185,8 @@ static void process_frames(int dev, int sock, int file)
 
 		switch (mode) {
 		case WRITE:
-			/* Save dump */
+		case SEND:
+			/* Save or send dump */
 			dh->len = htobs(frm.data_len);
 			dh->in  = frm.in;
 			dh->ts_sec  = htobl(frm.ts.tv_sec);
@@ -294,6 +302,90 @@ static int open_socket(int dev)
 	return sk;
 }
 
+static int open_connection(in_addr_t addr, in_port_t port)
+{
+	struct sockaddr_in sa;
+	int sk, opt;
+
+	if ((sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+		perror("Can't create inet socket");
+		exit(1);
+	}
+
+	opt = 1;
+	setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+	sa.sin_family = AF_INET;
+	sa.sin_addr.s_addr = htonl(INADDR_ANY);
+	sa.sin_port = htons(0);
+	if (bind(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
+		perror("Can't bind inet socket");
+		close(sk);
+		exit(1);
+	}
+
+	sa.sin_family = AF_INET;
+	sa.sin_addr.s_addr = htonl(addr);
+	sa.sin_port = htons(port);
+	if (connect(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
+		perror("Can't connect inet socket");
+		close(sk);
+		exit(1);
+	}
+
+	return sk;
+}
+
+static int wait_connection(in_addr_t addr, in_port_t port)
+{
+	struct sockaddr_in sa;
+	struct hostent *host;
+	int sk, nsk, opt, len;
+
+	if ((sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+		perror("Can't create inet socket");
+		exit(1);
+	}
+
+	opt = 1;
+	setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+	sa.sin_family = AF_INET;
+	sa.sin_addr.s_addr = htonl(addr);
+	sa.sin_port = htons(port);
+	if (bind(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
+		perror("Can't bind inet socket");
+		close(sk);
+		exit(1);
+	}
+
+	host = gethostbyaddr(&sa.sin_addr, sizeof(sa.sin_addr), AF_INET);
+	printf("device: %s:%d snap_len: %d filter: 0x%lx\n", 
+		host ? host->h_name : inet_ntoa(sa.sin_addr),
+		ntohs(sa.sin_port), snap_len, filter);
+
+	if (listen(sk, 1)) {
+		perror("Can't listen on inet socket");
+		close(sk);
+		exit(1);
+	}
+
+	len = sizeof(sa);
+	if ((nsk = accept(sk, (struct sockaddr *) &sa, &len)) < 0) {
+		perror("Can't accept new inet socket");
+		close(sk);
+		exit(1);
+	}
+
+	host = gethostbyaddr(&sa.sin_addr, sizeof(sa.sin_addr), AF_INET);
+	printf("device: %s snap_len: %d filter: 0x%lx\n", 
+		host ? host->h_name : inet_ntoa(sa.sin_addr), snap_len, filter);
+
+	close(sk);
+
+	return nsk;
+}
+
 static struct {
 	char *name;
 	int  flag;
@@ -332,11 +424,13 @@ static void usage(void)
 	printf(
 	"Usage: hcidump [OPTION...] [filter]\n"
 	"  -i, --device=hci_dev       HCI device\n"
-	"  -s, --snap-len=len         Snap len (in bytes)\n"
+	"  -l, --snap-len=len         Snap len (in bytes)\n"
 	"  -p, --psm=psm              Default PSM\n"
 	"  -m, --manufacturer=compid  Default manufacturer\n"
 	"  -w, --save-dump=file       Save dump to a file\n"
 	"  -r, --read-dump=file       Read dump from a file\n"
+	"  -s, --send-dump=host       Send dump to a host\n"
+	"  -n, --recv-dump=host       Receive dump on a host\n"
 	"  -t, --ts                   Display time stamps\n"
 	"  -a, --ascii                Dump data in ascii\n"
 	"  -x, --hex                  Dump data in hex\n"
@@ -352,12 +446,14 @@ static void usage(void)
 
 static struct option main_options[] = {
 	{ "device",		1, 0, 'i' },
-	{ "snap-len",		1, 0, 's' },
+	{ "snap-len",		1, 0, 'l' },
 	{ "psm",		1, 0, 'p' },
 	{ "manufacturer",	1, 0, 'm' },
 	{ "save-dump",		1, 0, 'w' },
 	{ "read-dump",		1, 0, 'r' },
-	{ "ts",			0, 0, 't' },
+	{ "send-dump",		1, 0, 's' },
+	{ "recv-dump",		1, 0, 'n' },
+	{ "timestamp",		0, 0, 't' },
 	{ "ascii",		0, 0, 'a' },
 	{ "hex",		0, 0, 'x' },
 	{ "ext",		0, 0, 'X' },
@@ -371,17 +467,19 @@ static struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
+	struct hostent *host;
+	struct in_addr addr;
 	int opt;
 
 	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:s:p:m:w:r:taxXRC:H:O:h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			device = atoi(optarg + 3);
 			break;
 
-		case 's': 
+		case 'l': 
 			snap_len = atoi(optarg);
 			break;
 
@@ -401,6 +499,32 @@ int main(int argc, char *argv[])
 		case 'r':
 			mode = READ;
 			dump_file = strdup(optarg);
+			break;
+
+		case 's':
+			mode = SEND;
+			host = gethostbyname(optarg);
+			if (host) {
+				bcopy(host->h_addr, &addr, sizeof(struct in_addr));
+				dump_addr = ntohl(addr.s_addr);
+				dump_port = DEFAULT_PORT;
+			} else {
+				dump_addr = INADDR_LOOPBACK;
+				dump_port = DEFAULT_PORT;
+			}
+			break;
+
+		case 'n':
+			mode = RECEIVE;
+			host = gethostbyname(optarg);
+			if (host) {
+				bcopy(host->h_addr, &addr, sizeof(struct in_addr));
+				dump_addr = ntohl(addr.s_addr);
+				dump_port = DEFAULT_PORT;
+			} else {
+				dump_addr = INADDR_LOOPBACK;
+				dump_port = DEFAULT_PORT;
+			}
 			break;
 
 		case 't': 
@@ -459,13 +583,22 @@ int main(int argc, char *argv[])
 		process_frames(device, open_socket(device), -1);
 		break;
 
+	case READ:
+		init_parser(flags, filter, defpsm, defcompid);
+		read_dump(open_file(dump_file, mode));
+		break;
+
 	case WRITE:
 		process_frames(device, open_socket(device), open_file(dump_file, mode));
 		break;
 
-	case READ:
+	case RECEIVE:
 		init_parser(flags, filter, defpsm, defcompid);
-		read_dump(open_file(dump_file, mode));
+		read_dump(wait_connection(dump_addr, dump_port));
+		break;
+
+	case SEND:
+		process_frames(device, open_socket(device), open_connection(dump_addr, dump_port));
 		break;
 	}
 
