@@ -128,6 +128,7 @@ bdaddr_t *strtoba(const char *str);
 char *batostr(const bdaddr_t *ba);
 int ba2str(const bdaddr_t *ba, char *str);
 int str2ba(const char *str, bdaddr_t *ba);
+int ba2oui(const bdaddr_t *ba, char *oui);
 
 int baprintf(const char *format, ...);
 int bafprintf(FILE *stream, const char *format, ...);

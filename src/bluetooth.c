@@ -106,6 +106,14 @@ int str2ba(const char *str, bdaddr_t *ba)
 	return 0;
 }
 
+int ba2oui(const bdaddr_t *ba, char *str)
+{
+	uint8_t b[6];
+
+	baswap((bdaddr_t *) b, ba);
+	return sprintf(str, "%2.2X-%2.2X-%2.2X", b[0], b[1], b[2]);
+}
+
 int baprintf(const char *format, ...)
 {
 	va_list ap;
