@@ -1,3 +1,9 @@
+ver 2.9:
+	Add L2CAP info type and info result definitions.
+	Add value for L2CAP_CONF_RFC_MODE.
+	Change RSSI value to signed instead of unsigned.
+	Allow UUID32 values as protocol identifiers.
+
 ver 2.8:
 	Fix the event code of inquiry with RSSI.
 	Add defines and UUID's for audio/video profiles.
