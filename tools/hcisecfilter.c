@@ -116,7 +116,7 @@ int main(void)
 	memset((void *) ocf_mask, 0, sizeof(ocf_mask));
 	hci_set_bit(OCF_READ_FAILED_CONTACT_COUNTER, ocf_mask);
 	hci_set_bit(OCF_RESET_FAILED_CONTACT_COUNTER, ocf_mask);
-	hci_set_bit(OCF_GET_LINK_QUALITY, ocf_mask);
+	hci_set_bit(OCF_READ_LINK_QUALITY, ocf_mask);
 	hci_set_bit(OCF_READ_RSSI, ocf_mask);
 
 	printf("OGF_STATUS_PARAM: { 0x%x, 0x%x, 0x%x, 0x%x}\n", 
