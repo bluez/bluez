@@ -43,9 +43,17 @@
 
 #include "parser.h"
 
+/* Modes */
+enum {
+	DUMP,
+	READ,
+	WRITE,
+};
+
 /* Default options */
 #define SNAP_LEN (1 + HCI_ACL_HDR_SIZE + L2CAP_HDR_SIZE + L2CAP_CMD_HDR_SIZE + 60)
 int snap_len = SNAP_LEN;
+int mode = DUMP;
 
 void usage(void)
 {
@@ -112,41 +120,27 @@ void process_frames(int dev, int fd)
 	}
 }
 
-int main(int argc, char *argv[])
+int open_file(char *file, int mode)
 {
-	extern int optind, opterr, optopt;
-	extern char *optarg;
+	int fi, flags;
+
+	if (mode == WRITE)
+		flags = O_WRONLY | O_CREATE | O_APPEND;
+	else
+		flags = O_RDONLY;
+
+	if ((f = open(file, flags) < 0) {
+		perror("Can't open output file");
+		exit(1);
+	}
+	return f;
+}
+
+int open_socket(int dev)
+{
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
-	int s, opt, dev;
-	long flags;	
-
-	dev = 0;
-	flags = 0;
-	
-	while ((opt=getopt(argc, argv,"i:s:ha")) != EOF) {
-		switch (opt) {
-		case 'i':
-			dev = atoi(optarg+3);
-			break;
-
-		case 'h':
-			flags |= DUMP_HEX;
-			break;
-
-		case 'a':
-			flags |= DUMP_ASCII;
-			break;
-
-		case 's':
-			snap_len = atoi(optarg);
-			break;
-
-		default:
-			usage();
-			exit(1);
-		}
-	}
+	int s, opt;
 
 	/* Create HCI socket */
 	if ((s=socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
@@ -177,12 +171,72 @@ int main(int argc, char *argv[])
 					dev, strerror(errno), errno);
 		exit(1);
 	}
+	return s;
+}
+
+int main(int argc, char *argv[])
+{
+	extern int optind, opterr, optopt;
+	extern char *optarg;
+	int s, f, dev;
+	long flags;	
+
+	dev = 0;
+	flags = 0;
+	
+	while ((opt=getopt(argc, argv,"i:s:haw:r:")) != EOF) {
+		switch(opt) {
+		case 'i':
+			dev = atoi(optarg+3);
+			break;
+
+		case 'h':
+			flags |= DUMP_HEX;
+			break;
+
+		case 'a':
+			flags |= DUMP_ASCII;
+			break;
+
+		case 's':
+			snap_len = atoi(optarg);
+			break;
+
+		case 'w':
+			mode = WRITE;
+			file = strdup(optarg);
+			break;
+
+		case 'r':
+			mode = READ;
+			file = strdup(optarg);
+			break;
+
+		default:
+			usage();
+			exit(1);
+		}
+	}
 
 	printf("HCIDump - HCI packet analyzer ver %s.\n", VERSION);
 
-	init_parser(flags);
-	process_frames(dev, s);	
+	switch (mode) {
+	case DUMP:
+		s = open_socket(dev);
+		init_parser(flags);
+		process_frames(dev, s);
+		break;
 
-	close(s);
+	case WRITE:
+		s = open_socket(dev);
+		f = open_file(file, mode);
+		write_frames(s, f);
+		break;
+
+	case READ:
+		f = open_file(file, mode);
+		read_frames(f);
+		break;
+	}
 	return 0;
 }
