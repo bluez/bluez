@@ -44,6 +44,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include "oui.h"
+
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, NULL)) != -1)
 
 static void usage(void);
@@ -224,8 +226,8 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 		ba2str(&(info+i)->bdaddr, addr);
 		printf("\t%s\tclock offset: 0x%4.4x\tclass: 0x%2.2x%2.2x%2.2x\n",
 			addr, btohs((info+i)->clock_offset),
-			(info+i)->dev_class[2], 
-			(info+i)->dev_class[1], 
+			(info+i)->dev_class[2],
+			(info+i)->dev_class[1],
 			(info+i)->dev_class[0]);
 	}
 	free(info);
@@ -250,7 +252,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	inquiry_info *info = NULL;
 	int num_rsp, length, flags;
 	char addr[18];
-	char name[248];
+	char name[249];
 	int i, opt, dd;
 
 	length  = 8;	/* ~10 seconds */
@@ -383,7 +385,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 {
 	bdaddr_t bdaddr;
 	uint16_t handle;
-	char name[248];
+	char name[249], oui[9], *comp;
 	unsigned char features[8];
 	struct hci_version version;
 	struct hci_dev_info di;
@@ -454,6 +456,13 @@ static void cmd_info(int dev_id, int argc, char **argv)
 
 	printf("\tBD Address:  %s\n", argv[0]);
 
+	ba2oui(&bdaddr, oui);
+	comp = ouitocomp(oui);
+	if (comp) {
+		printf("\tOUI Company: %s (%s)\n", comp, oui);
+		free(comp);
+	}
+
 	if (hci_read_remote_name(dd, &bdaddr, sizeof(name), name, 25000) == 0)
 		printf("\tDevice Name: %s\n", name);
 
@@ -480,6 +489,302 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	}
 
 	close(dd);
+}
+
+/* Find remote devices */
+
+static struct option find_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "length",	1, 0, 'l' },
+	{ "numrsp",	1, 0, 'n' },
+	{ "flush",	0, 0, 'f' },
+	{ 0, 0, 0, 0 }
+};
+
+static char *find_help =
+	"Usage:\n"
+	"\tfind [--length=N] [--numrsp=N] [--flush]\n";
+
+static char *get_minor_device_name(int major, int minor)
+{
+	switch (major) {
+	case 0:	/* misc */
+		return "";
+	case 1:	/* computer */
+		switch(minor) {
+		case 0:
+			return "Uncategorized";
+		case 1:
+			return "Desktop workstation";
+		case 2:
+			return "Server";
+		case 3:
+			return "Laptop";
+		case 4:
+			return "Handheld";
+		case 5:
+			return "Palm";
+		case 6:
+			return "Wearable";
+		}
+		break;
+	case 2:	/* phone */
+		switch(minor) {
+		case 0:
+			return "Uncategorized";
+		case 1:
+			return "Cellular";
+		case 2:
+			return "Cordless";
+		case 3:
+			return "Smart phone";
+		case 4:
+			return "Wired modem or voice gateway";
+		case 5:
+			return "Common ISDN Access";
+		case 6:
+			return "Sim Card Reader";
+		}
+		break;
+	case 3:	/* lan access */
+		if (minor == 0)
+			return "Uncategorized";
+		switch(minor / 8) {
+		case 0:
+			return "Fully available";
+		case 1:
+			return "1-17% utilized";
+		case 2:
+			return "17-33% utilized";
+		case 3:
+			return "33-50% utilized";
+		case 4:
+			return "50-67% utilized";
+		case 5:
+			return "67-83% utilized";
+		case 6:
+			return "83-99% utilized";
+		case 7:
+			return "No service available";
+		}
+		break;
+	case 4:	/* audio/video */
+		switch(minor) {
+		case 0:
+			return "Uncategorized";
+		case 1:
+			return "Device conforms to the Headset profile";
+		case 2:
+			return "Hands-free";
+			/* 3 is reserved */
+		case 4:
+			return "Microphone";
+		case 5:
+			return "Loudspeaker";
+		case 6:
+			return "Headphones";
+		case 7:
+			return "Portable Audio";
+		case 8:
+			return "Car Audio";
+		case 9:
+			return "Set-top box";
+		case 10:
+			return "HiFi Audio Device";
+		case 11:
+			return "VCR";
+		case 12:
+			return "Video Camera";
+		case 13:
+			return "Camcorder";
+		case 14:
+			return "Video Monitor";
+		case 15:
+			return "Video Display and Loudspeaker";
+		case 16:
+			return "Video Conferencing";
+			/* 17 is reserved */
+		case 18:
+			return "Gaming/Toy";
+		}
+		break;
+	case 5:	/* peripheral */
+		switch(minor) {
+		case 16:
+			return "Keyboard";
+		case 32:
+			return "Pointing device";
+		case 48:
+			return "Combo keyboard/pointing device";
+		}
+		break;
+	case 6:	/* imaging */
+		if (minor & 4)
+			return "Display";
+		if (minor & 8)
+			return "Camera";
+		if (minor & 16)
+			return "Scanner";
+		if (minor & 32)
+			return "Printer";
+		break;
+	case 63:	/* uncategorised */
+		return "";
+	}
+	return "Unknown (reserved) minor device class";
+}
+
+static char *major_classes[] = {
+	"Miscellaneous", "Computer", "Phone", "LAN Access",
+	"Audio/Video", "Peripheral", "Imaging", "Uncategorized"
+};
+
+static void cmd_find(int dev_id, int argc, char **argv)
+{
+	inquiry_info *info = NULL;
+	int num_rsp, length, flags;
+	uint8_t cls[3];
+	uint16_t handle;
+	char addr[18], name[249], oui[9], *comp;
+	unsigned char features[8];
+	struct hci_version version;
+	struct hci_dev_info di;
+	struct hci_conn_info_req *cr;
+	int i, opt, dd, cc = 0;
+
+	length  = 8;	/* ~10 seconds */
+	num_rsp = 100;
+	flags   = 0;
+
+	for_each_opt(opt, find_options, NULL) {
+		switch (opt) {
+		case 'l':
+			length = atoi(optarg);
+			break;
+
+		case 'n':
+			num_rsp = atoi(optarg);
+			break;
+
+		case 'f':
+			flags |= IREQ_CACHE_FLUSH;
+			break;
+
+		default:
+			printf(find_help);
+			return;
+		}
+	}
+
+	if (dev_id < 0) {
+		dev_id = hci_get_route(NULL);
+		if (dev_id < 0) {
+			perror("Device is not available");
+			exit(1);
+		}
+	}
+
+	if (hci_devinfo(dev_id, &di) < 0) {
+		perror("Can't get device info");
+		exit(1);
+	}
+
+	printf("Searching ...\n");
+	num_rsp = hci_inquiry(dev_id, length, num_rsp, NULL, &info, flags);
+	if (num_rsp < 0) {
+		perror("Inquiry failed");
+		exit(1);
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		free(info);
+		exit(1);
+	}
+
+	printf("\n");
+
+	for (i = 0; i < num_rsp; i++) {
+		ba2str(&(info+i)->bdaddr, addr);
+		printf("BD Address:\t%s [mode %d, clkoffset 0x%4.4x]\n", addr,
+			(info+i)->pscan_rep_mode, btohs((info+i)->clock_offset));
+
+		ba2oui(&(info+i)->bdaddr, oui);
+		comp = ouitocomp(oui);
+		if (comp) {
+			printf("OUI company:\t%s (%s)\n", comp, oui);
+			free(comp);
+		}
+
+		cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+		if (cr) {
+			bacpy(&cr->bdaddr, &(info+i)->bdaddr);
+			cr->type = ACL_LINK;
+			if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+				if (hci_create_connection(dd, &(info+i)->bdaddr,
+						htobs(di.pkt_type & ACL_PTYPE_MASK),
+						(info+i)->clock_offset | 0x8000,
+						0x01, &handle, 25000) < 0)
+					handle = 0;
+				else
+					cc = 1;
+			} else
+				handle = htobs(cr->conn_info->handle);
+		} else
+			handle = 0;
+
+		memset(name, 0, sizeof(name));
+		if (hci_read_remote_name_with_clock_offset(dd, &(info+i)->bdaddr,
+				(info+i)->pscan_rep_mode,
+				(info+i)->clock_offset | 0x8000,
+				sizeof(name), name, 100000) < 0)
+			strcpy(name, "n/a");
+		printf("Device name:\t%s\n", name);
+
+		memcpy(cls, (info+i)->dev_class, 3);
+		printf("Device class:\t");
+		if ((cls[1] & 0x1f) > sizeof(*major_classes))
+			printf("Invalid");
+		else
+			printf("%s, %s", major_classes[cls[1] & 0x1f],
+				get_minor_device_name(cls[1] & 0x1f, cls[0] >> 2));
+		printf(" (0x%2.2x%2.2x%2.2x)\n", cls[2], cls[1], cls[0]);
+
+		if (handle > 0) {
+			if (hci_read_remote_version(dd, handle, &version, 20000) == 0) {
+				printf("Manufacturer:\t%s (%d)\n",
+					bt_compidtostr(version.manufacturer),
+					version.manufacturer);
+				printf("LMP version:\t%s (0x%x) [subver 0x%x]\n",
+					lmp_vertostr(version.lmp_ver),
+					version.lmp_ver, version.lmp_subver);
+			}
+
+			if (hci_read_remote_features(dd, handle, features, 20000) == 0) {
+				printf("LMP features:\t0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x"
+					" 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",
+					features[0], features[1],
+					features[2], features[3],
+					features[4], features[5],
+					features[6], features[7]);
+				printf("%s\n", lmp_featurestostr(features, "\t\t", 63));
+			}
+
+			if (cc) {
+				usleep(10000);
+				hci_disconnect(dd, handle, HCI_OE_USER_ENDED_CONNECTION, 10000);
+			}
+		}
+
+		printf("\n");
+
+		if (cr)
+			free(cr);
+	}
+
+	close(dd);
+	free(info);
 }
 
 /* Send arbitrary HCI commands */
@@ -1637,6 +1942,7 @@ static struct {
 	{ "scan",   cmd_scan,   "Scan for remote devices"              },
 	{ "name",   cmd_name,   "Get name from remote device"          },
 	{ "info",   cmd_info,   "Get information from remote device"   },
+	{ "find",   cmd_find,   "Search for remote devices"            },
 	{ "cmd",    cmd_cmd,    "Submit arbitrary HCI commands"        },
 	{ "con",    cmd_con,    "Display active connections"           },
 	{ "cc",     cmd_cc,     "Create connection to remote device"   },
