@@ -268,20 +268,22 @@ static inline void uih_frame(int level, struct frame *frm, long_frame_head *head
 
 		proto = get_proto(frm->handle, 0, frm->channel);
 
-		switch (proto) {
-		case SDP_UUID_OBEX:
-			if (!p_filter(FILT_OBEX))
-				obex_dump(level + 1, frm);
-			else
-				raw_dump(level, frm);
-			break;
-
-		default:
-			if (p_filter(FILT_RFCOMM))
+		if (frm->len > 0) {
+			switch (proto) {
+			case SDP_UUID_OBEX:
+				if (!p_filter(FILT_OBEX))
+					obex_dump(level + 1, frm);
+				else
+					raw_dump(level, frm);
 				break;
 
-			raw_dump(level, frm);
-			break;
+			default:
+				if (p_filter(FILT_RFCOMM))
+					break;
+
+				raw_dump(level, frm);
+				break;
+			}
 		}
 	}
 }
