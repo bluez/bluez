@@ -228,6 +228,26 @@ static int digi(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
+/*
+ * BCSP specific initialization
+ */
+static int bcsp(int fd, struct uart_t *u, struct termios *ti)
+{
+	ti->c_cflag &= ~CBAUD;
+	ti->c_cflag |= B115200 | CS8 | CLOCAL | PARENB;
+	ti->c_cflag &= ~(PARODD|CRTSCTS);
+
+	ti->c_oflag = 0;   /* turn off output processing */
+	ti->c_lflag = 0;   /* no local modes */
+
+	if (tcsetattr(fd, TCSANOW, ti) < 0) {
+		perror("Can't set port settings");
+		return -1;
+	}
+
+	return 0;
+}
+
 /* 
  * CSR specific initialization 
  * Inspired strongly by code in OpenBT and experimentations with Brainboxes
@@ -525,30 +545,32 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 }
 
 struct uart_t uart[] = {
-	{ "any",      0x0000, 0x0000, HCI_UART_H4, 115200, FLOW_CTL, NULL },
-	{ "ericsson", 0x0000, 0x0000, HCI_UART_H4, 115200, FLOW_CTL, ericsson },
-	{ "digi",     0x0000, 0x0000, HCI_UART_H4, 115200, FLOW_CTL, digi },
+	{ "any",      0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, NULL },
+	{ "ericsson", 0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, ericsson },
+	{ "digi",     0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, digi },
+
+	{ "bcsp",     0x0000, 0x0000, HCI_UART_BCSP, 115200, 0,        bcsp },
 
 	/* Xircom PCMCIA cards: Credit Card Adapter and Real Port Adapter */
-	{ "xircom",   0x0105, 0x080a, HCI_UART_H4, 115200, FLOW_CTL, NULL },
+	{ "xircom",   0x0105, 0x080a, HCI_UART_H4,   115200, FLOW_CTL, NULL },
 
 	/* CSR Casira serial adapter or BrainBoxes serial dongle (BL642) */
-	{ "csr",      0x0000, 0x0000, HCI_UART_H4, 115200, FLOW_CTL, csr },
+	{ "csr",      0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, csr },
 
 	/* BrainBoxes PCMCIA card (BL620) */
-	{ "bboxes",   0x0160, 0x0002, HCI_UART_H4, 460800, FLOW_CTL, csr },
+	{ "bboxes",   0x0160, 0x0002, HCI_UART_H4,   460800, FLOW_CTL, csr },
 
 	/* Silicon Wave kits */
-	{ "swave",    0x0000, 0x0000, HCI_UART_H4, 115200, FLOW_CTL, swave },
+	{ "swave",    0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, swave },
 
 	/* Sphinx Electronics PICO Card */
-	{ "picocard", 0x025e, 0x1000, HCI_UART_H4, 115200, FLOW_CTL, NULL },
+	{ "picocard", 0x025e, 0x1000, HCI_UART_H4,   115200, FLOW_CTL, NULL },
 
 	/* Inventel BlueBird Module */
-	{ "inventel", 0x0000, 0x0000, HCI_UART_H4, 115200, FLOW_CTL, NULL },
+	{ "inventel", 0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, NULL },
 
 	/* COM One Platinium Bluetooth PC Card */
-	{ "comone",   0xffff, 0x0101, HCI_UART_H4, 115200, FLOW_CTL, NULL },
+	{ "comone",   0xffff, 0x0101, HCI_UART_BCSP, 115200, 0,        bcsp },
 
         { NULL, 0 }
 };
