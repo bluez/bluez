@@ -29,6 +29,8 @@ CLEANFILES = lexer.c parser.c parser.h
 
 EXTRA_DIST = $(hcid_CONFIG) $(man_MANS) dbus.c
 
+MAINTAINERCLEANFILES = Makefile.in
+
 #
 # Install configuration files
 # 

@@ -9,3 +9,5 @@ LIBS = @BLUEZ_LIBS@
 AM_CFLAGS = @BLUEZ_CFLAGS@
 
 EXTRA_DIST = hsplay hsmicro
+
+MAINTAINERCLEANFILES = Makefile.in

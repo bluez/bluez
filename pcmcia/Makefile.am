@@ -6,6 +6,8 @@ pcmciadir = $(sysconfdir)/pcmcia
 
 EXTRA_DIST = bluetooth bluetooth.conf
 
+MAINTAINERCLEANFILES = Makefile.in
+
 install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(pcmciadir)
 	[ -f $(DESTDIR)$(pcmciadir)/bluetooth ] || \

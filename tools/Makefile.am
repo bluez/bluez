@@ -27,3 +27,5 @@ AM_CFLAGS = @BLUEZ_CFLAGS@
 man_MANS = hciattach.8 hciconfig.8 hid2hci.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1
 
 EXTRA_DIST = $(man_MANS)
+
+MAINTAINERCLEANFILES = Makefile.in

@@ -6,6 +6,8 @@ bin_SCRIPTS = bluepin
 
 EXTRA_DIST = bluepin bluetooth.init bluetooth.default create_dev
 
+MAINTAINERCLEANFILES = Makefile.in
+
 install-data-local:
 	$(INSTALL) -D -m 755 $(srcdir)/bluetooth.init $(DESTDIR)$(sysconfdir)/init.d/bluetooth
 	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/default

@@ -21,6 +21,8 @@ CLEANFILES = lexer.c parser.c parser.h
 
 EXTRA_DIST = $(man_MANS) $(rfcomm_CONFIG)
 
+MAINTAINERCLEANFILES = Makefile.in
+
 install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(confdir)
 	[ -f $(DESTDIR)$(confdir)/$(rfcomm_CONFIG) ] || \

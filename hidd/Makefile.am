@@ -9,3 +9,5 @@ hidd_SOURCES = main.c hidd.h sdp.c
 LIBS = @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
+
+MAINTAINERCLEANFILES = Makefile.in

@@ -13,3 +13,5 @@ AM_CFLAGS = @BLUEZ_CFLAGS@
 man_MANS = dund.1
 
 EXTRA_DIST = $(man_MANS)
+
+MAINTAINERCLEANFILES = Makefile.in
