@@ -70,7 +70,9 @@ enum {
 	HCI_ENCRYPT,
 	HCI_INQUIRY,
 
-	HCI_RAW
+	HCI_RAW,
+
+	HCI_SECMGR
 };
 
 /* HCI ioctl defines */
@@ -93,6 +95,8 @@ enum {
 #define HCISETLINKMODE	_IOW('H', 226, int)
 #define HCISETACLMTU	_IOW('H', 227, int)
 #define HCISETSCOMTU	_IOW('H', 228, int)
+
+#define HCISETSECMGR	_IOW('H', 230, int)
 
 #define HCIINQUIRY	_IOR('H', 240, int)
 
