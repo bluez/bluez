@@ -285,6 +285,7 @@ static int open_socket(int dev, unsigned long flags)
 	hci_filter_clear(&flt);
 	if (flags & DUMP_BPA) {
 		hci_filter_set_ptype(HCI_VENDOR_PKT, &flt);
+		hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
 		hci_filter_set_event(EVT_VENDOR, &flt);
 	} else {
 		hci_filter_all_ptypes(&flt);
