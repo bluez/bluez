@@ -23,18 +23,6 @@ AM_PROG_LEX
 
 AC_PATH_BLUEZ
 
-AC_ARG_ENABLE(dbus, [  --enable-dbus           use D-BUS],
-	BLUEZ_DBUS="$enableval",
-	BLUEZ_DBUS="no"
-)
-
-if test x"$BLUEZ_DBUS" == "xyes"; then
-	PKG_CHECK_MODULES(DBUS, dbus-1, have_dbus=yes, have_dbus=no)
-
-	CFLAGS="$CFLAGS $DBUS_CFLAGS -DENABLE_DBUS"
-	LIBS="$LIBS $DBUS_LIBS"
-fi
-
-AM_CONDITIONAL(ENABLE_DBUS, test x$BLUEZ_DBUS = xyes)
+AC_PATH_DBUS
 
 AC_OUTPUT(Makefile hcid/Makefile tools/Makefile rfcomm/Makefile sdpd/Makefile test/Makefile scripts/Makefile pcmcia/Makefile)

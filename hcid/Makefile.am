@@ -4,18 +4,20 @@
 
 sbin_PROGRAMS = hcid
 
-if ENABLE_DBUS
+if DBUS
 dbus_hcid_sources = dbus.c
+dbus_hcid_ldflags = @DBUS_LIBS@
 else
 dbus_hcid_sources =
+dbus_hcid_ldflags =
 endif
 
 hcid_SOURCES = main.c security.c hcid.h lib.c lib.h parser.h parser.y lexer.l kword.h kword.c glib-ectomy.h glib-ectomy.c $(dbus_hcid_sources)
 hcid_CONFIG  = hcid.conf
 
-LDFLAGS = @BLUEZ_LIBS@
+LDFLAGS = @BLUEZ_LIBS@ $(dbus_hcid_ldflags)
 
-INCLUDES = @BLUEZ_INCLUDES@
+INCLUDES = @BLUEZ_INCLUDES@ @DBUS_INCLUDES@
 
 man_MANS = hcid.8 hcid.conf.5
 

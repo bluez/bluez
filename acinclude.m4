@@ -55,3 +55,65 @@ AC_DEFUN(AC_PATH_BLUEZ, [
 	AC_SUBST(BLUEZ_LDFLAGS)
 	AC_SUBST(BLUEZ_LIBS)
 ])
+
+AC_DEFUN(AC_PATH_DBUS, [
+	AC_ARG_ENABLE(dbus, [  --enable-dbus           enable D-BUS support],
+		dbus_enable=$enableval,
+		dbus_enable=no
+	)
+
+	AC_ARG_WITH(dbus, [  --with-dbus=DIR         D-BUS library is installed in DIR], [
+		dbus_includes=$withval/include
+		dbus_libraries=$withval/lib
+		dbus_enable=yes
+	])
+
+	DBUS_INCLUDES=""
+	DBUS_LDFLAGS=""
+	DBUS_LIBS=""
+
+	ac_save_CFLAGS=$CFLAGS
+	if test -n "$dbus_includes"; then 
+		CFLAGS="$CFLAGS -I$dbus_includes -I$dbus_includes/dbus-1.0"
+	else
+		CFLAGS="$CFLAGS -I/usr/include/dbus-1.0"
+	fi
+	CFLAGS="$CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE"
+
+	ac_save_LDFLAGS=$LDFLAGS
+	if test -n "$dbus_libraries"; then
+		CFLAGS="$CFLAGS -I$dbus_libraries/dbus-1.0/include"
+		LDFLAGS="$LDFLAGS -L$dbus_libraries"
+	else
+		CFLAGS="$CFLAGS -I/usr/lib/dbus-1.0/include"
+	fi
+
+	AC_CHECK_HEADER(dbus/dbus.h,,
+		dbus_enable=no)
+
+	AC_CHECK_LIB(dbus-1, dbus_error_init,
+		DBUS_LIBS="$DBUS_LIBS -ldbus-1",
+		dbus_enable=no)
+
+	CFLAGS=$ac_save_CFLAGS
+	if test -n "$dbus_includes"; then
+		DBUS_INCLUDES="-I$dbus_includes -I$dbus_includes/dbus-1.0"
+	else
+		DBUS_INCLUDES="-I/usr/include/dbus-1.0"
+	fi
+
+	LDFLAGS=$ac_save_LDFLAGS
+	if test -n "$dbus_libraries"; then
+		DBUS_INCLUDES="$DBUS_INCLUDES -I$dbus_libraries/dbus-1.0/include"
+		DBUS_LDFLAGS="-L$dbus_libraries"
+		DBUS_LIBS="-L$dbus_libraries $DBUS_LIBS"
+	else
+		DBUS_INCLUDES="$DBUS_INCLUDES -I/usr/lib/dbus-1.0/include"
+	fi
+
+	AC_SUBST(DBUS_INCLUDES)
+	AC_SUBST(DBUS_LDFLAGS)
+	AC_SUBST(DBUS_LIBS)
+
+	AM_CONDITIONAL(DBUS, test "$dbus_enable" = "yes")
+])
