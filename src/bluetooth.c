@@ -176,7 +176,7 @@ char *bt_compidtostr(int compid)
 {
 	switch (compid) {
 	case 0:
-		return "Ericsson Mobile Comunications";
+		return "Ericsson Technology Licensing";
 	case 1:
 		return "Nokia Mobile Phones";
 	case 2:
@@ -212,7 +212,7 @@ char *bt_compidtostr(int compid)
 	case 17:
 		return "Widcomm, Inc.";
 	case 18:
-		return "Telencomm Inc.";
+		return "Zeevo, Inc.";
 	case 19:
 		return "Atmel Corporation";
 	case 20:
