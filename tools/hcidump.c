@@ -1,9 +1,9 @@
 /*
  *
- *  Bluetooth packet analyzer - HCIdump
+ *  Bluetooth packet analyzer - HCI sniffer
  *
  *  Copyright (C) 2000-2002  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2003-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2003-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -480,7 +480,7 @@ int main(int argc, char *argv[])
 	struct in_addr addr;
 	int opt;
 
-	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
+	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
 	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRBC:H:O:h", main_options, NULL)) != -1) {
 		switch(opt) {
