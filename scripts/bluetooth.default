@@ -1,0 +1,34 @@
+# Bluetooth configuraton file
+
+# Start of hcid (allowed values are "true" and "false")
+HCID_ENABLE=true
+
+# Config file for hcid
+HCID_CONFIG="/etc/bluetooth/hcid.conf"
+
+# Start sdpd (allowed values are "true" and "false")
+SDPD_ENABLE=true
+
+# Start hidd (allowed values are "true" and "false")
+HIDD_ENABLE=true
+
+# Run hid2hci (allowed values are "true" and "false")
+HID2HCI_ENABLE=true
+
+# Bind rfcomm devices (allowed values are "true" and "false")
+RFCOMM_ENABLE=true
+
+# Config file for rfcomm
+RFCOMM_CONFIG="/etc/bluetooth/rfcomm.conf"
+
+# Start dund (allowed values are "true" and "false")
+DUND_ENABLE=false
+
+# Arguments to dund
+DUND_OPTIONS="--listen --persist"
+
+# Start pand (allowed values are "true" and "false")
+PAND_ENABLE=false
+
+# Arguments to pand
+PAND_OPTIONS="--listen --role NAP"

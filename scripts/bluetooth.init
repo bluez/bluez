@@ -1,0 +1,102 @@
+#!/bin/sh
+#
+# Start/stop the Bluetooth daemons
+#
+
+set -e
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+NAME=bluetooth
+DESC="Bluetooth subsystem"
+
+HCID_NAME=hcid
+SDPD_NAME=sdpd
+HIDD_NAME=hidd
+HID2HCI_NAME=hid2hci
+RFCOMM_NAME=rfcomm
+PAND_NAME=pand
+DUND_NAME=dund
+
+HCID_EXEC="`which $HCID_NAME || true`"
+SDPD_EXEC="`which $SDPD_NAME || true`"
+HIDD_EXEC="`which $HIDD_NAME || true`"
+HID2HCI_EXEC="`which $HIDD_NAME || true`"
+RFCOMM_EXEC="`which $RFCOMM_NAME || true`"
+PAND_EXEC="`which $PAND_NAME || true`"
+DUND_EXEC="`which $DUND_NAME || true`"
+
+HCID_ENABLE=true
+SDPD_ENABLE=true
+HIDD_ENABLE=false
+HID2HCI_ENABLE=false
+RFCOMM_ENABLE=true
+DUND_ENABLE=false
+PAND_ENABLE=false
+
+HCID_CONFIG="/etc/bluetooth/hcid.conf"
+RFCOMM_CONFIG="/etc/bluetooth/rfcomm.conf"
+
+DUND_OPTIONS=""
+PAND_OPTIONS=""
+
+[ -e /etc/default/bluetooth ] && . /etc/default/bluetooth
+
+case "$1" in
+  start)
+	echo -n "Starting $DESC:"
+	if $HCID_ENABLE && [ -x "$HCID_EXEC" -a -f "$HCID_CONFIG" ] ; then
+		$HCID_EXEC -f $HCID_CONFIG
+		echo -n " $HCID_NAME"
+	fi
+	if $SDPD_ENABLE && [ -x "$SDPD_EXEC" ] ; then
+		$SDPD_EXEC
+		echo -n " $SDPD_NAME"
+	fi
+	if $HIDD_ENABLE && [ -x "$HIDD_EXEC" ] ; then
+		$HIDD_EXEC --tohci
+		echo -n " $HIDD_NAME"
+	fi
+	if $HID2HCI_ENABLE && [ -x "$HID2HCI_EXEC" ] ; then
+		$HID2HCI_EXEC
+		echo -n " $HID2HCI_NAME"
+	fi
+	if $RFCOMM_ENABLE && [ -x "$RFCOMM_EXEC" -a -f "$RFCOMM_CONFIG" ] ; then
+		$RFCOMM_EXEC -f $RFCOMM_CONFIG bind all
+		echo -n " $RFCOMM_NAME"
+	fi
+	if $DUND_ENABLE && [ -x "$DUND_EXEC" -a -n "$DUND_OPTIONS" ] ; then
+		$DUND_EXEC $DUND_OPTIONS
+		echo -n " $DUND_NAME"
+	fi
+	if $PAND_ENABLE && [ -x "$PAND_EXEC" -a -n "$PAND_OPTIONS" ] ; then
+		$PAND_EXEC $PAND_OPTIONS
+		echo -n " $PAND_NAME"
+	fi
+	echo "."
+	;;
+  stop)
+	echo -n "Stopping $DESC:"
+	killall $PAND_EXEC > /dev/null 2>&1 || true
+	echo -n " $PAND_NAME"
+	killall $DUND_EXEC > /dev/null 2>&1 || true
+	echo -n " $DUND_NAME"
+	if [ -x "$RFCOMM_EXEC" ] ; then
+		$RFCOMM_EXEC release all
+		echo -n " $RFCOMM_NAME"
+	fi
+	killall $HIDD_EXEC > /dev/null 2>&1 || true
+	echo -n " $HIDD_NAME"
+	killall $SDPD_EXEC > /dev/null 2>&1 || true
+	echo -n " $SDPD_NAME"
+	killall $HCID_EXEC > /dev/null 2>&1 || true
+	echo -n " $HCID_NAME"
+	echo "."
+	;;
+  *)
+	N=/etc/init.d/$NAME
+	echo "Usage: $N {start|stop}" >&2
+	exit 1
+	;;
+esac
+
+exit 0
