@@ -82,7 +82,7 @@ statement:
 		}
   ;
 
-hcid_options: '{' hcid_opts '}'
+hcid_options: '{' hcid_opts '}';
 hcid_opts: | hcid_opt ';' | error ';' | hcid_opts hcid_opt ';';
 hcid_opt: 
   K_AUTOINIT bool	{
@@ -133,7 +133,7 @@ pair_mode:
   ;
 
 
-device_options: '{' device_opts '}'
+device_options: '{' device_opts '}';
 device_opts: | device_opt ';' | error ';' | device_opts device_opt ';';
 device_opt:
   K_PTYPE pkt_type	{
