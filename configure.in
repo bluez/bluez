@@ -10,19 +10,7 @@ AM_CONFIG_HEADER(config.h)
 
 AM_MAINTAINER_MODE
 
-AC_PREFIX_DEFAULT(/usr)
-
-if test "$prefix" = "NONE"; then
-	dnl no prefix and no sysconfdir, so default to /etc
-	if test "$sysconfdir" = '${prefix}/etc'; then
-		AC_SUBST([sysconfdir], ['/etc'])
-	fi
-
-	dnl no prefix and no mandir, so use ${prefix}/share/man as default
-	if test "$mandir" = '${prefix}/man'; then
-		AC_SUBST([mandir], ['${prefix}/share/man'])
-	fi
-fi
+AC_PREFIX_BLUEZ
 
 CFLAGS="-Wall -g -O2"
 
@@ -32,11 +20,6 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_YACC
 AM_PROG_LEX
-
-AC_ARG_WITH(bluez, [  --with-bluez=DIR        BlueZ library is installed in DIR], [
-	bluez_includes=$withval/include
-	bluez_libraries=$withval/lib
-])
 
 AC_PATH_BLUEZ
 
