@@ -36,6 +36,7 @@
 
 #include <termios.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <asm/types.h>
@@ -47,6 +48,8 @@
 
 extern int optind,opterr,optopt;
 extern char *optarg;
+
+#define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, NULL)) != -1)
 
 static int ctl;
 
@@ -232,29 +235,79 @@ static void hex_dump(char *pref, int width, unsigned char *buf, int len)
 		printf("\n");
 }
 
-static void cmd_dev(int dev_id, char **opt, int nopt)
+/* Display local devices */
+
+static struct option dev_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *dev_help = 
+	"Usage:\n"
+	"\tdev\n";
+
+static void cmd_dev(int dev_id, int argc, char **argv)
 {
+	int opt;
+	for_each_opt(opt, dev_options, NULL) {
+		switch(opt) {
+		default:
+			printf(dev_help);
+			return;
+		}
+	}
+
 	printf("Devices:\n");
 	for_each_dev(HCI_UP, dev_info, 0);
 }
 
-static void cmd_inq(int dev_id, char **opt, int nopt)
+/* Inquiry */
+
+static struct option inq_options[] = {
+	{"help",    0,0, 'h'},
+	{"length",  1,0, 'l'},
+	{"numrsp",  1,0, 'n'},
+	{"flush",   0,0, 'f'},
+	{0, 0, 0, 0}
+};
+
+static char *inq_help = 
+	"Usage:\n"
+	"\tinq [--length=N] [--numrsp=N] [--flush]\n";
+
+static void cmd_inq(int dev_id, int argc, char **argv)
 {
+	int num_rsp, length, flags;
 	inquiry_info *info;
-	int i, num_rsp = 0, length, flags;
 	bdaddr_t bdaddr;
-	
+	int i, opt;
+
+	length  = 8;  /* ~10 seconds */
+	num_rsp = 10;
+	flags = 0;
+
+	for_each_opt(opt, inq_options, NULL) {
+		switch(opt) {
+		case 'l':
+			length = atoi(optarg);
+			break;
+		
+		case 'n':
+			num_rsp = atoi(optarg);
+			break;
+
+		case 'f':
+			flags |= IREQ_CACHE_FLUSH;
+			break;
+
+		default:
+			printf(inq_help);
+			return;
+		}
+	}
+
 	if (dev_id < 0)
 		dev_id = get_route(NULL);
-	
-	if (nopt >= 1)
-		length = atoi(opt[0]);
-	else
-		length = 8; /* ~ 10 seconds */
-
-	flags = 0;
-	if (nopt >= 2)
-		flags |= !strncasecmp("f", opt[1], 1) ? IREQ_CACHE_FLUSH : 0;
 		
 	printf("Inquiring ...\n");
 	info = hci_inquiry(dev_id, length, &num_rsp, NULL, flags);
@@ -275,25 +328,54 @@ static void cmd_inq(int dev_id, char **opt, int nopt)
 	free(info);
 }
 
-static void cmd_scan(int dev_id, char **opt, int nopt)
+/* Device scanning */
+
+static struct option scan_options[] = {
+	{"help",    0,0, 'h'},
+	{"length",  1,0, 'l'},
+	{"numrsp",  1,0, 'n'},
+	{"flush",   0,0, 'f'},
+	{0, 0, 0, 0}
+};
+
+static char *scan_help = 
+	"Usage:\n"
+	"\tscan [--length=N] [--numrsp=N] [--flush]\n";
+
+static void cmd_scan(int dev_id, int argc, char **argv)
 {
 	inquiry_info *info;
-	int i, num_rsp = 0, length, flags;
+	int num_rsp, length, flags;
 	bdaddr_t bdaddr;
 	char name[248];
-	int dd;
+	int i, opt, dd;
+
+	length  = 8;  /* ~10 seconds */
+	num_rsp = 10;
+	flags = 0;
+
+	for_each_opt(opt, scan_options, NULL) {
+		switch(opt) {
+		case 'l':
+			length = atoi(optarg);
+			break;
+		
+		case 'n':
+			num_rsp = atoi(optarg);
+			break;
+
+		case 'f':
+			flags |= IREQ_CACHE_FLUSH;
+			break;
+
+		default:
+			printf(scan_help);
+			return;
+		}
+	}
 
 	if (dev_id < 0)
 		dev_id = get_route(NULL);
-
-	if (nopt >= 1)
-		length = atoi(opt[0]);
-	else
-		length = 8; /* ~ 10 seconds */
-
-	flags = 0;
-	if (nopt >= 2)
-		flags |= !strncasecmp("f", opt[1], 1) ? IREQ_CACHE_FLUSH : 0;
 
 	printf("Scanning ...\n");
 	info = hci_inquiry(dev_id, length, &num_rsp, NULL, flags);
@@ -315,19 +397,42 @@ static void cmd_scan(int dev_id, char **opt, int nopt)
 	free(info);
 }
 
-static void cmd_info(int dev_id, char **opt, int nopt)
+/* Info about remote device */
+
+static struct option info_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *info_help = 
+	"Usage:\n"
+	"\tinfo <bdaddr>\n";
+
+static void cmd_info(int dev_id, int argc, char **argv)
 {
 	bdaddr_t bdaddr;
 	uint16_t handle;
-	int dd;
 	char name[248];
 	unsigned char features[8];
 	struct hci_version version;
+	int opt, dd;
 
-	if (nopt < 1)
+	for_each_opt(opt, info_options, NULL) {
+		switch(opt) {
+		default:
+			printf(info_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(info_help);
 		return;
+	}
 
-	baswap(&bdaddr, strtoba(opt[0]));
+	baswap(&bdaddr, strtoba(argv[0]));
 
 	if (dev_id < 0) {
 		dev_id = get_route(&bdaddr);
@@ -345,7 +450,7 @@ static void cmd_info(int dev_id, char **opt, int nopt)
 		exit(1);
 	}
 
-	printf("\tBD Address:  %s\n", opt[0]);
+	printf("\tBD Address:  %s\n", argv[0]);
 
 	if (hci_create_connection(dd, &bdaddr, 0x0008 | 0x0010, 0, 0, &handle, 25000) < 0) {
 		close(dd);
@@ -372,17 +477,40 @@ static void cmd_info(int dev_id, char **opt, int nopt)
 	close(dd);
 }
 
-static void cmd_cmd(int dev_id, char **opt, int nopt)
+/* Send arbitrary HCI commands */
+
+static struct option cmd_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *cmd_help = 
+	"Usage:\n"
+	"\tcmd <ogf> <ocf> [parameters]\n"
+	"Example:\n"
+	"\tcmd 0x03 0x0013 0x41 0x42 0x43 0x44\n";
+
+static void cmd_cmd(int dev_id, int argc, char **argv)
 {
 	char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
 	struct hci_filter flt;
 	hci_event_hdr *hdr;
-	int i, len, dd;
+	int i, opt, len, dd;
 	uint16_t ocf;
 	uint8_t  ogf;
 
-	if (nopt < 2) {
-		usage();
+	for_each_opt(opt, cmd_options, NULL) {
+		switch(opt) {
+		default:
+			printf(cmd_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 2) {
+		printf(cmd_help);
 		return;
 	}
 
@@ -390,15 +518,15 @@ static void cmd_cmd(int dev_id, char **opt, int nopt)
 		dev_id = get_route(NULL);
 
 	errno = 0;
-	ogf = strtol(opt[0], NULL, 16);
-	ocf = strtol(opt[1], NULL, 16);
+	ogf = strtol(argv[0], NULL, 16);
+	ocf = strtol(argv[1], NULL, 16);
 	if (errno == ERANGE || (ogf > 0x3f) || (ocf > 0x3ff)) {
-		usage();
+		printf(cmd_help);
 		return;
 	}
 
-	for (i = 2, len = 0; i < nopt && len < sizeof(buf); i++, len++)
-		*ptr++ = (uint8_t) strtol(opt[i], NULL, 16);
+	for (i = 2, len = 0; i < argc && len < sizeof(buf); i++, len++)
+		*ptr++ = (uint8_t) strtol(argv[i], NULL, 16);
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
@@ -440,16 +568,58 @@ static void cmd_cmd(int dev_id, char **opt, int nopt)
 	return;
 }
 
-static void cmd_rev(int dev_id, char **opt, int nopt)
+/* Display revision info */
+
+static struct option rev_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *rev_help = 
+	"Usage:\n"
+	"\trev\n";
+
+static void cmd_rev(int dev_id, int argc, char **argv)
 {
+	int opt;
+
+	for_each_opt(opt, rev_options, NULL) {
+		switch(opt) {
+		default:
+			printf(rev_help);
+			return;
+		}
+	}
+
         if (dev_id < 0)
                 for_each_dev(HCI_UP, rev_info, 0);
         else
                 rev_info(dev_id, 0);
 }
 
-static void cmd_con(int dev_id, char **opt, int nopt)
+/* Display active connections */
+
+static struct option con_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *con_help = 
+	"Usage:\n"
+	"\tcon\n";
+
+static void cmd_con(int dev_id, int argc, char **argv)
 {
+	int opt;
+
+	for_each_opt(opt, con_options, NULL) {
+		switch(opt) {
+		default:
+			printf(con_help);
+			return;
+		}
+	}
+
 	printf("Connections:\n");
 	if (dev_id < 0)
 		for_each_dev(HCI_UP, conn_list, 0);
@@ -457,17 +627,56 @@ static void cmd_con(int dev_id, char **opt, int nopt)
 		conn_list(dev_id, 0);
 }
 
-static void cmd_cc(int dev_id, char **opt, int nopt)
+/* Create connection */
+
+static struct option cc_options[] = {
+	{"help",    0,0, 'h'},
+	{"role",    1,0, 'r'},
+	{"ptype",   1,0, 'p'},
+	{0, 0, 0, 0}
+};
+
+static char *cc_help = 
+	"Usage:\n"
+	"\tcc [--role=m|s] [--ptype=pkt_types] <bdaddr>\n"
+	"Example:\n"
+	"\tcc --ptype=dm1,dh3,dh5 01:02:03:04:05:06\n"
+	"\tcc --role=m 01:02:03:04:05:06\n";
+
+static void cmd_cc(int dev_id, int argc, char **argv)
 {
 	bdaddr_t bdaddr;
-	int ptype, dd;
+	int opt, ptype, dd;
 	uint16_t handle;
 	uint8_t role;
 
-	if (nopt < 1)
-		return;
+	role = 0;
+	ptype = HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5;
 
-	baswap(&bdaddr, strtoba(opt[0]));
+	for_each_opt(opt, cc_options, NULL) {
+		switch(opt) {
+		case 'p':
+			hci_strtoptype(optarg, &ptype);
+			break;
+		
+		case 'r':
+			role = optarg[0] == 'm' ? 0 : 1;
+			break;
+
+		default:
+			printf(cc_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(cc_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
 
 	if (dev_id < 0) {
 		dev_id = get_route(&bdaddr);
@@ -483,31 +692,43 @@ static void cmd_cc(int dev_id, char **opt, int nopt)
 		exit(1);
 	}
 
-	if (nopt >= 2)
-		hci_strtoptype(opt[1], &ptype);
-	else
-		ptype = HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5;
-
-	if (nopt >= 3)
-		role = !strncasecmp("m", opt[2], 1) ? 0 : 1;
-	else
-		role = 0;
-	
 	hci_create_connection(dd, &bdaddr, ptype, 0, role, &handle, 1000);
-
 	hci_close_dev(dd);
 }
 
-static void cmd_dc(int dev_id, char **opt, int nopt)
+/* Close connection */
+
+static struct option dc_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *dc_help = 
+	"Usage:\n"
+	"\tdc <bdaddr>\n";
+
+static void cmd_dc(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
 	bdaddr_t bdaddr;
-	int dd;
+	int opt, dd;
 
-	if (nopt < 1)
+	for_each_opt(opt, dc_options, NULL) {
+		switch(opt) {
+		default:
+			printf(dc_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(dc_help);
 		return;
+	}
 
-	baswap(&bdaddr, strtoba(*opt));
+	str2ba(argv[0], &bdaddr);
 
 	if (dev_id < 0) {
 		dev_id = for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
@@ -542,19 +763,18 @@ static void cmd_dc(int dev_id, char **opt, int nopt)
 
 struct {
 	char *cmd;
-	void (*func)(int dev_id, char **opt, int nopt);
-	char *opt;
+	void (*func)(int dev_id, int argc, char **argv);
 	char *doc;
 } command[] = {
-	{ "dev",  cmd_dev,  0,                            "Display local devices"              },
-	{ "rev",  cmd_rev,  0,                            "Display revison information"        },
-	{ "inq",  cmd_inq,  "[length] [flush]",           "Inquire remote devices"             },
-	{ "scan", cmd_scan, "[length] [flush]",           "Scan for remote devices"            },
-	{ "info", cmd_info, "<bdaddr>",                   "Get information from remote device" },
-	{ "cmd",  cmd_cmd,  "<ogf> <ocf> [param]",        "Submit arbitrary HCI commands"      },
-	{ "con",  cmd_con,  0,                            "Display active connections"         },
-	{ "cc",   cmd_cc,   "<bdaddr> [pkt type] [role]", "Create connection to remote device" },
-	{ "dc",	  cmd_dc,   "<bdaddr>",                   "Disconnect from remote device"      },
+	{ "dev",  cmd_dev,  "Display local devices"              },
+	{ "rev",  cmd_rev,  "Display revison information"        },
+	{ "inq",  cmd_inq,  "Inquire remote devices"             },
+	{ "scan", cmd_scan, "Scan for remote devices"            },
+	{ "info", cmd_info, "Get information from remote device" },
+	{ "cmd",  cmd_cmd,  "Submit arbitrary HCI commands"      },
+	{ "con",  cmd_con,  "Display active connections"         },
+	{ "cc",   cmd_cc,   "Create connection to remote device" },
+	{ "dc",	  cmd_dc,   "Disconnect from remote device"      },
 	{ NULL, NULL, 0}
 };
 
@@ -564,24 +784,30 @@ static void usage(void)
 
 	printf("hcitool - HCI Tool\n");
 	printf("Usage:\n"
-		"\thcitool [-i hciX] [command]\n");
+		"\thcitool [options] <command> [command parameters]\n");
+	printf("Options:\n"
+		"\t--help\tDisplay help\n"
+		"\t-i dev\tHCI device\n");
 	printf("Commands:\n");
 	for (i=0; command[i].cmd; i++)
-		printf("\t%-4s %-20s\t%s\n", command[i].cmd,
-		command[i].opt ? command[i].opt : " ",
+		printf("\t%-4s\t%s\n", command[i].cmd,
 		command[i].doc);
 }
 
-int main(int argc, char *argv[], char *env[])
+static struct option main_options[] = {
+	{"help",        0,0, 'h'},
+	{"device",      1,0, 'i'},
+	{0, 0, 0, 0}
+};
+
+int main(int argc, char **argv)
 {
 	int opt, i, dev_id = -1;
-	char *dev;
 
-	while ((opt=getopt(argc, argv, "i:h")) != EOF) {
+	while ((opt=getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
-			dev    = strdup(optarg);
-			dev_id = atoi(dev + 3);
+			dev_id = atoi(optarg + 3);
 			break;
 
 		case 'h':
@@ -591,22 +817,25 @@ int main(int argc, char *argv[], char *env[])
 		}
 	}
 
-	if (argc - optind < 1) {
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
 		usage();
 		exit(0);
 	}
 
-	/* Open HCI socket  */
+	/* Open HCI socket */
 	if ((ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		perror("Can't open HCI socket.");
 		exit(1);
 	}
 
 	for (i=0; command[i].cmd; i++) {
-		if (strncmp(command[i].cmd, argv[optind], 3)) 
+		if (strncmp(command[i].cmd, argv[0], 3))
 			continue;
-		optind++;
-		command[i].func(dev_id, argv + optind, argc - optind);
+		command[i].func(dev_id, argc, argv);
 		break;
 	}
 
