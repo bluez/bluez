@@ -41,6 +41,7 @@
 #include <syslog.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <sys/poll.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -71,7 +72,7 @@ static int imtu = 672;
 static int omtu = 0;
 
 /* Default data size */
-static long data_size = 0;
+static long data_size = -1;
 
 /* Default addr and psm */
 static bdaddr_t bdaddr;
@@ -474,13 +475,17 @@ static void dump_mode(int sk)
 
 static void recv_mode(int sk)
 {
-	struct timeval tv_beg,tv_end,tv_diff;
+	struct timeval tv_beg, tv_end, tv_diff;
+	struct pollfd p;
 	long total;
 	uint32_t seq;
 	socklen_t optlen;
 	int opt;
 
 	syslog(LOG_INFO,"Receiving ...");
+
+	p.fd = sk;
+	p.events = POLLIN | POLLERR | POLLHUP;
 
 	seq = 0;
 	while (1) {
@@ -489,26 +494,34 @@ static void recv_mode(int sk)
 		while (total < data_size) {
 			uint32_t sq;
 			uint16_t l;
-			int i, r;
+			int i, len;
 
-			if ((r = recv(sk, buf, data_size, 0)) <= 0) {
-				if (r < 0) {
-					if (reliable && (errno == ECOMM)) {
-						syslog(LOG_INFO, "L2CAP Error ECOMM - clearing error and continuing.\n");
-						optlen = sizeof(opt);
-						if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &opt, &optlen) < 0) {
-							syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s (%d)",
-								strerror(errno), errno);
-							return;
-						}
-						continue;
-					} else {
-						syslog(LOG_ERR, "Read failed: %s (%d)",
-							strerror(errno), errno);
-					}
-				}
+			p.revents = 0;
+			if (poll(&p, 1, -1) <= 0)
 				return;
+
+			if (p.revents & (POLLERR | POLLHUP))
+				return;
+
+			len = recv(sk, buf, data_size, 0);
+			if (len < 0) {
+				if (reliable && (errno == ECOMM)) {
+					syslog(LOG_INFO, "L2CAP Error ECOMM - clearing error and continuing.\n");
+					optlen = sizeof(opt);
+					if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &opt, &optlen) < 0) {
+						syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s (%d)",
+							strerror(errno), errno);
+						return;
+					}
+					continue;
+				} else {
+					syslog(LOG_ERR, "Read failed: %s (%d)",
+						strerror(errno), errno);
+				}
 			}
+
+			if (len < 6)
+				break;
 
 			/* Check sequence */
 			sq = btohl(*(uint32_t *) buf);
@@ -520,18 +533,18 @@ static void recv_mode(int sk)
 
 			/* Check length */
 			l = btohs(*(uint16_t *) (buf + 4));
-			if (r != l) {
-				syslog(LOG_INFO, "size missmatch: %d -> %d", r, l);
+			if (len != l) {
+				syslog(LOG_INFO, "size missmatch: %d -> %d", len, l);
 				continue;
 			}
 
 			/* Verify data */
-			for (i = 6; i < r; i++) {
+			for (i = 6; i < len; i++) {
 				if (buf[i] != 0x7f)
 					syslog(LOG_INFO, "data missmatch: byte %d 0x%2.2x", i, buf[i]);
 			}
 
-			total += r;
+			total += len;
 		}
 		gettimeofday(&tv_end, NULL);
 
@@ -545,7 +558,7 @@ static void recv_mode(int sk)
 static void send_mode(int sk)
 {
 	uint32_t seq;
-	int i;
+	int i, len;
 
 	syslog(LOG_INFO, "Sending ...");
 
@@ -558,7 +571,8 @@ static void send_mode(int sk)
 		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
 
-		if (send(sk, buf, data_size, 0) <= 0) {
+		len = send(sk, buf, data_size, 0);
+		if (len < 0 || len != data_size) {
 			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
@@ -781,7 +795,8 @@ int main(int argc ,char *argv[])
 		exit(1);
 	}
 
-	if (!data_size) {
+	if (data_size < 0) {
+		data_size = 48;
 		if (imtu > data_size)
 			data_size = imtu;
 		if (omtu > data_size)
