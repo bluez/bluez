@@ -649,6 +649,59 @@ void cmd_version(int ctl, int hdev, char *opt)
 		bt_compidtostr(ver.manufacturer), ver.manufacturer);
 }
 
+void cmd_inq_mode(int ctl, int hdev, char *opt)
+{
+	struct hci_request rq;
+	int dd;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	memset(&rq, 0, sizeof(rq));
+
+	if (opt) {
+		write_inquiry_mode_cp cp;
+
+		cp.mode = atoi(opt);
+
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_WRITE_INQUIRY_MODE;
+		rq.cparam = &cp;
+		rq.clen = WRITE_INQUIRY_MODE_RP_SIZE;
+
+		if (hci_send_req(dd, &rq, 1000) < 0) {
+			printf("Can't set inquiry mode on hci%d. %s(%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		read_inquiry_mode_rp rp;
+
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_READ_INQUIRY_MODE;
+		rq.rparam = &rp;
+		rq.rlen = READ_INQUIRY_MODE_RP_SIZE;
+
+		if (hci_send_req(dd, &rq, 1000) < 0) {
+			printf("Can't read inquiry mode on hci%d. %s(%d)\n", 
+							hdev, strerror(errno), errno);
+			exit(1);
+		}
+		if (rp.status) {
+			printf("Read inquiry mode on hci%d returned status %d\n", 
+							hdev, rp.status);
+			exit(1);
+		}
+
+		print_dev_hdr(&di);
+		printf("\tInquiry mode: %s\n",
+			rp.mode == 1 ? "Inquiry with RSSI" : "Standard Inquiry");
+	}
+}
+
 void cmd_inq_parms(int ctl, int hdev, char *opt)
 {
 	struct hci_request rq;
@@ -1011,6 +1064,7 @@ struct {
 	{ "class",	cmd_class,	"[class]",	"Get/Set class of device" },
 	{ "voice",	cmd_voice,	"[voice]",	"Get/Set voice setting" },
 	{ "iac",	cmd_iac,	"[iac]",	"Get/Set inquiry access code" },
+	{ "inqmode",	cmd_inq_mode,	"[mode]",	"Get/set inquiry mode" },
 	{ "inqparms",	cmd_inq_parms,	"[win:int]",	"Get/Set inquiry scan window and interval" },
 	{ "pageparms",	cmd_page_parms,	"[win:int]",	"Get/Set page scan window and interval" },
 	{ "pageto",	cmd_page_to,	"[to]",		"Get/Set page timeout" },
