@@ -399,7 +399,7 @@ static void do_listen(void (*handler)(int sk))
 
 		ba2str(&addr.l2_bdaddr, ba);
 		syslog(LOG_INFO, "Connect from %s [imtu %d, omtu %d, flush_to %d, "
-				"	mode %d, handle %d, class 0x%02x%02x%02x]",
+					"mode %d, handle %d, class 0x%02x%02x%02x]",
 			ba, opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
 			conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
