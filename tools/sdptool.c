@@ -34,12 +34,15 @@
 #include <config.h>
 #endif
 
-#include <stdlib.h>
 #include <stdio.h>
-#include <getopt.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <getopt.h>
 #include <netinet/in.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -48,7 +51,7 @@
 /*
  * Convert a string to a BDADDR, with a few "enhancements" - Jean II
  */
-int estr2ba(char *str, bdaddr_t *ba)
+static int estr2ba(char *str, bdaddr_t *ba)
 {
 	/* Only trap "local", "any" is already dealt with */
 	if(!strcmp(str, "local")) {
@@ -268,16 +271,16 @@ static struct uuid_def uuid16_names[] = {
   { 0x1204, "GenericTelephony", NULL, 0 },
 };
 
-const int uuid16_max = sizeof(uuid16_names)/sizeof(struct uuid_def);
+static const int uuid16_max = sizeof(uuid16_names)/sizeof(struct uuid_def);
 
-void sdp_data_printf(sdp_data_t *, struct attrib_context *, int);
+static void sdp_data_printf(sdp_data_t *, struct attrib_context *, int);
 
 /*
  * Parse a UUID.
  * The BT assigned numbers only list UUID16, so I'm not sure the
  * other types will ever get used...
  */
-void sdp_uuid_printf(uuid_t *uuid, struct attrib_context *context, int indent)
+static void sdp_uuid_printf(uuid_t *uuid, struct attrib_context *context, int indent)
 {
 	if (uuid) {
 		if (uuid->type == SDP_UUID16) {
@@ -360,7 +363,7 @@ static void printf_dataseq(sdp_data_t * pData,
  * Parse a single data element (either in the attribute or in a data
  * sequence).
  */
-void sdp_data_printf(sdp_data_t *sdpdata,
+static void sdp_data_printf(sdp_data_t *sdpdata,
 		     struct attrib_context *context,
 		     int indent)
 {
@@ -443,7 +446,7 @@ void sdp_data_printf(sdp_data_t *sdpdata,
 /*
  * Parse a single attribute.
  */
-void sdp_attr_printf_func(void *value, void *userData)
+static void sdp_attr_printf_func(void *value, void *userData)
 {
 	sdp_data_t *sdpdata = NULL;
 	uint16_t attrId;
@@ -496,7 +499,7 @@ void sdp_attr_printf_func(void *value, void *userData)
  * We assume the record has already been read, parsed and cached
  * locally. Jean II
  */
-void sdp_printf_service_attr(sdp_record_t *rec)
+static void sdp_printf_service_attr(sdp_record_t *rec)
 {
 	if (rec && rec->attrlist) {
 		struct service_context service = { NULL };
@@ -508,7 +511,7 @@ void sdp_printf_service_attr(sdp_record_t *rec)
  * Set attributes with single values in SDP record
  * Jean II
  */
-int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, char *value) 
+static int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, char *value) 
 {
 	sdp_list_t *attrid_list;
 	uint32_t range = 0x0000ffff;
@@ -560,8 +563,8 @@ int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, char *valu
 }
 
 static struct option set_options[] = {
-	{"help",    0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",    0,0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
 static char *set_help = 
@@ -571,7 +574,7 @@ static char *set_help =
 /*
  * Add an attribute to an existing SDP record on the local SDP server
  */
-int cmd_setattr(int argc, char **argv)
+static int cmd_setattr(int argc, char **argv)
 {
 	int opt, status;
 	uint32_t handle;
@@ -610,7 +613,7 @@ int cmd_setattr(int argc, char **argv)
  * We do only simple data sequences. Sequence of sequences is a pain ;-)
  * Jean II
  */
-int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attrib, int argc, char **argv)
+static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attrib, int argc, char **argv)
 {
 	sdp_list_t *attrid_list;
 	uint32_t range = 0x0000ffff;
@@ -695,8 +698,8 @@ int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attrib, int 
 }
 
 static struct option seq_options[] = {
-	{"help",    0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",    0,0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
 static char *seq_help = 
@@ -707,7 +710,7 @@ static char *seq_help =
  * Add an attribute sequence to an existing SDP record
  * on the local SDP server
  */
-int cmd_setseq(int argc, char **argv)
+static int cmd_setseq(int argc, char **argv)
 {
 	int opt, status;
 	uint32_t handle;
@@ -810,7 +813,7 @@ static void print_service_desc(void *value, void *user)
 	}
 }
 
-void print_lang_attr(void *value, void *user)
+static void print_lang_attr(void *value, void *user)
 {
 	sdp_lang_attr_t *lang = (sdp_lang_attr_t *)value;
 	printf("  code_ISO639: 0x%02x\n", lang->code_ISO639);
@@ -818,13 +821,13 @@ void print_lang_attr(void *value, void *user)
 	printf("  base_offset: 0x%02x\n", lang->base_offset);
 }
 
-void print_access_protos(void *value, void *userData)
+static void print_access_protos(void *value, void *userData)
 {
 	sdp_list_t *protDescSeq = (sdp_list_t *)value;
 	sdp_list_foreach(protDescSeq, print_service_desc, 0);
 }
 
-void print_profile_desc(void *value, void *userData)
+static void print_profile_desc(void *value, void *userData)
 {
 	sdp_profile_desc_t *desc = (sdp_profile_desc_t *)value;
 	char str[MAX_LEN_PROFILEDESCRIPTOR_UUID_STR];
@@ -840,7 +843,7 @@ void print_profile_desc(void *value, void *userData)
 /*
  * Parse a SDP record in user friendly form.
  */
-void print_service_attr(sdp_record_t *rec)
+static void print_service_attr(sdp_record_t *rec)
 {
 	sdp_list_t *list = 0, *proto = 0;
 
@@ -926,7 +929,7 @@ static int add_sp(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Serial Port", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -984,7 +987,7 @@ static int add_dun(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Dial-Up Networking", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1040,7 +1043,7 @@ static int add_lan(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "LAN Access over PPP", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1099,7 +1102,7 @@ static int add_headset(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Headset", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1161,7 +1164,7 @@ static int add_handsfree(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Handsfree", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1223,7 +1226,7 @@ static int add_simaccess(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "SIM Access", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1281,7 +1284,7 @@ static int add_fax(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Fax", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1354,7 +1357,7 @@ static int add_opush(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "OBEX Object Push", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1415,7 +1418,7 @@ static int add_file_trans(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "OBEX File Transfer", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1488,7 +1491,7 @@ static int add_nap(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Network Access Point Service", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1547,7 +1550,7 @@ static int add_gn(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Group Network Service", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1614,7 +1617,7 @@ static int add_ctp(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Cordless Telephony", 0, 0);
 
-	if (0 > sdp_record_register(session, &record, SDP_RECORD_PERSIST)) {
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1777,7 +1780,7 @@ struct {
 };
 
 /* Add local service */
-int add_service(bdaddr_t *bdaddr, svc_info_t *si)
+static int add_service(bdaddr_t *bdaddr, svc_info_t *si)
 {
 	int i;
 	sdp_session_t *sess = sdp_connect(&interface, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
@@ -1799,16 +1802,16 @@ int add_service(bdaddr_t *bdaddr, svc_info_t *si)
 }
 
 static struct option add_options[] = {
-	{"help",    0,0, 'h'},
-	{"channel", 1,0, 'c'},
-	{0, 0, 0, 0}
+	{ "help",    0,0, 'h' },
+	{ "channel", 1,0, 'c' },
+	{ 0, 0, 0, 0}
 };
 
 static char *add_help = 
 	"Usage:\n"
 	"\tadd [--channel=CHAN] service\n";
 
-int cmd_add(int argc, char **argv)
+static int cmd_add(int argc, char **argv)
 {
 	svc_info_t si;
 	int opt;
@@ -1837,7 +1840,7 @@ int cmd_add(int argc, char **argv)
 }
 
 /* Delete local service */
-int del_service(bdaddr_t *bdaddr, void *arg) 
+static int del_service(bdaddr_t *bdaddr, void *arg) 
 {
 	uint32_t handle, range = 0x0000ffff;
 	sdp_list_t *attr;
@@ -1873,15 +1876,15 @@ int del_service(bdaddr_t *bdaddr, void *arg)
 }
 
 static struct option del_options[] = {
-	{"help",    0,0, 'h'},
-	{0, 0, 0, 0}
+	{ "help",    0,0, 'h' },
+	{ 0, 0, 0, 0 }
 };
 
 static char *del_help = 
 	"Usage:\n"
 	"\tdel record_handle\n";
 
-int cmd_del(int argc, char **argv)
+static int cmd_del(int argc, char **argv)
 {
 	int opt;
 
@@ -1923,7 +1926,7 @@ static void inquiry(handler_t handler, void *arg)
 /*
  * Search for a specific SDP service
  */
-int do_search(bdaddr_t *bdaddr, struct search_context *context)
+static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 {
 	sdp_list_t *attrid, *search, *seq, *next;
 	uint32_t range = 0x0000ffff;
@@ -1984,9 +1987,9 @@ int do_search(bdaddr_t *bdaddr, struct search_context *context)
 }
 
 static struct option browse_options[] = {
-	{"help",    0,0, 'h'},
-	{"tree",    0,0, 't'},
-	{0, 0, 0, 0}
+	{ "help",    0,0, 'h' },
+	{ "tree",    0,0, 't' },
+	{ 0, 0, 0, 0 }
 };
 
 static char *browse_help = 
@@ -1997,7 +2000,7 @@ static char *browse_help =
  * Browse the full SDP database (i.e. list all services starting from the
  * root/top-level).
  */
-int cmd_browse(int argc, char **argv)
+static int cmd_browse(int argc, char **argv)
 {
 	struct search_context context;
 	int opt;
@@ -2029,10 +2032,10 @@ int cmd_browse(int argc, char **argv)
 }
 
 static struct option search_options[] = {
-	{"help",    0,0, 'h'},
-	{"bdaddr",  1,0, 'b'},
-	{"tree",    0,0, 't'},
-	{0, 0, 0, 0}
+	{ "help",    0,0, 'h' },
+	{ "bdaddr",  1,0, 'b' },
+	{ "tree",    0,0, 't' },
+	{ 0, 0, 0, 0}
 };
 
 static char *search_help = 
@@ -2048,7 +2051,7 @@ static char *search_help =
  * (this would search a service supporting both L2CAP and BNEP directly in
  * the top level browse group)
  */
-int cmd_search(int argc, char **argv)
+static int cmd_search(int argc, char **argv)
 {
 	struct search_context context;
 	uint16_t class = 0;
@@ -2116,7 +2119,7 @@ int cmd_search(int argc, char **argv)
  * Not really useful to the user, just show how it can be done...
  * Jean II
  */
-int get_service(bdaddr_t *bdaddr, struct search_context *context) 
+static int get_service(bdaddr_t *bdaddr, struct search_context *context) 
 {
 	sdp_list_t *attrid;
 	uint32_t range = 0x0000ffff;
@@ -2150,10 +2153,10 @@ int get_service(bdaddr_t *bdaddr, struct search_context *context)
 }
 
 static struct option get_options[] = {
-	{"help",    0,0, 'h'},
-	{"bdaddr",  1,0, 'b'},
-	{"tree",    0,0, 't'},
-	{0, 0, 0, 0}
+	{ "help",    0,0, 'h' },
+	{ "bdaddr",  1,0, 'b' },
+	{ "tree",    0,0, 't' },
+	{ 0, 0, 0, 0 }
 };
 
 static char *get_help = 
@@ -2163,7 +2166,7 @@ static char *get_help =
 /*
  * Get a specific SDP record on the local SDP server
  */
-int cmd_get(int argc, char **argv)
+static int cmd_get(int argc, char **argv)
 {
 	struct search_context context;
 	bdaddr_t bdaddr;
@@ -2200,7 +2203,7 @@ int cmd_get(int argc, char **argv)
 	return get_service(has_addr? &bdaddr: BDADDR_LOCAL, &context);
 }
 
-struct {
+static struct {
 	char *cmd;
 	int (*func)(int argc, char **argv);
 	char *doc;
@@ -2212,14 +2215,14 @@ struct {
 	{ "get",     cmd_get,         "Get local service"             },
 	{ "setattr", cmd_setattr,     "Set/Add attribute to a SDP record" },
 	{ "setseq",  cmd_setseq,      "Set/Add attribute sequence to a SDP record" },
-	{ 0, 0, 0}
+	{ 0, 0, 0 }
 };
 
 static void usage(void)
 {
 	int i;
 
-	printf("sdptool - SDP Tool v%s\n", VERSION);
+	printf("sdptool - SDP tool v%s\n", VERSION);
 	printf("Usage:\n"
 		"\tsdptool [options] <command> [command parameters]\n");
 	printf("Options:\n"
@@ -2227,47 +2230,57 @@ static void usage(void)
 		"\t--source\tSpecify source interface\n");
 
 	printf("Commands:\n");
-	for (i=0; command[i].cmd; i++)
+	for (i = 0; command[i].cmd; i++)
 		printf("\t%-4s\t\t%s\n", command[i].cmd, command[i].doc);
 
 	printf("\nServices:\n\t");
-	for (i=0; service[i].name; i++)
+	for (i = 0; service[i].name; i++)
 		printf("%s ", service[i].name);
 	printf("\n");
 }
 
 static struct option main_options[] = {
-	{"help",   0, 0, 'h'},
-	{"source", 1, 0, 'S'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ "device",	1, 0, 'i' },
+	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char **argv)
 {
-	int opt, i;
+	int i, opt;
 
 	bacpy(&interface, BDADDR_ANY);
-	while ((opt=getopt_long(argc, argv, "+hS:", main_options, 0)) != -1) {
+
+	while ((opt=getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
 		switch(opt) {
-		case 'S':
-			str2ba(optarg, &interface);
+		case 'i':
+			if (!strncmp(optarg, "hci", 3))
+				hci_devba(atoi(optarg + 3), &interface);
+			else
+				str2ba(optarg, &interface);
 			break;
+
 		case 'h':
-		default:
 			usage();
-			return -1;
+			exit(0);
+
+		default:
+			exit(1);
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 	optind = 0;
 
 	if (argc < 1) {
 		usage();
-		return -1;
+		exit(1);
 	}
-	for (i=0; command[i].cmd; i++)
+
+	for (i = 0; command[i].cmd; i++)
 		if (strncmp(command[i].cmd, argv[0], 4) == 0)
 			return command[i].func(argc, argv);
+
 	return -1;
 }
