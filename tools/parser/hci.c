@@ -84,6 +84,7 @@ char *cmd_linkctl_map[] = {
 	"Create Connection",
 	"Disconnect",
 	"Add SCO Connection",
+	"Unknown",
 	"Accept Connection Request",
 	"Reject Connection Request",
 	"Link Key Request Reply",
@@ -100,7 +101,7 @@ char *cmd_linkctl_map[] = {
 	"Read Remote Version Information",
 	"Read Clock offset"
 };
-#define CMD_LINKCTL_NUM	22
+#define CMD_LINKCTL_NUM	23
 
 char *cmd_linkpol_map[] = {
 	"Unknown",
