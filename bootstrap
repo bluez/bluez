@@ -1,2 +1,2 @@
 #! /bin/sh
-aclocal && autoheader && automake --copy --add-missing && autoconf
+aclocal && autoheader && automake --add-missing --copy --force-missing --ignore-deps && autoconf
