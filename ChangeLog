@@ -1,8 +1,15 @@
+ver 2.1:
+	Improved BCSP initialization (hciattach).
+	Support for displaying link quality (hcitool).
+	Support for changing link supervision timeout (hcitool).
+	New RFCOMM TTY configuration tool (rfcomm).
+	Minor fixes and updates.
+
 ver 2.0:
 	BCSP initialization (hciattach).
 	Minor hciconfig fixes.	
 
-ver 2.0-pre13:
+ver 2.0-pr13:
 	Support for multiple pairing modes.
 	Link key database handling fixes.
 
