@@ -83,6 +83,8 @@ static void process_frames(int dev, int sock, int file)
 	printf("device: hci%d snap_len: %d filter: 0x%lx\n", 
 		dev, snap_len, filter); 
 
+	memset(&msg, 0, sizeof(msg));
+
 	while (1) {
 		iv.iov_base = frm.data;
 		iv.iov_len  = snap_len;
