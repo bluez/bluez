@@ -535,7 +535,7 @@ void cmd_voice(int ctl, int hdev, char *opt)
 		exit(1);
 	}
 	if (opt) {
-		uint16_t vs = htobl(strtoul(opt, NULL, 16));
+		uint16_t vs = htobs(strtoul(opt, NULL, 16));
 		if (0 > hci_write_voice_setting(s, vs, 1000)) {
 			printf("Can't write voice setting on hci%d. %s(%d)\n",
 				hdev, strerror(errno), errno);
@@ -549,6 +549,7 @@ void cmd_voice(int ctl, int hdev, char *opt)
 				hdev, strerror(errno), errno);
 			exit(1);
 		}
+		vs = htobs(vs);
 		ic = (vs & 0x0300) >> 8;
 		print_dev_hdr(&di);
 		printf("\tVoice setting: 0x%04x%s\n", vs,
