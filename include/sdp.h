@@ -68,6 +68,9 @@ extern "C" {
 #define WSP_UUID	0x000E
 #define BNEP_UUID	0x000F
 #define HIDP_UUID	0x0011
+#define HCRP_CTRL_UUID	0x0012
+#define HCRP_DATA_UUID	0x0014
+#define HCRP_NOTE_UUID	0x0016
 #define CMTP_UUID	0x001B
 
 /*
