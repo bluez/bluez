@@ -1,5 +1,5 @@
 # Note that this is NOT a relocatable package
-%define ver      2.7
+%define ver      2.8
 %define RELEASE  1
 %define rel      %{?CUSTOM_RELEASE} %{!?CUSTOM_RELEASE:%RELEASE}
 %define prefix   /usr
@@ -12,9 +12,9 @@ Copyright: GPL
 Group: Applications/System
 Vendor: Official Linux Bluetooth protocol stack
 Packager: Sebastian Frankfurt <sf@infesto.de>
-Source: http://bluez.sourceforge.net/%{name}-%{ver}.tar.gz
+Source: http://bluez.sf.net/download/%{name}-%{ver}.tar.gz
 BuildRoot: /var/tmp/%{name}-%{PACKAGE_VERSION}-root
-URL: http://bluez.sourceforge.net
+URL: http://www.bluez.org
 Docdir: %{prefix}/share/doc
 Requires: glibc >= 2.2.4
 BuildRequires: glibc >= 2.2.4
@@ -54,7 +54,6 @@ rm -rf $RPM_BUILD_ROOT
 
 /usr/include/bluetooth/*
 /usr/lib/libbluetooth*
-/usr/lib/libsdp*
 
 %doc AUTHORS COPYING INSTALL ChangeLog NEWS README
 

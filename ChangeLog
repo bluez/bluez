@@ -1,3 +1,11 @@
+ver 2.8:
+	Fix the event code of inquiry with RSSI.
+	Add defines and UUID's for audio/video profiles.
+	Add AVDTP protocol identifier.
+	Add HIDP subclass field.
+	Add PKGConfig support.
+	Remove dummy SDP library.
+
 ver 2.7:
 	Fix display of decoded LMP features.
 	Update company identifiers.
