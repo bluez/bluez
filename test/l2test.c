@@ -37,6 +37,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <getopt.h>
 #include <syslog.h>
 #include <signal.h>
 #include <sys/time.h>
