@@ -537,7 +537,7 @@ int hci_devinfo(int dev_id, struct hci_dev_info *di)
 	return err;
 }
 
-int hci_devba(int dev_id, bdaddr_t *ba)
+int hci_devba(int dev_id, bdaddr_t *bdaddr)
 {
 	struct hci_dev_info di;
 
@@ -549,7 +549,7 @@ int hci_devba(int dev_id, bdaddr_t *ba)
 		return -1;
 	}
 
-	bacpy(ba, &di.bdaddr);
+	bacpy(bdaddr, &di.bdaddr);
 	return 0;
 }
 
@@ -783,14 +783,14 @@ done:
 	return 0;
 }
 
-int hci_create_connection(int dd, const bdaddr_t *ba, uint16_t ptype, uint16_t clkoffset, uint8_t rswitch, uint16_t *handle, int to)
+int hci_create_connection(int dd, const bdaddr_t *bdaddr, uint16_t ptype, uint16_t clkoffset, uint8_t rswitch, uint16_t *handle, int to)
 {
 	evt_conn_complete rp;
 	create_conn_cp cp;
 	struct hci_request rq;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, ba);
+	bacpy(&cp.bdaddr, bdaddr);
 	cp.pkt_type       = ptype;
 	cp.pscan_rep_mode = 0x02;
 	cp.clock_offset   = clkoffset;
@@ -892,19 +892,19 @@ int hci_write_local_name(int dd, const char *name, int to)
 	return 0;
 }
 
-int hci_remote_name(int dd, const bdaddr_t *ba, int len, char *name, int to)
+int hci_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)
 {
-	return hci_read_remote_name(dd, ba, len, name, to);
+	return hci_read_remote_name(dd, bdaddr, len, name, to);
 }
 
-int hci_read_remote_name(int dd, const bdaddr_t *ba, int len, char *name, int to)
+int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)
 {
 	evt_remote_name_req_complete rn;
 	remote_name_req_cp cp;
 	struct hci_request rq;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, ba);
+	bacpy(&cp.bdaddr, bdaddr);
 	cp.pscan_rep_mode = 0x02;
 
 	memset(&rq, 0, sizeof(rq));
@@ -1121,6 +1121,7 @@ int hci_write_voice_setting(int dd, uint16_t vs, int to)
 	rq.ocf    = OCF_WRITE_VOICE_SETTING;
 	rq.cparam = &cp;
 	rq.clen   = WRITE_VOICE_SETTING_CP_SIZE;
+
 	return hci_send_req(dd, &rq, to);
 }
 
@@ -1162,6 +1163,7 @@ int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
 	rq.ocf    = OCF_WRITE_CURRENT_IAC_LAP;
 	rq.cparam = &cp;
 	rq.clen   = WRITE_CURRENT_IAC_LAP_CP_SIZE;
+
 	return hci_send_req(dd, &rq, to);
 }
 
@@ -1179,32 +1181,37 @@ int hci_authenticate_link(int dd, uint16_t handle, int to)
 	rq.rparam = &rp;
 	rq.event  = EVT_AUTH_COMPLETE;
 	rq.rlen   = EVT_AUTH_COMPLETE_SIZE;
+
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
+
 	if (rp.status) {
 		errno = EIO;
 		return -1;
 	}
+
 	return 0;
 }
 
-int hci_encrypt_link(int dd, uint16_t handle, int on, int to)
+int hci_encrypt_link(int dd, uint16_t handle, uint8_t encrypt, int to)
 {
 	set_conn_encrypt_cp cp;
 	evt_encrypt_change rp;
 	struct hci_request rq;
 
 	cp.handle  = handle;
-	cp.encrypt = on;
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_SET_CONN_ENCRYPT;
-	rq.cparam = &cp;
-	rq.clen   = SET_CONN_ENCRYPT_CP_SIZE;
-	rq.event  = EVT_ENCRYPT_CHANGE;
-	rq.rlen   = EVT_ENCRYPT_CHANGE_SIZE;
-	rq.rparam = &rp;
+	cp.encrypt = encrypt;
+	rq.ogf     = OGF_LINK_CTL;
+	rq.ocf     = OCF_SET_CONN_ENCRYPT;
+	rq.cparam  = &cp;
+	rq.clen    = SET_CONN_ENCRYPT_CP_SIZE;
+	rq.event   = EVT_ENCRYPT_CHANGE;
+	rq.rlen    = EVT_ENCRYPT_CHANGE_SIZE;
+	rq.rparam  = &rp;
+
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
+
 	if (rp.status) {
 		errno = EIO;
 		return -1;
@@ -1212,13 +1219,13 @@ int hci_encrypt_link(int dd, uint16_t handle, int on, int to)
 	return 0;
 }
 
-int hci_switch_role(int dd, bdaddr_t peer, int role, int to)
+int hci_switch_role(int dd, bdaddr_t *bdaddr, uint8_t role, int to)
 {
 	switch_role_cp cp;
 	evt_role_change rp;
 	struct hci_request rq;
 
-	cp.bdaddr = peer;
+	bacpy(&cp.bdaddr, bdaddr);
 	cp.role   = role;
 	rq.ogf    = OGF_LINK_POLICY;
 	rq.ocf    = OCF_SWITCH_ROLE;
@@ -1227,12 +1234,15 @@ int hci_switch_role(int dd, bdaddr_t peer, int role, int to)
 	rq.rparam = &rp;
 	rq.rlen   = EVT_ROLE_CHANGE_SIZE;
 	rq.event  = EVT_ROLE_CHANGE;
+
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
+
 	if (rp.status) {
 		errno = EIO;
 		return -1;
 	}
+
 	return 0;
 }
 
