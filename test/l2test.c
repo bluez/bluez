@@ -78,6 +78,7 @@ int master = 0;
 int auth = 0;
 int encrypt = 0;
 int socktype = SOCK_SEQPACKET;
+int linger = 0;
 
 float tv2fl(struct timeval tv)
 {
@@ -116,6 +117,16 @@ int do_connect(char *svr)
 	if( setsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, opt) < 0 ) {
 		syslog(LOG_ERR, "Can't set L2CAP options. %s(%d)", strerror(errno), errno);
 		return -1;
+	}
+
+	/* Enable SO_LINGER */
+	if (linger) {
+		struct linger l = { .l_onoff = 1, .l_linger = linger };
+		if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+			syslog(LOG_ERR, "Can't enable SO_LINGER. %s(%d)",
+				strerror(errno), errno);
+			return -1;
+		}
 	}
 
 	memset(&rem_addr, 0, sizeof(rem_addr));
@@ -227,6 +238,16 @@ void do_listen( void (*handler)(int sk) )
 		baswap(&ba, &rem_addr.l2_bdaddr);
 		syslog(LOG_INFO, "Connect from %s [imtu %d, omtu %d, flush_to %d]\n",
 		       batostr(&ba), opts.imtu, opts.omtu, opts.flush_to);
+
+		/* Enable SO_LINGER */
+		if (linger) {
+			struct linger l = { .l_onoff = 1, .l_linger = linger };
+			if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+				syslog(LOG_ERR, "Can't enable SO_LINGER. %s(%d)",
+					strerror(errno), errno);
+				exit(1);
+			}
+		}
 
 		handler(s1);
 
@@ -390,6 +411,7 @@ void usage(void)
 		"\t[-b bytes] [-S bdaddr] [-P psm]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
 		"\t[-N num] send num blocks (default = infinite)\n"
+		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-D] use connectionless channel (datagram)\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
@@ -406,7 +428,7 @@ int main(int argc ,char *argv[])
 
 	mode = RECV; need_addr = 0;
 	
-	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:N:MAED")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:N:MAEDL:")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -463,6 +485,10 @@ int main(int argc ,char *argv[])
 
 		case 'O':
 			omtu = atoi(optarg);
+			break;
+
+		case 'L':
+			linger = atoi(optarg);
 			break;
 
 		case 'M':
