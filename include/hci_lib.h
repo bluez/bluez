@@ -73,6 +73,8 @@ int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to);
 int hci_read_clock_offset(int dd, uint16_t handle, uint16_t *clkoffset, int to);
 int hci_read_local_version(int dd, struct hci_version *ver, int to);
+int hci_read_local_features(int dd, uint8_t *features, int to);
+int hci_read_bd_addr(int dd, bdaddr_t *bdaddr, int to);
 int hci_read_class_of_dev(int dd, uint8_t *cls, int to);
 int hci_write_class_of_dev(int dd, uint32_t cls, int to);
 int hci_read_voice_setting(int dd, uint16_t *vs, int to);

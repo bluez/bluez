@@ -762,6 +762,7 @@ typedef struct {
 	uint8_t		status;
 	uint8_t		features[8];
 } __attribute__ ((packed)) read_local_features_rp;
+#define READ_LOCAL_FEATURES_RP_SIZE 9
 
 #define OCF_READ_BUFFER_SIZE		0x0005
 typedef struct {
@@ -771,12 +772,14 @@ typedef struct {
 	uint16_t	acl_max_pkt;
 	uint16_t	sco_max_pkt;
 } __attribute__ ((packed)) read_buffer_size_rp;
+#define READ_BUFFER_SIZE_RP_SIZE 8
 
 #define OCF_READ_BD_ADDR		0x0009
 typedef struct {
 	uint8_t		status;
 	bdaddr_t	bdaddr;
 } __attribute__ ((packed)) read_bd_addr_rp;
+#define READ_BD_ADDR_RP_SIZE 7
 
 /* Status params */
 #define OGF_STATUS_PARAM	0x05

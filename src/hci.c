@@ -1042,6 +1042,52 @@ int hci_read_local_version(int dd, struct hci_version *ver, int to)
 	return 0;
 }
 
+int hci_read_local_features(int dd, uint8_t *features, int to)
+{
+	read_local_features_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_INFO_PARAM;
+	rq.ocf    = OCF_READ_LOCAL_FEATURES;
+	rq.rparam = &rp;
+	rq.rlen   = READ_LOCAL_FEATURES_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	memcpy(features, rp.features, 8);
+	return 0;
+}
+
+int hci_read_bd_addr(int dd, bdaddr_t *bdaddr, int to)
+{
+	read_bd_addr_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_INFO_PARAM;
+	rq.ocf    = OCF_READ_BD_ADDR;
+	rq.rparam = &rp;
+	rq.rlen   = READ_BD_ADDR_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	bacpy(bdaddr, &rp.bdaddr);
+	return 0;
+}
+
 int hci_read_class_of_dev(int dd, uint8_t *cls, int to)
 {
 	read_class_of_dev_rp rp;
