@@ -52,6 +52,7 @@ void raw_dump(int level, struct frame *frm);
 void hci_dump(int level, struct frame *frm);
 void l2cap_dump(int level, struct frame *frm);
 void rfcomm_dump(int level, struct frame *frm);
+void sdp_dump(int level, struct frame *frm);
 
 static inline void indent(int level)
 {

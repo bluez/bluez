@@ -345,6 +345,10 @@ static void l2cap_parse(int level, struct frame *frm)
 		printf("L2CAP(d): cid 0x%x len %d [psm %d]\n", cid, dlen, psm);
 
 		switch (psm) {
+		case 0x01:
+			sdp_dump(level+1, frm);
+			break;
+
 		case 0x03:
 			rfcomm_dump(level+1, frm);
 			break;
