@@ -647,30 +647,36 @@ extern char *optarg;
 int main(int argc, char *argv[])
 {
 	struct uart_t *u = NULL;
-	int detach, opt, i, n;
+	int detach, printpid, opt, i, n;
 	int to = 5; 
+	pid_t pid;
 	struct sigaction sa;
 	char dev[20];
 
 	detach = 1;
+	printpid = 0;
 	
-	while ((opt=getopt(argc, argv, "nt:l")) != EOF) {
+	while ((opt=getopt(argc, argv, "npt:l")) != EOF) {
 		switch(opt) {
 		case 'n':
 			detach = 0;
 			break;
-		
+
+		case 'p':
+			printpid = 1;
+			break;
+
 		case 't':
 			to = atoi(optarg);
 			break;
-		
+
 		case 'l':
 			for (i = 0; uart[i].type; i++) {
 				printf("%-10s0x%04x,0x%04x\n", uart[i].type,
 							uart[i].m_id, uart[i].p_id);
 			}
 			exit(0);
-	
+
 		default:
 			usage();
 			exit(1);
@@ -747,7 +753,11 @@ int main(int argc, char *argv[])
 	alarm(0);
 
 	if (detach) {
-	       	if (fork()) return 0;
+		if ((pid = fork())) {
+			if (printpid)
+				printf("%d\n", pid);
+			return 0;
+		}
 		for (i=0; i<20; i++)
 			if (i != n) close(i);
 	}
