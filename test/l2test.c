@@ -469,8 +469,9 @@ void send_mode(int s)
 
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
-		*(uint32_t *) buf = htobl(seq++);
+		*(uint32_t *) buf = htobl(seq);
 		*(uint16_t *)(buf+4) = htobs(data_size);
+		seq++;
 		
 		if (send(s, buf, data_size, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed. %s(%d)", strerror(errno), errno);
@@ -497,8 +498,9 @@ void senddump_mode(int s)
 
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
-		*(uint32_t *) buf = htobl(seq++);
+		*(uint32_t *) buf = htobl(seq);
 		*(uint16_t *)(buf+4) = htobs(data_size);
+		seq++;
 		
 		if (send(s, buf, data_size, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed. %s(%d)", strerror(errno), errno);

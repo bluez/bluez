@@ -215,8 +215,9 @@ void send_mode(char *svr)
 
 	seq = 0;
 	while (1) {
-		*(uint32_t *)buf = htobl(seq++);
+		*(uint32_t *)buf = htobl(seq);
 		*(uint16_t *)(buf+4) = htobs(data_size);
+		seq++;
 		
 		if (send(s, buf, so.mtu, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed. %s(%d)", 
