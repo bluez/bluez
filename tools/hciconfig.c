@@ -617,6 +617,52 @@ void cmd_page_to(int ctl, int hdev, char *opt)
         }
 }
 
+static void cmd_revision(int ctl, int hdev, char *opt)
+{
+	struct hci_version ver;
+	struct hci_request rq;
+	unsigned char buf[102];
+	int dd;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		return;
+	}
+
+	if (hci_read_local_version(dd, &ver, 1000) < 0) {
+		printf("Can't read version info hci%d. %s(%d)\n",
+			hdev, strerror(errno), errno);
+		return;
+	}
+
+	print_dev_hdr(&di);
+	switch (ver.manufacturer) {
+	case 0:
+		memset(&rq, 0, sizeof(rq));
+		rq.ogf = 0x3f;
+		rq.ocf = 0x000f;
+		rq.cparam = NULL;
+		rq.clen = 0;
+		rq.rparam = &buf;
+		rq.rlen = sizeof(buf);
+
+		if (hci_send_req(dd, &rq, 1000) < 0) {
+			printf("\n Can't read revision info. %s(%d)\n",
+				strerror(errno), errno);
+			return;
+		}
+
+		printf("\t%s\n", buf + 1);
+		break;
+
+	default:
+		printf("\tUnsuported manufacturer\n");
+		break;
+	}
+	return;
+}
+
 void print_dev_hdr(struct hci_dev_info *di)
 {
 	static int hdr = -1;
@@ -687,13 +733,14 @@ struct {
 	{ "lp",     cmd_lp,      "[policy]", "Get/Set default link policy" },
 	{ "name",   cmd_name,    "[name]",   "Get/Set local name" },
 	{ "class",  cmd_class,   "[class]",  "Get/Set class of device" },
-	{ "inqparms",cmd_inq_parms, "[win:int]","Get/Set inquiry scan window and interval" },
-	{ "pageparms",cmd_page_parms, "[win:int]","Get/Set page scan window and interval" },
-	{ "ptimeo", cmd_page_to, "[to]",     "Get/Set page timeout" },
+	{ "inqparms",  cmd_inq_parms, "[win:int]","Get/Set inquiry scan window and interval" },
+	{ "pageparms", cmd_page_parms, "[win:int]","Get/Set page scan window and interval" },
+	{ "pageto", cmd_page_to, "[to]",     "Get/Set page timeout" },
 	{ "aclmtu", cmd_aclmtu, "<mtu:pkt>","Set ACL MTU and number of packets" },
 	{ "scomtu", cmd_scomtu, "<mtu:pkt>","Set SCO MTU and number of packets" },
-	{ "version",	cmd_version, 0,  "Display version information" },
-	{ "features",	cmd_features, 0,"Display device features" },
+	{ "features",	cmd_features, 0, "Display device features" },
+	{ "version",	cmd_version,  0, "Display version information" },
+	{ "revision",	cmd_revision, 0, "Display revision information" },
 	{ NULL, NULL, 0}
 };
 

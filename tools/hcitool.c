@@ -65,57 +65,6 @@ static int dev_info(int s, int dev_id, long arg)
 	return 0;
 }
 
-static int rev_info(int s, int dev_id, long arg)
-{
-	struct hci_version ver;
-	int id = arg;
-	int dd;
-
-	struct hci_request rq;
-	unsigned char buf[102];
-
-	if (id != -1 && dev_id != id)
-		return 0;
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		printf("Can't open device hci%d. %s(%d)\n", dev_id, strerror(errno), errno);
-		return -1;
-	}
-
-	if (hci_read_local_version(dd, &ver, 1000) < 0) {
-		printf("Can't read version info hci%d. %s(%d)\n",
-			dev_id, strerror(errno), errno);
-		return -1;
-	}
-
-	printf("hci%d:", dev_id);
-	switch (ver.manufacturer) {
-	case 0:
-		memset(&rq, 0, sizeof(rq));
-		rq.ogf = 0x3f;
-		rq.ocf = 0x000f;
-		rq.cparam = NULL;
-		rq.clen = 0;
-		rq.rparam = &buf;
-		rq.rlen = sizeof(buf);
-
-		if (hci_send_req(dd, &rq, 1000) < 0) {
-			printf("\n Can't read revision info. %s(%d)\n",
-				strerror(errno), errno);
-			return -1;
-		}
-
-		printf("%s\n", buf + 1);
-		break;
-	default:
-		printf("\n Manufacturer not supported\n");
-		break;
-	}
-	printf("\n");
-	return 0;
-}
-
 static int conn_list(int s, int dev_id, long arg)
 {
 	struct hci_conn_list_req *cl;
@@ -591,31 +540,6 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 	return;
 }
 
-/* Display revision info */
-
-static struct option rev_options[] = {
-	{"help",    0,0, 'h'},
-	{0, 0, 0, 0}
-};
-
-static char *rev_help = 
-	"Usage:\n"
-	"\trev\n";
-
-static void cmd_rev(int dev_id, int argc, char **argv)
-{
-	int opt;
-
-	for_each_opt(opt, rev_options, NULL) {
-		switch(opt) {
-		default:
-			printf(rev_help);
-			return;
-		}
-	}
-	hci_for_each_dev(HCI_UP, rev_info, dev_id);
-}
-
 /* Display active connections */
 
 static struct option con_options[] = {
@@ -948,7 +872,6 @@ struct {
 	char *doc;
 } command[] = {
 	{ "dev",  cmd_dev,  "Display local devices"              },
-	{ "rev",  cmd_rev,  "Display revison information"        },
 	{ "inq",  cmd_inq,  "Inquire remote devices"             },
 	{ "scan", cmd_scan, "Scan for remote devices"            },
 	{ "name", cmd_name, "Get name from remote device"        },
