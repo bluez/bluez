@@ -45,6 +45,9 @@ static struct {
 	uint16_t id;
 	char *str;
 } csr_map[] = {
+	{   66, "HCI 9.8"	},
+	{   97, "HCI 10.3"	},
+	{  101, "HCI 10.5"	},
 	{  111,	"HCI 11.0"	},
 	{  112,	"HCI 11.1"	},
 	{  114,	"HCI 11.2"	},
@@ -245,6 +248,7 @@ static struct {
 	{ 1120, "HCI 17.11"	},
 	{ 1168, "HCI 18.1"	},
 	{ 1169, "HCI 18.1"	},
+	{ 1241, "HCI 18.x"	},
 	{ 1298, "HCI 18.2"	},
 	{ 1392, "HCI 18.2"	},
 	{ 1393, "HCI 18.2"	},
@@ -287,10 +291,31 @@ char *csr_chipvertostr(uint16_t ver, uint16_t rev)
 		else
 			return "BlueCore01b";
 	case 0x02:
-		if (rev == 0x89)
-			return "BlueCore02 (ES2)";
-		else
+		switch (rev) {
+		case 0x89:
+			return "BlueCore02-External (ES2)";
+		case 0x8a:
+			return "BlueCore02-External";
+		case 0x28:
+			return "BlueCore02-ROM/Audio/Flash";
+		default:
 			return "BlueCore02";
+		}
+	case 0x03:
+		switch (rev) {
+		case 0x43:
+			return "BlueCore3-MM";
+		case 0x15:
+			return "BlueCore3-ROM";
+		case 0xe2:
+			return "BlueCore3-Flash";
+		case 0x26:
+			return "BlueCore4-External";
+		case 0x30:
+			return "BlueCore4-ROM";
+		default:
+			return "BlueCore3 or BlueCore4";
+		}
 	default:
 		return "Unknown";
 	}
