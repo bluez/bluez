@@ -56,7 +56,7 @@ static void add_cid(int in, __u16 cid, __u16 psm)
 	register int i;
 
 	for (i=0; i<CID_TABLE_SIZE; i++)
-		if (!table[i].cid) {
+		if (!table[i].cid || table[i].cid == cid) {
 			table[i].cid = cid;
 			table[i].psm = psm;
 		}
