@@ -140,7 +140,7 @@ static void save_link_key(struct link_key *key)
 	char sa[18], da[18];
 	int f, err;
 
-	f = open(hcid.key_file, O_RDWR | O_CREAT, 0);
+	f = open(hcid.key_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 	if (f < 0) {
 		syslog(LOG_ERR, "Link key database open failed. %s(%d)",
 				strerror(errno), errno);
