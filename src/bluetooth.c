@@ -1,30 +1,36 @@
-/* 
-   BlueZ - Bluetooth protocol stack for Linux
-   Copyright (C) 2000-2001 Qualcomm Incorporated
-
-   Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
-
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License version 2 as
-   published by the Free Software Foundation;
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-   IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
-   CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-   ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
-   COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
-   SOFTWARE IS DISCLAIMED.
-*/
-
 /*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2000-2001  Qualcomm Incorporated
+ *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
+ *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
+ *
+ *
  *  $Id$
  */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,10 +43,10 @@
 
 void baswap(bdaddr_t *dst, const bdaddr_t *src)
 {
-	register unsigned char *d = (unsigned char *)dst;
-	register const unsigned char *s = (const unsigned char *)src;
+	register unsigned char *d = (unsigned char *) dst;
+	register const unsigned char *s = (const unsigned char *) src;
 	register int i;
-	for(i=0; i<6; i++)
+	for (i = 0; i < 6; i++)
 		d[i] = s[5-i];
 }
 
@@ -51,7 +57,7 @@ char *batostr(const bdaddr_t *ba)
 		return NULL;
 
 	sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
-	        ba->b[0], ba->b[1], ba->b[2], 
+		ba->b[0], ba->b[1], ba->b[2], 
 		ba->b[3], ba->b[4], ba->b[5]);
 	return str;
 }
@@ -65,9 +71,9 @@ bdaddr_t *strtoba(const char *str)
 	if (!ba)
 		return NULL;
 
-	for(i=0; i<6; i++){
+	for(i = 0; i < 6; i++) {
 		ba[i] = (uint8_t) strtol(ptr, NULL, 16);
-		if( i!=5 && !(ptr=strchr(ptr,':')) )
+		if (i != 5 && !(ptr = strchr(ptr,':')))
 			ptr = ":00:00:00:00:00";
 		ptr++;
 	}
@@ -78,9 +84,9 @@ int ba2str(const bdaddr_t *ba, char *str)
 {
 	uint8_t b[6];
 
-	baswap((bdaddr_t *)b, ba);
+	baswap((bdaddr_t *) b, ba);
 	return sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
-	        b[0], b[1], b[2], b[3], b[4], b[5]);
+		b[0], b[1], b[2], b[3], b[4], b[5]);
 }
 
 int str2ba(const char *str, bdaddr_t *ba)
@@ -89,13 +95,13 @@ int str2ba(const char *str, bdaddr_t *ba)
 	const char *ptr = str;
 	int i;
 
-	for (i=0; i < 6; i++) {
+	for (i = 0; i < 6; i++) {
 		b[i] = (uint8_t) strtol(ptr, NULL, 16);
-		if (i!=5 && !(ptr=strchr(ptr, ':')))
+		if (i != 5 && !(ptr = strchr(ptr, ':')))
 			ptr = ":00:00:00:00:00";
 		ptr++;
 	}
-	baswap(ba, (bdaddr_t *)b);
+	baswap(ba, (bdaddr_t *) b);
 	return 0;
 }
 

@@ -1,34 +1,40 @@
 /*
-   Service Discovery Protocol (SDP)
-   Copyright (C) 2002 Maxim Krasnyansky <maxk@qualcomm.com>, Stephen Crane <steve.crane@rococosoft.com>
-   
-   Based on original SDP implementation by Nokia Corporation.
-   Copyright (C) 2001,2002 Nokia Corporation.
-   Original author Guruprasad Krishnamurthy <guruprasad.krishnamurthy@nokia.com>
-   
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License version 2 as
-   published by the Free Software Foundation;
-   
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-   IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-   OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-   RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-   NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-   USE OR PERFORMANCE OF THIS SOFTWARE.
-   
-   ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-   TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
-*/
-
-/*
- * $Id$
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2001-2002  Nokia Corporation
+ *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
+ *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2003  Stephen Crane <steve.crane@rococosoft.com>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
+ *
+ *
+ *  $Id$
  */
 
-#ifndef SDP_INTERNAL_H
-#define SDP_INTERNAL_H
+#ifndef __SDP_INTERNAL_H
+#define __SDP_INTERNAL_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <syslog.h>
 #include <sys/socket.h>
@@ -142,16 +148,16 @@ static inline unsigned long long __sdp_get_unaligned(const void *ptr, size_t siz
 {
 	unsigned long long val = 0;
 	switch (size) {
-	      case 1:	
+	case 1:
 		val = *(const unsigned char *)ptr;
 		break;
-	      case 2:
+	case 2:
 		val = __uldw((const unsigned short *)ptr);
 		break;
-	      case 4:	
+	case 4:
 		val = __uldl((const unsigned int *)ptr);
 		break;
-	      case 8:
+	case 8:
 		val = __uldq((const unsigned long *)ptr);
 		break;
 	}
@@ -163,7 +169,7 @@ static inline void __sdp_put_unaligned(unsigned long val, void *ptr, size_t size
 	switch (size) {
 	case 1:
 		*(unsigned char *)ptr = (val);
-	        break;
+		break;
 	case 2:
 		__ustw(val, (unsigned short *)ptr);
 		break;
@@ -177,10 +183,10 @@ static inline void __sdp_put_unaligned(unsigned long val, void *ptr, size_t size
 }
 
 #define sdp_get_unaligned(ptr) \
-        ((__typeof__(*(ptr)))__sdp_get_unaligned((ptr), sizeof(*(ptr))))
+	((__typeof__(*(ptr)))__sdp_get_unaligned((ptr), sizeof(*(ptr))))
 
 #define sdp_put_unaligned(x,ptr) \
-        __sdp_put_unaligned((unsigned long)(x), (ptr), sizeof(*(ptr)))
+	__sdp_put_unaligned((unsigned long)(x), (ptr), sizeof(*(ptr)))
 
 #endif 
 
@@ -189,7 +195,7 @@ static inline void __sdp_put_unaligned(unsigned long val, void *ptr, size_t size
 static inline void ntoh128(uint128_t *src, uint128_t *dst)
 {
 	int i;
-	for (i=0; i < 16; i++)
+	for (i = 0; i < 16; i++)
 		dst->data[i] = src->data[i];
 }
 #else
@@ -205,7 +211,7 @@ static inline uint64_t ntoh64(uint64_t n)
 static inline void ntoh128(uint128_t *src, uint128_t *dst)
 {
 	int i;
-	for (i=0; i < 16; i++)
+	for (i = 0; i < 16; i++)
 		dst->data[15 - i] = src->data[i];
 }
 #endif
@@ -213,4 +219,8 @@ static inline void ntoh128(uint128_t *src, uint128_t *dst)
 #define hton64(x) ntoh64(x)
 #define hton128(x,y) ntoh128(x,y)
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* __SDP_INTERNAL_H */

@@ -1,30 +1,37 @@
-/* 
-   BlueZ - Bluetooth protocol stack for Linux
-   Copyright (C) 2000-2001 Qualcomm Incorporated
-
-   Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
-
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License version 2 as
-   published by the Free Software Foundation;
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-   IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
-   CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-   ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
-   COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
-   SOFTWARE IS DISCLAIMED.
-*/
-
 /*
- * $Id$
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2000-2001  Qualcomm Incorporated
+ *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
+ *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
+ *
+ *
+ *  $Id$
  */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -64,7 +71,7 @@ static char *hci_bit2str(hci_map *m, unsigned int val)
 		if ((unsigned int) m->val & val)
 			ptr += sprintf(ptr, "%s ", m->str);
 		m++;
-	} 	
+	}
 	return str;
 }
 
@@ -79,14 +86,14 @@ static int hci_str2bit(hci_map *map, char *str, unsigned int *val)
 
 	*val = set = 0;
 
-	while ((t=strsep(&ptr, ","))) {
-		for (m=map; m->str; m++) {
-			if (!strcasecmp(m->str,t)) {
+	while ((t = strsep(&ptr, ","))) {
+		for (m = map; m->str; m++) {
+			if (!strcasecmp(m->str, t)) {
 				*val |= (unsigned int) m->val;
 				set = 1;
 			}
 		}
-	} 	
+	}
 	free(str);
 
 	return set;
@@ -107,7 +114,7 @@ static char *hci_uint2str(hci_map *m, unsigned int val)
 			break;
 		}
 		m++;
-	} 	
+	}
 	return str;
 }
 
@@ -122,14 +129,14 @@ static int hci_str2uint(hci_map *map, char *str, unsigned int *val)
 
 	str = ptr = strdup(str);
 
-	while ((t=strsep(&ptr, ","))) {
-		for (m=map; m->str; m++) {
+	while ((t = strsep(&ptr, ","))) {
+		for (m = map; m->str; m++) {
 			if (!strcasecmp(m->str,t)) {
 				*val = (unsigned int) m->val; set = 1;
 				break;
 			}
 		}
-	} 	
+	}
 	free(str);
 
 	return set;
@@ -156,7 +163,7 @@ char *hci_dtypetostr(int type)
 }
 
 /* HCI dev flags mapping */
-hci_map dev_flags_map[] = {
+static hci_map dev_flags_map[] = {
 	{ "UP",      HCI_UP      },
 	{ "INIT",    HCI_INIT    },
 	{ "RUNNING", HCI_RUNNING },
@@ -168,6 +175,7 @@ hci_map dev_flags_map[] = {
 	{ "ENCRYPT", HCI_ENCRYPT },
 	{ NULL }
 };
+
 char *hci_dflagstostr(uint32_t flags)
 {
 	char *str = malloc(50);
@@ -191,7 +199,7 @@ char *hci_dflagstostr(uint32_t flags)
 }
 
 /* HCI packet type mapping */
-hci_map pkt_type_map[] = {
+static hci_map pkt_type_map[] = {
 	{ "DM1", HCI_DM1 },
 	{ "DM3", HCI_DM3 },
 	{ "DM5", HCI_DM5 },
@@ -203,17 +211,19 @@ hci_map pkt_type_map[] = {
 	{ "HV3", HCI_HV3 },
 	{ NULL }
 };
+
 char *hci_ptypetostr(unsigned int ptype)
 {
 	return hci_bit2str(pkt_type_map, ptype);
 }
+
 int hci_strtoptype(char *str, unsigned int *val)
 {
 	return hci_str2bit(pkt_type_map, str, val);
 }
 
 /* Link policy mapping */
-hci_map link_policy_map[] = {
+static hci_map link_policy_map[] = {
 	{ "NONE",    0 },
 	{ "RSWITCH", HCI_LP_RSWITCH },
 	{ "HOLD",    HCI_LP_HOLD    },
@@ -221,17 +231,19 @@ hci_map link_policy_map[] = {
 	{ "PARK",    HCI_LP_PARK    },
 	{ NULL }
 };
+
 char *hci_lptostr(unsigned int lp)
 {
 	return hci_bit2str(link_policy_map, lp);
 }
+
 int hci_strtolp(char *str, unsigned int *val)
 {
 	return hci_str2bit(link_policy_map, str, val);
 }
 
 /* Link mode mapping */
-hci_map link_mode_map[] = {
+static hci_map link_mode_map[] = {
 	{ "NONE",    0 },
 	{ "ACCEPT",  HCI_LM_ACCEPT },
 	{ "MASTER",  HCI_LM_MASTER },
@@ -240,6 +252,7 @@ hci_map link_mode_map[] = {
 	{ "TRUSTED", HCI_LM_TRUSTED},
 	{ NULL }
 };
+
 char *hci_lmtostr(unsigned int lm)
 {
 	char *s, *str = malloc(50);
@@ -260,23 +273,26 @@ char *hci_lmtostr(unsigned int lm)
 	free(s);
 	return str;
 }
+
 int hci_strtolm(char *str, unsigned int *val)
 {
 	return hci_str2bit(link_mode_map, str, val);
 }
 
 /* Version mapping */
-hci_map ver_map[] = {
+static hci_map ver_map[] = {
 	{ "1.0b",    0x00 },
 	{ "1.1",     0x01 },
 	{ "1.2",     0x02 },
 	{ NULL }
 };
+
 char *hci_vertostr(unsigned int ver)
 {
 	char *str = hci_uint2str(ver_map, ver);
 	return *str ? str : "n/a";
 }
+
 int hci_strtover(char *str, unsigned int *ver)
 {
 	return hci_str2uint(ver_map, str, ver);
@@ -287,13 +303,14 @@ char *lmp_vertostr(unsigned int ver)
 	char *str = hci_uint2str(ver_map, ver);
 	return *str ? str : "n/a";
 }
+
 int lmp_strtover(char *str, unsigned int *ver)
 {
 	return hci_str2uint(ver_map, str, ver);
 }
 
 /* LMP features mapping */
-hci_map lmp_features_map[8][9] = {
+static hci_map lmp_features_map[8][9] = {
 	{	/* byte 0 */
 		{ "<3-slot packets>",	LMP_3SLOT	},
 		{ "<5-slot packets>",	LMP_5SLOT	},
@@ -341,7 +358,7 @@ hci_map lmp_features_map[8][9] = {
 	},
 	{	/* byte 5 */
 		{ "<AFH cap. master>",	LMP_AFH_CAP_MST	},
-		{ "<AFH class. master>",LMP_AFH_CLS_MST },
+		{ "<AFH class. master>",LMP_AFH_CLS_MST	},
 		{ NULL }
 	},
 	{	/* byte 6 */
@@ -366,7 +383,7 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 	if (pref)
 		ptr += sprintf(ptr, "%s", pref);
 
-	for(i=0, w=0; i<8; i++) {
+	for (i =  0, w = 0; i < 8; i++) {
 		hci_map *m;
 
 		m = lmp_features_map[i];
@@ -386,7 +403,7 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 
 /* HCI functions that do not require open device */
 
-int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg)
+int hci_for_each_dev(int flag, int (*func)(int s, int dev_id, long arg), long arg)
 {
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
@@ -402,13 +419,13 @@ int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg
 		close(s);
 		return -1;
 	}
-	
+
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
 	if (ioctl(s, HCIGETDEVLIST, (void *)dl))
 		goto done;
-	
+
 	for (i=0; i < dl->dev_num; i++, dr++) {
 		if (hci_test_bit(flag, &dr->dev_opt))
 			if (!func || func(s, dr->dev_id, arg)) {
@@ -417,7 +434,7 @@ int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg
 			}
 	}
 
-done:	
+done:
 	close(s);
 	free(dl);
 	return dev_id;
@@ -426,17 +443,17 @@ done:
 static int __other_bdaddr(int s, int dev_id, long arg)
 {
 	struct hci_dev_info di = {dev_id: dev_id};
-	if (ioctl(s, HCIGETDEVINFO, (void*) &di))
+	if (ioctl(s, HCIGETDEVINFO, (void *) &di))
 		return 0;
-	return bacmp((bdaddr_t *)arg, &di.bdaddr);
+	return bacmp((bdaddr_t *) arg, &di.bdaddr);
 }
 
 static int __same_bdaddr(int s, int dev_id, long arg)
 {
 	struct hci_dev_info di = {dev_id: dev_id};
-	if (ioctl(s, HCIGETDEVINFO, (void*) &di))
+	if (ioctl(s, HCIGETDEVINFO, (void *) &di))
 		return 0;
-	return !bacmp((bdaddr_t *)arg, &di.bdaddr);
+	return !bacmp((bdaddr_t *) arg, &di.bdaddr);
 }
 
 int hci_get_route(bdaddr_t *bdaddr)
@@ -502,7 +519,7 @@ int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info 
 	int s, err;
 
 	if (nrsp <= 0)
-		nrsp = 200; // enough ?
+		nrsp = 200;	/* enough ? */
 
 	if (dev_id < 0 && (dev_id = hci_get_route(NULL)) < 0) {
 		errno = ENODEV;
@@ -563,11 +580,11 @@ int hci_open_dev(int dev_id)
 	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (dd < 0)
 		return dd;
-	
+
 	/* Bind socket to the HCI device */
 	a.hci_family = AF_BLUETOOTH;
 	a.hci_dev = dev_id;
-	if (bind(dd, (struct sockaddr *)&a, sizeof(a)) < 0)
+	if (bind(dd, (struct sockaddr *) &a, sizeof(a)) < 0)
 		goto failed;
 
 	return dd;
@@ -645,7 +662,7 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 	while (try--) {
 		evt_cmd_complete *cc;
 		evt_cmd_status   *cs;
-	
+
 		if (to) {
 			struct pollfd p;
 			int n;
@@ -661,7 +678,7 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 				errno = ETIMEDOUT;
 				goto failed;
 			}
-			
+
 			to -= 10;
 			if (to < 0) to = 0;
 
@@ -673,17 +690,17 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 			goto failed;
 		}
 
-		hdr = (void *)(buf + 1);
+		hdr = (void *) (buf + 1);
 		ptr = buf + (1 + HCI_EVENT_HDR_SIZE);
 		len -= (1 + HCI_EVENT_HDR_SIZE);
 
 		switch (hdr->evt) {
 		case EVT_CMD_STATUS:
-			cs = (void *)ptr;
-	
+			cs = (void *) ptr;
+
 			if (cs->opcode != opcode)
 				continue;
-			
+
 			if (cs->status) {
 				errno = EIO;
 				goto failed;
@@ -691,11 +708,11 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 			break;
 
 		case EVT_CMD_COMPLETE:
-			cc = (void *)ptr;
+			cc = (void *) ptr;
 
 			if (cc->opcode != opcode)
 				continue;
-	
+
 			ptr += EVT_CMD_COMPLETE_SIZE;
 			len -= EVT_CMD_COMPLETE_SIZE;
 
@@ -706,7 +723,7 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 		default:
 			if (hdr->evt != r->event)
 				break;
-	
+
 			r->rlen = MIN(len, r->rlen);
 			memcpy(r->rparam, ptr, r->rlen);
 			goto done;
@@ -994,21 +1011,21 @@ int hci_read_class_of_dev(int dd, uint8_t *cls, int to)
 {
 	read_class_of_dev_rp rp;
 	struct hci_request rq;
-	
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_READ_CLASS_OF_DEV;
 	rq.rparam = &rp;
 	rq.rlen   = READ_CLASS_OF_DEV_RP_SIZE;
-	
+
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
-	
+
 	if (rp.status) {
 		errno = EIO;
 		return -1;
 	}
-	
+
 	memcpy(cls, rp.dev_class, 3);
 	return 0;
 }
@@ -1070,7 +1087,7 @@ int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to)
 {
 	read_current_iac_lap_rp rp;
 	struct hci_request rq;
-	
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_READ_CURRENT_IAC_LAP;
@@ -1094,11 +1111,11 @@ int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
 {
 	write_current_iac_lap_cp cp;
 	struct hci_request rq;
-	
+
 	memset(&cp, 0, sizeof(cp));
 	cp.num_current_iac = num_iac;
 	memcpy(&cp.lap, lap, num_iac * 3);
-	
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_WRITE_CURRENT_IAC_LAP;

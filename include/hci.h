@@ -1,28 +1,30 @@
-/* 
-   BlueZ - Bluetooth protocol stack for Linux
-   Copyright (C) 2000-2001 Qualcomm Incorporated
-
-   Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
-
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License version 2 as
-   published by the Free Software Foundation;
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-   IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
-   CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-   ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
-   COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
-   SOFTWARE IS DISCLAIMED.
-*/
-
 /*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2000-2001  Qualcomm Incorporated
+ *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
+ *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
+ *
+ *
  *  $Id$
  */
 
@@ -33,7 +35,7 @@
 extern "C" {
 #endif
 
-#define HCI_MAX_DEV 	16
+#define HCI_MAX_DEV	16
 
 #define HCI_MAX_ACL_SIZE	1024
 #define HCI_MAX_SCO_SIZE	255
@@ -42,7 +44,7 @@ extern "C" {
 
 /* HCI dev events */
 #define HCI_DEV_REG	1
-#define HCI_DEV_UNREG   2
+#define HCI_DEV_UNREG	2
 #define HCI_DEV_UP	3
 #define HCI_DEV_DOWN	4
 #define HCI_DEV_SUSPEND	5
@@ -52,8 +54,8 @@ extern "C" {
 #define HCI_VHCI	0
 #define HCI_USB		1
 #define HCI_PCCARD	2
-#define HCI_UART 	3
-#define HCI_RS232 	4
+#define HCI_UART	3
+#define HCI_RS232	4
 #define HCI_PCI		5
 
 /* HCI device flags */
@@ -72,40 +74,40 @@ enum {
 };
 
 /* HCI ioctl defines */
-#define HCIDEVUP        _IOW('H', 201, int)
-#define HCIDEVDOWN      _IOW('H', 202, int)
-#define HCIDEVRESET     _IOW('H', 203, int)
-#define HCIDEVRESTAT    _IOW('H', 204, int)
+#define HCIDEVUP	_IOW('H', 201, int)
+#define HCIDEVDOWN	_IOW('H', 202, int)
+#define HCIDEVRESET	_IOW('H', 203, int)
+#define HCIDEVRESTAT	_IOW('H', 204, int)
 
-#define HCIGETDEVLIST   _IOR('H', 210, int)
-#define HCIGETDEVINFO   _IOR('H', 211, int)
-#define HCIGETCONNLIST  _IOR('H', 212, int)
-#define HCIGETCONNINFO  _IOR('H', 213, int)
+#define HCIGETDEVLIST	_IOR('H', 210, int)
+#define HCIGETDEVINFO	_IOR('H', 211, int)
+#define HCIGETCONNLIST	_IOR('H', 212, int)
+#define HCIGETCONNINFO	_IOR('H', 213, int)
 
-#define HCISETRAW       _IOW('H', 220, int)
-#define HCISETSCAN      _IOW('H', 221, int)
-#define HCISETAUTH      _IOW('H', 222, int)
-#define HCISETENCRYPT   _IOW('H', 223, int)
-#define HCISETPTYPE     _IOW('H', 224, int)
-#define HCISETLINKPOL   _IOW('H', 225, int)
-#define HCISETLINKMODE  _IOW('H', 226, int)
-#define HCISETACLMTU    _IOW('H', 227, int)
-#define HCISETSCOMTU    _IOW('H', 228, int)
+#define HCISETRAW	_IOW('H', 220, int)
+#define HCISETSCAN	_IOW('H', 221, int)
+#define HCISETAUTH	_IOW('H', 222, int)
+#define HCISETENCRYPT	_IOW('H', 223, int)
+#define HCISETPTYPE	_IOW('H', 224, int)
+#define HCISETLINKPOL	_IOW('H', 225, int)
+#define HCISETLINKMODE	_IOW('H', 226, int)
+#define HCISETACLMTU	_IOW('H', 227, int)
+#define HCISETSCOMTU	_IOW('H', 228, int)
 
-#define HCIINQUIRY      _IOR('H', 240, int)
+#define HCIINQUIRY	_IOR('H', 240, int)
 
 /* HCI timeouts */
 
-#define HCI_CONN_TIMEOUT 	(HZ * 40)
-#define HCI_DISCONN_TIMEOUT 	(HZ * 2)
+#define HCI_CONN_TIMEOUT	(HZ * 40)
+#define HCI_DISCONN_TIMEOUT	(HZ * 2)
 #define HCI_CONN_IDLE_TIMEOUT	(HZ * 60)
 
 #ifndef __NO_HCI_DEFS
 
 /* HCI Packet types */
 #define HCI_COMMAND_PKT		0x01
-#define HCI_ACLDATA_PKT 	0x02
-#define HCI_SCODATA_PKT 	0x03
+#define HCI_ACLDATA_PKT		0x02
+#define HCI_SCODATA_PKT		0x03
 #define HCI_EVENT_PKT		0x04
 #define HCI_UNKNOWN_PKT		0xff
 
