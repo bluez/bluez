@@ -1,25 +1,34 @@
 /*
  *
- *  PPP over Bluetooth RFCOMM
+ *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2002  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
  *
+ *
+ *  $Id$
  */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <errno.h>
@@ -35,10 +44,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 
-
 extern int optind, opterr, optopt;
 extern char *optarg;
-
 
 /* IO cancelation */
 static volatile sig_atomic_t __io_canceled;
@@ -53,7 +60,6 @@ static inline void io_cancel(void)
 	__io_canceled = 1;
 }
 
-
 /* Signal functions */
 static void sig_hup(int sig)
 {
@@ -65,7 +71,6 @@ static void sig_term(int sig)
 	syslog(LOG_INFO, "Closing RFCOMM channel");
 	io_cancel();
 }
-
 
 /* Read exactly len bytes (Signal safe)*/
 static inline int read_n(int fd, char *buf, int len)
@@ -88,7 +93,6 @@ static inline int read_n(int fd, char *buf, int len)
 	return t;
 }
 
-
 /* Write exactly len bytes (Signal safe)*/
 static inline int write_n(int fd, char *buf, int len)
 {
@@ -109,7 +113,6 @@ static inline int write_n(int fd, char *buf, int len)
 
 	return t;
 }
-
 
 /* Create the RFCOMM connection */
 static int create_connection(bdaddr_t *bdaddr, uint8_t channel)
@@ -142,7 +145,6 @@ static int create_connection(bdaddr_t *bdaddr, uint8_t channel)
 	return fd;
 }
 
-
 /* Process the data from socket and pseudo tty */
 static int process_data(int fd)
 {
@@ -157,7 +159,7 @@ static int process_data(int fd)
 	p[1].events = POLLIN | POLLERR | POLLHUP | POLLNVAL;
 
 	err = 0;
-	
+
 	while (!__io_canceled) {
 		p[0].revents = 0;
 		p[1].revents = 0;
@@ -186,7 +188,7 @@ static int process_data(int fd)
 
 		if (p[1].revents) {
 			if (p[1].revents & (POLLERR | POLLHUP | POLLNVAL))
-			  break;
+				break;
 			r = read(fd, buf, sizeof(buf));
 			if (r < 0) {
 				if (errno != EINTR && errno != EAGAIN) {
@@ -204,12 +206,10 @@ static int process_data(int fd)
 	return err;
 }
 
-
 static void usage(void)
 {
 	printf("Usage:\tppporc <bdaddr> [channel]\n");
 }
-
 
 int main(int argc, char** argv)
 {
@@ -218,7 +218,6 @@ int main(int argc, char** argv)
 
 	bdaddr_t bdaddr;
 	uint8_t channel;
-
 
 	/* Parse command line options */
 	while ((opt = getopt(argc, argv, "h")) != EOF) {
@@ -246,11 +245,9 @@ int main(int argc, char** argv)
 		exit(0);
 	}
 
-
 	/* Initialize syslog */
 	openlog("ppporc", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
 	syslog(LOG_INFO, "PPP over RFCOMM");
-
 
 	/* Initialize signals */
 	memset(&sa, 0, sizeof(sa));
@@ -265,7 +262,6 @@ int main(int argc, char** argv)
 
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
-
 
 	syslog(LOG_INFO, "Connecting to %s", argv[0]);
 

@@ -1,29 +1,36 @@
-/* 
-	BlueZ - Bluetooth protocol stack for Linux
-	Copyright (C) 2000-2001 Qualcomm Incorporated
-
-	Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
-
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation;
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-	OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-	RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-	NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-	USE OR PERFORMANCE OF THIS SOFTWARE.
-
-	ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-	TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
-*/
-
 /*
- * $Id$
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2000-2001  Qualcomm Incorporated
+ *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
+ *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
+ *
+ *
+ *  $Id$
  */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,20 +100,20 @@ static void ping(char *svr)
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	addr.l2_bdaddr = bdaddr;
-        if (bind(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	if (bind(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("Can't bind socket.");
 		exit(1);
-        }
+	}
 
 	str2ba(svr, &addr.l2_bdaddr);
-	if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+	if (connect(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("Can't connect.");
 		exit(1);
 	}
 
 	/* Get local address */
 	opt = sizeof(addr);
-	if( getsockname(s, (struct sockaddr *)&addr, &opt) < 0 ) {
+	if (getsockname(s, (struct sockaddr *)&addr, &opt) < 0) {
 		perror("Can't get local address.");
 		exit(1);
 	}
@@ -115,7 +122,7 @@ static void ping(char *svr)
 	printf("Ping: %s from %s (data size %d) ...\n", svr, str, size);
 
 	/* Initialize buffer */
-	for(i = L2CAP_CMD_HDR_SIZE; i < sizeof(buf); i++)
+	for (i = L2CAP_CMD_HDR_SIZE; i < sizeof(buf); i++)
 		buf[i]=(i%40)+'A';
 
 	id = ident;
@@ -132,34 +139,34 @@ static void ping(char *svr)
 		gettimeofday(&tv_send, NULL);
 
 		/* Send Echo Request */
-		if( send(s, buf, size + L2CAP_CMD_HDR_SIZE, 0) <= 0 ){
+		if (send(s, buf, size + L2CAP_CMD_HDR_SIZE, 0) <= 0) {
 			perror("Send failed");
 			exit(1);
 		}
 
 		/* Wait for Echo Response */
 		lost = 0;
-		while( 1 ) {
+		while (1) {
 			struct pollfd pf[1];
 			register int err;
 
 			pf[0].fd = s; pf[0].events = POLLIN;
-			if( (err = poll(pf, 1, 10*1000)) < 0 ) {
+			if ((err = poll(pf, 1, 10*1000)) < 0) {
 				perror("Poll failed");
 				exit(1);
 			}
 
-			if( !err ){
+			if (!err) {
 				lost = 1;
 				break;
 			}
 
-			if( (err = recv(s, buf, sizeof(buf), 0)) < 0 ) {
+			if ((err = recv(s, buf, sizeof(buf), 0)) < 0) {
 				perror("Recv failed");
 				exit(1);
 			}
 
-			if( !err ){
+			if (!err){
 				printf("Disconnected\n");
 				exit(1);
 			}
@@ -171,9 +178,9 @@ static void ping(char *svr)
 				continue;
 
 			/* Check type */
-			if( cmd->code == L2CAP_ECHO_RSP )
+			if (cmd->code == L2CAP_ECHO_RSP)
 				break;
-			if( cmd->code == L2CAP_COMMAND_REJ ){
+			if (cmd->code == L2CAP_COMMAND_REJ) {
 				printf("Peer doesn't support Echo packets\n");
 				exit(1);
 			}
@@ -181,7 +188,7 @@ static void ping(char *svr)
 		}
 		sent_pkt++;
 
-		if( !lost ){
+		if (!lost) {
 			recv_pkt++;
 
 			gettimeofday(&tv_recv, NULL);
@@ -189,12 +196,12 @@ static void ping(char *svr)
 
 			printf("%d bytes from %s id %d time %.2fms\n", cmd->len, svr, id, tv2fl(tv_diff));
 
-			if( delay ) sleep(delay);
+			if (delay) sleep(delay);
 		} else {
 			printf("no response from %s: id %d\n", svr, id);
 		}
 
-		if( ++id > 254 ) id = ident;
+		if (++id > 254) id = ident;
 	}
 	stat(0);
 }

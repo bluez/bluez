@@ -1,23 +1,26 @@
 /*
  *
- *  Bluetooth HID to HCI mode switching utility
+ *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2003-2004  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation;
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY
+ *  CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES 
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *  ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, 
+ *  COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS 
+ *  SOFTWARE IS DISCLAIMED.
  *
  *
  *  $Id$
@@ -37,7 +40,6 @@
 #include <string.h>
 #include <getopt.h>
 #include <sys/ioctl.h>
-
 
 static char usbpath[PATH_MAX + 1] = "/proc/bus/usb";
 
@@ -74,7 +76,6 @@ struct usb_ctrltransfer {
 #define USB_RECIP_DEVICE	0x00
 #define USB_TYPE_VENDOR		0x40
 #define USB_DIR_OUT		0x00
-
 
 static char devpath[PATH_MAX + 1] = "/dev";
 
@@ -113,7 +114,6 @@ struct hiddev_usage_ref {
 
 #define HID_REPORT_TYPE_OUTPUT	2
 
-
 #define HCI 0
 #define HID 1
 
@@ -131,7 +131,6 @@ struct device_info {
 	uint16_t devnum;
 	struct device_id *id;
 };
-
 
 static int switch_hidproxy(struct device_info *dev)
 {
@@ -346,7 +345,6 @@ static int find_devices(int mode, struct device_info *dev, size_t size)
 
 	return count;
 }
-
 
 static void usage(void)
 {
