@@ -397,10 +397,10 @@ void cmd_name(int ctl, int hdev, char *opt)
  */
 static char *get_minor_device_name(int major, int minor)
 {
-	switch(major) {
-	case 0:/* misc */
+	switch (major) {
+	case 0:	/* misc */
 		return "";
-	case 1:/* computer */
+	case 1:	/* computer */
 		switch(minor) {
 		case 0:
 			return "Uncategorized";
@@ -418,7 +418,7 @@ static char *get_minor_device_name(int major, int minor)
 			return "Wearable";
 		}
 		break;
-	case 2:/* phone */
+	case 2:	/* phone */
 		switch(minor) {
 		case 0:
 			return "Uncategorized";
@@ -436,7 +436,7 @@ static char *get_minor_device_name(int major, int minor)
 			return "Sim Card Reader";
 		}
 		break;
-	case 3:/* lan access */
+	case 3:	/* lan access */
 		if (minor == 0)
 			return "Uncategorized";
 		switch(minor / 8) {
@@ -458,7 +458,7 @@ static char *get_minor_device_name(int major, int minor)
 			return "No service available";
 		}
 		break;
-	case 4:/* audio/video */
+	case 4:	/* audio/video */
 		switch(minor) {
 		case 0:
 			return "Uncategorized";
@@ -498,7 +498,7 @@ static char *get_minor_device_name(int major, int minor)
 			return "Gaming/Toy";
 		}
 		break;
-	case 5:/* peripheral */
+	case 5:	/* peripheral */
 		switch(minor) {
 		case 16:
 			return "Keyboard";
@@ -508,7 +508,7 @@ static char *get_minor_device_name(int major, int minor)
 			return "Combo keyboard/pointing device";
 		}
 		break;
-	case 6:/* imaging */
+	case 6:	/* imaging */
 		if (minor & 4)
 			return "Display";
 		if (minor & 8)
@@ -518,7 +518,7 @@ static char *get_minor_device_name(int major, int minor)
 		if (minor & 32)
 			return "Printer";
 		break;
-	case 63:/* uncategorised */
+	case 63:	/* uncategorised */
 		return "";
 	}
 	return "Unknown (reserved) minor device class";
@@ -550,14 +550,14 @@ void cmd_class(int ctl, int hdev, char *opt)
 	}
 	if (opt) {
 		uint32_t cod = strtoul(opt, NULL, 16);
-		if (0 > hci_write_class_of_dev(s, cod, 1000)) {
+		if (hci_write_class_of_dev(s, cod, 1000) < 0) {
 			printf("Can't write local class of device on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
 		uint8_t cls[3];
-		if (0 > hci_read_class_of_dev(s, cls, 1000)) {
+		if (hci_read_class_of_dev(s, cls, 1000) < 0) {
 			printf("Can't read class of device on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 			exit(1);
@@ -567,7 +567,7 @@ void cmd_class(int ctl, int hdev, char *opt)
 		printf("\tService Classes: ");
 		if (cls[2]) {
 			int first = 1;
-			for(s=0; s < sizeof(services); s++)
+			for (s = 0; s < sizeof(*services); s++)
 				if (cls[2] & (1 << s)) {
 					if (!first)
 						printf(", ");
@@ -577,7 +577,7 @@ void cmd_class(int ctl, int hdev, char *opt)
 		} else
 			printf("Unspecified");
 		printf("\n\tDevice Class: ");
-		if ((cls[1] & 0x1f) > sizeof(major_devices))
+		if ((cls[1] & 0x1f) > sizeof(*major_devices))
 			printf("Invalid Device Class!\n");
 		else
 			printf("%s, %s\n", major_devices[cls[1] & 0x1f], 

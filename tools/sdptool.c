@@ -813,7 +813,7 @@ void print_lang_attr(void *value, void *user)
 	printf("  base_offset: 0x%02x\n", lang->base_offset);
 }
 
-void print_access_protos(value, userData)
+void print_access_protos(void *value, void *userData)
 {
 	sdp_list_t *protDescSeq = (sdp_list_t *)value;
 	sdp_list_foreach(protDescSeq, print_service_desc, 0);
