@@ -71,36 +71,36 @@ enum {
 	LSENDDUMP
 };
 
-unsigned char *buf;
+static unsigned char *buf;
 
 /* Default mtu */
-int imtu = 672;
-int omtu = 0;
+static int imtu = 672;
+static int omtu = 0;
 
 /* Default data size */
-long data_size = 672;
+static long data_size = 672;
 
 /* Default addr and psm */
-bdaddr_t bdaddr;
-unsigned short psm = 10;
+static bdaddr_t bdaddr;
+static unsigned short psm = 10;
 
 /* Default number of frames to send */
-int num_frames = -1; // Infinite
+static int num_frames = -1; // Infinite
 
-int master = 0;
-int auth = 0;
-int encrypt = 0;
-int secure = 0;
-int socktype = SOCK_SEQPACKET;
-int linger = 0;
-int reliable = 0;
+static int master = 0;
+static int auth = 0;
+static int encrypt = 0;
+static int secure = 0;
+static int socktype = SOCK_SEQPACKET;
+static int linger = 0;
+static int reliable = 0;
 
-float tv2fl(struct timeval tv)
+static float tv2fl(struct timeval tv)
 {
 	return (float)tv.tv_sec + (float)(tv.tv_usec/1000000.0);
 }
 
-char *ltoh(unsigned long c, char* s)
+static char *ltoh(unsigned long c, char* s)
 {
 	int c1;
 
@@ -124,7 +124,7 @@ char *ltoh(unsigned long c, char* s)
 	return (s);
 }
 
-char *ctoh(char c, char* s)
+static char *ctoh(char c, char* s)
 {
 	char c1;
 
@@ -136,15 +136,15 @@ char *ctoh(char c, char* s)
 	return (s);
 }
 
-void hexdump(char *s, unsigned long l)
+static void hexdump(char *s, unsigned long l)
 {
 	char bfr[80];
 	char *pb;
 	unsigned long i, n = 0;
-	
+
 	if (l == 0)
 		return;
-	
+
 	while (n < l) {
 		pb = bfr;
 		pb = ltoh (n, pb);
@@ -165,14 +165,14 @@ void hexdump(char *s, unsigned long l)
 			else
 				*(pb++) = (isprint (*(s + i)) ? *(s + i) : '.');
 		}
-		*pb     = 0;
+		*pb = 0;
 		n += 16;
 		s += 16;
 		puts(bfr);
 	}
 }
 
-int do_connect(char *svr)
+static int do_connect(char *svr)
 {
 	struct sockaddr_l2 rem_addr, loc_addr;
 	struct l2cap_options opts;
@@ -186,7 +186,7 @@ int do_connect(char *svr)
 
 	memset(&loc_addr, 0, sizeof(loc_addr));
 	loc_addr.l2_family = AF_BLUETOOTH;
-	loc_addr.l2_bdaddr = bdaddr;
+	bacpy(&loc_addr.l2_bdaddr, &bdaddr);
 	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
 		exit(1);
@@ -232,7 +232,7 @@ int do_connect(char *svr)
 	rem_addr.l2_family = AF_BLUETOOTH;
 	baswap(&rem_addr.l2_bdaddr, strtoba(svr));
 	rem_addr.l2_psm = htobs(psm);
-	if (connect(s, (struct sockaddr *)&rem_addr, sizeof(rem_addr)) < 0 ) {
+	if (connect(s, (struct sockaddr *) &rem_addr, sizeof(rem_addr)) < 0 ) {
 		syslog(LOG_ERR, "Can't connect. %s(%d)", strerror(errno), errno);
 		close(s);
 		return -1;
@@ -261,12 +261,12 @@ int do_connect(char *svr)
 	return s;
 }
 
-void do_listen(void (*handler)(int sk))
+static void do_listen(void (*handler)(int sk))
 {
 	struct sockaddr_l2 loc_addr, rem_addr;
 	struct l2cap_options opts;
-	int  s, s1, opt;
-	bdaddr_t ba;
+	int s, s1, opt;
+	char ba[18];
 
 	if ((s = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP)) < 0) {
 		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
@@ -274,7 +274,7 @@ void do_listen(void (*handler)(int sk))
 	}
 
 	loc_addr.l2_family = AF_BLUETOOTH;
-	loc_addr.l2_bdaddr = bdaddr;
+	bacpy(&loc_addr.l2_bdaddr, &bdaddr);
 	loc_addr.l2_psm    = htobs(psm);
 	if (bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
@@ -327,7 +327,7 @@ void do_listen(void (*handler)(int sk))
 
 	while(1) {
 		opt = sizeof(rem_addr);
-		if ((s1 = accept(s, (struct sockaddr *)&rem_addr, &opt)) < 0) {
+		if ((s1 = accept(s, (struct sockaddr *) &rem_addr, &opt)) < 0) {
 			syslog(LOG_ERR,"Accept failed. %s(%d)", strerror(errno), errno);
 			exit(1);
 		}
@@ -346,9 +346,9 @@ void do_listen(void (*handler)(int sk))
 			exit(1);
 		}
 
-		baswap(&ba, &rem_addr.l2_bdaddr);
+		ba2str(&rem_addr.l2_bdaddr, ba);
 		syslog(LOG_INFO, "Connect from %s [imtu %d, omtu %d, flush_to %d]\n",
-		       batostr(&ba), opts.imtu, opts.omtu, opts.flush_to);
+					ba, opts.imtu, opts.omtu, opts.flush_to);
 
 		/* Enable SO_LINGER */
 		if (linger) {
@@ -362,12 +362,12 @@ void do_listen(void (*handler)(int sk))
 
 		handler(s1);
 
-		syslog(LOG_INFO, "Disconnect. %m\n");
+		syslog(LOG_INFO, "Disconnect. %m");
 		exit(0);
 	}
 }
 
-void dump_mode(int s)
+static void dump_mode(int s)
 {
 	int len;
 	int opt, optl;
@@ -375,7 +375,7 @@ void dump_mode(int s)
 	syslog(LOG_INFO, "Receiving ...");
 	while (1) {
 		fd_set rset;
-	
+
 		FD_ZERO(&rset);
 		FD_SET(s, &rset);
 		
@@ -393,7 +393,7 @@ void dump_mode(int s)
 					optl = sizeof(opt);
 					if (getsockopt(s, SOL_SOCKET, SO_ERROR, &opt, &optl ) < 0) { // Clear error
 						syslog(LOG_ERR, "Couldn't getsockopt(SO_ERROR): %s(%d)\n",
-						       strerror(errno), errno);
+							strerror(errno), errno);
 						return;
 					}
 					continue;
@@ -409,7 +409,7 @@ void dump_mode(int s)
 	}
 }
 
-void recv_mode(int s)
+static void recv_mode(int s)
 {
 	struct timeval tv_beg,tv_end,tv_diff;
 	long total;
@@ -440,7 +440,7 @@ void recv_mode(int s)
 						continue;
 					} else {
 						syslog(LOG_ERR, "Read failed. %s(%d)",
-						       strerror(errno), errno);
+							strerror(errno), errno);
 					}
 				}
 				return;
@@ -453,15 +453,15 @@ void recv_mode(int s)
 				seq = sq;
 			}
 			seq++;
-			
+
 			/* Check length */
 			l = btohs(*(uint16_t *)(buf+4));
 			if (r != l) {
 				syslog(LOG_INFO, "size missmatch: %d -> %d", r, l);
 				continue;
 			}
-			
-			/* Verify data */	
+
+			/* Verify data */
 			for (i=6; i < r; i++) {
 				if (buf[i] != 0x7f)
 					syslog(LOG_INFO, "data missmatch: byte %d 0x%2.2x", i, buf[i]);
@@ -474,11 +474,11 @@ void recv_mode(int s)
 		timersub(&tv_end,&tv_beg,&tv_diff);
 
 		syslog(LOG_INFO,"%ld bytes in %.2f sec, %.2f kB/s",total,
-		       tv2fl(tv_diff), (float)(total / tv2fl(tv_diff) ) / 1024.0);
+			tv2fl(tv_diff), (float)(total / tv2fl(tv_diff) ) / 1024.0);
 	}
 }
 
-void send_mode(int s)
+static void send_mode(int s)
 {
 	uint32_t seq;
 	int i;
@@ -493,7 +493,7 @@ void send_mode(int s)
 		*(uint32_t *) buf = htobl(seq);
 		*(uint16_t *)(buf+4) = htobs(data_size);
 		seq++;
-		
+
 		if (send(s, buf, data_size, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed. %s(%d)", strerror(errno), errno);
 			exit(1);
@@ -507,7 +507,7 @@ void send_mode(int s)
 		syslog(LOG_INFO, "Done");
 }
 
-void senddump_mode(int s)
+static void senddump_mode(int s)
 {
 	uint32_t seq;
 	int i;
@@ -522,7 +522,7 @@ void senddump_mode(int s)
 		*(uint32_t *) buf = htobl(seq);
 		*(uint16_t *)(buf+4) = htobs(data_size);
 		seq++;
-		
+
 		if (send(s, buf, data_size, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed. %s(%d)", strerror(errno), errno);
 			exit(1);
@@ -530,10 +530,9 @@ void senddump_mode(int s)
 	}
 
 	dump_mode(s);
-
 }
 
-void reconnect_mode(char *svr)
+static void reconnect_mode(char *svr)
 {
 	while(1) {
 		int s = do_connect(svr);
@@ -541,7 +540,7 @@ void reconnect_mode(char *svr)
 	}
 }
 
-void connect_mode(char *svr)
+static void connect_mode(char *svr)
 {
 	int s;
 	if ((s = do_connect(svr)) < 0)
@@ -549,7 +548,7 @@ void connect_mode(char *svr)
 	sleep(99999999);
 }
 
-void multi_connect_mode(char *svr)
+static void multi_connect_mode(char *svr)
 {
 	while (1) {
 		int i, s;
@@ -566,7 +565,7 @@ void multi_connect_mode(char *svr)
 	}
 }
 
-void usage(void)
+static void usage(void)
 {
 	printf("l2test - L2CAP testing\n"
 		"Usage:\n");
@@ -585,7 +584,7 @@ void usage(void)
 
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P psm]\n"
-	       	"\t[-I imtu] [-O omtu]\n"
+		"\t[-I imtu] [-O omtu]\n"
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-R] reliable mode\n"
@@ -593,11 +592,8 @@ void usage(void)
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 		"\t[-S] secure connection\n"
-	       	"\t[-M] become master\n");
+		"\t[-M] become master\n");
 }
-
-extern int optind,opterr,optopt;
-extern char *optarg;
 
 int main(int argc ,char *argv[])
 {
@@ -613,7 +609,7 @@ int main(int argc ,char *argv[])
 		case 'r':
 			mode = RECV;
 			break;
-		
+
 		case 's':
 			mode = SEND;
 			need_addr = 1;
@@ -733,7 +729,7 @@ int main(int argc ,char *argv[])
 
 	openlog("l2test", LOG_PERROR | LOG_PID, LOG_LOCAL0);
 
-	switch( mode ){
+	switch (mode) {
 		case RECV:
 			do_listen(recv_mode);
 			break;
@@ -782,8 +778,8 @@ int main(int argc ,char *argv[])
 		case LSENDDUMP:
 			do_listen(senddump_mode);
 			break;
-
 	}
+
 	syslog(LOG_INFO, "Exit");
 
 	closelog();
