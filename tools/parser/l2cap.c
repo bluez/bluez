@@ -61,14 +61,6 @@ static cid_info cid_table[2][CID_TABLE_SIZE];
 #define SCID cid_table[0]
 #define DCID cid_table[1]
 
-typedef struct {
-	uint16_t psm;
-	uint16_t num;
-} psm_info;
-#define PSM_TABLE_SIZE 20
-
-static psm_info psm_table[PSM_TABLE_SIZE];
-
 static struct frame *add_handle(uint16_t handle)
 {
 	register handle_info *t = handle_table;
@@ -100,39 +92,24 @@ static void add_cid(int in, uint16_t cid, uint16_t psm)
 	register int i, pos = -1;
 	uint16_t num = 1;
 
-	if (in) {
-		for (i = 0; i < PSM_TABLE_SIZE; i++)
-			if (psm_table[i].psm == psm)
-				num = psm_table[i].num;
-	} else {
-		for (i = 0; i < PSM_TABLE_SIZE; i++) {
-			if (psm_table[i].psm == psm) {
-				pos = i;
-				break;
-			} else if (pos < 0 && !psm_table[i].psm)
-				pos = i;
-		}
-
-		if (pos >= 0) {
-			psm_table[pos].psm = psm;
-			psm_table[pos].num++;
-			num = psm_table[pos].num;
-		}
+	for (i = 0; i < CID_TABLE_SIZE; i++) {
+		if ((pos < 0 && !table[i].cid) || table[i].cid == cid)
+			pos = i;
+		if (table[i].psm == psm)
+			num++;
 	}
 
-	for (i = 0; i < CID_TABLE_SIZE; i++)
-		if (!table[i].cid || table[i].cid == cid) {
-			table[i].cid = cid;
-			table[i].psm = psm;
-			table[i].num = num;
-			break;
-		}
+	if (pos >= 0) {
+		table[pos].cid = cid;
+		table[pos].psm = psm;
+		table[pos].num = num;
+	}
 }
 
 static void del_cid(int in, uint16_t dcid, uint16_t scid)
 {
 	register int t, i;
-	uint16_t cid[2], psm = 0;
+	uint16_t cid[2];
 
 	if (!in) {
 		cid[0] = dcid;
@@ -145,21 +122,12 @@ static void del_cid(int in, uint16_t dcid, uint16_t scid)
 	for (t = 0; t < 2; t++) {
 		for (i = 0; i < CID_TABLE_SIZE; i++)
 			if (cid_table[t][i].cid == cid[t]) {
-				psm = cid_table[t][i].psm;
 				cid_table[t][i].cid = 0;
+				cid_table[t][i].psm = 0;
+				cid_table[t][i].num = 0;
 				break;
 			}
 	}
-
-	for (i = 0; i < PSM_TABLE_SIZE; i++)
-		if (psm_table[i].psm == psm) {
-			if (psm_table[i].num < 2) {
-				psm_table[i].psm = 0;
-				psm_table[i].num = 0;
-			} else
-				psm_table[i].num--;
-			break;
-		}
 }
 
 static uint16_t get_psm(int in, uint16_t cid)
@@ -236,8 +204,19 @@ static inline void conn_rsp(int level, struct frame *frm)
 	l2cap_conn_rsp *h = frm->ptr;
 	uint16_t psm;
 
-	if ((psm = get_psm(!frm->in, btohs(h->scid))))
-		add_cid(frm->in, btohs(h->dcid), psm);
+	switch (h->result) {
+	case L2CAP_CR_SUCCESS:
+		if ((psm = get_psm(!frm->in, btohs(h->scid))))
+			add_cid(frm->in, btohs(h->dcid), psm);
+		break;
+
+	case L2CAP_CR_PEND:
+		break;
+
+	default:
+		del_cid(frm->in, btohs(h->dcid), btohs(h->scid));
+		break;
+	}
 
 	if (p_filter(FILT_L2CAP))
 		return;
