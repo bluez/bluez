@@ -49,8 +49,6 @@
 #include "hcid.h"
 #include "lib.h"
 
-#define VERSION "1.1"
-
 struct hcid_opts hcid;
 struct device_opts devi;
 
