@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "DEBUG: %s device %s service %s fd %d copies %d\n",
 			argv[0], device, service, fd, copies);
 
-	sdp = sdp_connect(BDADDR_ANY, &bdaddr, 0 /*SDP_RETRY_IF_BUSY*/);
+	sdp = sdp_connect(BDADDR_ANY, &bdaddr, SDP_RETRY_IF_BUSY);
 	if (!sdp) {
 		fprintf(stderr, "ERROR: Can't open Bluetooth connection\n");
 		return 1;
