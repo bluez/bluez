@@ -318,8 +318,8 @@ static void sdp_uuid_printf(uuid_t *uuid, struct attrib_context *context, int in
 			struct uuid_def *uuidDef = NULL;
 			int i;
 
-			for(i = 0; i < uuid16_max; i++)
-				if(uuid16_names[i].num == uuidNum) {
+			for (i = 0; i < uuid16_max; i++)
+				if (uuid16_names[i].num == uuidNum) {
 					uuidDef = &uuid16_names[i];
 					break;
 				}
@@ -330,15 +330,31 @@ static void sdp_uuid_printf(uuid_t *uuid, struct attrib_context *context, int in
 				context->service = uuidDef;
 			}
 
-			if(uuidDef)
+			if (uuidDef)
 				printf("%.*sUUID16 : 0x%.4x - %s\n",
 					indent, indent_spaces, uuidNum, uuidDef->name);
 			else
 				printf("%.*sUUID16 : 0x%.4x\n",
 					indent, indent_spaces, uuidNum);
 		} else if (uuid->type == SDP_UUID32) {
-			printf("%.*sUUID32 : 0x%.8x\n",
-				indent, indent_spaces, uuid->value.uuid32);
+			struct uuid_def *uuidDef = NULL;
+			int i;
+
+			if (!(uuid->value.uuid32 & 0xffff0000)) {
+				uint16_t uuidNum = uuid->value.uuid32;
+				for (i = 0; i < uuid16_max; i++)
+					if (uuid16_names[i].num == uuidNum) {
+						uuidDef = &uuid16_names[i];
+						break;
+					}
+			}
+
+			if (uuidDef)
+				printf("%.*sUUID32 : 0x%.8x - %s\n",
+					indent, indent_spaces, uuid->value.uuid32, uuidDef->name);
+			else
+				printf("%.*sUUID32 : 0x%.8x\n",
+					indent, indent_spaces, uuid->value.uuid32);
 		} else if (uuid->type == SDP_UUID128) {
 			unsigned int data0;
 			unsigned short data1;
