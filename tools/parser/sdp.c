@@ -72,6 +72,7 @@ sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_HTTP,                     "HTTP"         },
 	{ SDP_UUID_WSP,                      "WSP"          },
 	{ SDP_UUID_L2CAP,                    "L2CAP"        },
+        { SDP_UUID_BNEP,                     "BNEP"         }, /* PAN */
 	{ SDP_UUID_SERVICE_DISCOVERY_SERVER, "SDServer"     },
 	{ SDP_UUID_BROWSE_GROUP_DESCRIPTOR,  "BrwsGrpDesc"  },
 	{ SDP_UUID_PUBLIC_BROWSE_GROUP,      "PubBrwsGrp"   },
@@ -87,6 +88,9 @@ sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_INTERCOM,                 "Intercom"     },
 	{ SDP_UUID_FAX,                      "Fax"          },
 	{ SDP_UUID_HEADSET_AUDIO_GATEWAY,    "AG"           },
+        { SDP_UUID_PANU,                     "PANU"         }, /* PAN */
+        { SDP_UUID_NAP,                      "NAP"          }, /* PAN */
+        { SDP_UUID_GN,                       "GN"           }, /* PAN */
 	{ SDP_UUID_PNP_INFORMATION,          "PNPInfo"      },
 	{ SDP_UUID_GENERIC_NETWORKING,       "Networking"   },
 	{ SDP_UUID_GENERIC_FILE_TRANSFER,    "FileTrnsf"    },
@@ -115,10 +119,15 @@ sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
 	{ SDP_ATTR_ID_VERSION_NUMBER_LIST,               "VersionNumList"     },
 	{ SDP_ATTR_ID_GROUP_ID,                          "GrpID"              },
 	{ SDP_ATTR_ID_SERVICE_DATABASE_STATE,            "SrvDBState"         },
-	{ SDP_ATTR_ID_SERVICE_VERSION,                   "SrvVersion"         }
+	{ SDP_ATTR_ID_SERVICE_VERSION,                   "SrvVersion"         },
+        { SDP_ATTR_ID_SECURITY_DESCRIPTION,              "SecurityDescription"}, /* PAN */
+        { SDP_ATTR_ID_NET_ACCESS_TYPE,                   "NetAccessType"      }, /* PAN */
+        { SDP_ATTR_ID_MAX_NET_ACCESS_RATE,               "MaxNetAccessRate"   }, /* PAN */
+        { SDP_ATTR_ID_IPV4_SUBNET,                       "IPv4Subnet"         }, /* PAN */
+        { SDP_ATTR_ID_IPV6_SUBNET,                       "IPv6Subnet"         }  /* PAN */
 };
 
-static inline __u8 get_u8(struct frame *frm)
+inline __u8 get_u8(struct frame *frm)
 {
 	__u8 *u8_ptr = frm->ptr;
 	frm->ptr += 1;
@@ -126,7 +135,7 @@ static inline __u8 get_u8(struct frame *frm)
 	return *u8_ptr;
 }
 
-static inline __u16 get_u16(struct frame *frm)
+inline __u16 get_u16(struct frame *frm)
 {
 	__u16 *u16_ptr = frm->ptr;
 	frm->ptr += 2;
@@ -134,7 +143,7 @@ static inline __u16 get_u16(struct frame *frm)
 	return ntohs(*u16_ptr);
 }
 
-static inline __u32 get_u32(struct frame *frm)
+inline __u32 get_u32(struct frame *frm)
 {
 	__u32 *u32_ptr = frm->ptr;
 	frm->ptr += 4;
@@ -143,7 +152,7 @@ static inline __u32 get_u32(struct frame *frm)
 }
 
 
-static inline char* get_uuid_name(int uuid)
+inline char* get_uuid_name(int uuid)
 {
 	int i;
 
@@ -199,7 +208,6 @@ static inline __u8 parse_de_hdr(struct frame *frm, int* n)
 static inline void print_des(__u8 de_type, int level, int n, struct frame *frm)
 {
 	int len = frm->len;
-
 	while (len - frm->len < n ) {
 		print_de(level, frm);
 	}
@@ -282,13 +290,13 @@ static inline void print_string(int n, struct frame *frm)
 
 	printf(" str");
 	if ((s = malloc(n + 1))) {
-		s = frm->ptr;
+	        strncpy(s, frm->ptr, n);
 		s[n] = '\0';
 		printf(" \"%s\"", s);
+		free(s);
 	} else {
 		perror("Can't allocate string buffer");
 	}
-
 	frm->ptr += n;
 	frm->len -= n;
 }
@@ -406,8 +414,9 @@ static inline void print_attr_list(int level, struct frame *frm)
 				printf("aid 0x%x (%s)\n", attr_id, get_attr_id_name(attr_id));
 
 				/* Print AttributeValue */
-				p_indent(++level, 0);
+				p_indent(level+1, 0);
 				print_de(level, frm);
+				printf("\n");
 			} else {
 				printf("\nERROR: Unexpected syntax\n");
 				raw_dump(level, frm);

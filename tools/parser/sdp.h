@@ -54,6 +54,7 @@
 #define SDP_UUID_FTP                                   0x000A
 #define SDP_UUID_HTTP                                  0x000C
 #define SDP_UUID_WSP                                   0x000E
+#define SDP_UUID_BNEP                                  0x000F /* PAN */
 #define SDP_UUID_L2CAP                                 0x0100
 
 /* Bluetooth assigned UUIDs for Service Classes */
@@ -72,6 +73,9 @@
 #define SDP_UUID_INTERCOM                              0x1110
 #define SDP_UUID_FAX                                   0x1111
 #define SDP_UUID_HEADSET_AUDIO_GATEWAY                 0x1112
+#define SDP_UUID_PANU                                  0x1115 /* PAN */
+#define SDP_UUID_NAP                                   0x1116 /* PAN */
+#define SDP_UUID_GN                                    0x1117 /* PAN */
 #define SDP_UUID_PNP_INFORMATION                       0x1200
 #define SDP_UUID_GENERIC_NETWORKING                    0x1201
 #define SDP_UUID_GENERIC_FILE_TRANSFER                 0x1202
@@ -109,6 +113,11 @@
 #define SDP_ATTR_ID_FAX_CLASS_2_0_SUPPORT              0x0303
 #define SDP_ATTR_ID_FAX_CLASS_2_SUPPORT                0x0304
 #define SDP_ATTR_ID_AUDIO_FEEDBACK_SUPPORT             0x0305
+#define SDP_ATTR_ID_SECURITY_DESCRIPTION               0x030a /* PAN */
+#define SDP_ATTR_ID_NET_ACCESS_TYPE                    0x030b /* PAN */
+#define SDP_ATTR_ID_MAX_NET_ACCESS_RATE                0x030c /* PAN */
+#define SDP_ATTR_ID_IPV4_SUBNET                        0x030d /* PAN */
+#define SDP_ATTR_ID_IPV6_SUBNET                        0x030e /* PAN */
 
 /* Data element type descriptor */
 #define SDP_DE_NULL   0

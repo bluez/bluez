@@ -223,7 +223,7 @@ char *cmd_status_map[] = {
 static inline void command_dump(int level, struct frame *frm)
 {
 	hci_command_hdr *hdr = frm->ptr;
-	__u16 opcode = __le16_to_cpu(hdr->opcode);
+	__u16 opcode = btohs(hdr->opcode);
 	__u16 ogf = cmd_opcode_ogf(opcode);
 	__u16 ocf = cmd_opcode_ocf(opcode);
 	char *cmd;
@@ -307,8 +307,8 @@ static inline void event_dump(int level, struct frame *frm)
 static inline void acl_dump(int level, struct frame *frm)
 {
 	hci_acl_hdr *hdr = (void *) frm->ptr;
-	__u16 handle = __le16_to_cpu(hdr->handle);
-	__u16 dlen = __le16_to_cpu(hdr->dlen);
+	__u16 handle = btohs(hdr->handle);
+	__u16 dlen = btohs(hdr->dlen);
 	__u8 flags = acl_flags(handle);
 
 	if (!p_filter(FILT_HCI)) {
@@ -332,7 +332,7 @@ static inline void acl_dump(int level, struct frame *frm)
 static inline void sco_dump(int level, struct frame *frm)
 {
 	hci_sco_hdr *hdr = (void *) frm->ptr;
-	__u16 handle = __le16_to_cpu(hdr->handle);
+	__u16 handle = btohs(hdr->handle);
 
 	if (!p_filter(FILT_SCO)) {
 		p_indent(level, frm);

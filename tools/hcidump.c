@@ -117,10 +117,10 @@ static void process_frames(int dev, int sock, int file)
 		switch (mode) {
 		case WRITE:
 			/* Save dump */	
-			dh->len = __cpu_to_le16(frm.data_len);
+			dh->len = htobs(frm.data_len);
 			dh->in  = frm.in;
-			dh->ts_sec  = __cpu_to_le32(frm.ts.tv_sec);
-			dh->ts_usec = __cpu_to_le32(frm.ts.tv_usec);
+			dh->ts_sec  = htobl(frm.ts.tv_sec);
+			dh->ts_usec = htobl(frm.ts.tv_usec);
 			if (write_n(file, buf, frm.data_len + DUMP_HDR_SIZE) < 0) {
 				perror("Write error");
 				exit(1);
@@ -151,7 +151,7 @@ static void read_dump(int file)
 			goto failed;
 		if (!err) return;
 		
-		frm.data_len = __le16_to_cpu(dh.len);
+		frm.data_len = btohs(dh.len);
 
 		if ((err = read_n(file, frm.data, frm.data_len)) < 0)
 			goto failed;
@@ -160,8 +160,8 @@ static void read_dump(int file)
 		frm.ptr = frm.data;
 		frm.len = frm.data_len;
 		frm.in  = dh.in;
-		frm.ts.tv_sec  = __le32_to_cpu(dh.ts_sec);
-		frm.ts.tv_usec = __le32_to_cpu(dh.ts_usec);
+		frm.ts.tv_sec  = btohl(dh.ts_sec);
+		frm.ts.tv_usec = btohl(dh.ts_usec);
 		
 		parse(&frm);
 	}
@@ -255,6 +255,7 @@ static struct {
 	{ "sco",    FILT_SCO    },
 	{ "rfcomm", FILT_RFCOMM },
 	{ "sdp",    FILT_SDP    },
+	{ "bnep",   FILT_BNEP	},
 	{ 0 }
 };
 

@@ -410,6 +410,13 @@ static void l2cap_parse(int level, struct frame *frm)
 				raw_dump(level+1, frm);
 			break;
 
+		case 0x0f:
+			if (!p_filter(FILT_BNEP))
+				bnep_dump(level, frm);
+			else
+				raw_dump(level+1, frm);
+			break;
+
 		default:
 			if (p_filter(FILT_L2CAP))
 				break;

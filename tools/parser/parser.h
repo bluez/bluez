@@ -49,6 +49,7 @@ struct frame {
 #define FILT_RFCOMM	0x0004
 #define FILT_SDP	0x0008
 #define FILT_SCO	0x0010
+#define FILT_BNEP       0x0020
 
 struct parser_t {
 	unsigned long flags;
@@ -84,11 +85,17 @@ static inline void p_indent(int level, struct frame *f)
 		printf("%*c", (level*2), ' ');
 }
 
+inline __u8 get_u8(struct frame *frm);
+inline __u16 get_u16(struct frame *frm);
+inline __u32 get_u32(struct frame *frm);
+inline char* get_uuid_name(int uuid);
+
 void raw_dump(int level, struct frame *frm);
 void hci_dump(int level, struct frame *frm);
 void l2cap_dump(int level, struct frame *frm);
 void rfcomm_dump(int level, struct frame *frm);
 void sdp_dump(int level, struct frame *frm);
+void bnep_dump(int level, struct frame *frm);
 
 static inline void parse(struct frame *frm)
 {
