@@ -97,13 +97,17 @@ void print_link_mode(struct hci_dev_info *di)
 void print_dev_features(struct hci_dev_info *di, int format)
 {
 	if (!format) {
-		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n", 
-			di->features[0], di->features[1],
-			di->features[2], di->features[3] );
-	} else {
-		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n%s\n", 
+		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n", 
 			di->features[0], di->features[1],
 			di->features[2], di->features[3],
+			di->features[4], di->features[5],
+			di->features[6], di->features[7] );
+	} else {
+		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n%s\n", 
+			di->features[0], di->features[1],
+			di->features[2], di->features[3],
+			di->features[4], di->features[5],
+			di->features[6], di->features[7],
 			lmp_featurestostr(di->features, "\t\t", 3));
 	}
 }
