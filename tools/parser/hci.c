@@ -585,8 +585,9 @@ static inline void remote_name_req_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	ba2str(&cp->bdaddr, addr);
-	printf("bdaddr %s clkoffset 0x%4.4x%s\n",
-		addr, clkoffset & 0x7fff, clkoffset & 0x8000 ? " (valid)" : "");
+	printf("bdaddr %s mode %d clkoffset 0x%4.4x%s\n",
+		addr, cp->pscan_rep_mode,
+		clkoffset & 0x7fff, clkoffset & 0x8000 ? " (valid)" : "");
 }
 
 static inline void write_link_policy_dump(int level, struct frame *frm)
@@ -1084,9 +1085,9 @@ static inline void inq_result_dump(int level, struct frame *frm)
 		ba2str(&info->bdaddr, addr);
 
 		p_indent(level, frm);
-		printf("bdaddr %s clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x\n",
-			addr, btohs(info->clock_offset), info->dev_class[2],
-			info->dev_class[1], info->dev_class[0]);
+		printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x\n",
+			addr, info->pscan_rep_mode, btohs(info->clock_offset),
+			info->dev_class[2], info->dev_class[1], info->dev_class[0]);
 
 		frm->ptr += INQUIRY_INFO_SIZE;
 		frm->len -= INQUIRY_INFO_SIZE;
@@ -1347,9 +1348,9 @@ static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 		p_indent(level, frm);
 
 		ba2str(&info->bdaddr, addr);
-		printf("bdaddr %s clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
-			addr, btohs(info->clock_offset), info->dev_class[2],
-			info->dev_class[1], info->dev_class[0], info->rssi);
+		printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
+			addr, info->pscan_rep_mode, btohs(info->clock_offset),
+			info->dev_class[2], info->dev_class[1], info->dev_class[0], info->rssi);
 
 		frm->ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		frm->len -= INQUIRY_INFO_WITH_RSSI_SIZE;
