@@ -72,6 +72,8 @@ static char *cmd2str(uint8_t cmd)
 		return "DATA_B3";
 	case 0x87:
 		return "RESET_B3";
+	case 0x88:
+		return "CONNECT_B3_T90_ACTIVE";
 	case 0xff:
 		return "MANUFACTURER";
 	default:
@@ -292,6 +294,105 @@ static void cmd_common(int level, uint8_t subcmd, struct frame *frm)
 		info = htons(get_u16(frm));
 		p_indent(level, frm);
 		printf("Info: 0x%04x (%s)\n", info, info2str(info));
+	}
+}
+
+static void cmd_alert(int level, uint8_t subcmd, struct frame *frm)
+{
+	uint8_t len;
+
+	cmd_common(level, subcmd, frm);
+
+	if (subcmd == 0x80) {
+		len = get_u8(frm);
+		if (len > 0) {
+			p_indent(level, frm);
+			printf("Additional info:\n");
+			hex_dump(level, frm, len);
+		}
+	}
+}
+
+static void cmd_connect(int level, uint8_t subcmd, struct frame *frm)
+{
+	uint16_t cip;
+	uint8_t len;
+
+	cmd_common(level, subcmd, frm);
+
+	if (subcmd == 0x81)
+		return;
+
+	cip = htons(get_u16(frm));
+	p_indent(level, frm);
+	printf("CIP value: 0x%04x\n", cip);
+
+	len = get_u8(frm);
+	frm->ptr += len;
+	frm->len -= len;
+	len = get_u8(frm);
+	frm->ptr += len;
+	frm->len -= len;
+	len = get_u8(frm);
+	frm->ptr += len;
+	frm->len -= len;
+	len = get_u8(frm);
+	frm->ptr += len;
+	frm->len -= len;
+
+	raw_dump(level, frm);
+}
+
+static void cmd_disconnect(int level, uint8_t subcmd, struct frame *frm)
+{
+	uint16_t reason;
+	uint8_t len;
+
+	cmd_common(level, subcmd, frm);
+
+	if (subcmd == 0x80) {
+		len = get_u8(frm);
+		if (len > 0) {
+			p_indent(level, frm);
+			printf("Additional info:\n");
+			hex_dump(level, frm, len);
+		}
+	}
+
+	if (subcmd == 0x82) {
+		reason = htons(get_u16(frm));
+		p_indent(level, frm);
+		printf("Reason: 0x%04x (%s)\n", reason, info2str(reason));
+	}
+}
+
+static void cmd_connect_active(int level, uint8_t subcmd, struct frame *frm)
+{
+	uint8_t len;
+
+	cmd_common(level, subcmd, frm);
+
+	if (subcmd == 0x82) {
+		len = get_u8(frm);
+		if (len > 0) {
+			p_indent(level, frm);
+			printf("Connected number:\n");
+			hex_dump(level, frm, len);
+		}
+
+		len = get_u8(frm);
+		if (len > 0) {
+			p_indent(level, frm);
+			printf("Connected subaddress:\n");
+			hex_dump(level, frm, len);
+		}
+
+		len = get_u8(frm);
+		if (len > 0) {
+			p_indent(level, frm);
+			printf("LLC:\n");
+			hex_dump(level, frm, len);
+		}
 	}
 }
 
@@ -524,6 +625,125 @@ static void cmd_facility(int level, uint8_t subcmd, struct frame *frm)
 	raw_dump(level, frm);
 }
 
+static void cmd_connect_b3(int level, uint8_t subcmd, struct frame *frm)
+{
+	uint16_t reject;
+	uint8_t len;
+
+	cmd_common(level, subcmd, frm);
+
+	if (subcmd == 0x81)
+		return;
+
+	if (subcmd == 0x83) {
+		reject = htons(get_u16(frm));
+		p_indent(level, frm);
+		printf("Reject: 0x%04x (%s)\n", reject, info2str(reject));
+	}
+
+	len = get_u8(frm);
+	if (len > 0) {
+		p_indent(level, frm);
+		printf("NCPI:\n");
+		hex_dump(level, frm, len);
+	}
+}
+
+static void cmd_connect_b3_active(int level, uint8_t subcmd, struct frame *frm)
+{
+	uint8_t len;
+
+	cmd_common(level, subcmd, frm);
+
+	if (subcmd == 0x82) {
+		len = get_u8(frm);
+		if (len > 0) {
+			p_indent(level, frm);
+			printf("NCPI:\n");
+			hex_dump(level, frm, len);
+		}
+	}
+}
+
+static void cmd_disconnect_b3(int level, uint8_t subcmd, struct frame *frm)
+{
+	uint16_t reason;
+	uint8_t len;
+
+	cmd_common(level, subcmd, frm);
+
+	if (subcmd == 0x82) {
+		reason = htons(get_u16(frm));
+		p_indent(level, frm);
+		printf("Reason: 0x%04x (%s)\n", reason, info2str(reason));
+	}
+
+	if (subcmd == 0x80 || subcmd == 0x82) {
+		len = get_u8(frm);
+		if (len > 0) {
+			p_indent(level, frm);
+			printf("NCPI:\n");
+			hex_dump(level, frm, len);
+		}
+	}
+}
+
+static void cmd_data_b3(int level, uint8_t subcmd, struct frame *frm)
+{
+	uint32_t data;
+	uint64_t data64;
+	uint16_t length, handle, flags, info;
+
+	cmd_common(level, 0x00, frm);
+
+	if (subcmd == 0x81 || subcmd == 0x83) {
+		handle = htons(get_u16(frm));
+		p_indent(level, frm);
+		printf("Data handle: 0x%04x\n", handle);
+
+		if (subcmd == 0x81) {
+			info = htons(get_u16(frm));
+			p_indent(level, frm);
+			printf("Info: 0x%04x (%s)\n", info, info2str(info));
+		}
+	} else {
+		data = htonl(get_u32(frm));
+
+		length = htons(get_u16(frm));
+		p_indent(level, frm);
+		printf("Data length: 0x%04x (%d bytes)\n", length, length);
+
+		handle = htons(get_u16(frm));
+		p_indent(level, frm);
+		printf("Data handle: 0x%04x\n", handle);
+
+		flags = htons(get_u16(frm));
+		p_indent(level, frm);
+		printf("Flags: 0x%04x\n", flags);
+
+		if (data == 0)
+			data64 = get_u64(frm);
+
+		raw_dump(level, frm);
+	}
+}
+
+static void cmd_reset_b3(int level, uint8_t subcmd, struct frame *frm)
+{
+	uint8_t len;
+
+	cmd_common(level, subcmd, frm);
+
+	if (subcmd == 0x80 || subcmd == 0x82) {
+		len = get_u8(frm);
+		if (len > 0) {
+			p_indent(level, frm);
+			printf("NCPI:\n");
+			hex_dump(level, frm, len);
+		}
+	}
+}
+
 static void cmd_manufacturer(int level, uint8_t subcmd, struct frame *frm)
 {
 	uint32_t ctr, class, func;
@@ -575,6 +795,18 @@ void capi_dump(int level, struct frame *frm)
 			cmd2str(cmd), subcmd2str(subcmd), appl, msgnum, len);
 
 	switch (cmd) {
+	case 0x01:
+		cmd_alert(level + 1, subcmd, frm);
+		break;
+	case 0x02:
+		cmd_connect(level + 1, subcmd, frm);
+		break;
+	case 0x03:
+		cmd_connect_active(level + 1, subcmd, frm);
+		break;
+	case 0x04:
+		cmd_disconnect(level + 1, subcmd, frm);
+		break;
 	case 0x05:
 		cmd_listen(level + 1, subcmd, frm);
 		break;
@@ -586,6 +818,22 @@ void capi_dump(int level, struct frame *frm)
 		break;
 	case 0x80:
 		cmd_facility(level + 1, subcmd, frm);
+		break;
+	case 0x82:
+		cmd_connect_b3(level + 1, subcmd, frm);
+		break;
+	case 0x83:
+	case 0x88:
+		cmd_connect_b3_active(level + 1, subcmd, frm);
+		break;
+	case 0x84:
+		cmd_disconnect_b3(level + 1, subcmd, frm);
+		break;
+	case 0x86:
+		cmd_data_b3(level + 1, subcmd, frm);
+		break;
+	case 0x87:
+		cmd_reset_b3(level + 1, subcmd, frm);
 		break;
 	case 0xff:
 		cmd_manufacturer(level + 1, subcmd, frm);
