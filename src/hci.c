@@ -74,8 +74,7 @@ static int hci_str2bit(hci_map *map, char *str, unsigned int *val)
 	hci_map *m;
 	int set;
 
-	str = ptr = strdup(str);
-	if (!str)
+	if (!str || !(str = ptr = strdup(str)))
 		return 0;
 
 	*val = set = 0;
