@@ -1,22 +1,22 @@
 /* 
-	HCIDump - HCI packet analyzer	
-	Copyright (C) 2000-2001 Maxim Krasnyansky <maxk@qualcomm.com>
+   HCIDump - HCI packet analyzer	
+   Copyright (C) 2000-2001 Maxim Krasnyansky <maxk@qualcomm.com>
 
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation;
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License version 2 as
+   published by the Free Software Foundation;
 
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-	OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-	RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-	NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-	USE OR PERFORMANCE OF THIS SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+   IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
+   OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
+   RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+   NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
+   USE OR PERFORMANCE OF THIS SOFTWARE.
 
-	ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-	TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
+   ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
+   TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
 */
 
 /*
@@ -346,11 +346,11 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 				switch(n2) {
 				case 2:
 					attr_id = get_u16(frm);
-					printf(" 0x%x (%s)", attr_id, get_attr_id_name(attr_id));
+					printf(" 0x%04x (%s)", attr_id, get_attr_id_name(attr_id));
 					break;
 				case 4:
 					attr_id_range = get_u32(frm);
-					printf(" 0x%x - 0x%x",
+					printf(" 0x%04x - 0x%04x",
 							(attr_id_range >> 16),
 							(attr_id_range & 0xFFFF));
 					break;
@@ -380,7 +380,7 @@ static inline void print_attr_list(int level, struct frame *frm)
 				 			(n2 == sizeof(attr_id))) {
 				attr_id = get_u16(frm);
 				p_indent(level, 0);
-				printf("aid 0x%x (%s)\n", attr_id, get_attr_id_name(attr_id));
+				printf("aid 0x%04x (%s)\n", attr_id, get_attr_id_name(attr_id));
 
 				if (attr_id == SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST)
 					split = 0;
@@ -405,13 +405,13 @@ static inline void print_attr_list(int level, struct frame *frm)
 }
 
 
-static inline void print_attr_lists(int level, struct frame *frm)
+static inline void print_attr_lists(int level, struct frame *frm, int len)
 {
 	int   n;
 	int   cnt = 0;
-	int   len = frm->len;
 
 	if (parse_de_hdr(frm, &n) == SDP_DE_SEQ) {
+	printf(" len 0x%x frm->len 0x%x n 0x%x\n", len, frm->len, n);
 		while (len - frm->len < n ) {
 			p_indent(level, 0);
 			printf("srv rec #%d\n", cnt++);
@@ -516,14 +516,16 @@ static inline void ssa_req(int level, __u16 tid, __u16 len, struct frame *frm)
 
 static inline void ssa_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
 {
+	int cnt;
 	printf("SDP SSA Rsp: tid 0x%x len 0x%x\n", tid, len);
 
 	/* Parse AttributeByteCount */
 	p_indent(++level, 0);
-	printf("cnt 0x%x\n", get_u16(frm));
+	cnt = get_u16(frm);
+	printf("cnt 0x%x\n", cnt);
 
 	/* Parse AttributeLists */
-	print_attr_lists(level, frm);
+	print_attr_lists(level, frm, cnt);
 }
 
 void sdp_dump(int level, struct frame *frm)
@@ -567,10 +569,13 @@ void sdp_dump(int level, struct frame *frm)
 
 	if (hdr->pid != SDP_ERROR_RSP) {
 		/* Parse ContinuationState */
-		if (*(__u8*) frm->ptr)	{
-			p_indent(++level, frm);
-			printf("cont ");
-			raw_dump(0, frm);
+		int i;
+		unsigned char *buf = frm->ptr;
+		p_indent(++level, frm);
+		printf("cont ");
+		for (i=0; i < frm->len; i++) {
+			printf("%2.2X ", buf[i]);
 		}
+		printf("\n");
 	}
 }
