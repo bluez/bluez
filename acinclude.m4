@@ -5,7 +5,7 @@ dnl
 AC_DEFUN([AC_PREFIX_BLUEZ], [
 	AC_PREFIX_DEFAULT(/usr)
 
-	if test "$prefix" = "NONE"; then
+	if test "${prefix}" = "NONE"; then
 		dnl no prefix and no sysconfdir, so default to /etc
 		if test "$sysconfdir" = '${prefix}/etc'; then
 			AC_SUBST([sysconfdir], ['/etc'])
@@ -16,199 +16,157 @@ AC_DEFUN([AC_PREFIX_BLUEZ], [
 			AC_SUBST([mandir], ['${prefix}/share/man'])
 		fi
 
-		bluez_prefix="$ac_default_prefix"
-	else
-		bluez_prefix="$prefix"
+		prefix="${ac_default_prefix}"
 	fi
 ])
 
 AC_DEFUN([AC_PATH_BLUEZ], [
 	AC_ARG_WITH(bluez, [  --with-bluez=DIR        BlueZ library is installed in DIR], [
-		if (test "$withval" = "yes"); then
-			bluez_includes=$bluez_prefix/include
-			bluez_libraries=$bluez_prefix/lib
+		if (test "${withval}" = "yes"); then
+			bluez_prefix=${prefix}
 		else
-			bluez_includes=$withval/include
-			bluez_libraries=$withval/lib
+			bluez_prefix=${withval}
 		fi
 	])
 
-	BLUEZ_INCLUDES=""
-	BLUEZ_LDFLAGS=""
-	BLUEZ_LIBS=""
-
-	ac_save_CFLAGS=$CFLAGS
-	test -n "$bluez_includes" && CFLAGS="$CFLAGS -I$bluez_includes"
-
+	ac_save_CPPFLAGS=$CPPFLAGS
 	ac_save_LDFLAGS=$LDFLAGS
-	test -n "$bluez_libraries" && LDFLAGS="$LDFLAGS -L$bluez_libraries"
 
-	AC_CHECK_HEADER(bluetooth/bluetooth.h,,
-		AC_MSG_ERROR(Bluetooth header files not found))
+	BLUEZ_CFLAGS=""
+	test -d "${bluez_prefix}/include" && BLUEZ_CFLAGS="$BLUEZ_CFLAGS -I${bluez_prefix}/include"
 
-	AC_CHECK_LIB(bluetooth, hci_open_dev,
-		BLUEZ_LIBS="$BLUEZ_LIBS -lbluetooth",
-		AC_MSG_ERROR(Bluetooth library not found))
+	CPPFLAGS="$CPPFLAGS $BLUEZ_CFLAGS"
+	AC_CHECK_HEADER(bluetooth/bluetooth.h,, AC_MSG_ERROR(Bluetooth header files not found))
 
-	AC_CHECK_LIB(sdp, sdp_connect,
-		BLUEZ_LIBS="$BLUEZ_LIBS -lsdp")
+	BLUEZ_LIBS=""
+	test -d "${bluez_prefix}/lib" && BLUEZ_LIBS="$BLUEZ_LIBS -L${bluez_prefix}/lib"
+	test -d "${bluez_prefix}/lib64" && BLUEZ_LIBS="$BLUEZ_LIBS -L${bluez_prefix}/lib64"
+	test -d "${libdir}" && BLUEZ_LIBS="$BLUEZ_LIBS -L${libdir}"
 
-	CFLAGS=$ac_save_CFLAGS
-	test -n "$bluez_includes" && BLUEZ_INCLUDES="-I$bluez_includes"
+	LDFLAGS="$LDFLAGS $BLUEZ_LIBS"
+	AC_CHECK_LIB(bluetooth, hci_open_dev, BLUEZ_LIBS="$BLUEZ_LIBS -lbluetooth", AC_MSG_ERROR(Bluetooth library not found))
+	AC_CHECK_LIB(sdp, sdp_connect, BLUEZ_LIBS="$BLUEZ_LIBS -lsdp")
 
+	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS
-	test -n "$bluez_libraries" && BLUEZ_LDFLAGS="-L$bluez_libraries"
-	test -n "$bluez_libraries" && BLUEZ_LIBS="-L$bluez_libraries $BLUEZ_LIBS"
 
-	AC_SUBST(BLUEZ_INCLUDES)
-	AC_SUBST(BLUEZ_LDFLAGS)
+	AC_SUBST(BLUEZ_CFLAGS)
 	AC_SUBST(BLUEZ_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_USB], [
 	AC_ARG_WITH(usb, [  --with-usb=DIR          USB library is installed in DIR], [
 		if (test "$withval" = "yes"); then
-			usb_includes=/usr/include
-			usb_libraries=/usr/lib
+			usb_prefix=${prefix}
 		else
-			usb_includes=$withval/include
-			usb_libraries=$withval/lib
+			usb_prefix=${withval}
 		fi
 	])
 
-	USB_INCLUDES=""
-	USB_LDFLAGS=""
-	USB_LIBS=""
-
-	ac_save_CFLAGS=$CFLAGS
-	test -n "$usb_includes" && CFLAGS="$CFLAGS -I$usb_includes"
-
+	ac_save_CPPFLAGS=$CPPFLAGS
 	ac_save_LDFLAGS=$LDFLAGS
-	test -n "$usb_libraries" && LDFLAGS="$LDFLAGS -L$usb_libraries"
 
-	AC_CHECK_HEADER(usb.h,,
-		AC_MSG_ERROR(USB header files not found))
+	USB_CFLAGS=""
+	test -d "${usb_prefix}/include" && USB_CFLAGS="$USB_CFLAGS -I${usb_prefix}/include"
 
-	AC_CHECK_LIB(usb, usb_open,
-		USB_LIBS="$USB_LIBS -lusb",
-		AC_MSG_ERROR(USB library not found))
+	CPPFLAGS="$CPPFLAGS $USB_CFLAGS" 
+	AC_CHECK_HEADER(usb.h,, AC_MSG_ERROR(USB header files not found))
 
-	CFLAGS=$ac_save_CFLAGS
-	test -n "$usb_includes" && USB_INCLUDES="-I$usb_includes"
+	USB_LIBS=""
+	test -d "${usb_prefix}/lib" && USB_LIBS="$USB_LIBS -L${usb_prefix}/lib"
+	test -d "${usb_prefix}/lib64" && USB_LIBS="$USB_LIBS -L${usb_prefix}/lib64"
+	test -d "${libdir}" && USB_LIBS="$USB_LIBS -L${libdir}"
 
+	LDFLAGS="$LDFLAGS $USB_LIBS"
+	AC_CHECK_LIB(usb, usb_open, USB_LIBS="$USB_LIBS -lusb", AC_MSG_ERROR(USB library not found))
+
+	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS
-	test -n "$usb_libraries" && USB_LDFLAGS="-L$usb_libraries"
-	test -n "$usb_libraries" && USB_LIBS="-L$usb_libraries $USB_LIBS"
 
-	AC_SUBST(USB_INCLUDES)
-	AC_SUBST(USB_LDFLAGS)
+	AC_SUBST(USB_CFLAGS)
 	AC_SUBST(USB_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
 	AC_ARG_ENABLE(dbus, [  --enable-dbus           enable D-BUS support], [
-		dbus_enable=$enableval
+		dbus_enable=${enableval}
+		dbus_prefix=${prefix}
 	])
 
 	AC_ARG_WITH(dbus, [  --with-dbus=DIR         D-BUS library is installed in DIR], [
-		if (test "$withval" = "yes"); then
-			dbus_includes=$bluez_prefix/include
-			dbus_libraries=$bluez_prefix/lib
+		if (test "${withval}" = "yes"); then
+			dbus_prefix=${prefix}
 		else
-			dbus_includes=$withval/include
-			dbus_libraries=$withval/lib
+			dbus_prefix=${withval}
 		fi
 		dbus_enable=yes
 	])
 
-	DBUS_INCLUDES=""
-	DBUS_LDFLAGS=""
-	DBUS_LIBS=""
-
-	ac_save_CFLAGS=$CFLAGS
-	if test -n "$dbus_includes"; then 
-		CFLAGS="$CFLAGS -I$dbus_includes -I$dbus_includes/dbus-1.0"
-	else
-		CFLAGS="$CFLAGS -I$bluez_prefix/include/dbus-1.0 -I/usr/include/dbus-1.0"
-	fi
-	CFLAGS="$CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE"
-
+	ac_save_CPPFLAGS=$CPPFLAGS
 	ac_save_LDFLAGS=$LDFLAGS
-	if test -n "$dbus_libraries"; then
-		CFLAGS="$CFLAGS -I$dbus_libraries/dbus-1.0/include"
-		LDFLAGS="$LDFLAGS -L$dbus_libraries"
-	else
-		CFLAGS="$CFLAGS -I$bluez_prefix/include/dbus-1.0 -I/usr/lib/dbus-1.0/include"
-	fi
 
-	if test "$dbus_enable" = "yes"; then
-		AC_CHECK_HEADER(dbus/dbus.h,,
-			dbus_enable=no)
+	DBUS_CFLAGS="-DDBUS_API_SUBJECT_TO_CHANGE"
+	test -d "${dbus_prefix}/include/dbus-1.0" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/include/dbus-1.0"
+	test -d "${dbus_prefix}/lib/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib/dbus-1.0/include"
+	test -d "${dbus_prefix}/lib64/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib64/dbus-1.0/include"
+	test -d "${libdir}/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${libdir}/dbus-1.0/include"
 
-		AC_CHECK_LIB(dbus-1, dbus_error_init,
-			DBUS_LIBS="$DBUS_LIBS -ldbus-1",
-			dbus_enable=no)
-	fi
+	CPPFLAGS="$CPPFLAGS $DBUS_CFLAGS"
+	AC_CHECK_HEADER(dbus/dbus.h,, dbus_enable=no)
 
-	CFLAGS=$ac_save_CFLAGS
-	if test -n "$dbus_includes"; then
-		DBUS_INCLUDES="-I$dbus_includes -I$dbus_includes/dbus-1.0"
-	else
-		DBUS_INCLUDES="-I$bluez_prefix/include/dbus-1.0 -I/usr/include/dbus-1.0"
-	fi
+	DBUS_LIBS=""
+	test -d "${dbus_prefix}/lib" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib"
+	test -d "${dbus_prefix}/lib64" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib64"
+	test -d "${libdir}" && DBUS_LIBS="$DBUS_LIBS -L${libdir}"
 
+	LDFLAGS="$LDFLAGS $DBUS_LIBS"
+	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", dbus_enable=no)
+
+	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS
-	if test -n "$dbus_libraries"; then
-		DBUS_INCLUDES="$DBUS_INCLUDES -I$dbus_libraries/dbus-1.0/include"
-		DBUS_LDFLAGS="-L$dbus_libraries"
-		DBUS_LIBS="-L$dbus_libraries $DBUS_LIBS"
-	else
-		DBUS_INCLUDES="$DBUS_INCLUDES -I$bluez_prefix/include/dbus-1.0 -I/usr/lib/dbus-1.0/include"
-	fi
 
-	AC_SUBST(DBUS_INCLUDES)
-	AC_SUBST(DBUS_LDFLAGS)
+	AC_SUBST(DBUS_CFLAGS)
 	AC_SUBST(DBUS_LIBS)
 
-	AM_CONDITIONAL(DBUS, test "$dbus_enable" = "yes")
+	AM_CONDITIONAL(DBUS, test "${dbus_enable}" = "yes")
 ])
 
 AC_DEFUN([AC_PATH_CUPS], [
 	AC_ARG_ENABLE(cups, [  --enable-cups           enable CUPS support], [
-		cups_enable=$enableval
-		cups_prefix=/usr
+		cups_enable=${enableval}
+		cups_prefix=${prefix}
 	])
 
 	AC_ARG_WITH(cups, [  --with-cups=DIR         CUPS is installed in DIR], [
-		if (test "$withval" = "yes"); then
-			cups_prefix=/usr
+		if (test "${withval}" = "yes"); then
+			cups_prefix=${prefix}
 		else
-			cups_prefix=$withval
+			cups_prefix=${withval}
 		fi
 		cups_enable=yes
 	])
 
 	CUPS_BACKEND_DIR=""
 
-	if test "$cups_enable" = "yes"; then
-		AC_MSG_CHECKING(for CUPS backend directory)
+	AC_MSG_CHECKING(for CUPS backend directory)
 
-		if (test -d "$cups_prefix/lib/cups/backend"); then
-			CUPS_BACKEND_DIR="$cups_prefix/lib/cups/backend"
-		elif (test -d "$libdir/cups/backend"); then
-			CUPS_BACKEND_DIR="$libdir/cups/backend"
-		else
-			cups_enable=no
-		fi
+	if (test -d "${cups_prefix}/lib/cups/backend"); then
+		CUPS_BACKEND_DIR="${cups_prefix}/lib/cups/backend"
+	elif (test -d "${cups_prefix}/lib64/cups/backend"); then
+		CUPS_BACKEND_DIR="${cups_prefix}/lib64/cups/backend"
+	elif (test -d "${libdir}/cups/backend"); then
+		CUPS_BACKEND_DIR="${libdir}/cups/backend"
+	else
+		cups_enable=no
+	fi
 
-		if test "$cups_enable" = "yes"; then
-			AC_MSG_RESULT($CUPS_BACKEND_DIR)
-		else
-			AC_MSG_RESULT($cups_enable)
-		fi
+	if test "${cups_enable}" = "yes"; then
+		AC_MSG_RESULT($CUPS_BACKEND_DIR)
+	else
+		AC_MSG_RESULT($cups_enable)
 	fi
 
 	AC_SUBST(CUPS_BACKEND_DIR)
 
-	AM_CONDITIONAL(CUPS, test "$cups_enable" = "yes")
+	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 ])
