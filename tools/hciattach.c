@@ -173,6 +173,9 @@ static int ericsson(int fd, struct uart_t *u, struct termios *ti)
 	case 460800:
 		cmd[4] = 0x00;
 		break;
+	case 921600:
+		cmd[4] = 0x20;
+		break;
 	default:
 		cmd[4] = 0x03;
 		u->speed = 57600;
