@@ -37,7 +37,6 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <asm/types.h>
 
 #include <bluetooth.h>
 #include <hci.h>
@@ -377,6 +376,73 @@ void cmd_version(int ctl, int hdev, char *opt)
 		ver.manufacturer);
 }
 
+void cmd_inq_parms(int ctl, int hdev, char *opt)
+{
+	struct hci_request rq;
+	int s;
+	if ((s = hci_open_dev(hdev)) < 0) {
+		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	memset(&rq, 0, sizeof(rq));
+
+	if (opt) {
+		uint16_t window, interval;
+		write_inq_activity_cp cp;
+
+		if (sscanf(opt,"%4u/%4u", &window, &interval)!=2) {
+			printf("Invalid argument format\n");
+			exit(1);
+		}
+			
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_WRITE_INQ_ACTIVITY;
+		rq.cparam = &cp;
+		rq.clen = WRITE_INQ_ACTIVITY_CP_SIZE;
+		
+		cp.window = htobs(window);
+		cp.interval = htobs(interval);
+		
+		if (window < 0x12 || window > 0x1000)
+			printf("Warning: inquiry window out of range!\n");
+		
+		if (interval < 0x12 || interval > 0x1000)
+			printf("Warning: inquiry interval out of range!\n");
+		
+		if (hci_send_req(s, &rq, 1000) < 0) {
+			printf("Can't set inquiry parameters name on hci%d. %s(%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		uint16_t window, interval;
+		read_inq_activity_rp rp;
+		
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_READ_INQ_ACTIVITY;
+		rq.rparam = &rp;
+		rq.rlen = READ_INQ_ACTIVITY_RP_SIZE;
+		      
+		if (hci_send_req(s, &rq, 1000) < 0) {
+			printf("Can't read inquiry parameters on hci%d. %s(%d)\n", 
+							hdev, strerror(errno), errno);
+			exit(1);
+		}
+		if (rp.status) {
+			printf("Read inquiry parameters on hci%d returned status %d\n", 
+							hdev, rp.status);
+			exit(1);
+		}
+		print_dev_hdr(&di);
+		
+		window   = btohs(rp.window);
+		interval = btohs(rp.interval);
+		printf("\tInquiry interval: %u slots (%.2f ms), window: %u slots (%.2f ms)\n",
+				interval, (float)interval * 0.625, window, (float)window * 0.625);
+        }
+}
+
 void print_dev_hdr(struct hci_dev_info *di)
 {
 	static int hdr = -1;
@@ -447,6 +513,7 @@ struct {
 	{ "lp",     cmd_lp,      "[policy]", "Get/Set default link policy" },
 	{ "name",   cmd_name,    "[name]",   "Get/Set local name" },
 	{ "class",  cmd_class,   "[class]",  "Get/Set class of device" },
+	{ "inqparms",cmd_inq_parms, "[int/win]","Get/Set device inquiry window and iterval" },
 	{ "version",	cmd_version, 0,  "Display version information" },
 	{ "features",	cmd_features, 0,"Display device features" },
 	{ NULL, NULL, 0}
