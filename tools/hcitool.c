@@ -785,6 +785,91 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
+/* Get Link Quality */
+
+static struct option link_quality_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *link_quality_help = 
+	"Usage:\n"
+	"\tlq <bdaddr>\n";
+
+static void cmd_link_quality(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	struct hci_request rq;	
+	get_link_quality_rp rp;
+	bdaddr_t bdaddr;
+	int opt, dd;
+
+	for_each_opt(opt, link_quality_options, NULL) {
+		switch(opt) {
+		default:
+			printf(link_quality_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(link_quality_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+ 
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+        	return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+	
+	memset(&rq, 0, sizeof(rq));	
+	rq.ogf = OGF_STATUS_PARAM;
+	rq.ocf = OCF_GET_LINK_QUALITY;
+	rq.cparam = &cr->conn_info->handle;
+	rq.clen = 2;
+	rq.rparam = &rp;
+	rq.rlen = GET_LINK_QUALITY_RP_SIZE;
+	
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		perror("HCI get_link_quality request failed");
+		exit(1);
+	}
+
+	if (rp.status) {
+		fprintf(stderr, "HCI get_link_quality cmd failed (0x%2.2X)\n", 
+				rp.status);
+		exit(1);
+	}
+	printf("Link quality: %d\n", rp.link_quality);
+	
+	close(dd);
+	free(cr);
+}
+
 /* Set connection packet type */
 
 static struct option cpt_options[] = {
@@ -865,7 +950,6 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
-
 struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
@@ -882,6 +966,7 @@ struct {
 	{ "dc",	  cmd_dc,   "Disconnect from remote device"      },
 	{ "cpt",  cmd_cpt,  "Change connection packet type"      },
 	{ "rssi", cmd_rssi, "Display connection RSSI"            },
+	{ "lq",   cmd_link_quality, "Display link quality"       },
 	{ NULL, NULL, 0}
 };
 
