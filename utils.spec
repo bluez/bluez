@@ -23,7 +23,8 @@ BuildRequires: glibc >= 2.2.4
 BuildRequires: bluez-libs >= 2.8
 
 %description
-Bluetooth utilities (bluez-utils):
+Bluetooth utilities.
+
 	- hcitool
 	- hciattach
 	- hciconfig
@@ -55,7 +56,7 @@ make
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make DESTDIR=$RPM_BUILD_ROOT prefix=%{prefix} mandir=%{_mandir} install
+make DESTDIR=$RPM_BUILD_ROOT prefix=%{prefix} mandir=%{_mandir} sysconfdir=%{_sysconfdir} install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
