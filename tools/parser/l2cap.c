@@ -319,7 +319,7 @@ static inline void info_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	l2cap_info_rsp *h = frm->ptr;
-	int ilen = btohs(cmd->len) - L2CAP_INFO_REQ_SIZE;
+	int ilen = btohs(cmd->len) - L2CAP_INFO_RSP_SIZE;
 
 	if (p_filter(FILT_L2CAP))
 		return;
