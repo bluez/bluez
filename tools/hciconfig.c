@@ -844,7 +844,7 @@ static void print_rev_csr(uint16_t rev)
 
 static void print_rev_avm(uint16_t rev)
 {
-	printf("\tFirmware 3.%d.%d\n", rev >> 8, rev & 0xff);
+	printf("\tFirmware 03.%d.%d\n", rev >> 8, rev & 0xff);
 }
 
 static void cmd_revision(int ctl, int hdev, char *opt)
