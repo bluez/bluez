@@ -810,14 +810,15 @@ static sdp_data_t *extract_str(const void *p, int *len)
 		return 0;
 	}
 
-	s = (char *)malloc(n + 1);
+	s = malloc(n + 1);
 	memset(s, 0, n + 1);
-	strncpy(s, p, n);
+	memcpy(s, p, n);
 
 	SDPDBG("Len : %d\n", n);
 	SDPDBG("Str : %s\n", s);
 
 	d->val.str = s;
+	d->unitSize = n;
 	return d;
 }
 
