@@ -1,7 +1,7 @@
 %{
 /*
  *
- *  RFCOMM configuration file
+ *  RFCOMM configuration utility
  *
  *  Copyright (C) 2002  Marcel Holtmann <marcel@holtmann.org>
  *

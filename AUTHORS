@@ -17,6 +17,7 @@ Thomas Moser <Thomas.Moser@tmoser.ch>
 
 Marcel Holtmann <marcel@holtmann.org>
 	Various patches, fixes and other contributions.
+	RFCOMM configuration utility.
 
 Nils Faerber <nils@kernelconcepts.de>
 	Man pages.
