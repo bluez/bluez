@@ -40,8 +40,8 @@
 
 #include <usb.h>
 
-#ifndef usb_get_busses
-struct usb_bus *usb_get_busses(void)
+#ifdef NEED_USB_GET_BUSSES
+static inline struct usb_bus *usb_get_busses(void)
 {
 	return usb_busses;
 }

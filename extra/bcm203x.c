@@ -40,6 +40,20 @@
 
 #include <usb.h>
 
+#ifdef NEED_USB_GET_BUSSES
+static inline struct usb_bus *usb_get_busses(void)
+{
+	return usb_busses;
+}
+#endif
+
+#ifdef NEED_USB_INTERRUPT_READ
+static inline int usb_interrupt_read(usb_dev_handle *dev, int ep, char *bytes, int size, int timeout)
+{
+	return usb_bulk_read(dev, ep, bytes, size, timeout);
+}
+#endif
+
 static char *fw_path = "/lib/firmware";
 
 static int load_file(struct usb_dev_handle *udev, char *filename)
