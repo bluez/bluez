@@ -44,33 +44,34 @@ void baswap(bdaddr_t *dst, bdaddr_t *src)
 		d[i] = s[5-i];
 }
 
-char * batostr(bdaddr_t *ba)
+char *batostr(bdaddr_t *ba)
 {
-	static char str[2][18];
-	static int i = 1;
+	char *str = malloc(18);
+	if (!str)
+		return NULL;
 
-	i ^= 1;
-	sprintf(str[i], "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
+	sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
 	        ba->b[0], ba->b[1], ba->b[2], 
 		ba->b[3], ba->b[4], ba->b[5]);
-	return str[i];
+	return str;
 }
 
-bdaddr_t * strtoba(char *str)
+bdaddr_t *strtoba(char *str)
 {
-	static unsigned char ba[2][sizeof(bdaddr_t)];
-	static int i = 1;
-	register char *ptr = str;
-	register int x;
+	char *ptr = str;
+	int i;
 
-	i ^= 1;
-	for(x=0; x<6; x++){
-		ba[i][x] = (uint8_t) strtol(ptr, NULL, 16);
-		if( x!=5 && !(ptr=strchr(ptr,':')) )
+	uint8_t *ba = malloc(sizeof(bdaddr_t));
+	if (!ba)
+		return NULL;
+
+	for(i=0; i<6; i++){
+		ba[i] = (uint8_t) strtol(ptr, NULL, 16);
+		if( i!=5 && !(ptr=strchr(ptr,':')) )
 			ptr = ":00:00:00:00:00";
 		ptr++;
 	}
-	return (bdaddr_t *) ba[i];
+	return (bdaddr_t *) ba;
 }
 
 int ba2str(bdaddr_t *ba, char *str)
@@ -82,13 +83,13 @@ int ba2str(bdaddr_t *ba, char *str)
 
 int str2ba(char *str, bdaddr_t *ba)
 {
-	unsigned char *b = (void *) ba;
+	uint8_t *b = (void *) ba;
 	char *ptr = str;
-	register int x;
+	int i;
 
-	for (x=0; x < 6; x++) {
-		b[x] = (uint8_t) strtol(ptr, NULL, 16);
-		if (x!=5 && !(ptr=strchr(ptr, ':')))
+	for (i=0; i < 6; i++) {
+		b[i] = (uint8_t) strtol(ptr, NULL, 16);
+		if (i!=5 && !(ptr=strchr(ptr, ':')))
 			ptr = ":00:00:00:00:00";
 		ptr++;
 	}

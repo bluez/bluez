@@ -53,8 +53,11 @@ typedef struct {
 
 static char *hci_bit2str(hci_map *m, unsigned int val) 
 {
-	static char str[50];
+	char *str = malloc(50);
 	char *ptr = str;
+
+	if (!str)
+		return NULL;
 
 	*ptr = 0;
 	while (m->str) {
@@ -71,10 +74,10 @@ static int hci_str2bit(hci_map *map, char *str, unsigned int *val)
 	hci_map *m;
 	int set;
 
+	str = ptr = strdup(str);
 	if (!str)
 		return 0;
 
-	str = ptr = strdup(str);
 	*val = set = 0;
 
 	while ((t=strsep(&ptr, ","))) {
@@ -92,8 +95,11 @@ static int hci_str2bit(hci_map *map, char *str, unsigned int *val)
 
 static char *hci_uint2str(hci_map *m, unsigned int val) 
 {
-	static char str[50];
+	char *str = malloc(50);
 	char *ptr = str;
+
+	if (!str)
+		return NULL;
 
 	*ptr = 0;
 	while (m->str) {
@@ -161,9 +167,12 @@ hci_map dev_flags_map[] = {
 };
 char *hci_dflagstostr(uint32_t flags)
 {
-	static char str[50]; 
+	char *str = malloc(50);
 	char *ptr = str;
 	hci_map *m = dev_flags_map;
+
+	if (!str)
+		return NULL;
 
 	*ptr = 0;
 
@@ -230,13 +239,22 @@ hci_map link_mode_map[] = {
 };
 char *hci_lmtostr(unsigned int lm)
 {
-	static char str[50];
+	char *s, *str = malloc(50);
+	if (!str)
+		return NULL;
 
-	str[0] = 0;
+	*str = 0;
 	if (!(lm & HCI_LM_MASTER))
 		strcpy(str, "SLAVE ");
 
-	strcat(str, hci_bit2str(link_mode_map, lm));
+	s = hci_bit2str(link_mode_map, lm);
+	if (!s) {
+		free(str);
+		return NULL;
+	}
+
+	strcat(str, s);
+	free(s);
 	return str;
 }
 int hci_strtolm(char *str, unsigned int *val)
@@ -706,7 +724,7 @@ int hci_read_local_version(int dd, struct hci_version *ver, int to)
 	}
 
 	ver->manufacturer = btohs(rp.manufacturer);
-	ver->hci_ver    = rp.lmp_ver;
+	ver->hci_ver    = rp.hci_ver;
 	ver->hci_rev    = btohs(rp.hci_rev);
 	ver->lmp_ver    = rp.lmp_ver;
 	ver->lmp_subver = btohs(rp.lmp_subver);
