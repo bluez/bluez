@@ -92,6 +92,8 @@ sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_PANU,                     "PANU"         }, /* PAN */
 	{ SDP_UUID_NAP,                      "NAP"          }, /* PAN */
 	{ SDP_UUID_GN,                       "GN"           }, /* PAN */
+	{ SDP_UUID_IMAGING,                  "Imaging"      }, /* BIP */
+	{ SDP_UUID_IMAGING_RESPONDER,        "ImagingResp"  }, /* BIP */
 	{ SDP_UUID_HUMAN_INTERFACE_DEVICE,   "HID"          }, /* HID */
 	{ SDP_UUID_COMMON_ISDN_ACCESS,       "CIP"          }, /* CIP */
 	{ SDP_UUID_PNP_INFORMATION,          "PNPInfo"      },
