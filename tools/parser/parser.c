@@ -156,10 +156,9 @@ void ext_dump(int level, struct frame *frm, int num)
 		size = num > 16 ? 16 : num;
 
 		for (i = 0; i < size; i++)
-			printf("%02x ", buf[i]);
+			printf("%02x%s", buf[i], (i + 1) % 8 ? " " : "  ");
 		for (i = 0; i < 16 - size; i++)
-			printf("   ");
-		printf("  ");
+			printf("  %s", (i + 1) % 8 ? "  " : "  ");
 
 		for (i = 0; i < size; i++)
 			printf("%1c", isprint(buf[i]) ? buf[i] : '.');
