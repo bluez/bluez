@@ -288,7 +288,7 @@ static inline void print_de(int level, struct frame *frm, int *split)
 
 	switch(de_type) {
 	case SDP_DE_NULL:
-		printf("null");
+		printf(" null");
 		break;
 	case SDP_DE_UINT:
 	case SDP_DE_INT:
@@ -312,8 +312,14 @@ static inline void print_de(int level, struct frame *frm, int *split)
 		print_string(n, frm, de_type == SDP_DE_URL? "url": "str");
 		break;
 	case SDP_DE_SEQ:
-	case SDP_DE_ALT:
+		printf(" <");
 		print_des(de_type, level, n, frm, split);
+		printf(" >");
+		break;
+	case SDP_DE_ALT:
+		printf(" [");
+		print_des(de_type, level, n, frm, split);
+		printf(" ]");
 		break;
 	}
 }
