@@ -51,43 +51,103 @@
 
 int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req)
 {
+	uint32_t range = 0x0000ffff;
 	sdp_session_t *s;
-	sdp_list_t *srch, *attrs, *rsp;
+	sdp_list_t *search, *attrid, *pnp_rsp, *hid_rsp;
 	sdp_record_t *rec;
-	sdp_data_t *pdlist;
+	sdp_data_t *pdlist, *pdlist2;
 	uuid_t svclass;
-	uint16_t attr;
 	int err;
 
 	s = sdp_connect(src, dst, 0);
 	if (!s)
 		return -1;
 
+	sdp_uuid16_create(&svclass, PNP_INFO_SVCLASS_ID);
+	search = sdp_list_append(NULL, &svclass);
+	attrid = sdp_list_append(NULL, &range);
+
+	err = sdp_service_search_attr_req(s, search, SDP_ATTR_REQ_RANGE, attrid, &pnp_rsp);
+
+	sdp_list_free(search, 0);
+	sdp_list_free(attrid, 0);
+
 	sdp_uuid16_create(&svclass, HID_SVCLASS_ID);
-	srch  = sdp_list_append(NULL, &svclass);
+	search = sdp_list_append(NULL, &svclass);
+	attrid = sdp_list_append(NULL, &range);
 
-	attr  = 0x0206;
-	attrs = sdp_list_append(NULL, &attr);
+	err = sdp_service_search_attr_req(s, search, SDP_ATTR_REQ_RANGE, attrid, &hid_rsp);
 
-	err = sdp_service_search_attr_req(s, srch, SDP_ATTR_REQ_INDIVIDUAL, attrs, &rsp);
+	sdp_list_free(search, 0);
+	sdp_list_free(attrid, 0);
 
 	sdp_close(s);
 
-	if (err || !rsp)
+	if (err || !hid_rsp)
 		return -1;
 
-	rec = (sdp_record_t *) rsp->data;
+	if (pnp_rsp) {
+		rec = (sdp_record_t *) pnp_rsp->data;
+
+		pdlist = sdp_data_get(rec, 0x0201);
+		if (pdlist)
+			req->vendor = pdlist->val.uint16;
+
+		pdlist = sdp_data_get(rec, 0x0202);
+		if (pdlist)
+			req->product = pdlist->val.uint16;
+
+		pdlist = sdp_data_get(rec, 0x0203);
+		if (pdlist)
+			req->version = pdlist->val.uint16;
+
+		sdp_record_free(rec);
+	}
+
+	rec = (sdp_record_t *) hid_rsp->data;
+
+	pdlist = sdp_data_get(rec, 0x0101);
+	pdlist2 = sdp_data_get(rec, 0x0102);
+	if (pdlist) {
+		if (pdlist2) {
+			if (strncmp(pdlist->val.str, pdlist2->val.str, 5)) {
+				strncpy(req->name, pdlist2->val.str, sizeof(req->name) - 1);
+				strcat(req->name, " ");
+			}
+			strncat(req->name, pdlist->val.str,
+					sizeof(req->name) - strlen(req->name));
+		} else
+			strncpy(req->name, pdlist->val.str, sizeof(req->name));
+	} else {
+		pdlist2 = sdp_data_get(rec, 0x0100);
+		if (pdlist2)
+			strncpy(req->name, pdlist2->val.str, sizeof(req->name));
+	}
+
+	pdlist = sdp_data_get(rec, 0x0201);
+	if (pdlist)
+		req->parser = pdlist->val.uint16;
+	else
+		req->parser = 0x0100;
+
+	pdlist = sdp_data_get(rec, 0x0203);
+	if (pdlist)
+		req->country = pdlist->val.uint8;
 
 	pdlist = sdp_data_get(rec, 0x0206);
-	pdlist = pdlist->val.dataseq;
-	pdlist = pdlist->val.dataseq;
-	pdlist = pdlist->next;
+	if (pdlist) {
+		pdlist = pdlist->val.dataseq;
+		pdlist = pdlist->val.dataseq;
+		pdlist = pdlist->next;
 
-	req->rd_data = malloc(pdlist->unitSize);
-	if (req->rd_data) {
-		memcpy(req->rd_data, (unsigned char *) pdlist->val.str, pdlist->unitSize);
-		req->rd_size = pdlist->unitSize;
+		req->rd_data = malloc(pdlist->unitSize);
+		if (req->rd_data) {
+			memcpy(req->rd_data, (unsigned char *) pdlist->val.str, pdlist->unitSize);
+			req->rd_size = pdlist->unitSize;
+		}
 	}
+
+	sdp_record_free(rec);
 
 	return 0;
 }
