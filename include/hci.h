@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define HCI_MAX_DEV 	4
+#define HCI_MAX_DEV 	16
 
 #define HCI_MAX_ACL_SIZE	1024
 #define HCI_MAX_SCO_SIZE	255
