@@ -193,7 +193,7 @@ static void ping(char *svr)
 			cmd->len = btohs(cmd->len);
 
 			/* Check for our id */
-			if( cmd->ident != id )
+			if (cmd->ident != id)
 				continue;
 
 			/* Check type */
@@ -218,7 +218,7 @@ static void ping(char *svr)
 			if (delay)
 				sleep(delay);
 		} else {
-			printf("no response from %s: id %d\n", svr, id);
+			printf("no response from %s: id %d\n", svr, id - ident);
 		}
 
 		if (++id > 254)
