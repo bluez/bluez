@@ -1,3 +1,14 @@
+ver 2.12:
+	Inherit the device specific options from the default.
+	Use --device for selecting the source device.
+	Add --nosdp option for devices with resource limitation.
+	Add support and parameter option for secure mode.
+	Add a lot of build ids and hardware revisions.
+	Update UUID translation tables.
+
+	Note:
+	This version needs at least bluez-libs-2.12
+
 ver 2.11:
 	Various cleanups to avoid inclusion of kernel headers.
 	Fix output when the CUPS backend is called without arguments.
