@@ -171,7 +171,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	cups_enable=no
 	pcmcia_enable=no
 	initscripts_enable=no
-	bluepin_enable=no
+	bluepin_enable=yes
 	hid2hci_enable=${usb_found}
 	bcm203x_enable=no
 
