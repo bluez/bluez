@@ -1432,6 +1432,60 @@ int hci_write_afh_mode(int dd, uint8_t mode, int to)
 	return 0;
 }
 
+int hci_read_link_supervision_timeout(int dd, uint16_t handle, uint16_t *timeout, int to)
+{
+	read_link_supervision_timeout_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ocf    = OCF_READ_LINK_SUPERVISION_TIMEOUT;
+	rq.cparam = &handle;
+	rq.clen   = 2;
+	rq.rparam = &rp;
+	rq.rlen   = READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*timeout = rp.link_sup_to;
+	return 0;
+}
+
+int hci_write_link_supervision_timeout(int dd, uint16_t handle, uint16_t timeout, int to)
+{
+	write_link_supervision_timeout_cp cp;
+	write_link_supervision_timeout_rp rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle      = handle;
+	cp.link_sup_to = timeout;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ocf    = OCF_WRITE_LINK_SUPERVISION_TIMEOUT;
+	rq.cparam = &cp;
+	rq.clen   = WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = WRITE_LINK_SUPERVISION_TIMEOUT_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
 int hci_set_afh_classification(int dd, uint8_t *map, int to)
 {
 	set_afh_classification_cp cp;

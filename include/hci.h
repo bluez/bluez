@@ -677,6 +677,11 @@ typedef struct {
 	uint16_t	link_sup_to;
 } __attribute__ ((packed)) write_link_supervision_timeout_cp;
 #define WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE 4
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+} __attribute__ ((packed)) write_link_supervision_timeout_rp;
+#define WRITE_LINK_SUPERVISION_TIMEOUT_RP_SIZE 3
 
 #define MAX_IAC_LAP 0x40
 #define OCF_READ_CURRENT_IAC_LAP	0x0039

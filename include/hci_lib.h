@@ -91,6 +91,8 @@ int hci_read_inquiry_mode(int dd, uint8_t *mode, int to);
 int hci_write_inquiry_mode(int dd, uint8_t mode, int to);
 int hci_read_afh_mode(int dd, uint8_t *mode, int to);
 int hci_write_afh_mode(int dd, uint8_t mode, int to);
+int hci_read_link_supervision_timeout(int dd, uint16_t handle, uint16_t *timeout, int to);
+int hci_write_link_supervision_timeout(int dd, uint16_t handle, uint16_t timeout, int to);
 int hci_set_afh_classification(int dd, uint8_t *map, int to);
 int hci_read_link_quality(int dd, uint16_t handle, uint8_t *link_quality, int to);
 int hci_read_rssi(int dd, uint16_t handle, int8_t *rssi, int to);
