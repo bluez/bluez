@@ -461,6 +461,37 @@ typedef struct {
 /* Status params */
 #define OGF_STATUS_PARAM 	0x05
 
+#define OCF_READ_FAILED_CONTACT_COUNTER   0x0001
+typedef struct {
+	uint8_t 	status;
+	uint16_t	handle;
+	uint8_t 	counter;
+} __attribute__ ((packed)) read_failed_contact_counter_rp; 
+#define READ_FAILED_CONTACT_COUNTER_RP_SIZE 4
+ 
+#define OCF_RESET_FAILED_CONTACT_COUNTER  0x0002
+typedef struct {
+	uint8_t 	status;
+	uint16_t	handle;
+} __attribute__ ((packed)) reset_failed_contact_counter_rp; 
+#define OCF_RESET_FAILED_CONTACT_COUNTER_RP_SIZE 4
+ 
+#define OCF_GET_LINK_QUALITY   0x0003
+typedef struct {
+	uint8_t 	status;
+	uint16_t	handle;
+	uint8_t 	link_quality;
+} __attribute__ ((packed)) get_link_quality_rp; 
+#define GET_LINK_QUALITY_RP_SIZE 4
+ 
+#define OCF_READ_RSSI  0x0005
+typedef struct {
+	uint8_t 	status;
+	uint16_t	handle;
+	uint8_t 	rssi;
+} __attribute__ ((packed)) read_rssi_rp; 
+#define READ_RSSI_RP_SIZE 4
+ 
 /* ---- HCI Events ---- */
 #define EVT_INQUIRY_COMPLETE 	0x01
 
