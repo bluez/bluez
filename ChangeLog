@@ -1,6 +1,7 @@
 ver 2.2:
 	Support for voice settings (hciconfig).
 	Minor hcitool fixes.
+	Improved configure script.
 	Added Headset testing tool.
 	Updated man pages.
 	RPM package.
