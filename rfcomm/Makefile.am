@@ -3,7 +3,7 @@
 #
 
 mandir = $(prefix)/usr/share/man
-confdir = /etc/bluetooth
+confdir = $(sysconfdir)/bluetooth
 
 bin_PROGRAMS = rfcomm
 

@@ -16,7 +16,7 @@ EXTRA_DIST = $(hcid_CONFIG)
 #
 # Install configuration files
 # 
-confdir   = $(prefix)/etc/bluetooth
+confdir   = $(sysconfdir)/bluetooth
 conf_FILE = $(confdir)/$(hcid_CONFIG)
 pin_FILE  = $(confdir)/pin
 
