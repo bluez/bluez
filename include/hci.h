@@ -568,14 +568,22 @@ typedef struct {
 #define READ_CLOCK_OFFSET_CP_SIZE 2
 
 /* Link Policy */
-#define OGF_LINK_POLICY	0x02   
+#define OGF_LINK_POLICY	0x02
+
+#define OCF_HOLD_MODE		0x0001
+typedef struct {
+	uint16_t	handle;
+	uint16_t	max_interval;
+	uint16_t	min_interval;
+} __attribute__ ((packed)) hold_mode_cp;
+#define HOLD_MODE_CP_SIZE 6
 
 #define OCF_SNIFF_MODE		0x0003
 typedef struct {
 	uint16_t	handle;
-	uint16_t	interval_max;
-	uint16_t	interval_min;
-	uint16_t	attempt_window;
+	uint16_t	max_interval;
+	uint16_t	min_interval;
+	uint16_t	attempt;
 	uint16_t	timeout;
 } __attribute__ ((packed)) sniff_mode_cp;
 #define SNIFF_MODE_CP_SIZE 10
@@ -589,8 +597,8 @@ typedef struct {
 #define OCF_PARK_MODE		0x0005
 typedef struct {
 	uint16_t	handle;
-	uint16_t	beacon_max;
-	uint16_t	beacon_min;
+	uint16_t	max_interval;
+	uint16_t	min_interval;
 } __attribute__ ((packed)) park_mode_cp;
 #define PARK_MODE_CP_SIZE 6
 

@@ -39,9 +39,9 @@
 #include <sys/param.h>
 #include <sys/uio.h>
 #include <sys/poll.h>
+#include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <asm/types.h>
 
 #include <bluetooth.h>
 #include <hci.h>
@@ -699,9 +699,9 @@ done:
 
 int hci_create_connection(int dd, const bdaddr_t *ba, uint16_t ptype, uint16_t clkoffset, uint8_t rswitch, uint16_t *handle, int to)
 {
-        evt_conn_complete rp;
-        create_conn_cp cp;
-        struct hci_request rq;
+	evt_conn_complete rp;
+	create_conn_cp cp;
+	struct hci_request rq;
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, ba);
@@ -711,21 +711,21 @@ int hci_create_connection(int dd, const bdaddr_t *ba, uint16_t ptype, uint16_t c
 	cp.role_switch    = rswitch;
 
 	memset(&rq, 0, sizeof(rq));
-        rq.ogf    = OGF_LINK_CTL;
-        rq.ocf    = OCF_CREATE_CONN;
-        rq.event  = EVT_CONN_COMPLETE;
-        rq.cparam = &cp;
-        rq.clen   = CREATE_CONN_CP_SIZE;
-        rq.rparam = &rp;
-        rq.rlen   = EVT_CONN_COMPLETE_SIZE;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_CREATE_CONN;
+	rq.event  = EVT_CONN_COMPLETE;
+	rq.cparam = &cp;
+	rq.clen   = CREATE_CONN_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_CONN_COMPLETE_SIZE;
 
-        if (hci_send_req(dd, &rq, to) < 0)
-                return -1;
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
 
-        if (rp.status) {
-                errno = EIO;
-                return -1;
-        }
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
 
 	*handle = rp.handle;
 	return 0;
@@ -733,31 +733,31 @@ int hci_create_connection(int dd, const bdaddr_t *ba, uint16_t ptype, uint16_t c
 
 int hci_disconnect(int dd, uint16_t handle, uint8_t reason, int to)
 {
-        evt_disconn_complete rp;
-        disconnect_cp cp;
-        struct hci_request rq;
+	evt_disconn_complete rp;
+	disconnect_cp cp;
+	struct hci_request rq;
 
-        memset(&cp, 0, sizeof(cp));
-        cp.handle = handle;
-        cp.reason = reason;
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = handle;
+	cp.reason = reason;
 
 	memset(&rq, 0, sizeof(rq));
-        rq.ogf    = OGF_LINK_CTL;
-        rq.ocf    = OCF_DISCONNECT;
-        rq.event  = EVT_DISCONN_COMPLETE;
-        rq.cparam = &cp;
-        rq.clen   = DISCONNECT_CP_SIZE;
-        rq.rparam = &rp;
-        rq.rlen   = EVT_DISCONN_COMPLETE_SIZE;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_DISCONNECT;
+	rq.event  = EVT_DISCONN_COMPLETE;
+	rq.cparam = &cp;
+	rq.clen   = DISCONNECT_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_DISCONN_COMPLETE_SIZE;
 
-        if (hci_send_req(dd, &rq, to) < 0)
-                return -1;
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
 
-        if (rp.status) {
-                errno = EIO;
-                return -1;
-        }
-        return 0;
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+	return 0;
 }
 
 int hci_local_name(int dd, int len, char *name, int to)
@@ -775,7 +775,7 @@ int hci_read_local_name(int dd, int len, char *name, int to)
 	rq.ocf    = OCF_READ_LOCAL_NAME;
 	rq.rparam = &rp;
 	rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
-         
+
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 
@@ -796,10 +796,10 @@ int hci_write_local_name(int dd, const char *name, int to)
 
 	strncpy(cp.name, name, sizeof(cp.name));
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_HOST_CTL;
-	rq.ocf = OCF_CHANGE_LOCAL_NAME;
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_CHANGE_LOCAL_NAME;
 	rq.cparam = &cp;
-	rq.clen = CHANGE_LOCAL_NAME_CP_SIZE;
+	rq.clen   = CHANGE_LOCAL_NAME_CP_SIZE;
 
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
@@ -862,11 +862,11 @@ int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 	rq.rlen   = EVT_READ_REMOTE_FEATURES_COMPLETE_SIZE;
 
 	if (hci_send_req(dd, &rq, to) < 0)
-	        return -1;
+		return -1;
 
 	if (rp.status) {
-	        errno = EIO;
-	        return -1;
+		errno = EIO;
+		return -1;
 	}
 
 	memcpy(features, rp.features, 8);
@@ -955,10 +955,10 @@ int hci_read_local_version(int dd, struct hci_version *ver, int to)
 	}
 
 	ver->manufacturer = btohs(rp.manufacturer);
-	ver->hci_ver    = rp.hci_ver;
-	ver->hci_rev    = btohs(rp.hci_rev);
-	ver->lmp_ver    = rp.lmp_ver;
-	ver->lmp_subver = btohs(rp.lmp_subver);
+	ver->hci_ver      = rp.hci_ver;
+	ver->hci_rev      = btohs(rp.hci_rev);
+	ver->lmp_ver      = rp.lmp_ver;
+	ver->lmp_subver   = btohs(rp.lmp_subver);
 	return 0;
 }
 
@@ -994,10 +994,10 @@ int hci_write_class_of_dev(int dd, uint32_t cls, int to)
 	cp.dev_class[0] = cls & 0xff;
 	cp.dev_class[1] = (cls >> 8) & 0xff;
 	cp.dev_class[2] = (cls >> 16) & 0xff;
-	rq.ogf = OGF_HOST_CTL;
-	rq.ocf = OCF_WRITE_CLASS_OF_DEV;
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_CLASS_OF_DEV;
 	rq.cparam = &cp;
-	rq.clen = WRITE_CLASS_OF_DEV_CP_SIZE;
+	rq.clen   = WRITE_CLASS_OF_DEV_CP_SIZE;
 	return hci_send_req(dd, &rq, to);
 }
 
@@ -1020,8 +1020,8 @@ int hci_read_voice_setting(int dd, uint16_t *vs, int to)
 		return -1;
 	}
 
-        *vs = rp.voice_setting;
-        return 0;
+	*vs = rp.voice_setting;
+	return 0;
 }
 
 int hci_write_voice_setting(int dd, uint16_t vs, int to)
@@ -1031,10 +1031,10 @@ int hci_write_voice_setting(int dd, uint16_t vs, int to)
 
 	memset(&rq, 0, sizeof(rq));
 	cp.voice_setting = vs;
-	rq.ogf = OGF_HOST_CTL;
-	rq.ocf = OCF_WRITE_VOICE_SETTING;
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_VOICE_SETTING;
 	rq.cparam = &cp;
-	rq.clen = WRITE_VOICE_SETTING_CP_SIZE;
+	rq.clen   = WRITE_VOICE_SETTING_CP_SIZE;
 	return hci_send_req(dd, &rq, to);
 }
 
@@ -1044,10 +1044,10 @@ int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to)
 	struct hci_request rq;
 	
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_HOST_CTL;
-	rq.ocf = OCF_READ_CURRENT_IAC_LAP;
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_CURRENT_IAC_LAP;
 	rq.rparam = &rp;
-	rq.rlen = READ_CURRENT_IAC_LAP_RP_SIZE;
+	rq.rlen   = READ_CURRENT_IAC_LAP_RP_SIZE;
 
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
@@ -1072,10 +1072,10 @@ int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
 	memcpy(&cp.lap, lap, num_iac * 3);
 	
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_HOST_CTL;
-	rq.ocf = OCF_WRITE_CURRENT_IAC_LAP;
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_CURRENT_IAC_LAP;
 	rq.cparam = &cp;
-	rq.clen = WRITE_CURRENT_IAC_LAP_CP_SIZE;
+	rq.clen   = WRITE_CURRENT_IAC_LAP_CP_SIZE;
 	return hci_send_req(dd, &rq, to);
 }
 
@@ -1086,13 +1086,13 @@ int hci_authenticate_link(int dd, uint16_t handle, int to)
 	struct hci_request rq;
 
 	cp.handle = handle;
-	rq.ogf = OGF_LINK_CTL;
-	rq.ocf = OCF_AUTH_REQUESTED;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_AUTH_REQUESTED;
 	rq.cparam = &cp;
-	rq.clen = AUTH_REQUESTED_CP_SIZE;
+	rq.clen   = AUTH_REQUESTED_CP_SIZE;
 	rq.rparam = &rp;
-	rq.event = EVT_AUTH_COMPLETE;
-	rq.rlen = EVT_AUTH_COMPLETE_SIZE;
+	rq.event  = EVT_AUTH_COMPLETE;
+	rq.rlen   = EVT_AUTH_COMPLETE_SIZE;
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 	if (rp.status) {
@@ -1108,14 +1108,14 @@ int hci_encrypt_link(int dd, uint16_t handle, int on, int to)
 	evt_encrypt_change rp;
 	struct hci_request rq;
 
-	cp.handle = handle;
+	cp.handle  = handle;
 	cp.encrypt = on;
-	rq.ogf = OGF_LINK_CTL;
-	rq.ocf = OCF_SET_CONN_ENCRYPT;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_SET_CONN_ENCRYPT;
 	rq.cparam = &cp;
-	rq.clen = SET_CONN_ENCRYPT_CP_SIZE;
-	rq.event = EVT_ENCRYPT_CHANGE;
-	rq.rlen = EVT_ENCRYPT_CHANGE_SIZE;
+	rq.clen   = SET_CONN_ENCRYPT_CP_SIZE;
+	rq.event  = EVT_ENCRYPT_CHANGE;
+	rq.rlen   = EVT_ENCRYPT_CHANGE_SIZE;
 	rq.rparam = &rp;
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
@@ -1133,19 +1133,79 @@ int hci_switch_role(int dd, bdaddr_t peer, int role, int to)
 	struct hci_request rq;
 
 	cp.bdaddr = peer;
-	cp.role = role;
-	rq.ogf = OGF_LINK_POLICY;
-	rq.ocf = OCF_SWITCH_ROLE;
+	cp.role   = role;
+	rq.ogf    = OGF_LINK_POLICY;
+	rq.ocf    = OCF_SWITCH_ROLE;
 	rq.cparam = &cp;
-	rq.clen = SWITCH_ROLE_CP_SIZE;
+	rq.clen   = SWITCH_ROLE_CP_SIZE;
 	rq.rparam = &rp;
-	rq.rlen = EVT_ROLE_CHANGE_SIZE;
-	rq.event = EVT_ROLE_CHANGE;
+	rq.rlen   = EVT_ROLE_CHANGE_SIZE;
+	rq.event  = EVT_ROLE_CHANGE;
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 	if (rp.status) {
 		errno = EIO;
 		return -1;
 	}
+	return 0;
+}
+
+int hci_park_mode (int dd, uint16_t handle, uint16_t max_interval, uint16_t min_interval, int to)
+{
+	park_mode_cp cp;
+	evt_mode_change rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof (cp));
+	cp.handle       = handle;
+	cp.max_interval = max_interval;
+	cp.min_interval = min_interval;
+
+	memset(&rq, 0, sizeof (rq));
+	rq.ogf    = OGF_LINK_POLICY;
+	rq.ocf    = OCF_PARK_MODE;
+	rq.event  = EVT_MODE_CHANGE;
+	rq.cparam = &cp;
+	rq.clen   = PARK_MODE_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_MODE_CHANGE_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_exit_park_mode(int dd, uint16_t handle, int to)
+{
+	exit_park_mode_cp cp;
+	evt_mode_change rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof (cp));
+	cp.handle = handle;
+
+	memset (&rq, 0, sizeof (rq));
+	rq.ogf    = OGF_LINK_POLICY;
+	rq.ocf    = OCF_EXIT_PARK_MODE;
+	rq.event  = EVT_MODE_CHANGE;
+	rq.cparam = &cp;
+	rq.clen   = EXIT_PARK_MODE_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_MODE_CHANGE_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
 	return 0;
 }
