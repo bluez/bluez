@@ -70,6 +70,8 @@ static struct tupla Protocol[] = {
 	{ HTTP_UUID,    "HTTP"    },
 	{ WSP_UUID,     "WSP"     },
 	{ BNEP_UUID,    "BNEP"    },
+	{ HIDP_UUID,    "HIDP"    },
+	{ CMTP_UUID,    "CMTP"    },
 	{ 0 }
 };
 
@@ -97,6 +99,8 @@ static struct tupla ServiceClass[] = {
 	{ PANU_SVCLASS_ID,              "PAN user" },
 	{ NAP_SVCLASS_ID,               "Network access point" },
 	{ GN_SVCLASS_ID,                "PAN group network" },
+	{ HID_SVCLASS_ID,               "Human Interface Device" },
+	{ CIP_SVCLASS_ID,               "Common ISDN Access" },
 	{ 0 }
 };
 
@@ -116,6 +120,8 @@ static struct tupla Profile[] = {
 	{ PANU_PROFILE_ID,               "PAN user" },
 	{ NAP_PROFILE_ID,                "PAN access point" },
 	{ GN_PROFILE_ID,                 "PAN group network" },
+	{ HID_SVCLASS_ID,                "Human Interface Device" },
+	{ CIP_SVCLASS_ID,                "Common ISDN Access" },
 	{ 0 }
 };
 
