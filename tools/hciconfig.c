@@ -898,6 +898,58 @@ void cmd_page_to(int ctl, int hdev, char *opt)
 	}
 }
 
+void cmd_afh_mode(int ctl, int hdev, char *opt)
+{
+	struct hci_request rq;
+	int dd;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	memset(&rq, 0, sizeof(rq));
+
+	if (opt) {
+		write_afh_mode_cp cp;
+
+		cp.mode = atoi(opt);
+
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_WRITE_AFH_MODE;
+		rq.cparam = &cp;
+		rq.clen = WRITE_AFH_MODE_RP_SIZE;
+
+		if (hci_send_req(dd, &rq, 1000) < 0) {
+			printf("Can't set AFH mode on hci%d. %s(%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		read_afh_mode_rp rp;
+
+		rq.ogf = OGF_HOST_CTL;
+		rq.ocf = OCF_READ_AFH_MODE;
+		rq.rparam = &rp;
+		rq.rlen = READ_AFH_MODE_RP_SIZE;
+
+		if (hci_send_req(dd, &rq, 1000) < 0) {
+			printf("Can't read AFH mode on hci%d. %s(%d)\n", 
+							hdev, strerror(errno), errno);
+			exit(1);
+		}
+		if (rp.status) {
+			printf("Read AFH mode on hci%d returned status %d\n", 
+							hdev, rp.status);
+			exit(1);
+		}
+
+		print_dev_hdr(&di);
+		printf("\tAFH mode: %s\n", rp.mode == 1 ? "Enabled" : "Disabled");
+	}
+}
+
 static void print_rev_ericsson(int dd)
 {
 	struct hci_request rq;
@@ -1068,6 +1120,7 @@ struct {
 	{ "inqparms",	cmd_inq_parms,	"[win:int]",	"Get/Set inquiry scan window and interval" },
 	{ "pageparms",	cmd_page_parms,	"[win:int]",	"Get/Set page scan window and interval" },
 	{ "pageto",	cmd_page_to,	"[to]",		"Get/Set page timeout" },
+	{ "afhmode",	cmd_afh_mode,	"[mode]",	"Get/Set AFH mode" },
 	{ "aclmtu",	cmd_aclmtu,	"<mtu:pkt>",	"Set ACL MTU and number of packets" },
 	{ "scomtu",	cmd_scomtu,	"<mtu:pkt>",	"Set SCO MTU and number of packets" },
 	{ "features",	cmd_features,	0,		"Display device features" },
