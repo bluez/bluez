@@ -2,7 +2,7 @@
 #  $Id$
 #
 
-mandir = $(prefix)/usr/share/man
+mandir = $(prefix)/share/man
 
 sbin_PROGRAMS = hcid
 

@@ -61,16 +61,16 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-, root, root)
 
 /etc/rc.d/init.d/bluetooth
-/bin/hcitool
-/bin/l2ping
-/bin/bluepin
-/bin/rfcomm
-/sbin/hciattach
-/sbin/hciconfig
-/sbin/hcid
-/sbin/sdpd
-/bin/sdptool
-/bin/ciptool
+/usr/bin/hcitool
+/usr/bin/l2ping
+/usr/bin/bluepin
+/usr/bin/rfcomm
+/usr/sbin/hciattach
+/usr/sbin/hciconfig
+/usr/sbin/hcid
+/usr/sbin/sdpd
+/usr/bin/sdptool
+/usr/bin/ciptool
 %{_mandir}/man8/hciattach.8.gz
 %{_mandir}/man8/hciconfig.8.gz
 %{_mandir}/man5/hcid.conf.5.gz

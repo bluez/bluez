@@ -2,7 +2,7 @@
 #  $Id$
 #
 
-mandir = $(prefix)/usr/share/man
+mandir = $(prefix)/share/man
 confdir = $(sysconfdir)/bluetooth
 
 bin_PROGRAMS = rfcomm
