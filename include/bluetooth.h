@@ -88,17 +88,21 @@ enum {
 #endif
 
 /* Bluetooth unaligned access */
-#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__) || defined(__s390__) || defined(__cris__)
-#define bt_get_unaligned(ptr) (*(ptr))
-#define bt_put_unaligned(val, ptr) ((void)( *(ptr) = (val) ))
-#else
-#define bt_get_unaligned(ptr) \
-	({ __typeof__(*(ptr)) __tmp; memmove(&__tmp, (ptr), sizeof(*(ptr))); __tmp; })
-#define bt_put_unaligned(val, ptr) \
-	({ __typeof__(*(ptr)) __tmp = (val); \
-	memmove((ptr), &__tmp, sizeof(*(ptr))); \
-	(void)0; })
-#endif
+#define bt_get_unaligned(ptr)			\
+({						\
+	struct __attribute__((packed)) {	\
+		typeof(*(ptr)) __v;		\
+	} *__p = (ptr);				\
+	__p->__v;				\
+})
+
+#define bt_put_unaligned(val, ptr)		\
+do {						\
+	struct __attribute__((packed)) {	\
+		typeof(*(ptr)) __v;		\
+	} *__p = (ptr);				\
+	__p->__v = (val);			\
+} while(0)
 
 /* BD Address */
 typedef struct {
