@@ -47,9 +47,9 @@
 #include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
 
 #include "pand.h"
@@ -485,8 +485,8 @@ static struct option main_lopts[] = {
 	{ "killall",  0, 0, 'K' },
 	{ "role",     1, 0, 'r' },
 	{ "service",  1, 0, 'd' },
+	{ "ethernet", 1, 0, 'e' },
 	{ "device",   1, 0, 'i' },
-	{ "source",   1, 0, 'S' },
 	{ "nosdp",    0, 0, 'D' },
 	{ "list",     0, 0, 'l' },
 	{ "show",     0, 0, 'l' },
@@ -500,7 +500,7 @@ static struct option main_lopts[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:i:S:lnp::DQ::EMC::P:z";
+static char main_sopts[] = "hsc:k:Kr:e:i:lnp::DQ::EMC::P:z";
 
 static char main_help[] = 
 	"Bluetooth PAN daemon version " VERSION " \n"
@@ -516,8 +516,8 @@ static char main_help[] =
 	"\t--killall -K              Kill all PAN connections\n"
 	"\t--role -r <role>          Local PAN role (PANU, NAP, GN)\n"
 	"\t--service -d <role>       Remote PAN service (PANU, NAP, GN)\n"
-	"\t--device -i <name>        Network interface name\n"
-	"\t--source -S <bdaddr>      Source bdaddr\n"
+	"\t--ethernet -e <name>      Network interface name\n"
+	"\t--device -i <bdaddr>      Source bdaddr\n"
 	"\t--nosdp -D                Disable SDP\n"
 	"\t--encrypt -E              Enable encryption\n"
 	"\t--master -M               Become the master of a piconet\n"
@@ -566,7 +566,7 @@ int main(int argc, char **argv)
 			detach = 0;
 			break;
 
-		case 'S':
+		case 'i':
 			src = strdup(optarg);
 			break;
 
@@ -590,7 +590,7 @@ int main(int argc, char **argv)
 			master = 1;
 			break;
 
-		case 'i':
+		case 'e':
 			strcpy(netdev, optarg);
 			break;
 
