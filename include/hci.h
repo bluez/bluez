@@ -52,6 +52,7 @@ extern "C" {
 #define HCI_PCCARD	2
 #define HCI_UART 	3
 #define HCI_RS232 	4
+#define HCI_PCI		5
 
 /* HCI device flags */
 enum {

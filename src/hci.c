@@ -146,6 +146,10 @@ char *hci_dtypetostr(int type)
 		return "PCCARD";
 	case HCI_UART:
 		return "UART";
+	case HCI_RS232:
+		return "RS232";
+	case HCI_PCI:
+		return "PCI";
 	default:
 		return "UKNW";
 	}
