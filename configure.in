@@ -22,8 +22,8 @@ AC_PROG_YACC
 AM_PROG_LEX
 
 AC_PATH_BLUEZ
-AC_PATH_EXTRA
 AC_PATH_USB
 AC_PATH_DBUS
+AC_PATH_EXTRA
 
 AC_OUTPUT(Makefile hcid/Makefile tools/Makefile rfcomm/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile test/Makefile scripts/Makefile pcmcia/Makefile extra/Makefile)

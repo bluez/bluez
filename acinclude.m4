@@ -25,10 +25,10 @@ AC_DEFUN([AC_PREFIX_BLUEZ], [
 ])
 
 AC_DEFUN([AC_PATH_BLUEZ], [
+	bluez_prefix=${prefix}
+
 	AC_ARG_WITH(bluez, AC_HELP_STRING([--with-bluez=DIR], [BlueZ library is installed in DIR]), [
-		if (test "${withval}" = "yes"); then
-			bluez_prefix=${prefix}
-		else
+		if (test "${withval}" != "yes"); then
 			bluez_prefix=${withval}
 		fi
 	])
@@ -62,10 +62,10 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 ])
 
 AC_DEFUN([AC_PATH_USB], [
+	usb_prefix=${prefix}
+
 	AC_ARG_WITH(usb, AC_HELP_STRING([--with-usb=DIR], [USB library is installed in DIR]), [
-		if (test "$withval" = "yes"); then
-			usb_prefix=${prefix}
-		else
+		if (test "$withval" != "yes"); then
 			usb_prefix=${withval}
 		fi
 	])
@@ -77,7 +77,7 @@ AC_DEFUN([AC_PATH_USB], [
 	test -d "${usb_prefix}/include" && USB_CFLAGS="$USB_CFLAGS -I${usb_prefix}/include"
 
 	CPPFLAGS="$CPPFLAGS $USB_CFLAGS"
-	AC_CHECK_HEADER(usb.h, usb_enable=yes, usb_enable=no)
+	AC_CHECK_HEADER(usb.h, usb_found=yes, usb_found=no)
 
 	USB_LIBS=""
 	if (test "${prefix}" = "${usb_prefix}"); then
@@ -88,7 +88,7 @@ AC_DEFUN([AC_PATH_USB], [
 	fi
 
 	LDFLAGS="$LDFLAGS $USB_LIBS"
-	AC_CHECK_LIB(usb, usb_open, USB_LIBS="$USB_LIBS -lusb", usb_enable=no)
+	AC_CHECK_LIB(usb, usb_open, USB_LIBS="$USB_LIBS -lusb", usb_found=no)
 
 	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS
@@ -98,13 +98,12 @@ AC_DEFUN([AC_PATH_USB], [
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
+	dbus_prefix=${prefix}
+
 	AC_ARG_WITH(dbus, AC_HELP_STRING([--with-dbus=DIR], [D-BUS library is installed in DIR]), [
-		if (test "${withval}" = "yes"); then
-			dbus_prefix=${prefix}
-		else
+		if (test "${withval}" != "yes"); then
 			dbus_prefix=${withval}
 		fi
-		dbus_enable=yes
 	])
 
 	ac_save_CPPFLAGS=$CPPFLAGS
@@ -120,7 +119,7 @@ AC_DEFUN([AC_PATH_DBUS], [
 	fi
 
 	CPPFLAGS="$CPPFLAGS $DBUS_CFLAGS"
-	AC_CHECK_HEADER(dbus/dbus.h,, dbus_enable=no)
+	AC_CHECK_HEADER(dbus/dbus.h, dbus_found=yes, dbus_found=no)
 
 	DBUS_LIBS=""
 	if (test "${prefix}" = "${dbus_prefix}"); then
@@ -131,21 +130,18 @@ AC_DEFUN([AC_PATH_DBUS], [
 	fi
 
 	LDFLAGS="$LDFLAGS $DBUS_LIBS"
-	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", dbus_enable=no)
+	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", dbus_found=no)
 
 	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS
 
 	AC_SUBST(DBUS_CFLAGS)
 	AC_SUBST(DBUS_LIBS)
-
-	AM_CONDITIONAL(DBUS, test "${dbus_enable}" = "yes")
 ])
 
 AC_DEFUN([AC_PATH_EXTRA], [
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options]), [
 		dbus_enable=${enableval}
-		dbus_prefix=${prefix}
 		test_enable=${enableval}
 		cups_enable=${enableval}
 		pcmcia_enable=${enableval}
@@ -155,7 +151,6 @@ AC_DEFUN([AC_PATH_EXTRA], [
 
 	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
 		dbus_enable=${enableval}
-		dbus_prefix=${prefix}
 	])
 		
 	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
@@ -178,9 +173,10 @@ AC_DEFUN([AC_PATH_EXTRA], [
 		bcm203x_enable=${enableval}
 	])
 
+	AM_CONDITIONAL(DBUS, test "${dbus_enable}" = "yes" && test "${dbus_found}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(PCMCIA, test "${pcmcia_enable}" = "yes")
-	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_enable}" = "yes")
-	AM_CONDITIONAL(BCM203X, test "${bcm203x_enable}" = "yes" && test "${usb_enable}" = "yes")
+	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
+	AM_CONDITIONAL(BCM203X, test "${bcm203x_enable}" = "yes" && test "${usb_found}" = "yes")
 ])
