@@ -363,6 +363,13 @@ typedef struct {
 } __attribute__ ((packed)) write_current_iac_lap_cp;
 #define WRITE_CURRENT_IAC_LAP_CP_SIZE 1+3*MAX_IAC_LAP
 
+#define OCF_WRITE_SUPERVISION_TIMEOUT	0x0037
+typedef struct {
+	uint16_t 	handle;
+	uint16_t	timeout;	/* in 0.625 ms units */
+} __attribute__ ((packed)) write_supervision_timeout_cp;
+#define WRITE_SUPERVISION_TIMEOUT_CP_SIZE 4
+
 /* Link Control */
 #define OGF_LINK_CTL	0x01 
 #define OCF_CREATE_CONN		0x0005
@@ -417,6 +424,20 @@ typedef struct {
 	bdaddr_t	bdaddr;
 } __attribute__ ((packed)) status_bdaddr_rp;
 #define STATUS_BDADDR_RP_SIZE 7
+
+#define OCF_INQUIRY_CANCEL	0x0002
+
+#define OCF_PERIODIC_INQUIRY	0x0003
+typedef struct {
+	uint16_t 	max_period;	/* 1.28s units */
+	uint16_t 	min_period;	/* 1.28s units */
+	uint8_t 	lap[3];
+	uint8_t 	length;		/* 1.28s units */
+	uint8_t		num_rsp;
+} __attribute__ ((packed)) periodic_inquiry_cp;
+#define PERIODIC_INQUIRY_CP_SIZE 9
+
+#define OCF_EXIT_PERIODIC_INQUIRY	0x0004
 
 #define OCF_LINK_KEY_REPLY	0x000B
 #define OCF_LINK_KEY_NEG_REPLY	0x000C
@@ -478,6 +499,24 @@ typedef struct {
 
 /* Link Policy */
 #define OGF_LINK_POLICY	 0x02   
+
+typedef struct {
+	uint8_t 	service_type;		/* 1 = best effort */
+	uint32_t	token_rate;		/* Byte per seconds */
+	uint32_t	peak_bandwidth;		/* Byte per seconds */
+	uint32_t	latency;		/* Microseconds */
+	uint32_t	delay_variation;	/* Microseconds */
+} __attribute__ ((packed)) hci_qos;
+#define HCI_QOS_CP_SIZE 17
+
+#define OCF_QOS_SETUP	0x0007
+typedef struct {
+	uint16_t 	handle;
+	uint8_t 	flags;			/* Reserved */
+	hci_qos 	qos;
+} __attribute__ ((packed)) qos_setup_cp;
+#define QOS_SETUP_CP_SIZE (3 + HCI_QOS_CP_SIZE)
+
 #define OCF_ROLE_DISCOVERY	0x0009
 typedef struct {
 	uint16_t	handle;
@@ -620,18 +659,18 @@ typedef struct {
 
 #define EVT_QOS_SETUP_COMPLETE 0x0D
 typedef struct {
-	uint8_t 	service_type;
-	uint32_t	token_rate;
-	uint32_t	peak_bandwidth;
-	uint32_t	latency;
-	uint32_t	delay_variation;
-} __attribute__ ((packed)) hci_qos;
-typedef struct {
 	uint8_t 	status;
 	uint16_t	handle;
+	uint8_t 	flags;			/* Reserved */
 	hci_qos 	qos;
 } __attribute__ ((packed)) evt_qos_setup_complete;
-#define EVT_QOS_SETUP_COMPLETE_SIZE 20
+#define EVT_QOS_SETUP_COMPLETE_SIZE (4 + HCI_QOS_CP_SIZE)
+
+#define EVT_QOS_VIOLATION	0x1E
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) evt_qos_violation;
+#define EVT_QOS_VIOLATION_SIZE 2
 
 #define EVT_CMD_COMPLETE 	0x0e
 typedef struct {
