@@ -84,8 +84,8 @@ static struct link_key *__get_link_key(int f, bdaddr_t *sba, bdaddr_t *dba)
 
 	while ((r = read_n(f, &k, sizeof(k)))) {
 		if (r < 0) {
-			syslog(LOG_ERR, "Link key database read failed. %s(%d)",
-					strerror(errno), errno);
+			syslog(LOG_ERR, "Link key database read failed: %s (%d)",
+							strerror(errno), errno);
 			break;
 		}
 
@@ -106,8 +106,8 @@ static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
 	if (f >= 0)
 		key = __get_link_key(f, sba, dba);
 	else if (errno != ENOENT)
-		syslog(LOG_ERR, "Link key database open failed. %s(%d)",
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Link key database open failed: %s (%d)",
+							strerror(errno), errno);
 	close(f);
 	return key;
 }
@@ -118,7 +118,7 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	char sa[18], da[18];
 
 	ba2str(sba, sa); ba2str(dba, da);
-	syslog(LOG_INFO, "link_key_request (sba=%s, dba=%s)\n", sa, da);
+	syslog(LOG_INFO, "link_key_request (sba=%s, dba=%s)", sa, da);
 
 	if (key) {
 		/* Link key found */
@@ -142,8 +142,8 @@ static void save_link_key(struct link_key *key)
 
 	f = open(hcid.key_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 	if (f < 0) {
-		syslog(LOG_ERR, "Link key database open failed. %s(%d)",
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Link key database open failed: %s (%d)",
+							strerror(errno), errno);
 		return;
 	}
 
@@ -159,14 +159,14 @@ static void save_link_key(struct link_key *key)
 		err = fcntl(f, F_SETFL, O_APPEND);
 
 	if (err < 0) {
-		syslog(LOG_ERR, "Link key database seek failed. %s(%d)",
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Link key database seek failed: %s (%d)",
+							strerror(errno), errno);
 		goto failed;
 	}
 	
 	if (write_n(f, key, sizeof(*key)) < 0) {
-		syslog(LOG_ERR, "Link key database write failed. %s(%d)",
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Link key database write failed: %s (%d)",
+							strerror(errno), errno);
 	}
 
 	ba2str(&key->sba, sa); ba2str(&key->dba, da);
@@ -184,7 +184,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	char sa[18];
 
 	ba2str(sba, sa);
-	syslog(LOG_INFO, "link_key_notify (sba=%s)\n", sa);
+	syslog(LOG_INFO, "link_key_notify (sba=%s)", sa);
 
 	memcpy(key.key, evt->link_key, 16);
 	bacpy(&key.sba, sba);
@@ -204,8 +204,8 @@ int read_pin_code(void)
 	int len;
 
 	if (!(f = fopen(hcid.pin_file, "r"))) {
-		syslog(LOG_ERR, "Can't open PIN file %s. %s(%d)",
-				hcid.pin_file, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't open PIN file %s: %s (%d)",
+					hcid.pin_file, strerror(errno), errno);
 		return -1;
 	}
 
@@ -215,8 +215,8 @@ int read_pin_code(void)
 		memcpy(hcid.pin_code, buf, len);
 		hcid.pin_len = len;
 	} else {
-		syslog(LOG_ERR, "Can't read PIN file %s. %s(%d)",
-				hcid.pin_file, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't read PIN file %s: %s (%d)",
+					hcid.pin_file, strerror(errno), errno);
 		len = -1;
 	}
 	fclose(f);
@@ -245,15 +245,15 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Can't fork PIN helper. %s(%d)",
-					strerror(errno), errno);
+			syslog(LOG_ERR, "Can't fork PIN helper: %s (%d)",
+							strerror(errno), errno);
 		default:
 			return;
 	}
 
 	if (access(hcid.pin_helper, R_OK | X_OK)) {
-		syslog(LOG_ERR, "Can't exec PIN helper %s. %s(%d)",
-				hcid.pin_helper, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't exec PIN helper %s: %s (%d)",
+					hcid.pin_helper, strerror(errno), errno);
 		goto reject;
 	}
 
@@ -273,7 +273,8 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 
 	pipe = popen(str, "r");
 	if (!pipe) {
-		syslog(LOG_ERR, "Can't exec PIN helper. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't exec PIN helper: %s (%d)",
+							strerror(errno), errno);
 		goto reject;
 	}
 
@@ -326,7 +327,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	char sa[18], da[18];
 
 	ba2str(sba, sa); ba2str(dba, da);
-	syslog(LOG_INFO, "pin_code_request (sba=%s, dba=%s)\n", sa, da);
+	syslog(LOG_INFO, "pin_code_request (sba=%s, dba=%s)", sa, da);
 
 	cr = malloc(sizeof(*cr) + sizeof(*ci));
 	if (!cr)
@@ -335,8 +336,8 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	bacpy(&cr->bdaddr, dba);
 	cr->type = ACL_LINK;
 	if (ioctl(dev, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		syslog(LOG_ERR, "Can't get conn info %s(%d)",
-					strerror(errno), errno);
+		syslog(LOG_ERR, "Can't get conn info: %s (%d)",
+							strerror(errno), errno);
 		goto reject;
 	}
 	ci = cr->conn_info;
@@ -465,8 +466,8 @@ void start_security_manager(int hdev)
 	syslog(LOG_INFO, "Starting security manager %d", hdev);
 
 	if ((dev = hci_open_dev(hdev)) < 0) {
-		syslog(LOG_ERR, "Can't open device hci%d. %s(%d)",
-				hdev, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't open device hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		return;
 	}
 
@@ -478,24 +479,24 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_LINK_KEY_NOTIFY, &flt);
 	hci_filter_set_event(EVT_REMOTE_NAME_REQ_COMPLETE, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
-		syslog(LOG_ERR, "Can't set filter on hci%d. %s(%d)", 
-				hdev, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set filter on hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		close(dev);
 		return;
 	}
 
 	di = malloc(sizeof(*di));
 	if (!di) {
-		syslog(LOG_ERR, "Can't allocate device info buffer. %s(%d)",
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Can't allocate device info buffer: %s (%d)",
+							strerror(errno), errno);
 		close(dev);
 		return;
 	}
 
 	di->dev_id = hdev;
 	if (ioctl(dev, HCIGETDEVINFO, (void *)di)) {
-		syslog(LOG_ERR, "Can't get device info. %s(%d)",
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Can't get device info: %s (%d)",
+							strerror(errno), errno);
 		close(dev);
 		return;
 	}

@@ -84,8 +84,8 @@ struct device_opts *alloc_device_opts(char *ref)
 
 	device = malloc(sizeof(struct device_list));
 	if (!device) {
-		syslog(LOG_INFO, "Can't allocate devlist opts buffer. %s(%d)",
-			strerror(errno), errno);
+		syslog(LOG_INFO, "Can't allocate devlist opts buffer: %s (%d)",
+							strerror(errno), errno);
 		exit(1);
 	}
 
@@ -168,8 +168,8 @@ static void configure_device(int hdev)
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Fork failed. Can't init device hci%d. %s(%d)\n",
-					hdev, strerror(errno), errno);
+			syslog(LOG_ERR, "Fork failed. Can't init device hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		default:
 			return;
 	}
@@ -177,7 +177,8 @@ static void configure_device(int hdev)
 	set_title("hci%d config", hdev);
 
 	if ((s = hci_open_dev(hdev)) < 0) {
-		syslog(LOG_ERR, "Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't open device hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
@@ -187,8 +188,8 @@ static void configure_device(int hdev)
 	/* Set scan mode */
 	dr.dev_opt = device_opts->scan;
 	if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
-		syslog(LOG_ERR, "Can't set scan mode on hci%d. %s(%d)\n",
-				hdev, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set scan mode on hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 	}
 
 	/* Set authentication */
@@ -198,8 +199,8 @@ static void configure_device(int hdev)
 		dr.dev_opt = AUTH_DISABLED;
 
 	if (ioctl(s, HCISETAUTH, (unsigned long) &dr) < 0) {
-		syslog(LOG_ERR, "Can't set auth on hci%d. %s(%d)\n",
-				hdev, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set auth on hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 	}
 
 	/* Set encryption */
@@ -209,8 +210,8 @@ static void configure_device(int hdev)
 		dr.dev_opt = ENCRYPT_DISABLED;
 
 	if (ioctl(s, HCISETENCRYPT, (unsigned long) &dr) < 0) {
-		syslog(LOG_ERR, "Can't set encrypt on hci%d. %s(%d)\n",
-				hdev, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set encrypt on hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 	}
 
 	/* Set device class */
@@ -247,8 +248,8 @@ static void init_device(int hdev)
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Fork failed. Can't init device hci%d. %s(%d)\n",
-					hdev, strerror(errno), errno);
+			syslog(LOG_ERR, "Fork failed. Can't init device hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		default:
 			return;
 	}
@@ -256,15 +257,15 @@ static void init_device(int hdev)
 	set_title("hci%d init", hdev);
 
 	if ((s = hci_open_dev(hdev)) < 0) {
-		syslog(LOG_ERR, "Can't open device hci%d. %s(%d)\n",
-					hdev, strerror(errno), errno);
+		syslog(LOG_ERR, "Can't open device hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
 	/* Start HCI device */
 	if (ioctl(s, HCIDEVUP, hdev) < 0 && errno != EALREADY) {
-		syslog(LOG_ERR, "Can't init device hci%d. %s(%d)\n", hdev, 
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Can't init device hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
@@ -275,8 +276,8 @@ static void init_device(int hdev)
 	if (device_opts->pkt_type) {
 		dr.dev_opt = device_opts->pkt_type;
 		if (ioctl(s, HCISETPTYPE, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set packet type on hci%d. %s(%d)\n",
-				hdev, strerror(errno), errno);
+			syslog(LOG_ERR, "Can't set packet type on hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		}
 	}
 
@@ -284,8 +285,8 @@ static void init_device(int hdev)
 	if (device_opts->link_mode) {
 		dr.dev_opt = device_opts->link_mode;
 		if (ioctl(s, HCISETLINKMODE, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set link mode on hci%d. %s(%d)\n",
-				hdev, strerror(errno), errno);
+			syslog(LOG_ERR, "Can't set link mode on hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		}
 	}
 
@@ -293,8 +294,8 @@ static void init_device(int hdev)
 	if (device_opts->link_policy) {
 		dr.dev_opt = device_opts->link_policy;
 		if (ioctl(s, HCISETLINKPOL, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set link policy on hci%d. %s(%d)\n",
-				hdev, strerror(errno), errno);
+			syslog(LOG_ERR, "Can't set link policy on hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
 		}
 	}
 
@@ -308,16 +309,16 @@ static void init_all_devices(int ctl)
 	int i;
 
 	if (!(dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t)))) {
-		syslog(LOG_INFO, "Can't allocate devlist buffer. %s(%d)", 
-			strerror(errno), errno);
+		syslog(LOG_INFO, "Can't allocate devlist buffer: %s (%d)",
+							strerror(errno), errno);
 		exit(1);
 	}
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
 	if (ioctl(ctl, HCIGETDEVLIST, (void *) dl) < 0) {
-		syslog(LOG_INFO, "Can't get device list. %s(%d)",
-			strerror(errno), errno);
+		syslog(LOG_INFO, "Can't get device list: %s (%d)",
+							strerror(errno), errno);
 		exit(1);
 	}
 
@@ -325,10 +326,12 @@ static void init_all_devices(int ctl)
 		if (hcid.auto_init)
 			init_device(dr->dev_id);
 
-		if (hcid.auto_init && hci_test_bit(HCI_UP, &dr->dev_opt))
+		if (hcid.auto_init && hci_test_bit(HCI_UP, &dr->dev_opt) &&
+					!hci_test_bit(HCI_RAW, &dr->dev_opt))
 			configure_device(dr->dev_id);
 
-		if (hcid.security && hci_test_bit(HCI_UP, &dr->dev_opt))
+		if (hcid.security && hci_test_bit(HCI_UP, &dr->dev_opt) &&
+					!hci_test_bit(HCI_RAW, &dr->dev_opt))
 			start_security_manager(dr->dev_id);
 	}
 
@@ -418,8 +421,8 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer dat
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
 
-		syslog(LOG_ERR, "Read from control socket failed. %s(%d)",
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Read from control socket failed: %s (%d)",
+							strerror(errno), errno);
 		g_main_quit(event_loop);
 		return FALSE;
 	}
@@ -527,7 +530,8 @@ int main(int argc, char *argv[], char *env[])
 
 	/* Create and bind HCI socket */
 	if ((hcid.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
-		syslog(LOG_ERR, "Can't open HCI socket. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)",
+							strerror(errno), errno);
 		exit(1);
 	}
 
@@ -536,14 +540,16 @@ int main(int argc, char *argv[], char *env[])
 	hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
 	hci_filter_set_event(EVT_STACK_INTERNAL, &flt);
 	if (setsockopt(hcid.sock, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
-		syslog(LOG_ERR, "Can't set filter. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set filter: %s (%d)",
+							strerror(errno), errno);
 		exit(1);
 	}
 
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = HCI_DEV_NONE;
 	if (bind(hcid.sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind HCI socket. %s(%d)\n", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't bind HCI socket: %s (%d)",
+							strerror(errno), errno);
 		exit(1);
 	}
 

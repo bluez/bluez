@@ -294,7 +294,7 @@ bool: K_YES { $$ = 1; } | K_NO  { $$ = 0; };
 
 int yyerror(char *s) 
 {
-	syslog(LOG_ERR, "%s line %d\n", s, lineno);
+	syslog(LOG_ERR, "%s line %d", s, lineno);
 	return 0;
 }
 
