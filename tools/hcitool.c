@@ -107,6 +107,55 @@ static int dev_info(int dev_id, long arg)
 	return 0;
 }
 
+static int rev_info(int dev_id, long arg)
+{
+	struct hci_version ver;
+	int dd;
+
+	struct hci_request rq;
+	unsigned char buf[102];
+
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		printf("Can't open device hci%d. %s(%d)\n", dev_id, strerror(errno), errno);
+		return -1;
+	}
+
+	if (hci_read_local_version(dd, &ver, 1000) < 0) {
+		printf("Can't read version info hci%d. %s(%d)\n",
+			dev_id, strerror(errno), errno);
+		return -1;
+	}
+
+	printf("hci%d:", dev_id);
+	switch (ver.manufacturer) {
+	case 0:
+		memset(&rq, 0, sizeof(rq));
+		rq.ogf = 0x3f;
+		rq.ocf = 0x000f;
+		rq.cparam = NULL;
+		rq.clen = 0;
+		rq.rparam = &buf;
+		rq.rlen = sizeof(buf);
+
+		if (hci_send_req(dd, &rq, 1000) < 0) {
+			printf("\n Can't read revision info. %s(%d)\n",
+				strerror(errno), errno);
+			return -1;
+		}
+
+		printf("%s\n", buf + 1);
+		break;
+	default:
+		printf("\n Manufacturer not supported\n");
+		break;
+	}
+	printf("\n");
+
+	return 0;
+}
+
 static int conn_list(int dev_id, long arg)
 {
 	struct hci_conn_list_req *cl;
@@ -207,6 +256,54 @@ static void cmd_inq(int dev_id, char **opt, int nopt)
 	free(info);
 }
 
+static void cmd_scan(int dev_id, char **opt, int nopt)
+{
+	inquiry_info *info;
+	int i, num_rsp = 0, length, flags;
+	bdaddr_t bdaddr;
+	int dd;
+	char name[248];
+
+	if (dev_id < 0)
+		dev_id = get_route(NULL);
+
+	if (nopt >= 1)
+		length = atoi(opt[0]);
+	else
+		length = 8; /* ~ 10 seconds */
+
+	flags = 0;
+	if (nopt >= 2)
+		flags |= !strncasecmp("f", opt[1], 1) ? IREQ_CACHE_FLUSH : 0;
+
+	printf("Scanning ...\n");
+	info = hci_inquiry(dev_id, length, &num_rsp, NULL, flags);
+
+	if (!info) {
+		perror("Inquiry failed.");
+		exit(1);
+	}
+
+	for (i = 0; i < num_rsp; i++) {
+		dd = hci_open_dev(dev_id);
+		memset(name, 0, sizeof(name));
+		if (hci_remote_name(dd, &(info+i)->bdaddr, sizeof(name), name, 100000) < 0)
+			strcpy(name, "n/a");
+		close(dd);
+		baswap(&bdaddr, &(info+i)->bdaddr);
+                printf("\t%s\t%s\n", batostr(&bdaddr), name);
+	}
+	free(info);
+}
+
+static void cmd_rev(int dev_id, char **opt, int nopt)
+{
+        if (dev_id < 0)
+                for_each_dev(HCI_UP, rev_info, 0);
+        else
+                rev_info(dev_id, 0);
+}
+
 static void cmd_con(int dev_id, char **opt, int nopt)
 {
 	printf("Connections:\n");
@@ -305,8 +402,10 @@ struct {
 	char *opt;
 	char *doc;
 } command[] = {
-	{ "dev",  cmd_dev,  0,          "Display local devices"      },
-	{ "inq",  cmd_inq,  "[lenght] [flush]", "Inquire remote devices"     },
+	{ "dev",  cmd_dev,  0,          "Display local devices"       },
+	{ "rev",  cmd_rev,  0,          "Display revison information" },
+	{ "inq",  cmd_inq,  "[length] [flush]", "Inquire remote devices"     },
+	{ "scan", cmd_scan, "[length] [flush]", "Scan for remote devices"     },
 	{ "con",  cmd_con,  0,          "Display active connections" },
 	{ "cc",   cmd_cc,   "<bdaddr> [pkt type] [role]", "Create connection to remote device" },
 	{ "dc",	  cmd_dc,   "<bdaddr>", "Disconnect from remote device" },
