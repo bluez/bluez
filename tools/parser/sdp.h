@@ -49,6 +49,9 @@
 #define SDP_UUID_WSP                                   0x000E
 #define SDP_UUID_BNEP                                  0x000F /* PAN */
 #define SDP_UUID_HIDP                                  0x0011 /* HID */
+#define SDP_UUID_HARDCOPY_CONTROL_CHANNEL              0x0012 /* HCRP */
+#define SDP_UUID_HARDCOPY_DATA_CHANNEL                 0x0014 /* HCRP */
+#define SDP_UUID_HARDCOPY_NOTIFICATION                 0x0016 /* HCRP */
 #define SDP_UUID_CMTP                                  0x001B /* CIP */
 #define SDP_UUID_L2CAP                                 0x0100
 

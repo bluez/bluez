@@ -66,6 +66,9 @@ Raw mode: do not display packet type, only data.
 .TP
 .BR -C ", " "\-\^\-cmtp"
 Sets the PSM value for the CAPI Message Transport Protocol
+.TP
+.BR -H ", " "\-\^\-hcrp"
+Sets the PSM value for the Hardcopy Data Channel
 .SH FILTERS
 .B
 filter
@@ -77,7 +80,8 @@ is a space-separated list of packet categories: available categories are
 .IR sdp ,
 .IR bnep ,
 .IR cmtp ,
-.IR hidp
+.IR hidp ,
+.IR hcrp
 and
 .IR capi .
 If filters are used, only packets belonging to the specified categories are

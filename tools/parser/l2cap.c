@@ -438,6 +438,13 @@ static void l2cap_parse(int level, struct frame *frm)
 					raw_dump(level + 1, frm);
 				break;
 
+			case SDP_UUID_HARDCOPY_CONTROL_CHANNEL:
+				if (!p_filter(FILT_HCRP))
+					hcrp_dump(level, frm);
+				else
+					raw_dump(level + 1, frm);
+				break;
+
 			default:
 				if (p_filter(FILT_L2CAP))
 					break;

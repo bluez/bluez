@@ -301,6 +301,7 @@ static struct {
 	{ "bnep",	FILT_BNEP	},
 	{ "cmtp",	FILT_CMTP	},
 	{ "hidp",	FILT_HIDP	},
+	{ "hcrp",	FILT_HCRP	},
 	{ "capi",	FILT_CAPI	},
 	{ 0 }
 };
@@ -333,6 +334,7 @@ static void usage(void)
 	"  -a, --ascii                Dump data in ascii\n"
 	"  -R, --raw                  Raw mode\n"
 	"  -C, --cmtp=psm             PSM for CMTP\n"
+	"  -H, --hcrp=psm             PSM for HCRP\n"
 	"  -?, --help                 Give this help list\n"
 	"      --usage                Give a short usage message\n"
 	);
@@ -349,6 +351,7 @@ static struct option main_options[] = {
 	{ "ascii",	0, 0, 'a' },
 	{ "raw",	0, 0, 'R' },
 	{ "cmtp",	1, 0, 'C' },
+	{ "hcrp",	1, 0, 'H' },
 	{ "help",	0, 0, 'h' },
 	{ 0 }
 };
@@ -401,6 +404,10 @@ int main(int argc, char *argv[])
 
 		case 'C': 
 			set_proto(0, atoi(optarg), SDP_UUID_CMTP);
+			break;
+
+		case 'H':
+			set_proto(0, atoi(optarg), SDP_UUID_HARDCOPY_CONTROL_CHANNEL);
 			break;
 
 		case 'h':
