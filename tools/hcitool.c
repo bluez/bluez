@@ -273,7 +273,9 @@ static struct option inq_options[] = {
 
 static char *inq_help = 
 	"Usage:\n"
-	"\tinq [--length=N] [--numrsp=N] [--flush]\n";
+	"\tinq [--length=N] maximum inquiry duration in 1.28 s units\n"
+        "\t    [--numrsp=N] specify maximum number of inquiry responses\n"
+        "\t    [--flush]    flush the inquiry cache\n";
 
 static void cmd_inq(int dev_id, int argc, char **argv)
 {
