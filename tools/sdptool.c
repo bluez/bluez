@@ -920,6 +920,20 @@ typedef struct {
 	unsigned int channel;
 } svc_info_t;
 
+static void add_lang_attr(sdp_record_t *r)
+{
+	sdp_lang_attr_t base_lang;
+	sdp_list_t *langs = 0;
+
+	/* UTF-8 MIBenum (http://www.iana.org/assignments/character-sets) */
+	base_lang.code_ISO639 = (0x65 << 8) | 0x6e;
+	base_lang.encoding = 106;
+	base_lang.base_offset = SDP_PRIMARY_LANG_BASE;
+	langs = sdp_list_append(0, &base_lang);
+	sdp_set_lang_attr(r, langs);
+	sdp_list_free(langs, 0);
+}
+
 static int add_sp(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_list_t *svclass_id, *apseq, *proto[2], *profiles, *root, *aproto;
@@ -961,7 +975,9 @@ static int add_sp(sdp_session_t *session, svc_info_t *si)
 	aproto = sdp_list_append(0, apseq);
 	sdp_set_access_protos(&record, aproto);
 
-	sdp_set_info_attr(&record, "Serial Port", 0, 0);
+	add_lang_attr(&record);
+
+	sdp_set_info_attr(&record, "Serial Port", 0, "COM Port");
 
 	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
