@@ -70,6 +70,10 @@ struct hidp_conninfo {
 	bdaddr_t bdaddr;
 	uint32_t flags;
 	uint16_t state;
+	uint16_t vendor;
+	uint16_t product;
+	uint16_t version;
+	char name[128];
 };
 
 struct hidp_connlist_req {
