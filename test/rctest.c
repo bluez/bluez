@@ -63,6 +63,7 @@ int omtu = 0;
 
 /* Default data size */
 long data_size = 127;
+long num_frames = -1;
 
 /* Default addr and channel */
 bdaddr_t bdaddr;
@@ -72,6 +73,7 @@ int master = 0;
 int auth = 0;
 int encrypt = 0;
 int socktype = SOCK_STREAM;
+int linger = 0;
 
 float tv2fl(struct timeval tv)
 {
@@ -86,6 +88,16 @@ int do_connect(char *svr)
 	if( (s = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM)) < 0 ) {
 		syslog(LOG_ERR, "Can't create socket. %s(%d)", strerror(errno), errno);
 		return -1;
+	}
+
+	/* Enable SO_LINGER */
+	if (linger) {
+		struct linger l = { .l_onoff = 1, .l_linger = linger };
+		if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+			syslog(LOG_ERR, "Can't enable SO_LINGER. %s(%d)",
+				strerror(errno), errno);
+			return -1;
+		}
 	}
 
 	memset(&loc_addr, 0, sizeof(loc_addr));
@@ -173,6 +185,16 @@ void do_listen( void (*handler)(int sk) )
 		baswap(&ba, &rem_addr.rc_bdaddr);
 		syslog(LOG_INFO, "Connect from %s \n", batostr(&ba));
 
+		/* Enable SO_LINGER */
+		if (linger) {
+			struct linger l = { .l_onoff = 1, .l_linger = linger };
+			if (setsockopt(s, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+				syslog(LOG_ERR, "Can't enable SO_LINGER. %s(%d)",
+					strerror(errno), errno);
+				exit(1);
+			}
+		}
+
 		handler(s1);
 
 		syslog(LOG_INFO, "Disconnect\n");
@@ -256,7 +278,7 @@ void send_mode(int s)
 		buf[i]=0x7f;
 
 	seq = 0;
-	while (1) {
+	while ((num_frames == -1) || (num_frames-- > 0)) {
 		*(uint32_t *) buf = htobl(seq++);
 		*(uint16_t *)(buf+4) = htobs(data_size);
 		
@@ -265,6 +287,12 @@ void send_mode(int s)
 			exit(1);
 		}
 	}
+
+	syslog(LOG_INFO, "Closing channel ...");
+	if (shutdown(s, SHUT_RDWR) < 0)
+		syslog(LOG_INFO, "Close failed. %m.");
+	else
+		syslog(LOG_INFO, "Done");
 }
 
 void reconnect_mode(char *svr)
@@ -310,6 +338,8 @@ void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-S bdaddr] [-P channel]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
+	       	"\t[-L seconds] enabled SO_LINGER option\n"
+	       	"\t[-N num] number of frames to send\n"
 		"\t[-E] request encryption\n"
 		"\t[-E] request encryption\n"
 	       	"\t[-M] become master\n");
@@ -325,7 +355,7 @@ int main(int argc ,char *argv[])
 
 	mode = RECV; need_addr = 0;
 	
-	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:MAE")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:MAEL:N:")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -394,6 +424,14 @@ int main(int argc ,char *argv[])
 
 		case 'E':
 			encrypt = 1;
+			break;
+
+		case 'L':
+			linger = atoi(optarg);
+			break;
+
+		case 'N':
+			num_frames = atoi(optarg);
 			break;
 
 		default:
