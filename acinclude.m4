@@ -98,11 +98,6 @@ AC_DEFUN([AC_PATH_USB], [
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
-	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
-		dbus_enable=${enableval}
-		dbus_prefix=${prefix}
-	])
-
 	AC_ARG_WITH(dbus, AC_HELP_STRING([--with-dbus=DIR], [D-BUS library is installed in DIR]), [
 		if (test "${withval}" = "yes"); then
 			dbus_prefix=${prefix}
@@ -148,6 +143,21 @@ AC_DEFUN([AC_PATH_DBUS], [
 ])
 
 AC_DEFUN([AC_PATH_EXTRA], [
+	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options]), [
+		dbus_enable=${enableval}
+		dbus_prefix=${prefix}
+		test_enable=${enableval}
+		cups_enable=${enableval}
+		pcmcia_enable=${enableval}
+		hid2hci_enable=${enableval}
+		bcm203x_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
+		dbus_enable=${enableval}
+		dbus_prefix=${prefix}
+	])
+		
 	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
 		test_enable=${enableval}
 	])
