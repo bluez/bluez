@@ -43,6 +43,8 @@
 
 #include <sys/socket.h>
 #include <sys/poll.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
@@ -61,6 +63,7 @@ static int  use_sdp = 1;
 static int  use_cache;
 static int  encrypt;
 static int  master;
+static int  cleanup;
 static int  search_duration = 10;
 
 static struct {
@@ -70,11 +73,13 @@ static struct {
 } cache;
 
 static char netdev[16] = "bnep%d";
-
+static char *pidfile = NULL;
 static bdaddr_t src_addr = *BDADDR_ANY;
 static int src_dev = -1;
 
 volatile int terminate;
+
+static void do_kill(char *dst);
 
 enum {
 	NONE,
@@ -276,8 +281,14 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 
 		run_devup(netdev, dst);
 
-		if (persist)
+		if (persist) {
 			w4_hup(sk);
+
+			if (terminate && cleanup) {
+				syslog(LOG_INFO, "Disconnecting from %s.", dst);
+				do_kill(dst);
+			}
+		}
 
 		r = 0;
 	} else {
@@ -386,6 +397,71 @@ void sig_term(int sig)
 	terminate = 1;
 }
 
+int write_pidfile(void)
+{
+	int fd;
+	FILE *f;
+	pid_t pid;
+
+	do { 
+		fd = open(pidfile, O_WRONLY|O_TRUNC|O_CREAT|O_EXCL, 0644);
+		if (fd == -1) {
+			/* Try to open the file for read. */
+			fd = open(pidfile, O_RDONLY);
+			if(fd == -1) {
+				syslog(LOG_ERR, "Could not read old pidfile: %s(%d)", strerror(errno), errno);
+				return -1;
+			}
+			
+			/* We're already running; send a SIGHUP (we presume that they
+			 * are calling ifup for a reason, so they probably want to
+			 * rescan) and then exit cleanly and let things go on in the
+			 * background.  Muck with the filename so that we don't go
+			 * deleting the pid file for the already-running instance.
+			 */
+			f = fdopen(fd, "r");
+			if (!f) {
+				syslog(LOG_ERR, "Could not fdopen old pidfile: %s(%d)", strerror(errno), errno);
+				close(fd);
+				return -1;
+			}
+
+			pid = 0;
+			fscanf(f, "%d", &pid);
+			fclose(f);
+
+			if (pid) {
+				/* Try to kill it. */
+				if (kill(pid, SIGHUP) == -1) {
+					/* No such pid; remove the bogus pid file. */
+					syslog(LOG_INFO, "Removing stale pidfile");
+					unlink(pidfile);
+					fd = -1;
+				} else {
+					/* Got it.  Don't mess with the pid file on
+					 * our way out. */
+					syslog(LOG_INFO, "Signalling existing process %d and exiting\n", pid);
+					pidfile = NULL;
+					return -1;
+				}
+			}
+		}
+	} while(fd == -1);
+
+	f = fdopen(fd, "w");
+	if (!f) {
+		syslog(LOG_ERR, "Could not fdopen new pidfile: %s(%d)", strerror(errno), errno);
+		close(fd);
+		unlink(pidfile);
+		return -1;
+	}
+	fprintf(f, "%d\n", getpid());
+	fclose(f);
+	return 0;
+}
+		
+
+
 static struct option main_lopts[] = {
 	{ "help",     0, 0, 'h' },
 	{ "listen",   0, 0, 's' },
@@ -405,10 +481,12 @@ static struct option main_lopts[] = {
 	{ "encrypt",  0, 0, 'E' },
 	{ "master",   0, 0, 'M' },
 	{ "cache",    0, 0, 'C' },
+	{ "pidfile",  1, 0, 'P' },
+	{ "autozap",  0, 0, 'z' },
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:i:S:lnp::DQ::EMC::";
+static char main_sopts[] = "hsc:k:Kr:i:S:lnp::DQ::EMC::P:z";
 
 static char main_help[] = 
 	"PAN daemon version " VERSION " \n"
@@ -418,6 +496,7 @@ static char main_help[] =
 	"\t--show --list -l          Show active PAN connections\n"
 	"\t--listen -s               Listen for PAN connections\n"
 	"\t--connect -c <bdaddr>     Create PAN connection\n"
+	"\t--autozap -z              Disconnect automatically on exit\n"
 	"\t--search -Q[duration]     Search and connect\n"
 	"\t--kill -k <bdaddr>        Kill PAN connection\n"
 	"\t--killall -K              Kill all PAN connections\n"
@@ -430,7 +509,8 @@ static char main_help[] =
 	"\t--master -M               Become the master of a piconet\n"
 	"\t--nodetach -n             Do not become a daemon\n"
 	"\t--persist -p[interval]    Persist mode\n"
-	"\t--cache -C[valid]         Cache addresses\n";
+	"\t--cache -C[valid]         Cache addresses\n"
+	"\t--pidfile -P <pidfile>    Create PID file\n";
 
 int main(int argc, char **argv)
 {
@@ -519,7 +599,15 @@ int main(int argc, char **argv)
 			else
 				use_cache = 2;
 			break;
-			
+
+		case 'P':
+			pidfile = strdup(optarg);
+			break;
+
+		case 'z':
+			cleanup = 1;
+			break;
+
 		case 'h':
 		default:
 			printf(main_help);
@@ -588,6 +676,9 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (pidfile && write_pidfile())
+		return -1;
+
 	if (dst) {
 		/* Disable cache invalidation */
 		use_cache = 0;
@@ -606,6 +697,9 @@ int main(int argc, char **argv)
 		do_listen();
 		break;
 	}
+
+	if (pidfile)
+		unlink(pidfile);
 
 	return 0;
 }
