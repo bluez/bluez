@@ -25,4 +25,4 @@ AC_PATH_BLUEZ
 
 AC_PATH_DBUS
 
-AC_OUTPUT(Makefile hcid/Makefile tools/Makefile rfcomm/Makefile sdpd/Makefile pand/Makefile test/Makefile scripts/Makefile pcmcia/Makefile)
+AC_OUTPUT(Makefile hcid/Makefile tools/Makefile rfcomm/Makefile sdpd/Makefile dund/Makefile pand/Makefile test/Makefile scripts/Makefile pcmcia/Makefile)
