@@ -148,7 +148,7 @@ def main(*args):
 	if dialog(title, mesg, pin) == DLG_OK:
 		pin["PIN"] = string.strip(pin["PIN"])
 
-		if len(pin["PIN"]) >= 4 and len(pin["PIN"]) <=16:
+		if len(pin["PIN"]) >= 1 and len(pin["PIN"]) <= 16:
 			print "PIN:" + pin["PIN"]
 		else:
 			print "ERR"
