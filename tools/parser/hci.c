@@ -290,7 +290,7 @@ static char *error_code_str[] = {
 	"Connection Accept Timeout Exceeded",
 	"Unsupported Feature or Parameter Value",
 	"Invalid HCI Command Parameters",
-	"Remote User Teminated Connection",
+	"Remote User Terminated Connection",
 	"Remote Device Terminated Connection due to Low Resources",
 	"Remote Device Terminated Connection due to Power Off",
 	"Connection Terminated by Local Host",
