@@ -37,7 +37,8 @@ struct frame {
 	int	in;
 	int	handle;
 	int	cid;
-	int 	channel;
+	int	num;
+	int	channel;
 	long	flags;
 	struct	timeval ts;
 };

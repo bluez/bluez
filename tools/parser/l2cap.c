@@ -60,6 +60,14 @@ static cid_info cid_table[2][CID_TABLE_SIZE];
 #define SCID cid_table[0]
 #define DCID cid_table[1]
 
+typedef struct {
+	uint16_t psm;
+	uint16_t num;
+} psm_info;
+#define PSM_TABLE_SIZE 20
+
+static psm_info psm_table[PSM_TABLE_SIZE];
+
 static struct frame *add_handle(uint16_t handle)
 {
 	register handle_info *t = handle_table;
@@ -96,12 +104,22 @@ static void add_cid(int in, uint16_t cid, uint16_t psm)
 			table[i].psm = psm;
 			break;
 		}
+
+	if (in)
+		return;
+
+	for (i = 0; i < PSM_TABLE_SIZE; i++)
+		if (!psm_table[i].psm || psm_table[i].psm == psm) {
+			psm_table[i].psm = psm;
+			psm_table[i].num++;
+			break;
+		}
 }
 
 static void del_cid(int in, uint16_t dcid, uint16_t scid)
 {
 	register int t, i;
-	uint16_t cid[2];
+	uint16_t cid[2], psm = 0;
 
 	if (!in) {
 		cid[0] = dcid;
@@ -114,10 +132,21 @@ static void del_cid(int in, uint16_t dcid, uint16_t scid)
 	for (t = 0; t < 2; t++) {
 		for (i = 0; i < CID_TABLE_SIZE; i++)
 			if (cid_table[t][i].cid == cid[t]) {
+				psm = cid_table[t][i].psm;
 				cid_table[t][i].cid = 0;
 				break;
 			}
 	}
+
+	for (i = 0; i < PSM_TABLE_SIZE; i++)
+		if (psm_table[i].psm == psm) {
+			if (psm_table[i].num < 2) {
+				psm_table[i].psm = 0;
+				psm_table[i].num = 0;
+			} else
+				psm_table[i].num--;
+			break;
+		}
 }
 
 static uint16_t get_psm(int in, uint16_t cid)
@@ -129,6 +158,17 @@ static uint16_t get_psm(int in, uint16_t cid)
 		if (table[i].cid == cid)
 			return table[i].psm;
 	return parser.defpsm;
+}
+
+static uint16_t get_num(uint16_t psm)
+{
+	register psm_info *table = psm_table;
+	register int i;
+
+	for (i = 0; i < PSM_TABLE_SIZE; i++)
+		if (table[i].psm == psm)
+			return table[i].num;
+	return 0;
 }
 
 static uint32_t get_val(uint8_t *ptr, uint8_t len)
@@ -433,6 +473,7 @@ static void l2cap_parse(int level, struct frame *frm)
 		uint32_t proto;
 
 		frm->cid = cid;
+		frm->num = get_num(psm);
 
 		if (!p_filter(FILT_L2CAP)) {
 			p_indent(level, frm);
@@ -544,6 +585,7 @@ void l2cap_dump(int level, struct frame *frm)
 		fr->ts  = frm->ts;
 		fr->handle  = frm->handle;
 		fr->cid     = frm->cid;
+		fr->num     = frm->num;
 		fr->channel = frm->channel;
 	} else {
 		if (!(fr = get_frame(frm->handle))) {
