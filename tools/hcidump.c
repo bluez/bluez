@@ -41,21 +41,20 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/l2cap.h>
 
+#include <pwd.h>
+#include <argp.h>
+    
 #include "parser.h"
 #include "hcidump.h"
 
 /* Default options */
-int snap_len = SNAP_LEN;
-int mode = DUMP;
+static int  device;
+static int  snap_len = SNAP_LEN;
+static int  mode  = DUMP;
+static long flags; 
+static char *dump_file;
 
-void usage(void)
-{
-	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
-	printf("Usage:\n");
-	printf("\thcidump <-i hciX> [-ah] [-w file] [-r file]\n");
-}
-
-void process_frames(int dev, int sock, int file)
+static void process_frames(int dev, int sock, int file)
 {
 	struct cmsghdr *cmsg;
 	struct msghdr msg;
@@ -124,7 +123,7 @@ void process_frames(int dev, int sock, int file)
 	}
 }
 
-void read_dump(int file)
+static void read_dump(int file)
 {
 	struct dump_hdr dh;
 	struct frame frm;
@@ -158,7 +157,7 @@ failed:
 	exit(1);
 }
 
-int open_file(char *file, int mode)
+static int open_file(char *file, int mode)
 {
 	int f, flags;
 
@@ -174,7 +173,7 @@ int open_file(char *file, int mode)
 	return f;
 }
 
-int open_socket(int dev)
+static int open_socket(int dev)
 {
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
@@ -212,66 +211,80 @@ int open_socket(int dev)
 	return s;
 }
 
-int main(int argc, char *argv[])
-{
-	extern int optind, opterr, optopt;
-	extern char *optarg;
-	int  dev, opt;
-	long flags;
-	char *file = NULL;
+const char *argp_program_version = "HCIDump "VERSION;
+const char *argp_program_bug_address = "<bluez-users@lists.sf.net>";
+     
+static struct argp_option options[] = {
+	{"device", 	'i', "hci_dev", 0, "HCI device", 0  },
+	{"snap-len", 	's', "len",  0, "Snap len (in bytes)", 1 },
+	{"save-dump",	'w', "file", 0, "Save dump to a file", 2 },
+	{"read-dump",	'r', "file", 0, "Read dump from a file", 2 },
+	{"hex", 	'h', 0,  0, "Dump data in hex", 3 },
+	{"ascii", 	'a', 0,  0, "Dump data in ascii", 3 },
+	{ 0 }
+};
 
-	dev = 0;
-	flags = 0;
-	
-	while ((opt=getopt(argc, argv,"i:s:haw:r:")) != EOF) {
-		switch(opt) {
+static error_t parse_opt(int key, char *arg, struct argp_state *state)
+{
+	switch (key) {
 		case 'i':
-			dev = atoi(optarg+3);
+			device = atoi(arg+3);
 			break;
 
 		case 'h':
 			flags |= DUMP_HEX;
 			break;
 
-		case 'a':
+		case 'a': 
 			flags |= DUMP_ASCII;
 			break;
 
-		case 's':
-			snap_len = atoi(optarg);
-			break;
-
-		case 'w':
-			mode = WRITE;
-			file = strdup(optarg);
+		case 's': 
+			snap_len = atoi(arg);
 			break;
 
 		case 'r':
 			mode = READ;
-			file = strdup(optarg);
+			dump_file = strdup(arg);
 			break;
 
+		case 'w':
+			mode = WRITE;
+			dump_file = strdup(arg);
+			break;
+		
 		default:
-			usage();
-			exit(1);
-		}
+			return ARGP_ERR_UNKNOWN;
 	}
+	return 0;
+}
+     
+static struct argp parser = { 
+	options, 
+	parse_opt, 
+	"",
+	"HCIDump - HCI packet analyzer ver " VERSION
+};
 
+int main(int argc, char *argv[])
+{
+	argp_parse(&parser, argc, argv, 0, NULL, NULL);
+	
 	printf("HCIDump - HCI packet analyzer ver %s.\n", VERSION);
 
 	switch (mode) {
 	case DUMP:
 		init_parser(flags);
-		process_frames(dev, open_socket(dev), -1);
+		process_frames(device, open_socket(device), -1);
 		break;
 
 	case WRITE:
-		process_frames(dev, open_socket(dev), open_file(file, mode));
+		process_frames(device, open_socket(device), open_file(dump_file, mode));
 		break;
 
 	case READ:
 		init_parser(flags);
-		read_dump(open_file(file, mode));
+		read_dump(open_file(dump_file, mode));
 		break;
 	}
 	return 0;
