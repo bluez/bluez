@@ -1,3 +1,20 @@
+ver 2.11:
+	Various cleanups to avoid inclusion of kernel headers.
+	Fix output when the CUPS backend is called without arguments.
+	Fix problems with a 64 bit userland.
+	Use Bluetooth library functions if available.
+	Use standard numbering scheme of SDP record handles.
+	Add a master option to the hidd.
+	Add support for changing the link key of a connection.
+	Add support for requesting encryption on keyboards.
+	Add support for revision information of Digianswer devices.
+	Add support for the Zoom, IBM and TDK PCMCIA cards.
+	Add checks for the OpenOBEX and the ALSA libraries.
+	Add experimental mRouter support.
+
+	Note:
+	This version needs at least bluez-libs-2.11
+
 ver 2.10:
 	Use a define for the configuration directory.
 	Fix string initialization for flags translation.
