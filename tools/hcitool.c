@@ -252,7 +252,7 @@ static void cmd_cc(int dev_id, char **opt, int nopt)
 	else
 		role = 0;
 	
-	hci_create_connection(dd, &bdaddr, ptype, role, 0, &handle, 1000);
+	hci_create_connection(dd, &bdaddr, ptype, 0, role, &handle, 1000);
 
 	hci_close_dev(dd);
 }
