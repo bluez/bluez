@@ -796,54 +796,58 @@ static int st(int fd, struct uart_t *u, struct termios *ti)
 }
 
 struct uart_t uart[] = {
-	{ "any",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
-	{ "ericsson", 0x0000, 0x0000, HCI_UART_H4,   57600,  115200, FLOW_CTL, ericsson },
-	{ "digi",     0x0000, 0x0000, HCI_UART_H4,   9600,   115200, FLOW_CTL, digi },
-	{ "texas",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, texas},
+	{ "any",        0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL     },
+	{ "ericsson",   0x0000, 0x0000, HCI_UART_H4,   57600,  115200, FLOW_CTL, ericsson },
+	{ "digi",       0x0000, 0x0000, HCI_UART_H4,   9600,   115200, FLOW_CTL, digi     },
+	{ "texas",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, texas    },
 
-	{ "bcsp",     0x0000, 0x0000, HCI_UART_BCSP, 115200, 115200, 0,        bcsp },
+	{ "bcsp",       0x0000, 0x0000, HCI_UART_BCSP, 115200, 115200, 0,        bcsp     },
 
 	/* Xircom PCMCIA cards: Credit Card Adapter and Real Port Adapter */
-	{ "xircom",   0x0105, 0x080a, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
+	{ "xircom",     0x0105, 0x080a, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL     },
 
 	/* CSR Casira serial adapter or BrainBoxes serial dongle (BL642) */
-	{ "csr",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, csr },
+	{ "csr",        0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, csr      },
 
 	/* BrainBoxes PCMCIA card (BL620) */
-	{ "bboxes",   0x0160, 0x0002, HCI_UART_H4,   115200, 460800, FLOW_CTL, csr },
+	{ "bboxes",     0x0160, 0x0002, HCI_UART_H4,   115200, 460800, FLOW_CTL, csr      },
 
 	/* Silicon Wave kits */
-	{ "swave",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, swave },
+	{ "swave",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, swave    },
 
 	/* ST Microelectronics minikits based on STLC2410/STLC2415 */
-	{ "st",       0x0000, 0x0000, HCI_UART_H4,    57600, 115200, FLOW_CTL, st },
+	{ "st",         0x0000, 0x0000, HCI_UART_H4,    57600, 115200, FLOW_CTL, st       },
 
 	/* Sphinx Electronics PICO Card */
-	{ "picocard", 0x025e, 0x1000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
+	{ "picocard",   0x025e, 0x1000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL     },
 
 	/* Inventel BlueBird Module */
-	{ "inventel", 0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
+	{ "inventel",   0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL     },
 
 	/* COM One Platinium Bluetooth PC Card */
-	{ "comone",   0xffff, 0x0101, HCI_UART_BCSP, 115200, 115200, 0,        bcsp },
+	{ "comone",     0xffff, 0x0101, HCI_UART_BCSP, 115200, 115200, 0,        bcsp     },
 
 	/* TDK Bluetooth PC Card and IBM Bluetooth PC Card II */
-	{ "tdk",      0x0105, 0x4254, HCI_UART_BCSP, 115200, 115200, 0,        bcsp },
+	{ "tdk",        0x0105, 0x4254, HCI_UART_BCSP, 115200, 115200, 0,        bcsp     },
 
 	/* Socket Bluetooth CF Card (Rev G) */
-	{ "socket",   0x0104, 0x0096, HCI_UART_BCSP, 230400, 230400, 0,        bcsp },
+	{ "socket",     0x0104, 0x0096, HCI_UART_BCSP, 230400, 230400, 0,        bcsp     },
 
 	/* 3Com Bluetooth Card (Version 3.0) */
-	{ "3com",     0x0101, 0x0041, HCI_UART_H4,   115200, 115200, FLOW_CTL, csr  },
+	{ "3com",       0x0101, 0x0041, HCI_UART_H4,   115200, 115200, FLOW_CTL, csr      },
 
 	/* AmbiCom BT2000C Bluetooth PC/CF Card */
-	{ "bt2000c",  0x022d, 0x2000, HCI_UART_H4,    57600, 460800, FLOW_CTL, csr  },
+	{ "bt2000c",    0x022d, 0x2000, HCI_UART_H4,    57600, 460800, FLOW_CTL, csr      },
 
 	/* Zoom Bluetooth PCMCIA Card */
-	{ "zoom",     0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        bcsp  },
+	{ "zoom",       0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        bcsp     },
 
 	/* Sitecom CN-504 PCMCIA Card */
-	{ "sitecom",  0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        bcsp  },
+	{ "sitecom",    0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        bcsp     },
+
+	/* Billionton PCBTC1 PCMCIA Card */
+	{ "billionton", 0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        bcsp     },
+
 	{ NULL, 0 }
 };
 
