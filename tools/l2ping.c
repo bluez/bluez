@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -33,37 +33,32 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <syslog.h>
-#include <string.h>
 #include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <getopt.h>
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
 
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <resolv.h>
-#include <netdb.h>
-
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 
 /* Defaults */
-bdaddr_t bdaddr;
-int size    = 20;
-int ident   = 200;
-int delay   = 1;
-int count   = -1;
-int timeout = 10;
+static bdaddr_t bdaddr;
+static int size    = 20;
+static int ident   = 200;
+static int delay   = 1;
+static int count   = -1;
+static int timeout = 10;
 
 /* Stats */
-int sent_pkt = 0, recv_pkt = 0;
+static int sent_pkt = 0;
+static int recv_pkt = 0;
 
 static float tv2fl(struct timeval tv)
 {
@@ -79,53 +74,77 @@ static void stat(int sig)
 
 static void ping(char *svr)
 {
-	struct sockaddr_l2 addr;
 	struct sigaction sa;
-	char buf[2048];
+	struct sockaddr_l2 addr;
+	socklen_t optlen;
+	unsigned char *buf;
 	char str[18];
-	int s, i, opt, lost;
+	int i, sk, lost;
 	uint8_t id;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = stat;
 	sigaction(SIGINT, &sa, NULL);
 
-	if ((s = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP)) < 0) {
-		perror("Can't create socket.");
+	buf = malloc(L2CAP_CMD_HDR_SIZE + size);
+	if (!buf) {
+		perror("Can't allocate buffer");
 		exit(1);
 	}
 
+	/* Create socket */
+	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
+	if (sk < 0) {
+		perror("Can't create socket");
+		free(buf);
+		exit(1);
+	}
+
+	/* Bind to local address */
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
-	addr.l2_bdaddr = bdaddr;
-	if (bind(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		perror("Can't bind socket.");
+	bacpy(&addr.l2_bdaddr, &bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Can't bind socket");
+		close(sk);
+		free(buf);
 		exit(1);
 	}
 
+	/* Connect to remote device */
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
 	str2ba(svr, &addr.l2_bdaddr);
-	if (connect(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		perror("Can't connect.");
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Can't connect");
+		close(sk);
+		free(buf);
 		exit(1);
 	}
 
 	/* Get local address */
-	opt = sizeof(addr);
-	if (getsockname(s, (struct sockaddr *)&addr, &opt) < 0) {
-		perror("Can't get local address.");
+	memset(&addr, 0, sizeof(addr));
+	optlen = sizeof(addr);
+
+	if (getsockname(sk, (struct sockaddr *) &addr, &optlen) < 0) {
+		perror("Can't get local address");
+		close(sk);
+		free(buf);
 		exit(1);
 	}
-	ba2str(&addr.l2_bdaddr, str);
 
+	ba2str(&addr.l2_bdaddr, str);
 	printf("Ping: %s from %s (data size %d) ...\n", svr, str, size);
 
 	/* Initialize buffer */
-	for (i = L2CAP_CMD_HDR_SIZE; i < sizeof(buf); i++)
-		buf[i] = (i % 40) + 'A';
+	for (i = 0; i < size; i++)
+		buf[L2CAP_CMD_HDR_SIZE + i] = (i % 40) + 'A';
 
 	id = ident;
 
-	while( count == -1 || count-- > 0 ){
+	while (count == -1 || count-- > 0) {
 		struct timeval tv_send, tv_recv, tv_diff;
 		l2cap_cmd_hdr *cmd = (l2cap_cmd_hdr *) buf;
 
@@ -137,7 +156,7 @@ static void ping(char *svr)
 		gettimeofday(&tv_send, NULL);
 
 		/* Send Echo Request */
-		if (send(s, buf, size + L2CAP_CMD_HDR_SIZE, 0) <= 0) {
+		if (send(sk, buf, L2CAP_CMD_HDR_SIZE + size, 0) <= 0) {
 			perror("Send failed");
 			exit(1);
 		}
@@ -146,9 +165,11 @@ static void ping(char *svr)
 		lost = 0;
 		while (1) {
 			struct pollfd pf[1];
-			register int err;
+			int err;
 
-			pf[0].fd = s; pf[0].events = POLLIN;
+			pf[0].fd = sk;
+			pf[0].events = POLLIN;
+
 			if ((err = poll(pf, 1, timeout * 1000)) < 0) {
 				perror("Poll failed");
 				exit(1);
@@ -159,7 +180,7 @@ static void ping(char *svr)
 				break;
 			}
 
-			if ((err = recv(s, buf, sizeof(buf), 0)) < 0) {
+			if ((err = recv(sk, buf, L2CAP_CMD_HDR_SIZE + size, 0)) < 0) {
 				perror("Recv failed");
 				exit(1);
 			}
@@ -210,21 +231,25 @@ static void usage(void)
 {
 	printf("l2ping - L2CAP ping\n");
 	printf("Usage:\n");
-	printf("\tl2ping [-S source addr] [-s size] [-c count] [-t timeout] [-f] <bd_addr>\n");
+	printf("\tl2ping [-i device] [-s size] [-c count] [-t timeout] [-f] <bdaddr>\n");
 }
-
-extern int optind,opterr,optopt;
-extern char *optarg;
 
 int main(int argc, char *argv[])
 {
-	register int opt;
+	int opt;
 
 	/* Default options */
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"s:c:t:fS:")) != EOF) {
+	while ((opt=getopt(argc,argv,"i:s:c:t:f")) != EOF) {
 		switch(opt) {
+		case 'i':
+			if (!strncasecmp(optarg, "hci", 3))
+				hci_devba(atoi(optarg + 3), &bdaddr);
+			else
+				str2ba(optarg, &bdaddr);
+			break;
+
 		case 'f':
 			/* Kinda flood ping */
 			delay = 0;
@@ -240,10 +265,6 @@ int main(int argc, char *argv[])
 
 		case 's':
 			size = atoi(optarg);
-			break;
-
-		case 'S':
-			str2ba(optarg, &bdaddr);
 			break;
 
 		default:
