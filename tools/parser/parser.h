@@ -29,6 +29,8 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include <netinet/in.h>
+
 struct frame {
 	void	*data;
 	int	data_len;
