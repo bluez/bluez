@@ -121,7 +121,7 @@ int bt_error(uint16_t code)
 		return EHOSTDOWN;
 	case HCI_AUTHENTICATION_FAILURE:
 		return EACCES;
-	case HCI_KEY_MISSING:
+	case HCI_PIN_OR_KEY_MISSING:
 		return EINVAL;
 	case HCI_MEMORY_FULL:
 		return ENOMEM;
