@@ -279,6 +279,8 @@ char *bt_compidtostr(int compid)
 		return "Eclipse (HQ Espana) S.L.";
 	case 54:
 		return "Renesas Technology Corp.";
+	case 55:
+		return "Mobilian Corporation";
 	case 65535:
 		return "internal use";
 	default:
