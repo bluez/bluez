@@ -32,12 +32,14 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include <termios.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <asm/types.h>
+#include <netinet/in.h>
 
 #include <bluetooth.h>
 #include <hci.h>
@@ -47,6 +49,8 @@ extern int optind,opterr,optopt;
 extern char *optarg;
 
 static int ctl;
+
+static void usage(void);
 
 static int for_each_dev(int flag, int(*func)(int d, long arg), long arg)
 {
@@ -213,6 +217,23 @@ static int find_conn(int dev_id, long arg)
 	return 0;
 }
 
+static void hex_dump(char *pref, int width, unsigned char *buf, int len)
+{
+	register int i,n;
+
+	for (i=0, n=1; i<len; i++, n++) {
+		if (n == 1)
+			printf("%s", pref);
+		printf("%2.2X ", buf[i]);
+		if (n == width) {
+			printf("\n");
+			n = 0;
+		}
+	}
+	if (i && n!=1)
+		printf("\n");
+}
+
 static void cmd_dev(int dev_id, char **opt, int nopt)
 {
 	printf("Devices:\n");
@@ -354,6 +375,75 @@ static void cmd_info(int dev_id, char **opt, int nopt)
 
 }
 
+static void cmd_cmd(int dev_id, char **opt, int nopt)
+{
+	char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
+	struct hci_filter flt;
+	hci_event_hdr *hdr;
+	uint16_t ocf;
+	uint8_t  ogf;
+	int i, len, dd;
+
+	if (nopt < 2) {
+		usage();
+		return;
+	}
+
+	if (dev_id < 0)
+		dev_id = get_route(NULL);
+
+	errno = 0;
+	ogf = strtol(opt[0], NULL, 16);
+	ocf = strtol(opt[1], NULL, 16);
+	if (errno == ERANGE || (ogf > 0x3f) || (htobs(ocf) > 0x3ff)) {
+		usage();
+		return;
+	}
+
+	for (i = 2, len = 0; i < nopt && len < sizeof(buf); i++, len++)
+		*ptr++ = (uint8_t) strtol(opt[i], NULL, 16);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Device open failed");
+		exit(EXIT_FAILURE);
+	}
+
+	/* Setup filter */
+	hci_filter_clear(&flt);
+	hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
+	hci_filter_all_events(&flt);
+	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
+		perror("HCI filter setup failed");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("< HCI Command: OGF 0x%02x, OCF 0x%04x, plen %d\n", ogf, ocf, len);
+	hex_dump("  ", 20, buf, len);
+	fflush(stdout);
+
+	if (hci_send_cmd(dd, ogf, ocf, len, buf) < 0) {
+		perror("Send failed");
+		exit(EXIT_FAILURE);
+	}
+
+	len = read(dd, buf, sizeof(buf));
+	if (len < 0) {
+		perror("Read failed");
+		exit(EXIT_FAILURE);
+	}
+
+	hdr = (void *)(buf + 1);
+	ptr = buf + (1 + HCI_EVENT_HDR_SIZE);
+	len -= (1 + HCI_EVENT_HDR_SIZE);
+
+	printf("> HCI Event: 0x%02x plen %d:\n", hdr->evt, hdr->plen);
+	hex_dump("  ", 20, ptr, len);
+	fflush(stdout);
+
+	return;
+}
+
 static void cmd_rev(int dev_id, char **opt, int nopt)
 {
         if (dev_id < 0)
@@ -465,6 +555,7 @@ struct {
 	{ "inq",  cmd_inq,  "[length] [flush]",           "Inquire remote devices"             },
 	{ "scan", cmd_scan, "[length] [flush]",           "Scan for remote devices"            },
 	{ "info", cmd_info, "<bdaddr>",                   "Get information from remote device" },
+	{ "cmd",  cmd_cmd,  "<OGF> <OCF> [param]",        "Submit arbitrary HCI commands"      },
 	{ "con",  cmd_con,  0,                            "Display active connections"         },
 	{ "cc",   cmd_cc,   "<bdaddr> [pkt type] [role]", "Create connection to remote device" },
 	{ "dc",	  cmd_dc,   "<bdaddr>",                   "Disconnect from remote device"      },
