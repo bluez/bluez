@@ -73,4 +73,4 @@ fi
 
 AM_CONDITIONAL(ENABLE_DBUS, test x$BLUEZ_DBUS = xyes)
 
-AC_OUTPUT(Makefile hcid/Makefile tools/Makefile rfcomm/Makefile test/Makefile scripts/Makefile pcmcia/Makefile)
+AC_OUTPUT(Makefile hcid/Makefile tools/Makefile rfcomm/Makefile sdpd/Makefile test/Makefile scripts/Makefile pcmcia/Makefile)
