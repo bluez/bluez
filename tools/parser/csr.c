@@ -90,15 +90,34 @@ static char *frag2str(uint8_t frag)
 
 void csr_dump(int level, struct frame *frm)
 {
-	uint8_t desc, cid;
+	uint8_t desc, cid, type;
 
 	desc = get_u8(frm);
 
 	cid = desc & 0x3f;
 
-	p_indent(level, frm);
+	if (cid == 20) {
+		type = get_u8(frm);
 
-	printf("CSR: %s (channel %d)%s\n", cid2str(cid), cid, frag2str(desc));
+		if (!p_filter(FILT_LMP)) {
+			switch (type) {
+			case 0x10:
+				frm->master = 1;
+				lmp_dump(level, frm);
+				return;
+			case 0x0f:
+				frm->master = 0;
+				lmp_dump(level, frm);
+				return;
+			}
+		}
+
+		p_indent(level, frm);
+		printf("CSR: type 0x%2.2x\n", type);
+	} else {
+		p_indent(level, frm);
+		printf("CSR: %s (channel %d)%s", cid2str(cid), cid, frag2str(desc));
+	}
 
 	raw_dump(level, frm);
 }
