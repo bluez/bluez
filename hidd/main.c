@@ -409,6 +409,7 @@ static void usage(void)
 		"\t--server             Start HID server\n"
 		"\t--search             Search for HID devices\n"
 		"\t--connect <bdaddr>   Connect remote HID device\n"
+		"\t--unplug <bdaddr>    Unplug the HID connection\n"
 		"\t--kill <bdaddr>      Terminate HID connection\n"
 		"\t--killall            Terminate all connections\n"
 		"\t--show               List current HID connections\n"
@@ -432,6 +433,7 @@ static struct option main_options[] = {
 	{ "release",	1, 0, 'k' },
 	{ "kill",	1, 0, 'k' },
 	{ "killall",	0, 0, 'K' },
+	{ "unplug",	1, 0, 'u' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -439,6 +441,7 @@ int main(int argc, char *argv[])
 {
 	struct sigaction sa;
 	bdaddr_t bdaddr, dev;
+	uint32_t flags = 0;
 	char addr[18];
 	int log_option = LOG_NDELAY | LOG_PID;
 	int opt, fd, ctl, csk, isk;
@@ -446,7 +449,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:nt:ldsc:k:Kh", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:nt:ldsc:k:Ku:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (!strncasecmp(optarg, "hci", 3))
@@ -479,6 +482,11 @@ int main(int argc, char *argv[])
 			break;
 		case 'K':
 			bacpy(&dev, BDADDR_ALL);
+			mode = 4;
+			break;
+		case 'u':
+			str2ba(optarg, &dev);
+			flags = (1 << HIDP_VIRTUAL_CABLE_UNPLUG);
 			mode = 4;
 			break;
 		case 'h':
@@ -526,7 +534,7 @@ int main(int argc, char *argv[])
 		exit(0);
 
 	case 4:
-		do_kill(ctl, &dev, 0);
+		do_kill(ctl, &dev, flags);
 		close(ctl);
 		exit(0);
 
