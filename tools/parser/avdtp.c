@@ -94,9 +94,334 @@ static char *mt2str(uint8_t hdr)
 	}
 }
 
+static char *media2str(uint8_t type)
+{
+	switch (type) {
+	case 0:
+		return "Audio";
+	case 1:
+		return "Video";
+	case 2:
+		return "Multimedia";
+	default:
+		return "Reserved";
+	}
+}
+
+static char *codec2str(uint8_t type, uint8_t codec)
+{
+	switch (type) {
+	case 0:
+		switch (codec) {
+		case 0:
+			return "SBC";
+		case 1:
+			return "MPEG-1,2 Audio";
+		case 2:
+			return "MPEG-2,4 AAC";
+		case 4:
+			return "ATRAC family";
+		case 255:
+			return "non-A2DP";
+		default:
+			return "Reserved";
+		}
+		break;
+	case 1:
+		switch (codec) {
+		case 1:
+			return "H.263 baseline";
+		case 2:
+			return "MPEG-4 Visual Simple Profile";
+		case 3:
+			return "H.263 profile 3";
+		case 4:
+			return "H.263 profile 8";
+		case 255:
+			return "Non-VDP";
+		default:
+			return "Reserved";
+		}
+		break;
+	default:
+		return "Unknown";
+	}
+}
+
+static char *cat2str(uint8_t cat)
+{
+	switch (cat) {
+	case 1:
+		return "Media Transport";
+	case 2:
+		return "Reporting";
+	case 3:
+		return "Recovery";
+	case 4:
+		return "Content Protection";
+	case 5:
+		return "Header Compression";
+	case 6:
+		return "Multiplexing";
+	case 7:
+		return "Media Codec";
+	default:
+		return "Reserved";
+	}
+}
+
+static void errorcode(int level, struct frame *frm)
+{
+	uint8_t code;
+
+	p_indent(level, frm);
+	code = get_u8(frm);
+	printf("Error code %d\n", code);
+}
+
+static void acp_seid(int level, struct frame *frm)
+{
+	uint8_t seid;
+
+	p_indent(level, frm);
+	seid = get_u8(frm);
+	printf("ACP SEID %d\n", seid >> 2);
+}
+
+static void acp_int_seid(int level, struct frame *frm)
+{
+	uint8_t acp_seid, int_seid;
+
+	p_indent(level, frm);
+	acp_seid = get_u8(frm);
+	int_seid = get_u8(frm);
+	printf("ACP SEID %d - INT SEID %d\n", acp_seid >> 2, int_seid >> 2);
+}
+
+static void capabilities(int level, struct frame *frm)
+{
+	uint8_t cat, len;
+
+	while (frm->len > 1) {
+		p_indent(level, frm);
+		cat = get_u8(frm);
+		len = get_u8(frm);
+
+		if (cat == 7) {
+			uint8_t type, codec, tmp;
+
+			type  = get_u8(frm);
+			codec = get_u8(frm);
+
+			printf("%s - %s\n", cat2str(cat), codec2str(type, codec));
+
+			switch (codec) {
+			case 0:
+				tmp = get_u8(frm);
+				p_indent(level + 1, frm);
+				if (tmp & 0x80)
+					printf("16kHz ");
+				if (tmp & 0x40)
+					printf("32kHz ");
+				if (tmp & 0x20)
+					printf("44.1kHz ");
+				if (tmp & 0x10)
+					printf("48kHz ");
+				printf("\n");
+				p_indent(level + 1, frm);
+				if (tmp & 0x08)
+					printf("Mono ");
+				if (tmp & 0x04)
+					printf("DualChannel ");
+				if (tmp & 0x02)
+					printf("Stereo ");
+				if (tmp & 0x01)
+					printf("JointStereo ");
+				printf("\n");
+				tmp = get_u8(frm);
+				p_indent(level + 1, frm);
+				if (tmp & 0x80)
+					printf("4 ");
+				if (tmp & 0x40)
+					printf("8 ");
+				if (tmp & 0x20)
+					printf("12 ");
+				if (tmp & 0x10)
+					printf("16 ");
+				printf("Blocks\n");
+				p_indent(level + 1, frm);
+				if (tmp & 0x08)
+					printf("4 ");
+				if (tmp & 0x04)
+					printf("8 ");
+				printf("Subbands\n");
+				p_indent(level + 1, frm);
+				if (tmp & 0x02)
+					printf("SNR ");
+				if (tmp & 0x01)
+					printf("Loudness ");
+				printf("\n");
+				tmp = get_u8(frm);
+				p_indent(level + 1, frm);
+				printf("Bitpool Range %d-%d\n", tmp, get_u8(frm));
+				break;
+			default:
+				hex_dump(level + 1, frm, len - 2);
+				frm->ptr += (len - 2);
+				frm->len -= (len - 2);
+				break;
+			}
+		} else {
+			printf("%s\n", cat2str(cat));
+			hex_dump(level + 1, frm, len);
+
+			frm->ptr += len;
+			frm->len -= len;
+		}
+	}
+}
+
+static inline void discover(int level, uint8_t hdr, struct frame *frm)
+{
+	uint8_t seid, type;
+
+	switch (hdr & 0x03) {
+	case 0x02:
+		while (frm->len > 1) {
+			p_indent(level, frm);
+			seid = get_u8(frm);
+			type = get_u8(frm);
+			printf("ACP SEID %d - %s %s%s\n",
+				seid >> 2, media2str(type >> 4),
+				type & 0x08 ? "Sink" : "Source",
+				seid & 0x02 ? " (InUse)" : "");
+		}
+		break;
+	case 0x03:
+		errorcode(level, frm);
+		break;
+	}
+}
+
+static inline void get_capabilities(int level, uint8_t hdr, struct frame *frm)
+{
+	switch (hdr & 0x03) {
+	case 0x00:
+		acp_seid(level, frm);
+		break;
+	case 0x02:
+		capabilities(level, frm);
+		break;
+	case 0x03:
+		errorcode(level, frm);
+		break;
+	}
+}
+
+static inline void set_configuration(int level, uint8_t hdr, struct frame *frm)
+{
+	uint8_t cat;
+
+	switch (hdr & 0x03) {
+	case 0x00:
+		acp_int_seid(level, frm);
+		capabilities(level, frm);
+		break;
+	case 0x03:
+		p_indent(level, frm);
+		cat = get_u8(frm);
+		printf("%s\n", cat2str(cat));
+		errorcode(level, frm);
+		break;
+	}
+}
+
+static inline void get_configuration(int level, uint8_t hdr, struct frame *frm)
+{
+	switch (hdr & 0x03) {
+	case 0x00:
+		acp_seid(level, frm);
+	case 0x02:
+		capabilities(level, frm);
+		break;
+	case 0x03:
+		errorcode(level, frm);
+		break;
+	}
+}
+
+static inline void reconfigure(int level, uint8_t hdr, struct frame *frm)
+{
+	uint8_t cat;
+
+	switch (hdr & 0x03) {
+	case 0x00:
+		acp_seid(level, frm);
+		capabilities(level, frm);
+		break;
+	case 0x03:
+		p_indent(level, frm);
+		cat = get_u8(frm);
+		printf("%s\n", cat2str(cat));
+		errorcode(level, frm);
+		break;
+	}
+}
+
+static inline void open_close_stream(int level, uint8_t hdr, struct frame *frm)
+{
+	switch (hdr & 0x03) {
+	case 0x00:
+		acp_seid(level, frm);
+		break;
+	case 0x03:
+		errorcode(level, frm);
+		break;
+	}
+}
+
+static inline void start_suspend_stream(int level, uint8_t hdr, struct frame *frm)
+{
+	switch (hdr & 0x03) {
+	case 0x00:
+		while (frm->len > 0)
+			acp_seid(level, frm);
+		break;
+	case 0x03:
+		acp_seid(level, frm);
+		errorcode(level, frm);
+		break;
+	}
+}
+
+static inline void abort_streaming(int level, uint8_t hdr, struct frame *frm)
+{
+	switch (hdr & 0x03) {
+	case 0x00:
+		acp_seid(level, frm);
+		break;
+	}
+}
+
+static inline void security(int level, uint8_t hdr, struct frame *frm)
+{
+	switch (hdr & 0x03) {
+	case 0x00:
+		acp_seid(level, frm);
+	case 0x02:
+		hex_dump(level + 1, frm, frm->len);
+		frm->ptr += frm->len;
+		frm->len = 0;
+		break;
+	case 0x03:
+		errorcode(level, frm);
+		break;
+	}
+}
+
 void avdtp_dump(int level, struct frame *frm)
 {
-	uint8_t hdr, sid = 0xff, nsp;
+	uint8_t hdr, sid, nsp;
 
 	p_indent(level, frm);
 
@@ -108,6 +433,42 @@ void avdtp_dump(int level, struct frame *frm)
 
 		printf("AVDTP(s): %s %s: transaction %d\n",
 			sid & 0x08 ? pt2str(hdr) : si2str(sid), mt2str(hdr), hdr >> 4);
+
+		switch (sid & 0x7f) {
+		case 0x01:
+			discover(level + 1, hdr, frm);
+			break;
+		case 0x02:
+			get_capabilities(level + 1, hdr, frm);
+			break;
+		case 0x03:
+			set_configuration(level + 1, hdr, frm);
+			break;
+		case 0x04:
+			get_configuration(level + 1, hdr, frm);
+			break;
+		case 0x05:
+			reconfigure(level + 1, hdr, frm);
+			break;
+		case 0x06:
+			open_close_stream(level + 1, hdr, frm);
+			break;
+		case 0x07:
+			start_suspend_stream(level + 1, hdr, frm);
+			break;
+		case 0x08:
+			open_close_stream(level + 1, hdr, frm);
+			break;
+		case 0x09:
+			start_suspend_stream(level + 1, hdr, frm);
+			break;
+		case 0x0a:
+			abort_streaming(level + 1, hdr, frm);
+			break;
+		case 0x0b:
+			security(level + 1, hdr, frm);
+			break;
+		}
 	} else {
 		printf("AVDTP(m): \n");
 	}
