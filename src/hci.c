@@ -163,7 +163,7 @@ hci_map dev_flags_map[] = {
 	{ "RAW",     HCI_RAW     },
 	{ "PSCAN",   HCI_PSCAN   },
 	{ "ISCAN",   HCI_ISCAN   },
-	{ "IQUIRY",  HCI_INQUIRY },
+	{ "INQUIRY", HCI_INQUIRY },
 	{ "AUTH",    HCI_AUTH    },
 	{ "ENCRYPT", HCI_ENCRYPT },
 	{ NULL }
