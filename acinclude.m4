@@ -17,7 +17,9 @@ AC_DEFUN([AC_PROG_CC_PIE], [
 AC_DEFUN([AC_INIT_BLUEZ], [
 	AC_PREFIX_DEFAULT(/usr)
 
-	CFLAGS="-Wall -O2"
+	if (test "${CFLAGS}" = ""); then
+		CFLAGS="-Wall -O2"
+	fi
 
 	if (test "${prefix}" = "NONE"); then
 		dnl no prefix and no sysconfdir, so default to /etc
