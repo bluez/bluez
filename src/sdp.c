@@ -104,6 +104,7 @@ static struct tupla ServiceClass[] = {
 	{ GN_SVCLASS_ID,                "PAN group network" },
 	{ HID_SVCLASS_ID,               "Human Interface Device" },
 	{ CIP_SVCLASS_ID,               "Common ISDN Access" },
+	{ SAP_SVCLASS_ID,               "SIM Access" },
 	{ 0 }
 };
 
@@ -123,8 +124,9 @@ static struct tupla Profile[] = {
 	{ PANU_PROFILE_ID,               "PAN user" },
 	{ NAP_PROFILE_ID,                "PAN access point" },
 	{ GN_PROFILE_ID,                 "PAN group network" },
-	{ HID_SVCLASS_ID,                "Human Interface Device" },
-	{ CIP_SVCLASS_ID,                "Common ISDN Access" },
+	{ HID_PROFILE_ID,                "Human Interface Device" },
+	{ CIP_PROFILE_ID,                "Common ISDN Access" },
+	{ SAP_PROFILE_ID,                "SIM Access" },
 	{ 0 }
 };
 

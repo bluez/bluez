@@ -107,6 +107,7 @@ extern "C" {
 #define HCR_PRINT_SVCLASS_ID		0x1126
 #define HCR_SCAN_SVCLASS_ID		0x1127
 #define CIP_SVCLASS_ID			0x1128
+#define SAP_SVCLASS_ID			0x112d
 #define PNP_INFO_SVCLASS_ID		0x1200
 #define GENERIC_NETWORKING_SVCLASS_ID	0x1201
 #define GENERIC_FILETRANS_SVCLASS_ID	0x1202
@@ -141,6 +142,7 @@ extern "C" {
 #define HID_PROFILE_ID			0x1124
 #define HCR_PROFILE_ID			0x1125
 #define CIP_PROFILE_ID			0x1128
+#define SAP_PROFILE_ID			0x112d
 
 /*
  * Attribute identifier codes
