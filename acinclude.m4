@@ -65,7 +65,7 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 	AC_SUBST(BLUEZ_LIBS)
 ])
 
-AC_DEFUN(AC_PATH_USB, [
+AC_DEFUN([AC_PATH_USB], [
 	AC_ARG_WITH(usb, [  --with-usb=DIR          USB library is installed in DIR], [
 		if (test "$withval" = "yes"); then
 			usb_includes=/usr/include
