@@ -303,7 +303,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 
 	for (i = 0; i < num_rsp; i++) {
 		memset(name, 0, sizeof(name));
-		if (hci_remote_name(dd, &(info+i)->bdaddr, sizeof(name), name, 100000) < 0)
+		if (hci_read_remote_name(dd, &(info+i)->bdaddr, sizeof(name), name, 100000) < 0)
 			strcpy(name, "n/a");
 		baswap(&bdaddr, &(info+i)->bdaddr);
 		printf("\t%s\t%s\n", batostr(&bdaddr), name);
@@ -361,7 +361,7 @@ static void cmd_name(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (hci_remote_name(dd, &bdaddr, sizeof(name), name, 25000) == 0)
+	if (hci_read_remote_name(dd, &bdaddr, sizeof(name), name, 25000) == 0)
 		printf("%s\n", name);
 
 	close(dd);
@@ -428,7 +428,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (hci_remote_name(dd, &bdaddr, sizeof(name), name, 25000) == 0)
+	if (hci_read_remote_name(dd, &bdaddr, sizeof(name), name, 25000) == 0)
 		printf("\tDevice Name: %s\n", name);
 
 	if (hci_read_remote_version(dd, handle, &version, 20000) == 0) {

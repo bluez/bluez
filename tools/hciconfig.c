@@ -299,48 +299,26 @@ void cmd_features(int ctl, int hdev, char *opt)
 
 void cmd_name(int ctl, int hdev, char *opt)
 {
-	struct hci_request rq;
-	int s;
-	if ((s = hci_open_dev(hdev)) < 0) {
+	int s = hci_open_dev(hdev);
+	if (s < 0) {
 		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
 		exit(1);
 	}
-
-	memset(&rq, 0, sizeof(rq));
-
 	if (opt) {
-		change_local_name_cp cp;
-		strcpy(cp.name, opt);
-
-		rq.ogf = OGF_HOST_CTL;
-		rq.ocf = OCF_CHANGE_LOCAL_NAME;
-		rq.cparam = &cp;
-		rq.clen = CHANGE_LOCAL_NAME_CP_SIZE;
-	
-		if (hci_send_req(s, &rq, 1000) < 0) {
+		if (hci_write_local_name(s, opt, 1000) < 0) {
 			printf("Can't change local name on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
-		read_local_name_rp rp;
-
-		rq.ogf = OGF_HOST_CTL;
-		rq.ocf = OCF_READ_LOCAL_NAME;
-		rq.rparam = &rp;
-		rq.rlen = READ_LOCAL_NAME_RP_SIZE;
-		
-		if (hci_send_req(s, &rq, 1000) < 0) {
+		char name[248];
+		if (hci_read_local_name(s, sizeof(name), name, 1000) < 0) {
 			printf("Can't read local name on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 			exit(1);
 		}
-		if (rp.status) {
-			printf("Read local name on hci%d returned status %d\n", hdev, rp.status);
-			exit(1);
-		}
 		print_dev_hdr(&di);
-		printf("\tName: '%s'\n", rp.name);
+		printf("\tName: '%s'\n", name);
 	}
 }
 
@@ -495,58 +473,33 @@ void cmd_class(int ctl, int hdev, char *opt)
 					"Peripheral",
 					"Imaging",
 					"Uncategorized" };
-	struct hci_request rq;
-	int s;
+	int s = hci_open_dev(hdev);
 
-	if ((s = hci_open_dev(hdev)) < 0) {
+	if (s < 0) {
 		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
 		exit(1);
 	}
-
-	memset(&rq, 0, sizeof(rq));
 	if (opt) {
 		uint32_t cod = htobl(strtoul(opt, NULL, 16));
-		write_class_of_dev_cp cp;
-
-		memcpy(cp.dev_class, &cod, 3);
-
-		rq.ogf = OGF_HOST_CTL;
-		rq.ocf = OCF_WRITE_CLASS_OF_DEV;
-		rq.cparam = &cp;
-		rq.clen = WRITE_CLASS_OF_DEV_CP_SIZE;
-
-		if (hci_send_req(s, &rq, 1000) < 0) {
+		if (0 > hci_write_class_of_dev(s, cod, 1000)) {
 			printf("Can't write local class of device on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
-		read_class_of_dev_rp rp;
-
-		rq.ogf = OGF_HOST_CTL;
-		rq.ocf = OCF_READ_CLASS_OF_DEV;
-		rq.rparam = &rp;
-		rq.rlen = READ_CLASS_OF_DEV_RP_SIZE;
-
-		if (hci_send_req(s, &rq, 1000) < 0) {
+		uint8_t cls[3];
+		if (0 > hci_read_class_of_dev(s, cls, 1000)) {
 			printf("Can't read class of device on hci%d. %s(%d)\n", 
 				hdev, strerror(errno), errno);
 			exit(1);
 		}
-
-		if (rp.status) {
-			printf("Read class of device on hci%d returned status %d\n",
-				hdev, rp.status);
-			exit(1);
-		}
 		print_dev_hdr(&di);
-		printf("\tClass: 0x%02x%02x%02x\n", 
-			rp.dev_class[2], rp.dev_class[1], rp.dev_class[0]);
+		printf("\tClass: 0x%02x%02x%02x\n", cls[2], cls[1], cls[0]);
 		printf("\tService Classes: ");
-		if (rp.dev_class[2]) {
+		if (cls[2]) {
 			int first = 1;
 			for(s=0; s < sizeof(services); s++)
-				if (rp.dev_class[2] & (1 << s)) {
+				if (cls[2] & (1 << s)) {
 					if (!first)
 						printf(", ");
 					printf(services[s]);
@@ -555,12 +508,11 @@ void cmd_class(int ctl, int hdev, char *opt)
 		} else
 			printf("Unspecified");
 		printf("\n\tDevice Class: ");
-		if (rp.dev_class[1] > sizeof(major_devices))
+		if (cls[1] > sizeof(major_devices))
 			printf("Invalid Device Class!\n");
 		else
-			printf("%s, %s\n", major_devices[rp.dev_class[1]], 
-				get_minor_device_name(rp.dev_class[1], 
-					rp.dev_class[0] / 4));
+			printf("%s, %s\n", major_devices[cls[1]], 
+				get_minor_device_name(cls[1], cls[0] / 4));
 	}
 }
 
@@ -653,7 +605,7 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 		interval = btohs(rp.interval);
 		printf("\tInquiry interval: %u slots (%.2f ms), window: %u slots (%.2f ms)\n",
 				interval, (float)interval * 0.625, window, (float)window * 0.625);
-        }
+	}
 }
 
 void cmd_page_parms(int ctl, int hdev, char *opt)
