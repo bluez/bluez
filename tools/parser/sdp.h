@@ -75,6 +75,8 @@
 #define SDP_UUID_INTERCOM                              0x1110
 #define SDP_UUID_FAX                                   0x1111
 #define SDP_UUID_HEADSET_AUDIO_GATEWAY                 0x1112
+#define SDP_UUID_WAP                                   0x1113
+#define SDP_UUID_WAP_CLIENT                            0x1114
 #define SDP_UUID_PANU                                  0x1115 /* PAN */
 #define SDP_UUID_NAP                                   0x1116 /* PAN */
 #define SDP_UUID_GN                                    0x1117 /* PAN */

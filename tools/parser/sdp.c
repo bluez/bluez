@@ -82,6 +82,8 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_INTERCOM,                 "Intercom"     },
 	{ SDP_UUID_FAX,                      "Fax"          },
 	{ SDP_UUID_HEADSET_AUDIO_GATEWAY,    "Headset AG"   },
+	{ SDP_UUID_WAP,                      "WAP"          },
+	{ SDP_UUID_WAP_CLIENT,               "WAP Client"   },
 	{ SDP_UUID_PANU,                     "PANU"         }, /* PAN */
 	{ SDP_UUID_NAP,                      "NAP"          }, /* PAN */
 	{ SDP_UUID_GN,                       "GN"           }, /* PAN */
