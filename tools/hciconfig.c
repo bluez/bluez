@@ -962,7 +962,6 @@ void print_dev_info(int ctl, struct hci_dev_info *di)
 		if (hci_test_bit(HCI_UP, &di->flags)) {
 			cmd_name(ctl, di->dev_id, NULL);
 			cmd_class(ctl, di->dev_id, NULL);
-			cmd_iac(ctl, di->dev_id, NULL);
 			cmd_version(ctl, di->dev_id, NULL);
 		}
 	}
