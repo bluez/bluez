@@ -1255,6 +1255,88 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
+/* Request authentication */
+
+static struct option auth_options[] = {
+	{"help",	0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *auth_help = 
+	"Usage:\n"
+	"\tauth <bdaddr>\n";
+
+static void cmd_auth(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	struct hci_request rq;
+	auth_requested_cp cp;
+	evt_auth_complete rp;
+	bdaddr_t bdaddr;
+	int opt, dd;
+
+	for_each_opt(opt, auth_options, NULL) {
+		switch(opt) {
+		default:
+			printf(auth_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(auth_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+
+	cp.handle = cr->conn_info->handle;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_AUTH_REQUESTED;
+	rq.cparam = &cp;
+	rq.clen   = AUTH_REQUESTED_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_AUTH_COMPLETE_SIZE;
+	rq.event  = EVT_AUTH_COMPLETE;
+
+	if (hci_send_req(dd, &rq, 25000) < 0) {
+		perror("HCI authentication request failed");
+		exit(1);
+	}
+
+	close(dd);
+	free(cr);
+}
+
 struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
@@ -1268,14 +1350,15 @@ struct {
 	{ "cmd",  cmd_cmd,  "Submit arbitrary HCI commands"        },
 	{ "con",  cmd_con,  "Display active connections"           },
 	{ "cc",   cmd_cc,   "Create connection to remote device"   },
-	{ "dc",	  cmd_dc,   "Disconnect from remote device"        },
+	{ "dc",   cmd_dc,   "Disconnect from remote device"        },
 	{ "sr",   cmd_sr,   "Switch master/slave role"             },
 	{ "cpt",  cmd_cpt,  "Change connection packet type"        },
 	{ "rssi", cmd_rssi, "Display connection RSSI"              },
 	{ "lq",   cmd_lq,   "Display link quality"                 },
 	{ "tpl",  cmd_tpl,  "Display transmit power level"         },
 	{ "lst",  cmd_lst,  "Set/display link supervision timeout" },
-	{ NULL, NULL, 0}
+	{ "auth", cmd_auth, "Request authentication"               },
+	{ NULL, NULL, 0 }
 };
 
 static void usage(void)
