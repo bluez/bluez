@@ -203,3 +203,13 @@ sdp_list_t *sdp_get_record_list()
 {
 	return service_db;
 }
+
+uint32_t sdp_next_handle(void)
+{
+	uint32_t handle = 0x10000;
+
+	while (sdp_record_find(handle))
+		handle++;
+
+	return handle;
+}

@@ -106,7 +106,10 @@ static void register_public_browse_group(void)
 	sdp_data_t *sdpdata;
 	sdp_record_t *browse = sdp_record_alloc();
 
-	browse->handle = (uint32_t)browse;
+	browse->handle = sdp_next_handle();
+	if (browse->handle < 0x10000)
+		return;
+
 	sdp_record_add(browse);
 	sdpdata = sdp_data_alloc(SDP_UINT32, &browse->handle);
 	sdp_attr_add(browse, SDP_ATTR_RECORD_HANDLE, sdpdata);

@@ -141,7 +141,10 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 		return -1;
 	}
 
-	rec->handle = (uint32_t)rec;
+	rec->handle = sdp_next_handle();
+	if (rec->handle < 0x10000)
+		return -1;
+
 	sdp_record_add(rec);
 	if (!(req->flags & SDP_RECORD_PERSIST))
 		sdp_svcdb_set_collectable(rec, req->sock);

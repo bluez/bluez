@@ -83,6 +83,7 @@ sdp_record_t *sdp_record_find(uint32_t handle);
 void sdp_record_add(sdp_record_t *rec);
 int sdp_record_remove(uint32_t handle);
 sdp_list_t *sdp_get_record_list();
+uint32_t sdp_next_handle(void);
 
 long sdp_get_time();
 
