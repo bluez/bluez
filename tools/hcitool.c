@@ -410,10 +410,8 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	if (dev_id < 0)
 		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 
-	if (dev_id < 0) {
+	if (dev_id < 0)
 		dev_id = hci_get_route(&bdaddr);
-		cc = 1;
-	}
 
 	if (dev_id < 0) {
 		fprintf(stderr, "Device is not available or not connected.\n");
@@ -428,26 +426,24 @@ static void cmd_info(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (cc) {
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr) {
+		perror("Can't get connection info");
+		close(dd);
+		exit(1);
+	}
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		if (hci_create_connection(dd, &bdaddr, HCI_DM1 | HCI_DH1, 0, 0, &handle, 25000) < 0) {
 			perror("Can't create connection");
 			close(dd);
 			exit(1);
 		}
-	} else {
-		cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-		if (!cr)
-			return;
-
-		bacpy(&cr->bdaddr, &bdaddr);
-		cr->type = ACL_LINK;
-		if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-			perror("Get connection info failed");
-			exit(1);
-		}
-
+		cc = 1;
+	} else
 		handle = cr->conn_info->handle;
-	}
 
 	printf("\tBD Address:  %s\n", argv[0]);
 
