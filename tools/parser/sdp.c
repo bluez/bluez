@@ -36,6 +36,38 @@
 #include "parser.h"
 #include "sdp.h"
 
+#define SDP_ERROR_RSP                                  0x01
+#define SDP_SERVICE_SEARCH_REQ                         0x02
+#define SDP_SERVICE_SEARCH_RSP                         0x03
+#define SDP_SERVICE_ATTR_REQ                           0x04
+#define SDP_SERVICE_ATTR_RSP                           0x05
+#define SDP_SERVICE_SEARCH_ATTR_REQ                    0x06
+#define SDP_SERVICE_SEARCH_ATTR_RSP                    0x07
+
+typedef struct {
+	uint8_t  pid;
+	uint16_t tid;
+	uint16_t len;
+} __attribute__ ((packed)) sdp_pdu_hdr;
+#define SDP_PDU_HDR_SIZE 5
+
+/* Data element type descriptor */
+#define SDP_DE_NULL   0
+#define SDP_DE_UINT   1
+#define SDP_DE_INT    2
+#define SDP_DE_UUID   3
+#define SDP_DE_STRING 4
+#define SDP_DE_BOOL   5
+#define SDP_DE_SEQ    6
+#define SDP_DE_ALT    7
+#define SDP_DE_URL    8
+
+/* Data element size index lookup table */
+typedef struct {
+	int addl_bits;
+	int num_bytes;
+} sdp_siz_idx_lookup_table_t;
+
 static sdp_siz_idx_lookup_table_t sdp_siz_idx_lookup_table[] = {
 	{ 0, 1  }, /* Size index = 0 */
 	{ 0, 2  }, /*              1 */
@@ -46,6 +78,12 @@ static sdp_siz_idx_lookup_table_t sdp_siz_idx_lookup_table[] = {
 	{ 1, 2  }, /*              6 */
 	{ 1, 4  }, /*              7 */
 };
+
+/* UUID name lookup table */
+typedef struct {
+	int   uuid;
+	char* name;
+} sdp_uuid_nam_lookup_table_t;
 
 static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_SDP,                      "SDP"          },
@@ -106,6 +144,15 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_VIDEO_SINK,               "VideoSink"    }  /* VDP */
 };
 
+#define SDP_UUID_NAM_LOOKUP_TABLE_SIZE \
+	(sizeof(sdp_uuid_nam_lookup_table)/sizeof(sdp_uuid_nam_lookup_table_t))
+
+/* AttrID name lookup table */
+typedef struct {
+	int   attr_id;
+	char* name;
+} sdp_attr_id_nam_lookup_table_t;
+
 static sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
 	{ SDP_ATTR_ID_SERVICE_RECORD_HANDLE,             "SrvRecHndl"         },
 	{ SDP_ATTR_ID_SERVICE_CLASS_ID_LIST,             "SrvClassIDList"     },
@@ -136,6 +183,9 @@ static sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
 	{ SDP_ATTR_ID_IPV4_SUBNET,                       "IPv4Subnet"         }, /* PAN */
 	{ SDP_ATTR_ID_IPV6_SUBNET,                       "IPv6Subnet"         }  /* PAN */
 };
+
+#define SDP_ATTR_ID_NAM_LOOKUP_TABLE_SIZE \
+	(sizeof(sdp_attr_id_nam_lookup_table)/sizeof(sdp_attr_id_nam_lookup_table_t))
 
 char* get_uuid_name(int uuid)
 {
