@@ -365,9 +365,10 @@ reject:
 
 gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
+	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
 	struct hci_dev_info *di = (void *) data;
-	int len, type, dev;
+	int type, dev;
+	size_t len;
 	hci_event_hdr *eh;
 	GIOError err;
 

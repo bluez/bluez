@@ -397,10 +397,11 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 
 gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	char buf[HCI_MAX_FRAME_SIZE], *ptr;
+	unsigned char buf[HCI_MAX_FRAME_SIZE], *ptr;
 	evt_stack_internal *si;
 	hci_event_hdr *eh;
-	int  len, type;
+	int type;
+	size_t len;
 	GIOError err;
 
 	ptr = buf;
