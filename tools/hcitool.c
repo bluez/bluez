@@ -878,6 +878,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 	
+	memset(&rq, 0, sizeof(rq));	
 	rq.ogf = OGF_STATUS_PARAM;
 	rq.ocf = OCF_READ_RSSI;
 	rq.cparam = &cr->conn_info->handle;
@@ -886,21 +887,100 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	rq.rlen = READ_RSSI_RP_SIZE;
 	
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		printf("Can't read RSSI hci%d. %s(%d)\n", 
-			dd, strerror(errno), errno);
+		perror("Read RSSI failed");
 		exit(1);
 	}
 
 	if (rp.status) {
-		printf("Read RSSI on hci%d returned (error) status 0x%2.2X\n",
-			dd, rp.status);
+		printf("Read RSSI returned (error) status 0x%2.2X\n", rp.status);
 		exit(1);
 	}
-	printf( "\tRSSI return value: %d\n", rp.rssi);
+	printf("\tRSSI return value: %d\n", rp.rssi);
 	
 	close(dd);
 	free(cr);
 }
+
+/* Set connection packet type */
+
+static struct option cpt_options[] = {
+	{"help",    0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *cpt_help = 
+	"Usage:\n"
+	"\tcpt <bdaddr> <packet_types>\n";
+
+static void cmd_cpt(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	struct hci_request rq;
+	set_conn_ptype_cp  cp;
+	bdaddr_t bdaddr;
+	int opt, dd, ptype;
+
+	for_each_opt(opt, cpt_options, NULL) {
+		switch(opt) {
+		default:
+			printf(cpt_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 2) {
+		printf(cpt_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+	hci_strtoptype(argv[1], &ptype);
+
+	if (dev_id < 0) {
+		dev_id = for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+ 
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+        	return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+	
+	cp.handle   = cr->conn_info->handle;
+	cp.pkt_type = ptype;
+
+	memset(&rq, 0, sizeof(rq));	
+	rq.ogf = OGF_STATUS_PARAM;
+	rq.ocf = OCF_READ_RSSI;
+	rq.cparam = &cp;
+	rq.clen   = SET_CONN_PTYPE_CP_SIZE;
+	
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		perror("Packet type change failed");
+		exit(1);
+	}
+
+	close(dd);
+	free(cr);
+}
+
 
 struct {
 	char *cmd;
@@ -917,6 +997,7 @@ struct {
 	{ "con",  cmd_con,  "Display active connections"         },
 	{ "cc",   cmd_cc,   "Create connection to remote device" },
 	{ "dc",	  cmd_dc,   "Disconnect from remote device"      },
+	{ "cpt",  cmd_cpt,  "Change connection packet type"      },
 	{ "rssi", cmd_rssi, "Display connection RSSI"            },
 	{ NULL, NULL, 0}
 };
