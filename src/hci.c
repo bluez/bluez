@@ -511,7 +511,7 @@ done:
 	return 0;
 }
 
-int hci_create_connection(int dd, bdaddr_t *ba, int ptype, int rswitch, int to)
+int hci_create_connection(int dd, bdaddr_t *ba, uint16_t ptype, uint16_t clkoffset, uint8_t rswitch, uint16_t *handle, int to)
 {
         evt_conn_complete rp;
         create_conn_cp cp;
@@ -519,8 +519,9 @@ int hci_create_connection(int dd, bdaddr_t *ba, int ptype, int rswitch, int to)
 
         memset(&cp, 0, sizeof(cp));
         bacpy(&cp.bdaddr, ba);
-        cp.pkt_type    = ptype;
-	cp.role_switch = rswitch;
+        cp.pkt_type     = ptype;
+	cp.clock_offset = clkoffset;
+	cp.role_switch  = rswitch;
 
         rq.ogf    = OGF_LINK_CTL;
         rq.ocf    = OCF_CREATE_CONN;
@@ -538,18 +539,19 @@ int hci_create_connection(int dd, bdaddr_t *ba, int ptype, int rswitch, int to)
                 return -1;
         }
 
-        return rp.handle;
+	*handle = rp.handle;
+	return 0;
 }
 
-int hci_disconnect(int dd, int hndl, int res, int to)
+int hci_disconnect(int dd, uint16_t handle, uint8_t reason, int to)
 {
         evt_disconn_complete rp;
         disconnect_cp cp;
         struct hci_request rq;
 
         memset(&cp, 0, sizeof(cp));
-        cp.handle = hndl;
-        cp.reason = res;
+        cp.handle = handle;
+        cp.reason = reason;
 
         rq.ogf    = OGF_LINK_CTL;
         rq.ocf    = OCF_DISCONNECT;
@@ -622,14 +624,14 @@ int hci_remote_name(int dd, bdaddr_t *ba, int len, char *name, int to)
 	return 0;
 }
 
-int hci_read_remote_features(int dd, int hndl, uint8_t *features, int to)
+int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 {
 	evt_read_remote_features_complete rp;
 	read_remote_features_cp cp;
 	struct hci_request rq;
 	
 	memset(&cp, 0, sizeof(cp));
-	cp.handle = hndl;
+	cp.handle = handle;
 	
 	rq.ogf    = OGF_LINK_CTL;
 	rq.ocf    = OCF_READ_REMOTE_FEATURES;
@@ -651,14 +653,14 @@ int hci_read_remote_features(int dd, int hndl, uint8_t *features, int to)
 	return 0;
 }
 
-int hci_read_remote_version(int dd, int hndl, struct hci_version *ver, int to)
+int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to)
 {
 	evt_read_remote_version_complete rp;
 	read_remote_version_cp cp;
 	struct hci_request rq;
 	
 	memset(&cp, 0, sizeof(cp));
-	cp.handle = hndl;
+	cp.handle = handle;
 	
 	rq.ogf    = OGF_LINK_CTL;
 	rq.ocf    = OCF_READ_REMOTE_VERSION;
