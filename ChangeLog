@@ -1,3 +1,9 @@
+ver 2.0-pre8:
+	Additional HCI ioctls and defines.
+	All strings and buffers are allocated dynamically.
+	ba2str, str2ba automaticaly swap bdaddress.
+	Minor fixes and cleanup.
+
 ver 2.0-pre7:
 	Bluetooth libraries and header files is now a separate package.
 	New build environment uses automake and libtool.
