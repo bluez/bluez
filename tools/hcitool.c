@@ -477,8 +477,10 @@ static void cmd_info(int dev_id, int argc, char **argv)
 				lmp_featurestostr(features, "\t\t", 63));
 	}
 
-	if (cc)
+	if (cc) {
+		usleep(10000);
 		hci_disconnect(dd, handle, HCI_OE_USER_ENDED_CONNECTION, 10000);
+	}
 
 	close(dd);
 }
