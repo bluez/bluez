@@ -1,3 +1,16 @@
+ver 2.15:
+	Enable the RFCOMM service level security.
+	Add command for reading the clock offset.
+	Add command for reading the clock.
+	Don't configure raw devices.
+	Don't set inquiry scan or page scan on raw devices.
+	Don't show extended information for raw devices.
+	Support L2CAP signal sizes bigger than 2048 bytes.
+	Cleanup of the socket handling code of the test programs.
+
+	Note:
+	This version needs at least bluez-libs-2.15
+
 ver 2.14:
 	Make use of additional connection information.
 	Use library function for reading the RSSI.
