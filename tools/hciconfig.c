@@ -842,6 +842,11 @@ static void print_rev_csr(uint16_t rev)
 	printf("\tUnknown firmware\n");
 }
 
+static void print_rev_avm(uint16_t rev)
+{
+	printf("\tFirmware 3.%d.%d\n", rev >> 8, rev & 0xff);
+}
+
 static void cmd_revision(int ctl, int hdev, char *opt)
 {
 	struct hci_version ver;
@@ -866,6 +871,9 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 		break;
 	case 10:
 		print_rev_csr(ver.hci_rev);
+		break;
+	case 31:
+		print_rev_avm(ver.hci_rev);
 		break;
 	default:
 		printf("\tUnsupported manufacturer\n");
