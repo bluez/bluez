@@ -246,6 +246,7 @@ static struct {
 	{ "sdp",    FILT_SDP    },
 	{ "bnep",   FILT_BNEP	},
 	{ "cmtp",   FILT_CMTP	},
+	{ "hidp",   FILT_HIDP   },
 	{ 0 }
 };
 
