@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 	action = getenv("ACTION");
 	device = getenv("DEVICE");
 
-	if (!action || strcmp(action, "add"))
+	if (!action || (strcmp(action, "add") && strcmp(action, "register")))
 		exit(0);
 
 	openlog("bcm203x", LOG_NDELAY | LOG_PID, LOG_DAEMON);
