@@ -1,3 +1,9 @@
+ver 2.0-pre10:
+	Fix hci_inquiry function to return errors and accept user buffers.
+	New functions hci_devba, hci_devid, hci_for_each_dev and hci_get_route.
+	Additional company IDs.
+	Makefile and other minor fixes.
+
 ver 2.0-pre9:
 	LMP features to string translation support.
 	Additional HCI command and event defines.

@@ -9,7 +9,7 @@ dnl Guess host type.
 AC_CANONICAL_SYSTEM
 AC_CANONICAL_HOST
 
-AM_INIT_AUTOMAKE(bluez-libs, 2.0)
+AM_INIT_AUTOMAKE(bluez-libs, 2.0-pre10)
 
 AC_PREFIX_DEFAULT(/usr)
 
