@@ -51,62 +51,13 @@ extern char *optarg;
 
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, NULL)) != -1)
 
-static int ctl;
-
 static void usage(void);
 
-static int for_each_dev(int flag, int(*func)(int d, long arg), long arg)
-{
-	struct hci_dev_list_req *dl;
-	struct hci_dev_req *dr;
-	int i;
-
-	dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
-	if (!dl) {
-		perror("Can't allocate memory");
-		return -1;
-	}
-	dl->dev_num = HCI_MAX_DEV;
-	dr = dl->dev_req;
-
-	if (ioctl(ctl, HCIGETDEVLIST, (void*)dl)) {
-		perror("Can't get device list");
-		return -1;
-	}
-	
-	if (!dl->dev_num)
-		return -1;
-
-	for (i=0; i < dl->dev_num; i++, dr++) {
-		if (hci_test_bit(flag, &dr->dev_opt)) {
-			if (!func || func(dr->dev_id, arg))
-				return dr->dev_id;
-		}
-	}
-	return -1;
-}
-
-static int other_bdaddr(int dev_id, long arg)
-{
-	struct hci_dev_info di = {dev_id: dev_id};
-	if (ioctl(ctl, HCIGETDEVINFO, (void*) &di))
-		return 0;
-	return bacmp((bdaddr_t *)arg, &di.bdaddr);
-}
-
-static int get_route(bdaddr_t *bdaddr)
-{
-	if (bdaddr)
-		return for_each_dev(HCI_UP, other_bdaddr, (long) bdaddr);
-	else
-		return for_each_dev(HCI_UP, NULL, 0);
-}
-
-static int dev_info(int dev_id, long arg)
+static int dev_info(int s, int dev_id, long arg)
 {
 	struct hci_dev_info di = {dev_id: dev_id};
 	bdaddr_t bdaddr;
-	if (ioctl(ctl, HCIGETDEVINFO, (void*) &di))
+	if (ioctl(s, HCIGETDEVINFO, (void*) &di))
 		return 0;
 	
 	baswap(&bdaddr, &di.bdaddr);
@@ -114,14 +65,17 @@ static int dev_info(int dev_id, long arg)
 	return 0;
 }
 
-static int rev_info(int dev_id, long arg)
+static int rev_info(int s, int dev_id, long arg)
 {
 	struct hci_version ver;
+	int id = arg;
 	int dd;
 
 	struct hci_request rq;
 	unsigned char buf[102];
 
+	if (id != -1 && dev_id != id)
+		return 0;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
@@ -162,11 +116,15 @@ static int rev_info(int dev_id, long arg)
 	return 0;
 }
 
-static int conn_list(int dev_id, long arg)
+static int conn_list(int s, int dev_id, long arg)
 {
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
+	int id = arg;
 	int i;
+
+	if (id != -1 && dev_id != id)
+		return 0;
 
 	if (!(cl = malloc(10 * sizeof(*ci) + sizeof(*cl)))) {
 		perror("Can't allocate memory");
@@ -176,7 +134,7 @@ static int conn_list(int dev_id, long arg)
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(ctl, HCIGETCONNLIST, (void*)cl)) {
+	if (ioctl(s, HCIGETCONNLIST, (void*)cl)) {
 		perror("Can't get connection list");
 		exit(1);
 	}
@@ -193,7 +151,7 @@ static int conn_list(int dev_id, long arg)
 	return 0;
 }
 
-static int find_conn(int dev_id, long arg)
+static int find_conn(int s, int dev_id, long arg)
 {
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
@@ -207,7 +165,7 @@ static int find_conn(int dev_id, long arg)
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(ctl, HCIGETCONNLIST, (void*)cl)) {
+	if (ioctl(s, HCIGETCONNLIST, (void*)cl)) {
 		perror("Can't get connection list");
 		exit(1);
 	}
@@ -258,7 +216,7 @@ static void cmd_dev(int dev_id, int argc, char **argv)
 	}
 
 	printf("Devices:\n");
-	for_each_dev(HCI_UP, dev_info, 0);
+	hci_for_each_dev(HCI_UP, dev_info, 0);
 }
 
 /* Inquiry */
@@ -280,7 +238,7 @@ static char *inq_help =
 static void cmd_inq(int dev_id, int argc, char **argv)
 {
 	int num_rsp, length, flags;
-	inquiry_info *info;
+	inquiry_info *info = NULL;
 	bdaddr_t bdaddr;
 	int i, opt;
 
@@ -308,13 +266,9 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 		}
 	}
 
-	if (dev_id < 0)
-		dev_id = get_route(NULL);
-		
 	printf("Inquiring ...\n");
-	info = hci_inquiry(dev_id, length, &num_rsp, NULL, flags);
-
-	if (!info) {
+	num_rsp = hci_inquiry(dev_id, length, num_rsp, NULL, &info, flags);
+	if (num_rsp < 0) {
 		perror("Inquiry failed.");
 		exit(1);
 	}
@@ -346,7 +300,7 @@ static char *scan_help =
 
 static void cmd_scan(int dev_id, int argc, char **argv)
 {
-	inquiry_info *info;
+	inquiry_info *info = NULL;
 	int num_rsp, length, flags;
 	bdaddr_t bdaddr;
 	char name[248];
@@ -376,13 +330,9 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		}
 	}
 
-	if (dev_id < 0)
-		dev_id = get_route(NULL);
-
 	printf("Scanning ...\n");
-	info = hci_inquiry(dev_id, length, &num_rsp, NULL, flags);
-
-	if (!info) {
+	num_rsp = hci_inquiry(dev_id, length, num_rsp, NULL, &info, flags);
+	if (num_rsp < 0) {
 		perror("Inquiry failed.");
 		exit(1);
 	}
@@ -434,7 +384,7 @@ static void cmd_name(int dev_id, int argc, char **argv)
 	baswap(&bdaddr, strtoba(argv[0]));
 
 	if (dev_id < 0) {
-		dev_id = get_route(&bdaddr);
+		dev_id = hci_get_route(&bdaddr);
 		if (dev_id < 0) {
 			fprintf(stderr, "Device is not available.\n");
 			exit(1);
@@ -492,7 +442,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	baswap(&bdaddr, strtoba(argv[0]));
 
 	if (dev_id < 0) {
-		dev_id = get_route(&bdaddr);
+		dev_id = hci_get_route(&bdaddr);
 		if (dev_id < 0) {
 			fprintf(stderr, "Device is not available.\n");
 			exit(1);
@@ -573,7 +523,7 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 	}
 
 	if (dev_id < 0)
-		dev_id = get_route(NULL);
+		dev_id = hci_get_route(NULL);
 
 	errno = 0;
 	ogf = strtol(argv[0], NULL, 16);
@@ -648,11 +598,7 @@ static void cmd_rev(int dev_id, int argc, char **argv)
 			return;
 		}
 	}
-
-        if (dev_id < 0)
-                for_each_dev(HCI_UP, rev_info, 0);
-        else
-                rev_info(dev_id, 0);
+	hci_for_each_dev(HCI_UP, rev_info, dev_id);
 }
 
 /* Display active connections */
@@ -679,10 +625,7 @@ static void cmd_con(int dev_id, int argc, char **argv)
 	}
 
 	printf("Connections:\n");
-	if (dev_id < 0)
-		for_each_dev(HCI_UP, conn_list, 0);
-	else
-		conn_list(dev_id, 0);
+	hci_for_each_dev(HCI_UP, conn_list, dev_id);
 }
 
 /* Create connection */
@@ -737,7 +680,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 	str2ba(argv[0], &bdaddr);
 
 	if (dev_id < 0) {
-		dev_id = get_route(&bdaddr);
+		dev_id = hci_get_route(&bdaddr);
 		if (dev_id < 0) {
 			fprintf(stderr, "Device is not available.\n");
 			exit(1);
@@ -789,7 +732,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 	str2ba(argv[0], &bdaddr);
 
 	if (dev_id < 0) {
-		dev_id = for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 		if (dev_id < 0) {
 			fprintf(stderr, "Not connected.\n");
 			exit(1);
@@ -856,7 +799,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	str2ba(argv[0], &bdaddr);
 
 	if (dev_id < 0) {
-		dev_id = for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 		if (dev_id < 0) {
 			fprintf(stderr, "Not connected.\n");
 			exit(1);
@@ -941,7 +884,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	hci_strtoptype(argv[1], &ptype);
 
 	if (dev_id < 0) {
-		dev_id = for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 		if (dev_id < 0) {
 			fprintf(stderr, "Not connected.\n");
 			exit(1);
@@ -1032,6 +975,7 @@ static struct option main_options[] = {
 int main(int argc, char **argv)
 {
 	int opt, i, dev_id = -1;
+	bdaddr_t ba;
 
 	while ((opt=getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
 		switch(opt) {
@@ -1055,9 +999,8 @@ int main(int argc, char **argv)
 		exit(0);
 	}
 
-	/* Open HCI socket */
-	if ((ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
-		perror("Can't open HCI socket.");
+	if (dev_id != -1 && hci_devba(dev_id, &ba) < 0) {
+		perror("Device is not available");
 		exit(1);
 	}
 
@@ -1067,7 +1010,5 @@ int main(int argc, char **argv)
 		command[i].func(dev_id, argc, argv);
 		break;
 	}
-
-	close(ctl);
 	return 0;
 }
