@@ -6,12 +6,12 @@
 NAME=bluetooth
 DESC="Bluetooth subsystem"
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
-HCID=/sbin/hcid
+HCID=/usr/sbin/hcid
 HCID_CONF=/etc/bluetooth/hcid.conf
-HCIATTACH=/sbin/hciattach
+HCIATTACH=/usr/sbin/hciattach
 UART_CONF=/etc/bluetooth/uart
-SDPD=/sbin/sdpd
-RFCOMM=/bin/rfcomm
+SDPD=/usr/sbin/sdpd
+RFCOMM=/usr/bin/rfcomm
 RFCOMM_CONF=/etc/bluetooth/rfcomm.conf
 
 set -e
