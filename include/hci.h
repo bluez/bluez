@@ -791,13 +791,13 @@ typedef struct {
 } __attribute__ ((packed)) reset_failed_contact_counter_rp;
 #define RESET_FAILED_CONTACT_COUNTER_RP_SIZE 4
 
-#define OCF_GET_LINK_QUALITY		0x0003
+#define OCF_READ_LINK_QUALITY		0x0003
 typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
 	uint8_t		link_quality;
-} __attribute__ ((packed)) get_link_quality_rp;
-#define GET_LINK_QUALITY_RP_SIZE 4
+} __attribute__ ((packed)) read_link_quality_rp;
+#define READ_LINK_QUALITY_RP_SIZE 4
 
 #define OCF_READ_RSSI			0x0005
 typedef struct {

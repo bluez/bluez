@@ -1460,6 +1460,56 @@ int hci_set_afh_classification(int dd, uint8_t *map, int to)
 	return 0;
 }
 
+int hci_read_link_quality(int dd, uint16_t handle, uint8_t *link_quality, int to)
+{
+	read_link_quality_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ocf    = OCF_READ_LINK_QUALITY;
+	rq.cparam = &handle;
+	rq.clen   = 2;
+	rq.rparam = &rp;
+	rq.rlen   = READ_LINK_QUALITY_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*link_quality = rp.link_quality;
+	return 0;
+}
+
+int hci_read_rssi(int dd, uint16_t handle, int8_t *rssi, int to)
+{
+	read_rssi_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ocf    = OCF_READ_RSSI;
+	rq.cparam = &handle;
+	rq.clen   = 2;
+	rq.rparam = &rp;
+	rq.rlen   = READ_RSSI_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*rssi = rp.rssi;
+	return 0;
+}
+
 int hci_read_afh_map(int dd, uint16_t handle, uint8_t *mode, uint8_t *map, int to)
 {
 	read_afh_map_rp rp;
