@@ -301,7 +301,8 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 
 	for (i = 0; i < num_rsp; i++) {
 		memset(name, 0, sizeof(name));
-		if (hci_read_remote_name(dd, &(info+i)->bdaddr, sizeof(name), name, 100000) < 0)
+		if (hci_read_remote_name_with_clock_offset(dd, &(info+i)->bdaddr,
+				htobs((info+i)->clock_offset), sizeof(name), name, 100000) < 0)
 			strcpy(name, "n/a");
 		ba2str(&(info+i)->bdaddr, addr);
 		printf("\t%s\t%s\n", addr, name);
@@ -662,7 +663,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 	}
 
 	if (hci_create_connection(dd, &bdaddr, htobs(ptype),
-					0, role, &handle, 25000) < 0)
+				htobs(0x0000), role, &handle, 25000) < 0)
 		perror("Can't create connection");
 	hci_close_dev(dd);
 }
