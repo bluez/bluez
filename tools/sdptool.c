@@ -180,6 +180,25 @@ static struct attrib_def did_attrib_names[] = {
 	{ 0x205, "VendorIDSource", NULL, 0 },
 };
 
+/* Name of the various HID attributes. See HID spec. */
+static struct attrib_def hid_attrib_names[] = {
+	{ 0x200, "DeviceReleaseNum", NULL, 0 },
+	{ 0x201, "ParserVersion", NULL, 0 },
+	{ 0x202, "DeviceSubclass", NULL, 0 },
+	{ 0x203, "CountryCode", NULL, 0 },
+	{ 0x204, "VirtualCable", NULL, 0 },
+	{ 0x205, "ReconnectInitiate", NULL, 0 },
+	{ 0x206, "DescriptorList", NULL, 0 },
+	{ 0x207, "LangIDBaseList", NULL, 0 },
+	{ 0x208, "SDPDisable", NULL, 0 },
+	{ 0x209, "BatteryPower", NULL, 0 },
+	{ 0x20a, "RemoteWakeup", NULL, 0 },
+	{ 0x20b, "ProfileVersion", NULL, 0 },
+	{ 0x20c, "SupervisionTimeout", NULL, 0 },
+	{ 0x20d, "NormallyConnectable", NULL, 0 },
+	{ 0x20e, "BootDevice", NULL, 0 },
+};
+
 /* Name of the various PAN attributes. See BT assigned numbers */
 /* Note : those need to be double checked - Jean II */
 static struct attrib_def pan_attrib_names[] = {
@@ -264,7 +283,8 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1121, "ReflectedUI (BPP)", NULL, 0 },
 	{ 0x1122, "BasicPrinting (BPP)", NULL, 0 },
 	{ 0x1123, "PrintingStatus (BPP)", NULL, 0 },
-	{ 0x1124, "HumanInterfaceDeviceService (HID)", NULL, 0 },
+	{ 0x1124, "HumanInterfaceDeviceService (HID)",
+		hid_attrib_names, sizeof(hid_attrib_names)/sizeof(struct attrib_def) },
 	{ 0x1125, "HardcopyCableReplacement (HCR)", NULL, 0 },
 	{ 0x1126, "HCR_Print (HCR)", NULL, 0 },
 	{ 0x1127, "HCR_Scan (HCR)", NULL, 0 },
