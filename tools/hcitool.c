@@ -957,10 +957,8 @@ static char *tpl_help =
 static void cmd_tpl(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
-	struct hci_request rq;
-	read_transmit_power_level_cp cp;
-	read_transmit_power_level_rp rp;
 	bdaddr_t bdaddr;
+	uint8_t type, level;
 	int opt, dd;
 
 	for_each_opt(opt, tpl_options, NULL) {
@@ -979,7 +977,7 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 	}
 
 	str2ba(argv[0], &bdaddr);
-	cp.type = (argc > 1) ? atoi(argv[1]) : 0;
+	type = (argc > 1) ? atoi(argv[1]) : 0;
 
 	if (dev_id < 0) {
 		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
@@ -1005,28 +1003,14 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 		perror("Get connection info failed");
 		exit(1);
 	}
-	cp.handle = htobs(cr->conn_info->handle);
 
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_READ_TRANSMIT_POWER_LEVEL;
-	rq.cparam = &cp;
-	rq.clen   = READ_TRANSMIT_POWER_LEVEL_CP_SIZE;
-	rq.rparam = &rp;
-	rq.rlen   = READ_TRANSMIT_POWER_LEVEL_RP_SIZE;
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
+	if (hci_read_transmit_power_level(dd, htobs(cr->conn_info->handle), type, &level, 1000) < 0) {
 		perror("HCI read transmit power level request failed");
 		exit(1);
 	}
 
-	if (rp.status) {
-		fprintf(stderr, "HCI read_transmit_power_level cmd failed (0x%2.2X)\n", 
-				rp.status);
-		exit(1);
-	}
 	printf("%s transmit power level: %d\n",
-		(cp.type == 0) ? "Current" : "Maximum", rp.level);
+		(type == 0) ? "Current" : "Maximum", level);
 
 	close(dd);
 	free(cr);
