@@ -182,7 +182,7 @@ static int dun_create_tty(int sk, char *tty, int size)
 {
 	struct sockaddr_rc sa;
 	struct stat st;
-	int id, alen;
+	int id, alen, try = 3;
 
 	struct rfcomm_dev_req req = {
 		flags:   (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP),
@@ -205,10 +205,19 @@ static int dun_create_tty(int sk, char *tty, int size)
 		return id;
 
 	snprintf(tty, size, "/dev/rfcomm%d", id);
-	if (stat(tty, &st) < 0) {
+	while (stat(tty, &st) < 0) {
 		snprintf(tty, size, "/dev/bluetooth/rfcomm/%d", id);
 		if (stat(tty, &st) < 0) {
 			snprintf(tty, size, "/dev/rfcomm%d", id);
+			if (try--) {
+				sleep(1);
+				continue;
+			}
+
+			memset(&req, 0, sizeof(req));
+			req.dev_id = id;
+			ioctl(sk, RFCOMMRELEASEDEV, &req);
+
 			return -1;
 		}
 	}
