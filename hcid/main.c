@@ -249,15 +249,12 @@ static void init_defaults(void)
 
 static void sig_usr1(int sig)
 {
-	syslog(LOG_INFO, "Flushing link keys");
 	flush_link_keys();
 }
 
 static void sig_term(int sig)
 {
-	syslog(LOG_INFO, "Terminating");
 	g_main_quit(event_loop);
-	save_link_keys();
 }
 
 static void sig_hup(int sig)
@@ -455,6 +452,8 @@ int main(int argc, char *argv[], char *env[])
 
 	/* Start event processor */
 	g_main_run(event_loop);
+
+	save_link_keys();
 
 	syslog(LOG_INFO, "Exit.");
 	return 0;

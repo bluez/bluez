@@ -57,6 +57,8 @@ void save_link_keys(void)
 {
 	int n, f;
 
+	syslog(LOG_INFO, "Saving link key database");
+
 	umask(0077);
 	if (!(f = open(hcid.key_file, O_WRONLY | O_CREAT | O_TRUNC, 0))) {
 		syslog(LOG_ERR, "Can't save key database %s. %s(%d)",
@@ -78,6 +80,9 @@ void save_link_keys(void)
 void flush_link_keys(void)
 {
 	int n;
+	
+	syslog(LOG_INFO, "Flushing link key database");
+
 	for (n=0; n < hcid.key_num; n++) {
 		if (hcid.link_key[n]) {
 			free(hcid.link_key[n]);
@@ -300,24 +305,42 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
 	struct link_key *key;
-	time_t tm = time(0);
-	int n, k = -1;
+	time_t tm, td, ot;
+	int n, k = -1, ek = -1;
 
-	/* Find a slot */
+	tm = time(0); ot = HCID_KEY_TTL;
+	
+	/* Find an empty slot or the oldest key */
 	for (n=0; n < hcid.key_num; n++) {
 		key = hcid.link_key[n];
-		if (!key || (!bacmp(&key->sba, sba) && !bacmp(&key->dba, dba)) ||
-				(tm - key->time) > HCID_KEY_TTL) {
+		if (!key || (!bacmp(&key->sba, sba) && !bacmp(&key->dba, dba))) {
 			k = n;
 			break;
 		}
+
+		td = tm - key->time;
+		if (td > ot) {
+			ot = td;
+			ek = n;
+		}
 	}
 
+	if (k == -1 && ek != -1)
+		k = ek;
+	
 	if (k != -1) {
+		char sa[40], da[40];
+
 		/* Update link key */
 		key = hcid.link_key[k];
-		if (!key && !(key = malloc(sizeof(*key))))
+		if (!key && !(key = malloc(sizeof(*key)))) {
+			syslog(LOG_ERR, "Can't allocate link key memory. %s(%d)",
+				strerror(errno), errno);
 			return;
+		}
+
+		ba2str(sba, sa); ba2str(dba, da);
+		syslog(LOG_INFO, "Storing link key %s %s", sa, da);
 
 		bacpy(&key->sba, sba);
 		bacpy(&key->dba, dba);
@@ -326,7 +349,9 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 		key->time = tm;
 
 		hcid.link_key[k] = key;
-	}
+	} else
+		syslog(LOG_ERR, "No slot available for a link key.");
+
 }
 
 gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
