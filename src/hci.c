@@ -415,9 +415,20 @@ int hci_get_route(bdaddr_t *bdaddr)
 		return hci_for_each_dev(HCI_UP, NULL, 0);
 }
 
-int hci_devid(bdaddr_t *bdaddr)
+int hci_devid(char *str)
 {
-	return hci_for_each_dev(HCI_UP, __same_bdaddr, (long) bdaddr);
+	bdaddr_t ba;
+	int id = -1;
+
+	if (!strncmp(str, "hci", 3) && strlen(str) >= 4) {
+		id = atoi(str + 3);
+		if (hci_devba(id, &ba) < 0)
+			return -1;
+	} else {
+		str2ba(str, &ba);
+		id = hci_for_each_dev(HCI_UP, __same_bdaddr, (long) &ba);
+	}
+	return id;
 }
 
 int hci_devinfo(int dev_id, struct hci_dev_info *di)
