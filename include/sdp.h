@@ -71,6 +71,8 @@ extern "C" {
 #define HCRP_CTRL_UUID	0x0012
 #define HCRP_DATA_UUID	0x0014
 #define HCRP_NOTE_UUID	0x0016
+#define AVCTP_UUID	0x0017
+#define AVDTP_UUID	0x0019
 #define CMTP_UUID	0x001B
 
 /*
