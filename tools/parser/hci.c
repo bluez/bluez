@@ -38,6 +38,43 @@
 
 #include "parser.h"
 
+char *event_map[] = {
+	"Unknown",
+	"Inquiry Complete",
+	"Inquiry Result",
+	"Connect Complete",
+	"Connect Request",
+	"Disconn Complete",
+	"Auth Complete",
+	"Remote Name Req Complete",
+	"Encryp Change",
+	"Change Connection Link Key Complete",
+	"Master Link Key Complete",
+	"Read Remote Supported Features",
+	"Read Remote Ver Info Complete",
+	"QoS Setup Complete",
+	"Command Complete",
+	"Command Status",
+	"Hardware Error",
+	"Flush Occurred",
+	"Role Change",
+	"Number of Completed Packets",
+	"Mode Change",
+	"Return Link Keys",
+	"PIN Code Request",
+	"Link Key Request",
+	"Link Key Notification",
+	"Loopback Command",
+	"Data Buffer Overflow",
+	"Max Slots Change",
+	"Read Clock Offset Complete",
+	"Connection Packet Type Changed",
+	"QoS Violation",
+	"Page Scan Mode Change",
+	"Page Scan Repetition Mode Change"
+};
+#define EVENTS_NUM	32
+
 static inline void command_dump(void *ptr, int len)
 {
 	hci_command_hdr *hdr = ptr;
@@ -58,7 +95,11 @@ static inline void event_dump(void *ptr, int len)
 	ptr += HCI_EVENT_HDR_SIZE;
 	len -= HCI_EVENT_HDR_SIZE;
 
-	printf("HCI Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
+	if (hdr->evt <= EVENTS_NUM)
+		printf("HCI Event: %s(0x%2.2x) plen %d\n",
+			event_map[hdr->evt], hdr->evt, hdr->plen);
+	else
+		printf("HCI Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
 	raw_dump(1, ptr, len);
 }
 
