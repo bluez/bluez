@@ -5,10 +5,6 @@ dnl Process this file with autoconf to produce a configure script.
 dnl
 AC_INIT()
 
-dnl Guess host type.
-AC_CANONICAL_SYSTEM
-AC_CANONICAL_HOST
-
 AM_MAINTAINER_MODE
 
 AM_INIT_AUTOMAKE(bluez-utils, 2.4)
@@ -20,17 +16,10 @@ CFLAGS="-Wall -g -O2"
 
 AC_PREFIX_DEFAULT()
 
-dnl Check for programs.
 AC_PROG_CC
-AC_PROG_AWK
-AC_PROG_INSTALL
-AC_CHECK_TOOL(LD, ld, ld)
-AC_CHECK_TOOL(AR, ar, ar)
 AC_PROG_INSTALL
 AC_PROG_YACC
 AM_PROG_LEX
-
-AM_PROG_LIBTOOL
 
 AC_ARG_WITH(bluez-libs,
 	--with-bluez-libs=DIR     BlueZ libraries,
@@ -56,20 +45,18 @@ AC_SEARCH_HEADERS(bluetooth/bluetooth.h, $BLUEZ_INCDIR,,
 )
 
 AC_SEARCH_LIB(bluetooth, hci_open_dev, $BLUEZ_LIBDIR,,
-        AC_MSG_ERROR(Bluetooth library not found.
+	AC_MSG_ERROR(Bluetooth library not found.
 		Please compile and install bluez-libs package.)
 )
 
-dnl Check for distro type.
 DISTRO=unknown
 
 if test "$cross_compiling" != yes; then
-   AC_TEST_FILE(/etc/redhat-release,   DISTRO=redhat)
-   AC_TEST_FILE(/etc/mandrake-release, DISTRO=redhat)
-   AC_TEST_FILE(/etc/debian_version,   DISTRO=debian)
+	AC_TEST_FILE(/etc/redhat-release,   DISTRO=redhat)
+	AC_TEST_FILE(/etc/mandrake-release, DISTRO=redhat)
+	AC_TEST_FILE(/etc/debian_version,   DISTRO=debian)
 fi
 
-dnl Check for PCMCIA 
 AC_ARG_ENABLE(pcmcia,
     --enable-pcmcia           Always install PCMCIA support files,
     [PCMCIA=pcmcia],
@@ -78,10 +65,10 @@ AC_ARG_ENABLE(pcmcia,
     fi ])
 
 if test x"$BLUEZ_DBUS" == "xyes"; then
-  PKG_CHECK_MODULES(DBUS, dbus-1, have_dbus=yes, have_dbus=no)
+	PKG_CHECK_MODULES(DBUS, dbus-1, have_dbus=yes, have_dbus=no)
 
-  CFLAGS="$CFLAGS $DBUS_CFLAGS -DENABLE_DBUS"
-  LIBS="$LIBS $DBUS_LIBS"
+	CFLAGS="$CFLAGS $DBUS_CFLAGS -DENABLE_DBUS"
+	LIBS="$LIBS $DBUS_LIBS"
 fi
 
 AM_CONDITIONAL(ENABLE_DBUS, test x$BLUEZ_DBUS = xyes)
