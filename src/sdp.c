@@ -488,7 +488,7 @@ void sdp_set_seq_len(char *ptr, int length)
 	case SDP_ALT32:
 	case SDP_TEXT_STR32:
 	case SDP_URL_STR32:
-		sdp_put_unaligned(htons(length), (uint32_t *)ptr);
+		sdp_put_unaligned(htonl(length), (uint32_t *)ptr);
 		break;
 	}
 }
