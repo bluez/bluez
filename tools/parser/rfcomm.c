@@ -266,7 +266,7 @@ static inline void uih_frame(int level, struct frame *frm, long_frame_head *head
 		frm->len--;
 		frm->channel = head->addr.server_chn;
 
-		proto = get_proto(frm->handle, 0, frm->channel);
+		proto = get_proto(frm->handle, RFCOMM_PSM, frm->channel);
 
 		if (frm->len > 0) {
 			switch (proto) {

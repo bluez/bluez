@@ -35,6 +35,7 @@
 #include <netinet/in.h>
 
 #include "parser.h"
+#include "rfcomm.h"
 
 struct parser_t parser;
 
@@ -64,8 +65,11 @@ void set_proto(uint16_t handle, uint16_t psm, uint8_t channel, uint32_t proto)
 {
 	int i, pos = -1;
 
-	if (psm > 0 && psm < 0x1000)
+	if (psm > 0 && psm < 0x1000 && !channel)
 		return;
+
+	if (!psm && channel)
+		psm = RFCOMM_PSM; 
 
 	for (i = 0; i < PROTO_TABLE_SIZE; i++) {
 		if (proto_table[i].handle == handle && proto_table[i].psm == psm && proto_table[i].channel == channel) {
@@ -90,12 +94,17 @@ uint32_t get_proto(uint16_t handle, uint16_t psm, uint8_t channel)
 {
 	int i, pos = -1;
 
+	if (!psm && channel)
+		psm = RFCOMM_PSM;
+
 	for (i = 0; i < PROTO_TABLE_SIZE; i++) {
 		if (proto_table[i].handle == handle && proto_table[i].psm == psm && proto_table[i].channel == channel)
 			return proto_table[i].proto;
 
-		if (!proto_table[i].handle && (proto_table[i].psm == psm || (!proto_table[i].psm && proto_table[i].channel == channel)))
-			pos = i;
+		if (!proto_table[i].handle) {
+			if (proto_table[i].psm == psm && proto_table[i].channel == channel)
+				pos = i;
+		}
 	}
 
 	return (pos < 0) ? 0 : proto_table[pos].proto;
