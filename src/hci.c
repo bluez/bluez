@@ -453,51 +453,58 @@ int hci_for_each_dev(int flag, int (*func)(int s, int dev_id, long arg), long ar
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
 	int dev_id = -1;
-	int s, i;
+	int i, sk;
 
-	s = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (s < 0)
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0)
 		return -1;
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 	if (!dl) {
-		close(s);
+		close(sk);
 		return -1;
 	}
 
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
-	if (ioctl(s, HCIGETDEVLIST, (void *)dl))
+	if (ioctl(sk, HCIGETDEVLIST, (void *) dl))
 		goto done;
 
-	for (i=0; i < dl->dev_num; i++, dr++) {
+	for (i = 0; i < dl->dev_num; i++, dr++) {
 		if (hci_test_bit(flag, &dr->dev_opt))
-			if (!func || func(s, dr->dev_id, arg)) {
+			if (!func || func(sk, dr->dev_id, arg)) {
 				dev_id = dr->dev_id;
 				break;
 			}
 	}
 
 done:
-	close(s);
+	close(sk);
 	free(dl);
 	return dev_id;
 }
 
-static int __other_bdaddr(int s, int dev_id, long arg)
+static int __other_bdaddr(int sk, int dev_id, long arg)
 {
-	struct hci_dev_info di = {dev_id: dev_id};
-	if (ioctl(s, HCIGETDEVINFO, (void *) &di))
+	struct hci_dev_info di = { dev_id: dev_id };
+
+	if (ioctl(sk, HCIGETDEVINFO, (void *) &di))
 		return 0;
+
+	if (hci_test_bit(HCI_RAW, &di.flags))
+		return 0;
+
 	return bacmp((bdaddr_t *) arg, &di.bdaddr);
 }
 
-static int __same_bdaddr(int s, int dev_id, long arg)
+static int __same_bdaddr(int sk, int dev_id, long arg)
 {
-	struct hci_dev_info di = {dev_id: dev_id};
-	if (ioctl(s, HCIGETDEVINFO, (void *) &di))
+	struct hci_dev_info di = { dev_id: dev_id };
+
+	if (ioctl(sk, HCIGETDEVINFO, (void *) &di))
 		return 0;
+
 	return !bacmp((bdaddr_t *) arg, &di.bdaddr);
 }
 
