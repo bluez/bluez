@@ -90,7 +90,16 @@ AC_DEFUN( AC_SEARCH_LIB,
 
     ac_lib_found=no
     for p in $3; do
-	LDFLAGS="-L$p -l$1"
+	test -d $p || continue;
+
+	# Check for libtool library
+	if test -f $p/lib$1.la; then
+		path=$p/.libs
+	else
+		path=$p
+	fi
+	
+	LDFLAGS="-L$path -l$1"
 	AC_TRY_LINK_FUNC($2,
 	    [ 
 	       LIBS="$LIBS -L$p -l$1"
