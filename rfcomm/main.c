@@ -2,7 +2,7 @@
  *
  *  RFCOMM configuration utility
  *
- *  Copyright (C) 2002  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2003  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -30,6 +30,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <termios.h>
 #include <sys/poll.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>
@@ -50,14 +51,14 @@ extern char *optarg;
 static char *rfcomm_state[] = {
 	"unknown",
 	"connected",
-        "clean",
-        "bound",
-        "listening",
-        "connecting",
-        "connecting",
-        "config",
-        "disconnecting",
-        "closed"
+	"clean",
+	"bound",
+	"listening",
+	"connecting",
+	"connecting",
+	"config",
+	"disconnecting",
+	"closed"
 };
 
 static volatile sig_atomic_t __io_canceled = 0;
@@ -241,6 +242,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 {
 	struct sockaddr_rc laddr, raddr;
 	struct rfcomm_dev_req req;
+	struct termios ti;
 	struct sigaction sa;
 	struct pollfd p;
 	char dst[18], devname[MAXPATHLEN];
@@ -264,7 +266,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 			fprintf(stderr, "Can't find a config entry for rfcomm%d\n", dev);
 			return;
 		}
-		
+
 	} else {
 		raddr.rc_family = AF_BLUETOOTH;
 		str2ba(argv[1], &raddr.rc_bdaddr);
@@ -296,7 +298,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	if (getsockname(sk, (struct sockaddr *)&laddr, &alen) < 0) {
 		perror("Can't get RFCOMM socket name");
 		close(sk);
-                return;
+		return;
 	}
 
 	memset(&req, 0, sizeof(req));
@@ -305,7 +307,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 
 	bacpy(&req.src, &laddr.rc_bdaddr);
 	bacpy(&req.dst, &raddr.rc_bdaddr);
-        req.channel = raddr.rc_channel;
+	req.channel = raddr.rc_channel;
 
 	if ((dev = ioctl(sk, RFCOMMCREATEDEV, &req)) < 0) {
 		perror("Can't create RFCOMM TTY");
@@ -318,9 +320,17 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 		snprintf(devname, MAXPATHLEN - 1, "/dev/bluetooth/rfcomm/%d", dev);
 		if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
 			perror("Can't open RFCOMM device");
+			close(sk);
 			return;
 		}
 	}
+
+	tcflush(fd, TCIOFLUSH);
+
+	cfmakeraw(&ti);
+	tcsetattr(fd, TCSANOW, &ti);
+
+	close(sk);
 
 	ba2str(&req.dst, dst);
 	printf("Connected %s to %s on channel %d\n", devname, dst, req.channel);
@@ -349,6 +359,112 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	}
 
 	printf("Disconnected\n");
+
+	close(fd);
+}
+
+static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv)
+{
+	struct sockaddr_rc laddr, raddr;
+	struct rfcomm_dev_req req;
+	struct termios ti;
+	char dst[18], devname[MAXPATHLEN];
+	int sk, nsk, fd, alen;
+	int i;
+
+	if (argc < 3) {
+		fprintf(stderr, "No command specified\n");
+		return;
+	}
+
+	laddr.rc_family = AF_BLUETOOTH;
+	bacpy(&laddr.rc_bdaddr, bdaddr);
+
+	if (strncmp(argv[1], "exec", 4) == 0) {
+		laddr.rc_channel = 1;
+		argc -= 2;
+		argv += 2;
+	} else if (strncmp(argv[2], "exec", 4) == 0) {
+		laddr.rc_channel = atoi(argv[1]);
+		argc -= 3;
+		argv += 3;
+	} else {
+		fprintf(stderr, "Unknown syntax\n");
+		return;
+	}
+
+	argv[argc] = NULL;
+
+	if ((sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) < 0) {
+		perror("Can't create RFCOMM socket");
+		return;
+	}
+
+	if (bind(sk, (struct sockaddr *)&laddr, sizeof(laddr)) < 0) {
+		perror("Can't bind RFCOMM socket");
+		close(sk);
+		return;
+	}
+
+	printf("Waiting for connection on channel %d\n", laddr.rc_channel);
+
+	listen(sk, 10);
+
+	alen = sizeof(raddr);
+	nsk = accept(sk, (struct sockaddr *) &raddr, &alen);
+
+	alen = sizeof(laddr);
+	if (getsockname(nsk, (struct sockaddr *)&laddr, &alen) < 0) {
+		perror("Can't get RFCOMM socket name");
+		close(nsk);
+		return;
+	}
+
+	memset(&req, 0, sizeof(req));
+	req.dev_id = dev;
+	req.flags = (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP);
+
+	bacpy(&req.src, &laddr.rc_bdaddr);
+	bacpy(&req.dst, &raddr.rc_bdaddr);
+	req.channel = raddr.rc_channel;
+
+	if ((dev = ioctl(nsk, RFCOMMCREATEDEV, &req)) < 0) {
+		perror("Can't create RFCOMM TTY");
+		close(sk);
+		return;
+	}
+
+	snprintf(devname, MAXPATHLEN - 1, "/dev/rfcomm%d", dev);
+	if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
+		snprintf(devname, MAXPATHLEN - 1, "/dev/bluetooth/rfcomm/%d", dev);
+		if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
+			perror("Can't open RFCOMM device");
+			close(sk);
+			return;
+		}
+	}
+
+	tcflush(fd, TCIOFLUSH);
+
+	cfmakeraw(&ti);
+	tcsetattr(fd, TCSANOW, &ti);
+
+	close(sk);
+	close(nsk);
+
+	ba2str(&req.dst, dst);
+	printf("Connection from %s to %s\n", dst, devname);
+
+	for (i = 1; i < argc; i++)
+		if (strcmp(argv[i], "%d") == 0)
+			argv[i] = devname;
+
+	printf("Executing ");
+	for (i = 0; i < argc; i++)
+		printf("%s%s", (i == 0) ? "\"" : " ", argv[i]);
+	printf("\"\n");
+
+	execvp(argv[0], argv);
 
 	close(fd);
 }
@@ -393,8 +509,9 @@ struct {
 } command[] = {
 	{ "bind",    "create", cmd_create,  "<dev> <bdaddr> [channel]", "Bind device"    },
 	{ "release", "unbind", cmd_release, "<dev>",                    "Release device" },
+	{ "show",    "info",   cmd_show,    "<dev>",                    "Show device"    },
 	{ "connect", "conn",   cmd_connect, "<dev> <bdaddr> [channel]", "Connect device" },
-	{ "show",    "info",   cmd_show,    0,                          "Show device"    },
+	{ "listen",  "server", cmd_listen,  "<dev> [channel]",          "Listen"         },
 	{ NULL, NULL, NULL, 0, 0 }
 };
 
@@ -447,7 +564,7 @@ int main(int argc, char *argv[])
 			else
 				str2ba(optarg, &bdaddr);
 			break;
-			
+
 		case 'f':
 			rfcomm_config_file = strdup(optarg);
 			break;
@@ -483,7 +600,9 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-	if (strncmp(argv[1], "rfcomm", 6) == 0)
+	if (strncmp(argv[1], "/dev/rfcomm", 11) == 0)
+		dev_id = atoi(argv[1] + 11);
+	else if (strncmp(argv[1], "rfcomm", 6) == 0)
 		dev_id = atoi(argv[1] + 6);
 	else
 		dev_id = atoi(argv[1]);
