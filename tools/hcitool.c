@@ -78,7 +78,7 @@ static int for_each_dev(int flag, int(*func)(int d, long arg), long arg)
 		return -1;
 
 	for (i=0; i < dl->dev_num; i++, dr++) {
-		if (dr->dev_opt & (1<<flag)) {
+		if (hci_test_bit(flag, &dr->dev_opt)) {
 			if (!func || func(dr->dev_id, arg))
 				return dr->dev_id;
 		}
