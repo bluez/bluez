@@ -156,7 +156,6 @@ static int rev_info(int dev_id, long arg)
 		break;
 	}
 	printf("\n");
-
 	return 0;
 }
 
@@ -185,8 +184,7 @@ static int conn_list(int dev_id, long arg)
 		printf("\t%s %s %s handle %d state %d lm %s\n",
 			ci->out ? "<" : ">",
 			ci->type == ACL_LINK ? "ACL" : "SCO",
-			batostr(&bdaddr), ci->handle,
-		     	ci->state,
+			batostr(&bdaddr), ci->handle, ci->state,
 			hci_lmtostr(ci->link_mode));
 	}
 	return 0;
@@ -237,7 +235,7 @@ static void hex_dump(char *pref, int width, unsigned char *buf, int len)
 static void cmd_dev(int dev_id, char **opt, int nopt)
 {
 	printf("Devices:\n");
-	for_each_dev(HCI_UP, dev_info, 0);	
+	for_each_dev(HCI_UP, dev_info, 0);
 }
 
 static void cmd_inq(int dev_id, char **opt, int nopt)
@@ -282,8 +280,8 @@ static void cmd_scan(int dev_id, char **opt, int nopt)
 	inquiry_info *info;
 	int i, num_rsp = 0, length, flags;
 	bdaddr_t bdaddr;
-	int dd;
 	char name[248];
+	int dd;
 
 	if (dev_id < 0)
 		dev_id = get_route(NULL);
@@ -372,7 +370,6 @@ static void cmd_info(int dev_id, char **opt, int nopt)
 	hci_disconnect(dd, handle, 0x13, 10000);
 
 	close(dd);
-
 }
 
 static void cmd_cmd(int dev_id, char **opt, int nopt)
@@ -380,9 +377,9 @@ static void cmd_cmd(int dev_id, char **opt, int nopt)
 	char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
 	struct hci_filter flt;
 	hci_event_hdr *hdr;
+	int i, len, dd;
 	uint16_t ocf;
 	uint8_t  ogf;
-	int i, len, dd;
 
 	if (nopt < 2) {
 		usage();
@@ -395,7 +392,7 @@ static void cmd_cmd(int dev_id, char **opt, int nopt)
 	errno = 0;
 	ogf = strtol(opt[0], NULL, 16);
 	ocf = strtol(opt[1], NULL, 16);
-	if (errno == ERANGE || (ogf > 0x3f) || (htobs(ocf) > 0x3ff)) {
+	if (errno == ERANGE || (ogf > 0x3f) || (ocf > 0x3ff)) {
 		usage();
 		return;
 	}
@@ -418,9 +415,8 @@ static void cmd_cmd(int dev_id, char **opt, int nopt)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("< HCI Command: OGF 0x%02x, OCF 0x%04x, plen %d\n", ogf, ocf, len);
-	hex_dump("  ", 20, buf, len);
-	fflush(stdout);
+	printf("< HCI Command: ogf 0x%02x, ocf 0x%04x, plen %d\n", ogf, ocf, len);
+	hex_dump("  ", 20, buf, len); fflush(stdout);
 
 	if (hci_send_cmd(dd, ogf, ocf, len, buf) < 0) {
 		perror("Send failed");
@@ -437,10 +433,10 @@ static void cmd_cmd(int dev_id, char **opt, int nopt)
 	ptr = buf + (1 + HCI_EVENT_HDR_SIZE);
 	len -= (1 + HCI_EVENT_HDR_SIZE);
 
-	printf("> HCI Event: 0x%02x plen %d:\n", hdr->evt, hdr->plen);
-	hex_dump("  ", 20, ptr, len);
-	fflush(stdout);
+	printf("> HCI Event: 0x%02x plen %d\n", hdr->evt, hdr->plen);
+	hex_dump("  ", 20, ptr, len); fflush(stdout);
 
+	hci_close_dev(dd);
 	return;
 }
 
@@ -555,7 +551,7 @@ struct {
 	{ "inq",  cmd_inq,  "[length] [flush]",           "Inquire remote devices"             },
 	{ "scan", cmd_scan, "[length] [flush]",           "Scan for remote devices"            },
 	{ "info", cmd_info, "<bdaddr>",                   "Get information from remote device" },
-	{ "cmd",  cmd_cmd,  "<OGF> <OCF> [param]",        "Submit arbitrary HCI commands"      },
+	{ "cmd",  cmd_cmd,  "<ogf> <ocf> [param]",        "Submit arbitrary HCI commands"      },
 	{ "con",  cmd_con,  0,                            "Display active connections"         },
 	{ "cc",   cmd_cc,   "<bdaddr> [pkt type] [role]", "Create connection to remote device" },
 	{ "dc",	  cmd_dc,   "<bdaddr>",                   "Disconnect from remote device"      },
