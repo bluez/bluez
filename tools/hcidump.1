@@ -1,0 +1,83 @@
+.TH HCIDUMP 1 "Nov 12 2002" BlueZ "Linux System Administration"
+.SH NAME
+hcidump \- Parse HCI data
+.SH SYNOPSIS
+.B hcidump [-h]
+.br
+.B hcidump [option [option...]] [filter]
+
+.SH DESCRIPTION
+.LP
+.B
+hcidump
+reads raw HCI data coming from and going to a Bluetooth device (which can be
+specified with the option
+.BR -i ,
+default is the first available one) and prints to screen commands, events and
+data in a human-readable form. Optionally, the dump can be written to a file
+rather than parsed, and the dump file can be parsed in a subsequent moment.
+.SH OPTIONS
+.TP
+.BI -h
+Prints usage info and exits
+.TP
+.BI -i " <hciX>"
+Data is read from
+.IR hciX ,
+which must be the name of an installed Bluetooth device. If not specified,
+and if
+.B
+-r
+option is not set, data is read from the first available Bluetooth device.
+.TP
+.BI -r " <file>" "\fR,\fP \-\^\-read-dump=" "<file>"
+Data is not read from a Bluetooth device, but from file
+.IR file .
+.I
+file
+is crated with option
+.BR -w .
+.TP
+.BI -w " <file>" "\fR,\fP \-\^\-save-dump=" "<file>"
+Parse output is not printed to screen, instead data read from device is saved in file
+.IR file .
+The saved dump file can be subsequently parsed with option
+.BR -r .
+.TP
+.BR -x ", " "\-\^\-hex"
+For every packet, not only is the packet type displayed, but also all data in hex.
+.TP
+.BR -a ", " "\-\^\-ascii"
+For every packet, not only is the packet type displayed, but also all data in ASCII.
+.TP
+.BI -s " <len>" "\fR,\fP \-\^\-snap-len=" "<len>"
+Sets max length of processed packets to
+.IR len .
+.TP
+.BI -p " <psm>" "\fR,\fP \-\^\-psm=" "<psm>"
+Sets default Protocol Service Multiplexer to
+.IR psm .
+.TP
+.BR -t ", " "\-\^\-ts"
+Prepend a time stamp to every packet.
+.TP
+.BR -R ", " "\-\^\-raw"
+Raw mode: do not display packet type, only data.
+.SH FILTERS
+.B
+filter
+is a space-separated list of packet categories: available categories are
+.IR hci ,
+.IR l2cap ,
+.IR sco ,
+.IR rfcomm ,
+.IR sdp ,
+.I bnep
+and
+.IR cmtp .
+If filters are used, only packets belonging to the specified categories are
+dumped. By default, all packets are dumped.
+.SH AUTHORS
+Written by Maxim Krasnyansky <maxk@qualcomm.com>
+.PP
+man page by Fabrizio Gennari <fabrizio.gennari@philips.com>
