@@ -1,24 +1,24 @@
 /* 
-	BlueZ - Bluetooth protocol stack for Linux
-	Copyright (C) 2000-2001 Qualcomm Incorporated
-
-	Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
-
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation;
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-	OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-	RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-	NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-	USE OR PERFORMANCE OF THIS SOFTWARE.
-
-	ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-	TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
+   BlueZ - Bluetooth protocol stack for Linux
+   Copyright (C) 2000-2001 Qualcomm Incorporated
+   
+   Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
+   
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License version 2 as
+   published by the Free Software Foundation;
+   
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+   IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
+   OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
+   RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+   NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
+   USE OR PERFORMANCE OF THIS SOFTWARE.
+   
+   ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
+   TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
 */
 /*
  * $Id$
@@ -42,9 +42,9 @@
 #include <sys/stat.h>
 #include <asm/types.h>
 
-#include <bluetooth.h>
-#include <hci.h>
-#include <hci_lib.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 
 #include <glib.h>
 
@@ -53,74 +53,103 @@
 
 static GIOChannel *io_chan[HCI_MAX_DEV];
 
-void save_link_keys(void)
-{
-	int n, f;
-
-	syslog(LOG_INFO, "Saving link key database");
-
-	umask(0077);
-	if (!(f = open(hcid.key_file, O_WRONLY | O_CREAT | O_TRUNC, 0))) {
-		syslog(LOG_ERR, "Can't save key database %s. %s(%d)",
-				hcid.key_file, strerror(errno), errno);
-		return;
-	}
-
-	for (n = 0; n < hcid.key_num; n++) {
-		if (!hcid.link_key[n])
-			continue;
-
-		if (write_n(f, hcid.link_key[n], sizeof(struct link_key)) < 0)
-			break;
-	}
-	
-	close(f);
-}
+/* Link Key handling */
 
 void flush_link_keys(void)
 {
-	int n;
-	
 	syslog(LOG_INFO, "Flushing link key database");
-
-	for (n=0; n < hcid.key_num; n++) {
-		if (hcid.link_key[n]) {
-			free(hcid.link_key[n]);
-			hcid.link_key[n] = NULL;
-		}
-	}
+	truncate(hcid.key_file, 0);
 }
 
-int read_link_keys(void)
+/* This function is not reentrable */
+static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
 {
-	int f, n = 0;
+	static struct link_key k;
+	struct link_key *key = NULL;
+	int f, r;
 
-	if (!(f = open(hcid.key_file, O_RDONLY))) {
-		syslog(LOG_ERR, "Can't open key database %s. %s(%d)",
-				hcid.key_file, strerror(errno), errno);
-		return -1;
+	f = open(hcid.key_file, O_RDONLY);
+	if (f < 0) {
+		if (errno != ENOENT)
+			syslog(LOG_ERR, "Link key database open failed. %s(%d)",
+					strerror(errno), errno);
+		return NULL;
 	}
 
-	while (n < hcid.key_num) {
-		struct link_key *key;
-		int r;
-
-		key = malloc(sizeof(*key));
-		if (!key)
-			continue;
-
-		r = read_n(f, key, sizeof(*key));
-		if (r <= 0) {
-			free(key);
+	while ((r = read_n(f, &k, sizeof(k)))) {
+		if (r < 0) {
+			syslog(LOG_ERR, "Link key database read failed. %s(%d)",
+					strerror(errno), errno);
 			break;
 		}
 
-		hcid.link_key[n++] = key;
+		if (!bacmp(&k.sba, sba) && !bacmp(&k.dba, dba)) {
+			key = &k;
+			break;
+		}
 	}
 	
 	close(f);
-	return n;
+	return key;
 }
+
+static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
+{
+	struct link_key *key = get_link_key(sba, dba);
+
+	if (key) {
+		/* Link key found */
+		link_key_reply_cp lr;
+		memcpy(lr.link_key, key->key, 16);
+		bacpy(&lr.bdaddr, dba);
+		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
+				LINK_KEY_REPLY_CP_SIZE, &lr);
+		key->time = time(0);
+	} else {
+		/* Link key not found */
+		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY, 6, dba);
+	}
+}
+
+static void save_link_key(struct link_key *key)
+{
+	char sa[40], da[40];
+	int f;
+
+	f = open(hcid.key_file, O_WRONLY | O_CREAT | O_APPEND, 0);
+	if (f < 0) {
+		syslog(LOG_ERR, "Link key database open failed. %s(%d)",
+				strerror(errno), errno);
+		return;
+	}
+
+	if (write_n(f, key, sizeof(*key)) < 0) {
+		syslog(LOG_ERR, "Link key database write failed. %s(%d)",
+				strerror(errno), errno);
+	}
+
+	close(f);
+
+	ba2str(&key->sba, sa); ba2str(&key->dba, da);
+	syslog(LOG_INFO, "Saving link key %s %s", sa, da);
+}
+
+static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_link_key_notify *evt = ptr;
+	bdaddr_t *dba = &evt->bdaddr;
+	struct link_key key;
+	
+	memcpy(key.key, evt->link_key, 16);
+	bacpy(&key.sba, sba);
+	bacpy(&key.dba, dba);
+	key.type = evt->key_type;
+	key.time = time(0);
+	
+	save_link_key(&key);
+}
+
+/* PIN code handling */
 
 int read_pin_code(void)
 {
@@ -225,36 +254,6 @@ reject:
 	exit(0);
 }
 
-static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
-{
-	struct link_key *key = NULL;
-	int n;
-
-	/* Find the key */
-	for (n=0; n < hcid.key_num; n++) {
-		if (!hcid.link_key[n])
-			continue;
-		if (!bacmp(&hcid.link_key[n]->sba, sba) && 
-				!bacmp(&hcid.link_key[n]->dba, dba)) {
-			key = hcid.link_key[n];
-			break;
-		}
-	}
-
-	if (key) {
-		/* Link key found */
-		link_key_reply_cp lr;
-		memcpy(lr.link_key, key->key, 16);
-		bacpy(&lr.bdaddr, dba);
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
-				LINK_KEY_REPLY_CP_SIZE, &lr);
-		key->time = time(0);
-	} else {
-		/* Link key not found */
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY, 6, dba);
-	}
-}
-
 static void pin_code_request(int dev, bdaddr_t *ba)
 {
 	struct hci_conn_info_req *cr;
@@ -298,60 +297,6 @@ static void pin_code_request(int dev, bdaddr_t *ba)
 		call_pin_helper(dev, ci);
 	}	
 	free(cr);
-}
-
-static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
-{
-	evt_link_key_notify *evt = ptr;
-	bdaddr_t *dba = &evt->bdaddr;
-	struct link_key *key;
-	time_t tm, td, ot;
-	int n, k = -1, ek = -1;
-
-	tm = time(0); ot = HCID_KEY_TTL;
-	
-	/* Find an empty slot or the oldest key */
-	for (n=0; n < hcid.key_num; n++) {
-		key = hcid.link_key[n];
-		if (!key || (!bacmp(&key->sba, sba) && !bacmp(&key->dba, dba))) {
-			k = n;
-			break;
-		}
-
-		td = tm - key->time;
-		if (td > ot) {
-			ot = td;
-			ek = n;
-		}
-	}
-
-	if (k == -1 && ek != -1)
-		k = ek;
-	
-	if (k != -1) {
-		char sa[40], da[40];
-
-		/* Update link key */
-		key = hcid.link_key[k];
-		if (!key && !(key = malloc(sizeof(*key)))) {
-			syslog(LOG_ERR, "Can't allocate link key memory. %s(%d)",
-				strerror(errno), errno);
-			return;
-		}
-
-		ba2str(sba, sa); ba2str(dba, da);
-		syslog(LOG_INFO, "Storing link key %s %s", sa, da);
-
-		bacpy(&key->sba, sba);
-		bacpy(&key->dba, dba);
-		memcpy(key->key, evt->link_key, 16);
-		key->type = evt->key_type;
-		key->time = tm;
-
-		hcid.link_key[k] = key;
-	} else
-		syslog(LOG_ERR, "No slot available for a link key.");
-
 }
 
 gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -407,19 +352,14 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 }
 
-int init_security_data(void)
+static void init_security_data(void)
 {
-	void *buf;
+	static int initialized = 0;
 
-	buf = calloc(hcid.key_num, sizeof(void*));
-	if (!buf) {
-		syslog(LOG_ERR, "Can't allocate link key database. %s(%d)",
-				strerror(errno), errno);
-		return -1;
-	}
-	hcid.link_key = buf;
-	read_link_keys();
-
+	if (initialized)
+		return;
+	initialized = 1;
+	
 	/* Set local PIN code */
 	if (hcid.security == HCID_SEC_AUTO) {
 		if (read_pin_code() < 0) {
@@ -427,8 +367,7 @@ int init_security_data(void)
 			hcid.pin_len = 5;
 		}
 	}
-	
-	return 0;
+	return;
 }
 
 void start_security_manager(int hdev)
@@ -443,8 +382,7 @@ void start_security_manager(int hdev)
 	
 	syslog(LOG_INFO, "Starting security manager %d", hdev);
 
-	if (!hcid.link_key && init_security_data())
-		return;
+	init_security_data();
 
 	if ((dev = hci_open_dev(hdev)) < 0) {
 		syslog(LOG_ERR, "Can't open device hci%d. %s(%d)",

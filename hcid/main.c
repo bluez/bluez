@@ -1,24 +1,24 @@
 /* 
-	BlueZ - Bluetooth protocol stack for Linux
-	Copyright (C) 2000-2001 Qualcomm Incorporated
-
-	Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
-
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation;
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
-	OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
-	RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
-	NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
-	USE OR PERFORMANCE OF THIS SOFTWARE.
-
-	ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
-	TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
+   BlueZ - Bluetooth protocol stack for Linux
+   Copyright (C) 2000-2001 Qualcomm Incorporated
+   
+   Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
+   
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License version 2 as
+   published by the Free Software Foundation;
+   
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+   IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) AND AUTHOR(S) BE LIABLE FOR ANY CLAIM,
+   OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER
+   RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+   NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
+   USE OR PERFORMANCE OF THIS SOFTWARE.
+   
+   ALL LIABILITY, INCLUDING LIABILITY FOR INFRINGEMENT OF ANY PATENTS, COPYRIGHTS,
+   TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS SOFTWARE IS DISCLAIMED.
 */
 /*
  * $Id$
@@ -38,11 +38,11 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/time.h>
-#include <asm/types.h>
+#include <sys/stat.h>
 
-#include <bluetooth.h>
-#include <hci.h>
-#include <hci_lib.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 
 #include <glib.h>
 
@@ -359,7 +359,6 @@ int main(int argc, char *argv[], char *env[])
 	hcid.pin_file   = strdup(HCID_PIN_FILE);
 	hcid.pin_helper = strdup(HCID_PIN_HELPER);
 	hcid.key_file   = strdup(HCID_KEY_FILE);
-	hcid.key_num    = HCID_KEY_NUM;
 
 	init_defaults();
 	
@@ -393,6 +392,8 @@ int main(int argc, char *argv[], char *env[])
 		chdir("/");
 	}
 
+	umask(0077);
+	
         init_title(argc, argv, env, "hcid: ");
 	set_title("initializing");
 
@@ -452,8 +453,6 @@ int main(int argc, char *argv[], char *env[])
 
 	/* Start event processor */
 	g_main_run(event_loop);
-
-	save_link_keys();
 
 	syslog(LOG_INFO, "Exit.");
 	return 0;
