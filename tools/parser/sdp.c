@@ -81,17 +81,20 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_ADVANCED_AUDIO,           "AdvAudio"     }, /* A2DP */
 	{ SDP_UUID_INTERCOM,                 "Intercom"     },
 	{ SDP_UUID_FAX,                      "Fax"          },
-	{ SDP_UUID_HEADSET_AUDIO_GATEWAY,    "AG"           },
+	{ SDP_UUID_HEADSET_AUDIO_GATEWAY,    "Headset AG"   },
 	{ SDP_UUID_PANU,                     "PANU"         }, /* PAN */
 	{ SDP_UUID_NAP,                      "NAP"          }, /* PAN */
 	{ SDP_UUID_GN,                       "GN"           }, /* PAN */
 	{ SDP_UUID_IMAGING,                  "Imaging"      }, /* BIP */
 	{ SDP_UUID_IMAGING_RESPONDER,        "ImagingResp"  }, /* BIP */
+	{ SDP_UUID_HANDSFREE,                "Handsfree"    },
+	{ SDP_UUID_HANDSFREE_AUDIO_GATEWAY,  "Handsfree AG" },
 	{ SDP_UUID_HUMAN_INTERFACE_DEVICE,   "HID"          }, /* HID */
 	{ SDP_UUID_HARDCOPY_CABLE_REPLACE,   "HCRP",        }, /* HCRP */
 	{ SDP_UUID_HCR_PRINT,                "HCRPrint",    }, /* HCRP */
 	{ SDP_UUID_HCR_SCAN,                 "HCRScan",     }, /* HCRP */
 	{ SDP_UUID_COMMON_ISDN_ACCESS,       "CIP"          }, /* CIP */
+	{ SDP_UUID_SIM_ACCESS,               "SAP"          }, /* SAP */
 	{ SDP_UUID_PNP_INFORMATION,          "PNPInfo"      },
 	{ SDP_UUID_GENERIC_NETWORKING,       "Networking"   },
 	{ SDP_UUID_GENERIC_FILE_TRANSFER,    "FileTrnsf"    },
