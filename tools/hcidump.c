@@ -52,12 +52,12 @@ void usage(void)
 {
 	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
 	printf("Usage:\n");
-	printf("\thcidump <-i hciX> [-ah]\n");
+	printf("\thcidump <-i hciX> [-ah] [-w file] [-r file]\n");
 }
 
 void process_frames(int dev, int sock, int file)
 {
-	char *data, *ctrl, *frame;
+	char *buf, *data, *ctrl;
 	struct cmsghdr *cmsg;
 	struct msghdr msg;
 	struct iovec  iv;
@@ -67,12 +67,12 @@ void process_frames(int dev, int sock, int file)
 	if (snap_len < SNAP_LEN)
 		snap_len = SNAP_LEN;
 
-	if (!(data = malloc(snap_len + DUMP_HDR_SIZE))) {
+	if (!(buf = malloc(snap_len + DUMP_HDR_SIZE))) {
 		perror("Can't allocate data buffer");
 		exit(1);
 	}
-	dh = (void *) data;
-	frame = data + DUMP_HDR_SIZE;
+	dh = (void *) buf;
+	data = buf + DUMP_HDR_SIZE;
 	
 	if (!(ctrl = malloc(100))) {
 		perror("Can't allocate control buffer");
@@ -82,7 +82,7 @@ void process_frames(int dev, int sock, int file)
 	printf("device: hci%d snap_len: %d filter: none\n", dev, snap_len); 
 
 	while (1) {
-		iv.iov_base = frame;
+		iv.iov_base = data;
 		iv.iov_len  = snap_len;
 
 		msg.msg_iov = &iv;
@@ -108,8 +108,15 @@ void process_frames(int dev, int sock, int file)
 		}
 
 		if (file == -1) {
-			/* Parse and print */	
-			parse(in, frame, len);
+			/* Parse and print */
+			struct frame frm;
+
+			frm.data = frm.ptr = data;
+			frm.data_len = frm.len = len;
+			frm.in = in;
+			frm.flags = 0;
+			
+			parse(&frm);
 		} else {
 			/* Save dump */	
 			dh->len = __cpu_to_le16(len);
@@ -134,6 +141,7 @@ void read_dump(int file)
 	}
 	
 	while (1) {
+		struct frame frm;
 		int len;
 
 		if ((err = read_n(file, (void *) &dh, DUMP_HDR_SIZE)) < 0)
@@ -146,7 +154,12 @@ void read_dump(int file)
 			goto failed;
 		if (!err) return;
 
-		parse(dh.in, data, len);
+		frm.data = frm.ptr = data;
+		frm.data_len = frm.len = len;
+		frm.in = dh.in;
+		frm.flags = 0;
+		
+		parse(&frm);
 	}
 
 failed:

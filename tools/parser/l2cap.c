@@ -39,23 +39,23 @@
 
 #include "parser.h"
 
-static inline void command_rej(int level, __u8 *ptr, int len)
+static inline void command_rej(int level, struct frame *frm)
 {
-	l2cap_cmd_rej *h = (void *) ptr;
+	l2cap_cmd_rej *h = frm->ptr;
 	printf("Command rej: reason %d\n", 
 			btohs(h->reason));
 }
 
-static inline void conn_req(int level, __u8 *ptr, int len)
+static inline void conn_req(int level, struct frame *frm)
 {
-	l2cap_conn_req *h = (void *) ptr;
+	l2cap_conn_req *h = frm->ptr;
 	printf("Connect req: psm %d scid 0x%4.4x\n", 
 			btohs(h->psm), btohs(h->scid));
 }
 
-static inline void conn_rsp(int level, __u8 *ptr, int len)
+static inline void conn_rsp(int level, struct frame *frm)
 {
-	l2cap_conn_rsp *h = (void *) ptr;
+	l2cap_conn_rsp *h = frm->ptr;
 	printf("Connect rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n",
 			btohs(h->dcid), btohs(h->scid),
 			btohs(h->result), btohs(h->status));
@@ -76,11 +76,11 @@ static __u32 conf_opt_val(__u8 *ptr, __u8 len)
 	return 0;
 }
 
-static void conf_opt(int level, __u8 *ptr, int len)
+static void conf_opt(int level, void *ptr, int len)
 {
 	indent(level);
 	while (len > 0) {
-		l2cap_conf_opt *h = (void *) ptr;
+		l2cap_conf_opt *h = ptr;
 	
 		ptr += L2CAP_CONF_OPT_SIZE + h->len;
 		len -= L2CAP_CONF_OPT_SIZE + h->len;
@@ -100,9 +100,9 @@ static void conf_opt(int level, __u8 *ptr, int len)
 	printf("\n");
 }
 
-static inline void conf_req(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
+static inline void conf_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
-	l2cap_conf_req *h = (void *) ptr;
+	l2cap_conf_req *h = frm->ptr;
 	int clen = btohs(cmd->len) - L2CAP_CONF_REQ_SIZE;
 	printf("Config req: dcid 0x%4.4x flags 0x%4.4x clen %d\n",
 			btohs(h->dcid), btohs(h->flags), clen);
@@ -110,9 +110,9 @@ static inline void conf_req(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
 		conf_opt(level+1, h->data, clen);
 }
 
-static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
+static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
-	l2cap_conf_rsp *h = (void *) ptr;
+	l2cap_conf_rsp *h = frm->ptr;
 	int clen = btohs(cmd->len) - L2CAP_CONF_RSP_SIZE;
 	printf("Config rsp: scid 0x%4.4x flags 0x%4.4x result %d clen %d\n",
 			btohs(h->scid), btohs(h->flags), btohs(h->result), clen);
@@ -120,118 +120,118 @@ static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
 		conf_opt(level+1, h->data, clen);
 }
 
-static inline void disconn_req(int level, __u8 *ptr, int len)
+static inline void disconn_req(int level, struct frame *frm)
 {
-	l2cap_disconn_req *h = (void *) ptr;
+	l2cap_disconn_req *h = frm->ptr;
 	printf("Disconn req: dcid 0x%4.4x scid 0x%4.4x\n", 
 			btohs(h->dcid), btohs(h->scid));
 }
 
-static inline void disconn_rsp(int level, __u8 *ptr, int len)
+static inline void disconn_rsp(int level, struct frame *frm)
 {
-	l2cap_disconn_rsp *h = (void *) ptr;
+	l2cap_disconn_rsp *h = frm->ptr;
 	printf("Disconn rsp: dcid 0x%4.4x scid 0x%4.4x\n",
 			btohs(h->dcid), btohs(h->scid));
 }
 
-static inline void echo_req(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
+static inline void echo_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	printf("Echo req: dlen %d\n", 
 			btohs(cmd->len));
-	raw_dump(level, ptr, len);
+	raw_dump(level, frm);
 }
 
-static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
+static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	printf("Echo rsp: dlen %d\n", 
 			btohs(cmd->len));
-	raw_dump(level, ptr, len);
+	raw_dump(level, frm);
 }
 
-static inline void info_req(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
+static inline void info_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	printf("Info req: dlen %d\n", 
 			btohs(cmd->len));
-	raw_dump(level, ptr, len);
+	raw_dump(level, frm);
 }
 
-static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
+static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	printf("Info rsp: dlen %d\n", 
 			btohs(cmd->len));
-	raw_dump(level, ptr, len);
+	raw_dump(level, frm);
 }
 
-void l2cap_dump(int level, __u8 *ptr, int len, __u8 flags)
+void l2cap_dump(int level, struct frame *frm)
 {
-	l2cap_hdr *hdr = (void *) ptr;
+	l2cap_hdr *hdr = frm->ptr;
 	__u16 dlen = btohs(hdr->len);
 	__u16 cid  = btohs(hdr->cid);
 
-	ptr += L2CAP_HDR_SIZE;
-	len -= L2CAP_HDR_SIZE;
+	frm->ptr += L2CAP_HDR_SIZE;
+	frm->len -= L2CAP_HDR_SIZE;
 
 	indent(level); 
 	if (cid == 0x1) {
-		l2cap_cmd_hdr *hdr = (void *) ptr;
+		l2cap_cmd_hdr *hdr = frm->ptr;
 
-		ptr += L2CAP_CMD_HDR_SIZE;
-		len -= L2CAP_CMD_HDR_SIZE;
+		frm->ptr += L2CAP_CMD_HDR_SIZE;
+		frm->len -= L2CAP_CMD_HDR_SIZE;
 
 		printf("L2CAP(s): "); 
 
 		switch (hdr->code) {
 		case L2CAP_COMMAND_REJ:
-			command_rej(level, ptr, len);
+			command_rej(level, frm);
 			break;
 			
 		case L2CAP_CONN_REQ:
-			conn_req(level, ptr, len);
+			conn_req(level, frm);
 			break;
 	
 		case L2CAP_CONN_RSP:
-			conn_rsp(level, ptr, len);
+			conn_rsp(level, frm);
 			break;
 
 		case L2CAP_CONF_REQ:
-			conf_req(level, hdr, ptr, len);		
+			conf_req(level, hdr, frm);		
 			break;
 
 		case L2CAP_CONF_RSP:
-			conf_rsp(level, hdr, ptr, len);
+			conf_rsp(level, hdr, frm);
 			break;
 
 		case L2CAP_DISCONN_REQ:
-			disconn_req(level, ptr, len);
+			disconn_req(level, frm);
 			break;
 
 		case L2CAP_DISCONN_RSP:
-			disconn_rsp(level, ptr, len);
+			disconn_rsp(level, frm);
 			break;
 	
 		case L2CAP_ECHO_REQ:
-			echo_req(level, hdr, ptr, len);
+			echo_req(level, hdr, frm);
 			break;
 
 		case L2CAP_ECHO_RSP:
-			echo_rsp(level, hdr, ptr, len);	
+			echo_rsp(level, hdr, frm);	
 			break;
 
 		case L2CAP_INFO_REQ:
-			info_req(level, hdr, ptr, len);
+			info_req(level, hdr, frm);
 			break;
 
 		case L2CAP_INFO_RSP:
-			info_rsp(level, hdr, ptr, len);
+			info_rsp(level, hdr, frm);
 			break;
 
 		default:
 			printf("code 0x%2.2x ident %d len %d\n", 
 				hdr->code, hdr->ident, btohs(hdr->len));
-			raw_dump(level, ptr, len);
+			raw_dump(level, frm);
 		}		
 	} else {
 		printf("L2CAP(d): cid 0x%x len %d\n", cid, dlen);
-		raw_dump(level, ptr, len);
+		raw_dump(level, frm);
 	}
 }

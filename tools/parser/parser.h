@@ -29,17 +29,29 @@
 #define DUMP_ASCII	0x02
 #define DUMP_TYPE_MASK	(DUMP_HEX | DUMP_ASCII)
 
-#define indent(l) printf("%*c", (l*2), ' ')
+struct frame {
+	void *data;
+	int  data_len;
+	void *ptr;
+	int  len;
+	int  in;
+	long flags;
+};
 
 void init_parser(long flags);
 
-void raw_dump(int level, __u8 *data, int len);
-void hci_dump(int level, __u8 *data, int len);
-void l2cap_dump(int level, __u8 *data, int len, __u8 flags);
+void raw_dump(int level, struct frame *frm);
+void hci_dump(int level, struct frame *frm);
+void l2cap_dump(int level, struct frame *frm);
 
-static inline void parse(int in, char *data, int len)
+static inline void indent(int level)
 {
-	printf("%c ", (in ? '>' : '<')); 
-	hci_dump(0, data, len);
+	printf("%*c", (level*2), ' ');
+}
+
+static inline void parse(struct frame *frm)
+{
+	printf("%c ", (frm->in ? '>' : '<')); 
+	hci_dump(0, frm);
 	fflush(stdout);
 }

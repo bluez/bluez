@@ -76,15 +76,15 @@ static inline void ascii_dump(int level, unsigned char *buf, int len)
 		printf("\n");
 }
 
-void raw_dump(int level, unsigned char *buf, int len)
+void raw_dump(int level, struct frame *frm)
 {
 	switch (parser_flags & DUMP_TYPE_MASK) {
 	case DUMP_HEX:
-		hex_dump(level, buf, len);	
+		hex_dump(level, frm->ptr, frm->len);
 		break;
 
 	case DUMP_ASCII:
-		ascii_dump(level, buf, len);
+		ascii_dump(level, frm->ptr, frm->len);
 		break;
 	}
 }

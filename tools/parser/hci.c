@@ -220,16 +220,16 @@ char *cmd_status_map[] = {
 };
 #define CMD_STATUS_NUM 5
 
-static inline void command_dump(void *ptr, int len)
+static inline void command_dump(struct frame *frm)
 {
-	hci_command_hdr *hdr = ptr;
+	hci_command_hdr *hdr = frm->ptr;
 	__u16 opcode = __le16_to_cpu(hdr->opcode);
 	__u16 ogf = cmd_opcode_ogf(opcode);
 	__u16 ocf = cmd_opcode_ocf(opcode);
 	char *cmd;
 
-	ptr += HCI_COMMAND_HDR_SIZE;
-	len -= HCI_COMMAND_HDR_SIZE;
+	frm->ptr += HCI_COMMAND_HDR_SIZE;
+	frm->len -= HCI_COMMAND_HDR_SIZE;
 
 	switch (ogf) {
 	case OGF_INFO_PARAM:
@@ -273,27 +273,27 @@ static inline void command_dump(void *ptr, int len)
 	}
 
 	printf("HCI Command: %s(0x%2.2x|0x%4.4x) plen %d\n", cmd, ogf, ocf, hdr->plen);
-	raw_dump(1, ptr, len);
+	raw_dump(1, frm);
 }
 
-static inline void event_dump(void *ptr, int len)
+static inline void event_dump(struct frame *frm)
 {
-	hci_event_hdr *hdr = ptr;
+	hci_event_hdr *hdr = frm->ptr;
 	
-	ptr += HCI_EVENT_HDR_SIZE;
-	len -= HCI_EVENT_HDR_SIZE;
+	frm->ptr += HCI_EVENT_HDR_SIZE;
+	frm->len -= HCI_EVENT_HDR_SIZE;
 
 	if (hdr->evt <= EVENT_NUM)
 		printf("HCI Event: %s(0x%2.2x) plen %d\n",
 			event_map[hdr->evt], hdr->evt, hdr->plen);
 	else
 		printf("HCI Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
-	raw_dump(1, ptr, len);
+	raw_dump(1, frm);
 }
 
-static inline void acl_dump(void *ptr, int len)
+static inline void acl_dump(struct frame *frm)
 {
-	hci_acl_hdr *hdr = ptr;
+	hci_acl_hdr *hdr = (void *) frm->ptr;
 	__u16 handle = __le16_to_cpu(hdr->handle);
 	__u16 dlen = __le16_to_cpu(hdr->dlen);
 	__u8 flags = acl_flags(handle);
@@ -301,39 +301,39 @@ static inline void acl_dump(void *ptr, int len)
 	printf("ACL data: handle 0x%4.4x flags 0x%2.2x dlen %d\n",
 		acl_handle(handle), flags, dlen);
 	
-	ptr += HCI_ACL_HDR_SIZE;
-	len -= HCI_ACL_HDR_SIZE;
-
+	frm->ptr += HCI_ACL_HDR_SIZE;
+	frm->len -= HCI_ACL_HDR_SIZE;
+	frm->flags = flags;
+	
 	if (flags & ACL_START) {
-		l2cap_dump(1, ptr, len, flags);
+		l2cap_dump(1, frm);
 	} else {
-		raw_dump(1, ptr, len);
+		raw_dump(1, frm);
 	}
 }
 
-void hci_dump(int level, __u8 *data, int len)
+void hci_dump(int level, struct frame *frm)
 {
-	unsigned char *ptr = data;
-	__u8 type;
+	__u8 type = *(__u8 *)frm->ptr; 
 
-	type = *ptr++; len--;
+	frm->ptr++; frm->len--;
 	
 	switch (type) {
 	case HCI_COMMAND_PKT:
-		command_dump(ptr, len);
+		command_dump(frm);
 		break;
 
 	case HCI_EVENT_PKT:
-		event_dump(ptr, len);
+		event_dump(frm);
 		break;
 
 	case HCI_ACLDATA_PKT:
-		acl_dump(ptr, len);
+		acl_dump(frm);
 		break;
 
 	default:
-		printf("Unknown: type 0x%2.2x len %d\n", type, len);
-		raw_dump(1, ptr, len);
+		printf("Unknown: type 0x%2.2x len %d\n", type, frm->len);
+		raw_dump(1, frm);
 		break;
 	}
 }
