@@ -73,18 +73,181 @@ char *event_map[] = {
 	"Page Scan Mode Change",
 	"Page Scan Repetition Mode Change"
 };
-#define EVENTS_NUM	32
+#define EVENT_NUM	32
+
+char *cmd_linkctl_map[] = {
+	"Unknown",
+	"Inquiry",
+	"Inquiry Cancel",
+	"Periodic Inquiry Mode",
+	"Exit Periodic Inquiry Mode",
+	"Create Connection",
+	"Disconnect",
+	"Add SCO Connection",
+	"Accept Connection Request",
+	"Reject Connection Request",
+	"Link Key Request Reply",
+	"Link Key Request Negative Reply",
+	"PIN Code Request Reply",
+	"PIN Code Request Negative Reply",
+	"Change Connection Packet Type",
+	"Authentication Requested",
+	"Set Connection Encryption",
+	"Change Connection Link Key",
+	"Master Link Key",
+	"Remote Name Request",
+	"Read Remote Supported Features",
+	"Read Remote Version Information",
+	"Read Clock offset"
+};
+#define CMD_LINKCTL_NUM	22
+
+char *cmd_linkpol_map[] = {
+	"Unknown",
+	"Hold Mode",
+	"Sniff Mode",
+	"Exit Sniff Mode",
+	"Park Mode",
+	"Exit Park Mode",
+	"QoS Setup",
+	"Role Discovery",
+	"Switch Role",
+	"Read Link Policy Settings",
+	"Write Link Policy Settings"
+};
+#define CMD_LINKPOL_NUM 10
+
+char *cmd_hostctl_map[] = {
+	"Unknown",
+	"Hold Mode",
+	"Sniff Mode",
+	"Exit Sniff Mode",
+	"Set Event Mask",
+	"Reset",
+	"Set Event Filter",
+	"Flush",
+	"Read PIN Type ",
+	"Write PIN Type",
+	"Create New Unit Key",
+	"Read Stored Link Key",
+	"Write Stored Link Key",
+	"Delete Stored Link Key",
+	"Change Local Name",
+	"Read Local Name",
+	"Read Connection Accept Timeout",
+	"Write Connection Accept Timeout",
+	"Read Page Timeout",
+	"Write Page Timeout",
+	"Read Scan Enable",
+	"Write Scan Enable",
+	"Read Page Scan Activity",
+	"Write Page Scan Activity",
+	"Read Inquiry Scan Activity",
+	"Write Inquiry Scan Activity",
+	"Read Authentication Enable",
+	"Write Authentication Enable",
+	"Read Encryption Mode",
+	"Write Encryption Mode",
+	"Read Class of Device",
+	"Write Class of Device",
+	"Read Voice Setting",
+	"Write Voice Setting",
+	"Read Automatic Flush Timeout",
+	"Write Automatic Flush Timeout",
+	"Read Num Broadcast Retransmissions",
+	"Write Num Broadcast Retransmissions",
+	"Read Hold Mode Activity ",
+	"Write Hold Mode Activity",
+	"Read Transmit Power Level",
+	"Read SCO Flow Control Enable",
+	"Write SCO Flow Control Enable",
+	"Set Host Controller To Host Flow Control",
+	"Host Buffer Size",
+	"Host Number of Completed Packets",
+	"Read Link Supervision Timeout",
+	"Write Link Supervision Timeout",
+	"Read Number of Supported IAC",
+	"Read Current IAC LAP",
+	"Write Current IAC LAP",
+	"Read Page Scan Period Mode",
+	"Write Page Scan Period Mode",
+	"Read Page Scan Mode",
+	"Write Page Scan Mode"
+};
+#define CMD_HOSTCTL_NUM 51
+
+char *cmd_info_map[] = {
+	"Unknown",
+	"Read Local Version Information",
+	"Read Local Supported Features",
+	"Read Buffer Size",
+	"Read Country Code",
+	"Read BD ADDR"
+};
+#define CMD_INFO_NUM 5
+
+char *cmd_status_map[] = {
+	"Unknown",
+	"Read Failed Contact Counter",
+	"Reset Failed Contact Counter",
+	"Get Link Quality",
+	"Read RSSI"
+};
+#define CMD_STATUS_NUM 5
 
 static inline void command_dump(void *ptr, int len)
 {
 	hci_command_hdr *hdr = ptr;
 	__u16 opcode = __le16_to_cpu(hdr->opcode);
+	__u16 ogf = cmd_opcode_ogf(opcode);
+	__u16 ocf = cmd_opcode_ocf(opcode);
+	char *cmd;
 
 	ptr += HCI_COMMAND_HDR_SIZE;
 	len -= HCI_COMMAND_HDR_SIZE;
 
-	printf("HCI Command: ogf 0x%x ocf 0x%x plen %d\n",
-		cmd_opcode_ogf(opcode), cmd_opcode_ocf(opcode), hdr->plen);
+	switch (ogf) {
+	case OGF_INFO_PARAM:
+		if (ocf <= CMD_INFO_NUM)
+			cmd = cmd_info_map[ocf];
+		else
+			cmd = "Unknown";
+		break;
+
+	case OGF_HOST_CTL:
+		if (ocf <= CMD_HOSTCTL_NUM)
+			cmd = cmd_hostctl_map[ocf];
+		else
+			cmd = "Unknown";
+		break;
+
+	case OGF_LINK_CTL:
+		if (ocf <= CMD_LINKCTL_NUM)
+			cmd = cmd_linkctl_map[ocf];
+		else
+			cmd = "Unknown";
+		break;
+
+	case OGF_LINK_POLICY:
+		if (ocf <= CMD_LINKPOL_NUM)
+			cmd = cmd_linkpol_map[ocf];
+		else
+			cmd = "Unknown";
+		break;
+
+	case OGF_STATUS_PARAM:
+		if (ocf <= CMD_STATUS_NUM)
+			cmd = cmd_status_map[ocf];
+		else
+			cmd = "Unknown";
+		break;
+
+	default:
+		cmd = "Unknown";
+		break;
+	}
+
+	printf("HCI Command: %s(0x%2.2x|0x%4.4x) plen %d\n", cmd, ogf, ocf, hdr->plen);
 	raw_dump(1, ptr, len);
 }
 
@@ -95,7 +258,7 @@ static inline void event_dump(void *ptr, int len)
 	ptr += HCI_EVENT_HDR_SIZE;
 	len -= HCI_EVENT_HDR_SIZE;
 
-	if (hdr->evt <= EVENTS_NUM)
+	if (hdr->evt <= EVENT_NUM)
 		printf("HCI Event: %s(0x%2.2x) plen %d\n",
 			event_map[hdr->evt], hdr->evt, hdr->plen);
 	else
