@@ -311,61 +311,61 @@ int lmp_strtover(char *str, unsigned int *ver)
 
 /* LMP features mapping */
 static hci_map lmp_features_map[8][9] = {
-	{	/* byte 0 */
-		{ "<3-slot packets>",	LMP_3SLOT	},
-		{ "<5-slot packets>",	LMP_5SLOT	},
-		{ "<encryption>",	LMP_ENCRYPT	},
-		{ "<slot offset>",	LMP_SOFFSET	},
-		{ "<timing accuracy>",	LMP_TACCURACY	},
-		{ "<role switch>",	LMP_RSWITCH	},
-		{ "<hold mode>",	LMP_HOLD	},
-		{ "<sniff mode>",	LMP_SNIFF	},
+	{	/* Byte 0 */
+		{ "<3-slot packets>",	LMP_3SLOT	},	/* Bit 0 */
+		{ "<5-slot packets>",	LMP_5SLOT	},	/* Bit 1 */
+		{ "<encryption>",	LMP_ENCRYPT	},	/* Bit 2 */
+		{ "<slot offset>",	LMP_SOFFSET	},	/* Bit 3 */
+		{ "<timing accuracy>",	LMP_TACCURACY	},	/* Bit 4 */
+		{ "<role switch>",	LMP_RSWITCH	},	/* Bit 5 */
+		{ "<hold mode>",	LMP_HOLD	},	/* Bit 6 */
+		{ "<sniff mode>",	LMP_SNIFF	},	/* Bit 7 */
 		{ NULL }
 	},
-	{	/* byte 1 */
-		{ "<park state>",	LMP_PARK	},
-		{ "<RSSI>",		LMP_RSSI	},
-		{ "<channel quality>",	LMP_QUALITY	},
-		{ "<SCO link>",		LMP_SCO		},
-		{ "<HV2 packets>",	LMP_HV2		},
-		{ "<HV3 packets>",	LMP_HV3		},
-		{ "<u-law log>",	LMP_ULAW	},
-		{ "<A-law log>",	LMP_ALAW	},
+	{	/* Byte 1 */
+		{ "<park state>",	LMP_PARK	},	/* Bit 0 */
+		{ "<RSSI>",		LMP_RSSI	},	/* Bit 1 */
+		{ "<channel quality>",	LMP_QUALITY	},	/* Bit 2 */
+		{ "<SCO link>",		LMP_SCO		},	/* Bit 3 */
+		{ "<HV2 packets>",	LMP_HV2		},	/* Bit 4 */
+		{ "<HV3 packets>",	LMP_HV3		},	/* Bit 5 */
+		{ "<u-law log>",	LMP_ULAW	},	/* Bit 6 */
+		{ "<A-law log>",	LMP_ALAW	},	/* Bit 7 */
 		{ NULL }
 	},
-	{	/* byte 2 */
-		{ "<CVSD>",		LMP_CVSD	},
-		{ "<paging scheme>",	LMP_PSCHEME	},
-		{ "<power control>",	LMP_PCONTROL	},
-		{ "<transparent SCO>",	LMP_TRSP_SCO	},
-		{ "<broadcast encrypt>",LMP_BCAST_ENC	},
+	{	/* Byte 2 */
+		{ "<CVSD>",		LMP_CVSD	},	/* Bit 0 */
+		{ "<paging scheme>",	LMP_PSCHEME	},	/* Bit 1 */
+		{ "<power control>",	LMP_PCONTROL	},	/* Bit 2 */
+		{ "<transparent SCO>",	LMP_TRSP_SCO	},	/* Bit 3 */
+		{ "<broadcast encrypt>",LMP_BCAST_ENC	},	/* Bit 7 */
 		{ NULL }
 	},
-	{	/* byte 3 */
-		{ "<enhanced iscan>",	LMP_ENH_ISCAN	},
-		{ "<interlaced iscan>",	LMP_ILACE_ISCAN	},
-		{ "<interlaced pscan>",	LMP_ILACE_PSCAN	},
-		{ "<inquiry with RSSI>",LMP_RSSI_INQ	},
-		{ "<extended SCO>",	LMP_ESCO	},
+	{	/* Byte 3 */
+		{ "<enhanced iscan>",	LMP_ENH_ISCAN	},	/* Bit 3 */
+		{ "<interlaced iscan>",	LMP_ILACE_ISCAN	},	/* Bit 4 */
+		{ "<interlaced pscan>",	LMP_ILACE_PSCAN	},	/* Bit 5 */
+		{ "<inquiry with RSSI>",LMP_RSSI_INQ	},	/* Bit 6 */
+		{ "<extended SCO>",	LMP_ESCO	},	/* Bit 7 */
 		{ NULL }
 	},
-	{	/* byte 4 */
-		{ "<EV4 packets>",	LMP_EV4		},
-		{ "<EV5 packets>",	LMP_EV5		},
-		{ "<AFH cap. slave>",	LMP_AFH_CAP_SLV	},
-		{ "<AFH class. slave>",	LMP_AFH_CLS_SLV	},
+	{	/* Byte 4 */
+		{ "<EV4 packets>",	LMP_EV4		},	/* Bit 0 */
+		{ "<EV5 packets>",	LMP_EV5		},	/* Bit 1 */
+		{ "<AFH cap. slave>",	LMP_AFH_CAP_SLV	},	/* Bit 3 */
+		{ "<AFH class. slave>",	LMP_AFH_CLS_SLV	},	/* Bit 4 */
 		{ NULL }
 	},
-	{	/* byte 5 */
-		{ "<AFH cap. master>",	LMP_AFH_CAP_MST	},
-		{ "<AFH class. master>",LMP_AFH_CLS_MST	},
+	{	/* Byte 5 */
+		{ "<AFH cap. master>",	LMP_AFH_CAP_MST	},	/* Bit 3 */
+		{ "<AFH class. master>",LMP_AFH_CLS_MST	},	/* Bit 4 */
 		{ NULL }
 	},
-	{	/* byte 6 */
+	{	/* Byte 6 */
 		{ NULL }
 	},
-	{	/* byte 7 */
-		{ "<extended features>",LMP_EXT_FEAT	},
+	{	/* Byte 7 */
+		{ "<extended features>",LMP_EXT_FEAT	},	/* Bit 7 */
 		{ NULL }
 	},
 };
