@@ -148,7 +148,7 @@ static inline void mcc_rpn(int level, __u8 *ptr, int len,
 		rpn->rpn_val.parity_type, rpn->rpn_val.xon_input,
 		rpn->rpn_val.xon_output);
 	p_indent(level, 0); 
-	printf(" rtri: %d rtro: %d rtci: %d rtco: %d xon: %d xoff: %d pm: %04x",
+	printf(" rtri: %d rtro: %d rtci: %d rtco: %d xon: %d xoff: %d pm: %04x\n",
 		rpn->rpn_val.rtr_input, rpn->rpn_val.rtr_output,
 		rpn->rpn_val.rtc_input, rpn->rpn_val.rtc_output,
 		rpn->rpn_val.xon, rpn->rpn_val.xoff,
