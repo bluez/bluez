@@ -5,7 +5,7 @@ dnl
 AC_DEFUN([AC_PREFIX_BLUEZ], [
 	AC_PREFIX_DEFAULT(/usr)
 
-	if test "${prefix}" = "NONE"; then
+	if (test "${prefix}" = "NONE"); then
 		dnl no prefix and no sysconfdir, so default to /etc
 		if test "$sysconfdir" = '${prefix}/etc'; then
 			AC_SUBST([sysconfdir], ['/etc'])
@@ -39,9 +39,12 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 	AC_CHECK_HEADER(bluetooth/bluetooth.h,, AC_MSG_ERROR(Bluetooth header files not found))
 
 	BLUEZ_LIBS=""
-	test -d "${bluez_prefix}/lib" && BLUEZ_LIBS="$BLUEZ_LIBS -L${bluez_prefix}/lib"
-	test -d "${bluez_prefix}/lib64" && BLUEZ_LIBS="$BLUEZ_LIBS -L${bluez_prefix}/lib64"
-	test -d "${libdir}" && BLUEZ_LIBS="$BLUEZ_LIBS -L${libdir}"
+	if (test "${prefix}" = "${bluez_prefix}"); then
+		test -d "${libdir}" && BLUEZ_LIBS="$BLUEZ_LIBS -L${libdir}"
+	else
+		test -d "${bluez_prefix}/lib64" && BLUEZ_LIBS="$BLUEZ_LIBS -L${bluez_prefix}/lib64"
+		test -d "${bluez_prefix}/lib" && BLUEZ_LIBS="$BLUEZ_LIBS -L${bluez_prefix}/lib"
+	fi
 
 	LDFLAGS="$LDFLAGS $BLUEZ_LIBS"
 	AC_CHECK_LIB(bluetooth, hci_open_dev, BLUEZ_LIBS="$BLUEZ_LIBS -lbluetooth", AC_MSG_ERROR(Bluetooth library not found))
@@ -73,9 +76,12 @@ AC_DEFUN([AC_PATH_USB], [
 	AC_CHECK_HEADER(usb.h,, AC_MSG_ERROR(USB header files not found))
 
 	USB_LIBS=""
-	test -d "${usb_prefix}/lib" && USB_LIBS="$USB_LIBS -L${usb_prefix}/lib"
-	test -d "${usb_prefix}/lib64" && USB_LIBS="$USB_LIBS -L${usb_prefix}/lib64"
-	test -d "${libdir}" && USB_LIBS="$USB_LIBS -L${libdir}"
+	if (test "${prefix}" = "${bluez_prefix}"); then
+		test -d "${libdir}" && USB_LIBS="$USB_LIBS -L${libdir}"
+	else
+		test -d "${usb_prefix}/lib64" && USB_LIBS="$USB_LIBS -L${usb_prefix}/lib64"
+		test -d "${usb_prefix}/lib" && USB_LIBS="$USB_LIBS -L${usb_prefix}/lib"
+	fi
 
 	LDFLAGS="$LDFLAGS $USB_LIBS"
 	AC_CHECK_LIB(usb, usb_open, USB_LIBS="$USB_LIBS -lusb", AC_MSG_ERROR(USB library not found))
@@ -107,17 +113,23 @@ AC_DEFUN([AC_PATH_DBUS], [
 
 	DBUS_CFLAGS="-DDBUS_API_SUBJECT_TO_CHANGE"
 	test -d "${dbus_prefix}/include/dbus-1.0" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/include/dbus-1.0"
-	test -d "${dbus_prefix}/lib/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib/dbus-1.0/include"
-	test -d "${dbus_prefix}/lib64/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib64/dbus-1.0/include"
-	test -d "${libdir}/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${libdir}/dbus-1.0/include"
+	if (test "${prefix}" = "${bluez_prefix}"); then
+		test -d "${libdir}/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${libdir}/dbus-1.0/include"
+	else
+		test -d "${dbus_prefix}/lib64/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib64/dbus-1.0/include"
+		test -d "${dbus_prefix}/lib/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib/dbus-1.0/include"
+	fi
 
 	CPPFLAGS="$CPPFLAGS $DBUS_CFLAGS"
 	AC_CHECK_HEADER(dbus/dbus.h,, dbus_enable=no)
 
 	DBUS_LIBS=""
-	test -d "${dbus_prefix}/lib" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib"
-	test -d "${dbus_prefix}/lib64" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib64"
-	test -d "${libdir}" && DBUS_LIBS="$DBUS_LIBS -L${libdir}"
+	if (test "${prefix}" = "${bluez_prefix}"); then
+		test -d "${libdir}" && DBUS_LIBS="$DBUS_LIBS -L${libdir}"
+	else
+		test -d "${dbus_prefix}/lib64" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib64"
+		test -d "${dbus_prefix}/lib" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib"
+	fi
 
 	LDFLAGS="$LDFLAGS $DBUS_LIBS"
 	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", dbus_enable=no)
@@ -150,14 +162,20 @@ AC_DEFUN([AC_PATH_CUPS], [
 
 	AC_MSG_CHECKING(for CUPS backend directory)
 
-	if (test -d "${cups_prefix}/lib/cups/backend"); then
-		CUPS_BACKEND_DIR="${cups_prefix}/lib/cups/backend"
-	elif (test -d "${cups_prefix}/lib64/cups/backend"); then
-		CUPS_BACKEND_DIR="${cups_prefix}/lib64/cups/backend"
-	elif (test -d "${libdir}/cups/backend"); then
-		CUPS_BACKEND_DIR="${libdir}/cups/backend"
+	if (test "${prefix}" = "${bluez_prefix}"); then
+		if (test -d "${libdir}/cups/backend"); then
+			CUPS_BACKEND_DIR="${libdir}/cups/backend"
+		else
+			cups_enable=no
+		fi
 	else
-		cups_enable=no
+		if (test -d "${cups_prefix}/lib64/cups/backend"); then
+			CUPS_BACKEND_DIR="${cups_prefix}/lib64/cups/backend"
+		elif (test -d "${cups_prefix}/lib/cups/backend"); then
+			CUPS_BACKEND_DIR="${cups_prefix}/lib/cups/backend"
+		else
+			cups_enable=no
+		fi
 	fi
 
 	if test "${cups_enable}" = "yes"; then
