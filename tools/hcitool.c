@@ -1474,30 +1474,102 @@ static void cmd_key(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
+/* Read clock offset */
+
+static struct option clkoff_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static char *clkoff_help =
+	"Usage:\n"
+	"\tclkoff <bdaddr>\n";
+
+static void cmd_clkoff(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	bdaddr_t bdaddr;
+	uint16_t offset;
+	int opt, dd;
+
+	for_each_opt(opt, clkoff_options, NULL) {
+		switch (opt) {
+		default:
+			printf(clkoff_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(clkoff_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+
+	if (hci_read_clock_offset(dd, htobs(cr->conn_info->handle), &offset, 1000) < 0) {
+		perror("Reading clock offset failed");
+		exit(1);
+	}
+
+	printf("Clock offset: 0x%4.4x\n", btohs(offset));
+
+	close(dd);
+	free(cr);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
 	char *doc;
 } command[] = {
-	{ "dev",  cmd_dev,  "Display local devices"                },
-	{ "inq",  cmd_inq,  "Inquire remote devices"               },
-	{ "scan", cmd_scan, "Scan for remote devices"              },
-	{ "name", cmd_name, "Get name from remote device"          },
-	{ "info", cmd_info, "Get information from remote device"   },
-	{ "cmd",  cmd_cmd,  "Submit arbitrary HCI commands"        },
-	{ "con",  cmd_con,  "Display active connections"           },
-	{ "cc",   cmd_cc,   "Create connection to remote device"   },
-	{ "dc",   cmd_dc,   "Disconnect from remote device"        },
-	{ "sr",   cmd_sr,   "Switch master/slave role"             },
-	{ "cpt",  cmd_cpt,  "Change connection packet type"        },
-	{ "rssi", cmd_rssi, "Display connection RSSI"              },
-	{ "lq",   cmd_lq,   "Display link quality"                 },
-	{ "tpl",  cmd_tpl,  "Display transmit power level"         },
-	{ "afh",  cmd_afh,  "Display AFH channel map"              },
-	{ "lst",  cmd_lst,  "Set/display link supervision timeout" },
-	{ "auth", cmd_auth, "Request authentication"               },
-	{ "enc",  cmd_enc,  "Set connection encryption"            },
-	{ "key",  cmd_key,  "Change connection link key"           },
+	{ "dev",    cmd_dev,    "Display local devices"                },
+	{ "inq",    cmd_inq,    "Inquire remote devices"               },
+	{ "scan",   cmd_scan,   "Scan for remote devices"              },
+	{ "name",   cmd_name,   "Get name from remote device"          },
+	{ "info",   cmd_info,   "Get information from remote device"   },
+	{ "cmd",    cmd_cmd,    "Submit arbitrary HCI commands"        },
+	{ "con",    cmd_con,    "Display active connections"           },
+	{ "cc",     cmd_cc,     "Create connection to remote device"   },
+	{ "dc",     cmd_dc,     "Disconnect from remote device"        },
+	{ "sr",     cmd_sr,     "Switch master/slave role"             },
+	{ "cpt",    cmd_cpt,    "Change connection packet type"        },
+	{ "rssi",   cmd_rssi,   "Display connection RSSI"              },
+	{ "lq",     cmd_lq,     "Display link quality"                 },
+	{ "tpl",    cmd_tpl,    "Display transmit power level"         },
+	{ "afh",    cmd_afh,    "Display AFH channel map"              },
+	{ "lst",    cmd_lst,    "Set/display link supervision timeout" },
+	{ "auth",   cmd_auth,   "Request authentication"               },
+	{ "enc",    cmd_enc,    "Set connection encryption"            },
+	{ "key",    cmd_key,    "Change connection link key"           },
+	{ "clkoff", cmd_clkoff, "Read clock offset"                    },
 	{ NULL, NULL, 0 }
 };
 
