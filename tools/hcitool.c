@@ -1092,10 +1092,9 @@ static char *afh_help =
 static void cmd_afh(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
-	struct hci_request rq;
-	read_afh_map_rp rp;
 	bdaddr_t bdaddr;
 	uint16_t handle;
+	uint8_t mode, map[10];
 	int opt, dd;
 
 	for_each_opt(opt, afh_options, NULL) {
@@ -1142,30 +1141,16 @@ static void cmd_afh(int dev_id, int argc, char **argv)
 
 	handle = htobs(cr->conn_info->handle);
 
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_STATUS_PARAM;
-	rq.ocf    = OCF_READ_AFH_MAP;
-	rq.cparam = &handle;
-	rq.clen   = 2;
-	rq.rparam = &rp;
-	rq.rlen   = READ_AFH_MAP_RP_SIZE;
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
+	if (hci_read_afh_map(dd, handle, &mode, map, 1000) < 0) {
 		perror("HCI read AFH map request failed");
 		exit(1);
 	}
 
-	if (rp.status) {
-		fprintf(stderr, "HCI read_afh_map cmd failed (0x%2.2X)\n",
-				rp.status);
-		exit(1);
-	}
-
-	if (rp.mode == 0x01) {
+	if (mode == 0x01) {
 		int i;
 		printf("AFH map: 0x");
 		for (i = 0; i < 10; i++)
-			printf("%02x", rp.map[i]);
+			printf("%02x", map[i]);
 		printf("\n");
 	} else
 		printf("AFH disabled\n");

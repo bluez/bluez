@@ -670,7 +670,6 @@ void cmd_version(int ctl, int hdev, char *opt)
 
 void cmd_inq_mode(int ctl, int hdev, char *opt)
 {
-	struct hci_request rq;
 	int dd;
 
 	dd = hci_open_dev(hdev);
@@ -678,8 +677,6 @@ void cmd_inq_mode(int ctl, int hdev, char *opt)
 		printf("Can't open device hci%d. %s(%d)\n", hdev, strerror(errno), errno);
 		exit(1);
 	}
-
-	memset(&rq, 0, sizeof(rq));
 
 	if (opt) {
 		uint8_t mode = atoi(opt);
@@ -902,7 +899,6 @@ void cmd_page_to(int ctl, int hdev, char *opt)
 
 void cmd_afh_mode(int ctl, int hdev, char *opt)
 {
-	struct hci_request rq;
 	int dd;
 
 	dd = hci_open_dev(hdev);
@@ -911,44 +907,25 @@ void cmd_afh_mode(int ctl, int hdev, char *opt)
 		exit(1);
 	}
 
-	memset(&rq, 0, sizeof(rq));
-
 	if (opt) {
-		write_afh_mode_cp cp;
+		uint8_t mode = atoi(opt);
 
-		cp.mode = atoi(opt);
-
-		rq.ogf = OGF_HOST_CTL;
-		rq.ocf = OCF_WRITE_AFH_MODE;
-		rq.cparam = &cp;
-		rq.clen = WRITE_AFH_MODE_RP_SIZE;
-
-		if (hci_send_req(dd, &rq, 1000) < 0) {
+		if (hci_write_afh_mode(dd, mode, 1000) < 0) {
 			printf("Can't set AFH mode on hci%d. %s(%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
-		read_afh_mode_rp rp;
+		uint8_t mode;
 
-		rq.ogf = OGF_HOST_CTL;
-		rq.ocf = OCF_READ_AFH_MODE;
-		rq.rparam = &rp;
-		rq.rlen = READ_AFH_MODE_RP_SIZE;
-
-		if (hci_send_req(dd, &rq, 1000) < 0) {
+		if (hci_read_afh_mode(dd, &mode, 1000) < 0) {
 			printf("Can't read AFH mode on hci%d. %s(%d)\n", 
 							hdev, strerror(errno), errno);
 			exit(1);
 		}
-		if (rp.status) {
-			printf("Read AFH mode on hci%d returned status %d\n", 
-							hdev, rp.status);
-			exit(1);
-		}
 
 		print_dev_hdr(&di);
-		printf("\tAFH mode: %s\n", rp.mode == 1 ? "Enabled" : "Disabled");
+		printf("\tAFH mode: %s\n", mode == 1 ? "Enabled" : "Disabled");
 	}
 }
 
