@@ -454,6 +454,11 @@ int sdp_profile_uuid2strn(const uuid_t *uuid, char *str, size_t n);
 int sdp_get_access_protos(const sdp_record_t *rec, sdp_list_t **protos);
 
 /*
+ * Get the additional access protocols from the service record
+ */
+int sdp_get_add_access_protos(const sdp_record_t *rec, sdp_list_t **pap);
+
+/*
  * Extract the list of browse groups to which the service belongs.
  * When set, seqp contains elements of GroupID (uint16_t) 
  */

@@ -1310,6 +1310,30 @@ int sdp_get_access_protos(const sdp_record_t *rec, sdp_list_t **pap)
 	return 0;
 }
 
+int sdp_get_add_access_protos(const sdp_record_t *rec, sdp_list_t **pap)
+{
+	sdp_data_t *pdlist, *curr;
+	sdp_list_t *ap = 0;
+
+	pdlist = sdp_data_get(rec, SDP_ATTR_ADD_PROTO_DESC_LIST);
+	if (pdlist == NULL) {
+		errno = ENODATA;
+		return -1;
+	}
+	SDPDBG("AP type : 0%x\n", pdlist->dtd);
+
+	pdlist = pdlist->val.dataseq;
+
+	for (; pdlist; pdlist = pdlist->next) {
+		sdp_list_t *pds = 0;
+		for (curr = pdlist->val.dataseq; curr; curr = curr->next)
+			pds = sdp_list_append(pds, curr->val.dataseq);
+		ap = sdp_list_append(ap, pds);
+	}
+	*pap = ap;
+	return 0;
+}
+
 int sdp_get_uuidseq_attr(const sdp_record_t *rec, uint16_t attr, sdp_list_t **seqp)
 {
 	sdp_data_t *sdpdata = sdp_data_get(rec, attr);
