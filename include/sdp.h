@@ -207,65 +207,68 @@ extern "C" {
 /*
  * Attribute identifier codes
  */
-#define SDP_SERVER_RECORD_HANDLE	0x0000
+#define SDP_SERVER_RECORD_HANDLE		0x0000
 
 /*
- * Possible values for attribute-id are listed below. 
+ * Possible values for attribute-id are listed below.
  * See SDP Spec, section "Service Attribute Definitions" for more details.
  */
-#define SDP_ATTR_RECORD_HANDLE		0x0000
-#define SDP_ATTR_SVCLASS_ID_LIST	0x0001
-#define SDP_ATTR_RECORD_STATE		0x0002
-#define SDP_ATTR_SERVICE_ID		0x0003
-#define SDP_ATTR_PROTO_DESC_LIST	0x0004
-#define SDP_ATTR_BROWSE_GRP_LIST	0x0005
-#define SDP_ATTR_LANG_BASE_ATTR_ID_LIST	0x0006
-#define SDP_ATTR_SVCINFO_TTL		0x0007
-#define SDP_ATTR_SERVICE_AVAILABILITY	0x0008
-#define SDP_ATTR_PFILE_DESC_LIST	0x0009
-#define SDP_ATTR_DOC_URL		0x000A
-#define SDP_ATTR_CLNT_EXEC_URL		0x000B
-#define SDP_ATTR_ICON_URL		0x000C
-#define SDP_ATTR_ADD_PROTO_DESC_LIST	0x000D
+#define SDP_ATTR_RECORD_HANDLE			0x0000
+#define SDP_ATTR_SVCLASS_ID_LIST		0x0001
+#define SDP_ATTR_RECORD_STATE			0x0002
+#define SDP_ATTR_SERVICE_ID			0x0003
+#define SDP_ATTR_PROTO_DESC_LIST		0x0004
+#define SDP_ATTR_BROWSE_GRP_LIST		0x0005
+#define SDP_ATTR_LANG_BASE_ATTR_ID_LIST		0x0006
+#define SDP_ATTR_SVCINFO_TTL			0x0007
+#define SDP_ATTR_SERVICE_AVAILABILITY		0x0008
+#define SDP_ATTR_PFILE_DESC_LIST		0x0009
+#define SDP_ATTR_DOC_URL			0x000a
+#define SDP_ATTR_CLNT_EXEC_URL			0x000b
+#define SDP_ATTR_ICON_URL			0x000c
+#define SDP_ATTR_ADD_PROTO_DESC_LIST		0x000d
 
+#define SDP_ATTR_GROUP_ID			0x0200
 #define SDP_ATTR_IP_SUBNET			0x0200
-#define SDP_ATTR_SERVICE_VERSION		0x0300
-#define SDP_EXTERNAL_NETWORK			0x0301
-#define SDP_ATTR_SUPPORTED_DATA_STORES_LIST	0x0301
-#define SDP_ATTR_REMOTE_AUDIO_VOLUME_CONTROL	0x0302
-#define SDP_ATTR_SUPPORTED_FORMATS_LIST		0x0303
-#define SDP_ATTR_SECURITY_DESC			0x030A
-#define SDP_ATTR_NET_ACCESS_TYPE		0x030B
-#define SDP_ATTR_MAX_NET_ACCESSRATE		0x030C
-#define SDP_ATTR_IP4_SUBNET			0x030D
-#define SDP_ATTR_IP6_SUBNET			0x030E
-#define SDP_SUPPORTED_FEATURES			0x0311
+#define SDP_ATTR_VERSION_NUM_LIST		0x0200
+#define SDP_ATTR_SVCDB_STATE			0x0201
 
+#define SDP_ATTR_SERVICE_VERSION		0x0300
+#define SDP_ATTR_EXTERNAL_NETWORK		0x0301
+#define SDP_ATTR_SUPPORTED_DATA_STORES_LIST	0x0301
+#define SDP_ATTR_FAX_CLASS1_SUPPORT		0x0302
+#define SDP_ATTR_REMOTE_AUDIO_VOLUME_CONTROL	0x0302
+#define SDP_ATTR_FAX_CLASS20_SUPPORT		0x0303
+#define SDP_ATTR_SUPPORTED_FORMATS_LIST		0x0303
+#define SDP_ATTR_FAX_CLASS2_SUPPORT		0x0304
+#define SDP_ATTR_AUDIO_FEEDBACK_SUPPORT		0x0305
+#define SDP_ATTR_NETWORK_ADDRESS		0x0306
+#define SDP_ATTR_WAP_GATEWAY			0x0307
+#define SDP_ATTR_HOMEPAGE_URL			0x0308
+#define SDP_ATTR_WAP_STACK_TYPE			0x0309
+#define SDP_ATTR_SECURITY_DESC			0x030a
+#define SDP_ATTR_NET_ACCESS_TYPE		0x030b
+#define SDP_ATTR_MAX_NET_ACCESSRATE		0x030c
+#define SDP_ATTR_IP4_SUBNET			0x030d
+#define SDP_ATTR_IP6_SUBNET			0x030e
+#define SDP_ATTR_SUPPORTED_CAPABILITIES		0x0310
+#define SDP_ATTR_SUPPORTED_FEATURES		0x0311
+#define SDP_ATTR_SUPPORTED_FUNCTIONS		0x0312
+#define SDP_ATTR_TOTAL_IMAGING_DATA_CAPACITY	0x0313
 
 /*
  * These identifiers are based on the SDP spec stating that 
  * "base attribute id of the primary (universal) language must be 0x0100"
+ *
+ * Other languages should have their own offset; e.g.:
+ * #define XXXLangBase yyyy
+ * #define AttrServiceName_XXX	0x0000+XXXLangBase
  */
 #define SDP_PRIMARY_LANG_BASE 		0x0100
 
 #define SDP_ATTR_SVCNAME_PRIMARY	0x0000 + SDP_PRIMARY_LANG_BASE
 #define SDP_ATTR_SVCDESC_PRIMARY	0x0001 + SDP_PRIMARY_LANG_BASE
 #define SDP_ATTR_PROVNAME_PRIMARY	0x0002 + SDP_PRIMARY_LANG_BASE
-
-/*
- * Other languages should have their own offset; e.g.:
- * #define XXXLangBase yyyy
- * #define AttrServiceName_XXX	0x0000+XXXLangBase
- * ...
- */
-
-/*
- * These attributes are specific to the SDP server only; i.e.,
- * can be present only in the service record of the SDP server
- */
-#define SDP_ATTR_VERSION_NUM_LIST	0x0200
-#define SDP_ATTR_SVCDB_STATE		0x0201
-#define SDP_ATTR_GROUP_ID		0x0200
 
 /*
  * The Data representation in SDP PDUs (pps 339, 340 of BT SDP Spec)
@@ -371,7 +374,7 @@ typedef struct {
 
 /*
  * Common definitions for attributes in the SDP.
- * Should the type of any of these change, you need only make a change here. 
+ * Should the type of any of these change, you need only make a change here.
  */
 typedef struct {
 	char data[16];
@@ -398,10 +401,10 @@ struct _sdp_list {
  * User-visible strings can be in many languages
  * in addition to the universal language.
  *
- * Language meta-data includes language code in ISO639 
- * followed by the encoding format. The third field in this 
- * structure is the attribute offset for the language. 
- * User-visible strings in the specified language can be 
+ * Language meta-data includes language code in ISO639
+ * followed by the encoding format. The third field in this
+ * structure is the attribute offset for the language.
+ * User-visible strings in the specified language can be
  * obtained at this offset.
  */
 typedef struct {
@@ -411,8 +414,8 @@ typedef struct {
 } sdp_lang_attr_t;
 
 /*
- * Profile descriptor is the Bluetooth profile metadata. If a 
- * service conforms to a well-known profile, then its profile 
+ * Profile descriptor is the Bluetooth profile metadata. If a
+ * service conforms to a well-known profile, then its profile
  * identifier (UUID) is an attribute of the service. In addition,
  * if the profile has a version number it is specified here.
  */
