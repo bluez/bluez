@@ -4,3 +4,7 @@ Maxim Krasnyansky <maxk@qualcomm.com>
 
 Marcel Holtmann <marcel@holtmann.org>
 	Various patches, fixes and other contributions.
+
+Stephen Crane <steve.crane@rococosoft.com>
+	Support for hci_{read, write}_class_of_dev() and other HCI functions.
+

@@ -1,3 +1,11 @@
+ver 2.1:
+	New HCI functions:
+		hci_{read, write}_class_of_dev(),
+		hci_{read, write}_current_iac_lap(),
+		hci_write_local_name()
+	Added RFCOMM header file.
+	Minor fixes.
+
 ver 2.0:
 	Additional company IDs.
 	Minor fixes.
