@@ -10,17 +10,17 @@ noinst_PROGRAMS = ppporc hcisecfilter
 
 hciconfig_SOURCES = hciconfig.c csr.h csr.c
 
-hciconfig_LDFLAGS = @BLUEZ_LIBS@
+hciconfig_LDADD = @BLUEZ_LIBS@
 
-hcitool_LDFLAGS = @BLUEZ_LIBS@
+hcitool_LDADD = @BLUEZ_LIBS@
 
-l2ping_LDFLAGS = @BLUEZ_LIBS@
+l2ping_LDADD = @BLUEZ_LIBS@
 
-sdptool_LDFLAGS = @BLUEZ_LIBS@
+sdptool_LDADD = @BLUEZ_LIBS@
 
-ciptool_LDFLAGS = @BLUEZ_LIBS@
+ciptool_LDADD = @BLUEZ_LIBS@
 
-ppporc_LDFLAGS = @BLUEZ_LIBS@
+ppporc_LDADD = @BLUEZ_LIBS@
 
 INCLUDES = @BLUEZ_INCLUDES@
 
