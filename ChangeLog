@@ -1,3 +1,9 @@
+ver 2.6:
+	Use R2 for default value of pscan_rep_mode.
+	Add new company identifiers.
+	Add BNEP and CMTP header files.
+	Add the SDP library.
+
 ver 2.5:
 	Add decoding of Bluetooth 1.2 features.
 	Add link manager version parameter for Bluetooth 1.2.
