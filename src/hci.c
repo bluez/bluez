@@ -905,6 +905,36 @@ int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, in
 	return 0;
 }
 
+int hci_read_clock_offset(int dd, uint16_t handle, uint16_t *clkoffset, int to)
+{
+	evt_read_clock_offset_complete rp;
+	read_clock_offset_cp cp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = handle;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_READ_CLOCK_OFFSET;
+	rq.event  = EVT_READ_CLOCK_OFFSET_COMPLETE;
+	rq.cparam = &cp;
+	rq.clen   = READ_CLOCK_OFFSET_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_READ_CLOCK_OFFSET_COMPLETE_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*clkoffset = rp.clock_offset;
+	return 0;
+}
+
 int hci_read_local_version(int dd, struct hci_version *ver, int to)
 {
 	read_local_version_rp rp;

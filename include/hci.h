@@ -546,6 +546,12 @@ typedef struct {
 } __attribute__ ((packed)) read_remote_version_cp;
 #define READ_REMOTE_VERSION_CP_SIZE 2
 
+#define OCF_READ_CLOCK_OFFSET	0x001F
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) read_clock_offset_cp;
+#define READ_CLOCK_OFFSET_CP_SIZE 2
+
 /* Link Policy */
 #define OGF_LINK_POLICY	0x02   
 
@@ -776,6 +782,14 @@ typedef struct {
 	uint8_t 	key_type;
 } __attribute__ ((packed)) evt_link_key_notify;
 #define EVT_LINK_KEY_NOTIFY_SIZE 23
+
+#define EVT_READ_CLOCK_OFFSET_COMPLETE 0x1C
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint16_t	clock_offset;
+} __attribute__ ((packed)) evt_read_clock_offset_complete;
+#define EVT_READ_CLOCK_OFFSET_COMPLETE_SIZE 5
 
 #define EVT_CONN_PTYPE_CHANGED	0x1D
 typedef struct {
