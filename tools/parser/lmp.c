@@ -246,6 +246,44 @@ static inline void detach_dump(int level, struct frame *frm)
 	printf("error code 0x%2.2x\n", error);
 }
 
+static inline void random_number_dump(int level, struct frame *frm)
+{
+	uint8_t *number = frm->ptr;
+	int i;
+
+	frm->ptr += 16;
+	frm->len -= 16;
+
+	p_indent(level, frm);
+	printf("random number ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", number[i]);
+	printf("\n");
+}
+
+static inline void key_dump(int level, struct frame *frm)
+{
+	uint8_t *key = frm->ptr;
+	int i;
+
+	frm->ptr += 16;
+	frm->len -= 16;
+
+	p_indent(level, frm);
+	printf("key ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", key[i]);
+	printf("\n");
+}
+
+static inline void auth_resp_dump(int level, struct frame *frm)
+{
+	uint32_t resp = LMP_U32(frm);
+
+	p_indent(level, frm);
+	printf("authentication response 0x%4.4x\n", resp);
+}
+
 static inline void version_dump(int level, struct frame *frm)
 {
 	uint8_t ver = LMP_U8(frm);
@@ -283,6 +321,9 @@ static inline void set_afh_dump(int level, struct frame *frm)
 	uint8_t mode = LMP_U8(frm);
 	uint8_t *map = frm->ptr;
 	int i;
+
+	frm->ptr += 10;
+	frm->len -= 10;
 
 	p_indent(level, frm);
 	printf("AFH_instant 0x%04x\n", instant);
@@ -340,6 +381,38 @@ static inline void features_ext_dump(int level, struct frame *frm)
 	printf("\n");
 }
 
+static inline void max_slots_dump(int level, struct frame *frm)
+{
+	uint8_t slots = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("max slots %d\n", slots);
+}
+
+static inline void timing_accuracy_dump(int level, struct frame *frm)
+{
+	uint8_t drift = LMP_U8(frm);
+	uint8_t jitter = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("drift %d\n", drift);
+
+	p_indent(level, frm);
+	printf("jitter %d\n", jitter);
+}
+
+static inline void page_mode_dump(int level, struct frame *frm)
+{
+	uint8_t scheme = LMP_U8(frm);
+	uint8_t settings = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("page scheme %d\n", scheme);
+
+	p_indent(level, frm);
+	printf("page scheme settings %d\n", settings);
+}
+
 static inline void packet_type_table_dump(int level, struct frame *frm)
 {
 	uint8_t type = LMP_U8(frm);
@@ -357,6 +430,37 @@ static inline void packet_type_table_dump(int level, struct frame *frm)
 		printf("(Reserved)\n");
 		break;
 	}
+}
+
+static inline void channel_classification_req_dump(int level, struct frame *frm)
+{
+	uint8_t mode = LMP_U8(frm);
+	uint16_t min = LMP_U16(frm);
+	uint16_t max = LMP_U16(frm);
+
+	p_indent(level, frm);
+	printf("AFH_reporting_mode %d\n", mode);
+
+	p_indent(level, frm);
+	printf("AFH_min_interval 0x%4.4x\n", min);
+
+	p_indent(level, frm);
+	printf("AFH_max_interval 0x%4.4x\n", max);
+}
+
+static inline void channel_classification_dump(int level, struct frame *frm)
+{
+	uint8_t *map = frm->ptr;
+	int i;
+
+	frm->ptr += 10;
+	frm->len -= 10;
+
+	p_indent(level, frm);
+	printf("AFH_channel_classification 0x");
+	for (i = 0; i < 10; i++)
+		printf("%2.2x", map[i]);
+	printf("\n");
 }
 
 void lmp_dump(int level, struct frame *frm)
@@ -403,6 +507,20 @@ void lmp_dump(int level, struct frame *frm)
 	case 7:
 		detach_dump(level + 1, frm);
 		return;
+	case 8:
+	case 9:
+	case 11:
+	case 13:
+	case 17:
+		random_number_dump(level + 1, frm);
+		return;
+	case 10:
+	case 14:
+		key_dump(level + 1, frm);
+		return;
+	case 12:
+		auth_resp_dump(level + 1, frm);
+		return;
 	case 37:
 	case 38:
 		version_dump(level + 1, frm);
@@ -411,15 +529,34 @@ void lmp_dump(int level, struct frame *frm)
 	case 40:
 		features_dump(level + 1, frm);
 		return;
+	case 45:
+	case 46:
+		max_slots_dump(level + 1, frm);
+		return;
+	case 48:
+		timing_accuracy_dump(level + 1, frm);
+		return;
+	case 53:
+	case 54:
+		page_mode_dump(level + 1, frm);
+		return;
+	case 5:
+	case 18:
+	case 24:
+	case 33:
+	case 34:
 	case 35:
+	case 47:
 	case 49:
+	case 50:
 	case 51:
+	case 56:
+	case 58:
 		return;
 	case 60:
 		set_afh_dump(level + 1, frm);
 		return;
 	case 127 + (1 << 7):
-		raw_dump(level, frm);
 		accepted_ext_dump(level + 1, frm);
 		return;
 	case 127 + (2 << 7):
@@ -431,6 +568,12 @@ void lmp_dump(int level, struct frame *frm)
 		return;
 	case 127 + (11 << 7):
 		packet_type_table_dump(level + 1, frm);
+		return;
+	case 127 + (16 << 7):
+		channel_classification_req_dump(level + 1, frm);
+		return;
+	case 127 + (17 << 7):
+		channel_classification_dump(level + 1, frm);
 		return;
 	}
 
