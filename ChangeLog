@@ -1,3 +1,9 @@
+ver 2.13:
+	Add Device ID and HID attribute definitions.
+	Update the UUID constants and its translations.
+	Update L2CAP socket option definitions.
+	Update connection information definitions.
+
 ver 2.12:
 	Correct kernel interface for CMTP and HIDP support.
 	Add service classes and profile ids for WAP.
