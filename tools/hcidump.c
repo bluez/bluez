@@ -40,6 +40,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/l2cap.h>
+#include <bluetooth/hci_lib.h>
 
 #include <pwd.h>
 #include <argp.h>
@@ -212,9 +213,9 @@ static int open_socket(int dev)
 	}
 
 	/* Setup filter */
-	flt.type_mask  = ~0;      // All packet types
-	flt.event_mask[0] = ~0L;  // All events
-	flt.event_mask[1] = ~0L;
+	hci_filter_clear(&flt);
+	hci_filter_all_ptypes(&flt);
+	hci_filter_all_events(&flt);
 	if (setsockopt(s, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		perror("Can't set HCI filter");
 		exit(1);
