@@ -421,7 +421,9 @@ static inline void security(int level, uint8_t hdr, struct frame *frm)
 
 void avdtp_dump(int level, struct frame *frm)
 {
-	uint8_t hdr, sid, nsp;
+	uint8_t hdr, sid, nsp, type;
+	uint16_t seqn;
+	uint32_t time, ssrc;
 
 	switch (frm->num) {
 	case 1:
@@ -474,7 +476,15 @@ void avdtp_dump(int level, struct frame *frm)
 
 	case 2:
 		p_indent(level, frm);
-		printf("AVDTP(m): \n");
+		hdr  = get_u8(frm);
+		type = get_u8(frm);
+		seqn = get_u16(frm);
+		time = get_u32(frm);
+		ssrc = get_u32(frm);
+
+		printf("AVDTP(m): ver %d %s%scc %d %spt %d seqn %d time %d ssrc %d\n",
+			hdr >> 6, hdr & 0x20 ? "pad " : "", hdr & 0x10 ? "ext " : "",
+			hdr & 0xf, type & 0x80 ? "mark " : "", type & 0x7f, seqn, time, ssrc);
 		break;
 	}
 
