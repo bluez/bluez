@@ -51,6 +51,8 @@
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 
 #define NIBBLE_TO_ASCII(c)      ((c) < 0x0a ? (c) + 0x30 : (c) + 0x57)
@@ -88,6 +90,7 @@ int num_frames = -1; // Infinite
 int master = 0;
 int auth = 0;
 int encrypt = 0;
+int secure = 0;
 int socktype = SOCK_SEQPACKET;
 int linger = 0;
 int reliable = 0;
@@ -270,15 +273,14 @@ void do_listen(void (*handler)(int sk))
 	opt = 0;
 	if (reliable)
 		opt |= L2CAP_LM_RELIABLE;
-
 	if (master)
-		 opt |= L2CAP_LM_MASTER;
-
+		opt |= L2CAP_LM_MASTER;
 	if (auth)
-		 opt |= L2CAP_LM_AUTH;
-
+		opt |= L2CAP_LM_AUTH;
 	if (encrypt)
-		 opt |= L2CAP_LM_ENCRYPT;
+		opt |= L2CAP_LM_ENCRYPT;
+	if (secure)
+		opt |= L2CAP_LM_SECURE;
 
 	if (setsockopt(s, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP link mode. %s(%d)", strerror(errno), errno);
@@ -570,7 +572,7 @@ void usage(void)
 		"\t-m multiple connects\n");
 
 	printf("Options:\n"
-		"\t[-b bytes] [-S bdaddr] [-P psm]\n"
+		"\t[-b bytes] [-i device] [-P psm]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
@@ -578,6 +580,7 @@ void usage(void)
 		"\t[-D] use connectionless channel (datagram)\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
+		"\t[-S] secure connection\n"
 	       	"\t[-M] become master\n");
 }
 
@@ -590,8 +593,10 @@ int main(int argc ,char *argv[])
 	struct sigaction sa;
 
 	mode = RECV; need_addr = 0;
-	
-	while ((opt=getopt(argc,argv,"rdscuwmnxyb:P:I:O:S:N:RMAEDL:")) != EOF) {
+
+	bacpy(&bdaddr, BDADDR_ANY);
+
+	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:N:RMAESL:D")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -642,8 +647,11 @@ int main(int argc ,char *argv[])
 			mode = SENDDUMP;
 			break;
 
-		case 'S':
-			baswap(&bdaddr, strtoba(optarg));
+		case 'i':
+			if (!strncasecmp(optarg, "hci", 3))
+				hci_devba(atoi(optarg + 3), &bdaddr);
+			else
+				str2ba(optarg, &bdaddr);
 			break;
 
 		case 'P':
@@ -676,6 +684,10 @@ int main(int argc ,char *argv[])
 
 		case 'E':
 			encrypt = 1;
+			break;
+
+		case 'S':
+			secure = 1;
 			break;
 
 		case 'D':

@@ -49,6 +49,8 @@
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/rfcomm.h>
 
 /* Test modes */
@@ -65,10 +67,6 @@ enum {
 
 unsigned char *buf;
 
-/* Default mtu */
-int imtu = 672;
-int omtu = 0;
-
 /* Default data size */
 long data_size = 127;
 long num_frames = -1;
@@ -80,6 +78,7 @@ uint8_t  channel = 10;
 int master = 0;
 int auth = 0;
 int encrypt = 0;
+int secure = 0;
 int socktype = SOCK_STREAM;
 int linger = 0;
 
@@ -153,13 +152,13 @@ void do_listen( void (*handler)(int sk) )
 	/* Set link mode */
 	opt = 0;
 	if (master)
-		 opt |= RFCOMM_LM_MASTER;
-
+		opt |= RFCOMM_LM_MASTER;
 	if (auth)
-		 opt |= RFCOMM_LM_AUTH;
-
+		opt |= RFCOMM_LM_AUTH;
 	if (encrypt)
-		 opt |= RFCOMM_LM_ENCRYPT;
+		opt |= RFCOMM_LM_ENCRYPT;
+	if (secure)
+		opt |= RFCOMM_LM_SECURE;
 
 	if (setsockopt(s, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP link mode. %s(%d)", strerror(errno), errno);
@@ -343,8 +342,7 @@ void usage(void)
 		"\t-m multiple connects\n");
 
 	printf("Options:\n"
-		"\t[-b bytes] [-S bdaddr] [-P channel]\n"
-	       	"\t[-I imtu] [-O omtu]\n"
+		"\t[-b bytes] [-i device] [-P channel]\n"
 	       	"\t[-L seconds] enabled SO_LINGER option\n"
 	       	"\t[-N num] number of frames to send\n"
 		"\t[-A] request authentication\n"
@@ -361,8 +359,10 @@ int main(int argc ,char *argv[])
 	struct sigaction sa;
 
 	mode = RECV; need_addr = 0;
-	
-	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:MAEL:N:")) != EOF) {
+
+	bacpy(&bdaddr, BDADDR_ANY);
+
+	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:N:MAESL:")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -405,20 +405,15 @@ int main(int argc ,char *argv[])
 			data_size = atoi(optarg);
 			break;
 
-		case 'S':
-			baswap(&bdaddr, strtoba(optarg));
+		case 'i':
+			if (!strncasecmp(optarg, "hci", 3))
+				hci_devba(atoi(optarg + 3), &bdaddr);
+			else
+				str2ba(optarg, &bdaddr);
 			break;
 
 		case 'P':
 			channel = atoi(optarg);
-			break;
-
-		case 'I':
-			imtu = atoi(optarg);
-			break;
-
-		case 'O':
-			omtu = atoi(optarg);
 			break;
 
 		case 'M':
@@ -431,6 +426,10 @@ int main(int argc ,char *argv[])
 
 		case 'E':
 			encrypt = 1;
+			break;
+
+		case 'S':
+			secure = 1;
 			break;
 
 		case 'L':
