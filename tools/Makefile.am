@@ -20,6 +20,8 @@ hciconfig_SOURCES = hciconfig.c csr.h csr.c
 
 hciconfig_LDADD = @BLUEZ_LIBS@
 
+hcitool_SOURCES = hcitool.c oui.h oui.c
+
 hcitool_LDADD = @BLUEZ_LIBS@
 
 l2ping_LDADD = @BLUEZ_LIBS@
