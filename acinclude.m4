@@ -1,5 +1,5 @@
 dnl Test file
-AC_DEFUN( AC_TEST_FILE,
+AC_DEFUN([AC_TEST_FILE],
 [
     if test -f $1; then
 	ifelse([$2], , :,[$2])
@@ -9,7 +9,7 @@ AC_DEFUN( AC_TEST_FILE,
 ])
 
 dnl Test dir
-AC_DEFUN( AC_TEST_DIR,
+AC_DEFUN([AC_TEST_DIR],
 [
     if test -d $1; then
 	ifelse([$2], , :,[$2])
@@ -19,7 +19,7 @@ AC_DEFUN( AC_TEST_DIR,
 ])
 
 dnl Test files
-AC_DEFUN( AC_TEST_FILES,
+AC_DEFUN([AC_TEST_FILES],
 [
     ac_file_found=yes
     for f in $1; do
@@ -37,7 +37,7 @@ AC_DEFUN( AC_TEST_FILES,
 ])
 
 dnl Search for headers, add path to CPPFLAGS if found 
-AC_DEFUN( AC_SEARCH_HEADERS, 
+AC_DEFUN([AC_SEARCH_HEADERS], 
 [
     AC_MSG_CHECKING("for $1") 
     ac_hdr_found=no
@@ -62,7 +62,7 @@ AC_DEFUN( AC_SEARCH_HEADERS,
 ])
 
 dnl Search for library, add path to LIBS if found 
-AC_DEFUN( AC_SEARCH_LIB, 
+AC_DEFUN([AC_SEARCH_LIB], 
 [
     AC_MSG_CHECKING("for lib$1")
 
