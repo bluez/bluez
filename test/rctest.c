@@ -347,7 +347,7 @@ void usage(void)
 	       	"\t[-I imtu] [-O omtu]\n"
 	       	"\t[-L seconds] enabled SO_LINGER option\n"
 	       	"\t[-N num] number of frames to send\n"
-		"\t[-E] request encryption\n"
+		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 	       	"\t[-M] become master\n");
 }
