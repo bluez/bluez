@@ -64,9 +64,9 @@ int omtu = 0;
 /* Default data size */
 long data_size = 127;
 
-/* Default addr and port */
+/* Default addr and channel */
 bdaddr_t bdaddr;
-unsigned short port = 10;
+unsigned short channel = 10;
 
 int master = 0;
 int auth = 0;
@@ -99,7 +99,7 @@ int do_connect(char *svr)
 	memset(&rem_addr, 0, sizeof(rem_addr));
 	rem_addr.rc_family = AF_BLUETOOTH;
 	baswap(&rem_addr.rc_bdaddr, strtoba(svr));
-	rem_addr.rc_port = htobs(port);
+	rem_addr.rc_channel = htobs(channel);
 	if( connect(s, (struct sockaddr *)&rem_addr, sizeof(rem_addr)) < 0 ){
 		syslog(LOG_ERR, "Can't connect. %s(%d)", strerror(errno), errno);
 		close(s);
@@ -124,7 +124,7 @@ void do_listen( void (*handler)(int sk) )
 
 	loc_addr.rc_family = AF_BLUETOOTH;
 	loc_addr.rc_bdaddr = bdaddr;
-	loc_addr.rc_port    = htobs(port);
+	loc_addr.rc_channel    = htobs(channel);
 	if( bind(s, (struct sockaddr *) &loc_addr, sizeof(loc_addr)) < 0 ) {
 		syslog(LOG_ERR, "Can't bind socket. %s(%d)", strerror(errno), errno);
 		exit(1);
@@ -153,7 +153,7 @@ void do_listen( void (*handler)(int sk) )
 		exit(1);
 	}
 
-	syslog(LOG_INFO,"Waiting for connection on port %d ...", port);
+	syslog(LOG_INFO,"Waiting for connection on channel %d ...", channel);
 
 	while(1) {
 		opt = sizeof(rem_addr);
@@ -308,7 +308,7 @@ void usage(void)
 		"\t-m multiple connects\n");
 
 	printf("Options:\n"
-		"\t[-b bytes] [-S bdaddr] [-P port]\n"
+		"\t[-b bytes] [-S bdaddr] [-P channel]\n"
 	       	"\t[-I imtu] [-O omtu]\n"
 		"\t[-D] use connectionless channel (datagram)\n"
 		"\t[-E] request encryption\n"
@@ -374,7 +374,7 @@ int main(int argc ,char *argv[])
 			break;
 
 		case 'P':
-			port = atoi(optarg);
+			channel = atoi(optarg);
 			break;
 
 		case 'I':
