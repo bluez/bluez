@@ -153,7 +153,7 @@ static inline void hci_filter_set_opcode(int opcode, struct hci_filter *f)
 {
 	f->opcode = opcode;
 }
-static inline void hci_filter_clear_opcode(int opcode, struct hci_filter *f)
+static inline void hci_filter_clear_opcode(struct hci_filter *f)
 {
 	f->opcode = 0;
 }
