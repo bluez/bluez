@@ -87,13 +87,13 @@ static void conf_opt(int level, __u8 *ptr, int len)
 		
 		switch (h->type) {
 		case L2CAP_CONF_MTU:
-			printf("mtu %d ", conf_opt_val(h->val, h->len));
+			printf("MTU %d ", conf_opt_val(h->val, h->len));
 			break;
 		case L2CAP_CONF_FLUSH_TO:
-			printf("flush_to %d ", conf_opt_val(h->val, h->len));
+			printf("FlushTO %d ", conf_opt_val(h->val, h->len));
 			break;
 		default:
-			printf("unknown (type %2.2x, len %d) ", h->type, h->len);
+			printf("Unknown (type %2.2x, len %d) ", h->type, h->len);
 			break;
 		}
 	}
@@ -144,6 +144,20 @@ static inline void echo_req(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
 static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
 {
 	printf("Echo rsp: dlen %d\n", 
+			btohs(cmd->len));
+	raw_dump(level, ptr, len);
+}
+
+static inline void info_req(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
+{
+	printf("Info req: dlen %d\n", 
+			btohs(cmd->len));
+	raw_dump(level, ptr, len);
+}
+
+static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, __u8 *ptr, int len)
+{
+	printf("Info rsp: dlen %d\n", 
 			btohs(cmd->len));
 	raw_dump(level, ptr, len);
 }
@@ -202,15 +216,15 @@ void l2cap_dump(int level, __u8 *ptr, int len, __u8 flags)
 		case L2CAP_ECHO_RSP:
 			echo_rsp(level, hdr, ptr, len);	
 			break;
-/*
+
 		case L2CAP_INFO_REQ:
-			info_req(level, ptr, len);
+			info_req(level, hdr, ptr, len);
 			break;
 
 		case L2CAP_INFO_RSP:
-			info_rsp(level, ptr, len);
+			info_rsp(level, hdr, ptr, len);
 			break;
-*/
+
 		default:
 			printf("code 0x%2.2x ident %d len %d\n", 
 				hdr->code, hdr->ident, btohs(hdr->len));
