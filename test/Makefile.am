@@ -5,7 +5,7 @@
 if TEST
 bin_PROGRAMS = l2test rctest
 
-noinst_PROGRAMS	= scotest attest hstest
+noinst_PROGRAMS	= scotest attest hstest bdaddr
 
 LDADD = @BLUEZ_LIBS@
 
