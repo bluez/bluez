@@ -2096,12 +2096,13 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 static struct option browse_options[] = {
 	{ "help",    0,0, 'h' },
 	{ "tree",    0,0, 't' },
+	{ "l2cap",   0,0, 'l' },
 	{ 0, 0, 0, 0 }
 };
 
 static char *browse_help = 
 	"Usage:\n"
-	"\tbrowse [--tree] [bdaddr]\n";
+	"\tbrowse [--tree] [--l2cap] [bdaddr]\n";
 
 /*
  * Browse the full SDP database (i.e. list all services starting from the
@@ -2115,12 +2116,15 @@ static int cmd_browse(int argc, char **argv)
 	/* Initialise context */
 	memset(&context, '\0', sizeof(struct search_context));
 	/* We want to browse the top-level/root */
-	sdp_uuid16_create(&(context.group), PUBLIC_BROWSE_GROUP);
+	sdp_uuid16_create(&context.group, PUBLIC_BROWSE_GROUP);
 
 	for_each_opt(opt, browse_options, 0) {
 		switch(opt) {
 		case 't':
 			context.tree = 1;
+			break;
+		case 'l':
+			sdp_uuid16_create(&context.group, L2CAP_UUID);
 			break;
 		default:
 			printf(browse_help);
