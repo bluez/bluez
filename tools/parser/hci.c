@@ -294,6 +294,7 @@ static char *error_code_str[] = {
 	"Remote Device Terminated Connection due to Low Resources",
 	"Remote Device Terminated Connection due to Power Off",
 	"Connection Terminated by Local Host",
+	"Repeated Attempts",
 	"Pairing Not Allowed",
 	"Unknown LMP PDU",
 	"Unsupported Remote Feature / Unsupported LMP Feature",
@@ -311,7 +312,7 @@ static char *error_code_str[] = {
 	"Link Key Can Not be Changed",
 	"Requested QoS Not Supported",
 	"Instant Passed",
-	"Pairing with Unit Key Not Allowed",
+	"Pairing with Unit Key Not Supported",
 	"Different Transaction Collision",
 	"Reserved",
 	"QoS Unacceptable Parameter",
@@ -639,6 +640,28 @@ static inline void write_voice_setting_dump(int level, struct frame *frm)
 	printf("voice setting 0x%4.4x\n", btohs(cp->voice_setting));
 }
 
+static inline void write_current_iac_lap_dump(int level, struct frame *frm)
+{
+	write_current_iac_lap_cp *cp = frm->ptr;
+	int i;
+
+	for (i = 0; i < cp->num_current_iac; i++) {
+		p_indent(level, frm);
+		printf("IAC 0x%2.2x%2.2x%2.2x", cp->lap[i][2], cp->lap[i][1], cp->lap[i][0]);
+		if (cp->lap[i][2] == 0x9e && cp->lap[i][1] == 0x8b) {
+			switch (cp->lap[i][0]) {
+			case 0x00:
+				printf(" (Limited Inquiry Access Code)");
+				break;
+			case 0x33:
+				printf(" (General Inquiry Access Code)");
+				break;
+			}
+		}
+		printf("\n");
+	}
+}
+
 static inline void command_dump(int level, struct frame *frm)
 {
 	hci_command_hdr *hdr = frm->ptr;
@@ -741,6 +764,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_WRITE_VOICE_SETTING:
 			write_voice_setting_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_CURRENT_IAC_LAP:
+			write_current_iac_lap_dump(level + 1, frm);
 			return;
 		}
 	}
@@ -847,6 +873,28 @@ static inline void read_voice_setting_dump(int level, struct frame *frm)
 	if (rp->status > 0) {
 		p_indent(level, frm);
 		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_current_iac_lap_dump(int level, struct frame *frm)
+{
+	read_current_iac_lap_rp *rp = frm->ptr;
+	int i;
+
+	for (i = 0; i < rp->num_current_iac; i++) {
+		p_indent(level, frm);
+		printf("IAC 0x%2.2x%2.2x%2.2x", rp->lap[i][2], rp->lap[i][1], rp->lap[i][0]);
+		if (rp->lap[i][2] == 0x9e && rp->lap[i][1] == 0x8b) {
+			switch (rp->lap[i][0]) {
+			case 0x00:
+				printf(" (Limited Inquiry Access Code)");
+				break;
+			case 0x33:
+				printf(" (General Inquiry Access Code)");
+				break;
+			}
+		}
+		printf("\n");
 	}
 }
 
@@ -957,20 +1005,20 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_VOICE_SETTING:
 			read_voice_setting_dump(level, frm);
 			return;
+		case OCF_READ_CURRENT_IAC_LAP:
+			read_current_iac_lap_dump(level, frm);
+			return;
+		case OCF_WRITE_CURRENT_IAC_LAP:
+		case OCF_WRITE_INQUIRY_MODE:
+		case OCF_WRITE_AFH_MODE:
 		case OCF_READ_PAGE_TIMEOUT:
 		case OCF_READ_PAGE_ACTIVITY:
 		case OCF_READ_INQ_ACTIVITY:
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
-		case OCF_READ_CURRENT_IAC_LAP:
 		case OCF_SET_AFH_CLASSIFICATION:
 		case OCF_READ_INQUIRY_MODE:
 		case OCF_READ_AFH_MODE:
-			status_response_dump(level, frm);
-			return;
-		case OCF_CHANGE_LOCAL_NAME:
-		case OCF_WRITE_CLASS_OF_DEV:
-		case OCF_WRITE_VOICE_SETTING:
 			status_response_dump(level, frm);
 			return;
 		}
