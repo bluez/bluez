@@ -51,6 +51,7 @@ struct uart_t {
 	int  m_id;
 	int  p_id;
 	int  proto;
+	int  start_speed;
 	int  speed;
 	int  flags;
 	int  (*init) (int fd, struct uart_t *u, struct termios *ti);
@@ -79,6 +80,8 @@ static int uart_speed(int s)
 		return B921600;
 	case 1000000:
 		return B1000000;
+	case 1152000:
+		return B1152000;
 	default:
 		return B57600;
 	}
@@ -149,12 +152,6 @@ static int ericsson(int fd, struct uart_t *u, struct termios *ti)
 	struct timespec tm = {0, 50000};
 	char cmd[10];
 
-	/* Switch to default Ericsson baudrate*/
-	if (set_speed(fd, ti, 57600) < 0) {
-		perror("Can't set default baud rate");
-		return -1;
-	}
-
 	cmd[0] = HCI_COMMAND_PKT;
 	cmd[1] = 0x09;
 	cmd[2] = 0xfc;
@@ -199,12 +196,6 @@ static int digi(int fd, struct uart_t *u, struct termios *ti)
 	struct timespec tm = {0, 50000};
 	char cmd[10];
 
-	/* Switch to default Digi baudrate*/
-	if (set_speed(fd, ti, 9600) < 0) {
-		perror("Can't set default baud rate");
-		return -1;
-	}
-
 	/* DigiAnswer set baud rate command */
 	cmd[0] = HCI_COMMAND_PKT;
 	cmd[1] = 0x07;
@@ -241,12 +232,6 @@ static int texas(int fd, struct uart_t *u, struct termios *ti)
 	int n;
 
 	memset(resp,'\0', 100);
-
-	/* Switch to default Texas baudrate*/
-	if (set_speed(fd, ti, 115200) < 0) {
-		perror("Can't set default baud rate");
-		return -1;
-	}
 
 	/* It is possible to get software version with manufacturer specific 
 	   HCI command HCI_VS_TI_Version_Number. But the only thing you get more
@@ -484,12 +469,6 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 	static int csr_seq = 0;	/* Sequence number of command */
 	int  divisor;
 
-	/* Switch to default CSR baudrate */
-	if (set_speed(fd, ti, 115200) < 0) {
-		perror("Can't set default baud rate");
-		return -1;
-	}
-
 	/* It seems that if we set the CSR UART speed straight away, it
 	 * won't work, the CSR UART gets into a state where we can't talk
 	 * to it anymore.
@@ -596,6 +575,19 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 	}
 #endif
 
+	if (u->speed > 1500000) {
+		fprintf(stderr, "Speed %d too high. Remaining at %d baud\n", 
+			u->speed, u->start_speed);
+		u->speed = u->start_speed;
+	} else if (u->speed != 57600 && uart_speed(u->speed) == B57600) {
+		/* Unknown speed. Why oh why can't we just pass an int to the kernel? */
+		fprintf(stderr, "Speed %d unrecognised. Remaining at %d baud\n",
+			u->speed, u->start_speed);
+		u->speed = u->start_speed;
+	}
+	if (u->speed == u->start_speed)
+		return 0;
+
 	/* Now, create the command that will set the UART speed */
 	/* CSR BCC header */
 	cmd[5] = 0x02;			/* type = SET-REQ */
@@ -604,30 +596,8 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 	cmd[10] = (csr_seq >> 8) & 0xFF;/* - msB */
 	csr_seq++;
 
-	switch (u->speed) {
-	case 9600:
-		divisor = 0x0027;
-		break;
-	/* Various speeds ommited */ 
-	case 57600:
-		divisor = 0x00EC;
-		break;
-	case 115200:
-		divisor = 0x01D8;
-		break;
-	/* For Brainbox Pcmcia cards */
-	case 460800:
-		divisor = 0x075F;
-		break;
-	case 921600:
-		divisor = 0x0EBF;
-		break;
-	default:
-		/* Safe default */
-		divisor = 0x01D8;
-		u->speed = 115200;
-		break;
-	}
+	divisor = (u->speed*64+7812)/15625;
+
 	/* No parity, one stop bit -> divisor |= 0x0000; */
 	cmd[15] = (divisor) & 0xFF;		/* divider */
 	cmd[16] = (divisor >> 8) & 0xFF;	/* - msB */
@@ -664,12 +634,6 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 	struct timespec tm = {0, 500000};
 	char cmd[10], rsp[100];
 	int r;
-
-	/* Switch to default Silicon Wave baudrate*/
-	if (set_speed(fd, ti, 115200) < 0) {
-		perror("Can't set default baud rate");
-		return -1;
-	}
 
 	// Silicon Wave set baud rate command
 	// see HCI Vendor Specific Interface from Silicon Wave
@@ -766,33 +730,33 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 }
 
 struct uart_t uart[] = {
-	{ "any",      0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, NULL },
-	{ "ericsson", 0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, ericsson },
-	{ "digi",     0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, digi },
-	{ "texas",    0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, texas},
+	{ "any",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
+	{ "ericsson", 0x0000, 0x0000, HCI_UART_H4,   57600,  115200, FLOW_CTL, ericsson },
+	{ "digi",     0x0000, 0x0000, HCI_UART_H4,   9600,   115200, FLOW_CTL, digi },
+	{ "texas",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, texas},
 
-	{ "bcsp",     0x0000, 0x0000, HCI_UART_BCSP, 115200, 0,        bcsp },
+	{ "bcsp",     0x0000, 0x0000, HCI_UART_BCSP, 115200, 115200, 0,        bcsp },
 
 	/* Xircom PCMCIA cards: Credit Card Adapter and Real Port Adapter */
-	{ "xircom",   0x0105, 0x080a, HCI_UART_H4,   115200, FLOW_CTL, NULL },
+	{ "xircom",   0x0105, 0x080a, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
 
 	/* CSR Casira serial adapter or BrainBoxes serial dongle (BL642) */
-	{ "csr",      0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, csr },
+	{ "csr",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, csr },
 
 	/* BrainBoxes PCMCIA card (BL620) */
-	{ "bboxes",   0x0160, 0x0002, HCI_UART_H4,   460800, FLOW_CTL, csr },
+	{ "bboxes",   0x0160, 0x0002, HCI_UART_H4,   115200, 460800, FLOW_CTL, csr },
 
 	/* Silicon Wave kits */
-	{ "swave",    0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, swave },
+	{ "swave",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, swave },
 
 	/* Sphinx Electronics PICO Card */
-	{ "picocard", 0x025e, 0x1000, HCI_UART_H4,   115200, FLOW_CTL, NULL },
+	{ "picocard", 0x025e, 0x1000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
 
 	/* Inventel BlueBird Module */
-	{ "inventel", 0x0000, 0x0000, HCI_UART_H4,   115200, FLOW_CTL, NULL },
+	{ "inventel", 0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL },
 
 	/* COM One Platinium Bluetooth PC Card */
-	{ "comone",   0xffff, 0x0101, HCI_UART_BCSP, 115200, 0,        bcsp },
+	{ "comone",   0xffff, 0x0101, HCI_UART_BCSP, 115200, 115200, 0,        bcsp },
 
         { NULL, 0 }
 };
@@ -818,7 +782,7 @@ struct uart_t * get_by_type(char *type)
 }
 
 /* Initialize UART driver */
-int init_uart(char *dev, struct uart_t *u)
+int init_uart(char *dev, struct uart_t *u, int send_break)
 {
 	struct termios ti;
 	int  fd, i;
@@ -849,7 +813,16 @@ int init_uart(char *dev, struct uart_t *u)
 		return -1;
 	}
 
+	/* Set initial baudrate */
+	if (set_speed(fd, &ti, u->start_speed) < 0) {
+		perror("Can't set initial baud rate");
+		return -1;
+	}
+
 	tcflush(fd, TCIOFLUSH);
+
+	if (send_break)
+		tcsendbreak(fd, 0);
 
 	if (u->init && u->init(fd, u, &ti) < 0)
 		return -1;
@@ -881,7 +854,7 @@ static void usage(void)
 {
 	printf("hciattach - HCI UART driver initialization utility\n");
 	printf("Usage:\n");
-	printf("\thciattach [-n] [-p] [-t timeout] <tty> <type | id> [speed] [flow]\n");
+	printf("\thciattach [-n] [-p] [-b] [-t timeout] [-s initial_speed] <tty> <type | id> [speed] [flow]\n");
 	printf("\thciattach -l\n");
 }
 
@@ -893,6 +866,8 @@ int main(int argc, char *argv[])
 	struct uart_t *u = NULL;
 	int detach, printpid, opt, i, n;
 	int to = 5; 
+	int start_speed = 0;
+	int send_break = 0;
 	pid_t pid;
 	struct sigaction sa;
 	char dev[20];
@@ -900,8 +875,12 @@ int main(int argc, char *argv[])
 	detach = 1;
 	printpid = 0;
 	
-	while ((opt=getopt(argc, argv, "npt:l")) != EOF) {
+	while ((opt=getopt(argc, argv, "bnpt:s:l")) != EOF) {
 		switch(opt) {
+		case 'b':
+			send_break = 1;
+			break;
+
 		case 'n':
 			detach = 0;
 			break;
@@ -912,6 +891,10 @@ int main(int argc, char *argv[])
 
 		case 't':
 			to = atoi(optarg);
+			break;
+
+		case 's':
+			start_speed = atoi(optarg);
 			break;
 
 		case 'l':
@@ -980,6 +963,11 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	/* If user specified a starting speed, use that instead of
+	   the hardware's default */
+	if (start_speed)
+		u->start_speed = start_speed;
+
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
 	sa.sa_handler = sig_alarm;
@@ -988,7 +976,7 @@ int main(int argc, char *argv[])
 	/* 5 seconds should be enough for initialization */
 	alarm(to);
 	
-	n = init_uart(dev, u);
+	n = init_uart(dev, u, send_break);
 	if (n < 0) {
 		perror("Can't initialize device"); 
 		exit(1);
