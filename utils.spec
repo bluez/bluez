@@ -46,7 +46,7 @@ rm -rf $RPM_BUILD_ROOT
 %setup -q
 
 %build
-CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=%{prefix} --mandir=%{_mandir} --sysconfdir=%{_sysconfdir}
+CFLAGS="$RPM_OPT_FLAGS" ./configure --enable-pcmcia --prefix=%{prefix} --mandir=%{_mandir} --sysconfdir=%{_sysconfdir}
 make
 
 %install
