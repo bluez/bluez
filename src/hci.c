@@ -293,7 +293,7 @@ int lmp_strtover(char *str, unsigned int *ver)
 }
 
 /* LMP features mapping */
-hci_map lmp_features_map[][9] = {
+hci_map lmp_features_map[8][9] = {
 	{	/* byte 0 */
 		{ "<3-slot packets>",	LMP_3SLOT	},
 		{ "<5-slot packets>",	LMP_5SLOT	},
@@ -351,7 +351,6 @@ hci_map lmp_features_map[][9] = {
 		{ "<extended features>",LMP_EXT_FEAT	},
 		{ NULL }
 	},
-	{{ NULL }}
 };
 
 char *lmp_featurestostr(uint8_t *features, char *pref, int width)
@@ -367,7 +366,7 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 	if (pref)
 		ptr += sprintf(ptr, "%s", pref);
 
-	for(i=0, w=0; lmp_features_map[i][0].str; i++) {
+	for(i=0, w=0; i<8; i++) {
 		hci_map *m;
 
 		m = lmp_features_map[i];
@@ -381,7 +380,7 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 			m++;
 		}
 	}
-	
+
 	return str;
 }
 
