@@ -98,12 +98,14 @@ AC_DEFUN(AC_PATH_DBUS, [
 		CFLAGS="$CFLAGS -I/usr/lib/dbus-1.0/include"
 	fi
 
-	AC_CHECK_HEADER(dbus/dbus.h,,
-		dbus_enable=no)
+	if test "$dbus_enable" = "yes"; then
+		AC_CHECK_HEADER(dbus/dbus.h,,
+			dbus_enable=no)
 
-	AC_CHECK_LIB(dbus-1, dbus_error_init,
-		DBUS_LIBS="$DBUS_LIBS -ldbus-1",
-		dbus_enable=no)
+		AC_CHECK_LIB(dbus-1, dbus_error_init,
+			DBUS_LIBS="$DBUS_LIBS -ldbus-1",
+			dbus_enable=no)
+	fi
 
 	CFLAGS=$ac_save_CFLAGS
 	if test -n "$dbus_includes"; then
