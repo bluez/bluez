@@ -53,6 +53,7 @@ struct frame {
 #define DUMP_EXT	0x04
 #define DUMP_RAW	0x08
 #define DUMP_BPA	0x10
+#define DUMP_VERBOSE	0x40
 #define DUMP_TSTAMP	0x80
 #define DUMP_TYPE_MASK	(DUMP_ASCII | DUMP_HEX | DUMP_EXT)
 

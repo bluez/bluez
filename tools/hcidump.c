@@ -447,7 +447,8 @@ static void usage(void)
 	"  -C, --cmtp=psm             PSM for CMTP\n"
 	"  -H, --hcrp=psm             PSM for HCRP\n"
 	"  -O, --obex=channel         Channel for OBEX\n"
-	"  -?, --help                 Give this help list\n"
+	"  -V, --verbose              Verbose decoding\n"
+	"  -h, --help                 Give this help list\n"
 	"      --usage                Give a short usage message\n"
 	);
 }
@@ -470,6 +471,7 @@ static struct option main_options[] = {
 	{ "cmtp",		1, 0, 'C' },
 	{ "hcrp",		1, 0, 'H' },
 	{ "obex",		1, 0, 'O' },
+	{ "verbose",		0, 0, 'V' },
 	{ "help",		0, 0, 'h' },
 	{ 0 }
 };
@@ -482,7 +484,7 @@ int main(int argc, char *argv[])
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRBC:H:O:h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRBC:H:O:Vh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			device = atoi(optarg + 3);
@@ -572,6 +574,10 @@ int main(int argc, char *argv[])
 
 		case 'O':
 			set_proto(0, 0, atoi(optarg), SDP_UUID_OBEX);
+			break;
+
+		case 'V':
+			flags |= DUMP_VERBOSE;
 			break;
 
 		case 'h':
