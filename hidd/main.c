@@ -223,7 +223,7 @@ static int request_encryption(bdaddr_t *src, bdaddr_t *dst)
 	return err;
 }
 
-static int create_device(int ctl, int csk, int isk, uint8_t subclass, int encrypt, int timeout)
+static int create_device(int ctl, int csk, int isk, uint8_t subclass, int nosdp, int encrypt, int timeout)
 {
 	struct hidp_connadd_req req;
 	struct sockaddr_l2 addr;
@@ -254,9 +254,12 @@ static int create_device(int ctl, int csk, int isk, uint8_t subclass, int encryp
 	req.flags     = 0;
 	req.idle_to   = timeout * 60;
 
-	err = get_hid_device_info(&src, &dst, &req);
-	if (err < 0)
-		goto error;
+	if (!nosdp) {
+		err = get_hid_device_info(&src, &dst, &req);
+		if (err < 0)
+			goto error;
+	} else
+		req.subclass = 0xc0;
 
 	if (subclass != 0x00)
 		req.subclass = subclass;
@@ -285,7 +288,7 @@ error:
 	return err;
 }
 
-static void run_server(int ctl, int csk, int isk, uint8_t subclass, int encrypt, int timeout)
+static void run_server(int ctl, int csk, int isk, uint8_t subclass, int nosdp, int encrypt, int timeout)
 {
 	struct pollfd p[2];
 	short events;
@@ -311,7 +314,7 @@ static void run_server(int ctl, int csk, int isk, uint8_t subclass, int encrypt,
 			ncsk = l2cap_accept(csk, NULL);
 			nisk = l2cap_accept(isk, NULL);
 
-			err = create_device(ctl, ncsk, nisk, subclass, encrypt, timeout);
+			err = create_device(ctl, ncsk, nisk, subclass, nosdp, encrypt, timeout);
 			if (err < 0)
 				syslog(LOG_ERR, "HID create error %d (%s)",
 						errno, strerror(errno));
@@ -375,7 +378,7 @@ static void do_show(int ctl)
 	}
 }
 
-static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, int encrypt, int timeout)
+static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, int nosdp, int encrypt, int timeout)
 {
 	int csk, isk, err;
 
@@ -394,7 +397,7 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, 
 		exit(1);
 	}
 
-	err = create_device(ctl, csk, isk, subclass, encrypt, timeout);
+	err = create_device(ctl, csk, isk, subclass, nosdp, encrypt, timeout);
 	if (err < 0) {
 		fprintf(stderr, "HID create error %d (%s)\n",
 						errno, strerror(errno));
@@ -406,7 +409,7 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, 
 	}
 }
 
-static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int encrypt, int timeout)
+static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int nosdp, int encrypt, int timeout)
 {
 	inquiry_info *info = NULL;
 	bdaddr_t src, dst;
@@ -437,7 +440,7 @@ static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int encrypt, 
 			ba2str(&dst, addr);
 
 			printf("\tConnecting to device %s\n", addr);
-			do_connect(ctl, &src, &dst, subclass, encrypt, timeout);
+			do_connect(ctl, &src, &dst, subclass, nosdp, encrypt, timeout);
 		}
 	}
 
@@ -525,6 +528,7 @@ static struct option main_options[] = {
 	{ "device",	1, 0, 'i' },
 	{ "master",	0, 0, 'M' },
 	{ "encrypt",	0, 0, 'E' },
+	{ "nosdp",	0, 0, 'D' },
 	{ "show",	0, 0, 'l' },
 	{ "list",	0, 0, 'l' },
 	{ "server",	0, 0, 'd' },
@@ -550,11 +554,11 @@ int main(int argc, char *argv[])
 	char addr[18];
 	int log_option = LOG_NDELAY | LOG_PID;
 	int opt, fd, ctl, csk, isk;
-	int mode = 0, daemon = 1, encrypt = 0, timeout = 30, lm = 0;
+	int mode = 0, daemon = 1, nosdp = 0, encrypt = 0, timeout = 30, lm = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:nt:b:MEldsc:k:Ku:h", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:nt:b:MEDldsc:k:Ku:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (!strncasecmp(optarg, "hci", 3))
@@ -579,6 +583,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'E':
 			encrypt = 1;
+			break;
+		case 'D':
+			nosdp = 1;
 			break;
 		case 'l':
 			mode = 0;
@@ -641,12 +648,12 @@ int main(int argc, char *argv[])
 		break;
 
 	case 2:
-		do_search(ctl, &bdaddr, subclass, encrypt, timeout);
+		do_search(ctl, &bdaddr, subclass, nosdp, encrypt, timeout);
 		close(ctl);
 		exit(0);
 
 	case 3:
-		do_connect(ctl, &bdaddr, &dev, subclass, encrypt, timeout);
+		do_connect(ctl, &bdaddr, &dev, subclass, nosdp, encrypt, timeout);
 		close(ctl);
 		exit(0);
 
@@ -694,7 +701,7 @@ int main(int argc, char *argv[])
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
-	run_server(ctl, csk, isk, subclass, encrypt, timeout);
+	run_server(ctl, csk, isk, subclass, nosdp, encrypt, timeout);
 
 	syslog(LOG_INFO, "Exit");
 
