@@ -597,17 +597,19 @@ static void senddump_mode(int sk)
 
 static void reconnect_mode(char *svr)
 {
-	while(1) {
-		int s = do_connect(svr);
-		close(s);
+	while (1) {
+		int sk = do_connect(svr);
+		close(sk);
 	}
 }
 
 static void connect_mode(char *svr)
 {
-	int s;
-	if ((s = do_connect(svr)) < 0)
+	int sk;
+
+	if ((sk = do_connect(svr)) < 0)
 		exit(1);
+
 	sleep(99999999);
 }
 
