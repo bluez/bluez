@@ -58,16 +58,16 @@ static int l2cap_sock, unix_sock;
 static fd_set active_fdset;
 static int active_maxfd;
 
-sdp_record_t *server;
+static sdp_record_t *server;
 
 /*
  * List of version numbers supported by the SDP server.
  * Add to this list when newer versions are supported.
  */
 static sdp_version_t sdpVnumArray[1] = {
-	{1, 0}
+	{ 1, 0 }
 };
-const int sdpServerVnumEntries = 1;
+static const int sdpServerVnumEntries = 1;
 
 /*
  * The service database state is an attribute of the service record
@@ -99,16 +99,19 @@ static void add_lang_attr(sdp_record_t *r)
 	sdp_list_free(langs, 0);
 }
 
-static void register_public_browse_group(void)
+static void register_public_browse_group(int public)
 {
 	sdp_list_t *browselist;
 	uuid_t bgscid, pbgid;
 	sdp_data_t *sdpdata;
 	sdp_record_t *browse = sdp_record_alloc();
 
-	browse->handle = sdp_next_handle();
-	if (browse->handle < 0x10000)
-		return;
+	if (public) {
+		browse->handle = sdp_next_handle();
+		if (browse->handle < 0x10000)
+			return;
+	} else
+		browse->handle = SDP_SERVER_RECORD_HANDLE + 1;
 
 	sdp_record_add(browse);
 	sdpdata = sdp_data_alloc(SDP_UINT32, &browse->handle);
@@ -122,8 +125,10 @@ static void register_public_browse_group(void)
 	sdp_set_service_classes(browse, browselist);
 	sdp_list_free(browselist, 0);
 
-	sdp_uuid16_create(&pbgid, PUBLIC_BROWSE_GROUP);
-	sdp_set_group_id(browse, pbgid);
+	if (public) {
+		sdp_uuid16_create(&pbgid, PUBLIC_BROWSE_GROUP);
+		sdp_set_group_id(browse, pbgid);
+	}
 }
 
 /*
@@ -132,7 +137,7 @@ static void register_public_browse_group(void)
  * discovery clients. This method constructs a service record
  * and stores it in the repository
  */
-static void register_server_service(void)
+static void register_server_service(int public)
 {
 	int i;
 	sdp_list_t *classIDList, *browseList;
@@ -208,10 +213,12 @@ static void register_server_service(void)
 	sdp_data_free(version_data);
 	sdp_list_free(pd, 0);
 
-	sdp_uuid16_create(&browseGroupId, PUBLIC_BROWSE_GROUP);
-	browseList = sdp_list_append(0, &browseGroupId);
-	sdp_set_browse_groups(server, browseList);
-	sdp_list_free(browseList, 0);
+	if (public) {
+		sdp_uuid16_create(&browseGroupId, PUBLIC_BROWSE_GROUP);
+		browseList = sdp_list_append(0, &browseGroupId);
+		sdp_set_browse_groups(server, browseList);
+		sdp_list_free(browseList, 0);
+	}
 
 	update_db_timestamp();
 }
@@ -221,16 +228,16 @@ static void register_server_service(void)
  * l2cap and unix sockets over which discovery and registration clients
  * access us respectively
  */
-int init_server(int master)
+static int init_server(int master, int public)
 {
 	struct sockaddr_l2 l2addr;
 	struct sockaddr_un unaddr;
 
 	/* Register the public browse group root */
-	register_public_browse_group();
+	register_public_browse_group(public);
 
 	/* Register the SDP server's service record */
-	register_server_service();
+	register_server_service(public);
 
 	/* Create L2CAP socket */
 	l2cap_sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
@@ -278,7 +285,7 @@ int init_server(int master)
 	return 0;
 }
 
-void sig_term(int sig)
+static void sig_term(int sig)
 {
 	SDPINF("terminating... \n");
 	sdp_svcdb_reset();
@@ -287,7 +294,7 @@ void sig_term(int sig)
 	exit(0);
 }
 
-int become_daemon(void)
+static int become_daemon(void)
 {
 	int fd;
 
@@ -377,7 +384,7 @@ static void check_active(fd_set *mask, int num)
 	}
 }
 
-void usage(void)
+static void usage(void)
 {
 	printf("sdpd version %s\n", VERSION);
 	printf("Usage:\n"
@@ -386,25 +393,30 @@ void usage(void)
 }
 
 static struct option main_options[] = {
-        {"help", 0,0, 'h'},
-        {"nodaemon",  0,0, 'n'},
-        {"master",  0,0, 'm'},
-        {0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ "nodaemon",	0, 0, 'n' },
+	{ "master",	0, 0, 'm' },
+	{ "public",	0, 0, 'p' },
+        { 0, 0, 0, 0}
 };
 
 int main(int argc, char **argv)
 {
 	int daemon = 1;
 	int master = 0;
+	int public = 0;
 	int opt;
 
-	while ((opt = getopt_long(argc, argv, "nm", main_options, NULL)) != -1)
+	while ((opt = getopt_long(argc, argv, "nmp", main_options, NULL)) != -1)
 		switch (opt) {
 		case 'n':
 			daemon = 0;
 			break;
 		case 'm':
 			master = 1;
+			break;
+		case 'p':
+			public = 1;
 			break;
 		default:
 			usage();
@@ -418,7 +430,7 @@ int main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (init_server(master) < 0) {
+	if (init_server(master, public) < 0) {
 		SDPERR("Server initialization failed");
 		return -1;
 	}
