@@ -42,8 +42,8 @@
 #include <netdb.h>
 #include <sys/socket.h>
 
-#include <bluetooth.h>
-#include <l2cap.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
 
 /* Test modes */
 enum {

@@ -47,8 +47,8 @@
 #include <asm/types.h>
 #include <asm/byteorder.h>
 
-#include "bluetooth.h"
-#include "l2cap.h"
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
 
 /* Defaults */
 bdaddr_t bdaddr;

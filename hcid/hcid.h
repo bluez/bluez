@@ -28,7 +28,7 @@
 
 #include <glib.h>
 
-#include <bluetooth.h>
+#include <bluetooth/bluetooth.h>
 
 #define HCID_CONFIG_FILE "/etc/bluetooth/hcid.conf"
 #define HCID_PIN_FILE    "/etc/bluetooth/pin"

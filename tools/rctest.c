@@ -40,8 +40,8 @@
 #include <netdb.h>
 #include <sys/socket.h>
 
-#include <bluetooth.h>
-#include <rfcomm.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/rfcomm.h>
 
 /* Test modes */
 enum {
