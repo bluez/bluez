@@ -423,9 +423,9 @@ void avdtp_dump(int level, struct frame *frm)
 {
 	uint8_t hdr, sid, nsp;
 
-	p_indent(level, frm);
-
-	if (frm->num < 2) {
+	switch (frm->num) {
+	case 1:
+		p_indent(level, frm);
 		hdr = get_u8(frm);
 
 		nsp = (hdr & 0x0c) == 0x04 ? get_u8(frm) : 0;
@@ -469,8 +469,13 @@ void avdtp_dump(int level, struct frame *frm)
 			security(level + 1, hdr, frm);
 			break;
 		}
-	} else {
+
+		break;
+
+	case 2:
+		p_indent(level, frm);
 		printf("AVDTP(m): \n");
+		break;
 	}
 
 	raw_dump(level, frm);
