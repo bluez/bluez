@@ -30,17 +30,16 @@ The BLUETOOTH trademarks are owned by Bluetooth SIG, Inc., U.S.A.
 
 %prep
 rm -rf $RPM_BUILD_ROOT
-#rm -rf /usr/src/redhat/BUILD/*
 
 %setup -q
 
 %build
-CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=%{prefix}
+CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=%{prefix} --mandir=%{_mandir} --sysconfdir=%{_sysconfdir}
 make
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make prefix=$RPM_BUILD_ROOT%{prefix} install
+make DESTDIR=$RPM_BUILD_ROOT prefix=%{prefix} mandir=%{_mandir} sysconfdir=%{_sysconfdir} install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
