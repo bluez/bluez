@@ -247,6 +247,42 @@ void cmd_lm(int ctl, int hdev, char *opt)
 	}
 }
 
+void cmd_aclmtu(int ctl, int hdev, char *opt)
+{
+	struct hci_dev_req dr = { dev_id: hdev };
+	uint16_t mtu, mpkt;
+	
+	if (sscanf(opt, "%4hu:%4hu", &mtu, &mpkt) != 2)
+		return;
+
+	*((uint16_t *)&dr.dev_opt + 1) = mtu;
+	*((uint16_t *)&dr.dev_opt + 0) = mpkt;
+	
+	if (ioctl(ctl, HCISETACLMTU, (unsigned long)&dr) < 0) {
+		printf("Can't set ACL mtu on hci%d. %s(%d)\n", 
+				hdev, strerror(errno), errno);
+		exit(1);
+	}
+}
+
+void cmd_scomtu(int ctl, int hdev, char *opt)
+{
+	struct hci_dev_req dr = { dev_id: hdev };
+	uint16_t mtu, mpkt;
+	
+	if (sscanf(opt, "%4hu:%4hu", &mtu, &mpkt) != 2)
+		return;
+
+	*((uint16_t *)&dr.dev_opt + 1) = mtu;
+	*((uint16_t *)&dr.dev_opt + 0) = mpkt;
+	
+	if (ioctl(ctl, HCISETSCOMTU, (unsigned long)&dr) < 0) {
+		printf("Can't set SCO mtu on hci%d. %s(%d)\n", 
+				hdev, strerror(errno), errno);
+		exit(1);
+	}
+}
+
 void cmd_features(int ctl, int hdev, char *opt)
 {
 	print_dev_hdr(&di);
@@ -392,7 +428,7 @@ void cmd_inq_parms(int ctl, int hdev, char *opt)
 		unsigned int window, interval;
 		write_inq_activity_cp cp;
 
-		if (sscanf(opt,"%4u/%4u", &window, &interval)!=2) {
+		if (sscanf(opt,"%4u:%4u", &window, &interval) != 2) {
 			printf("Invalid argument format\n");
 			exit(1);
 		}
@@ -456,9 +492,9 @@ void print_dev_hdr(struct hci_dev_info *di)
 	baswap(&bdaddr, &di->bdaddr);
 
 	printf("%s:\tType: %s\n", di->name, hci_dtypetostr(di->type) );
-	printf("\tBD Address: %s ACL MTU: %d:%d  SCO: MTU %d:%d\n",
-	       batostr(&bdaddr), di->acl_mtu, di->acl_max,
-	       di->sco_mtu, di->sco_max);
+	printf("\tBD Address: %s ACL MTU: %d:%d  SCO MTU: %d:%d\n",
+	       batostr(&bdaddr), di->acl_mtu, di->acl_pkts,
+	       di->sco_mtu, di->sco_pkts);
 }
 
 void print_dev_info(int ctl, struct hci_dev_info *di)
@@ -514,7 +550,9 @@ struct {
 	{ "lp",     cmd_lp,      "[policy]", "Get/Set default link policy" },
 	{ "name",   cmd_name,    "[name]",   "Get/Set local name" },
 	{ "class",  cmd_class,   "[class]",  "Get/Set class of device" },
-	{ "inqparms",cmd_inq_parms, "[int/win]","Get/Set device inquiry window and iterval" },
+	{ "inqparms",cmd_inq_parms, "[win:int]","Get/Set inquiry scan window and interval" },
+	{ "aclmtu", cmd_aclmtu, "<mtu:pkt>","Set ACL MTU and number of packets" },
+	{ "scomtu", cmd_scomtu, "<mtu:pkt>","Set SCO MTU and number of packets" },
 	{ "version",	cmd_version, 0,  "Display version information" },
 	{ "features",	cmd_features, 0,"Display device features" },
 	{ NULL, NULL, 0}
