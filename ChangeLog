@@ -1,3 +1,16 @@
+var 2.3:
+	hciconfig changes:
+		CSR firmware version is now displayed by 'revision' command.
+		Voice command is working properly on big endian machines.
+	hciattach changes:
+		Added support for Texas Bluetooth modules.
+		Added support for high UART baud rates on Ericsson modules.
+		BCSP initialization fixes.
+	Support for role switch command (hcitool).
+	RFCOMM config file parser fixes.
+	Update man pages.
+	Removed GLib dependency.
+
 ver 2.2:
 	Support for voice settings (hciconfig).
 	Minor hcitool fixes.
