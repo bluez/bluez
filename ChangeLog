@@ -1,3 +1,16 @@
+ver 2.11:
+	Initial support for the kernel security manager.
+	Use bit zero for vendor packets in the filter type bitmask.
+	Add SIM Access types for service discovery.
+	Add more audio/video profile translations.
+	Add another company identifier.
+	Add the missing HCI error codes.
+	Add RFCOMM socket options.
+	Add definition for the SECURE link mode.
+	Add functions for reading and writing the inquiry mode.
+	Add functions for AFH related settings and information.
+	Add version identifier for the Bluetooth 2.0 specification.
+
 ver 2.10:
 	Fix and extend the unaligned access macros.
 	Make compiling with debug information optional.
