@@ -249,6 +249,7 @@ static struct {
 	{ "bnep",	FILT_BNEP	},
 	{ "cmtp",	FILT_CMTP	},
 	{ "hidp",	FILT_HIDP	},
+	{ "capi",	FILT_CAPI	},
 	{ 0 }
 };
 

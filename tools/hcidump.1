@@ -30,26 +30,6 @@ and if
 -r
 option is not set, data is read from the first available Bluetooth device.
 .TP
-.BI -r " <file>" "\fR,\fP \-\^\-read-dump=" "<file>"
-Data is not read from a Bluetooth device, but from file
-.IR file .
-.I
-file
-is crated with option
-.BR -w .
-.TP
-.BI -w " <file>" "\fR,\fP \-\^\-save-dump=" "<file>"
-Parse output is not printed to screen, instead data read from device is saved in file
-.IR file .
-The saved dump file can be subsequently parsed with option
-.BR -r .
-.TP
-.BR -x ", " "\-\^\-hex"
-For every packet, not only is the packet type displayed, but also all data in hex.
-.TP
-.BR -a ", " "\-\^\-ascii"
-For every packet, not only is the packet type displayed, but also all data in ASCII.
-.TP
 .BI -s " <len>" "\fR,\fP \-\^\-snap-len=" "<len>"
 Sets max length of processed packets to
 .IR len .
@@ -58,27 +38,52 @@ Sets max length of processed packets to
 Sets default Protocol Service Multiplexer to
 .IR psm .
 .TP
+.BI -w " <file>" "\fR,\fP \-\^\-save-dump=" "<file>"
+Parse output is not printed to screen, instead data read from device is saved in file
+.IR file .
+The saved dump file can be subsequently parsed with option
+.BR -r .
+.TP
+.BI -r " <file>" "\fR,\fP \-\^\-read-dump=" "<file>"
+Data is not read from a Bluetooth device, but from file
+.IR file .
+.I
+file
+is crated with option
+.BR -w .
+.TP
 .BR -t ", " "\-\^\-ts"
 Prepend a time stamp to every packet.
 .TP
+.BR -x ", " "\-\^\-hex"
+For every packet, not only is the packet type displayed, but also all data in hex.
+.TP
+.BR -a ", " "\-\^\-ascii"
+For every packet, not only is the packet type displayed, but also all data in ASCII.
+.TP
 .BR -R ", " "\-\^\-raw"
 Raw mode: do not display packet type, only data.
+.TP
+.BR -C ", " "\-\^\-cmtp"
+Sets the PSM value for the CAPI Message Transport Protocol
 .SH FILTERS
 .B
 filter
 is a space-separated list of packet categories: available categories are
 .IR hci ,
-.IR l2cap ,
 .IR sco ,
+.IR l2cap ,
 .IR rfcomm ,
 .IR sdp ,
 .IR bnep ,
-.IR cmtp
+.IR cmtp ,
+.IR hidp
 and
-.IR hidp .
+.IR capi .
 If filters are used, only packets belonging to the specified categories are
 dumped. By default, all packets are dumped.
 .SH AUTHORS
 Written by Maxim Krasnyansky <maxk@qualcomm.com>
+and Marcel Holtmann <marcel@holtmann.org>
 .PP
 man page by Fabrizio Gennari <fabrizio.gennari@philips.com>
