@@ -163,6 +163,13 @@ static void init_device(int hdev)
 		exit(1);
 	}
 
+	/* Start HCI device */
+	if (ioctl(s, HCIDEVUP, hdev) < 0 && errno != EALREADY) {
+		syslog(LOG_ERR, "Can't init device hci%d. %s(%d)\n", hdev, 
+				strerror(errno), errno);
+		exit(1);
+	}
+
 	dr.dev_id  = hdev;
 
 	/* Set packet type */
@@ -192,13 +199,6 @@ static void init_device(int hdev)
 		}
 	}
 
-	/* Start HCI device */
-	if (ioctl(s, HCIDEVUP, hdev) < 0 && errno != EALREADY) {
-		syslog(LOG_ERR, "Can't init device hci%d. %s(%d)\n", hdev, 
-				strerror(errno), errno);
-		exit(1);
-	}
-
 	exit(0);
 }
 
@@ -226,10 +226,10 @@ static void init_all_devices(int ctl)
 		if (hcid.auto_init)
 			init_device(dr->dev_id);
 
-		if (hcid.auto_init && (dr->dev_opt & (1<<HCI_UP)))
+		if (hcid.auto_init && hci_test_bit(HCI_UP, &dr->dev_opt))
 			configure_device(dr->dev_id);
 
-		if (hcid.security && (dr->dev_opt & (1<<HCI_UP)))
+		if (hcid.security && hci_test_bit(HCI_UP, &dr->dev_opt))
 			start_security_manager(dr->dev_id);
 	}
 	
