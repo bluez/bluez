@@ -202,9 +202,9 @@ void recv_mode(int s)
 		gettimeofday(&tv_beg,NULL);
 		total = 0;
 		while (total < data_size) {
-			uint32_t sq;
-			uint16_t l;
-			int i,r;
+			//uint32_t sq;
+			//uint16_t l;
+			int r;
 
 			if ((r = recv(s, buf, data_size, 0)) <= 0) {
 				if (r < 0)
