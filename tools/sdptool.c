@@ -236,7 +236,7 @@ static struct uuid_def uuid16_names[] = {
   { 0x1111, "Fax", NULL, 0 },
   { 0x1112, "HeadsetAudioGateway", NULL, 0 },
   { 0x1113, "WAP", NULL, 0 },
-  { 0x1114, "WAP_CLIENT", NULL, 0 },
+  { 0x1114, "WAP Client", NULL, 0 },
   { 0x1115, "PANU (PAN/BNEP)",
     pan_attrib_names, sizeof(pan_attrib_names)/sizeof(struct attrib_def) },
   { 0x1116, "NAP (PAN/BNEP)",
