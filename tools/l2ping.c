@@ -50,7 +50,7 @@
 
 /* Defaults */
 static bdaddr_t bdaddr;
-static int size    = 20;
+static int size    = 44;
 static int ident   = 200;
 static int delay   = 1;
 static int count   = -1;
