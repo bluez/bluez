@@ -205,7 +205,10 @@ static inline void print_int(__u8 de_type, int level, int n, struct frame *frm)
 		break;
 	case 16:/* 128-bit */
 		get_u128(frm, &val, &val2);
-		printf(" 0x%llx%llx", val2, val);
+		printf(" 0x%llx", val2);
+		if (val < 0x1000000000000000L)
+			printf("0");
+		printf("%llx", val);
 		return;
 	default: /* syntax error */
 		printf(" err");
