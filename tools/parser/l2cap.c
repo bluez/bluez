@@ -165,6 +165,20 @@ static uint32_t get_val(uint8_t *ptr, uint8_t len)
 	return 0;
 }
 
+static char *type2str(uint8_t type)
+{
+	switch (type) {
+	case 0x00:
+		return "No traffic";
+	case 0x01:
+		return "Best effort";
+	case 0x02:
+		return "Guaranteed";
+	default:
+		return "Reserved";
+	}
+}
+
 static char *mode2str(uint8_t mode)
 {
 	switch (mode) {
@@ -235,26 +249,43 @@ static void conf_opt(int level, void *ptr, int len)
 		ptr += L2CAP_CONF_OPT_SIZE + h->len;
 		len -= L2CAP_CONF_OPT_SIZE + h->len;
 
-		switch (h->type) {
+		if (h->type & 0x80)
+			printf("[");
+
+		switch (h->type & 0x7f) {
 		case L2CAP_CONF_MTU:
-			printf("MTU ");
+			printf("MTU");
 			if (h->len > 0)
-				printf("%d ", get_val(h->val, h->len));
+				printf(" %d", get_val(h->val, h->len));
 			break;
+
 		case L2CAP_CONF_FLUSH_TO:
-			printf("FlushTO ");
+			printf("FlushTO");
 			if (h->len > 0)
-				printf("%d ", get_val(h->val, h->len));
+				printf(" %d", get_val(h->val, h->len));
 			break;
+
+		case L2CAP_CONF_QOS:
+			printf("QoS");
+			if (h->len > 0)
+				printf(" 0x%02x (%s)", *(h->val + 1), type2str(*(h->val + 1)));
+			break;
+
 		case L2CAP_CONF_RFC_MODE:
-			printf("Mode ");
+			printf("Mode");
 			if (h->len > 0)
-				printf("%d (%s) ", *h->val, mode2str(*h->val));
+				printf(" 0x02%x (%s)", *h->val, mode2str(*h->val));
 			break;
+
 		default:
-			printf("Unknown (type %2.2x, len %d) ", h->type, h->len);
+			printf("Unknown (type %2.2x, len %d)", h->type & 0x7f, h->len);
 			break;
 		}
+
+		if (h->type & 0x80)
+			printf("] ");
+		else
+			printf(" ");
 	}
 	printf("\n");
 }
