@@ -10,6 +10,8 @@ l2ping \- Send L2CAP echo request and receive answer
 ] [
 .I -c count
 ] [
+.I -t timeout
+] [
 .I -f
 ] <
 .I bd_addr
@@ -34,6 +36,11 @@ Send
 .B count
 number of packets then exit.
 .TP
+.I -c timeout
+Wait
+.B timeout
+for the response.
+.TP
 .I -f
 Kind of flood ping. Use with care! It reduces the delay time between packets
 to 0.
@@ -44,6 +51,6 @@ The Bluetooth MAC address to be pinged in dotted hex notation like
 or
 .B 01:EF:cd:aB:02:03
 .SH AUTHORS
-Written by Maxim Krasnyansky <maxk@qualcomm.com>
+Written by Maxim Krasnyansky <maxk@qualcomm.com> and Marcel Holtmann <marcel@holtmann.org>
 .PP
 man page by Nils Faerber <nils@kernelconcepts.de>

@@ -56,10 +56,11 @@
 
 /* Defaults */
 bdaddr_t bdaddr;
-int size  = 20;
-int ident = 200;
-int delay = 1;
-int count = -1;
+int size    = 20;
+int ident   = 200;
+int delay   = 1;
+int count   = -1;
+int timeout = 10;
 
 /* Stats */
 int sent_pkt = 0, recv_pkt = 0;
@@ -120,7 +121,7 @@ static void ping(char *svr)
 
 	/* Initialize buffer */
 	for (i = L2CAP_CMD_HDR_SIZE; i < sizeof(buf); i++)
-		buf[i]=(i%40)+'A';
+		buf[i] = (i % 40) + 'A';
 
 	id = ident;
 
@@ -148,7 +149,7 @@ static void ping(char *svr)
 			register int err;
 
 			pf[0].fd = s; pf[0].events = POLLIN;
-			if ((err = poll(pf, 1, 10*1000)) < 0) {
+			if ((err = poll(pf, 1, timeout * 1000)) < 0) {
 				perror("Poll failed");
 				exit(1);
 			}
@@ -193,12 +194,14 @@ static void ping(char *svr)
 
 			printf("%d bytes from %s id %d time %.2fms\n", cmd->len, svr, id - ident, tv2fl(tv_diff));
 
-			if (delay) sleep(delay);
+			if (delay)
+				sleep(delay);
 		} else {
 			printf("no response from %s: id %d\n", svr, id);
 		}
 
-		if (++id > 254) id = ident;
+		if (++id > 254)
+			id = ident;
 	}
 	stat(0);
 }
@@ -207,7 +210,7 @@ static void usage(void)
 {
 	printf("l2ping - L2CAP ping\n");
 	printf("Usage:\n");
-	printf("\tl2ping [-S source addr] [-s size] [-c count] [-f] <bd_addr>\n");
+	printf("\tl2ping [-S source addr] [-s size] [-c count] [-t timeout] [-f] <bd_addr>\n");
 }
 
 extern int optind,opterr,optopt;
@@ -220,7 +223,7 @@ int main(int argc, char *argv[])
 	/* Default options */
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"s:c:fS:")) != EOF) {
+	while ((opt=getopt(argc,argv,"s:c:t:fS:")) != EOF) {
 		switch(opt) {
 		case 'f':
 			/* Kinda flood ping */
@@ -229,6 +232,10 @@ int main(int argc, char *argv[])
 
 		case 'c':
 			count = atoi(optarg);
+			break;
+
+		case 't':
+			timeout = atoi(optarg);
 			break;
 
 		case 's':
