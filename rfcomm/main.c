@@ -275,7 +275,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 		bacpy(&raddr.rc_bdaddr, &rfcomm_opts[dev].bdaddr);
 		raddr.rc_channel = rfcomm_opts[dev].channel;
 
-		if (bacmp(&req.dst, BDADDR_ANY) == 0) {
+		if (bacmp(&raddr.rc_bdaddr, BDADDR_ANY) == 0) {
 			fprintf(stderr, "Can't find a config entry for rfcomm%d\n", dev);
 			return;
 		}
