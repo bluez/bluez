@@ -674,6 +674,23 @@ typedef struct {
 } __attribute__ ((packed)) write_current_iac_lap_cp;
 #define WRITE_CURRENT_IAC_LAP_CP_SIZE 1+3*MAX_IAC_LAP
 
+#define OCF_READ_INQUIRY_MODE		0x0044
+typedef struct {
+	uint8_t		status;
+	uint8_t		mode;
+} __attribute__ ((packed)) read_inquiry_mode_rp;
+#define READ_INQUIRY_MODE_RP_SIZE 2
+
+#define OCF_WRITE_INQUIRY_MODE		0x0045
+typedef struct {
+	uint8_t		mode;
+} __attribute__ ((packed)) write_inquiry_mode_cp;
+#define WRITE_INQUIRY_MODE_CP_SIZE 1
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) write_inquiry_mode_rp;
+#define WRITE_INQUIRY_MODE_RP_SIZE 1
+
 /* Informational Parameters */
 #define OGF_INFO_PARAM		0x04
 
@@ -920,6 +937,17 @@ typedef struct {
 	uint16_t	handle;
 } __attribute__ ((packed)) evt_qos_violation;
 #define EVT_QOS_VIOLATION_SIZE 2
+
+#define EVT_INQUIRY_RESULT_WITH_RSSI	0x02
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		pscan_rep_mode;
+	uint8_t		pscan_period_mode;
+	uint8_t		dev_class[3];
+	uint16_t	clock_offset;
+	uint8_t		rssi;
+} __attribute__ ((packed)) inquiry_info_with_rssi;
+#define INQUIRY_INFO_WITH_RSSI_SIZE 14
 
 #define EVT_TESTING			0xFE
 
