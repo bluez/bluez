@@ -40,6 +40,14 @@
 #include "parser.h"
 
 typedef struct {
+	__u16 handle;
+	struct frame frm;
+} handle_info;
+#define HANDLE_TABLE_SIZE 10
+
+static handle_info handle_table[HANDLE_TABLE_SIZE];
+
+typedef struct {
 	__u16 cid;
 	__u16 psm;
 } cid_info;
@@ -49,6 +57,31 @@ static cid_info cid_table[2][CID_TABLE_SIZE];
 
 #define SCID cid_table[0]
 #define DCID cid_table[1]
+
+static struct frame * add_handle(__u16 handle)
+{
+	register handle_info *t = handle_table;
+	register int i;
+
+	for (i=0; i<HANDLE_TABLE_SIZE; i++)
+		if (!t[i].handle) {
+			t[i].handle = handle;
+			return &t[i].frm;
+		}
+	return NULL;
+}
+
+static struct frame * get_frame(__u16 handle)
+{
+	register handle_info *t = handle_table;
+	register int i;
+
+	for (i=0; i<HANDLE_TABLE_SIZE; i++)
+		if (t[i].handle == handle)
+			return &t[i].frm;
+
+	return add_handle(handle);
+}
 
 static void add_cid(int in, __u16 cid, __u16 psm)
 {
@@ -224,24 +257,25 @@ static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	raw_dump(level, frm);
 }
 
-void l2cap_dump(int level, struct frame *frm)
+static void l2cap_parse(int level, struct frame *frm)
 {
-	l2cap_hdr *hdr = frm->ptr;
+	l2cap_hdr *hdr = (void *)frm->ptr;
 	__u16 dlen = btohs(hdr->len);
 	__u16 cid  = btohs(hdr->cid);
 
 	frm->ptr += L2CAP_HDR_SIZE;
 	frm->len -= L2CAP_HDR_SIZE;
 
-	indent(level); 
+	indent(level);
 	if (cid == 0x1) {
+		/* Signaling channel */
 		while (frm->len >= L2CAP_CMD_HDR_SIZE) {
 			l2cap_cmd_hdr *hdr = frm->ptr;
 
 			frm->ptr += L2CAP_CMD_HDR_SIZE;
 			frm->len -= L2CAP_CMD_HDR_SIZE;
 
-			printf("L2CAP(s): "); 
+			printf("L2CAP(s): ");
 
 			switch (hdr->code) {
 			case L2CAP_COMMAND_REJ:
@@ -296,19 +330,93 @@ void l2cap_dump(int level, struct frame *frm)
 			frm->ptr += hdr->len;
 			frm->len -= hdr->len;
 		}
-	} else {
-		__u16 psm = get_psm(!frm->in, cid); 
-		
-		printf("L2CAP(d): cid 0x%x len %d [psm %d]\n",
-				cid, dlen, psm);
+	} else if (cid == 0x2) {
+		/* Connectionless channel */
+		__u16 psm = btohs(*(__u16*)frm->ptr);
+		frm->len -= 2;
 
-		/* FIXME: 
-		 * Add protocol handlers (RFCOMM, SDP) here */
-	
+		printf("L2CAP(c): cid 0x%x len %d psm %d\n", cid, dlen, psm);
+
+		raw_dump(level, frm);
+	} else {
+		/* Connection oriented channel */
+		__u16 psm = get_psm(!frm->in, cid);
+		
+		printf("L2CAP(d): cid 0x%x len %d [psm %d]\n", cid, dlen, psm);
+
 		switch (psm) {
+		case 0x03:
+			rfcomm_dump(level+1, frm);
+			break;
+
 		default:
 			raw_dump(level, frm);
 			break;
+		}
+	}
+}
+
+void l2cap_dump(int level, struct frame *frm)
+{
+	struct frame *fr;
+	l2cap_hdr *hdr;
+	__u16 dlen;
+
+	if (frm->flags & ACL_START) {
+		hdr  = frm->ptr;
+		dlen = btohs(hdr->len);
+
+		if (frm->len == (dlen + L2CAP_HDR_SIZE)) {
+			/* Complete frame */
+			l2cap_parse(level, frm);
+			return;
+		}
+
+		if (!(fr = get_frame(frm->handle))) {
+			fprintf(stderr, "Not enough connetion handles\n");
+			raw_dump(level, frm);
+			return;
+		}
+
+		if (fr->data) free(fr->data);
+
+		if (!(fr->data = malloc(dlen + L2CAP_HDR_SIZE))) {
+			perror("Can't allocate L2CAP reassembly buffer");
+			return;
+		}
+		memcpy(fr->data, frm->ptr, frm->len);
+		fr->data_len = dlen + L2CAP_HDR_SIZE;
+		fr->len = frm->len;
+		fr->ptr = fr->data;
+	} else {
+		if (!(fr = get_frame(frm->handle))) {
+			fprintf(stderr, "Not enough connetion handles\n");
+			raw_dump(level, frm);
+			return;
+		}
+
+		if (!fr->data) {
+			/* Unexpected fragment */
+			raw_dump(level, frm);
+			return;
+		}
+		
+		if (frm->len > (fr->data_len - fr->len)) {
+			/* Bad fragment */
+			raw_dump(level, frm);
+			free(fr->data); fr->data = NULL;
+			return;
+		}
+
+		memcpy(fr->data + fr->len, frm->ptr, frm->len);
+		fr->len += frm->len;
+
+		if (fr->len == fr->data_len) {
+			/* Complete frame */
+			l2cap_parse(level, fr);
+
+			free(fr->data); fr->data = NULL;
+			return;
 		}
 	}
 }
