@@ -39,18 +39,22 @@ struct parser_t parser;
 
 void init_parser(unsigned long flags, unsigned long filter)
 {
+	if ((flags & DUMP_RAW) && !(flags & DUMP_TYPE_MASK))
+		flags &= DUMP_HEX;
+
 	parser.flags  = flags;
 	parser.filter = filter;
 	parser.state  = 0;
 }
 
-static inline void hex_dump(int level, unsigned char *buf, int len)
+static inline void hex_dump(int level, struct frame *frm)
 {
+	unsigned char *buf = frm->ptr;
 	register int i,n;
 
-	for (i=0, n=1; i<len; i++, n++) {
+	for (i=0, n=1; i<frm->len; i++, n++) {
 		if (n == 1)
-			p_indent(level, 0);
+			p_indent(level, frm);
 		printf("%2.2X ", buf[i]);
 		if (n == DUMP_WIDTH) {
 			printf("\n");
@@ -61,13 +65,14 @@ static inline void hex_dump(int level, unsigned char *buf, int len)
 		printf("\n");
 }
 
-static inline void ascii_dump(int level, unsigned char *buf, int len)
+static inline void ascii_dump(int level, struct frame *frm)
 {
+	unsigned char *buf = frm->ptr;
 	register int i,n;
 
-	for (i=0, n=1; i<len; i++, n++) {
+	for (i=0, n=1; i<frm->len; i++, n++) {
 		if (n == 1)
-			p_indent(level, 0);
+			p_indent(level, frm);
 		printf("%1c ", isprint(buf[i]) ? buf[i] : '.');
 		if (n == DUMP_WIDTH) {
 			printf("\n");
@@ -84,12 +89,13 @@ void raw_dump(int level, struct frame *frm)
 		return;
 
 	switch (parser.flags & DUMP_TYPE_MASK) {
-	case DUMP_HEX:
-		hex_dump(level, frm->ptr, frm->len);
+	case DUMP_ASCII:
+		ascii_dump(level, frm);
 		break;
 
-	case DUMP_ASCII:
-		ascii_dump(level, frm->ptr, frm->len);
+	case DUMP_HEX:
+		hex_dump(level, frm);
 		break;
+
 	}
 }

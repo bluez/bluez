@@ -115,13 +115,6 @@ static void process_frames(int dev, int sock, int file)
 		frm.len = frm.data_len;
 
 		switch (mode) {
-		case RAW:
-			/* Print raw dump */
-      			printf("%c ", (frm.in ? '>' : '<')); 
-			raw_dump(0, &frm);
-			fflush(stdout);
-			break;
-
 		case WRITE:
 			/* Save dump */	
 			dh->len = __cpu_to_le16(frm.data_len);
@@ -303,8 +296,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			break;
 
 		case 'R': 
-			flags |= DUMP_HEX;
-			mode = RAW;
+			flags |= DUMP_RAW;
 			break;
 
 		case 'r':
@@ -345,7 +337,6 @@ int main(int argc, char *argv[])
 		filter = ~0L;
 
 	switch (mode) {
-	case RAW:
 	case PARSE:
 		init_parser(flags, filter);
 		process_frames(device, open_socket(device), -1);

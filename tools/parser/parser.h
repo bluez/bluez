@@ -41,6 +41,7 @@ struct frame {
 #define DUMP_ASCII	0x02
 #define DUMP_TYPE_MASK	(DUMP_HEX | DUMP_ASCII)
 #define DUMP_TSTAMP	0x04
+#define DUMP_RAW	0x08
 
 /* Parser filter */
 #define FILT_HCI	0x0001
@@ -74,7 +75,6 @@ static inline void p_indent(int level, struct frame *f)
 	if (!parser.state) {
 		if (parser.flags & DUMP_TSTAMP)
 			printf("%ld.%ld ", f->ts.tv_sec, f->ts.tv_usec);
-		
 		printf("%c ", (f->in ? '>' : '<'));
 		parser.state = 1;
 	} else 
@@ -92,7 +92,10 @@ void sdp_dump(int level, struct frame *frm);
 
 static inline void parse(struct frame *frm)
 {
-	p_indent(-1, 0);
-	hci_dump(0, frm);
+	p_indent(-1, NULL);
+	if (parser.flags & DUMP_RAW)
+		raw_dump(0, frm);
+	else
+		hci_dump(0, frm);
 	fflush(stdout);
 }
