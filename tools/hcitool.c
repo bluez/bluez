@@ -1545,6 +1545,84 @@ static void cmd_clkoff(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
+/* Read clock */
+
+static struct option clock_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static char *clock_help =
+	"Usage:\n"
+	"\tclock <bdaddr> [which clock]\n";
+
+static void cmd_clock(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	bdaddr_t bdaddr;
+	uint8_t which;
+	uint32_t clock;
+	uint16_t accuracy;
+	int opt, dd;
+
+	for_each_opt(opt, clock_options, NULL) {
+		switch (opt) {
+		default:
+			printf(clock_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(clock_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+
+	which = (argc > 1) ? atoi(argv[1]) : 0x01;
+
+	if (hci_read_clock(dd, htobs(cr->conn_info->handle), which, &clock, &accuracy, 1000) < 0) {
+		perror("Reading clock failed");
+		exit(1);
+	}
+
+	accuracy = btohs(accuracy);
+
+	printf("Clock:    0x%4.4x\n", btohl(clock));
+	printf("Accuracy: %.2f msec\n", (float) accuracy * 0.3125);
+
+	close(dd);
+	free(cr);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
@@ -1570,6 +1648,7 @@ static struct {
 	{ "enc",    cmd_enc,    "Set connection encryption"            },
 	{ "key",    cmd_key,    "Change connection link key"           },
 	{ "clkoff", cmd_clkoff, "Read clock offset"                    },
+	{ "clock",  cmd_clock,  "Read local or remote clock"           },
 	{ NULL, NULL, 0 }
 };
 
