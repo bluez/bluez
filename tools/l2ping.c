@@ -191,7 +191,7 @@ static void ping(char *svr)
 			gettimeofday(&tv_recv, NULL);
 			timersub(&tv_recv, &tv_send, &tv_diff);
 
-			printf("%d bytes from %s id %d time %.2fms\n", cmd->len, svr, id, tv2fl(tv_diff));
+			printf("%d bytes from %s id %d time %.2fms\n", cmd->len, svr, id - ident, tv2fl(tv_diff));
 
 			if (delay) sleep(delay);
 		} else {
