@@ -273,6 +273,8 @@ char *bt_compidtostr(int compid)
 		return "Red-M (Communications) Ltd";
 	case 51:
 		return "Commil Ltd";
+	case 52:
+		return "Computer Access Technology Corporation (CATC)";
 	case 65535:
 		return "internal use";
 	default:
