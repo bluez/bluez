@@ -796,10 +796,10 @@ int init_uart(char *dev, struct uart_t *u)
 		return -1;
 	}
 
-	/* Set TTY to N_HCI line discpline */
+	/* Set TTY to N_HCI line discipline */
 	i = N_HCI;
 	if (ioctl(fd, TIOCSETD, &i) < 0) {
-		perror("Can't set line disc");
+		perror("Can't set line discipline");
 		return -1;
 	}
 
@@ -890,7 +890,7 @@ int main(int argc, char *argv[])
 			}
 
 			if (!u) {
-				fprintf(stderr, "Unknow device type or id\n");
+				fprintf(stderr, "Unknown device type or id\n");
 				exit(1);
 			}
 			
@@ -910,7 +910,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!u) {
-		fprintf(stderr, "Unknow device type or id\n");
+		fprintf(stderr, "Unknown device type or id\n");
 		exit(1);
 	}
 
@@ -919,12 +919,12 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_alarm;
 	sigaction(SIGALRM, &sa, NULL);
 
-	/* 5 seconds should be enough for intialization */
+	/* 5 seconds should be enough for initialization */
 	alarm(to);
 	
 	n = init_uart(dev, u);
 	if (n < 0) {
-		perror("Can't init device"); 
+		perror("Can't initialize device"); 
 		exit(1);
 	}
 
