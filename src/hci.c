@@ -269,6 +269,7 @@ int hci_strtolm(char *str, unsigned int *val)
 hci_map ver_map[] = {
 	{ "1.0b",    0x00 },
 	{ "1.1",     0x01 },
+	{ "1.2",     0x02 },
 	{ NULL }
 };
 char *hci_vertostr(unsigned int ver)
