@@ -34,9 +34,10 @@
  * $Id$
  */
 
+#include <netinet/in.h>
+
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/sdp_internal.h>
 
 #include "sdpd.h"
 
