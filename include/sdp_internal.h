@@ -55,44 +55,6 @@ extern "C" {
 #define SDP_UUID_SEQ_SIZE 256
 #define SDP_MAX_ATTR_LEN 65535
 
-/*
- * Generate unique transaction identifiers
- */
-static inline uint16_t sdp_gen_tid(sdp_session_t *session)
-{
-	return session->tid++;
-}
-
-sdp_record_t *sdp_extract_pdu(const char *pdata, int *scanned);
-sdp_data_t *sdp_extract_string(char *, int *);
-
-void sdp_data_print(sdp_data_t *data);
-void sdp_print_service_attr(sdp_list_t *alist);
-
-int  sdp_attrid_comp_func(const void *key1, const void *key2);
-
-void sdp_set_seq_len(char *ptr, int length);
-void sdp_set_attrid(sdp_buf_t *pdu, uint16_t id);
-void sdp_append_to_pdu(sdp_buf_t *dst, sdp_data_t *d);
-void sdp_append_to_buf(sdp_buf_t *dst, char *data, int len);
-
-int sdp_gen_pdu(sdp_buf_t *pdu, sdp_data_t *data);
-int sdp_gen_record_pdu(const sdp_record_t *rec, sdp_buf_t *pdu);
-
-int sdp_extract_seqtype(const char *buf, uint8_t *dtdp, int *seqlen);
-
-sdp_data_t *sdp_extract_attr(const char *pdata, int *extractedLength, sdp_record_t *rec);
-
-void sdp_pattern_add_uuid(sdp_record_t *rec, uuid_t *uuid);
-void sdp_pattern_add_uuidseq(sdp_record_t *rec, sdp_list_t *seq);
-
-int sdp_send_req_w4_rsp(sdp_session_t *session, char *req, char *rsp, int reqsize, int *rspsize);
-
-typedef struct {
-	uint8_t length;
-	unsigned char data[16];
-} __attribute__ ((packed)) sdp_cstate_t;
-
 /* 
  * SDP unaligned access. 
  * based on linux/asm-<arch>/unaligned.h
