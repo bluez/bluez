@@ -343,10 +343,8 @@ static inline void command_rej(int level, struct frame *frm)
 		break;
 	}
 
-	if (parser.flags & DUMP_VERBOSE) {
-		p_indent(level + 1, frm);
-		printf("%s\n", reason2str(reason));
-	}
+	p_indent(level + 1, frm);
+	printf("%s\n", reason2str(reason));
 }
 
 static inline void conn_req(int level, struct frame *frm)
@@ -392,15 +390,13 @@ static inline void conn_rsp(int level, struct frame *frm)
 	printf("Connect rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n",
 		dcid, scid, result, status);
 
-	if (parser.flags & DUMP_VERBOSE) {
-		p_indent(level + 1, frm);
-		printf("%s", connresult2str(result));
+	p_indent(level + 1, frm);
+	printf("%s", connresult2str(result));
 
-		if (result == 0x0001)
-			printf(" - %s\n", status2str(status));
-		else
-			printf("\n");
-	}
+	if (result == 0x0001)
+		printf(" - %s\n", status2str(status));
+	else
+		printf("\n");
 }
 
 static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
@@ -469,7 +465,7 @@ static inline void conf_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	printf("Config req: dcid 0x%4.4x flags 0x%2.2x clen %d\n",
 			dcid, btohs(h->flags), clen);
 
-	if (clen)
+	if (clen > 0)
 		conf_opt(level + 1, h->data, clen, frm->in, dcid);
 }
 
@@ -486,13 +482,16 @@ static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	printf("Config rsp: scid 0x%4.4x flags 0x%2.2x result %d clen %d\n",
 			scid, btohs(h->flags), result, clen);
 
-	if (parser.flags & DUMP_VERBOSE) {
+	if (clen > 0) {
+		if (!result) {
+			p_indent(level + 1, frm);
+			printf("%s\n", confresult2str(result));
+		}
+		conf_opt(level + 1, h->data, clen, frm->in, scid);
+	} else {
 		p_indent(level + 1, frm);
 		printf("%s\n", confresult2str(result));
 	}
-
-	if (clen)
-		conf_opt(level + 1, h->data, clen, frm->in, scid);
 }
 
 static inline void disconn_req(int level, struct frame *frm)
@@ -541,6 +540,8 @@ static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 
 static void info_opt(int level, int type, void *ptr, int len)
 {
+	uint32_t mask;
+
 	p_indent(level, 0);
 
 	switch (type) {
@@ -548,7 +549,22 @@ static void info_opt(int level, int type, void *ptr, int len)
 		printf("Connectionless MTU %d\n", get_val(ptr, len));
 		break;
 	case 0x0002:
-		printf("Extended feature mask 0x%4.4x\n", get_val(ptr, len));
+		mask = get_val(ptr, len);
+		printf("Extended feature mask 0x%4.4x\n", mask);
+		if (parser.flags & DUMP_VERBOSE) {
+			if (mask & 0x01) {
+				p_indent(level + 1, 0);
+				printf("Flow control mode\n");
+			}
+			if (mask & 0x02) {
+				p_indent(level + 1, 0);
+				printf("Retransmission mode\n");
+			}
+			if (mask & 0x04) {
+				p_indent(level + 1, 0);
+				printf("Bi-directional QoS\n");
+			}
+		}
 		break;
 	default:
 		printf("Unknown (len %d)\n", len);
@@ -578,13 +594,12 @@ static inline void info_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 
 	printf("Info rsp: type %d result %d\n", type, result);
 
-	if (parser.flags & DUMP_VERBOSE) {
+	if (ilen > 0) {
+		info_opt(level + 1, type, h->data, ilen);
+	} else {
 		p_indent(level + 1, frm);
 		printf("%s\n", inforesult2str(result));
 	}
-
-	if (ilen)
-		info_opt(level + 1, type, h->data, ilen);
 }
 
 static void l2cap_parse(int level, struct frame *frm)
