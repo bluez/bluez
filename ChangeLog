@@ -1,4 +1,24 @@
-var 2.3:
+ver 2.4:
+	hcitool changes:
+		Increase number of inquiry responses.
+		Support for transmit power level.
+		Minor updates.
+	hciconfig changes:
+		Display all 8 bytes of the features.
+		Add support for reading and writing of IAC.
+		Correct decoding class of device.
+		Use Ericsson revision command for ST Microelectronics devices.
+		Display AVM firmware version with 'revision' command.
+		New code for CSR specific revision information.
+	hciattach changes:
+		Support for ST Microelectronics specific initialization.
+		Support for 3Com card version 3.0.
+		Support for TDK, IBM and Socket cards.
+		Support for initial baud rate.
+	Update man pages.
+	Fixes for some memory leaks.
+
+ver 2.3:
 	hciconfig changes:
 		CSR firmware version is now displayed by 'revision' command.
 		Voice command is working properly on big endian machines.
