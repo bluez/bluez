@@ -1082,6 +1082,7 @@ int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
 int hci_authenticate_link(int dd, uint16_t handle, int to)
 {
 	auth_requested_cp cp;
+	evt_auth_complete rp;
 	struct hci_request rq;
 
 	cp.handle = handle;
@@ -1089,12 +1090,22 @@ int hci_authenticate_link(int dd, uint16_t handle, int to)
 	rq.ocf = OCF_AUTH_REQUESTED;
 	rq.cparam = &cp;
 	rq.clen = AUTH_REQUESTED_CP_SIZE;
-	return hci_send_req(dd, &rq, to);
+	rq.rparam = &rp;
+	rq.event = EVT_AUTH_COMPLETE;
+	rq.rlen = EVT_AUTH_COMPLETE_SIZE;
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+	return 0;
 }
 
 int hci_encrypt_link(int dd, uint16_t handle, int on, int to)
 {
 	set_conn_encrypt_cp cp;
+	evt_encrypt_change rp;
 	struct hci_request rq;
 
 	cp.handle = handle;
@@ -1103,5 +1114,14 @@ int hci_encrypt_link(int dd, uint16_t handle, int on, int to)
 	rq.ocf = OCF_SET_CONN_ENCRYPT;
 	rq.cparam = &cp;
 	rq.clen = SET_CONN_ENCRYPT_CP_SIZE;
-	return hci_send_req(dd, &rq, to);
+	rq.event = EVT_ENCRYPT_CHANGE;
+	rq.rlen = EVT_ENCRYPT_CHANGE_SIZE;
+	rq.rparam = &rp;
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+	return 0;
 }
