@@ -557,6 +557,8 @@ int main(int argc, char *argv[])
 
 		case 'B':
 			flags |= DUMP_BPA;
+			if (defcompid == DEFAULT_COMPID)
+				defcompid = 12;
 			break;
 
 		case 'C': 
