@@ -425,6 +425,7 @@ int hci_devid(char *str)
 		if (hci_devba(id, &ba) < 0)
 			return -1;
 	} else {
+		errno = ENODEV;
 		str2ba(str, &ba);
 		id = hci_for_each_dev(HCI_UP, __same_bdaddr, (long) &ba);
 	}
