@@ -48,7 +48,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include <asm/types.h>
+#include <sys/types.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
