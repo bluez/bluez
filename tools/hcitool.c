@@ -59,7 +59,7 @@ static int dev_info(int s, int dev_id, long arg)
 	bdaddr_t bdaddr;
 	if (ioctl(s, HCIGETDEVINFO, (void*) &di))
 		return 0;
-	
+
 	baswap(&bdaddr, &di.bdaddr);
 	printf("\t%s\t%s\n", di.name, batostr(&bdaddr));
 	return 0;
@@ -171,18 +171,18 @@ static void cmd_dev(int dev_id, int argc, char **argv)
 /* Inquiry */
 
 static struct option inq_options[] = {
-	{"help",    0,0, 'h'},
-	{"length",  1,0, 'l'},
-	{"numrsp",  1,0, 'n'},
-	{"flush",   0,0, 'f'},
+	{"help",	0,0, 'h'},
+	{"length",	1,0, 'l'},
+	{"numrsp",	1,0, 'n'},
+	{"flush",	0,0, 'f'},
 	{0, 0, 0, 0}
 };
 
 static char *inq_help = 
 	"Usage:\n"
 	"\tinq [--length=N] maximum inquiry duration in 1.28 s units\n"
-        "\t    [--numrsp=N] specify maximum number of inquiry responses\n"
-        "\t    [--flush]    flush the inquiry cache\n";
+	"\t    [--numrsp=N] specify maximum number of inquiry responses\n"
+	"\t    [--flush]    flush the inquiry cache\n";
 
 static void cmd_inq(int dev_id, int argc, char **argv)
 {
@@ -200,7 +200,7 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 		case 'l':
 			length = atoi(optarg);
 			break;
-		
+
 		case 'n':
 			num_rsp = atoi(optarg);
 			break;
@@ -236,10 +236,10 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 /* Device scanning */
 
 static struct option scan_options[] = {
-	{"help",    0,0, 'h'},
-	{"length",  1,0, 'l'},
-	{"numrsp",  1,0, 'n'},
-	{"flush",   0,0, 'f'},
+	{"help",	0,0, 'h'},
+	{"length",	1,0, 'l'},
+	{"numrsp",	1,0, 'n'},
+	{"flush",	0,0, 'f'},
 	{0, 0, 0, 0}
 };
 
@@ -356,7 +356,7 @@ static void cmd_name(int dev_id, int argc, char **argv)
 	}
 
 	dd = hci_open_dev(dev_id);
-        if (dd < 0) {
+	if (dd < 0) {
 		perror("HCI device open failed");
 		exit(1);
 	}
@@ -371,7 +371,7 @@ static void cmd_name(int dev_id, int argc, char **argv)
 /* Info about remote device */
 
 static struct option info_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -475,7 +475,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 /* Send arbitrary HCI commands */
 
 static struct option cmd_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -492,7 +492,7 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 	hci_event_hdr *hdr;
 	int i, opt, len, dd;
 	uint16_t ocf;
-	uint8_t  ogf;
+	uint8_t ogf;
 
 	for_each_opt(opt, cmd_options, NULL) {
 		switch(opt) {
@@ -566,7 +566,7 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 /* Display active connections */
 
 static struct option con_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -593,9 +593,9 @@ static void cmd_con(int dev_id, int argc, char **argv)
 /* Create connection */
 
 static struct option cc_options[] = {
-	{"help",    0,0, 'h'},
-	{"role",    1,0, 'r'},
-	{"ptype",   1,0, 'p'},
+	{"help",	0,0, 'h'},
+	{"role",	1,0, 'r'},
+	{"ptype",	1,0, 'p'},
 	{0, 0, 0, 0}
 };
 
@@ -621,7 +621,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 		case 'p':
 			hci_strtoptype(optarg, &ptype);
 			break;
-		
+
 		case 'r':
 			role = optarg[0] == 'm' ? 0 : 1;
 			break;
@@ -662,7 +662,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 /* Close connection */
 
 static struct option dc_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -707,16 +707,16 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-        cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-        if (!cr)
-                return;
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return;
 
-        bacpy(&cr->bdaddr, &bdaddr);
-        cr->type = ACL_LINK;
-        if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		perror("Get connection info failed");
-                exit(1);
-        }
+		exit(1);
+	}
 
 	hci_disconnect(dd, cr->conn_info->handle, 0x13, 100);
 
@@ -724,10 +724,92 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
+/* Role switch */
+
+static struct option sr_options[] = {
+	{"help",	0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *sr_help = 
+	"Usage:\n"
+	"\tsr <bdaddr> <role>\n";
+
+static void cmd_sr(int dev_id, int argc, char **argv)
+{
+	struct hci_request rq;
+	switch_role_cp cp;
+	evt_role_change rp;
+	int opt, dd;
+
+	for_each_opt(opt, sr_options, NULL) {
+		switch(opt) {
+		default:
+			printf(sr_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 2) {
+		printf(sr_help);
+		return;
+	}
+
+	str2ba(argv[0], &cp.bdaddr);
+	switch (argv[1][0]) {
+	case 'm':
+		cp.role = 0;
+		break;
+	case 's':
+		cp.role = 1;
+		break;
+	default:
+		cp.role = atoi(argv[1]);
+		break;
+	}
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &cp.bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	memset(&rq, 0, sizeof(rq));	
+	rq.ogf    = OGF_LINK_POLICY;
+	rq.ocf    = OCF_SWITCH_ROLE;
+	rq.cparam = &cp;
+	rq.clen   = SWITCH_ROLE_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_ROLE_CHANGE_SIZE;
+	rq.event  = EVT_ROLE_CHANGE;
+
+	if (hci_send_req(dd, &rq, 300) < 0) {
+		perror("Switch role request failed");
+		exit(1);
+	}
+
+	if (rp.status) {
+		fprintf(stderr, "Switch role cmd failed (0x%2.2X)\n", rp.status);
+		exit(1);
+	}
+
+	close(dd);
+}
+
 /* Read RSSI */
 
 static struct option rssi_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -738,7 +820,7 @@ static char *rssi_help =
 static void cmd_rssi(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
-	struct hci_request rq;	
+	struct hci_request rq;
 	read_rssi_rp rp;
 	bdaddr_t bdaddr;
 	int opt, dd;
@@ -776,7 +858,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr)
-        	return;
+		return;
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -786,13 +868,13 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	}
 	
 	memset(&rq, 0, sizeof(rq));	
-	rq.ogf = OGF_STATUS_PARAM;
-	rq.ocf = OCF_READ_RSSI;
+	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ocf    = OCF_READ_RSSI;
 	rq.cparam = &cr->conn_info->handle;
-	rq.clen = 2;
+	rq.clen   = 2;
 	rq.rparam = &rp;
-	rq.rlen = READ_RSSI_RP_SIZE;
-	
+	rq.rlen   = READ_RSSI_RP_SIZE;
+
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		perror("Read RSSI failed");
 		exit(1);
@@ -803,7 +885,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 	printf("\tRSSI return value: %d\n", rp.rssi);
-	
+
 	close(dd);
 	free(cr);
 }
@@ -811,7 +893,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 /* Get Link Quality */
 
 static struct option link_quality_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -822,7 +904,7 @@ static char *link_quality_help =
 static void cmd_link_quality(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
-	struct hci_request rq;	
+	struct hci_request rq;
 	get_link_quality_rp rp;
 	bdaddr_t bdaddr;
 	int opt, dd;
@@ -860,7 +942,7 @@ static void cmd_link_quality(int dev_id, int argc, char **argv)
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr)
-        	return;
+		return;
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -868,7 +950,7 @@ static void cmd_link_quality(int dev_id, int argc, char **argv)
 		perror("Get connection info failed");
 		exit(1);
 	}
-	
+
 	memset(&rq, 0, sizeof(rq));	
 	rq.ogf = OGF_STATUS_PARAM;
 	rq.ocf = OCF_GET_LINK_QUALITY;
@@ -888,7 +970,7 @@ static void cmd_link_quality(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 	printf("Link quality: %d\n", rp.link_quality);
-	
+
 	close(dd);
 	free(cr);
 }
@@ -896,7 +978,7 @@ static void cmd_link_quality(int dev_id, int argc, char **argv)
 /* Set connection packet type */
 
 static struct option cpt_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -908,7 +990,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
 	struct hci_request rq;
-	set_conn_ptype_cp  cp;
+	set_conn_ptype_cp cp;
 	evt_conn_ptype_changed rp;
 	bdaddr_t bdaddr;
 	int opt, dd, ptype;
@@ -947,7 +1029,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr)
-        	return;
+		return;
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -955,19 +1037,19 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 		perror("Get connection info failed");
 		exit(1);
 	}
-	
+
 	cp.handle   = cr->conn_info->handle;
 	cp.pkt_type = ptype;
 
 	memset(&rq, 0, sizeof(rq));	
-	rq.ogf = OGF_LINK_CTL;
-	rq.ocf = OCF_SET_CONN_PTYPE;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_SET_CONN_PTYPE;
 	rq.cparam = &cp;
 	rq.clen   = SET_CONN_PTYPE_CP_SIZE;
 	rq.rparam = &rp;
 	rq.rlen   = EVT_CONN_PTYPE_CHANGED_SIZE;
 	rq.event  = EVT_CONN_PTYPE_CHANGED;
-	
+
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		perror("Packet type change failed");
 		exit(1);
@@ -980,7 +1062,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 /* Get/Set Link Supervision Timeout */
 
 static struct option link_supervision_options[] = {
-	{"help",    0,0, 'h'},
+	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -991,7 +1073,7 @@ static char *link_supervision_help =
 static void cmd_link_sup_to(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
-	struct hci_request rq;	
+	struct hci_request rq;
 	read_link_supervision_timeout_rp rp;
 	write_link_supervision_timeout_cp cp;
 	bdaddr_t bdaddr;
@@ -1030,7 +1112,7 @@ static void cmd_link_sup_to(int dev_id, int argc, char **argv)
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr)
-        	return;
+		return;
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1038,16 +1120,16 @@ static void cmd_link_sup_to(int dev_id, int argc, char **argv)
 		perror("Get connection info failed");
 		exit(1);
 	}
-	
+
 	if (argc == 1) {
 		memset(&rq, 0, sizeof(rq));	
-		rq.ogf = OGF_HOST_CTL;
-		rq.ocf = OCF_READ_LINK_SUPERVISION_TIMEOUT;
+		rq.ogf    = OGF_HOST_CTL;
+		rq.ocf    = OCF_READ_LINK_SUPERVISION_TIMEOUT;
 		rq.cparam = &cr->conn_info->handle;
-		rq.clen = 2;
+		rq.clen   = 2;
 		rq.rparam = &rp;
-		rq.rlen = READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE;
-	
+		rq.rlen   = READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE;
+
 		if (hci_send_req(dd, &rq, 100) < 0) {
 			perror("HCI read_link_supervision_timeout request failed");
 			exit(1);
@@ -1069,11 +1151,11 @@ static void cmd_link_sup_to(int dev_id, int argc, char **argv)
 		cp.link_sup_to = strtol(argv[1], NULL, 10);
 
 		memset(&rq, 0, sizeof(rq));	
-		rq.ogf = OGF_HOST_CTL;
-		rq.ocf = OCF_WRITE_LINK_SUPERVISION_TIMEOUT;
+		rq.ogf    = OGF_HOST_CTL;
+		rq.ocf    = OCF_WRITE_LINK_SUPERVISION_TIMEOUT;
 		rq.cparam = &cp;
-		rq.clen = WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE;
-	
+		rq.clen   = WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE;
+
 		if (hci_send_req(dd, &rq, 100) < 0) {
 			perror("HCI write_link_supervision_timeout request failed");
 			exit(1);
@@ -1098,6 +1180,7 @@ struct {
 	{ "con",  cmd_con,  "Display active connections"         },
 	{ "cc",   cmd_cc,   "Create connection to remote device" },
 	{ "dc",	  cmd_dc,   "Disconnect from remote device"      },
+	{ "sr",   cmd_sr,   "Switch master/slave role"           },
 	{ "cpt",  cmd_cpt,  "Change connection packet type"      },
 	{ "rssi", cmd_rssi, "Display connection RSSI"            },
 	{ "lq",   cmd_link_quality, "Display link quality"       },
@@ -1125,8 +1208,8 @@ static void usage(void)
 }
 
 static struct option main_options[] = {
-	{"help",        0,0, 'h'},
-	{"device",      1,0, 'i'},
+	{"help",		0,0, 'h'},
+	{"device",		1,0, 'i'},
 	{0, 0, 0, 0}
 };
 
