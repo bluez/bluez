@@ -4,6 +4,12 @@
 
 SUBDIRS = include src
 
+aclocaldir = $(datadir)/aclocal
+
+aclocal_DATA = bluez.m4
+
+EXTRA_DIST = $(aclocal_DATA)
+
 pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = bluez.pc

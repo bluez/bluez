@@ -1,0 +1,11 @@
+dnl
+dnl  $Id$
+dnl
+
+AC_DEFUN([AM_PATH_BLUEZ], [
+	BLUEZ_CFLAGS=""
+	BLUEZ_LIBS="-lbluetooth"
+
+	AC_SUBST(BLUEZ_CFLAGS)
+	AC_SUBST(BLUEZ_LIBS)
+])
