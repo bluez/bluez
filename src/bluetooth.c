@@ -250,6 +250,12 @@ char *bt_compidtostr(int compid)
 		return "C Technologies";
 	case 39:
 		return "Open Interface";
+	case 40:
+		return "R F Micro Devices";
+	case 41:
+		return "Hitachi Ltd";
+	case 42:
+		return "Symbol Technologies, Inc.";
 	case 65535:
 		return "internal use";
 	default:
