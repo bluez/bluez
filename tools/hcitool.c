@@ -783,7 +783,7 @@ static void usage(void)
 {
 	int i;
 
-	printf("hcitool - HCI Tool\n");
+	printf("hcitool - HCI Tool ver %s\n", VERSION);
 	printf("Usage:\n"
 		"\thcitool [options] <command> [command parameters]\n");
 	printf("Options:\n"

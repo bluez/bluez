@@ -32,6 +32,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <getopt.h>
 
 #include <termios.h>
 #include <fcntl.h>
@@ -580,21 +581,32 @@ void usage(void)
 		command[i].doc);
 }
 
-int main(int argc, char *argv[], char *env[])
+static struct option main_options[] = {
+	{"help", 0,0, 'h'},
+	{"all",  0,0, 'a'},
+	{0, 0, 0, 0}
+};
+
+int main(int argc, char **argv, char **env)
 {
 	int opt, ctl, i, cmd=0;
-	char *dev;
 
-	while ((opt=getopt(argc, argv,"ha")) != EOF) {
+	while ((opt=getopt_long(argc, argv, "ah", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'a':
 			all = 1;
 			break;
+
 		case 'h':
+		default:
 			usage();
 			exit(0);
 		}
 	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
 
 	/* Open HCI socket  */
 	if ((ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
@@ -602,33 +614,33 @@ int main(int argc, char *argv[], char *env[])
 		exit(1);
 	}
 
-	if (argc - optind < 1) {
+	if (argc < 1) {
 		print_dev_list(ctl, 0);
 		exit(0);
 	}
 
-	dev  = strdup(argv[optind]);
-	di.dev_id = atoi(argv[optind]+3);
-	optind++;
+	di.dev_id = atoi(argv[0] + 3);
+	argc--; argv++;
 
 	if (ioctl(ctl, HCIGETDEVINFO, (void*)&di)) {
 		perror("Can't get device info");
 		exit(1);
 	}
 
-	while (optind < argc) {
+	while (argc > 0) {
 		for (i=0; command[i].cmd; i++) {
-			if (strncmp(command[i].cmd, argv[optind],4)) 
+			if (strncmp(command[i].cmd, *argv, 4))
 				continue;
 
-			if (command[i].opt)
-				optind++;
+			if (command[i].opt) {
+				argc--; argv++;
+			}
 			
-			command[i].func(ctl, di.dev_id, argv[optind]);
+			command[i].func(ctl, di.dev_id, *argv);
 			cmd = 1;
 			break;
 		}
-		optind++;
+		argc--; argv++;
 	}
 
 	if (!cmd)
