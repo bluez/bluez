@@ -255,6 +255,20 @@ static char *hidp_state[] = {
 	"closed"
 };
 
+static char *hidp_flagstostr(uint32_t flags)
+{
+	static char str[100] = "";
+
+	strcat(str, "[");
+
+	if (flags & (1 << HIDP_BOOT_PROTOCOL_MODE))
+		strcat(str, "boot-protocol");
+
+	strcat(str, "]");
+
+	return str;
+}
+
 static void do_show(int ctl)
 {
 	struct hidp_connlist_req req;
@@ -273,8 +287,9 @@ static void do_show(int ctl)
 
 	for (i = 0; i < req.cnum; i++) {
 		ba2str(&ci[i].bdaddr, addr);
-		printf("%s %s [%04x:%04x] %s\n", addr, ci[i].name,
-			ci[i].vendor, ci[i].product, hidp_state[ci[i].state]);
+		printf("%s %s [%04x:%04x] %s %s\n", addr, ci[i].name,
+			ci[i].vendor, ci[i].product, hidp_state[ci[i].state],
+			ci[i].flags ? hidp_flagstostr(ci[i].flags) : "");
 	}
 }
 
