@@ -39,41 +39,7 @@
 #include <bluetooth/rfcomm.h>
 
 
-#ifndef OCF_READ_VOICE_SETTING
-#define OCF_READ_VOICE_SETTING  0x0025
-typedef struct {
-        uint8_t status;
-        uint16_t        voice_setting;
-} __attribute__ ((packed)) read_voice_setting_rp;
-#define READ_VOICE_SETTING_RP_SIZE 3
-
-static int hci_read_voice_setting(int dd, uint16_t *vs, int to)
-{
-	read_voice_setting_rp rp;
-	struct hci_request rq;
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_READ_VOICE_SETTING;
-	rq.rparam = &rp;
-	rq.rlen   = READ_VOICE_SETTING_RP_SIZE;
-
-	if (hci_send_req(dd, &rq, to) < 0)
-		return -1;
-
-	if (rp.status) {
-		errno = EIO;
-		return -1;
-	}
-
-	*vs = rp.voice_setting;
-	return 0;
-}
-#endif
-
-
 static volatile int terminate = 0;
-
 
 static void sig_term(int sig) {
 	terminate = 1;
@@ -109,7 +75,6 @@ static int rfcomm_connect(bdaddr_t *src, bdaddr_t *dst, uint8_t channel)
 
 	return s;
 }
-
 
 static int sco_connect(bdaddr_t *src, bdaddr_t *dst, uint16_t *handle, uint16_t *mtu)
 {
@@ -167,7 +132,6 @@ static void usage(void)
 		"\thstest record <file> <bdaddr> [channel]\n");
 }
 
-
 #define PLAY	1
 #define RECORD	2
 
@@ -222,6 +186,7 @@ int main(int argc, char *argv[])
 	hci_devba(0, &local);
 	dd = hci_open_dev(0);
 	hci_read_voice_setting(dd, &vs, 1000);
+	vs = htobs(vs);
 	fprintf(stderr, "Voice setting: 0x%04x\n", vs);
 	close(dd);
 	if (vs != 0x0040) {
