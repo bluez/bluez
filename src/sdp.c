@@ -181,10 +181,11 @@ static int uuid2str(struct tupla *message, const uuid_t *uuid, char *str, size_t
 		snprintf(str, n, str2);
 		break;
 	case SDP_UUID32:
-		snprintf(str, n, "Error: This is uuid32");
-		return -3;
+		str2 = string_lookup(message, uuid->value.uuid32);
+		snprintf(str, n, str2);
+		break;
 	case SDP_UUID128:
-		snprintf(str, n, "Error: This is uuid128");
+		snprintf(str, n, "Error: This is UUID-128");
 		return -4;
 	default:
 		snprintf(str, n, "Type of UUID (%x) unknown.", uuid->type);
