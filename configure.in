@@ -39,14 +39,14 @@ AC_ARG_WITH(bluez-libs,
 	    BLUEZ_INCDIR="$withval"/include
 	    BLUEZ_LIBDIR="$withval"/src
 	],[
-	    BLUEZ_INCDIR='../libs/include /usr/include/bluetooth'
+	    BLUEZ_INCDIR='../libs/include /usr/include'
 	    BLUEZ_LIBDIR='../libs/src /usr/lib'
 	]
 )
 
-AC_SEARCH_HEADERS(bluetooth.h, $BLUEZ_INCDIR,,
+AC_SEARCH_HEADERS(bluetooth/bluetooth.h, $BLUEZ_INCDIR,,
 	AC_MSG_ERROR(Bluetooth headers not found.
-		Please install bluez-libs package.)
+		Please compile and install bluez-libs package.)
 )
 
 AC_SEARCH_LIB(bluetooth, hci_open_dev, $BLUEZ_LIBDIR,,

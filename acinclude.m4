@@ -76,8 +76,6 @@ AC_DEFUN([AC_SEARCH_LIB],
 	# Check for libtool library
 	if test -f $p/lib$1.la; then
 		path=$p/.libs
-	else
-		path=$p
 	fi
 	
 	LDFLAGS="-L$path -l$1"
