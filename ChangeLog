@@ -1,3 +1,21 @@
+ver 2.7:
+	Add support for getting the AFH channel map.
+	Add support for AFH mode.
+	Add support for inquiry mode.
+	Add Bluetooth backend for CUPS.
+	Add the hid2hci utility.
+	Add the hidd utility.
+	Add the pand utility.
+	Add the dund utility.
+	More endian bug fixes.
+	Give udev some time to create the RFCOMM device nodes.
+	Release the TTY if no device node is found.
+	New startup script for the Bluetooth subsystem.
+	Update to the autoconf stuff.
+
+	Note:
+	This version needs at least bluez-libs-2.7
+
 ver 2.6:
 	Change default prefix to /usr.
 	Add manpages for hcid and hcid.conf.

@@ -1,5 +1,5 @@
 # Note that this is NOT a relocatable package
-%define ver      2.6
+%define ver      2.7
 %define RELEASE  1
 %define rel      %{?CUSTOM_RELEASE} %{!?CUSTOM_RELEASE:%RELEASE}
 %define prefix   /
@@ -18,9 +18,9 @@ BuildRoot: /var/tmp/%{name}-%{PACKAGE_VERSION}-root
 URL: http://bluez.sourceforge.net
 Docdir: %{prefix}/usr/share/doc
 Requires: glibc >= 2.2.4
-Requires: bluez-libs >= 2.0
+Requires: bluez-libs >= 2.7
 BuildRequires: glibc >= 2.2.4
-BuildRequires: bluez-libs >= 2.0
+BuildRequires: bluez-libs >= 2.7
 
 %description
 Bluetooth utilities (bluez-utils):
