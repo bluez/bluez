@@ -716,32 +716,32 @@ struct {
 	char *opt;
 	char *doc;
 } command[] = {
-	{ "up",     cmd_up,     0,	"Open and initialize HCI device" },
-	{ "down",   cmd_down,   0,	"Close HCI device" },
-	{ "reset",  cmd_reset,  0,	"Reset HCI device" },
-	{ "rstat",  cmd_rstat,  0,	"Reset statistic counters" },
-	{ "auth",   cmd_auth,   0,	"Enable Authentication" },
-	{ "noauth", cmd_auth,   0,	"Disable Authentication" },
-	{ "encrypt",cmd_encrypt,0,	"Enable Encryption" },
-	{ "noencrypt", cmd_encrypt, 0,	"Disable Encryption" },
-	{ "piscan", cmd_scan,   0,	"Enable Page and Inquiry scan" },
-	{ "noscan", cmd_scan,   0,	"Disable scan" },
-	{ "iscan",  cmd_scan,   0,	"Enable Inquiry scan" },
-	{ "pscan",  cmd_scan,   0,	"Enable Page scan" },
-	{ "ptype",  cmd_ptype,   "[type]",   "Get/Set default packet type" },
-	{ "lm",     cmd_lm,      "[mode]",   "Get/Set default link mode"   },
-	{ "lp",     cmd_lp,      "[policy]", "Get/Set default link policy" },
-	{ "name",   cmd_name,    "[name]",   "Get/Set local name" },
-	{ "class",  cmd_class,   "[class]",  "Get/Set class of device" },
-	{ "inqparms",  cmd_inq_parms, "[win:int]","Get/Set inquiry scan window and interval" },
-	{ "pageparms", cmd_page_parms, "[win:int]","Get/Set page scan window and interval" },
-	{ "pageto", cmd_page_to, "[to]",     "Get/Set page timeout" },
-	{ "aclmtu", cmd_aclmtu, "<mtu:pkt>","Set ACL MTU and number of packets" },
-	{ "scomtu", cmd_scomtu, "<mtu:pkt>","Set SCO MTU and number of packets" },
-	{ "features",	cmd_features, 0, "Display device features" },
-	{ "version",	cmd_version,  0, "Display version information" },
-	{ "revision",	cmd_revision, 0, "Display revision information" },
-	{ NULL, NULL, 0}
+	{ "up",		cmd_up,		0,		"Open and initialize HCI device" },
+	{ "down",	cmd_down,	0,		"Close HCI device" },
+	{ "reset",	cmd_reset,	0,		"Reset HCI device" },
+	{ "rstat",	cmd_rstat,	0,		"Reset statistic counters" },
+	{ "auth",	cmd_auth,	0,		"Enable Authentication" },
+	{ "noauth",	cmd_auth,	0,		"Disable Authentication" },
+	{ "encrypt",	cmd_encrypt,	0,		"Enable Encryption" },
+	{ "noencrypt",	cmd_encrypt,	0,		"Disable Encryption" },
+	{ "piscan",	cmd_scan,	0,		"Enable Page and Inquiry scan" },
+	{ "noscan",	cmd_scan,	0,		"Disable scan" },
+	{ "iscan",	cmd_scan,	0,		"Enable Inquiry scan" },
+	{ "pscan",	cmd_scan,	0,		"Enable Page scan" },
+	{ "ptype",	cmd_ptype,	"[type]",	"Get/Set default packet type" },
+	{ "lm",		cmd_lm,		"[mode]",	"Get/Set default link mode"   },
+	{ "lp",		cmd_lp,		"[policy]",	"Get/Set default link policy" },
+	{ "name",	cmd_name,	"[name]",	"Get/Set local name" },
+	{ "class",	cmd_class,	"[class]",	"Get/Set class of device" },
+	{ "inqparms",	cmd_inq_parms,	"[win:int]",	"Get/Set inquiry scan window and interval" },
+	{ "pageparms",	cmd_page_parms,	"[win:int]",	"Get/Set page scan window and interval" },
+	{ "pageto",	cmd_page_to,	"[to]",		"Get/Set page timeout" },
+	{ "aclmtu",	cmd_aclmtu,	"<mtu:pkt>",	"Set ACL MTU and number of packets" },
+	{ "scomtu",	cmd_scomtu,	"<mtu:pkt>",	"Set SCO MTU and number of packets" },
+	{ "features",	cmd_features,	0,		"Display device features" },
+	{ "version",	cmd_version,	0,		"Display version information" },
+	{ "revision",	cmd_revision,	0,		"Display revision information" },
+	{ NULL, NULL, 0 }
 };
 
 void usage(void)
@@ -807,7 +807,7 @@ int main(int argc, char **argv, char **env)
 
 	while (argc > 0) {
 		for (i=0; command[i].cmd; i++) {
-			if (strncmp(command[i].cmd, *argv, 4))
+			if (strncmp(command[i].cmd, *argv, 5))
 				continue;
 
 			if (command[i].opt) {
