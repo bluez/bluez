@@ -205,13 +205,19 @@ static void conf_opt(int level, void *ptr, int len)
 
 		switch (h->type) {
 		case L2CAP_CONF_MTU:
-			printf("MTU %d ", get_val(h->val, h->len));
+			printf("MTU ");
+			if (h->len > 0)
+				printf("%d ", get_val(h->val, h->len));
 			break;
 		case L2CAP_CONF_FLUSH_TO:
-			printf("FlushTO %d ", get_val(h->val, h->len));
+			printf("FlushTO ");
+			if (h->len > 0)
+				printf("%d ", get_val(h->val, h->len));
 			break;
 		case 0x04:
-			printf("Mode %d (%s)", *h->val, mode2str(*h->val));
+			printf("Mode ");
+			if (h->len > 0)
+				printf("%d (%s) ", *h->val, mode2str(*h->val));
 			break;
 		default:
 			printf("Unknown (type %2.2x, len %d) ", h->type, h->len);
