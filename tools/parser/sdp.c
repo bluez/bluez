@@ -479,13 +479,13 @@ static inline void ss_req(int level, uint16_t tid, uint16_t len, struct frame *f
 static inline void ss_rsp(int level, uint16_t tid, uint16_t len, struct frame *frm)
 {
 	register int i;
-	uint16_t cur_srv_rec_cnt = get_u16(frm); /* Parse CurrentServiceRecordCount */
 	uint16_t tot_srv_rec_cnt = get_u16(frm); /* Parse TotalServiceRecordCount */
+	uint16_t cur_srv_rec_cnt = get_u16(frm); /* Parse CurrentServiceRecordCount */
 
 	printf("SDP SS Rsp: tid 0x%x len 0x%x\n", tid, len);
 
 	p_indent(++level, 0);
-	printf("cur 0x%x tot 0x%x", cur_srv_rec_cnt, tot_srv_rec_cnt);
+	printf("tot 0x%x cur 0x%x", tot_srv_rec_cnt, cur_srv_rec_cnt);
 
 	/* Parse service record handle(s) */
 	if (cur_srv_rec_cnt > 0) {
