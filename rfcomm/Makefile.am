@@ -10,7 +10,7 @@ bin_PROGRAMS = rfcomm
 rfcomm_SOURCES = main.c parser.h parser.y lexer.l kword.h kword.c
 rfcomm_CONFIG  = rfcomm.conf
 
-man_MANS = rfcomm.8
+man_MANS = rfcomm.1
 
 YFLAGS = -d
 
