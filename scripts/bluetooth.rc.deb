@@ -1,57 +1,83 @@
 #! /bin/sh
 #
-# bluetooth    Bluetooth subsystem starting and stopping
+# bluetooth	Bluetooth subsystem starting and stopping
 #
-# Edd Dumbill <edd@usefulinc.com>
 
+NAME=bluetooth
+DESC="Bluetooth subsystem"
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
-DAEMON=/sbin/hcid
+HCID=/sbin/hcid
+HCID_CONF=/etc/bluetooth/hcid.conf
 HCIATTACH=/sbin/hciattach
 UART_CONF=/etc/bluetooth/uart
-NAME=hcid
-DESC=bluez-utils
-
-test -f $DAEMON || exit 0
-test -f $HCIATTACH || exit 0
+SDPD=/usr/sbin/sdpd
+RFCOMM=/bin/rfcomm
+RFCOMM_CONF=/etc/bluetooth/rfcomm.conf
 
 set -e
 
 start_uarts() 
 {
-    [ -f $HCIATTACH -a -f $UART_CONF ] || return
-    grep -v '^#' $UART_CONF | while read i; do
-        $HCIATTACH $i
-    done
+	[ -x $HCIATTACH -a -f $UART_CONF ] || return
+	grep -v '^#' $UART_CONF | while read i; do
+		$HCIATTACH $i
+	done
 }
 
 stop_uarts()
 {
-    killall hciattach > /dev/null 2>&1 || true
+	killall $HCIATTACH > /dev/null 2>&1 || true
 }
 
 case "$1" in
   start)
-	echo -n "Starting $DESC: "
-	$DAEMON
-	echo "$NAME."
+	echo -n "Starting $DESC:"
+	if [ -x $HCID -a -f $HCID_CONF ] ; then
+		$HCID -f $HCID_CONF
+		echo -n " hcid"
+	fi
+	if [ -x $SDPD ] ; then
+		$SDPD
+		echo -n " sdpd"
+	fi
+	if [ -x $RFCOMM -a -f $RFCOMM_CONF ] ; then
+		$RFCOMM -f $RFCOMM_CONF bind all
+		echo -n " rfcomm"
+	fi
+	echo "."
 	start_uarts || true
 	;;
   stop)
-	echo -n "Stopping $DESC: "
-	killall $NAME || true
-	echo "$NAME."
+	echo -n "Stopping $DESC:"
+	if [ -x $RFCOMM ] ; then
+		echo -n " rfcomm"
+		$RFCOMM unbind all
+	fi
+	echo -n " sdpd"
+	killall $SDPD > /dev/null 2>&1 || true
+	echo -n " hcid"
+	killall $HCID > /dev/null 2>&1 || true
+	echo "."
 	stop_uarts
 	;;
   restart|force-reload)
-	echo -n "Restarting $DESC: "
-	killall $NAME || true
+	echo -n "Restarting $DESC:"
+	echo -n " hcid"
+	killall $HCID > /dev/null 2>&1 || true
 	sleep 1
-	$DAEMON
-	echo "$NAME."
+	if [ -x $HCID -a -f $HCID_CONF ] ; then
+		$HCID -f $HCID_CONF
+	fi
+	echo -n " sdpd"
+	killall $SDPD > /dev/null 2>&1 || true
+	sleep 1
+	if [ -x $SDPD ] ; then
+		$SDPD
+	fi
+	echo "."
 	;;
   *)
-	N=/etc/init.d/bluez-utils
-	# echo "Usage: $N {start|stop|restart|reload|force-reload}" >&2
+	N=/etc/init.d/bluetooth
 	echo "Usage: $N {start|stop|restart|force-reload}" >&2
 	exit 1
 	;;
