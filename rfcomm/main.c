@@ -50,7 +50,7 @@ extern char *optarg;
 static char *rfcomm_state[] = {
 	"unknown",
 	"connected",
-        "open",
+        "clean",
         "bound",
         "listening",
         "connecting",
