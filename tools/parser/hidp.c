@@ -125,9 +125,9 @@ static char *protocol2str(uint8_t head)
 {
 	switch (head & 0x01) {
 	case 0x00:
-		return "Report protocol";
-	case 0x01:
 		return "Boot protocol";
+	case 0x01:
+		return "Report protocol";
 	default:
 		return "Reserved";
 	}
