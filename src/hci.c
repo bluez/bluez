@@ -295,32 +295,60 @@ int lmp_strtover(char *str, unsigned int *ver)
 /* LMP features mapping */
 hci_map lmp_features_map[][9] = {
 	{	/* byte 0 */
-		{ "<3-slot packets>",   LMP_3SLOT    },
-		{ "<5-slot packets>",   LMP_5SLOT    },
-		{ "<encryption>",       LMP_ENCRYPT  },
-		{ "<slot offset>",      LMP_SOFFSET  },
-		{ "<timing accuracy>",  LMP_TACCURACY},
-		{ "<role switch>",      LMP_RSWITCH  },
-		{ "<hold mode>",        LMP_HOLD     },
-		{ "<sniff mode>",       LMP_SNIFF    },
+		{ "<3-slot packets>",	LMP_3SLOT	},
+		{ "<5-slot packets>",	LMP_5SLOT	},
+		{ "<encryption>",	LMP_ENCRYPT	},
+		{ "<slot offset>",	LMP_SOFFSET	},
+		{ "<timing accuracy>",	LMP_TACCURACY	},
+		{ "<role switch>",	LMP_RSWITCH	},
+		{ "<hold mode>",	LMP_HOLD	},
+		{ "<sniff mode>",	LMP_SNIFF	},
 		{ NULL }
 	},
 	{	/* byte 1 */
-		{ "<park mode>",        LMP_PARK     },
-		{ "<RSSI>",             LMP_RSSI     },
-		{ "<channel quality>",  LMP_QUALITY  },
-		{ "<SCO link>",         LMP_SCO      },
-		{ "<HV2 packets>",      LMP_HV2      },
-		{ "<HV3 packets>",      LMP_HV3      },
-		{ "<u-law log>",        LMP_ULAW     },
-		{ "<A-law log>",        LMP_ALAW     },
+		{ "<park state>",	LMP_PARK	},
+		{ "<RSSI>",		LMP_RSSI	},
+		{ "<channel quality>",	LMP_QUALITY	},
+		{ "<SCO link>",		LMP_SCO		},
+		{ "<HV2 packets>",	LMP_HV2		},
+		{ "<HV3 packets>",	LMP_HV3		},
+		{ "<u-law log>",	LMP_ULAW	},
+		{ "<A-law log>",	LMP_ALAW	},
 		{ NULL }
 	},
 	{	/* byte 2 */
-		{ "<CVSD>",             LMP_CVSD     },
-		{ "<paging scheme>",    LMP_PSCHEME  },
-		{ "<power control>",    LMP_PCONTROL },
-		{ "<transparent SCO>",  LMP_TRSP_SCO },
+		{ "<CVSD>",		LMP_CVSD	},
+		{ "<paging scheme>",	LMP_PSCHEME	},
+		{ "<power control>",	LMP_PCONTROL	},
+		{ "<transparent SCO>",	LMP_TRSP_SCO	},
+		{ "<broadcast encrypt>",LMP_BCAST_ENC	},
+		{ NULL }
+	},
+	{	/* byte 3 */
+		{ "<enhanced iscan>",	LMP_ENH_ISCAN	},
+		{ "<interlaced iscan>",	LMP_ILACE_ISCAN	},
+		{ "<interlaced pscan>",	LMP_ILACE_PSCAN	},
+		{ "<inquiry with RSSI>",LMP_RSSI_INQ	},
+		{ "<extended SCO>",	LMP_ESCO	},
+		{ NULL }
+	},
+	{	/* byte 4 */
+		{ "<EV4 packets>",	LMP_EV4		},
+		{ "<EV5 packets>",	LMP_EV5		},
+		{ "<AFH cap. slave>",	LMP_AFH_CAP_SLV	},
+		{ "<AFH class. slave>",	LMP_AFH_CLS_SLV	},
+		{ NULL }
+	},
+	{	/* byte 5 */
+		{ "<AFH cap. master>",	LMP_AFH_CAP_MST	},
+		{ "<AFH class. master>",LMP_AFH_CLS_MST },
+		{ NULL }
+	},
+	{	/* byte 6 */
+		{ NULL }
+	},
+	{	/* byte 7 */
+		{ "<extended features>",LMP_EXT_FEAT	},
 		{ NULL }
 	},
 	{{ NULL }}

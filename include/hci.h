@@ -200,6 +200,23 @@ enum {
 #define LMP_PSCHEME	0x02
 #define LMP_PCONTROL	0x04
 #define LMP_TRSP_SCO	0x08
+#define LMP_BCAST_ENC	0x80
+
+#define LMP_ENH_ISCAN	0x08
+#define LMP_ILACE_ISCAN	0x10
+#define LMP_ILACE_PSCAN	0x20
+#define LMP_RSSI_INQ	0x40
+#define LMP_ESCO	0x80
+
+#define LMP_EV4		0x01
+#define LMP_EV5		0x02
+#define LMP_AFH_CAP_SLV	0x08
+#define LMP_AFH_CLS_SLV	0x10
+
+#define LMP_AFH_CAP_MST	0x08
+#define LMP_AFH_CLS_MST	0x10
+
+#define LMP_EXT_FEAT	0x80
 
 /* Link policies */
 #define HCI_LP_RSWITCH	0x0001
