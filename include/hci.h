@@ -280,7 +280,7 @@ typedef struct {
 } __attribute__ ((packed)) accept_conn_req_cp;
 #define ACCEPT_CONN_REQ_CP_SIZE	7
 
-#define OCF_REJECT_CONN_REQ		0x000a
+#define OCF_REJECT_CONN_REQ		0x000A
 typedef struct {
 	bdaddr_t	bdaddr;
 	uint8_t		reason;
@@ -711,78 +711,126 @@ typedef struct {
 
 /* ---- HCI Events ---- */
 
-#define EVT_INQUIRY_COMPLETE 	0x01
+#define EVT_INQUIRY_COMPLETE		0x01
 
-#define EVT_INQUIRY_RESULT 	0x02
+#define EVT_INQUIRY_RESULT		0x02
 typedef struct {
 	bdaddr_t	bdaddr;
-	uint8_t 	pscan_rep_mode;
-	uint8_t 	pscan_period_mode;
-	uint8_t 	pscan_mode;
-	uint8_t 	dev_class[3];
+	uint8_t		pscan_rep_mode;
+	uint8_t		pscan_period_mode;
+	uint8_t		pscan_mode;
+	uint8_t		dev_class[3];
 	uint16_t	clock_offset;
 } __attribute__ ((packed)) inquiry_info;
 #define INQUIRY_INFO_SIZE 14
 
-#define EVT_CONN_COMPLETE 	0x03
+#define EVT_CONN_COMPLETE		0x03
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
 	bdaddr_t	bdaddr;
-	uint8_t 	link_type;
-	uint8_t 	encr_mode;
+	uint8_t		link_type;
+	uint8_t		encr_mode;
 } __attribute__ ((packed)) evt_conn_complete;
 #define EVT_CONN_COMPLETE_SIZE 13
 
-#define EVT_CONN_REQUEST	0x04
+#define EVT_CONN_REQUEST		0x04
 typedef struct {
 	bdaddr_t	bdaddr;
-	uint8_t 	dev_class[3];
+	uint8_t		dev_class[3];
 	uint8_t		link_type;
 } __attribute__ ((packed)) evt_conn_request;
 #define EVT_CONN_REQUEST_SIZE 10
 
-#define EVT_DISCONN_COMPLETE	0x05
+#define EVT_DISCONN_COMPLETE		0x05
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
-	uint8_t 	reason;
+	uint8_t		reason;
 } __attribute__ ((packed)) evt_disconn_complete;
 #define EVT_DISCONN_COMPLETE_SIZE 4
 
-#define EVT_AUTH_COMPLETE	0x06
+#define EVT_AUTH_COMPLETE		0x06
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
 } __attribute__ ((packed)) evt_auth_complete;
 #define EVT_AUTH_COMPLETE_SIZE 3
 
 #define EVT_REMOTE_NAME_REQ_COMPLETE	0x07
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	bdaddr_t	bdaddr;
-	uint8_t 	name[248];
+	uint8_t		name[248];
 } __attribute__ ((packed)) evt_remote_name_req_complete;
 #define EVT_REMOTE_NAME_REQ_COMPLETE_SIZE 255
 
-#define EVT_ENCRYPT_CHANGE	0x08
+#define EVT_ENCRYPT_CHANGE		0x08
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
-	uint8_t 	encrypt;
+	uint8_t		encrypt;
 } __attribute__ ((packed)) evt_encrypt_change;
 #define EVT_ENCRYPT_CHANGE_SIZE 5
 
-#define EVT_QOS_SETUP_COMPLETE 0x0D
+#define EVT_READ_REMOTE_FEATURES_COMPLETE	0x0B
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
-	uint8_t 	flags;			/* Reserved */
-	hci_qos 	qos;
+	uint8_t		features[8];
+} __attribute__ ((packed)) evt_read_remote_features_complete;
+#define EVT_READ_REMOTE_FEATURES_COMPLETE_SIZE 11
+
+#define EVT_READ_REMOTE_VERSION_COMPLETE	0x0C
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		lmp_ver;
+	uint16_t	manufacturer;
+	uint16_t	lmp_subver;
+} __attribute__ ((packed)) evt_read_remote_version_complete;
+#define EVT_READ_REMOTE_VERSION_COMPLETE_SIZE 8
+
+#define EVT_QOS_SETUP_COMPLETE		0x0D
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		flags;			/* Reserved */
+	hci_qos		qos;
 } __attribute__ ((packed)) evt_qos_setup_complete;
 #define EVT_QOS_SETUP_COMPLETE_SIZE (4 + HCI_QOS_CP_SIZE)
 
-#define EVT_MODE_CHANGE		0x14
+#define EVT_CMD_COMPLETE 		0x0E
+typedef struct {
+	uint8_t		ncmd;
+	uint16_t	opcode;
+} __attribute__ ((packed)) evt_cmd_complete;
+#define EVT_CMD_COMPLETE_SIZE 3
+
+#define EVT_CMD_STATUS 			0x0F
+typedef struct {
+	uint8_t		status;
+	uint8_t		ncmd;
+	uint16_t	opcode;
+} __attribute__ ((packed)) evt_cmd_status;
+#define EVT_CMD_STATUS_SIZE 4
+
+#define EVT_ROLE_CHANGE			0x12
+typedef struct {
+	uint8_t		status;
+	bdaddr_t	bdaddr;
+	uint8_t		role;
+} __attribute__ ((packed)) evt_role_change;
+#define EVT_ROLE_CHANGE_SIZE 8
+
+#define EVT_NUM_COMP_PKTS		0x13
+typedef struct {
+	uint8_t		num_hndl;
+	/* variable length part */
+} __attribute__ ((packed)) evt_num_comp_pkts;
+#define EVT_NUM_COMP_PKTS_SIZE 1
+
+#define EVT_MODE_CHANGE			0x14
 typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
@@ -791,63 +839,27 @@ typedef struct {
 } __attribute__ ((packed)) evt_mode_change;
 #define EVT_MODE_CHANGE_SIZE 6
 
-#define EVT_QOS_VIOLATION	0x1E
-typedef struct {
-	uint16_t	handle;
-} __attribute__ ((packed)) evt_qos_violation;
-#define EVT_QOS_VIOLATION_SIZE 2
-
-#define EVT_CMD_COMPLETE 	0x0e
-typedef struct {
-	uint8_t 	ncmd;
-	uint16_t 	opcode;
-} __attribute__ ((packed)) evt_cmd_complete;
-#define EVT_CMD_COMPLETE_SIZE 3
-
-#define EVT_CMD_STATUS 		0x0f
-typedef struct {
-	uint8_t 	status;
-	uint8_t 	ncmd;
-	uint16_t	opcode;
-} __attribute__ ((packed)) evt_cmd_status;
-#define EVT_CMD_STATUS_SIZE 4
-
-#define EVT_NUM_COMP_PKTS	0x13
-typedef struct {
-	uint8_t		num_hndl;
-	/* variable length part */
-} __attribute__ ((packed)) evt_num_comp_pkts;
-#define EVT_NUM_COMP_PKTS_SIZE 1
-
-#define EVT_ROLE_CHANGE		0x12
-typedef struct {
-	uint8_t 	status;
-	bdaddr_t	bdaddr;
-	uint8_t 	role;
-} __attribute__ ((packed)) evt_role_change;
-#define EVT_ROLE_CHANGE_SIZE 8
-
-#define EVT_PIN_CODE_REQ        0x16
+#define EVT_PIN_CODE_REQ		0x16
 typedef struct {
 	bdaddr_t	bdaddr;
 } __attribute__ ((packed)) evt_pin_code_req;
 #define EVT_PIN_CODE_REQ_SIZE 6
 
-#define EVT_LINK_KEY_REQ        0x17
+#define EVT_LINK_KEY_REQ		0x17
 typedef struct {
 	bdaddr_t	bdaddr;
 } __attribute__ ((packed)) evt_link_key_req;
 #define EVT_LINK_KEY_REQ_SIZE 6
 
-#define EVT_LINK_KEY_NOTIFY	0x18
+#define EVT_LINK_KEY_NOTIFY		0x18
 typedef struct {
 	bdaddr_t	bdaddr;
-	uint8_t 	link_key[16];
-	uint8_t 	key_type;
+	uint8_t		link_key[16];
+	uint8_t		key_type;
 } __attribute__ ((packed)) evt_link_key_notify;
 #define EVT_LINK_KEY_NOTIFY_SIZE 23
 
-#define EVT_READ_CLOCK_OFFSET_COMPLETE 0x1C
+#define EVT_READ_CLOCK_OFFSET_COMPLETE	0x1C
 typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
@@ -855,41 +867,33 @@ typedef struct {
 } __attribute__ ((packed)) evt_read_clock_offset_complete;
 #define EVT_READ_CLOCK_OFFSET_COMPLETE_SIZE 5
 
-#define EVT_CONN_PTYPE_CHANGED	0x1D
+#define EVT_CONN_PTYPE_CHANGED		0x1D
 typedef struct {
-	uint8_t 	status;
-	uint16_t 	handle;
-	uint16_t 	ptype;
+	uint8_t		status;
+	uint16_t	handle;
+	uint16_t	ptype;
 } __attribute__ ((packed)) evt_conn_ptype_changed;
 #define EVT_CONN_PTYPE_CHANGED_SIZE 5
 
-#define EVT_READ_REMOTE_FEATURES_COMPLETE 0x0B
+#define EVT_QOS_VIOLATION		0x1E
 typedef struct {
-	uint8_t 	status;
 	uint16_t	handle;
-	uint8_t 	features[8];
-} __attribute__ ((packed)) evt_read_remote_features_complete;
-#define EVT_READ_REMOTE_FEATURES_COMPLETE_SIZE 11
+} __attribute__ ((packed)) evt_qos_violation;
+#define EVT_QOS_VIOLATION_SIZE 2
 
-#define EVT_READ_REMOTE_VERSION_COMPLETE 0x0C
-typedef struct {
-	uint8_t 	status;
-	uint16_t	handle;
-	uint8_t 	lmp_ver;
-	uint16_t	manufacturer;
-	uint16_t	lmp_subver;
-} __attribute__ ((packed)) evt_read_remote_version_complete;
-#define EVT_READ_REMOTE_VERSION_COMPLETE_SIZE 8
+#define EVT_TESTING			0xFE
+
+#define EVT_VENDOR			0xFF
 
 /* Internal events generated by BlueZ stack */
-#define EVT_STACK_INTERNAL	0xfd
+#define EVT_STACK_INTERNAL		0xFD
 typedef struct {
 	uint16_t	type;
-	uint8_t 	data[0];
+	uint8_t		data[0];
 } __attribute__ ((packed)) evt_stack_internal;
 #define EVT_STACK_INTERNAL_SIZE 2
 
-#define EVT_SI_DEVICE  	0x01
+#define EVT_SI_DEVICE	0x01
 typedef struct {
 	uint16_t	event;
 	uint16_t	dev_id;
@@ -901,25 +905,21 @@ typedef struct {
 	uint16_t	event;
 	uint16_t	proto;
 	uint16_t	subproto;
-	uint8_t 	incoming;
+	uint8_t		incoming;
 } __attribute__ ((packed)) evt_si_security;
-
-#define EVT_TESTING	0xfe
-
-#define EVT_VENDOR	0xff
 
 /* --------  HCI Packet structures  -------- */
 #define HCI_TYPE_LEN	1
 
 typedef struct {
 	uint16_t	opcode;		/* OCF & OGF */
-	uint8_t 	plen;
+	uint8_t		plen;
 } __attribute__ ((packed))	hci_command_hdr;
 #define HCI_COMMAND_HDR_SIZE 	3
 
 typedef struct {
-	uint8_t 	evt;
-	uint8_t 	plen;
+	uint8_t		evt;
+	uint8_t		plen;
 } __attribute__ ((packed))	hci_event_hdr;
 #define HCI_EVENT_HDR_SIZE 	2
 
@@ -931,7 +931,7 @@ typedef struct {
 
 typedef struct {
 	uint16_t	handle;
-	uint8_t 	dlen;
+	uint8_t		dlen;
 } __attribute__ ((packed))	hci_sco_hdr;
 #define HCI_SCO_HDR_SIZE 	3
 
@@ -957,8 +957,8 @@ typedef struct {
 #define HCI_CMSG_TSTAMP	0x0002
 
 struct sockaddr_hci {
-	sa_family_t    hci_family;
-	unsigned short hci_dev;
+	sa_family_t	hci_family;
+	unsigned short	hci_dev;
 };
 #define HCI_DEV_NONE	0xffff
 
