@@ -336,7 +336,7 @@ static inline void print_srv_srch_pat(int level, struct frame *frm)
 	printf("pat");
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
-		while (len - frm->len < n1 ) {
+		while (len - frm->len <= n1 ) {
 			if (parse_de_hdr(frm,&n2) == SDP_DE_UUID) {
 				print_uuid(n2, frm);
 			} else {
