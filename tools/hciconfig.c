@@ -570,7 +570,7 @@ void cmd_page_to(int ctl, int hdev, char *opt)
 		unsigned int timeout;
 		write_page_timeout_cp cp;
 
-		if (sscanf(opt,"%4u", &timeout) != 1) {
+		if (sscanf(opt,"%5u", &timeout) != 1) {
 			printf("Invalid argument format\n");
 			exit(1);
 		}
