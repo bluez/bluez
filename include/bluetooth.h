@@ -49,6 +49,7 @@ extern "C" {
 #define BTPROTO_RFCOMM	3
 #define BTPROTO_BNEP	4
 #define BTPROTO_CMTP	5
+#define BTPROTO_HIDP	6
 
 #define SOL_HCI		0
 #define SOL_L2CAP	6
