@@ -339,13 +339,13 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 
 		m = lmp_features_map[i];
 		while (m->str) {
-			if ((unsigned int) m->val & (unsigned int) features[i])
+			if ((unsigned int) m->val & (unsigned int) features[i]) {
 				ptr += sprintf(ptr, "%s ", m->str);
+				w = (w + 1) & width;
+				if (!w)
+					ptr += sprintf(ptr, "\n%s", pref ? pref : "");
+			}
 			m++;
-
-			w = (w + 1) & width;
-			if (!w)
-				ptr += sprintf(ptr, "\n%s", pref);
 		}
 	}
 	
