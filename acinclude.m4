@@ -7,21 +7,29 @@ AC_DEFUN([AC_PREFIX_BLUEZ], [
 
 	if (test "${prefix}" = "NONE"); then
 		dnl no prefix and no sysconfdir, so default to /etc
-		if test "$sysconfdir" = '${prefix}/etc'; then
+		if (test "$sysconfdir" = '${prefix}/etc'); then
 			AC_SUBST([sysconfdir], ['/etc'])
 		fi
 
 		dnl no prefix and no mandir, so use ${prefix}/share/man as default
-		if test "$mandir" = '${prefix}/man'; then
+		if (test "$mandir" = '${prefix}/man'); then
 			AC_SUBST([mandir], ['${prefix}/share/man'])
 		fi
 
 		prefix="${ac_default_prefix}"
 	fi
 
-	if (test "${libdir}" = "\${exec_prefix}/lib"); then
+	if (test "${libdir}" = '${exec_prefix}/lib'); then
 		libdir="${prefix}/lib"
 	fi
+
+	if (test "$sysconfdir" = '${prefix}/etc'); then
+		configdir="${prefix}/etc/bluetooth"
+	else
+		configdir="${sysconfdir}/bluetooth"
+	fi
+
+	AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}", [Directory for the configuration files])
 ])
 
 AC_DEFUN([AC_PATH_BLUEZ], [
