@@ -1,5 +1,3 @@
-#include "glib-ectomy.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -8,7 +6,7 @@
 #include <fcntl.h>
 #include <limits.h>
 
-// static void remove_watch(int fd);
+#include "glib-ectomy.h"
 
 GIOError    g_io_channel_read   (GIOChannel    *channel, 
 			         gchar         *buf, 
@@ -83,6 +81,21 @@ struct watch {
 };
 
 static struct watch watch_head = { .id = 0, .next = 0 };
+
+void  g_io_remove_watch (guint id)
+{
+  struct watch *w, *p;
+
+  for (p = &watch_head, w = watch_head.next; w; w = w->next)
+    {
+      if (w->id == id)
+	{
+	  p->next = w->next;
+	  free (w);
+	  return;
+	}
+    }
+}
 
 guint     g_io_add_watch        (GIOChannel      *channel,
 				 GIOCondition     condition,

@@ -76,6 +76,7 @@ struct hcid_opts {
 	int     pin_len;
 	char   *pin_helper;
 	char   *pin_file;
+	int     dbus_pin_helper;
 
 	char   *key_file;
 
@@ -102,3 +103,8 @@ void init_security_data(void);
 void start_security_manager(int hdev);
 void stop_security_manager(int hdev);
 void toggle_pairing(int enable);
+
+#ifdef ENABLE_DBUS
+void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci);
+gboolean hcid_dbus_init(void);
+#endif

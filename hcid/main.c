@@ -541,6 +541,18 @@ int main(int argc, char *argv[], char *env[])
 	if (read_config(hcid.config_file) < 0)
 		syslog(LOG_ERR, "Config load failed");
 
+#ifdef ENABLE_DBUS
+	if (hcid_dbus_init() == FALSE && hcid.dbus_pin_helper) {
+		syslog(LOG_ERR, "Unable to get on D-BUS");
+		exit(1);
+	}
+#else
+	if (hcid.dbus_pin_helper) {
+		syslog(LOG_ERR, "D-BUS not configured in this build of hcid");
+		exit(1);
+	}
+#endif
+
 	init_security_data();
 
 	/* Create event loop */

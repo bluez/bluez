@@ -173,7 +173,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
 	struct link_key key;
-        char sa[18];
+	char sa[18];
 
 	ba2str(sba, sa);
 	syslog(LOG_INFO, "link_key_notify (sba=%s)\n", sa);
@@ -291,6 +291,17 @@ reject:
 	exit(0);
 }
 
+static void request_pin(int dev, struct hci_conn_info *ci)
+{
+#ifdef ENABLE_DBUS
+	if (hcid.dbus_pin_helper) {
+		hcid_dbus_request_pin(dev, ci);
+		return;
+	}
+#endif
+	call_pin_helper(dev, ci);
+}
+
 static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct hci_conn_info_req *cr;
@@ -337,11 +348,11 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 			/* Outgoing connection */
 		
 			/* Let PIN helper handle that */ 
-			call_pin_helper(dev, ci);
+			request_pin(dev, ci);
 		}
 	} else {
 		/* Let PIN helper handle that */ 
-		call_pin_helper(dev, ci);
+		request_pin(dev, ci);
 	}	
 	free(cr);
 	return;
@@ -397,7 +408,7 @@ gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		link_key_notify(dev, &di->bdaddr, ptr);
 		break;
 	}
-		
+
 	return TRUE;
 }
 
@@ -410,7 +421,7 @@ void start_security_manager(int hdev)
 
 	if (chan)
 		return;
-	
+
 	syslog(LOG_INFO, "Starting security manager %d", hdev);
 
 	if ((dev = hci_open_dev(hdev)) < 0) {

@@ -58,7 +58,7 @@ int yyerror(char *s);
 %token K_OPTIONS K_DEVICE
 %token K_AUTOINIT K_SECURITY K_PAIRING
 %token K_PTYPE K_NAME K_CLASS K_LM K_LP K_AUTH K_ENCRYPT K_ISCAN K_PSCAN
-%token K_PINHELP
+%token K_PINHELP K_DBUSPINHELP
 %token K_YES K_NO
 
 %token <str> WORD PATH STRING LIST HCI BDADDR
@@ -112,10 +112,18 @@ hcid_opt:
 				hcid.pairing = $2;
 			}
 
-  | K_PINHELP  PATH	{
+  | K_PINHELP PATH	{
 				if (hcid.pin_helper)
 					free(hcid.pin_helper);
 				hcid.pin_helper = strdup($2);
+				hcid.dbus_pin_helper = 0;
+			}
+
+  | K_DBUSPINHELP	{
+				if (hcid.pin_helper)
+					free(hcid.pin_helper);
+				hcid.pin_helper = NULL;
+				hcid.dbus_pin_helper = 1;
 			}
 
   | WORD		{

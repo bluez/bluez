@@ -26,58 +26,64 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 
 #include "hcid.h"
 #include "kword.h"
 #include "parser.h"
 
 struct kword cfg_keyword[] = {
-   { "options",  K_OPTIONS	}, 
-   { "default",  K_DEVICE	}, 
-   { "device",   K_DEVICE	}, 
-   { "autoinit", K_AUTOINIT	}, 
-   { "security", K_SECURITY	}, 
-   { "pairing",  K_PAIRING	}, 
-   { "pkt_type", K_PTYPE	}, 
-   { "lm", 	 K_LM		}, 
-   { "lp", 	 K_LP		}, 
-   { "iscan", 	 K_ISCAN	}, 
-   { "pscan", 	 K_PSCAN	}, 
-   { "name",     K_NAME		}, 
-   { "class",    K_CLASS	}, 
-   { "auth",	 K_AUTH		},
-   { "encrypt",  K_ENCRYPT	},
-   { "pin_helper",  K_PINHELP	},
+	{ "options",		K_OPTIONS	},
+	{ "default",		K_DEVICE	},
+	{ "device",		K_DEVICE	},
+	{ "autoinit",		K_AUTOINIT	},
+	{ "security",		K_SECURITY	},
+	{ "pairing",		K_PAIRING	},
+	{ "pkt_type",		K_PTYPE		},
+	{ "lm", 		K_LM		},
+	{ "lp", 		K_LP		},
+	{ "iscan",		K_ISCAN		},
+	{ "pscan",		K_PSCAN		},
+	{ "name",		K_NAME		},
+	{ "class",		K_CLASS		},
+	{ "auth",		K_AUTH		},
+	{ "encrypt",		K_ENCRYPT	},
+	{ "pin_helper",		K_PINHELP	},
+	{ "dbus_pin_helper",	K_DBUSPINHELP	},
 
-   { "yes",      K_YES		},
-   { "no",       K_NO		},
-   { "enable",	 K_YES		},
-   { "disable",	 K_NO		},
-   { NULL , 0 }
+	{ "yes",		K_YES		},
+	{ "no",			K_NO		},
+	{ "enable",		K_YES		},
+	{ "disable",		K_NO		},
+	{ NULL , 0 }
 };
 
 struct kword sec_param[] = {
-   { "none",	 HCID_SEC_NONE	},
-   { "auto",	 HCID_SEC_AUTO	},
-   { "user",	 HCID_SEC_USER	},
-   { NULL , 0 }
+	{ "none",		HCID_SEC_NONE	},
+	{ "auto",		HCID_SEC_AUTO	},
+	{ "user",		HCID_SEC_USER	},
+	{ NULL , 0 }
 };
 
 struct kword pair_param[] = {
-   { "none",	 HCID_PAIRING_NONE	},
-   { "multi",	 HCID_PAIRING_MULTI	},
-   { "once",	 HCID_PAIRING_ONCE	},
-   { NULL , 0 }
+	{ "none",	HCID_PAIRING_NONE	},
+	{ "multi",	HCID_PAIRING_MULTI	},
+	{ "once",	HCID_PAIRING_ONCE	},
+	{ NULL , 0 }
 };
 
 int lineno;
 
 int find_keyword(struct kword *kw, char *str)
 {
-    while( kw->str ){
-	if( !strcmp(str,kw->str) )
-	   return kw->type;
-	kw++;
-    }
-    return -1;
+	while (kw->str) {
+		if (!strcmp(str,kw->str))
+			return kw->type;
+		kw++;
+	}
+	return -1;
 }

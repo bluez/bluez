@@ -92,6 +92,8 @@ guint     g_io_add_watch        (GIOChannel      *channel,
 				 GIOCondition     condition,
 				 GIOFunc          func,
 				 gpointer         user_data);
+void  g_io_remove_watch (guint id);
+
 
 
 GMainLoop *g_main_loop_new        (GMainContext *context,
