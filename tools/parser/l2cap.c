@@ -132,6 +132,20 @@ static uint16_t get_psm(int in, uint16_t cid)
 	return parser.defpsm;
 }
 
+static char *mode2str(uint8_t mode)
+{
+	switch (mode) {
+	case 0x00:
+		return "Basic";
+	case 0x01:
+		return "Retransmission";
+	case 0x02:
+		return "Flow control";
+	default:
+		return "Reserved";
+	}
+}
+
 static inline void command_rej(int level, struct frame *frm)
 {
 	l2cap_cmd_rej *h = frm->ptr;
@@ -196,6 +210,9 @@ static void conf_opt(int level, void *ptr, int len)
 			break;
 		case L2CAP_CONF_FLUSH_TO:
 			printf("FlushTO %d ", conf_opt_val(h->val, h->len));
+			break;
+		case 0x04:
+			printf("Mode %d (%s)", *h->val, mode2str(*h->val));
 			break;
 		default:
 			printf("Unknown (type %2.2x, len %d) ", h->type, h->len);
