@@ -164,6 +164,8 @@ static inline __u8 parse_de_hdr(struct frame *frm, int* n)
 			*n = get_u16(frm); break;
 		case 4:
 			*n = get_u32(frm); break;
+		case 8:
+			*n = get_u64(frm); break;
 		}
 	} else {
 		*n = sdp_siz_idx_lookup_table[siz_idx].num_bytes;
@@ -174,7 +176,7 @@ static inline __u8 parse_de_hdr(struct frame *frm, int* n)
 
 static inline void print_int(__u8 de_type, int level, int n, struct frame *frm)
 {
-	__u64 val;
+	__u64 val, val2;
 
 	switch(de_type) {
 	case SDP_DE_UINT:
@@ -199,9 +201,12 @@ static inline void print_int(__u8 de_type, int level, int n, struct frame *frm)
 		val = get_u32(frm);
 		break;
 	case 8: /* 64-bit */
-		/* Not supported yet */
-		val = 0;
+		val = get_u64(frm);
 		break;
+	case 16:/* 128-bit */
+		get_u128(frm, &val, &val2);
+		printf(" 0x%llx%llx", val, val2);
+		return;
 	default: /* syntax error */
 		printf(" err");
 		frm->ptr += n;
@@ -241,11 +246,11 @@ static inline void print_uuid(int n, struct frame *frm)
 		printf(" (%s)", s);
 }
 
-static inline void print_string(int n, struct frame *frm)
+static inline void print_string(int n, struct frame *frm, const char *name)
 {
 	char *s;
 
-	printf(" str");
+	printf(" %s", name);
 	if ((s = malloc(n + 1))) {
 	        strncpy(s, frm->ptr, n);
 		s[n] = '\0';
@@ -291,14 +296,13 @@ static inline void print_de(int level, struct frame *frm, int *split)
 		}
 		print_uuid(n, frm);
 		break;
+	case SDP_DE_URL:
 	case SDP_DE_STRING:
-		print_string(n, frm);
+		print_string(n, frm, de_type == SDP_DE_URL? "url": "str");
 		break;
 	case SDP_DE_SEQ:
 	case SDP_DE_ALT:
 		print_des(de_type, level, n, frm, split);
-		break;
-	case SDP_DE_URL:
 		break;
 	}
 }

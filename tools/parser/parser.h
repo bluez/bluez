@@ -128,6 +128,23 @@ static inline __u32 get_u32(struct frame *frm)
 	return ntohl(get_unaligned(u32_ptr));
 }
 
+static inline __u64 get_u64(struct frame *frm)
+{
+	__u64 *u64_ptr = frm->ptr;
+	__u64 u64 = get_unaligned(u64_ptr), tmp;
+	frm->ptr += 8;
+	frm->len -= 8;
+	tmp = ntohl(u64 & 0xffffffff);
+	u64 = (tmp << 32) | ntohl(u64 >> 32);
+	return u64;
+}
+
+static inline void get_u128(struct frame *frm, __u64 *l, __u64 *h)
+{
+	*h = get_u64(frm);
+	*l = get_u64(frm);
+}
+
 char *get_uuid_name(int uuid);
 
 void raw_dump(int level, struct frame *frm);
