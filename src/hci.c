@@ -643,7 +643,7 @@ int hci_close_dev(int dd)
 }
 
 /* HCI functions that require open device
- * dd - Device descriptor returned by hci_dev_open. */
+ * dd - Device descriptor returned by hci_open_dev. */
 
 int hci_send_cmd(int dd, uint16_t ogf, uint16_t ocf, uint8_t plen, void *param)
 {
