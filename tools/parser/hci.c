@@ -73,9 +73,22 @@ static char *event_map[] = {
 	"Connection Packet Type Changed",
 	"QoS Violation",
 	"Page Scan Mode Change",
-	"Page Scan Repetition Mode Change"
+	"Page Scan Repetition Mode Change",
+	"Flow Specification Complete",
+	"Inquiry Result with RSSI",
+	"Read Remote Extended Features",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Synchronous Connect Complete",
+	"Synchronous Connect Changed"
 };
-#define EVENT_NUM 32
+#define EVENT_NUM 43
 
 static char *cmd_linkctl_map[] = {
 	"Unknown",
@@ -86,7 +99,7 @@ static char *cmd_linkctl_map[] = {
 	"Create Connection",
 	"Disconnect",
 	"Add SCO Connection",
-	"Unknown",
+	"Create Connection Cancel",
 	"Accept Connection Request",
 	"Reject Connection Request",
 	"Link Key Request Reply",
@@ -104,14 +117,25 @@ static char *cmd_linkctl_map[] = {
 	"Master Link Key",
 	"Unknown",
 	"Remote Name Request",
-	"Unknown",
+	"Remote Name Request Cancel",
 	"Read Remote Supported Features",
-	"Unknown",
+	"Read Remote Extended Features",
 	"Read Remote Version Information",
 	"Unknown",
-	"Read Clock offset"
+	"Read Clock Offset",
+	"Read LMP Handle"
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Setup Synchronous Connection",
+	"Accept Synchronous Connection",
+	"Reject Synchronous Connection"
 };
-#define CMD_LINKCTL_NUM 31
+#define CMD_LINKCTL_NUM 42
 
 static char *cmd_linkpol_map[] = {
 	"Unknown",
@@ -119,17 +143,20 @@ static char *cmd_linkpol_map[] = {
 	"Unknown",
 	"Sniff Mode",
 	"Exit Sniff Mode",
-	"Park Mode",
-	"Exit Park Mode",
+	"Park State",
+	"Exit Park State",
 	"QoS Setup",
 	"Unknown",
 	"Role Discovery",
 	"Unknown",
 	"Switch Role",
 	"Read Link Policy Settings",
-	"Write Link Policy Settings"
+	"Write Link Policy Settings",
+	"Read Default Link Policy Settings",
+	"Write Default Link Policy Settings",
+	"Flow Specification"
 };
-#define CMD_LINKPOL_NUM 13
+#define CMD_LINKPOL_NUM 16
 
 static char *cmd_hostctl_map[] = {
 	"Unknown",
@@ -151,7 +178,7 @@ static char *cmd_hostctl_map[] = {
 	"Unknown",
 	"Write Stored Link Key",
 	"Delete Stored Link Key",
-	"Change Local Name",
+	"Write Local Name",
 	"Read Local Name",
 	"Read Connection Accept Timeout",
 	"Write Connection Accept Timeout",
@@ -178,8 +205,8 @@ static char *cmd_hostctl_map[] = {
 	"Read Hold Mode Activity ",
 	"Write Hold Mode Activity",
 	"Read Transmit Power Level",
-	"Read SCO Flow Control Enable",
-	"Write SCO Flow Control Enable",
+	"Read Synchronous Flow Control Enable",
+	"Write Synchronous Flow Control Enable",
 	"Unknown",
 	"Set Host Controller To Host Flow Control",
 	"Unknown",
@@ -194,16 +221,27 @@ static char *cmd_hostctl_map[] = {
 	"Read Page Scan Period Mode",
 	"Write Page Scan Period Mode",
 	"Read Page Scan Mode",
-	"Write Page Scan Mode"
+	"Write Page Scan Mode",
+	"Set AFH Host Channel Classification",
+	"Unknown",
+	"Unknown",
+	"Read Inquiry Scan Type",
+	"Write Inquiry Scan Type",
+	"Read Inquiry Mode",
+	"Write Inquiry Mode",
+	"Read Page Scan Type",
+	"Write Page Scan Type",
+	"Read AFH Channel Assessment Mode",
+	"Write AFH Channel Assessment Mode"
 };
-#define CMD_HOSTCTL_NUM 62
+#define CMD_HOSTCTL_NUM 73
 
 static char *cmd_info_map[] = {
 	"Unknown",
 	"Read Local Version Information",
-	"Unknown",
+	"Read Local Supported Commands",
 	"Read Local Supported Features",
-	"Unknown",
+	"Read Local Extended Features",
 	"Read Buffer Size",
 	"Unknown",
 	"Read Country Code",
@@ -216,11 +254,13 @@ static char *cmd_status_map[] = {
 	"Unknown",
 	"Read Failed Contact Counter",
 	"Reset Failed Contact Counter",
-	"Get Link Quality",
+	"Read Link Quality",
 	"Unknown",
-	"Read RSSI"
+	"Read RSSI",
+	"Read AFH Channel Map",
+	"Read Clock"
 };
-#define CMD_STATUS_NUM 5
+#define CMD_STATUS_NUM 7
 
 static inline void command_dump(int level, struct frame *frm)
 {
