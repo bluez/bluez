@@ -465,7 +465,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n%s\n",
 				features[0], features[1], features[2], features[3],
 				features[4], features[5], features[6], features[7],
-				lmp_featurestostr(features, "\t\t", 3));
+				lmp_featurestostr(features, "\t\t", 63));
 	}
 
 	if (cc)

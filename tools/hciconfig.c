@@ -113,7 +113,7 @@ void print_dev_features(struct hci_dev_info *di, int format)
 			di->features[2], di->features[3],
 			di->features[4], di->features[5],
 			di->features[6], di->features[7],
-			lmp_featurestostr(di->features, "\t\t", 3));
+			lmp_featurestostr(di->features, "\t\t", 63));
 	}
 }
 
