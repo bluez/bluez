@@ -196,6 +196,14 @@ typedef struct {
 } __attribute__ ((packed)) l2cap_info_rsp;
 #define L2CAP_INFO_RSP_SIZE 4
 
+/* info type */
+#define L2CAP_IT_CL_MTU		0x0001
+#define L2CAP_IT_FEAT_MASK	0x0002
+
+/* info result */
+#define L2CAP_IR_SUCCESS	0x0000
+#define L2CAP_IR_NOTSUPP	0x0001
+
 #ifdef __cplusplus
 }
 #endif
