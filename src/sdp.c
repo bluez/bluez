@@ -60,91 +60,105 @@ struct tupla {
 };
 
 static struct tupla Protocol[] = {
-	{ SDP_UUID,     "SDP"     },
-	{ RFCOMM_UUID,  "RFCOMM"  },
-	{ TCS_BIN_UUID, "TCS-BIN" },
-	{ L2CAP_UUID,   "L2CAP"   },
-	{ IP_UUID,      "IP"      },
-	{ UDP_UUID,     "UDP"     },
-	{ TCP_UUID,     "TCP"     },
-	{ TCS_AT_UUID,  "TCS-AT"  },
-	{ OBEX_UUID,    "OBEX"    },
-	{ FTP_UUID,     "FTP"     },
-	{ HTTP_UUID,    "HTTP"    },
-	{ WSP_UUID,     "WSP"     },
-	{ BNEP_UUID,    "BNEP"    },
-	{ HIDP_UUID,    "HIDP"    },
-	{ AVCTP_UUID,   "AVCTP"   },
-	{ AVDTP_UUID,   "AVDTP"   },
-	{ CMTP_UUID,    "CMTP"    },
+	{ SDP_UUID,		"SDP"		},
+	{ UDP_UUID,		"UDP"		},
+	{ RFCOMM_UUID,		"RFCOMM"	},
+	{ TCP_UUID,		"TCP"		},
+	{ TCS_BIN_UUID,		"TCS-BIN"	},
+	{ TCS_AT_UUID,		"TCS-AT"	},
+	{ OBEX_UUID,		"OBEX"		},
+	{ IP_UUID,		"IP"		},
+	{ FTP_UUID,		"FTP"		},
+	{ HTTP_UUID,		"HTTP"		},
+	{ WSP_UUID,		"WSP"		},
+	{ BNEP_UUID,		"BNEP"		},
+	{ UPNP_UUID,		"UPNP"		},
+	{ HIDP_UUID,		"HIDP"		},
+	{ HCRP_CTRL_UUID,	"HCRP-Ctrl"	},
+	{ HCRP_DATA_UUID,	"HCRP-Data"	},
+	{ HCRP_NOTE_UUID,	"HCRP-Notify"	},
+	{ AVCTP_UUID,		"AVCTP"		},
+	{ AVDTP_UUID,		"AVDTP"		},
+	{ CMTP_UUID,		"CMTP"		},
+	{ UDI_UUID,		"UDI"		},
+	{ L2CAP_UUID,		"L2CAP"		},
 	{ 0 }
 };
 
 static struct tupla ServiceClass[] = {
-	{ SDP_SERVER_SVCLASS_ID,        "SDP Server" },
-	{ BROWSE_GRP_DESC_SVCLASS_ID,   "Browse Group Descriptor" },
-	{ PUBLIC_BROWSE_GROUP,          "Public Browse Group" },
-	{ SERIAL_PORT_SVCLASS_ID,       "Serial Port" },
-	{ LAN_ACCESS_SVCLASS_ID,        "LAN Access Using PPP" },
-	{ DIALUP_NET_SVCLASS_ID,        "Dialup Networking" },
-	{ IRMC_SYNC_SVCLASS_ID,	        "IrMCSync" },
-	{ OBEX_OBJPUSH_SVCLASS_ID,      "OBEX Object Push" },
-	{ OBEX_FILETRANS_SVCLASS_ID,    "OBEX File Transfer" },
-	{ IRMC_SYNC_CMD_SVCLASS_ID,     "IrMCSync Command" },
-	{ HEADSET_SVCLASS_ID,           "Headset" },
-	{ CORDLESS_TELEPHONY_SVCLASS_ID,"Cordless Telephony" },
-	{ AUDIO_SOURCE_SVCLASS_ID,      "Audio Source" },
-	{ AUDIO_SINK_SVCLASS_ID,        "Audio Sink" },
-	{ INTERCOM_SVCLASS_ID,          "Intercom" },
-	{ FAX_SVCLASS_ID,               "Fax" },
-	{ HEADSET_AGW_SVCLASS_ID,       "Headset Audio Gateway" },
-	{ WAP_SVCLASS_ID,               "WAP" },
-	{ WAP_CLIENT_SVCLASS_ID,        "WAP Client" },
-	{ PNP_INFO_SVCLASS_ID,          "PnP Information" },
-	{ GENERIC_NETWORKING_SVCLASS_ID,"Generic Networking" },
-	{ GENERIC_FILETRANS_SVCLASS_ID, "Generic File Transfer" },
-	{ GENERIC_AUDIO_SVCLASS_ID,     "Generic Audio" },
-	{ GENERIC_TELEPHONY_SVCLASS_ID, "Generic Telephony" },
-	{ PANU_SVCLASS_ID,              "PAN user" },
-	{ NAP_SVCLASS_ID,               "Network access point" },
-	{ GN_SVCLASS_ID,                "PAN group network" },
-	{ HID_SVCLASS_ID,               "Human Interface Device" },
-	{ CIP_SVCLASS_ID,               "Common ISDN Access" },
-	{ SAP_SVCLASS_ID,               "SIM Access" },
+	{ SDP_SERVER_SVCLASS_ID,		"SDP Server"			},
+	{ BROWSE_GRP_DESC_SVCLASS_ID,		"Browse Group Descriptor"	},
+	{ PUBLIC_BROWSE_GROUP,			"Public Browse Group"		},
+	{ SERIAL_PORT_SVCLASS_ID,		"Serial Port"			},
+	{ LAN_ACCESS_SVCLASS_ID,		"LAN Access Using PPP"		},
+	{ DIALUP_NET_SVCLASS_ID,		"Dialup Networking"		},
+	{ IRMC_SYNC_SVCLASS_ID,			"IrMC Sync"			},
+	{ OBEX_OBJPUSH_SVCLASS_ID,		"OBEX Object Push"		},
+	{ OBEX_FILETRANS_SVCLASS_ID,		"OBEX File Transfer"		},
+	{ IRMC_SYNC_CMD_SVCLASS_ID,		"IrMC Sync Command"		},
+	{ HEADSET_SVCLASS_ID,			"Headset"			},
+	{ CORDLESS_TELEPHONY_SVCLASS_ID,	"Cordless Telephony"		},
+	{ AUDIO_SOURCE_SVCLASS_ID,		"Audio Source"			},
+	{ AUDIO_SINK_SVCLASS_ID,		"Audio Sink"			},
+	{ AV_REMOTE_TARGET_SVCLASS_ID,		"AV Remote Target"		},
+	{ ADVANCED_AUDIO_SVCLASS_ID,		"Advanced Audio"		},
+	{ AV_REMOTE_SVCLASS_ID,			"AV Remote"			},
+	{ VIDEO_CONF_SVCLASS_ID,		"Video Conferencing"		},
+	{ INTERCOM_SVCLASS_ID,			"Intercom"			},
+	{ FAX_SVCLASS_ID,			"Fax"				},
+	{ HEADSET_AGW_SVCLASS_ID,		"Headset Audio Gateway"		},
+	{ WAP_SVCLASS_ID,			"WAP"				},
+	{ WAP_CLIENT_SVCLASS_ID,		"WAP Client"			},
+	{ PANU_SVCLASS_ID,			"PAN User"			},
+	{ NAP_SVCLASS_ID,			"Network Access Point"		},
+	{ GN_SVCLASS_ID,			"PAN Group Network"		},
+	{ DIRECT_PRINTING_SVCLASS_ID,		"Direct Printing"		},
+	{ REFERENCE_PRINTING_SVCLASS_ID,	"Reference Printing"		},
+	{ IMAGING_SVCLASS_ID,			"Imaging"			},
+	{ IMAGING_RESPONDER_SVCLASS_ID,		"Imaging Responder"		},
+	{ IMAGING_ARCHIVE_SVCLASS_ID,		"Imaging Automatic Archive"	},
+	{ IMAGING_REFOBJS_SVCLASS_ID,		"Imaging Referenced Objects"	},
+	{ HANDSFREE_SVCLASS_ID,			"Handsfree"			},
+	{ HANDSFREE_AGW_SVCLASS_ID,		"Handfree Audio Gateway"	},
+	{ DIRECT_PRT_REFOBJS_SVCLASS_ID,	"Direct Printing Ref. Objects"	},
+	{ REFLECTED_UI_SVCLASS_ID,		"Reflected UI"			},
+	{ BASIC_PRINTING_SVCLASS_ID,		"Basic Printing"		},
+	{ PRINTING_STATUS_SVCLASS_ID,		"Printing Status"		},
+	{ HID_SVCLASS_ID,			"Human Interface Device"	},
+	{ HCR_SVCLASS_ID,			"Hardcopy Cable Replacement"	},
+	{ HCR_PRINT_SVCLASS_ID,			"HCR Print"			},
+	{ HCR_SCAN_SVCLASS_ID,			"HCR Scan"			},
+	{ CIP_SVCLASS_ID,			"Common ISDN Access"		},
+	{ VIDEO_CONF_GW_SVCLASS_ID,		"Video Conferencing Gateway"	},
+	{ UDI_MT_SVCLASS_ID,			"UDI MT"			},
+	{ UDI_TA_SVCLASS_ID,			"UDI TA"			},
+	{ AV_SVCLASS_ID,			"Audio/Video"			},
+	{ SAP_SVCLASS_ID,			"SIM Access"			},
+	{ PNP_INFO_SVCLASS_ID,			"PnP Information"		},
+	{ GENERIC_NETWORKING_SVCLASS_ID,	"Generic Networking"		},
+	{ GENERIC_FILETRANS_SVCLASS_ID,		"Generic File Transfer"		},
+	{ GENERIC_AUDIO_SVCLASS_ID,		"Generic Audio"			},
+	{ GENERIC_TELEPHONY_SVCLASS_ID,		"Generic Telephony"		},
+	{ UPNP_SVCLASS_ID,			"UPnP"				},
+	{ UPNP_IP_SVCLASS_ID,			"UPnP IP"			},
+	{ UPNP_PAN_SVCLASS_ID,			"UPnP PAN"			},
+	{ UPNP_LAP_SVCLASS_ID,			"UPnP LAP"			},
+	{ UPNP_L2CAP_SVCLASS_ID,		"UPnP L2CAP"			},
+	{ VIDEO_SOURCE_SVCLASS_ID,		"Video Source"			},
+	{ VIDEO_SINK_SVCLASS_ID,		"Video Sink"			},
 	{ 0 }
 };
 
-static struct tupla Profile[] = {
-	{ SERIAL_PORT_PROFILE_ID,        "Serial Port" },
-	{ LAN_ACCESS_PROFILE_ID,         "LAN Access Using PPP" },
-	{ DIALUP_NET_PROFILE_ID,         "Dialup Networking" },
-	{ IRMC_SYNC_PROFILE_ID,          "IrMCSync" },
-	{ OBEX_OBJPUSH_PROFILE_ID,       "OBEX Object Push" },
-	{ OBEX_FILETRANS_PROFILE_ID,     "OBEX File Transfer" },
-	{ IRMC_SYNC_CMD_PROFILE_ID,      "IrMCSync Command" },
-	{ HEADSET_PROFILE_ID,            "Headset" },
-	{ CORDLESS_TELEPHONY_PROFILE_ID, "Cordless Telephony" },
-	{ ADVANCED_AUDIO_PROFILE_ID,     "Advanced Audio" },
-	{ INTERCOM_PROFILE_ID,           "Intercom" },
-	{ FAX_PROFILE_ID,                "Fax" },
-	{ HEADSET_AGW_PROFILE_ID,        "Headset Audio Gateway" },
-	{ WAP_PROFILE_ID,                "WAP" },
-	{ WAP_CLIENT_PROFILE_ID,         "WAP Client" },
-	{ PANU_PROFILE_ID,               "PAN user" },
-	{ NAP_PROFILE_ID,                "PAN access point" },
-	{ GN_PROFILE_ID,                 "PAN group network" },
-	{ HID_PROFILE_ID,                "Human Interface Device" },
-	{ CIP_PROFILE_ID,                "Common ISDN Access" },
-	{ SAP_PROFILE_ID,                "SIM Access" },
-	{ 0 }
-};
+#define Profile ServiceClass
 
 static char *string_lookup(struct tupla *pt0, int index)
 {
 	struct tupla *pt;
+
 	for (pt = pt0; pt->index; pt++)
-		if (pt->index == index) 
+		if (pt->index == index)
 			return pt->str;
+
 	return "";
 }
 
@@ -160,6 +174,7 @@ static int uuid2str(struct tupla *message, const uuid_t *uuid, char *str, size_t
 		snprintf(str, n, "NULL");
 		return -2;
 	}
+
 	switch (uuid->type) {
 	case SDP_UUID16:
 		str2 = string_lookup(message, uuid->value.uuid16);
@@ -175,6 +190,7 @@ static int uuid2str(struct tupla *message, const uuid_t *uuid, char *str, size_t
 		snprintf(str, n, "Type of UUID (%x) unknown.", uuid->type);
 		return -1;
 	}
+
 	return 0;
 }
 
