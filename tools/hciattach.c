@@ -908,8 +908,10 @@ int init_uart(char *dev, struct uart_t *u, int send_break)
 
 	tcflush(fd, TCIOFLUSH);
 
-	if (send_break)
+	if (send_break) {
 		tcsendbreak(fd, 0);
+		usleep(500000);
+	}
 
 	if (u->init && u->init(fd, u, &ti) < 0)
 		return -1;
