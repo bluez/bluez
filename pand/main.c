@@ -62,6 +62,7 @@ static int  persist;
 static int  use_sdp = 1;
 static int  use_cache;
 static int  encrypt;
+static int  secure;
 static int  master;
 static int  cleanup;
 static int  search_duration = 10;
@@ -166,9 +167,10 @@ static int do_listen(void)
 	lm = 0;
 	if (master)
 		lm |= L2CAP_LM_MASTER;
-
 	if (encrypt)
 		lm |= L2CAP_LM_ENCRYPT;
+	if (secure)
+		lm |= L2CAP_LM_SECURE;
 
 	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
 		syslog(LOG_ERR, "Failed to set link mode. %s(%d)", strerror(errno), errno);
@@ -493,6 +495,7 @@ static struct option main_lopts[] = {
 	{ "nodetach", 0, 0, 'n' },
 	{ "persist",  2, 0, 'p' },
 	{ "encrypt",  0, 0, 'E' },
+	{ "secure",   0, 0, 'S' },
 	{ "master",   0, 0, 'M' },
 	{ "cache",    0, 0, 'C' },
 	{ "pidfile",  1, 0, 'P' },
@@ -500,7 +503,7 @@ static struct option main_lopts[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:e:i:lnp::DQ::EMC::P:z";
+static char main_sopts[] = "hsc:k:Kr:e:i:lnp::DQ::ESMC::P:z";
 
 static char main_help[] = 
 	"Bluetooth PAN daemon version " VERSION " \n"
@@ -520,6 +523,7 @@ static char main_help[] =
 	"\t--device -i <bdaddr>      Source bdaddr\n"
 	"\t--nosdp -D                Disable SDP\n"
 	"\t--encrypt -E              Enable encryption\n"
+	"\t--secure -S               Secure connection\n"
 	"\t--master -M               Become the master of a piconet\n"
 	"\t--nodetach -n             Do not become a daemon\n"
 	"\t--persist -p[interval]    Persist mode\n"
@@ -584,6 +588,10 @@ int main(int argc, char **argv)
 
 		case 'E':
 			encrypt = 1;
+			break;
+
+		case 'S':
+			secure = 1;
 			break;
 
 		case 'M':
