@@ -275,6 +275,8 @@ char *bt_compidtostr(int compid)
 		return "Commil Ltd";
 	case 52:
 		return "Computer Access Technology Corporation (CATC)";
+	case 53:
+		return "Eclipse (HQ Espana) S.L.";
 	case 65535:
 		return "internal use";
 	default:
