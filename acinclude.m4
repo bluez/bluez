@@ -175,9 +175,15 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	hid2hci_enable=${usb_found}
 	bcm203x_enable=no
 
-	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options]), [
-		pie_enable=${enableval}
+	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
 		debug_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie], [enable position independent executables flag]), [
+		pie_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		dbus_enable=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
@@ -186,14 +192,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		bluepin_enable=${enableval}
 		hid2hci_enable=${enableval}
 		bcm203x_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie], [enable position independent executables option]), [
-		pie_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
-		debug_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
@@ -228,13 +226,13 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		bcm203x_enable=${enableval}
 	])
 
+	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
+		CFLAGS="$CFLAGS -g"
+	fi
+
 	if (test "${pie_enable}" = "yes" && test "${ac_cv_prog_cc_pie}" = "yes"); then
 		CFLAGS="$CFLAGS -fPIE"
 		LDFLAGS="$LDFLAGS -pie"
-	fi
-
-	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
-		CFLAGS="$CFLAGS -g"
 	fi
 
 	AM_CONDITIONAL(DBUS, test "${dbus_enable}" = "yes" && test "${dbus_found}" = "yes")
