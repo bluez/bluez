@@ -40,8 +40,8 @@
 
 #include <bluetooth/bluetooth.h>
 
-#include "rfcomm.h"
 #include "parser.h"
+#include "rfcomm.h"
 
 static char *cr_str[] = {
 	"RSP",
@@ -49,12 +49,13 @@ static char *cr_str[] = {
 };
 
 #define CR_STR(mcc_head) cr_str[mcc_head->type.cr]
+#define GET_DLCI(addr) ((addr.server_chn << 1) | (addr.d & 1))
 
 void print_rfcomm_hdr(long_frame_head* head, __u8 *ptr, int len)
 {
 	address_field  addr  = head->addr;
 	__u8           ctr   = head->control;
-	__u16          ilen  = head->length.len;
+	__u16          ilen  = head->length.bits.len;
 	__u8           ctr_type,pf,dlci,fcs;
 
 	dlci     = GET_DLCI(addr);
@@ -67,7 +68,7 @@ void print_rfcomm_hdr(long_frame_head* head, __u8 *ptr, int len)
 
 void print_mcc(mcc_long_frame_head* mcc_head)
 {
-	printf("mcc_len %d\n", mcc_head->length.len);
+	printf("mcc_len %d\n", mcc_head->length.bits.len);
 }
 
 static inline void mcc_test(int level, __u8 *ptr, int len, 
@@ -86,6 +87,7 @@ static inline void mcc_fcon(int level, __u8 *ptr, int len,
 	print_rfcomm_hdr(head, ptr, len);
 	print_mcc(mcc_head);
 }
+
 static inline void mcc_fcoff(int level, __u8 *ptr, int len, 
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
@@ -94,37 +96,48 @@ static inline void mcc_fcoff(int level, __u8 *ptr, int len,
 	print_rfcomm_hdr(head, ptr, len);
 	print_mcc(mcc_head);
 }
+
 static inline void mcc_msc(int level, __u8 *ptr, int len, 
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
-	msc_data *msc = (void*) ptr;
+	msc_msg *msc = (void*) (ptr - STRUCT_END(msc_msg, mcc_s_head));
 
 	printf("MSC %s: ", CR_STR(mcc_head));
 	print_rfcomm_hdr(head, ptr, len);
 	print_mcc(mcc_head);
 	p_indent(level, 0); 
 	printf("dlci %d fc %d rtc %d rtr %d ic %d dv %d",
-		GET_DLCI(msc->addr), msc->v24_sigs.fc, msc->v24_sigs.rtc, 
+		GET_DLCI(msc->dlci), msc->v24_sigs.fc, msc->v24_sigs.rtc, 
 		msc->v24_sigs.rtr, msc->v24_sigs.ic, msc->v24_sigs.dv );
-	if (len == MSC_DATA_BREAK_SIZE)
-		printf(" b1 %d b2 %d b3 %d len %d\n", msc->brk_sigs.b1,
-		msc->brk_sigs.b2, msc->brk_sigs.b3, msc->brk_sigs.len);
+
+	/* Assuming that break_signals field is _not declared_ in
+	   struct msc_msg... */
+	if (len > 
+	  STRUCT_OFFSET(msc_msg, fcs) - STRUCT_END(msc_msg, v24_sigs)) {
+		break_signals *brk = (break_signals *)
+			(ptr + STRUCT_END(msc_msg, v24_sigs));
+		printf(" b1 %d b2 %d b3 %d len %d\n", 
+			brk->b1, brk->b2, brk->b3, brk->len);
+	}
 	else
 		printf("\n");
 }
+
 static inline void mcc_rpn(int level, __u8 *ptr, int len,
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
-	rpn_data *rpn = (void*) ptr;
+	rpn_msg *rpn = (void*) (ptr - STRUCT_END(rpn_msg, mcc_s_head));
 
 	printf("RPN %s: ", CR_STR(mcc_head));
 	print_rfcomm_hdr(head, ptr, len);
 	print_mcc(mcc_head);
-	printf("dlci %d ", GET_DLCI(rpn->addr));
+	printf("dlci %d ", GET_DLCI(rpn->dlci));
 
-	if (len == RPN_DATA_NO_RPN_SIZE) {
+	/* Assuming that rpn_val is _declared_ as a member of rpn_msg... */
+	if (len <=
+	  STRUCT_OFFSET(rpn_msg, rpn_val) - STRUCT_END(rpn_msg, mcc_s_head)) {
 		printf("\n");
 		return;
 	}
@@ -138,35 +151,38 @@ static inline void mcc_rpn(int level, __u8 *ptr, int len,
 	printf(" rtri: %d rtro: %d rtci: %d rtco: %d xon: %d xoff: %d pm: %04x",
 		rpn->rpn_val.rtr_input, rpn->rpn_val.rtr_output,
 		rpn->rpn_val.rtc_input, rpn->rpn_val.rtc_output,
-		rpn->rpn_val.xon___u8, rpn->rpn_val.xoff___u8,
-		*((__u16*)&rpn->rpn_val.pm));
+		rpn->rpn_val.xon, rpn->rpn_val.xoff,
+		btohs(*(__u16 *)&(rpn->rpn_val.pm)));
 }
+
 static inline void mcc_rls(int level, __u8 *ptr, int len,
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
-	rls_data* rls = (void*) ptr;
+	rls_msg* rls = (void*) (ptr - STRUCT_END(rls_msg, mcc_s_head));
 
-	printf("RLS %s ", CR_STR(mcc_head));
+	printf("RLS %s: ", CR_STR(mcc_head));
 	print_rfcomm_hdr(head, ptr, len);
 	print_mcc(mcc_head);
-	printf("dlci %d error: %d", GET_DLCI(rls->addr), rls->error);
+	printf("dlci %d error: %d", GET_DLCI(rls->dlci), rls->error);
 }
+
 static inline void mcc_pn(int level, __u8 *ptr, int len,
 				long_frame_head *head, 
 				mcc_long_frame_head *mcc_head)
 {
-	pn_data *pn = (void*) ptr;
+	pn_msg *pn = (void*) (ptr - STRUCT_END(pn_msg, mcc_s_head));
 
-	printf("PN %s", CR_STR(mcc_head));
+	printf("PN %s: ", CR_STR(mcc_head));
 	print_rfcomm_hdr(head, ptr, len);
 	print_mcc(mcc_head);
 
 	p_indent(level, 0); 
-	printf("dlci %d frame_type %d conv_lay %d pri %d ack_timer %d "
-		"frame_size %d max_retrans %d win_size %d\n",
-		pn->dlci, pn->frame_type, pn->conv_layer, pn->pri,
-		pn->ack_timer, pn->frame_size, pn->max_retrans, pn->win_size);
+	printf("dlci %d frame_type %d credit_flow %d pri %d ack_timer %d "
+		"frame_size %d max_retrans %d credits %d\n",
+		pn->dlci, pn->frame_type, pn->credit_flow, pn->prior,
+		pn->ack_timer, btohs(pn->frame_size), pn->max_nbrof_retrans, 
+		pn->credits);
 }
 
 static inline void mcc_nsc(int level, __u8 *ptr, int len,
@@ -174,7 +190,7 @@ static inline void mcc_nsc(int level, __u8 *ptr, int len,
 				mcc_long_frame_head *mcc_head)
 {
 
-	nsc_data *nsc = (void*) ptr;
+	nsc_msg *nsc = (void*) (ptr - STRUCT_END(nsc_msg, mcc_s_head));
 
 	printf("NSC %s: ", CR_STR(mcc_head));
 	print_rfcomm_hdr(head, ptr, len);
@@ -182,7 +198,7 @@ static inline void mcc_nsc(int level, __u8 *ptr, int len,
 
 	p_indent(level, 0); 
 	printf("cr %d, mcc_cmd_type %x\n", 
-		nsc->cmd_type.cr, nsc->cmd_type.type );
+		nsc->command_type.cr, nsc->command_type.type );
 }
 
 static inline void mcc_frame(int level, struct frame *frm, long_frame_head *head)
@@ -193,11 +209,12 @@ static inline void mcc_frame(int level, struct frame *frm, long_frame_head *head
 
         if ( mcc_short_head_p->length.ea == EA ) {
                 mcc_head.type       = mcc_short_head_p->type;
-                mcc_head.length.len = mcc_short_head_p->length.len;
-                hdr_size = MCC_SHORT_FRAME_HEAD_SIZE;
+                mcc_head.length.bits.len = mcc_short_head_p->length.len;
+                hdr_size = sizeof(mcc_short_frame_head);
         } else {
                 mcc_head = *(mcc_long_frame_head *)frm->ptr;
-                hdr_size = MCC_LONG_FRAME_HEAD_SIZE;
+                mcc_head.length.val = btohs(mcc_head.length.val);
+                hdr_size = sizeof(mcc_long_frame_head);
         }
 
         frm->ptr += hdr_size;
@@ -221,19 +238,19 @@ static inline void mcc_frame(int level, struct frame *frm, long_frame_head *head
 		mcc_msc(level, frm->ptr, frm->len, head, &mcc_head);
 		break;
 	case RPN:
-		mcc_test(level, frm->ptr, frm->len, head, &mcc_head);
+		mcc_rpn(level, frm->ptr, frm->len, head, &mcc_head);
 		break;
 	case RLS:
-		mcc_test(level, frm->ptr, frm->len, head, &mcc_head);
+		mcc_rls(level, frm->ptr, frm->len, head, &mcc_head);
 		break;
 	case PN:
-		mcc_test(level, frm->ptr, frm->len, head, &mcc_head);
+		mcc_pn(level, frm->ptr, frm->len, head, &mcc_head);
 		break;
 	case NSC:
-		mcc_test(level, frm->ptr, frm->len, head, &mcc_head);
+		mcc_nsc(level, frm->ptr, frm->len, head, &mcc_head);
 		break;
 	default:
-		printf("MCC ERR: ");
+		printf("MCC message type 0x%02x: ", mcc_head.type.type);
 		print_rfcomm_hdr(head, frm->ptr, frm->len);
 		printf("\n");
 		
@@ -266,11 +283,12 @@ void rfcomm_dump(int level, struct frame *frm)
 	if (short_head_p->length.ea == EA) {
 		head.addr       = short_head_p->addr;
 		head.control    = short_head_p->control;
-		head.length.len = short_head_p->length.len;
-		hdr_size = SHORT_FRAME_HEAD_SIZE;
+		head.length.bits.len = short_head_p->length.len;
+		hdr_size = sizeof(short_frame_head);
 	} else {
 		head = *(long_frame_head *) frm->ptr;
-		hdr_size = LONG_FRAME_HEAD_SIZE;
+		head.length.val = btohs(head.length.val);
+		hdr_size = sizeof(long_frame_head);
 	}
 
 	frm->ptr += hdr_size;
