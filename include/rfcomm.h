@@ -43,7 +43,7 @@ extern "C" {
 struct sockaddr_rc {
 	sa_family_t rc_family;
 	bdaddr_t    rc_bdaddr;
-	int         rc_channel;
+	uint8_t     rc_channel;
 };
 
 /* RFCOMM TTY support */
