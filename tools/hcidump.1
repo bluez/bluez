@@ -38,6 +38,10 @@ Sets max length of processed packets to
 Sets default Protocol Service Multiplexer to
 .IR psm .
 .TP
+.BI -m " <compid>" "\fR,\fP \-\^\-manufacturer=" "<compid>"
+Sets default company id for manufacturer to
+.IR compid .
+.TP
 .BI -w " <file>" "\fR,\fP \-\^\-save-dump=" "<file>"
 Parse output is not printed to screen, instead data read from device is saved in file
 .IR file .
@@ -55,11 +59,14 @@ is crated with option
 .BR -t ", " "\-\^\-ts"
 Prepend a time stamp to every packet.
 .TP
+.BR -a ", " "\-\^\-ascii"
+For every packet, not only is the packet type displayed, but also all data in ASCII.
+.TP
 .BR -x ", " "\-\^\-hex"
 For every packet, not only is the packet type displayed, but also all data in hex.
 .TP
-.BR -a ", " "\-\^\-ascii"
-For every packet, not only is the packet type displayed, but also all data in ASCII.
+.BR -X ", " "\-\^\-ext"
+For every packet, not only is the packet type displayed, but also all data in hex and ASCII.
 .TP
 .BR -R ", " "\-\^\-raw"
 Raw mode: do not display packet type, only data.
