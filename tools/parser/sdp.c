@@ -279,7 +279,7 @@ static inline void print_string(int n, struct frame *frm, const char *name)
 static inline void print_des(uint8_t de_type, int level, int n, struct frame *frm, int *split)
 {
 	int len = frm->len;
-	while (len - frm->len < n )
+	while (len - frm->len < n && frm->len > 0) 
 		print_de(level, frm, split);
 }
 
@@ -328,15 +328,14 @@ static inline void print_de(int level, struct frame *frm, int *split)
 
 static inline void print_srv_srch_pat(int level, struct frame *frm)
 {
-	int len = frm->len;
-	int n1;
-	int n2;
+	int len, n1, n2;
 
 	p_indent(level, frm);
 	printf("pat");
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
-		while (len - frm->len <= n1 ) {
+	        len = frm->len;
+		while (len - frm->len < n1 && frm->len > 0) {
 			if (parse_de_hdr(frm,&n2) == SDP_DE_UUID) {
 				print_uuid(n2, frm);
 			} else {
@@ -356,14 +355,14 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 {
 	uint16_t attr_id;
 	uint32_t attr_id_range;
-	int len = frm->len;
-	int n1, n2;
+	int len, n1, n2;
 
 	p_indent(level, frm);
 	printf("aid(s)");
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
-		while (len - frm->len <= n1 ) {
+	        len = frm->len;
+		while (len - frm->len < n1 && frm->len > 0) {
 			/* Print AttributeID */
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT) {
 				char *name;
@@ -397,11 +396,11 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 static inline void print_attr_list(int level, struct frame *frm)
 {
 	uint16_t attr_id;
-	int   n1, n2, split;
-	int   len = frm->len;
+	int len, n1, n2, split;
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
-		while (len - frm->len < n1 ) {
+	        len = frm->len;
+		while (len - frm->len < n1 && frm->len > 0) {
 			/* Print AttributeID */
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT && n2 == sizeof(attr_id)) {
 				char *name;
@@ -433,12 +432,10 @@ static inline void print_attr_list(int level, struct frame *frm)
 
 static inline void print_attr_lists(int level, struct frame *frm, int len)
 {
-	int   n;
-	int   cnt = 0;
+	int n, cnt = 0;
 
 	if (parse_de_hdr(frm, &n) == SDP_DE_SEQ) {
-//	printf(" len 0x%x frm->len 0x%x n 0x%x\n", len, frm->len, n);
-		while (len - frm->len < n ) {
+		while (len - frm->len < n && frm->len > 0) {
 			p_indent(level, 0);
 			printf("srv rec #%d\n", cnt++);
 			print_attr_list(level+1, frm);
