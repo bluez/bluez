@@ -18,6 +18,10 @@ AC_DEFUN([AC_PREFIX_BLUEZ], [
 
 		prefix="${ac_default_prefix}"
 	fi
+
+	if (test "${libdir}" = "\${exec_prefix}/lib"); then
+		libdir="${prefix}/lib"
+	fi
 ])
 
 AC_DEFUN([AC_PATH_BLUEZ], [
