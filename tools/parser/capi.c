@@ -41,7 +41,6 @@
 #define CAPI_U16(frm) (htobs(htons(get_u16(frm))))
 #define CAPI_U32(frm) (htobl(htonl(get_u32(frm))))
 
-
 static char *cmd2str(uint8_t cmd)
 {
 	switch (cmd) {

@@ -39,7 +39,6 @@
 
 #include "parser.h"
 
-
 static char *event_map[] = {
 	"Unknown",
 	"Inquiry Complete",
@@ -324,7 +323,7 @@ static inline void command_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 
-	printf("HCI Command: %s(0x%2.2x|0x%4.4x) plen %d\n", 
+	printf("HCI Command: %s (0x%2.2x|0x%4.4x) plen %d\n", 
 		cmd, ogf, ocf, hdr->plen);
 
 	frm->ptr += HCI_COMMAND_HDR_SIZE;
@@ -343,12 +342,12 @@ static inline void event_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 
 	if (hdr->evt <= EVENT_NUM)
-		printf("HCI Event: %s(0x%2.2x) plen %d\n",
+		printf("HCI Event: %s (0x%2.2x) plen %d\n",
 			event_map[hdr->evt], hdr->evt, hdr->plen);
 	else if (hdr->evt == EVT_TESTING)
-		printf("HCI Event: Testing(0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
+		printf("HCI Event: Testing (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
 	else if (hdr->evt == EVT_VENDOR)
-		printf("HCI Event: Vendor(0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
+		printf("HCI Event: Vendor (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
 	else
 		printf("HCI Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
 

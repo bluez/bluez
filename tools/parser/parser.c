@@ -36,7 +36,6 @@
 
 #include "parser.h"
 
-
 struct parser_t parser;
 
 void init_parser(unsigned long flags, unsigned long filter, unsigned int defpsm)

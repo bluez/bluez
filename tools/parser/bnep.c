@@ -43,7 +43,6 @@
 
 #define PAYLOAD_RAW_DUMP
 
-
 /* BNEP Type */
 #define BNEP_GENERAL_ETHERNET			0x00
 #define BNEP_CONTROL				0x01
@@ -88,6 +87,7 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 	case BNEP_CONTROL_COMMAND_NOT_UNDERSTOOD:
 		printf("Not Understood(0x%02x) type 0x%02x\n", type, get_u8(frm));
 		break;
+
 	case BNEP_SETUP_CONNECTION_REQUEST_MSG:
 		uuid_size = get_u8(frm);
 		printf("Setup Req(0x%02x) size 0x%02x ", type, uuid_size);
@@ -135,9 +135,11 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 			break;
 		}
 		break;
+
 	case BNEP_SETUP_CONNECTION_RESPONSE_MSG:
 		printf("Setup Rsp(0x%02x) res 0x%04x\n", type, get_u16(frm));
 		break;
+
 	case BNEP_FILTER_NET_TYPE_SET_MSG:
 		length = get_u16(frm);
 		printf("Filter NetType Set(0x%02x) len 0x%04x\n", type, length);
@@ -147,9 +149,11 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 			printf("0x%04x\n", get_u16(frm));
 		}
 		break;
+
 	case BNEP_FILTER_NET_TYPE_RESPONSE_MSG:
 		printf("Filter NetType Rsp(0x%02x) res 0x%04x\n", type, get_u16(frm));
 		break;
+
 	case BNEP_FILTER_MULT_ADDR_SET_MSG:
 		length = get_u16(frm);
 		printf("Filter MultAddr Set(0x%02x) len 0x%04x\n", type, length);
@@ -159,9 +163,11 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 			printf("%s\n", get_macaddr(frm));
 		}
 		break;
+
 	case BNEP_FILTER_MULT_ADDR_RESPONSE_MSG:
 		printf("Filter MultAddr Rsp(0x%02x) res 0x%04x\n", type, get_u16(frm));
 		break;
+
 	default:
 		printf("Unknown control type(0x%02x)\n", type);
 		raw_ndump(level + 1, frm, header_length - 1);
@@ -183,6 +189,7 @@ static void bnep_eval_extension(int level, struct frame *frm)
 		printf("Ext Control(0x%02x|%s) len 0x%02x\n", type & 0x7f, extension ? "1" : "0", length);
 		bnep_control(level, frm, length);
 		break;
+
 	default:
 		printf("Ext Unknown(0x%02x|%s) len 0x%02x\n", type & 0x7f, extension ? "1" : "0", length);
 		raw_ndump(level + 1, frm, length);
@@ -233,14 +240,17 @@ static void ip_dump(int level, struct frame *frm)
 		printf("TCP:\n");
 		raw_dump(level, frm);
 		break;
+
 	case IPPROTO_UDP:
 		printf("UDP:\n");
 		raw_dump(level, frm);
 		break;
+
 	case IPPROTO_ICMP:
 		printf("ICMP:\n");
 		raw_dump(level, frm);
 		break;
+
 	default:
 		printf("Unknown Protocol: 0x%02x\n", ip->ip_p);
 		raw_dump(level, frm);
@@ -262,12 +272,14 @@ void bnep_dump(int level, struct frame *frm)
 		printf("BNEP: Control(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
 		bnep_control(level, frm, -1);
 		break;
+
 	case BNEP_COMPRESSED_ETHERNET:
 		printf("BNEP: Compressed(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
 		proto = get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 		break;
+
 	case BNEP_GENERAL_ETHERNET:
 		printf("BNEP: General ethernet(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
@@ -276,6 +288,7 @@ void bnep_dump(int level, struct frame *frm)
 		proto = get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 		break;
+
 	case BNEP_COMPRESSED_ETHERNET_DEST_ONLY:
 		printf("BNEP: Compressed DestOnly(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
@@ -283,6 +296,7 @@ void bnep_dump(int level, struct frame *frm)
 		proto = get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 		break;
+
 	case BNEP_COMPRESSED_ETHERNET_SOURCE_ONLY:
 		printf("BNEP: Compressed SrcOnly(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
@@ -290,6 +304,7 @@ void bnep_dump(int level, struct frame *frm)
 		proto = get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 		break;
+
 	default:
 		printf("(Unknown packet type)\n");
 		return;
@@ -319,16 +334,19 @@ void bnep_dump(int level, struct frame *frm)
 		printf("ARP: ");
 		arp_dump(level, frm);
 		break;
+
 	case ETHERTYPE_REVARP:
 		p_indent(++level, frm);
 		printf("RARP: ");
 		arp_dump(level, frm);
 		break;
+
 	case ETHERTYPE_IP:
 		p_indent(++level, frm);
 		printf("IP: ");
 		ip_dump(level, frm);
 		break;
+
 	default:
 		raw_dump(level, frm);
 	}

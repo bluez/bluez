@@ -38,34 +38,36 @@
 #define GET_BIT(pos,bitfield) ((bitfield[(pos)/32]) & (1 << ((pos) % 32)))
 #define SET_BIT(pos,bitfield) ((bitfield[(pos)/32]) |= (1 << ((pos) % 32))) 
 #define CLR_BIT(pos,bitfield) ((bitfield[(pos)/32]) &= ((1 << ((pos) % 32)) ^ (~0)))
-#define SET_PF(ctr) ((ctr) | (1 << 4)) 
+
+
 /* Sets the P/F-bit in the control field */
+#define SET_PF(ctr) ((ctr) | (1 << 4)) 
+/* Clears the P/F-bit in the control field */
 #define CLR_PF(ctr) ((ctr) & 0xef)
-/* clears the P/F-bit in the control field */
+/* Returns the P/F-bit */
 #define GET_PF(ctr) (((ctr) >> 4) & 0x1)
-/* Returns the P/F bit */
 
-#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
-/* endian-swapping macros for structs */
+/* Endian-swapping macros for structs */
 #define swap_long_frame(x) ((x)->h.length.val = le16_to_cpu((x)->h.length.val))
 #define swap_mcc_long_frame(x) (swap_long_frame(x))
 
+/* Used for UIH packets */
 #define SHORT_CRC_CHECK 2
-/* Used for uih packets */
+/* Used for all packet exepts for the UIH packets */
 #define LONG_CRC_CHECK 3
-/* Used for all packet exepts for the uih packets */
+/* Short header for short UIH packets */
 #define SHORT_HDR 2
-/* Short header for short uih packets */
+/* Long header for long UIH packets */
 #define LONG_HDR 3
-/* and long header for long uih packets */
 
-/* FIXME: Should thsi one be define here? */
+/* FIXME: Should this one be defined here? */
 #define SHORT_PAYLOAD_SIZE 127
+/* Used for setting the EA field in different packets, really neccessary? */
 #define EA 1
-/* Used for setting the EA field in different packets,  really neccessary? */
-#define FCS_SIZE 1
 /* Yes the FCS size is only one byte */
+#define FCS_SIZE 1
 
 #define RFCOMM_MAX_HDR_SIZE 5
 
@@ -198,8 +200,8 @@ typedef struct rpn_values{
 #endif
 
 /* Typedefinitions of stuctures used for creating and parsing packets, for a
-   further description of the structures please se the bluetooth core
-   specification part F:1 and the ETSI TS 07.10 specification  */
+ * further description of the structures please se the bluetooth core
+ * specification part F:1 and the ETSI TS 07.10 specification  */
 
 #ifdef __LITTLE_ENDIAN_BITFIELD
 

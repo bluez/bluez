@@ -34,7 +34,6 @@
 
 #include "parser.h"
 
-
 static char *pid2str(uint16_t pid)
 {
 	switch (pid) {

@@ -41,7 +41,6 @@
 #include "parser.h"
 #include "sdp.h"
 
-
 typedef struct {
 	uint16_t handle;
 	struct frame frm;

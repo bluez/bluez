@@ -34,7 +34,6 @@
 
 #include "parser.h"
 
-
 static char *si2str(uint8_t si)
 {
 	switch (si & 0x7f) {

@@ -34,7 +34,6 @@
 
 #include "parser.h"
 
-
 static char *type2str(uint8_t head)
 {
 	switch (head & 0xf0) {

@@ -52,7 +52,6 @@
 #include "parser.h"
 #include "sdp.h"
 
-
 #define SNAP_LEN HCI_MAX_FRAME_SIZE
 
 /* Modes */
@@ -86,7 +85,7 @@ static inline int read_n(int fd, char *buf, int len)
 
 	while (len > 0) {
 		if ((w = read(fd, buf, len)) < 0) {
-			if( errno == EINTR || errno == EAGAIN )
+			if (errno == EINTR || errno == EAGAIN)
 				continue;
 			return -1;
 		}
@@ -103,7 +102,7 @@ static inline int write_n(int fd, char *buf, int len)
 
 	while (len > 0) {
 		if ((w = write(fd, buf, len)) < 0) {
-			if( errno == EINTR || errno == EAGAIN )
+			if (errno == EINTR || errno == EAGAIN)
 				continue;
 			return -1;
 		}
@@ -253,22 +252,22 @@ static int open_socket(int dev)
 {
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
-	int s, opt;
+	int sk, opt;
 
 	/* Create HCI socket */
-	if ((s=socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
+	if ((sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		perror("Can't create HCI socket");
 		exit(1);
 	}
 
 	opt = 1;
-	if (setsockopt(s, SOL_HCI, HCI_DATA_DIR, &opt, sizeof(opt)) < 0) {
+	if (setsockopt(sk, SOL_HCI, HCI_DATA_DIR, &opt, sizeof(opt)) < 0) {
 		perror("Can't enable data direction info");
 		exit(1);
 	}
 
 	opt = 1;
-	if (setsockopt(s, SOL_HCI, HCI_TIME_STAMP, &opt, sizeof(opt)) < 0) {
+	if (setsockopt(sk, SOL_HCI, HCI_TIME_STAMP, &opt, sizeof(opt)) < 0) {
 		perror("Can't enable time stamp");
 		exit(1);
 	}
@@ -277,7 +276,7 @@ static int open_socket(int dev)
 	hci_filter_clear(&flt);
 	hci_filter_all_ptypes(&flt);
 	hci_filter_all_events(&flt);
-	if (setsockopt(s, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
+	if (setsockopt(sk, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		perror("Can't set HCI filter");
 		exit(1);
 	}
@@ -285,12 +284,13 @@ static int open_socket(int dev)
 	/* Bind socket to the HCI device */
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = dev;
-	if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		printf("Can't attach to device hci%d. %s(%d)\n", 
 					dev, strerror(errno), errno);
 		exit(1);
 	}
-	return s;
+
+	return sk;
 }
 
 static struct {
@@ -367,10 +367,10 @@ int main(int argc, char *argv[])
 
 	printf("HCIDump - HCI packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:s:p:w:r:txaRC:h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:s:p:w:r:txaRC:H:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
-			device = atoi(optarg+3);
+			device = atoi(optarg + 3);
 			break;
 
 		case 's': 

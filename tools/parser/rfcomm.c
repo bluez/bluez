@@ -40,7 +40,6 @@
 #include "parser.h"
 #include "rfcomm.h"
 
-
 static char *cr_str[] = {
 	"RSP",
 	"CMD"

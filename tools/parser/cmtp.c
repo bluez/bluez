@@ -34,7 +34,6 @@
 
 #include "parser.h"
 
-
 #define TABLE_SIZE 10
 
 static struct {
