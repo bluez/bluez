@@ -29,12 +29,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/time.h>
-#include <unistd.h>
 #include <syslog.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 #include <signal.h>
+#include <sys/time.h>
 #include <sys/select.h>
 
 #include <netinet/in.h>
@@ -46,6 +46,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 
+#define NIBBLE_TO_ASCII(c)      ((c) < 0x0a ? (c) + 0x30 : (c) + 0x57)
+
 /* Test modes */
 enum {
 	SEND,
@@ -55,7 +57,9 @@ enum {
 	DUMP,
 	CONNECT,
 	CRECV,
-	LSEND
+	LSEND,
+	SENDDUMP,
+	LSENDDUMP
 };
 
 unsigned char *buf;
@@ -84,6 +88,78 @@ int reliable = 0;
 float tv2fl(struct timeval tv)
 {
 	return (float)tv.tv_sec + (float)(tv.tv_usec/1000000.0);
+}
+
+char *ltoh(unsigned long c, char* s)
+{
+	int c1;
+
+	c1     = (c >> 28) & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	c1     = (c >> 24) & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	c1     = (c >> 20) & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	c1     = (c >> 16) & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	c1     = (c >> 12) & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	c1     = (c >>  8) & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	c1     = (c >>  4) & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	c1     = c & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	*s     = 0;
+	return (s);
+}
+
+char *ctoh(char c, char* s)
+{
+	char c1;
+
+	c1     = (c >> 4) & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	c1     = c & 0x0f;
+	*(s++) = NIBBLE_TO_ASCII (c1);
+	*s     = 0;
+	return (s);
+}
+
+void hexdump(char *s, unsigned long l)
+{
+	char bfr[80];
+	char *pb;
+	unsigned long i, n = 0;
+	
+	if (l == 0)
+		return;
+	
+	while (n < l) {
+		pb = bfr;
+		pb = ltoh (n, pb);
+		*(pb++) = ':';
+		*(pb++) = ' ';
+		for (i = 0; i < 16; i++) {
+			if (n + i >= l) {
+				*(pb++) = ' ';
+				*(pb++) = ' ';
+			} else
+				pb = ctoh (*(s + i), pb);
+			*(pb++) = ' ';
+		}
+		*(pb++) = ' ';
+		for (i = 0; i < 16; i++) {
+			if (n + i >= l)
+				break;
+			else
+				*(pb++) = (isprint (*(s + i)) ? *(s + i) : '.');
+		}
+		*pb     = 0;
+		n += 16;
+		s += 16;
+		puts(bfr);
+	}
 }
 
 int do_connect(char *svr)
@@ -163,7 +239,7 @@ int do_connect(char *svr)
 	return s;
 }
 
-void do_listen( void (*handler)(int sk) )
+void do_listen(void (*handler)(int sk))
 {
 	struct sockaddr_l2 loc_addr, rem_addr;
 	struct l2cap_options opts;
@@ -308,6 +384,7 @@ void dump_mode(int s)
 		}
 
 		syslog(LOG_INFO, "Recevied %d bytes\n", len);
+		hexdump(buf,len);
 	}
 }
 
@@ -387,8 +464,8 @@ void send_mode(int s)
 
 	syslog(LOG_INFO, "Sending ...");
 
-	for(i=6; i < data_size; i++)
-		buf[i]=0x7f;
+	for(i = 6; i < data_size; i++)
+		buf[i] = 0x7f;
 
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
@@ -406,6 +483,31 @@ void send_mode(int s)
 		syslog(LOG_INFO, "Close failed. %m.");
 	else
 		syslog(LOG_INFO, "Done");
+}
+
+void senddump_mode(int s)
+{
+	uint32_t seq;
+	int i;
+
+	syslog(LOG_INFO, "Sending ...");
+
+	for(i = 6; i < data_size; i++)
+		buf[i] = 0x7f;
+
+	seq = 0;
+	while ((num_frames == -1) || (num_frames-- > 0)) {
+		*(uint32_t *) buf = htobl(seq++);
+		*(uint16_t *)(buf+4) = htobs(data_size);
+		
+		if (send(s, buf, data_size, 0) <= 0) {
+			syslog(LOG_ERR, "Send failed. %s(%d)", strerror(errno), errno);
+			exit(1);
+		}
+	}
+
+	dump_mode(s);
+
 }
 
 void reconnect_mode(char *svr)
@@ -450,9 +552,11 @@ void usage(void)
 		"\t-r listen and receive\n"
 		"\t-w listen and send\n"
 		"\t-d listen and dump incoming data\n"
+		"\t-x listen, then send, then dump incoming data\n"
 		"\t-s connect and send\n"
 		"\t-u connect and receive\n"
 		"\t-n connect and be silent\n"
+		"\t-y connect, then send, then dump incoming data\n"
 		"\t-c connect, disconnect, connect, ...\n"
 		"\t-m multiple connects\n");
 
@@ -478,7 +582,7 @@ int main(int argc ,char *argv[])
 
 	mode = RECV; need_addr = 0;
 	
-	while ((opt=getopt(argc,argv,"rdscuwmnb:P:I:O:S:N:RMAEDL:")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyb:P:I:O:S:N:RMAEDL:")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -519,6 +623,14 @@ int main(int argc ,char *argv[])
 
 		case 'b':
 			data_size = atoi(optarg);
+			break;
+
+		case 'x':
+			mode = LSENDDUMP;
+			break;
+
+		case 'y':
+			mode = SENDDUMP;
 			break;
 
 		case 'S':
@@ -626,6 +738,18 @@ int main(int argc ,char *argv[])
 		case CONNECT:
 			connect_mode(argv[optind]);
 			break;
+
+		case SENDDUMP:
+			s = do_connect(argv[optind]);
+			if (s < 0)
+				exit(1);
+			senddump_mode(s);
+			break;
+
+		case LSENDDUMP:
+			do_listen(senddump_mode);
+			break;
+
 	}
 	syslog(LOG_INFO, "Exit");
 
