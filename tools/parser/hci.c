@@ -911,7 +911,7 @@ static inline void read_local_version_dump(int level, struct frame *frm)
 		printf("Error: %s\n", status2str(rp->status));
 	} else {
 		p_indent(level, frm);
-		printf("HCI Version: %s (0x%x) LMP Revision: 0x%x\n",
+		printf("HCI Version: %s (0x%x) HCI Revision: 0x%x\n",
 			hci_vertostr(rp->hci_ver), rp->hci_ver,
 			btohs(rp->hci_rev));
 		p_indent(level, frm);
