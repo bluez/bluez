@@ -351,6 +351,7 @@ static void usage(void)
 		"\t[-N num] number of frames to send\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
+		"\t[-S] secure connection\n"
 		"\t[-M] become master\n");
 }
 
