@@ -44,7 +44,8 @@ extern "C" {
 #define HIDPGETCONNINFO	_IOR('H', 211, int)
 
 #define HIDP_VIRTUAL_CABLE_UNPLUG	0
-#define HIDP_BLUETOOTH_VENDOR_ID	1
+#define HIDP_BOOT_PROTOCOL_MODE		1
+#define HIDP_BLUETOOTH_VENDOR_ID	9
 
 struct hidp_connadd_req {
 	int ctrl_sock;		/* Connected control socket */
@@ -53,6 +54,7 @@ struct hidp_connadd_req {
 	uint16_t rd_size;	/* Report descriptor size */
 	uint8_t *rd_data;	/* Report descriptor data */
 	uint8_t  country;
+	uint8_t  subclass;
 	uint16_t vendor;
 	uint16_t product;
 	uint16_t version;
