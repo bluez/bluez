@@ -980,7 +980,11 @@ int main(int argc, char **argv)
 	while ((opt=getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
-			dev_id = atoi(optarg + 3);
+			dev_id = hci_devid(optarg);
+			if (dev_id < 0) {
+				perror("Invalid device");
+				exit(1);
+			}
 			break;
 
 		case 'h':
