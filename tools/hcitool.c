@@ -1074,6 +1074,102 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
+/* Get AFH channel map */
+
+static struct option afh_options[] = {
+	{"help",	0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *afh_help = 
+	"Usage:\n"
+	"\tafh <bdaddr>\n";
+
+static void cmd_afh(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	struct hci_request rq;
+	read_afh_map_rp rp;
+	bdaddr_t bdaddr;
+	uint16_t handle;
+	int opt, dd;
+
+	for_each_opt(opt, afh_options, NULL) {
+		switch(opt) {
+		default:
+			printf(afh_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(afh_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+
+	handle = htobs(cr->conn_info->handle);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ocf    = OCF_READ_AFH_MAP;
+	rq.cparam = &handle;
+	rq.clen   = 2;
+	rq.rparam = &rp;
+	rq.rlen   = READ_AFH_MAP_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		perror("HCI read AFH map request failed");
+		exit(1);
+	}
+
+	if (rp.status) {
+		fprintf(stderr, "HCI read_afh_map cmd failed (0x%2.2X)\n", 
+				rp.status);
+		exit(1);
+	}
+
+	if (rp.mode == 0x01) {
+		int i;
+		printf("AFH map: 0x");
+		for (i = 0; i < 10; i++)
+			printf("%02x", rp.map[i]);
+		printf("\n");
+	} else
+		printf("AFH disabled\n");
+
+	close(dd);
+	free(cr);
+}
+
 /* Set connection packet type */
 
 static struct option cpt_options[] = {
@@ -1451,6 +1547,7 @@ static struct {
 	{ "rssi", cmd_rssi, "Display connection RSSI"              },
 	{ "lq",   cmd_lq,   "Display link quality"                 },
 	{ "tpl",  cmd_tpl,  "Display transmit power level"         },
+	{ "afh",  cmd_afh,  "Display AFH channel map"              },
 	{ "lst",  cmd_lst,  "Set/display link supervision timeout" },
 	{ "auth", cmd_auth, "Request authentication"               },
 	{ "enc",  cmd_enc,  "Set connection encryption"            },
