@@ -132,19 +132,19 @@ static inline void hci_filter_clear(struct hci_filter *f)
 }
 static inline void hci_filter_set_ptype(int t, struct hci_filter *f)
 {
-	hci_set_bit((t & HCI_FLT_TYPE_BITS), &f->type_mask);
+	hci_set_bit((t == HCI_VENDOR_PKT) ? 0 : (t & HCI_FLT_TYPE_BITS), &f->type_mask);
 }
 static inline void hci_filter_clear_ptype(int t, struct hci_filter *f)
 {
-	hci_clear_bit((t & HCI_FLT_TYPE_BITS), &f->type_mask);
+	hci_clear_bit((t == HCI_VENDOR_PKT) ? 0 : (t & HCI_FLT_TYPE_BITS), &f->type_mask);
 }
 static inline int hci_filter_test_ptype(int t, struct hci_filter *f)
 {
-	return hci_test_bit((t & HCI_FLT_TYPE_BITS), &f->type_mask);
+	return hci_test_bit((t == HCI_VENDOR_PKT) ? 0 : (t & HCI_FLT_TYPE_BITS), &f->type_mask);
 }
 static inline void hci_filter_all_ptypes(struct hci_filter *f)
 {
-	memset((void *)&f->type_mask, 0xff, sizeof(f->type_mask));
+	memset((void *) &f->type_mask, 0xff, sizeof(f->type_mask));
 }
 static inline void hci_filter_set_event(int e, struct hci_filter *f)
 {
@@ -160,7 +160,7 @@ static inline int hci_filter_test_event(int e, struct hci_filter *f)
 }
 static inline void hci_filter_all_events(struct hci_filter *f)
 {
-	memset((void *)f->event_mask, 0xff, sizeof(f->event_mask));
+	memset((void *) f->event_mask, 0xff, sizeof(f->event_mask));
 }
 static inline void hci_filter_set_opcode(int opcode, struct hci_filter *f)
 {
