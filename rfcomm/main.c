@@ -185,6 +185,9 @@ static int create_all(int ctl)
 	}
 
 	for (i = 0; i < RFCOMM_MAX_DEV; i++) {
+		if (!rfcomm_opts[i].bind)
+			continue;
+
 		memset(&req, 0, sizeof(req));
 		req.dev_id = i;
 		req.flags = 0;
