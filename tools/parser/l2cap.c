@@ -53,6 +53,7 @@ typedef struct {
 	uint16_t cid;
 	uint16_t psm;
 	uint16_t num;
+	uint8_t mode;
 } cid_info;
 #define CID_TABLE_SIZE 20
 
@@ -100,9 +101,10 @@ static void add_cid(int in, uint16_t cid, uint16_t psm)
 	}
 
 	if (pos >= 0) {
-		table[pos].cid = cid;
-		table[pos].psm = psm;
-		table[pos].num = num;
+		table[pos].cid  = cid;
+		table[pos].psm  = psm;
+		table[pos].num  = num;
+		table[pos].mode = 0;
 	}
 }
 
@@ -122,9 +124,10 @@ static void del_cid(int in, uint16_t dcid, uint16_t scid)
 	for (t = 0; t < 2; t++) {
 		for (i = 0; i < CID_TABLE_SIZE; i++)
 			if (cid_table[t][i].cid == cid[t]) {
-				cid_table[t][i].cid = 0;
-				cid_table[t][i].psm = 0;
-				cid_table[t][i].num = 0;
+				cid_table[t][i].cid  = 0;
+				cid_table[t][i].psm  = 0;
+				cid_table[t][i].num  = 0;
+				cid_table[t][i].mode = 0;
 				break;
 			}
 	}
@@ -149,6 +152,27 @@ static uint16_t get_num(int in, uint16_t cid)
 	for (i = 0; i < CID_TABLE_SIZE; i++)
 		if (table[i].cid == cid)
 			return table[i].num;
+	return 0;
+}
+
+static void set_mode(int in, uint16_t cid, uint8_t mode)
+{
+	register cid_info *table = cid_table[in];
+	register int i;
+
+	for (i = 0; i < CID_TABLE_SIZE; i++)
+		if (table[i].cid == cid)
+			table[i].mode = mode;
+}
+
+static uint8_t get_mode(int in, uint16_t cid)
+{
+	register cid_info *table = cid_table[in];
+	register int i;
+
+	for (i = 0; i < CID_TABLE_SIZE; i++)
+		if (table[i].cid == cid)
+			return table[i].mode;
 	return 0;
 }
 
@@ -266,6 +290,38 @@ static char *mode2str(uint8_t mode)
 	}
 }
 
+static char *sar2str(uint8_t sar)
+{
+	switch (sar) {
+	case 0x00:
+		return "Unsegmented";
+	case 0x01:
+		return "Start";
+	case 0x02:
+		return "End";
+	case 0x03:
+		return "Continuation";
+	default:
+		return "Bad SAR";
+
+	}
+}
+
+static char *supervisory2str(uint8_t supervisory)
+{
+	switch (supervisory) {
+	case 0x00:
+		return "Receiver Ready (RR)";
+	case 0x01:
+		return "Reject (REJ)";
+	case 0x02:
+	case 0x03:
+		return "Reserved Supervisory";
+	default:
+		return "Bad Supervisory";
+	}
+}
+
 static inline void command_rej(int level, struct frame *frm)
 {
 	l2cap_cmd_rej *h = frm->ptr;
@@ -347,11 +403,12 @@ static inline void conn_rsp(int level, struct frame *frm)
 	}
 }
 
-static void conf_opt(int level, void *ptr, int len)
+static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
 {
 	p_indent(level, 0);
 	while (len > 0) {
 		l2cap_conf_opt *h = ptr;
+		uint8_t mode;
 
 		ptr += L2CAP_CONF_OPT_SIZE + h->len;
 		len -= L2CAP_CONF_OPT_SIZE + h->len;
@@ -380,8 +437,11 @@ static void conf_opt(int level, void *ptr, int len)
 
 		case L2CAP_CONF_RFC:
 			printf("Mode");
-			if (h->len > 0)
-				printf(" 0x02%x (%s)", *h->val, mode2str(*h->val));
+			if (h->len > 0) {
+				mode = *h->val;
+				set_mode(in, cid, mode);
+				printf(" 0x%02x (%s)", mode, mode2str(mode));
+			}
 			break;
 
 		default:
@@ -400,21 +460,23 @@ static void conf_opt(int level, void *ptr, int len)
 static inline void conf_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	l2cap_conf_req *h = frm->ptr;
+	uint16_t dcid = btohs(h->dcid);
 	int clen = btohs(cmd->len) - L2CAP_CONF_REQ_SIZE;
 
 	if (p_filter(FILT_L2CAP))
 		return;
 
 	printf("Config req: dcid 0x%4.4x flags 0x%2.2x clen %d\n",
-			btohs(h->dcid), btohs(h->flags), clen);
+			dcid, btohs(h->flags), clen);
 
 	if (clen)
-		conf_opt(level + 1, h->data, clen);
+		conf_opt(level + 1, h->data, clen, frm->in, dcid);
 }
 
 static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 {
 	l2cap_conf_rsp *h = frm->ptr;
+	uint16_t scid = btohs(h->scid);
 	uint16_t result = btohs(h->result);
 	int clen = btohs(cmd->len) - L2CAP_CONF_RSP_SIZE;
 
@@ -422,7 +484,7 @@ static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 		return;
 
 	printf("Config rsp: scid 0x%4.4x flags 0x%2.2x result %d clen %d\n",
-			btohs(h->scid), btohs(h->flags), result, clen);
+			scid, btohs(h->flags), result, clen);
 
 	if (parser.flags & DUMP_VERBOSE) {
 		p_indent(level + 1, frm);
@@ -430,7 +492,7 @@ static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	}
 
 	if (clen)
-		conf_opt(level + 1, h->data, clen);
+		conf_opt(level + 1, h->data, clen, frm->in, scid);
 }
 
 static inline void disconn_req(int level, struct frame *frm)
@@ -610,7 +672,8 @@ static void l2cap_parse(int level, struct frame *frm)
 		if (p_filter(FILT_L2CAP))
 			return;
 
-		psm = btohs(bt_get_unaligned((uint16_t*)frm->ptr));
+		psm = btohs(bt_get_unaligned((uint16_t *) frm->ptr));
+		frm->ptr += 2;
 		frm->len -= 2;
 
 		p_indent(level, frm);
@@ -619,17 +682,50 @@ static void l2cap_parse(int level, struct frame *frm)
 	} else {
 		/* Connection oriented channel */
 
+		uint8_t mode = get_mode(!frm->in, cid);
 		uint16_t psm = get_psm(!frm->in, cid);
+		uint16_t ctrl = 0, fcs = 0;
 		uint32_t proto;
 
 		frm->cid = cid;
 		frm->num = get_num(!frm->in, cid);
 
+		if (mode > 0) {
+			ctrl = btohs(bt_get_unaligned((uint16_t *) frm->ptr));
+			frm->ptr += 2;
+			frm->len -= 4;
+			fcs = btohs(bt_get_unaligned((uint16_t *) (frm->ptr + frm->len)));
+		}
+
 		if (!p_filter(FILT_L2CAP)) {
 			p_indent(level, frm);
-			printf("L2CAP(d): cid 0x%4.4x len %d [psm %d]\n",
-				cid, dlen, psm);
+			printf("L2CAP(d): cid 0x%4.4x len %d", cid, dlen);
+			if (mode > 0)
+				printf(" ctrl 0x%4.4x fcs 0x%4.4x", ctrl, fcs);
+			printf(" [psm %d]\n", psm);
 			level++;
+			if (mode > 0) {
+				p_indent(level, frm);
+				printf("%s:", ctrl & 0x01 ? "S-frame" : "I-frame");
+				if (ctrl & 0x01) {
+					printf(" %s", supervisory2str((ctrl & 0x0c) >> 2));
+				} else {
+					uint8_t sar = (ctrl & 0xc000) >> 14;
+					printf(" %s", sar2str(sar));
+					if (sar == 1) {
+						uint16_t len;
+						len = btohs(bt_get_unaligned((uint16_t *) frm->ptr));
+						frm->ptr += 2;
+						frm->len -= 2;
+						printf(" (len %d)", len);
+					}
+					printf(" TxSeq %d", (ctrl & 0x7e) >> 1);
+				}
+				printf(" ReqSeq %d", (ctrl & 0x3f00) >> 8);
+				if (ctrl & 0x80)
+					printf(" Retransmission Disable");
+				printf("\n");
+			}
 		}
 
 		switch (psm) {
