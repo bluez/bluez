@@ -101,7 +101,7 @@ static int do_connect(char *svr)
 
 	memset(&conn, 0, sizeof(conn));
 	opt = sizeof(conn);
-	if (getsockopt(s, SOL_L2CAP, SCO_CONNINFO, &conn, &opt) < 0) {
+	if (getsockopt(s, SOL_SCO, SCO_CONNINFO, &conn, &opt) < 0) {
 		syslog(LOG_ERR, "Can't get SCO connection information. %s(%d)", strerror(errno), errno);
 		close(s);
 		return -1;

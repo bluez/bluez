@@ -128,7 +128,7 @@ int do_connect(char *svr)
 
 	memset(&conn, 0, sizeof(conn));
 	opt = sizeof(conn);
-	if (getsockopt(s, SOL_L2CAP, RFCOMM_CONNINFO, &conn, &opt) < 0) {
+	if (getsockopt(s, SOL_RFCOMM, RFCOMM_CONNINFO, &conn, &opt) < 0) {
 		syslog(LOG_ERR, "Can't get RFCOMM connection information. %s(%d)", strerror(errno), errno);
 		close(s);
 		//return -1;
@@ -172,7 +172,7 @@ void do_listen( void (*handler)(int sk) )
 		opt |= RFCOMM_LM_SECURE;
 
 	if (setsockopt(s, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0) {
-		syslog(LOG_ERR, "Can't set L2CAP link mode. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't set RFCOMM link mode. %s(%d)", strerror(errno), errno);
 		exit(1);
 	}
 
