@@ -28,6 +28,9 @@ Bluetooth utilities (bluez-utils):
 	- hciattach
 	- hciconfig
 	- hcid
+	- sdpd
+	- sdptool
+	- ciptool
 	- l2ping
 	- start scripts (RedHat)
 	- pcmcia configuration files
@@ -65,11 +68,19 @@ rm -rf $RPM_BUILD_ROOT
 /sbin/hciattach
 /sbin/hciconfig
 /sbin/hcid
+/sbin/sdpd
+/bin/sdptool
+/bin/ciptool
 %{_mandir}/man8/hciattach.8.gz
 %{_mandir}/man8/hciconfig.8.gz
+%{_mandir}/man5/hcid.conf.5.gz
+%{_mandir}/man8/hcid.8.gz
+%{_mandir}/man8/sdpd.8.gz
 %{_mandir}/man1/hcitool.1.gz
-%{_mandir}/man1/l2ping.1.gz
+%{_mandir}/man1/sdptool.1.gz
+%{_mandir}/man1/ciptool.1.gz
 %{_mandir}/man1/rfcomm.1.gz
+%{_mandir}/man1/l2ping.1.gz
 %{_sysconfdir}/bluetooth/*
 %{_sysconfdir}/pcmcia/bluetooth.conf
 %{_sysconfdir}/pcmcia/bluetooth
