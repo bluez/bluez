@@ -120,12 +120,14 @@ int do_connect(char *svr)
 	rem_addr.l2_psm = htobs(psm);
 	if( connect(s, (struct sockaddr *)&rem_addr, sizeof(rem_addr)) < 0 ){
 		syslog(LOG_ERR, "Can't connect. %s(%d)", strerror(errno), errno);
+		close(s);
 		return -1;
 	}
 
 	opt = sizeof(opts);
 	if( getsockopt(s, SOL_L2CAP, L2CAP_OPTIONS, &opts, &opt) < 0 ){
 		syslog(LOG_ERR, "Can't get L2CAP options. %s(%d)", strerror(errno), errno);
+		close(s);
 		return -1;
 	}
 
@@ -305,11 +307,11 @@ void send_mode(int s)
 		buf[i]=0x7f;
 
 	seq = 0;
-	while(1){
-		*(uint32_t *)buf = htobl(seq++);
+	while (1) {
+		*(uint32_t *) buf = htobl(seq++);
 		*(uint16_t *)(buf+4) = htobs(data_size);
 		
-		if( send(s, buf, data_size, 0) <= 0 ) {
+		if (send(s, buf, data_size, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed. %s(%d)", strerror(errno), errno);
 			exit(1);
 		}
@@ -318,14 +320,9 @@ void send_mode(int s)
 
 void reconnect_mode(char *svr)
 {
-	while(1){
-		int s;
-		if( (s = do_connect(svr)) < 0 )
-			exit(1);
-		
+	while(1) {
+		int s = do_connect(svr);
 		close(s);
-
-		usleep(10);
 	}
 }
 
@@ -337,19 +334,20 @@ void connect_mode(char *svr)
 	sleep(99999999);
 }
 
-void multy_connect_mode(char *svr)
+void multi_connect_mode(char *svr)
 {
-	while(1){
+	while (1) {
 		int i, s;
-		for(i=0; i<10; i++){
-			if( fork() ) continue;
+		for (i=0; i<10; i++) {
+			if (fork()) continue;
 
 			/* Child */
 			s = do_connect(svr);
+			usleep(500);
 			close(s);
 			exit(0);
 		}
-		sleep(19);
+		sleep(2);
 	}
 }
 
@@ -517,7 +515,7 @@ int main(int argc ,char *argv[])
 			break;
 
 		case MULTY:
-			multy_connect_mode(argv[optind]);
+			multi_connect_mode(argv[optind]);
 			break;
 
 		case CONNECT:
