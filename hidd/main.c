@@ -156,6 +156,7 @@ static int create_device(int ctl, int csk, int isk, int timeout)
 	struct hidp_connadd_req req;
 	struct sockaddr_l2 addr;
 	socklen_t addrlen;
+	uint8_t subclass;
 	bdaddr_t src, dst;
 	char bda[18];
 	int err;
@@ -182,15 +183,19 @@ static int create_device(int ctl, int csk, int isk, int timeout)
 	req.flags     = 0;
 	req.idle_to   = timeout * 60;
 
-	err = get_hid_device_info(&src, &dst, &req);
+	err = get_hid_device_info(&src, &dst, &subclass, &req);
 	if (err < 0)
-		return err;
+		goto error;
 
 	ba2str(&dst, bda);
 	syslog(LOG_INFO, "New HID device %s (%s)", bda, req.name);
 
+	if (subclass == 0x40) {
+	}
+
 	err = ioctl(ctl, HIDPCONNADD, &req);
 
+error:
 	if (req.rd_data)
 		free(req.rd_data);
 
@@ -228,8 +233,9 @@ static void run_server(int ctl, int csk, int isk, int timeout)
 				syslog(LOG_ERR, "HID create error %d (%s)",
 						errno, strerror(errno));
 
-			close(ncsk);
 			close(nisk);
+			sleep(1);
+			close(ncsk);
 		}
 	}
 }
@@ -319,7 +325,7 @@ static void do_search(int ctl, bdaddr_t *bdaddr, int timeout)
 
 	length  = 8;	/* ~10 seconds */
 	num_rsp = 0;
-	flags   = 0;
+	flags   = IREQ_CACHE_FLUSH;
 
 	printf("Searching ...\n");
 
@@ -327,7 +333,7 @@ static void do_search(int ctl, bdaddr_t *bdaddr, int timeout)
 
 	for (i = 0; i < num_rsp; i++) {
 		memcpy(class, (info+i)->dev_class, 3);
-		if (class[1] == 0x25 && class[2] == 0x00) {
+		if (class[1] == 0x25 && (class[2] == 0x00 || class[2] == 0x01)) {
 			bacpy(&dst, &(info+i)->bdaddr);
 			ba2str(&dst, addr);
 

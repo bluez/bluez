@@ -49,7 +49,7 @@
 
 #include "hidd.h"
 
-int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req)
+int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, uint8_t *subclass, struct hidp_connadd_req *req)
 {
 	uint32_t range = 0x0000ffff;
 	sdp_session_t *s;
@@ -90,16 +90,13 @@ int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *r
 		rec = (sdp_record_t *) pnp_rsp->data;
 
 		pdlist = sdp_data_get(rec, 0x0201);
-		if (pdlist)
-			req->vendor = pdlist->val.uint16;
+		req->vendor = pdlist ? pdlist->val.uint16 : 0x0000;
 
 		pdlist = sdp_data_get(rec, 0x0202);
-		if (pdlist)
-			req->product = pdlist->val.uint16;
+		req->product = pdlist ? pdlist->val.uint16 : 0x0000;
 
 		pdlist = sdp_data_get(rec, 0x0203);
-		if (pdlist)
-			req->version = pdlist->val.uint16;
+		req->version = pdlist ? pdlist->val.uint16 : 0x0000;
 
 		sdp_record_free(rec);
 	}
@@ -125,14 +122,15 @@ int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *r
 	}
 
 	pdlist = sdp_data_get(rec, 0x0201);
-	if (pdlist)
-		req->parser = pdlist->val.uint16;
-	else
-		req->parser = 0x0100;
+	req->parser = pdlist ? pdlist->val.uint16 : 0x0100;
+
+	if (subclass) {
+		pdlist = sdp_data_get(rec, 0x0202);
+		*subclass = pdlist ? pdlist->val.uint8 : 0;
+	}
 
 	pdlist = sdp_data_get(rec, 0x0203);
-	if (pdlist)
-		req->country = pdlist->val.uint8;
+	req->country = pdlist ? pdlist->val.uint8 : 0;
 
 	pdlist = sdp_data_get(rec, 0x0206);
 	if (pdlist) {

@@ -29,4 +29,4 @@
 #define L2CAP_PSM_HIDP_CTRL 0x11
 #define L2CAP_PSM_HIDP_INTR 0x13
 
-int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req);
+int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, uint8_t *subclass, struct hidp_connadd_req *req);
