@@ -517,7 +517,7 @@ typedef struct {
 typedef struct {
 	uint8_t 	status;
 	uint16_t	handle;
-	uint8_t 	rssi;
+	int8_t  	rssi;
 } __attribute__ ((packed)) read_rssi_rp; 
 #define READ_RSSI_RP_SIZE 4
  
