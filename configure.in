@@ -42,7 +42,7 @@ AC_ARG_WITH(bluez-libs,
 AC_ARG_WITH(bluez-includes,
 	--with-bluez-includes=DIR BlueZ header files,
 	BLUEZ_INCDIR="$withval",
-	BLUEZ_INCDIR='../libs/include /usr/include/bluetooth'
+	BLUEZ_INCDIR='../libs/include /usr/include'
 )
 
 AC_SEARCH_HEADERS(bluetooth/bluetooth.h, $BLUEZ_INCDIR,,
