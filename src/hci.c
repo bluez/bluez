@@ -703,11 +703,12 @@ int hci_create_connection(int dd, const bdaddr_t *ba, uint16_t ptype, uint16_t c
         create_conn_cp cp;
         struct hci_request rq;
 
-        memset(&cp, 0, sizeof(cp));
-        bacpy(&cp.bdaddr, ba);
-        cp.pkt_type     = ptype;
-	cp.clock_offset = clkoffset;
-	cp.role_switch  = rswitch;
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, ba);
+	cp.pkt_type       = ptype;
+	cp.pscan_rep_mode = 0x01;
+	cp.clock_offset   = clkoffset;
+	cp.role_switch    = rswitch;
 
 	memset(&rq, 0, sizeof(rq));
         rq.ogf    = OGF_LINK_CTL;
