@@ -91,11 +91,16 @@ void print_link_mode(struct hci_dev_info *di)
 	printf("\tLink mode: %s\n", hci_lmtostr(di->link_mode));
 }
 
-void print_dev_features(struct hci_dev_info *di)
+void print_dev_features(struct hci_dev_info *di, int format)
 {
-	printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n", 
+	if (!format) {
+		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n", 
 			di->features[0], di->features[1],
 			di->features[2], di->features[3] );
+	} else {
+		printf("\tFeatures:\n%s\n", 
+			lmp_featurestostr(di->features, "\t\t", 3));
+	}
 }
 
 void cmd_rstat(int ctl, int hdev, char *opt)
@@ -286,7 +291,7 @@ void cmd_scomtu(int ctl, int hdev, char *opt)
 void cmd_features(int ctl, int hdev, char *opt)
 {
 	print_dev_hdr(&di);
-	print_dev_features(&di);
+	print_dev_features(&di, 1);
 }
 
 void cmd_name(int ctl, int hdev, char *opt)
@@ -512,7 +517,7 @@ void print_dev_info(int ctl, struct hci_dev_info *di)
 	       st->byte_tx, st->acl_tx, st->sco_tx, st->cmd_tx, st->err_tx);
 
 	if (all) {
-		print_dev_features(di);
+		print_dev_features(di, 0);
 		print_pkt_type(di);
 		print_link_policy(di);
 		print_link_mode(di);
