@@ -2286,8 +2286,7 @@ void sdp_append_to_pdu(sdp_buf_t *pdu, sdp_data_t *d)
  * It is incorrect to call this method on a record that
  * has been already registered with the server.
  *
- * Returns a non-null value (a pointer) to a service
- * record if successful, else -1 setting errno
+ * Returns zero on success, otherwise -1 (and sets errno).
  */
 int sdp_record_register(sdp_session_t *session, sdp_record_t *rec, uint8_t flags)
 {

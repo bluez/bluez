@@ -393,7 +393,8 @@ void sdp_record_free(sdp_record_t *rec);
  * record first and set its attributes using setXXX() methods.
  * 
  * The service provider must then call sdp_record_register() to make 
- * the service record visible to SDP clients.
+ * the service record visible to SDP clients.  This function returns 0
+ * on success or -1 on failure (and sets errno).
  */
 int sdp_record_register(sdp_session_t *sess, sdp_record_t *rec, uint8_t flags);
 
