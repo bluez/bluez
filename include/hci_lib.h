@@ -84,6 +84,7 @@ int hci_read_current_iac_lap(int dd, uint8_t *num_iac, uint8_t *lap, int to);
 int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to);
 int hci_authenticate_link(int dd, uint16_t handle, int to);
 int hci_encrypt_link(int dd, uint16_t handle, uint8_t encrypt, int to);
+int hci_change_link_key(int dd, uint16_t handle, int to);
 /* role == 0 is master, 1 is slave */
 int hci_switch_role(int dd, bdaddr_t *bdaddr, uint8_t role, int to);
 int hci_park_mode(int dd, uint16_t handle, uint16_t max_interval, uint16_t min_interval, int to);

@@ -370,6 +370,12 @@ typedef struct {
 } __attribute__ ((packed)) set_conn_encrypt_cp;
 #define SET_CONN_ENCRYPT_CP_SIZE 3
 
+#define OCF_CHANGE_CONN_LINK_KEY	0x0015
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) change_conn_link_key_cp;
+#define CHANGE_CONN_LINK_KEY_CP_SIZE 2
+
 #define OCF_REMOTE_NAME_REQ		0x0019
 typedef struct {
 	bdaddr_t	bdaddr;
@@ -859,6 +865,13 @@ typedef struct {
 	uint8_t		encrypt;
 } __attribute__ ((packed)) evt_encrypt_change;
 #define EVT_ENCRYPT_CHANGE_SIZE 5
+
+#define EVT_CHANGE_CONN_LINK_KEY_COMPLETE	0x09
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+}  __attribute__ ((packed)) evt_change_conn_link_key_complete;
+#define EVT_CHANGE_CONN_LINK_KEY_COMPLETE_SIZE 3
 
 #define EVT_READ_REMOTE_FEATURES_COMPLETE	0x0B
 typedef struct {

@@ -1174,12 +1174,13 @@ int hci_authenticate_link(int dd, uint16_t handle, int to)
 	struct hci_request rq;
 
 	cp.handle = handle;
+
 	rq.ogf    = OGF_LINK_CTL;
 	rq.ocf    = OCF_AUTH_REQUESTED;
+	rq.event  = EVT_AUTH_COMPLETE;
 	rq.cparam = &cp;
 	rq.clen   = AUTH_REQUESTED_CP_SIZE;
 	rq.rparam = &rp;
-	rq.event  = EVT_AUTH_COMPLETE;
 	rq.rlen   = EVT_AUTH_COMPLETE_SIZE;
 
 	if (hci_send_req(dd, &rq, to) < 0)
@@ -1201,13 +1202,14 @@ int hci_encrypt_link(int dd, uint16_t handle, uint8_t encrypt, int to)
 
 	cp.handle  = handle;
 	cp.encrypt = encrypt;
+
 	rq.ogf     = OGF_LINK_CTL;
 	rq.ocf     = OCF_SET_CONN_ENCRYPT;
+	rq.event   = EVT_ENCRYPT_CHANGE;
 	rq.cparam  = &cp;
 	rq.clen    = SET_CONN_ENCRYPT_CP_SIZE;
-	rq.event   = EVT_ENCRYPT_CHANGE;
-	rq.rlen    = EVT_ENCRYPT_CHANGE_SIZE;
 	rq.rparam  = &rp;
+	rq.rlen    = EVT_ENCRYPT_CHANGE_SIZE;
 
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
@@ -1216,6 +1218,34 @@ int hci_encrypt_link(int dd, uint16_t handle, uint8_t encrypt, int to)
 		errno = EIO;
 		return -1;
 	}
+
+	return 0;
+}
+
+int hci_change_link_key(int dd, uint16_t handle, int to)
+{
+	change_conn_link_key_cp cp;
+	evt_change_conn_link_key_complete rp;
+	struct hci_request rq;
+
+	cp.handle = handle;
+
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_CHANGE_CONN_LINK_KEY;
+	rq.event  = EVT_CHANGE_CONN_LINK_KEY_COMPLETE;
+	rq.cparam = &cp;
+	rq.clen   = CHANGE_CONN_LINK_KEY_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_CHANGE_CONN_LINK_KEY_COMPLETE_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
 	return 0;
 }
 
