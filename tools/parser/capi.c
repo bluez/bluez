@@ -33,7 +33,13 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
+#include <bluetooth/bluetooth.h>
+
 #include "parser.h"
+
+#define CAPI_U8(frm)  (get_u8(frm))
+#define CAPI_U16(frm) (htobs(htons(get_u16(frm))))
+#define CAPI_U32(frm) (htobl(htonl(get_u32(frm))))
 
 
 static char *cmd2str(uint8_t cmd)
@@ -227,8 +233,8 @@ static void profile(int level, struct frame *frm)
 	uint16_t nctr, nchn;
 	uint32_t value;
 
-	nctr = htons(get_u16(frm));
-	nchn = htons(get_u16(frm));
+	nctr = CAPI_U16(frm);
+	nchn = CAPI_U16(frm);
 
 	if (nchn > 0) {
 		p_indent(level, frm);
@@ -236,16 +242,16 @@ static void profile(int level, struct frame *frm)
 		p_indent(level, frm);
 		printf("Number of B-channels: %d\n", nchn);
 
-		value = htonl(get_u32(frm));
+		value = CAPI_U32(frm);
 		p_indent(level, frm);
 		printf("Global options: 0x%04x\n", value);
-		value = htonl(get_u32(frm));
+		value = CAPI_U32(frm);
 		p_indent(level, frm);
 		printf("B1 protocol support: 0x%08x\n", value);
-		value = htonl(get_u32(frm));
+		value = CAPI_U32(frm);
 		p_indent(level, frm);
 		printf("B2 protocol support: 0x%08x\n", value);
-		value = htonl(get_u32(frm));
+		value = CAPI_U32(frm);
 		p_indent(level, frm);
 		printf("B3 protocol support: 0x%08x\n", value);
 
@@ -267,7 +273,7 @@ static void cmd_common(int level, uint8_t subcmd, struct frame *frm)
 	uint16_t info, ncci;
 	uint8_t ctr, plci;
 
-	val = htonl(get_u32(frm));
+	val = CAPI_U32(frm);
 	ctr = val & 0xff;
 	plci = (val & 0xff00) >> 8;
 	ncci = (val & 0xffff0000) >> 16;
@@ -286,7 +292,7 @@ static void cmd_common(int level, uint8_t subcmd, struct frame *frm)
 	}
 
 	if (subcmd == 0x81) {
-		info = htons(get_u16(frm));
+		info = CAPI_U16(frm);
 		p_indent(level, frm);
 		printf("Info: 0x%04x (%s)\n", info, info2str(info));
 	}
@@ -299,7 +305,7 @@ static void cmd_alert(int level, uint8_t subcmd, struct frame *frm)
 	cmd_common(level, subcmd, frm);
 
 	if (subcmd == 0x80) {
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("Additional info:\n");
@@ -318,20 +324,20 @@ static void cmd_connect(int level, uint8_t subcmd, struct frame *frm)
 	if (subcmd == 0x81)
 		return;
 
-	cip = htons(get_u16(frm));
+	cip = CAPI_U16(frm);
 	p_indent(level, frm);
 	printf("CIP value: 0x%04x\n", cip);
 
-	len = get_u8(frm);
+	len = CAPI_U8(frm);
 	frm->ptr += len;
 	frm->len -= len;
-	len = get_u8(frm);
+	len = CAPI_U8(frm);
 	frm->ptr += len;
 	frm->len -= len;
-	len = get_u8(frm);
+	len = CAPI_U8(frm);
 	frm->ptr += len;
 	frm->len -= len;
-	len = get_u8(frm);
+	len = CAPI_U8(frm);
 	frm->ptr += len;
 	frm->len -= len;
 
@@ -346,7 +352,7 @@ static void cmd_disconnect(int level, uint8_t subcmd, struct frame *frm)
 	cmd_common(level, subcmd, frm);
 
 	if (subcmd == 0x80) {
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("Additional info:\n");
@@ -355,7 +361,7 @@ static void cmd_disconnect(int level, uint8_t subcmd, struct frame *frm)
 	}
 
 	if (subcmd == 0x82) {
-		reason = htons(get_u16(frm));
+		reason = CAPI_U16(frm);
 		p_indent(level, frm);
 		printf("Reason: 0x%04x (%s)\n", reason, info2str(reason));
 	}
@@ -368,21 +374,21 @@ static void cmd_connect_active(int level, uint8_t subcmd, struct frame *frm)
 	cmd_common(level, subcmd, frm);
 
 	if (subcmd == 0x82) {
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("Connected number:\n");
 			hex_dump(level, frm, len);
 		}
 
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("Connected subaddress:\n");
 			hex_dump(level, frm, len);
 		}
 
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("LLC:\n");
@@ -399,21 +405,21 @@ static void cmd_listen(int level, uint8_t subcmd, struct frame *frm)
 	cmd_common(level, subcmd, frm);
 
 	if (subcmd == 0x80) {
-		mask = htonl(get_u32(frm));
+		mask = CAPI_U32(frm);
 		p_indent(level, frm);
 		printf("Info mask: 0x%08x\n", mask);
 
-		mask = htonl(get_u32(frm));
+		mask = CAPI_U32(frm);
 		p_indent(level, frm);
 		printf("CIP mask:  0x%08x", mask);
 
-		mask = htonl(get_u32(frm));
+		mask = CAPI_U32(frm);
 		if (mask > 0)
 			printf(" 0x%08x\n", mask);
 		else
 			printf("\n");
 
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("Calling party number:\n");
@@ -422,7 +428,7 @@ static void cmd_listen(int level, uint8_t subcmd, struct frame *frm)
 		frm->ptr += len;
 		frm->len -= len;
 
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("Calling party subaddress:\n");
@@ -442,7 +448,7 @@ static void cmd_info(int level, uint8_t subcmd, struct frame *frm)
 
 	switch (subcmd) {
 	case 0x80:
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("Called party number:\n");
@@ -451,7 +457,7 @@ static void cmd_info(int level, uint8_t subcmd, struct frame *frm)
 		frm->ptr += len;
 		frm->len -= len;
 
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("Additional info:\n");
@@ -460,11 +466,11 @@ static void cmd_info(int level, uint8_t subcmd, struct frame *frm)
 		break;
 
 	case 0x82:
-		info = htons(get_u16(frm));
+		info = CAPI_U16(frm);
 		p_indent(level, frm);
 		printf("Info number: %d\n", info);
 
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("Info element:\n");
@@ -480,12 +486,12 @@ static void cmd_interoperability(int level, uint8_t subcmd, struct frame *frm)
 	uint16_t nconn, datablkcnt, datablklen;
 	uint32_t ctr, value, major, minor;
 
-	info = (subcmd == 0x81) ? htons(get_u16(frm)) : 0;
-	sel = htons(get_u16(frm));
-	get_u8(frm);
+	info = (subcmd == 0x81) ? CAPI_U16(frm) : 0;
+	sel = CAPI_U16(frm);
+	CAPI_U8(frm);
 	if (subcmd != 0x83) {
-		func = htons(get_u16(frm));
-		get_u8(frm);
+		func = CAPI_U16(frm);
+		CAPI_U8(frm);
 	} else
 		func = 0;
 
@@ -501,13 +507,13 @@ static void cmd_interoperability(int level, uint8_t subcmd, struct frame *frm)
 		case 0x80:
 			switch (func) {
 			case 0:
-				nconn = htons(get_u16(frm));
+				nconn = CAPI_U16(frm);
 				p_indent(level + 1, frm);
 				printf("maxLogicalConnections: %d\n", nconn);
-				datablkcnt = htons(get_u16(frm));
+				datablkcnt = CAPI_U16(frm);
 				p_indent(level + 1, frm);
 				printf("maxBDataBlocks: %d\n", datablkcnt);
-				datablklen = htons(get_u16(frm));
+				datablklen = CAPI_U16(frm);
 				p_indent(level + 1, frm);
 				printf("maxBDataLen: %d\n", datablklen);
 				break;
@@ -515,7 +521,7 @@ static void cmd_interoperability(int level, uint8_t subcmd, struct frame *frm)
 			case 3:
 			case 4:
 			case 5:
-				ctr = htonl(get_u32(frm));
+				ctr = CAPI_U32(frm);
 				p_indent(level + 1, frm);
 				printf("Controller: %d\n", ctr);
 				break;
@@ -529,41 +535,41 @@ static void cmd_interoperability(int level, uint8_t subcmd, struct frame *frm)
 			switch (func) {
 			case 0:
 			case 1:
-				info = htons(get_u16(frm));
+				info = CAPI_U16(frm);
 				p_indent(level + 1, frm);
 				printf("Info: 0x%04x (%s)\n", info, info2str(info));
 				break;
 			case 2:
-				info = htons(get_u16(frm));
+				info = CAPI_U16(frm);
 				p_indent(level + 1, frm);
 				printf("Info: 0x%04x (%s)\n", info, info2str(info));
-				get_u8(frm);
+				CAPI_U8(frm);
 				profile(level + 1, frm);
 				break;
 			case 3:
-				info = htons(get_u16(frm));
+				info = CAPI_U16(frm);
 				p_indent(level + 1, frm);
 				printf("Info: 0x%04x (%s)\n", info, info2str(info));
-				ctr = htonl(get_u32(frm));
+				ctr = CAPI_U32(frm);
 				p_indent(level + 1, frm);
 				printf("Controller: %d\n", ctr);
-				get_u8(frm);
+				CAPI_U8(frm);
 				p_indent(level + 1, frm);
 				printf("Identification: \"%s\"\n", (char *) frm->ptr);
 				break;
 			case 4:
-				value = htonl(get_u32(frm));
+				value = CAPI_U32(frm);
 				p_indent(level + 1, frm);
 				printf("Return value: 0x%04x\n", value);
-				ctr = htonl(get_u32(frm));
+				ctr = CAPI_U32(frm);
 				p_indent(level + 1, frm);
 				printf("Controller: %d\n", ctr);
 				p_indent(level + 1, frm);
-				major = htonl(get_u32(frm));
-				minor = htonl(get_u32(frm));
+				major = CAPI_U32(frm);
+				minor = CAPI_U32(frm);
 				printf("CAPI: %d.%d\n", major, minor);
-				major = htonl(get_u32(frm));
-				minor = htonl(get_u32(frm));
+				major = CAPI_U32(frm);
+				minor = CAPI_U32(frm);
 				p_indent(level + 1, frm);
 				printf("Manufacture: %u.%01x%01x-%02u (%d.%d)\n",
 					(major & 0xf0) >> 4, (major & 0x0f) << 4,
@@ -571,13 +577,13 @@ static void cmd_interoperability(int level, uint8_t subcmd, struct frame *frm)
 					major, minor);
 				break;
 			case 5:
-				value = htonl(get_u32(frm));
+				value = CAPI_U32(frm);
 				p_indent(level + 1, frm);
 				printf("Return value: 0x%04x\n", value);
-				ctr = htonl(get_u32(frm));
+				ctr = CAPI_U32(frm);
 				p_indent(level + 1, frm);
 				printf("Controller: %d\n", ctr);
-				get_u8(frm);
+				CAPI_U8(frm);
 				p_indent(level + 1, frm);
 				printf("Serial number: %.7s\n", (char *) frm->ptr);
 				break;
@@ -611,8 +617,8 @@ static void cmd_facility(int level, uint8_t subcmd, struct frame *frm)
 
 	cmd_common(level, subcmd, frm);
 
-	sel = htons(get_u16(frm));
-	get_u8(frm);
+	sel = CAPI_U16(frm);
+	CAPI_U8(frm);
 
 	p_indent(level, frm);
 	printf("Selector: 0x%04x (%s)\n", sel, facilitysel2str(sel));
@@ -631,12 +637,12 @@ static void cmd_connect_b3(int level, uint8_t subcmd, struct frame *frm)
 		return;
 
 	if (subcmd == 0x83) {
-		reject = htons(get_u16(frm));
+		reject = CAPI_U16(frm);
 		p_indent(level, frm);
 		printf("Reject: 0x%04x (%s)\n", reject, info2str(reject));
 	}
 
-	len = get_u8(frm);
+	len = CAPI_U8(frm);
 	if (len > 0) {
 		p_indent(level, frm);
 		printf("NCPI:\n");
@@ -651,7 +657,7 @@ static void cmd_connect_b3_active(int level, uint8_t subcmd, struct frame *frm)
 	cmd_common(level, subcmd, frm);
 
 	if (subcmd == 0x82) {
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("NCPI:\n");
@@ -668,13 +674,13 @@ static void cmd_disconnect_b3(int level, uint8_t subcmd, struct frame *frm)
 	cmd_common(level, subcmd, frm);
 
 	if (subcmd == 0x82) {
-		reason = htons(get_u16(frm));
+		reason = CAPI_U16(frm);
 		p_indent(level, frm);
 		printf("Reason: 0x%04x (%s)\n", reason, info2str(reason));
 	}
 
 	if (subcmd == 0x80 || subcmd == 0x82) {
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("NCPI:\n");
@@ -692,27 +698,27 @@ static void cmd_data_b3(int level, uint8_t subcmd, struct frame *frm)
 	cmd_common(level, 0x00, frm);
 
 	if (subcmd == 0x81 || subcmd == 0x83) {
-		handle = htons(get_u16(frm));
+		handle = CAPI_U16(frm);
 		p_indent(level, frm);
 		printf("Data handle: 0x%04x\n", handle);
 
 		if (subcmd == 0x81) {
-			info = htons(get_u16(frm));
+			info = CAPI_U16(frm);
 			p_indent(level, frm);
 			printf("Info: 0x%04x (%s)\n", info, info2str(info));
 		}
 	} else {
-		data = htonl(get_u32(frm));
+		data = CAPI_U32(frm);
 
-		length = htons(get_u16(frm));
+		length = CAPI_U16(frm);
 		p_indent(level, frm);
 		printf("Data length: 0x%04x (%d bytes)\n", length, length);
 
-		handle = htons(get_u16(frm));
+		handle = CAPI_U16(frm);
 		p_indent(level, frm);
 		printf("Data handle: 0x%04x\n", handle);
 
-		flags = htons(get_u16(frm));
+		flags = CAPI_U16(frm);
 		p_indent(level, frm);
 		printf("Flags: 0x%04x\n", flags);
 
@@ -730,7 +736,7 @@ static void cmd_reset_b3(int level, uint8_t subcmd, struct frame *frm)
 	cmd_common(level, subcmd, frm);
 
 	if (subcmd == 0x80 || subcmd == 0x82) {
-		len = get_u8(frm);
+		len = CAPI_U8(frm);
 		if (len > 0) {
 			p_indent(level, frm);
 			printf("NCPI:\n");
@@ -745,7 +751,7 @@ static void cmd_manufacturer(int level, uint8_t subcmd, struct frame *frm)
 	uint16_t len;
 	unsigned char *id;
 
-	ctr = htonl(get_u32(frm));
+	ctr = CAPI_U32(frm);
 	p_indent(level, frm);
 	printf("Controller: %d\n", ctr);
 
@@ -760,11 +766,11 @@ static void cmd_manufacturer(int level, uint8_t subcmd, struct frame *frm)
 	frm->len -= 4;
 
 	if (!strncmp(id, "AVM!", 4)) {
-		class = htonl(get_u32(frm));
-		func = htonl(get_u32(frm));
-		len = get_u8(frm);
+		class = CAPI_U32(frm);
+		func = CAPI_U32(frm);
+		len = CAPI_U8(frm);
 		if (len == 0xff)
-			len = htons(get_u16(frm));
+			len = CAPI_U16(frm);
 
 		printf(" [class %d func %d len %d]\n", class, func, len);
 	} else
@@ -778,11 +784,11 @@ void capi_dump(int level, struct frame *frm)
 	uint16_t len, appl, msgnum;
 	uint8_t cmd, subcmd;
 
-	len = htons(get_u16(frm)) - 8;
-	appl = htons(get_u16(frm));
-	cmd = get_u8(frm);
-	subcmd = get_u8(frm);
-	msgnum = htons(get_u16(frm));
+	len = CAPI_U16(frm) - 8;
+	appl = CAPI_U16(frm);
+	cmd = CAPI_U8(frm);
+	subcmd = CAPI_U8(frm);
+	msgnum = CAPI_U16(frm);
 
 	p_indent(level, frm);
 
