@@ -38,6 +38,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include <syslog.h>
 #include <sys/un.h>
 #include <sys/socket.h>
 
@@ -47,11 +48,54 @@
 #include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/sdp_internal.h>
+
+#include <netinet/in.h>
+
+#define SDPINF(fmt, arg...) syslog(LOG_INFO, fmt "\n", ## arg)
+#define SDPERR(fmt, arg...) syslog(LOG_ERR, "%s: " fmt "\n", __func__ , ## arg)
+
+#ifdef SDP_DEBUG
+#define SDPDBG(fmt, arg...) syslog(LOG_DEBUG, "%s: " fmt "\n", __func__ , ## arg)
+#else
+#define SDPDBG(fmt...)
+#endif
+
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define ntoh64(x) (x)
+static inline void ntoh128(uint128_t *src, uint128_t *dst)
+{
+	int i;
+	for (i = 0; i < 16; i++)
+		dst->data[i] = src->data[i];
+}
+#else
+static inline uint64_t ntoh64(uint64_t n)
+{
+	uint64_t h;
+	uint64_t tmp = ntohl(n & 0x00000000ffffffff);
+	h = ntohl(n >> 32);
+	h |= tmp << 32;
+	return h;
+}
+static inline void ntoh128(uint128_t *src, uint128_t *dst)
+{
+	int i;
+	for (i = 0; i < 16; i++)
+		dst->data[15 - i] = src->data[i];
+}
+#endif
+
+#define hton64(x)     ntoh64(x)
+#define hton128(x, y) ntoh128(x, y)
 
 #define BASE_UUID "00000000-0000-1000-8000-00805F9B34FB"
 
 static uint128_t *bluetooth_base_uuid = NULL;
+
+#define SDP_BASIC_ATTR_PDUFORM_SIZE 32
+#define SDP_SEQ_PDUFORM_SIZE 128
+#define SDP_UUID_SEQ_SIZE 256
+#define SDP_MAX_ATTR_LEN 65535
 
 /* Message structure. */
 struct tupla {
