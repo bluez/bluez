@@ -12,9 +12,9 @@ unknown:
 	-echo Unknown distribution 
 
 redhat:
-	$(mkinstalldirs) $(DESTDIR)/etc/rc.d/init.d
-	$(INSTALL) -m 755 $(srcdir)/bluetooth.rc.rh $(DESTDIR)/etc/rc.d/init.d/bluetooth
+	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/rc.d/init.d
+	$(INSTALL) -m 755 $(srcdir)/bluetooth.rc.rh $(DESTDIR)$(sysconfdir)/rc.d/init.d/bluetooth
 
 debian:
-	$(mkinstalldirs) $(DESTDIR)/etc/init.d
-	$(INSTALL) -m 755 $(srcdir)/bluetooth.rc.deb $(DESTDIR)/etc/init.d/bluetooth
+	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/init.d
+	$(INSTALL) -m 755 $(srcdir)/bluetooth.rc.deb $(DESTDIR)$(sysconfdir)/init.d/bluetooth

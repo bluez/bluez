@@ -2,7 +2,7 @@
 #  $Id$
 #
 
-pcmciadir  = /etc/pcmcia
+pcmciadir  = $(sysconfdir)/pcmcia
 
 EXTRA_DIST = bluetooth bluetooth.conf
 
