@@ -214,7 +214,7 @@ static inline void print_int(uint8_t de_type, int level, int n, struct frame *fr
 	case 16:/* 128-bit */
 		get_u128(frm, &val, &val2);
 		printf(" 0x%llx", val2);
-		if (val < 0x1000000000000000L)
+		if (val < 0x1000000000000000LL)
 			printf("0");
 		printf("%llx", val);
 		return;
