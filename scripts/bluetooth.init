@@ -54,7 +54,7 @@ case "$1" in
 		echo -n " $SDPD_NAME"
 	fi
 	if $HIDD_ENABLE && [ -x "$HIDD_EXEC" ] ; then
-		$HIDD_EXEC $HIDD_OPTIONS
+		$HIDD_EXEC $HIDD_OPTIONS --server
 		echo -n " $HIDD_NAME"
 	fi
 	if $HID2HCI_ENABLE && [ -x "$HID2HCI_EXEC" ] ; then
