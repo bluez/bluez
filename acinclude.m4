@@ -1,13 +1,3 @@
-dnl Add directory level
-AC_DEFUN( AC_ADD_DIRLEVEL,
-[
-    for i in $1; do
-	eval o=\$$i
-	o=`echo $o | sed 's#.\.\./#&../#g'`
-	eval $i=\$o	
-    done
-])
-
 dnl Test file
 AC_DEFUN( AC_TEST_FILE,
 [
@@ -52,6 +42,8 @@ AC_DEFUN( AC_SEARCH_HEADERS,
     AC_MSG_CHECKING("for $1") 
     ac_hdr_found=no
     for p in $2; do
+	test -d $p || continue;
+	p=`cd $p && pwd`
 	AC_TEST_FILES($1, $p, 
 	    [ 
      	       ac_hdr_found=yes
@@ -79,6 +71,7 @@ AC_DEFUN( AC_SEARCH_LIB,
     ac_lib_found=no
     for p in $3; do
 	test -d $p || continue;
+	p=`cd $p && pwd`
 
 	# Check for libtool library
 	if test -f $p/lib$1.la; then
@@ -90,7 +83,7 @@ AC_DEFUN( AC_SEARCH_LIB,
 	LDFLAGS="-L$path -l$1"
 	AC_TRY_LINK_FUNC($2,
 	    [ 
-	       LIBS="$LIBS -L$path -l$1"
+	       LIBS="$LIBS -L$p -l$1"
      	       ac_lib_found=yes
 	       break
 	    ]

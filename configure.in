@@ -27,9 +27,11 @@ AC_PROG_AWK
 AC_PROG_INSTALL
 AC_CHECK_TOOL(LD, ld, ld)
 AC_CHECK_TOOL(AR, ar, ar)
-
+AC_PROG_INSTALL
 AC_PROG_YACC
 AM_PROG_LEX
+
+AM_PROG_LIBTOOL
 
 AC_ARG_WITH(bluez-libs,
 	--with-bluez-libs=DIR  BlueZ libraries and header files,
@@ -37,8 +39,8 @@ AC_ARG_WITH(bluez-libs,
 	    BLUEZ_INCDIR="$withval"/include
 	    BLUEZ_LIBDIR="$withval"/src
 	],[
-	    BLUEZ_INCDIR='../libs/include ../bluez-libs*/include /usr/include/bluetooth'
-	    BLUEZ_LIBDIR='../libs/src ../bluez-libs*/src /usr/lib'
+	    BLUEZ_INCDIR='../libs/include /usr/include/bluetooth'
+	    BLUEZ_LIBDIR='../libs/src /usr/lib'
 	]
 )
 
@@ -69,9 +71,6 @@ AC_ARG_WITH(glib,
 	]
 )
 
-dnl Check for programs.
-AC_PROG_INSTALL
-
 dnl Check for distro type.
 DISTRO=unknown
 
@@ -88,7 +87,5 @@ AC_ARG_ENABLE(pcmcia,
     [ if test "$cross_compiling" != yes; then
            AC_TEST_DIR(/etc/pcmcia, PCMCIA=pcmcia, PCMCIA=)
     fi ])
-
-AC_ADD_DIRLEVEL(CFLAGS CPPFLAGS LDFLAGS LIBS)
 
 AC_OUTPUT(Makefile hcid/Makefile tools/Makefile scripts/Makefile pcmcia/Makefile)
