@@ -130,6 +130,15 @@ with Bluetooth address
 Display link quality for the connection to the device with Bluetooth address
 .IR bdaddr .
 .TP
+.BI tpl " <bdaddr> [type]"
+Display transmit power level for the connection to the device with Bluetooth address
+.IR bdaddr .
+The type can be
+.BR 0
+for the current transmit power level (which is default) or
+.BR 1
+for the maximum transmit power level.
+.TP
 .BI lst " <bdaddr> [value]"
 With no
 .IR value ,

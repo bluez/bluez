@@ -37,9 +37,9 @@
 #include <termios.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <asm/types.h>
 #include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
@@ -786,7 +786,7 @@ static void cmd_sr(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	memset(&rq, 0, sizeof(rq));	
+	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_POLICY;
 	rq.ocf    = OCF_SWITCH_ROLE;
 	rq.cparam = &cp;
@@ -869,7 +869,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 	
-	memset(&rq, 0, sizeof(rq));	
+	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_STATUS_PARAM;
 	rq.ocf    = OCF_READ_RSSI;
 	rq.cparam = &cr->conn_info->handle;
@@ -886,24 +886,24 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 		printf("Read RSSI returned (error) status 0x%2.2X\n", rp.status);
 		exit(1);
 	}
-	printf("\tRSSI return value: %d\n", rp.rssi);
+	printf("RSSI return value: %d\n", rp.rssi);
 
 	close(dd);
 	free(cr);
 }
 
-/* Get Link Quality */
+/* Get link quality */
 
-static struct option link_quality_options[] = {
+static struct option lq_options[] = {
 	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
-static char *link_quality_help = 
+static char *lq_help = 
 	"Usage:\n"
 	"\tlq <bdaddr>\n";
 
-static void cmd_link_quality(int dev_id, int argc, char **argv)
+static void cmd_lq(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
 	struct hci_request rq;
@@ -911,10 +911,10 @@ static void cmd_link_quality(int dev_id, int argc, char **argv)
 	bdaddr_t bdaddr;
 	int opt, dd;
 
-	for_each_opt(opt, link_quality_options, NULL) {
+	for_each_opt(opt, lq_options, NULL) {
 		switch(opt) {
 		default:
-			printf(link_quality_help);
+			printf(lq_help);
 			return;
 		}
 	}
@@ -922,7 +922,7 @@ static void cmd_link_quality(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(link_quality_help);
+		printf(lq_help);
 		return;
 	}
 
@@ -953,13 +953,13 @@ static void cmd_link_quality(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	memset(&rq, 0, sizeof(rq));	
-	rq.ogf = OGF_STATUS_PARAM;
-	rq.ocf = OCF_GET_LINK_QUALITY;
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_STATUS_PARAM;
+	rq.ocf    = OCF_GET_LINK_QUALITY;
 	rq.cparam = &cr->conn_info->handle;
-	rq.clen = 2;
+	rq.clen   = 2;
 	rq.rparam = &rp;
-	rq.rlen = GET_LINK_QUALITY_RP_SIZE;
+	rq.rlen   = GET_LINK_QUALITY_RP_SIZE;
 	
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		perror("HCI get_link_quality request failed");
@@ -972,6 +972,95 @@ static void cmd_link_quality(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 	printf("Link quality: %d\n", rp.link_quality);
+
+	close(dd);
+	free(cr);
+}
+
+/* Get transmit power level */
+
+static struct option tpl_options[] = {
+	{"help",	0,0, 'h'},
+	{0, 0, 0, 0}
+};
+
+static char *tpl_help = 
+	"Usage:\n"
+	"\ttpl <bdaddr> [type]\n";
+
+static void cmd_tpl(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	struct hci_request rq;
+	read_transmit_power_level_cp cp;
+	read_transmit_power_level_rp rp;
+	bdaddr_t bdaddr;
+	int opt, dd;
+
+	for_each_opt(opt, tpl_options, NULL) {
+		switch(opt) {
+		default:
+			printf(tpl_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(tpl_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+	cp.type = (argc > 1) ? atoi(argv[1]) : 0;
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+ 
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return;
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+	cp.handle = cr->conn_info->handle;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_TRANSMIT_POWER_LEVEL;
+	rq.cparam = &cp;
+	rq.clen   = READ_TRANSMIT_POWER_LEVEL_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = READ_TRANSMIT_POWER_LEVEL_RP_SIZE;
+	
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		perror("HCI read transmit power level request failed");
+		exit(1);
+	}
+
+	if (rp.status) {
+		fprintf(stderr, "HCI read_transmit_power_level cmd failed (0x%2.2X)\n", 
+				rp.status);
+		exit(1);
+	}
+	printf("%s transmit power level: %d\n",
+		(cp.type == 0) ? "Current" : "Maximum", rp.level);
 
 	close(dd);
 	free(cr);
@@ -1043,7 +1132,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	cp.handle   = cr->conn_info->handle;
 	cp.pkt_type = ptype;
 
-	memset(&rq, 0, sizeof(rq));	
+	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
 	rq.ocf    = OCF_SET_CONN_PTYPE;
 	rq.cparam = &cp;
@@ -1061,18 +1150,18 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	free(cr);
 }
 
-/* Get/Set Link Supervision Timeout */
+/* Get/Set link supervision timeout */
 
-static struct option link_supervision_options[] = {
+static struct option lst_options[] = {
 	{"help",	0,0, 'h'},
 	{0, 0, 0, 0}
 };
 
-static char *link_supervision_help = 
+static char *lst_help = 
 	"Usage:\n"
 	"\tlst <bdaddr> [new value in slots]\n";
 
-static void cmd_link_sup_to(int dev_id, int argc, char **argv)
+static void cmd_lst(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
 	struct hci_request rq;
@@ -1081,10 +1170,10 @@ static void cmd_link_sup_to(int dev_id, int argc, char **argv)
 	bdaddr_t bdaddr;
 	int opt, dd;
 
-	for_each_opt(opt, link_supervision_options, NULL) {
+	for_each_opt(opt, lst_options, NULL) {
 		switch(opt) {
 		default:
-			printf(link_supervision_help);
+			printf(lst_help);
 			return;
 		}
 	}
@@ -1092,7 +1181,7 @@ static void cmd_link_sup_to(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(link_supervision_help);
+		printf(lst_help);
 		return;
 	}
 
@@ -1124,7 +1213,7 @@ static void cmd_link_sup_to(int dev_id, int argc, char **argv)
 	}
 
 	if (argc == 1) {
-		memset(&rq, 0, sizeof(rq));	
+		memset(&rq, 0, sizeof(rq));
 		rq.ogf    = OGF_HOST_CTL;
 		rq.ocf    = OCF_READ_LINK_SUPERVISION_TIMEOUT;
 		rq.cparam = &cr->conn_info->handle;
@@ -1152,7 +1241,7 @@ static void cmd_link_sup_to(int dev_id, int argc, char **argv)
 		cp.handle      = cr->conn_info->handle;
 		cp.link_sup_to = strtol(argv[1], NULL, 10);
 
-		memset(&rq, 0, sizeof(rq));	
+		memset(&rq, 0, sizeof(rq));
 		rq.ogf    = OGF_HOST_CTL;
 		rq.ocf    = OCF_WRITE_LINK_SUPERVISION_TIMEOUT;
 		rq.cparam = &cp;
@@ -1173,20 +1262,21 @@ struct {
 	void (*func)(int dev_id, int argc, char **argv);
 	char *doc;
 } command[] = {
-	{ "dev",  cmd_dev,  "Display local devices"              },
-	{ "inq",  cmd_inq,  "Inquire remote devices"             },
-	{ "scan", cmd_scan, "Scan for remote devices"            },
-	{ "name", cmd_name, "Get name from remote device"        },
-	{ "info", cmd_info, "Get information from remote device" },
-	{ "cmd",  cmd_cmd,  "Submit arbitrary HCI commands"      },
-	{ "con",  cmd_con,  "Display active connections"         },
-	{ "cc",   cmd_cc,   "Create connection to remote device" },
-	{ "dc",	  cmd_dc,   "Disconnect from remote device"      },
-	{ "sr",   cmd_sr,   "Switch master/slave role"           },
-	{ "cpt",  cmd_cpt,  "Change connection packet type"      },
-	{ "rssi", cmd_rssi, "Display connection RSSI"            },
-	{ "lq",   cmd_link_quality, "Display link quality"       },
-	{ "lst",  cmd_link_sup_to, "Set/display link supervision timeout"       },
+	{ "dev",  cmd_dev,  "Display local devices"                },
+	{ "inq",  cmd_inq,  "Inquire remote devices"               },
+	{ "scan", cmd_scan, "Scan for remote devices"              },
+	{ "name", cmd_name, "Get name from remote device"          },
+	{ "info", cmd_info, "Get information from remote device"   },
+	{ "cmd",  cmd_cmd,  "Submit arbitrary HCI commands"        },
+	{ "con",  cmd_con,  "Display active connections"           },
+	{ "cc",   cmd_cc,   "Create connection to remote device"   },
+	{ "dc",	  cmd_dc,   "Disconnect from remote device"        },
+	{ "sr",   cmd_sr,   "Switch master/slave role"             },
+	{ "cpt",  cmd_cpt,  "Change connection packet type"        },
+	{ "rssi", cmd_rssi, "Display connection RSSI"              },
+	{ "lq",   cmd_lq,   "Display link quality"                 },
+	{ "tpl",  cmd_tpl,  "Display transmit power level"         },
+	{ "lst",  cmd_lst,  "Set/display link supervision timeout" },
 	{ NULL, NULL, 0}
 };
 
