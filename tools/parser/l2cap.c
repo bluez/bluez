@@ -397,17 +397,17 @@ static void l2cap_parse(int level, struct frame *frm)
 
 		switch (psm) {
 		case 0x01:
-			if (p_filter(FILT_SDP))
-				break;
-	
-			sdp_dump(level+1, frm);
+			if (!p_filter(FILT_SDP))
+				sdp_dump(level+1, frm);
+			else
+				raw_dump(level+1, frm);
 			break;
 
 		case 0x03:
-			if (p_filter(FILT_RFCOMM))
-				break;
-	
-			rfcomm_dump(level, frm);
+			if (!p_filter(FILT_RFCOMM))
+				rfcomm_dump(level, frm);
+			else
+				raw_dump(level+1, frm);
 			break;
 
 		default:

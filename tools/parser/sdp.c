@@ -337,13 +337,13 @@ static inline void print_srv_srch_pat(int level, struct frame *frm)
 			if (parse_de_hdr(frm,&n2) == SDP_DE_UUID) {
 				print_uuid(n2, frm);
 			} else {
-				printf("\nERROR: Unexpected syntax\n");
+				printf("\nERROR: Unexpected syntax (UUID)\n");
 				raw_dump(level, frm);
 			}
 		}
 		printf("\n");
 	} else {
-		printf("\nERROR: Unexpected syntax\n");
+		printf("\nERROR: Unexpected syntax (SEQ)\n");
 		raw_dump(level, frm);
 	}
 }
@@ -446,7 +446,7 @@ static inline void err_rsp(int level, __u16 tid, __u16 len, struct frame *frm)
 	printf("SDP Error Rsp: tid 0x%x len 0x%x\n", tid, len);
 
 	p_indent(++level, 0);
-   printf("ec 0x%x info ", get_u16(frm));
+	printf("ec 0x%x info ", get_u16(frm));
 	if (frm->len > 0) {
 		raw_dump(0, frm);
 	} else {
@@ -525,7 +525,7 @@ static inline void ssa_req(int level, __u16 tid, __u16 len, struct frame *frm)
 
 	/* Parse MaximumAttributeByteCount */
 	p_indent(level, 0);
-   printf("max 0x%x\n", get_u16(frm));
+	printf("max 0x%x\n", get_u16(frm));
 
 	/* Parse AttributeList */
 	print_attr_id_list(level, frm);
@@ -552,9 +552,9 @@ void sdp_dump(int level, struct frame *frm)
 	frm->ptr += SDP_PDU_HDR_SIZE;
 	frm->len -= SDP_PDU_HDR_SIZE;
 
-	p_indent(++level, frm->in);
+	p_indent(level, frm->in);
 
-	switch(hdr->pid) {
+	switch (hdr->pid) {
 	case SDP_ERROR_RSP:
 		err_rsp(level, tid, len, frm);
 		break;
