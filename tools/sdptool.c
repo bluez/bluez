@@ -2094,15 +2094,16 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 }
 
 static struct option browse_options[] = {
-	{ "help",    0,0, 'h' },
-	{ "tree",    0,0, 't' },
-	{ "l2cap",   0,0, 'l' },
+	{ "help",	0, 0, 'h' },
+	{ "tree",	0, 0, 't' },
+	{ "uuid",	1, 0, 'u' },
+	{ "l2cap",	0, 0, 'l' },
 	{ 0, 0, 0, 0 }
 };
 
 static char *browse_help = 
 	"Usage:\n"
-	"\tbrowse [--tree] [--l2cap] [bdaddr]\n";
+	"\tbrowse [--tree] [--uuid uuid] [--l2cap] [bdaddr]\n";
 
 /*
  * Browse the full SDP database (i.e. list all services starting from the
@@ -2111,7 +2112,7 @@ static char *browse_help =
 static int cmd_browse(int argc, char **argv)
 {
 	struct search_context context;
-	int opt;
+	int opt, num;
 
 	/* Initialise context */
 	memset(&context, '\0', sizeof(struct search_context));
@@ -2122,6 +2123,13 @@ static int cmd_browse(int argc, char **argv)
 		switch(opt) {
 		case 't':
 			context.tree = 1;
+			break;
+		case 'u':
+			if (sscanf(optarg, "%i", &num) != 1 || num < 0 || num > 0xffff) {
+				printf("Invalid uuid %s\n", optarg);
+				return -1;
+			}
+			sdp_uuid16_create(&context.group, num);
 			break;
 		case 'l':
 			sdp_uuid16_create(&context.group, L2CAP_UUID);
