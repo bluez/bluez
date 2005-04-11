@@ -1336,24 +1336,57 @@ static inline void conn_ptype_changed_dump(int level, struct frame *frm)
 	}
 }
 
+#ifndef INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		pscan_rep_mode;
+	uint8_t		pscan_period_mode;
+	uint8_t		pscan_mode;
+	uint8_t		dev_class[3];
+	uint16_t	clock_offset;
+	int8_t		rssi;
+} __attribute__ ((packed)) inquiry_info_with_rssi_and_pscan_mode;
+#define INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE 15
+#endif
+
 static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 {
 	uint8_t num = get_u8(frm);
 	int i;
 
-	for (i = 0; i < num; i++) {
-		inquiry_info_with_rssi *info = frm->ptr;
-		char addr[18];
+	if (!num)
+		return;
 
-		p_indent(level, frm);
+	if (frm->len / num == INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE) {
+		for (i = 0; i < num; i++) {
+			inquiry_info_with_rssi_and_pscan_mode *info = frm->ptr;
+			char addr[18];
 
-		ba2str(&info->bdaddr, addr);
-		printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
-			addr, info->pscan_rep_mode, btohs(info->clock_offset),
-			info->dev_class[2], info->dev_class[1], info->dev_class[0], info->rssi);
+			p_indent(level, frm);
 
-		frm->ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
-		frm->len -= INQUIRY_INFO_WITH_RSSI_SIZE;
+			ba2str(&info->bdaddr, addr);
+			printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
+				addr, info->pscan_rep_mode, btohs(info->clock_offset),
+				info->dev_class[2], info->dev_class[1], info->dev_class[0], info->rssi);
+
+			frm->ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
+			frm->len -= INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
+		}
+	} else {
+		for (i = 0; i < num; i++) {
+			inquiry_info_with_rssi *info = frm->ptr;
+			char addr[18];
+
+			p_indent(level, frm);
+
+			ba2str(&info->bdaddr, addr);
+			printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
+				addr, info->pscan_rep_mode, btohs(info->clock_offset),
+				info->dev_class[2], info->dev_class[1], info->dev_class[0], info->rssi);
+
+			frm->ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
+			frm->len -= INQUIRY_INFO_WITH_RSSI_SIZE;
+		}
 	}
 }
 
