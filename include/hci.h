@@ -1039,6 +1039,16 @@ typedef struct {
 	int8_t		rssi;
 } __attribute__ ((packed)) inquiry_info_with_rssi;
 #define INQUIRY_INFO_WITH_RSSI_SIZE 14
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		pscan_rep_mode;
+	uint8_t		pscan_period_mode;
+	uint8_t		pscan_mode;
+	uint8_t		dev_class[3];
+	uint16_t	clock_offset;
+	int8_t		rssi;
+} __attribute__ ((packed)) inquiry_info_with_rssi_and_pscan_mode;
+#define INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE 15
 
 #define EVT_TESTING			0xFE
 
