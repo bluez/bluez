@@ -111,3 +111,4 @@ gboolean hcid_dbus_init(void);
 #endif
 
 int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name);
+int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned char *key, const int type);

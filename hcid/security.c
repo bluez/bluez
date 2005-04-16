@@ -193,6 +193,8 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	key.time = time(0);
 
 	save_link_key(&key);
+
+	write_link_key(sba, dba, evt->link_key, evt->key_type);
 }
 
 /* PIN code handling */
@@ -386,7 +388,7 @@ static void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 	evt_remote_name_req_complete *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
 
-	if (!evt->status)
+	if (evt->status)
 		return;
 
 	write_device_name(sba, dba, evt->name);
