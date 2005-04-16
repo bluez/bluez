@@ -46,7 +46,7 @@
 
 #include "hcid.h"
 
-#define DEVPATH "/var/cache/bluetooth/"
+#define DEVPATH "/var/lib/bluetooth/"
 
 struct name_list {
 	bdaddr_t bdaddr;
