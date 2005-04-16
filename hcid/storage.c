@@ -201,10 +201,15 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 
 		ptr = buf;
 
+		memset(str, 0, sizeof(str));
 		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
 			str2ba(addr, &bdaddr);
-			list = list_add(list, &bdaddr, str, strlen(str) + 1);
+			str[sizeof(str) - 1] = '\0';
+			list = list_add(list, &bdaddr, str, sizeof(str));
+			memset(str, 0, sizeof(str));
 			ptr += pos;
+			if (ptr - buf >= st.st_size)
+				break;
 		};
 
 		lseek(fd, 0, SEEK_SET);
@@ -274,10 +279,15 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 
 		ptr = buf;
 
+		memset(str, 0, sizeof(str));
 		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
 			str2ba(addr, &bdaddr);
-			list = list_add(list, &bdaddr, str, strlen(str) + 1);
+			str[sizeof(str) - 1] = '\0';
+			list = list_add(list, &bdaddr, str, sizeof(str));
+			memset(str, 0, sizeof(str));
 			ptr += pos;
+			if (ptr - buf >= st.st_size)
+				break;
 		};
 
 		lseek(fd, 0, SEEK_SET);
@@ -289,7 +299,7 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 		sprintf(str + (i * 2), "%2.2X", key[i]);
 	sprintf(str + 32, " %d", type);
 
-	list = list_add(list, peer, str, strlen(str) + 1);
+	list = list_add(list, peer, str, sizeof(str));
 	if (!list) {
 		err = -EIO;
 		goto unlock;
