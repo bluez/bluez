@@ -544,7 +544,6 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 				continue;
 			}
 
-			memset(name, 0, sizeof(name));
 			if (hci_read_remote_name_with_clock_offset(dd,
 					&(info+i)->bdaddr,
 					(info+i)->pscan_rep_mode,
@@ -598,13 +597,15 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		}
 
 		if (handle > 0 || !nc) {
-			memset(name, 0, sizeof(name));
 			if (hci_read_remote_name_with_clock_offset(dd,
 					&(info+i)->bdaddr,
 					(info+i)->pscan_rep_mode,
 					(info+i)->clock_offset | 0x8000,
-					sizeof(name), name, 100000) < 0)
-				strcpy(name, "n/a");
+					sizeof(name), name, 100000) < 0) {
+				if (!nc)
+					strcpy(name, "n/a");
+			} else
+				nc = 0;
 		}
 		printf("Device name:\t%s%s\n", name, nc ? " [cached]" : "");
 
