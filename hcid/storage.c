@@ -220,3 +220,8 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 {
 	return 0;
 }
+
+int read_link_key(const bdaddr_t *local, const bdaddr_t *peer, unsigned char *key)
+{
+	return -ENOENT;
+}

@@ -114,23 +114,33 @@ static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
 
 static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
-	struct link_key *key = get_link_key(sba, dba);
+	unsigned char key[16];
 	char sa[18], da[18];
+	int err;
 
 	ba2str(sba, sa); ba2str(dba, da);
 	syslog(LOG_INFO, "link_key_request (sba=%s, dba=%s)", sa, da);
 
-	if (key) {
-		/* Link key found */
-		link_key_reply_cp lr;
-		memcpy(lr.link_key, key->key, 16);
-		bacpy(&lr.bdaddr, dba);
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
-				LINK_KEY_REPLY_CP_SIZE, &lr);
-		key->time = time(0);
-	} else {
+	err = read_link_key(sba, dba, key);
+	if (err < 0) {
+		struct link_key *linkkey = get_link_key(sba, dba);
+		if (linkkey) {
+			memcpy(key, linkkey->key, 16);
+			linkkey->time = time(0);
+			err = 0;
+		}
+	}
+
+	if (err < 0) {
 		/* Link key not found */
 		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY, 6, dba);
+	} else {
+		/* Link key found */
+		link_key_reply_cp lr;
+		memcpy(lr.link_key, key, 16);
+		bacpy(&lr.bdaddr, dba);
+		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
+						LINK_KEY_REPLY_CP_SIZE, &lr);
 	}
 }
 
