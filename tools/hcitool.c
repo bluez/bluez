@@ -286,7 +286,7 @@ static int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *n
 	char filename[PATH_MAX + 1], addr[18], str[249], *buf, *ptr;
 	bdaddr_t bdaddr;
 	struct stat st;
-	int fd, pos, err = 0;
+	int fd, pos, err = -ENOENT;
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/names", DEVPATH, addr);
@@ -321,6 +321,7 @@ static int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *n
 
 			if (!bacmp(&bdaddr, peer)) {
 				snprintf(name, 249, "%s", str);
+				err = 0;
 				break;
 			}
 
@@ -534,7 +535,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 
 	for (i = 0; i < num_rsp; i++) {
 		memset(name, 0, sizeof(name));
-		nc = read_device_name(&di.bdaddr, &(info+i)->bdaddr, name) < 0 ? 0 : 1;
+		nc = (read_device_name(&di.bdaddr, &(info+i)->bdaddr, name) == 0);
 
 		if (!extcls && !extinf && !extoui) {
 			ba2str(&(info+i)->bdaddr, addr);
