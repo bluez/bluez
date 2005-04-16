@@ -81,6 +81,7 @@ static unsigned short psm = 10;
 /* Default number of frames to send (-1 = infinite) */
 static int num_frames = -1;
 
+static int flowctl = 0;
 static int master = 0;
 static int auth = 0;
 static int encrypt = 0;
@@ -206,6 +207,8 @@ static int do_connect(char *svr)
 	/* Set new options */
 	opts.omtu = omtu;
 	opts.imtu = imtu;
+	if (flowctl)
+		opts.mode = 2;
 
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)",
@@ -338,6 +341,8 @@ static void do_listen(void (*handler)(int sk))
 
 	/* Set new options */
 	opts.imtu = imtu;
+	if (flowctl)
+		opts.mode = 2;
 
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)",
@@ -669,6 +674,7 @@ static void usage(void)
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-R] reliable mode\n"
 		"\t[-D] use connectionless channel (datagram)\n"
+		"\t[-F] enable flow control\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 		"\t[-S] secure connection\n"
@@ -682,7 +688,7 @@ int main(int argc ,char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:N:RMAESL:D")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:N:L:RDFAESM")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -762,6 +768,10 @@ int main(int argc ,char *argv[])
 
 		case 'M':
 			master = 1;
+			break;
+
+		case 'F':
+			flowctl = 1;
 			break;
 
 		case 'A':
