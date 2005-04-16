@@ -219,8 +219,10 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 
 	list_foreach(list, temp) {
 		ba2str(&temp->bdaddr, addr);
-		snprintf(buf, 300, "%s %s\n", addr, temp->data);
-		write(fd, buf, strlen(buf));
+		if (temp->data && temp->size > 0) {
+			snprintf(buf, 300, "%s %s\n", addr, temp->data);
+			write(fd, buf, strlen(buf));
+		}
 	}
 
 unlock:
@@ -294,8 +296,10 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 
 	list_foreach(list, temp) {
 		ba2str(&temp->bdaddr, addr);
-		snprintf(buf, 100, "%s %s\n", addr, temp->data);
-		write(fd, buf, strlen(buf));
+		if (temp->data && temp->size > 0) {
+			snprintf(buf, 100, "%s %s\n", addr, temp->data);
+			write(fd, buf, strlen(buf));
+		}
 	}
 
 unlock:
