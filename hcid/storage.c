@@ -48,22 +48,33 @@
 
 #define DEVPATH "/var/lib/bluetooth/"
 
-struct name_list {
+struct list {
 	bdaddr_t bdaddr;
-	char name[249];
-	struct name_list *next;
+	unsigned char *data;
+	size_t size;
+	struct list *next;
 };
 
-static struct name_list *name_add(struct name_list *list, const bdaddr_t *bdaddr, const char *name)
+static struct list *list_add(struct list *list, const bdaddr_t *bdaddr,
+				const unsigned char *data, const size_t size)
 {
-	struct name_list *temp = list, *last = list;
+	struct list *temp = list, *last = list;
 
 	if (!bacmp(bdaddr, BDADDR_ANY))
 		return list;
 
 	while (temp) {
 		if (!bacmp(&temp->bdaddr, bdaddr)) {
-			memcpy(temp->name, name, sizeof(temp->name));
+			if (temp->data)
+				free(temp->data);
+
+			temp->data = malloc(size);
+			if (temp->data) {
+				memcpy(temp->data, data, size);
+				temp->size = size;
+			} else
+				temp->size = 0;
+
 			return list;
 		}
 		temp = temp->next;
@@ -76,7 +87,13 @@ static struct name_list *name_add(struct name_list *list, const bdaddr_t *bdaddr
 	memset(temp, 0, sizeof(*temp));
 
 	bacpy(&temp->bdaddr, bdaddr);
-	memcpy(temp->name, name, sizeof(temp->name));
+	temp->data = malloc(size);
+	if (temp->data) {
+		memcpy(temp->data, data, size);
+		temp->size = size;
+	} else
+		temp->size = 0;
+
 	temp->next = NULL;
 
 	if (!list)
@@ -90,9 +107,9 @@ static struct name_list *name_add(struct name_list *list, const bdaddr_t *bdaddr
 	return list;
 }
 
-static struct name_list *name_free(struct name_list *list)
+static struct list *list_free(struct list *list)
 {
-	struct name_list *temp = list;
+	struct list *temp = list;
 
 	if (!list)
 		return NULL;
@@ -100,13 +117,15 @@ static struct name_list *name_free(struct name_list *list)
 	while (list->next) {
 		temp = list;
 		list = list->next;
+		if (temp->data)
+			free(temp->data);
 		free(temp);
 	}
 
 	return NULL;
 }
 
-#define name_foreach(list, entry) \
+#define list_foreach(list, entry) \
 	for (entry = list; entry; entry = entry->next)
 
 static int create_dirs(const char *filename, mode_t mode)
@@ -145,7 +164,7 @@ static int create_dirs(const char *filename, mode_t mode)
 
 int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name)
 {
-	struct name_list *temp, *list = NULL;
+	struct list *temp, *list = NULL;
 	char filename[PATH_MAX + 1], addr[18], str[249], *buf, *ptr;
 	bdaddr_t bdaddr;
 	struct stat st;
@@ -184,7 +203,7 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 
 		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
 			str2ba(addr, &bdaddr);
-			list = name_add(list, &bdaddr, str);
+			list = list_add(list, &bdaddr, str, strlen(str) + 1);
 			ptr += pos;
 		};
 
@@ -192,15 +211,15 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 		ftruncate(fd, 0);
 	}
 
-	list = name_add(list, peer, name);
+	list = list_add(list, peer, name, strlen(name) + 1);
 	if (!list) {
 		err = -EIO;
 		goto unlock;
 	}
 
-	name_foreach(list, temp) {
+	list_foreach(list, temp) {
 		ba2str(&temp->bdaddr, addr);
-		snprintf(buf, 200, "%s %s\n", addr, temp->name);
+		snprintf(buf, 200, "%s %s\n", addr, temp->data);
 		write(fd, buf, strlen(buf));
 	}
 
@@ -209,14 +228,17 @@ unlock:
 
 close:
 	close(fd);
-	name_free(list);
+	list_free(list);
 	return err;
 }
 
 int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned char *key, const int type)
 {
-	char filename[PATH_MAX + 1], addr[18];
-	int fd;
+	struct list *temp, *list = NULL;
+	char filename[PATH_MAX + 1], addr[18], str[35], *buf, *ptr;
+	bdaddr_t bdaddr;
+	struct stat st;
+	int i, fd, pos, err = 0;
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", DEVPATH, addr);
@@ -228,9 +250,61 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 	if (fd < 0)
 		return -errno;
 
-	close(fd);
+	if (flock(fd, LOCK_EX) < 0) {
+		err = -errno;
+		goto close;
+	}
 
-	return 0;
+	if (fstat(fd, &st) < 0) {
+		err = -errno;
+		goto unlock;
+	}
+
+	buf = malloc(st.st_size + 200);
+	if (!buf) {
+		err = -ENOMEM;
+		goto unlock;
+	}
+
+	if (st.st_size > 0) {
+		read(fd, buf, st.st_size);
+
+		ptr = buf;
+
+		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
+			str2ba(addr, &bdaddr);
+			list = list_add(list, &bdaddr, str, strlen(str) + 1);
+			ptr += pos;
+		};
+
+		lseek(fd, 0, SEEK_SET);
+		ftruncate(fd, 0);
+	}
+
+	memset(str, 0, sizeof(str));
+	for (i = 0; i < 16; i++)
+		sprintf(str + (i * 2), "%2.2X", key[i]);
+	sprintf(str + 32, " %d", type);
+
+	list = list_add(list, peer, str, strlen(str) + 1);
+	if (!list) {
+		err = -EIO;
+		goto unlock;
+	}
+
+	list_foreach(list, temp) {
+		ba2str(&temp->bdaddr, addr);
+		snprintf(buf, 200, "%s %s\n", addr, temp->data);
+		write(fd, buf, strlen(buf));
+	}
+
+unlock:
+	flock(fd, LOCK_UN);
+
+close:
+	close(fd);
+	list_free(list);
+	return err;
 }
 
 int read_link_key(const bdaddr_t *local, const bdaddr_t *peer, unsigned char *key)
