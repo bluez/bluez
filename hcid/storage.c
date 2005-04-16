@@ -312,7 +312,7 @@ int read_link_key(const bdaddr_t *local, const bdaddr_t *peer, unsigned char *ke
 	char filename[PATH_MAX + 1], addr[18], str[35], tmp[3], *buf, *ptr;
 	bdaddr_t bdaddr;
 	struct stat st;
-	int i, fd, pos, err = 0;
+	int i, fd, pos, err = -ENOENT;
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", DEVPATH, addr);
@@ -351,6 +351,7 @@ int read_link_key(const bdaddr_t *local, const bdaddr_t *peer, unsigned char *ke
 					memcpy(tmp, str + (i * 2), 2);
 					key[i] = (uint8_t) strtol(tmp, NULL, 16);
 				}
+				err = 0;
 				break;
 			}
 
