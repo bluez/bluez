@@ -34,9 +34,12 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <sys/file.h>
+#include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -276,6 +279,63 @@ static char *major_classes[] = {
 	"Audio/Video", "Peripheral", "Imaging", "Uncategorized"
 };
 
+#define DEVPATH "/var/lib/bluetooth/"
+
+static int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *name)
+{
+	char filename[PATH_MAX + 1], addr[18], str[249], *buf, *ptr;
+	bdaddr_t bdaddr;
+	struct stat st;
+	int fd, pos, err = 0;
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/names", DEVPATH, addr);
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0)
+		return -errno;
+
+	if (flock(fd, LOCK_SH) < 0) {
+		err = -errno;
+		goto close;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		err = -errno;
+		goto unlock;
+	}
+
+	buf = malloc(st.st_size);
+	if (!buf) {
+		err = -ENOMEM;
+		goto unlock;
+	}
+
+	if (st.st_size > 0) {
+		read(fd, buf, st.st_size);
+
+		ptr = buf;
+
+		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
+			str2ba(addr, &bdaddr);
+
+			if (!bacmp(&bdaddr, peer)) {
+				snprintf(name, 249, "%s", str);
+				break;
+			}
+
+			ptr += pos;
+		};
+	}
+
+unlock:
+	flock(fd, LOCK_UN);
+
+close:
+	close(fd);
+	return err;
+}
+
 /* Display local devices */
 
 static struct option dev_options[] = {
@@ -398,7 +458,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
 	int extcls = 0, extinf = 0, extoui = 0;
-	int i, opt, dd, cc;
+	int i, opt, dd, cc, nc;
 
 	length  = 8;	/* ~10 seconds */
 	num_rsp = 100;
@@ -473,7 +533,17 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		printf("\n");
 
 	for (i = 0; i < num_rsp; i++) {
+		memset(name, 0, sizeof(name));
+		nc = read_device_name(&di.bdaddr, &(info+i)->bdaddr, name) < 0 ? 0 : 1;
+
 		if (!extcls && !extinf && !extoui) {
+			ba2str(&(info+i)->bdaddr, addr);
+
+			if (nc) {
+				printf("\t%s\t%s\n", addr, name);
+				continue;
+			}
+
 			memset(name, 0, sizeof(name));
 			if (hci_read_remote_name_with_clock_offset(dd,
 					&(info+i)->bdaddr,
@@ -481,7 +551,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 					(info+i)->clock_offset | 0x8000,
 					sizeof(name), name, 100000) < 0)
 				strcpy(name, "n/a");
-			ba2str(&(info+i)->bdaddr, addr);
+
 			printf("\t%s\t%s\n", addr, name);
 			continue;
 		}
@@ -527,13 +597,16 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 			}
 		}
 
-		memset(name, 0, sizeof(name));
-		if (hci_read_remote_name_with_clock_offset(dd, &(info+i)->bdaddr,
-				(info+i)->pscan_rep_mode,
-				(info+i)->clock_offset | 0x8000,
-				sizeof(name), name, 100000) < 0)
-			strcpy(name, "n/a");
-		printf("Device name:\t%s\n", name);
+		if (handle > 0 || !nc) {
+			memset(name, 0, sizeof(name));
+			if (hci_read_remote_name_with_clock_offset(dd,
+					&(info+i)->bdaddr,
+					(info+i)->pscan_rep_mode,
+					(info+i)->clock_offset | 0x8000,
+					sizeof(name), name, 100000) < 0)
+				strcpy(name, "n/a");
+		}
+		printf("Device name:\t%s%s\n", name, nc ? " [cached]" : "");
 
 		if (extcls) {
 			memcpy(cls, (info+i)->dev_class, 3);
