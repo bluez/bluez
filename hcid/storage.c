@@ -220,7 +220,8 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 	list_foreach(list, temp) {
 		ba2str(&temp->bdaddr, addr);
 		if (temp->data && temp->size > 0) {
-			snprintf(buf, 300, "%s %s\n", addr, temp->data);
+			memset(buf, 0, 300);
+			snprintf(buf, 299, "%s %s\n", addr, temp->data);
 			write(fd, buf, strlen(buf));
 		}
 	}
@@ -297,7 +298,8 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 	list_foreach(list, temp) {
 		ba2str(&temp->bdaddr, addr);
 		if (temp->data && temp->size > 0) {
-			snprintf(buf, 100, "%s %s\n", addr, temp->data);
+			memset(buf, 0, 100);
+			snprintf(buf, 99, "%s %s\n", addr, temp->data);
 			write(fd, buf, strlen(buf));
 		}
 	}
