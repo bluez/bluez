@@ -146,10 +146,7 @@ static int create_dirs(const char *filename, mode_t mode)
 int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name)
 {
 	struct name_list *temp, *list = NULL;
-	mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
-	mode_t mask = S_IWGRP | S_IWOTH;
-	char filename[PATH_MAX + 1];
-	char addr[18], str[249], *buf, *ptr;
+	char filename[PATH_MAX + 1], addr[18], str[249], *buf, *ptr;
 	bdaddr_t bdaddr;
 	struct stat st;
 	int fd, pos, err = 0;
@@ -157,8 +154,8 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/names", DEVPATH, addr);
 
-	umask(mask);
-	create_dirs(filename, mode);
+	umask(S_IWGRP | S_IWOTH);
+	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 
 	fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (fd < 0)
@@ -218,6 +215,21 @@ close:
 
 int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned char *key, const int type)
 {
+	char filename[PATH_MAX + 1], addr[18];
+	int fd;
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", DEVPATH, addr);
+
+	umask(S_IWGRP | S_IWOTH);
+	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+
+	fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+	if (fd < 0)
+		return -errno;
+
+	close(fd);
+
 	return 0;
 }
 
