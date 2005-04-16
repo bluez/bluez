@@ -190,7 +190,7 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 		goto unlock;
 	}
 
-	buf = malloc(st.st_size + 200);
+	buf = malloc(st.st_size + 300);
 	if (!buf) {
 		err = -ENOMEM;
 		goto unlock;
@@ -219,7 +219,7 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 
 	list_foreach(list, temp) {
 		ba2str(&temp->bdaddr, addr);
-		snprintf(buf, 200, "%s %s\n", addr, temp->data);
+		snprintf(buf, 300, "%s %s\n", addr, temp->data);
 		write(fd, buf, strlen(buf));
 	}
 
@@ -260,7 +260,7 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 		goto unlock;
 	}
 
-	buf = malloc(st.st_size + 200);
+	buf = malloc(st.st_size + 100);
 	if (!buf) {
 		err = -ENOMEM;
 		goto unlock;
@@ -294,7 +294,7 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 
 	list_foreach(list, temp) {
 		ba2str(&temp->bdaddr, addr);
-		snprintf(buf, 200, "%s %s\n", addr, temp->data);
+		snprintf(buf, 100, "%s %s\n", addr, temp->data);
 		write(fd, buf, strlen(buf));
 	}
 
@@ -309,5 +309,59 @@ close:
 
 int read_link_key(const bdaddr_t *local, const bdaddr_t *peer, unsigned char *key)
 {
-	return -ENOENT;
+	char filename[PATH_MAX + 1], addr[18], str[35], tmp[3], *buf, *ptr;
+	bdaddr_t bdaddr;
+	struct stat st;
+	int i, fd, pos, err = 0;
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", DEVPATH, addr);
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0)
+		return -errno;
+
+	if (flock(fd, LOCK_SH) < 0) {
+		err = -errno;
+		goto close;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		err = -errno;
+		goto unlock;
+	}
+
+	buf = malloc(st.st_size);
+	if (!buf) {
+		err = -ENOMEM;
+		goto unlock;
+	}
+
+	if (st.st_size > 0) {
+		read(fd, buf, st.st_size);
+
+		ptr = buf;
+
+		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
+			str2ba(addr, &bdaddr);
+
+			if (!bacmp(&bdaddr, peer)) {
+				memset(tmp, 0, sizeof(tmp));
+				for (i = 0; i < 16; i++) {
+					memcpy(tmp, str + (i * 2), 2);
+					key[i] = (uint8_t) strtol(tmp, NULL, 16);
+				}
+				break;
+			}
+
+			ptr += pos;
+		};
+	}
+
+unlock:
+	flock(fd, LOCK_UN);
+
+close:
+	close(fd);
+	return err;
 }
