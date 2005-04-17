@@ -414,9 +414,20 @@ static hci_map lmp_features_map[8][9] = {
 
 char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 {
-	char *off, *ptr, *str = malloc(400);
-	int i;
+	char *off, *ptr, *str;
+	int i, size = 0;
 
+	for (i = 0; i < 8; i++) {
+		hci_map *m = lmp_features_map[i];
+
+		while (m->str) {
+			if ((unsigned int) m->val & (unsigned int) features[i])
+				size += strlen(m->str) + (pref ? strlen(pref) : 0) + 1;
+			m++;
+		}
+	}
+
+	str = malloc(size);
 	if (!str)
 		return NULL;
 
@@ -427,10 +438,9 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 
 	off = ptr;
 
-	for (i =  0;  i < 8; i++) {
-		hci_map *m;
+	for (i = 0; i < 8; i++) {
+		hci_map *m = lmp_features_map[i];
 
-		m = lmp_features_map[i];
 		while (m->str) {
 			if ((unsigned int) m->val & (unsigned int) features[i]) {
 				if (strlen(off) + strlen(m->str) > width - 1) {
