@@ -102,20 +102,14 @@ static void print_link_mode(struct hci_dev_info *di)
 
 static void print_dev_features(struct hci_dev_info *di, int format)
 {
-	if (!format) {
-		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n", 
-			di->features[0], di->features[1],
-			di->features[2], di->features[3],
-			di->features[4], di->features[5],
-			di->features[6], di->features[7] );
-	} else {
-		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n%s\n", 
-			di->features[0], di->features[1],
-			di->features[2], di->features[3],
-			di->features[4], di->features[5],
-			di->features[6], di->features[7],
-			lmp_featurestostr(di->features, "\t\t", 63));
-	}
+	printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
+				"0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",
+		di->features[0], di->features[1], di->features[2],
+		di->features[3], di->features[4], di->features[5],
+		di->features[6], di->features[7]);
+
+	if (format)
+		printf("%s\n", lmp_featurestostr(di->features, "\t\t", 63));
 }
 
 static void cmd_rstat(int ctl, int hdev, char *opt)
@@ -383,8 +377,47 @@ static void cmd_scomtu(int ctl, int hdev, char *opt)
 
 static void cmd_features(int ctl, int hdev, char *opt)
 {
+	uint8_t max_page, features[8];
+	int i, dd;
+
+	if (!(di.features[7] & 0x80)) {
+		print_dev_hdr(&di);
+		print_dev_features(&di, 1);
+		return;
+	}
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (hci_read_local_ext_features(dd, 0, &max_page, features, 1000) < 0) {
+		fprintf(stderr, "Can't read extended features hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
 	print_dev_hdr(&di);
-	print_dev_features(&di, 1);
+	printf("\tFeatures%s: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
+				"0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",
+		(max_page > 0) ? " page 0" : "",
+		features[0], features[1], features[2], features[3],
+		features[4], features[5], features[6], features[7]);
+	printf("%s\n", lmp_featurestostr(di.features, "\t\t", 63));
+
+	for (i = 1; i <= max_page; i++) {
+		if (hci_read_local_ext_features(dd, 1, &max_page, features, 1000) < 0)
+			continue;
+
+		printf("\tFeatures page %d: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
+					"0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n", i,
+			features[0], features[1], features[2], features[3],
+			features[4], features[5], features[6], features[7]);
+	}
+
+	hci_close_dev(dd);
 }
 
 static void cmd_name(int ctl, int hdev, char *opt)
@@ -656,6 +689,40 @@ static void cmd_voice(int ctl, int hdev, char *opt)
 	}
 }
 
+static void cmd_commands(int ctl, int hdev, char *opt)
+{
+	uint8_t cmds[64];
+	int i, n, dd;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (hci_read_local_commands(dd, cmds, 1000) < 0) {
+		fprintf(stderr, "Can't read support commands hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	print_dev_hdr(&di);
+	for (i = 0; i < 64; i++) {
+		if (!cmds[i])
+			continue;
+
+		printf("%s Octet %-2d = 0x%02x (Bit",
+			i ? "\t\t ": "\tCommands:", i, cmds[i]);
+		for (n = 0; n < 8; n++)
+			if (hci_test_bit(n, &cmds[i]))
+				printf(" %d", n);
+		printf(")\n");
+	}
+
+	hci_close_dev(dd);
+}
+
 static void cmd_version(int ctl, int hdev, char *opt)
 {
 	struct hci_version ver;
@@ -680,6 +747,8 @@ static void cmd_version(int ctl, int hdev, char *opt)
 		hci_vertostr(ver.hci_ver), ver.hci_ver, ver.hci_rev,
 		lmp_vertostr(ver.lmp_ver), ver.lmp_ver, ver.lmp_subver,
 		bt_compidtostr(ver.manufacturer), ver.manufacturer);
+
+	hci_close_dev(dd);
 }
 
 static void cmd_inq_mode(int ctl, int hdev, char *opt)
@@ -1166,6 +1235,7 @@ static struct {
 	{ "afhmode",	cmd_afh_mode,	"[mode]",	"Get/Set AFH mode" },
 	{ "aclmtu",	cmd_aclmtu,	"<mtu:pkt>",	"Set ACL MTU and number of packets" },
 	{ "scomtu",	cmd_scomtu,	"<mtu:pkt>",	"Set SCO MTU and number of packets" },
+	{ "commands",	cmd_commands,	0,		"Display supported commands" },
 	{ "features",	cmd_features,	0,		"Display device features" },
 	{ "version",	cmd_version,	0,		"Display version information" },
 	{ "revision",	cmd_revision,	0,		"Display revision information" },
