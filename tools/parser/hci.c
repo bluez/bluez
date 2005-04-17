@@ -590,6 +590,22 @@ static inline void remote_name_req_dump(int level, struct frame *frm)
 		clkoffset & 0x7fff, clkoffset & 0x8000 ? " (valid)" : "");
 }
 
+static inline void master_link_key_dump(int level, struct frame *frm)
+{
+	master_link_key_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("flag %d\n", cp->key_flag);
+}
+
+static inline void read_remote_ext_features_dump(int level, struct frame *frm)
+{
+	read_remote_ext_features_cp *cp = frm->ptr;
+
+        p_indent(level, frm);
+        printf("handle %d\n page %d", btohs(cp->handle), cp->page_num);
+}
+
 static inline void write_link_policy_dump(int level, struct frame *frm)
 {
 	write_link_policy_cp *cp = frm->ptr;
@@ -663,6 +679,14 @@ static inline void write_current_iac_lap_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void request_local_ext_features_dump(int level, struct frame *frm)
+{
+	read_local_ext_features_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("page %d\n", cp->page_num);
+}
+
 static inline void command_dump(int level, struct frame *frm)
 {
 	hci_command_hdr *hdr = frm->ptr;
@@ -734,6 +758,12 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_READ_CLOCK_OFFSET:
 			generic_command_dump(level + 1, frm);
 			return;
+		case OCF_MASTER_LINK_KEY:
+			master_link_key_dump(level + 1, frm);
+			return;
+		case OCF_READ_REMOTE_EXT_FEATURES:
+			read_remote_ext_features_dump(level + 1, frm);
+			return;
 		case OCF_REMOTE_NAME_REQ:
 			remote_name_req_dump(level + 1, frm);
 			return;
@@ -768,6 +798,13 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_WRITE_CURRENT_IAC_LAP:
 			write_current_iac_lap_dump(level + 1, frm);
+			return;
+		}
+
+	case OGF_INFO_PARAM:
+		switch (ocf) {
+		case OCF_READ_LOCAL_EXT_FEATURES:
+			request_local_ext_features_dump(level + 1, frm);
 			return;
 		}
 	}
@@ -925,6 +962,36 @@ static inline void read_local_version_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void read_local_commands_dump(int level, struct frame *frm)
+{
+	read_local_commands_rp *rp = frm->ptr;
+	int i, max = 0;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x\n", rp->status);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		for (i = 0; i < 64; i++)
+			if (rp->commands[i])
+				max = i + 1;
+		p_indent(level, frm);
+		printf("Commands: ");
+		for (i = 0; i < (max > 32 ? 32 : max); i++)
+			printf("%2.2x", rp->commands[i]);
+		printf("\n");
+		if (max > 32) {
+			p_indent(level, frm);
+			printf("          ");
+			for (i = 32; i < max; i++)
+				printf("%2.2x", rp->commands[i]);
+			printf("\n");
+		}
+	}
+}
+
 static inline void read_local_features_dump(int level, struct frame *frm)
 {
 	read_local_features_rp *rp = frm->ptr;
@@ -941,6 +1008,27 @@ static inline void read_local_features_dump(int level, struct frame *frm)
 		printf("Features:");
 		for (i = 0; i < 8; i++)
 			printf(" 0x%2.2x", rp->features[i]);
+		printf("\n");
+	}
+}
+
+static inline void read_local_ext_features_dump(int level, struct frame *frm)
+{
+	read_local_ext_features_rp *rp = frm->ptr;
+	int i;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x page %d max %d\n",
+		rp->status, rp->page_num, rp->max_page_num);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		p_indent(level, frm);
+		printf("Features:");
+		for (i = 0; i < 8; i++)
+			 printf(" 0x%2.2x", rp->features[i]);
 		printf("\n");
 	}
 }
@@ -980,6 +1068,11 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 	switch (ogf) {
 	case OGF_LINK_CTL:
 		switch (ocf) {
+		case OCF_INQUIRY_CANCEL:
+		case OCF_PERIODIC_INQUIRY:
+		case OCF_EXIT_PERIODIC_INQUIRY:
+			status_response_dump(level, frm);
+			return;
 		case OCF_PIN_CODE_REPLY:
 		case OCF_LINK_KEY_REPLY:
 		case OCF_PIN_CODE_NEG_REPLY:
@@ -987,6 +1080,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 			bdaddr_response_dump(level, frm);
 			return;
 		}
+		break;
 
 	case OGF_LINK_POLICY:
 		switch (ocf) {
@@ -994,6 +1088,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 			generic_response_dump(level, frm);
 			return;
 		}
+		break;
 
 	case OGF_HOST_CTL:
 		switch (ocf) {
@@ -1023,14 +1118,21 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 			status_response_dump(level, frm);
 			return;
 		}
+		break;
 
 	case OGF_INFO_PARAM:
 		switch (ocf) {
 		case OCF_READ_LOCAL_VERSION:
 			read_local_version_dump(level, frm);
 			return;
+		case OCF_READ_LOCAL_COMMANDS:
+			read_local_commands_dump(level, frm);
+			return;
 		case OCF_READ_LOCAL_FEATURES:
 			read_local_features_dump(level, frm);
+			return;
+		case OCF_READ_LOCAL_EXT_FEATURES:
+			read_local_ext_features_dump(level, frm);
 			return;
 		case OCF_READ_BUFFER_SIZE:
 			read_buffer_size_dump(level, frm);
@@ -1039,6 +1141,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 			bdaddr_response_dump(level, frm);
 			return;
 		}
+		break;
 
 	case OGF_STATUS_PARAM:
 		switch (ocf) {
@@ -1051,6 +1154,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 			status_response_dump(level, frm);
 			return;
 		}
+		break;
 	}
 
 	raw_dump(level, frm);
@@ -1159,6 +1263,20 @@ static inline void remote_name_req_complete_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x bdaddr %s name '%s'\n", evt->status, addr, name);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	}
+}
+
+static inline void master_link_key_complete_dump(int level, struct frame *frm)
+{
+	evt_master_link_key_complete *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d flag %d\n",
+		evt->status, btohs(evt->handle), evt->key_flag);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -1420,6 +1538,28 @@ static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void read_remote_ext_features_complete_dump(int level, struct frame *frm)
+{
+	evt_read_remote_ext_features_complete *evt = frm->ptr;
+	int i;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d page %d max %d\n",
+		evt->status, btohs(evt->handle),
+		evt->page_num, evt->max_page_num);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		p_indent(level, frm);
+		printf("Features:");
+		for (i = 0; i < 8; i++)
+			printf(" 0x%2.2x", evt->features[i]);
+		printf("\n");
+	}
+}
+
 static inline void event_dump(int level, struct frame *frm)
 {
 	hci_event_hdr *hdr = frm->ptr;
@@ -1488,6 +1628,9 @@ static inline void event_dump(int level, struct frame *frm)
 	case EVT_CHANGE_CONN_LINK_KEY_COMPLETE:
 		generic_response_dump(level + 1, frm);
 		break;
+	case EVT_MASTER_LINK_KEY_COMPLETE:
+		master_link_key_complete_dump(level + 1, frm);
+		break;
 	case EVT_REMOTE_NAME_REQ_COMPLETE:
 		remote_name_req_complete_dump(level + 1, frm);
 		break;
@@ -1533,6 +1676,9 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_INQUIRY_RESULT_WITH_RSSI:
 		inq_result_with_rssi_dump(level + 1, frm);
+		break;
+	case EVT_READ_REMOTE_EXT_FEATURES_COMPLETE:
+		read_remote_ext_features_complete_dump(level + 1, frm);
 		break;
 	default:
 		raw_dump(level, frm);
