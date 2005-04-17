@@ -407,6 +407,13 @@ typedef struct {
 } __attribute__ ((packed)) read_remote_features_cp;
 #define READ_REMOTE_FEATURES_CP_SIZE 2
 
+#define OCF_READ_REMOTE_EXT_FEATURES	0x001C
+typedef struct {
+	uint16_t	handle;
+	uint8_t		page_num;
+} __attribute__ ((packed)) read_remote_ext_features_cp;
+#define READ_REMOTE_EXT_FEATURES_CP_SIZE 3
+
 #define OCF_READ_REMOTE_VERSION		0x001D
 typedef struct {
 	uint16_t	handle;
@@ -763,12 +770,28 @@ typedef struct {
 } __attribute__ ((packed)) read_local_version_rp;
 #define READ_LOCAL_VERSION_RP_SIZE 9
 
+#define OCF_READ_LOCAL_COMMANDS		0x0002
+typedef struct {
+	uint8_t		status;
+	uint8_t		commands[64];
+} __attribute__ ((packed)) read_local_commands_rp;
+#define READ_LOCAL_COMMANDS_RP_SIZE 65
+
 #define OCF_READ_LOCAL_FEATURES		0x0003
 typedef struct {
 	uint8_t		status;
 	uint8_t		features[8];
 } __attribute__ ((packed)) read_local_features_rp;
 #define READ_LOCAL_FEATURES_RP_SIZE 9
+
+#define OCF_READ_LOCAL_EXT_FEATURES	0x0004
+typedef struct {
+	uint8_t		status;
+	uint8_t		page_num;
+	uint8_t		max_page_num;
+	uint8_t		features[8];
+} __attribute__ ((packed)) read_local_ext_features_rp;
+#define READ_LOCAL_EXT_FEATURES_RP_SIZE 11
 
 #define OCF_READ_BUFFER_SIZE		0x0005
 typedef struct {
