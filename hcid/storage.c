@@ -303,6 +303,173 @@ close:
 	return err;
 }
 
+int write_version_info(const bdaddr_t *local, const bdaddr_t *peer, const uint16_t manufacturer, const uint8_t lmp_ver, const uint16_t lmp_subver)
+{
+	struct list *temp, *list = NULL;
+	char filename[PATH_MAX + 1], addr[18], str[16], *buf, *ptr;
+	bdaddr_t bdaddr;
+	struct stat st;
+	int fd, pos, err = 0;
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", DEVPATH, addr);
+
+	umask(S_IWGRP | S_IWOTH);
+	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+
+	fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (fd < 0)
+		return -errno;
+
+	if (flock(fd, LOCK_EX) < 0) {
+		err = -errno;
+		goto close;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		err = -errno;
+		goto unlock;
+	}
+
+	buf = malloc(st.st_size + 100);
+	if (!buf) {
+		err = -ENOMEM;
+		goto unlock;
+	}
+
+	if (st.st_size > 0) {
+		read(fd, buf, st.st_size);
+
+		ptr = buf;
+
+		memset(str, 0, sizeof(str));
+		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
+			str2ba(addr, &bdaddr);
+			str[sizeof(str) - 1] = '\0';
+
+			list = list_add(list, &bdaddr, str, sizeof(str));
+
+			memset(str, 0, sizeof(str));
+			ptr += pos;
+			if (ptr - buf >= st.st_size)
+				break;
+		};
+
+		lseek(fd, 0, SEEK_SET);
+		ftruncate(fd, 0);
+	}
+
+	memset(str, 0, sizeof(str));
+	sprintf(str, "%d %d %d", manufacturer, lmp_ver, lmp_subver);
+
+	list = list_add(list, peer, str, sizeof(str));
+	if (!list) {
+		err = -EIO;
+		goto unlock;
+	}
+
+	list_foreach(list, temp) {
+		ba2str(&temp->bdaddr, addr);
+		if (temp->data && temp->size > 0) {
+			memset(buf, 0, 100);
+			snprintf(buf, 99, "%s %s\n", addr, temp->data);
+			write(fd, buf, strlen(buf));
+		}
+	}
+
+unlock:
+	flock(fd, LOCK_UN);
+
+close:
+	close(fd);
+	list_free(list);
+	return err;
+}
+
+int write_features_info(const bdaddr_t *local, const bdaddr_t *peer, const unsigned char *features)
+{
+	struct list *temp, *list = NULL;
+	char filename[PATH_MAX + 1], addr[18], str[17], *buf, *ptr;
+	bdaddr_t bdaddr;
+	struct stat st;
+	int i, fd, pos, err = 0;
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/features", DEVPATH, addr);
+
+	umask(S_IWGRP | S_IWOTH);
+	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+
+	fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (fd < 0)
+		return -errno;
+
+	if (flock(fd, LOCK_EX) < 0) {
+		err = -errno;
+		goto close;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		err = -errno;
+		goto unlock;
+	}
+
+	buf = malloc(st.st_size + 100);
+	if (!buf) {
+		err = -ENOMEM;
+		goto unlock;
+	}
+
+	if (st.st_size > 0) {
+		read(fd, buf, st.st_size);
+
+		ptr = buf;
+
+		memset(str, 0, sizeof(str));
+		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
+			str2ba(addr, &bdaddr);
+			str[sizeof(str) - 1] = '\0';
+
+			list = list_add(list, &bdaddr, str, sizeof(str));
+
+			memset(str, 0, sizeof(str));
+			ptr += pos;
+			if (ptr - buf >= st.st_size)
+				break;
+		};
+
+		lseek(fd, 0, SEEK_SET);
+		ftruncate(fd, 0);
+	}
+
+	memset(str, 0, sizeof(str));
+	for (i = 0; i < 8; i++)
+		sprintf(str + (i * 2), "%2.2X", features[i]);
+
+	list = list_add(list, peer, str, sizeof(str));
+	if (!list) {
+		err = -EIO;
+		goto unlock;
+	}
+
+	list_foreach(list, temp) {
+		ba2str(&temp->bdaddr, addr);
+		if (temp->data && temp->size > 0) {
+			memset(buf, 0, 100);
+			snprintf(buf, 99, "%s %s\n", addr, temp->data);
+			write(fd, buf, strlen(buf));
+		}
+	}
+
+unlock:
+	flock(fd, LOCK_UN);
+
+close:
+	close(fd);
+	list_free(list);
+	return err;
+}
+
 int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned char *key, const int type)
 {
 	struct list *temp, *list = NULL;

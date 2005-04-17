@@ -73,6 +73,38 @@ void toggle_pairing(int enable)
 	syslog(LOG_INFO, "Pairing %s", pairing ? "enabled" : "disabled");
 }
 
+static int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
+{
+	struct hci_conn_list_req *cl;
+	struct hci_conn_info *ci;
+	char addr[18];
+	int i;
+
+	cl = malloc(10 * sizeof(*ci) + sizeof(*cl));
+	if (!cl)
+		return -ENOMEM;
+
+	ba2str(sba, addr);
+	cl->dev_id = hci_devid(addr);
+	cl->conn_num = 10;
+	ci = cl->conn_info;
+
+	if (ioctl(dev, HCIGETCONNLIST, (void *) cl) < 0) {
+		free(cl);
+		return -EIO;
+	}
+
+	for (i = 0; i < cl->conn_num; i++, ci++)
+		if (ci->handle == handle) {
+			bacpy(dba, &ci->bdaddr);
+			free(cl);
+			return 0;
+		}
+
+	free(cl);
+	return -ENOENT;
+}
+
 /* Link Key handling */
 
 /* This function is not reentrable */
@@ -420,6 +452,35 @@ static void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 	write_device_name(sba, dba, evt->name);
 }
 
+static void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_read_remote_version_complete *evt = ptr;
+	bdaddr_t dba;
+
+	if (evt->status)
+		return;
+
+	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0)
+		return;
+
+	write_version_info(sba, &dba, btohs(evt->manufacturer),
+				evt->lmp_ver, btohs(evt->lmp_subver));
+}
+
+static void remote_features_information(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_read_remote_features_complete *evt = ptr;
+	bdaddr_t dba;
+
+	if (evt->status)
+		return;
+
+	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0)
+		return;
+
+	write_features_info(sba, &dba, evt->features);
+}
+
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
@@ -461,6 +522,14 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	switch (eh->evt) {
 	case EVT_REMOTE_NAME_REQ_COMPLETE:
 		remote_name_information(dev, &di->bdaddr, ptr);
+		break;
+
+	case EVT_READ_REMOTE_VERSION_COMPLETE:
+		remote_version_information(dev, &di->bdaddr, ptr);
+		break;
+
+	case EVT_READ_REMOTE_FEATURES_COMPLETE:
+		remote_features_information(dev, &di->bdaddr, ptr);
 		break;
 	}
 
@@ -509,6 +578,8 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_LINK_KEY_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_NOTIFY, &flt);
 	hci_filter_set_event(EVT_REMOTE_NAME_REQ_COMPLETE, &flt);
+	hci_filter_set_event(EVT_READ_REMOTE_VERSION_COMPLETE, &flt);
+	hci_filter_set_event(EVT_READ_REMOTE_FEATURES_COMPLETE, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		syslog(LOG_ERR, "Can't set filter on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
