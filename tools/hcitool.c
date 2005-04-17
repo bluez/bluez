@@ -316,8 +316,10 @@ static int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *n
 
 		ptr = buf;
 
+		memset(str, 0, sizeof(str));
 		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
 			str2ba(addr, &bdaddr);
+			str[sizeof(str) - 1] = '\0';
 
 			if (!bacmp(&bdaddr, peer)) {
 				snprintf(name, 249, "%s", str);
@@ -325,7 +327,10 @@ static int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *n
 				break;
 			}
 
+			memset(str, 0, sizeof(str));
 			ptr += pos;
+			if (ptr - buf >= st.st_size)
+				break;
 		};
 	}
 
