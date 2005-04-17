@@ -1064,6 +1064,16 @@ typedef struct {
 } __attribute__ ((packed)) inquiry_info_with_rssi_and_pscan_mode;
 #define INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE 15
 
+#define EVT_READ_REMOTE_EXT_FEATURES_COMPLETE	0x23
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		page_num;
+	uint8_t		max_page_num;
+	uint8_t		features[8];
+} __attribute__ ((packed)) evt_read_remote_ext_features_complete;
+#define EVT_READ_REMOTE_EXT_FEATURES_COMPLETE_SIZE 13
+
 #define EVT_TESTING			0xFE
 
 #define EVT_VENDOR			0xFF
