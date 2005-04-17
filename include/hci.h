@@ -386,6 +386,12 @@ typedef struct {
 } __attribute__ ((packed)) change_conn_link_key_cp;
 #define CHANGE_CONN_LINK_KEY_CP_SIZE 2
 
+#define OCF_MASTER_LINK_KEY		0x0017
+typedef struct {
+	uint8_t		key_flag;
+} __attribute__ ((packed)) master_link_key_cp;
+#define MASTER_LINK_KEY_CP_SIZE 1
+
 #define OCF_REMOTE_NAME_REQ		0x0019
 typedef struct {
 	bdaddr_t	bdaddr;
@@ -785,6 +791,10 @@ typedef struct {
 #define READ_LOCAL_FEATURES_RP_SIZE 9
 
 #define OCF_READ_LOCAL_EXT_FEATURES	0x0004
+typedef struct {
+	uint8_t		page_num;
+} __attribute__ ((packed)) read_local_ext_features_cp;
+#define READ_LOCAL_EXT_FEATURES_CP_SIZE 1
 typedef struct {
 	uint8_t		status;
 	uint8_t		page_num;
