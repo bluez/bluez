@@ -1007,6 +1007,13 @@ typedef struct {
 } __attribute__ ((packed)) evt_link_key_notify;
 #define EVT_LINK_KEY_NOTIFY_SIZE 23
 
+#define EVT_MAX_SLOTS_CHANGE		0x1B
+typedef struct {
+	uint16_t	handle;
+	uint8_t		max_slots;
+} __attribute__ ((packed)) evt_max_slots_change;
+#define EVT_MAX_SLOTS_CHANGE_SIZE 3
+
 #define EVT_READ_CLOCK_OFFSET_COMPLETE	0x1C
 typedef struct {
 	uint8_t		status;
