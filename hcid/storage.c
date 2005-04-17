@@ -242,6 +242,67 @@ close:
 	return err;
 }
 
+int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *name)
+{
+	char filename[PATH_MAX + 1], addr[18], str[249], *buf, *ptr;
+	bdaddr_t bdaddr;
+	struct stat st;
+	int fd, pos, err = -ENOENT;
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/names", DEVPATH, addr);
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0)
+		return -errno;
+
+	if (flock(fd, LOCK_SH) < 0) {
+		err = -errno;
+		goto close;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		err = -errno;
+		goto unlock;
+	}
+
+	buf = malloc(st.st_size);
+	if (!buf) {
+		err = -ENOMEM;
+		goto unlock;
+	}
+
+	if (st.st_size > 0) {
+		read(fd, buf, st.st_size);
+
+		ptr = buf;
+
+		memset(str, 0, sizeof(str));
+		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
+			str2ba(addr, &bdaddr);
+			str[sizeof(str) - 1] = '\0';
+
+			if (!bacmp(&bdaddr, peer)) {
+				snprintf(name, 249, "%s", str);
+				err = 0;
+				break;
+			}
+
+			memset(str, 0, sizeof(str));
+			ptr += pos;
+			if (ptr - buf >= st.st_size)
+				break;
+		};
+	}
+
+unlock:
+	flock(fd, LOCK_UN);
+
+close:
+	close(fd);
+	return err;
+}
+
 int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned char *key, const int type)
 {
 	struct list *temp, *list = NULL;

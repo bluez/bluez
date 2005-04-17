@@ -248,11 +248,11 @@ static int read_default_pin_code(void)
 	ERR		-	No PIN available
 */
 
-static void call_pin_helper(int dev, struct hci_conn_info *ci)
+static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	pin_code_reply_cp pr;
 	struct sigaction sa;
-	char addr[18], str[255], *pin, name[20];
+	char addr[18], str[255], *pin, name[249];
 	FILE *pipe;
 	int ret, len;
 
@@ -273,12 +273,13 @@ static void call_pin_helper(int dev, struct hci_conn_info *ci)
 		goto reject;
 	}
 
-	name[0] = 0;
+	memset(name, 0, sizeof(name));
+	read_device_name(sba, &ci->bdaddr, name);
 	//hci_remote_name(dev, &ci->bdaddr, sizeof(name), name, 0);
 
 	ba2str(&ci->bdaddr, addr);
-	sprintf(str, "%s %s %s \'%s\'", hcid.pin_helper,
-			ci->out ? "out" : "in", addr, name);
+	snprintf(str, sizeof(str), "%s %s %s \'%s\'", hcid.pin_helper,
+					ci->out ? "out" : "in", addr, name);
 
 	setenv("PATH", "/bin:/usr/bin:/usr/local/bin", 1);
 
@@ -325,7 +326,7 @@ reject:
 	exit(0);
 }
 
-static void request_pin(int dev, struct hci_conn_info *ci)
+static void request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 #ifdef ENABLE_DBUS
 	if (hcid.dbus_pin_helper) {
@@ -333,7 +334,7 @@ static void request_pin(int dev, struct hci_conn_info *ci)
 		return;
 	}
 #endif
-	call_pin_helper(dev, ci);
+	call_pin_helper(dev, sba, ci);
 }
 
 static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
@@ -382,11 +383,11 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 			/* Outgoing connection */
 
 			/* Let PIN helper handle that */ 
-			request_pin(dev, ci);
+			request_pin(dev, sba, ci);
 		}
 	} else {
 		/* Let PIN helper handle that */ 
-		request_pin(dev, ci);
+		request_pin(dev, sba, ci);
 	}
 	free(cr);
 	return;
