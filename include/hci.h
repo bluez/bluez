@@ -1036,6 +1036,13 @@ typedef struct {
 } __attribute__ ((packed)) evt_qos_violation;
 #define EVT_QOS_VIOLATION_SIZE 2
 
+#define EVT_PSCAN_REP_MODE_CHANGE	0x20
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		pscan_rep_mode;
+} __attribute__ ((packed)) evt_pscan_rep_mode_change;
+#define EVT_PSCAN_REP_MODE_CHANGE_SIZE 7
+
 #define EVT_INQUIRY_RESULT_WITH_RSSI	0x22
 typedef struct {
 	bdaddr_t	bdaddr;
