@@ -456,10 +456,9 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 {
 	inquiry_info *info = NULL;
 	int num_rsp, length, flags;
-	uint8_t cls[3];
+	uint8_t cls[3], features[8];
 	uint16_t handle;
 	char addr[18], name[249], oui[9], *comp;
-	unsigned char features[8];
 	struct hci_version version;
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
@@ -728,8 +727,8 @@ static void cmd_info(int dev_id, int argc, char **argv)
 {
 	bdaddr_t bdaddr;
 	uint16_t handle;
+	uint8_t max_page, features[8];
 	char name[249], oui[9], *comp;
-	unsigned char features[8];
 	struct hci_version version;
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
@@ -824,6 +823,12 @@ static void cmd_info(int dev_id, int argc, char **argv)
 			features[0], features[1], features[2], features[3],
 			features[4], features[5], features[6], features[7],
 			lmp_featurestostr(features, "\t\t", 63));
+	}
+
+	if (features[7] & 0x80) {
+		if (hci_read_remote_ext_features(dd, handle, 0, &max_page, features, 20000) == 0)
+			if (max_page > 0)
+				printf("\tExtended features: %d pages\n", max_page);
 	}
 
 	if (cc) {
