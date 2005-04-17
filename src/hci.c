@@ -969,6 +969,38 @@ int hci_read_remote_name_cancel(int dd, const bdaddr_t *bdaddr, int to)
 	return 0;
 }
 
+int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to)
+{
+	evt_read_remote_version_complete rp;
+	read_remote_version_cp cp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = handle;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_READ_REMOTE_VERSION;
+	rq.event  = EVT_READ_REMOTE_VERSION_COMPLETE;
+	rq.cparam = &cp;
+	rq.clen   = READ_REMOTE_VERSION_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_READ_REMOTE_VERSION_COMPLETE_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	ver->manufacturer = btohs(rp.manufacturer);
+	ver->lmp_ver      = rp.lmp_ver;
+	ver->lmp_subver   = btohs(rp.lmp_subver);
+	return 0;
+}
+
 int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 {
 	evt_read_remote_features_complete rp;
@@ -999,23 +1031,24 @@ int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 	return 0;
 }
 
-int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to)
+int hci_read_remote_ext_features(int dd, uint16_t handle, uint8_t page, uint8_t *max_page, uint8_t *features, int to)
 {
-	evt_read_remote_version_complete rp;
-	read_remote_version_cp cp;
+	evt_read_remote_ext_features_complete rp;
+	read_remote_ext_features_cp cp;
 	struct hci_request rq;
 
 	memset(&cp, 0, sizeof(cp));
-	cp.handle = handle;
+	cp.handle   = handle;
+	cp.page_num = page;
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_READ_REMOTE_VERSION;
-	rq.event  = EVT_READ_REMOTE_VERSION_COMPLETE;
+	rq.ocf    = OCF_READ_REMOTE_EXT_FEATURES;
+	rq.event  = EVT_READ_REMOTE_EXT_FEATURES_COMPLETE;
 	rq.cparam = &cp;
-	rq.clen   = READ_REMOTE_VERSION_CP_SIZE;
+	rq.clen   = READ_REMOTE_EXT_FEATURES_CP_SIZE;
 	rq.rparam = &rp;
-	rq.rlen   = EVT_READ_REMOTE_VERSION_COMPLETE_SIZE;
+	rq.rlen   = EVT_READ_REMOTE_EXT_FEATURES_COMPLETE_SIZE;
 
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
@@ -1025,9 +1058,8 @@ int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, in
 		return -1;
 	}
 
-	ver->manufacturer = btohs(rp.manufacturer);
-	ver->lmp_ver      = rp.lmp_ver;
-	ver->lmp_subver   = btohs(rp.lmp_subver);
+	*max_page = rp.max_page_num;
+	memcpy(features, rp.features, 8);
 	return 0;
 }
 
