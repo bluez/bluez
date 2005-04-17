@@ -1222,6 +1222,31 @@ static inline void read_remote_version_complete_dump(int level, struct frame *fr
 	}
 }
 
+static inline void qos_setup_complete_dump(int level, struct frame *frm)
+{
+	evt_qos_setup_complete *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d flags %d\n",
+		evt->status, btohs(evt->handle), evt->flags);
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		p_indent(level, frm);
+		printf("Service type: %d\n", evt->qos.service_type);
+		p_indent(level, frm);
+		printf("Token rate: %d\n", btohl(evt->qos.token_rate));
+		p_indent(level, frm);
+		printf("Peak bandwith: %d\n", btohl(evt->qos.peak_bandwidth));
+		p_indent(level, frm);
+		printf("Latency: %d\n", btohl(evt->qos.latency));
+		p_indent(level, frm);
+		printf("Delay variation: %d\n", btohl(evt->qos.delay_variation));
+	}
+}
+
 static inline void role_change_dump(int level, struct frame *frm)
 {
 	evt_role_change *evt = frm->ptr;
@@ -1299,6 +1324,14 @@ static inline void link_key_notify_dump(int level, struct frame *frm)
 	printf("\n");
 }
 
+static inline void max_slots_change_dump(int level, struct frame *frm)
+{
+	evt_max_slots_change *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d slots %d\n", btohs(evt->handle), evt->max_slots);
+}
+
 static inline void read_clock_offset_complete_dump(int level, struct frame *frm)
 {
 	evt_read_clock_offset_complete *evt = frm->ptr;
@@ -1336,18 +1369,15 @@ static inline void conn_ptype_changed_dump(int level, struct frame *frm)
 	}
 }
 
-#ifndef INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE
-typedef struct {
-	bdaddr_t	bdaddr;
-	uint8_t		pscan_rep_mode;
-	uint8_t		pscan_period_mode;
-	uint8_t		pscan_mode;
-	uint8_t		dev_class[3];
-	uint16_t	clock_offset;
-	int8_t		rssi;
-} __attribute__ ((packed)) inquiry_info_with_rssi_and_pscan_mode;
-#define INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE 15
-#endif
+static inline void pscan_rep_mode_change_dump(int level, struct frame *frm)
+{
+	evt_pscan_rep_mode_change *evt = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	ba2str(&evt->bdaddr, addr);
+	printf("bdaddr %s mode %d\n", addr, evt->pscan_rep_mode);
+}
 
 static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 {
@@ -1471,7 +1501,7 @@ static inline void event_dump(int level, struct frame *frm)
 		read_remote_version_complete_dump(level + 1, frm);
 		break;
 	case EVT_QOS_SETUP_COMPLETE:
-		generic_response_dump(level + 1, frm);
+		qos_setup_complete_dump(level + 1, frm);
 		break;
 	case EVT_ROLE_CHANGE:
 		role_change_dump(level + 1, frm);
@@ -1489,11 +1519,17 @@ static inline void event_dump(int level, struct frame *frm)
 	case EVT_LINK_KEY_NOTIFY:
 		link_key_notify_dump(level + 1, frm);
 		break;
+	case EVT_MAX_SLOTS_CHANGE:
+		max_slots_change_dump(level + 1, frm);
+		break;
 	case EVT_READ_CLOCK_OFFSET_COMPLETE:
 		read_clock_offset_complete_dump(level + 1, frm);
 		break;
 	case EVT_CONN_PTYPE_CHANGED:
 		conn_ptype_changed_dump(level + 1, frm);
+		break;
+	case EVT_PSCAN_REP_MODE_CHANGE:
+		pscan_rep_mode_change_dump(level + 1, frm);
 		break;
 	case EVT_INQUIRY_RESULT_WITH_RSSI:
 		inq_result_with_rssi_dump(level + 1, frm);
