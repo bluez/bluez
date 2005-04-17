@@ -603,7 +603,7 @@ static inline void read_remote_ext_features_dump(int level, struct frame *frm)
 	read_remote_ext_features_cp *cp = frm->ptr;
 
         p_indent(level, frm);
-        printf("handle %d\n page %d", btohs(cp->handle), cp->page_num);
+        printf("handle %d page %d\n", btohs(cp->handle), cp->page_num);
 }
 
 static inline void write_link_policy_dump(int level, struct frame *frm)
