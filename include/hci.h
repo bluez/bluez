@@ -954,6 +954,14 @@ typedef struct {
 }  __attribute__ ((packed)) evt_change_conn_link_key_complete;
 #define EVT_CHANGE_CONN_LINK_KEY_COMPLETE_SIZE 3
 
+#define EVT_MASTER_LINK_KEY_COMPLETE		0x0A
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		key_flag;
+} __attribute__ ((packed)) evt_master_link_key_complete;
+#define EVT_MASTER_LINK_KEY_COMPLETE_SIZE 4
+
 #define EVT_READ_REMOTE_FEATURES_COMPLETE	0x0B
 typedef struct {
 	uint8_t		status;
