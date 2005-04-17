@@ -495,7 +495,7 @@ int read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
 
 			if (!bacmp(&bdaddr, peer)) {
 				strncpy(pin, str, 16);
-				err = 0;
+				err = strlen(pin);
 				break;
 			}
 

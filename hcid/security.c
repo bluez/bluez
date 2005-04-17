@@ -339,9 +339,14 @@ static void request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
+	pin_code_reply_cp pr;
 	struct hci_conn_info_req *cr;
 	struct hci_conn_info *ci;
-	char sa[18], da[18];
+	char sa[18], da[18], pin[17];
+	int pinlen;
+
+	memset(&pr, 0, sizeof(pr));
+	bacpy(&pr.bdaddr, dba);
 
 	ba2str(sba, sa); ba2str(dba, da);
 	syslog(LOG_INFO, "pin_code_request (sba=%s, dba=%s)", sa, da);
@@ -359,6 +364,9 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	}
 	ci = cr->conn_info;
 
+	memset(pin, 0, sizeof(pin));
+	pinlen = read_pin_code(sba, dba, pin);
+
 	if (pairing == HCID_PAIRING_ONCE) {
 		struct link_key *key = get_link_key(sba, dba);
 		if (key) {
@@ -372,18 +380,21 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	if (hcid.security == HCID_SEC_AUTO) {
 		if (!ci->out) {
 			/* Incomming connection */
-			pin_code_reply_cp pr;
-			memset(&pr, 0, sizeof(pr));
-			bacpy(&pr.bdaddr, dba);
 			memcpy(pr.pin_code, hcid.pin_code, hcid.pin_len);
 			pr.pin_len = hcid.pin_len;
 			hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
 				PIN_CODE_REPLY_CP_SIZE, &pr);
 		} else {
 			/* Outgoing connection */
-
-			/* Let PIN helper handle that */ 
-			request_pin(dev, sba, ci);
+			if (pinlen > 0) {
+				memcpy(pr.pin_code, pin, pinlen);
+				pr.pin_len = pinlen;
+				hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
+					PIN_CODE_REPLY_CP_SIZE, &pr);
+			} else {
+				/* Let PIN helper handle that */ 
+				request_pin(dev, sba, ci);
+			}
 		}
 	} else {
 		/* Let PIN helper handle that */ 
