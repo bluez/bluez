@@ -144,6 +144,7 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	}
 }
 
+#if 0
 static void save_link_key(struct link_key *key)
 {
 	struct link_key *exist;
@@ -185,6 +186,7 @@ static void save_link_key(struct link_key *key)
 failed:
 	close(f);
 }
+#endif
 
 static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 {
@@ -202,14 +204,16 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	key.type = evt->key_type;
 	key.time = time(0);
 
+#if 0
 	save_link_key(&key);
+#endif
 
 	write_link_key(sba, dba, evt->link_key, evt->key_type);
 }
 
 /* PIN code handling */
 
-int read_pin_code(void)
+static int read_default_pin_code(void)
 {
 	char buf[17];
 	FILE *f; 
@@ -542,7 +546,7 @@ void stop_security_manager(int hdev)
 void init_security_data(void)
 {
 	/* Set local PIN code */
-	if (read_pin_code() < 0) {
+	if (read_default_pin_code() < 0) {
 		strcpy(hcid.pin_code, "BlueZ");
 		hcid.pin_len = 5;
 	}

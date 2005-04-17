@@ -205,7 +205,9 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
 			str2ba(addr, &bdaddr);
 			str[sizeof(str) - 1] = '\0';
+
 			list = list_add(list, &bdaddr, str, sizeof(str));
+
 			memset(str, 0, sizeof(str));
 			ptr += pos;
 			if (ptr - buf >= st.st_size)
@@ -283,7 +285,9 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
 			str2ba(addr, &bdaddr);
 			str[sizeof(str) - 1] = '\0';
+
 			list = list_add(list, &bdaddr, str, sizeof(str));
+
 			memset(str, 0, sizeof(str));
 			ptr += pos;
 			if (ptr - buf >= st.st_size)
@@ -358,8 +362,10 @@ int read_link_key(const bdaddr_t *local, const bdaddr_t *peer, unsigned char *ke
 
 		ptr = buf;
 
+		memset(str, 0, sizeof(str));
 		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
 			str2ba(addr, &bdaddr);
+			str[sizeof(str) - 1] = '\0';
 
 			if (!bacmp(&bdaddr, peer)) {
 				memset(tmp, 0, sizeof(tmp));
@@ -371,7 +377,71 @@ int read_link_key(const bdaddr_t *local, const bdaddr_t *peer, unsigned char *ke
 				break;
 			}
 
+			memset(str, 0, sizeof(str));
 			ptr += pos;
+			if (ptr - buf >= st.st_size)
+				break;
+		};
+	}
+
+unlock:
+	flock(fd, LOCK_UN);
+
+close:
+	close(fd);
+	return err;
+}
+
+int read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
+{
+	char filename[PATH_MAX + 1], addr[18], str[17], *buf, *ptr;
+	bdaddr_t bdaddr;
+	struct stat st;
+	int fd, pos, err = -ENOENT;
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/pincodes", DEVPATH, addr);
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0)
+		return -errno;
+
+	if (flock(fd, LOCK_SH) < 0) {
+		err = -errno;
+		goto close;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		err = -errno;
+		goto unlock;
+	}
+
+	buf = malloc(st.st_size);
+	if (!buf) {
+		err = -ENOMEM;
+		goto unlock;
+	}
+
+	if (st.st_size > 0) {
+		read(fd, buf, st.st_size);
+
+		ptr = buf;
+
+		memset(str, 0, sizeof(str));
+		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
+			str2ba(addr, &bdaddr);
+			str[sizeof(str) - 1] = '\0';
+
+			if (!bacmp(&bdaddr, peer)) {
+				strncpy(pin, str, 16);
+				err = 0;
+				break;
+			}
+
+			memset(str, 0, sizeof(str));
+			ptr += pos;
+			if (ptr - buf >= st.st_size)
+				break;
 		};
 	}
 
