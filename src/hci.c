@@ -1088,6 +1088,29 @@ int hci_read_local_version(int dd, struct hci_version *ver, int to)
 	return 0;
 }
 
+int hci_read_local_commands(int dd, uint8_t *commands, int to)
+{
+	read_local_commands_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_INFO_PARAM;
+	rq.ocf    = OCF_READ_LOCAL_COMMANDS;
+	rq.rparam = &rp;
+	rq.rlen   = READ_LOCAL_COMMANDS_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	memcpy(commands, rp.commands, 64);
+	return 0;
+}
+
 int hci_read_local_features(int dd, uint8_t *features, int to)
 {
 	read_local_features_rp rp;
@@ -1107,6 +1130,35 @@ int hci_read_local_features(int dd, uint8_t *features, int to)
 		return -1;
 	}
 
+	memcpy(features, rp.features, 8);
+	return 0;
+}
+
+int hci_read_local_ext_features(int dd, uint8_t page, uint8_t *max_page, uint8_t *features, int to)
+{
+	read_local_ext_features_cp cp;
+	read_local_ext_features_rp rp;
+	struct hci_request rq;
+
+	cp.page_num = page;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_INFO_PARAM;
+	rq.ocf    = OCF_READ_LOCAL_EXT_FEATURES;
+	rq.cparam = &cp;
+	rq.clen   = READ_LOCAL_EXT_FEATURES_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = READ_LOCAL_EXT_FEATURES_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*max_page = rp.max_page_num;
 	memcpy(features, rp.features, 8);
 	return 0;
 }
