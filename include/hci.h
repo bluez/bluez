@@ -1040,6 +1040,13 @@ typedef struct {
 } __attribute__ ((packed)) evt_mode_change;
 #define EVT_MODE_CHANGE_SIZE 6
 
+#define EVT_RETURN_LINK_KEYS		0x15
+typedef struct {
+	uint8_t		num_keys;
+	/* variable length part */
+} __attribute__ ((packed)) evt_return_link_keys;
+#define EVT_RETURN_LINK_KEYS_SIZE 1
+
 #define EVT_PIN_CODE_REQ		0x16
 typedef struct {
 	bdaddr_t	bdaddr;
