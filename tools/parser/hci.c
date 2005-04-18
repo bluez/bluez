@@ -827,6 +827,16 @@ static inline void status_response_dump(int level, struct frame *frm)
 	raw_dump(level, frm);
 }
 
+static inline void handle_response_dump(int level, struct frame *frm)
+{
+	uint16_t handle = btohs(htons(get_u16(frm)));
+
+	p_indent(level, frm);
+	printf("handle %d\n", handle);
+
+	raw_dump(level, frm);
+}
+
 static inline void bdaddr_response_dump(int level, struct frame *frm)
 {
 	uint8_t status = get_u8(frm);
@@ -1175,6 +1185,14 @@ static inline void cmd_status_dump(int level, struct frame *frm)
 		p_indent(level, frm);
 		printf("Error: %s\n", status2str(evt->status));
 	}
+}
+
+static inline void hardware_error_dump(int level, struct frame *frm)
+{
+	evt_hardware_error *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("code %d\n", evt->code);
 }
 
 static inline void inq_result_dump(int level, struct frame *frm)
@@ -1608,6 +1626,12 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_CMD_STATUS:
 		cmd_status_dump(level + 1, frm);
+		break;
+	case EVT_HARDWARE_ERROR:
+		hardware_error_dump(level + 1, frm);
+		break;
+	case EVT_FLUSH_OCCURRED:
+		handle_response_dump(level + 1, frm);
 		break;
 	case EVT_INQUIRY_COMPLETE:
 		status_response_dump(level + 1, frm);
