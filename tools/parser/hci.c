@@ -1545,6 +1545,32 @@ static inline void pscan_rep_mode_change_dump(int level, struct frame *frm)
 	printf("bdaddr %s mode %d\n", addr, evt->pscan_rep_mode);
 }
 
+static inline void flow_spec_complete_dump(int level, struct frame *frm)
+{
+	evt_flow_spec_complete *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d flags %d %s\n",
+		evt->status, btohs(evt->handle), evt->flags,
+		evt->direction == 0 ? "outgoing" : "incoming");
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		p_indent(level, frm);
+		printf("Service type: %d\n", evt->qos.service_type);
+		p_indent(level, frm);
+		printf("Token rate: %d\n", btohl(evt->qos.token_rate));
+		p_indent(level, frm);
+		printf("Peak bandwith: %d\n", btohl(evt->qos.peak_bandwidth));
+		p_indent(level, frm);
+		printf("Latency: %d\n", btohl(evt->qos.latency));
+		p_indent(level, frm);
+		printf("Delay variation: %d\n", btohl(evt->qos.delay_variation));
+	}
+}
+
 static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 {
 	uint8_t num = get_u8(frm);
@@ -1660,6 +1686,7 @@ static inline void event_dump(int level, struct frame *frm)
 		hardware_error_dump(level + 1, frm);
 		break;
 	case EVT_FLUSH_OCCURRED:
+	case EVT_QOS_VIOLATION:
 		handle_response_dump(level + 1, frm);
 		break;
 	case EVT_INQUIRY_COMPLETE:
@@ -1732,6 +1759,9 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_PSCAN_REP_MODE_CHANGE:
 		pscan_rep_mode_change_dump(level + 1, frm);
+		break;
+	case EVT_FLOW_SPEC_COMPLETE:
+		flow_spec_complete_dump(level + 1, frm);
 		break;
 	case EVT_INQUIRY_RESULT_WITH_RSSI:
 		inq_result_with_rssi_dump(level + 1, frm);
