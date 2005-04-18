@@ -380,7 +380,7 @@ static void cmd_features(int ctl, int hdev, char *opt)
 	uint8_t max_page, features[8];
 	int i, dd;
 
-	if (!(di.features[7] & 0x80)) {
+	if (!(di.features[7] & LMP_EXT_FEAT)) {
 		print_dev_hdr(&di);
 		print_dev_features(&di, 1);
 		return;
