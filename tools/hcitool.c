@@ -392,7 +392,7 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 	int i, opt;
 
 	length  = 8;	/* ~10 seconds */
-	num_rsp = 100;
+	num_rsp = 0;
 	flags   = 0;
 
 	for_each_opt(opt, inq_options, NULL) {
@@ -466,7 +466,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	int i, opt, dd, cc, nc;
 
 	length  = 8;	/* ~10 seconds */
-	num_rsp = 100;
+	num_rsp = 0;
 	flags   = 0;
 
 	for_each_opt(opt, scan_options, NULL) {
