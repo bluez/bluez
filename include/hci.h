@@ -1067,6 +1067,14 @@ typedef struct {
 } __attribute__ ((packed)) evt_link_key_notify;
 #define EVT_LINK_KEY_NOTIFY_SIZE 23
 
+#define EVT_LOOPBACK_COMMAND		0x19
+
+#define EVT_DATA_BUFFER_OVERFLOW	0x1A
+typedef struct {
+	uint8_t		link_type;
+} __attribute__ ((packed)) evt_data_buffer_overflow;
+#define EVT_DATA_BUFFER_OVERFLOW_SIZE 1
+
 #define EVT_MAX_SLOTS_CHANGE		0x1B
 typedef struct {
 	uint16_t	handle;
