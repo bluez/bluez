@@ -1,3 +1,24 @@
+ver 2.16:
+	Store link keys in ASCII based file format.
+	Support device name caching.
+	Support zero length data sizes in l2test.
+	Change default l2ping data size to 44 bytes.
+	Hide the server record and the public browse group root.
+	Read BD_ADDR if not set and if it is a raw device.
+	Add SDP language attributes.
+	Add support for browsing the L2CAP group.
+	Add support for stored pin codes for outgoing connections.
+	Add support for local commands and extended features.
+	Add support for reading CSR panic and fault codes.
+	Add config option for setting the inquiry mode.
+	Add OUI decoding support.
+	Use unlimited inquiry responses as default.
+	Use cached device names for PIN request.
+	Use the clock offset when getting the remote names.
+
+	Note:
+	This version needs at least bluez-libs-2.16
+
 ver 2.15:
 	Enable the RFCOMM service level security.
 	Add command for reading the clock offset.
