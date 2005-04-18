@@ -328,7 +328,7 @@ static int do_connect(void)
 		/* FIXME: Should we use non general LAP here ? */
 
 		ii = NULL;
-		n  = hci_inquiry(src_dev, search_duration, 10, NULL, &ii, 0);
+		n  = hci_inquiry(src_dev, search_duration, 0, NULL, &ii, 0);
 		if (n < 0) {
 			syslog(LOG_ERR, "Inquiry failed. %s(%d)", strerror(errno), errno);
 			continue;
