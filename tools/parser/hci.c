@@ -1490,6 +1490,14 @@ static inline void max_slots_change_dump(int level, struct frame *frm)
 	printf("handle %d slots %d\n", btohs(evt->handle), evt->max_slots);
 }
 
+static inline void data_buffer_overflow_dump(int level, struct frame *frm)
+{
+	evt_data_buffer_overflow *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("type %s\n", evt->link_type == 1 ? "ACL" : "SCO");
+}
+
 static inline void read_clock_offset_complete_dump(int level, struct frame *frm)
 {
 	evt_read_clock_offset_complete *evt = frm->ptr;
@@ -1709,6 +1717,9 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_LINK_KEY_NOTIFY:
 		link_key_notify_dump(level + 1, frm);
+		break;
+	case EVT_DATA_BUFFER_OVERFLOW:
+		data_buffer_overflow_dump(level + 1, frm);
 		break;
 	case EVT_MAX_SLOTS_CHANGE:
 		max_slots_change_dump(level + 1, frm);
