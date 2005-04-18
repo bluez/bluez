@@ -242,6 +242,15 @@ static void configure_device(int hdev)
 			CHANGE_LOCAL_NAME_CP_SIZE, (void *) &cp);
 	}
 
+	/* Set inquiry mode */
+	if (di.features[3] & LMP_RSSI_INQ) {
+		write_inquiry_mode_cp cp;
+
+		cp.mode = device_opts->inqmode;
+		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
+			WRITE_INQUIRY_MODE_CP_SIZE, (void *) &cp);
+	}
+
 	exit(0);
 }
 

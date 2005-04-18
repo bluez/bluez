@@ -43,6 +43,7 @@
 struct device_opts {
 	char    *name;
 	uint32_t class;
+	uint8_t  inqmode;
 	uint16_t pkt_type;
 	uint16_t scan;
 	uint16_t link_mode;
