@@ -1198,11 +1198,11 @@ static inline void hardware_error_dump(int level, struct frame *frm)
 static inline void inq_result_dump(int level, struct frame *frm)
 {
 	uint8_t num = get_u8(frm);
+	char addr[18];
 	int i;
 
 	for (i = 0; i < num; i++) {
 		inquiry_info *info = frm->ptr;
-		char addr[18];
 
 		ba2str(&info->bdaddr, addr);
 
@@ -1433,6 +1433,28 @@ static inline void mode_change_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void return_link_keys_dump(int level, struct frame *frm)
+{
+	uint8_t num = get_u8(frm);
+	unsigned char key[16];
+	char addr[18];
+	int i, n;
+
+	for (n = 0; n < num; n++) {
+		ba2str(frm->ptr, addr);
+		memcpy(key, frm->ptr + 6, 16);
+
+		p_indent(level, frm);
+		printf("bdaddr %s key ", addr);
+		for (i = 0; i < 16; i++)
+			printf("%2.2x", key[i]);
+		printf("\n");
+
+		frm->ptr += 22;
+		frm->len -= 22;
+	}
+}
+
 static inline void pin_code_req_dump(int level, struct frame *frm)
 {
 	evt_pin_code_req *evt = frm->ptr;
@@ -1518,6 +1540,7 @@ static inline void pscan_rep_mode_change_dump(int level, struct frame *frm)
 static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 {
 	uint8_t num = get_u8(frm);
+	char addr[18];
 	int i;
 
 	if (!num)
@@ -1526,7 +1549,6 @@ static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 	if (frm->len / num == INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE) {
 		for (i = 0; i < num; i++) {
 			inquiry_info_with_rssi_and_pscan_mode *info = frm->ptr;
-			char addr[18];
 
 			p_indent(level, frm);
 
@@ -1541,7 +1563,6 @@ static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 	} else {
 		for (i = 0; i < num; i++) {
 			inquiry_info_with_rssi *info = frm->ptr;
-			char addr[18];
 
 			p_indent(level, frm);
 
@@ -1678,6 +1699,9 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_MODE_CHANGE:
 		mode_change_dump(level + 1, frm);
+		break;
+	case EVT_RETURN_LINK_KEYS:
+		return_link_keys_dump(level + 1, frm);
 		break;
 	case EVT_PIN_CODE_REQ:
 	case EVT_LINK_KEY_REQ:
