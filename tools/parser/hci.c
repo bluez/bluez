@@ -452,6 +452,21 @@ static inline void generic_command_dump(int level, struct frame *frm)
 	raw_dump(level, frm);
 }
 
+static inline void bdaddr_command_dump(int level, struct frame *frm)
+{
+	bdaddr_t *bdaddr = frm->ptr;
+	char addr[18];
+
+	frm->ptr += sizeof(bdaddr_t);
+	frm->len -= sizeof(bdaddr_t);
+
+	p_indent(level, frm);
+	ba2str(bdaddr, addr);
+        printf("bdaddr %s\n", addr);
+
+	raw_dump(level, frm);
+}
+
 static inline void inquiry_dump(int level, struct frame *frm)
 {
 	inquiry_cp *cp = frm->ptr;
@@ -744,6 +759,11 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_DISCONNECT:
 			disconnect_dump(level + 1, frm);
 			return;
+		case OCF_CREATE_CONN_CANCEL:
+		case OCF_REMOTE_NAME_REQ_CANCEL:
+		case OCF_ACCEPT_SYNC_CONN_REQ:
+			bdaddr_command_dump(level + 1, frm);
+			return;
 		case OCF_ADD_SCO:
 		case OCF_SET_CONN_PTYPE:
 			add_sco_dump(level + 1, frm);
@@ -752,6 +772,7 @@ static inline void command_dump(int level, struct frame *frm)
 			accept_conn_req_dump(level + 1, frm);
 			return;
 		case OCF_REJECT_CONN_REQ:
+		case OCF_REJECT_SYNC_CONN_REQ:
 			reject_conn_req_dump(level + 1, frm);
 			return;
 		case OCF_PIN_CODE_REPLY:
@@ -772,6 +793,8 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_READ_REMOTE_FEATURES:
 		case OCF_READ_REMOTE_VERSION:
 		case OCF_READ_CLOCK_OFFSET:
+		case OCF_READ_LMP_HANDLE:
+		case OCF_SETUP_SYNC_CONN:
 			generic_command_dump(level + 1, frm);
 			return;
 		case OCF_MASTER_LINK_KEY:
@@ -1103,6 +1126,8 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_EXIT_PERIODIC_INQUIRY:
 			status_response_dump(level, frm);
 			return;
+		case OCF_CREATE_CONN_CANCEL:
+		case OCF_REMOTE_NAME_REQ_CANCEL:
 		case OCF_PIN_CODE_REPLY:
 		case OCF_LINK_KEY_REPLY:
 		case OCF_PIN_CODE_NEG_REPLY:
