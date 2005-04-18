@@ -768,6 +768,7 @@ static inline void command_dump(int level, struct frame *frm)
 			remote_name_req_dump(level + 1, frm);
 			return;
 		}
+		break;
 
 	case OGF_LINK_POLICY:
 		switch (ocf) {
@@ -784,6 +785,7 @@ static inline void command_dump(int level, struct frame *frm)
 			write_link_policy_dump(level + 1, frm);
 			return;
 		}
+		break;
 
 	case OGF_HOST_CTL:
 		switch (ocf) {
@@ -800,6 +802,7 @@ static inline void command_dump(int level, struct frame *frm)
 			write_current_iac_lap_dump(level + 1, frm);
 			return;
 		}
+		break;
 
 	case OGF_INFO_PARAM:
 		switch (ocf) {
@@ -807,6 +810,7 @@ static inline void command_dump(int level, struct frame *frm)
 			request_local_ext_features_dump(level + 1, frm);
 			return;
 		}
+		break;
 	}
 
 	raw_dump(level, frm);
@@ -1676,6 +1680,9 @@ static inline void event_dump(int level, struct frame *frm)
 	}
 
 	switch (event) {
+	case EVT_LOOPBACK_COMMAND:
+		command_dump(level + 1, frm);
+		break;
 	case EVT_CMD_COMPLETE:
 		cmd_complete_dump(level + 1, frm);
 		break;
