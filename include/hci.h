@@ -1004,6 +1004,18 @@ typedef struct {
 } __attribute__ ((packed)) evt_cmd_status;
 #define EVT_CMD_STATUS_SIZE 4
 
+#define EVT_HARDWARE_ERROR		0x10
+typedef struct {
+	uint8_t		code;
+} __attribute__ ((packed)) evt_hardware_error;
+#define EVT_HARDWARE_ERROR_SIZE 1
+
+#define EVT_FLUSH_OCCURRED		0x11
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) evt_flush_occured;
+#define EVT_FLUSH_OCCURRED_SIZE 2
+
 #define EVT_ROLE_CHANGE			0x12
 typedef struct {
 	uint8_t		status;
