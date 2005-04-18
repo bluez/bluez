@@ -1111,6 +1111,16 @@ typedef struct {
 } __attribute__ ((packed)) evt_pscan_rep_mode_change;
 #define EVT_PSCAN_REP_MODE_CHANGE_SIZE 7
 
+#define EVT_FLOW_SPEC_COMPLETE		0x21
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		flags;
+	uint8_t		direction;
+	hci_qos		qos;
+} __attribute__ ((packed)) evt_flow_spec_complete;
+#define EVT_FLOW_SPEC_COMPLETE_SIZE (5 + HCI_QOS_CP_SIZE)
+
 #define EVT_INQUIRY_RESULT_WITH_RSSI	0x22
 typedef struct {
 	bdaddr_t	bdaddr;
