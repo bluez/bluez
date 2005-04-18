@@ -577,11 +577,14 @@ int hci_devba(int dev_id, bdaddr_t *bdaddr)
 int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info **ii, long flags)
 {
 	struct hci_inquiry_req *ir;
+	uint8_t num_rsp = nrsp;
 	void *buf;
 	int s, err;
 
-	if (nrsp <= 0)
-		nrsp = 200;	/* enough ? */
+	if (nrsp <= 0) {
+		num_rsp = 0;
+		nrsp = 255;
+	}
 
 	if (dev_id < 0 && (dev_id = hci_get_route(NULL)) < 0) {
 		errno = ENODEV;
@@ -600,7 +603,7 @@ int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info 
 
 	ir = buf;
 	ir->dev_id  = dev_id;
-	ir->num_rsp = nrsp;
+	ir->num_rsp = num_rsp;
 	ir->length  = len;
 	ir->flags   = flags;
 
