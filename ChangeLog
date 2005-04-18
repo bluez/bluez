@@ -1,3 +1,13 @@
+ver 2.16:
+	Fix buffer allocation for features to string conversion.
+	Add function for reading local supported commands.
+	Add function for reading local extended features.
+	Add function for reading remote extended features.
+	Add function for getting the remote name with a clock offset.
+	Add function for extracting the OUI from a BD_ADDR.
+	Add inquiry info structure with RSSI and page scan mode.
+	Support inquiry with unlimited number of responses.
+
 ver 2.15:
 	Use better way for unaligned access.
 	Remove sdp_internal.h and its usage.
