@@ -327,6 +327,12 @@ typedef struct {
 } __attribute__ ((packed)) add_sco_cp;
 #define ADD_SCO_CP_SIZE 4
 
+#define OCF_CREATE_CONN_CANCEL		0x0008
+typedef struct {
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) create_conn_cancel_cp;
+#define CREATE_CONN_CANCEL_CP_SIZE 6
+
 #define OCF_ACCEPT_CONN_REQ		0x0009
 typedef struct {
 	bdaddr_t	bdaddr;
@@ -431,6 +437,39 @@ typedef struct {
 	uint16_t	handle;
 } __attribute__ ((packed)) read_clock_offset_cp;
 #define READ_CLOCK_OFFSET_CP_SIZE 2
+
+#define OCF_READ_LMP_HANDLE		0x0020
+
+#define OCF_SETUP_SYNC_CONN		0x0028
+typedef struct {
+	uint16_t	handle;
+	uint32_t	tx_bandwith;
+	uint32_t	rx_bandwith;
+	uint16_t	max_latency;
+	uint16_t	voice_setting;
+	uint8_t		retrans_effort;
+	uint16_t	pkt_type;
+} __attribute__ ((packed)) setup_sync_conn_cp;
+#define SETUP_SYNC_CONN_CP_SIZE 17
+
+#define OCF_ACCEPT_SYNC_CONN_REQ	0x0029
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint32_t	tx_bandwith;
+	uint32_t	rx_bandwith;
+	uint16_t	max_latency;
+	uint16_t	voice_setting;
+	uint8_t		retrans_effort;
+	uint16_t	pkt_type;
+} __attribute__ ((packed)) accept_sync_conn_req_cp;
+#define ACCEPT_SYNC_CONN_REQ_CP_SIZE 21
+
+#define OCF_REJECT_SYNC_CONN_REQ	0x002A
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		reason;
+} __attribute__ ((packed)) reject_sync_conn_req_cp;
+#define REJECT_SYNC_CONN_REQ_CP_SIZE 7
 
 /* Link Policy */
 #define OGF_LINK_POLICY		0x02
