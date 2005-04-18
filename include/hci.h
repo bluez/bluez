@@ -1152,6 +1152,31 @@ typedef struct {
 } __attribute__ ((packed)) evt_read_remote_ext_features_complete;
 #define EVT_READ_REMOTE_EXT_FEATURES_COMPLETE_SIZE 13
 
+#define EVT_SYNC_CONN_COMPLETE		0x2C
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	bdaddr_t	bdaddr;
+	uint8_t		link_type;
+	uint8_t		trans_interval;
+	uint8_t		retrans_window;
+	uint16_t	rx_pkt_len;
+	uint16_t	tx_pkt_len;
+	uint8_t		air_mode;
+} __attribute__ ((packed)) evt_sync_conn_complete;
+#define EVT_SYNC_CONN_COMPLETE_SIZE 17
+
+#define EVT_SYNC_CONN_CHANGED		0x2D
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		trans_interval;
+	uint8_t		retrans_window;
+	uint16_t	rx_pkt_len;
+	uint16_t	tx_pkt_len;
+} __attribute__ ((packed)) evt_sync_conn_changed;
+#define EVT_SYNC_CONN_CHANGED_SIZE 9
+
 #define EVT_TESTING			0xFE
 
 #define EVT_VENDOR			0xFF
