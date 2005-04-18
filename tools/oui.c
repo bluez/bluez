@@ -32,9 +32,12 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <malloc.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 
 #include "oui.h"
 
@@ -42,44 +45,50 @@
 
 #define OUIFILE "/usr/share/misc/oui.txt"
 
-#define AWKCMD "/usr/bin/awk"
-#define TRCMD  "/usr/bin/tr"
-
 char *ouitocomp(const char *oui)
 {
 	struct stat st;
-	FILE *input;
-	char cmd[512];
-	char *str;
-	size_t len;
+	char *str, *map, *off, *end;
+	int fd;
 
-	if (stat(OUIFILE, &st) < 0)
+
+	fd = open(OUIFILE, O_RDONLY);
+	if (fd < 0)
 		return NULL;
 
-	if (stat(AWKCMD, &st) < 0)
-		return NULL;
-
-	if (stat(TRCMD, &st) < 0)
-		return NULL;
-
-	str = malloc(128);
-	if (!str)
-		return NULL;
-
-	memset(str, 0, 128);
-
-	snprintf(cmd, sizeof(cmd) - 1, "%s -F'\\t' '/^"
-		"%s.*\\(hex\\).*/{ print $3 }' %s"
-		" | %s -d '\\n\\r'", AWKCMD, oui, OUIFILE, TRCMD);
-
-	input = popen(cmd, "r");
-	if (!input) {
-		free(str);
+	if (fstat(fd, &st) < 0) {
+		close(fd);
 		return NULL;
 	}
 
-	len = fread(str, 127, 1, input);
-	pclose(input);
+	str = malloc(128);
+	if (!str) {
+		close(fd);
+		return NULL;
+	}
+
+	memset(str, 0, 128);
+
+	map = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (map == MAP_FAILED) {
+		free(str);
+		close(fd);
+		return NULL;
+	}
+
+	off = strstr(map, oui);
+	if (off) {
+		off += 18;
+		end = strpbrk(off, "\r\n");
+		strncpy(str, off, end - off);
+	} else {
+		free(str);
+		str = NULL;
+	}
+
+	munmap(map, st.st_size);
+
+	close(fd);
 
 	return str;
 }
