@@ -426,6 +426,22 @@ static char *mode2str(uint8_t mode)
 	}
 }
 
+static char *airmode2str(uint8_t mode)
+{
+	switch (mode) {
+	case 0x00:
+		return "u-law log";
+	case 0x01:
+		return "A-law log";
+	case 0x02:
+		return "CVSD";
+	case 0x04:
+		return "Transparent data";
+	default:
+		return "Reserved";
+	}
+}
+
 static inline void generic_command_dump(int level, struct frame *frm)
 {
 	uint16_t handle = btohs(htons(get_u16(frm)));
@@ -1637,6 +1653,41 @@ static inline void read_remote_ext_features_complete_dump(int level, struct fram
 	}
 }
 
+static inline void sync_conn_complete_dump(int level, struct frame *frm)
+{
+	evt_sync_conn_complete *evt = frm->ptr;
+	char addr[18];
+
+	ba2str(&evt->bdaddr, addr);
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d bdaddr %s type %s\n",
+		evt->status, btohs(evt->handle), addr,
+		evt->link_type == 0 ? "SCO" : "eSCO");
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		p_indent(level, frm);
+		printf("Air mode: %s\n", airmode2str(evt->air_mode));
+	}
+}
+
+static inline void sync_conn_changed_dump(int level, struct frame *frm)
+{
+	evt_sync_conn_changed *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d\n",
+		evt->status, btohs(evt->handle));
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	}
+}
+
 static inline void event_dump(int level, struct frame *frm)
 {
 	hci_event_hdr *hdr = frm->ptr;
@@ -1775,6 +1826,12 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_READ_REMOTE_EXT_FEATURES_COMPLETE:
 		read_remote_ext_features_complete_dump(level + 1, frm);
+		break;
+	case EVT_SYNC_CONN_COMPLETE:
+		sync_conn_complete_dump(level + 1, frm);
+		break;
+	case EVT_SYNC_CONN_CHANGED:
+		sync_conn_changed_dump(level + 1, frm);
 		break;
 	default:
 		raw_dump(level, frm);
