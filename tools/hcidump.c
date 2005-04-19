@@ -72,6 +72,7 @@ static int  snap_len = SNAP_LEN;
 static int  defpsm = 0;
 static int  defcompid = DEFAULT_COMPID;
 static int  mode = PARSE;
+static int  permcheck = 1;
 static long flags;
 static long filter;
 static char *dump_file;
@@ -261,11 +262,35 @@ static int open_socket(int dev, unsigned long flags)
 {
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
-	int sk, opt;
+	struct hci_dev_info di;
+	int sk, dd, opt;
+
+	if (permcheck) {
+		dd = hci_open_dev(dev);
+		if (dd < 0) {
+			perror("Can't open device");
+			exit(1);
+		}
+
+		if (hci_devinfo(dev, &di) < 0) {
+			perror("Can't get device info");
+			exit(1);
+		}
+
+		opt = hci_test_bit(HCI_RAW, &di.flags);
+		if (ioctl(dd, HCISETRAW, opt) < 0) {
+			if (errno == EACCES) {
+				perror("Can't access device");
+				exit(1);
+			}
+		}
+
+		hci_close_dev(dd);
+	}
 
 	/* Create HCI socket */
 	if ((sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
-		perror("Can't create HCI socket");
+		perror("Can't create raw socket");
 		exit(1);
 	}
 
@@ -286,7 +311,7 @@ static int open_socket(int dev, unsigned long flags)
 	hci_filter_all_ptypes(&flt);
 	hci_filter_all_events(&flt);
 	if (setsockopt(sk, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
-		perror("Can't set HCI filter");
+		perror("Can't set filter");
 		exit(1);
 	}
 
@@ -478,7 +503,7 @@ int main(int argc, char *argv[])
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:Vh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:VZh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			device = atoi(optarg + 3);
@@ -566,6 +591,10 @@ int main(int argc, char *argv[])
 
 		case 'V':
 			flags |= DUMP_VERBOSE;
+			break;
+
+		case 'Z':
+			permcheck = 0;
 			break;
 
 		case 'h':
