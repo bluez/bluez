@@ -1433,6 +1433,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_LINK_SUPERVISION_TIMEOUT:
 			generic_response_dump(level, frm);
 			return;
+		case OCF_CHANGE_LOCAL_NAME:
 		case OCF_WRITE_CLASS_OF_DEV:
 		case OCF_WRITE_VOICE_SETTING:
 		case OCF_WRITE_CURRENT_IAC_LAP:
