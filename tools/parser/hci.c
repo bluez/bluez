@@ -710,6 +710,22 @@ static inline void write_current_iac_lap_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void write_page_timeout_dump(int level, struct frame *frm)
+{
+	write_page_timeout_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("timeout %d\n", btohs(cp->timeout));
+}
+
+static inline void write_page_activity_dump(int level, struct frame *frm)
+{
+	write_page_activity_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("interval %d window %d\n", btohs(cp->interval), btohs(cp->window));
+}
+
 static inline void write_inquiry_mode_dump(int level, struct frame *frm)
 {
 	write_inquiry_mode_cp *cp = frm->ptr;
@@ -847,6 +863,13 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_WRITE_CURRENT_IAC_LAP:
 			write_current_iac_lap_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_PAGE_TIMEOUT:
+			write_page_timeout_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_PAGE_ACTIVITY:
+		case OCF_WRITE_INQ_ACTIVITY:
+			write_page_activity_dump(level + 1, frm);
 			return;
 		case OCF_WRITE_INQUIRY_MODE:
 		case OCF_WRITE_AFH_MODE:
@@ -1007,6 +1030,33 @@ static inline void read_inquiry_mode_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x mode %d\n", rp->status, rp->mode);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_page_timeout_dump(int level, struct frame *frm)
+{
+	read_page_timeout_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x timeout %d\n", rp->status, btohs(rp->timeout));
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_page_activity_dump(int level, struct frame *frm)
+{
+	read_page_activity_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x interval %d window %d\n",
+		rp->status, btohs(rp->interval), btohs(rp->window));
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1184,6 +1234,13 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_CURRENT_IAC_LAP:
 			read_current_iac_lap_dump(level, frm);
 			return;
+		case OCF_READ_PAGE_TIMEOUT:
+			read_page_timeout_dump(level, frm);
+			return;
+		case OCF_READ_PAGE_ACTIVITY:
+		case OCF_READ_INQ_ACTIVITY:
+			read_page_activity_dump(level, frm);
+			return;
 		case OCF_READ_INQUIRY_MODE:
 		case OCF_READ_AFH_MODE:
 			read_inquiry_mode_dump(level, frm);
@@ -1191,11 +1248,11 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_CLASS_OF_DEV:
 		case OCF_WRITE_VOICE_SETTING:
 		case OCF_WRITE_CURRENT_IAC_LAP:
+		case OCF_WRITE_PAGE_TIMEOUT:
+		case OCF_WRITE_PAGE_ACTIVITY:
+		case OCF_WRITE_INQ_ACTIVITY:
 		case OCF_WRITE_INQUIRY_MODE:
 		case OCF_WRITE_AFH_MODE:
-		case OCF_READ_PAGE_TIMEOUT:
-		case OCF_READ_PAGE_ACTIVITY:
-		case OCF_READ_INQ_ACTIVITY:
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
 		case OCF_SET_AFH_CLASSIFICATION:
