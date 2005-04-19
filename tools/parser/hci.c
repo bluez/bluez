@@ -710,6 +710,14 @@ static inline void write_current_iac_lap_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void write_inquiry_mode_dump(int level, struct frame *frm)
+{
+	write_inquiry_mode_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("mode %d\n", cp->mode);
+}
+
 static inline void request_local_ext_features_dump(int level, struct frame *frm)
 {
 	read_local_ext_features_cp *cp = frm->ptr;
@@ -839,6 +847,10 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_WRITE_CURRENT_IAC_LAP:
 			write_current_iac_lap_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_INQUIRY_MODE:
+		case OCF_WRITE_AFH_MODE:
+			write_inquiry_mode_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -986,6 +998,19 @@ static inline void read_current_iac_lap_dump(int level, struct frame *frm)
 			}
 		}
 		printf("\n");
+	}
+}
+
+static inline void read_inquiry_mode_dump(int level, struct frame *frm)
+{
+	read_inquiry_mode_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x mode %d\n", rp->status, rp->mode);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
 	}
 }
 
@@ -1159,6 +1184,12 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_CURRENT_IAC_LAP:
 			read_current_iac_lap_dump(level, frm);
 			return;
+		case OCF_READ_INQUIRY_MODE:
+		case OCF_READ_AFH_MODE:
+			read_inquiry_mode_dump(level, frm);
+			return;
+		case OCF_WRITE_CLASS_OF_DEV:
+		case OCF_WRITE_VOICE_SETTING:
 		case OCF_WRITE_CURRENT_IAC_LAP:
 		case OCF_WRITE_INQUIRY_MODE:
 		case OCF_WRITE_AFH_MODE:
@@ -1168,8 +1199,6 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
 		case OCF_SET_AFH_CLASSIFICATION:
-		case OCF_READ_INQUIRY_MODE:
-		case OCF_READ_AFH_MODE:
 			status_response_dump(level, frm);
 			return;
 		}
