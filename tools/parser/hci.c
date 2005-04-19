@@ -754,6 +754,16 @@ static inline void request_local_ext_features_dump(int level, struct frame *frm)
 	printf("page %d\n", cp->page_num);
 }
 
+static inline void request_clock_dump(int level, struct frame *frm)
+{
+	read_clock_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d which %d (%s)\n",
+		btohs(cp->handle), cp->which_clock,
+		cp->which_clock ? "piconet" : "local");
+}
+
 static inline void command_dump(int level, struct frame *frm)
 {
 	hci_command_hdr *hdr = frm->ptr;
@@ -899,6 +909,19 @@ static inline void command_dump(int level, struct frame *frm)
 		switch (ocf) {
 		case OCF_READ_LOCAL_EXT_FEATURES:
 			request_local_ext_features_dump(level + 1, frm);
+			return;
+		}
+		break;
+
+	case OGF_STATUS_PARAM:
+		switch (ocf) {
+		case OCF_READ_LINK_QUALITY:
+		case OCF_READ_RSSI:
+		case OCF_READ_AFH_MAP:
+			generic_command_dump(level + 1, frm);
+			return;
+		case OCF_READ_CLOCK:
+			request_clock_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -1210,6 +1233,70 @@ static inline void read_buffer_size_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void read_link_quality_dump(int level, struct frame *frm)
+{
+	read_link_quality_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d lq %d\n",
+		rp->status, btohs(rp->handle), rp->link_quality);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_rssi_dump(int level, struct frame *frm)
+{
+	read_rssi_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d rssi %d\n",
+		rp->status, btohs(rp->handle), rp->rssi);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_afh_map_dump(int level, struct frame *frm)
+{
+	read_afh_map_rp *rp = frm->ptr;
+	int i;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d mode %d\n",
+		rp->status, btohs(rp->handle), rp->mode);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		p_indent(level, frm);
+		printf("AFH map: 0x");
+		for (i = 0; i < 10; i++)
+			printf("%2.2x", rp->map[i]);
+		printf("\n");
+	}
+}
+
+static inline void read_clock_dump(int level, struct frame *frm)
+{
+	read_clock_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d clock 0x%4.4x accuracy %d\n",
+		rp->status, btohs(rp->handle),
+		btohl(rp->clock), btohs(rp->accuracy));
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
 static inline void cmd_complete_dump(int level, struct frame *frm)
 {
 	evt_cmd_complete *evt = frm->ptr;
@@ -1327,11 +1414,19 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		switch (ocf) {
 		case OCF_READ_FAILED_CONTACT_COUNTER:
 		case OCF_RESET_FAILED_CONTACT_COUNTER:
-		case OCF_READ_LINK_QUALITY:
-		case OCF_READ_RSSI:
-		case OCF_READ_AFH_MAP:
-		case OCF_READ_CLOCK:
 			status_response_dump(level, frm);
+			return;
+		case OCF_READ_LINK_QUALITY:
+			read_link_quality_dump(level, frm);
+			return;
+		case OCF_READ_RSSI:
+			read_rssi_dump(level, frm);
+			return;
+		case OCF_READ_AFH_MAP:
+			read_afh_map_dump(level, frm);
+			return;
+		case OCF_READ_CLOCK:
+			read_clock_dump(level, frm);
 			return;
 		}
 		break;
