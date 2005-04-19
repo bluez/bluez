@@ -746,6 +746,25 @@ static inline void write_inquiry_mode_dump(int level, struct frame *frm)
 	printf("mode %d\n", cp->mode);
 }
 
+static inline void write_link_supervision_timeout_dump(int level, struct frame *frm)
+{
+	write_link_supervision_timeout_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d timeout %d\n",
+		btohs(cp->handle), btohs(cp->link_sup_to));
+}
+
+static inline void request_transmit_power_level_dump(int level, struct frame *frm)
+{
+	read_transmit_power_level_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d type %d (%s)\n",
+		btohs(cp->handle), cp->type,
+		cp->type ? "maximum" : "current");
+}
+
 static inline void request_local_ext_features_dump(int level, struct frame *frm)
 {
 	read_local_ext_features_cp *cp = frm->ptr;
@@ -901,6 +920,15 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_WRITE_INQUIRY_MODE:
 		case OCF_WRITE_AFH_MODE:
 			write_inquiry_mode_dump(level + 1, frm);
+			return;
+		case OCF_READ_TRANSMIT_POWER_LEVEL:
+			request_transmit_power_level_dump(level + 1, frm);
+			return;
+		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
+			generic_command_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_LINK_SUPERVISION_TIMEOUT:
+			write_link_supervision_timeout_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -1064,19 +1092,6 @@ static inline void read_current_iac_lap_dump(int level, struct frame *frm)
 	}
 }
 
-static inline void read_inquiry_mode_dump(int level, struct frame *frm)
-{
-	read_inquiry_mode_rp *rp = frm->ptr;
-
-	p_indent(level, frm);
-	printf("status 0x%2.2x mode %d\n", rp->status, rp->mode);
-
-	if (rp->status > 0) {
-		p_indent(level, frm);
-		printf("Error: %s\n", status2str(rp->status));
-	}
-}
-
 static inline void read_scan_enable_dump(int level, struct frame *frm)
 {
 	uint8_t status = get_u8(frm);
@@ -1111,6 +1126,47 @@ static inline void read_page_activity_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("status 0x%2.2x interval %d window %d\n",
 		rp->status, btohs(rp->interval), btohs(rp->window));
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_inquiry_mode_dump(int level, struct frame *frm)
+{
+	read_inquiry_mode_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x mode %d\n", rp->status, rp->mode);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_link_supervision_timeout_dump(int level, struct frame *frm)
+{
+	read_link_supervision_timeout_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d timeout %d\n",
+		rp->status, btohs(rp->handle), btohs(rp->link_sup_to));
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_transmit_power_level_dump(int level, struct frame *frm)
+{
+	read_transmit_power_level_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d level %d\n",
+		rp->status, btohs(rp->handle), rp->level);
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1368,6 +1424,15 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_AFH_MODE:
 			read_inquiry_mode_dump(level, frm);
 			return;
+		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
+			read_link_supervision_timeout_dump(level, frm);
+			return;
+		case OCF_READ_TRANSMIT_POWER_LEVEL:
+			read_transmit_power_level_dump(level, frm);
+			return;
+		case OCF_WRITE_LINK_SUPERVISION_TIMEOUT:
+			generic_response_dump(level, frm);
+			return;
 		case OCF_WRITE_CLASS_OF_DEV:
 		case OCF_WRITE_VOICE_SETTING:
 		case OCF_WRITE_CURRENT_IAC_LAP:
@@ -1379,8 +1444,6 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_INQ_ACTIVITY:
 		case OCF_WRITE_INQUIRY_MODE:
 		case OCF_WRITE_AFH_MODE:
-		case OCF_READ_TRANSMIT_POWER_LEVEL:
-		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
 		case OCF_SET_AFH_CLASSIFICATION:
 			status_response_dump(level, frm);
 			return;
