@@ -41,6 +41,10 @@
 
 #include "parser.h"
 
+#ifndef OCF_READ_SCAN_ENABLE
+#define OCF_READ_SCAN_ENABLE 0x0019
+#endif
+
 static uint16_t manufacturer = DEFAULT_COMPID;
 
 static inline uint16_t get_manufacturer(void)
@@ -710,6 +714,14 @@ static inline void write_current_iac_lap_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void write_scan_enable_dump(int level, struct frame *frm)
+{
+	uint8_t enable = get_u8(frm);
+
+	p_indent(level, frm);
+	printf("enable %d\n", enable);
+}
+
 static inline void write_page_timeout_dump(int level, struct frame *frm)
 {
 	write_page_timeout_cp *cp = frm->ptr;
@@ -864,6 +876,10 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_WRITE_CURRENT_IAC_LAP:
 			write_current_iac_lap_dump(level + 1, frm);
 			return;
+		case OCF_WRITE_SCAN_ENABLE:
+		case OCF_WRITE_AUTH_ENABLE:
+			write_scan_enable_dump(level + 1, frm);
+			return;
 		case OCF_WRITE_PAGE_TIMEOUT:
 			write_page_timeout_dump(level + 1, frm);
 			return;
@@ -871,6 +887,7 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_WRITE_INQ_ACTIVITY:
 			write_page_activity_dump(level + 1, frm);
 			return;
+		case OCF_WRITE_ENCRYPT_MODE:
 		case OCF_WRITE_INQUIRY_MODE:
 		case OCF_WRITE_AFH_MODE:
 			write_inquiry_mode_dump(level + 1, frm);
@@ -1034,6 +1051,20 @@ static inline void read_inquiry_mode_dump(int level, struct frame *frm)
 	if (rp->status > 0) {
 		p_indent(level, frm);
 		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_scan_enable_dump(int level, struct frame *frm)
+{
+	uint8_t status = get_u8(frm);
+	uint8_t enable = get_u8(frm);
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x enable %d\n", status, enable);
+
+	if (status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(status));
 	}
 }
 
@@ -1234,6 +1265,10 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_CURRENT_IAC_LAP:
 			read_current_iac_lap_dump(level, frm);
 			return;
+		case OCF_READ_SCAN_ENABLE:
+		case OCF_READ_AUTH_ENABLE:
+			read_scan_enable_dump(level, frm);
+			return;
 		case OCF_READ_PAGE_TIMEOUT:
 			read_page_timeout_dump(level, frm);
 			return;
@@ -1241,6 +1276,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_INQ_ACTIVITY:
 			read_page_activity_dump(level, frm);
 			return;
+		case OCF_READ_ENCRYPT_MODE:
 		case OCF_READ_INQUIRY_MODE:
 		case OCF_READ_AFH_MODE:
 			read_inquiry_mode_dump(level, frm);
@@ -1248,6 +1284,9 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_CLASS_OF_DEV:
 		case OCF_WRITE_VOICE_SETTING:
 		case OCF_WRITE_CURRENT_IAC_LAP:
+		case OCF_WRITE_SCAN_ENABLE:
+		case OCF_WRITE_AUTH_ENABLE:
+		case OCF_WRITE_ENCRYPT_MODE:
 		case OCF_WRITE_PAGE_TIMEOUT:
 		case OCF_WRITE_PAGE_ACTIVITY:
 		case OCF_WRITE_INQ_ACTIVITY:
