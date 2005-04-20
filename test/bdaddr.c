@@ -103,6 +103,53 @@ static int ericsson_store_in_flash(int dd, uint8_t user_id, uint8_t flash_length
 }
 #endif
 
+static int csr_write_bd_addr(int dd, bdaddr_t *bdaddr)
+{
+	unsigned char cmd[] = { 0x02, 0x00, 0x0c, 0x00, 0x11, 0x47, 0x03, 0x70,
+				0x00, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+	unsigned char cp[254], rp[254];
+	struct hci_request rq;
+
+	cmd[16] = bdaddr->b[2];
+	cmd[17] = 0x00;
+	cmd[18] = bdaddr->b[0];
+	cmd[19] = bdaddr->b[1];
+	cmd[20] = bdaddr->b[3];
+	cmd[21] = 0x00;
+	cmd[22] = bdaddr->b[4];
+	cmd[23] = bdaddr->b[5];
+
+	memset(&cp, 0, sizeof(cp));
+	cp[0] = 0xc2;
+	memcpy(cp + 1, cmd, sizeof(cmd));
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_VENDOR_CMD;
+	rq.ocf    = 0x00;
+	rq.event  = EVT_VENDOR;
+	rq.cparam = cp;
+	rq.clen   = sizeof(cmd) + 1;
+	rq.rparam = rp;
+	rq.rlen   = sizeof(rp);
+
+	if (hci_send_req(dd, &rq, 2000) < 0)
+		return -1;
+
+	if (rp[0] != 0xc2) {
+		errno = EIO;
+		return -1;
+	}
+
+	if ((rp[9] + (rp[10] << 8)) != 0) {
+		errno = ENXIO;
+		return -1;
+	}
+
+	return 0;
+}
+
 #define OCF_ZEEVO_WRITE_BD_ADDR		0x0001
 typedef struct {
 	bdaddr_t	bdaddr;
@@ -136,6 +183,7 @@ static struct {
 	int (*func)(int dd, bdaddr_t *bdaddr);
 } vendor[] = {
 	{ 0,		ericsson_write_bd_addr	},
+	{ 10,		csr_write_bd_addr	},
 	{ 18,		zeevo_write_bd_addr	},
 	{ 65535,	NULL			},
 };
@@ -205,10 +253,20 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (!bacmp(&di.bdaddr, BDADDR_ANY)) {
+		if (hci_read_bd_addr(dd, &bdaddr, 1000) < 0) {
+			fprintf(stderr, "Can't read address for hci%d: %s (%d)\n",
+						dev, strerror(errno), errno);
+			hci_close_dev(dd);
+			exit(1);
+		}
+	} else
+		bacpy(&bdaddr, &di.bdaddr);
+
 	printf("Manufacturer:   %s (%d)\n",
 			bt_compidtostr(ver.manufacturer), ver.manufacturer);
 
-	ba2str(&di.bdaddr, addr);
+	ba2str(&bdaddr, addr);
 	printf("Device address: %s\n", addr);
 
 	if (argc < 1) {
@@ -228,7 +286,7 @@ int main(int argc, char *argv[])
 			printf("New BD address: %s\n\n", addr);
 
 			if (vendor[i].func(dd, &bdaddr) < 0) {
-				fprintf(stderr, "Can't write new address");
+				fprintf(stderr, "Can't write new address\n");
 				hci_close_dev(dd);
 				exit(1);
 			}
