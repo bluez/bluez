@@ -39,6 +39,8 @@
 
 char *csr_buildidtostr(uint16_t id);
 char *csr_chipvertostr(uint16_t ver, uint16_t rev);
+char *csr_pskeytostr(uint16_t pskey);
 
 int csr_read_varid_uint16(int dd, uint16_t seqnum, uint16_t varid, uint16_t *value);
 int csr_read_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t *value);
+int csr_write_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t value);
