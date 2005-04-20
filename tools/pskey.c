@@ -81,7 +81,7 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 	if (err < 0)
 		return err;
 
-	printf("%s: %d\n", csr_pskeytostr(pskey), value);
+	printf("%s: 0x%04x (%d)\n", csr_pskeytostr(pskey), value, value);
 
 	return err;
 }
@@ -92,6 +92,9 @@ static struct {
 	char *str;
 } storage[] = {
 	{ CSR_PSKEY_HOSTIO_MAP_SCO_PCM, CSR_TYPE_UINT16, "mapsco"   },
+	{ CSR_PSKEY_HOST_INTERFACE,     CSR_TYPE_UINT16, "hostintf" },
+	{ CSR_PSKEY_USB_VENDOR_ID,      CSR_TYPE_UINT16, "usbvid"   },
+	{ CSR_PSKEY_USB_PRODUCT_ID,     CSR_TYPE_UINT16, "usbpid"   },
 	{ CSR_PSKEY_INITIAL_BOOTMODE,   CSR_TYPE_UINT16, "bootmode" },
 	{ 0x0000, CSR_TYPE_NULL, NULL },
 };
