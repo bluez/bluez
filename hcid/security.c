@@ -225,10 +225,10 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
 	struct link_key key;
-	char sa[18];
+	char sa[18], da[18];
 
-	ba2str(sba, sa);
-	syslog(LOG_INFO, "link_key_notify (sba=%s)", sa);
+	ba2str(sba, sa); ba2str(dba, da);
+	syslog(LOG_INFO, "link_key_notify (sba=%s, dba=%s)", sa, da);
 
 	memcpy(key.key, evt->link_key, 16);
 	bacpy(&key.sba, sba);
@@ -241,6 +241,28 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 #endif
 
 	write_link_key(sba, dba, evt->link_key, evt->key_type);
+}
+
+static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_return_link_keys *evt = ptr;
+	uint8_t num = evt->num_keys;
+	unsigned char key[16];
+	char sa[18], da[18];
+	bdaddr_t dba;
+	int i;
+
+	ba2str(sba, sa);
+	ptr++;
+
+	for (i = 0; i < num; i++) {
+		bacpy(&dba, ptr); ba2str(&dba, da);
+		memcpy(key, ptr + 6, 16);
+
+		syslog(LOG_INFO, "return_link_keys (sba=%s, dba=%s)", sa, da);
+
+		ptr += 22;
+	}
 }
 
 /* PIN code handling */
@@ -548,6 +570,10 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	case EVT_LINK_KEY_NOTIFY:
 		link_key_notify(dev, &di->bdaddr, ptr);
 		break;
+
+	case EVT_RETURN_LINK_KEYS:
+		return_link_keys(dev, &di->bdaddr, ptr);
+		break;
 	}
 
 	return TRUE;
@@ -577,6 +603,7 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_PIN_CODE_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_NOTIFY, &flt);
+	hci_filter_set_event(EVT_RETURN_LINK_KEYS, &flt);
 	hci_filter_set_event(EVT_REMOTE_NAME_REQ_COMPLETE, &flt);
 	hci_filter_set_event(EVT_READ_REMOTE_VERSION_COMPLETE, &flt);
 	hci_filter_set_event(EVT_READ_REMOTE_FEATURES_COMPLETE, &flt);
