@@ -35,6 +35,7 @@
 #define CSR_VARID_FAULT_ARG		0x6806
 
 #define CSR_PSKEY_HOSTIO_MAP_SCO_PCM	0x01ab
+#define CSR_PSKEY_INITIAL_BOOTMODE	0x03cd
 
 char *csr_buildidtostr(uint16_t id);
 char *csr_chipvertostr(uint16_t ver, uint16_t rev);
