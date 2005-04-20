@@ -14,7 +14,7 @@ sbin_PROGRAMS = hciattach hciconfig $(hid2hci_programs)
 
 bin_PROGRAMS = hcitool l2ping sdptool ciptool
 
-noinst_PROGRAMS = ppporc hcisecfilter
+noinst_PROGRAMS = hcisecfilter ppporc pskey
 
 hciconfig_SOURCES = hciconfig.c csr.h csr.c
 
@@ -31,6 +31,10 @@ sdptool_LDADD = @BLUEZ_LIBS@
 ciptool_LDADD = @BLUEZ_LIBS@
 
 ppporc_LDADD = @BLUEZ_LIBS@
+
+pskey_SOURCES = pskey.c csr.h csr.c
+
+pskey_LDADD = @BLUEZ_LIBS@
 
 if HID2HCI
 hid2hci_LDADD = @USB_LIBS@
