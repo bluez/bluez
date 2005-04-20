@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2001-2002  Nokia Corporation
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *  Copyright (C) 2002-2003  Stephen Crane <steve.crane@rococosoft.com>
  *  Copyright (C) 2002-2003  Jean Tourrilhes <jt@hpl.hp.com>
  *
@@ -1423,7 +1423,7 @@ end:
 	return ret;
 }
 
-static int add_file_trans(sdp_session_t *session, svc_info_t *si)
+static int add_ftp(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, ftrn_uuid, l2cap_uuid, rfcomm_uuid, obex_uuid;
@@ -1852,6 +1852,83 @@ done:
 	return ret;
 }
 
+static unsigned char nokid_uuid[] = {	0x00, 0x00, 0x55, 0x55, 0x00, 0x00, 0x10, 0x00,
+					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x01 };
+
+static int add_nokia_id(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass;
+	uuid_t root_uuid, svclass_uuid;
+	uint16_t verid = 0x005f;
+	sdp_data_t *version = sdp_data_alloc(SDP_UINT16, &verid);
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid128_create(&svclass_uuid, (void *) nokid_uuid);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+
+	sdp_attr_add(&record, SDP_ATTR_SERVICE_VERSION, version);
+
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		sdp_data_free(version);
+		return -1;
+	}
+
+	printf("Nokia ID service record registered\n");
+
+	return 0;
+}
+
+static unsigned char pcsuite_uuid[] = {	0x00, 0x00, 0x50, 0x02, 0x00, 0x00, 0x10, 0x00,
+					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x01 };
+
+static int add_pcsuite(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass, *proto;
+	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid;
+	uint8_t channel = si->channel? si->channel: 14;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto = sdp_list_append(NULL, sdp_list_append(NULL, &l2cap_uuid));
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto = sdp_list_append(proto, sdp_list_append(
+		sdp_list_append(NULL, &rfcomm_uuid), sdp_data_alloc(SDP_UINT8, &channel)));
+
+	sdp_set_access_protos(&record, sdp_list_append(NULL, proto));
+
+	sdp_uuid128_create(&svclass_uuid, (void *) pcsuite_uuid);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+
+	sdp_set_info_attr(&record, "Nokia PC Suite", NULL, NULL);
+
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("Nokia PC Suite service registered\n");
+
+	return 0;
+}
+
 struct {
 	char		*name;
 	uint16_t	class;
@@ -1864,7 +1941,7 @@ struct {
 	{ "LAN",	LAN_ACCESS_SVCLASS_ID,		add_lan		},
 	{ "FAX",	FAX_SVCLASS_ID,			add_fax		},
 	{ "OPUSH",	OBEX_OBJPUSH_SVCLASS_ID,	add_opush	},
-	{ "FTRN",	OBEX_FILETRANS_SVCLASS_ID,	add_file_trans	},
+	{ "FTP",	OBEX_FILETRANS_SVCLASS_ID,	add_ftp		},
 
 	{ "HS",		HEADSET_SVCLASS_ID,		add_headset	},
 	{ "HF",		HANDSFREE_SVCLASS_ID,		add_handsfree	},
@@ -1880,6 +1957,9 @@ struct {
 
 	{ "A2SRC",	AUDIO_SOURCE_SVCLASS_ID,	add_audio_source},
 	{ "A2SNK",	AUDIO_SINK_SVCLASS_ID,		add_audio_sink	},
+
+	{ "NOKID",	0,				add_nokia_id	},
+	{ "PCSUITE",	0,				add_pcsuite	},
 
 	{ 0 }
 };
@@ -2339,7 +2419,7 @@ static struct {
 
 static void usage(void)
 {
-	int i;
+	int i, pos = 0;
 
 	printf("sdptool - SDP tool v%s\n", VERSION);
 	printf("Usage:\n"
@@ -2353,8 +2433,14 @@ static void usage(void)
 		printf("\t%-4s\t\t%s\n", command[i].cmd, command[i].doc);
 
 	printf("\nServices:\n\t");
-	for (i = 0; service[i].name; i++)
+	for (i = 0; service[i].name; i++) {
 		printf("%s ", service[i].name);
+		pos += strlen(service[i].name) + 1;
+		if (pos > 60) {
+			printf("\n\t");
+			pos = 0;
+		}
+	}
 	printf("\n");
 }
 
