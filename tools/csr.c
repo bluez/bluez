@@ -379,12 +379,16 @@ char *csr_pskeytostr(uint16_t pskey)
 	switch (pskey) {
 	case CSR_PSKEY_HOSTIO_MAP_SCO_PCM:
 		return "Map SCO over PCM";
+	case CSR_PSKEY_UART_BAUDRATE:
+		return "UART Baud rate";
 	case CSR_PSKEY_HOST_INTERFACE:
 		return "Host interface";
 	case CSR_PSKEY_USB_VENDOR_ID:
 		return "USB vendor identifier";
 	case CSR_PSKEY_USB_PRODUCT_ID:
 		return "USB product identifier";
+	case CSR_PSKEY_USB_DFU_PRODUCT_ID:
+		return "USB DFU product ID";
 	case CSR_PSKEY_INITIAL_BOOTMODE:
 		return "Initial device bootmode";
 	default:
