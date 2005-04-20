@@ -34,7 +34,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -151,7 +150,7 @@ static void usage(void)
 static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "device",	1, 0, 'i' },
-	{ 0, 0, 0, 0}
+	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char *argv[])
@@ -192,8 +191,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	di.dev_id = dev;
-	if (ioctl(dd, HCIGETDEVINFO, (void *) &di) < 0) {
+	if (hci_devinfo(dev, &di) < 0) {
 		fprintf(stderr, "Can't get device info for hci%d: %s (%d)\n",
 						dev, strerror(errno), errno);
 		hci_close_dev(dd);
