@@ -35,6 +35,9 @@
 #define CSR_VARID_FAULT_ARG		0x6806
 
 #define CSR_PSKEY_HOSTIO_MAP_SCO_PCM	0x01ab
+#define CSR_PSKEY_HOST_INTERFACE	0x01f9
+#define CSR_PSKEY_USB_VENDOR_ID		0x02be
+#define CSR_PSKEY_USB_PRODUCT_ID	0x02bf
 #define CSR_PSKEY_INITIAL_BOOTMODE	0x03cd
 
 char *csr_buildidtostr(uint16_t id);
