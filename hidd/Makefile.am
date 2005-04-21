@@ -5,8 +5,7 @@
 bin_PROGRAMS = hidd
 
 hidd_SOURCES = main.c hidd.h sdp.c
-
-LIBS = @BLUEZ_LIBS@
+hidd_LDADD = @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 

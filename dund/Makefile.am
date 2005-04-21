@@ -5,8 +5,7 @@
 bin_PROGRAMS = dund
 
 dund_SOURCES = main.c dun.c dund.h sdp.c lib.h msdun.c
-
-LIBS = @BLUEZ_LIBS@
+dund_LDADD = @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 

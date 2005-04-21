@@ -11,7 +11,7 @@ usb_DATA = $(datafiles)
 
 usb_PROGRAMS = bcm203x
 
-LDADD = @USB_LIBS@
+bcm203x_LDADD = @USB_LIBS@
 
 AM_CFLAGS = @USB_CFLAGS@
 endif

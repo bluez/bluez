@@ -5,8 +5,7 @@
 bin_PROGRAMS = pand
 
 pand_SOURCES = main.c pand.h bnep.c sdp.c
-
-LIBS = @BLUEZ_LIBS@
+pand_LDADD = @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 

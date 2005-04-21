@@ -8,8 +8,7 @@ cupsdir = $(libdir)/cups/backend
 cups_PROGRAMS = bluetooth
 
 bluetooth_SOURCES = main.c sdp.c spp.c hcrp.c
-
-LDADD = @BLUEZ_LIBS@
+bluetooth_LDADD = @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 endif
