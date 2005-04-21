@@ -17,7 +17,8 @@ In order to compile Bluetooth utilities you need following software packages:
 	- YACC (yacc, bison, byacc)
 
 To configure run:
-	./configure --prefix=/usr --mandir=/usr/share/man --sysconfdir=/etc
+	./configure --prefix=/usr --mandir=/usr/share/man \
+				--sysconfdir=/etc --localstatedir=/var
  
 Configure automatically searches for all required components and packages. 
 

@@ -46,8 +46,6 @@
 
 #include "hcid.h"
 
-#define DEVPATH "/var/lib/bluetooth/"
-
 struct list {
 	bdaddr_t bdaddr;
 	unsigned char *data;
@@ -171,7 +169,7 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 	int fd, pos, err = 0;
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/names", DEVPATH, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
 
 	umask(S_IWGRP | S_IWOTH);
 	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
@@ -250,7 +248,7 @@ int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *name)
 	int fd, pos, err = -ENOENT;
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/names", DEVPATH, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0)
@@ -312,7 +310,7 @@ int write_version_info(const bdaddr_t *local, const bdaddr_t *peer, const uint16
 	int fd, pos, err = 0;
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", DEVPATH, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
 
 	umask(S_IWGRP | S_IWOTH);
 	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
@@ -395,7 +393,7 @@ int write_features_info(const bdaddr_t *local, const bdaddr_t *peer, const unsig
 	int i, fd, pos, err = 0;
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/features", DEVPATH, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, addr);
 
 	umask(S_IWGRP | S_IWOTH);
 	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
@@ -479,7 +477,7 @@ int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned c
 	int i, fd, pos, err = 0;
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", DEVPATH, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
 
 	umask(S_IWGRP | S_IWOTH);
 	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
@@ -563,7 +561,7 @@ int read_link_key(const bdaddr_t *local, const bdaddr_t *peer, unsigned char *ke
 	int i, fd, pos, err = -ENOENT;
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", DEVPATH, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0)
@@ -628,7 +626,7 @@ int read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
 	int fd, pos, err = -ENOENT;
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/pincodes", DEVPATH, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/pincodes", STORAGEDIR, addr);
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0)

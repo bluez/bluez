@@ -279,8 +279,6 @@ static char *major_classes[] = {
 	"Audio/Video", "Peripheral", "Imaging", "Uncategorized"
 };
 
-#define DEVPATH "/var/lib/bluetooth/"
-
 static int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *name)
 {
 	char filename[PATH_MAX + 1], addr[18], str[249], *buf, *ptr;
@@ -289,7 +287,7 @@ static int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *n
 	int fd, pos, err = -ENOENT;
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/names", DEVPATH, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0)

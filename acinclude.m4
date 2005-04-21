@@ -27,6 +27,11 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 			AC_SUBST([sysconfdir], ['/etc'])
 		fi
 
+		dnl no prefix and no localstatedir, so default to /var
+		if (test "$localstatedir" = '${prefix}/var'); then
+			AC_SUBST([localstatedir], ['/var'])
+		fi
+
 		dnl no prefix and no mandir, so use ${prefix}/share/man as default
 		if (test "$mandir" = '${prefix}/man'); then
 			AC_SUBST([mandir], ['${prefix}/share/man'])
@@ -45,7 +50,14 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 		configdir="${sysconfdir}/bluetooth"
 	fi
 
+	if (test "$localstatedir" = '${prefix}/var'); then
+		storagedir="${prefix}/var/lib/bluetooth"
+	else
+		storagedir="${localstatedir}/lib/bluetooth"
+	fi
+
 	AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}", [Directory for the configuration files])
+	AC_DEFINE_UNQUOTED(STORAGEDIR, "${storagedir}", [Directory for the storage files])
 ])
 
 AC_DEFUN([AC_PATH_BLUEZ], [
