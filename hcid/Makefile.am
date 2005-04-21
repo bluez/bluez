@@ -6,6 +6,10 @@ confdir = $(sysconfdir)/bluetooth
 
 conf_DATA = hcid.conf
 
+statedir = $(localstatedir)/lib/bluetooth
+
+state_DATA =
+
 sbin_PROGRAMS = hcid
 
 if DBUS
