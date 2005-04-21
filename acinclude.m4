@@ -76,7 +76,7 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 	test -d "${bluez_prefix}/include" && BLUEZ_CFLAGS="$BLUEZ_CFLAGS -I${bluez_prefix}/include"
 
 	CPPFLAGS="$CPPFLAGS $BLUEZ_CFLAGS"
-	AC_CHECK_HEADER(bluetooth/bluetooth.h,, AC_MSG_ERROR(Bluetooth header files not found))
+	AC_CHECK_HEADER(bluetooth/bluetooth.h, dummy=yes, AC_MSG_ERROR(Bluetooth header files not found))
 
 	BLUEZ_LIBS=""
 	if (test "${prefix}" = "${bluez_prefix}"); then
@@ -88,7 +88,7 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 
 	LDFLAGS="$LDFLAGS $BLUEZ_LIBS"
 	AC_CHECK_LIB(bluetooth, hci_open_dev, BLUEZ_LIBS="$BLUEZ_LIBS -lbluetooth", AC_MSG_ERROR(Bluetooth library not found))
-	AC_CHECK_LIB(bluetooth, sdp_connect,, AC_CHECK_LIB(sdp, sdp_connect, BLUEZ_LIBS="$BLUEZ_LIBS -lsdp"))
+	AC_CHECK_LIB(bluetooth, sdp_connect, dummy=yes, AC_CHECK_LIB(sdp, sdp_connect, BLUEZ_LIBS="$BLUEZ_LIBS -lsdp"))
 
 	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS
@@ -262,6 +262,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	initscripts_enable=no
 	bluepin_enable=yes
 	hid2hci_enable=${usb_found}
+	dfutool_enable=no
 	bcm203x_enable=no
 
 	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
@@ -282,6 +283,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		initscripts_enable=${enableval}
 		bluepin_enable=${enableval}
 		hid2hci_enable=${enableval}
+		dfutool_enable=${enableval}
 		bcm203x_enable=${enableval}
 	])
 
@@ -321,6 +323,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		hid2hci_enable=${enableval}
 	])
 
+	AC_ARG_ENABLE(dfutool, AC_HELP_STRING([--enable-dfutool], [install DFU firmware upgrade utility]), [
+		dfutool_enable=${enableval}
+	])
+
 	AC_ARG_ENABLE(bcm203x, AC_HELP_STRING([--enable-bcm203x], [install Broadcom 203x firmware loader]), [
 		bcm203x_enable=${enableval}
 	])
@@ -343,5 +349,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(INITSCRIPTS, test "${initscripts_enable}" = "yes")
 	AM_CONDITIONAL(BLUEPIN, test "${bluepin_enable}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
+	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(BCM203X, test "${bcm203x_enable}" = "yes" && test "${usb_found}" = "yes")
 ])
