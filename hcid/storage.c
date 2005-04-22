@@ -37,7 +37,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <malloc.h>
-#include <syslog.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
