@@ -38,8 +38,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <sys/file.h>
-#include <sys/stat.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -48,6 +46,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include "textfile.h"
 #include "oui.h"
 
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, NULL)) != -1)
@@ -280,65 +279,15 @@ static char *major_classes[] = {
 	"Audio/Video", "Peripheral", "Imaging", "Uncategorized"
 };
 
-static int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *name)
+static char *get_device_name(const bdaddr_t *local, const bdaddr_t *peer)
 {
-	char filename[PATH_MAX + 1], addr[18], str[249], *buf, *ptr;
-	bdaddr_t bdaddr;
-	struct stat st;
-	int fd, pos, err = -ENOENT;
+	char filename[PATH_MAX + 1], addr[18];
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
 
-	fd = open(filename, O_RDONLY);
-	if (fd < 0)
-		return -errno;
-
-	if (flock(fd, LOCK_SH) < 0) {
-		err = -errno;
-		goto close;
-	}
-
-	if (fstat(fd, &st) < 0) {
-		err = -errno;
-		goto unlock;
-	}
-
-	buf = malloc(st.st_size);
-	if (!buf) {
-		err = -ENOMEM;
-		goto unlock;
-	}
-
-	if (st.st_size > 0) {
-		read(fd, buf, st.st_size);
-
-		ptr = buf;
-
-		memset(str, 0, sizeof(str));
-		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
-			str2ba(addr, &bdaddr);
-			str[sizeof(str) - 1] = '\0';
-
-			if (!bacmp(&bdaddr, peer)) {
-				snprintf(name, 249, "%s", str);
-				err = 0;
-				break;
-			}
-
-			memset(str, 0, sizeof(str));
-			ptr += pos;
-			if (ptr - buf >= st.st_size)
-				break;
-		};
-	}
-
-unlock:
-	flock(fd, LOCK_UN);
-
-close:
-	close(fd);
-	return err;
+	ba2str(peer, addr);
+	return textfile_get(filename, addr);
 }
 
 /* Display local devices */
@@ -457,7 +406,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	int num_rsp, length, flags;
 	uint8_t cls[3], features[8];
 	uint16_t handle;
-	char addr[18], name[249], oui[9], *comp;
+	char addr[18], name[249], oui[9], *comp, *tmp;
 	struct hci_version version;
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
@@ -538,7 +487,13 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 
 	for (i = 0; i < num_rsp; i++) {
 		memset(name, 0, sizeof(name));
-		nc = (read_device_name(&di.bdaddr, &(info+i)->bdaddr, name) == 0);
+		tmp = get_device_name(&di.bdaddr, &(info+i)->bdaddr);
+		if (tmp) {
+			strncpy(name, tmp, 249);
+			free(tmp);
+			nc = 1;
+		} else
+			nc = 0;
 
 		if (!extcls && !extinf && !extoui) {
 			ba2str(&(info+i)->bdaddr, addr);

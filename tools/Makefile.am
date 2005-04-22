@@ -28,7 +28,7 @@ hciconfig_SOURCES = hciconfig.c csr.h csr.c
 hciconfig_LDADD = @BLUEZ_LIBS@
 
 hcitool_SOURCES = hcitool.c oui.h oui.c
-hcitool_LDADD = @BLUEZ_LIBS@
+hcitool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libtextfile.a
 
 l2ping_LDADD = @BLUEZ_LIBS@
 
@@ -51,6 +51,8 @@ dfutool_LDADD = @USB_LIBS@
 endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @USB_CFLAGS@
+
+INCLUDES = -I$(top_srcdir)/common
 
 man_MANS = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 \
 		$(hid2hci_manfiles) $(dfutool_manfiles)
