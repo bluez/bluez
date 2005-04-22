@@ -39,6 +39,7 @@
 #include <malloc.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
