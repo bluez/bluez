@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <malloc.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -44,6 +45,7 @@
 
 typedef struct snd_pcm_a2dp {
 	snd_pcm_ioplug_t io;
+	int refcnt;
 	bdaddr_t src;
 	bdaddr_t dst;
 	int sk;
@@ -53,6 +55,31 @@ typedef struct snd_pcm_a2dp {
 	unsigned int len;
 	unsigned int frame_bytes;
 } snd_pcm_a2dp_t;
+
+#define MAX_CONNECTIONS 10
+
+static snd_pcm_a2dp_t *connections[MAX_CONNECTIONS];
+
+static void sig_alarm(int sig)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONNECTIONS; i++) {
+		snd_pcm_a2dp_t *a2dp = connections[i];
+
+		if (!a2dp || a2dp->refcnt > 0)
+			continue;
+
+		connections[i] = NULL;
+
+		if (a2dp->sk >= 0)
+			close(a2dp->sk);
+
+		sbc_finish(&a2dp->sbc);
+
+		free(a2dp);
+	}
+}
 
 static int a2dp_start(snd_pcm_ioplug_t *io)
 {
@@ -120,15 +147,11 @@ static int a2dp_close(snd_pcm_ioplug_t *io)
 
 	a2dp->len = 0;
 
-	if (a2dp->sk >= 0) {
-		shutdown(a2dp->sk, SHUT_RDWR);
-		sleep(1);
-		close(a2dp->sk);
-	}
+	a2dp->refcnt--;
 
-	sbc_finish(&a2dp->sbc);
+	if (!a2dp->refcnt)
+		alarm(2);
 
-	free(a2dp);
 	return 0;
 }
 
@@ -158,6 +181,10 @@ static int a2dp_prepare(snd_pcm_ioplug_t *io)
 
 	DBG("a2dp %p", a2dp);
 
+	a2dp->len = 0;
+
+	a2dp->num = 0;
+
 	a2dp->sbc.rate = io->rate;
 	a2dp->sbc.channels = io->channels;
 
@@ -175,6 +202,14 @@ static int a2dp_drain(snd_pcm_ioplug_t *io)
 	return 0;
 }
 
+static int a2dp_poll(snd_pcm_ioplug_t *io, struct pollfd *ufds,
+				unsigned int nfds, unsigned short *revents)
+{
+	*revents = ufds[0].revents;
+
+	return 0;
+}
+
 static snd_pcm_ioplug_callback_t a2dp_callback = {
 	.start		= a2dp_start,
 	.stop		= a2dp_stop,
@@ -184,11 +219,13 @@ static snd_pcm_ioplug_callback_t a2dp_callback = {
 	.hw_params	= a2dp_params,
 	.prepare	= a2dp_prepare,
 	.drain		= a2dp_drain,
+	.poll_revents	= a2dp_poll,
 };
 
 static int a2dp_connect(snd_pcm_a2dp_t *a2dp)
 {
 	struct sockaddr_rc addr;
+	socklen_t len;
 	int sk;
 
 	DBG("a2dp %p", a2dp);
@@ -216,7 +253,18 @@ static int a2dp_connect(snd_pcm_a2dp_t *a2dp)
 		return -errno;
 	}
 
+	memset(&addr, 0, sizeof(addr));
+	len = sizeof(addr);
+
+	if (getsockname(sk, (struct sockaddr *) &addr, &len) < 0) {
+		close(sk);
+		return -errno;
+	}
+
+	bacpy(&a2dp->src, &addr.rc_bdaddr);
+
 	a2dp->sk = sk;
+
 	return 0;
 }
 
@@ -271,10 +319,10 @@ static int a2dp_constraint(snd_pcm_a2dp_t *a2dp)
 
 SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 {
-	snd_pcm_a2dp_t *a2dp;
+	snd_pcm_a2dp_t *a2dp = NULL;
 	snd_config_iterator_t i, next;
 	bdaddr_t src, dst;
-	int err;
+	int err, n, pos = -1;
 
 	DBG("name %s mode %d", name, mode);
 
@@ -300,7 +348,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 			continue;
 		}
 
-		if (strcmp(id, "src") == 0) {
+		if (!strcmp(id, "local") || !strcmp(id, "src")) {
 			if (snd_config_get_string(n, &addr) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
@@ -313,26 +361,59 @@ SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 		return -EINVAL;
 	}
 
-	a2dp = malloc(sizeof(*a2dp));
-	if (!a2dp) {
-		SNDERR("Cannot allocate");
-		return -ENOMEM;
+	for (n = 0; n < MAX_CONNECTIONS; n++) {
+		if (connections[n]) {
+			if (!bacmp(&connections[n]->dst, &dst) &&
+					(!bacmp(&connections[n]->src, &src) ||
+						!bacmp(&src, BDADDR_ANY))) {
+				a2dp = connections[n];
+				a2dp->refcnt++;
+				break;
+			}
+		} else if (pos < 0)
+			pos = n;
 	}
 
-	memset(a2dp, 0, sizeof(*a2dp));
+	if (!a2dp) {
+		struct sigaction sa;
 
-	bacpy(&a2dp->src, &src);
-	bacpy(&a2dp->dst, &dst);
+		if (pos < 0) {
+			SNDERR("Too many connections");
+			return -ENOMEM;
+		}
 
-	err = a2dp_connect(a2dp);
-	if (err < 0) {
-		SNDERR("Cannot connect");
-		goto error;
+		a2dp = malloc(sizeof(*a2dp));
+		if (!a2dp) {
+			SNDERR("Cannot allocate");
+			return -ENOMEM;
+		}
+
+		memset(a2dp, 0, sizeof(*a2dp));
+
+		a2dp->refcnt = 1;
+
+		bacpy(&a2dp->src, &src);
+		bacpy(&a2dp->dst, &dst);
+
+		err = a2dp_connect(a2dp);
+		if (err < 0) {
+			SNDERR("Cannot connect");
+			goto error;
+		}
+
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_flags   = SA_NOCLDSTOP;
+		sa.sa_handler = sig_alarm;
+		sigaction(SIGALRM, &sa, NULL);
+
+		alarm(0);
+
+		connections[pos] = a2dp;
 	}
 
 	a2dp->io.name = "Bluetooth Advanced Audio Distribution";
 	a2dp->io.poll_fd = a2dp->sk;
-	a2dp->io.poll_events = POLLOUT | POLLHUP;
+	a2dp->io.poll_events = POLLOUT;
 	a2dp->io.mmap_rw = 0;
 	a2dp->io.callback = &a2dp_callback;
 	a2dp->io.private_data = a2dp;
@@ -344,14 +425,18 @@ SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 	err = a2dp_constraint(a2dp);
 	if (err < 0) {
 		snd_pcm_ioplug_delete(&a2dp->io);
-		return err;
+		goto error;
 	}
 
 	*pcmp = a2dp->io.pcm;
 	return 0;
 
 error:
-	free(a2dp);
+	a2dp->refcnt--;
+
+	if (!a2dp->refcnt)
+		alarm(2);
+
 	return err;
 }
 
