@@ -1043,7 +1043,7 @@ static void print_rev_ericsson(int dd)
 
 static void print_rev_csr(int dd, uint16_t rev)
 {
-	uint16_t buildid, chipver, chiprev, maxkeylen, mapsco, bootmode, error;
+	uint16_t buildid, chipver, chiprev, maxkeylen, mapsco, error;
 
 	if (csr_read_varid_uint16(dd, 0, CSR_VARID_BUILDID, &buildid) < 0) {
 		printf("\t%s\n", csr_buildidtostr(rev));
@@ -1063,9 +1063,6 @@ static void print_rev_csr(int dd, uint16_t rev)
 
 	if (!csr_read_pskey_uint16(dd, 4, CSR_PSKEY_HOSTIO_MAP_SCO_PCM, &mapsco))
 		printf("\tSCO mapping:  %s\n", mapsco ? "PCM" : "HCI");
-
-	if (!csr_read_pskey_uint16(dd, 4, CSR_PSKEY_INITIAL_BOOTMODE, &bootmode))
-		printf("\tBoot mode:    %d%s\n", bootmode, bootmode ? "" : " (HCI)");
 
 	if (!csr_read_varid_uint16(dd, 5, CSR_VARID_PANIC_ARG, &error)) {
 		if (error < 0x0100)
