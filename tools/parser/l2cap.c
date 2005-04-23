@@ -50,6 +50,7 @@ typedef struct {
 static handle_info handle_table[HANDLE_TABLE_SIZE];
 
 typedef struct {
+	uint16_t handle;
 	uint16_t cid;
 	uint16_t psm;
 	uint16_t num;
@@ -87,7 +88,7 @@ static struct frame *get_frame(uint16_t handle)
 	return add_handle(handle);
 }
 
-static void add_cid(int in, uint16_t cid, uint16_t psm)
+static void add_cid(int in, uint16_t handle, uint16_t cid, uint16_t psm)
 {
 	register cid_info *table = cid_table[in];
 	register int i, pos = -1;
@@ -101,10 +102,11 @@ static void add_cid(int in, uint16_t cid, uint16_t psm)
 	}
 
 	if (pos >= 0) {
-		table[pos].cid  = cid;
-		table[pos].psm  = psm;
-		table[pos].num  = num;
-		table[pos].mode = 0;
+		table[pos].handle = handle;
+		table[pos].cid    = cid;
+		table[pos].psm    = psm;
+		table[pos].num    = num;
+		table[pos].mode   = 0;
 	}
 }
 
@@ -124,15 +126,32 @@ static void del_cid(int in, uint16_t dcid, uint16_t scid)
 	for (t = 0; t < 2; t++) {
 		for (i = 0; i < CID_TABLE_SIZE; i++)
 			if (cid_table[t][i].cid == cid[t]) {
-				cid_table[t][i].cid  = 0;
-				cid_table[t][i].psm  = 0;
-				cid_table[t][i].num  = 0;
-				cid_table[t][i].mode = 0;
+				cid_table[t][i].handle = 0;
+				cid_table[t][i].cid    = 0;
+				cid_table[t][i].psm    = 0;
+				cid_table[t][i].num    = 0;
+				cid_table[t][i].mode   = 0;
 				break;
 			}
 	}
 }
 
+static void del_handle(uint16_t handle)
+{
+	register int t, i;
+
+	for (t = 0; t < 2; t++) {
+		for (i = 0; i < CID_TABLE_SIZE; i++)
+			if (cid_table[t][i].handle == handle) {
+				cid_table[t][i].handle = 0;
+				cid_table[t][i].cid    = 0;
+				cid_table[t][i].psm    = 0;
+				cid_table[t][i].num    = 0;
+				cid_table[t][i].mode   = 0;
+				break;
+			}
+	}
+}
 static uint16_t get_psm(int in, uint16_t cid)
 {
 	register cid_info *table = cid_table[in];
@@ -353,7 +372,7 @@ static inline void conn_req(int level, struct frame *frm)
 	uint16_t psm = btohs(h->psm);
 	uint16_t scid = btohs(h->scid);
 
-	add_cid(frm->in, scid, psm);
+	add_cid(frm->in, frm->handle, scid, psm);
 
 	if (p_filter(FILT_L2CAP))
 		return;
@@ -373,7 +392,7 @@ static inline void conn_rsp(int level, struct frame *frm)
 	switch (h->result) {
 	case L2CAP_CR_SUCCESS:
 		if ((psm = get_psm(!frm->in, scid)))
-			add_cid(frm->in, dcid, psm);
+			add_cid(frm->in, frm->handle, dcid, psm);
 		break;
 
 	case L2CAP_CR_PEND:
@@ -879,4 +898,9 @@ void l2cap_dump(int level, struct frame *frm)
 			return;
 		}
 	}
+}
+
+void l2cap_clear(uint16_t handle)
+{
+	del_handle(handle);
 }

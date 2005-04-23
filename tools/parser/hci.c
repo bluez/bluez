@@ -2034,6 +2034,11 @@ static inline void event_dump(int level, struct frame *frm)
 		}
 	}
 
+	if (event == EVT_DISCONN_COMPLETE) {
+		evt_disconn_complete *evt = frm->ptr;
+		l2cap_clear(btohs(evt->handle));
+	}
+
 	if (!(parser.flags & DUMP_VERBOSE)) {
 		raw_dump(level, frm);
 		return;

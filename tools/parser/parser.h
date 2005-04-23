@@ -169,6 +169,8 @@ char *get_uuid_name(int uuid);
 void set_proto(uint16_t handle, uint16_t psm, uint8_t channel, uint32_t proto);
 uint32_t get_proto(uint16_t handle, uint16_t psm, uint8_t channel);
 
+void l2cap_clear(uint16_t handle);
+
 void ascii_dump(int level, struct frame *frm, int num);
 void hex_dump(int level, struct frame *frm, int num);
 void ext_dump(int level, struct frame *frm, int num);
