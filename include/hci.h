@@ -598,6 +598,43 @@ typedef struct {
 #define CONN_SETUP_AUTO_OFF	0x01
 #define CONN_SETUP_AUTO_ON	0x02
 
+#define OCF_READ_STORED_LINK_KEY	0x000D
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		read_all;
+} __attribute__ ((packed)) read_stored_link_key_cp;
+#define READ_STORED_LINK_KEY_CP_SIZE 7
+typedef struct {
+	uint8_t		status;
+	uint16_t	max_keys;
+	uint16_t	num_keys;
+} __attribute__ ((packed)) read_stored_link_key_rp;
+#define READ_STORED_LINK_KEY_RP_SIZE 5
+
+#define OCF_WRITE_STORED_LINK_KEY	0x0011
+typedef struct {
+	uint8_t		num_keys;
+	/* variable length part */
+} __attribute__ ((packed)) write_stored_link_key_cp;
+#define WRITE_STORED_LINK_KEY_CP_SIZE 1
+typedef struct {
+	uint8_t		status;
+	uint8_t		num_keys;
+} __attribute__ ((packed)) write_stored_link_key_rp;
+#define READ_WRITE_LINK_KEY_RP_SIZE 2
+
+#define OCF_DELETE_STORED_LINK_KEY	0x0012
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		delete_all;
+} __attribute__ ((packed)) delete_stored_link_key_cp;
+#define DELETE_STORED_LINK_KEY_CP_SIZE 7
+typedef struct {
+	uint8_t		status;
+	uint16_t	num_keys;
+} __attribute__ ((packed)) delete_stored_link_key_rp;
+#define DELETE_STORED_LINK_KEY_RP_SIZE 3
+
 #define OCF_CHANGE_LOCAL_NAME		0x0013
 typedef struct {
 	uint8_t		name[248];
