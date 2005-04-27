@@ -35,6 +35,8 @@
 extern "C" {
 #endif
 
+#include <sys/socket.h>
+
 /* L2CAP defaults */
 #define L2CAP_DEFAULT_MTU	672
 #define L2CAP_DEFAULT_FLUSH_TO	0xFFFF

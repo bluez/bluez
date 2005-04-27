@@ -34,6 +34,8 @@
 extern "C" {
 #endif
 
+#include <sys/socket.h>
+
 /* RFCOMM defaults */
 #define RFCOMM_DEFAULT_MTU	127
 
