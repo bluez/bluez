@@ -64,7 +64,7 @@ int yyerror(char *s);
 
 %token K_OPTIONS K_DEVICE
 %token K_AUTOINIT K_SECURITY K_PAIRING
-%token K_PTYPE K_NAME K_CLASS K_INQMODE K_LM K_LP K_AUTH K_ENCRYPT K_ISCAN K_PSCAN
+%token K_PTYPE K_NAME K_CLASS K_VOICE K_INQMODE K_LM K_LP K_AUTH K_ENCRYPT K_ISCAN K_PSCAN
 %token K_PINHELP K_DBUSPINHELP
 %token K_YES K_NO
 
@@ -169,28 +169,39 @@ device_options: '{' device_opts '}';
 device_opts: | device_opt ';' | error ';' | device_opts device_opt ';';
 device_opt:
   K_PTYPE pkt_type	{
+				parser_device->flags |= (1 << HCID_SET_PTYPE);
 				parser_device->pkt_type = $2;
 			}
 
   | K_LM link_mode	{
+				parser_device->flags |= (1 << HCID_SET_LM);
 				parser_device->link_mode = $2;
 			}
 
   | K_LP link_policy	{
+				parser_device->flags |= (1 << HCID_SET_LP);
 				parser_device->link_policy = $2;
 			}
 
   | K_NAME dev_name	{
 				if (parser_device->name)
 					free(parser_device->name);
+				parser_device->flags |= (1 << HCID_SET_NAME);
 				parser_device->name = strdup($2);
 			}
 
   | K_CLASS NUM		{
+				parser_device->flags |= (1 << HCID_SET_CLASS);
 				parser_device->class = $2;
 			}
 
+  | K_VOICE NUM		{
+				parser_device->flags |= (1 << HCID_SET_VOICE);
+				parser_device->voice = $2;
+			}
+
   | K_INQMODE NUM	{
+				parser_device->flags |= (1 << HCID_SET_INQMODE);
 				parser_device->inqmode = $2;
 			}
 

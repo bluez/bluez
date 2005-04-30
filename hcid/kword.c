@@ -59,6 +59,7 @@ struct kword cfg_keyword[] = {
 	{ "pscan",		K_PSCAN		},
 	{ "name",		K_NAME		},
 	{ "class",		K_CLASS		},
+	{ "voice",		K_VOICE		},
 	{ "inqmode",		K_INQMODE	},
 	{ "auth",		K_AUTH		},
 	{ "encrypt",		K_ENCRYPT	},

@@ -222,18 +222,8 @@ static void configure_device(int hdev)
 						hdev, strerror(errno), errno);
 	}
 
-	/* Set device class */
-	if (device_opts->class) {
-		uint32_t class = htobl(device_opts->class);
-		write_class_of_dev_cp cp;
-
-		memcpy(cp.dev_class, &class, 3);
-		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
-			WRITE_CLASS_OF_DEV_CP_SIZE, (void *) &cp);
-	}
-
 	/* Set device name */
-	if (device_opts->name) {
+	if ((device_opts->flags & (1 << HCID_SET_NAME)) && device_opts->name) {
 		change_local_name_cp cp;
 		memset(cp.name, 0, sizeof(cp.name));
 		expand_name(cp.name, sizeof(cp.name), device_opts->name, hdev);
@@ -242,8 +232,28 @@ static void configure_device(int hdev)
 			CHANGE_LOCAL_NAME_CP_SIZE, (void *) &cp);
 	}
 
+	/* Set device class */
+	if ((device_opts->flags & (1 << HCID_SET_CLASS))) {
+		uint32_t class = htobl(device_opts->class);
+		write_class_of_dev_cp cp;
+
+		memcpy(cp.dev_class, &class, 3);
+		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
+			WRITE_CLASS_OF_DEV_CP_SIZE, (void *) &cp);
+	}
+
+	/* Set voice setting */
+	if ((device_opts->flags & (1 << HCID_SET_VOICE))) {
+		write_voice_setting_cp cp;
+
+		cp.voice_setting = htobl(device_opts->voice);
+		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_VOICE_SETTING,
+			WRITE_VOICE_SETTING_CP_SIZE, (void *) &cp);
+	}
+
 	/* Set inquiry mode */
-	if (di.features[3] & LMP_RSSI_INQ) {
+	if ((device_opts->flags & (1 << HCID_SET_INQMODE)) &&
+					(di.features[3] & LMP_RSSI_INQ)) {
 		write_inquiry_mode_cp cp;
 
 		cp.mode = device_opts->inqmode;
@@ -298,7 +308,7 @@ static void init_device(int hdev)
 	device_opts = get_device_opts(s, hdev);
 
 	/* Set packet type */
-	if (device_opts->pkt_type) {
+	if ((device_opts->flags & (1 << HCID_SET_PTYPE))) {
 		dr.dev_opt = device_opts->pkt_type;
 		if (ioctl(s, HCISETPTYPE, (unsigned long) &dr) < 0) {
 			syslog(LOG_ERR, "Can't set packet type on hci%d: %s (%d)",
@@ -307,7 +317,7 @@ static void init_device(int hdev)
 	}
 
 	/* Set link mode */
-	if (device_opts->link_mode) {
+	if ((device_opts->flags & (1 << HCID_SET_LM))) {
 		dr.dev_opt = device_opts->link_mode;
 		if (ioctl(s, HCISETLINKMODE, (unsigned long) &dr) < 0) {
 			syslog(LOG_ERR, "Can't set link mode on hci%d: %s (%d)",
@@ -316,7 +326,7 @@ static void init_device(int hdev)
 	}
 
 	/* Set link policy */
-	if (device_opts->link_policy) {
+	if ((device_opts->flags & (1 << HCID_SET_LP))) {
 		dr.dev_opt = device_opts->link_policy;
 		if (ioctl(s, HCISETLINKPOL, (unsigned long) &dr) < 0) {
 			syslog(LOG_ERR, "Can't set link policy on hci%d: %s (%d)",

@@ -40,14 +40,26 @@
 #define HCID_KEY_FILE    CONFIGDIR "/link_key"
 #define HCID_PIN_HELPER  "/usr/bin/bluepin"
 
+enum {
+	HCID_SET_NAME,
+	HCID_SET_CLASS,
+	HCID_SET_VOICE,
+	HCID_SET_INQMODE,
+	HCID_SET_PTYPE,
+	HCID_SET_LM,
+	HCID_SET_LP,
+};
+
 struct device_opts {
+	unsigned long flags;
 	char    *name;
 	uint32_t class;
+	uint16_t voice;
 	uint8_t  inqmode;
 	uint16_t pkt_type;
-	uint16_t scan;
 	uint16_t link_mode;
 	uint16_t link_policy;
+	uint16_t scan;
 	uint16_t auth;
 	uint16_t encrypt;
 };
