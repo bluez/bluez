@@ -584,6 +584,7 @@ void start_security_manager(int hdev)
 	GIOChannel *chan = io_chan[hdev];
 	struct hci_dev_info *di;
 	struct hci_filter flt;
+	read_stored_link_key_cp cp;
 	int dev;
 
 	if (chan)
@@ -635,6 +636,12 @@ void start_security_manager(int hdev)
 			io_security_event, (void *) di);
 
 	io_chan[hdev] = chan;
+
+	bacpy(&cp.bdaddr, BDADDR_ANY);
+	cp.read_all = 1;
+
+	hci_send_cmd(dev, OGF_HOST_CTL, OCF_READ_STORED_LINK_KEY,
+			READ_STORED_LINK_KEY_CP_SIZE, (void *) &cp);
 }
 
 void stop_security_manager(int hdev)
