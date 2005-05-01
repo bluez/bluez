@@ -1340,6 +1340,61 @@ int hci_write_current_iac_lap(int dd, uint8_t num_iac, uint8_t *lap, int to)
 	return hci_send_req(dd, &rq, to);
 }
 
+int hci_read_stored_link_key(int dd, bdaddr_t *bdaddr, uint8_t all, int to)
+{
+	read_stored_link_key_cp cp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+	cp.read_all = all;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_STORED_LINK_KEY;
+	rq.cparam = &cp;
+	rq.clen   = READ_STORED_LINK_KEY_CP_SIZE;
+
+	return hci_send_req(dd, &rq, to);
+}
+
+int hci_write_stored_link_key(int dd, bdaddr_t *bdaddr, uint8_t *key, int to)
+{
+	unsigned char cp[WRITE_STORED_LINK_KEY_CP_SIZE + 6 + 16];
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp[0] = 1;
+	bacpy((bdaddr_t *) (cp + 1), bdaddr);
+	memcpy(cp + 7, key, 16);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_STORED_LINK_KEY;
+	rq.cparam = &cp;
+	rq.clen   = WRITE_STORED_LINK_KEY_CP_SIZE + 6 + 16;
+
+	return hci_send_req(dd, &rq, to);
+}
+
+int hci_delete_stored_link_key(int dd, bdaddr_t *bdaddr, uint8_t all, int to)
+{
+	delete_stored_link_key_cp cp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+	cp.delete_all = all;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_DELETE_STORED_LINK_KEY;
+	rq.cparam = &cp;
+	rq.clen   = DELETE_STORED_LINK_KEY_CP_SIZE;
+
+	return hci_send_req(dd, &rq, to);
+}
+
 int hci_authenticate_link(int dd, uint16_t handle, int to)
 {
 	auth_requested_cp cp;
