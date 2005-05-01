@@ -25,7 +25,7 @@ bin_PROGRAMS = hcitool l2ping sdptool ciptool $(dfutool_programs)
 noinst_PROGRAMS = hcisecfilter ppporc pskey
 
 hciconfig_SOURCES = hciconfig.c csr.h csr.c
-hciconfig_LDADD = @BLUEZ_LIBS@
+hciconfig_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libtextfile.a
 
 hcitool_SOURCES = hcitool.c oui.h oui.c
 hcitool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libtextfile.a
