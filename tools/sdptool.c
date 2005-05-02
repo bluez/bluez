@@ -1734,7 +1734,7 @@ end:
 	return ret;
 }
 
-static int add_audio_source(sdp_session_t *session, svc_info_t *si)
+static int add_a2source(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avdtp, a2src;
@@ -1793,7 +1793,7 @@ done:
 	return ret;
 }
 
-static int add_audio_sink(sdp_session_t *session, svc_info_t *si)
+static int add_a2sink(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avdtp, a2snk;
@@ -1855,7 +1855,7 @@ done:
 static unsigned char nokid_uuid[] = {	0x00, 0x00, 0x55, 0x55, 0x00, 0x00, 0x10, 0x00,
 					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x01 };
 
-static int add_nokia_id(sdp_session_t *session, svc_info_t *si)
+static int add_nokiaid(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_record_t record;
 	sdp_list_t *root, *svclass;
@@ -1929,6 +1929,38 @@ static int add_pcsuite(sdp_session_t *session, svc_info_t *si)
 	return 0;
 }
 
+static unsigned char sr1_uuid[] = {	0xbc, 0x19, 0x9c, 0x24, 0x95, 0x8b, 0x4c, 0xc0,
+					0xa2, 0xcb, 0xfd, 0x8a, 0x30, 0xbf, 0x32, 0x06 };
+
+static int add_sr1(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass;
+	uuid_t root_uuid, svclass_uuid;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid128_create(&svclass_uuid, (void *) sr1_uuid);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+
+	sdp_set_info_attr(&record, "TOSHIBA SR-1", NULL, NULL);
+
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("Toshiba Speech Recognition SR-1 service record registered\n");
+
+	return 0;
+}
+
 struct {
 	char		*name;
 	uint16_t	class;
@@ -1955,11 +1987,12 @@ struct {
 	{ "CIP",	CIP_SVCLASS_ID,			NULL		},
 	{ "CTP",	CORDLESS_TELEPHONY_SVCLASS_ID,	add_ctp		},
 
-	{ "A2SRC",	AUDIO_SOURCE_SVCLASS_ID,	add_audio_source},
-	{ "A2SNK",	AUDIO_SINK_SVCLASS_ID,		add_audio_sink	},
+	{ "A2SRC",	AUDIO_SOURCE_SVCLASS_ID,	add_a2source	},
+	{ "A2SNK",	AUDIO_SINK_SVCLASS_ID,		add_a2sink	},
 
-	{ "NOKID",	0,				add_nokia_id	},
+	{ "NOKID",	0,				add_nokiaid	},
 	{ "PCSUITE",	0,				add_pcsuite	},
+	{ "SR1",	0,				add_sr1		},
 
 	{ 0 }
 };
