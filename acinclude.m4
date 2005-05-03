@@ -146,6 +146,8 @@ AC_DEFUN([AC_PATH_ALSA], [
 	ac_save_CPPFLAGS=$CPPFLAGS
 	ac_save_LDFLAGS=$LDFLAGS
 
+	AC_CHECK_HEADER(sys/soundcard.h, AC_DEFINE(HAVE_SYS_SOUNDCARD_H, 1, [Define to 1 if you have the <sys/soundcard.h> header file.]))
+
 	ALSA_CFLAGS=""
 	test -d "${alsa_prefix}/include" && ALSA_CFLAGS="$ALSA_CFLAGS -I${alsa_prefix}/include"
 
