@@ -32,6 +32,12 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -39,6 +45,7 @@
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/hidp.h>
 
+#include "textfile.h"
 #include "hidd.h"
 
 static void epox_endian_quirk(unsigned char *data, int size)
@@ -66,7 +73,96 @@ static void epox_endian_quirk(unsigned char *data, int size)
 	}
 }
 
-int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req)
+static int store_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req)
+{
+	char filename[PATH_MAX + 1], addr[18], *str, *desc;
+	int i, fd, size;
+
+	ba2str(src, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/hidd", STORAGEDIR, addr);
+
+	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9 + strlen(req->name) + 2;
+	str = malloc(size);
+	if (!str)
+		return -ENOMEM;
+
+	desc = malloc((req->rd_size * 2) + 1);
+	if (!desc) {
+		free(str);
+		return -ENOMEM;
+	}
+
+	memset(desc, 0, (req->rd_size * 2) + 1);
+	for (i = 0; i < req->rd_size; i++)
+		sprintf(desc + (i * 2), "%2.2X", req->rd_data[i]);
+
+	snprintf(str, size - 1, "%04X:%04X:%04X %02X %02X %04X %s %08X %s",
+			req->vendor, req->product, req->version,
+			req->subclass, req->country, req->parser, desc,
+			req->flags, req->name);
+
+	fd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (fd < 0)
+		return -errno;
+
+	close(fd);
+
+	ba2str(dst, addr);
+	return textfile_put(filename, addr, str);
+}
+
+int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req)
+{
+	char filename[PATH_MAX + 1], addr[18], tmp[3], *str, *desc;
+	unsigned int vendor, product, version, subclass, country, parser, pos;
+	int i;
+
+	desc = malloc(4096);
+	if (!desc)
+		return -ENOMEM;
+
+	memset(desc, 0, 4096);
+
+	ba2str(src, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/hidd", STORAGEDIR, addr);
+
+	ba2str(dst, addr);
+	str = textfile_get(filename, addr);
+	if (!str) {
+		free(desc);
+		return -EIO;
+	}
+
+	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
+			&vendor, &product, &version, &subclass, &country,
+			&parser, desc, &req->flags, &pos);
+
+	free(str);
+
+	req->vendor   = vendor;
+	req->product  = product;
+	req->version  = version;
+	req->subclass = subclass;
+	req->country  = country;
+	req->parser   = parser;
+
+	snprintf(req->name, 128, str + pos);
+
+	req->rd_size = strlen(desc) / 2;
+	req->rd_data = malloc(req->rd_size);
+	if (!req->rd_data)
+		return -ENOMEM;
+
+	memset(tmp, 0, sizeof(tmp));
+	for (i = 0; i < req->rd_size; i++) {
+		memcpy(tmp, desc + (i * 2), 2);
+		req->rd_data[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	return 0;
+}
+
+int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req)
 {
 	uint32_t range = 0x0000ffff;
 	sdp_session_t *s;
@@ -162,6 +258,8 @@ int get_hid_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *r
 	}
 
 	sdp_record_free(rec);
+
+	store_device_info(src, dst, req);
 
 	return 0;
 }

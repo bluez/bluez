@@ -258,8 +258,12 @@ static int create_device(int ctl, int csk, int isk, uint8_t subclass, int nosdp,
 	req.flags     = 0;
 	req.idle_to   = timeout * 60;
 
+	err = get_stored_device_info(&src, &dst, &req);
+	if (!err)
+		goto create;
+
 	if (!nosdp) {
-		err = get_hid_device_info(&src, &dst, &req);
+		err = get_sdp_device_info(&src, &dst, &req);
 		if (err < 0)
 			goto error;
 	} else {
@@ -280,6 +284,7 @@ static int create_device(int ctl, int csk, int isk, uint8_t subclass, int nosdp,
 			req.subclass = 0xc0;
 	}
 
+create:
 	if (subclass != 0x00)
 		req.subclass = subclass;
 
@@ -399,7 +404,16 @@ static void do_show(int ctl)
 
 static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, int nosdp, int encrypt, int timeout)
 {
+	struct hidp_connadd_req req;
 	int csk, isk, err;
+
+	memset(&req, 0, sizeof(req));
+
+	if (get_sdp_device_info(src, dst, &req) < 0) {
+		perror("Can't get device information");
+		close(ctl);
+		exit(1);
+	}
 
 	csk = l2cap_connect(src, dst, L2CAP_PSM_HIDP_CTRL);
 	if (csk < 0) {
