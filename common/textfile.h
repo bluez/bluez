@@ -26,4 +26,5 @@
  *  $Id$
  */
 
+int textfile_put(const char *pathname, const char *key, const char *value);
 char *textfile_get(const char *pathname, const char *key);
