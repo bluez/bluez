@@ -2085,7 +2085,7 @@ static int cmd_add(int argc, char **argv)
 
 	memset(&si, 0, sizeof(si));
 	for_each_opt(opt, add_options, 0) {
-		switch(opt) {
+		switch (opt) {
 		case 'c':
 			si.channel = atoi(optarg);
 			break;
@@ -2103,11 +2103,12 @@ static int cmd_add(int argc, char **argv)
 	}
 
 	si.name = strdup(argv[0]);
+
 	return add_service(0, &si);
 }
 
 /* Delete local service */
-static int del_service(bdaddr_t *bdaddr, void *arg) 
+static int del_service(bdaddr_t *bdaddr, void *arg)
 {
 	uint32_t handle, range = 0x0000ffff;
 	sdp_list_t *attr;
@@ -2118,11 +2119,13 @@ static int del_service(bdaddr_t *bdaddr, void *arg)
 		printf("Record handle was not specified.\n");
 		return -1;
 	}
+
 	sess = sdp_connect(&interface, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
 	if (!sess) {
 		printf("No local SDP server!\n");
 		return -1;
 	}
+
 	handle = strtoul((char *)arg, 0, 16);
 	attr = sdp_list_append(0, &range);
 	rec = sdp_service_attr_req(sess, handle, SDP_ATTR_REQ_RANGE, attr);
@@ -2132,11 +2135,13 @@ static int del_service(bdaddr_t *bdaddr, void *arg)
 		sdp_close(sess);
 		return -1;
 	}
+
 	if (sdp_record_unregister(sess, rec)) {
 		printf("Failed to unregister service record: %s\n", strerror(errno));
 		sdp_close(sess);
 		return -1;
 	}
+
 	printf("Service Record deleted.\n");
 	sdp_close(sess);
 	return 0;
@@ -2156,7 +2161,7 @@ static int cmd_del(int argc, char **argv)
 	int opt;
 
 	for_each_opt(opt, del_options, 0) {
-		switch(opt) {
+		switch (opt) {
 		default:
 			printf(del_help);
 			return -1;
@@ -2169,7 +2174,8 @@ static int cmd_del(int argc, char **argv)
 		printf(del_help);
 		return -1;
 	}
-	return del_service(0, argv[0]);
+
+	return del_service(NULL, argv[0]);
 }
 
 /*
@@ -2186,6 +2192,7 @@ static void inquiry(handler_t handler, void *arg)
 		printf("Inquiry failed\n");
 		return;
 	}
+
 	for (i = 0; i < count; i++)
 		handler(&ii[i].bdaddr, arg);
 }
@@ -2204,12 +2211,14 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 		inquiry(do_search, context);
 		return 0;
 	}
+
 	sess = sdp_connect(&interface, bdaddr, SDP_RETRY_IF_BUSY);
 	ba2str(bdaddr, str);
 	if (!sess) {
 		printf("Failed to connect to SDP server on %s: %s\n", str, strerror(errno));
 		return -1;
 	}
+
 	if (context->svc)
 		printf("Searching for %s on %s ...\n", context->svc, str);
 	else
@@ -2249,6 +2258,7 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 		free(seq);
 		sdp_record_free(rec);
 	}
+
 	sdp_close(sess);
 	return 0;
 }
@@ -2280,7 +2290,7 @@ static int cmd_browse(int argc, char **argv)
 	sdp_uuid16_create(&context.group, PUBLIC_BROWSE_GROUP);
 
 	for_each_opt(opt, browse_options, 0) {
-		switch(opt) {
+		switch (opt) {
 		case 't':
 			context.tree = 1;
 			break;
@@ -2307,7 +2317,8 @@ static int cmd_browse(int argc, char **argv)
 		estr2ba(argv[0], &bdaddr);
 		return do_search(&bdaddr, &context);
 	}
-	return do_search(0, &context);
+
+	return do_search(NULL, &context);
 }
 
 static struct option search_options[] = {
@@ -2344,7 +2355,7 @@ static int cmd_search(int argc, char **argv)
 	memset(&context, '\0', sizeof(struct search_context));
 
 	for_each_opt(opt, search_options, 0) {
-		switch(opt) {
+		switch (opt) {
 		case 'b':
 			estr2ba(optarg, &bdaddr);
 			has_addr = 1;
@@ -2405,7 +2416,7 @@ static int cmd_search(int argc, char **argv)
  * Not really useful to the user, just show how it can be done...
  * Jean II
  */
-static int get_service(bdaddr_t *bdaddr, struct search_context *context) 
+static int get_service(bdaddr_t *bdaddr, struct search_context *context, int quite)
 {
 	sdp_list_t *attrid;
 	uint32_t range = 0x0000ffff;
@@ -2418,14 +2429,17 @@ static int get_service(bdaddr_t *bdaddr, struct search_context *context)
 		printf("Failed to connect to SDP server on %s: %s\n", str, strerror(errno));
 		return -1;
 	}
+
 	attrid = sdp_list_append(0, &range);
 	rec = sdp_service_attr_req(session, context->handle, SDP_ATTR_REQ_RANGE, attrid);
 	sdp_list_free(attrid, 0);
 	sdp_close(session);
 	if (!rec) {
-		printf("Service get request failed.\n");
+		if (!quite)
+			printf("Service get request failed.\n");
 		return -1;
 	}
+
 	if (context->tree) {
 		/* Display full tree */
 		sdp_printf_service_attr(rec);
@@ -2434,14 +2448,68 @@ static int get_service(bdaddr_t *bdaddr, struct search_context *context)
 		print_service_attr(rec);
 	}
 	printf("\n");
+
 	sdp_record_free(rec);
 	return 0;
 }
 
+static struct option records_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "tree",	0, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
+static char *records_help = 
+	"Usage:\n"
+	"\trecords [--tree] bdaddr\n";
+
+/*
+ * Request possible SDP service records
+ */
+static int cmd_records(int argc, char **argv)
+{
+	struct search_context context;
+	uint32_t base[] = { 0x10000, 0x1002e };
+	bdaddr_t bdaddr;
+	int i, n, opt, num = 32;
+
+	/* Initialise context */
+	memset(&context, '\0', sizeof(struct search_context));
+
+	for_each_opt(opt, records_options, 0) {
+		switch (opt) {
+		case 't':
+			context.tree = 1;
+			break;
+		default:
+			printf(records_help);
+			return -1;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(records_help);
+		return -1;
+	}
+
+	/* Convert command line parameters */
+	estr2ba(argv[0], &bdaddr);
+
+	for (i = 0; i < sizeof(base) / sizeof(uint32_t); i++)
+		for (n = 0; n < num; n++) {
+			context.handle = base[i] + n;
+			get_service(&bdaddr, &context, 1);
+		}
+
+	return 0;
+}
+
 static struct option get_options[] = {
-	{ "help",    0,0, 'h' },
-	{ "bdaddr",  1,0, 'b' },
-	{ "tree",    0,0, 't' },
+	{ "help",	0,0, 'h' },
+	{ "bdaddr",	1,0, 'b' },
+	{ "tree",	0,0, 't' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -2463,7 +2531,7 @@ static int cmd_get(int argc, char **argv)
 	memset(&context, '\0', sizeof(struct search_context));
 
 	for_each_opt(opt, get_options, 0) {
-		switch(opt) {
+		switch (opt) {
 		case 'b':
 			estr2ba(optarg, &bdaddr);
 			has_addr = 1;
@@ -2483,10 +2551,11 @@ static int cmd_get(int argc, char **argv)
 		printf(get_help);
 		return -1;
 	}
+
 	/* Convert command line parameters */
 	context.handle = strtoul(argv[0], 0, 16);
 
-	return get_service(has_addr? &bdaddr: BDADDR_LOCAL, &context);
+	return get_service(has_addr ? &bdaddr : BDADDR_LOCAL, &context, 0);
 }
 
 static struct {
@@ -2496,6 +2565,7 @@ static struct {
 } command[] = {
 	{ "search",  cmd_search,      "Search for a service"          },
 	{ "browse",  cmd_browse,      "Browse all available services" },
+	{ "records", cmd_records,     "Request all records"           },
 	{ "add",     cmd_add,         "Add local service"             },
 	{ "del",     cmd_del,         "Delete local service"          },
 	{ "get",     cmd_get,         "Get local service"             },
