@@ -36,15 +36,19 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
 #include <getopt.h>
-#include <netinet/in.h>
+#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+
+#include <netinet/in.h>
 
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, 0)) != -1)
 
@@ -61,11 +65,15 @@ static int estr2ba(char *str, bdaddr_t *ba)
 	return str2ba(str, ba);
 }
 
+#define DEFAULT_VIEW	0	/* Display only known attribute */
+#define TREE_VIEW	1	/* Display full attribute tree */
+#define RAW_VIEW	2	/* Display raw tree */
+
 /* Pass args to the inquiry/search handler */
 struct search_context {
 	char		*svc;		/* Service */
 	uuid_t		group;		/* Browse group */
-	int		tree;		/* Display full attribute tree */
+	int		view;		/* View mode */
 	uint32_t	handle;		/* Service record handle */
 };
 
@@ -219,7 +227,7 @@ static struct attrib_def audio_attrib_names[] = {
 /* Same for the UUIDs. See BT assigned numbers */
 static struct uuid_def uuid16_names[] = {
 	/* -- Protocols -- */
-	{ 0x0001, "SDP (Service Discovery Protocol)", NULL, 0 },
+	{ 0x0001, "SDP", NULL, 0 },
 	{ 0x0002, "UDP", NULL, 0 },
 	{ 0x0003, "RFCOMM", NULL, 0 },
 	{ 0x0004, "TCP", NULL, 0 },
@@ -230,7 +238,7 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x000a, "FTP", NULL, 0 },
 	{ 0x000c, "HTTP", NULL, 0 },
 	{ 0x000e, "WSP", NULL, 0 },
-	{ 0x000f, "BNEP (PAN/BNEP)", NULL, 0 },
+	{ 0x000f, "BNEP", NULL, 0 },
 	{ 0x0010, "UPnP/ESDP", NULL, 0 },
 	{ 0x0011, "HIDP", NULL, 0 },
 	{ 0x0012, "HardcopyControlChannel", NULL, 0 },
@@ -242,11 +250,11 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x001d, "UDI_C-Plane", NULL, 0 },
 	{ 0x0100, "L2CAP", NULL, 0 },
 	/* -- Services -- */
-	{ 0x1000, "ServiceDiscoveryServerServiceClassID (SDP)",
+	{ 0x1000, "ServiceDiscoveryServerServiceClassID",
 		sdp_attrib_names, sizeof(sdp_attrib_names)/sizeof(struct attrib_def) },
-	{ 0x1001, "BrowseGroupDescriptorServiceClassID (SDP)",
+	{ 0x1001, "BrowseGroupDescriptorServiceClassID",
 		browse_attrib_names, sizeof(browse_attrib_names)/sizeof(struct attrib_def) },
-	{ 0x1002, "PublicBrowseGroup (SDP)", NULL, 0 },
+	{ 0x1002, "PublicBrowseGroup", NULL, 0 },
 	{ 0x1101, "SerialPort", NULL, 0 },
 	{ 0x1102, "LANAccessUsingPPP", NULL, 0 },
 	{ 0x1103, "DialupNetworking (DUN)", NULL, 0 },
@@ -276,7 +284,10 @@ static struct uuid_def uuid16_names[] = {
 		pan_attrib_names, sizeof(pan_attrib_names)/sizeof(struct attrib_def) },
 	{ 0x1118, "DirectPrinting (BPP)", NULL, 0 },
 	{ 0x1119, "ReferencePrinting (BPP)", NULL, 0 },
-	/* ... */
+	{ 0x111a, "Imaging (BIP)", NULL, 0 },
+	{ 0x111b, "ImagingResponder (BIP)", NULL, 0 },
+	{ 0x111c, "ImagingAutomaticArchive (BIP)", NULL, 0 },
+	{ 0x111d, "ImagingReferencedObjects (BIP)", NULL, 0 },
 	{ 0x111e, "Handsfree", NULL, 0 },
 	{ 0x111f, "HandsfreeAudioGateway", NULL, 0 },
 	{ 0x1120, "DirectPrintingReferenceObjectsService (BPP)", NULL, 0 },
@@ -411,9 +422,9 @@ static void sdp_data_printf(sdp_data_t *sdpdata, struct attrib_context *context,
 	char *member_name = NULL;
 
 	/* Find member name. Almost black magic ;-) */
-	if (context->attrib && context->attrib->members &&
-	   context->member_index < context->attrib->member_max) {
-	  member_name = context->attrib->members[context->member_index].name;
+	if (context && context->attrib && context->attrib->members &&
+			context->member_index < context->attrib->member_max) {
+		member_name = context->attrib->members[context->member_index].name;
 	}
 
 	switch (sdpdata->dtd) {
@@ -484,7 +495,7 @@ static void sdp_data_printf(sdp_data_t *sdpdata, struct attrib_context *context,
 /*
  * Parse a single attribute.
  */
-static void sdp_attr_printf_func(void *value, void *userData)
+static void print_tree_attr_func(void *value, void *userData)
 {
 	sdp_data_t *sdpdata = NULL;
 	uint16_t attrId;
@@ -535,11 +546,191 @@ static void sdp_attr_printf_func(void *value, void *userData)
  * We assume the record has already been read, parsed and cached
  * locally. Jean II
  */
-static void sdp_printf_service_attr(sdp_record_t *rec)
+static void print_tree_attr(sdp_record_t *rec)
 {
 	if (rec && rec->attrlist) {
 		struct service_context service = { NULL };
-		sdp_list_foreach(rec->attrlist, sdp_attr_printf_func, &service);
+		sdp_list_foreach(rec->attrlist, print_tree_attr_func, &service);
+	}
+}
+
+static void print_raw_data(sdp_data_t *data, int indent)
+{
+	struct uuid_def *def;
+	char *str;
+	int i, hex;
+
+	if (!data)
+		return;
+
+	for (i = 0; i < indent; i++)
+		printf("\t");
+
+	switch (data->dtd) {
+	case SDP_DATA_NIL:
+		printf("NIL\n");
+		break;
+	case SDP_BOOL:
+		printf("Bool %s\n", data->val.uint8 ? "True" : "False");
+		break;
+	case SDP_UINT8:
+		printf("UINT8 0x%02x\n", data->val.uint8);
+		break;
+	case SDP_UINT16:
+		printf("UINT16 0x%04x\n", data->val.uint16);
+		break;
+	case SDP_UINT32:
+		printf("UINT32 0x%08x\n", data->val.uint32);
+		break;
+	case SDP_UINT64:
+		printf("UINT64 0x%016llx\n", data->val.uint64);
+		break;
+	case SDP_UINT128:
+		printf("UINT128 ...\n");
+		break;
+	case SDP_INT8:
+		printf("INT8 %d\n", data->val.int8);
+		break;
+	case SDP_INT16:
+		printf("INT16 %d\n", data->val.int16);
+		break;
+	case SDP_INT32:
+		printf("INT32 %d\n", data->val.int32);
+		break;
+	case SDP_INT64:
+		printf("INT64 %lld\n", data->val.int64);
+		break;
+	case SDP_INT128:
+		printf("INT128 ...\n");
+		break;
+	case SDP_UUID16:
+	case SDP_UUID32:
+	case SDP_UUID128:
+		switch (data->val.uuid.type) {
+		case SDP_UUID16:
+			def = NULL;
+			for (i = 0; i < uuid16_max; i++)
+				if (uuid16_names[i].num == data->val.uuid.value.uuid16) {
+					def = &uuid16_names[i];
+					break;
+				}
+			if (def)
+				printf("UUID16 0x%04x - %s\n", data->val.uuid.value.uuid16, def->name);
+			else
+				printf("UUID16 0x%04x\n", data->val.uuid.value.uuid16);
+			break;
+		case SDP_UUID32:
+			def = NULL;
+			if (!(data->val.uuid.value.uuid32 & 0xffff0000)) {
+				uint16_t value = data->val.uuid.value.uuid32;
+				for (i = 0; i < uuid16_max; i++)
+					if (uuid16_names[i].num == value) {
+						def = &uuid16_names[i];
+						break;
+					}
+			}
+			if (def)
+				printf("UUID32 0x%08x - %s\n", data->val.uuid.value.uuid32, def->name);
+			else
+				printf("UUID32 0x%08x\n", data->val.uuid.value.uuid32);
+			break;
+		case SDP_UUID128:
+			printf("UUID128 ");
+			for (i = 0; i < 16; i++) {
+				switch (i) {
+				case 4:
+				case 6:
+				case 8:
+				case 10:
+					printf("-");
+					break;
+				}
+				printf("%02x", (unsigned char ) data->val.uuid.value.uuid128.data[i]);
+			}
+			printf("\n");
+			break;
+		default:
+			printf("UUID type 0x%02x\n", data->val.uuid.type);
+			break;
+		}
+		break;
+	case SDP_TEXT_STR8:
+	case SDP_TEXT_STR16:
+	case SDP_TEXT_STR32:
+		str = data->val.str;
+		if (data->unitSize > strlen(str) + 1) {
+			hex = 0;
+			for (i = 0; i < data->unitSize - 1; i++)
+				if (!isprint(str[i])) {
+					hex = 1;
+					break;
+				}
+			if (str[data->unitSize - 1] != '\0')
+				hex = 1;
+		} else
+			hex = 0;
+		if (hex) {
+			printf("String");
+			for (i = 0; i < data->unitSize; i++)
+				printf(" %02x", (unsigned char) str[i]);
+			printf("\n");
+		} else
+			printf("String %s\n", str);
+		break;
+	case SDP_URL_STR8:
+	case SDP_URL_STR16:
+	case SDP_URL_STR32:
+		printf("URL %s\n", data->val.str);
+		break;
+	case SDP_SEQ8:
+	case SDP_SEQ16:
+	case SDP_SEQ32:
+		printf("Sequence\n");
+		print_raw_data(data->val.dataseq, indent + 1);
+		break;
+	case SDP_ALT8:
+	case SDP_ALT16:
+	case SDP_ALT32:
+		printf("Alternate\n");
+		print_raw_data(data->val.dataseq, indent + 1);
+		break;
+	default:
+		printf("Unknown type 0x%02x\n", data->dtd);
+		break;
+	}
+
+	print_raw_data(data->next, indent);
+}
+
+static void print_raw_attr_func(void *value, void *userData)
+{
+	sdp_data_t *data = (sdp_data_t *) value;
+	struct attrib_def *def = NULL;
+	int i;
+
+	/* Search amongst the generic attributes */
+	for (i = 0; i < attrib_max; i++)
+		if (attrib_names[i].num == data->attrId) {
+			def = &attrib_names[i];
+			break;
+		}
+
+	if (def)
+		printf("\tAttribute 0x%04x - %s\n", data->attrId, def->name);
+	else
+		printf("\tAttribute 0x%04x\n", data->attrId);
+
+	if (data)
+		print_raw_data(data, 2);
+	else
+		printf("  NULL value\n");
+}
+
+static void print_raw_attr(sdp_record_t *rec)
+{
+	if (rec && rec->attrlist) {
+		printf("Sequence\n");
+		sdp_list_foreach(rec->attrlist, print_raw_attr_func, 0);
 	}
 }
 
@@ -2219,10 +2410,12 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 		return -1;
 	}
 
-	if (context->svc)
-		printf("Searching for %s on %s ...\n", context->svc, str);
-	else
-		printf("Browsing %s ...\n", str);
+	if (context->view != RAW_VIEW) {
+		if (context->svc)
+			printf("Searching for %s on %s ...\n", context->svc, str);
+		else
+			printf("Browsing %s ...\n", str);
+	}
 
 	attrid = sdp_list_append(0, &range);
 	search = sdp_list_append(0, &context->group);
@@ -2238,15 +2431,23 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
 		struct search_context sub_context;
 
-		if (context->tree) {
-			/* Display full tree */
-			sdp_printf_service_attr(rec);
-		} else {
+		switch (context->view) {
+		case DEFAULT_VIEW:
 			/* Display user friendly form */
 			print_service_attr(rec);
+			printf("\n");
+			break;
+		case TREE_VIEW:
+			/* Display full tree */
+			print_tree_attr(rec);
+			printf("\n");
+			break;
+		default:
+			/* Display raw tree */
+			print_raw_attr(rec);
+			break;
 		}
-		printf("\n");
-		
+
 		if (sdp_get_group_id(rec, &sub_context.group) != -1) {
 			/* Set the subcontext for browsing the sub tree */
 			memcpy(&sub_context, context, sizeof(struct search_context));
@@ -2266,6 +2467,7 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 static struct option browse_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "tree",	0, 0, 't' },
+	{ "raw",	0, 0, 'r' },
 	{ "uuid",	1, 0, 'u' },
 	{ "l2cap",	0, 0, 'l' },
 	{ 0, 0, 0, 0 }
@@ -2273,7 +2475,7 @@ static struct option browse_options[] = {
 
 static char *browse_help = 
 	"Usage:\n"
-	"\tbrowse [--tree] [--uuid uuid] [--l2cap] [bdaddr]\n";
+	"\tbrowse [--tree] [--raw] [--uuid uuid] [--l2cap] [bdaddr]\n";
 
 /*
  * Browse the full SDP database (i.e. list all services starting from the
@@ -2292,7 +2494,10 @@ static int cmd_browse(int argc, char **argv)
 	for_each_opt(opt, browse_options, 0) {
 		switch (opt) {
 		case 't':
-			context.tree = 1;
+			context.view = TREE_VIEW;
+			break;
+		case 'r':
+			context.view = RAW_VIEW;
 			break;
 		case 'u':
 			if (sscanf(optarg, "%i", &num) != 1 || num < 0 || num > 0xffff) {
@@ -2322,15 +2527,16 @@ static int cmd_browse(int argc, char **argv)
 }
 
 static struct option search_options[] = {
-	{ "help",    0,0, 'h' },
-	{ "bdaddr",  1,0, 'b' },
-	{ "tree",    0,0, 't' },
+	{ "help",	0,0, 'h' },
+	{ "bdaddr",	1,0, 'b' },
+	{ "tree",	0,0, 't' },
+	{ "raw",	0, 0, 'r' },
 	{ 0, 0, 0, 0}
 };
 
 static char *search_help = 
 	"Usage:\n"
-	"\tsearch [--bdaddr bdaddr] [--tree] SERVICE\n"
+	"\tsearch [--bdaddr bdaddr] [--tree] [--raw] SERVICE\n"
 	"SERVICE is a name (string) or UUID (0x1002)\n";
 
 /*
@@ -2361,7 +2567,10 @@ static int cmd_search(int argc, char **argv)
 			has_addr = 1;
 			break;
 		case 't':
-			context.tree = 1;
+			context.view = TREE_VIEW;
+			break;
+		case 'r':
+			context.view = RAW_VIEW;
 			break;
 		default:
 			printf(search_help);
@@ -2435,19 +2644,29 @@ static int get_service(bdaddr_t *bdaddr, struct search_context *context, int qui
 	sdp_list_free(attrid, 0);
 	sdp_close(session);
 	if (!rec) {
-		if (!quite)
+		if (!quite) {
 			printf("Service get request failed.\n");
-		return -1;
+			return -1;
+		} else
+			return 0;
 	}
 
-	if (context->tree) {
-		/* Display full tree */
-		sdp_printf_service_attr(rec);
-	} else {
+	switch (context->view) {
+	case DEFAULT_VIEW:
 		/* Display user friendly form */
 		print_service_attr(rec);
+		printf("\n");
+		break;
+	case TREE_VIEW:
+		/* Display full tree */
+		print_tree_attr(rec);
+		printf("\n");
+		break;
+	default:
+		/* Display raw tree */
+		print_raw_attr(rec);
+		break;
 	}
-	printf("\n");
 
 	sdp_record_free(rec);
 	return 0;
@@ -2456,12 +2675,13 @@ static int get_service(bdaddr_t *bdaddr, struct search_context *context, int qui
 static struct option records_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "tree",	0, 0, 't' },
+	{ "raw",	0, 0, 'r' },
 	{ 0, 0, 0, 0 }
 };
 
 static char *records_help = 
 	"Usage:\n"
-	"\trecords [--tree] bdaddr\n";
+	"\trecords [--tree] [--raw] bdaddr\n";
 
 /*
  * Request possible SDP service records
@@ -2469,9 +2689,9 @@ static char *records_help =
 static int cmd_records(int argc, char **argv)
 {
 	struct search_context context;
-	uint32_t base[] = { 0x10000, 0x1002e };
+	uint32_t base[] = { 0x10000, 0x1002e, 0x110b };
 	bdaddr_t bdaddr;
-	int i, n, opt, num = 32;
+	int i, n, opt, err = 0, num = 32;
 
 	/* Initialise context */
 	memset(&context, '\0', sizeof(struct search_context));
@@ -2479,7 +2699,10 @@ static int cmd_records(int argc, char **argv)
 	for_each_opt(opt, records_options, 0) {
 		switch (opt) {
 		case 't':
-			context.tree = 1;
+			context.view = TREE_VIEW;
+			break;
+		case 'r':
+			context.view = RAW_VIEW;
 			break;
 		default:
 			printf(records_help);
@@ -2500,22 +2723,26 @@ static int cmd_records(int argc, char **argv)
 	for (i = 0; i < sizeof(base) / sizeof(uint32_t); i++)
 		for (n = 0; n < num; n++) {
 			context.handle = base[i] + n;
-			get_service(&bdaddr, &context, 1);
+			err = get_service(&bdaddr, &context, 1);
+			if (err < 0)
+				goto done;
 		}
 
+done:
 	return 0;
 }
 
 static struct option get_options[] = {
-	{ "help",	0,0, 'h' },
-	{ "bdaddr",	1,0, 'b' },
-	{ "tree",	0,0, 't' },
+	{ "help",	0, 0, 'h' },
+	{ "bdaddr",	1, 0, 'b' },
+	{ "tree",	0, 0, 't' },
+	{ "raw",	0, 0, 'r' },
 	{ 0, 0, 0, 0 }
 };
 
 static char *get_help = 
 	"Usage:\n"
-	"\tget [--tree] [--bdaddr bdaddr] record_handle\n";
+	"\tget [--tree] [--raw] [--bdaddr bdaddr] record_handle\n";
 
 /*
  * Get a specific SDP record on the local SDP server
@@ -2537,7 +2764,10 @@ static int cmd_get(int argc, char **argv)
 			has_addr = 1;
 			break;
 		case 't':
-			context.tree = 1;
+			context.view = TREE_VIEW;
+			break;
+		case 'r':
+			context.view = RAW_VIEW;
 			break;
 		default:
 			printf(get_help);

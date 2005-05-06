@@ -65,15 +65,16 @@ local \fBsdpd\fR.
 .SH "COMMANDS" 
 .PP 
 The following commands are available. 
-.IP "\fBsearch [--bdaddr bdaddr] [--tree] service\fP" 10 
+.IP "\fBsearch [--bdaddr bdaddr] [--tree] [--raw] service\fP" 10 
 Search for services.. 
 .IP "" 10 
-Known service names are SP< DUN, LAN, FAX, OPUSH, 
-FTRN, NAP, GN, HID, CIP. 
-.IP "\fBbrowse [--tree] [bdaddr]\fP" 10 
+Known service names are DID, SP, DUN, LAN, FAX, OPUSH, 
+FTP, HS, HF, SAP, NAP, GN, PANU, HID, CIP, CTP, A2SRC, A2SNK
+and SYNCML.
+.IP "\fBbrowse [--tree] [--raw] [bdaddr]\fP" 10 
 Browse all available services on the device 
 specified by a Bluetooth address as a parameter. 
-.IP "\fBrecords [--tree] bdaddr\fP" 10
+.IP "\fBrecords [--tree] [--raw] bdaddr\fP" 10
 Retrieve all possible service records.
 .IP "\fBadd [ --channel=N ]\fP" 10 
 Add a service to the local  
@@ -84,7 +85,7 @@ using the \fB--channel\fP option.
 .IP "\fBdel record_handle\fP" 10 
 Remove a service from the local  
 \fBsdpd\fR. 
-.IP "\fBget [--tree] [--bdaddr bdaddr] record_handle\fP" 10 
+.IP "\fBget [--tree] [--raw] [--bdaddr bdaddr] record_handle\fP" 10 
 Retrieve a service from the local  
 \fBsdpd\fR. 
 .IP "\fBsetattr record_handle attrib_id attrib_value\fP" 10 
@@ -99,13 +100,13 @@ Displays help on using sdptool.
  
 .SH "EXAMPLES" 
 .PP 
-sdptool browse 00:80:98:24:15:6D 
+sdptool browse 00:80:98:24:15:6D
 .PP 
-sdptool browse local 
+sdptool browse local
 .PP 
-sdptool add DUN 
+sdptool add DUN
 .PP 
-sdptool del LAN 
+sdptool del 0x10000
 .SH "BUGS" 
 .PP 
 Documentation needs improving. 
