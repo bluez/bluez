@@ -1852,6 +1852,51 @@ done:
 	return ret;
 }
 
+static unsigned char syncml_uuid[] = {	0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x10, 0x00,
+					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x02 };
+
+static int add_syncml(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass, *proto;
+	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid, obex_uuid;
+	uint8_t channel = si->channel? si->channel: 15;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid128_create(&svclass_uuid, (void *) syncml_uuid);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto = sdp_list_append(NULL, sdp_list_append(NULL, &l2cap_uuid));
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto = sdp_list_append(proto, sdp_list_append(
+		sdp_list_append(NULL, &rfcomm_uuid), sdp_data_alloc(SDP_UINT8, &channel)));
+
+	sdp_uuid16_create(&obex_uuid, OBEX_UUID);
+	proto = sdp_list_append(proto, sdp_list_append(NULL, &obex_uuid));
+
+	sdp_set_access_protos(&record, sdp_list_append(NULL, proto));
+
+	sdp_set_info_attr(&record, "SyncML Client", NULL, NULL);
+
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("SyncML Client service record registered\n");
+
+	return 0;
+}
+
 static unsigned char nokid_uuid[] = {	0x00, 0x00, 0x55, 0x55, 0x00, 0x00, 0x10, 0x00,
 					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x01 };
 
@@ -1989,6 +2034,8 @@ struct {
 
 	{ "A2SRC",	AUDIO_SOURCE_SVCLASS_ID,	add_a2source	},
 	{ "A2SNK",	AUDIO_SINK_SVCLASS_ID,		add_a2sink	},
+
+	{ "SYNCML",	0,				add_syncml	},
 
 	{ "NOKID",	0,				add_nokiaid	},
 	{ "PCSUITE",	0,				add_pcsuite	},
