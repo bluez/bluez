@@ -2010,6 +2010,7 @@ struct {
 	char		*name;
 	uint16_t	class;
 	int		(*add)(sdp_session_t *sess, svc_info_t *si);
+	unsigned char *uuid;
 } service[] = {
 	{ "DID",	PNP_INFO_SVCLASS_ID,		NULL,		},
 
@@ -2035,11 +2036,10 @@ struct {
 	{ "A2SRC",	AUDIO_SOURCE_SVCLASS_ID,	add_a2source	},
 	{ "A2SNK",	AUDIO_SINK_SVCLASS_ID,		add_a2sink	},
 
-	{ "SYNCML",	0,				add_syncml	},
-
-	{ "NOKID",	0,				add_nokiaid	},
-	{ "PCSUITE",	0,				add_pcsuite	},
-	{ "SR1",	0,				add_sr1		},
+	{ "SYNCML",	0,				add_syncml,	syncml_uuid	},
+	{ "NOKID",	0,				add_nokiaid,	nokid_uuid	},
+	{ "PCSUITE",	0,				add_pcsuite,	pcsuite_uuid	},
+	{ "SR1",	0,				add_sr1,	sr1_uuid	},
 
 	{ 0 }
 };
@@ -2333,6 +2333,7 @@ static char *search_help =
 static int cmd_search(int argc, char **argv)
 {
 	struct search_context context;
+	unsigned char *uuid = NULL;
 	uint16_t class = 0;
 	bdaddr_t bdaddr;
 	int has_addr = 0;
@@ -2363,6 +2364,7 @@ static int cmd_search(int argc, char **argv)
 		printf(search_help);
 		return -1;
 	}
+
 	/* Note : we need to find a way to support search combining
 	 * multiple services - Jean II */
 	context.svc = strdup(argv[0]);
@@ -2378,19 +2380,24 @@ static int cmd_search(int argc, char **argv)
 		for (i = 0; service[i].name; i++)
 			if (strcasecmp(context.svc, service[i].name) == 0) {
 				class = service[i].class;
+				uuid = service[i].uuid;
 				break;
 			}
-		if (!class) {
+		if (!class && !uuid) {
 			printf("Unknown service %s\n", context.svc);
 			return -1;
 		}
-	}	
+	}
 
-	sdp_uuid16_create(&context.group, class);
+	if (class)
+		sdp_uuid16_create(&context.group, class);
+	else
+		sdp_uuid128_create(&context.group, uuid);
 
 	if (has_addr)
 		return do_search(&bdaddr, &context);
-	return do_search(0, &context);
+
+	return do_search(NULL, &context);
 }
 
 /*
