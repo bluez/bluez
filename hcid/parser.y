@@ -64,7 +64,7 @@ int yyerror(char *s);
 
 %token K_OPTIONS K_DEVICE
 %token K_AUTOINIT K_SECURITY K_PAIRING
-%token K_PTYPE K_NAME K_CLASS K_VOICE K_INQMODE K_LM K_LP K_AUTH K_ENCRYPT K_ISCAN K_PSCAN
+%token K_PTYPE K_NAME K_CLASS K_VOICE K_INQMODE K_PAGETO K_LM K_LP K_AUTH K_ENCRYPT K_ISCAN K_PSCAN
 %token K_PINHELP K_DBUSPINHELP
 %token K_YES K_NO
 
@@ -203,6 +203,11 @@ device_opt:
   | K_INQMODE NUM	{
 				parser_device->flags |= (1 << HCID_SET_INQMODE);
 				parser_device->inqmode = $2;
+			}
+
+  | K_PAGETO NUM	{
+				parser_device->flags |= (1 << HCID_SET_PAGETO);
+				parser_device->pageto = $2;
 			}
 
   | K_AUTH bool		{

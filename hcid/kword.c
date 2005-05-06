@@ -61,6 +61,7 @@ struct kword cfg_keyword[] = {
 	{ "class",		K_CLASS		},
 	{ "voice",		K_VOICE		},
 	{ "inqmode",		K_INQMODE	},
+	{ "pageto",		K_PAGETO	},
 	{ "auth",		K_AUTH		},
 	{ "encrypt",		K_ENCRYPT	},
 	{ "pin_helper",		K_PINHELP	},

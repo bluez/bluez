@@ -229,7 +229,7 @@ static void configure_device(int hdev)
 		expand_name(cp.name, sizeof(cp.name), device_opts->name, hdev);
 
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
-			CHANGE_LOCAL_NAME_CP_SIZE, (void *) &cp);
+					CHANGE_LOCAL_NAME_CP_SIZE, &cp);
 	}
 
 	/* Set device class */
@@ -239,7 +239,7 @@ static void configure_device(int hdev)
 
 		memcpy(cp.dev_class, &class, 3);
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
-			WRITE_CLASS_OF_DEV_CP_SIZE, (void *) &cp);
+					WRITE_CLASS_OF_DEV_CP_SIZE, &cp);
 	}
 
 	/* Set voice setting */
@@ -248,7 +248,7 @@ static void configure_device(int hdev)
 
 		cp.voice_setting = htobl(device_opts->voice);
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_VOICE_SETTING,
-			WRITE_VOICE_SETTING_CP_SIZE, (void *) &cp);
+					WRITE_VOICE_SETTING_CP_SIZE, &cp);
 	}
 
 	/* Set inquiry mode */
@@ -258,7 +258,16 @@ static void configure_device(int hdev)
 
 		cp.mode = device_opts->inqmode;
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
-			WRITE_INQUIRY_MODE_CP_SIZE, (void *) &cp);
+					WRITE_INQUIRY_MODE_CP_SIZE, &cp);
+	}
+
+	/* Set page timeout */
+	if ((device_opts->flags & (1 << HCID_SET_PAGETO))) {
+		write_page_timeout_cp cp;
+
+		cp.timeout = htobs(device_opts->pageto);
+		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
+					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
 
 	exit(0);

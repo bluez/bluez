@@ -45,6 +45,7 @@ enum {
 	HCID_SET_CLASS,
 	HCID_SET_VOICE,
 	HCID_SET_INQMODE,
+	HCID_SET_PAGETO,
 	HCID_SET_PTYPE,
 	HCID_SET_LM,
 	HCID_SET_LP,
@@ -56,6 +57,7 @@ struct device_opts {
 	uint32_t class;
 	uint16_t voice;
 	uint8_t  inqmode;
+	uint16_t pageto;
 	uint16_t pkt_type;
 	uint16_t link_mode;
 	uint16_t link_policy;
