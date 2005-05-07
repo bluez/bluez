@@ -70,6 +70,7 @@ static char *pppd_opts[DUN_MAX_PPP_OPTS] =
 static int  detach = 1;
 static int  persist;
 static int  use_sdp = 1;
+static int  auth;
 static int  encrypt;
 static int  secure;
 static int  master;
@@ -147,6 +148,8 @@ static int do_listen(void)
 	lm = 0;
 	if (master)
 		lm |= RFCOMM_LM_MASTER;
+	if (auth)
+		lm |= RFCOMM_LM_AUTH;
 	if (encrypt)
 		lm |= RFCOMM_LM_ENCRYPT;
 	if (secure)
@@ -390,6 +393,7 @@ static struct option main_lopts[] = {
 	{ "show",     0, 0, 'l' },
 	{ "nodetach", 0, 0, 'n' },
 	{ "persist",  2, 0, 'p' },
+	{ "auth",     0, 0, 'A' },
 	{ "encrypt",  0, 0, 'E' },
 	{ "secure",   0, 0, 'S' },
 	{ "master",   0, 0, 'M' },
@@ -400,7 +404,7 @@ static struct option main_lopts[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:i:lnp::DQ::ESMP:C::P:X";
+static char main_sopts[] = "hsc:k:Kr:i:lnp::DQ::AESMP:C::P:X";
 
 static char main_help[] = 
 	"Bluetooth LAP (LAN Access over PPP) daemon version " VERSION " \n"
@@ -417,6 +421,7 @@ static char main_help[] =
 	"\t--channel -P <channel>    RFCOMM channel\n"
 	"\t--device -i <bdaddr>      Source bdaddr\n"
 	"\t--nosdp -D                Disable SDP\n"
+	"\t--auth -A                 Enable authentication\n"
 	"\t--encrypt -E              Enable encryption\n"
 	"\t--secure -S               Secure connection\n"
 	"\t--master -M               Become the master of a piconet\n"
@@ -478,6 +483,10 @@ int main(int argc, char **argv)
 
 		case 'D':
 			use_sdp = 0;
+			break;
+
+		case 'A':
+			auth = 1;
 			break;
 
 		case 'E':

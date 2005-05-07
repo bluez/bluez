@@ -61,6 +61,7 @@ static int  detach = 1;
 static int  persist;
 static int  use_sdp = 1;
 static int  use_cache;
+static int  auth;
 static int  encrypt;
 static int  secure;
 static int  master;
@@ -169,6 +170,8 @@ static int do_listen(void)
 	lm = 0;
 	if (master)
 		lm |= L2CAP_LM_MASTER;
+	if (auth)
+		lm |= L2CAP_LM_AUTH;
 	if (encrypt)
 		lm |= L2CAP_LM_ENCRYPT;
 	if (secure)
@@ -497,6 +500,7 @@ static struct option main_lopts[] = {
 	{ "show",     0, 0, 'l' },
 	{ "nodetach", 0, 0, 'n' },
 	{ "persist",  2, 0, 'p' },
+	{ "auth",     0, 0, 'A' },
 	{ "encrypt",  0, 0, 'E' },
 	{ "secure",   0, 0, 'S' },
 	{ "master",   0, 0, 'M' },
@@ -506,7 +510,7 @@ static struct option main_lopts[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:e:i:lnp::DQ::ESMC::P:z";
+static char main_sopts[] = "hsc:k:Kr:e:i:lnp::DQ::AESMC::P:z";
 
 static char main_help[] = 
 	"Bluetooth PAN daemon version " VERSION " \n"
@@ -525,6 +529,7 @@ static char main_help[] =
 	"\t--ethernet -e <name>      Network interface name\n"
 	"\t--device -i <bdaddr>      Source bdaddr\n"
 	"\t--nosdp -D                Disable SDP\n"
+	"\t--auth -A                 Enable authentication\n"
 	"\t--encrypt -E              Enable encryption\n"
 	"\t--secure -S               Secure connection\n"
 	"\t--master -M               Become the master of a piconet\n"
@@ -587,6 +592,10 @@ int main(int argc, char **argv)
 
 		case 'D':
 			use_sdp = 0;
+			break;
+
+		case 'A':
+			auth = 1;
 			break;
 
 		case 'E':
