@@ -3167,13 +3167,17 @@ sdp_session_t *sdp_connect(const bdaddr_t *src, const bdaddr_t *dst, uint32_t fl
 			sa.l2_psm = 0;
 			if (bacmp(src, BDADDR_ANY) != 0) {
 				sa.l2_bdaddr = *src;
-				if (0 > bind(session->sock, (struct sockaddr *)&sa, sizeof(sa)))
+				if (bind(session->sock, (struct sockaddr *) &sa, sizeof(sa)) < 0)
 					goto fail;
+			}
+			if (flags & SDP_WAIT_ON_CLOSE) {
+				struct linger l = { .l_onoff = 1, .l_linger = 1 };
+				setsockopt(session->sock, SOL_SOCKET, SO_LINGER, &l, sizeof(l));
 			}
 			sa.l2_psm = htobs(SDP_PSM);
 			sa.l2_bdaddr = *dst;
 			do
-				if (connect(session->sock, (struct sockaddr *)&sa, sizeof(sa)) == 0)
+				if (connect(session->sock, (struct sockaddr *) &sa, sizeof(sa)) == 0)
 					return session;
 			while (errno == EBUSY && (flags & SDP_RETRY_IF_BUSY));
 		}

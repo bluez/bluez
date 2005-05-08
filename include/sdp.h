@@ -376,6 +376,7 @@ extern "C" {
  * Values of the flags parameter to sdp_connect
  */
 #define SDP_RETRY_IF_BUSY	0x01
+#define SDP_WAIT_ON_CLOSE	0x02
 
 /*
  * SDP Error codes
