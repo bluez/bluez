@@ -41,6 +41,7 @@
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/hidp.h>
@@ -164,6 +165,9 @@ int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp
 
 int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req)
 {
+	struct sockaddr_l2 addr;
+	socklen_t addrlen;
+	bdaddr_t bdaddr;
 	uint32_t range = 0x0000ffff;
 	sdp_session_t *s;
 	sdp_list_t *search, *attrid, *pnp_rsp, *hid_rsp;
@@ -172,7 +176,7 @@ int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_co
 	uuid_t svclass;
 	int err;
 
-	s = sdp_connect(src, dst, 0);
+	s = sdp_connect(src, dst, SDP_RETRY_IF_BUSY | SDP_WAIT_ON_CLOSE);
 	if (!s)
 		return -1;
 
@@ -193,6 +197,14 @@ int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_co
 
 	sdp_list_free(search, 0);
 	sdp_list_free(attrid, 0);
+
+	memset(&addr, 0, sizeof(addr));
+	addrlen = sizeof(addr);
+
+	if (getsockname(s->sock, (struct sockaddr *) &addr, &addrlen) < 0)
+		bacpy(&bdaddr, src);
+	else
+		bacpy(&bdaddr, &addr.l2_bdaddr);
 
 	sdp_close(s);
 
@@ -259,7 +271,8 @@ int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_co
 
 	sdp_record_free(rec);
 
-	store_device_info(src, dst, req);
+	if (bacmp(&bdaddr, BDADDR_ANY))
+		store_device_info(&bdaddr, dst, req);
 
 	return 0;
 }

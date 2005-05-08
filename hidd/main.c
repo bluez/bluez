@@ -430,7 +430,7 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, 
 		exit(1);
 	}
 
-	err = create_device(ctl, csk, isk, subclass, nosdp, encrypt, timeout);
+	err = create_device(ctl, csk, isk, subclass, 1, encrypt, timeout);
 	if (err < 0) {
 		fprintf(stderr, "HID create error %d (%s)\n",
 						errno, strerror(errno));
