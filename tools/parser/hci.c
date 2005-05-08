@@ -585,12 +585,9 @@ static inline void link_key_reply_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	ba2str(&cp->bdaddr, addr);
-	printf("bdaddr %s\n", addr);
-
-	p_indent(level, frm);
-	printf("Link key: ");
+	printf("bdaddr %s key ", addr);
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", cp->link_key[i]);
+		printf("%2.2X", cp->link_key[i]);
 	printf("\n");
 }
 
@@ -655,6 +652,94 @@ static inline void write_link_policy_dump(int level, struct frame *frm)
 		p_indent(level, frm);
 		printf("Link policy: %s\n", str);
 		free(str);
+	}
+}
+
+static inline void set_event_mask_dump(int level, struct frame *frm)
+{
+	set_event_mask_cp *cp = frm->ptr;
+	int i;
+
+	p_indent(level, frm);
+	printf("Mask: 0x");
+	for (i = 0; i < 8; i++)
+		printf("%2.2x", cp->mask[i]);
+	printf("\n");
+}
+
+static inline void set_event_flt_dump(int level, struct frame *frm)
+{
+	set_event_flt_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("type %d condition %d\n", cp->flt_type, cp->cond_type);
+
+	switch (cp->flt_type) {
+	case FLT_CLEAR_ALL:
+		printf("Clear all filters\n");
+		break;
+	case FLT_INQ_RESULT:
+		printf("Inquiry result");
+		switch (cp->cond_type) {
+		case INQ_RESULT_RETURN_ALL:
+		case INQ_RESULT_RETURN_CLASS:
+		case INQ_RESULT_RETURN_BDADDR:
+		default:
+			printf("\n");
+			break;
+		}
+		break;
+	case FLT_CONN_SETUP:
+		printf("Connection setup");
+		switch (cp->cond_type) {
+		case CONN_SETUP_ALLOW_ALL:
+		case CONN_SETUP_ALLOW_CLASS:
+		case CONN_SETUP_ALLOW_BDADDR:
+		default:
+			printf("\n");
+			break;
+		}
+		break;
+	}
+}
+
+static inline void write_pin_type_dump(int level, struct frame *frm)
+{
+	write_pin_type_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("type %d\n", cp->pin_type);
+}
+
+static inline void request_stored_link_key_dump(int level, struct frame *frm)
+{
+	read_stored_link_key_cp *cp = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s all %d\n", addr, cp->read_all);
+}
+
+static inline void return_link_keys_dump(int level, struct frame *frm)
+{
+	uint8_t num = get_u8(frm);
+	uint8_t key[16];
+	char addr[18];
+	int i, n;
+
+	for (n = 0; n < num; n++) {
+		ba2str(frm->ptr, addr);
+		memcpy(key, frm->ptr + 6, 16);
+
+		p_indent(level, frm);
+		printf("bdaddr %s key ", addr);
+		for (i = 0; i < 16; i++)
+			printf("%2.2X", key[i]);
+		printf("\n");
+
+		frm->ptr += 2;
+		frm->len -= 2;
 	}
 }
 
@@ -893,6 +978,25 @@ static inline void command_dump(int level, struct frame *frm)
 
 	case OGF_HOST_CTL:
 		switch (ocf) {
+		case OCF_RESET:
+		case OCF_CREATE_NEW_UNIT_KEY:
+			return;
+		case OCF_SET_EVENT_MASK:
+			set_event_mask_dump(level + 1, frm);
+			return;
+		case OCF_SET_EVENT_FLT:
+			set_event_flt_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_PIN_TYPE:
+			write_pin_type_dump(level + 1, frm);
+			return;
+		case OCF_READ_STORED_LINK_KEY:
+		case OCF_DELETE_STORED_LINK_KEY:
+			request_stored_link_key_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_STORED_LINK_KEY:
+			return_link_keys_dump(level + 1, frm);
+			return;
 		case OCF_CHANGE_LOCAL_NAME:
 			change_local_name_dump(level + 1, frm);
 			return;
@@ -924,6 +1028,7 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 			request_transmit_power_level_dump(level + 1, frm);
 			return;
+		case OCF_FLUSH:
 		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
 			generic_command_dump(level + 1, frm);
 			return;
@@ -1018,6 +1123,59 @@ static inline void generic_response_dump(int level, struct frame *frm)
 	}
 
 	raw_dump(level, frm);
+}
+
+static inline void read_pin_type_dump(int level, struct frame *frm)
+{
+	read_pin_type_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x type %d\n", rp->status, rp->pin_type);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_stored_link_key_dump(int level, struct frame *frm)
+{
+	read_stored_link_key_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x max %d num %d\n",
+		rp->status, rp->max_keys, rp->num_keys);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void write_stored_link_key_dump(int level, struct frame *frm)
+{
+	write_stored_link_key_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x written %d\n", rp->status, rp->num_keys);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void delete_stored_link_key_dump(int level, struct frame *frm)
+{
+	delete_stored_link_key_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x deleted %d\n", rp->status, btohs(rp->num_keys));
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
 }
 
 static inline void read_local_name_dump(int level, struct frame *frm)
@@ -1396,6 +1554,18 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 
 	case OGF_HOST_CTL:
 		switch (ocf) {
+		case OCF_READ_PIN_TYPE:
+			read_pin_type_dump(level, frm);
+			return;
+		case OCF_READ_STORED_LINK_KEY:
+			read_stored_link_key_dump(level, frm);
+			return;
+		case OCF_WRITE_STORED_LINK_KEY:
+			write_stored_link_key_dump(level, frm);
+			return;
+		case OCF_DELETE_STORED_LINK_KEY:
+			delete_stored_link_key_dump(level, frm);
+			return;
 		case OCF_READ_LOCAL_NAME:
 			read_local_name_dump(level, frm);
 			return;
@@ -1430,9 +1600,15 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 			read_transmit_power_level_dump(level, frm);
 			return;
+		case OCF_FLUSH:
 		case OCF_WRITE_LINK_SUPERVISION_TIMEOUT:
 			generic_response_dump(level, frm);
 			return;
+		case OCF_RESET:
+		case OCF_SET_EVENT_MASK:
+		case OCF_SET_EVENT_FLT:
+		case OCF_WRITE_PIN_TYPE:
+		case OCF_CREATE_NEW_UNIT_KEY:
 		case OCF_CHANGE_LOCAL_NAME:
 		case OCF_WRITE_CLASS_OF_DEV:
 		case OCF_WRITE_VOICE_SETTING:
@@ -1762,28 +1938,6 @@ static inline void mode_change_dump(int level, struct frame *frm)
 	}
 }
 
-static inline void return_link_keys_dump(int level, struct frame *frm)
-{
-	uint8_t num = get_u8(frm);
-	unsigned char key[16];
-	char addr[18];
-	int i, n;
-
-	for (n = 0; n < num; n++) {
-		ba2str(frm->ptr, addr);
-		memcpy(key, frm->ptr + 6, 16);
-
-		p_indent(level, frm);
-		printf("bdaddr %s key ", addr);
-		for (i = 0; i < 16; i++)
-			printf("%2.2x", key[i]);
-		printf("\n");
-
-		frm->ptr += 22;
-		frm->len -= 22;
-	}
-}
-
 static inline void pin_code_req_dump(int level, struct frame *frm)
 {
 	evt_pin_code_req *evt = frm->ptr;
@@ -1802,13 +1956,10 @@ static inline void link_key_notify_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	ba2str(&evt->bdaddr, addr);
-	printf("bdaddr %s type 0x%2.2x\n", addr, evt->key_type);
-
-	p_indent(level, frm);
-	printf("Link key: ");
+	printf("bdaddr %s key ", addr);
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", evt->link_key[i]);
-	printf("\n");
+		printf("%2.2X", evt->link_key[i]);
+	printf(" type %d\n", evt->key_type);
 }
 
 static inline void max_slots_change_dump(int level, struct frame *frm)
