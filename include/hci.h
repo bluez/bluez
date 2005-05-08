@@ -576,6 +576,12 @@ typedef struct {
 /* Host Controller and Baseband */
 #define OGF_HOST_CTL		0x03
 
+#define OCF_SET_EVENT_MASK		0x0001
+typedef struct {
+	uint8_t		mask[8];
+} __attribute__ ((packed)) set_event_mask_cp;
+#define SET_EVENT_MASK_CP_SIZE 8
+
 #define OCF_RESET			0x0003
 
 #define OCF_SET_EVENT_FLT		0x0005
@@ -587,16 +593,37 @@ typedef struct {
 #define SET_EVENT_FLT_CP_SIZE 2
 
 /* Filter types */
-#define FLT_CLEAR_ALL	0x00
-#define FLT_INQ_RESULT	0x01
-#define FLT_CONN_SETUP	0x02
+#define FLT_CLEAR_ALL			0x00
+#define FLT_INQ_RESULT			0x01
+#define FLT_CONN_SETUP			0x02
+/* INQ_RESULT Condition types */
+#define INQ_RESULT_RETURN_ALL		0x00
+#define INQ_RESULT_RETURN_CLASS		0x01
+#define INQ_RESULT_RETURN_BDADDR	0x02
 /* CONN_SETUP Condition types */
-#define CONN_SETUP_ALLOW_ALL	0x00
-#define CONN_SETUP_ALLOW_CLASS	0x01
-#define CONN_SETUP_ALLOW_BDADDR	0x02
+#define CONN_SETUP_ALLOW_ALL		0x00
+#define CONN_SETUP_ALLOW_CLASS		0x01
+#define CONN_SETUP_ALLOW_BDADDR		0x02
 /* CONN_SETUP Conditions */
-#define CONN_SETUP_AUTO_OFF	0x01
-#define CONN_SETUP_AUTO_ON	0x02
+#define CONN_SETUP_AUTO_OFF		0x01
+#define CONN_SETUP_AUTO_ON		0x02
+
+#define OCF_FLUSH			0x0008
+
+#define OCF_READ_PIN_TYPE		0x0009
+typedef struct {
+	uint8_t		status;
+	uint8_t		pin_type;
+} __attribute__ ((packed)) read_pin_type_rp;
+#define READ_PIN_TYPE_RP_SIZE 2
+
+#define OCF_WRITE_PIN_TYPE		0x000A
+typedef struct {
+	uint8_t		pin_type;
+} __attribute__ ((packed)) write_pin_type_cp;
+#define WRITE_PIN_TYPE_CP_SIZE 1
+
+#define OCF_CREATE_NEW_UNIT_KEY		0x000B
 
 #define OCF_READ_STORED_LINK_KEY	0x000D
 typedef struct {
