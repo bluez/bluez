@@ -1,3 +1,10 @@
+ver 2.17:
+	Include stdio.h in bluetooth.h header file.
+	Include sys/socket.h in the header files.
+	Add functions for stored link keys.
+	Add definitions for PIN type and unit key.
+	Add SDP_WAIT_ON_CLOSE flag for sdp_connect().
+
 ver 2.16:
 	Fix buffer allocation for features to string conversion.
 	Add function for reading local supported commands.
