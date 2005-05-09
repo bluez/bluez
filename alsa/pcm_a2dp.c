@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <malloc.h>
 #include <signal.h>
+#include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -43,9 +44,13 @@
 //#define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
 #define DBG(D...)
 
+static void a2dp_init(void) __attribute__ ((constructor));
+static void a2dp_exit(void) __attribute__ ((destructor));
+
 typedef struct snd_pcm_a2dp {
 	snd_pcm_ioplug_t io;
 	int refcnt;
+	unsigned long state;
 	bdaddr_t src;
 	bdaddr_t dst;
 	int sk;
@@ -55,31 +60,6 @@ typedef struct snd_pcm_a2dp {
 	unsigned int len;
 	unsigned int frame_bytes;
 } snd_pcm_a2dp_t;
-
-#define MAX_CONNECTIONS 10
-
-static snd_pcm_a2dp_t *connections[MAX_CONNECTIONS];
-
-static void sig_alarm(int sig)
-{
-	int i;
-
-	for (i = 0; i < MAX_CONNECTIONS; i++) {
-		snd_pcm_a2dp_t *a2dp = connections[i];
-
-		if (!a2dp || a2dp->refcnt > 0)
-			continue;
-
-		connections[i] = NULL;
-
-		if (a2dp->sk >= 0)
-			close(a2dp->sk);
-
-		sbc_finish(&a2dp->sbc);
-
-		free(a2dp);
-	}
-}
 
 static int a2dp_start(snd_pcm_ioplug_t *io)
 {
@@ -134,7 +114,8 @@ static snd_pcm_sframes_t a2dp_transfer(snd_pcm_ioplug_t *io,
 		a2dp->len = 0;
 	}
 
-	a2dp->num += len / a2dp->frame_bytes;
+	if (a2dp->state == BT_CONNECTED)
+		a2dp->num += len / a2dp->frame_bytes;
 
 	return len / a2dp->frame_bytes;
 }
@@ -148,9 +129,6 @@ static int a2dp_close(snd_pcm_ioplug_t *io)
 	a2dp->len = 0;
 
 	a2dp->refcnt--;
-
-	if (!a2dp->refcnt)
-		alarm(2);
 
 	return 0;
 }
@@ -205,7 +183,23 @@ static int a2dp_drain(snd_pcm_ioplug_t *io)
 static int a2dp_poll(snd_pcm_ioplug_t *io, struct pollfd *ufds,
 				unsigned int nfds, unsigned short *revents)
 {
+	snd_pcm_a2dp_t *a2dp = io->private_data;
+	struct timeval tv;
+
 	*revents = ufds[0].revents;
+
+	if (a2dp->state == BT_CLOSED)
+		return 0;
+
+	if (ufds[0].revents & POLLHUP) {
+		a2dp->state = BT_CLOSED;
+		a2dp->io.poll_fd = -1;
+		a2dp->io.poll_events = POLLIN;
+		snd_pcm_ioplug_reinit_status(&a2dp->io);
+	}
+
+	if (gettimeofday(&tv, NULL) < 0)
+		return 0;
 
 	return 0;
 }
@@ -317,6 +311,53 @@ static int a2dp_constraint(snd_pcm_a2dp_t *a2dp)
 	return 0;
 }
 
+#define MAX_CONNECTIONS 10
+
+static snd_pcm_a2dp_t *connections[MAX_CONNECTIONS];
+
+static inline void a2dp_free(snd_pcm_a2dp_t *a2dp)
+{
+	if (a2dp->sk >= 0)
+		close(a2dp->sk);
+
+	sbc_finish(&a2dp->sbc);
+
+	free(a2dp);
+}
+
+static inline void a2dp_delete(snd_pcm_a2dp_t *a2dp)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONNECTIONS; i++)
+		if (connections[i] == a2dp) {
+			connections[i] = NULL;
+			a2dp_free(a2dp);
+		}
+}
+
+static void a2dp_init(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONNECTIONS; i++)
+		connections[i] = NULL;
+}
+
+static void a2dp_exit(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONNECTIONS; i++) {
+		snd_pcm_a2dp_t *a2dp = connections[i];
+		if (!a2dp)
+			continue;
+
+		connections[i] = NULL;
+		a2dp_free(a2dp);
+	}
+}
+
 SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 {
 	snd_pcm_a2dp_t *a2dp = NULL;
@@ -375,8 +416,6 @@ SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 	}
 
 	if (!a2dp) {
-		struct sigaction sa;
-
 		if (pos < 0) {
 			SNDERR("Too many connections");
 			return -ENOMEM;
@@ -390,25 +429,23 @@ SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 
 		memset(a2dp, 0, sizeof(*a2dp));
 
+		connections[pos] = a2dp;
+
 		a2dp->refcnt = 1;
+		a2dp->state  = BT_CONNECT;
 
 		bacpy(&a2dp->src, &src);
 		bacpy(&a2dp->dst, &dst);
+	}
 
+	if (a2dp->state != BT_CONNECTED) {
 		err = a2dp_connect(a2dp);
 		if (err < 0) {
 			SNDERR("Cannot connect");
 			goto error;
 		}
 
-		memset(&sa, 0, sizeof(sa));
-		sa.sa_flags   = SA_NOCLDSTOP;
-		sa.sa_handler = sig_alarm;
-		sigaction(SIGALRM, &sa, NULL);
-
-		alarm(0);
-
-		connections[pos] = a2dp;
+		a2dp->state = BT_CONNECTED;
 	}
 
 	a2dp->io.name = "Bluetooth Advanced Audio Distribution";
@@ -435,7 +472,7 @@ error:
 	a2dp->refcnt--;
 
 	if (!a2dp->refcnt)
-		alarm(2);
+		a2dp_delete(a2dp);
 
 	return err;
 }
