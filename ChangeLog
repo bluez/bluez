@@ -1,3 +1,23 @@
+ver 2.17:
+	Set the storage directory through ${localstatedir}.
+	Add the textfile library for ASCII based file access.
+	Add support for return link keys event.
+	Add support for voice setting configuration.
+	Add support for page scan timeout configuration.
+	Add support for storing and deleting of stored link keys.
+	Add support for searching for services with UUID-128.
+	Add support for retrieving all possible service records.
+	Add support for a raw mode view of service records.
+	Add support for HID information caching in hidd.
+	Add support for authentication in pand and dund.
+	Add support for changing BD_ADDR of CSR chips.
+	Add pskey utility for changing CSR persistent storage values.
+	Add the firmware upgrade utility.
+	Add connection caching for the A2DP ALSA plugin.
+
+	Note:
+	This version needs at least bluez-libs-2.17
+
 ver 2.16:
 	Store link keys in ASCII based file format.
 	Support device name caching.
