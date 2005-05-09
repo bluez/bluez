@@ -41,6 +41,8 @@ struct sbc_struct {
 	int size;
 	int len;
 
+	unsigned long duration;
+
 	void *priv;
 };
 

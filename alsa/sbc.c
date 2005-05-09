@@ -1278,6 +1278,8 @@ int sbc_decode(sbc_t *sbc, void *data, int count)
 
 	sbc->len = samples * priv->frame.channels * 2;
 
+	sbc->duration = (1000000 * priv->frame.subbands * priv->frame.blocks) / sbc->rate;
+
 	return framelen;
 }
 
@@ -1336,6 +1338,8 @@ int sbc_encode(sbc_t *sbc, void *data, int count)
 	framelen = sbc_pack_frame(sbc->data, &priv->frame, sbc->size);
 
 	sbc->len = framelen;
+
+	sbc->duration = (1000000 * priv->frame.subbands * priv->frame.blocks) / sbc->rate;
 
 	return samples * sbc->channels * 2;
 }
