@@ -238,6 +238,11 @@ void obex_dump(int level, struct frame *frm)
 	length = get_u16(frm);
 	status = opcode & 0x7f;
 
+	if (frm->len < length - 3) {
+		p_indent(level, frm);
+		printf("[partial segment with %d bytes]\n", frm->len + 3);
+	}
+
 	p_indent(level, frm);
 
 	if ((opcode & 0x70) == 0x00) {
@@ -274,7 +279,7 @@ void obex_dump(int level, struct frame *frm)
 
 	if ((status & 0x70) && (parser.flags & DUMP_VERBOSE)) {
 		p_indent(level, frm);
-		printf("Status (%x%02d) = %s\n", status >> 4, status & 0xf,
+		printf("Status %x%02d = %s\n", status >> 4, status & 0xf,
 							opcode2str(status));
 	}
 
