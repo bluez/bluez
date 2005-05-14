@@ -226,24 +226,6 @@ static void parse_headers(int level, struct frame *frm)
 	}
 }
 
-static void print_status(uint8_t status)
-{
-	switch (status & 0x7f) {
-	case 0x10:
-		printf(" (continue)");
-		break;
-	case 0x20:
-		printf(" (success)");
-		break;
-	case 0x21:
-		printf(" (created)");
-		break;
-	case 0x22:
-		printf(" (accepted)");
-		break;
-	}
-}
-
 static uint8_t last_opcode = 0x00;
 static uint8_t last_status = 0x00;
 
@@ -261,13 +243,11 @@ void obex_dump(int level, struct frame *frm)
 	if ((opcode & 0x70) == 0x00) {
 		printf("OBEX: %s cmd(%c): len %d",
 			opcode2str(opcode), opcode & 0x80 ? 'f' : 'c', length);
-		print_status(last_status);
 		last_opcode = opcode;
 	} else {
 		printf("OBEX: %s rsp(%c): status %x%02d len %d",
 			opcode2str(last_opcode), opcode & 0x80 ? 'f' : 'c',
 					status >> 4, status & 0xf, length);
-		print_status(status);
 		opcode = last_opcode;
 	}
 
@@ -292,9 +272,10 @@ void obex_dump(int level, struct frame *frm)
 		printf("\n");
 	}
 
-	if ((status >> 4) > 2 && (parser.flags & DUMP_VERBOSE)) {
+	if ((status & 0x70) && (parser.flags & DUMP_VERBOSE)) {
 		p_indent(level, frm);
-		printf("Error: %s\n", opcode2str(status));
+		printf("Status (%x%02d) = %s\n", status >> 4, status & 0xf,
+							opcode2str(status));
 	}
 
 	parse_headers(level, frm);
