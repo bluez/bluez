@@ -72,7 +72,11 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 	size_t len;
 	char *pin;
 
+#ifdef HAVE_DBUS_PENDING_CALL_STEAL_REPLY
+	message = dbus_pending_call_steal_reply(call);
+#else
 	message = dbus_pending_call_get_reply(call);
+#endif
 
 	if (dbus_message_is_error(message, WRONG_ARGS_ERROR))
 		goto error;
@@ -83,7 +87,12 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 	if (type != DBUS_TYPE_STRING)
 		goto error;
 
+#ifdef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
+	dbus_message_iter_get_basic(&iter, &pin);
+#else
 	pin = dbus_message_iter_get_string(&iter);
+#endif
+
 	len = strlen(pin);
 
 	memset(&pr, 0, sizeof(pr));
@@ -93,11 +102,13 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 	hci_send_cmd(req->dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
 						PIN_CODE_REPLY_CP_SIZE, &pr);
 
+	dbus_message_unref(message);
+
 	return;
 
 error:
-	hci_send_cmd(req->dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY,
-							6, &req->bda);
+	hci_send_cmd(req->dev, OGF_LINK_CTL,
+				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 }
 
 
@@ -109,7 +120,9 @@ static void free_pin_req(void *req)
 void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 {
 	DBusMessage *message;
+#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
 	DBusMessageIter iter;
+#endif
 	DBusPendingCall *pending = NULL;
 	struct pin_request *req;
 
@@ -124,14 +137,20 @@ void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 	req->dev = dev;
 	bacpy(&req->bda, &ci->bdaddr);
 
+#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+	dbus_message_append_args(message, DBUS_TYPE_BOOLEAN, &ci->out,
+			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+			&ci->bdaddr, sizeof(bdaddr_t), DBUS_TYPE_INVALID);
+#else
 	dbus_message_append_iter_init(message, &iter);
 
 	dbus_message_iter_append_boolean(&iter, ci->out);
 	dbus_message_iter_append_byte_array(&iter,
 			(unsigned char *) &ci->bdaddr, sizeof(ci->bdaddr));
+#endif
 
 	if (dbus_connection_send_with_reply(connection, message,
-						&pending, TIMEOUT) == FALSE) {
+					&pending, TIMEOUT) == FALSE) {
 		syslog(LOG_ERR, "D-BUS send failed");
 		goto failed;
 	}
@@ -139,16 +158,16 @@ void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 	dbus_pending_call_set_notify(pending, reply_handler_function,
 							req, free_pin_req);
 
-	dbus_connection_flush (connection);
+	dbus_connection_flush(connection);
 
-	dbus_message_unref (message);
+	dbus_message_unref(message);
 
 	return;
 
 failed:
-	dbus_message_unref (message);
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY,
-							6, &ci->bdaddr);
+	dbus_message_unref(message);
+	hci_send_cmd(dev, OGF_LINK_CTL,
+				OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
 }
 
 gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
