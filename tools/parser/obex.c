@@ -34,6 +34,131 @@
 
 #include "parser.h"
 
+#define TABLE_SIZE 20
+
+static struct {
+	uint16_t handle;
+	uint8_t dlci;
+	uint8_t opcode;
+	uint8_t status;
+	struct frame frm;
+} table[TABLE_SIZE];
+
+static void del_frame(uint16_t handle, uint8_t dlci)
+{
+	int i;
+
+	for (i = 0; i < TABLE_SIZE; i++)
+		if (table[i].handle == handle && table[i].dlci == dlci) {
+			table[i].handle = 0;
+			table[i].dlci   = 0;
+			table[i].opcode = 0;
+			table[i].status = 0;
+			if (table[i].frm.data)
+				free(table[i].frm.data);
+			memset(&table[i].frm, 0, sizeof(struct frame));
+			break;
+		}
+}
+
+static struct frame *add_frame(struct frame *frm)
+{
+	struct frame *fr;
+	void *data;
+	int i, pos = -1;
+
+	for (i = 0; i < TABLE_SIZE; i++) {
+		if (table[i].handle == frm->handle && table[i].dlci == frm->dlci) {
+			pos = i;
+			break;
+		}
+
+		if (pos < 0 && !table[i].handle && !table[i].dlci)
+			pos = i;
+	}
+
+	if (pos < 0)
+		return frm;
+
+	table[pos].handle = frm->handle;
+	table[pos].dlci   = frm->dlci;
+	fr = &table[pos].frm;
+
+	data = malloc(fr->len + frm->len);
+	if (!data) {
+		perror("Can't allocate OBEX stream buffer");
+		del_frame(frm->handle, frm->dlci);
+		return frm;
+	}
+
+	if (fr->len > 0)
+		memcpy(data, fr->ptr, fr->len);
+
+	if (frm->len > 0)
+		memcpy(data + fr->len, frm->ptr, frm->len);
+
+	if (fr->data)
+		free(fr->data);
+
+	fr->data     = data;
+	fr->data_len = fr->len + frm->len;
+	fr->len      = fr->data_len;
+	fr->ptr      = fr->data;
+	fr->in       = frm->in;
+	fr->ts       = frm->ts;
+	fr->handle   = frm->handle;
+	fr->cid      = frm->cid;
+	fr->num      = frm->num;
+	fr->dlci     = frm->dlci;
+	fr->channel  = frm->channel;
+
+	return fr;
+}
+
+static uint8_t get_opcode(uint16_t handle, uint8_t dlci)
+{
+	int i;
+
+	for (i = 0; i < TABLE_SIZE; i++)
+		if (table[i].handle == handle && table[i].dlci == dlci)
+			return table[i].opcode;
+
+	return 0x00;
+}
+
+static void set_opcode(uint16_t handle, uint8_t dlci, uint8_t opcode)
+{
+	int i;
+
+	for (i = 0; i < TABLE_SIZE; i++)
+		if (table[i].handle == handle && table[i].dlci == dlci) {
+			table[i].opcode = opcode;
+			break;
+		}
+}
+
+static uint8_t get_status(uint16_t handle, uint8_t dlci)
+{
+	int i;
+
+	for (i = 0; i < TABLE_SIZE; i++)
+		if (table[i].handle == handle && table[i].dlci == dlci)
+			return table[i].status;
+
+	return 0x00;
+}
+
+static void set_status(uint16_t handle, uint8_t dlci, uint8_t status)
+{
+	int i;
+
+	for (i = 0; i < TABLE_SIZE; i++)
+		if (table[i].handle == handle && table[i].dlci == dlci) {
+			table[i].status = status;
+			break;
+		}
+}
+
 static char *opcode2str(uint8_t opcode)
 {
 	switch (opcode & 0x7f) {
@@ -200,9 +325,9 @@ static void parse_headers(int level, struct frame *frm)
 		case 0x00:	/* Unicode */
 			len = get_u16(frm) - 3;
 			printf(" = Unicode length %d\n", len);
-			raw_ndump(level, frm, len * 2);
-			frm->ptr += (len + 1) * 2;
-			frm->len -= (len + 1) * 2;
+			raw_ndump(level, frm, len);
+			frm->ptr += len;
+			frm->len -= len;
 			break;
 
 		case 0x40:	/* Byte sequence */
@@ -226,64 +351,82 @@ static void parse_headers(int level, struct frame *frm)
 	}
 }
 
-static uint8_t last_opcode = 0x00;
-static uint8_t last_status = 0x00;
-
 void obex_dump(int level, struct frame *frm)
 {
-	uint8_t opcode, status, version, flags, constants;
+	uint8_t last_opcode, opcode, status;
+	uint8_t version, flags, constants;
 	uint16_t length, pktlen;
 
-	opcode = get_u8(frm);
-	length = get_u16(frm);
-	status = opcode & 0x7f;
+	frm = add_frame(frm);
 
-	if (frm->len < length - 3) {
+	while (frm->len > 0) {
+		opcode = get_u8(frm);
+		length = get_u16(frm);
+		status = opcode & 0x7f;
+
+		if (frm->len < length - 3) {
+			frm->ptr -= 3;
+			frm->len += 3;
+			return;
+		}
+
 		p_indent(level, frm);
-		printf("[partial segment with %d bytes]\n", frm->len + 3);
-	}
 
-	p_indent(level, frm);
+		last_opcode = get_opcode(frm->handle, frm->dlci);
 
-	if ((opcode & 0x70) == 0x00) {
-		printf("OBEX: %s cmd(%c): len %d",
-			opcode2str(opcode), opcode & 0x80 ? 'f' : 'c', length);
-		last_opcode = opcode;
-	} else {
-		printf("OBEX: %s rsp(%c): status %x%02d len %d",
-			opcode2str(last_opcode), opcode & 0x80 ? 'f' : 'c',
+		if (!(opcode & 0x70)) {
+			printf("OBEX: %s cmd(%c): len %d",
+					opcode2str(opcode),
+					opcode & 0x80 ? 'f' : 'c', length);
+			set_opcode(frm->handle, frm->dlci, opcode);
+		} else {
+			printf("OBEX: %s rsp(%c): status %x%02d len %d",
+					opcode2str(last_opcode),
+					opcode & 0x80 ? 'f' : 'c',
 					status >> 4, status & 0xf, length);
-		opcode = last_opcode;
-	}
+			opcode = last_opcode;
+		}
 
-	last_status = status;
+		if (get_status(frm->handle, frm->dlci) == 0x10)
+			printf(" (continue)");
 
-	switch (opcode & 0x7f) {
-	case 0x00:	/* Connect */
-		version = get_u8(frm);
-		flags   = get_u8(frm);
-		pktlen  = get_u16(frm);
-		printf(" version %d.%d flags %d mtu %d\n",
+		set_status(frm->handle, frm->dlci, status);
+
+		switch (opcode & 0x7f) {
+		case 0x00:	/* Connect */
+			version = get_u8(frm);
+			flags   = get_u8(frm);
+			pktlen  = get_u16(frm);
+			printf(" version %d.%d flags %d mtu %d\n",
 				version >> 4, version & 0xf, flags, pktlen);
-		break;
+			break;
 
-	case 0x05:	/* SetPath */
-		flags     = get_u8(frm);
-		constants = get_u8(frm);
-		printf(" flags %d constants %d\n", flags, constants);
-		break;
+		case 0x05:	/* SetPath */
+			if (length > 3) {
+				flags     = get_u8(frm);
+				constants = get_u8(frm);
+				printf(" flags %d constants %d\n",
+							flags, constants);
+			} else
+				printf("\n");
+			break;
 
-	default:
-		printf("\n");
-	}
+		default:
+			printf("\n");
+		}
 
-	if ((status & 0x70) && (parser.flags & DUMP_VERBOSE)) {
-		p_indent(level, frm);
-		printf("Status %x%02d = %s\n", status >> 4, status & 0xf,
+		if ((status & 0x70) && (parser.flags & DUMP_VERBOSE)) {
+			p_indent(level, frm);
+			printf("Status %x%02d = %s\n",
+					status >> 4, status & 0xf,
 							opcode2str(status));
+		}
+
+		parse_headers(level, frm);
 	}
+}
 
-	parse_headers(level, frm);
-
-	raw_dump(level, frm);
+void obex_clear(uint16_t handle, uint8_t dlci)
+{
+	del_frame(handle, dlci);
 }

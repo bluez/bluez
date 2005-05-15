@@ -329,6 +329,7 @@ void rfcomm_dump(int level, struct frame *frm)
 			break;
 		case DISC:
 			printf("DISC: ");
+			obex_clear(frm->handle, GET_DLCI(head.addr));
 			break;
 		default:
 			printf("ERR: ");
