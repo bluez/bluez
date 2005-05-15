@@ -264,6 +264,7 @@ static inline void uih_frame(int level, struct frame *frm, long_frame_head *head
 			printf("\n");
 
 		frm->len--;
+		frm->dlci = GET_DLCI(head->addr);
 		frm->channel = head->addr.server_chn;
 
 		proto = get_proto(frm->handle, RFCOMM_PSM, frm->channel);

@@ -851,7 +851,8 @@ void l2cap_dump(int level, struct frame *frm)
 			return;
 		}
 
-		if (fr->data) free(fr->data);
+		if (fr->data)
+			free(fr->data);
 
 		if (!(fr->data = malloc(dlen + L2CAP_HDR_SIZE))) {
 			perror("Can't allocate L2CAP reassembly buffer");
@@ -866,6 +867,7 @@ void l2cap_dump(int level, struct frame *frm)
 		fr->handle  = frm->handle;
 		fr->cid     = frm->cid;
 		fr->num     = frm->num;
+		fr->dlci    = frm->dlci;
 		fr->channel = frm->channel;
 	} else {
 		if (!(fr = get_frame(frm->handle))) {

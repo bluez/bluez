@@ -41,6 +41,7 @@ struct frame {
 	int	handle;
 	int	cid;
 	int	num;
+	int	dlci;
 	int	channel;
 	long	flags;
 	struct	timeval ts;
