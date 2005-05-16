@@ -52,6 +52,85 @@ static char *type2str(uint16_t type)
 	}
 }
 
+static inline void uint16_dump(int level, char *str, struct frame *frm)
+{
+	uint16_t value;
+
+	value = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("%s: value %d (0x%4.4x)\n", str, value, value);
+}
+
+static inline void bdaddr_dump(int level, char *str, struct frame *frm)
+{
+	char addr[18];
+
+	ba2str(frm->ptr, addr);
+
+	p_indent(level, frm);
+	printf("%s: bdaddr %s\n", str, addr);
+}
+
+static inline void handle_length_dump(int level, char *str, struct frame *frm)
+{
+	uint16_t handle, length;
+
+	handle = CSR_U16(frm);
+	length = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("%s: handle %d length %d\n", str, handle, length);
+}
+
+static inline void pskey_dump(int level, struct frame *frm)
+{
+	uint16_t key, length, stores;
+
+	key    = CSR_U16(frm);
+	length = CSR_U16(frm);
+	stores = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("PSKEY: key 0x%4.4x len %d stores %d\n", key, length, stores);
+
+	switch (key) {
+	case 0x0001:
+		bdaddr_dump(level + 1, "BDADDR", frm);
+		break;
+	case 0x00da:
+		uint16_dump(level + 1, "ENC_KEY_LMIN", frm);
+		break;
+	case 0x00db:
+		uint16_dump(level + 1, "ENC_KEY_LMAX", frm);
+		break;
+	case 0x01ab:
+		uint16_dump(level + 1, "HOSTIO_MAP_SCO_PCM", frm);
+		break;
+	case 0x01be:
+		uint16_dump(level + 1, "UART_BAUDRATE", frm);
+		break;
+	case 0x01f9:
+		uint16_dump(level + 1, "HOST_INTERFACE", frm);
+		break;
+	case 0x02be:
+		uint16_dump(level + 1, "USB_VENDOR_ID", frm);
+		break;
+	case 0x02bf:
+		uint16_dump(level + 1, "USB_PRODUCT_ID", frm);
+		break;
+	case 0x02cb:
+		uint16_dump(level + 1, "USB_DFU_PRODUCT_ID", frm);
+		break;
+	case 0x03cd:
+		uint16_dump(level + 1, "INITIAL_BOOTMODE", frm);
+		break;
+	default:
+		raw_dump(level + 1, frm);
+		break;
+	}
+}
+
 static inline void bccmd_dump(int level, struct frame *frm)
 {
 	uint16_t type, length, seqno, varid, status;
@@ -65,6 +144,41 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("BCCMD: %s: len %d seqno %d varid 0x%4.4x status %d\n",
 			type2str(type), length, seqno, varid, status);
+
+	if (!(parser.flags & DUMP_VERBOSE)) {
+		raw_dump(level + 1, frm);
+		return;
+	}
+
+	switch (varid) {
+	case 0x2819:
+		uint16_dump(level + 1, "BUILDID", frm);
+		break;
+	case 0x281a:
+		uint16_dump(level + 1, "CHIPVER", frm);
+		break;
+	case 0x281b:
+		uint16_dump(level + 1, "CHIPREV", frm);
+		break;
+	case 0x282c:
+		uint16_dump(level + 1, "MAX_CRYPT_KEY_LENGTH", frm);
+		break;
+	case 0x3008:
+		handle_length_dump(level + 1, "CRYPT_KEY_LENGTH", frm);
+		break;
+	case 0x6805:
+		uint16_dump(level + 1, "PANIC_ARG", frm);
+		break;
+	case 0x6806:
+		uint16_dump(level + 1, "FAULT_ARG", frm);
+		break;
+	case 0x7003:
+		pskey_dump(level + 1, frm);
+		break;
+	default:
+		raw_dump(level + 1, frm);
+		break;
+	}
 }
 
 static char *cid2str(uint8_t cid)
@@ -133,7 +247,6 @@ void csr_dump(int level, struct frame *frm)
 	switch (cid) {
 	case 2:
 		bccmd_dump(level, frm);
-		level++;
 		break;
 
 	case 20:
@@ -172,13 +285,13 @@ void csr_dump(int level, struct frame *frm)
 
 		p_indent(level, frm);
 		printf("CSR: Debug (type 0x%2.2x)\n", type);
+		raw_dump(level, frm);
 		break;
 
 	default:
 		p_indent(level, frm);
 		printf("CSR: %s (channel %d)%s\n", cid2str(cid), cid, frag2str(desc));
+		raw_dump(level, frm);
 		break;
 	}
-
-	raw_dump(level, frm);
 }
