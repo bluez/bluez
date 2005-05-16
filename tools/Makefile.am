@@ -22,7 +22,7 @@ sbin_PROGRAMS = hciattach hciconfig $(hid2hci_programs)
 
 bin_PROGRAMS = hcitool l2ping sdptool ciptool $(dfutool_programs)
 
-noinst_PROGRAMS = hcisecfilter ppporc pskey
+noinst_PROGRAMS = hcisecfilter ppporc pskey bccmd
 
 hciconfig_SOURCES = hciconfig.c csr.h csr.c
 hciconfig_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libtextfile.a
@@ -40,6 +40,9 @@ ppporc_LDADD = @BLUEZ_LIBS@
 
 pskey_SOURCES = pskey.c csr.h csr.c
 pskey_LDADD = @BLUEZ_LIBS@
+
+bccmd_SOURCES = bccmd.c csr.h csr.c
+bccmd_LDADD = @BLUEZ_LIBS@
 
 if HID2HCI
 hid2hci_LDADD = @USB_LIBS@
