@@ -380,6 +380,10 @@ char *csr_chipvertostr(uint16_t ver, uint16_t rev)
 char *csr_pskeytostr(uint16_t pskey)
 {
 	switch (pskey) {
+	case CSR_PSKEY_ENC_KEY_LMIN:
+		return "Minimum encryption key length";
+	case CSR_PSKEY_ENC_KEY_LMAX:
+		return "Maximum encryption key length";
 	case CSR_PSKEY_HOSTIO_MAP_SCO_PCM:
 		return "Map SCO over PCM";
 	case CSR_PSKEY_UART_BAUDRATE:
