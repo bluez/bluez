@@ -26,13 +26,37 @@
  *  $Id$
  */
 
-#define CSR_VARID_BUILDID		0x2819
-#define CSR_VARID_CHIPVER		0x281a
-#define CSR_VARID_CHIPREV		0x281b
-#define CSR_VARID_MAX_CRYPT_KEY_LENGTH	0x282c
-
-#define CSR_VARID_PANIC_ARG		0x6805
-#define CSR_VARID_FAULT_ARG		0x6806
+#define CSR_VARID_BC01_STATUS		0x2801		/* uint16 */
+#define CSR_VARID_BUILDID		0x2819		/* uint16 */
+#define CSR_VARID_CHIPVER		0x281a		/* uint16 */
+#define CSR_VARID_CHIPREV		0x281b		/* uint16 */
+#define CSR_VARID_INTERFACE_VERSION	0x2825		/* uint16 */
+#define CSR_VARID_RAND			0x282a		/* uint16 */
+#define CSR_VARID_MAX_CRYPT_KEY_LENGTH	0x282c		/* uint16 */
+#define CSR_VARID_CHIPANAREV		0x2836		/* uint16 */
+#define CSR_VARID_BUILDID_LOADER	0x2838		/* uint16 */
+#define CSR_VARID_BT_CLOCK		0x2c00		/* uint32 */
+#define CSR_VARID_CRYPT_KEY_LENGTH	0x3008		/* complex */
+#define CSR_VARID_PICONET_INSTANCE	0x3009		/* complex */
+#define CSR_VARID_GET_CLR_EVT		0x300a		/* complex */
+#define CSR_VARID_GET_NEXT_BUILDDEF	0x300b		/* complex */
+#define CSR_VARID_COLD_RESET		0x4001		/* valueless */
+#define CSR_VARID_WARM_RESET		0x4002		/* valueless */
+#define CSR_VARID_COLD_HALT		0x4003		/* valueless */
+#define CSR_VARID_WARM_HALT		0x4004		/* valueless */
+#define CSR_VARID_INIT_BT_STACK		0x4005		/* valueless */
+#define CSR_VARID_ACTIVATE_BT_STACK	0x4006		/* valueless */
+#define CSR_VARID_ENABLE_TX		0x4007		/* valueless */
+#define CSR_VARID_DISABLE_TX		0x4008		/* valueless */
+#define CSR_VARID_RECAL			0x4009		/* valueless */
+#define CSR_VARID_CANCEL_PAGE		0x4012		/* valueless */
+#define CSR_VARID_MAP_SCO_PCM		0x481c		/* uint16 */
+#define CSR_VARID_NO_VARIABLE		0x6000		/* valueless */
+#define CSR_VARID_CONFIG_UART		0x6802		/* uint16 */
+#define CSR_VARID_PANIC_ARG		0x6805		/* uint16 */
+#define CSR_VARID_FAULT_ARG		0x6806		/* uint16 */
+#define CSR_VARID_MAX_TX_POWER		0x6827		/* int8 */
+#define CSR_VARID_DEFAULT_TX_POWER	0x682b		/* int8 */
 
 #define CSR_PSKEY_HOSTIO_MAP_SCO_PCM	0x01ab
 #define CSR_PSKEY_UART_BAUDRATE		0x01be
@@ -46,6 +70,7 @@ char *csr_buildidtostr(uint16_t id);
 char *csr_chipvertostr(uint16_t ver, uint16_t rev);
 char *csr_pskeytostr(uint16_t pskey);
 
+int csr_read_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length);
 int csr_read_varid_uint16(int dd, uint16_t seqnum, uint16_t varid, uint16_t *value);
 int csr_read_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t *value);
 int csr_write_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t value);
