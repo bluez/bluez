@@ -91,6 +91,8 @@ static struct {
 	int type;
 	char *str;
 } storage[] = {
+	{ CSR_PSKEY_ENC_KEY_LMIN,       CSR_TYPE_UINT16, "keymin"   },
+	{ CSR_PSKEY_ENC_KEY_LMAX,       CSR_TYPE_UINT16, "keymax"   },
 	{ CSR_PSKEY_HOSTIO_MAP_SCO_PCM, CSR_TYPE_UINT16, "mapsco"   },
 	{ CSR_PSKEY_UART_BAUDRATE,      CSR_TYPE_UINT16, "baudrate" },
 	{ CSR_PSKEY_HOST_INTERFACE,     CSR_TYPE_UINT16, "hostintf" },
