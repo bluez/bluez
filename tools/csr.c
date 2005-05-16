@@ -401,7 +401,7 @@ char *csr_pskeytostr(uint16_t pskey)
 
 int csr_read_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length)
 {
-	unsigned char cmd[] = { 0x00, 0x00, (length + 5) & 0xff, (length + 5) >> 8,
+	unsigned char cmd[] = { 0x00, 0x00, ((length / 2) + 5) & 0xff, ((length / 2) + 5) >> 8,
 				seqnum & 0xff, seqnum >> 8, varid & 0xff, varid >> 8, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
