@@ -29,7 +29,6 @@
 #include <errno.h>
 #include <malloc.h>
 #include <signal.h>
-#include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -50,6 +49,7 @@ static void a2dp_exit(void) __attribute__ ((destructor));
 typedef struct snd_pcm_a2dp {
 	snd_pcm_ioplug_t io;
 	int refcnt;
+	int timeout;
 	unsigned long state;
 	bdaddr_t src;
 	bdaddr_t dst;
@@ -60,6 +60,20 @@ typedef struct snd_pcm_a2dp {
 	unsigned int len;
 	unsigned int frame_bytes;
 } snd_pcm_a2dp_t;
+
+static void inline a2dp_get(snd_pcm_a2dp_t *a2dp)
+{
+	a2dp->refcnt++;
+	a2dp->timeout = 0;
+}
+
+static void inline a2dp_put(snd_pcm_a2dp_t *a2dp)
+{
+	a2dp->refcnt--;
+
+	if (a2dp->refcnt <= 0)
+		a2dp->timeout = 2;
+}
 
 static int a2dp_start(snd_pcm_ioplug_t *io)
 {
@@ -100,19 +114,17 @@ static snd_pcm_sframes_t a2dp_transfer(snd_pcm_ioplug_t *io,
 
 	buf = (unsigned char *) areas->addr + (areas->first + areas->step * offset) / 8;
 
-	size *= a2dp->frame_bytes;
-
-	len = sbc_encode(&a2dp->sbc, buf, size);
+	len = sbc_encode(&a2dp->sbc, buf, size * a2dp->frame_bytes);
 	if (len <= 0)
 		return len;
 
-	memcpy(a2dp->buf + a2dp->len, a2dp->sbc.data, a2dp->sbc.len);
-	a2dp->len += a2dp->sbc.len;
-
-	if (a2dp->len > 700) {
+	if (a2dp->len + a2dp->sbc.len > sizeof(a2dp->buf)) {
 		write(a2dp->sk, a2dp->buf, a2dp->len);
 		a2dp->len = 0;
 	}
+
+	memcpy(a2dp->buf + a2dp->len, a2dp->sbc.data, a2dp->sbc.len);
+	a2dp->len += a2dp->sbc.len;
 
 	if (a2dp->state == BT_CONNECTED)
 		a2dp->num += len / a2dp->frame_bytes;
@@ -128,7 +140,7 @@ static int a2dp_close(snd_pcm_ioplug_t *io)
 
 	a2dp->len = 0;
 
-	a2dp->refcnt--;
+	a2dp_put(a2dp);
 
 	return 0;
 }
@@ -180,40 +192,64 @@ static int a2dp_drain(snd_pcm_ioplug_t *io)
 	return 0;
 }
 
-static int a2dp_poll(snd_pcm_ioplug_t *io, struct pollfd *ufds,
-				unsigned int nfds, unsigned short *revents)
+static int a2dp_descriptors_count(snd_pcm_ioplug_t *io)
 {
 	snd_pcm_a2dp_t *a2dp = io->private_data;
-	struct timeval tv;
-
-	*revents = ufds[0].revents;
 
 	if (a2dp->state == BT_CLOSED)
 		return 0;
 
-	if (ufds[0].revents & POLLHUP) {
-		a2dp->state = BT_CLOSED;
-		a2dp->io.poll_fd = -1;
-		a2dp->io.poll_events = POLLIN;
-		snd_pcm_ioplug_reinit_status(&a2dp->io);
+	return 1;
+}
+
+static int a2dp_descriptors(snd_pcm_ioplug_t *io, struct pollfd *pfds, unsigned int space)
+{
+	snd_pcm_a2dp_t *a2dp = io->private_data;
+
+	if (a2dp->state == BT_CLOSED)
+		return 0;
+
+	if (space < 1) {
+		SNDERR("Can't fill in descriptors");
+		return 0;
 	}
 
-	if (gettimeofday(&tv, NULL) < 0)
+	pfds[0].fd = a2dp->sk;
+	pfds[0].events = POLLOUT;
+
+	return 1;
+}
+
+static int a2dp_poll(snd_pcm_ioplug_t *io, struct pollfd *pfds,
+			unsigned int nfds, unsigned short *revents)
+{
+	snd_pcm_a2dp_t *a2dp = io->private_data;
+
+	*revents = pfds[0].revents;
+
+	if (a2dp->state == BT_CLOSED)
 		return 0;
+
+	if (pfds[0].revents & POLLHUP) {
+		a2dp->state = BT_CLOSED;
+		snd_pcm_ioplug_reinit_status(&a2dp->io);
+	}
 
 	return 0;
 }
 
 static snd_pcm_ioplug_callback_t a2dp_callback = {
-	.start		= a2dp_start,
-	.stop		= a2dp_stop,
-	.pointer	= a2dp_pointer,
-	.transfer	= a2dp_transfer,
-	.close		= a2dp_close,
-	.hw_params	= a2dp_params,
-	.prepare	= a2dp_prepare,
-	.drain		= a2dp_drain,
-	.poll_revents	= a2dp_poll,
+	.start			= a2dp_start,
+	.stop			= a2dp_stop,
+	.pointer		= a2dp_pointer,
+	.transfer		= a2dp_transfer,
+	.close			= a2dp_close,
+	.hw_params		= a2dp_params,
+	.prepare		= a2dp_prepare,
+	.drain			= a2dp_drain,
+	.poll_descriptors_count	= a2dp_descriptors_count,
+	.poll_descriptors	= a2dp_descriptors,
+	.poll_revents		= a2dp_poll,
 };
 
 static int a2dp_connect(snd_pcm_a2dp_t *a2dp)
@@ -257,6 +293,8 @@ static int a2dp_connect(snd_pcm_a2dp_t *a2dp)
 
 	bacpy(&a2dp->src, &addr.rc_bdaddr);
 
+	fcntl(sk, F_SETFL, fcntl(sk, F_GETFL) | O_NONBLOCK);
+
 	a2dp->sk = sk;
 
 	return 0;
@@ -298,15 +336,13 @@ static int a2dp_constraint(snd_pcm_a2dp_t *a2dp)
 	if (err < 0)
 		return err;
 
-	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES, 2048, 2048);
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES, 8192, 8192);
 	if (err < 0)
 		return err;
 
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS, 2, 2);
 	if (err < 0)
 		return err;
-
-	sbc_init(&a2dp->sbc, SBC_NULL);
 
 	return 0;
 }
@@ -315,9 +351,45 @@ static int a2dp_constraint(snd_pcm_a2dp_t *a2dp)
 
 static snd_pcm_a2dp_t *connections[MAX_CONNECTIONS];
 
+static snd_timer_t *timer = NULL;
+
+static volatile sig_atomic_t __locked = 0;
+
+static inline void a2dp_lock(void)
+{
+	while (__locked)
+		usleep(100);
+
+	__locked = 1;
+}
+
+static inline void a2dp_unlock(void)
+{
+	__locked = 0;
+}
+
+static inline snd_pcm_a2dp_t *a2dp_alloc(void)
+{
+	snd_pcm_a2dp_t *a2dp;
+
+	a2dp = malloc(sizeof(*a2dp));
+	if (!a2dp)
+		return NULL;
+
+	memset(a2dp, 0, sizeof(*a2dp));
+
+	a2dp->refcnt = 1;
+
+	a2dp->state = BT_OPEN;
+
+	sbc_init(&a2dp->sbc, SBC_NULL);
+
+	return a2dp;
+}
+
 static inline void a2dp_free(snd_pcm_a2dp_t *a2dp)
 {
-	if (a2dp->sk >= 0)
+	if (a2dp->sk > fileno(stderr))
 		close(a2dp->sk);
 
 	sbc_finish(&a2dp->sbc);
@@ -325,37 +397,111 @@ static inline void a2dp_free(snd_pcm_a2dp_t *a2dp)
 	free(a2dp);
 }
 
-static inline void a2dp_delete(snd_pcm_a2dp_t *a2dp)
+static void a2dp_timer(snd_async_handler_t *async)
 {
-	int i;
+	snd_timer_t *handle = snd_async_handler_get_timer(async);
+	snd_timer_read_t tr;
+	int i, ticks = 0;
 
-	for (i = 0; i < MAX_CONNECTIONS; i++)
-		if (connections[i] == a2dp) {
-			connections[i] = NULL;
-			a2dp_free(a2dp);
+	while (snd_timer_read(handle, &tr, sizeof(tr)) == sizeof(tr))
+		ticks += tr.ticks;
+
+	a2dp_lock();
+
+	for (i = 0; i < MAX_CONNECTIONS; i++) {
+		snd_pcm_a2dp_t *a2dp = connections[i];
+
+		if (a2dp && a2dp->refcnt <= 0) {
+			a2dp->timeout = ((a2dp->timeout * 1000) - ticks) / 1000;
+			if (a2dp->timeout <= 0) {
+				connections[i] = NULL;
+				a2dp_free(a2dp);
+			}
 		}
+	}
+
+	a2dp_unlock();
 }
 
 static void a2dp_init(void)
 {
-	int i;
+	snd_async_handler_t *async;
+	snd_timer_info_t *info;
+	snd_timer_params_t *params;
+	long resolution;
+	char timername[64];
+	int err, i;
+
+	a2dp_lock();
 
 	for (i = 0; i < MAX_CONNECTIONS; i++)
 		connections[i] = NULL;
+
+	a2dp_unlock();
+
+	snd_timer_info_alloca(&info);
+	snd_timer_params_alloca(&params);
+
+	sprintf(timername, "hw:CLASS=%i,SCLASS=%i,CARD=%i,DEV=%i,SUBDEV=%i",
+		SND_TIMER_CLASS_GLOBAL, SND_TIMER_CLASS_NONE, 0,
+					SND_TIMER_GLOBAL_SYSTEM, 0);
+
+	err = snd_timer_open(&timer, timername, SND_TIMER_OPEN_NONBLOCK);
+	if (err < 0) {
+		SNDERR("Can't open global timer");
+		return;
+	}
+
+	err = snd_timer_info(timer, info);
+	if (err < 0) {
+		SNDERR("Can't get global timer info");
+		return;
+	}
+
+	snd_timer_params_set_auto_start(params, 1);
+
+	resolution = snd_timer_info_get_resolution(info);
+	snd_timer_params_set_ticks(params, 1000000000 / resolution);
+	if (snd_timer_params_get_ticks(params) < 1)
+		snd_timer_params_set_ticks(params, 1);
+
+	err = snd_timer_params(timer, params);
+	if (err < 0) {
+		SNDERR("Can't set global timer parameters");
+		snd_timer_close(timer);
+		return;
+	}
+
+	err = snd_async_add_timer_handler(&async, timer, a2dp_timer, NULL);
+	if (err < 0) {
+		SNDERR("Can't create global async callback");
+		snd_timer_close(timer);
+		return;
+	}
+
+	err = snd_timer_start(timer);
 }
 
 static void a2dp_exit(void)
 {
-	int i;
+	int err, i;
+
+	err = snd_timer_stop(timer);
+
+	err = snd_timer_close(timer);
+
+	a2dp_lock();
 
 	for (i = 0; i < MAX_CONNECTIONS; i++) {
 		snd_pcm_a2dp_t *a2dp = connections[i];
-		if (!a2dp)
-			continue;
 
-		connections[i] = NULL;
-		a2dp_free(a2dp);
+		if (a2dp) {
+			connections[i] = NULL;
+			a2dp_free(a2dp);
+		}
 	}
+
+	a2dp_unlock();
 }
 
 SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
@@ -402,13 +548,15 @@ SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 		return -EINVAL;
 	}
 
+	a2dp_lock();
+
 	for (n = 0; n < MAX_CONNECTIONS; n++) {
 		if (connections[n]) {
 			if (!bacmp(&connections[n]->dst, &dst) &&
 					(!bacmp(&connections[n]->src, &src) ||
 						!bacmp(&src, BDADDR_ANY))) {
 				a2dp = connections[n];
-				a2dp->refcnt++;
+				a2dp_get(a2dp);
 				break;
 			}
 		} else if (pos < 0)
@@ -421,42 +569,36 @@ SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 			return -ENOMEM;
 		}
 
-		a2dp = malloc(sizeof(*a2dp));
+		a2dp = a2dp_alloc();
 		if (!a2dp) {
-			SNDERR("Cannot allocate");
+			SNDERR("Can't allocate");
 			return -ENOMEM;
 		}
 
-		memset(a2dp, 0, sizeof(*a2dp));
-
 		connections[pos] = a2dp;
 
-		a2dp->refcnt = 1;
 		a2dp->state  = BT_CONNECT;
 
 		bacpy(&a2dp->src, &src);
 		bacpy(&a2dp->dst, &dst);
 	}
 
+	a2dp_unlock();
+
 	if (a2dp->state != BT_CONNECTED) {
 		err = a2dp_connect(a2dp);
 		if (err < 0) {
-			SNDERR("Cannot connect");
+			SNDERR("Can't connect");
 			goto error;
 		}
 
 		a2dp->state = BT_CONNECTED;
 	}
 
-#ifdef SND_PCM_IOPLUG_VERSION
-	a2dp->io.version = SND_PCM_IOPLUG_VERSION;
-#endif
-
-	a2dp->io.name = "Bluetooth Advanced Audio Distribution";
-	a2dp->io.poll_fd = a2dp->sk;
-	a2dp->io.poll_events = POLLOUT;
-	a2dp->io.mmap_rw = 0;
-	a2dp->io.callback = &a2dp_callback;
+	a2dp->io.version      = SND_PCM_IOPLUG_VERSION;
+	a2dp->io.name         = "Bluetooth Advanced Audio Distribution";
+	a2dp->io.mmap_rw      = 0;
+	a2dp->io.callback     = &a2dp_callback;
 	a2dp->io.private_data = a2dp;
 
 	err = snd_pcm_ioplug_create(&a2dp->io, name, stream, mode);
@@ -473,10 +615,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 	return 0;
 
 error:
-	a2dp->refcnt--;
-
-	if (!a2dp->refcnt)
-		a2dp_delete(a2dp);
+	a2dp_put(a2dp);
 
 	return err;
 }
