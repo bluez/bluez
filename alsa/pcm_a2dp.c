@@ -448,6 +448,10 @@ SND_PCM_PLUGIN_DEFINE_FUNC(a2dp)
 		a2dp->state = BT_CONNECTED;
 	}
 
+#ifdef SND_PCM_IOPLUG_VERSION
+	a2dp->io.version = SND_PCM_IOPLUG_VERSION;
+#endif
+
 	a2dp->io.name = "Bluetooth Advanced Audio Distribution";
 	a2dp->io.poll_fd = a2dp->sk;
 	a2dp->io.poll_events = POLLOUT;
