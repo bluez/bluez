@@ -1225,6 +1225,12 @@ int sbc_init(sbc_t *sbc, unsigned long flags)
 
 	memset(sbc->priv, 0, sizeof(struct sbc_priv));
 
+	sbc->rate     = 44100;
+	sbc->channels = 2;
+	sbc->subbands = 8;
+	sbc->blocks   = 16;
+	sbc->bitpool  = 32;
+
 	return 0;
 }
 
@@ -1245,8 +1251,11 @@ int sbc_decode(sbc_t *sbc, void *data, int count)
 		sbc_decoder_init(&priv->dec_state, &priv->frame);
 		priv->init = 1;
 
-		sbc->rate = priv->frame.sampling_frequency * 1000;
+		sbc->rate     = priv->frame.sampling_frequency * 1000;
 		sbc->channels = priv->frame.channels;
+		sbc->subbands = priv->frame.subbands;
+		sbc->blocks   = priv->frame.blocks;
+		sbc->bitpool  = priv->frame.bitpool;
 	}
 
 	samples = sbc_synthesize_audio(&priv->dec_state, &priv->frame);
@@ -1304,9 +1313,9 @@ int sbc_encode(sbc_t *sbc, void *data, int count)
 			priv->frame.channel_mode = MONO;
 
 		priv->frame.allocation_method = SNR;
-		priv->frame.subbands = 8;
-		priv->frame.blocks = 16;
-		priv->frame.bitpool = 32;
+		priv->frame.subbands = sbc->subbands;
+		priv->frame.blocks   = sbc->blocks;
+		priv->frame.bitpool  = sbc->bitpool;
 
 		sbc_encoder_init(&priv->enc_state, &priv->frame);
 		priv->init = 1;
