@@ -891,6 +891,11 @@ static inline void command_dump(int level, struct frame *frm)
 		return;
 	}
 
+	if (!(parser.flags & DUMP_VERBOSE)) {
+		raw_dump(level, frm);
+		return;
+	}
+
 	switch (ogf) {
 	case OGF_LINK_CTL:
 		switch (ocf) {
@@ -1524,6 +1529,11 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 
 	frm->ptr += EVT_CMD_COMPLETE_SIZE;
 	frm->len -= EVT_CMD_COMPLETE_SIZE;
+
+	if (!(parser.flags & DUMP_VERBOSE)) {
+		raw_dump(level, frm);
+		return;
+	}
 
 	switch (ogf) {
 	case OGF_LINK_CTL:
