@@ -364,6 +364,8 @@ char *bt_compidtostr(int compid)
 		return "Research In Motion";
 	case 61:
 		return "IPextreme, Inc.";
+	case 62:
+		return "Systems and Chips, Inc";
 	case 65535:
 		return "internal use";
 	default:
