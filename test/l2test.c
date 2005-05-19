@@ -275,6 +275,9 @@ static int do_connect(char *svr)
 		opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
 		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
+	if (data_size > opts.omtu)
+		data_size = opts.omtu;
+
 	return sk;
 
 error:
@@ -625,12 +628,24 @@ static void reconnect_mode(char *svr)
 
 static void connect_mode(char *svr)
 {
+	struct pollfd p;
 	int sk;
 
 	if ((sk = do_connect(svr)) < 0)
 		exit(1);
 
-	sleep(99999999);
+	p.fd = sk;
+	p.events = POLLERR | POLLHUP;
+
+	while (1) {
+		p.revents = 0;
+		if (poll(&p, 1, 100))
+			break;
+	}
+
+	syslog(LOG_INFO, "Disconnected");
+
+	close(sk);
 }
 
 static void multi_connect_mode(char *svr)
