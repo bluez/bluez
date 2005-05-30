@@ -1920,15 +1920,16 @@ static inline void role_change_dump(int level, struct frame *frm)
 static inline void num_comp_pkts_dump(int level, struct frame *frm)
 {
 	uint8_t num = get_u8(frm);
+	uint16_t handle, packets;
 	int i;
 
-	p_indent(level, frm);
-	printf("handle%s", num > 1 ? "s" : "");
 	for (i = 0; i < num; i++) {
-		uint16_t handle = btohs(htons(get_u16(frm)));
-		printf(" %d", handle);
+		handle = btohs(htons(get_u16(frm)));
+		packets = btohs(htons(get_u16(frm)));
+
+		p_indent(level, frm);
+		printf("handle %d packets %d\n", handle, packets);
 	}
-	printf("\n");
 }
 
 static inline void mode_change_dump(int level, struct frame *frm)
