@@ -54,6 +54,22 @@
 #include "parser.h"
 #include "sdp.h"
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+static inline uint64_t ntoh64(uint64_t n)
+{
+	uint64_t h;
+	uint64_t tmp = ntohl(n & 0x00000000ffffffff);
+	h = ntohl(n >> 32);
+	h |= tmp << 32;
+	return h;
+}
+#elif __BYTE_ORDER == __BIG_ENDIAN
+#define ntoh64(x) (x)
+#else
+#error "Unknown byte order"
+#endif
+#define hton64(x) ntoh64(x)
+
 #define SNAP_LEN 	HCI_MAX_FRAME_SIZE
 #define DEFAULT_PORT	10839;
 
@@ -79,14 +95,33 @@ static char *dump_file;
 static in_addr_t dump_addr = INADDR_LOOPBACK;
 static in_port_t dump_port = DEFAULT_PORT;
 
-struct dump_hdr {
+struct hcidump_hdr {
 	uint16_t	len;
 	uint8_t		in;
 	uint8_t		pad;
 	uint32_t	ts_sec;
 	uint32_t	ts_usec;
 } __attribute__ ((packed));
-#define DUMP_HDR_SIZE (sizeof(struct dump_hdr))
+#define HCIDUMP_HDR_SIZE (sizeof(struct hcidump_hdr))
+
+struct btsnoop_hdr {
+	uint8_t		id[8];		/* Identification Pattern */
+	uint32_t	version;	/* Version Number = 1 */
+	uint32_t	type;		/* Datalink Type */
+} __attribute__ ((packed));
+#define BTSNOOP_HDR_SIZE (sizeof(struct btsnoop_hdr))
+
+struct btsnoop_pkt {
+	uint32_t	size;		/* Original Length */
+	uint32_t	len;		/* Included Length */
+	uint32_t	flags;		/* Packet Flags */
+	uint32_t	drops;		/* Cumulative Drops */
+	uint64_t	ts;		/* Timestamp microseconds */
+	uint8_t		data[0];	/* Packet Data */
+} __attribute__ ((packed));
+#define BTSNOOP_PKT_SIZE (sizeof(struct btsnoop_pkt))
+
+static uint8_t btsnoop_id[] = { 0x62, 0x74, 0x73, 0x6e, 0x6f, 0x6f, 0x70, 0x00 };
 
 static inline int read_n(int fd, char *buf, int len)
 {
@@ -122,27 +157,29 @@ static inline int write_n(int fd, char *buf, int len)
 	return t;
 }
 
-static void process_frames(int dev, int sock, int file)
+static void process_frames(int dev, int sock, int fd)
 {
 	struct cmsghdr *cmsg;
 	struct msghdr msg;
 	struct iovec  iv;
-	struct dump_hdr *dh;
+	struct hcidump_hdr *dh;
 	struct frame frm;
 	char *buf, *ctrl;
 
 	if (snap_len < SNAP_LEN)
 		snap_len = SNAP_LEN;
 
-	if (!(buf = malloc(snap_len + DUMP_HDR_SIZE))) {
+	buf = malloc(snap_len + HCIDUMP_HDR_SIZE);
+	if (!buf) {
 		perror("Can't allocate data buffer");
 		exit(1);
 	}
 
 	dh = (void *) buf;
-	frm.data = buf + DUMP_HDR_SIZE;
+	frm.data = buf + HCIDUMP_HDR_SIZE;
 
-	if (!(ctrl = malloc(100))) {
+	ctrl = malloc(100);
+	if (!ctrl) {
 		perror("Can't allocate control buffer");
 		exit(1);
 	}
@@ -161,7 +198,8 @@ static void process_frames(int dev, int sock, int file)
 		msg.msg_control = ctrl;
 		msg.msg_controllen = 100;
 
-		if ((frm.data_len = recvmsg(sock, &msg, 0)) < 0) {
+		frm.data_len = recvmsg(sock, &msg, 0);
+		if (frm.data_len < 0) {
 			perror("Receive failed");
 			exit(1);
 		}
@@ -172,10 +210,10 @@ static void process_frames(int dev, int sock, int file)
 		while (cmsg) {
 			switch (cmsg->cmsg_type) {
 			case HCI_CMSG_DIR:
-				frm.in = *((int *)CMSG_DATA(cmsg));
+				frm.in = *((int *) CMSG_DATA(cmsg));
 				break;
 			case HCI_CMSG_TSTAMP:
-				frm.ts = *((struct timeval *)CMSG_DATA(cmsg));
+				frm.ts = *((struct timeval *) CMSG_DATA(cmsg));
 				break;
 			}
 			cmsg = CMSG_NXTHDR(&msg, cmsg);
@@ -192,7 +230,7 @@ static void process_frames(int dev, int sock, int file)
 			dh->in  = frm.in;
 			dh->ts_sec  = htobl(frm.ts.tv_sec);
 			dh->ts_usec = htobl(frm.ts.tv_usec);
-			if (write_n(file, buf, frm.data_len + DUMP_HDR_SIZE) < 0) {
+			if (write_n(fd, buf, frm.data_len + HCIDUMP_HDR_SIZE) < 0) {
 				perror("Write error");
 				exit(1);
 			}
@@ -206,33 +244,66 @@ static void process_frames(int dev, int sock, int file)
 	}
 }
 
-static void read_dump(int file)
+static void read_dump(int fd)
 {
-	struct dump_hdr dh;
+	struct hcidump_hdr dh;
+	struct btsnoop_pkt dp;
 	struct frame frm;
+	uint8_t pkt_type;
 	int err;
 
-	if (!(frm.data = malloc(HCI_MAX_FRAME_SIZE))) {
+	frm.data = malloc(HCI_MAX_FRAME_SIZE);
+	if (!frm.data) {
 		perror("Can't allocate data buffer");
 		exit(1);
 	}
 
 	while (1) {
-		if ((err = read_n(file, (void *) &dh, DUMP_HDR_SIZE)) < 0)
-			goto failed;
-		if (!err) return;
+		if (parser.flags & DUMP_BTSNOOP)
+			err = read_n(fd, (void *) &dp, BTSNOOP_PKT_SIZE);
+		else
+			err = read_n(fd, (void *) &dh, HCIDUMP_HDR_SIZE);
 
-		frm.data_len = btohs(dh.len);
-
-		if ((err = read_n(file, frm.data, frm.data_len)) < 0)
+		if (err < 0)
 			goto failed;
-		if (!err) return;
+		if (!err)
+			return;
+
+		if (parser.flags & DUMP_BTSNOOP) {
+			if (ntohl(dp.flags) & 0x02) {
+				if (ntohl(dp.flags) & 0x01)
+					pkt_type = HCI_EVENT_PKT;
+				else
+					pkt_type = HCI_COMMAND_PKT;
+			} else
+				pkt_type = HCI_ACLDATA_PKT;
+
+			((uint8_t *) frm.data)[0] = pkt_type;
+
+			frm.data_len = ntohl(dp.len) + 1;
+			err = read_n(fd, frm.data + 1, frm.data_len - 1);
+		} else {
+			frm.data_len = btohs(dh.len);
+			err = read_n(fd, frm.data, frm.data_len);
+		}
+
+		if (err < 0)
+			goto failed;
+		if (!err)
+			return;
 
 		frm.ptr = frm.data;
 		frm.len = frm.data_len;
-		frm.in  = dh.in;
-		frm.ts.tv_sec  = btohl(dh.ts_sec);
-		frm.ts.tv_usec = btohl(dh.ts_usec);
+
+		if (parser.flags & DUMP_BTSNOOP) {
+			frm.in  = ntohl(dp.flags) & 0x01;
+			frm.ts.tv_sec = ntoh64(dp.ts) / 10000;
+			frm.ts.tv_usec = ntoh64(dp.ts) % 10000;
+		} else {
+			frm.in  = dh.in;
+			frm.ts.tv_sec  = btohl(dh.ts_sec);
+			frm.ts.tv_usec = btohl(dh.ts_usec);
+		}
 
 		parse(&frm);
 	}
@@ -244,18 +315,48 @@ failed:
 
 static int open_file(char *file, int mode)
 {
-	int f, flags;
+	struct btsnoop_hdr hdr;
+	int fd, len, flags;
 
 	if (mode == WRITE)
 		flags = O_WRONLY | O_CREAT | O_APPEND;
 	else
 		flags = O_RDONLY;
 
-	if ((f = open(file, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+	fd = open(file, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (fd < 0) {
 		perror("Can't open output file");
 		exit(1);
 	}
-	return f;
+
+	if (mode == READ) {
+		len = read(fd, &hdr, BTSNOOP_HDR_SIZE);
+		if (len != BTSNOOP_HDR_SIZE) {
+			lseek(fd, 0, SEEK_SET);
+			return fd;
+		}
+
+		if (!memcmp(hdr.id, btsnoop_id, sizeof(btsnoop_id))) {
+			parser.flags |= DUMP_BTSNOOP;
+			printf("btsnoop: version %d datalink type %d\n",
+					ntohl(hdr.version), ntohl(hdr.type));
+
+			if (ntohl(hdr.version) != 1) {
+				fprintf(stderr, "Unsupported BTSnoop version %d\n");
+				exit(1);
+			}
+
+			if (ntohl(hdr.type) != 1001) {
+				fprintf(stderr, "Unsupported BTSnoop datalink type %d\n");
+				exit(1);
+			}
+		} else {
+			lseek(fd, 0, SEEK_SET);
+			return fd;
+		}
+	}
+
+	return fd;
 }
 
 static int open_socket(int dev, unsigned long flags)
@@ -289,7 +390,8 @@ static int open_socket(int dev, unsigned long flags)
 	}
 
 	/* Create HCI socket */
-	if ((sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0) {
 		perror("Can't create raw socket");
 		exit(1);
 	}
@@ -332,7 +434,8 @@ static int open_connection(in_addr_t addr, in_port_t port)
 	struct sockaddr_in sa;
 	int sk, opt;
 
-	if ((sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sk < 0) {
 		perror("Can't create inet socket");
 		exit(1);
 	}
@@ -367,7 +470,8 @@ static int wait_connection(in_addr_t addr, in_port_t port)
 	struct hostent *host;
 	int sk, nsk, opt, len;
 
-	if ((sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sk < 0) {
 		perror("Can't create inet socket");
 		exit(1);
 	}
@@ -627,7 +731,8 @@ int main(int argc, char *argv[])
 		break;
 
 	case WRITE:
-		process_frames(device, open_socket(device, flags), open_file(dump_file, mode));
+		process_frames(device, open_socket(device, flags),
+						open_file(dump_file, mode));
 		break;
 
 	case RECEIVE:
@@ -636,7 +741,8 @@ int main(int argc, char *argv[])
 		break;
 
 	case SEND:
-		process_frames(device, open_socket(device, flags), open_connection(dump_addr, dump_port));
+		process_frames(device, open_socket(device, flags),
+					open_connection(dump_addr, dump_port));
 		break;
 	}
 
