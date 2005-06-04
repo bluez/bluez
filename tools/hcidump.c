@@ -342,12 +342,12 @@ static int open_file(char *file, int mode)
 					ntohl(hdr.version), ntohl(hdr.type));
 
 			if (ntohl(hdr.version) != 1) {
-				fprintf(stderr, "Unsupported BTSnoop version %d\n");
+				fprintf(stderr, "Unsupported BTSnoop version\n");
 				exit(1);
 			}
 
 			if (ntohl(hdr.type) != 1001) {
-				fprintf(stderr, "Unsupported BTSnoop datalink type %d\n");
+				fprintf(stderr, "Unsupported BTSnoop datalink type\n");
 				exit(1);
 			}
 		} else {
