@@ -104,6 +104,12 @@ static inline void pskey_dump(int level, struct frame *frm)
 	case 0x00db:
 		uint16_dump(level + 1, "ENC_KEY_LMAX", frm);
 		break;
+	case 0x010d:
+		uint16_dump(level + 1, "HCI_LMP_LOCAL_VERSION", frm);
+		break;
+	case 0x010e:
+		uint16_dump(level + 1, "LMP_REMOTE_VERSION", frm);
+		break;
 	case 0x01ab:
 		uint16_dump(level + 1, "HOSTIO_MAP_SCO_PCM", frm);
 		break;
