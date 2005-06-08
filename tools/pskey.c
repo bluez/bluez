@@ -42,15 +42,16 @@
 
 #include "csr.h"
 
-#define CSR_TYPE_NULL    0
-#define CSR_TYPE_UINT16  1
+#define CSR_TYPE_NULL	0
+#define CSR_TYPE_UINT8	1
+#define CSR_TYPE_UINT16	2
 
 static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 {
 	uint16_t value;
 	int err;
 
-	if (type != CSR_TYPE_UINT16) {
+	if (type != CSR_TYPE_UINT8 && type != CSR_TYPE_UINT16) {
 		errno = EFAULT;
 		return -1;
 	}
@@ -60,7 +61,10 @@ static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 		return -1;
 	}
 
-	value = atoi(argv[0]);
+	if (!strncasecmp(argv[0], "0x", 2))
+		value = strtol(argv[0] + 2, NULL, 16);
+	else
+		value = atoi(argv[0]);
 
 	err = csr_write_pskey_uint16(dd, 0x4711, pskey, value);
 
@@ -72,7 +76,7 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 	uint16_t value;
 	int err;
 
-	if (type != CSR_TYPE_UINT16) {
+	if (type != CSR_TYPE_UINT8 && type != CSR_TYPE_UINT16) {
 		errno = EFAULT;
 		return -1;
 	}
@@ -91,15 +95,17 @@ static struct {
 	int type;
 	char *str;
 } storage[] = {
-	{ CSR_PSKEY_ENC_KEY_LMIN,       CSR_TYPE_UINT16, "keymin"   },
-	{ CSR_PSKEY_ENC_KEY_LMAX,       CSR_TYPE_UINT16, "keymax"   },
-	{ CSR_PSKEY_HOSTIO_MAP_SCO_PCM, CSR_TYPE_UINT16, "mapsco"   },
-	{ CSR_PSKEY_UART_BAUDRATE,      CSR_TYPE_UINT16, "baudrate" },
-	{ CSR_PSKEY_HOST_INTERFACE,     CSR_TYPE_UINT16, "hostintf" },
-	{ CSR_PSKEY_USB_VENDOR_ID,      CSR_TYPE_UINT16, "usbvid"   },
-	{ CSR_PSKEY_USB_PRODUCT_ID,     CSR_TYPE_UINT16, "usbpid"   },
-	{ CSR_PSKEY_USB_DFU_PRODUCT_ID, CSR_TYPE_UINT16, "dfupid"   },
-	{ CSR_PSKEY_INITIAL_BOOTMODE,   CSR_TYPE_UINT16, "bootmode" },
+	{ CSR_PSKEY_ENC_KEY_LMIN,          CSR_TYPE_UINT16, "keymin"   },
+	{ CSR_PSKEY_ENC_KEY_LMAX,          CSR_TYPE_UINT16, "keymax"   },
+	{ CSR_PSKEY_HCI_LMP_LOCAL_VERSION, CSR_TYPE_UINT16, "version"  },
+	{ CSR_PSKEY_LMP_REMOTE_VERSION,    CSR_TYPE_UINT8,  "remver"   },
+	{ CSR_PSKEY_HOSTIO_MAP_SCO_PCM,    CSR_TYPE_UINT16, "mapsco"   },
+	{ CSR_PSKEY_UART_BAUDRATE,         CSR_TYPE_UINT16, "baudrate" },
+	{ CSR_PSKEY_HOST_INTERFACE,        CSR_TYPE_UINT16, "hostintf" },
+	{ CSR_PSKEY_USB_VENDOR_ID,         CSR_TYPE_UINT16, "usbvid"   },
+	{ CSR_PSKEY_USB_PRODUCT_ID,        CSR_TYPE_UINT16, "usbpid"   },
+	{ CSR_PSKEY_USB_DFU_PRODUCT_ID,    CSR_TYPE_UINT16, "dfupid"   },
+	{ CSR_PSKEY_INITIAL_BOOTMODE,      CSR_TYPE_UINT16, "bootmode" },
 	{ 0x0000, CSR_TYPE_NULL, NULL },
 };
 
