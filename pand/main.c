@@ -510,7 +510,7 @@ static struct option main_lopts[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:e:i:lnp::DQ::AESMC::P:z";
+static char main_sopts[] = "hsc:k:Kr:d:e:i:lnp::DQ::AESMC::P:z";
 
 static char main_help[] = 
 	"Bluetooth PAN daemon version " VERSION " \n"
