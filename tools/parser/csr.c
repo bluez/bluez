@@ -72,6 +72,20 @@ static inline void bdaddr_dump(int level, char *str, struct frame *frm)
 	printf("%s: bdaddr %s\n", str, addr);
 }
 
+static inline void features_dump(int level, char *str, struct frame *frm)
+{
+	unsigned char features[8];
+	int i;
+
+	memcpy(features, frm->ptr, 8);
+
+	p_indent(level, frm);
+	printf("%s: features", str);
+	for (i = 0; i < 8; i++)
+		printf(" 0x%02x", features[i]);
+	printf("\n");
+}
+
 static inline void handle_length_dump(int level, char *str, struct frame *frm)
 {
 	uint16_t handle, length;
@@ -103,6 +117,9 @@ static inline void pskey_dump(int level, struct frame *frm)
 		break;
 	case 0x00db:
 		uint16_dump(level + 1, "ENC_KEY_LMAX", frm);
+		break;
+	case 0x00ef:
+		features_dump(level + 1, "LOCAL_SUPPORTED_FEATURES", frm);
 		break;
 	case 0x010d:
 		uint16_dump(level + 1, "HCI_LMP_LOCAL_VERSION", frm);
