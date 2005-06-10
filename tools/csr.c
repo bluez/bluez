@@ -386,6 +386,12 @@ char *csr_pskeytostr(uint16_t pskey)
 		return "Minimum encryption key length";
 	case CSR_PSKEY_ENC_KEY_LMAX:
 		return "Maximum encryption key length";
+	case CSR_PSKEY_LOCAL_SUPPORTED_FEATURES:
+		return "Local supported features block";
+	case CSR_PSKEY_HCI_LMP_LOCAL_VERSION:
+		return "The HCI and LMP version reported locally";
+	case CSR_PSKEY_LMP_REMOTE_VERSION:
+		return "The LMP version reported remotely";
 	case CSR_PSKEY_HOSTIO_MAP_SCO_PCM:
 		return "Map SCO over PCM";
 	case CSR_PSKEY_UART_BAUDRATE:
@@ -482,6 +488,48 @@ int csr_read_varid_uint16(int dd, uint16_t seqnum, uint16_t varid, uint16_t *val
 	}
 
 	*value = rp[11] + (rp[12] << 8);
+
+	return 0;
+}
+
+int csr_read_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint8_t *value, uint16_t length)
+{
+	unsigned char cmd[] = { 0x00, 0x00, ((length / 2) + 8) & 0xff, ((length / 2) + 8) >> 8,
+				seqnum & 0xff, seqnum >> 8, 0x03, 0x70, 0x00, 0x00,
+				pskey & 0xff, pskey >> 8,
+				(length / 2) & 0xff, (length / 2) >> 8,
+				0x00, 0x00, 0x00, 0x00 };
+
+	unsigned char cp[254], rp[254];
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp[0] = 0xc2;
+	memcpy(cp + 1, cmd, sizeof(cmd));
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_VENDOR_CMD;
+	rq.ocf    = 0x00;
+	rq.event  = EVT_VENDOR;
+	rq.cparam = cp;
+	rq.clen   = sizeof(cmd) + 1;
+	rq.rparam = rp;
+	rq.rlen   = sizeof(rp);
+
+	if (hci_send_req(dd, &rq, 2000) < 0)
+		return -1;
+
+	if (rp[0] != 0xc2) {
+		errno = EIO;
+		return -1;
+	}
+
+	if ((rp[9] + (rp[10] << 8)) != 0) {
+		errno = ENXIO;
+		return -1;
+	}
+
+	memcpy(value, rp + 17, length);
 
 	return 0;
 }

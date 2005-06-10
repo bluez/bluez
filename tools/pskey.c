@@ -43,8 +43,9 @@
 #include "csr.h"
 
 #define CSR_TYPE_NULL	0
-#define CSR_TYPE_UINT8	1
-#define CSR_TYPE_UINT16	2
+#define CSR_TYPE_ARRAY	1
+#define CSR_TYPE_UINT8	2
+#define CSR_TYPE_UINT16	3
 
 static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 {
@@ -73,19 +74,38 @@ static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 
 static int read_pskey(int dd, uint16_t pskey, int type)
 {
-	uint16_t value;
-	int err;
+	uint8_t array[64];
+	uint16_t value = 0;
+	int i, err, size = sizeof(array);
 
-	if (type != CSR_TYPE_UINT8 && type != CSR_TYPE_UINT16) {
+	memset(array, 0, sizeof(array));
+
+	if (type != CSR_TYPE_ARRAY &&
+			type != CSR_TYPE_UINT8 &&
+			type != CSR_TYPE_UINT16) {
 		errno = EFAULT;
 		return -1;
 	}
 
-	err = csr_read_pskey_uint16(dd, 0x4711, pskey, &value);
-	if (err < 0)
-		return err;
+	if (type != CSR_TYPE_ARRAY) {
+		err = csr_read_pskey_uint16(dd, 0x4711, pskey, &value);
+		if (err < 0)
+			return err;
 
-	printf("%s: 0x%04x (%d)\n", csr_pskeytostr(pskey), value, value);
+		printf("%s: 0x%04x (%d)\n", csr_pskeytostr(pskey), value, value);
+	} else {
+		if (pskey == CSR_PSKEY_LOCAL_SUPPORTED_FEATURES)
+			size = 8;
+
+		err = csr_read_pskey_complex(dd, 0x4711, pskey, array, size);
+		if (err < 0)
+			return err;
+
+		printf("%s:", csr_pskeytostr(pskey));
+		for (i = 0; i < size; i++)
+			printf(" 0x%02x", array[i]);
+		printf("\n");
+	}
 
 	return err;
 }
@@ -95,31 +115,38 @@ static struct {
 	int type;
 	char *str;
 } storage[] = {
-	{ CSR_PSKEY_ENC_KEY_LMIN,          CSR_TYPE_UINT16, "keymin"   },
-	{ CSR_PSKEY_ENC_KEY_LMAX,          CSR_TYPE_UINT16, "keymax"   },
-	{ CSR_PSKEY_HCI_LMP_LOCAL_VERSION, CSR_TYPE_UINT16, "version"  },
-	{ CSR_PSKEY_LMP_REMOTE_VERSION,    CSR_TYPE_UINT8,  "remver"   },
-	{ CSR_PSKEY_HOSTIO_MAP_SCO_PCM,    CSR_TYPE_UINT16, "mapsco"   },
-	{ CSR_PSKEY_UART_BAUDRATE,         CSR_TYPE_UINT16, "baudrate" },
-	{ CSR_PSKEY_HOST_INTERFACE,        CSR_TYPE_UINT16, "hostintf" },
-	{ CSR_PSKEY_USB_VENDOR_ID,         CSR_TYPE_UINT16, "usbvid"   },
-	{ CSR_PSKEY_USB_PRODUCT_ID,        CSR_TYPE_UINT16, "usbpid"   },
-	{ CSR_PSKEY_USB_DFU_PRODUCT_ID,    CSR_TYPE_UINT16, "dfupid"   },
-	{ CSR_PSKEY_INITIAL_BOOTMODE,      CSR_TYPE_UINT16, "bootmode" },
+	{ CSR_PSKEY_ENC_KEY_LMIN,             CSR_TYPE_UINT16, "keymin"   },
+	{ CSR_PSKEY_ENC_KEY_LMAX,             CSR_TYPE_UINT16, "keymax"   },
+	{ CSR_PSKEY_LOCAL_SUPPORTED_FEATURES, CSR_TYPE_ARRAY,  "features" },
+	{ CSR_PSKEY_HCI_LMP_LOCAL_VERSION,    CSR_TYPE_UINT16, "version"  },
+	{ CSR_PSKEY_LMP_REMOTE_VERSION,       CSR_TYPE_UINT8,  "remver"   },
+	{ CSR_PSKEY_HOSTIO_MAP_SCO_PCM,       CSR_TYPE_UINT16, "mapsco"   },
+	{ CSR_PSKEY_UART_BAUDRATE,            CSR_TYPE_UINT16, "baudrate" },
+	{ CSR_PSKEY_HOST_INTERFACE,           CSR_TYPE_UINT16, "hostintf" },
+	{ CSR_PSKEY_USB_VENDOR_ID,            CSR_TYPE_UINT16, "usbvid"   },
+	{ CSR_PSKEY_USB_PRODUCT_ID,           CSR_TYPE_UINT16, "usbpid"   },
+	{ CSR_PSKEY_USB_DFU_PRODUCT_ID,       CSR_TYPE_UINT16, "dfupid"   },
+	{ CSR_PSKEY_INITIAL_BOOTMODE,         CSR_TYPE_UINT16, "bootmode" },
 	{ 0x0000, CSR_TYPE_NULL, NULL },
 };
 
 static void usage(void)
 {
-	int i;
+	int i, pos = 0;
 
 	printf("pskey - Utility for changing CSR persistent storage\n\n");
 	printf("Usage:\n"
 		"\tpskey [-i <dev>] <key> [value]\n\n");
 
 	printf("Keys:\n\t");
-		for (i = 0; storage[i].pskey; i++)
-			printf("%s ", storage[i].str);
+	for (i = 0; storage[i].pskey; i++) {
+		printf("%s ", storage[i].str);
+		pos += strlen(storage[i].str) + 1;
+		if (pos > 60) {
+			printf("\n\t");
+			pos = 0;
+		}
+	}
 	printf("\n");
 }
 
