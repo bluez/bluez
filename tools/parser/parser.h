@@ -32,19 +32,19 @@
 #include <netinet/in.h>
 
 struct frame {
-	void	*data;
-	int	data_len;
-	void	*ptr;
-	int	len;
-	int	in;
-	int	master;
-	int	handle;
-	int	cid;
-	int	num;
-	int	dlci;
-	int	channel;
-	long	flags;
-	struct	timeval ts;
+	void		*data;
+	uint32_t	data_len;
+	void		*ptr;
+	uint32_t	len;
+	uint8_t		in;
+	uint8_t		master;
+	uint16_t	handle;
+	uint16_t	cid;
+	uint16_t	num;
+	uint8_t		dlci;
+	uint8_t		channel;
+	unsigned long	flags;
+	struct timeval	ts;
 };
 
 /* Parser flags */
