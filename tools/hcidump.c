@@ -233,12 +233,14 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		case SEND:
 			/* Save or send dump */
 			if (flags & DUMP_BTSNOOP) {
+				uint64_t ts;
 				uint8_t pkt_type = ((uint8_t *) frm.data)[0];
 				dp->size = htonl(frm.data_len);
 				dp->len  = dp->size;
 				dp->flags = ntohl(frm.in & 0x01);
 				dp->drops = 0;
-				dp->ts = hton64(0);
+				ts = (frm.ts.tv_sec - 946684800ll) * 1000000ll + frm.ts.tv_usec;
+				dp->ts = hton64(ts + 0x00E03AB44A676000ll);
 				if (pkt_type == HCI_COMMAND_PKT ||
 						pkt_type == HCI_EVENT_PKT)
 					dp->flags |= ntohl(0x02);
@@ -324,11 +326,13 @@ static void read_dump(int fd)
 		frm.len = frm.data_len;
 
 		if (parser.flags & DUMP_BTSNOOP) {
-			frm.in  = ntohl(dp.flags) & 0x01;
-			frm.ts.tv_sec = ntoh64(dp.ts) / 10000;
-			frm.ts.tv_usec = ntoh64(dp.ts) % 10000;
+			uint64_t ts;
+			frm.in = ntohl(dp.flags) & 0x01;
+			ts = ntoh64(dp.ts) - 0x00E03AB44A676000ll;
+			frm.ts.tv_sec = (ts / 1000000ll) + 946684800ll;
+			frm.ts.tv_usec = ts % 1000000ll; 
 		} else {
-			frm.in  = dh.in;
+			frm.in = dh.in;
 			frm.ts.tv_sec  = btohl(dh.ts_sec);
 			frm.ts.tv_usec = btohl(dh.ts_usec);
 		}
