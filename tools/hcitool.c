@@ -1030,8 +1030,10 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1165,8 +1167,10 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1236,8 +1240,10 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1309,8 +1315,10 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1382,8 +1390,10 @@ static void cmd_afh(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1465,8 +1475,10 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1546,8 +1558,10 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1631,8 +1645,10 @@ static void cmd_auth(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1700,8 +1716,10 @@ static void cmd_enc(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1770,8 +1788,10 @@ static void cmd_key(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1839,8 +1859,10 @@ static void cmd_clkoff(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
@@ -1912,8 +1934,10 @@ static void cmd_clock(int dev_id, int argc, char **argv)
 	}
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return;
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
