@@ -881,6 +881,40 @@ static void cmd_inq_mode(int ctl, int hdev, char *opt)
 	}
 }
 
+static void cmd_inq_type(int ctl, int hdev, char *opt)
+{
+	int dd;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (opt) {
+		uint8_t type = atoi(opt);
+
+		if (hci_write_inquiry_scan_type(dd, type, 2000) < 0) {
+			fprintf(stderr, "Can't set inquiry scan type on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		uint8_t type;
+
+		if (hci_read_inquiry_scan_type(dd, &type, 1000) < 0) {
+			fprintf(stderr, "Can't read inquiry scan type on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+
+		print_dev_hdr(&di);
+		printf("\tInquiry scan type: %s\n",
+			type == 1 ? "Interlaced Inquiry Scan" : "Standard Inquiry Scan");
+	}
+}
+
 static void cmd_inq_parms(int ctl, int hdev, char *opt)
 {
 	struct hci_request rq;
@@ -1325,6 +1359,7 @@ static struct {
 	{ "voice",	cmd_voice,	"[voice]",	"Get/Set voice setting" },
 	{ "iac",	cmd_iac,	"[iac]",	"Get/Set inquiry access code" },
 	{ "inqmode",	cmd_inq_mode,	"[mode]",	"Get/set inquiry mode" },
+	{ "inqtype",	cmd_inq_type,	"[type]",	"Get/set inquiry scan type" },
 	{ "inqparms",	cmd_inq_parms,	"[win:int]",	"Get/Set inquiry scan window and interval" },
 	{ "pageparms",	cmd_page_parms,	"[win:int]",	"Get/Set page scan window and interval" },
 	{ "pageto",	cmd_page_to,	"[to]",		"Get/Set page timeout" },
