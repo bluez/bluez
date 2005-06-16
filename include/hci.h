@@ -833,6 +833,23 @@ typedef struct {
 } __attribute__ ((packed)) set_afh_classification_rp;
 #define SET_AFH_CLASSIFICATION_RP_SIZE 1
 
+#define OCF_READ_INQUIRY_SCAN_TYPE	0x0042
+typedef struct {
+	uint8_t		status;
+	uint8_t		type;
+} __attribute__ ((packed)) read_inquiry_scan_type_rp;
+#define READ_INQUIRY_SCAN_TYPE_RP_SIZE 2
+
+#define OCF_WRITE_INQUIRY_SCAN_TYPE	0x0043
+typedef struct {
+	uint8_t		type;
+} __attribute__ ((packed)) write_inquiry_scan_type_cp;
+#define WRITE_INQUIRY_SCAN_TYPE_CP_SIZE 1
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) write_inquiry_scan_type_rp;
+#define WRITE_INQUIRY_SCAN_TYPE_RP_SIZE 1
+
 #define OCF_READ_INQUIRY_MODE		0x0044
 typedef struct {
 	uint8_t		status;

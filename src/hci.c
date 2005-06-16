@@ -1564,6 +1564,57 @@ int hci_exit_park_mode(int dd, uint16_t handle, int to)
 	return 0;
 }
 
+int hci_read_inquiry_scan_type(int dd, uint8_t *type, int to)
+{
+	read_inquiry_scan_type_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_INQUIRY_SCAN_TYPE;
+	rq.rparam = &rp;
+	rq.rlen   = READ_INQUIRY_SCAN_TYPE_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*type = rp.type;
+	return 0;
+}
+
+int hci_write_inquiry_scan_type(int dd, uint8_t type, int to)
+{
+	write_inquiry_scan_type_cp cp;
+	write_inquiry_scan_type_rp rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.type = type;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_INQUIRY_SCAN_TYPE;
+	rq.cparam = &cp;
+	rq.clen   = WRITE_INQUIRY_SCAN_TYPE_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = WRITE_INQUIRY_SCAN_TYPE_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
 int hci_read_inquiry_mode(int dd, uint8_t *mode, int to)
 {
 	read_inquiry_mode_rp rp;
