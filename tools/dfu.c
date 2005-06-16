@@ -146,7 +146,7 @@ int dfu_clear_status(struct usb_dev_handle *udev, int intf)
 	if (!udev)
 		return -EIO;
 
-	return usb_control_msg(udev, USB_TYPE_CLASS | USB_DIR_IN | USB_RECIP_INTERFACE,
+	return usb_control_msg(udev, USB_TYPE_CLASS | USB_DIR_OUT | USB_RECIP_INTERFACE,
 		DFU_CLRSTATUS, 0, intf, NULL, 0, DFU_TIMEOUT);
 }
 
@@ -164,6 +164,6 @@ int dfu_abort(struct usb_dev_handle *udev, int intf)
 	if (!udev)
 		return -EIO;
 
-	return usb_control_msg(udev, USB_TYPE_CLASS | USB_DIR_IN | USB_RECIP_INTERFACE,
+	return usb_control_msg(udev, USB_TYPE_CLASS | USB_DIR_OUT | USB_RECIP_INTERFACE,
 		DFU_ABORT, 0, intf, NULL, 0, DFU_TIMEOUT);
 }
