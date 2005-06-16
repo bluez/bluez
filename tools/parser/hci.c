@@ -823,6 +823,14 @@ static inline void write_page_activity_dump(int level, struct frame *frm)
 	printf("interval %d window %d\n", btohs(cp->interval), btohs(cp->window));
 }
 
+static inline void write_inquiry_scan_type_dump(int level, struct frame *frm)
+{
+	write_inquiry_scan_type_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("type %d\n", cp->type);
+}
+
 static inline void write_inquiry_mode_dump(int level, struct frame *frm)
 {
 	write_inquiry_mode_cp *cp = frm->ptr;
@@ -1024,6 +1032,9 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_WRITE_PAGE_ACTIVITY:
 		case OCF_WRITE_INQ_ACTIVITY:
 			write_page_activity_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_INQUIRY_SCAN_TYPE:
+			write_inquiry_scan_type_dump(level + 1, frm);
 			return;
 		case OCF_WRITE_ENCRYPT_MODE:
 		case OCF_WRITE_INQUIRY_MODE:
@@ -1289,6 +1300,19 @@ static inline void read_page_activity_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("status 0x%2.2x interval %d window %d\n",
 		rp->status, btohs(rp->interval), btohs(rp->window));
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_inquiry_scan_type_dump(int level, struct frame *frm)
+{
+	read_inquiry_scan_type_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x type %d\n", rp->status, rp->type);
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1599,6 +1623,9 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_INQ_ACTIVITY:
 			read_page_activity_dump(level, frm);
 			return;
+		case OCF_READ_INQUIRY_SCAN_TYPE:
+			read_inquiry_scan_type_dump(level, frm);
+			return;
 		case OCF_READ_ENCRYPT_MODE:
 		case OCF_READ_INQUIRY_MODE:
 		case OCF_READ_AFH_MODE:
@@ -1629,6 +1656,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_PAGE_TIMEOUT:
 		case OCF_WRITE_PAGE_ACTIVITY:
 		case OCF_WRITE_INQ_ACTIVITY:
+		case OCF_WRITE_INQUIRY_SCAN_TYPE:
 		case OCF_WRITE_INQUIRY_MODE:
 		case OCF_WRITE_AFH_MODE:
 		case OCF_SET_AFH_CLASSIFICATION:
