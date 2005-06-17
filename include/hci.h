@@ -675,8 +675,18 @@ typedef struct {
 } __attribute__ ((packed)) read_local_name_rp;
 #define READ_LOCAL_NAME_RP_SIZE 249 
 
-#define OCF_WRITE_CA_TIMEOUT		0x0016
-#define OCF_WRITE_PG_TIMEOUT		0x0018
+#define OCF_READ_CONN_ACCEPT_TIMEOUT	0x0015
+typedef struct {
+	uint8_t		status;
+	uint16_t	timeout;
+} __attribute__ ((packed)) read_conn_accept_timeout_rp;
+#define READ_CONN_ACCEPT_TIMEOUT_RP_SIZE 3
+
+#define OCF_WRITE_CONN_ACCEPT_TIMEOUT	0x0016
+typedef struct {
+	uint16_t	timeout;
+} __attribute__ ((packed)) write_conn_accept_timeout_cp;
+#define WRITE_CONN_ACCEPT_TIMEOUT_CP_SIZE 2
 
 #define OCF_READ_PAGE_TIMEOUT		0x0017
 typedef struct {
@@ -690,6 +700,13 @@ typedef struct {
 	uint16_t	timeout;
 } __attribute__ ((packed)) write_page_timeout_cp;
 #define WRITE_PAGE_TIMEOUT_CP_SIZE 2
+
+#define OCF_READ_SCAN_ENABLE		0x0019
+typedef struct {
+	uint8_t		status;
+	uint8_t		enable;
+} __attribute__ ((packed)) read_scan_enable_rp;
+#define READ_SCAN_ENABLE_RP_SIZE 2
 
 #define OCF_WRITE_SCAN_ENABLE		0x001A
 	#define SCAN_DISABLED		0x00
