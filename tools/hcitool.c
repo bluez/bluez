@@ -34,6 +34,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -411,7 +412,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
 	int extcls = 0, extinf = 0, extoui = 0;
-	int i, opt, dd, cc, nc;
+	int i, n, opt, dd, cc, nc;
 
 	length  = 8;	/* ~10 seconds */
 	num_rsp = 0;
@@ -510,6 +511,10 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 					sizeof(name), name, 100000) < 0)
 				strcpy(name, "n/a");
 
+			for (n = 0; n < 248 && name[n]; n++)
+				if (!isprint(name[n]))
+					name[n] = '.';
+
 			printf("\t%s\t%s\n", addr, name);
 			continue;
 		}
@@ -563,8 +568,12 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 					sizeof(name), name, 100000) < 0) {
 				if (!nc)
 					strcpy(name, "n/a");
-			} else
+			} else {
+				for (n = 0; n < 248 && name[n]; n++)
+					if (!isprint(name[n]))
+						name[n] = '.';
 				nc = 0;
+			}
 		}
 		printf("Device name:\t%s%s\n", name, nc ? " [cached]" : "");
 

@@ -34,6 +34,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <malloc.h>
@@ -166,7 +167,7 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 	char filename[PATH_MAX + 1], addr[18], str[249], *buf, *ptr;
 	bdaddr_t bdaddr;
 	struct stat st;
-	int fd, pos, err = 0;
+	int i, fd, pos, err = 0;
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
@@ -216,7 +217,13 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 		ftruncate(fd, 0);
 	}
 
-	list = list_add(list, peer, name, strlen(name) + 1);
+	memset(str, 0, sizeof(str));
+	strncpy(str, name, 248);
+	for (i = 0; i < 248 && str[i]; i++)
+		if (!isprint(str[i]))
+			str[i] = '.';
+
+	list = list_add(list, peer, str, strlen(str) + 1);
 	if (!list) {
 		err = -EIO;
 		goto unlock;
