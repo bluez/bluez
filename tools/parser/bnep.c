@@ -41,8 +41,6 @@
 
 #include "parser.h"
 
-#define PAYLOAD_RAW_DUMP
-
 /* BNEP Type */
 #define BNEP_GENERAL_ETHERNET			0x00
 #define BNEP_CONTROL				0x01
@@ -202,8 +200,6 @@ static void bnep_eval_extension(int level, struct frame *frm)
 	}
 }
 
-#ifndef PAYLOAD_RAW_DUMP
-
 static void arp_dump(int level, struct frame *frm)
 {
 	int i;
@@ -256,8 +252,6 @@ static void ip_dump(int level, struct frame *frm)
 		raw_dump(level, frm);
 	}
 }
-
-#endif
 
 void bnep_dump(int level, struct frame *frm)
 {
@@ -318,16 +312,19 @@ void bnep_dump(int level, struct frame *frm)
 	if ((type & 0x7f) == BNEP_CONTROL)
 		return;
 
-	if (proto == 0x8100) { /* 802.1p */
+	/* 802.1p header */
+	if (proto == 0x8100) {
 		p_indent(level, frm);
 		printf("802.1p Header: 0x%04x ", get_u16(frm));
 		proto = get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 	}
 
-#ifdef PAYLOAD_RAW_DUMP
-	raw_dump(level, frm);
-#else
+	if (!(parser.flags & DUMP_VERBOSE)) {
+		raw_dump(level, frm);
+		return;
+	}
+
 	switch (proto) {
 	case ETHERTYPE_ARP:
 		p_indent(++level, frm);
@@ -349,6 +346,6 @@ void bnep_dump(int level, struct frame *frm)
 
 	default:
 		raw_dump(level, frm);
+		break;
 	}
-#endif
 }
