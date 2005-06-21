@@ -113,7 +113,7 @@ int hci_read_clock(int dd, uint16_t handle, uint8_t which, uint32_t *clock, uint
 int hci_local_name(int dd, int len, char *name, int to);
 int hci_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to);
 
-int hci_for_each_dev(int flag, int(*func)(int s, int dev_id, long arg), long arg);
+int hci_for_each_dev(int flag, int(*func)(int dd, int dev_id, long arg), long arg);
 int hci_get_route(bdaddr_t *bdaddr);
 
 char *hci_dtypetostr(int type);

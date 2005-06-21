@@ -33,18 +33,14 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <syslog.h>
 #include <errno.h>
-#include <termios.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <string.h>
 
 #include <sys/param.h>
-#include <sys/uio.h>
 #include <sys/poll.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -458,28 +454,26 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 
 /* HCI functions that do not require open device */
 
-int hci_for_each_dev(int flag, int (*func)(int s, int dev_id, long arg), long arg)
+int hci_for_each_dev(int flag, int (*func)(int dd, int dev_id, long arg), long arg)
 {
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
 	int dev_id = -1;
-	int i, sk;
+	int i, sk, err;
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0)
 		return -1;
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
-	if (!dl) {
-		close(sk);
-		return -1;
-	}
+	if (!dl)
+		goto done;
 
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
 	if (ioctl(sk, HCIGETDEVLIST, (void *) dl))
-		goto done;
+		goto free;
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		if (hci_test_bit(flag, &dr->dev_opt))
@@ -489,17 +483,25 @@ int hci_for_each_dev(int flag, int (*func)(int s, int dev_id, long arg), long ar
 			}
 	}
 
-done:
-	close(sk);
+	if (dev_id < 0)
+		errno = ENODEV;
+
+free:
 	free(dl);
+
+done:
+	err = errno;
+	close(sk);
+	errno = err;
+
 	return dev_id;
 }
 
-static int __other_bdaddr(int sk, int dev_id, long arg)
+static int __other_bdaddr(int dd, int dev_id, long arg)
 {
 	struct hci_dev_info di = { dev_id: dev_id };
 
-	if (ioctl(sk, HCIGETDEVINFO, (void *) &di))
+	if (ioctl(dd, HCIGETDEVINFO, (void *) &di))
 		return 0;
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
@@ -508,11 +510,11 @@ static int __other_bdaddr(int sk, int dev_id, long arg)
 	return bacmp((bdaddr_t *) arg, &di.bdaddr);
 }
 
-static int __same_bdaddr(int sk, int dev_id, long arg)
+static int __same_bdaddr(int dd, int dev_id, long arg)
 {
 	struct hci_dev_info di = { dev_id: dev_id };
 
-	if (ioctl(sk, HCIGETDEVINFO, (void *) &di))
+	if (ioctl(dd, HCIGETDEVINFO, (void *) &di))
 		return 0;
 
 	return !bacmp((bdaddr_t *) arg, &di.bdaddr);
@@ -540,22 +542,26 @@ int hci_devid(const char *str)
 		str2ba(str, &ba);
 		id = hci_for_each_dev(HCI_UP, __same_bdaddr, (long) &ba);
 	}
+
 	return id;
 }
 
 int hci_devinfo(int dev_id, struct hci_dev_info *di)
 {
-	int s, err;
+	int dd, err, ret;
 
-	s = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (s < 0)
-		return s;
+	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (dd < 0)
+		return dd;
 
 	di->dev_id = dev_id;
-	err = ioctl(s, HCIGETDEVINFO, (void *) di);
-	close(s);
+	ret = ioctl(dd, HCIGETDEVINFO, (void *) di);
 
-	return err;
+	err = errno;
+	close(dd);
+	errno = err;
+
+	return ret;
 }
 
 int hci_devba(int dev_id, bdaddr_t *bdaddr)
@@ -571,6 +577,7 @@ int hci_devba(int dev_id, bdaddr_t *bdaddr)
 	}
 
 	bacpy(bdaddr, &di.bdaddr);
+
 	return 0;
 }
 
@@ -579,7 +586,7 @@ int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info 
 	struct hci_inquiry_req *ir;
 	uint8_t num_rsp = nrsp;
 	void *buf;
-	int s, err;
+	int dd, size, err, ret = -1;
 
 	if (nrsp <= 0) {
 		num_rsp = 0;
@@ -591,15 +598,13 @@ int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info 
 		return -1;
 	}	
 
-	s = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (s < 0)
-		return -1;
+	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (dd < 0)
+		return dd;
 
 	buf = malloc(sizeof(*ir) + (sizeof(inquiry_info) * (nrsp)));
-	if (!buf) {
-		close(s);
-		return -1;
-	}
+	if (!buf)
+		goto done;
 
 	ir = buf;
 	ir->dev_id  = dev_id;
@@ -615,23 +620,30 @@ int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info 
 		ir->lap[2] = 0x9e;
 	}
 
-	err = ioctl(s, HCIINQUIRY, (unsigned long) buf);
-	close(s);
+	ret = ioctl(dd, HCIINQUIRY, (unsigned long) buf);
+	if (ret < 0)
+		goto free;
 
-	if (!err) {
-		int size = sizeof(inquiry_info) * ir->num_rsp;
+	size = sizeof(inquiry_info) * ir->num_rsp;
 
-		if (!*ii) 
-			*ii = (void *) malloc(size);
+	if (!*ii)
+		*ii = malloc(size);
 
-		if (*ii) {
-			memcpy((void *) *ii, buf + sizeof(*ir), size);
-			err = ir->num_rsp;
-		} else
-			err = -1;
-	}
+	if (*ii) {
+		memcpy((void *) *ii, buf + sizeof(*ir), size);
+		ret = ir->num_rsp;
+	} else
+		ret = -1;
+
+free:
 	free(buf);
-	return err;
+
+done:
+	err = errno;
+	close(dd);
+	errno = err;
+
+	return ret;
 }
 
 /* Open HCI device. 
@@ -658,6 +670,7 @@ failed:
 	err = errno;
 	close(dd);
 	errno = err;
+
 	return -1;
 }
 
