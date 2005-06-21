@@ -49,7 +49,18 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
-#include <bluetooth/hci_uart.h>
+
+#ifndef N_HCI
+#define N_HCI	15
+#endif
+
+#define HCIUARTSETPROTO _IOW('U', 200, int)
+#define HCIUARTGETPROTO _IOR('U', 201, int)
+
+#define HCI_UART_H4	0
+#define HCI_UART_BCSP	1
+#define HCI_UART_3WIRE	2
+#define HCI_UART_H4DS	3
 
 struct uart_t {
 	char *type;
