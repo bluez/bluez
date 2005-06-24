@@ -2812,8 +2812,8 @@ static void usage(void)
 	printf("Usage:\n"
 		"\tsdptool [options] <command> [command parameters]\n");
 	printf("Options:\n"
-		"\t--help\t\tDisplay help\n"
-		"\t--source\tSpecify source interface\n");
+		"\t-h\t\tDisplay help\n"
+		"\t-i\t\tSpecify source interface\n");
 
 	printf("Commands:\n");
 	for (i = 0; command[i].cmd; i++)
