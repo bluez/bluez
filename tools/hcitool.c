@@ -1900,14 +1900,14 @@ static struct option clock_options[] = {
 
 static char *clock_help =
 	"Usage:\n"
-	"\tclock <bdaddr> [which clock]\n";
+	"\tclock [bdaddr] [which clock]\n";
 
 static void cmd_clock(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
 	bdaddr_t bdaddr;
 	uint8_t which;
-	uint32_t clock;
+	uint32_t handle, clock;
 	uint16_t accuracy;
 	int opt, dd;
 
@@ -1921,12 +1921,13 @@ static void cmd_clock(int dev_id, int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc < 1) {
-		printf(clock_help);
-		return;
-	}
+	if (argc > 0)
+		str2ba(argv[0], &bdaddr);
+	else
+		bacpy(&bdaddr, BDADDR_ANY);
 
-	str2ba(argv[0], &bdaddr);
+	if (!bacmp(&bdaddr, BDADDR_ANY))
+		dev_id = hci_get_route(NULL);
 
 	if (dev_id < 0) {
 		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
@@ -1942,22 +1943,31 @@ static void cmd_clock(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr) {
-		perror("Can't allocate memory");
-		exit(1);
+	if (bacmp(&bdaddr, BDADDR_ANY)) {
+		cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+		if (!cr) {
+			perror("Can't allocate memory");
+			exit(1);
+		}
+
+		bacpy(&cr->bdaddr, &bdaddr);
+		cr->type = ACL_LINK;
+		if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+			perror("Get connection info failed");
+			free(cr);
+			exit(1);
+		}
+
+		handle = htobs(cr->conn_info->handle);
+		which = (argc > 1) ? atoi(argv[1]) : 0x01;
+
+		free(cr);
+	} else {
+		handle = 0x00;
+		which = 0x00;
 	}
 
-	bacpy(&cr->bdaddr, &bdaddr);
-	cr->type = ACL_LINK;
-	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		perror("Get connection info failed");
-		exit(1);
-	}
-
-	which = (argc > 1) ? atoi(argv[1]) : 0x01;
-
-	if (hci_read_clock(dd, htobs(cr->conn_info->handle), which, &clock, &accuracy, 1000) < 0) {
+	if (hci_read_clock(dd, handle, which, &clock, &accuracy, 1000) < 0) {
 		perror("Reading clock failed");
 		exit(1);
 	}
@@ -1968,7 +1978,6 @@ static void cmd_clock(int dev_id, int argc, char **argv)
 	printf("Accuracy: %.2f msec\n", (float) accuracy * 0.3125);
 
 	close(dd);
-	free(cr);
 }
 
 static struct {
