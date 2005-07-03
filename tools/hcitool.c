@@ -575,7 +575,9 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 				nc = 0;
 			}
 		}
-		printf("Device name:\t%s%s\n", name, nc ? " [cached]" : "");
+
+		if (strlen(name) > 0)
+			printf("Device name:\t%s%s\n", name, nc ? " [cached]" : "");
 
 		if (extcls) {
 			memcpy(cls, (info+i)->dev_class, 3);
