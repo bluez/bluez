@@ -1,3 +1,17 @@
+ver 2.18:
+	Support D-Bus 0.23 and 0.33 API versions.
+	Support reading of complex BCCMD values.
+	Support minimum and maximum encryption key length.
+	Add support for inquiry scan type.
+	Add tool for the CSR BCCMD interface.
+	Add first draft of the Audio/Video control utility.
+	Add disconnect timer support for the A2DP ALSA plugin.
+	Make SBC parameters configurable.
+	Replace non-printable characters in device names.
+
+	Note:
+	This version needs at least bluez-libs-2.18
+
 ver 2.17:
 	Set the storage directory through ${localstatedir}.
 	Add the textfile library for ASCII based file access.
