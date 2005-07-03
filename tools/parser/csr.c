@@ -36,7 +36,7 @@
 
 #define CSR_U8(frm)  (get_u8(frm))
 #define CSR_U16(frm) (btohs(htons(get_u16(frm))))
-#define CSR_U32(frm) (btohl(htonl(get_u32(frm))))
+#define CSR_U32(frm) ((CSR_U16(frm) << 16) + CSR_U16(frm))
 
 static char *type2str(uint16_t type)
 {
