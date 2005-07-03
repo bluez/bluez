@@ -79,6 +79,22 @@ static int cmd_keylen(int dd, int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_clock(int dd, int argc, char *argv[])
+{
+	uint32_t clock = 0;
+	int err;
+
+	err = csr_read_varid_uint32(dd, 0x4711, CSR_VARID_BT_CLOCK, &clock);
+	if (err < 0) {
+		errno = -err;
+		return -1;
+	}
+
+	printf("Bluetooth clock: 0x%04x (%d)\n", clock, clock);
+
+	return 0;
+}
+
 static struct {
 	char *str;
 	int (*func)(int dd, int argc, char **argv);
@@ -86,6 +102,7 @@ static struct {
 	char *doc;
 } commands[] = {
 	{ "keylen", cmd_keylen, "<handle>", "Get current crypt key length" },
+	{ "clock",  cmd_clock,  "",         "Get local Bluetooth clock"    },
 	{ NULL },
 };
 
@@ -99,7 +116,7 @@ static void usage(void)
 
 	printf("Commands:\n");
 		for (i = 0; commands[i].str; i++)
-			printf("\t%s\t%s\t%s\n", commands[i].str,
+			printf("\t%s\t%-8s\t%s\n", commands[i].str,
 				commands[i].arg, commands[i].doc);
 }
 
