@@ -1,3 +1,9 @@
+ver 2.18:
+	Add support for reading and writing the inquiry scan type.
+	Add definitions for connection accept timeout and scan enable.
+	Remove hci_vhci.h header file.
+	Remove hci_uart.h header file.
+
 ver 2.17:
 	Include stdio.h in bluetooth.h header file.
 	Include sys/socket.h in the header files.
