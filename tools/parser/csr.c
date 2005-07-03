@@ -62,6 +62,16 @@ static inline void uint16_dump(int level, char *str, struct frame *frm)
 	printf("%s: value %d (0x%4.4x)\n", str, value, value);
 }
 
+static inline void uint32_dump(int level, char *str, struct frame *frm)
+{
+	uint32_t value;
+
+	value = CSR_U32(frm);
+
+	p_indent(level, frm);
+	printf("%s: value %d (0x%4.4x)\n", str, value, value);
+}
+
 static inline void bdaddr_dump(int level, char *str, struct frame *frm)
 {
 	char addr[18];
@@ -183,11 +193,32 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	case 0x281b:
 		uint16_dump(level + 1, "CHIPREV", frm);
 		break;
+	case 0x2825:
+		uint16_dump(level + 1, "INTERFACE_VERSION", frm);
+		break;
+	case 0x282a:
+		uint16_dump(level + 1, "RAND", frm);
+		break;
 	case 0x282c:
 		uint16_dump(level + 1, "MAX_CRYPT_KEY_LENGTH", frm);
 		break;
+	case 0x2836:
+		uint16_dump(level + 1, "CHIPANAREV", frm);
+		break;
+	case 0x2838:
+		uint16_dump(level + 1, "BUILDID_LOADER", frm);
+		break;
+	case 0x2c00:
+		uint32_dump(level + 1, "BT_CLOCK", frm);
+		break;
 	case 0x3008:
 		handle_length_dump(level + 1, "CRYPT_KEY_LENGTH", frm);
+		break;
+	case 0x481c:
+		uint16_dump(level + 1, "MAP_SCO_PCM", frm);
+		break;
+	case 0x6802:
+		uint16_dump(level + 1, "CONFIG_UART", frm);
 		break;
 	case 0x6805:
 		uint16_dump(level + 1, "PANIC_ARG", frm);
