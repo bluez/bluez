@@ -159,7 +159,7 @@ static int a2dp_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params)
 	DBG("format %s rate %d channels %d", snd_pcm_format_name(io->format),
 					io->rate, io->channels);
 
-	DBG("frame_bytes %d period_byts %d period_size %ld buffer_size %ld",
+	DBG("frame_bytes %d period_bytes %d period_size %ld buffer_size %ld",
 		a2dp->frame_bytes, period_bytes, io->period_size, io->buffer_size);
 
 	return 0;
