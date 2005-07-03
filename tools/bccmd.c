@@ -95,14 +95,50 @@ static int cmd_clock(int dd, int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_panicarg(int dd, int argc, char *argv[])
+{
+	uint16_t error = 0;
+	int err;
+
+	err = csr_read_varid_uint16(dd, 5, CSR_VARID_PANIC_ARG, &error);
+	if (err < 0) {
+		errno = -err;
+		return -1;
+	}
+
+	printf("Panic code: 0x%02x (%s)\n", error,
+					error < 0x100 ? "valid" : "invalid");
+
+	return 0;
+}
+
+static int cmd_faultarg(int dd, int argc, char *argv[])
+{
+	uint16_t error = 0;
+	int err;
+
+	err = csr_read_varid_uint16(dd, 5, CSR_VARID_FAULT_ARG, &error);
+	if (err < 0) {
+		errno = -err;
+		return -1;
+	}
+
+	printf("Fault code: 0x%02x (%s)\n", error,
+					error < 0x100 ? "valid" : "invalid");
+
+	return 0;
+}
+
 static struct {
 	char *str;
 	int (*func)(int dd, int argc, char **argv);
 	char *arg;
 	char *doc;
 } commands[] = {
-	{ "keylen", cmd_keylen, "<handle>", "Get current crypt key length" },
-	{ "clock",  cmd_clock,  "",         "Get local Bluetooth clock"    },
+	{ "keylen",   cmd_keylen,   "<handle>", "Get current crypt key length" },
+	{ "clock",    cmd_clock,    "",         "Get local Bluetooth clock"    },
+	{ "panicarg", cmd_panicarg, "",         "Get panic code argument"      },
+	{ "faultarg", cmd_faultarg, "",         "Get fault code argument"      },
 	{ NULL },
 };
 
@@ -116,7 +152,7 @@ static void usage(void)
 
 	printf("Commands:\n");
 		for (i = 0; commands[i].str; i++)
-			printf("\t%s\t%-8s\t%s\n", commands[i].str,
+			printf("\t%-10s%-8s\t%s\n", commands[i].str,
 				commands[i].arg, commands[i].doc);
 }
 
