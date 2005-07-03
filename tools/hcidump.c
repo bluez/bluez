@@ -166,7 +166,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 	struct btsnoop_pkt *dp;
 	struct frame frm;
 	char *buf, *ctrl;
-	int hdr_size = HCIDUMP_HDR_SIZE;
+	int len, hdr_size = HCIDUMP_HDR_SIZE;
 
 	if (snap_len < SNAP_LEN)
 		snap_len = SNAP_LEN;
@@ -204,13 +204,14 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		msg.msg_control = ctrl;
 		msg.msg_controllen = 100;
 
-		frm.data_len = recvmsg(sock, &msg, 0);
-		if (frm.data_len < 0) {
+		len = recvmsg(sock, &msg, 0);
+		if (len < 0) {
 			perror("Receive failed");
 			exit(1);
 		}
 
 		/* Process control message */
+		frm.data_len = len;
 		frm.in = 0;
 		cmsg = CMSG_FIRSTHDR(&msg);
 		while (cmsg) {
