@@ -265,10 +265,11 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	cups_enable=no
 	pcmcia_enable=no
 	initscripts_enable=no
-	bluepin_enable=yes
+	avctrl_enable=${usb_found}
 	hid2hci_enable=${usb_found}
 	dfutool_enable=no
 	bcm203x_enable=no
+	bluepin_enable=yes
 
 	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
 		debug_enable=${enableval}
@@ -286,10 +287,11 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		cups_enable=${enableval}
 		pcmcia_enable=${enableval}
 		initscripts_enable=${enableval}
-		bluepin_enable=${enableval}
+		avctrl_enable=${enableval}
 		hid2hci_enable=${enableval}
 		dfutool_enable=${enableval}
 		bcm203x_enable=${enableval}
+		bluepin_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
@@ -320,8 +322,8 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		initscripts_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(bluepin, AC_HELP_STRING([--enable-bluepin], [install Python based PIN helper utility]), [
-		bluepin_enable=${enableval}
+	AC_ARG_ENABLE(avctrl, AC_HELP_STRING([--enable-avctrl], [install Audio/Video control utility]), [
+		avctrl_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci], [install HID mode switching utility]), [
@@ -334,6 +336,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(bcm203x, AC_HELP_STRING([--enable-bcm203x], [install Broadcom 203x firmware loader]), [
 		bcm203x_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(bluepin, AC_HELP_STRING([--enable-bluepin], [install Python based PIN helper utility]), [
+		bluepin_enable=${enableval}
 	])
 
 	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
@@ -352,8 +358,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(PCMCIA, test "${pcmcia_enable}" = "yes")
 	AM_CONDITIONAL(INITSCRIPTS, test "${initscripts_enable}" = "yes")
-	AM_CONDITIONAL(BLUEPIN, test "${bluepin_enable}" = "yes")
+	AM_CONDITIONAL(AVCTRL, test "${avctrl_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(BCM203X, test "${bcm203x_enable}" = "yes" && test "${usb_found}" = "yes")
+	AM_CONDITIONAL(BLUEPIN, test "${bluepin_enable}" = "yes")
 ])
