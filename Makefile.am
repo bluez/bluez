@@ -2,7 +2,7 @@
 #  $Id$
 #
 
-SUBDIRS = common tools rfcomm hcid sdpd dund pand hidd \
+SUBDIRS = common daemon tools rfcomm hcid sdpd dund pand hidd \
 	cups alsa test scripts pcmcia extra
 
 MAINTAINERCLEANFILES = Makefile.in \

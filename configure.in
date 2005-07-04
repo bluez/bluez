@@ -34,4 +34,4 @@ AC_PATH_DBUS
 
 AC_ARG_BLUEZ
 
-AC_OUTPUT(Makefile common/Makefile tools/Makefile rfcomm/Makefile hcid/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile alsa/Makefile test/Makefile scripts/Makefile pcmcia/Makefile extra/Makefile)
+AC_OUTPUT(Makefile common/Makefile daemon/Makefile tools/Makefile rfcomm/Makefile hcid/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile alsa/Makefile test/Makefile scripts/Makefile pcmcia/Makefile extra/Makefile)

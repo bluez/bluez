@@ -1,0 +1,5 @@
+#
+#  $Id$
+#
+
+MAINTAINERCLEANFILES = Makefile.in
