@@ -717,8 +717,9 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr;
 	uint16_t opcode = htobs(cmd_opcode_pack(r->ogf, r->ocf));
 	struct hci_filter nf, of;
+	socklen_t len;
 	hci_event_hdr *hdr;
-	int err, len, try;
+	int err, try;
 
 	len = sizeof(of);
 	if (getsockopt(dd, SOL_HCI, HCI_FILTER, &of, &len) < 0)
@@ -903,7 +904,7 @@ int hci_read_local_name(int dd, int len, char *name, int to)
 	}
 
 	rp.name[247] = '\0';
-	strncpy(name, rp.name, len);
+	strncpy(name, (char *) rp.name, len);
 	return 0;
 }
 
@@ -913,7 +914,7 @@ int hci_write_local_name(int dd, const char *name, int to)
 	struct hci_request rq;
 
 	memset(&cp, 0, sizeof(cp));
-	strncpy(cp.name, name, sizeof(cp.name));
+	strncpy((char *) cp.name, name, sizeof(cp.name));
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
@@ -956,7 +957,7 @@ int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr, uint8
 	}
 
 	rn.name[247] = '\0';
-	strncpy(name, rn.name, len);
+	strncpy(name, (char *) rn.name, len);
 	return 0;
 }
 
