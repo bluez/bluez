@@ -819,7 +819,7 @@ static char *cmd_help =
 
 static void cmd_cmd(int dev_id, int argc, char **argv)
 {
-	char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
+	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
 	struct hci_filter flt;
 	hci_event_hdr *hdr;
 	int i, opt, len, dd;
@@ -940,9 +940,10 @@ static char *cc_help =
 static void cmd_cc(int dev_id, int argc, char **argv)
 {
 	bdaddr_t bdaddr;
-	int opt, ptype, dd;
 	uint16_t handle;
 	uint8_t role;
+	unsigned int ptype;
+	int dd, opt;
 
 	role = 0x01;
 	ptype = HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5;
@@ -1451,7 +1452,8 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	set_conn_ptype_cp cp;
 	evt_conn_ptype_changed rp;
 	bdaddr_t bdaddr;
-	int opt, dd, ptype;
+	unsigned int ptype;
+	int dd, opt;
 
 	for_each_opt(opt, cpt_options, NULL) {
 		switch (opt) {

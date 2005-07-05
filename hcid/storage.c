@@ -56,7 +56,7 @@ struct list {
 };
 
 static struct list *list_add(struct list *list, const bdaddr_t *bdaddr,
-				const unsigned char *data, const size_t size)
+				const char *data, const size_t size)
 {
 	struct list *temp = list, *last = list;
 

@@ -82,7 +82,7 @@ struct device_info {
 
 static int dongle_csr(struct device_info *devinfo)
 {
-	unsigned char buf[8];
+	char buf[8];
 	struct usb_dev_handle *udev;
 	int err, intf = 2;
 

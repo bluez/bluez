@@ -134,7 +134,8 @@ static int do_connect(int ctl, int dev_id, bdaddr_t *src, bdaddr_t *dst, unsigne
 	struct hci_dev_info di;
 	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
-	int sk, size;
+	socklen_t size;
+	int sk;
 
 	hci_devinfo(dev_id, &di);
 	if (!(di.link_policy & HCI_LP_RSWITCH)) {

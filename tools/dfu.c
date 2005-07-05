@@ -114,7 +114,7 @@ int dfu_detach(struct usb_dev_handle *udev, int intf)
 		DFU_DETACH, 0x1388, intf, NULL, 0, DFU_TIMEOUT);
 }
 
-int dfu_upload(struct usb_dev_handle *udev, int intf, int block, unsigned char *buffer, int size)
+int dfu_upload(struct usb_dev_handle *udev, int intf, int block, char *buffer, int size)
 {
 	if (!udev)
 		return -EIO;
@@ -123,7 +123,7 @@ int dfu_upload(struct usb_dev_handle *udev, int intf, int block, unsigned char *
 		DFU_UPLOAD, block, intf, buffer, size, DFU_TIMEOUT);
 }
 
-int dfu_download(struct usb_dev_handle *udev, int intf, int block, unsigned char *buffer, int size)
+int dfu_download(struct usb_dev_handle *udev, int intf, int block, char *buffer, int size)
 {
 	if (!udev)
 		return -EIO;
@@ -138,7 +138,7 @@ int dfu_get_status(struct usb_dev_handle *udev, int intf, struct dfu_status *sta
 		return -EIO;
 
 	return usb_control_msg(udev, USB_TYPE_CLASS | USB_DIR_IN | USB_RECIP_INTERFACE,
-		DFU_GETSTATUS, 0, intf, (unsigned char *) status, DFU_STATUS_SIZE, DFU_TIMEOUT);
+		DFU_GETSTATUS, 0, intf, (char *) status, DFU_STATUS_SIZE, DFU_TIMEOUT);
 }
 
 int dfu_clear_status(struct usb_dev_handle *udev, int intf)
@@ -156,7 +156,7 @@ int dfu_get_state(struct usb_dev_handle *udev, int intf, uint8_t *state)
 		return -EIO;
 
 	return usb_control_msg(udev, USB_TYPE_CLASS | USB_DIR_IN | USB_RECIP_INTERFACE,
-		DFU_GETSTATE, 0, intf, (unsigned char *) state, 1, DFU_TIMEOUT);
+		DFU_GETSTATE, 0, intf, (char *) state, 1, DFU_TIMEOUT);
 }
 
 int dfu_abort(struct usb_dev_handle *udev, int intf)

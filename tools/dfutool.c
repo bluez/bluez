@@ -400,7 +400,7 @@ static void cmd_upgrade(char *device, int argc, char **argv)
 	struct dfu_status status;
 	struct dfu_suffix suffix;
 	struct stat st;
-	unsigned char *buf;
+	char *buf;
 	unsigned long filesize, count, timeout = 0;
 	char *filename;
 	uint32_t crc;
@@ -568,7 +568,7 @@ static void cmd_archive(char *device, int argc, char **argv)
 	struct usb_dev_handle *udev;
 	struct dfu_status status;
 	struct dfu_suffix suffix;
-	unsigned char buf[2048];
+	char buf[2048];
 	unsigned long timeout = 0;
 	char *filename;
 	uint32_t crc;

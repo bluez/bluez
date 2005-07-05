@@ -258,8 +258,9 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	struct termios ti;
 	struct sigaction sa;
 	struct pollfd p;
+	socklen_t alen;
 	char dst[18], devname[MAXPATHLEN];
-	int sk, fd, alen, try = 3;
+	int sk, fd, try = 3;
 
 	laddr.rc_family = AF_BLUETOOTH;
 	bacpy(&laddr.rc_bdaddr, bdaddr);
@@ -395,8 +396,9 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	struct termios ti;
 	struct sigaction sa;
 	struct pollfd p;
+	socklen_t alen;
 	char dst[18], devname[MAXPATHLEN];
-	int sk, nsk, fd, alen, try = 3;
+	int sk, nsk, fd, try = 3;
 
 	laddr.rc_family = AF_BLUETOOTH;
 	bacpy(&laddr.rc_bdaddr, bdaddr);

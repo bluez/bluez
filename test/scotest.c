@@ -251,8 +251,9 @@ static void recv_mode(int sk)
 static void send_mode(char *svr)
 {
 	struct sco_options so;
+	socklen_t len;
 	uint32_t seq;
-	int sk, i, opt;
+	int i, sk;
 
 	if ((sk = do_connect(svr)) < 0) {
 		syslog(LOG_ERR, "Can't connect to the server: %s (%d)",
@@ -260,8 +261,8 @@ static void send_mode(char *svr)
 		exit(1);
 	}
 
-	opt = sizeof(so);
-	if (getsockopt(sk, SOL_SCO, SCO_OPTIONS, &so, &opt) < 0) {
+	len = sizeof(so);
+	if (getsockopt(sk, SOL_SCO, SCO_OPTIONS, &so, &len) < 0) {
 		syslog(LOG_ERR, "Can't get SCO options: %s (%d)",
 							strerror(errno), errno);
 		exit(1);

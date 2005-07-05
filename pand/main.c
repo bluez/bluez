@@ -127,7 +127,8 @@ static int do_listen(void)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
-	int sk, olen, lm;
+	socklen_t olen;
+	int sk, lm;
 
 	if (use_sdp)
 		bnep_sdp_register(role);
@@ -185,7 +186,7 @@ static int do_listen(void)
 	listen(sk, 10);
 
 	while (!terminate) {
-		int alen = sizeof(l2a);
+		socklen_t alen = sizeof(l2a);
 		int nsk;
 		nsk = accept(sk, (struct sockaddr *) &l2a, &alen);
 		if (nsk < 0) {
@@ -243,7 +244,8 @@ static int w4_hup(int sk)
 		}
 
 		if (n) {
-			int err = 0, olen = sizeof(err);
+			int err = 0;
+			socklen_t olen = sizeof(err);
 			getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &olen);
 			syslog(LOG_INFO, "%s disconnected%s%s", netdev,
 				err ? " : " : "", err ? strerror(err) : "");
@@ -265,7 +267,8 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
-	int sk, olen, r = 0;
+	socklen_t olen;
+	int sk, r = 0;
 
 	syslog(LOG_INFO, "Connecting to %s", dst);
 

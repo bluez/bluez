@@ -130,7 +130,7 @@ static int switch_hidproxy(struct device_info *devinfo)
 	return err;
 }
 
-static int send_report(int fd, const unsigned char *buf, size_t size)
+static int send_report(int fd, const char *buf, size_t size)
 {
 	struct hiddev_report_info rinfo;
 	struct hiddev_usage_ref uref;

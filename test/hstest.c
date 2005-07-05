@@ -89,7 +89,8 @@ static int sco_connect(bdaddr_t *src, bdaddr_t *dst, uint16_t *handle, uint16_t 
 	struct sockaddr_sco addr;
 	struct sco_conninfo conn;
 	struct sco_options opts;
-	int s, size;
+	socklen_t size;
+	int s;
 
 	if ((s = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)) < 0) {
 		return -1;

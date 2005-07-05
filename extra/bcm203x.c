@@ -58,7 +58,7 @@ static char *fw_path = "/lib/firmware";
 
 static int load_file(struct usb_dev_handle *udev, char *filename)
 {
-	unsigned char buf[4096];
+	char buf[4096];
 	int fd, err, len;
 
 	fd = open(filename, O_RDONLY);
@@ -100,7 +100,7 @@ static void load_firmware(struct usb_device *dev)
 {
 	struct usb_dev_handle *udev;
 	char filename[PATH_MAX + 1];
-	unsigned char buf[16];
+	char buf[16];
 
 	udev = usb_open(dev);
 	if (!udev) {

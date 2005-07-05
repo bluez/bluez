@@ -182,7 +182,8 @@ static int dun_create_tty(int sk, char *tty, int size)
 {
 	struct sockaddr_rc sa;
 	struct stat st;
-	int id, alen, try = 3;
+	socklen_t alen;
+	int id, try = 3;
 
 	struct rfcomm_dev_req req = {
 		flags:   (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP),

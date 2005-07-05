@@ -226,7 +226,7 @@ static void configure_device(int hdev)
 	if ((device_opts->flags & (1 << HCID_SET_NAME)) && device_opts->name) {
 		change_local_name_cp cp;
 		memset(cp.name, 0, sizeof(cp.name));
-		expand_name(cp.name, sizeof(cp.name), device_opts->name, hdev);
+		expand_name((char *) cp.name, sizeof(cp.name), device_opts->name, hdev);
 
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
 					CHANGE_LOCAL_NAME_CP_SIZE, &cp);
@@ -459,7 +459,7 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer dat
 
 	ptr = buf;
 
-	if ((err = g_io_channel_read(chan, buf, sizeof(buf), &len))) {
+	if ((err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len))) {
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
 

@@ -471,7 +471,7 @@ static void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 	if (evt->status)
 		return;
 
-	write_device_name(sba, dba, evt->name);
+	write_device_name(sba, dba, (char *) evt->name);
 }
 
 static void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
@@ -518,7 +518,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 		return FALSE;
 	}
 
-	if ((err = g_io_channel_read(chan, buf, sizeof(buf), &len))) {
+	if ((err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len))) {
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
 		g_io_channel_close(chan);
@@ -664,7 +664,7 @@ void init_security_data(void)
 {
 	/* Set local PIN code */
 	if (read_default_pin_code() < 0) {
-		strcpy(hcid.pin_code, "BlueZ");
+		strcpy((char *) hcid.pin_code, "BlueZ");
 		hcid.pin_len = 5;
 	}
 

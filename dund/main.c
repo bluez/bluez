@@ -163,7 +163,8 @@ static int do_listen(void)
 	listen(sk, 10);
 
 	while (!terminate) {
-		int  alen = sizeof(sa), nsk;
+		socklen_t alen = sizeof(sa);
+		int nsk;
 		char ba[40];
 		char ch[10];
 

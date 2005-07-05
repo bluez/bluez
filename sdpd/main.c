@@ -316,7 +316,7 @@ static int become_daemon(void)
 static inline void handle_request(int sk, char *data, int len)
 {
 	struct sockaddr_l2 sa;
-	int size;
+	socklen_t size;
 	sdp_req_t req;
 
 	size = sizeof(sa);

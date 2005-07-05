@@ -47,7 +47,7 @@ static int at_command(int fd, char *cmd, int to)
 {
 	fd_set rfds;
 	struct timeval timeout;
-	unsigned char buf[1024];
+	char buf[1024];
 	int sel, len, i, n;
 
 	write(fd, cmd, strlen(cmd));

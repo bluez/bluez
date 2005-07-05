@@ -131,7 +131,7 @@ static char *ctoh(char c, char* s)
 	return s;
 }
 
-static void hexdump(char *s, unsigned long l)
+static void hexdump(unsigned char *s, unsigned long l)
 {
 	char bfr[80];
 	char *pb;
@@ -477,7 +477,7 @@ static void dump_mode(int sk)
 		}
 
 		syslog(LOG_INFO, "Recevied %d bytes", len);
-		hexdump(buf,len);
+		hexdump(buf, len);
 	}
 }
 

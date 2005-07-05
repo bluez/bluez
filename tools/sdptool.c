@@ -874,7 +874,7 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 		if (!strncasecmp(argv[i], "u0x", 3)) {
 			/* UUID16 */
 			uint16_t value_int = strtoul((argv[i]) + 3, NULL, 16);
-			uuid_t *value_uuid = (uuid_t *)malloc(sizeof(uuid_t));
+			uuid_t *value_uuid = (uuid_t *) malloc(sizeof(uuid_t));
 			allocArray[i] = value_uuid;
 			sdp_uuid16_create(value_uuid, value_int);
 
@@ -883,7 +883,7 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 			valueArray[i] = &value_uuid->value.uuid16;
 		} else if (!strncasecmp(argv[i], "0x", 2)) {
 			/* Int */
-			uint32_t *value_int = (int *)malloc(sizeof(int));
+			uint32_t *value_int = (uint32_t *) malloc(sizeof(int));
 			allocArray[i] = value_int;
 			*value_int = strtoul((argv[i]) + 2, NULL, 16);
 

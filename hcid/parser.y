@@ -262,14 +262,14 @@ bdaddr:
 
 pkt_type:
   WORD		{
-			int opt;
+			unsigned int opt;
 			if (!hci_strtoptype($1, &opt))
 				cfg_error("Unknown packet type '%s'", $1);
 			$$ = opt;
 		}
 
   | LIST	{
-			int opt;
+			unsigned int opt;
 			if (!hci_strtoptype($1, &opt))
 				cfg_error("Unknown packet type '%s'", $1);
 			$$ = opt;
@@ -278,14 +278,14 @@ pkt_type:
 
 link_mode:
   WORD		{
-			int opt;
+			unsigned int opt;
 			if (!hci_strtolm($1, &opt))
 				cfg_error("Unknown link mode '%s'", $1);
 			$$ = opt;
 		}
 
   | LIST	{
-			int opt;
+			unsigned int opt;
 			if (!hci_strtolm($1, &opt))
 				cfg_error("Unknown link mode '%s'", $1);
 			$$ = opt;
@@ -294,14 +294,14 @@ link_mode:
 
 link_policy:
   WORD		{
-			int opt;
+			unsigned int opt;
 			if (!hci_strtolp($1, &opt))
 				cfg_error("Unknown link policy '%s'", $1);
 			$$ = opt;
 		}
 
   | LIST	{
-			int opt;
+			unsigned int opt;
 			if (!hci_strtolp($1, &opt))
 				cfg_error("Unknown link policy '%s'", $1);
 			$$ = opt;

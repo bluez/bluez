@@ -100,8 +100,8 @@ struct dfu_suffix {
 
 /* DFU interface */
 int dfu_detach(struct usb_dev_handle *udev, int intf);
-int dfu_upload(struct usb_dev_handle *udev, int intf, int block, unsigned char *buffer, int size);
-int dfu_download(struct usb_dev_handle *udev, int intf, int block, unsigned char *buffer, int size);
+int dfu_upload(struct usb_dev_handle *udev, int intf, int block, char *buffer, int size);
+int dfu_download(struct usb_dev_handle *udev, int intf, int block, char *buffer, int size);
 int dfu_get_status(struct usb_dev_handle *udev, int intf, struct dfu_status *status);
 int dfu_clear_status(struct usb_dev_handle *udev, int intf);
 int dfu_get_state(struct usb_dev_handle *udev, int intf, uint8_t *state);
