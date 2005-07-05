@@ -360,7 +360,7 @@ static inline void print_des(uint8_t de_type, int level, int n, struct frame *fr
 
 static inline void print_de(int level, struct frame *frm, int *split, uint16_t *psm, uint8_t *channel)
 {
-	int n;
+	int n = 0;
 	uint8_t de_type = parse_de_hdr(frm, &n);
 
 	switch (de_type) {
@@ -471,7 +471,7 @@ static inline void print_attr_list(int level, struct frame *frm)
 {
 	uint16_t attr_id, psm;
 	uint8_t channel;
-	int len, n1, n2, split;
+	int len, split, n1 = 0, n2 = 0;
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
 		len = frm->len;

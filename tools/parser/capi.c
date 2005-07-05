@@ -764,7 +764,7 @@ static void cmd_manufacturer(int level, uint8_t subcmd, struct frame *frm)
 	frm->ptr += 4;
 	frm->len -= 4;
 
-	if (!strncmp(id, "AVM!", 4)) {
+	if (!strncmp((char *) id, "AVM!", 4)) {
 		class = CAPI_U32(frm);
 		func = CAPI_U32(frm);
 		len = CAPI_U8(frm);

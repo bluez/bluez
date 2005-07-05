@@ -532,7 +532,8 @@ static int wait_connection(in_addr_t addr, in_port_t port)
 {
 	struct sockaddr_in sa;
 	struct hostent *host;
-	int sk, nsk, opt, len;
+	socklen_t len;
+	int sk, nsk, opt;
 
 	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sk < 0) {
@@ -564,7 +565,8 @@ static int wait_connection(in_addr_t addr, in_port_t port)
 	}
 
 	len = sizeof(sa);
-	if ((nsk = accept(sk, (struct sockaddr *) &sa, &len)) < 0) {
+	nsk = accept(sk, (struct sockaddr *) &sa, &len);
+	if (nsk < 0) {
 		perror("Can't accept new inet socket");
 		close(sk);
 		exit(1);

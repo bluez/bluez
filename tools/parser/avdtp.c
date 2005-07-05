@@ -143,9 +143,8 @@ static char *codec2str(uint8_t type, uint8_t codec)
 			return "Reserved";
 		}
 		break;
-	default:
-		return "Unknown";
 	}
+	return "Unknown";
 }
 
 static char *cat2str(uint8_t cat)
