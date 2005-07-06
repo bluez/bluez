@@ -68,7 +68,7 @@ sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate)
 uint32_t sdp_cstate_alloc_buf(sdp_buf_t *buf)
 {
 	sdp_cstate_list_t *cstate = (sdp_cstate_list_t *)malloc(sizeof(sdp_cstate_list_t));
-	char *data = (char *)malloc(buf->data_size);
+	uint8_t *data = malloc(buf->data_size);
 
 	memcpy(data, buf->data, buf->data_size);
 	memset((char *)cstate, 0, sizeof(sdp_cstate_list_t));

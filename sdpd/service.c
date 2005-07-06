@@ -46,7 +46,7 @@
 extern void update_db_timestamp(void);
 
 // FIXME: refactor for server-side
-static sdp_record_t *extract_pdu_server(char *p, uint32_t handleExpected, int *scanned)
+static sdp_record_t *extract_pdu_server(uint8_t *p, uint32_t handleExpected, int *scanned)
 {
 	int extractStatus = -1, localExtractedLength = 0;
 	uint8_t dtd;
@@ -129,7 +129,7 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 {
 	int scanned = 0;
 	sdp_data_t *handle;
-	char *p = req->buf + sizeof(sdp_pdu_hdr_t);
+	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
 	sdp_record_t *rec;
 
 	req->flags = *p++;
@@ -175,7 +175,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 {
 	sdp_record_t *orec;
 	int status = 0, scanned = 0;
-	char *p = req->buf + sizeof(sdp_pdu_hdr_t);
+	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
 	uint32_t handle = ntohl(sdp_get_unaligned((uint32_t *)p));
 
 	SDPDBG("");
@@ -217,7 +217,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
  */
 int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 {
-	char *p = req->buf + sizeof(sdp_pdu_hdr_t);
+	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
 	uint32_t handle = ntohl(sdp_get_unaligned((uint32_t *)p));
 	sdp_record_t *rec;
 	int status = 0;

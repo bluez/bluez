@@ -313,7 +313,7 @@ static int become_daemon(void)
 	return 1;
 }
 
-static inline void handle_request(int sk, char *data, int len)
+static inline void handle_request(int sk, uint8_t *data, int len)
 {
 	struct sockaddr_l2 sa;
 	socklen_t size;
@@ -357,7 +357,7 @@ static void check_active(fd_set *mask, int num)
 {
 	sdp_pdu_hdr_t hdr;
 	int size, fd, count, r;
-	char *buf;
+	uint8_t *buf;
 
 	for (fd = 0, count = 0; fd <= active_maxfd && count < num; fd++) {
 		if (fd == l2cap_sock || fd == unix_sock || !FD_ISSET(fd, mask))

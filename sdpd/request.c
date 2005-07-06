@@ -57,7 +57,7 @@
  * sequence. The data type of elements found in the
  * sequence is returned in the reference pDataType
  */
-static int extract_des(char *buf, sdp_list_t **svcReqSeq, uint8_t *pDataType, uint8_t expectedType)
+static int extract_des(uint8_t *buf, sdp_list_t **svcReqSeq, uint8_t *pDataType, uint8_t expectedType)
 {
 	uint8_t seqType;
 	int data_size = 0;
@@ -67,7 +67,7 @@ static int extract_des(char *buf, sdp_list_t **svcReqSeq, uint8_t *pDataType, ui
 	sdp_list_t *pSeq = NULL;
 	uint8_t dataType;
 	int status = 0;
-	const char *p;
+	const uint8_t *p;
 
 	SDPDBG("Seq type : %d\n", seqType);
 	if (!scanned || (seqType != SDP_SEQ8 && seqType != SDP_SEQ16)) {
@@ -142,7 +142,7 @@ static int extract_des(char *buf, sdp_list_t **svcReqSeq, uint8_t *pDataType, ui
 
 static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
 {
-	char *pdata = buf->data + buf->data_size;
+	uint8_t *pdata = buf->data + buf->data_size;
 	int length = 0;
 
 	if (cstate) {
@@ -162,9 +162,9 @@ static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
 	return length;
 }
 
-static sdp_cont_state_t *sdp_cstate_get(char *buffer)
+static sdp_cont_state_t *sdp_cstate_get(uint8_t *buffer)
 {
-	char *pdata = buffer;
+	uint8_t *pdata = buffer;
 	uint8_t cStateSize = *(uint8_t *)pdata;
 
 	/*
@@ -233,16 +233,16 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 {
 	int status = 0, i, plen, mlen;
 	sdp_list_t *pattern = NULL;
-	int expected, actual;
+	uint16_t expected, actual;
 	uint8_t dtd;
 	sdp_cont_state_t *cstate = NULL;
-	char *pCacheBuffer = NULL;
+	uint8_t *pCacheBuffer = NULL;
 	int handleSize = 0;
 	uint32_t cStateId = 0;
 	short rsp_count = 0;
 	short *pTotalRecordCount, *pCurrentRecordCount;
 	int mtu;
-	char *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
+	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
 	int scanned = extract_des(pdata, &pattern, &dtd, SDP_TYPE_UUID);
 
 	SDPDBG("");
@@ -361,7 +361,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		 * current record count and increment the cached
 		 * buffer pointer to beyond the counters
 		 */
-		pdata = (char *)pCurrentRecordCount + sizeof(uint16_t);
+		pdata = (uint8_t *) pCurrentRecordCount + sizeof(uint16_t);
 
 		/* increment beyond the totalCount and the currentCount */
 		pCacheBuffer += 2 * sizeof(uint16_t);
@@ -486,14 +486,14 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 {
 	sdp_cont_state_t *cstate = NULL;
-	char *pResponse = NULL;
+	uint8_t *pResponse = NULL;
 	short cstate_size = 0;
 	sdp_list_t *seq = NULL;
 	uint8_t dtd = 0;
 	int scanned = 0;
 	int max_rsp_size;
 	int status = 0, plen, mlen;
-	char *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
+	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
 	uint32_t handle = ntohl(sdp_get_unaligned((uint32_t *)pdata));
 
 	SDPDBG("");
@@ -605,7 +605,7 @@ done:
 static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 {
 	int status = 0, plen, totscanned;
-	char *pdata, *pResponse = NULL;
+	uint8_t *pdata, *pResponse = NULL;
 	int scanned, max, rsp_count = 0;
 	sdp_list_t *pattern = NULL, *seq = NULL, *svcList;
 	sdp_cont_state_t *cstate = NULL;
@@ -653,7 +653,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	svcList = sdp_get_record_list();
 
-	tmpbuf.data = (char *)malloc(USHRT_MAX);
+	tmpbuf.data = malloc(USHRT_MAX);
 	tmpbuf.data_size = 0;
 	tmpbuf.buf_size = USHRT_MAX;
 	memset(tmpbuf.data, 0, USHRT_MAX);
@@ -765,13 +765,13 @@ void process_request(sdp_req_t *req)
 	sdp_pdu_hdr_t *reqhdr = (sdp_pdu_hdr_t *)req->buf;
 	sdp_pdu_hdr_t *rsphdr;
 	sdp_buf_t rsp;
-	char *buf = (char *)malloc(USHRT_MAX);
+	uint8_t *buf = malloc(USHRT_MAX);
 	int sent = 0;
 	int status = SDP_INVALID_SYNTAX;
 
 	SDPDBG("");
 
-	memset((void *)buf, 0, USHRT_MAX);
+	memset(buf, 0, USHRT_MAX);
 	rsp.data = buf + sizeof(sdp_pdu_hdr_t);
 	rsp.data_size = 0;
 	rsp.buf_size = USHRT_MAX - sizeof(sdp_pdu_hdr_t);

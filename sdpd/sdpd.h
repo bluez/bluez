@@ -50,7 +50,7 @@ typedef struct request {
 	int      sock;
 	int      mtu;
 	int      flags;
-	char     *buf;
+	uint8_t  *buf;
 	int      len;
 } sdp_req_t;
 
