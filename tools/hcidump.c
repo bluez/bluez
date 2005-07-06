@@ -190,8 +190,12 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		exit(1);
 	}
 
-	printf("device: hci%d snap_len: %d filter: 0x%lx\n", 
-		dev, snap_len, filter); 
+	if (device == HCI_DEV_NONE)
+		printf("system: ");
+	else
+		printf("device: hci%d ", dev);
+
+	printf("snap_len: %d filter: 0x%lx\n", snap_len, filter);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -430,7 +434,7 @@ static int open_socket(int dev, unsigned long flags)
 	struct hci_dev_info di;
 	int sk, dd, opt;
 
-	if (permcheck) {
+	if (permcheck && dev != HCI_DEV_NONE) {
 		dd = hci_open_dev(dev);
 		if (dd < 0) {
 			perror("Can't open device");
@@ -678,7 +682,10 @@ int main(int argc, char *argv[])
 	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:BVZh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
-			device = atoi(optarg + 3);
+			if (strcasecmp(optarg, "none"))
+				device = atoi(optarg + 3);
+			else
+				device = HCI_DEV_NONE;
 			break;
 
 		case 'l': 
