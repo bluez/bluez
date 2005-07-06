@@ -104,6 +104,7 @@ static struct frame *add_frame(struct frame *frm)
 	fr->data_len = fr->len + frm->len;
 	fr->len      = fr->data_len;
 	fr->ptr      = fr->data;
+	fr->dev_id   = frm->dev_id;
 	fr->in       = frm->in;
 	fr->ts       = frm->ts;
 	fr->handle   = frm->handle;

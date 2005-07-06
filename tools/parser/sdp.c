@@ -597,16 +597,17 @@ static int add_frame(struct frame *frm, int count)
 	if (fr->data)
 		free(fr->data);
 
-	fr->data = data;
+	fr->data     = data;
 	fr->data_len = len + count;
-	fr->len = fr->data_len;
-	fr->ptr = fr->data;
-	fr->in  = frm->in;
-	fr->ts  = frm->ts;
-	fr->handle  = frm->handle;
-	fr->cid     = frm->cid;
-	fr->num     = frm->num;
-	fr->channel = frm->channel;
+	fr->len      = fr->data_len;
+	fr->ptr      = fr->data;
+	fr->dev_id   = frm->dev_id;
+	fr->in       = frm->in;
+	fr->ts       = frm->ts;
+	fr->handle   = frm->handle;
+	fr->cid      = frm->cid;
+	fr->num      = frm->num;
+	fr->channel  = frm->channel;
 
 	return pos;
 }

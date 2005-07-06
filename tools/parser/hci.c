@@ -2389,6 +2389,19 @@ static inline void vendor_dump(int level, struct frame *frm)
 	if (p_filter(FILT_HCI))
 		return;
 
+	if (frm->dev_id == HCI_DEV_NONE) {
+		uint16_t type = btohs(htons(get_u16(frm)));
+		uint16_t plen = btohs(htons(get_u16(frm)));
+
+		p_indent(level, frm);
+
+		printf("System %s: type 0x%2.2x plen %d\n",
+				frm->in ? "event" : "command", type, plen);
+
+		raw_dump(level, frm);
+		return;
+	}
+
 	if (get_manufacturer() == 12) {
 		bpa_dump(level, frm);
 		return;

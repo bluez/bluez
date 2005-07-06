@@ -190,7 +190,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		exit(1);
 	}
 
-	if (device == HCI_DEV_NONE)
+	if (dev == HCI_DEV_NONE)
 		printf("system: ");
 	else
 		printf("device: hci%d ", dev);
@@ -216,7 +216,9 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 
 		/* Process control message */
 		frm.data_len = len;
+		frm.dev_id = dev;
 		frm.in = 0;
+
 		cmsg = CMSG_FIRSTHDR(&msg);
 		while (cmsg) {
 			switch (cmsg->cmsg_type) {

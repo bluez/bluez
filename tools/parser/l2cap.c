@@ -860,15 +860,16 @@ void l2cap_dump(int level, struct frame *frm)
 		}
 		memcpy(fr->data, frm->ptr, frm->len);
 		fr->data_len = dlen + L2CAP_HDR_SIZE;
-		fr->len = frm->len;
-		fr->ptr = fr->data;
-		fr->in  = frm->in;
-		fr->ts  = frm->ts;
-		fr->handle  = frm->handle;
-		fr->cid     = frm->cid;
-		fr->num     = frm->num;
-		fr->dlci    = frm->dlci;
-		fr->channel = frm->channel;
+		fr->len      = frm->len;
+		fr->ptr      = fr->data;
+		fr->dev_id   = frm->dev_id;
+		fr->in       = frm->in;
+		fr->ts       = frm->ts;
+		fr->handle   = frm->handle;
+		fr->cid      = frm->cid;
+		fr->num      = frm->num;
+		fr->dlci     = frm->dlci;
+		fr->channel  = frm->channel;
 	} else {
 		if (!(fr = get_frame(frm->handle))) {
 			fprintf(stderr, "Not enough connection handles\n");

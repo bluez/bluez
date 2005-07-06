@@ -37,6 +37,7 @@ struct frame {
 	uint32_t	data_len;
 	void		*ptr;
 	uint32_t	len;
+	uint16_t	dev_id;
 	uint8_t		in;
 	uint8_t		master;
 	uint16_t	handle;
