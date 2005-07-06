@@ -534,7 +534,7 @@ void sdp_attr_remove(sdp_record_t *rec, uint16_t attr)
 		rec->attrlist = sdp_list_remove(rec->attrlist, d);
 }
 
-void sdp_set_seq_len(char *ptr, int length)
+void sdp_set_seq_len(uint8_t *ptr, uint32_t length)
 {
 	uint8_t dtd = *(uint8_t *) ptr++;
 
@@ -614,14 +614,14 @@ static int get_data_size(sdp_buf_t *buf, sdp_data_t *sdpdata)
 
 int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 {
-	int pdu_size = 0, data_size = 0;
+	uint32_t pdu_size = 0, data_size = 0;
 	unsigned char *src = NULL, is_seq = 0, is_alt = 0;
 	uint8_t dtd = d->dtd;
 	uint16_t u16;
 	uint32_t u32;
 	uint64_t u64;
 	uint128_t u128;
-	char *seqp = buf->data + buf->data_size;
+	uint8_t *seqp = buf->data + buf->data_size;
 
 	pdu_size = sdp_set_data_type(buf, dtd);
 	switch (dtd) {
@@ -735,7 +735,7 @@ static void sdp_attr_pdu(void *value, void *udata)
 
 int sdp_gen_record_pdu(const sdp_record_t *rec, sdp_buf_t *buf)
 {
-	buf->data = (char *)malloc(SDP_PDU_CHUNK_SIZE);
+	buf->data = malloc(SDP_PDU_CHUNK_SIZE);
 	if (buf->data) {
 		buf->buf_size = SDP_PDU_CHUNK_SIZE;
 		buf->data_size = 0;
@@ -845,7 +845,7 @@ static sdp_data_t *extract_int(const void *p, int *len)
 	return d;
 }
 
-static sdp_data_t *extract_uuid(const void *p, int *len, sdp_record_t *rec)
+static sdp_data_t *extract_uuid(const uint8_t *p, int *len, sdp_record_t *rec)
 {
 	sdp_data_t *d = (sdp_data_t *) malloc(sizeof(sdp_data_t));
 
@@ -942,7 +942,7 @@ static sdp_data_t *extract_seq(const void *p, int *len, sdp_record_t *rec)
 	return d;
 }
 
-sdp_data_t *sdp_extract_attr(const char *p, int *size, sdp_record_t *rec)
+sdp_data_t *sdp_extract_attr(const uint8_t *p, int *size, sdp_record_t *rec)
 {
 	sdp_data_t *elem;
 	int n = 0;
@@ -1016,13 +1016,13 @@ void sdp_print_service_attr(sdp_list_t *svcAttrList)
 }
 #endif
 
-sdp_record_t *sdp_extract_pdu(const char *buf, int *scanned)
+sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int *scanned)
 {
 	int extracted = 0, seqlen = 0;
 	uint8_t dtd;
 	uint16_t attr;
 	sdp_record_t *rec = sdp_record_alloc();
-	const char *p = buf;
+	const uint8_t *p = buf;
 
 	*scanned = sdp_extract_seqtype(buf, &dtd, &seqlen);
 	p += *scanned;
@@ -1155,7 +1155,7 @@ sdp_data_t *sdp_data_get(const sdp_record_t *rec, uint16_t attrId)
  * Extract the sequence type and its length, and return offset into buf
  * or 0 on failure.
  */
-int sdp_extract_seqtype(const char *buf, uint8_t *dtdp, int *size)
+int sdp_extract_seqtype(const uint8_t *buf, uint8_t *dtdp, int *size)
 {
 	uint8_t dtd = *(uint8_t *) buf;
 	int scanned = sizeof(uint8_t);
@@ -1185,9 +1185,9 @@ int sdp_extract_seqtype(const char *buf, uint8_t *dtdp, int *size)
 	return scanned;
 }
 
-int sdp_send_req(sdp_session_t *session, char *buf, int size)
+int sdp_send_req(sdp_session_t *session, uint8_t *buf, uint32_t size)
 {
-	int sent = 0;
+	uint32_t sent = 0;
 
 	while (sent < size) {
 		int n = send(session->sock, buf + sent, size - sent, 0);
@@ -1198,7 +1198,7 @@ int sdp_send_req(sdp_session_t *session, char *buf, int size)
 	return 0;
 }
 
-int sdp_read_rsp(sdp_session_t *session, char *buf, int size)
+int sdp_read_rsp(sdp_session_t *session, uint8_t *buf, uint32_t size)
 {
 	fd_set readFds;
 	struct timeval timeout = { SDP_RESPONSE_TIMEOUT, 0 };
@@ -1216,7 +1216,7 @@ int sdp_read_rsp(sdp_session_t *session, char *buf, int size)
 /*
  * generic send request, wait for response method.
  */
-int sdp_send_req_w4_rsp(sdp_session_t *session, char *reqbuf, char *rspbuf, int reqsize, int *rspsize)
+int sdp_send_req_w4_rsp(sdp_session_t *session, uint8_t *reqbuf, uint8_t *rspbuf, uint32_t reqsize, uint32_t *rspsize)
 {
 	int n;
 	sdp_pdu_hdr_t *reqhdr = (sdp_pdu_hdr_t *)reqbuf;
@@ -1952,7 +1952,7 @@ uint128_t *sdp_create_base_uuid(void)
 	char *dataPtr;
 	char temp[10];
 	int toBeCopied;
-	char *data;
+	uint8_t *data;
 
 	if (bluetooth_base_uuid == NULL) {
 		strcpy(baseStr, BASE_UUID);
@@ -2182,7 +2182,7 @@ int sdp_uuid_to_proto(uuid_t *uuid)
 	return 0;
 }
 
-int sdp_uuid_extract(const char *p, uuid_t *uuid, int *scanned)
+int sdp_uuid_extract(const uint8_t *p, uuid_t *uuid, int *scanned)
 {
 	uint8_t type = *(const uint8_t *) p;
 
@@ -2214,9 +2214,9 @@ int sdp_uuid_extract(const char *p, uuid_t *uuid, int *scanned)
  * Should the PDU length exceed 2^8, then sequence type is
  * set accordingly and the data is memmove()'d.
  */
-void sdp_append_to_buf(sdp_buf_t *dst, char *data, int len)
+void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 {
-	char *p = dst->data;
+	uint8_t *p = dst->data;
 	uint8_t dtd = *(uint8_t *) p;
 
 	SDPDBG("Append src size: %d\n", len);
@@ -2224,7 +2224,7 @@ void sdp_append_to_buf(sdp_buf_t *dst, char *data, int len)
 	SDPDBG("Dst buffer size: %d\n", dst->buf_size);
 	if (dst->data_size + len > dst->buf_size) {
 		int need = SDP_PDU_CHUNK_SIZE * ((len / SDP_PDU_CHUNK_SIZE) + 1);
-		dst->data = (char *)realloc(dst->data, dst->buf_size + need);
+		dst->data = realloc(dst->data, dst->buf_size + need);
 
 		SDPDBG("Realloc'ing : %d\n", need);
 
@@ -2273,7 +2273,7 @@ void sdp_append_to_buf(sdp_buf_t *dst, char *data, int len)
 
 void sdp_append_to_pdu(sdp_buf_t *pdu, sdp_data_t *d)
 {
-	char buf[SDP_SEQ_PDUFORM_SIZE];
+	uint8_t buf[SDP_SEQ_PDUFORM_SIZE];
 	sdp_buf_t append;
 
 	append.data = buf;
@@ -2294,10 +2294,9 @@ void sdp_append_to_pdu(sdp_buf_t *pdu, sdp_data_t *d)
  */
 int sdp_record_register(sdp_session_t *session, sdp_record_t *rec, uint8_t flags)
 {
-	char *p;
 	int status = 0;
-	char *req, *rsp;
-	int reqsize, rspsize;
+	uint8_t *req, *rsp, *p;
+	uint32_t reqsize, rspsize;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
 	sdp_buf_t pdu;
 
@@ -2307,8 +2306,8 @@ int sdp_record_register(sdp_session_t *session, sdp_record_t *rec, uint8_t flags
 		errno = EREMOTE;
 		return -1;
 	}
-	req = (char *) malloc(SDP_REQ_BUFFER_SIZE);
-	rsp = (char *) malloc(SDP_RSP_BUFFER_SIZE);
+	req = malloc(SDP_REQ_BUFFER_SIZE);
+	rsp = malloc(SDP_RSP_BUFFER_SIZE);
 	if (req == NULL || rsp == NULL) {
 		status = -1;
 		errno = ENOMEM;
@@ -2354,10 +2353,9 @@ end:
  */
 int sdp_record_unregister(sdp_session_t *session, sdp_record_t *rec)
 {
-	char *p;
 	int status = 0;
-	char *reqbuf, *rspbuf;
-	int reqsize = 0, rspsize = 0;
+	uint8_t *reqbuf, *rspbuf, *p;
+	uint32_t reqsize = 0, rspsize = 0;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
 	uint32_t handle = 0;
 
@@ -2372,8 +2370,8 @@ int sdp_record_unregister(sdp_session_t *session, sdp_record_t *rec)
 		errno = EREMOTE;
 		return -1;
 	}
-	reqbuf = (char *) malloc(SDP_REQ_BUFFER_SIZE);
-	rspbuf = (char *) malloc(SDP_RSP_BUFFER_SIZE);
+	reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
+	rspbuf = malloc(SDP_RSP_BUFFER_SIZE);
 	if (!reqbuf || !rspbuf) {
 		errno = ENOMEM;
 		status = -1;
@@ -2412,10 +2410,9 @@ end:
  */
 int sdp_record_update(sdp_session_t *session, const sdp_record_t *rec)
 {
-	char *p;
 	int status = 0;
-	char *reqbuf, *rspbuf;
-	int reqsize, rspsize;
+	uint8_t *reqbuf, *rspbuf, *p;
+	uint32_t reqsize, rspsize;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
 	uint32_t handle;
 	sdp_buf_t pdu;
@@ -2431,8 +2428,8 @@ int sdp_record_update(sdp_session_t *session, const sdp_record_t *rec)
 		errno = EREMOTE;
 		return -1;
 	}
-	reqbuf = (char *) malloc(SDP_REQ_BUFFER_SIZE);
-	rspbuf = (char *) malloc(SDP_RSP_BUFFER_SIZE);
+	reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
+	rspbuf = malloc(SDP_RSP_BUFFER_SIZE);
 	if (!reqbuf || !rspbuf) {
 		errno = ENOMEM;
 		status = -1;
@@ -2442,7 +2439,7 @@ int sdp_record_update(sdp_session_t *session, const sdp_record_t *rec)
 	reqhdr->pdu_id = SDP_SVC_UPDATE_REQ;
 	reqhdr->tid    = htons(sdp_gen_tid(session));
 
-	p = (char *) (reqbuf + sizeof(sdp_pdu_hdr_t));
+	p = reqbuf + sizeof(sdp_pdu_hdr_t);
 	reqsize = sizeof(sdp_pdu_hdr_t);
 
 	bt_put_unaligned(htonl(handle), (uint32_t *) p);
@@ -2523,10 +2520,10 @@ void sdp_pattern_add_uuidseq(sdp_record_t *rec, sdp_list_t *seq)
  * handles are not in "data element sequence" form, but just like
  * an array of service handles
  */
-static void extract_record_handle_seq(char *pdu, sdp_list_t **seq, int count, int *scanned)
+static void extract_record_handle_seq(uint8_t *pdu, sdp_list_t **seq, int count, int *scanned)
 {
 	sdp_list_t *pSeq = *seq;
-	char *pdata = pdu;
+	uint8_t *pdata = pdu;
 	int n;
 
 	for (n = 0; n < count; n++) {
@@ -2542,7 +2539,7 @@ static void extract_record_handle_seq(char *pdu, sdp_list_t **seq, int count, in
  * Generate the attribute sequence pdu form
  * from sdp_list_t elements. Return length of attr seq
  */
-static int gen_dataseq_pdu(char *dst, const sdp_list_t *seq, uint8_t dtd)
+static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 {
 	sdp_data_t *dataseq;
 	void **types, **values;
@@ -2553,7 +2550,7 @@ static int gen_dataseq_pdu(char *dst, const sdp_list_t *seq, uint8_t dtd)
 	SDPDBG("");
 	
 	memset(&buf, 0, sizeof(sdp_buf_t));
-	buf.data = (char *)malloc(SDP_UUID_SEQ_SIZE);
+	buf.data = malloc(SDP_UUID_SEQ_SIZE);
 	buf.buf_size = SDP_UUID_SEQ_SIZE;
 
 	SDPDBG("Seq length : %d\n", seqlen);
@@ -2583,18 +2580,18 @@ static int gen_dataseq_pdu(char *dst, const sdp_list_t *seq, uint8_t dtd)
 	return seqlen;
 }
 
-static int gen_searchseq_pdu(char *dst, const sdp_list_t *seq)
+static int gen_searchseq_pdu(uint8_t *dst, const sdp_list_t *seq)
 {
-	uuid_t *uuid = (uuid_t *)seq->data;
+	uuid_t *uuid = (uuid_t *) seq->data;
 	return gen_dataseq_pdu(dst, seq, uuid->type);
 }
 
-static int gen_attridseq_pdu(char *dst, const sdp_list_t *seq, uint8_t dataType)
+static int gen_attridseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dataType)
 {
 	return gen_dataseq_pdu(dst, seq, dataType);
 }
 
-static int copy_cstate(char *pdata, const sdp_cstate_t *cstate)
+static int copy_cstate(uint8_t *pdata, const sdp_cstate_t *cstate)
 {
 	if (cstate) {
 		*pdata++ = cstate->length;
@@ -2638,12 +2635,12 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 			uint16_t max_rec_num, sdp_list_t **rsp)
 {
 	int status = 0;
-	int reqsize = 0, _reqsize;
-	int rspsize = 0, rsplen;
+	uint32_t reqsize = 0, _reqsize;
+	uint32_t rspsize = 0, rsplen;
 	int seqlen = 0;
 	int scanned, total_rec_count, rec_count;
-	char *pdata, *_pdata;
-	char *reqbuf, *rspbuf;
+	uint8_t *pdata, *_pdata;
+	uint8_t *reqbuf, *rspbuf;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
 	sdp_cstate_t *cstate = NULL;
 
@@ -2782,12 +2779,12 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 			sdp_attrreq_type_t reqtype, const sdp_list_t *attrids)
 {
 	int status = 0;
-	int reqsize = 0, _reqsize;
-	int rspsize = 0, rsp_count;
+	uint32_t reqsize = 0, _reqsize;
+	uint32_t rspsize = 0, rsp_count;
 	int attr_list_len = 0;
 	int seqlen = 0;
-	char *pdata, *_pdata;
-	char *reqbuf, *rspbuf;
+	uint8_t *pdata, *_pdata;
+	uint8_t *reqbuf, *rspbuf;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
 	sdp_cstate_t *cstate = NULL;
 	uint8_t cstate_len = 0;
@@ -2799,8 +2796,8 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 		return 0;
 	}
 
-	reqbuf = (char *) malloc(SDP_REQ_BUFFER_SIZE);
-	rspbuf = (char *) malloc(SDP_RSP_BUFFER_SIZE);
+	reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
+	rspbuf = malloc(SDP_RSP_BUFFER_SIZE);
 	if (!reqbuf || !rspbuf) {
 		errno = ENOMEM;
 		status = -1;
@@ -2874,12 +2871,12 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 		 * and the last one (which has cstate_len == 0)
 		 */
 		if (cstate_len > 0 || rsp_concat_buf.data_size != 0) {
-			char *targetPtr = NULL;
+			uint8_t *targetPtr = NULL;
 
 			cstate = cstate_len > 0 ? (sdp_cstate_t *) (pdata + rsp_count) : 0;
 
 			// build concatenated response buffer
-			rsp_concat_buf.data = (char *) realloc(rsp_concat_buf.data, rsp_concat_buf.data_size + rsp_count);
+			rsp_concat_buf.data = realloc(rsp_concat_buf.data, rsp_concat_buf.data_size + rsp_count);
 			rsp_concat_buf.buf_size = rsp_concat_buf.data_size + rsp_count;
 			targetPtr = rsp_concat_buf.data + rsp_concat_buf.data_size;
 			memcpy(targetPtr, pdata, rsp_count);
@@ -2951,12 +2948,12 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search, sdp_attrreq_type_t reqtype, const sdp_list_t *attrids, sdp_list_t **rsp)
 {
 	int status = 0;
-	int reqsize = 0, _reqsize;
-	int rspsize = 0;
+	uint32_t reqsize = 0, _reqsize;
+	uint32_t rspsize = 0;
 	int seqlen = 0, attr_list_len = 0;
 	int rsp_count = 0, cstate_len = 0;
-	char *pdata, *_pdata;
-	char *reqbuf, *rspbuf;
+	uint8_t *pdata, *_pdata;
+	uint8_t *reqbuf, *rspbuf;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
 	uint8_t dataType;
 	sdp_list_t *rec_list = NULL;
@@ -2967,8 +2964,8 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 		errno = EINVAL;
 		return -1;
 	}
-	reqbuf = (char *) malloc(SDP_REQ_BUFFER_SIZE);
-	rspbuf = (char *) malloc(SDP_RSP_BUFFER_SIZE);
+	reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
+	rspbuf = malloc(SDP_RSP_BUFFER_SIZE);
 	if (!reqbuf || !rspbuf) {
 		errno = ENOMEM;
 		status = -1;
@@ -3048,12 +3045,12 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 		 * responses and the last one which will have cstate_len == 0
 		 */
 		if (cstate_len > 0 || rsp_concat_buf.data_size != 0) {
-			char *targetPtr = NULL;
+			uint8_t *targetPtr = NULL;
 
 			cstate = cstate_len > 0 ? (sdp_cstate_t *) (pdata + rsp_count) : 0;
 
 			// build concatenated response buffer
-			rsp_concat_buf.data = (char *)realloc(rsp_concat_buf.data, rsp_concat_buf.data_size + rsp_count);
+			rsp_concat_buf.data = realloc(rsp_concat_buf.data, rsp_concat_buf.data_size + rsp_count);
 			targetPtr = rsp_concat_buf.data + rsp_concat_buf.data_size;
 			rsp_concat_buf.buf_size = rsp_concat_buf.data_size + rsp_count;
 			memcpy(targetPtr, pdata, rsp_count);

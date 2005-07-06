@@ -401,7 +401,7 @@ typedef struct {
  * Should the type of any of these change, you need only make a change here.
  */
 typedef struct {
-	char data[16];
+	uint8_t data[16];
 } uint128_t;
 
 typedef struct {
@@ -454,9 +454,9 @@ typedef struct {
 } sdp_version_t;
 
 typedef struct {
-	char *data;
-	int data_size;
-	int buf_size;
+	uint8_t *data;
+	uint32_t data_size;
+	uint32_t buf_size;
 } sdp_buf_t;
 
 typedef struct {

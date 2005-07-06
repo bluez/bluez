@@ -424,7 +424,7 @@ uuid_t *sdp_uuid_to_uuid128(uuid_t *uuid);
 void sdp_uuid16_to_uuid128(uuid_t *uuid128, uuid_t *uuid16);
 int sdp_uuid128_to_uuid(uuid_t *uuid);
 int sdp_uuid_to_proto(uuid_t *uuid);
-int sdp_uuid_extract(const char *buffer, uuid_t *uuid, int *scanned);
+int sdp_uuid_extract(const uint8_t *buffer, uuid_t *uuid, int *scanned);
 void sdp_uuid_print(const uuid_t *uuid);
 
 #define MAX_LEN_UUID_STR 37
@@ -538,30 +538,30 @@ static inline uint16_t sdp_gen_tid(sdp_session_t *session)
 	return session->tid++;
 }
 
-sdp_record_t *sdp_extract_pdu(const char *pdata, int *scanned);
-sdp_data_t *sdp_extract_string(char *, int *);
+sdp_record_t *sdp_extract_pdu(const uint8_t *pdata, int *scanned);
+sdp_data_t *sdp_extract_string(uint8_t *, int *);
 
 void sdp_data_print(sdp_data_t *data);
 void sdp_print_service_attr(sdp_list_t *alist);
 
 int sdp_attrid_comp_func(const void *key1, const void *key2);
 
-void sdp_set_seq_len(char *ptr, int length);
+void sdp_set_seq_len(uint8_t *ptr, uint32_t length);
 void sdp_set_attrid(sdp_buf_t *pdu, uint16_t id);
 void sdp_append_to_pdu(sdp_buf_t *dst, sdp_data_t *d);
-void sdp_append_to_buf(sdp_buf_t *dst, char *data, int len);
+void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len);
 
 int sdp_gen_pdu(sdp_buf_t *pdu, sdp_data_t *data);
 int sdp_gen_record_pdu(const sdp_record_t *rec, sdp_buf_t *pdu);
 
-int sdp_extract_seqtype(const char *buf, uint8_t *dtdp, int *seqlen);
+int sdp_extract_seqtype(const uint8_t *buf, uint8_t *dtdp, int *seqlen);
 
-sdp_data_t *sdp_extract_attr(const char *pdata, int *extractedLength, sdp_record_t *rec);
+sdp_data_t *sdp_extract_attr(const uint8_t *pdata, int *extractedLength, sdp_record_t *rec);
 
 void sdp_pattern_add_uuid(sdp_record_t *rec, uuid_t *uuid);
 void sdp_pattern_add_uuidseq(sdp_record_t *rec, sdp_list_t *seq);
 
-int sdp_send_req_w4_rsp(sdp_session_t *session, char *req, char *rsp, int reqsize, int *rspsize);
+int sdp_send_req_w4_rsp(sdp_session_t *session, uint8_t *req, uint8_t *rsp, uint32_t reqsize, uint32_t *rspsize);
 
 typedef struct {
 	uint8_t length;
