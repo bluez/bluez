@@ -170,6 +170,94 @@ failed:
 				OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
 }
 
+void hcid_dbus_inquiry_result(const bdaddr_t *local, const bdaddr_t *peer)
+{
+	DBusMessage *message;
+#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
+	DBusMessageIter iter;
+#endif
+	char local_addr[18], peer_addr[18];
+
+	ba2str(local, local_addr);
+	ba2str(peer, peer_addr);
+
+	message = dbus_message_new_signal("/org/bluez/DevAgent",
+				"org.bluez.DevAgent", "InquiryResult");
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS inquiry result message");
+		goto failed;
+	}
+
+#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, local_addr,
+					DBUS_TYPE_STRING, peer_addr,
+					DBUS_TYPE_INVALID);
+#else
+	dbus_message_append_iter_init(message, &iter);
+
+	dbus_message_iter_append_string(&iter, local_addr);
+	dbus_message_iter_append_string(&iter, peer_addr);
+#endif
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS inquiry result message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	dbus_message_unref(message);
+
+	return;
+}
+
+void hcid_dbus_remote_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name)
+{
+	DBusMessage *message;
+#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
+	DBusMessageIter iter;
+#endif
+	char local_addr[18], peer_addr[18];
+
+	ba2str(local, local_addr);
+	ba2str(peer, peer_addr);
+
+	message = dbus_message_new_signal("/org/bluez/DevAgent",
+				"org.bluez.DevAgent", "RemoteName");
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		goto failed;
+	}
+
+#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, local_addr,
+					DBUS_TYPE_STRING, peer_addr,
+					DBUS_TYPE_STRING, name,
+					DBUS_TYPE_INVALID);
+#else
+	dbus_message_append_iter_init(message, &iter);
+
+	dbus_message_iter_append_string(&iter, local_addr);
+	dbus_message_iter_append_string(&iter, peer_addr);
+	dbus_message_iter_append_string(&iter, name);
+#endif
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS remote name message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	dbus_message_unref(message);
+
+	return;
+}
+
 gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	DBusWatch *watch = (DBusWatch *) data;

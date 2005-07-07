@@ -471,6 +471,8 @@ static void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 	if (evt->status)
 		return;
 
+	hcid_dbus_remote_name(sba, dba, (char *) evt->name);
+
 	write_device_name(sba, dba, (char *) evt->name);
 }
 
@@ -487,6 +489,47 @@ static void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 
 	write_version_info(sba, &dba, btohs(evt->manufacturer),
 				evt->lmp_ver, btohs(evt->lmp_subver));
+}
+
+static void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
+{
+	uint8_t num = *(uint8_t *)ptr++;
+	int i;
+
+	for (i = 0; i < num; i++) {
+		inquiry_info *info = ptr;
+
+		hcid_dbus_inquiry_result(sba, &info->bdaddr);
+
+		ptr += INQUIRY_INFO_SIZE;
+	}
+}
+
+static void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, void *ptr)
+{
+	uint8_t num = *(uint8_t *)ptr++; 
+	int i;
+
+	if (!num)
+		return;
+
+	if ((plen - 1) / num == INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE) {
+		for (i = 0; i < num; i++) {
+			inquiry_info_with_rssi_and_pscan_mode *info = ptr;
+
+			hcid_dbus_inquiry_result(sba, &info->bdaddr);
+
+			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
+		}
+	} else {
+		for (i = 0; i < num; i++) {
+			inquiry_info_with_rssi *info = ptr;
+
+			hcid_dbus_inquiry_result(sba, &info->bdaddr);
+
+			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
+		}
+	}
 }
 
 static void remote_features_information(int dev, bdaddr_t *sba, void *ptr)
@@ -553,6 +596,14 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	case EVT_READ_REMOTE_FEATURES_COMPLETE:
 		remote_features_information(dev, &di->bdaddr, ptr);
 		break;
+
+	case EVT_INQUIRY_RESULT:
+		inquiry_result(dev, &di->bdaddr, eh->plen, ptr);
+		break;
+
+	case EVT_INQUIRY_RESULT_WITH_RSSI:
+		inquiry_result_with_rssi(dev, &di->bdaddr, eh->plen, ptr);
+		break;
 	}
 
 	if (hci_test_bit(HCI_SECMGR, &di->flags))
@@ -608,6 +659,8 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_REMOTE_NAME_REQ_COMPLETE, &flt);
 	hci_filter_set_event(EVT_READ_REMOTE_VERSION_COMPLETE, &flt);
 	hci_filter_set_event(EVT_READ_REMOTE_FEATURES_COMPLETE, &flt);
+	hci_filter_set_event(EVT_INQUIRY_RESULT, &flt);
+	hci_filter_set_event(EVT_INQUIRY_RESULT_WITH_RSSI, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		syslog(LOG_ERR, "Can't set filter on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
