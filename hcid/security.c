@@ -493,13 +493,16 @@ static void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 
 static void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 {
-	uint8_t num = *(uint8_t *)ptr++;
+	uint8_t num = *(uint8_t *) ptr++;
 	int i;
 
 	for (i = 0; i < num; i++) {
 		inquiry_info *info = ptr;
+		uint32_t class = info->dev_class[0]
+			| (info->dev_class[1] << 8)
+			| (info->dev_class[2] << 16);
 
-		hcid_dbus_inquiry_result(sba, &info->bdaddr);
+		hcid_dbus_inquiry_result(sba, &info->bdaddr, class, 0);
 
 		ptr += INQUIRY_INFO_SIZE;
 	}
@@ -507,7 +510,7 @@ static void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 
 static void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, void *ptr)
 {
-	uint8_t num = *(uint8_t *)ptr++; 
+	uint8_t num = *(uint8_t *) ptr++;
 	int i;
 
 	if (!num)
@@ -516,16 +519,24 @@ static void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, void *ptr
 	if ((plen - 1) / num == INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE) {
 		for (i = 0; i < num; i++) {
 			inquiry_info_with_rssi_and_pscan_mode *info = ptr;
+			uint32_t class = info->dev_class[0]
+				| (info->dev_class[1] << 8)
+				| (info->dev_class[2] << 16);
 
-			hcid_dbus_inquiry_result(sba, &info->bdaddr);
+			hcid_dbus_inquiry_result(sba, &info->bdaddr,
+							class, info->rssi);
 
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
 	} else {
 		for (i = 0; i < num; i++) {
 			inquiry_info_with_rssi *info = ptr;
+			uint32_t class = info->dev_class[0]
+				| (info->dev_class[1] << 8)
+				| (info->dev_class[2] << 16);
 
-			hcid_dbus_inquiry_result(sba, &info->bdaddr);
+			hcid_dbus_inquiry_result(sba, &info->bdaddr,
+							class, info->rssi);
 
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}

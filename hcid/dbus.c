@@ -170,7 +170,7 @@ failed:
 				OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
 }
 
-void hcid_dbus_inquiry_result(const bdaddr_t *local, const bdaddr_t *peer)
+void hcid_dbus_inquiry_result(const bdaddr_t *local, const bdaddr_t *peer, const uint32_t class, const int8_t rssi)
 {
 	DBusMessage *message;
 #ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
@@ -192,12 +192,16 @@ void hcid_dbus_inquiry_result(const bdaddr_t *local, const bdaddr_t *peer)
 	dbus_message_append_args(message,
 					DBUS_TYPE_STRING, local_addr,
 					DBUS_TYPE_STRING, peer_addr,
+					DBUS_TYPE_UINT32, class,
+					DBUS_TYPE_INT32, rssi,
 					DBUS_TYPE_INVALID);
 #else
 	dbus_message_append_iter_init(message, &iter);
 
 	dbus_message_iter_append_string(&iter, local_addr);
 	dbus_message_iter_append_string(&iter, peer_addr);
+	dbus_message_iter_append_uint32(&iter, class);
+	dbus_message_iter_append_int32(&iter, rssi);
 #endif
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {

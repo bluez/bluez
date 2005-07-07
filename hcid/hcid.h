@@ -123,10 +123,10 @@ void toggle_pairing(int enable);
 #ifdef ENABLE_DBUS
 gboolean hcid_dbus_init(void);
 void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci);
-void hcid_dbus_inquiry_result(const bdaddr_t *local, const bdaddr_t *peer);
+void hcid_dbus_inquiry_result(const bdaddr_t *local, const bdaddr_t *peer, const uint32_t class, const int8_t rssi);
 void hcid_dbus_remote_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name);
 #else
-static inline void hcid_dbus_inquiry_result(const bdaddr_t *local, const bdaddr_t *peer)
+static inline void hcid_dbus_inquiry_result(const bdaddr_t *local, const bdaddr_t *peer, uint32_t class, const int8_t rssi)
 {
 }
 static inline void hcid_dbus_remote_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name)
