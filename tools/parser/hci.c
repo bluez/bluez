@@ -2390,13 +2390,14 @@ static inline void vendor_dump(int level, struct frame *frm)
 		return;
 
 	if (frm->dev_id == HCI_DEV_NONE) {
+		uint16_t device = btohs(htons(get_u16(frm)));
 		uint16_t type = btohs(htons(get_u16(frm)));
 		uint16_t plen = btohs(htons(get_u16(frm)));
 
 		p_indent(level, frm);
 
-		printf("System %s: type 0x%2.2x plen %d\n",
-				frm->in ? "event" : "command", type, plen);
+		printf("System %s: device hci%d type 0x%2.2x plen %d\n",
+			frm->in ? "event" : "command", device, type, plen);
 
 		raw_dump(level, frm);
 		return;
