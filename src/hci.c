@@ -522,10 +522,8 @@ static int __same_bdaddr(int dd, int dev_id, long arg)
 
 int hci_get_route(bdaddr_t *bdaddr)
 {
-	if (bdaddr)
-		return hci_for_each_dev(HCI_UP, __other_bdaddr, (long) bdaddr);
-	else
-		return hci_for_each_dev(HCI_UP, NULL, 0);
+	return hci_for_each_dev(HCI_UP, __other_bdaddr,
+				(long) (bdaddr ? bdaddr : BDADDR_ANY));
 }
 
 int hci_devid(const char *str)
@@ -593,9 +591,12 @@ int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info 
 		nrsp = 255;
 	}
 
-	if (dev_id < 0 && (dev_id = hci_get_route(NULL)) < 0) {
-		errno = ENODEV;
-		return -1;
+	if (dev_id < 0) {
+		dev_id = hci_get_route(NULL);
+		if (dev_id < 0) {
+			errno = ENODEV;
+			return -1;
+		}
 	}	
 
 	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
