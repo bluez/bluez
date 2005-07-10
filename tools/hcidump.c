@@ -684,7 +684,7 @@ int main(int argc, char *argv[])
 	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:BVZh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
-			if (strcasecmp(optarg, "none"))
+			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
 				device = atoi(optarg + 3);
 			else
 				device = HCI_DEV_NONE;
