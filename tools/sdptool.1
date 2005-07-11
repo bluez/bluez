@@ -64,8 +64,14 @@ performing SDP queries on Bluetooth devices, and administering a
 local \fBsdpd\fR. 
 .SH "COMMANDS" 
 .PP 
-The following commands are available. 
-.IP "\fBsearch [--bdaddr bdaddr] [--tree] [--raw] service\fP" 10 
+The following commands are available.  In all cases \fBbdaddr\fR 
+specifies the device to search or browse.  If \fIlocal\fP is used
+for \fBbdaddr\fP, then the local \fBsdpd\fR is searched.
+.PP
+Services are identified and manipulated with a 4-byte \fBrecord_handle\fP 
+(NOT the service name).  To find a service's \fBrecord_handle\fP, look for the 
+"Service RecHandle" line in the \fBsearch\fP or \fBbrowse\fP results
+.IP "\fBsearch [--bdaddr bdaddr] [--tree] [--raw] service_name\fP" 10 
 Search for services.. 
 .IP "" 10 
 Known service names are DID, SP, DUN, LAN, FAX, OPUSH, 
