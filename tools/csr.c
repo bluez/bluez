@@ -278,6 +278,8 @@ static struct {
 	{ 2068, "Unified 18f"	},
 	{ 2243, "Unified 18e"	},
 	{ 2244, "Unified 18e"	},
+	{ 2258, "Unified 20d"	},
+	{ 2259, "Unified 20d"	},
 	{  195, "Sniff 1 (2001-11-27)"	},
 	{  220, "Sniff 2 (2002-01-03)"	},
 	{  269, "Sniff 3 (2002-02-22)"	},
