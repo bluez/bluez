@@ -2318,8 +2318,13 @@ int sdp_device_record_register(sdp_session_t *session, bdaddr_t *device, sdp_rec
 	reqhdr->tid    = htons(sdp_gen_tid(session));
 	reqsize = sizeof(sdp_pdu_hdr_t) + 1;
 	p = req + sizeof(sdp_pdu_hdr_t);
-	*p++ = flags;
-	if (0 > sdp_gen_record_pdu(rec, &pdu)) {
+	if (bacmp(device, BDADDR_ANY)) {
+		*p++ = flags | SDP_DEVICE_RECORD;
+		bacpy((bdaddr_t *) p, device);
+		p += sizeof(bdaddr_t);
+	} else
+		*p++ = flags;
+	if (sdp_gen_record_pdu(rec, &pdu) < 0) {
 		status = -1;
 		errno = ENOMEM;
 		goto end;

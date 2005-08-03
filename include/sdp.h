@@ -371,6 +371,7 @@ extern "C" {
  * Values of the flags parameter to sdp_record_register
  */
 #define SDP_RECORD_PERSIST	0x01
+#define SDP_DEVICE_RECORD	0x02
 
 /*
  * Values of the flags parameter to sdp_connect
