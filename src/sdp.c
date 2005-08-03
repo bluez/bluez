@@ -2322,6 +2322,7 @@ int sdp_device_record_register(sdp_session_t *session, bdaddr_t *device, sdp_rec
 		*p++ = flags | SDP_DEVICE_RECORD;
 		bacpy((bdaddr_t *) p, device);
 		p += sizeof(bdaddr_t);
+		reqsize += sizeof(bdaddr_t);
 	} else
 		*p++ = flags;
 	if (sdp_gen_record_pdu(rec, &pdu) < 0) {
