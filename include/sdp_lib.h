@@ -397,11 +397,13 @@ void sdp_record_free(sdp_record_t *rec);
  * on success or -1 on failure (and sets errno).
  */
 int sdp_record_register(sdp_session_t *sess, sdp_record_t *rec, uint8_t flags);
+int sdp_device_record_register(sdp_session_t *sess, bdaddr_t *device, sdp_record_t *rec, uint8_t flags);
 
 /*
  * Unregister a service record.
  */
 int sdp_record_unregister(sdp_session_t *sess, sdp_record_t *rec);
+int sdp_device_record_unregister(sdp_session_t *sess, bdaddr_t *device, sdp_record_t *rec);
 
 /*
  * Update an existing service record.  (Calling this function
@@ -409,6 +411,7 @@ int sdp_record_unregister(sdp_session_t *sess, sdp_record_t *rec);
  * in an error.)
  */
 int sdp_record_update(sdp_session_t *sess, const sdp_record_t *rec);
+int sdp_device_record_update(sdp_session_t *sess, bdaddr_t *device, const sdp_record_t *rec);
 
 void sdp_record_print(const sdp_record_t *rec);
 

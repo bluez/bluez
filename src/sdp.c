@@ -2292,7 +2292,7 @@ void sdp_append_to_pdu(sdp_buf_t *pdu, sdp_data_t *d)
  *
  * Returns zero on success, otherwise -1 (and sets errno).
  */
-int sdp_record_register(sdp_session_t *session, sdp_record_t *rec, uint8_t flags)
+int sdp_device_record_register(sdp_session_t *session, bdaddr_t *device, sdp_record_t *rec, uint8_t flags)
 {
 	int status = 0;
 	uint8_t *req, *rsp, *p;
@@ -2348,10 +2348,15 @@ end:
 	return status;
 }
 
+int sdp_record_register(sdp_session_t *session, sdp_record_t *rec, uint8_t flags)
+{
+	return sdp_device_record_register(session, BDADDR_ANY, rec, flags);
+}
+
 /*
  * unregister a service record
  */
-int sdp_record_unregister(sdp_session_t *session, sdp_record_t *rec)
+int sdp_device_record_unregister(sdp_session_t *session, bdaddr_t *device, sdp_record_t *rec)
 {
 	int status = 0;
 	uint8_t *reqbuf, *rspbuf, *p;
@@ -2405,10 +2410,15 @@ end:
 	return status;
 }
 
+int sdp_record_unregister(sdp_session_t *session, sdp_record_t *rec)
+{
+	return sdp_device_record_unregister(session, BDADDR_ANY, rec);
+}
+
 /*
  * modify an existing service record
  */
-int sdp_record_update(sdp_session_t *session, const sdp_record_t *rec)
+int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp_record_t *rec)
 {
 	int status = 0;
 	uint8_t *reqbuf, *rspbuf, *p;
@@ -2470,6 +2480,11 @@ end:
 	if (rspbuf)
 		free(rspbuf);
 	return status;
+}
+
+int sdp_record_update(sdp_session_t *session, const sdp_record_t *rec)
+{
+	return sdp_device_record_update(session, BDADDR_ANY, rec);
 }
 
 sdp_record_t *sdp_record_alloc()
