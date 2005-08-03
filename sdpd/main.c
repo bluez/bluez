@@ -113,7 +113,7 @@ static void register_public_browse_group(int public)
 	} else
 		browse->handle = SDP_SERVER_RECORD_HANDLE + 1;
 
-	sdp_record_add(browse);
+	sdp_record_add(BDADDR_ANY, browse);
 	sdpdata = sdp_data_alloc(SDP_UINT32, &browse->handle);
 	sdp_attr_add(browse, SDP_ATTR_RECORD_HANDLE, sdpdata);
 
@@ -155,7 +155,7 @@ static void register_server_service(int public)
 	/* Force the record to be SDP_SERVER_RECORD_HANDLE */
 	server->handle = SDP_SERVER_RECORD_HANDLE;
 
-	sdp_record_add(server);
+	sdp_record_add(BDADDR_ANY, server);
 	sdp_attr_add(server, SDP_ATTR_RECORD_HANDLE, sdp_data_alloc(SDP_UINT32, &server->handle));
 
 	/*
@@ -320,7 +320,7 @@ static inline void handle_request(int sk, uint8_t *data, int len)
 	sdp_req_t req;
 
 	size = sizeof(sa);
-	if (getpeername(sk, (struct sockaddr *)&sa, &size) < 0)
+	if (getpeername(sk, (struct sockaddr *) &sa, &size) < 0)
 		return;
 
 	if (sa.l2_family == AF_BLUETOOTH) { 
@@ -331,7 +331,12 @@ static inline void handle_request(int sk, uint8_t *data, int len)
 		req.bdaddr = sa.l2_bdaddr;
 		req.mtu    = lo.omtu;
 		req.local  = 0;
+		memset(&sa, 0, sizeof(sa));
+		size = sizeof(sa);
+		getsockname(sk, (struct sockaddr *) &sa, &size);
+		req.device = sa.l2_bdaddr;
 	} else {
+		req.device = *BDADDR_ANY;
 		req.bdaddr = *BDADDR_LOCAL;
 		req.mtu    = 2048;
 		req.local  = 1;

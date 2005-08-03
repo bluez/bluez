@@ -46,7 +46,7 @@
 extern void update_db_timestamp(void);
 
 // FIXME: refactor for server-side
-static sdp_record_t *extract_pdu_server(uint8_t *p, uint32_t handleExpected, int *scanned)
+static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t handleExpected, int *scanned)
 {
 	int extractStatus = -1, localExtractedLength = 0;
 	uint8_t dtd;
@@ -71,15 +71,15 @@ static sdp_record_t *extract_pdu_server(uint8_t *p, uint32_t handleExpected, int
 	} else if (handleExpected != 0xffffffff)
 		rec = sdp_record_find(handleExpected);
 
-	if (rec == NULL) {
+	if (!rec) {
 		rec = sdp_record_alloc();
 		rec->attrlist = NULL;
 		if (lookAheadAttrId == SDP_ATTR_RECORD_HANDLE) {
 			rec->handle = handle;
-			sdp_record_add(rec);
+			sdp_record_add(device, rec);
 		} else if (handleExpected != 0xffffffff) {
 			rec->handle = handleExpected;
-			sdp_record_add(rec);
+			sdp_record_add(device, rec);
 		}
 	}
 
@@ -133,10 +133,14 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 	sdp_record_t *rec;
 
 	req->flags = *p++;
+	if (req->flags & SDP_DEVICE_RECORD) {
+		bacpy(&req->device, (bdaddr_t *) p);
+		p += sizeof(bdaddr_t);
+	}
 
 	// save image of PDU: we need it when clients request this attribute
-	rec = extract_pdu_server(p, 0xffffffff, &scanned);
-	if (rec == NULL) {
+	rec = extract_pdu_server(&req->device, p, 0xffffffff, &scanned);
+	if (!rec) {
 		sdp_put_unaligned(htons(SDP_INVALID_SYNTAX), (uint16_t *)rsp->data);
 		rsp->data_size = sizeof(uint16_t);
 		return -1;
@@ -146,7 +150,7 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 	if (rec->handle < 0x10000)
 		return -1;
 
-	sdp_record_add(rec);
+	sdp_record_add(&req->device, rec);
 	if (!(req->flags & SDP_RECORD_PERSIST))
 		sdp_svcdb_set_collectable(rec, req->sock);
 	handle = sdp_data_alloc(SDP_UINT32, &rec->handle);
@@ -189,7 +193,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 	SDPDBG("SvcRecOld: 0x%x\n", (uint32_t)orec);
 
 	if (orec) {
-		sdp_record_t *nrec = extract_pdu_server(p, handle, &scanned);
+		sdp_record_t *nrec = extract_pdu_server(BDADDR_ANY, p, handle, &scanned);
 		if (nrec && handle == nrec->handle)
 			update_db_timestamp();
 		else {

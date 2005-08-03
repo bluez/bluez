@@ -45,6 +45,7 @@
 #endif
 
 typedef struct request {
+	bdaddr_t device;
 	bdaddr_t bdaddr;
 	int      local;
 	int      sock;
@@ -80,7 +81,7 @@ void sdp_svcdb_collect_all(int sock);
 void sdp_svcdb_set_collectable(sdp_record_t *rec, int sock);
 void sdp_svcdb_collect(sdp_record_t *rec);
 sdp_record_t *sdp_record_find(uint32_t handle);
-void sdp_record_add(sdp_record_t *rec);
+void sdp_record_add(bdaddr_t *device, sdp_record_t *rec);
 int sdp_record_remove(uint32_t handle);
 sdp_list_t *sdp_get_record_list();
 uint32_t sdp_next_handle(void);

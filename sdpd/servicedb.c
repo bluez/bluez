@@ -143,7 +143,7 @@ void sdp_svcdb_set_collectable(sdp_record_t *record, int sock)
 /*
  * Add a service record to the repository
  */
-void sdp_record_add(sdp_record_t *rec)
+void sdp_record_add(bdaddr_t *device, sdp_record_t *rec)
 {
 #ifdef SDP_DEBUG
 	SDPDBG("Adding rec : 0x%lx\n", (long) rec);
