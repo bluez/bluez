@@ -170,7 +170,7 @@ failed:
 				OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
 }
 
-void hcid_dbus_inquiry_result(const bdaddr_t *local, const bdaddr_t *peer, const uint32_t class, const int8_t rssi)
+void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
 {
 	DBusMessage *message;
 #ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
@@ -217,7 +217,7 @@ failed:
 	return;
 }
 
-void hcid_dbus_remote_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name)
+void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	DBusMessage *message;
 #ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS

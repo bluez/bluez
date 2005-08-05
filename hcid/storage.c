@@ -48,129 +48,16 @@
 #include "textfile.h"
 #include "hcid.h"
 
-struct list {
-	bdaddr_t bdaddr;
-	unsigned char *data;
-	size_t size;
-	struct list *next;
-};
-
-static struct list *list_add(struct list *list, const bdaddr_t *bdaddr,
-				const char *data, const size_t size)
-{
-	struct list *temp = list, *last = list;
-
-	if (!bacmp(bdaddr, BDADDR_ANY))
-		return list;
-
-	while (temp) {
-		if (!bacmp(&temp->bdaddr, bdaddr)) {
-			if (temp->data)
-				free(temp->data);
-
-			temp->data = malloc(size);
-			if (temp->data) {
-				memcpy(temp->data, data, size);
-				temp->size = size;
-			} else
-				temp->size = 0;
-
-			return list;
-		}
-		temp = temp->next;
-	}
-
-	temp = malloc(sizeof(*temp));
-	if (!temp)
-		return list;
-
-	memset(temp, 0, sizeof(*temp));
-
-	bacpy(&temp->bdaddr, bdaddr);
-	temp->data = malloc(size);
-	if (temp->data) {
-		memcpy(temp->data, data, size);
-		temp->size = size;
-	} else
-		temp->size = 0;
-
-	temp->next = NULL;
-
-	if (!list)
-		return temp;
-
-	while (last->next)
-		last = last->next;
-
-	last->next = temp;
-
-	return list;
-}
-
-static struct list *list_free(struct list *list)
-{
-	struct list *temp = list;
-
-	if (!list)
-		return NULL;
-
-	while (list->next) {
-		temp = list;
-		list = list->next;
-		if (temp->data)
-			free(temp->data);
-		free(temp);
-	}
-
-	return NULL;
-}
-
-#define list_foreach(list, entry) \
-	for (entry = list; entry; entry = entry->next)
-
-static int create_dirs(const char *filename, mode_t mode)
-{
-	struct stat st;
-	char dir[PATH_MAX + 1], *prev, *next;
-	int err;
-
-	err = stat(filename, &st);
-	if (!err && S_ISREG(st.st_mode))
-		return 0;
-
-	memset(dir, 0, PATH_MAX + 1);
-	strcat(dir, "/");
-
-	prev = strchr(filename, '/');
-
-	while (prev) {
-		next = strchr(prev + 1, '/');
-		if (!next)
-			break;
-
-		if (next - prev == 1) {
-			prev = next;
-			continue;
-		}
-
-		strncat(dir, prev + 1, next - prev);
-		mkdir(dir, mode);
-
-		prev = next;
-	}
-
-	return 0;
-}
-
-int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *name)
+int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	char filename[PATH_MAX + 1], addr[18], str[249];
 	int i;
 
 	memset(str, 0, sizeof(str));
-	strncpy(str, name, 248);
-	for (i = 0; i < 248 && str[i]; i++)
-		if (!isprint(str[i]))
+	for (i = 0; i < 248 && name[i]; i++)
+		if (isprint(name[i]))
+			str[i] = name[i];
+		else
 			str[i] = '.';
 
 	ba2str(local, addr);
@@ -180,9 +67,10 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer, const char *n
 	return textfile_put(filename, addr, str);
 }
 
-int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *name)
+int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	char filename[PATH_MAX + 1], addr[18], *str;
+	int len;
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
@@ -192,386 +80,98 @@ int read_device_name(const bdaddr_t *local, const bdaddr_t *peer, char *name)
 	if (!str)
 		return -ENOENT;
 
-	memset(name, 0, 249);
-	strncpy(name, str, 248);
+	len = strlen(str);
+	if (len > 248)
+		str[248] = '\0';
+	strcpy(name, str);
 
 	return 0;
 }
 
-int write_version_info(const bdaddr_t *local, const bdaddr_t *peer, const uint16_t manufacturer, const uint8_t lmp_ver, const uint16_t lmp_subver)
+int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, uint8_t lmp_ver, uint16_t lmp_subver)
 {
-	struct list *temp, *list = NULL;
-	char filename[PATH_MAX + 1], addr[18], str[16], *buf, *ptr;
-	bdaddr_t bdaddr;
-	struct stat st;
-	int fd, pos, err = 0;
-
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
-
-	umask(S_IWGRP | S_IWOTH);
-	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-
-	fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	if (fd < 0)
-		return -errno;
-
-	if (flock(fd, LOCK_EX) < 0) {
-		err = -errno;
-		goto close;
-	}
-
-	if (fstat(fd, &st) < 0) {
-		err = -errno;
-		goto unlock;
-	}
-
-	buf = malloc(st.st_size + 100);
-	if (!buf) {
-		err = -ENOMEM;
-		goto unlock;
-	}
-
-	if (st.st_size > 0) {
-		read(fd, buf, st.st_size);
-
-		ptr = buf;
-
-		memset(str, 0, sizeof(str));
-		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
-			str2ba(addr, &bdaddr);
-			str[sizeof(str) - 1] = '\0';
-
-			list = list_add(list, &bdaddr, str, sizeof(str));
-
-			memset(str, 0, sizeof(str));
-			ptr += pos;
-			if (ptr - buf >= st.st_size)
-				break;
-		};
-
-		lseek(fd, 0, SEEK_SET);
-		ftruncate(fd, 0);
-	}
+	char filename[PATH_MAX + 1], addr[18], str[16];
 
 	memset(str, 0, sizeof(str));
 	sprintf(str, "%d %d %d", manufacturer, lmp_ver, lmp_subver);
 
-	list = list_add(list, peer, str, sizeof(str));
-	if (!list) {
-		err = -EIO;
-		goto unlock;
-	}
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
 
-	list_foreach(list, temp) {
-		ba2str(&temp->bdaddr, addr);
-		if (temp->data && temp->size > 0) {
-			memset(buf, 0, 100);
-			snprintf(buf, 99, "%s %s\n", addr, temp->data);
-			write(fd, buf, strlen(buf));
-		}
-	}
-
-unlock:
-	flock(fd, LOCK_UN);
-
-close:
-	close(fd);
-	list_free(list);
-	return err;
+	ba2str(peer, addr);
+	return textfile_put(filename, addr, str);
 }
 
-int write_features_info(const bdaddr_t *local, const bdaddr_t *peer, const unsigned char *features)
+int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features)
 {
-	struct list *temp, *list = NULL;
-	char filename[PATH_MAX + 1], addr[18], str[17], *buf, *ptr;
-	bdaddr_t bdaddr;
-	struct stat st;
-	int i, fd, pos, err = 0;
-
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, addr);
-
-	umask(S_IWGRP | S_IWOTH);
-	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-
-	fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	if (fd < 0)
-		return -errno;
-
-	if (flock(fd, LOCK_EX) < 0) {
-		err = -errno;
-		goto close;
-	}
-
-	if (fstat(fd, &st) < 0) {
-		err = -errno;
-		goto unlock;
-	}
-
-	buf = malloc(st.st_size + 100);
-	if (!buf) {
-		err = -ENOMEM;
-		goto unlock;
-	}
-
-	if (st.st_size > 0) {
-		read(fd, buf, st.st_size);
-
-		ptr = buf;
-
-		memset(str, 0, sizeof(str));
-		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
-			str2ba(addr, &bdaddr);
-			str[sizeof(str) - 1] = '\0';
-
-			list = list_add(list, &bdaddr, str, sizeof(str));
-
-			memset(str, 0, sizeof(str));
-			ptr += pos;
-			if (ptr - buf >= st.st_size)
-				break;
-		};
-
-		lseek(fd, 0, SEEK_SET);
-		ftruncate(fd, 0);
-	}
+	char filename[PATH_MAX + 1], addr[18], str[17];
+	int i;
 
 	memset(str, 0, sizeof(str));
 	for (i = 0; i < 8; i++)
 		sprintf(str + (i * 2), "%2.2X", features[i]);
 
-	list = list_add(list, peer, str, sizeof(str));
-	if (!list) {
-		err = -EIO;
-		goto unlock;
-	}
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, addr);
 
-	list_foreach(list, temp) {
-		ba2str(&temp->bdaddr, addr);
-		if (temp->data && temp->size > 0) {
-			memset(buf, 0, 100);
-			snprintf(buf, 99, "%s %s\n", addr, temp->data);
-			write(fd, buf, strlen(buf));
-		}
-	}
-
-unlock:
-	flock(fd, LOCK_UN);
-
-close:
-	close(fd);
-	list_free(list);
-	return err;
+	ba2str(peer, addr);
+	return textfile_put(filename, addr, str);
 }
 
-int write_link_key(const bdaddr_t *local, const bdaddr_t *peer, const unsigned char *key, const int type)
+int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type)
 {
-	struct list *temp, *list = NULL;
-	char filename[PATH_MAX + 1], addr[18], str[35], *buf, *ptr;
-	bdaddr_t bdaddr;
-	struct stat st;
-	int i, fd, pos, err = 0;
-
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
-
-	umask(S_IWGRP | S_IWOTH);
-	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-
-	fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-	if (fd < 0)
-		return -errno;
-
-	if (flock(fd, LOCK_EX) < 0) {
-		err = -errno;
-		goto close;
-	}
-
-	if (fstat(fd, &st) < 0) {
-		err = -errno;
-		goto unlock;
-	}
-
-	buf = malloc(st.st_size + 100);
-	if (!buf) {
-		err = -ENOMEM;
-		goto unlock;
-	}
-
-	if (st.st_size > 0) {
-		read(fd, buf, st.st_size);
-
-		ptr = buf;
-
-		memset(str, 0, sizeof(str));
-		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
-			str2ba(addr, &bdaddr);
-			str[sizeof(str) - 1] = '\0';
-
-			list = list_add(list, &bdaddr, str, sizeof(str));
-
-			memset(str, 0, sizeof(str));
-			ptr += pos;
-			if (ptr - buf >= st.st_size)
-				break;
-		};
-
-		lseek(fd, 0, SEEK_SET);
-		ftruncate(fd, 0);
-	}
+	char filename[PATH_MAX + 1], addr[18], str[35];
+	int i;
 
 	memset(str, 0, sizeof(str));
 	for (i = 0; i < 16; i++)
 		sprintf(str + (i * 2), "%2.2X", key[i]);
 	sprintf(str + 32, " %d", type);
 
-	list = list_add(list, peer, str, sizeof(str));
-	if (!list) {
-		err = -EIO;
-		goto unlock;
-	}
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
 
-	list_foreach(list, temp) {
-		ba2str(&temp->bdaddr, addr);
-		if (temp->data && temp->size > 0) {
-			memset(buf, 0, 100);
-			snprintf(buf, 99, "%s %s\n", addr, temp->data);
-			write(fd, buf, strlen(buf));
-		}
-	}
-
-unlock:
-	flock(fd, LOCK_UN);
-
-close:
-	close(fd);
-	list_free(list);
-	return err;
+	ba2str(peer, addr);
+	return textfile_put(filename, addr, str);
 }
 
-int read_link_key(const bdaddr_t *local, const bdaddr_t *peer, unsigned char *key)
+int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key)
 {
-	char filename[PATH_MAX + 1], addr[18], str[35], tmp[3], *buf, *ptr;
-	bdaddr_t bdaddr;
-	struct stat st;
-	int i, fd, pos, err = -ENOENT;
+	char filename[PATH_MAX + 1], addr[18], tmp[3], *str;
+	int i;
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
 
-	fd = open(filename, O_RDONLY);
-	if (fd < 0)
-		return -errno;
+	ba2str(peer, addr);
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
 
-	if (flock(fd, LOCK_SH) < 0) {
-		err = -errno;
-		goto close;
+	memset(tmp, 0, sizeof(tmp));
+	for (i = 0; i < 16; i++) {
+		memcpy(tmp, str + (i * 2), 2);
+		key[i] = (uint8_t) strtol(tmp, NULL, 16);
 	}
 
-	if (fstat(fd, &st) < 0) {
-		err = -errno;
-		goto unlock;
-	}
-
-	buf = malloc(st.st_size);
-	if (!buf) {
-		err = -ENOMEM;
-		goto unlock;
-	}
-
-	if (st.st_size > 0) {
-		read(fd, buf, st.st_size);
-
-		ptr = buf;
-
-		memset(str, 0, sizeof(str));
-		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
-			str2ba(addr, &bdaddr);
-			str[sizeof(str) - 1] = '\0';
-
-			if (!bacmp(&bdaddr, peer)) {
-				memset(tmp, 0, sizeof(tmp));
-				for (i = 0; i < 16; i++) {
-					memcpy(tmp, str + (i * 2), 2);
-					key[i] = (uint8_t) strtol(tmp, NULL, 16);
-				}
-				err = 0;
-				break;
-			}
-
-			memset(str, 0, sizeof(str));
-			ptr += pos;
-			if (ptr - buf >= st.st_size)
-				break;
-		};
-	}
-
-unlock:
-	flock(fd, LOCK_UN);
-
-close:
-	close(fd);
-	return err;
+	return 0;
 }
 
-int read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
+int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin)
 {
-	char filename[PATH_MAX + 1], addr[18], str[17], *buf, *ptr;
-	bdaddr_t bdaddr;
-	struct stat st;
-	int fd, pos, err = -ENOENT;
+	char filename[PATH_MAX + 1], addr[18], *str;
+	int len;
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/pincodes", STORAGEDIR, addr);
 
-	fd = open(filename, O_RDONLY);
-	if (fd < 0)
-		return -errno;
+	ba2str(peer, addr);
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
 
-	if (flock(fd, LOCK_SH) < 0) {
-		err = -errno;
-		goto close;
-	}
+	strncpy(pin, str, 16);
+	len = strlen(pin);
 
-	if (fstat(fd, &st) < 0) {
-		err = -errno;
-		goto unlock;
-	}
-
-	buf = malloc(st.st_size);
-	if (!buf) {
-		err = -ENOMEM;
-		goto unlock;
-	}
-
-	if (st.st_size > 0) {
-		read(fd, buf, st.st_size);
-
-		ptr = buf;
-
-		memset(str, 0, sizeof(str));
-		while (sscanf(ptr, "%17s %[^\n]\n%n", addr, str, &pos) != EOF) {
-			str2ba(addr, &bdaddr);
-			str[sizeof(str) - 1] = '\0';
-
-			if (!bacmp(&bdaddr, peer)) {
-				strncpy(pin, str, 16);
-				err = strlen(pin);
-				break;
-			}
-
-			memset(str, 0, sizeof(str));
-			ptr += pos;
-			if (ptr - buf >= st.st_size)
-				break;
-		};
-	}
-
-unlock:
-	flock(fd, LOCK_UN);
-
-close:
-	close(fd);
-	return err;
+	return len;
 }

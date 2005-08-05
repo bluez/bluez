@@ -69,7 +69,7 @@ void toggle_pairing(int enable)
 	syslog(LOG_INFO, "Pairing %s", pairing ? "enabled" : "disabled");
 }
 
-static int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
+static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
 {
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
@@ -340,8 +340,10 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 				*ptr++ = '\\';
 			}
 			*ptr++ = name[i];
-		} else
+		} else {
+			name[i] = '.';
 			*ptr++ = '.';
+		}
 
 	ba2str(&ci->bdaddr, addr);
 	snprintf(str, sizeof(str), "%s %s %s \"%s\"", hcid.pin_helper,
@@ -475,20 +477,26 @@ reject:
 	return;
 }
 
-static void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
+static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_remote_name_req_complete *evt = ptr;
-	bdaddr_t *dba = &evt->bdaddr;
+	char name[249];
+	bdaddr_t dba;
 
 	if (evt->status)
 		return;
 
-	hcid_dbus_remote_name(sba, dba, (char *) evt->name);
+	memset(name, 0, sizeof(name));
+	memcpy(name, evt->name, 248);
 
-	write_device_name(sba, dba, (char *) evt->name);
+	bacpy(&dba, &evt->bdaddr);
+
+	hcid_dbus_remote_name(sba, &dba, name);
+
+	write_device_name(sba, &dba, name);
 }
 
-static void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
+static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_read_remote_version_complete *evt = ptr;
 	bdaddr_t dba;
@@ -503,7 +511,7 @@ static void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 				evt->lmp_ver, btohs(evt->lmp_subver));
 }
 
-static void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
+static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 {
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
@@ -520,7 +528,7 @@ static void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 	}
 }
 
-static void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, void *ptr)
+static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, void *ptr)
 {
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
@@ -555,7 +563,7 @@ static void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, void *ptr
 	}
 }
 
-static void remote_features_information(int dev, bdaddr_t *sba, void *ptr)
+static inline void remote_features_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_read_remote_features_complete *evt = ptr;
 	bdaddr_t dba;
