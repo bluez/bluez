@@ -33,22 +33,18 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <errno.h>
+#include <ctype.h>
+#include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <malloc.h>
 #include <string.h>
 #include <signal.h>
-#include <fcntl.h>
 #include <syslog.h>
-#include <errno.h>
 #include <time.h>
-#include <fcntl.h>
-#include <time.h>
-
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -308,7 +304,7 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	struct sigaction sa;
 	char addr[18], str[255], *pin, name[249];
 	FILE *pipe;
-	int ret, len;
+	int i, ret, len;
 
 	/* Run PIN helper in the separate process */
 	switch (fork()) {
@@ -330,6 +326,11 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	memset(name, 0, sizeof(name));
 	read_device_name(sba, &ci->bdaddr, name);
 	//hci_remote_name(dev, &ci->bdaddr, sizeof(name), name, 0);
+
+	for (i = 0; i < 248 && name[i]; i++)
+		if (!isprint(name[i]))
+			name[i] = '.';
+	name[248] = '\0';
 
 	ba2str(&ci->bdaddr, addr);
 	snprintf(str, sizeof(str), "%s %s %s \'%s\'", hcid.pin_helper,
