@@ -39,11 +39,50 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/param.h>
 
-static int write_key_value(const int fd, const char *key, const char *value)
+static int create_dirs(char *filename, mode_t mode)
+{
+	struct stat st;
+	char dir[PATH_MAX + 1], *prev, *next;
+	int err;
+
+	err = stat(filename, &st);
+	if (!err && S_ISREG(st.st_mode))
+		return 0;
+
+	memset(dir, 0, PATH_MAX + 1);
+	strcat(dir, "/");
+
+	prev = strchr(filename, '/');
+
+	while (prev) {
+		next = strchr(prev + 1, '/');
+		if (!next)
+			break;
+
+		if (next - prev == 1) {
+			prev = next;
+			continue;
+		}
+
+		strncat(dir, prev + 1, next - prev);
+		mkdir(dir, mode);
+
+		prev = next;
+	}
+
+	return 0;
+}
+
+static int write_key_value(int fd, char *key, char *value)
 {
 	char *str;
 	int size, err = 0;
+
+	/* This check is needed, because other it will segfault */
+	if (strlen(value) == 9)
+		return -EIO;
 
 	size = strlen(key) + strlen(value) + 2;
 
@@ -61,7 +100,7 @@ static int write_key_value(const int fd, const char *key, const char *value)
 	return err;
 }
 
-int textfile_put(const char *pathname, const char *key, const char *value)
+int textfile_put(char *pathname, char *key, char *value)
 {
 	struct stat st;
 	char *map, *off, *end, *str;
@@ -90,7 +129,7 @@ int textfile_put(const char *pathname, const char *key, const char *value)
 		goto unlock;
 	}
 
-	map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
 	if (map == MAP_FAILED) {
 		err = errno;
 		goto unlock;
@@ -129,6 +168,11 @@ int textfile_put(const char *pathname, const char *key, const char *value)
 
 	len = size - (end - map);
 
+	if (len <= 0 || len > size) {
+		err = EILSEQ;
+		goto unmap;
+	}
+
 	str = malloc(len);
 	if (!str) {
 		err = errno;
@@ -161,7 +205,7 @@ close:
 	return -err;
 }
 
-char *textfile_get(const char *pathname, const char *key)
+char *textfile_get(char *pathname, char *key)
 {
 	struct stat st;
 	char *map, *off, *end, *str = NULL;
