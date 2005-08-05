@@ -782,7 +782,7 @@ static int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, cha
 	}
 
 	/* Update on the server */
-	if (sdp_record_update(sess, rec)) {
+	if (sdp_device_record_update(sess, &interface, rec)) {
 		printf("Service Record update failed (%d).\n", errno);
 		return -1;
 	}
@@ -904,7 +904,7 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 		sdp_attr_replace(rec, attrib, pSequenceHolder);
 
 		/* Update on the server */
-		if (sdp_record_update(session, rec)) {
+		if (sdp_device_record_update(session, &interface, rec)) {
 			printf("Service Record update failed (%d).\n", errno);
 			return -1;
 		}
@@ -1170,7 +1170,7 @@ static int add_sp(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Serial Port", 0, "COM Port");
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1228,7 +1228,7 @@ static int add_dun(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Dial-Up Networking", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1284,7 +1284,7 @@ static int add_lan(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "LAN Access over PPP", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1343,7 +1343,7 @@ static int add_headset(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Headset", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1405,7 +1405,7 @@ static int add_handsfree(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Handsfree", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1467,7 +1467,7 @@ static int add_simaccess(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "SIM Access", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1525,7 +1525,7 @@ static int add_fax(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Fax", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1598,7 +1598,7 @@ static int add_opush(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "OBEX Object Push", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1659,7 +1659,7 @@ static int add_ftp(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "OBEX File Transfer", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1732,7 +1732,7 @@ static int add_nap(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Network Access Point Service", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1791,7 +1791,7 @@ static int add_gn(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Group Network Service", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1853,7 +1853,7 @@ static int add_panu(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "PAN User", NULL, NULL);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1910,7 +1910,7 @@ static int add_ctp(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Cordless Telephony", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto end;
@@ -1968,7 +1968,7 @@ static int add_a2source(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Audio Source", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto done;
@@ -2027,7 +2027,7 @@ static int add_a2sink(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Audio Sink", 0, 0);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		ret = -1;
 		goto done;
@@ -2078,7 +2078,7 @@ static int add_syncml(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "SyncML Client", NULL, NULL);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		return -1;
 	}
@@ -2112,7 +2112,7 @@ static int add_nokiaid(sdp_session_t *session, svc_info_t *si)
 
 	sdp_attr_add(&record, SDP_ATTR_SERVICE_VERSION, version);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		sdp_data_free(version);
 		return -1;
@@ -2155,7 +2155,7 @@ static int add_pcsuite(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "Nokia PC Suite", NULL, NULL);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		return -1;
 	}
@@ -2187,7 +2187,7 @@ static int add_sr1(sdp_session_t *session, svc_info_t *si)
 
 	sdp_set_info_attr(&record, "TOSHIBA SR-1", NULL, NULL);
 
-	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
 		return -1;
 	}
@@ -2327,7 +2327,7 @@ static int del_service(bdaddr_t *bdaddr, void *arg)
 		return -1;
 	}
 
-	if (sdp_record_unregister(sess, rec)) {
+	if (sdp_device_record_unregister(sess, &interface, rec)) {
 		printf("Failed to unregister service record: %s\n", strerror(errno));
 		sdp_close(sess);
 		return -1;
