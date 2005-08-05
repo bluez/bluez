@@ -3,7 +3,7 @@
 #
 
 if DBUS
-sbin_PROGRAMS = bluetoothd
+noinst_PROGRAMS = bluetoothd
 
 bluetoothd_SOURCES = main.c
 
