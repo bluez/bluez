@@ -514,6 +514,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 			for (n = 0; n < 248 && name[n]; n++)
 				if (!isprint(name[n]))
 					name[n] = '.';
+			name[248] = '\0';
 
 			printf("\t%s\t%s\n", addr, name);
 			continue;
@@ -572,6 +573,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 				for (n = 0; n < 248 && name[n]; n++)
 					if (!isprint(name[n]))
 						name[n] = '.';
+				name[248] = '\0';
 				nc = 0;
 			}
 		}

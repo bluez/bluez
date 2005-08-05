@@ -437,7 +437,7 @@ static void cmd_name(int ctl, int hdev, char *opt)
 			exit(1);
 		}
 	} else {
-		char name[248];
+		char name[249];
 		int i;
 		if (hci_read_local_name(s, sizeof(name), name, 1000) < 0) {
 			fprintf(stderr, "Can't read local name on hci%d: %s (%d)\n",
@@ -447,6 +447,7 @@ static void cmd_name(int ctl, int hdev, char *opt)
 		for (i = 0; i < 248 && name[i]; i++)
 			if (!isprint(name[i]))
 				name[i] = '.';
+		name[248] = '\0';
 		print_dev_hdr(&di);
 		printf("\tName: '%s'\n", name);
 	}
