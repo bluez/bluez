@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <malloc.h>
 #include <string.h>
 #include <sys/socket.h>
 
@@ -160,6 +161,16 @@ int basnprintf(char *str, size_t size, const char *format, ...)
 	va_end(ap);
 
 	return len;
+}
+
+void *bt_malloc(size_t size)
+{
+	return malloc(size);
+}
+
+void bt_free(void *ptr)
+{
+	free(ptr);
 }
 
 /* Bluetooth error codes to Unix errno mapping */
