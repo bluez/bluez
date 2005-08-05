@@ -15,7 +15,7 @@ pygtk.require('2.0')
 def set_display():
 	disp = ":0"
 	auth = ""
-	proc = "-C X -C XFree86"
+	proc = "-C X -C Xorg -C XFree86"
 	ps   = "/bin/ps " + proc + " --format args --no-headers"
 
 	r,w = popen2.popen2(ps)
