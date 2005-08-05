@@ -472,7 +472,7 @@ int hci_for_each_dev(int flag, int (*func)(int dd, int dev_id, long arg), long a
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
-	if (ioctl(sk, HCIGETDEVLIST, (void *) dl))
+	if (ioctl(sk, HCIGETDEVLIST, (void *) dl) < 0)
 		goto free;
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
