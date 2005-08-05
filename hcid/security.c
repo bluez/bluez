@@ -302,7 +302,7 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	pin_code_reply_cp pr;
 	struct sigaction sa;
-	char addr[18], str[512], *pin, name[249], tmp[499], *ptr;
+	char addr[18], str[512], *pin, name[249], tmp[497], *ptr;
 	FILE *pipe;
 	int i, ret, len;
 
@@ -332,8 +332,13 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	for (i = 0; i < 248 && name[i]; i++)
 		if (isprint(name[i])) {
-			if (name[i] == '"')
+			switch (name[i]) {
+			case '"':
+			case '`':
+			case '$':
+			case '\\':
 				*ptr++ = '\\';
+			}
 			*ptr++ = name[i];
 		} else
 			*ptr++ = '.';
