@@ -379,7 +379,8 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 			(info+i)->dev_class[1],
 			(info+i)->dev_class[0]);
 	}
-	free(info);
+
+	bt_free(info);
 }
 
 /* Device scanning */
@@ -603,13 +604,15 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 			}
 
 			if (hci_read_remote_features(dd, handle, features, 20000) == 0) {
+				char *tmp = lmp_featurestostr(features, "\t\t", 63);
 				printf("LMP features:\t0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x"
 					" 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",
 					features[0], features[1],
 					features[2], features[3],
 					features[4], features[5],
 					features[6], features[7]);
-				printf("%s\n", lmp_featurestostr(features, "\t\t", 63));
+				printf("%s\n", tmp);
+				bt_free(tmp);
 			}
 
 			if (cc) {
@@ -622,7 +625,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	}
 
 	close(dd);
-	free(info);
+	bt_free(info);
 }
 
 /* Remote name */
@@ -786,10 +789,11 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	}
 
 	if (hci_read_remote_features(dd, handle, features, 20000) == 0) {
+		char *tmp = lmp_featurestostr(features, "\t\t", 63);
 		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n%s\n",
 			features[0], features[1], features[2], features[3],
-			features[4], features[5], features[6], features[7],
-			lmp_featurestostr(features, "\t\t", 63));
+			features[4], features[5], features[6], features[7], tmp);
+		bt_free(tmp);
 	}
 
 	if (features[7] & LMP_EXT_FEAT) {

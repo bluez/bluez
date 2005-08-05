@@ -109,8 +109,11 @@ static void print_dev_features(struct hci_dev_info *di, int format)
 		di->features[3], di->features[4], di->features[5],
 		di->features[6], di->features[7]);
 
-	if (format)
-		printf("%s\n", lmp_featurestostr(di->features, "\t\t", 63));
+	if (format) {
+		char *tmp = lmp_featurestostr(di->features, "\t\t", 63);
+		printf("%s\n", tmp);
+		bt_free(tmp);
+	}
 }
 
 static void cmd_rstat(int ctl, int hdev, char *opt)
@@ -379,6 +382,7 @@ static void cmd_scomtu(int ctl, int hdev, char *opt)
 static void cmd_features(int ctl, int hdev, char *opt)
 {
 	uint8_t max_page, features[8];
+	char *tmp;
 	int i, dd;
 
 	if (!(di.features[7] & LMP_EXT_FEAT)) {
@@ -401,12 +405,14 @@ static void cmd_features(int ctl, int hdev, char *opt)
 	}
 
 	print_dev_hdr(&di);
+	tmp = lmp_featurestostr(di.features, "\t\t", 63);
 	printf("\tFeatures%s: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
 				"0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",
 		(max_page > 0) ? " page 0" : "",
 		features[0], features[1], features[2], features[3],
 		features[4], features[5], features[6], features[7]);
-	printf("%s\n", lmp_featurestostr(di.features, "\t\t", 63));
+	printf("%s\n", tmp);
+	bt_free(tmp);
 
 	for (i = 1; i <= max_page; i++) {
 		if (hci_read_local_ext_features(dd, 1, &max_page, features, 1000) < 0)
