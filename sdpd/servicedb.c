@@ -46,6 +46,12 @@
 #include "sdpd.h"
 
 static sdp_list_t *service_db;
+static sdp_list_t *access_db;
+
+typedef struct {
+	uint32_t handle;
+	bdaddr_t device;
+} sdp_access_t;
 
 /*
  * Ordering function called when inserting a service record.
@@ -54,14 +60,33 @@ static sdp_list_t *service_db;
  */
 static int record_sort(const void *r1, const void *r2)
 {
-	const sdp_record_t *rec1 = (const sdp_record_t *)r1;
-	const sdp_record_t *rec2 = (const sdp_record_t *)r2;
+	const sdp_record_t *rec1 = (const sdp_record_t *) r1;
+	const sdp_record_t *rec2 = (const sdp_record_t *) r2;
 
 	if (!rec1 || !rec2) {
 		SDPERR("NULL RECORD LIST FATAL\n");
 		return -1;
 	}
+
 	return rec1->handle - rec2->handle;
+}
+
+static int access_sort(const void *r1, const void *r2)
+{
+	const sdp_access_t *rec1 = (const sdp_access_t *) r1;
+	const sdp_access_t *rec2 = (const sdp_access_t *) r2;
+
+	if (!rec1 || !rec2) {
+		SDPERR("NULL RECORD LIST FATAL\n");
+		return -1;
+	}
+
+	return rec1->handle - rec2->handle;
+}
+
+static void access_free(void *p)
+{
+	free(p);
 }
 
 /*
@@ -69,7 +94,8 @@ static int record_sort(const void *r1, const void *r2)
  */
 void sdp_svcdb_reset()
 {
-	sdp_list_free(service_db, (sdp_free_func_t)sdp_record_free);
+	sdp_list_free(service_db, (sdp_free_func_t) sdp_record_free);
+	sdp_list_free(access_db, access_free);
 }
 
 typedef struct _indexed {
@@ -86,8 +112,8 @@ void sdp_svcdb_collect_all(int sock)
 {
 	sdp_list_t *p, *q;
 
-	for (p=socket_index, q=0; p; ) {
-		sdp_indexed_t *item = (sdp_indexed_t *)p->data;
+	for (p = socket_index, q = 0; p; ) {
+		sdp_indexed_t *item = (sdp_indexed_t *) p->data;
 		if (item->sock == sock) {
 			sdp_list_t *next = p->next;
 			sdp_record_remove(item->record->handle);
@@ -111,8 +137,8 @@ void sdp_svcdb_collect(sdp_record_t *rec)
 {
 	sdp_list_t *p, *q;
 
-	for (p=socket_index, q=0; p; q=p, p=p->next) {
-		sdp_indexed_t *item = (sdp_indexed_t *)p->data;
+	for (p = socket_index, q = 0; p; q = p, p = p->next) {
+		sdp_indexed_t *item = (sdp_indexed_t *) p->data;
 		if (rec == item->record) {
 			free(item);
 			if (q)
@@ -127,14 +153,14 @@ void sdp_svcdb_collect(sdp_record_t *rec)
 
 static int compare_indices(const void *i1, const void *i2)
 {
-	const sdp_indexed_t *s1 = (const sdp_indexed_t *)i1;
-	const sdp_indexed_t *s2 = (const sdp_indexed_t *)i2;
+	const sdp_indexed_t *s1 = (const sdp_indexed_t *) i1;
+	const sdp_indexed_t *s2 = (const sdp_indexed_t *) i2;
 	return s1->sock - s2->sock;
 }
 
 void sdp_svcdb_set_collectable(sdp_record_t *record, int sock)
 {
-	sdp_indexed_t *item = (sdp_indexed_t *)malloc(sizeof(sdp_indexed_t));
+	sdp_indexed_t *item = malloc(sizeof(sdp_indexed_t));
 	item->sock = sock;
 	item->record = record;
 	socket_index = sdp_list_insert_sorted(socket_index, item, compare_indices);
@@ -145,11 +171,22 @@ void sdp_svcdb_set_collectable(sdp_record_t *record, int sock)
  */
 void sdp_record_add(bdaddr_t *device, sdp_record_t *rec)
 {
+	sdp_access_t *dev;
+
 #ifdef SDP_DEBUG
 	SDPDBG("Adding rec : 0x%lx\n", (long) rec);
 	SDPDBG("with handle : 0x%x\n", rec->handle);
 #endif
 	service_db = sdp_list_insert_sorted(service_db, rec, record_sort);
+
+	dev = malloc(sizeof(*dev));
+	if (!dev)
+		return;
+
+	bacpy(&dev->device, device);
+	dev->handle = rec->handle;
+
+	access_db = sdp_list_insert_sorted(access_db, dev, access_sort);
 }
 
 static sdp_list_t *record_locate(uint32_t handle)
@@ -162,8 +199,24 @@ static sdp_list_t *record_locate(uint32_t handle)
 		p = sdp_list_find(service_db, &r, record_sort);
 		return p;
 	}
+
 	SDPDBG("Could not find svcRec for : 0x%x\n", handle);
-	return 0;
+	return NULL;
+}
+
+static sdp_list_t *access_locate(uint32_t handle)
+{
+	if (access_db) {
+		sdp_list_t *p;
+		sdp_access_t a;
+
+		a.handle = handle;
+		p = sdp_list_find(access_db, &a, access_sort);
+		return p;
+	}
+
+	SDPDBG("Could not find access data for : 0x%x\n", handle);
+	return NULL;
 }
 
 /*
@@ -171,12 +224,14 @@ static sdp_list_t *record_locate(uint32_t handle)
  */
 sdp_record_t *sdp_record_find(uint32_t handle)
 {
-        sdp_list_t *p = record_locate(handle);
+	sdp_list_t *p = record_locate(handle);
 
-        if (p)
-                return (sdp_record_t *)p->data;
-	SDPDBG("Couldn't find record for : 0x%x\n", handle);
-        return 0;
+        if (!p) {
+		SDPDBG("Couldn't find record for : 0x%x\n", handle);
+		return 0;
+	}
+
+	return (sdp_record_t *) p->data;
 }
 
 /*
@@ -185,24 +240,59 @@ sdp_record_t *sdp_record_find(uint32_t handle)
 int sdp_record_remove(uint32_t handle)
 {
 	sdp_list_t *p = record_locate(handle);
+	sdp_record_t *r;
+	sdp_access_t *a;
 
-	if (p) {
-		sdp_record_t *r = (sdp_record_t *)p->data;
-		if (r) {
-			service_db = sdp_list_remove(service_db, r);
-			return 0;
-		}
+	if (!p) {
+		SDPERR("Remove : Couldn't find record for : 0x%x\n", handle);
+		return -1;
 	}
-	SDPERR("Remove : Couldn't find record for : 0x%x\n", handle);
-	return -1;
+
+	r = (sdp_record_t *) p->data;
+	if (r)
+		service_db = sdp_list_remove(service_db, r);
+
+	p = access_locate(handle);
+	if (p) {
+		a = (sdp_access_t *) p->data;
+		if (a)
+			access_db = sdp_list_remove(access_db, a);
+	}
+
+	return 0;
 }
 
 /*
  * Return a pointer to the linked list containing the records in sorted order
  */
-sdp_list_t *sdp_get_record_list()
+sdp_list_t *sdp_get_record_list(void)
 {
 	return service_db;
+}
+
+sdp_list_t *sdp_get_access_list(void)
+{
+	return access_db;
+}
+
+int sdp_check_access(uint32_t handle, bdaddr_t *device)
+{
+	sdp_list_t *p = access_locate(handle);
+	sdp_access_t *a;
+
+	if (!p)
+		return 1;
+
+	a = (sdp_access_t *) p->data;
+	if (!a)
+		return 1;
+
+	if (bacmp(&a->device, device) &&
+			bacmp(&a->device, BDADDR_ANY) &&
+			bacmp(device, BDADDR_ANY))
+		return 0;
+
+	return 1;
 }
 
 uint32_t sdp_next_handle(void)

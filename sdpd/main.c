@@ -328,18 +328,18 @@ static inline void handle_request(int sk, uint8_t *data, int len)
 		memset(&lo, 0, sizeof(lo));
 		size = sizeof(lo);
 		getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &lo, &size);
-		req.bdaddr = sa.l2_bdaddr;
-		req.mtu    = lo.omtu;
-		req.local  = 0;
+		bacpy(&req.bdaddr, &sa.l2_bdaddr);
+		req.mtu = lo.omtu;
+		req.local = 0;
 		memset(&sa, 0, sizeof(sa));
 		size = sizeof(sa);
 		getsockname(sk, (struct sockaddr *) &sa, &size);
-		req.device = sa.l2_bdaddr;
+		bacpy(&req.device, &sa.l2_bdaddr);
 	} else {
-		req.device = *BDADDR_ANY;
-		req.bdaddr = *BDADDR_LOCAL;
-		req.mtu    = 2048;
-		req.local  = 1;
+		bacpy(&req.device, BDADDR_ANY);
+		bacpy(&req.bdaddr, BDADDR_LOCAL);
+		req.mtu = 2048;
+		req.local = 1;
 	}
 	req.sock = sk;
 	req.buf  = data;
