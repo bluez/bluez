@@ -1,3 +1,13 @@
+ver 2.19:
+	Fix the GCC 4.0 warnings.
+	Fix off by one memory allocation error.
+	Fix security problem with escape characters in device name.
+	Send D-Bus signals for inquiry results and remote name resolves.
+	Add support for device specific SDP records.
+
+	Note:
+	This version needs at least bluez-libs-2.19
+
 ver 2.18:
 	Support D-Bus 0.23 and 0.33 API versions.
 	Support reading of complex BCCMD values.
