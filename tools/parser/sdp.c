@@ -141,7 +141,8 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_GENERIC_AUDIO,            "Audio"        },
 	{ SDP_UUID_GENERIC_TELEPHONY,        "Telephony"    },
 	{ SDP_UUID_VIDEO_SOURCE,             "VideoSource"  }, /* VDP */
-	{ SDP_UUID_VIDEO_SINK,               "VideoSink"    }  /* VDP */
+	{ SDP_UUID_VIDEO_SINK,               "VideoSink"    }, /* VDP */
+	{ SDP_UUID_VIDEO_DISTRIBUTION,       "VideoDist"    }, /* VDP */
 };
 
 #define SDP_UUID_NAM_LOOKUP_TABLE_SIZE \
