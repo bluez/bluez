@@ -192,6 +192,7 @@ static struct tupla ServiceClass[] = {
 	{ UPNP_L2CAP_SVCLASS_ID,		"UPnP L2CAP"			},
 	{ VIDEO_SOURCE_SVCLASS_ID,		"Video Source"			},
 	{ VIDEO_SINK_SVCLASS_ID,		"Video Sink"			},
+	{ VIDEO_DISTRIBUTION_SVCLASS_ID,	"Video Distribution"		},
 	{ 0 }
 };
 
