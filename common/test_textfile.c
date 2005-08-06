@@ -41,7 +41,7 @@
 int main(int argc, char *argv[])
 {
 	char filename[] = "/tmp/textfile";
-	char key[18], value[512];
+	char key[18], value[512], *str;
 	int i, j, fd;
 
 	fd = creat(filename, 0644);
@@ -60,6 +60,10 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
 			break;
 		}
+
+		str = textfile_get(filename, key);
+		if (!str)
+			fprintf(stderr, "No value for %s\n", key);
 	}
 
 	return 0;
