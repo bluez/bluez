@@ -477,7 +477,7 @@ static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int nosdp, in
 		}
 	}
 
-	free(info);
+	bt_free(info);
 
 	if (!num_rsp) {
 		fprintf(stderr, "\tNo devices in range or visible\n");

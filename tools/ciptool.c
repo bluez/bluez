@@ -256,7 +256,7 @@ static void cmd_search(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 			if (!get_psm(&src, &dst, &psm))
 				continue;
 
-			free(info);
+			bt_free(info);
 
 			printf("\tConnecting to device %s\n", addr);
 			do_connect(ctl, dev_id, &src, &dst, psm, 0);
@@ -264,7 +264,7 @@ static void cmd_search(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 		}
 	}
 
-	free(info);
+	bt_free(info);
 	fprintf(stderr, "\tNo devices in range or visible\n");
 	exit(1);
 }

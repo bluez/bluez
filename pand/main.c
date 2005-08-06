@@ -393,7 +393,7 @@ static int do_connect(void)
 				break;
 			}
 		}
-		free(ii);
+		bt_free(ii);
 	} while (!terminate && persist);
 
 	return r;
