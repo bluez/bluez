@@ -1,3 +1,8 @@
+ver 2.19:
+	Fix the GCC 4.0 warnings.
+	Fix the routing for dealing with raw devices.
+	Add per device service record functions.
+
 ver 2.18:
 	Add support for reading and writing the inquiry scan type.
 	Add definitions for connection accept timeout and scan enable.
