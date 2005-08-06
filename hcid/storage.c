@@ -48,6 +48,56 @@
 #include "textfile.h"
 #include "hcid.h"
 
+static int create_dirs(char *filename, mode_t mode)
+{
+	struct stat st;
+	char dir[PATH_MAX + 1], *prev, *next;
+	int err;
+
+	err = stat(filename, &st);
+	if (!err && S_ISREG(st.st_mode))
+		return 0;
+
+	memset(dir, 0, PATH_MAX + 1);
+	strcat(dir, "/");
+
+	prev = strchr(filename, '/');
+
+	while (prev) {
+		next = strchr(prev + 1, '/');
+		if (!next)
+			break;
+
+		if (next - prev == 1) {
+			prev = next;
+			continue;
+		}
+
+		strncat(dir, prev + 1, next - prev);
+		mkdir(dir, mode);
+
+		prev = next;
+	}
+
+	return 0;
+}
+
+static inline int create_file(char *filename, mode_t mode)
+{
+	int fd;
+
+	umask(S_IWGRP | S_IWOTH);
+	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+
+	fd = open(filename, O_RDWR | O_CREAT, mode);
+	if (fd < 0)
+		return fd;
+
+	close(fd);
+
+	return 0;
+}
+
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	char filename[PATH_MAX + 1], addr[18], str[249];
@@ -62,6 +112,8 @@ int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(peer, addr);
 	return textfile_put(filename, addr, str);
@@ -98,6 +150,8 @@ int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, u
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
 
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
 	ba2str(peer, addr);
 	return textfile_put(filename, addr, str);
 }
@@ -113,6 +167,8 @@ int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, addr);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(peer, addr);
 	return textfile_put(filename, addr, str);
@@ -130,6 +186,8 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+
+	create_file(filename, S_IRUSR | S_IWUSR);
 
 	ba2str(peer, addr);
 	return textfile_put(filename, addr, str);
