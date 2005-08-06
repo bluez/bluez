@@ -75,18 +75,15 @@ static int create_dirs(char *filename, mode_t mode)
 	return 0;
 }
 
-static int write_key_value(int fd, char *key, char *value)
+static inline int write_key_value(int fd, char *key, char *value)
 {
 	char *str;
-	int size, err = 0;
-
-	/* This check is needed, because other it will segfault */
-	if (strlen(value) == 9)
-		return -EIO;
+	size_t size;
+	int err = 0;
 
 	size = strlen(key) + strlen(value) + 2;
 
-	str = malloc(size);
+	str = malloc(size + 1);
 	if (!str)
 		return ENOMEM;
 
