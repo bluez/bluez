@@ -2097,6 +2097,36 @@ static int add_syncml(sdp_session_t *session, svc_info_t *si)
 	return 0;
 }
 
+static unsigned char hotsync_uuid[] = {	0xF5, 0xBE, 0xB6, 0x51, 0x41, 0x71, 0x40, 0x51,
+					0xAC, 0xF5, 0x6C, 0xA7, 0x20, 0x22, 0x42, 0xF0 };
+
+static int add_hotsync(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass;
+	uuid_t root_uuid, svclass_uuid;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid128_create(&svclass_uuid, (void *) hotsync_uuid);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("HotSync service record registered\n");
+
+	return 0;
+}
+
 static unsigned char nokid_uuid[] = {	0x00, 0x00, 0x55, 0x55, 0x00, 0x00, 0x10, 0x00,
 					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x01 };
 
@@ -2237,6 +2267,7 @@ struct {
 	{ "A2SNK",	AUDIO_SINK_SVCLASS_ID,		add_a2sink	},
 
 	{ "SYNCML",	0,				add_syncml,	syncml_uuid	},
+	{ "HOTSYNC",	0,				add_hotsync,	hotsync_uuid	},
 	{ "NOKID",	0,				add_nokiaid,	nokid_uuid	},
 	{ "PCSUITE",	0,				add_pcsuite,	pcsuite_uuid	},
 	{ "SR1",	0,				add_sr1,	sr1_uuid	},
