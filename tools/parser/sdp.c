@@ -135,6 +135,8 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_HCR_SCAN,                 "HCRScan",     }, /* HCRP */
 	{ SDP_UUID_COMMON_ISDN_ACCESS,       "CIP"          }, /* CIP */
 	{ SDP_UUID_SIM_ACCESS,               "SAP"          }, /* SAP */
+	{ SDP_UUID_PHONEBOOK_ACCESS_PCE,     "PBAP PCE"     }, /* PBAP */
+	{ SDP_UUID_PHONEBOOK_ACCESS_PSE,     "PBAP PSE"     }, /* PBAP */
 	{ SDP_UUID_PNP_INFORMATION,          "PNPInfo"      },
 	{ SDP_UUID_GENERIC_NETWORKING,       "Networking"   },
 	{ SDP_UUID_GENERIC_FILE_TRANSFER,    "FileTrnsf"    },
