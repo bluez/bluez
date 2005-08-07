@@ -46,6 +46,6 @@ int bnep_accept_connection(int sk, uint16_t role, char *dev);
 int bnep_create_connection(int sk, uint16_t role, uint16_t svc, char *dev);
 
 /* SDP functions */
-int  bnep_sdp_register(uint16_t role);
+int  bnep_sdp_register(bdaddr_t *device, uint16_t role);
 void bnep_sdp_unregister(void);
 int  bnep_sdp_search(bdaddr_t *src, bdaddr_t *dst, uint16_t service);

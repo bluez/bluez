@@ -58,7 +58,7 @@ void bnep_sdp_unregister(void)
 	sdp_close(session);
 }
 
-int bnep_sdp_register(uint16_t role)
+int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
 	uuid_t root_uuid, pan, l2cap, bnep;
@@ -173,7 +173,7 @@ int bnep_sdp_register(uint16_t role)
 		break;
 	}
 
-	status = sdp_record_register(session, record, 0);
+	status = sdp_device_record_register(session, device, record, 0);
 	if (status) {
 		syslog(LOG_ERR, "SDP registration failed.");
 		sdp_record_free(record); record = NULL;

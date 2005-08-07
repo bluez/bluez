@@ -56,7 +56,7 @@ void dun_sdp_unregister(void)
 	sdp_close(session);
 }
 
-int dun_sdp_register(uint8_t channel, int mrouter)
+int dun_sdp_register(bdaddr_t *device, uint8_t channel, int mrouter)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
 	uuid_t root_uuid, l2cap, rfcomm, dun;
@@ -104,7 +104,7 @@ int dun_sdp_register(uint8_t channel, int mrouter)
 		
 	sdp_set_info_attr(record, mrouter ? "mRouter" : "LAN Access Point", NULL, NULL);
 
-	status = sdp_record_register(session, record, 0);
+	status = sdp_device_record_register(session, device, record, 0);
 	if (status) {
 		syslog(LOG_ERR, "SDP registration failed.");
 		sdp_record_free(record); record = NULL;

@@ -131,7 +131,7 @@ static int do_listen(void)
 	int sk, lm;
 
 	if (use_sdp)
-		bnep_sdp_register(role);
+		bnep_sdp_register(&src_addr, role);
 
 	/* Create L2CAP socket and bind it to PSM BNEP */
 	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);

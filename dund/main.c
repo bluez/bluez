@@ -122,7 +122,7 @@ static int do_listen(void)
 		channel = DUN_DEFAULT_CHANNEL;
 
 	if (use_sdp)
-		dun_sdp_register(channel, mrouter);
+		dun_sdp_register(&src_addr, channel, mrouter);
 
 	if (mrouter)
 		syslog(LOG_INFO, "Waiting for mRouter callback on channel %d", channel);
