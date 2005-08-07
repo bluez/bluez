@@ -301,6 +301,9 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1127, "HCR_Scan (HCR)", NULL, 0 },
 	{ 0x1128, "Common ISDN Access (CIP)", NULL, 0 },
 	{ 0x1129, "VideoConferencingGW (VCP)", NULL, 0 },
+	{ 0x112a, "UDI-MT", NULL, 0 },
+	{ 0x112b, "UDI-TA", NULL, 0 },
+	{ 0x112c, "Audio/Video", NULL, 0 },
 	{ 0x112d, "SIM Access (SAP)", NULL, 0 },
 	{ 0x112e, "Phonebook Access (PBAP) - PCE", NULL, 0 },
 	{ 0x112f, "Phonebook Access (PBAP) - PSE", NULL, 0 },
@@ -312,6 +315,10 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1203, "GenericAudio",
 		audio_attrib_names, sizeof(audio_attrib_names)/sizeof(struct attrib_def) },
 	{ 0x1204, "GenericTelephony", NULL, 0 },
+	/* ... */
+	{ 0x1303, "VideoSource", NULL, 0 },
+	{ 0x1304, "VideoSink", NULL, 0 },
+	{ 0x1305, "VideoDistribution", NULL, 0 },
 };
 
 static const int uuid16_max = sizeof(uuid16_names)/sizeof(struct uuid_def);
