@@ -302,6 +302,8 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1128, "Common ISDN Access (CIP)", NULL, 0 },
 	{ 0x1129, "VideoConferencingGW (VCP)", NULL, 0 },
 	{ 0x112d, "SIM Access (SAP)", NULL, 0 },
+	{ 0x112e, "Phonebook Access (PBAP) - PCE", NULL, 0 },
+	{ 0x112f, "Phonebook Access (PBAP) - PSE", NULL, 0 },
 	/* ... */
 	{ 0x1200, "PnPInformation",
 		did_attrib_names, sizeof(did_attrib_names)/sizeof(struct attrib_def) },
