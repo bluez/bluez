@@ -901,6 +901,25 @@ typedef struct {
 } __attribute__ ((packed)) write_afh_mode_rp;
 #define WRITE_AFH_MODE_RP_SIZE 1
 
+#define OCF_READ_EXT_INQUIRY_RESPONSE	0x0051
+typedef struct {
+	uint8_t		status;
+	uint8_t		fec;
+	uint8_t		data[240];
+} __attribute__ ((packed)) read_ext_inquiry_response_rp;
+#define READ_EXT_INQUIRY_RESPONSE_RP_SIZE 242
+
+#define OCF_WRITE_EXT_INQUIRY_RESPONSE	0x0052
+typedef struct {
+	uint8_t		fec;
+	uint8_t		data[240];
+} __attribute__ ((packed)) write_ext_inquiry_response_cp;
+#define WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE 241
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) write_ext_inquiry_response_rp;
+#define WRITE_EXT_INQUIRY_RESPONSE_RP_SIZE 1
+
 /* Informational Parameters */
 #define OGF_INFO_PARAM		0x04
 
@@ -1315,6 +1334,18 @@ typedef struct {
 	uint16_t	tx_pkt_len;
 } __attribute__ ((packed)) evt_sync_conn_changed;
 #define EVT_SYNC_CONN_CHANGED_SIZE 9
+
+#define EVT_EXTENDED_INQUIRY_RESULT	0x2F
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		pscan_rep_mode;
+	uint8_t		pscan_period_mode;
+	uint8_t		dev_class[3];
+	uint16_t	clock_offset;
+	int8_t		rssi;
+	uint8_t		data[240];
+} __attribute__ ((packed)) extended_inquiry_info;
+#define EXTENDED_INQUIRY_INFO 254
 
 #define EVT_TESTING			0xFE
 
