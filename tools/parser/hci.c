@@ -94,9 +94,11 @@ static char *event_str[] = {
 	"Unknown",
 	"Unknown",
 	"Synchronous Connect Complete",
-	"Synchronous Connect Changed"
+	"Synchronous Connect Changed",
+	"Unknown",
+	"Extended Inquiry Result",
 };
-#define EVENT_NUM 43
+#define EVENT_NUM 45
 
 static char *cmd_linkctl_str[] = {
 	"Unknown",
@@ -141,7 +143,7 @@ static char *cmd_linkctl_str[] = {
 	"Unknown",
 	"Setup Synchronous Connection",
 	"Accept Synchronous Connection",
-	"Reject Synchronous Connection"
+	"Reject Synchronous Connection",
 };
 #define CMD_LINKCTL_NUM 42
 
@@ -162,7 +164,7 @@ static char *cmd_linkpol_str[] = {
 	"Write Link Policy Settings",
 	"Read Default Link Policy Settings",
 	"Write Default Link Policy Settings",
-	"Flow Specification"
+	"Flow Specification",
 };
 #define CMD_LINKPOL_NUM 16
 
@@ -240,9 +242,12 @@ static char *cmd_hostctl_str[] = {
 	"Read Page Scan Type",
 	"Write Page Scan Type",
 	"Read AFH Channel Assessment Mode",
-	"Write AFH Channel Assessment Mode"
+	"Write AFH Channel Assessment Mode",
+	"Unknown",
+	"Read Extended Inquiry Response",
+	"Write Extended Inquiry Response",
 };
-#define CMD_HOSTCTL_NUM 73
+#define CMD_HOSTCTL_NUM 76
 
 static char *cmd_info_str[] = {
 	"Unknown",
@@ -254,7 +259,7 @@ static char *cmd_info_str[] = {
 	"Unknown",
 	"Read Country Code",
 	"Unknown",
-	"Read BD ADDR"
+	"Read BD ADDR",
 };
 #define CMD_INFO_NUM 9
 
@@ -266,7 +271,7 @@ static char *cmd_status_str[] = {
 	"Unknown",
 	"Read RSSI",
 	"Read AFH Channel Map",
-	"Read Clock"
+	"Read Clock",
 };
 #define CMD_STATUS_NUM 7
 
@@ -324,7 +329,7 @@ static char *error_code_str[] = {
 	"Role Switch Pending",
 	"Reserved",
 	"Reserved Slot Violation",
-	"Role Switch Failed"
+	"Role Switch Failed",
 };
 #define ERROR_CODE_NUM 53
 
@@ -844,6 +849,14 @@ static inline void write_link_supervision_timeout_dump(int level, struct frame *
 		btohs(cp->handle), btohs(cp->link_sup_to));
 }
 
+static inline void write_ext_inquiry_response_dump(int level, struct frame *frm)
+{
+	write_ext_inquiry_response_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("fec 0x%2.2x\n", cp->fec);
+}
+
 static inline void request_transmit_power_level_dump(int level, struct frame *frm)
 {
 	read_transmit_power_level_cp *cp = frm->ptr;
@@ -1047,6 +1060,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_WRITE_LINK_SUPERVISION_TIMEOUT:
 			write_link_supervision_timeout_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_EXT_INQUIRY_RESPONSE:
+			write_ext_inquiry_response_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -1358,6 +1374,19 @@ static inline void read_transmit_power_level_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void read_ext_inquiry_response_dump(int level, struct frame *frm)
+{
+	read_ext_inquiry_response_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x fec 0x%2.2x\n", rp->status, rp->fec);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
 static inline void read_local_version_dump(int level, struct frame *frm)
 {
 	read_local_version_rp *rp = frm->ptr;
@@ -1635,6 +1664,9 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 			read_transmit_power_level_dump(level, frm);
 			return;
+		case OCF_READ_EXT_INQUIRY_RESPONSE:
+			read_ext_inquiry_response_dump(level, frm);
+			return;
 		case OCF_FLUSH:
 		case OCF_WRITE_LINK_SUPERVISION_TIMEOUT:
 			generic_response_dump(level, frm);
@@ -1659,6 +1691,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_INQUIRY_MODE:
 		case OCF_WRITE_AFH_MODE:
 		case OCF_SET_AFH_CLASSIFICATION:
+		case OCF_WRITE_EXT_INQUIRY_RESPONSE:
 			status_response_dump(level, frm);
 			return;
 		}
