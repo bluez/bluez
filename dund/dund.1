@@ -5,7 +5,7 @@ dund \- BlueZ Bluetooth dial-up networking daemon
 .SH DESCRIPTION
 DUN daemon
 .SH SYNOPSIS
-dund <options>
+dund <options> [pppd options]
 .SH OPTIONS
 .TP
 \fB\-\-show\fR \fB\-\-list\fR \fB\-l\fR
@@ -16,6 +16,9 @@ Listen for DUN connections
 .TP
 \fB\-\-connect\fR \fB\-c\fR <bdaddr>
 Create DUN connection
+.TP
+\fB\-\-mrouter\fR \fB\-m\fR <bdaddr>
+Create mRouter connection
 .TP
 \fB\-\-search\fR \fB\-Q[duration]\fR
 Search and connect
@@ -35,6 +38,9 @@ Source bdaddr
 \fB\-\-nosdp\fR \fB\-D\fR
 Disable SDP
 .TP
+\fB\-\-auth\fR \fB\-A\fR
+Enable authentification
+.TP
 \fB\-\-encrypt\fR \fB\-E\fR
 Enable encryption
 .TP
@@ -49,4 +55,13 @@ Do not become a daemon
 .TP
 \fB\-\-persist\fR \fB\-p[interval]\fR
 Persist mode
+.TP
+\fB\-\-pppd\fR \fB\-d\fR <pppd>
+Location of the PPP daemon (pppd)
+.TP
+\fB\-\-msdun\fR \fB\-X\fR [timeo]
+Enable Microsoft dialup networking support
+.TP
+\fB\-\-cache\fR \fB\-C\fR [valid]
+Enable address cache
 

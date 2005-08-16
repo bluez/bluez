@@ -430,7 +430,7 @@ static char main_help[] =
 	"\t--persist -p[interval]    Persist mode\n"
 	"\t--pppd -d <pppd>          Location of the PPP daemon (pppd)\n"
 	"\t--msdun -X[timeo]         Enable Microsoft dialup networking support\n"
-	"\t--cache -C[valid]         Enable addess cache\n";
+	"\t--cache -C[valid]         Enable address cache\n";
 
 int main(int argc, char **argv)
 {
