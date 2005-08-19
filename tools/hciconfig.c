@@ -883,8 +883,21 @@ static void cmd_inq_mode(int ctl, int hdev, char *opt)
 		}
 
 		print_dev_hdr(&di);
-		printf("\tInquiry mode: %s\n",
-			mode == 1 ? "Inquiry with RSSI" : "Standard Inquiry");
+		printf("\tInquiry mode: ");
+		switch (mode) {
+		case 0:
+			printf("Standard Inquiry\n");
+			break;
+		case 1:
+			printf("Inquiry with RSSI\n");
+			break;
+		case 2:
+			printf("Inquiry with RSSI or Extended Inquiry\n");
+			break;
+		default:
+			printf("Unknown (0x%02x)\n", mode);
+			break;
+		}
 	}
 }
 
