@@ -337,6 +337,9 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 			case '`':
 			case '$':
 			case '|':
+			case '>':
+			case '<':
+			case '&':
 			case ';':
 			case '\\':
 				*ptr++ = '\\';
