@@ -2097,10 +2097,94 @@ static int add_syncml(sdp_session_t *session, svc_info_t *si)
 	return 0;
 }
 
-static unsigned char hotsync_uuid[] = {	0xF5, 0xBE, 0xB6, 0x51, 0x41, 0x71, 0x40, 0x51,
-					0xAC, 0xF5, 0x6C, 0xA7, 0x20, 0x22, 0x42, 0xF0 };
+static unsigned char async_uuid[] = {	0x03, 0x50, 0x27, 0x8F, 0x3D, 0xCA, 0x4E, 0x62,
+					0x83, 0x1D, 0xA4, 0x11, 0x65, 0xFF, 0x90, 0x6C };
+
+static int add_activesync(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass, *proto;
+	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid;
+	uint8_t channel = si->channel? si->channel: 21;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto = sdp_list_append(NULL, sdp_list_append(NULL, &l2cap_uuid));
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto = sdp_list_append(proto, sdp_list_append(
+	sdp_list_append(NULL, &rfcomm_uuid), sdp_data_alloc(SDP_UINT8, &channel)));
+
+	sdp_set_access_protos(&record, sdp_list_append(NULL, proto));
+
+	sdp_uuid128_create(&svclass_uuid, (void *) async_uuid);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+
+	sdp_set_info_attr(&record, "Microsoft ActiveSync", NULL, NULL);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("ActiveSync service record registered\n");
+
+	return 0;
+}
+
+static unsigned char hotsync_uuid[] = {	0xD8, 0x0C, 0xF9, 0xEA, 0x13, 0x4C, 0x11, 0xD5,
+					0x83, 0xCE, 0x00, 0x30, 0x65, 0x7C, 0x54, 0x3C };
 
 static int add_hotsync(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass, *proto;
+	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid;
+	uint8_t channel = si->channel? si->channel: 22;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto = sdp_list_append(NULL, sdp_list_append(NULL, &l2cap_uuid));
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto = sdp_list_append(proto, sdp_list_append(
+	sdp_list_append(NULL, &rfcomm_uuid), sdp_data_alloc(SDP_UINT8, &channel)));
+
+	sdp_set_access_protos(&record, sdp_list_append(NULL, proto));
+
+	sdp_uuid128_create(&svclass_uuid, (void *) hotsync_uuid);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+
+	sdp_set_info_attr(&record, "PalmOS HotSync", NULL, NULL);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("HotSync service record registered\n");
+
+	return 0;
+}
+
+static unsigned char palmos_uuid[] = {	0xF5, 0xBE, 0xB6, 0x51, 0x41, 0x71, 0x40, 0x51,
+					0xAC, 0xF5, 0x6C, 0xA7, 0x20, 0x22, 0x42, 0xF0 };
+
+static int add_palmos(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_record_t record;
 	sdp_list_t *root, *svclass;
@@ -2122,7 +2206,7 @@ static int add_hotsync(sdp_session_t *session, svc_info_t *si)
 		return -1;
 	}
 
-	printf("HotSync service record registered\n");
+	printf("PalmOS service record registered\n");
 
 	return 0;
 }
@@ -2267,7 +2351,9 @@ struct {
 	{ "A2SNK",	AUDIO_SINK_SVCLASS_ID,		add_a2sink	},
 
 	{ "SYNCML",	0,				add_syncml,	syncml_uuid	},
+	{ "ACTIVESYNC",	0,				add_activesync,	async_uuid	},
 	{ "HOTSYNC",	0,				add_hotsync,	hotsync_uuid	},
+	{ "PALMOS",	0,				add_palmos,	palmos_uuid	},
 	{ "NOKID",	0,				add_nokiaid,	nokid_uuid	},
 	{ "PCSUITE",	0,				add_pcsuite,	pcsuite_uuid	},
 	{ "SR1",	0,				add_sr1,	sr1_uuid	},
