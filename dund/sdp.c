@@ -3,7 +3,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -46,6 +46,9 @@
 
 #include "dund.h"
 
+static unsigned char async_uuid[] = {	0x03, 0x50, 0x27, 0x8F, 0x3D, 0xCA, 0x4E, 0x62,
+					0x83, 0x1D, 0xA4, 0x11, 0x65, 0xFF, 0x90, 0x6C };
+
 static sdp_record_t  *record;
 static sdp_session_t *session;
 
@@ -56,7 +59,7 @@ void dun_sdp_unregister(void)
 	sdp_close(session);
 }
 
-int dun_sdp_register(bdaddr_t *device, uint8_t channel, int mrouter)
+int dun_sdp_register(bdaddr_t *device, uint8_t channel, int type)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
 	uuid_t root_uuid, l2cap, rfcomm, dun;
@@ -93,27 +96,51 @@ int dun_sdp_register(bdaddr_t *device, uint8_t channel, int mrouter)
 	aproto   = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
 
-	sdp_uuid16_create(&dun, mrouter ? SERIAL_PORT_SVCLASS_ID : LAN_ACCESS_SVCLASS_ID);
+	switch (type) {
+	case MROUTER:
+		sdp_uuid16_create(&dun, SERIAL_PORT_SVCLASS_ID);
+		break;
+	case ACTIVESYNC:
+		sdp_uuid128_create(&dun, (void *) async_uuid);
+		break;
+	default:
+		sdp_uuid16_create(&dun, LAN_ACCESS_SVCLASS_ID);
+		break;
+	}
+
 	svclass = sdp_list_append(NULL, &dun);
 	sdp_set_service_classes(record, svclass);
 
-	sdp_uuid16_create(&profile[0].uuid, mrouter ? SERIAL_PORT_PROFILE_ID : LAN_ACCESS_PROFILE_ID);
-	profile[0].version = 0x0100;
-	pfseq = sdp_list_append(NULL, &profile[0]);
-	sdp_set_profile_descs(record, pfseq);
-		
-	sdp_set_info_attr(record, mrouter ? "mRouter" : "LAN Access Point", NULL, NULL);
+	if (type == LANACCESS) {
+		sdp_uuid16_create(&profile[0].uuid, LAN_ACCESS_PROFILE_ID);
+		profile[0].version = 0x0100;
+		pfseq = sdp_list_append(NULL, &profile[0]);
+		sdp_set_profile_descs(record, pfseq);
+	}
+
+	switch (type) {
+	case MROUTER:
+		sdp_set_info_attr(record, "mRouter", NULL, NULL);
+		break;
+	case ACTIVESYNC:
+		sdp_set_info_attr(record, "ActiveSync", NULL, NULL);
+		break;
+	default:
+		sdp_set_info_attr(record, "LAN Access Point", NULL, NULL);
+		break;
+	}
 
 	status = sdp_device_record_register(session, device, record, 0);
 	if (status) {
 		syslog(LOG_ERR, "SDP registration failed.");
-		sdp_record_free(record); record = NULL;
+		sdp_record_free(record);
+		record = NULL;
 		return -1;
 	}
 	return 0;
 }
 
-int dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel, int mrouter)
+int dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel, int type)
 {
 	sdp_session_t *s;
 	sdp_list_t *srch, *attrs, *rsp;
@@ -128,7 +155,18 @@ int dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel, int mrouter)
 		return -1;
 	}
 
-	sdp_uuid16_create(&svclass, mrouter ? SERIAL_PORT_SVCLASS_ID : LAN_ACCESS_SVCLASS_ID);
+	switch (type) {
+	case MROUTER:
+		sdp_uuid16_create(&svclass, SERIAL_PORT_SVCLASS_ID);
+		break;
+	case ACTIVESYNC:
+		sdp_uuid128_create(&svclass, (void *) async_uuid);
+		break;
+	default:
+		sdp_uuid16_create(&svclass, LAN_ACCESS_SVCLASS_ID);
+		break;
+	}
+
 	srch  = sdp_list_append(NULL, &svclass);
 
 	attr  = SDP_ATTR_PROTO_DESC_LIST;
@@ -137,7 +175,7 @@ int dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel, int mrouter)
 	err = sdp_service_search_attr_req(s, srch, SDP_ATTR_REQ_INDIVIDUAL, attrs, &rsp);
 
 	sdp_close(s);
-	
+
 	if (err)
 		return 0;
 

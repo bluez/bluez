@@ -3,7 +3,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2004  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -74,7 +74,7 @@ static int  auth;
 static int  encrypt;
 static int  secure;
 static int  master;
-static int  mrouter;
+static int  type = LANACCESS;
 static int  search_duration = 10;
 static uint use_cache;
 
@@ -107,11 +107,11 @@ static int do_listen(void)
 	struct sockaddr_rc sa;
 	int sk, lm;
 
-	if (mrouter) {
+	if (type == MROUTER) {
 		if (!cache.valid)
 			return -1;
 
-		if (create_connection(cache.dst, &cache.bdaddr, mrouter) < 0) {
+		if (create_connection(cache.dst, &cache.bdaddr, type) < 0) {
 			syslog(LOG_ERR, "Cannot connect to mRouter device. %s(%d)",
 								strerror(errno), errno);
 			return -1;
@@ -122,9 +122,9 @@ static int do_listen(void)
 		channel = DUN_DEFAULT_CHANNEL;
 
 	if (use_sdp)
-		dun_sdp_register(&src_addr, channel, mrouter);
+		dun_sdp_register(&src_addr, channel, type);
 
-	if (mrouter)
+	if (type == MROUTER)
 		syslog(LOG_INFO, "Waiting for mRouter callback on channel %d", channel);
 
 	/* Create RFCOMM socket */
@@ -181,7 +181,7 @@ static int do_listen(void)
 			syslog(LOG_ERR, "Fork failed. %s(%d)", strerror(errno), errno);
 		default:
 			close(nsk);
-			if (mrouter) {
+			if (type == MROUTER) {
 				close(sk);
 				terminate = 1;
 			}
@@ -381,31 +381,32 @@ void sig_term(int sig)
 }
 
 static struct option main_lopts[] = {
-	{ "help",     0, 0, 'h' },
-	{ "listen",   0, 0, 's' },
-	{ "connect",  1, 0, 'c' },
-	{ "search",   2, 0, 'Q' },
-	{ "kill",     1, 0, 'k' },
-	{ "killall",  0, 0, 'K' },
-	{ "channel",  1, 0, 'P' },
-	{ "device",   1, 0, 'i' },
-	{ "nosdp",    0, 0, 'D' },
-	{ "list",     0, 0, 'l' },
-	{ "show",     0, 0, 'l' },
-	{ "nodetach", 0, 0, 'n' },
-	{ "persist",  2, 0, 'p' },
-	{ "auth",     0, 0, 'A' },
-	{ "encrypt",  0, 0, 'E' },
-	{ "secure",   0, 0, 'S' },
-	{ "master",   0, 0, 'M' },
-	{ "cache",    0, 0, 'C' },
-	{ "pppd",     1, 0, 'd' },
-	{ "msdun",    2, 0, 'X' },
-	{ "mrouter",  1, 0, 'm' },
+	{ "help",	0, 0, 'h' },
+	{ "listen",	0, 0, 's' },
+	{ "connect",	1, 0, 'c' },
+	{ "search",	2, 0, 'Q' },
+	{ "kill",	1, 0, 'k' },
+	{ "killall",	0, 0, 'K' },
+	{ "channel",	1, 0, 'P' },
+	{ "device",	1, 0, 'i' },
+	{ "nosdp",	0, 0, 'D' },
+	{ "list",	0, 0, 'l' },
+	{ "show",	0, 0, 'l' },
+	{ "nodetach",	0, 0, 'n' },
+	{ "persist",	2, 0, 'p' },
+	{ "auth",	0, 0, 'A' },
+	{ "encrypt",	0, 0, 'E' },
+	{ "secure",	0, 0, 'S' },
+	{ "master",	0, 0, 'M' },
+	{ "cache",	0, 0, 'C' },
+	{ "pppd",	1, 0, 'd' },
+	{ "msdun",	2, 0, 'X' },
+	{ "activesync",	0, 0, 'a' },
+	{ "mrouter",	1, 0, 'm' },
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:i:lnp::DQ::AESMP:C::P:X";
+static char main_sopts[] = "hsc:k:Kr:i:lnp::DQ::AESMP:C::P:Xa";
 
 static char main_help[] = 
 	"Bluetooth LAP (LAN Access over PPP) daemon version " VERSION " \n"
@@ -430,6 +431,7 @@ static char main_help[] =
 	"\t--persist -p[interval]    Persist mode\n"
 	"\t--pppd -d <pppd>          Location of the PPP daemon (pppd)\n"
 	"\t--msdun -X[timeo]         Enable Microsoft dialup networking support\n"
+	"\t--activesync -a           Enable Microsoft ActiveSync networking\n"
 	"\t--cache -C[valid]         Enable address cache\n";
 
 int main(int argc, char **argv)
@@ -531,10 +533,15 @@ int main(int argc, char **argv)
 				msdun = 10;
 			break;
 
+		case 'a':
+			msdun = 10;
+			type = ACTIVESYNC;
+			break;
+
 		case 'm':
 			mode = LISTEN;
 			dst  = strdup(optarg);
-			mrouter = 1;
+			type = MROUTER;
 			break;
 
 		case 'h':
