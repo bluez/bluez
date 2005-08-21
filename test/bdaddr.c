@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -150,6 +151,34 @@ static int csr_write_bd_addr(int dd, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int csr_reset_device(int dd)
+{
+	unsigned char cmd[] = { 0x02, 0x00, 0x09, 0x00,
+				0x00, 0x00, 0x01, 0x40, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+	unsigned char cp[254], rp[254];
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp[0] = 0xc2;
+	memcpy(cp + 1, cmd, sizeof(cmd));
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_VENDOR_CMD;
+	rq.ocf    = 0x00;
+	rq.event  = EVT_VENDOR;
+	rq.cparam = cp;
+	rq.clen   = sizeof(cmd) + 1;
+	rq.rparam = rp;
+	rq.rlen   = sizeof(rp);
+
+	if (hci_send_req(dd, &rq, 2000) < 0)
+		return -1;
+
+	return 0;
+}
+
 #define OCF_ZEEVO_WRITE_BD_ADDR		0x0001
 typedef struct {
 	bdaddr_t	bdaddr;
@@ -180,12 +209,13 @@ static int zeevo_write_bd_addr(int dd, bdaddr_t *bdaddr)
 
 static struct {
 	uint16_t compid;
-	int (*func)(int dd, bdaddr_t *bdaddr);
+	int (*write_bd_addr)(int dd, bdaddr_t *bdaddr);
+	int (*reset_device)(int dd);
 } vendor[] = {
-	{ 0,		ericsson_write_bd_addr	},
-	{ 10,		csr_write_bd_addr	},
-	{ 18,		zeevo_write_bd_addr	},
-	{ 65535,	NULL			},
+	{ 0,		ericsson_write_bd_addr,	NULL			},
+	{ 10,		csr_write_bd_addr,	csr_reset_device	},
+	{ 18,		zeevo_write_bd_addr,	NULL			},
+	{ 65535,	NULL,			NULL			},
 };
 
 static void usage(void)
@@ -285,13 +315,24 @@ int main(int argc, char *argv[])
 			ba2str(&bdaddr, addr);
 			printf("New BD address: %s\n\n", addr);
 
-			if (vendor[i].func(dd, &bdaddr) < 0) {
+			if (vendor[i].write_bd_addr(dd, &bdaddr) < 0) {
 				fprintf(stderr, "Can't write new address\n");
 				hci_close_dev(dd);
 				exit(1);
 			}
 
-			printf("Address changed - Reset device now\n");
+			printf("Address changed - ");
+
+			if (vendor[i].reset_device) {
+				if (vendor[i].reset_device(dd) < 0) {
+					printf("Reset device manually\n");
+				} else {
+					ioctl(dd, HCIDEVRESET, dev);
+					printf("Device reset successully\n");
+				}
+			} else {
+				printf("Reset device now\n");
+			}
 
 			//ioctl(dd, HCIDEVRESET, dev);
 			//ioctl(dd, HCIDEVDOWN, dev);
