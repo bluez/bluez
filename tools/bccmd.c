@@ -95,6 +95,22 @@ static int cmd_clock(int dd, int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_rand(int dd, int argc, char *argv[])
+{
+	uint16_t rand = 0;
+	int err;
+
+	err = csr_read_varid_uint16(dd, 5, CSR_VARID_RAND, &rand);
+	if (err < 0) {
+		errno = -err;
+		return -1;
+	}
+
+	printf("Random number: 0x%02x (%d)\n", rand, rand);
+
+	return 0;
+}
+
 static int cmd_panicarg(int dd, int argc, char *argv[])
 {
 	uint16_t error = 0;
@@ -129,16 +145,41 @@ static int cmd_faultarg(int dd, int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_coldreset(int dd, int argc, char *argv[])
+{
+	return csr_write_varid_valueless(dd, 0, CSR_VARID_COLD_RESET);
+}
+
+static int cmd_warmreset(int dd, int argc, char *argv[])
+{
+	return csr_write_varid_valueless(dd, 0, CSR_VARID_WARM_RESET);
+}
+
+static int cmd_disabletx(int dd, int argc, char *argv[])
+{
+	return csr_write_varid_valueless(dd, 0, CSR_VARID_DISABLE_TX);
+}
+
+static int cmd_enabletx(int dd, int argc, char *argv[])
+{
+	return csr_write_varid_valueless(dd, 0, CSR_VARID_ENABLE_TX);
+}
+
 static struct {
 	char *str;
 	int (*func)(int dd, int argc, char **argv);
 	char *arg;
 	char *doc;
 } commands[] = {
-	{ "keylen",   cmd_keylen,   "<handle>", "Get current crypt key length" },
-	{ "clock",    cmd_clock,    "",         "Get local Bluetooth clock"    },
-	{ "panicarg", cmd_panicarg, "",         "Get panic code argument"      },
-	{ "faultarg", cmd_faultarg, "",         "Get fault code argument"      },
+	{ "keylen",    cmd_keylen,    "<handle>", "Get current crypt key length" },
+	{ "clock",     cmd_clock,     "",         "Get local Bluetooth clock"    },
+	{ "rand",      cmd_rand,      "",         "Get random number"            },
+	{ "panicarg",  cmd_panicarg,  "",         "Get panic code argument"      },
+	{ "faultarg",  cmd_faultarg,  "",         "Get fault code argument"      },
+	{ "coldreset", cmd_coldreset, "",         "Perform cold reset"           },
+	{ "warmreset", cmd_warmreset, "",         "Perform warm reset"           },
+	{ "disabletx", cmd_disabletx, "",         "Disable TX on the device"     },
+	{ "enabletx",  cmd_enabletx,  "",         "Enable TX on the device"      },
 	{ NULL },
 };
 
