@@ -132,4 +132,10 @@
 #define SDP_ATTR_ID_IPV4_SUBNET                        0x030d /* PAN */
 #define SDP_ATTR_ID_IPV6_SUBNET                        0x030e /* PAN */
 
+#define SDP_ATTR_ID_SUPPORTED_CAPABILITIES             0x0310 /* Imaging */
+#define SDP_ATTR_ID_SUPPORTED_FEATURES                 0x0311 /* Imaging and Hansfree */
+#define SDP_ATTR_ID_SUPPORTED_FUNCTIONS                0x0312 /* Imaging */
+#define SDP_ATTR_ID_TOTAL_IMAGING_DATA_CAPACITY        0x0313 /* Imaging */
+#define SDP_ATTR_ID_SUPPORTED_REPOSITORIES             0x0314 /* PBAP */
+
 #endif /* __SDP_H */
