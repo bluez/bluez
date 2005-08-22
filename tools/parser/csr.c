@@ -37,6 +37,7 @@
 #define CSR_U8(frm)  (get_u8(frm))
 #define CSR_U16(frm) (btohs(htons(get_u16(frm))))
 #define CSR_U32(frm) ((CSR_U16(frm) << 16) + CSR_U16(frm))
+#define CSR_S16(frm) (btohs(htons(get_u16(frm))))
 
 static char *type2str(uint16_t type)
 {
@@ -50,6 +51,30 @@ static char *type2str(uint16_t type)
 	default:
 		return "Reserved";
 	}
+}
+
+static inline void valueless_dump(int level, char *str, struct frame *frm)
+{
+	p_indent(level, frm);
+	printf("%s\n", str);
+}
+
+static inline void complex_dump(int level, char *str, struct frame *frm)
+{
+	p_indent(level, frm);
+	printf("%s\n", str);
+
+	raw_dump(level, frm);
+}
+
+static inline void int8_dump(int level, char *str, struct frame *frm)
+{
+	int16_t value;
+
+	value = CSR_S16(frm);
+
+	p_indent(level, frm);
+	printf("%s: value %d (0x%2.2x)\n", str, value, value);
 }
 
 static inline void uint16_dump(int level, char *str, struct frame *frm)
@@ -105,6 +130,18 @@ static inline void handle_length_dump(int level, char *str, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("%s: handle %d length %d\n", str, handle, length);
+}
+
+static inline void handle_clock_dump(int level, char *str, struct frame *frm)
+{
+	uint16_t handle;
+	uint32_t clock;
+
+	handle = CSR_U16(frm);
+	clock  = CSR_U32(frm);
+
+	p_indent(level, frm);
+	printf("%s: handle %d clock 0x%4.4x\n", str, handle, clock);
 }
 
 static inline void pskey_dump(int level, struct frame *frm)
@@ -184,6 +221,9 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	}
 
 	switch (varid) {
+	case 0x2801:
+		uint16_dump(level + 1, "BC01_STATUS", frm);
+		break;
 	case 0x2819:
 		uint16_dump(level + 1, "BUILDID", frm);
 		break;
@@ -214,6 +254,48 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	case 0x3008:
 		handle_length_dump(level + 1, "CRYPT_KEY_LENGTH", frm);
 		break;
+	case 0x3009:
+		handle_clock_dump(level + 1, "PICONET_INSTANCE", frm);
+		break;
+	case 0x300a:
+		complex_dump(level + 1, "GET_CLR_EVT", frm);
+		break;
+	case 0x300b:
+		complex_dump(level + 1, "GET_NEXT_BUILDDEF", frm);
+		break;
+	case 0x4001:
+		valueless_dump(level + 1, "COLD_RESET", frm);
+		break;
+	case 0x4002:
+		valueless_dump(level + 1, "WARM_RESET", frm);
+		break;
+	case 0x4003:
+		valueless_dump(level + 1, "COLD_HALT", frm);
+		break;
+	case 0x4004:
+		valueless_dump(level + 1, "WARM_HALT", frm);
+		break;
+	case 0x4005:
+		valueless_dump(level + 1, "INIT_BT_STACK", frm);
+		break;
+	case 0x4006:
+		valueless_dump(level + 1, "ACTIVATE_BT_STACK", frm);
+		break;
+	case 0x4007:
+		valueless_dump(level + 1, "ENABLE_TX", frm);
+		break;
+	case 0x4008:
+		valueless_dump(level + 1, "DISABLE_TX", frm);
+		break;
+	case 0x4009:
+		valueless_dump(level + 1, "RECAL", frm);
+		break;
+	case 0x4012:
+		valueless_dump(level + 1, "CANCEL_PAGE", frm);
+		break;
+	case 0x6000:
+		valueless_dump(level + 1, "NO_VARIABLE", frm);
+		break;
 	case 0x481c:
 		uint16_dump(level + 1, "MAP_SCO_PCM", frm);
 		break;
@@ -225,6 +307,12 @@ static inline void bccmd_dump(int level, struct frame *frm)
 		break;
 	case 0x6806:
 		uint16_dump(level + 1, "FAULT_ARG", frm);
+		break;
+	case 0x6827:
+		int8_dump(level + 1, "MAX_TX_POWER", frm);
+		break;
+	case 0x682b:
+		int8_dump(level + 1, "DEFAULT_TX_POWER", frm);
 		break;
 	case 0x7003:
 		pskey_dump(level + 1, frm);
