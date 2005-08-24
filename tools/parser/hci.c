@@ -2219,6 +2219,27 @@ static inline void sync_conn_changed_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void extended_inq_result_dump(int level, struct frame *frm)
+{
+	uint8_t num = get_u8(frm);
+	char addr[18];
+	int i;
+
+	for (i = 0; i < num; i++) {
+		extended_inquiry_info *info = frm->ptr;
+
+		ba2str(&info->bdaddr, addr);
+
+		p_indent(level, frm);
+		printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x\n",
+			addr, info->pscan_rep_mode, btohs(info->clock_offset),
+			info->dev_class[2], info->dev_class[1], info->dev_class[0]);
+
+		frm->ptr += EXTENDED_INQUIRY_INFO_SIZE;
+		frm->len -= EXTENDED_INQUIRY_INFO_SIZE;
+	}
+}
+
 static inline void event_dump(int level, struct frame *frm)
 {
 	hci_event_hdr *hdr = frm->ptr;
@@ -2368,6 +2389,9 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_SYNC_CONN_CHANGED:
 		sync_conn_changed_dump(level + 1, frm);
+		break;
+	case EVT_EXTENDED_INQUIRY_RESULT:
+		extended_inq_result_dump(level + 1, frm);
 		break;
 	default:
 		raw_dump(level, frm);
