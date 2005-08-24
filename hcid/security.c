@@ -568,6 +568,23 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, vo
 	}
 }
 
+static inline void extended_inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
+{
+	uint8_t num = *(uint8_t *) ptr++;
+	int i;
+
+	for (i = 0; i < num; i++) {
+		extended_inquiry_info *info = ptr;
+		uint32_t class = info->dev_class[0]
+			| (info->dev_class[1] << 8)
+			| (info->dev_class[2] << 16);
+
+		hcid_dbus_inquiry_result(sba, &info->bdaddr, class, info->rssi);
+
+		ptr += EXTENDED_INQUIRY_INFO_SIZE;
+	}
+}
+
 static inline void remote_features_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_read_remote_features_complete *evt = ptr;
@@ -640,6 +657,10 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	case EVT_INQUIRY_RESULT_WITH_RSSI:
 		inquiry_result_with_rssi(dev, &di->bdaddr, eh->plen, ptr);
 		break;
+
+	case EVT_EXTENDED_INQUIRY_RESULT:
+		extended_inquiry_result(dev, &di->bdaddr, eh->plen, ptr);
+		break;
 	}
 
 	if (hci_test_bit(HCI_SECMGR, &di->flags))
@@ -697,6 +718,7 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_READ_REMOTE_FEATURES_COMPLETE, &flt);
 	hci_filter_set_event(EVT_INQUIRY_RESULT, &flt);
 	hci_filter_set_event(EVT_INQUIRY_RESULT_WITH_RSSI, &flt);
+	hci_filter_set_event(EVT_EXTENDED_INQUIRY_RESULT, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		syslog(LOG_ERR, "Can't set filter on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
