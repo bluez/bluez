@@ -103,6 +103,7 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 						PIN_CODE_REPLY_CP_SIZE, &pr);
 
 	dbus_message_unref(message);
+	dbus_pending_call_unref(call);
 
 	return;
 
