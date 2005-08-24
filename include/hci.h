@@ -1345,7 +1345,7 @@ typedef struct {
 	int8_t		rssi;
 	uint8_t		data[240];
 } __attribute__ ((packed)) extended_inquiry_info;
-#define EXTENDED_INQUIRY_INFO 254
+#define EXTENDED_INQUIRY_INFO_SIZE 254
 
 #define EVT_TESTING			0xFE
 
