@@ -1732,6 +1732,60 @@ int hci_write_afh_mode(int dd, uint8_t mode, int to)
 	return 0;
 }
 
+int hci_read_ext_inquiry_response(int dd, uint8_t *fec, uint8_t *data, int to)
+{
+	read_ext_inquiry_response_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_EXT_INQUIRY_RESPONSE;
+	rq.rparam = &rp;
+	rq.rlen   = READ_EXT_INQUIRY_RESPONSE_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*fec = rp.fec;
+	memcpy(data, rp.data, 240);
+
+	return 0;
+}
+
+int hci_write_ext_inquiry_response(int dd, uint8_t fec, uint8_t *data, int to)
+{
+	write_ext_inquiry_response_cp cp;
+	write_ext_inquiry_response_rp rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.fec = fec;
+	memcpy(cp.data, data, 240);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_EXT_INQUIRY_RESPONSE;
+	rq.cparam = &cp;
+	rq.clen   = WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = WRITE_EXT_INQUIRY_RESPONSE_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
 int hci_read_transmit_power_level(int dd, uint16_t handle, uint8_t type, int8_t *level, int to)
 {
 	read_transmit_power_level_cp cp;
