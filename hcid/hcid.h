@@ -123,15 +123,19 @@ void toggle_pairing(int enable);
 #ifdef ENABLE_DBUS
 gboolean hcid_dbus_init(void);
 void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci);
+void hcid_dbus_inquiry_start(bdaddr_t *local);
+void hcid_dbus_inquiry_complete(bdaddr_t *local);
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi);
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name);
+void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer);
+void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason);
 #else
-static inline void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
-{
-}
-static inline void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
-{
-}
+static inline void hcid_dbus_inquiry_start(bdaddr_t *local) {}
+static inline void hcid_dbus_inquiry_complete(bdaddr_t *local) {}
+static inline void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi) {}
+static inline void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name) {}
+static inline void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer) {}
+static inline void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason) {}
 #endif
 
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);

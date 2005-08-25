@@ -112,7 +112,6 @@ error:
 				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 }
 
-
 static void free_pin_req(void *req)
 {
 	free(req);
@@ -173,15 +172,93 @@ failed:
 				OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
 }
 
+void hcid_dbus_inquiry_start(bdaddr_t *local)
+{
+	DBusMessage *message;
+#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
+	DBusMessageIter iter;
+#endif
+	char local_addr[18];
+
+	ba2str(local, local_addr);
+
+	message = dbus_message_new_signal("/org/bluez/DevAgent",
+				"org.bluez.DevAgent", "InquiryStart");
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS inquiry start message");
+		goto failed;
+	}
+
+#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, local_addr,
+					DBUS_TYPE_INVALID);
+#else
+	dbus_message_append_iter_init(message, &iter);
+
+	dbus_message_iter_append_string(&iter, local_addr);
+#endif
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS inquiry start message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	dbus_message_unref(message);
+
+	return;
+}
+
+void hcid_dbus_inquiry_complete(bdaddr_t *local)
+{
+	DBusMessage *message;
+#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
+	DBusMessageIter iter;
+#endif
+	char local_addr[18];
+
+	ba2str(local, local_addr);
+
+	message = dbus_message_new_signal("/org/bluez/DevAgent",
+				"org.bluez.DevAgent", "InquiryComplete");
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
+		goto failed;
+	}
+
+#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, local_addr,
+					DBUS_TYPE_INVALID);
+#else
+	dbus_message_append_iter_init(message, &iter);
+
+	dbus_message_iter_append_string(&iter, local_addr);
+#endif
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS inquiry complete message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	dbus_message_unref(message);
+
+	return;
+}
+
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
 {
 	DBusMessage *message;
-	char local_addr[18], peer_addr[18];
-#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
-	char *local_ptr = local_addr, *peer_ptr = peer_addr;
-#else
+#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
 	DBusMessageIter iter;
 #endif
+	char local_addr[18], peer_addr[18];
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -195,10 +272,10 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 
 #ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
 	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &local_ptr,
-					DBUS_TYPE_STRING, &peer_ptr,
-					DBUS_TYPE_UINT32, &class,
-					DBUS_TYPE_INT32, &rssi,
+					DBUS_TYPE_STRING, local_addr,
+					DBUS_TYPE_STRING, peer_addr,
+					DBUS_TYPE_UINT32, class,
+					DBUS_TYPE_INT32, rssi,
 					DBUS_TYPE_INVALID);
 #else
 	dbus_message_append_iter_init(message, &iter);
@@ -225,13 +302,10 @@ failed:
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	DBusMessage *message;
-	char local_addr[18], peer_addr[18];
-#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
-	char *local_ptr = local_addr, *peer_ptr = peer_addr;
-	char *name_ptr = name;
-#else
+#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
 	DBusMessageIter iter;
 #endif
+	char local_addr[18], peer_addr[18];
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -245,9 +319,9 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 
 #ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
 	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &local_ptr,
-					DBUS_TYPE_STRING, &peer_ptr,
-					DBUS_TYPE_STRING, &name_ptr,
+					DBUS_TYPE_STRING, local_addr,
+					DBUS_TYPE_STRING, peer_addr,
+					DBUS_TYPE_STRING, name,
 					DBUS_TYPE_INVALID);
 #else
 	dbus_message_append_iter_init(message, &iter);
@@ -268,6 +342,14 @@ failed:
 	dbus_message_unref(message);
 
 	return;
+}
+
+void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer)
+{
+}
+
+void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason)
+{
 }
 
 gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)

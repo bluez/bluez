@@ -482,6 +482,17 @@ reject:
 	return;
 }
 
+static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_cmd_status *evt = ptr;
+
+	if (evt->status)
+		return;
+
+	if (evt->opcode == cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY))
+		hcid_dbus_inquiry_start(sba);
+}
+
 static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_remote_name_req_complete *evt = ptr;
@@ -514,6 +525,11 @@ static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 
 	write_version_info(sba, &dba, btohs(evt->manufacturer),
 				evt->lmp_ver, btohs(evt->lmp_subver));
+}
+
+static inline void inquiry_complete(int dev, bdaddr_t *sba, void *ptr)
+{
+	hcid_dbus_inquiry_complete(sba);
 }
 
 static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
@@ -599,6 +615,29 @@ static inline void remote_features_information(int dev, bdaddr_t *sba, void *ptr
 	write_features_info(sba, &dba, evt->features);
 }
 
+static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_conn_complete *evt = ptr;
+
+	if (evt->status)
+		return;
+
+	hcid_dbus_conn_complete(sba, &evt->bdaddr);
+}
+
+static inline void disconn_complete(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_disconn_complete *evt = ptr;
+	bdaddr_t dba;
+
+	if (evt->status)
+		return;
+
+	bacpy(&dba, BDADDR_ANY);
+
+	hcid_dbus_disconn_complete(sba, &dba, evt->reason);
+}
+
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
@@ -638,6 +677,10 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 		return TRUE;
 
 	switch (eh->evt) {
+	case EVT_CMD_STATUS:
+		cmd_status(dev, &di->bdaddr, ptr);
+		break;
+
 	case EVT_REMOTE_NAME_REQ_COMPLETE:
 		remote_name_information(dev, &di->bdaddr, ptr);
 		break;
@@ -650,6 +693,10 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 		remote_features_information(dev, &di->bdaddr, ptr);
 		break;
 
+	case EVT_INQUIRY_COMPLETE:
+		inquiry_complete(dev, &di->bdaddr, ptr);
+		break;
+
 	case EVT_INQUIRY_RESULT:
 		inquiry_result(dev, &di->bdaddr, eh->plen, ptr);
 		break;
@@ -660,6 +707,14 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 
 	case EVT_EXTENDED_INQUIRY_RESULT:
 		extended_inquiry_result(dev, &di->bdaddr, eh->plen, ptr);
+		break;
+
+	case EVT_CONN_COMPLETE:
+		conn_complete(dev, &di->bdaddr, ptr);
+		break;
+
+	case EVT_DISCONN_COMPLETE:
+		disconn_complete(dev, &di->bdaddr, ptr);
 		break;
 	}
 
@@ -709,6 +764,7 @@ void start_security_manager(int hdev)
 	/* Set filter */
 	hci_filter_clear(&flt);
 	hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
+	hci_filter_set_event(EVT_CMD_STATUS, &flt);
 	hci_filter_set_event(EVT_PIN_CODE_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_NOTIFY, &flt);
@@ -716,9 +772,12 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_REMOTE_NAME_REQ_COMPLETE, &flt);
 	hci_filter_set_event(EVT_READ_REMOTE_VERSION_COMPLETE, &flt);
 	hci_filter_set_event(EVT_READ_REMOTE_FEATURES_COMPLETE, &flt);
+	hci_filter_set_event(EVT_INQUIRY_COMPLETE, &flt);
 	hci_filter_set_event(EVT_INQUIRY_RESULT, &flt);
 	hci_filter_set_event(EVT_INQUIRY_RESULT_WITH_RSSI, &flt);
 	hci_filter_set_event(EVT_EXTENDED_INQUIRY_RESULT, &flt);
+	hci_filter_set_event(EVT_CONN_COMPLETE, &flt);
+	hci_filter_set_event(EVT_DISCONN_COMPLETE, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		syslog(LOG_ERR, "Can't set filter on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
