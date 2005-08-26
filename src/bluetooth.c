@@ -54,7 +54,7 @@ void baswap(bdaddr_t *dst, const bdaddr_t *src)
 
 char *batostr(const bdaddr_t *ba)
 {
-	char *str = malloc(18);
+	char *str = bt_malloc(18);
 	if (!str)
 		return NULL;
 
@@ -69,7 +69,7 @@ bdaddr_t *strtoba(const char *str)
 	const char *ptr = str;
 	int i;
 
-	uint8_t *ba = malloc(sizeof(bdaddr_t));
+	uint8_t *ba = bt_malloc(sizeof(bdaddr_t));
 	if (!ba)
 		return NULL;
 
