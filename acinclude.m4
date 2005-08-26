@@ -244,9 +244,7 @@ AC_DEFUN([AC_PATH_DBUS], [
 
 	LDFLAGS="$LDFLAGS $DBUS_LIBS"
 	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", dbus_found=no)
-	AC_CHECK_LIB(dbus-1, dbus_pending_call_steal_reply, AC_DEFINE(HAVE_DBUS_PENDING_CALL_STEAL_REPLY, 1, [Define to 1 if you have the dbus_pending_call_steal_reply() function.]))
 	AC_CHECK_LIB(dbus-1, dbus_message_iter_get_basic, AC_DEFINE(HAVE_DBUS_MESSAGE_ITER_GET_BASIC, 1, [Define to 1 if you have the dbus_message_iter_get_basic() function.]))
-	AC_CHECK_LIB(dbus-1, dbus_message_append_args, AC_DEFINE(HAVE_DBUS_MESSAGE_APPEND_ARGS, 1, [Define to 1 if you have the dbus_message_append_args() function.]))
 
 	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS

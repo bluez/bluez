@@ -72,11 +72,7 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 	size_t len;
 	char *pin;
 
-#ifdef HAVE_DBUS_PENDING_CALL_STEAL_REPLY
 	message = dbus_pending_call_steal_reply(call);
-#else
-	message = dbus_pending_call_get_reply(call);
-#endif
 
 	if (dbus_message_is_error(message, WRONG_ARGS_ERROR))
 		goto error;
@@ -120,7 +116,7 @@ static void free_pin_req(void *req)
 void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 {
 	DBusMessage *message;
-#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifdef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	uint8_t *addr = (uint8_t *) &ci->bdaddr;
 #else
 	DBusMessageIter iter;
@@ -139,7 +135,7 @@ void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 	req->dev = dev;
 	bacpy(&req->bda, &ci->bdaddr);
 
-#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifdef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	dbus_message_append_args(message, DBUS_TYPE_BOOLEAN, &ci->out,
 			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
 			&addr, sizeof(bdaddr_t), DBUS_TYPE_INVALID);
@@ -175,12 +171,13 @@ failed:
 void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	DBusMessage *message;
-#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifndef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	DBusMessageIter iter;
 #endif
-	char local_addr[18];
+	char *local_addr;	
+	bdaddr_t tmp;
 
-	ba2str(local, local_addr);
+	baswap(&tmp, local); local_addr = batostr(&tmp);
 
 	message = dbus_message_new_signal("/org/bluez/DevAgent",
 				"org.bluez.DevAgent", "InquiryStart");
@@ -189,9 +186,9 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		goto failed;
 	}
 
-#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifdef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, local_addr,
+					DBUS_TYPE_STRING, &local_addr,
 					DBUS_TYPE_INVALID);
 #else
 	dbus_message_append_iter_init(message, &iter);
@@ -209,18 +206,21 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 failed:
 	dbus_message_unref(message);
 
+	bt_free(local_addr);
+
 	return;
 }
 
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
 	DBusMessage *message;
-#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifndef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	DBusMessageIter iter;
 #endif
-	char local_addr[18];
+	char *local_addr;
+	bdaddr_t tmp;
 
-	ba2str(local, local_addr);
+	baswap(&tmp, local); local_addr = batostr(&tmp);
 
 	message = dbus_message_new_signal("/org/bluez/DevAgent",
 				"org.bluez.DevAgent", "InquiryComplete");
@@ -229,9 +229,9 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifdef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, local_addr,
+					DBUS_TYPE_STRING, &local_addr,
 					DBUS_TYPE_INVALID);
 #else
 	dbus_message_append_iter_init(message, &iter);
@@ -249,19 +249,22 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 failed:
 	dbus_message_unref(message);
 
+	bt_free(local_addr);
+
 	return;
 }
 
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
 {
 	DBusMessage *message;
-#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifndef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	DBusMessageIter iter;
 #endif
-	char local_addr[18], peer_addr[18];
+	char *local_addr, *peer_addr;
+	bdaddr_t tmp;
 
-	ba2str(local, local_addr);
-	ba2str(peer, peer_addr);
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	baswap(&tmp, peer); peer_addr = batostr(&tmp);
 
 	message = dbus_message_new_signal("/org/bluez/DevAgent",
 				"org.bluez.DevAgent", "InquiryResult");
@@ -270,12 +273,12 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		goto failed;
 	}
 
-#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifdef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, local_addr,
-					DBUS_TYPE_STRING, peer_addr,
-					DBUS_TYPE_UINT32, class,
-					DBUS_TYPE_INT32, rssi,
+					DBUS_TYPE_STRING, &local_addr,
+					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_UINT32, &class,
+					DBUS_TYPE_INT32, &rssi,
 					DBUS_TYPE_INVALID);
 #else
 	dbus_message_append_iter_init(message, &iter);
@@ -296,19 +299,23 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 failed:
 	dbus_message_unref(message);
 
+	bt_free(local_addr);
+	bt_free(peer_addr);
+
 	return;
 }
 
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	DBusMessage *message;
-#ifndef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifndef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	DBusMessageIter iter;
 #endif
-	char local_addr[18], peer_addr[18];
+	char *local_addr, *peer_addr;
+	bdaddr_t tmp;
 
-	ba2str(local, local_addr);
-	ba2str(peer, peer_addr);
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	baswap(&tmp, peer); peer_addr = batostr(&tmp);
 
 	message = dbus_message_new_signal("/org/bluez/DevAgent",
 				"org.bluez.DevAgent", "RemoteName");
@@ -317,11 +324,11 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 		goto failed;
 	}
 
-#ifdef HAVE_DBUS_MESSAGE_APPEND_ARGS
+#ifdef HAVE_DBUS_MESSAGE_ITER_GET_BASIC
 	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, local_addr,
-					DBUS_TYPE_STRING, peer_addr,
-					DBUS_TYPE_STRING, name,
+					DBUS_TYPE_STRING, &local_addr,
+					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_STRING, &name,
 					DBUS_TYPE_INVALID);
 #else
 	dbus_message_append_iter_init(message, &iter);
@@ -340,6 +347,9 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 
 failed:
 	dbus_message_unref(message);
+
+	bt_free(local_addr);
+	bt_free(peer_addr);
 
 	return;
 }
