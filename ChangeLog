@@ -1,3 +1,10 @@
+ver 2.20:
+	Add UUIDs for video distribution profile.
+	Add UUIDs for phonebook access profile.
+	Add attribute identifier for supported repositories.
+	Add definitions for extended inquiry response.
+	Add functions for extended inquiry response.
+
 ver 2.19:
 	Fix the GCC 4.0 warnings.
 	Fix the routing for dealing with raw devices.
