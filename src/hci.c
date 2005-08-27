@@ -400,6 +400,7 @@ static hci_map lmp_features_map[8][9] = {
 		{ NULL }
 	},
 	{	/* Byte 6 */
+		{ "<extended inquiry>",	LMP_EXT_INQ	},	/* Bit 0 */
 		{ NULL }
 	},
 	{	/* Byte 7 */

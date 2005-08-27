@@ -254,6 +254,8 @@ enum {
 #define LMP_EDR_ESCO_3M	0x40
 #define LMP_EDR_3S_ESCO	0x80
 
+#define LMP_EXT_INQ	0x01
+
 #define LMP_EXT_FEAT	0x80
 
 /* Link policies */
