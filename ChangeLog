@@ -1,3 +1,13 @@
+ver 2.20:
+	Add support for extended inquiry response.
+	Add support for HotSync service record.
+	Add support for ActiveSync service record.
+	Add ActiveSync networking support.
+	Fix D-Bus crashes with new API versions.
+
+	Note:
+	This version needs at least bluez-libs-2.20
+
 ver 2.19:
 	Fix the GCC 4.0 warnings.
 	Fix off by one memory allocation error.
