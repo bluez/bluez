@@ -26,5 +26,8 @@
  *  $Id$
  */
 
+int create_dirs(char *filename, mode_t mode);
+int create_file(char *filename, mode_t mode);
+
 int textfile_put(char *pathname, char *key, char *value);
 char *textfile_get(char *pathname, char *key);

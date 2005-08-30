@@ -77,7 +77,7 @@ static void epox_endian_quirk(unsigned char *data, int size)
 static int store_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req)
 {
 	char filename[PATH_MAX + 1], addr[18], *str, *desc;
-	int i, fd, size;
+	int i, size;
 
 	ba2str(src, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/hidd", STORAGEDIR, addr);
@@ -102,11 +102,7 @@ static int store_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hi
 			req->subclass, req->country, req->parser, desc,
 			req->flags, req->name);
 
-	fd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	if (fd < 0)
-		return -errno;
-
-	close(fd);
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(dst, addr);
 	return textfile_put(filename, addr, str);

@@ -41,6 +41,56 @@
 #include <sys/mman.h>
 #include <sys/param.h>
 
+int create_dirs(char *filename, mode_t mode)
+{
+	struct stat st;
+	char dir[PATH_MAX + 1], *prev, *next;
+	int err;
+
+	err = stat(filename, &st);
+	if (!err && S_ISREG(st.st_mode))
+		return 0;
+
+	memset(dir, 0, PATH_MAX + 1);
+	strcat(dir, "/");
+
+	prev = strchr(filename, '/');
+
+	while (prev) {
+		next = strchr(prev + 1, '/');
+		if (!next)
+			break;
+
+		if (next - prev == 1) {
+			prev = next;
+			continue;
+		}
+
+		strncat(dir, prev + 1, next - prev);
+		mkdir(dir, mode);
+
+		prev = next;
+	}
+
+	return 0;
+}
+
+int create_file(char *filename, mode_t mode)
+{
+	int fd;
+
+	umask(S_IWGRP | S_IWOTH);
+	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+
+	fd = open(filename, O_RDWR | O_CREAT, mode);
+	if (fd < 0)
+		return fd;
+
+	close(fd);
+
+	return 0;
+}
+
 static inline int write_key_value(int fd, char *key, char *value)
 {
 	char *str;
