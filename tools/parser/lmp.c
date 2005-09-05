@@ -38,6 +38,133 @@
 #define LMP_U16(frm) (btohs(htons(get_u16(frm))))
 #define LMP_U32(frm) (btohl(htonl(get_u32(frm))))
 
+static enum {
+	IN_RAND,
+	COMB_KEY_M,
+	COMB_KEY_S,
+	AU_RAND_M,
+	AU_RAND_S,
+	SRES_M,
+	SRES_S,
+} pairing_state = IN_RAND;
+
+static struct {
+	uint8_t in_rand[16];
+	uint8_t comb_key_m[16];
+	uint8_t comb_key_s[16];
+	uint8_t au_rand_m[16];
+	uint8_t au_rand_s[16];
+	uint8_t sres_m[4];
+	uint8_t sres_s[4];
+} pairing_data;
+
+static inline void pairing_data_dump(void)
+{
+	int i;
+
+	p_indent(6, NULL);
+	printf("IN_RAND  ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", pairing_data.in_rand[i]);
+	printf("\n");
+
+	p_indent(6, NULL);
+	printf("COMB_KEY ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", pairing_data.comb_key_m[i]);
+	printf(" (M)\n");
+
+	p_indent(6, NULL);
+	printf("COMB_KEY ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", pairing_data.comb_key_s[i]);
+	printf(" (S)\n");
+
+	p_indent(6, NULL);
+	printf("AU_RAND  ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", pairing_data.au_rand_m[i]);
+	printf(" SRES ");
+	for (i = 0; i < 4; i++)
+		printf("%2.2x", pairing_data.sres_m[i]);
+	printf(" (M)\n");
+
+	p_indent(6, NULL);
+	printf("AU_RAND  ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", pairing_data.au_rand_s[i]);
+	printf(" SRES ");
+	for (i = 0; i < 4; i++)
+		printf("%2.2x", pairing_data.sres_s[i]);
+	printf(" (S)\n");
+}
+
+static inline void in_rand(struct frame *frm)
+{
+	uint8_t *val = frm->ptr;
+
+	memcpy(pairing_data.in_rand, val, 16);
+	pairing_state = COMB_KEY_M;
+}
+
+static inline void comb_key(struct frame *frm)
+{
+	uint8_t *val = frm->ptr;
+
+	switch (pairing_state) {
+	case COMB_KEY_M:
+		memcpy(pairing_data.comb_key_m, val, 16);
+		pairing_state = COMB_KEY_S;
+		break;
+	case COMB_KEY_S:
+		memcpy(pairing_data.comb_key_s, val, 16);
+		pairing_state = AU_RAND_M;
+		break;
+	default:
+		pairing_state = IN_RAND;
+		break;
+	}
+}
+
+static inline void au_rand(struct frame *frm)
+{
+	uint8_t *val = frm->ptr;
+
+	switch (pairing_state) {
+	case AU_RAND_M:
+		memcpy(pairing_data.au_rand_m, val, 16);
+		pairing_state = SRES_M;
+		break;
+	case AU_RAND_S:
+		memcpy(pairing_data.au_rand_s, val, 16);
+		pairing_state = SRES_S;
+		break;
+	default:
+		pairing_state = IN_RAND;
+		break;
+	}
+}
+
+static inline void sres(struct frame *frm)
+{
+	uint8_t *val = frm->ptr;
+
+	switch (pairing_state) {
+	case SRES_M:
+		memcpy(pairing_data.sres_m, val, 4);
+		pairing_state = AU_RAND_S;
+		break;
+	case SRES_S:
+		memcpy(pairing_data.sres_s, val, 4);
+		pairing_state = IN_RAND;
+		pairing_data_dump();
+		break;
+	default:
+		pairing_state = IN_RAND;
+		break;
+	}
+}
+
 static char *opcode2str(uint16_t opcode)
 {
 	switch (opcode) {
@@ -278,10 +405,17 @@ static inline void key_dump(int level, struct frame *frm)
 
 static inline void auth_resp_dump(int level, struct frame *frm)
 {
-	uint32_t resp = LMP_U32(frm);
+	uint8_t *resp = frm->ptr;
+	int i;
+
+	frm->ptr += 4;
+	frm->ptr -= 4;
 
 	p_indent(level, frm);
-	printf("authentication response 0x%4.4x\n", resp);
+	printf("authentication response ");
+	for (i = 0; i < 4; i++)
+		printf("%2.2x", resp[i]);
+	printf("\n");
 }
 
 static inline void version_dump(int level, struct frame *frm)
@@ -513,8 +647,21 @@ void lmp_dump(int level, struct frame *frm)
 		detach_dump(level + 1, frm);
 		return;
 	case 8:
+		in_rand(frm);
+		random_number_dump(level + 1, frm);
+		return;
 	case 9:
+		comb_key(frm);
+		random_number_dump(level + 1, frm);
+		return;
 	case 11:
+		au_rand(frm);
+		random_number_dump(level + 1, frm);
+		return;
+	case 12:
+		sres(frm);
+		auth_resp_dump(level + 1, frm);
+		return;
 	case 13:
 	case 17:
 		random_number_dump(level + 1, frm);
@@ -522,9 +669,6 @@ void lmp_dump(int level, struct frame *frm)
 	case 10:
 	case 14:
 		key_dump(level + 1, frm);
-		return;
-	case 12:
-		auth_resp_dump(level + 1, frm);
 		return;
 	case 37:
 	case 38:
