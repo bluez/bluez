@@ -222,12 +222,13 @@ static void usage(void)
 {
 	printf("bdaddr - Utility for changing the Bluetooth device address\n\n");
 	printf("Usage:\n"
-		"\tbdaddr [-i <dev>] [new bdaddr]\n");
+		"\tbdaddr [-i <dev>] [-r] [new bdaddr]\n");
 }
 
 static struct option main_options[] = {
-	{ "help",	0, 0, 'h' },
 	{ "device",	1, 0, 'i' },
+	{ "reset",	0, 0, 'r' },
+	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -237,11 +238,11 @@ int main(int argc, char *argv[])
 	struct hci_version ver;
 	bdaddr_t bdaddr;
 	char addr[18];
-	int i, dd, opt, dev = 0;
+	int i, dd, opt, dev = 0, reset = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+i:rh", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
 			dev = hci_devid(optarg);
@@ -249,6 +250,10 @@ int main(int argc, char *argv[])
 				perror("Invalid device");
 				exit(1);
 			}
+			break;
+
+		case 'r':
+			reset = 1;
 			break;
 
 		case 'h':
@@ -323,7 +328,7 @@ int main(int argc, char *argv[])
 
 			printf("Address changed - ");
 
-			if (vendor[i].reset_device) {
+			if (reset && vendor[i].reset_device) {
 				if (vendor[i].reset_device(dd) < 0) {
 					printf("Reset device manually\n");
 				} else {
