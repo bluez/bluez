@@ -807,6 +807,9 @@ void start_security_manager(int hdev)
 
 	io_chan[hdev] = chan;
 
+	if (hci_test_bit(HCI_RAW, &di->flags))
+		return;
+
 	bacpy(&cp.bdaddr, BDADDR_ANY);
 	cp.read_all = 1;
 
