@@ -595,12 +595,15 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 
 		if (extinf && handle > 0) {
 			if (hci_read_remote_version(dd, handle, &version, 20000) == 0) {
+				char *ver = lmp_vertostr(version.lmp_ver);
 				printf("Manufacturer:\t%s (%d)\n",
 					bt_compidtostr(version.manufacturer),
 					version.manufacturer);
 				printf("LMP version:\t%s (0x%x) [subver 0x%x]\n",
-					lmp_vertostr(version.lmp_ver),
+					ver ? ver : "n/a",
 					version.lmp_ver, version.lmp_subver);
+				if (ver)
+					bt_free(ver);
 			}
 
 			if (hci_read_remote_features(dd, handle, features, 20000) == 0) {
@@ -779,13 +782,16 @@ static void cmd_info(int dev_id, int argc, char **argv)
 		printf("\tDevice Name: %s\n", name);
 
 	if (hci_read_remote_version(dd, handle, &version, 20000) == 0) {
+		char *ver = lmp_vertostr(version.lmp_ver);
 		printf("\tLMP Version: %s (0x%x) LMP Subversion: 0x%x\n"
 			"\tManufacturer: %s (%d)\n",
-			lmp_vertostr(version.lmp_ver),
+			ver ? ver : "n/a",
 			version.lmp_ver,
 			version.lmp_subver,
 			bt_compidtostr(version.manufacturer),
 			version.manufacturer);
+		if (ver)
+			bt_free(ver);
 	}
 
 	if (hci_read_remote_features(dd, handle, features, 20000) == 0) {

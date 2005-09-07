@@ -795,6 +795,7 @@ static void cmd_delkey(int ctl, int hdev, char *opt)
 static void cmd_commands(int ctl, int hdev, char *opt)
 {
 	uint8_t cmds[64];
+	char *str;
 	int i, n, dd;
 
 	dd = hci_open_dev(hdev);
@@ -823,12 +824,17 @@ static void cmd_commands(int ctl, int hdev, char *opt)
 		printf(")\n");
 	}
 
+	str = hci_commandstostr(cmds, "\t", 71);
+	printf("%s\n", str);
+	bt_free(str);
+
 	hci_close_dev(dd);
 }
 
 static void cmd_version(int ctl, int hdev, char *opt)
 {
 	struct hci_version ver;
+	char *hciver, *lmpver;
 	int dd;
 
 	dd = hci_open_dev(hdev);
@@ -844,12 +850,20 @@ static void cmd_version(int ctl, int hdev, char *opt)
 		exit(1);
 	}
 
+	hciver = hci_vertostr(ver.hci_ver);
+	lmpver = lmp_vertostr(ver.hci_ver);
+
 	print_dev_hdr(&di);
 	printf("\tHCI Ver: %s (0x%x) HCI Rev: 0x%x LMP Ver: %s (0x%x) LMP Subver: 0x%x\n"
 		"\tManufacturer: %s (%d)\n",
-		hci_vertostr(ver.hci_ver), ver.hci_ver, ver.hci_rev,
-		lmp_vertostr(ver.lmp_ver), ver.lmp_ver, ver.lmp_subver,
+		hciver ? hciver : "n/a", ver.hci_ver, ver.hci_rev,
+		lmpver ? lmpver : "n/a", ver.lmp_ver, ver.lmp_subver,
 		bt_compidtostr(ver.manufacturer), ver.manufacturer);
+
+	if (hciver)
+		bt_free(hciver);
+	if (lmpver)
+		bt_free(lmpver);
 
 	hci_close_dev(dd);
 }
