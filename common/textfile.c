@@ -180,8 +180,15 @@ int textfile_put(char *pathname, char *key, char *value)
 	end += len;
 
 	len = size - (end - map);
+	if (!len) {
+		munmap(map, size);
+		ftruncate(fd, base);
+		pos = lseek(fd, base, SEEK_SET);
+		err = write_key_value(fd, key, value);
+		goto unlock;
+	}
 
-	if (len <= 0 || len > size) {
+	if (len < 0 || len > size) {
 		err = EILSEQ;
 		goto unmap;
 	}
@@ -193,12 +200,12 @@ int textfile_put(char *pathname, char *key, char *value)
 	}
 
 	memcpy(str, end, len);
-	munmap(map, size);
 
+	munmap(map, size);
 	ftruncate(fd, base);
 	pos = lseek(fd, base, SEEK_SET);
+	err = write_key_value(fd, key, value);
 
-	write_key_value(fd, key, value);
 	write(fd, str, len);
 
 	free(str);
