@@ -72,6 +72,6 @@ INCLUDES = -I$(top_srcdir)/common
 man_MANS = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 \
 		$(avctrl_manfiles) $(hid2hci_manfiles) $(dfutool_manfiles)
 
-EXTRA_DIST = $(man_MANS) avctrl.8 hid2hci.8 dfutool.1
+EXTRA_DIST = $(man_MANS) avctrl.8 hid2hci.8 dfutool.1 example.psr
 
 MAINTAINERCLEANFILES = Makefile.in
