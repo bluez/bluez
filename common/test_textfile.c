@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "textfile.h"
@@ -64,6 +65,8 @@ int main(int argc, char *argv[])
 		str = textfile_get(filename, key);
 		if (!str)
 			fprintf(stderr, "No value for %s\n", key);
+		else
+			free(str);
 	}
 
 	return 0;

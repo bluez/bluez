@@ -37,6 +37,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <malloc.h>
 #include <sys/file.h>
 #include <sys/stat.h>
@@ -86,6 +87,8 @@ int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	if (len > 248)
 		str[248] = '\0';
 	strcpy(name, str);
+
+	free(str);
 
 	return 0;
 }
@@ -162,6 +165,8 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key)
 		key[i] = (uint8_t) strtol(tmp, NULL, 16);
 	}
 
+	free(str);
+
 	return 0;
 }
 
@@ -180,6 +185,8 @@ int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin)
 
 	strncpy(pin, str, 16);
 	len = strlen(pin);
+
+	free(str);
 
 	return len;
 }
