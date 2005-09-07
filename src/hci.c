@@ -98,7 +98,7 @@ static int hci_str2bit(hci_map *map, char *str, unsigned int *val)
 
 static char *hci_uint2str(hci_map *m, unsigned int val) 
 {
-	char *str = malloc(50);
+	char *str = bt_malloc(50);
 	char *ptr = str;
 
 	if (!str)
@@ -309,6 +309,195 @@ int hci_strtolm(char *str, unsigned int *val)
 	return hci_str2bit(link_mode_map, str, val);
 }
 
+/* Command mapping */
+static hci_map commands_map[] = {
+	{ "Inquiry",					0   },
+	{ "Inquiry Cancel",				1   },
+	{ "Periodic Inquiry Mode",			2   },
+	{ "Exit Periodic Inquiry Mode",			3   },
+	{ "Create Connection",				4   },
+	{ "Disconnect",					5   },
+	{ "Add SCO Connection",				6   },
+	{ "Cancel Create Connection",			7   },
+	{ "Accept Connection Request",			8   },
+	{ "Reject Connection Request",			9   },
+	{ "Link Key Request Reply",			10  },
+	{ "Link Key Request Negative Reply",		11  },
+	{ "PIN Code Request Reply",			12  },
+	{ "PIN Code Request Negative Reply",		13  },
+	{ "Change Connection Packet Type",		14  },
+	{ "Authentication Requested",			15  },
+	{ "Set Connection Encryption",			16  },
+	{ "Change Connection Link Key",			17  },
+	{ "Master Link Key",				18  },
+	{ "Remote Name Request",			19  },
+	{ "Cancel Remote Name Request",			20  },
+	{ "Read Remote Supported Features",		21  },
+	{ "Read Remote Extended Features",		22  },
+	{ "Read Remote Version Information",		23  },
+	{ "Read Clock Offset",				24  },
+	{ "Read LMP Handle",				25  },
+	{ "Reserved",					26  },
+	{ "Reserved",					27  },
+	{ "Reserved",					28  },
+	{ "Reserved",					29  },
+	{ "Reserved",					30  },
+	{ "Reserved",					31  },
+	{ "Reserved",					32  },
+	{ "Hold Mode",					33  },
+	{ "Sniff Mode",					34  },
+	{ "Exit Sniff Mode",				35  },
+	{ "Park State",					36  },
+	{ "Exit Park State",				37  },
+	{ "QoS Setup",					38  },
+	{ "Role Discovery",				39  },
+	{ "Switch Role",				40  },
+	{ "Read Link Policy Settings",			41  },
+	{ "Write Link Policy Settings",			42  },
+	{ "Read Default Link Policy Settings",		43  },
+	{ "Write Default Link Policy Settings",		44  },
+	{ "Flow Specification",				45  },
+	{ "Set Event Mask",				46  },
+	{ "Reset",					47  },
+	{ "Set Event Filter",				48  },
+	{ "Flush",					49  },
+	{ "Read PIN Type",				50  },
+	{ "Write PIN Type",				51  },
+	{ "Create New Unit Key",			52  },
+	{ "Read Stored Link Key",			53  },
+	{ "Write Stored Link Key",			54  },
+	{ "Delete Stored Link Key",			55  },
+	{ "Write Local Name",				56  },
+	{ "Read Local Name",				57  },
+	{ "Read Connection Accept Timeout",		58  },
+	{ "Write Connection Accept Timeout",		59  },
+	{ "Read Page Timeout",				60  },
+	{ "Write Page Timeout",				61  },
+	{ "Read Scan Enable",				62  },
+	{ "Write Scan Enable",				63  },
+	{ "Read Page Scan Activity",			64  },
+	{ "Write Page Scan Activity",			65  },
+	{ "Read Inquiry Scan Activity",			66  },
+	{ "Write Inquiry Scan Activity",		67  },
+	{ "Read Authentication Enable",			68  },
+	{ "Write Authentication Enable",		69  },
+	{ "Read Encryption Mode",			70  },
+	{ "Write Encryption Mode",			71  },
+	{ "Read Class Of Device",			72  },
+	{ "Write Class Of Device",			73  },
+	{ "Read Voice Setting",				74  },
+	{ "Write Voice Setting",			75  },
+	{ "Read Automatic Flush Timeout",		76  },
+	{ "Write Automatic Flush Timeout",		77  },
+	{ "Read Num Broadcast Retransmissions",		78  },
+	{ "Write Num Broadcast Retransmissions",	79  },
+	{ "Read Hold Mode Activity",			80  },
+	{ "Write Hold Mode Activity",			81  },
+	{ "Read Transmit Power Level",			82  },
+	{ "Read Synchronous Flow Control Enable",	83  },
+	{ "Write Synchronous Flow Control Enable",	84  },
+	{ "Set Host Controller To Host Flow Control",	85  },
+	{ "Host Buffer Size",				86  },
+	{ "Host Number Of Completed Packets",		87  },
+	{ "Read Link Supervision Timeout",		88  },
+	{ "Write Link Supervision Timeout",		89  },
+	{ "Read Number of Supported IAC",		90  },
+	{ "Read Current IAC LAP",			91  },
+	{ "Write Current IAC LAP",			92  },
+	{ "Reserved",					93  },
+	{ "Reserved",					94  },
+	{ "Read Page Scan Mode",			95  },
+	{ "Write Page Scan Mode",			96  },
+	{ "Set AFH Channel Classification",		97  },
+	{ "reserved",					98  },
+	{ "reserved",					99  },
+	{ "Read Inquiry Scan Type",			100 },
+	{ "Write Inquiry Scan Type",			101 },
+	{ "Read Inquiry Mode",				102 },
+	{ "Write Inquiry Mode",				103 },
+	{ "Read Page Scan Type",			104 },
+	{ "Write Page Scan Type",			105 },
+	{ "Read AFH Channel Assessment Mode",		106 },
+	{ "Write AFH Channel Assessment Mode",		107 },
+	{ "Reserved",					108 },
+	{ "Reserved",					109 },
+	{ "Reserved",					110 },
+	{ "Reserved",					111 },
+	{ "Reserved",					112 },
+	{ "Reserved",					113 },
+	{ "Reserved",					114 },
+	{ "Read Loacal Version Information",		115 },
+	{ "Reserved",					116 },
+	{ "Read Local Supported Features",		117 },
+	{ "Read Local Extended Features",		118 },
+	{ "Read Buffer Sizer",				119 },
+	{ "Read Country Code",				120 },
+	{ "Read BD ADDR",				121 },
+	{ "Read Failed Contact Counter",		122 },
+	{ "Reset Failed Contact Counter",		123 },
+	{ "Get Link Quality",				124 },
+	{ "Read RSSI",					125 },
+	{ "Read AFH Channel Map",			126 },
+	{ "Read BD Clock",				127 },
+	{ "Read Loopback Mode",				128 },
+	{ "Write Loopback Mode",			129 },
+	{ "Enable Device Under Test Mode",		130 },
+	{ "Setup Synchronous Connection",		131 },
+	{ "Accept Synchronous Connection",		132 },
+	{ "Reject Synchronous Connection",		133 },
+	{ "Reserved",					134 },
+	{ "Reserved",					135 },
+	{ "Read Extended Inquiry Response",		136 },
+	{ "Write Extended Inquiry Response",		137 },
+	{ NULL }
+};
+
+char *hci_cmdtostr(unsigned int cmd)
+{
+	return hci_uint2str(commands_map, cmd);
+}
+
+char *hci_commandstostr(uint8_t *commands, char *pref, int width)
+{
+	hci_map *m;
+	char *off, *ptr, *str;
+	int size = 10;
+
+	m = commands_map;
+
+	while (m->str) {
+		if (hci_test_bit(m->val, commands))
+			size += strlen(m->str) + (pref ? strlen(pref) : 0) + 3;
+		m++;
+	}
+
+	str = bt_malloc(size);
+	if (!str)
+		return NULL;
+
+	ptr = str; *ptr = '\0';
+
+	if (pref)
+		ptr += sprintf(ptr, "%s", pref);
+
+	off = ptr;
+
+	m = commands_map;
+
+	while (m->str) {
+		if (hci_test_bit(m->val, commands)) {
+			if (strlen(off) + strlen(m->str) > width - 3) {
+				ptr += sprintf(ptr, "\n%s", pref ? pref : "");
+				off = ptr;
+			}
+			ptr += sprintf(ptr, "'%s' ", m->str);
+		}
+		m++;
+	}
+
+	return str;
+}
+
 /* Version mapping */
 static hci_map ver_map[] = {
 	{ "1.0b",	0x00 },
@@ -320,8 +509,7 @@ static hci_map ver_map[] = {
 
 char *hci_vertostr(unsigned int ver)
 {
-	char *str = hci_uint2str(ver_map, ver);
-	return *str ? str : "n/a";
+	return hci_uint2str(ver_map, ver);
 }
 
 int hci_strtover(char *str, unsigned int *ver)
@@ -331,8 +519,7 @@ int hci_strtover(char *str, unsigned int *ver)
 
 char *lmp_vertostr(unsigned int ver)
 {
-	char *str = hci_uint2str(ver_map, ver);
-	return *str ? str : "n/a";
+	return hci_uint2str(ver_map, ver);
 }
 
 int lmp_strtover(char *str, unsigned int *ver)
@@ -424,7 +611,7 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 		}
 	}
 
-	str = malloc(size);
+	str = bt_malloc(size);
 	if (!str)
 		return NULL;
 
