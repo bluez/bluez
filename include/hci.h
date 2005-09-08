@@ -575,6 +575,10 @@ typedef struct {
 } __attribute__ ((packed)) write_link_policy_rp;
 #define WRITE_LINK_POLICY_RP_SIZE 3
 
+#define OCF_READ_DEFAULT_LINK_POLICY	0x000E
+
+#define OCF_WRITE_DEFAULT_LINK_POLICY	0x000F
+
 /* Host Controller and Baseband */
 #define OGF_HOST_CTL		0x03
 
@@ -784,6 +788,18 @@ typedef struct {
 } __attribute__ ((packed)) write_voice_setting_cp;
 #define WRITE_VOICE_SETTING_CP_SIZE 2
 
+#define OCF_READ_AUTOMATIC_FLUSH_TIMEOUT	0x0027
+
+#define OCF_WRITE_AUTOMATIC_FLUSH_TIMEOUT	0x0028
+
+#define OCF_READ_NUM_BROADCAST_RETRANS	0x0029
+
+#define OCF_WRITE_NUM_BROADCAST_RETRANS	0x002A
+
+#define OCF_READ_HOLD_MODE_ACTIVITY	0x002B
+
+#define OCF_WRITE_HOLD_MODE_ACTIVITY	0x002C
+
 #define OCF_READ_TRANSMIT_POWER_LEVEL	0x002D
 typedef struct {
 	uint16_t	handle;
@@ -826,6 +842,8 @@ typedef struct {
 } __attribute__ ((packed)) write_link_supervision_timeout_rp;
 #define WRITE_LINK_SUPERVISION_TIMEOUT_RP_SIZE 3
 
+#define OCF_READ_NUM_SUPPORTED_IAC	0x0038
+
 #define MAX_IAC_LAP 0x40
 #define OCF_READ_CURRENT_IAC_LAP	0x0039
 typedef struct {
@@ -841,6 +859,14 @@ typedef struct {
 	uint8_t		lap[MAX_IAC_LAP][3];
 } __attribute__ ((packed)) write_current_iac_lap_cp;
 #define WRITE_CURRENT_IAC_LAP_CP_SIZE 1+3*MAX_IAC_LAP
+
+#define OCF_READ_PAGE_SCAN_PERIOD_MODE	0x003B
+
+#define OCF_WRITE_PAGE_SCAN_PERIOD_MODE	0x003C
+
+#define OCF_READ_PAGE_SCAN_MODE		0x003D
+
+#define OCF_WRITE_PAGE_SCAN_MODE	0x003E
 
 #define OCF_SET_AFH_CLASSIFICATION	0x003F
 typedef struct {
@@ -885,6 +911,10 @@ typedef struct {
 	uint8_t		status;
 } __attribute__ ((packed)) write_inquiry_mode_rp;
 #define WRITE_INQUIRY_MODE_RP_SIZE 1
+
+#define OCF_READ_PAGE_SCAN_TYPE		0x0046
+
+#define OCF_WRITE_PAGE_SCAN_TYPE	0x0047
 
 #define OCF_READ_AFH_MODE		0x0048
 typedef struct {
@@ -972,6 +1002,8 @@ typedef struct {
 	uint16_t	sco_max_pkt;
 } __attribute__ ((packed)) read_buffer_size_rp;
 #define READ_BUFFER_SIZE_RP_SIZE 8
+
+#define OCF_READ_COUNTRY_CODE		0x0007
 
 #define OCF_READ_BD_ADDR		0x0009
 typedef struct {
