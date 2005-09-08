@@ -18,6 +18,14 @@ hid2hci_programs =
 hid2hci_manfiles =
 endif
 
+if CSRINIT
+csrinit_programs = csrinit
+csrinit_manfiles = csrinit.8
+else
+csrinit_programs =
+csrinit_manfiles =
+endif
+
 if DFUTOOL
 dfutool_programs = dfutool
 dfutool_manfiles = dfutool.1
@@ -26,7 +34,7 @@ dfutool_programs =
 dfutool_manfiles =
 endif
 
-sbin_PROGRAMS = hciattach hciconfig $(avctrl_programs) $(hid2hci_programs)
+sbin_PROGRAMS = hciattach hciconfig $(avctrl_programs) $(hid2hci_programs) $(csrinit_programs)
 
 bin_PROGRAMS = hcitool l2ping sdptool ciptool $(dfutool_programs)
 
@@ -60,6 +68,11 @@ if HID2HCI
 hid2hci_LDADD = @USB_LIBS@
 endif
 
+if CSRINIT
+csrinit_SOURCES = csrinit.c csr.h
+csrinit_LDADD = @USB_LIBS@
+endif
+
 if DFUTOOL
 dfutool_SOURCES = dfutool.c dfu.h dfu.c
 dfutool_LDADD = @USB_LIBS@
@@ -70,8 +83,8 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @USB_CFLAGS@
 INCLUDES = -I$(top_srcdir)/common
 
 man_MANS = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 \
-		$(avctrl_manfiles) $(hid2hci_manfiles) $(dfutool_manfiles)
+		$(avctrl_manfiles) $(hid2hci_manfiles) $(csrinit_manfiles) $(dfutool_manfiles)
 
-EXTRA_DIST = $(man_MANS) avctrl.8 hid2hci.8 dfutool.1 example.psr
+EXTRA_DIST = $(man_MANS) avctrl.8 hid2hci.8 csrinit.8 dfutool.1 example.psr
 
 MAINTAINERCLEANFILES = Makefile.in
