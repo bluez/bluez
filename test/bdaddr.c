@@ -41,6 +41,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+static int transient = 0;
+
 #define OCF_ERICSSON_WRITE_BD_ADDR	0x000d
 typedef struct {
 	bdaddr_t	bdaddr;
@@ -113,6 +115,9 @@ static int csr_write_bd_addr(int dd, bdaddr_t *bdaddr)
 	unsigned char cp[254], rp[254];
 	struct hci_request rq;
 
+	if (transient)
+		cmd[14] = 0x08;
+
 	cmd[16] = bdaddr->b[2];
 	cmd[17] = 0x00;
 	cmd[18] = bdaddr->b[0];
@@ -159,6 +164,9 @@ static int csr_reset_device(int dd)
 
 	unsigned char cp[254], rp[254];
 	struct hci_request rq;
+
+	if (transient)
+		cmd[6] = 0x02;
 
 	memset(&cp, 0, sizeof(cp));
 	cp[0] = 0xc2;
@@ -222,12 +230,13 @@ static void usage(void)
 {
 	printf("bdaddr - Utility for changing the Bluetooth device address\n\n");
 	printf("Usage:\n"
-		"\tbdaddr [-i <dev>] [-r] [new bdaddr]\n");
+		"\tbdaddr [-i <dev>] [-r] [-t] [new bdaddr]\n");
 }
 
 static struct option main_options[] = {
 	{ "device",	1, 0, 'i' },
 	{ "reset",	0, 0, 'r' },
+	{ "transient",	0, 0, 't' },
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
@@ -242,7 +251,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt_long(argc, argv, "+i:rh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+i:rth", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
 			dev = hci_devid(optarg);
@@ -254,6 +263,10 @@ int main(int argc, char *argv[])
 
 		case 'r':
 			reset = 1;
+			break;
+
+		case 't':
+			transient = 1;
 			break;
 
 		case 'h':
