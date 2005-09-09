@@ -124,6 +124,7 @@ int main(void)
 	hci_set_bit(OCF_READ_INQUIRY_MODE,		ocf_mask);
 	hci_set_bit(OCF_READ_PAGE_SCAN_TYPE,		ocf_mask);
 	hci_set_bit(OCF_READ_AFH_MODE,			ocf_mask);
+	//hci_set_bit(OCF_READ_EXT_INQUIRY_RESPONSE,	ocf_mask);
 
 	printf("OGF_HOST_CTL:     { 0x%08x, 0x%08x, 0x%04x, 0x%02x }\n",
 			ocf_mask[0], ocf_mask[1], ocf_mask[2], ocf_mask[3]);
