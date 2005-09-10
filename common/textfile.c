@@ -113,6 +113,17 @@ static inline int write_key_value(int fd, char *key, char *value)
 	return err;
 }
 
+static inline char *find_key(char *map, char *key, size_t len)
+{
+	char *off = strstr(map, key);
+
+	while (off && ((off > map && *(off - 1) != '\r' &&
+				*(off - 1) != '\n') || *(off + len) != ' '))
+		off = strstr(off + len, key);
+
+	return off;
+}
+
 int textfile_put(char *pathname, char *key, char *value)
 {
 	struct stat st;
@@ -148,24 +159,12 @@ int textfile_put(char *pathname, char *key, char *value)
 		goto unlock;
 	}
 
-	off = strstr(map, key);
+	off = find_key(map, key, strlen(key));
 	if (!off) {
 		munmap(map, size);
 		pos = lseek(fd, size, SEEK_SET);
 		err = write_key_value(fd, key, value);
 		goto unlock;
-	}
-
-	if (off > map) {
-		while (*(off - 1) != '\r' && *(off - 1) != '\n') {
-			off = strstr(off, key);
-			if (!off) {
-				munmap(map, size);
-				pos = lseek(fd, size, SEEK_SET);
-				err = write_key_value(fd, key, value);
-				goto unlock;
-			}
-		}
 	}
 
 	base = off - map;
@@ -254,20 +253,11 @@ char *textfile_get(char *pathname, char *key)
 		goto unlock;
 	}
 
-	off = strstr(map, key);
+	len = strlen(key);
+	off = find_key(map, key, len);
 	if (!off) {
 		err = EILSEQ;
 		goto unmap;
-	}
-
-	if (off > map) {
-		while (*(off - 1) != '\r' && *(off - 1) != '\n') {
-			off = strstr(off, key);
-			if (!off) {
-				err = EILSEQ;
-				goto unmap;
-			}
-		}
 	}
 
 	end = strpbrk(off, "\r\n");
@@ -276,7 +266,6 @@ char *textfile_get(char *pathname, char *key)
 		goto unmap;
 	}
 
-	len = strlen(key);
 	str = malloc(end - off - len);
 	if (!str) {
 		err = EILSEQ;
