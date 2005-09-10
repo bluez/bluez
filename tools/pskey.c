@@ -141,7 +141,7 @@ static void usage(void)
 
 	printf("pskey - Utility for changing CSR persistent storage\n\n");
 	printf("Usage:\n"
-		"\tpskey [-i <dev>] [-t] <key> [value]\n\n");
+		"\tpskey [-i <dev>] [-r] [-t] <key> [value]\n\n");
 
 	printf("Keys:\n\t");
 	for (i = 0; storage[i].pskey; i++) {
@@ -157,6 +157,7 @@ static void usage(void)
 
 static struct option main_options[] = {
 	{ "device",	1, 0, 'i' },
+	{ "reset",	0, 0, 'r' },
 	{ "transient",	0, 0, 't' },
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
@@ -166,9 +167,9 @@ int main(int argc, char *argv[])
 {
 	struct hci_dev_info di;
 	struct hci_version ver;
-	int i, err, dd, opt, dev = 0;
+	int i, err, dd, opt, dev = 0, reset = 0;
 
-	while ((opt=getopt_long(argc, argv, "+i:th", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+i:rth", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
 			dev = hci_devid(optarg);
@@ -176,6 +177,10 @@ int main(int argc, char *argv[])
 				perror("Invalid device");
 				exit(1);
 			}
+			break;
+
+		case 'r':
+			reset = 1;
 			break;
 
 		case 't':
@@ -229,10 +234,14 @@ int main(int argc, char *argv[])
 		if (strcasecmp(storage[i].str, argv[0]))
 			continue;
 
-		if (argc > 1)
+		if (argc > 1) {
 			err = write_pskey(dd, storage[i].pskey,
 					storage[i].type, argc - 1, argv + 1);
-		else
+
+			if (reset)
+				csr_write_varid_valueless(dd, 0x0000,
+							CSR_VARID_WARM_RESET);
+		} else
 			err = read_pskey(dd, storage[i].pskey, storage[i].type);
 
 		hci_close_dev(dd);
