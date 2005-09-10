@@ -1,0 +1,14 @@
+#
+#  $Id$
+#
+
+if FUSE
+noinst_PROGRAMS = btfs
+
+btfs_SOURCES = main.c
+btfs_LDADD = @FUSE_LIBS@ @OPENOBEX_LIBS@ @BLUEZ_LIBS@
+
+AM_CFLAGS = @BLUEZ_CFLAGS@ @OPENOBEX_CFLAGS@ @FUSE_CFLAGS@
+endif
+
+MAINTAINERCLEANFILES = Makefile.in
