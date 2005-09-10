@@ -180,8 +180,14 @@ static inline void pskey_dump(int level, struct frame *frm)
 	case 0x01be:
 		uint16_dump(level + 1, "UART_BAUDRATE", frm);
 		break;
+	case 0x01f6
+		uint16_dump(level + 1, "ANA_FTRIM", frm);
+		break;
 	case 0x01f9:
 		uint16_dump(level + 1, "HOST_INTERFACE", frm);
+		break;
+	case 0x01fe:
+		uint16_dump(level + 1, "ANA_FREQ", frm);
 		break;
 	case 0x02be:
 		uint16_dump(level + 1, "USB_VENDOR_ID", frm);
