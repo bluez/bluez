@@ -189,7 +189,7 @@ AC_DEFUN([AC_PATH_FUSE], [
 	ac_save_CPPFLAGS=$CPPFLAGS
 	ac_save_LDFLAGS=$LDFLAGS
 
-	FUSE_CFLAGS=""
+	FUSE_CFLAGS="-D_FILE_OFFSET_BITS=64"
 	test -d "${fuse_prefix}/include" && FUSE_CFLAGS="$FUSE_CFLAGS -I${fuse_prefix}/include"
 
 	CPPFLAGS="$CPPFLAGS $FUSE_CFLAGS"
