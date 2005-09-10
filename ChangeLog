@@ -1,3 +1,16 @@
+ver 2.21:
+	Move create_dirs() and create_file() into the textfile library.
+	Let textfile_put() also replace the last key value pair.
+	Fix memory leaks with textfile_get() usage.
+	Fix infinite loops and false positive matches.
+	Don't retrieve stored link keys for RAW devices.
+	Document the putkey and delkey commands.
+	Show supported commands also in clear text.
+	Support volatile changes of the BD_ADDR for CSR chips.
+
+	Note:
+	This version needs at least bluez-libs-2.21
+
 ver 2.20:
 	Add support for extended inquiry response.
 	Add support for HotSync service record.
