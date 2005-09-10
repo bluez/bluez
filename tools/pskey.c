@@ -123,6 +123,8 @@ static struct {
 	{ CSR_PSKEY_HOSTIO_MAP_SCO_PCM,       CSR_TYPE_UINT16, "mapsco"   },
 	{ CSR_PSKEY_UART_BAUDRATE,            CSR_TYPE_UINT16, "baudrate" },
 	{ CSR_PSKEY_HOST_INTERFACE,           CSR_TYPE_UINT16, "hostintf" },
+	{ CSR_PSKEY_ANA_FREQ,                 CSR_TYPE_UINT16, "anafreq"  },
+	{ CSR_PSKEY_ANA_FTRIM,                CSR_TYPE_UINT16, "anaftrim" },
 	{ CSR_PSKEY_USB_VENDOR_ID,            CSR_TYPE_UINT16, "usbvid"   },
 	{ CSR_PSKEY_USB_PRODUCT_ID,           CSR_TYPE_UINT16, "usbpid"   },
 	{ CSR_PSKEY_USB_DFU_PRODUCT_ID,       CSR_TYPE_UINT16, "dfupid"   },
