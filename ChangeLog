@@ -1,3 +1,8 @@
+ver 2.21:
+	Add support for identification of supported commands.
+	Add missing OCF declarations for the security filter.
+	Add two new company identifiers.
+
 ver 2.20:
 	Add UUIDs for video distribution profile.
 	Add UUIDs for phonebook access profile.
