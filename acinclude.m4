@@ -134,6 +134,85 @@ AC_DEFUN([AC_PATH_OPENOBEX], [
 	AC_SUBST(OPENOBEX_LIBS)
 ])
 
+AC_DEFUN([AC_PATH_DBUS], [
+	dbus_prefix=${prefix}
+
+	AC_ARG_WITH(dbus, AC_HELP_STRING([--with-dbus=DIR], [D-BUS library is installed in DIR]), [
+		if (test "${withval}" != "yes"); then
+			dbus_prefix=${withval}
+		fi
+	])
+
+	ac_save_CPPFLAGS=$CPPFLAGS
+	ac_save_LDFLAGS=$LDFLAGS
+
+	DBUS_CFLAGS="-DDBUS_API_SUBJECT_TO_CHANGE"
+	test -d "${dbus_prefix}/include/dbus-1.0" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/include/dbus-1.0"
+	if (test "${prefix}" = "${bluez_prefix}"); then
+		test -d "${libdir}/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${libdir}/dbus-1.0/include"
+	else
+		test -d "${dbus_prefix}/lib64/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib64/dbus-1.0/include"
+		test -d "${dbus_prefix}/lib/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib/dbus-1.0/include"
+	fi
+
+	CPPFLAGS="$CPPFLAGS $DBUS_CFLAGS"
+	AC_CHECK_HEADER(dbus/dbus.h, dbus_found=yes, dbus_found=no)
+
+	DBUS_LIBS=""
+	if (test "${prefix}" = "${dbus_prefix}"); then
+		test -d "${libdir}" && DBUS_LIBS="$DBUS_LIBS -L${libdir}"
+	else
+		test -d "${dbus_prefix}/lib64" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib64"
+		test -d "${dbus_prefix}/lib" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib"
+	fi
+
+	LDFLAGS="$LDFLAGS $DBUS_LIBS"
+	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", dbus_found=no)
+	AC_CHECK_LIB(dbus-1, dbus_message_iter_get_basic, AC_DEFINE(HAVE_DBUS_MESSAGE_ITER_GET_BASIC, 1, [Define to 1 if you have the dbus_message_iter_get_basic() function.]))
+
+	CPPFLAGS=$ac_save_CPPFLAGS
+	LDFLAGS=$ac_save_LDFLAGS
+
+	AC_SUBST(DBUS_CFLAGS)
+	AC_SUBST(DBUS_LIBS)
+])
+
+AC_DEFUN([AC_PATH_FUSE], [
+	fuse_prefix=${prefix}
+
+	AC_ARG_WITH(fuse, AC_HELP_STRING([--with-fuse=DIR], [FUSE library is installed in DIR]), [
+		if (test "${withval}" != "yes"); then
+			fuse_prefix=${withval}
+		fi
+	])
+
+	ac_save_CPPFLAGS=$CPPFLAGS
+	ac_save_LDFLAGS=$LDFLAGS
+
+	FUSE_CFLAGS=""
+	test -d "${fuse_prefix}/include" && FUSE_CFLAGS="$FUSE_CFLAGS -I${fuse_prefix}/include"
+
+	CPPFLAGS="$CPPFLAGS $FUSE_CFLAGS"
+	AC_CHECK_HEADER(fuse.h, fuse_found=yes, fuse_found=no)
+
+	FUSE_LIBS=""
+	if (test "${prefix}" = "${fuse_prefix}"); then
+		test -d "${libdir}" && FUSE_LIBS="$FUSE_LIBS -L${libdir}"
+	else
+		test -d "${fuse_prefix}/lib64" && FUSE_LIBS="$FUSE_LIBS -L${fuse_prefix}/lib64"
+		test -d "${fuse_prefix}/lib" && FUSE_LIBS="$FUSE_LIBS -L${fuse_prefix}/lib"
+	fi
+
+	LDFLAGS="$LDFLAGS $FUSE_LIBS"
+	AC_CHECK_LIB(fuse, fuse_main, FUSE_LIBS="$FUSE_LIBS -lfuse", fuse_found=no)
+
+	CPPFLAGS=$ac_save_CPPFLAGS
+	LDFLAGS=$ac_save_LDFLAGS
+
+	AC_SUBST(FUSE_CFLAGS)
+	AC_SUBST(FUSE_LIBS)
+])
+
 AC_DEFUN([AC_PATH_ALSA], [
 	alsa_prefix=${prefix}
 
@@ -208,49 +287,6 @@ AC_DEFUN([AC_PATH_USB], [
 
 	AC_SUBST(USB_CFLAGS)
 	AC_SUBST(USB_LIBS)
-])
-
-AC_DEFUN([AC_PATH_DBUS], [
-	dbus_prefix=${prefix}
-
-	AC_ARG_WITH(dbus, AC_HELP_STRING([--with-dbus=DIR], [D-BUS library is installed in DIR]), [
-		if (test "${withval}" != "yes"); then
-			dbus_prefix=${withval}
-		fi
-	])
-
-	ac_save_CPPFLAGS=$CPPFLAGS
-	ac_save_LDFLAGS=$LDFLAGS
-
-	DBUS_CFLAGS="-DDBUS_API_SUBJECT_TO_CHANGE"
-	test -d "${dbus_prefix}/include/dbus-1.0" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/include/dbus-1.0"
-	if (test "${prefix}" = "${bluez_prefix}"); then
-		test -d "${libdir}/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${libdir}/dbus-1.0/include"
-	else
-		test -d "${dbus_prefix}/lib64/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib64/dbus-1.0/include"
-		test -d "${dbus_prefix}/lib/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib/dbus-1.0/include"
-	fi
-
-	CPPFLAGS="$CPPFLAGS $DBUS_CFLAGS"
-	AC_CHECK_HEADER(dbus/dbus.h, dbus_found=yes, dbus_found=no)
-
-	DBUS_LIBS=""
-	if (test "${prefix}" = "${dbus_prefix}"); then
-		test -d "${libdir}" && DBUS_LIBS="$DBUS_LIBS -L${libdir}"
-	else
-		test -d "${dbus_prefix}/lib64" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib64"
-		test -d "${dbus_prefix}/lib" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib"
-	fi
-
-	LDFLAGS="$LDFLAGS $DBUS_LIBS"
-	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", dbus_found=no)
-	AC_CHECK_LIB(dbus-1, dbus_message_iter_get_basic, AC_DEFINE(HAVE_DBUS_MESSAGE_ITER_GET_BASIC, 1, [Define to 1 if you have the dbus_message_iter_get_basic() function.]))
-
-	CPPFLAGS=$ac_save_CPPFLAGS
-	LDFLAGS=$ac_save_LDFLAGS
-
-	AC_SUBST(DBUS_CFLAGS)
-	AC_SUBST(DBUS_LIBS)
 ])
 
 AC_DEFUN([AC_ARG_BLUEZ], [
