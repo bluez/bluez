@@ -598,13 +598,13 @@ int csr_read_varid_uint32(int dd, uint16_t seqnum, uint16_t varid, uint32_t *val
 	return 0;
 }
 
-int csr_read_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint8_t *value, uint16_t length)
+int csr_read_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint8_t *value, uint16_t length)
 {
 	unsigned char cmd[] = { 0x00, 0x00, ((length / 2) + 8) & 0xff, ((length / 2) + 8) >> 8,
 				seqnum & 0xff, seqnum >> 8, 0x03, 0x70, 0x00, 0x00,
 				pskey & 0xff, pskey >> 8,
 				(length / 2) & 0xff, (length / 2) >> 8,
-				0x00, 0x00, 0x00, 0x00 };
+				store & 0xff, store >> 8, 0x00, 0x00 };
 
 	unsigned char cp[254], rp[254];
 	struct hci_request rq;
@@ -640,11 +640,12 @@ int csr_read_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint8_t *val
 	return 0;
 }
 
-int csr_read_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t *value)
+int csr_read_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint16_t *value)
 {
 	unsigned char cmd[] = { 0x00, 0x00, 0x09, 0x00,
 				seqnum & 0xff, seqnum >> 8, 0x03, 0x70, 0x00, 0x00,
-				pskey & 0xff, pskey >> 8, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 };
+				pskey & 0xff, pskey >> 8, 0x01, 0x00,
+				store & 0xff, store >> 8, 0x00, 0x00 };
 
 	unsigned char cp[254], rp[254];
 	struct hci_request rq;
@@ -680,12 +681,12 @@ int csr_read_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t *val
 	return 0;
 }
 
-int csr_write_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t value)
+int csr_write_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint16_t value)
 {
 	unsigned char cmd[] = { 0x02, 0x00, 0x09, 0x00,
 				seqnum & 0xff, seqnum >> 8, 0x03, 0x70, 0x00, 0x00,
-				pskey & 0xff, pskey >> 8, 0x01, 0x00, 0x00, 0x00,
-				value & 0xff, value >> 8 };
+				pskey & 0xff, pskey >> 8, 0x01, 0x00,
+				store & 0xff, store >> 8, value & 0xff, value >> 8 };
 
 	unsigned char cp[254], rp[254];
 	struct hci_request rq;

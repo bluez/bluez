@@ -47,6 +47,8 @@
 #define CSR_TYPE_UINT8	2
 #define CSR_TYPE_UINT16	3
 
+static int transient = 0;
+
 static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 {
 	uint16_t value;
@@ -67,7 +69,8 @@ static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 	else
 		value = atoi(argv[0]);
 
-	err = csr_write_pskey_uint16(dd, 0x4711, pskey, value);
+	err = csr_write_pskey_uint16(dd, 0x4711, pskey,
+					transient ? 0x0008 : 0x0000, value);
 
 	return err;
 }
@@ -88,7 +91,7 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 	}
 
 	if (type != CSR_TYPE_ARRAY) {
-		err = csr_read_pskey_uint16(dd, 0x4711, pskey, &value);
+		err = csr_read_pskey_uint16(dd, 0x4711, pskey, 0x0000, &value);
 		if (err < 0)
 			return err;
 
@@ -97,7 +100,7 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 		if (pskey == CSR_PSKEY_LOCAL_SUPPORTED_FEATURES)
 			size = 8;
 
-		err = csr_read_pskey_complex(dd, 0x4711, pskey, array, size);
+		err = csr_read_pskey_complex(dd, 0x4711, pskey, 0x0000, array, size);
 		if (err < 0)
 			return err;
 
@@ -138,7 +141,7 @@ static void usage(void)
 
 	printf("pskey - Utility for changing CSR persistent storage\n\n");
 	printf("Usage:\n"
-		"\tpskey [-i <dev>] <key> [value]\n\n");
+		"\tpskey [-i <dev>] [-t] <key> [value]\n\n");
 
 	printf("Keys:\n\t");
 	for (i = 0; storage[i].pskey; i++) {
@@ -153,8 +156,9 @@ static void usage(void)
 }
 
 static struct option main_options[] = {
-	{ "help",	0, 0, 'h' },
 	{ "device",	1, 0, 'i' },
+	{ "transient",	0, 0, 't' },
+	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -164,7 +168,7 @@ int main(int argc, char *argv[])
 	struct hci_version ver;
 	int i, err, dd, opt, dev = 0;
 
-	while ((opt=getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+i:th", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
 			dev = hci_devid(optarg);
@@ -172,6 +176,10 @@ int main(int argc, char *argv[])
 				perror("Invalid device");
 				exit(1);
 			}
+			break;
+
+		case 't':
+			transient = 1;
 			break;
 
 		case 'h':

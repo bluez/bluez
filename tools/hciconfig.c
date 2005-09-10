@@ -1225,7 +1225,7 @@ static void print_rev_csr(int dd, uint16_t rev)
 	if (!csr_read_varid_uint16(dd, 3, CSR_VARID_MAX_CRYPT_KEY_LENGTH, &maxkeylen))
 		printf("\tMax key size: %d bit\n", maxkeylen * 8);
 
-	if (!csr_read_pskey_uint16(dd, 4, CSR_PSKEY_HOSTIO_MAP_SCO_PCM, &mapsco))
+	if (!csr_read_pskey_uint16(dd, 4, CSR_PSKEY_HOSTIO_MAP_SCO_PCM, 0x0000, &mapsco))
 		printf("\tSCO mapping:  %s\n", mapsco ? "PCM" : "HCI");
 }
 
