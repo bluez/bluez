@@ -180,7 +180,7 @@ static inline void pskey_dump(int level, struct frame *frm)
 	case 0x01be:
 		uint16_dump(level + 1, "UART_BAUDRATE", frm);
 		break;
-	case 0x01f6
+	case 0x01f6:
 		uint16_dump(level + 1, "ANA_FTRIM", frm);
 		break;
 	case 0x01f9:
