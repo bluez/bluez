@@ -123,6 +123,7 @@ static struct {
 	{ CSR_PSKEY_LOCAL_SUPPORTED_FEATURES, CSR_TYPE_ARRAY,  "features" },
 	{ CSR_PSKEY_HCI_LMP_LOCAL_VERSION,    CSR_TYPE_UINT16, "version"  },
 	{ CSR_PSKEY_LMP_REMOTE_VERSION,       CSR_TYPE_UINT8,  "remver"   },
+	{ CSR_PSKEY_HOSTIO_USE_HCI_EXTN,      CSR_TYPE_UINT16, "hciextn"  },
 	{ CSR_PSKEY_HOSTIO_MAP_SCO_PCM,       CSR_TYPE_UINT16, "mapsco"   },
 	{ CSR_PSKEY_UART_BAUDRATE,            CSR_TYPE_UINT16, "baudrate" },
 	{ CSR_PSKEY_HOST_INTERFACE,           CSR_TYPE_UINT16, "hostintf" },
