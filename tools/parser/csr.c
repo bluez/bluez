@@ -67,7 +67,27 @@ static inline void complex_dump(int level, char *str, struct frame *frm)
 	raw_dump(level, frm);
 }
 
+static inline void bool_dump(int level, char *str, struct frame *frm)
+{
+	uint16_t value;
+
+	value = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("%s: value %s (%d)\n", str, value ? "TRUE" : "FALSE", value);
+}
+
 static inline void int8_dump(int level, char *str, struct frame *frm)
+{
+	int16_t value;
+
+	value = CSR_S16(frm);
+
+	p_indent(level, frm);
+	printf("%s: value %d (0x%2.2x)\n", str, value, value);
+}
+
+static inline void int16_dump(int level, char *str, struct frame *frm)
 {
 	int16_t value;
 
@@ -174,8 +194,11 @@ static inline void pskey_dump(int level, struct frame *frm)
 	case 0x010e:
 		uint16_dump(level + 1, "LMP_REMOTE_VERSION", frm);
 		break;
+	case 0x01a5:
+		bool_dump(level + 1, "HOSTIO_USE_HCI_EXTN", frm);
+		break;
 	case 0x01ab:
-		uint16_dump(level + 1, "HOSTIO_MAP_SCO_PCM", frm);
+		bool_dump(level + 1, "HOSTIO_MAP_SCO_PCM", frm);
 		break;
 	case 0x01be:
 		uint16_dump(level + 1, "UART_BAUDRATE", frm);
@@ -199,7 +222,7 @@ static inline void pskey_dump(int level, struct frame *frm)
 		uint16_dump(level + 1, "USB_DFU_PRODUCT_ID", frm);
 		break;
 	case 0x03cd:
-		uint16_dump(level + 1, "INITIAL_BOOTMODE", frm);
+		int16_dump(level + 1, "INITIAL_BOOTMODE", frm);
 		break;
 	default:
 		raw_dump(level + 1, frm);
