@@ -408,6 +408,8 @@ char *csr_pskeytostr(uint16_t pskey)
 		return "The HCI and LMP version reported locally";
 	case CSR_PSKEY_LMP_REMOTE_VERSION:
 		return "The LMP version reported remotely";
+	case CSR_PSKEY_HOSTIO_USE_HCI_EXTN:
+		return "Use hci_extn to route non-hci channels";
 	case CSR_PSKEY_HOSTIO_MAP_SCO_PCM:
 		return "Map SCO over PCM";
 	case CSR_PSKEY_UART_BAUDRATE:

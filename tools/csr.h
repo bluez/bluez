@@ -59,19 +59,20 @@
 #define CSR_VARID_DEFAULT_TX_POWER	0x682b		/* int8 */
 
 #define CSR_PSKEY_LOCAL_SUPPORTED_FEATURES	0x00ef	/* uint16[] = { 0xffff, 0xFE8f, 0xF99B, 0x8000 } */
-#define CSR_PSKEY_ENC_KEY_LMIN			0x00da
-#define CSR_PSKEY_ENC_KEY_LMAX			0x00db
+#define CSR_PSKEY_ENC_KEY_LMIN			0x00da	/* uint16 */
+#define CSR_PSKEY_ENC_KEY_LMAX			0x00db	/* uint16 */
 #define CSR_PSKEY_HCI_LMP_LOCAL_VERSION		0x010d	/* uint16 */
 #define CSR_PSKEY_LMP_REMOTE_VERSION		0x010e	/* uint8 */
-#define CSR_PSKEY_HOSTIO_MAP_SCO_PCM		0x01ab
-#define CSR_PSKEY_UART_BAUDRATE			0x01be
+#define CSR_PSKEY_HOSTIO_USE_HCI_EXTN		0x01a5	/* bool (uint16) */
+#define CSR_PSKEY_HOSTIO_MAP_SCO_PCM		0x01ab	/* bool (uint16) */
+#define CSR_PSKEY_UART_BAUDRATE			0x01be	/* uint16 */
 #define CSR_PSKEY_ANA_FTRIM			0x01f6	/* uint16 */
 #define CSR_PSKEY_HOST_INTERFACE		0x01f9	/* uint16 */
 #define CSR_PSKEY_ANA_FREQ			0x01fe	/* uint16 */
-#define CSR_PSKEY_USB_VENDOR_ID			0x02be
-#define CSR_PSKEY_USB_PRODUCT_ID		0x02bf
-#define CSR_PSKEY_USB_DFU_PRODUCT_ID		0x02cb
-#define CSR_PSKEY_INITIAL_BOOTMODE		0x03cd
+#define CSR_PSKEY_USB_VENDOR_ID			0x02be	/* uint16 */
+#define CSR_PSKEY_USB_PRODUCT_ID		0x02bf	/* uint16 */
+#define CSR_PSKEY_USB_DFU_PRODUCT_ID		0x02cb	/* uint16 */
+#define CSR_PSKEY_INITIAL_BOOTMODE		0x03cd	/* int16 */
 
 char *csr_buildidtostr(uint16_t id);
 char *csr_chipvertostr(uint16_t ver, uint16_t rev);
