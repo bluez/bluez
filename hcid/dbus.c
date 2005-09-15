@@ -68,39 +68,49 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 	pin_code_reply_cp pr;
 	DBusMessage *message;
 	DBusMessageIter iter;
-	int type;
+	int arg_type;
+	int msg_type;
 	size_t len;
 	char *pin;
-
+	const char *error_msg;
+        
 	message = dbus_pending_call_steal_reply(call);
+        
+	if (message) {
+		msg_type = dbus_message_get_type(message);
+		dbus_message_iter_init(message, &iter);
+		
+		if (msg_type == DBUS_MESSAGE_TYPE_ERROR) {
+			dbus_message_iter_get_basic(&iter, &error_msg);
 
-	if (dbus_message_is_error(message, WRONG_ARGS_ERROR))
-		goto error;
-
-	dbus_message_iter_init(message, &iter);
-
-	type = dbus_message_iter_get_arg_type(&iter);
-	if (type != DBUS_TYPE_STRING)
-		goto error;
-
-	dbus_message_iter_get_basic(&iter, &pin);
-	len = strlen(pin);
-
-	memset(&pr, 0, sizeof(pr));
-	bacpy(&pr.bdaddr, &req->bda);
-	memcpy(pr.pin_code, pin, len);
-	pr.pin_len = len;
-	hci_send_cmd(req->dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
+			/* handling WRONG_ARGS_ERROR, DBUS_ERROR_NO_REPLY, DBUS_ERROR_SERVICE_UNKNOWN */
+			syslog(LOG_ERR, "%s: %s", dbus_message_get_error_name(message), error_msg);
+			hci_send_cmd(req->dev, OGF_LINK_CTL,
+					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
+		} else {
+			/* check signature */
+			arg_type = dbus_message_iter_get_arg_type(&iter);
+			if (arg_type != DBUS_TYPE_STRING) {
+				syslog(LOG_ERR, "Wrong reply signature: expected PIN");
+				hci_send_cmd(req->dev, OGF_LINK_CTL,
+						OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
+			} else {
+				dbus_message_iter_get_basic(&iter, &pin);
+				len = strlen(pin);
+				
+				memset(&pr, 0, sizeof(pr));
+				bacpy(&pr.bdaddr, &req->bda);
+				memcpy(pr.pin_code, pin, len);
+				pr.pin_len = len;
+				hci_send_cmd(req->dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
 						PIN_CODE_REPLY_CP_SIZE, &pr);
+			}
+                }
 
-	dbus_message_unref(message);
+		dbus_message_unref(message);
+	}
+
 	dbus_pending_call_unref(call);
-
-	return;
-
-error:
-	hci_send_cmd(req->dev, OGF_LINK_CTL,
-				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 }
 
 static void free_pin_req(void *req)
