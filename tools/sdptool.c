@@ -2197,7 +2197,7 @@ static int add_palmos(sdp_session_t *session, svc_info_t *si)
 	root = sdp_list_append(NULL, &root_uuid);
 	sdp_set_browse_groups(&record, root);
 
-	sdp_uuid128_create(&svclass_uuid, (void *) hotsync_uuid);
+	sdp_uuid128_create(&svclass_uuid, (void *) palmos_uuid);
 	svclass = sdp_list_append(NULL, &svclass_uuid);
 	sdp_set_service_classes(&record, svclass);
 
