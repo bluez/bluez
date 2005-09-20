@@ -58,11 +58,17 @@ Or, when no PIN is available:
 ERR
 
 .TP 
+\fBdbus_pin_helper\fP
+
+Declaring this parameter enables the D-BUS message bus system for PIN
+requests.
+
+.TP 
 \fBsecurity\fP  none|auto|user
 
 \fInone\fP means the security manager is disabled. \fIauto\fP uses
-local PIN for incoming connections. \fIuser\fP always asks the user
-for a PIN.
+local PIN, by default from /etc/bluetooth/pin, for incoming
+connections. \fIuser\fP always asks the user for a PIN.
 
 .SH "DEVICE SECTION"
 Parameters within a device section with no specifier, the default
@@ -229,6 +235,12 @@ You can check the Bluetooth specification version 1.2 Volume 2, Part B section 6
 .TP 
 .I /etc/bluetooth/hcid.conf
 Default location of the global configuration file.
+
+.TP 
+.I /etc/bluetooth/pin
+Default location of local PIN file, used for incoming connections in
+security mode \fIauto\fP. The file contains the PIN code terminated by
+newline.
 
 .SH "AUTHOR"
 This manual page was written by Edouard Lafargue, Fredrik Noring and Maxim Krasnyansky.
