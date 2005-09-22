@@ -3160,6 +3160,7 @@ static inline int sdp_is_local(const bdaddr_t *device)
 
 sdp_session_t *sdp_connect(const bdaddr_t *src, const bdaddr_t *dst, uint32_t flags)
 {
+	int err;
 	sdp_session_t *session = malloc(sizeof(sdp_session_t));
 	if (!session)
 		return session;
@@ -3204,8 +3205,10 @@ sdp_session_t *sdp_connect(const bdaddr_t *src, const bdaddr_t *dst, uint32_t fl
 		}
 	}
 fail:
+	err = errno;
 	if (session->sock >= 0)
 		close(session->sock);
 	free(session);
+	errno = err;
 	return 0;
 }

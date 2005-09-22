@@ -647,21 +647,25 @@ int hci_for_each_dev(int flag, int (*func)(int dd, int dev_id, long arg), long a
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
 	int dev_id = -1;
-	int i, sk, err;
+	int i, sk, err = 0;
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0)
 		return -1;
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
-	if (!dl)
+	if (!dl) {
+		err = errno;
 		goto done;
+	}
 
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
-	if (ioctl(sk, HCIGETDEVLIST, (void *) dl) < 0)
+	if (ioctl(sk, HCIGETDEVLIST, (void *) dl) < 0) {
+		err = errno;
 		goto free;
+	}
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		if (hci_test_bit(flag, &dr->dev_opt))
@@ -672,13 +676,12 @@ int hci_for_each_dev(int flag, int (*func)(int dd, int dev_id, long arg), long a
 	}
 
 	if (dev_id < 0)
-		errno = ENODEV;
+		err = ENODEV;
 
 free:
 	free(dl);
 
 done:
-	err = errno;
 	close(sk);
 	errno = err;
 
