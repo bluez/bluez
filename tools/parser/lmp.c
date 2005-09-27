@@ -324,7 +324,7 @@ static inline void name_res_dump(int level, struct frame *frm)
 	uint8_t offset = LMP_U8(frm);
 	uint8_t length = LMP_U8(frm);
 	uint8_t *name = frm->ptr;
-	int i;
+	int i, size;
 
 	frm->ptr += 14;
 	frm->len -= 14;
@@ -335,9 +335,13 @@ static inline void name_res_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("name length %d\n", length);
 
+	size = length - offset;
+	if (size > 14)
+		size = 14;
+
 	p_indent(level, frm);
 	printf("name fragment '");
-	for (i = 0; i < length; i++)
+	for (i = 0; i < size; i++)
 		if (isprint(name[i]))
 			printf("%c", name[i]);
 		else
