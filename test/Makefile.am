@@ -17,11 +17,17 @@ attest_LDADD = @BLUEZ_LIBS@
 
 hstest_LDADD = @BLUEZ_LIBS@
 
+bdaddr_SOURCES = bdaddr.c $(top_builddir)/tools/oui.h $(top_builddir)/tools/oui.c
+
 bdaddr_LDADD = @BLUEZ_LIBS@
+
+noinst_MANS = bdaddr.8
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 endif
 
-EXTRA_DIST = hsplay hsmicro
+INCLUDES = -I$(top_srcdir)/tools
+
+EXTRA_DIST = hsplay hsmicro bdaddr.8
 
 MAINTAINERCLEANFILES = Makefile.in

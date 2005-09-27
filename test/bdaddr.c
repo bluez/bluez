@@ -41,6 +41,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include "oui.h"
+
 static int transient = 0;
 
 #define OCF_ERICSSON_WRITE_BD_ADDR	0x000d
@@ -246,7 +248,7 @@ int main(int argc, char *argv[])
 	struct hci_dev_info di;
 	struct hci_version ver;
 	bdaddr_t bdaddr;
-	char addr[18];
+	char addr[18], oui[9], *comp;
 	int i, dd, opt, dev = 0, reset = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
@@ -314,8 +316,17 @@ int main(int argc, char *argv[])
 	printf("Manufacturer:   %s (%d)\n",
 			bt_compidtostr(ver.manufacturer), ver.manufacturer);
 
+	ba2oui(&bdaddr, oui);
+	comp = ouitocomp(oui);
+
 	ba2str(&bdaddr, addr);
-	printf("Device address: %s\n", addr);
+	printf("Device address: %s", addr);
+
+	if (comp) {
+		printf(" (%s)\n", comp);
+		free(comp);
+	} else
+		printf("\n");
 
 	if (argc < 1) {
 		hci_close_dev(dd);
@@ -330,8 +341,18 @@ int main(int argc, char *argv[])
 
 	for (i = 0; vendor[i].compid != 65535; i++)
 		if (ver.manufacturer == vendor[i].compid) {
+			ba2oui(&bdaddr, oui);
+			comp = ouitocomp(oui);
+
 			ba2str(&bdaddr, addr);
-			printf("New BD address: %s\n\n", addr);
+			printf("New BD address: %s", addr);
+
+			if (comp) {
+				printf(" (%s)\n\n", comp);
+				free(comp);
+			} else
+				printf("\n\n");
+
 
 			if (vendor[i].write_bd_addr(dd, &bdaddr) < 0) {
 				fprintf(stderr, "Can't write new address\n");
