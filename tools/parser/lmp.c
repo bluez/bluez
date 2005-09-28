@@ -436,6 +436,59 @@ static inline void preferred_rate_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("data rate 0x%2.2x\n", rate);
+
+	p_indent(level, frm);
+	printf("Basic: ");
+
+	printf("%suse FEC, ", rate & 0x01 ? "do not " : "");
+
+	switch ((rate >> 1) & 0x03) {
+	case 0x00:
+		printf("no packet-size preference\n");
+		break;
+	case 0x01:
+		printf("use 1-slot packets\n");
+		break;
+	case 0x02:
+		printf("use 3-slot packets\n");
+		break;
+	case 0x03:
+		printf("use 5-slot packets\n");
+		break;
+	}
+
+	p_indent(level, frm);
+	printf("EDR: ");
+
+	switch ((rate >> 3) & 0x03) {
+	case 0x00:
+		printf("use DM1 packets, ");
+		break;
+	case 0x01:
+		printf("use 2 Mbps packets, ");
+		break;
+	case 0x02:
+		printf("use 3 Mbps packets, ");
+		break;
+	case 0x03:
+		printf("reserved, \n");
+		break;
+	}
+
+	switch ((rate >> 5) & 0x03) {
+	case 0x00:
+		printf("no packet-size preference\n");
+		break;
+	case 0x01:
+		printf("use 1-slot packets\n");
+		break;
+	case 0x02:
+		printf("use 3-slot packets\n");
+		break;
+	case 0x03:
+		printf("use 5-slot packets\n");
+		break;
+	}
 }
 
 static inline void version_dump(int level, struct frame *frm)
