@@ -422,6 +422,14 @@ static inline void auth_resp_dump(int level, struct frame *frm)
 	printf("\n");
 }
 
+static inline void power_req_dump(int level, struct frame *frm)
+{
+	uint8_t val = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("future use 0x%2.2x\n", val);
+}
+
 static inline void preferred_rate_dump(int level, struct frame *frm)
 {
 	uint8_t rate = LMP_U8(frm);
@@ -681,6 +689,10 @@ void lmp_dump(int level, struct frame *frm)
 	case 10:
 	case 14:
 		key_dump(level + 1, frm);
+		return;
+	case 31:
+	case 32:
+		power_req_dump(level + 1, frm);
 		return;
 	case 36:
 		preferred_rate_dump(level + 1, frm);
