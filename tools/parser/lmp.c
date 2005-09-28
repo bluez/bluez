@@ -239,7 +239,7 @@ static char *opcode2str(uint16_t opcode)
 	case 35:
 		return "auto_rate";
 	case 36:
-		return "prefered_rate";
+		return "preferred_rate";
 	case 37:
 		return "version_req";
 	case 38:
@@ -420,6 +420,14 @@ static inline void auth_resp_dump(int level, struct frame *frm)
 	for (i = 0; i < 4; i++)
 		printf("%2.2x", resp[i]);
 	printf("\n");
+}
+
+static inline void preferred_rate_dump(int level, struct frame *frm)
+{
+	uint8_t rate = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("data rate 0x%2.2x\n", rate);
 }
 
 static inline void version_dump(int level, struct frame *frm)
@@ -673,6 +681,9 @@ void lmp_dump(int level, struct frame *frm)
 	case 10:
 	case 14:
 		key_dump(level + 1, frm);
+		return;
+	case 36:
+		preferred_rate_dump(level + 1, frm);
 		return;
 	case 37:
 	case 38:
