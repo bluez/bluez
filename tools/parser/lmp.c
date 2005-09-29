@@ -496,9 +496,12 @@ static inline void version_dump(int level, struct frame *frm)
 	uint8_t ver = LMP_U8(frm);
 	uint16_t compid = LMP_U16(frm);
 	uint16_t subver = LMP_U16(frm);
+	char *tmp;
 
 	p_indent(level, frm);
-	printf("VersNr %d (%s)\n", ver, lmp_vertostr(ver));
+	tmp = lmp_vertostr(ver);
+	printf("VersNr %d (%s)\n", ver, tmp);
+	bt_free(tmp);
 
 	p_indent(level, frm);
 	printf("CompId %d (%s)\n", compid, bt_compidtostr(compid));
