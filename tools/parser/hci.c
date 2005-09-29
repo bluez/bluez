@@ -855,6 +855,11 @@ static inline void write_ext_inquiry_response_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("fec 0x%2.2x\n", cp->fec);
+
+	frm->ptr++;
+	frm->len--;
+
+	raw_dump(level, frm);
 }
 
 static inline void request_transmit_power_level_dump(int level, struct frame *frm)
@@ -1384,6 +1389,11 @@ static inline void read_ext_inquiry_response_dump(int level, struct frame *frm)
 	if (rp->status > 0) {
 		p_indent(level, frm);
 		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		frm->ptr += 2;
+		frm->len -= 2;
+
+		raw_dump(level, frm);
 	}
 }
 
