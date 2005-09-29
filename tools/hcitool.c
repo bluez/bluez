@@ -323,6 +323,7 @@ static struct option inq_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "length",	1, 0, 'l' },
 	{ "numrsp",	1, 0, 'n' },
+	{ "iac",	1, 0, 'i' },
 	{ "flush",	0, 0, 'f' },
 	{ 0, 0, 0, 0 }
 };
@@ -331,14 +332,16 @@ static char *inq_help =
 	"Usage:\n"
 	"\tinq [--length=N] maximum inquiry duration in 1.28 s units\n"
 	"\t    [--numrsp=N] specify maximum number of inquiry responses\n"
+	"\t    [--iac=lap]  specify the inquiry access code\n"
 	"\t    [--flush]    flush the inquiry cache\n";
 
 static void cmd_inq(int dev_id, int argc, char **argv)
 {
-	int num_rsp, length, flags;
 	inquiry_info *info = NULL;
+	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
+	int num_rsp, length, flags;
 	char addr[18];
-	int i, opt;
+	int i, l, opt;
 
 	length  = 8;	/* ~10 seconds */
 	num_rsp = 0;
@@ -354,6 +357,17 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 			num_rsp = atoi(optarg);
 			break;
 
+		case 'i':
+			l = strtoul(optarg, 0, 16);
+			if (l < 0x9e8b00 || l > 0x9e8b3f) {
+				printf("Invalid access code 0x%x\n", l);
+				exit(1);
+			}
+			lap[0] = (l & 0xff);
+			lap[1] = (l >> 8) & 0xff;
+			lap[2] = (l >> 16) & 0xff;
+			break;
+
 		case 'f':
 			flags |= IREQ_CACHE_FLUSH;
 			break;
@@ -365,7 +379,7 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 	}
 
 	printf("Inquiring ...\n");
-	num_rsp = hci_inquiry(dev_id, length, num_rsp, NULL, &info, flags);
+	num_rsp = hci_inquiry(dev_id, length, num_rsp, lap, &info, flags);
 	if (num_rsp < 0) {
 		perror("Inquiry failed.");
 		exit(1);
@@ -389,22 +403,24 @@ static struct option scan_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "length",	1, 0, 'l' },
 	{ "numrsp",	1, 0, 'n' },
+	{ "iac",	1, 0, 'i' },
 	{ "flush",	0, 0, 'f' },
-	{ "class",	0, 0, 'c' },
-	{ "info",	0, 0, 'i' },
-	{ "oui",	0, 0, 'o' },
-	{ "all",	0, 0, 'a' },
-	{ "ext",	0, 0, 'a' },
+	{ "class",	0, 0, 'C' },
+	{ "info",	0, 0, 'I' },
+	{ "oui",	0, 0, 'O' },
+	{ "all",	0, 0, 'A' },
+	{ "ext",	0, 0, 'A' },
 	{ 0, 0, 0, 0 }
 };
 
 static char *scan_help =
 	"Usage:\n"
-	"\tscan [--length=N] [--numrsp=N] [--flush] [--class] [--info] [--oui]\n";
+	"\tscan [--length=N] [--numrsp=N] [--iac=lap] [--flush] [--class] [--info] [--oui]\n";
 
 static void cmd_scan(int dev_id, int argc, char **argv)
 {
 	inquiry_info *info = NULL;
+	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int num_rsp, length, flags;
 	uint8_t cls[3], features[8];
 	uint16_t handle;
@@ -413,7 +429,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
 	int extcls = 0, extinf = 0, extoui = 0;
-	int i, n, opt, dd, cc, nc;
+	int i, n, l, opt, dd, cc, nc;
 
 	length  = 8;	/* ~10 seconds */
 	num_rsp = 0;
@@ -429,23 +445,34 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 			num_rsp = atoi(optarg);
 			break;
 
+		case 'i':
+			l = strtoul(optarg, 0, 16);
+			if (l < 0x9e8b00 || l > 0x9e8b3f) {
+				printf("Invalid access code 0x%x\n", l);
+				exit(1);
+			}
+			lap[0] = (l & 0xff);
+			lap[1] = (l >> 8) & 0xff;
+			lap[2] = (l >> 16) & 0xff;
+			break;
+
 		case 'f':
 			flags |= IREQ_CACHE_FLUSH;
 			break;
 
-		case 'c':
+		case 'C':
 			extcls = 1;
 			break;
 
-		case 'i':
+		case 'I':
 			extinf = 1;
 			break;
 
-		case 'o':
+		case 'O':
 			extoui = 1;
 			break;
 
-		case 'a':
+		case 'A':
 			extcls = 1;
 			extinf = 1;
 			extoui = 1;
@@ -471,7 +498,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	}
 
 	printf("Scanning ...\n");
-	num_rsp = hci_inquiry(dev_id, length, num_rsp, NULL, &info, flags);
+	num_rsp = hci_inquiry(dev_id, length, num_rsp, lap, &info, flags);
 	if (num_rsp < 0) {
 		perror("Inquiry failed");
 		exit(1);
