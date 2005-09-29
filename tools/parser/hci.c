@@ -98,7 +98,7 @@ static char *event_str[] = {
 	"Unknown",
 	"Extended Inquiry Result",
 };
-#define EVENT_NUM 45
+#define EVENT_NUM 47
 
 static char *cmd_linkctl_str[] = {
 	"Unknown",
@@ -2231,12 +2231,17 @@ static inline void extended_inq_result_dump(int level, struct frame *frm)
 		ba2str(&info->bdaddr, addr);
 
 		p_indent(level, frm);
-		printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x\n",
+		printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
 			addr, info->pscan_rep_mode, btohs(info->clock_offset),
-			info->dev_class[2], info->dev_class[1], info->dev_class[0]);
+			info->dev_class[2], info->dev_class[1], info->dev_class[0], info->rssi);
 
-		frm->ptr += EXTENDED_INQUIRY_INFO_SIZE;
-		frm->len -= EXTENDED_INQUIRY_INFO_SIZE;
+		frm->ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
+		frm->len -= INQUIRY_INFO_WITH_RSSI_SIZE;
+
+		raw_dump(level, frm);
+
+		frm->ptr += EXTENDED_INQUIRY_INFO_SIZE - INQUIRY_INFO_WITH_RSSI_SIZE;
+		frm->len -= EXTENDED_INQUIRY_INFO_SIZE - INQUIRY_INFO_WITH_RSSI_SIZE;
 	}
 }
 
