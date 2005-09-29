@@ -48,7 +48,8 @@ static inline uint16_t get_manufacturer(void)
 	return (manufacturer == DEFAULT_COMPID ? parser.defcompid : manufacturer);
 }
 
-static char *event_str[] = {
+#define EVENT_NUM 47
+static char *event_str[EVENT_NUM + 1] = {
 	"Unknown",
 	"Inquiry Complete",
 	"Inquiry Result",
@@ -98,9 +99,9 @@ static char *event_str[] = {
 	"Unknown",
 	"Extended Inquiry Result",
 };
-#define EVENT_NUM 47
 
-static char *cmd_linkctl_str[] = {
+#define CMD_LINKCTL_NUM 41
+static char *cmd_linkctl_str[CMD_LINKCTL_NUM + 1] = {
 	"Unknown",
 	"Inquiry",
 	"Inquiry Cancel",
@@ -145,9 +146,9 @@ static char *cmd_linkctl_str[] = {
 	"Accept Synchronous Connection",
 	"Reject Synchronous Connection",
 };
-#define CMD_LINKCTL_NUM 42
 
-static char *cmd_linkpol_str[] = {
+#define CMD_LINKPOL_NUM 16
+static char *cmd_linkpol_str[CMD_LINKPOL_NUM + 1] = {
 	"Unknown",
 	"Hold Mode",
 	"Unknown",
@@ -166,9 +167,9 @@ static char *cmd_linkpol_str[] = {
 	"Write Default Link Policy Settings",
 	"Flow Specification",
 };
-#define CMD_LINKPOL_NUM 16
 
-static char *cmd_hostctl_str[] = {
+#define CMD_HOSTCTL_NUM 82
+static char *cmd_hostctl_str[CMD_HOSTCTL_NUM + 1] = {
 	"Unknown",
 	"Set Event Mask",
 	"Unknown",
@@ -244,12 +245,18 @@ static char *cmd_hostctl_str[] = {
 	"Read AFH Channel Assessment Mode",
 	"Write AFH Channel Assessment Mode",
 	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
 	"Read Extended Inquiry Response",
 	"Write Extended Inquiry Response",
 };
-#define CMD_HOSTCTL_NUM 76
 
-static char *cmd_info_str[] = {
+#define CMD_INFO_NUM 9
+static char *cmd_info_str[CMD_INFO_NUM + 1] = {
 	"Unknown",
 	"Read Local Version Information",
 	"Read Local Supported Commands",
@@ -261,9 +268,9 @@ static char *cmd_info_str[] = {
 	"Unknown",
 	"Read BD ADDR",
 };
-#define CMD_INFO_NUM 9
 
-static char *cmd_status_str[] = {
+#define CMD_STATUS_NUM 7
+static char *cmd_status_str[CMD_STATUS_NUM + 1] = {
 	"Unknown",
 	"Read Failed Contact Counter",
 	"Reset Failed Contact Counter",
@@ -273,9 +280,9 @@ static char *cmd_status_str[] = {
 	"Read AFH Channel Map",
 	"Read Clock",
 };
-#define CMD_STATUS_NUM 7
 
-static char *error_code_str[] = {
+#define ERROR_CODE_NUM 53
+static char *error_code_str[ERROR_CODE_NUM + 1] = {
 	"Success",
 	"Unknown HCI Command",
 	"Unknown Connection Identifier",
@@ -331,7 +338,6 @@ static char *error_code_str[] = {
 	"Reserved Slot Violation",
 	"Role Switch Failed",
 };
-#define ERROR_CODE_NUM 53
 
 static char *status2str(uint8_t status)
 {
