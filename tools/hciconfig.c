@@ -915,6 +915,48 @@ static void cmd_inq_mode(int ctl, int hdev, char *opt)
 	}
 }
 
+static void cmd_inq_data(int ctl, int hdev, char *opt)
+{
+	int i, dd;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (opt) {
+		uint8_t fec = 0, data[248];
+
+		memset(data, 0, sizeof(data));
+		data[0] = strlen(opt) + 1;
+		data[1] = 0x09;
+		memcpy(data + 2, opt, strlen(opt));
+
+		if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0) {
+			fprintf(stderr, "Can't set extended inquiry response on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		uint8_t fec, data[240];
+
+		if (hci_read_ext_inquiry_response(dd, &fec, data, 1000) < 0) {
+			fprintf(stderr, "Can't read extended inquiry response on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+
+		print_dev_hdr(&di);
+		printf("\tFEC: %d\n\t", fec);
+		for (i = 0; i < 240; i++)
+			printf("%02x%s%s", data[i], (i + 1) % 8 ? "" : " ",
+				(i + 1) % 16 ? " " : "\n\t");
+		printf("\n");
+	}
+}
+
 static void cmd_inq_type(int ctl, int hdev, char *opt)
 {
 	int dd;
@@ -1382,8 +1424,9 @@ static struct {
 	{ "class",	cmd_class,	"[class]",	"Get/Set class of device" },
 	{ "voice",	cmd_voice,	"[voice]",	"Get/Set voice setting" },
 	{ "iac",	cmd_iac,	"[iac]",	"Get/Set inquiry access code" },
-	{ "inqmode",	cmd_inq_mode,	"[mode]",	"Get/set inquiry mode" },
-	{ "inqtype",	cmd_inq_type,	"[type]",	"Get/set inquiry scan type" },
+	{ "inqmode",	cmd_inq_mode,	"[mode]",	"Get/Set inquiry mode" },
+	{ "inqdata",	cmd_inq_data,	"[name]",	"Get/Set inquiry data (device name)" },
+	{ "inqtype",	cmd_inq_type,	"[type]",	"Get/Set inquiry scan type" },
 	{ "inqparms",	cmd_inq_parms,	"[win:int]",	"Get/Set inquiry scan window and interval" },
 	{ "pageparms",	cmd_page_parms,	"[win:int]",	"Get/Set page scan window and interval" },
 	{ "pageto",	cmd_page_to,	"[to]",		"Get/Set page timeout" },
