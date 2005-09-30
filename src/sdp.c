@@ -1529,12 +1529,24 @@ int sdp_get_profile_descs(const sdp_record_t *rec, sdp_list_t **profDescSeq)
 		return -1;
 	}
 	for (seq = sdpdata->val.dataseq; seq && seq->val.dataseq; seq = seq->next) {
-		sdp_data_t *uuid = seq->val.dataseq;
-		sdp_data_t *pVnum = seq->val.dataseq->next;
-		if (uuid && pVnum) {
+		uuid_t *uuid = NULL;
+		uint16_t version = 0x100;
+
+		if (SDP_IS_UUID(seq->dtd)) {
+			uuid = &seq->val.uuid;
+		} else {
+			sdp_data_t *puuid = seq->val.dataseq;
+			sdp_data_t *pVnum = seq->val.dataseq->next;
+			if (puuid && pVnum) {
+				uuid = &puuid->val.uuid;
+				version = pVnum->val.uint16;
+			}
+		}
+
+		if (uuid != NULL) {
 			profDesc = (sdp_profile_desc_t *)malloc(sizeof(sdp_profile_desc_t));
-			profDesc->uuid = uuid->val.uuid;
-			profDesc->version = pVnum->val.uint16;
+			profDesc->uuid = *uuid;
+			profDesc->version = version;
 #ifdef SDP_DEBUG
 			sdp_uuid_print(&profDesc->uuid);
 			SDPDBG("Vnum : 0x%04x\n", profDesc->version);
