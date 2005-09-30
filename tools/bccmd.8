@@ -1,0 +1,55 @@
+.TH BCCMD 8 "Sep 30 2005" BlueZ "Linux System Administration"
+.SH NAME
+bccmd \- Utility for the CSR BCCMD interface
+.SH SYNOPSIS
+.B bccmd
+.br
+.B bccmd [-i <dev>] <command>
+.br
+
+.SH DESCRIPTION
+.LP
+.B
+bccmd
+issues BlueCore commands to
+.B
+Cambridge Silicon Radio
+devices. If run without the <command> argument, a short help page will be diaplayed.
+.PP
+
+.SH OPTIONS
+.TP
+.BI -i\ <dev>
+Specify a particular device to operate on. If not specified, default is the first available device.
+.SH COMMANDS
+.TP
+.BI keylen\ <handle>
+Get current crypt key length
+.TP
+.BI clock
+Get local Bluetooth clock
+.TP
+.BI rand
+Get random number
+.TP
+.BI panicarg
+Get panic code argument
+.TP
+.BI faultarg
+Get fault code argument
+.TP
+.BI coldreset
+Perform cold reset
+.TP
+.BI warmreset
+Perform warm reset
+.TP
+.BI disabletx
+Disable TX on the device
+.TP
+.BI enabletx
+Enable TX on the device
+.SH AUTHORS
+Written by Marcel Holtmann <marcel@holtmann.org>,
+man page by Adam Laurie <adam@algroup.co.uk>
+.PP
