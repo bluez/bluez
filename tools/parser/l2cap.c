@@ -870,6 +870,7 @@ void l2cap_dump(int level, struct frame *frm)
 		fr->num      = frm->num;
 		fr->dlci     = frm->dlci;
 		fr->channel  = frm->channel;
+		fr->audio_fd = frm->audio_fd;
 	} else {
 		if (!(fr = get_frame(frm->handle))) {
 			fprintf(stderr, "Not enough connection handles\n");

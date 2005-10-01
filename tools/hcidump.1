@@ -79,14 +79,17 @@ For every packet, not only is the packet type displayed, but also all data in he
 .BR -R ", " "\-\^\-raw"
 For every packet, only the raw data is displayed.
 .TP
-.BR -C ", " "\-\^\-cmtp"
+.BR -C ", " "\-\^\-cmtp=" "<psm>"
 Sets the PSM value for the CAPI Message Transport Protocol.
 .TP
-.BR -H ", " "\-\^\-hcrp"
+.BR -H ", " "\-\^\-hcrp=" "<psm>"
 Sets the PSM value for the Hardcopy Control Channel.
 .TP
-.BR -O ", " "\-\^\-obex"
+.BR -O ", " "\-\^\-obex=" "<channel>"
 Sets the RFCOMM channel value for the Object Exchange protocol.
+.TP
+.BR -A ", " "\-\^\-audio=" "<file>"
+Extract SCO audio data.
 .TP
 .BR -B ", " "\-\^\-btsnoop"
 Use the BTSnoop file format.

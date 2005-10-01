@@ -40,7 +40,8 @@
 struct parser_t parser;
 
 void init_parser(unsigned long flags, unsigned long filter,
-		unsigned short defpsm, unsigned short defcompid)
+		unsigned short defpsm, unsigned short defcompid,
+		int audio_fd)
 {
 	if ((flags & DUMP_RAW) && !(flags & DUMP_TYPE_MASK))
 		flags |= DUMP_HEX;
@@ -50,6 +51,7 @@ void init_parser(unsigned long flags, unsigned long filter,
 	parser.defpsm    = defpsm;
 	parser.defcompid = defcompid;
 	parser.state     = 0;
+	parser.audio_fd  = audio_fd;
 }
 
 #define PROTO_TABLE_SIZE 20

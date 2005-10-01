@@ -76,7 +76,8 @@ enum {
 	READ,
 	WRITE,
 	RECEIVE,
-	SEND
+	SEND,
+	AUDIO
 };
 
 /* Default options */
@@ -88,7 +89,8 @@ static int  mode = PARSE;
 static int  permcheck = 1;
 static long flags;
 static long filter;
-static char *dump_file;
+static char *dump_file = NULL;
+static char *audio_file = NULL;
 static in_addr_t dump_addr = INADDR_LOOPBACK;
 static in_port_t dump_port = DEFAULT_PORT;
 
@@ -218,6 +220,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		frm.data_len = len;
 		frm.dev_id = dev;
 		frm.in = 0;
+		frm.audio_fd = parser.audio_fd;
 
 		cmsg = CMSG_FIRSTHDR(&msg);
 		while (cmsg) {
@@ -357,7 +360,7 @@ static int open_file(char *file, int mode, unsigned long flags)
 	struct btsnoop_hdr hdr;
 	int fd, len, open_flags;
 
-	if (mode == WRITE) {
+	if (mode == WRITE || mode == AUDIO) {
 		if (flags & DUMP_BTSNOOP)
 			open_flags = O_WRONLY | O_CREAT;
 		else
@@ -643,6 +646,7 @@ static void usage(void)
 	"  -C, --cmtp=psm             PSM for CMTP\n"
 	"  -H, --hcrp=psm             PSM for HCRP\n"
 	"  -O, --obex=channel         Channel for OBEX\n"
+	"  -A, --audio=file           Extract SCO audio data\n"
 	"  -B, --btsnoop              Use BTSnoop file format\n"
 	"  -V, --verbose              Verbose decoding\n"
 	"  -h, --help                 Give this help list\n"
@@ -667,6 +671,7 @@ static struct option main_options[] = {
 	{ "cmtp",		1, 0, 'C' },
 	{ "hcrp",		1, 0, 'H' },
 	{ "obex",		1, 0, 'O' },
+	{ "audio",		1, 0, 'A' },
 	{ "btsnoop",		0, 0, 'B' },
 	{ "verbose",		0, 0, 'V' },
 	{ "help",		0, 0, 'h' },
@@ -677,11 +682,11 @@ int main(int argc, char *argv[])
 {
 	struct hostent *host;
 	struct in_addr addr;
-	int opt;
+	int opt, fd = -1;
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:BVZh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:A:BVZh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -770,6 +775,10 @@ int main(int argc, char *argv[])
 			set_proto(0, 0, atoi(optarg), SDP_UUID_OBEX);
 			break;
 
+		case 'A':
+			audio_file = strdup(optarg);
+			break;
+
 		case 'B':
 			flags |= DUMP_BTSNOOP;
 			break;
@@ -800,14 +809,17 @@ int main(int argc, char *argv[])
 	if (!filter)
 		filter = ~0L;
 
+	if (audio_file)
+		fd = open_file(audio_file, AUDIO, flags);
+
 	switch (mode) {
 	case PARSE:
-		init_parser(flags, filter, defpsm, defcompid);
+		init_parser(flags, filter, defpsm, defcompid, fd);
 		process_frames(device, open_socket(device, flags), -1, flags);
 		break;
 
 	case READ:
-		init_parser(flags, filter, defpsm, defcompid);
+		init_parser(flags, filter, defpsm, defcompid, fd);
 		read_dump(open_file(dump_file, mode, flags));
 		break;
 
@@ -817,7 +829,7 @@ int main(int argc, char *argv[])
 		break;
 
 	case RECEIVE:
-		init_parser(flags, filter, defpsm, defcompid);
+		init_parser(flags, filter, defpsm, defcompid, fd);
 		read_dump(wait_connection(dump_addr, dump_port));
 		break;
 

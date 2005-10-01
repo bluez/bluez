@@ -112,6 +112,7 @@ static struct frame *add_frame(struct frame *frm)
 	fr->num      = frm->num;
 	fr->dlci     = frm->dlci;
 	fr->channel  = frm->channel;
+	fr->audio_fd = frm->audio_fd;
 
 	return fr;
 }

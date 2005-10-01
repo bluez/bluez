@@ -611,6 +611,7 @@ static int add_frame(struct frame *frm, int count)
 	fr->cid      = frm->cid;
 	fr->num      = frm->num;
 	fr->channel  = frm->channel;
+	fr->audio_fd = frm->audio_fd;
 
 	return pos;
 }
