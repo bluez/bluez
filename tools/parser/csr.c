@@ -444,8 +444,16 @@ void csr_dump(int level, struct frame *frm)
 				p_indent(level, frm);
 				printf("FHS: handle %d addr %d (%s)\n", handle,
 					addr, master ? "master" : "slave");
-				if (!master)
-					raw_dump(level, frm);
+				if (!master) {
+					char addr[18];
+					ba2str((bdaddr_t *) frm->ptr, addr);
+					p_indent(level + 1, frm);
+					printf("bdaddr %s class "
+						"0x%2.2x%2.2x%2.2x\n", addr,
+						((uint8_t *) frm->ptr)[8],
+						((uint8_t *) frm->ptr)[7],
+						((uint8_t *) frm->ptr)[6]);
+				}
 				return;
 			case 0x7b:
 				p_indent(level, frm);
