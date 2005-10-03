@@ -369,6 +369,14 @@ static inline void not_accepted_dump(int level, struct frame *frm)
 	printf("error code 0x%2.2x\n", error);
 }
 
+static inline void clkoffset_dump(int level, struct frame *frm)
+{
+	uint16_t clkoffset = LMP_U16(frm);
+
+	p_indent(level, frm);
+	printf("clock offset 0x%4.4x\n", clkoffset);
+}
+
 static inline void detach_dump(int level, struct frame *frm)
 {
 	uint8_t error = LMP_U8(frm);
@@ -420,6 +428,66 @@ static inline void auth_resp_dump(int level, struct frame *frm)
 	for (i = 0; i < 4; i++)
 		printf("%2.2x", resp[i]);
 	printf("\n");
+}
+
+static inline void encryption_mode_req_dump(int level, struct frame *frm)
+{
+	uint8_t mode = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("encryption mode %d\n", mode);
+}
+
+static inline void encryption_key_size_req_dump(int level, struct frame *frm)
+{
+	uint8_t keysize = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("key size %d\n", keysize);
+}
+
+static inline void switch_req_dump(int level, struct frame *frm)
+{
+	uint32_t instant = LMP_U32(frm);
+
+	p_indent(level, frm);
+	printf("switch instant 0x%04x\n", instant);
+}
+
+static inline void hold_dump(int level, struct frame *frm)
+{
+	uint16_t time = LMP_U16(frm);
+	uint32_t instant = LMP_U32(frm);
+
+	p_indent(level, frm);
+	printf("hold time 0x%4.4x\n", time);
+
+	p_indent(level, frm);
+	printf("hold instant 0x%04x\n", instant);
+}
+
+static inline void sniff_req_dump(int level, struct frame *frm)
+{
+	uint8_t flags = LMP_U8(frm);
+	uint16_t dsniff = LMP_U16(frm);
+	uint16_t tsniff = LMP_U16(frm);
+	uint16_t attempt = LMP_U16(frm);
+	uint16_t timeout = LMP_U16(frm);
+
+	p_indent(level, frm);
+	printf("timing control flags 0x%2.2x\n", flags);
+
+	p_indent(level, frm);
+	printf("D_sniff %d\n", dsniff);
+
+	p_indent(level, frm);
+	printf("T_sniff %d\n", tsniff);
+
+	p_indent(level, frm);
+	printf("sniff attempt %d\n", attempt);
+
+	p_indent(level, frm);
+	printf("sniff timeout %d\n", timeout);
 }
 
 static inline void power_req_dump(int level, struct frame *frm)
@@ -591,6 +659,18 @@ static inline void features_ext_dump(int level, struct frame *frm)
 	printf("\n");
 }
 
+static inline void quality_of_service_dump(int level, struct frame *frm)
+{
+	uint16_t interval = LMP_U16(frm);
+	uint8_t nbc = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("poll interval %d\n", interval);
+
+	p_indent(level, frm);
+	printf("N_BC %d\n", nbc);
+}
+
 static inline void max_slots_dump(int level, struct frame *frm)
 {
 	uint8_t slots = LMP_U8(frm);
@@ -611,6 +691,20 @@ static inline void timing_accuracy_dump(int level, struct frame *frm)
 	printf("jitter %d\n", jitter);
 }
 
+static inline void slot_offset_dump(int level, struct frame *frm)
+{
+	uint16_t offset = LMP_U16(frm);
+	char addr[18];
+
+	ba2str((bdaddr_t *) frm->ptr, addr);
+
+	p_indent(level, frm);
+	printf("slot offset %d\n", offset);
+
+	p_indent(level, frm);
+	printf("BD_ADDR %s\n", addr);
+}
+
 static inline void page_mode_dump(int level, struct frame *frm)
 {
 	uint8_t scheme = LMP_U8(frm);
@@ -621,6 +715,22 @@ static inline void page_mode_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("page scheme settings %d\n", settings);
+}
+
+static inline void supervision_timeout_dump(int level, struct frame *frm)
+{
+	uint16_t timeout = LMP_U16(frm);
+
+	p_indent(level, frm);
+	printf("supervision timeout %d\n", timeout);
+}
+
+static inline void encryption_key_size_mask_res(int level, struct frame *frm)
+{
+	uint16_t mask = LMP_U16(frm);
+
+	p_indent(level, frm);
+	printf("key size mask 0x%4.4x\n", mask);
 }
 
 static inline void packet_type_table_dump(int level, struct frame *frm)
@@ -719,6 +829,9 @@ void lmp_dump(int level, struct frame *frm)
 	case 4:
 		not_accepted_dump(level + 1, frm);
 		return;
+	case 6:
+		clkoffset_dump(level + 1, frm);
+		return;
 	case 7:
 		detach_dump(level + 1, frm);
 		return;
@@ -746,6 +859,22 @@ void lmp_dump(int level, struct frame *frm)
 	case 14:
 		key_dump(level + 1, frm);
 		return;
+	case 15:
+		encryption_mode_req_dump(level + 1, frm);
+		return;
+	case 16:
+		encryption_key_size_req_dump(level + 1, frm);
+		return;
+	case 19:
+		switch_req_dump(level + 1, frm);
+		return;
+	case 20:
+	case 21:
+		hold_dump(level + 1, frm);
+		return;
+	case 23:
+		sniff_req_dump(level + 1, frm);
+		return;
 	case 31:
 	case 32:
 		power_req_dump(level + 1, frm);
@@ -761,6 +890,10 @@ void lmp_dump(int level, struct frame *frm)
 	case 40:
 		features_dump(level + 1, frm);
 		return;
+	case 41:
+	case 42:
+		quality_of_service_dump(level + 1, frm);
+		return;
 	case 45:
 	case 46:
 		max_slots_dump(level + 1, frm);
@@ -768,9 +901,21 @@ void lmp_dump(int level, struct frame *frm)
 	case 48:
 		timing_accuracy_dump(level + 1, frm);
 		return;
+	case 52:
+		slot_offset_dump(level + 1, frm);
+		return;
 	case 53:
 	case 54:
 		page_mode_dump(level + 1, frm);
+		return;
+	case 55:
+		supervision_timeout_dump(level + 1, frm);
+		return;
+	case 59:
+		encryption_key_size_mask_res(level + 1, frm);
+		return;
+	case 60:
+		set_afh_dump(level + 1, frm);
 		return;
 	case 5:
 	case 18:
@@ -784,9 +929,6 @@ void lmp_dump(int level, struct frame *frm)
 	case 51:
 	case 56:
 	case 58:
-		return;
-	case 60:
-		set_afh_dump(level + 1, frm);
 		return;
 	case 127 + (1 << 7):
 		accepted_ext_dump(level + 1, frm);
