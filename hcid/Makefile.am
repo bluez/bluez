@@ -13,7 +13,7 @@ state_DATA =
 sbin_PROGRAMS = hcid
 
 if DBUS
-dbus_hcid_sources = dbus.c
+dbus_hcid_sources = dbus.h dbus.c
 dbus_hcid_libs    = @DBUS_LIBS@
 dbus_hcid_cflags  = -DENABLE_DBUS -DDBUS_API_SUBJECT_TO_CHANGE
 else
@@ -35,7 +35,7 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) $(conf_DATA) dbus.c
+EXTRA_DIST = $(man_MANS) $(conf_DATA) dbus.h dbus.c
 
 MAINTAINERCLEANFILES = Makefile.in
 

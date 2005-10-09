@@ -28,7 +28,9 @@
  *  $Id$
  */
 
+#include <syslog.h>
 #include <sys/types.h>
+#include <sys/ioctl.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -122,6 +124,9 @@ void toggle_pairing(int enable);
 
 #ifdef ENABLE_DBUS
 gboolean hcid_dbus_init(void);
+void hcid_dbus_exit(void);
+gboolean hcid_dbus_register_device(uint16_t id);
+gboolean hcid_dbus_unregister_device(uint16_t id);
 void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci);
 void hcid_dbus_inquiry_start(bdaddr_t *local);
 void hcid_dbus_inquiry_complete(bdaddr_t *local);
@@ -145,3 +150,33 @@ int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features
 int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type);
 int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key);
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
+
+static inline int find_conn(int dd, int dev_id, long arg)
+{
+	struct hci_conn_list_req *cl;
+	struct hci_conn_info *ci;
+	int i;
+
+	cl = malloc(10 * sizeof(*ci) + sizeof(*cl));
+	if (!cl) {
+		syslog(LOG_ERR, "Can't allocate memory");
+		return 0;
+	}
+
+	cl->dev_id = dev_id;
+	cl->conn_num = 10;
+	ci = cl->conn_info;
+
+	if (ioctl(dd, HCIGETCONNLIST, (void *) cl)) {
+		syslog(LOG_ERR, "Can't get connection list");
+		return 0;
+	}
+
+	for (i = 0; i < cl->conn_num; i++, ci++)
+		if (!bacmp((bdaddr_t *) arg, &ci->bdaddr))
+			return 1;
+
+	free(cl);
+
+	return 0;
+}

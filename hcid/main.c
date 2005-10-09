@@ -375,6 +375,10 @@ static void init_all_devices(int ctl)
 
 		if (hcid.security && hci_test_bit(HCI_UP, &dr->dev_opt))
 			start_security_manager(dr->dev_id);
+
+#ifdef ENABLE_DBUS
+		hcid_dbus_register_device(dr->dev_id);
+#endif
 	}
 
 	free(dl);
@@ -438,12 +442,18 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 			configure_device(sd->dev_id);
 		if (hcid.security)
 			start_security_manager(sd->dev_id);
+#ifdef ENABLE_DBUS
+		hcid_dbus_register_device(sd->dev_id);
+#endif
 		break;
 
 	case HCI_DEV_DOWN:
 		syslog(LOG_INFO, "HCI dev %d down", sd->dev_id);
 		if (hcid.security)
 			stop_security_manager(sd->dev_id);
+#ifdef ENABLE_DBUS
+		hcid_dbus_unregister_device(sd->dev_id);
+#endif
 		break;
 	}
 }
@@ -627,6 +637,10 @@ int main(int argc, char *argv[], char *env[])
 	g_main_run(event_loop);
 
 	free_device_opts();
+
+#ifdef ENABLE_DBUS
+	hcid_dbus_exit();
+#endif
 
 	syslog(LOG_INFO, "Exit.");
 	return 0;
