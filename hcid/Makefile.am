@@ -12,6 +12,8 @@ state_DATA =
 
 if DBUS
 dbusdir = $(sysconfdir)/dbus-1/system.d
+
+dbus_DATA = bluez-hcid.conf
 endif
 
 sbin_PROGRAMS = hcid
@@ -39,7 +41,7 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) $(conf_DATA) dbus.h dbus.c dbus.conf
+EXTRA_DIST = $(man_MANS) $(conf_DATA) dbus.h dbus.c bluez-hcid.conf
 
 MAINTAINERCLEANFILES = Makefile.in
 
