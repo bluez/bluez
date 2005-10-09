@@ -10,6 +10,10 @@ statedir = $(localstatedir)/lib/bluetooth
 
 state_DATA =
 
+if DBUS
+dbusdir = $(sysconfdir)/dbus-1/system.d
+endif
+
 sbin_PROGRAMS = hcid
 
 if DBUS
