@@ -1,0 +1,2 @@
+#! /bin/sh
+./configure --enable-maintainer-mode && make && sudo make install
