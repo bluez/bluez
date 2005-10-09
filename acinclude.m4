@@ -290,6 +290,7 @@ AC_DEFUN([AC_PATH_USB], [
 ])
 
 AC_DEFUN([AC_ARG_BLUEZ], [
+	fortify_enable=yes
 	debug_enable=no
 	pie_enable=no
 	dbus_enable=${dbus_found}
@@ -306,6 +307,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	dfutool_enable=no
 	bcm203x_enable=no
 	bluepin_enable=yes
+
+	AC_ARG_ENABLE(fortify, AC_HELP_STRING([--disable-fortify], [disable compile time buffer checks]), [
+		fortify_enable=${enableval}
+	])
 
 	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
 		debug_enable=${enableval}
@@ -387,6 +392,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(bluepin, AC_HELP_STRING([--enable-bluepin], [install Python based PIN helper utility]), [
 		bluepin_enable=${enableval}
 	])
+
+	if (test "${fortify_enable}" = "yes"); then
+		CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
+	fi
 
 	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
 		CFLAGS="$CFLAGS -g"
