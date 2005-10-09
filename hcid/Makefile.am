@@ -35,7 +35,7 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) $(conf_DATA) dbus.h dbus.c
+EXTRA_DIST = $(man_MANS) $(conf_DATA) dbus.h dbus.c dbus.conf
 
 MAINTAINERCLEANFILES = Makefile.in
 
