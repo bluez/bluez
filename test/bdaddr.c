@@ -189,6 +189,34 @@ static int csr_reset_device(int dd)
 	return 0;
 }
 
+#define OCF_TI_WRITE_BD_ADDR		0x0006
+typedef struct {
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) ti_write_bd_addr_cp;
+#define TI_WRITE_BD_ADDR_CP_SIZE 6
+
+static int ti_write_bd_addr(int dd, bdaddr_t *bdaddr)
+{
+	struct hci_request rq;
+	ti_write_bd_addr_cp cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_VENDOR_CMD;
+	rq.ocf    = OCF_TI_WRITE_BD_ADDR;
+	rq.cparam = &cp;
+	rq.clen   = TI_WRITE_BD_ADDR_CP_SIZE;
+	rq.rparam = NULL;
+	rq.rlen   = 0;
+
+	if (hci_send_req(dd, &rq, 1000) < 0)
+		return -1;
+
+	return 0;
+}
+
 #define OCF_ZEEVO_WRITE_BD_ADDR		0x0001
 typedef struct {
 	bdaddr_t	bdaddr;
@@ -224,6 +252,7 @@ static struct {
 } vendor[] = {
 	{ 0,		ericsson_write_bd_addr,	NULL			},
 	{ 10,		csr_write_bd_addr,	csr_reset_device	},
+	{ 13,		ti_write_bd_addr,	NULL,			},
 	{ 18,		zeevo_write_bd_addr,	NULL			},
 	{ 65535,	NULL,			NULL			},
 };
