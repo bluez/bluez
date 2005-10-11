@@ -507,7 +507,7 @@ dbus_bool_t add_watch(DBusWatch *watch, void *data)
 {
 	GIOCondition cond = G_IO_HUP | G_IO_ERR;
 	GIOChannel *io;
-	guint id;
+	gulong id;
 	int fd, flags;
 
 	if (!dbus_watch_get_enabled(watch))
@@ -520,7 +520,7 @@ dbus_bool_t add_watch(DBusWatch *watch, void *data)
 	if (flags & DBUS_WATCH_READABLE) cond |= G_IO_IN;
 	if (flags & DBUS_WATCH_WRITABLE) cond |= G_IO_OUT;
 
-	id = g_io_add_watch(io, cond, watch_func, watch);
+	id = (gulong) g_io_add_watch(io, cond, watch_func, watch);
 
 	dbus_watch_set_data(watch, (void *) id, NULL);
 
@@ -529,12 +529,12 @@ dbus_bool_t add_watch(DBusWatch *watch, void *data)
 
 static void remove_watch(DBusWatch *watch, void *data)
 {
-	guint id = (guint) dbus_watch_get_data(watch);
+	gulong id = (gulong) dbus_watch_get_data(watch);
 
 	dbus_watch_set_data(watch, NULL, NULL);
 
 	if (id)
-		g_io_remove_watch(id);
+		g_io_remove_watch((guint) id);
 }
 
 static void watch_toggled(DBusWatch *watch, void *data)
@@ -717,7 +717,7 @@ static int hci_dbus_reg_obj_path(DBusConnection *conn, int dft_reg, uint16_t id)
 
 		syslog(LOG_INFO, "registering dft path:%s - id:%d", path, DEFAULT_DEVICE_PATH_ID);
 
-		if (!dbus_connection_register_object_path(conn, path, &obj_vtable, (void *)DEFAULT_DEVICE_PATH_ID)) { 
+		if (!dbus_connection_register_object_path(conn, path, &obj_vtable, (void *) DEFAULT_DEVICE_PATH_ID)) { 
 			syslog(LOG_ERR,"DBUS failed to register %s object", path);
 			/* ignore, the default path was already registered */
 		}
@@ -728,7 +728,7 @@ static int hci_dbus_reg_obj_path(DBusConnection *conn, int dft_reg, uint16_t id)
 
 	syslog(LOG_INFO, "registering  -  path:%s - id:%d",path, id);
 
-	if (!dbus_connection_register_object_path(conn, path, &obj_vtable, (void *)((uint32_t)id))) {
+	if (!dbus_connection_register_object_path(conn, path, &obj_vtable, (void *) ((long) id))) {
 		syslog(LOG_ERR,"DBUS failed to register %s object", path);
 		/* ignore, the path was already registered */
 	}
@@ -826,7 +826,7 @@ static DBusHandlerResult msg_func(DBusConnection *conn, DBusMessage *msg, void *
 	const char *path;
 	const char *rel_path;
 	const char *tmp_iface = NULL;
-	const uint32_t udata = (uint32_t) data;
+	long udata = (long) data;
 	uint32_t result = BLUEZ_EDBUS_UNKNOWN_METHOD;
 	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	uint8_t found = 0;
@@ -837,7 +837,7 @@ static DBusHandlerResult msg_func(DBusConnection *conn, DBusMessage *msg, void *
 	method = dbus_message_get_member (msg);
 	signature = dbus_message_get_signature(msg);
 
-	syslog (LOG_INFO, "%s - path:%s, udata:0x%X", __PRETTY_FUNCTION__, path, udata);
+	syslog (LOG_INFO, "%s - path:%s, udata:0x%X", __PRETTY_FUNCTION__, path, (guint) udata);
 
 	if (strcmp(path, DEVICE_PATH) == 0) {
 		ptr_handlers = dev_services;
@@ -918,7 +918,7 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	periodic_inquiry_cp inq_param;
 	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
-	uint32_t udata = (uint32_t) data;
+	long udata = (long) data;
 	uint8_t length;
 	uint8_t max_period;
 	uint8_t min_period;
@@ -933,7 +933,7 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 		
 		}
 	} else
-		dev_id = udata;
+		dev_id = (int) udata;
 
 	if ((sock = hci_open_dev(dev_id)) < 0) {
 		syslog(LOG_ERR, "HCI device open failed");
@@ -997,7 +997,7 @@ static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
-	uint32_t udata = (uint32_t) data;
+	long udata = (long) data;
 	int sock = -1;
 	int dev_id = -1;
 
@@ -1008,7 +1008,7 @@ static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
 			goto failed;
 		}
 	} else
-		dev_id = udata;
+		dev_id = (int) udata;
 
 	if ((sock = hci_open_dev(dev_id)) < 0) {
 		syslog(LOG_ERR, "HCI device open failed");
@@ -1043,7 +1043,7 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	DBusMessageIter  struct_iter;
 	DBusMessage *reply = NULL;
 	inquiry_info *info = NULL;
-	uint32_t udata = (uint32_t) data;
+	long udata = (long) data;
 	const char *paddr = addr;
 	int dev_id = -1;
 	int i;
@@ -1060,7 +1060,7 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 			goto failed;
 		}
 	} else
-		dev_id = udata;
+		dev_id = (int) udata;
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_get_basic(&iter, &length);
@@ -1112,7 +1112,7 @@ static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
 	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
 	char *str_bdaddr = NULL;
-	const uint32_t udata = (uint32_t) data;
+	long udata = (long) data;
 	bdaddr_t bdaddr;
 	uint8_t role;
 	int dev_id = -1;
