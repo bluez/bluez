@@ -338,22 +338,28 @@ failed:
 
 void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
-	DBusMessage *message;
+	DBusMessage *message = NULL;
+	char path[MAX_PATH_LENGTH];
 	char *local_addr;
 	bdaddr_t tmp;
+	int id;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 
-	message = dbus_message_new_signal(BLUEZ_HCI_PATH,
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d/%s", MANAGER_PATH, id, BLUEZ_HCI);
+
+	message = dbus_message_new_signal(path,
 				BLUEZ_HCI_INTERFACE, BLUEZ_HCI_INQ_START);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS inquiry start message");
 		goto failed;
 	}
-
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &local_addr,
-					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
 		syslog(LOG_ERR, "Can't send D-BUS inquiry start message");
@@ -372,22 +378,28 @@ failed:
 
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
-	DBusMessage *message;
+	DBusMessage *message = NULL;
+	char path[MAX_PATH_LENGTH];
 	char *local_addr;
 	bdaddr_t tmp;
+	int id;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 
-	message = dbus_message_new_signal(BLUEZ_HCI_PATH,
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d/%s", MANAGER_PATH, id, BLUEZ_HCI);
+
+	message = dbus_message_new_signal(path,
 				BLUEZ_HCI_INTERFACE, BLUEZ_HCI_INQ_COMPLETE);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
 		goto failed;
 	}
-
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &local_addr,
-					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
 		syslog(LOG_ERR, "Can't send D-BUS inquiry complete message");
@@ -406,16 +418,26 @@ failed:
 
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
 {
-	DBusMessage *message;
+	DBusMessage *message = NULL;
+	char path[MAX_PATH_LENGTH];
 	char *local_addr, *peer_addr;
 	dbus_uint32_t tmp_class = class;
 	dbus_int32_t tmp_rssi = rssi;
 	bdaddr_t tmp;
+	int id;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	baswap(&tmp, peer); peer_addr = batostr(&tmp);
 
-	message = dbus_message_new_signal(BLUEZ_HCI_PATH,
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d/%s", MANAGER_PATH, id, BLUEZ_HCI);
+
+	message = dbus_message_new_signal(path,
 				BLUEZ_HCI_INTERFACE, BLUEZ_HCI_INQ_RESULT);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS inquiry result message");
@@ -423,7 +445,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	}
 
 	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &local_addr,
 					DBUS_TYPE_STRING, &peer_addr,
 					DBUS_TYPE_UINT32, &tmp_class,
 					DBUS_TYPE_INT32, &tmp_rssi,
@@ -447,14 +468,24 @@ failed:
 
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
-	DBusMessage *message;
+	DBusMessage *message = NULL;
+	char path[MAX_PATH_LENGTH];
 	char *local_addr, *peer_addr;
 	bdaddr_t tmp;
+	int id;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	baswap(&tmp, peer); peer_addr = batostr(&tmp);
 
-	message = dbus_message_new_signal(BLUEZ_HCI_PATH,
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d/%s", MANAGER_PATH, id, BLUEZ_HCI);
+
+	message = dbus_message_new_signal(path,
 				BLUEZ_HCI_INTERFACE, BLUEZ_HCI_REMOTE_NAME);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
@@ -462,7 +493,6 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	}
 
 	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &local_addr,
 					DBUS_TYPE_STRING, &peer_addr,
 					DBUS_TYPE_STRING, &name,
 					DBUS_TYPE_INVALID);
@@ -1314,7 +1344,7 @@ static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
 	struct hci_dbus_data *dbus_data = data;
 	int i;
 	int dev_id = -1;
-	int sk;
+	int sk = -1;
 
 	if (dbus_data->id == DEFAULT_DEVICE_PATH_ID) {
 		if ((dev_id = hci_get_route(NULL)) < 0) {
