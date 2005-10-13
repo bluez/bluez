@@ -58,6 +58,8 @@ static int num_adapters = 0;
 #define BLUETOOTH_DEVICE_NAME_LEN    (18)
 #define BLUETOOTH_DEVICE_ADDR_LEN    (18)
 #define MAX_PATH_LENGTH   (64)
+#define READ_REMOTE_NAME_TIMEOUT	(25000)
+#define MAX_CONN_NUMBER			(10)
 
 #define PINAGENT_SERVICE_NAME BASE_INTERFACE ".PinAgent"
 #define PINAGENT_INTERFACE PINAGENT_SERVICE_NAME
@@ -129,7 +131,7 @@ static const char *bluez_dbus_error_to_str(const uint32_t ecode)
 
 	if (ecode & BLUEZ_ESYSTEM_OFFSET) {
 		/* System error */
-		raw_code = (!BLUEZ_ESYSTEM_OFFSET) & ecode;
+		raw_code = (~BLUEZ_ESYSTEM_OFFSET) & ecode;
 		syslog(LOG_INFO, "%s - msg:%s", __PRETTY_FUNCTION__, strerror(raw_code));
 		return strerror(raw_code);
 	} else if (ecode & BLUEZ_EDBUS_OFFSET) { 
@@ -221,12 +223,16 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_inq_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data);
 
 static const struct service_data hci_services[] = {
 	{ HCI_PERIODIC_INQ,		handle_periodic_inq_req,	HCI_PERIODIC_INQ_SIGNATURE		},
 	{ HCI_CANCEL_PERIODIC_INQ,	handle_cancel_periodic_inq_req,	HCI_CANCEL_PERIODIC_INQ_SIGNATURE	},
 	{ HCI_ROLE_SWITCH,		handle_role_switch_req,		HCI_ROLE_SWITCH_SIGNATURE		},
 	{ HCI_INQ,			handle_inq_req,			HCI_INQ_SIGNATURE			},
+	{ HCI_REMOTE_NAME,		handle_remote_name_req,		HCI_REMOTE_NAME_SIGNATURE		},
+	{ HCI_CONNECTIONS,		handle_display_conn_req,	HCI_CONNECTIONS_SIGNATURE		},
 	{ NULL,				NULL,				NULL					}
 };
 
@@ -982,17 +988,17 @@ static DBusHandlerResult msg_func(DBusConnection *conn, DBusMessage *msg, void *
 			reply = bluez_new_failure_msg(msg, result);
 		}
 
-		/* send an error or the success reply*/
-		if (reply) {
-			if (!dbus_connection_send (conn, reply, NULL)) { 
-				syslog(LOG_ERR, "%s line:%d Can't send reply message!",
-					__PRETTY_FUNCTION__, __LINE__) ;
-			}
-			dbus_message_unref (reply);
-		}
-
 		ret = DBUS_HANDLER_RESULT_HANDLED;
 	}
+	
+	/* send an error or the success reply*/
+	if (reply) {
+		if (!dbus_connection_send (conn, reply, NULL)) { 
+			syslog(LOG_ERR, "Can't send reply message!") ;
+		}
+		dbus_message_unref (reply);
+	}
+	
 	return ret;
 }
 
@@ -1245,6 +1251,132 @@ static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
 failed:
 	return reply;
 }
+
+static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
+{
+	char name[64];
+	const char *pname = name;
+	DBusMessageIter iter;
+	DBusMessage *reply = NULL;
+	struct hci_dbus_data *dbus_data = data;
+	int dev_id = -1;
+	int dd = -1;
+	const char *str_bdaddr;
+	bdaddr_t bdaddr;
+	
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &str_bdaddr);
+	
+	str2ba(str_bdaddr, &bdaddr);
+
+	if (dbus_data->id == DEFAULT_DEVICE_PATH_ID) {
+		if ((dev_id = hci_get_route(&bdaddr)) < 0) {
+			syslog(LOG_ERR, "Bluetooth device is not available");
+			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+			goto failed;
+		}
+	} else  {
+		dev_id = dbus_data->id;
+	}
+
+	if ((dd = hci_open_dev(dev_id)) > 0) {
+	
+		if (hci_read_remote_name(dd, &bdaddr, sizeof(name), name, READ_REMOTE_NAME_TIMEOUT) ==0) {
+			reply = dbus_message_new_method_return(msg);
+			dbus_message_iter_init_append(reply, &iter);
+			dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &pname);
+			syslog(LOG_INFO, "Remote Name: %s", pname);
+		} else {
+			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		}
+	} else {
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+	}
+	
+	if (dd > 0)
+		close (dd);
+
+failed:
+	return reply;
+}
+
+static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
+{
+	struct hci_conn_list_req *cl = NULL;
+	struct hci_conn_info *ci = NULL;
+	DBusMessage *reply = NULL;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	DBusMessageIter  struct_iter;
+	char addr[18];
+	const char array_sig[] = HCI_CONN_INFO_STRUCT_SIGNATURE;
+	const char *paddr = addr;
+	struct hci_dbus_data *dbus_data = data;
+	int i;
+	int dev_id = -1;
+	int sk;
+
+	if (dbus_data->id == DEFAULT_DEVICE_PATH_ID) {
+		if ((dev_id = hci_get_route(NULL)) < 0) {
+			syslog(LOG_ERR, "Bluetooth device is not available");
+			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+			goto failed;
+		}
+	} else  {
+		dev_id = dbus_data->id;
+	}
+
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+
+	if (sk < 0) {
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (!(cl = malloc(MAX_CONN_NUMBER * sizeof(*ci) + sizeof(*cl)))) { 
+		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
+		goto failed;
+	}
+
+	cl->dev_id = dev_id;
+	cl->conn_num = MAX_CONN_NUMBER;
+	ci = cl->conn_info;
+
+	if (ioctl(sk, HCIGETCONNLIST, (void *) cl)) {
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, array_sig, &array_iter);
+	
+	for (i = 0; i < cl->conn_num; i++, ci++) {
+		ba2str(&ci->bdaddr, addr);
+
+		dbus_message_iter_open_container(&array_iter, DBUS_TYPE_STRUCT, NULL, &struct_iter);
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT16 ,&(ci->handle));
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING ,&paddr);
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_BYTE ,&(ci->type));
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_BYTE ,&(ci->out));
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT16 ,&(ci->state));
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT32 ,&(ci->link_mode));
+		dbus_message_iter_close_container(&array_iter, &struct_iter);
+	}
+	
+	dbus_message_iter_close_container(&iter, &array_iter);
+failed:
+
+	if (sk > 0)
+		close (sk);
+
+	if (cl)
+		free (cl);
+	
+	return reply;
+}
+
+
 
 /*****************************************************************
  *  
