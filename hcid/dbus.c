@@ -774,7 +774,13 @@ static int hci_dbus_reg_obj_path(DBusConnection *conn, int dft_reg, uint16_t id)
 
 		syslog(LOG_INFO, "registering dft path:%s - id:%d", path, DEFAULT_DEVICE_PATH_ID);
 
-		if (!dbus_connection_register_object_path(conn, path, &obj_vtable, (void *) DEFAULT_DEVICE_PATH_ID)) { 
+		data = malloc(sizeof(struct hci_dbus_data));
+		if (data == NULL)
+			return -1;
+
+		data->id = DEFAULT_DEVICE_PATH_ID;
+
+		if (!dbus_connection_register_object_path(conn, path, &obj_vtable, data)) { 
 			syslog(LOG_ERR,"DBUS failed to register %s object", path);
 			/* ignore, the default path was already registered */
 		}
