@@ -120,7 +120,7 @@ static const bluez_error_t error_array[] = {
 	{ BLUEZ_EDBUS_RECORD_NOT_FOUND,	"No record found"		},
 	{ BLUEZ_EDBUS_NO_MEM,		"No memory"			},
 	{ BLUEZ_EDBUS_CONN_NOT_FOUND,	"Connection not found"		},
-	{ BLUEZ_EDBUS_UNKNOWN_PATH, 	"Device path is not registered"	},
+	{ BLUEZ_EDBUS_UNKNOWN_PATH,	"Device path is not registered"	},
 	{ 0,				NULL }
 };
 
@@ -271,7 +271,7 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 			} else {
 				dbus_message_iter_get_basic(&iter, &pin);
 				len = strlen(pin);
-				
+
 				memset(&pr, 0, sizeof(pr));
 				bacpy(&pr.bdaddr, &req->bda);
 				memcpy(pr.pin_code, pin, len);
@@ -631,8 +631,6 @@ gboolean hcid_dbus_init(void)
 		return FALSE;
 	}
 
-	syslog(LOG_INFO,"Registered %s object", DEVICE_PATH);
-
 	data = malloc(sizeof(struct hci_dbus_data));
 	if (data == NULL)
 		return FALSE;
@@ -644,8 +642,6 @@ gboolean hcid_dbus_init(void)
 		syslog(LOG_ERR, "Can't register %s object", MANAGER_PATH);
 		return FALSE;
 	}
-
-	syslog(LOG_INFO, "Registered %s object", MANAGER_PATH);
 
 	if (!dbus_connection_add_filter(connection, hci_signal_filter, NULL, NULL)) {
 		syslog(LOG_ERR, "Can't add new HCI filter");
@@ -673,7 +669,7 @@ void hcid_dbus_exit(void)
 		return;
 
 	if (dbus_connection_get_object_path_data(connection,
-						DEVICE_PATH, &data)) {
+				DEVICE_PATH, &data)) {
 		if (data) {
 			free(data);
 			data = NULL;
@@ -682,11 +678,9 @@ void hcid_dbus_exit(void)
 
 	if (!dbus_connection_unregister_object_path(connection, DEVICE_PATH))
 		syslog(LOG_ERR, "Can't unregister %s object", DEVICE_PATH);
-	else
-		syslog(LOG_INFO, "Unregistered %s object", DEVICE_PATH);
 
 	if (dbus_connection_get_object_path_data(connection,
-						MANAGER_PATH, &data)) {
+				MANAGER_PATH, &data)) {
 		if (data) {
 			free(data);
 			data = NULL;
@@ -695,60 +689,56 @@ void hcid_dbus_exit(void)
 
 	if (!dbus_connection_unregister_object_path(connection, MANAGER_PATH))
 		syslog(LOG_ERR, "Can't unregister %s object", MANAGER_PATH);
-	else
-		syslog(LOG_INFO, "Unregistered %s object", MANAGER_PATH);
 
-	dbus_connection_list_registered(connection, fst_parent, &fst_level);
+	if (dbus_connection_list_registered(connection, fst_parent, &fst_level)) {
 
-	for (; *fst_level; fst_level++) {
-		ptr1 = *fst_level;
-		sprintf(snd_parent, "%s/%s", fst_parent, ptr1);
+		for (; *fst_level; fst_level++) {
+			ptr1 = *fst_level;
+			sprintf(snd_parent, "%s/%s", fst_parent, ptr1);
 
-		dbus_connection_list_registered(connection, snd_parent, &snd_level);
+			if (dbus_connection_list_registered(connection, snd_parent, &snd_level)) {
 
-		if (!(*snd_level)) {
-			sprintf(path, "%s/%s", MANAGER_PATH, ptr1);
+				if (!(*snd_level)) {
+					sprintf(path, "%s/%s", MANAGER_PATH, ptr1);
 
-			syslog(LOG_INFO, "Unregistered %s object", path);
-
-			if (dbus_connection_get_object_path_data(connection,
+					if (dbus_connection_get_object_path_data(connection,
 								path, &data)) {
-				if (data) {
-					free(data);
-					data = NULL;
+						if (data) {
+							free(data);
+							data = NULL;
+						}
+					}
+
+					if (!dbus_connection_unregister_object_path(connection, path))
+						syslog(LOG_ERR, "Can't unregister %s object", path);
+
+					continue;
 				}
+
+				for (; *snd_level; snd_level++) {
+					ptr2 = *snd_level;
+					sprintf(path, "%s/%s/%s", MANAGER_PATH, ptr1, ptr2);
+
+					if (dbus_connection_get_object_path_data(connection,
+								path, &data)) {
+						if (data) {
+							free(data);
+							data = NULL;
+						}
+					}
+
+					if (!dbus_connection_unregister_object_path(connection, path))
+						syslog(LOG_ERR, "Can't unregister %s object", path);
+				}
+
+				if (*snd_level)
+					dbus_free_string_array(snd_level);
 			}
-
-			if (!dbus_connection_unregister_object_path(connection, path))
-				syslog(LOG_ERR, "Can't unregister %s object", path);
-
-			continue;
 		}
 
-		for (; *snd_level; snd_level++) {
-			ptr2 = *snd_level;
-			sprintf(path, "%s/%s/%s", MANAGER_PATH, ptr1, ptr2);
-
-			syslog(LOG_INFO, "Unregistered %s object", path);
-
-			if (dbus_connection_get_object_path_data(connection,
-								path, &data)) {
-				if (data) {
-					free(data);
-					data = NULL;
-				}
-			}
-
-			if (!dbus_connection_unregister_object_path(connection, path))
-				syslog(LOG_ERR, "Can't unregister %s object", path);
-		}
-
-		if (*snd_level)
-			dbus_free_string_array(snd_level);
+		if (*fst_level)
+			dbus_free_string_array(fst_level);
 	}
-
-	if (*fst_level)
-		dbus_free_string_array(fst_level);
 }
 
 gboolean hcid_dbus_register_device(uint16_t id)
@@ -806,9 +796,8 @@ static int hci_dbus_reg_obj_path(DBusConnection *conn, int dft_reg, uint16_t id)
 
 	/* register the default path*/
 	if (!dft_reg) {
-		sprintf(path, "%s/%s/%s", MANAGER_PATH, HCI_DEFAULT_DEVICE_NAME, BLUEZ_HCI);
 
-		syslog(LOG_INFO, "registering dft path:%s - id:%d", path, DEFAULT_DEVICE_PATH_ID);
+		sprintf(path, "%s/%s/%s", MANAGER_PATH, HCI_DEFAULT_DEVICE_NAME, BLUEZ_HCI);
 
 		data = malloc(sizeof(struct hci_dbus_data));
 		if (data == NULL)
@@ -830,8 +819,6 @@ static int hci_dbus_reg_obj_path(DBusConnection *conn, int dft_reg, uint16_t id)
 
 	/* register the default path*/
 	sprintf(path, "%s/%s%d/%s", MANAGER_PATH, HCI_DEVICE_NAME, id, BLUEZ_HCI);
-
-	syslog(LOG_INFO, "registering  -  path:%s - id:%d",path, id);
 
 	if (!dbus_connection_register_object_path(conn, path, &obj_vtable, data)) {
 		syslog(LOG_ERR,"DBUS failed to register %s object", path);
@@ -859,8 +846,9 @@ static int hci_dbus_unreg_obj_path(DBusConnection *conn, int unreg_dft, uint16_t
 	void *data = NULL;
 
 	if (unreg_dft) {
+
 		sprintf(dft_path, "%s/%s/%s", MANAGER_PATH, HCI_DEFAULT_DEVICE_NAME, BLUEZ_HCI);
-		syslog(LOG_INFO, "%s - unregistering dft:%s", __PRETTY_FUNCTION__, dft_path);
+
 		if (!dbus_connection_unregister_object_path (connection, dft_path)) {
 			syslog(LOG_ERR,"DBUS failed to unregister %s object", dft_path);
 			ret = -1;
@@ -875,7 +863,7 @@ static int hci_dbus_unreg_obj_path(DBusConnection *conn, int unreg_dft, uint16_t
 	}
 
 	sprintf(path, "%s/%s%d/%s", MANAGER_PATH, HCI_DEVICE_NAME, id, BLUEZ_HCI);
-	syslog(LOG_INFO, "%s - unregistering spec:%s", __PRETTY_FUNCTION__, path);
+
 	if (!dbus_connection_unregister_object_path (connection, path)) {
 		syslog(LOG_ERR,"DBUS failed to unregister %s object", path);
 		ret = -1;
@@ -1305,7 +1293,7 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 			goto failed;
 		}
-	} else  {
+	} else {
 		dev_id = dbus_data->id;
 	}
 
@@ -1315,7 +1303,6 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 			reply = dbus_message_new_method_return(msg);
 			dbus_message_iter_init_append(reply, &iter);
 			dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &pname);
-			syslog(LOG_INFO, "Remote Name: %s", pname);
 		} else {
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		}
@@ -1352,7 +1339,7 @@ static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 			goto failed;
 		}
-	} else  {
+	} else {
 		dev_id = dbus_data->id;
 	}
 
@@ -1410,7 +1397,7 @@ failed:
 
 /*****************************************************************
  *  
- *  Section reserved to Device D-Bus message handlers
+ *  Section reserved to Manager D-Bus message handlers
  *  
  *****************************************************************/
 
