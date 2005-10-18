@@ -743,7 +743,11 @@ void hcid_dbus_exit(void)
 
 gboolean hcid_dbus_register_device(uint16_t id)
 {
+	char dev[BLUETOOTH_DEVICE_NAME_LEN];
 	struct profile_obj_path_data *ptr = obj_path_table;
+	DBusMessage *message = NULL;
+	const char *pdev = dev;
+	DBusMessageIter iter;
 	int ret = -1; 
 
 	if (!connection)
@@ -757,12 +761,43 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	if (!ret)
 		num_adapters++;
 
+
+	message = dbus_message_new_signal(BLUEZ_HCI_PATH,
+			BLUEZ_HCI_INTERFACE, BLUEZ_HCI_DEV_ADDED);
+
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		goto failed;
+	}
+
+	sprintf(dev, "hci%d", id);
+
+	dbus_message_iter_init_append(message, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING ,&pdev);
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS added device message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	/* if the signal can't be sent ignore the error */
+
+	if (message)
+		dbus_message_unref(message);
+
 	return TRUE;
 }
 
 gboolean hcid_dbus_unregister_device(uint16_t id)
 {
+	char dev[BLUETOOTH_DEVICE_NAME_LEN];
 	struct profile_obj_path_data *ptr = obj_path_table;
+	DBusMessage *message = NULL;
+	const char *pdev = dev;
+	DBusMessageIter iter;
 	int dft_unreg = 0;
 
 	if (!connection)
@@ -776,6 +811,33 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 		if (dft_unreg )
 			ptr->dft_reg = 0;
 	}
+
+
+	message = dbus_message_new_signal(BLUEZ_HCI_PATH,
+			BLUEZ_HCI_INTERFACE, BLUEZ_HCI_DEV_REMOVED);
+
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS device removed  message");
+		goto failed;
+	}
+
+	sprintf(dev, "hci%d", id);
+
+	dbus_message_iter_init_append(message, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING ,&pdev);
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS removed device message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	/* if the signal can't be sent ignore the error */
+
+	if (message)
+		dbus_message_unref(message);
 
 	return TRUE;
 }

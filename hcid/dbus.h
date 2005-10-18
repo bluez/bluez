@@ -111,11 +111,15 @@
 #define BLUEZ_HCI_PATH			MANAGER_PATH "/" BLUEZ_HCI
 #define BLUEZ_HCI_INTERFACE		MANAGER_INTERFACE "." BLUEZ_HCI
 
-//HCI signals
+//Device based HCI signals
 #define BLUEZ_HCI_INQ_START		"InquiryStart"
 #define BLUEZ_HCI_INQ_COMPLETE		"InquiryComplete"
 #define BLUEZ_HCI_INQ_RESULT		"InquiryResult"
 #define BLUEZ_HCI_REMOTE_NAME		"RemoteName"
+
+//HCI signals sent in the BLUEZ_HCI_PATH
+#define BLUEZ_HCI_DEV_ADDED		"DeviceAdded"
+#define BLUEZ_HCI_DEV_REMOVED		"DeviceRemoved"
 
 //HCI Provided services
 #define HCI_PERIODIC_INQ		"PeriodicInquiry"
@@ -167,6 +171,7 @@
 							DBUS_TYPE_UINT16_AS_STRING\
 							DBUS_STRUCT_END_CHAR_AS_STRING\
 							__END_SIG__
+
 
 /* BLUEZ_DBUS_ERROR 
  * EFailed error messages signature is : su
