@@ -1144,20 +1144,12 @@ failed:
 
 static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 {
-	char addr[18];
-	const char array_sig[] = HCI_INQ_REPLY_SIGNATURE;
 	DBusMessageIter iter;
-	DBusMessageIter array_iter;
-	DBusMessageIter  struct_iter;
 	DBusMessage *reply = NULL;
-	inquiry_info *info = NULL;
+	inquiry_cp cp;
+	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
-	const char *paddr = addr;
-	int dev_id = -1;
-	int i;
-	uint32_t class = 0;
-	uint16_t clock_offset;
-	uint16_t flags;
+	int dev_id = -1, dd = -1;
 	int8_t length;
 	int8_t num_rsp;
 
@@ -1174,45 +1166,44 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	dbus_message_iter_get_basic(&iter, &length);
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_get_basic(&iter, &num_rsp);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_get_basic(&iter, &flags);
 
 	if ((length <= 0) || (num_rsp <= 0)) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 		goto failed;
 	}
 
-	num_rsp = hci_inquiry(dev_id, length, num_rsp, NULL, &info, flags);
-
-	if (num_rsp < 0) {
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		syslog(LOG_ERR, "Unable to open device %d: %s", dev_id, strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-	} else {
-		reply = dbus_message_new_method_return(msg);
-		dbus_message_iter_init_append(reply, &iter);
-		dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, array_sig, &array_iter);
-
-		for (i = 0; i < num_rsp; i++) {
-			ba2str(&(info+i)->bdaddr, addr);
-
-			clock_offset = btohs((info+i)->clock_offset);
-			/* only 3 bytes are used */
-			memcpy(&class, (info+i)->dev_class, 3);
-
-			dbus_message_iter_open_container(&array_iter, DBUS_TYPE_STRUCT, NULL, &struct_iter);
-			dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING , &paddr);
-			dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT32 , &class);
-			dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT16 , &clock_offset);
-			dbus_message_iter_close_container(&array_iter, &struct_iter);
-		}
-
-		dbus_message_iter_close_container(&iter, &array_iter);
+		goto failed;
 	}
 
-failed:
-	if(info)
-		bt_free(info);
+	cp.lap[0] = 0x33;
+	cp.lap[1] = 0x8b;
+	cp.lap[2] = 0x9e;
+	cp.length = length;
+	cp.num_rsp = num_rsp;
 
-	return NULL;
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LINK_CTL;
+	rq.ocf = OCF_INQUIRY;
+	rq.cparam = &cp;
+	rq.clen = INQUIRY_CP_SIZE;
+	
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		syslog(LOG_ERR, "Unable to start inquiry: %s", strerror(errno));
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+	
+	reply = dbus_message_new_method_return(msg);
+
+failed:
+	if (dd >= 0)
+		hci_close_dev(dd);
+
+	return reply;
 }
 
 static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
