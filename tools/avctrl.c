@@ -66,7 +66,7 @@ struct device_info;
 struct device_id {
 	uint16_t vendor;
 	uint16_t product;
-	int (*func)(struct device_info *dev);
+	int (*func)(struct device_info *dev, int argc, char *argv[]);
 };
 
 struct device_info {
@@ -80,11 +80,22 @@ struct device_info {
 #define SWITCH_TO_DFU		0x04
 #define READ_CODEC		0x05
 
-static int dongle_csr(struct device_info *devinfo)
+static int dongle_csr(struct device_info *devinfo, int argc, char *argv[])
 {
 	char buf[8];
 	struct usb_dev_handle *udev;
 	int err, intf = 2;
+
+	memset(buf, 0, sizeof(buf));
+
+	if (!strncasecmp(argv[0], "discover", 4))
+		buf[0] = DISCOVER;
+	else if (!strncasecmp(argv[0], "switch", 3))
+		buf[0] = SWITCH_TO_DFU;
+	else if (!strncasecmp(argv[0], "dfu", 3))
+		buf[0] = SWITCH_TO_DFU;
+	else
+		return -EINVAL;
 
 	udev = usb_open(devinfo->dev);
 	if (!udev)
@@ -95,9 +106,6 @@ static int dongle_csr(struct device_info *devinfo)
 		usb_close(udev);
 		return err;
 	}
-
-	memset(buf, 0, sizeof(buf));
-	buf[0] = SWITCH_TO_DFU;
 
 	err = usb_control_msg(udev, USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
 				HID_REQ_SET_REPORT, 0x03 << 8, intf, buf, sizeof(buf), 10000);
@@ -166,12 +174,17 @@ static void usage(void)
 	printf("avctrl - Bluetooth Audio/Video control utility\n\n");
 
 	printf("Usage:\n"
-		"\tavctrl [options]\n"
+		"\tavctrl [options] <command>\n"
 		"\n");
 
 	printf("Options:\n"
 		"\t-h, --help           Display help\n"
 		"\t-q, --quiet          Don't display any messages\n"
+		"\n");
+
+	printf("Commands:\n"
+		"\tdiscover         Simulate pressing the discover button\n"
+		"\tswitch           Switch the dongle to DFU mode\n"
 		"\n");
 }
 
@@ -203,6 +216,11 @@ int main(int argc, char *argv[])
 	argv += optind;
 	optind = 0;
 
+	if (argc < 1) {
+		usage();
+		exit(1);
+	}
+
 	usb_init();
 
 	num = find_devices(dev, sizeof(dev) / sizeof(dev[0]));
@@ -214,15 +232,17 @@ int main(int argc, char *argv[])
 
 	for (i = 0; i < num; i++) {
 		struct device_id *id = dev[i].id;
+		int err;
 
 		if (!quiet)
-			printf("Switching device %04x:%04x ",
+			printf("Selecting device %04x:%04x ",
 						id->vendor, id->product);
 		fflush(stdout);
 
-		if (id->func(&dev[i]) < 0) {
+		err = id->func(&dev[i], argc, argv);
+		if (err < 0) {
 			if (!quiet)
-				printf("failed (%s)\n", strerror(errno));
+				printf("failed (%s)\n", strerror(-err));
 		} else {
 			if (!quiet)
 				printf("was successful\n");
