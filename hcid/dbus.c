@@ -761,7 +761,6 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	if (!ret)
 		num_adapters++;
 
-
 	message = dbus_message_new_signal(BLUEZ_HCI_PATH,
 			BLUEZ_HCI_INTERFACE, BLUEZ_HCI_DEV_ADDED);
 
@@ -811,7 +810,6 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 		if (dft_unreg )
 			ptr->dft_reg = 0;
 	}
-
 
 	message = dbus_message_new_signal(BLUEZ_HCI_PATH,
 			BLUEZ_HCI_INTERFACE, BLUEZ_HCI_DEV_REMOVED);
@@ -1070,15 +1068,15 @@ static DBusHandlerResult msg_func(DBusConnection *conn, DBusMessage *msg, void *
 
 		ret = DBUS_HANDLER_RESULT_HANDLED;
 	}
-	
+
 	/* send an error or the success reply*/
 	if (reply) {
-		if (!dbus_connection_send (conn, reply, NULL)) { 
+		if (!dbus_connection_send (conn, reply, NULL)) {
 			syslog(LOG_ERR, "Can't send reply message!") ;
 		}
 		dbus_message_unref (reply);
 	}
-	
+
 	return ret;
 }
 
@@ -1252,13 +1250,13 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	rq.ocf = OCF_INQUIRY;
 	rq.cparam = &cp;
 	rq.clen = INQUIRY_CP_SIZE;
-	
+
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to start inquiry: %s", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
-	
+
 	reply = dbus_message_new_method_return(msg);
 
 failed:
@@ -1301,7 +1299,6 @@ static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
 	}
 
 	sock = hci_open_dev(dev_id);
-	
 	if (sock < 0) {
 		syslog(LOG_ERR, "HCI device open failed\n");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
@@ -1334,10 +1331,10 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 	int dd = -1;
 	const char *str_bdaddr;
 	bdaddr_t bdaddr;
-	
+
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_get_basic(&iter, &str_bdaddr);
-	
+
 	str2ba(str_bdaddr, &bdaddr);
 
 	if (dbus_data->id == DEFAULT_DEVICE_PATH_ID) {
@@ -1350,8 +1347,8 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 		dev_id = dbus_data->id;
 	}
 
-	if ((dd = hci_open_dev(dev_id)) > 0) {
-	
+	dd = hci_open_dev(dev_id);
+	if (dd >= 0) {
 		if (hci_read_remote_name(dd, &bdaddr, sizeof(name), name, READ_REMOTE_NAME_TIMEOUT) ==0) {
 			reply = dbus_message_new_method_return(msg);
 			dbus_message_iter_init_append(reply, &iter);
@@ -1362,9 +1359,9 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 	} else {
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 	}
-	
+
 	if (dd > 0)
-		close (dd);
+		close(dd);
 
 failed:
 	return reply;
@@ -1397,13 +1394,13 @@ static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
 	}
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-
 	if (sk < 0) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
-	if (!(cl = malloc(MAX_CONN_NUMBER * sizeof(*ci) + sizeof(*cl)))) { 
+	cl = malloc(MAX_CONN_NUMBER * sizeof(*ci) + sizeof(*cl));
+	if (!cl) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
 		goto failed;
 	}
@@ -1412,7 +1409,7 @@ static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
 	cl->conn_num = MAX_CONN_NUMBER;
 	ci = cl->conn_info;
 
-	if (ioctl(sk, HCIGETCONNLIST, (void *) cl)) {
+	if (ioctl(sk, HCIGETCONNLIST, (void *) cl) < 0) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1420,7 +1417,7 @@ static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
 	reply = dbus_message_new_method_return(msg);
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, array_sig, &array_iter);
-	
+
 	for (i = 0; i < cl->conn_num; i++, ci++) {
 		ba2str(&ci->bdaddr, addr);
 
@@ -1433,20 +1430,18 @@ static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
 		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT32 ,&(ci->link_mode));
 		dbus_message_iter_close_container(&array_iter, &struct_iter);
 	}
-	
-	dbus_message_iter_close_container(&iter, &array_iter);
-failed:
 
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+failed:
 	if (sk > 0)
-		close (sk);
+		close(sk);
 
 	if (cl)
-		free (cl);
-	
+		free(cl);
+
 	return reply;
 }
-
-
 
 /*****************************************************************
  *  
@@ -1474,14 +1469,14 @@ static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data)
 	const char array_sig[] = HCI_DEVICE_STRUCT_SIGNATURE;
 
 	/* Create and bind HCI socket */
-	if ((sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
+	sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sock < 0) {
 		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)", strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
-
 	if (!dl) {
 		syslog(LOG_ERR, "Can't allocate memory");
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
@@ -1503,21 +1498,25 @@ static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data)
 	dr = dl->dev_req;
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
-		if (hci_test_bit(HCI_UP, &dr->dev_opt)) {
-			memset(&di, 0 , sizeof(struct hci_dev_info));
-			di.dev_id = dr->dev_id;
+		if (!hci_test_bit(HCI_UP, &dr->dev_opt))
+			continue;
 
-			if (!ioctl(sock, HCIGETDEVINFO, &di)) {
-				strcpy(aname, di.name);
-				ba2str(&di.bdaddr, aaddr);
-				dbus_message_iter_open_container(&array_iter, DBUS_TYPE_STRUCT, NULL,
-						&struct_iter);
-				dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING ,&pname);
-				dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING ,&paddr);
+		memset(&di, 0 , sizeof(struct hci_dev_info));
+		di.dev_id = dr->dev_id;
 
-				dbus_message_iter_close_container(&array_iter, &struct_iter);
-			}
-		}
+		if (ioctl(sock, HCIGETDEVINFO, &di) < 0)
+			continue;
+
+		strcpy(aname, di.name);
+		ba2str(&di.bdaddr, aaddr);
+
+		dbus_message_iter_open_container(&array_iter,
+					DBUS_TYPE_STRUCT, NULL, &struct_iter);
+
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &pname);
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &paddr);
+
+		dbus_message_iter_close_container(&array_iter, &struct_iter);
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
@@ -1527,7 +1526,7 @@ failed:
 		free(dl);
 
 	if (sock > 0)
-		close (sock);
+		close(sock);
 
 	return reply;
 }
