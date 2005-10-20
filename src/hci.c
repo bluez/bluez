@@ -976,7 +976,13 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 				errno = EIO;
 				goto failed;
 			}
-			break;
+
+			if (r->event != EVT_CMD_STATUS)
+				break;
+
+			r->rlen = MIN(len, r->rlen);
+			memcpy(r->rparam, ptr, r->rlen);
+			goto done;
 
 		case EVT_CMD_COMPLETE:
 			cc = (void *) ptr;
