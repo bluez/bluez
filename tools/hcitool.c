@@ -38,6 +38,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 #include <getopt.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>
@@ -359,7 +360,11 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 
 		case 'i':
 			l = strtoul(optarg, 0, 16);
-			if (l < 0x9e8b00 || l > 0x9e8b3f) {
+			if (!strcasecmp(optarg, "giac")) {
+				l = 0x9e8b33;
+			} else if (!strcasecmp(optarg, "liac")) {
+				l = 0x9e8b00;
+			} if (l < 0x9e8b00 || l > 0x9e8b3f) {
 				printf("Invalid access code 0x%x\n", l);
 				exit(1);
 			}
@@ -447,7 +452,11 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 
 		case 'i':
 			l = strtoul(optarg, 0, 16);
-			if (l < 0x9e8b00 || l > 0x9e8b3f) {
+			if (!strcasecmp(optarg, "giac")) {
+				l = 0x9e8b33;
+			} else if (!strcasecmp(optarg, "liac")) {
+				l = 0x9e8b00;
+			} else if (l < 0x9e8b00 || l > 0x9e8b3f) {
 				printf("Invalid access code 0x%x\n", l);
 				exit(1);
 			}

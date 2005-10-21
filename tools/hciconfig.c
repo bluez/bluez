@@ -37,6 +37,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 #include <getopt.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -158,7 +159,11 @@ static void cmd_iac(int ctl, int hdev, char *opt)
 	if (opt) {
 		int l = strtoul(opt, 0, 16);
 		uint8_t lap[3];
-		if (l < 0x9e8b00 || l > 0x9e8b3f) {
+		if (!strcasecmp(opt, "giac")) {
+			l = 0x9e8b33;
+		} else if (!strcasecmp(opt, "liac")) {
+			l = 0x9e8b00;
+		} else if (l < 0x9e8b00 || l > 0x9e8b3f) {
 			printf("Invalid access code 0x%x\n", l);
 			exit(1);
 		}
@@ -182,8 +187,8 @@ static void cmd_iac(int ctl, int hdev, char *opt)
 		for (i = 0; i < n; i++) {
 			printf("0x");
 			for (j = 3; j--; )
-				printf("%02x", lap[j + 3*i]);
-			if (i < n-1)
+				printf("%02x", lap[j + 3 * i]);
+			if (i < n - 1)
 				printf(", ");
 		}
 		printf("\n");
