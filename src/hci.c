@@ -430,7 +430,7 @@ static hci_map commands_map[] = {
 	{ "Read Local Supported Commands",		116 },
 	{ "Read Local Supported Features",		117 },
 	{ "Read Local Extended Features",		118 },
-	{ "Read Buffer Sizer",				119 },
+	{ "Read Buffer Size",				119 },
 	{ "Read Country Code",				120 },
 	{ "Read BD ADDR",				121 },
 	{ "Read Failed Contact Counter",		122 },
