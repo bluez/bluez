@@ -129,6 +129,7 @@
 #define HCI_ROLE_SWITCH			"RoleSwitch"
 #define HCI_REMOTE_NAME			"RemoteName"
 #define HCI_CONNECTIONS			"Connections"
+#define HCI_AUTHENTICATE			"Authenticate"
 
 
 #define HCI_PERIODIC_INQ_SIGNATURE			DBUS_TYPE_BYTE_AS_STRING\
@@ -171,6 +172,9 @@
 							DBUS_TYPE_UINT32_AS_STRING\
 							DBUS_TYPE_UINT16_AS_STRING\
 							DBUS_STRUCT_END_CHAR_AS_STRING\
+							__END_SIG__
+
+#define HCI_AUTHENTICATE_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
 							__END_SIG__
 
 

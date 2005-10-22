@@ -225,6 +225,7 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_auth_req(DBusMessage *msg, void *data);
 
 static const struct service_data hci_services[] = {
 	{ HCI_PERIODIC_INQ,		handle_periodic_inq_req,	HCI_PERIODIC_INQ_SIGNATURE		},
@@ -233,6 +234,7 @@ static const struct service_data hci_services[] = {
 	{ HCI_INQ,			handle_inq_req,			HCI_INQ_SIGNATURE			},
 	{ HCI_REMOTE_NAME,		handle_remote_name_req,		HCI_REMOTE_NAME_SIGNATURE		},
 	{ HCI_CONNECTIONS,		handle_display_conn_req,	HCI_CONNECTIONS_SIGNATURE		},
+	{ HCI_AUTHENTICATE,		handle_auth_req,		HCI_AUTHENTICATE_SIGNATURE		},
 	{ NULL,				NULL,				NULL					}
 };
 
@@ -1150,7 +1152,8 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	} else
 		dev_id =  dbus_data->id;
 
-	if ((sock = hci_open_dev(dev_id)) < 0) {
+	sock = hci_open_dev(dev_id);
+	if (sock < 0) {
 		syslog(LOG_ERR, "HCI device open failed");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
@@ -1163,9 +1166,9 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	dbus_message_iter_next(&iter);	
 	dbus_message_iter_get_basic(&iter, &max_period);
 
-	if ((length >= min_period) || (min_period >= max_period)) {
-		  reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
-		  goto failed;
+	if (length >= min_period || min_period >= max_period) {
+		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+		goto failed;
 	}
 
 	inq_param.num_rsp = 100;
@@ -1182,14 +1185,14 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	inq_mode.mode = 1; //INQUIRY_WITH_RSSI;
 
 	if (hci_send_cmd(sock, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
-			WRITE_INQUIRY_MODE_CP_SIZE, &inq_mode) < 0) {
+				WRITE_INQUIRY_MODE_CP_SIZE, &inq_mode) < 0) {
 		syslog(LOG_ERR, "Can't set inquiry mode:%s.", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
 	if (hci_send_cmd(sock, OGF_LINK_CTL, OCF_PERIODIC_INQUIRY,
-			PERIODIC_INQUIRY_CP_SIZE, &inq_param) < 0) {
+				PERIODIC_INQUIRY_CP_SIZE, &inq_param) < 0) {
 		syslog(LOG_ERR, "Can't send HCI commands:%s.", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
@@ -1243,7 +1246,7 @@ static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
 	}
 
 failed:
-	if (sock > 0)
+	if (sock >= 0)
 		close(sock);
 
 	return reply;
@@ -1512,11 +1515,95 @@ static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
 	dbus_message_iter_close_container(&iter, &array_iter);
 
 failed:
-	if (sk > 0)
+	if (sk >= 0)
 		close(sk);
 
 	if (cl)
 		free(cl);
+
+	return reply;
+}
+
+static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
+{
+	struct hci_request rq;
+	auth_requested_cp cp;
+	evt_cmd_status rp;
+	DBusMessageIter iter;
+	DBusMessage *reply = NULL;
+	char *str_bdaddr = NULL;
+	struct hci_dbus_data *dbus_data = data;
+	struct hci_conn_info_req *cr = NULL;
+	bdaddr_t bdaddr;
+	int dev_id = -1;
+	int sock = -1;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &str_bdaddr);
+	str2ba(str_bdaddr, &bdaddr);
+
+	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+
+	if (dev_id < 0) {
+		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
+		goto failed;
+	}
+
+	if (dbus_data->id != DEFAULT_DEVICE_PATH_ID && dbus_data->id != dev_id) {
+		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
+		goto failed;
+	}
+
+	sock = hci_open_dev(dev_id);
+	if (sock < 0) {
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+		goto failed;
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr) {
+		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
+		goto failed;
+	}
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+
+	if (ioctl(sock, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = cr->conn_info->handle;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LINK_CTL;
+	rq.ocf = OCF_AUTH_REQUESTED;
+	rq.cparam = &cp;
+	rq.clen = AUTH_REQUESTED_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen = EVT_CMD_STATUS_SIZE;
+	rq.event = EVT_CMD_STATUS;
+
+	if (hci_send_req(sock, &rq, 25000) < 0) {
+		syslog(LOG_ERR, "Unable to send authentication request: %s", strerror(errno));
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (rp.status) {
+		syslog(LOG_ERR, "Authentication command failed with status 0x%02X", rp.status);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + EIO);
+		goto failed;
+	}
+
+failed:
+	if (sock >= 0)
+		close(sock);
+
+	if (cr)
+		free(cr);
 
 	return reply;
 }
@@ -1600,11 +1687,11 @@ static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data)
 	dbus_message_iter_close_container(&iter, &array_iter);
 
 failed:
+	if (sock >= 0)
+		close(sock);
+
 	if (dl)
 		free(dl);
-
-	if (sock > 0)
-		close(sock);
 
 	return reply;
 }
