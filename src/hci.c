@@ -556,10 +556,14 @@ static hci_map lmp_features_map[8][9] = {
 		{ "<paging scheme>",	LMP_PSCHEME	},	/* Bit 1 */
 		{ "<power control>",	LMP_PCONTROL	},	/* Bit 2 */
 		{ "<transparent SCO>",	LMP_TRSP_SCO	},	/* Bit 3 */
+		{ "<flow control (LSB)",0x10		},	/* Bit 4 */
+		{ "<flow control (MB)",	0x20		},	/* Bit 5 */
+		{ "<flow control (MSB)",0x40		},	/* Bit 6 */
 		{ "<broadcast encrypt>",LMP_BCAST_ENC	},	/* Bit 7 */
 		{ NULL }
 	},
 	{	/* Byte 3 */
+		{ "<no. 24>",		0x01		},	/* Bit 0 */
 		{ "<EDR ACL 2 Mbps>",	LMP_EDR_ACL_2M	},	/* Bit 1 */
 		{ "<EDR ACL 3 Mbps>",	LMP_EDR_ACL_3M	},	/* Bit 2 */
 		{ "<enhanced iscan>",	LMP_ENH_ISCAN	},	/* Bit 3 */
@@ -572,13 +576,18 @@ static hci_map lmp_features_map[8][9] = {
 	{	/* Byte 4 */
 		{ "<EV4 packets>",	LMP_EV4		},	/* Bit 0 */
 		{ "<EV5 packets>",	LMP_EV5		},	/* Bit 1 */
+		{ "<no. 34>",		0x04		},	/* Bit 2 */
 		{ "<AFH cap. slave>",	LMP_AFH_CAP_SLV	},	/* Bit 3 */
 		{ "<AFH class. slave>",	LMP_AFH_CLS_SLV	},	/* Bit 4 */
+		{ "<no. 37>",		0x20		},	/* Bit 5 */
+		{ "<no. 38>",		0x40		},	/* Bit 6 */
 		{ "<3-slot EDR ACL>",	LMP_EDR_3SLOT	},	/* Bit 7 */
 		{ NULL }
 	},
 	{	/* Byte 5 */
 		{ "<5-slot EDR ACL>",	LMP_EDR_5SLOT	},	/* Bit 0 */
+		{ "<no. 41>",		0x02		},	/* Bit 1 */
+		{ "<no. 42>",		0x04		},	/* Bit 2 */
 		{ "<AFH cap. master>",	LMP_AFH_CAP_MST	},	/* Bit 3 */
 		{ "<AFH class. master>",LMP_AFH_CLS_MST	},	/* Bit 4 */
 		{ "<EDR eSCO 2 Mbps>",	LMP_EDR_ESCO_2M	},	/* Bit 5 */
