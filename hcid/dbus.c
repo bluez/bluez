@@ -513,6 +513,53 @@ failed:
 	return;
 }
 
+void hcid_dbus_remote_name_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
+{
+	DBusMessage *message = NULL;
+	char path[MAX_PATH_LENGTH];
+	char *local_addr, *peer_addr;
+	bdaddr_t tmp;
+	int id;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d/%s", MANAGER_PATH, id, BLUEZ_HCI);
+
+	message = dbus_message_new_signal(path,
+				BLUEZ_HCI_INTERFACE, BLUEZ_HCI_REMOTE_NAME_FAILED);
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		goto failed;
+	}
+
+	dbus_message_append_args(message,
+				DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_BYTE, &status,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS remote name message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	dbus_message_unref(message);
+
+	bt_free(local_addr);
+	bt_free(peer_addr);
+
+	return;
+}
+
 void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer)
 {
 }
@@ -1207,6 +1254,7 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
 	inquiry_cp cp;
+	evt_cmd_status rp;
 	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
 	int dev_id = -1, dd = -1;
@@ -1250,10 +1298,19 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	rq.ocf = OCF_INQUIRY;
 	rq.cparam = &cp;
 	rq.clen = INQUIRY_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen = EVT_CMD_STATUS_SIZE;
+	rq.event = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to start inquiry: %s", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (rp.status) {
+		syslog(LOG_ERR, "Inquiry command failed with status 0x%02X", rp.status);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + EIO);
 		goto failed;
 	}
 
@@ -1322,8 +1379,6 @@ failed:
 
 static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 {
-	char name[64];
-	const char *pname = name;
 	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
@@ -1331,6 +1386,9 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 	int dd = -1;
 	const char *str_bdaddr;
 	bdaddr_t bdaddr;
+	struct hci_request rq;
+	remote_name_req_cp cp;
+	evt_cmd_status rp;
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_get_basic(&iter, &str_bdaddr);
@@ -1343,27 +1401,47 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 			goto failed;
 		}
-	} else {
+	} else
 		dev_id = dbus_data->id;
-	}
 
 	dd = hci_open_dev(dev_id);
-	if (dd >= 0) {
-		if (hci_read_remote_name(dd, &bdaddr, sizeof(name), name, READ_REMOTE_NAME_TIMEOUT) ==0) {
-			reply = dbus_message_new_method_return(msg);
-			dbus_message_iter_init_append(reply, &iter);
-			dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &pname);
-		} else {
-			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		}
-	} else {
+	if (dd < 0) {
+		syslog(LOG_ERR, "Unable to open device %d: %s", dev_id, strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
 	}
 
-	if (dd > 0)
-		close(dd);
+	memset(&cp, 0, sizeof(cp));
+	cp.bdaddr = bdaddr;
+	cp.pscan_rep_mode = 0x01;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LINK_CTL;
+	rq.ocf = OCF_REMOTE_NAME_REQ;
+	rq.cparam = &cp;
+	rq.clen = REMOTE_NAME_REQ_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen = EVT_CMD_STATUS_SIZE;
+	rq.event = EVT_CMD_STATUS;
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		syslog(LOG_ERR, "Unable to send remote name request: %s", strerror(errno));
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (rp.status) {
+		syslog(LOG_ERR, "Remote name command failed with status 0x%02X", rp.status);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + EIO);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(msg);
 
 failed:
+	if (dd >= 0)
+		hci_close_dev(dd);
+
 	return reply;
 }
 

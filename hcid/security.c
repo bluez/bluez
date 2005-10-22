@@ -496,20 +496,18 @@ static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_remote_name_req_complete *evt = ptr;
-	char name[249];
 	bdaddr_t dba;
-
-	if (evt->status)
-		return;
-
-	memset(name, 0, sizeof(name));
-	memcpy(name, evt->name, 248);
 
 	bacpy(&dba, &evt->bdaddr);
 
-	hcid_dbus_remote_name(sba, &dba, name);
-
-	write_device_name(sba, &dba, name);
+	if (!evt->status) {
+		char name[249];
+		memset(name, 0, sizeof(name));
+		memcpy(name, evt->name, 248);
+		write_device_name(sba, &dba, name);
+		hcid_dbus_remote_name(sba, &dba, name);
+	} else
+		hcid_dbus_remote_name_failed(sba, &dba, evt->status);
 }
 
 static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)

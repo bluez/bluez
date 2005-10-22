@@ -116,6 +116,7 @@
 #define BLUEZ_HCI_INQ_COMPLETE		"InquiryComplete"
 #define BLUEZ_HCI_INQ_RESULT		"InquiryResult"
 #define BLUEZ_HCI_REMOTE_NAME		"RemoteName"
+#define BLUEZ_HCI_REMOTE_NAME_FAILED	"RemoteNameFailed"
 
 //HCI signals sent in the BLUEZ_HCI_PATH
 #define BLUEZ_HCI_DEV_ADDED		"DeviceAdded"
