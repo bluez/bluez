@@ -1374,12 +1374,6 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 		goto failed;
 	}
 
-	if (rp.status) {
-		syslog(LOG_ERR, "Inquiry command failed with status 0x%02X", rp.status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + EIO);
-		goto failed;
-	}
-
 	reply = dbus_message_new_method_return(msg);
 
 failed:
@@ -1493,12 +1487,6 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to send remote name request: %s", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	if (rp.status) {
-		syslog(LOG_ERR, "Remote name command failed with status 0x%02X", rp.status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + EIO);
 		goto failed;
 	}
 
@@ -1652,12 +1640,6 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	if (hci_send_req(sock, &rq, 25000) < 0) {
 		syslog(LOG_ERR, "Unable to send authentication request: %s", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	if (rp.status) {
-		syslog(LOG_ERR, "Authentication command failed with status 0x%02X", rp.status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + EIO);
 		goto failed;
 	}
 
