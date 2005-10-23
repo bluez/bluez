@@ -51,26 +51,50 @@ static int transient = 0;
 
 static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 {
+	uint8_t array[64];
 	uint16_t value;
-	int err;
+	int i, err, size = sizeof(array);
 
-	if (type != CSR_TYPE_UINT8 && type != CSR_TYPE_UINT16) {
+	memset(array, 0, sizeof(array));
+
+	if (type != CSR_TYPE_ARRAY &&
+			type != CSR_TYPE_UINT8 &&
+			type != CSR_TYPE_UINT16) {
 		errno = EFAULT;
 		return -1;
 	}
 
-	if (argc != 1) {
-		errno = E2BIG;
-		return -1;
-	}
+	if (type != CSR_TYPE_ARRAY) {
+		if (argc != 1) {
+			errno = E2BIG;
+			return -1;
+		}
 
-	if (!strncasecmp(argv[0], "0x", 2))
-		value = strtol(argv[0] + 2, NULL, 16);
-	else
-		value = atoi(argv[0]);
+		if (!strncasecmp(argv[0], "0x", 2))
+			value = strtol(argv[0] + 2, NULL, 16);
+		else
+			value = atoi(argv[0]);
 
-	err = csr_write_pskey_uint16(dd, 0x4711, pskey,
+		err = csr_write_pskey_uint16(dd, 0x4711, pskey,
 					transient ? 0x0008 : 0x0000, value);
+	} else {
+		if (pskey == CSR_PSKEY_LOCAL_SUPPORTED_FEATURES)
+			size = 8;
+
+		if (argc != size) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		for (i = 0; i < size; i++)
+			if (!strncasecmp(argv[0], "0x", 2))
+				array[i] = strtol(argv[i] + 2, NULL, 16);
+			else
+				array[i] = atoi(argv[i]);
+
+		err = csr_write_pskey_complex(dd, 0x4711, pskey,
+					transient ? 0x0008 : 0x0000, array, size);
+	}
 
 	return err;
 }
@@ -239,7 +263,7 @@ int main(int argc, char *argv[])
 			err = write_pskey(dd, storage[i].pskey,
 					storage[i].type, argc - 1, argv + 1);
 
-			if (reset)
+			if (!err && reset)
 				csr_write_varid_valueless(dd, 0x0000,
 							CSR_VARID_WARM_RESET);
 		} else
