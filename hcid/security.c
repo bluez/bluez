@@ -493,6 +493,14 @@ static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 		hcid_dbus_inquiry_start(sba);
 }
 
+static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_cmd_complete *evt = ptr;
+
+	if (evt->opcode == cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL))
+		hcid_dbus_inquiry_complete(sba);
+}
+
 static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_remote_name_req_complete *evt = ptr;
@@ -677,6 +685,10 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	switch (eh->evt) {
 	case EVT_CMD_STATUS:
 		cmd_status(dev, &di->bdaddr, ptr);
+		break;
+
+	case EVT_CMD_COMPLETE:
+		cmd_complete(dev, &di->bdaddr, ptr);
 		break;
 
 	case EVT_REMOTE_NAME_REQ_COMPLETE:

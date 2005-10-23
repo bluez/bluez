@@ -285,6 +285,7 @@ static DBusHandlerResult hci_signal_filter (DBusConnection *conn, DBusMessage *m
 static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_inq_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_cancel_inq_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data);
@@ -295,6 +296,7 @@ static const struct service_data hci_services[] = {
 	{ HCI_CANCEL_PERIODIC_INQ,	handle_cancel_periodic_inq_req,	HCI_CANCEL_PERIODIC_INQ_SIGNATURE	},
 	{ HCI_ROLE_SWITCH,		handle_role_switch_req,		HCI_ROLE_SWITCH_SIGNATURE		},
 	{ HCI_INQ,			handle_inq_req,			HCI_INQ_SIGNATURE			},
+	{ HCI_CANCEL_INQ,		handle_cancel_inq_req,		HCI_CANCEL_INQ_SIGNATURE		},
 	{ HCI_REMOTE_NAME,		handle_remote_name_req,		HCI_REMOTE_NAME_SIGNATURE		},
 	{ HCI_CONNECTIONS,		handle_display_conn_req,	HCI_CONNECTIONS_SIGNATURE		},
 	{ HCI_AUTHENTICATE,		handle_auth_req,		HCI_AUTHENTICATE_SIGNATURE		},
@@ -1370,6 +1372,48 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to start inquiry: %s", strerror(errno));
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+failed:
+	if (dd >= 0)
+		hci_close_dev(dd);
+
+	return reply;
+}
+
+static DBusMessage* handle_cancel_inq_req(DBusMessage *msg, void *data)
+{
+	DBusMessage *reply = NULL;
+	struct hci_request rq;
+	struct hci_dbus_data *dbus_data = data;
+	int dev_id = -1, dd = -1;
+
+	if (dbus_data->id == DEFAULT_DEVICE_PATH_ID) {
+		if ((dev_id = hci_get_route(NULL)) < 0) {
+			syslog(LOG_ERR, "Bluetooth device is not available");
+			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+			goto failed;
+		}
+	} else
+		dev_id = dbus_data->id;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		syslog(LOG_ERR, "Unable to open device %d: %s", dev_id, strerror(errno));
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LINK_CTL;
+	rq.ocf = OCF_INQUIRY_CANCEL;
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		syslog(LOG_ERR, "Unable to cancel inquiry: %s", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}

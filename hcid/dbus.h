@@ -105,10 +105,11 @@
 #define HCI_PERIODIC_INQ		"PeriodicInquiry"
 #define HCI_CANCEL_PERIODIC_INQ		"CancelPeriodic"
 #define HCI_INQ				"Inquiry"
+#define HCI_CANCEL_INQ			"CancelInquiry"
 #define HCI_ROLE_SWITCH			"RoleSwitch"
 #define HCI_REMOTE_NAME			"RemoteName"
 #define HCI_CONNECTIONS			"Connections"
-#define HCI_AUTHENTICATE			"Authenticate"
+#define HCI_AUTHENTICATE		"Authenticate"
 
 
 #define HCI_PERIODIC_INQ_SIGNATURE			DBUS_TYPE_BYTE_AS_STRING\
@@ -121,6 +122,8 @@
 #define HCI_INQ_SIGNATURE				DBUS_TYPE_BYTE_AS_STRING\
 							DBUS_TYPE_BYTE_AS_STRING\
 							__END_SIG__
+
+#define HCI_CANCEL_INQ_SIGNATURE			__END_SIG__
 
 #define HCI_ROLE_SWITCH_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
 							DBUS_TYPE_BYTE_AS_STRING\
