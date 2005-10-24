@@ -233,6 +233,21 @@ static inline void pskey_dump(int level, struct frame *frm)
 	case 0x0003:
 		uint32_dump(level + 1, "CLASSOFDEVICE", frm);
 		break;
+	case 0x0004:
+		uint16_dump(level + 1, "DEVICE_DRIFT", frm);
+		break;
+	case 0x0005:
+		uint16_dump(level + 1, "DEVICE_JITTER", frm);
+		break;
+	case 0x000d:
+		uint16_dump(level + 1, "MAX_ACLS", frm);
+		break;
+	case 0x000e:
+		uint16_dump(level + 1, "MAX_SCOS", frm);
+		break;
+	case 0x000f:
+		uint16_dump(level + 1, "MAX_REMOTE_MASTERS", frm);
+		break;
 	case 0x00da:
 		uint16_dump(level + 1, "ENC_KEY_LMIN", frm);
 		break;
