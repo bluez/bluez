@@ -72,6 +72,11 @@
 #define CSR_PSKEY_BDADDR			0x0001	/* uint16[] = { 0x00A5A5, 0x5b, 0x0002 } */
 #define CSR_PSKEY_COUNTRYCODE			0x0002	/* uint16 */
 #define CSR_PSKEY_CLASSOFDEVICE			0x0003	/* uint32 */
+#define CSR_PSKEY_DEVICE_DRIFT			0x0004	/* uint16 */
+#define CSR_PSKEY_DEVICE_JITTER			0x0005	/* uint16 */
+#define CSR_PSKEY_MAX_ACLS			0x000d	/* uint16 */
+#define CSR_PSKEY_MAX_SCOS			0x000e	/* uint16 */
+#define CSR_PSKEY_MAX_REMOTE_MASTERS		0x000f	/* uint16 */
 #define CSR_PSKEY_ENC_KEY_LMIN			0x00da	/* uint16 */
 #define CSR_PSKEY_ENC_KEY_LMAX			0x00db	/* uint16 */
 #define CSR_PSKEY_LOCAL_SUPPORTED_FEATURES	0x00ef	/* uint16[] = { 0xffff, 0xfe8f, 0xf99b, 0x8000 } */

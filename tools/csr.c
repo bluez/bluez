@@ -414,6 +414,16 @@ char *csr_pskeytostr(uint16_t pskey)
 		return "Country code";
 	case CSR_PSKEY_CLASSOFDEVICE:
 		return "Class of device";
+	case CSR_PSKEY_DEVICE_DRIFT:
+		return "Device drift";
+	case CSR_PSKEY_DEVICE_JITTER:
+		return "Device jitter";
+	case CSR_PSKEY_MAX_ACLS:
+		return "Maximum ACL links";
+	case CSR_PSKEY_MAX_SCOS:
+		return "Maximum SCO links";
+	case CSR_PSKEY_MAX_REMOTE_MASTERS:
+		return "Maximum remote masters";
 	case CSR_PSKEY_ENC_KEY_LMIN:
 		return "Minimum encryption key length";
 	case CSR_PSKEY_ENC_KEY_LMAX:
