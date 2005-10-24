@@ -78,8 +78,14 @@ static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 		err = csr_write_pskey_uint16(dd, 0x4711, pskey,
 					transient ? 0x0008 : 0x0000, value);
 	} else {
-		if (pskey == CSR_PSKEY_LOCAL_SUPPORTED_FEATURES)
+		switch (pskey) {
+		case CSR_PSKEY_LOCAL_SUPPORTED_FEATURES:
 			size = 8;
+			break;
+		case CSR_PSKEY_LOCAL_SUPPORTED_COMMANDS:
+			size = 18;
+			break;
+		}
 
 		if (argc != size) {
 			errno = EINVAL;
@@ -121,8 +127,14 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 
 		printf("%s: 0x%04x (%d)\n", csr_pskeytostr(pskey), value, value);
 	} else {
-		if (pskey == CSR_PSKEY_LOCAL_SUPPORTED_FEATURES)
+		switch (pskey) {
+		case CSR_PSKEY_LOCAL_SUPPORTED_FEATURES:
 			size = 8;
+			break;
+		case CSR_PSKEY_LOCAL_SUPPORTED_COMMANDS:
+			size = 18;
+			break;
+		}
 
 		err = csr_read_pskey_complex(dd, 0x4711, pskey, 0x0000, array, size);
 		if (err < 0)
@@ -145,6 +157,7 @@ static struct {
 	{ CSR_PSKEY_ENC_KEY_LMIN,             CSR_TYPE_UINT16, "keymin"   },
 	{ CSR_PSKEY_ENC_KEY_LMAX,             CSR_TYPE_UINT16, "keymax"   },
 	{ CSR_PSKEY_LOCAL_SUPPORTED_FEATURES, CSR_TYPE_ARRAY,  "features" },
+	{ CSR_PSKEY_LOCAL_SUPPORTED_COMMANDS, CSR_TYPE_ARRAY,  "commands" },
 	{ CSR_PSKEY_HCI_LMP_LOCAL_VERSION,    CSR_TYPE_UINT16, "version"  },
 	{ CSR_PSKEY_LMP_REMOTE_VERSION,       CSR_TYPE_UINT8,  "remver"   },
 	{ CSR_PSKEY_HOSTIO_USE_HCI_EXTN,      CSR_TYPE_UINT16, "hciextn"  },
