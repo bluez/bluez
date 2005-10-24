@@ -414,6 +414,8 @@ char *csr_pskeytostr(uint16_t pskey)
 		return "Maximum encryption key length";
 	case CSR_PSKEY_LOCAL_SUPPORTED_FEATURES:
 		return "Local supported features block";
+	case CSR_PSKEY_LOCAL_SUPPORTED_COMMANDS:
+		return "Local supported commands";
 	case CSR_PSKEY_HCI_LMP_LOCAL_VERSION:
 		return "The HCI and LMP version reported locally";
 	case CSR_PSKEY_LMP_REMOTE_VERSION:

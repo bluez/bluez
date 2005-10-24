@@ -58,9 +58,10 @@
 #define CSR_VARID_MAX_TX_POWER		0x6827		/* int8 */
 #define CSR_VARID_DEFAULT_TX_POWER	0x682b		/* int8 */
 
-#define CSR_PSKEY_LOCAL_SUPPORTED_FEATURES	0x00ef	/* uint16[] = { 0xffff, 0xFE8f, 0xF99B, 0x8000 } */
 #define CSR_PSKEY_ENC_KEY_LMIN			0x00da	/* uint16 */
 #define CSR_PSKEY_ENC_KEY_LMAX			0x00db	/* uint16 */
+#define CSR_PSKEY_LOCAL_SUPPORTED_FEATURES	0x00ef	/* uint16[] = { 0xffff, 0xfe8f, 0xf99b, 0x8000 } */
+#define CSR_PSKEY_LOCAL_SUPPORTED_COMMANDS	0x0106	/* uint16[] = { 0xffff, 0x03ff, 0xfffe, 0xffff, 0xffff, 0xffff, 0x0ff3, 0xfff8, 0x003f } */
 #define CSR_PSKEY_HCI_LMP_LOCAL_VERSION		0x010d	/* uint16 */
 #define CSR_PSKEY_LMP_REMOTE_VERSION		0x010e	/* uint8 */
 #define CSR_PSKEY_HOSTIO_USE_HCI_EXTN		0x01a5	/* bool (uint16) */
