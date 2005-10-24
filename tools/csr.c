@@ -408,6 +408,12 @@ char *csr_chipvertostr(uint16_t ver, uint16_t rev)
 char *csr_pskeytostr(uint16_t pskey)
 {
 	switch (pskey) {
+	case CSR_PSKEY_BDADDR:
+		return "Bluetooth address";
+	case CSR_PSKEY_COUNTRYCODE:
+		return "Country code";
+	case CSR_PSKEY_CLASSOFDEVICE:
+		return "Class of device";
 	case CSR_PSKEY_ENC_KEY_LMIN:
 		return "Minimum encryption key length";
 	case CSR_PSKEY_ENC_KEY_LMAX:
