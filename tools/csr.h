@@ -101,3 +101,5 @@ int csr_read_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint16_t sto
 int csr_write_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint8_t *value, uint16_t length);
 int csr_read_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint16_t *value);
 int csr_write_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint16_t value);
+int csr_read_pskey_uint32(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint32_t *value);
+int csr_write_pskey_uint32(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint32_t value);
