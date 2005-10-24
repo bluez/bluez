@@ -775,6 +775,7 @@ void start_security_manager(int hdev)
 	hci_filter_clear(&flt);
 	hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
 	hci_filter_set_event(EVT_CMD_STATUS, &flt);
+	hci_filter_set_event(EVT_CMD_COMPLETE, &flt);
 	hci_filter_set_event(EVT_PIN_CODE_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_NOTIFY, &flt);
