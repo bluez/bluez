@@ -178,6 +178,40 @@ static inline void handle_clock_dump(int level, char *str, struct frame *frm)
 	printf("%s: handle %d clock 0x%4.4x\n", str, handle, clock);
 }
 
+static inline void psnext_dump(int level, char *str, struct frame *frm)
+{
+	uint16_t key, stores, next;
+
+	key    = CSR_U16(frm);
+	stores = CSR_U16(frm);
+	next   = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("%s: key 0x%4.4x stores %d next 0x%4.4x\n", str, key, stores, next);
+}
+
+static inline void pssize_dump(int level, char *str, struct frame *frm)
+{
+	uint16_t key, length;
+
+	key    = CSR_U16(frm);
+	length = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("%s: key 0x%4.4x len %d\n", str, key, length);
+}
+
+static inline void psstores_dump(int level, char *str, struct frame *frm)
+{
+	uint16_t key, stores;
+
+	key    = CSR_U16(frm);
+	stores = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("%s: key 0x%4.4x stores %d\n", str, key, stores);
+}
+
 static inline void pskey_dump(int level, struct frame *frm)
 {
 	uint16_t key, length, stores;
@@ -192,6 +226,12 @@ static inline void pskey_dump(int level, struct frame *frm)
 	switch (key) {
 	case 0x0001:
 		bdaddr_dump(level + 1, "BDADDR", frm);
+		break;
+	case 0x0002:
+		uint16_dump(level + 1, "COUNTRYCODE", frm);
+		break;
+	case 0x0003:
+		uint32_dump(level + 1, "CLASSOFDEVICE", frm);
 		break;
 	case 0x00da:
 		uint16_dump(level + 1, "ENC_KEY_LMIN", frm);
@@ -267,6 +307,15 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	}
 
 	switch (varid) {
+	case 0x000b:
+		valueless_dump(level + 1, "PS_CLR_ALL", frm);
+		break;
+	case 0x000c:
+		valueless_dump(level + 1, "PS_FACTORY_SET", frm);
+		break;
+	case 0x082d:
+		uint16_dump(level + 1, "PS_CLR_ALL_STORES", frm);
+		break;
 	case 0x2801:
 		uint16_dump(level + 1, "BC01_STATUS", frm);
 		break;
@@ -288,6 +337,9 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	case 0x282c:
 		uint16_dump(level + 1, "MAX_CRYPT_KEY_LENGTH", frm);
 		break;
+	case 0x2833:
+		uint16_dump(level + 1, "E2_APP_SIZE", frm);
+		break;
 	case 0x2836:
 		uint16_dump(level + 1, "CHIPANAREV", frm);
 		break;
@@ -296,6 +348,12 @@ static inline void bccmd_dump(int level, struct frame *frm)
 		break;
 	case 0x2c00:
 		uint32_dump(level + 1, "BT_CLOCK", frm);
+		break;
+	case 0x3005:
+		psnext_dump(level + 1, "PS_NEXT", frm);
+		break;
+	case 0x3006:
+		pssize_dump(level + 1, "PS_SIZE", frm);
 		break;
 	case 0x3008:
 		handle_length_dump(level + 1, "CRYPT_KEY_LENGTH", frm);
@@ -308,6 +366,12 @@ static inline void bccmd_dump(int level, struct frame *frm)
 		break;
 	case 0x300b:
 		complex_dump(level + 1, "GET_NEXT_BUILDDEF", frm);
+		break;
+	case 0x300e:
+		complex_dump(level + 1, "E2_DEVICE", frm);
+		break;
+	case 0x300f:
+		complex_dump(level + 1, "E2_APP_DATA", frm);
 		break;
 	case 0x4001:
 		valueless_dump(level + 1, "COLD_RESET", frm);
@@ -336,14 +400,29 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	case 0x4009:
 		valueless_dump(level + 1, "RECAL", frm);
 		break;
+	case 0x400d:
+		valueless_dump(level + 1, "PS_FACTORY_RESTORE", frm);
+		break;
+	case 0x400e:
+		valueless_dump(level + 1, "PS_FACTORY_RESTORE_ALL", frm);
+		break;
+	case 0x400f:
+		valueless_dump(level + 1, "PS_DEFRAG_RESET", frm);
+		break;
 	case 0x4012:
 		valueless_dump(level + 1, "CANCEL_PAGE", frm);
 		break;
-	case 0x6000:
-		valueless_dump(level + 1, "NO_VARIABLE", frm);
+	case 0x4818:
+		uint16_dump(level + 1, "PS_CLR", frm);
 		break;
 	case 0x481c:
 		uint16_dump(level + 1, "MAP_SCO_PCM", frm);
+		break;
+	case 0x500c:
+		psstores_dump(level + 1, "PS_CLR_STORES", frm);
+		break;
+	case 0x6000:
+		valueless_dump(level + 1, "NO_VARIABLE", frm);
 		break;
 	case 0x6802:
 		uint16_dump(level + 1, "CONFIG_UART", frm);
