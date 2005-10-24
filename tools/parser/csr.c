@@ -141,6 +141,20 @@ static inline void features_dump(int level, char *str, struct frame *frm)
 	printf("\n");
 }
 
+static inline void commands_dump(int level, char *str, struct frame *frm)
+{
+	unsigned char commands[64];
+	int i;
+
+	memcpy(commands, frm->ptr, frm->len);
+
+	p_indent(level, frm);
+	printf("%s: commands", str);
+	for (i = 0; i < frm->len; i++)
+		printf(" 0x%02x", commands[i]);
+	printf("\n");
+}
+
 static inline void handle_length_dump(int level, char *str, struct frame *frm)
 {
 	uint16_t handle, length;
@@ -187,6 +201,9 @@ static inline void pskey_dump(int level, struct frame *frm)
 		break;
 	case 0x00ef:
 		features_dump(level + 1, "LOCAL_SUPPORTED_FEATURES", frm);
+		break;
+	case 0x0106:
+		commands_dump(level + 1, "LOCAL_SUPPORTED_COMMANDS", frm);
 		break;
 	case 0x010d:
 		uint16_dump(level + 1, "HCI_LMP_LOCAL_VERSION", frm);
