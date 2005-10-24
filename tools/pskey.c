@@ -179,7 +179,8 @@ static void usage(void)
 
 	printf("pskey - Utility for changing CSR persistent storage\n\n");
 	printf("Usage:\n"
-		"\tpskey [-i <dev>] [-r] [-t] <key> [value]\n\n");
+		"\tpskey [-i <dev>] [-r] [-t] <key> [value]\n"
+		"\tpskey [-i <dev>] --list\n\n");
 
 	printf("Keys:\n\t");
 	for (i = 0; storage[i].pskey; i++) {
@@ -197,6 +198,7 @@ static struct option main_options[] = {
 	{ "device",	1, 0, 'i' },
 	{ "reset",	0, 0, 'r' },
 	{ "transient",	0, 0, 't' },
+	{ "list",	0, 0, 'l' },
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
@@ -205,9 +207,9 @@ int main(int argc, char *argv[])
 {
 	struct hci_dev_info di;
 	struct hci_version ver;
-	int i, err, dd, opt, dev = 0, reset = 0;
+	int i, err, dd, opt, dev = 0, list = 0, reset = 0;
 
-	while ((opt=getopt_long(argc, argv, "+i:rth", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+i:rtlh", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
 			dev = hci_devid(optarg);
@@ -225,6 +227,10 @@ int main(int argc, char *argv[])
 			transient = 1;
 			break;
 
+		case 'l':
+			list = 1;
+			break;
+
 		case 'h':
 		default:
 			usage();
@@ -236,7 +242,7 @@ int main(int argc, char *argv[])
 	argv += optind;
 	optind = 0;
 
-	if (argc < 1) {
+	if (!list && argc < 1) {
 		usage();
 		exit(1);
 	}
@@ -266,6 +272,44 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Unsupported manufacturer\n");
 		hci_close_dev(dd);
 		exit(1);
+	}
+
+	if (list) {
+		uint8_t array[8];
+		uint16_t length, seqnum = 0x0000, pskey = 0x0000;
+		int err;
+
+		while (1) {
+			memset(array, 0, sizeof(array));
+			array[0] = pskey & 0xff;
+			array[1] = pskey >> 8;
+
+			err = csr_read_varid_complex(dd, seqnum++,
+					CSR_VARID_PS_NEXT, array, sizeof(array));
+			if (err < 0)
+				break;
+
+			pskey = array[4] + (array[5] << 8);
+			if (pskey == 0x0000)
+				break;
+
+			memset(array, 0, sizeof(array));
+			array[0] = pskey & 0xff;
+			array[1] = pskey >> 8;
+
+			err = csr_read_varid_complex(dd, seqnum++,
+					CSR_VARID_PS_SIZE, array, sizeof(array));
+			if (err < 0)
+				continue;
+
+			length = array[2] + (array[3] << 8);
+
+			printf("0x%04x - %s (%d bytes)\n", pskey,
+					csr_pskeytostr(pskey), length * 2);
+		}
+
+		hci_close_dev(dd);
+		exit(0);
 	}
 
 	for (i = 0; storage[i].pskey; i++) {
