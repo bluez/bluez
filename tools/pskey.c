@@ -46,46 +46,36 @@
 #define CSR_TYPE_ARRAY	1
 #define CSR_TYPE_UINT8	2
 #define CSR_TYPE_UINT16	3
+#define CSR_TYPE_UINT32	4
 
 static int transient = 0;
+
+static int pskey_size(uint16_t pskey)
+{
+	switch (pskey) {
+	case CSR_PSKEY_BDADDR:
+		return 8;
+	case CSR_PSKEY_LOCAL_SUPPORTED_FEATURES:
+		return 8;
+	case CSR_PSKEY_LOCAL_SUPPORTED_COMMANDS:
+		return 18;
+	default:
+		return 64;
+	}
+}
 
 static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 {
 	uint8_t array[64];
 	uint16_t value;
+	uint32_t val32;
 	int i, err, size = sizeof(array);
 
 	memset(array, 0, sizeof(array));
 
-	if (type != CSR_TYPE_ARRAY &&
-			type != CSR_TYPE_UINT8 &&
-			type != CSR_TYPE_UINT16) {
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (type != CSR_TYPE_ARRAY) {
-		if (argc != 1) {
-			errno = E2BIG;
-			return -1;
-		}
-
-		if (!strncasecmp(argv[0], "0x", 2))
-			value = strtol(argv[0] + 2, NULL, 16);
-		else
-			value = atoi(argv[0]);
-
-		err = csr_write_pskey_uint16(dd, 0x4711, pskey,
-					transient ? 0x0008 : 0x0000, value);
-	} else {
-		switch (pskey) {
-		case CSR_PSKEY_LOCAL_SUPPORTED_FEATURES:
-			size = 8;
-			break;
-		case CSR_PSKEY_LOCAL_SUPPORTED_COMMANDS:
-			size = 18;
-			break;
-		}
+	switch (type) {
+	case CSR_TYPE_ARRAY:
+		size = pskey_size(pskey);
 
 		if (argc != size) {
 			errno = EINVAL;
@@ -100,6 +90,43 @@ static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 
 		err = csr_write_pskey_complex(dd, 0x4711, pskey,
 					transient ? 0x0008 : 0x0000, array, size);
+		break;
+
+	case CSR_TYPE_UINT8:
+	case CSR_TYPE_UINT16:
+		if (argc != 1) {
+			errno = E2BIG;
+			return -1;
+		}
+
+		if (!strncasecmp(argv[0], "0x", 2))
+			value = strtol(argv[0] + 2, NULL, 16);
+		else
+			value = atoi(argv[0]);
+
+		err = csr_write_pskey_uint16(dd, 0x4711, pskey,
+					transient ? 0x0008 : 0x0000, value);
+		break;
+
+	case CSR_TYPE_UINT32:
+		if (argc != 1) {
+			errno = E2BIG;
+			return -1;
+		}
+
+		if (!strncasecmp(argv[0], "0x", 2))
+			val32 = strtol(argv[0] + 2, NULL, 16);
+		else
+			val32 = atoi(argv[0]);
+
+		err = csr_write_pskey_uint32(dd, 0x4711, pskey,
+					transient ? 0x0008 : 0x0000, val32);
+		break;
+
+	default:
+		errno = EFAULT;
+		err = -1;
+		break;
 	}
 
 	return err;
@@ -109,32 +136,14 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 {
 	uint8_t array[64];
 	uint16_t value = 0;
+	uint32_t val32 = 0;
 	int i, err, size = sizeof(array);
 
 	memset(array, 0, sizeof(array));
 
-	if (type != CSR_TYPE_ARRAY &&
-			type != CSR_TYPE_UINT8 &&
-			type != CSR_TYPE_UINT16) {
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (type != CSR_TYPE_ARRAY) {
-		err = csr_read_pskey_uint16(dd, 0x4711, pskey, 0x0000, &value);
-		if (err < 0)
-			return err;
-
-		printf("%s: 0x%04x (%d)\n", csr_pskeytostr(pskey), value, value);
-	} else {
-		switch (pskey) {
-		case CSR_PSKEY_LOCAL_SUPPORTED_FEATURES:
-			size = 8;
-			break;
-		case CSR_PSKEY_LOCAL_SUPPORTED_COMMANDS:
-			size = 18;
-			break;
-		}
+	switch (type) {
+	case CSR_TYPE_ARRAY:
+		size = pskey_size(pskey);
 
 		err = csr_read_pskey_complex(dd, 0x4711, pskey, 0x0000, array, size);
 		if (err < 0)
@@ -144,6 +153,29 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 		for (i = 0; i < size; i++)
 			printf(" 0x%02x", array[i]);
 		printf("\n");
+		break;
+
+	case CSR_TYPE_UINT8:
+	case CSR_TYPE_UINT16:
+		err = csr_read_pskey_uint16(dd, 0x4711, pskey, 0x0000, &value);
+		if (err < 0)
+			return err;
+
+		printf("%s: 0x%04x (%d)\n", csr_pskeytostr(pskey), value, value);
+		break;
+
+	case CSR_TYPE_UINT32:
+		err = csr_read_pskey_uint32(dd, 0x4711, pskey, 0x0000, &val32);
+		if (err < 0)
+			return err;
+
+		printf("%s: 0x%08x (%d)\n", csr_pskeytostr(pskey), val32, val32);
+		break;
+
+	default:
+		errno = EFAULT;
+		err = -1;
+		break;
 	}
 
 	return err;
@@ -154,6 +186,9 @@ static struct {
 	int type;
 	char *str;
 } storage[] = {
+	{ CSR_PSKEY_BDADDR,                   CSR_TYPE_ARRAY,  "bdaddr"   },
+	{ CSR_PSKEY_COUNTRYCODE,              CSR_TYPE_UINT16, "country"  },
+	{ CSR_PSKEY_CLASSOFDEVICE,            CSR_TYPE_UINT32, "devclass" },
 	{ CSR_PSKEY_ENC_KEY_LMIN,             CSR_TYPE_UINT16, "keymin"   },
 	{ CSR_PSKEY_ENC_KEY_LMAX,             CSR_TYPE_UINT16, "keymax"   },
 	{ CSR_PSKEY_LOCAL_SUPPORTED_FEATURES, CSR_TYPE_ARRAY,  "features" },
