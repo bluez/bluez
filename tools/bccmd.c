@@ -48,7 +48,7 @@ static int cmd_builddef(int dd, int argc, char *argv[])
 	uint16_t seqnum = 0x4711, def = 0x0000, nextdef = 0x0000;
 	int err = 0;
 
-	printf("Build definitions:");
+	printf("Build definitions:\n");
 
 	while (1) {
 		memset(buf, 0, sizeof(buf));
@@ -69,10 +69,8 @@ static int cmd_builddef(int dd, int argc, char *argv[])
 
 		def = nextdef;
 
-		printf(" %s (0x%02x)", csr_builddeftostr(def), def);
+		printf("0x%04x - %s\n", def, csr_builddeftostr(def));
 	}
-
-	printf("\n");
 
 	return err;
 }
