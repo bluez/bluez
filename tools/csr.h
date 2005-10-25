@@ -499,6 +499,7 @@ char *csr_builddeftostr(uint16_t def);
 char *csr_buildidtostr(uint16_t id);
 char *csr_chipvertostr(uint16_t ver, uint16_t rev);
 char *csr_pskeytostr(uint16_t pskey);
+char *csr_pskeytoval(uint16_t pskey);
 
 int csr_write_varid_valueless(int dd, uint16_t seqnum, uint16_t varid);
 int csr_read_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length);
