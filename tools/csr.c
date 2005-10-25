@@ -351,6 +351,112 @@ static struct {
 	{    0, }
 };
 
+char *csr_builddeftostr(uint16_t def)
+{
+	switch (def) {
+	case 0x0000:
+		return "NONE";
+	case 0x0001:
+		return "CHIP_BASE_BC01";
+	case 0x0002:
+		return "CHIP_BASE_BC02";
+	case 0x0003:
+		return "CHIP_BC01B";
+	case 0x0004:
+		return "CHIP_BC02_EXTERNAL";
+	case 0x0005:
+		return "BUILD_HCI";
+	case 0x0006:
+		return "BUILD_RFCOMM";
+	case 0x0007:
+		return "BT_VER_1_1";
+	case 0x0008:
+		return "TRANSPORT_ALL";
+	case 0x0009:
+		return "TRANSPORT_BCSP";
+	case 0x000a:
+		return "TRANSPORT_H4";
+	case 0x000b:
+		return "TRANSPORT_USB";
+	case 0x000c:
+		return "MAX_CRYPT_KEY_LEN_56";
+	case 0x000d:
+		return "MAX_CRYPT_KEY_LEN_128";
+	case 0x000e:
+		return "TRANSPORT_USER";
+	case 0x000f:
+		return "CHIP_BC02K";
+	case 0x0010:
+		return "TRANSPORT_NONE";
+	case 0x0012:
+		return "REQUIRE_8MBIT";
+	case 0x0013:
+		return "RADIOTEST";
+	case 0x0014:
+		return "RADIOTEST_LITE";
+	case 0x0015:
+		return "INSTALL_FLASH";
+	case 0x0016:
+		return "INSTALL_EEPROM";
+	case 0x0017:
+		return "INSTALL_COMBO_DOT11";
+	case 0x0018:
+		return "LOWPOWER_TX";
+	case 0x0019:
+		return "TRANSPORT_TWUTL";
+	case 0x001a:
+		return "COMPILER_GCC";
+	case 0x001b:
+		return "CHIP_BC02C";
+	case 0x001c:
+		return "CHIP_BC02T";
+	case 0x001d:
+		return "CHIP_BASE_BC3";
+	case 0x001e:
+		return "CHIP_BC3N";
+	case 0x001f:
+		return "CHIP_BC3K";
+	case 0x0020:
+		return "INSTALL_HCI_MODULE";
+	case 0x0021:
+		return "INSTALL_L2CAP_MODULE";
+	case 0x0022:
+		return "INSTALL_DM_MODULE";
+	case 0x0023:
+		return "INSTALL_SDP_MODULE";
+	case 0x0024:
+		return "INSTALL_RFCOMM_MODULE";
+	case 0x0025:
+		return "INSTALL_HIDIO_MODULE";
+	case 0x0026:
+		return "INSTALL_PAN_MODULE";
+	case 0x0027:
+		return "INSTALL_IPV4_MODULE";
+	case 0x0028:
+		return "INSTALL_IPV6_MODULE";
+	case 0x0029:
+		return "INSTALL_TCP_MODULE";
+	case 0x002a:
+		return "BT_VER_1_2";
+	case 0x002b:
+		return "INSTALL_UDP_MODULE";
+	case 0x002c:
+		return "REQUIRE_0_WAIT_STATES";
+	case 0x002d:
+		return "CHIP_BC3_PADDYWACK";
+	case 0x002e:
+		return "CHIP_BC4_COYOTE";
+	case 0x002f:
+		return "CHIP_BC4_ODDJOB";
+	case 0x0030:
+		return "TRANSPORT_H4DS";
+	case 0x0031:
+		return "CHIP_BASE_BC4";
+	default:
+		return "UNKNOWN";
+	}
+}
+
 char *csr_buildidtostr(uint16_t id)
 {
 	static char str[12];
@@ -370,10 +476,13 @@ char *csr_chipvertostr(uint16_t ver, uint16_t rev)
 	case 0x00:
 		return "BlueCore01a";
 	case 0x01:
-		if (rev == 0x64)
+		switch (rev) {
+		case 0x64:
 			return "BlueCore01b (ES)";
-		else
+		case 0x65:
+		default:
 			return "BlueCore01b";
+		}
 	case 0x02:
 		switch (rev) {
 		case 0x89:

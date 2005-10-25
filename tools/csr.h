@@ -495,6 +495,7 @@
 #define CSR_PSKEY_LOCAL_NAME_SIMPLIFIED				0x0423	/* local_name_complete */
 #define CSR_PSKEY_EXTENDED_STUB					0x2001	/* uint16 */
 
+char *csr_builddeftostr(uint16_t def);
 char *csr_buildidtostr(uint16_t id);
 char *csr_chipvertostr(uint16_t ver, uint16_t rev);
 char *csr_pskeytostr(uint16_t pskey);
