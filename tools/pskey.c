@@ -48,7 +48,106 @@
 #define CSR_TYPE_UINT16	3
 #define CSR_TYPE_UINT32	4
 
+enum {
+	NONE = 0,
+	LIST,
+	READ,
+};
+
 static int transient = 0;
+
+static int cmd_list(int dd, int argc, char *argv[])
+{
+	uint8_t array[8];
+	uint16_t length, seqnum = 0x0000, pskey = 0x0000;
+	int err;
+
+	while (1) {
+		memset(array, 0, sizeof(array));
+		array[0] = pskey & 0xff;
+		array[1] = pskey >> 8;
+
+		err = csr_read_varid_complex(dd, seqnum++,
+				CSR_VARID_PS_NEXT, array, sizeof(array));
+		if (err < 0)
+			break;
+
+		pskey = array[4] + (array[5] << 8);
+		if (pskey == 0x0000)
+			break;
+
+		memset(array, 0, sizeof(array));
+		array[0] = pskey & 0xff;
+		array[1] = pskey >> 8;
+
+		err = csr_read_varid_complex(dd, seqnum++,
+				CSR_VARID_PS_SIZE, array, sizeof(array));
+		if (err < 0)
+			continue;
+
+		length = array[2] + (array[3] << 8);
+
+		printf("0x%04x - %s (%d bytes)\n", pskey,
+					csr_pskeytostr(pskey), length * 2);
+	}
+
+	return 0;
+}
+
+static int cmd_read(int dd, int argc, char *argv[])
+{
+	uint8_t array[256];
+	uint16_t length, seqnum = 0x0000, pskey = 0x0000;
+	char *str, val[7];
+	int i, err;
+
+	while (1) {
+		memset(array, 0, sizeof(array));
+		array[0] = pskey & 0xff;
+		array[1] = pskey >> 8;
+
+		err = csr_read_varid_complex(dd, seqnum++,
+				CSR_VARID_PS_NEXT, array, 8);
+		if (err < 0)
+			break;
+
+		pskey = array[4] + (array[5] << 8);
+		if (pskey == 0x0000)
+			break;
+
+		memset(array, 0, sizeof(array));
+		array[0] = pskey & 0xff;
+		array[1] = pskey >> 8;
+
+		err = csr_read_varid_complex(dd, seqnum++,
+				CSR_VARID_PS_SIZE, array, 8);
+		if (err < 0)
+			continue;
+
+		length = array[2] + (array[3] << 8);
+		if (length > sizeof(array) / 2)
+			continue;
+
+		err = csr_read_pskey_complex(dd, seqnum++, pskey,
+						0x0000, array, length * 2);
+		if (err < 0)
+			continue;
+
+		str = csr_pskeytoval(pskey);
+		if (!strcasecmp(str, "UNKNOWN")) {
+			sprintf(val, "0x%04x", pskey);
+			str = NULL;
+		}
+
+		printf("// %s%s\n&%04x =", str ? "PSKEY_" : "", 
+						str ? str : val, pskey);
+		for (i = 0; i < length; i++)
+			printf(" %02x%02x", array[i * 2 + 1], array[i * 2]);
+		printf("\n");
+	}
+
+	return 0;
+}
 
 static int pskey_size(uint16_t pskey)
 {
@@ -215,7 +314,8 @@ static void usage(void)
 	printf("pskey - Utility for changing CSR persistent storage\n\n");
 	printf("Usage:\n"
 		"\tpskey [-i <dev>] [-r] [-t] <key> [value]\n"
-		"\tpskey [-i <dev>] --list\n\n");
+		"\tpskey [-i <dev>] --list\n"
+		"\tpskey [-i <dev>] --read\n\n");
 
 	printf("Keys:\n\t");
 	for (i = 0; storage[i].pskey; i++) {
@@ -233,7 +333,8 @@ static struct option main_options[] = {
 	{ "device",	1, 0, 'i' },
 	{ "reset",	0, 0, 'r' },
 	{ "transient",	0, 0, 't' },
-	{ "list",	0, 0, 'l' },
+	{ "list",	0, 0, 'L' },
+	{ "read",	0, 0, 'R' },
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
@@ -242,9 +343,9 @@ int main(int argc, char *argv[])
 {
 	struct hci_dev_info di;
 	struct hci_version ver;
-	int i, err, dd, opt, dev = 0, list = 0, reset = 0;
+	int i, err, dd, opt, dev = 0, reset = 0, mode = NONE;
 
-	while ((opt=getopt_long(argc, argv, "+i:rtlh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+i:rtLRh", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
 			dev = hci_devid(optarg);
@@ -262,8 +363,12 @@ int main(int argc, char *argv[])
 			transient = 1;
 			break;
 
-		case 'l':
-			list = 1;
+		case 'L':
+			mode = LIST;
+			break;
+
+		case 'R':
+			mode = READ;
 			break;
 
 		case 'h':
@@ -277,7 +382,7 @@ int main(int argc, char *argv[])
 	argv += optind;
 	optind = 0;
 
-	if (!list && argc < 1) {
+	if (mode == NONE && argc < 1) {
 		usage();
 		exit(1);
 	}
@@ -309,42 +414,24 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (list) {
-		uint8_t array[8];
-		uint16_t length, seqnum = 0x0000, pskey = 0x0000;
-		int err;
+	if (mode > 0) {
+		switch (mode) {
+		case LIST:
+			err = cmd_list(dd, argc, argv);
+			break;
 
-		while (1) {
-			memset(array, 0, sizeof(array));
-			array[0] = pskey & 0xff;
-			array[1] = pskey >> 8;
+		case READ:
+			err = cmd_read(dd, argc, argv);
+			break;
 
-			err = csr_read_varid_complex(dd, seqnum++,
-					CSR_VARID_PS_NEXT, array, sizeof(array));
-			if (err < 0)
-				break;
-
-			pskey = array[4] + (array[5] << 8);
-			if (pskey == 0x0000)
-				break;
-
-			memset(array, 0, sizeof(array));
-			array[0] = pskey & 0xff;
-			array[1] = pskey >> 8;
-
-			err = csr_read_varid_complex(dd, seqnum++,
-					CSR_VARID_PS_SIZE, array, sizeof(array));
-			if (err < 0)
-				continue;
-
-			length = array[2] + (array[3] << 8);
-
-			printf("0x%04x - %s (%d bytes)\n", pskey,
-					csr_pskeytostr(pskey), length * 2);
+		default:
+			usage();
+			err = -1;
+			break;
 		}
 
 		hci_close_dev(dd);
-		exit(0);
+		exit(err < 0 ? 1 : 0);
 	}
 
 	for (i = 0; storage[i].pskey; i++) {
