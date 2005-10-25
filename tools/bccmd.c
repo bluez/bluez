@@ -42,6 +42,41 @@
 
 #include "csr.h"
 
+static int cmd_builddef(int dd, int argc, char *argv[])
+{
+	uint8_t buf[8];
+	uint16_t seqnum = 0x4711, def = 0x0000, nextdef = 0x0000;
+	int err = 0;
+
+	printf("Build definitions:");
+
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		buf[0] = def & 0xff;
+		buf[1] = def >> 8;
+
+		err = csr_read_varid_complex(dd, seqnum++,
+				CSR_VARID_GET_NEXT_BUILDDEF, buf, sizeof(buf));
+		if (err < 0) {
+			errno = -err;
+			break;
+		}
+
+		nextdef = buf[2] | (buf[3] << 8);
+
+		if (nextdef == 0x0000)
+			break;
+
+		def = nextdef;
+
+		printf(" %s (0x%02x)", csr_builddeftostr(def), def);
+	}
+
+	printf("\n");
+
+	return err;
+}
+
 static int cmd_keylen(int dd, int argc, char *argv[])
 {
 	uint8_t buf[8];
@@ -171,6 +206,7 @@ static struct {
 	char *arg;
 	char *doc;
 } commands[] = {
+	{ "builddef",  cmd_builddef,  "",         "Get build definitions"        },
 	{ "keylen",    cmd_keylen,    "<handle>", "Get current crypt key length" },
 	{ "clock",     cmd_clock,     "",         "Get local Bluetooth clock"    },
 	{ "rand",      cmd_rand,      "",         "Get random number"            },
