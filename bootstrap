@@ -1,2 +1,7 @@
-#! /bin/sh
-aclocal && autoheader && libtoolize --copy --force && automake --add-missing --copy --ignore-deps && autoconf
+#!/bin/sh
+
+aclocal && \
+    autoheader && \
+	libtoolize --copy --force && \
+	    automake --add-missing --copy && \
+		autoconf
