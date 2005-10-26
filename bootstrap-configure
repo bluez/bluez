@@ -1,0 +1,13 @@
+#!/bin/sh
+
+./bootstrap && \
+    ./configure --enable-maintainer-mode \
+		--enable-debug \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--enable-all \
+		--disable-pcmcia \
+		--disable-initscripts \
+		--disable-bluepin

@@ -1,7 +1,0 @@
-#! /bin/sh
-./configure --enable-maintainer-mode --enable-all --disable-pcmcia --disable-initscripts --disable-bluepin && make && \
-	sudo cp hcid/hcid /usr/sbin && \
-	sudo cp sdpd/sdpd /usr/sbin && \
-	sudo cp tools/hciconfig /usr/sbin && \
-	sudo cp tools/hcitool /usr/bin && \
-	sudo cp tools/sdptool /usr/bin
