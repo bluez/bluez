@@ -32,7 +32,13 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <malloc.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -40,6 +46,15 @@
 #include <bluetooth/hci_lib.h>
 
 #include "csr.h"
+
+struct psr_data {
+	uint16_t pskey;
+	uint8_t *value;
+	uint8_t size;
+	struct psr_data *next;
+};
+
+static struct psr_data *head = NULL, *tail = NULL;
 
 static struct {
 	uint16_t id;
@@ -2522,4 +2537,165 @@ int csr_write_pskey_uint32(int dd, uint16_t seqnum, uint16_t pskey, uint16_t sto
 					value & 0xff, (value & 0xff00) >> 8 };
 
 	return csr_write_pskey_complex(dd, seqnum, pskey, store, array, 4);
+}
+
+int psr_put(uint16_t pskey, uint8_t *value, uint16_t size)
+{
+	struct psr_data *item;
+
+	item = malloc(sizeof(*item));
+	if (!item)
+		return -ENOMEM;
+
+	item->pskey = pskey;
+
+	if (size > 0) {
+		item->value = malloc(size);
+		if (!item->value) {
+			free(item);
+			return -ENOMEM;
+		}
+
+		memcpy(item->value, value, size);
+		item->size = size;
+	} else {
+		item->value = NULL;
+		item->size = 0;
+	}
+
+	item->next = NULL;
+
+	if (!head)
+		head = item;
+	else
+		tail->next = item;
+
+	tail = item;
+
+	return 0;
+}
+
+int psr_get(uint16_t *pskey, uint8_t *value, uint16_t *size)
+{
+	struct psr_data *item = head;
+
+	if (!head)
+		return -ENOENT;
+
+	*pskey = item->pskey;
+
+	if (item->value) {
+		if (value && item->size > 0)
+			memcpy(value, item->value, item->size);
+		free(item->value);
+		*size = item->size;
+	} else
+		*size = 0;
+
+	if (head == tail)
+		tail = NULL;
+
+	head = head->next;
+	free(item);
+
+	return 0;
+}
+
+static int parse_line(char *str)
+{
+	uint8_t array[256];
+	uint16_t value, pskey, length = 0;
+	char *tmp, *end;
+
+	pskey = strtol(str + 1, NULL, 16);
+	tmp = strstr(str, "=") + 1;
+
+	while (1) {
+		value = strtol(tmp, &end, 16);
+		if (value == 0 && tmp == end)
+			break;
+
+		array[length++] = value & 0xff;
+		array[length++] = value >> 8;
+
+		tmp = end + 1;
+	}
+
+	return psr_put(pskey, array, length);
+}
+
+int psr_read(const char *filename)
+{
+	struct stat st;
+	char *str, *map, *off, *end;
+	int fd, err = 0;
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0)
+		return fd;
+
+	if (fstat(fd, &st) < 0) {
+		err = -errno;
+		goto close;
+	}
+
+	map = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (map == MAP_FAILED) {
+		err = -errno;
+		goto close;
+	}
+
+	off = map;
+
+	while (1) {
+		end = strpbrk(off, "\r\n");
+		if (!end)
+			break;
+
+		str = malloc(end - off + 1);
+		if (!str)
+			break;
+
+		memset(str, 0, end - off + 1);
+		strncpy(str, off, end - off);
+		if (*str == '&')
+			parse_line(str);
+
+		free(str);
+		off = end + 1;
+	}
+
+	munmap(map, st.st_size);
+
+close:
+	close(fd);
+
+	return err;
+}
+
+int psr_print(void)
+{
+	uint8_t array[256];
+	uint16_t pskey, length;
+	char *str, val[7];
+	int i;
+
+	while (1) {
+		if (psr_get(&pskey, array, &length) < 0)
+			break;
+
+		str = csr_pskeytoval(pskey);
+		if (!strcasecmp(str, "UNKNOWN")) {
+			sprintf(val, "0x%04x", pskey);
+			str = NULL;
+		}
+
+		printf("// %s%s\n&%04x =", str ? "PSKEY_" : "",
+						str ? str : val, pskey);
+		for (i = 0; i < length / 2; i++)
+			printf(" %02x%02x", array[i * 2 + 1], array[i * 2]);
+		printf("\n");
+	}
+
+	return 0;
 }
