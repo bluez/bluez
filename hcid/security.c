@@ -644,6 +644,18 @@ static inline void disconn_complete(int dev, bdaddr_t *sba, void *ptr)
 	hcid_dbus_disconn_complete(sba, &dba, evt->reason);
 }
 
+static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_auth_complete *evt = ptr;
+	bdaddr_t dba;
+
+	if (get_bdaddr(dev, sba, evt->handle, &dba) < 0) 
+		return;
+
+	hcid_dbus_auth_complete(sba, &dba, evt->status);
+}
+
+
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
@@ -726,6 +738,9 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	case EVT_DISCONN_COMPLETE:
 		disconn_complete(dev, &di->bdaddr, ptr);
 		break;
+	case EVT_AUTH_COMPLETE:
+		auth_complete(dev, &di->bdaddr, ptr);
+		break;
 	}
 
 	if (hci_test_bit(HCI_SECMGR, &di->flags))
@@ -789,6 +804,7 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_EXTENDED_INQUIRY_RESULT, &flt);
 	hci_filter_set_event(EVT_CONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_DISCONN_COMPLETE, &flt);
+	hci_filter_set_event(EVT_AUTH_COMPLETE, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		syslog(LOG_ERR, "Can't set filter on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);

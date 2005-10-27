@@ -137,6 +137,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 void hcid_dbus_remote_name_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status);
 void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer);
 void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason);
+void hcid_dbus_auth_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status);
 #else
 static inline void hcid_dbus_inquiry_start(bdaddr_t *local) {}
 static inline void hcid_dbus_inquiry_complete(bdaddr_t *local) {}
@@ -145,6 +146,7 @@ static inline void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *
 static inline void hcid_dbus_remote_name_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status) {}
 static inline void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer) {}
 static inline void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason) {}
+static inline void hcid_dbus_auth_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status) {}
 #endif
 
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);

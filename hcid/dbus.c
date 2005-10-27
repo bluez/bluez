@@ -668,6 +668,51 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason)
 {
 }
 
+void hcid_dbus_auth_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
+{
+	DBusMessage *message = NULL;
+	char *local_addr, *peer_addr;
+	bdaddr_t tmp;
+	char path[MAX_PATH_LENGTH];
+	int id;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d/%s", MANAGER_PATH, id, BLUEZ_HCI);
+
+	message = dbus_message_new_signal(path, BLUEZ_HCI_INTERFACE, BLUEZ_HCI_AUTH_COMPLETE);
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		goto failed;
+	}
+
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_BYTE, &status,
+					DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS remote name message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	if (message)
+		dbus_message_unref(message);
+
+	bt_free(local_addr);
+	bt_free(peer_addr);
+}
+
 gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	DBusWatch *watch = (DBusWatch *) data;
@@ -1697,7 +1742,7 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	rq.rlen = EVT_CMD_STATUS_SIZE;
 	rq.event = EVT_CMD_STATUS;
 
-	if (hci_send_req(dd, &rq, 25000) < 0) {
+	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to send authentication request: %s", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
