@@ -377,6 +377,9 @@ static void init_all_devices(int ctl)
 			start_security_manager(dr->dev_id);
 
 #ifdef ENABLE_DBUS
+		if (hci_test_bit(HCI_UP, &dr->dev_opt))
+			hcid_dbus_register_manager(dr->dev_id);
+
 		hcid_dbus_register_device(dr->dev_id);
 #endif
 	}
@@ -430,10 +433,16 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		syslog(LOG_INFO, "HCI dev %d registered", sd->dev_id);
 		if (hcid.auto_init)
 			init_device(sd->dev_id);
+#ifdef ENABLE_DBUS
+		hcid_dbus_register_device(sd->dev_id);
+#endif
 		break;
 
 	case HCI_DEV_UNREG:
 		syslog(LOG_INFO, "HCI dev %d unregistered", sd->dev_id);
+#ifdef ENABLE_DBUS
+		hcid_dbus_unregister_device(sd->dev_id);
+#endif
 		break;
 
 	case HCI_DEV_UP:
@@ -443,7 +452,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		if (hcid.security)
 			start_security_manager(sd->dev_id);
 #ifdef ENABLE_DBUS
-		hcid_dbus_register_device(sd->dev_id);
+		hcid_dbus_register_manager(sd->dev_id);
 #endif
 		break;
 
@@ -452,7 +461,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		if (hcid.security)
 			stop_security_manager(sd->dev_id);
 #ifdef ENABLE_DBUS
-		hcid_dbus_unregister_device(sd->dev_id);
+		hcid_dbus_unregister_manager(sd->dev_id);
 #endif
 		break;
 	}

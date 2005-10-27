@@ -52,7 +52,7 @@
 #include "dbus.h"
 
 static DBusConnection *connection;
-static int num_adapters = 0;
+static int up_adapters = 0;
 
 #define TIMEOUT (30 * 1000)		/* 30 seconds */
 #define BLUETOOTH_DEVICE_NAME_LEN    (18)
@@ -357,6 +357,39 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 static void free_pin_req(void *req)
 {
 	free(req);
+}
+
+static gboolean register_dbus_path(char *path, uint16_t id)
+{
+	struct hci_dbus_data *data;
+	syslog(LOG_INFO,"Registering DBUS Path: %s", path);
+	data = malloc(sizeof(struct hci_dbus_data));
+	if (data == NULL) {
+		syslog(LOG_ERR,"Failed to alloc memory to DBUS path register data (%s)", path);
+		return FALSE;
+	}
+	data->id = id;
+
+	if (!dbus_connection_register_object_path(connection, path, &obj_vtable, data)) {
+		syslog(LOG_ERR,"DBUS failed to register %s object", path);
+		free(data);
+		return FALSE;
+	}
+	return TRUE;
+}
+
+static gboolean unregister_dbus_path(char *path)
+{
+	void *data;
+	syslog(LOG_INFO,"Unregistering DBUS Path: %s", path);
+	if (dbus_connection_get_object_path_data(connection, path, &data) && data) 
+		free(data);
+	
+	if (!dbus_connection_unregister_object_path (connection, path)) {
+		syslog(LOG_ERR,"DBUS failed to unregister %s object", path);
+		return FALSE;
+	} 
+	return TRUE;
 }
 
 void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
@@ -739,7 +772,7 @@ gboolean hcid_dbus_init(void)
 
 	data->id = DEVICE_PATH_ID;
 
-	if (!dbus_connection_register_object_path(connection, DEVICE_PATH,
+	if (!dbus_connection_register_fallback(connection, DEVICE_PATH,
 						&obj_vtable, data)) {
 		syslog(LOG_ERR, "Can't register %s object", DEVICE_PATH);
 		return FALSE;
@@ -855,7 +888,32 @@ void hcid_dbus_exit(void)
 	}
 }
 
-gboolean hcid_dbus_register_device(uint16_t id)
+gboolean hcid_dbus_register_device(uint16_t id) 
+{
+	char path[MAX_PATH_LENGTH+1];
+	char dev[BLUETOOTH_DEVICE_NAME_LEN+1];
+	const char *pdev = dev;
+
+	snprintf(dev, BLUETOOTH_DEVICE_NAME_LEN, HCI_DEVICE_NAME "%d", id);
+	snprintf(path, MAX_PATH_LENGTH, "%s/%s", DEVICE_PATH, pdev);
+
+	/* register the default path*/
+	return register_dbus_path(path, id);
+}
+
+gboolean hcid_dbus_unregister_device(uint16_t id)
+{
+	char dev[BLUETOOTH_DEVICE_NAME_LEN+1];
+	char path[MAX_PATH_LENGTH+1];
+	const char *pdev = dev;
+
+	snprintf(dev, BLUETOOTH_DEVICE_NAME_LEN, HCI_DEVICE_NAME "%d", id);
+	snprintf(path, MAX_PATH_LENGTH, "%s/%s", DEVICE_PATH, pdev);
+
+	return unregister_dbus_path(path);
+}
+
+gboolean hcid_dbus_register_manager(uint16_t id)
 {
 	char dev[BLUETOOTH_DEVICE_NAME_LEN];
 	struct profile_obj_path_data *ptr = obj_path_table;
@@ -873,7 +931,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	}
 
 	if (!ret)
-		num_adapters++;
+		up_adapters++;
 
 	message = dbus_message_new_signal(BLUEZ_HCI_PATH,
 			BLUEZ_HCI_INTERFACE, BLUEZ_HCI_DEV_ADDED);
@@ -883,7 +941,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 		goto failed;
 	}
 
-	sprintf(dev, "hci%d", id);
+	sprintf(dev, HCI_DEVICE_NAME "%d", id);
 
 	dbus_message_iter_init_append(message, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING ,&pdev);
@@ -904,7 +962,7 @@ failed:
 	return TRUE;
 }
 
-gboolean hcid_dbus_unregister_device(uint16_t id)
+gboolean hcid_dbus_unregister_manager(uint16_t id)
 {
 	char dev[BLUETOOTH_DEVICE_NAME_LEN];
 	struct profile_obj_path_data *ptr = obj_path_table;
@@ -917,8 +975,8 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 		return FALSE;
 
 	for (; ptr->name; ptr++) {
-		dft_unreg = (num_adapters > 1) ? 0 : 1;
-		num_adapters--;
+		dft_unreg = (up_adapters > 1) ? 0 : 1;
+		up_adapters--;
 		ptr->unreg_func(connection, dft_unreg, id);
 
 		if (dft_unreg )
@@ -933,7 +991,7 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 		goto failed;
 	}
 
-	sprintf(dev, "hci%d", id);
+	sprintf(dev, HCI_DEVICE_NAME "%d", id);
 
 	dbus_message_iter_init_append(message, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING ,&pdev);
@@ -965,39 +1023,17 @@ failed:
  */
 static int hci_dbus_reg_obj_path(DBusConnection *conn, int dft_reg, uint16_t id)
 {
-	struct hci_dbus_data *data;
 	char path[MAX_PATH_LENGTH];
 
 	/* register the default path*/
 	if (!dft_reg) {
-
 		sprintf(path, "%s/%s/%s", MANAGER_PATH, HCI_DEFAULT_DEVICE_NAME, BLUEZ_HCI);
-
-		data = malloc(sizeof(struct hci_dbus_data));
-		if (data == NULL)
-			return -1;
-
-		data->id = DEFAULT_DEVICE_PATH_ID;
-
-		if (!dbus_connection_register_object_path(conn, path, &obj_vtable, data)) { 
-			syslog(LOG_ERR,"DBUS failed to register %s object", path);
-			/* ignore, the default path was already registered */
-		}
+		register_dbus_path(path, DEFAULT_DEVICE_PATH_ID);
 	}
-
-	data = malloc(sizeof(struct hci_dbus_data));
-	if (data == NULL)
-		return -1;
-
-	data->id = id;
 
 	/* register the default path*/
 	sprintf(path, "%s/%s%d/%s", MANAGER_PATH, HCI_DEVICE_NAME, id, BLUEZ_HCI);
-
-	if (!dbus_connection_register_object_path(conn, path, &obj_vtable, data)) {
-		syslog(LOG_ERR,"DBUS failed to register %s object", path);
-		/* ignore, the path was already registered */
-	}
+	register_dbus_path(path, id);
 
 	return 0;
 }
@@ -1016,39 +1052,14 @@ static int hci_dbus_unreg_obj_path(DBusConnection *conn, int unreg_dft, uint16_t
 {
 	int ret = 0;
 	char path[MAX_PATH_LENGTH];
-	char dft_path[MAX_PATH_LENGTH];
-	void *data = NULL;
 
 	if (unreg_dft) {
-
-		sprintf(dft_path, "%s/%s/%s", MANAGER_PATH, HCI_DEFAULT_DEVICE_NAME, BLUEZ_HCI);
-
-		if (!dbus_connection_unregister_object_path (connection, dft_path)) {
-			syslog(LOG_ERR,"DBUS failed to unregister %s object", dft_path);
-			ret = -1;
-		} else {
-			if (dbus_connection_get_object_path_data(conn, dft_path, &data)) {
-				if (data) {
-					free(data);
-					data = NULL;
-				}
-			}
-		}
+		sprintf(path, "%s/%s/%s", MANAGER_PATH, HCI_DEFAULT_DEVICE_NAME, BLUEZ_HCI);
+		unregister_dbus_path(path);
 	}
 
 	sprintf(path, "%s/%s%d/%s", MANAGER_PATH, HCI_DEVICE_NAME, id, BLUEZ_HCI);
-
-	if (!dbus_connection_unregister_object_path (connection, path)) {
-		syslog(LOG_ERR,"DBUS failed to unregister %s object", path);
-		ret = -1;
-	} else {
-		if (dbus_connection_get_object_path_data(conn, path, &data)) {
-			if (data) {
-				free(data);
-				data = NULL;
-			}
-		}
-	}
+	unregister_dbus_path(path);
 
 	return ret;
 }
