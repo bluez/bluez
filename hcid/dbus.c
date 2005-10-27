@@ -1215,11 +1215,12 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	uint8_t length;
 	uint8_t max_period;
 	uint8_t min_period;
-	int sock = -1;
+	int dd = -1;
 	int dev_id = -1;
 
 	if (dbus_data->id == DEFAULT_DEVICE_PATH_ID) {
-		if ((dev_id = hci_get_route(NULL)) < 0) {
+		dev_id = hci_get_route(NULL);
+		if (dev_id < 0) {
 			syslog(LOG_ERR, "Bluetooth device is not available");
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 			goto failed;
@@ -1228,8 +1229,8 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	} else
 		dev_id =  dbus_data->id;
 
-	sock = hci_open_dev(dev_id);
-	if (sock < 0) {
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
 		syslog(LOG_ERR, "HCI device open failed");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
@@ -1260,14 +1261,14 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 
 	inq_mode.mode = 1; //INQUIRY_WITH_RSSI;
 
-	if (hci_send_cmd(sock, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
+	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
 				WRITE_INQUIRY_MODE_CP_SIZE, &inq_mode) < 0) {
 		syslog(LOG_ERR, "Can't set inquiry mode:%s.", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
-	if (hci_send_cmd(sock, OGF_LINK_CTL, OCF_PERIODIC_INQUIRY,
+	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_PERIODIC_INQUIRY,
 				PERIODIC_INQUIRY_CP_SIZE, &inq_param) < 0) {
 		syslog(LOG_ERR, "Can't send HCI commands:%s.", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
@@ -1281,8 +1282,8 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	}
 
 failed:
-	if (sock > 0)
-		close(sock);
+	if (dd >= 0)
+		close(dd);
 
 	return reply;
 }
@@ -1292,11 +1293,12 @@ static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
 	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
-	int sock = -1;
+	int dd = -1;
 	int dev_id = -1;
 
 	if (dbus_data->id == DEFAULT_DEVICE_PATH_ID) {
-		if ((dev_id = hci_get_route(NULL)) < 0) {
+		dev_id = hci_get_route(NULL);
+		if (dev_id < 0) {
 			syslog(LOG_ERR, "Bluetooth device is not available");
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 			goto failed;
@@ -1304,13 +1306,14 @@ static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
 	} else
 		dev_id = dbus_data->id;
 
-	if ((sock = hci_open_dev(dev_id)) < 0) {
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
 		syslog(LOG_ERR, "HCI device open failed");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
 	}
 
-	if (hci_send_cmd(sock, OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY, 0 , NULL) < 0) {
+	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY, 0 , NULL) < 0) {
 		syslog(LOG_ERR, "Send hci command failed.");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 	} else {
@@ -1322,8 +1325,8 @@ static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
 	}
 
 failed:
-	if (sock >= 0)
-		close(sock);
+	if (dd >= 0)
+		close(dd);
 
 	return reply;
 }
@@ -1447,7 +1450,7 @@ static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
 	bdaddr_t bdaddr;
 	uint8_t role;
 	int dev_id = -1;
-	int sock = -1;
+	int dd = -1;
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_get_basic(&iter, &str_bdaddr);
@@ -1470,14 +1473,14 @@ static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
 		goto failed;
 	}
 
-	sock = hci_open_dev(dev_id);
-	if (sock < 0) {
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
 		syslog(LOG_ERR, "HCI device open failed\n");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
 	}
 
-	if (hci_switch_role(sock, &bdaddr, role, 10000) < 0) {
+	if (hci_switch_role(dd, &bdaddr, role, 10000) < 0) {
 		syslog(LOG_ERR, "Switch role request failed\n");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 	} else {
@@ -1511,7 +1514,8 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 	str2ba(str_bdaddr, &bdaddr);
 
 	if (dbus_data->id == DEFAULT_DEVICE_PATH_ID) {
-		if ((dev_id = hci_get_route(&bdaddr)) < 0) {
+		dev_id = hci_get_route(&bdaddr);
+		if (dev_id  < 0) {
 			syslog(LOG_ERR, "Bluetooth device is not available");
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 			goto failed;
@@ -1566,12 +1570,13 @@ static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
 	const char array_sig[] = HCI_CONN_INFO_STRUCT_SIGNATURE;
 	const char *paddr = addr;
 	struct hci_dbus_data *dbus_data = data;
-	int i;
 	int dev_id = -1;
 	int sk = -1;
+	int i;
 
 	if (dbus_data->id == DEFAULT_DEVICE_PATH_ID) {
-		if ((dev_id = hci_get_route(NULL)) < 0) {
+		dev_id = hci_get_route(NULL);
+		if (dev_id < 0) {
 			syslog(LOG_ERR, "Bluetooth device is not available");
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 			goto failed;
@@ -1642,7 +1647,7 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	struct hci_conn_info_req *cr = NULL;
 	bdaddr_t bdaddr;
 	int dev_id = -1;
-	int sock = -1;
+	int dd = -1;
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_get_basic(&iter, &str_bdaddr);
@@ -1660,8 +1665,8 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 		goto failed;
 	}
 
-	sock = hci_open_dev(dev_id);
-	if (sock < 0) {
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
 	}
@@ -1675,7 +1680,7 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
 
-	if (ioctl(sock, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1692,15 +1697,15 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	rq.rlen = EVT_CMD_STATUS_SIZE;
 	rq.event = EVT_CMD_STATUS;
 
-	if (hci_send_req(sock, &rq, 25000) < 0) {
+	if (hci_send_req(dd, &rq, 25000) < 0) {
 		syslog(LOG_ERR, "Unable to send authentication request: %s", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
 failed:
-	if (sock >= 0)
-		close(sock);
+	if (dd >= 0)
+		close(dd);
 
 	if (cr)
 		free(cr);
@@ -1724,8 +1729,8 @@ static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data)
 	struct hci_dev_list_req *dl = NULL;
 	struct hci_dev_req *dr      = NULL;
 	struct hci_dev_info di;
+	int sk = -1;
 	int i;
-	int sock = -1;
 
 	char aname[BLUETOOTH_DEVICE_NAME_LEN];
 	char aaddr[BLUETOOTH_DEVICE_ADDR_LEN];
@@ -1734,8 +1739,8 @@ static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data)
 	const char array_sig[] = HCI_DEVICE_STRUCT_SIGNATURE;
 
 	/* Create and bind HCI socket */
-	sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (sock < 0) {
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0) {
 		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)", strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
@@ -1751,7 +1756,7 @@ static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data)
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
-	if (ioctl(sock, HCIGETDEVLIST, dl) < 0) {
+	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1769,7 +1774,7 @@ static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data)
 		memset(&di, 0 , sizeof(struct hci_dev_info));
 		di.dev_id = dr->dev_id;
 
-		if (ioctl(sock, HCIGETDEVINFO, &di) < 0)
+		if (ioctl(sk, HCIGETDEVINFO, &di) < 0)
 			continue;
 
 		strcpy(aname, di.name);
@@ -1787,8 +1792,8 @@ static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data)
 	dbus_message_iter_close_container(&iter, &array_iter);
 
 failed:
-	if (sock >= 0)
-		close(sock);
+	if (sk >= 0)
+		close(sk);
 
 	if (dl)
 		free(dl);
