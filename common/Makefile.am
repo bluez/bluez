@@ -1,6 +1,3 @@
-#  
-#  $Id$
-#
 
 noinst_LIBRARIES = libtextfile.a
 

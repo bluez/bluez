@@ -1,6 +1,3 @@
-# 
-#  $Id$
-#
 
 datafiles = bluetooth bluetooth.conf
 

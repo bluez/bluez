@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 if ALSA
 alsadir = $(libdir)/alsa-lib

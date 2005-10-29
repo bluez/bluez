@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 if DBUS
 noinst_PROGRAMS = bluetoothd

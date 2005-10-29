@@ -1,39 +1,16 @@
 Maxim Krasnyansky <maxk@qualcomm.com>
-	Original author.
-
 Marcel Holtmann <marcel@holtmann.org>
-	Primary maintainer.
-	Various patches, fixes and other contributions.
-	RFCOMM configuration utility.
-
-Ilguiz Latypov <ilatypov@superbt.com>
-	Patches. Suggestions.
-
-Jan Beutel <j.beutel@ieee.org>
-	Documentation maintainer.
-	BlueZ HowTo.
-
-Jean Tourrilhes <jt@hpl.hp.com>
-	CSR and BrainBoxes specific UART initialization.
-
-Thomas Moser <Thomas.Moser@tmoser.ch>
-	Silicon Wave UART initialization.
-
-Nils Faerber <nils@kernelconcepts.de>
-	Man pages.
-
-Martin Leopold <martin@leopold.dk>
-	Various patches and fixes.
-
 Stephen Crane <steve.crane@rococosoft.com>
-	Support for human readable class of device display.
-	SDP server and sdptool fixes.
-
+Jean Tourrilhes <jt@hpl.hp.com>
+Jan Beutel <j.beutel@ieee.org>
+Ilguiz Latypov <ilatypov@superbt.com>
+Thomas Moser <thomas.moser@tmoser.ch>
+Nils Faerber <nils@kernelconcepts.de>
+Martin Leopold <martin@leopold.dk>
 Wolfgang Heidrich <wolfgang.heidrich@esk.fhg.de>
-	Support for displaying link quality (hcitool).
-
 Fabrizio Gennari <fabrizio.gennari@philips.com>
-	Support for link supervision timeout (hcitool).
-
+Brad Midgley <bmidgley@xmission.com>
+Henryk Ploetz <henryk@ploetzli.ch>
 Philip Blundell <pb@nexus.co.uk>
-	D-Bus PIN helper support.
+Claudio Takahasi <cktakahasi@gmail.com>
+Johan Hedberg <johan.hedberg@nokia.com>

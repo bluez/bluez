@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 sbin_PROGRAMS = sdpd
 

@@ -9,10 +9,6 @@
 # environment variables FUNCTION, VENDORID, CARDNAME
 #
 
-#
-# $Id$
-#
-
 if [ -r ./shared ]; then . ./shared ; else . /etc/pcmcia/shared ; fi
 
 # Get device attributes

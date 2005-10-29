@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 SUBDIRS = common daemon tools rfcomm hcid sdpd dund pand hidd \
 	cups fuse alsa test scripts pcmcia extra

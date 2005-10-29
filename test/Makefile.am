@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 if TEST
 bin_PROGRAMS = l2test rctest

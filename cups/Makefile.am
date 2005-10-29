@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 if CUPS
 cupsdir = $(libdir)/cups/backend

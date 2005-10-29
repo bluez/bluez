@@ -1,6 +1,3 @@
-#  
-#  $Id$
-#
 
 confdir = $(sysconfdir)/bluetooth
 

@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 if FUSE
 noinst_PROGRAMS = btfs

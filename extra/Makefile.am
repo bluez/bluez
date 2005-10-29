@@ -1,6 +1,3 @@
-# 
-#  $Id$
-#
 
 datafiles = bcm203x.usermap
 

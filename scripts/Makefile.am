@@ -1,6 +1,3 @@
-# 
-#  $Id$
-#
 
 if BLUEPIN
 bin_SCRIPTS = bluepin

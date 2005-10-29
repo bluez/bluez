@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 if AVCTRL
 avctrl_programs = avctrl

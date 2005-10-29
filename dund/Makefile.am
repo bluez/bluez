@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 bin_PROGRAMS = dund
 

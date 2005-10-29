@@ -2,8 +2,6 @@
 #
 #  Create Bluetooth devices in /dev
 #
-#  $Id$
-#
 
 VHCI_MAJOR=10
 VHCI_MINOR=250
