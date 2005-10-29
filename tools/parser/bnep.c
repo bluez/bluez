@@ -1,6 +1,6 @@
 /*
  *
- *  Bluetooth packet analyzer - BNEP parser
+ *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2002-2003  Takashi Sasai <sasai@sm.sony.co.jp>
  *  Copyright (C) 2003-2005  Marcel Holtmann <marcel@holtmann.org>
@@ -18,16 +18,18 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
- *
- *  $Id$
  */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <sys/types.h>
