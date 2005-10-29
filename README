@@ -1,4 +1,5 @@
 BlueZ - Bluetooth protocol stack for Linux
+******************************************
 
 Copyright (C) 2000-2001  Qualcomm Incorporated
 Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
@@ -7,7 +8,8 @@ Copyright (C) 2002-2005  Marcel Holtmann <marcel@holtmann.org>
 Bluetooth libraries
 
 
-1. Compilation and installation
+Compilation and installation
+============================
 
 In order to compile Bluetooth libraries you need following software packages:
 	- Linux Bluetooth protocol stack (BlueZ)
@@ -19,10 +21,11 @@ To configure run:
 Configure automatically searches for all required components and packages. 
 
 To compile and install run:
-	make install
+	make && make install
 
 
-2. Information
+Information
+===========
 
 Mailing lists:
 	bluez-users@lists.sf.net - BlueZ general questions and discussions

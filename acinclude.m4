@@ -1,7 +1,3 @@
-dnl
-dnl  $Id$
-dnl
-
 AC_DEFUN([AC_PROG_CC_PIE], [
 	AC_CACHE_CHECK([whether ${CC-cc} accepts -fPIE], ac_cv_prog_cc_pie, [
 		echo 'void f(){}' > conftest.c
@@ -15,7 +11,7 @@ AC_DEFUN([AC_PROG_CC_PIE], [
 ])
 
 AC_DEFUN([AC_INIT_BLUEZ], [
-	AC_PREFIX_DEFAULT(/usr)
+	AC_PREFIX_DEFAULT(/usr/local)
 
 	if (test "${CFLAGS}" = ""); then
 		CFLAGS="-Wall -O2"

@@ -1,6 +1,3 @@
-#  
-#  $Id$
-#
 
 includedir = @includedir@/bluetooth
 

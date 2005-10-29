@@ -1,6 +1,3 @@
-#
-#  $Id$
-#
 
 SUBDIRS = include src
 

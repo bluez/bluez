@@ -1,6 +1,3 @@
-#  
-#  $Id$
-#
 
 lib_LTLIBRARIES = libbluetooth.la
 

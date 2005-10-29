@@ -1,10 +1,3 @@
 Maxim Krasnyansky <maxk@qualcomm.com>
-	Original author.
-
 Marcel Holtmann <marcel@holtmann.org>
-	Primary maintainer.
-	Various patches, fixes and other contributions.
-
 Stephen Crane <steve.crane@rococosoft.com>
-	Support for many HCI functions.
-	Memory leak fixes and SDP API cleanups.

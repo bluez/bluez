@@ -1,7 +1,3 @@
-dnl
-dnl  $Id$
-dnl
-
 AC_DEFUN([AM_PATH_BLUEZ], [
 	if (test "${prefix}" = "NONE"); then
 		bluez_prefix=${ac_default_prefix}
