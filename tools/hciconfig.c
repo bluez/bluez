@@ -434,34 +434,66 @@ static void cmd_features(int ctl, int hdev, char *opt)
 
 static void cmd_name(int ctl, int hdev, char *opt)
 {
-	int s = hci_open_dev(hdev);
+	int dd;
 
-	if (s < 0) {
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
 		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 		exit(1);
 	}
+
 	if (opt) {
-		if (hci_write_local_name(s, opt, 2000) < 0) {
+		uint8_t fec = 0, data[240];
+		int len, eir = 0;
+
+		if (di.features[6] & LMP_EXT_INQ) {
+			if (hci_read_ext_inquiry_response(dd, &fec, data, 1000) == 0)
+				eir = 1;
+		}
+
+		memset(data, 0, sizeof(data));
+		len = strlen(opt);
+		if (len > 48) {
+			len = 48;
+			data[1] = 0x08;
+		} else
+			data[1] = 0x09;
+		data[0] = len + 1;
+		memcpy(data + 2, opt, len);
+
+		if (hci_write_local_name(dd, opt, 2000) < 0) {
 			fprintf(stderr, "Can't change local name on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);
 		}
+
+		if (eir) {
+			if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0) {
+				fprintf(stderr, "Can't set extended inquiry response on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+			}
+		}
 	} else {
 		char name[249];
 		int i;
-		if (hci_read_local_name(s, sizeof(name), name, 1000) < 0) {
+
+		if (hci_read_local_name(dd, sizeof(name), name, 1000) < 0) {
 			fprintf(stderr, "Can't read local name on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);
 		}
+
 		for (i = 0; i < 248 && name[i]; i++)
 			if (!isprint(name[i]))
 				name[i] = '.';
 		name[248] = '\0';
+
 		print_dev_hdr(&di);
 		printf("\tName: '%s'\n", name);
 	}
+
+	hci_close_dev(dd);
 }
 
 /* 
@@ -918,6 +950,8 @@ static void cmd_inq_mode(int ctl, int hdev, char *opt)
 			break;
 		}
 	}
+
+	hci_close_dev(dd);
 }
 
 static void cmd_inq_data(int ctl, int hdev, char *opt)
@@ -932,12 +966,21 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 	}
 
 	if (opt) {
-		uint8_t fec = 0, data[248];
+		uint8_t fec = 0, data[240];
+		char tmp[3];
+		int i, size;
 
 		memset(data, 0, sizeof(data));
-		data[0] = strlen(opt) + 1;
-		data[1] = 0x09;
-		memcpy(data + 2, opt, strlen(opt));
+
+		memset(tmp, 0, sizeof(tmp));
+		size = (strlen(opt) + 1) / 2;
+		if (size > 240)
+			size = 240;
+
+		for (i = 0; i < size; i++) {
+			memcpy(tmp, opt + (i * 2), 2);
+			data[i] = strtol(tmp, NULL, 16);
+		}
 
 		if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0) {
 			fprintf(stderr, "Can't set extended inquiry response on hci%d: %s (%d)\n",
@@ -945,7 +988,8 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 			exit(1);
 		}
 	} else {
-		uint8_t fec, data[240];
+		uint8_t fec, data[240], len, type, *ptr;
+		char *str;
 
 		if (hci_read_ext_inquiry_response(dd, &fec, data, 1000) < 0) {
 			fprintf(stderr, "Can't read extended inquiry response on hci%d: %s (%d)\n",
@@ -954,12 +998,42 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 		}
 
 		print_dev_hdr(&di);
-		printf("\tFEC: %d\n\t", fec);
+		printf("\tFEC %s\n\t\t", fec ? "enabled" : "disabled");
 		for (i = 0; i < 240; i++)
 			printf("%02x%s%s", data[i], (i + 1) % 8 ? "" : " ",
-				(i + 1) % 16 ? " " : "\n\t");
+				(i + 1) % 16 ? " " : (i < 239 ? "\n\t\t" : "\n"));
+
+		ptr = data;
+		while (*ptr) {
+			len = *ptr++;
+			type = *ptr++;
+			switch (type) {
+			case 0x08:
+			case 0x09:
+				str = malloc(len);
+				if (str) {
+					snprintf(str, len, "%s", ptr);
+					for (i = 0; i < len - 1; i++)
+						if (!isprint(str[i]))
+							str[i] = '.';
+					printf("\t%s local name: \'%s\'\n",
+						type == 0x08 ? "Shortened" : "Complete", str);
+					free(str);
+				}
+				break;
+			default:
+				printf("\tUnknown type 0x%02x with %d bytes data\n",
+								type, len - 1);
+				break;
+			}
+
+			ptr += (len - 1);
+		}
+
 		printf("\n");
 	}
+
+	hci_close_dev(dd);
 }
 
 static void cmd_inq_type(int ctl, int hdev, char *opt)
@@ -994,6 +1068,8 @@ static void cmd_inq_type(int ctl, int hdev, char *opt)
 		printf("\tInquiry scan type: %s\n",
 			type == 1 ? "Interlaced Inquiry Scan" : "Standard Inquiry Scan");
 	}
+
+	hci_close_dev(dd);
 }
 
 static void cmd_inq_parms(int ctl, int hdev, char *opt)
@@ -1430,7 +1506,7 @@ static struct {
 	{ "voice",	cmd_voice,	"[voice]",	"Get/Set voice setting" },
 	{ "iac",	cmd_iac,	"[iac]",	"Get/Set inquiry access code" },
 	{ "inqmode",	cmd_inq_mode,	"[mode]",	"Get/Set inquiry mode" },
-	{ "inqdata",	cmd_inq_data,	"[name]",	"Get/Set inquiry data (device name)" },
+	{ "inqdata",	cmd_inq_data,	"[data]",	"Get/Set inquiry data" },
 	{ "inqtype",	cmd_inq_type,	"[type]",	"Get/Set inquiry scan type" },
 	{ "inqparms",	cmd_inq_parms,	"[win:int]",	"Get/Set inquiry scan window and interval" },
 	{ "pageparms",	cmd_page_parms,	"[win:int]",	"Get/Set page scan window and interval" },
