@@ -80,6 +80,7 @@
 #define CSR_PSKEY_LC_FC_BUFFER_LOW_WATER_MARK			0x0015	/* lc_fc_lwm */
 #define CSR_PSKEY_LC_MAX_TX_POWER				0x0017	/* int16 */
 #define CSR_PSKEY_TX_GAIN_RAMP					0x001d	/* uint16 */
+#define CSR_PSKEY_LC_POWER_TABLE				0x001e	/* power_setting[] */
 #define CSR_PSKEY_LC_PEER_POWER_PERIOD				0x001f	/* TIME */
 #define CSR_PSKEY_LC_FC_POOLS_LOW_WATER_MARK			0x0020	/* lc_fc_lwm */
 #define CSR_PSKEY_LC_DEFAULT_TX_POWER				0x0021	/* int16 */
@@ -133,6 +134,7 @@
 #define CSR_PSKEY_LM_USE_UNIT_KEY				0x00f0	/* bool */
 #define CSR_PSKEY_HCI_NOP_DISABLE				0x00f2	/* bool */
 #define CSR_PSKEY_LM_MAX_EVENT_FILTERS				0x00f4	/* uint8 */
+#define CSR_PSKEY_LM_USE_ENC_MODE_BROADCAST			0x00f5	/* bool */
 #define CSR_PSKEY_LM_TEST_SEND_ACCEPTED_TWICE			0x00f6	/* bool */
 #define CSR_PSKEY_LM_MAX_PAGE_HOLD_TIME				0x00f7	/* uint16 */
 #define CSR_PSKEY_AFH_ADAPTATION_RESPONSE_TIME			0x00f8	/* uint16 */
@@ -252,6 +254,7 @@
 #define CSR_PSKEY_LO_ADC_AMPL_MAX				0x0213	/* uint16 */
 #define CSR_PSKEY_IQ_TRIM_CHANNEL				0x0214	/* uint16 */
 #define CSR_PSKEY_IQ_TRIM_GAIN					0x0215	/* uint16 */
+#define CSR_PSKEY_IQ_TRIM_ENABLE				0x0216	/* iq_trim_enable_flag */
 #define CSR_PSKEY_TX_OFFSET_HALF_MHZ				0x0217	/* int16 */
 #define CSR_PSKEY_GBL_MISC_ENABLES				0x0221	/* uint16 */
 #define CSR_PSKEY_UART_SLEEP_TIMEOUT				0x0222	/* uint16 */
@@ -394,6 +397,7 @@
 #define CSR_PSKEY_DRAIN_BORE_COUNTERS				0x03e6	/* uint32[] */
 #define CSR_PSKEY_LOOP_FILTER_TRIM				0x03e4	/* uint16 */
 #define CSR_PSKEY_DRAIN_BORE_CURRENT_PEAK			0x03e3	/* uint32[] */
+#define CSR_PSKEY_VM_E2_CACHE_LIMIT				0x03e2	/* uint16 */
 #define CSR_PSKEY_FORCE_16MHZ_REF_PIO				0x03e1	/* uint16 */
 #define CSR_PSKEY_CDMA_LO_REF_LIMITS				0x03df	/* uint16 */
 #define CSR_PSKEY_CDMA_LO_ERROR_LIMITS				0x03de	/* uint16 */
@@ -423,6 +427,7 @@
 #define CSR_PSKEY_USB_VM_CONTROL				0x03c0	/* bool */
 #define CSR_PSKEY_MR_ANA_RX_FTRIM				0x03bf	/* uint16 */
 #define CSR_PSKEY_I2C_CONFIG					0x03be	/* uint16 */
+#define CSR_PSKEY_IQ_LVL_RX					0x03bd	/* uint16 */
 #define CSR_PSKEY_MR_TX_FILTER_CONFIG				0x03bb	/* uint32 */
 #define CSR_PSKEY_MR_TX_CONFIG2					0x03ba	/* uint16 */
 #define CSR_PSKEY_USB_DONT_RESET_BOOTMODE_ON_HOST_RESET		0x03b9	/* bool */

@@ -565,6 +565,8 @@ char *csr_pskeytostr(uint16_t pskey)
 		return "Maximum transmit power";
 	case CSR_PSKEY_TX_GAIN_RAMP:
 		return "Transmit gain ramp rate";
+	case CSR_PSKEY_LC_POWER_TABLE:
+		return "Radio power table";
 	case CSR_PSKEY_LC_PEER_POWER_PERIOD:
 		return "Peer transmit power control interval";
 	case CSR_PSKEY_LC_FC_POOLS_LOW_WATER_MARK:
@@ -671,6 +673,8 @@ char *csr_pskeytostr(uint16_t pskey)
 		return "Disable the HCI Command_Status event on boot";
 	case CSR_PSKEY_LM_MAX_EVENT_FILTERS:
 		return "Maximum number of event filters";
+	case CSR_PSKEY_LM_USE_ENC_MODE_BROADCAST:
+		return "Allow LM to use enc_mode=2";
 	case CSR_PSKEY_LM_TEST_SEND_ACCEPTED_TWICE:
 		return "LM sends two LMP_accepted messages in test mode";
 	case CSR_PSKEY_LM_MAX_PAGE_HOLD_TIME:
@@ -909,6 +913,8 @@ char *csr_pskeytostr(uint16_t pskey)
 		return "IQ calibration channel";
 	case CSR_PSKEY_IQ_TRIM_GAIN:
 		return "IQ calibration gain";
+	case CSR_PSKEY_IQ_TRIM_ENABLE:
+		return "IQ calibration enable";
 	case CSR_PSKEY_TX_OFFSET_HALF_MHZ:
 		return "Transmit offset";
 	case CSR_PSKEY_GBL_MISC_ENABLES:
@@ -1193,6 +1199,8 @@ char *csr_pskeytostr(uint16_t pskey)
 		return "Trim value to optimise loop filter";
 	case CSR_PSKEY_DRAIN_BORE_CURRENT_PEAK:
 		return "Energy consumption estimation current peak";
+	case CSR_PSKEY_VM_E2_CACHE_LIMIT:
+		return "Maximum RAM for caching EEPROM VM application";
 	case CSR_PSKEY_FORCE_16MHZ_REF_PIO:
 		return "PIO line to force 16 MHz reference to be assumed";
 	case CSR_PSKEY_CDMA_LO_REF_LIMITS:
@@ -1251,6 +1259,8 @@ char *csr_pskeytostr(uint16_t pskey)
 		return "Medium rate value for the ANA_RX_FTRIM register";
 	case CSR_PSKEY_I2C_CONFIG:
 		return "I2C configuration";
+	case CSR_PSKEY_IQ_LVL_RX:
+		return "IQ demand level for reception";
 	case CSR_PSKEY_MR_TX_FILTER_CONFIG:
 		return "TX filter configuration used for enhanced data rate";
 	case CSR_PSKEY_MR_TX_CONFIG2:
@@ -1423,6 +1433,8 @@ char *csr_pskeytoval(uint16_t pskey)
 		return "LC_MAX_TX_POWER";
 	case CSR_PSKEY_TX_GAIN_RAMP:
 		return "TX_GAIN_RAMP";
+	case CSR_PSKEY_LC_POWER_TABLE:
+		return "LC_POWER_TABLE";
 	case CSR_PSKEY_LC_PEER_POWER_PERIOD:
 		return "LC_PEER_POWER_PERIOD";
 	case CSR_PSKEY_LC_FC_POOLS_LOW_WATER_MARK:
@@ -1529,6 +1541,8 @@ char *csr_pskeytoval(uint16_t pskey)
 		return "HCI_NOP_DISABLE";
 	case CSR_PSKEY_LM_MAX_EVENT_FILTERS:
 		return "LM_MAX_EVENT_FILTERS";
+	case CSR_PSKEY_LM_USE_ENC_MODE_BROADCAST:
+		return "LM_USE_ENC_MODE_BROADCAST";
 	case CSR_PSKEY_LM_TEST_SEND_ACCEPTED_TWICE:
 		return "LM_TEST_SEND_ACCEPTED_TWICE";
 	case CSR_PSKEY_LM_MAX_PAGE_HOLD_TIME:
@@ -1767,6 +1781,8 @@ char *csr_pskeytoval(uint16_t pskey)
 		return "IQ_TRIM_CHANNEL";
 	case CSR_PSKEY_IQ_TRIM_GAIN:
 		return "IQ_TRIM_GAIN";
+	case CSR_PSKEY_IQ_TRIM_ENABLE:
+		return "IQ_TRIM_ENABLE";
 	case CSR_PSKEY_TX_OFFSET_HALF_MHZ:
 		return "TX_OFFSET_HALF_MHZ";
 	case CSR_PSKEY_GBL_MISC_ENABLES:
@@ -2051,6 +2067,8 @@ char *csr_pskeytoval(uint16_t pskey)
 		return "LOOP_FILTER_TRIM";
 	case CSR_PSKEY_DRAIN_BORE_CURRENT_PEAK:
 		return "DRAIN_BORE_CURRENT_PEAK";
+	case CSR_PSKEY_VM_E2_CACHE_LIMIT:
+		return "VM_E2_CACHE_LIMIT";
 	case CSR_PSKEY_FORCE_16MHZ_REF_PIO:
 		return "FORCE_16MHZ_REF_PIO";
 	case CSR_PSKEY_CDMA_LO_REF_LIMITS:
@@ -2109,6 +2127,8 @@ char *csr_pskeytoval(uint16_t pskey)
 		return "MR_ANA_RX_FTRIM";
 	case CSR_PSKEY_I2C_CONFIG:
 		return "I2C_CONFIG";
+	case CSR_PSKEY_IQ_LVL_RX:
+		return "IQ_LVL_RX";
 	case CSR_PSKEY_MR_TX_FILTER_CONFIG:
 		return "MR_TX_FILTER_CONFIG";
 	case CSR_PSKEY_MR_TX_CONFIG2:
