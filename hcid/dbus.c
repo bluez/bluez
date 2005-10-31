@@ -53,6 +53,7 @@ static int up_adapters = 0;
 #define MAX_PATH_LENGTH   (64)
 #define READ_REMOTE_NAME_TIMEOUT	(25000)
 #define MAX_CONN_NUMBER			(10)
+#define DEVICE_FLAG_NAME		(16)
 
 #define PINAGENT_SERVICE_NAME BASE_INTERFACE ".PinAgent"
 #define PINAGENT_INTERFACE PINAGENT_SERVICE_NAME
@@ -90,9 +91,9 @@ struct profile_obj_path_data {
 	const char		*name;
 	int			status; /* 1:active  0:disabled */
 	int			dft_reg; /* dft path registered */
-	register_function_t     *reg_func;
-	unregister_function_t   *unreg_func;
-	get_svc_table_func_t *get_svc_table; /* return the service table */
+	register_function_t	*reg_func;
+	unregister_function_t	*unreg_func;
+	get_svc_table_func_t	*get_svc_table; /* return the service table */
 };
 
 /*
@@ -101,10 +102,29 @@ struct profile_obj_path_data {
  * in the future
  *
  */
+
 typedef struct  {
 	uint32_t code;
 	const char *str;
 }bluez_error_t;
+
+typedef struct {
+	char *str;
+	unsigned int val;
+} hci_map;
+
+static hci_map dev_flags_map[] = {
+	{ "INIT",	HCI_INIT	},
+	{ "RUNNING",	HCI_RUNNING	},
+	{ "RAW",	HCI_RAW		},
+	{ "PSCAN",	HCI_PSCAN	},
+	{ "ISCAN",	HCI_ISCAN	},
+	{ "INQUIRY",	HCI_INQUIRY	},
+	{ "AUTH",	HCI_AUTH	},
+	{ "ENCRYPT",	HCI_ENCRYPT	},
+	{ "SECMGR",	HCI_SECMGR	},
+	{ NULL }
+};
 
 static const bluez_error_t dbus_error_array[] = {
 	{ BLUEZ_EDBUS_UNKNOWN_METHOD,	"Method not found"		},
@@ -114,7 +134,7 @@ static const bluez_error_t dbus_error_array[] = {
 	{ BLUEZ_EDBUS_NO_MEM,		"No memory"			},
 	{ BLUEZ_EDBUS_CONN_NOT_FOUND,	"Connection not found"		},
 	{ BLUEZ_EDBUS_UNKNOWN_PATH,	"Device path is not registered"	},
-	{ 0,				NULL 				}
+	{ 0, NULL }
 };
 
 static const bluez_error_t hci_error_array[] = {
@@ -168,7 +188,7 @@ static const bluez_error_t hci_error_array[] = {
 	{ HCI_ROLE_SWITCH_PENDING,		"Role Switch Pending"						},
 	{ HCI_SLOT_VIOLATION,			"Reserved Slot Violation"					},
 	{ HCI_ROLE_SWITCH_FAILED,		"Role Switch Failed"						},
-	{ 0,					NULL								},
+	{ 0, NULL },
 };
 
 
@@ -182,7 +202,7 @@ static const char *bluez_dbus_error_to_str(const uint32_t ecode)
 		raw_code = (~BLUEZ_ESYSTEM_OFFSET) & ecode;
 		syslog(LOG_INFO, "%s - msg:%s", __PRETTY_FUNCTION__, strerror(raw_code));
 		return strerror(raw_code);
-	} else if (ecode & BLUEZ_EDBUS_OFFSET) { 
+	} else if (ecode & BLUEZ_EDBUS_OFFSET) {
 		/* D-Bus error */
 		for (ptr = dbus_error_array; ptr->code; ptr++) {
 			if (ptr->code == ecode) {
@@ -234,13 +254,20 @@ static struct profile_obj_path_data obj_path_table[] = {
 /*
  * Device Message handler functions object table declaration
  */
-static DBusHandlerResult msg_func(DBusConnection *conn, DBusMessage *msg, void *data);
+static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data);
+static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data);
 
-static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_get_devices_req_device(DBusMessage *msg, void *data);
+static DBusMessage* handle_get_devices_req_manager(DBusMessage *msg, void *data);
 static DBusMessage* handle_not_implemented_req(DBusMessage *msg, void *data);
 
-static const DBusObjectPathVTable obj_vtable = {
-	.message_function = &msg_func,
+static const DBusObjectPathVTable obj_dev_vtable = {
+	.message_function = &msg_func_device,
+	.unregister_function = NULL
+};
+
+static const DBusObjectPathVTable obj_mgr_vtable = {
+	.message_function = &msg_func_manager,
 	.unregister_function = NULL
 };
 
@@ -248,6 +275,11 @@ static const DBusObjectPathVTable obj_vtable = {
  * Service provided under the path DEVICE_PATH
  * TODO add the handlers
  */
+static const struct service_data dev_root_services[] = {
+	{ DEV_GET_DEV,		handle_get_devices_req_device,	DEV_GET_DEV_SIGNATURE		},
+	{ NULL, NULL, NULL}
+};
+
 static const struct service_data dev_services[] = {
 	{ DEV_UP,		handle_not_implemented_req,	DEV_UP_SIGNATURE		},
 	{ DEV_DOWN,		handle_not_implemented_req,	DEV_DOWN_SIGNATURE		},
@@ -262,11 +294,11 @@ static const struct service_data dev_services[] = {
  *
  */
 static const struct service_data mgr_services[] = {
-	{ MGR_GET_DEV,		handle_get_devices_req,		MGR_GET_DEV_SIGNATURE	},
+	{ MGR_GET_DEV,		handle_get_devices_req_manager,	MGR_GET_DEV_SIGNATURE	},
 	{ MGR_INIT,		handle_not_implemented_req,	NULL			},
 	{ MGR_ENABLE,		handle_not_implemented_req,	NULL			},
 	{ MGR_DISABLE,		handle_not_implemented_req,	NULL			},
-	{ NULL,			handle_not_implemented_req,	NULL			}
+	{ NULL, NULL, NULL }
 };
 
 /*
@@ -293,7 +325,7 @@ static const struct service_data hci_services[] = {
 	{ HCI_REMOTE_NAME,		handle_remote_name_req,		HCI_REMOTE_NAME_SIGNATURE		},
 	{ HCI_CONNECTIONS,		handle_display_conn_req,	HCI_CONNECTIONS_SIGNATURE		},
 	{ HCI_AUTHENTICATE,		handle_auth_req,		HCI_AUTHENTICATE_SIGNATURE		},
-	{ NULL,				NULL,				NULL					}
+	{ NULL, NULL, NULL }
 };
 
 static void reply_handler_function(DBusPendingCall *call, void *user_data)
@@ -352,7 +384,7 @@ static void free_pin_req(void *req)
 	free(req);
 }
 
-static gboolean register_dbus_path(char *path, uint16_t id)
+static gboolean register_dbus_path(char *path, uint16_t id, const DBusObjectPathVTable *pvtable)
 {
 	struct hci_dbus_data *data;
 	syslog(LOG_INFO,"Registering DBUS Path: %s", path);
@@ -363,7 +395,7 @@ static gboolean register_dbus_path(char *path, uint16_t id)
 	}
 	data->id = id;
 
-	if (!dbus_connection_register_object_path(connection, path, &obj_vtable, data)) {
+	if (!dbus_connection_register_object_path(connection, path, pvtable, data)) {
 		syslog(LOG_ERR,"DBUS failed to register %s object", path);
 		free(data);
 		return FALSE;
@@ -377,11 +409,11 @@ static gboolean unregister_dbus_path(char *path)
 	syslog(LOG_INFO,"Unregistering DBUS Path: %s", path);
 	if (dbus_connection_get_object_path_data(connection, path, &data) && data) 
 		free(data);
-	
+
 	if (!dbus_connection_unregister_object_path (connection, path)) {
 		syslog(LOG_ERR,"DBUS failed to unregister %s object", path);
 		return FALSE;
-	} 
+	}
 	return TRUE;
 }
 
@@ -811,7 +843,7 @@ gboolean hcid_dbus_init(void)
 	data->id = DEVICE_PATH_ID;
 
 	if (!dbus_connection_register_fallback(connection, DEVICE_PATH,
-						&obj_vtable, data)) {
+						&obj_dev_vtable, data)) {
 		syslog(LOG_ERR, "Can't register %s object", DEVICE_PATH);
 		return FALSE;
 	}
@@ -823,7 +855,7 @@ gboolean hcid_dbus_init(void)
 	data->id = MANAGER_PATH_ID;
 
 	if (!dbus_connection_register_fallback(connection, MANAGER_PATH,
-						&obj_vtable, data)) {
+						&obj_mgr_vtable, data)) {
 		syslog(LOG_ERR, "Can't register %s object", MANAGER_PATH);
 		return FALSE;
 	}
@@ -936,7 +968,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	snprintf(path, sizeof(path), "%s/%s", DEVICE_PATH, pdev);
 
 	/* register the default path*/
-	return register_dbus_path(path, id);
+	return register_dbus_path(path, id, &obj_dev_vtable);
 }
 
 gboolean hcid_dbus_unregister_device(uint16_t id)
@@ -1066,12 +1098,12 @@ static int hci_dbus_reg_obj_path(DBusConnection *conn, int dft_reg, uint16_t id)
 	/* register the default path*/
 	if (!dft_reg) {
 		snprintf(path, sizeof(path), "%s/%s/%s", MANAGER_PATH, HCI_DEFAULT_DEVICE_NAME, BLUEZ_HCI);
-		register_dbus_path(path, DEFAULT_DEVICE_PATH_ID);
+		register_dbus_path(path, DEFAULT_DEVICE_PATH_ID, &obj_mgr_vtable);
 	}
 
 	/* register the default path*/
 	snprintf(path, sizeof(path), "%s/%s%d/%s", MANAGER_PATH, HCI_DEVICE_NAME, id, BLUEZ_HCI);
-	register_dbus_path(path, id);
+	register_dbus_path(path, id, &obj_mgr_vtable);
 
 	return 0;
 }
@@ -1146,7 +1178,81 @@ static DBusHandlerResult hci_signal_filter (DBusConnection *conn, DBusMessage *m
  *
  */
 
-static DBusHandlerResult msg_func(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	const struct service_data *ptr_handlers = NULL;
+	DBusMessage *reply = NULL;
+	int type;
+	const char *iface;
+	const char *method;
+	const char *signature;
+	const char *path;
+	struct hci_dbus_data *dbus_data = data;
+	uint32_t result = BLUEZ_EDBUS_UNKNOWN_METHOD;
+	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	uint8_t found = 0;
+
+	path = dbus_message_get_path(msg);
+	type = dbus_message_get_type(msg);
+	iface = dbus_message_get_interface(msg);
+	method = dbus_message_get_member(msg);
+	signature = dbus_message_get_signature(msg);
+
+	if (strcmp(iface, DEVICE_INTERFACE))
+		return ret;
+
+	if (strcmp(path, DEVICE_PATH) > 0) {
+		if (dbus_data->id == DEVICE_PATH_ID) {
+			/* fallback handling. The child path IS NOT registered */
+			reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_UNKNOWN_PATH);
+			ret = DBUS_HANDLER_RESULT_HANDLED;
+		} else {
+			/* hciX code */
+		}
+	} else {
+		/* it's the device path */
+		ptr_handlers = dev_root_services;
+		found = 1;
+	}
+
+	if (found && (type == DBUS_MESSAGE_TYPE_METHOD_CALL) && (method != NULL)) {
+
+		for (; ptr_handlers->name; ptr_handlers++) {
+			if (strcmp(method, ptr_handlers->name) == 0) {
+				/* resetting unknown method. It's possible handle method overload */
+				result = BLUEZ_EDBUS_WRONG_SIGNATURE; 
+				if (strcmp(ptr_handlers->signature, signature) == 0) {
+					if (ptr_handlers->handler_func) {
+						reply = (ptr_handlers->handler_func) (msg, data);
+						result = 0; /* resetting wrong signature*/
+					} else
+						syslog(LOG_INFO, "Service not implemented");
+
+					break;
+				}
+				
+			}
+		}
+
+		if (result) {
+			reply = bluez_new_failure_msg(msg, result);
+		}
+
+		ret = DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	/* send an error or the success reply*/
+	if (reply) {
+		if (!dbus_connection_send (conn, reply, NULL)) {
+			syslog(LOG_ERR, "Can't send reply message!");
+		}
+		dbus_message_unref (reply);
+	}
+
+	return ret;
+}
+
+static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	const struct service_data *ptr_handlers = NULL;
 	DBusMessage *reply = NULL;
@@ -1156,7 +1262,6 @@ static DBusHandlerResult msg_func(DBusConnection *conn, DBusMessage *msg, void *
 	const char *signature;
 	const char *path;
 	const char *rel_path;
-	const char *tmp_iface = NULL;
 	struct hci_dbus_data *dbus_data = data;
 	uint32_t result = BLUEZ_EDBUS_UNKNOWN_METHOD;
 	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -1170,43 +1275,38 @@ static DBusHandlerResult msg_func(DBusConnection *conn, DBusMessage *msg, void *
 
 	syslog (LOG_INFO, "%s - path:%s, id:0x%X", __PRETTY_FUNCTION__, path, dbus_data->id);
 
-	if (strcmp(path, DEVICE_PATH) == 0) {
-		ptr_handlers = dev_services;
-		tmp_iface = DEVICE_INTERFACE;
-		found = 1;
-	} else {
-		if (strcmp(path, MANAGER_PATH) > 0) {
-			/* it is device specific path */
-			if ( dbus_data->id == MANAGER_PATH_ID ) {
-				/* fallback handling. The child path IS NOT registered */
-				reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_UNKNOWN_PATH);
-				ret = DBUS_HANDLER_RESULT_HANDLED;
-			} else {
-				const struct profile_obj_path_data *mgr_child = obj_path_table;
-				rel_path = strrchr(path,'/');
-				rel_path++;
+	if (strcmp(iface, MANAGER_INTERFACE))
+		return ret;
 
-				if (rel_path) {
-					for ( ;mgr_child->name; mgr_child++) {
-						if (strcmp(mgr_child->name, rel_path) == 0) {
-							ptr_handlers = mgr_child->get_svc_table();
-							found = 1;
-						}
-					}
-
-					tmp_iface = MANAGER_INTERFACE;
-				}
-			}
+	if (strcmp(path, MANAGER_PATH) > 0) {
+		/* it is device specific path */
+		if (dbus_data->id == MANAGER_PATH_ID) {
+			/* fallback handling. The child path IS NOT registered */
+			reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_UNKNOWN_PATH);
+			ret = DBUS_HANDLER_RESULT_HANDLED;
 		} else {
-			/* it's the manager path */
-			ptr_handlers = mgr_services;
-			tmp_iface = MANAGER_INTERFACE;
-			found = 1;
+			const struct profile_obj_path_data *mgr_child = obj_path_table;
+			rel_path = strrchr(path,'/');
+			rel_path++;
+
+			if (rel_path) {
+				for ( ;mgr_child->name; mgr_child++) {
+					if (strcmp(mgr_child->name, rel_path) == 0) {
+						ptr_handlers = mgr_child->get_svc_table();
+						found = 1;
+						break;
+					}
+				}
+
+			}
 		}
+	} else {
+		/* it's the manager! path */
+		ptr_handlers = mgr_services;
+		found = 1;
 	}
 
-	if (found && (type == DBUS_MESSAGE_TYPE_METHOD_CALL) && 
-		(strcmp(iface, tmp_iface) == 0) && (method != NULL)) {
+	if (found && (type == DBUS_MESSAGE_TYPE_METHOD_CALL) && (method != NULL)) {
 
 		for (; ptr_handlers->name; ptr_handlers++) {
 			if (strcmp(method, ptr_handlers->name) == 0) {
@@ -1399,20 +1499,21 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 		goto failed;
 	}
 
-	cp.lap[0] = 0x33;
-	cp.lap[1] = 0x8b;
-	cp.lap[2] = 0x9e;
-	cp.length = length;
+	memset(&cp, 0, sizeof(cp));
+	cp.lap[0]  = 0x33;
+	cp.lap[1]  = 0x8b;
+	cp.lap[2]  = 0x9e;
+	cp.length  = length;
 	cp.num_rsp = num_rsp;
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_LINK_CTL;
-	rq.ocf = OCF_INQUIRY;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_INQUIRY;
 	rq.cparam = &cp;
-	rq.clen = INQUIRY_CP_SIZE;
+	rq.clen   = INQUIRY_CP_SIZE;
 	rq.rparam = &rp;
-	rq.rlen = EVT_CMD_STATUS_SIZE;
-	rq.event = EVT_CMD_STATUS;
+	rq.rlen   = EVT_CMD_STATUS_SIZE;
+	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to start inquiry: %s", strerror(errno));
@@ -1565,13 +1666,13 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 	cp.pscan_rep_mode = 0x01;
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_LINK_CTL;
-	rq.ocf = OCF_REMOTE_NAME_REQ;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_REMOTE_NAME_REQ;
 	rq.cparam = &cp;
-	rq.clen = REMOTE_NAME_REQ_CP_SIZE;
+	rq.clen   = REMOTE_NAME_REQ_CP_SIZE;
 	rq.rparam = &rp;
-	rq.rlen = EVT_CMD_STATUS_SIZE;
-	rq.event = EVT_CMD_STATUS;
+	rq.rlen   = EVT_CMD_STATUS_SIZE;
+	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to send remote name request: %s", strerror(errno));
@@ -1719,13 +1820,13 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	cp.handle = cr->conn_info->handle;
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_LINK_CTL;
-	rq.ocf = OCF_AUTH_REQUESTED;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_AUTH_REQUESTED;
 	rq.cparam = &cp;
-	rq.clen = AUTH_REQUESTED_CP_SIZE;
+	rq.clen   = AUTH_REQUESTED_CP_SIZE;
 	rq.rparam = &rp;
-	rq.rlen = EVT_CMD_STATUS_SIZE;
-	rq.event = EVT_CMD_STATUS;
+	rq.rlen   = EVT_CMD_STATUS_SIZE;
+	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to send authentication request: %s", strerror(errno));
@@ -1748,8 +1849,111 @@ failed:
  *  Section reserved to Manager D-Bus message handlers
  *  
  *****************************************************************/
+static DBusMessage* handle_get_devices_req_device(DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	DBusMessageIter flag_array_iter;
+	DBusMessageIter  struct_iter;
+	DBusMessage *reply = NULL;
+	struct hci_dev_list_req *dl = NULL;
+	struct hci_dev_req *dr      = NULL;
+	struct hci_dev_info di;
+	int sk = -1;
+	int i;
+	char aname[BLUETOOTH_DEVICE_NAME_LEN+1];
+	char aaddr[BLUETOOTH_DEVICE_ADDR_LEN];
+	char aflag[DEVICE_FLAG_NAME];
+	char *paddr = aaddr;
+	char *pname = aname;
+	char *pflag = aflag;
+	char *ptype;
+	const char array_sig[] = DEV_GET_DEV_REPLY_STRUCT_SIGNATURE;
+	hci_map *mp;
 
-static DBusMessage* handle_get_devices_req(DBusMessage *msg, void *data)
+	/* Create and bind HCI socket */
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)", strerror(errno), errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
+	if (!dl) {
+		syslog(LOG_ERR, "Can't allocate memory");
+		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
+		goto failed;
+	}
+
+	dl->dev_num = HCI_MAX_DEV;
+	dr = dl->dev_req;
+
+	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	/* active bluetooth adapter found */
+	reply = dbus_message_new_method_return(msg);
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, array_sig, &array_iter);
+	dr = dl->dev_req;
+
+	for (i = 0; i < dl->dev_num; i++, dr++) {
+		mp = dev_flags_map;
+		memset(&di, 0 , sizeof(struct hci_dev_info));
+		di.dev_id = dr->dev_id;
+
+		if (ioctl(sk, HCIGETDEVINFO, &di) < 0)
+			continue;
+
+		strncpy(aname, di.name, BLUETOOTH_DEVICE_NAME_LEN);
+		aname[BLUETOOTH_DEVICE_NAME_LEN] = '\0';
+
+		ba2str(&di.bdaddr, aaddr);
+		ptype = hci_dtypetostr(di.type);
+
+		dbus_message_iter_open_container(&array_iter,
+				DBUS_TYPE_STRUCT, NULL, &struct_iter);
+
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &pname);
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &paddr);
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &ptype);
+
+		if (hci_test_bit(HCI_UP, &dr->dev_opt)) {
+			sprintf(pflag, "%s", "UP");
+		} else {
+			sprintf(pflag, "%s", "DOWN");
+		}
+		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &pflag);
+
+		dbus_message_iter_open_container(&struct_iter,
+					DBUS_TYPE_ARRAY, DBUS_TYPE_STRING_AS_STRING, &flag_array_iter);
+
+		while (mp->str) {
+			if (hci_test_bit(mp->val, &dr->dev_opt)) {
+				sprintf(pflag, "%s", mp->str);
+				dbus_message_iter_append_basic(&flag_array_iter, DBUS_TYPE_STRING, &pflag);
+			}
+			mp++;
+		}
+		dbus_message_iter_close_container(&struct_iter, &flag_array_iter);
+		dbus_message_iter_close_container(&array_iter, &struct_iter);
+	}
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+failed:
+	if (sk >= 0)
+		close(sk);
+	if (dl)
+		free(dl);
+	return reply;
+}
+
+
+static DBusMessage* handle_get_devices_req_manager(DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
