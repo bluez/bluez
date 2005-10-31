@@ -1,3 +1,13 @@
+ver 2.22:
+	Remove D-Bus 0.23 support.
+	Add initial version of the new D-Bus interface.
+	Add support for extended inquiry response commands.
+	Add support for the Logitech diNovo Media Desktop Laser.
+	Add compile time buffer checks (FORTIFY SOURCE).
+
+	Note:
+	This version needs at least bluez-libs-2.22
+
 ver 2.21:
 	Move create_dirs() and create_file() into the textfile library.
 	Let textfile_put() also replace the last key value pair.
