@@ -455,6 +455,53 @@ static char *airmode2str(uint8_t mode)
 	}
 }
 
+static inline void ext_inquiry_response_dump(int level, struct frame *frm)
+{
+	void *ptr = frm->ptr;
+	uint32_t len = frm->len;
+	uint8_t type, length;
+	char *str;
+	int i;
+
+	length = get_u8(frm);
+
+	while (length > 0) {
+		type = get_u8(frm);
+		length--;
+
+		switch (type) {
+		case 0x08:
+		case 0x09:
+			str = malloc(length + 1);
+			if (str) {
+				snprintf(str, length + 1, "%s", frm->ptr);
+				for (i = 0; i < length; i++)
+				if (!isprint(str[i]))
+					str[i] = '.';
+				p_indent(level, frm);
+				printf("%s local name: \'%s\'\n",
+					type == 0x08 ? "Shortened" : "Complete", str);
+				free(str);
+			}
+			break;
+
+		default:
+			p_indent(level, frm);
+			printf("Unknown type 0x%02x with %d bytes data\n",
+								type, length);
+			break;
+		}
+
+		frm->ptr += length;
+		frm->len -= length;
+
+		length = get_u8(frm);
+	}
+
+	frm->ptr = ptr + (EXTENDED_INQUIRY_INFO_SIZE - INQUIRY_INFO_WITH_RSSI_SIZE);
+	frm->len = len + (EXTENDED_INQUIRY_INFO_SIZE - INQUIRY_INFO_WITH_RSSI_SIZE);
+}
+
 static inline void generic_command_dump(int level, struct frame *frm)
 {
 	uint16_t handle = btohs(htons(get_u16(frm)));
@@ -475,7 +522,7 @@ static inline void bdaddr_command_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	ba2str(bdaddr, addr);
-        printf("bdaddr %s\n", addr);
+	printf("bdaddr %s\n", addr);
 
 	raw_dump(level, frm);
 }
@@ -643,8 +690,8 @@ static inline void read_remote_ext_features_dump(int level, struct frame *frm)
 {
 	read_remote_ext_features_cp *cp = frm->ptr;
 
-        p_indent(level, frm);
-        printf("handle %d page %d\n", btohs(cp->handle), cp->page_num);
+	p_indent(level, frm);
+	printf("handle %d page %d\n", btohs(cp->handle), cp->page_num);
 }
 
 static inline void write_link_policy_dump(int level, struct frame *frm)
@@ -867,7 +914,7 @@ static inline void write_ext_inquiry_response_dump(int level, struct frame *frm)
 	frm->ptr++;
 	frm->len--;
 
-	raw_dump(level, frm);
+	ext_inquiry_response_dump(level, frm);
 }
 
 static inline void request_transmit_power_level_dump(int level, struct frame *frm)
@@ -1401,7 +1448,7 @@ static inline void read_ext_inquiry_response_dump(int level, struct frame *frm)
 		frm->ptr += 2;
 		frm->len -= 2;
 
-		raw_dump(level, frm);
+		ext_inquiry_response_dump(level, frm);
 	}
 }
 
@@ -2256,10 +2303,7 @@ static inline void extended_inq_result_dump(int level, struct frame *frm)
 		frm->ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		frm->len -= INQUIRY_INFO_WITH_RSSI_SIZE;
 
-		raw_dump(level, frm);
-
-		frm->ptr += EXTENDED_INQUIRY_INFO_SIZE - INQUIRY_INFO_WITH_RSSI_SIZE;
-		frm->len -= EXTENDED_INQUIRY_INFO_SIZE - INQUIRY_INFO_WITH_RSSI_SIZE;
+		ext_inquiry_response_dump(level, frm);
 	}
 }
 
