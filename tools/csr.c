@@ -752,33 +752,33 @@ char *csr_pskeytostr(uint16_t pskey)
 	case CSR_PSKEY_HOSTIO_FC_PS_BLOCK:
 		return "HCI flow control block";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO0:
-		return "Host transport channel 0 settings (BCSP ACK";
+		return "Host transport channel 0 settings (BCSP ACK)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO1:
-		return "Host transport channel 1 settings (BCSP-LE";
+		return "Host transport channel 1 settings (BCSP-LE)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO2:
-		return "Host transport channel 2 settings (BCCMD";
+		return "Host transport channel 2 settings (BCCMD)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO3:
-		return "Host transport channel 3 settings (HQ";
+		return "Host transport channel 3 settings (HQ)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO4:
-		return "Host transport channel 4 settings (DM";
+		return "Host transport channel 4 settings (DM)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO5:
-		return "Host transport channel 5 settings (HCI CMD/EVT";
+		return "Host transport channel 5 settings (HCI CMD/EVT)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO6:
-		return "Host transport channel 6 settings (HCI ACL";
+		return "Host transport channel 6 settings (HCI ACL)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO7:
-		return "Host transport channel 7 settings (HCI SCO";
+		return "Host transport channel 7 settings (HCI SCO)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO8:
-		return "Host transport channel 8 settings (L2CAP";
+		return "Host transport channel 8 settings (L2CAP)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO9:
-		return "Host transport channel 9 settings (RFCOMM";
+		return "Host transport channel 9 settings (RFCOMM)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO10:
-		return "Host transport channel 10 settings (SDP";
+		return "Host transport channel 10 settings (SDP)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO11:
-		return "Host transport channel 11 settings (TEST";
+		return "Host transport channel 11 settings (TEST)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO12:
-		return "Host transport channel 12 settings (DFU";
+		return "Host transport channel 12 settings (DFU)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO13:
-		return "Host transport channel 13 settings (VM";
+		return "Host transport channel 13 settings (VM)";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO14:
 		return "Host transport channel 14 settings";
 	case CSR_PSKEY_HOSTIO_PROTOCOL_INFO15:
@@ -798,7 +798,7 @@ char *csr_pskeytostr(uint16_t pskey)
 	case CSR_PSKEY_HOSTIO_AWKWARD_PCM_SYNC:
 		return "PCM interface synchronisation is difficult";
 	case CSR_PSKEY_HOSTIO_BREAK_POLL_PERIOD:
-		return "Break poll period (microseconds";
+		return "Break poll period (microseconds)";
 	case CSR_PSKEY_HOSTIO_MIN_UART_HCI_SCO_SIZE:
 		return "Minimum SCO packet size sent to host over UART HCI";
 	case CSR_PSKEY_HOSTIO_MAP_SCO_CODEC:
@@ -870,9 +870,9 @@ char *csr_pskeytostr(uint16_t pskey)
 	case CSR_PSKEY_ANA_FTRIM:
 		return "Crystal frequency trim";
 	case CSR_PSKEY_WD_TIMEOUT:
-		return "Watchdog timeout (microseconds";
+		return "Watchdog timeout (microseconds)";
 	case CSR_PSKEY_WD_PERIOD:
-		return "Watchdog period (microseconds";
+		return "Watchdog period (microseconds)";
 	case CSR_PSKEY_HOST_INTERFACE:
 		return "Host interface";
 	case CSR_PSKEY_HQ_HOST_TIMEOUT:
@@ -888,7 +888,7 @@ char *csr_pskeytostr(uint16_t pskey)
 	case CSR_PSKEY_PMALLOC_SIZES:
 		return "pmalloc sizes array";
 	case CSR_PSKEY_UART_BAUD_RATE:
-		return "UART Baud rate (pre 18";
+		return "UART Baud rate (pre 18)";
 	case CSR_PSKEY_UART_CONFIG:
 		return "UART configuration bitfield";
 	case CSR_PSKEY_STUB:
@@ -1150,7 +1150,7 @@ char *csr_pskeytostr(uint16_t pskey)
 	case CSR_PSKEY_USB_ENDPOINT_0_MAX_PACKET_SIZE:
 		return "The maxmimum packet size for USB endpoint 0";
 	case CSR_PSKEY_USB_CONFIG:
-		return "USB config params for new chips (>bc2";
+		return "USB config params for new chips (>bc2)";
 	case CSR_PSKEY_RADIOTEST_ATTEN_INIT:
 		return "Radio test initial attenuator";
 	case CSR_PSKEY_RADIOTEST_FIRST_TRIM_TIME:
@@ -1390,7 +1390,7 @@ char *csr_pskeytostr(uint16_t pskey)
 	case CSR_PSKEY_AMUX_AIO3:
 		return "Multiplexer for AIO 3";
 	case CSR_PSKEY_LOCAL_NAME_SIMPLIFIED:
-		return "Local Name (simplified";
+		return "Local Name (simplified)";
 	case CSR_PSKEY_EXTENDED_STUB:
 		return "Extended stub";
 	default:
