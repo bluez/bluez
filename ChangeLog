@@ -1,3 +1,9 @@
+ver 2.22:
+	Decode reserved LMP feature bits.
+	Fix errno overwrite problems.
+	Fix profile descriptor problem with Samsung phones.
+	Add compile time buffer checks (FORTIFY SOURCE).
+
 ver 2.21:
 	Add support for identification of supported commands.
 	Add missing OCF declarations for the security filter.
