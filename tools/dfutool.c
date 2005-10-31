@@ -36,12 +36,28 @@
 #include <malloc.h>
 #include <string.h>
 #include <libgen.h>
+#include <endian.h>
+#include <byteswap.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
 #include <usb.h>
 
 #include "dfu.h"
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define cpu_to_le16(d)  (d)
+#define cpu_to_le32(d)  (d)
+#define le16_to_cpu(d)  (d)
+#define le32_to_cpu(d)  (d)
+#elif __BYTE_ORDER == __BIG_ENDIAN
+#define cpu_to_le16(d)  bswap_16(d)
+#define cpu_to_le32(d)  bswap_32(d)
+#define le16_to_cpu(d)  bswap_16(d)
+#define le32_to_cpu(d)  bswap_32(d)
+#else
+#error "Unknown byte order"
+#endif
 
 #ifdef NEED_USB_GET_BUSSES
 static inline struct usb_bus *usb_get_busses(void)
@@ -211,9 +227,9 @@ static struct usb_dev_handle *open_device(char *device, struct dfu_suffix *suffi
 	fflush(stdout);
 
 	if (suffix) {
-		suffix->idVendor  = dfu_dev[sel]->descriptor.idVendor;
-		suffix->idProduct = dfu_dev[sel]->descriptor.idProduct;
-		suffix->bcdDevice = dfu_dev[sel]->descriptor.bcdDevice;
+		suffix->idVendor  = cpu_to_le16(dfu_dev[sel]->descriptor.idVendor);
+		suffix->idProduct = cpu_to_le16(dfu_dev[sel]->descriptor.idProduct);
+		suffix->bcdDevice = cpu_to_le16(dfu_dev[sel]->descriptor.bcdDevice);
 	}
 
 	if (dfu_detach(udev, intf) < 0) {
@@ -302,6 +318,7 @@ static void cmd_verify(char *device, int argc, char **argv)
 	struct stat st;
 	struct dfu_suffix *suffix;
 	uint32_t crc;
+	uint16_t bcd;
 	char str[16];
 	unsigned char *buf;
 	unsigned long size;
@@ -358,17 +375,19 @@ static void cmd_verify(char *device, int argc, char **argv)
 
 	suffix = (struct dfu_suffix *) (buf + size - DFU_SUFFIX_SIZE);
 
-	printf("idVendor\t%04x\n", suffix->idVendor);
-	printf("idProduct\t%04x\n", suffix->idProduct);
-	printf("bcdDevice\t%x\n", suffix->bcdDevice);
+	printf("idVendor\t%04x\n", le16_to_cpu(suffix->idVendor));
+	printf("idProduct\t%04x\n", le16_to_cpu(suffix->idProduct));
+	printf("bcdDevice\t%x\n", le16_to_cpu(suffix->bcdDevice));
 
 	printf("\n");
 
-	printf("bcdDFU\t\t%x.%x\n", suffix->bcdDFU >> 8, suffix->bcdDFU & 0xff);
+	bcd = le16_to_cpu(suffix->bcdDFU);
+
+	printf("bcdDFU\t\t%x.%x\n", bcd >> 8, bcd & 0xff);
 	printf("ucDfuSignature\t%c%c%c\n", suffix->ucDfuSignature[2],
 		suffix->ucDfuSignature[1], suffix->ucDfuSignature[0]);
 	printf("bLength\t\t%d\n", suffix->bLength);
-	printf("dwCRC\t\t%08x\n", suffix->dwCRC);
+	printf("dwCRC\t\t%08x\n", le32_to_cpu(suffix->dwCRC));
 	printf("\n");
 
 	memset(str, 0, sizeof(str));
@@ -402,7 +421,7 @@ static void cmd_upgrade(char *device, int argc, char **argv)
 	char *buf;
 	unsigned long filesize, count, timeout = 0;
 	char *filename;
-	uint32_t crc;
+	uint32_t crc, dwCRC;
 	int fd, i, block, len, size, sent = 0, try = 10;
 
 	if (argc < 2) {
@@ -438,6 +457,7 @@ static void cmd_upgrade(char *device, int argc, char **argv)
 	}
 
 	memcpy(&suffix, buf + filesize - DFU_SUFFIX_SIZE, sizeof(suffix));
+	dwCRC = le32_to_cpu(suffix.dwCRC);
 
 	printf("Filename\t%s\n", basename(filename));
 	printf("Filesize\t%ld\n", filesize);
@@ -445,10 +465,11 @@ static void cmd_upgrade(char *device, int argc, char **argv)
 	crc = crc32_init();
 	for (i = 0; i < filesize - 4; i++)
 		crc = crc32_byte(crc, buf[i]);
-	printf("Checksum\t%08x (%s)\n", crc,
-			crc == suffix.dwCRC ? "valid" : "corrupt");
 
-	if (crc != suffix.dwCRC) {
+	printf("Checksum\t%08x (%s)\n", crc,
+			crc == dwCRC ? "valid" : "corrupt");
+
+	if (crc != dwCRC) {
 		free(buf);
 		close(fd);
 		exit(1);
@@ -654,7 +675,7 @@ static void cmd_archive(char *device, int argc, char **argv)
 	}
 	printf("\n");
 
-	suffix.bcdDFU = 0x0100;
+	suffix.bcdDFU = cpu_to_le16(0x0100);
 	suffix.ucDfuSignature[0] = 'U';
 	suffix.ucDfuSignature[1] = 'F';
 	suffix.ucDfuSignature[2] = 'D';
@@ -664,7 +685,7 @@ static void cmd_archive(char *device, int argc, char **argv)
 	for (i = 0; i < DFU_SUFFIX_SIZE - 4; i++)
 		crc = crc32_byte(crc, buf[i]);
 
-	suffix.dwCRC = crc;
+	suffix.dwCRC = cpu_to_le32(crc);
 
 	write(fd, &suffix, DFU_SUFFIX_SIZE);
 
