@@ -49,9 +49,7 @@ enum {
 	READ,
 };
 
-static int transient = 0;
-
-static int cmd_list(int dd, int argc, char *argv[])
+static int cmd_list(int dd, uint16_t stores, int argc, char *argv[])
 {
 	uint8_t array[8];
 	uint16_t length, seqnum = 0x0000, pskey = 0x0000;
@@ -61,6 +59,8 @@ static int cmd_list(int dd, int argc, char *argv[])
 		memset(array, 0, sizeof(array));
 		array[0] = pskey & 0xff;
 		array[1] = pskey >> 8;
+		array[2] = stores & 0xff;
+		array[3] = stores >> 8;
 
 		err = csr_read_varid_complex(dd, seqnum++,
 				CSR_VARID_PS_NEXT, array, sizeof(array));
@@ -74,6 +74,8 @@ static int cmd_list(int dd, int argc, char *argv[])
 		memset(array, 0, sizeof(array));
 		array[0] = pskey & 0xff;
 		array[1] = pskey >> 8;
+		array[2] = stores & 0xff;
+		array[3] = stores >> 8;
 
 		err = csr_read_varid_complex(dd, seqnum++,
 				CSR_VARID_PS_SIZE, array, sizeof(array));
@@ -89,7 +91,7 @@ static int cmd_list(int dd, int argc, char *argv[])
 	return 0;
 }
 
-static int cmd_read(int dd, int argc, char *argv[])
+static int cmd_read(int dd, uint16_t stores, int argc, char *argv[])
 {
 	uint8_t array[256];
 	uint16_t length, seqnum = 0x0000, pskey = 0x0000;
@@ -100,9 +102,11 @@ static int cmd_read(int dd, int argc, char *argv[])
 		memset(array, 0, sizeof(array));
 		array[0] = pskey & 0xff;
 		array[1] = pskey >> 8;
+		array[2] = stores & 0xff;
+		array[3] = stores >> 8;
 
 		err = csr_read_varid_complex(dd, seqnum++,
-				CSR_VARID_PS_NEXT, array, 8);
+						CSR_VARID_PS_NEXT, array, 8);
 		if (err < 0)
 			break;
 
@@ -113,9 +117,11 @@ static int cmd_read(int dd, int argc, char *argv[])
 		memset(array, 0, sizeof(array));
 		array[0] = pskey & 0xff;
 		array[1] = pskey >> 8;
+		array[2] = stores & 0xff;
+		array[3] = stores >> 8;
 
 		err = csr_read_varid_complex(dd, seqnum++,
-				CSR_VARID_PS_SIZE, array, 8);
+						CSR_VARID_PS_SIZE, array, 8);
 		if (err < 0)
 			continue;
 
@@ -124,7 +130,7 @@ static int cmd_read(int dd, int argc, char *argv[])
 			continue;
 
 		err = csr_read_pskey_complex(dd, seqnum++, pskey,
-						0x0000, array, length * 2);
+						stores, array, length * 2);
 		if (err < 0)
 			continue;
 
@@ -158,7 +164,7 @@ static int pskey_size(uint16_t pskey)
 	}
 }
 
-static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
+static int write_pskey(int dd, uint16_t pskey, uint16_t stores, int type, int argc, char *argv[])
 {
 	uint8_t array[64];
 	uint16_t value;
@@ -183,7 +189,7 @@ static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 				array[i] = atoi(argv[i]);
 
 		err = csr_write_pskey_complex(dd, 0x4711, pskey,
-					transient ? 0x0008 : 0x0000, array, size);
+							stores, array, size);
 		break;
 
 	case CSR_TYPE_UINT8:
@@ -198,8 +204,7 @@ static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 		else
 			value = atoi(argv[0]);
 
-		err = csr_write_pskey_uint16(dd, 0x4711, pskey,
-					transient ? 0x0008 : 0x0000, value);
+		err = csr_write_pskey_uint16(dd, 0x4711, pskey, stores, value);
 		break;
 
 	case CSR_TYPE_UINT32:
@@ -213,8 +218,7 @@ static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 		else
 			val32 = atoi(argv[0]);
 
-		err = csr_write_pskey_uint32(dd, 0x4711, pskey,
-					transient ? 0x0008 : 0x0000, val32);
+		err = csr_write_pskey_uint32(dd, 0x4711, pskey, stores, val32);
 		break;
 
 	default:
@@ -226,7 +230,7 @@ static int write_pskey(int dd, uint16_t pskey, int type, int argc, char *argv[])
 	return err;
 }
 
-static int read_pskey(int dd, uint16_t pskey, int type)
+static int read_pskey(int dd, uint16_t pskey, uint16_t stores, int type)
 {
 	uint8_t array[64];
 	uint16_t value = 0;
@@ -239,7 +243,7 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 	case CSR_TYPE_ARRAY:
 		size = pskey_size(pskey);
 
-		err = csr_read_pskey_complex(dd, 0x4711, pskey, 0x0000, array, size);
+		err = csr_read_pskey_complex(dd, 0x4711, pskey, stores, array, size);
 		if (err < 0)
 			return err;
 
@@ -251,7 +255,7 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 
 	case CSR_TYPE_UINT8:
 	case CSR_TYPE_UINT16:
-		err = csr_read_pskey_uint16(dd, 0x4711, pskey, 0x0000, &value);
+		err = csr_read_pskey_uint16(dd, 0x4711, pskey, stores, &value);
 		if (err < 0)
 			return err;
 
@@ -259,7 +263,7 @@ static int read_pskey(int dd, uint16_t pskey, int type)
 		break;
 
 	case CSR_TYPE_UINT32:
-		err = csr_read_pskey_uint32(dd, 0x4711, pskey, 0x0000, &val32);
+		err = csr_read_pskey_uint32(dd, 0x4711, pskey, stores, &val32);
 		if (err < 0)
 			return err;
 
@@ -308,7 +312,7 @@ static void usage(void)
 
 	printf("pskey - Utility for changing CSR persistent storage\n\n");
 	printf("Usage:\n"
-		"\tpskey [-i <dev>] [-r] [-t] <key> [value]\n"
+		"\tpskey [-i <dev>] [-r] [-s stores] [-t] <key> [value]\n"
 		"\tpskey [-i <dev>] --list\n"
 		"\tpskey [-i <dev>] --read\n\n");
 
@@ -327,6 +331,7 @@ static void usage(void)
 static struct option main_options[] = {
 	{ "device",	1, 0, 'i' },
 	{ "reset",	0, 0, 'r' },
+	{ "stores",	1, 0, 's' },
 	{ "transient",	0, 0, 't' },
 	{ "list",	0, 0, 'L' },
 	{ "read",	0, 0, 'R' },
@@ -338,9 +343,10 @@ int main(int argc, char *argv[])
 {
 	struct hci_dev_info di;
 	struct hci_version ver;
+	uint16_t stores = 0x0001;
 	int i, err, dd, opt, dev = 0, reset = 0, mode = NONE;
 
-	while ((opt=getopt_long(argc, argv, "+i:rtLRh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+i:rs:tLRh", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
 			dev = hci_devid(optarg);
@@ -354,8 +360,25 @@ int main(int argc, char *argv[])
 			reset = 1;
 			break;
 
+		case 's':
+			if (!strcasecmp(optarg, "default"))
+				stores = 0x0000;
+			else if (!strcasecmp(optarg, "psi"))
+				stores = 0x0001;
+			else if (!strcasecmp(optarg, "psf"))
+				stores = 0x0002;
+			else if (!strcasecmp(optarg, "psrom"))
+				stores = 0x0004;
+			else if (!strcasecmp(optarg, "psram"))
+				stores = 0x0008;
+			else if (!strncasecmp(optarg, "0x", 2))
+				stores = strtol(optarg, NULL, 16);
+			else
+				stores = atoi(optarg);
+			break;
+
 		case 't':
-			transient = 1;
+			stores = 0x0008;
 			break;
 
 		case 'L':
@@ -412,11 +435,11 @@ int main(int argc, char *argv[])
 	if (mode > 0) {
 		switch (mode) {
 		case LIST:
-			err = cmd_list(dd, argc, argv);
+			err = cmd_list(dd, stores, argc, argv);
 			break;
 
 		case READ:
-			err = cmd_read(dd, argc, argv);
+			err = cmd_read(dd, stores, argc, argv);
 			break;
 
 		default:
@@ -434,14 +457,15 @@ int main(int argc, char *argv[])
 			continue;
 
 		if (argc > 1) {
-			err = write_pskey(dd, storage[i].pskey,
+			err = write_pskey(dd, storage[i].pskey, stores,
 					storage[i].type, argc - 1, argv + 1);
 
 			if (!err && reset)
 				csr_write_varid_valueless(dd, 0x0000,
 							CSR_VARID_WARM_RESET);
 		} else
-			err = read_pskey(dd, storage[i].pskey, storage[i].type);
+			err = read_pskey(dd, storage[i].pskey,
+						stores, storage[i].type);
 
 		hci_close_dev(dd);
 
