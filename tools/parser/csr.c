@@ -390,6 +390,9 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	case 0x300f:
 		complex_dump(level + 1, "E2_APP_DATA", frm);
 		break;
+	case 0x3012:
+		complex_dump(level + 1, "PS_MEMORY_TYPE", frm);
+		break;
 	case 0x4001:
 		valueless_dump(level + 1, "COLD_RESET", frm);
 		break;
