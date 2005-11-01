@@ -453,7 +453,7 @@ static inline void switch_req_dump(int level, struct frame *frm)
 	uint32_t instant = LMP_U32(frm);
 
 	p_indent(level, frm);
-	printf("switch instant 0x%04x\n", instant);
+	printf("switch instant 0x%4.4x\n", instant);
 }
 
 static inline void hold_dump(int level, struct frame *frm)
@@ -465,7 +465,7 @@ static inline void hold_dump(int level, struct frame *frm)
 	printf("hold time 0x%4.4x\n", time);
 
 	p_indent(level, frm);
-	printf("hold instant 0x%04x\n", instant);
+	printf("hold instant 0x%4.4x\n", instant);
 }
 
 static inline void sniff_req_dump(int level, struct frame *frm)
@@ -673,6 +673,43 @@ static inline void quality_of_service_dump(int level, struct frame *frm)
 	printf("N_BC %d\n", nbc);
 }
 
+static inline void sco_link_req_dump(int level, struct frame *frm)
+{
+	uint8_t handle = LMP_U8(frm);
+	uint8_t timing = LMP_U8(frm);
+	uint8_t dsco = LMP_U8(frm);
+	uint8_t tsco = LMP_U8(frm);
+	uint8_t packet = LMP_U8(frm);
+	uint8_t airmode = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("SCO handle %d\n", handle);
+
+	p_indent(level, frm);
+	printf("timing control flags 0x%2.2x\n", timing);
+
+	p_indent(level, frm);
+	printf("D_SCO %d T_SCO %d\n", dsco, tsco);
+
+	p_indent(level, frm);
+	printf("SCO packet 0x%2.2x\n", packet);
+
+	p_indent(level, frm);
+	printf("air mode 0x%2.2x\n", airmode);
+}
+
+static inline void remove_sco_link_req_dump(int level, struct frame *frm)
+{
+	uint8_t handle = LMP_U8(frm);
+	uint8_t error = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("SCO handle %d\n", handle);
+
+	p_indent(level, frm);
+	printf("error code 0x%2.2x\n", error);
+}
+
 static inline void max_slots_dump(int level, struct frame *frm)
 {
 	uint8_t slots = LMP_U8(frm);
@@ -727,7 +764,7 @@ static inline void supervision_timeout_dump(int level, struct frame *frm)
 	printf("supervision timeout %d\n", timeout);
 }
 
-static inline void encryption_key_size_mask_res(int level, struct frame *frm)
+static inline void encryption_key_size_mask_res_dump(int level, struct frame *frm)
 {
 	uint16_t mask = LMP_U16(frm);
 
@@ -752,6 +789,58 @@ static inline void packet_type_table_dump(int level, struct frame *frm)
 		printf("(Reserved)\n");
 		break;
 	}
+}
+
+static inline void esco_link_req_dump(int level, struct frame *frm)
+{
+	uint8_t handle = LMP_U8(frm);
+	uint8_t ltaddr = LMP_U8(frm);
+	uint8_t timing = LMP_U8(frm);
+	uint8_t desco = LMP_U8(frm);
+	uint8_t tesco = LMP_U8(frm);
+	uint8_t wesco = LMP_U8(frm);
+	uint8_t mspkt = LMP_U8(frm);
+	uint8_t smpkt = LMP_U8(frm);
+	uint16_t mslen = LMP_U16(frm);
+	uint16_t smlen = LMP_U16(frm);
+	uint8_t airmode = LMP_U8(frm);
+	uint8_t negstate = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("eSCO handle %d\n", handle);
+
+	p_indent(level, frm);
+	printf("eSCO LT_ADDR %d\n", ltaddr);
+
+	p_indent(level, frm);
+	printf("timing control flags 0x%2.2x\n", timing);
+
+	p_indent(level, frm);
+	printf("D_eSCO %d T_eSCO %d W_eSCO %d\n", desco, tesco, wesco);
+
+	p_indent(level, frm);
+	printf("eSCO M->S packet type 0x%2.2x length %d\n", mspkt, mslen);
+
+	p_indent(level, frm);
+	printf("eSCO S->M packet type 0x%2.2x length %d\n", smpkt, smlen);
+
+	p_indent(level, frm);
+	printf("air mode 0x%2.2x\n", airmode);
+
+	p_indent(level, frm);
+	printf("negotiation state 0x%2.2x\n", negstate);
+}
+
+static inline void remove_esco_link_req_dump(int level, struct frame *frm)
+{
+	uint8_t handle = LMP_U8(frm);
+	uint8_t error = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("eSCO handle %d\n", handle);
+
+	p_indent(level, frm);
+	printf("error code 0x%2.2x\n", error);
 }
 
 static inline void channel_classification_req_dump(int level, struct frame *frm)
@@ -896,6 +985,12 @@ void lmp_dump(int level, struct frame *frm)
 	case 42:
 		quality_of_service_dump(level + 1, frm);
 		return;
+	case 43:
+		sco_link_req_dump(level + 1, frm);
+		return;
+	case 44:
+		remove_sco_link_req_dump(level + 1, frm);
+		return;
 	case 45:
 	case 46:
 		max_slots_dump(level + 1, frm);
@@ -914,7 +1009,7 @@ void lmp_dump(int level, struct frame *frm)
 		supervision_timeout_dump(level + 1, frm);
 		return;
 	case 59:
-		encryption_key_size_mask_res(level + 1, frm);
+		encryption_key_size_mask_res_dump(level + 1, frm);
 		return;
 	case 60:
 		set_afh_dump(level + 1, frm);
@@ -944,6 +1039,12 @@ void lmp_dump(int level, struct frame *frm)
 		return;
 	case 127 + (11 << 7):
 		packet_type_table_dump(level + 1, frm);
+		return;
+	case 127 + (12 << 7):
+		esco_link_req_dump(level + 1, frm);
+		return;
+	case 127 + (13 << 7):
+		remove_esco_link_req_dump(level + 1, frm);
 		return;
 	case 127 + (16 << 7):
 		channel_classification_req_dump(level + 1, frm);
