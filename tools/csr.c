@@ -2433,13 +2433,13 @@ int csr_read_varid_uint32(int dd, uint16_t seqnum, uint16_t varid, uint32_t *val
 	return 0;
 }
 
-int csr_read_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint8_t *value, uint16_t length)
+int csr_read_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint16_t stores, uint8_t *value, uint16_t length)
 {
 	unsigned char cmd[] = { 0x00, 0x00, ((length / 2) + 8) & 0xff, ((length / 2) + 8) >> 8,
 				seqnum & 0xff, seqnum >> 8, 0x03, 0x70, 0x00, 0x00,
 				pskey & 0xff, pskey >> 8,
 				(length / 2) & 0xff, (length / 2) >> 8,
-				store & 0xff, store >> 8, 0x00, 0x00 };
+				stores & 0xff, stores >> 8, 0x00, 0x00 };
 
 	unsigned char cp[254], rp[254];
 	struct hci_request rq;
@@ -2475,13 +2475,13 @@ int csr_read_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint16_t sto
 	return 0;
 }
 
-int csr_write_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint8_t *value, uint16_t length)
+int csr_write_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint16_t stores, uint8_t *value, uint16_t length)
 {
 	unsigned char cmd[] = { 0x02, 0x00, ((length / 2) + 8) & 0xff, ((length / 2) + 8) >> 8,
 				seqnum & 0xff, seqnum >> 8, 0x03, 0x70, 0x00, 0x00,
 				pskey & 0xff, pskey >> 8,
 				(length / 2) & 0xff, (length / 2) >> 8,
-				store & 0xff, store >> 8, 0x00, 0x00 };
+				stores & 0xff, stores >> 8, 0x00, 0x00 };
 
 	unsigned char cp[254], rp[254];
 	struct hci_request rq;
@@ -2517,31 +2517,31 @@ int csr_write_pskey_complex(int dd, uint16_t seqnum, uint16_t pskey, uint16_t st
 	return 0;
 }
 
-int csr_read_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint16_t *value)
+int csr_read_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t stores, uint16_t *value)
 {
 	uint8_t array[2] = { 0x00, 0x00 };
 	int err;
 
-	err = csr_read_pskey_complex(dd, seqnum, pskey, store, array, 2);
+	err = csr_read_pskey_complex(dd, seqnum, pskey, stores, array, 2);
 
 	*value = array[0] + (array[1] << 8);
 
 	return err;
 }
 
-int csr_write_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint16_t value)
+int csr_write_pskey_uint16(int dd, uint16_t seqnum, uint16_t pskey, uint16_t stores, uint16_t value)
 {
 	uint8_t array[2] = { value & 0xff, value >> 8 };
 
-	return csr_write_pskey_complex(dd, seqnum, pskey, store, array, 2);
+	return csr_write_pskey_complex(dd, seqnum, pskey, stores, array, 2);
 }
 
-int csr_read_pskey_uint32(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint32_t *value)
+int csr_read_pskey_uint32(int dd, uint16_t seqnum, uint16_t pskey, uint16_t stores, uint32_t *value)
 {
 	uint8_t array[4] = { 0x00, 0x00, 0x00, 0x00 };
 	int err;
 
-	err = csr_read_pskey_complex(dd, seqnum, pskey, store, array, 4);
+	err = csr_read_pskey_complex(dd, seqnum, pskey, stores, array, 4);
 
 	*value = ((array[0] + (array[1] << 8)) << 16) +
 						(array[2] + (array[3] << 8));
@@ -2549,12 +2549,12 @@ int csr_read_pskey_uint32(int dd, uint16_t seqnum, uint16_t pskey, uint16_t stor
 	return err;
 }
 
-int csr_write_pskey_uint32(int dd, uint16_t seqnum, uint16_t pskey, uint16_t store, uint32_t value)
+int csr_write_pskey_uint32(int dd, uint16_t seqnum, uint16_t pskey, uint16_t stores, uint32_t value)
 {
 	uint8_t array[4] = { (value & 0xff0000) >> 16, value >> 24,
 					value & 0xff, (value & 0xff00) >> 8 };
 
-	return csr_write_pskey_complex(dd, seqnum, pskey, store, array, 4);
+	return csr_write_pskey_complex(dd, seqnum, pskey, stores, array, 4);
 }
 
 int psr_put(uint16_t pskey, uint8_t *value, uint16_t size)
