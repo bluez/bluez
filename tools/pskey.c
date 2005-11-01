@@ -363,6 +363,14 @@ int main(int argc, char *argv[])
 		case 's':
 			if (!strcasecmp(optarg, "default"))
 				stores = 0x0000;
+			else if (!strcasecmp(optarg, "implementation"))
+				stores = 0x0001;
+			else if (!strcasecmp(optarg, "factory"))
+				stores = 0x0002;
+			else if (!strcasecmp(optarg, "rom"))
+				stores = 0x0004;
+			else if (!strcasecmp(optarg, "ram"))
+				stores = 0x0008;
 			else if (!strcasecmp(optarg, "psi"))
 				stores = 0x0001;
 			else if (!strcasecmp(optarg, "psf"))
