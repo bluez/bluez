@@ -34,27 +34,31 @@
 
 #define ERROR_INTERFACE		BASE_INTERFACE ".Error"
 
-#define DEFAULT_DEVICE_PATH_ID 		(0xFFFF)
-#define MANAGER_PATH_ID			(0xFFFE)
-#define DEVICE_PATH_ID			(0xFFFD)
-
-#define HCI_DEFAULT_DEVICE_NAME		"default"
-#define HCI_DEVICE_NAME			"hci"
+#define MANAGER_PATH_ID		(0xFFFF)
+#define DEVICE_PATH_ID		(0xFFFE)
 
 /*======================================================================== 
-    BlueZ D-Bus Device service definitions "/org/bluez/Device"
+    BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
  *========================================================================*/
-#define DEV_GET_DEV			"DeviceList"
-#define DEV_UP				"Up"
-#define DEV_DOWN			"Down"
-#define DEV_RESET			"Reset"
-#define DEV_SET_PROPERTY		"SetProperty"
-#define DEV_GET_PROPERTY		"GetProperty"
 
-#define DEV_GET_DEV_SIGNATURE			__END_SIG__
+#define MGR_DEVICE_LIST		"DeviceList"
+#define MGR_DEFAULT_DEVICE	"DefaultDevice"
+#define MGR_INIT		"Init"
+
+/* Enable/Disable services controller, pan, serial, ... */
+#define MGR_ENABLE		"Enable"
+#define MGR_DISABLE		"Disable"
+
+/* Signatures */
+
+#define MGR_GET_DEV_SIGNATURE			__END_SIG__
 
 /* DeviceList Reply: a(devname, addr, type, up/down, a(flags)) - all types strings */
-#define DEV_GET_DEV_REPLY_STRUCT_SIGNATURE	DBUS_STRUCT_BEGIN_CHAR_AS_STRING \
+#define MGR_GET_DEV_REPLY_SIGNATURE		DBUS_TYPE_ARRAY_AS_STRING \
+						DEV_GET_DEV_REPLY_STRUCT_SIGNATURE \
+						__END_SIG__
+
+#define MGR_GET_DEV_REPLY_STRUCT_SIGNATURE	DBUS_STRUCT_BEGIN_CHAR_AS_STRING \
 						DBUS_TYPE_STRING_AS_STRING \
 						DBUS_TYPE_STRING_AS_STRING \
 						DBUS_TYPE_STRING_AS_STRING \
@@ -64,44 +68,23 @@
 						DBUS_STRUCT_END_CHAR_AS_STRING \
 						__END_SIG__
 
-#define DEV_GET_DEV_REPLY_SIGNATURE		DBUS_TYPE_ARRAY_AS_STRING \
-						DEV_GET_DEV_REPLY_STRUCT_SIGNATURE \
-						__END_SIG__
+#define MGR_DEFAULT_DEV_SIGNATURE		__END_SIG__
 
-#define DEV_UP_SIGNATURE			__END_SIG__
-#define DEV_DOWN_SIGNATURE			__END_SIG__
-#define DEV_RESET_SIGNATURE			__END_SIG__
-#define DEV_SET_PROPERTY_SIGNATURE		__END_SIG__
-#define DEV_GET_PROPERTY_SIGNATURE		__END_SIG__
+
+/* Signals sent in the Manager path */
+#define BLUEZ_MGR_DEV_ADDED		"DeviceAdded"
+#define BLUEZ_MGR_DEV_REMOVED		"DeviceRemoved"
+
 
 /*======================================================================== 
-    BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
+    BlueZ D-Bus Device path definitions "/org/bluez/Device"
  *========================================================================*/
 
- /* ===== Manager definitions, services under DEVICE_PATH ===== */
-#define MGR_GET_DEV			"DeviceList"
-#define MGR_INIT			"Init"
-
-/* Enable/Disable services controller, pan, serial, ... */
-#define MGR_ENABLE			"Enable"
-#define MGR_DISABLE			"Disable"
-
-/* Signatures */
-#define MGR_GET_DEV_SIGNATURE			__END_SIG__
-
-/* yya(ss) */
-#define MGR_GET_DEV_REPLY_SIGNATURE		DBUS_TYPE_BYTE_AS_STRING \
-						DBUS_TYPE_BYTE_AS_STRING \
-						DBUS_TYPE_ARRAY_AS_STRING \
-						HCI_DEVICE_STRUCT_SIGNATURE \
-						__END_SIG__
-
-/* ===== HCI definitions ===== */
+/* Interfaces implemented in the "/org/bluez/Device" path */
 #define BLUEZ_HCI			"Controller"
-#define BLUEZ_HCI_PATH			MANAGER_PATH "/" BLUEZ_HCI
-#define BLUEZ_HCI_INTERFACE		MANAGER_INTERFACE "." BLUEZ_HCI
+#define DEV_HCI_INTERFACE		DEVICE_INTERFACE "." BLUEZ_HCI
 
-/* Device based HCI signals */
+/* Control interface signals */
 #define BLUEZ_HCI_INQ_START		"InquiryStart"
 #define BLUEZ_HCI_INQ_COMPLETE		"InquiryComplete"
 #define BLUEZ_HCI_INQ_RESULT		"InquiryResult"
@@ -109,11 +92,7 @@
 #define BLUEZ_HCI_REMOTE_NAME_FAILED	"RemoteNameFailed"
 #define BLUEZ_HCI_AUTH_COMPLETE		"AuthenticationComplete"
 
-/* HCI signals sent in the BLUEZ_HCI_PATH */
-#define BLUEZ_HCI_DEV_ADDED		"DeviceAdded"
-#define BLUEZ_HCI_DEV_REMOVED		"DeviceRemoved"
-
-/* HCI Provided services */
+/* Control interface methods */
 #define HCI_PERIODIC_INQ		"PeriodicInquiry"
 #define HCI_CANCEL_PERIODIC_INQ		"CancelPeriodic"
 #define HCI_INQ				"Inquiry"
@@ -122,6 +101,19 @@
 #define HCI_REMOTE_NAME			"RemoteName"
 #define HCI_CONNECTIONS			"Connections"
 #define HCI_AUTHENTICATE		"Authenticate"
+
+/* Control interface methods */
+#define DEV_UP				"Up"
+#define DEV_DOWN			"Down"
+#define DEV_RESET			"Reset"
+#define DEV_SET_PROPERTY		"SetProperty"
+#define DEV_GET_PROPERTY		"GetProperty"
+
+#define DEV_UP_SIGNATURE			__END_SIG__
+#define DEV_DOWN_SIGNATURE			__END_SIG__
+#define DEV_RESET_SIGNATURE			__END_SIG__
+#define DEV_SET_PROPERTY_SIGNATURE		__END_SIG__
+#define DEV_GET_PROPERTY_SIGNATURE		__END_SIG__
 
 
 #define HCI_PERIODIC_INQ_SIGNATURE			DBUS_TYPE_BYTE_AS_STRING \
