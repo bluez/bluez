@@ -474,7 +474,7 @@ static inline void ext_inquiry_response_dump(int level, struct frame *frm)
 		case 0x09:
 			str = malloc(length + 1);
 			if (str) {
-				snprintf(str, length + 1, "%s", frm->ptr);
+				snprintf(str, length + 1, "%s", (char *) frm->ptr);
 				for (i = 0; i < length; i++)
 				if (!isprint(str[i]))
 					str[i] = '.';
@@ -2518,13 +2518,14 @@ static inline void vendor_dump(int level, struct frame *frm)
 
 	if (frm->dev_id == HCI_DEV_NONE) {
 		uint16_t device = btohs(htons(get_u16(frm)));
+		uint16_t proto = btohs(htons(get_u16(frm)));
 		uint16_t type = btohs(htons(get_u16(frm)));
 		uint16_t plen = btohs(htons(get_u16(frm)));
 
 		p_indent(level, frm);
 
-		printf("System %s: device hci%d type 0x%2.2x plen %d\n",
-			frm->in ? "event" : "command", device, type, plen);
+		printf("System %s: device hci%d proto 0x%2.2x type 0x%2.2x plen %d\n",
+			frm->in ? "event" : "command", device, proto, type, plen);
 
 		raw_dump(level, frm);
 		return;
