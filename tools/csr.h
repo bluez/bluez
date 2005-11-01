@@ -40,6 +40,7 @@
 #define CSR_VARID_PICONET_INSTANCE		0x3009	/* complex */
 #define CSR_VARID_GET_CLR_EVT			0x300a	/* complex */
 #define CSR_VARID_GET_NEXT_BUILDDEF		0x300b	/* complex */
+#define CSR_VARID_PS_MEMORY_TYPE		0x3012	/* complex */
 #define CSR_VARID_COLD_RESET			0x4001	/* valueless */
 #define CSR_VARID_WARM_RESET			0x4002	/* valueless */
 #define CSR_VARID_COLD_HALT			0x4003	/* valueless */
