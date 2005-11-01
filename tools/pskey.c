@@ -45,9 +45,67 @@
 
 enum {
 	NONE = 0,
+	MEMORY,
 	LIST,
 	READ,
 };
+
+static char *storestostr(uint16_t stores)
+{
+	switch (stores) {
+	case 0x0000:
+		return "Default";
+	case 0x0001:
+		return "psi";
+	case 0x0002:
+		return "psf";
+	case 0x0004:
+		return "psrom";
+	case 0x0008:
+		return "psram";
+	default:
+		return "Unknown";
+	}
+}
+
+static char *memorytostr(uint16_t type)
+{
+	switch (type) {
+	case 0x0000:
+		return "Flash memory";
+	case 0x0001:
+		return "EEPROM";
+	case 0x0002:
+		return "RAM (transient)";
+	case 0x0003:
+		return "ROM (or \"read-only\" flash memory)";
+	default:
+		return "Unknown";
+	}
+}
+
+static int cmd_memory(int dd, uint16_t stores, int argc, char *argv[])
+{
+	uint8_t array[8];
+	uint16_t type;
+	int err;
+
+	memset(array, 0, sizeof(array));
+	array[2] = stores & 0xff;
+	array[3] = stores >> 8;
+
+	err = csr_read_varid_complex(dd, 0x4711,
+				CSR_VARID_PS_MEMORY_TYPE, array, sizeof(array));
+	if (err < 0)
+		return err;
+
+	type = array[4] + (array[5] << 8);
+
+	printf("%s (0x%04x) = %s (%d)\n", storestostr(stores), stores,
+						memorytostr(type), type);
+
+	return 0;
+}
 
 static int cmd_list(int dd, uint16_t stores, int argc, char *argv[])
 {
@@ -331,8 +389,9 @@ static void usage(void)
 	printf("Usage:\n"
 		"\tpskey [-i <dev>] [-r] [-s stores] <key> [value]\n"
 		"\tpskey [-i <dev>] [-r] [-s stores] --clear <key>\n"
-		"\tpskey [-i <dev>] --list\n"
-		"\tpskey [-i <dev>] --read\n\n");
+		"\tpskey [-i <dev>] [-s stores] --memory\n"
+		"\tpskey [-i <dev>] [-s stores] --list\n"
+		"\tpskey [-i <dev>] [-s stores] --read\n\n");
 
 	printf("Keys:\n\t");
 	for (i = 0; storage[i].pskey; i++) {
@@ -351,6 +410,7 @@ static struct option main_options[] = {
 	{ "reset",	0, 0, 'r' },
 	{ "stores",	1, 0, 's' },
 	{ "clear",	0, 0, 'c' },
+	{ "memory",	0, 0, 'M' },
 	{ "list",	0, 0, 'L' },
 	{ "read",	0, 0, 'R' },
 	{ "help",	0, 0, 'h' },
@@ -364,7 +424,7 @@ int main(int argc, char *argv[])
 	uint16_t stores = 0x0001 | 0x0002 | 0x0008;
 	int i, err, dd, opt, dev = 0, reset = 0, clear = 0, mode = NONE;
 
-	while ((opt=getopt_long(argc, argv, "+i:rs:cLRh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+i:rs:cMLRh", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
 			dev = hci_devid(optarg);
@@ -405,6 +465,10 @@ int main(int argc, char *argv[])
 
 		case 'c':
 			clear = 1;
+			break;
+
+		case 'M':
+			mode = MEMORY;
 			break;
 
 		case 'L':
@@ -460,14 +524,15 @@ int main(int argc, char *argv[])
 
 	if (mode > 0) {
 		switch (mode) {
+		case MEMORY:
+			err = cmd_memory(dd, stores, argc, argv);
+			break;
 		case LIST:
 			err = cmd_list(dd, stores, argc, argv);
 			break;
-
 		case READ:
 			err = cmd_read(dd, stores, argc, argv);
 			break;
-
 		default:
 			usage();
 			err = -1;
