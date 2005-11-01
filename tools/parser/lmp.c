@@ -470,26 +470,97 @@ static inline void hold_dump(int level, struct frame *frm)
 
 static inline void sniff_req_dump(int level, struct frame *frm)
 {
-	uint8_t flags = LMP_U8(frm);
+	uint8_t timing = LMP_U8(frm);
 	uint16_t dsniff = LMP_U16(frm);
 	uint16_t tsniff = LMP_U16(frm);
 	uint16_t attempt = LMP_U16(frm);
 	uint16_t timeout = LMP_U16(frm);
 
 	p_indent(level, frm);
-	printf("timing control flags 0x%2.2x\n", flags);
+	printf("timing control flags 0x%2.2x\n", timing);
 
 	p_indent(level, frm);
-	printf("D_sniff %d\n", dsniff);
-
-	p_indent(level, frm);
-	printf("T_sniff %d\n", tsniff);
+	printf("D_sniff %d T_sniff %d\n", dsniff, tsniff);
 
 	p_indent(level, frm);
 	printf("sniff attempt %d\n", attempt);
 
 	p_indent(level, frm);
 	printf("sniff timeout %d\n", timeout);
+}
+
+static inline void park_req_dump(int level, struct frame *frm)
+{
+	uint8_t timing = LMP_U8(frm);
+	uint16_t db = LMP_U16(frm);
+	uint16_t tb = LMP_U16(frm);
+	uint8_t nb = LMP_U8(frm);
+	uint8_t xb = LMP_U8(frm);
+	uint8_t pmaddr = LMP_U8(frm);
+	uint8_t araddr = LMP_U8(frm);
+	uint8_t nbsleep = LMP_U8(frm);
+	uint8_t dbsleep = LMP_U8(frm);
+	uint8_t daccess = LMP_U8(frm);
+	uint8_t taccess = LMP_U8(frm);
+	uint8_t nslots = LMP_U8(frm);
+	uint8_t npoll = LMP_U8(frm);
+	uint8_t access = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("timing control flags 0x%2.2x\n", timing);
+
+	p_indent(level, frm);
+	printf("D_B %d T_B %d N_B %d X_B %d\n", db, tb, nb, xb);
+
+	p_indent(level, frm);
+	printf("PM_ADDR %d AR_ADDR %d\n", pmaddr, araddr);
+
+	p_indent(level, frm);
+	printf("N_Bsleep %d D_Bsleep %d\n", nbsleep, dbsleep);
+
+	p_indent(level, frm);
+	printf("D_access %d T_access %d\n", daccess, taccess);
+
+	p_indent(level, frm);
+	printf("N_acc-slots %d N_poll %d\n", nslots, npoll);
+
+	p_indent(level, frm);
+	printf("M_access %d\n", access & 0x0f);
+
+	p_indent(level, frm);
+	printf("access scheme 0x%2.2x\n", access >> 4);
+}
+
+static inline void modify_beacon_dump(int level, struct frame *frm)
+{
+	uint8_t timing = LMP_U8(frm);
+	uint16_t db = LMP_U16(frm);
+	uint16_t tb = LMP_U16(frm);
+	uint8_t nb = LMP_U8(frm);
+	uint8_t xb = LMP_U8(frm);
+	uint8_t daccess = LMP_U8(frm);
+	uint8_t taccess = LMP_U8(frm);
+	uint8_t nslots = LMP_U8(frm);
+	uint8_t npoll = LMP_U8(frm);
+	uint8_t access = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("timing control flags 0x%2.2x\n", timing);
+
+	p_indent(level, frm);
+	printf("D_B %d T_B %d N_B %d X_B %d\n", db, tb, nb, xb);
+
+	p_indent(level, frm);
+	printf("D_access %d T_access %d\n", daccess, taccess);
+
+	p_indent(level, frm);
+	printf("N_acc-slots %d N_poll %d\n", nslots, npoll);
+
+	p_indent(level, frm);
+	printf("M_access %d\n", access & 0x0f);
+
+	p_indent(level, frm);
+	printf("access scheme 0x%2.2x\n", access >> 4);
 }
 
 static inline void power_req_dump(int level, struct frame *frm)
@@ -764,6 +835,45 @@ static inline void supervision_timeout_dump(int level, struct frame *frm)
 	printf("supervision timeout %d\n", timeout);
 }
 
+static inline void test_control_dump(int level, struct frame *frm)
+{
+	uint8_t scenario = LMP_U8(frm);
+	uint8_t hopping = LMP_U8(frm);
+	uint8_t txfreq = LMP_U8(frm);
+	uint8_t rxfreq = LMP_U8(frm);
+	uint8_t power = LMP_U8(frm);
+	uint8_t poll = LMP_U8(frm);
+	uint8_t packet = LMP_U8(frm);
+	uint16_t length = LMP_U16(frm);
+
+	p_indent(level, frm);
+	printf("test scenario %d\n", scenario);
+
+	p_indent(level, frm);
+	printf("hopping mode %d\n", hopping);
+
+	p_indent(level, frm);
+	printf("TX frequency %d\n", txfreq);
+
+	p_indent(level, frm);
+	printf("RX frequency %d\n", rxfreq);
+
+	p_indent(level, frm);
+	printf("power control mode %d\n", power);
+
+	p_indent(level, frm);
+	printf("poll period %d\n", poll);
+
+	p_indent(level, frm);
+	printf("poll period %d\n", poll);
+
+	p_indent(level, frm);
+	printf("packet type 0x%2.2x\n", packet);
+
+	p_indent(level, frm);
+	printf("length of test data %d\n", length);
+}
+
 static inline void encryption_key_size_mask_res_dump(int level, struct frame *frm)
 {
 	uint16_t mask = LMP_U16(frm);
@@ -881,11 +991,11 @@ void lmp_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 
-	tmp = get_u8(frm);
+	tmp = LMP_U8(frm);
 	tid = tmp & 0x01;
 	opcode = (tmp & 0xfe) >> 1;
 	if (opcode > 123) {
-		tmp = get_u8(frm);
+		tmp = LMP_U8(frm);
 		opcode += tmp << 7;
 	}
 
@@ -966,6 +1076,12 @@ void lmp_dump(int level, struct frame *frm)
 	case 23:
 		sniff_req_dump(level + 1, frm);
 		return;
+	case 25:
+		park_req_dump(level + 1, frm);
+		return;
+	case 28:
+		modify_beacon_dump(level + 1, frm);
+		return;
 	case 31:
 	case 32:
 		power_req_dump(level + 1, frm);
@@ -1007,6 +1123,9 @@ void lmp_dump(int level, struct frame *frm)
 		return;
 	case 55:
 		supervision_timeout_dump(level + 1, frm);
+		return;
+	case 57:
+		test_control_dump(level + 1, frm);
 		return;
 	case 59:
 		encryption_key_size_mask_res_dump(level + 1, frm);
