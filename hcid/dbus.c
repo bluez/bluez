@@ -258,6 +258,8 @@ static struct profile_obj_path_data obj_path_table[] = {
 static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data);
 static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data);
 
+static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_device_down_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_device_list_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_default_device_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_not_implemented_req(DBusMessage *msg, void *data);
@@ -273,8 +275,8 @@ static const DBusObjectPathVTable obj_mgr_vtable = {
 };
 
 static const struct service_data device_services[] = {
-	{ DEV_UP,		handle_not_implemented_req,	DEV_UP_SIGNATURE		},
-	{ DEV_DOWN,		handle_not_implemented_req,	DEV_DOWN_SIGNATURE		},
+	{ DEV_UP,		handle_device_up_req,		DEV_UP_SIGNATURE		},
+	{ DEV_DOWN,		handle_device_down_req,		DEV_DOWN_SIGNATURE		},
 	{ DEV_RESET,		handle_not_implemented_req,	DEV_RESET_SIGNATURE		},
 	{ DEV_SET_PROPERTY,	handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE	},
 	{ DEV_GET_PROPERTY,	handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE	},
@@ -380,12 +382,15 @@ static void free_pin_req(void *req)
 static gboolean register_dbus_path(const char *path, uint16_t id, const DBusObjectPathVTable *pvtable)
 {
 	struct hci_dbus_data *data;
+
 	syslog(LOG_INFO,"Registering DBUS Path: %s", path);
+
 	data = malloc(sizeof(struct hci_dbus_data));
 	if (data == NULL) {
 		syslog(LOG_ERR,"Failed to alloc memory to DBUS path register data (%s)", path);
 		return FALSE;
 	}
+
 	data->id = id;
 
 	if (!dbus_connection_register_object_path(connection, path, pvtable, data)) {
@@ -393,13 +398,16 @@ static gboolean register_dbus_path(const char *path, uint16_t id, const DBusObje
 		free(data);
 		return FALSE;
 	}
+
 	return TRUE;
 }
 
 static gboolean unregister_dbus_path(const char *path)
 {
 	void *data;
+
 	syslog(LOG_INFO,"Unregistering DBUS Path: %s", path);
+
 	if (dbus_connection_get_object_path_data(connection, path, &data) && data) 
 		free(data);
 
@@ -407,6 +415,7 @@ static gboolean unregister_dbus_path(const char *path)
 		syslog(LOG_ERR,"DBUS failed to unregister %s object", path);
 		return FALSE;
 	}
+
 	return TRUE;
 }
 
@@ -1187,14 +1196,16 @@ static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg,
 		if (child && *child) {
 			struct profile_obj_path_data *profile;
 			child++;
-
-			for (profile = obj_path_table ;profile->name != NULL; profile++) {
-				if (strcmp(profile->name, child) == 0) {
-					handlers = profile->get_svc_table();
-					break;
+			if (!strncmp(child, "hci", 3)) {
+				handlers = device_services;
+			} else {
+				for (profile = obj_path_table; profile->name != NULL; profile++) {
+					if (strcmp(profile->name, child) == 0) {
+						handlers = profile->get_svc_table();
+						break;
+					}
 				}
 			}
-
 		}
 	}
 
@@ -1716,6 +1727,80 @@ failed:
  *  Section reserved to Manager D-Bus message handlers
  *  
  *****************************************************************/
+static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data)
+{
+	DBusMessage *reply = NULL;
+	struct hci_dbus_data *dbus_data = data;
+	struct hci_dev_info di;
+	struct hci_dev_req dr;
+	int sk = -1;
+
+	/* Create and bind HCI socket */
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)", strerror(errno), errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (ioctl(sk, HCIDEVUP, dbus_data->id) < 0 && errno != EALREADY) {
+		syslog(LOG_ERR, "Can't init device hci%d: %s (%d)\n",
+			dbus_data->id, strerror(errno), errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (ioctl(sk, HCIGETDEVINFO, (void *) &di) >= 0 &&
+					!hci_test_bit(HCI_RAW, &di.flags)) {
+		dr.dev_id  = dbus_data->id;
+		dr.dev_opt = SCAN_PAGE | SCAN_INQUIRY; /* piscan */
+		if (ioctl(sk, HCISETSCAN, (unsigned long) &dr) < 0) {
+			syslog(LOG_ERR, "Can't set scan mode on hci%d: %s (%d)\n",
+					dbus_data->id, strerror(errno), errno);
+			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+			goto failed;
+		}
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+failed:
+	if (sk >= 0)
+		close(sk);
+
+	return reply;
+}
+
+static DBusMessage* handle_device_down_req(DBusMessage *msg, void *data)
+{
+	DBusMessage *reply = NULL;
+	struct hci_dbus_data *dbus_data = data;
+	int sk = -1;
+
+	/* Create and bind HCI socket */
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)", strerror(errno), errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (ioctl(sk, HCIDEVDOWN, dbus_data->id) < 0) {
+		syslog(LOG_ERR, "Can't down device hci%d: %s (%d)\n",
+					dbus_data->id, strerror(errno), errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+failed:
+	if (sk >= 0)
+		close(sk);
+
+	return reply;
+}
+
 static DBusMessage* handle_device_list_req(DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
@@ -1810,8 +1895,10 @@ static DBusMessage* handle_device_list_req(DBusMessage *msg, void *data)
 failed:
 	if (sk >= 0)
 		close(sk);
+
 	if (dl)
 		free(dl);
+
 	return reply;
 }
 
