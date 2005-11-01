@@ -279,6 +279,23 @@ static int read_pskey(int dd, uint16_t pskey, uint16_t stores, int type)
 	return err;
 }
 
+static int delete_pskey(int dd, uint16_t pskey, uint16_t stores)
+{
+	uint8_t array[8];
+	int err;
+
+	memset(array, 0, sizeof(array));
+	array[0] = pskey & 0xff;
+	array[1] = pskey >> 8;
+	array[2] = stores & 0xff;
+	array[3] = stores >> 8;
+
+	err = csr_write_varid_complex(dd, 0x4711,
+				CSR_VARID_PS_CLR_STORES, array, sizeof(array));
+
+	return err;
+}
+
 static struct {
 	uint16_t pskey;
 	int type;
@@ -312,7 +329,8 @@ static void usage(void)
 
 	printf("pskey - Utility for changing CSR persistent storage\n\n");
 	printf("Usage:\n"
-		"\tpskey [-i <dev>] [-r] [-s stores] [-t] <key> [value]\n"
+		"\tpskey [-i <dev>] [-r] [-s stores] <key> [value]\n"
+		"\tpskey [-i <dev>] [-r] [-s stores] --clear <key>\n"
 		"\tpskey [-i <dev>] --list\n"
 		"\tpskey [-i <dev>] --read\n\n");
 
@@ -332,7 +350,7 @@ static struct option main_options[] = {
 	{ "device",	1, 0, 'i' },
 	{ "reset",	0, 0, 'r' },
 	{ "stores",	1, 0, 's' },
-	{ "transient",	0, 0, 't' },
+	{ "clear",	0, 0, 'c' },
 	{ "list",	0, 0, 'L' },
 	{ "read",	0, 0, 'R' },
 	{ "help",	0, 0, 'h' },
@@ -344,9 +362,9 @@ int main(int argc, char *argv[])
 	struct hci_dev_info di;
 	struct hci_version ver;
 	uint16_t stores = 0x0001 | 0x0002 | 0x0008;
-	int i, err, dd, opt, dev = 0, reset = 0, mode = NONE;
+	int i, err, dd, opt, dev = 0, reset = 0, clear = 0, mode = NONE;
 
-	while ((opt=getopt_long(argc, argv, "+i:rs:tLRh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+i:rs:cLRh", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
 			dev = hci_devid(optarg);
@@ -385,8 +403,8 @@ int main(int argc, char *argv[])
 				stores = atoi(optarg);
 			break;
 
-		case 't':
-			stores = 0x0008;
+		case 'c':
+			clear = 1;
 			break;
 
 		case 'L':
@@ -471,9 +489,13 @@ int main(int argc, char *argv[])
 			if (!err && reset)
 				csr_write_varid_valueless(dd, 0x0000,
 							CSR_VARID_WARM_RESET);
-		} else
-			err = read_pskey(dd, storage[i].pskey,
-						stores, storage[i].type);
+		} else {
+			if (clear)
+				err = delete_pskey(dd, storage[i].pskey, stores);
+			else
+				err = read_pskey(dd, storage[i].pskey,
+							stores, storage[i].type);
+		}
 
 		hci_close_dev(dd);
 
