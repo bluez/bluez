@@ -502,6 +502,7 @@ char *csr_pskeytostr(uint16_t pskey);
 char *csr_pskeytoval(uint16_t pskey);
 
 int csr_write_varid_valueless(int dd, uint16_t seqnum, uint16_t varid);
+int csr_write_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length);
 int csr_read_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length);
 int csr_read_varid_uint16(int dd, uint16_t seqnum, uint16_t varid, uint16_t *value);
 int csr_read_varid_uint32(int dd, uint16_t seqnum, uint16_t varid, uint32_t *value);
