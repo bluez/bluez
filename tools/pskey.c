@@ -343,7 +343,7 @@ int main(int argc, char *argv[])
 {
 	struct hci_dev_info di;
 	struct hci_version ver;
-	uint16_t stores = 0x0001;
+	uint16_t stores = 0x0001 | 0x0002 | 0x0008;
 	int i, err, dd, opt, dev = 0, reset = 0, mode = NONE;
 
 	while ((opt=getopt_long(argc, argv, "+i:rs:tLRh", main_options, NULL)) != -1) {
