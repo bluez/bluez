@@ -1712,6 +1712,8 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 		goto failed;
 	}
 
+	reply = dbus_message_new_method_return(msg);
+
 failed:
 	if (dd >= 0)
 		close(dd);
