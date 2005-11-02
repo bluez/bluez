@@ -551,9 +551,6 @@ static hci_map lmp_features_map[8][9] = {
 		{ "<paging scheme>",	LMP_PSCHEME	},	/* Bit 1 */
 		{ "<power control>",	LMP_PCONTROL	},	/* Bit 2 */
 		{ "<transparent SCO>",	LMP_TRSP_SCO	},	/* Bit 3 */
-		{ "<flow control (LSB)",0x10		},	/* Bit 4 */
-		{ "<flow control (MB)",	0x20		},	/* Bit 5 */
-		{ "<flow control (MSB)",0x40		},	/* Bit 6 */
 		{ "<broadcast encrypt>",LMP_BCAST_ENC	},	/* Bit 7 */
 		{ NULL }
 	},
