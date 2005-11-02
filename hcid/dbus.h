@@ -34,8 +34,23 @@
 
 #define ERROR_INTERFACE		BASE_INTERFACE ".Error"
 
-#define MANAGER_PATH_ID		(0xFFFF)
-#define DEVICE_PATH_ID		(0xFFFE)
+#define MANAGER_PATH_MASK	(1 << 15)
+#define DEVICE_PATH_MASK	(1 << 14)
+
+/* /org/bluez/Manager */
+#define MANAGER_ROOT_ID		MANAGER_PATH_MASK
+
+/* /org/bluez/Device */
+#define DEVICE_ROOT_ID		DEVICE_PATH_MASK
+
+/* E.g. /org/bluez/Device/hci0 */
+#define DEVICE_PATH_ID		(DEVICE_PATH_MASK | 0x0001)
+
+/* E.g. /org/bluez/Device/hci0/Controller */
+#define HCI_PATH_ID		(DEVICE_PATH_MASK | 0x0002)
+
+#define INVALID_PATH_ID		0xFFFF
+#define INVALID_DEV_ID		0xFFFF
 
 /*======================================================================== 
     BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
