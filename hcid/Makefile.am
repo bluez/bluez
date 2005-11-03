@@ -15,6 +15,8 @@ endif
 
 sbin_PROGRAMS = hcid
 
+noinst_SCRIPTS = dbus-test
+
 if DBUS
 dbus_hcid_sources = dbus.h dbus.c
 dbus_hcid_libs    = @DBUS_LIBS@
@@ -42,7 +44,7 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) $(conf_DATA) dbus.h dbus.c bluez-hcid.conf
+EXTRA_DIST = $(man_MANS) $(conf_DATA) dbus.h dbus.c dbus-test bluez-hcid.conf
 
 MAINTAINERCLEANFILES = Makefile.in
 
