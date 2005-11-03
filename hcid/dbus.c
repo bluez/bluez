@@ -48,7 +48,6 @@ static DBusConnection *connection;
 static int default_dev = -1;
 
 #define TIMEOUT				(30 * 1000)	/* 30 seconds */
-#define BTADDR_LEN			18
 #define MAX_PATH_LENGTH			64
 #define MAX_CONN_NUMBER			10
 
@@ -1548,7 +1547,7 @@ static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 	DBusMessageIter  struct_iter;
-	char addr[BTADDR_LEN];
+	char addr[18];
 	const char array_sig[] = HCI_CONN_INFO_STRUCT_SIGNATURE;
 	const char *paddr = addr;
 	struct hci_dbus_data *dbus_data = data;
@@ -1816,7 +1815,7 @@ static DBusMessage* handle_device_list_req(DBusMessage *msg, void *data)
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		char apath[MAX_PATH_LENGTH];
-		char aaddr[BTADDR_LEN];
+		char aaddr[18];
 		char *paddr = aaddr;
 		char *ppath = apath;
 		char *ptype;
