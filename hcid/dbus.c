@@ -106,7 +106,7 @@ struct profile_obj_path_data {
 typedef struct  {
 	uint32_t code;
 	const char *str;
-}bluez_error_t;
+} bluez_error_t;
 
 typedef struct {
 	char *str;
@@ -381,14 +381,15 @@ static void free_pin_req(void *req)
 static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t dev_id,
 				const DBusObjectPathVTable *pvtable, gboolean fallback)
 {
-	struct hci_dbus_data *data;
+	gboolean ret = FALSE;
+	struct hci_dbus_data *data = NULL;
 
-	syslog(LOG_INFO,"Registering DBUS Path: %s", path);
+	syslog(LOG_INFO, "Registering DBUS Path: %s", path);
 
 	data = malloc(sizeof(struct hci_dbus_data));
 	if (data == NULL) {
-		syslog(LOG_ERR,"Failed to alloc memory to DBUS path register data (%s)", path);
-		return FALSE;
+		syslog(LOG_ERR, "Failed to alloc memory to DBUS path register data (%s)", path);
+		goto out;
 	}
 
 	data->path_id = path_id;
@@ -396,32 +397,36 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
-			syslog(LOG_ERR,"DBUS failed to register %s object", path);
-			free(data);
-			return FALSE;
+			syslog(LOG_ERR, "DBUS failed to register %s fallback", path);
+			goto out;
 		}
 	} else {
 		if (!dbus_connection_register_object_path(connection, path, pvtable, data)) {
-			syslog(LOG_ERR,"DBUS failed to register %s object", path);
-			free(data);
-			return FALSE;
+			syslog(LOG_ERR, "DBUS failed to register %s object", path);
+			goto out;
 		}
 	}
 
-	return TRUE;
+	ret = TRUE;
+
+out:
+	if (!ret && data)
+		free(data);
+
+	return ret;
 }
 
 static gboolean unregister_dbus_path(const char *path)
 {
 	void *data;
 
-	syslog(LOG_INFO,"Unregistering DBUS Path: %s", path);
+	syslog(LOG_INFO, "Unregistering DBUS Path: %s", path);
 
 	if (dbus_connection_get_object_path_data(connection, path, &data) && data) 
 		free(data);
 
 	if (!dbus_connection_unregister_object_path (connection, path)) {
-		syslog(LOG_ERR,"DBUS failed to unregister %s object", path);
+		syslog(LOG_ERR, "DBUS failed to unregister %s object", path);
 		return FALSE;
 	}
 
@@ -468,8 +473,7 @@ void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 
 failed:
 	dbus_message_unref(message);
-	hci_send_cmd(dev, OGF_LINK_CTL,
-				OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
 }
 
 void hcid_dbus_inquiry_start(bdaddr_t *local)
@@ -506,10 +510,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 
 failed:
 	dbus_message_unref(message);
-
 	bt_free(local_addr);
-
-	return;
 }
 
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
@@ -546,10 +547,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 failed:
 	dbus_message_unref(message);
-
 	bt_free(local_addr);
-
-	return;
 }
 
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
@@ -598,8 +596,6 @@ failed:
 
 	bt_free(local_addr);
 	bt_free(peer_addr);
-
-	return;
 }
 
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
@@ -645,8 +641,6 @@ failed:
 
 	bt_free(local_addr);
 	bt_free(peer_addr);
-
-	return;
 }
 
 void hcid_dbus_remote_name_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
@@ -692,8 +686,6 @@ failed:
 
 	bt_free(local_addr);
 	bt_free(peer_addr);
-
-	return;
 }
 
 void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer)
@@ -851,7 +843,7 @@ gboolean hcid_dbus_init(void)
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
 
 	if (dbus_error_is_set(&error)) {
-		syslog(LOG_ERR, "Can't open system message bus connection: %s\n",
+		syslog(LOG_ERR, "Can't open system message bus connection: %s",
 								error.message);
 		dbus_error_free(&error);
 		return FALSE;
@@ -861,7 +853,7 @@ gboolean hcid_dbus_init(void)
 				DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT, &error);
 
 	if (dbus_error_is_set(&error)) {
-		syslog(LOG_ERR,"Can't get system message bus name: %s\n",
+		syslog(LOG_ERR, "Can't get system message bus name: %s",
 								error.message);
 		dbus_error_free(&error);
 		return FALSE;
@@ -910,7 +902,6 @@ void hcid_dbus_exit(void)
 
 	unregister_dbus_path(DEVICE_PATH);
 	unregister_dbus_path(MANAGER_PATH);
-
 }
 
 gboolean hcid_dbus_register_device(uint16_t id) 
@@ -1046,7 +1037,7 @@ gboolean hcid_dbus_dev_down(uint16_t id)
 
 	for (; ptr->id != INVALID_PATH_ID; ptr++) {
 		if (ptr->unreg_func(connection, id) < 0)
-			goto failed;
+			syslog(LOG_ERR, "Unregistering profile id %04X failed", ptr->id);
 	}
 
 	up_adapters--;
@@ -1161,8 +1152,6 @@ static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg,
 	const struct service_data *handlers = NULL;
 	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
-	int type;
-	const char *iface;
 	const char *method;
 	const char *signature;
 	const char *path;
@@ -1170,8 +1159,6 @@ static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg,
 	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	path = dbus_message_get_path(msg);
-	type = dbus_message_get_type(msg);
-	iface = dbus_message_get_interface(msg);
 	method = dbus_message_get_member(msg);
 	signature = dbus_message_get_signature(msg);
 
@@ -1216,11 +1203,9 @@ static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg,
 	if (error)
 		reply = bluez_new_failure_msg(msg, error);
 
-
 	if (reply) {
-		if (!dbus_connection_send (conn, reply, NULL)) {
+		if (!dbus_connection_send (conn, reply, NULL))
 			syslog(LOG_ERR, "Can't send reply message!");
-		}
 		dbus_message_unref (reply);
 	}
 
@@ -1240,7 +1225,7 @@ static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg
 
 	path = dbus_message_get_path(msg);
 	iface = dbus_message_get_interface(msg);
-	method = dbus_message_get_member (msg);
+	method = dbus_message_get_member(msg);
 	signature = dbus_message_get_signature(msg);
 
 	syslog (LOG_INFO, "%s - path:%s", __PRETTY_FUNCTION__, path);
@@ -1264,11 +1249,9 @@ static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg
 	if (error)
 		reply = bluez_new_failure_msg(msg, error);
 
-
 	if (reply) {
-		if (!dbus_connection_send (conn, reply, NULL)) {
+		if (!dbus_connection_send (conn, reply, NULL))
 			syslog(LOG_ERR, "Can't send reply message!");
-		}
 		dbus_message_unref (reply);
 	}
 
@@ -1484,34 +1467,31 @@ static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
 	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 
 	if (dev_id < 0) {
-		syslog(LOG_ERR, "Bluetooth device failed\n");
+		syslog(LOG_ERR, "Bluetooth device failed");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
 	}
 
 	if (dbus_data->dev_id != dev_id) {
-		syslog(LOG_ERR, "Connection not found\n");
+		syslog(LOG_ERR, "Connection not found");
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
 		goto failed;
 	}
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed\n");
+		syslog(LOG_ERR, "HCI device open failed");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
 	}
 
 	if (hci_switch_role(dd, &bdaddr, role, 10000) < 0) {
-		syslog(LOG_ERR, "Switch role request failed\n");
+		syslog(LOG_ERR, "Switch role request failed");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-	} else {
-		uint8_t result = 0;
-		/* return TRUE to indicate that operation was completed */
-		reply = dbus_message_new_method_return(msg);
-		dbus_message_iter_init_append(reply, &iter);
-		dbus_message_iter_append_basic(&iter, DBUS_TYPE_BYTE, &result);
+		goto failed;
 	}
+
+	reply = dbus_message_new_method_return(msg);
 
 failed:
 	return reply;
@@ -1737,7 +1717,7 @@ static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data)
 	}
 
 	if (ioctl(sk, HCIDEVUP, dbus_data->dev_id) < 0 && errno != EALREADY) {
-		syslog(LOG_ERR, "Can't init device hci%d: %s (%d)\n",
+		syslog(LOG_ERR, "Can't init device hci%d: %s (%d)",
 			dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
@@ -1748,7 +1728,7 @@ static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data)
 		dr.dev_id  = dbus_data->dev_id;
 		dr.dev_opt = SCAN_PAGE | SCAN_INQUIRY; /* piscan */
 		if (ioctl(sk, HCISETSCAN, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set scan mode on hci%d: %s (%d)\n",
+			syslog(LOG_ERR, "Can't set scan mode on hci%d: %s (%d)",
 					dbus_data->dev_id, strerror(errno), errno);
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 			goto failed;
@@ -1779,7 +1759,7 @@ static DBusMessage* handle_device_down_req(DBusMessage *msg, void *data)
 	}
 
 	if (ioctl(sk, HCIDEVDOWN, dbus_data->dev_id) < 0) {
-		syslog(LOG_ERR, "Can't down device hci%d: %s (%d)\n",
+		syslog(LOG_ERR, "Can't down device hci%d: %s (%d)",
 					dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
