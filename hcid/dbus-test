@@ -8,8 +8,9 @@ import getopt
 from signal import *
 
 mgr_cmds = [ "DeviceList", "DefaultDevice" ]
-dev_cmds = [ "Inquiry", "CancelInquiry", "PeriodicInquiry", "CancelPeriodic",
-             "RemoteName", "Connections", "Authenticate", "RoleSwitch" ]
+dev_cmds = [ "Up", "Down", "Inquiry", "CancelInquiry", "PeriodicInquiry",
+             "CancelPeriodic", "RemoteName", "Connections", "Authenticate",
+             "RoleSwitch" ]
 
 class Tester:
     exit_events = []
@@ -100,8 +101,8 @@ class Tester:
         self.manager.connect_to_signal('DeviceRemoved', self.device_removed)
 
     def usage(self):
-        print 'Usage: %s [-i] [-l] [-h] <cmd> [arg1..]' % self.name
-        print '  -i <dev>   Specify device (e.g. "hci0" or "/dev/bluez/Device/hci0")'
+        print 'Usage: %s [-i <dev>] [-l] [-h] <cmd> [arg1..]' % self.name
+        print '  -i <dev>   Specify device (e.g. "hci0" or "/org/bluez/Device/hci0")'
         print '  -l         Listen for events (no command required)'
         print '  -h         Show this help'
         print 'Manager commands:'
