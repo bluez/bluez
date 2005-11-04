@@ -268,13 +268,61 @@ static const DBusObjectPathVTable obj_mgr_vtable = {
  */
 static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_device_down_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_device_set_propety_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_device_get_propety_req(DBusMessage *msg, void *data);
 
 static const struct service_data device_services[] = {
 	{ DEV_UP,		handle_device_up_req,		DEV_UP_SIGNATURE		},
 	{ DEV_DOWN,		handle_device_down_req,		DEV_DOWN_SIGNATURE		},
-	{ DEV_RESET,		handle_not_implemented_req,	DEV_RESET_SIGNATURE		},
-	{ DEV_SET_PROPERTY,	handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE	},
-	{ DEV_GET_PROPERTY,	handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE	},
+	{ DEV_SET_PROPERTY,	handle_device_set_propety_req,	DEV_SET_PROPERTY_SIGNATURE_1	},
+	{ DEV_SET_PROPERTY,	handle_device_set_propety_req,	DEV_SET_PROPERTY_SIGNATURE_2	},
+	{ DEV_SET_PROPERTY,	handle_device_set_propety_req,	DEV_SET_PROPERTY_SIGNATURE_3	},
+	{ DEV_GET_PROPERTY,	handle_device_get_propety_req,	DEV_GET_PROPERTY_SIGNATURE	},
+	{ NULL, NULL, NULL}
+};
+
+static const struct service_data set_property_services[] = {
+	{ DEV_PROPERTY_AUTH,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_ENCRYPT,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_SECMGR,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_PISCAN,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_PSCAN,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_ISCAN,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_PTYPE,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_LM,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_LP,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_NAME,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_CLASS,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_VOICE,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_IAC,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_INCMODE,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_INCTYPE,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_INCPARMS,	handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_PAGEPARMS,	handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_PAGETO,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_AFHMODE,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_ACLMTU,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_SCOMTU,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_PUTKEY,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ DEV_PROPERTY_DELKEY,		handle_not_implemented_req,	DEV_SET_PROPERTY_SIGNATURE_1 	},
+	{ NULL, NULL, NULL}
+};
+
+static const struct service_data get_property_services[] = {
+	{ DEV_PROPERTY_DEV_INFO,	handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_PTYPE,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_LM,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_LP,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_NAME,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_CLASS,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_VOICE,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_IAC,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_INCMODE,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_INCTYPE,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_INCPARMS,	handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_PAGEPARMS,	handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_PAGETO,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
+	{ DEV_PROPERTY_AFHMODE,		handle_not_implemented_req,	DEV_GET_PROPERTY_SIGNATURE 	},
 	{ NULL, NULL, NULL}
 };
 
@@ -1174,16 +1222,16 @@ static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	if (handlers) {
+		error = BLUEZ_EDBUS_WRONG_SIGNATURE;
 		for (; handlers->name != NULL; handlers++) {
 			if (strcmp(handlers->name, method) == 0) {
-				if (strcmp(handlers->signature, signature) != 0)
-					error = BLUEZ_EDBUS_WRONG_SIGNATURE;
-				else {
+				if (strcmp(handlers->signature, signature) == 0) {
 					reply = handlers->handler_func(msg, data);
 					error = 0;
+					ret = DBUS_HANDLER_RESULT_HANDLED;
+					break;
 				}
 
-				ret = DBUS_HANDLER_RESULT_HANDLED;
 			}
 		}
 	}
@@ -1764,6 +1812,66 @@ static DBusMessage* handle_device_down_req(DBusMessage *msg, void *data)
 failed:
 	if (sk >= 0)
 		close(sk);
+
+	return reply;
+}
+
+static DBusMessage* handle_device_set_propety_req(DBusMessage *msg, void *data)
+{
+	const struct service_data *handlers = set_property_services;
+	DBusMessageIter iter;
+	DBusMessage *reply = NULL;
+	const char *signature;
+	char *str_name;
+	uint32_t error = BLUEZ_EDBUS_UNKNOWN_METHOD;
+
+	signature = dbus_message_get_signature(msg);
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &str_name);
+
+	for (; handlers->name != NULL; handlers++) {
+		if (strcasecmp(handlers->name, str_name) == 0) {
+			if (strcmp(handlers->signature, signature) == 0) {
+				reply = handlers->handler_func(msg, data);
+				error = 0;
+				break;
+			} else {
+				error = BLUEZ_EDBUS_WRONG_SIGNATURE;
+				break;
+			}
+
+		}
+	}
+
+	if (error)
+		reply = bluez_new_failure_msg(msg, error);
+
+	return reply;
+}
+
+static DBusMessage* handle_device_get_propety_req(DBusMessage *msg, void *data)
+{
+	const struct service_data *handlers = get_property_services;
+	DBusMessageIter iter;
+	DBusMessage *reply = NULL;
+	char *str_name;
+	uint32_t error = BLUEZ_EDBUS_UNKNOWN_METHOD;
+
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &str_name);
+
+	for (; handlers->name != NULL; handlers++) {
+		if (strcasecmp(handlers->name, str_name) == 0) {
+			reply = handlers->handler_func(msg, data);
+			error = 0;
+			break;
+		}
+	}
+
+	if (error)
+		reply = bluez_new_failure_msg(msg, error);
 
 	return reply;
 }
