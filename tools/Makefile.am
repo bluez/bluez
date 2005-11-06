@@ -1,4 +1,12 @@
 
+if BCCMD
+bccmd_programs = bccmd
+bccmd_manfiles = bccmd.8
+else
+bccmd_programs =
+bccmd_manfiles =
+endif
+
 if AVCTRL
 avctrl_programs = avctrl
 avctrl_manfiles = avctrl.8
@@ -15,14 +23,6 @@ hid2hci_programs =
 hid2hci_manfiles =
 endif
 
-if CSRINIT
-csrinit_programs = csrinit
-csrinit_manfiles = csrinit.8
-else
-csrinit_programs =
-csrinit_manfiles =
-endif
-
 if DFUTOOL
 dfutool_programs = dfutool
 dfutool_manfiles = dfutool.1
@@ -31,11 +31,11 @@ dfutool_programs =
 dfutool_manfiles =
 endif
 
-sbin_PROGRAMS = hciattach hciconfig $(avctrl_programs) $(hid2hci_programs) $(csrinit_programs)
+sbin_PROGRAMS = hciattach hciconfig $(bccmd_programs) $(avctrl_programs) $(hid2hci_programs)
 
 bin_PROGRAMS = hcitool l2ping sdptool ciptool $(dfutool_programs)
 
-noinst_PROGRAMS = hcisecfilter ppporc pskey bccmd
+noinst_PROGRAMS = hcisecfilter ppporc
 
 hciconfig_SOURCES = hciconfig.c csr.h csr.c
 hciconfig_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libtextfile.a
@@ -51,11 +51,10 @@ ciptool_LDADD = @BLUEZ_LIBS@
 
 ppporc_LDADD = @BLUEZ_LIBS@
 
-pskey_SOURCES = pskey.c csr.h csr.c
-pskey_LDADD = @BLUEZ_LIBS@
-
+if BCCMD
 bccmd_SOURCES = bccmd.c csr.h csr.c
 bccmd_LDADD = @BLUEZ_LIBS@
+endif
 
 if AVCTRL
 avctrl_LDADD = @USB_LIBS@
@@ -63,11 +62,6 @@ endif
 
 if HID2HCI
 hid2hci_LDADD = @USB_LIBS@
-endif
-
-if CSRINIT
-csrinit_SOURCES = csrinit.c csr.h
-csrinit_LDADD = @USB_LIBS@
 endif
 
 if DFUTOOL
@@ -80,10 +74,8 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @USB_CFLAGS@
 INCLUDES = -I$(top_srcdir)/common
 
 man_MANS = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 \
-		$(avctrl_manfiles) $(hid2hci_manfiles) $(csrinit_manfiles) $(dfutool_manfiles)
+		$(bccmd_manfiles) $(avctrl_manfiles) $(hid2hci_manfiles) $(dfutool_manfiles)
 
-noinst_MANS = bccmd.8
-
-EXTRA_DIST = $(man_MANS) avctrl.8 hid2hci.8 csrinit.8 dfutool.1 bccmd.8 example.psr
+EXTRA_DIST = $(man_MANS) bccmd.8 avctrl.8 hid2hci.8 dfutool.1 example.psr
 
 MAINTAINERCLEANFILES = Makefile.in
