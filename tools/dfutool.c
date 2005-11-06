@@ -211,9 +211,9 @@ static struct usb_dev_handle *open_device(char *device, struct dfu_suffix *suffi
 
 	if (status.bState == DFU_STATE_DFU_IDLE) {
 		if (suffix) {
-			suffix->idVendor  = 0x0000;
-			suffix->idProduct = 0x0000;
-			suffix->bcdDevice = 0x0000;
+			suffix->idVendor  = cpu_to_le16(0x0000);
+			suffix->idProduct = cpu_to_le16(0x0000);
+			suffix->bcdDevice = cpu_to_le16(0x0000);
 		}
 		return udev;
 	}
@@ -262,7 +262,7 @@ static struct usb_dev_handle *open_device(char *device, struct dfu_suffix *suffi
 			if (dev->descriptor.bDeviceClass != USB_CLASS_APPLICATION)
 				continue;
 
-			if (suffix && dev->descriptor.idVendor != suffix->idVendor)
+			if (suffix && dev->descriptor.idVendor != le16_to_cpu(suffix->idVendor))
 				continue;
 
 			if (num > 9 || get_interface_number(dev) != 0)
