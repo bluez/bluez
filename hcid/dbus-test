@@ -222,7 +222,7 @@ class Tester:
                 length, min, max = self.cmd_args
             self.listen = True
             try:
-                self.ctl.PeriodicInquiry(dbus.Byte(length), dbus.Byte(min), dbus.Byte(max))
+                self.ctl.PeriodicInquiry(dbus.Byte(length), dbus.UInt16(min), dbus.UInt16(max))
             except dbus.DBusException, e:
                 print 'Sending %s failed: %s' % (self.cmd, e)
                 sys.exit(1)

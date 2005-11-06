@@ -1303,12 +1303,11 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 {
 	write_inquiry_mode_cp inq_mode;
 	periodic_inquiry_cp inq_param;
-	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
 	uint8_t length;
-	uint8_t max_period;
-	uint8_t min_period;
+	uint16_t max_period;
+	uint16_t min_period;
 	int dd = -1;
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -1318,12 +1317,13 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 		goto failed;
 	}
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &length);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_get_basic(&iter, &min_period);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_get_basic(&iter, &max_period);
+	dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_BYTE, &length,
+			DBUS_TYPE_UINT16, &min_period,
+			DBUS_TYPE_UINT16, &max_period,
+			DBUS_TYPE_INVALID);
+
+	syslog(LOG_DEBUG, "%02X %04X %04X", length, min_period, max_period);
 
 	if (length >= min_period || min_period >= max_period) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
@@ -1333,8 +1333,8 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	inq_param.num_rsp = 100;
 	inq_param.length  = length;
 
-	inq_param.max_period = max_period;
-	inq_param.min_period = min_period;
+	inq_param.max_period = htobs(max_period);
+	inq_param.min_period = htobs(min_period);
 
 	/* General/Unlimited Inquiry Access Code (GIAC) */
 	inq_param.lap[0] = 0x33;
