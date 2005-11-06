@@ -200,7 +200,8 @@ static inline void pssize_dump(int level, char *str, struct frame *frm)
 	length = CSR_U16(frm);
 
 	p_indent(level, frm);
-	printf("%s: key 0x%4.4x len %d\n", str, key, length);
+	printf("%s: key 0x%4.4x %s %d\n", str, key,
+				frm->in ? "len" : "stores", length);
 }
 
 static inline void psstores_dump(int level, char *str, struct frame *frm)
