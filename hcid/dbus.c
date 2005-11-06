@@ -1222,15 +1222,19 @@ static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	if (handlers) {
-		error = BLUEZ_EDBUS_WRONG_SIGNATURE;
 		for (; handlers->name != NULL; handlers++) {
 			if (strcmp(handlers->name, method) == 0) {
+				ret = DBUS_HANDLER_RESULT_HANDLED;
 				if (strcmp(handlers->signature, signature) == 0) {
 					reply = handlers->handler_func(msg, data);
 					error = 0;
-					ret = DBUS_HANDLER_RESULT_HANDLED;
 					break;
 				}
+				else
+					/* Set the error, but continue looping incase there is
+					 * another method with the same name but a different
+					 * signature */
+					error = BLUEZ_EDBUS_WRONG_SIGNATURE;
 
 			}
 		}
@@ -1392,22 +1396,20 @@ failed:
 
 static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 {
-	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
 	inquiry_cp cp;
 	evt_cmd_status rp;
 	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
 	int dd = -1;
-	int8_t length;
-	int8_t num_rsp;
+	uint8_t length, num_rsp;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &length);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_get_basic(&iter, &num_rsp);
+	dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_BYTE, &length,
+			DBUS_TYPE_BYTE, &num_rsp,
+			DBUS_TYPE_INVALID);
 
-	if ((length <= 0) || (num_rsp <= 0)) {
+	if (length < 0x01 || length > 0x30) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 		goto failed;
 	}
@@ -1486,7 +1488,6 @@ failed:
 
 static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
 {
-	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
 	char *str_bdaddr = NULL;
 	struct hci_dbus_data *dbus_data = data;
@@ -1494,10 +1495,10 @@ static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
 	uint8_t role;
 	int dev_id = -1, dd = -1;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &str_bdaddr);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_get_basic(&iter, &role);
+	dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &str_bdaddr,
+			DBUS_TYPE_BYTE, &role,
+			DBUS_TYPE_INVALID);
 
 	str2ba(str_bdaddr, &bdaddr);
 
@@ -1536,7 +1537,6 @@ failed:
 
 static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 {
-	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
 	int dd = -1;
@@ -1546,8 +1546,9 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 	remote_name_req_cp cp;
 	evt_cmd_status rp;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &str_bdaddr);
+	dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &str_bdaddr,
+			DBUS_TYPE_INVALID);
 
 	str2ba(str_bdaddr, &bdaddr);
 
@@ -1662,7 +1663,6 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	struct hci_request rq;
 	auth_requested_cp cp;
 	evt_cmd_status rp;
-	DBusMessageIter iter;
 	DBusMessage *reply = NULL;
 	char *str_bdaddr = NULL;
 	struct hci_dbus_data *dbus_data = data;
@@ -1671,8 +1671,10 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	int dev_id = -1;
 	int dd = -1;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &str_bdaddr);
+	dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &str_bdaddr,
+			DBUS_TYPE_INVALID);
+
 	str2ba(str_bdaddr, &bdaddr);
 
 	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
