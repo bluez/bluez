@@ -64,9 +64,9 @@ struct pin_request {
 typedef DBusMessage* (service_handler_func_t)(DBusMessage *, void *);
 
 struct service_data {
-	const char             *name;
-	service_handler_func_t *handler_func;
-	const char             *signature;
+	const char		*name;
+	service_handler_func_t	*handler_func;
+	const char		*signature;
 };
 
 struct hci_dbus_data {
@@ -88,7 +88,7 @@ struct profile_obj_path_data {
 	uint16_t		id;
 	register_function_t	*reg_func;
 	unregister_function_t	*unreg_func;
-	get_svc_table_func_t	*get_svc_table; /* return the service table */
+	get_svc_table_func_t	*get_svc_table;	/* return the service table */
 };
 
 /*
@@ -186,7 +186,6 @@ static const bluez_error_t hci_error_array[] = {
 	{ 0, NULL },
 };
 
-
 static const char *bluez_dbus_error_to_str(const uint32_t ecode) 
 {
 	const bluez_error_t *ptr;
@@ -221,17 +220,17 @@ static const char *bluez_dbus_error_to_str(const uint32_t ecode)
 static DBusMessage *bluez_new_failure_msg(DBusMessage *msg, const uint32_t ecode)
 {
 	DBusMessageIter iter;
-	DBusMessage *reply = NULL;
-	const char *error_msg = NULL;
+	DBusMessage *reply;
+	const char *error_msg;
 
 	error_msg = bluez_dbus_error_to_str(ecode);
+	if (!error_msg)
+		return NULL;
 
-	if (error_msg) {
-		reply = dbus_message_new_error(msg, ERROR_INTERFACE, error_msg);
+	reply = dbus_message_new_error(msg, ERROR_INTERFACE, error_msg);
 
-		dbus_message_iter_init_append(reply, &iter);
-		dbus_message_iter_append_basic(&iter, DBUS_TYPE_UINT32 ,&ecode);
-	}
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_UINT32 ,&ecode);
 
 	return reply;
 }
@@ -254,13 +253,13 @@ static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg
 static DBusMessage* handle_not_implemented_req(DBusMessage *msg, void *data);
 
 static const DBusObjectPathVTable obj_dev_vtable = {
-	.message_function = &msg_func_device,
-	.unregister_function = NULL
+	.message_function	= &msg_func_device,
+	.unregister_function	= NULL
 };
 
 static const DBusObjectPathVTable obj_mgr_vtable = {
-	.message_function = &msg_func_manager,
-	.unregister_function = NULL
+	.message_function	= &msg_func_manager,
+	.unregister_function	= NULL
 };
 
 /*
@@ -344,7 +343,7 @@ static const struct service_data manager_services[] = {
 /*
  * HCI D-Bus services
  */
-static DBusHandlerResult hci_signal_filter (DBusConnection *conn, DBusMessage *msg, void *data);
+static DBusHandlerResult hci_signal_filter(DBusConnection *conn, DBusMessage *msg, void *data);
 
 static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data);
@@ -381,40 +380,42 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 
 	message = dbus_pending_call_steal_reply(call);
 
-	if (message) {
-		msg_type = dbus_message_get_type(message);
-		dbus_message_iter_init(message, &iter);
-		
-		if (msg_type == DBUS_MESSAGE_TYPE_ERROR) {
-			dbus_message_iter_get_basic(&iter, &error_msg);
+	if (!message)
+		goto done;
 
-			/* handling WRONG_ARGS_ERROR, DBUS_ERROR_NO_REPLY, DBUS_ERROR_SERVICE_UNKNOWN */
-			syslog(LOG_ERR, "%s: %s", dbus_message_get_error_name(message), error_msg);
+	msg_type = dbus_message_get_type(message);
+	dbus_message_iter_init(message, &iter);
+
+	if (msg_type == DBUS_MESSAGE_TYPE_ERROR) {
+		dbus_message_iter_get_basic(&iter, &error_msg);
+
+		/* handling WRONG_ARGS_ERROR, DBUS_ERROR_NO_REPLY, DBUS_ERROR_SERVICE_UNKNOWN */
+		syslog(LOG_ERR, "%s: %s", dbus_message_get_error_name(message), error_msg);
+		hci_send_cmd(req->dev, OGF_LINK_CTL,
+					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
+	} else {
+		/* check signature */
+		arg_type = dbus_message_iter_get_arg_type(&iter);
+		if (arg_type != DBUS_TYPE_STRING) {
+			syslog(LOG_ERR, "Wrong reply signature: expected PIN");
 			hci_send_cmd(req->dev, OGF_LINK_CTL,
 					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 		} else {
-			/* check signature */
-			arg_type = dbus_message_iter_get_arg_type(&iter);
-			if (arg_type != DBUS_TYPE_STRING) {
-				syslog(LOG_ERR, "Wrong reply signature: expected PIN");
-				hci_send_cmd(req->dev, OGF_LINK_CTL,
-						OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
-			} else {
-				dbus_message_iter_get_basic(&iter, &pin);
-				len = strlen(pin);
+			dbus_message_iter_get_basic(&iter, &pin);
+			len = strlen(pin);
 
-				memset(&pr, 0, sizeof(pr));
-				bacpy(&pr.bdaddr, &req->bda);
-				memcpy(pr.pin_code, pin, len);
-				pr.pin_len = len;
-				hci_send_cmd(req->dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
-						PIN_CODE_REPLY_CP_SIZE, &pr);
-			}
+			memset(&pr, 0, sizeof(pr));
+			bacpy(&pr.bdaddr, &req->bda);
+			memcpy(pr.pin_code, pin, len);
+			pr.pin_len = len;
+			hci_send_cmd(req->dev, OGF_LINK_CTL,
+				OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
 		}
-
-		dbus_message_unref(message);
 	}
 
+	dbus_message_unref(message);
+
+done:
 	dbus_pending_call_unref(call);
 }
 
@@ -502,7 +503,7 @@ void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 			&addr, sizeof(bdaddr_t), DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(connection, message,
-					&pending, TIMEOUT) == FALSE) {
+						&pending, TIMEOUT) == FALSE) {
 		syslog(LOG_ERR, "D-BUS send failed");
 		goto failed;
 	}
@@ -862,19 +863,21 @@ static gboolean unregister_device_path(const char *path)
 {
 	char **children = NULL;
 
-	if (dbus_connection_list_registered(connection, path, &children)) {
-		for (; *children; children++) {
-			char child_path[MAX_PATH_LENGTH];
+	if (!dbus_connection_list_registered(connection, path, &children))
+		goto done;
 
-			snprintf(child_path, sizeof(child_path), "%s/%s", path, *children);
+	for (; *children; children++) {
+		char child_path[MAX_PATH_LENGTH];
 
-			unregister_dbus_path(child_path);
-		}
+		snprintf(child_path, sizeof(child_path), "%s/%s", path, *children);
 
-		if (*children)
-			dbus_free_string_array(children);
+		unregister_dbus_path(child_path);
 	}
 
+	if (*children)
+		dbus_free_string_array(children);
+
+done:
 	return unregister_dbus_path(path);
 }
 
@@ -1221,22 +1224,25 @@ static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg,
 		}
 	}
 
-	if (handlers) {
-		for (; handlers->name != NULL; handlers++) {
-			if (strcmp(handlers->name, method) == 0) {
-				ret = DBUS_HANDLER_RESULT_HANDLED;
-				if (strcmp(handlers->signature, signature) == 0) {
-					reply = handlers->handler_func(msg, data);
-					error = 0;
-					break;
-				}
-				else
-					/* Set the error, but continue looping incase there is
-					 * another method with the same name but a different
-					 * signature */
-					error = BLUEZ_EDBUS_WRONG_SIGNATURE;
+	if (!handlers)
+		goto failed;
 
-			}
+	for (; handlers->name != NULL; handlers++) {
+		if (strcmp(handlers->name, method))
+			continue;
+
+		ret = DBUS_HANDLER_RESULT_HANDLED;
+
+		if (!strcmp(handlers->signature, signature)) {
+			reply = handlers->handler_func(msg, data);
+			error = 0;
+			break;
+		} else {
+			/* Set the error, but continue looping incase there is
+			 * another method with the same name but a different
+			 * signature */
+			error = BLUEZ_EDBUS_WRONG_SIGNATURE;
+			continue;
 		}
 	}
 
@@ -1247,7 +1253,7 @@ failed:
 	if (reply) {
 		if (!dbus_connection_send (conn, reply, NULL))
 			syslog(LOG_ERR, "Can't send reply message!");
-		dbus_message_unref (reply);
+		dbus_message_unref(reply);
 	}
 
 	return ret;
@@ -1275,16 +1281,17 @@ static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg
 		return ret;
 
 	for (handlers = manager_services; handlers->name != NULL; handlers++) {
-		if (strcmp(handlers->name, method) == 0) {
-			if (strcmp(handlers->signature, signature) != 0)
-				error = BLUEZ_EDBUS_WRONG_SIGNATURE;
-			else {
-				reply = handlers->handler_func(msg, data);
-				error = 0;
-			}
+		if (strcmp(handlers->name, method))
+			continue;
 
-			ret = DBUS_HANDLER_RESULT_HANDLED;
+		if (strcmp(handlers->signature, signature) != 0)
+			error = BLUEZ_EDBUS_WRONG_SIGNATURE;
+		else {
+			reply = handlers->handler_func(msg, data);
+			error = 0;
 		}
+
+		ret = DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	if (error)
@@ -1293,7 +1300,7 @@ static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg
 	if (reply) {
 		if (!dbus_connection_send (conn, reply, NULL))
 			syslog(LOG_ERR, "Can't send reply message!");
-		dbus_message_unref (reply);
+		dbus_message_unref(reply);
 	}
 
 	return ret;
@@ -1405,9 +1412,9 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	uint8_t length, num_rsp;
 
 	dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_BYTE, &length,
-			DBUS_TYPE_BYTE, &num_rsp,
-			DBUS_TYPE_INVALID);
+					DBUS_TYPE_BYTE, &length,
+					DBUS_TYPE_BYTE, &num_rsp,
+					DBUS_TYPE_INVALID);
 
 	if (length < 0x01 || length > 0x30) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
@@ -1496,9 +1503,9 @@ static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
 	int dev_id = -1, dd = -1;
 
 	dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_STRING, &str_bdaddr,
-			DBUS_TYPE_BYTE, &role,
-			DBUS_TYPE_INVALID);
+					DBUS_TYPE_STRING, &str_bdaddr,
+					DBUS_TYPE_BYTE, &role,
+					DBUS_TYPE_INVALID);
 
 	str2ba(str_bdaddr, &bdaddr);
 
@@ -1547,8 +1554,8 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 	evt_cmd_status rp;
 
 	dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_STRING, &str_bdaddr,
-			DBUS_TYPE_INVALID);
+					DBUS_TYPE_STRING, &str_bdaddr,
+					DBUS_TYPE_INVALID);
 
 	str2ba(str_bdaddr, &bdaddr);
 
@@ -1672,8 +1679,8 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	int dd = -1;
 
 	dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_STRING, &str_bdaddr,
-			DBUS_TYPE_INVALID);
+					DBUS_TYPE_STRING, &str_bdaddr,
+					DBUS_TYPE_INVALID);
 
 	str2ba(str_bdaddr, &bdaddr);
 
@@ -1865,7 +1872,7 @@ static DBusMessage* handle_device_get_propety_req(DBusMessage *msg, void *data)
 	dbus_message_iter_get_basic(&iter, &str_name);
 
 	for (; handlers->name != NULL; handlers++) {
-		if (strcasecmp(handlers->name, str_name) == 0) {
+		if (!strcasecmp(handlers->name, str_name)) {
 			reply = handlers->handler_func(msg, data);
 			error = 0;
 			break;
