@@ -335,21 +335,21 @@ static int cmd_memtypes(int dd, int argc, char *argv[])
 
 	for (i = 0; i < 4; i++) {
 		memset(array, 0, sizeof(array));
-		array[2] = stores[i] & 0xff;
-		array[3] = stores[i] >> 8;
+		array[0] = stores[i] & 0xff;
+		array[1] = stores[i] >> 8;
 
 		err = csr_read_varid_complex(dd, seqnum++,
 				CSR_VARID_PS_MEMORY_TYPE, array, sizeof(array));
 		if (err < 0)
-			break;
+			continue;
 
-		type = array[4] + (array[5] << 8);
+		type = array[2] + (array[3] << 8);
 
 		printf("%s (0x%04x) = %s (%d)\n", storestostr(stores[i]),
 					stores[i], memorytostr(type), type);
 	}
 
-	return err;
+	return 0;
 }
 
 static struct option pskey_options[] = {
