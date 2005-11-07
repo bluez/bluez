@@ -180,6 +180,17 @@ static inline void handle_clock_dump(int level, char *str, struct frame *frm)
 	printf("%s: handle %d clock 0x%4.4x\n", str, handle, clock);
 }
 
+static inline void psmemtype_dump(int level, char *str, struct frame *frm)
+{
+	uint16_t store, type;
+
+	store = CSR_U16(frm);
+	type  = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("%s: store 0x%4.4x type %d\n", str, store, type);
+}
+
 static inline void psnext_dump(int level, char *str, struct frame *frm)
 {
 	uint16_t key, stores, next;
@@ -189,7 +200,7 @@ static inline void psnext_dump(int level, char *str, struct frame *frm)
 	next   = CSR_U16(frm);
 
 	p_indent(level, frm);
-	printf("%s: key 0x%4.4x stores %d next 0x%4.4x\n", str, key, stores, next);
+	printf("%s: key 0x%4.4x stores 0x%4.4x next 0x%4.4x\n", str, key, stores, next);
 }
 
 static inline void pssize_dump(int level, char *str, struct frame *frm)
@@ -200,7 +211,7 @@ static inline void pssize_dump(int level, char *str, struct frame *frm)
 	length = CSR_U16(frm);
 
 	p_indent(level, frm);
-	printf("%s: key 0x%4.4x %s %d\n", str, key,
+	printf("%s: key 0x%4.4x %s 0x%4.4x\n", str, key,
 				frm->in ? "len" : "stores", length);
 }
 
@@ -212,7 +223,7 @@ static inline void psstores_dump(int level, char *str, struct frame *frm)
 	stores = CSR_U16(frm);
 
 	p_indent(level, frm);
-	printf("%s: key 0x%4.4x stores %d\n", str, key, stores);
+	printf("%s: key 0x%4.4x stores 0x%4.4x\n", str, key, stores);
 }
 
 static inline void pskey_dump(int level, struct frame *frm)
@@ -224,7 +235,7 @@ static inline void pskey_dump(int level, struct frame *frm)
 	stores = CSR_U16(frm);
 
 	p_indent(level, frm);
-	printf("PSKEY: key 0x%4.4x len %d stores %d\n", key, length, stores);
+	printf("PSKEY: key 0x%4.4x len %d stores 0x%4.4x\n", key, length, stores);
 
 	switch (key) {
 	case 0x0001:
@@ -392,7 +403,7 @@ static inline void bccmd_dump(int level, struct frame *frm)
 		complex_dump(level + 1, "E2_APP_DATA", frm);
 		break;
 	case 0x3012:
-		complex_dump(level + 1, "PS_MEMORY_TYPE", frm);
+		psmemtype_dump(level + 1, "PS_MEMORY_TYPE", frm);
 		break;
 	case 0x4001:
 		valueless_dump(level + 1, "COLD_RESET", frm);
