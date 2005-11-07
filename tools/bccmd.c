@@ -424,6 +424,10 @@ static int cmd_psget(int dd, int argc, char *argv[])
 	OPT_PSKEY(1, &stores, &reset, NULL);
 
 	if (strncasecmp(argv[0], "0x", 2)) {
+		pskey = atoi(argv[0]);
+		type = CSR_TYPE_COMPLEX;
+		size = sizeof(array);
+
 		for (i = 0; storage[i].pskey; i++) {
 			if (strcasecmp(storage[i].str, argv[0]))
 				continue;
@@ -433,9 +437,6 @@ static int cmd_psget(int dd, int argc, char *argv[])
 			size = storage[i].type;
 			break;
 		}
-		pskey = atoi(argv[0]);
-		type = CSR_TYPE_COMPLEX;
-		size = sizeof(array);
 	} else {
 		pskey = strtol(argv[0] + 2, NULL, 16);
 		type = CSR_TYPE_COMPLEX;
@@ -511,6 +512,10 @@ static int cmd_psset(int dd, int argc, char *argv[])
 	OPT_PSKEY(2, &stores, &reset, NULL);
 
 	if (strncasecmp(argv[0], "0x", 2)) {
+		pskey = atoi(argv[0]);
+		type = CSR_TYPE_COMPLEX;
+		size = sizeof(array);
+
 		for (i = 0; storage[i].pskey; i++) {
 			if (strcasecmp(storage[i].str, argv[0]))
 				continue;
@@ -520,9 +525,6 @@ static int cmd_psset(int dd, int argc, char *argv[])
 			size = storage[i].type;
 			break;
 		}
-		pskey = atoi(argv[0]);
-		type = CSR_TYPE_COMPLEX;
-		size = sizeof(array);
 	} else {
 		pskey = strtol(argv[0] + 2, NULL, 16);
 		type = CSR_TYPE_COMPLEX;
@@ -601,6 +603,8 @@ static int cmd_psclr(int dd, int argc, char *argv[])
 	OPT_PSKEY(1, &stores, &reset, NULL);
 
 	if (strncasecmp(argv[0], "0x", 2)) {
+		pskey = atoi(argv[0]);
+
 		for (i = 0; storage[i].pskey; i++) {
 			if (strcasecmp(storage[i].str, argv[0]))
 				continue;
@@ -608,7 +612,6 @@ static int cmd_psclr(int dd, int argc, char *argv[])
 			pskey = storage[i].pskey;
 			break;
 		}
-		pskey = atoi(argv[0]);
 	} else
 		pskey = strtol(argv[0] + 2, NULL, 16);
 
