@@ -356,9 +356,11 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data);
 
 static const struct service_data device_hci_services[] = {
 	{ HCI_PERIODIC_INQ,		handle_periodic_inq_req,	HCI_PERIODIC_INQ_SIGNATURE		},
+	{ HCI_PERIODIC_INQ,		handle_periodic_inq_req,	HCI_PERIODIC_INQ_EXT_SIGNATURE		},
 	{ HCI_CANCEL_PERIODIC_INQ,	handle_cancel_periodic_inq_req,	HCI_CANCEL_PERIODIC_INQ_SIGNATURE	},
 	{ HCI_ROLE_SWITCH,		handle_role_switch_req,		HCI_ROLE_SWITCH_SIGNATURE		},
 	{ HCI_INQ,			handle_inq_req,			HCI_INQ_SIGNATURE			},
+	{ HCI_INQ,			handle_inq_req,			HCI_INQ_EXT_SIGNATURE			},
 	{ HCI_CANCEL_INQ,		handle_cancel_inq_req,		HCI_CANCEL_INQ_SIGNATURE		},
 	{ HCI_REMOTE_NAME,		handle_remote_name_req,		HCI_REMOTE_NAME_SIGNATURE		},
 	{ HCI_CONNECTIONS,		handle_display_conn_req,	HCI_CONNECTIONS_SIGNATURE		},
@@ -1312,9 +1314,10 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	periodic_inquiry_cp inq_param;
 	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
-	uint8_t length;
+	uint8_t length, num_rsp = 0;
 	uint16_t max_period;
 	uint16_t min_period;
+	uint32_t lap = 0x9e8b33;
 	int dd = -1;
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -1324,42 +1327,50 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 		goto failed;
 	}
 
-	dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_BYTE, &length,
-			DBUS_TYPE_UINT16, &min_period,
-			DBUS_TYPE_UINT16, &max_period,
-			DBUS_TYPE_INVALID);
+	if (dbus_message_has_signature(msg, HCI_PERIODIC_INQ_EXT_SIGNATURE))
+		dbus_message_get_args(msg, NULL,
+						DBUS_TYPE_BYTE, &length,
+						DBUS_TYPE_UINT16, &min_period,
+						DBUS_TYPE_UINT16, &max_period,
+						DBUS_TYPE_UINT32, &lap,
+						DBUS_TYPE_INVALID);
+	else
+		dbus_message_get_args(msg, NULL,
+						DBUS_TYPE_BYTE, &length,
+						DBUS_TYPE_UINT16, &min_period,
+						DBUS_TYPE_UINT16, &max_period,
+						DBUS_TYPE_INVALID);
 
-	syslog(LOG_DEBUG, "%02X %04X %04X", length, min_period, max_period);
-
-	if (length >= min_period || min_period >= max_period) {
+	/* Check for valid parameters */
+	if (length >= min_period || min_period >= max_period
+					|| length < 0x01 || length > 0x30
+					|| lap < 0x9e8b00 || lap > 0x9e8b3f) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 		goto failed;
 	}
 
-	inq_param.num_rsp = 100;
+	inq_param.num_rsp = num_rsp;
 	inq_param.length  = length;
 
 	inq_param.max_period = htobs(max_period);
 	inq_param.min_period = htobs(min_period);
 
-	/* General/Unlimited Inquiry Access Code (GIAC) */
-	inq_param.lap[0] = 0x33;
-	inq_param.lap[1] = 0x8b;
-	inq_param.lap[2] = 0x9e;
+	inq_param.lap[0] = lap & 0xff;
+	inq_param.lap[1] = (lap >> 8) & 0xff;
+	inq_param.lap[2] = (lap >> 16) & 0xff;
 
-	inq_mode.mode = 1; //INQUIRY_WITH_RSSI;
+	inq_mode.mode = 1;	// INQUIRY_WITH_RSSI
 
 	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
 				WRITE_INQUIRY_MODE_CP_SIZE, &inq_mode) < 0) {
-		syslog(LOG_ERR, "Can't set inquiry mode:%s.", strerror(errno));
+		syslog(LOG_ERR, "Can't set inquiry mode: %s", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
 	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_PERIODIC_INQUIRY,
 				PERIODIC_INQUIRY_CP_SIZE, &inq_param) < 0) {
-		syslog(LOG_ERR, "Can't send HCI commands:%s.", strerror(errno));
+		syslog(LOG_ERR, "Can't send HCI commands: %s", strerror(errno));
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1387,7 +1398,7 @@ static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
 	}
 
 	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY, 0 , NULL) < 0) {
-		syslog(LOG_ERR, "Send hci command failed.");
+		syslog(LOG_ERR, "Send HCI command failed");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1409,16 +1420,20 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
 	int dd = -1;
-	uint8_t length, num_rsp;
+	uint8_t length = 8, num_rsp = 0;
+	uint32_t lap = 0x9e8b33;
 
-	dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &length,
-					DBUS_TYPE_BYTE, &num_rsp,
-					DBUS_TYPE_INVALID);
+	if (dbus_message_has_signature(msg, HCI_INQ_EXT_SIGNATURE)) {
+		dbus_message_get_args(msg, NULL,
+						DBUS_TYPE_BYTE, &length,
+						DBUS_TYPE_UINT32, &lap,
+						DBUS_TYPE_INVALID);
 
-	if (length < 0x01 || length > 0x30) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
-		goto failed;
+		if (length < 0x01 || length > 0x30
+					|| lap < 0x9e8b00 || lap > 0x9e8b3f) {
+			reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+			goto failed;
+		}
 	}
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -1429,9 +1444,9 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	}
 
 	memset(&cp, 0, sizeof(cp));
-	cp.lap[0]  = 0x33;
-	cp.lap[1]  = 0x8b;
-	cp.lap[2]  = 0x9e;
+	cp.lap[0]  = lap & 0xff;
+	cp.lap[1]  = (lap >> 8) & 0xff;
+	cp.lap[2]  = (lap >> 16) & 0xff;
 	cp.length  = length;
 	cp.num_rsp = num_rsp;
 

@@ -182,12 +182,12 @@ class Tester:
 
         # Device.Controller methods
         elif self.cmd == 'Inquiry':
-            if len(self.cmd_args) != 2:
-                length, maxrsp = (10, 100)
-            else:
-                length, maxrsp = self.cmd_args
             try:
-                self.ctl.Inquiry(dbus.Byte(length), dbus.Byte(maxrsp))
+                if len(self.cmd_args) != 2:
+                    self.ctl.Inquiry()
+                else:
+                    length, lap = self.cmd_args
+                    self.ctl.Inquiry(dbus.Byte(length), dbus.UInt32(long(lap, 0)))
             except dbus.DBusException, e:
                 print 'Sending %s failed: %s' % (self.cmd, e)
                 sys.exit(1)
@@ -216,13 +216,18 @@ class Tester:
             self.exit_events.append('RemoteName')
 
         elif self.cmd == 'PeriodicInquiry':
-            if len(self.cmd_args) != 3:
-                length, min, max = (6, 20, 60)
-            else:
-                length, min, max = self.cmd_args
-            self.listen = True
             try:
-                self.ctl.PeriodicInquiry(dbus.Byte(length), dbus.UInt16(min), dbus.UInt16(max))
+                if len(self.cmd_args) < 3:
+                    length, min, max = (6, 20, 60)
+                    self.ctl.PeriodicInquiry(dbus.Byte(length), dbus.UInt16(min), dbus.UInt16(max))
+                elif len(self.cmd_args) == 3:
+                    length, min, max = self.cmd_args
+                    self.ctl.PeriodicInquiry(dbus.Byte(length), dbus.UInt16(min), dbus.UInt16(max))
+                else:
+                    length, min, max, lap = self.cmd_args
+                    self.ctl.PeriodicInquiry(dbus.Byte(length), dbus.UInt16(min), dbus.UInt16(max),
+                            dbus.UInt32(long(lap, 0)))
+                self.listen = True
             except dbus.DBusException, e:
                 print 'Sending %s failed: %s' % (self.cmd, e)
                 sys.exit(1)
