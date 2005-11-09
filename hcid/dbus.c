@@ -1083,7 +1083,7 @@ gboolean hcid_dbus_dev_down(uint16_t id)
 
 	for (; ptr->id != INVALID_PATH_ID; ptr++) {
 		if (ptr->unreg_func(connection, id) < 0)
-			syslog(LOG_ERR, "Unregistering profile id %04X failed", ptr->id);
+			syslog(LOG_ERR, "Unregistering profile id 0x%04x failed", ptr->id);
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
@@ -1204,7 +1204,7 @@ static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg,
 	method = dbus_message_get_member(msg);
 	signature = dbus_message_get_signature(msg);
 
-	syslog(LOG_INFO, "%s - path:%s, path_id:%04X dev_id:%04X", __PRETTY_FUNCTION__,
+	syslog(LOG_INFO, "%s - path:%s, path_id:0x%04x dev_id:0x%04x", __PRETTY_FUNCTION__,
 			path, dbus_data->path_id, dbus_data->dev_id);
 
 	if (dbus_data->path_id == DEVICE_ROOT_ID) {
@@ -1310,8 +1310,9 @@ static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg
 
 static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 {
-	write_inquiry_mode_cp inq_mode;
 	periodic_inquiry_cp inq_param;
+	struct hci_request rq;
+	uint8_t status;
 	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
 	uint8_t length, num_rsp = 0;
@@ -1359,19 +1360,24 @@ static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
 	inq_param.lap[1] = (lap >> 8) & 0xff;
 	inq_param.lap[2] = (lap >> 16) & 0xff;
 
-	inq_mode.mode = 1;	// INQUIRY_WITH_RSSI
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_PERIODIC_INQUIRY;
+	rq.cparam = &inq_param;
+	rq.clen   = PERIODIC_INQUIRY_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
 
-	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
-				WRITE_INQUIRY_MODE_CP_SIZE, &inq_mode) < 0) {
-		syslog(LOG_ERR, "Can't set inquiry mode: %s", strerror(errno));
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		syslog(LOG_ERR, "Sending periodic inquiry command failed: %s (%d)",
+							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
-	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_PERIODIC_INQUIRY,
-				PERIODIC_INQUIRY_CP_SIZE, &inq_param) < 0) {
-		syslog(LOG_ERR, "Can't send HCI commands: %s", strerror(errno));
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+	if (status) {
+		syslog(LOG_ERR, "Periodic inquiry failed with status 0x%02x", status);
+		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + status);
 		goto failed;
 	}
 
@@ -1387,7 +1393,9 @@ failed:
 static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
+	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
+	uint8_t status;
 	int dd = -1;
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -1397,9 +1405,22 @@ static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
 		goto failed;
 	}
 
-	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY, 0 , NULL) < 0) {
-		syslog(LOG_ERR, "Send HCI command failed");
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_EXIT_PERIODIC_INQUIRY;
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		syslog(LOG_ERR, "Sending exit periodic inquiry command failed: %s (%d)",
+							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (status) {
+		syslog(LOG_ERR, "Exit periodic inquiry failed with status 0x%02x", status);
+		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + status);
 		goto failed;
 	}
 
@@ -1438,7 +1459,8 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "Unable to open device %d: %s", dbus_data->dev_id, strerror(errno));
+		syslog(LOG_ERR, "Unable to open device %d: %s (%d)",
+					dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1460,7 +1482,8 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Unable to start inquiry: %s", strerror(errno));
+		syslog(LOG_ERR, "Unable to start inquiry: %s (%d)",
+							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1479,23 +1502,33 @@ static DBusMessage* handle_cancel_inq_req(DBusMessage *msg, void *data)
 	DBusMessage *reply = NULL;
 	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
+	uint8_t status;
 	int dd = -1;
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "Unable to open device %d: %s",
-				dbus_data->dev_id, strerror(errno));
+		syslog(LOG_ERR, "Unable to open device %d: %s (%d)",
+					dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_LINK_CTL;
-	rq.ocf = OCF_INQUIRY_CANCEL;
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_INQUIRY_CANCEL;
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Unable to cancel inquiry: %s", strerror(errno));
+		syslog(LOG_ERR, "Sending cancel inquiry failed: %s (%d)",
+							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (status) {
+		syslog(LOG_ERR, "Cancel inquiry failed with status 0x%02x", status);
+		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + status);
 		goto failed;
 	}
 
@@ -1576,8 +1609,8 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "Unable to open device %d: %s",
-				dbus_data->dev_id, strerror(errno));
+		syslog(LOG_ERR, "Unable to open device %d: %s (%d)",
+					dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1596,7 +1629,8 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Unable to send remote name request: %s", strerror(errno));
+		syslog(LOG_ERR, "Unable to send remote name request: %s (%d)",
+							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1744,7 +1778,8 @@ static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
 	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Unable to send authentication request: %s", strerror(errno));
+		syslog(LOG_ERR, "Unable to send authentication request: %s (%d)",
+							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1777,14 +1812,15 @@ static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data)
 	/* Create and bind HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0) {
-		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)",
+							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
 	if (ioctl(sk, HCIDEVUP, dbus_data->dev_id) < 0 && errno != EALREADY) {
 		syslog(LOG_ERR, "Can't init device hci%d: %s (%d)",
-			dbus_data->dev_id, strerror(errno), errno);
+					dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1819,7 +1855,8 @@ static DBusMessage* handle_device_down_req(DBusMessage *msg, void *data)
 	/* Create and bind HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0) {
-		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)",
+							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
@@ -1855,16 +1892,16 @@ static DBusMessage* handle_device_set_propety_req(DBusMessage *msg, void *data)
 	dbus_message_iter_get_basic(&iter, &str_name);
 
 	for (; handlers->name != NULL; handlers++) {
-		if (strcasecmp(handlers->name, str_name) == 0) {
-			if (strcmp(handlers->signature, signature) == 0) {
-				reply = handlers->handler_func(msg, data);
-				error = 0;
-				break;
-			} else {
-				error = BLUEZ_EDBUS_WRONG_SIGNATURE;
-				break;
-			}
+		if (strcasecmp(handlers->name, str_name))
+			continue;
 
+		if (strcmp(handlers->signature, signature) == 0) {
+			reply = handlers->handler_func(msg, data);
+			error = 0;
+			break;
+		} else {
+			error = BLUEZ_EDBUS_WRONG_SIGNATURE;
+			break;
 		}
 	}
 
