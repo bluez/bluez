@@ -2697,7 +2697,7 @@ int psr_read(const char *filename)
 	}
 
 	map = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if (map == MAP_FAILED) {
+	if (!map || map == MAP_FAILED) {
 		err = -errno;
 		goto close;
 	}

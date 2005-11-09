@@ -149,7 +149,7 @@ int textfile_put(char *pathname, char *key, char *value)
 	}
 
 	map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
-	if (map == MAP_FAILED) {
+	if (!map || map == MAP_FAILED) {
 		err = errno;
 		goto unlock;
 	}
@@ -243,7 +243,7 @@ char *textfile_get(char *pathname, char *key)
 	size = st.st_size;
 
 	map = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
-	if (map == MAP_FAILED) {
+	if (!map || map == MAP_FAILED) {
 		err = errno;
 		goto unlock;
 	}
