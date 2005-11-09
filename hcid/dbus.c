@@ -28,10 +28,12 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include <string.h>
 #include <syslog.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -47,7 +49,8 @@
 static DBusConnection *connection;
 static int default_dev = -1;
 
-#define TIMEOUT				(30 * 1000)	/* 30 seconds */
+#define TIMEOUT				(30 * 1000)		/* 30 seconds */
+#define DBUS_RECONNECT_TIMER		(5 * 1000 * 1000)	/* 5 sec */
 #define MAX_PATH_LENGTH			64
 #define MAX_CONN_NUMBER			10
 
@@ -61,7 +64,7 @@ struct pin_request {
 	bdaddr_t bda;
 };
 
-typedef DBusMessage* (service_handler_func_t)(DBusMessage *, void *);
+typedef DBusMessage* (service_handler_func_t) (DBusMessage *, void *);
 
 struct service_data {
 	const char		*name;
@@ -898,6 +901,8 @@ gboolean hcid_dbus_init(void)
 		return FALSE;
 	}
 
+	dbus_connection_set_exit_on_disconnect(connection, FALSE);
+
 	dbus_bus_request_name(connection, BASE_INTERFACE,
 				DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT, &error);
 
@@ -1156,6 +1161,89 @@ const struct service_data *get_hci_table(void)
 }
 
 /*****************************************************************
+ *
+ *  Section reserved to re-connection timer
+ *
+ *****************************************************************/
+static void reconnect_timer_handler(int signum)
+{
+	struct hci_dev_list_req *dl = NULL;
+	struct hci_dev_req *dr;
+	int sk;
+	int i;
+
+	if (hcid_dbus_init() == FALSE)
+		return;
+
+	/* stop the timer */
+	sigaction(SIGALRM, NULL, NULL);
+	setitimer(ITIMER_REAL, NULL, NULL);
+
+	/* register the device based paths */
+
+	/* Create and bind HCI socket */
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0) {
+		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)",
+							strerror(errno), errno);
+		return;
+	}
+
+	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
+	if (!dl) {
+		syslog(LOG_ERR, "Can't allocate memory");
+		goto failed;
+	}
+
+	dl->dev_num = HCI_MAX_DEV;
+	dr = dl->dev_req;
+
+	if (ioctl(sk, HCIGETDEVLIST, (void *) dl) < 0) {
+		syslog(LOG_INFO, "Can't get device list: %s (%d)",
+							strerror(errno), errno);
+		goto failed;
+	}
+
+	/* reset the default device */
+	default_dev = -1;
+
+	for (i = 0; i < dl->dev_num; i++, dr++) {
+
+		hcid_dbus_register_device(dr->dev_id);
+
+		if (hci_test_bit(HCI_UP, &dr->dev_opt))
+			hcid_dbus_dev_up(dr->dev_id);
+	}
+failed:
+	if (sk >= 0)
+		close(sk);
+
+	if (dl)
+		free(dl);
+
+}
+
+static void reconnect_timer_start(void)
+{
+	struct sigaction sa;
+	struct itimerval timer;
+
+	memset (&sa, 0, sizeof (sa));
+	sa.sa_handler = &reconnect_timer_handler;
+	sigaction(SIGALRM, &sa, NULL);
+
+	/* expire after X  msec... */
+	timer.it_value.tv_sec = 0;
+	timer.it_value.tv_usec = DBUS_RECONNECT_TIMER;
+
+	/* ... and every x msec after that. */
+	timer.it_interval.tv_sec = 0;
+	timer.it_interval.tv_usec = DBUS_RECONNECT_TIMER;
+
+	setitimer(ITIMER_REAL, &timer, NULL);
+}
+
+/*****************************************************************
  *  
  *  Section reserved to HCI D-Bus services 
  *  
@@ -1175,14 +1263,18 @@ static DBusHandlerResult hci_signal_filter (DBusConnection *conn, DBusMessage *m
 	iface = dbus_message_get_interface(msg);
 	method = dbus_message_get_member(msg);
 
-	if (strcmp(iface, DBUS_INTERFACE_LOCAL) == 0) {
-		if (strcmp(method, "Disconnected") == 0)
-			ret = DBUS_HANDLER_RESULT_HANDLED;
+	if ((strcmp(iface, DBUS_INTERFACE_LOCAL) == 0) &&
+			(strcmp(method, "Disconnected") == 0)) {
+		syslog(LOG_ERR, "Got disconnected from the system message bus");
+		dbus_connection_dispatch(conn);
+		dbus_connection_close(conn);
+		dbus_connection_unref(conn);
+		reconnect_timer_start();
+		ret = DBUS_HANDLER_RESULT_HANDLED;
 	} else if (strcmp(iface, DBUS_INTERFACE_DBUS) == 0) {
 		if (strcmp(method, "NameOwnerChanged") == 0)
 			ret = DBUS_HANDLER_RESULT_HANDLED;
-
-		if (strcmp(method, "NameAcquired") == 0)
+		else if (strcmp(method, "NameAcquired") == 0)
 			ret = DBUS_HANDLER_RESULT_HANDLED;
 	}
 
