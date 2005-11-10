@@ -40,6 +40,13 @@ static inline struct usb_bus *usb_get_busses(void)
 }
 #endif
 
+#ifdef NEED_USB_INTERRUPT_READ
+static inline int usb_interrupt_read(usb_dev_handle *dev, int ep, char *bytes, int size, int timeout)
+{
+	return usb_bulk_read(dev, ep, bytes, size, timeout);
+}
+#endif
+
 #ifndef USB_DIR_OUT
 #define USB_DIR_OUT	0x00
 #endif
