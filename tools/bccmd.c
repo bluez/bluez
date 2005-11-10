@@ -59,7 +59,56 @@
 #define CSR_TYPE_ARRAY		CSR_TYPE_COMPLEX
 #define CSR_TYPE_BDADDR		CSR_TYPE_COMPLEX
 
-static uint16_t seqnum = 0x0000;
+static inline int transport_open(int transport, char *device)
+{
+	switch (transport) {
+	case CSR_TRANSPORT_HCI:
+		return csr_open_hci(device);
+	case CSR_TRANSPORT_USB:
+		return csr_open_usb(device);
+	default:
+		fprintf(stderr, "Unsupported transport\n");
+		return -1;
+	}
+}
+
+static inline void transport_close(int transport)
+{
+	switch (transport) {
+	case CSR_TRANSPORT_HCI:
+		csr_close_hci();
+		break;
+	case CSR_TRANSPORT_USB:
+		csr_close_usb();
+		break;
+	}
+}
+
+static inline int transport_read(int transport, uint16_t varid, uint8_t *value, uint16_t length)
+{
+	switch (transport) {
+	case CSR_TRANSPORT_HCI:
+		return csr_read_hci(varid, value, length);
+	case CSR_TRANSPORT_USB:
+		return csr_read_usb(varid, value, length);
+	default:
+		errno = EOPNOTSUPP;
+		return -1;
+	}
+}
+
+static inline int transport_write(int transport, uint16_t varid, uint8_t *value, uint16_t length)
+{
+	switch (transport) {
+	case CSR_TRANSPORT_HCI:
+		return csr_write_hci(varid, value, length);
+	case CSR_TRANSPORT_USB:
+		return csr_write_usb(varid, value, length);
+	default:
+		errno = EOPNOTSUPP;
+		return -1;
+	}
+}
 
 static struct {
 	uint16_t pskey;
@@ -88,20 +137,6 @@ static struct {
 	{ CSR_PSKEY_INITIAL_BOOTMODE,         CSR_TYPE_UINT16,  0,  "bootmode" },
 	{ 0x0000 },
 };
-
-static int pskey_size(uint16_t pskey)
-{
-	switch (pskey) {
-	case CSR_PSKEY_BDADDR:
-		return 8;
-	case CSR_PSKEY_LOCAL_SUPPORTED_FEATURES:
-		return 8;
-	case CSR_PSKEY_LOCAL_SUPPORTED_COMMANDS:
-		return 18;
-	default:
-		return 64;
-	}
-}
 
 static char *storestostr(uint16_t stores)
 {
@@ -167,9 +202,9 @@ static int opt_help(int argc, char *argv[], int *help)
 		argc -= optind; argv += optind; optind = 0; \
 		OPT_RANGE((range))
 
-static int cmd_builddef(int dd, int argc, char *argv[])
+static int cmd_builddef(int transport, int argc, char *argv[])
 {
-	uint8_t buf[8];
+	uint8_t array[8];
 	uint16_t def = 0x0000, nextdef = 0x0000;
 	int err = 0;
 
@@ -178,18 +213,17 @@ static int cmd_builddef(int dd, int argc, char *argv[])
 	printf("Build definitions:\n");
 
 	while (1) {
-		memset(buf, 0, sizeof(buf));
-		buf[0] = def & 0xff;
-		buf[1] = def >> 8;
+		memset(array, 0, sizeof(array));
+		array[0] = def & 0xff;
+		array[1] = def >> 8;
 
-		err = csr_read_varid_complex(dd, seqnum++,
-				CSR_VARID_GET_NEXT_BUILDDEF, buf, sizeof(buf));
+		err = transport_read(transport, CSR_VARID_GET_NEXT_BUILDDEF, array, 8);
 		if (err < 0) {
 			errno = -err;
 			break;
 		}
 
-		nextdef = buf[2] | (buf[3] << 8);
+		nextdef = array[2] | (array[3] << 8);
 
 		if (nextdef == 0x0000)
 			break;
@@ -202,9 +236,9 @@ static int cmd_builddef(int dd, int argc, char *argv[])
 	return err;
 }
 
-static int cmd_keylen(int dd, int argc, char *argv[])
+static int cmd_keylen(int transport, int argc, char *argv[])
 {
-	uint8_t buf[8];
+	uint8_t array[8];
 	uint16_t handle, keylen;
 	int err;
 
@@ -212,73 +246,87 @@ static int cmd_keylen(int dd, int argc, char *argv[])
 
 	handle = atoi(argv[0]);
 
-	memset(buf, 0, sizeof(buf));
-	buf[0] = handle & 0xff;
-	buf[1] = handle >> 8;
+	memset(array, 0, sizeof(array));
+	array[0] = handle & 0xff;
+	array[1] = handle >> 8;
 
-	err = csr_read_varid_complex(dd, seqnum++,
-				CSR_VARID_CRYPT_KEY_LENGTH, buf, sizeof(buf));
+	err = transport_read(transport, CSR_VARID_CRYPT_KEY_LENGTH, array, 8);
 	if (err < 0) {
 		errno = -err;
 		return -1;
 	}
 
-	handle = buf[0] | (buf[1] << 8);
-	keylen = buf[2] | (buf[3] << 8);
+	handle = array[0] | (array[1] << 8);
+	keylen = array[2] | (array[3] << 8);
 
 	printf("Crypt key length: %d bit\n", keylen * 8);
 
 	return 0;
 }
 
-static int cmd_clock(int dd, int argc, char *argv[])
+static int cmd_clock(int transport, int argc, char *argv[])
 {
-	uint32_t clock = 0;
+	uint8_t array[8];
+	uint32_t clock;
 	int err;
 
 	OPT_HELP(0, NULL);
 
-	err = csr_read_varid_uint32(dd, seqnum++, CSR_VARID_BT_CLOCK, &clock);
+	memset(array, 0, sizeof(array));
+
+	err = transport_read(transport, CSR_VARID_BT_CLOCK, array, 8);
 	if (err < 0) {
 		errno = -err;
 		return -1;
 	}
+
+	clock = array[2] | (array[3] << 8) | (array[0] << 16) | (array[1] << 24);
 
 	printf("Bluetooth clock: 0x%04x (%d)\n", clock, clock);
 
 	return 0;
 }
 
-static int cmd_rand(int dd, int argc, char *argv[])
+static int cmd_rand(int transport, int argc, char *argv[])
 {
-	uint16_t rand = 0;
+	uint8_t array[8];
+	uint16_t rand;
 	int err;
 
 	OPT_HELP(0, NULL);
 
-	err = csr_read_varid_uint16(dd, seqnum++, CSR_VARID_RAND, &rand);
+	memset(array, 0, sizeof(array));
+
+	err = transport_read(transport, CSR_VARID_RAND, array, 8);
 	if (err < 0) {
 		errno = -err;
 		return -1;
 	}
+
+	rand = array[0] | (array[1] << 8);
 
 	printf("Random number: 0x%02x (%d)\n", rand, rand);
 
 	return 0;
 }
 
-static int cmd_panicarg(int dd, int argc, char *argv[])
+static int cmd_panicarg(int transport, int argc, char *argv[])
 {
-	uint16_t error = 0;
+	uint8_t array[8];
+	uint16_t error;
 	int err;
 
 	OPT_HELP(0, NULL);
 
-	err = csr_read_varid_uint16(dd, seqnum++, CSR_VARID_PANIC_ARG, &error);
+	memset(array, 0, sizeof(array));
+
+	err = transport_read(transport, CSR_VARID_PANIC_ARG, array, 8);
 	if (err < 0) {
 		errno = -err;
 		return -1;
 	}
+
+	error = array[0] | (array[1] << 8);
 
 	printf("Panic code: 0x%02x (%s)\n", error,
 					error < 0x100 ? "valid" : "invalid");
@@ -286,18 +334,23 @@ static int cmd_panicarg(int dd, int argc, char *argv[])
 	return 0;
 }
 
-static int cmd_faultarg(int dd, int argc, char *argv[])
+static int cmd_faultarg(int transport, int argc, char *argv[])
 {
-	uint16_t error = 0;
+	uint8_t array[8];
+	uint16_t error;
 	int err;
 
 	OPT_HELP(0, NULL);
 
-	err = csr_read_varid_uint16(dd, seqnum++, CSR_VARID_FAULT_ARG, &error);
+	memset(array, 0, sizeof(array));
+
+	err = transport_read(transport, CSR_VARID_FAULT_ARG, array, 8);
 	if (err < 0) {
 		errno = -err;
 		return -1;
 	}
+
+	error = array[0] | (array[1] << 8);
 
 	printf("Fault code: 0x%02x (%s)\n", error,
 					error < 0x100 ? "valid" : "invalid");
@@ -305,27 +358,27 @@ static int cmd_faultarg(int dd, int argc, char *argv[])
 	return 0;
 }
 
-static int cmd_coldreset(int dd, int argc, char *argv[])
+static int cmd_coldreset(int transport, int argc, char *argv[])
 {
-	return csr_write_varid_valueless(dd, seqnum++, CSR_VARID_COLD_RESET);
+	return transport_write(transport, CSR_VARID_COLD_RESET, NULL, 0);
 }
 
-static int cmd_warmreset(int dd, int argc, char *argv[])
+static int cmd_warmreset(int transport, int argc, char *argv[])
 {
-	return csr_write_varid_valueless(dd, seqnum++, CSR_VARID_WARM_RESET);
+	return transport_write(transport, CSR_VARID_WARM_RESET, NULL, 0);
 }
 
-static int cmd_disabletx(int dd, int argc, char *argv[])
+static int cmd_disabletx(int transport, int argc, char *argv[])
 {
-	return csr_write_varid_valueless(dd, seqnum++, CSR_VARID_DISABLE_TX);
+	return transport_write(transport, CSR_VARID_DISABLE_TX, NULL, 0);
 }
 
-static int cmd_enabletx(int dd, int argc, char *argv[])
+static int cmd_enabletx(int transport, int argc, char *argv[])
 {
-	return csr_write_varid_valueless(dd, seqnum++, CSR_VARID_ENABLE_TX);
+	return transport_write(transport, CSR_VARID_ENABLE_TX, NULL, 0);
 }
 
-static int cmd_memtypes(int dd, int argc, char *argv[])
+static int cmd_memtypes(int transport, int argc, char *argv[])
 {
 	uint8_t array[8];
 	uint16_t type, stores[4] = { 0x0001, 0x0002, 0x0004, 0x0008 };
@@ -338,8 +391,7 @@ static int cmd_memtypes(int dd, int argc, char *argv[])
 		array[0] = stores[i] & 0xff;
 		array[1] = stores[i] >> 8;
 
-		err = csr_read_varid_complex(dd, seqnum++,
-				CSR_VARID_PS_MEMORY_TYPE, array, sizeof(array));
+		err = transport_read(transport, CSR_VARID_PS_MEMORY_TYPE, array, 8);
 		if (err < 0)
 			continue;
 
@@ -412,12 +464,12 @@ static int opt_pskey(int argc, char *argv[], uint16_t *stores, int *reset, int *
 		argc -= optind; argv += optind; optind = 0; \
 		OPT_RANGE((range))
 
-static int cmd_psget(int dd, int argc, char *argv[])
+static int cmd_psget(int transport, int argc, char *argv[])
 {
-	uint8_t array[64];
+	uint8_t array[128];
 	uint16_t pskey, length, value, stores = CSR_STORES_DEFAULT;
 	uint32_t val32;
-	int i, err, size, reset = 0, type = CSR_TYPE_NULL;
+	int i, err, reset = 0;
 
 	memset(array, 0, sizeof(array));
 
@@ -425,87 +477,74 @@ static int cmd_psget(int dd, int argc, char *argv[])
 
 	if (strncasecmp(argv[0], "0x", 2)) {
 		pskey = atoi(argv[0]);
-		type = CSR_TYPE_COMPLEX;
-		size = sizeof(array);
 
 		for (i = 0; storage[i].pskey; i++) {
 			if (strcasecmp(storage[i].str, argv[0]))
 				continue;
 
 			pskey = storage[i].pskey;
-			type = storage[i].type;
-			size = storage[i].type;
 			break;
 		}
-	} else {
+	} else
 		pskey = strtol(argv[0] + 2, NULL, 16);
-		type = CSR_TYPE_COMPLEX;
-		size = sizeof(array);
-	}
 
-	switch (type) {
-	case CSR_TYPE_COMPLEX:
-		memset(array, 0, sizeof(array));
-		array[0] = pskey & 0xff;
-		array[1] = pskey >> 8;
-		array[2] = stores & 0xff;
-		array[3] = stores >> 8;
+	memset(array, 0, sizeof(array));
+	array[0] = pskey & 0xff;
+	array[1] = pskey >> 8;
+	array[2] = stores & 0xff;
+	array[3] = stores >> 8;
 
-		err = csr_read_varid_complex(dd, seqnum++,
-						CSR_VARID_PS_SIZE, array, 8);
-		if (err < 0)
-			return err;
+	err = transport_read(transport, CSR_VARID_PS_SIZE, array, 8);
+	if (err < 0)
+		return err;
 
-		length = array[2] + (array[3] << 8);
-		if (length > sizeof(array) / 2)
-			return -EIO;
+	length = array[2] + (array[3] << 8);
+	if (length + 6 > sizeof(array) / 2)
+		return -EIO;
 
-		err = csr_read_pskey_complex(dd, seqnum++, pskey, stores,
-							array, length * 2);
-		if (err < 0)
-			return err;
+	memset(array, 0, sizeof(array));
+	array[0] = pskey & 0xff;
+	array[1] = pskey >> 8;
+	array[2] = length & 0xff;
+	array[3] = length >> 8;
+	array[4] = stores & 0xff;
+	array[5] = stores >> 8;
 
-		printf("%s:", csr_pskeytostr(pskey));
-		for (i = 0; i < length; i++)
-			printf(" 0x%02x%02x", array[i * 2], array[(i * 2) + 1]);
-		printf("\n");
-		break;
+	err = transport_read(transport, CSR_VARID_PS, array, (length + 3) * 2);
+	if (err < 0)
+		return err;
 
-	case CSR_TYPE_UINT8:
-	case CSR_TYPE_UINT16:
-		err = csr_read_pskey_uint16(dd, seqnum++, pskey, stores, &value);
-		if (err < 0)
-			return err;
-
+	switch (length) {
+	case 1:
+		value = array[6] | (array[7] << 8);
 		printf("%s: 0x%04x (%d)\n", csr_pskeytostr(pskey), value, value);
 		break;
 
-	case CSR_TYPE_UINT32:
-		err = csr_read_pskey_uint32(dd, seqnum++, pskey, stores, &val32);
-		if (err < 0)
-			return err;
-
+	case 2:
+		val32 = array[8] | (array[9] << 8) | (array[6] << 16) | (array[7] << 24);
 		printf("%s: 0x%08x (%d)\n", csr_pskeytostr(pskey), val32, val32);
 		break;
 
 	default:
-		errno = EFAULT;
-		err = -1;
+		printf("%s:", csr_pskeytostr(pskey));
+		for (i = 0; i < length; i++)
+			printf(" 0x%02x%02x", array[(i * 2) + 6], array[(i * 2) + 7]);
+		printf("\n");
 		break;
 	}
 
-	if (!err && reset)
-		csr_write_varid_valueless(dd, seqnum++, CSR_VARID_WARM_RESET);
+	if (reset)
+		transport_write(transport, CSR_VARID_WARM_RESET, NULL, 0);
 
 	return err;
 }
 
-static int cmd_psset(int dd, int argc, char *argv[])
+static int cmd_psset(int transport, int argc, char *argv[])
 {
-	uint8_t array[64];
-	uint16_t pskey, value, stores = CSR_STORES_PSRAM;
+	uint8_t array[128];
+	uint16_t pskey, length, value, stores = CSR_STORES_PSRAM;
 	uint32_t val32;
-	int i, err, size, reset = 0, type = CSR_TYPE_NULL;
+	int i, err, reset = 0;
 
 	memset(array, 0, sizeof(array));
 
@@ -513,48 +552,44 @@ static int cmd_psset(int dd, int argc, char *argv[])
 
 	if (strncasecmp(argv[0], "0x", 2)) {
 		pskey = atoi(argv[0]);
-		type = CSR_TYPE_COMPLEX;
-		size = sizeof(array);
 
 		for (i = 0; storage[i].pskey; i++) {
 			if (strcasecmp(storage[i].str, argv[0]))
 				continue;
 
 			pskey = storage[i].pskey;
-			type = storage[i].type;
-			size = storage[i].type;
 			break;
 		}
-	} else {
+	} else
 		pskey = strtol(argv[0] + 2, NULL, 16);
-		type = CSR_TYPE_COMPLEX;
-		size = sizeof(array);
-	}
+
+	memset(array, 0, sizeof(array));
+	array[0] = pskey & 0xff;
+	array[1] = pskey >> 8;
+	array[2] = stores & 0xff;
+	array[3] = stores >> 8;
+
+	err = transport_read(transport, CSR_VARID_PS_SIZE, array, 8);
+	if (err < 0)
+		return err;
+
+	length = array[2] + (array[3] << 8);
+	if (length + 6 > sizeof(array) / 2)
+		return -EIO;
+
+	memset(array, 0, sizeof(array));
+	array[0] = pskey & 0xff;
+	array[1] = pskey >> 8;
+	array[2] = length & 0xff;
+	array[3] = length >> 8;
+	array[4] = stores & 0xff;
+	array[5] = stores >> 8;
 
 	argc--;
 	argv++;
 
-	switch (type) {
-	case CSR_TYPE_COMPLEX:
-		size = pskey_size(pskey);
-
-		if (argc != size) {
-			errno = EINVAL;
-			return -1;
-		}
-
-		for (i = 0; i < size; i++)
-			if (!strncasecmp(argv[0], "0x", 2))
-				array[i] = strtol(argv[i] + 2, NULL, 16);
-			else
-				array[i] = atoi(argv[i]);
-
-		err = csr_write_pskey_complex(dd, seqnum++, pskey,
-							stores, array, size);
-		break;
-
-	case CSR_TYPE_UINT8:
-	case CSR_TYPE_UINT16:
+	switch (length) {
+	case 1:
 		if (argc != 1) {
 			errno = E2BIG;
 			return -1;
@@ -565,10 +600,11 @@ static int cmd_psset(int dd, int argc, char *argv[])
 		else
 			value = atoi(argv[0]);
 
-		err = csr_write_pskey_uint16(dd, seqnum++, pskey, stores, value);
+		array[6] = value & 0xff;
+		array[7] = value >> 8;
 		break;
 
-	case CSR_TYPE_UINT32:
+	case 2:
 		if (argc != 1) {
 			errno = E2BIG;
 			return -1;
@@ -579,22 +615,37 @@ static int cmd_psset(int dd, int argc, char *argv[])
 		else
 			val32 = atoi(argv[0]);
 
-		err = csr_write_pskey_uint32(dd, seqnum++, pskey, stores, val32);
+		array[6] = (val32 & 0xff0000) >> 16;
+		array[7] = val32 >> 24;
+		array[8] = val32 & 0xff;
+		array[9] = (val32 & 0xff00) >> 8;
 		break;
 
 	default:
-		errno = EFAULT;
-		err = -1;
+		if (argc != length * 2) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		for (i = 0; i < length * 2; i++)
+			if (!strncasecmp(argv[0], "0x", 2))
+				array[i + 6] = strtol(argv[i] + 2, NULL, 16);
+			else
+				array[i + 6] = atoi(argv[i]);
 		break;
 	}
 
-	if (!err && reset)
-		csr_write_varid_valueless(dd, seqnum++, CSR_VARID_WARM_RESET);
+	err = transport_write(transport, CSR_VARID_PS, array, (length + 3) * 2);
+	if (err < 0)
+		return err;
+
+	if (reset)
+		transport_write(transport, CSR_VARID_WARM_RESET, NULL, 0);
 
 	return err;
 }
 
-static int cmd_psclr(int dd, int argc, char *argv[])
+static int cmd_psclr(int transport, int argc, char *argv[])
 {
 	uint8_t array[8];
 	uint16_t pskey, stores = CSR_STORES_PSRAM;
@@ -621,16 +672,17 @@ static int cmd_psclr(int dd, int argc, char *argv[])
 	array[2] = stores & 0xff;
 	array[3] = stores >> 8;
 
-	err = csr_write_varid_complex(dd, seqnum++,
-				CSR_VARID_PS_CLR_STORES, array, sizeof(array));
+	err = transport_write(transport, CSR_VARID_PS_CLR_STORES, array, 8);
+	if (err < 0)
+		return err;
 
-	if (!err && reset)
-		csr_write_varid_valueless(dd, seqnum++, CSR_VARID_WARM_RESET);
+	if (reset)
+		transport_write(transport, CSR_VARID_WARM_RESET, NULL, 0);
 
 	return err;
 }
 
-static int cmd_pslist(int dd, int argc, char *argv[])
+static int cmd_pslist(int transport, int argc, char *argv[])
 {
 	uint8_t array[8];
 	uint16_t pskey = 0x0000, length, stores = CSR_STORES_DEFAULT;
@@ -645,8 +697,7 @@ static int cmd_pslist(int dd, int argc, char *argv[])
 		array[2] = stores & 0xff;
 		array[3] = stores >> 8;
 
-		err = csr_read_varid_complex(dd, seqnum++,
-				CSR_VARID_PS_NEXT, array, sizeof(array));
+		err = transport_read(transport, CSR_VARID_PS_NEXT, array, 8);
 		if (err < 0)
 			break;
 
@@ -660,8 +711,7 @@ static int cmd_pslist(int dd, int argc, char *argv[])
 		array[2] = stores & 0xff;
 		array[3] = stores >> 8;
 
-		err = csr_read_varid_complex(dd, seqnum++,
-				CSR_VARID_PS_SIZE, array, sizeof(array));
+		err = transport_read(transport, CSR_VARID_PS_SIZE, array, 8);
 		if (err < 0)
 			continue;
 
@@ -672,12 +722,12 @@ static int cmd_pslist(int dd, int argc, char *argv[])
 	}
 
 	if (reset)
-		csr_write_varid_valueless(dd, seqnum++, CSR_VARID_WARM_RESET);
+		transport_write(transport, CSR_VARID_WARM_RESET, NULL, 0);
 
 	return 0;
 }
 
-static int cmd_psread(int dd, int argc, char *argv[])
+static int cmd_psread(int transport, int argc, char *argv[])
 {
 	uint8_t array[256];
 	uint16_t pskey = 0x0000, length, stores = CSR_STORES_DEFAULT;
@@ -693,8 +743,7 @@ static int cmd_psread(int dd, int argc, char *argv[])
 		array[2] = stores & 0xff;
 		array[3] = stores >> 8;
 
-		err = csr_read_varid_complex(dd, seqnum++,
-						CSR_VARID_PS_NEXT, array, 8);
+		err = transport_read(transport, CSR_VARID_PS_NEXT, array, 8);
 		if (err < 0)
 			break;
 
@@ -708,17 +757,23 @@ static int cmd_psread(int dd, int argc, char *argv[])
 		array[2] = stores & 0xff;
 		array[3] = stores >> 8;
 
-		err = csr_read_varid_complex(dd, seqnum++,
-						CSR_VARID_PS_SIZE, array, 8);
+		err = transport_read(transport, CSR_VARID_PS_SIZE, array, 8);
 		if (err < 0)
 			continue;
 
 		length = array[2] + (array[3] << 8);
-		if (length > sizeof(array) / 2)
+		if (length + 6 > sizeof(array) / 2)
 			continue;
 
-		err = csr_read_pskey_complex(dd, seqnum++, pskey,
-						stores, array, length * 2);
+		memset(array, 0, sizeof(array));
+		array[0] = pskey & 0xff;
+		array[1] = pskey >> 8;
+		array[2] = length & 0xff;
+		array[3] = length >> 8;
+		array[4] = stores & 0xff;
+		array[5] = stores >> 8;
+
+		err = transport_read(transport, CSR_VARID_PS, array, (length + 3) * 2);
 		if (err < 0)
 			continue;
 
@@ -731,20 +786,20 @@ static int cmd_psread(int dd, int argc, char *argv[])
 		printf("// %s%s\n&%04x =", str ? "PSKEY_" : "", 
 						str ? str : val, pskey);
 		for (i = 0; i < length; i++)
-			printf(" %02x%02x", array[i * 2 + 1], array[i * 2]);
+			printf(" %02x%02x", array[(i * 2) + 7], array[(i * 2) + 6]);
 		printf("\n");
 	}
 
 	if (reset)
-		csr_write_varid_valueless(dd, seqnum++, CSR_VARID_WARM_RESET);
+		transport_write(transport, CSR_VARID_WARM_RESET, NULL, 0);
 
 	return 0;
 }
 
-static int cmd_psload(int dd, int argc, char *argv[])
+static int cmd_psload(int transport, int argc, char *argv[])
 {
 	uint8_t array[256];
-	uint16_t pskey, size, stores = CSR_STORES_PSRAM;
+	uint16_t pskey, length, size, stores = CSR_STORES_PSRAM;
 	char *str, val[7];
 	int err, reset = 0;
 
@@ -752,7 +807,10 @@ static int cmd_psload(int dd, int argc, char *argv[])
 
 	psr_read(argv[0]);
 
-	while (psr_get(&pskey, array, &size) == 0) {
+	memset(array, 0, sizeof(array));
+	size = sizeof(array) - 6;
+
+	while (psr_get(&pskey, array + 6, &size) == 0) {
 		str = csr_pskeytoval(pskey);
 		if (!strcasecmp(str, "UNKNOWN")) {
 			sprintf(val, "0x%04x", pskey);
@@ -763,19 +821,30 @@ static int cmd_psload(int dd, int argc, char *argv[])
 							str ? str : val);
 		fflush(stdout);
 
-		err = csr_write_pskey_complex(dd, seqnum++, pskey,
-							stores, array, size);
+		length = size / 2;
+
+		array[0] = pskey & 0xff;
+		array[1] = pskey >> 8;
+		array[2] = length & 0xff;
+		array[3] = length >> 8;
+		array[4] = stores & 0xff;
+		array[5] = stores >> 8;
+
+		err = transport_write(transport, CSR_VARID_PS, array, size + 6);
 
 		printf("%s\n", err < 0 ? "failed" : "done");
+
+		memset(array, 0, sizeof(array));
+		size = sizeof(array) - 6;
 	}
 
 	if (reset)
-		csr_write_varid_valueless(dd, seqnum++, CSR_VARID_WARM_RESET);
+		transport_write(transport, CSR_VARID_WARM_RESET, NULL, 0);
 
 	return 0;
 }
 
-static int cmd_pscheck(int dd, int argc, char *argv[])
+static int cmd_pscheck(int transport, int argc, char *argv[])
 {
 	uint8_t array[256];
 	uint16_t pskey, size;
@@ -797,7 +866,7 @@ static int cmd_pscheck(int dd, int argc, char *argv[])
 
 static struct {
 	char *str;
-	int (*func)(int dd, int argc, char *argv[]);
+	int (*func)(int transport, int argc, char *argv[]);
 	char *arg;
 	char *doc;
 } commands[] = {
@@ -864,10 +933,8 @@ static struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	struct hci_dev_info di;
-	struct hci_version ver;
 	char *device = NULL;
-	int i, err, opt, dd, dev, transport = CSR_TRANSPORT_HCI;
+	int i, err, opt, transport = CSR_TRANSPORT_HCI;
 
 	while ((opt=getopt_long(argc, argv, "+t:d:i:h", main_options, NULL)) != EOF) {
 		switch (opt) {
@@ -911,55 +978,19 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (transport != CSR_TRANSPORT_HCI) {
-		fprintf(stderr, "Unsupported transport\n");
+	if (transport_open(transport, device) < 0)
 		exit(1);
-	}
 
-	if (device) {
-		dev = hci_devid(device);
-		if (dev < 0) {
-			fprintf(stderr, "Device not available\n");
-			exit(1);
-		}
+	if (device)
 		free(device);
-	} else
-		dev = 0;
-
-	dd = hci_open_dev(dev);
-	if (dd < 0) {
-		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
-						dev, strerror(errno), errno);
-		exit(1);
-	}
-
-	if (hci_devinfo(dev, &di) < 0) {
-		fprintf(stderr, "Can't get device info for hci%d: %s (%d)\n",
-						dev, strerror(errno), errno);
-		hci_close_dev(dd);
-		exit(1);
-	}
-
-	if (hci_read_local_version(dd, &ver, 1000) < 0) {
-		fprintf(stderr, "Can't read version info for hci%d: %s (%d)\n",
-						dev, strerror(errno), errno);
-		hci_close_dev(dd);
-		exit(1);
-	}
-
-	if (ver.manufacturer != 10) {
-		fprintf(stderr, "Unsupported manufacturer\n");
-		hci_close_dev(dd);
-		exit(1);
-	}
 
 	for (i = 0; commands[i].str; i++) {
 		if (strcasecmp(commands[i].str, argv[0]))
 			continue;
 
-		err = commands[i].func(dd, argc, argv);
+		err = commands[i].func(transport, argc, argv);
 
-		hci_close_dev(dd);
+		transport_close(transport);
 
 		if (err < 0) {
 			fprintf(stderr, "Can't execute command: %s (%d)\n",
@@ -972,7 +1003,7 @@ int main(int argc, char *argv[])
 
 	fprintf(stderr, "Unsupported command\n");
 
-	hci_close_dev(dd);
+	transport_close(transport);
 
 	exit(1);
 }

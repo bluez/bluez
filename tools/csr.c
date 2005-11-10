@@ -2354,7 +2354,7 @@ int csr_write_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *va
 	rq.ocf    = 0x00;
 	rq.event  = EVT_VENDOR;
 	rq.cparam = cp;
-	rq.clen   = sizeof(cmd) + 1;
+	rq.clen   = sizeof(cmd) + length + 1;
 	rq.rparam = rp;
 	rq.rlen   = sizeof(rp);
 
@@ -2393,7 +2393,7 @@ int csr_read_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *val
 	rq.ocf    = 0x00;
 	rq.event  = EVT_VENDOR;
 	rq.cparam = cp;
-	rq.clen   = sizeof(cmd) + 1;
+	rq.clen   = sizeof(cmd) + length + 1;
 	rq.rparam = rp;
 	rq.rlen   = sizeof(rp);
 

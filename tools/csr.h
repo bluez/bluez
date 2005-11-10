@@ -63,7 +63,7 @@
 #define CSR_VARID_FAULT_ARG			0x6806	/* uint16 */
 #define CSR_VARID_MAX_TX_POWER			0x6827	/* int8 */
 #define CSR_VARID_DEFAULT_TX_POWER		0x682b	/* int8 */
-#define CSR_VARID_PS				0x7002	/* complex */
+#define CSR_VARID_PS				0x7003	/* complex */
 
 #define CSR_PSKEY_BDADDR					0x0001	/* bdaddr / uint16[] = { 0x00A5A5, 0x5b, 0x0002 } */
 #define CSR_PSKEY_COUNTRYCODE					0x0002	/* uint16 */
@@ -501,6 +501,16 @@ char *csr_buildidtostr(uint16_t id);
 char *csr_chipvertostr(uint16_t ver, uint16_t rev);
 char *csr_pskeytostr(uint16_t pskey);
 char *csr_pskeytoval(uint16_t pskey);
+
+int csr_open_hci(char *device);
+int csr_read_hci(uint16_t varid, uint8_t *value, uint16_t length);
+int csr_write_hci(uint16_t varid, uint8_t *value, uint16_t length);
+void csr_close_hci(void);
+
+int csr_open_usb(char *device);
+int csr_read_usb(uint16_t varid, uint8_t *value, uint16_t length);
+int csr_write_usb(uint16_t varid, uint8_t *value, uint16_t length);
+void csr_close_usb(void);
 
 int csr_write_varid_valueless(int dd, uint16_t seqnum, uint16_t varid);
 int csr_write_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length);
