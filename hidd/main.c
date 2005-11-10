@@ -47,6 +47,15 @@
 
 #include "hidd.h"
 
+enum {
+	NONE,
+	SHOW,
+	SERVER,
+	SEARCH,
+	CONNECT,
+	KILL
+};
+
 static volatile sig_atomic_t __io_canceled = 0;
 
 static void sig_hup(int sig)
@@ -582,7 +591,7 @@ int main(int argc, char *argv[])
 	char addr[18];
 	int log_option = LOG_NDELAY | LOG_PID;
 	int opt, fd, ctl, csk, isk;
-	int mode = 0, daemon = 1, nosdp = 0, encrypt = 0, timeout = 30, lm = 0;
+	int mode = SHOW, daemon = 1, nosdp = 0, encrypt = 0, timeout = 30, lm = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
@@ -616,30 +625,30 @@ int main(int argc, char *argv[])
 			nosdp = 1;
 			break;
 		case 'l':
-			mode = 0;
+			mode = SHOW;
 			break;
 		case 'd':
-			mode = 1;
+			mode = SERVER;
 			break;
 		case 's':
-			mode = 2;
+			mode = SEARCH;
 			break;
 		case 'c':
 			str2ba(optarg, &dev);
-			mode = 3;
+			mode = CONNECT;
 			break;
 		case 'k':
 			str2ba(optarg, &dev);
-			mode = 4;
+			mode = KILL;
 			break;
 		case 'K':
 			bacpy(&dev, BDADDR_ALL);
-			mode = 4;
+			mode = KILL;
 			break;
 		case 'u':
 			str2ba(optarg, &dev);
 			flags = (1 << HIDP_VIRTUAL_CABLE_UNPLUG);
-			mode = 4;
+			mode = KILL;
 			break;
 		case 'h':
 			usage();
@@ -658,7 +667,7 @@ int main(int argc, char *argv[])
 	}
 
 	switch (mode) {
-	case 1:
+	case SERVER:
 		csk = l2cap_listen(&bdaddr, L2CAP_PSM_HIDP_CTRL, lm, 10);
 		if (csk < 0) {
 			perror("Can't listen on HID control channel");
@@ -675,17 +684,17 @@ int main(int argc, char *argv[])
 		}
 		break;
 
-	case 2:
+	case SEARCH:
 		do_search(ctl, &bdaddr, subclass, nosdp, encrypt, timeout);
 		close(ctl);
 		exit(0);
 
-	case 3:
+	case CONNECT:
 		do_connect(ctl, &bdaddr, &dev, subclass, nosdp, encrypt, timeout);
 		close(ctl);
 		exit(0);
 
-	case 4:
+	case KILL:
 		do_kill(ctl, &dev, flags);
 		close(ctl);
 		exit(0);
