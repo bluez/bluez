@@ -512,6 +512,16 @@ int csr_read_usb(uint16_t varid, uint8_t *value, uint16_t length);
 int csr_write_usb(uint16_t varid, uint8_t *value, uint16_t length);
 void csr_close_usb(void);
 
+int csr_open_bcsp(char *device);
+int csr_read_bcsp(uint16_t varid, uint8_t *value, uint16_t length);
+int csr_write_bcsp(uint16_t varid, uint8_t *value, uint16_t length);
+void csr_close_bcsp(void);
+
+int csr_open_h4(char *device);
+int csr_read_h4(uint16_t varid, uint8_t *value, uint16_t length);
+int csr_write_h4(uint16_t varid, uint8_t *value, uint16_t length);
+void csr_close_h4(void);
+
 int csr_write_varid_valueless(int dd, uint16_t seqnum, uint16_t varid);
 int csr_write_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length);
 int csr_read_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length);
