@@ -144,7 +144,7 @@ static int do_command(uint16_t command, uint16_t seqnum, uint16_t varid, uint8_t
 
 	do {
 		len = usb_interrupt_read(udev, 0x81,
-				(void *) (rp + offset), sizeof(rp), 10);
+			(void *) (rp + offset), sizeof(rp) - offset, 10);
 		offset += len;
 	} while (len > 0);
 
