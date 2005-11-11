@@ -694,6 +694,25 @@ static inline void read_remote_ext_features_dump(int level, struct frame *frm)
 	printf("handle %d page %d\n", btohs(cp->handle), cp->page_num);
 }
 
+static inline void hold_mode_dump(int level, struct frame *frm)
+{
+	hold_mode_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d max %d min %d\n", btohs(cp->handle),
+			btohs(cp->max_interval), btohs(cp->min_interval));
+}
+
+static inline void sniff_mode_dump(int level, struct frame *frm)
+{
+	sniff_mode_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d max %d min %d attempt %d timeout %d\n",
+		btohs(cp->handle), btohs(cp->max_interval),
+		btohs(cp->min_interval), btohs(cp->attempt), btohs(cp->timeout));
+}
+
 static inline void write_link_policy_dump(int level, struct frame *frm)
 {
 	write_link_policy_cp *cp = frm->ptr;
@@ -1043,6 +1062,13 @@ static inline void command_dump(int level, struct frame *frm)
 
 	case OGF_LINK_POLICY:
 		switch (ocf) {
+		case OCF_HOLD_MODE:
+		case OCF_PARK_MODE:
+			hold_mode_dump(level + 1, frm);
+			return;
+		case OCF_SNIFF_MODE:
+			sniff_mode_dump(level + 1, frm);
+			return;
 		case OCF_EXIT_SNIFF_MODE:
 		case OCF_EXIT_PARK_MODE:
 		case OCF_ROLE_DISCOVERY:
