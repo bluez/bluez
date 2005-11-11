@@ -67,13 +67,6 @@ int csr_open_h4(char *device)
 	ti.c_cflag |= CLOCAL;
 	ti.c_cflag |= CRTSCTS;
 
-	if (tcsetattr(fd, TCSANOW, &ti) < 0) {
-		fprintf(stderr, "Can't change port settings: %s (%d)\n",
-						strerror(errno), errno);
-		close(fd);
-		return -1;
-	}
-
 	cfsetospeed(&ti, B38400);
 
 	if (tcsetattr(fd, TCSANOW, &ti) < 0) {
