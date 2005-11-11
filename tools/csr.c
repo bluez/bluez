@@ -2685,20 +2685,25 @@ static int parse_line(char *str)
 {
 	uint8_t array[256];
 	uint16_t value, pskey, length = 0;
-	char *tmp, *end;
+	char *off, *end;
 
 	pskey = strtol(str + 1, NULL, 16);
-	tmp = strstr(str, "=") + 1;
+	off = strstr(str, "=") + 1;
+	if (!off)
+		return -EIO;
 
 	while (1) {
-		value = strtol(tmp, &end, 16);
-		if (value == 0 && tmp == end)
+		value = strtol(off, &end, 16);
+		if (value == 0 && off == end)
 			break;
 
 		array[length++] = value & 0xff;
 		array[length++] = value >> 8;
 
-		tmp = end + 1;
+		if (*end == '\0')
+			break;
+
+		off = end + 1;
 	}
 
 	return psr_put(pskey, array, length);
@@ -2728,6 +2733,11 @@ int psr_read(const char *filename)
 	off = map;
 
 	while (1) {
+		if (*off == '\r' || *off == '\n') {
+			off++;
+			continue;
+		}
+
 		end = strpbrk(off, "\r\n");
 		if (!end)
 			break;
