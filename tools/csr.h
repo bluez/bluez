@@ -522,6 +522,11 @@ int csr_read_h4(uint16_t varid, uint8_t *value, uint16_t length);
 int csr_write_h4(uint16_t varid, uint8_t *value, uint16_t length);
 void csr_close_h4(void);
 
+int csr_open_3wire(char *device);
+int csr_read_3wire(uint16_t varid, uint8_t *value, uint16_t length);
+int csr_write_3wire(uint16_t varid, uint8_t *value, uint16_t length);
+void csr_close_3wire(void);
+
 int csr_write_varid_valueless(int dd, uint16_t seqnum, uint16_t varid);
 int csr_write_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length);
 int csr_read_varid_complex(int dd, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length);

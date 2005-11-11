@@ -70,6 +70,8 @@ static inline int transport_open(int transport, char *device)
 		return csr_open_bcsp(device);
 	case CSR_TRANSPORT_H4:
 		return csr_open_h4(device);
+	case CSR_TRANSPORT_3WIRE:
+		return csr_open_3wire(device);
 	default:
 		fprintf(stderr, "Unsupported transport\n");
 		return -1;
@@ -87,6 +89,8 @@ static inline int transport_read(int transport, uint16_t varid, uint8_t *value, 
 		return csr_read_bcsp(varid, value, length);
 	case CSR_TRANSPORT_H4:
 		return csr_read_h4(varid, value, length);
+	case CSR_TRANSPORT_3WIRE:
+		return csr_read_3wire(varid, value, length);
 	default:
 		errno = EOPNOTSUPP;
 		return -1;
@@ -104,6 +108,8 @@ static inline int transport_write(int transport, uint16_t varid, uint8_t *value,
 		return csr_write_bcsp(varid, value, length);
 	case CSR_TRANSPORT_H4:
 		return csr_write_h4(varid, value, length);
+	case CSR_TRANSPORT_3WIRE:
+		return csr_write_3wire(varid, value, length);
 	default:
 		errno = EOPNOTSUPP;
 		return -1;
@@ -124,6 +130,9 @@ static inline void transport_close(int transport)
 		break;
 	case CSR_TRANSPORT_H4:
 		csr_close_h4();
+		break;
+	case CSR_TRANSPORT_3WIRE:
+		csr_close_3wire();
 		break;
 	}
 }
