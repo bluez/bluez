@@ -27,15 +27,73 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 #include <stdint.h>
+#include <termios.h>
+
+#include "csr.h"
 
 static uint16_t seqnum = 0x0000;
 
+static int fd = -1;
+
 int csr_open_bcsp(char *device)
 {
-	fprintf(stderr, "Transport not implemented\n");
+	struct termios ti;
 
-	return -1;
+	if (!device)
+		device = "/dev/ttyS0";
+
+	fd = open(device, O_RDWR | O_NOCTTY);
+	if (fd < 0) {
+		fprintf(stderr, "Can't open serial port: %s (%d)\n",
+						strerror(errno), errno);
+		return -1;
+	}
+
+	tcflush(fd, TCIOFLUSH);
+
+	if (tcgetattr(fd, &ti) < 0) {
+		fprintf(stderr, "Can't get port settings: %s (%d)\n",
+						strerror(errno), errno);
+		close(fd);
+		return -1;
+	}
+
+	cfmakeraw(&ti);
+
+	ti.c_cflag |=  CLOCAL;
+	ti.c_cflag &= ~CRTSCTS;
+	ti.c_cflag |=  PARENB;
+	ti.c_cflag &= ~PARODD;
+	ti.c_cflag &= ~CSIZE;
+	ti.c_cflag |=  CS8;
+	ti.c_cflag &= ~CSTOPB;
+
+	ti.c_cc[VMIN] = 1;
+	ti.c_cc[VTIME] = 0;
+
+	cfsetospeed(&ti, B38400);
+
+	if (tcsetattr(fd, TCSANOW, &ti) < 0) {
+		fprintf(stderr, "Can't change port settings: %s (%d)\n",
+						strerror(errno), errno);
+		close(fd);
+		return -1;
+	}
+
+	tcflush(fd, TCIOFLUSH);
+
+	if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
+		fprintf(stderr, "Can't set non blocking mode: %s (%d)\n",
+						strerror(errno), errno);
+		close(fd);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int do_command(uint16_t command, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length)
@@ -57,4 +115,5 @@ int csr_write_bcsp(uint16_t varid, uint8_t *value, uint16_t length)
 
 void csr_close_bcsp(void)
 {
+	close(fd);
 }
