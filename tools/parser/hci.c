@@ -751,9 +751,11 @@ static inline void set_event_flt_dump(int level, struct frame *frm)
 
 	switch (cp->flt_type) {
 	case FLT_CLEAR_ALL:
+		p_indent(level, frm);
 		printf("Clear all filters\n");
 		break;
 	case FLT_INQ_RESULT:
+		p_indent(level, frm);
 		printf("Inquiry result");
 		switch (cp->cond_type) {
 		case INQ_RESULT_RETURN_ALL:
@@ -765,6 +767,7 @@ static inline void set_event_flt_dump(int level, struct frame *frm)
 		}
 		break;
 	case FLT_CONN_SETUP:
+		p_indent(level, frm);
 		printf("Connection setup");
 		switch (cp->cond_type) {
 		case CONN_SETUP_ALLOW_ALL:
