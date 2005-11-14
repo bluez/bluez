@@ -21,12 +21,29 @@
  *
  */
 
-#define L2CAP_PSM_HIDP_CTRL 0x11
-#define L2CAP_PSM_HIDP_INTR 0x13
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req);
-int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req);
-int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t *uuid, uint8_t *channel);
+#include <stdio.h>
+#include <errno.h>
+#include <sys/socket.h>
 
-void epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
-void headset_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/rfcomm.h>
+#include <bluetooth/hidp.h>
+
+#include "hidd.h"
+
+#include <X11/Xlib.h>
+#include <X11/extensions/XTest.h>
+
+#include <math.h>
+
+void epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
+{
+}
+
+void headset_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
+{
+}

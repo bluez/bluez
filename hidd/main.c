@@ -406,19 +406,42 @@ static void do_show(int ctl)
 	}
 }
 
-static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, int nosdp, int encrypt, int timeout)
+static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, int fakehid, int encrypt, int timeout)
 {
 	struct hidp_connadd_req req;
+	uint16_t uuid = HID_SVCLASS_ID;
+	uint8_t channel = 0;
 	int csk, isk, err;
 
 	memset(&req, 0, sizeof(req));
 
-	if (get_sdp_device_info(src, dst, &req) < 0) {
+	err = get_sdp_device_info(src, dst, &req);
+	if (err < 0 && fakehid)
+		err = get_alternate_device_info(src, dst, &uuid, &channel);
+
+	if (err < 0) {
 		perror("Can't get device information");
 		close(ctl);
 		exit(1);
 	}
 
+	switch (uuid) {
+	case HID_SVCLASS_ID:
+		goto connect;
+
+	case SERIAL_PORT_SVCLASS_ID:
+		epox_presenter(src, dst, channel);
+		break;
+
+	case HEADSET_SVCLASS_ID:
+	case HANDSFREE_SVCLASS_ID:
+		headset_presenter(src, dst, channel);
+		break;
+	}
+
+	return;
+
+connect:
 	csk = l2cap_connect(src, dst, L2CAP_PSM_HIDP_CTRL);
 	if (csk < 0) {
 		perror("Can't create HID control channel");
@@ -446,7 +469,7 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, 
 	}
 }
 
-static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int nosdp, int encrypt, int timeout)
+static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int fakehid, int encrypt, int timeout)
 {
 	inquiry_info *info = NULL;
 	bdaddr_t src, dst;
@@ -477,10 +500,25 @@ static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int nosdp, in
 			ba2str(&dst, addr);
 
 			printf("\tConnecting to device %s\n", addr);
-			do_connect(ctl, &src, &dst, subclass, nosdp, encrypt, timeout);
+			do_connect(ctl, &src, &dst, subclass, fakehid, encrypt, timeout);
 		}
 	}
 
+	if (!fakehid)
+		goto done;
+
+	for (i = 0; i < num_rsp; i++) {
+		memcpy(class, (info+i)->dev_class, 3);
+		if (class[0] == 0x00 && class[1] == 0x40 && class[2] == 0x00) {
+			bacpy(&dst, &(info+i)->bdaddr);
+			ba2str(&dst, addr);
+
+			printf("\tConnecting to device %s\n", addr);
+			do_connect(ctl, &src, &dst, subclass, 1, 0, timeout);
+		}
+	}
+
+done:
 	bt_free(info);
 
 	if (!num_rsp) {
@@ -591,7 +629,7 @@ int main(int argc, char *argv[])
 	char addr[18];
 	int log_option = LOG_NDELAY | LOG_PID;
 	int opt, fd, ctl, csk, isk;
-	int mode = SHOW, daemon = 1, nosdp = 0, encrypt = 0, timeout = 30, lm = 0;
+	int mode = SHOW, daemon = 1, nosdp = 0, fakehid = 1, encrypt = 0, timeout = 30, lm = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
@@ -685,12 +723,12 @@ int main(int argc, char *argv[])
 		break;
 
 	case SEARCH:
-		do_search(ctl, &bdaddr, subclass, nosdp, encrypt, timeout);
+		do_search(ctl, &bdaddr, subclass, fakehid, encrypt, timeout);
 		close(ctl);
 		exit(0);
 
 	case CONNECT:
-		do_connect(ctl, &bdaddr, &dev, subclass, nosdp, encrypt, timeout);
+		do_connect(ctl, &bdaddr, &dev, subclass, fakehid, encrypt, timeout);
 		close(ctl);
 		exit(0);
 

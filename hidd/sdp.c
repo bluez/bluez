@@ -267,3 +267,22 @@ int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_co
 
 	return 0;
 }
+
+int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t *uuid, uint8_t *channel)
+{
+	sdp_session_t *s;
+
+	s = sdp_connect(src, dst, SDP_RETRY_IF_BUSY | SDP_WAIT_ON_CLOSE);
+	if (!s)
+		return -1;
+
+	sdp_close(s);
+
+	if (uuid)
+		*uuid = 0x0000;
+
+	if (channel)
+		*channel = 0;
+
+	return 0;
+}
