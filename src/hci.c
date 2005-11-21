@@ -444,6 +444,9 @@ static hci_map commands_map[] = {
 	{ "Reserved",					135 },
 	{ "Read Extended Inquiry Response",		136 },
 	{ "Write Extended Inquiry Response",		137 },
+	{ "Unknown",					138 },
+	{ "Unknown",					139 },
+	{ "Sniff Subrate",				140 },
 	{ NULL }
 };
 
@@ -578,7 +581,7 @@ static hci_map lmp_features_map[8][9] = {
 	},
 	{	/* Byte 5 */
 		{ "<5-slot EDR ACL>",	LMP_EDR_5SLOT	},	/* Bit 0 */
-		{ "<no. 41>",		0x02		},	/* Bit 1 */
+		{ "<sniff subrating>",	LMP_SNIFF_SUBR	},	/* Bit 1 */
 		{ "<no. 42>",		0x04		},	/* Bit 2 */
 		{ "<AFH cap. master>",	LMP_AFH_CAP_MST	},	/* Bit 3 */
 		{ "<AFH class. master>",LMP_AFH_CLS_MST	},	/* Bit 4 */
