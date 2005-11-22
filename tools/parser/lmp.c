@@ -308,6 +308,10 @@ static char *opcode2str(uint16_t opcode)
 		return "channel_classification_req";
 	case 127 + (17 << 7):
 		return "channel_classification";
+	case 127 + (21 << 7):
+		return "sniff_subrate_req";
+	case 127 + (22 << 7):
+		return "sniff_subrate_res";
 	default:
 		return "unknown";
 	}
@@ -960,13 +964,13 @@ static inline void channel_classification_req_dump(int level, struct frame *frm)
 	uint16_t max = LMP_U16(frm);
 
 	p_indent(level, frm);
-	printf("AFH_reporting_mode %d\n", mode);
+	printf("AFH reporting mode %d\n", mode);
 
 	p_indent(level, frm);
-	printf("AFH_min_interval 0x%4.4x\n", min);
+	printf("AFH min interval 0x%4.4x\n", min);
 
 	p_indent(level, frm);
-	printf("AFH_max_interval 0x%4.4x\n", max);
+	printf("AFH max interval 0x%4.4x\n", max);
 }
 
 static inline void channel_classification_dump(int level, struct frame *frm)
@@ -978,10 +982,26 @@ static inline void channel_classification_dump(int level, struct frame *frm)
 	frm->len -= 10;
 
 	p_indent(level, frm);
-	printf("AFH_channel_classification 0x");
+	printf("AFH channel classification 0x");
 	for (i = 0; i < 10; i++)
 		printf("%2.2x", map[i]);
 	printf("\n");
+}
+
+static inline void sniff_subrate_dump(int level, struct frame *frm)
+{
+	uint8_t subrate = LMP_U8(frm);
+	uint16_t timeout = LMP_U16(frm);
+	uint32_t instant = LMP_U32(frm);
+
+	p_indent(level, frm);
+	printf("max subrate %d\n", subrate);
+
+	p_indent(level, frm);
+	printf("min subrate zero timeout %d\n", timeout);
+
+	p_indent(level, frm);
+	printf("subrate instant 0x%4.4x\n", instant);
 }
 
 void lmp_dump(int level, struct frame *frm)
@@ -1170,6 +1190,10 @@ void lmp_dump(int level, struct frame *frm)
 		return;
 	case 127 + (17 << 7):
 		channel_classification_dump(level + 1, frm);
+		return;
+	case 127 + (21 << 7):
+	case 127 + (22 << 7):
+		sniff_subrate_dump(level + 1, frm);
 		return;
 	}
 
