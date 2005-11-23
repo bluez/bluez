@@ -98,7 +98,7 @@ static char *event_str[EVENT_NUM + 1] = {
 	"Unknown",
 	"Synchronous Connect Complete",
 	"Synchronous Connect Changed",
-	"Unknown",
+	"Sniff Subrate",
 	"Extended Inquiry Result",
 };
 
@@ -149,7 +149,7 @@ static char *cmd_linkctl_str[CMD_LINKCTL_NUM + 1] = {
 	"Reject Synchronous Connection",
 };
 
-#define CMD_LINKPOL_NUM 16
+#define CMD_LINKPOL_NUM 17
 static char *cmd_linkpol_str[CMD_LINKPOL_NUM + 1] = {
 	"Unknown",
 	"Hold Mode",
@@ -168,6 +168,7 @@ static char *cmd_linkpol_str[CMD_LINKPOL_NUM + 1] = {
 	"Read Default Link Policy Settings",
 	"Write Default Link Policy Settings",
 	"Flow Specification",
+	"Sniff Subrate",
 };
 
 #define CMD_HOSTCTL_NUM 82
@@ -730,6 +731,22 @@ static inline void write_link_policy_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void sniff_subrate_dump(int level, struct frame *frm)
+{
+	sniff_subrate_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d\n", btohs(cp->handle));
+
+	p_indent(level, frm);
+	printf("max latency remote %d local %d\n",
+		btohs(cp->max_remote_latency), btohs(cp->max_local_latency));
+
+	p_indent(level, frm);
+	printf("min timeout remote %d local %d\n",
+		btohs(cp->min_remote_timeout), btohs(cp->min_local_timeout));
+}
+
 static inline void set_event_mask_dump(int level, struct frame *frm)
 {
 	set_event_mask_cp *cp = frm->ptr;
@@ -844,7 +861,7 @@ static inline void write_class_of_dev_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("class 0x%2.2x%2.2x%2.2x\n",
-		cp->dev_class[2], cp->dev_class[1], cp->dev_class[0]);
+			cp->dev_class[2], cp->dev_class[1], cp->dev_class[0]);
 }
 
 static inline void write_voice_setting_dump(int level, struct frame *frm)
@@ -923,7 +940,7 @@ static inline void write_link_supervision_timeout_dump(int level, struct frame *
 
 	p_indent(level, frm);
 	printf("handle %d timeout %d\n",
-		btohs(cp->handle), btohs(cp->link_sup_to));
+				btohs(cp->handle), btohs(cp->link_sup_to));
 }
 
 static inline void write_ext_inquiry_response_dump(int level, struct frame *frm)
@@ -945,8 +962,8 @@ static inline void request_transmit_power_level_dump(int level, struct frame *fr
 
 	p_indent(level, frm);
 	printf("handle %d type %d (%s)\n",
-		btohs(cp->handle), cp->type,
-		cp->type ? "maximum" : "current");
+					btohs(cp->handle), cp->type,
+					cp->type ? "maximum" : "current");
 }
 
 static inline void request_local_ext_features_dump(int level, struct frame *frm)
@@ -963,8 +980,8 @@ static inline void request_clock_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("handle %d which %d (%s)\n",
-		btohs(cp->handle), cp->which_clock,
-		cp->which_clock ? "piconet" : "local");
+					btohs(cp->handle), cp->which_clock,
+					cp->which_clock ? "piconet" : "local");
 }
 
 static inline void command_dump(int level, struct frame *frm)
@@ -980,7 +997,7 @@ static inline void command_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 
 	printf("HCI Command: %s (0x%2.2x|0x%4.4x) plen %d\n", 
-		opcode2str(opcode), ogf, ocf, hdr->plen);
+				opcode2str(opcode), ogf, ocf, hdr->plen);
 
 	frm->ptr += HCI_COMMAND_HDR_SIZE;
 	frm->len -= HCI_COMMAND_HDR_SIZE;
@@ -1083,6 +1100,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_WRITE_LINK_POLICY:
 			write_link_policy_dump(level + 1, frm);
+			return;
+		case OCF_SNIFF_SUBRATE:
+			sniff_subrate_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -1262,7 +1282,7 @@ static inline void read_stored_link_key_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x max %d num %d\n",
-		rp->status, rp->max_keys, rp->num_keys);
+				rp->status, rp->max_keys, rp->num_keys);
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1324,7 +1344,7 @@ static inline void read_class_of_dev_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x class 0x%2.2x%2.2x%2.2x\n", rp->status,
-		rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
+			rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1338,7 +1358,7 @@ static inline void read_voice_setting_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x voice setting 0x%4.4x\n",
-		rp->status, btohs(rp->voice_setting));
+					rp->status, btohs(rp->voice_setting));
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1401,7 +1421,7 @@ static inline void read_page_activity_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x interval %d window %d\n",
-		rp->status, btohs(rp->interval), btohs(rp->window));
+			rp->status, btohs(rp->interval), btohs(rp->window));
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1441,7 +1461,7 @@ static inline void read_link_supervision_timeout_dump(int level, struct frame *f
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d timeout %d\n",
-		rp->status, btohs(rp->handle), btohs(rp->link_sup_to));
+			rp->status, btohs(rp->handle), btohs(rp->link_sup_to));
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1455,7 +1475,7 @@ static inline void read_transmit_power_level_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d level %d\n",
-		rp->status, btohs(rp->handle), rp->level);
+				rp->status, btohs(rp->handle), rp->level);
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1495,15 +1515,15 @@ static inline void read_local_version_dump(int level, struct frame *frm)
 	} else {
 		p_indent(level, frm);
 		printf("HCI Version: %s (0x%x) HCI Revision: 0x%x\n",
-			hci_vertostr(rp->hci_ver), rp->hci_ver,
-			btohs(rp->hci_rev));
+					hci_vertostr(rp->hci_ver),
+					rp->hci_ver, btohs(rp->hci_rev));
 		p_indent(level, frm);
 		printf("LMP Version: %s (0x%x) LMP Subversion: 0x%x\n",
-			lmp_vertostr(rp->lmp_ver), rp->lmp_ver,
-			btohs(rp->lmp_subver));
+					lmp_vertostr(rp->lmp_ver),
+					rp->lmp_ver, btohs(rp->lmp_subver));
 		p_indent(level, frm);
 		printf("Manufacturer: %s (%d)\n",
-			bt_compidtostr(manufacturer), manufacturer);
+				bt_compidtostr(manufacturer), manufacturer);
 	}
 }
 
@@ -1591,8 +1611,8 @@ static inline void read_buffer_size_dump(int level, struct frame *frm)
 	} else {
 		p_indent(level, frm);
 		printf("ACL MTU %d:%d SCO MTU %d:%d\n",
-			btohs(rp->acl_mtu), btohs(rp->acl_max_pkt),
-			rp->sco_mtu, btohs(rp->sco_max_pkt));
+				btohs(rp->acl_mtu), btohs(rp->acl_max_pkt),
+				rp->sco_mtu, btohs(rp->sco_max_pkt));
 	}
 }
 
@@ -1602,7 +1622,7 @@ static inline void read_link_quality_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d lq %d\n",
-		rp->status, btohs(rp->handle), rp->link_quality);
+			rp->status, btohs(rp->handle), rp->link_quality);
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1616,7 +1636,7 @@ static inline void read_rssi_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d rssi %d\n",
-		rp->status, btohs(rp->handle), rp->rssi);
+				rp->status, btohs(rp->handle), rp->rssi);
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1631,7 +1651,7 @@ static inline void read_afh_map_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d mode %d\n",
-		rp->status, btohs(rp->handle), rp->mode);
+				rp->status, btohs(rp->handle), rp->mode);
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1651,8 +1671,8 @@ static inline void read_clock_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d clock 0x%4.4x accuracy %d\n",
-		rp->status, btohs(rp->handle),
-		btohl(rp->clock), btohs(rp->accuracy));
+					rp->status, btohs(rp->handle),
+					btohl(rp->clock), btohs(rp->accuracy));
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -1669,7 +1689,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("%s (0x%2.2x|0x%4.4x) ncmd %d\n",
-		opcode2str(opcode), ogf, ocf, evt->ncmd);
+				opcode2str(opcode), ogf, ocf, evt->ncmd);
 
 	frm->ptr += EVT_CMD_COMPLETE_SIZE;
 	frm->len -= EVT_CMD_COMPLETE_SIZE;
@@ -1846,9 +1866,8 @@ static inline void cmd_status_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("%s (0x%2.2x|0x%4.4x) status 0x%2.2x ncmd %d\n",
-		opcode2str(opcode),
-		cmd_opcode_ogf(opcode), cmd_opcode_ocf(opcode),
-		evt->status, evt->ncmd);
+				opcode2str(opcode), cmd_opcode_ogf(opcode),
+				cmd_opcode_ocf(opcode), evt->status, evt->ncmd);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -1894,8 +1913,8 @@ static inline void conn_complete_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d bdaddr %s type %s encrypt 0x%2.2x\n",
-		evt->status, btohs(evt->handle), addr,
-		evt->link_type == 1 ? "ACL" : "SCO", evt->encr_mode);
+			evt->status, btohs(evt->handle), addr,
+			evt->link_type == 1 ? "ACL" : "SCO", evt->encr_mode);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -1912,8 +1931,8 @@ static inline void conn_request_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("bdaddr %s class 0x%2.2x%2.2x%2.2x type %s\n",
-		addr, evt->dev_class[2], evt->dev_class[1],
-		evt->dev_class[0], evt->link_type == 1 ? "ACL" : "SCO");
+			addr, evt->dev_class[2], evt->dev_class[1],
+			evt->dev_class[0], evt->link_type == 1 ? "ACL" : "SCO");
 }
 
 static inline void disconn_complete_dump(int level, struct frame *frm)
@@ -1922,7 +1941,7 @@ static inline void disconn_complete_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d reason 0x%2.2x\n",
-		evt->status, btohs(evt->handle), evt->reason);
+				evt->status, btohs(evt->handle), evt->reason);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -1963,7 +1982,7 @@ static inline void master_link_key_complete_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d flag %d\n",
-		evt->status, btohs(evt->handle), evt->key_flag);
+				evt->status, btohs(evt->handle), evt->key_flag);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -1977,7 +1996,7 @@ static inline void encrypt_change_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d encrypt 0x%2.2x\n",
-		evt->status, btohs(evt->handle), evt->encrypt);
+				evt->status, btohs(evt->handle), evt->encrypt);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -2033,7 +2052,7 @@ static inline void qos_setup_complete_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d flags %d\n",
-		evt->status, btohs(evt->handle), evt->flags);
+				evt->status, btohs(evt->handle), evt->flags);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -2060,7 +2079,7 @@ static inline void role_change_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	ba2str(&evt->bdaddr, addr);
 	printf("status 0x%2.2x bdaddr %s role 0x%2.2x\n",
-		evt->status, addr, evt->role);
+						evt->status, addr, evt->role);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -2165,7 +2184,7 @@ static inline void conn_ptype_changed_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d ptype 0x%4.4x\n",
-		evt->status, btohs(evt->handle), ptype);
+				evt->status, btohs(evt->handle), ptype);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -2196,8 +2215,8 @@ static inline void flow_spec_complete_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d flags %d %s\n",
-		evt->status, btohs(evt->handle), evt->flags,
-		evt->direction == 0 ? "outgoing" : "incoming");
+				evt->status, btohs(evt->handle), evt->flags,
+				evt->direction == 0 ? "outgoing" : "incoming");
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -2263,8 +2282,8 @@ static inline void read_remote_ext_features_complete_dump(int level, struct fram
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d page %d max %d\n",
-		evt->status, btohs(evt->handle),
-		evt->page_num, evt->max_page_num);
+					evt->status, btohs(evt->handle),
+					evt->page_num, evt->max_page_num);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -2287,8 +2306,8 @@ static inline void sync_conn_complete_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d bdaddr %s type %s\n",
-		evt->status, btohs(evt->handle), addr,
-		evt->link_type == 0 ? "SCO" : "eSCO");
+					evt->status, btohs(evt->handle), addr,
+					evt->link_type == 0 ? "SCO" : "eSCO");
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -2304,12 +2323,34 @@ static inline void sync_conn_changed_dump(int level, struct frame *frm)
 	evt_sync_conn_changed *evt = frm->ptr;
 
 	p_indent(level, frm);
-	printf("status 0x%2.2x handle %d\n",
-		evt->status, btohs(evt->handle));
+	printf("status 0x%2.2x handle %d\n", evt->status, btohs(evt->handle));
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
 		printf("Error: %s\n", status2str(evt->status));
+	}
+}
+
+static inline void sniff_subrate_event_dump(int level, struct frame *frm)
+{
+	evt_sniff_subrate *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d\n", evt->status, btohs(evt->handle));
+
+	if (evt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(evt->status));
+	} else {
+		p_indent(level, frm);
+		printf("max latency remote %d local %d\n",
+					btohs(evt->max_remote_latency),
+					btohs(evt->max_local_latency));
+
+		p_indent(level, frm);
+		printf("min timeout remote %d local %d\n",
+					btohs(evt->min_remote_timeout),
+					btohs(evt->min_local_timeout));
 	}
 }
 
@@ -2486,6 +2527,9 @@ static inline void event_dump(int level, struct frame *frm)
 	case EVT_SYNC_CONN_CHANGED:
 		sync_conn_changed_dump(level + 1, frm);
 		break;
+	case EVT_SNIFF_SUBRATE:
+		sniff_subrate_event_dump(level + 1, frm);
+		break;
 	case EVT_EXTENDED_INQUIRY_RESULT:
 		extended_inq_result_dump(level + 1, frm);
 		break;
@@ -2531,7 +2575,7 @@ static inline void sco_dump(int level, struct frame *frm)
 	if (!p_filter(FILT_SCO)) {
 		p_indent(level, frm);
 		printf("SCO data: handle %d dlen %d\n",
-			acl_handle(handle), hdr->dlen);
+					acl_handle(handle), hdr->dlen);
 		level++;
 
 		frm->ptr += HCI_SCO_HDR_SIZE;
