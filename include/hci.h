@@ -575,6 +575,16 @@ typedef struct {
 
 #define OCF_WRITE_DEFAULT_LINK_POLICY	0x000F
 
+#define OCF_SNIFF_SUBRATE		0x0011
+typedef struct {
+	uint16_t	handle;
+	uint16_t	max_remote_latency;
+	uint16_t	max_local_latency;
+	uint16_t	min_remote_timeout;
+	uint16_t	min_local_timeout;
+} __attribute__ ((packed)) sniff_subrate_cp;
+#define SNIFF_SUBRATE_CP_SIZE 10
+
 /* Host Controller and Baseband */
 #define OGF_HOST_CTL		0x03
 
@@ -1364,6 +1374,17 @@ typedef struct {
 	uint16_t	tx_pkt_len;
 } __attribute__ ((packed)) evt_sync_conn_changed;
 #define EVT_SYNC_CONN_CHANGED_SIZE 9
+
+#define EVT_SNIFF_SUBRATE		0x2E
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint16_t	max_remote_latency;
+	uint16_t	max_local_latency;
+	uint16_t	min_remote_timeout;
+	uint16_t	min_local_timeout;
+} __attribute__ ((packed)) evt_sniff_subrate;
+#define EVT_SNIFF_SUBRATE_SIZE 11
 
 #define EVT_EXTENDED_INQUIRY_RESULT	0x2F
 typedef struct {
