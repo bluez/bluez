@@ -348,8 +348,7 @@ static void cmd_aclmtu(int ctl, int hdev, char *opt)
 	if (sscanf(opt, "%4hu:%4hu", &mtu, &mpkt) != 2)
 		return;
 
-	*((uint16_t *)&dr.dev_opt + 1) = mtu;
-	*((uint16_t *)&dr.dev_opt + 0) = mpkt;
+	dr.dev_opt = mpkt | (mtu << 16);
 
 	if (ioctl(ctl, HCISETACLMTU, (unsigned long) &dr) < 0) {
 		fprintf(stderr, "Can't set ACL mtu on hci%d: %s(%d)\n",
@@ -369,9 +368,8 @@ static void cmd_scomtu(int ctl, int hdev, char *opt)
 	if (sscanf(opt, "%4hu:%4hu", &mtu, &mpkt) != 2)
 		return;
 
-	*((uint16_t *)&dr.dev_opt + 1) = mtu;
-	*((uint16_t *)&dr.dev_opt + 0) = mpkt;
-	
+	dr.dev_opt = mpkt | (mtu << 16);
+
 	if (ioctl(ctl, HCISETSCOMTU, (unsigned long) &dr) < 0) {
 		fprintf(stderr, "Can't set SCO mtu on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
