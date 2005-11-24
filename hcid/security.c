@@ -491,9 +491,14 @@ static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_complete *evt = ptr;
-
-	if (evt->opcode == cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL))
+	switch (evt->opcode) {
+	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
 		hcid_dbus_inquiry_complete(sba);
+		break;
+	case cmd_opcode_pack(OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME):
+		hcid_dbus_setname_complete(sba);
+		break;
+	};
 }
 
 static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)

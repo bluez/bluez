@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import dbus
+import dbus.decorators
 import dbus.glib
 import gobject
 import sys
@@ -8,9 +9,11 @@ import getopt
 from signal import *
 
 mgr_cmds = [ "DeviceList", "DefaultDevice" ]
-dev_cmds = [ "Up", "Down", "Inquiry", "CancelInquiry", "PeriodicInquiry",
-             "CancelPeriodic", "RemoteName", "Connections", "Authenticate",
-             "RoleSwitch" ]
+dev_cmds = [ "Up", "Down", "SetProperty", "GetProperty", "Inquiry",
+             "CancelInquiry", "PeriodicInquiry","CancelPeriodic", "RemoteName",
+             "Connections", "Authenticate", "RoleSwitch" ]
+dev_setprop_bool = [ "auth", "encrypt", "discoverable", "connectable" ]
+dev_setprop_byte = [ "incmode" ]
 
 class Tester:
     exit_events = []
@@ -78,6 +81,9 @@ class Tester:
 
                 self.dev.connect_to_signal('Up', self.dev_up)
                 self.dev.connect_to_signal('Down', self.dev_down)
+                self.bus.add_signal_receiver(self.dev_name_changed, 'DeviceNameChanged',
+                                             'org.bluez.Device', 'org.bluez',
+                                             '/org/bluez/Device/hci0')
 
                 obj = self.bus.get_object('org.bluez', '%s/Controller' % self.dev_path)
                 self.ctl = dbus.Interface(obj, 'org.bluez.Device.Controller')
@@ -150,6 +156,12 @@ class Tester:
     def dev_down(self):
         print 'Down'
 
+    @dbus.decorators.explicitly_pass_message
+    def dev_name_changed(*args, **keywords):
+        name = args[1]
+        dbus_message = keywords["dbus_message"]
+        print 'Device %s name changed: %s' % (dbus_message.get_path(), name)
+
     def signal_cb(self, sig, frame):
         print 'Caught signal, exiting'
         if self.at_interrupt:
@@ -179,7 +191,29 @@ class Tester:
             except dbus.DBusException, e:
                 print 'Sending %s failed: %s' % (self.cmd, e)
                 sys.exit(1)
-
+        elif self.cmd == 'SetProperty':
+            if len(self.cmd_args) < 2:
+                print 'Usage: %s -i <dev> SetProperty strPropName arg' % self.name
+                sys.exit(1)
+            try:
+                if self.cmd_args[0].lower() in dev_setprop_bool:
+                    self.dev.SetProperty(self.cmd_args[0], dbus.Boolean(self.cmd_args[1]))
+                elif self.cmd_args[0].lower() in dev_setprop_byte:
+                    self.dev.SetProperty(self.cmd_args[0], dbus.Byte(self.cmd_args[1]))
+                else:
+                    self.dev.SetProperty(self.cmd_args[0], self.cmd_args[1])
+            except dbus.DBusException, e:
+                print 'Sending %s failed: %s' % (self.cmd, e)
+                sys.exit(1)
+        elif self.cmd == 'GetProperty':
+            if len(self.cmd_args) < 1:
+                print 'Usage: %s -i <dev> GetProperty strPropName' % self.name
+                sys.exit(1)
+            try:
+                print self.dev.GetProperty(self.cmd_args[0])
+            except dbus.DBusException, e:
+                print 'Sending %s failed: %s' % (self.cmd, e)
+                sys.exit(1)
         # Device.Controller methods
         elif self.cmd == 'Inquiry':
             try:

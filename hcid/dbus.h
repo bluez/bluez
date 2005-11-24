@@ -99,6 +99,9 @@
 #define BLUEZ_HCI			"Controller"
 #define DEV_HCI_INTERFACE		DEVICE_INTERFACE "." BLUEZ_HCI
 
+/* /org/bluez/Device signals */
+#define BLUEZ_HCI_SET_NAME		"DeviceNameChanged"
+
 /* Control interface signals */
 #define BLUEZ_HCI_INQ_START		"InquiryStart"
 #define BLUEZ_HCI_INQ_COMPLETE		"InquiryComplete"
@@ -125,40 +128,23 @@
 
 #define DEV_PROPERTY_AUTH		"auth"
 #define DEV_PROPERTY_ENCRYPT		"encrypt"
-#define DEV_PROPERTY_SECMGR		"secmgr"
-#define DEV_PROPERTY_PISCAN		"piscan"
-#define DEV_PROPERTY_PSCAN		"pscan"
-#define DEV_PROPERTY_ISCAN		"iscan"
-#define DEV_PROPERTY_PTYPE		"ptype"
-#define DEV_PROPERTY_LM			"lm"
-#define DEV_PROPERTY_LP			"lp"
+#define DEV_PROPERTY_PSCAN		"connectable"
+#define DEV_PROPERTY_ISCAN		"discoverable"
 #define DEV_PROPERTY_NAME		"name"
-#define DEV_PROPERTY_CLASS		"class"
-#define DEV_PROPERTY_VOICE		"voice"
-#define DEV_PROPERTY_IAC		"iac"
 #define DEV_PROPERTY_INCMODE		"incmode"
-#define DEV_PROPERTY_INCTYPE		"inctype"
-#define DEV_PROPERTY_INCPARMS		"incparms"
-#define DEV_PROPERTY_PAGEPARMS		"pageparms"
-#define DEV_PROPERTY_PAGETO		"pageto"
-#define DEV_PROPERTY_AFHMODE		"afhmode"
-#define DEV_PROPERTY_ACLMTU		"aclmtu"
-#define DEV_PROPERTY_SCOMTU		"scomtu"
-#define DEV_PROPERTY_PUTKEY		"putkey"
-#define DEV_PROPERTY_DELKEY		"delkey"
 #define DEV_PROPERTY_DEV_INFO		"info"
 
 #define DEV_UP_SIGNATURE			__END_SIG__
 #define DEV_DOWN_SIGNATURE			__END_SIG__
 #define DEV_RESET_SIGNATURE			__END_SIG__
-#define DEV_SET_PROPERTY_SIGNATURE_1		DBUS_TYPE_STRING_AS_STRING \
+#define DEV_SET_PROPERTY_SIGNATURE_BOOL		DBUS_TYPE_STRING_AS_STRING \
 						DBUS_TYPE_BOOLEAN_AS_STRING \
 						__END_SIG__
-#define DEV_SET_PROPERTY_SIGNATURE_2		DBUS_TYPE_STRING_AS_STRING \
+#define DEV_SET_PROPERTY_SIGNATURE_STR		DBUS_TYPE_STRING_AS_STRING \
 						DBUS_TYPE_STRING_AS_STRING \
 						__END_SIG__
-#define DEV_SET_PROPERTY_SIGNATURE_3		DBUS_TYPE_STRING_AS_STRING \
-						DBUS_TYPE_UINT16_AS_STRING \
+#define DEV_SET_PROPERTY_SIGNATURE_BYTE		DBUS_TYPE_STRING_AS_STRING \
+						DBUS_TYPE_BYTE_AS_STRING \
 						__END_SIG__
 
 #define DEV_GET_PROPERTY_SIGNATURE		DBUS_TYPE_STRING_AS_STRING \
