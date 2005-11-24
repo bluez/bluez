@@ -3115,6 +3115,10 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 					status = -1;
 					goto end;
 				}
+				if (!recsize) {
+					sdp_record_free(rec);
+					break;
+				}
 				scanned += recsize;
 				pdata += recsize;
 
