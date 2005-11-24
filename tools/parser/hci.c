@@ -1721,6 +1721,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 	case OGF_LINK_POLICY:
 		switch (ocf) {
 		case OCF_WRITE_LINK_POLICY:
+		case OCF_SNIFF_SUBRATE:
 			generic_response_dump(level, frm);
 			return;
 		}
