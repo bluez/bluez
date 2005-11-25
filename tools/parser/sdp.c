@@ -408,7 +408,7 @@ static inline void print_de(int level, struct frame *frm, int *split, uint16_t *
 
 static inline void print_srv_srch_pat(int level, struct frame *frm)
 {
-	int len, n1, n2;
+	int len, n1 = 0, n2 = 0;
 
 	p_indent(level, frm);
 	printf("pat");
@@ -434,7 +434,7 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 {
 	uint16_t attr_id;
 	uint32_t attr_id_range;
-	int len, n1, n2;
+	int len, n1 = 0, n2 = 0;
 
 	p_indent(level, frm);
 	printf("aid(s)");
@@ -514,7 +514,7 @@ static inline void print_attr_list(int level, struct frame *frm)
 
 static inline void print_attr_lists(int level, struct frame *frm)
 {
-	int n, cnt = 0;
+	int n = 0, cnt = 0;
 	int count = frm->len;
 
 	if (parse_de_hdr(frm, &n) == SDP_DE_SEQ) {
