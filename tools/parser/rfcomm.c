@@ -119,7 +119,7 @@ static inline void mcc_msc(int level, uint8_t *ptr, int len,
 static inline void mcc_rpn(int level, uint8_t *ptr, int len,
 				long_frame_head *head, mcc_long_frame_head *mcc_head)
 {
-	rpn_msg *rpn = (void*) (ptr - STRUCT_END(rpn_msg, mcc_s_head));
+	rpn_msg *rpn = (void *) (ptr - STRUCT_END(rpn_msg, mcc_s_head));
 
 	printf("RPN %s: ", CR_STR(mcc_head));
 	print_rfcomm_hdr(head, ptr, len);
@@ -139,12 +139,12 @@ static inline void mcc_rpn(int level, uint8_t *ptr, int len,
 		rpn->rpn_val.stop_bit, rpn->rpn_val.parity,
 		rpn->rpn_val.parity_type, rpn->rpn_val.xon_input,
 		rpn->rpn_val.xon_output);
+
 	p_indent(level, 0);
 	printf("rtri %d rtro %d rtci %d rtco %d xon %d xoff %d pm 0x%04x\n",
 		rpn->rpn_val.rtr_input, rpn->rpn_val.rtr_output,
 		rpn->rpn_val.rtc_input, rpn->rpn_val.rtc_output,
-		rpn->rpn_val.xon, rpn->rpn_val.xoff,
-		btohs(*(uint16_t *)&(rpn->rpn_val.pm)));
+		rpn->rpn_val.xon, rpn->rpn_val.xoff, btohs(rpn->rpn_val.pm));
 }
 
 static inline void mcc_rls(int level, uint8_t *ptr, int len,

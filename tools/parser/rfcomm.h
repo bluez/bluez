@@ -39,7 +39,6 @@
 #define SET_BIT(pos,bitfield) ((bitfield[(pos)/32]) |= (1 << ((pos) % 32))) 
 #define CLR_BIT(pos,bitfield) ((bitfield[(pos)/32]) &= ((1 << ((pos) % 32)) ^ (~0)))
 
-
 /* Sets the P/F-bit in the control field */
 #define SET_PF(ctr) ((ctr) | (1 << 4)) 
 /* Clears the P/F-bit in the control field */
@@ -114,7 +113,7 @@
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
-typedef struct parameter_mask{
+typedef struct parameter_mask {
 	uint8_t bit_rate:1;
 	uint8_t data_bits:1;
 	uint8_t stop_bit:1;
@@ -132,7 +131,7 @@ typedef struct parameter_mask{
 	uint8_t res2:2;
 } __attribute__ ((packed)) parameter_mask;
 
-typedef struct rpn_values{
+typedef struct rpn_values {
 	uint8_t bit_rate;
 	uint8_t data_bits:2;
 	uint8_t stop_bit:1;
@@ -148,12 +147,13 @@ typedef struct rpn_values{
 	uint8_t res2:2;
 	uint8_t xon;
 	uint8_t xoff;
-	parameter_mask pm;
+	uint16_t pm;
+	//parameter_mask pm;
 } __attribute__ ((packed)) rpn_values;
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
-typedef struct parameter_mask{ 
+typedef struct parameter_mask {
 	uint8_t res1:1;
 	uint8_t xoff:1;
 	uint8_t xon:1;
@@ -162,7 +162,6 @@ typedef struct parameter_mask{
 	uint8_t stop_bit:1;
 	uint8_t data_bits:1;
 	uint8_t bit_rate:1;
-
 	uint8_t res2:2;
 	uint8_t rtc_output:1;
 	uint8_t rtc_input:1;
@@ -173,15 +172,13 @@ typedef struct parameter_mask{
 
 } __attribute__ ((packed)) parameter_mask;
 
-typedef struct rpn_values{ 
+typedef struct rpn_values {
 	uint8_t bit_rate;
-
 	uint8_t res1:2;
 	uint8_t parity_type:2;
 	uint8_t parity:1;
 	uint8_t stop_bit:1;
 	uint8_t data_bits:2;
-
 	uint8_t res2:2;
 	uint8_t rtc_output:1;
 	uint8_t rtc_input:1;
@@ -189,10 +186,10 @@ typedef struct rpn_values{
 	uint8_t rtr_input:1;
 	uint8_t xon_output:1;
 	uint8_t xon_input:1;
-
 	uint8_t xon;
 	uint8_t xoff;
-	parameter_mask pm;
+	uint16_t pm;
+	//parameter_mask pm;
 } __attribute__ ((packed)) rpn_values;
 
 #else
@@ -371,7 +368,7 @@ typedef union long_length {
 	uint16_t val;
 } __attribute__ ((packed)) long_length;
 
-typedef struct short_frame_head { 
+typedef struct short_frame_head {
 	address_field addr;
 	uint8_t control;
 	short_length length;
@@ -382,47 +379,47 @@ typedef struct short_frame {
 	uint8_t data[0];
 } __attribute__ ((packed)) short_frame;
 
-typedef struct long_frame_head { 
+typedef struct long_frame_head {
 	address_field addr;
 	uint8_t control;
 	long_length length;
 	uint8_t data[0];
 } __attribute__ ((packed)) long_frame_head;
 
-typedef struct long_frame { 
+typedef struct long_frame {
 	long_frame_head h;
 	uint8_t data[0];
 } __attribute__ ((packed)) long_frame;
 
-typedef struct mcc_type { 
+typedef struct mcc_type {
 	uint8_t type:6;
 	uint8_t cr:1;
 	uint8_t ea:1;
 } __attribute__ ((packed)) mcc_type;
 
-typedef struct mcc_short_frame_head { 
+typedef struct mcc_short_frame_head {
 	mcc_type type;
 	short_length length;
 	uint8_t value[0];
 } __attribute__ ((packed)) mcc_short_frame_head;
 
-typedef struct mcc_short_frame { 
+typedef struct mcc_short_frame {
 	mcc_short_frame_head h;
 	uint8_t value[0];
 } __attribute__ ((packed)) mcc_short_frame;
 
-typedef struct mcc_long_frame_head { 
+typedef struct mcc_long_frame_head {
 	mcc_type type;
 	long_length length;
 	uint8_t value[0];
 } __attribute__ ((packed)) mcc_long_frame_head;
 
-typedef struct mcc_long_frame { 
+typedef struct mcc_long_frame {
 	mcc_long_frame_head h;
 	uint8_t value[0];
 } __attribute__ ((packed)) mcc_long_frame;
 
-typedef struct v24_signals { 
+typedef struct v24_signals {
 	uint8_t dv:1;
 	uint8_t ic:1;
 	uint8_t reserved:2;
@@ -432,7 +429,7 @@ typedef struct v24_signals {
 	uint8_t ea:1;
 } __attribute__ ((packed)) v24_signals;
 
-typedef struct break_signals { 
+typedef struct break_signals {
 	uint8_t len:4;
 	uint8_t b3:1;
 	uint8_t b2:1;
@@ -440,7 +437,7 @@ typedef struct break_signals {
 	uint8_t ea:1;
 } __attribute__ ((packed)) break_signals;
 
-typedef struct msc_msg { 
+typedef struct msc_msg {
 	short_frame_head s_head;
 	mcc_short_frame_head mcc_s_head;
 	address_field dlci;
@@ -449,7 +446,7 @@ typedef struct msc_msg {
 	uint8_t fcs;
 } __attribute__ ((packed)) msc_msg;
 
-typedef struct rpn_msg { 
+typedef struct rpn_msg {
 	short_frame_head s_head;
 	mcc_short_frame_head mcc_s_head;
 	address_field dlci;
@@ -457,7 +454,7 @@ typedef struct rpn_msg {
 	uint8_t fcs;
 } __attribute__ ((packed)) rpn_msg;
 
-typedef struct rls_msg { 
+typedef struct rls_msg {
 	short_frame_head s_head;
 	mcc_short_frame_head mcc_s_head;
 	address_field dlci;
@@ -466,7 +463,7 @@ typedef struct rls_msg {
 	uint8_t fcs;
 } __attribute__ ((packed)) rls_msg;
 
-typedef struct pn_msg { 
+typedef struct pn_msg {
 	short_frame_head s_head;
 	mcc_short_frame_head mcc_s_head;
 	uint8_t res1:2;
@@ -482,7 +479,7 @@ typedef struct pn_msg {
 	uint8_t fcs;
 } __attribute__ ((packed)) pn_msg;
 
-typedef struct nsc_msg { 
+typedef struct nsc_msg {
 	short_frame_head s_head;
 	mcc_short_frame_head mcc_s_head;
 	mcc_type command_type;
