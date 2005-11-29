@@ -647,6 +647,7 @@ static void usage(void)
 	"  -A, --audio=file           Extract SCO audio data\n"
 	"  -B, --btsnoop              Use BTSnoop file format\n"
 	"  -V, --verbose              Verbose decoding\n"
+	"  -Y, --novendor             No vendor commands or events\n"
 	"  -h, --help                 Give this help list\n"
 	"      --usage                Give a short usage message\n"
 	);
@@ -672,6 +673,8 @@ static struct option main_options[] = {
 	{ "audio",		1, 0, 'A' },
 	{ "btsnoop",		0, 0, 'B' },
 	{ "verbose",		0, 0, 'V' },
+	{ "novendor",		0, 0, 'Y' },
+	{ "nopermcheck",	0, 0, 'Z' },
 	{ "help",		0, 0, 'h' },
 	{ 0 }
 };
@@ -684,7 +687,7 @@ int main(int argc, char *argv[])
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:A:BVZh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:A:BVYZh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -783,6 +786,10 @@ int main(int argc, char *argv[])
 
 		case 'V':
 			flags |= DUMP_VERBOSE;
+			break;
+
+		case 'Y':
+			flags |= DUMP_NOVENDOR;
 			break;
 
 		case 'Z':

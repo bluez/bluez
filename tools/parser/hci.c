@@ -994,17 +994,21 @@ static inline void command_dump(int level, struct frame *frm)
 	if (p_filter(FILT_HCI))
 		return;
 
-	p_indent(level, frm);
+	if (ogf == OGF_VENDOR_CMD && (parser.flags & DUMP_NOVENDOR))
+		return;
 
+	p_indent(level, frm);
 	printf("HCI Command: %s (0x%2.2x|0x%4.4x) plen %d\n", 
 				opcode2str(opcode), ogf, ocf, hdr->plen);
 
 	frm->ptr += HCI_COMMAND_HDR_SIZE;
 	frm->len -= HCI_COMMAND_HDR_SIZE;
 
-	if (ogf == OGF_VENDOR_CMD && ocf == 0 && get_manufacturer() == 10) {
-		csr_dump(level + 1, frm);
-		return;
+	if (ogf == OGF_VENDOR_CMD) {
+	       	if (ocf == 0 && get_manufacturer() == 10) {
+			csr_dump(level + 1, frm);
+			return;
+		}
 	}
 
 	if (!(parser.flags & DUMP_VERBOSE)) {
@@ -1687,6 +1691,9 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 	uint16_t ogf = cmd_opcode_ogf(opcode);
 	uint16_t ocf = cmd_opcode_ocf(opcode);
 
+	if (ogf == OGF_VENDOR_CMD && (parser.flags & DUMP_NOVENDOR))
+		return;
+
 	p_indent(level, frm);
 	printf("%s (0x%2.2x|0x%4.4x) ncmd %d\n",
 				opcode2str(opcode), ogf, ocf, evt->ncmd);
@@ -1864,11 +1871,15 @@ static inline void cmd_status_dump(int level, struct frame *frm)
 {
 	evt_cmd_status *evt = frm->ptr;
 	uint16_t opcode = btohs(evt->opcode);
+	uint16_t ogf = cmd_opcode_ogf(opcode);
+	uint16_t ocf = cmd_opcode_ocf(opcode);
+
+	if (ogf == OGF_VENDOR_CMD && (parser.flags & DUMP_NOVENDOR))
+		return;
 
 	p_indent(level, frm);
 	printf("%s (0x%2.2x|0x%4.4x) status 0x%2.2x ncmd %d\n",
-				opcode2str(opcode), cmd_opcode_ogf(opcode),
-				cmd_opcode_ocf(opcode), evt->status, evt->ncmd);
+			opcode2str(opcode), ogf, ocf, evt->status, evt->ncmd);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -2386,23 +2397,30 @@ static inline void event_dump(int level, struct frame *frm)
 	if (p_filter(FILT_HCI))
 		return;
 
-	p_indent(level, frm);
-
 	if (event <= EVENT_NUM) {
+		p_indent(level, frm);
 		printf("HCI Event: %s (0x%2.2x) plen %d\n",
-			event_str[hdr->evt], hdr->evt, hdr->plen);
+					event_str[hdr->evt], hdr->evt, hdr->plen);
 	} else if (hdr->evt == EVT_TESTING) {
+		p_indent(level, frm);
 		printf("HCI Event: Testing (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
 	} else if (hdr->evt == EVT_VENDOR) {
+		if (parser.flags & DUMP_NOVENDOR)
+			return;
+
+		p_indent(level, frm);
 		printf("HCI Event: Vendor (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
+
 		if (get_manufacturer() == 10) {
 			frm->ptr += HCI_EVENT_HDR_SIZE;
 			frm->len -= HCI_EVENT_HDR_SIZE;
 			csr_dump(level + 1, frm);
 			return;
 		}
-	} else
+	} else {
+		p_indent(level, frm);
 		printf("HCI Event: code 0x%2.2x plen %d\n", hdr->evt, hdr->plen);
+	}
 
 	frm->ptr += HCI_EVENT_HDR_SIZE;
 	frm->len -= HCI_EVENT_HDR_SIZE;
@@ -2604,6 +2622,9 @@ static inline void vendor_dump(int level, struct frame *frm)
 		raw_dump(level, frm);
 		return;
 	}
+
+	if (parser.flags & DUMP_NOVENDOR)
+		return;
 
 	if (get_manufacturer() == 12) {
 		bpa_dump(level, frm);

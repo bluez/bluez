@@ -51,14 +51,15 @@ struct frame {
 /* Parser flags */
 #define DUMP_WIDTH	20
 
-#define DUMP_ASCII	0x01
-#define DUMP_HEX	0x02
-#define DUMP_EXT	0x04
-#define DUMP_RAW	0x08
-#define DUMP_BPA	0x10
-#define DUMP_BTSNOOP	0x20
-#define DUMP_VERBOSE	0x40
-#define DUMP_TSTAMP	0x80
+#define DUMP_ASCII	0x0001
+#define DUMP_HEX	0x0002
+#define DUMP_EXT	0x0004
+#define DUMP_RAW	0x0008
+#define DUMP_BPA	0x0010
+#define DUMP_TSTAMP	0x0100
+#define DUMP_VERBOSE	0x0200
+#define DUMP_BTSNOOP	0x1000
+#define DUMP_NOVENDOR	0x2000
 #define DUMP_TYPE_MASK	(DUMP_ASCII | DUMP_HEX | DUMP_EXT)
 
 /* Parser filter */
