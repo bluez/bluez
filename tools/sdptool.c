@@ -2047,6 +2047,162 @@ done:
 	return ret;
 }
 
+static int add_avrct(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, l2cap, avctp, avrct;
+	sdp_profile_desc_t profile[1];
+	sdp_list_t *aproto, *proto[2];
+	sdp_record_t record;
+	sdp_data_t *psm, *version, *features;
+	uint16_t lp = 0x0017, ver = 0x0100, feat = 0x000f;
+	int ret = 0;
+
+	memset((void *)&record, 0, sizeof(sdp_record_t));
+	record.handle = 0xffffffff;
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(0, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&avrct, AV_REMOTE_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &avrct);
+	sdp_set_service_classes(&record, svclass_id);
+
+	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
+	profile[0].version = 0x0100;
+	pfseq = sdp_list_append(0, &profile[0]);
+	sdp_set_profile_descs(&record, pfseq);
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap);
+	psm = sdp_data_alloc(SDP_UINT16, &lp);
+	proto[0] = sdp_list_append(proto[0], psm);
+	apseq = sdp_list_append(0, proto[0]);
+
+	sdp_uuid16_create(&avctp, AVCTP_UUID);
+	proto[1] = sdp_list_append(0, &avctp);
+	version = sdp_data_alloc(SDP_UINT16, &ver);
+	proto[1] = sdp_list_append(proto[1], version);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(0, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	features = sdp_data_alloc(SDP_UINT16, &feat);
+	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
+
+	sdp_set_info_attr(&record, "AVRCP CT", 0, 0);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		ret = -1;
+		goto done;
+	}
+
+	printf("Remote control service registered\n");
+
+done:
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+	return ret;
+}
+
+static int add_avrtg(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, l2cap, avctp, avrtg;
+	sdp_profile_desc_t profile[1];
+	sdp_list_t *aproto, *proto[2];
+	sdp_record_t record;
+	sdp_data_t *psm, *version, *features;
+	uint16_t lp = 0x0017, ver = 0x0100, feat = 0x000f;
+	int ret = 0;
+
+	memset((void *)&record, 0, sizeof(sdp_record_t));
+	record.handle = 0xffffffff;
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(0, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&avrtg, AV_REMOTE_TARGET_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &avrtg);
+	sdp_set_service_classes(&record, svclass_id);
+
+	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
+	profile[0].version = 0x0100;
+	pfseq = sdp_list_append(0, &profile[0]);
+	sdp_set_profile_descs(&record, pfseq);
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap);
+	psm = sdp_data_alloc(SDP_UINT16, &lp);
+	proto[0] = sdp_list_append(proto[0], psm);
+	apseq = sdp_list_append(0, proto[0]);
+
+	sdp_uuid16_create(&avctp, AVCTP_UUID);
+	proto[1] = sdp_list_append(0, &avctp);
+	version = sdp_data_alloc(SDP_UINT16, &ver);
+	proto[1] = sdp_list_append(proto[1], version);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(0, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	features = sdp_data_alloc(SDP_UINT16, &feat);
+	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
+
+	sdp_set_info_attr(&record, "AVRCP TG", 0, 0);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		ret = -1;
+		goto done;
+	}
+
+	printf("Remote target service registered\n");
+
+done:
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+	return ret;
+}
+
+static unsigned char sr1_uuid[] = {	0xbc, 0x19, 0x9c, 0x24, 0x95, 0x8b, 0x4c, 0xc0,
+					0xa2, 0xcb, 0xfd, 0x8a, 0x30, 0xbf, 0x32, 0x06 };
+
+static int add_sr1(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass;
+	uuid_t root_uuid, svclass_uuid;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid128_create(&svclass_uuid, (void *) sr1_uuid);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+
+	sdp_set_info_attr(&record, "TOSHIBA SR-1", NULL, NULL);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("Toshiba Speech Recognition SR-1 service record registered\n");
+
+	return 0;
+}
+
 static unsigned char syncml_uuid[] = {	0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x10, 0x00,
 					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x02 };
 
@@ -2283,38 +2439,6 @@ static int add_pcsuite(sdp_session_t *session, svc_info_t *si)
 	return 0;
 }
 
-static unsigned char sr1_uuid[] = {	0xbc, 0x19, 0x9c, 0x24, 0x95, 0x8b, 0x4c, 0xc0,
-					0xa2, 0xcb, 0xfd, 0x8a, 0x30, 0xbf, 0x32, 0x06 };
-
-static int add_sr1(sdp_session_t *session, svc_info_t *si)
-{
-	sdp_record_t record;
-	sdp_list_t *root, *svclass;
-	uuid_t root_uuid, svclass_uuid;
-
-	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
-
-	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
-	root = sdp_list_append(NULL, &root_uuid);
-	sdp_set_browse_groups(&record, root);
-
-	sdp_uuid128_create(&svclass_uuid, (void *) sr1_uuid);
-	svclass = sdp_list_append(NULL, &svclass_uuid);
-	sdp_set_service_classes(&record, svclass);
-
-	sdp_set_info_attr(&record, "TOSHIBA SR-1", NULL, NULL);
-
-	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
-		printf("Service Record registration failed\n");
-		return -1;
-	}
-
-	printf("Toshiba Speech Recognition SR-1 service record registered\n");
-
-	return 0;
-}
-
 struct {
 	char		*name;
 	uint16_t	class;
@@ -2344,14 +2468,16 @@ struct {
 
 	{ "A2SRC",	AUDIO_SOURCE_SVCLASS_ID,	add_a2source	},
 	{ "A2SNK",	AUDIO_SINK_SVCLASS_ID,		add_a2sink	},
+	{ "AVRCT",	AV_REMOTE_SVCLASS_ID,		add_avrct	},
+	{ "AVRTG",	AV_REMOTE_TARGET_SVCLASS_ID,	add_avrtg	},
 
+	{ "SR1",	0,				add_sr1,	sr1_uuid	},
 	{ "SYNCML",	0,				add_syncml,	syncml_uuid	},
 	{ "ACTIVESYNC",	0,				add_activesync,	async_uuid	},
 	{ "HOTSYNC",	0,				add_hotsync,	hotsync_uuid	},
 	{ "PALMOS",	0,				add_palmos,	palmos_uuid	},
 	{ "NOKID",	0,				add_nokiaid,	nokid_uuid	},
 	{ "PCSUITE",	0,				add_pcsuite,	pcsuite_uuid	},
-	{ "SR1",	0,				add_sr1,	sr1_uuid	},
 
 	{ 0 }
 };
