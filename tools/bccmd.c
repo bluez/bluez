@@ -957,6 +957,9 @@ static void usage(void)
 		"\t-h, --help         Display help\n"
 		"\n");
 
+	printf("Transports:\n"
+		"\tHCI USB BCSP H4 3WIRE\n\n");
+
 	printf("Commands:\n");
 	for (i = 0; commands[i].str; i++)
 		printf("\t%-10s %-14s\t%s\n", commands[i].str,
