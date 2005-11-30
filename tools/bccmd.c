@@ -337,6 +337,30 @@ static int cmd_rand(int transport, int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_buildname(int transport, int argc, char *argv[])
+{
+	uint8_t array[130];
+	char name[64];
+	int i, err;
+
+	OPT_HELP(0, NULL);
+
+	memset(array, 0, sizeof(array));
+
+	err = transport_read(transport, CSR_VARID_READ_BUILD_NAME, array, 128);
+	if (err < 0) {
+		errno = -err;
+		return -1;
+	}
+
+	for (i = 0; i < sizeof(name); i++)
+		name[i] = array[(i * 2) + 4];
+
+	printf("Build name: %s\n", name);
+
+	return 0;
+}
+
 static int cmd_panicarg(int transport, int argc, char *argv[])
 {
 	uint8_t array[8];
@@ -901,6 +925,7 @@ static struct {
 	{ "keylen",    cmd_keylen,    "<handle>",      "Get current crypt key length"   },
 	{ "clock",     cmd_clock,     "",              "Get local Bluetooth clock"      },
 	{ "rand",      cmd_rand,      "",              "Get random number"              },
+	{ "buildname", cmd_buildname, "",              "Get the full build name"        },
 	{ "panicarg",  cmd_panicarg,  "",              "Get panic code argument"        },
 	{ "faultarg",  cmd_faultarg,  "",              "Get fault code argument"        },
 	{ "coldreset", cmd_coldreset, "",              "Perform cold reset"             },
