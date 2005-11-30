@@ -4,7 +4,7 @@ l2ping \- Send L2CAP echo request and receive answer
 .SH SYNOPSIS
 .B l2ping
 [
-.I -S source addr
+.I -i <hciX>
 ] [
 .I -s size
 ] [
@@ -23,8 +23,13 @@ L2ping sends a L2CAP echo request to the Bluetooth MAC address
 given in dotted hex notation.
 .SH OPTIONS
 .TP
-.I -S source addr
-Select address to be used as source address for the request.
+.I -i " <hciX>"
+The command is applied to device
+.I
+hciX
+, which must be the name of an installed Bluetooth device (X = 0, 1, 2, ...)
+If not specified, the command will be sent to the first available Bluetooth
+device.
 .TP
 .I -s size
 The
@@ -36,10 +41,10 @@ Send
 .B count
 number of packets then exit.
 .TP
-.I -c timeout
+.I -c \fBtimeout\fP
 Wait
-.B timeout
-for the response.
+.B \fBtimeout\fP
+seconds for the response.
 .TP
 .I -f
 Kind of flood ping. Use with care! It reduces the delay time between packets
@@ -53,4 +58,4 @@ or
 .SH AUTHORS
 Written by Maxim Krasnyansky <maxk@qualcomm.com> and Marcel Holtmann <marcel@holtmann.org>
 .PP
-man page by Nils Faerber <nils@kernelconcepts.de>
+man page by Nils Faerber <nils@kernelconcepts.de>.
