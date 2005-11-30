@@ -405,6 +405,9 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	case 0x3012:
 		psmemtype_dump(level + 1, "PS_MEMORY_TYPE", frm);
 		break;
+	case 0x301c:
+		complex_dump(level + 1, "READ_BUILD_NAME", frm);
+		break;
 	case 0x4001:
 		valueless_dump(level + 1, "COLD_RESET", frm);
 		break;
