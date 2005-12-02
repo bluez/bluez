@@ -34,33 +34,11 @@
 #include <termios.h>
 
 #include "csr.h"
+#include "ubcsp.h"
 
 static uint16_t seqnum = 0x0000;
 
 static int fd = -1;
-
-#ifdef HAVE_UBCSP
-#include "ubcsp.h"
-#else
-#define UBCSP_PACKET_SENT     0x01
-#define UBCSP_PACKET_RECEIVED 0x02
-#define UBCSP_PEER_RESET      0x04
-#define UBCSP_PACKET_ACK      0x08
-
-struct ubcsp_packet
-{
-	uint8_t  channel;
-	uint8_t  reliable;
-	uint8_t  use_crc;
-	uint16_t length;
-	uint8_t *payload;
-};
-
-static inline void ubcsp_initialize(void) {}
-static inline void ubcsp_send_packet(struct ubcsp_packet *send_packet) {}
-static inline void ubcsp_receive_packet(struct ubcsp_packet *receive_packet) {}
-static inline uint8_t ubcsp_poll(uint8_t *activity) { return 20; }
-#endif
 
 static struct ubcsp_packet send_packet;
 static uint8_t send_buffer[512];
