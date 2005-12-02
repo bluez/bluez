@@ -102,8 +102,10 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_L2CAP,                    "L2CAP"        },
 	{ SDP_UUID_BNEP,                     "BNEP"         }, /* PAN */
 	{ SDP_UUID_HIDP,                     "HIDP"         }, /* HID */
+	{ SDP_UUID_AVCTP,                    "AVCTP"        }, /* AVCTP */
 	{ SDP_UUID_AVDTP,                    "AVDTP"        }, /* AVDTP */
 	{ SDP_UUID_CMTP,                     "CMTP"         }, /* CIP */
+	{ SDP_UUID_UDI_C_PLANE,              "UDI_C-Plane"  }, /* UDI */
 	{ SDP_UUID_SERVICE_DISCOVERY_SERVER, "SDServer"     },
 	{ SDP_UUID_BROWSE_GROUP_DESCRIPTOR,  "BrwsGrpDesc"  },
 	{ SDP_UUID_PUBLIC_BROWSE_GROUP,      "PubBrwsGrp"   },
@@ -118,7 +120,10 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_CORDLESS_TELEPHONY,       "CordlessTel"  },
 	{ SDP_UUID_AUDIO_SOURCE,             "AudioSource"  }, /* A2DP */
 	{ SDP_UUID_AUDIO_SINK,               "AudioSink"    }, /* A2DP */
+	{ SDP_UUID_AV_REMOTE_TARGET,         "AVRemTarget"  }, /* AVRCP */
 	{ SDP_UUID_ADVANCED_AUDIO,           "AdvAudio"     }, /* A2DP */
+	{ SDP_UUID_AV_REMOTE,                "AVRemote"     }, /* AVRCP */
+	{ SDP_UUID_VIDEO_CONFERENCING,       "VideoConf"    }, /* VCP */
 	{ SDP_UUID_INTERCOM,                 "Intercom"     },
 	{ SDP_UUID_FAX,                      "Fax"          },
 	{ SDP_UUID_HEADSET_AUDIO_GATEWAY,    "Headset AG"   },
@@ -127,15 +132,25 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_PANU,                     "PANU"         }, /* PAN */
 	{ SDP_UUID_NAP,                      "NAP"          }, /* PAN */
 	{ SDP_UUID_GN,                       "GN"           }, /* PAN */
+	{ SDP_UUID_DIRECT_PRINTING,          "DirectPrint"  }, /* BPP */
+	{ SDP_UUID_REFERENCE_PRINTING,       "RefPrint"     }, /* BPP */
 	{ SDP_UUID_IMAGING,                  "Imaging"      }, /* BIP */
 	{ SDP_UUID_IMAGING_RESPONDER,        "ImagingResp"  }, /* BIP */
 	{ SDP_UUID_HANDSFREE,                "Handsfree"    },
 	{ SDP_UUID_HANDSFREE_AUDIO_GATEWAY,  "Handsfree AG" },
+	{ SDP_UUID_DIRECT_PRINTING_REF_OBJS, "RefObjsPrint" }, /* BPP */
+	{ SDP_UUID_REFLECTED_UI,             "ReflectedUI"  }, /* BPP */
+	{ SDP_UUID_BASIC_PRINTING,           "BasicPrint"   }, /* BPP */
+	{ SDP_UUID_PRINTING_STATUS,          "PrintStatus"  }, /* BPP */
 	{ SDP_UUID_HUMAN_INTERFACE_DEVICE,   "HID"          }, /* HID */
-	{ SDP_UUID_HARDCOPY_CABLE_REPLACE,   "HCRP",        }, /* HCRP */
-	{ SDP_UUID_HCR_PRINT,                "HCRPrint",    }, /* HCRP */
-	{ SDP_UUID_HCR_SCAN,                 "HCRScan",     }, /* HCRP */
+	{ SDP_UUID_HARDCOPY_CABLE_REPLACE,   "HCRP"         }, /* HCRP */
+	{ SDP_UUID_HCR_PRINT,                "HCRPrint"     }, /* HCRP */
+	{ SDP_UUID_HCR_SCAN,                 "HCRScan"      }, /* HCRP */
 	{ SDP_UUID_COMMON_ISDN_ACCESS,       "CIP"          }, /* CIP */
+	{ SDP_UUID_VIDEO_CONFERENCING_GW,    "VideoConf GW" }, /* VCP */
+	{ SDP_UUID_UDI_MT,                   "UDI MT"       }, /* UDI */
+	{ SDP_UUID_UDI_TA,                   "UDI TA"       }, /* UDI */
+	{ SDP_UUID_AUDIO_VIDEO,              "AudioVideo"   }, /* VCP */
 	{ SDP_UUID_SIM_ACCESS,               "SAP"          }, /* SAP */
 	{ SDP_UUID_PHONEBOOK_ACCESS_PCE,     "PBAP PCE"     }, /* PBAP */
 	{ SDP_UUID_PHONEBOOK_ACCESS_PSE,     "PBAP PSE"     }, /* PBAP */
@@ -144,6 +159,11 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_GENERIC_FILE_TRANSFER,    "FileTrnsf"    },
 	{ SDP_UUID_GENERIC_AUDIO,            "Audio"        },
 	{ SDP_UUID_GENERIC_TELEPHONY,        "Telephony"    },
+	{ SDP_UUID_UPNP_SERVICE,             "UPNP"         }, /* ESDP */
+	{ SDP_UUID_UPNP_IP_SERVICE,          "UPNP IP"      }, /* ESDP */
+	{ SDP_UUID_ESDP_UPNP_IP_PAN,         "UPNP PAN"     }, /* ESDP */
+	{ SDP_UUID_ESDP_UPNP_IP_LAP,         "UPNP LAP"     }, /* ESDP */
+	{ SDP_UUID_ESDP_UPNP_L2CAP,          "UPNP L2CAP"   }, /* ESDP */
 	{ SDP_UUID_VIDEO_SOURCE,             "VideoSource"  }, /* VDP */
 	{ SDP_UUID_VIDEO_SINK,               "VideoSink"    }, /* VDP */
 	{ SDP_UUID_VIDEO_DISTRIBUTION,       "VideoDist"    }, /* VDP */
@@ -416,7 +436,7 @@ static inline void print_srv_srch_pat(int level, struct frame *frm)
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
 		len = frm->len;
 		while (len - frm->len < n1 && frm->len > 0) {
-			if (parse_de_hdr(frm,&n2) == SDP_DE_UUID) {
+			if (parse_de_hdr(frm, &n2) == SDP_DE_UUID) {
 				print_uuid(n2, frm, NULL, NULL);
 			} else {
 				printf("\nERROR: Unexpected syntax (UUID)\n");

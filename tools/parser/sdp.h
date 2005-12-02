@@ -42,8 +42,10 @@
 #define SDP_UUID_HARDCOPY_CONTROL_CHANNEL              0x0012 /* HCRP */
 #define SDP_UUID_HARDCOPY_DATA_CHANNEL                 0x0014 /* HCRP */
 #define SDP_UUID_HARDCOPY_NOTIFICATION                 0x0016 /* HCRP */
+#define SDP_UUID_AVCTP                                 0x0017 /* AVCTP */
 #define SDP_UUID_AVDTP                                 0x0019 /* AVDTP */
 #define SDP_UUID_CMTP                                  0x001B /* CIP */
+#define SDP_UUID_UDI_C_PLANE                           0x001D /* UDI */
 #define SDP_UUID_L2CAP                                 0x0100
 
 /* Bluetooth assigned UUIDs for Service Classes */
@@ -61,7 +63,10 @@
 #define SDP_UUID_CORDLESS_TELEPHONY                    0x1109
 #define SDP_UUID_AUDIO_SOURCE                          0x110a /* A2DP */
 #define SDP_UUID_AUDIO_SINK                            0x110b /* A2DP */
+#define SDP_UUID_AV_REMOTE_TARGET                      0x110c /* AVRCP */
 #define SDP_UUID_ADVANCED_AUDIO                        0x110d /* A2DP */
+#define SDP_UUID_AV_REMOTE                             0x110e /* AVRCP */
+#define SDP_UUID_VIDEO_CONFERENCING                    0x110f /* VCP */
 #define SDP_UUID_INTERCOM                              0x1110
 #define SDP_UUID_FAX                                   0x1111
 #define SDP_UUID_HEADSET_AUDIO_GATEWAY                 0x1112
@@ -70,17 +75,28 @@
 #define SDP_UUID_PANU                                  0x1115 /* PAN */
 #define SDP_UUID_NAP                                   0x1116 /* PAN */
 #define SDP_UUID_GN                                    0x1117 /* PAN */
+#define SDP_UUID_DIRECT_PRINTING                       0x1118 /* BPP */
+#define SDP_UUID_REFERENCE_PRINTING                    0x1119 /* BPP */
 #define SDP_UUID_IMAGING                               0x111a /* BIP */
 #define SDP_UUID_IMAGING_RESPONDER                     0x111b /* BIP */
 #define SDP_UUID_IMAGING_AUTOMATIC_ARCHIVE             0x111c /* BIP */
 #define SDP_UUID_IMAGING_REFERENCED_OBJECTS            0x111d /* BIP */
 #define SDP_UUID_HANDSFREE                             0x111e
 #define SDP_UUID_HANDSFREE_AUDIO_GATEWAY               0x111f
+#define SDP_UUID_DIRECT_PRINTING_REF_OBJS              0x1120 /* BPP */
+#define SDP_UUID_DIRECT_PRINTING_REFERENCE_OBJECTS     0x1120 /* BPP */
+#define SDP_UUID_REFLECTED_UI                          0x1121 /* BPP */
+#define SDP_UUID_BASIC_PRINTING                        0x1122 /* BPP */
+#define SDP_UUID_PRINTING_STATUS                       0x1123 /* BPP */
 #define SDP_UUID_HUMAN_INTERFACE_DEVICE                0x1124 /* HID */
 #define SDP_UUID_HARDCOPY_CABLE_REPLACE                0x1125 /* HCRP */
 #define SDP_UUID_HCR_PRINT                             0x1126 /* HCRP */
 #define SDP_UUID_HCR_SCAN                              0x1127 /* HCRP */
 #define SDP_UUID_COMMON_ISDN_ACCESS                    0x1128 /* CIP */
+#define SDP_UUID_VIDEO_CONFERENCING_GW                 0x1129 /* VCP */
+#define SDP_UUID_UDI_MT                                0x112a /* UDI */
+#define SDP_UUID_UDI_TA                                0x112b /* UDI */
+#define SDP_UUID_AUDIO_VIDEO                           0x112c /* VCP */
 #define SDP_UUID_SIM_ACCESS                            0x112d /* SAP */
 #define SDP_UUID_PHONEBOOK_ACCESS_PCE                  0x112e /* PBAP */
 #define SDP_UUID_PHONEBOOK_ACCESS_PSE                  0x112f /* PBAP */
@@ -89,6 +105,11 @@
 #define SDP_UUID_GENERIC_FILE_TRANSFER                 0x1202
 #define SDP_UUID_GENERIC_AUDIO                         0x1203
 #define SDP_UUID_GENERIC_TELEPHONY                     0x1204
+#define SDP_UUID_UPNP_SERVICE                          0x1205 /* ESDP */
+#define SDP_UUID_UPNP_IP_SERVICE                       0x1206 /* ESDP */
+#define SDP_UUID_ESDP_UPNP_IP_PAN                      0x1300 /* ESDP */
+#define SDP_UUID_ESDP_UPNP_IP_LAP                      0x1301 /* ESDP */
+#define SDP_UUID_ESDP_UPNP_L2CAP                       0x1302 /* ESDP */
 #define SDP_UUID_VIDEO_SOURCE                          0x1303 /* VDP */
 #define SDP_UUID_VIDEO_SINK                            0x1304 /* VDP */
 #define SDP_UUID_VIDEO_DISTRIBUTION                    0x1305 /* VDP */
