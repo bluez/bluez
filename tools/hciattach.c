@@ -968,7 +968,7 @@ int main(int argc, char *argv[])
 	int send_break = 0;
 	pid_t pid;
 	struct sigaction sa;
-	char dev[20];
+	char dev[PATH_MAX];
 
 	detach = 1;
 	printpid = 0;
