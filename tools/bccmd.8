@@ -1,26 +1,45 @@
-.TH BCCMD 8 "Sep 30 2005" BlueZ "Linux System Administration"
+.TH BCCMD 8 "Dec 6 2005" BlueZ "Linux System Administration"
 .SH NAME
 bccmd \- Utility for the CSR BCCMD interface
 .SH SYNOPSIS
 .B bccmd
 .br
-.B bccmd [-i <dev>] <command>
+.B bccmd [-t <transport>] [-d <device>] <command> [<args>]
 .br
-
+.B bccmd [-h --help]
+.br
 .SH DESCRIPTION
-.LP
 .B
 bccmd
 issues BlueCore commands to
 .B
 Cambridge Silicon Radio
-devices. If run without the <command> argument, a short help page will be diaplayed.
-.PP
-
+devices. If run without the <command> argument, a short help page will be displayed.
 .SH OPTIONS
 .TP
-.BI -i\ <dev>
-Specify a particular device to operate on. If not specified, default is the first available device.
+.BI -t\ <transport>
+Specify the communication transport. Valid options are:
+.RS
+.TP
+.BI HCI
+Local device with Host Controller Interface (default).
+.TP
+.BI USB
+Direct USB connection.
+.TP
+.BI BCSP
+Blue Core Serial Protocol.
+.TP
+.BI H4
+H4 serial protocol.
+.TP
+.BI 3WIRE
+3WIRE protocol (not implemented).
+.SH
+.TP
+.BI -d\ <dev>
+Specify a particular device to operate on. If not specified, default is the first available HCI device
+or /dev/ttyS0 for serial transports.
 .SH COMMANDS
 .TP
 .BI builddef
@@ -34,6 +53,9 @@ Get local Bluetooth clock
 .TP
 .BI rand
 Get random number
+.TP
+.BI buildname
+Get the full build name
 .TP
 .BI panicarg
 Get panic code argument
@@ -52,6 +74,34 @@ Disable TX on the device
 .TP
 .BI enabletx
 Enable TX on the device
+.TP
+.BI memtypes
+Get memory types
+.TP
+.BI psget\ <key>
+Get value for PS key
+.TP
+.BI psset\ <key>\ <value>
+Set value for PS key
+.TP
+.BI psclr\ <key>
+Clear value for PS key
+.TP
+.BI pslist
+List all PS keys
+.TP
+.BI psread
+Read all PS keys
+.TP
+.BI psload\ <file>
+Load all PS keys from PSR file
+.TP
+.BI pscheck\ <file>
+Check syntax of PSR file
+.SH KEYS
+bdaddr country devclass keymin keymax features commands version
+remver hciextn mapsco baudrate hostintf anafreq anaftrim usbvid
+usbpid dfupid bootmode
 .SH AUTHORS
 Written by Marcel Holtmann <marcel@holtmann.org>,
 man page by Adam Laurie <adam@algroup.co.uk>
