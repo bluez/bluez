@@ -648,7 +648,7 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
  */
 static int swave(int fd, struct uart_t *u, struct termios *ti)
 {
-	struct timespec tm = {0, 500000};
+	struct timespec tm = { 0, 500000 };
 	char cmd[10], rsp[100];
 	int r;
 
@@ -688,7 +688,7 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 	}
 
 	/* Send initialization command */
-	if (write(fd, cmd, 9) != 9) {
+	if (write(fd, cmd, 10) != 10) {
 		perror("Failed to write init command");
 		return -1;
 	}
@@ -720,15 +720,16 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 		return -1;
 	}
 
-	// we probably got the reply. Now we must send the "soft reset":
+	// we probably got the reply. Now we must send the "soft reset"
+	// which is standard HCI RESET.
+
 	cmd[0] = HCI_COMMAND_PKT;	// it's a command packet
-	cmd[1] = 0x0B;			// OCF 0x0B	= param access set	
-	cmd[2] = 0xfc;			// OGF bx111111 = vendor specific
-	cmd[3] = 0x01;			// 1 byte of data following 
-	cmd[4] = 0x03;			// HCI Reset Subcommand
-			
-	// Send initialization command
-	if (write(fd, cmd, 5) != 5) {
+	cmd[1] = 0x03;
+	cmd[2] = 0x0c;
+	cmd[3] = 0x00;
+
+	/* Send reset command */
+	if (write(fd, cmd, 4) != 4) {
 		perror("Can't write Silicon Wave reset cmd.");
 		return -1;
 	}
