@@ -770,7 +770,8 @@ static inline void set_event_flt_dump(int level, struct frame *frm)
 	set_event_flt_cp *cp = frm->ptr;
 
 	p_indent(level, frm);
-	printf("type %d condition %d\n", cp->flt_type, cp->cond_type);
+	printf("type %d condition %d\n", cp->flt_type,
+				(cp->flt_type == 0) ? 0 : cp->cond_type);
 
 	switch (cp->flt_type) {
 	case FLT_CLEAR_ALL:
