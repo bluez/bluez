@@ -102,10 +102,12 @@ int sdp_get_string_attr(const sdp_record_t *rec, uint16_t attr, char *value, int
  * Basic sdp data functions
  */
 sdp_data_t *sdp_data_alloc(uint8_t dtd, const void *value);
+sdp_data_t *sdp_data_alloc_with_length(uint8_t dtd, const void *value, uint32_t length);
 void sdp_data_free(sdp_data_t *data);
 sdp_data_t *sdp_data_get(const sdp_record_t *rec, uint16_t attr_id);
 
 sdp_data_t *sdp_seq_alloc(void **dtds, void **values, int len);
+sdp_data_t *sdp_seq_alloc_with_length(void **dtds, void **values, int *length, int len);
 sdp_data_t *sdp_seq_append(sdp_data_t *seq, sdp_data_t *data);
 
 int sdp_attr_add(sdp_record_t *rec, uint16_t attr, sdp_data_t *data);

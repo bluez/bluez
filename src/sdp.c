@@ -344,10 +344,9 @@ void sdp_uuid_print(const uuid_t *uuid)
 }
 #endif
 
-sdp_data_t *sdp_data_alloc(uint8_t dtd, const void *value)
+sdp_data_t *sdp_data_alloc_with_length(uint8_t dtd, const void *value, uint32_t length)
 {
 	sdp_data_t *seq;
-	int len = 0;
 	sdp_data_t *d = (sdp_data_t *) malloc(sizeof(sdp_data_t));
 
 	if (!d)
@@ -414,21 +413,25 @@ sdp_data_t *sdp_data_alloc(uint8_t dtd, const void *value)
 		d->unitSize += sizeof(uint128_t);
 		break;
 	case SDP_URL_STR8:
-	case SDP_TEXT_STR8:
 	case SDP_URL_STR16:
+	case SDP_TEXT_STR8:
 	case SDP_TEXT_STR16:
-		if (!value)
-			goto out_error;
+		if (!value) {
+			free(d);
+			return NULL;
+		}
 
-		len = strlen(value);
-		d->unitSize += len;
-		if (len <= USHRT_MAX) {
-			d->val.str = (char *) malloc(len + 1);
-			if (!d->val.str)
-				goto out_error;
+		d->unitSize += length;
+		if (length <= USHRT_MAX) {
+			d->val.str = malloc(length);
+			if (!d->val.str) {
+				free(d);
+				return NULL;
+			}
 
-			strcpy(d->val.str, value);
-			if (len <= UCHAR_MAX) {
+			memcpy(d->val.str, value, length);
+
+			if (length <= UCHAR_MAX) {
 				d->unitSize += sizeof(uint8_t);
 				if (dtd != SDP_URL_STR8 && dtd != SDP_TEXT_STR8) {
 					if (dtd == SDP_URL_STR16)
@@ -445,7 +448,8 @@ sdp_data_t *sdp_data_alloc(uint8_t dtd, const void *value)
 			}
 		} else {
 			SDPERR("Strings of size > USHRT_MAX not supported\n");
-			goto out_error;
+			free(d);
+			d = NULL;
 		}
 		break;
 	case SDP_URL_STR32:
@@ -470,13 +474,33 @@ sdp_data_t *sdp_data_alloc(uint8_t dtd, const void *value)
 			d->unitSize += seq->unitSize;
 		break;
 	default:
-		goto out_error;
+		free(d);
+		d = NULL;
 	}
-	return d;
 
-out_error:
-	free(d);
-	return NULL;
+	return d;
+}
+
+sdp_data_t *sdp_data_alloc(uint8_t dtd, const void *value)
+{
+	uint32_t length;
+
+	switch (dtd) {
+	case SDP_URL_STR8:
+	case SDP_URL_STR16:
+	case SDP_TEXT_STR8:
+	case SDP_TEXT_STR16:
+		if (!value)
+			return NULL;
+
+		length = strlen((char *) value);
+		break;
+	default:
+		length = 0;
+		break;
+	}
+
+	return sdp_data_alloc_with_length(dtd, value, length);
 }
 
 sdp_data_t *sdp_seq_append(sdp_data_t *seq, sdp_data_t *d)
@@ -491,6 +515,34 @@ sdp_data_t *sdp_seq_append(sdp_data_t *seq, sdp_data_t *d)
 	return seq;
 }
 
+sdp_data_t *sdp_seq_alloc_with_length(void **dtds, void **values, int *length, int len)
+{
+	sdp_data_t *curr = NULL, *seq = NULL;
+	int i;
+
+	for (i = 0; i < len; i++) {
+		sdp_data_t *data;
+		int8_t dtd = *(uint8_t *) dtds[i];
+
+		if (dtd >= SDP_SEQ8 && dtd <= SDP_ALT32)
+			data = (sdp_data_t *) values[i];
+		else
+			data = sdp_data_alloc_with_length(dtd, values[i], length[i]);
+
+		if (!data)
+			return NULL;
+
+		if (curr)
+			curr->next = data;
+		else
+			seq = data;
+
+		curr = data;
+	}
+
+	return sdp_data_alloc_with_length(SDP_SEQ8, seq, length[i]);
+}
+
 sdp_data_t *sdp_seq_alloc(void **dtds, void **values, int len)
 {
 	sdp_data_t *curr = NULL, *seq = NULL;
@@ -498,19 +550,24 @@ sdp_data_t *sdp_seq_alloc(void **dtds, void **values, int len)
 
 	for (i = 0; i < len; i++) {
 		sdp_data_t *data;
-		uint8_t dtd = *(uint8_t *)dtds[i];
+		uint8_t dtd = *(uint8_t *) dtds[i];
+
 		if (dtd >= SDP_SEQ8 && dtd <= SDP_ALT32)
-			data = (sdp_data_t *)values[i];
+			data = (sdp_data_t *) values[i];
 		else
 			data = sdp_data_alloc(dtd, values[i]);
+
 		if (!data)
 			return NULL;
+
 		if (curr)
 			curr->next = data;
 		else
 			seq = data;
+
 		curr = data;
 	}
+
 	return sdp_data_alloc(SDP_SEQ8, seq);
 }
 
@@ -565,6 +622,7 @@ int sdp_set_data_type(sdp_buf_t *buf, uint8_t dtd)
 
 	*p++ = dtd;
 	buf->data_size += sizeof(uint8_t);
+
 	switch (dtd) {
 	case SDP_SEQ8:
 	case SDP_TEXT_STR8:
@@ -585,6 +643,7 @@ int sdp_set_data_type(sdp_buf_t *buf, uint8_t dtd)
 		buf->data_size += sizeof(uint32_t);
 		break;
 	}
+
 	return buf->data_size - orig;
 }
 
@@ -607,6 +666,7 @@ static int get_data_size(sdp_buf_t *buf, sdp_data_t *sdpdata)
 
 	for (d = sdpdata->val.dataseq; d; d = d->next)
 		n += sdp_gen_pdu(buf, d);
+
 	return n;
 }
 
@@ -622,6 +682,7 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	uint8_t *seqp = buf->data + buf->data_size;
 
 	pdu_size = sdp_set_data_type(buf, dtd);
+
 	switch (dtd) {
 	case SDP_DATA_NIL:
 		break;
@@ -675,9 +736,13 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 		data_size = sizeof(uint128_t);
 		break;
 	case SDP_TEXT_STR8:
-	case SDP_URL_STR8:
 	case SDP_TEXT_STR16:
 	case SDP_TEXT_STR32:
+		src = (unsigned char *)d->val.str;
+		data_size = d->unitSize - sizeof(uint8_t);
+		sdp_set_seq_len(seqp, data_size);
+		break;
+	case SDP_URL_STR8:
 	case SDP_URL_STR16:
 	case SDP_URL_STR32:
 		src = (unsigned char *)d->val.str;
@@ -715,6 +780,7 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	default:
 		break;
 	}
+
 	if (!is_seq && !is_alt) {
 		if (src && buf) {
 			memcpy(buf->data + buf->data_size, src, data_size);
@@ -722,7 +788,9 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 		} else if (dtd != SDP_DATA_NIL)
 			SDPDBG("Gen PDU : Cant copy from NULL source or dest\n");
 	}
+
 	pdu_size += data_size;
+
 	return pdu_size;
 }
 
