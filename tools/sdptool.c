@@ -561,7 +561,6 @@ static void print_tree_attr(sdp_record_t *rec)
 static void print_raw_data(sdp_data_t *data, int indent)
 {
 	struct uuid_def *def;
-	char *str;
 	int i, hex;
 
 	if (!data)
@@ -661,25 +660,18 @@ static void print_raw_data(sdp_data_t *data, int indent)
 	case SDP_TEXT_STR8:
 	case SDP_TEXT_STR16:
 	case SDP_TEXT_STR32:
-		str = data->val.str;
-		if (data->unitSize > strlen(str) + 1) {
-			hex = 0;
-			for (i = 0; i < data->unitSize - 1; i++)
-				if (!isprint(str[i])) {
-					hex = 1;
-					break;
-				}
-			if (str[data->unitSize - 1] != '\0')
+		hex = 0;
+		for (i = 0; i < data->unitSize; i++)
+			if (!isprint(data->val.str[i])) {
 				hex = 1;
-		} else
-			hex = 0;
-		if (hex) {
-			printf("String");
-			for (i = 0; i < data->unitSize; i++)
-				printf(" %02x", (unsigned char) str[i]);
-			printf("\n");
-		} else
-			printf("String %s\n", str);
+				break;
+			}
+		for (i = 0; i < data->unitSize; i++)
+			if (hex)
+				printf(" %02x", (unsigned char) data->val.str[i]);
+			else
+				printf("%c", data->val.str[i]);
+		printf("\n");
 		break;
 	case SDP_URL_STR8:
 	case SDP_URL_STR16:
