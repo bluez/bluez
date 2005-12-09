@@ -175,19 +175,21 @@ int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_co
 	search = sdp_list_append(NULL, &svclass);
 	attrid = sdp_list_append(NULL, &range);
 
-	err = sdp_service_search_attr_req(s, search, SDP_ATTR_REQ_RANGE, attrid, &pnp_rsp);
+	err = sdp_service_search_attr_req(s, search,
+					SDP_ATTR_REQ_RANGE, attrid, &pnp_rsp);
 
-	sdp_list_free(search, 0);
-	sdp_list_free(attrid, 0);
+	sdp_list_free(search, NULL);
+	sdp_list_free(attrid, NULL);
 
 	sdp_uuid16_create(&svclass, HID_SVCLASS_ID);
 	search = sdp_list_append(NULL, &svclass);
 	attrid = sdp_list_append(NULL, &range);
 
-	err = sdp_service_search_attr_req(s, search, SDP_ATTR_REQ_RANGE, attrid, &hid_rsp);
+	err = sdp_service_search_attr_req(s, search,
+					SDP_ATTR_REQ_RANGE, attrid, &hid_rsp);
 
-	sdp_list_free(search, 0);
-	sdp_list_free(attrid, 0);
+	sdp_list_free(search, NULL);
+	sdp_list_free(attrid, NULL);
 
 	memset(&addr, 0, sizeof(addr));
 	addrlen = sizeof(addr);
@@ -270,19 +272,66 @@ int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_co
 
 int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t *uuid, uint8_t *channel)
 {
+	uint16_t attr = SDP_ATTR_PROTO_DESC_LIST;
 	sdp_session_t *s;
+	sdp_list_t *search, *attrid, *rsp;
+	uuid_t svclass;
+	int err;
 
 	s = sdp_connect(src, dst, SDP_RETRY_IF_BUSY | SDP_WAIT_ON_CLOSE);
 	if (!s)
 		return -1;
 
+	sdp_uuid16_create(&svclass, HEADSET_SVCLASS_ID);
+	search = sdp_list_append(NULL, &svclass);
+	attrid = sdp_list_append(NULL, &attr);
+
+	err = sdp_service_search_attr_req(s, search,
+					SDP_ATTR_REQ_INDIVIDUAL, attrid, &rsp);
+
+	sdp_list_free(search, NULL);
+	sdp_list_free(attrid, NULL);
+
+	if (err <= 0) {
+		sdp_uuid16_create(&svclass, SERIAL_PORT_SVCLASS_ID);
+		search = sdp_list_append(NULL, &svclass);
+		attrid = sdp_list_append(NULL, &attr);
+
+		err = sdp_service_search_attr_req(s, search,
+					SDP_ATTR_REQ_INDIVIDUAL, attrid, &rsp);
+
+		sdp_list_free(search, NULL);
+		sdp_list_free(attrid, NULL);
+
+		if (err < 0) {
+			sdp_close(s);
+			return err;
+		}
+
+		if (uuid)
+			*uuid = SERIAL_PORT_SVCLASS_ID;
+	} else {
+		if (uuid)
+			*uuid = HEADSET_SVCLASS_ID;
+	}
+
 	sdp_close(s);
 
-	if (uuid)
-		*uuid = 0x0000;
+	for (; rsp; rsp = rsp->next) {
+		sdp_record_t *rec = (sdp_record_t *) rsp->data;
+		sdp_list_t *protos;
 
-	if (channel)
-		*channel = 0;
+		if (!sdp_get_access_protos(rec, &protos)) {
+			uint8_t ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+			if (ch > 0) {
+				if (channel)
+					*channel = ch;
+				return 0;
+			}
+		}
 
-	return 0;
+		sdp_record_free(rec);
+	}
+
+	return -EIO;
 }

@@ -1,8 +1,8 @@
 
 bin_PROGRAMS = hidd
 
-hidd_SOURCES = main.c hidd.h sdp.c fakehid.c
-hidd_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libtextfile.a
+hidd_SOURCES = main.c hidd.h sdp.c uinput.h fakehid.c
+hidd_LDADD = @BLUEZ_LIBS@ -lm $(top_builddir)/common/libtextfile.a
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 
