@@ -1269,9 +1269,10 @@ int sdp_read_rsp(sdp_session_t *session, uint8_t *buf, uint32_t size)
 	fd_set readFds;
 	struct timeval timeout = { SDP_RESPONSE_TIMEOUT, 0 };
 
+	FD_ZERO(&readFds);
 	FD_SET(session->sock, &readFds);
 	SDPDBG("Waiting for response\n");
-	if (0 == select(session->sock + 1, &readFds, NULL, NULL, &timeout)) {
+	if (select(session->sock + 1, &readFds, NULL, NULL, &timeout) == 0) {
 		SDPERR("Client timed out\n");
 		errno = ETIMEDOUT;
 		return -1;
