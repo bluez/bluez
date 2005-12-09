@@ -161,7 +161,7 @@ static void epox_decode(int fd, unsigned char event)
 	}
 }
 
-static int uinput_create(int keyboard, int mouse)
+static int uinput_create(char *name, int keyboard, int mouse)
 {
 	struct uinput_dev dev;
 	int fd, aux;
@@ -180,9 +180,12 @@ static int uinput_create(int keyboard, int mouse)
 	}
 
 	memset(&dev, 0, sizeof(dev));
-	strncpy(dev.name, "Bluetooth FakeHID", UINPUT_MAX_NAME_SIZE);
+
+	if (name)
+		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE);
+
 	dev.id.bustype = BUS_BLUETOOTH;
-	dev.id.vendor = 0x0000;
+	dev.id.vendor  = 0x0000;
 	dev.id.product = 0x0000;
 	dev.id.version = 0x0000;
 
@@ -285,7 +288,7 @@ void epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 	if (sk < 0)
 		return;
 
-	fd = uinput_create(1, 1);
+	fd = uinput_create("Bluetooth Presenter", 0, 1);
 	if (fd < 0) {
 		close(sk);
 		return;
