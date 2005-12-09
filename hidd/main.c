@@ -231,7 +231,7 @@ static int request_encryption(bdaddr_t *src, bdaddr_t *dst)
 	return err;
 }
 
-static int create_device(int ctl, int csk, int isk, uint8_t subclass, int nosdp, int encrypt, int timeout)
+static int create_device(int ctl, int csk, int isk, uint8_t subclass, int nosdp, int nocheck, int encrypt, int timeout)
 {
 	struct hidp_connadd_req req;
 	struct sockaddr_l2 addr;
@@ -265,6 +265,9 @@ static int create_device(int ctl, int csk, int isk, uint8_t subclass, int nosdp,
 	err = get_stored_device_info(&src, &dst, &req);
 	if (!err)
 		goto create;
+
+	if (!nocheck)
+		return -1;
 
 	if (!nosdp) {
 		err = get_sdp_device_info(&src, &dst, &req);
@@ -316,7 +319,7 @@ error:
 	return err;
 }
 
-static void run_server(int ctl, int csk, int isk, uint8_t subclass, int nosdp, int encrypt, int timeout)
+static void run_server(int ctl, int csk, int isk, uint8_t subclass, int nosdp, int nocheck, int encrypt, int timeout)
 {
 	struct pollfd p[2];
 	short events;
@@ -342,7 +345,7 @@ static void run_server(int ctl, int csk, int isk, uint8_t subclass, int nosdp, i
 			ncsk = l2cap_accept(csk, NULL);
 			nisk = l2cap_accept(isk, NULL);
 
-			err = create_device(ctl, ncsk, nisk, subclass, nosdp, encrypt, timeout);
+			err = create_device(ctl, ncsk, nisk, subclass, nosdp, nocheck, encrypt, timeout);
 			if (err < 0)
 				syslog(LOG_ERR, "HID create error %d (%s)",
 						errno, strerror(errno));
@@ -457,7 +460,7 @@ connect:
 		exit(1);
 	}
 
-	err = create_device(ctl, csk, isk, subclass, 1, encrypt, timeout);
+	err = create_device(ctl, csk, isk, subclass, 1, 1, encrypt, timeout);
 	if (err < 0) {
 		fprintf(stderr, "HID create error %d (%s)\n",
 						errno, strerror(errno));
@@ -604,6 +607,7 @@ static struct option main_options[] = {
 	{ "master",	0, 0, 'M' },
 	{ "encrypt",	0, 0, 'E' },
 	{ "nosdp",	0, 0, 'D' },
+	{ "nocheck",	0, 0, 'Z' },
 	{ "show",	0, 0, 'l' },
 	{ "list",	0, 0, 'l' },
 	{ "server",	0, 0, 'd' },
@@ -629,11 +633,12 @@ int main(int argc, char *argv[])
 	char addr[18];
 	int log_option = LOG_NDELAY | LOG_PID;
 	int opt, fd, ctl, csk, isk;
-	int mode = SHOW, daemon = 1, nosdp = 0, fakehid = 1, encrypt = 0, timeout = 30, lm = 0;
+	int mode = SHOW, daemon = 1, nosdp = 0, nocheck = 0;
+	int fakehid = 1, encrypt = 0, timeout = 30, lm = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:nt:b:MEDldsc:k:Ku:h", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:nt:b:MEDZldsc:k:Ku:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (!strncasecmp(optarg, "hci", 3))
@@ -661,6 +666,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'D':
 			nosdp = 1;
+			break;
+		case 'Z':
+			nocheck = 1;
 			break;
 		case 'l':
 			mode = SHOW;
@@ -776,7 +784,7 @@ int main(int argc, char *argv[])
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
-	run_server(ctl, csk, isk, subclass, nosdp, encrypt, timeout);
+	run_server(ctl, csk, isk, subclass, nosdp, nocheck, encrypt, timeout);
 
 	syslog(LOG_INFO, "Exit");
 
