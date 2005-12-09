@@ -768,6 +768,8 @@ static inline void set_event_mask_dump(int level, struct frame *frm)
 static inline void set_event_flt_dump(int level, struct frame *frm)
 {
 	set_event_flt_cp *cp = frm->ptr;
+	uint8_t dev_class[3], dev_mask[3];
+	char addr[18];
 
 	p_indent(level, frm);
 	printf("type %d condition %d\n", cp->flt_type,
@@ -783,8 +785,19 @@ static inline void set_event_flt_dump(int level, struct frame *frm)
 		printf("Inquiry result");
 		switch (cp->cond_type) {
 		case INQ_RESULT_RETURN_ALL:
+			printf(" for all devices\n");
+			break;
 		case INQ_RESULT_RETURN_CLASS:
+			memcpy(dev_class, cp->condition, 3);
+			memcpy(dev_mask, cp->condition + 3, 3);
+			printf(" with class 0x%2.2x%2.2x%2.2x mask 0x%2.2x%2.2x%2.2x\n",
+				dev_class[2], dev_class[1], dev_class[0],
+				dev_mask[2], dev_mask[1], dev_mask[0]);
+			break;
 		case INQ_RESULT_RETURN_BDADDR:
+			ba2str((bdaddr_t *) cp->condition, addr);
+			printf(" with bdaddr %s\n", addr);
+			break;
 		default:
 			printf("\n");
 			break;
