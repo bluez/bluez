@@ -1,3 +1,17 @@
+ver 2.23:
+	Update the new D-Bus interface.
+	Make dfutool ready for big endian architectures.
+	Add support for AVRCP specific service records.
+	Add support for writing complex BCCMD commands.
+	Add the new BCCMD interface utility.
+	Add MicroBCSP implementation from CSR.
+	Add HCI emulation tool.
+	Add fake HID support for old EPoX presenters.
+	Reject connections from unknown HID devices.
+
+	Note:
+	This version needs at least bluez-libs-2.23
+
 ver 2.22:
 	Remove D-Bus 0.23 support.
 	Add initial version of the new D-Bus interface.
