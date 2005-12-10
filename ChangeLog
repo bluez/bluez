@@ -1,3 +1,8 @@
+ver 2.23:
+	Add constants and definitions for sniff subrating.
+	Add support for allocation of binary text elements.
+	Fix service discovery deadlocks with Samsung D600 phones.
+
 ver 2.22:
 	Decode reserved LMP feature bits.
 	Fix errno overwrite problems.
