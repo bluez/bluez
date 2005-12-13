@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -359,16 +360,24 @@ static inline void print_uuid(int n, struct frame *frm, uint16_t *psm, uint8_t *
 
 static inline void print_string(int n, struct frame *frm, const char *name)
 {
-	char *s;
+	int i, hex = 0;
+
+	for (i = 0; i < n; i++)
+		if (!isprint(((char *) frm->ptr)[i])) {
+			hex = 1;
+			break;
+		}
 
 	printf(" %s", name);
-	if ((s = malloc(n + 1))) {
-		strncpy(s, frm->ptr, n);
-		s[n] = '\0';
-		printf(" \"%s\"", s);
-		free(s);
-	} else
-		perror("Can't allocate string buffer");
+	if (hex) {
+		for (i = 0; i < n; i++)
+			printf(" %02x", ((unsigned char *) frm->ptr)[i]);
+	} else {
+		printf(" \"");
+		for (i = 0; i < n; i++)
+			printf("%c", ((char *) frm->ptr)[i]);
+		printf("\"");
+	}
 
 	frm->ptr += n;
 	frm->len -= n;
