@@ -666,11 +666,15 @@ static void print_raw_data(sdp_data_t *data, int indent)
 				hex = 1;
 				break;
 			}
-		for (i = 0; i < data->unitSize; i++)
-			if (hex)
+		if (hex) {
+			printf("Data");
+			for (i = 0; i < data->unitSize; i++)
 				printf(" %02x", (unsigned char) data->val.str[i]);
-			else
+		} else {
+			printf("String ");
+			for (i = 0; i < data->unitSize; i++)
 				printf("%c", data->val.str[i]);
+		}
 		printf("\n");
 		break;
 	case SDP_URL_STR8:
