@@ -1812,13 +1812,31 @@ static sdp_data_t *access_proto_to_dataseq(sdp_record_t *rec, sdp_list_t *proto)
 int sdp_set_access_protos(sdp_record_t *rec, const sdp_list_t *ap)
 {
 	const sdp_list_t *p;
-	sdp_data_t *protos = 0;
+	sdp_data_t *protos = NULL;
 
 	for (p = ap; p; p = p->next) {
-		sdp_data_t *seq = access_proto_to_dataseq(rec, (sdp_list_t *)p->data);
+		sdp_data_t *seq = access_proto_to_dataseq(rec, (sdp_list_t *) p->data);
 		protos = sdp_seq_append(protos, seq);
 	}
+
 	sdp_attr_add(rec, SDP_ATTR_PROTO_DESC_LIST, protos);
+
+	return 0;
+}
+
+int sdp_set_add_access_protos(sdp_record_t *rec, const sdp_list_t *ap)
+{
+	const sdp_list_t *p;
+	sdp_data_t *protos = NULL;
+
+	for (p = ap; p; p = p->next) {
+		sdp_data_t *seq = access_proto_to_dataseq(rec, (sdp_list_t *) p->data);
+		protos = sdp_seq_append(protos, seq);
+	}
+
+	sdp_attr_add(rec, SDP_ATTR_ADD_PROTO_DESC_LIST,
+			protos ? sdp_data_alloc(SDP_SEQ8, protos) : NULL);
+
 	return 0;
 }
 

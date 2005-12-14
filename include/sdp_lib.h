@@ -176,6 +176,11 @@ static inline int sdp_set_browse_groups(sdp_record_t *rec, sdp_list_t *seq)
 int sdp_set_access_protos(sdp_record_t *rec, const sdp_list_t *proto);
 
 /*
+ * Set the additional access protocols of the record to those specified in proto
+ */
+int sdp_set_add_access_protos(sdp_record_t *rec, const sdp_list_t *proto);
+
+/*
  * Get protocol port (i.e. PSM for L2CAP, Channel for RFCOMM) 
  */
 int sdp_get_proto_port(const sdp_list_t *list, int proto);
@@ -457,7 +462,7 @@ int sdp_get_access_protos(const sdp_record_t *rec, sdp_list_t **protos);
 /*
  * Get the additional access protocols from the service record
  */
-int sdp_get_add_access_protos(const sdp_record_t *rec, sdp_list_t **pap);
+int sdp_get_add_access_protos(const sdp_record_t *rec, sdp_list_t **protos);
 
 /*
  * Extract the list of browse groups to which the service belongs.
