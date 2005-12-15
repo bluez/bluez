@@ -424,7 +424,7 @@ char *csr_builddeftostr(uint16_t def)
 	case 0x000e:
 		return "TRANSPORT_USER";
 	case 0x000f:
-		return "CHIP_BC02K";
+		return "CHIP_BC02_KATO";
 	case 0x0010:
 		return "TRANSPORT_NONE";
 	case 0x0012:
@@ -446,15 +446,15 @@ char *csr_builddeftostr(uint16_t def)
 	case 0x001a:
 		return "COMPILER_GCC";
 	case 0x001b:
-		return "CHIP_BC02C";
+		return "CHIP_BC02_CLOUSEAU";
 	case 0x001c:
-		return "CHIP_BC02T";
+		return "CHIP_BC02_TOULOUSE";
 	case 0x001d:
 		return "CHIP_BASE_BC3";
 	case 0x001e:
-		return "CHIP_BC3N";
+		return "CHIP_BC3_NICKNACK";
 	case 0x001f:
-		return "CHIP_BC3K";
+		return "CHIP_BC3_KALIMBA";
 	case 0x0020:
 		return "INSTALL_HCI_MODULE";
 	case 0x0021:
