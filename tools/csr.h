@@ -21,6 +21,8 @@
  *
  */
 
+#include <stdint.h>
+
 #define CSR_VARID_PS_CLR_ALL			0x000b	/* valueless */
 #define CSR_VARID_PS_FACTORY_SET		0x000c	/* valueless */
 #define CSR_VARID_PS_CLR_ALL_STORES		0x082d	/* uint16 */
