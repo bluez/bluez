@@ -794,6 +794,13 @@ static void l2cap_parse(int level, struct frame *frm)
 				raw_dump(level + 1, frm);
 			break;
 
+		case 0x17:
+			if (!p_filter(FILT_AVCTP))
+				avctp_dump(level, frm);
+			else
+				raw_dump(level + 1, frm);
+			break;
+
 		case 0x19:
 			if (!p_filter(FILT_AVDTP))
 				avdtp_dump(level, frm);

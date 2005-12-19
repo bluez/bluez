@@ -603,6 +603,7 @@ static struct {
 	{ "hidp",	FILT_HIDP	},
 	{ "hcrp",	FILT_HCRP	},
 	{ "avdtp",	FILT_AVDTP	},
+	{ "avctp",	FILT_AVCTP	},
 	{ "obex",	FILT_OBEX	},
 	{ "capi",	FILT_CAPI	},
 	{ "csr",	FILT_CSR	},
