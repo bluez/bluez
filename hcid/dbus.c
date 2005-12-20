@@ -46,6 +46,10 @@
 #include "hcid.h"
 #include "dbus.h"
 
+#ifndef DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT
+#define DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT	0x00
+#endif
+
 static DBusConnection *connection;
 static int default_dev = -1;
 
