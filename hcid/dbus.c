@@ -460,11 +460,16 @@ static gboolean unregister_dbus_path(const char *path)
 
 void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 {
-	DBusMessage *message;
+	DBusMessage *message = NULL;
 	DBusPendingCall *pending = NULL;
 	struct pin_request *req;
 	uint8_t *addr = (uint8_t *) &ci->bdaddr;
 	dbus_bool_t out = ci->out;
+
+	if (!connection) {
+		if (!hcid_dbus_init())
+			goto failed;
+	}
 
 	message = dbus_message_new_method_call(PINAGENT_SERVICE_NAME, PINAGENT_PATH,
 						PINAGENT_INTERFACE, PIN_REQUEST);
@@ -497,7 +502,9 @@ void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 	return;
 
 failed:
-	dbus_message_unref(message);
+	if (message)
+		dbus_message_unref(message);
+
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
 }
 
