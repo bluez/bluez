@@ -1,3 +1,11 @@
+ver 2.24:
+	Fix display of SDP text and data strings.
+	Add support for device scan property.
+	Update the D-Bus policy configuration file.
+
+	Note:
+	This version needs at least bluez-libs-2.24
+
 ver 2.23:
 	Update the new D-Bus interface.
 	Make dfutool ready for big endian architectures.
