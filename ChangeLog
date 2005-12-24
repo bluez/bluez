@@ -1,3 +1,6 @@
+ver 2.24:
+	Add support for additional access protocols.
+
 ver 2.23:
 	Add constants and definitions for sniff subrating.
 	Add support for allocation of binary text elements.
