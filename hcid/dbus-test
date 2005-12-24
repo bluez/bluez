@@ -14,6 +14,9 @@ dev_cmds = [ "Up", "Down", "SetProperty", "GetProperty", "Inquiry",
              "Connections", "Authenticate", "RoleSwitch" ]
 dev_setprop_bool = [ "auth", "encrypt", "discoverable", "connectable" ]
 dev_setprop_byte = [ "incmode" ]
+dev_prop_filter = ["/org/bluez/Device/hci0", "/org/bluez/Device/hci1",
+                   "/org/bluez/Device/hci2", "/org/bluez/Device/hci3",
+                   "/org/bluez/Device/hci4", "/org/bluez/Device/hci5"]
 
 class Tester:
     exit_events = []
@@ -81,10 +84,10 @@ class Tester:
 
                 self.dev.connect_to_signal('Up', self.dev_up)
                 self.dev.connect_to_signal('Down', self.dev_down)
-                self.bus.add_signal_receiver(self.dev_name_changed, 'DeviceNameChanged',
-                                             'org.bluez.Device', 'org.bluez',
-                                             '/org/bluez/Device/hci0')
-
+                for path in dev_prop_filter:
+                    self.bus.add_signal_receiver(self.dev_property_changed,
+                                             'PropertyChanged','org.bluez.Device',
+                                             'org.bluez',path)
                 obj = self.bus.get_object('org.bluez', '%s/Controller' % self.dev_path)
                 self.ctl = dbus.Interface(obj, 'org.bluez.Device.Controller')
 
@@ -157,10 +160,17 @@ class Tester:
         print 'Down'
 
     @dbus.decorators.explicitly_pass_message
-    def dev_name_changed(*args, **keywords):
-        name = args[1]
+    def dev_property_changed(*args, **keywords):
+        property = args[1]
+        param = args[2]
         dbus_message = keywords["dbus_message"]
-        print 'Device %s name changed: %s' % (dbus_message.get_path(), name)
+        if property == 'name':
+            print 'Device %s name changed: %s' % (dbus_message.get_path(), param)
+        elif property == 'connectable':
+            print 'Device %s connectable scan property changed: %d' % (dbus_message.get_path(), param)
+        elif property == 'discoverable':
+            print 'Device %s discoverable scan property changed: %d' % (dbus_message.get_path(), param)
+
 
     def signal_cb(self, sig, frame):
         print 'Caught signal, exiting'

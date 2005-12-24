@@ -100,7 +100,7 @@
 #define DEV_HCI_INTERFACE		DEVICE_INTERFACE "." BLUEZ_HCI
 
 /* /org/bluez/Device signals */
-#define BLUEZ_HCI_SET_NAME		"DeviceNameChanged"
+#define BLUEZ_HCI_PROPERTY_CHANGED	"PropertyChanged"
 
 /* Control interface signals */
 #define BLUEZ_HCI_INQ_START		"InquiryStart"
@@ -227,6 +227,7 @@
 #define BLUEZ_EDBUS_NO_MEM   		(0x05 + BLUEZ_EDBUS_OFFSET)
 #define BLUEZ_EDBUS_CONN_NOT_FOUND	(0x06 + BLUEZ_EDBUS_OFFSET)
 #define BLUEZ_EDBUS_UNKNOWN_PATH	(0x07 + BLUEZ_EDBUS_OFFSET)
+#define BLUEZ_EDBUS_NOT_IMPLEMENTED	(0x08 + BLUEZ_EDBUS_OFFSET)
 
 /* D-Bus error code, class BLUEZ_ESYSTEM_OFFSET */
 #define BLUEZ_ESYSTEM_ENODEV		(ENODEV + BLUEZ_ESYSTEM_OFFSET)
