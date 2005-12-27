@@ -117,6 +117,7 @@ static struct link_key *__get_link_key(int f, bdaddr_t *sba, bdaddr_t *dba)
 			break;
 		}
 	}
+
 	return key;
 }
 
@@ -131,7 +132,9 @@ static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
 	else if (errno != ENOENT)
 		syslog(LOG_ERR, "Link key database open failed: %s (%d)",
 							strerror(errno), errno);
+
 	close(f);
+
 	return key;
 }
 
@@ -197,7 +200,7 @@ static void save_link_key(struct link_key *key)
 							strerror(errno), errno);
 		goto failed;
 	}
-	
+
 	if (write_n(f, key, sizeof(*key)) < 0) {
 		syslog(LOG_ERR, "Link key database write failed: %s (%d)",
 							strerror(errno), errno);
@@ -280,7 +283,9 @@ static int read_default_pin_code(void)
 					hcid.pin_file, strerror(errno), errno);
 		len = -1;
 	}
+
 	fclose(f);
+
 	return len;
 }
 
@@ -871,5 +876,4 @@ void init_security_data(void)
 	}
 
 	pairing = hcid.pairing;
-	return;
 }

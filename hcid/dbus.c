@@ -380,29 +380,32 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 		syslog(LOG_ERR, "%s: %s", dbus_message_get_error_name(message), error_msg);
 		hci_send_cmd(req->dev, OGF_LINK_CTL,
 					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
-	} else {
-		/* check signature */
-		arg_type = dbus_message_iter_get_arg_type(&iter);
-		if (arg_type != DBUS_TYPE_STRING) {
-			syslog(LOG_ERR, "Wrong reply signature: expected PIN");
-			hci_send_cmd(req->dev, OGF_LINK_CTL,
-					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
-		} else {
-			dbus_message_iter_get_basic(&iter, &pin);
-			len = strlen(pin);
 
-			memset(&pr, 0, sizeof(pr));
-			bacpy(&pr.bdaddr, &req->bda);
-			memcpy(pr.pin_code, pin, len);
-			pr.pin_len = len;
-			hci_send_cmd(req->dev, OGF_LINK_CTL,
-				OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
-		}
+		goto done;
 	}
 
-	dbus_message_unref(message);
+	/* check signature */
+	arg_type = dbus_message_iter_get_arg_type(&iter);
+	if (arg_type != DBUS_TYPE_STRING) {
+		syslog(LOG_ERR, "Wrong reply signature: expected PIN");
+		hci_send_cmd(req->dev, OGF_LINK_CTL,
+					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
+	} else {
+		dbus_message_iter_get_basic(&iter, &pin);
+		len = strlen(pin);
+
+		memset(&pr, 0, sizeof(pr));
+		bacpy(&pr.bdaddr, &req->bda);
+		memcpy(pr.pin_code, pin, len);
+		pr.pin_len = len;
+		hci_send_cmd(req->dev, OGF_LINK_CTL,
+			OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
+	}
 
 done:
+	if (message)
+		dbus_message_unref(message);
+
 	dbus_pending_call_unref(call);
 }
 
@@ -673,7 +676,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	dbus_connection_flush(connection);
 
 failed:
-	dbus_message_unref(message);
+	if (message)
+		dbus_message_unref(message);
 
 	bt_free(local_addr);
 	bt_free(peer_addr);
@@ -718,7 +722,8 @@ void hcid_dbus_remote_name_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t statu
 	dbus_connection_flush(connection);
 
 failed:
-	dbus_message_unref(message);
+	if (message)
+		dbus_message_unref(message);
 
 	bt_free(local_addr);
 	bt_free(peer_addr);
@@ -771,7 +776,8 @@ void hcid_dbus_auth_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t stat
 	dbus_connection_flush(connection);
 
 failed:
-	dbus_message_unref(message);
+	if (message)
+		dbus_message_unref(message);
 
 	bt_free(local_addr);
 	bt_free(peer_addr);
@@ -925,20 +931,21 @@ void hcid_dbus_exit(void)
 		return;
 
 	/* Unregister all paths in Device path hierarchy */
-	if (dbus_connection_list_registered(connection, DEVICE_PATH, &children)) {
+	if (!dbus_connection_list_registered(connection, DEVICE_PATH, &children))
+		goto done;
 
-		for (; *children; children++) {
-			char dev_path[MAX_PATH_LENGTH];
+	for (; *children; children++) {
+		char dev_path[MAX_PATH_LENGTH];
 
-			snprintf(dev_path, sizeof(dev_path), "%s/%s", DEVICE_PATH, *children);
+		snprintf(dev_path, sizeof(dev_path), "%s/%s", DEVICE_PATH, *children);
 
-			unregister_device_path(dev_path);
-		}
-
-		if (*children)
-			dbus_free_string_array(children);
+		unregister_device_path(dev_path);
 	}
 
+	if (*children)
+		dbus_free_string_array(children);
+
+done:
 	unregister_dbus_path(DEVICE_PATH);
 	unregister_dbus_path(MANAGER_PATH);
 
@@ -986,7 +993,6 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	else
 		pdata->path_data = rp.enable; /* Keep the current scan status */
 
-
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
 							BLUEZ_MGR_DEV_ADDED);
 	if (message == NULL) {
@@ -1008,9 +1014,10 @@ gboolean hcid_dbus_register_device(uint16_t id)
 failed:
 	if (message)
 		dbus_message_unref(message);
-	
+
 	if (ret && default_dev < 0)
 		default_dev = id;
+
 	if (dd >= 0)
 		close(dd);
 
@@ -1045,7 +1052,8 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 	dbus_connection_flush(connection);
 
 failed:
-	dbus_message_unref(message);
+	if (message)
+		dbus_message_unref(message);
 
 	ret = unregister_device_path(path);
 
@@ -1090,7 +1098,8 @@ gboolean hcid_dbus_dev_up(uint16_t id)
 failed:
 	/* if the signal can't be sent ignore the error */
 
-	dbus_message_unref(message);
+	if (message)
+		dbus_message_unref(message);
 
 	return TRUE;
 }
@@ -1127,7 +1136,8 @@ gboolean hcid_dbus_dev_down(uint16_t id)
 failed:
 	/* if the signal can't be sent ignore the error */
 
-	dbus_message_unref(message);
+	if (message)
+		dbus_message_unref(message);
 
 	return TRUE;
 }
@@ -1232,6 +1242,7 @@ static void reconnect_timer_handler(int signum)
 		if (hci_test_bit(HCI_UP, &dr->dev_opt))
 			hcid_dbus_dev_up(dr->dev_id);
 	}
+
 failed:
 	if (sk >= 0)
 		close(sk);
@@ -2056,13 +2067,14 @@ static void send_property_changed_signal(const int devid, const char *prop_name,
 		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
 		goto failed;
 	}
+
 	dbus_message_append_args(message,
 				DBUS_TYPE_STRING, &prop_name,
 				prop_type, value,
 				DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS PropertChanged(%s) signal",prop_name);
+		syslog(LOG_ERR, "Can't send D-BUS PropertChanged(%s) signal", prop_name);
 		goto failed;
 	}
 
@@ -2086,7 +2098,7 @@ static DBusMessage* handle_device_set_property_req_name(DBusMessage *msg, void *
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_get_basic(&iter, &str_name);
 
-	if(strlen(str_name) == 0) {
+	if (strlen(str_name) == 0) {
 		syslog(LOG_ERR, "HCI change name failed - Invalid Name!");
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 		goto failed;
@@ -2150,20 +2162,23 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	}
 
 	dd = hci_open_dev(id);
-	memset(&rq, 0, sizeof(rq));
 	if (dd < 0) {
 		syslog(LOG_ERR, "HCI device open failed: hci%d", id);
+		memset(&rq, 0, sizeof(rq));
 	} else {
+		memset(&rq, 0, sizeof(rq));
 		rq.ogf    = OGF_HOST_CTL;
 		rq.ocf    = OCF_READ_LOCAL_NAME;
 		rq.rparam = &rp;
 		rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
+
 		if (hci_send_req(dd, &rq, 100) < 0) {
 			syslog(LOG_ERR,
 				"Sending getting name command failed: %s (%d)",
 				strerror(errno), errno);
 			rp.name[0] = '\0';
 		}
+
 		if (rp.status) {
 			syslog(LOG_ERR,
 				"Getting name failed with status 0x%02x",
@@ -2172,7 +2187,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 		}
 	}
 
-	strncpy(name,pname,sizeof(name)-1);
+	strncpy(name, pname, sizeof(name) - 1);
 	name[248] = '\0';
 	pname = name;
 
@@ -2182,6 +2197,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 failed:
 	if (dd >= 0)
 		close(dd);
+
 	bt_free(local_addr);
 }
 
@@ -2201,6 +2217,7 @@ static DBusMessage* handle_device_get_property_req_name(DBusMessage *msg, void *
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
 	}
+
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_READ_LOCAL_NAME;
@@ -2359,22 +2376,23 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
 
 	dd = hci_open_dev(id);
-	memset(&rq, 0, sizeof(rq));
-
 	if (dd < 0) {
 		syslog(LOG_ERR, "HCI device open failed: hci%d", id);
 		goto failed;
 	}
+
+	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_READ_SCAN_ENABLE;
 	rq.rparam = &rp;
 	rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
+
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR,
-			"Sending read scan enable command failed: %s (%d)",
-			strerror(errno), errno);
+		syslog(LOG_ERR, "Sending read scan enable command failed: %s (%d)",
+							strerror(errno), errno);
 		goto failed;
 	}
+
 	if (rp.status) {
 		syslog(LOG_ERR,
 			"Getting scan enable failed with status 0x%02x",
@@ -2406,6 +2424,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 failed:
 	if (dd >= 0)
 		close(dd);
+
 	bt_free(local_addr);
 }
 
@@ -2530,7 +2549,8 @@ failed:
  *  Section reserved to Manager D-Bus services
  *  
  *****************************************************************/
-static DBusMessage* handle_default_device_req(DBusMessage *msg, void *data) {
+static DBusMessage* handle_default_device_req(DBusMessage *msg, void *data)
+{
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
 	DBusMessage *reply = NULL;
@@ -2555,7 +2575,7 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_not_implemented_req(DBusMessage *msg, void *data) 
+static DBusMessage* handle_not_implemented_req(DBusMessage *msg, void *data)
 {
 	const char *path = dbus_message_get_path(msg);
 	const char *iface = dbus_message_get_interface(msg);
