@@ -586,7 +586,7 @@ static void print_raw_data(sdp_data_t *data, int indent)
 		printf("UINT32 0x%08x\n", data->val.uint32);
 		break;
 	case SDP_UINT64:
-		printf("UINT64 0x%016llx\n", data->val.uint64);
+		printf("UINT64 0x%016jx\n", data->val.uint64);
 		break;
 	case SDP_UINT128:
 		printf("UINT128 ...\n");
@@ -601,7 +601,7 @@ static void print_raw_data(sdp_data_t *data, int indent)
 		printf("INT32 %d\n", data->val.int32);
 		break;
 	case SDP_INT64:
-		printf("INT64 %lld\n", data->val.int64);
+		printf("INT64 %jd\n", data->val.int64);
 		break;
 	case SDP_INT128:
 		printf("INT128 ...\n");
