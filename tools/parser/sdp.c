@@ -296,10 +296,10 @@ static inline void print_int(uint8_t de_type, int level, int n, struct frame *fr
 		break;
 	case 16:/* 128-bit */
 		get_u128(frm, &val, &val2);
-		printf(" 0x%llx", val2);
+		printf(" 0x%jx", val2);
 		if (val < 0x1000000000000000LL)
 			printf("0");
-		printf("%llx", val);
+		printf("%jx", val);
 		return;
 	default: /* syntax error */
 		printf(" err");
@@ -308,7 +308,7 @@ static inline void print_int(uint8_t de_type, int level, int n, struct frame *fr
 		return;
 	}
 
-	printf(" 0x%llx", val);
+	printf(" 0x%jx", val);
 }
 
 static inline void print_uuid(int n, struct frame *frm, uint16_t *psm, uint8_t *channel)
