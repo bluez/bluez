@@ -314,6 +314,7 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1303, "VideoSource", NULL, 0 },
 	{ 0x1304, "VideoSink", NULL, 0 },
 	{ 0x1305, "VideoDistribution", NULL, 0 },
+	{ 0x2112, "AppleAgent", NULL, 0 },
 };
 
 static const int uuid16_max = sizeof(uuid16_names)/sizeof(struct uuid_def);
@@ -2482,6 +2483,8 @@ struct {
 	{ "PCSUITE",	0,				add_pcsuite,	pcsuite_uuid	},
 	{ "NGAGE",	0,				NULL,		ngage_uuid	},
 	{ "APPLE",	0,				NULL,		apple_uuid	},
+
+	{ "ISYNC",	APPLE_AGENT_SVCLASS_ID,		NULL,		},
 
 	{ 0 }
 };
