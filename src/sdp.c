@@ -190,6 +190,7 @@ static struct tupla ServiceClass[] = {
 	{ VIDEO_SOURCE_SVCLASS_ID,		"Video Source"			},
 	{ VIDEO_SINK_SVCLASS_ID,		"Video Sink"			},
 	{ VIDEO_DISTRIBUTION_SVCLASS_ID,	"Video Distribution"		},
+	{ APPLE_AGENT_SVCLASS_ID,		"Apple Agent"			},
 	{ 0 }
 };
 
