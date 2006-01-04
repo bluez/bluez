@@ -2442,6 +2442,85 @@ static unsigned char ngage_uuid[] = {	0x00, 0x00, 0x13, 0x01, 0x00, 0x00, 0x10, 
 static unsigned char apple_uuid[] = {	0xf0, 0x72, 0x2e, 0x20, 0x0f, 0x8b, 0x4e, 0x90,
 					0x8c, 0xc2, 0x1b, 0x46, 0xf5, 0xf2, 0xef, 0xe2 };
 
+static int add_apple(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root;
+	uuid_t root_uuid;
+	uint32_t attr783 = 0x00000000;
+	uint32_t attr785 = 0x00000002;
+	uint16_t attr786 = 0x1234;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_attr_add_new(&record, 0x0780, SDP_UUID128, (void *) apple_uuid);
+	sdp_attr_add_new(&record, 0x0781, SDP_TEXT_STR8, (void *) "Macmini");
+	sdp_attr_add_new(&record, 0x0782, SDP_TEXT_STR8, (void *) "PowerMac10,1");
+	sdp_attr_add_new(&record, 0x0783, SDP_UINT32, (void *) &attr783);
+	sdp_attr_add_new(&record, 0x0784, SDP_TEXT_STR8, (void *) "1.6.6f22");
+	sdp_attr_add_new(&record, 0x0785, SDP_UINT32, (void *) &attr785);
+	sdp_attr_add_new(&record, 0x0786, SDP_UUID16, (void *) &attr786);
+
+	sdp_set_info_attr(&record, "Apple Macintosh Attributes", NULL, NULL);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("Apple attribute service registered\n");
+
+	return 0;
+}
+
+static int add_isync(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass, *proto;
+	uuid_t root_uuid, svclass_uuid, serial_uuid, l2cap_uuid, rfcomm_uuid;
+	uint8_t channel = si->channel? si->channel: 8;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = 0xffffffff;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto = sdp_list_append(NULL, sdp_list_append(NULL, &l2cap_uuid));
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto = sdp_list_append(proto, sdp_list_append(
+		sdp_list_append(NULL, &rfcomm_uuid), sdp_data_alloc(SDP_UINT8, &channel)));
+
+	sdp_set_access_protos(&record, sdp_list_append(NULL, proto));
+
+	sdp_uuid16_create(&serial_uuid, SERIAL_PORT_SVCLASS_ID);
+	svclass = sdp_list_append(NULL, &serial_uuid);
+
+	sdp_uuid16_create(&svclass_uuid, APPLE_AGENT_SVCLASS_ID);
+	svclass = sdp_list_append(svclass, &svclass_uuid);
+
+	sdp_set_service_classes(&record, svclass);
+
+	sdp_set_info_attr(&record, "AppleAgent", "Bluetooth acceptor", "Apple Computer Ltd.");
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("Apple iSync service registered\n");
+
+	return 0;
+}
+
 struct {
 	char		*name;
 	uint16_t	class;
@@ -2482,9 +2561,9 @@ struct {
 	{ "NOKID",	0,				add_nokiaid,	nokid_uuid	},
 	{ "PCSUITE",	0,				add_pcsuite,	pcsuite_uuid	},
 	{ "NGAGE",	0,				NULL,		ngage_uuid	},
-	{ "APPLE",	0,				NULL,		apple_uuid	},
+	{ "APPLE",	0,				add_apple,	apple_uuid	},
 
-	{ "ISYNC",	APPLE_AGENT_SVCLASS_ID,		NULL,		},
+	{ "ISYNC",	APPLE_AGENT_SVCLASS_ID,		add_isync,	},
 
 	{ 0 }
 };
