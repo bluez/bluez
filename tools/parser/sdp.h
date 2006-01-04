@@ -113,6 +113,7 @@
 #define SDP_UUID_VIDEO_SOURCE                          0x1303 /* VDP */
 #define SDP_UUID_VIDEO_SINK                            0x1304 /* VDP */
 #define SDP_UUID_VIDEO_DISTRIBUTION                    0x1305 /* VDP */
+#define SDP_UUID_APPLE_AGENT                           0x2112
 
 /* Bluetooth assigned numbers for Attribute IDs */
 #define SDP_ATTR_ID_SERVICE_RECORD_HANDLE              0x0000
