@@ -662,11 +662,14 @@ static void print_raw_data(sdp_data_t *data, int indent)
 	case SDP_TEXT_STR16:
 	case SDP_TEXT_STR32:
 		hex = 0;
-		for (i = 0; i < data->unitSize; i++)
+		for (i = 0; i < data->unitSize; i++) {
+			if (i == (data->unitSize - 1) && data->val.str[i] == '\0')
+				break;
 			if (!isprint(data->val.str[i])) {
 				hex = 1;
 				break;
 			}
+		}
 		if (hex) {
 			printf("Data");
 			for (i = 0; i < data->unitSize; i++)
