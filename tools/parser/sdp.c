@@ -363,11 +363,15 @@ static inline void print_string(int n, struct frame *frm, const char *name)
 {
 	int i, hex = 0;
 
-	for (i = 0; i < n; i++)
+	for (i = 0; i < n; i++) {
+		if (i == (n - 1) && ((char *) frm->ptr)[i] == '\0')
+			break;
+
 		if (!isprint(((char *) frm->ptr)[i])) {
 			hex = 1;
 			break;
 		}
+	}
 
 	printf(" %s", name);
 	if (hex) {
