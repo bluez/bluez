@@ -86,7 +86,10 @@ Sets the PSM value for the CAPI Message Transport Protocol.
 Sets the PSM value for the Hardcopy Control Channel.
 .TP
 .BR -O ", " "\-\^\-obex=" "<channel>"
-Sets the RFCOMM channel value for the Object Exchange protocol.
+Sets the RFCOMM channel value for the Object Exchange Protocol.
+.TP
+.BR -P ", " "\-\^\-ppp=" "<channel>"
+Sets the RFCOMM channel value for the Point-to-Point Protocol.
 .TP
 .BR -A ", " "\-\^\-audio=" "<file>"
 Extract SCO audio data.
@@ -115,9 +118,10 @@ is a space-separated list of packet categories: available categories are
 .IR hcrp ,
 .IR avdtp ,
 .IR avctp ,
-.IR obex
+.IR obex ,
+.IR capi
 and
-.IR capi .
+.IR ppp .
 If filters are used, only packets belonging to the specified categories are
 dumped. By default, all packets are dumped.
 .SH AUTHORS

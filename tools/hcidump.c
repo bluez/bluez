@@ -606,6 +606,7 @@ static struct {
 	{ "avctp",	FILT_AVCTP	},
 	{ "obex",	FILT_OBEX	},
 	{ "capi",	FILT_CAPI	},
+	{ "ppp",	FILT_PPP	},
 	{ "csr",	FILT_CSR	},
 	{ "dga",	FILT_DGA	},
 	{ 0 }
@@ -645,6 +646,7 @@ static void usage(void)
 	"  -C, --cmtp=psm             PSM for CMTP\n"
 	"  -H, --hcrp=psm             PSM for HCRP\n"
 	"  -O, --obex=channel         Channel for OBEX\n"
+	"  -P, --ppp=channel          Channel for PPP\n"
 	"  -A, --audio=file           Extract SCO audio data\n"
 	"  -B, --btsnoop              Use BTSnoop file format\n"
 	"  -V, --verbose              Verbose decoding\n"
@@ -671,6 +673,7 @@ static struct option main_options[] = {
 	{ "cmtp",		1, 0, 'C' },
 	{ "hcrp",		1, 0, 'H' },
 	{ "obex",		1, 0, 'O' },
+	{ "ppp",		1, 0, 'P' },
 	{ "audio",		1, 0, 'A' },
 	{ "btsnoop",		0, 0, 'B' },
 	{ "verbose",		0, 0, 'V' },
@@ -688,7 +691,7 @@ int main(int argc, char *argv[])
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:A:BVYZh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:P:A:BVYZh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -775,6 +778,10 @@ int main(int argc, char *argv[])
 
 		case 'O':
 			set_proto(0, 0, atoi(optarg), SDP_UUID_OBEX);
+			break;
+
+		case 'P':
+			set_proto(0, 0, atoi(optarg), SDP_UUID_LAN_ACCESS_PPP);
 			break;
 
 		case 'A':
