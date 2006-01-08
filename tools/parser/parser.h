@@ -123,7 +123,7 @@ static inline void p_indent(int level, struct frame *f)
 				struct tm tm;
 				time_t t = f->ts.tv_sec;
 				localtime_r(&t, &tm);
-				printf("%04d-%02d-%02d %02d:%02d:%02d.%06lu ", 
+				printf("%04d-%02d-%02d %02d:%02d:%02d.%06lu ",
 					tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 					tm.tm_hour, tm.tm_min, tm.tm_sec, f->ts.tv_usec);
 			} else
@@ -136,6 +136,17 @@ static inline void p_indent(int level, struct frame *f)
 
 	if (level)
 		printf("%*c", (level*2), ' ');
+}
+
+static inline void p_ba2str(const bdaddr_t *ba, char *str)
+{
+	if (parser.flags & DUMP_NOVENDOR) {
+		uint8_t b[6];
+
+		baswap((bdaddr_t *) b, ba);
+		sprintf(str, "%2.2X:%2.2X:%2.2X:*:*:*", b[0], b[1], b[2]);
+	} else
+		ba2str(ba, str);
 }
 
 /* get_uXX functions do byte swaping */

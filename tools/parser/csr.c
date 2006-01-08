@@ -123,7 +123,7 @@ static inline void bdaddr_dump(int level, char *str, struct frame *frm)
 {
 	char addr[18];
 
-	ba2str(frm->ptr, addr);
+	p_ba2str(frm->ptr, addr);
 
 	p_indent(level, frm);
 	printf("%s: bdaddr %s\n", str, addr);
@@ -577,7 +577,7 @@ void csr_dump(int level, struct frame *frm)
 					addr, master ? "master" : "slave");
 				if (!master) {
 					char addr[18];
-					ba2str((bdaddr_t *) frm->ptr, addr);
+					p_ba2str((bdaddr_t *) frm->ptr, addr);
 					p_indent(level + 1, frm);
 					printf("bdaddr %s class "
 						"0x%2.2x%2.2x%2.2x\n", addr,

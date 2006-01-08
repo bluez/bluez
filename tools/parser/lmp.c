@@ -810,7 +810,7 @@ static inline void slot_offset_dump(int level, struct frame *frm)
 	uint16_t offset = LMP_U16(frm);
 	char addr[18];
 
-	ba2str((bdaddr_t *) frm->ptr, addr);
+	p_ba2str((bdaddr_t *) frm->ptr, addr);
 
 	p_indent(level, frm);
 	printf("slot offset %d\n", offset);

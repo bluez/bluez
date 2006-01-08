@@ -522,7 +522,7 @@ static inline void bdaddr_command_dump(int level, struct frame *frm)
 	frm->len -= sizeof(bdaddr_t);
 
 	p_indent(level, frm);
-	ba2str(bdaddr, addr);
+	p_ba2str(bdaddr, addr);
 	printf("bdaddr %s\n", addr);
 
 	raw_dump(level, frm);
@@ -555,7 +555,7 @@ static inline void create_conn_dump(int level, struct frame *frm)
 	char addr[18], *str;
 
 	p_indent(level, frm);
-	ba2str(&cp->bdaddr, addr);
+	p_ba2str(&cp->bdaddr, addr);
 	printf("bdaddr %s ptype 0x%4.4x rswitch 0x%2.2x clkoffset 0x%4.4x%s\n",
 		addr, ptype, cp->role_switch,
 		clkoffset & 0x7fff, clkoffset & 0x8000 ? " (valid)" : "");
@@ -602,7 +602,7 @@ static inline void accept_conn_req_dump(int level, struct frame *frm)
 	char addr[18];
 
 	p_indent(level, frm);
-	ba2str(&cp->bdaddr, addr);
+	p_ba2str(&cp->bdaddr, addr);
 	printf("bdaddr %s role 0x%2.2x\n", addr, cp->role);
 
 	p_indent(level, frm);
@@ -615,7 +615,7 @@ static inline void reject_conn_req_dump(int level, struct frame *frm)
 	char addr[18];
 
 	p_indent(level, frm);
-	ba2str(&cp->bdaddr, addr);
+	p_ba2str(&cp->bdaddr, addr);
 	printf("bdaddr %s reason 0x%2.2x\n", addr, cp->reason);
 
 	p_indent(level, frm);
@@ -628,7 +628,7 @@ static inline void pin_code_reply_dump(int level, struct frame *frm)
 	char addr[18], pin[17];
 
 	p_indent(level, frm);
-	ba2str(&cp->bdaddr, addr);
+	p_ba2str(&cp->bdaddr, addr);
 	memset(pin, 0, sizeof(pin));
 	if (parser.flags & DUMP_NOVENDOR)
 		memset(pin, '*', cp->pin_len);
@@ -644,7 +644,7 @@ static inline void link_key_reply_dump(int level, struct frame *frm)
 	int i;
 
 	p_indent(level, frm);
-	ba2str(&cp->bdaddr, addr);
+	p_ba2str(&cp->bdaddr, addr);
 	printf("bdaddr %s key ", addr);
 	for (i = 0; i < 16; i++)
 		if (parser.flags & DUMP_NOVENDOR)
@@ -660,7 +660,7 @@ static inline void pin_code_neg_reply_dump(int level, struct frame *frm)
 	char addr[18];
 
 	p_indent(level, frm);
-	ba2str(bdaddr, addr);
+	p_ba2str(bdaddr, addr);
 	printf("bdaddr %s\n", addr);
 }
 
@@ -679,7 +679,7 @@ static inline void remote_name_req_dump(int level, struct frame *frm)
 	char addr[18];
 
 	p_indent(level, frm);
-	ba2str(&cp->bdaddr, addr);
+	p_ba2str(&cp->bdaddr, addr);
 	printf("bdaddr %s mode %d clkoffset 0x%4.4x%s\n",
 		addr, cp->pscan_rep_mode,
 		clkoffset & 0x7fff, clkoffset & 0x8000 ? " (valid)" : "");
@@ -795,7 +795,7 @@ static inline void set_event_flt_dump(int level, struct frame *frm)
 				dev_mask[2], dev_mask[1], dev_mask[0]);
 			break;
 		case INQ_RESULT_RETURN_BDADDR:
-			ba2str((bdaddr_t *) cp->condition, addr);
+			p_ba2str((bdaddr_t *) cp->condition, addr);
 			printf(" with bdaddr %s\n", addr);
 			break;
 		default:
@@ -832,7 +832,7 @@ static inline void request_stored_link_key_dump(int level, struct frame *frm)
 	char addr[18];
 
 	p_indent(level, frm);
-	ba2str(&cp->bdaddr, addr);
+	p_ba2str(&cp->bdaddr, addr);
 	printf("bdaddr %s all %d\n", addr, cp->read_all);
 }
 
@@ -844,7 +844,7 @@ static inline void return_link_keys_dump(int level, struct frame *frm)
 	int i, n;
 
 	for (n = 0; n < num; n++) {
-		ba2str(frm->ptr, addr);
+		p_ba2str(frm->ptr, addr);
 		memcpy(key, frm->ptr + 6, 16);
 
 		p_indent(level, frm);
@@ -1263,7 +1263,7 @@ static inline void bdaddr_response_dump(int level, struct frame *frm)
 	frm->len -= sizeof(bdaddr_t);
 
 	p_indent(level, frm);
-	ba2str(bdaddr, addr);
+	p_ba2str(bdaddr, addr);
 	printf("status 0x%2.2x bdaddr %s\n", status, addr);
 
 	if (status > 0) {
@@ -1927,7 +1927,7 @@ static inline void inq_result_dump(int level, struct frame *frm)
 	for (i = 0; i < num; i++) {
 		inquiry_info *info = frm->ptr;
 
-		ba2str(&info->bdaddr, addr);
+		p_ba2str(&info->bdaddr, addr);
 
 		p_indent(level, frm);
 		printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x\n",
@@ -1944,7 +1944,7 @@ static inline void conn_complete_dump(int level, struct frame *frm)
 	evt_conn_complete *evt = frm->ptr;
 	char addr[18];
 
-	ba2str(&evt->bdaddr, addr);
+	p_ba2str(&evt->bdaddr, addr);
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d bdaddr %s type %s encrypt 0x%2.2x\n",
@@ -1962,7 +1962,7 @@ static inline void conn_request_dump(int level, struct frame *frm)
 	evt_conn_request *evt = frm->ptr;
 	char addr[18];
 
-	ba2str(&evt->bdaddr, addr);
+	p_ba2str(&evt->bdaddr, addr);
 
 	p_indent(level, frm);
 	printf("bdaddr %s class 0x%2.2x%2.2x%2.2x type %s\n",
@@ -1993,7 +1993,7 @@ static inline void remote_name_req_complete_dump(int level, struct frame *frm)
 	char addr[18], name[249];
 	int i;
 
-	ba2str(&evt->bdaddr, addr);
+	p_ba2str(&evt->bdaddr, addr);
 
 	memset(name, 0, sizeof(name));
 	for (i = 0; i < 248 && evt->name[i]; i++)
@@ -2112,7 +2112,7 @@ static inline void role_change_dump(int level, struct frame *frm)
 	char addr[18];
 
 	p_indent(level, frm);
-	ba2str(&evt->bdaddr, addr);
+	p_ba2str(&evt->bdaddr, addr);
 	printf("status 0x%2.2x bdaddr %s role 0x%2.2x\n",
 						evt->status, addr, evt->role);
 
@@ -2163,7 +2163,7 @@ static inline void pin_code_req_dump(int level, struct frame *frm)
 	char addr[18];
 
 	p_indent(level, frm);
-	ba2str(&evt->bdaddr, addr);
+	p_ba2str(&evt->bdaddr, addr);
 	printf("bdaddr %s\n", addr);
 }
 
@@ -2174,7 +2174,7 @@ static inline void link_key_notify_dump(int level, struct frame *frm)
 	int i;
 
 	p_indent(level, frm);
-	ba2str(&evt->bdaddr, addr);
+	p_ba2str(&evt->bdaddr, addr);
 	printf("bdaddr %s key ", addr);
 	for (i = 0; i < 16; i++)
 		if (parser.flags & DUMP_NOVENDOR)
@@ -2243,7 +2243,7 @@ static inline void pscan_rep_mode_change_dump(int level, struct frame *frm)
 	char addr[18];
 
 	p_indent(level, frm);
-	ba2str(&evt->bdaddr, addr);
+	p_ba2str(&evt->bdaddr, addr);
 	printf("bdaddr %s mode %d\n", addr, evt->pscan_rep_mode);
 }
 
@@ -2288,7 +2288,7 @@ static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 
 			p_indent(level, frm);
 
-			ba2str(&info->bdaddr, addr);
+			p_ba2str(&info->bdaddr, addr);
 			printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
 				addr, info->pscan_rep_mode, btohs(info->clock_offset),
 				info->dev_class[2], info->dev_class[1], info->dev_class[0], info->rssi);
@@ -2302,7 +2302,7 @@ static inline void inq_result_with_rssi_dump(int level, struct frame *frm)
 
 			p_indent(level, frm);
 
-			ba2str(&info->bdaddr, addr);
+			p_ba2str(&info->bdaddr, addr);
 			printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
 				addr, info->pscan_rep_mode, btohs(info->clock_offset),
 				info->dev_class[2], info->dev_class[1], info->dev_class[0], info->rssi);
@@ -2340,7 +2340,7 @@ static inline void sync_conn_complete_dump(int level, struct frame *frm)
 	evt_sync_conn_complete *evt = frm->ptr;
 	char addr[18];
 
-	ba2str(&evt->bdaddr, addr);
+	p_ba2str(&evt->bdaddr, addr);
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d bdaddr %s type %s\n",
@@ -2401,7 +2401,7 @@ static inline void extended_inq_result_dump(int level, struct frame *frm)
 	for (i = 0; i < num; i++) {
 		extended_inquiry_info *info = frm->ptr;
 
-		ba2str(&info->bdaddr, addr);
+		p_ba2str(&info->bdaddr, addr);
 
 		p_indent(level, frm);
 		printf("bdaddr %s mode %d clkoffset 0x%4.4x class 0x%2.2x%2.2x%2.2x rssi %d\n",
