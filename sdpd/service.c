@@ -137,21 +137,25 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 
 	// save image of PDU: we need it when clients request this attribute
 	rec = extract_pdu_server(&req->device, p, 0xffffffff, &scanned);
-	if (!rec) {
-		sdp_put_unaligned(htons(SDP_INVALID_SYNTAX), (uint16_t *)rsp->data);
-		rsp->data_size = sizeof(uint16_t);
-		return -1;
-	}
+	if (!rec)
+		goto invalid;
 
-	rec->handle = sdp_next_handle();
-	if (rec->handle < 0x10000)
-		return -1;
+	if (rec->handle == 0xffffffff) {
+		rec->handle = sdp_next_handle();
+		if (rec->handle < 0x10000)
+			goto invalid;
+	} else {
+		if (sdp_record_find(rec->handle))
+			goto invalid;
+	}
 
 	sdp_record_add(&req->device, rec);
 	if (!(req->flags & SDP_RECORD_PERSIST))
 		sdp_svcdb_set_collectable(rec, req->sock);
+
 	handle = sdp_data_alloc(SDP_UINT32, &rec->handle);
 	sdp_attr_replace(rec, SDP_ATTR_RECORD_HANDLE, handle);
+
 	/*
 	 * if the browse group descriptor is NULL,
 	 * ensure that the record belongs to the ROOT group
@@ -161,12 +165,20 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 		 sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
 		 sdp_pattern_add_uuid(rec, &uuid);
 	}
+
 	update_db_timestamp();
 
 	/* Build a rsp buffer */
 	sdp_put_unaligned(htonl(rec->handle), (uint32_t *)rsp->data);
 	rsp->data_size = sizeof(uint32_t);
+
 	return 0;
+
+invalid:
+	sdp_put_unaligned(htons(SDP_INVALID_SYNTAX), (uint16_t *) rsp->data);
+	rsp->data_size = sizeof(uint16_t);
+
+	return -1;
 }
 
 /*
