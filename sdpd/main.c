@@ -30,6 +30,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -301,8 +302,16 @@ static int become_daemon(void)
 			return 0;
 		setsid();
 	}
-	for (fd = 0; fd < 3; fd++)
-		close(fd);
+
+	fd = open("/dev/null", O_RDWR);
+	if (fd != -1) {
+		dup2(fd, STDIN_FILENO);
+		dup2(fd, STDOUT_FILENO);
+		dup2(fd, STDERR_FILENO);
+
+		if (fd > STDERR_FILENO)
+			close(fd);
+	}
 
 	chdir("/");
 	return 1;
