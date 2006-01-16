@@ -1303,7 +1303,6 @@ end:
 	return ret;
 }
 
-
 static int add_headset(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
@@ -1415,6 +1414,73 @@ static int add_handsfree(sdp_session_t *session, svc_info_t *si)
 		goto end;
 	}
 	printf("Handsfree service registered\n");
+end:
+	sdp_data_free(channel);
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+	return ret;
+}
+
+static int add_handsfree_ag(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, svclass_uuid, ga_svclass_uuid, l2cap_uuid, rfcomm_uuid;
+	sdp_profile_desc_t profile;
+	sdp_list_t *aproto, *proto[2];
+	sdp_record_t record;
+	uint8_t u8 = si->channel? si->channel: 3;
+	uint16_t u16 = 0x17;
+	sdp_data_t *channel, *features;
+	uint8_t netid = 0x01; // ???? profile document
+	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
+	int ret = 0;
+
+	memset((void *)&record, 0, sizeof(sdp_record_t));
+	//record.handle = 0xffffffff;
+	record.handle = 0x10001;
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(0, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&svclass_uuid, HANDSFREE_AGW_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &svclass_uuid);
+	sdp_uuid16_create(&ga_svclass_uuid, GENERIC_AUDIO_SVCLASS_ID);
+	svclass_id = sdp_list_append(svclass_id, &ga_svclass_uuid);
+	sdp_set_service_classes(&record, svclass_id);
+
+	sdp_uuid16_create(&profile.uuid, HANDSFREE_PROFILE_ID);
+	profile.version = 0x0100;
+	pfseq = sdp_list_append(0, &profile);
+	sdp_set_profile_descs(&record, pfseq);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap_uuid);
+	apseq = sdp_list_append(0, proto[0]);
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto[1] = sdp_list_append(0, &rfcomm_uuid);
+	channel = sdp_data_alloc(SDP_UINT8, &u8);
+	proto[1] = sdp_list_append(proto[1], channel);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	features = sdp_data_alloc(SDP_UINT16, &u16);
+	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
+
+	aproto = sdp_list_append(0, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	sdp_set_info_attr(&record, "Voice Gateway", 0, 0);
+
+	sdp_attr_add(&record, SDP_ATTR_EXTERNAL_NETWORK, network);
+
+	if (sdp_record_register(session, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		ret = -1;
+		goto end;
+	}
+	printf("Handsfree AG service registered\n");
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
@@ -2541,6 +2607,7 @@ struct {
 
 	{ "HS",		HEADSET_SVCLASS_ID,		add_headset	},
 	{ "HF",		HANDSFREE_SVCLASS_ID,		add_handsfree	},
+	{ "HFAG",	HANDSFREE_AGW_SVCLASS_ID,	add_handsfree_ag},
 	{ "SAP",	SAP_SVCLASS_ID,			add_simaccess	},
 
 	{ "NAP",	NAP_SVCLASS_ID,			add_nap		},
