@@ -86,6 +86,7 @@ static int  defpsm = 0;
 static int  defcompid = DEFAULT_COMPID;
 static int  mode = PARSE;
 static int  permcheck = 1;
+static int  noappend = 0;
 static long flags;
 static long filter;
 static char *dump_file = NULL;
@@ -362,8 +363,8 @@ static int open_file(char *file, int mode, unsigned long flags)
 	int fd, len, open_flags;
 
 	if (mode == WRITE || mode == PPPDUMP || mode == AUDIO) {
-		if (flags & DUMP_BTSNOOP)
-			open_flags = O_WRONLY | O_CREAT;
+		if (noappend || flags & DUMP_BTSNOOP)
+			open_flags = O_WRONLY | O_CREAT | O_TRUNC;
 		else
 			open_flags = O_WRONLY | O_CREAT | O_APPEND;
 	} else
@@ -655,6 +656,7 @@ static void usage(void)
 	"  -B, --btsnoop              Use BTSnoop file format\n"
 	"  -V, --verbose              Verbose decoding\n"
 	"  -Y, --novendor             No vendor commands or events\n"
+	"  -N, --noappend             No appending to existing files\n"
 	"  -h, --help                 Give this help list\n"
 	"      --usage                Give a short usage message\n"
 	);
@@ -684,6 +686,7 @@ static struct option main_options[] = {
 	{ "verbose",		0, 0, 'V' },
 	{ "novendor",		0, 0, 'Y' },
 	{ "nopermcheck",	0, 0, 'Z' },
+	{ "noappend",		0, 0, 'N' },
 	{ "help",		0, 0, 'h' },
 	{ 0 }
 };
@@ -696,7 +699,7 @@ int main(int argc, char *argv[])
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:P:D:A:BVYZh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:P:D:A:BVYZNh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -811,6 +814,10 @@ int main(int argc, char *argv[])
 
 		case 'Z':
 			permcheck = 0;
+			break;
+
+		case 'N':
+			noappend = 1;
 			break;
 
 		case 'h':
