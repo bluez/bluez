@@ -30,7 +30,6 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -290,33 +289,6 @@ static void sig_term(int sig)
 	exit(0);
 }
 
-static int become_daemon(void)
-{
-	int fd;
-
-	if (getppid() != 1) {
-		signal(SIGTTOU, SIG_IGN);
-		signal(SIGTTIN, SIG_IGN);
-		signal(SIGTSTP, SIG_IGN);
-		if (fork())
-			return 0;
-		setsid();
-	}
-
-	fd = open("/dev/null", O_RDWR);
-	if (fd != -1) {
-		dup2(fd, STDIN_FILENO);
-		dup2(fd, STDOUT_FILENO);
-		dup2(fd, STDERR_FILENO);
-
-		if (fd > STDERR_FILENO)
-			close(fd);
-	}
-
-	chdir("/");
-	return 1;
-}
-
 static inline void handle_request(int sk, uint8_t *data, int len)
 {
 	struct sockaddr_l2 sa;
@@ -411,7 +383,7 @@ static struct option main_options[] = {
 
 int main(int argc, char **argv)
 {
-	int daemon = 1;
+	int daemonize = 1;
 	int master = 0;
 	int public = 0;
 	int opt;
@@ -419,7 +391,7 @@ int main(int argc, char **argv)
 	while ((opt = getopt_long(argc, argv, "nmp", main_options, NULL)) != -1)
 		switch (opt) {
 		case 'n':
-			daemon = 0;
+			daemonize = 0;
 			break;
 		case 'm':
 			master = 1;
@@ -431,10 +403,13 @@ int main(int argc, char **argv)
 			usage();
 			exit(0);
 		}
+
 	openlog("sdpd", LOG_PID | LOG_NDELAY, LOG_DAEMON);
-	
-	if (daemon && !become_daemon())
-		return 0;
+
+	if (daemonize && daemon(0, 0)) {
+		SDPERR("Server startup failed: %s (%d)", strerror(errno), errno);
+		return -1;
+	}
 
 	argc -= optind;
 	argv += optind;
@@ -490,6 +465,7 @@ int main(int argc, char **argv)
 		} else
 			check_active(&mask, num);
 	}
+
 exit:
 	sdp_svcdb_reset();
 	return 0;
