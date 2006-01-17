@@ -1,3 +1,7 @@
+ver 2.25:
+	Add definitions for Apple Agent.
+	Add support for record handle on service registration.
+
 ver 2.24:
 	Add support for additional access protocols.
 
