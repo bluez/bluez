@@ -148,7 +148,7 @@ int textfile_put(char *pathname, char *key, char *value)
 		goto unlock;
 	}
 
-	map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
+	map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_LOCKED, fd, 0);
 	if (!map || map == MAP_FAILED) {
 		err = errno;
 		goto unlock;
