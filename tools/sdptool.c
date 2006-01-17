@@ -747,7 +747,7 @@ static int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, cha
 	sdp_list_t *attrid_list;
 	uint32_t range = 0x0000ffff;
 	sdp_record_t *rec;
-		
+
 	/* Get the old SDP record */
 	attrid_list = sdp_list_append(NULL, &range);
 	rec = sdp_service_attr_req(sess, handle, SDP_ATTR_REQ_RANGE, attrid_list);
@@ -794,7 +794,7 @@ static int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, cha
 }
 
 static struct option set_options[] = {
-	{ "help",    0,0, 'h' },
+	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -819,6 +819,7 @@ static int cmd_setattr(int argc, char **argv)
 			return -1;
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -835,8 +836,10 @@ static int cmd_setattr(int argc, char **argv)
 	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
 	if (!sess)
 		return -1;
+
 	status = set_attrib(sess, handle, attrib, argv[2]);
 	sdp_close(sess);
+
 	return status;
 }
 
@@ -912,13 +915,13 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 			printf("Service Record update failed (%d).\n", errno);
 			return -1;
 		}
-	} else {
+	} else
 		printf("Failed to create pSequenceHolder\n");
-	}
 
 	/* Cleanup */
 	for (i = 0; i < argc; i++)
 		free(allocArray[i]);
+
 	free(dtdArray);
 	free(valueArray);
 
@@ -926,7 +929,7 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 }
 
 static struct option seq_options[] = {
-	{ "help",    0,0, 'h' },
+	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -952,6 +955,7 @@ static int cmd_setseq(int argc, char **argv)
 			return -1;
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -971,8 +975,10 @@ static int cmd_setseq(int argc, char **argv)
 	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
 	if (!sess)
 		return -1;
+
 	status = set_attribseq(sess, handle, attrib, argc, argv);
 	sdp_close(sess);
+
 	return status;
 }
 
@@ -991,7 +997,7 @@ static void print_service_desc(void *value, void *user)
 	char str[MAX_LEN_PROTOCOL_UUID_STR];
 	sdp_data_t *p = (sdp_data_t *)value, *s;
 	int i = 0, proto = 0;
-	
+
 	for (; p; p = p->next, i++) {
 		switch (p->dtd) {
 		case SDP_UUID16:
@@ -1106,10 +1112,10 @@ static void print_service_attr(sdp_record_t *rec)
  * Support for Service (de)registration
  */
 typedef struct {
+	uint32_t handle;
 	char *name;
 	char *provider;
 	char *desc;
-	
 	unsigned int class;
 	unsigned int profile;
 	unsigned int channel;
@@ -1135,12 +1141,12 @@ static int add_sp(sdp_session_t *session, svc_info_t *si)
 	uuid_t root_uuid, sp_uuid, l2cap, rfcomm;
 	sdp_profile_desc_t profile;
 	sdp_record_t record;
-	uint8_t u8 = si->channel? si->channel: 1;
+	uint8_t u8 = si->channel ? si->channel : 1;
 	sdp_data_t *channel;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1179,13 +1185,16 @@ static int add_sp(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("Serial Port service registered\n");
+
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1196,12 +1205,12 @@ static int add_dun(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile;
 	sdp_list_t *proto[2];
 	sdp_record_t record;
-	uint8_t u8 = si->channel? si->channel: 1;
+	uint8_t u8 = si->channel ? si->channel : 2;
 	sdp_data_t *channel;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&rootu, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &rootu);
 	sdp_set_browse_groups(&record, root);
@@ -1237,7 +1246,68 @@ static int add_dun(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("Dial-Up Networking service registered\n");
+
+end:
+	sdp_data_free(channel);
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+
+	return ret;
+}
+
+static int add_fax(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, fax_uuid, tel_uuid, l2cap_uuid, rfcomm_uuid;
+	sdp_profile_desc_t profile;
+	sdp_list_t *aproto, *proto[2];
+	sdp_record_t record;
+	uint8_t u8 = si->channel? si->channel : 3;
+	sdp_data_t *channel;
+	int ret = 0;
+
+	memset((void *)&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(0, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&fax_uuid, FAX_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &fax_uuid);
+	sdp_uuid16_create(&tel_uuid, GENERIC_TELEPHONY_SVCLASS_ID);
+	svclass_id = sdp_list_append(svclass_id, &tel_uuid);
+	sdp_set_service_classes(&record, svclass_id);
+
+	sdp_uuid16_create(&profile.uuid, FAX_PROFILE_ID);
+	profile.version = 0x0100;
+	pfseq = sdp_list_append(0, &profile);
+	sdp_set_profile_descs(&record, pfseq);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap_uuid);
+	apseq = sdp_list_append(0, proto[0]);
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto[1] = sdp_list_append(0, &rfcomm_uuid);
+	channel = sdp_data_alloc(SDP_UINT8, &u8);
+	proto[1] = sdp_list_append(proto[1], channel);
+	apseq  = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(0, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	sdp_set_info_attr(&record, "Fax", 0, 0);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		ret = -1;
+		goto end;
+	}
+	printf("Fax service registered\n");
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
@@ -1254,12 +1324,12 @@ static int add_lan(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile;
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
-	uint8_t u8 = si->channel? si->channel: 2;
+	uint8_t u8 = si->channel ? si->channel : 4;
 	sdp_data_t *channel;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1293,13 +1363,16 @@ static int add_lan(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("LAN Access service registered\n");
+
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1310,12 +1383,12 @@ static int add_headset(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile;
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
-	uint8_t u8 = si->channel? si->channel: 5;
+	uint8_t u8 = si->channel ? si->channel : 5;
 	sdp_data_t *channel;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1351,13 +1424,16 @@ static int add_headset(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("Headset service registered\n");
+
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1368,13 +1444,13 @@ static int add_handsfree(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile;
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
-	uint8_t u8 = si->channel? si->channel: 3;
+	uint8_t u8 = si->channel ? si->channel : 6;
 	uint16_t u16 = 0x31;
-	sdp_data_t *channel, *features;	
+	sdp_data_t *channel, *features;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1413,13 +1489,16 @@ static int add_handsfree(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("Handsfree service registered\n");
+
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1430,16 +1509,15 @@ static int add_handsfree_ag(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile;
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
-	uint8_t u8 = si->channel? si->channel: 3;
+	uint8_t u8 = si->channel ? si->channel : 7;
 	uint16_t u16 = 0x17;
 	sdp_data_t *channel, *features;
 	uint8_t netid = 0x01; // ???? profile document
 	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	//record.handle = 0xffffffff;
-	record.handle = 0x10001;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1480,13 +1558,16 @@ static int add_handsfree_ag(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("Handsfree AG service registered\n");
+
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1497,13 +1578,13 @@ static int add_simaccess(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile;
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
-	uint8_t u8 = si->channel? si->channel: 3;
+	uint8_t u8 = si->channel? si->channel : 8;
 	uint16_t u16 = 0x31;
 	sdp_data_t *channel, *features;	
 	int ret = 0;
 
 	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1552,64 +1633,6 @@ end:
 	return ret;
 }
 
-static int add_fax(sdp_session_t *session, svc_info_t *si)
-{
-	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
-	uuid_t root_uuid, fax_uuid, tel_uuid, l2cap_uuid, rfcomm_uuid;
-	sdp_profile_desc_t profile;
-	sdp_list_t *aproto, *proto[2];
-	sdp_record_t record;
-	uint8_t u8 = si->channel? si->channel: 3;
-	sdp_data_t *channel;
-	int ret = 0;
-
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
-	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
-	root = sdp_list_append(0, &root_uuid);
-	sdp_set_browse_groups(&record, root);
-
-	sdp_uuid16_create(&fax_uuid, FAX_SVCLASS_ID);
-	svclass_id = sdp_list_append(0, &fax_uuid);
-	sdp_uuid16_create(&tel_uuid, GENERIC_TELEPHONY_SVCLASS_ID);
-	svclass_id = sdp_list_append(svclass_id, &tel_uuid);
-	sdp_set_service_classes(&record, svclass_id);
-
-	sdp_uuid16_create(&profile.uuid, FAX_PROFILE_ID);
-	profile.version = 0x0100;
-	pfseq = sdp_list_append(0, &profile);
-	sdp_set_profile_descs(&record, pfseq);
-
-	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
-	proto[0] = sdp_list_append(0, &l2cap_uuid);
-	apseq = sdp_list_append(0, proto[0]);
-
-	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
-	proto[1] = sdp_list_append(0, &rfcomm_uuid);
-	channel = sdp_data_alloc(SDP_UINT8, &u8);
-	proto[1] = sdp_list_append(proto[1], channel);
-	apseq  = sdp_list_append(apseq, proto[1]);
-
-	aproto = sdp_list_append(0, apseq);
-	sdp_set_access_protos(&record, aproto);
-
-	sdp_set_info_attr(&record, "Fax", 0, 0);
-
-	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
-		printf("Service Record registration failed\n");
-		ret = -1;
-		goto end;
-	}
-	printf("Fax service registered\n");
-end:
-	sdp_data_free(channel);
-	sdp_list_free(proto[0], 0);
-	sdp_list_free(proto[1], 0);
-	sdp_list_free(apseq, 0);
-	sdp_list_free(aproto, 0);
-	return ret;
-}
-
 static int add_opush(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
@@ -1617,7 +1640,7 @@ static int add_opush(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[3];
 	sdp_record_t record;
-	uint8_t chan = si->channel? si->channel: 4;
+	uint8_t chan = si->channel ? si->channel : 9;
 	sdp_data_t *channel;
 	uint8_t formats[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
 	//uint8_t formats[] = { 0xff };
@@ -1627,8 +1650,8 @@ static int add_opush(sdp_session_t *session, svc_info_t *si)
 	sdp_data_t *sflist;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1673,7 +1696,9 @@ static int add_opush(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("OBEX Object Push service registered\n");
+
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
@@ -1681,6 +1706,7 @@ end:
 	sdp_list_free(proto[2], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1691,12 +1717,12 @@ static int add_ftp(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[3];
 	sdp_record_t record;
-	uint8_t u8 = si->channel? si->channel: 4;
+	uint8_t u8 = si->channel ? si->channel: 10;
 	sdp_data_t *channel;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1734,7 +1760,9 @@ static int add_ftp(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("OBEX File Transfer service registered\n");
+
 end:
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
@@ -1742,6 +1770,7 @@ end:
 	sdp_list_free(proto[2], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1756,8 +1785,8 @@ static int add_nap(sdp_session_t *session, svc_info_t *si)
 	sdp_data_t *psm, *version;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1807,7 +1836,9 @@ static int add_nap(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("NAP service registered\n");
+
 end:
 	sdp_data_free(version);
 	sdp_data_free(psm);
@@ -1815,6 +1846,7 @@ end:
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1829,8 +1861,8 @@ static int add_gn(sdp_session_t *session, svc_info_t *si)
 	sdp_data_t *psm, *version;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1866,7 +1898,9 @@ static int add_gn(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("GN service registered\n");
+
 end:
 	sdp_data_free(version);
 	sdp_data_free(psm);
@@ -1874,6 +1908,7 @@ end:
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1888,8 +1923,8 @@ static int add_panu(sdp_session_t *session, svc_info_t *si)
 	sdp_data_t *psm, *version;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1928,7 +1963,9 @@ static int add_panu(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("PANU service registered\n");
+
 end:
 	sdp_data_free(version);
 	sdp_data_free(psm);
@@ -1936,6 +1973,7 @@ end:
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -1950,8 +1988,8 @@ static int add_ctp(sdp_session_t *session, svc_info_t *si)
 	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1985,13 +2023,16 @@ static int add_ctp(sdp_session_t *session, svc_info_t *si)
 		ret = -1;
 		goto end;
 	}
+
 	printf("CTP service registered\n");
+
 end:
 	sdp_list_free(proto[0], 0);
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
 	sdp_data_free(network);
+
 	return ret;
 }
 
@@ -2006,8 +2047,8 @@ static int add_a2source(sdp_session_t *session, svc_info_t *si)
 	uint16_t lp = 0x0019, ver = 0x0100;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -2051,6 +2092,7 @@ done:
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -2065,8 +2107,8 @@ static int add_a2sink(sdp_session_t *session, svc_info_t *si)
 	uint16_t lp = 0x0019, ver = 0x0100;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -2110,6 +2152,7 @@ done:
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -2124,8 +2167,8 @@ static int add_avrct(sdp_session_t *session, svc_info_t *si)
 	uint16_t lp = 0x0017, ver = 0x0100, feat = 0x000f;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -2172,6 +2215,7 @@ done:
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -2186,8 +2230,8 @@ static int add_avrtg(sdp_session_t *session, svc_info_t *si)
 	uint16_t lp = 0x0017, ver = 0x0100, feat = 0x000f;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -2234,6 +2278,7 @@ done:
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+
 	return ret;
 }
 
@@ -2247,7 +2292,7 @@ static int add_sr1(sdp_session_t *session, svc_info_t *si)
 	uuid_t root_uuid, svclass_uuid;
 
 	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
@@ -2277,10 +2322,10 @@ static int add_syncml(sdp_session_t *session, svc_info_t *si)
 	sdp_record_t record;
 	sdp_list_t *root, *svclass, *proto;
 	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid, obex_uuid;
-	uint8_t channel = si->channel? si->channel: 15;
+	uint8_t channel = si->channel ? si->channel: 15;
 
 	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
@@ -2322,10 +2367,10 @@ static int add_activesync(sdp_session_t *session, svc_info_t *si)
 	sdp_record_t record;
 	sdp_list_t *root, *svclass, *proto;
 	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid;
-	uint8_t channel = si->channel? si->channel: 21;
+	uint8_t channel = si->channel ? si->channel: 21;
 
 	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
@@ -2364,10 +2409,10 @@ static int add_hotsync(sdp_session_t *session, svc_info_t *si)
 	sdp_record_t record;
 	sdp_list_t *root, *svclass, *proto;
 	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid;
-	uint8_t channel = si->channel? si->channel: 22;
+	uint8_t channel = si->channel ? si->channel: 22;
 
 	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
@@ -2408,7 +2453,7 @@ static int add_palmos(sdp_session_t *session, svc_info_t *si)
 	uuid_t root_uuid, svclass_uuid;
 
 	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
@@ -2440,7 +2485,7 @@ static int add_nokiaid(sdp_session_t *session, svc_info_t *si)
 	sdp_data_t *version = sdp_data_alloc(SDP_UINT16, &verid);
 
 	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
@@ -2471,10 +2516,10 @@ static int add_pcsuite(sdp_session_t *session, svc_info_t *si)
 	sdp_record_t record;
 	sdp_list_t *root, *svclass, *proto;
 	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid;
-	uint8_t channel = si->channel? si->channel: 14;
+	uint8_t channel = si->channel ? si->channel: 14;
 
 	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
@@ -2521,7 +2566,7 @@ static int add_apple(sdp_session_t *session, svc_info_t *si)
 	uint16_t attr786 = 0x1234;
 
 	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
@@ -2552,10 +2597,10 @@ static int add_isync(sdp_session_t *session, svc_info_t *si)
 	sdp_record_t record;
 	sdp_list_t *root, *svclass, *proto;
 	uuid_t root_uuid, svclass_uuid, serial_uuid, l2cap_uuid, rfcomm_uuid;
-	uint8_t channel = si->channel? si->channel: 8;
+	uint8_t channel = si->channel ? si->channel : 16;
 
 	memset(&record, 0, sizeof(record));
-	record.handle = 0xffffffff;
+	record.handle = si->handle;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
@@ -2641,36 +2686,42 @@ struct {
 /* Add local service */
 static int add_service(bdaddr_t *bdaddr, svc_info_t *si)
 {
-	int i;
-	sdp_session_t *sess = sdp_connect(&interface, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
+	sdp_session_t *sess;
+	int i, ret = -1;
 
+	if (!si->name)
+		return -1;
+
+	sess = sdp_connect(&interface, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
 	if (!sess)
 		return -1;
-	if (si->name)
-		for (i = 0; service[i].name; i++)
-			if (!strcasecmp(service[i].name, si->name)) {
-				int ret = -1;
-				if (service[i].add)
-					ret = service[i].add(sess, si);
-				free(si->name);
-				sdp_close(sess);
-				return ret;
-			}
+
+	for (i = 0; service[i].name; i++)
+		if (!strcasecmp(service[i].name, si->name)) {
+			if (service[i].add)
+				ret = service[i].add(sess, si);
+			goto done;
+		}
+
 	printf("Unknown service name: %s\n", si->name);
+
+done:
 	free(si->name);
 	sdp_close(sess);
-	return -1;
+
+	return ret;
 }
 
 static struct option add_options[] = {
-	{ "help",    0,0, 'h' },
-	{ "channel", 1,0, 'c' },
-	{ 0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ "handle",	1, 0, 'r' },
+	{ "channel",	1, 0, 'c' },
+	{ 0, 0, 0, 0 }
 };
 
 static char *add_help = 
 	"Usage:\n"
-	"\tadd [--channel=CHAN] service\n";
+	"\tadd [--handle=RECORD_HANDLE --channel=CHANNEL] service\n";
 
 static int cmd_add(int argc, char **argv)
 {
@@ -2678,8 +2729,16 @@ static int cmd_add(int argc, char **argv)
 	int opt;
 
 	memset(&si, 0, sizeof(si));
+	si.handle = 0xffffffff;
+
 	for_each_opt(opt, add_options, 0) {
 		switch (opt) {
+		case 'r':
+			if (strncasecmp(optarg, "0x", 2))
+				si.handle = atoi(optarg);
+			else
+				si.handle = strtol(optarg + 2, NULL, 16);
+			break;
 		case 'c':
 			si.channel = atoi(optarg);
 			break;
@@ -2688,6 +2747,7 @@ static int cmd_add(int argc, char **argv)
 			return -1;
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -2724,6 +2784,7 @@ static int del_service(bdaddr_t *bdaddr, void *arg)
 	attr = sdp_list_append(0, &range);
 	rec = sdp_service_attr_req(sess, handle, SDP_ATTR_REQ_RANGE, attr);
 	sdp_list_free(attr, 0);
+
 	if (!rec) {
 		printf("Service Record not found.\n");
 		sdp_close(sess);
@@ -2738,11 +2799,12 @@ static int del_service(bdaddr_t *bdaddr, void *arg)
 
 	printf("Service Record deleted.\n");
 	sdp_close(sess);
+
 	return 0;
 }
 
 static struct option del_options[] = {
-	{ "help",    0,0, 'h' },
+	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -2761,6 +2823,7 @@ static int cmd_del(int argc, char **argv)
 			return -1;
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -2917,6 +2980,7 @@ static int cmd_browse(int argc, char **argv)
 			return -1;
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -2930,9 +2994,9 @@ static int cmd_browse(int argc, char **argv)
 }
 
 static struct option search_options[] = {
-	{ "help",	0,0, 'h' },
-	{ "bdaddr",	1,0, 'b' },
-	{ "tree",	0,0, 't' },
+	{ "help",	0, 0, 'h' },
+	{ "bdaddr",	1, 0, 'b' },
+	{ "tree",	0, 0, 't' },
 	{ "raw",	0, 0, 'r' },
 	{ 0, 0, 0, 0}
 };
@@ -2946,7 +3010,7 @@ static char *search_help =
  * Search for a specific SDP service
  *
  * Note : we should support multiple services on the command line :
- *	sdptool search 0x0100 0x000f 0x1002
+ *          sdptool search 0x0100 0x000f 0x1002
  * (this would search a service supporting both L2CAP and BNEP directly in
  * the top level browse group)
  */
@@ -2980,6 +3044,7 @@ static int cmd_search(int argc, char **argv)
 			return -1;
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -2989,7 +3054,7 @@ static int cmd_search(int argc, char **argv)
 	}
 
 	/* Note : we need to find a way to support search combining
-	 * multiple services - Jean II */
+	 * multiple services */
 	context.svc = strdup(argv[0]);
 	if (!strncasecmp(context.svc, "0x", 2)) {
 		int num;
@@ -3026,7 +3091,6 @@ static int cmd_search(int argc, char **argv)
 /*
  * Show how to get a specific SDP record by its handle.
  * Not really useful to the user, just show how it can be done...
- * Jean II
  */
 static int get_service(bdaddr_t *bdaddr, struct search_context *context, int quite)
 {
@@ -3046,6 +3110,7 @@ static int get_service(bdaddr_t *bdaddr, struct search_context *context, int qui
 	rec = sdp_service_attr_req(session, context->handle, SDP_ATTR_REQ_RANGE, attrid);
 	sdp_list_free(attrid, 0);
 	sdp_close(session);
+
 	if (!rec) {
 		if (!quite) {
 			printf("Service get request failed.\n");
@@ -3112,6 +3177,7 @@ static int cmd_records(int argc, char **argv)
 			return -1;
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -3177,6 +3243,7 @@ static int cmd_get(int argc, char **argv)
 			return -1;
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -3202,7 +3269,7 @@ static struct {
 	{ "add",     cmd_add,         "Add local service"             },
 	{ "del",     cmd_del,         "Delete local service"          },
 	{ "get",     cmd_get,         "Get local service"             },
-	{ "setattr", cmd_setattr,     "Set/Add attribute to a SDP record" },
+	{ "setattr", cmd_setattr,     "Set/Add attribute to a SDP record"          },
 	{ "setseq",  cmd_setseq,      "Set/Add attribute sequence to a SDP record" },
 	{ 0, 0, 0 }
 };
@@ -3277,5 +3344,5 @@ int main(int argc, char **argv)
 		if (strncmp(command[i].cmd, argv[0], 4) == 0)
 			return command[i].func(argc, argv);
 
-	return -1;
+	return 1;
 }
