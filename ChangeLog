@@ -1,3 +1,17 @@
+ver 2.25:
+	Use %jx instead of %llx for uint64_t and int64_t.
+	Allow null-terminated text strings.
+	Add UUID for N-Gage games.
+	Add UUID for Apple Macintosh Attributes.
+	Add Apple attributes and iSync records.
+	Add definitions for Apple Agent.
+	Add support for the Handsfree Audio Gateway service.
+	Add support for choosing a specific record handle.
+	Add support for dialup/telephone connections.
+
+	Note:
+	This version needs at least bluez-libs-2.25
+
 ver 2.24:
 	Fix display of SDP text and data strings.
 	Add support for device scan property.
