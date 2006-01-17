@@ -2411,6 +2411,11 @@ int sdp_device_record_register(sdp_session_t *session, bdaddr_t *device, sdp_rec
 		errno = ENOMEM;
 		goto end;
 	}
+	if (rec->handle && rec->handle != 0xffffffff) {
+		uint32_t handle = rec->handle;
+		sdp_data_t *data = sdp_data_alloc(SDP_UINT32, &handle);
+		sdp_attr_replace(rec, SDP_ATTR_RECORD_HANDLE, data);
+	}
 	reqhdr = (sdp_pdu_hdr_t *)req;
 	reqhdr->pdu_id = SDP_SVC_REGISTER_REQ;
 	reqhdr->tid    = htons(sdp_gen_tid(session));
