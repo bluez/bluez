@@ -75,6 +75,7 @@ enum {
 	WRITE,
 	RECEIVE,
 	SEND,
+	PPPDUMP,
 	AUDIO
 };
 
@@ -88,6 +89,7 @@ static int  permcheck = 1;
 static long flags;
 static long filter;
 static char *dump_file = NULL;
+static char *pppdump_file = NULL;
 static char *audio_file = NULL;
 static in_addr_t dump_addr = INADDR_LOOPBACK;
 static in_port_t dump_port = DEFAULT_PORT;
@@ -218,7 +220,8 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		frm.data_len = len;
 		frm.dev_id = dev;
 		frm.in = 0;
-		frm.audio_fd = parser.audio_fd;
+		frm.pppdump_fd = parser.pppdump_fd;
+		frm.audio_fd   = parser.audio_fd;
 
 		cmsg = CMSG_FIRSTHDR(&msg);
 		while (cmsg) {
@@ -358,7 +361,7 @@ static int open_file(char *file, int mode, unsigned long flags)
 	struct btsnoop_hdr hdr;
 	int fd, len, open_flags;
 
-	if (mode == WRITE || mode == AUDIO) {
+	if (mode == WRITE || mode == PPPDUMP || mode == AUDIO) {
 		if (flags & DUMP_BTSNOOP)
 			open_flags = O_WRONLY | O_CREAT;
 		else
@@ -647,6 +650,7 @@ static void usage(void)
 	"  -H, --hcrp=psm             PSM for HCRP\n"
 	"  -O, --obex=channel         Channel for OBEX\n"
 	"  -P, --ppp=channel          Channel for PPP\n"
+	"  -D, --pppdump=file         Extract PPP traffic\n"
 	"  -A, --audio=file           Extract SCO audio data\n"
 	"  -B, --btsnoop              Use BTSnoop file format\n"
 	"  -V, --verbose              Verbose decoding\n"
@@ -674,6 +678,7 @@ static struct option main_options[] = {
 	{ "hcrp",		1, 0, 'H' },
 	{ "obex",		1, 0, 'O' },
 	{ "ppp",		1, 0, 'P' },
+	{ "pppdump",		1, 0, 'D' },
 	{ "audio",		1, 0, 'A' },
 	{ "btsnoop",		0, 0, 'B' },
 	{ "verbose",		0, 0, 'V' },
@@ -687,11 +692,11 @@ int main(int argc, char *argv[])
 {
 	struct hostent *host;
 	struct in_addr addr;
-	int opt, fd = -1;
+	int opt, pppdump_fd = -1, audio_fd = -1;
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:P:A:BVYZh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:P:D:A:BVYZh", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -784,6 +789,10 @@ int main(int argc, char *argv[])
 			set_proto(0, 0, atoi(optarg), SDP_UUID_LAN_ACCESS_PPP);
 			break;
 
+		case 'D':
+			pppdump_file = strdup(optarg);
+			break;
+
 		case 'A':
 			audio_file = strdup(optarg);
 			break;
@@ -822,17 +831,20 @@ int main(int argc, char *argv[])
 	if (!filter)
 		filter = ~0L;
 
+	if (pppdump_file)
+		pppdump_fd = open_file(pppdump_file, PPPDUMP, flags);
+
 	if (audio_file)
-		fd = open_file(audio_file, AUDIO, flags);
+		audio_fd = open_file(audio_file, AUDIO, flags);
 
 	switch (mode) {
 	case PARSE:
-		init_parser(flags, filter, defpsm, defcompid, fd);
+		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
 		process_frames(device, open_socket(device, flags), -1, flags);
 		break;
 
 	case READ:
-		init_parser(flags, filter, defpsm, defcompid, fd);
+		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
 		read_dump(open_file(dump_file, mode, flags));
 		break;
 
@@ -842,7 +854,7 @@ int main(int argc, char *argv[])
 		break;
 
 	case RECEIVE:
-		init_parser(flags, filter, defpsm, defcompid, fd);
+		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
 		read_dump(wait_connection(dump_addr, dump_port));
 		break;
 

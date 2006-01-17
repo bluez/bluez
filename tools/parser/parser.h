@@ -45,6 +45,7 @@ struct frame {
 	uint8_t		channel;
 	unsigned long	flags;
 	struct timeval	ts;
+	int		pppdump_fd;
 	int		audio_fd;
 };
 
@@ -96,6 +97,7 @@ struct parser_t {
 	unsigned short defpsm;
 	unsigned short defcompid;
 	int state;
+	int pppdump_fd;
 	int audio_fd;
 };
 
@@ -103,7 +105,7 @@ extern struct parser_t parser;
 
 void init_parser(unsigned long flags, unsigned long filter, 
 		unsigned short defpsm, unsigned short defcompid,
-		int audio_fd);
+		int pppdump_fd, int audio_fd);
 
 static inline int p_filter(unsigned long f)
 {

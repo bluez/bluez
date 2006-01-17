@@ -43,17 +43,18 @@ struct parser_t parser;
 
 void init_parser(unsigned long flags, unsigned long filter,
 		unsigned short defpsm, unsigned short defcompid,
-		int audio_fd)
+		int pppdump_fd, int audio_fd)
 {
 	if ((flags & DUMP_RAW) && !(flags & DUMP_TYPE_MASK))
 		flags |= DUMP_HEX;
 
-	parser.flags     = flags;
-	parser.filter    = filter;
-	parser.defpsm    = defpsm;
-	parser.defcompid = defcompid;
-	parser.state     = 0;
-	parser.audio_fd  = audio_fd;
+	parser.flags      = flags;
+	parser.filter     = filter;
+	parser.defpsm     = defpsm;
+	parser.defcompid  = defcompid;
+	parser.state      = 0;
+	parser.pppdump_fd = pppdump_fd;
+	parser.audio_fd   = audio_fd;
 }
 
 #define PROTO_TABLE_SIZE 20
@@ -182,19 +183,20 @@ struct frame *add_frame(struct frame *frm)
 	if (fr->data)
 		free(fr->data);
 
-	fr->data     = data;
-	fr->data_len = fr->len + frm->len;
-	fr->len      = fr->data_len;
-	fr->ptr      = fr->data;
-	fr->dev_id   = frm->dev_id;
-	fr->in       = frm->in;
-	fr->ts       = frm->ts;
-	fr->handle   = frm->handle;
-	fr->cid      = frm->cid;
-	fr->num      = frm->num;
-	fr->dlci     = frm->dlci;
-	fr->channel  = frm->channel;
-	fr->audio_fd = frm->audio_fd;
+	fr->data       = data;
+	fr->data_len   = fr->len + frm->len;
+	fr->len        = fr->data_len;
+	fr->ptr        = fr->data;
+	fr->dev_id     = frm->dev_id;
+	fr->in         = frm->in;
+	fr->ts         = frm->ts;
+	fr->handle     = frm->handle;
+	fr->cid        = frm->cid;
+	fr->num        = frm->num;
+	fr->dlci       = frm->dlci;
+	fr->channel    = frm->channel;
+	fr->pppdump_fd = frm->pppdump_fd;
+	fr->audio_fd   = frm->audio_fd;
 
 	return fr;
 }

@@ -76,6 +76,21 @@ void ppp_dump(int level, struct frame *frm)
 	void *ptr, *end;
 	int len, pos = 0;
 
+	if (frm->pppdump_fd > fileno(stderr)) {
+		unsigned char id;
+		uint16_t len = htons(frm->len);
+		uint32_t ts = htonl(frm->ts.tv_sec & 0xffffffff);
+
+		id = 0x07;
+		write(frm->pppdump_fd, &id, 1);
+		write(frm->pppdump_fd, &ts, 4);
+
+		id = frm->in ? 0x02 : 0x01;
+		write(frm->pppdump_fd, &id, 1);
+		write(frm->pppdump_fd, &len, 2);
+		write(frm->pppdump_fd, frm->ptr, frm->len);
+	}
+
 	if (!ppp_traffic) {
 		pos = check_for_ppp_traffic(frm->ptr, frm->len);
 		if (pos < 0) {

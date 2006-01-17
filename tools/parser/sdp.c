@@ -636,18 +636,19 @@ static int frame_add(struct frame *frm, int count)
 	if (fr->data)
 		free(fr->data);
 
-	fr->data     = data;
-	fr->data_len = len + count;
-	fr->len      = fr->data_len;
-	fr->ptr      = fr->data;
-	fr->dev_id   = frm->dev_id;
-	fr->in       = frm->in;
-	fr->ts       = frm->ts;
-	fr->handle   = frm->handle;
-	fr->cid      = frm->cid;
-	fr->num      = frm->num;
-	fr->channel  = frm->channel;
-	fr->audio_fd = frm->audio_fd;
+	fr->data       = data;
+	fr->data_len   = len + count;
+	fr->len        = fr->data_len;
+	fr->ptr        = fr->data;
+	fr->dev_id     = frm->dev_id;
+	fr->in         = frm->in;
+	fr->ts         = frm->ts;
+	fr->handle     = frm->handle;
+	fr->cid        = frm->cid;
+	fr->num        = frm->num;
+	fr->channel    = frm->channel;
+	fr->pppdump_fd = frm->pppdump_fd;
+	fr->audio_fd   = frm->audio_fd;
 
 	return pos;
 }
