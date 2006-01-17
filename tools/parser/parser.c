@@ -114,6 +114,139 @@ uint32_t get_proto(uint16_t handle, uint16_t psm, uint8_t channel)
 	return (pos < 0) ? 0 : proto_table[pos].proto;
 }
 
+#define FRAME_TABLE_SIZE 20
+
+static struct {
+	uint16_t handle;
+	uint8_t dlci;
+	uint8_t opcode;
+	uint8_t status;
+	struct frame frm;
+} frame_table[FRAME_TABLE_SIZE];
+
+void del_frame(uint16_t handle, uint8_t dlci)
+{
+	int i;
+
+	for (i = 0; i < FRAME_TABLE_SIZE; i++)
+		if (frame_table[i].handle == handle &&
+					frame_table[i].dlci == dlci) {
+			frame_table[i].handle = 0;
+			frame_table[i].dlci   = 0;
+			frame_table[i].opcode = 0;
+			frame_table[i].status = 0;
+			if (frame_table[i].frm.data)
+				free(frame_table[i].frm.data);
+			memset(&frame_table[i].frm, 0, sizeof(struct frame));
+			break;
+		}
+}
+
+struct frame *add_frame(struct frame *frm)
+{
+	struct frame *fr;
+	void *data;
+	int i, pos = -1;
+
+	for (i = 0; i < FRAME_TABLE_SIZE; i++) {
+		if (frame_table[i].handle == frm->handle &&
+					frame_table[i].dlci == frm->dlci) {
+			pos = i;
+			break;
+		}
+
+		if (pos < 0 && !frame_table[i].handle && !frame_table[i].dlci)
+			pos = i;
+	}
+
+	if (pos < 0)
+		return frm;
+
+	frame_table[pos].handle = frm->handle;
+	frame_table[pos].dlci   = frm->dlci;
+	fr = &frame_table[pos].frm;
+
+	data = malloc(fr->len + frm->len);
+	if (!data) {
+		perror("Can't allocate frame stream buffer");
+		del_frame(frm->handle, frm->dlci);
+		return frm;
+	}
+
+	if (fr->len > 0)
+		memcpy(data, fr->ptr, fr->len);
+
+	if (frm->len > 0)
+		memcpy(data + fr->len, frm->ptr, frm->len);
+
+	if (fr->data)
+		free(fr->data);
+
+	fr->data     = data;
+	fr->data_len = fr->len + frm->len;
+	fr->len      = fr->data_len;
+	fr->ptr      = fr->data;
+	fr->dev_id   = frm->dev_id;
+	fr->in       = frm->in;
+	fr->ts       = frm->ts;
+	fr->handle   = frm->handle;
+	fr->cid      = frm->cid;
+	fr->num      = frm->num;
+	fr->dlci     = frm->dlci;
+	fr->channel  = frm->channel;
+	fr->audio_fd = frm->audio_fd;
+
+	return fr;
+}
+
+uint8_t get_opcode(uint16_t handle, uint8_t dlci)
+{
+	int i;
+
+	for (i = 0; i < FRAME_TABLE_SIZE; i++)
+		if (frame_table[i].handle == handle &&
+					frame_table[i].dlci == dlci)
+			return frame_table[i].opcode;
+
+	return 0x00;
+}
+
+void set_opcode(uint16_t handle, uint8_t dlci, uint8_t opcode)
+{
+	int i;
+
+	for (i = 0; i < FRAME_TABLE_SIZE; i++)
+		if (frame_table[i].handle == handle && 
+					frame_table[i].dlci == dlci) {
+			frame_table[i].opcode = opcode;
+			break;
+		}
+}
+
+uint8_t get_status(uint16_t handle, uint8_t dlci)
+{
+	int i;
+
+	for (i = 0; i < FRAME_TABLE_SIZE; i++)
+		if (frame_table[i].handle == handle &&
+					frame_table[i].dlci == dlci)
+			return frame_table[i].status;
+
+	return 0x00;
+}
+
+void set_status(uint16_t handle, uint8_t dlci, uint8_t status)
+{
+	int i;
+
+	for (i = 0; i < FRAME_TABLE_SIZE; i++)
+		if (frame_table[i].handle == handle &&
+					frame_table[i].dlci == dlci) {
+			frame_table[i].status = status;
+			break;
+		}
+}
+
 void ascii_dump(int level, struct frame *frm, int num)
 {
 	unsigned char *buf = frm->ptr;

@@ -601,7 +601,7 @@ static char *pid2str(uint8_t pid)
 
 static struct frame frame_table[FRAME_TABLE_SIZE];
 
-static int add_frame(struct frame *frm, int count)
+static int frame_add(struct frame *frm, int count)
 {
 	register struct frame *fr;
 	register unsigned char *data;
@@ -652,11 +652,11 @@ static int add_frame(struct frame *frm, int count)
 	return pos;
 }
 
-static struct frame *get_frame(struct frame *frm, int count)
+static struct frame *frame_get(struct frame *frm, int count)
 {
 	register int pos;
 
-	pos = add_frame(frm, count);
+	pos = frame_add(frm, count);
 	if (pos < 0)
 		return frm;
 
@@ -754,9 +754,9 @@ void sdp_dump(int level, struct frame *frm)
 
 		if (cont == 0) {
 			/* Parse AttributeList */
-			print_attr_list(level + 1, get_frame(frm, count));
+			print_attr_list(level + 1, frame_get(frm, count));
 		} else
-			add_frame(frm, count);
+			frame_add(frm, count);
 
 		print_cont_state(level + 1, frm->ptr + count);
 		break;
@@ -787,9 +787,9 @@ void sdp_dump(int level, struct frame *frm)
 
 		if (cont == 0) {
 			/* Parse AttributeLists */
-			print_attr_lists(level + 1, get_frame(frm, count));
+			print_attr_lists(level + 1, frame_get(frm, count));
 		} else
-			add_frame(frm, count);
+			frame_add(frm, count);
 
 		print_cont_state(level + 1, frm->ptr + count);
 		break;
