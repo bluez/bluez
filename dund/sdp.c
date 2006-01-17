@@ -98,6 +98,9 @@ int dun_sdp_register(bdaddr_t *device, uint8_t channel, int type)
 	case ACTIVESYNC:
 		sdp_uuid128_create(&dun, (void *) async_uuid);
 		break;
+	case DIALUP:
+		sdp_uuid16_create(&dun, DIALUP_NET_SVCLASS_ID);
+		break;
 	default:
 		sdp_uuid16_create(&dun, LAN_ACCESS_SVCLASS_ID);
 		break;
@@ -106,7 +109,7 @@ int dun_sdp_register(bdaddr_t *device, uint8_t channel, int type)
 	svclass = sdp_list_append(NULL, &dun);
 	sdp_set_service_classes(record, svclass);
 
-	if (type == LANACCESS) {
+	if (type == LANACCESS || type == DIALUP) {
 		sdp_uuid16_create(&profile[0].uuid, LAN_ACCESS_PROFILE_ID);
 		profile[0].version = 0x0100;
 		pfseq = sdp_list_append(NULL, &profile[0]);
@@ -119,6 +122,9 @@ int dun_sdp_register(bdaddr_t *device, uint8_t channel, int type)
 		break;
 	case ACTIVESYNC:
 		sdp_set_info_attr(record, "ActiveSync", NULL, NULL);
+		break;
+	case DIALUP:
+		sdp_set_info_attr(record, "Dialup Networking", NULL, NULL);
 		break;
 	default:
 		sdp_set_info_attr(record, "LAN Access Point", NULL, NULL);

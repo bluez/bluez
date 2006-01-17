@@ -398,10 +398,11 @@ static struct option main_lopts[] = {
 	{ "msdun",	2, 0, 'X' },
 	{ "activesync",	0, 0, 'a' },
 	{ "mrouter",	1, 0, 'm' },
+	{ "dialup",	1, 0, 'u' },
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:i:lnp::DQ::AESMP:C::P:Xa";
+static char main_sopts[] = "hsc:k:Kr:i:lnp::DQ::AESMP:C::P:Xam:u";
 
 static char main_help[] = 
 	"Bluetooth LAP (LAN Access over PPP) daemon version " VERSION " \n"
@@ -410,6 +411,7 @@ static char main_help[] =
 	"Options:\n"
 	"\t--show --list -l          Show active LAP connections\n"
 	"\t--listen -s               Listen for LAP connections\n"
+	"\t--dialup -u               Pretend to be a dialup/telephone\n"
 	"\t--connect -c <bdaddr>     Create LAP connection\n"
 	"\t--mrouter -m <bdaddr>     Create mRouter connection\n"
 	"\t--search -Q[duration]     Search and connect\n"
@@ -539,6 +541,11 @@ int main(int argc, char **argv)
 			type = MROUTER;
 			break;
 
+		case 'u':
+			mode = LISTEN;
+			type = DIALUP;
+			break;
+
 		case 'h':
 		default:
 			printf(main_help);
@@ -599,7 +606,7 @@ int main(int argc, char **argv)
 		fd = open("/dev/null", O_RDWR);
 		dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
 		close(fd);
-		
+
 		setsid();
 		chdir("/");
 	}

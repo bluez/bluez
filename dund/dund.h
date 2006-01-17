@@ -33,6 +33,7 @@
 #define LANACCESS	0
 #define MROUTER		1
 #define ACTIVESYNC	2
+#define DIALUP		3
 
 /* DUN functions */
 int dun_init(void);
