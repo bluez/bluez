@@ -36,10 +36,89 @@
 
 #include "parser.h"
 
+#define PPP_U8(frm)  (get_u8(frm))
+#define PPP_U16(frm) (btohs(htons(get_u16(frm))))
+#define PPP_U32(frm) (btohl(htonl(get_u32(frm))))
+
+static int ppp_traffic = 0;
+
+static unsigned char ppp_magic1[] = { 0x7e, 0xff, 0x03, 0xc0, 0x21 };
+static unsigned char ppp_magic2[] = { 0x7e, 0xff, 0x7d, 0x23, 0xc0, 0x21 };
+static unsigned char ppp_magic3[] = { 0x7e, 0x7d, 0xdf, 0x7d, 0x23, 0xc0, 0x21 };
+
+static int check_for_ppp_traffic(unsigned char *data, int size)
+{
+	int i;
+
+	for (i = 0; i < size - sizeof(ppp_magic1); i++)
+		if (!memcmp(data + i, ppp_magic1, sizeof(ppp_magic1))) {
+			ppp_traffic = 1;
+			return i;
+		}
+
+	for (i = 0; i < size - sizeof(ppp_magic2); i++)
+		if (!memcmp(data + i, ppp_magic2, sizeof(ppp_magic2))) {
+			ppp_traffic = 1;
+			return i;
+		}
+
+	for (i = 0; i < size - sizeof(ppp_magic3); i++)
+		if (!memcmp(data + i, ppp_magic3, sizeof(ppp_magic3))) {
+			ppp_traffic = 1;
+			return i;
+		}
+
+	return -1;
+}
+
 void ppp_dump(int level, struct frame *frm)
 {
-	p_indent(level, frm);
-	printf("PPP:\n");
+	void *ptr, *end;
+	int len, pos = 0;
 
-	raw_dump(level, frm);
+	if (!ppp_traffic) {
+		pos = check_for_ppp_traffic(frm->ptr, frm->len);
+		if (pos < 0) {
+			raw_dump(level, frm);
+			return;
+		}
+
+		if (pos > 0) {
+			raw_ndump(level, frm, pos);
+			frm->ptr += pos;
+			frm->len -= pos;
+		}
+	}
+
+	frm = add_frame(frm);
+
+	while (frm->len > 0) {
+		ptr = memchr(frm->ptr, 0x7e, frm->len);
+		if (!ptr)
+			break;
+
+		if (frm->ptr != ptr) {
+			frm->len -= (ptr - frm->ptr);
+			frm->ptr = ptr;
+		}
+
+		end = memchr(frm->ptr + 1, 0x7e, frm->len - 1);
+		if (!end)
+			break;
+
+		len = end - ptr - 1;
+
+		frm->ptr++;
+		frm->len--;
+
+		if (len > 0) {
+			p_indent(level, frm);
+			printf("HDLC: len %d\n", len);
+
+			raw_ndump(level, frm, len);
+
+			frm->ptr += len;
+			frm->len -= len;
+		}
+	}
 }
