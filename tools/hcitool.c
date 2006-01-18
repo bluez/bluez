@@ -1973,7 +1973,7 @@ static void cmd_clock(int dev_id, int argc, char **argv)
 	else
 		bacpy(&bdaddr, BDADDR_ANY);
 
-	if (!bacmp(&bdaddr, BDADDR_ANY))
+	if (dev_id < 0 && !bacmp(&bdaddr, BDADDR_ANY))
 		dev_id = hci_get_route(NULL);
 
 	if (dev_id < 0) {
