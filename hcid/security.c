@@ -505,6 +505,7 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE):
 		hcid_dbus_setscan_enable_complete(sba);
+		break;
 	};
 }
 
@@ -745,6 +746,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	case EVT_DISCONN_COMPLETE:
 		disconn_complete(dev, &di->bdaddr, ptr);
 		break;
+
 	case EVT_AUTH_COMPLETE:
 		auth_complete(dev, &di->bdaddr, ptr);
 		break;
