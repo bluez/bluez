@@ -22,10 +22,6 @@
  *
  */
 
-/* PAN scripts & commands */
-#define PAND_CONFIG_DIR  "/etc/bluetooth/pan"
-#define PAND_DEVUP_CMD   "dev-up"
-
 /* BNEP functions */
 int bnep_init(void);
 int bnep_cleanup(void);

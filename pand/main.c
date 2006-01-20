@@ -48,19 +48,19 @@
 
 #include "pand.h"
 
-static uint16_t role = BNEP_SVC_PANU;	/* Local role (ie service) */
-static uint16_t service = BNEP_SVC_NAP;	/* Remote service */
+static uint16_t role    = BNEP_SVC_PANU;	/* Local role (ie service) */
+static uint16_t service = BNEP_SVC_NAP;		/* Remote service */
 
-static int  detach = 1;
-static int  persist;
-static int  use_sdp = 1;
-static int  use_cache;
-static int  auth;
-static int  encrypt;
-static int  secure;
-static int  master;
-static int  cleanup;
-static int  search_duration = 10;
+static int detach = 1;
+static int persist;
+static int use_sdp = 1;
+static int use_cache;
+static int auth;
+static int encrypt;
+static int secure;
+static int master;
+static int cleanup;
+static int search_duration = 10;
 
 static struct {
 	int      valid;
@@ -70,10 +70,12 @@ static struct {
 
 static char netdev[16] = "bnep%d";
 static char *pidfile = NULL;
+static char *devupcmd = NULL;
+
 static bdaddr_t src_addr = *BDADDR_ANY;
 static int src_dev = -1;
 
-volatile int terminate;
+static volatile int terminate;
 
 static void do_kill(char *dst);
 
@@ -87,12 +89,13 @@ enum {
 
 static void run_devup(char *dev, char *dst, int sk, int nsk)
 {
-	char *argv[4], prog[40];
+	char *argv[4];
 	struct sigaction sa;
 
-	sprintf(prog, "%s/%s", PAND_CONFIG_DIR, PAND_DEVUP_CMD);
+	if (!devupcmd)
+		return;
 
-	if (access(prog, R_OK | X_OK))
+	if (access(devupcmd, R_OK | X_OK))
 		return;
 
 	if (fork())
@@ -103,17 +106,19 @@ static void run_devup(char *dev, char *dst, int sk, int nsk)
 
 	if (nsk >= 0)
 		close(nsk);
-	
+
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_DFL;
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
-	argv[0] = prog;
+	argv[0] = devupcmd;
 	argv[1] = dev;
 	argv[2] = dst;
 	argv[3] = NULL;
-	execv(prog, argv);
+
+	execv(devupcmd, argv);
+
 	exit(1);
 }
 
@@ -131,7 +136,7 @@ static int do_listen(void)
 	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (sk < 0) {
 		syslog(LOG_ERR, "Cannot create L2CAP socket. %s(%d)",
-				strerror(errno), errno);
+						strerror(errno), errno);
 		return -1;
 	}
 
@@ -141,7 +146,8 @@ static int do_listen(void)
 	l2a.l2_psm = htobs(BNEP_PSM);
 
 	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
-		syslog(LOG_ERR, "Bind failed. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Bind failed. %s(%d)",
+						strerror(errno), errno);
 		return -1;
 	}
 
@@ -150,14 +156,14 @@ static int do_listen(void)
 	olen = sizeof(l2o);
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen) < 0) {
 		syslog(LOG_ERR, "Failed to get L2CAP options. %s(%d)",
-				strerror(errno), errno);
+						strerror(errno), errno);
 		return -1;
 	}
 
 	l2o.imtu = l2o.omtu = BNEP_MTU;
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o)) < 0) {
 		syslog(LOG_ERR, "Failed to set L2CAP options. %s(%d)",
-				strerror(errno), errno);
+						strerror(errno), errno);
 		return -1;
 	}
 
@@ -173,7 +179,8 @@ static int do_listen(void)
 		lm |= L2CAP_LM_SECURE;
 
 	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
-		syslog(LOG_ERR, "Failed to set link mode. %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Failed to set link mode. %s(%d)",
+						strerror(errno), errno);
 		return -1;
 	}
 
@@ -184,7 +191,8 @@ static int do_listen(void)
 		int nsk;
 		nsk = accept(sk, (struct sockaddr *) &l2a, &alen);
 		if (nsk < 0) {
-			syslog(LOG_ERR, "Accept failed. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Accept failed. %s(%d)",
+						strerror(errno), errno);
 			continue;
 		}
 
@@ -192,7 +200,8 @@ static int do_listen(void)
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Fork failed. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Fork failed. %s(%d)",
+						strerror(errno), errno);
 		default:
 			close(nsk);
 			continue;
@@ -202,12 +211,13 @@ static int do_listen(void)
 			char str[40];
 			ba2str(&l2a.l2_bdaddr, str);
 
-			syslog(LOG_INFO, "New connection from %s %s", str, netdev);
+			syslog(LOG_INFO, "New connection from %s %s",
+								str, netdev);
 
 			run_devup(netdev, str, sk, nsk);
 		} else {
 			syslog(LOG_ERR, "Connection failed. %s(%d)",
-					strerror(errno), errno);
+						strerror(errno), errno);
 		}
 
 		close(nsk);
@@ -233,7 +243,7 @@ static int w4_hup(int sk)
 			if (errno == EINTR || errno == EAGAIN)
 				continue;
 			syslog(LOG_ERR, "Poll failed. %s(%d)",
-					strerror(errno), errno);
+						strerror(errno), errno);
 			return 1;
 		}
 
@@ -269,7 +279,7 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (sk < 0) {
 		syslog(LOG_ERR, "Cannot create L2CAP socket. %s(%d)",
-				strerror(errno), errno);
+						strerror(errno), errno);
 		return -1;
 	}
 
@@ -285,8 +295,8 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 	bacpy(&l2a.l2_bdaddr, &src_addr);
 
 	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a)))
-		syslog(LOG_ERR, "Bind failed. %s(%d)", 
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Bind failed. %s(%d)",
+						strerror(errno), errno);
 
 	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
@@ -312,7 +322,7 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 		r = 0;
 	} else {
 		syslog(LOG_ERR, "Connect to %s failed. %s(%d)",
-				dst, strerror(errno), errno);
+						dst, strerror(errno), errno);
 		r = 1;
 	}
 
@@ -365,7 +375,8 @@ static int do_connect(void)
 		ii = NULL;
 		n  = hci_inquiry(src_dev, search_duration, 0, NULL, &ii, 0);
 		if (n < 0) {
-			syslog(LOG_ERR, "Inquiry failed. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Inquiry failed. %s(%d)",
+						strerror(errno), errno);
 			continue;
 		}
 
@@ -406,29 +417,30 @@ static void do_kill(char *dst)
 		bnep_kill_all_connections();
 }
 
-void sig_hup(int sig)
+static void sig_hup(int sig)
 {
 	return;
 }
 
-void sig_term(int sig)
+static void sig_term(int sig)
 {
 	terminate = 1;
 }
 
-int write_pidfile(void)
+static int write_pidfile(void)
 {
 	int fd;
 	FILE *f;
 	pid_t pid;
 
-	do { 
+	do {
 		fd = open(pidfile, O_WRONLY|O_TRUNC|O_CREAT|O_EXCL, 0644);
 		if (fd == -1) {
 			/* Try to open the file for read. */
 			fd = open(pidfile, O_RDONLY);
 			if(fd == -1) {
-				syslog(LOG_ERR, "Could not read old pidfile: %s(%d)", strerror(errno), errno);
+				syslog(LOG_ERR, "Could not read old pidfile: %s(%d)",
+							strerror(errno), errno);
 				return -1;
 			}
 			
@@ -440,7 +452,8 @@ int write_pidfile(void)
 			 */
 			f = fdopen(fd, "r");
 			if (!f) {
-				syslog(LOG_ERR, "Could not fdopen old pidfile: %s(%d)", strerror(errno), errno);
+				syslog(LOG_ERR, "Could not fdopen old pidfile: %s(%d)",
+							strerror(errno), errno);
 				close(fd);
 				return -1;
 			}
@@ -469,17 +482,18 @@ int write_pidfile(void)
 
 	f = fdopen(fd, "w");
 	if (!f) {
-		syslog(LOG_ERR, "Could not fdopen new pidfile: %s(%d)", strerror(errno), errno);
+		syslog(LOG_ERR, "Could not fdopen new pidfile: %s(%d)",
+						strerror(errno), errno);
 		close(fd);
 		unlink(pidfile);
 		return -1;
 	}
+
 	fprintf(f, "%d\n", getpid());
 	fclose(f);
+
 	return 0;
 }
-		
-
 
 static struct option main_lopts[] = {
 	{ "help",     0, 0, 'h' },
@@ -503,11 +517,12 @@ static struct option main_lopts[] = {
 	{ "master",   0, 0, 'M' },
 	{ "cache",    0, 0, 'C' },
 	{ "pidfile",  1, 0, 'P' },
+	{ "devup",    1, 0, 'u' },
 	{ "autozap",  0, 0, 'z' },
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:d:e:i:lnp::DQ::AESMC::P:z";
+static char main_sopts[] = "hsc:k:Kr:d:e:i:lnp::DQ::AESMC::P:u:z";
 
 static char main_help[] = 
 	"Bluetooth PAN daemon version " VERSION " \n"
@@ -533,7 +548,8 @@ static char main_help[] =
 	"\t--nodetach -n             Do not become a daemon\n"
 	"\t--persist -p[interval]    Persist mode\n"
 	"\t--cache -C[valid]         Cache addresses\n"
-	"\t--pidfile -P <pidfile>    Create PID file\n";
+	"\t--pidfile -P <pidfile>    Create PID file\n"
+	"\t--devup -u <script>       Script to run when interface comes up\n";
 
 int main(int argc, char **argv)
 {
@@ -633,6 +649,10 @@ int main(int argc, char **argv)
 			pidfile = strdup(optarg);
 			break;
 
+		case 'u':
+			devupcmd = strdup(optarg);
+			break;
+
 		case 'z':
 			cleanup = 1;
 			break;
@@ -681,7 +701,8 @@ int main(int argc, char **argv)
 	sigaction(SIGINT,  &sa, NULL);
 
 	if (detach) {
-		if (fork()) exit(0);
+		if (fork())
+			exit(0);
 
 		/* Direct stdin,stdout,stderr to '/dev/null' */
 		{
@@ -700,7 +721,8 @@ int main(int argc, char **argv)
 	if (src) {
 		src_dev = hci_devid(src);
 		if (src_dev < 0 || hci_devba(src_dev, &src_addr) < 0) {
-			syslog(LOG_ERR, "Invalid source. %s(%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Invalid source. %s(%d)",
+						strerror(errno), errno);
 			return -1;
 		}
 	}
