@@ -1118,7 +1118,9 @@ typedef struct {
 	char *desc;
 	unsigned int class;
 	unsigned int profile;
-	unsigned int channel;
+	uint16_t psm;
+	uint8_t channel;
+	uint8_t network;
 } svc_info_t;
 
 static void add_lang_attr(sdp_record_t *r)
@@ -1211,6 +1213,7 @@ static int add_dun(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&rootu, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &rootu);
 	sdp_set_browse_groups(&record, root);
@@ -1270,8 +1273,9 @@ static int add_fax(sdp_session_t *session, svc_info_t *si)
 	sdp_data_t *channel;
 	int ret = 0;
 
-	memset((void *)&record, 0, sizeof(sdp_record_t));
+	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1330,6 +1334,7 @@ static int add_lan(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1389,6 +1394,7 @@ static int add_headset(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1451,6 +1457,7 @@ static int add_handsfree(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1512,12 +1519,13 @@ static int add_handsfree_ag(sdp_session_t *session, svc_info_t *si)
 	uint8_t u8 = si->channel ? si->channel : 7;
 	uint16_t u16 = 0x17;
 	sdp_data_t *channel, *features;
-	uint8_t netid = 0x01; // ???? profile document
+	uint8_t netid = si->network ? si->network : 0x01; // ???? profile document
 	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
 	int ret = 0;
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1585,6 +1593,7 @@ static int add_simaccess(sdp_session_t *session, svc_info_t *si)
 
 	memset((void *)&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1652,6 +1661,7 @@ static int add_opush(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1723,6 +1733,7 @@ static int add_ftp(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1787,6 +1798,7 @@ static int add_nap(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1863,6 +1875,7 @@ static int add_gn(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1925,6 +1938,7 @@ static int add_panu(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -1977,6 +1991,69 @@ end:
 	return ret;
 }
 
+static int add_cip(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, l2cap, cmtp, cip;
+	sdp_profile_desc_t profile[1];
+	sdp_list_t *aproto, *proto[2];
+	sdp_record_t record;
+	uint16_t psm = si->psm ? si->psm : 0x1001;
+	uint8_t netid = si->network ? si->network : 0x02; // 0x02 = ISDN, 0x03 = GSM
+	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
+	int ret = 0;
+
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(0, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&cip, CIP_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &cip);
+	sdp_set_service_classes(&record, svclass_id);
+
+	sdp_uuid16_create(&profile[0].uuid, CIP_PROFILE_ID);
+	profile[0].version = 0x0100;
+	pfseq = sdp_list_append(0, &profile[0]);
+	sdp_set_profile_descs(&record, pfseq);
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap);
+	apseq = sdp_list_append(0, proto[0]);
+	proto[0] = sdp_list_append(proto[0], sdp_data_alloc(SDP_UINT16, &psm));
+	apseq = sdp_list_append(0, proto[0]);
+
+	sdp_uuid16_create(&cmtp, CMTP_UUID);
+	proto[1] = sdp_list_append(0, &cmtp);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(0, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	sdp_attr_add(&record, SDP_ATTR_EXTERNAL_NETWORK, network);
+
+	sdp_set_info_attr(&record, "Common ISDN Access", 0, 0);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		ret = -1;
+		goto end;
+	}
+
+	printf("CIP service registered\n");
+
+end:
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+	sdp_data_free(network);
+
+	return ret;
+}
+
 static int add_ctp(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
@@ -1984,12 +2061,13 @@ static int add_ctp(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
-	uint8_t netid = 0x02; // 0x01-0x07 cf. p120 profile document
+	uint8_t netid = si->network ? si->network : 0x02; // 0x01-0x07 cf. p120 profile document
 	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
 	int ret = 0;
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -2049,6 +2127,7 @@ static int add_a2source(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -2109,6 +2188,7 @@ static int add_a2sink(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -2169,6 +2249,7 @@ static int add_avrct(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -2232,6 +2313,7 @@ static int add_avrtg(sdp_session_t *session, svc_info_t *si)
 
 	memset(&record, 0, sizeof(sdp_record_t));
 	record.handle = si->handle;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -2742,7 +2824,7 @@ struct {
 	{ "PANU",	PANU_SVCLASS_ID,		add_panu	},
 
 	{ "HID",	HID_SVCLASS_ID,			NULL		},
-	{ "CIP",	CIP_SVCLASS_ID,			NULL		},
+	{ "CIP",	CIP_SVCLASS_ID,			add_cip		},
 	{ "CTP",	CORDLESS_TELEPHONY_SVCLASS_ID,	add_ctp		},
 
 	{ "A2SRC",	AUDIO_SOURCE_SVCLASS_ID,	add_a2source	},
@@ -2800,7 +2882,9 @@ done:
 static struct option add_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "handle",	1, 0, 'r' },
+	{ "psm",	1, 0, 'p' },
 	{ "channel",	1, 0, 'c' },
+	{ "network",	1, 0, 'n' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -2824,8 +2908,23 @@ static int cmd_add(int argc, char **argv)
 			else
 				si.handle = strtol(optarg + 2, NULL, 16);
 			break;
+		case 'p':
+			if (strncasecmp(optarg, "0x", 2))
+				si.psm = atoi(optarg);
+			else
+				si.psm = strtol(optarg + 2, NULL, 16);
+			break;
 		case 'c':
-			si.channel = atoi(optarg);
+			if (strncasecmp(optarg, "0x", 2))
+				si.channel = atoi(optarg);
+			else
+				si.channel = strtol(optarg + 2, NULL, 16);
+			break;
+		case 'n':
+			if (strncasecmp(optarg, "0x", 2))
+				si.network = atoi(optarg);
+			else
+				si.network = strtol(optarg + 2, NULL, 16);
 			break;
 		default:
 			printf(add_help);

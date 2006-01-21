@@ -74,17 +74,20 @@ Services are identified and manipulated with a 4-byte \fBrecord_handle\fP
 .IP "\fBsearch [--bdaddr bdaddr] [--tree] [--raw] service_name\fP" 10 
 Search for services.. 
 .IP "" 10 
-Known service names are DID, SP, DUN, LAN, FAX, OPUSH, 
-FTP, HS, HF, SAP, NAP, GN, PANU, HID, CIP, CTP, A2SRC, A2SNK
-and SYNCML.
+Known service names are DID, SP, DUN, LAN, FAX, OPUSH,
+FTP, HS, HF, HFAG, SAP, NAP, GN, PANU, HID, CIP,
+A2SRC, A2SNK, AVRCT, AVRTG, UDIUE, UDITE and SYNCML.
 .IP "\fBbrowse [--tree] [--raw] [bdaddr]\fP" 10 
 Browse all available services on the device 
 specified by a Bluetooth address as a parameter. 
 .IP "\fBrecords [--tree] [--raw] bdaddr\fP" 10
 Retrieve all possible service records.
-.IP "\fBadd [ --channel=N ]\fP" 10 
+.IP "\fBadd [ --handle=N --channel=N ]\fP" 10 
 Add a service to the local  
 \fBsdpd\fR. 
+.IP "" 10
+You can specify a handle for this record using
+the \fB--handle\fP option.
 .IP "" 10 
 You can specify a channel to add the service on 
 using the \fB--channel\fP option. 
