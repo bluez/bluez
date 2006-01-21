@@ -31,15 +31,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <sys/types.h>
-#include <netinet/in.h>
 
 #include <net/ethernet.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/if_ether.h>
-#include <arpa/inet.h>
 
 #include "parser.h"
 
@@ -199,59 +193,6 @@ static void bnep_eval_extension(int level, struct frame *frm)
 
 	if (extension) {
 		bnep_eval_extension(level, frm);
-	}
-}
-
-static void arp_dump(int level, struct frame *frm)
-{
-	int i;
-	struct ether_arp *arp = (struct ether_arp *) frm->ptr;
-
-	printf("Src ");
-	for (i = 0; i < 5; i++)
-		printf("%02x:", arp->arp_sha[i]);
-	printf("%02x", arp->arp_sha[5]);
-	printf("(%s) ", inet_ntoa(*(struct in_addr *) &arp->arp_spa));
-	printf("Tgt ");
-	for (i = 0; i < 5; i++)
-		printf("%02x:", arp->arp_tha[i]);
-	printf("%02x", arp->arp_tha[5]);
-	printf("(%s)\n", inet_ntoa(*(struct in_addr *) &arp->arp_tpa));
-	frm->ptr += sizeof(struct ether_arp);
-	frm->len -= sizeof(struct ether_arp);
-	raw_dump(level, frm);		// not needed.
-}
-
-static void ip_dump(int level, struct frame *frm)
-{
-	struct ip *ip = (struct ip *) (frm->ptr);
-	int len = ip->ip_hl << 2;
-	frm->ptr += len;
-	frm->len -= len;
-
-	printf("src %s ", inet_ntoa(*(struct in_addr *) &(ip->ip_src)));
-	printf("dst %s\n", inet_ntoa(*(struct in_addr *) &(ip->ip_dst)));
-	p_indent(++level, frm);
-
-	switch (ip->ip_p) {
-	case IPPROTO_TCP:
-		printf("TCP:\n");
-		raw_dump(level, frm);
-		break;
-
-	case IPPROTO_UDP:
-		printf("UDP:\n");
-		raw_dump(level, frm);
-		break;
-
-	case IPPROTO_ICMP:
-		printf("ICMP:\n");
-		raw_dump(level, frm);
-		break;
-
-	default:
-		printf("Unknown Protocol: 0x%02x\n", ip->ip_p);
-		raw_dump(level, frm);
 	}
 }
 

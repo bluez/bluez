@@ -231,6 +231,8 @@ void avctp_dump(int level, struct frame *frm);
 void obex_dump(int level, struct frame *frm);
 void capi_dump(int level, struct frame *frm);
 void ppp_dump(int level, struct frame *frm);
+void arp_dump(int level, struct frame *frm);
+void ip_dump(int level, struct frame *frm);
 void csr_dump(int level, struct frame *frm);
 void bpa_dump(int level, struct frame *frm);
 
