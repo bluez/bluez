@@ -46,7 +46,7 @@ static unsigned char ppp_magic1[] = { 0x7e, 0xff, 0x03, 0xc0, 0x21 };
 static unsigned char ppp_magic2[] = { 0x7e, 0xff, 0x7d, 0x23, 0xc0, 0x21 };
 static unsigned char ppp_magic3[] = { 0x7e, 0x7d, 0xdf, 0x7d, 0x23, 0xc0, 0x21 };
 
-static int check_for_ppp_traffic(unsigned char *data, int size)
+static inline int check_for_ppp_traffic(unsigned char *data, int size)
 {
 	int i;
 
@@ -69,6 +69,101 @@ static int check_for_ppp_traffic(unsigned char *data, int size)
 		}
 
 	return -1;
+}
+
+static inline char *dir2str(uint8_t in)
+{
+	return in ? "DCE" : "DTE";
+}
+
+static inline char *proto2str(uint16_t proto)
+{
+	switch (proto) {
+	case 0x0001:
+		return "Padding Protocol";
+	case 0x0021:
+		return "IP";
+	case 0x8021:
+		return "IP Control Protocol";
+	case 0x80fd:
+		return "Compression Control Protocol";
+	case 0xc021:
+		return "Link Control Protocol";
+	case 0xc023:
+		return "Password Authentication Protocol";
+	case 0xc025:
+		return "Link Quality Report";
+	case 0xc223:
+		return "Challenge Handshake Authentication Protocol";
+	default:
+		return "Unknown Protocol";
+	}
+}
+
+static void hdlc_dump(int level, struct frame *frm)
+{
+	uint8_t addr = get_u8(frm);
+	uint8_t ctrl = get_u8(frm);
+	uint16_t fcs, proto;
+
+	fcs = bt_get_unaligned((uint16_t *) (frm->ptr + frm->len - 2));
+	frm->len -= 2;
+
+	p_indent(level, frm);
+
+	if (addr != 0xff || ctrl != 0x03) {
+		frm->ptr -= 2;
+		frm->len += 2;
+		printf("HDLC: %s: len %d fcs 0x%04x\n",
+				dir2str(frm->in), frm->len, fcs);
+	} else
+		printf("HDLC: %s: addr 0x%02x ctrl 0x%02x len %d fcs 0x%04x\n",
+				dir2str(frm->in), addr, ctrl, frm->len, fcs);
+
+	if (*((uint8_t *) frm->ptr) & 0x80)
+		proto = get_u16(frm);
+	else
+		proto = get_u8(frm);
+
+	p_indent(level + 1, frm);
+	printf("PPP: %s (0x%04x): len %d\n", proto2str(proto), proto, frm->len);
+
+	raw_dump(level + 1, frm);
+}
+
+static inline void unslip_frame(int level, struct frame *frm, int len)
+{
+	struct frame msg;
+	unsigned char *data, *ptr;
+	int i, p = 0;
+
+	data = malloc(len * 2);
+	if (!data)
+		return;
+
+	ptr = frm->ptr;
+
+	for (i = 0; i < len; i++) {
+		if (ptr[i] == 0x7d) {
+			data[p++] = ptr[i + 1] ^ 0x20;
+			i++;
+		} else
+			data[p++] = ptr[i];
+	}
+
+	memset(&msg, 0, sizeof(msg));
+	msg.data     = data;
+	msg.data_len = len * 2;
+	msg.ptr      = msg.data;
+	msg.len      = p;
+	msg.in       = frm->in;
+	msg.ts       = frm->ts;
+	msg.handle   = frm->handle;
+	msg.cid      = frm->cid;
+
+	hdlc_dump(level, &msg);
+
+	free(data);
 }
 
 void ppp_dump(int level, struct frame *frm)
@@ -127,10 +222,7 @@ void ppp_dump(int level, struct frame *frm)
 		frm->len--;
 
 		if (len > 0) {
-			p_indent(level, frm);
-			printf("HDLC: len %d\n", len);
-
-			raw_ndump(level, frm, len);
+			unslip_frame(level, frm, len);
 
 			frm->ptr += len;
 			frm->len -= len;
