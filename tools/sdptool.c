@@ -2282,6 +2282,88 @@ done:
 	return ret;
 }
 
+static int add_udiue(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass, *proto;
+	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid;
+	uint8_t channel = si->channel ? si->channel: 18;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = si->handle;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+	sdp_list_free(root, NULL);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto = sdp_list_append(NULL, sdp_list_append(NULL, &l2cap_uuid));
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto = sdp_list_append(proto, sdp_list_append(
+		sdp_list_append(NULL, &rfcomm_uuid), sdp_data_alloc(SDP_UINT8, &channel)));
+
+	sdp_set_access_protos(&record, sdp_list_append(NULL, proto));
+
+	sdp_uuid16_create(&svclass_uuid, UDI_MT_SVCLASS_ID);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+	sdp_list_free(svclass, NULL);
+
+	sdp_set_info_attr(&record, "UDI UE", NULL, NULL);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("UDI UE service registered\n");
+
+	return 0;
+}
+
+static int add_udite(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_list_t *root, *svclass, *proto;
+	uuid_t root_uuid, svclass_uuid, l2cap_uuid, rfcomm_uuid;
+	uint8_t channel = si->channel ? si->channel: 19;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = si->handle;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+	sdp_list_free(root, NULL);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto = sdp_list_append(NULL, sdp_list_append(NULL, &l2cap_uuid));
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto = sdp_list_append(proto, sdp_list_append(
+		sdp_list_append(NULL, &rfcomm_uuid), sdp_data_alloc(SDP_UINT8, &channel)));
+
+	sdp_set_access_protos(&record, sdp_list_append(NULL, proto));
+
+	sdp_uuid16_create(&svclass_uuid, UDI_TA_SVCLASS_ID);
+	svclass = sdp_list_append(NULL, &svclass_uuid);
+	sdp_set_service_classes(&record, svclass);
+	sdp_list_free(svclass, NULL);
+
+	sdp_set_info_attr(&record, "UDI TE", NULL, NULL);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	printf("UDI TE service registered\n");
+
+	return 0;
+}
+
 static unsigned char sr1_uuid[] = {	0xbc, 0x19, 0x9c, 0x24, 0x95, 0x8b, 0x4c, 0xc0,
 					0xa2, 0xcb, 0xfd, 0x8a, 0x30, 0xbf, 0x32, 0x06 };
 
@@ -2667,6 +2749,9 @@ struct {
 	{ "A2SNK",	AUDIO_SINK_SVCLASS_ID,		add_a2sink	},
 	{ "AVRCT",	AV_REMOTE_SVCLASS_ID,		add_avrct	},
 	{ "AVRTG",	AV_REMOTE_TARGET_SVCLASS_ID,	add_avrtg	},
+
+	{ "UDIUE",	UDI_MT_SVCLASS_ID,		add_udiue	},
+	{ "UDITE",	UDI_TA_SVCLASS_ID,		add_udite	},
 
 	{ "SR1",	0,				add_sr1,	sr1_uuid	},
 	{ "SYNCML",	0,				add_syncml,	syncml_uuid	},
