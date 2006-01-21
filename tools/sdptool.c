@@ -2823,6 +2823,7 @@ struct {
 	{ "GN",		GN_SVCLASS_ID,			add_gn		},
 	{ "PANU",	PANU_SVCLASS_ID,		add_panu	},
 
+	{ "HCRP",	HCR_SVCLASS_ID,			NULL		},
 	{ "HID",	HID_SVCLASS_ID,			NULL		},
 	{ "CIP",	CIP_SVCLASS_ID,			add_cip		},
 	{ "CTP",	CORDLESS_TELEPHONY_SVCLASS_ID,	add_ctp		},
