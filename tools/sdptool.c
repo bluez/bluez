@@ -1785,6 +1785,71 @@ end:
 	return ret;
 }
 
+static int add_directprint(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, opush_uuid, l2cap_uuid, rfcomm_uuid, obex_uuid;
+	sdp_profile_desc_t profile[1];
+	sdp_list_t *aproto, *proto[3];
+	sdp_record_t record;
+	uint8_t chan = si->channel ? si->channel : 12;
+	sdp_data_t *channel;
+	int ret = 0;
+
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = si->handle;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(0, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&opush_uuid, DIRECT_PRINTING_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &opush_uuid);
+	sdp_set_service_classes(&record, svclass_id);
+
+	sdp_uuid16_create(&profile[0].uuid, BASIC_PRINTING_PROFILE_ID);
+	profile[0].version = 0x0100;
+	pfseq = sdp_list_append(0, profile);
+	sdp_set_profile_descs(&record, pfseq);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap_uuid);
+	apseq = sdp_list_append(0, proto[0]);
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto[1] = sdp_list_append(0, &rfcomm_uuid);
+	channel = sdp_data_alloc(SDP_UINT8, &chan);
+	proto[1] = sdp_list_append(proto[1], channel);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	sdp_uuid16_create(&obex_uuid, OBEX_UUID);
+	proto[2] = sdp_list_append(0, &obex_uuid);
+	apseq = sdp_list_append(apseq, proto[2]);
+
+	aproto = sdp_list_append(0, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	sdp_set_info_attr(&record, "Direct Printing", 0, 0);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		ret = -1;
+		goto end;
+	}
+
+	printf("Direct Printing service registered\n");
+
+end:
+	sdp_data_free(channel);
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(proto[2], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+
+	return ret;
+}
+
 static int add_nap(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
@@ -2813,6 +2878,7 @@ struct {
 	{ "FAX",	FAX_SVCLASS_ID,			add_fax		},
 	{ "OPUSH",	OBEX_OBJPUSH_SVCLASS_ID,	add_opush	},
 	{ "FTP",	OBEX_FILETRANS_SVCLASS_ID,	add_ftp		},
+	{ "PRINT",	DIRECT_PRINTING_SVCLASS_ID,	add_directprint	},
 
 	{ "HS",		HEADSET_SVCLASS_ID,		add_headset	},
 	{ "HF",		HANDSFREE_SVCLASS_ID,		add_handsfree	},
