@@ -453,6 +453,9 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	case 0x481c:
 		uint16_dump(level + 1, "MAP_SCO_PCM", frm);
 		break;
+	case 0x5004:
+		complex_dump(level + 1, "RADIOTEST", frm);
+		break;
 	case 0x500c:
 		psstores_dump(level + 1, "PS_CLR_STORES", frm);
 		break;
