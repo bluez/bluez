@@ -180,6 +180,18 @@ static inline void handle_clock_dump(int level, char *str, struct frame *frm)
 	printf("%s: handle %d clock 0x%4.4x\n", str, handle, clock);
 }
 
+static inline void radiotest_dump(int level, char *str, struct frame *frm)
+{
+	uint16_t testid;
+
+	testid = CSR_U16(frm);
+
+	p_indent(level, frm);
+	printf("%s: test id %d\n", str, testid);
+
+	raw_dump(level, frm);
+}
+
 static inline void psmemtype_dump(int level, char *str, struct frame *frm)
 {
 	uint16_t store, type;
@@ -454,7 +466,7 @@ static inline void bccmd_dump(int level, struct frame *frm)
 		uint16_dump(level + 1, "MAP_SCO_PCM", frm);
 		break;
 	case 0x5004:
-		complex_dump(level + 1, "RADIOTEST", frm);
+		radiotest_dump(level + 1, "RADIOTEST", frm);
 		break;
 	case 0x500c:
 		psstores_dump(level + 1, "PS_CLR_STORES", frm);
