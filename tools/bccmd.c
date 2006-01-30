@@ -429,6 +429,31 @@ static int cmd_enabletx(int transport, int argc, char *argv[])
 	return transport_write(transport, CSR_VARID_ENABLE_TX, NULL, 0);
 }
 
+static int cmd_rttxdata1(int transport, int argc, char *argv[])
+{
+	uint8_t array[8];
+	uint16_t freq, level;
+
+	OPT_HELP(2, NULL);
+
+	freq = atoi(argv[0]);
+
+	if (!strncasecmp(argv[1], "0x", 2))
+		level = strtol(argv[1], NULL, 16);
+	else
+		level = atoi(argv[1]);
+
+	memset(array, 0, sizeof(array));
+	array[0] = 0x04;
+	array[1] = 0x00;
+	array[2] = freq & 0xff;
+	array[3] = freq >> 8;
+	array[4] = level & 0xff;
+	array[5] = level >> 8;
+
+	return transport_write(transport, CSR_VARID_RADIOTEST, array, 8);
+}
+
 static int cmd_memtypes(int transport, int argc, char *argv[])
 {
 	uint8_t array[8];
@@ -932,6 +957,7 @@ static struct {
 	{ "warmreset", cmd_warmreset, "",              "Perform warm reset"             },
 	{ "disabletx", cmd_disabletx, "",              "Disable TX on the device"       },
 	{ "enabletx",  cmd_enabletx,  "",              "Enable TX on the device"        },
+	{ "rttxdata1", cmd_rttxdata1, "<freq> <level>","TXData1 radio test"             },
 	{ "memtypes",  cmd_memtypes,  NULL,            "Get memory types"               },
 	{ "psget",     cmd_psget,     "<key>",         "Get value for PS key"           },
 	{ "psset",     cmd_psset,     "<key> <value>", "Set value for PS key"           },
