@@ -59,6 +59,7 @@
 #define CSR_VARID_CANCEL_PAGE			0x4012	/* valueless */
 #define CSR_VARID_PS_CLR			0x4818	/* uint16 */
 #define CSR_VARID_MAP_SCO_PCM			0x481c	/* uint16 */
+#define CSR_VARID_RADIOTEST			0x5004	/* complex */
 #define CSR_VARID_PS_CLR_STORES			0x500c	/* complex */
 #define CSR_VARID_NO_VARIABLE			0x6000	/* valueless */
 #define CSR_VARID_CONFIG_UART			0x6802	/* uint16 */
