@@ -50,6 +50,7 @@ static int ident   = 200;
 static int delay   = 1;
 static int count   = -1;
 static int timeout = 10;
+static int reverse = 0;
 
 /* Stats */
 static int sent_pkt = 0;
@@ -144,13 +145,17 @@ static void ping(char *svr)
 		l2cap_cmd_hdr *cmd = (l2cap_cmd_hdr *) buf;
 
 		/* Build command header */
-		cmd->code  = L2CAP_ECHO_REQ;
 		cmd->ident = id;
 		cmd->len   = htobs(size);
 
+		if (reverse)
+			cmd->code = L2CAP_ECHO_RSP;
+		else
+			cmd->code = L2CAP_ECHO_REQ;
+
 		gettimeofday(&tv_send, NULL);
 
-		/* Send Echo Request */
+		/* Send Echo Command */
 		if (send(sk, buf, L2CAP_CMD_HDR_SIZE + size, 0) <= 0) {
 			perror("Send failed");
 			exit(1);
@@ -192,8 +197,9 @@ static void ping(char *svr)
 				continue;
 
 			/* Check type */
-			if (cmd->code == L2CAP_ECHO_RSP)
+			if (!reverse && cmd->code == L2CAP_ECHO_RSP)
 				break;
+
 			if (cmd->code == L2CAP_COMMAND_REJ) {
 				printf("Peer doesn't support Echo packets\n");
 				exit(1);
@@ -226,7 +232,7 @@ static void usage(void)
 {
 	printf("l2ping - L2CAP ping\n");
 	printf("Usage:\n");
-	printf("\tl2ping [-i device] [-s size] [-c count] [-t timeout] [-f] <bdaddr>\n");
+	printf("\tl2ping [-i device] [-s size] [-c count] [-t timeout] [-f] [-r] <bdaddr>\n");
 }
 
 int main(int argc, char *argv[])
@@ -236,7 +242,7 @@ int main(int argc, char *argv[])
 	/* Default options */
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"i:s:c:t:f")) != EOF) {
+	while ((opt=getopt(argc,argv,"i:s:c:t:fr")) != EOF) {
 		switch(opt) {
 		case 'i':
 			if (!strncasecmp(optarg, "hci", 3))
@@ -248,6 +254,11 @@ int main(int argc, char *argv[])
 		case 'f':
 			/* Kinda flood ping */
 			delay = 0;
+			break;
+
+		case 'r':
+			/* Use responses instead of requests */
+			reverse = 1;
 			break;
 
 		case 'c':
