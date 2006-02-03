@@ -30,6 +30,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <syslog.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
