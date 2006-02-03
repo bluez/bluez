@@ -13,6 +13,8 @@ l2ping \- Send L2CAP echo request and receive answer
 .I -t timeout
 ] [
 .I -f
+] [
+.I -r
 ] <
 .I bd_addr
 >
@@ -50,6 +52,9 @@ seconds for the response.
 Kind of flood ping. Use with care! It reduces the delay time between packets
 to 0.
 .TP
+.I -r
+Reverse ping (gnip?). Send echo response instead of echo request.
+.TP
 .I bd_addr
 The Bluetooth MAC address to be pinged in dotted hex notation like
 .B 01:02:03:ab:cd:ef
@@ -58,4 +63,4 @@ or
 .SH AUTHORS
 Written by Maxim Krasnyansky <maxk@qualcomm.com> and Marcel Holtmann <marcel@holtmann.org>
 .PP
-man page by Nils Faerber <nils@kernelconcepts.de>.
+man page by Nils Faerber <nils@kernelconcepts.de>, Adam Laurie <adam@algroup.co.uk>.
