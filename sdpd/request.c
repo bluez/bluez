@@ -448,6 +448,7 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 			uint16_t attr;
 			uint16_t low = (0xffff0000 & range) >> 16;
 			uint16_t high = 0x0000ffff & range;
+			sdp_data_t *data;
 
 			SDPDBG("attr range : 0x%x\n", range);
 			SDPDBG("Low id : 0x%x\n", low);
@@ -460,11 +461,14 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 				break;
 			}
 			/* (else) sub-range of attributes */
-			for (attr = low; attr <= high; attr++) {
-				sdp_data_t *a = (sdp_data_t *)sdp_data_get(rec, attr);
-				if (a)
-					sdp_append_to_pdu(buf, a);
+			for (attr = low; attr < high; attr++) {
+				data = sdp_data_get(rec, attr);
+				if (data)
+					sdp_append_to_pdu(buf, data);
 			}
+			data = sdp_data_get(rec, high);
+			if (data)
+				sdp_append_to_pdu(buf, data);
 		}
 		free(pdu.data);
 	} else {
