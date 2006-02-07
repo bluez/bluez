@@ -166,10 +166,13 @@ static int dun_exec(char *tty, char *prog, char **args)
 	setsid();
 
 	/* Close all FDs */
-	for (fd=3; fd < 20; fd++)
+	for (fd = 3; fd < 20; fd++)
 		close(fd);
 
 	execvp(prog, args);
+
+	syslog(LOG_ERR, "Error while executing %s", prog);
+
 	exit(1);
 }
 
