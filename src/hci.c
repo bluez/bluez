@@ -583,7 +583,7 @@ static hci_map lmp_features_map[8][9] = {
 	{	/* Byte 5 */
 		{ "<5-slot EDR ACL>",	LMP_EDR_5SLOT	},	/* Bit 0 */
 		{ "<sniff subrating>",	LMP_SNIFF_SUBR	},	/* Bit 1 */
-		{ "<no. 42>",		0x04		},	/* Bit 2 */
+		{ "<pause encryption>",	LMP_PAUSE_ENC	},	/* Bit 2 */
 		{ "<AFH cap. master>",	LMP_AFH_CAP_MST	},	/* Bit 3 */
 		{ "<AFH class. master>",LMP_AFH_CLS_MST	},	/* Bit 4 */
 		{ "<EDR eSCO 2 Mbps>",	LMP_EDR_ESCO_2M	},	/* Bit 5 */

@@ -244,6 +244,7 @@ enum {
 
 #define LMP_EDR_5SLOT	0x01
 #define LMP_SNIFF_SUBR	0x02
+#define LMP_PAUSE_ENC	0x04
 #define LMP_AFH_CAP_MST	0x08
 #define LMP_AFH_CLS_MST	0x10
 #define LMP_EDR_ESCO_2M	0x20
