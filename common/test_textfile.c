@@ -38,12 +38,13 @@ int main(int argc, char *argv[])
 {
 	char filename[] = "/tmp/textfile";
 	char key[18], value[512], *str;
-	int i, j, fd;
+	int i, j, fd, max = 10;
 
 	fd = creat(filename, 0644);
 	close(fd);
 
-	for (i = 1; i < 101; i++) {
+
+	for (i = 1; i < max + 1; i++) {
 		sprintf(key, "00:00:00:00:00:%02X", i);
 
 		memset(value, 0, sizeof(value));
@@ -62,6 +63,87 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "No value for %s\n", key);
 		else
 			free(str);
+	}
+
+
+	sprintf(key, "00:00:00:00:00:%02X", max);
+
+	memset(value, 0, sizeof(value));
+	for (j = 0; j < max; j++)
+		value[j] = 'y';
+
+	if (textfile_put(filename, key, value) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	sprintf(key, "00:00:00:00:00:%02X", 1);
+
+	memset(value, 0, sizeof(value));
+	for (j = 0; j < max; j++)
+		value[j] = 'z';
+
+	if (textfile_put(filename, key, value) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	printf("\n");
+
+	for (i = 1; i < max + 1; i++) {
+		sprintf(key, "00:00:00:00:00:%02X", i);
+
+		str = textfile_get(filename, key);
+		if (str) {
+			printf("%s %s\n", key, str);
+			free(str);
+		}
+	}
+
+
+	sprintf(key, "00:00:00:00:00:%02X", 2);
+
+	if (textfile_del(filename, key) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	sprintf(key, "00:00:00:00:00:%02X", max - 3);
+
+	if (textfile_del(filename, key) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	printf("\n");
+
+	for (i = 1; i < max + 1; i++) {
+		sprintf(key, "00:00:00:00:00:%02X", i);
+
+		str = textfile_get(filename, key);
+		if (str) {
+			printf("%s %s\n", key, str);
+			free(str);
+		}
+	}
+
+	sprintf(key, "00:00:00:00:00:%02X", 1);
+
+	if (textfile_del(filename, key) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	sprintf(key, "00:00:00:00:00:%02X", max);
+
+	if (textfile_del(filename, key) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	sprintf(key, "00:00:00:00:00:%02X", max + 1);
+
+	if (textfile_del(filename, key) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	printf("\n");
+
+	for (i = 1; i < max + 1; i++) {
+		sprintf(key, "00:00:00:00:00:%02X", i);
+
+		str = textfile_get(filename, key);
+		if (str) {
+			printf("%s %s\n", key, str);
+			free(str);
+		}
 	}
 
 	return 0;

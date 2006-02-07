@@ -86,6 +86,17 @@ int create_file(char *filename, mode_t mode)
 	return 0;
 }
 
+static inline char *find_key(char *map, char *key, size_t len)
+{
+	char *off = strstr(map, key);
+
+	while (off && ((off > map && *(off - 1) != '\r' &&
+				*(off - 1) != '\n') || *(off + len) != ' '))
+		off = strstr(off + len, key);
+
+	return off;
+}
+
 static inline int write_key_value(int fd, char *key, char *value)
 {
 	char *str;
@@ -108,18 +119,7 @@ static inline int write_key_value(int fd, char *key, char *value)
 	return err;
 }
 
-static inline char *find_key(char *map, char *key, size_t len)
-{
-	char *off = strstr(map, key);
-
-	while (off && ((off > map && *(off - 1) != '\r' &&
-				*(off - 1) != '\n') || *(off + len) != ' '))
-		off = strstr(off + len, key);
-
-	return off;
-}
-
-int textfile_put(char *pathname, char *key, char *value)
+static int write_key(char *pathname, char *key, char *value)
 {
 	struct stat st;
 	char *map, *off, *end, *str;
@@ -156,9 +156,11 @@ int textfile_put(char *pathname, char *key, char *value)
 
 	off = find_key(map, key, strlen(key));
 	if (!off) {
-		munmap(map, size);
-		pos = lseek(fd, size, SEEK_SET);
-		err = write_key_value(fd, key, value);
+		if (value) {
+			munmap(map, size);
+			pos = lseek(fd, size, SEEK_SET);
+			err = write_key_value(fd, key, value);
+		}
 		goto unlock;
 	}
 
@@ -178,7 +180,8 @@ int textfile_put(char *pathname, char *key, char *value)
 		munmap(map, size);
 		ftruncate(fd, base);
 		pos = lseek(fd, base, SEEK_SET);
-		err = write_key_value(fd, key, value);
+		if (value)
+			err = write_key_value(fd, key, value);
 		goto unlock;
 	}
 
@@ -198,7 +201,8 @@ int textfile_put(char *pathname, char *key, char *value)
 	munmap(map, size);
 	ftruncate(fd, base);
 	pos = lseek(fd, base, SEEK_SET);
-	err = write_key_value(fd, key, value);
+	if (value)
+		err = write_key_value(fd, key, value);
 
 	write(fd, str, len);
 
@@ -217,6 +221,16 @@ close:
 	errno = err;
 
 	return -err;
+}
+
+int textfile_put(char *pathname, char *key, char *value)
+{
+	return write_key(pathname, key, value);
+}
+
+int textfile_del(char *pathname, char *key)
+{
+	return write_key(pathname, key, NULL);
 }
 
 char *textfile_get(char *pathname, char *key)
