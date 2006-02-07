@@ -276,16 +276,18 @@ static const DBusObjectPathVTable obj_mgr_vtable = {
  */
 static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_device_down_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_device_get_mode_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_device_set_mode_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_device_set_property_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_device_get_property_req(DBusMessage *msg, void *data);
 static DBusMessage* handle_device_set_property_req_name(DBusMessage *msg, void *data);
 static DBusMessage* handle_device_get_property_req_name(DBusMessage *msg, void *data);
-static DBusMessage* handle_device_set_property_req_pscan(DBusMessage *msg, void *data);
-static DBusMessage* handle_device_set_property_req_iscan(DBusMessage *msg, void *data);
 
 static const struct service_data device_services[] = {
 	{ DEV_UP,		handle_device_up_req,		DEV_UP_SIGNATURE		},
 	{ DEV_DOWN,		handle_device_down_req,		DEV_DOWN_SIGNATURE		},
+	{ DEV_GET_MODE,		handle_device_get_mode_req,	DEV_GET_MODE_SIGNATURE		},
+	{ DEV_SET_MODE,		handle_device_set_mode_req,	DEV_SET_MODE_SIGNATURE		},
 	{ DEV_SET_PROPERTY,	handle_device_set_property_req,	DEV_SET_PROPERTY_SIGNATURE_BOOL	},
 	{ DEV_SET_PROPERTY,	handle_device_set_property_req,	DEV_SET_PROPERTY_SIGNATURE_STR	},
 	{ DEV_SET_PROPERTY,	handle_device_set_property_req,	DEV_SET_PROPERTY_SIGNATURE_BYTE	},
@@ -296,8 +298,6 @@ static const struct service_data device_services[] = {
 static const struct service_data set_property_services[] = {
 	{ DEV_PROPERTY_AUTH,		handle_not_implemented_req,		DEV_SET_PROPERTY_SIGNATURE_BOOL		},
 	{ DEV_PROPERTY_ENCRYPT,		handle_not_implemented_req,		DEV_SET_PROPERTY_SIGNATURE_BOOL		},
-	{ DEV_PROPERTY_PSCAN,		handle_device_set_property_req_pscan,	DEV_SET_PROPERTY_SIGNATURE_BOOL		},
-	{ DEV_PROPERTY_ISCAN,		handle_device_set_property_req_iscan,	DEV_SET_PROPERTY_SIGNATURE_BOOL		},
 	{ DEV_PROPERTY_NAME,		handle_device_set_property_req_name,	DEV_SET_PROPERTY_SIGNATURE_STR		},
 	{ DEV_PROPERTY_INCMODE,		handle_not_implemented_req,		DEV_SET_PROPERTY_SIGNATURE_BYTE		},
 	{ NULL, NULL, NULL}
@@ -1993,6 +1993,110 @@ failed:
 	return reply;
 }
 
+static DBusMessage* handle_device_get_mode_req(DBusMessage *msg, void *data)
+{
+	const struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
+	const uint8_t hci_mode = dbus_data->path_data;
+	uint8_t scan_mode;
+
+	switch (hci_mode) {
+	case SCAN_DISABLED:
+		scan_mode = MODE_OFF;
+		break;
+	case SCAN_PAGE:
+		scan_mode = MODE_CONNECTABLE;
+		break;
+	case (SCAN_PAGE | SCAN_INQUIRY):
+		scan_mode = MODE_DISCOVERABLE;
+		break;
+	case SCAN_INQUIRY:
+	/* inquiry scan mode is not handled, return 0xff */
+	default:
+		/* reserved */
+		scan_mode = 0xff;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply,
+					DBUS_TYPE_BYTE, &scan_mode,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage* handle_device_set_mode_req(DBusMessage *msg, void *data)
+{
+	const struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
+	struct hci_request rq;
+	int dd = -1;
+	const uint8_t scan_mode;
+	uint8_t hci_mode;
+	uint8_t status = 0;
+	const uint8_t current_mode = dbus_data->path_data;
+
+	dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_BYTE, &scan_mode,
+					DBUS_TYPE_INVALID);
+
+	switch (scan_mode) {
+	case MODE_OFF:
+		hci_mode = SCAN_DISABLED;
+		break;
+	case MODE_CONNECTABLE:
+		hci_mode = SCAN_PAGE;
+		break;
+	case MODE_DISCOVERABLE:
+		hci_mode = (SCAN_PAGE | SCAN_INQUIRY);
+		break;
+	default:
+		/* invalid mode */
+		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+		goto failed;
+	}
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0) {
+		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+		goto failed;
+	}
+
+	/* Check if the new requested mode is different from the current */
+	if (current_mode != hci_mode) {
+		memset(&rq, 0, sizeof(rq));
+		rq.ogf    = OGF_HOST_CTL;
+		rq.ocf    = OCF_WRITE_SCAN_ENABLE;
+		rq.cparam = &hci_mode;
+		rq.clen   = sizeof(hci_mode);
+		rq.rparam = &status;
+		rq.rlen   = sizeof(status);
+
+		if (hci_send_req(dd, &rq, 100) < 0) {
+			syslog(LOG_ERR, "Sending write scan enable command failed: %s (%d)",
+							strerror(errno), errno);
+			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+			goto failed;
+		}
+		if (status) {
+			syslog(LOG_ERR, "Setting scan enable failed with status 0x%02x", status);
+			reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
+			goto failed;
+		}
+
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+failed:
+	if (dd >= 0)
+		close(dd);
+
+	return reply;
+}
+
 static DBusMessage* handle_device_set_property_req(DBusMessage *msg, void *data)
 {
 	const struct service_data *handlers = set_property_services;
@@ -2258,113 +2362,18 @@ failed:
 	return reply;
 }
 
-static DBusMessage* write_scan_enable(DBusMessage *msg, void *data, gboolean ispscan)
-{
-	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
-	DBusMessage *reply = NULL;
-	int dd = -1;
-	read_scan_enable_rp rp;
-	uint8_t enable;
-	uint8_t status;
-	uint8_t scan_change, scan_keep;
-	struct hci_request rq;
-	gboolean prop_value; /* new requested value for the iscan or pscan */
-
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_get_basic(&iter, &prop_value);
-
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_READ_SCAN_ENABLE;
-	rq.rparam = &rp;
-	rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending read scan enable command failed: %s (%d)",
-							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	if (rp.status) {
-		syslog(LOG_ERR, "Getting scan enable failed with status 0x%02x",
-								 	rp.status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + rp.status);
-		goto failed;
-        }
-
-	if (ispscan) { /* Page scan */
-		scan_change = SCAN_PAGE;
-		scan_keep = SCAN_INQUIRY;
-	} else { /* Inquiry scan */
-		scan_change = SCAN_INQUIRY;
-		scan_keep = SCAN_PAGE;
-	}
-
-	/* This is an optimization. We want to avoid overwrite the value
-	if the requested scan property will not change. */
-	if (prop_value && !(rp.enable & scan_change))
-		/* Enable the requested scan type (e.g. page scan). Keep the
-		the other type untouched. */
-		enable = (rp.enable & scan_keep) | scan_change;
-	else if (!prop_value && (rp.enable & scan_change))
-		/* Disable the requested scan type (e.g. page scan). Keep the
-		the other type untouched. */
-		enable = (rp.enable & scan_keep);
-	else { /* Property not changed. Do nothing. Return ok. */
-		reply = dbus_message_new_method_return(msg);
-		goto failed;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
-	rq.cparam = &enable;
-	rq.clen   = sizeof(enable);
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending write scan enable command failed: %s (%d)",
-							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-	if (status) {
-		syslog(LOG_ERR, "Setting scan enable failed with status 0x%02x", rp.status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + rp.status);
-		goto failed;
-	}
-	reply = dbus_message_new_method_return(msg);
-
-failed:
-	if (dd >= 0)
-		close(dd);
-	return reply;
-
-}
-
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
+	DBusMessage *message = NULL;
+	struct hci_dbus_data *pdata = NULL;
 	char *local_addr;
 	char path[MAX_PATH_LENGTH];
 	bdaddr_t tmp;
-	int id;
-	int dd = -1;
-	gboolean se;
 	read_scan_enable_rp rp;
 	struct hci_request rq;
-	struct hci_dbus_data *pdata = NULL;
-	uint32_t old_data;
+	int id;
+	int dd = -1;
+	uint8_t scan_mode;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	id = hci_devid(local_addr);
@@ -2405,37 +2414,54 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	old_data = pdata->path_data;
+	/* update the current scan mode value */
 	pdata->path_data = rp.enable;
 
-	/* If the new page scan flag is different from what we had, send a signal. */
-	if((rp.enable & SCAN_PAGE) != (old_data & SCAN_PAGE)) {
-		se = (rp.enable & SCAN_PAGE);
-		send_property_changed_signal(id, DEV_PROPERTY_PSCAN, DBUS_TYPE_BOOLEAN, &se);
+	switch (rp.enable) {
+	case SCAN_DISABLED:
+		scan_mode = MODE_OFF;
+		break;
+	case SCAN_PAGE:
+		scan_mode = MODE_CONNECTABLE;
+		break;
+	case (SCAN_PAGE | SCAN_INQUIRY):
+		scan_mode = MODE_DISCOVERABLE;
+		break;
+	case SCAN_INQUIRY:
+		/* ignore, this event should not be sent*/
+	default:
+		/* ignore, reserved */
+		goto failed;
 	}
-	/* If the new inquity scan flag is different from what we had, send a signal. */
-	if ((rp.enable & SCAN_INQUIRY) != (old_data & SCAN_INQUIRY)) {
-		se = (rp.enable & SCAN_INQUIRY);
-		send_property_changed_signal(id, DEV_PROPERTY_ISCAN, DBUS_TYPE_BOOLEAN, &se);
+
+	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+						BLUEZ_HCI_SCAN_MODE_CHANGED);
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
+		goto failed;
 	}
+
+	dbus_message_append_args(message,
+					DBUS_TYPE_BYTE, &scan_mode,
+					DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS ModeChanged(%x) signal", rp.enable);
+		goto failed;
+	}
+
 
 	dbus_connection_flush(connection);
 
 failed:
+
+	if (message)
+		dbus_message_unref(message);
+
 	if (dd >= 0)
 		close(dd);
 
 	bt_free(local_addr);
-}
-
-static DBusMessage* handle_device_set_property_req_pscan(DBusMessage *msg, void *data)
-{
-	return write_scan_enable(msg, data, TRUE);
-}
-
-static DBusMessage* handle_device_set_property_req_iscan(DBusMessage *msg, void *data)
-{
-	return write_scan_enable(msg, data, FALSE);
 }
 
 static DBusMessage* handle_device_list_req(DBusMessage *msg, void *data)

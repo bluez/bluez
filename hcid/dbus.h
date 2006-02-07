@@ -101,6 +101,7 @@
 
 /* /org/bluez/Device signals */
 #define BLUEZ_HCI_PROPERTY_CHANGED	"PropertyChanged"
+#define BLUEZ_HCI_SCAN_MODE_CHANGED	"ModeChanged"
 
 /* Control interface signals */
 #define BLUEZ_HCI_INQ_START		"InquiryStart"
@@ -125,6 +126,20 @@
 #define DEV_DOWN			"Down"
 #define DEV_SET_PROPERTY		"SetProperty"
 #define DEV_GET_PROPERTY		"GetProperty"
+#define DEV_SET_MODE			"SetMode"
+#define DEV_GET_MODE			"GetMode"
+
+/*
+ * Scanning modes
+ * off: remote devices are not allowed to find or connect to this device
+ * connectable: remote devices are allowed to connect, but they are not
+ *              allowed to find it.
+ * discoverable: remote devices are allowed to connect and find this device
+ */
+#define MODE_OFF			0x00
+#define MODE_CONNECTABLE		0x01
+#define MODE_DISCOVERABLE		0x02
+
 
 #define DEV_PROPERTY_AUTH		"auth"
 #define DEV_PROPERTY_ENCRYPT		"encrypt"
@@ -136,7 +151,9 @@
 
 #define DEV_UP_SIGNATURE			__END_SIG__
 #define DEV_DOWN_SIGNATURE			__END_SIG__
-#define DEV_RESET_SIGNATURE			__END_SIG__
+#define DEV_SET_MODE_SIGNATURE			DBUS_TYPE_BYTE_AS_STRING\
+						__END_SIG__
+#define DEV_GET_MODE_SIGNATURE			__END_SIG__
 #define DEV_SET_PROPERTY_SIGNATURE_BOOL		DBUS_TYPE_STRING_AS_STRING \
 						DBUS_TYPE_BOOLEAN_AS_STRING \
 						__END_SIG__

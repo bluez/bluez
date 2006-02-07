@@ -9,10 +9,10 @@ import getopt
 from signal import *
 
 mgr_cmds = [ "DeviceList", "DefaultDevice" ]
-dev_cmds = [ "Up", "Down", "SetProperty", "GetProperty", "Inquiry",
+dev_cmds = [ "Up", "Down", "SetProperty", "GetProperty", "SetMode", "GetMode", "Inquiry",
              "CancelInquiry", "PeriodicInquiry","CancelPeriodic", "RemoteName",
              "Connections", "Authenticate", "RoleSwitch" ]
-dev_setprop_bool = [ "auth", "encrypt", "discoverable", "connectable" ]
+dev_setprop_bool = [ "auth", "encrypt" ]
 dev_setprop_byte = [ "incmode" ]
 dev_prop_filter = ["/org/bluez/Device/hci0", "/org/bluez/Device/hci1",
                    "/org/bluez/Device/hci2", "/org/bluez/Device/hci3",
@@ -87,6 +87,10 @@ class Tester:
                 for path in dev_prop_filter:
                     self.bus.add_signal_receiver(self.dev_property_changed,
                                              'PropertyChanged','org.bluez.Device',
+                                             'org.bluez',path)
+                for path in dev_prop_filter:
+                    self.bus.add_signal_receiver(self.dev_mode_changed,
+                                             'ModeChanged','org.bluez.Device',
                                              'org.bluez',path)
                 obj = self.bus.get_object('org.bluez', '%s/Controller' % self.dev_path)
                 self.ctl = dbus.Interface(obj, 'org.bluez.Device.Controller')
@@ -166,11 +170,12 @@ class Tester:
         dbus_message = keywords["dbus_message"]
         if property == 'name':
             print 'Device %s name changed: %s' % (dbus_message.get_path(), param)
-        elif property == 'connectable':
-            print 'Device %s connectable scan property changed: %d' % (dbus_message.get_path(), param)
-        elif property == 'discoverable':
-            print 'Device %s discoverable scan property changed: %d' % (dbus_message.get_path(), param)
 
+    @dbus.decorators.explicitly_pass_message
+    def dev_mode_changed(*args, **keywords):
+        mode = args[1]
+        dbus_message = keywords["dbus_message"]
+        print 'Device %s scan mode changed: %x' % (dbus_message.get_path(), mode)
 
     def signal_cb(self, sig, frame):
         print 'Caught signal, exiting'
@@ -221,6 +226,25 @@ class Tester:
                 sys.exit(1)
             try:
                 print self.dev.GetProperty(self.cmd_args[0])
+            except dbus.DBusException, e:
+                print 'Sending %s failed: %s' % (self.cmd, e)
+                sys.exit(1)
+        elif self.cmd == 'SetMode':
+            if len(self.cmd_args) != 1:
+                print 'Usage: %s -i <dev> SetMode scan_enable' % self.name
+                print 'scan_enable values: 0(no scan), 1(connectable), 2(connectable and discoverable)' % self.name
+                sys.exit(1)
+            try:
+                print self.dev.SetMode(dbus.Byte(self.cmd_args[0]))
+            except dbus.DBusException, e:
+                print 'Sending %s failed: %s' % (self.cmd, e)
+                sys.exit(1)
+        elif self.cmd == 'GetMode':
+            if len(self.cmd_args) != 0:
+                print 'Usage: %s -i <dev> GetMode' % self.name
+                sys.exit(1)
+            try:
+                print self.dev.GetMode()
             except dbus.DBusException, e:
                 print 'Sending %s failed: %s' % (self.cmd, e)
                 sys.exit(1)
