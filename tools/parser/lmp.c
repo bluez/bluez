@@ -312,6 +312,10 @@ static char *opcode2str(uint16_t opcode)
 		return "sniff_subrate_req";
 	case 127 + (22 << 7):
 		return "sniff_subrate_res";
+	case 127 + (23 << 7):
+		return "pause_encryption_req";
+	case 127 + (24 << 7):
+		return "resume_encryption_req";
 	default:
 		return "unknown";
 	}
@@ -1165,6 +1169,8 @@ void lmp_dump(int level, struct frame *frm)
 	case 51:
 	case 56:
 	case 58:
+	case 127 + (23 << 7):
+	case 127 + (24 << 7):
 		return;
 	case 127 + (1 << 7):
 		accepted_ext_dump(level + 1, frm);
