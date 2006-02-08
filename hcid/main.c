@@ -552,9 +552,10 @@ int main(int argc, char *argv[], char *env[])
 	hcid.security    = HCID_SEC_AUTO;
 	hcid.pairing     = HCID_PAIRING_MULTI;
 
-	hcid.pin_file    = strdup(HCID_PIN_FILE);
+	strcpy((char *) hcid.pin_code, "BlueZ");
+	hcid.pin_len = 5;
+
 	hcid.pin_helper  = strdup(HCID_PIN_HELPER);
-	hcid.key_file    = strdup(HCID_KEY_FILE);
 
 	init_defaults();
 

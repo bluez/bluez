@@ -33,8 +33,7 @@
 #include "glib-ectomy.h"
 
 #define HCID_CONFIG_FILE CONFIGDIR "/hcid.conf"
-#define HCID_PIN_FILE    CONFIGDIR "/pin"
-#define HCID_KEY_FILE    CONFIGDIR "/link_key"
+
 #define HCID_PIN_HELPER  "/usr/bin/bluepin"
 
 enum {
@@ -90,11 +89,9 @@ struct hcid_opts {
 
 	uint8_t pin_code[16];
 	int     pin_len;
-	char   *pin_helper;
-	char   *pin_file;
-	int     dbus_pin_helper;
 
-	char   *key_file;
+	char   *pin_helper;
+	int     dbus_pin_helper;
 
 	int     sock;
 };

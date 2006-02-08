@@ -98,46 +98,6 @@ static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *
 
 /* Link Key handling */
 
-/* This function is not reentrable */
-static struct link_key *__get_link_key(int f, bdaddr_t *sba, bdaddr_t *dba)
-{
-	static struct link_key k;
-	struct link_key *key = NULL;
-	int r;
-
-	while ((r = read_n(f, &k, sizeof(k)))) {
-		if (r < 0) {
-			syslog(LOG_ERR, "Link key database read failed: %s (%d)",
-							strerror(errno), errno);
-			break;
-		}
-
-		if (!bacmp(&k.sba, sba) && !bacmp(&k.dba, dba)) {
-			key = &k;
-			break;
-		}
-	}
-
-	return key;
-}
-
-static struct link_key *get_link_key(bdaddr_t *sba, bdaddr_t *dba)
-{
-	struct link_key *key = NULL;
-	int f;
-
-	f = open(hcid.key_file, O_RDONLY);
-	if (f >= 0)
-		key = __get_link_key(f, sba, dba);
-	else if (errno != ENOENT)
-		syslog(LOG_ERR, "Link key database open failed: %s (%d)",
-							strerror(errno), errno);
-
-	close(f);
-
-	return key;
-}
-
 static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
 	unsigned char key[16];
@@ -148,15 +108,6 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	syslog(LOG_INFO, "link_key_request (sba=%s, dba=%s)", sa, da);
 
 	err = read_link_key(sba, dba, key);
-	if (err < 0) {
-		struct link_key *linkkey = get_link_key(sba, dba);
-		if (linkkey) {
-			memcpy(key, linkkey->key, 16);
-			linkkey->time = time(0);
-			err = 0;
-		}
-	}
-
 	if (err < 0) {
 		/* Link key not found */
 		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY, 6, dba);
@@ -169,50 +120,6 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 						LINK_KEY_REPLY_CP_SIZE, &lr);
 	}
 }
-
-#if 0
-static void save_link_key(struct link_key *key)
-{
-	struct link_key *exist;
-	char sa[18], da[18];
-	int f, err;
-
-	f = open(hcid.key_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-	if (f < 0) {
-		syslog(LOG_ERR, "Link key database open failed: %s (%d)",
-							strerror(errno), errno);
-		return;
-	}
-
-	/* Check if key already exist */
-	exist = __get_link_key(f, &key->sba, &key->dba);
-
-	err = 0;
-
-	if (exist) {
-		off_t o = lseek(f, 0, SEEK_CUR);
-		err = lseek(f, o - sizeof(*key), SEEK_SET);
-	} else
-		err = fcntl(f, F_SETFL, O_APPEND);
-
-	if (err < 0) {
-		syslog(LOG_ERR, "Link key database seek failed: %s (%d)",
-							strerror(errno), errno);
-		goto failed;
-	}
-
-	if (write_n(f, key, sizeof(*key)) < 0) {
-		syslog(LOG_ERR, "Link key database write failed: %s (%d)",
-							strerror(errno), errno);
-	}
-
-	ba2str(&key->sba, sa); ba2str(&key->dba, da);
-	syslog(LOG_INFO, "%s link key %s %s", exist ? "Replacing" : "Saving", sa, da);
-
-failed:
-	close(f);
-}
-#endif
 
 static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 {
@@ -229,10 +136,6 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	bacpy(&key.dba, dba);
 	key.type = evt->key_type;
 	key.time = time(0);
-
-#if 0
-	save_link_key(&key);
-#endif
 
 	write_link_key(sba, dba, evt->link_key, evt->key_type);
 }
@@ -260,34 +163,6 @@ static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
 }
 
 /* PIN code handling */
-
-static int read_default_pin_code(void)
-{
-	char buf[17];
-	FILE *f; 
-	int len;
-
-	if (!(f = fopen(hcid.pin_file, "r"))) {
-		syslog(LOG_ERR, "Can't open PIN file %s: %s (%d)",
-					hcid.pin_file, strerror(errno), errno);
-		return -1;
-	}
-
-	if (fgets(buf, sizeof(buf), f)) {
-		strtok(buf, "\n\r");
-		len = strlen(buf); 
-		memcpy(hcid.pin_code, buf, len);
-		hcid.pin_len = len;
-	} else {
-		syslog(LOG_ERR, "Can't read PIN file %s: %s (%d)",
-					hcid.pin_file, strerror(errno), errno);
-		len = -1;
-	}
-
-	fclose(f);
-
-	return len;
-}
 
 /*
   PIN helper is an external app that asks user for a PIN. It can 
@@ -415,8 +290,9 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	pin_code_reply_cp pr;
 	struct hci_conn_info_req *cr;
 	struct hci_conn_info *ci;
+	unsigned char key[16];
 	char sa[18], da[18], pin[17];
-	int pinlen;
+	int err, pinlen;
 
 	memset(&pr, 0, sizeof(pr));
 	bacpy(&pr.bdaddr, dba);
@@ -441,8 +317,8 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	pinlen = read_pin_code(sba, dba, pin);
 
 	if (pairing == HCID_PAIRING_ONCE) {
-		struct link_key *key = get_link_key(sba, dba);
-		if (key) {
+		err = read_link_key(sba, dba, key);
+		if (!err) {
 			ba2str(dba, da);
 			syslog(LOG_WARNING, "PIN code request for already paired device %s", da);
 			goto reject;
@@ -871,11 +747,5 @@ void stop_security_manager(int hdev)
 
 void init_security_data(void)
 {
-	/* Set local PIN code */
-	if (read_default_pin_code() < 0) {
-		strcpy((char *) hcid.pin_code, "BlueZ");
-		hcid.pin_len = 5;
-	}
-
 	pairing = hcid.pairing;
 }

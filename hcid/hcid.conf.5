@@ -45,6 +45,12 @@ with already paired devices. \fIonce\fP allows pairing once and denies
 successive attempts. The default hcid configuration is shipped with \fBmulti\fP
 enabled
 
+.TP
+\fBpin_code\fP "\fIpin\fP"
+
+The default PIN for incoming connections if \fBsecurity\fP has been
+set to \fIauto\fP.
+
 .TP 
 \fBpin_helper\fP "\fIfile\fP"
 
@@ -67,7 +73,7 @@ requests.
 \fBsecurity\fP  none|auto|user
 
 \fInone\fP means the security manager is disabled. \fIauto\fP uses
-local PIN, by default from /etc/bluetooth/pin, for incoming
+local PIN, by default from pin_code, for incoming
 connections. \fIuser\fP always asks the user for a PIN.
 
 .SH "DEVICE SECTION"
@@ -235,12 +241,6 @@ You can check the Bluetooth specification version 1.2 Volume 2, Part B section 6
 .TP 
 .I /etc/bluetooth/hcid.conf
 Default location of the global configuration file.
-
-.TP 
-.I /etc/bluetooth/pin
-Default location of local PIN file, used for incoming connections in
-security mode \fIauto\fP. The file contains the PIN code terminated by
-newline.
 
 .SH "AUTHOR"
 This manual page was written by Edouard Lafargue, Fredrik Noring and Maxim Krasnyansky.
