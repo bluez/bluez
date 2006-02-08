@@ -97,6 +97,28 @@ static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *
 	return -ENOENT;
 }
 
+static inline void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
+{
+	time_t t;
+	struct tm *tm;
+
+	t = time(NULL);
+	tm = gmtime(&t);
+
+	write_lastseen_info(sba, dba, tm);
+}
+
+static inline void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
+{
+	time_t t;
+	struct tm *tm;
+
+	t = time(NULL);
+	tm = gmtime(&t);
+
+	write_lastused_info(sba, dba, tm);
+}
+
 /* Link Key handling */
 
 static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
@@ -423,17 +445,6 @@ static inline void inquiry_complete(int dev, bdaddr_t *sba, void *ptr)
 	hcid_dbus_inquiry_complete(sba);
 }
 
-static inline void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
-{
-	time_t t;
-	struct tm *tm;
-
-	t = time(NULL);
-	tm = gmtime(&t);
-
-	write_lastseen_info(sba, dba, tm);
-}
-
 static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 {
 	uint8_t num = *(uint8_t *) ptr++;
@@ -543,6 +554,8 @@ static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 
 	if (evt->status)
 		return;
+
+	update_lastused(sba, &evt->bdaddr);
 
 	name_resolve(dev, &evt->bdaddr);
 
