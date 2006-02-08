@@ -23,6 +23,7 @@
  *
  */
 
+#include <time.h>
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -150,6 +151,7 @@ int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, uint8_t lmp_ver, uint16_t lmp_subver);
 int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features);
+int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
 int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type);
 int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key);
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);

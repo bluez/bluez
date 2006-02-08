@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include <time.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -113,6 +114,22 @@ int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, addr);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(peer, addr);
+	return textfile_put(filename, addr, str);
+}
+
+int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
+{
+	char filename[PATH_MAX + 1], addr[18], str[24];
+
+	memset(str, 0, sizeof(str));
+	strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S %Z", tm);
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 

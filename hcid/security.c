@@ -38,6 +38,7 @@
 #include <signal.h>
 #include <syslog.h>
 #include <time.h>
+#include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -422,6 +423,17 @@ static inline void inquiry_complete(int dev, bdaddr_t *sba, void *ptr)
 	hcid_dbus_inquiry_complete(sba);
 }
 
+static inline void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
+{
+	time_t t;
+	struct tm *tm;
+
+	t = time(NULL);
+	tm = gmtime(&t);
+
+	write_lastseen_info(sba, dba, tm);
+}
+
 static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 {
 	uint8_t num = *(uint8_t *) ptr++;
@@ -434,6 +446,8 @@ static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 			| (info->dev_class[2] << 16);
 
 		hcid_dbus_inquiry_result(sba, &info->bdaddr, class, 0);
+
+		update_lastseen(sba, &info->bdaddr);
 
 		ptr += INQUIRY_INFO_SIZE;
 	}
@@ -457,6 +471,8 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, vo
 			hcid_dbus_inquiry_result(sba, &info->bdaddr,
 							class, info->rssi);
 
+			update_lastseen(sba, &info->bdaddr);
+
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
 	} else {
@@ -468,6 +484,8 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, vo
 
 			hcid_dbus_inquiry_result(sba, &info->bdaddr,
 							class, info->rssi);
+
+			update_lastseen(sba, &info->bdaddr);
 
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}
@@ -486,6 +504,8 @@ static inline void extended_inquiry_result(int dev, bdaddr_t *sba, int plen, voi
 			| (info->dev_class[2] << 16);
 
 		hcid_dbus_inquiry_result(sba, &info->bdaddr, class, info->rssi);
+
+		update_lastseen(sba, &info->bdaddr);
 
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
