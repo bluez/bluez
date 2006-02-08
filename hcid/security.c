@@ -525,12 +525,26 @@ static inline void remote_features_information(int dev, bdaddr_t *sba, void *ptr
 	write_features_info(sba, &dba, evt->features);
 }
 
+static inline void name_resolve(int dev, bdaddr_t *bdaddr)
+{
+	remote_name_req_cp cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+	cp.pscan_rep_mode = 0x02;
+
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
+						REMOTE_NAME_REQ_CP_SIZE, &cp);
+}
+
 static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_conn_complete *evt = ptr;
 
 	if (evt->status)
 		return;
+
+	name_resolve(dev, &evt->bdaddr);
 
 	hcid_dbus_conn_complete(sba, &evt->bdaddr);
 }
