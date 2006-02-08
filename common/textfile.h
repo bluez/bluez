@@ -27,3 +27,6 @@ int create_file(char *filename, mode_t mode);
 int textfile_put(char *pathname, char *key, char *value);
 int textfile_del(char *pathname, char *key);
 char *textfile_get(char *pathname, char *key);
+
+int textfile_foreach(char *pathname,
+		void (*func)(char *key, char *value, void *data), void *data);

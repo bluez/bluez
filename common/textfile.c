@@ -296,3 +296,92 @@ close:
 
 	return str;
 }
+
+int textfile_foreach(char *pathname,
+		void (*func)(char *key, char *value, void *data), void *data)
+{
+	struct stat st;
+	char *map, *off, *end, *key, *value;
+	off_t size; size_t len;
+	int fd, err = 0;
+
+	fd = open(pathname, O_RDONLY);
+	if (fd < 0)
+		return -errno;
+
+	if (flock(fd, LOCK_SH) < 0) {
+		err = errno;
+		goto close;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		err = errno;
+		goto unlock;
+	}
+
+	size = st.st_size;
+
+	map = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+	if (!map || map == MAP_FAILED) {
+		err = errno;
+		goto unlock;
+	}
+
+	off = map;
+
+	while (1) {
+		end = strpbrk(off, " ");
+		if (!end) {
+			err = EILSEQ;
+			break;
+		}
+
+		len = end - off;
+
+		key = malloc(len + 1);
+		if (!key) {
+			err = errno;
+			break;
+		}
+
+		memset(key, 0, len + 1);
+		memcpy(key, off, len);
+
+		off = end + 1;
+
+		end = strpbrk(off, "\r\n");
+		if (!end) {
+			err = EILSEQ;
+			break;
+		}
+
+		len = end - off;
+
+		value = malloc(len + 1);
+		if (!value) {
+			err = errno;
+			break;
+		}
+
+		memset(value, 0, len + 1);
+		memcpy(value, off, len);
+
+		func(key, value, data);
+
+		free(key);
+		free(value);
+
+		off = end + 1;
+	}
+
+	munmap(map, size);
+
+unlock:
+	flock(fd, LOCK_UN);
+
+close:
+	close(fd);
+	errno = err;
+
+	return 0;
+}

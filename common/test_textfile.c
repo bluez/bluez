@@ -34,6 +34,11 @@
 
 #include "textfile.h"
 
+static void print_entry(char *key, char *value, void *data)
+{
+	printf("%s %s\n", key, value);
+}
+
 int main(int argc, char *argv[])
 {
 	char filename[] = "/tmp/textfile";
@@ -109,15 +114,8 @@ int main(int argc, char *argv[])
 
 	printf("\n");
 
-	for (i = 1; i < max + 1; i++) {
-		sprintf(key, "00:00:00:00:00:%02X", i);
+	textfile_foreach(filename, print_entry, NULL);
 
-		str = textfile_get(filename, key);
-		if (str) {
-			printf("%s %s\n", key, str);
-			free(str);
-		}
-	}
 
 	sprintf(key, "00:00:00:00:00:%02X", 1);
 
@@ -136,15 +134,7 @@ int main(int argc, char *argv[])
 
 	printf("\n");
 
-	for (i = 1; i < max + 1; i++) {
-		sprintf(key, "00:00:00:00:00:%02X", i);
-
-		str = textfile_get(filename, key);
-		if (str) {
-			printf("%s %s\n", key, str);
-			free(str);
-		}
-	}
+	textfile_foreach(filename, print_entry, NULL);
 
 	return 0;
 }
