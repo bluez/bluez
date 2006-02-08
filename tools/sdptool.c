@@ -3029,9 +3029,57 @@ static int add_isync(sdp_session_t *session, svc_info_t *si)
 	return 0;
 }
 
+static int add_semchla(sdp_session_t *session, svc_info_t *si)
+{
+	sdp_record_t record;
+	sdp_profile_desc_t profile;
+	sdp_list_t *root, *svclass, *proto, *profiles;
+	uuid_t root_uuid, service_uuid, l2cap_uuid, semchla_uuid;
+	uint16_t psm = 0xf0f9;
+
+	memset(&record, 0, sizeof(record));
+	record.handle = si->handle;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto = sdp_list_append(NULL, sdp_list_append(
+		sdp_list_append(NULL, &l2cap_uuid), sdp_data_alloc(SDP_UINT16, &psm)));
+
+	sdp_uuid32_create(&semchla_uuid, 0x8e770300);
+	proto = sdp_list_append(proto, sdp_list_append(NULL, &semchla_uuid));
+
+	sdp_set_access_protos(&record, sdp_list_append(NULL, proto));
+
+	sdp_uuid32_create(&service_uuid, 0x8e771301);
+	svclass = sdp_list_append(NULL, &service_uuid);
+
+	sdp_set_service_classes(&record, svclass);
+
+	sdp_uuid32_create(&profile.uuid, 0x8e771302);	// Headset
+	//sdp_uuid32_create(&profile.uuid, 0x8e771303);	// Phone
+	profile.version = 0x0100;
+	profiles = sdp_list_append(NULL, &profile);
+	sdp_set_profile_descs(&record, profiles);
+
+	sdp_set_info_attr(&record, "SEMC HLA", NULL, NULL);
+
+	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+		printf("Service Record registration failed\n");
+		return -1;
+	}
+
+	/* SEMC High Level Authentication */
+	printf("SEMC HLA service registered\n");
+
+	return 0;
+}
+
 struct {
 	char		*name;
-	uint16_t	class;
+	uint32_t	class;
 	int		(*add)(sdp_session_t *sess, svc_info_t *si);
 	unsigned char *uuid;
 } service[] = {
@@ -3067,6 +3115,8 @@ struct {
 
 	{ "UDIUE",	UDI_MT_SVCLASS_ID,		add_udi_ue	},
 	{ "UDITE",	UDI_TA_SVCLASS_ID,		add_udi_te	},
+
+	{ "SEMCHLA",	0x8e771301,			add_semchla	},
 
 	{ "SR1",	0,				add_sr1,	sr1_uuid	},
 	{ "SYNCML",	0,				add_syncml,	syncml_uuid	},
@@ -3435,7 +3485,7 @@ static int cmd_search(int argc, char **argv)
 {
 	struct search_context context;
 	unsigned char *uuid = NULL;
-	uint16_t class = 0;
+	uint32_t class = 0;
 	bdaddr_t bdaddr;
 	int has_addr = 0;
 	int i;
@@ -3494,9 +3544,14 @@ static int cmd_search(int argc, char **argv)
 		}
 	}
 
-	if (class)
-		sdp_uuid16_create(&context.group, class);
-	else
+	if (class) {
+		if (class & 0xffff0000)
+			sdp_uuid32_create(&context.group, class);
+		else {
+			uint16_t class16 = class & 0xffff;
+			sdp_uuid16_create(&context.group, class16);
+		}
+	} else
 		sdp_uuid128_create(&context.group, uuid);
 
 	if (has_addr)
