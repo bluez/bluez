@@ -1057,10 +1057,8 @@ failed:
 
 	ret = unregister_device_path(path);
 
-	/* FIXME: If there are any devices left after this removal the default
-	 * device should be changed to one of them */
 	if (ret && default_dev == id)
-		default_dev = -1;
+		default_dev = hci_get_route(NULL);
 
 	return ret;
 }
@@ -1921,8 +1919,6 @@ static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
-	struct hci_dev_info di;
-	struct hci_dev_req dr;
 	int sk = -1;
 
 	/* Create and bind HCI socket */
@@ -1939,18 +1935,6 @@ static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data)
 					dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
-	}
-
-	if (ioctl(sk, HCIGETDEVINFO, (void *) &di) >= 0 &&
-					!hci_test_bit(HCI_RAW, &di.flags)) {
-		dr.dev_id  = dbus_data->dev_id;
-		dr.dev_opt = SCAN_PAGE | SCAN_INQUIRY; /* piscan */
-		if (ioctl(sk, HCISETSCAN, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set scan mode on hci%d: %s (%d)",
-					dbus_data->dev_id, strerror(errno), errno);
-			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-			goto failed;
-		}
 	}
 
 	reply = dbus_message_new_method_return(msg);
