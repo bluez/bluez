@@ -699,8 +699,12 @@ static void l2cap_parse(int level, struct frame *frm)
 					hdr->code, hdr->ident, btohs(hdr->len));
 				raw_dump(level, frm);
 			}
-			frm->ptr += btohs(hdr->len);
-			frm->len -= btohs(hdr->len);
+
+			if (frm->len > btohs(hdr->len)) {
+				frm->len -= btohs(hdr->len);
+				frm->ptr += btohs(hdr->len);
+			} else
+				frm->len = 0;
 		}
 	} else if (cid == 0x2) {
 		/* Connectionless channel */
