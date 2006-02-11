@@ -31,9 +31,9 @@
 #include <signal.h>
 #include <string.h>
 #include <syslog.h>
+#include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/time.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -296,7 +296,6 @@ static DBusMessage *bluez_new_failure_msg(DBusMessage *msg, const uint32_t ecode
 	return reply;
 }
 
-
 /*
  * Virtual table that handle the object path hierarchy
  */
@@ -367,7 +366,7 @@ static const struct service_data dev_services[] = {
 	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		DEV_GET_FEATURES_SIGNATURE		},
 	{ DEV_GET_MANUFACTURER,		handle_dev_get_manufacturer_req,	DEV_GET_MANUFACTURER_SIGNATURE		},
 	{ DEV_GET_MODE,			handle_dev_get_mode_req,		DEV_GET_MODE_SIGNATURE			},
-	{ DEV_GET_NAME,                 handle_dev_get_name_req,                DEV_GET_NAME_SIGNATURE                  },
+	{ DEV_GET_NAME,			handle_dev_get_name_req,		DEV_GET_NAME_SIGNATURE			},
 	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		DEV_GET_REVISION_SIGNATURE		},
 	{ DEV_GET_VERSION,		handle_dev_get_version_req,		DEV_GET_VERSION_SIGNATURE		},
 
@@ -975,7 +974,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason)
 {
 }
 
-
 /*****************************************************************
  *
  *  Section reserved to D-Bus watch functions
@@ -1501,7 +1499,7 @@ static DBusMessage* handle_dev_set_alias_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
 	char *str_ptr, *addr_ptr;
 	bdaddr_t bdaddr;
 
@@ -1518,6 +1516,26 @@ static DBusMessage* handle_dev_set_alias_req(DBusMessage *msg, void *data)
 	str2ba(addr_ptr, &bdaddr);
 
 	set_device_alias(dbus_data->dev_id, &bdaddr, str_ptr);
+
+	signal = dev_signal_factory(dbus_data->dev_id, "AliasChanged",
+						DBUS_TYPE_STRING, &addr_ptr,
+						DBUS_TYPE_STRING, &str_ptr,
+						DBUS_TYPE_INVALID);
+	if (signal) {
+		dbus_connection_send(connection, signal, NULL);
+		dbus_connection_flush(connection);
+		dbus_message_unref(signal);
+	}
+
+	signal = dev_signal_factory(dbus_data->dev_id, "RemoteAlias",
+						DBUS_TYPE_STRING, &addr_ptr,
+						DBUS_TYPE_STRING, &str_ptr,
+						DBUS_TYPE_INVALID);
+	if (signal) {
+		dbus_connection_send(connection, signal, NULL);
+		dbus_connection_flush(connection);
+		dbus_message_unref(signal);
+	}
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1760,7 +1778,6 @@ failed:
 	return reply;
 }
 
-
 static DBusMessage* handle_dev_discover_service_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
@@ -1975,8 +1992,6 @@ static DBusMessage* handle_dev_list_bondings_req(DBusMessage *msg, void *data)
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-
-
 static DBusMessage* handle_dev_has_bonding_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
@@ -2001,7 +2016,6 @@ static DBusMessage* handle_dev_encryption_key_size_req(DBusMessage *msg, void *d
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
-
 
 /*****************************************************************
  *  
@@ -2075,7 +2089,6 @@ failed:
 
 	bt_free(local_addr);
 }
-
 
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
@@ -2178,7 +2191,7 @@ failed:
 
 	bt_free(local_addr);
 }
- 
+
 /*****************************************************************
  *  
  *  Section reserved to Manager D-Bus services implementation
