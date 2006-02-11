@@ -147,6 +147,18 @@ static inline void hcid_dbus_setname_complete(bdaddr_t *local) {}
 static inline void hcid_dbus_setscan_enable_complete(bdaddr_t *local) {}
 #endif
 
+void init_devices(void);
+int add_device(uint16_t dev_id);
+int remove_device(uint16_t dev_id);
+int start_device(uint16_t dev_id);
+int stop_device(uint16_t dev_id);
+
+int get_device_address(uint16_t dev_id, char *address, size_t size);
+int get_device_version(uint16_t dev_id, char *version, size_t size);
+int get_device_revision(uint16_t dev_id, char *revision, size_t size);
+int get_device_manufacturer(uint16_t dev_id, char *manufacturer, size_t size);
+int get_device_company(uint16_t dev_id, char *company, size_t size);
+
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, uint8_t lmp_ver, uint16_t lmp_subver);

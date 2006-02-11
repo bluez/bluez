@@ -1350,7 +1350,88 @@ static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg
  *  Section reserved to device D-Bus services implementation
  *
  *****************************************************************/
+
 static DBusMessage* handle_dev_get_address_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	char str[18], *str_ptr = str;
+
+	get_device_address(dbus_data->dev_id, str, sizeof(str));
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_get_version_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	char str[20], *str_ptr = str;
+
+	get_device_version(dbus_data->dev_id, str, sizeof(str));
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_get_revision_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	char str[20], *str_ptr = str;
+
+	get_device_revision(dbus_data->dev_id, str, sizeof(str));
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_get_manufacturer_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	char str[64], *str_ptr = str;
+
+	get_device_manufacturer(dbus_data->dev_id, str, sizeof(str));
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_get_company_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	char str[64], *str_ptr = str;
+
+	get_device_company(dbus_data->dev_id, str, sizeof(str));
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_get_features_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
@@ -1361,22 +1442,8 @@ static DBusMessage* handle_dev_get_alias_req(DBusMessage *msg, void *data)
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
-static DBusMessage* handle_dev_get_company_req(DBusMessage *msg, void *data)
-{
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
-}
+
 static DBusMessage* handle_dev_get_discoverable_to_req(DBusMessage *msg, void *data)
-{
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
-}
-static DBusMessage* handle_dev_get_features_req(DBusMessage *msg, void *data)
-{
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
-}
-static DBusMessage* handle_dev_get_manufacturer_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
@@ -1472,22 +1539,12 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_revision_req(DBusMessage *msg, void *data)
-{
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
-}
-static DBusMessage* handle_dev_get_version_req(DBusMessage *msg, void *data)
-{
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
-}
-
 static DBusMessage* handle_dev_is_connectable_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
+
 static DBusMessage* handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
@@ -1505,6 +1562,7 @@ static DBusMessage* handle_dev_set_class_req(DBusMessage *msg, void *data)
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
+
 static DBusMessage* handle_dev_set_discoverable_to_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
@@ -2298,4 +2356,3 @@ static DBusMessage* handle_mgr_default_device_req(DBusMessage *msg, void *data)
 failed:
 	return reply;
 }
-

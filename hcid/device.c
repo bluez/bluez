@@ -1,0 +1,267 @@
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <syslog.h>
+#include <string.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+
+#include "oui.h"
+
+#define MAX_DEVICES 16
+
+struct hci_peer {
+	struct timeval lastseen;
+	struct timeval lastused;
+
+	bdaddr_t bdaddr;
+	uint32_t class;
+	int8_t   rssi;
+	uint8_t  data[240];
+	uint8_t  name[248];
+
+	uint8_t  pscan_rep_mode;
+	uint8_t  pscan_period_mode;
+	uint8_t  pscan_mode;
+	uint16_t clock_offset;
+
+	struct hci_peer *next;
+};
+
+struct hci_conn {
+	bdaddr_t bdaddr;
+	uint16_t handle;
+
+	struct hci_conn *next;
+};
+
+struct hci_dev {
+	bdaddr_t bdaddr;
+	uint8_t  features[8];
+	uint8_t  lmp_ver;
+	uint16_t lmp_subver;
+	uint16_t manufacturer;
+
+	struct hci_peer *peers;
+	struct hci_conn *conns;
+};
+
+static struct hci_dev devices[MAX_DEVICES];
+
+#define ASSERT_DEV_ID { if (dev_id >= MAX_DEVICES) return -ERANGE; }
+
+static void info(const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+
+	vsyslog(LOG_INFO, format, ap);
+
+	va_end(ap);
+}
+
+static void err(const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+
+	vsyslog(LOG_ERR, format, ap);
+
+	va_end(ap);
+}
+
+void init_devices(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_DEVICES; i++)
+		memset(devices + i, 0, sizeof(struct hci_dev));
+}
+
+int add_device(uint16_t dev_id)
+{
+	struct hci_dev *dev;
+	struct hci_dev_info di;
+
+	ASSERT_DEV_ID;
+
+	dev = &devices[dev_id];
+
+	if (hci_devinfo(dev_id, &di) < 0)
+		return -errno;
+
+	bacpy(&dev->bdaddr, &di.bdaddr);
+	memcpy(dev->features, di.features, 8);
+
+	info("Device hci%d has been added", dev_id);
+
+	return 0;
+}
+
+int remove_device(uint16_t dev_id)
+{
+	struct hci_dev *dev;
+
+	ASSERT_DEV_ID;
+
+	dev = &devices[dev_id];
+
+	memset(dev, 0, sizeof(struct hci_dev));
+
+	info("Device hci%d has been removed", dev_id);
+
+	return 0;
+}
+
+int start_device(uint16_t dev_id)
+{
+	struct hci_dev *dev;
+	struct hci_version ver;
+	int dd;
+
+	ASSERT_DEV_ID;
+
+	dev = &devices[dev_id];
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		err("Can't open device hci%d",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	if (hci_read_local_version(dd, &ver, 1000) < 0) {
+		err("Can't read version info for hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	dev->lmp_ver = ver.lmp_ver;
+	dev->lmp_subver = ver.lmp_subver;
+	dev->manufacturer = ver.manufacturer;
+
+	hci_close_dev(dd);
+
+	info("Device hci%d has been activated", dev_id);
+
+	return 0;
+}
+
+int stop_device(uint16_t dev_id)
+{
+	ASSERT_DEV_ID;
+
+	info("Device hci%d has been disabled", dev_id);
+
+	return 0;
+}
+
+int get_device_address(uint16_t dev_id, char *address, size_t size)
+{
+	ASSERT_DEV_ID;
+
+	if (size < 18)
+		return -ENOBUFS;
+
+	return ba2str(&devices[dev_id].bdaddr, address);
+}
+
+int get_device_version(uint16_t dev_id, char *version, size_t size)
+{
+	struct hci_dev *dev;
+	char edr[7], *tmp;
+	int err;
+
+	ASSERT_DEV_ID;
+
+	if (size < 14)
+		return -ENOBUFS;
+
+	dev = &devices[dev_id];
+
+	if (dev->lmp_ver == 0x03 &&
+			(dev->features[3] & (LMP_EDR_ACL_2M | LMP_EDR_ACL_3M)))
+		sprintf(edr, " + EDR");
+	else
+		edr[0] = '\0';
+
+	tmp = lmp_vertostr(dev->lmp_ver);
+
+	if (strlen(tmp) == 0)
+		err = snprintf(version, size, "not assigned");
+	else
+		err = snprintf(version, size, "Bluetooth %s%s", tmp, edr);
+
+	bt_free(tmp);
+
+	return err;
+}
+
+int get_device_revision(uint16_t dev_id, char *revision, size_t size)
+{
+	ASSERT_DEV_ID;
+
+	return snprintf(revision, size, "0x%02x", devices[dev_id].lmp_subver);
+}
+
+int get_device_manufacturer(uint16_t dev_id, char *manufacturer, size_t size)
+{
+	char *tmp;
+
+	ASSERT_DEV_ID;
+
+	tmp = bt_compidtostr(devices[dev_id].manufacturer);
+
+	return snprintf(manufacturer, size, "%s", tmp);
+}
+
+int get_device_company(uint16_t dev_id, char *company, size_t size)
+{
+	char *tmp, oui[9];
+	int err;
+
+	ASSERT_DEV_ID;
+
+	ba2oui(&devices[dev_id].bdaddr, oui);
+	tmp = ouitocomp(oui);
+
+	err = snprintf(company, size, "%s", tmp);
+
+	free(tmp);
+
+	return err;
+}
