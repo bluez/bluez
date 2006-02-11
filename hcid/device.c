@@ -32,12 +32,14 @@
 #include <syslog.h>
 #include <string.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include "textfile.h"
 #include "oui.h"
 
 #define MAX_DEVICES 16
@@ -73,6 +75,8 @@ struct hci_dev {
 	uint8_t  lmp_ver;
 	uint16_t lmp_subver;
 	uint16_t manufacturer;
+
+	uint8_t  name[248];
 
 	struct hci_peer *peers;
 	struct hci_conn *conns;
@@ -264,4 +268,96 @@ int get_device_company(uint16_t dev_id, char *company, size_t size)
 	free(tmp);
 
 	return err;
+}
+
+int get_device_name(uint16_t dev_id, char *name, size_t size)
+{
+	char tmp[249];
+	int dd;
+
+	ASSERT_DEV_ID;
+
+	memset(tmp, 0, sizeof(tmp));
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		err("Can't open device hci%d",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	if (hci_read_local_name(dd, sizeof(tmp), tmp, 2000) < 0) {
+		err("Can't read name for hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	hci_close_dev(dd);
+
+	memcpy(devices[dev_id].name, tmp, 248);
+
+	return snprintf(name, size, "%s", tmp);
+}
+
+int set_device_name(uint16_t dev_id, const char *name)
+{
+	int dd;
+
+	ASSERT_DEV_ID;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		err("Can't open device hci%d",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	if (hci_write_local_name(dd, name, 5000) < 0) {
+		err("Can't read name for hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	hci_close_dev(dd);
+
+	return 0;
+}
+
+int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_t size)
+{
+	char filename[PATH_MAX + 1], addr[18], *tmp;
+	int err;
+
+	ASSERT_DEV_ID;
+
+	ba2str(&devices[dev_id].bdaddr, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/aliases", STORAGEDIR, addr);
+
+	ba2str(bdaddr, addr);
+
+	tmp = textfile_get(filename, addr);
+	if (!tmp)
+		return -ENXIO;
+
+	err = snprintf(alias, size, "%s", tmp);
+
+	free(tmp);
+
+	return err;
+}
+
+int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
+{
+	char filename[PATH_MAX + 1], addr[18];
+
+	ASSERT_DEV_ID;
+
+	ba2str(&devices[dev_id].bdaddr, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/aliases", STORAGEDIR, addr);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(bdaddr, addr);
+
+	return textfile_put(filename, addr, alias);
 }

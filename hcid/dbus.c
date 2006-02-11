@@ -89,7 +89,7 @@ typedef int unregister_function_t(DBusConnection *conn, uint16_t id);
 /*
  * Utility functions
  */
-static char *get_device_name(const bdaddr_t *local, const bdaddr_t *peer)
+static char *get_peer_name(const bdaddr_t *local, const bdaddr_t *peer)
 {
 	char filename[PATH_MAX + 1], addr[18];
 
@@ -1433,14 +1433,95 @@ static DBusMessage* handle_dev_get_company_req(DBusMessage *msg, void *data)
 
 static DBusMessage* handle_dev_get_features_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_get_name_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	char str[249], *str_ptr = str;
+
+	get_device_name(dbus_data->dev_id, str, sizeof(str));
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_set_name_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessageIter iter;
+	DBusMessage *reply;
+	char *str_ptr;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &str_ptr);
+
+	if (strlen(str_ptr) == 0) {
+		syslog(LOG_ERR, "Name change failed: Invalid parameter");
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+	}
+
+	set_device_name(dbus_data->dev_id, str_ptr);
+
+	reply = dbus_message_new_method_return(msg);
+
+	return reply;
 }
 
 static DBusMessage* handle_dev_get_alias_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessageIter iter;
+	DBusMessage *reply;
+	char str[249], *str_ptr = str, *addr_ptr;
+	bdaddr_t bdaddr;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &addr_ptr);
+
+	str2ba(addr_ptr, &bdaddr);
+
+	get_device_alias(dbus_data->dev_id, &bdaddr, str, sizeof(str));
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_set_alias_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessageIter iter;
+	DBusMessage *reply;
+	char *str_ptr, *addr_ptr;
+	bdaddr_t bdaddr;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &addr_ptr);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_get_basic(&iter, &str_ptr);
+
+	if (strlen(str_ptr) == 0) {
+		syslog(LOG_ERR, "Alias change failed: Invalid parameter");
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+	}
+
+	str2ba(addr_ptr, &bdaddr);
+
+	set_device_alias(dbus_data->dev_id, &bdaddr, str_ptr);
+
+	reply = dbus_message_new_method_return(msg);
+
+	return reply;
 }
 
 static DBusMessage* handle_dev_get_discoverable_to_req(DBusMessage *msg, void *data)
@@ -1482,63 +1563,6 @@ static DBusMessage* handle_dev_get_mode_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_name_req(DBusMessage *msg, void *data)
-{
-	struct hci_dbus_data *dbus_data = data;
-	DBusMessage *reply = NULL;
-	int dd = -1;
-	read_local_name_rp rp;
-	struct hci_request rq;
-	const char *pname = (char*) rp.name;
-	char name[249];
-
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_READ_LOCAL_NAME;
-	rq.rparam = &rp;
-	rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending getting name command failed: %s (%d)",
-							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	if (rp.status) {
-		syslog(LOG_ERR, "Getting name failed with status 0x%02x", rp.status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + rp.status);
-		goto failed;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL) {
-		syslog(LOG_ERR, "Out of memory while calling dbus_message_new_method_return");
-		goto failed;
-	}
-
-	strncpy(name,pname,sizeof(name)-1);
-	name[248]='\0';
-	pname = name;
-
-	dbus_message_append_args(reply,
-				DBUS_TYPE_STRING, &pname,
-				DBUS_TYPE_INVALID);
-
-failed:
-	if (dd >= 0)
-		close(dd);
-
-	return reply;
-}
-
 static DBusMessage* handle_dev_is_connectable_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
@@ -1546,12 +1570,6 @@ static DBusMessage* handle_dev_is_connectable_req(DBusMessage *msg, void *data)
 }
 
 static DBusMessage* handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
-{
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
-}
-
-static DBusMessage* handle_dev_set_alias_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
@@ -1638,65 +1656,6 @@ failed:
 		close(dd);
 
 	return reply;
-}
-
-static DBusMessage* handle_dev_set_name_req(DBusMessage *msg, void *data)
-{
-	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
-	DBusMessage *reply = NULL;
-	char *str_name;
-	int dd = -1;
-	uint8_t status;
-	change_local_name_cp cp;
-	struct hci_request rq;
-
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &str_name);
-
-	if (strlen(str_name) == 0) {
-		syslog(LOG_ERR, "HCI change name failed - Invalid Name!");
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
-		goto failed;
-	}
-
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	strncpy((char *) cp.name, str_name, sizeof(cp.name));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_CHANGE_LOCAL_NAME;
-	rq.cparam = &cp;
-	rq.clen   = CHANGE_LOCAL_NAME_CP_SIZE;
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending change name command failed: %s (%d)",
-							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	if (status) {
-		syslog(LOG_ERR, "Setting name failed with status 0x%02x", status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + status);
-		goto failed;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-
-failed:
-	if (dd >= 0)
-		close(dd);
-
-	return reply;
-
 }
 
 static DBusMessage* handle_dev_discover_req(DBusMessage *msg, void *data)
@@ -1853,7 +1812,7 @@ static DBusMessage* handle_dev_remote_name_req(DBusMessage *msg, void *data)
 	}
 
 	/* Try retrieve from local cache */
-	name = get_device_name(&di.bdaddr, &bdaddr);
+	name = get_peer_name(&di.bdaddr, &bdaddr);
 	if (name) {
 
 		reply = dbus_message_new_method_return(msg);

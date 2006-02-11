@@ -159,6 +159,11 @@ int get_device_revision(uint16_t dev_id, char *revision, size_t size);
 int get_device_manufacturer(uint16_t dev_id, char *manufacturer, size_t size);
 int get_device_company(uint16_t dev_id, char *company, size_t size);
 
+int get_device_name(uint16_t dev_id, char *name, size_t size);
+int set_device_name(uint16_t dev_id, const char *name);
+int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_t size);
+int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias);
+
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, uint8_t lmp_ver, uint16_t lmp_subver);
