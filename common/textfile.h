@@ -21,12 +21,12 @@
  *
  */
 
-int create_dirs(char *filename, mode_t mode);
-int create_file(char *filename, mode_t mode);
+int create_dirs(const char *filename, const mode_t mode);
+int create_file(const char *filename, const mode_t mode);
 
-int textfile_put(char *pathname, char *key, char *value);
-int textfile_del(char *pathname, char *key);
-char *textfile_get(char *pathname, char *key);
+int textfile_put(const char *pathname, const char *key, const char *value);
+int textfile_del(const char *pathname, const char *key);
+char *textfile_get(const char *pathname, const char *key);
 
-int textfile_foreach(char *pathname,
+int textfile_foreach(const char *pathname,
 		void (*func)(char *key, char *value, void *data), void *data);
