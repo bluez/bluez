@@ -21,6 +21,9 @@
  *
  */
 
+#ifndef __H_BLUEZ_DBUS_H__
+#define __H_BLUEZ_DBUS_H__
+
 #define __END_SIG__ DBUS_TYPE_INVALID_AS_STRING
 
 #define BASE_PATH		"/org/bluez"
@@ -46,9 +49,6 @@
 /* E.g. /org/bluez/Device/hci0 */
 #define DEVICE_PATH_ID		(DEVICE_PATH_MASK | 0x0001)
 
-/* E.g. /org/bluez/Device/hci0/Controller */
-#define HCI_PATH_ID		(DEVICE_PATH_MASK | 0x0002)
-
 #define INVALID_PATH_ID		0xFFFF
 #define INVALID_DEV_ID		0xFFFF
 
@@ -58,22 +58,19 @@
 
 #define MGR_DEVICE_LIST		"DeviceList"
 #define MGR_DEFAULT_DEVICE	"DefaultDevice"
-#define MGR_INIT		"Init"
 
-/* Enable/Disable services controller, pan, serial, ... */
-#define MGR_ENABLE		"Enable"
-#define MGR_DISABLE		"Disable"
+/* Signals sent in the Manager path */
+#define BLUEZ_MGR_DEV_ADDED		"DeviceAdded"
+#define BLUEZ_MGR_DEV_REMOVED		"DeviceRemoved"
 
-/* Signatures */
+/* Manager Signatures */
+#define MGR_DEVICE_LIST_SIGNATURE		__END_SIG__
+#define MGR_DEFAULT_DEVICE_SIGNATURE		__END_SIG__
 
-#define MGR_GET_DEV_SIGNATURE			__END_SIG__
 
+/*FIXME: should it be moved to a internal header file? */
 /* DeviceList Reply: a(devname, addr, type, up/down, a(flags)) - all types strings */
-#define MGR_GET_DEV_REPLY_SIGNATURE		DBUS_TYPE_ARRAY_AS_STRING \
-						DEV_GET_DEV_REPLY_STRUCT_SIGNATURE \
-						__END_SIG__
-
-#define MGR_GET_DEV_REPLY_STRUCT_SIGNATURE	DBUS_STRUCT_BEGIN_CHAR_AS_STRING \
+#define MGR_REPLY_DEVICE_LIST_STRUCT_SIGNATURE	DBUS_STRUCT_BEGIN_CHAR_AS_STRING \
 						DBUS_TYPE_STRING_AS_STRING \
 						DBUS_TYPE_STRING_AS_STRING \
 						DBUS_TYPE_STRING_AS_STRING \
@@ -83,145 +80,128 @@
 						DBUS_STRUCT_END_CHAR_AS_STRING \
 						__END_SIG__
 
-#define MGR_DEFAULT_DEV_SIGNATURE		__END_SIG__
+#define MGR_REPLY_DEVICE_LIST_SIGNATURE		DBUS_TYPE_ARRAY_AS_STRING \
+						MGR_REPLY_DEVICE_LIST_STRUCT_SIGNATURE \
+						__END_SIG__
 
-
-/* Signals sent in the Manager path */
-#define BLUEZ_MGR_DEV_ADDED		"DeviceAdded"
-#define BLUEZ_MGR_DEV_REMOVED		"DeviceRemoved"
 
 
 /*======================================================================== 
     BlueZ D-Bus Device path definitions "/org/bluez/Device"
  *========================================================================*/
-
-/* Interfaces implemented in the "/org/bluez/Device" path */
-#define BLUEZ_HCI			"Controller"
-#define DEV_HCI_INTERFACE		DEVICE_INTERFACE "." BLUEZ_HCI
-
-/* /org/bluez/Device signals */
-#define BLUEZ_HCI_PROPERTY_CHANGED	"PropertyChanged"
-#define BLUEZ_HCI_SCAN_MODE_CHANGED	"ModeChanged"
-
-/* Control interface signals */
-#define BLUEZ_HCI_INQ_START		"InquiryStart"
-#define BLUEZ_HCI_INQ_COMPLETE		"InquiryComplete"
-#define BLUEZ_HCI_INQ_RESULT		"InquiryResult"
-#define BLUEZ_HCI_REMOTE_NAME		"RemoteName"
-#define BLUEZ_HCI_REMOTE_NAME_FAILED	"RemoteNameFailed"
-#define BLUEZ_HCI_AUTH_COMPLETE		"AuthenticationComplete"
-
-/* Control interface methods */
-#define HCI_PERIODIC_INQ		"PeriodicInquiry"
-#define HCI_CANCEL_PERIODIC_INQ		"CancelPeriodic"
-#define HCI_INQ				"Inquiry"
-#define HCI_CANCEL_INQ			"CancelInquiry"
-#define HCI_ROLE_SWITCH			"RoleSwitch"
-#define HCI_REMOTE_NAME			"RemoteName"
-#define HCI_CONNECTIONS			"Connections"
-#define HCI_AUTHENTICATE		"Authenticate"
-
-/* Control interface methods */
-#define DEV_UP				"Up"
-#define DEV_DOWN			"Down"
-#define DEV_SET_PROPERTY		"SetProperty"
-#define DEV_GET_PROPERTY		"GetProperty"
-#define DEV_SET_MODE			"SetMode"
+#define DEV_GET_ADDRESS			"GetAddress"
+#define DEV_GET_ALIAS			"GetAlias"
+#define DEV_GET_COMPANY			"GetCompany"
+#define DEV_GET_DISCOVERABLE_TO		"GetDiscoverableTimeOut"
+#define DEV_GET_FEATURES		"GetFeatures"
+#define DEV_GET_MANUFACTURER		"GetManufacturer"
 #define DEV_GET_MODE			"GetMode"
+#define DEV_GET_NAME			"GetName"
+#define DEV_GET_REVISION		"GetRevision"
+#define DEV_GET_VERSION			"GetVersion"
+#define DEV_IS_CONNECTABLE		"IsConnectable"
+#define DEV_IS_DISCOVERABLE		"IsDiscoverable"
+#define DEV_SET_ALIAS			"SetAlias"
+#define DEV_SET_CLASS			"SetClass"
+#define DEV_SET_DISCOVERABLE_TO		"SetDiscoverableTimeOut"
+#define DEV_SET_MODE			"SetMode"
+#define DEV_SET_NAME			"SetName"
+#define DEV_DISCOVER			"Discover"
+#define DEV_DISCOVER_CACHE		"DiscoverCache"
+#define DEV_DISCOVER_CANCEL		"DiscoverCancel"
+#define DEV_DISCOVER_SERVICE		"DiscoverService"
+#define DEV_LAST_SEEN			"LastSeen"
+#define DEV_LAST_USED			"LastUsed"
+#define DEV_REMOTE_ALIAS		"RemoteAlias"
+#define DEV_REMOTE_NAME			"RemoteName"
+#define DEV_REMOTE_VERSION		"RemoteVersion"
+#define DEV_CREATE_BONDING		"CreateBonding"
+#define DEV_LIST_BONDINGS		"ListBondings"
+#define DEV_HAS_BONDING_NAME		"HasBonding"
+#define DEV_REMOVE_BONDING		"RemoveBonding"
+#define DEV_PIN_CODE_LENGTH		"PinCodeLength"
+#define DEV_ENCRYPTION_KEY_SIZE		"EncryptionKeySize"
 
-/*
- * Scanning modes
+/*FIXME: maybe this section can be moved to a internal header file */
+/* Device service signature */
+#define DEV_GET_ADDRESS_SIGNATURE			__END_SIG__
+#define DEV_GET_ALIAS_SIGNATURE				DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_GET_COMPANY_SIGNATURE			__END_SIG__
+#define DEV_GET_DISCOVERABLE_TO_SIGNATURE		__END_SIG__
+#define DEV_GET_FEATURES_SIGNATURE			__END_SIG__
+#define DEV_GET_MANUFACTURER_SIGNATURE			__END_SIG__
+#define DEV_GET_MODE_SIGNATURE				__END_SIG__
+#define DEV_GET_NAME_SIGNATURE				__END_SIG__
+#define DEV_GET_REVISION_SIGNATURE			__END_SIG__
+#define DEV_GET_VERSION_SIGNATURE			__END_SIG__
+#define DEV_IS_CONNECTABLE_SIGNATURE			__END_SIG__
+#define DEV_IS_DISCOVERABLE_SIGNATURE			__END_SIG__	
+#define DEV_SET_ALIAS_SIGNATURE				DBUS_TYPE_STRING_AS_STRING\
+							DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_SET_CLASS_SIGNATURE				DBUS_TYPE_STRING_AS_STRING\
+							DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_SET_DISCOVERABLE_TO_SIGNATURE		DBUS_TYPE_UINT32_AS_STRING\
+							__END_SIG__
+#define DEV_SET_MODE_SIGNATURE				DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_SET_NAME_SIGNATURE				DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_DISCOVER_SIGNATURE				__END_SIG__
+#define DEV_DISCOVER_CACHE_SIGNATURE			__END_SIG__
+#define DEV_DISCOVER_CANCEL_SIGNATURE			__END_SIG__
+#define DEV_DISCOVER_SERVICE_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_LAST_SEEN_SIGNATURE				DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_LAST_USED_SIGNATURE				DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_REMOTE_ALIAS_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_REMOTE_NAME_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_REMOTE_VERSION_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_CREATE_BONDING_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_LIST_BONDINGS_SIGNATURE			__END_SIG__
+#define DEV_HAS_BONDING_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_REMOVE_BONDING_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_PIN_CODE_LENGTH_SIGNATURE			DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+#define DEV_ENCRYPTION_KEY_SIZE_SIGNATURE		DBUS_TYPE_STRING_AS_STRING\
+							__END_SIG__
+
+
+/* Signals sent in the Manager path */
+#define	DEV_SIG_MODE_CHANGED		"ModeChanged"
+#define DEV_SIG_NAME_CHANGED		"NameChanged"
+#define DEV_SIG_ALIAS_CHANGED		"AliasChanged"
+#define DEV_SIG_REMOTE_NAME		"RemoteName"
+#define DEV_SIG_REMOTE_NAME_FAILED	"RemoteNameFailed"
+#define DEV_SIG_REMOTE_ALIAS		"RemoteAlias"
+#define DEV_SIG_REMOTE_VERSION		"RemoteVersion"
+#define DEV_SIG_BONDING_CREATED		"BondingCreated"
+#define DEV_SIG_BONDING_FAILED		"BondingFailed"
+#define DEV_SIG_BONDING_REMOVED		"BondingRemoved"
+#define DEV_SIG_DISCOVER_START		"DiscoverStart"
+#define DEV_SIG_DISCOVER_COMPLETE	"DiscoverComplete"
+#define DEV_SIG_DISCOVER_RESULT		"DiscoverResult"
+
+/* FIXME: Change to string
+ * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device
  * connectable: remote devices are allowed to connect, but they are not
  *              allowed to find it.
  * discoverable: remote devices are allowed to connect and find this device
  */
-#define MODE_OFF			0x00
-#define MODE_CONNECTABLE		0x01
-#define MODE_DISCOVERABLE		0x02
-
-
-#define DEV_PROPERTY_AUTH		"auth"
-#define DEV_PROPERTY_ENCRYPT		"encrypt"
-#define DEV_PROPERTY_PSCAN		"connectable"
-#define DEV_PROPERTY_ISCAN		"discoverable"
-#define DEV_PROPERTY_NAME		"name"
-#define DEV_PROPERTY_INCMODE		"incmode"
-#define DEV_PROPERTY_DEV_INFO		"info"
-
-#define DEV_UP_SIGNATURE			__END_SIG__
-#define DEV_DOWN_SIGNATURE			__END_SIG__
-#define DEV_SET_MODE_SIGNATURE			DBUS_TYPE_BYTE_AS_STRING\
-						__END_SIG__
-#define DEV_GET_MODE_SIGNATURE			__END_SIG__
-#define DEV_SET_PROPERTY_SIGNATURE_BOOL		DBUS_TYPE_STRING_AS_STRING \
-						DBUS_TYPE_BOOLEAN_AS_STRING \
-						__END_SIG__
-#define DEV_SET_PROPERTY_SIGNATURE_STR		DBUS_TYPE_STRING_AS_STRING \
-						DBUS_TYPE_STRING_AS_STRING \
-						__END_SIG__
-#define DEV_SET_PROPERTY_SIGNATURE_BYTE		DBUS_TYPE_STRING_AS_STRING \
-						DBUS_TYPE_BYTE_AS_STRING \
-						__END_SIG__
-
-#define DEV_GET_PROPERTY_SIGNATURE		DBUS_TYPE_STRING_AS_STRING \
-						__END_SIG__
-
-#define HCI_PERIODIC_INQ_SIGNATURE			DBUS_TYPE_BYTE_AS_STRING \
-							DBUS_TYPE_UINT16_AS_STRING \
-							DBUS_TYPE_UINT16_AS_STRING \
-							__END_SIG__
-
-#define HCI_PERIODIC_INQ_EXT_SIGNATURE			DBUS_TYPE_BYTE_AS_STRING \
-							DBUS_TYPE_UINT16_AS_STRING \
-							DBUS_TYPE_UINT16_AS_STRING \
-							DBUS_TYPE_UINT32_AS_STRING \
-							__END_SIG__
-
-#define HCI_CANCEL_PERIODIC_INQ_SIGNATURE		__END_SIG__
-
-#define HCI_INQ_SIGNATURE				__END_SIG__
-
-#define HCI_INQ_EXT_SIGNATURE				DBUS_TYPE_BYTE_AS_STRING \
-							DBUS_TYPE_UINT32_AS_STRING \
-							__END_SIG__
-
-#define HCI_CANCEL_INQ_SIGNATURE			__END_SIG__
-
-#define HCI_ROLE_SWITCH_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
-							DBUS_TYPE_BYTE_AS_STRING \
-							__END_SIG__
-
-#define HCI_REMOTE_NAME_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
-							__END_SIG__
-
-#define HCI_CONNECTIONS_SIGNATURE			__END_SIG__
-
-#define HCI_CONN_INFO_STRUCT_SIGNATURE			DBUS_STRUCT_BEGIN_CHAR_AS_STRING \
-							DBUS_TYPE_UINT16_AS_STRING \
-							DBUS_TYPE_STRING_AS_STRING \
-							DBUS_TYPE_BYTE_AS_STRING \
-							DBUS_TYPE_BYTE_AS_STRING \
-							DBUS_TYPE_UINT16_AS_STRING \
-							DBUS_TYPE_UINT32_AS_STRING \
-							DBUS_STRUCT_END_CHAR_AS_STRING \
-							__END_SIG__
-
-#define HCI_DEVICE_STRUCT_SIGNATURE			DBUS_STRUCT_BEGIN_CHAR_AS_STRING \
-							DBUS_TYPE_STRING_AS_STRING \
-							DBUS_TYPE_STRING_AS_STRING \
-							DBUS_STRUCT_END_CHAR_AS_STRING \
-							__END_SIG__
-
-#define HCI_INQ_REPLY_SIGNATURE				DBUS_STRUCT_BEGIN_CHAR_AS_STRING \
-							DBUS_TYPE_STRING_AS_STRING \
-							DBUS_TYPE_UINT32_AS_STRING \
-							DBUS_TYPE_UINT16_AS_STRING \
-							DBUS_STRUCT_END_CHAR_AS_STRING \
-							__END_SIG__
-
-#define HCI_AUTHENTICATE_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
-							__END_SIG__
+#define MODE_OFF		0x00	
+#define MODE_CONNECTABLE	0x01	
+#define MODE_DISCOVERABLE	0x02	
 
 
 /* BLUEZ_DBUS_ERROR 
@@ -251,3 +231,6 @@
 
 /* BLUEZ_DBUS_ERR_NO_MEMORY */
 #define BLUEZ_DBUS_ERR_NO_MEMORY_STR	"No memory"
+
+#endif /* __H_BLUEZ_DBUS_H__ */
+

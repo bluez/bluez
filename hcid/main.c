@@ -402,9 +402,6 @@ static void init_all_devices(int ctl)
 
 #ifdef ENABLE_DBUS
 		hcid_dbus_register_device(dr->dev_id);
-
-		if (hci_test_bit(HCI_UP, &dr->dev_opt))
-			hcid_dbus_dev_up(dr->dev_id);
 #endif
 	}
 
@@ -475,18 +472,12 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 			configure_device(sd->dev_id);
 		if (hcid.security)
 			start_security_manager(sd->dev_id);
-#ifdef ENABLE_DBUS
-		hcid_dbus_dev_up(sd->dev_id);
-#endif
 		break;
 
 	case HCI_DEV_DOWN:
 		syslog(LOG_INFO, "HCI dev %d down", sd->dev_id);
 		if (hcid.security)
 			stop_security_manager(sd->dev_id);
-#ifdef ENABLE_DBUS
-		hcid_dbus_dev_down(sd->dev_id);
-#endif
 		break;
 	}
 }

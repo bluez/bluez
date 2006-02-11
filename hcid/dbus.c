@@ -86,19 +86,6 @@ struct hci_dbus_data {
 typedef int register_function_t(DBusConnection *conn, uint16_t id);
 typedef int unregister_function_t(DBusConnection *conn, uint16_t id);
 
-const struct service_data *get_hci_table(void);
-
-static int hci_dbus_reg_obj_path(DBusConnection *conn, uint16_t id);
-static int hci_dbus_unreg_obj_path(DBusConnection *conn, uint16_t id);
-
-typedef const struct service_data *get_svc_table_func_t(void);
-
-struct profile_obj_path_data {
-	uint16_t		id;
-	register_function_t	*reg_func;
-	unregister_function_t	*unreg_func;
-	get_svc_table_func_t	*get_svc_table;	/* return the service table */
-};
 /*
  * Utility functions
  */
@@ -111,6 +98,57 @@ static char *get_device_name(const bdaddr_t *local, const bdaddr_t *peer)
 
 	ba2str(peer, addr);
 	return textfile_get(filename, addr);
+}
+
+static int8_t dev_append_signal_args(DBusMessage *signal, int first, va_list var_args)
+{
+	void *value;
+	DBusMessageIter iter;
+	int type;
+	int8_t retval = 0;
+
+	type = first;
+
+	dbus_message_iter_init_append (signal, &iter);
+
+	while (type != DBUS_TYPE_INVALID)
+	{
+		value = va_arg (var_args, void*);
+
+		if (!dbus_message_iter_append_basic (&iter, type, value)) {
+			syslog(LOG_INFO, "Append property argument error! type:%d", type);
+			retval = -1;
+			goto failed;
+		}
+		type = va_arg (var_args, int);
+	}
+failed:
+	return retval;
+}
+
+static DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...)
+{
+	DBusMessage *signal = NULL;
+	char path[MAX_PATH_LENGTH];
+	va_list var_args;
+
+	snprintf(path, sizeof(path)-1, "%s/hci%d", DEVICE_PATH, devid);
+
+	signal = dbus_message_new_signal(path, DEVICE_INTERFACE,
+					 prop_name);
+	if (signal == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
+		return NULL;
+	}
+
+	va_start(var_args, first);
+	if (dev_append_signal_args(signal, first, var_args) < 0) {
+		dbus_message_unref(signal);
+		return NULL;
+	}
+
+	va_end(var_args);
+	return signal;
 }
 
 /*
@@ -258,22 +296,12 @@ static DBusMessage *bluez_new_failure_msg(DBusMessage *msg, const uint32_t ecode
 	return reply;
 }
 
-/*
- * Object path register/unregister functions 
- *
- */
-static struct profile_obj_path_data obj_path_table[] = {
-	{ HCI_PATH_ID, hci_dbus_reg_obj_path, hci_dbus_unreg_obj_path, get_hci_table },
-	/* add other profiles here */
-	{ INVALID_PATH_ID, NULL, NULL, NULL }
-};
 
 /*
  * Virtual table that handle the object path hierarchy
  */
 static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data);
 static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data);
-static DBusMessage* handle_not_implemented_req(DBusMessage *msg, void *data);
 
 static const DBusObjectPathVTable obj_dev_vtable = {
 	.message_function	= &msg_func_device,
@@ -288,84 +316,109 @@ static const DBusObjectPathVTable obj_mgr_vtable = {
 /*
  * Services provided under the path DEVICE_PATH
  */
-static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_device_down_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_device_get_mode_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_device_set_mode_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_device_set_property_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_device_get_property_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_device_set_property_req_name(DBusMessage *msg, void *data);
-static DBusMessage* handle_device_get_property_req_name(DBusMessage *msg, void *data);
 
-static const struct service_data device_services[] = {
-	{ DEV_UP,		handle_device_up_req,		DEV_UP_SIGNATURE		},
-	{ DEV_DOWN,		handle_device_down_req,		DEV_DOWN_SIGNATURE		},
-	{ DEV_GET_MODE,		handle_device_get_mode_req,	DEV_GET_MODE_SIGNATURE		},
-	{ DEV_SET_MODE,		handle_device_set_mode_req,	DEV_SET_MODE_SIGNATURE		},
-	{ DEV_SET_PROPERTY,	handle_device_set_property_req,	DEV_SET_PROPERTY_SIGNATURE_BOOL	},
-	{ DEV_SET_PROPERTY,	handle_device_set_property_req,	DEV_SET_PROPERTY_SIGNATURE_STR	},
-	{ DEV_SET_PROPERTY,	handle_device_set_property_req,	DEV_SET_PROPERTY_SIGNATURE_BYTE	},
-	{ DEV_GET_PROPERTY,	handle_device_get_property_req,	DEV_GET_PROPERTY_SIGNATURE	},
-	{ NULL, NULL, NULL}
-};
+static DBusMessage* handle_dev_get_address_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_get_alias_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_get_company_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_get_discoverable_to_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_get_features_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_get_manufacturer_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_get_mode_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_get_name_req(DBusMessage *msg, void *data);
 
-static const struct service_data set_property_services[] = {
-	{ DEV_PROPERTY_AUTH,		handle_not_implemented_req,		DEV_SET_PROPERTY_SIGNATURE_BOOL		},
-	{ DEV_PROPERTY_ENCRYPT,		handle_not_implemented_req,		DEV_SET_PROPERTY_SIGNATURE_BOOL		},
-	{ DEV_PROPERTY_NAME,		handle_device_set_property_req_name,	DEV_SET_PROPERTY_SIGNATURE_STR		},
-	{ DEV_PROPERTY_INCMODE,		handle_not_implemented_req,		DEV_SET_PROPERTY_SIGNATURE_BYTE		},
-	{ NULL, NULL, NULL}
-};
+static DBusMessage* handle_dev_get_revision_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_get_version_req(DBusMessage *msg, void *data);
 
-static const struct service_data get_property_services[] = {
-	{ DEV_PROPERTY_DEV_INFO,	handle_not_implemented_req,		DEV_GET_PROPERTY_SIGNATURE 	},
-	{ DEV_PROPERTY_NAME,		handle_device_get_property_req_name,	DEV_GET_PROPERTY_SIGNATURE 	},
-	{ DEV_PROPERTY_INCMODE,		handle_not_implemented_req,		DEV_GET_PROPERTY_SIGNATURE 	},
+static DBusMessage* handle_dev_is_connectable_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_is_discoverable_req(DBusMessage *msg, void *data);
+
+static DBusMessage* handle_dev_set_alias_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_set_class_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_set_discoverable_to_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_set_mode_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_set_name_req(DBusMessage *msg, void *data);
+
+static DBusMessage* handle_dev_discover_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_discover_cache_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_discover_cancel_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_discover_service_req(DBusMessage *msg, void *data);
+
+static DBusMessage* handle_dev_last_seen_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_last_used_req(DBusMessage *msg, void *data);
+
+static DBusMessage* handle_dev_remote_alias_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_remote_name_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_remote_version_req(DBusMessage *msg, void *data);
+
+static DBusMessage* handle_dev_create_bonding_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_list_bondings_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_has_bonding_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_remove_bonding_req(DBusMessage *msg, void *data);
+
+static DBusMessage* handle_dev_pin_code_length_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_dev_encryption_key_size_req(DBusMessage *msg, void *data);
+
+
+static const struct service_data dev_services[] = {
+	{ DEV_GET_ADDRESS,		handle_dev_get_address_req,		DEV_GET_ADDRESS_SIGNATURE		},
+	{ DEV_GET_ALIAS,		handle_dev_get_alias_req,		DEV_GET_ALIAS_SIGNATURE			},
+	{ DEV_GET_COMPANY,		handle_dev_get_company_req,		DEV_GET_COMPANY_SIGNATURE		},
+	{ DEV_GET_DISCOVERABLE_TO,	handle_dev_get_discoverable_to_req,	DEV_GET_DISCOVERABLE_TO_SIGNATURE	},
+	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		DEV_GET_FEATURES_SIGNATURE		},
+	{ DEV_GET_MANUFACTURER,		handle_dev_get_manufacturer_req,	DEV_GET_MANUFACTURER_SIGNATURE		},
+	{ DEV_GET_MODE,			handle_dev_get_mode_req,		DEV_GET_MODE_SIGNATURE			},
+	{ DEV_GET_NAME,                 handle_dev_get_name_req,                DEV_GET_NAME_SIGNATURE                  },
+	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		DEV_GET_REVISION_SIGNATURE		},
+	{ DEV_GET_VERSION,		handle_dev_get_version_req,		DEV_GET_VERSION_SIGNATURE		},
+
+	{ DEV_IS_CONNECTABLE,		handle_dev_is_connectable_req,		DEV_IS_CONNECTABLE_SIGNATURE		},
+	{ DEV_IS_DISCOVERABLE,		handle_dev_is_discoverable_req,		DEV_IS_DISCOVERABLE_SIGNATURE		},
+
+	{ DEV_SET_ALIAS,		handle_dev_set_alias_req,		DEV_SET_ALIAS_SIGNATURE			},
+	{ DEV_SET_CLASS,		handle_dev_set_class_req,		DEV_SET_CLASS_SIGNATURE			},
+	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	DEV_SET_DISCOVERABLE_TO_SIGNATURE	},
+	{ DEV_SET_MODE,			handle_dev_set_mode_req,		DEV_SET_MODE_SIGNATURE			},
+	{ DEV_SET_NAME,			handle_dev_set_name_req,		DEV_SET_NAME_SIGNATURE			},
+
+	{ DEV_DISCOVER,			handle_dev_discover_req,		DEV_DISCOVER_SIGNATURE			},
+	{ DEV_DISCOVER_CACHE,		handle_dev_discover_cache_req,		DEV_DISCOVER_CACHE_SIGNATURE		},
+	{ DEV_DISCOVER_CANCEL,		handle_dev_discover_cancel_req,		DEV_DISCOVER_CANCEL_SIGNATURE		},
+	{ DEV_DISCOVER_SERVICE,		handle_dev_discover_service_req,	DEV_DISCOVER_SERVICE_SIGNATURE		},
+
+	{ DEV_LAST_SEEN,		handle_dev_last_seen_req,		DEV_LAST_SEEN_SIGNATURE			},
+	{ DEV_LAST_USED,		handle_dev_last_used_req,		DEV_LAST_USED_SIGNATURE			},
+
+	{ DEV_REMOTE_ALIAS,		handle_dev_remote_alias_req,		DEV_REMOTE_ALIAS_SIGNATURE		},
+	{ DEV_REMOTE_NAME,		handle_dev_remote_name_req,		DEV_REMOTE_NAME_SIGNATURE		},
+	{ DEV_REMOTE_VERSION,		handle_dev_remote_version_req,		DEV_REMOTE_VERSION_SIGNATURE		},
+
+	{ DEV_CREATE_BONDING,		handle_dev_create_bonding_req,		DEV_CREATE_BONDING_SIGNATURE		},
+	{ DEV_LIST_BONDINGS,		handle_dev_list_bondings_req,		DEV_LIST_BONDINGS_SIGNATURE		},
+	{ DEV_HAS_BONDING_NAME,		handle_dev_has_bonding_req,		DEV_HAS_BONDING_SIGNATURE		},
+	{ DEV_REMOVE_BONDING,		handle_dev_remove_bonding_req,		DEV_REMOVE_BONDING_SIGNATURE		},
+
+	{ DEV_PIN_CODE_LENGTH,		handle_dev_pin_code_length_req,		DEV_PIN_CODE_LENGTH_SIGNATURE		},
+	{ DEV_ENCRYPTION_KEY_SIZE,	handle_dev_encryption_key_size_req,	DEV_ENCRYPTION_KEY_SIZE_SIGNATURE	},
+
 	{ NULL, NULL, NULL}
 };
 
 /*
  * Services provided under the path MANAGER_PATH
  */
-static DBusMessage* handle_device_list_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_default_device_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_mgr_device_list_req(DBusMessage *msg, void *data);
+static DBusMessage* handle_mgr_default_device_req(DBusMessage *msg, void *data);
 
-static const struct service_data manager_services[] = {
-	{ MGR_DEVICE_LIST,	handle_device_list_req,		MGR_GET_DEV_SIGNATURE		},
-	{ MGR_DEFAULT_DEVICE,	handle_default_device_req,	MGR_DEFAULT_DEV_SIGNATURE	},
-	{ MGR_INIT,		handle_not_implemented_req,	NULL				},
-	{ MGR_ENABLE,		handle_not_implemented_req,	NULL				},
-	{ MGR_DISABLE,		handle_not_implemented_req,	NULL				},
+static const struct service_data mgr_services[] = {
+	{ MGR_DEVICE_LIST,	handle_mgr_device_list_req,		MGR_DEVICE_LIST_SIGNATURE	},
+	{ MGR_DEFAULT_DEVICE,	handle_mgr_default_device_req,		MGR_DEFAULT_DEVICE_SIGNATURE	},
 	{ NULL, NULL, NULL }
 };
 
 /*
  * HCI D-Bus services
  */
-static DBusHandlerResult hci_signal_filter(DBusConnection *conn, DBusMessage *msg, void *data);
-
-static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_inq_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_cancel_inq_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data);
-static DBusMessage* handle_auth_req(DBusMessage *msg, void *data);
-
-static const struct service_data device_hci_services[] = {
-	{ HCI_PERIODIC_INQ,		handle_periodic_inq_req,	HCI_PERIODIC_INQ_SIGNATURE		},
-	{ HCI_PERIODIC_INQ,		handle_periodic_inq_req,	HCI_PERIODIC_INQ_EXT_SIGNATURE		},
-	{ HCI_CANCEL_PERIODIC_INQ,	handle_cancel_periodic_inq_req,	HCI_CANCEL_PERIODIC_INQ_SIGNATURE	},
-	{ HCI_ROLE_SWITCH,		handle_role_switch_req,		HCI_ROLE_SWITCH_SIGNATURE		},
-	{ HCI_INQ,			handle_inq_req,			HCI_INQ_SIGNATURE			},
-	{ HCI_INQ,			handle_inq_req,			HCI_INQ_EXT_SIGNATURE			},
-	{ HCI_CANCEL_INQ,		handle_cancel_inq_req,		HCI_CANCEL_INQ_SIGNATURE		},
-	{ HCI_REMOTE_NAME,		handle_remote_name_req,		HCI_REMOTE_NAME_SIGNATURE		},
-	{ HCI_CONNECTIONS,		handle_display_conn_req,	HCI_CONNECTIONS_SIGNATURE		},
-	{ HCI_AUTHENTICATE,		handle_auth_req,		HCI_AUTHENTICATE_SIGNATURE		},
-	{ NULL, NULL, NULL }
-};
+static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessage *msg, void *data);
 
 static void reply_handler_function(DBusPendingCall *call, void *user_data)
 {
@@ -434,6 +487,8 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 	gboolean ret = FALSE;
 	struct hci_dbus_data *data = NULL;
 
+	syslog(LOG_INFO, "[%s,%d] path:%s, fallback:%d", __PRETTY_FUNCTION__, __LINE__, path, fallback);
+
 	data = malloc(sizeof(struct hci_dbus_data));
 	if (data == NULL) {
 		syslog(LOG_ERR, "Failed to alloc memory to DBUS path register data (%s)", path);
@@ -468,6 +523,8 @@ static gboolean unregister_dbus_path(const char *path)
 {
 	void *data;
 
+	syslog(LOG_INFO, "[%s,%d] path:%s", __PRETTY_FUNCTION__, __LINE__, path);
+
 	if (dbus_connection_get_object_path_data(connection, path, &data) && data)
 		free(data);
 
@@ -477,6 +534,126 @@ static gboolean unregister_dbus_path(const char *path)
 	}
 
 	return TRUE;
+}
+
+/*****************************************************************
+ *
+ *  Section reserved to HCI commands confirmation handling and low
+ *  level events(eg: device attached/dettached.
+ *
+ *****************************************************************/
+
+gboolean hcid_dbus_register_device(uint16_t id) 
+{
+	char path[MAX_PATH_LENGTH];
+	char *pptr = path;
+	gboolean ret;
+	DBusMessage *message = NULL;
+	int dd = -1;
+	read_scan_enable_rp rp;
+	struct hci_request rq;
+	struct hci_dbus_data* pdata;
+
+	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+	ret = register_dbus_path(path, DEVICE_PATH_ID, id, &obj_dev_vtable, FALSE);
+
+	dd = hci_open_dev(id);
+	if (dd < 0) {
+		syslog(LOG_ERR, "HCI device open failed: hci%d", id);
+		rp.enable = SCAN_PAGE | SCAN_INQUIRY;
+	} else {
+		memset(&rq, 0, sizeof(rq));
+		rq.ogf    = OGF_HOST_CTL;
+		rq.ocf    = OCF_READ_SCAN_ENABLE;
+		rq.rparam = &rp;
+		rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
+	
+		if (hci_send_req(dd, &rq, 500) < 0) {
+			syslog(LOG_ERR, "Sending read scan enable command failed: %s (%d)",
+								strerror(errno), errno);
+			rp.enable = SCAN_PAGE | SCAN_INQUIRY;
+		} else if (rp.status) {
+			syslog(LOG_ERR, "Getting scan enable failed with status 0x%02x",
+										rp.status);
+			rp.enable = SCAN_PAGE | SCAN_INQUIRY;
+		}
+	}
+
+	if (!dbus_connection_get_object_path_data(connection, path, (void*) &pdata))
+		syslog(LOG_ERR, "Getting path data failed!");
+	else
+		pdata->path_data = rp.enable; /* Keep the current scan status */
+
+	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
+							BLUEZ_MGR_DEV_ADDED);
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		goto failed;
+	}
+
+	/*FIXME: append a friendly name instead of device path */
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, &pptr,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send(connection, message, NULL)) {
+		syslog(LOG_ERR, "Can't send D-BUS added device message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	if (message)
+		dbus_message_unref(message);
+
+	if (ret && default_dev < 0)
+		default_dev = id;
+
+	if (dd >= 0)
+		close(dd);
+
+	return ret;
+}
+
+gboolean hcid_dbus_unregister_device(uint16_t id)
+{
+	gboolean ret;
+	DBusMessage *message = NULL;
+	char path[MAX_PATH_LENGTH];
+	char *pptr = path;
+
+	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+
+	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
+							BLUEZ_MGR_DEV_REMOVED);
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		goto failed;
+	}
+
+	/*FIXME: append a friendly name instead of device path */
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, &pptr,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send(connection, message, NULL)) {
+		syslog(LOG_ERR, "Can't send D-BUS added device message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	if (message)
+		dbus_message_unref(message);
+
+	ret = unregister_dbus_path(path);
+
+	if (ret && default_dev == id)
+		default_dev = hci_get_route(NULL);
+
+	return ret;
 }
 
 void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
@@ -529,7 +706,54 @@ failed:
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
 }
 
-void hcid_dbus_inquiry_start(bdaddr_t *local)
+void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
+{
+	DBusMessage *message = NULL;
+	char *local_addr, *peer_addr;
+	bdaddr_t tmp;
+	char path[MAX_PATH_LENGTH];
+	int id;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+
+	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+						DEV_SIG_BONDING_CREATED);
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		goto failed;
+	}
+
+	/*FIXME: create the signal based on status value - BondingCreated or BondingFailed*/
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_BYTE, &status,
+					DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS remote name message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	if (message)
+		dbus_message_unref(message);
+
+	bt_free(local_addr);
+	bt_free(peer_addr);
+}
+
+void hcid_dbus_discover_start(bdaddr_t *local)
 {
 	DBusMessage *message = NULL;
 	char path[MAX_PATH_LENGTH];
@@ -545,10 +769,10 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d/%s", DEVICE_PATH, id, BLUEZ_HCI);
+	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
 
-	message = dbus_message_new_signal(path, DEV_HCI_INTERFACE,
-						BLUEZ_HCI_INQ_START);
+	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+						DEV_SIG_DISCOVER_START);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS inquiry start message");
 		goto failed;
@@ -566,7 +790,7 @@ failed:
 	bt_free(local_addr);
 }
 
-void hcid_dbus_inquiry_complete(bdaddr_t *local)
+void hcid_dbus_discover_complete(bdaddr_t *local)
 {
 	DBusMessage *message = NULL;
 	char path[MAX_PATH_LENGTH];
@@ -582,10 +806,10 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d/%s", DEVICE_PATH, id, BLUEZ_HCI);
+	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
 
-	message = dbus_message_new_signal(path, DEV_HCI_INTERFACE,
-						BLUEZ_HCI_INQ_COMPLETE);
+	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+						DEV_SIG_DISCOVER_COMPLETE);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
 		goto failed;
@@ -603,7 +827,7 @@ failed:
 	bt_free(local_addr);
 }
 
-void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
+void hcid_dbus_discover_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
 {
 	DBusMessage *message = NULL;
 	char path[MAX_PATH_LENGTH];
@@ -622,10 +846,10 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d/%s", DEVICE_PATH, id, BLUEZ_HCI);
+	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
 
-	message = dbus_message_new_signal(path, DEV_HCI_INTERFACE,
-						BLUEZ_HCI_INQ_RESULT);
+	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+						DEV_SIG_DISCOVER_RESULT);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS inquiry result message");
 		goto failed;
@@ -668,10 +892,10 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d/%s", DEVICE_PATH, id, BLUEZ_HCI);
+	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
 
-	message = dbus_message_new_signal(path, DEV_HCI_INTERFACE,
-						BLUEZ_HCI_REMOTE_NAME);
+	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+						DEV_REMOTE_NAME);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
 		goto failed;
@@ -714,10 +938,10 @@ void hcid_dbus_remote_name_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t statu
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d/%s", DEVICE_PATH, id, BLUEZ_HCI);
+	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
 
-	message = dbus_message_new_signal(path, DEV_HCI_INTERFACE,
-						BLUEZ_HCI_REMOTE_NAME_FAILED);
+	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+						DEV_SIG_REMOTE_NAME_FAILED);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
 		goto failed;
@@ -751,52 +975,12 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason)
 {
 }
 
-void hcid_dbus_auth_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
-{
-	DBusMessage *message = NULL;
-	char *local_addr, *peer_addr;
-	bdaddr_t tmp;
-	char path[MAX_PATH_LENGTH];
-	int id;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
-	baswap(&tmp, peer); peer_addr = batostr(&tmp);
-
-	id = hci_devid(local_addr);
-	if (id < 0) {
-		syslog(LOG_ERR, "No matching device id for %s", local_addr);
-		goto failed;
-	}
-
-	snprintf(path, sizeof(path), "%s/hci%d/%s", DEVICE_PATH, id, BLUEZ_HCI);
-
-	message = dbus_message_new_signal(path, DEV_HCI_INTERFACE,
-						BLUEZ_HCI_AUTH_COMPLETE);
-	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
-		goto failed;
-	}
-
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &peer_addr,
-					DBUS_TYPE_BYTE, &status,
-					DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS remote name message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-
-failed:
-	if (message)
-		dbus_message_unref(message);
-
-	bt_free(local_addr);
-	bt_free(peer_addr);
-}
-
+/*****************************************************************
+ *
+ *  Section reserved to D-Bus watch functions
+ *
+ *****************************************************************/
 gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	DBusWatch *watch = (DBusWatch *) data;
@@ -869,28 +1053,6 @@ static void watch_toggled(DBusWatch *watch, void *data)
 		remove_watch(watch, data);
 }
 
-static gboolean unregister_device_path(const char *path)
-{
-	char **children = NULL;
-
-	if (!dbus_connection_list_registered(connection, path, &children))
-		goto done;
-
-	for (; *children; children++) {
-		char child_path[MAX_PATH_LENGTH];
-
-		snprintf(child_path, sizeof(child_path), "%s/%s", path, *children);
-
-		unregister_dbus_path(child_path);
-	}
-
-	if (*children)
-		dbus_free_string_array(children);
-
-done:
-	return unregister_dbus_path(path);
-}
-
 gboolean hcid_dbus_init(void)
 {
 	DBusError error;
@@ -926,7 +1088,7 @@ gboolean hcid_dbus_init(void)
 				&obj_mgr_vtable, FALSE))
 		return FALSE;
 
-	if (!dbus_connection_add_filter(connection, hci_signal_filter, NULL, NULL)) {
+	if (!dbus_connection_add_filter(connection, hci_dbus_signal_filter, NULL, NULL)) {
 		syslog(LOG_ERR, "Can't add new HCI filter");
 		return FALSE;
 	}
@@ -953,7 +1115,7 @@ void hcid_dbus_exit(void)
 
 		snprintf(dev_path, sizeof(dev_path), "%s/%s", DEVICE_PATH, *children);
 
-		unregister_device_path(dev_path);
+		unregister_dbus_path(dev_path);
 	}
 
 	if (*children)
@@ -964,240 +1126,6 @@ done:
 	unregister_dbus_path(MANAGER_PATH);
 
 	dbus_connection_close(connection);
-}
-
-gboolean hcid_dbus_register_device(uint16_t id) 
-{
-	char path[MAX_PATH_LENGTH];
-	char *pptr = path;
-	gboolean ret;
-	DBusMessage *message = NULL;
-	int dd = -1;
-	read_scan_enable_rp rp;
-	struct hci_request rq;
-	struct hci_dbus_data* pdata;
-
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
-	ret = register_dbus_path(path, DEVICE_PATH_ID, id, &obj_dev_vtable, FALSE);
-
-	dd = hci_open_dev(id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", id);
-		rp.enable = SCAN_PAGE | SCAN_INQUIRY;
-	} else {
-		memset(&rq, 0, sizeof(rq));
-		rq.ogf    = OGF_HOST_CTL;
-		rq.ocf    = OCF_READ_SCAN_ENABLE;
-		rq.rparam = &rp;
-		rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
-	
-		if (hci_send_req(dd, &rq, 500) < 0) {
-			syslog(LOG_ERR, "Sending read scan enable command failed: %s (%d)",
-								strerror(errno), errno);
-			rp.enable = SCAN_PAGE | SCAN_INQUIRY;
-		} else if (rp.status) {
-			syslog(LOG_ERR, "Getting scan enable failed with status 0x%02x",
-										rp.status);
-			rp.enable = SCAN_PAGE | SCAN_INQUIRY;
-		}
-	}
-
-	if (!dbus_connection_get_object_path_data(connection, path, (void*) &pdata))
-		syslog(LOG_ERR, "Getting path data failed!");
-	else
-		pdata->path_data = rp.enable; /* Keep the current scan status */
-
-	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
-							BLUEZ_MGR_DEV_ADDED);
-	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
-		goto failed;
-	}
-
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &pptr,
-					DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send(connection, message, NULL)) {
-		syslog(LOG_ERR, "Can't send D-BUS added device message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-
-failed:
-	if (message)
-		dbus_message_unref(message);
-
-	if (ret && default_dev < 0)
-		default_dev = id;
-
-	if (dd >= 0)
-		close(dd);
-
-	return ret;
-}
-
-gboolean hcid_dbus_unregister_device(uint16_t id)
-{
-	gboolean ret;
-	DBusMessage *message = NULL;
-	char path[MAX_PATH_LENGTH];
-	char *pptr = path;
-
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
-
-	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
-							BLUEZ_MGR_DEV_REMOVED);
-	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
-		goto failed;
-	}
-
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &pptr,
-					DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send(connection, message, NULL)) {
-		syslog(LOG_ERR, "Can't send D-BUS added device message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-
-failed:
-	if (message)
-		dbus_message_unref(message);
-
-	ret = unregister_device_path(path);
-
-	if (ret && default_dev == id)
-		default_dev = hci_get_route(NULL);
-
-	return ret;
-}
-
-gboolean hcid_dbus_dev_up(uint16_t id)
-{
-	char path[MAX_PATH_LENGTH];
-	struct profile_obj_path_data *ptr = obj_path_table;
-	DBusMessage *message = NULL;
-
-	if (!connection)
-		return FALSE;
-
-	for (; ptr->id != INVALID_PATH_ID; ptr++) {
-		if (ptr->reg_func(connection, id) < 0)
-			goto failed;
-	}
-
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
-
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE, DEV_UP);
-
-	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
-		goto failed;
-	}
-
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS added device message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-
-failed:
-	/* if the signal can't be sent ignore the error */
-
-	if (message)
-		dbus_message_unref(message);
-
-	return TRUE;
-}
-
-gboolean hcid_dbus_dev_down(uint16_t id)
-{
-	char path[MAX_PATH_LENGTH];
-	struct profile_obj_path_data *ptr = obj_path_table;
-	DBusMessage *message = NULL;
-
-	if (!connection)
-		return FALSE;
-
-	for (; ptr->id != INVALID_PATH_ID; ptr++) {
-		if (ptr->unreg_func(connection, id) < 0)
-			syslog(LOG_ERR, "Unregistering profile id 0x%04x failed", ptr->id);
-	}
-
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
-
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE, DEV_DOWN);
-	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS device removed  message");
-		goto failed;
-	}
-
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS removed device message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-
-failed:
-	/* if the signal can't be sent ignore the error */
-
-	if (message)
-		dbus_message_unref(message);
-
-	return TRUE;
-}
-
-/*
- * @brief HCI object path register function
- * Detailed description: function responsible for register a new hci 
- * D-Bus path. If necessary the default path must be registered too.
- * @param conn D-Bus connection
- * @param id hci device identification
- * @return (0-Success/-1 failure)
- */
-static int hci_dbus_reg_obj_path(DBusConnection *conn, uint16_t id)
-{
-	char path[MAX_PATH_LENGTH];
-
-	/* register the default path*/
-	snprintf(path, sizeof(path), "%s/hci%d/%s", DEVICE_PATH, id, BLUEZ_HCI);
-	if (!register_dbus_path(path, HCI_PATH_ID, id, &obj_dev_vtable, FALSE))
-		return -1;
-
-	return 0;
-}
-
-/*
- * @brief HCI object path unregister function
- * Detailed description: function responsible for unregister HCI D-Bus
- * path for a detached hci device. If necessary the default path must 
- * be registered too.
- * @param conn D-Bus connection
- * @param unreg_dft register the default path(0 or !0)
- * @param id hci device identification
- * @return (0-Success/-1 failure)
- */
-static int hci_dbus_unreg_obj_path(DBusConnection *conn, uint16_t id) 
-{
-	char path[MAX_PATH_LENGTH];
-
-	snprintf(path, sizeof(path), "%s/hci%d/%s", DEVICE_PATH, id, BLUEZ_HCI);
-	if (!unregister_dbus_path(path))
-		return -1;
-
-	return 0;
-}
-
-const struct service_data *get_hci_table(void)
-{
-	return device_hci_services;
 }
 
 /*****************************************************************
@@ -1247,13 +1175,8 @@ static void reconnect_timer_handler(int signum)
 	/* reset the default device */
 	default_dev = -1;
 
-	for (i = 0; i < dl->dev_num; i++, dr++) {
-
+	for (i = 0; i < dl->dev_num; i++, dr++)
 		hcid_dbus_register_device(dr->dev_id);
-
-		if (hci_test_bit(HCI_UP, &dr->dev_opt))
-			hcid_dbus_dev_up(dr->dev_id);
-	}
 
 failed:
 	if (sk >= 0)
@@ -1285,11 +1208,11 @@ static void reconnect_timer_start(void)
 }
 
 /*****************************************************************
- *  
- *  Section reserved to HCI D-Bus services 
- *  
+ *
+ *  Section reserved to D-Bus signal/messages handling function
+ *
  *****************************************************************/
-static DBusHandlerResult hci_signal_filter (DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult hci_dbus_signal_filter (DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	const char *iface;
@@ -1324,19 +1247,19 @@ static DBusHandlerResult hci_signal_filter (DBusConnection *conn, DBusMessage *m
 
 static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	const struct service_data *handlers = NULL;
+	const struct service_data *handlers = dev_services;
 	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
 	const char *method;
 	const char *signature;
-	const char *path;
 	uint32_t error = BLUEZ_EDBUS_UNKNOWN_METHOD;
 	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	path = dbus_message_get_path(msg);
 	method = dbus_message_get_member(msg);
 	signature = dbus_message_get_signature(msg);
 
+	syslog(LOG_INFO, "[%s,%d] path:%s, method:%s", __PRETTY_FUNCTION__, __LINE__, dbus_message_get_path(msg), method);
+	       
 	if (dbus_data->path_id == DEVICE_ROOT_ID) {
 		/* Device is down(path unregistered) or the path is wrong */
 		ret = DBUS_HANDLER_RESULT_HANDLED;
@@ -1344,21 +1267,7 @@ static DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg,
 		goto failed;
 	}
 
-	if (dbus_data->path_id == DEVICE_PATH_ID)
-		handlers = device_services;
-	else {
-		struct profile_obj_path_data *profile;
-		for (profile = obj_path_table; profile->id != INVALID_PATH_ID; profile++) {
-			if (profile->id == dbus_data->path_id) {
-				handlers = profile->get_svc_table();
-				break;
-			}
-		}
-	}
-
-	if (!handlers)
-		goto failed;
-
+	/* It's a device path id */
 	for (; handlers->name != NULL; handlers++) {
 		if (strcmp(handlers->name, method))
 			continue;
@@ -1398,19 +1307,19 @@ static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg
 	const char *iface;
 	const char *method;
 	const char *signature;
-	const char *path;
 	uint32_t error = BLUEZ_EDBUS_UNKNOWN_METHOD;
 	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	path = dbus_message_get_path(msg);
 	iface = dbus_message_get_interface(msg);
 	method = dbus_message_get_member(msg);
 	signature = dbus_message_get_signature(msg);
 
+	syslog(LOG_INFO, "[%s,%d] path:%s, method:%s", __PRETTY_FUNCTION__, __LINE__, dbus_message_get_path(msg), method);
+
 	if (strcmp(iface, MANAGER_INTERFACE) != 0)
 		return ret;
 
-	for (handlers = manager_services; handlers->name != NULL; handlers++) {
+	for (handlers = mgr_services; handlers->name != NULL; handlers++) {
 		if (strcmp(handlers->name, method))
 			continue;
 
@@ -1436,77 +1345,232 @@ static DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg
 	return ret;
 }
 
-static DBusMessage* handle_periodic_inq_req(DBusMessage *msg, void *data)
+/*****************************************************************
+ *
+ *  Section reserved to device D-Bus services implementation
+ *
+ *****************************************************************/
+static DBusMessage* handle_dev_get_address_req(DBusMessage *msg, void *data)
 {
-	periodic_inquiry_cp inq_param;
-	struct hci_request rq;
-	uint8_t status;
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_get_alias_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+static DBusMessage* handle_dev_get_company_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+static DBusMessage* handle_dev_get_discoverable_to_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+static DBusMessage* handle_dev_get_features_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+static DBusMessage* handle_dev_get_manufacturer_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_get_mode_req(DBusMessage *msg, void *data)
+{
+	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
+	const uint8_t hci_mode = dbus_data->path_data;
+	uint8_t scan_mode;
+
+	switch (hci_mode) {
+	case SCAN_DISABLED:
+		scan_mode = MODE_OFF;
+		break;
+	case SCAN_PAGE:
+		scan_mode = MODE_CONNECTABLE;
+		break;
+	case (SCAN_PAGE | SCAN_INQUIRY):
+		scan_mode = MODE_DISCOVERABLE;
+		break;
+	case SCAN_INQUIRY:
+	/* inquiry scan mode is not handled, return 0xff */
+	default:
+		/* reserved */
+		scan_mode = 0xff;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply,
+					DBUS_TYPE_BYTE, &scan_mode,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_get_name_req(DBusMessage *msg, void *data)
+{
 	struct hci_dbus_data *dbus_data = data;
-	uint8_t length, num_rsp = 0;
-	uint16_t max_period;
-	uint16_t min_period;
-	uint32_t lap = 0x9e8b33;
+	DBusMessage *reply = NULL;
 	int dd = -1;
+	read_local_name_rp rp;
+	struct hci_request rq;
+	const char *pname = (char*) rp.name;
+	char name[249];
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed");
+		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
 	}
 
-	if (dbus_message_has_signature(msg, HCI_PERIODIC_INQ_EXT_SIGNATURE))
-		dbus_message_get_args(msg, NULL,
-						DBUS_TYPE_BYTE, &length,
-						DBUS_TYPE_UINT16, &min_period,
-						DBUS_TYPE_UINT16, &max_period,
-						DBUS_TYPE_UINT32, &lap,
-						DBUS_TYPE_INVALID);
-	else
-		dbus_message_get_args(msg, NULL,
-						DBUS_TYPE_BYTE, &length,
-						DBUS_TYPE_UINT16, &min_period,
-						DBUS_TYPE_UINT16, &max_period,
-						DBUS_TYPE_INVALID);
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_LOCAL_NAME;
+	rq.rparam = &rp;
+	rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
 
-	/* Check for valid parameters */
-	if (length >= min_period || min_period >= max_period
-					|| length < 0x01 || length > 0x30
-					|| lap < 0x9e8b00 || lap > 0x9e8b3f) {
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		syslog(LOG_ERR, "Sending getting name command failed: %s (%d)",
+							strerror(errno), errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		goto failed;
+	}
+
+	if (rp.status) {
+		syslog(LOG_ERR, "Getting name failed with status 0x%02x", rp.status);
+		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + rp.status);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL) {
+		syslog(LOG_ERR, "Out of memory while calling dbus_message_new_method_return");
+		goto failed;
+	}
+
+	strncpy(name,pname,sizeof(name)-1);
+	name[248]='\0';
+	pname = name;
+
+	dbus_message_append_args(reply,
+				DBUS_TYPE_STRING, &pname,
+				DBUS_TYPE_INVALID);
+
+failed:
+	if (dd >= 0)
+		close(dd);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_get_revision_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+static DBusMessage* handle_dev_get_version_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_is_connectable_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+static DBusMessage* handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_set_alias_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_set_class_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+static DBusMessage* handle_dev_set_discoverable_to_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_set_mode_req(DBusMessage *msg, void *data)
+{
+	const struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
+	struct hci_request rq;
+	int dd = -1;
+	const uint8_t scan_mode;
+	uint8_t hci_mode;
+	uint8_t status = 0;
+	const uint8_t current_mode = dbus_data->path_data;
+
+	dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_BYTE, &scan_mode,
+					DBUS_TYPE_INVALID);
+
+	switch (scan_mode) {
+	case MODE_OFF:
+		hci_mode = SCAN_DISABLED;
+		break;
+	case MODE_CONNECTABLE:
+		hci_mode = SCAN_PAGE;
+		break;
+	case MODE_DISCOVERABLE:
+		hci_mode = (SCAN_PAGE | SCAN_INQUIRY);
+		break;
+	default:
+		/* invalid mode */
 		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 		goto failed;
 	}
 
-	inq_param.num_rsp = num_rsp;
-	inq_param.length  = length;
-
-	inq_param.max_period = htobs(max_period);
-	inq_param.min_period = htobs(min_period);
-
-	inq_param.lap[0] = lap & 0xff;
-	inq_param.lap[1] = (lap >> 8) & 0xff;
-	inq_param.lap[2] = (lap >> 16) & 0xff;
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_PERIODIC_INQUIRY;
-	rq.cparam = &inq_param;
-	rq.clen   = PERIODIC_INQUIRY_CP_SIZE;
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending periodic inquiry command failed: %s (%d)",
-							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0) {
+		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
 	}
 
-	if (status) {
-		syslog(LOG_ERR, "Periodic inquiry failed with status 0x%02x", status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + status);
-		goto failed;
+	/* Check if the new requested mode is different from the current */
+	if (current_mode != hci_mode) {
+		memset(&rq, 0, sizeof(rq));
+		rq.ogf    = OGF_HOST_CTL;
+		rq.ocf    = OCF_WRITE_SCAN_ENABLE;
+		rq.cparam = &hci_mode;
+		rq.clen   = sizeof(hci_mode);
+		rq.rparam = &status;
+		rq.rlen   = sizeof(status);
+
+		if (hci_send_req(dd, &rq, 100) < 0) {
+			syslog(LOG_ERR, "Sending write scan enable command failed: %s (%d)",
+							strerror(errno), errno);
+			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+			goto failed;
+		}
+		if (status) {
+			syslog(LOG_ERR, "Setting scan enable failed with status 0x%02x", status);
+			reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
+			goto failed;
+		}
+
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -1518,36 +1582,51 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_cancel_periodic_inq_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_set_name_req(DBusMessage *msg, void *data)
 {
-	DBusMessage *reply = NULL;
-	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
-	uint8_t status;
+	DBusMessageIter iter;
+	DBusMessage *reply = NULL;
+	char *str_name;
 	int dd = -1;
+	uint8_t status;
+	change_local_name_cp cp;
+	struct hci_request rq;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &str_name);
+
+	if (strlen(str_name) == 0) {
+		syslog(LOG_ERR, "HCI change name failed - Invalid Name!");
+		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+		goto failed;
+	}
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed");
+		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 		goto failed;
 	}
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_EXIT_PERIODIC_INQUIRY;
+	strncpy((char *) cp.name, str_name, sizeof(cp.name));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_CHANGE_LOCAL_NAME;
+	rq.cparam = &cp;
+	rq.clen   = CHANGE_LOCAL_NAME_CP_SIZE;
 	rq.rparam = &status;
 	rq.rlen   = sizeof(status);
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending exit periodic inquiry command failed: %s (%d)",
+		syslog(LOG_ERR, "Sending change name command failed: %s (%d)",
 							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 		goto failed;
 	}
 
 	if (status) {
-		syslog(LOG_ERR, "Exit periodic inquiry failed with status 0x%02x", status);
+		syslog(LOG_ERR, "Setting name failed with status 0x%02x", status);
 		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + status);
 		goto failed;
 	}
@@ -1559,9 +1638,10 @@ failed:
 		close(dd);
 
 	return reply;
+
 }
 
-static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_discover_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	inquiry_cp cp;
@@ -1571,19 +1651,6 @@ static DBusMessage* handle_inq_req(DBusMessage *msg, void *data)
 	int dd = -1;
 	uint8_t length = 8, num_rsp = 0;
 	uint32_t lap = 0x9e8b33;
-
-	if (dbus_message_has_signature(msg, HCI_INQ_EXT_SIGNATURE)) {
-		dbus_message_get_args(msg, NULL,
-						DBUS_TYPE_BYTE, &length,
-						DBUS_TYPE_UINT32, &lap,
-						DBUS_TYPE_INVALID);
-
-		if (length < 0x01 || length > 0x30
-					|| lap < 0x9e8b00 || lap > 0x9e8b3f) {
-			reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
-			goto failed;
-		}
-	}
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
@@ -1623,9 +1690,16 @@ failed:
 		hci_close_dev(dd);
 
 	return reply;
+
 }
 
-static DBusMessage* handle_cancel_inq_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_discover_cache_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_discover_cancel_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	struct hci_request rq;
@@ -1669,56 +1743,32 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_role_switch_req(DBusMessage *msg, void *data)
+
+static DBusMessage* handle_dev_discover_service_req(DBusMessage *msg, void *data)
 {
-	DBusMessage *reply = NULL;
-	char *str_bdaddr = NULL;
-	struct hci_dbus_data *dbus_data = data;
-	bdaddr_t bdaddr;
-	uint8_t role;
-	int dev_id = -1, dd = -1;
-
-	dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_STRING, &str_bdaddr,
-					DBUS_TYPE_BYTE, &role,
-					DBUS_TYPE_INVALID);
-
-	str2ba(str_bdaddr, &bdaddr);
-
-	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
-
-	if (dev_id < 0) {
-		syslog(LOG_ERR, "Bluetooth device failed");
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
-
-	if (dbus_data->dev_id != dev_id) {
-		syslog(LOG_ERR, "Connection not found");
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
-		goto failed;
-	}
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed");
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
-
-	if (hci_switch_role(dd, &bdaddr, role, 10000) < 0) {
-		syslog(LOG_ERR, "Switch role request failed");
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-
-failed:
-	return reply;
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_last_seen_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_last_used_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_remote_alias_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_remote_name_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	DBusMessage *signal = NULL;
@@ -1750,10 +1800,10 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 
 		reply = dbus_message_new_method_return(msg);
 
-		snprintf(path, sizeof(path), "%s/hci%d/%s", DEVICE_PATH, dbus_data->dev_id, BLUEZ_HCI);
+		snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, dbus_data->dev_id);
 
-		signal = dbus_message_new_signal(path, DEV_HCI_INTERFACE,
-							BLUEZ_HCI_REMOTE_NAME);
+		signal = dbus_message_new_signal(path, DEVICE_INTERFACE,
+							DEV_SIG_REMOTE_NAME);
 
 		dbus_message_append_args(signal,
 						DBUS_TYPE_STRING, &str_bdaddr,
@@ -1775,7 +1825,7 @@ static DBusMessage* handle_remote_name_req(DBusMessage *msg, void *data)
 		if (dd < 0) {
 			syslog(LOG_ERR, "Unable to open device %d: %s (%d)",
 						dbus_data->dev_id, strerror(errno), errno);
-			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 			goto failed;
 		}
 
@@ -1814,77 +1864,13 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_display_conn_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_remote_version_req(DBusMessage *msg, void *data)
 {
-	struct hci_conn_list_req *cl = NULL;
-	struct hci_conn_info *ci = NULL;
-	DBusMessage *reply = NULL;
-	DBusMessageIter iter;
-	DBusMessageIter array_iter;
-	DBusMessageIter  struct_iter;
-	char addr[18];
-	const char array_sig[] = HCI_CONN_INFO_STRUCT_SIGNATURE;
-	const char *paddr = addr;
-	struct hci_dbus_data *dbus_data = data;
-	int sk = -1;
-	int i;
-
-	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (sk < 0) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	cl = malloc(MAX_CONN_NUMBER * sizeof(*ci) + sizeof(*cl));
-	if (!cl) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
-		goto failed;
-	}
-
-	cl->dev_id = dbus_data->dev_id;
-	cl->conn_num = MAX_CONN_NUMBER;
-	ci = cl->conn_info;
-
-	if (ioctl(sk, HCIGETCONNLIST, (void *) cl) < 0) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL) {
-		syslog(LOG_ERR, "Out of memory while calling dbus_message_new_method_return");
-		goto failed;
-	}
-
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, array_sig, &array_iter);
-
-	for (i = 0; i < cl->conn_num; i++, ci++) {
-		ba2str(&ci->bdaddr, addr);
-
-		dbus_message_iter_open_container(&array_iter, DBUS_TYPE_STRUCT, NULL, &struct_iter);
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT16 ,&(ci->handle));
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING ,&paddr);
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_BYTE ,&(ci->type));
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_BYTE ,&(ci->out));
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT16 ,&(ci->state));
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT32 ,&(ci->link_mode));
-		dbus_message_iter_close_container(&array_iter, &struct_iter);
-	}
-
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-failed:
-	if (sk >= 0)
-		close(sk);
-
-	if (cl)
-		free(cl);
-
-	return reply;
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage* handle_auth_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 {
 	struct hci_request rq;
 	auth_requested_cp cp;
@@ -1966,328 +1952,48 @@ failed:
 	return reply;
 }
 
+static DBusMessage* handle_dev_list_bondings_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+
+
+static DBusMessage* handle_dev_has_bonding_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+
+static DBusMessage* handle_dev_pin_code_length_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage* handle_dev_encryption_key_size_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+
 /*****************************************************************
  *  
- *  Section reserved to local device configuration D-Bus Services
+ *  Section reserved to device HCI callbacks
  *  
  *****************************************************************/
-static DBusMessage* handle_device_up_req(DBusMessage *msg, void *data)
-{
-	DBusMessage *reply = NULL;
-	struct hci_dbus_data *dbus_data = data;
-	int sk = -1;
-
-	/* Create and bind HCI socket */
-	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (sk < 0) {
-		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)",
-							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	if (ioctl(sk, HCIDEVUP, dbus_data->dev_id) < 0 && errno != EALREADY) {
-		syslog(LOG_ERR, "Can't init device hci%d: %s (%d)",
-					dbus_data->dev_id, strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-
-failed:
-	if (sk >= 0)
-		close(sk);
-
-	return reply;
-}
-
-static DBusMessage* handle_device_down_req(DBusMessage *msg, void *data)
-{
-	DBusMessage *reply = NULL;
-	struct hci_dbus_data *dbus_data = data;
-	int sk = -1;
-
-	/* Create and bind HCI socket */
-	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (sk < 0) {
-		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)",
-							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	if (ioctl(sk, HCIDEVDOWN, dbus_data->dev_id) < 0) {
-		syslog(LOG_ERR, "Can't down device hci%d: %s (%d)",
-					dbus_data->dev_id, strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-
-failed:
-	if (sk >= 0)
-		close(sk);
-
-	return reply;
-}
-
-static DBusMessage* handle_device_get_mode_req(DBusMessage *msg, void *data)
-{
-	const struct hci_dbus_data *dbus_data = data;
-	DBusMessage *reply = NULL;
-	const uint8_t hci_mode = dbus_data->path_data;
-	uint8_t scan_mode;
-
-	switch (hci_mode) {
-	case SCAN_DISABLED:
-		scan_mode = MODE_OFF;
-		break;
-	case SCAN_PAGE:
-		scan_mode = MODE_CONNECTABLE;
-		break;
-	case (SCAN_PAGE | SCAN_INQUIRY):
-		scan_mode = MODE_DISCOVERABLE;
-		break;
-	case SCAN_INQUIRY:
-	/* inquiry scan mode is not handled, return 0xff */
-	default:
-		/* reserved */
-		scan_mode = 0xff;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-
-	dbus_message_append_args(reply,
-					DBUS_TYPE_BYTE, &scan_mode,
-					DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage* handle_device_set_mode_req(DBusMessage *msg, void *data)
-{
-	const struct hci_dbus_data *dbus_data = data;
-	DBusMessage *reply = NULL;
-	struct hci_request rq;
-	int dd = -1;
-	const uint8_t scan_mode;
-	uint8_t hci_mode;
-	uint8_t status = 0;
-	const uint8_t current_mode = dbus_data->path_data;
-
-	dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &scan_mode,
-					DBUS_TYPE_INVALID);
-
-	switch (scan_mode) {
-	case MODE_OFF:
-		hci_mode = SCAN_DISABLED;
-		break;
-	case MODE_CONNECTABLE:
-		hci_mode = SCAN_PAGE;
-		break;
-	case MODE_DISCOVERABLE:
-		hci_mode = (SCAN_PAGE | SCAN_INQUIRY);
-		break;
-	default:
-		/* invalid mode */
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
-		goto failed;
-	}
-
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
-
-	/* Check if the new requested mode is different from the current */
-	if (current_mode != hci_mode) {
-		memset(&rq, 0, sizeof(rq));
-		rq.ogf    = OGF_HOST_CTL;
-		rq.ocf    = OCF_WRITE_SCAN_ENABLE;
-		rq.cparam = &hci_mode;
-		rq.clen   = sizeof(hci_mode);
-		rq.rparam = &status;
-		rq.rlen   = sizeof(status);
-
-		if (hci_send_req(dd, &rq, 100) < 0) {
-			syslog(LOG_ERR, "Sending write scan enable command failed: %s (%d)",
-							strerror(errno), errno);
-			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-			goto failed;
-		}
-		if (status) {
-			syslog(LOG_ERR, "Setting scan enable failed with status 0x%02x", status);
-			reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
-			goto failed;
-		}
-
-	}
-
-	reply = dbus_message_new_method_return(msg);
-
-failed:
-	if (dd >= 0)
-		close(dd);
-
-	return reply;
-}
-
-static DBusMessage* handle_device_set_property_req(DBusMessage *msg, void *data)
-{
-	const struct service_data *handlers = set_property_services;
-	DBusMessageIter iter;
-	DBusMessage *reply = NULL;
-	const char *signature;
-	char *str_name;
-	uint32_t error = BLUEZ_EDBUS_WRONG_PARAM;
-
-	signature = dbus_message_get_signature(msg);
-
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &str_name);
-
-	for (; handlers->name != NULL; handlers++) {
-		if (strcasecmp(handlers->name, str_name))
-			continue;
-
-		if (strcmp(handlers->signature, signature) == 0) {
-			reply = handlers->handler_func(msg, data);
-			error = 0;
-			break;
-		} else {
-			error = BLUEZ_EDBUS_WRONG_SIGNATURE;
-			break;
-		}
-	}
-
-	if (error)
-		reply = bluez_new_failure_msg(msg, error);
-
-	return reply;
-}
-
-static DBusMessage* handle_device_get_property_req(DBusMessage *msg, void *data)
-{
-	const struct service_data *handlers = get_property_services;
-	DBusMessageIter iter;
-	DBusMessage *reply = NULL;
-	char *str_name;
-	uint32_t error = BLUEZ_EDBUS_WRONG_PARAM;
-
-
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &str_name);
-
-	for (; handlers->name != NULL; handlers++) {
-		if (!strcasecmp(handlers->name, str_name)) {
-			reply = handlers->handler_func(msg, data);
-			error = 0;
-			break;
-		}
-	}
-
-	if (error)
-		reply = bluez_new_failure_msg(msg, error);
-
-	return reply;
-}
-
-static void send_property_changed_signal(const int devid, const char *prop_name, const int prop_type, void *value)
-{
-	DBusMessage *message = NULL;
-	char path[MAX_PATH_LENGTH];
-
-	snprintf(path, sizeof(path)-1, "%s/hci%d", DEVICE_PATH, devid);
-	path[MAX_PATH_LENGTH-1]='\0';
-
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
-						BLUEZ_HCI_PROPERTY_CHANGED);
-	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
-		goto failed;
-	}
-
-	dbus_message_append_args(message,
-				DBUS_TYPE_STRING, &prop_name,
-				prop_type, value,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS PropertChanged(%s) signal", prop_name);
-		goto failed;
-	}
-
-failed:
-	if (message)
-		dbus_message_unref(message);
-}
-
-static DBusMessage* handle_device_set_property_req_name(DBusMessage *msg, void *data)
-{
-	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
-	DBusMessage *reply = NULL;
-	char *str_name;
-	int dd = -1;
-	uint8_t status;
-	change_local_name_cp cp;
-	struct hci_request rq;
-
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_get_basic(&iter, &str_name);
-
-	if (strlen(str_name) == 0) {
-		syslog(LOG_ERR, "HCI change name failed - Invalid Name!");
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
-		goto failed;
-	}
-
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	strncpy((char *) cp.name, str_name, sizeof(cp.name));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_CHANGE_LOCAL_NAME;
-	rq.cparam = &cp;
-	rq.clen   = CHANGE_LOCAL_NAME_CP_SIZE;
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending change name command failed: %s (%d)",
-							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	if (status) {
-		syslog(LOG_ERR, "Setting name failed with status 0x%02x", status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + status);
-		goto failed;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-
-failed:
-	if (dd >= 0)
-		close(dd);
-
-	return reply;
-}
-
 void hcid_dbus_setname_complete(bdaddr_t *local)
 {
+	DBusMessage *signal = NULL;
 	char *local_addr;
 	bdaddr_t tmp;
 	int id;
@@ -2335,72 +2041,24 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	name[248] = '\0';
 	pname = name;
 
-	send_property_changed_signal(id, DEV_PROPERTY_NAME, DBUS_TYPE_STRING, &pname);
+	signal = dev_signal_factory(id, DEV_SIG_NAME_CHANGED, DBUS_TYPE_STRING, &pname, DBUS_TYPE_INVALID);
+	if (dbus_connection_send(connection, signal, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-BUS %s signal", DEV_SIG_NAME_CHANGED);
+		goto failed;
+	}
+
 	dbus_connection_flush(connection);
 
 failed:
+	if (signal)
+		dbus_message_unref(signal);
+
 	if (dd >= 0)
 		close(dd);
 
 	bt_free(local_addr);
 }
 
-static DBusMessage* handle_device_get_property_req_name(DBusMessage *msg, void *data)
-{
-	struct hci_dbus_data *dbus_data = data;
-	DBusMessage *reply = NULL;
-	int dd = -1;
-	read_local_name_rp rp;
-	struct hci_request rq;
-	const char *pname = (char*) rp.name;
-	char name[249];
-
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_READ_LOCAL_NAME;
-	rq.rparam = &rp;
-	rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending getting name command failed: %s (%d)",
-							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
-	}
-
-	if (rp.status) {
-		syslog(LOG_ERR, "Getting name failed with status 0x%02x", rp.status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + rp.status);
-		goto failed;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL) {
-		syslog(LOG_ERR, "Out of memory while calling dbus_message_new_method_return");
-		goto failed;
-	}
-
-	strncpy(name,pname,sizeof(name)-1);
-	name[248]='\0';
-	pname = name;
-
-	dbus_message_append_args(reply,
-				DBUS_TYPE_STRING, &pname,
-				DBUS_TYPE_INVALID);
-
-failed:
-	if (dd >= 0)
-		close(dd);
-
-	return reply;
-}
 
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
@@ -2475,7 +2133,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	}
 
 	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
-						BLUEZ_HCI_SCAN_MODE_CHANGED);
+						DEV_SIG_MODE_CHANGED);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
 		goto failed;
@@ -2503,8 +2161,13 @@ failed:
 
 	bt_free(local_addr);
 }
-
-static DBusMessage* handle_device_list_req(DBusMessage *msg, void *data)
+ 
+/*****************************************************************
+ *  
+ *  Section reserved to Manager D-Bus services implementation
+ *  
+ *****************************************************************/
+static DBusMessage* handle_mgr_device_list_req(DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
@@ -2513,7 +2176,7 @@ static DBusMessage* handle_device_list_req(DBusMessage *msg, void *data)
 	struct hci_dev_req *dr      = NULL;
 	int sk = -1;
 	int i;
-	const char array_sig[] = MGR_GET_DEV_REPLY_STRUCT_SIGNATURE;
+	const char array_sig[] = MGR_REPLY_DEVICE_LIST_STRUCT_SIGNATURE;
 
 	/* Create and bind HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
@@ -2610,12 +2273,7 @@ failed:
 	return reply;
 }
 
-/*****************************************************************
- *  
- *  Section reserved to Manager D-Bus services
- *  
- *****************************************************************/
-static DBusMessage* handle_default_device_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_mgr_default_device_req(DBusMessage *msg, void *data)
 {
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
@@ -2641,14 +2299,3 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_not_implemented_req(DBusMessage *msg, void *data)
-{
-	const char *path = dbus_message_get_path(msg);
-	const char *iface = dbus_message_get_interface(msg);
-	const char *method = dbus_message_get_member(msg);
-
-	syslog(LOG_INFO, "Not Implemented - path %s iface %s method %s",
-							path, iface, method);
-
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
-}
