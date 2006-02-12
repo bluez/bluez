@@ -163,24 +163,6 @@ typedef struct  {
 	const char *str;
 } bluez_error_t;
 
-typedef struct {
-	char *str;
-	unsigned int val;
-} hci_map;
-
-static hci_map dev_flags_map[] = {
-	{ "INIT",	HCI_INIT	},
-	{ "RUNNING",	HCI_RUNNING	},
-	{ "RAW",	HCI_RAW		},
-	{ "PSCAN",	HCI_PSCAN	},
-	{ "ISCAN",	HCI_ISCAN	},
-	{ "INQUIRY",	HCI_INQUIRY	},
-	{ "AUTH",	HCI_AUTH	},
-	{ "ENCRYPT",	HCI_ENCRYPT	},
-	{ "SECMGR",	HCI_SECMGR	},
-	{ NULL }
-};
-
 static const bluez_error_t dbus_error_array[] = {
 	{ BLUEZ_EDBUS_UNKNOWN_METHOD,	"Method not found"		},
 	{ BLUEZ_EDBUS_WRONG_SIGNATURE,	"Wrong method signature"	},
@@ -979,7 +961,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason)
  *  Section reserved to D-Bus watch functions
  *
  *****************************************************************/
-gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	DBusWatch *watch = (DBusWatch *) data;
 	int flags = 0;
@@ -1001,7 +983,7 @@ gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 }
 
-dbus_bool_t add_watch(DBusWatch *watch, void *data)
+static dbus_bool_t add_watch(DBusWatch *watch, void *data)
 {
 	GIOCondition cond = G_IO_HUP | G_IO_ERR;
 	GIOChannel *io;
@@ -2201,26 +2183,22 @@ static DBusMessage* handle_mgr_device_list_req(DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
-	DBusMessage *reply = NULL;
+	DBusMessage *reply;
 	struct hci_dev_list_req *dl = NULL;
 	struct hci_dev_req *dr      = NULL;
-	int sk = -1;
-	int i;
-	const char array_sig[] = MGR_REPLY_DEVICE_LIST_STRUCT_SIGNATURE;
+	int i, sk = -1;
 
-	/* Create and bind HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0) {
 		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)", strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 	}
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 	if (!dl) {
 		syslog(LOG_ERR, "Can't allocate memory");
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
-		goto failed;
+		close(sk);
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
 	}
 
 	dl->dev_num = HCI_MAX_DEV;
@@ -2231,7 +2209,8 @@ static DBusMessage* handle_mgr_device_list_req(DBusMessage *msg, void *data)
 		goto failed;
 	}
 
-	/* active bluetooth adapter found */
+	dr = dl->dev_req;
+
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL) {
 		syslog(LOG_ERR, "Out of memory while calling dbus_message_new_method_return");
@@ -2239,92 +2218,54 @@ static DBusMessage* handle_mgr_device_list_req(DBusMessage *msg, void *data)
 	}
 
 	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, array_sig, &array_iter);
-	dr = dl->dev_req;
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
-		char apath[MAX_PATH_LENGTH];
-		char aaddr[18];
-		char *paddr = aaddr;
-		char *ppath = apath;
-		char *ptype;
-		const char *flag;
-		DBusMessageIter flag_array_iter, struct_iter;
+		char path[MAX_PATH_LENGTH], *path_ptr = path;
 		struct hci_dev_info di;
-		hci_map *mp;
 
-		mp = dev_flags_map;
 		memset(&di, 0 , sizeof(struct hci_dev_info));
 		di.dev_id = dr->dev_id;
 
 		if (ioctl(sk, HCIGETDEVINFO, &di) < 0)
 			continue;
 
-		snprintf(apath, sizeof(apath), "%s/%s", DEVICE_PATH, di.name);
+		snprintf(path, sizeof(path), "%s/%s", DEVICE_PATH, di.name);
 
-		ba2str(&di.bdaddr, aaddr);
-		ptype = hci_dtypetostr(di.type);
-
-		dbus_message_iter_open_container(&array_iter,
-				DBUS_TYPE_STRUCT, NULL, &struct_iter);
-
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &ppath);
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &paddr);
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &ptype);
-
-		if (hci_test_bit(HCI_UP, &dr->dev_opt))
-			flag = "UP";
-		else
-			flag = "DOWN";
-
-		dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_STRING, &flag);
-
-		dbus_message_iter_open_container(&struct_iter,
-					DBUS_TYPE_ARRAY, DBUS_TYPE_STRING_AS_STRING, &flag_array_iter);
-
-		while (mp->str) {
-			if (hci_test_bit(mp->val, &dr->dev_opt))
-				dbus_message_iter_append_basic(&flag_array_iter, DBUS_TYPE_STRING, &mp->str);
-			mp++;
-		}
-		dbus_message_iter_close_container(&struct_iter, &flag_array_iter);
-		dbus_message_iter_close_container(&array_iter, &struct_iter);
+		dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING, &path_ptr);
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
 failed:
-	if (sk >= 0)
-		close(sk);
+	free(dl);
 
-	if (dl)
-		free(dl);
+	close(sk);
 
 	return reply;
 }
 
 static DBusMessage* handle_mgr_default_device_req(DBusMessage *msg, void *data)
 {
-	char path[MAX_PATH_LENGTH];
-	char *pptr = path;
-	DBusMessage *reply = NULL;
+	DBusMessage *reply;
+	char path[MAX_PATH_LENGTH], *path_ptr = path;
 
-	if (default_dev < 0) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
+	if (default_dev < 0)
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 
 	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL) {
+	if (!reply) {
 		syslog(LOG_ERR, "Out of memory while calling dbus_message_new_method_return");
-		goto failed;
+		return reply;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, default_dev);
-	dbus_message_append_args(reply,
-					DBUS_TYPE_STRING, &pptr,
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
 					DBUS_TYPE_INVALID);
 
-failed:
 	return reply;
 }
