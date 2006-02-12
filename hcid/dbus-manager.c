@@ -39,7 +39,7 @@
 #include "hcid.h"
 #include "dbus.h"
 
-static DBusMessage* handle_mgr_device_list_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_mgr_list_devices_req(DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
@@ -132,7 +132,7 @@ static DBusMessage* handle_mgr_default_device_req(DBusMessage *msg, void *data)
 }
 
 static const struct service_data mgr_services[] = {
-	{ MGR_DEVICE_LIST,	handle_mgr_device_list_req,		MGR_DEVICE_LIST_SIGNATURE	},
+	{ MGR_LIST_DEVICES,	handle_mgr_list_devices_req,		MGR_LIST_DEVICES_SIGNATURE	},
 	{ MGR_DEFAULT_DEVICE,	handle_mgr_default_device_req,		MGR_DEFAULT_DEVICE_SIGNATURE	},
 	{ NULL, NULL, NULL }
 };

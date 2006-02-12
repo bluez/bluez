@@ -86,7 +86,7 @@ int get_default_dev_id(void);
     BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
  *========================================================================*/
 
-#define MGR_DEVICE_LIST		"DeviceList"
+#define MGR_LIST_DEVICES	"ListDevices"
 #define MGR_DEFAULT_DEVICE	"DefaultDevice"
 
 /* Signals sent in the Manager path */
@@ -94,7 +94,7 @@ int get_default_dev_id(void);
 #define BLUEZ_MGR_DEV_REMOVED		"DeviceRemoved"
 
 /* Manager Signatures */
-#define MGR_DEVICE_LIST_SIGNATURE		__END_SIG__
+#define MGR_LIST_DEVICES_SIGNATURE		__END_SIG__
 #define MGR_DEFAULT_DEVICE_SIGNATURE		__END_SIG__
 
 #define MGR_REPLY_DEVICE_LIST_SIGNATURE		DBUS_TYPE_ARRAY_AS_STRING \
