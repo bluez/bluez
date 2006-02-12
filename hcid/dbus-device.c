@@ -88,7 +88,7 @@ static DBusMessage* handle_dev_get_revision_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
-	char str[20], *str_ptr = str;
+	char str[64], *str_ptr = str;
 
 	get_device_revision(dbus_data->dev_id, str, sizeof(str));
 

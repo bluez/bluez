@@ -196,12 +196,35 @@ int stop_device(uint16_t dev_id)
 
 int get_device_address(uint16_t dev_id, char *address, size_t size)
 {
+	struct hci_dev *dev;
+	int dd;
+
 	ASSERT_DEV_ID;
 
 	if (size < 18)
 		return -ENOBUFS;
 
-	return ba2str(&devices[dev_id].bdaddr, address);
+	dev = &devices[dev_id];
+
+	if (bacmp(&dev->bdaddr, BDADDR_ANY))
+		return ba2str(&dev->bdaddr, address);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		err("Can't open device hci%d",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	if (hci_read_bd_addr(dd, &dev->bdaddr, 2000) < 0) {
+		err("Can't read address for hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	hci_close_dev(dd);
+
+	return ba2str(&dev->bdaddr, address);
 }
 
 int get_device_version(uint16_t dev_id, char *version, size_t size)
@@ -235,11 +258,61 @@ int get_device_version(uint16_t dev_id, char *version, size_t size)
 	return err;
 }
 
+static int digi_revision(uint16_t dev_id, char *revision, size_t size)
+{
+	struct hci_request rq;
+	unsigned char req[] = { 0x07 };
+	unsigned char buf[102];
+	int dd;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		err("Can't open device hci%d",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_VENDOR_CMD;
+	rq.ocf    = 0x000e;
+	rq.cparam = req;
+	rq.clen   = sizeof(req);
+	rq.rparam = &buf;
+	rq.rlen   = sizeof(buf);
+
+	if (hci_send_req(dd, &rq, 2000) < 0) {
+		err("Can't read revision for hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	hci_close_dev(dd);
+
+	return snprintf(revision, size, "%s", buf + 1);
+}
+
 int get_device_revision(uint16_t dev_id, char *revision, size_t size)
 {
+	struct hci_dev *dev;
+	int err;
+
 	ASSERT_DEV_ID;
 
-	return snprintf(revision, size, "0x%02x", devices[dev_id].lmp_subver);
+	dev = &devices[dev_id];
+
+	switch (dev->manufacturer) {
+	case 10:
+		err = snprintf(revision, size, "Build %d", dev->lmp_subver);
+		break;
+	case 12:
+		err = digi_revision(dev_id, revision, size);
+		break;
+	default:
+		err = snprintf(revision, size, "0x%02x", dev->lmp_subver);
+		break;
+	}
+
+	return err;
 }
 
 int get_device_manufacturer(uint16_t dev_id, char *manufacturer, size_t size)
