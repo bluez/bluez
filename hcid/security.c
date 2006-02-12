@@ -389,7 +389,7 @@ static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 		return;
 
 	if (evt->opcode == cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY))
-		hcid_dbus_discover_start(sba);
+		hcid_dbus_inquiry_start(sba);
 }
 
 static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
@@ -397,7 +397,7 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 	evt_cmd_complete *evt = ptr;
 	switch (evt->opcode) {
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
-		hcid_dbus_discover_complete(sba);
+		hcid_dbus_inquiry_complete(sba);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME):
 		hcid_dbus_setname_complete(sba);
@@ -442,7 +442,7 @@ static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 
 static inline void inquiry_complete(int dev, bdaddr_t *sba, void *ptr)
 {
-	hcid_dbus_discover_complete(sba);
+	hcid_dbus_inquiry_complete(sba);
 }
 
 static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
@@ -456,7 +456,7 @@ static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 			| (info->dev_class[1] << 8)
 			| (info->dev_class[2] << 16);
 
-		hcid_dbus_discover_result(sba, &info->bdaddr, class, 0);
+		hcid_dbus_inquiry_result(sba, &info->bdaddr, class, 0);
 
 		update_lastseen(sba, &info->bdaddr);
 
@@ -479,7 +479,7 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, vo
 				| (info->dev_class[1] << 8)
 				| (info->dev_class[2] << 16);
 
-			hcid_dbus_discover_result(sba, &info->bdaddr,
+			hcid_dbus_inquiry_result(sba, &info->bdaddr,
 							class, info->rssi);
 
 			update_lastseen(sba, &info->bdaddr);
@@ -493,7 +493,7 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, vo
 				| (info->dev_class[1] << 8)
 				| (info->dev_class[2] << 16);
 
-			hcid_dbus_discover_result(sba, &info->bdaddr,
+			hcid_dbus_inquiry_result(sba, &info->bdaddr,
 							class, info->rssi);
 
 			update_lastseen(sba, &info->bdaddr);
@@ -514,7 +514,7 @@ static inline void extended_inquiry_result(int dev, bdaddr_t *sba, int plen, voi
 			| (info->dev_class[1] << 8)
 			| (info->dev_class[2] << 16);
 
-		hcid_dbus_discover_result(sba, &info->bdaddr, class, info->rssi);
+		hcid_dbus_inquiry_result(sba, &info->bdaddr, class, info->rssi);
 
 		update_lastseen(sba, &info->bdaddr);
 

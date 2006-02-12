@@ -52,6 +52,36 @@
 #define INVALID_PATH_ID		0xFFFF
 #define INVALID_DEV_ID		0xFFFF
 
+#define MAX_PATH_LENGTH		64
+
+typedef DBusMessage* (service_handler_func_t) (DBusMessage *, void *);
+
+struct service_data {
+	const char		*name;
+	service_handler_func_t	*handler_func;
+	const char		*signature;
+};
+
+struct hci_dbus_data {
+	uint16_t dev_id;
+	uint16_t path_id;
+	uint32_t path_data;
+};
+
+typedef int register_function_t(DBusConnection *conn, uint16_t id);
+typedef int unregister_function_t(DBusConnection *conn, uint16_t id);
+
+DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data);
+DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data);
+
+DBusMessage *bluez_new_failure_msg(DBusMessage *msg, const uint32_t ecode);
+
+DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...);
+
+DBusConnection *get_dbus_connection(void);
+
+int get_default_dev_id(void);
+
 /*======================================================================== 
     BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
  *========================================================================*/
