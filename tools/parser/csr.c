@@ -456,6 +456,9 @@ static inline void bccmd_dump(int level, struct frame *frm)
 	case 0x400f:
 		valueless_dump(level + 1, "PS_DEFRAG_RESET", frm);
 		break;
+	case 0x4011:
+		valueless_dump(level + 1, "HOPPING_ON", frm);
+		break;
 	case 0x4012:
 		valueless_dump(level + 1, "CANCEL_PAGE", frm);
 		break;
@@ -464,6 +467,9 @@ static inline void bccmd_dump(int level, struct frame *frm)
 		break;
 	case 0x481c:
 		uint16_dump(level + 1, "MAP_SCO_PCM", frm);
+		break;
+	case 0x482e:
+		uint16_dump(level + 1, "SINGLE_CHAN", frm);
 		break;
 	case 0x5004:
 		radiotest_dump(level + 1, "RADIOTEST", frm);
