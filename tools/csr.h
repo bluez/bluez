@@ -56,6 +56,7 @@
 #define CSR_VARID_PS_FACTORY_RESTORE		0x400d	/* valueless */
 #define CSR_VARID_PS_FACTORY_RESTORE_ALL	0x400e	/* valueless */
 #define CSR_VARID_PS_DEFRAG_RESET		0x400f	/* valueless */
+#define CSR_VARID_KILL_VM_APPLICATION		0x4010	/* valueless */
 #define CSR_VARID_HOPPING_ON			0x4011	/* valueless */
 #define CSR_VARID_CANCEL_PAGE			0x4012	/* valueless */
 #define CSR_VARID_PS_CLR			0x4818	/* uint16 */
