@@ -223,10 +223,12 @@ static void register_server_service(int public)
  * l2cap and unix sockets over which discovery and registration clients
  * access us respectively
  */
-static int init_server(int master, int public)
+static int init_server(uint16_t mtu, int master, int public)
 {
+	struct l2cap_options opts;
 	struct sockaddr_l2 l2addr;
 	struct sockaddr_un unaddr;
+	socklen_t optlen;
 
 	/* Register the public browse group root */
 	register_public_browse_group(public);
@@ -236,7 +238,7 @@ static int init_server(int master, int public)
 
 	/* Create L2CAP socket */
 	l2cap_sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (l2cap_sock == -1) {
+	if (l2cap_sock < 0) {
 		SDPERR("opening L2CAP socket: %s", strerror(errno));
 		return -1;
 	}
@@ -244,39 +246,60 @@ static int init_server(int master, int public)
 	l2addr.l2_bdaddr = *BDADDR_ANY;
 	l2addr.l2_family = AF_BLUETOOTH;
 	l2addr.l2_psm    = htobs(SDP_PSM);
-	if (0 > bind(l2cap_sock, (struct sockaddr *)&l2addr, sizeof(l2addr))) {
+	if (bind(l2cap_sock, (struct sockaddr *)&l2addr, sizeof(l2addr)) < 0) {
 		SDPERR("binding L2CAP socket: %s", strerror(errno));
 		return -1;
 	}
 
 	if (master) {
 		int opt = L2CAP_LM_MASTER;
-		if (0 > setsockopt(l2cap_sock, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt))) {
+		if (setsockopt(l2cap_sock, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
 			SDPERR("setsockopt: %s", strerror(errno));
 			return -1;
 		}
 	}
+
+	if (mtu > 0) {
+		memset(&opts, 0, sizeof(opts));
+		optlen = sizeof(opts);
+
+		if (getsockopt(l2cap_sock, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen) < 0) {
+			SDPERR("getsockopt: %s", strerror(errno));
+			return -1;
+		}
+
+		opts.imtu = mtu;
+
+		if (setsockopt(l2cap_sock, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
+			SDPERR("setsockopt: %s", strerror(errno));
+			return -1;
+		}
+	}
+
 	listen(l2cap_sock, 5);
 	FD_SET(l2cap_sock, &active_fdset);
 	active_maxfd = l2cap_sock;
 
 	/* Create local Unix socket */
 	unix_sock = socket(PF_UNIX, SOCK_STREAM, 0);
-	if (unix_sock == -1) {
+	if (unix_sock < 0) {
 		SDPERR("opening UNIX socket: %s", strerror(errno));
 		return -1;
 	}
+
 	unaddr.sun_family = AF_UNIX;
 	strcpy(unaddr.sun_path, SDP_UNIX_PATH);
 	unlink(unaddr.sun_path);
-	if (0 > bind(unix_sock, (struct sockaddr *)&unaddr, sizeof(unaddr))) {
+	if (bind(unix_sock, (struct sockaddr *)&unaddr, sizeof(unaddr)) < 0) {
 		SDPERR("binding UNIX socket: %s", strerror(errno));
 		return -1;
 	}
+
 	listen(unix_sock, 5);
 	FD_SET(unix_sock, &active_fdset);
 	active_maxfd = unix_sock;
 	chmod(SDP_UNIX_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+
 	return 0;
 }
 
@@ -317,9 +340,11 @@ static inline void handle_request(int sk, uint8_t *data, int len)
 		req.mtu = 2048;
 		req.local = 1;
 	}
+
 	req.sock = sk;
 	req.buf  = data;
 	req.len  = len;
+
 	process_request(&req);
 }
 
@@ -351,17 +376,17 @@ static void check_active(fd_set *mask, int num)
 			close_sock(fd, r);
 			continue;
 		}
-	       
+
 		size = sizeof(sdp_pdu_hdr_t) + ntohs(hdr.plen);
 		buf = malloc(size);
 		if (!buf)
 			continue;
-		
+
 		r = recv(fd, buf, size, 0);
 		if (r <= 0)
 			close_sock(fd, r);
 		else
-			handle_request(fd, buf, r);       
+			handle_request(fd, buf, r);
 	}
 }
 
@@ -369,35 +394,38 @@ static void usage(void)
 {
 	printf("sdpd version %s\n", VERSION);
 	printf("Usage:\n"
-		"sdpd [-n] [-m]\n"
+		"sdpd [-n]\n"
 	);
 }
 
 static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "nodaemon",	0, 0, 'n' },
-	{ "master",	0, 0, 'm' },
+	{ "mtu",	1, 0, 'm' },
 	{ "public",	0, 0, 'p' },
-        { 0, 0, 0, 0}
+	{ "master",	0, 0, 'M' },
+	{ 0, 0, 0, 0}
 };
 
 int main(int argc, char **argv)
 {
-	int daemonize = 1;
-	int master = 0;
-	int public = 0;
+	uint16_t mtu = 0;
+	int daemonize = 1, public = 0, master = 0;
 	int opt;
 
-	while ((opt = getopt_long(argc, argv, "nmp", main_options, NULL)) != -1)
+	while ((opt = getopt_long(argc, argv, "nm:pM", main_options, NULL)) != -1)
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
 			break;
 		case 'm':
-			master = 1;
+			mtu = atoi(optarg);
 			break;
 		case 'p':
 			public = 1;
+			break;
+		case 'M':
+			master = 1;
 			break;
 		default:
 			usage();
@@ -414,7 +442,7 @@ int main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (init_server(master, public) < 0) {
+	if (init_server(mtu, master, public) < 0) {
 		SDPERR("Server initialization failed");
 		return -1;
 	}
