@@ -429,6 +429,35 @@ static int cmd_enabletx(int transport, int argc, char *argv[])
 	return transport_write(transport, CSR_VARID_ENABLE_TX, NULL, 0);
 }
 
+static int cmd_singlechan(int transport, int argc, char *argv[])
+{
+	uint8_t array[8];
+	uint16_t channel;
+
+	OPT_HELP(1, NULL);
+
+	channel = atoi(argv[0]);
+
+	if (channel > 2401 && channel < 2481)
+		channel -= 2402;
+
+	if (channel > 78) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	memset(array, 0, sizeof(array));
+	array[0] = channel & 0xff;
+	array[1] = channel >> 8;
+
+	return transport_write(transport, CSR_VARID_SINGLE_CHAN, array, 8);
+}
+
+static int cmd_hoppingon(int transport, int argc, char *argv[])
+{
+	return transport_write(transport, CSR_VARID_HOPPING_ON, NULL, 0);
+}
+
 static int cmd_rttxdata1(int transport, int argc, char *argv[])
 {
 	uint8_t array[8];
@@ -957,6 +986,8 @@ static struct {
 	{ "warmreset", cmd_warmreset, "",              "Perform warm reset"             },
 	{ "disabletx", cmd_disabletx, "",              "Disable TX on the device"       },
 	{ "enabletx",  cmd_enabletx,  "",              "Enable TX on the device"        },
+	{ "singlechan",cmd_singlechan,"<channel>",     "Lock radio on specific channel" },
+	{ "hoppingon", cmd_hoppingon, "",              "Revert to channel hopping"      },
 	{ "rttxdata1", cmd_rttxdata1, "<freq> <level>","TXData1 radio test"             },
 	{ "memtypes",  cmd_memtypes,  NULL,            "Get memory types"               },
 	{ "psget",     cmd_psget,     "<key>",         "Get value for PS key"           },
