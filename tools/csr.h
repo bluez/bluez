@@ -56,9 +56,11 @@
 #define CSR_VARID_PS_FACTORY_RESTORE		0x400d	/* valueless */
 #define CSR_VARID_PS_FACTORY_RESTORE_ALL	0x400e	/* valueless */
 #define CSR_VARID_PS_DEFRAG_RESET		0x400f	/* valueless */
+#define CSR_VARID_HOPPING_ON			0x4011	/* valueless */
 #define CSR_VARID_CANCEL_PAGE			0x4012	/* valueless */
 #define CSR_VARID_PS_CLR			0x4818	/* uint16 */
 #define CSR_VARID_MAP_SCO_PCM			0x481c	/* uint16 */
+#define CSR_VARID_SINGLE_CHAN			0x482e	/* uint16 */
 #define CSR_VARID_RADIOTEST			0x5004	/* complex */
 #define CSR_VARID_PS_CLR_STORES			0x500c	/* complex */
 #define CSR_VARID_NO_VARIABLE			0x6000	/* valueless */
