@@ -257,7 +257,7 @@ static DBusMessage* handle_dev_get_mode_req(DBusMessage *msg, void *data)
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
 	const uint8_t hci_mode = dbus_data->path_data;
-	uint8_t scan_mode;
+	const char *scan_mode;
 
 	switch (hci_mode) {
 	case SCAN_DISABLED:
@@ -270,16 +270,15 @@ static DBusMessage* handle_dev_get_mode_req(DBusMessage *msg, void *data)
 		scan_mode = MODE_DISCOVERABLE;
 		break;
 	case SCAN_INQUIRY:
-	/* inquiry scan mode is not handled, return 0xff */
+	/* inquiry scan mode is not handled, return unknown */
 	default:
 		/* reserved */
-		scan_mode = 0xff;
+		scan_mode = MODE_UNKNOWN;
 	}
 
 	reply = dbus_message_new_method_return(msg);
 
-	dbus_message_append_args(reply,
-					DBUS_TYPE_BYTE, &scan_mode,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
 
 	return reply;
@@ -287,14 +286,38 @@ static DBusMessage* handle_dev_get_mode_req(DBusMessage *msg, void *data)
 
 static DBusMessage* handle_dev_is_connectable_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	const struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
+	const uint8_t hci_mode = dbus_data->path_data;
+	dbus_bool_t connectable = FALSE;
+
+	if (hci_mode & SCAN_PAGE)
+		connectable = TRUE;
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connectable,
+					DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage* handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	const struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
+	const uint8_t hci_mode = dbus_data->path_data;
+	dbus_bool_t discoverable = FALSE;
+
+	if (hci_mode & SCAN_INQUIRY)
+		discoverable = TRUE;
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &discoverable,
+					DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage* handle_dev_set_class_req(DBusMessage *msg, void *data)
@@ -315,36 +338,31 @@ static DBusMessage* handle_dev_set_mode_req(DBusMessage *msg, void *data)
 	DBusMessage *reply = NULL;
 	struct hci_request rq;
 	int dd = -1;
-	const uint8_t scan_mode;
+	const char* scan_mode;
 	uint8_t hci_mode;
 	uint8_t status = 0;
 	const uint8_t current_mode = dbus_data->path_data;
 
 	dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &scan_mode,
+					DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
 
-	switch (scan_mode) {
-	case MODE_OFF:
+	if (!scan_mode)
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+
+	if (strcasecmp(MODE_OFF, scan_mode) == 0)
 		hci_mode = SCAN_DISABLED;
-		break;
-	case MODE_CONNECTABLE:
+	else if (strcasecmp(MODE_CONNECTABLE, scan_mode) == 0)
 		hci_mode = SCAN_PAGE;
-		break;
-	case MODE_DISCOVERABLE:
+	else if (strcasecmp(MODE_DISCOVERABLE, scan_mode) == 0)
 		hci_mode = (SCAN_PAGE | SCAN_INQUIRY);
-		break;
-	default:
-		/* invalid mode */
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
-		goto failed;
-	}
+	else
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
 		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 	}
 
 	/* Check if the new requested mode is different from the current */

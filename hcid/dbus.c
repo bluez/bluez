@@ -1054,7 +1054,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	struct hci_request rq;
 	int id;
 	int dd = -1;
-	uint8_t scan_mode;
+	const char *scan_mode;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	id = hci_devid(local_addr);
@@ -1123,7 +1123,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	}
 
 	dbus_message_append_args(message,
-					DBUS_TYPE_BYTE, &scan_mode,
+					DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {

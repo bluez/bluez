@@ -206,17 +206,18 @@ int get_default_dev_id(void);
 #define DEV_SIG_DISCOVER_COMPLETE	"DiscoverComplete"
 #define DEV_SIG_DISCOVER_RESULT		"DiscoverResult"
 
-/* FIXME: Change to string
+/*
  * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device
  * connectable: remote devices are allowed to connect, but they are not
  *              allowed to find it.
  * discoverable: remote devices are allowed to connect and find this device
+ * unknown: reserved to not allowed/future modes
  */
-#define MODE_OFF		0x00	
-#define MODE_CONNECTABLE	0x01	
-#define MODE_DISCOVERABLE	0x02	
-
+#define MODE_OFF		"off"
+#define MODE_CONNECTABLE	"connectable"
+#define MODE_DISCOVERABLE	"discoverable"
+#define MODE_UNKNOWN		"unknown"
 
 /* BLUEZ_DBUS_ERROR 
  * EFailed error messages signature is : su
