@@ -989,7 +989,10 @@ static void print_service_class(void *value, void *userData)
 
 	sdp_uuid2strn(uuid, UUID_str, MAX_LEN_UUID_STR);
 	sdp_svclass_uuid2strn(uuid, ServiceClassUUID_str, MAX_LEN_SERVICECLASS_UUID_STR);
-	printf("  \"%s\" (0x%s)\n", ServiceClassUUID_str, UUID_str);
+	if (uuid->type != SDP_UUID128)
+		printf("  \"%s\" (0x%s)\n", ServiceClassUUID_str, UUID_str);
+	else
+		printf("  UUID 128: %s\n", UUID_str);
 }
 
 static void print_service_desc(void *value, void *user)
