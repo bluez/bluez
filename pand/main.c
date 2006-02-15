@@ -188,7 +188,9 @@ static int do_listen(void)
 
 	while (!terminate) {
 		socklen_t alen = sizeof(l2a);
+		char devname[16];
 		int nsk;
+
 		nsk = accept(sk, (struct sockaddr *) &l2a, &alen);
 		if (nsk < 0) {
 			syslog(LOG_ERR, "Accept failed. %s(%d)",
@@ -207,14 +209,17 @@ static int do_listen(void)
 			continue;
 		}
 
-		if (!bnep_accept_connection(nsk, role, netdev)) {
+		strncpy(devname, netdev, 16);
+		devname[15] = '\0';
+
+		if (!bnep_accept_connection(nsk, role, devname)) {
 			char str[40];
 			ba2str(&l2a.l2_bdaddr, str);
 
 			syslog(LOG_INFO, "New connection from %s %s",
 								str, netdev);
 
-			run_devup(netdev, str, sk, nsk);
+			run_devup(devname, str, sk, nsk);
 		} else {
 			syslog(LOG_ERR, "Connection failed. %s(%d)",
 						strerror(errno), errno);
@@ -624,7 +629,8 @@ int main(int argc, char **argv)
 			break;
 
 		case 'e':
-			strcpy(netdev, optarg);
+			strncpy(netdev, optarg, 16);
+			netdev[15] = '\0';
 			break;
 
 		case 'n':
