@@ -676,7 +676,7 @@ static void cmd_class(int ctl, int hdev, char *opt)
 		} else
 			printf("Unspecified");
 		printf("\n\tDevice Class: ");
-		if ((cls[1] & 0x1f) > sizeof(*major_devices))
+		if ((cls[1] & 0x1f) >= sizeof(major_devices) / sizeof(*major_devices))
 			printf("Invalid Device Class!\n");
 		else
 			printf("%s, %s\n", major_devices[cls[1] & 0x1f],
