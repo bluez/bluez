@@ -1369,7 +1369,7 @@ static void print_rev_digianswer(int dd)
 
 static void print_rev_broadcom(uint16_t hci_rev, uint16_t lmp_subver)
 {
-	printf("\tFirmware %d.%d / %d\n", hci_rev, lmp_subver >> 8, lmp_subver & 0xff);
+	printf("\tFirmware %d.%d / %d\n", hci_rev & 0xff, lmp_subver >> 8, lmp_subver & 0xff);
 }
 
 static void print_rev_avm(uint16_t hci_rev, uint16_t lmp_subver)
