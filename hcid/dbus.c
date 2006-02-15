@@ -224,6 +224,8 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 
 	data->path_id = path_id;
 	data->dev_id = dev_id;
+	data->mode = 0x00;
+	data->discoverable_timeout = DFT_DISCOVERABLE_TIMEOUT;
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
@@ -309,7 +311,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	if (!dbus_connection_get_object_path_data(connection, path, (void*) &pdata))
 		syslog(LOG_ERR, "Getting path data failed!");
 	else
-		pdata->path_data = rp.enable; /* Keep the current scan status */
+		pdata->mode = rp.enable;	/* Keep the current scan status */
 
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
 							BLUEZ_MGR_DEV_ADDED);
@@ -1096,7 +1098,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	}
 
 	/* update the current scan mode value */
-	pdata->path_data = rp.enable;
+	pdata->mode = rp.enable;
 
 	switch (rp.enable) {
 	case SCAN_DISABLED:

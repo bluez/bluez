@@ -65,7 +65,8 @@ struct service_data {
 struct hci_dbus_data {
 	uint16_t dev_id;
 	uint16_t path_id;
-	uint32_t path_data;
+	uint32_t discoverable_timeout;
+	uint8_t  mode;
 };
 
 typedef int register_function_t(DBusConnection *conn, uint16_t id);
@@ -106,7 +107,7 @@ int get_default_dev_id(void);
 #define DEV_GET_ADDRESS			"GetAddress"
 #define DEV_GET_ALIAS			"GetAlias"
 #define DEV_GET_COMPANY			"GetCompany"
-#define DEV_GET_DISCOVERABLE_TO		"GetDiscoverableTimeOut"
+#define DEV_GET_DISCOVERABLE_TO		"GetDiscoverableTimeout"
 #define DEV_GET_FEATURES		"GetFeatures"
 #define DEV_GET_MANUFACTURER		"GetManufacturer"
 #define DEV_GET_MODE			"GetMode"
@@ -117,7 +118,7 @@ int get_default_dev_id(void);
 #define DEV_IS_DISCOVERABLE		"IsDiscoverable"
 #define DEV_SET_ALIAS			"SetAlias"
 #define DEV_SET_CLASS			"SetClass"
-#define DEV_SET_DISCOVERABLE_TO		"SetDiscoverableTimeOut"
+#define DEV_SET_DISCOVERABLE_TO		"SetDiscoverableTimeout"
 #define DEV_SET_MODE			"SetMode"
 #define DEV_SET_NAME			"SetName"
 #define DEV_DISCOVER			"Discover"
@@ -218,6 +219,9 @@ int get_default_dev_id(void);
 #define MODE_CONNECTABLE	"connectable"
 #define MODE_DISCOVERABLE	"discoverable"
 #define MODE_UNKNOWN		"unknown"
+
+#define DFT_DISCOVERABLE_TIMEOUT	180	/* 3 seconds */
+#define DISCOVERABLE_TIMEOUT_OFF	0
 
 /* BLUEZ_DBUS_ERROR 
  * EFailed error messages signature is : su

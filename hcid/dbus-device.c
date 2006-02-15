@@ -248,15 +248,22 @@ static DBusMessage* handle_dev_set_alias_req(DBusMessage *msg, void *data)
 
 static DBusMessage* handle_dev_get_discoverable_to_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	const struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &dbus_data->discoverable_timeout,
+					DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage* handle_dev_get_mode_req(DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
-	const uint8_t hci_mode = dbus_data->path_data;
+	const uint8_t hci_mode = dbus_data->mode;
 	const char *scan_mode;
 
 	switch (hci_mode) {
@@ -288,7 +295,7 @@ static DBusMessage* handle_dev_is_connectable_req(DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
-	const uint8_t hci_mode = dbus_data->path_data;
+	const uint8_t hci_mode = dbus_data->mode;
 	dbus_bool_t connectable = FALSE;
 
 	if (hci_mode & SCAN_PAGE)
@@ -306,7 +313,7 @@ static DBusMessage* handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
-	const uint8_t hci_mode = dbus_data->path_data;
+	const uint8_t hci_mode = dbus_data->mode;
 	dbus_bool_t discoverable = FALSE;
 
 	if (hci_mode & SCAN_INQUIRY)
@@ -328,8 +335,19 @@ static DBusMessage* handle_dev_set_class_req(DBusMessage *msg, void *data)
 
 static DBusMessage* handle_dev_set_discoverable_to_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
+	DBusMessageIter iter;
+	uint32_t timeout;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &timeout);
+
+	dbus_data->discoverable_timeout = timeout;
+
+	reply = dbus_message_new_method_return(msg);
+
+	return reply;
 }
 
 static DBusMessage* handle_dev_set_mode_req(DBusMessage *msg, void *data)
@@ -341,7 +359,7 @@ static DBusMessage* handle_dev_set_mode_req(DBusMessage *msg, void *data)
 	const char* scan_mode;
 	uint8_t hci_mode;
 	uint8_t status = 0;
-	const uint8_t current_mode = dbus_data->path_data;
+	const uint8_t current_mode = dbus_data->mode;
 
 	dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_STRING, &scan_mode,
