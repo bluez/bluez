@@ -62,10 +62,14 @@ struct service_data {
 	const char		*signature;
 };
 
+typedef int (timeout_handler_func_t) (void *data);
+
 struct hci_dbus_data {
 	uint16_t dev_id;
 	uint16_t path_id;
 	uint32_t discoverable_timeout;
+	uint32_t timeout_hits;
+	timeout_handler_func_t *timeout_handler;
 	uint8_t  mode;
 };
 

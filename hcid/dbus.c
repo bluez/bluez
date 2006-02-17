@@ -52,9 +52,9 @@
 
 static DBusConnection *connection;
 static int default_dev = -1;
+static volatile sig_atomic_t __timeout_active = 0;
 
 #define TIMEOUT				(30 * 1000)		/* 30 seconds */
-#define DBUS_RECONNECT_TIMER		(5 * 1000 * 1000)	/* 5 sec */
 #define MAX_CONN_NUMBER			10
 
 #define PINAGENT_SERVICE_NAME BASE_INTERFACE ".PinAgent"
@@ -224,8 +224,10 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 
 	data->path_id = path_id;
 	data->dev_id = dev_id;
-	data->mode = 0x00;
+	data->mode = SCAN_DISABLED;
 	data->discoverable_timeout = DFT_DISCOVERABLE_TIMEOUT;
+	data->timeout_hits = 0;
+	data->timeout_handler = NULL;
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
@@ -393,7 +395,7 @@ void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 	uint8_t *addr = (uint8_t *) &ci->bdaddr;
 	dbus_bool_t out = ci->out;
 
-	if (!connection) {
+	if (!dbus_connection_get_is_connected(connection)) {
 		if (!hcid_dbus_init())
 			goto failed;
 	}
@@ -830,24 +832,24 @@ gboolean hcid_dbus_init(void)
 void hcid_dbus_exit(void)
 {
 	char **children = NULL;
+	int i = 0;
 
-	if (!connection)
+	if (!dbus_connection_get_is_connected(connection))
 		return;
 
 	/* Unregister all paths in Device path hierarchy */
 	if (!dbus_connection_list_registered(connection, DEVICE_PATH, &children))
 		goto done;
 
-	for (; *children; children++) {
+	for (; children[i]; i++) {
 		char dev_path[MAX_PATH_LENGTH];
 
-		snprintf(dev_path, sizeof(dev_path), "%s/%s", DEVICE_PATH, *children);
+		snprintf(dev_path, sizeof(dev_path), "%s/%s", DEVICE_PATH, children[i]);
 
 		unregister_dbus_path(dev_path);
 	}
 
-	if (*children)
-		dbus_free_string_array(children);
+	dbus_free_string_array(children);
 
 done:
 	unregister_dbus_path(DEVICE_PATH);
@@ -861,7 +863,52 @@ done:
  *  Section reserved to re-connection timer
  *
  *****************************************************************/
-static void reconnect_timer_handler(int signum)
+
+static int discoverable_timeout_handler(void *data)
+{
+	const struct hci_dbus_data *dbus_data = data;
+	struct hci_request rq;
+	int dd = -1;
+	uint8_t hci_mode = dbus_data->mode;
+	uint8_t status = 0;
+	int8_t retval = 0;
+
+	hci_mode &= ~SCAN_INQUIRY;
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0) {
+		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
+		return -1;
+	}
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
+	rq.cparam = &hci_mode;
+	rq.clen   = sizeof(hci_mode);
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		syslog(LOG_ERR, "Sending write scan enable command to hci%d failed: %s (%d)",
+		       dbus_data->dev_id, strerror(errno), errno);
+		retval = -1;
+		goto failed;
+	}
+	if (status) {
+		syslog(LOG_ERR, "Setting scan enable failed with status 0x%02x", status);
+		retval = -1;
+		goto failed;
+	}
+
+failed:
+	if (dd >= 0)
+		close(dd);
+
+	return retval;
+}
+
+static void system_bus_reconnect(void)
 {
 	struct hci_dev_list_req *dl = NULL;
 	struct hci_dev_req *dr;
@@ -870,12 +917,6 @@ static void reconnect_timer_handler(int signum)
 
 	if (hcid_dbus_init() == FALSE)
 		return;
-
-	/* stop the timer */
-	sigaction(SIGALRM, NULL, NULL);
-	setitimer(ITIMER_REAL, NULL, NULL);
-
-	/* register the device based paths */
 
 	/* Create and bind HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
@@ -914,22 +955,85 @@ failed:
 		free(dl);
 }
 
-static void reconnect_timer_start(void)
+static void sigalarm_handler (int signum)
+{
+	struct hci_dbus_data *pdata = NULL;
+	char device_path[MAX_PATH_LENGTH];
+	char **device = NULL;
+	int active_handlers = 0;
+	int i = 0;
+
+	if (!dbus_connection_get_is_connected(connection)) {
+		/* it is not connected */
+		system_bus_reconnect();
+		return;
+	}
+
+	if (!dbus_connection_list_registered(connection, DEVICE_PATH, &device))
+		goto done;
+
+	/* check the timer for each registered path */
+	for (; device[i]; i++) {
+
+		snprintf(device_path, sizeof(device_path), "%s/%s", DEVICE_PATH, device[i]);
+
+		if (!dbus_connection_get_object_path_data(connection, device_path, (void*) &pdata)){
+			syslog(LOG_ERR, "Getting %s path data failed!", device_path);
+			continue;
+		}
+
+		if (pdata->timeout_handler == NULL)
+			continue;
+
+		if (!(pdata->mode & SCAN_INQUIRY)) {
+			pdata->timeout_hits = 0;
+			continue;
+		}
+
+		active_handlers++;
+
+		if ((++(pdata->timeout_hits) % pdata->discoverable_timeout) != 0)
+			continue;
+
+		if (!pdata->timeout_handler(pdata)) {
+			/* Remove from the timeout queue */
+			pdata->timeout_handler = NULL;
+			pdata->timeout_hits = 0;
+			active_handlers--;
+		}
+	}
+
+	dbus_free_string_array(device);
+
+done:
+	if (!active_handlers) {
+		sigaction(SIGALRM, NULL, NULL);
+		setitimer(ITIMER_REAL, NULL, NULL);
+		__timeout_active = 0;
+	}
+}
+
+static void bluez_timeout_start(void)
 {
 	struct sigaction sa;
 	struct itimerval timer;
 
+	if (__timeout_active)
+		return;
+
+	__timeout_active = 1;
+
 	memset (&sa, 0, sizeof (sa));
-	sa.sa_handler = &reconnect_timer_handler;
+	sa.sa_handler = &sigalarm_handler;
 	sigaction(SIGALRM, &sa, NULL);
 
-	/* expire after X  msec... */
-	timer.it_value.tv_sec = 0;
-	timer.it_value.tv_usec = DBUS_RECONNECT_TIMER;
+	/* expire after 1 sec... */
+	timer.it_value.tv_sec = 1;
+	timer.it_value.tv_usec = 0;
 
-	/* ... and every x msec after that. */
-	timer.it_interval.tv_sec = 0;
-	timer.it_interval.tv_usec = DBUS_RECONNECT_TIMER;
+	/* ... and every 1 sec after that. */
+	timer.it_interval.tv_sec = 1;
+	timer.it_interval.tv_usec = 0;
 
 	setitimer(ITIMER_REAL, &timer, NULL);
 }
@@ -957,10 +1061,8 @@ static DBusHandlerResult hci_dbus_signal_filter (DBusConnection *conn, DBusMessa
 	if ((strcmp(iface, DBUS_INTERFACE_LOCAL) == 0) &&
 			(strcmp(method, "Disconnected") == 0)) {
 		syslog(LOG_ERR, "Got disconnected from the system message bus");
-		dbus_connection_dispatch(conn);
-		dbus_connection_close(conn);
 		dbus_connection_unref(conn);
-		reconnect_timer_start();
+		bluez_timeout_start();
 		ret = DBUS_HANDLER_RESULT_HANDLED;
 	} else if (strcmp(iface, DBUS_INTERFACE_DBUS) == 0) {
 		if (strcmp(method, "NameOwnerChanged") == 0)
@@ -1109,8 +1211,13 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
 		scan_mode = MODE_DISCOVERABLE;
+		pdata->timeout_handler = &discoverable_timeout_handler;
+		bluez_timeout_start();
 		break;
 	case SCAN_INQUIRY:
+		/* Address the scenario where another app changed the scan mode */
+		pdata->timeout_handler = &discoverable_timeout_handler;
+		bluez_timeout_start();
 		/* ignore, this event should not be sent*/
 	default:
 		/* ignore, reserved */
