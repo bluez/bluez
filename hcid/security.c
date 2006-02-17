@@ -51,7 +51,12 @@
 #include "hcid.h"
 #include "lib.h"
 
-static GIOChannel *io_chan[HCI_MAX_DEV];
+struct g_io_info {
+	GIOChannel	*channel;
+	int		watch_id;
+};
+
+static struct g_io_info io_data[HCI_MAX_DEV];
 
 static int pairing;
 
@@ -701,7 +706,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 
 void start_security_manager(int hdev)
 {
-	GIOChannel *chan = io_chan[hdev];
+	GIOChannel *chan = io_data[hdev].channel;
 	struct hci_dev_info *di;
 	struct hci_filter flt;
 	read_stored_link_key_cp cp;
@@ -761,10 +766,10 @@ void start_security_manager(int hdev)
 	}
 
 	chan = g_io_channel_unix_new(dev);
-	g_io_add_watch(chan, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-			io_security_event, (void *) di);
+	io_data[hdev].watch_id = g_io_add_watch(chan, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+						io_security_event, (void *) di);
 
-	io_chan[hdev] = chan;
+	io_data[hdev].channel = chan;
 
 	if (hci_test_bit(HCI_RAW, &di->flags))
 		return;
@@ -778,7 +783,7 @@ void start_security_manager(int hdev)
 
 void stop_security_manager(int hdev)
 {
-	GIOChannel *chan = io_chan[hdev];
+	GIOChannel *chan = io_data[hdev].channel;
 
 	if (!chan)
 		return;
@@ -789,7 +794,9 @@ void stop_security_manager(int hdev)
 	   loop to call us right back with G_IO_NVAL set, at which
 	   point we will see it and clean things up */
 	close(g_io_channel_unix_get_fd(chan));
-	io_chan[hdev] = NULL;
+	g_io_remove_watch(io_data[hdev].watch_id);
+	io_data[hdev].watch_id = -1;
+	io_data[hdev].channel = NULL;
 }
 
 void init_security_data(void)

@@ -92,7 +92,7 @@ void g_io_remove_watch(guint id)
 {
 	struct watch *w, *p;
 
-	for (p = &watch_head, w = watch_head.next; w; w = w->next)
+	for (p = &watch_head, w = watch_head.next; w; p = w, w = w->next)
 		if (w->id == id) {
 			p->next = w->next;
 			free (w);
@@ -181,5 +181,12 @@ void g_main_loop_run(GMainLoop *loop)
 
 void g_main_loop_quit(GMainLoop *loop)
 {
+	struct watch *w;
+
 	loop->bail = 1;
+
+	for (w = watch_head.next; w; w = w->next) {
+		watch_head.next = w->next;
+		free (w);
+	}
 }

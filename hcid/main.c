@@ -666,6 +666,7 @@ int main(int argc, char *argv[], char *env[])
 	set_title("processing events");
 
 	ctl_io = g_io_channel_unix_new(hcid.sock);
+
 	g_io_add_watch(ctl_io, G_IO_IN, io_stack_event, NULL);
 
 	/* Start event processor */
