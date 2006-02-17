@@ -67,6 +67,11 @@ struct pin_request {
 	bdaddr_t bda;
 };
 
+/*
+ * Timeout functions Protypes
+ */
+static int discoverable_timeout_handler(void *data);
+
 DBusConnection *get_dbus_connection(void)
 {
 	return connection;
@@ -314,6 +319,13 @@ gboolean hcid_dbus_register_device(uint16_t id)
 		syslog(LOG_ERR, "Getting path data failed!");
 	else
 		pdata->mode = rp.enable;	/* Keep the current scan status */
+
+	/* 
+	 * Enable timeout to address dbus daemon restart, where
+	 * register the device paths is required due connection lost.
+	 */
+	if (pdata->mode & SCAN_INQUIRY)
+		pdata->timeout_handler = &discoverable_timeout_handler;
 
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
 							BLUEZ_MGR_DEV_ADDED);
