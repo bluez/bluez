@@ -453,6 +453,7 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 {
 	DBusMessage *message = NULL;
 	char *local_addr, *peer_addr;
+	const char *name;
 	bdaddr_t tmp;
 	char path[MAX_PATH_LENGTH];
 	int id;
@@ -468,17 +469,21 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 
 	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
 
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
-						DEV_SIG_BONDING_CREATED);
+	/*
+	 * 0x00: authentication request successfully completed
+	 * 0x01-0x0F: authentication request failed
+	 */
+	name = status ? DEV_SIG_BONDING_FAILED : DEV_SIG_BONDING_CREATED;
+
+	message = dbus_message_new_signal(path, DEVICE_INTERFACE, name);
+
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
 		goto failed;
 	}
 
-	/*FIXME: create the signal based on status value - BondingCreated or BondingFailed*/
 	dbus_message_append_args(message,
 					DBUS_TYPE_STRING, &peer_addr,
-					DBUS_TYPE_BYTE, &status,
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
