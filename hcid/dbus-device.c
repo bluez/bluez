@@ -729,14 +729,64 @@ failed:
 
 static DBusMessage* handle_dev_list_bondings_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	void do_append(char *key, char *value, void *data)
+	{
+		DBusMessageIter *iter = data;
+
+		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
+	}
+
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	DBusMessage *reply;
+	char filename[PATH_MAX + 1];
+	char addr[18];
+
+	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	textfile_foreach(filename, do_append, &array_iter);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return reply;
 }
 
 static DBusMessage* handle_dev_has_bonding_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessageIter iter;
+	DBusMessage *reply;
+	char filename[PATH_MAX + 1];
+	char addr[18], *addr_ptr, *str;
+	dbus_bool_t result = FALSE;
+
+	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &addr_ptr);
+
+	str = textfile_get(filename, addr_ptr);
+	result = str ? TRUE : FALSE;
+	free(str);
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &result,
+					DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage* handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
@@ -744,7 +794,6 @@ static DBusMessage* handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
-
 
 static DBusMessage* handle_dev_pin_code_length_req(DBusMessage *msg, void *data)
 {
