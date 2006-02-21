@@ -791,8 +791,67 @@ static DBusMessage* handle_dev_has_bonding_req(DBusMessage *msg, void *data)
 
 static DBusMessage* handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessageIter iter;
+	DBusMessage *reply;
+	char filename[PATH_MAX + 1];
+	char addr[18], *addr_ptr;
+	struct hci_conn_info_req *cr;
+	bdaddr_t bdaddr;
+	int dd;
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0)
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+
+	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &addr_ptr);
+
+	/* Delete the link key from storage */
+	textfile_del(filename, addr_ptr);
+
+	str2ba(addr_ptr, &bdaddr);
+
+	/* Delete the link key from the Bluetooth chip */
+	hci_delete_stored_link_key(dd, &bdaddr, 0, 1000);
+
+	/* Close active connections for the remote device */
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr) {
+		syslog(LOG_ERR, "Can't allocate memory");
+		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
+		goto failed;
+	}
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		/* Ignore when there isn't active connections, return success */
+		reply = dbus_message_new_method_return(msg);
+		goto failed;
+	}
+
+	/* Send the HCI disconnect command */
+	if (hci_disconnect(dd, htobs(cr->conn_info->handle), HCI_OE_USER_ENDED_CONNECTION, 1000) < 0) {
+		syslog(LOG_ERR, "Disconnect failed");
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+failed:
+	if (dd >= 0)
+		close(dd);
+
+	if (cr)
+		free(cr);
+
+	return reply;
 }
 
 static DBusMessage* handle_dev_pin_code_length_req(DBusMessage *msg, void *data)
