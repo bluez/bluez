@@ -182,13 +182,16 @@ static DBusMessage* handle_dev_get_alias_req(DBusMessage *msg, void *data)
 	DBusMessage *reply;
 	char str[249], *str_ptr = str, *addr_ptr;
 	bdaddr_t bdaddr;
+	int err;
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_get_basic(&iter, &addr_ptr);
 
 	str2ba(addr_ptr, &bdaddr);
 
-	get_device_alias(dbus_data->dev_id, &bdaddr, str, sizeof(str));
+	err = get_device_alias(dbus_data->dev_id, &bdaddr, str, sizeof(str));
+	if (err < 0)
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | -err);
 
 	reply = dbus_message_new_method_return(msg);
 
