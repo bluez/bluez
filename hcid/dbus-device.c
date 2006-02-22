@@ -917,17 +917,20 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	struct hci_dbus_data *dbus_data = data;
 	const char *method;
 	const char *signature;
+	const char *iface;
 	uint32_t error = BLUEZ_EDBUS_UNKNOWN_METHOD;
-	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	method = dbus_message_get_member(msg);
 	signature = dbus_message_get_signature(msg);
+	iface = dbus_message_get_interface(msg);
 
 	syslog(LOG_INFO, "[%s,%d] path:%s, method:%s", __PRETTY_FUNCTION__, __LINE__, dbus_message_get_path(msg), method);
 
+	if (strcmp(DEVICE_INTERFACE, iface))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
 	if (dbus_data->path_id == DEVICE_ROOT_ID) {
 		/* Device is down(path unregistered) or the path is wrong */
-		ret = DBUS_HANDLER_RESULT_HANDLED;
 		error = BLUEZ_EDBUS_UNKNOWN_PATH;
 		goto failed;
 	}
@@ -936,8 +939,6 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	for (; handlers->name != NULL; handlers++) {
 		if (strcmp(handlers->name, method))
 			continue;
-
-		ret = DBUS_HANDLER_RESULT_HANDLED;
 
 		if (!strcmp(handlers->signature, signature)) {
 			reply = handlers->handler_func(msg, data);
@@ -962,5 +963,5 @@ failed:
 		dbus_message_unref(reply);
 	}
 
-	return ret;
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
