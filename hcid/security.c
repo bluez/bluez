@@ -426,8 +426,7 @@ static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 		memcpy(name, evt->name, 248);
 		write_device_name(sba, &dba, name);
 		hcid_dbus_remote_name(sba, &dba, name);
-	} else
-		hcid_dbus_remote_name_failed(sba, &dba, evt->status);
+	}
 }
 
 static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)

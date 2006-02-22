@@ -109,7 +109,6 @@ int get_default_dev_id(void);
     BlueZ D-Bus Device path definitions "/org/bluez/Device"
  *========================================================================*/
 #define DEV_GET_ADDRESS			"GetAddress"
-#define DEV_GET_ALIAS			"GetAlias"
 #define DEV_GET_COMPANY			"GetCompany"
 #define DEV_GET_DISCOVERABLE_TO		"GetDiscoverableTimeout"
 #define DEV_GET_FEATURES		"GetFeatures"
@@ -120,7 +119,6 @@ int get_default_dev_id(void);
 #define DEV_GET_VERSION			"GetVersion"
 #define DEV_IS_CONNECTABLE		"IsConnectable"
 #define DEV_IS_DISCOVERABLE		"IsDiscoverable"
-#define DEV_SET_ALIAS			"SetAlias"
 #define DEV_SET_CLASS			"SetClass"
 #define DEV_SET_DISCOVERABLE_TO		"SetDiscoverableTimeout"
 #define DEV_SET_MODE			"SetMode"
@@ -131,9 +129,10 @@ int get_default_dev_id(void);
 #define DEV_DISCOVER_SERVICE		"DiscoverService"
 #define DEV_LAST_SEEN			"LastSeen"
 #define DEV_LAST_USED			"LastUsed"
-#define DEV_REMOTE_ALIAS		"RemoteAlias"
-#define DEV_REMOTE_NAME			"RemoteName"
-#define DEV_REMOTE_VERSION		"RemoteVersion"
+#define DEV_SET_REMOTE_ALIAS		"SetRemoteAlias"
+#define DEV_GET_REMOTE_ALIAS		"GetRemoteAlias"
+#define DEV_GET_REMOTE_NAME		"GetRemoteName"
+#define DEV_GET_REMOTE_VERSION		"GetRemoteVersion"
 #define DEV_CREATE_BONDING		"CreateBonding"
 #define DEV_LIST_BONDINGS		"ListBondings"
 #define DEV_HAS_BONDING_NAME		"HasBonding"
@@ -144,8 +143,6 @@ int get_default_dev_id(void);
 /*FIXME: maybe this section can be moved to a internal header file */
 /* Device service signature */
 #define DEV_GET_ADDRESS_SIGNATURE			__END_SIG__
-#define DEV_GET_ALIAS_SIGNATURE				DBUS_TYPE_STRING_AS_STRING \
-							__END_SIG__
 #define DEV_GET_COMPANY_SIGNATURE			__END_SIG__
 #define DEV_GET_DISCOVERABLE_TO_SIGNATURE		__END_SIG__
 #define DEV_GET_FEATURES_SIGNATURE			__END_SIG__
@@ -156,9 +153,6 @@ int get_default_dev_id(void);
 #define DEV_GET_VERSION_SIGNATURE			__END_SIG__
 #define DEV_IS_CONNECTABLE_SIGNATURE			__END_SIG__
 #define DEV_IS_DISCOVERABLE_SIGNATURE			__END_SIG__
-#define DEV_SET_ALIAS_SIGNATURE				DBUS_TYPE_STRING_AS_STRING \
-							DBUS_TYPE_STRING_AS_STRING \
-							__END_SIG__
 #define DEV_SET_CLASS_SIGNATURE				DBUS_TYPE_STRING_AS_STRING \
 							DBUS_TYPE_STRING_AS_STRING \
 							__END_SIG__
@@ -177,11 +171,14 @@ int get_default_dev_id(void);
 							__END_SIG__
 #define DEV_LAST_USED_SIGNATURE				DBUS_TYPE_STRING_AS_STRING \
 							__END_SIG__
-#define DEV_REMOTE_ALIAS_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
+#define DEV_SET_REMOTE_ALIAS_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
+							DBUS_TYPE_STRING_AS_STRING \
 							__END_SIG__
-#define DEV_REMOTE_NAME_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
+#define DEV_GET_REMOTE_ALIAS_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
 							__END_SIG__
-#define DEV_REMOTE_VERSION_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
+#define DEV_GET_REMOTE_NAME_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
+							__END_SIG__
+#define DEV_GET_REMOTE_VERSION_SIGNATURE		DBUS_TYPE_STRING_AS_STRING \
 							__END_SIG__
 #define DEV_CREATE_BONDING_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
 							__END_SIG__
@@ -199,11 +196,8 @@ int get_default_dev_id(void);
 /* Signals sent in the Manager path */
 #define	DEV_SIG_MODE_CHANGED		"ModeChanged"
 #define DEV_SIG_NAME_CHANGED		"NameChanged"
-#define DEV_SIG_ALIAS_CHANGED		"AliasChanged"
-#define DEV_SIG_REMOTE_NAME		"RemoteName"
-#define DEV_SIG_REMOTE_NAME_FAILED	"RemoteNameFailed"
-#define DEV_SIG_REMOTE_ALIAS		"RemoteAlias"
-#define DEV_SIG_REMOTE_VERSION		"RemoteVersion"
+#define DEV_SIG_REMOTE_NAME_CHANGED	"RemoteNameChange"
+#define DEV_SIG_REMOTE_ALIAS_CHANGED	"RemoteAliasChanged"
 #define DEV_SIG_BONDING_CREATED		"BondingCreated"
 #define DEV_SIG_BONDING_FAILED		"BondingFailed"
 #define DEV_SIG_BONDING_REMOVED		"BondingRemoved"

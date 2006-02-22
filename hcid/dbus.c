@@ -643,7 +643,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
 
 	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
-						DEV_REMOTE_NAME);
+						DEV_SIG_REMOTE_NAME_CHANGED);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
 		goto failed;
@@ -652,52 +652,6 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	dbus_message_append_args(message,
 					DBUS_TYPE_STRING, &peer_addr,
 					DBUS_TYPE_STRING, &name,
-					DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS remote name message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-
-failed:
-	if (message)
-		dbus_message_unref(message);
-
-	bt_free(local_addr);
-	bt_free(peer_addr);
-}
-
-void hcid_dbus_remote_name_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
-{
-	DBusMessage *message = NULL;
-	char path[MAX_PATH_LENGTH];
-	char *local_addr, *peer_addr;
-	bdaddr_t tmp;
-	int id;
-
-	baswap(&tmp, local); local_addr = batostr(&tmp);
-	baswap(&tmp, peer); peer_addr = batostr(&tmp);
-
-	id = hci_devid(local_addr);
-	if (id < 0) {
-		syslog(LOG_ERR, "No matching device id for %s", local_addr);
-		goto failed;
-	}
-
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
-
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
-						DEV_SIG_REMOTE_NAME_FAILED);
-	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
-		goto failed;
-	}
-
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &peer_addr,
-					DBUS_TYPE_BYTE, &status,
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {

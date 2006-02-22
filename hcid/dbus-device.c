@@ -175,7 +175,7 @@ static DBusMessage* handle_dev_set_name_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_alias_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_get_remote_alias_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -201,7 +201,7 @@ static DBusMessage* handle_dev_get_alias_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_set_alias_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_set_remote_alias_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusConnection *connection = get_dbus_connection();
@@ -224,17 +224,7 @@ static DBusMessage* handle_dev_set_alias_req(DBusMessage *msg, void *data)
 
 	set_device_alias(dbus_data->dev_id, &bdaddr, str_ptr);
 
-	signal = dev_signal_factory(dbus_data->dev_id, "AliasChanged",
-						DBUS_TYPE_STRING, &addr_ptr,
-						DBUS_TYPE_STRING, &str_ptr,
-						DBUS_TYPE_INVALID);
-	if (signal) {
-		dbus_connection_send(connection, signal, NULL);
-		dbus_connection_flush(connection);
-		dbus_message_unref(signal);
-	}
-
-	signal = dev_signal_factory(dbus_data->dev_id, "RemoteAlias",
+	signal = dev_signal_factory(dbus_data->dev_id, DEV_SIG_REMOTE_ALIAS_CHANGED,
 						DBUS_TYPE_STRING, &addr_ptr,
 						DBUS_TYPE_STRING, &str_ptr,
 						DBUS_TYPE_INVALID);
@@ -539,110 +529,40 @@ static DBusMessage* handle_dev_last_used_req(DBusMessage *msg, void *data)
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage* handle_dev_remote_alias_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_get_remote_name_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
-}
-
-static DBusMessage* handle_dev_remote_name_req(DBusMessage *msg, void *data)
-{
-	DBusConnection *connection = get_dbus_connection();
-	DBusMessage *reply = NULL;
-	DBusMessage *signal = NULL;
 	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
 	const char *str_bdaddr;
 	char *name;
-	char path[MAX_PATH_LENGTH];
 	bdaddr_t bdaddr;
 	struct hci_dev_info di;
-	struct hci_request rq;
-	remote_name_req_cp cp;
-	evt_cmd_status rp;
-	int dd = -1;
 
-	dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_STRING, &str_bdaddr,
-					DBUS_TYPE_INVALID);
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str_bdaddr,
+							DBUS_TYPE_INVALID);
 
 	str2ba(str_bdaddr, &bdaddr);
+
 	if (hci_devinfo(dbus_data->dev_id, &di) < 0) {
 		syslog(LOG_ERR, "Can't get device info");
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 	}
 
-	/* Try retrieve from local cache */
 	name = get_peer_name(&di.bdaddr, &bdaddr);
-	if (name) {
-
-		reply = dbus_message_new_method_return(msg);
-
-		snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, dbus_data->dev_id);
-
-		signal = dbus_message_new_signal(path, DEVICE_INTERFACE,
-							DEV_SIG_REMOTE_NAME);
-
-		dbus_message_append_args(signal,
-						DBUS_TYPE_STRING, &str_bdaddr,
-						DBUS_TYPE_STRING, &name,
-						DBUS_TYPE_INVALID);
-
-		if (dbus_connection_send(connection, signal, NULL) == FALSE) {
-			syslog(LOG_ERR, "Can't send D-BUS remote name signal message");
-			goto failed;
-		}
-
-		dbus_message_unref(signal);
-		free(name);
-
-	} else {
-
-		/* Send HCI command */
-		dd = hci_open_dev(dbus_data->dev_id);
-		if (dd < 0) {
-			syslog(LOG_ERR, "Unable to open device %d: %s (%d)",
-						dbus_data->dev_id, strerror(errno), errno);
-			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-			goto failed;
-		}
-
-		memset(&cp, 0, sizeof(cp));
-		cp.bdaddr = bdaddr;
-		cp.pscan_rep_mode = 0x02;
-
-		memset(&rq, 0, sizeof(rq));
-		rq.ogf    = OGF_LINK_CTL;
-		rq.ocf    = OCF_REMOTE_NAME_REQ;
-		rq.cparam = &cp;
-		rq.clen   = REMOTE_NAME_REQ_CP_SIZE;
-		rq.rparam = &rp;
-		rq.rlen   = EVT_CMD_STATUS_SIZE;
-		rq.event  = EVT_CMD_STATUS;
-
-		if (hci_send_req(dd, &rq, 100) < 0) {
-			syslog(LOG_ERR, "Unable to send remote name request: %s (%d)",
-						strerror(errno), errno);
-			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-			goto failed;
-		}
-
-		if (rp.status) {
-			syslog(LOG_ERR, "Remote name request failed");
-			reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | rp.status);
-			goto failed;
-		}
-	}
+	if (!name)
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_RECORD_NOT_FOUND);
 
 	reply = dbus_message_new_method_return(msg);
-failed:
-	if (dd >= 0)
-		hci_close_dev(dd);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_INVALID);
+
+	free(name);
 
 	return reply;
 }
 
-static DBusMessage* handle_dev_remote_version_req(DBusMessage *msg, void *data)
+static DBusMessage* handle_dev_get_remote_version_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
@@ -884,7 +804,6 @@ static DBusMessage* handle_dev_encryption_key_size_req(DBusMessage *msg, void *d
 
 static const struct service_data dev_services[] = {
 	{ DEV_GET_ADDRESS,		handle_dev_get_address_req,		DEV_GET_ADDRESS_SIGNATURE		},
-	{ DEV_GET_ALIAS,		handle_dev_get_alias_req,		DEV_GET_ALIAS_SIGNATURE			},
 	{ DEV_GET_COMPANY,		handle_dev_get_company_req,		DEV_GET_COMPANY_SIGNATURE		},
 	{ DEV_GET_DISCOVERABLE_TO,	handle_dev_get_discoverable_to_req,	DEV_GET_DISCOVERABLE_TO_SIGNATURE	},
 	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		DEV_GET_FEATURES_SIGNATURE		},
@@ -897,7 +816,6 @@ static const struct service_data dev_services[] = {
 	{ DEV_IS_CONNECTABLE,		handle_dev_is_connectable_req,		DEV_IS_CONNECTABLE_SIGNATURE		},
 	{ DEV_IS_DISCOVERABLE,		handle_dev_is_discoverable_req,		DEV_IS_DISCOVERABLE_SIGNATURE		},
 
-	{ DEV_SET_ALIAS,		handle_dev_set_alias_req,		DEV_SET_ALIAS_SIGNATURE			},
 	{ DEV_SET_CLASS,		handle_dev_set_class_req,		DEV_SET_CLASS_SIGNATURE			},
 	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	DEV_SET_DISCOVERABLE_TO_SIGNATURE	},
 	{ DEV_SET_MODE,			handle_dev_set_mode_req,		DEV_SET_MODE_SIGNATURE			},
@@ -911,9 +829,10 @@ static const struct service_data dev_services[] = {
 	{ DEV_LAST_SEEN,		handle_dev_last_seen_req,		DEV_LAST_SEEN_SIGNATURE			},
 	{ DEV_LAST_USED,		handle_dev_last_used_req,		DEV_LAST_USED_SIGNATURE			},
 
-	{ DEV_REMOTE_ALIAS,		handle_dev_remote_alias_req,		DEV_REMOTE_ALIAS_SIGNATURE		},
-	{ DEV_REMOTE_NAME,		handle_dev_remote_name_req,		DEV_REMOTE_NAME_SIGNATURE		},
-	{ DEV_REMOTE_VERSION,		handle_dev_remote_version_req,		DEV_REMOTE_VERSION_SIGNATURE		},
+	{ DEV_SET_REMOTE_ALIAS,		handle_dev_set_remote_alias_req,	DEV_SET_REMOTE_ALIAS_SIGNATURE		},
+	{ DEV_GET_REMOTE_ALIAS,		handle_dev_get_remote_alias_req,	DEV_GET_REMOTE_ALIAS_SIGNATURE		},
+	{ DEV_GET_REMOTE_NAME,		handle_dev_get_remote_name_req,		DEV_GET_REMOTE_NAME_SIGNATURE		},
+	{ DEV_GET_REMOTE_VERSION,	handle_dev_get_remote_version_req,	DEV_GET_REMOTE_VERSION_SIGNATURE	},
 
 	{ DEV_CREATE_BONDING,		handle_dev_create_bonding_req,		DEV_CREATE_BONDING_SIGNATURE		},
 	{ DEV_LIST_BONDINGS,		handle_dev_list_bondings_req,		DEV_LIST_BONDINGS_SIGNATURE		},
