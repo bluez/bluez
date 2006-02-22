@@ -1,0 +1,303 @@
+D-Bus API description for BlueZ
+*******************************
+
+Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+
+
+Manager hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Manager
+Object path	/org/bluez/Manager/
+
+Methods		array{string} ListDevices()
+
+			Returns list of object paths under /org/bluez/Device/
+
+		string DefaultDevice()
+
+			Returns object path for the default device.
+
+Signals		void DeviceAdded(string path)
+
+			Parameter is object path of added device.
+
+		void DeviceRemoved(string path)
+
+			Parameter is object path of removed device.
+
+
+Device hierarchy
+================
+
+Service		org.bluez
+Interface	org.bluez.Device
+Object path	/org/bluez/Device/{hci0,hci1,...}/
+
+Methods		string GetAddress()
+
+			Returns the device address for a given path.
+
+			Example: "00:11:22:33:44:55"
+
+		string GetVersion()
+
+			Returns the version of the Bluetooth chip. This version
+			is compiled from the LMP version. In case of EDR the
+			features attribute must be checked.
+
+			Example: "Bluetooth 2.0 + EDR"
+
+		string GetRevision()
+
+			Returns the revision of the Bluetooth chip. This is a
+			vendor specific value and in most cases it represents
+			the firmware version. This might derive from the HCI
+			revision and LMP subversion values or via extra vendor
+			specific commands.
+
+			Example: "HCI 19.2"
+
+		string GetManufacturer()
+
+			Returns the manufacturer of the Bluetooth chip.
+
+			Example: "Cambridge Silicon Radio"
+
+		string GetCompany()
+
+			Returns the company name from the OUI database of the
+			Bluetooth device address. This function will need a
+			valid and up-to-date oui.txt from the IEEE. This value
+			will be different from the manufacturer string in the
+			most cases.
+
+			Example: "Apple Computer"
+
+		array{string} GetFeatures()
+
+			Returns list of features supported by the device. This
+			list is only for showing them in the UI. No application
+			should implement different behaviors based on these
+			strings.
+
+		string GetMode()
+
+			Returns the current mode of a device.
+
+			Valid modes: "off", "connectable", "discoverable"
+
+		void SetMode(string mode)
+
+			Sets mode of the device. See GetMode for valid strings
+			for the mode parameter.
+
+		uint32 GetDiscoverableTimeout()
+
+			Returns the discoverable timeout in seconds. A value
+			of zero means that the timeout is disabled and it will
+			stay in discoverable mode forever.
+
+			The default value for the discoverable timeout should
+			be 180 seconds (3 minutes).
+
+		void SetDiscoverableTimeout(uint32 timeout)
+
+			Sets the discoverable timeout in seconds. A value of
+			zero disables the timeout and the device would be
+			always discoverable.
+
+			Changing this value doesn't set the device into
+			discoverable mode. The SetMode method must be used.
+
+		boolean IsConnectable()
+
+			Returns true if the local device is connectable and
+			false if it is switched off.
+
+			It is also possible to use GetMode to retrieve this
+			information.
+
+		boolean IsDiscoverable()
+
+			Returns true if the local device is discoverable and
+			false if it is only connectable or switched off.
+
+			It is also possible to use GetMode to retrieve this
+			information.
+
+		string GetMajorClass()
+
+			Returns the current major class value for this
+			system. This value is set to "computer" for now.
+
+		string GetMinorClass()
+
+			Returns the current minor class value for this
+			system where the default major class is "computer".
+
+			Valid values: "uncategorized", "desktop", "server",
+			              "laptop", "handheld", "palm", "wearable"
+
+			The default value is "uncategorized".
+
+		void SetMinorClass(string minor)
+
+			Sets the local minor class and on success it sends
+			a MinorClassChanged signal.
+
+		array{string} GetServiceClasses()
+
+			Returns the current set of service classes.
+
+			Valid values: "positioning", "networking", "rendering",
+			              "capturing", "object transfer", "audio",
+			              "telephony", "information"
+
+		string GetName()
+
+			Returns the local device name (friendly name) in UTF-8.
+
+		void SetName(string name)
+
+			Sets the local device name. If EIR is supported by the
+			local hardware this modifies also the extended response
+			data value.
+
+		string GetRemoteName(string address)
+
+			Get device name for a remote device. This request
+			returns always a cached name. The service daemon is
+			responsible for updating the cache.
+
+			If this is an empty value, then no remote name
+			available at the moment. The UI should show the
+			address in this case.
+
+			Example: "00:11:22:33:44:55", "Nokia 770"
+
+		string GetRemoteVersion(string address)
+
+			Get the version info for a remote device. This request
+			returns always this information based on its cached
+			data. The base for this string is the LMP version
+			value and the features for EDR support.
+
+			Example: "Bluetooth 2.0 + EDR"
+
+		string GetRemoteAlias(string address)
+
+			Returns alias name for remote device. If this is
+			an empty value, then no alias has been defined so far.
+			This is the default case and the UI should show the
+			remote name instead.
+
+			An alias should supersede the remote name.
+
+		void SetRemoteAlias(string address, string alias)
+
+			Sets alias name for remote device. If alias name is
+			empty, then no alias is set.
+
+			On success the SetRemoteAlias method will produce a
+			RemoteAliasChanged signal which applications can use
+			to update their current display of the remote device
+			name.
+
+		string LastSeen(string address)
+
+			Returns the date and time when the device has been
+			seen by a discover procedure.
+
+			Example: "2006-02-08 12:00:00 GMT"
+
+		string LastUsed(string address)
+
+			Returns the date and time of the last time when the
+			device has been connected.
+
+			Example: "2006-02-08 12:00:00 GMT"
+
+		void CreateBonding(string address)
+
+			This method creates a bonding with a remote device.
+
+			If a link key for this device already exists, this
+			procedure should fail instead of trying to create a
+			new pairing.
+
+		void RemoveBonding(string address)
+
+			This method removes the bonding with a remote device.
+
+			For security reasons this includes removing the actual
+			link key and also disconnecting any open connections
+			for the remote device.
+
+			If the link key was stored on the Bluetooth chip, it
+			must be removed from there, too.
+
+		boolean HasBonding(string address)
+
+			Returns true if the remote device is bonded and false
+			if no link key is available.
+
+		array{string} ListBondings()
+
+			List device addresses of currently bonded device.
+
+		uint8 PinCodeLength(string address)
+
+			Returns the PIN code length that was used in the
+			pairing process.
+
+		uint8 EncryptionKeySize(string address)
+
+			Returns the currently used encryption key size.
+
+			This method will fail if no connection to that device
+			has been established.
+
+Signals		void ModeChanged(string mode)
+
+			If the current mode is changed with SetMode this signal
+			will inform about the new mode.
+
+			This signal can also be triggered by low-level HCI
+			commands.
+
+		void MinorClassChanged(string minor)
+
+			After changing the minor class with SetMinorClass this
+			signal will provide the new class value.
+
+		void NameChanged(string name)
+
+			After changing the local device name with SetName this
+			signal will provide the new name.
+
+			This signal can also be triggered by low-level HCI
+			commands.
+
+		void RemoteNameChanged(string address, string name)
+
+			This signal will be send every time the service daemon
+			detect a new name for a remote device.
+
+		void RemoteAliasChanged(string address, string alias)
+
+			After changing an alias with SetRemoteAlias this signal
+			will indicate the new alias.
+
+		void BondingCreated(string address)
+
+			Signals that a successful bonding has been created.
+
+		void BondingFailed(string address)
+
+			Signals that a bonding has failed.
+
+		void BondingRemoved(string address)
+
+			Signals that a bonding was removed.
