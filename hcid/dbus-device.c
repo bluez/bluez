@@ -795,8 +795,10 @@ static DBusMessage* handle_dev_has_bonding_req(DBusMessage *msg, void *data)
 static DBusMessage* handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
+	DBusConnection *connection = get_dbus_connection();
 	DBusMessageIter iter;
 	DBusMessage *reply;
+	DBusMessage *signal;
 	char filename[PATH_MAX + 1];
 	char addr[18], *addr_ptr;
 	struct hci_conn_info_req *cr;
@@ -843,6 +845,17 @@ static DBusMessage* handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 		syslog(LOG_ERR, "Disconnect failed");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto failed;
+	}
+
+	/* FIXME: which condition must be verified before send the signal */
+	signal = dev_signal_factory(dbus_data->dev_id,
+					DEV_SIG_BONDING_REMOVED,
+					DBUS_TYPE_STRING, &addr_ptr,
+					DBUS_TYPE_INVALID);
+	if (signal) {
+		dbus_connection_send(connection, signal, NULL);
+		dbus_connection_flush(connection);
+		dbus_message_unref(signal);
 	}
 
 	reply = dbus_message_new_method_return(msg);
