@@ -72,9 +72,9 @@ struct hci_conn {
 struct hci_dev {
 	bdaddr_t bdaddr;
 	uint8_t  features[8];
-	uint8_t  hci_rev;
 	uint8_t  lmp_ver;
 	uint16_t lmp_subver;
+	uint16_t hci_rev;
 	uint16_t manufacturer;
 
 	uint8_t  name[248];
