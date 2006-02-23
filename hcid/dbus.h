@@ -114,6 +114,7 @@ int get_default_dev_id(void);
 #define DEV_GET_FEATURES		"GetFeatures"
 #define DEV_GET_MAJOR_CLASS		"GetMajorClass"
 #define DEV_GET_MANUFACTURER		"GetManufacturer"
+#define DEV_GET_MINOR_CLASS		"GetMinorClass"
 #define DEV_GET_MODE			"GetMode"
 #define DEV_GET_NAME			"GetName"
 #define DEV_GET_REVISION		"GetRevision"
@@ -150,6 +151,7 @@ int get_default_dev_id(void);
 #define DEV_GET_FEATURES_SIGNATURE			__END_SIG__
 #define DEV_GET_MAJOR_CLASS_SIGNATURE			__END_SIG__
 #define DEV_GET_MANUFACTURER_SIGNATURE			__END_SIG__
+#define DEV_GET_MINOR_CLASS_SIGNATURE			__END_SIG__
 #define DEV_GET_MODE_SIGNATURE				__END_SIG__
 #define DEV_GET_NAME_SIGNATURE				__END_SIG__
 #define DEV_GET_REVISION_SIGNATURE			__END_SIG__

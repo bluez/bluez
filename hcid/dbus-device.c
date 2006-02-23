@@ -140,6 +140,51 @@ static DBusMessage* handle_dev_get_manufacturer_req(DBusMessage *msg, void *data
 	return reply;
 }
 
+static DBusMessage* handle_dev_get_minor_class_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	const char *str_ptr = "";
+	uint8_t cls[3];
+	uint8_t minor_class;
+	int dd;
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0) {
+		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+	}
+
+	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
+				dbus_data->dev_id, strerror(errno), errno);
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+	/* FIXME: Currently, only computer major class is supported */
+	if ((cls[1] & 0x1f) != 1)
+		goto failed;
+
+	minor_class = cls[0] >> 2;
+
+	/* Validate computer minor class */
+	if (minor_class > (sizeof(computer_minor_cls) / sizeof(*computer_minor_cls)))
+		goto failed;
+
+	str_ptr = computer_minor_cls[minor_class];
+
+failed:
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+				 	DBUS_TYPE_INVALID);
+
+	hci_close_dev(dd);
+
+	return reply;
+}
+
 static DBusMessage* handle_dev_get_company_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
@@ -937,6 +982,7 @@ static const struct service_data dev_services[] = {
 	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		DEV_GET_FEATURES_SIGNATURE		},
 	{ DEV_GET_MAJOR_CLASS,		handle_dev_get_major_class_req,		DEV_GET_MAJOR_CLASS_SIGNATURE		},
 	{ DEV_GET_MANUFACTURER,		handle_dev_get_manufacturer_req,	DEV_GET_MANUFACTURER_SIGNATURE		},
+	{ DEV_GET_MINOR_CLASS,		handle_dev_get_minor_class_req,		DEV_GET_MINOR_CLASS_SIGNATURE		},
 	{ DEV_GET_MODE,			handle_dev_get_mode_req,		DEV_GET_MODE_SIGNATURE			},
 	{ DEV_GET_NAME,			handle_dev_get_name_req,		DEV_GET_NAME_SIGNATURE			},
 	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		DEV_GET_REVISION_SIGNATURE		},
