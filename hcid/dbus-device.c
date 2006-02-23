@@ -41,6 +41,17 @@
 
 #include "textfile.h"
 
+static const char *service_cls[] = {
+	"positioning",
+	"networking",
+	"rendering",
+	"capturing",
+	"object transfer",
+	"audio",
+	"telephony",
+	"information"
+};
+
 static const char *computer_minor_cls[] = {
 	"uncategorized",
 	"desktop",
@@ -106,6 +117,51 @@ static DBusMessage *handle_dev_get_revision_req(DBusMessage *msg, void *data)
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *handle_dev_get_service_classes_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	const char *str_ptr;
+	uint8_t cls[3];
+	int dd, i;
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0) {
+		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+	}
+
+	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
+				dbus_data->dev_id, strerror(errno), errno);
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	for (i = 0; i < (sizeof(service_cls) / sizeof(*service_cls)); i++) {
+		if (cls[2] & (1 << i)) {
+			str_ptr = service_cls[i];
+			dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING, &str_ptr);
+		}
+	}
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	hci_close_dev(dd);
 
 	return reply;
 }
@@ -986,6 +1042,7 @@ static const struct service_data dev_services[] = {
 	{ DEV_GET_MODE,			handle_dev_get_mode_req,		DEV_GET_MODE_SIGNATURE			},
 	{ DEV_GET_NAME,			handle_dev_get_name_req,		DEV_GET_NAME_SIGNATURE			},
 	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		DEV_GET_REVISION_SIGNATURE		},
+	{ DEV_GET_SERVICE_CLASSES,	handle_dev_get_service_classes_req,	DEV_GET_SERVICE_CLASSES_SIGNATURE	},
 	{ DEV_GET_VERSION,		handle_dev_get_version_req,		DEV_GET_VERSION_SIGNATURE		},
 
 	{ DEV_IS_CONNECTABLE,		handle_dev_is_connectable_req,		DEV_IS_CONNECTABLE_SIGNATURE		},

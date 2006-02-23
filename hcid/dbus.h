@@ -118,6 +118,7 @@ int get_default_dev_id(void);
 #define DEV_GET_MODE			"GetMode"
 #define DEV_GET_NAME			"GetName"
 #define DEV_GET_REVISION		"GetRevision"
+#define DEV_GET_SERVICE_CLASSES		"GetServiceClasses"
 #define DEV_GET_VERSION			"GetVersion"
 #define DEV_IS_CONNECTABLE		"IsConnectable"
 #define DEV_IS_DISCOVERABLE		"IsDiscoverable"
@@ -155,6 +156,7 @@ int get_default_dev_id(void);
 #define DEV_GET_MODE_SIGNATURE				__END_SIG__
 #define DEV_GET_NAME_SIGNATURE				__END_SIG__
 #define DEV_GET_REVISION_SIGNATURE			__END_SIG__
+#define DEV_GET_SERVICE_CLASSES_SIGNATURE		__END_SIG__
 #define DEV_GET_VERSION_SIGNATURE			__END_SIG__
 #define DEV_IS_CONNECTABLE_SIGNATURE			__END_SIG__
 #define DEV_IS_DISCOVERABLE_SIGNATURE			__END_SIG__
