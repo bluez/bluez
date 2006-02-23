@@ -48,6 +48,7 @@
 
 #include "hcid.h"
 #include "lib.h"
+#include "sdp.h"
 
 struct hcid_opts hcid;
 struct device_opts default_device;
@@ -537,13 +538,13 @@ extern char *optarg;
 
 int main(int argc, char *argv[], char *env[])
 {
-	int daemon, dofork, opt, fd;
+	int daemon, dofork, sdp, opt, fd;
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
 	struct sigaction sa;
 	GIOChannel *ctl_io;
 
-	daemon = 1; dofork = 1;
+	daemon = 1; dofork = 1; sdp = 0;
 
 	/* Default HCId settings */
 	hcid.config_file = HCID_CONFIG_FILE;
@@ -558,10 +559,14 @@ int main(int argc, char *argv[], char *env[])
 
 	init_defaults();
 
-	while ((opt = getopt(argc, argv, "f:n")) != EOF) {
+	while ((opt = getopt(argc, argv, "nsf:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemon = 0;
+			break;
+
+		case 's':
+			sdp = 1;
 			break;
 
 		case 'f':
@@ -669,8 +674,14 @@ int main(int argc, char *argv[], char *env[])
 
 	g_io_add_watch(ctl_io, G_IO_IN, io_stack_event, NULL);
 
+	if (sdp)
+		start_sdp_server();
+
 	/* Start event processor */
 	g_main_run(event_loop);
+
+	if (sdp)
+		stop_sdp_server();
 
 	free_device_opts();
 
