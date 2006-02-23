@@ -72,6 +72,7 @@ struct hci_conn {
 struct hci_dev {
 	bdaddr_t bdaddr;
 	uint8_t  features[8];
+	uint8_t  hci_rev;
 	uint8_t  lmp_ver;
 	uint16_t lmp_subver;
 	uint16_t manufacturer;
@@ -174,6 +175,7 @@ int start_device(uint16_t dev_id)
 		return -errno;
 	}
 
+	dev->hci_rev = ver.hci_rev;
 	dev->lmp_ver = ver.lmp_ver;
 	dev->lmp_subver = ver.lmp_subver;
 	dev->manufacturer = ver.manufacturer;
@@ -306,6 +308,11 @@ int get_device_revision(uint16_t dev_id, char *revision, size_t size)
 		break;
 	case 12:
 		err = digi_revision(dev_id, revision, size);
+		break;
+	case 15:
+		err = snprintf(revision, size, "%d.%d / %d",
+				dev->hci_rev & 0xff,
+				dev->lmp_subver >> 8, dev->lmp_subver & 0xff);
 		break;
 	default:
 		err = snprintf(revision, size, "0x%02x", dev->lmp_subver);
