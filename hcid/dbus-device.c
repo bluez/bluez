@@ -100,6 +100,20 @@ static DBusMessage* handle_dev_get_revision_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
+static DBusMessage* handle_dev_get_major_class_req(DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *str_ptr = "computer";
+
+	reply = dbus_message_new_method_return(msg);
+
+	/*FIXME: Check the real device major class */
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
 static DBusMessage* handle_dev_get_manufacturer_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
@@ -807,6 +821,7 @@ static const struct service_data dev_services[] = {
 	{ DEV_GET_COMPANY,		handle_dev_get_company_req,		DEV_GET_COMPANY_SIGNATURE		},
 	{ DEV_GET_DISCOVERABLE_TO,	handle_dev_get_discoverable_to_req,	DEV_GET_DISCOVERABLE_TO_SIGNATURE	},
 	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		DEV_GET_FEATURES_SIGNATURE		},
+	{ DEV_GET_MAJOR_CLASS,		handle_dev_get_major_class_req,		DEV_GET_MAJOR_CLASS_SIGNATURE		},
 	{ DEV_GET_MANUFACTURER,		handle_dev_get_manufacturer_req,	DEV_GET_MANUFACTURER_SIGNATURE		},
 	{ DEV_GET_MODE,			handle_dev_get_mode_req,		DEV_GET_MODE_SIGNATURE			},
 	{ DEV_GET_NAME,			handle_dev_get_name_req,		DEV_GET_NAME_SIGNATURE			},

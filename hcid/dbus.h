@@ -112,6 +112,7 @@ int get_default_dev_id(void);
 #define DEV_GET_COMPANY			"GetCompany"
 #define DEV_GET_DISCOVERABLE_TO		"GetDiscoverableTimeout"
 #define DEV_GET_FEATURES		"GetFeatures"
+#define DEV_GET_MAJOR_CLASS		"GetMajorClass"
 #define DEV_GET_MANUFACTURER		"GetManufacturer"
 #define DEV_GET_MODE			"GetMode"
 #define DEV_GET_NAME			"GetName"
@@ -146,6 +147,7 @@ int get_default_dev_id(void);
 #define DEV_GET_COMPANY_SIGNATURE			__END_SIG__
 #define DEV_GET_DISCOVERABLE_TO_SIGNATURE		__END_SIG__
 #define DEV_GET_FEATURES_SIGNATURE			__END_SIG__
+#define DEV_GET_MAJOR_CLASS_SIGNATURE			__END_SIG__
 #define DEV_GET_MANUFACTURER_SIGNATURE			__END_SIG__
 #define DEV_GET_MODE_SIGNATURE				__END_SIG__
 #define DEV_GET_NAME_SIGNATURE				__END_SIG__
