@@ -39,7 +39,7 @@
 #include "hcid.h"
 #include "dbus.h"
 
-static DBusMessage* handle_mgr_list_devices_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_mgr_list_devices_req(DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
@@ -108,7 +108,7 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_mgr_default_device_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_mgr_default_device_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;

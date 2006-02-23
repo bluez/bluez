@@ -62,7 +62,7 @@ static char *get_peer_name(const bdaddr_t *local, const bdaddr_t *peer)
 	return textfile_get(filename, addr);
 }
 
-static DBusMessage* handle_dev_get_address_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_address_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -78,7 +78,7 @@ static DBusMessage* handle_dev_get_address_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_version_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_version_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -94,7 +94,7 @@ static DBusMessage* handle_dev_get_version_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_revision_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_revision_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -110,7 +110,7 @@ static DBusMessage* handle_dev_get_revision_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_major_class_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_major_class_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *str_ptr = "computer";
@@ -124,7 +124,7 @@ static DBusMessage* handle_dev_get_major_class_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_manufacturer_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_manufacturer_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -140,7 +140,7 @@ static DBusMessage* handle_dev_get_manufacturer_req(DBusMessage *msg, void *data
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_minor_class_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_minor_class_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -185,7 +185,7 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_company_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_company_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -201,12 +201,12 @@ static DBusMessage* handle_dev_get_company_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_features_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_features_req(DBusMessage *msg, void *data)
 {
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage* handle_dev_get_name_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_name_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -222,7 +222,7 @@ static DBusMessage* handle_dev_get_name_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_set_name_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_set_name_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -244,7 +244,7 @@ static DBusMessage* handle_dev_set_name_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_remote_alias_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_remote_alias_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -270,7 +270,7 @@ static DBusMessage* handle_dev_get_remote_alias_req(DBusMessage *msg, void *data
 	return reply;
 }
 
-static DBusMessage* handle_dev_set_remote_alias_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_set_remote_alias_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusConnection *connection = get_dbus_connection();
@@ -308,7 +308,7 @@ static DBusMessage* handle_dev_set_remote_alias_req(DBusMessage *msg, void *data
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_discoverable_to_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_discoverable_to_req(DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
@@ -321,7 +321,7 @@ static DBusMessage* handle_dev_get_discoverable_to_req(DBusMessage *msg, void *d
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_mode_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_mode_req(DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
@@ -353,7 +353,7 @@ static DBusMessage* handle_dev_get_mode_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_is_connectable_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_is_connectable_req(DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
@@ -371,7 +371,7 @@ static DBusMessage* handle_dev_is_connectable_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
@@ -389,13 +389,13 @@ static DBusMessage* handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_set_class_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_set_class_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage* handle_dev_set_discoverable_to_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_set_discoverable_to_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
@@ -412,7 +412,7 @@ static DBusMessage* handle_dev_set_discoverable_to_req(DBusMessage *msg, void *d
 	return reply;
 }
 
-static DBusMessage* handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -470,7 +470,7 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_dev_set_mode_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
@@ -536,7 +536,7 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_dev_discover_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_discover_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	inquiry_cp cp;
@@ -588,13 +588,13 @@ failed:
 
 }
 
-static DBusMessage* handle_dev_discover_cache_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_discover_cache_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage* handle_dev_discover_cancel_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_discover_cancel_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	struct hci_request rq;
@@ -638,13 +638,13 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_dev_discover_service_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_discover_service_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage* handle_dev_last_seen_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_last_seen_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -673,7 +673,7 @@ static DBusMessage* handle_dev_last_seen_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_last_used_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_last_used_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -702,7 +702,7 @@ static DBusMessage* handle_dev_last_used_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_remote_name_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_remote_name_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
@@ -735,13 +735,13 @@ static DBusMessage* handle_dev_get_remote_name_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_get_remote_version_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_remote_version_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage* handle_dev_create_bonding_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 {
 	struct hci_request rq;
 	auth_requested_cp cp;
@@ -823,7 +823,7 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_dev_list_bondings_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_list_bondings_req(DBusMessage *msg, void *data)
 {
 	void do_append(char *key, char *value, void *data)
 	{
@@ -857,7 +857,7 @@ static DBusMessage* handle_dev_list_bondings_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_has_bonding_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_has_bonding_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -885,7 +885,7 @@ static DBusMessage* handle_dev_has_bonding_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage* handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusConnection *connection = get_dbus_connection();
@@ -963,13 +963,13 @@ failed:
 	return reply;
 }
 
-static DBusMessage* handle_dev_pin_code_length_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_pin_code_length_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage* handle_dev_encryption_key_size_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_encryption_key_size_req(DBusMessage *msg, void *data)
 {
 	/*FIXME: */
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
