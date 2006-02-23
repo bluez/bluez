@@ -41,6 +41,16 @@
 
 #include "textfile.h"
 
+static const char *computer_minor_cls[] = {
+	"uncategorized",
+	"desktop",
+	"server",
+	"laptop",
+	"handheld",
+	"palm",
+	"wearable"
+};
+
 static char *get_peer_name(const bdaddr_t *local, const bdaddr_t *peer)
 {
 	char filename[PATH_MAX + 1], addr[18];
@@ -353,6 +363,64 @@ static DBusMessage* handle_dev_set_discoverable_to_req(DBusMessage *msg, void *d
 	dbus_data->discoverable_timeout = timeout;
 
 	reply = dbus_message_new_method_return(msg);
+
+	return reply;
+}
+
+static DBusMessage* handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	const char *minor;
+	uint8_t cls[3];
+	uint32_t dev_class = 0xFFFFFFFF;
+	int i, dd;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &minor);
+
+	if (!minor)
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+
+	/* FIXME: currently, only computer minor classes are allowed */
+	for (i = 0; i < sizeof(computer_minor_cls) / sizeof(*computer_minor_cls); i++)
+		if (!strcasecmp(minor, computer_minor_cls[i])) {
+			/* Remove the format type */
+			dev_class = i << 2;
+			break;
+		}
+
+	/* Check if it's a valid minor class */
+	if (dev_class == 0xFFFFFFFF)
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0) {
+		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+	}
+
+	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
+				dbus_data->dev_id, strerror(errno), errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		goto failed;
+	}
+
+	dev_class |= (cls[2] << 16) | (cls[1] << 8);
+
+	if (hci_write_class_of_dev(dd, dev_class, 2000) < 0) {
+		syslog(LOG_ERR, "Can't write class of device on hci%d: %s(%d)",
+				dbus_data->dev_id, strerror(errno), errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+failed:
+	hci_close_dev(dd);
 
 	return reply;
 }
@@ -833,6 +901,7 @@ static const struct service_data dev_services[] = {
 
 	{ DEV_SET_CLASS,		handle_dev_set_class_req,		DEV_SET_CLASS_SIGNATURE			},
 	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	DEV_SET_DISCOVERABLE_TO_SIGNATURE	},
+	{ DEV_SET_MINOR_CLASS,		handle_dev_set_minor_class_req,		DEV_SET_MINOR_CLASS_SIGNATURE		},
 	{ DEV_SET_MODE,			handle_dev_set_mode_req,		DEV_SET_MODE_SIGNATURE			},
 	{ DEV_SET_NAME,			handle_dev_set_name_req,		DEV_SET_NAME_SIGNATURE			},
 

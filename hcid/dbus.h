@@ -122,6 +122,7 @@ int get_default_dev_id(void);
 #define DEV_IS_DISCOVERABLE		"IsDiscoverable"
 #define DEV_SET_CLASS			"SetClass"
 #define DEV_SET_DISCOVERABLE_TO		"SetDiscoverableTimeout"
+#define DEV_SET_MINOR_CLASS		"SetMinorClass"
 #define DEV_SET_MODE			"SetMode"
 #define DEV_SET_NAME			"SetName"
 #define DEV_DISCOVER			"Discover"
@@ -159,6 +160,8 @@ int get_default_dev_id(void);
 							DBUS_TYPE_STRING_AS_STRING \
 							__END_SIG__
 #define DEV_SET_DISCOVERABLE_TO_SIGNATURE		DBUS_TYPE_UINT32_AS_STRING \
+							__END_SIG__
+#define DEV_SET_MINOR_CLASS_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
 							__END_SIG__
 #define DEV_SET_MODE_SIGNATURE				DBUS_TYPE_STRING_AS_STRING \
 							__END_SIG__
