@@ -666,7 +666,7 @@ static void cmd_class(int ctl, int hdev, char *opt)
 		printf("\tService Classes: ");
 		if (cls[2]) {
 			int first = 1;
-			for (s = 0; s < sizeof(*services); s++)
+			for (s = 0; s < (sizeof(services) / sizeof(*services)); s++)
 				if (cls[2] & (1 << s)) {
 					if (!first)
 						printf(", ");
