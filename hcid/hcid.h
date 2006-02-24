@@ -72,14 +72,6 @@ struct device_list {
 	struct device_opts opts;
 };
 
-struct link_key {
-	bdaddr_t sba;
-	bdaddr_t dba;
-	uint8_t  key[16];
-	uint8_t  type;
-	time_t   time;
-};
-
 struct hcid_opts {
 	char   *host_name;
 	int     auto_init;
@@ -115,6 +107,8 @@ void start_security_manager(int hdev);
 void stop_security_manager(int hdev);
 void toggle_pairing(int enable);
 
+void set_pin_length(bdaddr_t *sba, int length);
+
 #ifdef ENABLE_DBUS
 gboolean hcid_dbus_init(void);
 void hcid_dbus_exit(void);
@@ -122,7 +116,7 @@ gboolean hcid_dbus_register_device(uint16_t id);
 gboolean hcid_dbus_unregister_device(uint16_t id);
 gboolean hcid_dbus_dev_up(uint16_t id);
 gboolean hcid_dbus_dev_down(uint16_t id);
-void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci);
+void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci);
 
 void hcid_dbus_inquiry_start(bdaddr_t *local);
 void hcid_dbus_inquiry_complete(bdaddr_t *local);
@@ -168,8 +162,9 @@ int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, u
 int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features);
 int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
 int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
-int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type);
+int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type, int length);
 int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key);
+int read_pin_length(bdaddr_t *local, bdaddr_t *peer);
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
 
 static inline int find_conn(int dd, int dev_id, long arg)

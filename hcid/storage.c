@@ -153,15 +153,15 @@ int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
 	return textfile_put(filename, addr, str);
 }
 
-int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type)
+int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type, int length)
 {
-	char filename[PATH_MAX + 1], addr[18], str[35];
+	char filename[PATH_MAX + 1], addr[18], str[38];
 	int i;
 
 	memset(str, 0, sizeof(str));
 	for (i = 0; i < 16; i++)
 		sprintf(str + (i * 2), "%2.2X", key[i]);
-	sprintf(str + 32, " %d", type);
+	sprintf(str + 32, " %d %d", type, length);
 
 	ba2str(local, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
@@ -169,6 +169,13 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type
 	create_file(filename, S_IRUSR | S_IWUSR);
 
 	ba2str(peer, addr);
+
+	if (length < 0) {
+		char *tmp = textfile_get(filename, addr);
+		if (tmp && strlen(tmp) > 34)
+			memcpy(str + 34, tmp + 34, 3);
+	}
+
 	return textfile_put(filename, addr, str);
 }
 
@@ -194,6 +201,29 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key)
 	free(str);
 
 	return 0;
+}
+
+int read_pin_length(bdaddr_t *local, bdaddr_t *peer)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+	int len;
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+
+	ba2str(peer, addr);
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
+
+	if (strlen(str) < 36)
+		return -ENOENT;
+
+	len = atoi(str + 35);
+
+	free(str);
+
+	return len;
 }
 
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin)

@@ -54,6 +54,7 @@
 struct g_io_info {
 	GIOChannel	*channel;
 	int		watch_id;
+	int		pin_length;
 };
 
 static struct g_io_info io_data[HCI_MAX_DEV];
@@ -153,19 +154,18 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
-	struct link_key key;
 	char sa[18], da[18];
+	int dev_id;
 
 	ba2str(sba, sa); ba2str(dba, da);
 	syslog(LOG_INFO, "link_key_notify (sba=%s, dba=%s)", sa, da);
 
-	memcpy(key.key, evt->link_key, 16);
-	bacpy(&key.sba, sba);
-	bacpy(&key.dba, dba);
-	key.type = evt->key_type;
-	key.time = time(0);
+	dev_id = hci_devid(sa);
 
-	write_link_key(sba, dba, evt->link_key, evt->key_type);
+	write_link_key(sba, dba, evt->link_key, evt->key_type,
+						io_data[dev_id].pin_length);
+
+	io_data[dev_id].pin_length = -1;
 }
 
 static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
@@ -191,6 +191,17 @@ static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
 }
 
 /* PIN code handling */
+
+void set_pin_length(bdaddr_t *sba, int length)
+{
+	char addr[18];
+	int dev_id;
+
+	ba2str(sba, addr);
+	dev_id = hci_devid(addr);
+
+	io_data[dev_id].pin_length = length;
+}
 
 /*
   PIN helper is an external app that asks user for a PIN. It can 
@@ -285,6 +296,8 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	pin += 4;
 	len  = strlen(pin);
 
+	set_pin_length(sba, len);
+
 	memset(&pr, 0, sizeof(pr));
 	bacpy(&pr.bdaddr, &ci->bdaddr);
 	memcpy(pr.pin_code, pin, len);
@@ -306,7 +319,7 @@ static void request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 #ifdef ENABLE_DBUS
 	if (hcid.dbus_pin_helper) {
-		hcid_dbus_request_pin(dev, ci);
+		hcid_dbus_request_pin(dev, sba, ci);
 		return;
 	}
 #endif
@@ -357,6 +370,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	if (hcid.security == HCID_SEC_AUTO) {
 		if (!ci->out) {
 			/* Incomming connection */
+			set_pin_length(sba, hcid.pin_len);
 			memcpy(pr.pin_code, hcid.pin_code, hcid.pin_len);
 			pr.pin_len = hcid.pin_len;
 			hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
@@ -364,6 +378,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		} else {
 			/* Outgoing connection */
 			if (pinlen > 0) {
+				set_pin_length(sba, pinlen);
 				memcpy(pr.pin_code, pin, pinlen);
 				pr.pin_len = pinlen;
 				hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
@@ -769,6 +784,7 @@ void start_security_manager(int hdev)
 						io_security_event, (void *) di);
 
 	io_data[hdev].channel = chan;
+	io_data[hdev].pin_length = -1;
 
 	if (hci_test_bit(HCI_RAW, &di->flags))
 		return;
@@ -796,6 +812,7 @@ void stop_security_manager(int hdev)
 	g_io_remove_watch(io_data[hdev].watch_id);
 	io_data[hdev].watch_id = -1;
 	io_data[hdev].channel = NULL;
+	io_data[hdev].pin_length = -1;
 }
 
 void init_security_data(void)

@@ -64,6 +64,7 @@ static volatile sig_atomic_t __timeout_active = 0;
 
 struct pin_request {
 	int dev;
+	bdaddr_t sba;
 	bdaddr_t bda;
 };
 
@@ -192,6 +193,8 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 	} else {
 		dbus_message_iter_get_basic(&iter, &pin);
 		len = strlen(pin);
+
+		set_pin_length(&req->sba, len);
 
 		memset(&pr, 0, sizeof(pr));
 		bacpy(&pr.bdaddr, &req->bda);
@@ -399,7 +402,7 @@ failed:
 	return ret;
 }
 
-void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
+void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	DBusMessage *message = NULL;
 	DBusPendingCall *pending = NULL;
@@ -421,6 +424,7 @@ void hcid_dbus_request_pin(int dev, struct hci_conn_info *ci)
 
 	req = malloc(sizeof(*req));
 	req->dev = dev;
+	bacpy(&req->sba, sba);
 	bacpy(&req->bda, &ci->bdaddr);
 
 	dbus_message_append_args(message, DBUS_TYPE_BOOLEAN, &out,
