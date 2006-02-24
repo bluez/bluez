@@ -813,6 +813,24 @@ static DBusMessage *handle_dev_get_remote_version_req(DBusMessage *msg, void *da
 	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
+static DBusMessage *handle_dev_get_remote_revision_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage *handle_dev_get_remote_manufacturer_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
+static DBusMessage *handle_dev_get_remote_company_req(DBusMessage *msg, void *data)
+{
+	/*FIXME: */
+	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+}
+
 static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 {
 	struct hci_request rq;
@@ -1099,46 +1117,46 @@ static DBusMessage *handle_dev_encryption_key_size_req(DBusMessage *msg, void *d
 
 static const struct service_data dev_services[] = {
 	{ DEV_GET_ADDRESS,		handle_dev_get_address_req,		DEV_GET_ADDRESS_SIGNATURE		},
-	{ DEV_GET_COMPANY,		handle_dev_get_company_req,		DEV_GET_COMPANY_SIGNATURE		},
-	{ DEV_GET_DISCOVERABLE_TO,	handle_dev_get_discoverable_to_req,	DEV_GET_DISCOVERABLE_TO_SIGNATURE	},
-	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		DEV_GET_FEATURES_SIGNATURE		},
-	{ DEV_GET_MAJOR_CLASS,		handle_dev_get_major_class_req,		DEV_GET_MAJOR_CLASS_SIGNATURE		},
-	{ DEV_GET_MANUFACTURER,		handle_dev_get_manufacturer_req,	DEV_GET_MANUFACTURER_SIGNATURE		},
-	{ DEV_GET_MINOR_CLASS,		handle_dev_get_minor_class_req,		DEV_GET_MINOR_CLASS_SIGNATURE		},
-	{ DEV_GET_MODE,			handle_dev_get_mode_req,		DEV_GET_MODE_SIGNATURE			},
-	{ DEV_GET_NAME,			handle_dev_get_name_req,		DEV_GET_NAME_SIGNATURE			},
-	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		DEV_GET_REVISION_SIGNATURE		},
-	{ DEV_GET_SERVICE_CLASSES,	handle_dev_get_service_classes_req,	DEV_GET_SERVICE_CLASSES_SIGNATURE	},
 	{ DEV_GET_VERSION,		handle_dev_get_version_req,		DEV_GET_VERSION_SIGNATURE		},
-
+	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		DEV_GET_REVISION_SIGNATURE		},
+	{ DEV_GET_MANUFACTURER,		handle_dev_get_manufacturer_req,	DEV_GET_MANUFACTURER_SIGNATURE		},
+	{ DEV_GET_COMPANY,		handle_dev_get_company_req,		DEV_GET_COMPANY_SIGNATURE		},
+	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		DEV_GET_FEATURES_SIGNATURE		},
+	{ DEV_GET_MODE,			handle_dev_get_mode_req,		DEV_GET_MODE_SIGNATURE			},
+	{ DEV_SET_MODE,			handle_dev_set_mode_req,		DEV_SET_MODE_SIGNATURE			},
+	{ DEV_GET_DISCOVERABLE_TO,	handle_dev_get_discoverable_to_req,	DEV_GET_DISCOVERABLE_TO_SIGNATURE	},
+	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	DEV_SET_DISCOVERABLE_TO_SIGNATURE	},
 	{ DEV_IS_CONNECTABLE,		handle_dev_is_connectable_req,		DEV_IS_CONNECTABLE_SIGNATURE		},
 	{ DEV_IS_DISCOVERABLE,		handle_dev_is_discoverable_req,		DEV_IS_DISCOVERABLE_SIGNATURE		},
-
-	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	DEV_SET_DISCOVERABLE_TO_SIGNATURE	},
+	{ DEV_GET_MAJOR_CLASS,		handle_dev_get_major_class_req,		DEV_GET_MAJOR_CLASS_SIGNATURE		},
+	{ DEV_GET_MINOR_CLASS,		handle_dev_get_minor_class_req,		DEV_GET_MINOR_CLASS_SIGNATURE		},
 	{ DEV_SET_MINOR_CLASS,		handle_dev_set_minor_class_req,		DEV_SET_MINOR_CLASS_SIGNATURE		},
-	{ DEV_SET_MODE,			handle_dev_set_mode_req,		DEV_SET_MODE_SIGNATURE			},
+	{ DEV_GET_SERVICE_CLASSES,	handle_dev_get_service_classes_req,	DEV_GET_SERVICE_CLASSES_SIGNATURE	},
+	{ DEV_GET_NAME,			handle_dev_get_name_req,		DEV_GET_NAME_SIGNATURE			},
 	{ DEV_SET_NAME,			handle_dev_set_name_req,		DEV_SET_NAME_SIGNATURE			},
+
+	{ DEV_GET_REMOTE_VERSION,	handle_dev_get_remote_version_req,	DEV_GET_REMOTE_VERSION_SIGNATURE	},
+	{ DEV_GET_REMOTE_REVISION,	handle_dev_get_remote_revision_req,	DEV_GET_REMOTE_REVISION_SIGNATURE	},
+	{ DEV_GET_REMOTE_MANUFACTURER,	handle_dev_get_remote_manufacturer_req,	DEV_GET_REMOTE_MANUFACTURER_SIGNATURE	},
+	{ DEV_GET_REMOTE_COMPANY,	handle_dev_get_remote_company_req,	DEV_GET_REMOTE_COMPANY_SIGNATURE	},
+	{ DEV_GET_REMOTE_NAME,		handle_dev_get_remote_name_req,		DEV_GET_REMOTE_NAME_SIGNATURE		},
+	{ DEV_GET_REMOTE_ALIAS,		handle_dev_get_remote_alias_req,	DEV_GET_REMOTE_ALIAS_SIGNATURE		},
+	{ DEV_SET_REMOTE_ALIAS,		handle_dev_set_remote_alias_req,	DEV_SET_REMOTE_ALIAS_SIGNATURE		},
+
+	{ DEV_LAST_SEEN,		handle_dev_last_seen_req,		DEV_LAST_SEEN_SIGNATURE			},
+	{ DEV_LAST_USED,		handle_dev_last_used_req,		DEV_LAST_USED_SIGNATURE			},
+
+	{ DEV_CREATE_BONDING,		handle_dev_create_bonding_req,		DEV_CREATE_BONDING_SIGNATURE		},
+	{ DEV_REMOVE_BONDING,		handle_dev_remove_bonding_req,		DEV_REMOVE_BONDING_SIGNATURE		},
+	{ DEV_HAS_BONDING_NAME,		handle_dev_has_bonding_req,		DEV_HAS_BONDING_SIGNATURE		},
+	{ DEV_LIST_BONDINGS,		handle_dev_list_bondings_req,		DEV_LIST_BONDINGS_SIGNATURE		},
+	{ DEV_PIN_CODE_LENGTH,		handle_dev_pin_code_length_req,		DEV_PIN_CODE_LENGTH_SIGNATURE		},
+	{ DEV_ENCRYPTION_KEY_SIZE,	handle_dev_encryption_key_size_req,	DEV_ENCRYPTION_KEY_SIZE_SIGNATURE	},
 
 	{ DEV_DISCOVER,			handle_dev_discover_req,		DEV_DISCOVER_SIGNATURE			},
 	{ DEV_DISCOVER_CACHE,		handle_dev_discover_cache_req,		DEV_DISCOVER_CACHE_SIGNATURE		},
 	{ DEV_DISCOVER_CANCEL,		handle_dev_discover_cancel_req,		DEV_DISCOVER_CANCEL_SIGNATURE		},
 	{ DEV_DISCOVER_SERVICE,		handle_dev_discover_service_req,	DEV_DISCOVER_SERVICE_SIGNATURE		},
-
-	{ DEV_LAST_SEEN,		handle_dev_last_seen_req,		DEV_LAST_SEEN_SIGNATURE			},
-	{ DEV_LAST_USED,		handle_dev_last_used_req,		DEV_LAST_USED_SIGNATURE			},
-
-	{ DEV_SET_REMOTE_ALIAS,		handle_dev_set_remote_alias_req,	DEV_SET_REMOTE_ALIAS_SIGNATURE		},
-	{ DEV_GET_REMOTE_ALIAS,		handle_dev_get_remote_alias_req,	DEV_GET_REMOTE_ALIAS_SIGNATURE		},
-	{ DEV_GET_REMOTE_NAME,		handle_dev_get_remote_name_req,		DEV_GET_REMOTE_NAME_SIGNATURE		},
-	{ DEV_GET_REMOTE_VERSION,	handle_dev_get_remote_version_req,	DEV_GET_REMOTE_VERSION_SIGNATURE	},
-
-	{ DEV_CREATE_BONDING,		handle_dev_create_bonding_req,		DEV_CREATE_BONDING_SIGNATURE		},
-	{ DEV_LIST_BONDINGS,		handle_dev_list_bondings_req,		DEV_LIST_BONDINGS_SIGNATURE		},
-	{ DEV_HAS_BONDING_NAME,		handle_dev_has_bonding_req,		DEV_HAS_BONDING_SIGNATURE		},
-	{ DEV_REMOVE_BONDING,		handle_dev_remove_bonding_req,		DEV_REMOVE_BONDING_SIGNATURE		},
-
-	{ DEV_PIN_CODE_LENGTH,		handle_dev_pin_code_length_req,		DEV_PIN_CODE_LENGTH_SIGNATURE		},
-	{ DEV_ENCRYPTION_KEY_SIZE,	handle_dev_encryption_key_size_req,	DEV_ENCRYPTION_KEY_SIZE_SIGNATURE	},
 
 	{ NULL, NULL, NULL}
 };
