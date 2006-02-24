@@ -234,7 +234,7 @@ static DBusMessage *handle_dev_get_minor_class_req(DBusMessage *msg, void *data)
 
 failed:
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
-				 	DBUS_TYPE_INVALID);
+					DBUS_TYPE_INVALID);
 
 	hci_close_dev(dd);
 
@@ -738,7 +738,7 @@ static DBusMessage *handle_dev_last_seen_req(DBusMessage *msg, void *data)
 	reply = dbus_message_new_method_return(msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,
-				 	DBUS_TYPE_INVALID);
+					DBUS_TYPE_INVALID);
 
 	free(str);
 
@@ -767,7 +767,7 @@ static DBusMessage *handle_dev_last_used_req(DBusMessage *msg, void *data)
 	reply = dbus_message_new_method_return(msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,
-				 	DBUS_TYPE_INVALID);
+					DBUS_TYPE_INVALID);
 
 	free(str);
 
@@ -1063,15 +1063,38 @@ static DBusMessage *handle_dev_pin_code_length_req(DBusMessage *msg, void *data)
 	length = len;
 
 	dbus_message_append_args(reply, DBUS_TYPE_BYTE, &length,
-				 	DBUS_TYPE_INVALID);
+					DBUS_TYPE_INVALID);
 
 	return reply;
 }
 
 static DBusMessage *handle_dev_encryption_key_size_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessageIter iter;
+	DBusMessage *reply;
+	bdaddr_t bdaddr;
+	char *addr_ptr;
+	uint8_t size;
+	int val;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &addr_ptr);
+
+	str2ba(addr_ptr, &bdaddr);
+
+	val = get_encryption_key_size(dbus_data->dev_id, &bdaddr);
+	if (val < 0)
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | -val);
+
+	reply = dbus_message_new_method_return(msg);
+
+	size = val;
+
+	dbus_message_append_args(reply, DBUS_TYPE_BYTE, &size,
+					DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static const struct service_data dev_services[] = {

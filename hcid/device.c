@@ -441,3 +441,21 @@ int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
 
 	return textfile_put(filename, addr, alias);
 }
+
+int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr)
+{
+	struct hci_dev *dev;
+	int size;
+
+	ASSERT_DEV_ID;
+
+	dev = &devices[dev_id];
+
+	switch (dev->manufacturer) {
+	default:
+		size = -ENOENT;
+		break;
+	}
+
+	return size;
+}
