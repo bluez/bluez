@@ -486,6 +486,7 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 	DBusConnection *connection = get_dbus_connection();
 	DBusMessageIter iter;
 	DBusMessage *reply, *signal;
+	bdaddr_t bdaddr;
 	const char *minor;
 	uint8_t cls[3];
 	uint32_t dev_class = 0xFFFFFFFF;
@@ -523,6 +524,14 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 	}
 
 	dev_class |= (cls[2] << 16) | (cls[1] << 8);
+
+	cls[2] = 0x00;	/* no service classes */
+	cls[1] = 0x01;	/* major class computer */
+	cls[0] = (dev_class & 0xff);
+
+	hci_devba(dbus_data->dev_id, &bdaddr);
+
+	write_local_class(&bdaddr, cls);
 
 	if (hci_write_class_of_dev(dd, dev_class, 2000) < 0) {
 		syslog(LOG_ERR, "Can't write class of device on hci%d: %s(%d)",

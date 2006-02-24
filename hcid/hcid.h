@@ -160,6 +160,8 @@ int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr);
 
 int write_local_name(bdaddr_t *bdaddr, char *name);
 int read_local_name(bdaddr_t *bdaddr, char *name);
+int write_local_class(bdaddr_t *bdaddr, uint8_t *class);
+int read_local_class(bdaddr_t *bdaddr, uint8_t *class);
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, uint8_t lmp_ver, uint16_t lmp_subver);

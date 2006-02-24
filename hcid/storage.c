@@ -85,6 +85,36 @@ int read_local_name(bdaddr_t *bdaddr, char *name)
 	return 0;
 }
 
+int write_local_class(bdaddr_t *bdaddr, uint8_t *class)
+{
+	char filename[PATH_MAX + 1], addr[18], str[9];
+
+	sprintf(str, "0x%2.2x%2.2x%2.2x", class[2], class[1], class[0]);
+
+	ba2str(bdaddr, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	return textfile_put(filename, "class", str);
+}
+
+int read_local_class(bdaddr_t *bdaddr, uint8_t *class)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+
+	ba2str(bdaddr, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+
+	str = textfile_get(filename, "class");
+	if (!str)
+		return -ENOENT;
+
+	free(str);
+
+	return 0;
+}
+
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	char filename[PATH_MAX + 1], addr[18], str[249];
