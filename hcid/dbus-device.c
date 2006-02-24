@@ -471,8 +471,9 @@ static DBusMessage *handle_dev_set_discoverable_to_req(DBusMessage *msg, void *d
 static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusMessage *reply;
+	DBusConnection *connection = get_dbus_connection();
 	DBusMessageIter iter;
+	DBusMessage *reply, *signal;
 	const char *minor;
 	uint8_t cls[3];
 	uint32_t dev_class = 0xFFFFFFFF;
@@ -516,6 +517,15 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 				dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto failed;
+	}
+
+	signal = dev_signal_factory(dbus_data->dev_id, DEV_SIG_MINOR_CLASS_CHANGED,
+						DBUS_TYPE_STRING, &minor,
+						DBUS_TYPE_INVALID);
+	if (signal) {
+		dbus_connection_send(connection, signal, NULL);
+		dbus_connection_flush(connection);
+		dbus_message_unref(signal);
 	}
 
 	reply = dbus_message_new_method_return(msg);

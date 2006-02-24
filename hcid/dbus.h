@@ -203,8 +203,9 @@ int get_default_dev_id(void);
 
 
 /* Signals sent in the Manager path */
-#define	DEV_SIG_MODE_CHANGED		"ModeChanged"
+#define DEV_SIG_MODE_CHANGED		"ModeChanged"
 #define DEV_SIG_NAME_CHANGED		"NameChanged"
+#define DEV_SIG_MINOR_CLASS_CHANGED	"MinorClassChanged"
 #define DEV_SIG_REMOTE_NAME_CHANGED	"RemoteNameChange"
 #define DEV_SIG_REMOTE_ALIAS_CHANGED	"RemoteAliasChanged"
 #define DEV_SIG_BONDING_CREATED		"BondingCreated"
