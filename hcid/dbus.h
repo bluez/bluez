@@ -122,7 +122,6 @@ int get_default_dev_id(void);
 #define DEV_GET_VERSION			"GetVersion"
 #define DEV_IS_CONNECTABLE		"IsConnectable"
 #define DEV_IS_DISCOVERABLE		"IsDiscoverable"
-#define DEV_SET_CLASS			"SetClass"
 #define DEV_SET_DISCOVERABLE_TO		"SetDiscoverableTimeout"
 #define DEV_SET_MINOR_CLASS		"SetMinorClass"
 #define DEV_SET_MODE			"SetMode"

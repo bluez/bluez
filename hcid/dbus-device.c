@@ -259,7 +259,20 @@ static DBusMessage *handle_dev_get_company_req(DBusMessage *msg, void *data)
 
 static DBusMessage *handle_dev_get_features_req(DBusMessage *msg, void *data)
 {
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return reply;
 }
 
 static DBusMessage *handle_dev_get_name_req(DBusMessage *msg, void *data)
@@ -443,12 +456,6 @@ static DBusMessage *handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
 					DBUS_TYPE_INVALID);
 
 	return reply;
-}
-
-static DBusMessage *handle_dev_set_class_req(DBusMessage *msg, void *data)
-{
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
 static DBusMessage *handle_dev_set_discoverable_to_req(DBusMessage *msg, void *data)
@@ -651,7 +658,6 @@ failed:
 		hci_close_dev(dd);
 
 	return reply;
-
 }
 
 static DBusMessage *handle_dev_discover_cache_req(DBusMessage *msg, void *data)
@@ -1085,7 +1091,6 @@ static const struct service_data dev_services[] = {
 	{ DEV_IS_CONNECTABLE,		handle_dev_is_connectable_req,		DEV_IS_CONNECTABLE_SIGNATURE		},
 	{ DEV_IS_DISCOVERABLE,		handle_dev_is_discoverable_req,		DEV_IS_DISCOVERABLE_SIGNATURE		},
 
-	{ DEV_SET_CLASS,		handle_dev_set_class_req,		DEV_SET_CLASS_SIGNATURE			},
 	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	DEV_SET_DISCOVERABLE_TO_SIGNATURE	},
 	{ DEV_SET_MINOR_CLASS,		handle_dev_set_minor_class_req,		DEV_SET_MINOR_CLASS_SIGNATURE		},
 	{ DEV_SET_MODE,			handle_dev_set_mode_req,		DEV_SET_MODE_SIGNATURE			},
