@@ -16,7 +16,7 @@ dev_cmds = [ "GetAddress", "GetManufacturer", "GetVersion", "GetRevision",
              "GetMinorClass", "SetMinorClass", "GetRemoteVersion", "GetRemoteName",
              "GetRemoteAlias", "SetRemoteAlias", "LastSeen", "LastUsed",
              "CreateBonding", "RemoveBonding", "HasBonding", "ListBondings",
-             "PinCodeLength", "EncryptionKeySize", "GetServiceClasses" ]
+             "PinCodeLength", "EncryptionKeySize" ]
 mgr_signals = [ "DeviceAdded", "DeviceRemoved" ]
 dev_signals = [ "ModeChanged", "NameChanged" , "MinorClassChanged",
                 "RemoteAliasChanged", "RemoteNameChanged" ]
