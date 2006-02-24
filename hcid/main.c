@@ -219,14 +219,11 @@ static void configure_device(int hdev)
 	if ((device_opts->flags & (1 << HCID_SET_NAME)) && device_opts->name) {
 		change_local_name_cp cp;
 		write_ext_inquiry_response_cp ip;
-		bdaddr_t bdaddr;
 		char name[249];
 		uint8_t len;
 
-		hci_devba(hdev, &bdaddr);
-
 		memset(name, 0, sizeof(name));
-		if (read_local_name(&bdaddr, name) < 0) {
+		if (read_local_name(&di.bdaddr, name) < 0) {
 			memset(cp.name, 0, sizeof(cp.name));
 			expand_name((char *) cp.name, sizeof(cp.name),
 						device_opts->name, hdev);
@@ -254,10 +251,16 @@ static void configure_device(int hdev)
 
 	/* Set device class */
 	if ((device_opts->flags & (1 << HCID_SET_CLASS))) {
-		uint32_t class = htobl(device_opts->class);
 		write_class_of_dev_cp cp;
+		uint32_t class;
+		uint8_t cls[3];
 
-		memcpy(cp.dev_class, &class, 3);
+		if (read_local_class(&di.bdaddr, cls) < 0) {
+			class = htobl(device_opts->class);
+			memcpy(cp.dev_class, &class, 3);
+		} else
+			memcpy(cp.dev_class, cls, 3);
+
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
 					WRITE_CLASS_OF_DEV_CP_SIZE, &cp);
 	}

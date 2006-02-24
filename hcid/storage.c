@@ -101,7 +101,8 @@ int write_local_class(bdaddr_t *bdaddr, uint8_t *class)
 
 int read_local_class(bdaddr_t *bdaddr, uint8_t *class)
 {
-	char filename[PATH_MAX + 1], addr[18], *str;
+	char filename[PATH_MAX + 1], addr[18], tmp[3], *str;
+	int i;
 
 	ba2str(bdaddr, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
@@ -109,6 +110,12 @@ int read_local_class(bdaddr_t *bdaddr, uint8_t *class)
 	str = textfile_get(filename, "class");
 	if (!str)
 		return -ENOENT;
+
+	memset(tmp, 0, sizeof(tmp));
+	for (i = 0; i < 3; i++) {
+		memcpy(tmp, str + (i * 2) + 2, 2);
+		class[2 - i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
 
 	free(str);
 
