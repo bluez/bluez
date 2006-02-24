@@ -79,9 +79,11 @@ gint g_io_channel_unix_get_fd(GIOChannel *channel)
 struct watch {
 	guint id;
 	GIOChannel *channel;
+	gint priority;
 	GIOCondition condition;
 	GIOFunc func;
 	gpointer user_data;
+	GDestroyNotify destroy;
 
 	struct watch *next;
 };
@@ -100,20 +102,31 @@ void g_io_remove_watch(guint id)
 		}
 }
 
-guint g_io_add_watch(GIOChannel *channel, GIOCondition condition, GIOFunc func, gpointer user_data)
+guint g_io_add_watch_full(GIOChannel *channel, gint priority,
+				GIOCondition condition, GIOFunc func,
+				gpointer user_data, GDestroyNotify notify)
 {
 	struct watch *watch = malloc(sizeof(struct watch));
 
 	watch->id = ++watch_head.id;
 	watch->channel = channel;
+	watch->priority = priority;
 	watch->condition = condition;
 	watch->func = func;
 	watch->user_data = user_data;
+	watch->destroy = notify;
 
 	watch->next = watch_head.next;
 	watch_head.next = watch;
 
 	return watch->id;
+}
+
+guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
+					GIOFunc func, gpointer user_data)
+{
+	return g_io_add_watch_full(channel, 0, condition,
+						func, user_data, NULL);
 }
 
 GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running)
@@ -162,6 +175,8 @@ void g_main_loop_run(GMainLoop *loop)
 			if (ufds[i].revents) {
 				gboolean keep = w->func(w->channel, ufds[i].revents, w->user_data);
 				if (!keep) {
+					if (w->destroy)
+						w->destroy(w->user_data);
 					p->next = w->next;
 					memset(w, 0, sizeof(*w));
 					w = p->next;
@@ -187,6 +202,6 @@ void g_main_loop_quit(GMainLoop *loop)
 
 	for (w = watch_head.next; w; w = w->next) {
 		watch_head.next = w->next;
-		free (w);
+		free(w);
 	}
 }

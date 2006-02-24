@@ -71,6 +71,7 @@ typedef enum {
 	G_IO_NVAL	= POLLNVAL
 } GIOCondition;
 
+typedef void (*GDestroyNotify) (gpointer data);
 typedef gboolean (*GIOFunc) (GIOChannel *source, GIOCondition condition, gpointer data);
 
 GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count, gsize *bytes_read);
@@ -78,7 +79,11 @@ void g_io_channel_close(GIOChannel *channel);
 
 GIOChannel *g_io_channel_unix_new(int fd);
 gint g_io_channel_unix_get_fd(GIOChannel *channel);
-guint g_io_add_watch(GIOChannel *channel, GIOCondition condition, GIOFunc func, gpointer user_data);
+guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
+					GIOFunc func, gpointer user_data);
+guint g_io_add_watch_full(GIOChannel *channel, gint priority,
+				GIOCondition condition, GIOFunc func,
+				gpointer user_data, GDestroyNotify notify);
 void g_io_remove_watch(guint id);
 
 GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running);
