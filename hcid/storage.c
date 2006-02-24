@@ -43,6 +43,48 @@
 #include "textfile.h"
 #include "hcid.h"
 
+int write_local_name(bdaddr_t *bdaddr, char *name)
+{
+	char filename[PATH_MAX + 1], addr[18], str[249];
+	int i;
+
+	memset(str, 0, sizeof(str));
+	for (i = 0; i < 248 && name[i]; i++)
+		if (isprint(name[i]))
+			str[i] = name[i];
+		else
+			str[i] = '.';
+
+	ba2str(bdaddr, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	return textfile_put(filename, "name", str);
+}
+
+int read_local_name(bdaddr_t *bdaddr, char *name)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+	int len;
+
+	ba2str(bdaddr, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+
+	str = textfile_get(filename, "name");
+	if (!str)
+		return -ENOENT;
+
+	len = strlen(str);
+	if (len > 248)
+		str[248] = '\0';
+	strcpy(name, str);
+
+	free(str);
+
+	return 0;
+}
+
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	char filename[PATH_MAX + 1], addr[18], str[249];

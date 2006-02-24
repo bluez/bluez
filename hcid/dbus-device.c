@@ -296,6 +296,7 @@ static DBusMessage *handle_dev_set_name_req(DBusMessage *msg, void *data)
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
 	DBusMessage *reply;
+	bdaddr_t bdaddr;
 	char *str_ptr;
 
 	dbus_message_iter_init(msg, &iter);
@@ -305,6 +306,10 @@ static DBusMessage *handle_dev_set_name_req(DBusMessage *msg, void *data)
 		syslog(LOG_ERR, "Name change failed: Invalid parameter");
 		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 	}
+
+	hci_devba(dbus_data->dev_id, &bdaddr);
+
+	write_local_name(&bdaddr, str_ptr);
 
 	set_device_name(dbus_data->dev_id, str_ptr);
 

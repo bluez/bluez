@@ -219,10 +219,19 @@ static void configure_device(int hdev)
 	if ((device_opts->flags & (1 << HCID_SET_NAME)) && device_opts->name) {
 		change_local_name_cp cp;
 		write_ext_inquiry_response_cp ip;
+		bdaddr_t bdaddr;
+		char name[249];
 		uint8_t len;
 
-		memset(cp.name, 0, sizeof(cp.name));
-		expand_name((char *) cp.name, sizeof(cp.name), device_opts->name, hdev);
+		hci_devba(hdev, &bdaddr);
+
+		memset(name, 0, sizeof(name));
+		if (read_local_name(&bdaddr, name) < 0) {
+			memset(cp.name, 0, sizeof(cp.name));
+			expand_name((char *) cp.name, sizeof(cp.name),
+						device_opts->name, hdev);
+		} else
+			memcpy(cp.name, name, sizeof(cp.name));
 
 		ip.fec = 0x00;
 		memset(ip.data, 0, sizeof(ip.data));
