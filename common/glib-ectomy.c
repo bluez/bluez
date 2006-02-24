@@ -201,6 +201,8 @@ void g_main_loop_quit(GMainLoop *loop)
 	loop->bail = 1;
 
 	for (w = watch_head.next; w; w = w->next) {
+		if (w->destroy)
+			w->destroy(w->user_data);
 		watch_head.next = w->next;
 		free(w);
 	}
