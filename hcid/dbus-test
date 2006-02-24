@@ -10,14 +10,16 @@ from signal import *
 
 mgr_cmds = [ "ListDevices", "DefaultDevice" ]
 dev_cmds = [ "GetAddress", "GetManufacturer", "GetVersion", "GetRevision",
-             "GetCompany", "GetFeatures", "GetMode", "SetMode", "GetDiscoverableTimeout",
-             "SetDiscoverableTimeout", "IsConnectable", "IsDiscoverable" , "GetName",
-             "SetName", "GetMajorClass", "GetMinorClass", "SetMinorClass", "GetAlias", 
-             "SetAlias", "GetRemoteName", "GetRemoteAlias", "SetRemoteAlias", "GetRemoteVersion", 
-             "LastSeen", "Discover", "DiscoverService", "CreateBonding", "RemoveBonding", 
-             "HasBonding", "ListBondings", "PinCodeLength", "EncryptionKeySize", "GetServiceClasses" ]
+             "GetCompany", "GetMode", "SetMode", "GetDiscoverableTimeout",
+             "SetDiscoverableTimeout", "IsConnectable", "IsDiscoverable" ,
+             "GetName", "SetName", "GetServiceClasses", "GetMajorClass",
+             "GetMinorClass", "SetMinorClass", "GetRemoteVersion", "GetRemoteName",
+             "GetRemoteAlias", "SetRemoteAlias", "LastSeen", "LastUsed",
+             "CreateBonding", "RemoveBonding", "HasBonding", "ListBondings",
+             "PinCodeLength", "EncryptionKeySize", "GetServiceClasses" ]
 mgr_signals = [ "DeviceAdded", "DeviceRemoved" ]
-dev_signals = [ "ModeChanged", "NameChanged" , "AliasChanged", "RemoteName", "RemoteAlias" ]
+dev_signals = [ "ModeChanged", "NameChanged" , "MinorClassChanged",
+                "RemoteAliasChanged", "RemoteNameChanged" ]
 dev_signals_filter = [ "/org/bluez/Device/hci0", "/org/bluez/Device/hci1",
                        "/org/bluez/Device/hci2", "/org/bluez/Device/hci3",
                        "/org/bluez/Device/hci4", "/org/bluez/Device/hci5",
