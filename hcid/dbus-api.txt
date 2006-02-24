@@ -165,6 +165,40 @@ Methods		string GetAddress()
 			local hardware this modifies also the extended response
 			data value.
 
+		string GetRemoteVersion(string address)
+
+			Get the version info for a remote device. This request
+			returns always this information based on its cached
+			data. The base for this string is the LMP version
+			value and the features for EDR support.
+
+			Example: "Bluetooth 2.0 + EDR"
+
+		string GetRemoteRevision(string address)
+
+			Get the revision of the Bluetooth chip. This is a
+			vendor specific value and in most cases it represents
+			the firmware version. This derives only from the LMP
+			subversion value.
+
+			Example: "HCI 19.2"
+
+		string GetRemoteManufacturer(string address)
+
+			Get the manufacturer of the chip for a remote device.
+
+			Example: "Nokia Mobile Phones"
+
+		string GetRemoteCompany(string address)
+
+			Get the company name from the OUI database of the
+			Bluetooth device address. This function will need a
+			valid and up-to-date oui.txt from the IEEE. This value
+			will be different from the manufacturer string in the
+			most cases.
+
+			Example: "Microsoft Corporation"
+
 		string GetRemoteName(string address)
 
 			Get device name for a remote device. This request
@@ -176,15 +210,6 @@ Methods		string GetAddress()
 			address in this case.
 
 			Example: "00:11:22:33:44:55", "Nokia 770"
-
-		string GetRemoteVersion(string address)
-
-			Get the version info for a remote device. This request
-			returns always this information based on its cached
-			data. The base for this string is the LMP version
-			value and the features for EDR support.
-
-			Example: "Bluetooth 2.0 + EDR"
 
 		string GetRemoteAlias(string address)
 
