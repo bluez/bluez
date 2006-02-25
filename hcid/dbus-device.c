@@ -208,16 +208,13 @@ static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
-	struct hci_request rq;
-	int dd = -1;
 	const char* scan_mode;
 	uint8_t hci_mode;
-	uint8_t status = 0;
 	const uint8_t current_mode = dbus_data->mode;
+	int dd;
 
-	dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_STRING, &scan_mode,
-					DBUS_TYPE_INVALID);
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &scan_mode,
+							DBUS_TYPE_INVALID);
 
 	if (!scan_mode)
 		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
@@ -239,6 +236,9 @@ static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 
 	/* Check if the new requested mode is different from the current */
 	if (current_mode != hci_mode) {
+		struct hci_request rq;
+		uint8_t status = 0;
+
 		memset(&rq, 0, sizeof(rq));
 		rq.ogf    = OGF_HOST_CTL;
 		rq.ocf    = OCF_WRITE_SCAN_ENABLE;
@@ -253,19 +253,18 @@ static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 			reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 			goto failed;
 		}
+
 		if (status) {
 			syslog(LOG_ERR, "Setting scan enable failed with status 0x%02x", status);
 			reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
 			goto failed;
 		}
-
 	}
 
 	reply = dbus_message_new_method_return(msg);
 
 failed:
-	if (dd >= 0)
-		close(dd);
+	close(dd);
 
 	return reply;
 }
@@ -792,13 +791,12 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 	struct hci_request rq;
 	auth_requested_cp cp;
 	evt_cmd_status rp;
-	DBusMessage *reply = NULL;
-	char *str_bdaddr = NULL;
+	DBusMessage *reply;
+	char *str_bdaddr;
 	struct hci_dbus_data *dbus_data = data;
-	struct hci_conn_info_req *cr = NULL;
+	struct hci_conn_info_req *cr;
 	bdaddr_t bdaddr;
-	int dev_id = -1;
-	int dd = -1;
+	int dd, dev_id;
 
 	dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_STRING, &str_bdaddr,
@@ -808,21 +806,15 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 
 	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 
-	if (dev_id < 0) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
-		goto failed;
-	}
+	if (dev_id < 0)
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
 
-	if (dbus_data->dev_id != dev_id) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
-		goto failed;
-	}
+	if (dbus_data->dev_id != dev_id)
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
 
 	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-		goto failed;
-	}
+	if (dd < 0)
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr) {
@@ -835,7 +827,7 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 
 	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
+		goto done;
 	}
 
 	memset(&cp, 0, sizeof(cp));
@@ -854,17 +846,16 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 		syslog(LOG_ERR, "Unable to send authentication request: %s (%d)",
 							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
+		goto done;
 	}
 
 	reply = dbus_message_new_method_return(msg);
 
-failed:
-	if (dd >= 0)
-		close(dd);
+done:
+	free(cr);
 
-	if (cr)
-		free(cr);
+failed:
+	close(dd);
 
 	return reply;
 }
@@ -905,8 +896,8 @@ static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr) {
 		syslog(LOG_ERR, "Can't allocate memory");
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
-		goto failed;
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
 	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
@@ -938,11 +929,9 @@ static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 	reply = dbus_message_new_method_return(msg);
 
 failed:
-	if (dd >= 0)
-		close(dd);
+	free(cr);
 
-	if (cr)
-		free(cr);
+	close(dd);
 
 	return reply;
 }
@@ -954,7 +943,7 @@ static DBusMessage *handle_dev_has_bonding_req(DBusMessage *msg, void *data)
 	DBusMessage *reply;
 	char filename[PATH_MAX + 1];
 	char addr[18], *addr_ptr, *str;
-	dbus_bool_t result = FALSE;
+	dbus_bool_t result;
 
 	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
 
@@ -964,8 +953,11 @@ static DBusMessage *handle_dev_has_bonding_req(DBusMessage *msg, void *data)
 	dbus_message_iter_get_basic(&iter, &addr_ptr);
 
 	str = textfile_get(filename, addr_ptr);
-	result = str ? TRUE : FALSE;
-	free(str);
+	if (str) {
+		result = TRUE;
+		free(str);
+	} else
+		result = FALSE;
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1078,16 +1070,15 @@ static DBusMessage *handle_dev_discover_req(DBusMessage *msg, void *data)
 	evt_cmd_status rp;
 	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
-	int dd = -1;
 	uint8_t length = 8, num_rsp = 0;
 	uint32_t lap = 0x9e8b33;
+	int dd;
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
 		syslog(LOG_ERR, "Unable to open device %d: %s (%d)",
 					dbus_data->dev_id, strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 	}
 
 	memset(&cp, 0, sizeof(cp));
@@ -1116,8 +1107,7 @@ static DBusMessage *handle_dev_discover_req(DBusMessage *msg, void *data)
 	reply = dbus_message_new_method_return(msg);
 
 failed:
-	if (dd >= 0)
-		hci_close_dev(dd);
+	hci_close_dev(dd);
 
 	return reply;
 }
@@ -1128,14 +1118,13 @@ static DBusMessage *handle_dev_discover_cancel_req(DBusMessage *msg, void *data)
 	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
 	uint8_t status;
-	int dd = -1;
+	int dd;
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
 		syslog(LOG_ERR, "Unable to open device %d: %s (%d)",
 					dbus_data->dev_id, strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-		goto failed;
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
 	}
 
 	memset(&rq, 0, sizeof(rq));
@@ -1160,8 +1149,7 @@ static DBusMessage *handle_dev_discover_cancel_req(DBusMessage *msg, void *data)
 	reply = dbus_message_new_method_return(msg);
 
 failed:
-	if (dd >= 0)
-		hci_close_dev(dd);
+	hci_close_dev(dd);
 
 	return reply;
 }
