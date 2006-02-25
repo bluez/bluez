@@ -142,8 +142,8 @@ int get_default_dev_id(void);
 #define DEV_PIN_CODE_LENGTH		"PinCodeLength"
 #define DEV_ENCRYPTION_KEY_SIZE		"EncryptionKeySize"
 #define DEV_DISCOVER			"Discover"
-#define DEV_DISCOVER_CACHE		"DiscoverCache"
 #define DEV_DISCOVER_CANCEL		"DiscoverCancel"
+#define DEV_DISCOVER_CACHE		"DiscoverCache"
 #define DEV_DISCOVER_SERVICE		"DiscoverService"
 
 /*FIXME: maybe this section can be moved to a internal header file */
@@ -201,8 +201,8 @@ int get_default_dev_id(void);
 #define DEV_ENCRYPTION_KEY_SIZE_SIGNATURE	DBUS_TYPE_STRING_AS_STRING \
 						__END_SIG__
 #define DEV_DISCOVER_SIGNATURE			__END_SIG__
-#define DEV_DISCOVER_CACHE_SIGNATURE		__END_SIG__
 #define DEV_DISCOVER_CANCEL_SIGNATURE		__END_SIG__
+#define DEV_DISCOVER_CACHE_SIGNATURE		__END_SIG__
 #define DEV_DISCOVER_SERVICE_SIGNATURE		DBUS_TYPE_STRING_AS_STRING \
 						__END_SIG__
 
