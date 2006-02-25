@@ -40,6 +40,7 @@
 #include "dbus.h"
 
 #include "textfile.h"
+#include "oui.h"
 
 static const char *service_cls[] = {
 	"positioning",
@@ -841,8 +842,28 @@ static DBusMessage *handle_dev_get_remote_manufacturer_req(DBusMessage *msg, voi
 
 static DBusMessage *handle_dev_get_remote_company_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	DBusMessage *reply;
+	bdaddr_t bdaddr;
+	char oui[9], *str_bdaddr, *tmp;
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str_bdaddr,
+							DBUS_TYPE_INVALID);
+
+	str2ba(str_bdaddr, &bdaddr);
+	ba2oui(&bdaddr, oui);
+
+	tmp = ouitocomp(oui);
+	if (!tmp)
+		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_RECORD_NOT_FOUND);
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &tmp,
+					DBUS_TYPE_INVALID);
+
+	free(tmp);
+
+	return reply;
 }
 
 static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
