@@ -574,8 +574,36 @@ static DBusMessage *handle_dev_get_remote_revision_req(DBusMessage *msg, void *d
 
 static DBusMessage *handle_dev_get_remote_manufacturer_req(DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessageIter iter;
+	DBusMessage *reply;
+	char filename[PATH_MAX + 1];
+	char addr[18], *addr_ptr, *str;
+	int compid;
+
+	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &addr_ptr);
+
+	str = textfile_get(filename, addr_ptr);
+	if (!str)
+		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
+
+	reply = dbus_message_new_method_return(msg);
+
+	compid = atoi(str);
+
+	free(str);
+
+	str = bt_compidtostr(compid);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,
+					DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage *handle_dev_get_remote_company_req(DBusMessage *msg, void *data)
