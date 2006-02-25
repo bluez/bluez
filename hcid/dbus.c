@@ -51,6 +51,7 @@
 #endif
 
 static DBusConnection *connection;
+
 static int default_dev = -1;
 static volatile sig_atomic_t __timeout_active = 0;
 
@@ -282,7 +283,7 @@ static gboolean unregister_dbus_path(const char *path)
  *
  *****************************************************************/
 
-gboolean hcid_dbus_register_device(uint16_t id) 
+gboolean hcid_dbus_register_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
@@ -930,7 +931,7 @@ failed:
 		free(dl);
 }
 
-static void sigalarm_handler (int signum)
+static void sigalarm_handler(int signum)
 {
 	struct hci_dbus_data *pdata = NULL;
 	char device_path[MAX_PATH_LENGTH];
@@ -1018,7 +1019,7 @@ static void bluez_timeout_start(void)
  *  Section reserved to D-Bus signal/messages handling function
  *
  *****************************************************************/
-static DBusHandlerResult hci_dbus_signal_filter (DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	const char *iface;
@@ -1104,7 +1105,8 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	name[248] = '\0';
 	pname = name;
 
-	signal = dev_signal_factory(id, DEV_SIG_NAME_CHANGED, DBUS_TYPE_STRING, &pname, DBUS_TYPE_INVALID);
+	signal = dev_signal_factory(id, DEV_SIG_NAME_CHANGED,
+				DBUS_TYPE_STRING, &pname, DBUS_TYPE_INVALID);
 	if (dbus_connection_send(connection, signal, NULL) == FALSE) {
 		syslog(LOG_ERR, "Can't send D-BUS %s signal", DEV_SIG_NAME_CHANGED);
 		goto failed;
@@ -1214,7 +1216,6 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		syslog(LOG_ERR, "Can't send D-BUS ModeChanged(%x) signal", rp.enable);
 		goto failed;
 	}
-
 
 	dbus_connection_flush(connection);
 
