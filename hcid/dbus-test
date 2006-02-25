@@ -268,6 +268,21 @@ class Tester:
                    print self.device.GetRemoteVersion(self.cmd_args[0])
                else:
                    print 'Usage: %s -i <dev> GetRemoteVersion address' % self.name
+           elif self.cmd == 'GetRemoteRevision':
+               if len(self.cmd_args) == 1:
+                   print self.device.GetRemoteRevision(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> GetRemoteRevision address' % self.name
+           elif self.cmd == 'GetRemoteManufacturer':
+               if len(self.cmd_args) == 1:
+                   print self.device.GetRemoteManufacturer(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> GetRemoteManufacturer address' % self.name
+           elif self.cmd == 'GetRemoteCompany':
+               if len(self.cmd_args) == 1:
+                   print self.device.GetRemoteCompany(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> GetRemoteCompany address' % self.name
            elif self.cmd == 'GetRemoteAlias':
                if len(self.cmd_args) == 1:
                    print self.device.GetRemoteAlias(self.cmd_args[0])
