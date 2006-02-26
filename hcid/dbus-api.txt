@@ -4,6 +4,27 @@ D-Bus API description for BlueZ
 Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
 
 
+Error hierachy
+==============
+
+Interface	org.bluez.Error
+
+Errors		UnknownError
+
+			An unknown error occured. The error messages is
+			taken from the strerror(errno) function.
+
+		OutOfMemory
+
+			Error returned when a memory allocation via malloc()
+			fails. This error is similar to ENOMEM.
+
+		NoSuchDevice
+
+			Error returned when the requested device doesn't
+			exists. This error is similar to ENODEV.
+
+
 Manager hierarchy
 =================
 
