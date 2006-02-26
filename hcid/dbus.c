@@ -223,7 +223,7 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 	gboolean ret = FALSE;
 	struct hci_dbus_data *data = NULL;
 
-	syslog(LOG_INFO, "[%s,%d] path:%s, fallback:%d", __PRETTY_FUNCTION__, __LINE__, path, fallback);
+	syslog(LOG_INFO, "Register path:%s fallback:%d", path, fallback);
 
 	data = malloc(sizeof(struct hci_dbus_data));
 	if (data == NULL) {
@@ -240,12 +240,12 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
-			syslog(LOG_ERR, "DBUS failed to register %s fallback", path);
+			syslog(LOG_ERR, "D-Bus failed to register %s fallback", path);
 			goto failed;
 		}
 	} else {
 		if (!dbus_connection_register_object_path(connection, path, pvtable, data)) {
-			syslog(LOG_ERR, "DBUS failed to register %s object", path);
+			syslog(LOG_ERR, "D-Bus failed to register %s object", path);
 			goto failed;
 		}
 	}
@@ -263,13 +263,13 @@ static gboolean unregister_dbus_path(const char *path)
 {
 	void *data;
 
-	syslog(LOG_INFO, "[%s,%d] path:%s", __PRETTY_FUNCTION__, __LINE__, path);
+	syslog(LOG_INFO, "Unregister path:%s", path);
 
 	if (dbus_connection_get_object_path_data(connection, path, &data) && data)
 		free(data);
 
 	if (!dbus_connection_unregister_object_path (connection, path)) {
-		syslog(LOG_ERR, "DBUS failed to unregister %s object", path);
+		syslog(LOG_ERR, "D-Bus failed to unregister %s object", path);
 		return FALSE;
 	}
 
@@ -375,7 +375,7 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
 							BLUEZ_MGR_DEV_REMOVED);
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
 		goto failed;
 	}
 
@@ -385,7 +385,7 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 					DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send(connection, message, NULL)) {
-		syslog(LOG_ERR, "Can't send D-BUS added device message");
+		syslog(LOG_ERR, "Can't send D-Bus added device message");
 		goto failed;
 	}
 
@@ -419,7 +419,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	message = dbus_message_new_method_call(PINAGENT_SERVICE_NAME, PINAGENT_PATH,
 						PINAGENT_INTERFACE, PIN_REQUEST);
 	if (message == NULL) {
-		syslog(LOG_ERR, "Couldn't allocate D-BUS message");
+		syslog(LOG_ERR, "Couldn't allocate D-Bus message");
 		goto failed;
 	}
 
@@ -434,7 +434,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&pending, TIMEOUT) == FALSE) {
-		syslog(LOG_ERR, "D-BUS send failed");
+		syslog(LOG_ERR, "D-Bus send failed");
 		goto failed;
 	}
 
@@ -483,7 +483,7 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	message = dbus_message_new_signal(path, DEVICE_INTERFACE, name);
 
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
 		goto failed;
 	}
 
@@ -492,7 +492,7 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS remote name message");
+		syslog(LOG_ERR, "Can't send D-Bus remote name message");
 		goto failed;
 	}
 
@@ -527,12 +527,12 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
 						DEV_SIG_DISCOVER_START);
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS inquiry start message");
+		syslog(LOG_ERR, "Can't allocate D-Bus inquiry start message");
 		goto failed;
 	}
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS inquiry start message");
+		syslog(LOG_ERR, "Can't send D-Bus inquiry start message");
 		goto failed;
 	}
 
@@ -564,12 +564,12 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
 						DEV_SIG_DISCOVER_COMPLETE);
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
+		syslog(LOG_ERR, "Can't allocate D-Bus inquiry complete message");
 		goto failed;
 	}
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS inquiry complete message");
+		syslog(LOG_ERR, "Can't send D-Bus inquiry complete message");
 		goto failed;
 	}
 
@@ -604,7 +604,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
 						DEV_SIG_DISCOVER_RESULT);
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS inquiry result message");
+		syslog(LOG_ERR, "Can't allocate D-Bus inquiry result message");
 		goto failed;
 	}
 
@@ -615,7 +615,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS inquiry result message");
+		syslog(LOG_ERR, "Can't send D-Bus inquiry result message");
 		goto failed;
 	}
 
@@ -650,7 +650,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
 						DEV_SIG_REMOTE_NAME_CHANGED);
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
 		goto failed;
 	}
 
@@ -660,7 +660,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS remote name message");
+		syslog(LOG_ERR, "Can't send D-Bus remote name message");
 		goto failed;
 	}
 
@@ -1108,7 +1108,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	signal = dev_signal_factory(id, DEV_SIG_NAME_CHANGED,
 				DBUS_TYPE_STRING, &pname, DBUS_TYPE_INVALID);
 	if (dbus_connection_send(connection, signal, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS %s signal", DEV_SIG_NAME_CHANGED);
+		syslog(LOG_ERR, "Can't send D-Bus %s signal", DEV_SIG_NAME_CHANGED);
 		goto failed;
 	}
 
@@ -1204,7 +1204,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
 						DEV_SIG_MODE_CHANGED);
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
+		syslog(LOG_ERR, "Can't allocate D-Bus inquiry complete message");
 		goto failed;
 	}
 
@@ -1213,7 +1213,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-BUS ModeChanged(%x) signal", rp.enable);
+		syslog(LOG_ERR, "Can't send D-Bus ModeChanged signal");
 		goto failed;
 	}
 

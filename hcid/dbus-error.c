@@ -156,3 +156,22 @@ DBusMessage *bluez_new_failure_msg(DBusMessage *msg, const uint32_t ecode)
 
 	return reply;
 }
+
+DBusMessage *error_generic(DBusMessage *msg, int err)
+{
+	const char *str = strerror(err);
+
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownError", str);
+}
+
+DBusMessage *error_out_of_memory(DBusMessage *msg)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".OutOfMemory",
+							"Out of memory");
+}
+
+DBusMessage *error_no_such_device(DBusMessage *msg)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".NoSuchDevice",
+							"No such device");
+}

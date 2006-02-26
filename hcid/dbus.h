@@ -87,6 +87,10 @@ DBusConnection *get_dbus_connection(void);
 
 int get_default_dev_id(void);
 
+DBusMessage *error_generic(DBusMessage *msg, int err);
+DBusMessage *error_out_of_memory(DBusMessage *msg);
+DBusMessage *error_no_such_device(DBusMessage *msg);
+
 /*======================================================================== 
     BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
  *========================================================================*/

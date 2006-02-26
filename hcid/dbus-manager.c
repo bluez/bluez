@@ -46,34 +46,31 @@ static DBusMessage *handle_mgr_list_devices_req(DBusMessage *msg, void *data)
 	DBusMessage *reply;
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
-	int i, sk = -1;
+	int i, sk;
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (sk < 0) {
-		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)", strerror(errno), errno);
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
-	}
+	if (sk < 0)
+		return error_generic(msg, errno);
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 	if (!dl) {
-		syslog(LOG_ERR, "Can't allocate memory");
 		close(sk);
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
+		return error_out_of_memory(msg);
 	}
 
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
 	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		reply = error_generic(msg, errno);
 		goto failed;
 	}
 
 	dr = dl->dev_req;
 
 	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL) {
-		syslog(LOG_ERR, "Out of memory while calling dbus_message_new_method_return");
+	if (!reply) {
+		reply = error_out_of_memory(msg);
 		goto failed;
 	}
 
@@ -115,13 +112,11 @@ static DBusMessage *handle_mgr_default_device_req(DBusMessage *msg, void *data)
 	int default_dev = get_default_dev_id();
 
 	if (default_dev < 0)
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
+		return error_no_such_device(msg);
 
 	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		syslog(LOG_ERR, "Out of memory while calling dbus_message_new_method_return");
-		return reply;
-	}
+	if (!reply)
+		return error_out_of_memory(msg);
 
 	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, default_dev);
 
@@ -132,8 +127,8 @@ static DBusMessage *handle_mgr_default_device_req(DBusMessage *msg, void *data)
 }
 
 static const struct service_data mgr_services[] = {
-	{ MGR_LIST_DEVICES,	handle_mgr_list_devices_req,		MGR_LIST_DEVICES_SIGNATURE	},
-	{ MGR_DEFAULT_DEVICE,	handle_mgr_default_device_req,		MGR_DEFAULT_DEVICE_SIGNATURE	},
+	{ MGR_LIST_DEVICES,	handle_mgr_list_devices_req,	MGR_LIST_DEVICES_SIGNATURE	},
+	{ MGR_DEFAULT_DEVICE,	handle_mgr_default_device_req,	MGR_DEFAULT_DEVICE_SIGNATURE	},
 	{ NULL, NULL, NULL }
 };
 
@@ -151,9 +146,10 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void 
 	method = dbus_message_get_member(msg);
 	signature = dbus_message_get_signature(msg);
 
-	syslog(LOG_INFO, "[%s,%d] path:%s, method:%s", __PRETTY_FUNCTION__, __LINE__, dbus_message_get_path(msg), method);
+	syslog(LOG_INFO, "Manager path:%s method:%s",
+					dbus_message_get_path(msg), method);
 
-	if (strcmp(iface, MANAGER_INTERFACE) != 0)
+	if (!strcmp(iface, MANAGER_INTERFACE))
 		return ret;
 
 	for (handlers = mgr_services; handlers->name != NULL; handlers++) {
@@ -175,7 +171,8 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void 
 
 	if (reply) {
 		if (!dbus_connection_send (conn, reply, NULL))
-			syslog(LOG_ERR, "Can't send reply message!");
+			syslog(LOG_ERR, "Can't send reply message");
+
 		dbus_message_unref(reply);
 	}
 
