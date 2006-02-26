@@ -149,8 +149,8 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void 
 	syslog(LOG_INFO, "Manager path:%s method:%s",
 					dbus_message_get_path(msg), method);
 
-	if (!strcmp(iface, MANAGER_INTERFACE))
-		return ret;
+	if (strcmp(iface, MANAGER_INTERFACE))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	for (handlers = mgr_services; handlers->name != NULL; handlers++) {
 		if (strcmp(handlers->name, method))
