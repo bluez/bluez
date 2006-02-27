@@ -1078,7 +1078,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	dd = hci_open_dev(id);
 	if (dd < 0) {
 		syslog(LOG_ERR, "HCI device open failed: hci%d", id);
-		memset(&rq, 0, sizeof(rq));
+		memset(&rp, 0, sizeof(rp));
 	} else {
 		memset(&rq, 0, sizeof(rq));
 		rq.ogf    = OGF_HOST_CTL;
