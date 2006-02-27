@@ -103,7 +103,7 @@ class Tester:
     def dbus_dev_setup(self):
         if not self.dev_path:
             try:
-                self.dbus_mrg_setup()
+                self.dbus_mgr_setup()
                 self.dev_path = self.manager.DefaultAdapter()
             except dbus.DBusException, e:
                 print 'Failed to get default device: %s' % e
@@ -136,7 +136,7 @@ class Tester:
             print 'Failed to setup signal handler for manager path: %s' % e
             sys.exit(1)
 
-    def dbus_mrg_setup(self):
+    def dbus_mgr_setup(self):
         self.manager_obj = self.bus.get_object('org.bluez', '/org/bluez/Manager')
         self.manager = dbus.Interface(self.manager_obj, 'org.bluez.Manager')
 
@@ -158,28 +158,18 @@ class Tester:
     @dbus.decorators.explicitly_pass_message
     def dev_signal_handler(*args, **keywords):
         dbus_message = keywords["dbus_message"]
-        member = dbus_message.get_member()
-        sys.stdout.write(member) 
-        sys.stdout.write(' - ') 
-        sys.stdout.write(dbus_message.get_path())
-        sys.stdout.write(': ')
+        print '%s - %s: ' % (dbus_message.get_member(), dbus_message.get_path()),
         for arg in args[1:]:
-            sys.stdout.write(arg)
-            sys.stdout.write('   ')
-        sys.stdout.write('\n')
-        sys.stdout.flush()
+            print '%s   ' % arg,
+        print
 
     @dbus.decorators.explicitly_pass_message
     def mgr_signal_handler(*args, **keywords):
         dbus_message = keywords["dbus_message"]
-        member = dbus_message.get_member()
-        sys.stdout.write(member) 
-        sys.stdout.write(': ')
+        print '%s: ' % dbus_messsage.get_member()
         for arg in args[1:]:
-            sys.stdout.write(arg)
-            sys.stdout.write('   ')
-        sys.stdout.write('\n')
-        sys.stdout.flush()
+            print '%s   ' % arg,
+        print
 
     def signal_cb(self, sig, frame):
         print 'Caught signal, exiting'
@@ -346,7 +336,7 @@ class Tester:
             print 'Listening for events...'
         elif self.cmd in mgr_cmds:
             try:
-                self.dbus_mrg_setup()
+                self.dbus_mgr_setup()
             except dbus.DBusException, e:
                 print 'Failed to setup manager interface: %s' % e
                 sys.exit(1)
