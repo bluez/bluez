@@ -19,9 +19,9 @@ Errors		UnknownError
 			Error returned when a memory allocation via malloc()
 			fails. This error is similar to ENOMEM.
 
-		NoSuchDevice
+		NoSuchAdapter
 
-			Error returned when the requested device doesn't
+			Error returned when the requested adapter doesn't
 			exists. This error is similar to ENODEV.
 
 
@@ -32,29 +32,29 @@ Service		org.bluez
 Interface	org.bluez.Manager
 Object path	/org/bluez/Manager/
 
-Methods		array{string} ListDevices()
+Methods		array{string} ListAdapters()
 
-			Returns list of object paths under /org/bluez/Device/
+			Returns list of object paths under /org/bluez/Adapter/
 
-		string DefaultDevice()
+		string DefaultAdapter()
 
-			Returns object path for the default device.
+			Returns object path for the default adapter.
 
-Signals		void DeviceAdded(string path)
+Signals		void AdapterAdded(string path)
 
-			Parameter is object path of added device.
+			Parameter is object path of added adapter.
 
-		void DeviceRemoved(string path)
+		void AdapterRemoved(string path)
 
-			Parameter is object path of removed device.
+			Parameter is object path of removed adapter.
 
 
-Device hierarchy
+Adapter hierarchy
 ================
 
 Service		org.bluez
-Interface	org.bluez.Device
-Object path	/org/bluez/Device/{hci0,hci1,...}/
+Interface	org.bluez.Adapter
+Object path	/org/bluez/Adapter/{hci0,hci1,...}/
 
 Methods		string GetAddress()
 
@@ -98,20 +98,20 @@ Methods		string GetAddress()
 
 		array{string} GetFeatures()
 
-			Returns list of features supported by the device. This
+			Returns list of features supported by the adapter. This
 			list is only for showing them in the UI. No application
 			should implement different behaviors based on these
 			strings.
 
 		string GetMode()
 
-			Returns the current mode of a device.
+			Returns the current mode of a adapter.
 
 			Valid modes: "off", "connectable", "discoverable"
 
 		void SetMode(string mode)
 
-			Sets mode of the device. See GetMode for valid strings
+			Sets mode of the adapter. See GetMode for valid strings
 			for the mode parameter.
 
 		uint32 GetDiscoverableTimeout()
@@ -126,15 +126,15 @@ Methods		string GetAddress()
 		void SetDiscoverableTimeout(uint32 timeout)
 
 			Sets the discoverable timeout in seconds. A value of
-			zero disables the timeout and the device would be
+			zero disables the timeout and the adapter would be
 			always discoverable.
 
-			Changing this value doesn't set the device into
+			Changing this value doesn't set the adapter into
 			discoverable mode. The SetMode method must be used.
 
 		boolean IsConnectable()
 
-			Returns true if the local device is connectable and
+			Returns true if the local adapter is connectable and
 			false if it is switched off.
 
 			It is also possible to use GetMode to retrieve this
@@ -142,7 +142,7 @@ Methods		string GetAddress()
 
 		boolean IsDiscoverable()
 
-			Returns true if the local device is discoverable and
+			Returns true if the local adapter is discoverable and
 			false if it is only connectable or switched off.
 
 			It is also possible to use GetMode to retrieve this
@@ -178,11 +178,11 @@ Methods		string GetAddress()
 
 		string GetName()
 
-			Returns the local device name (friendly name) in UTF-8.
+			Returns the local adapter name (friendly name) in UTF-8.
 
 		void SetName(string name)
 
-			Sets the local device name. If EIR is supported by the
+			Sets the local adapter name. If EIR is supported by the
 			local hardware this modifies also the extended response
 			data value.
 
@@ -222,7 +222,7 @@ Methods		string GetAddress()
 
 		string GetRemoteName(string address)
 
-			Get device name for a remote device. This request
+			Get adapter name for a remote device. This request
 			returns always a cached name. The service daemon is
 			responsible for updating the cache.
 
@@ -253,7 +253,7 @@ Methods		string GetAddress()
 
 		string LastSeen(string address)
 
-			Returns the date and time when the device has been
+			Returns the date and time when the adapter has been
 			seen by a discover procedure.
 
 			Example: "2006-02-08 12:00:00 GMT"
@@ -261,7 +261,7 @@ Methods		string GetAddress()
 		string LastUsed(string address)
 
 			Returns the date and time of the last time when the
-			device has been connected.
+			adapter has been connected.
 
 			Example: "2006-02-08 12:00:00 GMT"
 
@@ -269,7 +269,7 @@ Methods		string GetAddress()
 
 			This method creates a bonding with a remote device.
 
-			If a link key for this device already exists, this
+			If a link key for this adapter already exists, this
 			procedure should fail instead of trying to create a
 			new pairing.
 
@@ -291,7 +291,7 @@ Methods		string GetAddress()
 
 		array{string} ListBondings()
 
-			List device addresses of currently bonded device.
+			List device addresses of currently bonded adapter.
 
 		uint8 PinCodeLength(string address)
 
@@ -302,7 +302,7 @@ Methods		string GetAddress()
 
 			Returns the currently used encryption key size.
 
-			This method will fail if no connection to that device
+			This method will fail if no connection to that adapter
 			has been established.
 
 Signals		void ModeChanged(string mode)
@@ -320,7 +320,7 @@ Signals		void ModeChanged(string mode)
 
 		void NameChanged(string name)
 
-			After changing the local device name with SetName this
+			After changing the local adapter name with SetName this
 			signal will provide the new name.
 
 			This signal can also be triggered by low-level HCI
