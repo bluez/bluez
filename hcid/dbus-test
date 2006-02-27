@@ -8,8 +8,8 @@ import sys
 import getopt
 from signal import *
 
-mgr_cmds = [ "ListDevices", "DefaultDevice" ]
-mgr_signals = [ "DeviceAdded", "DeviceRemoved" ]
+mgr_cmds = [ "ListAdapters", "DefaultAdapter" ]
+mgr_signals = [ "AdapterAdded", "AdapterRemoved" ]
 
 dev_cmds = [ "GetAddress",
              "GetVersion",
@@ -50,10 +50,10 @@ dev_signals = [ "ModeChanged",
                 "RemoteNameChanged",
                 "RemoteAliasChanged" ]
 
-dev_signals_filter = [ "/org/bluez/Device/hci0", "/org/bluez/Device/hci1",
-                       "/org/bluez/Device/hci2", "/org/bluez/Device/hci3",
-                       "/org/bluez/Device/hci4", "/org/bluez/Device/hci5",
-                       "/org/bluez/Device/hci6", "/org/bluez/Device/hci7" ]
+dev_signals_filter = [ "/org/bluez/Adapter/hci0", "/org/bluez/Adapter/hci1",
+                       "/org/bluez/Adapter/hci2", "/org/bluez/Adapter/hci3",
+                       "/org/bluez/Adapter/hci4", "/org/bluez/Adapter/hci5",
+                       "/org/bluez/Adapter/hci6", "/org/bluez/Adapter/hci7" ]
 
 class Tester:
     exit_events = []
@@ -70,7 +70,7 @@ class Tester:
         try:
             self.dbus_setup()
         except dbus.DBusException, e:
-            print 'Failed to do D-BUS setup: %s' % e
+            print 'Failed to do D-Bus setup: %s' % e
             sys.exit(1)
 
     def parse_args(self, argv):
@@ -90,7 +90,7 @@ class Tester:
                 if a[0] == '/':
                     self.dev_path = a
                 else:
-                    self.dev_path = '/org/bluez/Device/%s' % a
+                    self.dev_path = '/org/bluez/Adapter/%s' % a
 
         if not (args or self.listen):
             self.usage()
@@ -104,13 +104,13 @@ class Tester:
         if not self.dev_path:
             try:
                 self.dbus_mrg_setup()
-                self.dev_path = self.manager.DefaultDevice()
+                self.dev_path = self.manager.DefaultAdapter()
             except dbus.DBusException, e:
                 print 'Failed to get default device: %s' % e
                 sys.exit(1)
         try:
             obj = self.bus.get_object('org.bluez', self.dev_path)
-            self.device = dbus.Interface(obj, 'org.bluez.Device')
+            self.device = dbus.Interface(obj, 'org.bluez.Adapter')
         except dbus.DBusException, e:
             print 'Failed to setup device path: %s' % e
             sys.exit(1)
@@ -120,7 +120,7 @@ class Tester:
            for signal in dev_signals:
                 for path in dev_signals_filter:
                     self.bus.add_signal_receiver(self.dev_signal_handler,
-                                             signal, 'org.bluez.Device',
+                                             signal, 'org.bluez.Adapter',
                                              'org.bluez', path)
         except dbus.DBusException, e:
             print 'Failed to setup signal handler for device path: %s' % e
@@ -145,13 +145,13 @@ class Tester:
 
     def usage(self):
         print 'Usage: %s [-i <dev>] [-l] [-h] <cmd> [arg1..]' % self.name
-        print '  -i <dev>   Specify device (e.g. "hci0" or "/org/bluez/Device/hci0")'
+        print '  -i <dev>   Specify device (e.g. "hci0" or "/org/bluez/Adapter/hci0")'
         print '  -l         Listen for events (no command required)'
         print '  -h         Show this help'
         print 'Manager commands:'
         for cmd in mgr_cmds:
             print '\t%s' % cmd
-        print 'Device commands:'
+        print 'Adapter commands:'
         for cmd in dev_cmds:
             print '\t%s' % cmd
 
@@ -188,17 +188,17 @@ class Tester:
         self.main_loop.quit()
 
     def call_mgr_dbus_func(self):
-        if self.cmd == 'ListDevices':
+        if self.cmd == 'ListAdapters':
             try:
-                devices = self.manager.ListDevices()
+                devices = self.manager.ListAdapters()
             except dbus.DBusException, e:
                 print 'Sending %s failed: %s' % (self.cmd, e)
                 sys.exit(1)
             for device in devices:
                 print device
-        elif self.cmd == 'DefaultDevice':
+        elif self.cmd == 'DefaultAdapter':
             try:
-                print self.manager.DefaultDevice()
+                print self.manager.DefaultAdapter()
             except dbus.DBusException, e:
                 print 'Sending %s failed: %s' % (self.cmd, e)
                 sys.exit(1)
