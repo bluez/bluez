@@ -116,9 +116,9 @@ DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const in
 	char path[MAX_PATH_LENGTH];
 	va_list var_args;
 
-	snprintf(path, sizeof(path)-1, "%s/hci%d", DEVICE_PATH, devid);
+	snprintf(path, sizeof(path)-1, "%s/hci%d", ADAPTER_PATH, devid);
 
-	signal = dbus_message_new_signal(path, DEVICE_INTERFACE,
+	signal = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 					 prop_name);
 	if (signal == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
@@ -294,8 +294,8 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	struct hci_request rq;
 	struct hci_dbus_data* pdata;
 
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
-	ret = register_dbus_path(path, DEVICE_PATH_ID, id, &obj_dev_vtable, FALSE);
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	ret = register_dbus_path(path, ADAPTER_PATH_ID, id, &obj_dev_vtable, FALSE);
 
 	dd = hci_open_dev(id);
 	if (dd < 0) {
@@ -370,7 +370,7 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
 
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
 							BLUEZ_MGR_DEV_REMOVED);
@@ -472,7 +472,7 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	/*
 	 * 0x00: authentication request successfully completed
@@ -480,7 +480,7 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	 */
 	name = status ? DEV_SIG_BONDING_FAILED : DEV_SIG_BONDING_CREATED;
 
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE, name);
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE, name);
 
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
@@ -522,9 +522,9 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						DEV_SIG_DISCOVER_START);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry start message");
@@ -559,9 +559,9 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						DEV_SIG_DISCOVER_COMPLETE);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry complete message");
@@ -599,9 +599,9 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						DEV_SIG_DISCOVER_RESULT);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry result message");
@@ -645,9 +645,9 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						DEV_SIG_REMOTE_NAME_CHANGED);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
@@ -786,7 +786,7 @@ gboolean hcid_dbus_init(void)
 		return FALSE;
 	}
 
-	if (!register_dbus_path(DEVICE_PATH, DEVICE_ROOT_ID, INVALID_DEV_ID,
+	if (!register_dbus_path(ADAPTER_PATH, ADAPTER_ROOT_ID, INVALID_DEV_ID,
 				&obj_dev_vtable, TRUE))
 		return FALSE;
 
@@ -813,14 +813,14 @@ void hcid_dbus_exit(void)
 	if (!dbus_connection_get_is_connected(connection))
 		return;
 
-	/* Unregister all paths in Device path hierarchy */
-	if (!dbus_connection_list_registered(connection, DEVICE_PATH, &children))
+	/* Unregister all paths in Adapter path hierarchy */
+	if (!dbus_connection_list_registered(connection, ADAPTER_PATH, &children))
 		goto done;
 
 	for (; children[i]; i++) {
 		char dev_path[MAX_PATH_LENGTH];
 
-		snprintf(dev_path, sizeof(dev_path), "%s/%s", DEVICE_PATH, children[i]);
+		snprintf(dev_path, sizeof(dev_path), "%s/%s", ADAPTER_PATH, children[i]);
 
 		unregister_dbus_path(dev_path);
 	}
@@ -828,7 +828,7 @@ void hcid_dbus_exit(void)
 	dbus_free_string_array(children);
 
 done:
-	unregister_dbus_path(DEVICE_PATH);
+	unregister_dbus_path(ADAPTER_PATH);
 	unregister_dbus_path(MANAGER_PATH);
 
 	dbus_connection_close(connection);
@@ -867,7 +867,7 @@ static int discoverable_timeout_handler(void *data)
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Sending write scan enable command to hci%d failed: %s (%d)",
-		       dbus_data->dev_id, strerror(errno), errno);
+				dbus_data->dev_id, strerror(errno), errno);
 		retval = -1;
 		goto failed;
 	}
@@ -945,13 +945,13 @@ static void sigalarm_handler(int signum)
 		return;
 	}
 
-	if (!dbus_connection_list_registered(connection, DEVICE_PATH, &device))
+	if (!dbus_connection_list_registered(connection, ADAPTER_PATH, &device))
 		goto done;
 
 	/* check the timer for each registered path */
 	for (; device[i]; i++) {
 
-		snprintf(device_path, sizeof(device_path), "%s/%s", DEVICE_PATH, device[i]);
+		snprintf(device_path, sizeof(device_path), "%s/%s", ADAPTER_PATH, device[i]);
 
 		if (!dbus_connection_get_object_path_data(connection, device_path, (void*) &pdata)){
 			syslog(LOG_ERR, "Getting %s path data failed!", device_path);
@@ -1144,7 +1144,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	dd = hci_open_dev(id);
 	if (dd < 0) {
@@ -1201,7 +1201,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	message = dbus_message_new_signal(path, DEVICE_INTERFACE,
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						DEV_SIG_MODE_CHANGED);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry complete message");

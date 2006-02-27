@@ -89,7 +89,7 @@ static DBusMessage *handle_mgr_list_devices_req(DBusMessage *msg, void *data)
 		if (ioctl(sk, HCIGETDEVINFO, &di) < 0)
 			continue;
 
-		snprintf(path, sizeof(path), "%s/%s", DEVICE_PATH, di.name);
+		snprintf(path, sizeof(path), "%s/%s", ADAPTER_PATH, di.name);
 
 		dbus_message_iter_append_basic(&array_iter,
 						DBUS_TYPE_STRING, &path_ptr);
@@ -118,7 +118,7 @@ static DBusMessage *handle_mgr_default_device_req(DBusMessage *msg, void *data)
 	if (!reply)
 		return error_out_of_memory(msg);
 
-	snprintf(path, sizeof(path), "%s/hci%d", DEVICE_PATH, default_dev);
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, default_dev);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
 					DBUS_TYPE_INVALID);
@@ -127,8 +127,8 @@ static DBusMessage *handle_mgr_default_device_req(DBusMessage *msg, void *data)
 }
 
 static const struct service_data mgr_services[] = {
-	{ MGR_LIST_DEVICES,	handle_mgr_list_devices_req,	MGR_LIST_DEVICES_SIGNATURE	},
-	{ MGR_DEFAULT_DEVICE,	handle_mgr_default_device_req,	MGR_DEFAULT_DEVICE_SIGNATURE	},
+	{ MGR_LIST_ADAPTERS,	handle_mgr_list_devices_req,	MGR_LIST_ADAPTERS_SIGNATURE	},
+	{ MGR_DEFAULT_ADAPTER,	handle_mgr_default_device_req,	MGR_DEFAULT_ADAPTER_SIGNATURE	},
 	{ NULL, NULL, NULL }
 };
 

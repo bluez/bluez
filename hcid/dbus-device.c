@@ -1297,14 +1297,14 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	signature = dbus_message_get_signature(msg);
 	iface = dbus_message_get_interface(msg);
 
-	syslog(LOG_INFO, "Device path:%s method:%s",
+	syslog(LOG_INFO, "Adapter path:%s method:%s",
 					dbus_message_get_path(msg), method);
 
-	if (strcmp(DEVICE_INTERFACE, iface))
+	if (strcmp(ADAPTER_INTERFACE, iface))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	if (dbus_data->path_id == DEVICE_ROOT_ID) {
-		/* Device is down(path unregistered) or the path is wrong */
+	if (dbus_data->path_id == ADAPTER_ROOT_ID) {
+		/* Adapter is down(path unregistered) or the path is wrong */
 		error = BLUEZ_EDBUS_UNKNOWN_PATH;
 		goto failed;
 	}

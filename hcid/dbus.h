@@ -29,8 +29,8 @@
 #define BASE_PATH		"/org/bluez"
 #define BASE_INTERFACE		"org.bluez"
 
-#define DEVICE_PATH		BASE_PATH "/Device"
-#define DEVICE_INTERFACE	BASE_INTERFACE ".Device"
+#define ADAPTER_PATH		BASE_PATH "/Adapter"
+#define ADAPTER_INTERFACE	BASE_INTERFACE ".Adapter"
 
 #define MANAGER_PATH		BASE_PATH "/Manager"
 #define MANAGER_INTERFACE	BASE_INTERFACE ".Manager"
@@ -38,16 +38,16 @@
 #define ERROR_INTERFACE		BASE_INTERFACE ".Error"
 
 #define MANAGER_PATH_MASK	(1 << 15)
-#define DEVICE_PATH_MASK	(1 << 14)
+#define ADAPTER_PATH_MASK	(1 << 14)
 
 /* /org/bluez/Manager */
 #define MANAGER_ROOT_ID		MANAGER_PATH_MASK
 
-/* /org/bluez/Device */
-#define DEVICE_ROOT_ID		DEVICE_PATH_MASK
+/* /org/bluez/Adapter */
+#define ADAPTER_ROOT_ID		ADAPTER_PATH_MASK
 
-/* E.g. /org/bluez/Device/hci0 */
-#define DEVICE_PATH_ID		(DEVICE_PATH_MASK | 0x0001)
+/* E.g. /org/bluez/Adapter/hci0 */
+#define ADAPTER_PATH_ID		(ADAPTER_PATH_MASK | 0x0001)
 
 #define INVALID_PATH_ID		0xFFFF
 #define INVALID_DEV_ID		0xFFFF
@@ -95,22 +95,22 @@ DBusMessage *error_no_such_device(DBusMessage *msg);
     BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
  *========================================================================*/
 
-#define MGR_LIST_DEVICES	"ListDevices"
-#define MGR_DEFAULT_DEVICE	"DefaultDevice"
+#define MGR_LIST_ADAPTERS	"ListAdapters"
+#define MGR_DEFAULT_ADAPTER	"DefaultAdapter"
 
 /* Signals sent in the Manager path */
-#define BLUEZ_MGR_DEV_ADDED		"DeviceAdded"
-#define BLUEZ_MGR_DEV_REMOVED		"DeviceRemoved"
+#define BLUEZ_MGR_DEV_ADDED		"AdapterAdded"
+#define BLUEZ_MGR_DEV_REMOVED		"AdapterRemoved"
 
 /* Manager Signatures */
-#define MGR_LIST_DEVICES_SIGNATURE		__END_SIG__
-#define MGR_DEFAULT_DEVICE_SIGNATURE		__END_SIG__
+#define MGR_LIST_ADAPTERS_SIGNATURE		__END_SIG__
+#define MGR_DEFAULT_ADAPTER_SIGNATURE		__END_SIG__
 
-#define MGR_REPLY_DEVICE_LIST_SIGNATURE		DBUS_TYPE_ARRAY_AS_STRING \
+#define MGR_REPLY_ADAPTER_LIST_SIGNATURE	DBUS_TYPE_ARRAY_AS_STRING \
 						__END_SIG__
 
 /*======================================================================== 
-    BlueZ D-Bus Device path definitions "/org/bluez/Device"
+    BlueZ D-Bus Adapter path definitions "/org/bluez/Adapter"
  *========================================================================*/
 #define DEV_GET_ADDRESS			"GetAddress"
 #define DEV_GET_VERSION			"GetVersion"
@@ -151,7 +151,7 @@ DBusMessage *error_no_such_device(DBusMessage *msg);
 #define DEV_DISCOVER_SERVICE		"DiscoverService"
 
 /*FIXME: maybe this section can be moved to a internal header file */
-/* Device service signature */
+/* Adapter service signature */
 #define DEV_GET_ADDRESS_SIGNATURE		__END_SIG__
 #define DEV_GET_VERSION_SIGNATURE		__END_SIG__
 #define DEV_GET_REVISION_SIGNATURE		__END_SIG__
