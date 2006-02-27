@@ -42,8 +42,8 @@ dev_cmds = [ "GetAddress",
              "RemoveBonding",
              "HasBonding",
              "ListBondings",
-             "PinCodeLength",
-             "EncryptionKeySize" ]
+             "GetPinCodeLength",
+             "GetEncryptionKeySize" ]
 dev_signals = [ "ModeChanged",
                 "NameChanged",
                 "MinorClassChanged",
@@ -311,16 +311,16 @@ class Tester:
                bondings = self.device.ListBondings()
                for bond in bondings: 
                    print bond,
-           elif self.cmd == 'PinCodeLength':
+           elif self.cmd == 'GetPinCodeLength':
                if len(self.cmd_args) == 1:
-                   print self.device.PinCodeLength(self.cmd_args[0])
+                   print self.device.GetPinCodeLength(self.cmd_args[0])
                else:
-                   print 'Usage: %s -i <dev> PinCodeLength address' % self.name
-           elif self.cmd == 'EncryptionKeySize':
+                   print 'Usage: %s -i <dev> GetPinCodeLength address' % self.name
+           elif self.cmd == 'GetEncryptionKeySize':
                if len(self.cmd_args) == 1:
-                   print self.device.EncryptionKeySize(self.cmd_args[0])
+                   print self.device.GetEncryptionKeySize(self.cmd_args[0])
                else:
-                   print 'Usage: %s -i <dev> EncryptionKeySize address' % self.name
+                   print 'Usage: %s -i <dev> GetEncryptionKeySize address' % self.name
            else:
                 # FIXME: remove at future version
                 print 'Script Error: Method %s not found. Maybe a mispelled word.' % (self.cmd_args)

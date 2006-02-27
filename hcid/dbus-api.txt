@@ -293,12 +293,12 @@ Methods		string GetAddress()
 
 			List device addresses of currently bonded adapter.
 
-		uint8 PinCodeLength(string address)
+		uint8 GetPinCodeLength(string address)
 
 			Returns the PIN code length that was used in the
 			pairing process.
 
-		uint8 EncryptionKeySize(string address)
+		uint8 GetEncryptionKeySize(string address)
 
 			Returns the currently used encryption key size.
 

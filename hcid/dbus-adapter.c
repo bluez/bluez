@@ -1078,7 +1078,7 @@ static DBusMessage *handle_dev_list_bondings_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage *handle_dev_pin_code_length_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_pin_code_length_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -1111,7 +1111,7 @@ static DBusMessage *handle_dev_pin_code_length_req(DBusMessage *msg, void *data)
 	return reply;
 }
 
-static DBusMessage *handle_dev_encryption_key_size_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_get_encryption_key_size_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -1272,8 +1272,8 @@ static const struct service_data dev_services[] = {
 	{ DEV_REMOVE_BONDING,		handle_dev_remove_bonding_req,		DEV_REMOVE_BONDING_SIGNATURE		},
 	{ DEV_HAS_BONDING_NAME,		handle_dev_has_bonding_req,		DEV_HAS_BONDING_SIGNATURE		},
 	{ DEV_LIST_BONDINGS,		handle_dev_list_bondings_req,		DEV_LIST_BONDINGS_SIGNATURE		},
-	{ DEV_PIN_CODE_LENGTH,		handle_dev_pin_code_length_req,		DEV_PIN_CODE_LENGTH_SIGNATURE		},
-	{ DEV_ENCRYPTION_KEY_SIZE,	handle_dev_encryption_key_size_req,	DEV_ENCRYPTION_KEY_SIZE_SIGNATURE	},
+	{ DEV_GET_PIN_CODE_LENGTH,	handle_dev_get_pin_code_length_req,	DEV_GET_PIN_CODE_LENGTH_SIGNATURE	},
+	{ DEV_GET_ENCRYPTION_KEY_SIZE,	handle_dev_get_encryption_key_size_req,	DEV_GET_ENCRYPTION_KEY_SIZE_SIGNATURE	},
 
 	{ DEV_DISCOVER,			handle_dev_discover_req,		DEV_DISCOVER_SIGNATURE			},
 	{ DEV_DISCOVER_CANCEL,		handle_dev_discover_cancel_req,		DEV_DISCOVER_CANCEL_SIGNATURE		},

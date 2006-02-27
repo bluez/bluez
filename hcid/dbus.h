@@ -143,8 +143,8 @@ DBusMessage *error_no_such_device(DBusMessage *msg);
 #define DEV_REMOVE_BONDING		"RemoveBonding"
 #define DEV_HAS_BONDING_NAME		"HasBonding"
 #define DEV_LIST_BONDINGS		"ListBondings"
-#define DEV_PIN_CODE_LENGTH		"PinCodeLength"
-#define DEV_ENCRYPTION_KEY_SIZE		"EncryptionKeySize"
+#define DEV_GET_PIN_CODE_LENGTH		"GetPinCodeLength"
+#define DEV_GET_ENCRYPTION_KEY_SIZE	"GetEncryptionKeySize"
 #define DEV_DISCOVER			"Discover"
 #define DEV_DISCOVER_CANCEL		"DiscoverCancel"
 #define DEV_DISCOVER_CACHE		"DiscoverCache"
@@ -200,9 +200,9 @@ DBusMessage *error_no_such_device(DBusMessage *msg);
 #define DEV_HAS_BONDING_SIGNATURE		DBUS_TYPE_STRING_AS_STRING \
 						__END_SIG__
 #define DEV_LIST_BONDINGS_SIGNATURE		__END_SIG__
-#define DEV_PIN_CODE_LENGTH_SIGNATURE		DBUS_TYPE_STRING_AS_STRING \
+#define DEV_GET_PIN_CODE_LENGTH_SIGNATURE	DBUS_TYPE_STRING_AS_STRING \
 						__END_SIG__
-#define DEV_ENCRYPTION_KEY_SIZE_SIGNATURE	DBUS_TYPE_STRING_AS_STRING \
+#define DEV_GET_ENCRYPTION_KEY_SIZE_SIGNATURE	DBUS_TYPE_STRING_AS_STRING \
 						__END_SIG__
 #define DEV_DISCOVER_SIGNATURE			__END_SIG__
 #define DEV_DISCOVER_CANCEL_SIGNATURE		__END_SIG__
