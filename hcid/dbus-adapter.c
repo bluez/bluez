@@ -63,17 +63,6 @@ static const char *computer_minor_cls[] = {
 	"wearable"
 };
 
-static char *get_peer_name(const bdaddr_t *local, const bdaddr_t *peer)
-{
-	char filename[PATH_MAX + 1], addr[18];
-
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
-
-	ba2str(peer, addr);
-	return textfile_get(filename, addr);
-}
-
 static DBusMessage *handle_dev_get_address_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
@@ -463,10 +452,8 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 
 	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-	}
+	if (dd < 0)
+		return error_no_such_device(msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
@@ -520,10 +507,8 @@ static DBusMessage *handle_dev_get_service_classes_req(DBusMessage *msg, void *d
 	int dd, i;
 
 	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-	}
+	if (dd < 0)
+		return error_no_such_device(msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
@@ -689,24 +674,25 @@ done:
 
 static DBusMessage *handle_dev_get_remote_name_req(DBusMessage *msg, void *data)
 {
+	char filename[PATH_MAX + 1], addr[18];
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
 	const char *str_bdaddr;
 	char *name;
-	bdaddr_t bdaddr;
-	struct hci_dev_info di;
+	int err;
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str_bdaddr,
 							DBUS_TYPE_INVALID);
 
-	str2ba(str_bdaddr, &bdaddr);
+	err = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (err < 0)
+		return error_generic(msg, -err);
 
-	if (hci_devinfo(dbus_data->dev_id, &di) < 0) {
-		syslog(LOG_ERR, "Can't get device info");
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_ENODEV);
-	}
 
-	name = get_peer_name(&di.bdaddr, &bdaddr);
+	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
+
+	name = textfile_get(filename, str_bdaddr);
+
 	if (!name)
 		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_RECORD_NOT_FOUND);
 
@@ -903,7 +889,7 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 	cr->type = ACL_LINK;
 
 	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto done;
 	}
 
@@ -922,7 +908,7 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to send authentication request: %s (%d)",
 							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto done;
 	}
 
@@ -1174,7 +1160,7 @@ static DBusMessage *handle_dev_discover_req(DBusMessage *msg, void *data)
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Unable to start inquiry: %s (%d)",
 							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto failed;
 	}
 
@@ -1207,13 +1193,13 @@ static DBusMessage *handle_dev_discover_cancel_req(DBusMessage *msg, void *data)
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		syslog(LOG_ERR, "Sending cancel inquiry failed: %s (%d)",
 							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET + errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto failed;
 	}
 
 	if (status) {
 		syslog(LOG_ERR, "Cancel inquiry failed with status 0x%02x", status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET + status);
+		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
 		goto failed;
 	}
 
