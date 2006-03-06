@@ -9,10 +9,15 @@ Error hierachy
 
 Interface	org.bluez.Error
 
-Errors		UnknownError
+Errors		Failed
 
 			An unknown error occured. The error messages is
 			taken from the strerror(errno) function.
+
+		InvalidArguments
+
+			Error returned when the argument list is invalid or
+			out of specification for the method.
 
 		OutOfMemory
 
@@ -24,6 +29,39 @@ Errors		UnknownError
 			Error returned when the requested adapter doesn't
 			exists. This error is similar to ENODEV.
 
+		UnknownAddress
+
+			Error returned when the remote address haven't been
+			seen by a discovery procedure so far.
+
+		NotAvailable
+
+			Error returned when a specified record is not
+			available.
+
+		NotConnected
+
+			Error returned when the remote device isn't connected
+			at the moment.
+
+		ConnectionAttemptFailed
+
+		BondingAlreadyExists
+
+		BondingDoesNotExists
+
+		BondingInProgress
+
+		AuthenticationFailed
+
+		AuthenticationTimeout
+
+		AuthenticationRejected
+
+		AuthenticationCanceled
+
+		UnsupportedMajorClass
+
 
 Manager hierarchy
 =================
@@ -32,7 +70,12 @@ Service		org.bluez
 Interface	org.bluez.Manager
 Object path	/org/bluez/Manager/
 
-Methods		array{string} ListAdapters()
+Methods		uint32 InterfaceVersion()
+
+			Returns the current interface version. At the moment
+			only version 0 is supported.
+
+		array{string} ListAdapters()
 
 			Returns list of object paths under /org/bluez/Adapter/
 
@@ -50,7 +93,7 @@ Signals		void AdapterAdded(string path)
 
 
 Adapter hierarchy
-================
+=================
 
 Service		org.bluez
 Interface	org.bluez.Adapter
@@ -62,6 +105,8 @@ Methods		string GetAddress()
 
 			Example: "00:11:22:33:44:55"
 
+			Possible errors: none
+
 		string GetVersion()
 
 			Returns the version of the Bluetooth chip. This version
@@ -69,6 +114,8 @@ Methods		string GetAddress()
 			features attribute must be checked.
 
 			Example: "Bluetooth 2.0 + EDR"
+
+			Possible errors: none
 
 		string GetRevision()
 
@@ -78,13 +125,24 @@ Methods		string GetAddress()
 			revision and LMP subversion values or via extra vendor
 			specific commands.
 
+			In case the revision of a chip is not available. This
+			method should return the LMP subversion value as a
+			string.
+
 			Example: "HCI 19.2"
+
+			Possible errors: none
 
 		string GetManufacturer()
 
-			Returns the manufacturer of the Bluetooth chip.
+			Returns the manufacturer of the Bluetooth chip. If
+			the company id is not know the sting "Company ID %d"
+			where %d should be replaced with the numeric value
+			from the manufacturer field.
 
 			Example: "Cambridge Silicon Radio"
+
+			Possible errors: none
 
 		string GetCompany()
 
@@ -94,14 +152,13 @@ Methods		string GetAddress()
 			will be different from the manufacturer string in the
 			most cases.
 
+			If the oui.txt file is not present or the OUI part of
+			the BD_ADDR is not listed, it should return the
+			string "OUI %s" where %s is the actual OUI.
+
 			Example: "Apple Computer"
 
-		array{string} GetFeatures()
-
-			Returns list of features supported by the adapter. This
-			list is only for showing them in the UI. No application
-			should implement different behaviors based on these
-			strings.
+			Possible errors: none
 
 		string GetMode()
 
@@ -109,10 +166,14 @@ Methods		string GetAddress()
 
 			Valid modes: "off", "connectable", "discoverable"
 
+			Possible errors: none
+
 		void SetMode(string mode)
 
 			Sets mode of the adapter. See GetMode for valid strings
 			for the mode parameter.
+
+			Possible errors: org.bluez.Error.Failed
 
 		uint32 GetDiscoverableTimeout()
 
@@ -123,6 +184,8 @@ Methods		string GetAddress()
 			The default value for the discoverable timeout should
 			be 180 seconds (3 minutes).
 
+			Possible errors: none
+
 		void SetDiscoverableTimeout(uint32 timeout)
 
 			Sets the discoverable timeout in seconds. A value of
@@ -132,6 +195,8 @@ Methods		string GetAddress()
 			Changing this value doesn't set the adapter into
 			discoverable mode. The SetMode method must be used.
 
+			Possible errors: org.bluez.Error.Failed
+
 		boolean IsConnectable()
 
 			Returns true if the local adapter is connectable and
@@ -139,6 +204,8 @@ Methods		string GetAddress()
 
 			It is also possible to use GetMode to retrieve this
 			information.
+
+			Possible errors: none
 
 		boolean IsDiscoverable()
 
@@ -148,43 +215,85 @@ Methods		string GetAddress()
 			It is also possible to use GetMode to retrieve this
 			information.
 
+			Possible errors: none
+
 		string GetMajorClass()
 
 			Returns the current major class value for this
 			system. This value is set to "computer" for now.
+
+			If the major class can't be matched by a string
+			the decimal value as string should be returned.
+
+			Possible errors: none
+
+		array{string} ListAvailableMinorClasses()
+
+			Returns a list of available minor classes for the
+			currently used major class. At the moment this should
+			only return a list of minor classes if the major
+			class is set to "computer".
+
+			If the major class is not "computer" an error should
+			be returned.
+
+			Possible errors: org.bluez.Error.UnsupportedMajorClass
 
 		string GetMinorClass()
 
 			Returns the current minor class value for this
 			system where the default major class is "computer".
 
+			If the major class is not "computer" an error should
+			be returned.
+
 			Valid values: "uncategorized", "desktop", "server",
 			              "laptop", "handheld", "palm", "wearable"
 
 			The default value is "uncategorized".
+
+			Possible errors: org.bluez.Error.UnsupportedMajorClass
 
 		void SetMinorClass(string minor)
 
 			Sets the local minor class and on success it sends
 			a MinorClassChanged signal.
 
+			If the major class is not "computer" an error should
+			be returned.
+
+			Possible errors: org.bluez.Error.UnsupportedMajorClass
+
 		array{string} GetServiceClasses()
 
 			Returns the current set of service classes.
+
+			In the case no service classes are set (when no
+			service has been registered) an empty list should
+			be returned.
 
 			Valid values: "positioning", "networking", "rendering",
 			              "capturing", "object transfer", "audio",
 			              "telephony", "information"
 
+			Possible errors: none
+
 		string GetName()
 
 			Returns the local adapter name (friendly name) in UTF-8.
 
+			Possible errors: none
+
 		void SetName(string name)
 
-			Sets the local adapter name. If EIR is supported by the
-			local hardware this modifies also the extended response
-			data value.
+			Sets the local adapter name. If EIR is supported by
+			the local hardware this modifies also the extended
+			response data value.
+
+			Possible errors: org.bluez.Error.Failed
+
+			Questions: What to do (in case of EIR) if one
+			           low-level API call fails.
 
 		string GetRemoteVersion(string address)
 
@@ -193,7 +302,14 @@ Methods		string GetAddress()
 			data. The base for this string is the LMP version
 			value and the features for EDR support.
 
+			In case the remote address is unknown, it should
+			return the error UnkownAddress and if the data is
+			not available it should return NotAvailable.
+
 			Example: "Bluetooth 2.0 + EDR"
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotAvailable
 
 		string GetRemoteRevision(string address)
 
@@ -204,11 +320,17 @@ Methods		string GetAddress()
 
 			Example: "HCI 19.2"
 
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotAvailable
+
 		string GetRemoteManufacturer(string address)
 
 			Get the manufacturer of the chip for a remote device.
 
 			Example: "Nokia Mobile Phones"
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotAvailable
 
 		string GetRemoteCompany(string address)
 
@@ -220,26 +342,33 @@ Methods		string GetAddress()
 
 			Example: "Microsoft Corporation"
 
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotAvailable
+
 		string GetRemoteName(string address)
 
 			Get adapter name for a remote device. This request
 			returns always a cached name. The service daemon is
 			responsible for updating the cache.
 
-			If this is an empty value, then no remote name
-			available at the moment. The UI should show the
-			address in this case.
+			If this is an empty string, the UI might wanna
+			display the BD_ADDR instead.
 
 			Example: "00:11:22:33:44:55", "Nokia 770"
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotAvailable
 
 		string GetRemoteAlias(string address)
 
 			Returns alias name for remote device. If this is
-			an empty value, then no alias has been defined so far.
-			This is the default case and the UI should show the
+			an empty string value, the UI should show the
 			remote name instead.
 
 			An alias should supersede the remote name.
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotAvailable
 
 		void SetRemoteAlias(string address, string alias)
 
@@ -251,12 +380,30 @@ Methods		string GetAddress()
 			to update their current display of the remote device
 			name.
 
+			Possible errors: org.bluez.Error.Failed
+			                 org.bluez.Error.UnknownAddress
+
+		void ClearRemoteAlias(string address)
+
+			Resets alias name for remote device. If there is no
+			alias set for the device this method will silently
+			succeed, but no RemoteAliasCleared signal has to be
+			sent in this case.
+
+			On success the ClearRemoteAlias method will produce
+			a RemoteAliasCleared signal.
+
+			Possible errors: org.bluez.Error.Failed
+			                 org.bluez.Error.UnknownAddress
+
 		string LastSeen(string address)
 
 			Returns the date and time when the adapter has been
 			seen by a discover procedure.
 
 			Example: "2006-02-08 12:00:00 GMT"
+
+			Question: Can we find a better name?
 
 		string LastUsed(string address)
 
@@ -265,6 +412,8 @@ Methods		string GetAddress()
 
 			Example: "2006-02-08 12:00:00 GMT"
 
+			Question: Can we find a better name?
+
 		void CreateBonding(string address)
 
 			This method creates a bonding with a remote device.
@@ -272,6 +421,37 @@ Methods		string GetAddress()
 			If a link key for this adapter already exists, this
 			procedure should fail instead of trying to create a
 			new pairing.
+
+			If no connection to the remote device exists, a
+			low-level ACL connection must be created.
+
+			This function will block and the calling application
+			should take care of setting are higher timeout. This
+			might be needed in case of a page timeout from the
+			low-level HCI commands.
+
+			In case of success it will send a BondingCreated
+			signal.
+
+			Possible errors: org.bluez.Error.Failed
+			                 org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.BondingAlreadyExists
+			                 org.bluez.Error.BondingInProgress
+			                 org.bluez.Error.ConnectionAttemptFailed
+			                 org.bluez.Error.AuthenticationFailed
+			                 org.bluez.Error.AuthenticationTimeout
+			                 org.bluez.Error.AuthenticationRejected
+			                 org.bluez.Error.AuthenticationCanceled
+
+		void CancelBondingProcess(string address)
+
+			This method will cancel the CreateBonding process.
+
+			The CreateBonding method will return AuthenticationCanceled
+			to signal that an attempt to create a bonding has been
+			canceled.
+
+			Possible errors: org.bluez.Error.UnknownAddress
 
 		void RemoveBonding(string address)
 
@@ -284,19 +464,32 @@ Methods		string GetAddress()
 			If the link key was stored on the Bluetooth chip, it
 			must be removed from there, too.
 
+			After deleting the link key this method will send a
+			BondingRemoved signal.
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.BondingDoesNotExists
+
 		boolean HasBonding(string address)
 
 			Returns true if the remote device is bonded and false
 			if no link key is available.
 
+			Possible errors: org.bluez.Error.UnknownAddress
+
 		array{string} ListBondings()
 
 			List device addresses of currently bonded adapter.
+
+			Possible errors: org.bluez.Error.UnknownAddress
 
 		uint8 GetPinCodeLength(string address)
 
 			Returns the PIN code length that was used in the
 			pairing process.
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.BondingDoesNotExists
 
 		uint8 GetEncryptionKeySize(string address)
 
@@ -304,6 +497,10 @@ Methods		string GetAddress()
 
 			This method will fail if no connection to that adapter
 			has been established.
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotConnected
+			                 org.bluez.Error.BondingDoesNotExists
 
 Signals		void ModeChanged(string mode)
 
@@ -333,16 +530,18 @@ Signals		void ModeChanged(string mode)
 
 		void RemoteAliasChanged(string address, string alias)
 
-			After changing an alias with SetRemoteAlias this signal
-			will indicate the new alias.
+			After changing an alias with SetRemoteAlias this
+			signal will indicate the new alias.
+
+		void RemoteAliasCleared(string address)
+
+			After removing an alias with ClearRemoteAlias this
+			signal will indicate that the alias is no longer
+			valid.
 
 		void BondingCreated(string address)
 
 			Signals that a successful bonding has been created.
-
-		void BondingFailed(string address)
-
-			Signals that a bonding has failed.
 
 		void BondingRemoved(string address)
 
