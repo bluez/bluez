@@ -358,7 +358,7 @@ Methods		string GetAddress()
 			signal will be send and if a failure happens it will
 			be indicated by a RemoteNameFailed signal.
 
-			If this is an empty string, the UI might wanna
+			If this is an empty string, the UI might want to
 			display the BD_ADDR instead.
 
 			Example: "00:11:22:33:44:55", "Nokia 770"
@@ -455,9 +455,9 @@ Methods		string GetAddress()
 
 			This method will cancel the CreateBonding process.
 
-			The CreateBonding method will return AuthenticationCanceled
-			to signal that an attempt to create a bonding has been
-			canceled.
+			The CreateBonding method will return
+			AuthenticationCanceled to signal that an attempt to
+			create a bonding has been canceled.
 
 			Possible errors: org.bluez.Error.UnknownAddress
 
@@ -489,7 +489,7 @@ Methods		string GetAddress()
 
 			List device addresses of currently bonded adapter.
 
-			Possible errors: org.bluez.Error.UnknownAddress
+			Possible errors: none
 
 		uint8 GetPinCodeLength(string address)
 
@@ -503,7 +503,7 @@ Methods		string GetAddress()
 
 			Returns the currently used encryption key size.
 
-			This method will fail if no connection to that adapter
+			This method will fail if no connection to the address
 			has been established.
 
 			Possible errors: org.bluez.Error.UnknownAddress
@@ -512,7 +512,7 @@ Methods		string GetAddress()
 
 		void DiscoverDevices()
 
-			This method starts the discovery procedure. This
+			This method starts the device discovery procedure. This
 			includes an inquiry procedure and remote device name
 			resolving.
 
@@ -525,12 +525,12 @@ Methods		string GetAddress()
 
 		void DiscoverDevicesWithoutNameResolving()
 
-			This method starts the discovery procedure. This
-			includes an inquiry and an optional remote device
-			name resolving. The remote names can be retrieved
-			with GetRemoteName and in the case a name doesn't
-			exists it will be queued for later resolving and
-			GetRemoteName will return an error.
+			This method starts the device discovery procedure. This
+			includes an inquiry and an optional remote device name
+			resolving. The remote names can be retrieved with
+			GetRemoteName and in the case a name doesn't exist it
+			will be queued for later resolving and GetRemoteName
+			will return an error.
 
 			While this procedure is running every found device
 			will be returned with RemoteDeviceFound. While
@@ -574,7 +574,7 @@ Signals		void ModeChanged(string mode)
 			This signal indicates that a device discovery
 			procedure has been started.
 
-		void DiscoverCompleted()
+		void DiscoveryCompleted()
 
 			This signal indicates that a device discovery
 			procedure has been completed.
@@ -630,7 +630,7 @@ Methods		string Connect(string address, string service)
 			a UUID-32, a UUID-128 or a service abbreviation.
 
 			The return value will be the path of the newly
-			creates RFCOMM TTY device (for example /dev/rfcomm0).
+			created RFCOMM TTY device (for example /dev/rfcomm0).
 
 			If the application disconnects from the D-Bus this
 			connection will be terminated.
@@ -654,9 +654,9 @@ Methods		string Connect(string address, string service)
 		void Disconnect(string device)
 
 			This will disconnect a previously connected RFCOMM
-			service. The device parameter must the return value
-			from the previous Connect or ConnectByChannel method
-			calls (for example /dev/rfcomm0).
+			service. The device parameter must be the return value
+			from a previous Connect or ConnectByChannel method
+			call (for example /dev/rfcomm0).
 
 		string Bind(string address, string service)
 
@@ -670,7 +670,7 @@ Methods		string Connect(string address, string service)
 Signals		void Connected(string address, byte channel, string service)
 
 			This signal will be issued once a RFCOMM connection
-			has been established trough Connect or ConnectByChannel
+			has been established through Connect or ConnectByChannel
 			and the service will be translated into a profile if
 			it is known. Otherwise the UUID will be listed. If
 			no UUID or service name is available it will be an
