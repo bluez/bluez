@@ -351,6 +351,13 @@ Methods		string GetAddress()
 			returns always a cached name. The service daemon is
 			responsible for updating the cache.
 
+			If no remote name is available, then this function
+			will return RequestDeferred. In this case the service
+			daemon will try to resolve the name at the next
+			possible opportunity. On success a RemoteNameUpdated
+			signal will be send and if a failure happens it will
+			be indicated by a RemoteNameFailed signal.
+
 			If this is an empty string, the UI might wanna
 			display the BD_ADDR instead.
 
@@ -358,6 +365,7 @@ Methods		string GetAddress()
 
 			Possible errors: org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.NotAvailable
+			                 org.bluez.Error.RequestDeferred
 
 		string GetRemoteAlias(string address)
 
@@ -502,6 +510,44 @@ Methods		string GetAddress()
 			                 org.bluez.Error.NotConnected
 			                 org.bluez.Error.BondingDoesNotExists
 
+		void DiscoverDevices()
+
+			This method starts the discovery procedure. This
+			includes an inquiry procedure and remote device name
+			resolving.
+
+			On start up this process will generate a DiscoveryStart
+			signal and then return RemoteDeviceFound and also
+			RemoteNameUpdated signals. If the procedure has been
+			finished an DiscoveryCompleted signal will be sent.
+
+			Possible errors: org.bluez.Error.InProgress
+
+		void DiscoverDevicesWithoutNameResolving()
+
+			This method starts the discovery procedure. This
+			includes an inquiry and an optional remote device
+			name resolving. The remote names can be retrieved
+			with GetRemoteName and in the case a name doesn't
+			exists it will be queued for later resolving and
+			GetRemoteName will return an error.
+
+			While this procedure is running every found device
+			will be returned with RemoteDeviceFound. While
+			DiscoverDevices() automatically resolves unknown
+			devices names and sends RemoteNameUpdated in this
+			case it will only happen if GetRemoteName has been
+			called and no previously stored name is available.
+
+			Possible errors: org.bluez.Error.InProgress
+
+		void CancelDiscovery()
+
+			This method will cancel any previous DiscoverDevices
+			or DiscoverDevicesWithoutNameResolving actions.
+
+			Possible errors: org.bluez.Error.InProgress
+
 Signals		void ModeChanged(string mode)
 
 			If the current mode is changed with SetMode this signal
@@ -523,10 +569,32 @@ Signals		void ModeChanged(string mode)
 			This signal can also be triggered by low-level HCI
 			commands.
 
-		void RemoteNameChanged(string address, string name)
+		void DiscoveryStart()
+
+			This signal indicates that a device discovery
+			procedure has been started.
+
+		void DiscoverCompleted()
+
+			This signal indicates that a device discovery
+			procedure has been completed.
+
+		void RemoteDeviceFound(string address, int16 rssi,
+		                       string major, string minor, string service)
+
+			This signal will be send every time an inquiry result
+			has been found by the service daemon. In general they
+			only appear during a device discovery.
+
+		void RemoteNameUpdated(string address, string name)
 
 			This signal will be send every time the service daemon
 			detect a new name for a remote device.
+
+		void RemoteNameFailed(string address)
+
+			This signal will be send every time the service daemon
+			tries to resolve a remote and this fails.
 
 		void RemoteAliasChanged(string address, string alias)
 
