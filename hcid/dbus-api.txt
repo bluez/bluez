@@ -614,3 +614,70 @@ Signals		void ModeChanged(string mode)
 		void BondingRemoved(string address)
 
 			Signals that a bonding was removed.
+
+
+RFCOMM hierarchy
+================
+
+Service		org.bluez
+Interface	org.bluez.RFCOMM
+Object path	/org/bluez/Adapter/{hci0,hci1,...}/
+
+Methods		string Connect(string address, string service)
+
+			This creates a connection to a remote RFCOMM based
+			service. The service string can either be a UUID-16,
+			a UUID-32, a UUID-128 or a service abbreviation.
+
+			The return value will be the path of the newly
+			creates RFCOMM TTY device (for example /dev/rfcomm0).
+
+			If the application disconnects from the D-Bus this
+			connection will be terminated.
+
+			Valid service values: "vcp", "map", "pbap", "sap",
+			                      "ftp", "bpp", "bip", "synch",
+			                      "dun", "opp", "fax", "spp"
+
+		string ConnectByChannel(string address, byte channel)
+
+			This creates a connection to a remote RFCOMM based
+			service. In comparison to Connect a channel number
+			is needed.
+
+			The return value will be the path of the newly
+			creates RFCOMM TTY device (for example /dev/rfcomm0).
+
+			If the application disconnects from the D-Bus this
+			connection will be terminated.
+
+		string Disconnect(string device)
+
+			This will disconnect a previously connected RFCOMM
+			service. The device parameter must the return value
+			from the previous Connect or ConnectByChannel method
+			calls (for example /dev/rfcomm0).
+
+		void Bind(string address, string service)
+
+		string BindByChannel(string address, byte channel)
+
+		void Release(string device)
+
+		array{string} ListBindings()
+
+
+Signals		void Connected(string address, byte channel, string service)
+
+			This signal will be issued once a RFCOMM connection
+			has been established trough Connect or ConnectByChannel
+			and the service will be translated into a profile if
+			it is known. Otherwise the UUID will be listed. If
+			no UUID or service name is available it will be an
+			empty string.
+
+		void Disconnected(string address, byte channel, string service)
+
+			This signal will be issued if a RFCOMM connection
+			gets terminated through Disconnect or of the caller
+			application disconnects from the D-Bus.
