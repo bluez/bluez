@@ -4,8 +4,8 @@ D-Bus API description for BlueZ
 Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
 
 
-Error hierachy
-==============
+Error hierarchy
+===============
 
 Interface	org.bluez.Error
 
@@ -569,7 +569,7 @@ Signals		void ModeChanged(string mode)
 			This signal can also be triggered by low-level HCI
 			commands.
 
-		void DiscoveryStart()
+		void DiscoveryStarted()
 
 			This signal indicates that a device discovery
 			procedure has been started.
@@ -593,7 +593,7 @@ Signals		void ModeChanged(string mode)
 
 		void RemoteNameFailed(string address)
 
-			This signal will be send every time the service daemon
+			This signal will be sent every time the service daemon
 			tries to resolve a remote and this fails.
 
 		void RemoteAliasChanged(string address, string alias)
@@ -642,8 +642,8 @@ Methods		string Connect(string address, string service)
 		string ConnectByChannel(string address, byte channel)
 
 			This creates a connection to a remote RFCOMM based
-			service. In comparison to Connect a channel number
-			is needed.
+			service. In contrast to Connect a channel number is
+			needed.
 
 			The return value will be the path of the newly
 			creates RFCOMM TTY device (for example /dev/rfcomm0).
