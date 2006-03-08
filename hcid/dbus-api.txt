@@ -805,3 +805,23 @@ Signals		void Connected(string address, byte channel, string service)
 			This signal will be issued if a RFCOMM connection
 			gets terminated through Disconnect or of the caller
 			application disconnects from the D-Bus.
+
+
+SDP hierarchy
+=============
+
+Service		org.bluez
+Interface	org.bluez.SDP
+Object path	/org/bluez/Adapter/{hci0,hci1,...}/
+
+Methods		array{string} GetIdentifiers(string address)
+
+		array{string} GetIdentifiersByService(string address, string service)
+
+		string GetUUID(string identifier)
+
+		string GetName(string identifier)
+
+		string RegisterRFCOMM(string service, byte channel)
+
+		void UnregisterRFCOMM(string identifier)
