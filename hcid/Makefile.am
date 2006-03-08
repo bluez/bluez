@@ -19,7 +19,9 @@ noinst_SCRIPTS = dbus-test
 
 if DBUS
 dbus_hcid_sources = dbus.h dbus.c dbus-error.c \
-			dbus-manager.c dbus-adapter.c dbus-device.c
+			dbus-manager.c dbus-adapter.c \
+			dbus-device.c dbus-security.c \
+			dbus-rfcomm.c
 dbus_hcid_libs    = @DBUS_LIBS@
 dbus_hcid_cflags  = -DENABLE_DBUS -DDBUS_API_SUBJECT_TO_CHANGE
 else
