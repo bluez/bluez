@@ -223,6 +223,20 @@ Methods		string GetAddress()
 
 			Possible errors: none
 
+		boolean IsConnected(string address)
+
+			Return true if the local adapter is connected to
+			the remote device.
+
+			Possible errors: none
+
+		array{string} ListConnections()
+
+			Returns a list with addresses of currently connected
+			remote devices.
+
+			Possible errors: none
+
 		string GetMajorClass()
 
 			Returns the current major class value for this
@@ -612,6 +626,16 @@ Signals		void ModeChanged(string mode)
 			After removing an alias with ClearRemoteAlias this
 			signal will indicate that the alias is no longer
 			valid.
+
+		void RemoteDeviceConnected(string address)
+
+			This signal will be send if a low level connection
+			between two devices has been created.
+
+		void RemoteDeviceDisconnected(string address)
+
+			This signal will be send if a low level connection
+			between two devices has been terminated.
 
 		void BondingCreated(string address)
 
