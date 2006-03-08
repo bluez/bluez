@@ -19,6 +19,12 @@ Errors		Failed
 			Error returned when the argument list is invalid or
 			out of specification for the method.
 
+		NotAuthorized
+
+			Error returned when the caller of a method is not
+			authorized. This might happen if a caller tries to
+			terminate a connection that it hasn't created.
+
 		OutOfMemory
 
 			Error returned when a memory allocation via malloc()
@@ -639,6 +645,10 @@ Methods		string Connect(string address, string service)
 			                      "ftp", "bpp", "bip", "synch",
 			                      "dun", "opp", "fax", "spp"
 
+		void CancelConnect(string address, string service)
+
+			This method cancels a previous Connect method call.
+
 		string ConnectByChannel(string address, byte channel)
 
 			This creates a connection to a remote RFCOMM based
@@ -650,6 +660,11 @@ Methods		string Connect(string address, string service)
 
 			If the application disconnects from the D-Bus this
 			connection will be terminated.
+
+		void CancelConnectByChannel(string address, byte channel)
+
+			This method cancels a previous ConnectByChannel
+			method call.
 
 		void Disconnect(string device)
 
