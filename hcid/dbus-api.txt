@@ -2,6 +2,8 @@ D-Bus API description for BlueZ
 *******************************
 
 Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
+Copyright (C) 2005-2006  Claudio Takahasi <cktakahasi@gmail.com>
 
 
 Error hierarchy
