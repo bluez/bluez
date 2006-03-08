@@ -622,6 +622,91 @@ Signals		void ModeChanged(string mode)
 			Signals that a bonding was removed.
 
 
+Security hierarchy
+==================
+
+Service		org.bluez
+Interface	org.bluez.Security
+Object path	/org/bluez/Manager/
+		/org/bluez/Adapter/{hci0,hci1,...}/
+
+Methods		void RegisterDefaultPasskeyAgent(string path)
+
+			This registers the default passkey agent. It can
+			register a passkey for all adapters or for a
+			specific device depending on with object path has
+			been used.
+
+			The path parameter defines the object path of the
+			passkey agent that will be called when a passkey
+			needs to be entered.
+
+			If an application disconnects from the bus all
+			registered passkey agent will be removed.
+
+			Possible errors: org.bluez.Error.AlreadyExists
+
+		void UnregisterDefaultPasskeyAgent(string path)
+
+			This unregisters a default passkey agent that has
+			been previously registered. The object path and
+			the path parameter must match the same values that
+			has been used on registration.
+
+			Possible errors: org.bluez.Error.DoesNotExists
+
+		void RegisterPasskeyAgent(string path, string address)
+
+			This registers the application passkey agent that
+			will be used for any application specific passkey
+			tasks.
+
+			The path parameter defines the object path of the
+			passkey agent that will be called when a passkey
+			needs to be entered. The address defines the remote
+			device that it will answer passkey requests for.
+
+			If an application disconnects from the bus all
+			registered passkey agent will be removed. It will
+			also be unregistered after a timeout and if the
+			pairing succeeds or fails. The application has to
+			take care of that it reregisters the passkey agent.
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.AlreadyExists
+
+		void UnregisterPasskeyAgent(string path, string address)
+
+			This unregisters a passkey agent that has been
+			previously registered. The object path and the path
+			and address parameter must match the same values
+			that has been used on registration.
+
+			The method is actually only needed if an application
+			wants to removed the passkey agent and don't wanna
+			wait for the automatic timeout.
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.DoesNotExists
+
+
+PasskeyAgent hierarchy
+======================
+
+Service		unique name
+Interface	org.bluez.PasskeyAgent
+Object path	freely definable
+
+Methods		string Request(string address)
+
+			This method gets called when the service daemon
+			needs to get the passkey for an authentication. The
+			return value is actual passkey.
+
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
+
 RFCOMM hierarchy
 ================
 
