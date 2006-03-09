@@ -3,6 +3,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -26,7 +27,8 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <errno.h>
+#include <malloc.h>
 
 #include "list.h"
 

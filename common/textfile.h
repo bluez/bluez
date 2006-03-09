@@ -21,6 +21,9 @@
  *
  */
 
+#ifndef __TEXTFILE_H
+#define __TEXTFILE_H
+
 int create_dirs(const char *filename, const mode_t mode);
 int create_file(const char *filename, const mode_t mode);
 
@@ -30,3 +33,5 @@ char *textfile_get(const char *pathname, const char *key);
 
 int textfile_foreach(const char *pathname,
 		void (*func)(char *key, char *value, void *data), void *data);
+
+#endif /* __TEXTFILE_H */
