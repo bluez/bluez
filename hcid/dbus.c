@@ -64,6 +64,49 @@ static volatile sig_atomic_t __timeout_active = 0;
 #define PIN_REQUEST "PinRequest"
 #define PINAGENT_PATH BASE_PATH "/PinAgent"
 
+static const char *services_cls[] = {
+	"positioning",
+	"networking",
+	"rendering",
+	"capturing",
+	"object transfer",
+	"audio",
+	"telephony",
+	"information"
+};
+
+static const char *major_cls[] = {
+	"miscellaneous",
+	"computer",
+	"phone",
+	"access point",
+	"audio/video",
+	"peripheral",
+	"imaging",
+	"wearable",
+	"toy",
+	"uncategorized"
+};
+
+static const char *computer_minor_cls[] = {
+	"uncategorized",
+	"desktop",
+	"server",
+	"laptop",
+	"handheld",
+	"palm",
+	"wearable"
+};
+
+static const char *phone_minor_cls[] = {
+	"uncategorized",
+	"cellular",
+	"cordless",
+	"smart phone",
+	"modem",
+	"isdn"
+};
+
 struct pin_request {
 	int dev;
 	bdaddr_t sba;
@@ -585,14 +628,17 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 {
 	char filename[PATH_MAX + 1];
 	DBusMessage *message = NULL;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
 	char path[MAX_PATH_LENGTH];
 	char *local_addr, *peer_addr, *name = NULL;
-	const char *service = "none";
-	const char *major_class = "none";
-	const char *minor_class = "none";
-	dbus_int16_t tmp_rssi = rssi;
+	const char *major_ptr;
+	char invalid_minor_class[] = "";
+	const char *minor_ptr = invalid_minor_class;
+	const dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
-	int id;
+	int id, i;
+	uint8_t service_index, major_index, minor_index;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	baswap(&tmp, peer); peer_addr = batostr(&tmp);
@@ -612,13 +658,40 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		goto failed;
 	}
 
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &peer_addr,
-					DBUS_TYPE_INT16, &tmp_rssi,
-					DBUS_TYPE_STRING, &major_class,
-					DBUS_TYPE_STRING, &minor_class,
-					DBUS_TYPE_STRING, &service,
-					DBUS_TYPE_INVALID);
+	/* get the major class */
+	major_index = (class >> 8) & 0x1F;
+	if (major_index > 8)
+		major_ptr = major_cls[9]; /* set to uncategorized */
+	else
+		major_ptr = major_cls[major_index];
+
+	/* get the minor class */
+	minor_index = (class >> 2) & 0x3F;
+	switch (major_index) {
+	case 1: /* computer */
+		minor_ptr = computer_minor_cls[minor_index];
+		break;
+	case 2: /* phone */
+		minor_ptr = phone_minor_cls[minor_index];
+		break;
+	}
+
+	dbus_message_iter_init_append(message, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &peer_addr);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_INT16, &tmp_rssi);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &major_ptr);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &minor_ptr);
+
+	/* add the service classes */
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	service_index = class >> 16;
+	for (i = 0; i < (sizeof(services_cls) / sizeof(*services_cls)); i++)
+		if (service_index & (1 << i))
+			dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &services_cls[i]);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
 		syslog(LOG_ERR, "Can't send D-Bus inquiry result message");
@@ -628,10 +701,10 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, local_addr);
 
 	name = textfile_get(filename, peer_addr);
-	
+
 	if (!name)
 		goto failed;
-			
+
 	dbus_message_unref(message);
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
