@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -265,14 +264,14 @@ static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 		rq.rlen   = sizeof(status);
 
 		if (hci_send_req(dd, &rq, 100) < 0) {
-			syslog(LOG_ERR, "Sending write scan enable command failed: %s (%d)",
+			error("Sending write scan enable command failed: %s (%d)",
 							strerror(errno), errno);
 			hci_close_dev(dd);
 			return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		}
 
 		if (status) {
-			syslog(LOG_ERR, "Setting scan enable failed with status 0x%02x", status);
+			error("Setting scan enable failed with status 0x%02x", status);
 			hci_close_dev(dd);
 			return bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
 		}
@@ -391,7 +390,7 @@ static DBusMessage *handle_dev_get_minor_class_req(DBusMessage *msg, void *data)
 		return error_no_such_adapter(msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
+		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
 		return error_failed(msg, -errno);
@@ -457,7 +456,7 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 		return error_no_such_adapter(msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
+		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto failed;
@@ -474,7 +473,7 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 	write_local_class(&bdaddr, cls);
 
 	if (hci_write_class_of_dev(dd, dev_class, 2000) < 0) {
-		syslog(LOG_ERR, "Can't write class of device on hci%d: %s(%d)",
+		error("Can't write class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto failed;
@@ -512,7 +511,7 @@ static DBusMessage *handle_dev_get_service_classes_req(DBusMessage *msg, void *d
 		return error_no_such_adapter(msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
+		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
 		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
@@ -574,7 +573,7 @@ static DBusMessage *handle_dev_set_name_req(DBusMessage *msg, void *data)
 	dbus_message_iter_get_basic(&iter, &str_ptr);
 
 	if (strlen(str_ptr) == 0) {
-		syslog(LOG_ERR, "Name change failed: Invalid parameter");
+		error("Name change failed: Invalid parameter");
 		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 	}
 
@@ -756,7 +755,7 @@ static DBusMessage *handle_dev_set_remote_alias_req(DBusMessage *msg, void *data
 	dbus_message_iter_get_basic(&iter, &str_ptr);
 
 	if (strlen(str_ptr) == 0) {
-		syslog(LOG_ERR, "Alias change failed: Invalid parameter");
+		error("Alias change failed: Invalid parameter");
 		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
 	}
 
@@ -907,7 +906,7 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Unable to send authentication request: %s (%d)",
+		error("Unable to send authentication request: %s (%d)",
 							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto done;
@@ -959,7 +958,7 @@ static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 	/* Close active connections for the remote device */
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr) {
-		syslog(LOG_ERR, "Can't allocate memory");
+		error("Can't allocate memory");
 		hci_close_dev(dd);
 		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
 	}
@@ -974,7 +973,7 @@ static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 
 	/* Send the HCI disconnect command */
 	if (hci_disconnect(dd, htobs(cr->conn_info->handle), HCI_OE_USER_ENDED_CONNECTION, 1000) < 0) {
-		syslog(LOG_ERR, "Disconnect failed");
+		error("Disconnect failed");
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto failed;
 	}
@@ -1159,7 +1158,7 @@ static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data
 	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Unable to start inquiry: %s (%d)",
+		error("Unable to start inquiry: %s (%d)",
 							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto failed;
@@ -1192,14 +1191,14 @@ static DBusMessage *handle_dev_cancel_discovery_req(DBusMessage *msg, void *data
 	rq.rlen   = sizeof(status);
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending cancel inquiry failed: %s (%d)",
+		error("Sending cancel inquiry failed: %s (%d)",
 							strerror(errno), errno);
 		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		goto failed;
 	}
 
 	if (status) {
-		syslog(LOG_ERR, "Cancel inquiry failed with status 0x%02x", status);
+		error("Cancel inquiry failed with status 0x%02x", status);
 		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
 		goto failed;
 	}
@@ -1278,21 +1277,20 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	const char *method;
 	const char *signature;
 	const char *iface;
-	uint32_t error = BLUEZ_EDBUS_UNKNOWN_METHOD;
+	uint32_t err = BLUEZ_EDBUS_UNKNOWN_METHOD;
 
 	method = dbus_message_get_member(msg);
 	signature = dbus_message_get_signature(msg);
 	iface = dbus_message_get_interface(msg);
 
-	syslog(LOG_INFO, "Adapter path:%s method:%s",
-					dbus_message_get_path(msg), method);
+	info("Adapter path:%s method:%s", dbus_message_get_path(msg), method);
 
 	if (strcmp(ADAPTER_INTERFACE, iface))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (dbus_data->path_id == ADAPTER_ROOT_ID) {
 		/* Adapter is down(path unregistered) or the path is wrong */
-		error = BLUEZ_EDBUS_UNKNOWN_PATH;
+		err = BLUEZ_EDBUS_UNKNOWN_PATH;
 		goto failed;
 	}
 
@@ -1303,24 +1301,24 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 
 		if (!strcmp(handlers->signature, signature)) {
 			reply = handlers->handler_func(msg, data);
-			error = 0;
+			err = 0;
 			break;
 		} else {
 			/* Set the error, but continue looping incase there is
 			 * another method with the same name but a different
 			 * signature */
-			error = BLUEZ_EDBUS_WRONG_SIGNATURE;
+			err = BLUEZ_EDBUS_WRONG_SIGNATURE;
 			continue;
 		}
 	}
 
 failed:
-	if (error)
-		reply = bluez_new_failure_msg(msg, error);
+	if (err)
+		reply = bluez_new_failure_msg(msg, err);
 
 	if (reply) {
 		if (!dbus_connection_send (conn, reply, NULL))
-			syslog(LOG_ERR, "Can't send reply message");
+			error("Can't send reply message");
 
 		dbus_message_unref(reply);
 	}
