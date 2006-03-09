@@ -45,6 +45,10 @@
 
 #include <netinet/in.h>
 
+#ifndef APPLE_AGENT_SVCLASS_ID
+#define APPLE_AGENT_SVCLASS_ID 0x2112
+#endif
+
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, 0)) != -1)
 
 /*
