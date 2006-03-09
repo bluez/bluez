@@ -29,7 +29,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <syslog.h>
 #include <string.h>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -38,6 +37,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+
+#include "hcid.h"
 
 #include "textfile.h"
 #include "oui.h"
@@ -86,28 +87,6 @@ struct hci_dev {
 static struct hci_dev devices[MAX_DEVICES];
 
 #define ASSERT_DEV_ID { if (dev_id >= MAX_DEVICES) return -ERANGE; }
-
-static void info(const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-
-	vsyslog(LOG_INFO, format, ap);
-
-	va_end(ap);
-}
-
-static void err(const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-
-	vsyslog(LOG_ERR, format, ap);
-
-	va_end(ap);
-}
 
 void init_devices(void)
 {
@@ -164,13 +143,13 @@ int start_device(uint16_t dev_id)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		err("Can't open device hci%d",
+		error("Can't open device hci%d",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
 
 	if (hci_read_local_version(dd, &ver, 1000) < 0) {
-		err("Can't read version info for hci%d: %s (%d)",
+		error("Can't read version info for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
@@ -213,13 +192,13 @@ int get_device_address(uint16_t dev_id, char *address, size_t size)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		err("Can't open device hci%d",
+		error("Can't open device hci%d",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
 
 	if (hci_read_bd_addr(dd, &dev->bdaddr, 2000) < 0) {
-		err("Can't read address for hci%d: %s (%d)",
+		error("Can't read address for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
@@ -269,7 +248,7 @@ static int digi_revision(uint16_t dev_id, char *revision, size_t size)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		err("Can't open device hci%d",
+		error("Can't open device hci%d",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
@@ -283,7 +262,7 @@ static int digi_revision(uint16_t dev_id, char *revision, size_t size)
 	rq.rlen   = sizeof(buf);
 
 	if (hci_send_req(dd, &rq, 2000) < 0) {
-		err("Can't read revision for hci%d: %s (%d)",
+		error("Can't read revision for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
@@ -361,13 +340,13 @@ int get_device_name(uint16_t dev_id, char *name, size_t size)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		err("Can't open device hci%d",
+		error("Can't open device hci%d",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
 
 	if (hci_read_local_name(dd, sizeof(tmp), tmp, 2000) < 0) {
-		err("Can't read name for hci%d: %s (%d)",
+		error("Can't read name for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
@@ -387,13 +366,13 @@ int set_device_name(uint16_t dev_id, const char *name)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		err("Can't open device hci%d",
+		error("Can't open device hci%d",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
 
 	if (hci_write_local_name(dd, name, 5000) < 0) {
-		err("Can't read name for hci%d: %s (%d)",
+		error("Can't read name for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}

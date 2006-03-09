@@ -24,7 +24,6 @@
  */
 
 #include <time.h>
-#include <syslog.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
@@ -189,7 +188,7 @@ static inline int find_conn(int dd, int dev_id, long arg)
 
 	cl = malloc(10 * sizeof(*ci) + sizeof(*cl));
 	if (!cl) {
-		syslog(LOG_ERR, "Can't allocate memory");
+		error("Can't allocate memory");
 		return 0;
 	}
 
@@ -198,7 +197,7 @@ static inline int find_conn(int dd, int dev_id, long arg)
 	ci = cl->conn_info;
 
 	if (ioctl(dd, HCIGETCONNLIST, (void *) cl)) {
-		syslog(LOG_ERR, "Can't get connection list");
+		error("Can't get connection list");
 		return 0;
 	}
 

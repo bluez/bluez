@@ -36,7 +36,6 @@
 #include <malloc.h>
 #include <string.h>
 #include <signal.h>
-#include <syslog.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
@@ -68,7 +67,7 @@ void toggle_pairing(int enable)
 	else
 		pairing = 0;
 
-	syslog(LOG_INFO, "Pairing %s", pairing ? "enabled" : "disabled");
+	info("Pairing %s", pairing ? "enabled" : "disabled");
 }
 
 static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
@@ -134,7 +133,7 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	int err;
 
 	ba2str(sba, sa); ba2str(dba, da);
-	syslog(LOG_INFO, "link_key_request (sba=%s, dba=%s)", sa, da);
+	info("link_key_request (sba=%s, dba=%s)", sa, da);
 
 	err = read_link_key(sba, dba, key);
 	if (err < 0) {
@@ -158,7 +157,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	int dev_id;
 
 	ba2str(sba, sa); ba2str(dba, da);
-	syslog(LOG_INFO, "link_key_notify (sba=%s, dba=%s)", sa, da);
+	info("link_key_notify (sba=%s, dba=%s)", sa, da);
 
 	dev_id = hci_devid(sa);
 
@@ -184,7 +183,7 @@ static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
 		bacpy(&dba, ptr); ba2str(&dba, da);
 		memcpy(key, ptr + 6, 16);
 
-		syslog(LOG_INFO, "return_link_keys (sba=%s, dba=%s)", sa, da);
+		info("return_link_keys (sba=%s, dba=%s)", sa, da);
 
 		ptr += 22;
 	}
@@ -225,14 +224,14 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Can't fork PIN helper: %s (%d)",
+			error("Can't fork PIN helper: %s (%d)",
 							strerror(errno), errno);
 		default:
 			return;
 	}
 
 	if (access(hcid.pin_helper, R_OK | X_OK)) {
-		syslog(LOG_ERR, "Can't exec PIN helper %s: %s (%d)",
+		error("Can't exec PIN helper %s: %s (%d)",
 					hcid.pin_helper, strerror(errno), errno);
 		goto reject;
 	}
@@ -277,7 +276,7 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	pipe = popen(str, "r");
 	if (!pipe) {
-		syslog(LOG_ERR, "Can't exec PIN helper: %s (%d)",
+		error("Can't exec PIN helper: %s (%d)",
 							strerror(errno), errno);
 		goto reject;
 	}
@@ -308,7 +307,7 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 nopin:
 	if (!pin || strncmp("ERR", pin, 3))
-		syslog(LOG_ERR, "PIN helper exited abnormally with code %d", ret);
+		error("PIN helper exited abnormally with code %d", ret);
 
 reject:
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
@@ -339,7 +338,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	bacpy(&pr.bdaddr, dba);
 
 	ba2str(sba, sa); ba2str(dba, da);
-	syslog(LOG_INFO, "pin_code_request (sba=%s, dba=%s)", sa, da);
+	info("pin_code_request (sba=%s, dba=%s)", sa, da);
 
 	cr = malloc(sizeof(*cr) + sizeof(*ci));
 	if (!cr)
@@ -348,7 +347,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	bacpy(&cr->bdaddr, dba);
 	cr->type = ACL_LINK;
 	if (ioctl(dev, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		syslog(LOG_ERR, "Can't get conn info: %s (%d)",
+		error("Can't get conn info: %s (%d)",
 							strerror(errno), errno);
 		goto reject;
 	}
@@ -361,7 +360,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		err = read_link_key(sba, dba, key);
 		if (!err) {
 			ba2str(dba, da);
-			syslog(LOG_WARNING, "PIN code request for already paired device %s", da);
+			error("PIN code request for already paired device %s", da);
 			goto reject;
 		}
 	} else if (pairing == HCID_PAIRING_NONE)
@@ -729,10 +728,10 @@ void start_security_manager(int hdev)
 	if (chan)
 		return;
 
-	syslog(LOG_INFO, "Starting security manager %d", hdev);
+	info("Starting security manager %d", hdev);
 
 	if ((dev = hci_open_dev(hdev)) < 0) {
-		syslog(LOG_ERR, "Can't open device hci%d: %s (%d)",
+		error("Can't open device hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		return;
 	}
@@ -757,7 +756,7 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_DISCONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_AUTH_COMPLETE, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
-		syslog(LOG_ERR, "Can't set filter on hci%d: %s (%d)",
+		error("Can't set filter on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		close(dev);
 		return;
@@ -765,7 +764,7 @@ void start_security_manager(int hdev)
 
 	di = malloc(sizeof(*di));
 	if (!di) {
-		syslog(LOG_ERR, "Can't allocate device info buffer: %s (%d)",
+		error("Can't allocate device info buffer: %s (%d)",
 							strerror(errno), errno);
 		close(dev);
 		return;
@@ -773,7 +772,7 @@ void start_security_manager(int hdev)
 
 	di->dev_id = hdev;
 	if (ioctl(dev, HCIGETDEVINFO, (void *)di)) {
-		syslog(LOG_ERR, "Can't get device info: %s (%d)",
+		error("Can't get device info: %s (%d)",
 							strerror(errno), errno);
 		close(dev);
 		return;
@@ -803,7 +802,7 @@ void stop_security_manager(int hdev)
 	if (!chan)
 		return;
 
-	syslog(LOG_INFO, "Stoping security manager %d", hdev);
+	info("Stoping security manager %d", hdev);
 
 	/* this is a bit sneaky. closing the fd will cause the event
 	   loop to call us right back with G_IO_NVAL set, at which

@@ -32,7 +32,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <stdarg.h>
 
 #include <sys/socket.h>
@@ -317,7 +316,7 @@ bool: K_YES { $$ = 1; } | K_NO  { $$ = 0; };
 
 int yyerror(char *s) 
 {
-	syslog(LOG_ERR, "%s line %d", s, lineno);
+	error("%s line %d", s, lineno);
 	return 0;
 }
 
@@ -342,7 +341,7 @@ int read_config(char *file)
 	extern FILE *yyin;
 
 	if (!(yyin = fopen(file, "r"))) {
-		syslog(LOG_ERR,"Can not open %s", file);
+		error("Can't open config file %s", file);
 		return -1;
 	}
 

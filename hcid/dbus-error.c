@@ -116,13 +116,13 @@ static const char *bluez_dbus_error_to_str(const uint32_t ecode)
 	if (ecode & BLUEZ_ESYSTEM_OFFSET) {
 		/* System error */
 		raw_code = (~BLUEZ_ESYSTEM_OFFSET) & ecode;
-		syslog(LOG_INFO, "%s - msg:%s", __PRETTY_FUNCTION__, strerror(raw_code));
+		info("%s - msg:%s", __PRETTY_FUNCTION__, strerror(raw_code));
 		return strerror(raw_code);
 	} else if (ecode & BLUEZ_EDBUS_OFFSET) {
 		/* D-Bus error */
 		for (ptr = dbus_error_array; ptr->code; ptr++) {
 			if (ptr->code == ecode) {
-				syslog(LOG_INFO, "%s - msg:%s", __PRETTY_FUNCTION__, ptr->str);
+				info("%s - msg:%s", __PRETTY_FUNCTION__, ptr->str);
 				return ptr->str;
 			}
 		}
@@ -130,7 +130,7 @@ static const char *bluez_dbus_error_to_str(const uint32_t ecode)
 		/* BLUEZ_EBT_OFFSET - Bluetooth HCI errors */
 		for (ptr = hci_error_array; ptr->code; ptr++) {
 			if (ptr->code == ecode) {
-				syslog(LOG_INFO, "%s - msg:%s", __PRETTY_FUNCTION__, ptr->str);
+				info("%s - msg:%s", __PRETTY_FUNCTION__, ptr->str);
 				return ptr->str;
 			}
 		}

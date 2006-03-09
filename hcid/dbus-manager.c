@@ -139,15 +139,14 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void 
 	const char *iface;
 	const char *method;
 	const char *signature;
-	uint32_t error = BLUEZ_EDBUS_UNKNOWN_METHOD;
+	uint32_t err = BLUEZ_EDBUS_UNKNOWN_METHOD;
 	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	iface = dbus_message_get_interface(msg);
 	method = dbus_message_get_member(msg);
 	signature = dbus_message_get_signature(msg);
 
-	syslog(LOG_INFO, "Manager path:%s method:%s",
-					dbus_message_get_path(msg), method);
+	info("Manager path:%s method:%s", dbus_message_get_path(msg), method);
 
 	if (strcmp(iface, MANAGER_INTERFACE))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -157,21 +156,21 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void 
 			continue;
 
 		if (strcmp(handlers->signature, signature) != 0)
-			error = BLUEZ_EDBUS_WRONG_SIGNATURE;
+			err = BLUEZ_EDBUS_WRONG_SIGNATURE;
 		else {
 			reply = handlers->handler_func(msg, data);
-			error = 0;
+			err = 0;
 		}
 
 		ret = DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	if (error)
-		reply = bluez_new_failure_msg(msg, error);
+	if (err)
+		reply = bluez_new_failure_msg(msg, err);
 
 	if (reply) {
 		if (!dbus_connection_send (conn, reply, NULL))
-			syslog(LOG_ERR, "Can't send reply message");
+			error("Can't send reply message");
 
 		dbus_message_unref(reply);
 	}

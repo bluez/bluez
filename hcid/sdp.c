@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -39,6 +38,7 @@
 
 #include "glib-ectomy.h"
 
+#include "hcid.h"
 #include "sdp.h"
 
 struct session {
@@ -50,7 +50,7 @@ static void session_destory(gpointer data)
 {
 	struct session *session_data = data;
 
-	syslog(LOG_DEBUG, "Cleanup of SDP session");
+	debug("Cleanup of SDP session");
 
 	if (session_data)
 		free(session_data);
@@ -67,7 +67,7 @@ static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		return FALSE;
 
-	syslog(LOG_DEBUG, "Incoming SDP transaction");
+	debug("Incoming SDP transaction");
 
 	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
 	if (err == G_IO_ERROR_AGAIN)
@@ -95,7 +95,7 @@ static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	socklen_t optlen;
 	int sk, nsk;
 
-	syslog(LOG_DEBUG, "Incoming SDP connection");
+	debug("Incoming SDP connection");
 
 	sk = g_io_channel_unix_get_fd(chan);
 
@@ -104,7 +104,7 @@ static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data
 
 	nsk = accept(sk, (struct sockaddr *) &addr, &optlen);
 	if (nsk < 0) {
-		syslog(LOG_ERR, "Can't accept L2CAP connection: %s (%d)",
+		error("Can't accept L2CAP connection: %s (%d)",
 						strerror(errno), errno);
 		return TRUE;
 	}
@@ -113,7 +113,7 @@ static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	optlen = sizeof(opts);
 
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen) < 0) {
-		syslog(LOG_ERR, "Can't get L2CAP options: %s (%d)",
+		error("Can't get L2CAP options: %s (%d)",
 						strerror(errno), errno);
 		close(nsk);
 		return TRUE;
@@ -144,11 +144,11 @@ int start_sdp_server(void)
 	struct sockaddr_l2 addr;
 	int sk;
 
-	syslog(LOG_INFO, "Starting SDP server");
+	info("Starting SDP server");
 
 	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (sk < 0) {
-		syslog(LOG_ERR, "Can't open L2CAP socket: %s (%d)",
+		error("Can't open L2CAP socket: %s (%d)",
 						strerror(errno), errno);
 		return -errno;
 	}
@@ -159,7 +159,7 @@ int start_sdp_server(void)
 	addr.l2_psm = htobs(1);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind L2CAP socket: %s (%d)",
+		error("Can't bind L2CAP socket: %s (%d)",
 						strerror(errno), errno);
 		return -errno;
 	}
@@ -175,5 +175,5 @@ int start_sdp_server(void)
 
 void stop_sdp_server(void)
 {
-	syslog(LOG_INFO, "Stopping SDP server");
+	info("Stopping SDP server");
 }
