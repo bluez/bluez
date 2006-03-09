@@ -1,5 +1,7 @@
 
-noinst_LIBRARIES = libtextfile.a libglib-ectomy.a
+noinst_LIBRARIES = libtextfile.a libglib-ectomy.a liblist.a
+
+liblist_a_SOURCES = list.h list.c
 
 libtextfile_a_SOURCES = textfile.h textfile.c
 

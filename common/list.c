@@ -1,0 +1,94 @@
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "list.h"
+
+struct slist *slist_append(struct slist *list, void *data)
+{
+	struct slist *entry, *tail;
+
+	entry = malloc(sizeof(struct slist));
+	/* FIXME: this currently just silently fails */
+	if (!entry)
+		return list;
+
+	entry->data = data;
+	entry->next = NULL;
+
+	if (!list)
+		return entry;
+
+	/* Find the end of the list */
+	for (tail = list; tail->next; tail = tail->next);
+
+	tail->next = entry;
+
+	return list;
+}
+
+struct slist *slist_remove(struct slist *list, void *data)
+{
+	struct slist *l, *next, *prev = NULL, *match = NULL;
+
+	if (!list)
+		return NULL;
+
+	for (l = list; l != NULL; l = l->next) {
+		if (l->data == data) {
+			match = l;
+			break;
+		}
+		prev = l;
+	}
+
+	if (!match)
+		return list;
+
+	next = match->next;
+	match->next = NULL;
+
+	/* If the head was removed, return the next element */
+	if (!prev)
+		return next;
+
+	prev->next = match->next;
+
+	return list;
+}
+
+void slist_free(struct slist *list)
+{
+	struct slist *l, *next;
+
+	for (l = list; l != NULL; l = next) {
+		next = l->next;
+		free(l);
+	}
+}
