@@ -93,6 +93,10 @@ DBusMessage *error_not_authorized(DBusMessage *msg);
 DBusMessage *error_out_of_memory(DBusMessage *msg);
 DBusMessage *error_no_such_adapter(DBusMessage *msg);
 DBusMessage *error_unknown_address(DBusMessage *msg);
+DBusMessage *error_not_available(DBusMessage *msg);
+DBusMessage *error_not_connected(DBusMessage *msg);
+
+DBusMessage *error_bonding_in_progress(DBusMessage *msg);
 
 /*======================================================================== 
     BlueZ D-Bus Manager service definitions "/org/bluez/Manager"

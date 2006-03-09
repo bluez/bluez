@@ -191,5 +191,27 @@ DBusMessage *error_no_such_adapter(DBusMessage *msg)
 DBusMessage *error_unknown_address(DBusMessage *msg)
 {
 	return dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownAddress",
-						"Device address is unknown");
+							"Unknown address");
+}
+
+DBusMessage *error_not_available(DBusMessage *msg)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".NotAvailable",
+							"Not available");
+}
+
+DBusMessage *error_not_connected(DBusMessage *msg)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".NotConnected",
+							"Not connected");
+}
+
+static DBusMessage *error_in_progress(DBusMessage *msg, const char *str)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str);
+}
+
+DBusMessage *error_bonding_in_progress(DBusMessage *msg)
+{
+	return error_in_progress(msg, "Bonding in progress");
 }
