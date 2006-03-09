@@ -36,7 +36,8 @@ hcid_SOURCES = main.c security.c device.c storage.c hcid.h \
 
 hcid_LDADD = $(dbus_hcid_libs) @BLUEZ_LIBS@ \
 		$(top_builddir)/common/libglib-ectomy.a \
-		$(top_builddir)/common/libtextfile.a
+		$(top_builddir)/common/libtextfile.a \
+		$(top_builddir)/common/liblist.a
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(dbus_hcid_cflags)
 

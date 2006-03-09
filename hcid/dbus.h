@@ -24,6 +24,8 @@
 #ifndef __H_BLUEZ_DBUS_H__
 #define __H_BLUEZ_DBUS_H__
 
+#include <stdint.h>
+
 #define __END_SIG__ DBUS_TYPE_INVALID_AS_STRING
 
 #define BASE_PATH		"/org/bluez"
@@ -97,6 +99,15 @@ DBusMessage *error_not_available(DBusMessage *msg);
 DBusMessage *error_not_connected(DBusMessage *msg);
 
 DBusMessage *error_bonding_in_progress(DBusMessage *msg);
+
+
+typedef void (*name_cb_t)(const char *name, void *user_data);
+
+int name_listener_add(DBusConnection *connection, const char *name,
+				name_cb_t func, void *user_data);
+int name_listener_remove(DBusConnection *connection, const char *name,
+				name_cb_t func, void *user_data);
+
 
 /*======================================================================== 
     BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
