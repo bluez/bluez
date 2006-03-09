@@ -117,6 +117,11 @@ static int name_data_add(const char *name, name_cb_t func, void *user_data)
 
 static void name_data_free(struct name_data *data)
 {
+	struct slist *l;
+
+	for (l = data->callbacks; l != NULL; l = l->next)
+		free(l->data);
+
 	free(data->name);
 	free(data);
 }
