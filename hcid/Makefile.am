@@ -39,6 +39,14 @@ hcid_LDADD = $(dbus_hcid_libs) @BLUEZ_LIBS@ \
 		$(top_builddir)/common/libtextfile.a \
 		$(top_builddir)/common/liblist.a
 
+if DBUS
+noinst_PROGRAMS = passkey-agent
+
+passkey_agent_SOURCES = passkey-agent.c
+
+passkey_agent_LDADD = @DBUS_LIBS@
+endif
+
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(dbus_hcid_cflags)
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/tools
