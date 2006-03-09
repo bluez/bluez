@@ -32,17 +32,29 @@
 
 #include "hcid.h"
 
-void info(const char *format, va_list ap)
+void info(const char *format, ...)
 {
+	va_list ap;
+
+	va_start(ap, format);
 	vsyslog(LOG_INFO, format, ap);
+	va_end(ap);
 }
 
-void error(const char *format, va_list ap)
+void error(const char *format, ...)
 {
+	va_list ap;
+
+	va_start(ap, format);
 	vsyslog(LOG_ERR, format, ap);
+	va_end(ap);
 }
 
-void debug(const char *format, va_list ap)
+void debug(const char *format, ...)
 {
+	va_list ap;
+
+	va_start(ap, format);
 	vsyslog(LOG_DEBUG, format, ap);
+	va_end(ap);
 }

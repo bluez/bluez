@@ -24,7 +24,6 @@
  */
 
 #include <time.h>
-#include <stdarg.h>
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -174,9 +173,9 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key);
 int read_pin_length(bdaddr_t *local, bdaddr_t *peer);
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
 
-void info(const char *format, va_list ap);
-void error(const char *format, va_list ap);
-void debug(const char *format, va_list ap);
+void info(const char *format, ...);
+void error(const char *format, ...);
+void debug(const char *format, ...);
 
 static inline int find_conn(int dd, int dev_id, long arg)
 {
