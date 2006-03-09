@@ -34,7 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <syslog.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -77,7 +76,7 @@ struct device_opts *alloc_device_opts(char *ref)
 
 	device = malloc(sizeof(struct device_list));
 	if (!device) {
-		syslog(LOG_INFO, "Can't allocate devlist opts buffer: %s (%d)",
+		info("Can't allocate devlist opts buffer: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
 	}
@@ -162,7 +161,7 @@ static void configure_device(int hdev)
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Fork failed. Can't init device hci%d: %s (%d)",
+			error("Fork failed. Can't init device hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		default:
 			return;
@@ -171,7 +170,7 @@ static void configure_device(int hdev)
 	set_title("hci%d config", hdev);
 
 	if ((s = hci_open_dev(hdev)) < 0) {
-		syslog(LOG_ERR, "Can't open device hci%d: %s (%d)",
+		error("Can't open device hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		exit(1);
 	}
@@ -189,7 +188,7 @@ static void configure_device(int hdev)
 	/* Set scan mode */
 	dr.dev_opt = device_opts->scan;
 	if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
-		syslog(LOG_ERR, "Can't set scan mode on hci%d: %s (%d)",
+		error("Can't set scan mode on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 	}
 
@@ -200,7 +199,7 @@ static void configure_device(int hdev)
 		dr.dev_opt = AUTH_DISABLED;
 
 	if (ioctl(s, HCISETAUTH, (unsigned long) &dr) < 0) {
-		syslog(LOG_ERR, "Can't set auth on hci%d: %s (%d)",
+		error("Can't set auth on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 	}
 
@@ -211,7 +210,7 @@ static void configure_device(int hdev)
 		dr.dev_opt = ENCRYPT_DISABLED;
 
 	if (ioctl(s, HCISETENCRYPT, (unsigned long) &dr) < 0) {
-		syslog(LOG_ERR, "Can't set encrypt on hci%d: %s (%d)",
+		error("Can't set encrypt on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 	}
 
@@ -322,7 +321,7 @@ static void init_device(int hdev)
 		case 0:
 			break;
 		case -1:
-			syslog(LOG_ERR, "Fork failed. Can't init device hci%d: %s (%d)",
+			error("Fork failed. Can't init device hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		default:
 			return;
@@ -331,14 +330,14 @@ static void init_device(int hdev)
 	set_title("hci%d init", hdev);
 
 	if ((s = hci_open_dev(hdev)) < 0) {
-		syslog(LOG_ERR, "Can't open device hci%d: %s (%d)",
+		error("Can't open device hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		exit(1);
 	}
 
 	/* Start HCI device */
 	if (ioctl(s, HCIDEVUP, hdev) < 0 && errno != EALREADY) {
-		syslog(LOG_ERR, "Can't init device hci%d: %s (%d)",
+		error("Can't init device hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		exit(1);
 	}
@@ -357,7 +356,7 @@ static void init_device(int hdev)
 	if ((device_opts->flags & (1 << HCID_SET_PTYPE))) {
 		dr.dev_opt = device_opts->pkt_type;
 		if (ioctl(s, HCISETPTYPE, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set packet type on hci%d: %s (%d)",
+			error("Can't set packet type on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		}
 	}
@@ -366,7 +365,7 @@ static void init_device(int hdev)
 	if ((device_opts->flags & (1 << HCID_SET_LM))) {
 		dr.dev_opt = device_opts->link_mode;
 		if (ioctl(s, HCISETLINKMODE, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set link mode on hci%d: %s (%d)",
+			error("Can't set link mode on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		}
 	}
@@ -375,7 +374,7 @@ static void init_device(int hdev)
 	if ((device_opts->flags & (1 << HCID_SET_LP))) {
 		dr.dev_opt = device_opts->link_policy;
 		if (ioctl(s, HCISETLINKPOL, (unsigned long) &dr) < 0) {
-			syslog(LOG_ERR, "Can't set link policy on hci%d: %s (%d)",
+			error("Can't set link policy on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
 		}
 	}
@@ -390,7 +389,7 @@ static void init_all_devices(int ctl)
 	int i;
 
 	if (!(dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t)))) {
-		syslog(LOG_INFO, "Can't allocate devlist buffer: %s (%d)",
+		info("Can't allocate devlist buffer: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
 	}
@@ -398,7 +397,7 @@ static void init_all_devices(int ctl)
 	dr = dl->dev_req;
 
 	if (ioctl(ctl, HCIGETDEVLIST, (void *) dl) < 0) {
-		syslog(LOG_INFO, "Can't get device list: %s (%d)",
+		info("Can't get device list: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
 	}
@@ -450,12 +449,12 @@ static void sig_term(int sig)
 
 static void sig_hup(int sig)
 {
-	syslog(LOG_INFO, "Reloading config file");
+	info("Reloading config file");
 
 	init_defaults();
 
 	if (read_config(hcid.config_file) < 0)
-		syslog(LOG_ERR, "Config reload failed");
+		error("Config reload failed");
 
 	init_security_data();
 
@@ -468,7 +467,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 
 	switch (sd->event) {
 	case HCI_DEV_REG:
-		syslog(LOG_INFO, "HCI dev %d registered", sd->dev_id);
+		info("HCI dev %d registered", sd->dev_id);
 		if (hcid.auto_init)
 			init_device(sd->dev_id);
 		add_device(sd->dev_id);
@@ -478,7 +477,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		break;
 
 	case HCI_DEV_UNREG:
-		syslog(LOG_INFO, "HCI dev %d unregistered", sd->dev_id);
+		info("HCI dev %d unregistered", sd->dev_id);
 #ifdef ENABLE_DBUS
 		hcid_dbus_unregister_device(sd->dev_id);
 #endif
@@ -486,7 +485,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		break;
 
 	case HCI_DEV_UP:
-		syslog(LOG_INFO, "HCI dev %d up", sd->dev_id);
+		info("HCI dev %d up", sd->dev_id);
 		if (hcid.auto_init)
 			configure_device(sd->dev_id);
 		if (hcid.security)
@@ -495,7 +494,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		break;
 
 	case HCI_DEV_DOWN:
-		syslog(LOG_INFO, "HCI dev %d down", sd->dev_id);
+		info("HCI dev %d down", sd->dev_id);
 		if (hcid.security)
 			stop_security_manager(sd->dev_id);
 		stop_device(sd->dev_id);
@@ -518,7 +517,7 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer dat
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
 
-		syslog(LOG_ERR, "Read from control socket failed: %s (%d)",
+		error("Read from control socket failed: %s (%d)",
 							strerror(errno), errno);
 		g_main_quit(event_loop);
 		return FALSE;
@@ -610,9 +609,7 @@ int main(int argc, char *argv[], char *env[])
 	init_title(argc, argv, env, "hcid: ");
 	set_title("initializing");
 
-	/* Start logging to syslog and stderr */
-	openlog("hcid", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
-	syslog(LOG_INFO, "Bluetooth HCI daemon");
+	start_logging("hcid", "Bluetooth HCI daemon");
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
@@ -634,7 +631,7 @@ int main(int argc, char *argv[], char *env[])
 
 	/* Create and bind HCI socket */
 	if ((hcid.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
-		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)",
+		error("Can't open HCI socket: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
 	}
@@ -644,7 +641,7 @@ int main(int argc, char *argv[], char *env[])
 	hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
 	hci_filter_set_event(EVT_STACK_INTERNAL, &flt);
 	if (setsockopt(hcid.sock, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
-		syslog(LOG_ERR, "Can't set filter: %s (%d)",
+		error("Can't set filter: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
 	}
@@ -652,24 +649,24 @@ int main(int argc, char *argv[], char *env[])
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = HCI_DEV_NONE;
 	if (bind(hcid.sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind HCI socket: %s (%d)",
+		error("Can't bind HCI socket: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
 	}
 
 	if (read_config(hcid.config_file) < 0)
-		syslog(LOG_ERR, "Config load failed");
+		error("Config load failed");
 
 	init_devices();
 
 #ifdef ENABLE_DBUS
 	if (hcid_dbus_init() == FALSE && hcid.dbus_pin_helper) {
-		syslog(LOG_ERR, "Unable to get on D-BUS");
+		error("Unable to get on D-Bus");
 		exit(1);
 	}
 #else
 	if (hcid.dbus_pin_helper) {
-		syslog(LOG_ERR, "D-BUS not configured in this build of hcid");
+		error("D-Bus not configured in this build of hcid");
 		exit(1);
 	}
 #endif
@@ -703,6 +700,9 @@ int main(int argc, char *argv[], char *env[])
 	hcid_dbus_exit();
 #endif
 
-	syslog(LOG_INFO, "Exit.");
+	info("Exit");
+
+	stop_logging();
+
 	return 0;
 }

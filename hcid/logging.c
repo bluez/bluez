@@ -79,3 +79,15 @@ void disable_debug()
 {
 	debug_enabled = 0;
 }
+
+void start_logging(const char *ident, const char *message)
+{
+	openlog(ident, LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
+
+	info(message);
+}
+
+void stop_logging(void)
+{
+	closelog();
+}

@@ -176,9 +176,10 @@ int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
 void info(const char *format, ...);
 void error(const char *format, ...);
 void debug(const char *format, ...);
-
 void enable_debug();
 void disable_debug();
+void start_logging(const char *ident, const char *message);
+void stop_logging(void);
 
 static inline int find_conn(int dd, int dev_id, long arg)
 {
