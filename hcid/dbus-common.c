@@ -85,7 +85,7 @@ static int name_data_add(const char *name, name_cb_t func, void *user_data)
 
 	cb = malloc(sizeof(struct name_callback));
 	if (!cb)
-		goto out;
+		return 0;
 
 	cb->func = func;
 	cb->user_data = user_data;
@@ -95,13 +95,13 @@ static int name_data_add(const char *name, name_cb_t func, void *user_data)
 		data = malloc(sizeof(struct name_data));
 		if (!data) {
 			free(cb);
-			goto out;
+			return 0;
 		}
 
 		data->name = strdup(name);
 		if (!data->name) {
 			free(cb);
-			goto out;
+			return 0;
 		}
 
 		data->callbacks = NULL;
@@ -111,7 +111,6 @@ static int name_data_add(const char *name, name_cb_t func, void *user_data)
 
 	data->callbacks = slist_append(data->callbacks, cb);
 
-out:
 	return first;
 }
 
@@ -154,7 +153,7 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 	if (!dbus_message_is_signal(message,
 				DBUS_INTERFACE_DBUS,
 				"NameOwnerChanged"))
-		goto out;
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (!dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &name,
@@ -162,18 +161,18 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 				DBUS_TYPE_STRING, &new,
 				DBUS_TYPE_INVALID)) {
 		syslog(LOG_ERR, "Invalid arguments for NameOwnerChanged signal");
-		goto out;
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
 	/* We are not interested of service creations */
 	if (*new != '\0')
-		goto out;
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	data = name_data_find(name);
 	if (!data) {
 		syslog(LOG_ERR, "Got NameOwnerChanged signal for %s which has no listeners",
 				name);
-		goto out;
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
 	for (l = data->callbacks; l != NULL; l = l->next) {
@@ -184,10 +183,8 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 	name_listeners = slist_remove(name_listeners, data);
 	name_data_free(data);
 
-out:
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
-
 
 int name_listener_add(DBusConnection *connection, const char *name,
 			name_cb_t func, void *user_data)
@@ -277,4 +274,3 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 
 	return 0;
 }
-
