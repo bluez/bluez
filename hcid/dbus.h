@@ -72,7 +72,8 @@ struct hci_dbus_data {
 	uint32_t discoverable_timeout;
 	uint32_t timeout_hits;
 	timeout_handler_func_t *timeout_handler;
-	uint8_t  mode;
+	uint8_t mode;
+	uint8_t	busy;
 };
 
 typedef int register_function_t(DBusConnection *conn, uint16_t id);
@@ -101,7 +102,7 @@ DBusMessage *error_not_connected(DBusMessage *msg);
 DBusMessage *error_bonding_already_exists(DBusMessage *msg);
 DBusMessage *error_bonding_does_not_exists(DBusMessage *msg);
 DBusMessage *error_bonding_in_progress(DBusMessage *msg);
-
+DBusMessage *error_discover_in_progress(DBusMessage *msg);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
@@ -165,7 +166,7 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 #define DEV_LIST_BONDINGS		"ListBondings"
 #define DEV_GET_PIN_CODE_LENGTH		"GetPinCodeLength"
 #define DEV_GET_ENCRYPTION_KEY_SIZE	"GetEncryptionKeySize"
-#define DEV_DISCOVER_DEVICES		"DiscoverdDevices"
+#define DEV_DISCOVER_DEVICES		"DiscoverDevices"
 #define DEV_CANCEL_DISCOVERY		"CancelDiscovery"
 #define DEV_DISCOVER_CACHE		"DiscoverCache"
 #define DEV_DISCOVER_SERVICE		"DiscoverService"

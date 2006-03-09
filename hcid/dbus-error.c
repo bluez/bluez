@@ -235,3 +235,8 @@ DBusMessage *error_bonding_in_progress(DBusMessage *msg)
 {
 	return error_in_progress(msg, "Bonding in progress");
 }
+
+DBusMessage *error_discover_in_progress(DBusMessage *msg)
+{
+	return error_in_progress(msg, "Discover in progress");
+}

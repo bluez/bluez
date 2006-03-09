@@ -281,6 +281,7 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 	data->discoverable_timeout = DFT_DISCOVERABLE_TIMEOUT;
 	data->timeout_hits = 0;
 	data->timeout_handler = NULL;
+	data->busy = 0;
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
@@ -554,6 +555,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	DBusMessage *message = NULL;
 	char path[MAX_PATH_LENGTH];
+	struct hci_dbus_data *pdata = NULL;
 	char *local_addr;
 	bdaddr_t tmp;
 	int id;
@@ -567,6 +569,10 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+
+	if (dbus_connection_get_object_path_data(connection, path, (void*) &pdata)) {
+		pdata->busy = 1;
+	}
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						DEV_SIG_DISCOVER_START);
@@ -591,6 +597,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
 	DBusMessage *message = NULL;
 	char path[MAX_PATH_LENGTH];
+	struct hci_dbus_data *pdata = NULL;
 	char *local_addr;
 	bdaddr_t tmp;
 	int id;
@@ -604,6 +611,10 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+
+	if (dbus_connection_get_object_path_data(connection, path, (void*) &pdata)) {
+		pdata->busy = 0;
+	}
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						DEV_SIG_DISCOVER_COMPLETE);

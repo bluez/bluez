@@ -1137,6 +1137,9 @@ static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data
 	uint32_t lap = 0x9e8b33;
 	int dd;
 
+	if (dbus_data->busy)
+		return error_discover_in_progress(msg);
+
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
 		return error_no_such_adapter(msg);
@@ -1283,7 +1286,7 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	signature = dbus_message_get_signature(msg);
 	iface = dbus_message_get_interface(msg);
 
-	info("Adapter path:%s method:%s", dbus_message_get_path(msg), method);
+	info("Adapter path:%s iface:%s method:%s", dbus_message_get_path(msg), iface, method);
 
 	if (strcmp(ADAPTER_INTERFACE, iface))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
