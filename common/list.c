@@ -74,13 +74,14 @@ struct slist *slist_remove(struct slist *list, void *data)
 		return list;
 
 	next = match->next;
-	match->next = NULL;
+
+	free(match);
 
 	/* If the head was removed, return the next element */
 	if (!prev)
 		return next;
 
-	prev->next = match->next;
+	prev->next = next;
 
 	return list;
 }
