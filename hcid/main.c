@@ -630,6 +630,8 @@ int main(int argc, char *argv[], char *env[])
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
+	enable_debug();
+
 	/* Create and bind HCI socket */
 	if ((hcid.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)",

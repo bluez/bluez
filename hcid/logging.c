@@ -32,12 +32,16 @@
 
 #include "hcid.h"
 
+static volatile int debug_enabled = 0;
+
 void info(const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
+
 	vsyslog(LOG_INFO, format, ap);
+
 	va_end(ap);
 }
 
@@ -46,7 +50,9 @@ void error(const char *format, ...)
 	va_list ap;
 
 	va_start(ap, format);
+
 	vsyslog(LOG_ERR, format, ap);
+
 	va_end(ap);
 }
 
@@ -54,7 +60,22 @@ void debug(const char *format, ...)
 {
 	va_list ap;
 
+	if (!debug_enabled)
+		return;
+
 	va_start(ap, format);
+
 	vsyslog(LOG_DEBUG, format, ap);
+
 	va_end(ap);
+}
+
+void enable_debug()
+{
+	debug_enabled = 1;
+}
+
+void disable_debug()
+{
+	debug_enabled = 0;
 }

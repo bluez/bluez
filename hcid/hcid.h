@@ -177,6 +177,9 @@ void info(const char *format, ...);
 void error(const char *format, ...);
 void debug(const char *format, ...);
 
+void enable_debug();
+void disable_debug();
+
 static inline int find_conn(int dd, int dev_id, long arg)
 {
 	struct hci_conn_list_req *cl;
