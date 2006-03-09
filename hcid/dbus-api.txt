@@ -76,11 +76,28 @@ Errors		Failed
 
 		ConnectionAttemptFailed
 
-		BondingAlreadyExists
+		AlreadyExists
 
-		BondingDoesNotExists
+			Error returned if a record for a specific procedure
+			already exists and it has been tried create a new
+			one. The error message however should indicate the
+			procedure that fails. For example "Bonding already
+			exists"
 
-		BondingInProgress
+		DoesNotExists
+
+			Error returned if a record for a specifc procedure
+			doesn't exists. The error message however should
+			indicate the procedure that fails. For example
+			"Bonding does not exits".
+
+		InProgress
+
+			Error returned if an operation is in progress. Since
+			this is a generic error that can be used in various
+			situations, the error message should be more clear
+			about what is in progress. For example "Bonding in
+			progress".
 
 		AuthenticationFailed
 
@@ -487,8 +504,8 @@ Methods		string GetAddress()
 
 			Possible errors: org.bluez.Error.Failed
 			                 org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.BondingAlreadyExists
-			                 org.bluez.Error.BondingInProgress
+			                 org.bluez.Error.AlreadyExists
+			                 org.bluez.Error.InProgress
 			                 org.bluez.Error.ConnectionAttemptFailed
 			                 org.bluez.Error.AuthenticationFailed
 			                 org.bluez.Error.AuthenticationTimeout
@@ -520,7 +537,7 @@ Methods		string GetAddress()
 			BondingRemoved signal.
 
 			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.BondingDoesNotExists
+			                 org.bluez.Error.DoesNotExists
 
 		boolean HasBonding(string address)
 
@@ -541,7 +558,7 @@ Methods		string GetAddress()
 			pairing process.
 
 			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.BondingDoesNotExists
+			                 org.bluez.Error.DoesNotExists
 
 		uint8 GetEncryptionKeySize(string address)
 
@@ -552,7 +569,7 @@ Methods		string GetAddress()
 
 			Possible errors: org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.NotConnected
-			                 org.bluez.Error.BondingDoesNotExists
+			                 org.bluez.Error.DoesNotExists
 
 		void DiscoverDevices()
 
