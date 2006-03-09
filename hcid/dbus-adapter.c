@@ -1126,7 +1126,7 @@ static DBusMessage *handle_dev_get_encryption_key_size_req(DBusMessage *msg, voi
 	return reply;
 }
 
-static DBusMessage *handle_dev_discover_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	inquiry_cp cp;
@@ -1172,7 +1172,7 @@ failed:
 	return reply;
 }
 
-static DBusMessage *handle_dev_discover_cancel_req(DBusMessage *msg, void *data)
+static DBusMessage *handle_dev_cancel_discovery_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	struct hci_request rq;
@@ -1261,8 +1261,8 @@ static const struct service_data dev_services[] = {
 	{ DEV_GET_PIN_CODE_LENGTH,	handle_dev_get_pin_code_length_req,	DEV_GET_PIN_CODE_LENGTH_SIGNATURE	},
 	{ DEV_GET_ENCRYPTION_KEY_SIZE,	handle_dev_get_encryption_key_size_req,	DEV_GET_ENCRYPTION_KEY_SIZE_SIGNATURE	},
 
-	{ DEV_DISCOVER,			handle_dev_discover_req,		DEV_DISCOVER_SIGNATURE			},
-	{ DEV_DISCOVER_CANCEL,		handle_dev_discover_cancel_req,		DEV_DISCOVER_CANCEL_SIGNATURE		},
+	{ DEV_DISCOVER_DEVICES,		handle_dev_discover_devices_req,	DEV_DISCOVER_DEVICES_SIGNATURE		},
+	{ DEV_CANCEL_DISCOVERY,		handle_dev_cancel_discovery_req,	DEV_CANCEL_DISCOVERY_SIGNATURE		},
 	{ DEV_DISCOVER_CACHE,		handle_dev_discover_cache_req,		DEV_DISCOVER_CACHE_SIGNATURE		},
 	{ DEV_DISCOVER_SERVICE,		handle_dev_discover_service_req,	DEV_DISCOVER_SERVICE_SIGNATURE		},
 

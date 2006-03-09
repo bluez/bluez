@@ -165,8 +165,8 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 #define DEV_LIST_BONDINGS		"ListBondings"
 #define DEV_GET_PIN_CODE_LENGTH		"GetPinCodeLength"
 #define DEV_GET_ENCRYPTION_KEY_SIZE	"GetEncryptionKeySize"
-#define DEV_DISCOVER			"Discover"
-#define DEV_DISCOVER_CANCEL		"DiscoverCancel"
+#define DEV_DISCOVER_DEVICES		"DiscoverdDevices"
+#define DEV_CANCEL_DISCOVERY		"CancelDiscovery"
 #define DEV_DISCOVER_CACHE		"DiscoverCache"
 #define DEV_DISCOVER_SERVICE		"DiscoverService"
 
@@ -224,24 +224,24 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 						__END_SIG__
 #define DEV_GET_ENCRYPTION_KEY_SIZE_SIGNATURE	DBUS_TYPE_STRING_AS_STRING \
 						__END_SIG__
-#define DEV_DISCOVER_SIGNATURE			__END_SIG__
-#define DEV_DISCOVER_CANCEL_SIGNATURE		__END_SIG__
+#define DEV_DISCOVER_DEVICES_SIGNATURE		__END_SIG__
+#define DEV_CANCEL_DISCOVERY_SIGNATURE		__END_SIG__
 #define DEV_DISCOVER_CACHE_SIGNATURE		__END_SIG__
 #define DEV_DISCOVER_SERVICE_SIGNATURE		DBUS_TYPE_STRING_AS_STRING \
 						__END_SIG__
 
-/* Signals sent in the Manager path */
+/* Signals sent in the adapter based path /org/bluez/Adapter/{hci0, hci1, ...} */
 #define DEV_SIG_MODE_CHANGED		"ModeChanged"
 #define DEV_SIG_NAME_CHANGED		"NameChanged"
 #define DEV_SIG_MINOR_CLASS_CHANGED	"MinorClassChanged"
-#define DEV_SIG_REMOTE_NAME_CHANGED	"RemoteNameChange"
+#define DEV_SIG_REMOTE_NAME_UPDATED	"RemoteNameUpdated"
 #define DEV_SIG_REMOTE_ALIAS_CHANGED	"RemoteAliasChanged"
 #define DEV_SIG_BONDING_CREATED		"BondingCreated"
 #define DEV_SIG_BONDING_FAILED		"BondingFailed"
 #define DEV_SIG_BONDING_REMOVED		"BondingRemoved"
-#define DEV_SIG_DISCOVER_START		"DiscoverStart"
-#define DEV_SIG_DISCOVER_COMPLETE	"DiscoverComplete"
-#define DEV_SIG_DISCOVER_RESULT		"DiscoverResult"
+#define DEV_SIG_DISCOVER_START		"DiscoveryStart"
+#define DEV_SIG_DISCOVER_COMPLETE	"DiscoveryCompleted"
+#define DEV_SIG_REMOTE_DEVICE_FOUND	"RemoteDeviceFound"
 
 /*
  * Scanning modes, used by DEV_SET_MODE

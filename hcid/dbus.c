@@ -45,6 +45,7 @@
 
 #include "hcid.h"
 #include "dbus.h"
+#include "textfile.h"
 
 #ifndef DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT
 #define DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT	0x00
@@ -582,11 +583,14 @@ failed:
 
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
 {
+	char filename[PATH_MAX + 1];
 	DBusMessage *message = NULL;
 	char path[MAX_PATH_LENGTH];
-	char *local_addr, *peer_addr;
-	dbus_uint32_t tmp_class = class;
-	dbus_int32_t tmp_rssi = rssi;
+	char *local_addr, *peer_addr, *name = NULL;
+	const char *service = "none";
+	const char *major_class = "none";
+	const char *minor_class = "none";
+	dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
 	int id;
 
@@ -602,7 +606,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						DEV_SIG_DISCOVER_RESULT);
+						DEV_SIG_REMOTE_DEVICE_FOUND);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry result message");
 		goto failed;
@@ -610,8 +614,35 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 
 	dbus_message_append_args(message,
 					DBUS_TYPE_STRING, &peer_addr,
-					DBUS_TYPE_UINT32, &tmp_class,
-					DBUS_TYPE_INT32, &tmp_rssi,
+					DBUS_TYPE_INT16, &tmp_rssi,
+					DBUS_TYPE_STRING, &major_class,
+					DBUS_TYPE_STRING, &minor_class,
+					DBUS_TYPE_STRING, &service,
+					DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send(connection, message, NULL) == FALSE) {
+		syslog(LOG_ERR, "Can't send D-Bus inquiry result message");
+		goto failed;
+	}
+
+	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, local_addr);
+
+	name = textfile_get(filename, peer_addr);
+	
+	if (!name)
+		goto failed;
+			
+	dbus_message_unref(message);
+
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+						DEV_SIG_REMOTE_DEVICE_FOUND);
+	if (message == NULL) {
+		syslog(LOG_ERR, "Can't allocate D-Bus inquiry result message");
+		goto failed;
+	}
+
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, &name,
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
@@ -626,6 +657,10 @@ failed:
 
 	bt_free(local_addr);
 	bt_free(peer_addr);
+
+	if (name)
+		bt_free(name);
+
 }
 
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
@@ -648,7 +683,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						DEV_SIG_REMOTE_NAME_CHANGED);
+						DEV_SIG_REMOTE_NAME_UPDATED);
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
 		goto failed;
