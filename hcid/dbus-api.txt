@@ -6,6 +6,28 @@ Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
 Copyright (C) 2005-2006  Claudio Takahasi <cktakahasi@gmail.com>
 
 
+Constant definitions
+====================
+
+The class of device definition from the Bluetooth specification divides into
+three different parts. It the major class, the minor class and the service
+classes. The D-Bus interface will always use string constants to identify
+any of these classes.
+
+Service classes		positioning, networking, rendering, capturing,
+			object transfer, audio, telephony, information
+
+Major classes		miscellaneous, computer, phone, access point,
+			audio/video, peripheral, imaging, wearable, toy,
+			uncategorized
+
+Minor classes computer	uncategorized, desktop, server, laptop, handheld,
+			palm, wearable
+
+Minor classes phone	uncategorized, cellular, cordless, smart phone,
+			modem, isdn
+
+
 Error hierarchy
 ===============
 
