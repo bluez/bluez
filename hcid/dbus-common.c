@@ -78,43 +78,6 @@ static struct name_callback *name_callback_find(struct slist *callbacks,
 	return NULL;
 }
 
-static int name_data_add(const char *name, name_cb_t func, void *user_data)
-{
-	int first = 0;
-	struct name_data *data;
-	struct name_callback *cb;
-
-	cb = malloc(sizeof(struct name_callback));
-	if (!cb)
-		return 0;
-
-	cb->func = func;
-	cb->user_data = user_data;
-
-	data = name_data_find(name);
-	if (!data) {
-		data = malloc(sizeof(struct name_data));
-		if (!data) {
-			free(cb);
-			return 0;
-		}
-
-		data->name = strdup(name);
-		if (!data->name) {
-			free(cb);
-			return 0;
-		}
-
-		data->callbacks = NULL;
-		name_listeners = slist_append(name_listeners, data);
-		first = 1;
-	}
-
-	data->callbacks = slist_append(data->callbacks, cb);
-
-	return first;
-}
-
 static void name_data_free(struct name_data *data)
 {
 	struct slist *l;
@@ -124,6 +87,49 @@ static void name_data_free(struct name_data *data)
 
 	free(data->name);
 	free(data);
+}
+
+static int name_data_add(const char *name, name_cb_t func, void *user_data)
+{
+	int first = 1;
+	struct name_data *data = NULL;
+	struct name_callback *cb = NULL;
+
+	cb = malloc(sizeof(struct name_callback));
+	if (!cb)
+		goto failed;
+
+	cb->func = func;
+	cb->user_data = user_data;
+
+	data = name_data_find(name);
+	if (data) {
+		first = 0;
+		goto done;
+	}
+
+	data = malloc(sizeof(struct name_data));
+	if (!data)
+		goto failed;
+
+	memset(data, sizeof(struct name_data), 0);
+
+	data->name = strdup(name);
+	if (!data->name)
+		goto failed;
+
+	name_listeners = slist_append(name_listeners, data);
+
+done:
+	data->callbacks = slist_append(data->callbacks, cb);
+	return first;
+
+failed:
+	if (data)
+		name_data_free(data);
+	if (cb)
+		free(cb);
+	return 0;
 }
 
 static void name_data_remove(const char *name, name_cb_t func, void *user_data)
