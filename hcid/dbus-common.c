@@ -3,6 +3,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -26,13 +27,13 @@
 #endif
 
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <syslog.h>
 
 #include <dbus/dbus.h>
 
+#include "hcid.h"
 #include "list.h"
 #include "dbus.h"
 
@@ -143,16 +144,14 @@ static void name_data_remove(const char *name, name_cb_t func, void *user_data)
 }
 
 static DBusHandlerResult name_exit_filter(DBusConnection *connection,
-						DBusMessage *message,
-						void *user_data)
+					DBusMessage *message, void *user_data)
 {
 	struct slist *l;
 	struct name_data *data;
 	char *name, *old, *new;
 
-	if (!dbus_message_is_signal(message,
-				DBUS_INTERFACE_DBUS,
-				"NameOwnerChanged"))
+	if (!dbus_message_is_signal(message, DBUS_INTERFACE_DBUS,
+							"NameOwnerChanged"))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (!dbus_message_get_args(message, NULL,
@@ -160,7 +159,7 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 				DBUS_TYPE_STRING, &old,
 				DBUS_TYPE_STRING, &new,
 				DBUS_TYPE_INVALID)) {
-		syslog(LOG_ERR, "Invalid arguments for NameOwnerChanged signal");
+		error("Invalid arguments for NameOwnerChanged signal");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
@@ -170,8 +169,7 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 
 	data = name_data_find(name);
 	if (!data) {
-		syslog(LOG_ERR, "Got NameOwnerChanged signal for %s which has no listeners",
-				name);
+		error("Got NameOwnerChanged signal for %s which has no listeners", name);
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
@@ -187,17 +185,17 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 }
 
 int name_listener_add(DBusConnection *connection, const char *name,
-			name_cb_t func, void *user_data)
+					name_cb_t func, void *user_data)
 {
 	DBusError err;
 	char match_string[128];
 	int first;
 
-	syslog(LOG_DEBUG, "name_listener_add(%s)", name);
+	debug("name_listener_add(%s)", name);
 
 	if (!name_listener_initialized) {
 		if (!dbus_connection_add_filter(connection, name_exit_filter, NULL, NULL)) {
-			syslog(LOG_ERR, "dbus_connection_add_filter() failed");
+			error("dbus_connection_add_filter() failed");
 			return -1;
 		}
 		name_listener_initialized = 1;
@@ -217,8 +215,7 @@ int name_listener_add(DBusConnection *connection, const char *name,
 	dbus_bus_add_match(connection, match_string, &err);
 
 	if (dbus_error_is_set(&err)) {
-		syslog(LOG_ERR, "Adding owner match rule for %s failed: %s",
-				name, err.message);
+		error("Adding owner match rule for %s failed: %s", name, err.message);
 		dbus_error_free(&err);
 		name_data_remove(name, func, user_data);
 		return -1;
@@ -235,18 +232,17 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 	DBusError err;
 	char match_string[128];
 
-	syslog(LOG_DEBUG, "name_listener_remove(%s)", name);
+	debug("name_listener_remove(%s)", name);
 
 	data = name_data_find(name);
 	if (!data) {
-		syslog(LOG_ERR, "remove_name_listener: no listener for %s",
-				name);
+		error("remove_name_listener: no listener for %s", name);
 		return -1;
 	}
 
 	cb = name_callback_find(data->callbacks, func, user_data);
 	if (!cb) {
-		syslog(LOG_ERR, "No matching callback found for %s", name);
+		error("No matching callback found for %s", name);
 		return -1;
 	}
 
@@ -264,8 +260,8 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 	dbus_bus_remove_match(connection, match_string, &err);
 
 	if (dbus_error_is_set(&err)) {
-		syslog(LOG_ERR, "Removing owner match rule for %s failed: %s",
-				name, err.message);
+		error("Removing owner match rule for %s failed: %s",
+							name, err.message);
 		dbus_error_free(&err);
 		return -1;
 	}
