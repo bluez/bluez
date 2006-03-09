@@ -72,7 +72,7 @@ static DBusMessage *handle_dev_get_address_req(DBusMessage *msg, void *data)
 
 	err = get_device_address(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -93,7 +93,7 @@ static DBusMessage *handle_dev_get_version_req(DBusMessage *msg, void *data)
 
 	err = get_device_version(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -114,7 +114,7 @@ static DBusMessage *handle_dev_get_revision_req(DBusMessage *msg, void *data)
 
 	err = get_device_revision(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -135,7 +135,7 @@ static DBusMessage *handle_dev_get_manufacturer_req(DBusMessage *msg, void *data
 
 	err = get_device_manufacturer(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -156,7 +156,7 @@ static DBusMessage *handle_dev_get_company_req(DBusMessage *msg, void *data)
 
 	err = get_device_company(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -248,7 +248,7 @@ static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_device(msg);
+		return error_no_such_adapter(msg);
 
 	/* Check if the new requested mode is different from the current */
 	if (current_mode != hci_mode) {
@@ -387,13 +387,13 @@ static DBusMessage *handle_dev_get_minor_class_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_device(msg);
+		return error_no_such_adapter(msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_generic(msg, -errno);
+		return error_failed(msg, -errno);
 	}
 
 	hci_close_dev(dd);
@@ -453,7 +453,7 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_device(msg);
+		return error_no_such_adapter(msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
@@ -508,7 +508,7 @@ static DBusMessage *handle_dev_get_service_classes_req(DBusMessage *msg, void *d
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_device(msg);
+		return error_no_such_adapter(msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		syslog(LOG_ERR, "Can't read class of device on hci%d: %s(%d)",
@@ -548,7 +548,7 @@ static DBusMessage *handle_dev_get_name_req(DBusMessage *msg, void *data)
 
 	err = get_device_name(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -583,7 +583,7 @@ static DBusMessage *handle_dev_set_name_req(DBusMessage *msg, void *data)
 
 	err = set_device_name(dbus_data->dev_id, str_ptr);
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -686,7 +686,7 @@ static DBusMessage *handle_dev_get_remote_name_req(DBusMessage *msg, void *data)
 
 	err = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
@@ -727,7 +727,7 @@ static DBusMessage *handle_dev_get_remote_alias_req(DBusMessage *msg, void *data
 
 	err = get_device_alias(dbus_data->dev_id, &bdaddr, str, sizeof(str));
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -763,7 +763,7 @@ static DBusMessage *handle_dev_set_remote_alias_req(DBusMessage *msg, void *data
 
 	err = set_device_alias(dbus_data->dev_id, &bdaddr, str_ptr);
 	if (err < 0)
-		return error_generic(msg, -err);
+		return error_failed(msg, -err);
 
 	signal = dev_signal_factory(dbus_data->dev_id, DEV_SIG_REMOTE_ALIAS_CHANGED,
 						DBUS_TYPE_STRING, &addr_ptr,
@@ -877,7 +877,7 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0)
-		return error_no_such_device(msg);
+		return error_no_such_adapter(msg);
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr) {
@@ -938,7 +938,7 @@ static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_device(msg);
+		return error_no_such_adapter(msg);
 
 	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
 
@@ -1139,7 +1139,7 @@ static DBusMessage *handle_dev_discover_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_device(msg);
+		return error_no_such_adapter(msg);
 
 	memset(&cp, 0, sizeof(cp));
 	cp.lap[0]  = lap & 0xff;
@@ -1182,7 +1182,7 @@ static DBusMessage *handle_dev_discover_cancel_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_device(msg);
+		return error_no_such_adapter(msg);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;

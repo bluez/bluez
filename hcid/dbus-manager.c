@@ -50,7 +50,7 @@ static DBusMessage *handle_mgr_list_devices_req(DBusMessage *msg, void *data)
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0)
-		return error_generic(msg, errno);
+		return error_failed(msg, errno);
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 	if (!dl) {
@@ -62,7 +62,7 @@ static DBusMessage *handle_mgr_list_devices_req(DBusMessage *msg, void *data)
 	dr = dl->dev_req;
 
 	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
-		reply = error_generic(msg, errno);
+		reply = error_failed(msg, errno);
 		goto failed;
 	}
 
@@ -112,7 +112,7 @@ static DBusMessage *handle_mgr_default_device_req(DBusMessage *msg, void *data)
 	int default_dev = get_default_dev_id();
 
 	if (default_dev < 0)
-		return error_no_such_device(msg);
+		return error_no_such_adapter(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

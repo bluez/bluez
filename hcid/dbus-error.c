@@ -157,11 +157,23 @@ DBusMessage *bluez_new_failure_msg(DBusMessage *msg, const uint32_t ecode)
 	return reply;
 }
 
-DBusMessage *error_generic(DBusMessage *msg, int err)
+DBusMessage *error_failed(DBusMessage *msg, int err)
 {
 	const char *str = strerror(err);
 
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownError", str);
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".Failed", str);
+}
+
+DBusMessage *error_invalid_arguments(DBusMessage *msg)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".InvalidArguments",
+							"Invalid arguments");
+}
+
+DBusMessage *error_not_authorized(DBusMessage *msg)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".NotAuthorized",
+							"Not authorized");
 }
 
 DBusMessage *error_out_of_memory(DBusMessage *msg)
@@ -170,8 +182,14 @@ DBusMessage *error_out_of_memory(DBusMessage *msg)
 							"Out of memory");
 }
 
-DBusMessage *error_no_such_device(DBusMessage *msg)
+DBusMessage *error_no_such_adapter(DBusMessage *msg)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".NoSuchDevice",
-							"No such device");
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
+							"No such adapter");
+}
+
+DBusMessage *error_unknown_address(DBusMessage *msg)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownAddress",
+						"Device address is unknown");
 }
