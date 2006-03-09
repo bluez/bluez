@@ -27,3 +27,22 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <syslog.h>
+
+#include "hcid.h"
+
+void info(const char *format, va_list ap)
+{
+	vsyslog(LOG_INFO, format, ap);
+}
+
+void error(const char *format, va_list ap)
+{
+	vsyslog(LOG_ERR, format, ap);
+}
+
+void debug(const char *format, va_list ap)
+{
+	vsyslog(LOG_DEBUG, format, ap);
+}
