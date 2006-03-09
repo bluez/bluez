@@ -98,6 +98,8 @@ DBusMessage *error_unknown_address(DBusMessage *msg);
 DBusMessage *error_not_available(DBusMessage *msg);
 DBusMessage *error_not_connected(DBusMessage *msg);
 
+DBusMessage *error_bonding_already_exists(DBusMessage *msg);
+DBusMessage *error_bonding_does_not_exists(DBusMessage *msg);
 DBusMessage *error_bonding_in_progress(DBusMessage *msg);
 
 

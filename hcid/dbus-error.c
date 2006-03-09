@@ -206,9 +206,29 @@ DBusMessage *error_not_connected(DBusMessage *msg)
 							"Not connected");
 }
 
+static DBusMessage *error_already_exists(DBusMessage *msg, const char *str)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".AlreadyExists", str);
+}
+
+static DBusMessage *error_does_not_exists(DBusMessage *msg, const char *str)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".DoesNotExists", str);
+}
+
 static DBusMessage *error_in_progress(DBusMessage *msg, const char *str)
 {
 	return dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str);
+}
+
+DBusMessage *error_bonding_already_exists(DBusMessage *msg)
+{
+	return error_already_exists(msg, "Bonding already exists");
+}
+
+DBusMessage *error_bonding_does_not_exists(DBusMessage *msg)
+{
+	return error_does_not_exists(msg, "Bonding does not exists");
 }
 
 DBusMessage *error_bonding_in_progress(DBusMessage *msg)
