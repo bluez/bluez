@@ -206,6 +206,12 @@ DBusMessage *error_not_connected(DBusMessage *msg)
 							"Not connected");
 }
 
+DBusMessage *error_unsupported_major_class(DBusMessage *msg)
+{
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".UnsupportedMajorClass",
+							"Unsupported Major Class");
+}
+
 static DBusMessage *error_already_exists(DBusMessage *msg, const char *str)
 {
 	return dbus_message_new_error(msg, ERROR_INTERFACE ".AlreadyExists", str);

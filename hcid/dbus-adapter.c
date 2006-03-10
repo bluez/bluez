@@ -63,6 +63,15 @@ static const char *computer_minor_cls[] = {
 	"wearable"
 };
 
+static const char *phone_minor_cls[] = {
+	"uncategorized",
+	"cellular",
+	"cordless",
+	"smart phone",
+	"modem",
+	"isdn"
+};
+
 static DBusMessage *handle_dev_get_address_req(DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
@@ -218,6 +227,62 @@ static DBusMessage *handle_dev_get_mode_req(DBusMessage *msg, void *data)
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *handle_dev_list_minor_classes_req(DBusMessage *msg, void *data)
+{
+	const struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	const char **minor_ptr;
+	uint8_t cls[3];
+	uint8_t major_class;
+	int dd, size, i;
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0)
+		return error_no_such_adapter(msg);
+
+	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		error("Can't read class of device on hci%d: %s(%d)",
+				dbus_data->dev_id, strerror(errno), errno);
+		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		goto failed;
+	}
+
+	major_class = cls[1] & 0x1F;
+
+	switch (major_class) {
+	case 1: /* computer */
+		minor_ptr = computer_minor_cls;
+		size = sizeof(computer_minor_cls) / sizeof(*computer_minor_cls);
+		break;
+	case 2: /* phone */
+		minor_ptr = phone_minor_cls;
+		size = sizeof(phone_minor_cls) / sizeof(*phone_minor_cls);
+		break;
+	default:
+		reply = error_unsupported_major_class(msg);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return error_out_of_memory(msg);
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					 	DBUS_TYPE_STRING_AS_STRING, &array_iter);
+	for (i = 0; i < size; i++)
+		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &minor_ptr[i]);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+failed:
+	hci_close_dev(dd);
 
 	return reply;
 }
@@ -1252,6 +1317,7 @@ static const struct service_data dev_services[] = {
 	{ DEV_GET_COMPANY,		handle_dev_get_company_req,		DEV_GET_COMPANY_SIGNATURE		},
 	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		DEV_GET_FEATURES_SIGNATURE		},
 	{ DEV_GET_MODE,			handle_dev_get_mode_req,		DEV_GET_MODE_SIGNATURE			},
+	{ DEV_LIST_MINOR_CLASSES,	handle_dev_list_minor_classes_req,	DEV_LIST_MINOR_CLASSES_SIGNATURE	},
 	{ DEV_SET_MODE,			handle_dev_set_mode_req,		DEV_SET_MODE_SIGNATURE			},
 	{ DEV_GET_DISCOVERABLE_TO,	handle_dev_get_discoverable_to_req,	DEV_GET_DISCOVERABLE_TO_SIGNATURE	},
 	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	DEV_SET_DISCOVERABLE_TO_SIGNATURE	},
@@ -1263,7 +1329,7 @@ static const struct service_data dev_services[] = {
 	{ DEV_GET_SERVICE_CLASSES,	handle_dev_get_service_classes_req,	DEV_GET_SERVICE_CLASSES_SIGNATURE	},
 	{ DEV_GET_NAME,			handle_dev_get_name_req,		DEV_GET_NAME_SIGNATURE			},
 	{ DEV_SET_NAME,			handle_dev_set_name_req,		DEV_SET_NAME_SIGNATURE			},
-
+	
 	{ DEV_GET_REMOTE_VERSION,	handle_dev_get_remote_version_req,	DEV_GET_REMOTE_VERSION_SIGNATURE	},
 	{ DEV_GET_REMOTE_REVISION,	handle_dev_get_remote_revision_req,	DEV_GET_REMOTE_REVISION_SIGNATURE	},
 	{ DEV_GET_REMOTE_MANUFACTURER,	handle_dev_get_remote_manufacturer_req,	DEV_GET_REMOTE_MANUFACTURER_SIGNATURE	},
