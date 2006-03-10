@@ -127,8 +127,14 @@ DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg,
 
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
 
-static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusMessage *msg)
+static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusMessage *reply)
 {
+	if (reply) {
+		dbus_connection_send(conn, reply, NULL);
+
+		dbus_message_unref(reply);
+	}
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 

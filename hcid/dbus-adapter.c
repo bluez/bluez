@@ -1351,7 +1351,6 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	service_handler_func_t handler;
 	struct hci_dbus_data *dbus_data = data;
 	const char *iface;
-	uint32_t err = 0;
 
 	iface = dbus_message_get_interface(msg);
 
@@ -1360,8 +1359,7 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 
 	if (dbus_data->path_id == ADAPTER_ROOT_ID) {
 		/* Adapter is down(path unregistered) or the path is wrong */
-		err = BLUEZ_EDBUS_UNKNOWN_PATH;
-		goto failed;
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_UNKNOWN_PATH);
 	}
 
 	handler = find_service_handler(dev_services, msg);
@@ -1369,20 +1367,4 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	return handler(conn, msg, data);
-
-failed:
-#if 0
-	if (err) {
-		DBusMessage *reply = bluez_new_failure_msg(msg, err);
-
-		if (reply) {
-			if (!dbus_connection_send(conn, reply, NULL))
-				error("Can't send reply message");
-
-			dbus_message_unref(reply);
-		}
-	}
-#endif
-
-	return bluez_new_failure_msg(conn, msg, err);
 }
