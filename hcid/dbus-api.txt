@@ -84,12 +84,12 @@ Errors		Failed
 			procedure that fails. For example "Bonding already
 			exists"
 
-		DoesNotExists
+		DoesNotExist
 
 			Error returned if a record for a specifc procedure
-			doesn't exists. The error message however should
+			doesn't exist. The error message however should
 			indicate the procedure that fails. For example
-			"Bonding does not exits".
+			"Bonding does not exist".
 
 		InProgress
 
@@ -537,7 +537,7 @@ Methods		string GetAddress()
 			BondingRemoved signal.
 
 			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.DoesNotExists
+			                 org.bluez.Error.DoesNotExist
 
 		boolean HasBonding(string address)
 
@@ -558,7 +558,7 @@ Methods		string GetAddress()
 			pairing process.
 
 			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.DoesNotExists
+			                 org.bluez.Error.DoesNotExist
 
 		uint8 GetEncryptionKeySize(string address)
 
@@ -569,7 +569,7 @@ Methods		string GetAddress()
 
 			Possible errors: org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.NotConnected
-			                 org.bluez.Error.DoesNotExists
+			                 org.bluez.Error.DoesNotExist
 
 		void DiscoverDevices()
 
@@ -719,7 +719,7 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 			the path parameter must match the same values that
 			has been used on registration.
 
-			Possible errors: org.bluez.Error.DoesNotExists
+			Possible errors: org.bluez.Error.DoesNotExist
 
 		void RegisterPasskeyAgent(string path, string address)
 
@@ -753,7 +753,7 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 			wait for the automatic timeout.
 
 			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.DoesNotExists
+			                 org.bluez.Error.DoesNotExist
 
 
 PasskeyAgent hierarchy
