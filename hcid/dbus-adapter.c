@@ -1129,6 +1129,7 @@ static DBusMessage *handle_dev_get_encryption_key_size_req(DBusMessage *msg, voi
 static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
+	const char *requestor_name;
 	inquiry_cp cp;
 	evt_cmd_status rp;
 	struct hci_request rq;
@@ -1137,7 +1138,7 @@ static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data
 	uint32_t lap = 0x9e8b33;
 	int dd;
 
-	if (dbus_data->busy)
+	if (dbus_data->requestor_name)
 		return error_discover_in_progress(msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -1167,6 +1168,9 @@ static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data
 		goto failed;
 	}
 
+	requestor_name = dbus_message_get_sender(msg);
+	dbus_data->requestor_name = strdup(requestor_name);
+
 	reply = dbus_message_new_method_return(msg);
 
 failed:
@@ -1178,10 +1182,21 @@ failed:
 static DBusMessage *handle_dev_cancel_discovery_req(DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
+	const char *requestor_name;
 	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
 	uint8_t status;
-	int dd;
+	int dd = -1;
+
+	requestor_name = dbus_message_get_sender(msg);
+
+	/* is there discover pending? */
+	if (!dbus_data->requestor_name)
+		return error_not_authorized(msg);
+		
+	/* only the discover requestor can cancel the inquiry process */
+	if (strcmp(dbus_data->requestor_name, requestor_name))
+		return error_not_authorized(msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
@@ -1205,6 +1220,9 @@ static DBusMessage *handle_dev_cancel_discovery_req(DBusMessage *msg, void *data
 		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
 		goto failed;
 	}
+
+	free(dbus_data->requestor_name);
+	dbus_data->requestor_name = NULL;
 
 	reply = dbus_message_new_method_return(msg);
 
