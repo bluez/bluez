@@ -43,6 +43,11 @@ Errors		Failed
 			Error returned when the argument list is invalid or
 			out of specification for the method.
 
+		NotImplemented
+
+			Error returned when the called method has not been
+			implemented.
+
 		NotAuthorized
 
 			Error returned when the caller of a method is not
