@@ -281,3 +281,19 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 
 	return 0;
 }
+
+service_hanbdler_func_t *find_service_handler(const service_data *handlers, DBusMessage *msg)
+{
+	struct service_data *current;
+	const char *name, *sig;
+
+	member = dbus_message_get_member(msg);
+
+	for (current = handlers; current->name != NULL; current++) {
+		if (!strcmp(current->name, member))
+			return current->handler_func;
+	}
+
+	return NULL;
+}
+

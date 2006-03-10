@@ -1310,67 +1310,58 @@ static DBusMessage *handle_dev_discover_service_req(DBusMessage *msg, void *data
 }
 
 static const struct service_data dev_services[] = {
-	{ DEV_GET_ADDRESS,		handle_dev_get_address_req,		DEV_GET_ADDRESS_SIGNATURE		},
-	{ DEV_GET_VERSION,		handle_dev_get_version_req,		DEV_GET_VERSION_SIGNATURE		},
-	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		DEV_GET_REVISION_SIGNATURE		},
-	{ DEV_GET_MANUFACTURER,		handle_dev_get_manufacturer_req,	DEV_GET_MANUFACTURER_SIGNATURE		},
-	{ DEV_GET_COMPANY,		handle_dev_get_company_req,		DEV_GET_COMPANY_SIGNATURE		},
-	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		DEV_GET_FEATURES_SIGNATURE		},
-	{ DEV_GET_MODE,			handle_dev_get_mode_req,		DEV_GET_MODE_SIGNATURE			},
-	{ DEV_LIST_MINOR_CLASSES,	handle_dev_list_minor_classes_req,	DEV_LIST_MINOR_CLASSES_SIGNATURE	},
-	{ DEV_SET_MODE,			handle_dev_set_mode_req,		DEV_SET_MODE_SIGNATURE			},
-	{ DEV_GET_DISCOVERABLE_TO,	handle_dev_get_discoverable_to_req,	DEV_GET_DISCOVERABLE_TO_SIGNATURE	},
-	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	DEV_SET_DISCOVERABLE_TO_SIGNATURE	},
-	{ DEV_IS_CONNECTABLE,		handle_dev_is_connectable_req,		DEV_IS_CONNECTABLE_SIGNATURE		},
-	{ DEV_IS_DISCOVERABLE,		handle_dev_is_discoverable_req,		DEV_IS_DISCOVERABLE_SIGNATURE		},
-	{ DEV_GET_MAJOR_CLASS,		handle_dev_get_major_class_req,		DEV_GET_MAJOR_CLASS_SIGNATURE		},
-	{ DEV_GET_MINOR_CLASS,		handle_dev_get_minor_class_req,		DEV_GET_MINOR_CLASS_SIGNATURE		},
-	{ DEV_SET_MINOR_CLASS,		handle_dev_set_minor_class_req,		DEV_SET_MINOR_CLASS_SIGNATURE		},
-	{ DEV_GET_SERVICE_CLASSES,	handle_dev_get_service_classes_req,	DEV_GET_SERVICE_CLASSES_SIGNATURE	},
-	{ DEV_GET_NAME,			handle_dev_get_name_req,		DEV_GET_NAME_SIGNATURE			},
-	{ DEV_SET_NAME,			handle_dev_set_name_req,		DEV_SET_NAME_SIGNATURE			},
+	{ DEV_GET_ADDRESS,		handle_dev_get_address_req,		},
+	{ DEV_GET_VERSION,		handle_dev_get_version_req,		},
+	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		},
+	{ DEV_GET_MANUFACTURER,		handle_dev_get_manufacturer_req,	},
+	{ DEV_GET_COMPANY,		handle_dev_get_company_req,		},
+	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		},
+	{ DEV_GET_MODE,			handle_dev_get_mode_req,		},
+	{ DEV_LIST_MINOR_CLASSES,	handle_dev_list_minor_classes_req,	},
+	{ DEV_SET_MODE,			handle_dev_set_mode_req,		},
+	{ DEV_GET_DISCOVERABLE_TO,	handle_dev_get_discoverable_to_req,	},
+	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	},
+	{ DEV_IS_CONNECTABLE,		handle_dev_is_connectable_req,		},
+	{ DEV_IS_DISCOVERABLE,		handle_dev_is_discoverable_req,		},
+	{ DEV_GET_MAJOR_CLASS,		handle_dev_get_major_class_req,		},
+	{ DEV_GET_MINOR_CLASS,		handle_dev_get_minor_class_req,		},
+	{ DEV_SET_MINOR_CLASS,		handle_dev_set_minor_class_req,		},
+	{ DEV_GET_SERVICE_CLASSES,	handle_dev_get_service_classes_req,	},
+	{ DEV_GET_NAME,			handle_dev_get_name_req,		},
+	{ DEV_SET_NAME,			handle_dev_set_name_req,		},
 	
-	{ DEV_GET_REMOTE_VERSION,	handle_dev_get_remote_version_req,	DEV_GET_REMOTE_VERSION_SIGNATURE	},
-	{ DEV_GET_REMOTE_REVISION,	handle_dev_get_remote_revision_req,	DEV_GET_REMOTE_REVISION_SIGNATURE	},
-	{ DEV_GET_REMOTE_MANUFACTURER,	handle_dev_get_remote_manufacturer_req,	DEV_GET_REMOTE_MANUFACTURER_SIGNATURE	},
-	{ DEV_GET_REMOTE_COMPANY,	handle_dev_get_remote_company_req,	DEV_GET_REMOTE_COMPANY_SIGNATURE	},
-	{ DEV_GET_REMOTE_NAME,		handle_dev_get_remote_name_req,		DEV_GET_REMOTE_NAME_SIGNATURE		},
-	{ DEV_GET_REMOTE_ALIAS,		handle_dev_get_remote_alias_req,	DEV_GET_REMOTE_ALIAS_SIGNATURE		},
-	{ DEV_SET_REMOTE_ALIAS,		handle_dev_set_remote_alias_req,	DEV_SET_REMOTE_ALIAS_SIGNATURE		},
+	{ DEV_GET_REMOTE_VERSION,	handle_dev_get_remote_version_req,	},
+	{ DEV_GET_REMOTE_REVISION,	handle_dev_get_remote_revision_req,	},
+	{ DEV_GET_REMOTE_MANUFACTURER,	handle_dev_get_remote_manufacturer_req,	},
+	{ DEV_GET_REMOTE_COMPANY,	handle_dev_get_remote_company_req,	},
+	{ DEV_GET_REMOTE_NAME,		handle_dev_get_remote_name_req,		},
+	{ DEV_GET_REMOTE_ALIAS,		handle_dev_get_remote_alias_req,	},
+	{ DEV_SET_REMOTE_ALIAS,		handle_dev_set_remote_alias_req,	},
 
-	{ DEV_LAST_SEEN,		handle_dev_last_seen_req,		DEV_LAST_SEEN_SIGNATURE			},
-	{ DEV_LAST_USED,		handle_dev_last_used_req,		DEV_LAST_USED_SIGNATURE			},
+	{ DEV_LAST_SEEN,		handle_dev_last_seen_req,		},
+	{ DEV_LAST_USED,		handle_dev_last_used_req,		},
 
-	{ DEV_CREATE_BONDING,		handle_dev_create_bonding_req,		DEV_CREATE_BONDING_SIGNATURE		},
-	{ DEV_REMOVE_BONDING,		handle_dev_remove_bonding_req,		DEV_REMOVE_BONDING_SIGNATURE		},
-	{ DEV_HAS_BONDING_NAME,		handle_dev_has_bonding_req,		DEV_HAS_BONDING_SIGNATURE		},
-	{ DEV_LIST_BONDINGS,		handle_dev_list_bondings_req,		DEV_LIST_BONDINGS_SIGNATURE		},
-	{ DEV_GET_PIN_CODE_LENGTH,	handle_dev_get_pin_code_length_req,	DEV_GET_PIN_CODE_LENGTH_SIGNATURE	},
-	{ DEV_GET_ENCRYPTION_KEY_SIZE,	handle_dev_get_encryption_key_size_req,	DEV_GET_ENCRYPTION_KEY_SIZE_SIGNATURE	},
+	{ DEV_CREATE_BONDING,		handle_dev_create_bonding_req,		},
+	{ DEV_REMOVE_BONDING,		handle_dev_remove_bonding_req,		},
+	{ DEV_HAS_BONDING_NAME,		handle_dev_has_bonding_req,		},
+	{ DEV_LIST_BONDINGS,		handle_dev_list_bondings_req,		},
+	{ DEV_GET_PIN_CODE_LENGTH,	handle_dev_get_pin_code_length_req,	},
+	{ DEV_GET_ENCRYPTION_KEY_SIZE,	handle_dev_get_encryption_key_size_req,	},
 
-	{ DEV_DISCOVER_DEVICES,		handle_dev_discover_devices_req,	DEV_DISCOVER_DEVICES_SIGNATURE		},
-	{ DEV_CANCEL_DISCOVERY,		handle_dev_cancel_discovery_req,	DEV_CANCEL_DISCOVERY_SIGNATURE		},
-	{ DEV_DISCOVER_CACHE,		handle_dev_discover_cache_req,		DEV_DISCOVER_CACHE_SIGNATURE		},
-	{ DEV_DISCOVER_SERVICE,		handle_dev_discover_service_req,	DEV_DISCOVER_SERVICE_SIGNATURE		},
+	{ DEV_DISCOVER_DEVICES,		handle_dev_discover_devices_req,	},
+	{ DEV_CANCEL_DISCOVERY,		handle_dev_cancel_discovery_req,	},
+	{ DEV_DISCOVER_CACHE,		handle_dev_discover_cache_req,		},
+	{ DEV_DISCOVER_SERVICE,		handle_dev_discover_service_req,	},
 
-	{ NULL, NULL, NULL}
+	{ NULL, NULL }
 };
 
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	const struct service_data *handlers = dev_services;
-	DBusMessage *reply = NULL;
 	struct hci_dbus_data *dbus_data = data;
-	const char *method;
-	const char *signature;
 	const char *iface;
-	uint32_t err = BLUEZ_EDBUS_UNKNOWN_METHOD;
 
-	method = dbus_message_get_member(msg);
-	signature = dbus_message_get_signature(msg);
 	iface = dbus_message_get_interface(msg);
-
-	info("Adapter path:%s iface:%s method:%s", dbus_message_get_path(msg), iface, method);
 
 	if (strcmp(ADAPTER_INTERFACE, iface))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -1381,33 +1372,22 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 		goto failed;
 	}
 
-	/* It's a device path id */
-	for (; handlers->name != NULL; handlers++) {
-		if (strcmp(handlers->name, method))
-			continue;
+	handler = find_service_handler(dev_services, msg);
+	if (!handler)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-		if (!strcmp(handlers->signature, signature)) {
-			reply = handlers->handler_func(msg, data);
-			err = 0;
-			break;
-		} else {
-			/* Set the error, but continue looping incase there is
-			 * another method with the same name but a different
-			 * signature */
-			err = BLUEZ_EDBUS_WRONG_SIGNATURE;
-			continue;
-		}
-	}
+	return handler(conn, msg, data);
 
 failed:
-	if (err)
-		reply = bluez_new_failure_msg(msg, err);
+	if (err) {
+		DBusMessage *reply = bluez_new_failure_msg(msg, err);
 
-	if (reply) {
-		if (!dbus_connection_send (conn, reply, NULL))
-			error("Can't send reply message");
+		if (reply) {
+			if (!dbus_connection_send(conn, reply, NULL))
+				error("Can't send reply message");
 
-		dbus_message_unref(reply);
+			dbus_message_unref(reply);
+		}
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;

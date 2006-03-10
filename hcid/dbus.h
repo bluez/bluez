@@ -56,12 +56,13 @@
 
 #define MAX_PATH_LENGTH		64
 
-typedef DBusMessage* (service_handler_func_t) (DBusMessage *, void *);
+typedef DBusMessage* (service_handler_func_t) (DBusConnection *conn,
+						DBusMessage *msg,
+						void *user_data);
 
 struct service_data {
 	const char		*name;
 	service_handler_func_t	*handler_func;
-	const char		*signature;
 };
 
 typedef int (timeout_handler_func_t) (void *data);
@@ -121,6 +122,9 @@ int name_listener_add(DBusConnection *connection, const char *name,
 int name_listener_remove(DBusConnection *connection, const char *name,
 				name_cb_t func, void *user_data);
 
+DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);
+
+service_hanbdler_func_t *find_service_handler(service_data *services, DBusMessage *msg);
 
 /*======================================================================== 
     BlueZ D-Bus Manager service definitions "/org/bluez/Manager"

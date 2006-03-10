@@ -127,53 +127,35 @@ static DBusMessage *handle_mgr_default_device_req(DBusMessage *msg, void *data)
 }
 
 static const struct service_data mgr_services[] = {
-	{ MGR_LIST_ADAPTERS,	handle_mgr_list_devices_req,	MGR_LIST_ADAPTERS_SIGNATURE	},
-	{ MGR_DEFAULT_ADAPTER,	handle_mgr_default_device_req,	MGR_DEFAULT_ADAPTER_SIGNATURE	},
-	{ NULL, NULL, NULL }
+	{ MGR_LIST_ADAPTERS,	handle_mgr_list_devices_req	},
+	{ MGR_DEFAULT_ADAPTER,	handle_mgr_default_device_req	},
+	{ NULL, NULL }
 };
+
+static DBusHandlerResult handle_manager_method(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	service_handler_func_t *handler;
+
+	handler = find_service_handler(mgr_services, msg);
+
+	if (handler)
+		return handler(conn, msg, data);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
 
 DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	const struct service_data *handlers;
-	DBusMessage *reply = NULL;
 	const char *iface;
-	const char *method;
-	const char *signature;
-	uint32_t err = BLUEZ_EDBUS_UNKNOWN_METHOD;
-	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	iface = dbus_message_get_interface(msg);
-	method = dbus_message_get_member(msg);
-	signature = dbus_message_get_signature(msg);
 
-	info("Manager path:%s method:%s", dbus_message_get_path(msg), method);
+	if (!strcmp(iface, MANAGER_INTERFACE))
+		return handle_manager_method(conn, msg, data);
 
-	if (strcmp(iface, MANAGER_INTERFACE))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	if (!strcmp(iface, SECURITY_INTERFACE))
+		return handle_security_method(conn, msg, data);
 
-	for (handlers = mgr_services; handlers->name != NULL; handlers++) {
-		if (strcmp(handlers->name, method))
-			continue;
-
-		if (strcmp(handlers->signature, signature) != 0)
-			err = BLUEZ_EDBUS_WRONG_SIGNATURE;
-		else {
-			reply = handlers->handler_func(msg, data);
-			err = 0;
-		}
-
-		ret = DBUS_HANDLER_RESULT_HANDLED;
-	}
-
-	if (err)
-		reply = bluez_new_failure_msg(msg, err);
-
-	if (reply) {
-		if (!dbus_connection_send (conn, reply, NULL))
-			error("Can't send reply message");
-
-		dbus_message_unref(reply);
-	}
-
-	return ret;
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
