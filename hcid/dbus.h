@@ -110,6 +110,9 @@ DBusMessage *error_bonding_does_not_exists(DBusMessage *msg);
 DBusMessage *error_bonding_in_progress(DBusMessage *msg);
 DBusMessage *error_discover_in_progress(DBusMessage *msg);
 
+DBusMessage *error_passkey_agent_already_exists(DBusMessage *msg);
+DBusMessage *error_passkey_agent_does_not_exists(DBusMessage *msg);
+
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
 int name_listener_add(DBusConnection *connection, const char *name,

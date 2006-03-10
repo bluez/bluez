@@ -240,3 +240,13 @@ DBusMessage *error_discover_in_progress(DBusMessage *msg)
 {
 	return error_in_progress(msg, "Discover in progress");
 }
+
+DBusMessage *error_passkey_agent_already_exists(DBusMessage *msg)
+{
+	return error_already_exists(msg, "Passkey agent already exists");
+}
+
+DBusMessage *error_passkey_agent_does_not_exists(DBusMessage *msg)
+{
+	return error_does_not_exists(msg, "Passkey agent does not exists");
+}
