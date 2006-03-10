@@ -35,6 +35,8 @@
 
 static const char *agent_path = "/org/bluez/passkey-agent/";
 
+static char *passkey = "0000";
+
 static volatile sig_atomic_t __io_canceled = 0;
 
 static void sig_term(int sig)
@@ -44,7 +46,26 @@ static void sig_term(int sig)
 
 DBusHandlerResult agent_message(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	char *path, *address;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &path);
+	dbus_message_iter_get_basic(&iter, &address);
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &passkey);
+
+	dbus_connection_send(conn, reply, NULL);
+
+	dbus_connection_flush(conn);
+
+	dbus_message_unref(reply);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static const DBusObjectPathVTable agent_table = {
