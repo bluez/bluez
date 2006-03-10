@@ -106,12 +106,12 @@ DBusMessage *error_not_available(DBusMessage *msg);
 DBusMessage *error_not_connected(DBusMessage *msg);
 
 DBusMessage *error_bonding_already_exists(DBusMessage *msg);
-DBusMessage *error_bonding_does_not_exists(DBusMessage *msg);
+DBusMessage *error_bonding_does_not_exist(DBusMessage *msg);
 DBusMessage *error_bonding_in_progress(DBusMessage *msg);
 DBusMessage *error_discover_in_progress(DBusMessage *msg);
 
 DBusMessage *error_passkey_agent_already_exists(DBusMessage *msg);
-DBusMessage *error_passkey_agent_does_not_exists(DBusMessage *msg);
+DBusMessage *error_passkey_agent_does_not_exist(DBusMessage *msg);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 

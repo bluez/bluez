@@ -211,9 +211,9 @@ static DBusMessage *error_already_exists(DBusMessage *msg, const char *str)
 	return dbus_message_new_error(msg, ERROR_INTERFACE ".AlreadyExists", str);
 }
 
-static DBusMessage *error_does_not_exists(DBusMessage *msg, const char *str)
+static DBusMessage *error_does_not_exist(DBusMessage *msg, const char *str)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".DoesNotExists", str);
+	return dbus_message_new_error(msg, ERROR_INTERFACE ".DoesNotExist", str);
 }
 
 static DBusMessage *error_in_progress(DBusMessage *msg, const char *str)
@@ -226,9 +226,9 @@ DBusMessage *error_bonding_already_exists(DBusMessage *msg)
 	return error_already_exists(msg, "Bonding already exists");
 }
 
-DBusMessage *error_bonding_does_not_exists(DBusMessage *msg)
+DBusMessage *error_bonding_does_not_exist(DBusMessage *msg)
 {
-	return error_does_not_exists(msg, "Bonding does not exists");
+	return error_does_not_exist(msg, "Bonding does not exist");
 }
 
 DBusMessage *error_bonding_in_progress(DBusMessage *msg)
@@ -246,7 +246,7 @@ DBusMessage *error_passkey_agent_already_exists(DBusMessage *msg)
 	return error_already_exists(msg, "Passkey agent already exists");
 }
 
-DBusMessage *error_passkey_agent_does_not_exists(DBusMessage *msg)
+DBusMessage *error_passkey_agent_does_not_exist(DBusMessage *msg)
 {
-	return error_does_not_exists(msg, "Passkey agent does not exists");
+	return error_does_not_exist(msg, "Passkey agent does not exist");
 }
