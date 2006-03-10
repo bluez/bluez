@@ -56,9 +56,9 @@
 
 #define MAX_PATH_LENGTH		64
 
-typedef DBusMessage* (service_handler_func_t) (DBusConnection *conn,
-						DBusMessage *msg,
-						void *user_data);
+typedef DBusHandlerResult (service_handler_func_t) (DBusConnection *conn,
+							DBusMessage *msg,
+							void *user_data);
 
 struct service_data {
 	const char		*name;
