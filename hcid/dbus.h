@@ -73,8 +73,13 @@ struct hci_dbus_data {
 	uint32_t timeout_hits;
 	timeout_handler_func_t *timeout_handler;
 	uint8_t mode;
-	char*   requestor_name;
-	uint8_t	busy;
+	char *requestor_name;
+};
+
+struct passkey_agent {
+	char *addr;
+	char *name;
+	char *path;
 };
 
 typedef int register_function_t(DBusConnection *conn, uint16_t id);
