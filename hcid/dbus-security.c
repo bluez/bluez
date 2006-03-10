@@ -57,21 +57,13 @@ static DBusHandlerResult register_default_agent(DBusConnection *conn,
 	char *path;
 	DBusMessage *reply;
 
-	if (default_agent) {
-		reply = error_passkey_agent_already_exists(msg);
-		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		goto done;
-	}
+	if (default_agent)
+		return error_passkey_agent_already_exists(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID)) {
-		reply = error_invalid_arguments(msg);
-		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		goto done;
-	}
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
 
 	default_agent = malloc(sizeof(struct passkey_agent));
 	if (!default_agent)
@@ -87,7 +79,7 @@ static DBusHandlerResult register_default_agent(DBusConnection *conn,
 	if (!default_agent->path)
 		goto need_memory;
 
-	reply = dbus_message_new_method_return();
+	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		goto need_memory;
 
@@ -97,7 +89,6 @@ static DBusHandlerResult register_default_agent(DBusConnection *conn,
 	info("Default passkey agent (%s, %s) registered",
 			default_agent->name, default_agent->path);
 
-done:
 	dbus_connection_send(conn, reply, NULL);
 	dbus_message_unref(reply);
 
@@ -120,30 +111,21 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	char *name, *path;
+	char *path;
+	const char *name;
 
-	if (!default_agent) {
-		reply = error_does_not_exist(msg);
-		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		goto done;
-	}
+	if (!default_agent)
+		return error_passkey_agent_does_not_exist(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID)) {
-		reply = error_invalid_arguments(msg);
-		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		goto done;
-	}
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
 
-	if (strcmp(name, default_agent->name) || strcmp(path, default_agent->path)) {
-		reply = error_does_not_exist(msg);
-		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		goto done;
-	}
+	name = dbus_message_get_sender(msg);
+
+	if (strcmp(name, default_agent->name) || strcmp(path, default_agent->path))
+		return error_passkey_agent_does_not_exist(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -160,7 +142,6 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 	free(default_agent);
 	default_agent = NULL;
 
-done:
 	dbus_connection_send(conn, reply, NULL);
 	dbus_message_unref(reply);
 
@@ -175,7 +156,7 @@ static struct service_data sec_services[] = {
 
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	service_handler_func_t *handler;
+	service_handler_func_t handler;
 
 	handler = find_service_handler(sec_services, msg);
 
