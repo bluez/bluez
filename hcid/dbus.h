@@ -73,6 +73,7 @@ struct hci_dbus_data {
 	uint32_t timeout_hits;
 	timeout_handler_func_t *timeout_handler;
 	uint8_t mode;
+	char*   requestor_name;
 	uint8_t	busy;
 };
 
