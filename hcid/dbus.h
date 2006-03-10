@@ -27,8 +27,6 @@
 #include <stdint.h>
 #include <dbus/dbus.h>
 
-#define __END_SIG__ DBUS_TYPE_INVALID_AS_STRING
-
 #define BASE_PATH		"/org/bluez"
 #define BASE_INTERFACE		"org.bluez"
 
@@ -102,6 +100,7 @@ int get_default_dev_id(void);
 
 DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err);
 DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_not_implemented(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
@@ -113,6 +112,7 @@ DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage
 DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_passkey_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 
@@ -219,27 +219,5 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 
 #define DFT_DISCOVERABLE_TIMEOUT	180	/* 3 seconds */
 #define DISCOVERABLE_TIMEOUT_OFF	0
-
-/* BLUEZ_DBUS_ERROR 
- * EFailed error messages signature is : su
- * Where the first argument is a string(error message description),
- * the last  is a uint32 that contains the error class(system, dbus or hci). */
-
-/* Error code offsets */
-#define BLUEZ_EBT_OFFSET		(0x00000000) /* see Bluetooth error code */
-#define BLUEZ_EBT_EXT_OFFSET		(0x00000100)
-#define BLUEZ_EDBUS_OFFSET		(0x00010000)
-#define BLUEZ_ESYSTEM_OFFSET		(0x00020000)
-#define BLUEZ_EFUTURE_OFFSET		(0x00040000)
-
-/* D-Bus error code, class BLUEZ_EDBUS_OFFSET */
-#define BLUEZ_EDBUS_UNKNOWN_METHOD	(0x01 | BLUEZ_EDBUS_OFFSET)
-#define BLUEZ_EDBUS_WRONG_SIGNATURE	(0x02 | BLUEZ_EDBUS_OFFSET)
-#define BLUEZ_EDBUS_WRONG_PARAM		(0x03 | BLUEZ_EDBUS_OFFSET)
-#define BLUEZ_EDBUS_RECORD_NOT_FOUND	(0x04 | BLUEZ_EDBUS_OFFSET)
-#define BLUEZ_EDBUS_NO_MEM   		(0x05 | BLUEZ_EDBUS_OFFSET)
-#define BLUEZ_EDBUS_CONN_NOT_FOUND	(0x06 | BLUEZ_EDBUS_OFFSET)
-#define BLUEZ_EDBUS_UNKNOWN_PATH	(0x07 | BLUEZ_EDBUS_OFFSET)
-#define BLUEZ_EDBUS_NOT_IMPLEMENTED	(0x08 | BLUEZ_EDBUS_OFFSET)
 
 #endif /* __H_BLUEZ_DBUS_H__ */

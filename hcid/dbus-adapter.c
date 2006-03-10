@@ -250,7 +250,7 @@ static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn,
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return error_failed(conn, msg, errno);
 	}
 
 	hci_close_dev(dd);
@@ -298,7 +298,7 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 							DBUS_TYPE_INVALID);
 
 	if (!scan_mode)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return error_invalid_arguments(conn, msg);
 
 	if (strcasecmp(MODE_OFF, scan_mode) == 0)
 		hci_mode = SCAN_DISABLED;
@@ -307,7 +307,7 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 	else if (strcasecmp(MODE_DISCOVERABLE, scan_mode) == 0)
 		hci_mode = (SCAN_PAGE | SCAN_INQUIRY);
 	else
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return error_invalid_arguments(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
@@ -330,13 +330,13 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 			error("Sending write scan enable command failed: %s (%d)",
 							strerror(errno), errno);
 			hci_close_dev(dd);
-			return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+			return error_failed(conn, msg, errno);
 		}
 
 		if (status) {
 			error("Setting scan enable failed with status 0x%02x", status);
 			hci_close_dev(dd);
-			return bluez_new_failure_msg(conn, msg, BLUEZ_EBT_OFFSET | status);
+			return error_failed(conn, msg, status);
 		}
 	}
 
@@ -500,7 +500,7 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 	dbus_message_iter_get_basic(&iter, &minor);
 
 	if (!minor)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return error_invalid_arguments(conn, msg);
 
 	/* FIXME: currently, only computer minor classes are allowed */
 	for (i = 0; i < sizeof(computer_minor_cls) / sizeof(*computer_minor_cls); i++)
@@ -512,7 +512,7 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 
 	/* Check if it's a valid minor class */
 	if (dev_class == 0xFFFFFFFF)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return error_invalid_arguments(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
@@ -522,7 +522,7 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return error_failed(conn, msg, errno);
 	}
 
 	dev_class |= (cls[2] << 16) | (cls[1] << 8);
@@ -539,7 +539,7 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 		error("Can't write class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return error_failed(conn, msg, errno);
 	}
 
 	signal = dev_signal_factory(dbus_data->dev_id, DEV_SIG_MINOR_CLASS_CHANGED,
@@ -576,7 +576,7 @@ static DBusHandlerResult handle_dev_get_service_classes_req(DBusConnection *conn
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return error_failed(conn, msg, errno);
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -636,7 +636,7 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 
 	if (strlen(str_ptr) == 0) {
 		error("Name change failed: Invalid parameter");
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return error_invalid_arguments(conn, msg);
 	}
 
 	hci_devba(dbus_data->dev_id, &bdaddr);
@@ -656,14 +656,12 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 
 static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	return error_not_implemented(conn, msg);
 }
 
 static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	return error_not_implemented(conn, msg);
 }
 
 static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -684,7 +682,7 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
+		return error_failed(conn, msg, ENXIO);
 
 	compid = atoi(str);
 
@@ -717,7 +715,7 @@ static DBusHandlerResult handle_dev_get_remote_company_req(DBusConnection *conn,
 
 	tmp = ouitocomp(oui);
 	if (!tmp)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_RECORD_NOT_FOUND);
+		return error_record_does_not_exist(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -754,7 +752,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	name = textfile_get(filename, str_bdaddr);
 
 	if (!name)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_RECORD_NOT_FOUND);
+		return error_record_does_not_exist(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -815,7 +813,7 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 
 	if (strlen(str_ptr) == 0) {
 		error("Alias change failed: Invalid parameter");
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return error_invalid_arguments(conn, msg);
 	}
 
 	str2ba(addr_ptr, &bdaddr);
@@ -858,7 +856,7 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
+		return error_failed(conn, msg, ENXIO);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -891,7 +889,7 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
+		return error_failed(conn, msg, ENXIO);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -927,10 +925,10 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 
 	if (dev_id < 0)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
+		return error_failed(conn, msg, ENOTCONN);
 
 	if (dbus_data->dev_id != dev_id)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
+		return error_failed(conn, msg, ENOTCONN);
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0)
@@ -939,7 +937,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr) {
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NO_MEM);
+		return error_out_of_memory(conn, msg);
 	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
@@ -948,7 +946,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		hci_close_dev(dd);
 		free(cr);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return error_failed(conn, msg, errno);
 	}
 
 	memset(&cp, 0, sizeof(cp));
@@ -968,7 +966,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 							strerror(errno), errno);
 		hci_close_dev(dd);
 		free(cr);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return error_failed(conn, msg, errno);
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -1017,7 +1015,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	if (!cr) {
 		error("Can't allocate memory");
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NO_MEM);
+		return error_out_of_memory(conn, msg);
 	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
@@ -1034,7 +1032,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 		error("Disconnect failed");
 		free(cr);
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return error_failed(conn, msg, errno);
 	}
 
 	/* FIXME: which condition must be verified before send the signal */
@@ -1143,7 +1141,7 @@ static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn
 
 	len = read_pin_length(&local, &peer);
 	if (len < 0)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | -len);
+		return error_failed(conn, msg, -len);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1172,7 +1170,7 @@ static DBusHandlerResult handle_dev_get_encryption_key_size_req(DBusConnection *
 
 	val = get_encryption_key_size(dbus_data->dev_id, &bdaddr);
 	if (val < 0)
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | -val);
+		return error_failed(conn, msg, -val);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1223,7 +1221,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 		error("Unable to start inquiry: %s (%d)",
 							strerror(errno), errno);
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return error_failed(conn, msg, errno);
 	}
 
 	requestor_name = dbus_message_get_sender(msg);
@@ -1269,14 +1267,14 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		error("Sending cancel inquiry failed: %s (%d)",
 							strerror(errno), errno);
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return error_failed(conn, msg, errno);
 	}
 
 	hci_close_dev(dd);
 
 	if (status) {
 		error("Cancel inquiry failed with status 0x%02x", status);
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EBT_OFFSET | status);
+		return error_failed(conn, msg, status);
 	}
 
 	free(dbus_data->requestor_name);
@@ -1289,14 +1287,12 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 
 static DBusHandlerResult handle_dev_discover_cache_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	return error_not_implemented(conn, msg);
 }
 
 static DBusHandlerResult handle_dev_discover_service_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	/*FIXME: */
-	return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	return error_not_implemented(conn, msg);
 }
 
 static struct service_data dev_services[] = {
@@ -1359,7 +1355,7 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 
 	if (dbus_data->path_id == ADAPTER_ROOT_ID) {
 		/* Adapter is down(path unregistered) or the path is wrong */
-		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_UNKNOWN_PATH);
+		return error_no_such_adapter(conn, msg);
 	}
 
 	handler = find_service_handler(dev_services, msg);
