@@ -128,6 +128,21 @@ int main(int argc, char **argv)
 			break;
 	}
 
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/Manager",
+			"org.bluez.Security", "UnregisterDefaultPasskeyAgent");
+
+	if (!msg) {
+		fprintf(stderr, "Can't allocate new method call\n");
+		exit(1);
+	}
+
+	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &agent_path);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+
+	dbus_message_unref(msg);
+
 	dbus_connection_close(conn);
 
 	return 0;
