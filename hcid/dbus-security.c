@@ -31,16 +31,9 @@
 #include <dbus/dbus.h>
 
 #include "dbus.h"
-#include "dbus-error.h"
-#include "dbus-common.h"
+#include "hcid.h"
 
 static struct passkey_agent *default_agent = NULL;
-
-static const struct service_data sec_services[] = {
-	{ "RegisterDefault",	register_default_agent		},
-	{ "UnregisterDefault",	unregister_default_agent	},
-	{ NULL, NULL }
-};
 
 static void default_agent_exited(const char *name, void *data)
 {
@@ -173,6 +166,12 @@ done:
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
+
+static struct service_data sec_services[] = {
+	{ "RegisterDefault",	register_default_agent		},
+	{ "UnregisterDefault",	unregister_default_agent	},
+	{ NULL, NULL }
+};
 
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data)
 {

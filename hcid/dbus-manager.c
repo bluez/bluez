@@ -39,7 +39,7 @@
 #include "hcid.h"
 #include "dbus.h"
 
-static DBusMessage *handle_mgr_list_devices_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_mgr_list_devices_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
@@ -50,28 +50,30 @@ static DBusMessage *handle_mgr_list_devices_req(DBusMessage *msg, void *data)
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0)
-		return error_failed(msg, errno);
+		return error_failed(conn, msg, errno);
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 	if (!dl) {
 		close(sk);
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 	}
 
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
 	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
-		reply = error_failed(msg, errno);
-		goto failed;
+		close(sk);
+		free(dl);
+		return error_failed(conn, msg, errno);
 	}
 
 	dr = dl->dev_req;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
-		reply = error_out_of_memory(msg);
-		goto failed;
+		close(sk);
+		free(dl);
+		return error_out_of_memory(conn, msg);
 	}
 
 	dbus_message_iter_init_append(reply, &iter);
@@ -97,45 +99,44 @@ static DBusMessage *handle_mgr_list_devices_req(DBusMessage *msg, void *data)
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-failed:
 	free(dl);
 
 	close(sk);
 
-	return reply;
+	return send_reply_and_unref(conn, reply);
 }
 
-static DBusMessage *handle_mgr_default_device_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_mgr_default_adapter_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
 	int default_dev = get_default_dev_id();
 
 	if (default_dev < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, default_dev);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, reply);
 }
 
-static const struct service_data mgr_services[] = {
+static struct service_data mgr_services[] = {
 	{ MGR_LIST_ADAPTERS,	handle_mgr_list_devices_req	},
-	{ MGR_DEFAULT_ADAPTER,	handle_mgr_default_device_req	},
+	{ MGR_DEFAULT_ADAPTER,	handle_mgr_default_adapter_req	},
 	{ NULL, NULL }
 };
 
 static DBusHandlerResult handle_manager_method(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	service_handler_func_t *handler;
+	service_handler_func_t handler;
 
 	handler = find_service_handler(mgr_services, msg);
 

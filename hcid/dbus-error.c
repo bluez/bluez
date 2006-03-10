@@ -139,7 +139,7 @@ static const char *bluez_dbus_error_to_str(const uint32_t ecode)
 	return NULL;
 }
 
-DBusMessage *bluez_new_failure_msg(DBusMessage *msg, const uint32_t ecode)
+DBusHandlerResult bluez_new_failure_msg(DBusConnection *conn, DBusMessage *msg, const uint32_t ecode)
 {
 	DBusMessageIter iter;
 	DBusMessage *reply;
@@ -147,112 +147,124 @@ DBusMessage *bluez_new_failure_msg(DBusMessage *msg, const uint32_t ecode)
 
 	error_msg = bluez_dbus_error_to_str(ecode);
 	if (!error_msg)
-		return NULL;
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	reply = dbus_message_new_error(msg, ERROR_INTERFACE, error_msg);
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_UINT32 ,&ecode);
 
-	return reply;
+	return send_reply_and_unref(conn, reply);
 }
 
-DBusMessage *error_failed(DBusMessage *msg, int err)
+DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err)
 {
 	const char *str = strerror(err);
 
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".Failed", str);
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".Failed", str));
 }
 
-DBusMessage *error_invalid_arguments(DBusMessage *msg)
+DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".InvalidArguments",
-							"Invalid arguments");
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".InvalidArguments",
+							"Invalid arguments"));
 }
 
-DBusMessage *error_not_authorized(DBusMessage *msg)
+DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".NotAuthorized",
-							"Not authorized");
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".NotAuthorized",
+							"Not authorized"));
 }
 
-DBusMessage *error_out_of_memory(DBusMessage *msg)
+DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".OutOfMemory",
-							"Out of memory");
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".OutOfMemory",
+							"Out of memory"));
 }
 
-DBusMessage *error_no_such_adapter(DBusMessage *msg)
+DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
-							"No such adapter");
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
+							"No such adapter"));
 }
 
-DBusMessage *error_unknown_address(DBusMessage *msg)
+DBusHandlerResult error_unknown_address(DBusConnection *conn, DBusMessage *msg)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownAddress",
-							"Unknown address");
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownAddress",
+							"Unknown address"));
 }
 
-DBusMessage *error_not_available(DBusMessage *msg)
+DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".NotAvailable",
-							"Not available");
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".NotAvailable",
+							"Not available"));
 }
 
-DBusMessage *error_not_connected(DBusMessage *msg)
+DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".NotConnected",
-							"Not connected");
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".NotConnected",
+							"Not connected"));
 }
 
-DBusMessage *error_unsupported_major_class(DBusMessage *msg)
+DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".UnsupportedMajorClass",
-							"Unsupported Major Class");
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".UnsupportedMajorClass",
+							"Unsupported Major Class"));
 }
 
-static DBusMessage *error_already_exists(DBusMessage *msg, const char *str)
+static DBusHandlerResult error_already_exists(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".AlreadyExists", str);
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".AlreadyExists", str));
 }
 
-static DBusMessage *error_does_not_exist(DBusMessage *msg, const char *str)
+static DBusHandlerResult error_does_not_exist(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".DoesNotExist", str);
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".DoesNotExist", str));
 }
 
-static DBusMessage *error_in_progress(DBusMessage *msg, const char *str)
+static DBusHandlerResult error_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
-	return dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str);
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str));
 }
 
-DBusMessage *error_bonding_already_exists(DBusMessage *msg)
+DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_already_exists(msg, "Bonding already exists");
+	return error_already_exists(conn, msg, "Bonding already exists");
 }
 
-DBusMessage *error_bonding_does_not_exist(DBusMessage *msg)
+DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_does_not_exist(msg, "Bonding does not exist");
+	return error_does_not_exist(conn, msg, "Bonding does not exist");
 }
 
-DBusMessage *error_bonding_in_progress(DBusMessage *msg)
+DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_in_progress(msg, "Bonding in progress");
+	return error_in_progress(conn, msg, "Bonding in progress");
 }
 
-DBusMessage *error_discover_in_progress(DBusMessage *msg)
+DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_in_progress(msg, "Discover in progress");
+	return error_in_progress(conn, msg, "Discover in progress");
 }
 
-DBusMessage *error_passkey_agent_already_exists(DBusMessage *msg)
+DBusHandlerResult error_passkey_agent_already_exists(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_already_exists(msg, "Passkey agent already exists");
+	return error_already_exists(conn, msg, "Passkey agent already exists");
 }
 
-DBusMessage *error_passkey_agent_does_not_exist(DBusMessage *msg)
+DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_does_not_exist(msg, "Passkey agent does not exist");
+	return error_does_not_exist(conn, msg, "Passkey agent does not exist");
 }

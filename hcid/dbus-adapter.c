@@ -72,7 +72,7 @@ static const char *phone_minor_cls[] = {
 	"isdn"
 };
 
-static DBusMessage *handle_dev_get_address_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_address_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -81,19 +81,19 @@ static DBusMessage *handle_dev_get_address_req(DBusMessage *msg, void *data)
 
 	err = get_device_address(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(msg, -err);
+		return error_failed(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_version_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_version_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -102,19 +102,19 @@ static DBusMessage *handle_dev_get_version_req(DBusMessage *msg, void *data)
 
 	err = get_device_version(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(msg, -err);
+		return error_failed(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_revision_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_revision_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -123,19 +123,19 @@ static DBusMessage *handle_dev_get_revision_req(DBusMessage *msg, void *data)
 
 	err = get_device_revision(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(msg, -err);
+		return error_failed(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_manufacturer_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_manufacturer_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -144,19 +144,19 @@ static DBusMessage *handle_dev_get_manufacturer_req(DBusMessage *msg, void *data
 
 	err = get_device_manufacturer(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(msg, -err);
+		return error_failed(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_company_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_company_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -165,19 +165,19 @@ static DBusMessage *handle_dev_get_company_req(DBusMessage *msg, void *data)
 
 	err = get_device_company(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(msg, -err);
+		return error_failed(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_features_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_features_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter;
@@ -185,7 +185,7 @@ static DBusMessage *handle_dev_get_features_req(DBusMessage *msg, void *data)
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -194,10 +194,10 @@ static DBusMessage *handle_dev_get_features_req(DBusMessage *msg, void *data)
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_mode_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_mode_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
@@ -223,15 +223,15 @@ static DBusMessage *handle_dev_get_mode_req(DBusMessage *msg, void *data)
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_list_minor_classes_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
@@ -244,14 +244,16 @@ static DBusMessage *handle_dev_list_minor_classes_req(DBusMessage *msg, void *da
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-		goto failed;
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 	}
+
+	hci_close_dev(dd);
 
 	major_class = cls[1] & 0x1F;
 
@@ -265,13 +267,12 @@ static DBusMessage *handle_dev_list_minor_classes_req(DBusMessage *msg, void *da
 		size = sizeof(phone_minor_cls) / sizeof(*phone_minor_cls);
 		break;
 	default:
-		reply = error_unsupported_major_class(msg);
-		goto failed;
+		return error_unsupported_major_class(conn, msg);
 	}
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -281,13 +282,10 @@ static DBusMessage *handle_dev_list_minor_classes_req(DBusMessage *msg, void *da
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-failed:
-	hci_close_dev(dd);
-
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -300,7 +298,7 @@ static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 							DBUS_TYPE_INVALID);
 
 	if (!scan_mode)
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
 
 	if (strcasecmp(MODE_OFF, scan_mode) == 0)
 		hci_mode = SCAN_DISABLED;
@@ -309,11 +307,11 @@ static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 	else if (strcasecmp(MODE_DISCOVERABLE, scan_mode) == 0)
 		hci_mode = (SCAN_PAGE | SCAN_INQUIRY);
 	else
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	/* Check if the new requested mode is different from the current */
 	if (current_mode != hci_mode) {
@@ -332,13 +330,13 @@ static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 			error("Sending write scan enable command failed: %s (%d)",
 							strerror(errno), errno);
 			hci_close_dev(dd);
-			return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+			return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 		}
 
 		if (status) {
 			error("Setting scan enable failed with status 0x%02x", status);
 			hci_close_dev(dd);
-			return bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
+			return bluez_new_failure_msg(conn, msg, BLUEZ_EBT_OFFSET | status);
 		}
 	}
 
@@ -346,27 +344,27 @@ static DBusMessage *handle_dev_set_mode_req(DBusMessage *msg, void *data)
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_discoverable_to_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_discoverable_to_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &dbus_data->discoverable_timeout,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_set_discoverable_to_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -380,12 +378,12 @@ static DBusMessage *handle_dev_set_discoverable_to_req(DBusMessage *msg, void *d
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_is_connectable_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_is_connectable_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -397,15 +395,15 @@ static DBusMessage *handle_dev_is_connectable_req(DBusMessage *msg, void *data)
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connectable,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_is_discoverable_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -417,31 +415,31 @@ static DBusMessage *handle_dev_is_discoverable_req(DBusMessage *msg, void *data)
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &discoverable,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_major_class_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_major_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *str_ptr = "computer";
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	/*FIXME: Check the real device major class */
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_minor_class_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_minor_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -452,20 +450,20 @@ static DBusMessage *handle_dev_get_minor_class_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(msg, -errno);
+		return error_failed(conn, msg, -errno);
 	}
 
 	hci_close_dev(dd);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	/* FIXME: Currently, only computer major class is supported */
 	if ((cls[1] & 0x1f) != 1)
@@ -483,10 +481,10 @@ failed:
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusConnection *connection = get_dbus_connection();
@@ -502,7 +500,7 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 	dbus_message_iter_get_basic(&iter, &minor);
 
 	if (!minor)
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
 
 	/* FIXME: currently, only computer minor classes are allowed */
 	for (i = 0; i < sizeof(computer_minor_cls) / sizeof(*computer_minor_cls); i++)
@@ -514,17 +512,17 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 
 	/* Check if it's a valid minor class */
 	if (dev_class == 0xFFFFFFFF)
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-		goto failed;
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 	}
 
 	dev_class |= (cls[2] << 16) | (cls[1] << 8);
@@ -540,8 +538,8 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 	if (hci_write_class_of_dev(dd, dev_class, 2000) < 0) {
 		error("Can't write class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-		goto failed;
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 	}
 
 	signal = dev_signal_factory(dbus_data->dev_id, DEV_SIG_MINOR_CLASS_CHANGED,
@@ -555,13 +553,12 @@ static DBusMessage *handle_dev_set_minor_class_req(DBusMessage *msg, void *data)
 
 	reply = dbus_message_new_method_return(msg);
 
-failed:
 	hci_close_dev(dd);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_service_classes_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_service_classes_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -573,13 +570,13 @@ static DBusMessage *handle_dev_get_service_classes_req(DBusMessage *msg, void *d
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -601,10 +598,10 @@ static DBusMessage *handle_dev_get_service_classes_req(DBusMessage *msg, void *d
 
 	hci_close_dev(dd);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_name_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_name_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
@@ -613,19 +610,19 @@ static DBusMessage *handle_dev_get_name_req(DBusMessage *msg, void *data)
 
 	err = get_device_name(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(msg, -err);
+		return error_failed(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_set_name_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -639,7 +636,7 @@ static DBusMessage *handle_dev_set_name_req(DBusMessage *msg, void *data)
 
 	if (strlen(str_ptr) == 0) {
 		error("Name change failed: Invalid parameter");
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
 	}
 
 	hci_devba(dbus_data->dev_id, &bdaddr);
@@ -648,28 +645,28 @@ static DBusMessage *handle_dev_set_name_req(DBusMessage *msg, void *data)
 
 	err = set_device_name(dbus_data->dev_id, str_ptr);
 	if (err < 0)
-		return error_failed(msg, -err);
+		return error_failed(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_remote_version_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage *handle_dev_get_remote_revision_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage *handle_dev_get_remote_manufacturer_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -687,7 +684,7 @@ static DBusMessage *handle_dev_get_remote_manufacturer_req(DBusMessage *msg, voi
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
 
 	compid = atoi(str);
 
@@ -697,15 +694,15 @@ static DBusMessage *handle_dev_get_remote_manufacturer_req(DBusMessage *msg, voi
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_remote_company_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_remote_company_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	bdaddr_t bdaddr;
@@ -720,24 +717,23 @@ static DBusMessage *handle_dev_get_remote_company_req(DBusMessage *msg, void *da
 
 	tmp = ouitocomp(oui);
 	if (!tmp)
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_RECORD_NOT_FOUND);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_RECORD_NOT_FOUND);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
-		reply = error_out_of_memory(msg);
-		goto done;
+		free(tmp);
+		return error_out_of_memory(conn, msg);
 	}
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &tmp,
 					DBUS_TYPE_INVALID);
 
-done:
 	free(tmp);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_remote_name_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	char filename[PATH_MAX + 1], addr[18];
 	struct hci_dbus_data *dbus_data = data;
@@ -751,32 +747,30 @@ static DBusMessage *handle_dev_get_remote_name_req(DBusMessage *msg, void *data)
 
 	err = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
 	if (err < 0)
-		return error_failed(msg, -err);
-
+		return error_failed(conn, msg, -err);
 
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
 
 	name = textfile_get(filename, str_bdaddr);
 
 	if (!name)
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_RECORD_NOT_FOUND);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_RECORD_NOT_FOUND);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
-		reply = error_out_of_memory(msg);
-		goto done;
+		free(name);
+		return error_out_of_memory(conn, msg);
 	}
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &name,
 					DBUS_TYPE_INVALID);
 
-done:
 	free(name);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_remote_alias_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -792,19 +786,19 @@ static DBusMessage *handle_dev_get_remote_alias_req(DBusMessage *msg, void *data
 
 	err = get_device_alias(dbus_data->dev_id, &bdaddr, str, sizeof(str));
 	if (err < 0)
-		return error_failed(msg, -err);
+		return error_failed(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_set_remote_alias_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusConnection *connection = get_dbus_connection();
@@ -821,14 +815,14 @@ static DBusMessage *handle_dev_set_remote_alias_req(DBusMessage *msg, void *data
 
 	if (strlen(str_ptr) == 0) {
 		error("Alias change failed: Invalid parameter");
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_WRONG_PARAM);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_WRONG_PARAM);
 	}
 
 	str2ba(addr_ptr, &bdaddr);
 
 	err = set_device_alias(dbus_data->dev_id, &bdaddr, str_ptr);
 	if (err < 0)
-		return error_failed(msg, -err);
+		return error_failed(conn, msg, -err);
 
 	signal = dev_signal_factory(dbus_data->dev_id, DEV_SIG_REMOTE_ALIAS_CHANGED,
 						DBUS_TYPE_STRING, &addr_ptr,
@@ -842,12 +836,12 @@ static DBusMessage *handle_dev_set_remote_alias_req(DBusMessage *msg, void *data
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(msg);
+		return error_out_of_memory(conn, msg);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_last_seen_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -864,24 +858,23 @@ static DBusMessage *handle_dev_last_seen_req(DBusMessage *msg, void *data)
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
-		reply = error_out_of_memory(msg);
-		goto done;
+		free(str);
+		return error_out_of_memory(conn, msg);
 	}
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,
 					DBUS_TYPE_INVALID);
 
-done:
 	free(str);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_last_used_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -898,24 +891,23 @@ static DBusMessage *handle_dev_last_used_req(DBusMessage *msg, void *data)
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | ENXIO);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
-		reply = error_out_of_memory(msg);
-		goto done;
+		free(str);
+		return error_out_of_memory(conn, msg);
 	}
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,
 					DBUS_TYPE_INVALID);
 
-done:
 	free(str);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_request rq;
 	auth_requested_cp cp;
@@ -935,27 +927,28 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 
 	if (dev_id < 0)
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
 
 	if (dbus_data->dev_id != dev_id)
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_CONN_NOT_FOUND);
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
-		goto failed;
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NO_MEM);
 	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
 
 	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-		goto done;
+		hci_close_dev(dd);
+		free(cr);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 	}
 
 	memset(&cp, 0, sizeof(cp));
@@ -973,22 +966,21 @@ static DBusMessage *handle_dev_create_bonding_req(DBusMessage *msg, void *data)
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Unable to send authentication request: %s (%d)",
 							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-		goto done;
+		hci_close_dev(dd);
+		free(cr);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 	}
 
 	reply = dbus_message_new_method_return(msg);
 
-done:
 	free(cr);
 
-failed:
 	close(dd);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusConnection *connection = get_dbus_connection();
@@ -1003,7 +995,7 @@ static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
 
@@ -1025,22 +1017,24 @@ static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 	if (!cr) {
 		error("Can't allocate memory");
 		hci_close_dev(dd);
-		return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NO_MEM);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NO_MEM);
 	}
 
 	bacpy(&cr->bdaddr, &bdaddr);
 	cr->type = ACL_LINK;
 	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		/* Ignore when there isn't active connections, return success */
-		reply = dbus_message_new_method_return(msg);
-		goto failed;
+		hci_close_dev(dd);
+		free(cr);
+		return send_reply_and_unref(conn, dbus_message_new_method_return(msg));
 	}
 
 	/* Send the HCI disconnect command */
 	if (hci_disconnect(dd, htobs(cr->conn_info->handle), HCI_OE_USER_ENDED_CONNECTION, 1000) < 0) {
 		error("Disconnect failed");
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-		goto failed;
+		free(cr);
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 	}
 
 	/* FIXME: which condition must be verified before send the signal */
@@ -1056,15 +1050,14 @@ static DBusMessage *handle_dev_remove_bonding_req(DBusMessage *msg, void *data)
 
 	reply = dbus_message_new_method_return(msg);
 
-failed:
 	free(cr);
 
-	close(dd);
+	hci_close_dev(dd);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_has_bonding_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -1092,10 +1085,10 @@ static DBusMessage *handle_dev_has_bonding_req(DBusMessage *msg, void *data)
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &result,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_list_bondings_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_list_bondings_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	void do_append(char *key, char *value, void *data)
 	{
@@ -1126,10 +1119,10 @@ static DBusMessage *handle_dev_list_bondings_req(DBusMessage *msg, void *data)
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_pin_code_length_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -1150,7 +1143,7 @@ static DBusMessage *handle_dev_get_pin_code_length_req(DBusMessage *msg, void *d
 
 	len = read_pin_length(&local, &peer);
 	if (len < 0)
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | -len);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | -len);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1159,10 +1152,10 @@ static DBusMessage *handle_dev_get_pin_code_length_req(DBusMessage *msg, void *d
 	dbus_message_append_args(reply, DBUS_TYPE_BYTE, &length,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_get_encryption_key_size_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_get_encryption_key_size_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
@@ -1179,7 +1172,7 @@ static DBusMessage *handle_dev_get_encryption_key_size_req(DBusMessage *msg, voi
 
 	val = get_encryption_key_size(dbus_data->dev_id, &bdaddr);
 	if (val < 0)
-		return bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | -val);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | -val);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1188,10 +1181,10 @@ static DBusMessage *handle_dev_get_encryption_key_size_req(DBusMessage *msg, voi
 	dbus_message_append_args(reply, DBUS_TYPE_BYTE, &size,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	const char *requestor_name;
@@ -1204,11 +1197,11 @@ static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data
 	int dd;
 
 	if (dbus_data->requestor_name)
-		return error_discover_in_progress(msg);
+		return error_discover_in_progress(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	memset(&cp, 0, sizeof(cp));
 	cp.lap[0]  = lap & 0xff;
@@ -1229,8 +1222,8 @@ static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Unable to start inquiry: %s (%d)",
 							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-		goto failed;
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 	}
 
 	requestor_name = dbus_message_get_sender(msg);
@@ -1238,13 +1231,12 @@ static DBusMessage *handle_dev_discover_devices_req(DBusMessage *msg, void *data
 
 	reply = dbus_message_new_method_return(msg);
 
-failed:
 	hci_close_dev(dd);
 
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_cancel_discovery_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
 	const char *requestor_name;
@@ -1257,15 +1249,15 @@ static DBusMessage *handle_dev_cancel_discovery_req(DBusMessage *msg, void *data
 
 	/* is there discover pending? */
 	if (!dbus_data->requestor_name)
-		return error_not_authorized(msg);
-		
+		return error_not_authorized(conn, msg);
+
 	/* only the discover requestor can cancel the inquiry process */
 	if (strcmp(dbus_data->requestor_name, requestor_name))
-		return error_not_authorized(msg);
+		return error_not_authorized(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
-		return error_no_such_adapter(msg);
+		return error_no_such_adapter(conn, msg);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
@@ -1276,14 +1268,15 @@ static DBusMessage *handle_dev_cancel_discovery_req(DBusMessage *msg, void *data
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Sending cancel inquiry failed: %s (%d)",
 							strerror(errno), errno);
-		reply = bluez_new_failure_msg(msg, BLUEZ_ESYSTEM_OFFSET | errno);
-		goto failed;
+		hci_close_dev(dd);
+		return bluez_new_failure_msg(conn, msg, BLUEZ_ESYSTEM_OFFSET | errno);
 	}
+
+	hci_close_dev(dd);
 
 	if (status) {
 		error("Cancel inquiry failed with status 0x%02x", status);
-		reply = bluez_new_failure_msg(msg, BLUEZ_EBT_OFFSET | status);
-		goto failed;
+		return bluez_new_failure_msg(conn, msg, BLUEZ_EBT_OFFSET | status);
 	}
 
 	free(dbus_data->requestor_name);
@@ -1291,25 +1284,22 @@ static DBusMessage *handle_dev_cancel_discovery_req(DBusMessage *msg, void *data
 
 	reply = dbus_message_new_method_return(msg);
 
-failed:
-	hci_close_dev(dd);
-
-	return reply;
+	return send_reply_and_unref(conn, msg);
 }
 
-static DBusMessage *handle_dev_discover_cache_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_discover_cache_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static DBusMessage *handle_dev_discover_service_req(DBusMessage *msg, void *data)
+static DBusHandlerResult handle_dev_discover_service_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	/*FIXME: */
-	return bluez_new_failure_msg(msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
+	return bluez_new_failure_msg(conn, msg, BLUEZ_EDBUS_NOT_IMPLEMENTED);
 }
 
-static const struct service_data dev_services[] = {
+static struct service_data dev_services[] = {
 	{ DEV_GET_ADDRESS,		handle_dev_get_address_req,		},
 	{ DEV_GET_VERSION,		handle_dev_get_version_req,		},
 	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		},
@@ -1358,8 +1348,10 @@ static const struct service_data dev_services[] = {
 
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
 {
+	service_handler_func_t handler;
 	struct hci_dbus_data *dbus_data = data;
 	const char *iface;
+	uint32_t err = 0;
 
 	iface = dbus_message_get_interface(msg);
 
@@ -1379,6 +1371,7 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	return handler(conn, msg, data);
 
 failed:
+#if 0
 	if (err) {
 		DBusMessage *reply = bluez_new_failure_msg(msg, err);
 
@@ -1389,6 +1382,7 @@ failed:
 			dbus_message_unref(reply);
 		}
 	}
+#endif
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return bluez_new_failure_msg(conn, msg, err);
 }

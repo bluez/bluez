@@ -25,6 +25,7 @@
 #define __H_BLUEZ_DBUS_H__
 
 #include <stdint.h>
+#include <dbus/dbus.h>
 
 #define __END_SIG__ DBUS_TYPE_INVALID_AS_STRING
 
@@ -38,6 +39,8 @@
 #define MANAGER_INTERFACE	BASE_INTERFACE ".Manager"
 
 #define ERROR_INTERFACE		BASE_INTERFACE ".Error"
+
+#define SECURITY_INTERFACE	BASE_INTERFACE ".Security"
 
 #define MANAGER_PATH_MASK	(1 << 15)
 #define ADAPTER_PATH_MASK	(1 << 14)
@@ -56,13 +59,13 @@
 
 #define MAX_PATH_LENGTH		64
 
-typedef DBusHandlerResult (service_handler_func_t) (DBusConnection *conn,
+typedef DBusHandlerResult (*service_handler_func_t) (DBusConnection *conn,
 							DBusMessage *msg,
 							void *user_data);
 
 struct service_data {
 	const char		*name;
-	service_handler_func_t	*handler_func;
+	service_handler_func_t	handler_func;
 };
 
 typedef int (timeout_handler_func_t) (void *data);
@@ -89,7 +92,7 @@ typedef int unregister_function_t(DBusConnection *conn, uint16_t id);
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data);
 DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data);
 
-DBusMessage *bluez_new_failure_msg(DBusMessage *msg, const uint32_t ecode);
+DBusHandlerResult bluez_new_failure_msg(DBusConnection *conn, DBusMessage *msg, const uint32_t ecode);
 
 DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...);
 
@@ -97,23 +100,21 @@ DBusConnection *get_dbus_connection(void);
 
 int get_default_dev_id(void);
 
-DBusMessage *error_failed(DBusMessage *msg, int err);
-DBusMessage *error_invalid_arguments(DBusMessage *msg);
-DBusMessage *error_not_authorized(DBusMessage *msg);
-DBusMessage *error_out_of_memory(DBusMessage *msg);
-DBusMessage *error_no_such_adapter(DBusMessage *msg);
-DBusMessage *error_unknown_address(DBusMessage *msg);
-DBusMessage *error_not_available(DBusMessage *msg);
-DBusMessage *error_not_connected(DBusMessage *msg);
-DBusMessage *error_unsupported_major_class(DBusMessage *msg);
-
-DBusMessage *error_bonding_already_exists(DBusMessage *msg);
-DBusMessage *error_bonding_does_not_exist(DBusMessage *msg);
-DBusMessage *error_bonding_in_progress(DBusMessage *msg);
-DBusMessage *error_discover_in_progress(DBusMessage *msg);
-
-DBusMessage *error_passkey_agent_already_exists(DBusMessage *msg);
-DBusMessage *error_passkey_agent_does_not_exist(DBusMessage *msg);
+DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err);
+DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_unknown_address(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_passkey_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
@@ -124,7 +125,12 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
-service_hanbdler_func_t *find_service_handler(service_data *services, DBusMessage *msg);
+service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
+
+static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusMessage *msg)
+{
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
 
 /*======================================================================== 
     BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
