@@ -104,6 +104,7 @@ DBusMessage *error_no_such_adapter(DBusMessage *msg);
 DBusMessage *error_unknown_address(DBusMessage *msg);
 DBusMessage *error_not_available(DBusMessage *msg);
 DBusMessage *error_not_connected(DBusMessage *msg);
+DBusMessage *error_unsupported_major_class(DBusMessage *msg);
 
 DBusMessage *error_bonding_already_exists(DBusMessage *msg);
 DBusMessage *error_bonding_does_not_exist(DBusMessage *msg);
@@ -149,6 +150,7 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 #define DEV_GET_COMPANY			"GetCompany"
 #define DEV_GET_FEATURES		"GetFeatures"
 #define DEV_GET_MODE			"GetMode"
+#define DEV_LIST_MINOR_CLASSES		"ListAvailableMinorClasses"
 #define DEV_SET_MODE			"SetMode"
 #define DEV_GET_DISCOVERABLE_TO		"GetDiscoverableTimeout"
 #define DEV_SET_DISCOVERABLE_TO		"SetDiscoverableTimeout"
@@ -189,6 +191,7 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 #define DEV_GET_COMPANY_SIGNATURE		__END_SIG__
 #define DEV_GET_FEATURES_SIGNATURE		__END_SIG__
 #define DEV_GET_MODE_SIGNATURE			__END_SIG__
+#define DEV_LIST_MINOR_CLASSES_SIGNATURE	__END_SIG__
 #define DEV_SET_MODE_SIGNATURE			DBUS_TYPE_STRING_AS_STRING \
 						__END_SIG__
 #define DEV_GET_DISCOVERABLE_TO_SIGNATURE	__END_SIG__
