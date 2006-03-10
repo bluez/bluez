@@ -149,8 +149,8 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 }
 
 static struct service_data sec_services[] = {
-	{ "RegisterDefault",	register_default_agent		},
-	{ "UnregisterDefault",	unregister_default_agent	},
+	{ "RegisterDefaultPasskeyAgent",	register_default_agent		},
+	{ "UnregisterDefaultPasskeyAgent",	unregister_default_agent	},
 	{ NULL, NULL }
 };
 
