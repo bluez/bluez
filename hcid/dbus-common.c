@@ -112,7 +112,7 @@ static int name_data_add(const char *name, name_cb_t func, void *user_data)
 	if (!data)
 		goto failed;
 
-	memset(data, sizeof(struct name_data), 0);
+	memset(data, 0, sizeof(struct name_data));
 
 	data->name = strdup(name);
 	if (!data->name)
@@ -164,6 +164,8 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 	if (!dbus_message_is_signal(message, DBUS_INTERFACE_DBUS,
 							"NameOwnerChanged"))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	debug("name_exit_filter");
 
 	if (!dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &name,
@@ -225,8 +227,11 @@ int name_listener_add(DBusConnection *connection, const char *name,
 	dbus_error_init(&err);
 	dbus_bus_add_match(connection, match_string, &err);
 
+	debug("match rule \"%s\" added", match_string);
+
 	if (dbus_error_is_set(&err)) {
-		error("Adding owner match rule for %s failed: %s", name, err.message);
+		error("Adding match rule \"%s\" failed: %s", match_string,
+				err.message);
 		dbus_error_free(&err);
 		name_data_remove(name, func, user_data);
 		return -1;
