@@ -641,7 +641,8 @@ Signals		void ModeChanged(string mode)
 			procedure has been completed.
 
 		void RemoteDeviceFound(string address, int16 rssi,
-		                       string major, string minor, string service)
+		                       string major, string minor,
+		                       array{string} services)
 
 			This signal will be send every time an inquiry result
 			has been found by the service daemon. In general they
