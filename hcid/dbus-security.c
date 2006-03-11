@@ -28,10 +28,22 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+
 #include <dbus/dbus.h>
 
 #include "dbus.h"
 #include "hcid.h"
+
+#define TIMEOUT				(30 * 1000)		/* 30 seconds */
+
+struct pin_request {
+	int dev;
+	bdaddr_t sba;
+	bdaddr_t bda;
+};
 
 static struct passkey_agent *default_agent = NULL;
 
@@ -154,6 +166,121 @@ static struct service_data sec_services[] = {
 	{ NULL, NULL }
 };
 
+static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
+{
+	struct pin_request *req = (struct pin_request *) user_data;
+	pin_code_reply_cp pr;
+	DBusMessage *message;
+	DBusMessageIter iter;
+	int arg_type;
+	int msg_type;
+	size_t len;
+	char *pin;
+	const char *error_msg;
+
+	message = dbus_pending_call_steal_reply(call);
+
+	if (!message)
+		goto done;
+
+	msg_type = dbus_message_get_type(message);
+	dbus_message_iter_init(message, &iter);
+
+	if (msg_type == DBUS_MESSAGE_TYPE_ERROR) {
+		dbus_message_iter_get_basic(&iter, &error_msg);
+
+		/* handling WRONG_ARGS_ERROR, DBUS_ERROR_NO_REPLY, DBUS_ERROR_SERVICE_UNKNOWN */
+		error("%s: %s", dbus_message_get_error_name(message), error_msg);
+		hci_send_cmd(req->dev, OGF_LINK_CTL,
+					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
+
+		goto done;
+	}
+
+	/* check signature */
+	arg_type = dbus_message_iter_get_arg_type(&iter);
+	if (arg_type != DBUS_TYPE_STRING) {
+		error("Wrong reply signature: expected PIN");
+		hci_send_cmd(req->dev, OGF_LINK_CTL,
+					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
+	} else {
+		dbus_message_iter_get_basic(&iter, &pin);
+		len = strlen(pin);
+
+		set_pin_length(&req->sba, len);
+
+		memset(&pr, 0, sizeof(pr));
+		bacpy(&pr.bdaddr, &req->bda);
+		memcpy(pr.pin_code, pin, len);
+		pr.pin_len = len;
+		hci_send_cmd(req->dev, OGF_LINK_CTL,
+			OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
+	}
+
+done:
+	if (message)
+		dbus_message_unref(message);
+
+	dbus_pending_call_unref(call);
+}
+
+static int call_passkey_agent(struct passkey_agent *agent, int dev, const char *path,
+				bdaddr_t *sba, bdaddr_t *dba)
+{
+	DBusMessage *message = NULL;
+	DBusPendingCall *pending = NULL;
+	DBusConnection *connection;
+	struct pin_request *req;
+	char bda[18];
+	char *ptr = bda;
+
+	ba2str(sba, bda);
+
+	debug("Creating method call: name=%s, path=%s", agent->name,
+			agent->path);
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+			"org.bluez.PasskeyAgent", "Request");
+	if (message == NULL) {
+		error("Couldn't allocate D-Bus message");
+		goto failed;
+	}
+
+	req = malloc(sizeof(*req));
+	if (!req)
+		goto failed;
+	req->dev = dev;
+	bacpy(&req->sba, sba);
+	bacpy(&req->bda, dba);
+
+	connection = get_dbus_connection();
+
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, message,
+				&pending, TIMEOUT) == FALSE) {
+		error("D-Bus send failed");
+		goto failed;
+	}
+
+	dbus_pending_call_set_notify(pending, passkey_agent_reply, req, free);
+
+	dbus_message_unref(message);
+
+	return 0;
+
+failed:
+	if (message)
+		dbus_message_unref(message);
+
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
+
+	return -1;
+}
+
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	service_handler_func_t handler;
@@ -164,5 +291,10 @@ DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg,
 		return handler(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+int call_default_passkey_agent(int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba)
+{
+	return call_passkey_agent(default_agent, dev, path, sba, dba);
 }
 

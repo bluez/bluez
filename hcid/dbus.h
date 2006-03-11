@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <dbus/dbus.h>
+#include <bluetooth/bluetooth.h>
 
 #define BASE_PATH		"/org/bluez"
 #define BASE_INTERFACE		"org.bluez"
@@ -126,6 +127,8 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
+
+int call_default_passkey_agent(int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
 
 static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusMessage *reply)
 {

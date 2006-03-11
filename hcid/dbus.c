@@ -55,13 +55,7 @@ static DBusConnection *connection;
 static int default_dev = -1;
 static volatile sig_atomic_t __timeout_active = 0;
 
-#define TIMEOUT				(30 * 1000)		/* 30 seconds */
 #define MAX_CONN_NUMBER			10
-
-#define PINAGENT_SERVICE_NAME BASE_INTERFACE ".PinAgent"
-#define PINAGENT_INTERFACE PINAGENT_SERVICE_NAME
-#define PIN_REQUEST "PinRequest"
-#define PINAGENT_PATH BASE_PATH "/PinAgent"
 
 static const char *services_cls[] = {
 	"positioning",
@@ -104,12 +98,6 @@ static const char *phone_minor_cls[] = {
 	"smart phone",
 	"modem",
 	"isdn"
-};
-
-struct pin_request {
-	int dev;
-	bdaddr_t sba;
-	bdaddr_t bda;
 };
 
 /*
@@ -193,69 +181,6 @@ static const DBusObjectPathVTable obj_mgr_vtable = {
  * HCI D-Bus services
  */
 static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessage *msg, void *data);
-
-static void reply_handler_function(DBusPendingCall *call, void *user_data)
-{
-	struct pin_request *req = (struct pin_request *) user_data;
-	pin_code_reply_cp pr;
-	DBusMessage *message;
-	DBusMessageIter iter;
-	int arg_type;
-	int msg_type;
-	size_t len;
-	char *pin;
-	const char *error_msg;
-
-	message = dbus_pending_call_steal_reply(call);
-
-	if (!message)
-		goto done;
-
-	msg_type = dbus_message_get_type(message);
-	dbus_message_iter_init(message, &iter);
-
-	if (msg_type == DBUS_MESSAGE_TYPE_ERROR) {
-		dbus_message_iter_get_basic(&iter, &error_msg);
-
-		/* handling WRONG_ARGS_ERROR, DBUS_ERROR_NO_REPLY, DBUS_ERROR_SERVICE_UNKNOWN */
-		error("%s: %s", dbus_message_get_error_name(message), error_msg);
-		hci_send_cmd(req->dev, OGF_LINK_CTL,
-					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
-
-		goto done;
-	}
-
-	/* check signature */
-	arg_type = dbus_message_iter_get_arg_type(&iter);
-	if (arg_type != DBUS_TYPE_STRING) {
-		error("Wrong reply signature: expected PIN");
-		hci_send_cmd(req->dev, OGF_LINK_CTL,
-					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
-	} else {
-		dbus_message_iter_get_basic(&iter, &pin);
-		len = strlen(pin);
-
-		set_pin_length(&req->sba, len);
-
-		memset(&pr, 0, sizeof(pr));
-		bacpy(&pr.bdaddr, &req->bda);
-		memcpy(pr.pin_code, pin, len);
-		pr.pin_len = len;
-		hci_send_cmd(req->dev, OGF_LINK_CTL,
-			OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
-	}
-
-done:
-	if (message)
-		dbus_message_unref(message);
-
-	dbus_pending_call_unref(call);
-}
-
-static void free_pin_req(void *req)
-{
-	free(req);
-}
 
 static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t dev_id,
 				const DBusObjectPathVTable *pvtable, gboolean fallback)
@@ -449,53 +374,13 @@ failed:
 
 void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
-	DBusMessage *message = NULL;
-	DBusPendingCall *pending = NULL;
-	struct pin_request *req;
-	uint8_t *addr = (uint8_t *) &ci->bdaddr;
-	dbus_bool_t out = ci->out;
+	char path[MAX_PATH_LENGTH], addr[18];
 
-	if (!dbus_connection_get_is_connected(connection)) {
-		if (!hcid_dbus_init())
-			goto failed;
-	}
+	ba2str(sba, addr);
 
-	message = dbus_message_new_method_call(PINAGENT_SERVICE_NAME, PINAGENT_PATH,
-						PINAGENT_INTERFACE, PIN_REQUEST);
-	if (message == NULL) {
-		error("Couldn't allocate D-Bus message");
-		goto failed;
-	}
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, hci_devid(addr));
 
-	req = malloc(sizeof(*req));
-	req->dev = dev;
-	bacpy(&req->sba, sba);
-	bacpy(&req->bda, &ci->bdaddr);
-
-	dbus_message_append_args(message, DBUS_TYPE_BOOLEAN, &out,
-			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-			&addr, sizeof(bdaddr_t), DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&pending, TIMEOUT) == FALSE) {
-		error("D-Bus send failed");
-		goto failed;
-	}
-
-	dbus_pending_call_set_notify(pending, reply_handler_function,
-							req, free_pin_req);
-
-	dbus_connection_flush(connection);
-
-	dbus_message_unref(message);
-
-	return;
-
-failed:
-	if (message)
-		dbus_message_unref(message);
-
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
+	call_default_passkey_agent(dev, path, sba, &ci->bdaddr);
 }
 
 void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
