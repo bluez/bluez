@@ -30,7 +30,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
-#include <syslog.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -128,54 +127,51 @@ int get_default_dev_id(void)
 	return default_dev;
 }
 
-static int8_t dev_append_signal_args(DBusMessage *signal, int first, va_list var_args)
+static int dev_append_signal_args(DBusMessage *signal, int first, va_list var_args)
 {
 	void *value;
 	DBusMessageIter iter;
-	int type;
-	int8_t retval = 0;
+	int type = first;
 
-	type = first;
+	dbus_message_iter_init_append(signal, &iter);
 
-	dbus_message_iter_init_append (signal, &iter);
+	while (type != DBUS_TYPE_INVALID) {
+		value = va_arg(var_args, void *);
 
-	while (type != DBUS_TYPE_INVALID)
-	{
-		value = va_arg (var_args, void*);
-
-		if (!dbus_message_iter_append_basic (&iter, type, value)) {
-			syslog(LOG_INFO, "Append property argument error! type:%d", type);
-			retval = -1;
-			goto failed;
+		if (!dbus_message_iter_append_basic(&iter, type, value)) {
+			error("Append property argument error (type %d)", type);
+			return -1;
 		}
-		type = va_arg (var_args, int);
+
+		type = va_arg(var_args, int);
 	}
-failed:
-	return retval;
+
+	return 0;
 }
 
 DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...)
 {
-	DBusMessage *signal = NULL;
-	char path[MAX_PATH_LENGTH];
 	va_list var_args;
+	DBusMessage *signal;
+	char path[MAX_PATH_LENGTH];
 
 	snprintf(path, sizeof(path)-1, "%s/hci%d", ADAPTER_PATH, devid);
 
-	signal = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-					 prop_name);
-	if (signal == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS inquiry complete message");
+	signal = dbus_message_new_signal(path, ADAPTER_INTERFACE, prop_name);
+	if (!signal) {
+		error("Can't allocate D-BUS inquiry complete message");
 		return NULL;
 	}
 
 	va_start(var_args, first);
+
 	if (dev_append_signal_args(signal, first, var_args) < 0) {
 		dbus_message_unref(signal);
 		return NULL;
 	}
 
 	va_end(var_args);
+
 	return signal;
 }
 
@@ -222,7 +218,7 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_get_basic(&iter, &error_msg);
 
 		/* handling WRONG_ARGS_ERROR, DBUS_ERROR_NO_REPLY, DBUS_ERROR_SERVICE_UNKNOWN */
-		syslog(LOG_ERR, "%s: %s", dbus_message_get_error_name(message), error_msg);
+		error("%s: %s", dbus_message_get_error_name(message), error_msg);
 		hci_send_cmd(req->dev, OGF_LINK_CTL,
 					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 
@@ -232,7 +228,7 @@ static void reply_handler_function(DBusPendingCall *call, void *user_data)
 	/* check signature */
 	arg_type = dbus_message_iter_get_arg_type(&iter);
 	if (arg_type != DBUS_TYPE_STRING) {
-		syslog(LOG_ERR, "Wrong reply signature: expected PIN");
+		error("Wrong reply signature: expected PIN");
 		hci_send_cmd(req->dev, OGF_LINK_CTL,
 					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 	} else {
@@ -267,11 +263,11 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 	gboolean ret = FALSE;
 	struct hci_dbus_data *data = NULL;
 
-	syslog(LOG_INFO, "Register path:%s fallback:%d", path, fallback);
+	info("Register path:%s fallback:%d", path, fallback);
 
 	data = malloc(sizeof(struct hci_dbus_data));
 	if (data == NULL) {
-		syslog(LOG_ERR, "Failed to alloc memory to DBUS path register data (%s)", path);
+		error("Failed to alloc memory to DBUS path register data (%s)", path);
 		goto failed;
 	}
 
@@ -285,12 +281,12 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
-			syslog(LOG_ERR, "D-Bus failed to register %s fallback", path);
+			error("D-Bus failed to register %s fallback", path);
 			goto failed;
 		}
 	} else {
 		if (!dbus_connection_register_object_path(connection, path, pvtable, data)) {
-			syslog(LOG_ERR, "D-Bus failed to register %s object", path);
+			error("D-Bus failed to register %s object", path);
 			goto failed;
 		}
 	}
@@ -308,7 +304,7 @@ static gboolean unregister_dbus_path(const char *path)
 {
 	struct hci_dbus_data *data;
 
-	syslog(LOG_INFO, "Unregister path:%s", path);
+	info("Unregister path:%s", path);
 
 	if (dbus_connection_get_object_path_data(connection, path, (void*)&data) && data) {
 		if (data->requestor_name)
@@ -317,7 +313,7 @@ static gboolean unregister_dbus_path(const char *path)
 	}
 
 	if (!dbus_connection_unregister_object_path (connection, path)) {
-		syslog(LOG_ERR, "D-Bus failed to unregister %s object", path);
+		error("D-Bus failed to unregister %s object", path);
 		return FALSE;
 	}
 
@@ -347,7 +343,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 
 	dd = hci_open_dev(id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", id);
+		error("HCI device open failed: hci%d", id);
 		rp.enable = SCAN_PAGE | SCAN_INQUIRY;
 	} else {
 		memset(&rq, 0, sizeof(rq));
@@ -357,18 +353,18 @@ gboolean hcid_dbus_register_device(uint16_t id)
 		rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
 	
 		if (hci_send_req(dd, &rq, 500) < 0) {
-			syslog(LOG_ERR, "Sending read scan enable command failed: %s (%d)",
+			error("Sending read scan enable command failed: %s (%d)",
 								strerror(errno), errno);
 			rp.enable = SCAN_PAGE | SCAN_INQUIRY;
 		} else if (rp.status) {
-			syslog(LOG_ERR, "Getting scan enable failed with status 0x%02x",
+			error("Getting scan enable failed with status 0x%02x",
 										rp.status);
 			rp.enable = SCAN_PAGE | SCAN_INQUIRY;
 		}
 	}
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void*) &pdata))
-		syslog(LOG_ERR, "Getting path data failed!");
+		error("Getting path data failed!");
 	else
 		pdata->mode = rp.enable;	/* Keep the current scan status */
 
@@ -382,7 +378,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
 							"AdapterAdded");
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
+		error("Can't allocate D-BUS remote name message");
 		goto failed;
 	}
 
@@ -392,7 +388,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 					DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send(connection, message, NULL)) {
-		syslog(LOG_ERR, "Can't send D-BUS added device message");
+		error("Can't send D-BUS added device message");
 		goto failed;
 	}
 
@@ -423,7 +419,7 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
 							"AdapterRemoved");
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
+		error("Can't allocate D-Bus remote name message");
 		goto failed;
 	}
 
@@ -433,7 +429,7 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 					DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send(connection, message, NULL)) {
-		syslog(LOG_ERR, "Can't send D-Bus added device message");
+		error("Can't send D-Bus added device message");
 		goto failed;
 	}
 
@@ -467,7 +463,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	message = dbus_message_new_method_call(PINAGENT_SERVICE_NAME, PINAGENT_PATH,
 						PINAGENT_INTERFACE, PIN_REQUEST);
 	if (message == NULL) {
-		syslog(LOG_ERR, "Couldn't allocate D-Bus message");
+		error("Couldn't allocate D-Bus message");
 		goto failed;
 	}
 
@@ -482,7 +478,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&pending, TIMEOUT) == FALSE) {
-		syslog(LOG_ERR, "D-Bus send failed");
+		error("D-Bus send failed");
 		goto failed;
 	}
 
@@ -516,7 +512,7 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
-		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		error("No matching device id for %s", local_addr);
 		goto failed;
 	}
 
@@ -531,7 +527,7 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE, name);
 
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
+		error("Can't allocate D-Bus remote name message");
 		goto failed;
 	}
 
@@ -540,7 +536,7 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-Bus remote name message");
+		error("Can't send D-Bus remote name message");
 		goto failed;
 	}
 
@@ -566,7 +562,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
-		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		error("No matching device id for %s", local_addr);
 		goto failed;
 	}
 
@@ -575,12 +571,12 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"DiscoveryStarted");
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-Bus inquiry start message");
+		error("Can't allocate D-Bus inquiry start message");
 		goto failed;
 	}
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-Bus inquiry start message");
+		error("Can't send D-Bus inquiry start message");
 		goto failed;
 	}
 
@@ -604,7 +600,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
-		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		error("No matching device id for %s", local_addr);
 		goto failed;
 	}
 
@@ -620,12 +616,12 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"DiscoveryCompleted");
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-Bus inquiry complete message");
+		error("Can't allocate D-Bus inquiry complete message");
 		goto failed;
 	}
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-Bus inquiry complete message");
+		error("Can't send D-Bus inquiry complete message");
 		goto failed;
 	}
 
@@ -657,7 +653,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
-		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		error("No matching device id for %s", local_addr);
 		goto failed;
 	}
 
@@ -666,7 +662,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"RemoteDeviceFound");
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-Bus inquiry result message");
+		error("Can't allocate D-Bus inquiry result message");
 		goto failed;
 	}
 
@@ -706,7 +702,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	dbus_message_iter_close_container(&iter, &array_iter);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-Bus inquiry result message");
+		error("Can't send D-Bus inquiry result message");
 		goto failed;
 	}
 
@@ -722,7 +718,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"RemoteDeviceFound");
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-Bus inquiry result message");
+		error("Can't allocate D-Bus inquiry result message");
 		goto failed;
 	}
 
@@ -731,7 +727,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-Bus inquiry result message");
+		error("Can't send D-Bus inquiry result message");
 		goto failed;
 	}
 
@@ -761,7 +757,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
-		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		error("No matching device id for %s", local_addr);
 		goto failed;
 	}
 
@@ -770,7 +766,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"RemoteNameUpdated");
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
+		error("Can't allocate D-Bus remote name message");
 		goto failed;
 	}
 
@@ -780,7 +776,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-Bus remote name message");
+		error("Can't send D-Bus remote name message");
 		goto failed;
 	}
 
@@ -881,28 +877,26 @@ static void watch_toggled(DBusWatch *watch, void *data)
 
 gboolean hcid_dbus_init(void)
 {
-	DBusError error;
+	DBusError err;
 
-	dbus_error_init(&error);
+	dbus_error_init(&err);
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
 
-	if (dbus_error_is_set(&error)) {
-		syslog(LOG_ERR, "Can't open system message bus connection: %s",
-								error.message);
-		dbus_error_free(&error);
+	if (dbus_error_is_set(&err)) {
+		error("Can't open system message bus connection: %s", err.message);
+		dbus_error_free(&err);
 		return FALSE;
 	}
 
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
 
 	dbus_bus_request_name(connection, BASE_INTERFACE,
-				DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT, &error);
+				DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT, &err);
 
-	if (dbus_error_is_set(&error)) {
-		syslog(LOG_ERR, "Can't get system message bus name: %s",
-								error.message);
-		dbus_error_free(&error);
+	if (dbus_error_is_set(&err)) {
+		error("Can't get system message bus name: %s", err.message);
+		dbus_error_free(&err);
 		return FALSE;
 	}
 
@@ -915,7 +909,7 @@ gboolean hcid_dbus_init(void)
 		return FALSE;
 
 	if (!dbus_connection_add_filter(connection, hci_dbus_signal_filter, NULL, NULL)) {
-		syslog(LOG_ERR, "Can't add new HCI filter");
+		error("Can't add new HCI filter");
 		return FALSE;
 	}
 
@@ -973,7 +967,7 @@ static int discoverable_timeout_handler(void *data)
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", dbus_data->dev_id);
+		error("HCI device open failed: hci%d", dbus_data->dev_id);
 		return -1;
 	}
 
@@ -986,13 +980,13 @@ static int discoverable_timeout_handler(void *data)
 	rq.rlen   = sizeof(status);
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending write scan enable command to hci%d failed: %s (%d)",
+		error("Sending write scan enable command to hci%d failed: %s (%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		retval = -1;
 		goto failed;
 	}
 	if (status) {
-		syslog(LOG_ERR, "Setting scan enable failed with status 0x%02x", status);
+		error("Setting scan enable failed with status 0x%02x", status);
 		retval = -1;
 		goto failed;
 	}
@@ -1017,14 +1011,14 @@ static void system_bus_reconnect(void)
 	/* Create and bind HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0) {
-		syslog(LOG_ERR, "Can't open HCI socket: %s (%d)",
+		error("Can't open HCI socket: %s (%d)",
 							strerror(errno), errno);
 		return;
 	}
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 	if (!dl) {
-		syslog(LOG_ERR, "Can't allocate memory");
+		error("Can't allocate memory");
 		goto failed;
 	}
 
@@ -1032,7 +1026,7 @@ static void system_bus_reconnect(void)
 	dr = dl->dev_req;
 
 	if (ioctl(sk, HCIGETDEVLIST, (void *) dl) < 0) {
-		syslog(LOG_INFO, "Can't get device list: %s (%d)",
+		info("Can't get device list: %s (%d)",
 							strerror(errno), errno);
 		goto failed;
 	}
@@ -1074,7 +1068,7 @@ static void sigalarm_handler(int signum)
 		snprintf(device_path, sizeof(device_path), "%s/%s", ADAPTER_PATH, device[i]);
 
 		if (!dbus_connection_get_object_path_data(connection, device_path, (void*) &pdata)){
-			syslog(LOG_ERR, "Getting %s path data failed!", device_path);
+			error("Getting %s path data failed!", device_path);
 			continue;
 		}
 
@@ -1156,7 +1150,7 @@ static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessag
 
 	if ((strcmp(iface, DBUS_INTERFACE_LOCAL) == 0) &&
 			(strcmp(method, "Disconnected") == 0)) {
-		syslog(LOG_ERR, "Got disconnected from the system message bus");
+		error("Got disconnected from the system message bus");
 		dbus_connection_unref(conn);
 		bluez_timeout_start();
 		ret = DBUS_HANDLER_RESULT_HANDLED;
@@ -1186,13 +1180,13 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
-		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		error("No matching device id for %s", local_addr);
 		goto failed;
 	}
 
 	dd = hci_open_dev(id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", id);
+		error("HCI device open failed: hci%d", id);
 		memset(&rp, 0, sizeof(rp));
 	} else {
 		memset(&rq, 0, sizeof(rq));
@@ -1202,16 +1196,13 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 		rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
 
 		if (hci_send_req(dd, &rq, 100) < 0) {
-			syslog(LOG_ERR,
-				"Sending getting name command failed: %s (%d)",
-				strerror(errno), errno);
+			error("Sending getting name command failed: %s (%d)",
+						strerror(errno), errno);
 			rp.name[0] = '\0';
 		}
 
 		if (rp.status) {
-			syslog(LOG_ERR,
-				"Getting name failed with status 0x%02x",
-				rp.status);
+			error("Getting name failed with status 0x%02x", rp.status);
 			rp.name[0] = '\0';
 		}
 	}
@@ -1223,7 +1214,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	signal = dev_signal_factory(id, "NameChanged",
 				DBUS_TYPE_STRING, &pname, DBUS_TYPE_INVALID);
 	if (dbus_connection_send(connection, signal, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-Bus signal");
+		error("Can't send D-Bus signal");
 		goto failed;
 	}
 
@@ -1255,7 +1246,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	id = hci_devid(local_addr);
 	if (id < 0) {
-		syslog(LOG_ERR, "No matching device id for %s", local_addr);
+		error("No matching device id for %s", local_addr);
 		goto failed;
 	}
 
@@ -1263,7 +1254,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 
 	dd = hci_open_dev(id);
 	if (dd < 0) {
-		syslog(LOG_ERR, "HCI device open failed: hci%d", id);
+		error("HCI device open failed: hci%d", id);
 		goto failed;
 	}
 
@@ -1274,20 +1265,18 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		syslog(LOG_ERR, "Sending read scan enable command failed: %s (%d)",
+		error("Sending read scan enable command failed: %s (%d)",
 							strerror(errno), errno);
 		goto failed;
 	}
 
 	if (rp.status) {
-		syslog(LOG_ERR,
-			"Getting scan enable failed with status 0x%02x",
-			rp.status);
+		error("Getting scan enable failed with status 0x%02x", rp.status);
 		goto failed;
 	}
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void*) &pdata)) {
-		syslog(LOG_ERR, "Getting path data failed!");
+		error("Getting path data failed!");
 		goto failed;
 	}
 
@@ -1319,7 +1308,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"ModeChanged");
 	if (message == NULL) {
-		syslog(LOG_ERR, "Can't allocate D-Bus inquiry complete message");
+		error("Can't allocate D-Bus inquiry complete message");
 		goto failed;
 	}
 
@@ -1328,7 +1317,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-Bus ModeChanged signal");
+		error("Can't send D-Bus ModeChanged signal");
 		goto failed;
 	}
 
