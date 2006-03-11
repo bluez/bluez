@@ -128,8 +128,8 @@ static DBusHandlerResult handle_mgr_default_adapter_req(DBusConnection *conn, DB
 }
 
 static struct service_data mgr_services[] = {
-	{ MGR_LIST_ADAPTERS,	handle_mgr_list_devices_req	},
-	{ MGR_DEFAULT_ADAPTER,	handle_mgr_default_adapter_req	},
+	{ "ListAdapters",	handle_mgr_list_devices_req	},
+	{ "DefaultAdapter",	handle_mgr_default_adapter_req	},
 	{ NULL, NULL }
 };
 

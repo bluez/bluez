@@ -138,59 +138,6 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-/*======================================================================== 
-    BlueZ D-Bus Manager service definitions "/org/bluez/Manager"
- *========================================================================*/
-
-#define MGR_LIST_ADAPTERS	"ListAdapters"
-#define MGR_DEFAULT_ADAPTER	"DefaultAdapter"
-
-/* Signals sent in the Manager path */
-#define BLUEZ_MGR_DEV_ADDED		"AdapterAdded"
-#define BLUEZ_MGR_DEV_REMOVED		"AdapterRemoved"
-
-/*======================================================================== 
-    BlueZ D-Bus Adapter path definitions "/org/bluez/Adapter"
- *========================================================================*/
-#define DEV_GET_ADDRESS			"GetAddress"
-#define DEV_GET_VERSION			"GetVersion"
-#define DEV_GET_REVISION		"GetRevision"
-#define DEV_GET_MANUFACTURER		"GetManufacturer"
-#define DEV_GET_COMPANY			"GetCompany"
-#define DEV_GET_FEATURES		"GetFeatures"
-#define DEV_GET_MODE			"GetMode"
-#define DEV_LIST_MINOR_CLASSES		"ListAvailableMinorClasses"
-#define DEV_SET_MODE			"SetMode"
-#define DEV_GET_DISCOVERABLE_TO		"GetDiscoverableTimeout"
-#define DEV_SET_DISCOVERABLE_TO		"SetDiscoverableTimeout"
-#define DEV_IS_CONNECTABLE		"IsConnectable"
-#define DEV_IS_DISCOVERABLE		"IsDiscoverable"
-#define DEV_GET_MAJOR_CLASS		"GetMajorClass"
-#define DEV_GET_MINOR_CLASS		"GetMinorClass"
-#define DEV_SET_MINOR_CLASS		"SetMinorClass"
-#define DEV_GET_SERVICE_CLASSES		"GetServiceClasses"
-#define DEV_GET_NAME			"GetName"
-#define DEV_SET_NAME			"SetName"
-#define DEV_GET_REMOTE_VERSION		"GetRemoteVersion"
-#define DEV_GET_REMOTE_REVISION		"GetRemoteRevision"
-#define DEV_GET_REMOTE_MANUFACTURER	"GetRemoteManufacturer"
-#define DEV_GET_REMOTE_COMPANY		"GetRemoteCompany"
-#define DEV_GET_REMOTE_NAME		"GetRemoteName"
-#define DEV_GET_REMOTE_ALIAS		"GetRemoteAlias"
-#define DEV_SET_REMOTE_ALIAS		"SetRemoteAlias"
-#define DEV_LAST_SEEN			"LastSeen"
-#define DEV_LAST_USED			"LastUsed"
-#define DEV_CREATE_BONDING		"CreateBonding"
-#define DEV_REMOVE_BONDING		"RemoveBonding"
-#define DEV_HAS_BONDING_NAME		"HasBonding"
-#define DEV_LIST_BONDINGS		"ListBondings"
-#define DEV_GET_PIN_CODE_LENGTH		"GetPinCodeLength"
-#define DEV_GET_ENCRYPTION_KEY_SIZE	"GetEncryptionKeySize"
-#define DEV_DISCOVER_DEVICES		"DiscoverDevices"
-#define DEV_CANCEL_DISCOVERY		"CancelDiscovery"
-#define DEV_DISCOVER_CACHE		"DiscoverCache"
-#define DEV_DISCOVER_SERVICE		"DiscoverService"
-
 /* Signals sent in the adapter based path /org/bluez/Adapter/{hci0, hci1, ...} */
 #define DEV_SIG_MODE_CHANGED		"ModeChanged"
 #define DEV_SIG_NAME_CHANGED		"NameChanged"

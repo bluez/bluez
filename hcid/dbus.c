@@ -380,7 +380,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 		pdata->timeout_handler = &discoverable_timeout_handler;
 
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
-							BLUEZ_MGR_DEV_ADDED);
+							"AdapterAdded");
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-BUS remote name message");
 		goto failed;
@@ -421,7 +421,7 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
-							BLUEZ_MGR_DEV_REMOVED);
+							"AdapterRemoved");
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
 		goto failed;

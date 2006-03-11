@@ -177,26 +177,6 @@ static DBusHandlerResult handle_dev_get_company_req(DBusConnection *conn, DBusMe
 	return send_reply_and_unref(conn, reply);
 }
 
-static DBusHandlerResult handle_dev_get_features_req(DBusConnection *conn, DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	DBusMessageIter iter;
-	DBusMessageIter array_iter;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return error_out_of_memory(conn, msg);
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_STRING_AS_STRING, &array_iter);
-
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-	return send_reply_and_unref(conn, reply);
-}
-
 static DBusHandlerResult handle_dev_get_mode_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	const struct hci_dbus_data *dbus_data = data;
@@ -227,60 +207,6 @@ static DBusHandlerResult handle_dev_get_mode_req(DBusConnection *conn, DBusMessa
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
-
-	return send_reply_and_unref(conn, reply);
-}
-
-static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn, DBusMessage *msg, void *data)
-{
-	const struct hci_dbus_data *dbus_data = data;
-	DBusMessage *reply = NULL;
-	DBusMessageIter iter;
-	DBusMessageIter array_iter;
-	const char **minor_ptr;
-	uint8_t cls[3];
-	uint8_t major_class;
-	int dd, size, i;
-
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
-	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		error("Can't read class of device on hci%d: %s(%d)",
-				dbus_data->dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
-	}
-
-	hci_close_dev(dd);
-
-	major_class = cls[1] & 0x1F;
-
-	switch (major_class) {
-	case 1: /* computer */
-		minor_ptr = computer_minor_cls;
-		size = sizeof(computer_minor_cls) / sizeof(*computer_minor_cls);
-		break;
-	case 2: /* phone */
-		minor_ptr = phone_minor_cls;
-		size = sizeof(phone_minor_cls) / sizeof(*phone_minor_cls);
-		break;
-	default:
-		return error_unsupported_major_class(conn, msg);
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return error_out_of_memory(conn, msg);
-
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-					 	DBUS_TYPE_STRING_AS_STRING, &array_iter);
-	for (i = 0; i < size; i++)
-		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &minor_ptr[i]);
-
-	dbus_message_iter_close_container(&iter, &array_iter);
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -435,6 +361,60 @@ static DBusHandlerResult handle_dev_get_major_class_req(DBusConnection *conn, DB
 	/*FIXME: Check the real device major class */
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	const struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply = NULL;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	const char **minor_ptr;
+	uint8_t cls[3];
+	uint8_t major_class;
+	int dd, size, i;
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0)
+		return error_no_such_adapter(conn, msg);
+
+	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		error("Can't read class of device on hci%d: %s(%d)",
+				dbus_data->dev_id, strerror(errno), errno);
+		hci_close_dev(dd);
+		return error_failed(conn, msg, errno);
+	}
+
+	hci_close_dev(dd);
+
+	major_class = cls[1] & 0x1F;
+
+	switch (major_class) {
+	case 1: /* computer */
+		minor_ptr = computer_minor_cls;
+		size = sizeof(computer_minor_cls) / sizeof(*computer_minor_cls);
+		break;
+	case 2: /* phone */
+		minor_ptr = phone_minor_cls;
+		size = sizeof(phone_minor_cls) / sizeof(*phone_minor_cls);
+		break;
+	default:
+		return error_unsupported_major_class(conn, msg);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return error_out_of_memory(conn, msg);
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					 	DBUS_TYPE_STRING_AS_STRING, &array_iter);
+	for (i = 0; i < size; i++)
+		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &minor_ptr[i]);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -1285,59 +1265,46 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	return send_reply_and_unref(conn, reply);
 }
 
-static DBusHandlerResult handle_dev_discover_cache_req(DBusConnection *conn, DBusMessage *msg, void *data)
-{
-	return error_not_implemented(conn, msg);
-}
-
-static DBusHandlerResult handle_dev_discover_service_req(DBusConnection *conn, DBusMessage *msg, void *data)
-{
-	return error_not_implemented(conn, msg);
-}
-
 static struct service_data dev_services[] = {
-	{ DEV_GET_ADDRESS,		handle_dev_get_address_req,		},
-	{ DEV_GET_VERSION,		handle_dev_get_version_req,		},
-	{ DEV_GET_REVISION,		handle_dev_get_revision_req,		},
-	{ DEV_GET_MANUFACTURER,		handle_dev_get_manufacturer_req,	},
-	{ DEV_GET_COMPANY,		handle_dev_get_company_req,		},
-	{ DEV_GET_FEATURES,		handle_dev_get_features_req,		},
-	{ DEV_GET_MODE,			handle_dev_get_mode_req,		},
-	{ DEV_LIST_MINOR_CLASSES,	handle_dev_list_minor_classes_req,	},
-	{ DEV_SET_MODE,			handle_dev_set_mode_req,		},
-	{ DEV_GET_DISCOVERABLE_TO,	handle_dev_get_discoverable_to_req,	},
-	{ DEV_SET_DISCOVERABLE_TO,	handle_dev_set_discoverable_to_req,	},
-	{ DEV_IS_CONNECTABLE,		handle_dev_is_connectable_req,		},
-	{ DEV_IS_DISCOVERABLE,		handle_dev_is_discoverable_req,		},
-	{ DEV_GET_MAJOR_CLASS,		handle_dev_get_major_class_req,		},
-	{ DEV_GET_MINOR_CLASS,		handle_dev_get_minor_class_req,		},
-	{ DEV_SET_MINOR_CLASS,		handle_dev_set_minor_class_req,		},
-	{ DEV_GET_SERVICE_CLASSES,	handle_dev_get_service_classes_req,	},
-	{ DEV_GET_NAME,			handle_dev_get_name_req,		},
-	{ DEV_SET_NAME,			handle_dev_set_name_req,		},
+	{ "GetAddress",			handle_dev_get_address_req,		},
+	{ "GetVersion",			handle_dev_get_version_req,		},
+	{ "GetRevision",		handle_dev_get_revision_req,		},
+	{ "GetManufacturer",		handle_dev_get_manufacturer_req,	},
+	{ "GetCompany",			handle_dev_get_company_req,		},
+	{ "GetMode",			handle_dev_get_mode_req,		},
+	{ "SetMode",			handle_dev_set_mode_req,		},
+	{ "GetDiscoverableTimeout",	handle_dev_get_discoverable_to_req,	},
+	{ "SetDiscoverableTimeout",	handle_dev_set_discoverable_to_req,	},
+	{ "IsConnectable",		handle_dev_is_connectable_req,		},
+	{ "IsDiscoverable",		handle_dev_is_discoverable_req,		},
+	{ "GetMajorClass",		handle_dev_get_major_class_req,		},
+	{ "ListAvailableMinorClasses",	handle_dev_list_minor_classes_req,	},
+	{ "GetMinorClass",		handle_dev_get_minor_class_req,		},
+	{ "SetMinorClass",		handle_dev_set_minor_class_req,		},
+	{ "GetServicesClasses",		handle_dev_get_service_classes_req,	},
+	{ "GetName",			handle_dev_get_name_req,		},
+	{ "SetName",			handle_dev_set_name_req,		},
 	
-	{ DEV_GET_REMOTE_VERSION,	handle_dev_get_remote_version_req,	},
-	{ DEV_GET_REMOTE_REVISION,	handle_dev_get_remote_revision_req,	},
-	{ DEV_GET_REMOTE_MANUFACTURER,	handle_dev_get_remote_manufacturer_req,	},
-	{ DEV_GET_REMOTE_COMPANY,	handle_dev_get_remote_company_req,	},
-	{ DEV_GET_REMOTE_NAME,		handle_dev_get_remote_name_req,		},
-	{ DEV_GET_REMOTE_ALIAS,		handle_dev_get_remote_alias_req,	},
-	{ DEV_SET_REMOTE_ALIAS,		handle_dev_set_remote_alias_req,	},
+	{ "GetRemoteVersion",		handle_dev_get_remote_version_req,	},
+	{ "GetRemoteRevision",		handle_dev_get_remote_revision_req,	},
+	{ "GetRemoteManufacturer",	handle_dev_get_remote_manufacturer_req,	},
+	{ "GetRemoteCompany",		handle_dev_get_remote_company_req,	},
+	{ "GetRemoteName",		handle_dev_get_remote_name_req,		},
+	{ "GetRemoteAlias",		handle_dev_get_remote_alias_req,	},
+	{ "SetRemoteAlias",		handle_dev_set_remote_alias_req,	},
 
-	{ DEV_LAST_SEEN,		handle_dev_last_seen_req,		},
-	{ DEV_LAST_USED,		handle_dev_last_used_req,		},
+	{ "LastSeen",			handle_dev_last_seen_req,		},
+	{ "LastUsed",			handle_dev_last_used_req,		},
 
-	{ DEV_CREATE_BONDING,		handle_dev_create_bonding_req,		},
-	{ DEV_REMOVE_BONDING,		handle_dev_remove_bonding_req,		},
-	{ DEV_HAS_BONDING_NAME,		handle_dev_has_bonding_req,		},
-	{ DEV_LIST_BONDINGS,		handle_dev_list_bondings_req,		},
-	{ DEV_GET_PIN_CODE_LENGTH,	handle_dev_get_pin_code_length_req,	},
-	{ DEV_GET_ENCRYPTION_KEY_SIZE,	handle_dev_get_encryption_key_size_req,	},
+	{ "CreateBonding",		handle_dev_create_bonding_req,		},
+	{ "RemoveBonding",		handle_dev_remove_bonding_req,		},
+	{ "HasBonding",			handle_dev_has_bonding_req,		},
+	{ "ListBondings",		handle_dev_list_bondings_req,		},
+	{ "GetPinCodeLength",		handle_dev_get_pin_code_length_req,	},
+	{ "GetEncryptionKeySize",	handle_dev_get_encryption_key_size_req,	},
 
-	{ DEV_DISCOVER_DEVICES,		handle_dev_discover_devices_req,	},
-	{ DEV_CANCEL_DISCOVERY,		handle_dev_cancel_discovery_req,	},
-	{ DEV_DISCOVER_CACHE,		handle_dev_discover_cache_req,		},
-	{ DEV_DISCOVER_SERVICE,		handle_dev_discover_service_req,	},
+	{ "DiscoverDevices",		handle_dev_discover_devices_req,	},
+	{ "CancelDiscovery",		handle_dev_cancel_discovery_req,	},
 
 	{ NULL, NULL }
 };
