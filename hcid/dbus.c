@@ -1160,11 +1160,6 @@ static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessag
 		dbus_connection_unref(conn);
 		bluez_timeout_start();
 		ret = DBUS_HANDLER_RESULT_HANDLED;
-	} else if (strcmp(iface, DBUS_INTERFACE_DBUS) == 0) {
-		if (strcmp(method, "NameOwnerChanged") == 0)
-			ret = DBUS_HANDLER_RESULT_HANDLED;
-		else if (strcmp(method, "NameAcquired") == 0)
-			ret = DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	return ret;

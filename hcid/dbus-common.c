@@ -165,8 +165,6 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 							"NameOwnerChanged"))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	debug("name_exit_filter");
-
 	if (!dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_STRING, &old,
@@ -226,8 +224,6 @@ int name_listener_add(DBusConnection *connection, const char *name,
 
 	dbus_error_init(&err);
 	dbus_bus_add_match(connection, match_string, &err);
-
-	debug("match rule \"%s\" added", match_string);
 
 	if (dbus_error_is_set(&err)) {
 		error("Adding match rule \"%s\" failed: %s", match_string,
