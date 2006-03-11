@@ -236,7 +236,12 @@ static int call_passkey_agent(struct passkey_agent *agent, int dev, const char *
 
 	ba2str(sba, bda);
 
-	debug("Creating method call: name=%s, path=%s", agent->name,
+	if (!agent) {
+		debug("call_passkey_agent(): no agent registered");
+		goto failed;
+	}
+
+	debug("Calling PasskeyAgent.Request: name=%s, path=%s", agent->name,
 			agent->path);
 
 	message = dbus_message_new_method_call(agent->name, agent->path,
