@@ -33,7 +33,7 @@
 
 #include <dbus/dbus.h>
 
-static const char *agent_path = "/org/bluez/passkey_agent/";
+static const char *agent_path = "/org/bluez/passkey_agent";
 
 static char *passkey = "0000";
 
