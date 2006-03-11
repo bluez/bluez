@@ -167,7 +167,7 @@ DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const in
 
 	if (dev_append_signal_args(signal, first, var_args) < 0) {
 		dbus_message_unref(signal);
-		return NULL;
+		signal = NULL;
 	}
 
 	va_end(var_args);
