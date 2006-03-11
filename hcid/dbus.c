@@ -526,7 +526,7 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	 * 0x00: authentication request successfully completed
 	 * 0x01-0x0F: authentication request failed
 	 */
-	name = status ? DEV_SIG_BONDING_FAILED : DEV_SIG_BONDING_CREATED;
+	name = status ? "BondingFailed" : "BondingCreated";
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE, name);
 
@@ -573,7 +573,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						DEV_SIG_DISCOVER_START);
+						"DiscoveryStarted");
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry start message");
 		goto failed;
@@ -618,7 +618,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	}
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						DEV_SIG_DISCOVER_COMPLETE);
+						"DiscoveryCompleted");
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry complete message");
 		goto failed;
@@ -664,7 +664,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						DEV_SIG_REMOTE_DEVICE_FOUND);
+						"RemoteDeviceFound");
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry result message");
 		goto failed;
@@ -720,7 +720,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	dbus_message_unref(message);
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						DEV_SIG_REMOTE_DEVICE_FOUND);
+						"RemoteDeviceFound");
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry result message");
 		goto failed;
@@ -768,7 +768,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						DEV_SIG_REMOTE_NAME_UPDATED);
+						"RemoteNameUpdated");
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus remote name message");
 		goto failed;
@@ -1220,10 +1220,10 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	name[248] = '\0';
 	pname = name;
 
-	signal = dev_signal_factory(id, DEV_SIG_NAME_CHANGED,
+	signal = dev_signal_factory(id, "NameChanged",
 				DBUS_TYPE_STRING, &pname, DBUS_TYPE_INVALID);
 	if (dbus_connection_send(connection, signal, NULL) == FALSE) {
-		syslog(LOG_ERR, "Can't send D-Bus %s signal", DEV_SIG_NAME_CHANGED);
+		syslog(LOG_ERR, "Can't send D-Bus signal");
 		goto failed;
 	}
 
@@ -1317,7 +1317,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	}
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						DEV_SIG_MODE_CHANGED);
+						"ModeChanged");
 	if (message == NULL) {
 		syslog(LOG_ERR, "Can't allocate D-Bus inquiry complete message");
 		goto failed;

@@ -138,19 +138,6 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-/* Signals sent in the adapter based path /org/bluez/Adapter/{hci0, hci1, ...} */
-#define DEV_SIG_MODE_CHANGED		"ModeChanged"
-#define DEV_SIG_NAME_CHANGED		"NameChanged"
-#define DEV_SIG_MINOR_CLASS_CHANGED	"MinorClassChanged"
-#define DEV_SIG_REMOTE_NAME_UPDATED	"RemoteNameUpdated"
-#define DEV_SIG_REMOTE_ALIAS_CHANGED	"RemoteAliasChanged"
-#define DEV_SIG_BONDING_CREATED		"BondingCreated"
-#define DEV_SIG_BONDING_FAILED		"BondingFailed"
-#define DEV_SIG_BONDING_REMOVED		"BondingRemoved"
-#define DEV_SIG_DISCOVER_START		"DiscoveryStart"
-#define DEV_SIG_DISCOVER_COMPLETE	"DiscoveryCompleted"
-#define DEV_SIG_REMOTE_DEVICE_FOUND	"RemoteDeviceFound"
-
 /*
  * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device

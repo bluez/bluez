@@ -522,7 +522,7 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 		return error_failed(conn, msg, errno);
 	}
 
-	signal = dev_signal_factory(dbus_data->dev_id, DEV_SIG_MINOR_CLASS_CHANGED,
+	signal = dev_signal_factory(dbus_data->dev_id, "MinorClassChange",
 						DBUS_TYPE_STRING, &minor,
 						DBUS_TYPE_INVALID);
 	if (signal) {
@@ -802,7 +802,7 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 	if (err < 0)
 		return error_failed(conn, msg, -err);
 
-	signal = dev_signal_factory(dbus_data->dev_id, DEV_SIG_REMOTE_ALIAS_CHANGED,
+	signal = dev_signal_factory(dbus_data->dev_id, "RemoteAliasChanged",
 						DBUS_TYPE_STRING, &addr_ptr,
 						DBUS_TYPE_STRING, &str_ptr,
 						DBUS_TYPE_INVALID);
@@ -1016,8 +1016,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	}
 
 	/* FIXME: which condition must be verified before send the signal */
-	signal = dev_signal_factory(dbus_data->dev_id,
-					DEV_SIG_BONDING_REMOVED,
+	signal = dev_signal_factory(dbus_data->dev_id, "BondingRemoved",
 					DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
 	if (signal) {
