@@ -46,28 +46,10 @@ successive attempts. The default hcid configuration is shipped with \fBmulti\fP
 enabled
 
 .TP
-\fBpin_code\fP "\fIpin\fP"
+\fBpasskey\fP "\fIpin\fP"
 
 The default PIN for incoming connections if \fBsecurity\fP has been
 set to \fIauto\fP.
-
-.TP 
-\fBpin_helper\fP "\fIfile\fP"
-
-The path to the PIN helper application. The default is "/bin/bluepin".
-The following output is expected from the PIN helper:
-
-PIN:12345678
-
-Or, when no PIN is available:
-
-ERR
-
-.TP 
-\fBdbus_pin_helper\fP
-
-Declaring this parameter enables the D-BUS message bus system for PIN
-requests.
 
 .TP 
 \fBsecurity\fP  none|auto|user

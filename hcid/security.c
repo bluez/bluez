@@ -202,97 +202,13 @@ void set_pin_length(bdaddr_t *sba, int length)
 	io_data[dev_id].pin_length = length;
 }
 
-/*
-  PIN helper is an external app that asks user for a PIN. It can 
-  implement its own PIN  code generation policy and methods like
-  PIN look up in some database, etc. 
-  HCId expects following output from PIN helper:
-	PIN:12345678	-	PIN code
-	ERR		-	No PIN available
-*/
-
+#ifndef ENABLE_DBUS
 static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	pin_code_reply_cp pr;
-	struct sigaction sa;
-	char addr[18], str[512], *pin, name[249], tmp[497], *ptr;
-	FILE *pipe;
-	int i, ret, len;
+	char *pin = "BlueZ";
+	int len;
 
-	/* Run PIN helper in the separate process */
-	switch (fork()) {
-		case 0:
-			break;
-		case -1:
-			error("Can't fork PIN helper: %s (%d)",
-							strerror(errno), errno);
-		default:
-			return;
-	}
-
-	if (access(hcid.pin_helper, R_OK | X_OK)) {
-		error("Can't exec PIN helper %s: %s (%d)",
-					hcid.pin_helper, strerror(errno), errno);
-		goto reject;
-	}
-
-	memset(name, 0, sizeof(name));
-	read_device_name(sba, &ci->bdaddr, name);
-	//hci_remote_name(dev, &ci->bdaddr, sizeof(name), name, 0);
-
-	memset(tmp, 0, sizeof(tmp));
-	ptr = tmp;
-
-	for (i = 0; i < 248 && name[i]; i++)
-		if (isprint(name[i])) {
-			switch (name[i]) {
-			case '"':
-			case '`':
-			case '$':
-			case '|':
-			case '>':
-			case '<':
-			case '&':
-			case ';':
-			case '\\':
-				*ptr++ = '\\';
-			}
-			*ptr++ = name[i];
-		} else {
-			name[i] = '.';
-			*ptr++ = '.';
-		}
-
-	ba2str(&ci->bdaddr, addr);
-	snprintf(str, sizeof(str), "%s %s %s \"%s\"", hcid.pin_helper,
-					ci->out ? "out" : "in", addr, tmp);
-
-	setenv("PATH", "/bin:/usr/bin:/usr/local/bin", 1);
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_flags = SA_NOCLDSTOP;
-	sa.sa_handler = SIG_DFL;
-	sigaction(SIGCHLD, &sa, NULL);
-
-	pipe = popen(str, "r");
-	if (!pipe) {
-		error("Can't exec PIN helper: %s (%d)",
-							strerror(errno), errno);
-		goto reject;
-	}
-
-	pin = fgets(str, sizeof(str), pipe);
-	ret = pclose(pipe);
-
-	if (!pin || strlen(pin) < 5)
-		goto nopin;
-
-	strtok(pin, "\n\r");
-
-	if (strncmp("PIN:", pin, 4))
-		goto nopin;
-
-	pin += 4;
 	len  = strlen(pin);
 
 	set_pin_length(sba, len);
@@ -303,26 +219,16 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	pr.pin_len = len;
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
 			PIN_CODE_REPLY_CP_SIZE, &pr);
-	exit(0);
-
-nopin:
-	if (!pin || strncmp("ERR", pin, 3))
-		error("PIN helper exited abnormally with code %d", ret);
-
-reject:
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &ci->bdaddr);
-	exit(0);
 }
+#endif
 
 static void request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 #ifdef ENABLE_DBUS
-	if (hcid.dbus_pin_helper) {
-		hcid_dbus_request_pin(dev, sba, ci);
-		return;
-	}
-#endif
+	hcid_dbus_request_pin(dev, sba, ci);
+#else
 	call_pin_helper(dev, sba, ci);
+#endif
 }
 
 static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)

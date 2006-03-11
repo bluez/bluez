@@ -34,8 +34,6 @@
 
 #define HCID_CONFIG_FILE CONFIGDIR "/hcid.conf"
 
-#define HCID_PIN_HELPER  "/usr/bin/bluepin"
-
 enum {
 	HCID_SET_NAME,
 	HCID_SET_CLASS,
@@ -81,9 +79,6 @@ struct hcid_opts {
 
 	uint8_t pin_code[16];
 	int     pin_len;
-
-	char   *pin_helper;
-	int     dbus_pin_helper;
 
 	int     sock;
 };

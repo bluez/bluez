@@ -60,9 +60,7 @@ struct kword cfg_keyword[] = {
 	{ "pageto",		K_PAGETO	},
 	{ "auth",		K_AUTH		},
 	{ "encrypt",		K_ENCRYPT	},
-	{ "pin_code",		K_PINCODE	},
-	{ "pin_helper",		K_PINHELP	},
-	{ "dbus_pin_helper",	K_DBUSPINHELP	},
+	{ "passkey",		K_PASSKEY	},
 
 	{ "yes",		K_YES		},
 	{ "no",			K_NO		},

@@ -60,7 +60,7 @@ int yyerror(char *s);
 %token K_OPTIONS K_DEVICE
 %token K_AUTOINIT K_SECURITY K_PAIRING
 %token K_PTYPE K_NAME K_CLASS K_VOICE K_INQMODE K_PAGETO K_LM K_LP K_AUTH K_ENCRYPT K_ISCAN K_PSCAN
-%token K_PINCODE K_PINHELP K_DBUSPINHELP
+%token K_PASSKEY
 %token K_YES K_NO
 
 %token <str> WORD PATH STRING LIST HCI BDADDR
@@ -114,26 +114,13 @@ hcid_opt:
 				hcid.pairing = $2;
 			}
 
-  | K_PINCODE STRING	{
+  | K_PASSKEY STRING	{
   				strncpy((char *) hcid.pin_code, $2, 16);
 				hcid.pin_len = strlen($2);
 				if (hcid.pin_len > 16)
 					hcid.pin_len = 16;
 			}
 
-  | K_PINHELP PATH	{
-				if (hcid.pin_helper)
-					free(hcid.pin_helper);
-				hcid.pin_helper = strdup($2);
-				hcid.dbus_pin_helper = 0;
-			}
-
-  | K_DBUSPINHELP	{
-				if (hcid.pin_helper)
-					free(hcid.pin_helper);
-				hcid.pin_helper = NULL;
-				hcid.dbus_pin_helper = 1;
-			}
 
   | WORD		{
 				cfg_error("Unknown option '%s'", $1);

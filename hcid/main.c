@@ -566,8 +566,6 @@ int main(int argc, char *argv[], char *env[])
 	strcpy((char *) hcid.pin_code, "BlueZ");
 	hcid.pin_len = 5;
 
-	hcid.pin_helper  = strdup(HCID_PIN_HELPER);
-
 	init_defaults();
 
 	while ((opt = getopt(argc, argv, "nsf:")) != EOF) {
@@ -660,13 +658,8 @@ int main(int argc, char *argv[], char *env[])
 	init_devices();
 
 #ifdef ENABLE_DBUS
-	if (hcid_dbus_init() == FALSE && hcid.dbus_pin_helper) {
+	if (hcid_dbus_init() == FALSE) {
 		error("Unable to get on D-Bus");
-		exit(1);
-	}
-#else
-	if (hcid.dbus_pin_helper) {
-		error("D-Bus not configured in this build of hcid");
 		exit(1);
 	}
 #endif
