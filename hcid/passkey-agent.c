@@ -128,6 +128,7 @@ int main(int argc, char **argv)
 			break;
 	}
 
+#if 0
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/Manager",
 			"org.bluez.Security", "UnregisterDefaultPasskeyAgent");
 
@@ -142,6 +143,7 @@ int main(int argc, char **argv)
 	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
 
 	dbus_message_unref(msg);
+#endif
 
 	dbus_connection_close(conn);
 
