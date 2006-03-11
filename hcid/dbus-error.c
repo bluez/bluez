@@ -27,10 +27,6 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <sys/socket.h>
-
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
 
 #include <dbus/dbus.h>
 

@@ -1354,13 +1354,14 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (dbus_data->path_id == ADAPTER_ROOT_ID) {
-		/* Adapter is down(path unregistered) or the path is wrong */
+		/* Adapter is down (path unregistered) or the path is wrong */
 		return error_no_such_adapter(conn, msg);
 	}
 
 	handler = find_service_handler(dev_services, msg);
-	if (!handler)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	return handler(conn, msg, data);
+	if (handler)
+		return handler(conn, msg, data);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
