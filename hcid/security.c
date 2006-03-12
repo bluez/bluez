@@ -192,9 +192,11 @@ void set_pin_length(bdaddr_t *sba, int length)
 	io_data[dev_id].pin_length = length;
 }
 
-#ifndef ENABLE_DBUS
-static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
+static void request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
+#ifdef ENABLE_DBUS
+	hcid_dbus_request_pin(dev, sba, ci);
+#else
 	pin_code_reply_cp pr;
 	char *pin = "BlueZ";
 	int len;
@@ -207,17 +209,9 @@ static void call_pin_helper(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	bacpy(&pr.bdaddr, &ci->bdaddr);
 	memcpy(pr.pin_code, pin, len);
 	pr.pin_len = len;
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
-			PIN_CODE_REPLY_CP_SIZE, &pr);
-}
-#endif
 
-static void request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
-{
-#ifdef ENABLE_DBUS
-	hcid_dbus_request_pin(dev, sba, ci);
-#else
-	call_pin_helper(dev, sba, ci);
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
+					PIN_CODE_REPLY_CP_SIZE, &pr);
 #endif
 }
 
