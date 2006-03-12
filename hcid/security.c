@@ -58,17 +58,7 @@ struct g_io_info {
 
 static struct g_io_info io_data[HCI_MAX_DEV];
 
-static int pairing;
-
-void toggle_pairing(int enable)
-{
-	if (enable)
-		pairing = hcid.pairing;
-	else
-		pairing = 0;
-
-	info("Pairing %s", pairing ? "enabled" : "disabled");
-}
+static int pairing = HCID_PAIRING_MULTI;
 
 static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
 {
@@ -509,7 +499,6 @@ static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
 
 	hcid_dbus_bonding_created_complete(sba, &dba, evt->status);
 }
-
 
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {

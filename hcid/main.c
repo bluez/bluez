@@ -432,16 +432,6 @@ static void init_defaults(void)
 	init_device_defaults(&default_device);
 }
 
-static void sig_usr1(int sig)
-{
-	toggle_pairing(0);
-}
-
-static void sig_usr2(int sig)
-{
-	toggle_pairing(1);
-}
-
 static void sig_term(int sig)
 {
 	g_main_quit(event_loop);
@@ -616,10 +606,6 @@ int main(int argc, char *argv[], char *env[])
 	sigaction(SIGINT,  &sa, NULL);
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
-	sa.sa_handler = sig_usr1;
-	sigaction(SIGUSR1, &sa, NULL);
-	sa.sa_handler = sig_usr2;
-	sigaction(SIGUSR2, &sa, NULL);
 
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL);
