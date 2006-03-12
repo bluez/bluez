@@ -89,6 +89,7 @@ static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *
 		}
 
 	free(cl);
+
 	return -ENOENT;
 }
 
@@ -237,8 +238,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	bacpy(&cr->bdaddr, dba);
 	cr->type = ACL_LINK;
 	if (ioctl(dev, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		error("Can't get conn info: %s (%d)",
-							strerror(errno), errno);
+		error("Can't get conn info: %s (%d)", strerror(errno), errno);
 		goto reject;
 	}
 	ci = cr->conn_info;
@@ -281,12 +281,16 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		/* Let PIN helper handle that */ 
 		request_pin(dev, sba, ci);
 	}
+
 	free(cr);
+
 	return;
 
 reject:
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 	free(cr);
+
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
+
 	return;
 }
 
