@@ -3,6 +3,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -27,6 +28,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -37,7 +39,7 @@
 #include "dbus.h"
 #include "hcid.h"
 
-#define TIMEOUT				(30 * 1000)		/* 30 seconds */
+#define TIMEOUT (30 * 1000)		/* 30 seconds */
 
 struct pin_request {
 	int dev;
@@ -52,7 +54,7 @@ static void default_agent_exited(const char *name, void *data)
 	debug("%s exited without unregistering the default passkey agent", name);
 
 	if (!default_agent || strcmp(name, default_agent->name)) {
-		/* This should never happen (there's a bug in the code if it does */
+		/* This should never happen (there's a bug in the code if it does) */
 		debug("default_agent_exited: mismatch with actual default_agent");
 		return;
 	}
@@ -241,11 +243,11 @@ static int call_passkey_agent(struct passkey_agent *agent, int dev, const char *
 		goto failed;
 	}
 
-	debug("Calling PasskeyAgent.Request: name=%s, path=%s", agent->name,
-			agent->path);
+	debug("Calling PasskeyAgent.Request: name=%s, path=%s",
+						agent->name, agent->path);
 
 	message = dbus_message_new_method_call(agent->name, agent->path,
-			"org.bluez.PasskeyAgent", "Request");
+					"org.bluez.PasskeyAgent", "Request");
 	if (message == NULL) {
 		error("Couldn't allocate D-Bus message");
 		goto failed;
@@ -302,4 +304,3 @@ int call_default_passkey_agent(int dev, const char *path, bdaddr_t *sba, bdaddr_
 {
 	return call_passkey_agent(default_agent, dev, path, sba, dba);
 }
-

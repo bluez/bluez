@@ -127,8 +127,10 @@ done:
 failed:
 	if (data)
 		name_data_free(data);
+
 	if (cb)
 		free(cb);
+
 	return 0;
 }
 
@@ -297,4 +299,3 @@ service_handler_func_t find_service_handler(struct service_data *handlers, DBusM
 
 	return NULL;
 }
-
