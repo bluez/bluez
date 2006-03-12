@@ -1,9 +1,5 @@
 
-if BLUEPIN
-bin_SCRIPTS = bluepin
-endif
-
-EXTRA_DIST = bluepin bluetooth.init bluetooth.default create_dev
+EXTRA_DIST = bluetooth.init bluetooth.default create_dev
 
 MAINTAINERCLEANFILES = Makefile.in
 

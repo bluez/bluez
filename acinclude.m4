@@ -302,7 +302,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	hid2hci_enable=${usb_found}
 	dfutool_enable=no
 	bcm203x_enable=no
-	bluepin_enable=yes
 
 	AC_ARG_ENABLE(fortify, AC_HELP_STRING([--disable-fortify], [disable compile time buffer checks]), [
 		fortify_enable=${enableval}
@@ -330,7 +329,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		hid2hci_enable=${enableval}
 		dfutool_enable=${enableval}
 		bcm203x_enable=${enableval}
-		bluepin_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
@@ -385,10 +383,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		bcm203x_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(bluepin, AC_HELP_STRING([--enable-bluepin], [install Python based PIN helper]), [
-		bluepin_enable=${enableval}
-	])
-
 	if (test "${fortify_enable}" = "yes"); then
 		CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
 	fi
@@ -415,5 +409,4 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(BCM203X, test "${bcm203x_enable}" = "yes" && test "${usb_found}" = "yes")
-	AM_CONDITIONAL(BLUEPIN, test "${bluepin_enable}" = "yes")
 ])

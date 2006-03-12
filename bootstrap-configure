@@ -13,5 +13,4 @@ fi
 		--localstatedir=/var \
 		--enable-all \
 		--disable-pcmcia \
-		--disable-initscripts \
-		--disable-bluepin
+		--disable-initscripts
