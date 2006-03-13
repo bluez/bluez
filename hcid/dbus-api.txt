@@ -3,7 +3,8 @@ D-Bus API description for BlueZ
 
 Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
 Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
-Copyright (C) 2005-2006  Claudio Takahasi <cktakahasi@gmail.com>
+Copyright (C) 2005-2006  Claudio Takahasi <claudio.takahasi@indt.org.br>
+Copyright (C) 2005-2006  Eduardo Rocha <eduardo.rocha@indt.org.br>
 
 
 Constant definitions
@@ -120,7 +121,7 @@ Manager hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Manager
-Object path	/org/bluez/Manager/
+Object path	/org/bluez/Manager
 
 Methods		uint32 InterfaceVersion()
 
@@ -149,7 +150,7 @@ Adapter hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Adapter
-Object path	/org/bluez/Adapter/{hci0,hci1,...}/
+Object path	/org/bluez/Adapter/{hci0,hci1,...}
 
 Methods		string GetAddress()
 
@@ -699,7 +700,7 @@ Security hierarchy
 Service		org.bluez
 Interface	org.bluez.Security
 Object path	/org/bluez/Manager/
-		/org/bluez/Adapter/{hci0,hci1,...}/
+		/org/bluez/Adapter/{hci0,hci1,...}
 
 Methods		void RegisterDefaultPasskeyAgent(string path)
 
@@ -794,7 +795,7 @@ RFCOMM hierarchy
 
 Service		org.bluez
 Interface	org.bluez.RFCOMM
-Object path	/org/bluez/Adapter/{hci0,hci1,...}/
+Object path	/org/bluez/Adapter/{hci0,hci1,...}
 
 Methods		string Connect(string address, string service)
 
@@ -870,7 +871,7 @@ SDP hierarchy
 
 Service		org.bluez
 Interface	org.bluez.SDP
-Object path	/org/bluez/Adapter/{hci0,hci1,...}/
+Object path	/org/bluez/Adapter/{hci0,hci1,...}
 
 Methods		array{string} GetIdentifiers(string address)
 
