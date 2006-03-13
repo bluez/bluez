@@ -27,37 +27,74 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <getopt.h>
 #include <string.h>
 
 #include <dbus/dbus.h>
 
-static const char *agent_path = "/org/bluez/passkey_agent";
+#define INTERFACE "org.bluez.Security"
 
-static char *passkey = "0000";
+static char *passkey = NULL;
+static char *address = NULL;
 
 static volatile sig_atomic_t __io_canceled = 0;
+static volatile sig_atomic_t __io_terminated = 0;
 
 static void sig_term(int sig)
 {
 	__io_canceled = 1;
 }
 
-DBusHandlerResult agent_message(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult agent_filter(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	const char *name, *old, *new;
+
+	if (!dbus_message_is_signal(msg, DBUS_INTERFACE_DBUS, "NameOwnerChanged"))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &old,
+				DBUS_TYPE_STRING, &new, DBUS_TYPE_INVALID)) {
+		fprintf(stderr, "Invalid arguments for NameOwnerChanged signal");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	if (!strcmp(name, "org.bluez") && *new == '\0') {
+		fprintf(stderr, "Passkey service has been terminated\n");
+		__io_terminated = 1;
+	}
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult agent_message(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	DBusMessageIter iter;
-	char *path, *address;
+	const char *path, *address;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &path);
-	dbus_message_iter_get_basic(&iter, &address);
+	if (!dbus_message_is_method_call(msg, INTERFACE, "Request"))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (!passkey)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_STRING, &address, DBUS_TYPE_INVALID)) {
+		fprintf(stderr, "Invalid arguments for passkey Request method");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
 
 	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		fprintf(stderr, "Can't create reply message\n");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
 
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &passkey);
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &passkey,
+					DBUS_TYPE_INVALID);
 
 	dbus_connection_send(conn, reply, NULL);
 
@@ -72,50 +109,179 @@ static const DBusObjectPathVTable agent_table = {
 	.message_function = agent_message,
 };
 
-int main(int argc, char **argv)
+static int register_agent(DBusConnection *conn, const char *agent_path,
+					const char *address, int use_default)
 {
-	struct sigaction sa;
-	DBusConnection* conn;
 	DBusMessage *msg, *reply;
-	DBusMessageIter iter;
-	DBusError err;
+	const char *path, *method;
 
-	dbus_error_init(&err);
-
-	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
-
-	if (dbus_error_is_set(&err)) {
-		fprintf(stderr, "Can't get on system bus");
-		dbus_error_free(&err);
-		exit(1);
+	if (!dbus_connection_register_object_path(conn, agent_path,
+							&agent_table, NULL)) {
+		fprintf(stderr, "Can't register path object path for agent\n");
+		return -1;
 	}
 
-	dbus_connection_register_object_path(conn, agent_path,
-							&agent_table, NULL);
+	if (use_default) {
+		path = "/org/bluez/Manager";
+		method = "RegisterDefaultPasskeyAgent";
+	} else {
+		path = "/org/bluez/Adapter/hci0";
+		method = "RegisterPasskeyAgent";
+	}
 
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/Manager",
-			"org.bluez.Security", "RegisterDefaultPasskeyAgent");
-
+	msg = dbus_message_new_method_call("org.bluez", path, INTERFACE, method);
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");
-		exit(1);
+		return -1;
 	}
 
-	dbus_message_iter_init_append(msg, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &agent_path);
+	if (use_default)
+		dbus_message_append_args(msg, DBUS_TYPE_STRING, &agent_path,
+							DBUS_TYPE_INVALID);
+	else
+		dbus_message_append_args(msg, DBUS_TYPE_STRING, &agent_path,
+				DBUS_TYPE_STRING, &address, DBUS_TYPE_INVALID);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
 
 	dbus_message_unref(msg);
 
 	if (!reply) {
 		fprintf(stderr, "Can't register passkey agent\n");
-		exit(1);
+		return -1;
 	}
 
 	dbus_message_unref(reply);
 
 	dbus_connection_flush(conn);
+
+	return 0;
+}
+
+static int unregister_agent(DBusConnection *conn, const char *agent_path,
+					const char *address, int use_default)
+{
+	DBusMessage *msg, *reply;
+	const char *path, *method;
+
+	if (use_default) {
+		path = "/org/bluez/Manager";
+		method = "UnregisterDefaultPasskeyAgent";
+	} else {
+		path = "/org/bluez/Adapter/hci0";
+		method = "UnregisterPasskeyAgent";
+	}
+
+	msg = dbus_message_new_method_call("org.bluez", path, INTERFACE, method);
+	if (!msg) {
+		fprintf(stderr, "Can't allocate new method call\n");
+		dbus_connection_close(conn);
+		exit(1);
+	}
+
+	if (use_default)
+		dbus_message_append_args(msg, DBUS_TYPE_STRING, &agent_path,
+							DBUS_TYPE_INVALID);
+	else
+		dbus_message_append_args(msg, DBUS_TYPE_STRING, &agent_path,
+				DBUS_TYPE_STRING, &address, DBUS_TYPE_INVALID);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+
+	dbus_message_unref(msg);
+
+	if (!reply) {
+		fprintf(stderr, "Can't unregister passkey agent\n");
+		return -1;
+	}
+
+	dbus_message_unref(reply);
+
+	dbus_connection_flush(conn);
+
+	return 0;
+}
+
+static void usage(void)
+{
+	printf("Bluetooth passkey agent ver %s\n\n", VERSION);
+
+	printf("Usage:\n"
+		"\tpasskey-agent [--default] [--path agent-path] <passkey> [address]\n"
+		"\n");
+}
+
+static struct option main_options[] = {
+	{ "default",	0, 0, 'd' },
+	{ "path",	0, 0, 'p' },
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+int main(int argc, char **argv)
+{
+	struct sigaction sa;
+	DBusConnection *conn;
+	char match_string[128], default_path[128], *agent_path = NULL;
+	int opt, use_default = 0;
+
+	snprintf(default_path, sizeof(default_path),
+				"/org/bluez/passkey-agent-%d", getpid());
+
+	while ((opt = getopt_long(argc, argv, "+dp:h", main_options, NULL)) != EOF) {
+		switch(opt) {
+		case 'd':
+			use_default = 1;
+			break;
+		case 'p':
+			if (optarg[0] != '/') {
+				fprintf(stderr, "Invalid path\n");
+				exit(1);
+			}
+			agent_path = strdup(optarg);
+			break;
+		case 'h':
+			usage();
+			exit(0);
+		default:
+			exit(1);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		usage();
+		exit(1);
+	}
+
+	passkey = strdup(argv[0]);
+	address = (argc > 1) ? strdup(argv[1]) : NULL;
+
+	if (!agent_path)
+		agent_path = strdup(default_path);
+
+	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (!conn) {
+		fprintf(stderr, "Can't get on system bus");
+		exit(1);
+	}
+
+	if (register_agent(conn, agent_path, address, use_default) < 0) {
+		dbus_connection_close(conn);
+		exit(1);
+	}
+
+	if (!dbus_connection_add_filter(conn, agent_filter, NULL, NULL))
+		fprintf(stderr, "Can't add signal filter");
+
+	snprintf(match_string, sizeof(match_string),
+			"interface=%s,member=NameOwnerChanged,arg0=%s",
+					DBUS_INTERFACE_DBUS, "org.bluez");
+
+	dbus_bus_add_match(conn, match_string, NULL);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags   = SA_NOCLDSTOP;
@@ -123,27 +289,16 @@ int main(int argc, char **argv)
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT,  &sa, NULL);
 
-	while (!__io_canceled) {
+	while (!__io_canceled && !__io_terminated) {
 		if (dbus_connection_read_write_dispatch(conn, 100) != TRUE)
 			break;
 	}
 
-#if 0
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/Manager",
-			"org.bluez.Security", "UnregisterDefaultPasskeyAgent");
+	if (!__io_terminated)
+		unregister_agent(conn, agent_path, address, use_default);
 
-	if (!msg) {
-		fprintf(stderr, "Can't allocate new method call\n");
-		exit(1);
-	}
-
-	dbus_message_iter_init_append(msg, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &agent_path);
-
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
-
-	dbus_message_unref(msg);
-#endif
+	if (passkey)
+		free(passkey);
 
 	dbus_connection_close(conn);
 
