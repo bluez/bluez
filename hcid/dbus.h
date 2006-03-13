@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <dbus/dbus.h>
 #include <bluetooth/bluetooth.h>
+#include "list.h"
 
 #define BASE_PATH		"/org/bluez"
 #define BASE_INTERFACE		"org.bluez"
@@ -76,9 +77,10 @@ struct hci_dbus_data {
 	uint32_t timeout_hits;
 	timeout_handler_func_t *timeout_handler;
 	uint8_t mode;		/* scan mode */
-	uint8_t resolve_name;	/* send name on discover process */
+	int resolve_name;	/* send name on discover process */
 	struct slist *discovered_devices;
 	char *requestor_name;	/* requestor unique name */
+	struct slist *passkey_agents;
 };
 
 struct passkey_agent {
@@ -130,7 +132,7 @@ DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg,
 
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
 
-int call_default_passkey_agent(int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
+int handle_passkey_request(int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
 
 static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusMessage *reply)
 {

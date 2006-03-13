@@ -65,6 +65,165 @@ static void default_agent_exited(const char *name, void *data)
 	default_agent = NULL;
 }
 
+static void passkey_agent_free(struct passkey_agent *agent)
+{
+	if (!agent)
+		return;
+	if (agent->name)
+		free(agent->name);
+	if (agent->path)
+		free(agent->path);
+	if (agent->addr)
+		free(agent->addr);
+	free(agent);
+}
+
+static struct passkey_agent *passkey_agent_new(const char *name,
+					const char *path, const char *addr)
+{
+	struct passkey_agent *agent;
+
+	agent = malloc(sizeof(struct passkey_agent));
+	if (!agent)
+		return NULL;
+
+	memset(agent, 0, sizeof(struct passkey_agent));
+
+	agent->name = strdup(name);
+	if (!agent->name)
+		goto mem_fail;
+
+	agent->path = strdup(path);
+	if (!agent->path)
+		goto mem_fail;
+
+	if (addr) {
+		agent->addr = strdup(addr);
+		if (!agent->addr)
+			goto mem_fail;
+	}
+
+	return agent;
+
+mem_fail:
+	passkey_agent_free(agent);
+	return NULL;
+}
+
+static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *b)
+{
+	int ret;
+
+	if (b->name) {
+		if (!a->name)
+			return -1;
+		ret = strcmp(a->name, b->name);
+		if (ret)
+			return ret;
+	}
+
+	if (b->path) {
+		if (!a->path)
+			return -1;
+		ret = strcmp(a->path, b->path);
+		if (ret)
+			return ret;
+	}
+
+	if (b->addr) {
+		if (!a->addr)
+			return -1;
+		ret = strcmp(a->addr, b->addr);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static DBusHandlerResult register_agent(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	char *path, *addr;
+	struct passkey_agent *agent, ref;
+	struct hci_dbus_data *adapter;
+	DBusMessage *reply;
+
+	if (!data) {
+		error("register_agent called without any adapter info!");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	adapter = data;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_STRING, &addr,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	ref.name = (char *)dbus_message_get_sender(msg);
+	ref.addr = addr;
+	ref.path = path;
+
+	if (slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp))
+		return error_passkey_agent_already_exists(conn, msg);
+
+	agent = passkey_agent_new(ref.name, path, addr);
+	if (!agent)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		passkey_agent_free(agent);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	adapter->passkey_agents = slist_append(adapter->passkey_agents, agent);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult unregister_agent(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	char *path, *addr;
+	struct hci_dbus_data *adapter;
+	struct slist *match;
+	struct passkey_agent ref;
+	DBusMessage *reply;
+
+	if (!data) {
+		error("uregister_agent called without any adapter info!");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	adapter = data;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_STRING, &addr,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	ref.name = (char *)dbus_message_get_sender(msg);
+	ref.path = path;
+	ref.addr = addr;
+
+	match = slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp);
+	if (!match)
+		return error_passkey_agent_does_not_exist(conn, msg);
+
+	adapter->passkey_agents = slist_remove(adapter->passkey_agents, match->data);
+	passkey_agent_free(match->data);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	return send_reply_and_unref(conn, reply);
+}
+
 static DBusHandlerResult register_default_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -79,18 +238,8 @@ static DBusHandlerResult register_default_agent(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	default_agent = malloc(sizeof(struct passkey_agent));
+	default_agent = passkey_agent_new(dbus_message_get_sender(msg), path, NULL);
 	if (!default_agent)
-		goto need_memory;
-
-	memset(default_agent, 0, sizeof(struct passkey_agent));
-
-	default_agent->name = strdup(dbus_message_get_sender(msg));
-	if (!default_agent->name)
-		goto need_memory;
-
-	default_agent->path = strdup(path);
-	if (!default_agent->path)
 		goto need_memory;
 
 	reply = dbus_message_new_method_return(msg);
@@ -103,18 +252,11 @@ static DBusHandlerResult register_default_agent(DBusConnection *conn,
 	info("Default passkey agent (%s, %s) registered",
 			default_agent->name, default_agent->path);
 
-	dbus_connection_send(conn, reply, NULL);
-	dbus_message_unref(reply);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_reply_and_unref(conn, reply);
 
 need_memory:
 	if (default_agent) {
-		if (default_agent->name)
-			free(default_agent->name);
-		if (default_agent->path)
-			free(default_agent->path);
-		free(default_agent);
+		passkey_agent_free(default_agent);
 		default_agent = NULL;
 	}
 
@@ -151,20 +293,17 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 	info("Default passkey agent (%s, %s) unregistered",
 			default_agent->name, default_agent->path);
 
-	free(default_agent->path);
-	free(default_agent->name);
-	free(default_agent);
+	passkey_agent_free(default_agent);
 	default_agent = NULL;
 
-	dbus_connection_send(conn, reply, NULL);
-	dbus_message_unref(reply);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_reply_and_unref(conn, reply);
 }
 
 static struct service_data sec_services[] = {
 	{ "RegisterDefaultPasskeyAgent",	register_default_agent		},
 	{ "UnregisterDefaultPasskeyAgent",	unregister_default_agent	},
+	{ "RegisterPasskeyAgent",		register_agent			},
+	{ "UnregisterPasskeyAgent",		unregister_agent		},
 	{ NULL, NULL }
 };
 
@@ -299,7 +438,31 @@ DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-int call_default_passkey_agent(int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba)
+int handle_passkey_request(int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba)
 {
-	return call_passkey_agent(default_agent, dev, path, sba, dba);
+	struct passkey_agent *agent = default_agent;
+	struct hci_dbus_data *adapter = NULL;
+	struct slist *l;
+	char addr[18];
+	void *data;
+
+	dbus_connection_get_object_path_data(get_dbus_connection(), path, &data);
+
+	if (!data)
+		goto done;
+
+	adapter = data;
+
+	ba2str(dba, addr);
+
+	for (l = adapter->passkey_agents; l != NULL; l = l->next) {
+		struct passkey_agent *a = l->data;
+		if (!strcmp(a->addr, addr)) {
+			agent = a;
+			break;
+		}
+	}
+
+done:
+	return call_passkey_agent(agent, dev, path, sba, dba);
 }

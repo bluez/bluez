@@ -433,7 +433,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, hci_devid(addr));
 
-	call_default_passkey_agent(dev, path, sba, &ci->bdaddr);
+	handle_passkey_request(dev, path, sba, &ci->bdaddr);
 }
 
 void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)

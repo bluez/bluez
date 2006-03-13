@@ -86,6 +86,19 @@ struct slist *slist_remove(struct slist *list, void *data)
 	return list;
 }
 
+struct slist *slist_find(struct slist *list, const void *data,
+			cmp_func_t cmp_func)
+{
+	struct slist *l;
+
+	for (l = list; l != NULL; l = l->next) {
+		if (!cmp_func(l->data, data))
+			return l;
+	}
+
+	return NULL;
+}
+
 void slist_free(struct slist *list)
 {
 	struct slist *l, *next;

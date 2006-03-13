@@ -30,9 +30,14 @@ struct slist {
 	struct slist *next;
 };
 
+typedef int (*cmp_func_t)(const void *a, const void *b);
+
 struct slist *slist_append(struct slist *list, void *data);
 
 struct slist *slist_remove(struct slist *list, void *data);
+
+struct slist *slist_find(struct slist *list, const void *data,
+			cmp_func_t cmp_func);
 
 void slist_free(struct slist *list);
 
