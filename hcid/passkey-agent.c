@@ -226,7 +226,7 @@ int main(int argc, char **argv)
 	int opt, use_default = 0;
 
 	snprintf(default_path, sizeof(default_path),
-				"/org/bluez/passkey-agent-%d", getpid());
+				"/org/bluez/passkey_agent_%d", getpid());
 
 	while ((opt = getopt_long(argc, argv, "+dp:h", main_options, NULL)) != EOF) {
 		switch(opt) {
