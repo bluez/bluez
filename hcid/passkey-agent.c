@@ -195,7 +195,7 @@ static int register_agent(DBusConnection *conn, const char *agent_path,
 	if (!reply) {
 		fprintf(stderr, "Can't register passkey agent\n");
 		if (dbus_error_is_set(&err)) {
-			fprintf(stderr, "%s", err.message);
+			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
 		}
 		return -1;
@@ -246,7 +246,7 @@ static int unregister_agent(DBusConnection *conn, const char *agent_path,
 	if (!reply) {
 		fprintf(stderr, "Can't unregister passkey agent\n");
 		if (dbus_error_is_set(&err)) {
-			fprintf(stderr, "%s", err.message);
+			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
 		}
 		return -1;
