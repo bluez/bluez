@@ -780,7 +780,7 @@ Methods		string Request(string path, string address)
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
-		void Release(string path)
+		void Release()
 
 			This method gets called when the service daemon
 			unregisters a passkey agent. An agent can use
