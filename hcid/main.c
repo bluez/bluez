@@ -66,7 +66,7 @@ static void usage(void)
 static inline void init_device_defaults(struct device_opts *device_opts)
 {
 	memset(device_opts, 0, sizeof(*device_opts));
-	device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
+	device_opts->scan = SCAN_PAGE;
 	device_opts->name = strdup("BlueZ");
 }
 
@@ -426,8 +426,8 @@ static void init_all_devices(int ctl)
 
 static void init_defaults(void)
 {
-	hcid.auto_init = 0;
-	hcid.security  = 0;
+	hcid.auto_init = 1;
+	hcid.security  = HCID_SEC_AUTO;
 
 	init_device_defaults(&default_device);
 }
@@ -548,6 +548,7 @@ int main(int argc, char *argv[], char *env[])
 	daemon = 1; dofork = 1; sdp = 0;
 
 	/* Default HCId settings */
+	hcid.auto_init   = 1;
 	hcid.config_file = HCID_CONFIG_FILE;
 	hcid.host_name   = get_host_name();
 	hcid.security    = HCID_SEC_AUTO;
