@@ -248,14 +248,12 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 		goto failed;
 	}
 
+	memset(data, 0, sizeof(struct hci_dbus_data));
+
 	data->path_id = path_id;
 	data->dev_id = dev_id;
 	data->mode = SCAN_DISABLED;
 	data->discoverable_timeout = DFT_DISCOVERABLE_TIMEOUT;
-	data->timeout_hits = 0;
-	data->timeout_handler = NULL;
-	data->requestor_name = NULL;
-	data->discovered_devices = NULL;
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
