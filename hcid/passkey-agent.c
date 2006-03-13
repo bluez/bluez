@@ -258,7 +258,7 @@ static void usage(void)
 
 static struct option main_options[] = {
 	{ "default",	0, 0, 'd' },
-	{ "path",	0, 0, 'p' },
+	{ "path",	1, 0, 'p' },
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
