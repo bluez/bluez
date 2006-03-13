@@ -305,6 +305,11 @@ int main(int argc, char **argv)
 	passkey = strdup(argv[0]);
 	address = (argc > 1) ? strdup(argv[1]) : NULL;
 
+	if (!use_default && !address) {
+		usage();
+		exit(1);
+	}
+
 	if (!agent_path)
 		agent_path = strdup(default_path);
 
