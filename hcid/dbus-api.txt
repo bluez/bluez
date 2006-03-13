@@ -489,6 +489,17 @@ Methods		string GetAddress()
 
 			Question: Can we find a better name?
 
+		void DisconnectRemoteDevice(string address)
+
+			This method disconnects a specific remote device by
+			terminating the low-level ACL connection. The use
+			of this method should be restricted to administrator
+			use only.
+
+			Possible errors: org.bluez.Error.Failed
+			                 org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotConnected
+
 		void CreateBonding(string address)
 
 			This method creates a bonding with a remote device.
