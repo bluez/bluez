@@ -70,13 +70,10 @@ static DBusHandlerResult agent_filter(DBusConnection *conn, DBusMessage *msg, vo
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static DBusHandlerResult agent_message(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult request_message(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *path, *address;
-
-	if (!dbus_message_is_method_call(msg, INTERFACE, "Request"))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (!passkey)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -103,6 +100,48 @@ static DBusHandlerResult agent_message(DBusConnection *conn, DBusMessage *msg, v
 	dbus_message_unref(reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult release_message(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID)) {
+		fprintf(stderr, "Invalid arguments for passkey Release method");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		fprintf(stderr, "Can't create reply message\n");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	dbus_connection_send(conn, reply, NULL);
+
+	dbus_connection_flush(conn);
+
+	dbus_message_unref(reply);
+
+	if (!__io_canceled)
+		fprintf(stderr, "Passkey service has been released\n");
+
+	__io_terminated = 1;
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult agent_message(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	if (dbus_message_is_method_call(msg, INTERFACE, "Request"))
+		return request_message(conn, msg, data);
+
+	if (dbus_message_is_method_call(msg, INTERFACE, "Release"))
+		return release_message(conn, msg, data);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static const DBusObjectPathVTable agent_table = {
