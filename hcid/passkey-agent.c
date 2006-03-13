@@ -153,10 +153,11 @@ static const DBusObjectPathVTable agent_table = {
 };
 
 static int register_agent(DBusConnection *conn, const char *agent_path,
-					const char *address, int use_default)
+				const char *remote_address, int use_default)
 {
 	DBusMessage *msg, *reply;
-	const char *path, *method;
+	DBusError err;
+	const char *path, *method, *address = remote_address;
 
 	if (!dbus_connection_register_object_path(conn, agent_path,
 							&agent_table, NULL)) {
@@ -185,12 +186,18 @@ static int register_agent(DBusConnection *conn, const char *agent_path,
 		dbus_message_append_args(msg, DBUS_TYPE_STRING, &agent_path,
 				DBUS_TYPE_STRING, &address, DBUS_TYPE_INVALID);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+	dbus_error_init(&err);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
 
 	dbus_message_unref(msg);
 
 	if (!reply) {
 		fprintf(stderr, "Can't register passkey agent\n");
+		if (dbus_error_is_set(&err)) {
+			fprintf(stderr, "%s", err.message);
+			dbus_error_free(&err);
+		}
 		return -1;
 	}
 
@@ -202,10 +209,11 @@ static int register_agent(DBusConnection *conn, const char *agent_path,
 }
 
 static int unregister_agent(DBusConnection *conn, const char *agent_path,
-					const char *address, int use_default)
+				const char *remote_address, int use_default)
 {
 	DBusMessage *msg, *reply;
-	const char *path, *method;
+	DBusError err;
+	const char *path, *method, *address = remote_address;
 
 	if (use_default) {
 		path = "/org/bluez/Manager";
@@ -229,12 +237,18 @@ static int unregister_agent(DBusConnection *conn, const char *agent_path,
 		dbus_message_append_args(msg, DBUS_TYPE_STRING, &agent_path,
 				DBUS_TYPE_STRING, &address, DBUS_TYPE_INVALID);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+	dbus_error_init(&err);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
 
 	dbus_message_unref(msg);
 
 	if (!reply) {
 		fprintf(stderr, "Can't unregister passkey agent\n");
+		if (dbus_error_is_set(&err)) {
+			fprintf(stderr, "%s", err.message);
+			dbus_error_free(&err);
+		}
 		return -1;
 	}
 
