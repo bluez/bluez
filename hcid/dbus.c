@@ -282,7 +282,7 @@ static gboolean unregister_dbus_path(const char *path)
 
 	info("Unregister path:%s", path);
 
-	if (dbus_connection_get_object_path_data(connection, path, (void*)&data) && data) {
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &data) && data) {
 		if (data->requestor_name)
 			free(data->requestor_name);
 		free(data);
@@ -339,7 +339,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 		}
 	}
 
-	if (!dbus_connection_get_object_path_data(connection, path, (void*) &pdata))
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
 		error("Getting path data failed!");
 	else
 		pdata->mode = rp.enable;	/* Keep the current scan status */
@@ -572,7 +572,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
-	if (dbus_connection_get_object_path_data(connection, path, (void*) &pdata)) {
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		if (pdata->resolve_name)
 			if (!remote_name_resolve(pdata))
 				goto failed; /* skip, send discovery complete after resolve all remote names */
@@ -690,10 +690,17 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 
 	name = textfile_get(filename, peer_addr);
 
-	if (!name) {
-		/* FIXME: if necessary create a queue to resolve the name */
+	if (name) {
 
-		if (!dbus_connection_get_object_path_data(connection, path, (void*) &pdata)) {
+		dbus_message_append_args(signal_name,
+					 DBUS_TYPE_STRING, &name,
+					 DBUS_TYPE_INVALID);
+
+		if (dbus_connection_send(connection, signal_name, NULL) == FALSE)
+			error("Can't send D-Bus inquiry result message");
+
+	} else {
+		if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 			error("Getting %s path data failed!", path);
 			goto failed;
 		}
@@ -705,14 +712,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 
 		goto failed;
 	}
-
-
-	dbus_message_append_args(signal_name,
-					DBUS_TYPE_STRING, &name,
-					DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send(connection, signal_name, NULL) == FALSE)
-		error("Can't send D-Bus inquiry result message");
 
 failed:
 	if (signal_device)
@@ -749,9 +748,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
-
 	/* remove from remote name request list */
-	if (dbus_connection_get_object_path_data(connection, path, (void*) &pdata))
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
 		remote_name_remove(&pdata->discovered_devices, peer);
 	
 	if (!status)
@@ -780,7 +778,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 
 request_next:
 	if (!pdata->requestor_name)
-		goto failed; /* handle requests from external app */
+		goto failed; /* requested by an external app */
 
 	if (!remote_name_resolve(pdata))
 		goto failed; /* skip: there is more remote name to resolve */
@@ -804,6 +802,8 @@ request_next:
 
 	free(pdata->requestor_name);
 	pdata->requestor_name = NULL;
+
+	pdata->resolve_name = 0;
 
 failed:
 	if (message)
@@ -1090,7 +1090,7 @@ static void sigalarm_handler(int signum)
 
 		snprintf(device_path, sizeof(device_path), "%s/%s", ADAPTER_PATH, device[i]);
 
-		if (!dbus_connection_get_object_path_data(connection, device_path, (void*) &pdata)){
+		if (!dbus_connection_get_object_path_data(connection, device_path, (void *) &pdata)){
 			error("Getting %s path data failed!", device_path);
 			continue;
 		}
@@ -1298,7 +1298,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	if (!dbus_connection_get_object_path_data(connection, path, (void*) &pdata)) {
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting path data failed!");
 		goto failed;
 	}
