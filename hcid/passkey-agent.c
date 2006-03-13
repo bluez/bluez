@@ -139,10 +139,10 @@ static DBusHandlerResult release_message(DBusConnection *conn,
 static DBusHandlerResult agent_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	if (dbus_message_is_method_call(msg, INTERFACE, "Request"))
+	if (dbus_message_is_method_call(msg, "org.bluez.PasskeyAgent", "Request"))
 		return request_message(conn, msg, data);
 
-	if (dbus_message_is_method_call(msg, INTERFACE, "Release"))
+	if (dbus_message_is_method_call(msg, "org.bluez.PasskeyAgent", "Release"))
 		return release_message(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -198,8 +198,6 @@ static int register_agent(DBusConnection *conn, const char *agent_path,
 
 	dbus_connection_flush(conn);
 
-	dbus_connection_unregister_object_path(conn, agent_path);
-
 	return 0;
 }
 
@@ -243,6 +241,8 @@ static int unregister_agent(DBusConnection *conn, const char *agent_path,
 	dbus_message_unref(reply);
 
 	dbus_connection_flush(conn);
+
+	dbus_connection_unregister_object_path(conn, agent_path);
 
 	return 0;
 }
