@@ -194,6 +194,8 @@ static int register_agent(DBusConnection *conn, const char *agent_path,
 
 	dbus_connection_flush(conn);
 
+	dbus_connection_unregister_object_path(conn, agent_path);
+
 	return 0;
 }
 
