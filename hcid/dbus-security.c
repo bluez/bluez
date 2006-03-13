@@ -190,7 +190,7 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	char *path, *addr;
 	struct hci_dbus_data *adapter;
 	struct slist *match;
-	struct passkey_agent ref;
+	struct passkey_agent ref, *agent;
 	DBusMessage *reply;
 
 	if (!data) {
@@ -214,8 +214,10 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	if (!match)
 		return error_passkey_agent_does_not_exist(conn, msg);
 
-	adapter->passkey_agents = slist_remove(adapter->passkey_agents, match->data);
-	passkey_agent_free(match->data);
+	agent = match->data;
+
+	adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
+	passkey_agent_free(agent);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
