@@ -780,6 +780,14 @@ Methods		string Request(string path, string address)
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
+		void Release(string path)
+
+			This method gets called when the service daemon
+			unregisters a passkey agent. An agent can use
+			it to do cleanup tasks. There is no need to
+			unregister the agent, because when this method
+			gets called it has already been unregistered.
+
 
 RFCOMM hierarchy
 ================
