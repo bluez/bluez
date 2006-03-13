@@ -144,7 +144,7 @@ AC_DEFUN([AC_PATH_DBUS], [
 
 	DBUS_CFLAGS="-DDBUS_API_SUBJECT_TO_CHANGE"
 	test -d "${dbus_prefix}/include/dbus-1.0" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/include/dbus-1.0"
-	if (test "${prefix}" = "${bluez_prefix}"); then
+	if (test "${prefix}" = "${dbus_prefix}"); then
 		test -d "${libdir}/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${libdir}/dbus-1.0/include"
 	else
 		test -d "${dbus_prefix}/lib64/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib64/dbus-1.0/include"
