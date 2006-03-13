@@ -1318,24 +1318,26 @@ static struct service_data dev_services[] = {
 
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	service_handler_func_t handler;
 	struct hci_dbus_data *dbus_data = data;
 	const char *iface;
 
 	iface = dbus_message_get_interface(msg);
-
-	if (strcmp(ADAPTER_INTERFACE, iface))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (dbus_data->path_id == ADAPTER_ROOT_ID) {
 		/* Adapter is down (path unregistered) or the path is wrong */
 		return error_no_such_adapter(conn, msg);
 	}
 
-	handler = find_service_handler(dev_services, msg);
+	if (!strcmp(ADAPTER_INTERFACE, iface)) {
+		service_handler_func_t handler;
 
-	if (handler)
-		return handler(conn, msg, data);
+		handler = find_service_handler(dev_services, msg);
+
+		if (handler)
+			return handler(conn, msg, data);
+	}
+	else if (!strcmp(SECURITY_INTERFACE, iface))
+		return handle_security_method(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
