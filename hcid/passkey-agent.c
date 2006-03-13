@@ -48,7 +48,8 @@ static void sig_term(int sig)
 	__io_canceled = 1;
 }
 
-static DBusHandlerResult agent_filter(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult agent_filter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	const char *name, *old, *new;
 
@@ -70,7 +71,8 @@ static DBusHandlerResult agent_filter(DBusConnection *conn, DBusMessage *msg, vo
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static DBusHandlerResult request_message(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult request_message(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *path, *address;
@@ -102,7 +104,8 @@ static DBusHandlerResult request_message(DBusConnection *conn, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult release_message(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult release_message(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 
@@ -133,7 +136,8 @@ static DBusHandlerResult release_message(DBusConnection *conn, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult agent_message(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult agent_message(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	if (dbus_message_is_method_call(msg, INTERFACE, "Request"))
 		return request_message(conn, msg, data);
