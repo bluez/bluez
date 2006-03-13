@@ -325,16 +325,17 @@ static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_remote_name_req_complete *evt = ptr;
 	bdaddr_t dba;
+	char name[249];
 
+	memset(name, 0, sizeof(name));
 	bacpy(&dba, &evt->bdaddr);
 
 	if (!evt->status) {
-		char name[249];
-		memset(name, 0, sizeof(name));
 		memcpy(name, evt->name, 248);
 		write_device_name(sba, &dba, name);
-		hcid_dbus_remote_name(sba, &dba, name);
 	}
+
+	hcid_dbus_remote_name(sba, &dba, evt->status, name);
 }
 
 static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)

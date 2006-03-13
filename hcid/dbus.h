@@ -75,8 +75,10 @@ struct hci_dbus_data {
 	uint32_t discoverable_timeout;
 	uint32_t timeout_hits;
 	timeout_handler_func_t *timeout_handler;
-	uint8_t mode;
-	char *requestor_name;
+	uint8_t mode;		/* scan mode */
+	uint8_t resolve_name;	/* send name on discover process */
+	struct slist *discovered_devices;
+	char *requestor_name;	/* requestor unique name */
 };
 
 struct passkey_agent {
