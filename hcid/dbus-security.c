@@ -173,51 +173,50 @@ static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 	struct pin_request *req = (struct pin_request *) user_data;
 	pin_code_reply_cp pr;
 	DBusMessage *message;
-	DBusMessageIter iter;
-	int arg_type;
-	int msg_type;
+	DBusError err;
 	size_t len;
 	char *pin;
-	const char *error_msg;
 
+	/* steal_reply will always return non-NULL since the callback
+	 * is only called after a reply has been received */
 	message = dbus_pending_call_steal_reply(call);
 
-	if (!message)
-		goto done;
-
-	msg_type = dbus_message_get_type(message);
-	dbus_message_iter_init(message, &iter);
-
-	if (msg_type == DBUS_MESSAGE_TYPE_ERROR) {
-		dbus_message_iter_get_basic(&iter, &error_msg);
-
-		/* handling WRONG_ARGS_ERROR, DBUS_ERROR_NO_REPLY, DBUS_ERROR_SERVICE_UNKNOWN */
-		error("%s: %s", dbus_message_get_error_name(message), error_msg);
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, message)) {
+		error("Passkey agent replied with an error: %s, %s",
+				err.name, err.message);
+		dbus_error_free(&err);
 		hci_send_cmd(req->dev, OGF_LINK_CTL,
-					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
-
+				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 		goto done;
 	}
 
-	/* check signature */
-	arg_type = dbus_message_iter_get_arg_type(&iter);
-	if (arg_type != DBUS_TYPE_STRING) {
-		error("Wrong reply signature: expected PIN");
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(message, &err,
+				DBUS_TYPE_STRING, &pin,
+				DBUS_TYPE_INVALID)) {
+		error("Wrong passkey reply signature: %s", err.message);
+		dbus_error_free(&err);
 		hci_send_cmd(req->dev, OGF_LINK_CTL,
-					OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
-	} else {
-		dbus_message_iter_get_basic(&iter, &pin);
-		len = strlen(pin);
+				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
+		goto done;
+	}
 
-		set_pin_length(&req->sba, len);
+	len = strlen(pin);
 
-		memset(&pr, 0, sizeof(pr));
-		bacpy(&pr.bdaddr, &req->bda);
-		memcpy(pr.pin_code, pin, len);
-		pr.pin_len = len;
-		hci_send_cmd(req->dev, OGF_LINK_CTL,
+	if (len > 16) {
+		error("Too long (%d char) passkey from handler", len);
+		goto done;
+	}
+
+	set_pin_length(&req->sba, len);
+
+	memset(&pr, 0, sizeof(pr));
+	bacpy(&pr.bdaddr, &req->bda);
+	memcpy(pr.pin_code, pin, len);
+	pr.pin_len = len;
+	hci_send_cmd(req->dev, OGF_LINK_CTL,
 			OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
-	}
 
 done:
 	if (message)
