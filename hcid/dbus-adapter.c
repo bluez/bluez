@@ -1179,9 +1179,9 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 
 	method = dbus_message_get_member(msg);
 	if (strcmp("DiscoverDevicesWithoutNameResolving", method) == 0)
-		dbus_data->resolve_name = 0;
+		dbus_data->discover_state = DISCOVER_RUNNING;
 	else 
-		dbus_data->resolve_name = 1;
+		dbus_data->discover_state = DISCOVER_RUNNING_WITH_NAMES;
 		
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
@@ -1206,6 +1206,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Unable to start inquiry: %s (%d)",
 							strerror(errno), errno);
+		dbus_data->discover_state = DISCOVER_OFF;
 		hci_close_dev(dd);
 		return error_failed(conn, msg, errno);
 	}
@@ -1224,9 +1225,11 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 {
 	DBusMessage *reply = NULL;
 	const char *requestor_name;
+	bdaddr_t *addr;
 	struct hci_request rq;
+	remote_name_req_cancel_cp cp;
 	struct hci_dbus_data *dbus_data = data;
-	uint8_t status;
+	uint8_t status = 0x00;
 	int dd = -1;
 
 	requestor_name = dbus_message_get_sender(msg);
@@ -1244,14 +1247,38 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		return error_no_such_adapter(conn, msg);
 
 	memset(&rq, 0, sizeof(rq));
+	memset(&cp, 0, sizeof(cp));
 	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_INQUIRY_CANCEL;
 	rq.rparam = &status;
 	rq.rlen   = sizeof(status);
 
+	switch (dbus_data->discover_state) {
+	case DISCOVER_OFF:
+		/* FIXME: */
+		break;
+	case RESOLVING_NAMES:
+		/* get the first element */
+		addr = (bdaddr_t *) (dbus_data->discovered_devices)->data;
+
+		memcpy(&cp.bdaddr, addr, sizeof(bdaddr_t));
+
+		rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
+		rq.cparam = &cp;
+		rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
+		rq.event = EVT_CMD_STATUS;
+		break;
+	case DISCOVER_RUNNING:
+	case DISCOVER_RUNNING_WITH_NAMES:
+		rq.ocf = OCF_INQUIRY_CANCEL;
+		break;
+	}
+
+	slist_free(dbus_data->discovered_devices);
+	dbus_data->discovered_devices = NULL;
+
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		error("Sending cancel inquiry failed: %s (%d)",
-							strerror(errno), errno);
+		error("Sending command failed: %s (%d)",
+		      strerror(errno), errno);
 		hci_close_dev(dd);
 		return error_failed(conn, msg, errno);
 	}
@@ -1259,7 +1286,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	hci_close_dev(dd);
 
 	if (status) {
-		error("Cancel inquiry failed with status 0x%02x", status);
+		error("Cancel failed with status 0x%02x", status);
 		return error_failed(conn, msg, status);
 	}
 

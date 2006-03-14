@@ -70,6 +70,13 @@ struct service_data {
 
 typedef int (timeout_handler_func_t) (void *data);
 
+typedef enum {
+	DISCOVER_OFF,
+	DISCOVER_RUNNING,
+	DISCOVER_RUNNING_WITH_NAMES,
+	RESOLVING_NAMES
+} discover_state_t;
+
 struct hci_dbus_data {
 	uint16_t dev_id;
 	uint16_t path_id;
@@ -77,7 +84,7 @@ struct hci_dbus_data {
 	uint32_t timeout_hits;
 	timeout_handler_func_t *timeout_handler;
 	uint8_t mode;		/* scan mode */
-	int resolve_name;	/* send name on discover process */
+	discover_state_t discover_state;
 	struct slist *discovered_devices;
 	char *requestor_name;	/* requestor unique name */
 	struct slist *passkey_agents;

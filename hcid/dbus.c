@@ -573,9 +573,15 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
-		if (pdata->resolve_name)
+		if (pdata->discover_state == DISCOVER_RUNNING_WITH_NAMES) {
+			/* start name resolving */
+			pdata->discover_state = RESOLVING_NAMES;
+
 			if (!remote_name_resolve(pdata))
-				goto failed; /* skip, send discovery complete after resolve all remote names */
+				goto failed; /* skip, sending the first name to resolve */
+			else 
+				pdata->discover_state = DISCOVER_OFF; /* no names to resolve */
+		}
 
 		if (pdata->requestor_name) {
 			free(pdata->requestor_name);
@@ -704,12 +710,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 			goto failed;
 		}
 
-		if (!pdata->resolve_name)
-			goto failed; /* skip - it is a normal request */
-		else
+		if (pdata->discover_state == DISCOVER_RUNNING_WITH_NAMES)
 			remote_name_add(&pdata->discovered_devices, peer);
-
-		goto failed;
 	}
 
 failed:
@@ -803,7 +805,7 @@ request_next:
 	free(pdata->requestor_name);
 	pdata->requestor_name = NULL;
 
-	pdata->resolve_name = 0;
+	pdata->discover_state = DISCOVER_OFF;
 
 failed:
 	if (message)
