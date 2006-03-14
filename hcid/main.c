@@ -539,13 +539,11 @@ extern char *optarg;
 
 int main(int argc, char *argv[], char *env[])
 {
-	int daemon, dofork, sdp, opt, fd;
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
 	struct sigaction sa;
 	GIOChannel *ctl_io;
-
-	daemon = 1; dofork = 1; sdp = 0;
+	int opt, daemonize = 1, sdp = 0;
 
 	/* Default HCId settings */
 	hcid.auto_init   = 1;
@@ -562,7 +560,7 @@ int main(int argc, char *argv[], char *env[])
 	while ((opt = getopt(argc, argv, "nsf:")) != EOF) {
 		switch (opt) {
 		case 'n':
-			daemon = 0;
+			daemonize = 0;
 			break;
 
 		case 's':
@@ -579,18 +577,9 @@ int main(int argc, char *argv[], char *env[])
 		}
 	}
 
-	if (daemon) {
-		if (dofork && fork())
-			exit(0);
-
-		/* Direct stdin,stdout,stderr to '/dev/null' */
-		fd = open("/dev/null", O_RDWR);
-		dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
-		close(fd);
-
-		setsid();
-
-		chdir("/");
+	if (daemonize && daemon(0, 0)) {
+		error("Can't daemonize: %s (%d)", strerror(errno), errno);
+		exit(1);
 	}
 
 	umask(0077);
