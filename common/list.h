@@ -31,6 +31,7 @@ struct slist {
 };
 
 typedef int (*cmp_func_t)(const void *a, const void *b);
+typedef void (*slist_func_t)(void *data, void *user_data);
 
 struct slist *slist_append(struct slist *list, void *data);
 
@@ -39,6 +40,7 @@ struct slist *slist_remove(struct slist *list, void *data);
 struct slist *slist_find(struct slist *list, const void *data,
 			cmp_func_t cmp_func);
 
+void slist_foreach(struct slist *list, slist_func_t func, void *user_data);
 void slist_free(struct slist *list);
 
 #endif /* __LIST_H */

@@ -99,6 +99,15 @@ struct slist *slist_find(struct slist *list, const void *data,
 	return NULL;
 }
 
+void slist_foreach(struct slist *list, slist_func_t func, void *user_data)
+{
+	while (list) {
+		struct slist *next = list->next;
+		func(list->data, user_data);
+		list = next;
+	}
+}
+
 void slist_free(struct slist *list)
 {
 	struct slist *l, *next;

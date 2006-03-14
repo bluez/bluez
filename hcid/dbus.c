@@ -148,7 +148,7 @@ static int remote_name_remove(struct slist **list, bdaddr_t *addr)
 		free(data);
 		ret_val = 0;
 	}
-	
+
 	return ret_val;
 }
 
