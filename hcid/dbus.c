@@ -691,7 +691,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	name = textfile_get(filename, peer_addr);
 
 	if (name) {
-
 		dbus_message_append_args(signal_name,
 					 DBUS_TYPE_STRING, &name,
 					 DBUS_TYPE_INVALID);
@@ -751,8 +750,9 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	/* remove from remote name request list */
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
 		remote_name_remove(&pdata->discovered_devices, peer);
-	
-	if (!status)
+
+	/* if the requested name failed, don't send signal and request the next name */
+	if (status)
 		goto request_next;
 
 
