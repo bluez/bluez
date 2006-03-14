@@ -261,6 +261,7 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 	}
 
 	data->callbacks = slist_remove(data->callbacks, cb);
+	free(cb);
 
 	/* Don't remove the filter if other callbacks exist */
 	if (data->callbacks)
