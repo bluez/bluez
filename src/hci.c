@@ -977,13 +977,13 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 			if (cs->opcode != opcode)
 				continue;
 
-			if (cs->status) {
-				errno = EIO;
-				goto failed;
-			}
-
-			if (r->event != EVT_CMD_STATUS)
+			if (r->event != EVT_CMD_STATUS) {
+				if (cs->status) {
+					errno = EIO;
+					goto failed;
+				}
 				break;
+			}
 
 			r->rlen = MIN(len, r->rlen);
 			memcpy(r->rparam, ptr, r->rlen);
