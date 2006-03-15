@@ -79,6 +79,16 @@ typedef enum {
 	RESOLVING_NAMES
 } discover_state_t;
 
+typedef enum {
+	NAME_PENDING,
+	NAME_SENT
+}name_status_t;
+
+struct discovered_dev_info {
+	bdaddr_t *addr;
+	name_status_t name_status;
+};
+
 struct hci_dbus_data {
 	uint16_t dev_id;
 	uint16_t path_id;
@@ -155,6 +165,8 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
+
+void discovered_device_free(void *data, void *user_data);
 
 /*
  * Scanning modes, used by DEV_SET_MODE

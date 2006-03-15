@@ -101,35 +101,59 @@ static const char *phone_minor_cls[] = {
 	"isdn"
 };
 
-static bdaddr_t *remote_name_find(struct slist *list, bdaddr_t *addr)
+void discovered_device_free(void *data, void *user_data)
 {
-	struct slist *current;
-
-	for (current = list; current != NULL; current = current->next) {
-		bdaddr_t *data = current->data;
-		if (memcmp(data, addr, sizeof(*addr)) == 0) 
-			return data;
+	struct discovered_dev_info *dev = data;
+	if (dev) {
+		free(dev->addr);
+		free(dev);
 	}
-
-	return NULL;
 }
 
-static int remote_name_add(struct slist **list, bdaddr_t *addr)
+int remote_name_find_by_address(const void *a, const void *b)
 {
-	bdaddr_t *data;
+	const struct discovered_dev_info *dev = a;
+	const bdaddr_t *addr = b;
+
+	if (memcmp(dev->addr, addr, sizeof(*addr)) == 0)
+		return 0;
+
+	return -1;
+}
+
+int remote_name_find_by_name_status(const void *a, const void *b)
+{
+	const struct discovered_dev_info *dev = a;
+	const name_status_t *name_status = b;
+
+	if (dev->name_status == *name_status)
+		return 0;
+
+	return -1;
+}
+
+static int remote_name_append(struct slist **list, bdaddr_t *addr, name_status_t name_status)
+{
+	struct discovered_dev_info *data = NULL;
+	struct slist *tmp_list;
 
 	/* ignore repeated entries */
-	data = remote_name_find(*list, addr);
+	tmp_list = slist_find(*list, addr, remote_name_find_by_address);
 
-	if (data)
+	if (tmp_list) {
+		/* device found, update the attributes */
+		data = tmp_list->data;
+		data->name_status = name_status;
 		return -1;
+	}
 
-	data = malloc(sizeof(bdaddr_t));
+	data = malloc(sizeof(*data));
 	if (!data)
 		return -1;
 
-	data = malloc(sizeof(bdaddr_t));
-	memcpy(data, addr, sizeof(bdaddr_t));
+	data->addr = malloc(sizeof(*data->addr));
+	memcpy(data->addr, addr, sizeof(*data->addr));
+	data->name_status = name_status;
 
 	*list = slist_append(*list, data);
 
@@ -138,13 +162,16 @@ static int remote_name_add(struct slist **list, bdaddr_t *addr)
 
 static int remote_name_remove(struct slist **list, bdaddr_t *addr)
 {
-	bdaddr_t *data;
+	struct discovered_dev_info *data;
+	struct slist *tmp_list;
 	int ret_val = -1;
 
-	data = remote_name_find(*list, addr);
+	tmp_list = slist_find(*list, addr, remote_name_find_by_address);
 
-	if (data) {
+	if (tmp_list) {
+		data = tmp_list->data;
 		*list = slist_remove(*list, data);
+		free(data->addr);
 		free(data);
 		ret_val = 0;
 	}
@@ -525,16 +552,23 @@ failed:
 
 static inline int remote_name_resolve(struct hci_dbus_data *dbus_data)
 {
-	bdaddr_t *bdaddr;
+	struct discovered_dev_info *data;
+	struct slist *tmp_list = NULL;
 	remote_name_req_cp cp;
 	int dd;
+	name_status_t name_status = NAME_PENDING;
 
 	/*get the next remote address */
 	if (!dbus_data->discovered_devices)
 		return -1;
 
-	bdaddr = (bdaddr_t *) dbus_data->discovered_devices->data;
-	if (!bdaddr)
+	tmp_list = slist_find(dbus_data->discovered_devices, &name_status, remote_name_find_by_name_status);
+
+	if (!tmp_list)
+		return -1;
+
+	data = tmp_list->data;
+	if (!data)
 		return -1;
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -542,7 +576,7 @@ static inline int remote_name_resolve(struct hci_dbus_data *dbus_data)
 		return -1;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
+	bacpy(&cp.bdaddr, data->addr);
 	cp.pscan_rep_mode = 0x02;
 
 	hci_send_cmd(dd, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
@@ -579,9 +613,15 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 			if (!remote_name_resolve(pdata))
 				goto failed; /* skip, sending the first name to resolve */
-			else 
-				pdata->discover_state = DISCOVER_OFF; /* no names to resolve */
+			
+			pdata->discover_state = DISCOVER_OFF; /* no names to resolve */
+
 		}
+
+		/* free discovered devices list */
+		slist_foreach(pdata->discovered_devices, discovered_device_free, NULL);
+		slist_free(pdata->discovered_devices);
+		pdata->discovered_devices = NULL;
 
 		if (pdata->requestor_name) {
 			free(pdata->requestor_name);
@@ -618,6 +658,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	DBusMessageIter array_iter;
 	char path[MAX_PATH_LENGTH];
 	struct hci_dbus_data *pdata = NULL;
+	struct slist *list = NULL;
+	struct discovered_dev_info *dev;
 	char *local_addr, *peer_addr, *name = NULL;
 	const char *major_ptr;
 	char invalid_minor_class[] = "";
@@ -626,6 +668,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	bdaddr_t tmp;
 	int id, i;
 	uint8_t service_index, major_index, minor_index;
+	name_status_t name_status = NAME_PENDING;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	baswap(&tmp, peer); peer_addr = batostr(&tmp);
@@ -638,13 +681,12 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
-	signal_name = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"RemoteNameUpdated");
-	if (signal_name == NULL) {
-		error("Can't allocate D-Bus inquiry result message");
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
 		goto failed;
 	}
 
+	/* send the device found signal */
 	signal_device = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"RemoteDeviceFound");
 	if (signal_device == NULL) {
@@ -692,27 +734,42 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		goto failed;
 	}
 
+	/* send the remote name signal */
+	list = slist_find(pdata->discovered_devices, peer, remote_name_find_by_address);
+
+	if (list) {
+		dev = list->data;
+		if (dev->name_status == NAME_SENT)
+			goto failed; /* don't sent the name again */
+	}
+
+	signal_name = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+						"RemoteNameUpdated");
+	if (signal_name == NULL) {
+		error("Can't allocate D-Bus inquiry result message");
+		goto failed;
+	}
+
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, local_addr);
 
 	name = textfile_get(filename, peer_addr);
 
 	if (name) {
 		dbus_message_append_args(signal_name,
+					 DBUS_TYPE_STRING, &peer_addr,
 					 DBUS_TYPE_STRING, &name,
 					 DBUS_TYPE_INVALID);
 
 		if (dbus_connection_send(connection, signal_name, NULL) == FALSE)
 			error("Can't send D-Bus inquiry result message");
 
-	} else {
-		if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
-			error("Getting %s path data failed!", path);
-			goto failed;
-		}
-
-		if (pdata->discover_state == DISCOVER_RUNNING_WITH_NAMES)
-			remote_name_add(&pdata->discovered_devices, peer);
+		name_status = NAME_SENT;
 	}
+
+	/* handle only requests triggered by dbus applications */
+	if ((pdata->discover_state == DISCOVER_RUNNING_WITH_NAMES) ||
+		(pdata->discover_state == DISCOVER_RUNNING))
+		remote_name_append(&pdata->discovered_devices, peer, name_status);
 
 failed:
 	if (signal_device)
@@ -784,6 +841,11 @@ request_next:
 
 	if (!remote_name_resolve(pdata))
 		goto failed; /* skip: there is more remote name to resolve */
+
+	/* free discovered devices list */
+	slist_foreach(pdata->discovered_devices, discovered_device_free, NULL);
+	slist_free(pdata->discovered_devices);
+	pdata->discovered_devices = NULL;
 
 	if (message)
 		dbus_message_unref(message);

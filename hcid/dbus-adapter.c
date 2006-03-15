@@ -73,12 +73,6 @@ static const char *phone_minor_cls[] = {
 	"isdn"
 };
 
-static void remote_name_data_free(void *data, void *user_data)
-{
-	bdaddr_t *addr = data;
-	bt_free(addr);
-}
-
 static DBusHandlerResult handle_dev_get_address_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
@@ -1280,7 +1274,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		break;
 	}
 
-	slist_foreach(dbus_data->discovered_devices, remote_name_data_free, NULL);
+	slist_foreach(dbus_data->discovered_devices, discovered_device_free, NULL);
 	slist_free(dbus_data->discovered_devices);
 	dbus_data->discovered_devices = NULL;
 
