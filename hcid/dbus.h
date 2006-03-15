@@ -42,6 +42,8 @@
 
 #define SECURITY_INTERFACE	BASE_INTERFACE ".Security"
 
+#define RFCOMM_INTERFACE	BASE_INTERFACE ".RFCOMM"
+
 #define MANAGER_PATH_MASK	(1 << 15)
 #define ADAPTER_PATH_MASK	(1 << 14)
 
@@ -136,6 +138,8 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 				name_cb_t func, void *user_data);
 
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);
+
+DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
 

@@ -1373,6 +1373,8 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	}
 	else if (!strcmp(SECURITY_INTERFACE, iface))
 		return handle_security_method(conn, msg, data);
+	else if (!strcmp(RFCOMM_INTERFACE, iface))
+		return handle_rfcomm_method(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }

@@ -27,3 +27,13 @@
 
 #include <stdio.h>
 #include <errno.h>
+
+#include <dbus/dbus.h>
+
+#include "dbus.h"
+
+DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
