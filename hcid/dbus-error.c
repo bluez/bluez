@@ -156,3 +156,8 @@ DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusM
 {
 	return error_does_not_exist(conn, msg, "Passkey agent does not exist");
 }
+
+DBusHandlerResult error_binding_does_not_exist(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_does_not_exist(conn, msg, "Binding does not exist");
+}

@@ -139,6 +139,7 @@ DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *
 DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_passkey_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_binding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
