@@ -179,6 +179,7 @@ void g_main_loop_run(GMainLoop *loop)
 						w->destroy(w->user_data);
 					p->next = w->next;
 					memset(w, 0, sizeof(*w));
+					free(w);
 					w = p->next;
 					i++;
 					continue;
