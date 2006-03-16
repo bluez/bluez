@@ -108,7 +108,7 @@ DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMess
 {
 	return send_reply_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
-					err ? "Connection attempt failed" : strerror(err)));
+					err ? strerror(err) : "Connection attempt failed"));
 }
 
 static DBusHandlerResult error_already_exists(DBusConnection *conn, DBusMessage *msg, const char *str)
