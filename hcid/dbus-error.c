@@ -122,6 +122,17 @@ static DBusHandlerResult error_in_progress(DBusConnection *conn, DBusMessage *ms
 		dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str));
 }
 
+static DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg, const char *str)
+{
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".Canceled", str));
+}
+
+DBusHandlerResult error_connect_canceled(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_canceled(conn, msg, "Connection creation was canceled");
+}
+
 DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_already_exists(conn, msg, "Bonding already exists");
@@ -140,6 +151,11 @@ DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *m
 DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_in_progress(conn, msg, "Discover in progress");
+}
+
+DBusHandlerResult error_connect_in_progress(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_in_progress(conn, msg, "Connection creation in progress");
 }
 
 DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg)
