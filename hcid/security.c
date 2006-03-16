@@ -465,14 +465,14 @@ static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_conn_complete *evt = ptr;
 
+	hcid_dbus_conn_complete(sba, evt->status, evt->handle, &evt->bdaddr);
+
 	if (evt->status)
 		return;
 
 	update_lastused(sba, &evt->bdaddr);
 
 	name_resolve(dev, &evt->bdaddr);
-
-	hcid_dbus_conn_complete(sba, &evt->bdaddr);
 }
 
 static inline void disconn_complete(int dev, bdaddr_t *sba, void *ptr)

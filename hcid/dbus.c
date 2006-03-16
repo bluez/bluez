@@ -101,6 +101,7 @@ static const char *phone_minor_cls[] = {
 	"isdn"
 };
 
+
 void discovered_device_free(void *data, void *user_data)
 {
 	struct discovered_dev_info *dev = data;
@@ -177,6 +178,63 @@ static int remote_name_remove(struct slist **list, bdaddr_t *addr)
 	}
 
 	return ret_val;
+}
+
+static int bonding_requests_find(const void *a, const void *b)
+{
+	const struct bonding_request_info *dev = a;
+	const bdaddr_t *peer = b;
+
+	if (!dev)
+		return -1;
+
+	if (memcmp(dev->addr, peer, sizeof(*peer)) == 0)
+		return 0;
+
+	return -1;
+}
+
+static DBusMessage *dbus_msg_new_authentication_return(DBusMessage *msg, uint8_t status)
+{
+
+	switch (status) {
+	case 0x00: /* success */
+		return dbus_message_new_method_return(msg);
+
+	case 0x04: /* page timeout */
+	case 0x08: /* connection timeout */
+	case 0x10: /* connection accept timeout */
+	case 0x22: /* LMP response timeout */
+	case 0x28: /* instant passed - is this a timeout? */
+		return dbus_message_new_error(msg, ERROR_INTERFACE".AuthenticationTimeout",
+						  	"Authentication Timeout");
+	case 0x17: /* too frequent pairing attempts */
+		return dbus_message_new_error(msg, ERROR_INTERFACE".RepeatedAttemps",
+						  	"Repeated Attempts");
+
+	case 0x18: /* pairing not allowed (e.g. gw rejected attempt) */
+		return dbus_message_new_error(msg, ERROR_INTERFACE".AuthenticationRejected",
+						  	"Authentication Rejected");
+	
+	case 0x07: /* memory capacity */
+	case 0x09: /* connection limit */
+	case 0x0a: /* synchronous connection limit */
+	case 0x0d: /* limited resources */
+	case 0x14: /* terminated due to low resources */
+		return dbus_message_new_error(msg, ERROR_INTERFACE".AuthenticationCanceled",
+						  	"Authentication Canceled");
+
+	case 0x05: /* authentication failure */
+	case 0x06: /* pin missing */
+	case 0x0E: /* rejected due to security reasons - is this auth failure? */
+	case 0x25: /* encryption mode not acceptable - is this auth failure? */
+	case 0x26: /* link key cannot be changed - is this auth failure? */
+	case 0x29: /* pairing with unit key unsupported - is this auth failure? */
+	case 0x2f: /* insufficient security - is this auth failure? */
+	default:
+		return dbus_message_new_error(msg, ERROR_INTERFACE".AuthenticationFailed",
+						  	"Authentication Failed");
+	}
 }
 
 /*
@@ -463,7 +521,9 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
 {
-	DBusMessage *message = NULL;
+	struct hci_dbus_data *pdata;
+	DBusMessage *msg_reply = NULL;
+	DBusMessage *msg_signal = NULL;
 	char *local_addr, *peer_addr;
 	const char *name;
 	bdaddr_t tmp;
@@ -486,28 +546,53 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	 * 0x01-0x0F: authentication request failed
 	 */
 	name = status ? "BondingFailed" : "BondingCreated";
+	/* authentication signal */
+	msg_signal = dbus_message_new_signal(path, ADAPTER_INTERFACE, name);
 
-	message = dbus_message_new_signal(path, ADAPTER_INTERFACE, name);
-
-	if (message == NULL) {
+	if (msg_signal == NULL) {
 		error("Can't allocate D-Bus remote name message");
 		goto failed;
 	}
 
-	dbus_message_append_args(message,
+	dbus_message_append_args(msg_signal,
 					DBUS_TYPE_STRING, &peer_addr,
 					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		error("Can't send D-Bus remote name message");
+	if (dbus_connection_send(connection, msg_signal, NULL) == FALSE) {
+		error("Can't send D-Bus bonding created signal");
 		goto failed;
 	}
 
 	dbus_connection_flush(connection);
 
+	/* create the authentication reply */
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		struct slist *l;
+
+		l = slist_find(pdata->bonding_requests, peer, bonding_requests_find);
+
+		if (l) {
+			struct bonding_request_info *dev = l->data;
+
+			msg_reply = dbus_msg_new_authentication_return(dev->msg, status);
+			if (dbus_connection_send(connection, msg_reply, NULL) == FALSE) {
+				error("Can't send D-Bus reply for create bonding request");
+				goto failed;
+			}
+
+			dbus_message_unref(dev->msg);
+			pdata->bonding_requests = slist_remove(pdata->bonding_requests, dev);
+			free(dev->addr);
+			free(dev);
+		}
+	}
+
 failed:
-	if (message)
-		dbus_message_unref(message);
+	if (msg_signal)
+		dbus_message_unref(msg_signal);
+
+	if (msg_reply)
+		dbus_message_unref(msg_reply);
 
 	bt_free(local_addr);
 	bt_free(peer_addr);
@@ -877,8 +962,105 @@ failed:
 	bt_free(peer_addr);
 }
 
-void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer)
+void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer)
 {
+	char path[MAX_PATH_LENGTH];
+	struct hci_request rq;
+	evt_cmd_status rp;
+	auth_requested_cp cp;
+	struct hci_dbus_data *pdata = NULL;
+	const struct slist *l;
+	struct bonding_request_info *dev = NULL;
+	char *local_addr, *peer_addr;
+	bdaddr_t tmp;
+	int dd, id;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		error("No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
+		goto failed;
+
+	l = slist_find(pdata->bonding_requests, peer, bonding_requests_find);
+
+	/* 
+	 * Connections can be requested by other applications,  profiles and bonding
+	 * For now it's necessary check only if there a pending bonding request
+	 */
+	if (!l) 
+		goto failed;
+
+	dev = l->data;
+
+	/* connection failed */	
+	if (status) {
+		error_connection_attempt_failed(connection, dev->msg, status);
+		goto failed;
+	}
+
+	if (dev->bonding_state != CONNECTING)
+		goto failed; /* FIXME: is it possible? */
+
+	dd = hci_open_dev(pdata->dev_id);
+	if (dd < 0) {
+		error_no_such_adapter(connection, dev->msg);
+		goto failed;
+	}
+
+	/* request authentication */
+	memset(&rq, 0, sizeof(rq));
+	memset(&rp, 0, sizeof(rp));
+	memset(&cp, 0, sizeof(cp));
+
+	cp.handle = handle;
+
+	rq.ogf    = OGF_LINK_CTL;
+	rq.event  = EVT_CMD_STATUS;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_CMD_STATUS_SIZE;
+
+	rq.ocf    = OCF_AUTH_REQUESTED;
+	rq.cparam = &cp;
+	rq.clen   = AUTH_REQUESTED_CP_SIZE;
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		error("Unable to send the HCI request: %s (%d)",
+			strerror(errno), errno);
+		error_failed(connection, dev->msg, errno);
+		goto failed;
+	}
+
+	if (rp.status) {
+		error("Failed with status 0x%02x", rp.status);
+		error_failed(connection, dev->msg, rp.status);
+		goto failed;
+	}
+	/* request sent properly */
+	dev->bonding_state = PAIRING;
+
+failed:
+	/* remove from the list if the HCI pairing request was not sent */
+	if (dev) {
+		if (dev->bonding_state != PAIRING) {
+			dbus_message_unref(dev->msg);
+			pdata->bonding_requests = slist_remove(pdata->bonding_requests, dev);
+			free(dev->addr);
+			free(dev);
+		}
+	}
+
+	hci_close_dev(dd);
+
+	bt_free(local_addr);
+	bt_free(peer_addr);
 }
 
 void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason)

@@ -116,7 +116,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local);
 void hcid_dbus_inquiry_complete(bdaddr_t *local);
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi);
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char *name);
-void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer);
+void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer);
 void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason);
 void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status);
 void hcid_dbus_setname_complete(bdaddr_t *local);
@@ -126,7 +126,7 @@ static inline void hcid_dbus_inquiry_start(bdaddr_t *local) {}
 static inline void hcid_dbus_inquiry_complete(bdaddr_t *local) {}
 static inline void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi) {}
 static inline void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char *name) {}
-static inline void hcid_dbus_conn_complete(bdaddr_t *local, bdaddr_t *peer) {}
+static inline void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer) {}
 static inline void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason) {}
 static inline void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status) {}
 static inline void hcid_dbus_setname_complete(bdaddr_t *local) {}
@@ -174,33 +174,3 @@ void enable_debug();
 void disable_debug();
 void start_logging(const char *ident, const char *message);
 void stop_logging(void);
-
-static inline int find_conn(int dd, int dev_id, long arg)
-{
-	struct hci_conn_list_req *cl;
-	struct hci_conn_info *ci;
-	int i;
-
-	cl = malloc(10 * sizeof(*ci) + sizeof(*cl));
-	if (!cl) {
-		error("Can't allocate memory");
-		return 0;
-	}
-
-	cl->dev_id = dev_id;
-	cl->conn_num = 10;
-	ci = cl->conn_info;
-
-	if (ioctl(dd, HCIGETCONNLIST, (void *) cl)) {
-		error("Can't get connection list");
-		return 0;
-	}
-
-	for (i = 0; i < cl->conn_num; i++, ci++)
-		if (!bacmp((bdaddr_t *) arg, &ci->bdaddr))
-			return 1;
-
-	free(cl);
-
-	return 0;
-}

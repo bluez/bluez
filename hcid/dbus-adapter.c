@@ -73,6 +73,62 @@ static const char *phone_minor_cls[] = {
 	"isdn"
 };
 
+int find_connection_handle(int dd, bdaddr_t *peer)
+{
+	struct hci_conn_info_req *cr;
+	int handle = -1;
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return -1;
+
+	bacpy(&cr->bdaddr, peer);
+	cr->type = ACL_LINK;
+
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		free(cr);
+		return -1;
+	}
+
+	handle = cr->conn_info->handle;
+	free(cr);
+
+	return handle;
+}
+
+static int bonding_requests_find(const void *a, const void *b)
+{
+	const struct bonding_request_info *dev = a;
+	const bdaddr_t *peer = b;
+
+	if (!dev)
+		return -1;
+
+	if (memcmp(dev->addr, peer, sizeof(*peer)) == 0) {
+		return 0;
+	}
+
+	return -1;
+}
+
+static int bonding_requests_append(struct slist **list, bdaddr_t *addr, DBusMessage *msg, bonding_state_t bonding_state)
+{
+	struct bonding_request_info *data;
+
+	data = malloc(sizeof(*data));
+	if (!data)
+		return -1;
+
+	data->addr = malloc(sizeof(*data->addr));
+	memcpy(data->addr, addr, sizeof(*data->addr));
+	data->msg = msg;
+	data->bonding_state = bonding_state;
+
+	*list = slist_append(*list, data);
+
+	return 0;
+}
+
 static DBusHandlerResult handle_dev_get_address_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
@@ -888,75 +944,125 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 
 static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
+	char filename[PATH_MAX + 1];
+	char local_addr[18];
 	struct hci_request rq;
-	auth_requested_cp cp;
 	evt_cmd_status rp;
-	DBusMessage *reply;
-	char *str_bdaddr;
+	DBusError err;
+	char *peer_addr;
+	char *str;
 	struct hci_dbus_data *dbus_data = data;
-	struct hci_conn_info_req *cr;
-	bdaddr_t bdaddr;
-	int dd, dev_id;
+	struct slist *tmp_list;
+	bdaddr_t peer_bdaddr;
+	int dd, handle;
+	bonding_state_t bonding_state;
 
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str_bdaddr,
-							DBUS_TYPE_INVALID);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+			      	DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_INVALID);
 
-	str2ba(str_bdaddr, &bdaddr);
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
-	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+	str2ba(peer_addr, &peer_bdaddr);
+	
+	/* check if there is a pending bonding request */
+	tmp_list = slist_find(dbus_data->bonding_requests, &peer_bdaddr, bonding_requests_find);
 
-	if (dev_id < 0)
-		return error_failed(conn, msg, ENOTCONN);
+	if (tmp_list)
+		return error_bonding_in_progress(conn, msg);
 
-	if (dbus_data->dev_id != dev_id)
-		return error_failed(conn, msg, ENOTCONN);
+	get_device_address(dbus_data->dev_id, local_addr, sizeof(local_addr));
 
-	dd = hci_open_dev(dev_id);
+	/* check if a link key already exists */
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, local_addr);
+
+	str = textfile_get(filename, peer_addr);
+	if (str) {
+		free(str);
+		return error_bonding_already_exists(conn, msg);
+	}
+
+	/* check if the address belongs to the last seen cache */
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, local_addr);
+	str = textfile_get(filename, peer_addr);
+	if (!str)
+		return error_unknown_address(conn, msg);
+
+	free(str);
+
+	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
-	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr) {
-		hci_close_dev(dd);
-		return error_out_of_memory(conn, msg);
-	}
-
-	bacpy(&cr->bdaddr, &bdaddr);
-	cr->type = ACL_LINK;
-
-	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		hci_close_dev(dd);
-		free(cr);
-		return error_failed(conn, msg, errno);
-	}
-
-	memset(&cp, 0, sizeof(cp));
-	cp.handle = cr->conn_info->handle;
+	/* check if there is an active connection */
+	//dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &peer_bdaddr);
+	handle = find_connection_handle(dd, &peer_bdaddr);
 
 	memset(&rq, 0, sizeof(rq));
+	memset(&rp, 0, sizeof(rp));
+
 	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_AUTH_REQUESTED;
-	rq.cparam = &cp;
-	rq.clen   = AUTH_REQUESTED_CP_SIZE;
+	rq.event = EVT_CMD_STATUS;
 	rq.rparam = &rp;
-	rq.rlen   = EVT_CMD_STATUS_SIZE;
-	rq.event  = EVT_CMD_STATUS;
+	rq.rlen = EVT_CMD_STATUS_SIZE;
+
+	if (handle < 0 ) {
+		create_conn_cp cp;
+
+		memset(&cp, 0, sizeof(cp));
+		/* create a new connection */
+		bonding_state = CONNECTING;
+		
+		bacpy(&cp.bdaddr, &peer_bdaddr);
+		cp.pkt_type = htobs(HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5);
+		cp.pscan_rep_mode = 0x02;
+		cp.clock_offset = htobs(0x0000);
+		cp.role_switch = 0x01;
+
+		rq.ocf = OCF_CREATE_CONN;
+		rq.cparam = &cp;
+		rq.clen = CREATE_CONN_CP_SIZE;
+	} else {
+		/* connection found */
+		auth_requested_cp cp;
+
+		memset(&cp, 0, sizeof(cp));
+
+		/* active connection found */
+		bonding_state = PAIRING;
+
+		cp.handle = handle;
+
+		rq.ocf    = OCF_AUTH_REQUESTED;
+		rq.cparam = &cp;
+		rq.clen   = AUTH_REQUESTED_CP_SIZE;
+	}
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		error("Unable to send authentication request: %s (%d)",
-							strerror(errno), errno);
+		error("Unable to send the HCI request: %s (%d)",
+				strerror(errno), errno);
 		hci_close_dev(dd);
-		free(cr);
 		return error_failed(conn, msg, errno);
 	}
 
-	reply = dbus_message_new_method_return(msg);
+	if (rp.status) {
+		error("Failed with status 0x%02x", rp.status);
+		hci_close_dev(dd);
+		return error_failed(conn, msg, rp.status);
+	}
 
-	free(cr);
+	/* add in the bonding requests list */
+	bonding_requests_append(&dbus_data->bonding_requests, &peer_bdaddr, msg, bonding_state);
 
-	close(dd);
+	dbus_message_ref(msg);
+	hci_close_dev(dd);
 
-	return send_reply_and_unref(conn, reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)

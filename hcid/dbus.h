@@ -89,6 +89,17 @@ struct discovered_dev_info {
 	name_status_t name_status;
 };
 
+typedef enum {
+	CONNECTING,
+	PAIRING	
+} bonding_state_t;
+
+struct bonding_request_info {
+	bdaddr_t *addr;
+	DBusMessage *msg;
+	bonding_state_t bonding_state;
+};
+
 struct hci_dbus_data {
 	uint16_t dev_id;
 	uint16_t path_id;
@@ -100,6 +111,7 @@ struct hci_dbus_data {
 	struct slist *discovered_devices;
 	char *requestor_name;	/* requestor unique name */
 	struct slist *passkey_agents;
+	struct slist *bonding_requests;
 };
 
 struct passkey_agent {
