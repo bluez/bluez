@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -45,6 +46,10 @@
 #include "glib-ectomy.h"
 #include "dbus.h"
 
+/* Waiting for udev to create the device node */
+#define MAX_OPEN_TRIES 6
+#define OPEN_WAIT (1000 * 300)
+
 static int rfcomm_ctl = -1;
 
 struct rfcomm_node {
@@ -54,9 +59,20 @@ struct rfcomm_node {
 	/* The following members are only valid for connected nodes */
 	GIOChannel	*io;		/* IO Channel for the connection */
 	char		*owner;		/* D-Bus name that created the node */
-	int		canceled;	/* User canceled the connection */
 };
 
+struct pending_connect {
+	DBusConnection		*conn;
+	DBusMessage		*msg;
+	GIOChannel		*io;
+	char 			*svc;
+	int			canceled;
+	struct sockaddr_rc	laddr;
+	struct sockaddr_rc	raddr;
+};
+
+static struct slist *pending_connects = NULL;
+static struct slist *connected_nodes = NULL;
 static struct slist *bound_nodes = NULL;
 
 static char *rfcomm_node_name_from_id(int16_t id, char *dev, size_t len)
@@ -78,11 +94,74 @@ static struct rfcomm_node *find_node_by_name(struct slist *nodes, const char *na
 	return NULL;
 }
 
+static struct pending_connect *find_pending_connect(const char *bda, uint8_t ch)
+{
+	struct slist *l;
+	bdaddr_t dba;
+
+	str2ba(bda, &dba);
+
+	for (l = pending_connects; l != NULL; l = l->next) {
+		struct pending_connect *pending = l->data;
+		if (!bacmp(&dba, &pending->raddr.rc_bdaddr)
+				&& pending->raddr.rc_channel == ch)
+			return pending;
+	}
+
+	return NULL;
+}
+
+static void pending_connect_free(struct pending_connect *c)
+{
+	if (c->svc)
+		free(c->svc);
+	if (c->io)
+		g_io_channel_close(c->io);
+	if (c->msg)
+		dbus_message_unref(c->msg);
+	if (c->conn)
+		dbus_connection_unref(c->conn);
+	free(c);
+}
+
+static int set_nonblocking(int fd, int *err)
+{
+	long arg;
+
+	arg = fcntl(fd, F_GETFL);
+	if (arg < 0) {
+		if (err)
+			*err = errno;
+		error("fcntl(F_GETFL): %s (%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	/* Return if already nonblocking */
+	if (arg & O_NONBLOCK)
+		return 0;
+
+	arg |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, arg) < 0) {
+		if (err)
+			*err = errno;
+		error("fcntl(F_SETFL, O_NONBLOCK): %s (%d)",
+				strerror(errno), errno);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int rfcomm_release(struct rfcomm_node *node, int *err)
 {
 	struct rfcomm_dev_req req;
 
 	debug("rfcomm_release(%s)", node->name);
+
+	if (node->io) {
+		g_io_channel_close(node->io);
+		node->io = NULL;
+	}
 
 	memset(&req, 0, sizeof(req));
 	req.dev_id = node->id;
@@ -97,9 +176,223 @@ static int rfcomm_release(struct rfcomm_node *node, int *err)
 
 	bound_nodes = slist_remove(bound_nodes, node);
 
+	if (node->owner)
+		free(node->owner);
+
 	free(node);
 
 	return 0;
+}
+
+static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
+					struct pending_connect *c)
+{
+	int sk, ret, err, fd = -1, i;
+	size_t alen;
+	socklen_t len;
+	char *ptr;
+	struct rfcomm_dev_req req;
+	struct rfcomm_node *node = NULL;
+	DBusMessage *reply = NULL;
+
+	if (c->canceled) {
+		error_connect_canceled(c->conn, c->msg);
+		goto failed;
+	}
+
+	sk = g_io_channel_unix_get_fd(chan);
+
+	len = sizeof(ret);
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		error_failed(c->conn, c->msg, err);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		error("connect(): %s (%d)", strerror(ret), ret);
+		error_connection_attempt_failed(c->conn, c->msg, ret);
+		goto failed;
+	}
+
+	debug("rfcomm_connect_cb: connected");
+
+	alen = sizeof(c->laddr);
+	if (getsockname(sk, (struct sockaddr *)&c->laddr, &alen) < 0) {
+		err = errno;
+		error_failed(c->conn, c->msg, err);
+		error("getsockname: %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	node = malloc(sizeof(struct rfcomm_node));
+	if (!node) {
+		error_failed(c->conn, c->msg, ENOMEM);
+		goto failed;
+	}
+
+	/* Create the rfcomm device node */
+	memset(&req, 0, sizeof(req));
+
+	req.dev_id = -1;
+	req.flags = (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP);
+
+	bacpy(&req.src, &c->laddr.rc_bdaddr);
+	bacpy(&req.dst, &c->raddr.rc_bdaddr);
+	req.channel = c->raddr.rc_channel;
+
+	node->id = ioctl(sk, RFCOMMCREATEDEV, &req);
+	if (node->id < 0) {
+		err = errno;
+		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(errno), err);
+		error_failed(c->conn, c->msg, err);
+		goto failed;
+	}
+
+	rfcomm_node_name_from_id(node->id, node->name, sizeof(node->name));
+
+	/* FIXME: instead of looping here we should create a timer and
+	 * return to the mainloop */
+	for (i = 0; i < MAX_OPEN_TRIES; i++) {
+		fd = open(node->name, O_RDONLY | O_NOCTTY);
+		if (fd >= 0)
+			break;
+		usleep(OPEN_WAIT);
+	}
+
+	if (fd < 0) {
+		err = errno;
+		error("Could not open %s: %s (%d)", node->name,
+				strerror(err), err);
+		/* This will also try to remove the node from bound_nodes, but
+		 * that's ok since the slist_remove just silently fails */
+		rfcomm_release(node, NULL);
+		error_connection_attempt_failed(c->conn, c->msg, err);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(c->msg);
+	if (!reply) {
+		error_failed(c->conn, c->msg, ENOMEM);
+		goto failed;
+	}
+
+	ptr = node->name;
+	if (!dbus_message_append_args(reply,
+				DBUS_TYPE_STRING, &ptr,
+				DBUS_TYPE_INVALID)) {
+		error_failed(c->conn, c->msg, ENOMEM);
+		goto failed;
+	}
+
+	node->owner = strdup(dbus_message_get_sender(c->msg));
+	if (!node->owner) {
+		error_failed(c->conn, c->msg, ENOMEM);
+		goto failed;
+	}
+
+	send_reply_and_unref(c->conn, reply);
+
+        node->io = g_io_channel_unix_new(fd);
+
+	connected_nodes = slist_append(connected_nodes, node);
+
+	goto done;
+
+failed:
+	if (fd >= 0)
+		close(fd);
+	if (node)
+		rfcomm_release(node, NULL);
+	if (reply)
+		dbus_message_unref(reply);
+done:
+	pending_connects = slist_remove(pending_connects, c);
+	pending_connect_free(c);
+
+	return FALSE;
+}
+
+static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
+			const char *bda, const char *svc, uint8_t ch, int *err)
+{
+	int sk = -1;
+	struct pending_connect *c = NULL;
+
+	c = malloc(sizeof(struct pending_connect));
+	if (!c) {
+		if (err)
+			*err = ENOMEM;
+		goto failed;
+	}
+
+	memset(c, 0, sizeof(struct pending_connect));
+
+	if (svc) {
+		c->svc = strdup(svc);
+		if (!c->svc) {
+			if (err)
+				*err = ENOMEM;
+			goto failed;
+		}
+	}
+
+	c->laddr.rc_family = AF_BLUETOOTH;
+	bacpy(&c->laddr.rc_bdaddr, src);
+	c->laddr.rc_channel = 0;
+
+	c->raddr.rc_family = AF_BLUETOOTH;
+	str2ba(bda, &c->raddr.rc_bdaddr);
+	c->raddr.rc_channel = ch;
+
+	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0) {
+		if (err)
+			*err = errno;
+		goto failed;
+	}
+
+	if (bind(sk, (struct sockaddr *)&c->laddr, sizeof(c->laddr)) < 0) {
+		if (err)
+			*err = errno;
+		goto failed;
+	}
+
+	if (set_nonblocking(sk, err) < 0)
+		goto failed;
+
+	/* So we can reply to the message later */
+	c->msg = dbus_message_ref(msg);
+	c->conn = dbus_connection_ref(conn);
+
+	c->io = g_io_channel_unix_new(sk);
+
+	if (connect(sk, (struct sockaddr *)&c->raddr, sizeof(c->raddr)) < 0) {
+		/* BlueZ returns EAGAIN eventhough it should return EINPROGRESS */
+		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
+			if (err)
+				*err = errno;
+			error("connect() failed: %s (%d)", strerror(errno), errno);
+			goto failed;
+		}
+
+		debug("Connect in progress");
+		g_io_add_watch(c->io, G_IO_OUT, (GIOFunc)rfcomm_connect_cb, c);
+		pending_connects = slist_append(pending_connects, c);
+	} else {
+		debug("Connect succeeded with first try");
+		(void) rfcomm_connect_cb(c->io, G_IO_OUT, c);
+	}
+
+	return 0;
+
+failed:
+	if (c)
+		pending_connect_free(c);
+	if (sk >= 0)
+		close(sk);
+	return -1;
 }
 
 static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t ch, int *err)
@@ -144,36 +437,103 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t c
 static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	error("RFCOMM.Connect not implemented");
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult rfcomm_cancel_connect_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	error("RFCOMM.CancelConnect not implemented");
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult rfcomm_connect_by_ch_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	bdaddr_t bdaddr;
+	const char *dst;
+	uint8_t ch;
+	int err;
+	struct hci_dbus_data *dbus_data = data;
+
+	hci_devba(dbus_data->dev_id, &bdaddr);
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &dst,
+				DBUS_TYPE_BYTE, &ch,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (find_pending_connect(dst, ch))
+		return error_connect_in_progress(conn, msg);
+
+	if (rfcomm_connect(conn, msg, &bdaddr, dst, NULL, ch, &err) < 0)
+		return error_failed(conn, msg, err);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult rfcomm_cancel_connect_by_ch_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	const char *dst;
+	uint8_t ch;
+	DBusMessage *reply;
+	struct pending_connect *pending;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &dst,
+				DBUS_TYPE_BYTE, &ch,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	pending = find_pending_connect(dst, ch);
+	if (!pending)
+		return error_connect_not_in_progress(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	pending->canceled = 1;
+
+	return send_reply_and_unref(conn, reply);
 }
 
 static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	const char *name;
+	struct rfcomm_node *node;
+	int err;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &name,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	node = find_node_by_name(connected_nodes, name);
+	if (!node)
+		return error_not_connected(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (rfcomm_release(node, &err) < 0) {
+		dbus_message_unref(reply);
+		return error_failed(conn, msg, err);
+	}
+
+	return send_reply_and_unref(conn, reply);
 }
 
 static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	error("RFCOMM.Bind not implemented");
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
