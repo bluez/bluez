@@ -131,6 +131,7 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t c
 		if (err)
 			*err = errno;
 		error("RFCOMMCREATEDEV failed: %s (%d)", strerror(errno), errno);
+		free(node);
 		return NULL;
 	}
 
@@ -139,7 +140,6 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t c
 
 	return node;
 }
-
 
 static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
