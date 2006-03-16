@@ -104,6 +104,13 @@ DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessag
 							"Unsupported Major Class"));
 }
 
+DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMessage *msg, int err)
+{
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
+					err ? "Connection attempt failed" : strerror(err)));
+}
+
 static DBusHandlerResult error_already_exists(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
 	return send_reply_and_unref(conn,
@@ -120,6 +127,12 @@ static DBusHandlerResult error_in_progress(DBusConnection *conn, DBusMessage *ms
 {
 	return send_reply_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str));
+}
+
+static DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str)
+{
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".NotInProgress", str));
 }
 
 static DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg, const char *str)
@@ -156,6 +169,11 @@ DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *
 DBusHandlerResult error_connect_in_progress(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_in_progress(conn, msg, "Connection creation in progress");
+}
+
+DBusHandlerResult error_connect_not_in_progress(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_not_in_progress(conn, msg, "Connection creation not in progress");
 }
 
 DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg)
