@@ -96,35 +96,20 @@ int find_connection_handle(int dd, bdaddr_t *peer)
 	return handle;
 }
 
-static int bonding_requests_find(const void *a, const void *b)
+static int bonding_requests_append(struct slist **list, bdaddr_t *bdaddr, DBusMessage *msg, bonding_state_t bonding_state)
 {
-	const struct bonding_request_info *dev = a;
-	const bdaddr_t *peer = b;
+	struct bonding_request_info *dev;
 
+	dev = malloc(sizeof(*dev));
 	if (!dev)
 		return -1;
 
-	if (memcmp(dev->addr, peer, sizeof(*peer)) == 0) {
-		return 0;
-	}
+	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
+	memcpy(dev->bdaddr, bdaddr, sizeof(*dev->bdaddr));
+	dev->msg = msg;
+	dev->bonding_state = bonding_state;
 
-	return -1;
-}
-
-static int bonding_requests_append(struct slist **list, bdaddr_t *addr, DBusMessage *msg, bonding_state_t bonding_state)
-{
-	struct bonding_request_info *data;
-
-	data = malloc(sizeof(*data));
-	if (!data)
-		return -1;
-
-	data->addr = malloc(sizeof(*data->addr));
-	memcpy(data->addr, addr, sizeof(*data->addr));
-	data->msg = msg;
-	data->bonding_state = bonding_state;
-
-	*list = slist_append(*list, data);
+	*list = slist_append(*list, dev);
 
 	return 0;
 }
@@ -272,13 +257,22 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 {
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
+	DBusError err;
 	const char* scan_mode;
 	uint8_t hci_mode;
 	const uint8_t current_mode = dbus_data->mode;
 	int dd;
 
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &scan_mode,
-							DBUS_TYPE_INVALID);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &scan_mode,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	if (!scan_mode)
 		return error_invalid_arguments(conn, msg);
@@ -351,11 +345,19 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
-	DBusMessageIter iter;
+	DBusError err;
 	uint32_t timeout;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &timeout);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_UINT32, &timeout,
+				DBUS_TYPE_INVALID);
+ 
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	dbus_data->discoverable_timeout = timeout;
 
@@ -525,16 +527,24 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusConnection *connection = get_dbus_connection();
-	DBusMessageIter iter;
 	DBusMessage *reply, *signal;
+	DBusError err;
 	bdaddr_t bdaddr;
 	const char *minor;
 	uint8_t cls[3];
 	uint32_t dev_class = 0xFFFFFFFF;
 	int i, dd;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &minor);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &minor,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	if (!minor)
 		return error_invalid_arguments(conn, msg);
@@ -662,14 +672,22 @@ static DBusHandlerResult handle_dev_get_name_req(DBusConnection *conn, DBusMessa
 static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
 	DBusMessage *reply;
+	DBusError err;
 	bdaddr_t bdaddr;
 	char *str_ptr;
-	int err;
+	int ecode;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &str_ptr);
+	dbus_error_init(&err);	
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &str_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	if (strlen(str_ptr) == 0) {
 		error("Name change failed: Invalid parameter");
@@ -680,9 +698,9 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 
 	write_local_name(&bdaddr, str_ptr);
 
-	err = set_device_name(dbus_data->dev_id, str_ptr);
-	if (err < 0)
-		return error_failed(conn, msg, -err);
+	ecode = set_device_name(dbus_data->dev_id, str_ptr);
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -704,18 +722,29 @@ static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn
 static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
 	DBusMessage *reply;
+	DBusError err;
 	char filename[PATH_MAX + 1];
 	char addr[18], *addr_ptr, *str;
 	int compid;
+	int ecode;
 
-	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
 
 	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &addr_ptr);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -740,12 +769,20 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 static DBusHandlerResult handle_dev_get_remote_company_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	DBusError err;
 	bdaddr_t bdaddr;
 	char oui[9], *str_bdaddr, *tmp;
 
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str_bdaddr,
-							DBUS_TYPE_INVALID);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &str_bdaddr,
+				DBUS_TYPE_INVALID);
 
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	str2ba(str_bdaddr, &bdaddr);
 	ba2oui(&bdaddr, oui);
@@ -773,16 +810,25 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	char filename[PATH_MAX + 1], addr[18];
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
+	DBusError err;
 	const char *str_bdaddr;
 	char *name;
-	int err;
+	int ecode;
 
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str_bdaddr,
-							DBUS_TYPE_INVALID);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &str_bdaddr,
+				DBUS_TYPE_INVALID);
 
-	err = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (err < 0)
-		return error_failed(conn, msg, -err);
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode< 0)
+		return error_failed(conn, msg, -ecode);
 
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
 
@@ -808,20 +854,28 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
 	DBusMessage *reply;
+	DBusError err;
 	char str[249], *str_ptr = str, *addr_ptr;
 	bdaddr_t bdaddr;
-	int err;
+	int ecode;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &addr_ptr);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	str2ba(addr_ptr, &bdaddr);
 
-	err = get_device_alias(dbus_data->dev_id, &bdaddr, str, sizeof(str));
-	if (err < 0)
-		return error_failed(conn, msg, -err);
+	ecode = get_device_alias(dbus_data->dev_id, &bdaddr, str, sizeof(str));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -837,16 +891,23 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusConnection *connection = get_dbus_connection();
-	DBusMessageIter iter;
 	DBusMessage *reply, *signal;
+	DBusError err;
 	char *str_ptr, *addr_ptr;
 	bdaddr_t bdaddr;
-	int err;
+	int ecode;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &addr_ptr);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_get_basic(&iter, &str_ptr);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_STRING, &str_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	if (strlen(str_ptr) == 0) {
 		error("Alias change failed: Invalid parameter");
@@ -855,9 +916,9 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 
 	str2ba(addr_ptr, &bdaddr);
 
-	err = set_device_alias(dbus_data->dev_id, &bdaddr, str_ptr);
-	if (err < 0)
-		return error_failed(conn, msg, -err);
+	ecode = set_device_alias(dbus_data->dev_id, &bdaddr, str_ptr);
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
 
 	signal = dev_signal_factory(dbus_data->dev_id, "RemoteAliasChanged",
 						DBUS_TYPE_STRING, &addr_ptr,
@@ -879,17 +940,28 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
 	DBusMessage *reply;
+	DBusError err;
 	char filename[PATH_MAX + 1];
 	char addr[18], *addr_ptr, *str;
+	int ecode;
 
-	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
 
 	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &addr_ptr);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -912,17 +984,28 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
 	DBusMessage *reply;
+	DBusError err;
 	char filename[PATH_MAX + 1];
 	char addr[18], *addr_ptr, *str;
+	int ecode;
 
-	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
 
 	snprintf(filename, PATH_MAX, "%s/%s/lastused", STORAGEDIR, addr);
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &addr_ptr);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -952,9 +1035,9 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	char *peer_addr;
 	char *str;
 	struct hci_dbus_data *dbus_data = data;
-	struct slist *tmp_list;
+	struct slist *l;
 	bdaddr_t peer_bdaddr;
-	int dd, handle;
+	int dd, handle, ecode;
 	bonding_state_t bonding_state;
 
 	dbus_error_init(&err);
@@ -971,12 +1054,14 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	str2ba(peer_addr, &peer_bdaddr);
 	
 	/* check if there is a pending bonding request */
-	tmp_list = slist_find(dbus_data->bonding_requests, &peer_bdaddr, bonding_requests_find);
+	l = slist_find(dbus_data->bonding_requests, &peer_bdaddr, bonding_requests_find);
 
-	if (tmp_list)
+	if (l)
 		return error_bonding_in_progress(conn, msg);
 
-	get_device_address(dbus_data->dev_id, local_addr, sizeof(local_addr));
+	ecode = get_device_address(dbus_data->dev_id, local_addr, sizeof(local_addr));
+	if (ecode < 0) /* FIXME: remove the peer bdaddr from the list */
+		return error_failed(conn, msg, -ecode);
 
 	/* check if a link key already exists */
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, local_addr);
@@ -1069,9 +1154,9 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 {
 	struct hci_dbus_data *dbus_data = data;
 	DBusConnection *connection = get_dbus_connection();
-	DBusMessageIter iter;
 	DBusMessage *reply;
 	DBusMessage *signal;
+	DBusError err;
 	char filename[PATH_MAX + 1];
 	char addr[18], *addr_ptr;
 	struct hci_conn_info_req *cr;
@@ -1086,8 +1171,16 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &addr_ptr);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	/* Delete the link key from storage */
 	textfile_del(filename, addr_ptr);
@@ -1144,18 +1237,29 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
 	DBusMessage *reply;
+	DBusError err;
 	char filename[PATH_MAX + 1];
 	char addr[18], *addr_ptr, *str;
 	dbus_bool_t result;
+	int ecode;
 
-	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
 
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &addr_ptr);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	str = textfile_get(filename, addr_ptr);
 	if (str) {
@@ -1187,8 +1291,11 @@ static DBusHandlerResult handle_dev_list_bondings_req(DBusConnection *conn, DBus
 	DBusMessage *reply;
 	char filename[PATH_MAX + 1];
 	char addr[18];
+	int ecode;
 
-	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
 
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
 
@@ -1209,19 +1316,29 @@ static DBusHandlerResult handle_dev_list_bondings_req(DBusConnection *conn, DBus
 static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
 	DBusMessage *reply;
+	DBusError err;
 	bdaddr_t local, peer;
 	char addr[18], *addr_ptr;
 	uint8_t length;
-	int len;
+	int len, ecode;
 
-	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
 
 	str2ba(addr, &local);
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &addr_ptr);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	str2ba(addr_ptr, &peer);
 
@@ -1242,15 +1359,23 @@ static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn
 static DBusHandlerResult handle_dev_get_encryption_key_size_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusMessageIter iter;
 	DBusMessage *reply;
+	DBusError err;
 	bdaddr_t bdaddr;
 	char *addr_ptr;
 	uint8_t size;
 	int val;
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &addr_ptr);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	str2ba(addr_ptr, &bdaddr);
 

@@ -85,7 +85,7 @@ typedef enum {
 }name_status_t;
 
 struct discovered_dev_info {
-	bdaddr_t *addr;
+	bdaddr_t *bdaddr;
 	name_status_t name_status;
 };
 
@@ -95,7 +95,7 @@ typedef enum {
 } bonding_state_t;
 
 struct bonding_request_info {
-	bdaddr_t *addr;
+	bdaddr_t *bdaddr;
 	DBusMessage *msg;
 	bonding_state_t bonding_state;
 };
@@ -184,7 +184,7 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 }
 
 void discovered_device_free(void *data, void *user_data);
-
+int bonding_requests_find(const void *data, const void *user_data);
 /*
  * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device
