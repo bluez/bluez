@@ -47,10 +47,6 @@
 #include "textfile.h"
 #include "list.h"
 
-#ifndef DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT
-#define DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT	0x00
-#endif
-
 static DBusConnection *connection;
 
 static int default_dev = -1;
@@ -1144,6 +1140,7 @@ static void watch_toggled(DBusWatch *watch, void *data)
 
 gboolean hcid_dbus_init(void)
 {
+	int ret_val;
 	DBusError err;
 
 	dbus_error_init(&err);
@@ -1158,8 +1155,13 @@ gboolean hcid_dbus_init(void)
 
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
 
-	dbus_bus_request_name(connection, BASE_INTERFACE,
-				DBUS_NAME_FLAG_PROHIBIT_REPLACEMENT, &err);
+	ret_val = dbus_bus_request_name(connection, BASE_INTERFACE,
+						0, &err);
+
+	if (ret_val != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
+		error("Service could not become the primary owner.");
+		return FALSE;
+	}
 
 	if (dbus_error_is_set(&err)) {
 		error("Can't get system message bus name: %s", err.message);
