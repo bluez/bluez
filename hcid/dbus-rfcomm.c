@@ -58,6 +58,7 @@ struct rfcomm_node {
 
 	/* The following members are only valid for connected nodes */
 	GIOChannel	*io;		/* IO Channel for the connection */
+	guint		io_id;		/* ID for IO channel */
 	char		*owner;		/* D-Bus name that created the node */
 };
 
@@ -79,6 +80,17 @@ static char *rfcomm_node_name_from_id(int16_t id, char *dev, size_t len)
 {
     snprintf(dev, len, "/dev/rfcomm%d", id);
     return dev;
+}
+
+static void rfcomm_node_free(struct rfcomm_node *node)
+{
+	if (node->io) {
+		g_io_channel_close(node->io);
+		g_io_remove_watch(node->io_id);
+	}
+	if (node->owner)
+		free(node->owner);
+	free(node);
 }
 
 static struct rfcomm_node *find_node_by_name(struct slist *nodes, const char *name)
@@ -160,6 +172,7 @@ static int rfcomm_release(struct rfcomm_node *node, int *err)
 
 	if (node->io) {
 		g_io_channel_close(node->io);
+		g_io_remove_watch(node->io_id);
 		node->io = NULL;
 	}
 
@@ -174,14 +187,16 @@ static int rfcomm_release(struct rfcomm_node *node, int *err)
 		return -1;
 	}
 
-	bound_nodes = slist_remove(bound_nodes, node);
-
-	if (node->owner)
-		free(node->owner);
-
-	free(node);
-
 	return 0;
+}
+
+static gboolean rfcomm_disconnect_cb(GIOChannel *io, GIOCondition cond,
+					struct rfcomm_node *node)
+{
+	debug("RFCOMM node %s was disconnected", node->name);
+	connected_nodes = slist_remove(connected_nodes, node);
+	rfcomm_node_free(node);
+	return FALSE;
 }
 
 static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
@@ -264,9 +279,9 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 		err = errno;
 		error("Could not open %s: %s (%d)", node->name,
 				strerror(err), err);
-		/* This will also try to remove the node from bound_nodes, but
-		 * that's ok since the slist_remove just silently fails */
 		rfcomm_release(node, NULL);
+		rfcomm_node_free(node);
+
 		error_connection_attempt_failed(c->conn, c->msg, err);
 		goto failed;
 	}
@@ -291,9 +306,11 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	send_reply_and_unref(c->conn, reply);
-
         node->io = g_io_channel_unix_new(fd);
+	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_HUP,
+					(GIOFunc)rfcomm_disconnect_cb, node);
+
+	send_reply_and_unref(c->conn, reply);
 
 	connected_nodes = slist_append(connected_nodes, node);
 
@@ -302,8 +319,10 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 failed:
 	if (fd >= 0)
 		close(fd);
-	if (node)
+	if (node) {
 		rfcomm_release(node, NULL);
+		rfcomm_node_free(node);
+	}
 	if (reply)
 		dbus_message_unref(reply);
 done:
@@ -423,7 +442,7 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t c
 		if (err)
 			*err = errno;
 		error("RFCOMMCREATEDEV failed: %s (%d)", strerror(errno), errno);
-		free(node);
+		rfcomm_node_free(node);
 		return NULL;
 	}
 
@@ -526,6 +545,9 @@ static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
 		return error_failed(conn, msg, err);
 	}
 
+	connected_nodes = slist_remove(connected_nodes, node);
+	rfcomm_node_free(node);
+
 	return send_reply_and_unref(conn, reply);
 }
 
@@ -574,8 +596,11 @@ static DBusHandlerResult rfcomm_bind_by_ch_req(DBusConnection *conn,
 need_memory:
 	if (reply)
 		dbus_message_unref(reply);
-	if (node)
+	if (node) {
+		bound_nodes = slist_remove(bound_nodes, node);
 		rfcomm_release(node, NULL);
+		rfcomm_node_free(node);
+	}
 	return DBUS_HANDLER_RESULT_NEED_MEMORY;
 }
 
@@ -604,6 +629,9 @@ static DBusHandlerResult rfcomm_release_req(DBusConnection *conn,
 		dbus_message_unref(reply);
 		return error_failed(conn, msg, err);
 	}
+
+	bound_nodes = slist_remove(bound_nodes, node);
+	rfcomm_node_free(node);
 
 	return send_reply_and_unref(conn, reply);
 }
