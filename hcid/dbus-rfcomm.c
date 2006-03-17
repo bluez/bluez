@@ -188,7 +188,6 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 					struct pending_connect *c)
 {
 	int sk, ret, err, fd = -1, i;
-	size_t alen;
 	socklen_t len;
 	char *ptr;
 	struct rfcomm_dev_req req;
@@ -218,8 +217,8 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	debug("rfcomm_connect_cb: connected");
 
-	alen = sizeof(c->laddr);
-	if (getsockname(sk, (struct sockaddr *)&c->laddr, &alen) < 0) {
+	len = sizeof(c->laddr);
+	if (getsockname(sk, (struct sockaddr *) &c->laddr, &len) < 0) {
 		err = errno;
 		error_failed(c->conn, c->msg, err);
 		error("getsockname: %s (%d)", strerror(err), err);
