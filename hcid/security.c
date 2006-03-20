@@ -478,14 +478,8 @@ static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 static inline void disconn_complete(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_disconn_complete *evt = ptr;
-	bdaddr_t dba;
 
-	if (evt->status)
-		return;
-
-	bacpy(&dba, BDADDR_ANY);
-
-	hcid_dbus_disconn_complete(sba, &dba, evt->reason);
+	hcid_dbus_disconn_complete(sba, evt->status, evt->handle, evt->reason);
 }
 
 static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)

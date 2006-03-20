@@ -98,9 +98,30 @@ static const char *phone_minor_cls[] = {
 };
 
 
-void discovered_device_free(void *data, void *user_data)
+void discovered_device_info_free(void *data, void *user_data)
 {
 	struct discovered_dev_info *dev = data;
+
+	if (dev) {
+		free(dev->bdaddr);
+		free(dev);
+	}
+}
+
+static void bonding_request_info_free(void *data, void *user_data)
+{
+	struct bonding_request_info *dev = data;
+
+	if (dev) {
+		free(dev->bdaddr);
+		dbus_message_unref(dev->msg);
+		free(dev);
+	}
+}
+
+static void active_conn_info_free(void *data, void *user_data)
+{
+	struct active_conn_info *dev = data;
 
 	if (dev) {
 		free(dev->bdaddr);
@@ -175,6 +196,52 @@ static int remote_name_remove(struct slist **list, bdaddr_t *bdaddr)
 	int ret_val = -1;
 
 	l = slist_find(*list, bdaddr, remote_name_find_by_bdaddr);
+
+	if (l) {
+		dev = l->data;
+		*list = slist_remove(*list, dev);
+		free(dev->bdaddr);
+		free(dev);
+		ret_val = 0;
+	}
+
+	return ret_val;
+}
+
+static int active_conn_find_by_handle(const void *data, const void *user_data)
+{
+	const struct active_conn_info *dev = data;
+	const uint16_t *handle = user_data;
+
+	if (dev->handle == *handle)
+		return 0;
+
+	return -1;
+}
+
+static int active_conn_append(struct slist **list, bdaddr_t *bdaddr, uint16_t handle)
+{
+	struct active_conn_info *dev = NULL;
+
+	dev = malloc(sizeof(*dev));
+	if (!dev)
+		return -1;
+
+	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
+	bacpy(dev->bdaddr, bdaddr);
+	dev->handle = handle;
+
+	*list = slist_append(*list, dev);
+	return 0;
+}
+
+static int active_conn_remove(struct slist **list, uint16_t *handle)
+{
+	struct active_conn_info *dev;
+	struct slist *l;
+	int ret_val = -1;
+
+	l = slist_find(*list, handle, active_conn_find_by_handle);
 
 	if (l) {
 		dev = l->data;
@@ -356,14 +423,31 @@ failed:
 
 static gboolean unregister_dbus_path(const char *path)
 {
-	struct hci_dbus_data *data;
+	struct hci_dbus_data *pdata;
 
 	info("Unregister path:%s", path);
 
-	if (dbus_connection_get_object_path_data(connection, path, (void *) &data) && data) {
-		if (data->requestor_name)
-			free(data->requestor_name);
-		free(data);
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata) && pdata) {
+		if (pdata->requestor_name)
+			free(pdata->requestor_name);
+
+		if (pdata->discovered_devices) {
+			slist_foreach(pdata->discovered_devices, discovered_device_info_free, NULL);
+			slist_free(pdata->discovered_devices);
+			pdata->discovered_devices = NULL;
+		}
+
+		if (pdata->bonding_requests) {
+			slist_foreach(pdata->bonding_requests, bonding_request_info_free, NULL);
+			slist_free(pdata->bonding_requests);
+			pdata->bonding_requests = NULL;
+		}
+
+		if (pdata->active_conn) {
+			slist_foreach(pdata->active_conn, active_conn_info_free, NULL);
+			slist_free(pdata->active_conn);
+			pdata->active_conn = NULL;
+		}
 	}
 
 	if (!dbus_connection_unregister_object_path (connection, path)) {
@@ -387,10 +471,12 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	char *pptr = path;
 	gboolean ret;
 	DBusMessage *message = NULL;
-	int dd = -1;
+	int i, dd = -1;
 	read_scan_enable_rp rp;
 	struct hci_request rq;
 	struct hci_dbus_data* pdata;
+	struct hci_conn_list_req *cl = NULL;
+	struct hci_conn_info *ci = NULL;
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 	ret = register_dbus_path(path, ADAPTER_PATH_ID, id, &obj_dev_vtable, FALSE);
@@ -447,6 +533,27 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	}
 
 	dbus_connection_flush(connection);
+	
+	/* 
+	 * retrieve the active connections: address the scenario where
+	 * the are active connections before the daemon've started
+	 */
+
+	cl = malloc(10 * sizeof(*ci) + sizeof(*cl));
+	if (!cl)
+		goto failed;
+
+	cl->dev_id = id;
+	cl->conn_num = 10;
+	ci = cl->conn_info;
+
+	if (ioctl(dd, HCIGETCONNLIST, (void *) cl) < 0) {
+		free(cl);
+		goto failed;
+	}
+
+	for (i = 0; i < cl->conn_num; i++, ci++)
+		active_conn_append(&pdata->active_conn, &ci->bdaddr, ci->handle);
 
 failed:
 	if (message)
@@ -457,6 +564,9 @@ failed:
 
 	if (dd >= 0)
 		close(dd);
+
+	if (cl)
+		free(cl);
 
 	return ret;
 }
@@ -752,7 +862,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		pdata->discover_state = DISCOVER_OFF;
 
 		/* free discovered devices list */
-		slist_foreach(pdata->discovered_devices, discovered_device_free, NULL);
+		slist_foreach(pdata->discovered_devices, discovered_device_info_free, NULL);
 		slist_free(pdata->discovered_devices);
 		pdata->discovered_devices = NULL;
 
@@ -945,7 +1055,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 		goto failed; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
-	slist_foreach(pdata->discovered_devices, discovered_device_free, NULL);
+	slist_foreach(pdata->discovered_devices, discovered_device_info_free, NULL);
 	slist_free(pdata->discovered_devices);
 	pdata->discovered_devices = NULL;
 
@@ -971,6 +1081,7 @@ failed:
 void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer)
 {
 	char path[MAX_PATH_LENGTH];
+	DBusMessage *message = NULL;
 	struct hci_request rq;
 	evt_cmd_status rp;
 	auth_requested_cp cp;
@@ -992,28 +1103,37 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
+	if (!status) {
+		/* Sent the remote device connected signal */
+		message = dbus_message_new_signal(path, ADAPTER_INTERFACE, "RemoteDeviceConnected");
+
+		dbus_message_append_args(message,
+					 	DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_INVALID);
+
+		send_reply_and_unref(connection, message);
+	}
+
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
 		goto failed;
 
-	l = slist_find(pdata->bonding_requests, peer, bonding_requests_find);
+	/* add in the active connetions list */
+	active_conn_append(&pdata->active_conn, peer, handle);
 
-	/* 
-	 * Connections can be requested by other applications,  profiles and bonding
-	 * For now it's necessary check only if there a pending bonding request
-	 */
+	/* check if this connection request was requested by a bonding procedure */
+	l = slist_find(pdata->bonding_requests, peer, bonding_requests_find);
 	if (!l) 
 		goto failed;
 
 	dev = l->data;
 
-	/* connection failed */	
 	if (status) {
 		error_connection_attempt_failed(connection, dev->msg, status);
 		goto failed;
 	}
 
 	if (dev->bonding_state != CONNECTING)
-		goto failed; /* FIXME: is it possible? */
+		goto failed;
 
 	dd = hci_open_dev(pdata->dev_id);
 	if (dd < 0) {
@@ -1032,7 +1152,6 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	rq.event  = EVT_CMD_STATUS;
 	rq.rparam = &rp;
 	rq.rlen   = EVT_CMD_STATUS_SIZE;
-
 	rq.ocf    = OCF_AUTH_REQUESTED;
 	rq.cparam = &cp;
 	rq.clen   = AUTH_REQUESTED_CP_SIZE;
@@ -1069,8 +1188,54 @@ failed:
 	bt_free(peer_addr);
 }
 
-void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason)
+void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, uint8_t reason)
 {
+	char path[MAX_PATH_LENGTH];
+	struct hci_dbus_data *pdata = NULL;
+	struct active_conn_info *dev;
+	DBusMessage *message;
+	struct slist *l;
+	char *local_addr, *peer_addr = NULL;
+	bdaddr_t tmp;
+	int id;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		error("No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
+		goto failed;
+
+	l = slist_find(pdata->active_conn, &handle, active_conn_find_by_handle);
+
+	if (!l)
+		goto failed;
+
+	dev = l->data;
+	/* add in the active connetions list */
+	baswap(&tmp, dev->bdaddr); peer_addr = batostr(&tmp);
+
+	/* Sent the remote device disconnected signal */
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE, "RemoteDeviceDisconnected");
+
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_INVALID);
+
+	send_reply_and_unref(connection, message);
+	active_conn_remove(&pdata->active_conn, &handle);
+
+failed:
+	if (peer_addr)
+		free(peer_addr);
+
+	free(local_addr);
 }
 
 /*****************************************************************

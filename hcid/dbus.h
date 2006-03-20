@@ -100,6 +100,11 @@ struct bonding_request_info {
 	bonding_state_t bonding_state;
 };
 
+struct active_conn_info {
+	bdaddr_t *bdaddr;
+	uint16_t handle;
+};
+
 struct hci_dbus_data {
 	uint16_t dev_id;
 	uint16_t path_id;
@@ -112,6 +117,7 @@ struct hci_dbus_data {
 	char *requestor_name;	/* requestor unique name */
 	struct slist *passkey_agents;
 	struct slist *bonding_requests;
+	struct slist *active_conn;
 };
 
 struct passkey_agent {
@@ -184,7 +190,7 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-void discovered_device_free(void *data, void *user_data);
+void discovered_device_info_free(void *data, void *user_data);
 int bonding_requests_find(const void *data, const void *user_data);
 int remote_name_find_by_bdaddr(const void *data, const void *user_data);
 int remote_name_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);

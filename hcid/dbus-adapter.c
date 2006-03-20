@@ -1081,7 +1081,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		return error_bonding_in_progress(conn, msg);
 
 	ecode = get_device_address(dbus_data->dev_id, local_addr, sizeof(local_addr));
-	if (ecode < 0) /* FIXME: remove the peer bdaddr from the list */
+	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
 
 	/* check if a link key already exists */
@@ -1105,10 +1105,6 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
-	/* check if there is an active connection */
-	//dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &peer_bdaddr);
-	handle = find_connection_handle(dd, &peer_bdaddr);
-
 	memset(&rq, 0, sizeof(rq));
 	memset(&rp, 0, sizeof(rp));
 
@@ -1116,6 +1112,9 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	rq.event = EVT_CMD_STATUS;
 	rq.rparam = &rp;
 	rq.rlen = EVT_CMD_STATUS_SIZE;
+
+	/* check if there is an active connection */
+	handle = find_connection_handle(dd, &peer_bdaddr);
 
 	if (handle < 0 ) {
 		create_conn_cp cp;
@@ -1125,14 +1124,14 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		bonding_state = CONNECTING;
 		
 		bacpy(&cp.bdaddr, &peer_bdaddr);
-		cp.pkt_type = htobs(HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5);
+		cp.pkt_type       = htobs(HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5);
 		cp.pscan_rep_mode = 0x02;
-		cp.clock_offset = htobs(0x0000);
-		cp.role_switch = 0x01;
+		cp.clock_offset	  = htobs(0x0000);
+		cp.role_switch    = 0x01;
 
-		rq.ocf = OCF_CREATE_CONN;
+		rq.ocf    = OCF_CREATE_CONN;
 		rq.cparam = &cp;
-		rq.clen = CREATE_CONN_CP_SIZE;
+		rq.clen   = CREATE_CONN_CP_SIZE;
 	} else {
 		/* connection found */
 		auth_requested_cp cp;
@@ -1526,7 +1525,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		break;
 	}
 
-	slist_foreach(dbus_data->discovered_devices, discovered_device_free, NULL);
+	slist_foreach(dbus_data->discovered_devices, discovered_device_info_free, NULL);
 	slist_free(dbus_data->discovered_devices);
 	dbus_data->discovered_devices = NULL;
 
@@ -1591,7 +1590,7 @@ static struct service_data dev_services[] = {
 	{ "GetEncryptionKeySize",			handle_dev_get_encryption_key_size_req,	},
 
 	{ "DiscoverDevices",				handle_dev_discover_devices_req,	},
-	{ "DiscoverDevicesWithoutNameResolving",	handle_dev_discover_devices_req	},
+	{ "DiscoverDevicesWithoutNameResolving",	handle_dev_discover_devices_req		},
 	{ "CancelDiscovery",				handle_dev_cancel_discovery_req,	},
 
 	{ NULL, NULL }
