@@ -122,15 +122,15 @@ int bonding_requests_find(const void *data, const void *user_data)
 int remote_name_find_by_bdaddr(const void *data, const void *user_data)
 {
 	const struct discovered_dev_info *dev = data;
-	const bdaddr_t *baddr = user_data;
+	const bdaddr_t *bdaddr = user_data;
 
-	if (memcmp(dev->bdaddr, baddr, sizeof(*baddr)) == 0)
+	if (memcmp(dev->bdaddr, bdaddr, sizeof(*bdaddr)) == 0)
 		return 0;
 
 	return -1;
 }
 
-int remote_name_find_by_name_status(const void *data, const void *user_data)
+static int remote_name_find_by_name_status(const void *data, const void *user_data)
 {
 	const struct discovered_dev_info *dev = data;
 	const name_status_t *name_status = user_data;
@@ -141,7 +141,7 @@ int remote_name_find_by_name_status(const void *data, const void *user_data)
 	return -1;
 }
 
-static int remote_name_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status)
+int remote_name_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status)
 {
 	struct discovered_dev_info *dev = NULL;
 	struct slist *l;
@@ -161,11 +161,10 @@ static int remote_name_append(struct slist **list, bdaddr_t *bdaddr, name_status
 		return -1;
 
 	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
-	memcpy(dev->bdaddr, bdaddr, sizeof(*dev->bdaddr));
+	bacpy(dev->bdaddr, bdaddr);
 	dev->name_status = name_status;
 
 	*list = slist_append(*list, dev);
-
 	return 0;
 }
 
@@ -246,7 +245,7 @@ int get_default_dev_id(void)
 	return default_dev;
 }
 
-static int dev_append_signal_args(DBusMessage *signal, int first, va_list var_args)
+static inline int dev_append_signal_args(DBusMessage *signal, int first, va_list var_args)
 {
 	void *value;
 	DBusMessageIter iter;
@@ -629,12 +628,17 @@ failed:
 	bt_free(local_addr);
 }
 
-static inline int remote_name_resolve(struct hci_dbus_data *dbus_data)
+int remote_name_resolve(struct hci_dbus_data *dbus_data)
 {
-	struct discovered_dev_info *dev;
-	struct slist *l = NULL;
+	struct hci_request rq;
+	evt_cmd_status rp;
 	remote_name_req_cp cp;
-	int dd;
+	bdaddr_t tmp;
+	struct discovered_dev_info *dev;
+	DBusMessage *message = NULL;
+	struct slist *l = NULL;
+	char *peer_addr = NULL;
+	int dd, req_sent, ret_val = 0;
 	name_status_t name_status = NAME_PENDING;
 
 	/*get the next remote address */
@@ -654,16 +658,70 @@ static inline int remote_name_resolve(struct hci_dbus_data *dbus_data)
 	if (dd < 0)
 		return -1;
 
-	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, dev->bdaddr);
-	cp.pscan_rep_mode = 0x02;
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_REMOTE_NAME_REQ;
+	rq.cparam = &cp;
+	rq.clen   = REMOTE_NAME_REQ_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_CMD_STATUS_SIZE;
+	rq.event  = EVT_CMD_STATUS;
 
-	hci_send_cmd(dd, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
-						REMOTE_NAME_REQ_CP_SIZE, &cp);
+	/* send at least one request or return failed if the list is empty */
+	do {
+		req_sent = 1;
 
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.bdaddr, dev->bdaddr);
+		cp.pscan_rep_mode = 0x02;
+
+		baswap(&tmp, dev->bdaddr); peer_addr = batostr(&tmp);
+
+		if (hci_send_req(dd, &rq, 100) < 0) {
+			error("Unable to send the HCI remote name request: %s (%d)",
+				strerror(errno), errno);
+			message = dev_signal_factory(dbus_data->dev_id, "RemoteNameFailed",
+							DBUS_TYPE_STRING, &peer_addr,
+							DBUS_TYPE_INVALID);
+			req_sent = 0;
+		}
+
+		if (rp.status) {
+			error("Remote name request failed with status 0x%02x", rp.status);
+			message = dev_signal_factory(dbus_data->dev_id, "RemoteNameFailed",
+							DBUS_TYPE_STRING, &peer_addr,
+							DBUS_TYPE_INVALID);
+			req_sent = 0;
+		}
+
+		send_reply_and_unref(connection, message);
+
+		free(peer_addr);
+
+		/* if failed, request the next element */
+		if (!req_sent) {
+			/* remove the element from the list */
+			dbus_data->discovered_devices = slist_remove(dbus_data->discovered_devices, dev);
+			free(dev->bdaddr);
+			free(dev);
+
+			/* get the next element */
+			l = slist_find(dbus_data->discovered_devices, &name_status, remote_name_find_by_name_status);
+
+			if (!l) {
+				/* no more devices: exit */
+				ret_val = -1;
+				goto failed;
+			}
+
+			dev = l->data;
+		}
+	} while (!req_sent);
+
+failed:
 	hci_close_dev(dd);
 
-	return 0;
+	return ret_val;
 }
 
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
@@ -686,16 +744,12 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
-		if (pdata->discover_state == DISCOVER_RUNNING_WITH_NAMES) {
-			/* start name resolving */
+		if (!remote_name_resolve(pdata)) {
 			pdata->discover_state = RESOLVING_NAMES;
-
-			if (!remote_name_resolve(pdata))
-				goto failed; /* skip, sending the first name to resolve */
-			
-			pdata->discover_state = DISCOVER_OFF; /* no names to resolve */
-
+			goto failed; /* skip - there is name to resolve */
 		}
+
+		pdata->discover_state = DISCOVER_OFF;
 
 		/* free discovered devices list */
 		slist_foreach(pdata->discovered_devices, discovered_device_free, NULL);
@@ -822,26 +876,17 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 			goto failed; /* don't sent the name again */
 	}
 
-	signal_name = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"RemoteNameUpdated");
-	if (signal_name == NULL) {
-		error("Can't allocate D-Bus message");
-		goto failed;
-	}
-
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, local_addr);
-
 	name = textfile_get(filename, peer_addr);
 
 	if (name) {
-		dbus_message_append_args(signal_name,
-					 DBUS_TYPE_STRING, &peer_addr,
-					 DBUS_TYPE_STRING, &name,
-					 DBUS_TYPE_INVALID);
+		signal_name = dev_signal_factory(pdata->dev_id, "RemoteNameUpdate",
+							DBUS_TYPE_STRING, &peer_addr,
+							DBUS_TYPE_STRING, &name,
+							DBUS_TYPE_INVALID);
+		send_reply_and_unref(connection, signal_name);
 
-		if (dbus_connection_send(connection, signal_name, NULL) == FALSE)
-			error("Can't send D-Bus remote name updated signal");
-
+		free(name);
 		name_status = NAME_SENT;
 	}
 
@@ -854,15 +899,8 @@ failed:
 	if (signal_device)
 		dbus_message_unref(signal_device);
 
-	if (signal_name)
-		dbus_message_unref(signal_name);
-
 	bt_free(local_addr);
 	bt_free(peer_addr);
-
-	if (name)
-		bt_free(name);
-
 }
 
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char *name)
@@ -891,67 +929,41 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 
 	/* if the requested name failed, don't send signal and request the next name */
 	if (status)
-		goto request_next;
+		message = dev_signal_factory(pdata->dev_id, "RemoteNameFailed",
+						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_INVALID);
+	else 
+		message = dev_signal_factory(pdata->dev_id, "RemoteNameUpdated",
+					     	DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_STRING, &name,
+						DBUS_TYPE_INVALID);
 
+	send_reply_and_unref(connection, message);
 
-	/* send the remote name update signal */
-	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"RemoteNameUpdated");
-	if (message == NULL) {
-		error("Can't allocate D-Bus message");
-		goto failed;
-	}
-
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &peer_addr,
-					DBUS_TYPE_STRING, &name,
-					DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		error("Can't send D-Bus remote name updated signal");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-
-request_next:
-	if (!pdata->requestor_name)
-		goto failed; /* requested by an external app */
-
+	/* check if there is more devices to request names */
 	if (!remote_name_resolve(pdata))
-		goto failed; /* skip: there is more remote name to resolve */
+		goto failed; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
 	slist_foreach(pdata->discovered_devices, discovered_device_free, NULL);
 	slist_free(pdata->discovered_devices);
 	pdata->discovered_devices = NULL;
 
-	if (message)
-		dbus_message_unref(message);
-	
-	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"DiscoveryCompleted");
-	if (message == NULL) {
-		error("Can't allocate D-Bus message");
-		goto failed;
+	if (pdata->discover_state != DISCOVER_OFF) {
+		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+						  "DiscoveryCompleted");
+
+		send_reply_and_unref(connection, message);
+
+		if (pdata->requestor_name) {
+			free(pdata->requestor_name);
+			pdata->requestor_name = NULL;
+		}
+
+		pdata->discover_state = DISCOVER_OFF;
 	}
-
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		error("Can't send D-Bus discovery completed signal");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-
-	free(pdata->requestor_name);
-	pdata->requestor_name = NULL;
-
-	pdata->discover_state = DISCOVER_OFF;
 
 failed:
-	if (message)
-		dbus_message_unref(message);
-
 	bt_free(local_addr);
 	bt_free(peer_addr);
 }

@@ -82,7 +82,7 @@ typedef enum {
 typedef enum {
 	NAME_PENDING,
 	NAME_SENT
-}name_status_t;
+} name_status_t;
 
 struct discovered_dev_info {
 	bdaddr_t *bdaddr;
@@ -142,6 +142,7 @@ DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_unknown_address(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMessage *msg, int err);
@@ -185,6 +186,10 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 
 void discovered_device_free(void *data, void *user_data);
 int bonding_requests_find(const void *data, const void *user_data);
+int remote_name_find_by_bdaddr(const void *data, const void *user_data);
+int remote_name_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);
+int remote_name_resolve(struct hci_dbus_data *dbus_data);
+
 /*
  * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device

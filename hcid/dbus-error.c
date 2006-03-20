@@ -90,6 +90,13 @@ DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg)
 							"Not available"));
 }
 
+DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".RequestDeferred",
+							"Request Deferred"));
+}
+
 DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_reply_and_unref(conn,

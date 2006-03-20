@@ -105,7 +105,7 @@ static int bonding_requests_append(struct slist **list, bdaddr_t *bdaddr, DBusMe
 		return -1;
 
 	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
-	memcpy(dev->bdaddr, bdaddr, sizeof(*dev->bdaddr));
+	bacpy(dev->bdaddr, bdaddr);
 	dev->msg = msg;
 	dev->bonding_state = bonding_state;
 
@@ -811,13 +811,14 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
 	DBusError err;
-	const char *str_bdaddr;
-	char *name;
+	const char *peer_addr;
+	bdaddr_t peer_bdaddr;
+	char *str;
 	int ecode;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
-				DBUS_TYPE_STRING, &str_bdaddr,
+				DBUS_TYPE_STRING, &peer_addr,
 				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&err)) {
@@ -827,28 +828,48 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	}
 
 	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode< 0)
+	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
 
+	/* check if it is a unknown address */
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
+
+	str = textfile_get(filename, peer_addr);
+
+	if (!str)
+		return error_unknown_address(conn, msg);
+
+	free(str);
+
+	/* check if it is in the cache */
 	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
 
-	name = textfile_get(filename, str_bdaddr);
+	str = textfile_get(filename, peer_addr);
 
-	if (!name)
-		return error_record_does_not_exist(conn, msg);
+	if (str) {
+		reply = dbus_message_new_method_return(msg);
+		if (!reply) {
+			free(str);
+			return error_out_of_memory(conn, msg);
+		}
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		free(name);
-		return error_out_of_memory(conn, msg);
+		/* send the cached name */
+		dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,
+						DBUS_TYPE_INVALID);
+
+		free(str);
+		return send_reply_and_unref(conn, reply);
 	}
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &name,
-					DBUS_TYPE_INVALID);
+	/* put the request name in the queue to resolve name */
+	str2ba(peer_addr, &peer_bdaddr);
+	remote_name_append(&dbus_data->discovered_devices, &peer_bdaddr, NAME_PENDING);
 
-	free(name);
+	/* check if there is a discover process running */
+	if (dbus_data->discover_state == DISCOVER_OFF)
+		remote_name_resolve(dbus_data);
 
-	return send_reply_and_unref(conn, reply);
+	return error_request_deferred(conn, msg);
 }
 
 static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1492,7 +1513,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		/* get the first element */
 		addr = (bdaddr_t *) (dbus_data->discovered_devices)->data;
 
-		memcpy(&cp.bdaddr, addr, sizeof(bdaddr_t));
+		bacpy(&cp.bdaddr, addr);
 
 		rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
 		rq.cparam = &cp;
