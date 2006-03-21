@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -73,6 +74,43 @@ static const char *phone_minor_cls[] = {
 	"isdn"
 };
 
+static int is_valid_address(const char *addr)
+{
+	char tmp[18];
+	char *ptr = tmp;
+
+	if (!addr)
+		return -1;
+
+	if (strlen(addr) != 17)
+		return -1;
+
+	memcpy(tmp, addr, 18);
+
+	while (ptr) {
+
+		*ptr = toupper(*ptr);
+		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
+			return -1;
+
+		ptr++;
+		*ptr = toupper(*ptr);
+		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
+			return -1;
+
+		ptr++;
+		*ptr = toupper(*ptr);
+		if (*ptr == 0)
+			break;
+
+		if (*ptr != ':')
+			return -1;
+
+		ptr++;
+	}
+
+	return 0;
+}
 int find_connection_handle(int dd, bdaddr_t *peer)
 {
 	struct hci_conn_info_req *cr;
@@ -862,6 +900,9 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 		return error_invalid_arguments(conn, msg);
 	}
 
+	if (is_valid_address(peer_addr) < 0)
+		return error_invalid_arguments(conn, msg);
+
 	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
 	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
@@ -927,6 +968,9 @@ static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, D
 		return error_invalid_arguments(conn, msg);
 	}
 
+	if (is_valid_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
 	str2ba(addr_ptr, &bdaddr);
 
 	ecode = get_device_alias(dbus_data->dev_id, &bdaddr, str, sizeof(str));
@@ -965,7 +1009,7 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (strlen(str_ptr) == 0) {
+	if ((strlen(str_ptr) == 0) || (is_valid_address(addr_ptr) < 0)) {
 		error("Alias change failed: Invalid parameter");
 		return error_invalid_arguments(conn, msg);
 	}
@@ -1002,12 +1046,6 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 	char addr[18], *addr_ptr, *str;
 	int ecode;
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
-
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &addr_ptr,
@@ -1018,6 +1056,15 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
+
+	if (is_valid_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
+
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1046,12 +1093,6 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 	char addr[18], *addr_ptr, *str;
 	int ecode;
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/lastused", STORAGEDIR, addr);
-
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &addr_ptr,
@@ -1062,6 +1103,16 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
+
+	if (is_valid_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
+
+	snprintf(filename, PATH_MAX, "%s/%s/lastused", STORAGEDIR, addr);
+
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1107,7 +1158,8 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		return error_invalid_arguments(conn, msg);
 	}
 
-	/* FIXME: check if the address is valid */
+	if (is_valid_address(peer_addr) < 0)
+		return error_invalid_arguments(conn, msg);
 
 	str2ba(peer_addr, &peer_bdaddr);
 	
@@ -1220,14 +1272,6 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	bdaddr_t bdaddr;
 	int dd;
 
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
-	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
-
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &addr_ptr,
@@ -1238,6 +1282,18 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
+
+	if (is_valid_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0)
+		return error_no_such_adapter(conn, msg);
+
+	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+
 
 	/* Delete the link key from storage */
 	textfile_del(filename, addr_ptr);
@@ -1301,12 +1357,6 @@ static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMe
 	dbus_bool_t result;
 	int ecode;
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
-
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &addr_ptr,
@@ -1317,6 +1367,15 @@ static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMe
 		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
+
+	if (is_valid_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
+
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
 
 	str = textfile_get(filename, addr_ptr);
 	if (str) {
@@ -1380,12 +1439,6 @@ static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn
 	uint8_t length;
 	int len, ecode;
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	str2ba(addr, &local);
-
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &addr_ptr,
@@ -1396,6 +1449,15 @@ static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn
 		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
+
+	if (is_valid_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
+
+	str2ba(addr, &local);
 
 	str2ba(addr_ptr, &peer);
 
@@ -1433,6 +1495,9 @@ static DBusHandlerResult handle_dev_get_encryption_key_size_req(DBusConnection *
 		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
+
+	if (is_valid_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
 
 	str2ba(addr_ptr, &bdaddr);
 
@@ -1653,11 +1718,13 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 
 		if (handler)
 			return handler(conn, msg, data);
+		else
+			return error_not_implemented(conn, msg);
 	}
 	else if (!strcmp(SECURITY_INTERFACE, iface))
 		return handle_security_method(conn, msg, data);
 	else if (!strcmp(RFCOMM_INTERFACE, iface))
 		return handle_rfcomm_method(conn, msg, data);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	else
+		return error_not_implemented(conn, msg);
 }
