@@ -413,24 +413,23 @@ static DBusHandlerResult handle_dev_list_connections_req(DBusConnection *conn, D
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
-
 	struct hci_dbus_data *dbus_data = data;
 	struct slist *l = dbus_data->active_conn;
-	struct active_conn_info *dev;
 
-	char *peer_addr;
-	bdaddr_t tmp;
 
 	reply = dbus_message_new_method_return(msg);
-        if (!reply)
-		return error_out_of_memory(conn, msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-	                                        DBUS_TYPE_STRING_AS_STRING, &array_iter);
+					DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	while(l) {
-		dev = (struct active_conn_info *) l->data;
+	while (l) {
+		char *peer_addr;
+		bdaddr_t tmp;
+		struct active_conn_info *dev = l->data;
+
 		baswap(&tmp, dev->bdaddr); peer_addr = batostr(&tmp);
 		
 		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &peer_addr);
@@ -438,6 +437,7 @@ static DBusHandlerResult handle_dev_list_connections_req(DBusConnection *conn, D
 
 		l = l->next;
 	}
+
 	dbus_message_iter_close_container(&iter, &array_iter);
 
 	return send_reply_and_unref(conn, reply);
