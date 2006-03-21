@@ -113,7 +113,7 @@ struct hci_dbus_data {
 	timeout_handler_func_t *timeout_handler;
 	uint8_t mode;		/* scan mode */
 	discover_state_t discover_state;
-	struct slist *discovered_devices;
+	struct slist *disc_devices;
 	char *requestor_name;	/* requestor unique name */
 	struct slist *passkey_agents;
 	struct slist *bonding_requests;
@@ -190,11 +190,11 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-void discovered_device_info_free(void *data, void *user_data);
+void disc_device_info_free(void *data, void *user_data);
 int bonding_requests_find(const void *data, const void *user_data);
-int remote_name_find_by_bdaddr(const void *data, const void *user_data);
-int remote_name_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);
-int remote_name_resolve(struct hci_dbus_data *dbus_data);
+int disc_device_find_by_bdaddr(const void *data, const void *user_data);
+int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);
+int disc_device_req_name(struct hci_dbus_data *dbus_data);
 
 /*
  * Scanning modes, used by DEV_SET_MODE

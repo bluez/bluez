@@ -313,7 +313,7 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 		if (status) {
 			error("Setting scan enable failed with status 0x%02x", status);
 			hci_close_dev(dd);
-			return error_failed(conn, msg, status);
+			return error_failed(conn, msg, bt_error(status));
 		}
 	}
 
@@ -863,11 +863,11 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 
 	/* put the request name in the queue to resolve name */
 	str2ba(peer_addr, &peer_bdaddr);
-	remote_name_append(&dbus_data->discovered_devices, &peer_bdaddr, NAME_PENDING);
+	disc_device_append(&dbus_data->disc_devices, &peer_bdaddr, NAME_PENDING);
 
 	/* check if there is a discover process running */
 	if (dbus_data->discover_state == DISCOVER_OFF)
-		remote_name_resolve(dbus_data);
+		disc_device_req_name(dbus_data);
 
 	return error_request_deferred(conn, msg);
 }
@@ -1053,7 +1053,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	struct hci_request rq;
 	evt_cmd_status rp;
 	DBusError err;
-	char *peer_addr;
+	char *peer_addr = NULL;
 	char *str;
 	struct hci_dbus_data *dbus_data = data;
 	struct slist *l;
@@ -1071,6 +1071,8 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
+
+	/* FIXME: check if the address is valid */
 
 	str2ba(peer_addr, &peer_bdaddr);
 	
@@ -1158,7 +1160,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	if (rp.status) {
 		error("Failed with status 0x%02x", rp.status);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, rp.status);
+		return error_failed(conn, msg, bt_error(rp.status));
 	}
 
 	/* add in the bonding requests list */
@@ -1477,7 +1479,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 {
 	DBusMessage *reply = NULL;
 	const char *requestor_name;
-	bdaddr_t *addr;
+	const struct discovered_dev_info *dev;
 	struct hci_request rq;
 	remote_name_req_cancel_cp cp;
 	struct hci_dbus_data *dbus_data = data;
@@ -1506,13 +1508,12 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 
 	switch (dbus_data->discover_state) {
 	case DISCOVER_OFF:
-		/* FIXME: */
-		break;
+		goto failed;
 	case RESOLVING_NAMES:
 		/* get the first element */
-		addr = (bdaddr_t *) (dbus_data->discovered_devices)->data;
+		dev = (struct discovered_dev_info *) (dbus_data->disc_devices)->data;
 
-		bacpy(&cp.bdaddr, addr);
+		bacpy(&cp.bdaddr, dev->bdaddr);
 
 		rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
 		rq.cparam = &cp;
@@ -1525,10 +1526,6 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		break;
 	}
 
-	slist_foreach(dbus_data->discovered_devices, discovered_device_info_free, NULL);
-	slist_free(dbus_data->discovered_devices);
-	dbus_data->discovered_devices = NULL;
-
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Sending command failed: %s (%d)",
 		      strerror(errno), errno);
@@ -1540,8 +1537,13 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 
 	if (status) {
 		error("Cancel failed with status 0x%02x", status);
-		return error_failed(conn, msg, status);
+		return error_failed(conn, msg, bt_error(status));
 	}
+
+failed:
+	slist_foreach(dbus_data->disc_devices, disc_device_info_free, NULL);
+	slist_free(dbus_data->disc_devices);
+	dbus_data->disc_devices = NULL;
 
 	free(dbus_data->requestor_name);
 	dbus_data->requestor_name = NULL;

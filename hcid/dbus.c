@@ -98,7 +98,7 @@ static const char *phone_minor_cls[] = {
 };
 
 
-void discovered_device_info_free(void *data, void *user_data)
+void disc_device_info_free(void *data, void *user_data)
 {
 	struct discovered_dev_info *dev = data;
 
@@ -140,7 +140,7 @@ int bonding_requests_find(const void *data, const void *user_data)
 	return -1;
 }
 
-int remote_name_find_by_bdaddr(const void *data, const void *user_data)
+int disc_device_find_by_bdaddr(const void *data, const void *user_data)
 {
 	const struct discovered_dev_info *dev = data;
 	const bdaddr_t *bdaddr = user_data;
@@ -151,7 +151,7 @@ int remote_name_find_by_bdaddr(const void *data, const void *user_data)
 	return -1;
 }
 
-static int remote_name_find_by_name_status(const void *data, const void *user_data)
+static int disc_device_find_by_name_status(const void *data, const void *user_data)
 {
 	const struct discovered_dev_info *dev = data;
 	const name_status_t *name_status = user_data;
@@ -162,13 +162,13 @@ static int remote_name_find_by_name_status(const void *data, const void *user_da
 	return -1;
 }
 
-int remote_name_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status)
+int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status)
 {
 	struct discovered_dev_info *dev = NULL;
 	struct slist *l;
 
 	/* ignore repeated entries */
-	l = slist_find(*list, bdaddr, remote_name_find_by_bdaddr);
+	l = slist_find(*list, bdaddr, disc_device_find_by_bdaddr);
 
 	if (l) {
 		/* device found, update the attributes */
@@ -189,13 +189,13 @@ int remote_name_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name
 	return 0;
 }
 
-static int remote_name_remove(struct slist **list, bdaddr_t *bdaddr)
+static int disc_device_remove(struct slist **list, bdaddr_t *bdaddr)
 {
 	struct discovered_dev_info *dev;
 	struct slist *l;
 	int ret_val = -1;
 
-	l = slist_find(*list, bdaddr, remote_name_find_by_bdaddr);
+	l = slist_find(*list, bdaddr, disc_device_find_by_bdaddr);
 
 	if (l) {
 		dev = l->data;
@@ -431,10 +431,10 @@ static gboolean unregister_dbus_path(const char *path)
 		if (pdata->requestor_name)
 			free(pdata->requestor_name);
 
-		if (pdata->discovered_devices) {
-			slist_foreach(pdata->discovered_devices, discovered_device_info_free, NULL);
-			slist_free(pdata->discovered_devices);
-			pdata->discovered_devices = NULL;
+		if (pdata->disc_devices) {
+			slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
+			slist_free(pdata->disc_devices);
+			pdata->disc_devices = NULL;
 		}
 
 		if (pdata->bonding_requests) {
@@ -738,7 +738,7 @@ failed:
 	bt_free(local_addr);
 }
 
-int remote_name_resolve(struct hci_dbus_data *dbus_data)
+int disc_device_req_name(struct hci_dbus_data *dbus_data)
 {
 	struct hci_request rq;
 	evt_cmd_status rp;
@@ -752,10 +752,10 @@ int remote_name_resolve(struct hci_dbus_data *dbus_data)
 	name_status_t name_status = NAME_PENDING;
 
 	/*get the next remote address */
-	if (!dbus_data->discovered_devices)
+	if (!dbus_data->disc_devices)
 		return -1;
 
-	l = slist_find(dbus_data->discovered_devices, &name_status, remote_name_find_by_name_status);
+	l = slist_find(dbus_data->disc_devices, &name_status, disc_device_find_by_name_status);
 
 	if (!l)
 		return -1;
@@ -811,12 +811,12 @@ int remote_name_resolve(struct hci_dbus_data *dbus_data)
 		/* if failed, request the next element */
 		if (!req_sent) {
 			/* remove the element from the list */
-			dbus_data->discovered_devices = slist_remove(dbus_data->discovered_devices, dev);
+			dbus_data->disc_devices = slist_remove(dbus_data->disc_devices, dev);
 			free(dev->bdaddr);
 			free(dev);
 
 			/* get the next element */
-			l = slist_find(dbus_data->discovered_devices, &name_status, remote_name_find_by_name_status);
+			l = slist_find(dbus_data->disc_devices, &name_status, disc_device_find_by_name_status);
 
 			if (!l) {
 				/* no more devices: exit */
@@ -854,7 +854,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
-		if (!remote_name_resolve(pdata)) {
+		if (!disc_device_req_name(pdata)) {
 			pdata->discover_state = RESOLVING_NAMES;
 			goto failed; /* skip - there is name to resolve */
 		}
@@ -862,9 +862,9 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		pdata->discover_state = DISCOVER_OFF;
 
 		/* free discovered devices list */
-		slist_foreach(pdata->discovered_devices, discovered_device_info_free, NULL);
-		slist_free(pdata->discovered_devices);
-		pdata->discovered_devices = NULL;
+		slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
+		slist_free(pdata->disc_devices);
+		pdata->disc_devices = NULL;
 
 		if (pdata->requestor_name) {
 			free(pdata->requestor_name);
@@ -978,7 +978,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	}
 
 	/* send the remote name signal */
-	l = slist_find(pdata->discovered_devices, peer, remote_name_find_by_bdaddr);
+	l = slist_find(pdata->disc_devices, peer, disc_device_find_by_bdaddr);
 
 	if (l) {
 		dev = l->data;
@@ -998,12 +998,26 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 
 		free(name);
 		name_status = NAME_SENT;
-	}
 
-	/* handle only requests triggered by dbus applications */
-	if ((pdata->discover_state == DISCOVER_RUNNING_WITH_NAMES) ||
-		(pdata->discover_state == DISCOVER_RUNNING))
-		remote_name_append(&pdata->discovered_devices, peer, name_status);
+		/*
+		 * Add in the discovered devices list to avoid
+		 * multiple remote name update signals
+		 */
+		switch (pdata->discover_state) {
+		    case DISCOVER_RUNNING_WITH_NAMES:
+		    case DISCOVER_RUNNING:
+			    disc_device_append(&pdata->disc_devices, peer, name_status);
+			    break;
+		    default: /* ignore */
+			    break;
+		}
+
+
+	} else {
+		/* check if the remote name needs be requested */
+		if (pdata->discover_state == DISCOVER_RUNNING_WITH_NAMES)
+			disc_device_append(&pdata->disc_devices, peer, name_status);
+	}
 
 failed:
 	if (signal_device)
@@ -1035,7 +1049,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 
 	/* remove from remote name request list */
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
-		remote_name_remove(&pdata->discovered_devices, peer);
+		disc_device_remove(&pdata->disc_devices, peer);
 
 	/* if the requested name failed, don't send signal and request the next name */
 	if (status)
@@ -1051,13 +1065,13 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	send_reply_and_unref(connection, message);
 
 	/* check if there is more devices to request names */
-	if (!remote_name_resolve(pdata))
+	if (!disc_device_req_name(pdata))
 		goto failed; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
-	slist_foreach(pdata->discovered_devices, discovered_device_info_free, NULL);
-	slist_free(pdata->discovered_devices);
-	pdata->discovered_devices = NULL;
+	slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
+	slist_free(pdata->disc_devices);
+	pdata->disc_devices = NULL;
 
 	if (pdata->discover_state != DISCOVER_OFF) {
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
@@ -1128,7 +1142,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	dev = l->data;
 
 	if (status) {
-		error_connection_attempt_failed(connection, dev->msg, status);
+		error_connection_attempt_failed(connection, dev->msg, bt_error(status));
 		goto failed;
 	}
 
@@ -1158,14 +1172,14 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Unable to send the HCI request: %s (%d)",
-			strerror(errno), errno);
+				strerror(errno), errno);
 		error_failed(connection, dev->msg, errno);
 		goto failed;
 	}
 
 	if (rp.status) {
 		error("Failed with status 0x%02x", rp.status);
-		error_failed(connection, dev->msg, rp.status);
+		error_failed(connection, dev->msg, bt_error(rp.status));
 		goto failed;
 	}
 	/* request sent properly */
@@ -1527,6 +1541,9 @@ static void sigalarm_handler(int signum)
 		}
 
 		active_handlers++;
+
+		if (!pdata->discoverable_timeout)
+			continue; /* skip if discoverable always: timeout zero */
 
 		if ((++(pdata->timeout_hits) % pdata->discoverable_timeout) != 0)
 			continue;
