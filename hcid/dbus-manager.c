@@ -39,6 +39,21 @@
 #include "hcid.h"
 #include "dbus.h"
 
+static DBusHandlerResult handle_mgr_interface_version_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	dbus_uint32_t version = 0;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return error_out_of_memory(conn, msg);
+ 
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &version,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
 static DBusHandlerResult handle_mgr_list_devices_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
@@ -128,8 +143,9 @@ static DBusHandlerResult handle_mgr_default_adapter_req(DBusConnection *conn, DB
 }
 
 static struct service_data mgr_services[] = {
-	{ "ListAdapters",	handle_mgr_list_devices_req	},
-	{ "DefaultAdapter",	handle_mgr_default_adapter_req	},
+	{ "InterfaceVersion",	handle_mgr_interface_version_req	},
+	{ "ListAdapters",	handle_mgr_list_devices_req		},
+	{ "DefaultAdapter",	handle_mgr_default_adapter_req		},
 	{ NULL, NULL }
 };
 
