@@ -134,6 +134,17 @@ int find_connection_handle(int dd, bdaddr_t *peer)
 	return handle;
 }
 
+int active_conn_find_by_bdaddr(const void *data, const void *user_data)
+{
+	const struct active_conn_info *con = data;
+	const bdaddr_t *bdaddr = user_data;
+
+	if (memcmp(con->bdaddr, bdaddr, sizeof(*bdaddr)) == 0)
+		return 0;
+
+	return -1;
+}
+
 static int bonding_requests_append(struct slist **list, bdaddr_t *bdaddr, DBusMessage *msg, bonding_state_t bonding_state)
 {
 	struct bonding_request_info *dev;
@@ -441,6 +452,48 @@ static DBusHandlerResult handle_dev_is_discoverable_req(DBusConnection *conn, DB
 		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &discoverable,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_is_connected_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusError err;
+	dbus_bool_t connected = FALSE;
+
+	struct hci_dbus_data *dbus_data = data;
+	struct slist *l = dbus_data->active_conn;
+
+	const char *peer_addr;
+	bdaddr_t peer_bdaddr;
+
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+	        dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (is_valid_address(peer_addr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	str2ba(peer_addr, &peer_bdaddr);
+
+	l = slist_find(l, &peer_bdaddr, active_conn_find_by_bdaddr);
+	if (l)
+		connected = TRUE;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return error_out_of_memory(conn, msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
 
 	return send_reply_and_unref(conn, reply);
@@ -1665,6 +1718,7 @@ static struct service_data dev_services[] = {
 	{ "SetDiscoverableTimeout",			handle_dev_set_discoverable_to_req,	},
 	{ "IsConnectable",				handle_dev_is_connectable_req,		},
 	{ "IsDiscoverable",				handle_dev_is_discoverable_req,		},
+	{ "IsConnected",				handle_dev_is_connected_req,		},
 	{ "ListConnections",				handle_dev_list_connections_req,	},
 	{ "GetMajorClass",				handle_dev_get_major_class_req,		},
 	{ "ListAvailableMinorClasses",			handle_dev_list_minor_classes_req,	},
