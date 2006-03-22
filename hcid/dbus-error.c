@@ -168,6 +168,12 @@ DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *m
 	return error_in_progress(conn, msg, "Bonding in progress");
 }
 
+DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_reply_and_unref(conn,
+				    dbus_message_new_error(msg, ERROR_INTERFACE ".AuthenticationCanceled",
+							   "Authentication Canceled"));
+}
 DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_in_progress(conn, msg, "Discover in progress");

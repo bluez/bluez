@@ -119,6 +119,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer);
 void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, uint8_t reason);
 void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status);
+void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr);
 void hcid_dbus_setname_complete(bdaddr_t *local);
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local);
 #else
@@ -129,6 +130,7 @@ static inline void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_
 static inline void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer) {}
 static inline void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t reason) {}
 static inline void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status) {}
+static inline void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr) {}
 static inline void hcid_dbus_setname_complete(bdaddr_t *local) {}
 static inline void hcid_dbus_setscan_enable_complete(bdaddr_t *local) {}
 #endif

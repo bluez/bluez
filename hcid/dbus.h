@@ -89,15 +89,11 @@ struct discovered_dev_info {
 	name_status_t name_status;
 };
 
-typedef enum {
-	CONNECTING,
-	PAIRING	
-} bonding_state_t;
-
 struct bonding_request_info {
 	bdaddr_t *bdaddr;
-	DBusMessage *msg;
-	bonding_state_t bonding_state;
+	DBusMessage *req_msg;
+	DBusMessage *cancel_msg;
+	int disconnect; /* disconnect after finish */
 };
 
 struct active_conn_info {
@@ -155,6 +151,7 @@ DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMess
 DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_not_in_progress(DBusConnection *conn, DBusMessage *msg);
@@ -191,6 +188,7 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 }
 
 void disc_device_info_free(void *data, void *user_data);
+void bonding_request_info_free(void *data, void *user_data);
 int bonding_requests_find(const void *data, const void *user_data);
 int disc_device_find_by_bdaddr(const void *data, const void *user_data);
 int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);

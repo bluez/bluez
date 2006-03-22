@@ -108,13 +108,16 @@ void disc_device_info_free(void *data, void *user_data)
 	}
 }
 
-static void bonding_request_info_free(void *data, void *user_data)
+void bonding_request_info_free(void *data, void *user_data)
 {
 	struct bonding_request_info *dev = data;
 
 	if (dev) {
 		free(dev->bdaddr);
-		dbus_message_unref(dev->msg);
+		if (dev->req_msg)
+			dbus_message_unref(dev->req_msg);
+		if (dev->cancel_msg)
+			dbus_message_unref(dev->cancel_msg);
 		free(dev);
 	}
 }
@@ -181,6 +184,7 @@ int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name
 	if (!dev)
 		return -1;
 
+	memset(dev, 0, sizeof(*dev));
 	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
 	bacpy(dev->bdaddr, bdaddr);
 	dev->name_status = name_status;
@@ -227,6 +231,7 @@ static int active_conn_append(struct slist **list, bdaddr_t *bdaddr, uint16_t ha
 	if (!dev)
 		return -1;
 
+	memset(dev, 0 , sizeof(*dev));
 	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
 	bacpy(dev->bdaddr, bdaddr);
 	dev->handle = handle;
@@ -504,7 +509,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	}
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
-		error("Getting path data failed!");
+		error("Getting %s path data failed!", path);
 	else
 		pdata->mode = rp.enable;	/* Keep the current scan status */
 
@@ -627,6 +632,8 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	struct hci_dbus_data *pdata;
 	DBusMessage *msg_reply = NULL;
 	DBusMessage *msg_signal = NULL;
+	struct bonding_request_info *dev = NULL; 
+	struct slist *l;
 	char *local_addr, *peer_addr;
 	const char *name;
 	bdaddr_t tmp;
@@ -658,8 +665,8 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	}
 
 	dbus_message_append_args(msg_signal,
-					DBUS_TYPE_STRING, &peer_addr,
-					DBUS_TYPE_INVALID);
+					 DBUS_TYPE_STRING, &peer_addr,
+					 DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(connection, msg_signal, NULL) == FALSE) {
 		error("Can't send D-Bus bonding created signal");
@@ -669,26 +676,28 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	dbus_connection_flush(connection);
 
 	/* create the authentication reply */
-	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
-		struct slist *l;
-
-		l = slist_find(pdata->bonding_requests, peer, bonding_requests_find);
-
-		if (l) {
-			struct bonding_request_info *dev = l->data;
-
-			msg_reply = dbus_msg_new_authentication_return(dev->msg, status);
-			if (dbus_connection_send(connection, msg_reply, NULL) == FALSE) {
-				error("Can't send D-Bus reply for create bonding request");
-				goto failed;
-			}
-
-			dbus_message_unref(dev->msg);
-			pdata->bonding_requests = slist_remove(pdata->bonding_requests, dev);
-			free(dev->bdaddr);
-			free(dev);
-		}
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
+		goto failed;
 	}
+
+	l = slist_find(pdata->bonding_requests, peer, bonding_requests_find);
+
+	if (!l)
+		goto failed;
+
+	dev = l->data;
+
+	msg_reply = dbus_msg_new_authentication_return(dev->req_msg, status);
+	if (dbus_connection_send(connection, msg_reply, NULL) == FALSE) {
+		error("Can't send D-Bus reply for create bonding request");
+		goto failed;
+	}
+
+	/* FIXME: disconnect if required */
+
+	pdata->bonding_requests = slist_remove(pdata->bonding_requests, dev);
+	bonding_request_info_free(dev, NULL);
 
 failed:
 	if (msg_signal)
@@ -697,6 +706,62 @@ failed:
 	if (msg_reply)
 		dbus_message_unref(msg_reply);
 
+	bt_free(local_addr);
+	bt_free(peer_addr);
+}
+
+void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr)
+{
+	typedef struct {
+		uint8_t status;
+		bdaddr_t bdaddr;
+	}__attribute__ ((packed)) ret_param_conn_cancel;
+
+	char path[MAX_PATH_LENGTH];
+	bdaddr_t tmp;
+	ret_param_conn_cancel *ret = ptr + sizeof(evt_cmd_complete);
+	struct bonding_request_info *dev = NULL;
+	DBusMessage *reply;
+	char *local_addr, *peer_addr;
+	struct slist *l;
+	struct hci_dbus_data *pdata;
+	int id;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	baswap(&tmp, &ret->bdaddr); peer_addr = batostr(&tmp);
+
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		error("No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
+		goto failed;
+	}
+
+	l = slist_find(pdata->bonding_requests, &ret->bdaddr, bonding_requests_find);
+
+	if (!l)
+		goto failed;
+
+	dev = l->data;
+
+	if (!ret->status) {
+		reply = dbus_message_new_method_return(dev->cancel_msg);
+		send_reply_and_unref(connection, reply);
+	} else
+		error_failed(connection, dev->cancel_msg, bt_error(ret->status));	
+
+	dbus_message_unref(dev->cancel_msg);
+	dev->cancel_msg = NULL;
+	/* Don't remove from the list. It will be necessary 
+	 * to return the reply for create bonding request
+	 */
+
+failed:
 	bt_free(local_addr);
 	bt_free(peer_addr);
 }
@@ -1117,6 +1182,11 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
+		goto failed;
+	}
+
 	if (!status) {
 		/* Sent the remote device connected signal */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE, "RemoteDeviceConnected");
@@ -1126,13 +1196,10 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 						DBUS_TYPE_INVALID);
 
 		send_reply_and_unref(connection, message);
+
+		/* add in the active connetions list */
+		active_conn_append(&pdata->active_conn, peer, handle);
 	}
-
-	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
-		goto failed;
-
-	/* add in the active connetions list */
-	active_conn_append(&pdata->active_conn, peer, handle);
 
 	/* check if this connection request was requested by a bonding procedure */
 	l = slist_find(pdata->bonding_requests, peer, bonding_requests_find);
@@ -1142,16 +1209,13 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	dev = l->data;
 
 	if (status) {
-		error_connection_attempt_failed(connection, dev->msg, bt_error(status));
+		error_connection_attempt_failed(connection, dev->req_msg, bt_error(status));
 		goto failed;
 	}
 
-	if (dev->bonding_state != CONNECTING)
-		goto failed;
-
 	dd = hci_open_dev(pdata->dev_id);
 	if (dd < 0) {
-		error_no_such_adapter(connection, dev->msg);
+		error_no_such_adapter(connection, dev->req_msg);
 		goto failed;
 	}
 
@@ -1173,29 +1237,23 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Unable to send the HCI request: %s (%d)",
 				strerror(errno), errno);
-		error_failed(connection, dev->msg, errno);
+		error_failed(connection, dev->req_msg, errno);
 		goto failed;
 	}
 
 	if (rp.status) {
 		error("Failed with status 0x%02x", rp.status);
-		error_failed(connection, dev->msg, bt_error(rp.status));
+		error_failed(connection, dev->req_msg, bt_error(rp.status));
 		goto failed;
 	}
-	/* request sent properly */
-	dev->bonding_state = PAIRING;
-
+	goto done;
 failed:
 	/* remove from the list if the HCI pairing request was not sent */
 	if (dev) {
-		if (dev->bonding_state != PAIRING) {
-			dbus_message_unref(dev->msg);
-			pdata->bonding_requests = slist_remove(pdata->bonding_requests, dev);
-			free(dev->bdaddr);
-			free(dev);
-		}
+		pdata->bonding_requests = slist_remove(pdata->bonding_requests, dev);
+		bonding_request_info_free(dev, NULL);
 	}
-
+done:
 	hci_close_dev(dd);
 
 	bt_free(local_addr);
@@ -1223,8 +1281,10 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
 		goto failed;
+	}
 
 	l = slist_find(pdata->active_conn, &handle, active_conn_find_by_handle);
 
@@ -1739,7 +1799,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	}
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
-		error("Getting path data failed!");
+		error("Getting %s path data failed!", path);
 		goto failed;
 	}
 

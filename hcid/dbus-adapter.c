@@ -74,7 +74,7 @@ static const char *phone_minor_cls[] = {
 	"isdn"
 };
 
-static int is_valid_address(const char *addr)
+static int check_address(const char *addr)
 {
 	char tmp[18];
 	char *ptr = tmp;
@@ -87,7 +87,7 @@ static int is_valid_address(const char *addr)
 
 	memcpy(tmp, addr, 18);
 
-	while (ptr) {
+	while (*ptr) {
 
 		*ptr = toupper(*ptr);
 		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
@@ -111,28 +111,6 @@ static int is_valid_address(const char *addr)
 
 	return 0;
 }
-int find_connection_handle(int dd, bdaddr_t *peer)
-{
-	struct hci_conn_info_req *cr;
-	int handle = -1;
-
-	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return -1;
-
-	bacpy(&cr->bdaddr, peer);
-	cr->type = ACL_LINK;
-
-	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		free(cr);
-		return -1;
-	}
-
-	handle = cr->conn_info->handle;
-	free(cr);
-
-	return handle;
-}
 
 int active_conn_find_by_bdaddr(const void *data, const void *user_data)
 {
@@ -145,18 +123,20 @@ int active_conn_find_by_bdaddr(const void *data, const void *user_data)
 	return -1;
 }
 
-static int bonding_requests_append(struct slist **list, bdaddr_t *bdaddr, DBusMessage *msg, bonding_state_t bonding_state)
+static int bonding_requests_append(struct slist **list, bdaddr_t *bdaddr, DBusMessage *msg, int disconnect)
 {
 	struct bonding_request_info *dev;
 
 	dev = malloc(sizeof(*dev));
+
 	if (!dev)
 		return -1;
 
+	memset(dev, 0, sizeof(*dev));
 	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
 	bacpy(dev->bdaddr, bdaddr);
-	dev->msg = msg;
-	dev->bonding_state = bonding_state;
+	dev->req_msg = msg;
+	dev->disconnect = disconnect;
 
 	*list = slist_append(*list, dev);
 
@@ -480,7 +460,7 @@ static DBusHandlerResult handle_dev_is_connected_req(DBusConnection *conn, DBusM
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(peer_addr) < 0)
+	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	str2ba(peer_addr, &peer_bdaddr);
@@ -953,7 +933,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(peer_addr) < 0)
+	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
@@ -1021,7 +1001,7 @@ static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, D
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(addr_ptr) < 0)
+	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	str2ba(addr_ptr, &bdaddr);
@@ -1062,7 +1042,7 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if ((strlen(str_ptr) == 0) || (is_valid_address(addr_ptr) < 0)) {
+	if ((strlen(str_ptr) == 0) || (check_address(addr_ptr) < 0)) {
 		error("Alias change failed: Invalid parameter");
 		return error_invalid_arguments(conn, msg);
 	}
@@ -1110,7 +1090,7 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(addr_ptr) < 0)
+	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
@@ -1157,7 +1137,7 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(addr_ptr) < 0)
+	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
@@ -1190,15 +1170,17 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	char filename[PATH_MAX + 1];
 	char local_addr[18];
 	struct hci_request rq;
+	create_conn_cp cc_cp;
+	auth_requested_cp ar_cp;
 	evt_cmd_status rp;
 	DBusError err;
 	char *peer_addr = NULL;
 	char *str;
 	struct hci_dbus_data *dbus_data = data;
-	struct slist *l;
+	struct slist *lbon;
+	struct slist *lconn;
 	bdaddr_t peer_bdaddr;
-	int dd, handle, ecode;
-	bonding_state_t bonding_state;
+	int dd, ecode, disconnect;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1211,16 +1193,19 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(peer_addr) < 0)
+	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	str2ba(peer_addr, &peer_bdaddr);
-	
-	/* check if there is a pending bonding request */
-	l = slist_find(dbus_data->bonding_requests, &peer_bdaddr, bonding_requests_find);
 
-	if (l)
+	/* check if there is a pending bonding request */
+	lbon = slist_find(dbus_data->bonding_requests, &peer_bdaddr, bonding_requests_find);
+
+	if (lbon)
 		return error_bonding_in_progress(conn, msg);
+
+	if (dbus_data->requestor_name)
+		return error_discover_in_progress(conn, msg); 
 
 	ecode = get_device_address(dbus_data->dev_id, local_addr, sizeof(local_addr));
 	if (ecode < 0)
@@ -1256,38 +1241,32 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	rq.rlen = EVT_CMD_STATUS_SIZE;
 
 	/* check if there is an active connection */
-	handle = find_connection_handle(dd, &peer_bdaddr);
+	lconn = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
 
-	if (handle < 0 ) {
-		create_conn_cp cp;
-
-		memset(&cp, 0, sizeof(cp));
+	if (!lconn) {
+		memset(&cc_cp, 0, sizeof(cc_cp));
 		/* create a new connection */
-		bonding_state = CONNECTING;
-		
-		bacpy(&cp.bdaddr, &peer_bdaddr);
-		cp.pkt_type       = htobs(HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5);
-		cp.pscan_rep_mode = 0x02;
-		cp.clock_offset	  = htobs(0x0000);
-		cp.role_switch    = 0x01;
+		bacpy(&cc_cp.bdaddr, &peer_bdaddr);
+		cc_cp.pkt_type       = htobs(HCI_DM1);
+		cc_cp.pscan_rep_mode = 0x02;
+		cc_cp.clock_offset   = htobs(0x0000);
+		cc_cp.role_switch    = 0x01;
 
 		rq.ocf    = OCF_CREATE_CONN;
-		rq.cparam = &cp;
+		rq.cparam = &cc_cp;
 		rq.clen   = CREATE_CONN_CP_SIZE;
+		disconnect = 1;
 	} else {
-		/* connection found */
-		auth_requested_cp cp;
-
-		memset(&cp, 0, sizeof(cp));
+		struct active_conn_info *dev = lconn->data;
+		memset(&ar_cp, 0, sizeof(ar_cp));
 
 		/* active connection found */
-		bonding_state = PAIRING;
-
-		cp.handle = handle;
+		ar_cp.handle = dev->handle;
 
 		rq.ocf    = OCF_AUTH_REQUESTED;
-		rq.cparam = &cp;
+		rq.cparam = &ar_cp;
 		rq.clen   = AUTH_REQUESTED_CP_SIZE;
+		disconnect = 0;
 	}
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
@@ -1304,11 +1283,121 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	}
 
 	/* add in the bonding requests list */
-	bonding_requests_append(&dbus_data->bonding_requests, &peer_bdaddr, msg, bonding_state);
+	bonding_requests_append(&dbus_data->bonding_requests, &peer_bdaddr,
+					dbus_message_ref(msg), disconnect);
 
-	dbus_message_ref(msg);
 	hci_close_dev(dd);
 
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	struct bonding_request_info *dev;
+	struct slist *lconn;
+	struct slist *lbon;
+	DBusMessage *reply = NULL;
+	struct hci_request rq;
+	create_conn_cancel_cp cc_cp;
+	disconnect_cp dc_cp;
+	evt_cmd_status rp;
+	DBusError err;
+	bdaddr_t peer_bdaddr;
+	const char *peer_addr;
+	int dd = -1;
+
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+			      DBUS_TYPE_STRING, &peer_addr,
+			      DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (check_address(peer_addr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	/* FIXME: check authorization */
+
+	str2ba(peer_addr, &peer_bdaddr);
+
+	/* check if there is a pending bonding request */
+	lbon = slist_find(dbus_data->bonding_requests, &peer_bdaddr, bonding_requests_find);
+
+	if (!lbon) {
+		error("No bonding request pending.");
+		return error_unknown_address(conn, msg);
+	}
+
+	lconn = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
+
+	dev = lbon->data;
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0)
+		return error_no_such_adapter(conn, msg);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.rparam  = &rp;
+	rq.rlen    = EVT_CMD_STATUS_SIZE;
+	rq.event   = EVT_CMD_STATUS;
+
+	if (!lconn) {
+		/* connection request is pending */
+		memset(&cc_cp, 0, sizeof(cc_cp));
+		bacpy(&cc_cp.bdaddr, dev->bdaddr);
+		rq.ocf    = OCF_CREATE_CONN_CANCEL;
+		rq.cparam = &cc_cp;
+		rq.clen   = CREATE_CONN_CANCEL_CP_SIZE;
+
+		dev->cancel_msg = dbus_message_ref(msg);
+	} else {
+		struct active_conn_info *cinfo = lconn->data;
+		/* FIXME: if waiting remote PIN, which HCI cmd must be sent? */
+
+		/* reply to cancel bonding */
+		reply = dbus_message_new_method_return(msg);
+		send_reply_and_unref(conn, reply);
+
+		/* Reply to the create bonding request */
+		error_authentication_canceled(conn, dev->req_msg);
+
+		dbus_data->bonding_requests = slist_remove(dbus_data->bonding_requests, dev);
+		bonding_request_info_free(dev, NULL);
+
+		/* disconnect from the remote device */
+
+		/* FIXME: send the disconnect if the connection was created by a create 
+		 * bonding procedure only. Otherwise, keep the connection active.
+		 */ 
+		memset(&dc_cp, 0, sizeof(dc_cp));
+		dc_cp.handle = cinfo->handle;
+		dc_cp.reason = 0x05;
+		rq.ocf       = OCF_DISCONNECT;
+		rq.cparam    = &dc_cp;
+		rq.clen      = DISCONNECT_CP_SIZE;
+	}
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+
+		error("Cancel bonding - unable to send the HCI request: %s (%d)",
+		      strerror(errno), errno);
+		hci_close_dev(dd);
+		return error_failed(conn, msg, errno);
+	}
+
+	if (rp.status) {
+		error("Cancel bonding - Failed with status 0x%02x", rp.status);
+		hci_close_dev(dd);
+		return error_failed(conn, msg, bt_error(rp.status));
+	}
+
+	hci_close_dev(dd);
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
@@ -1336,7 +1425,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(addr_ptr) < 0)
+	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -1421,7 +1510,7 @@ static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMe
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(addr_ptr) < 0)
+	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
@@ -1503,7 +1592,7 @@ static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(addr_ptr) < 0)
+	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
@@ -1549,7 +1638,7 @@ static DBusHandlerResult handle_dev_get_encryption_key_size_req(DBusConnection *
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (is_valid_address(addr_ptr) < 0)
+	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
 	str2ba(addr_ptr, &bdaddr);
@@ -1616,6 +1705,12 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 		dbus_data->discover_state = DISCOVER_OFF;
 		hci_close_dev(dd);
 		return error_failed(conn, msg, errno);
+	}
+
+	if (rp.status) {
+		error("Failed with status 0x%02x", rp.status);
+		hci_close_dev(dd);
+		return error_failed(conn, msg, bt_error(rp.status));
 	}
 
 	requestor_name = dbus_message_get_sender(msg);
@@ -1740,6 +1835,7 @@ static struct service_data dev_services[] = {
 	{ "LastUsed",					handle_dev_last_used_req,		},
 
 	{ "CreateBonding",				handle_dev_create_bonding_req,		},
+	{ "CancelBonding",				handle_dev_cancel_bonding_req		},
 	{ "RemoveBonding",				handle_dev_remove_bonding_req,		},
 	{ "HasBonding",					handle_dev_has_bonding_req,		},
 	{ "ListBondings",				handle_dev_list_bondings_req,		},
