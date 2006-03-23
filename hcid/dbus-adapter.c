@@ -1165,6 +1165,61 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 	return send_reply_and_unref(conn, reply);
 }
 
+static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusError err;
+
+	struct hci_dbus_data *dbus_data = data;
+	struct slist *l = dbus_data->active_conn;
+
+	const char *peer_addr;
+	bdaddr_t peer_bdaddr;
+
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (check_address(peer_addr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	str2ba(peer_addr, &peer_bdaddr);
+
+	l = slist_find(l, &peer_bdaddr, active_conn_find_by_bdaddr);
+	if (l) {
+		int dd;
+		struct active_conn_info *dev = l->data;
+
+		dd = hci_open_dev(dbus_data->dev_id);
+		if (dd < 0)
+			return error_no_such_adapter(conn, msg);
+
+		/* Send the HCI disconnect command */
+		if (hci_disconnect(dd, dev->handle, HCI_OE_USER_ENDED_CONNECTION, 100) < 0) {
+			error("Disconnect failed");
+			hci_close_dev(dd);
+			return error_failed(conn, msg, errno);
+		}
+
+		hci_close_dev(dd);
+	} else 
+		return error_not_connected(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	return send_reply_and_unref(conn, reply);
+
+}
+
 static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	char filename[PATH_MAX + 1];
@@ -1802,49 +1857,51 @@ failed:
 }
 
 static struct service_data dev_services[] = {
-	{ "GetAddress",					handle_dev_get_address_req,		},
-	{ "GetVersion",					handle_dev_get_version_req,		},
-	{ "GetRevision",				handle_dev_get_revision_req,		},
-	{ "GetManufacturer",				handle_dev_get_manufacturer_req,	},
-	{ "GetCompany",					handle_dev_get_company_req,		},
-	{ "GetMode",					handle_dev_get_mode_req,		},
-	{ "SetMode",					handle_dev_set_mode_req,		},
-	{ "GetDiscoverableTimeout",			handle_dev_get_discoverable_to_req,	},
-	{ "SetDiscoverableTimeout",			handle_dev_set_discoverable_to_req,	},
-	{ "IsConnectable",				handle_dev_is_connectable_req,		},
-	{ "IsDiscoverable",				handle_dev_is_discoverable_req,		},
-	{ "IsConnected",				handle_dev_is_connected_req,		},
-	{ "ListConnections",				handle_dev_list_connections_req,	},
-	{ "GetMajorClass",				handle_dev_get_major_class_req,		},
-	{ "ListAvailableMinorClasses",			handle_dev_list_minor_classes_req,	},
-	{ "GetMinorClass",				handle_dev_get_minor_class_req,		},
-	{ "SetMinorClass",				handle_dev_set_minor_class_req,		},
-	{ "GetServicesClasses",				handle_dev_get_service_classes_req,	},
-	{ "GetName",					handle_dev_get_name_req,		},
-	{ "SetName",					handle_dev_set_name_req,		},
+	{ "GetAddress",					handle_dev_get_address_req		},
+	{ "GetVersion",					handle_dev_get_version_req		},
+	{ "GetRevision",				handle_dev_get_revision_req		},
+	{ "GetManufacturer",				handle_dev_get_manufacturer_req		},
+	{ "GetCompany",					handle_dev_get_company_req		},
+	{ "GetMode",					handle_dev_get_mode_req			},
+	{ "SetMode",					handle_dev_set_mode_req			},
+	{ "GetDiscoverableTimeout",			handle_dev_get_discoverable_to_req	},
+	{ "SetDiscoverableTimeout",			handle_dev_set_discoverable_to_req	},
+	{ "IsConnectable",				handle_dev_is_connectable_req		},
+	{ "IsDiscoverable",				handle_dev_is_discoverable_req		},
+	{ "IsConnected",				handle_dev_is_connected_req		},
+	{ "ListConnections",				handle_dev_list_connections_req		},
+	{ "GetMajorClass",				handle_dev_get_major_class_req		},
+	{ "ListAvailableMinorClasses",			handle_dev_list_minor_classes_req	},
+	{ "GetMinorClass",				handle_dev_get_minor_class_req		},
+	{ "SetMinorClass",				handle_dev_set_minor_class_req		},
+	{ "GetServicesClasses",				handle_dev_get_service_classes_req	},
+	{ "GetName",					handle_dev_get_name_req			},
+	{ "SetName",					handle_dev_set_name_req			},
 	
-	{ "GetRemoteVersion",				handle_dev_get_remote_version_req,	},
-	{ "GetRemoteRevision",				handle_dev_get_remote_revision_req,	},
-	{ "GetRemoteManufacturer",			handle_dev_get_remote_manufacturer_req,	},
-	{ "GetRemoteCompany",				handle_dev_get_remote_company_req,	},
-	{ "GetRemoteName",				handle_dev_get_remote_name_req,		},
-	{ "GetRemoteAlias",				handle_dev_get_remote_alias_req,	},
-	{ "SetRemoteAlias",				handle_dev_set_remote_alias_req,	},
+	{ "GetRemoteVersion",				handle_dev_get_remote_version_req	},
+	{ "GetRemoteRevision",				handle_dev_get_remote_revision_req	},
+	{ "GetRemoteManufacturer",			handle_dev_get_remote_manufacturer_req	},
+	{ "GetRemoteCompany",				handle_dev_get_remote_company_req	},
+	{ "GetRemoteName",				handle_dev_get_remote_name_req		},
+	{ "GetRemoteAlias",				handle_dev_get_remote_alias_req		},
+	{ "SetRemoteAlias",				handle_dev_set_remote_alias_req		},
 
-	{ "LastSeen",					handle_dev_last_seen_req,		},
-	{ "LastUsed",					handle_dev_last_used_req,		},
+	{ "LastSeen",					handle_dev_last_seen_req		},
+	{ "LastUsed",					handle_dev_last_used_req		},
 
-	{ "CreateBonding",				handle_dev_create_bonding_req,		},
+	{ "DisconnectRemoteDevice",			handle_dev_disconnect_remote_device_req	},
+
+	{ "CreateBonding",				handle_dev_create_bonding_req		},
 	{ "CancelBonding",				handle_dev_cancel_bonding_req		},
-	{ "RemoveBonding",				handle_dev_remove_bonding_req,		},
-	{ "HasBonding",					handle_dev_has_bonding_req,		},
-	{ "ListBondings",				handle_dev_list_bondings_req,		},
-	{ "GetPinCodeLength",				handle_dev_get_pin_code_length_req,	},
-	{ "GetEncryptionKeySize",			handle_dev_get_encryption_key_size_req,	},
+	{ "RemoveBonding",				handle_dev_remove_bonding_req		},
+	{ "HasBonding",					handle_dev_has_bonding_req		},
+	{ "ListBondings",				handle_dev_list_bondings_req		},
+	{ "GetPinCodeLength",				handle_dev_get_pin_code_length_req	},
+	{ "GetEncryptionKeySize",			handle_dev_get_encryption_key_size_req	},
 
-	{ "DiscoverDevices",				handle_dev_discover_devices_req,	},
+	{ "DiscoverDevices",				handle_dev_discover_devices_req		},
 	{ "DiscoverDevicesWithoutNameResolving",	handle_dev_discover_devices_req		},
-	{ "CancelDiscovery",				handle_dev_cancel_discovery_req,	},
+	{ "CancelDiscovery",				handle_dev_cancel_discovery_req		},
 
 	{ NULL, NULL }
 };
