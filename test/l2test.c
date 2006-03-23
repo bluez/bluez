@@ -683,7 +683,7 @@ static void usage(void)
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-R] reliable mode\n"
-		"\t[-D] use connectionless channel (datagram)\n"
+		"\t[-G] use connectionless channel (datagram)\n"
 		"\t[-F] enable flow control\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
@@ -698,7 +698,7 @@ int main(int argc ,char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:N:L:RDFAESM")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:N:L:RGFAESM")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -796,7 +796,7 @@ int main(int argc ,char *argv[])
 			secure = 1;
 			break;
 
-		case 'D':
+		case 'G':
 			socktype = SOCK_DGRAM;
 			break;
 
