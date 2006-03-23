@@ -76,6 +76,12 @@ static unsigned short psm = 10;
 /* Default number of frames to send (-1 = infinite) */
 static int num_frames = -1;
 
+/* Default number of consecutive frames before the delay */
+static int count = 1;
+
+/* Default delay after sending count number of frames */
+static unsigned long delay = 0;
+
 static int flowctl = 0;
 static int master = 0;
 static int auth = 0;
@@ -579,6 +585,9 @@ static void send_mode(int sk)
 			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
+
+		if (num_frames && delay && !(seq % count))
+			usleep(delay);
 	}
 
 	syslog(LOG_INFO, "Closing channel ...");
@@ -608,6 +617,9 @@ static void senddump_mode(int sk)
 			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
 			exit(1);
 		}
+
+		if (num_frames && delay && !(seq % count))
+			usleep(delay);
 	}
 
 	dump_mode(sk);
@@ -682,6 +694,8 @@ static void usage(void)
 		"\t[-I imtu] [-O omtu]\n"
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
+		"\t[-C num] send num frames before delay (default = 1)\n"
+		"\t[-D seconds] delay after sending num frames (default = 0)\n"
 		"\t[-R] reliable mode\n"
 		"\t[-G] use connectionless channel (datagram)\n"
 		"\t[-F] enable flow control\n"
@@ -698,7 +712,7 @@ int main(int argc ,char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:N:L:RGFAESM")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:N:L:C:D:RGFAESM")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -770,6 +784,14 @@ int main(int argc ,char *argv[])
 
 		case 'L':
 			linger = atoi(optarg);
+			break;
+
+		case 'C':
+			count = atoi(optarg);
+			break;
+
+		case 'D':
+			delay = atoi(optarg) * 1000000;
 			break;
 
 		case 'R':

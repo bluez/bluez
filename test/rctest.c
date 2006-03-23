@@ -60,6 +60,12 @@ static unsigned char *buf;
 static long data_size = 127;
 static long num_frames = -1;
 
+/* Default number of consecutive frames before the delay */
+static int count = 1;
+
+/* Default delay after sending count number of frames */
+static unsigned long delay = 0;
+
 /* Default addr and channel */
 static bdaddr_t bdaddr;
 static uint8_t channel = 10;
@@ -344,6 +350,9 @@ static void send_mode(int sk)
 							strerror(errno), errno);
 			exit(1);
 		}
+
+		if (num_frames && delay && !(seq % count))
+			usleep(delay);
 	}
 
 	syslog(LOG_INFO, "Closing channel ...");
@@ -399,6 +408,8 @@ static void usage(void)
 		"\t[-b bytes] [-i device] [-P channel]\n"
 		"\t[-L seconds] enabled SO_LINGER option\n"
 		"\t[-N num] number of frames to send\n"
+		"\t[-C num] send num frames before delay (default = 1)\n"
+		"\t[-D seconds] delay after sending num frames (default = 0)\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 		"\t[-S] secure connection\n"
@@ -412,7 +423,7 @@ int main(int argc ,char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:N:MAESL:")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:N:MAESL:C:D:")) != EOF) {
 		switch (opt) {
 		case 'r':
 			mode = RECV;
@@ -488,6 +499,14 @@ int main(int argc ,char *argv[])
 
 		case 'N':
 			num_frames = atoi(optarg);
+			break;
+
+		case 'C':
+			count = atoi(optarg);
+			break;
+
+		case 'D':
+			delay = atoi(optarg) * 1000000;
 			break;
 
 		default:
