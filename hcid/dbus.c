@@ -108,16 +108,14 @@ void disc_device_info_free(void *data, void *user_data)
 	}
 }
 
-void bonding_request_info_free(void *data, void *user_data)
+void bonding_request_free(struct bonding_request_info *dev )
 {
-	struct bonding_request_info *dev = data;
-
 	if (dev) {
 		free(dev->bdaddr);
-		if (dev->req_msg)
-			dbus_message_unref(dev->req_msg);
-		if (dev->cancel_msg)
-			dbus_message_unref(dev->cancel_msg);
+		if (dev->rq)
+			dbus_message_unref(dev->rq);
+		if (dev->cancel)
+			dbus_message_unref(dev->cancel);
 		free(dev);
 	}
 }
@@ -132,18 +130,7 @@ static void active_conn_info_free(void *data, void *user_data)
 	}
 }
 
-int bonding_requests_find(const void *data, const void *user_data)
-{
-	const struct bonding_request_info *dev = data;
-	const bdaddr_t *bdaddr = user_data;
-
-	if (memcmp(dev->bdaddr, bdaddr, sizeof(*bdaddr)) == 0)
-		return 0;
-
-	return -1;
-}
-
-int disc_device_find_by_bdaddr(const void *data, const void *user_data)
+static int disc_device_find_by_bdaddr(const void *data, const void *user_data)
 {
 	const struct discovered_dev_info *dev = data;
 	const bdaddr_t *bdaddr = user_data;
@@ -210,6 +197,17 @@ static int disc_device_remove(struct slist **list, bdaddr_t *bdaddr)
 	}
 
 	return ret_val;
+}
+
+int active_conn_find_by_bdaddr(const void *data, const void *user_data)
+{
+	const struct active_conn_info *con = data;
+	const bdaddr_t *bdaddr = user_data;
+
+	if (memcmp(con->bdaddr, bdaddr, sizeof(*bdaddr)) == 0)
+		return 0;
+
+	return -1;
 }
 
 static int active_conn_find_by_handle(const void *data, const void *user_data)
@@ -442,10 +440,9 @@ static gboolean unregister_dbus_path(const char *path)
 			pdata->disc_devices = NULL;
 		}
 
-		if (pdata->bonding_requests) {
-			slist_foreach(pdata->bonding_requests, bonding_request_info_free, NULL);
-			slist_free(pdata->bonding_requests);
-			pdata->bonding_requests = NULL;
+		if (pdata->bonding) {
+			bonding_request_free(pdata->bonding);
+			pdata->bonding = NULL;
 		}
 
 		if (pdata->active_conn) {
@@ -632,8 +629,6 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	struct hci_dbus_data *pdata;
 	DBusMessage *msg_reply = NULL;
 	DBusMessage *msg_signal = NULL;
-	struct bonding_request_info *dev = NULL; 
-	struct slist *l;
 	char *local_addr, *peer_addr;
 	const char *name;
 	bdaddr_t tmp;
@@ -681,23 +676,36 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 		goto failed;
 	}
 
-	l = slist_find(pdata->bonding_requests, peer, bonding_requests_find);
+	if (!pdata->bonding)
+		goto failed; /* skip: no bonding req pending */
 
-	if (!l)
-		goto failed;
-
-	dev = l->data;
-
-	msg_reply = dbus_msg_new_authentication_return(dev->req_msg, status);
+	msg_reply = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
 	if (dbus_connection_send(connection, msg_reply, NULL) == FALSE) {
 		error("Can't send D-Bus reply for create bonding request");
 		goto failed;
 	}
 
 	/* FIXME: disconnect if required */
+	if (pdata->bonding->disconnect) {
+		struct slist *l;
 
-	pdata->bonding_requests = slist_remove(pdata->bonding_requests, dev);
-	bonding_request_info_free(dev, NULL);
+		l = slist_find(pdata->active_conn, peer, active_conn_find_by_bdaddr);
+		if (l) {
+			struct active_conn_info *con = l->data;
+			int dd = hci_open_dev(pdata->dev_id);
+			/* Send the HCI disconnect command */
+			if (hci_disconnect(dd, con->handle, HCI_OE_USER_ENDED_CONNECTION, 100) < 0) {
+				error("Disconnect failed");
+			}
+			hci_close_dev(dd);
+		}
+	}
+
+	bonding_request_free(pdata->bonding);
+	pdata->bonding = NULL;
+
+	free(pdata->requestor_name);
+	pdata->requestor_name = NULL;
 
 failed:
 	if (msg_signal)
@@ -720,10 +728,8 @@ void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr)
 	char path[MAX_PATH_LENGTH];
 	bdaddr_t tmp;
 	ret_param_conn_cancel *ret = ptr + sizeof(evt_cmd_complete);
-	struct bonding_request_info *dev = NULL;
 	DBusMessage *reply;
 	char *local_addr, *peer_addr;
-	struct slist *l;
 	struct hci_dbus_data *pdata;
 	int id;
 
@@ -742,24 +748,20 @@ void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr)
 		goto failed;
 	}
 
-	l = slist_find(pdata->bonding_requests, &ret->bdaddr, bonding_requests_find);
-
-	if (!l)
+	if (!pdata->bonding)
 		goto failed;
 
-	dev = l->data;
-
+	if (memcmp(pdata->bonding->bdaddr, &ret->bdaddr, sizeof(bdaddr_t)))
+		goto failed;
+	
 	if (!ret->status) {
-		reply = dbus_message_new_method_return(dev->cancel_msg);
+		reply = dbus_message_new_method_return(pdata->bonding->cancel);
 		send_reply_and_unref(connection, reply);
 	} else
-		error_failed(connection, dev->cancel_msg, bt_error(ret->status));	
+		error_failed(connection, pdata->bonding->cancel, bt_error(ret->status));	
 
-	dbus_message_unref(dev->cancel_msg);
-	dev->cancel_msg = NULL;
-	/* Don't remove from the list. It will be necessary 
-	 * to return the reply for create bonding request
-	 */
+	dbus_message_unref(pdata->bonding->cancel);
+	pdata->bonding->cancel = NULL;
 
 failed:
 	bt_free(local_addr);
@@ -768,6 +770,7 @@ failed:
 
 void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
+	struct hci_dbus_data *pdata;
 	DBusMessage *message = NULL;
 	char path[MAX_PATH_LENGTH];
 	char *local_addr;
@@ -783,6 +786,9 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
+		pdata->discover_state = STATE_DISCOVER;
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"DiscoveryStarted");
@@ -919,12 +925,14 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
-		if (!disc_device_req_name(pdata)) {
-			pdata->discover_state = RESOLVING_NAMES;
-			goto failed; /* skip - there is name to resolve */
-		}
 
-		pdata->discover_state = DISCOVER_OFF;
+		if (pdata->discover_type == RESOLVE_NAMES) {
+			if (!disc_device_req_name(pdata)) {
+				pdata->discover_state = STATE_RESOLVING_NAMES;
+				goto failed; /* skip - there is name to resolve */
+			}
+		}
+		pdata->discover_state = STATE_IDLE;
 
 		/* free discovered devices list */
 		slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
@@ -1063,26 +1071,13 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 
 		free(name);
 		name_status = NAME_SENT;
-
-		/*
-		 * Add in the discovered devices list to avoid
-		 * multiple remote name update signals
-		 */
-		switch (pdata->discover_state) {
-		    case DISCOVER_RUNNING_WITH_NAMES:
-		    case DISCOVER_RUNNING:
-			    disc_device_append(&pdata->disc_devices, peer, name_status);
-			    break;
-		    default: /* ignore */
-			    break;
-		}
+	} 
+	/* queue only results triggered by D-Bus clients */
+	if (pdata->requestor_name)
+		disc_device_append(&pdata->disc_devices, peer, name_status);
 
 
-	} else {
-		/* check if the remote name needs be requested */
-		if (pdata->discover_state == DISCOVER_RUNNING_WITH_NAMES)
-			disc_device_append(&pdata->disc_devices, peer, name_status);
-	}
+	disc_device_append(&pdata->disc_devices, peer, name_status);
 
 failed:
 	if (signal_device)
@@ -1133,12 +1128,14 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	if (!disc_device_req_name(pdata))
 		goto failed; /* skip if a new request has been sent */
 
+	pdata->discover_state = STATE_IDLE;
+
 	/* free discovered devices list */
 	slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
 
-	if (pdata->discover_state != DISCOVER_OFF) {
+	if (pdata->discover_type == RESOLVE_NAMES) {
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						  "DiscoveryCompleted");
 
@@ -1148,8 +1145,6 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 			free(pdata->requestor_name);
 			pdata->requestor_name = NULL;
 		}
-
-		pdata->discover_state = DISCOVER_OFF;
 	}
 
 failed:
@@ -1165,8 +1160,6 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	evt_cmd_status rp;
 	auth_requested_cp cp;
 	struct hci_dbus_data *pdata = NULL;
-	const struct slist *l;
-	struct bonding_request_info *dev = NULL;
 	char *local_addr, *peer_addr;
 	bdaddr_t tmp;
 	int dd = -1, id;
@@ -1177,14 +1170,14 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		goto done;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting %s path data failed!", path);
-		goto failed;
+		goto done;
 	}
 
 	if (!status) {
@@ -1202,21 +1195,21 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	}
 
 	/* check if this connection request was requested by a bonding procedure */
-	l = slist_find(pdata->bonding_requests, peer, bonding_requests_find);
-	if (!l) 
-		goto failed;
+	if (!pdata->bonding)
+		goto done; /* skip */
 
-	dev = l->data;
+	if (memcmp(pdata->bonding->bdaddr, peer, sizeof(bdaddr_t)))
+		goto done; /* skip */
 
 	if (status) {
-		error_connection_attempt_failed(connection, dev->req_msg, bt_error(status));
-		goto failed;
+		error_connection_attempt_failed(connection, pdata->bonding->rq, bt_error(status));
+		goto bonding_failed;
 	}
 
 	dd = hci_open_dev(pdata->dev_id);
 	if (dd < 0) {
-		error_no_such_adapter(connection, dev->req_msg);
-		goto failed;
+		error_no_such_adapter(connection, pdata->bonding->rq);
+		goto bonding_failed;
 	}
 
 	/* request authentication */
@@ -1237,22 +1230,24 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Unable to send the HCI request: %s (%d)",
 				strerror(errno), errno);
-		error_failed(connection, dev->req_msg, errno);
-		goto failed;
+		error_failed(connection, pdata->bonding->rq, errno);
+		goto bonding_failed;
 	}
 
 	if (rp.status) {
 		error("Failed with status 0x%02x", rp.status);
-		error_failed(connection, dev->req_msg, bt_error(rp.status));
-		goto failed;
+		error_failed(connection, pdata->bonding->rq, bt_error(rp.status));
+		goto bonding_failed;
 	}
-	goto done;
-failed:
-	/* remove from the list if the HCI pairing request was not sent */
-	if (dev) {
-		pdata->bonding_requests = slist_remove(pdata->bonding_requests, dev);
-		bonding_request_info_free(dev, NULL);
-	}
+
+	goto done; /* skip: authentication requested */
+
+bonding_failed:
+	/* free bonding request if the HCI pairing request was not sent */
+	bonding_request_free(pdata->bonding);
+	pdata->bonding = NULL;
+	free(pdata->requestor_name);
+	pdata->requestor_name = NULL;
 done:
 	hci_close_dev(dd);
 

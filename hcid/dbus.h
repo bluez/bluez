@@ -73,11 +73,14 @@ struct service_data {
 typedef int (timeout_handler_func_t) (void *data);
 
 typedef enum {
-	DISCOVER_OFF,
-	DISCOVER_RUNNING,
-	DISCOVER_RUNNING_WITH_NAMES,
-	RESOLVING_NAMES
-} discover_state_t;
+	STATE_IDLE,
+	STATE_DISCOVER,
+	STATE_RESOLVING_NAMES
+}discover_state_t;
+
+/* discover type  */
+#define WITHOUT_NAME_RESOLVING		0
+#define RESOLVE_NAMES			1
 
 typedef enum {
 	NAME_PENDING,
@@ -91,8 +94,8 @@ struct discovered_dev_info {
 
 struct bonding_request_info {
 	bdaddr_t *bdaddr;
-	DBusMessage *req_msg;
-	DBusMessage *cancel_msg;
+	DBusMessage *rq;
+	DBusMessage *cancel;
 	int disconnect; /* disconnect after finish */
 };
 
@@ -107,12 +110,13 @@ struct hci_dbus_data {
 	uint32_t discoverable_timeout;
 	uint32_t timeout_hits;
 	timeout_handler_func_t *timeout_handler;
-	uint8_t mode;		/* scan mode */
-	discover_state_t discover_state;
+	uint8_t mode;		           /* scan mode */
+	discover_state_t discover_state;   /* discover states */
+	int discover_type;                 /* with/without name resolving */
 	struct slist *disc_devices;
-	char *requestor_name;	/* requestor unique name */
+	char *requestor_name;	           /* requestor unique name */
 	struct slist *passkey_agents;
-	struct slist *bonding_requests;
+	struct bonding_request_info *bonding;
 	struct slist *active_conn;
 };
 
@@ -187,10 +191,9 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+int active_conn_find_by_bdaddr(const void *data, const void *user_data);
+void bonding_request_free(struct bonding_request_info *dev);
 void disc_device_info_free(void *data, void *user_data);
-void bonding_request_info_free(void *data, void *user_data);
-int bonding_requests_find(const void *data, const void *user_data);
-int disc_device_find_by_bdaddr(const void *data, const void *user_data);
 int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);
 int disc_device_req_name(struct hci_dbus_data *dbus_data);
 

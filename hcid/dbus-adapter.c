@@ -112,35 +112,21 @@ static int check_address(const char *addr)
 	return 0;
 }
 
-int active_conn_find_by_bdaddr(const void *data, const void *user_data)
+static struct bonding_request_info *bonding_request_new(bdaddr_t *peer)
 {
-	const struct active_conn_info *con = data;
-	const bdaddr_t *bdaddr = user_data;
+	struct bonding_request_info *bonding;
+	
+	bonding = malloc(sizeof(*bonding));
 
-	if (memcmp(con->bdaddr, bdaddr, sizeof(*bdaddr)) == 0)
-		return 0;
+	if (!bonding)
+		return NULL;
 
-	return -1;
-}
+	memset(bonding, 0, sizeof(*bonding));
 
-static int bonding_requests_append(struct slist **list, bdaddr_t *bdaddr, DBusMessage *msg, int disconnect)
-{
-	struct bonding_request_info *dev;
+	bonding->bdaddr = malloc(sizeof(*bonding->bdaddr));
+	bacpy(bonding->bdaddr, peer);
 
-	dev = malloc(sizeof(*dev));
-
-	if (!dev)
-		return -1;
-
-	memset(dev, 0, sizeof(*dev));
-	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
-	bacpy(dev->bdaddr, bdaddr);
-	dev->req_msg = msg;
-	dev->disconnect = disconnect;
-
-	*list = slist_append(*list, dev);
-
-	return 0;
+	return bonding;
 }
 
 static DBusHandlerResult handle_dev_get_address_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -974,9 +960,14 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	str2ba(peer_addr, &peer_bdaddr);
 	disc_device_append(&dbus_data->disc_devices, &peer_bdaddr, NAME_PENDING);
 
-	/* check if there is a discover process running */
-	if (dbus_data->discover_state == DISCOVER_OFF)
-		disc_device_req_name(dbus_data);
+	/* 
+	 * if there is a discover process running, just queue the request.
+	 * Otherwise, send the HCI cmd to get the remote name
+	 */
+	if (dbus_data->discover_state == STATE_IDLE) {
+		if (!disc_device_req_name(dbus_data))
+			dbus_data->discover_state = STATE_RESOLVING_NAMES;
+	}
 
 	return error_request_deferred(conn, msg);
 }
@@ -1232,8 +1223,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	char *peer_addr = NULL;
 	char *str;
 	struct hci_dbus_data *dbus_data = data;
-	struct slist *lbon;
-	struct slist *lconn;
+	struct slist *l;
 	bdaddr_t peer_bdaddr;
 	int dd, ecode, disconnect;
 
@@ -1254,12 +1244,11 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	str2ba(peer_addr, &peer_bdaddr);
 
 	/* check if there is a pending bonding request */
-	lbon = slist_find(dbus_data->bonding_requests, &peer_bdaddr, bonding_requests_find);
-
-	if (lbon)
+	if (dbus_data->bonding)
 		return error_bonding_in_progress(conn, msg);
 
-	if (dbus_data->requestor_name)
+	/* check if there is a pending discover */
+	if (dbus_data->discover_state != STATE_IDLE || dbus_data->requestor_name)
 		return error_discover_in_progress(conn, msg); 
 
 	ecode = get_device_address(dbus_data->dev_id, local_addr, sizeof(local_addr));
@@ -1296,9 +1285,9 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	rq.rlen = EVT_CMD_STATUS_SIZE;
 
 	/* check if there is an active connection */
-	lconn = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
+	l = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
 
-	if (!lconn) {
+	if (!l) {
 		memset(&cc_cp, 0, sizeof(cc_cp));
 		/* create a new connection */
 		bacpy(&cc_cp.bdaddr, &peer_bdaddr);
@@ -1312,12 +1301,11 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		rq.clen   = CREATE_CONN_CP_SIZE;
 		disconnect = 1;
 	} else {
-		struct active_conn_info *dev = lconn->data;
+		struct active_conn_info *dev = l->data;
+
 		memset(&ar_cp, 0, sizeof(ar_cp));
 
-		/* active connection found */
 		ar_cp.handle = dev->handle;
-
 		rq.ocf    = OCF_AUTH_REQUESTED;
 		rq.cparam = &ar_cp;
 		rq.clen   = AUTH_REQUESTED_CP_SIZE;
@@ -1337,9 +1325,11 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		return error_failed(conn, msg, bt_error(rp.status));
 	}
 
-	/* add in the bonding requests list */
-	bonding_requests_append(&dbus_data->bonding_requests, &peer_bdaddr,
-					dbus_message_ref(msg), disconnect);
+	dbus_data->bonding = bonding_request_new(&peer_bdaddr);
+	dbus_data->bonding->disconnect = disconnect;
+	dbus_data->bonding->rq = dbus_message_ref(msg);
+
+	dbus_data->requestor_name = strdup(dbus_message_get_sender(msg));
 
 	hci_close_dev(dd);
 
@@ -1349,14 +1339,8 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	struct bonding_request_info *dev;
-	struct slist *lconn;
-	struct slist *lbon;
+	struct slist *l;
 	DBusMessage *reply = NULL;
-	struct hci_request rq;
-	create_conn_cancel_cp cc_cp;
-	disconnect_cp dc_cp;
-	evt_cmd_status rp;
 	DBusError err;
 	bdaddr_t peer_bdaddr;
 	const char *peer_addr;
@@ -1376,43 +1360,60 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	/* FIXME: check authorization */
-
 	str2ba(peer_addr, &peer_bdaddr);
 
 	/* check if there is a pending bonding request */
-	lbon = slist_find(dbus_data->bonding_requests, &peer_bdaddr, bonding_requests_find);
-
-	if (!lbon) {
+	if ((!dbus_data->bonding) ||
+	    	(memcmp(dbus_data->bonding->bdaddr, &peer_bdaddr, sizeof(bdaddr_t)))) {
 		error("No bonding request pending.");
 		return error_unknown_address(conn, msg);
 	}
 
-	lconn = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
-
-	dev = lbon->data;
+	if (strcmp(dbus_data->requestor_name, dbus_message_get_sender(msg)))
+		return error_not_authorized(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.rparam  = &rp;
-	rq.rlen    = EVT_CMD_STATUS_SIZE;
-	rq.event   = EVT_CMD_STATUS;
+	l = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
 
-	if (!lconn) {
+	if (!l) {
 		/* connection request is pending */
-		memset(&cc_cp, 0, sizeof(cc_cp));
-		bacpy(&cc_cp.bdaddr, dev->bdaddr);
-		rq.ocf    = OCF_CREATE_CONN_CANCEL;
-		rq.cparam = &cc_cp;
-		rq.clen   = CREATE_CONN_CANCEL_CP_SIZE;
+		struct hci_request rq;
+		create_conn_cancel_cp cp;
+		evt_cmd_status rp;
 
-		dev->cancel_msg = dbus_message_ref(msg);
+		memset(&rq, 0, sizeof(rq));
+		memset(&cp, 0, sizeof(cp));
+		memset(&rp, 0, sizeof(rp));
+
+		bacpy(&cp.bdaddr, dbus_data->bonding->bdaddr);
+
+		rq.ogf     = OGF_LINK_CTL;
+		rq.ocf     = OCF_CREATE_CONN_CANCEL;
+		rq.rparam  = &rp;
+		rq.rlen    = EVT_CMD_STATUS_SIZE;
+		rq.event   = EVT_CMD_STATUS;
+		rq.cparam  = &cp;
+		rq.clen    = CREATE_CONN_CANCEL_CP_SIZE;
+
+		if (hci_send_req(dd, &rq, 100) < 0) {
+			error("Cancel bonding - unable to send the HCI request: %s (%d)",
+			      strerror(errno), errno);
+			hci_close_dev(dd);
+			return error_failed(conn, msg, errno);
+		}
+
+		if (rp.status) {
+			error("Cancel bonding - Failed with status 0x%02x", rp.status);
+			hci_close_dev(dd);
+			return error_failed(conn, msg, bt_error(rp.status));
+		}
+
+		dbus_data->bonding->cancel = dbus_message_ref(msg);
 	} else {
-		struct active_conn_info *cinfo = lconn->data;
+		struct active_conn_info *cinfo = l->data;
 		/* FIXME: if waiting remote PIN, which HCI cmd must be sent? */
 
 		/* reply to cancel bonding */
@@ -1420,36 +1421,16 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 		send_reply_and_unref(conn, reply);
 
 		/* Reply to the create bonding request */
-		error_authentication_canceled(conn, dev->req_msg);
-
-		dbus_data->bonding_requests = slist_remove(dbus_data->bonding_requests, dev);
-		bonding_request_info_free(dev, NULL);
+		error_authentication_canceled(conn, dbus_data->bonding->rq);
 
 		/* disconnect from the remote device */
+		if (dbus_data->bonding->disconnect) {
+			if (hci_disconnect(dd, htobs(cinfo->handle), HCI_OE_USER_ENDED_CONNECTION, 1000) < 0)
+				error("Disconnect failed");
+		}
 
-		/* FIXME: send the disconnect if the connection was created by a create 
-		 * bonding procedure only. Otherwise, keep the connection active.
-		 */ 
-		memset(&dc_cp, 0, sizeof(dc_cp));
-		dc_cp.handle = cinfo->handle;
-		dc_cp.reason = 0x05;
-		rq.ocf       = OCF_DISCONNECT;
-		rq.cparam    = &dc_cp;
-		rq.clen      = DISCONNECT_CP_SIZE;
-	}
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-
-		error("Cancel bonding - unable to send the HCI request: %s (%d)",
-		      strerror(errno), errno);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
-	}
-
-	if (rp.status) {
-		error("Cancel bonding - Failed with status 0x%02x", rp.status);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, bt_error(rp.status));
+		bonding_request_free(dbus_data->bonding);
+		dbus_data->bonding = NULL;
 	}
 
 	hci_close_dev(dd);
@@ -1459,13 +1440,13 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
+	struct slist *l;
 	DBusConnection *connection = get_dbus_connection();
 	DBusMessage *reply;
 	DBusMessage *signal;
 	DBusError err;
 	char filename[PATH_MAX + 1];
 	char addr[18], *addr_ptr;
-	struct hci_conn_info_req *cr;
 	bdaddr_t bdaddr;
 	int dd;
 
@@ -1500,29 +1481,16 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	/* Delete the link key from the Bluetooth chip */
 	hci_delete_stored_link_key(dd, &bdaddr, 0, 1000);
 
-	/* Close active connections for the remote device */
-	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr) {
-		error("Can't allocate memory");
-		hci_close_dev(dd);
-		return error_out_of_memory(conn, msg);
-	}
-
-	bacpy(&cr->bdaddr, &bdaddr);
-	cr->type = ACL_LINK;
-	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		/* Ignore when there isn't active connections, return success */
-		hci_close_dev(dd);
-		free(cr);
-		return send_reply_and_unref(conn, dbus_message_new_method_return(msg));
-	}
-
-	/* Send the HCI disconnect command */
-	if (hci_disconnect(dd, htobs(cr->conn_info->handle), HCI_OE_USER_ENDED_CONNECTION, 1000) < 0) {
-		error("Disconnect failed");
-		free(cr);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
+	/* find the connection */
+	l = slist_find(dbus_data->active_conn, &bdaddr, active_conn_find_by_bdaddr);
+	if (l) {
+		struct active_conn_info *con = l->data;
+		/* Send the HCI disconnect command */
+		if (hci_disconnect(dd, htobs(con->handle), HCI_OE_USER_ENDED_CONNECTION, 1000) < 0) {
+			error("Disconnect failed");
+			hci_close_dev(dd);
+			return error_failed(conn, msg, errno);
+		}
 	}
 
 	/* FIXME: which condition must be verified before send the signal */
@@ -1536,8 +1504,6 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	}
 
 	reply = dbus_message_new_method_return(msg);
-
-	free(cr);
 
 	hci_close_dev(dd);
 
@@ -1715,7 +1681,6 @@ static DBusHandlerResult handle_dev_get_encryption_key_size_req(DBusConnection *
 static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply = NULL;
-	const char *requestor_name;
 	const char *method;
 	inquiry_cp cp;
 	evt_cmd_status rp;
@@ -1725,15 +1690,12 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	uint32_t lap = 0x9e8b33;
 	int dd;
 
-	if (dbus_data->requestor_name)
+	if (dbus_data->discover_state != STATE_IDLE)
 		return error_discover_in_progress(conn, msg);
 
-	method = dbus_message_get_member(msg);
-	if (strcmp("DiscoverDevicesWithoutNameResolving", method) == 0)
-		dbus_data->discover_state = DISCOVER_RUNNING;
-	else 
-		dbus_data->discover_state = DISCOVER_RUNNING_WITH_NAMES;
-		
+	if (dbus_data->bonding)
+		return error_bonding_in_progress(conn, msg);
+
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
@@ -1757,7 +1719,6 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Unable to start inquiry: %s (%d)",
 							strerror(errno), errno);
-		dbus_data->discover_state = DISCOVER_OFF;
 		hci_close_dev(dd);
 		return error_failed(conn, msg, errno);
 	}
@@ -1768,8 +1729,13 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 		return error_failed(conn, msg, bt_error(rp.status));
 	}
 
-	requestor_name = dbus_message_get_sender(msg);
-	dbus_data->requestor_name = strdup(requestor_name);
+	method = dbus_message_get_member(msg);
+	if (strcmp("DiscoverDevicesWithoutNameResolving", method) == 0)
+		dbus_data->discover_type = WITHOUT_NAME_RESOLVING;
+	else 
+		dbus_data->discover_type = RESOLVE_NAMES;
+		
+	dbus_data->requestor_name = strdup(dbus_message_get_sender(msg));
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1792,8 +1758,9 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	requestor_name = dbus_message_get_sender(msg);
 
 	/* is there discover pending? */
-	if (!dbus_data->requestor_name)
-		return error_not_authorized(conn, msg);
+	if (dbus_data->discover_state != STATE_DISCOVER &&
+	    	dbus_data->discover_state != STATE_RESOLVING_NAMES)
+		return error_not_authorized(conn, msg); /* FIXME: find a better error name */
 
 	/* only the discover requestor can cancel the inquiry process */
 	if (strcmp(dbus_data->requestor_name, requestor_name))
@@ -1810,9 +1777,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	rq.rlen   = sizeof(status);
 
 	switch (dbus_data->discover_state) {
-	case DISCOVER_OFF:
-		goto failed;
-	case RESOLVING_NAMES:
+	case STATE_RESOLVING_NAMES:
 		/* get the first element */
 		dev = (struct discovered_dev_info *) (dbus_data->disc_devices)->data;
 
@@ -1823,8 +1788,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
 		rq.event = EVT_CMD_STATUS;
 		break;
-	case DISCOVER_RUNNING:
-	case DISCOVER_RUNNING_WITH_NAMES:
+	default: /* STATE_DISCOVER */
 		rq.ocf = OCF_INQUIRY_CANCEL;
 		break;
 	}
@@ -1843,13 +1807,14 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		return error_failed(conn, msg, bt_error(status));
 	}
 
-failed:
 	slist_foreach(dbus_data->disc_devices, disc_device_info_free, NULL);
 	slist_free(dbus_data->disc_devices);
 	dbus_data->disc_devices = NULL;
 
-	free(dbus_data->requestor_name);
-	dbus_data->requestor_name = NULL;
+	if (dbus_data->requestor_name) {
+		free(dbus_data->requestor_name);
+		dbus_data->requestor_name = NULL;
+	}
 
 	reply = dbus_message_new_method_return(msg);
 
