@@ -141,6 +141,25 @@ static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *
 	return 0;
 }
 
+static void agent_exited(const char *name, struct hci_dbus_data *adapter)
+{
+	struct slist *cur, *next;
+
+	debug("Passkey agent %s exited without calling Unregister", name);
+
+	for (cur = adapter->passkey_agents; cur != NULL; cur = next) {
+		struct passkey_agent *agent = cur->data;
+
+		next = cur->next;
+
+		if (strcmp(agent->name, name))
+			continue;
+
+		adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
+		passkey_agent_free(agent);
+	}
+}
+
 static DBusHandlerResult register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -178,6 +197,12 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 		passkey_agent_free(agent);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
+
+	/* Only add a name listener if there isn't one already for this name */
+	ref.addr = NULL;
+	ref.path = NULL;
+	if (!slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp))
+		name_listener_add(conn, ref.name, (name_cb_t)agent_exited, adapter);
 
 	adapter->passkey_agents = slist_append(adapter->passkey_agents, agent);
 
@@ -218,6 +243,12 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 
 	adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
 	passkey_agent_free(agent);
+
+	/* Only remove the name listener if there are no more agents for this name */
+	ref.addr = NULL;
+	ref.path = NULL;
+	if (!slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp))
+		name_listener_remove(conn, ref.name, (name_cb_t)agent_exited, adapter);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
