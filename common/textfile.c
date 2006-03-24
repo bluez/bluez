@@ -143,8 +143,10 @@ static int write_key(const char *pathname, const char *key, const char *value)
 	size = st.st_size;
 
 	if (!size) {
-		pos = lseek(fd, size, SEEK_SET);
-		err = write_key_value(fd, key, value);
+		if (value) {
+			pos = lseek(fd, size, SEEK_SET);
+			err = write_key_value(fd, key, value);
+		}
 		goto unlock;
 	}
 

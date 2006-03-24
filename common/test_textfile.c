@@ -48,6 +48,28 @@ int main(int argc, char *argv[])
 	fd = creat(filename, 0644);
 	close(fd);
 
+	sprintf(key, "00:00:00:00:00:00");
+	if (textfile_del(filename, key) < 0) 
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	memset(value, 0, sizeof(value));
+	if (textfile_put(filename, key, value) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	str = textfile_get(filename, key);
+	if (!str)
+		fprintf(stderr, "No value for %s\n", key);
+	else
+		free(str);
+
+	if (textfile_del(filename, key) < 0) 
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	str = textfile_get(filename, key);
+	if (str) {
+		fprintf(stderr, "Found value for %s\n", key);
+		free(str);
+	}
 
 	for (i = 1; i < max + 1; i++) {
 		sprintf(key, "00:00:00:00:00:%02X", i);
