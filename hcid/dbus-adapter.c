@@ -1061,6 +1061,60 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 	return send_reply_and_unref(conn, reply);
 }
 
+static DBusHandlerResult handle_dev_clear_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusConnection *connection = get_dbus_connection();
+	DBusMessage *reply, *signal;
+	DBusError err;
+	char *addr_ptr;
+	bdaddr_t bdaddr;
+	int ecode, had_alias = 1;
+
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message argument:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (check_address(addr_ptr) < 0) {
+		error("Alias clear failed: Invalid parameter");
+		return error_invalid_arguments(conn, msg);
+	}
+
+	str2ba(addr_ptr, &bdaddr);
+
+	ecode = get_device_alias(dbus_data->dev_id, &bdaddr, NULL, 0);
+	if (ecode == -ENXIO) 
+		had_alias = 0;
+
+	ecode = set_device_alias(dbus_data->dev_id, &bdaddr, NULL);
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
+
+	if (had_alias) {
+		signal = dev_signal_factory(dbus_data->dev_id, "RemoteAliasCleared",
+							DBUS_TYPE_STRING, &addr_ptr,
+							DBUS_TYPE_INVALID);
+		if (signal) {
+			dbus_connection_send(connection, signal, NULL);
+			dbus_connection_flush(connection);
+			dbus_message_unref(signal);
+		}
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return error_out_of_memory(conn, msg);
+
+	return send_reply_and_unref(conn, reply);
+}
+
 static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
@@ -1850,6 +1904,7 @@ static struct service_data dev_services[] = {
 	{ "GetRemoteName",				handle_dev_get_remote_name_req		},
 	{ "GetRemoteAlias",				handle_dev_get_remote_alias_req		},
 	{ "SetRemoteAlias",				handle_dev_set_remote_alias_req		},
+	{ "ClearRemoteAlias",				handle_dev_clear_remote_alias_req	},
 
 	{ "LastSeen",					handle_dev_last_seen_req		},
 	{ "LastUsed",					handle_dev_last_used_req		},
