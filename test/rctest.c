@@ -351,7 +351,7 @@ static void send_mode(int sk)
 			exit(1);
 		}
 
-		if (num_frames && delay && !(seq % count))
+		if (num_frames && delay && count && !(seq % count))
 			usleep(delay);
 	}
 
@@ -409,7 +409,7 @@ static void usage(void)
 		"\t[-L seconds] enabled SO_LINGER option\n"
 		"\t[-N num] number of frames to send\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
-		"\t[-D seconds] delay after sending num frames (default = 0)\n"
+		"\t[-D milliseconds] delay after sending num frames (default = 0)\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 		"\t[-S] secure connection\n"
@@ -506,7 +506,7 @@ int main(int argc ,char *argv[])
 			break;
 
 		case 'D':
-			delay = atoi(optarg) * 1000000;
+			delay = atoi(optarg) * 1000;
 			break;
 
 		default:

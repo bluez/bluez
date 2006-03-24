@@ -586,7 +586,7 @@ static void send_mode(int sk)
 			exit(1);
 		}
 
-		if (num_frames && delay && !(seq % count))
+		if (num_frames && delay && count && !(seq % count))
 			usleep(delay);
 	}
 
@@ -618,7 +618,7 @@ static void senddump_mode(int sk)
 			exit(1);
 		}
 
-		if (num_frames && delay && !(seq % count))
+		if (num_frames && delay && count && !(seq % count))
 			usleep(delay);
 	}
 
@@ -695,7 +695,7 @@ static void usage(void)
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
-		"\t[-D seconds] delay after sending num frames (default = 0)\n"
+		"\t[-D milliseconds] delay after sending num frames (default = 0)\n"
 		"\t[-R] reliable mode\n"
 		"\t[-G] use connectionless channel (datagram)\n"
 		"\t[-F] enable flow control\n"
@@ -791,7 +791,7 @@ int main(int argc ,char *argv[])
 			break;
 
 		case 'D':
-			delay = atoi(optarg) * 1000000;
+			delay = atoi(optarg) * 1000;
 			break;
 
 		case 'R':
