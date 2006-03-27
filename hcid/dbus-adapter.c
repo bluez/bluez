@@ -638,6 +638,8 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 		return error_invalid_arguments(conn, msg);
 	}
 
+	/* FIXME: check if the major class is computer. If not, return UnsupportedMajorClass */
+
 	if (!minor)
 		return error_invalid_arguments(conn, msg);
 
@@ -681,7 +683,7 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 		return error_failed(conn, msg, errno);
 	}
 
-	signal = dev_signal_factory(dbus_data->dev_id, "MinorClassChange",
+	signal = dev_signal_factory(dbus_data->dev_id, "MinorClassChanged",
 						DBUS_TYPE_STRING, &minor,
 						DBUS_TYPE_INVALID);
 	if (signal) {
@@ -803,31 +805,21 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 
 static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	return error_not_implemented(conn, msg);
-}
-
-static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn, DBusMessage *msg, void *data)
-{
-	return error_not_implemented(conn, msg);
-}
-
-static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *conn, DBusMessage *msg, void *data)
-{
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
 	DBusError err;
 	char filename[PATH_MAX + 1];
 	char addr[18], *addr_ptr, *str;
-	int compid;
+	const char *str_ver;
+	char info_array[64], *info = info_array;
+	int compid, ver, subver;
 	int ecode;
-
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
+	uint8_t features;
 
 	dbus_error_init(&err);
+
+	memset(info_array, 0, 64);
+
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID);
@@ -838,21 +830,184 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 		return error_invalid_arguments(conn, msg);
 	}
 
+	if (check_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
+
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
+
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
-		return error_failed(conn, msg, ENXIO);
-
-	compid = atoi(str);
+		return error_unknown_address(conn, msg);
 
 	free(str);
 
-	str = bt_compidtostr(compid);
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
+
+	str = textfile_get(filename, addr_ptr);
+	if (!str)
+		return error_not_available(conn, msg);
+
+	if (sscanf(str, "%d %d %d", &compid, &ver, &subver) != 3) {
+		/* corrupted file data */
+		free(str);
+		goto failed;
+	}
+
+	free(str);
+
+	str_ver = lmp_vertostr(ver);
+
+	/* default value */
+	snprintf(info, 64, "Bluetooth %s", str_ver);
+
+	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, addr);
+
+	str = textfile_get(filename, addr_ptr);
+	if (!str)
+		goto failed;
+
+	/* check if the data is not corrupted */
+	if (strlen(str) == 16) {
+		/* Getting the third byte */
+		features  = ((str[6] - 48) << 4) | (str[7] - 48);
+		if (features & (LMP_EDR_ACL_2M | LMP_EDR_ACL_3M))
+			snprintf(info, 64, "Bluetooth %s + EDR", str_ver);
+	}
+
+	free(str);
+
+failed:
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return error_out_of_memory(conn, msg);
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &info,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	DBusError err;
+	char filename[PATH_MAX + 1];
+	char addr[18], *addr_ptr, *str;
+	char info_array[16], *info = info_array;
+	int compid, ver, subver;
+	int ecode;
+
+	dbus_error_init(&err);
+
+	memset(info_array, 0, 16);
+
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (check_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
+
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
+
+	str = textfile_get(filename, addr_ptr);
+	if (!str)
+		return error_unknown_address(conn, msg);
+
+	free(str);
+
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
+
+	str = textfile_get(filename, addr_ptr);
+	if (!str)
+		return error_not_available(conn, msg);
+
+	if (sscanf(str, "%d %d %d", &compid, &ver, &subver) == 3)
+		snprintf(info, 16, "HCI 0x%X", subver);
+
+	free(str);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return error_out_of_memory(conn, msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &info,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	DBusError err;
+	char filename[PATH_MAX + 1];
+	char addr[18], *addr_ptr, *str;
+	char info_array[64], *info = info_array;
+	int compid, ver, subver;
+	int ecode;
+	dbus_error_init(&err);
+
+	memset(info_array, 0, 64);
+
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (check_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
+	if (ecode < 0)
+		return error_failed(conn, msg, -ecode);
+
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
+
+	str = textfile_get(filename, addr_ptr);
+	if (!str)
+		return error_unknown_address(conn, msg);
+
+	free(str);
+
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
+
+	str = textfile_get(filename, addr_ptr);
+	if (!str)
+		return error_not_available(conn, msg);
+
+	if (sscanf(str, "%d %d %d", &compid, &ver, &subver) == 3)
+		info = bt_compidtostr(compid);
+
+	free(str);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return error_out_of_memory(conn, msg);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &info,
 					DBUS_TYPE_INVALID);
 
 	return send_reply_and_unref(conn, reply);
@@ -1526,9 +1681,11 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
 
-
 	/* Delete the link key from storage */
-	textfile_del(filename, addr_ptr);
+	if (textfile_del(filename, addr_ptr)) {
+		hci_close_dev(dd);
+		return error_bonding_does_not_exist(conn, msg);
+	}
 
 	str2ba(addr_ptr, &bdaddr);
 

@@ -551,6 +551,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 
 	if (ioctl(dd, HCIGETCONNLIST, (void *) cl) < 0) {
 		free(cl);
+		cl = NULL;
 		goto failed;
 	}
 
