@@ -8,7 +8,7 @@ import sys
 import getopt
 from signal import *
 
-mgr_cmds = [ "ListAdapters", "DefaultAdapter" ]
+mgr_cmds = [ "InterfaceVersion", "ListAdapters", "DefaultAdapter" ]
 mgr_signals = [ "AdapterAdded", "AdapterRemoved" ]
 
 dev_cmds = [ "GetAddress",
@@ -16,14 +16,16 @@ dev_cmds = [ "GetAddress",
              "GetRevision",
              "GetManufacturer",
              "GetCompany",
-             "GetFeatures",
              "GetMode",
              "SetMode",
              "GetDiscoverableTimeout",
              "SetDiscoverableTimeout",
              "IsConnectable",
              "IsDiscoverable",
+             "IsConnected",
+             "ListConnections",
              "GetMajorClass",
+             "ListAvailableMinorClasses"
              "GetMinorClass",
              "SetMinorClass",
              "GetServiceClasses",
@@ -36,19 +38,34 @@ dev_cmds = [ "GetAddress",
              "GetRemoteName",
              "GetRemoteAlias",
              "SetRemoteAlias",
+             "ClearRemoteAlias",
              "LastSeen",
              "LastUsed",
+             "DisconnectRemoteDevice",
              "CreateBonding",
+             "CancelBondingProcess",
              "RemoveBonding",
              "HasBonding",
              "ListBondings",
              "GetPinCodeLength",
-             "GetEncryptionKeySize" ]
+             "GetEncryptionKeySize",
+             "DiscoverDevices",
+             "DiscoverDevicesWithoutNameResolving",
+             "CancelDiscovery" ]
 dev_signals = [ "ModeChanged",
                 "NameChanged",
                 "MinorClassChanged",
-                "RemoteNameChanged",
-                "RemoteAliasChanged" ]
+                "DiscoveryStarted",
+                "DiscoveryCompleted",
+                "RemoteDeviceFound",
+                "RemoteNameUpdated",
+                "RemoteNameFailed",
+                "RemoteAliasChanged"
+                "RemoteAliasCleared",
+                "RemoteDeviceConnected",
+                "RemoteDeviceDisconnected",
+                "BondingCreated",
+                "BondingRemoved" ]
 
 dev_signals_filter = [ "/org/bluez/Adapter/hci0", "/org/bluez/Adapter/hci1",
                        "/org/bluez/Adapter/hci2", "/org/bluez/Adapter/hci3",
@@ -178,6 +195,11 @@ class Tester:
         self.main_loop.quit()
 
     def call_mgr_dbus_func(self):
+        if self.cmd == 'InterfaceVersion':
+            try:
+                print self.manager.InterfaceVersion()
+            except dbus.DBusException, e:
+                print 'Sending %s failed: %s' % (self.cmd, e)
         if self.cmd == 'ListAdapters':
             try:
                 devices = self.manager.ListAdapters()
@@ -205,10 +227,6 @@ class Tester:
                print self.device.GetRevision()
            elif self.cmd == 'GetCompany':
                print self.device.GetCompany()
-           elif self.cmd == 'GetFeatures':
-               features = self.device.GetFeatures()
-               for feature in features: 
-                   print feature,
            elif self.cmd == 'GetMode':
                print self.device.GetMode()
            elif self.cmd == 'SetMode':
@@ -227,8 +245,17 @@ class Tester:
                print self.device.IsConnectable()
            elif self.cmd == 'IsDiscoverable':
                print self.device.IsDiscoverable()
+           elif self.cmd == 'IsConnected':
+               if len(self.cmd_args) == 1:
+                   print self.device.IsConnected(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> IsConnected address' % self.name
+           elif self.cmd == 'ListConnections':
+               print self.device.ListConnections()
            elif self.cmd == 'GetMajorClass':
                print self.device.GetMajorClass()
+           elif self.cmd == 'ListAvailableMinorClasses':
+               print self.device.ListAvailableMinorClasses()
            elif self.cmd == 'GetMinorClass':
                print self.device.GetMinorClass()
            elif self.cmd == 'SetMinorClass':
@@ -282,6 +309,11 @@ class Tester:
                    self.device.SetRemoteAlias(self.cmd_args[0], self.cmd_args[1])
                else:
                    print 'Usage: %s -i <dev> SetRemoteAlias address alias' % self.name
+           elif self.cmd == 'ClearRemoteAlias':
+               if len(self.cmd_args) == 1:
+                   print self.device.ClearRemoteAlias(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> ClearRemoteAlias address' % self.name
            elif self.cmd == 'LastSeen':
                if len(self.cmd_args) == 1:
                    print self.device.LastSeen(self.cmd_args[0])
@@ -292,6 +324,11 @@ class Tester:
                    print self.device.LastUsed(self.cmd_args[0])
                else:
                    print 'Usage: %s -i <dev> LastUsed address' % self.name
+           elif self.cmd == 'DisconnectRemoteDevice':
+               if len(self.cmd_args) == 1:
+                   print self.device.LastUsed(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> DisconnectRemoteDevice address' % self.name
            elif self.cmd == 'CreateBonding':
                if len(self.cmd_args) == 1:
                    print self.device.CreateBonding(self.cmd_args[0])
@@ -302,6 +339,11 @@ class Tester:
                    print self.device.RemoveBonding(self.cmd_args[0])
                else:
                    print 'Usage: %s -i <dev> RemoveBonding address' % self.name
+           elif self.cmd == 'CancelBondingProcess':
+               if len(self.cmd_args) == 1:
+                   print self.device.CancelBondingProcess(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> CancelBondingProcess address' % self.name
            elif self.cmd == 'HasBonding':
                if len(self.cmd_args) == 1:
                    print self.device.HasBonding(self.cmd_args[0])
