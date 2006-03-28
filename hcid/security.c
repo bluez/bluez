@@ -103,10 +103,7 @@ static int hci_req_find_by_dev(const void *data, const void *user_data)
 	const struct hci_req_data *req = data;
 	const int *dev = user_data;
 
-	if (req->dev == *dev)
-		return 0;
-
-	return -1;
+	return (*dev - req->dev);
 }
 
 static int check_pending_hci_req(int dev)
