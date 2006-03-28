@@ -407,7 +407,7 @@ static int call_passkey_agent(struct passkey_agent *agent, int dev, const char *
 	char bda[18];
 	char *ptr = bda;
 
-	ba2str(sba, bda);
+	ba2str(dba, bda);
 
 	if (!agent) {
 		debug("call_passkey_agent(): no agent registered");
