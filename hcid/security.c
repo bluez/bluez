@@ -49,6 +49,8 @@
 
 #include "hcid.h"
 #include "lib.h"
+#include "textfile.h"
+#include "list.h"
 
 struct g_io_info {
 	GIOChannel	*channel;
@@ -59,6 +61,78 @@ struct g_io_info {
 static struct g_io_info io_data[HCI_MAX_DEV];
 
 static int pairing = HCID_PAIRING_MULTI;
+
+struct hci_req_data {
+	int dev;
+	uint16_t ogf;
+	uint16_t ocf;
+	void *cparam;
+	int clen;
+};
+
+static struct slist *hci_req_queue = NULL;
+
+static struct hci_req_data *hci_req_data_new(int dev, uint16_t ogf, uint16_t ocf, const void *cparam, int clen)
+{
+	struct hci_req_data *data;
+
+	data = malloc(sizeof(*data));
+	if (!data)
+		return NULL;
+
+	memset(data, 0, sizeof(*data));
+
+	data->cparam = malloc(clen);
+	if (!data->cparam) {
+		free(data);
+		return NULL;
+	}
+
+	memcpy(data->cparam, cparam, clen);
+
+	data->dev = dev;
+	data->ogf = ogf;
+	data->ocf = ocf;
+	data->clen = clen;
+
+	return data;
+}
+
+static int hci_req_find_by_dev(const void *data, const void *user_data)
+{
+	const struct hci_req_data *req = data;
+	const int *dev = user_data;
+
+	if (req->dev == *dev)
+		return 0;
+
+	return -1;
+}
+
+static int check_pending_hci_req(int dev)
+{
+	struct slist *l;
+
+	if (!hci_req_queue)
+		return -1;
+
+	l = slist_find(hci_req_queue, &dev, hci_req_find_by_dev);
+
+	if (l) {
+		struct hci_req_data *data = l->data;
+
+		hci_send_cmd(dev, data->ogf, data->ocf, data->clen, data->cparam);
+
+		hci_req_queue = slist_remove(hci_req_queue, data);
+
+		free(data->cparam);
+		free(data);
+
+		return 0;
+	}
+
+	return -1;
+}
 
 static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
 {
@@ -339,6 +413,9 @@ static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 	}
 
 	hcid_dbus_remote_name(sba, &dba, evt->status, name);
+
+	/* pending remote version or remote features */
+	check_pending_hci_req(dev);
 }
 
 static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
@@ -354,6 +431,9 @@ static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 
 	write_version_info(sba, &dba, btohs(evt->manufacturer),
 				evt->lmp_ver, btohs(evt->lmp_subver));
+
+	/* pending remote features */
+	check_pending_hci_req(dev);
 }
 
 static inline void inquiry_complete(int dev, bdaddr_t *sba, void *ptr)
@@ -467,6 +547,9 @@ static inline void name_resolve(int dev, bdaddr_t *bdaddr)
 static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_conn_complete *evt = ptr;
+	char filename[PATH_MAX];
+	bdaddr_t tmp;
+	char *str, *local_addr, *peer_addr;
 
 	hcid_dbus_conn_complete(sba, evt->status, evt->handle, &evt->bdaddr);
 
@@ -476,6 +559,53 @@ static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 	update_lastused(sba, &evt->bdaddr);
 
 	name_resolve(dev, &evt->bdaddr);
+
+	/* check if the remote version needs be requested */
+	baswap(&tmp, sba); local_addr = batostr(&tmp);
+	baswap(&tmp, &evt->bdaddr); peer_addr = batostr(&tmp);
+
+	snprintf(filename, sizeof(filename), "%s/%s/manufacturers",
+			STORAGEDIR, local_addr);
+
+	str = textfile_get(filename, peer_addr);
+	if (!str) {
+		struct hci_req_data *data;
+		read_remote_features_cp cp;
+
+		cp.handle = evt->handle;
+
+		data = hci_req_data_new(dev, OGF_LINK_CTL, OCF_READ_REMOTE_VERSION,
+						&cp, READ_REMOTE_VERSION_CP_SIZE);
+
+		hci_req_queue = slist_append(hci_req_queue, data);
+	} else {
+		/* skip: remote version found */
+		free(str);
+	}
+
+	/* check if the remote features needs be requested */
+	snprintf(filename, sizeof(filename), "%s/%s/features",
+			STORAGEDIR, local_addr);
+
+	str = textfile_get(filename, peer_addr);
+	if (!str) {
+		struct hci_req_data *data;
+		read_remote_features_cp cp;
+
+		cp.handle = evt->handle;
+
+		data = hci_req_data_new(dev, OGF_LINK_CTL, OCF_READ_REMOTE_FEATURES,
+						&cp, READ_REMOTE_FEATURES_CP_SIZE);
+
+		hci_req_queue = slist_append(hci_req_queue, data);
+	} else {
+		/* skip: remote features found */
+		free(str);
+	}
+
+	free(local_addr);
+	free(peer_addr);
+
 }
 
 static inline void disconn_complete(int dev, bdaddr_t *sba, void *ptr)
