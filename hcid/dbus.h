@@ -88,19 +88,19 @@ typedef enum {
 } name_status_t;
 
 struct discovered_dev_info {
-	bdaddr_t *bdaddr;
+	bdaddr_t bdaddr;
 	name_status_t name_status;
 };
 
 struct bonding_request_info {
-	bdaddr_t *bdaddr;
+	bdaddr_t bdaddr;
 	DBusMessage *rq;
 	DBusMessage *cancel;
 	int disconnect; /* disconnect after finish */
 };
 
 struct active_conn_info {
-	bdaddr_t *bdaddr;
+	bdaddr_t bdaddr;
 	uint16_t handle;
 };
 

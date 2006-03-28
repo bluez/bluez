@@ -123,8 +123,7 @@ static struct bonding_request_info *bonding_request_new(bdaddr_t *peer)
 
 	memset(bonding, 0, sizeof(*bonding));
 
-	bonding->bdaddr = malloc(sizeof(*bonding->bdaddr));
-	bacpy(bonding->bdaddr, peer);
+	bacpy(&bonding->bdaddr, peer);
 
 	return bonding;
 }
@@ -487,7 +486,7 @@ static DBusHandlerResult handle_dev_list_connections_req(DBusConnection *conn, D
 		bdaddr_t tmp;
 		struct active_conn_info *dev = l->data;
 
-		baswap(&tmp, dev->bdaddr); peer_addr = batostr(&tmp);
+		baswap(&tmp, &dev->bdaddr); peer_addr = batostr(&tmp);
 		
 		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &peer_addr);
 		bt_free(peer_addr);
@@ -1572,8 +1571,7 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 	str2ba(peer_addr, &peer_bdaddr);
 
 	/* check if there is a pending bonding request */
-	if ((!dbus_data->bonding) ||
-	    	(memcmp(dbus_data->bonding->bdaddr, &peer_bdaddr, sizeof(bdaddr_t)))) {
+	if (!dbus_data->bonding || bacmp(&dbus_data->bonding->bdaddr, &peer_bdaddr)) {
 		error("No bonding request pending.");
 		return error_unknown_address(conn, msg);
 	}
@@ -1597,7 +1595,7 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 		memset(&cp, 0, sizeof(cp));
 		memset(&rp, 0, sizeof(rp));
 
-		bacpy(&cp.bdaddr, dbus_data->bonding->bdaddr);
+		bacpy(&cp.bdaddr, &dbus_data->bonding->bdaddr);
 
 		rq.ogf     = OGF_LINK_CTL;
 		rq.ocf     = OCF_CREATE_CONN_CANCEL;
@@ -1992,7 +1990,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		/* get the first element */
 		dev = (struct discovered_dev_info *) (dbus_data->disc_devices)->data;
 
-		bacpy(&cp.bdaddr, dev->bdaddr);
+		bacpy(&cp.bdaddr, &dev->bdaddr);
 
 		rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
 		rq.cparam = &cp;

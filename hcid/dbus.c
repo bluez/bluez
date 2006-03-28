@@ -102,16 +102,13 @@ void disc_device_info_free(void *data, void *user_data)
 {
 	struct discovered_dev_info *dev = data;
 
-	if (dev) {
-		free(dev->bdaddr);
+	if (dev)
 		free(dev);
-	}
 }
 
 void bonding_request_free(struct bonding_request_info *dev )
 {
 	if (dev) {
-		free(dev->bdaddr);
 		if (dev->rq)
 			dbus_message_unref(dev->rq);
 		if (dev->cancel)
@@ -124,10 +121,8 @@ static void active_conn_info_free(void *data, void *user_data)
 {
 	struct active_conn_info *dev = data;
 
-	if (dev) {
-		free(dev->bdaddr);
+	if (dev)
 		free(dev);
-	}
 }
 
 static int disc_device_find_by_bdaddr(const void *data, const void *user_data)
@@ -135,10 +130,7 @@ static int disc_device_find_by_bdaddr(const void *data, const void *user_data)
 	const struct discovered_dev_info *dev = data;
 	const bdaddr_t *bdaddr = user_data;
 
-	if (memcmp(dev->bdaddr, bdaddr, sizeof(*bdaddr)) == 0)
-		return 0;
-
-	return -1;
+	return bacmp(&dev->bdaddr, bdaddr);
 }
 
 static int disc_device_find_by_name_status(const void *data, const void *user_data)
@@ -172,11 +164,11 @@ int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name
 		return -1;
 
 	memset(dev, 0, sizeof(*dev));
-	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
-	bacpy(dev->bdaddr, bdaddr);
+	bacpy(&dev->bdaddr, bdaddr);
 	dev->name_status = name_status;
 
 	*list = slist_append(*list, dev);
+
 	return 0;
 }
 
@@ -191,7 +183,6 @@ static int disc_device_remove(struct slist **list, bdaddr_t *bdaddr)
 	if (l) {
 		dev = l->data;
 		*list = slist_remove(*list, dev);
-		free(dev->bdaddr);
 		free(dev);
 		ret_val = 0;
 	}
@@ -204,10 +195,7 @@ int active_conn_find_by_bdaddr(const void *data, const void *user_data)
 	const struct active_conn_info *con = data;
 	const bdaddr_t *bdaddr = user_data;
 
-	if (memcmp(con->bdaddr, bdaddr, sizeof(*bdaddr)) == 0)
-		return 0;
-
-	return -1;
+	return bacmp(&con->bdaddr, bdaddr);
 }
 
 static int active_conn_find_by_handle(const void *data, const void *user_data)
@@ -230,8 +218,7 @@ static int active_conn_append(struct slist **list, bdaddr_t *bdaddr, uint16_t ha
 		return -1;
 
 	memset(dev, 0 , sizeof(*dev));
-	dev->bdaddr = malloc(sizeof(*dev->bdaddr));
-	bacpy(dev->bdaddr, bdaddr);
+	bacpy(&dev->bdaddr, bdaddr);
 	dev->handle = handle;
 
 	*list = slist_append(*list, dev);
@@ -249,7 +236,6 @@ static int active_conn_remove(struct slist **list, uint16_t *handle)
 	if (l) {
 		dev = l->data;
 		*list = slist_remove(*list, dev);
-		free(dev->bdaddr);
 		free(dev);
 		ret_val = 0;
 	}
@@ -752,7 +738,7 @@ void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr)
 	if (!pdata->bonding)
 		goto failed;
 
-	if (memcmp(pdata->bonding->bdaddr, &ret->bdaddr, sizeof(bdaddr_t)))
+	if (bacmp(&pdata->bonding->bdaddr, &ret->bdaddr))
 		goto failed;
 	
 	if (!ret->status) {
@@ -854,10 +840,10 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 		req_sent = 1;
 
 		memset(&cp, 0, sizeof(cp));
-		bacpy(&cp.bdaddr, dev->bdaddr);
+		bacpy(&cp.bdaddr, &dev->bdaddr);
 		cp.pscan_rep_mode = 0x02;
 
-		baswap(&tmp, dev->bdaddr); peer_addr = batostr(&tmp);
+		baswap(&tmp, &dev->bdaddr); peer_addr = batostr(&tmp);
 
 		if (hci_send_req(dd, &rq, 100) < 0) {
 			error("Unable to send the HCI remote name request: %s (%d)",
@@ -884,7 +870,6 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 		if (!req_sent) {
 			/* remove the element from the list */
 			dbus_data->disc_devices = slist_remove(dbus_data->disc_devices, dev);
-			free(dev->bdaddr);
 			free(dev);
 
 			/* get the next element */
@@ -1199,7 +1184,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	if (!pdata->bonding)
 		goto done; /* skip */
 
-	if (memcmp(pdata->bonding->bdaddr, peer, sizeof(bdaddr_t)))
+	if (bacmp(&pdata->bonding->bdaddr, peer))
 		goto done; /* skip */
 
 	if (status) {
@@ -1289,7 +1274,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 
 	dev = l->data;
 	/* add in the active connetions list */
-	baswap(&tmp, dev->bdaddr); peer_addr = batostr(&tmp);
+	baswap(&tmp, &dev->bdaddr); peer_addr = batostr(&tmp);
 
 	/* Sent the remote device disconnected signal */
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE, "RemoteDeviceDisconnected");

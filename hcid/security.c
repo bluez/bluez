@@ -111,6 +111,7 @@ static int hci_req_find_by_dev(const void *data, const void *user_data)
 
 static int check_pending_hci_req(int dev)
 {
+	struct hci_req_data *data;
 	struct slist *l;
 
 	if (!hci_req_queue)
@@ -118,20 +119,19 @@ static int check_pending_hci_req(int dev)
 
 	l = slist_find(hci_req_queue, &dev, hci_req_find_by_dev);
 
-	if (l) {
-		struct hci_req_data *data = l->data;
+	if (!l)
+		return -1;
 
-		hci_send_cmd(dev, data->ogf, data->ocf, data->clen, data->cparam);
+	data = l->data;
 
-		hci_req_queue = slist_remove(hci_req_queue, data);
+	hci_send_cmd(dev, data->ogf, data->ocf, data->clen, data->cparam);
 
-		free(data->cparam);
-		free(data);
+	hci_req_queue = slist_remove(hci_req_queue, data);
 
-		return 0;
-	}
+	free(data->cparam);
+	free(data);
 
-	return -1;
+	return 0;
 }
 
 static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
