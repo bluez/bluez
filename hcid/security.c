@@ -226,6 +226,8 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	write_link_key(sba, dba, evt->link_key, evt->key_type,
 						io_data[dev_id].pin_length);
 
+	hcid_dbus_bonding_created_complete(sba, &dba, 0);
+
 	io_data[dev_id].pin_length = -1;
 }
 
@@ -620,7 +622,8 @@ static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
 	if (get_bdaddr(dev, sba, evt->handle, &dba) < 0) 
 		return;
 
-	hcid_dbus_bonding_created_complete(sba, &dba, evt->status);
+	if (evt->status)
+		hcid_dbus_bonding_created_complete(sba, &dba, evt->status);
 }
 
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
