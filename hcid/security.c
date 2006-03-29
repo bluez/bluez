@@ -226,7 +226,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	write_link_key(sba, dba, evt->link_key, evt->key_type,
 						io_data[dev_id].pin_length);
 
-	hcid_dbus_bonding_created_complete(sba, &dba, 0);
+	hcid_dbus_bonding_created_complete(sba, dba, 0);
 
 	io_data[dev_id].pin_length = -1;
 }
