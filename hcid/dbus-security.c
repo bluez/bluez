@@ -486,6 +486,8 @@ int handle_passkey_request(int dev, const char *path, bdaddr_t *sba, bdaddr_t *d
 
 	adapter = data;
 
+	adapter->pairing_active = 1;
+
 	ba2str(dba, addr);
 
 	for (l = adapter->passkey_agents; l != NULL; l = l->next) {

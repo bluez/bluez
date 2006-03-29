@@ -118,6 +118,7 @@ struct hci_dbus_data {
 	struct slist *passkey_agents;
 	struct bonding_request_info *bonding;
 	struct slist *active_conn;
+	int pairing_active;
 };
 
 struct passkey_agent {

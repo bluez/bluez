@@ -611,7 +611,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	handle_passkey_request(dev, path, sba, &ci->bdaddr);
 }
 
-void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
+void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
 {
 	struct hci_dbus_data *pdata;
 	DBusMessage *msg_reply = NULL;
@@ -632,6 +632,18 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+
+	/* create the authentication reply */
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
+		goto failed;
+	}
+
+	/* Don't send any signals if a pairing process isn't active */
+	if (!pdata->pairing_active)
+		return;
+
+	pdata->pairing_active = 0;
 
 	/*
 	 * 0x00: authentication request successfully completed
@@ -656,12 +668,6 @@ void hcid_dbus_bonding_created_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	}
 
 	dbus_connection_flush(connection);
-
-	/* create the authentication reply */
-	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
-		error("Getting %s path data failed!", path);
-		goto failed;
-	}
 
 	if (!pdata->bonding)
 		goto failed; /* skip: no bonding req pending */
