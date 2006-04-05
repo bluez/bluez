@@ -10,8 +10,11 @@
 #include <malloc.h>
 #include <string.h>
 #include <limits.h>
+#include <sys/time.h>
+#include <time.h>
 
 #include "glib-ectomy.h"
+#include "list.h"
 
 GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count, gsize *bytes_read)
 {
@@ -89,6 +92,7 @@ struct watch {
 };
 
 static struct watch watch_head = { .id = 0, .next = 0 };
+static GMainContext *default_context = NULL;
 
 void g_io_remove_watch(guint id)
 {
@@ -129,6 +133,23 @@ guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
 						func, user_data, NULL);
 }
 
+static GMainContext *g_main_context_default()
+{
+
+	if (default_context)
+		return default_context;
+
+	default_context = malloc(sizeof(GMainContext));
+	if (!default_context)
+		return NULL;
+
+	memset(default_context, 0, sizeof(GMainContext));
+
+	default_context->timeout = -1;
+
+	return default_context;
+}
+
 GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running)
 {
 	GMainLoop *ml;
@@ -137,9 +158,78 @@ GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running)
 	if (!ml)
 		return NULL;
 
-	ml->bail = 0;
+	memset(ml, 0, sizeof(GMainLoop));
 
+	if (!context)
+		ml->context = g_main_context_default();
+	else
+		ml->context = context;
+
+	ml->bail = 0;
 	return ml;
+}
+
+static void timeout_handlers_prepare(GMainContext *context)
+{
+	struct slist *l = context->ltimeout;
+	struct timeout *t;
+	struct timeval tv;
+	glong msec, timeout = LONG_MAX;
+
+	gettimeofday(&tv, NULL);
+
+	while (l) {
+		t = l->data;
+		l = l->next;
+
+		/* calculate the remainning time */
+		msec = (t->expiration.tv_sec - tv.tv_sec) * 1000 +
+				(t->expiration.tv_usec - tv.tv_usec) / 1000;
+		if (msec < 0)
+			msec = 0;
+
+		timeout = MIN_TIMEOUT(timeout, msec);
+	}
+
+	/* set to min value found or NO timeout */
+	context->timeout = (timeout != LONG_MAX ? timeout: -1);
+}
+
+static void timeout_handlers_check(GMainContext *context)
+{
+	struct slist *l = context->ltimeout;
+	struct timeout *t;
+	struct timeval tv;
+
+	gettimeofday(&tv, NULL);
+
+	while (l) {
+		t = l->data;
+		l = l->next;
+
+		if ((tv.tv_sec < t->expiration.tv_sec) ||
+		   	(tv.tv_sec == t->expiration.tv_sec &&
+		   	 tv.tv_usec < t->expiration.tv_usec))
+			continue;
+
+		if (t->func(t->data)) {
+			/* if false/expired: remove it from the list */
+			context->ltimeout = slist_remove(context->ltimeout, t);
+			free(t);
+		} else {
+			glong secs, msecs;
+			/* update the next expiration time */
+			secs = t->interval / 1000;
+			msecs = t->interval - secs * 1000;
+
+			t->expiration.tv_sec = tv.tv_sec + secs;
+			t->expiration.tv_usec = tv.tv_usec + msecs * 1000;
+			if (t->expiration.tv_usec >= 1000000) {
+				t->expiration.tv_usec -= 1000000;
+				t->expiration.tv_sec++;
+			}
+		}
+	}
 }
 
 void g_main_loop_run(GMainLoop *loop)
@@ -163,7 +253,10 @@ void g_main_loop_run(GMainLoop *loop)
 			nfds++;
 		}
 
-		rc = poll(ufds, nfds, -1);
+		/* calculate the next timeout */
+		timeout_handlers_prepare(loop->context);
+
+		rc = poll(ufds, nfds, loop->context->timeout);
 		if (rc < 0)
 			continue;
 
@@ -190,6 +283,9 @@ void g_main_loop_run(GMainLoop *loop)
 			w = w->next;
 			i++;
 		}
+
+		/* check expired timers */
+		timeout_handlers_check(loop->context);
 	}
 
 	free(ufds);
@@ -208,3 +304,78 @@ void g_main_loop_quit(GMainLoop *loop)
 		free(w);
 	}
 }
+
+void g_main_loop_unref(GMainLoop *loop)
+{
+	if (!loop->context)
+		return;
+
+	slist_free(loop->context->ltimeout);
+	free(loop->context);
+}
+
+guint g_timeout_add(guint interval, timeout_func_t *func, void *data)
+{
+	struct timeval tv;
+	guint secs;
+	guint msecs;
+	struct timeout *t;
+
+	if (!default_context || !func)
+		return 0;
+
+	t = malloc(sizeof(*t));
+
+	if (!t)
+		return 0;
+
+	t->interval = interval;
+	t->func = func;
+	t->data = data;
+
+	gettimeofday(&tv, NULL);
+
+	secs = interval /1000;
+	msecs = interval - secs * 1000;
+
+	t->expiration.tv_sec = tv.tv_sec + secs;
+	t->expiration.tv_usec = tv.tv_usec + msecs * 1000;
+
+	if (t->expiration.tv_usec >= 1000000) {
+		t->expiration.tv_usec -= 1000000;
+		t->expiration.tv_sec++;
+	}
+
+	/* attach the timeout the default context */
+	t->id = ++default_context->next_id;
+	default_context->ltimeout = slist_append(default_context->ltimeout, t);
+
+	return t->id;
+}
+
+gint g_timeout_remove(const guint id)
+{
+	struct slist *l;
+	struct timeout *t;
+
+	if (!default_context)
+		return -1;
+
+	l = default_context->ltimeout;
+
+	while (l) {
+		t = l->data;
+		l = l->next;
+
+		if (t->id != id)
+			continue;
+
+		default_context->ltimeout = slist_remove(default_context->ltimeout, t);
+		free(t);
+
+		return 0;
+	}
+
+	return -1;
+}
+

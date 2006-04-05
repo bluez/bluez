@@ -28,9 +28,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-#include <signal.h>
 #include <string.h>
-#include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -50,9 +48,9 @@
 static DBusConnection *connection;
 
 static int default_dev = -1;
-static volatile sig_atomic_t __timeout_active = 0;
 
 #define MAX_CONN_NUMBER			10
+#define RECONNECT_RETRY_TIMEOUT		5000
 
 static const char *services_cls[] = {
 	"positioning",
@@ -289,8 +287,6 @@ static DBusMessage *dbus_msg_new_authentication_return(DBusMessage *msg, uint8_t
 /*
  * Timeout functions Protypes
  */
-static int discoverable_timeout_handler(void *data);
-
 DBusConnection *get_dbus_connection(void)
 {
 	return connection;
@@ -495,13 +491,6 @@ gboolean hcid_dbus_register_device(uint16_t id)
 		error("Getting %s path data failed!", path);
 	else
 		pdata->mode = rp.enable;	/* Keep the current scan status */
-
-	/* 
-	 * Enable timeout to address dbus daemon restart, where
-	 * register the device paths is required due connection lost.
-	 */
-	if (pdata->mode & SCAN_INQUIRY)
-		pdata->timeout_handler = &discoverable_timeout_handler;
 
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
 							"AdapterAdded");
@@ -1055,7 +1044,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	name = textfile_get(filename, peer_addr);
 
 	if (name) {
-		signal_name = dev_signal_factory(pdata->dev_id, "RemoteNameUpdate",
+		signal_name = dev_signal_factory(pdata->dev_id, "RemoteNameUpdated",
 							DBUS_TYPE_STRING, &peer_addr,
 							DBUS_TYPE_STRING, &name,
 							DBUS_TYPE_INVALID);
@@ -1475,7 +1464,7 @@ static int discoverable_timeout_handler(void *data)
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
 		error("HCI device open failed: hci%d", dbus_data->dev_id);
-		return -1;
+		return 0;
 	}
 
 	memset(&rq, 0, sizeof(rq));
@@ -1489,15 +1478,14 @@ static int discoverable_timeout_handler(void *data)
 	if (hci_send_req(dd, &rq, 100) < 0) {
 		error("Sending write scan enable command to hci%d failed: %s (%d)",
 				dbus_data->dev_id, strerror(errno), errno);
-		retval = -1;
 		goto failed;
 	}
 	if (status) {
 		error("Setting scan enable failed with status 0x%02x", status);
-		retval = -1;
 		goto failed;
 	}
 
+	retval = -1;
 failed:
 	if (dd >= 0)
 		close(dd);
@@ -1505,22 +1493,24 @@ failed:
 	return retval;
 }
 
-static void system_bus_reconnect(void)
+static int system_bus_reconnect(void *data)
 {
 	struct hci_dev_list_req *dl = NULL;
 	struct hci_dev_req *dr;
-	int sk;
-	int i;
+	int sk, i, ret_val = 0;
+
+       if (dbus_connection_get_is_connected(connection))
+	       return -1;
 
 	if (hcid_dbus_init() == FALSE)
-		return;
+		return 0;
 
 	/* Create and bind HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0) {
 		error("Can't open HCI socket: %s (%d)",
 							strerror(errno), errno);
-		return;
+		return 0;
 	}
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
@@ -1544,98 +1534,15 @@ static void system_bus_reconnect(void)
 	for (i = 0; i < dl->dev_num; i++, dr++)
 		hcid_dbus_register_device(dr->dev_id);
 
+	ret_val = -1;
 failed:
 	if (sk >= 0)
 		close(sk);
 
 	if (dl)
 		free(dl);
-}
 
-static void sigalarm_handler(int signum)
-{
-	struct hci_dbus_data *pdata = NULL;
-	char device_path[MAX_PATH_LENGTH];
-	char **device = NULL;
-	int active_handlers = 0;
-	int i = 0;
-
-	if (!dbus_connection_get_is_connected(connection)) {
-		/* it is not connected */
-		system_bus_reconnect();
-		return;
-	}
-
-	if (!dbus_connection_list_registered(connection, ADAPTER_PATH, &device))
-		goto done;
-
-	/* check the timer for each registered path */
-	for (; device[i]; i++) {
-
-		snprintf(device_path, sizeof(device_path), "%s/%s", ADAPTER_PATH, device[i]);
-
-		if (!dbus_connection_get_object_path_data(connection, device_path, (void *) &pdata)){
-			error("Getting %s path data failed!", device_path);
-			continue;
-		}
-
-		if (pdata->timeout_handler == NULL)
-			continue;
-
-		if (!(pdata->mode & SCAN_INQUIRY)) {
-			pdata->timeout_hits = 0;
-			continue;
-		}
-
-		active_handlers++;
-
-		if (!pdata->discoverable_timeout)
-			continue; /* skip if discoverable always: timeout zero */
-
-		if ((++(pdata->timeout_hits) % pdata->discoverable_timeout) != 0)
-			continue;
-
-		if (!pdata->timeout_handler(pdata)) {
-			/* Remove from the timeout queue */
-			pdata->timeout_handler = NULL;
-			pdata->timeout_hits = 0;
-			active_handlers--;
-		}
-	}
-
-	dbus_free_string_array(device);
-
-done:
-	if (!active_handlers) {
-		sigaction(SIGALRM, NULL, NULL);
-		setitimer(ITIMER_REAL, NULL, NULL);
-		__timeout_active = 0;
-	}
-}
-
-static void bluez_timeout_start(void)
-{
-	struct sigaction sa;
-	struct itimerval timer;
-
-	if (__timeout_active)
-		return;
-
-	__timeout_active = 1;
-
-	memset (&sa, 0, sizeof (sa));
-	sa.sa_handler = &sigalarm_handler;
-	sigaction(SIGALRM, &sa, NULL);
-
-	/* expire after 1 sec... */
-	timer.it_value.tv_sec = 1;
-	timer.it_value.tv_usec = 0;
-
-	/* ... and every 1 sec after that. */
-	timer.it_interval.tv_sec = 1;
-	timer.it_interval.tv_usec = 0;
-
-	setitimer(ITIMER_REAL, &timer, NULL);
+	return ret_val;
 }
 
 /*****************************************************************
@@ -1662,8 +1569,7 @@ static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessag
 			(strcmp(method, "Disconnected") == 0)) {
 		error("Got disconnected from the system message bus");
 		dbus_connection_unref(conn);
-		bluez_timeout_start();
-		ret = DBUS_HANDLER_RESULT_HANDLED;
+		g_timeout_add(RECONNECT_RETRY_TIMEOUT, system_bus_reconnect, NULL);
 	}
 
 	return ret;
@@ -1802,13 +1708,11 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
 		scan_mode = MODE_DISCOVERABLE;
-		pdata->timeout_handler = &discoverable_timeout_handler;
-		bluez_timeout_start();
+		g_timeout_add(pdata->discoverable_timeout, discoverable_timeout_handler, pdata);
 		break;
 	case SCAN_INQUIRY:
 		/* Address the scenario where another app changed the scan mode */
-		pdata->timeout_handler = &discoverable_timeout_handler;
-		bluez_timeout_start();
+		g_timeout_add(pdata->discoverable_timeout, discoverable_timeout_handler, pdata);
 		/* ignore, this event should not be sent*/
 	default:
 		/* ignore, reserved */

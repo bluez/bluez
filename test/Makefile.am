@@ -6,7 +6,10 @@ bin_PROGRAMS = l2test rctest
 
 noinst_PROGRAMS = scotest attest hstest bdaddr
 
-hciemu_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libglib-ectomy.a
+hciemu_LDADD = @BLUEZ_LIBS@ \
+	       $(top_builddir)/common/libglib-ectomy.a \
+	       $(top_builddir)/common/liblist.a
+
 
 l2test_LDADD = @BLUEZ_LIBS@
 

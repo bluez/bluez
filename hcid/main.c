@@ -34,7 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -659,6 +658,8 @@ int main(int argc, char *argv[], char *env[])
 
 	/* Start event processor */
 	g_main_run(event_loop);
+
+	g_main_unref(event_loop);
 
 	if (sdp)
 		stop_sdp_server();

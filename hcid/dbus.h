@@ -70,8 +70,6 @@ struct service_data {
 	service_handler_func_t	handler_func;
 };
 
-typedef int (timeout_handler_func_t) (void *data);
-
 typedef enum {
 	STATE_IDLE,
 	STATE_DISCOVER,
@@ -108,8 +106,6 @@ struct hci_dbus_data {
 	uint16_t dev_id;
 	uint16_t path_id;
 	uint32_t discoverable_timeout;
-	uint32_t timeout_hits;
-	timeout_handler_func_t *timeout_handler;
 	uint8_t mode;		           /* scan mode */
 	discover_state_t discover_state;   /* discover states */
 	int discover_type;                 /* with/without name resolving */
@@ -211,7 +207,7 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data);
 #define MODE_DISCOVERABLE	"discoverable"
 #define MODE_UNKNOWN		"unknown"
 
-#define DFT_DISCOVERABLE_TIMEOUT	180	/* 3 seconds */
+#define DFT_DISCOVERABLE_TIMEOUT	180*1000 /* 3 seconds */
 #define DISCOVERABLE_TIMEOUT_OFF	0
 
 #endif /* __H_BLUEZ_DBUS_H__ */
