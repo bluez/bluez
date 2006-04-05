@@ -146,11 +146,10 @@ static void name_data_remove(const char *name, name_cb_t func, void *user_data)
 		return;
 
 	cb = name_callback_find(data->callbacks, func, user_data);
-	if (!cb)
-		return;
-
-	data->callbacks = slist_remove(data->callbacks, cb);
-	free(cb);
+	if (cb) {
+		data->callbacks = slist_remove(data->callbacks, cb);
+		free(cb);
+	}
 
 	if (!data->callbacks) {
 		name_listeners = slist_remove(name_listeners, data);
