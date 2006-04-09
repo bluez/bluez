@@ -416,6 +416,33 @@ Methods		string GetAddress()
 			Possible errors: org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.NotAvailable
 
+		string GetRemoteMajorClass(string address)
+
+			Get the major device class of the specified device.
+
+			Example: "computer"
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotAvailable
+
+		string GetRemoteMinorClass(string address)
+
+			Get the minor device class of the specified device.
+
+			Example: "laptop"
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotAvailable
+
+		array{string] GetRemoteServiceClasses(string address)
+
+			Get the service classes of the specified device.
+
+			Example: ["networking", "object transfer"]
+
+			Possible errors: org.bluez.Error.UnknownAddress
+			                 org.bluez.Error.NotAvailable
+
 		string GetRemoteName(string address)
 
 			Get adapter name for a remote device. This request

@@ -52,50 +52,6 @@ static int default_dev = -1;
 #define MAX_CONN_NUMBER			10
 #define RECONNECT_RETRY_TIMEOUT		5000
 
-static const char *services_cls[] = {
-	"positioning",
-	"networking",
-	"rendering",
-	"capturing",
-	"object transfer",
-	"audio",
-	"telephony",
-	"information"
-};
-
-static const char *major_cls[] = {
-	"miscellaneous",
-	"computer",
-	"phone",
-	"access point",
-	"audio/video",
-	"peripheral",
-	"imaging",
-	"wearable",
-	"toy",
-	"uncategorized"
-};
-
-static const char *computer_minor_cls[] = {
-	"uncategorized",
-	"desktop",
-	"server",
-	"laptop",
-	"handheld",
-	"palm",
-	"wearable"
-};
-
-static const char *phone_minor_cls[] = {
-	"uncategorized",
-	"cellular",
-	"cordless",
-	"smart phone",
-	"modem",
-	"isdn"
-};
-
-
 void disc_device_info_free(void *data, void *user_data)
 {
 	struct discovered_dev_info *dev = data;
@@ -958,13 +914,11 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	struct slist *l = NULL;
 	struct discovered_dev_info *dev;
 	char *local_addr, *peer_addr, *name = NULL;
-	const char *major_ptr;
-	char invalid_minor_class[] = "";
-	const char *minor_ptr = invalid_minor_class;
+	const char *major_ptr, *minor_ptr;
+	const char **service_classes;
 	const dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
 	int id, i;
-	uint8_t service_index, major_index, minor_index;
 	name_status_t name_status = NAME_PENDING;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
@@ -983,6 +937,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		goto failed;
 	}
 
+	write_remote_class(local, peer, class);
+
 	/* send the device found signal */
 	signal_device = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"RemoteDeviceFound");
@@ -991,23 +947,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		goto failed;
 	}
 
-	/* get the major class */
-	major_index = (class >> 8) & 0x1F;
-	if (major_index > 8)
-		major_ptr = major_cls[9]; /* set to uncategorized */
-	else
-		major_ptr = major_cls[major_index];
-
-	/* get the minor class */
-	minor_index = (class >> 2) & 0x3F;
-	switch (major_index) {
-	case 1: /* computer */
-		minor_ptr = computer_minor_cls[minor_index];
-		break;
-	case 2: /* phone */
-		minor_ptr = phone_minor_cls[minor_index];
-		break;
-	}
+	major_ptr = major_class_str(class);
+	minor_ptr = minor_class_str(class);
 
 	dbus_message_iter_init_append(signal_device, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &peer_addr);
@@ -1015,16 +956,22 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &major_ptr);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &minor_ptr);
 
+	service_classes = service_classes_str(class);
+	if (!service_classes) {
+		error("Unable to create service class strings");
+		goto failed;
+	}
+
 	/* add the service classes */
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	service_index = class >> 16;
-	for (i = 0; i < (sizeof(services_cls) / sizeof(*services_cls)); i++)
-		if (service_index & (1 << i))
-			dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &services_cls[i]);
+	for (i = 0; service_classes[i] != NULL; i++)
+		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &service_classes[i]);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
+
+	free(service_classes);
 
 	if (dbus_connection_send(connection, signal_device, NULL) == FALSE) {
 		error("Can't send D-Bus remote device found signal");

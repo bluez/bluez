@@ -122,6 +122,44 @@ int read_local_class(bdaddr_t *bdaddr, uint8_t *class)
 	return 0;
 }
 
+int write_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
+{
+	char filename[PATH_MAX + 1], addr[18], str[9];
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/classes", STORAGEDIR, addr);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(peer, addr);
+	sprintf(str, "0x%6.6x", class);
+
+	return textfile_put(filename, addr, str);
+}
+
+int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+
+	ba2str(local, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/classes", STORAGEDIR, addr);
+
+	ba2str(peer, addr);
+
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
+
+	if (sscanf(str, "%x", class) != 1) {
+		free(str);
+		return -ENOENT;
+	}
+
+	free(str);
+
+	return 0;
+}
+
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	char filename[PATH_MAX + 1], addr[18], str[249];
@@ -251,8 +289,11 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type
 
 	if (length < 0) {
 		char *tmp = textfile_get(filename, addr);
-		if (tmp && strlen(tmp) > 34)
-			memcpy(str + 34, tmp + 34, 3);
+		if (tmp) {
+			if (strlen(tmp) > 34)
+				memcpy(str + 34, tmp + 34, 3);
+			free(tmp);
+		}
 	}
 
 	return textfile_put(filename, addr, str);
@@ -295,8 +336,10 @@ int read_pin_length(bdaddr_t *local, bdaddr_t *peer)
 	if (!str)
 		return -ENOENT;
 
-	if (strlen(str) < 36)
+	if (strlen(str) < 36) {
+		free(str);
 		return -ENOENT;
+	}
 
 	len = atoi(str + 35);
 

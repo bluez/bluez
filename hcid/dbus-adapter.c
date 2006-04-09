@@ -55,6 +55,19 @@ static const char *service_cls[] = {
 	"information"
 };
 
+static const char *major_cls[] = {
+	"miscellaneous",
+	"computer",
+	"phone",
+	"access point",
+	"audio/video",
+	"peripheral",
+	"imaging",
+	"wearable",
+	"toy",
+	"uncategorized"
+};
+
 static const char *computer_minor_cls[] = {
 	"uncategorized",
 	"desktop",
@@ -1051,6 +1064,132 @@ static DBusHandlerResult handle_dev_get_remote_company_req(DBusConnection *conn,
 	return send_reply_and_unref(conn, reply);
 }
 
+static int get_remote_class(DBusConnection *conn, DBusMessage *msg, void *data, uint32_t *class)
+{
+	struct hci_dbus_data *dbus_data = data;
+	char addr_local[18], *addr_peer;
+	DBusError err;
+	bdaddr_t local, peer;
+	int ecode;
+
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &addr_peer,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		error_invalid_arguments(conn, msg);
+		return -1;
+	}
+
+	if (check_address(addr_peer) < 0) {
+		error_invalid_arguments(conn, msg);
+		return -1;
+	}
+
+	ecode = get_device_address(dbus_data->dev_id, addr_local, sizeof(addr_local));
+	if (ecode < 0) {
+		error_failed(conn, msg, -ecode);
+		return -1;
+	}
+
+	str2ba(addr_peer, &peer);
+	str2ba(addr_local, &local);
+
+	ecode = read_remote_class(&local, &peer, class);
+	if (ecode < 0) {
+		error_failed(conn, msg, -ecode);
+		return -1;
+	}
+
+	return 0;
+}
+
+static DBusHandlerResult handle_dev_get_remote_major_class_req(DBusConnection *conn,
+								DBusMessage *msg,
+								void *data)
+{
+	DBusMessage *reply;
+	const char *major_class;
+	uint32_t class;
+
+	if (get_remote_class(conn, msg, data, &class) < 0)
+		return DBUS_HANDLER_RESULT_HANDLED;
+
+	major_class = major_class_str(class);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &major_class,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_get_remote_minor_class_req(DBusConnection *conn,
+								DBusMessage *msg,
+								void *data)
+{
+	DBusMessage *reply;
+	const char *major_class;
+	uint32_t class;
+
+	if (get_remote_class(conn, msg, data, &class) < 0)
+		return DBUS_HANDLER_RESULT_HANDLED;
+
+	major_class = minor_class_str(class);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &major_class,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_get_remote_service_cls_req(DBusConnection *conn,
+								DBusMessage *msg,
+								void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array_iter;
+	const char **service_classes;
+	int i;
+	uint32_t class;
+
+	if (get_remote_class(conn, msg, data, &class) < 0)
+		return DBUS_HANDLER_RESULT_HANDLED;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	service_classes = service_classes_str(class);
+	if (!service_classes) {
+		error("Unable to create service classes list");
+		return error_failed(conn,msg, ENOMEM);
+	}
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	for (i = 0; service_classes[i] != NULL; i++)
+		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &service_classes[i]);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	free(service_classes);
+
+	return send_reply_and_unref(conn, reply);
+}
+
 static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	char filename[PATH_MAX + 1], addr[18];
@@ -2030,6 +2169,68 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	return send_reply_and_unref(conn, reply);
 }
 
+const char *major_class_str(uint32_t class)
+{
+	uint8_t index = (class >> 8) & 0x1F;
+
+	if (index > 8)
+		return major_cls[9]; /* uncategorized */
+
+	return major_cls[index];
+}
+
+const char *minor_class_str(uint32_t class)
+{
+	uint8_t major_index = (class >> 8) & 0x1F;
+	uint8_t minor_index = (class >> 2) & 0x3F;
+
+	switch (major_index) {
+	case 1: /* computer */
+		return computer_minor_cls[minor_index];
+	case 2: /* phone */
+		return phone_minor_cls[minor_index];
+	}
+
+	return "";
+}
+
+/* Return NULL terminated array of strings */
+const char **service_classes_str(uint32_t class)
+{
+	uint8_t services = class >> 16;
+	const char **classes;
+	int i, class_count = 0;
+
+	classes = malloc(sizeof(const char *));
+	if (!classes)
+		return NULL;
+
+	classes[0] = NULL;
+
+	for (i = 0; i < (sizeof(service_cls) / sizeof(*service_cls)); i++) {
+		const char **tmp;
+
+		if (!(services & (1 << i)))
+			continue;
+
+		class_count++;
+
+		tmp = realloc(classes, sizeof(const char *) * (class_count + 1));
+		if (!tmp) {
+			free(classes);
+			return NULL;
+		}
+
+		classes = tmp;
+
+		classes[class_count - 1] = service_cls[i];
+		classes[class_count] = NULL;
+	}
+
+	return classes;
+}
+
+
 static struct service_data dev_services[] = {
 	{ "GetAddress",					handle_dev_get_address_req		},
 	{ "GetVersion",					handle_dev_get_version_req		},
@@ -2056,6 +2257,9 @@ static struct service_data dev_services[] = {
 	{ "GetRemoteRevision",				handle_dev_get_remote_revision_req	},
 	{ "GetRemoteManufacturer",			handle_dev_get_remote_manufacturer_req	},
 	{ "GetRemoteCompany",				handle_dev_get_remote_company_req	},
+	{ "GetRemoteMajorClass",			handle_dev_get_remote_major_class_req	},
+	{ "GetRemoteMinorClass",			handle_dev_get_remote_minor_class_req	},
+	{ "GetRemoteServiceClasses",			handle_dev_get_remote_service_cls_req	},
 	{ "GetRemoteName",				handle_dev_get_remote_name_req		},
 	{ "GetRemoteAlias",				handle_dev_get_remote_alias_req		},
 	{ "SetRemoteAlias",				handle_dev_set_remote_alias_req		},

@@ -129,6 +129,10 @@ typedef int unregister_function_t(DBusConnection *conn, uint16_t id);
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data);
 DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data);
 
+const char *major_class_str(uint32_t class);
+const char *minor_class_str(uint32_t class);
+const char **service_classes_str(uint32_t class);
+
 DBusHandlerResult bluez_new_failure_msg(DBusConnection *conn, DBusMessage *msg, const uint32_t ecode);
 
 DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...);
