@@ -131,7 +131,7 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void 
 
 const char *major_class_str(uint32_t class);
 const char *minor_class_str(uint32_t class);
-const char **service_classes_str(uint32_t class);
+struct slist *service_classes_str(uint32_t class);
 
 DBusHandlerResult bluez_new_failure_msg(DBusConnection *conn, DBusMessage *msg, const uint32_t ecode);
 

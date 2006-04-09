@@ -902,6 +902,11 @@ failed:
 	bt_free(local_addr);
 }
 
+static void append_class_string(const char *class, DBusMessageIter *iter)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &class);
+}
+
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
 {
 	char filename[PATH_MAX + 1];
@@ -915,10 +920,10 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	struct discovered_dev_info *dev;
 	char *local_addr, *peer_addr, *name = NULL;
 	const char *major_ptr, *minor_ptr;
-	const char **service_classes;
+	struct slist *service_classes;
 	const dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
-	int id, i;
+	int id;
 	name_status_t name_status = NAME_PENDING;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
@@ -957,21 +962,16 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &minor_ptr);
 
 	service_classes = service_classes_str(class);
-	if (!service_classes) {
-		error("Unable to create service class strings");
-		goto failed;
-	}
 
 	/* add the service classes */
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	for (i = 0; service_classes[i] != NULL; i++)
-		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &service_classes[i]);
+	slist_foreach(l, (slist_func_t)append_class_string, &array_iter);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	free(service_classes);
+	slist_free(service_classes);
 
 	if (dbus_connection_send(connection, signal_device, NULL) == FALSE) {
 		error("Can't send D-Bus remote device found signal");

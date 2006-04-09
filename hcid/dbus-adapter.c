@@ -1153,14 +1153,18 @@ static DBusHandlerResult handle_dev_get_remote_minor_class_req(DBusConnection *c
 	return send_reply_and_unref(conn, reply);
 }
 
+static void append_class_string(const char *class, DBusMessageIter *iter)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &class);
+}
+
 static DBusHandlerResult handle_dev_get_remote_service_cls_req(DBusConnection *conn,
 								DBusMessage *msg,
 								void *data)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
-	const char **service_classes;
-	int i;
+	struct slist *service_classes;
 	uint32_t class;
 
 	if (get_remote_class(conn, msg, data, &class) < 0)
@@ -1171,21 +1175,16 @@ static DBusHandlerResult handle_dev_get_remote_service_cls_req(DBusConnection *c
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	service_classes = service_classes_str(class);
-	if (!service_classes) {
-		error("Unable to create service classes list");
-		return error_failed(conn,msg, ENOMEM);
-	}
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	for (i = 0; service_classes[i] != NULL; i++)
-		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &service_classes[i]);
+	slist_foreach(service_classes, (slist_func_t)append_class_string, &array_iter);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	free(service_classes);
+	slist_free(service_classes);
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -2194,40 +2193,20 @@ const char *minor_class_str(uint32_t class)
 	return "";
 }
 
-/* Return NULL terminated array of strings */
-const char **service_classes_str(uint32_t class)
+struct slist *service_classes_str(uint32_t class)
 {
 	uint8_t services = class >> 16;
-	const char **classes;
-	int i, class_count = 0;
-
-	classes = malloc(sizeof(const char *));
-	if (!classes)
-		return NULL;
-
-	classes[0] = NULL;
+	struct slist *l = NULL;
+	int i;
 
 	for (i = 0; i < (sizeof(service_cls) / sizeof(*service_cls)); i++) {
-		const char **tmp;
-
 		if (!(services & (1 << i)))
 			continue;
 
-		class_count++;
-
-		tmp = realloc(classes, sizeof(const char *) * (class_count + 1));
-		if (!tmp) {
-			free(classes);
-			return NULL;
-		}
-
-		classes = tmp;
-
-		classes[class_count - 1] = service_cls[i];
-		classes[class_count] = NULL;
+		l = slist_append(l, (void *)service_cls[i]);
 	}
 
-	return classes;
+	return l;
 }
 
 
