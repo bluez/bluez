@@ -133,6 +133,14 @@ guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
 						func, user_data, NULL);
 }
 
+static void timeout_free(void *data, void *user_data)
+{
+	struct timeout *t = data;
+
+	if (t)
+		free (t);
+}
+
 static GMainContext *g_main_context_default()
 {
 
@@ -310,6 +318,7 @@ void g_main_loop_unref(GMainLoop *loop)
 	if (!loop->context)
 		return;
 
+	slist_foreach(loop->context->ltimeout, timeout_free, NULL);
 	slist_free(loop->context->ltimeout);
 	free(loop->context);
 }

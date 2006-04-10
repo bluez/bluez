@@ -386,6 +386,14 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 		return error_invalid_arguments(conn, msg);
 	}
 
+	if (dbus_data->timeout_id) {
+		g_timeout_remove(dbus_data->timeout_id);
+		dbus_data->timeout_id = 0;
+	}
+
+	if ((timeout != 0) && (dbus_data->mode & SCAN_INQUIRY))
+		dbus_data->timeout_id = g_timeout_add(timeout, discoverable_timeout_handler, dbus_data);
+
 	dbus_data->discoverable_timeout = timeout;
 
 	reply = dbus_message_new_method_return(msg);

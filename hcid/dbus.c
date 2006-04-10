@@ -388,6 +388,8 @@ static gboolean unregister_dbus_path(const char *path)
 			slist_free(pdata->active_conn);
 			pdata->active_conn = NULL;
 		}
+
+		free (pdata);
 	}
 
 	if (!dbus_connection_unregister_object_path (connection, path)) {
@@ -1397,9 +1399,9 @@ done:
  *
  *****************************************************************/
 
-static int discoverable_timeout_handler(void *data)
+int discoverable_timeout_handler(void *data)
 {
-	const struct hci_dbus_data *dbus_data = data;
+	struct hci_dbus_data *dbus_data = data;
 	struct hci_request rq;
 	int dd = -1;
 	uint8_t hci_mode = dbus_data->mode;
@@ -1432,6 +1434,7 @@ static int discoverable_timeout_handler(void *data)
 		goto failed;
 	}
 
+	dbus_data->timeout_id = 0;
 	retval = -1;
 failed:
 	if (dd >= 0)
@@ -1642,10 +1645,14 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		error("Getting %s path data failed!", path);
 		goto failed;
 	}
-
+	
 	/* update the current scan mode value */
 	pdata->mode = rp.enable;
 
+	if (pdata->timeout_id) {
+		g_timeout_remove(pdata->timeout_id);
+		pdata->timeout_id = 0;
+	}
 	switch (rp.enable) {
 	case SCAN_DISABLED:
 		scan_mode = MODE_OFF;
@@ -1655,11 +1662,15 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
 		scan_mode = MODE_DISCOVERABLE;
-		g_timeout_add(pdata->discoverable_timeout, discoverable_timeout_handler, pdata);
+		if (pdata->discoverable_timeout != 0)
+			pdata->timeout_id = g_timeout_add(pdata->discoverable_timeout,
+							  discoverable_timeout_handler, pdata);
 		break;
 	case SCAN_INQUIRY:
 		/* Address the scenario where another app changed the scan mode */
-		g_timeout_add(pdata->discoverable_timeout, discoverable_timeout_handler, pdata);
+		if (pdata->discoverable_timeout != 0)
+			pdata->timeout_id = g_timeout_add(pdata->discoverable_timeout,
+							  discoverable_timeout_handler, pdata);
 		/* ignore, this event should not be sent*/
 	default:
 		/* ignore, reserved */

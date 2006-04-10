@@ -105,7 +105,8 @@ struct active_conn_info {
 struct hci_dbus_data {
 	uint16_t dev_id;
 	uint16_t path_id;
-	uint32_t discoverable_timeout;
+	uint32_t timeout_id;		   /* discoverable timeout id */
+	uint32_t discoverable_timeout;	   /* discoverable time(msec) */
 	uint8_t mode;		           /* scan mode */
 	discover_state_t discover_state;   /* discover states */
 	int discover_type;                 /* with/without name resolving */
@@ -198,6 +199,7 @@ void disc_device_info_free(void *data, void *user_data);
 int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);
 int disc_device_req_name(struct hci_dbus_data *dbus_data);
 
+int discoverable_timeout_handler(void *data);
 /*
  * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device

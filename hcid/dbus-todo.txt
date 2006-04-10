@@ -1,0 +1,10 @@
+* method rename
+Date: 2006/04/10
+Description: Rename the method GetServicesClasses to GetServiceClasses.
+
+* Error return for remote major/minor class
+Date: 2006/04/10
+Description: GetRemoteMajorMajorClass and GetRemoteMinorClass should
+return "org.bluez.Error.NotAvailable" when the "classes" doesn't exists.
+Currently, it's returning no such file or directory.
+
