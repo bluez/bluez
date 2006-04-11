@@ -7,3 +7,25 @@ Date: 2006/04/11
 Description: Review these errors. The usage of "Does not exists"
 and "Not available" are confusing.
 
+* pending HCI requests
+Date: 2006/04/11
+Description: The D-Bus authentication method creates automatically
+an ACL connection when required and disconnects when the procedure
+finishes. When the HCI connection complete arrives, remote name/
+version/features are queued. Considering that the authentication
+is not queued, when this procedure finishes and the disconnect is
+requested, the remaining elements in the queue can't be executed.
+
+* active connections verification
+Date: 2006/04/11
+Description: get_bdaddr function is called frequently in the
+security.c file. In a real usage scenario, the disconnect
+command can be sent by another process or BlueZ D-Bus method.
+On this case if there is pending request confirmation(eg: remote
+version complete or remote features complete), when the
+confirmation arrives the bdaddr can't be retrieved because
+there isn't active connection anymore. Suggestion: keep a active
+connection list instead of call the get_bdaddr frequently. Keep
+in mind that D-Bus data already has a list to store active
+connections.
+
