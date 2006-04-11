@@ -411,9 +411,9 @@ gboolean hcid_dbus_register_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
-	gboolean ret;
+	gboolean ret = FALSE;
 	DBusMessage *message = NULL;
-	int i, dd = -1;
+	int i, err, dd = -1;
 	read_scan_enable_rp rp;
 	struct hci_request rq;
 	struct hci_dbus_data* pdata;
@@ -421,7 +421,8 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	struct hci_conn_info *ci = NULL;
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
-	ret = register_dbus_path(path, ADAPTER_PATH_ID, id, &obj_dev_vtable, FALSE);
+	if (!register_dbus_path(path, ADAPTER_PATH_ID, id, &obj_dev_vtable, FALSE))
+		return FALSE;
 
 	dd = hci_open_dev(id);
 	if (dd < 0) {
@@ -445,11 +446,23 @@ gboolean hcid_dbus_register_device(uint16_t id)
 		}
 	}
 
-	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting %s path data failed!", path);
-	else
-		pdata->mode = rp.enable;	/* Keep the current scan status */
+		goto failed;
+	}
 
+	pdata->mode = rp.enable;	/* Keep the current scan status */
+
+	/*
+	 * Get the adapter Bluetooth address
+	 */
+	err = get_device_address(pdata->dev_id, pdata->address, sizeof(pdata->address));
+	if (err < 0)
+		goto failed;
+
+	/*
+	 * Send the adapter added signal
+	 */
 	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
 							"AdapterAdded");
 	if (message == NULL) {
@@ -491,7 +504,11 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	for (i = 0; i < cl->conn_num; i++, ci++)
 		active_conn_append(&pdata->active_conn, &ci->bdaddr, ci->handle);
 
+	ret = TRUE;
 failed:
+	if (!ret)
+		dbus_connection_unregister_object_path(connection, path);
+
 	if (message)
 		dbus_message_unref(message);
 

@@ -7,12 +7,6 @@ an out of memory error
 Date: 2006/04/11
 Description: This method is not implemented
 
-* get_device_address
-Date: 2006/04/11
-Description: This function is called frequently. Verify if it's
-possible add a new field in the D-Bus data path structure to 
-store this information.
-
 * record doesn't exist and not available
 Date: 2006/04/11
 Description: Review these errors. The usage of "Does not exists"

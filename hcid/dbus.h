@@ -105,6 +105,7 @@ struct active_conn_info {
 struct hci_dbus_data {
 	uint16_t dev_id;
 	uint16_t path_id;
+	char address[18];		   /* adapter Bluetooth Address */
 	uint32_t timeout_id;		   /* discoverable timeout id */
 	uint32_t discoverable_timeout;	   /* discoverable time(msec) */
 	uint8_t mode;		           /* scan mode */

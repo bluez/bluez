@@ -144,19 +144,14 @@ static struct bonding_request_info *bonding_request_new(bdaddr_t *peer)
 static DBusHandlerResult handle_dev_get_address_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
+	const char *paddr = dbus_data->address;
 	DBusMessage *reply;
-	char str[18], *str_ptr = str;
-	int err;
-
-	err = get_device_address(dbus_data->dev_id, str, sizeof(str));
-	if (err < 0)
-		return error_failed(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return error_out_of_memory(conn, msg);
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &paddr,
 					DBUS_TYPE_INVALID);
 
 	return send_reply_and_unref(conn, reply);
@@ -829,11 +824,10 @@ static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusError err;
 	char filename[PATH_MAX + 1];
-	char addr[18], *addr_ptr, *str;
+	char *addr_ptr, *str;
 	const char *str_ver;
 	char info_array[64], *info = info_array;
 	int compid, ver, subver;
-	int ecode;
 	uint8_t features;
 
 	dbus_error_init(&err);
@@ -853,11 +847,7 @@ static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn,
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -876,7 +866,7 @@ static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn,
 	/* default value */
 	snprintf(info, 64, "Bluetooth %s", str_ver);
 
-	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -910,10 +900,9 @@ static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn
 	DBusMessage *reply;
 	DBusError err;
 	char filename[PATH_MAX + 1];
-	char addr[18], *addr_ptr, *str;
+	char *addr_ptr, *str;
 	char info_array[16], *info = info_array;
 	int compid, ver, subver;
-	int ecode;
 
 	dbus_error_init(&err);
 
@@ -932,11 +921,7 @@ static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -963,10 +948,9 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 	DBusMessage *reply;
 	DBusError err;
 	char filename[PATH_MAX + 1];
-	char addr[18], *addr_ptr, *str;
+	char *addr_ptr, *str;
 	char info_array[64], *info = info_array;
 	int compid, ver, subver;
-	int ecode;
 	dbus_error_init(&err);
 
 	memset(info_array, 0, 64);
@@ -984,11 +968,7 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1051,7 +1031,7 @@ static DBusHandlerResult handle_dev_get_remote_company_req(DBusConnection *conn,
 static int get_remote_class(DBusConnection *conn, DBusMessage *msg, void *data, uint32_t *class)
 {
 	struct hci_dbus_data *dbus_data = data;
-	char addr_local[18], *addr_peer;
+	char *addr_peer;
 	DBusError err;
 	bdaddr_t local, peer;
 	int ecode;
@@ -1073,14 +1053,8 @@ static int get_remote_class(DBusConnection *conn, DBusMessage *msg, void *data, 
 		return -1;
 	}
 
-	ecode = get_device_address(dbus_data->dev_id, addr_local, sizeof(addr_local));
-	if (ecode < 0) {
-		error_failed(conn, msg, -ecode);
-		return -1;
-	}
-
 	str2ba(addr_peer, &peer);
-	str2ba(addr_local, &local);
+	str2ba(dbus_data->address, &local);
 
 	ecode = read_remote_class(&local, &peer, class);
 	if (ecode < 0) {
@@ -1175,14 +1149,13 @@ static DBusHandlerResult handle_dev_get_remote_service_cls_req(DBusConnection *c
 
 static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1];
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply = NULL;
 	DBusError err;
 	const char *peer_addr;
 	bdaddr_t peer_bdaddr;
 	char *str;
-	int ecode;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1198,12 +1171,8 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
 	/* check if it is a unknown address */
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, peer_addr);
 
@@ -1213,7 +1182,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	free(str);
 
 	/* check if it is in the cache */
-	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, peer_addr);
 
@@ -1397,8 +1366,7 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 	DBusMessage *reply;
 	DBusError err;
 	char filename[PATH_MAX + 1];
-	char addr[18], *addr_ptr, *str;
-	int ecode;
+	char *addr_ptr, *str;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1414,11 +1382,7 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1444,8 +1408,7 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 	DBusMessage *reply;
 	DBusError err;
 	char filename[PATH_MAX + 1];
-	char addr[18], *addr_ptr, *str;
-	int ecode;
+	char *addr_ptr, *str;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1461,12 +1424,7 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/lastused", STORAGEDIR, addr);
-
+	snprintf(filename, PATH_MAX, "%s/%s/lastused", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1546,7 +1504,6 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	char filename[PATH_MAX + 1];
-	char local_addr[18];
 	struct hci_request rq;
 	create_conn_cp cc_cp;
 	auth_requested_cp ar_cp;
@@ -1557,7 +1514,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	struct hci_dbus_data *dbus_data = data;
 	struct slist *l;
 	bdaddr_t peer_bdaddr;
-	int dd, ecode, disconnect;
+	int dd, disconnect;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1583,12 +1540,8 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	if (dbus_data->discover_state != STATE_IDLE || dbus_data->requestor_name)
 		return error_discover_in_progress(conn, msg); 
 
-	ecode = get_device_address(dbus_data->dev_id, local_addr, sizeof(local_addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
 	/* check if a link key already exists */
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, local_addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, peer_addr);
 	if (str) {
@@ -1597,7 +1550,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	}
 
 	/* check if the address belongs to the last seen cache */
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, local_addr);
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
 	str = textfile_get(filename, peer_addr);
 	if (!str)
 		return error_unknown_address(conn, msg);
@@ -1777,7 +1730,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	DBusMessage *signal;
 	DBusError err;
 	char filename[PATH_MAX + 1];
-	char addr[18], *addr_ptr;
+	char *addr_ptr;
 	bdaddr_t bdaddr;
 	int dd;
 
@@ -1799,9 +1752,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
-	get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
 
 	/* Delete the link key from storage */
 	if (textfile_del(filename, addr_ptr)) {
@@ -1849,9 +1800,8 @@ static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMe
 	DBusMessage *reply;
 	DBusError err;
 	char filename[PATH_MAX + 1];
-	char addr[18], *addr_ptr, *str;
+	char *addr_ptr, *str;
 	dbus_bool_t result;
-	int ecode;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1867,11 +1817,7 @@ static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMe
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, addr_ptr);
 	if (str) {
@@ -1902,14 +1848,8 @@ static DBusHandlerResult handle_dev_list_bondings_req(DBusConnection *conn, DBus
 	DBusMessageIter array_iter;
 	DBusMessage *reply;
 	char filename[PATH_MAX + 1];
-	char addr[18];
-	int ecode;
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1931,9 +1871,9 @@ static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn
 	DBusMessage *reply;
 	DBusError err;
 	bdaddr_t local, peer;
-	char addr[18], *addr_ptr;
+	char *addr_ptr;
 	uint8_t length;
-	int len, ecode;
+	int len;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1949,11 +1889,7 @@ static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	ecode = get_device_address(dbus_data->dev_id, addr, sizeof(addr));
-	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
-
-	str2ba(addr, &local);
+	str2ba(dbus_data->address, &local);
 
 	str2ba(addr_ptr, &peer);
 
