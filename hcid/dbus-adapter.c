@@ -857,14 +857,6 @@ static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn,
 	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
 
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
-
-	str = textfile_get(filename, addr_ptr);
-	if (!str)
-		return error_unknown_address(conn, msg);
-
-	free(str);
-
 	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
 
 	str = textfile_get(filename, addr_ptr);
@@ -944,14 +936,6 @@ static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn
 	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
 
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
-
-	str = textfile_get(filename, addr_ptr);
-	if (!str)
-		return error_unknown_address(conn, msg);
-
-	free(str);
-
 	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
 
 	str = textfile_get(filename, addr_ptr);
@@ -1004,14 +988,6 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
 
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
-
-	str = textfile_get(filename, addr_ptr);
-	if (!str)
-		return error_unknown_address(conn, msg);
-
-	free(str);
-
 	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
 
 	str = textfile_get(filename, addr_ptr);
@@ -1056,7 +1032,7 @@ static DBusHandlerResult handle_dev_get_remote_company_req(DBusConnection *conn,
 
 	tmp = ouitocomp(oui);
 	if (!tmp)
-		return error_record_does_not_exist(conn, msg);
+		return error_not_available(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -1108,7 +1084,7 @@ static int get_remote_class(DBusConnection *conn, DBusMessage *msg, void *data, 
 
 	ecode = read_remote_class(&local, &peer, class);
 	if (ecode < 0) {
-		error_failed(conn, msg, -ecode);
+		error_not_available(conn, msg);
 		return -1;
 	}
 
@@ -1299,7 +1275,7 @@ static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, D
 
 	ecode = get_device_alias(dbus_data->dev_id, &bdaddr, str, sizeof(str));
 	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
+		return error_not_available(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1446,7 +1422,7 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
-		return error_failed(conn, msg, ENXIO);
+		return error_not_available(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -1494,7 +1470,7 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
-		return error_failed(conn, msg, ENXIO);
+		return error_not_available(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -1520,6 +1496,9 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 
 	const char *peer_addr;
 	bdaddr_t peer_bdaddr;
+	int dd;
+	struct active_conn_info *dev;
+
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1538,24 +1517,23 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 	str2ba(peer_addr, &peer_bdaddr);
 
 	l = slist_find(l, &peer_bdaddr, active_conn_find_by_bdaddr);
-	if (l) {
-		int dd;
-		struct active_conn_info *dev = l->data;
-
-		dd = hci_open_dev(dbus_data->dev_id);
-		if (dd < 0)
-			return error_no_such_adapter(conn, msg);
-
-		/* Send the HCI disconnect command */
-		if (hci_disconnect(dd, dev->handle, HCI_OE_USER_ENDED_CONNECTION, 100) < 0) {
-			error("Disconnect failed");
-			hci_close_dev(dd);
-			return error_failed(conn, msg, errno);
-		}
-
-		hci_close_dev(dd);
-	} else 
+	if (!l)
 		return error_not_connected(conn, msg);
+
+	dev = l->data;
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0)
+		return error_no_such_adapter(conn, msg);
+
+	/* Send the HCI disconnect command */
+	if (hci_disconnect(dd, dev->handle, HCI_OE_USER_ENDED_CONNECTION, 100) < 0) {
+		error("Disconnect failed");
+		hci_close_dev(dd);
+		return error_failed(conn, msg, errno);
+	}
+
+	hci_close_dev(dd);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1981,7 +1959,7 @@ static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn
 
 	len = read_pin_length(&local, &peer);
 	if (len < 0)
-		return error_failed(conn, msg, -len);
+		return error_record_does_not_exist(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -2236,7 +2214,7 @@ static struct service_data dev_services[] = {
 	{ "ListAvailableMinorClasses",			handle_dev_list_minor_classes_req	},
 	{ "GetMinorClass",				handle_dev_get_minor_class_req		},
 	{ "SetMinorClass",				handle_dev_set_minor_class_req		},
-	{ "GetServicesClasses",				handle_dev_get_service_classes_req	},
+	{ "GetServiceClasses",				handle_dev_get_service_classes_req	},
 	{ "GetName",					handle_dev_get_name_req			},
 	{ "SetName",					handle_dev_set_name_req			},
 	

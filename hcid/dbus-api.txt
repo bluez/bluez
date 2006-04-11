@@ -370,14 +370,13 @@ Methods		string GetAddress()
 			data. The base for this string is the LMP version
 			value and the features for EDR support.
 
-			In case the remote address is unknown, it should
-			return the error UnkownAddress and if the data is
-			not available it should return NotAvailable.
+			Not available can be received if the remote device was
+			not contacted(connected) previously. Remote data is
+			automatically retrieved in the first connection.
 
 			Example: "Bluetooth 2.0 + EDR"
 
 			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.NotAvailable
 
 		string GetRemoteRevision(string address)
@@ -390,7 +389,6 @@ Methods		string GetAddress()
 			Example: "HCI 19.2"
 
 			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.NotAvailable
 
 		string GetRemoteManufacturer(string address)
@@ -400,7 +398,6 @@ Methods		string GetAddress()
 			Example: "Nokia Mobile Phones"
 
 			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.NotAvailable
 
 		string GetRemoteCompany(string address)
@@ -413,8 +410,8 @@ Methods		string GetAddress()
 
 			Example: "Microsoft Corporation"
 
-			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.NotAvailable
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
 
 		string GetRemoteMajorClass(string address)
 
@@ -422,8 +419,8 @@ Methods		string GetAddress()
 
 			Example: "computer"
 
-			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.NotAvailable
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
 
 		string GetRemoteMinorClass(string address)
 
@@ -431,8 +428,8 @@ Methods		string GetAddress()
 
 			Example: "laptop"
 
-			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.NotAvailable
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
 
 		array{string] GetRemoteServiceClasses(string address)
 
@@ -440,7 +437,7 @@ Methods		string GetAddress()
 
 			Example: ["networking", "object transfer"]
 
-			Possible errors: org.bluez.Error.UnknownAddress
+			Possible errors: org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.NotAvailable
 
 		string GetRemoteName(string address)
@@ -461,8 +458,8 @@ Methods		string GetAddress()
 
 			Example: "00:11:22:33:44:55", "Nokia 770"
 
-			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.NotAvailable
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.RequestDeferred
 
 		string GetRemoteAlias(string address)
@@ -473,7 +470,7 @@ Methods		string GetAddress()
 
 			An alias should supersede the remote name.
 
-			Possible errors: org.bluez.Error.UnknownAddress
+			Possible errors: org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.NotAvailable
 
 		void SetRemoteAlias(string address, string alias)
@@ -487,7 +484,7 @@ Methods		string GetAddress()
 			name.
 
 			Possible errors: org.bluez.Error.Failed
-			                 org.bluez.Error.UnknownAddress
+					 org.bluez.Error.InvalidArguments
 
 		void ClearRemoteAlias(string address)
 
@@ -500,7 +497,7 @@ Methods		string GetAddress()
 			a RemoteAliasCleared signal.
 
 			Possible errors: org.bluez.Error.Failed
-			                 org.bluez.Error.UnknownAddress
+					 org.bluez.Error.InvalidArguments
 
 		string LastSeen(string address)
 
@@ -508,6 +505,9 @@ Methods		string GetAddress()
 			seen by a discover procedure.
 
 			Example: "2006-02-08 12:00:00 GMT"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
 
 			Question: Can we find a better name?
 
@@ -517,6 +517,9 @@ Methods		string GetAddress()
 			adapter has been connected.
 
 			Example: "2006-02-08 12:00:00 GMT"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
 
 			Question: Can we find a better name?
 
@@ -528,7 +531,8 @@ Methods		string GetAddress()
 			use only.
 
 			Possible errors: org.bluez.Error.Failed
-			                 org.bluez.Error.UnknownAddress
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.NotConnected
 
 		void CreateBonding(string address)
@@ -551,9 +555,11 @@ Methods		string GetAddress()
 			signal.
 
 			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.AlreadyExists
 			                 org.bluez.Error.InProgress
+					 org.bluez.Error.NoSuchAdapter
 			                 org.bluez.Error.ConnectionAttemptFailed
 			                 org.bluez.Error.AuthenticationFailed
 			                 org.bluez.Error.AuthenticationTimeout
@@ -568,7 +574,11 @@ Methods		string GetAddress()
 			AuthenticationCanceled to signal that an attempt to
 			create a bonding has been canceled.
 
-			Possible errors: org.bluez.Error.UnknownAddress
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.UnknownAddress
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NoSuchAdapter
 
 		void RemoveBonding(string address)
 
@@ -584,14 +594,17 @@ Methods		string GetAddress()
 			After deleting the link key this method will send a
 			BondingRemoved signal.
 
-			Possible errors: org.bluez.Error.DoesNotExist
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.DoesNotExist
 
 		boolean HasBonding(string address)
 
 			Returns true if the remote device is bonded and false
 			if no link key is available.
 
-			Possible errors: org.bluez.Error.UnknownAddress
+			Possible errors: org.bluez.Error.InvalidArguments
 
 		array{string} ListBondings()
 
@@ -604,7 +617,7 @@ Methods		string GetAddress()
 			Returns the PIN code length that was used in the
 			pairing process.
 
-			Possible errors: org.bluez.Error.UnknownAddress
+			Possible errors: org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.DoesNotExist
 
 		uint8 GetEncryptionKeySize(string address)
@@ -614,7 +627,8 @@ Methods		string GetAddress()
 			This method will fail if no connection to the address
 			has been established.
 
-			Possible errors: org.bluez.Error.UnknownAddress
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.NotConnected
 			                 org.bluez.Error.DoesNotExist
 
@@ -629,7 +643,9 @@ Methods		string GetAddress()
 			RemoteNameUpdated signals. If the procedure has been
 			finished an DiscoveryCompleted signal will be sent.
 
-			Possible errors: org.bluez.Error.InProgress
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NoSuchAdapter
 
 		void DiscoverDevicesWithoutNameResolving()
 
@@ -647,14 +663,19 @@ Methods		string GetAddress()
 			case it will only happen if GetRemoteName has been
 			called and no previously stored name is available.
 
-			Possible errors: org.bluez.Error.InProgress
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NoSuchAdapter
 
 		void CancelDiscovery()
 
 			This method will cancel any previous DiscoverDevices
 			or DiscoverDevicesWithoutNameResolving actions.
 
-			Possible errors: org.bluez.Error.InProgress
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NoSuchAdapter
 
 Signals		void ModeChanged(string mode)
 
