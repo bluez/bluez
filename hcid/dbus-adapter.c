@@ -149,7 +149,7 @@ static DBusHandlerResult handle_dev_get_address_req(DBusConnection *conn, DBusMe
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &paddr,
 					DBUS_TYPE_INVALID);
@@ -170,7 +170,7 @@ static DBusHandlerResult handle_dev_get_version_req(DBusConnection *conn, DBusMe
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
@@ -191,7 +191,7 @@ static DBusHandlerResult handle_dev_get_revision_req(DBusConnection *conn, DBusM
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
@@ -212,7 +212,7 @@ static DBusHandlerResult handle_dev_get_manufacturer_req(DBusConnection *conn, D
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
@@ -233,7 +233,7 @@ static DBusHandlerResult handle_dev_get_company_req(DBusConnection *conn, DBusMe
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
@@ -267,7 +267,7 @@ static DBusHandlerResult handle_dev_get_mode_req(DBusConnection *conn, DBusMessa
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
@@ -343,7 +343,7 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -355,7 +355,7 @@ static DBusHandlerResult handle_dev_get_discoverable_to_req(DBusConnection *conn
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &dbus_data->discoverable_timeout,
 					DBUS_TYPE_INVALID);
@@ -381,6 +381,10 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 		return error_invalid_arguments(conn, msg);
 	}
 
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
 	if (dbus_data->timeout_id) {
 		g_timeout_remove(dbus_data->timeout_id);
 		dbus_data->timeout_id = 0;
@@ -390,10 +394,6 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 		dbus_data->timeout_id = g_timeout_add(timeout, discoverable_timeout_handler, dbus_data);
 
 	dbus_data->discoverable_timeout = timeout;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return error_out_of_memory(conn, msg);
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -410,7 +410,7 @@ static DBusHandlerResult handle_dev_is_connectable_req(DBusConnection *conn, DBu
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connectable,
 					DBUS_TYPE_INVALID);
@@ -430,7 +430,7 @@ static DBusHandlerResult handle_dev_is_discoverable_req(DBusConnection *conn, DB
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &discoverable,
 					DBUS_TYPE_INVALID);
@@ -472,7 +472,7 @@ static DBusHandlerResult handle_dev_is_connected_req(DBusConnection *conn, DBusM
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
@@ -522,7 +522,7 @@ static DBusHandlerResult handle_dev_get_major_class_req(DBusConnection *conn, DB
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	/*FIXME: Check the real device major class */
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
@@ -572,7 +572,7 @@ static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -609,7 +609,7 @@ static DBusHandlerResult handle_dev_get_minor_class_req(DBusConnection *conn, DB
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	/* FIXME: Currently, only computer major class is supported */
 	if ((cls[1] & 0x1f) != 1)
@@ -770,7 +770,7 @@ static DBusHandlerResult handle_dev_get_name_req(DBusConnection *conn, DBusMessa
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
@@ -813,7 +813,7 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -886,7 +886,7 @@ failed:
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &info,
 					DBUS_TYPE_INVALID);
@@ -921,6 +921,10 @@ static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
 	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, dbus_data->address);
 
 	str = textfile_get(filename, addr_ptr);
@@ -931,10 +935,6 @@ static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn
 		snprintf(info, 16, "HCI 0x%X", subver);
 
 	free(str);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return error_out_of_memory(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &info,
 					DBUS_TYPE_INVALID);
@@ -981,7 +981,7 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &info,
 					DBUS_TYPE_INVALID);
@@ -1017,7 +1017,7 @@ static DBusHandlerResult handle_dev_get_remote_company_req(DBusConnection *conn,
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
 		free(tmp);
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &tmp,
@@ -1190,7 +1190,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 		reply = dbus_message_new_method_return(msg);
 		if (!reply) {
 			free(str);
-			return error_out_of_memory(conn, msg);
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 		}
 
 		/* send the cached name */
@@ -1248,7 +1248,7 @@ static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, D
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
@@ -1289,6 +1289,10 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
 
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
 	signal = dev_signal_factory(dbus_data->dev_id, "RemoteAliasChanged",
 						DBUS_TYPE_STRING, &addr_ptr,
 						DBUS_TYPE_STRING, &str_ptr,
@@ -1298,10 +1302,6 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 		dbus_connection_flush(connection);
 		dbus_message_unref(signal);
 	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return error_out_of_memory(conn, msg);
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -1342,6 +1342,10 @@ static DBusHandlerResult handle_dev_clear_remote_alias_req(DBusConnection *conn,
 	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
 
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
 	if (had_alias) {
 		signal = dev_signal_factory(dbus_data->dev_id, "RemoteAliasCleared",
 							DBUS_TYPE_STRING, &addr_ptr,
@@ -1352,10 +1356,6 @@ static DBusHandlerResult handle_dev_clear_remote_alias_req(DBusConnection *conn,
 			dbus_message_unref(signal);
 		}
 	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return error_out_of_memory(conn, msg);
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -1391,7 +1391,7 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
 		free(str);
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,
@@ -1433,7 +1433,7 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
 		free(str);
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str,

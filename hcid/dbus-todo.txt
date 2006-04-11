@@ -1,8 +1,3 @@
-* Memory allocation failure for D-Bus messages
-Date: 2006/04/10
-Description: return DBUS_HANDLER_RESULT_NEED_MEMORY instead of return
-an out of memory error
-
 * Get encryption key size
 Date: 2006/04/11
 Description: This method is not implemented

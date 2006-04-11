@@ -46,7 +46,7 @@ static DBusHandlerResult handle_mgr_interface_version_req(DBusConnection *conn, 
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
  
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &version,
 					DBUS_TYPE_INVALID);
@@ -88,7 +88,7 @@ static DBusHandlerResult handle_mgr_list_devices_req(DBusConnection *conn, DBusM
 	if (!reply) {
 		close(sk);
 		free(dl);
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
 	dbus_message_iter_init_append(reply, &iter);
@@ -132,7 +132,7 @@ static DBusHandlerResult handle_mgr_default_adapter_req(DBusConnection *conn, DB
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return error_out_of_memory(conn, msg);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, default_dev);
 
