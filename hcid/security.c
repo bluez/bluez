@@ -569,7 +569,7 @@ static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 	str = textfile_get(filename, peer_addr);
 	if (!str) {
 		struct hci_req_data *data;
-		read_remote_features_cp cp;
+		read_remote_version_cp cp;
 
 		cp.handle = evt->handle;
 
