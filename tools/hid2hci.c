@@ -218,6 +218,7 @@ static struct device_id device_list[] = {
 	{ HID, 0x0458, 0x003f, switch_hidproxy },
 	{ HCI, 0x05ac, 0x1000, switch_hidproxy },
 	{ HID, 0x05ac, 0x8203, switch_hidproxy },
+	{ HID, 0x05ac, 0x8204, switch_hidproxy },	/* Apple Mac mini */
 	{ HCI, 0x046d, 0xc703, switch_logitech },
 	{ HCI, 0x046d, 0xc704, switch_logitech },
 	{ HCI, 0x046d, 0xc705, switch_logitech },
