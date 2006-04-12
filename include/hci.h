@@ -192,6 +192,7 @@ enum {
 #define HCI_ROLE_SWITCH_PENDING			0x32
 #define HCI_SLOT_VIOLATION			0x34
 #define HCI_ROLE_SWITCH_FAILED			0x35
+#define HCI_EIR_TOO_LARGE			0x36
 
 /* ACL flags */
 #define ACL_CONT		0x01
