@@ -1075,14 +1075,12 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	if (!disc_device_req_name(pdata))
 		goto failed; /* skip if a new request has been sent */
 
-	pdata->discover_state = STATE_IDLE;
-
 	/* free discovered devices list */
 	slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
 
-	if (pdata->discover_type == RESOLVE_NAMES) {
+	if (pdata->discover_state == STATE_RESOLVING_NAMES ) {
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						  "DiscoveryCompleted");
 
@@ -1093,6 +1091,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 			pdata->requestor_name = NULL;
 		}
 	}
+
+	pdata->discover_state = STATE_IDLE;
 
 failed:
 	bt_free(local_addr);
