@@ -376,6 +376,8 @@ char *bt_compidtostr(int compid)
 		return "Bluetooth SIG, Inc";
 	case 64:
 		return "Seiko Epson Corporation";
+	case 65:
+		return "Integrated Silicon Solution Taiwain, Inc.";
 	case 65535:
 		return "internal use";
 	default:
