@@ -27,3 +27,8 @@
 
 #include <stdio.h>
 #include <errno.h>
+
+int stlc2500_init(int fd)
+{
+	return 0;
+}

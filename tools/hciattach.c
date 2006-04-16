@@ -821,6 +821,13 @@ static int st(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
+extern stlc2500_init(int fd);
+
+static int stlc2500(int fd, struct uart_t *u, struct termios *ti)
+{
+	return stlc2500_init(fd);
+}
+
 /*
  * Broadcom specific initialization
  * Extracted from Jungo openrg
@@ -961,6 +968,9 @@ struct uart_t uart[] = {
 
 	/* ST Microelectronics minikits based on STLC2410/STLC2415 */
 	{ "st",         0x0000, 0x0000, HCI_UART_H4,    57600, 115200, FLOW_CTL, st       },
+
+	/* ST Microelectronics minikits based on STLC2500 */
+	{ "stlc2500",   0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, stlc2500 },
 
 	/* Sphinx Electronics PICO Card */
 	{ "picocard",   0x025e, 0x1000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL     },
