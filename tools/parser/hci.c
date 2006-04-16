@@ -2431,13 +2431,24 @@ static inline void event_dump(int level, struct frame *frm)
 		p_indent(level, frm);
 		printf("HCI Event: Testing (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
 	} else if (hdr->evt == EVT_VENDOR) {
+		uint16_t manufacturer;
+
 		if (parser.flags & DUMP_NOVENDOR)
 			return;
 
 		p_indent(level, frm);
 		printf("HCI Event: Vendor (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
 
-		if (get_manufacturer() == 10) {
+		manufacturer = get_manufacturer();
+
+		switch (manufacturer) {
+		case 0:
+		case 48:
+			frm->ptr += HCI_EVENT_HDR_SIZE;
+			frm->len -= HCI_EVENT_HDR_SIZE;
+			ericsson_dump(level + 1, frm);
+			return;
+		case 10:
 			frm->ptr += HCI_EVENT_HDR_SIZE;
 			frm->len -= HCI_EVENT_HDR_SIZE;
 			csr_dump(level + 1, frm);
