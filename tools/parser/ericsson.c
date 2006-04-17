@@ -32,5 +32,22 @@
 
 void ericsson_dump(int level, struct frame *frm)
 {
-	raw_dump(level, frm);
+	uint8_t event = get_u8(frm);
+	uint8_t *buf = (uint8_t *) frm->ptr;
+
+	if (event != 0x10) {
+		p_indent(level, frm);
+		printf("Ericsson: event 0x%2.2x\n", event);
+		raw_dump(level, frm);
+	}
+
+	frm->master = !(buf[0] & 0x01);
+	frm->handle = buf[1] | (buf[2] << 8);
+
+	buf[5] = (buf[5] << 1) | (buf[3] & 0x01);
+
+	frm->ptr += 5;
+	frm->len -= 5;
+
+	lmp_dump(level, frm);
 }
