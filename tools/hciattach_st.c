@@ -29,8 +29,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <dirent.h>
 
 static int debug = 0;
 
@@ -38,7 +40,7 @@ static int do_command(int fd, uint8_t ogf, uint16_t ocf,
 			uint8_t *cparam, int clen, uint8_t *rparam, int rlen)
 {
 	//uint16_t opcode = (uint16_t) ((ocf & 0x03ff) | (ogf << 10));
-	unsigned char cp[254], rp[254];
+	unsigned char cp[260], rp[260];
 	int len, size, offset = 3;
 
 	cp[0] = 0x01;
@@ -109,17 +111,104 @@ static int do_command(int fd, uint8_t ogf, uint16_t ocf,
 	return size;
 }
 
-int stlc2500_init(int fd)
+static int load_file(int dd, uint16_t version, const char *suffix)
+{
+	DIR *dir;
+	struct dirent *d;
+	char filename[NAME_MAX], prefix[20];
+	unsigned char cmd[256];
+	unsigned char buf[256];
+	uint8_t seqnum = 0;
+	int fd, size, len;
+
+	memset(filename, 0, sizeof(filename));
+
+	snprintf(prefix, sizeof(prefix), "STLC2500_R%d_%02d_",
+						version >> 8, version & 0xff);
+
+	dir = opendir(".");
+	if (!dir)
+		return -errno;
+
+	while (1) {
+		d = readdir(dir);
+		if (!d)
+			break;
+
+		if (strncmp(d->d_name + strlen(d->d_name) - strlen(suffix),
+						suffix, strlen(suffix)))
+			continue;
+
+		if (strncmp(d->d_name, prefix, strlen(prefix)))
+			continue;
+
+		snprintf(filename, sizeof(filename), "%s", d->d_name);
+	}
+
+	closedir(dir);
+
+	printf("Loading file %s\n", filename);
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		perror("Can't open firmware file");
+		return -errno;
+	}
+
+	while (1) {
+		size = read(fd, cmd + 1, 254);
+		if (size <= 0)
+			break;
+
+		cmd[0] = seqnum;
+
+		len = do_command(dd, 0xff, 0x002e, cmd, size + 1, buf, sizeof(buf));
+		if (len < 1)
+			break;
+
+		if (buf[0] != seqnum) {
+			fprintf(stderr, "Sequence number mismatch\n");
+			break;
+		}
+
+		seqnum++;
+	}
+
+	close(fd);
+
+	return 0;
+}
+
+int stlc2500_init(int dd)
 {
 	unsigned char cmd[16];
 	unsigned char buf[254];
+	uint16_t version;
 	int len;
 
-	len = do_command(fd, 0x04, 0x0001, NULL, 0, buf, sizeof(buf));
+	len = do_command(dd, 0x04, 0x0001, NULL, 0, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
 
-	printf("Patch: STLC2500_R%d_%02d_*.ptc\n", buf[2], buf[1]);
+	version = buf[2] << 8 | buf[1];
 
-	len = do_command(fd, 0xff, 0x000f, NULL, 0, buf, sizeof(buf));
+	if (load_file(dd, version, ".ptc") < 0)
+		return -1;
+
+	len = do_command(dd, 0x03, 0x0003, NULL, 0, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
+
+	if (load_file(dd, buf[2] << 8 | buf[1], ".ssf") < 0)
+		return -1;
+
+	len = do_command(dd, 0x03, 0x0003, NULL, 0, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
+
+	len = do_command(dd, 0xff, 0x000f, NULL, 0, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
 
 	printf("%s\n", buf);
 
@@ -132,9 +221,13 @@ int stlc2500_init(int fd)
 	cmd[6] = 0x80;
 	cmd[7] = 0x00;
 
-	len = do_command(fd, 0xff, 0x0022, cmd, 8, buf, sizeof(buf));
+	len = do_command(dd, 0xff, 0x0022, cmd, 8, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
 
-	len = do_command(fd, 0x03, 0x0003, NULL, 0, buf, sizeof(buf));
+	len = do_command(dd, 0x03, 0x0003, NULL, 0, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
 
 	return 0;
 }
