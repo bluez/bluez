@@ -62,17 +62,9 @@ static struct g_io_info io_data[HCI_MAX_DEV];
 
 static int pairing = HCID_PAIRING_MULTI;
 
-struct hci_req_data {
-	int dev;
-	uint16_t ogf;
-	uint16_t ocf;
-	void *cparam;
-	int clen;
-};
-
 static struct slist *hci_req_queue = NULL;
 
-static struct hci_req_data *hci_req_data_new(int dev, uint16_t ogf, uint16_t ocf, const void *cparam, int clen)
+struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba, uint16_t ogf, uint16_t ocf, int event, const void *cparam, int clen)
 {
 	struct hci_req_data *data;
 
@@ -87,48 +79,103 @@ static struct hci_req_data *hci_req_data_new(int dev, uint16_t ogf, uint16_t ocf
 		free(data);
 		return NULL;
 	}
-
+	
 	memcpy(data->cparam, cparam, clen);
 
-	data->dev = dev;
+	bacpy(&data->dba, dba);
+
+	data->dev_id = dev_id;
+	data->status = REQ_PENDING;
 	data->ogf = ogf;
 	data->ocf = ocf;
+	data->event = event;
 	data->clen = clen;
 
 	return data;
 }
 
-static int hci_req_find_by_dev(const void *data, const void *user_data)
+void hci_req_queue_append(struct hci_req_data *data)
 {
-	const struct hci_req_data *req = data;
-	const int *dev = user_data;
-
-	return (*dev - req->dev);
+	hci_req_queue = slist_append(hci_req_queue, data);
 }
 
-static int check_pending_hci_req(int dev)
+void hci_req_queue_remove(int dev_id, bdaddr_t *dba)
+{
+	struct slist *cur, *next;
+	struct hci_req_data *req;
+
+	for (cur = hci_req_queue; cur != NULL; cur = next) {
+		req = cur->data;
+		next = cur->next;
+		if ((req->dev_id != dev_id) || (bacmp(&req->dba, dba)))
+			continue;
+
+		hci_req_queue = slist_remove(hci_req_queue, req);
+		free(req->cparam);
+		free(req);
+	}
+}
+
+static int hci_req_find_by_devid(const void *data, const void *user_data)
+{
+	const struct hci_req_data *req = data;
+	const int *dev_id = user_data;
+
+	return (*dev_id - req->dev_id);
+}
+
+static void check_pending_hci_req(int dev_id, int event)
 {
 	struct hci_req_data *data;
 	struct slist *l;
+	int dd, ret_val;
 
 	if (!hci_req_queue)
-		return -1;
+		return;
 
-	l = slist_find(hci_req_queue, &dev, hci_req_find_by_dev);
+	/* find the first element(pending)*/
+	l = slist_find(hci_req_queue, &dev_id, hci_req_find_by_devid);
 
 	if (!l)
-		return -1;
+		return;
 
 	data = l->data;
 
-	hci_send_cmd(dev, data->ogf, data->ocf, data->clen, data->cparam);
+	/* skip if there is pending confirmation */
+	if (data->status == REQ_SENT) {
+		if (data->event != event)
+			return;
 
-	hci_req_queue = slist_remove(hci_req_queue, data);
+		/* remove the confirmed cmd */
+		hci_req_queue = slist_remove(hci_req_queue, data);
+		free(data->cparam);
+		free(data);
+	}
 
-	free(data->cparam);
-	free(data);
+	/* send the next pending cmd */
+	dd = hci_open_dev(dev_id);
+	do {
+		l = slist_find(hci_req_queue, &dev_id, hci_req_find_by_devid);
 
-	return 0;
+		if (!l)
+			goto failed;
+
+		data = l->data;
+		data->status = REQ_SENT;
+		
+		ret_val = hci_send_cmd(dd, data->ogf, data->ocf, data->clen, data->cparam);
+		if (ret_val < 0) {
+			hci_req_queue = slist_remove(hci_req_queue, data);
+			free(data->cparam);
+			free(data);
+		}
+
+	} while(ret_val < 0);
+
+failed:
+	hci_close_dev(dd);
+
+	return;
 }
 
 static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
@@ -412,9 +459,6 @@ static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 	}
 
 	hcid_dbus_remote_name(sba, &dba, evt->status, name);
-
-	/* pending remote version or remote features */
-	check_pending_hci_req(dev);
 }
 
 static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
@@ -430,9 +474,6 @@ static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 
 	write_version_info(sba, &dba, btohs(evt->manufacturer),
 				evt->lmp_ver, btohs(evt->lmp_subver));
-
-	/* pending remote features */
-	check_pending_hci_req(dev);
 }
 
 static inline void inquiry_complete(int dev, bdaddr_t *sba, void *ptr)
@@ -531,23 +572,13 @@ static inline void remote_features_information(int dev, bdaddr_t *sba, void *ptr
 	write_features_info(sba, &dba, evt->features);
 }
 
-static inline void name_resolve(int dev, bdaddr_t *bdaddr)
-{
-	remote_name_req_cp cp;
-
-	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
-	cp.pscan_rep_mode = 0x02;
-
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
-						REMOTE_NAME_REQ_CP_SIZE, &cp);
-}
-
-static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
+static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 {
 	evt_conn_complete *evt = ptr;
 	char filename[PATH_MAX];
+	remote_name_req_cp cp_name;
 	bdaddr_t tmp;
+	struct hci_req_data *data;
 	char *str, *local_addr, *peer_addr;
 
 	hcid_dbus_conn_complete(sba, evt->status, evt->handle, &evt->bdaddr);
@@ -557,7 +588,16 @@ static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 
 	update_lastused(sba, &evt->bdaddr);
 
-	name_resolve(dev, &evt->bdaddr);
+	/* Request remote name */
+	memset(&cp_name, 0, sizeof(cp_name));
+	bacpy(&cp_name.bdaddr, &evt->bdaddr);
+	cp_name.pscan_rep_mode = 0x02;
+
+	data = hci_req_data_new(dev_id, &evt->bdaddr, OGF_LINK_CTL,
+				OCF_REMOTE_NAME_REQ, EVT_REMOTE_NAME_REQ_COMPLETE,
+				&cp_name, REMOTE_NAME_REQ_CP_SIZE);
+
+	hci_req_queue_append(data);
 
 	/* check if the remote version needs be requested */
 	baswap(&tmp, sba); local_addr = batostr(&tmp);
@@ -568,15 +608,15 @@ static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 
 	str = textfile_get(filename, peer_addr);
 	if (!str) {
-		struct hci_req_data *data;
 		read_remote_version_cp cp;
 
 		cp.handle = evt->handle;
 
-		data = hci_req_data_new(dev, OGF_LINK_CTL, OCF_READ_REMOTE_VERSION,
-						&cp, READ_REMOTE_VERSION_CP_SIZE);
+		data = hci_req_data_new(dev_id, &evt->bdaddr, OGF_LINK_CTL,
+					OCF_READ_REMOTE_VERSION, EVT_READ_REMOTE_VERSION_COMPLETE,
+					&cp, READ_REMOTE_VERSION_CP_SIZE);
 
-		hci_req_queue = slist_append(hci_req_queue, data);
+		hci_req_queue_append(data);
 	} else {
 		/* skip: remote version found */
 		free(str);
@@ -588,15 +628,15 @@ static inline void conn_complete(int dev, bdaddr_t *sba, void *ptr)
 
 	str = textfile_get(filename, peer_addr);
 	if (!str) {
-		struct hci_req_data *data;
 		read_remote_features_cp cp;
 
 		cp.handle = evt->handle;
 
-		data = hci_req_data_new(dev, OGF_LINK_CTL, OCF_READ_REMOTE_FEATURES,
-						&cp, READ_REMOTE_FEATURES_CP_SIZE);
+		data = hci_req_data_new(dev_id, &evt->bdaddr, OGF_LINK_CTL,
+					OCF_READ_REMOTE_FEATURES, EVT_READ_REMOTE_FEATURES_COMPLETE,
+					&cp, READ_REMOTE_FEATURES_CP_SIZE);
 
-		hci_req_queue = slist_append(hci_req_queue, data);
+		hci_req_queue_append(data);
 	} else {
 		/* skip: remote features found */
 		free(str);
@@ -702,7 +742,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 		break;
 
 	case EVT_CONN_COMPLETE:
-		conn_complete(dev, &di->bdaddr, ptr);
+		conn_complete(dev, di->dev_id, &di->bdaddr, ptr);
 		break;
 
 	case EVT_DISCONN_COMPLETE:
@@ -713,6 +753,8 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 		auth_complete(dev, &di->bdaddr, ptr);
 		break;
 	}
+	/* check for pending cmd request */
+	check_pending_hci_req(di->dev_id, eh->evt);
 
 	if (hci_test_bit(HCI_SECMGR, &di->flags))
 		return TRUE;

@@ -578,8 +578,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
 {
 	struct hci_dbus_data *pdata;
-	DBusMessage *msg_reply = NULL;
-	DBusMessage *msg_signal = NULL;
+	DBusMessage *message = NULL;
 	char *local_addr, *peer_addr;
 	const char *name;
 	bdaddr_t tmp;
@@ -615,48 +614,37 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	 */
 	name = status ? "BondingFailed" : "BondingCreated";
 	/* authentication signal */
-	msg_signal = dbus_message_new_signal(path, ADAPTER_INTERFACE, name);
+	message = dev_signal_factory(pdata->dev_id, name,
+					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_INVALID);
 
-	if (msg_signal == NULL) {
-		error("Can't allocate D-Bus message");
-		goto failed;
-	}
-
-	dbus_message_append_args(msg_signal,
-					 DBUS_TYPE_STRING, &peer_addr,
-					 DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send(connection, msg_signal, NULL) == FALSE) {
-		error("Can't send D-Bus bonding created signal");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
+	send_reply_and_unref(connection, message);
 
 	if (!pdata->bonding)
 		goto failed; /* skip: no bonding req pending */
 
-	msg_reply = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
-	if (dbus_connection_send(connection, msg_reply, NULL) == FALSE) {
-		error("Can't send D-Bus reply for create bonding request");
-		goto failed;
-	}
-
-	/* FIXME: disconnect if required */
 	if (pdata->bonding->disconnect) {
 		struct slist *l;
 
 		l = slist_find(pdata->active_conn, peer, active_conn_find_by_bdaddr);
 		if (l) {
 			struct active_conn_info *con = l->data;
-			int dd = hci_open_dev(pdata->dev_id);
-			/* Send the HCI disconnect command */
-			if (hci_disconnect(dd, con->handle, HCI_OE_USER_ENDED_CONNECTION, 100) < 0) {
-				error("Disconnect failed");
-			}
-			hci_close_dev(dd);
+			struct hci_req_data *data;
+			disconnect_cp cp;
+			memset(&cp, 0, sizeof(cp));
+
+			cp.handle = con->handle;
+			cp.reason = HCI_OE_USER_ENDED_CONNECTION;
+
+			data = hci_req_data_new(pdata->dev_id, peer, OGF_LINK_CTL,
+						OCF_DISCONNECT, EVT_DISCONN_COMPLETE,
+						&cp, DISCONNECT_CP_SIZE);
+			hci_req_queue_append(data);
 		}
 	}
+
+	message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
+	send_reply_and_unref(connection, message);
 
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
@@ -665,12 +653,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	pdata->requestor_name = NULL;
 
 failed:
-	if (msg_signal)
-		dbus_message_unref(msg_signal);
-
-	if (msg_reply)
-		dbus_message_unref(msg_reply);
-
 	bt_free(local_addr);
 	bt_free(peer_addr);
 }
@@ -1234,13 +1216,32 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 		goto failed;
 
 	dev = l->data;
-	/* add in the active connetions list */
+
 	baswap(&tmp, &dev->bdaddr); peer_addr = batostr(&tmp);
 
-	/* Sent the remote device disconnected signal */
-	message = dbus_message_new_signal(path, ADAPTER_INTERFACE, "RemoteDeviceDisconnected");
+	/* clean pending HCI cmds */
+	hci_req_queue_remove(pdata->dev_id, &dev->bdaddr);
 
-	dbus_message_append_args(message,
+	/* Check if there is a pending Bonding */
+	if (pdata->bonding) {
+		message = dev_signal_factory(pdata->dev_id, "BondingFailed",
+						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_INVALID);
+
+		send_reply_and_unref(connection, message);
+
+		message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
+		send_reply_and_unref(connection, message);
+
+		bonding_request_free(pdata->bonding);
+		pdata->bonding = NULL;
+
+		free(pdata->requestor_name);
+		pdata->requestor_name = NULL;
+	}
+
+	/* Sent the remote device disconnected signal */
+	message = dev_signal_factory(pdata->dev_id, "RemoteDeviceDisconnected",
 					DBUS_TYPE_STRING, &peer_addr,
 					DBUS_TYPE_INVALID);
 
