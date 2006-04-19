@@ -67,6 +67,7 @@ static inline void init_device_defaults(struct device_opts *device_opts)
 	memset(device_opts, 0, sizeof(*device_opts));
 	device_opts->scan = SCAN_PAGE;
 	device_opts->name = strdup("BlueZ");
+	device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
 }
 
 struct device_opts *alloc_device_opts(char *ref)
@@ -148,11 +149,54 @@ static struct device_opts *get_device_opts(int sock, int hdev)
 	return device_opts;
 }
 
+int get_discoverable_timeout(int hdev)
+{
+	int sock, timeout;
+	char address[18];
+	struct device_opts *device_opts = NULL;
+	struct hci_dev_info di;
+
+	if (hdev < 0)
+		return HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
+
+	sock = hci_open_dev(hdev);
+	if (sock < 0)
+		goto no_address;
+
+	di.dev_id = hdev;
+	if (!ioctl(sock, HCIGETDEVINFO, (void *) &di))
+		ba2str(&di.bdaddr, address);
+	else {
+		close(sock);
+		goto no_address;
+	}
+
+	close(sock);
+
+	if (!read_discoverable_timeout(address, &timeout))
+		return timeout;
+
+	device_opts = find_device_opts(address);
+
+no_address:
+	if (!device_opts) {
+		char ref[8];
+		snprintf(ref, sizeof(ref) - 1, "hci%d", hdev);
+		device_opts = find_device_opts(ref);
+	}
+
+	if (!device_opts)
+		device_opts = &default_device;
+
+	return device_opts->discovto;
+}
+
 static void configure_device(int hdev)
 {
 	struct device_opts *device_opts;
 	struct hci_dev_req dr;
 	struct hci_dev_info di;
+	char mode[14];
 	int s;
 
 	/* Do configuration in the separate process */
@@ -185,10 +229,19 @@ static void configure_device(int hdev)
 	device_opts = get_device_opts(s, hdev);
 
 	/* Set scan mode */
+	if (!read_device_mode(&di.bdaddr, mode, sizeof(mode))) {
+		if (!strcmp(mode, MODE_OFF))
+			device_opts->scan = SCAN_DISABLED;
+		else if (!strcmp(mode, MODE_CONNECTABLE))
+			device_opts->scan = SCAN_PAGE;
+		else if (!strcmp(mode, MODE_DISCOVERABLE))
+			device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
+	}
+
 	dr.dev_opt = device_opts->scan;
 	if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
 		error("Can't set scan mode on hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
+				hdev, strerror(errno), errno);
 	}
 
 	/* Set authentication */
@@ -304,6 +357,10 @@ static void configure_device(int hdev)
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
+
+	/* Set default discoverable timeout if not set */
+	if (!(device_opts->flags & (1 << HCID_SET_DISCOVTO)))
+		device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
 
 	exit(0);
 }

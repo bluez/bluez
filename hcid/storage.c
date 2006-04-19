@@ -43,6 +43,70 @@
 #include "textfile.h"
 #include "hcid.h"
 
+int write_discoverable_timeout(const char *address, int timeout)
+{
+	char filename[PATH_MAX + 1], str[32];
+
+	snprintf(str, sizeof(str), "%d", timeout);
+	
+	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, address);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	return textfile_put(filename, "discovto", str);
+}
+
+int read_discoverable_timeout(const char *address, int *timeout)
+{
+	char filename[PATH_MAX + 1], *str;
+
+	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, address);
+
+	str = textfile_get(filename, "discovto");
+	if (!str)
+		return -ENOENT;
+
+	if (sscanf(str, "%d", timeout) != 1) {
+		free(str);
+		return -ENOENT;
+	}
+
+	free(str);
+
+	return 0;
+}
+
+int write_device_mode(bdaddr_t *bdaddr, const char *mode)
+{
+	char filename[PATH_MAX + 1], addr[18];
+
+	ba2str(bdaddr, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	return textfile_put(filename, "mode", mode);
+}
+
+int read_device_mode(bdaddr_t *bdaddr, char *mode, int length)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+
+	ba2str(bdaddr, addr);
+	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+
+	str = textfile_get(filename, "mode");
+	if (!str)
+		return -ENOENT;
+
+	strncpy(mode, str, length);
+	mode[length-1] = '\0';
+
+	free(str);
+
+	return 0;
+}
+
 int write_local_name(bdaddr_t *bdaddr, char *name)
 {
 	char filename[PATH_MAX + 1], addr[18], str[249];

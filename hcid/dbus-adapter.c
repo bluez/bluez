@@ -395,6 +395,8 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 
 	dbus_data->discoverable_timeout = timeout;
 
+	write_discoverable_timeout(dbus_data->address, timeout);
+
 	return send_reply_and_unref(conn, reply);
 }
 

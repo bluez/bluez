@@ -201,20 +201,5 @@ int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name
 int disc_device_req_name(struct hci_dbus_data *dbus_data);
 
 int discoverable_timeout_handler(void *data);
-/*
- * Scanning modes, used by DEV_SET_MODE
- * off: remote devices are not allowed to find or connect to this device
- * connectable: remote devices are allowed to connect, but they are not
- *              allowed to find it.
- * discoverable: remote devices are allowed to connect and find this device
- * unknown: reserved to not allowed/future modes
- */
-#define MODE_OFF		"off"
-#define MODE_CONNECTABLE	"connectable"
-#define MODE_DISCOVERABLE	"discoverable"
-#define MODE_UNKNOWN		"unknown"
-
-#define DFT_DISCOVERABLE_TIMEOUT	180*1000 /* 3 seconds */
-#define DISCOVERABLE_TIMEOUT_OFF	0
 
 #endif /* __H_BLUEZ_DBUS_H__ */

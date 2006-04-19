@@ -339,7 +339,7 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 	data->path_id = path_id;
 	data->dev_id = dev_id;
 	data->mode = SCAN_DISABLED;
-	data->discoverable_timeout = DFT_DISCOVERABLE_TIMEOUT;
+	data->discoverable_timeout = get_discoverable_timeout(dev_id);
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
@@ -1694,6 +1694,8 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		/* ignore, reserved */
 		goto failed;
 	}
+
+	write_device_mode(local, scan_mode);
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"ModeChanged");

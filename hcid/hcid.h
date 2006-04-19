@@ -34,12 +34,28 @@
 
 #define HCID_CONFIG_FILE CONFIGDIR "/hcid.conf"
 
+#define HCID_DEFAULT_DISCOVERABLE_TIMEOUT (180*1000) /* 3 minutes */
+
+/*
+ * Scanning modes, used by DEV_SET_MODE
+ * off: remote devices are not allowed to find or connect to this device
+ * connectable: remote devices are allowed to connect, but they are not
+ *              allowed to find it.
+ * discoverable: remote devices are allowed to connect and find this device
+ * unknown: reserved to not allowed/future modes
+ */
+#define MODE_OFF		"off"
+#define MODE_CONNECTABLE	"connectable"
+#define MODE_DISCOVERABLE	"discoverable"
+#define MODE_UNKNOWN		"unknown"
+
 enum {
 	HCID_SET_NAME,
 	HCID_SET_CLASS,
 	HCID_SET_VOICE,
 	HCID_SET_INQMODE,
 	HCID_SET_PAGETO,
+	HCID_SET_DISCOVTO,
 	HCID_SET_PTYPE,
 	HCID_SET_LM,
 	HCID_SET_LP,
@@ -58,6 +74,7 @@ struct device_opts {
 	uint16_t scan;
 	uint16_t auth;
 	uint16_t encrypt;
+	int      discovto;
 };
 
 extern struct device_opts default_device;
@@ -115,6 +132,8 @@ void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
 int read_config(char *file);
 
 struct device_opts *alloc_device_opts(char *ref);
+
+int get_discoverable_timeout(int dev_id);
 
 void init_security_data(void);
 void start_security_manager(int hdev);
@@ -174,6 +193,10 @@ int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
 
 int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr);
 
+int write_discoverable_timeout(const char *address, int timeout);
+int read_discoverable_timeout(const char *address, int *timeout);
+int write_device_mode(bdaddr_t *bdaddr, const char *mode);
+int read_device_mode(bdaddr_t *bdaddr, char *mode, int length);
 int write_local_name(bdaddr_t *bdaddr, char *name);
 int read_local_name(bdaddr_t *bdaddr, char *name);
 int write_local_class(bdaddr_t *bdaddr, uint8_t *class);
