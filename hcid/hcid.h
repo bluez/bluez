@@ -34,7 +34,7 @@
 
 #define HCID_CONFIG_FILE CONFIGDIR "/hcid.conf"
 
-#define HCID_DEFAULT_DISCOVERABLE_TIMEOUT (180*1000) /* 3 minutes */
+#define HCID_DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
 
 /*
  * Scanning modes, used by DEV_SET_MODE

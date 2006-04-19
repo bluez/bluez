@@ -1681,13 +1681,13 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	case (SCAN_PAGE | SCAN_INQUIRY):
 		scan_mode = MODE_DISCOVERABLE;
 		if (pdata->discoverable_timeout != 0)
-			pdata->timeout_id = g_timeout_add(pdata->discoverable_timeout,
+			pdata->timeout_id = g_timeout_add(pdata->discoverable_timeout * 1000,
 							  discoverable_timeout_handler, pdata);
 		break;
 	case SCAN_INQUIRY:
 		/* Address the scenario where another app changed the scan mode */
 		if (pdata->discoverable_timeout != 0)
-			pdata->timeout_id = g_timeout_add(pdata->discoverable_timeout,
+			pdata->timeout_id = g_timeout_add(pdata->discoverable_timeout * 1000,
 							  discoverable_timeout_handler, pdata);
 		/* ignore, this event should not be sent*/
 	default:

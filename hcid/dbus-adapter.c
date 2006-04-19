@@ -391,7 +391,7 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 	}
 
 	if ((timeout != 0) && (dbus_data->mode & SCAN_INQUIRY))
-		dbus_data->timeout_id = g_timeout_add(timeout, discoverable_timeout_handler, dbus_data);
+		dbus_data->timeout_id = g_timeout_add(timeout * 1000, discoverable_timeout_handler, dbus_data);
 
 	dbus_data->discoverable_timeout = timeout;
 
