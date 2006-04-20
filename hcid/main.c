@@ -228,14 +228,23 @@ static void configure_device(int hdev)
 	dr.dev_id   = hdev;
 	device_opts = get_device_opts(s, hdev);
 
+	/* Set default discoverable timeout if not set */
+	if (!(device_opts->flags & (1 << HCID_SET_DISCOVTO)))
+		device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
+
 	/* Set scan mode */
 	if (!read_device_mode(&di.bdaddr, mode, sizeof(mode))) {
 		if (!strcmp(mode, MODE_OFF))
 			device_opts->scan = SCAN_DISABLED;
 		else if (!strcmp(mode, MODE_CONNECTABLE))
 			device_opts->scan = SCAN_PAGE;
-		else if (!strcmp(mode, MODE_DISCOVERABLE))
-			device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
+		else if (!strcmp(mode, MODE_DISCOVERABLE)) {
+			/* Set discoverable only if timeout is 0 */
+			if (!get_discoverable_timeout(hdev))
+				device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
+			else
+				device_opts->scan = SCAN_PAGE;
+		}
 	}
 
 	dr.dev_opt = device_opts->scan;
@@ -357,10 +366,6 @@ static void configure_device(int hdev)
 		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
-
-	/* Set default discoverable timeout if not set */
-	if (!(device_opts->flags & (1 << HCID_SET_DISCOVTO)))
-		device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
 
 	exit(0);
 }
