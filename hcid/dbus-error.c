@@ -208,3 +208,19 @@ DBusHandlerResult error_binding_does_not_exist(DBusConnection *conn, DBusMessage
 {
 	return error_does_not_exist(conn, msg, "Binding does not exist");
 }
+
+DBusHandlerResult error_service_already_exists(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_already_exists(conn, msg, "Service already exists");
+}
+
+DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_does_not_exist(conn, msg, "Service does not exist");
+}
+
+DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_in_progress(conn, msg, "Service search in progress");
+}
+

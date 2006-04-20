@@ -27,7 +27,9 @@
 #include <stdint.h>
 #include <dbus/dbus.h>
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
 #include "list.h"
+#include "glib-ectomy.h"
 
 #define BASE_PATH		"/org/bluez"
 #define BASE_INTERFACE		"org.bluez"
@@ -43,6 +45,8 @@
 #define SECURITY_INTERFACE	BASE_INTERFACE ".Security"
 
 #define RFCOMM_INTERFACE	BASE_INTERFACE ".RFCOMM"
+
+#define SDP_INTERFACE		BASE_INTERFACE ".SDP"
 
 #define MANAGER_PATH_MASK	(1 << 15)
 #define ADAPTER_PATH_MASK	(1 << 14)
@@ -97,6 +101,13 @@ struct bonding_request_info {
 	int disconnect; /* disconnect after finish */
 };
 
+struct search_request_info {
+	bdaddr_t bdaddr;
+	DBusMessage *rq;
+	GIOChannel *io;
+	sdp_session_t *session;
+};
+
 struct active_conn_info {
 	bdaddr_t bdaddr;
 	uint16_t handle;
@@ -115,6 +126,7 @@ struct hci_dbus_data {
 	char *requestor_name;	           /* requestor unique name */
 	struct slist *passkey_agents;
 	struct bonding_request_info *bonding;
+	struct search_request_info *search;
 	struct slist *active_conn;
 	int pairing_active;
 };
@@ -166,6 +178,9 @@ DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage 
 DBusHandlerResult error_passkey_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_binding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_service_already_exists(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_canceled(DBusConnection *conn, DBusMessage *msg);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
@@ -178,6 +193,8 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
 DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg, void *data);
+
+DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
 

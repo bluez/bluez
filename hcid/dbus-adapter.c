@@ -2214,6 +2214,8 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 		return handle_security_method(conn, msg, data);
 	else if (!strcmp(RFCOMM_INTERFACE, iface))
 		return handle_rfcomm_method(conn, msg, data);
-	else
+	else if (!strcmp(SDP_INTERFACE, iface))
+		return handle_sdp_method(conn, msg, data);
+	else 
 		return error_not_implemented(conn, msg);
 }
