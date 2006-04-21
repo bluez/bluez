@@ -968,7 +968,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	slist_foreach(l, (slist_func_t)append_class_string, &array_iter);
+	slist_foreach(service_classes, (slist_func_t)append_class_string, &array_iter);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
