@@ -166,10 +166,10 @@ static int register_agent(DBusConnection *conn, const char *agent_path,
 	}
 
 	if (use_default) {
-		path = "/org/bluez/Manager";
+		path = "/org/bluez";
 		method = "RegisterDefaultPasskeyAgent";
 	} else {
-		path = "/org/bluez/Adapter/hci0";
+		path = "/org/bluez/hci0";
 		method = "RegisterPasskeyAgent";
 	}
 
@@ -216,10 +216,10 @@ static int unregister_agent(DBusConnection *conn, const char *agent_path,
 	const char *path, *method, *address = remote_address;
 
 	if (use_default) {
-		path = "/org/bluez/Manager";
+		path = "/org/bluez";
 		method = "UnregisterDefaultPasskeyAgent";
 	} else {
-		path = "/org/bluez/Adapter/hci0";
+		path = "/org/bluez/hci0";
 		method = "UnregisterPasskeyAgent";
 	}
 

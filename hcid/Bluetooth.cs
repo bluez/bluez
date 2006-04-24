@@ -68,7 +68,7 @@ namespace Bluetooth
 		public event RemoteNameUpdatedHandler RemoteNameUpdated;
 #pragma warning restore 0067
 
-		public Adapter() : this("/org/bluez/Adapter/hci0")
+		public Adapter() : this("/org/bluez/hci0")
 		{
 		}
 
