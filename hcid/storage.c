@@ -114,10 +114,10 @@ int write_local_name(bdaddr_t *bdaddr, char *name)
 
 	memset(str, 0, sizeof(str));
 	for (i = 0; i < 248 && name[i]; i++)
-		if (isprint(name[i]))
-			str[i] = name[i];
-		else
+		if (name[i] < 32 || name[i] == 127)
 			str[i] = '.';
+		else
+			str[i] = name[i];
 
 	ba2str(bdaddr, addr);
 	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
