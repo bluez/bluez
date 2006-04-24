@@ -281,7 +281,7 @@ DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const in
 	DBusMessage *signal;
 	char path[MAX_PATH_LENGTH];
 
-	snprintf(path, sizeof(path)-1, "%s/hci%d", ADAPTER_PATH, devid);
+	snprintf(path, sizeof(path)-1, "%s/hci%d", BASE_PATH, devid);
 
 	signal = dbus_message_new_signal(path, ADAPTER_INTERFACE, prop_name);
 	if (!signal) {
@@ -320,7 +320,7 @@ static const DBusObjectPathVTable obj_mgr_vtable = {
  */
 static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessage *msg, void *data);
 
-static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t dev_id,
+static gboolean register_dbus_path(const char *path, uint16_t dev_id,
 				const DBusObjectPathVTable *pvtable, gboolean fallback)
 {
 	gboolean ret = FALSE;
@@ -336,7 +336,6 @@ static gboolean register_dbus_path(const char *path, uint16_t path_id, uint16_t 
 
 	memset(data, 0, sizeof(struct hci_dbus_data));
 
-	data->path_id = path_id;
 	data->dev_id = dev_id;
 	data->mode = SCAN_DISABLED;
 	data->discoverable_timeout = get_discoverable_timeout(dev_id);
@@ -420,8 +419,8 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci = NULL;
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
-	if (!register_dbus_path(path, ADAPTER_PATH_ID, id, &obj_dev_vtable, FALSE))
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+	if (!register_dbus_path(path, id, &obj_dev_vtable, FALSE))
 		return FALSE;
 
 	dd = hci_open_dev(id);
@@ -463,7 +462,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	/*
 	 * Send the adapter added signal
 	 */
-	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
+	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
 							"AdapterAdded");
 	if (message == NULL) {
 		error("Can't allocate D-Bus message");
@@ -531,9 +530,9 @@ gboolean hcid_dbus_unregister_device(uint16_t id)
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	message = dbus_message_new_signal(MANAGER_PATH, MANAGER_INTERFACE,
+	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
 							"AdapterRemoved");
 	if (message == NULL) {
 		error("Can't allocate D-Bus message");
@@ -570,7 +569,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	ba2str(sba, addr);
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, hci_devid(addr));
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, hci_devid(addr));
 
 	handle_passkey_request(dev, path, sba, &ci->bdaddr);
 }
@@ -594,7 +593,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	/* create the authentication reply */
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
@@ -681,7 +680,7 @@ void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting %s path data failed!", path);
 		goto failed;
@@ -724,7 +723,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
 		pdata->discover_state = STATE_DISCOVER;
@@ -860,7 +859,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 
@@ -936,7 +935,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting %s path data failed!", path);
@@ -1034,7 +1033,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	/* remove from remote name request list */
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
@@ -1102,7 +1101,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 		goto done;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting %s path data failed!", path);
@@ -1203,7 +1202,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting %s path data failed!", path);
@@ -1363,12 +1362,7 @@ gboolean hcid_dbus_init(void)
 		return FALSE;
 	}
 
-	if (!register_dbus_path(ADAPTER_PATH, ADAPTER_ROOT_ID, INVALID_DEV_ID,
-				&obj_dev_vtable, TRUE))
-		return FALSE;
-
-	if (!register_dbus_path(MANAGER_PATH, MANAGER_ROOT_ID, INVALID_DEV_ID,
-				&obj_mgr_vtable, FALSE))
+	if (!register_dbus_path(BASE_PATH, INVALID_DEV_ID, &obj_mgr_vtable, TRUE))
 		return FALSE;
 
 	if (!dbus_connection_add_filter(connection, hci_dbus_signal_filter, NULL, NULL)) {
@@ -1391,13 +1385,13 @@ void hcid_dbus_exit(void)
 		return;
 
 	/* Unregister all paths in Adapter path hierarchy */
-	if (!dbus_connection_list_registered(connection, ADAPTER_PATH, &children))
+	if (!dbus_connection_list_registered(connection, BASE_PATH, &children))
 		goto done;
 
 	for (; children[i]; i++) {
 		char dev_path[MAX_PATH_LENGTH];
 
-		snprintf(dev_path, sizeof(dev_path), "%s/%s", ADAPTER_PATH, children[i]);
+		snprintf(dev_path, sizeof(dev_path), "%s/%s", BASE_PATH, children[i]);
 
 		unregister_dbus_path(dev_path);
 	}
@@ -1405,8 +1399,7 @@ void hcid_dbus_exit(void)
 	dbus_free_string_array(children);
 
 done:
-	unregister_dbus_path(ADAPTER_PATH);
-	unregister_dbus_path(MANAGER_PATH);
+	unregister_dbus_path(BASE_PATH);
 
 	dbus_connection_close(connection);
 }
@@ -1634,7 +1627,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, id);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	dd = hci_open_dev(id);
 	if (dd < 0) {

@@ -44,11 +44,6 @@ Errors		Failed
 			Error returned when the argument list is invalid or
 			out of specification for the method.
 
-		NotImplemented
-
-			Error returned when the called method has not been
-			implemented.
-
 		NotAuthorized
 
 			Error returned when the caller of a method is not
@@ -121,7 +116,7 @@ Manager hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Manager
-Object path	/org/bluez/Manager
+Object path	/org/bluez
 
 Methods		uint32 InterfaceVersion()
 
@@ -150,7 +145,7 @@ Adapter hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Adapter
-Object path	/org/bluez/Adapter/{hci0,hci1,...}
+Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		string GetAddress()
 

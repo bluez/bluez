@@ -468,7 +468,7 @@ DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg,
 	if (handler)
 		return handler(conn, msg, data);
 
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return error_unknown_method(conn, msg);
 }
 
 int handle_passkey_request(int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba)

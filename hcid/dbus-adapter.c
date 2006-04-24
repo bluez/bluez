@@ -2190,15 +2190,9 @@ static struct service_data dev_services[] = {
 
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	struct hci_dbus_data *dbus_data = data;
 	const char *iface;
 
 	iface = dbus_message_get_interface(msg);
-
-	if (dbus_data->path_id == ADAPTER_ROOT_ID) {
-		/* Adapter is down (path unregistered) or the path is wrong */
-		return error_no_such_adapter(conn, msg);
-	}
 
 	if (!strcmp(ADAPTER_INTERFACE, iface)) {
 		service_handler_func_t handler;
@@ -2208,7 +2202,7 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 		if (handler)
 			return handler(conn, msg, data);
 		else
-			return error_not_implemented(conn, msg);
+			return error_unknown_method(conn, msg);
 	}
 	else if (!strcmp(SECURITY_INTERFACE, iface))
 		return handle_security_method(conn, msg, data);
@@ -2217,5 +2211,5 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	else if (!strcmp(SDP_INTERFACE, iface))
 		return handle_sdp_method(conn, msg, data);
 	else 
-		return error_not_implemented(conn, msg);
+		return error_unknown_method(conn, msg);
 }

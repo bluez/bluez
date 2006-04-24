@@ -34,10 +34,8 @@
 #define BASE_PATH		"/org/bluez"
 #define BASE_INTERFACE		"org.bluez"
 
-#define ADAPTER_PATH		BASE_PATH "/Adapter"
 #define ADAPTER_INTERFACE	BASE_INTERFACE ".Adapter"
 
-#define MANAGER_PATH		BASE_PATH "/Manager"
 #define MANAGER_INTERFACE	BASE_INTERFACE ".Manager"
 
 #define ERROR_INTERFACE		BASE_INTERFACE ".Error"
@@ -48,19 +46,6 @@
 
 #define SDP_INTERFACE		BASE_INTERFACE ".SDP"
 
-#define MANAGER_PATH_MASK	(1 << 15)
-#define ADAPTER_PATH_MASK	(1 << 14)
-
-/* /org/bluez/Manager */
-#define MANAGER_ROOT_ID		MANAGER_PATH_MASK
-
-/* /org/bluez/Adapter */
-#define ADAPTER_ROOT_ID		ADAPTER_PATH_MASK
-
-/* E.g. /org/bluez/Adapter/hci0 */
-#define ADAPTER_PATH_ID		(ADAPTER_PATH_MASK | 0x0001)
-
-#define INVALID_PATH_ID		0xFFFF
 #define INVALID_DEV_ID		0xFFFF
 
 #define MAX_PATH_LENGTH		64
@@ -115,7 +100,6 @@ struct active_conn_info {
 
 struct hci_dbus_data {
 	uint16_t dev_id;
-	uint16_t path_id;
 	char address[18];		   /* adapter Bluetooth Address */
 	uint32_t timeout_id;		   /* discoverable timeout id */
 	uint32_t discoverable_timeout;	   /* discoverable time(msec) */
@@ -157,7 +141,7 @@ int get_default_dev_id(void);
 
 DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err);
 DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_not_implemented(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);

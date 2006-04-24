@@ -67,10 +67,10 @@ dev_signals = [ "ModeChanged",
                 "BondingCreated",
                 "BondingRemoved" ]
 
-dev_signals_filter = [ "/org/bluez/Adapter/hci0", "/org/bluez/Adapter/hci1",
-                       "/org/bluez/Adapter/hci2", "/org/bluez/Adapter/hci3",
-                       "/org/bluez/Adapter/hci4", "/org/bluez/Adapter/hci5",
-                       "/org/bluez/Adapter/hci6", "/org/bluez/Adapter/hci7" ]
+dev_signals_filter = [ "/org/bluez/hci0", "/org/bluez/hci1",
+                       "/org/bluez/hci2", "/org/bluez/hci3",
+                       "/org/bluez/hci4", "/org/bluez/hci5",
+                       "/org/bluez/hci6", "/org/bluez/hci7" ]
 
 class Tester:
     exit_events = []
@@ -107,7 +107,7 @@ class Tester:
                 if a[0] == '/':
                     self.dev_path = a
                 else:
-                    self.dev_path = '/org/bluez/Adapter/%s' % a
+                    self.dev_path = '/org/bluez/%s' % a
 
         if not (args or self.listen):
             self.usage()
@@ -148,13 +148,13 @@ class Tester:
             for signal in mgr_signals:
                 self.bus.add_signal_receiver(self.mgr_signal_handler,
                                          signal,'org.bluez.Manager',
-                                         'org.bluez', '/org/bluez/Manager')
+                                         'org.bluez', '/org/bluez')
         except dbus.DBusException, e:
             print 'Failed to setup signal handler for manager path: %s' % e
             sys.exit(1)
 
     def dbus_mgr_setup(self):
-        self.manager_obj = self.bus.get_object('org.bluez', '/org/bluez/Manager')
+        self.manager_obj = self.bus.get_object('org.bluez', '/org/bluez')
         self.manager = dbus.Interface(self.manager_obj, 'org.bluez.Manager')
 
     def dbus_setup(self):
@@ -162,7 +162,7 @@ class Tester:
 
     def usage(self):
         print 'Usage: %s [-i <dev>] [-l] [-h] <cmd> [arg1..]' % self.name
-        print '  -i <dev>   Specify device (e.g. "hci0" or "/org/bluez/Adapter/hci0")'
+        print '  -i <dev>   Specify device (e.g. "hci0" or "/org/bluez/hci0")'
         print '  -l         Listen for events (no command required)'
         print '  -h         Show this help'
         print 'Manager commands:'

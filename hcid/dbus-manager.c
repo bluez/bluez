@@ -106,7 +106,7 @@ static DBusHandlerResult handle_mgr_list_devices_req(DBusConnection *conn, DBusM
 		if (ioctl(sk, HCIGETDEVINFO, &di) < 0)
 			continue;
 
-		snprintf(path, sizeof(path), "%s/%s", ADAPTER_PATH, di.name);
+		snprintf(path, sizeof(path), "%s/%s", BASE_PATH, di.name);
 
 		dbus_message_iter_append_basic(&array_iter,
 						DBUS_TYPE_STRING, &path_ptr);
@@ -134,7 +134,7 @@ static DBusHandlerResult handle_mgr_default_adapter_req(DBusConnection *conn, DB
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	snprintf(path, sizeof(path), "%s/hci%d", ADAPTER_PATH, default_dev);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, default_dev);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
 					DBUS_TYPE_INVALID);
@@ -164,9 +164,13 @@ static DBusHandlerResult handle_manager_method(DBusConnection *conn,
 
 DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	const char *iface;
+	const char *iface, *path;
 
 	iface = dbus_message_get_interface(msg);
+	path = dbus_message_get_path(msg);
+
+	if (strcmp(BASE_PATH, path))
+		return error_no_such_adapter(conn, msg);
 
 	if (!strcmp(iface, MANAGER_INTERFACE))
 		return handle_manager_method(conn, msg, data);
@@ -174,5 +178,5 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void 
 	if (!strcmp(iface, SECURITY_INTERFACE))
 		return handle_security_method(conn, msg, data);
 
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return error_unknown_method(conn, msg);
 }
