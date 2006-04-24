@@ -26,6 +26,12 @@ namespace Bluetooth
 	using System;
 	using DBus;
 
+	[Interface("org.bluez.Manager")]
+	internal abstract class ManagerProxy
+	{
+		[Method] public abstract string DefaultAdapter();
+	}
+
 	public delegate void RemoteDeviceFoundHandler(string address, Int16 rssi,
 				string major, string minor, string[] services);
 	public delegate void RemoteNameUpdatedHandler(string address, string name);
@@ -60,6 +66,7 @@ namespace Bluetooth
 	{
 		private Service service;
 		private Connection connection;
+		private ManagerProxy manager;
 		private AdapterProxy adapter;
 		private string path;
 
@@ -68,7 +75,7 @@ namespace Bluetooth
 		public event RemoteNameUpdatedHandler RemoteNameUpdated;
 #pragma warning restore 0067
 
-		public Adapter() : this("/org/bluez/hci0")
+		public Adapter() : this("")
 		{
 		}
 
@@ -76,6 +83,11 @@ namespace Bluetooth
 		{
 			connection = Bus.GetSystemBus();
 			service = Service.Get(connection, "org.bluez");
+
+			manager = (ManagerProxy) service.GetObject(typeof(ManagerProxy), "/org/bluez");
+
+			if (path == "")
+				path = manager.DefaultAdapter();
 
 			this.path = path;
 
@@ -90,6 +102,7 @@ namespace Bluetooth
 		public void Dispose()
 		{
 			GC.SuppressFinalize(adapter);
+			GC.SuppressFinalize(manager);
 		}
 
 		private void OnSignalCalled(Signal signal)
