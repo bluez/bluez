@@ -48,7 +48,6 @@
 #include "glib-ectomy.h"
 
 #include "hcid.h"
-#include "lib.h"
 #include "textfile.h"
 #include "list.h"
 

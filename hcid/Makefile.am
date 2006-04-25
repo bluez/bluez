@@ -31,7 +31,7 @@ dbus_hcid_cflags  =
 endif
 
 hcid_SOURCES = main.c security.c device.c logging.c storage.c \
-		sdp.c sdp.h lib.c lib.h hcid.h parser.h parser.y \
+		sdp.c sdp.h hcid.h parser.h parser.y \
 		lexer.l kword.c kword.h $(dbus_hcid_sources) \
 		$(top_builddir)/tools/oui.h $(top_builddir)/tools/oui.c
 

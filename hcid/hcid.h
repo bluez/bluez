@@ -87,7 +87,7 @@ struct device_list {
 };
 
 struct hcid_opts {
-	char   *host_name;
+	char    host_name[40];
 	int     auto_init;
 	int     security;
 	int     pairing;

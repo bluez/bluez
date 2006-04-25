@@ -45,7 +45,6 @@
 #include "glib-ectomy.h"
 
 #include "hcid.h"
-#include "lib.h"
 #include "sdp.h"
 
 struct hcid_opts hcid;
@@ -191,6 +190,64 @@ no_address:
 	return device_opts->discovto;
 }
 
+/* 
+ * Device name expansion 
+ *   %d - device id
+ */
+static char *expand_name(char *dst, int size, char *str, int dev_id)
+{
+	register int sp, np, olen;
+	char *opt, buf[10];
+
+	if (!str && !dst)
+		return NULL;
+
+	sp = np = 0;
+	while (np < size - 1 && str[sp]) {
+		switch (str[sp]) {
+		case '%':
+			opt = NULL;
+
+			switch (str[sp+1]) {
+			case 'd':
+				sprintf(buf, "%d", dev_id);
+				opt = buf;
+				break;
+
+			case 'h':
+				opt = hcid.host_name;
+				break;
+
+			case '%':
+				dst[np++] = str[sp++];
+				/* fall through */
+			default:
+				sp++;
+				continue;
+			}
+
+			if (opt) {
+				/* substitute */
+				olen = strlen(opt);
+				if (np + olen < size - 1)
+					memcpy(dst + np, opt, olen);
+				np += olen;
+			}
+			sp += 2;
+			continue;
+
+		case '\\':
+			sp++;
+			/* fall through */
+		default:
+			dst[np++] = str[sp++];
+			break;
+		}
+	}
+	dst[np] = '\0';
+	return dst;
+}
+
 static void configure_device(int hdev)
 {
 	struct device_opts *device_opts;
@@ -209,8 +266,6 @@ static void configure_device(int hdev)
 		default:
 			return;
 	}
-
-	set_title("hci%d config", hdev);
 
 	if ((s = hci_open_dev(hdev)) < 0) {
 		error("Can't open device hci%d: %s (%d)",
@@ -387,8 +442,6 @@ static void init_device(int hdev)
 		default:
 			return;
 	}
-
-	set_title("hci%d init", hdev);
 
 	if ((s = hci_open_dev(hdev)) < 0) {
 		error("Can't open device hci%d: %s (%d)",
@@ -595,10 +648,7 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer dat
 	return TRUE;
 }
 
-extern int optind, opterr, optopt;
-extern char *optarg;
-
-int main(int argc, char *argv[], char *env[])
+int main(int argc, char *argv[])
 {
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
@@ -607,11 +657,14 @@ int main(int argc, char *argv[], char *env[])
 	int opt, daemonize = 1, sdp = 0;
 
 	/* Default HCId settings */
+	memset(&hcid, 0, sizeof(hcid));
 	hcid.auto_init   = 1;
 	hcid.config_file = HCID_CONFIG_FILE;
-	hcid.host_name   = get_host_name();
 	hcid.security    = HCID_SEC_AUTO;
 	hcid.pairing     = HCID_PAIRING_MULTI;
+
+	if (gethostname(hcid.host_name, sizeof(hcid.host_name) - 1) < 0)
+		strcpy(hcid.host_name, "noname");
 
 	strcpy((char *) hcid.pin_code, "BlueZ");
 	hcid.pin_len = 5;
@@ -644,9 +697,6 @@ int main(int argc, char *argv[], char *env[])
 	}
 
 	umask(0077);
-
-	init_title(argc, argv, env, "hcid: ");
-	set_title("initializing");
 
 	start_logging("hcid", "Bluetooth HCI daemon");
 
@@ -708,8 +758,6 @@ int main(int argc, char *argv[], char *env[])
 
 	/* Initialize already connected devices */
 	init_all_devices(hcid.sock);
-
-	set_title("processing events");
 
 	ctl_io = g_io_channel_unix_new(hcid.sock);
 
