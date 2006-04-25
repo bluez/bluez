@@ -79,17 +79,17 @@ struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba, uint16_t 
 		free(data);
 		return NULL;
 	}
-	
+
 	memcpy(data->cparam, cparam, clen);
 
 	bacpy(&data->dba, dba);
 
 	data->dev_id = dev_id;
 	data->status = REQ_PENDING;
-	data->ogf = ogf;
-	data->ocf = ocf;
-	data->event = event;
-	data->clen = clen;
+	data->ogf    = ogf;
+	data->ocf    = ocf;
+	data->event  = event;
+	data->clen   = clen;
 
 	return data;
 }
@@ -753,7 +753,8 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 		auth_complete(dev, &di->bdaddr, ptr);
 		break;
 	}
-	/* check for pending cmd request */
+
+	/* Check for pending command request */
 	check_pending_hci_req(di->dev_id, eh->evt);
 
 	if (hci_test_bit(HCI_SECMGR, &di->flags))

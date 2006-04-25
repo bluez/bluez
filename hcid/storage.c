@@ -48,7 +48,7 @@ int write_discoverable_timeout(const char *address, int timeout)
 	char filename[PATH_MAX + 1], str[32];
 
 	snprintf(str, sizeof(str), "%d", timeout);
-	
+
 	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, address);
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -100,7 +100,7 @@ int read_device_mode(bdaddr_t *bdaddr, char *mode, int length)
 		return -ENOENT;
 
 	strncpy(mode, str, length);
-	mode[length-1] = '\0';
+	mode[length - 1] = '\0';
 
 	free(str);
 
