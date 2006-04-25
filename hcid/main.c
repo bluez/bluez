@@ -430,7 +430,7 @@ static void init_device(int hdev)
 	struct device_opts *device_opts;
 	struct hci_dev_req dr;
 	struct hci_dev_info di;
-	int s;
+	int dd, dev_id = hdev;
 
 	/* Do initialization in the separate process */
 	switch (fork()) {
@@ -438,58 +438,61 @@ static void init_device(int hdev)
 			break;
 		case -1:
 			error("Fork failed. Can't init device hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
+					dev_id, strerror(errno), errno);
 		default:
 			return;
 	}
 
-	if ((s = hci_open_dev(hdev)) < 0) {
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
 		error("Can't open device hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
+					dev_id, strerror(errno), errno);
 		exit(1);
 	}
 
 	/* Start HCI device */
-	if (ioctl(s, HCIDEVUP, hdev) < 0 && errno != EALREADY) {
+	if (ioctl(dd, HCIDEVUP, dev_id) < 0 && errno != EALREADY) {
 		error("Can't init device hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
+					dev_id, strerror(errno), errno);
 		exit(1);
 	}
 
-	di.dev_id = hdev;
-	if (ioctl(s, HCIGETDEVINFO, (void *) &di) < 0)
+	memset(&di, 0, sizeof(di));
+	di.dev_id = dev_id;
+	if (ioctl(dd, HCIGETDEVINFO, (void *) &di) < 0)
 		exit(1);
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		exit(0);
 
-	dr.dev_id   = hdev;
-	device_opts = get_device_opts(s, hdev);
+	memset(&dr, 0, sizeof(dr));
+	dr.dev_id   = dev_id;
+	device_opts = get_device_opts(dd, dev_id);
 
 	/* Set packet type */
 	if ((device_opts->flags & (1 << HCID_SET_PTYPE))) {
 		dr.dev_opt = device_opts->pkt_type;
-		if (ioctl(s, HCISETPTYPE, (unsigned long) &dr) < 0) {
+		if (ioctl(dd, HCISETPTYPE, (unsigned long) &dr) < 0) {
 			error("Can't set packet type on hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
+					dev_id, strerror(errno), errno);
 		}
 	}
 
 	/* Set link mode */
 	if ((device_opts->flags & (1 << HCID_SET_LM))) {
 		dr.dev_opt = device_opts->link_mode;
-		if (ioctl(s, HCISETLINKMODE, (unsigned long) &dr) < 0) {
+		if (ioctl(dd, HCISETLINKMODE, (unsigned long) &dr) < 0) {
 			error("Can't set link mode on hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
+					dev_id, strerror(errno), errno);
 		}
 	}
 
 	/* Set link policy */
 	if ((device_opts->flags & (1 << HCID_SET_LP))) {
 		dr.dev_opt = device_opts->link_policy;
-		if (ioctl(s, HCISETLINKPOL, (unsigned long) &dr) < 0) {
+		if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0) {
 			error("Can't set link policy on hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
+					dev_id, strerror(errno), errno);
 		}
 	}
 
@@ -502,11 +505,14 @@ static void init_all_devices(int ctl)
 	struct hci_dev_req *dr;
 	int i;
 
-	if (!(dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t)))) {
+	dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
+	if (!dl) {
 		info("Can't allocate devlist buffer: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
 	}
+
+	memset(dl, 0, HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
