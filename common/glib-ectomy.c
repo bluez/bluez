@@ -143,7 +143,7 @@ guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 	watch->user_data = user_data;
 	watch->destroy = notify;
 
-	watch->prev = 0;
+	watch->prev = &watch_head;
 	watch->next = watch_head.next;
 	if (watch_head.next)
 		watch_head.next->prev = watch;
@@ -296,17 +296,20 @@ void g_main_loop_run(GMainLoop *loop)
 		if (rc < 0)
 			continue;
 
-		for (w = watch_head.next; w; w = n) {
-			n = w->next;
-			if (*w->revents) {
-				gboolean keep = w->func(w->channel, *w->revents, w->user_data);
-				if (keep)
-					continue;
-
-				if (w->destroy)
-					w->destroy(w->user_data);
-				watch_remove(w);
+		w = watch_head.next;
+		while (w) {
+			if (!*w->revents || w->func(w->channel, *w->revents, w->user_data)) {
+				w = w->next;
+				continue;
 			}
+
+			n = w->next;
+
+			if (w->destroy)
+				w->destroy(w->user_data);
+			watch_remove(w);
+
+			w = n;
 		}
 
 		/* check expired timers */
@@ -404,4 +407,6 @@ gint g_timeout_remove(const guint id)
 
 	return -1;
 }
+
+
 
