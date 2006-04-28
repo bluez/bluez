@@ -84,26 +84,49 @@ struct watch {
 	GIOChannel *channel;
 	gint priority;
 	GIOCondition condition;
+	short *revents;
 	GIOFunc func;
 	gpointer user_data;
 	GDestroyNotify destroy;
 
+	struct watch *prev;
 	struct watch *next;
 };
 
-static struct watch watch_head = { .id = 0, .next = 0 };
+static struct watch watch_head = { .id = 0, .prev = 0, .next = 0, .revents = 0 };
 static GMainContext *default_context = NULL;
+
+static void watch_remove(struct watch *w)
+{
+	struct watch *p, *n;
+
+	if (!w)
+		return;
+
+	p = w->prev;
+	n = w->next;
+
+	if (p)
+		p->next = n;
+
+	if (n)
+		n->prev = p;
+
+	free(w);
+}
 
 void g_io_remove_watch(guint id)
 {
-	struct watch *w, *p;
+	struct watch *w, *n;
 
-	for (p = &watch_head, w = watch_head.next; w; p = w, w = w->next)
-		if (w->id == id) {
-			p->next = w->next;
-			free (w);
-			return;
-		}
+	for (w = watch_head.next; w; w = n) {
+		n = w->next;
+		if (w->id != id)
+			continue;
+
+		watch_remove(w);
+		return;
+	}
 }
 
 guint g_io_add_watch_full(GIOChannel *channel, gint priority,
@@ -120,7 +143,11 @@ guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 	watch->user_data = user_data;
 	watch->destroy = notify;
 
+	watch->prev = 0;
 	watch->next = watch_head.next;
+	if (watch_head.next)
+		watch_head.next->prev = watch;
+
 	watch_head.next = watch;
 
 	return watch->id;
@@ -250,14 +277,15 @@ void g_main_loop_run(GMainLoop *loop)
 		return;
 
 	while (!loop->bail) {
-		int nfds, rc, i;
-		struct watch *p, *w;
+		int nfds, rc;
+		struct watch *n, *w;
 
 		nfds = 0;
 		for (w = watch_head.next; w != NULL; w = w->next) {
 			ufds[nfds].fd = w->channel->fd;
 			ufds[nfds].events = w->condition;
 			ufds[nfds].revents = 0;
+			w->revents = &ufds[nfds].revents;
 			nfds++;
 		}
 
@@ -268,28 +296,17 @@ void g_main_loop_run(GMainLoop *loop)
 		if (rc < 0)
 			continue;
 
-		p = &watch_head;
-		w = watch_head.next;
-		i = 0;
-
-		while (w) {
-			if (ufds[i].revents) {
-				gboolean keep = w->func(w->channel, ufds[i].revents, w->user_data);
-				if (!keep) {
-					if (w->destroy)
-						w->destroy(w->user_data);
-					p->next = w->next;
-					memset(w, 0, sizeof(*w));
-					free(w);
-					w = p->next;
-					i++;
+		for (w = watch_head.next; w; w = n) {
+			n = w->next;
+			if (*w->revents) {
+				gboolean keep = w->func(w->channel, *w->revents, w->user_data);
+				if (keep)
 					continue;
-				}
-			}
 
-			p = w;
-			w = w->next;
-			i++;
+				if (w->destroy)
+					w->destroy(w->user_data);
+				watch_remove(w);
+			}
 		}
 
 		/* check expired timers */
