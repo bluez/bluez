@@ -240,14 +240,6 @@ static DBusMessage *dbus_msg_new_authentication_return(DBusMessage *msg, uint8_t
 	}
 }
 
-/*
- * Timeout functions Protypes
- */
-DBusConnection *get_dbus_connection(void)
-{
-	return connection;
-}
-
 int get_default_dev_id(void)
 {
 	return default_dev;
@@ -571,7 +563,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, hci_devid(addr));
 
-	handle_passkey_request(dev, path, sba, &ci->bdaddr);
+	handle_passkey_request(connection, dev, path, sba, &ci->bdaddr);
 }
 
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)

@@ -635,7 +635,6 @@ failed:
 static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusConnection *connection = get_dbus_connection();
 	DBusMessage *reply, *signal;
 	DBusError err;
 	bdaddr_t bdaddr;
@@ -704,8 +703,8 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 						DBUS_TYPE_STRING, &minor,
 						DBUS_TYPE_INVALID);
 	if (signal) {
-		dbus_connection_send(connection, signal, NULL);
-		dbus_connection_flush(connection);
+		dbus_connection_send(conn, signal, NULL);
+		dbus_connection_flush(conn);
 		dbus_message_unref(signal);
 	}
 
@@ -1261,7 +1260,6 @@ static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, D
 static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusConnection *connection = get_dbus_connection();
 	DBusMessage *reply, *signal;
 	DBusError err;
 	char *str_ptr, *addr_ptr;
@@ -1300,8 +1298,8 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 						DBUS_TYPE_STRING, &str_ptr,
 						DBUS_TYPE_INVALID);
 	if (signal) {
-		dbus_connection_send(connection, signal, NULL);
-		dbus_connection_flush(connection);
+		dbus_connection_send(conn, signal, NULL);
+		dbus_connection_flush(conn);
 		dbus_message_unref(signal);
 	}
 
@@ -1311,7 +1309,6 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 static DBusHandlerResult handle_dev_clear_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	DBusConnection *connection = get_dbus_connection();
 	DBusMessage *reply, *signal;
 	DBusError err;
 	char *addr_ptr;
@@ -1353,8 +1350,8 @@ static DBusHandlerResult handle_dev_clear_remote_alias_req(DBusConnection *conn,
 							DBUS_TYPE_STRING, &addr_ptr,
 							DBUS_TYPE_INVALID);
 		if (signal) {
-			dbus_connection_send(connection, signal, NULL);
-			dbus_connection_flush(connection);
+			dbus_connection_send(conn, signal, NULL);
+			dbus_connection_flush(conn);
 			dbus_message_unref(signal);
 		}
 	}
@@ -1727,7 +1724,6 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 {
 	struct hci_dbus_data *dbus_data = data;
 	struct slist *l;
-	DBusConnection *connection = get_dbus_connection();
 	DBusMessage *reply;
 	DBusMessage *signal;
 	DBusError err;
@@ -1784,8 +1780,8 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 					DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
 	if (signal) {
-		dbus_connection_send(connection, signal, NULL);
-		dbus_connection_flush(connection);
+		dbus_connection_send(conn, signal, NULL);
+		dbus_connection_flush(conn);
 		dbus_message_unref(signal);
 	}
 

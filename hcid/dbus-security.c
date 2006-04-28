@@ -397,12 +397,11 @@ done:
 	dbus_pending_call_unref(call);
 }
 
-static int call_passkey_agent(struct passkey_agent *agent, int dev, const char *path,
-				bdaddr_t *sba, bdaddr_t *dba)
+static int call_passkey_agent(DBusConnection *conn, struct passkey_agent *agent,
+		int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba)
 {
 	DBusMessage *message = NULL;
 	DBusPendingCall *pending = NULL;
-	DBusConnection *connection;
 	struct pin_request *req;
 	char bda[18];
 	char *ptr = bda;
@@ -431,14 +430,12 @@ static int call_passkey_agent(struct passkey_agent *agent, int dev, const char *
 	bacpy(&req->sba, sba);
 	bacpy(&req->bda, dba);
 
-	connection = get_dbus_connection();
-
 	dbus_message_append_args(message,
 					DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_STRING, &ptr,
 					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, message,
+	if (dbus_connection_send_with_reply(conn, message,
 				&pending, TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		goto failed;
@@ -471,7 +468,7 @@ DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg,
 	return error_unknown_method(conn, msg);
 }
 
-int handle_passkey_request(int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba)
+int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct passkey_agent *agent = default_agent;
 	struct hci_dbus_data *adapter = NULL;
@@ -479,7 +476,7 @@ int handle_passkey_request(int dev, const char *path, bdaddr_t *sba, bdaddr_t *d
 	char addr[18];
 	void *data;
 
-	dbus_connection_get_object_path_data(get_dbus_connection(), path, &data);
+	dbus_connection_get_object_path_data(conn, path, &data);
 
 	if (!data)
 		goto done;
@@ -499,5 +496,5 @@ int handle_passkey_request(int dev, const char *path, bdaddr_t *sba, bdaddr_t *d
 	}
 
 done:
-	return call_passkey_agent(agent, dev, path, sba, dba);
+	return call_passkey_agent(conn, agent, dev, path, sba, dba);
 }

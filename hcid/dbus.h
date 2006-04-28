@@ -135,8 +135,6 @@ DBusHandlerResult bluez_new_failure_msg(DBusConnection *conn, DBusMessage *msg, 
 
 DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...);
 
-DBusConnection *get_dbus_connection(void);
-
 int get_default_dev_id(void);
 
 DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err);
@@ -182,7 +180,7 @@ DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void
 
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
 
-int handle_passkey_request(int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
+int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
 
 static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusMessage *reply)
 {
