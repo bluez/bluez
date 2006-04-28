@@ -142,7 +142,6 @@ void toggle_pairing(int enable);
 
 void set_pin_length(bdaddr_t *sba, int length);
 
-#ifdef ENABLE_DBUS
 gboolean hcid_dbus_init(void);
 void hcid_dbus_exit(void);
 gboolean hcid_dbus_register_device(uint16_t id);
@@ -161,18 +160,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr);
 void hcid_dbus_setname_complete(bdaddr_t *local);
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local);
-#else
-static inline void hcid_dbus_inquiry_start(bdaddr_t *local) {}
-static inline void hcid_dbus_inquiry_complete(bdaddr_t *local) {}
-static inline void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi) {}
-static inline void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char *name) {}
-static inline void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer) {}
-static inline void hcid_dbus_disconn_complete(bdaddr_t *local, bdaddr_t *peer, uint16_t handle, uint8_t reason) {}
-static inline void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status) {}
-static inline void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr) {}
-static inline void hcid_dbus_setname_complete(bdaddr_t *local) {}
-static inline void hcid_dbus_setscan_enable_complete(bdaddr_t *local) {}
-#endif
 
 void init_devices(void);
 int add_device(uint16_t dev_id);

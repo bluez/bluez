@@ -7,48 +7,35 @@ statedir = $(localstatedir)/lib/bluetooth
 
 state_DATA =
 
-if DBUS
 dbusdir = $(sysconfdir)/dbus-1/system.d
 
 dbus_DATA = bluez-hcid.conf
-endif
 
 sbin_PROGRAMS = hcid
 
-noinst_SCRIPTS = dbus-test
+noinst_PROGRAMS = passkey-agent
 
-if DBUS
-dbus_hcid_sources = dbus.h dbus.c dbus-common.c \
-			dbus-error.c dbus-manager.c dbus-adapter.c \
-			dbus-device.c dbus-service.c dbus-security.c \
-			dbus-sdp.c dbus-rfcomm.c
-dbus_hcid_libs    = @DBUS_LIBS@
-dbus_hcid_cflags  = -DENABLE_DBUS -DDBUS_API_SUBJECT_TO_CHANGE
-else
-dbus_hcid_sources =
-dbus_hcid_libs    =
-dbus_hcid_cflags  =
-endif
+noinst_SCRIPTS = dbus-test
 
 hcid_SOURCES = main.c security.c device.c logging.c storage.c \
 		sdp.c sdp.h hcid.h parser.h parser.y \
-		lexer.l kword.c kword.h $(dbus_hcid_sources) \
+		lexer.l kword.c kword.h \
+		dbus.h dbus.c dbus-common.c \
+		dbus-error.c dbus-manager.c dbus-adapter.c \
+		dbus-device.c dbus-service.c dbus-security.c \
+		dbus-sdp.c dbus-rfcomm.c \
 		$(top_builddir)/tools/oui.h $(top_builddir)/tools/oui.c
 
-hcid_LDADD = $(dbus_hcid_libs) @BLUEZ_LIBS@ \
+hcid_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ \
 		$(top_builddir)/common/libglib-ectomy.a \
 		$(top_builddir)/common/libtextfile.a \
 		$(top_builddir)/common/liblist.a
 
-if DBUS
-noinst_PROGRAMS = passkey-agent
-
 passkey_agent_SOURCES = passkey-agent.c
 
 passkey_agent_LDADD = @DBUS_LIBS@
-endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(dbus_hcid_cflags)
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/tools
 
@@ -58,7 +45,6 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) $(conf_DATA) bluez-hcid.conf dbus-test \
-		dbus.h dbus.c dbus-error.c dbus-manager.c dbus-device.c
+EXTRA_DIST = $(man_MANS) $(conf_DATA) bluez-hcid.conf dbus-test
 
 MAINTAINERCLEANFILES = Makefile.in

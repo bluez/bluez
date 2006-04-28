@@ -152,7 +152,7 @@ AC_DEFUN([AC_PATH_DBUS], [
 	fi
 
 	CPPFLAGS="$CPPFLAGS $DBUS_CFLAGS"
-	AC_CHECK_HEADER(dbus/dbus.h, dbus_found=yes, dbus_found=no)
+	AC_CHECK_HEADER(dbus/dbus.h, dummy=yes, AC_MSG_ERROR(D-BUS header files not found))
 
 	DBUS_LIBS=""
 	if (test "${prefix}" = "${dbus_prefix}"); then
@@ -163,8 +163,8 @@ AC_DEFUN([AC_PATH_DBUS], [
 	fi
 
 	LDFLAGS="$LDFLAGS $DBUS_LIBS"
-	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", dbus_found=no)
-	AC_CHECK_LIB(dbus-1, dbus_message_iter_get_basic, dummy=yes, dbus_found=no)
+	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", AC_MSG_ERROR(D-BUS library not found))
+	AC_CHECK_LIB(dbus-1, dbus_message_iter_get_basic, dummy=yes, AC_MSG_ERROR(D-BUS library not found))
 
 	CPPFLAGS=$ac_save_CPPFLAGS
 	LDFLAGS=$ac_save_LDFLAGS
@@ -289,7 +289,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fortify_enable=yes
 	debug_enable=no
 	pie_enable=no
-	dbus_enable=${dbus_found}
 	obex_enable=${openobex_found}
 	fuse_enable=no
 	alsa_enable=no
@@ -329,10 +328,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		hid2hci_enable=${enableval}
 		dfutool_enable=${enableval}
 		bcm203x_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(dbus, AC_HELP_STRING([--enable-dbus], [enable D-BUS support]), [
-		dbus_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
@@ -396,7 +391,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		LDFLAGS="$LDFLAGS -pie"
 	fi
 
-	AM_CONDITIONAL(DBUS, test "${dbus_enable}" = "yes" && test "${dbus_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(FUSE, test "${fuse_enable}" = "yes" && test "${openobex_found}" = "yes" && test "${fuse_found}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")

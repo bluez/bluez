@@ -536,9 +536,7 @@ static void init_all_devices(int ctl)
 
 		start_device(dr->dev_id);
 
-#ifdef ENABLE_DBUS
 		hcid_dbus_register_device(dr->dev_id);
-#endif
 	}
 
 	free(dl);
@@ -581,16 +579,12 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		if (hcid.auto_init)
 			init_device(sd->dev_id);
 		add_device(sd->dev_id);
-#ifdef ENABLE_DBUS
 		hcid_dbus_register_device(sd->dev_id);
-#endif
 		break;
 
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", sd->dev_id);
-#ifdef ENABLE_DBUS
 		hcid_dbus_unregister_device(sd->dev_id);
-#endif
 		remove_device(sd->dev_id);
 		break;
 
@@ -750,12 +744,10 @@ int main(int argc, char *argv[])
 
 	init_devices();
 
-#ifdef ENABLE_DBUS
 	if (hcid_dbus_init() == FALSE) {
 		error("Unable to get on D-Bus");
 		exit(1);
 	}
-#endif
 
 	init_security_data();
 
@@ -782,9 +774,7 @@ int main(int argc, char *argv[])
 
 	free_device_opts();
 
-#ifdef ENABLE_DBUS
 	hcid_dbus_exit();
-#endif
 
 	info("Exit");
 
