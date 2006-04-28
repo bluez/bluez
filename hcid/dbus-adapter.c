@@ -459,7 +459,7 @@ static DBusHandlerResult handle_dev_is_connected_req(DBusConnection *conn, DBusM
 
 	if (dbus_error_is_set(&err)) {
 		error("Can't extract message arguments:%s", err.message);
-	        dbus_error_free(&err);
+		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
 
@@ -490,7 +490,6 @@ static DBusHandlerResult handle_dev_list_connections_req(DBusConnection *conn, D
 	struct hci_dbus_data *dbus_data = data;
 	struct slist *l = dbus_data->active_conn;
 
-
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -505,7 +504,7 @@ static DBusHandlerResult handle_dev_list_connections_req(DBusConnection *conn, D
 		struct active_conn_info *dev = l->data;
 
 		baswap(&tmp, &dev->bdaddr); peer_addr = batostr(&tmp);
-		
+
 		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &peer_addr);
 		bt_free(peer_addr);
 
@@ -788,7 +787,7 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 	char *str_ptr;
 	int ecode;
 
-	dbus_error_init(&err);	
+	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &str_ptr,
 				DBUS_TYPE_INVALID);
@@ -1456,7 +1455,6 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 	int dd;
 	struct active_conn_info *dev;
 
-
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &peer_addr,
@@ -1517,7 +1515,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
-			      	DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_STRING, &peer_addr,
 				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&err)) {
@@ -1632,8 +1630,8 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
-			      DBUS_TYPE_STRING, &peer_addr,
-			      DBUS_TYPE_INVALID);
+				DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&err)) {
 		error("Can't extract message arguments:%s", err.message);
@@ -1717,6 +1715,7 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 	}
 
 	hci_close_dev(dd);
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
@@ -2026,7 +2025,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 
 	/* is there discover pending? */
 	if (dbus_data->discover_state != STATE_DISCOVER &&
-	    	dbus_data->discover_state != STATE_RESOLVING_NAMES)
+		dbus_data->discover_state != STATE_RESOLVING_NAMES)
 		return error_not_authorized(conn, msg); /* FIXME: find a better error name */
 
 	/* only the discover requestor can cancel the inquiry process */
@@ -2061,8 +2060,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	}
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
-		error("Sending command failed: %s (%d)",
-		      strerror(errno), errno);
+		error("Sending command failed: %s (%d)", strerror(errno), errno);
 		hci_close_dev(dd);
 		return error_failed(conn, msg, errno);
 	}
@@ -2128,7 +2126,6 @@ struct slist *service_classes_str(uint32_t class)
 
 	return l;
 }
-
 
 static struct service_data dev_services[] = {
 	{ "GetAddress",					handle_dev_get_address_req		},
@@ -2199,13 +2196,12 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 			return handler(conn, msg, data);
 		else
 			return error_unknown_method(conn, msg);
-	}
-	else if (!strcmp(SECURITY_INTERFACE, iface))
+	} else if (!strcmp(SECURITY_INTERFACE, iface))
 		return handle_security_method(conn, msg, data);
 	else if (!strcmp(RFCOMM_INTERFACE, iface))
 		return handle_rfcomm_method(conn, msg, data);
 	else if (!strcmp(SDP_INTERFACE, iface))
 		return handle_sdp_method(conn, msg, data);
-	else 
+	else
 		return error_unknown_method(conn, msg);
 }

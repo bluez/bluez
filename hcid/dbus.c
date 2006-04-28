@@ -199,7 +199,6 @@ static int active_conn_remove(struct slist **list, uint16_t *handle)
 
 static DBusMessage *dbus_msg_new_authentication_return(DBusMessage *msg, uint8_t status)
 {
-
 	switch (status) {
 	case 0x00: /* success */
 		return dbus_message_new_method_return(msg);
@@ -496,6 +495,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 		active_conn_append(&pdata->active_conn, &ci->bdaddr, ci->handle);
 
 	ret = TRUE;
+
 failed:
 	if (!ret)
 		dbus_connection_unregister_object_path(connection, path);
@@ -1168,6 +1168,7 @@ bonding_failed:
 	pdata->bonding = NULL;
 	free(pdata->requestor_name);
 	pdata->requestor_name = NULL;
+
 done:
 	hci_close_dev(dd);
 
@@ -1340,8 +1341,7 @@ gboolean hcid_dbus_init(void)
 
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
 
-	ret_val = dbus_bus_request_name(connection, BASE_INTERFACE,
-						0, &err);
+	ret_val = dbus_bus_request_name(connection, BASE_INTERFACE, 0, &err);
 
 	if (ret_val != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
 		error("Service could not become the primary owner.");
@@ -1439,6 +1439,7 @@ int discoverable_timeout_handler(void *data)
 
 	dbus_data->timeout_id = 0;
 	retval = -1;
+
 failed:
 	if (dd >= 0)
 		close(dd);
@@ -1452,8 +1453,8 @@ static int system_bus_reconnect(void *data)
 	struct hci_dev_req *dr;
 	int sk, i, ret_val = 0;
 
-       if (dbus_connection_get_is_connected(connection))
-	       return -1;
+	if (dbus_connection_get_is_connected(connection))
+		return -1;
 
 	if (hcid_dbus_init() == FALSE)
 		return 0;
@@ -1488,6 +1489,7 @@ static int system_bus_reconnect(void *data)
 		hcid_dbus_register_device(dr->dev_id);
 
 	ret_val = -1;
+
 failed:
 	if (sk >= 0)
 		close(sk);
@@ -1656,6 +1658,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		g_timeout_remove(pdata->timeout_id);
 		pdata->timeout_id = 0;
 	}
+
 	switch (rp.enable) {
 	case SCAN_DISABLED:
 		scan_mode = MODE_OFF;
@@ -1701,7 +1704,6 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	dbus_connection_flush(connection);
 
 failed:
-
 	if (message)
 		dbus_message_unref(message);
 
