@@ -407,7 +407,7 @@ static struct option main_options[] = {
 	{ 0, 0, 0, 0}
 };
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
 	uint16_t mtu = 0;
 	int daemonize = 1, public = 0, master = 0;

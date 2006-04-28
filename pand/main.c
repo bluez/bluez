@@ -556,7 +556,7 @@ static char main_help[] =
 	"\t--pidfile -P <pidfile>    Create PID file\n"
 	"\t--devup -u <script>       Script to run when interface comes up\n";
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
 	char *dst = NULL, *src = NULL;
 	struct sigaction sa;

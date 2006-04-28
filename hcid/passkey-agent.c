@@ -277,7 +277,7 @@ static struct option main_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
 	struct sigaction sa;
 	DBusConnection *conn;

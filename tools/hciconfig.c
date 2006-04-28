@@ -1532,12 +1532,12 @@ static void usage(void)
 }
 
 static struct option main_options[] = {
-	{"help", 0,0, 'h'},
-	{"all",  0,0, 'a'},
-	{0, 0, 0, 0}
+	{ "help",	0, 0, 'h' },
+	{ "all",	0, 0, 'a' },
+	{ 0, 0, 0, 0 }
 };
 
-int main(int argc, char **argv, char **env)
+int main(int argc, char *argv[])
 {
 	int opt, ctl, i, cmd=0;
 

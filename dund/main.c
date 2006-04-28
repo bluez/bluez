@@ -431,7 +431,7 @@ static char main_help[] =
 	"\t--activesync -a           Enable Microsoft ActiveSync networking\n"
 	"\t--cache -C[valid]         Enable address cache\n";
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
 	char *dst = NULL, *src = NULL;
 	struct sigaction sa;

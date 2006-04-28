@@ -2081,7 +2081,7 @@ static struct option main_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
 	int opt, i, dev_id = -1;
 	bdaddr_t ba;

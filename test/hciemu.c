@@ -1179,7 +1179,7 @@ static struct option main_options[] = {
 	{ 0 }
 };
 
-int main(int argc, char *argv[], char *env[])
+int main(int argc, char *argv[])
 {
 	struct sigaction sa;
 	GIOChannel *dev_io;
