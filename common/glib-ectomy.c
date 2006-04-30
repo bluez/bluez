@@ -94,6 +94,7 @@ struct watch {
 };
 
 static struct watch watch_head = { .id = 0, .prev = 0, .next = 0, .revents = 0 };
+
 static GMainContext *default_context = NULL;
 
 static void watch_remove(struct watch *w)
@@ -201,6 +202,7 @@ GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running)
 		ml->context = context;
 
 	ml->bail = 0;
+
 	return ml;
 }
 
@@ -243,8 +245,8 @@ static void timeout_handlers_check(GMainContext *context)
 		l = l->next;
 
 		if ((tv.tv_sec < t->expiration.tv_sec) ||
-		   	(tv.tv_sec == t->expiration.tv_sec &&
-		   	 tv.tv_usec < t->expiration.tv_usec))
+			(tv.tv_sec == t->expiration.tv_sec &&
+			 tv.tv_usec < t->expiration.tv_usec))
 			continue;
 
 		if (t->func(t->data)) {
@@ -407,6 +409,3 @@ gint g_timeout_remove(const guint id)
 
 	return -1;
 }
-
-
-
