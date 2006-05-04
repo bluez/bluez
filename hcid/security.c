@@ -642,6 +642,15 @@ static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
 		hcid_dbus_bonding_process_complete(sba, &dba, evt->status);
 }
 
+static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_conn_request *evt = ptr;
+	uint32_t class = evt->dev_class[0] | (evt->dev_class[1] << 8)
+				| (evt->dev_class[2] << 16);
+
+	write_remote_class(sba, &evt->bdaddr, class);
+}
+
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
@@ -728,6 +737,10 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	case EVT_AUTH_COMPLETE:
 		auth_complete(dev, &di->bdaddr, ptr);
 		break;
+
+	case EVT_CONN_REQUEST:
+		conn_request(dev, &di->bdaddr, ptr);
+		break;
 	}
 
 	/* Check for pending command request */
@@ -795,6 +808,7 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_CONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_DISCONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_AUTH_COMPLETE, &flt);
+	hci_filter_set_event(EVT_CONN_REQUEST, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		error("Can't set filter on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);
