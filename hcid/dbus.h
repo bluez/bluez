@@ -86,13 +86,6 @@ struct bonding_request_info {
 	int disconnect; /* disconnect after finish */
 };
 
-struct search_request_info {
-	bdaddr_t bdaddr;
-	DBusMessage *rq;
-	GIOChannel *io;
-	sdp_session_t *session;
-};
-
 struct active_conn_info {
 	bdaddr_t bdaddr;
 	uint16_t handle;
@@ -110,7 +103,6 @@ struct hci_dbus_data {
 	char *requestor_name;	           /* requestor unique name */
 	struct slist *passkey_agents;
 	struct bonding_request_info *bonding;
-	struct search_request_info *search;
 	struct slist *active_conn;
 	int pairing_active;
 };
