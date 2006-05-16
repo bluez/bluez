@@ -327,6 +327,7 @@ static struct {
 	{ 3062, "Unified 21d"	},
 	{ 3063, "Unified 21d"	},
 	{ 3064, "Unified 21d"	},
+	{ 3164, "Unified 21e"	},
 	{ 2526, "Marcel 1 (2005-09-26)"	},
 	{ 2543, "Marcel 2 (2005-09-28)"	},
 	{ 2622, "Marcel 3 (2005-10-27)" },
