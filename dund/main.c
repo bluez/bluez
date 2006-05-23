@@ -398,7 +398,7 @@ static struct option main_lopts[] = {
 	{ "msdun",	2, 0, 'X' },
 	{ "activesync",	0, 0, 'a' },
 	{ "mrouter",	1, 0, 'm' },
-	{ "dialup",	1, 0, 'u' },
+	{ "dialup",	0, 0, 'u' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -447,6 +447,7 @@ int main(int argc, char *argv[])
 
 		case 's':
 			mode = LISTEN;
+			type = LANACCESS;
 			break;
 
 		case 'c':

@@ -109,11 +109,19 @@ int dun_sdp_register(bdaddr_t *device, uint8_t channel, int type)
 	svclass = sdp_list_append(NULL, &dun);
 	sdp_set_service_classes(record, svclass);
 
-	if (type == LANACCESS || type == DIALUP) {
+	switch (type) {
+	case LANACCESS:
 		sdp_uuid16_create(&profile[0].uuid, LAN_ACCESS_PROFILE_ID);
 		profile[0].version = 0x0100;
 		pfseq = sdp_list_append(NULL, &profile[0]);
 		sdp_set_profile_descs(record, pfseq);
+		break;
+	case DIALUP:
+		sdp_uuid16_create(&profile[0].uuid, DIALUP_NET_PROFILE_ID);
+		profile[0].version = 0x0100;
+		pfseq = sdp_list_append(NULL, &profile[0]);
+		sdp_set_profile_descs(record, pfseq);
+		break;
 	}
 
 	switch (type) {
