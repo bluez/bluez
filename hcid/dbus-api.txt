@@ -770,7 +770,7 @@ Security hierarchy
 Service		org.bluez
 Interface	org.bluez.Security
 Object path	/org/bluez/Manager/
-		/org/bluez/Adapter/{hci0,hci1,...}
+		/org/bluez/{hci0,hci1,...}
 
 Methods		void RegisterDefaultPasskeyAgent(string path)
 
@@ -865,7 +865,7 @@ RFCOMM hierarchy
 
 Service		org.bluez
 Interface	org.bluez.RFCOMM
-Object path	/org/bluez/Adapter/{hci0,hci1,...}
+Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		string Connect(string address, string service)
 
@@ -941,7 +941,7 @@ SDP hierarchy
 
 Service		org.bluez
 Interface	org.bluez.SDP
-Object path	/org/bluez/Adapter/{hci0,hci1,...}
+Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		array{string} GetIdentifiers(string address)
 
