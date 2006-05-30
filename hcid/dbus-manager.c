@@ -39,7 +39,8 @@
 #include "hcid.h"
 #include "dbus.h"
 
-static DBusHandlerResult handle_mgr_interface_version_req(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult interface_version(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	dbus_uint32_t version = 0;
@@ -54,7 +55,30 @@ static DBusHandlerResult handle_mgr_interface_version_req(DBusConnection *conn, 
 	return send_reply_and_unref(conn, reply);
 }
 
-static DBusHandlerResult handle_mgr_list_devices_req(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult default_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	char path[MAX_PATH_LENGTH], *path_ptr = path;
+	int default_dev = get_default_dev_id();
+
+	if (default_dev < 0)
+		return error_no_such_adapter(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, default_dev);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult list_adapters(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
@@ -121,49 +145,30 @@ static DBusHandlerResult handle_mgr_list_devices_req(DBusConnection *conn, DBusM
 	return send_reply_and_unref(conn, reply);
 }
 
-static DBusHandlerResult handle_mgr_default_adapter_req(DBusConnection *conn, DBusMessage *msg, void *data)
+static DBusHandlerResult list_services(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	char path[MAX_PATH_LENGTH], *path_ptr = path;
-	int default_dev = get_default_dev_id();
-
-	if (default_dev < 0)
-		return error_no_such_adapter(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, default_dev);
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
-					DBUS_TYPE_INVALID);
-
 	return send_reply_and_unref(conn, reply);
 }
 
-static struct service_data mgr_services[] = {
-	{ "InterfaceVersion",	handle_mgr_interface_version_req	},
-	{ "ListAdapters",	handle_mgr_list_devices_req		},
-	{ "DefaultAdapter",	handle_mgr_default_adapter_req		},
+static struct service_data methods[] = {
+	{ "InterfaceVersion",	interface_version	},
+	{ "DefaultAdapter",	default_adapter		},
+	{ "ListAdapters",	list_adapters		},
+	{ "ListServices",	list_services		},
 	{ NULL, NULL }
 };
 
-static DBusHandlerResult handle_manager_method(DBusConnection *conn,
+DBusHandlerResult msg_func_manager(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	service_handler_func_t handler;
-
-	handler = find_service_handler(mgr_services, msg);
-
-	if (handler)
-		return handler(conn, msg, data);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data)
-{
 	const char *iface, *path;
 
 	iface = dbus_message_get_interface(msg);
@@ -172,8 +177,13 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void 
 	if (strcmp(BASE_PATH, path))
 		return error_no_such_adapter(conn, msg);
 
-	if (!strcmp(iface, MANAGER_INTERFACE))
-		return handle_manager_method(conn, msg, data);
+	if (!strcmp(iface, MANAGER_INTERFACE)) {
+		handler = find_service_handler(methods, msg);
+		if (handler)
+			return handler(conn, msg, data);
+		else
+			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
 
 	if (!strcmp(iface, SECURITY_INTERFACE))
 		return handle_security_method(conn, msg, data);

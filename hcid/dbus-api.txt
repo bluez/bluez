@@ -123,13 +123,17 @@ Methods		uint32 InterfaceVersion()
 			Returns the current interface version. At the moment
 			only version 0 is supported.
 
+		string DefaultAdapter()
+
+			Returns object path for the default adapter.
+
 		array{string} ListAdapters()
 
 			Returns list of object paths under /org/bluez/Adapter/
 
-		string DefaultAdapter()
+		array{string} ListServices()
 
-			Returns object path for the default adapter.
+			Returns list of service connection identifiers.
 
 Signals		void AdapterAdded(string path)
 
