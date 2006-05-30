@@ -127,6 +127,11 @@ Methods		uint32 InterfaceVersion()
 
 			Returns object path for the default adapter.
 
+		string FindAdapter(string pattern)
+
+			Returns object path for the specified adapter. Valid
+			patterns are "hci0" or "00:11:22:33:44:55".
+
 		array{string} ListAdapters()
 
 			Returns list of object paths under /org/bluez/Adapter/

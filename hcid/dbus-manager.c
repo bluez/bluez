@@ -77,6 +77,33 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 	return send_reply_and_unref(conn, reply);
 }
 
+static DBusHandlerResult find_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	char path[MAX_PATH_LENGTH], *path_ptr = path;
+	const char *pattern;
+	int dev_id;
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
+							DBUS_TYPE_INVALID);
+
+	dev_id = hci_devid(pattern);
+	if (dev_id < 0)
+		return error_no_such_adapter(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, dev_id);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
 static DBusHandlerResult list_adapters(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -160,6 +187,7 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 static struct service_data methods[] = {
 	{ "InterfaceVersion",	interface_version	},
 	{ "DefaultAdapter",	default_adapter		},
+	{ "FindAdapter",	find_adapter		},
 	{ "ListAdapters",	list_adapters		},
 	{ "ListServices",	list_services		},
 	{ NULL, NULL }

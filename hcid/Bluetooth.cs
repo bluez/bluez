@@ -30,6 +30,7 @@ namespace Bluetooth
 	internal abstract class ManagerProxy
 	{
 		[Method] public abstract string DefaultAdapter();
+		[Method] public abstract string FindAdapter(string pattern);
 	}
 
 	public delegate void RemoteDeviceFoundHandler(string address, Int16 rssi,
@@ -79,17 +80,17 @@ namespace Bluetooth
 		{
 		}
 
-		public Adapter(string path)
+		public Adapter(string pattern)
 		{
 			connection = Bus.GetSystemBus();
 			service = Service.Get(connection, "org.bluez");
 
 			manager = (ManagerProxy) service.GetObject(typeof(ManagerProxy), "/org/bluez");
 
-			if (path == "")
+			if (pattern == "")
 				path = manager.DefaultAdapter();
-
-			this.path = path;
+			else
+				path = manager.FindAdapter(pattern);
 
 			adapter = (AdapterProxy) service.GetObject(typeof(AdapterProxy), path);
 
