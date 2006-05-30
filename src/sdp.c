@@ -177,6 +177,7 @@ static struct tupla ServiceClass[] = {
 	{ SAP_SVCLASS_ID,			"SIM Access"			},
 	{ PBAP_PCE_SVCLASS_ID,			"Phonebook Access - PCE"	},
 	{ PBAP_PSE_SVCLASS_ID,			"Phonebook Access - PSE"	},
+	{ PBAP_SVCLASS_ID,			"Phonebook Access"		},
 	{ PNP_INFO_SVCLASS_ID,			"PnP Information"		},
 	{ GENERIC_NETWORKING_SVCLASS_ID,	"Generic Networking"		},
 	{ GENERIC_FILETRANS_SVCLASS_ID,		"Generic File Transfer"		},
