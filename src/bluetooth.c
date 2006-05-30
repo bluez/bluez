@@ -378,6 +378,10 @@ char *bt_compidtostr(int compid)
 		return "Seiko Epson Corporation";
 	case 65:
 		return "Integrated Silicon Solution Taiwain, Inc.";
+	case 66:
+		return "CONWISE Technology Corporation Ltd";
+	case 67:
+		return "PARROT SA";
 	case 65535:
 		return "internal use";
 	default:
