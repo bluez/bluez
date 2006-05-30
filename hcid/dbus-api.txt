@@ -134,7 +134,7 @@ Methods		uint32 InterfaceVersion()
 
 		array{string} ListAdapters()
 
-			Returns list of object paths under /org/bluez/Adapter/
+			Returns list of adapter object paths under /org/bluez
 
 		array{string} ListServices()
 
@@ -769,7 +769,7 @@ Security hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Security
-Object path	/org/bluez/Manager/
+Object path	/org/bluez
 		/org/bluez/{hci0,hci1,...}
 
 Methods		void RegisterDefaultPasskeyAgent(string path)
