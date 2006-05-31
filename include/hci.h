@@ -580,8 +580,7 @@ typedef struct {
 #define OCF_SNIFF_SUBRATE		0x0011
 typedef struct {
 	uint16_t	handle;
-	uint16_t	max_remote_latency;
-	uint16_t	max_local_latency;
+	uint16_t	max_latency;
 	uint16_t	min_remote_timeout;
 	uint16_t	min_local_timeout;
 } __attribute__ ((packed)) sniff_subrate_cp;
@@ -1381,8 +1380,8 @@ typedef struct {
 typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
-	uint16_t	max_remote_latency;
-	uint16_t	max_local_latency;
+	uint16_t	max_tx_latency;
+	uint16_t	max_rx_latency;
 	uint16_t	min_remote_timeout;
 	uint16_t	min_local_timeout;
 } __attribute__ ((packed)) evt_sniff_subrate;
