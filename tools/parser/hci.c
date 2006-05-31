@@ -745,8 +745,7 @@ static inline void sniff_subrate_dump(int level, struct frame *frm)
 	printf("handle %d\n", btohs(cp->handle));
 
 	p_indent(level, frm);
-	printf("max latency remote %d local %d\n",
-		btohs(cp->max_remote_latency), btohs(cp->max_local_latency));
+	printf("max latency %d\n", btohs(cp->max_latency));
 
 	p_indent(level, frm);
 	printf("min timeout remote %d local %d\n",
@@ -2381,9 +2380,9 @@ static inline void sniff_subrate_event_dump(int level, struct frame *frm)
 		printf("Error: %s\n", status2str(evt->status));
 	} else {
 		p_indent(level, frm);
-		printf("max latency remote %d local %d\n",
-					btohs(evt->max_remote_latency),
-					btohs(evt->max_local_latency));
+		printf("max latency transmit %d receive %d\n",
+					btohs(evt->max_tx_latency),
+					btohs(evt->max_rx_latency));
 
 		p_indent(level, frm);
 		printf("min timeout remote %d local %d\n",

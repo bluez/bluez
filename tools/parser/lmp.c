@@ -1002,7 +1002,7 @@ static inline void sniff_subrate_dump(int level, struct frame *frm)
 	printf("max subrate %d\n", subrate);
 
 	p_indent(level, frm);
-	printf("min subrate zero timeout %d\n", timeout);
+	printf("min sniff timeout %d\n", timeout);
 
 	p_indent(level, frm);
 	printf("subrate instant 0x%4.4x\n", instant);
