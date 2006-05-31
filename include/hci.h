@@ -584,7 +584,7 @@ typedef struct {
 	uint16_t	min_remote_timeout;
 	uint16_t	min_local_timeout;
 } __attribute__ ((packed)) sniff_subrate_cp;
-#define SNIFF_SUBRATE_CP_SIZE 10
+#define SNIFF_SUBRATE_CP_SIZE 8
 
 /* Host Controller and Baseband */
 #define OGF_HOST_CTL		0x03
