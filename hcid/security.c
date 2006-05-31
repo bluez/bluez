@@ -593,34 +593,11 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 					&cp, READ_REMOTE_VERSION_CP_SIZE);
 
 		hci_req_queue_append(data);
-	} else {
-		/* skip: remote version found */
+	} else
 		free(str);
-	}
-
-	/* check if the remote features needs be requested */
-	snprintf(filename, sizeof(filename), "%s/%s/features",
-			STORAGEDIR, local_addr);
-
-	str = textfile_get(filename, peer_addr);
-	if (!str) {
-		read_remote_features_cp cp;
-
-		cp.handle = evt->handle;
-
-		data = hci_req_data_new(dev_id, &evt->bdaddr, OGF_LINK_CTL,
-					OCF_READ_REMOTE_FEATURES, EVT_READ_REMOTE_FEATURES_COMPLETE,
-					&cp, READ_REMOTE_FEATURES_CP_SIZE);
-
-		hci_req_queue_append(data);
-	} else {
-		/* skip: remote features found */
-		free(str);
-	}
 
 	free(local_addr);
 	free(peer_addr);
-
 }
 
 static inline void disconn_complete(int dev, bdaddr_t *sba, void *ptr)
