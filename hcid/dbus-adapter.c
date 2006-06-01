@@ -1303,10 +1303,11 @@ static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, D
 
 static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
+	char filename[PATH_MAX + 1];
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply, *signal;
 	DBusError err;
-	char *str_ptr, *addr_ptr;
+	char *str_ptr, *addr_ptr, *find_ptr;
 	bdaddr_t bdaddr;
 	int ecode;
 
@@ -1326,6 +1327,16 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 		error("Alias change failed: Invalid parameter");
 		return error_invalid_arguments(conn, msg);
 	}
+
+	/* check if it is a unknown address */
+	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
+
+	find_ptr = textfile_get(filename, addr_ptr);
+
+	if (!find_ptr)
+		return error_unknown_address(conn, msg);
+
+	free(find_ptr);
 
 	str2ba(addr_ptr, &bdaddr);
 

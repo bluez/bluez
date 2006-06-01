@@ -488,6 +488,7 @@ Methods		string GetAddress()
 			name.
 
 			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.UnknownAddress
 					 org.bluez.Error.InvalidArguments
 
 		void ClearRemoteAlias(string address)
