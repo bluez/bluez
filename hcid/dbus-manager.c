@@ -45,6 +45,9 @@ static DBusHandlerResult interface_version(DBusConnection *conn,
 	DBusMessage *reply;
 	dbus_uint32_t version = 0;
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -61,6 +64,9 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 	DBusMessage *reply;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
 	int default_dev = get_default_dev_id();
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	if (default_dev < 0)
 		return error_no_such_adapter(conn, msg);
@@ -81,12 +87,21 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	DBusError err;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
 	const char *pattern;
 	int dev_id;
 
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
-							DBUS_TYPE_INVALID);
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &pattern,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
 
 	dev_id = hci_devid(pattern);
 	if (dev_id < 0)
@@ -113,6 +128,9 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
 	int i, sk;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0)
@@ -176,6 +194,9 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

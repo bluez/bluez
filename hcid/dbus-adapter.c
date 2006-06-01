@@ -147,6 +147,9 @@ static DBusHandlerResult handle_dev_get_address_req(DBusConnection *conn, DBusMe
 	const char *paddr = dbus_data->address;
 	DBusMessage *reply;
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -163,6 +166,9 @@ static DBusHandlerResult handle_dev_get_version_req(DBusConnection *conn, DBusMe
 	DBusMessage *reply;
 	char str[20], *str_ptr = str;
 	int err;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	err = get_device_version(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
@@ -185,6 +191,9 @@ static DBusHandlerResult handle_dev_get_revision_req(DBusConnection *conn, DBusM
 	char str[64], *str_ptr = str;
 	int err;
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	err = get_device_revision(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
 		return error_failed(conn, msg, -err);
@@ -205,6 +214,9 @@ static DBusHandlerResult handle_dev_get_manufacturer_req(DBusConnection *conn, D
 	DBusMessage *reply;
 	char str[64], *str_ptr = str;
 	int err;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	err = get_device_manufacturer(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
@@ -227,6 +239,9 @@ static DBusHandlerResult handle_dev_get_company_req(DBusConnection *conn, DBusMe
 	char str[64], *str_ptr = str;
 	int err;
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	err = get_device_company(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
 		return error_failed(conn, msg, -err);
@@ -247,6 +262,9 @@ static DBusHandlerResult handle_dev_get_mode_req(DBusConnection *conn, DBusMessa
 	DBusMessage *reply = NULL;
 	const uint8_t hci_mode = dbus_data->mode;
 	const char *scan_mode;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	switch (hci_mode) {
 	case SCAN_DISABLED:
@@ -353,6 +371,9 @@ static DBusHandlerResult handle_dev_get_discoverable_to_req(DBusConnection *conn
 	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -407,6 +428,9 @@ static DBusHandlerResult handle_dev_is_connectable_req(DBusConnection *conn, DBu
 	const uint8_t hci_mode = dbus_data->mode;
 	dbus_bool_t connectable = FALSE;
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	if (hci_mode & SCAN_PAGE)
 		connectable = TRUE;
 
@@ -426,6 +450,9 @@ static DBusHandlerResult handle_dev_is_discoverable_req(DBusConnection *conn, DB
 	DBusMessage *reply;
 	const uint8_t hci_mode = dbus_data->mode;
 	dbus_bool_t discoverable = FALSE;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	if (hci_mode & SCAN_INQUIRY)
 		discoverable = TRUE;
@@ -490,6 +517,9 @@ static DBusHandlerResult handle_dev_list_connections_req(DBusConnection *conn, D
 	struct hci_dbus_data *dbus_data = data;
 	struct slist *l = dbus_data->active_conn;
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -521,6 +551,9 @@ static DBusHandlerResult handle_dev_get_major_class_req(DBusConnection *conn, DB
 	DBusMessage *reply;
 	const char *str_ptr = "computer";
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -542,6 +575,9 @@ static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn,
 	uint8_t cls[3];
 	uint8_t major_class;
 	int dd, size, i;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
@@ -594,6 +630,9 @@ static DBusHandlerResult handle_dev_get_minor_class_req(DBusConnection *conn, DB
 	uint8_t cls[3];
 	uint8_t minor_class;
 	int dd;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
@@ -724,6 +763,9 @@ static DBusHandlerResult handle_dev_get_service_classes_req(DBusConnection *conn
 	uint8_t cls[3];
 	int dd, i;
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
@@ -763,6 +805,9 @@ static DBusHandlerResult handle_dev_get_name_req(DBusConnection *conn, DBusMessa
 	DBusMessage *reply;
 	char str[249], *str_ptr = str;
 	int err;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	err = get_device_name(dbus_data->dev_id, str, sizeof(str));
 	if (err < 0)
@@ -1846,6 +1891,9 @@ static DBusHandlerResult handle_dev_list_bondings_req(DBusConnection *conn, DBus
 	DBusMessage *reply;
 	char filename[PATH_MAX + 1];
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
 
 	reply = dbus_message_new_method_return(msg);
@@ -1956,6 +2004,9 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	uint32_t lap = 0x9e8b33;
 	int dd;
 
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
 	if (dbus_data->discover_state != STATE_IDLE)
 		return error_discover_in_progress(conn, msg);
 
@@ -2020,6 +2071,9 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	struct hci_dbus_data *dbus_data = data;
 	uint8_t status = 0x00;
 	int dd = -1;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
 
 	requestor_name = dbus_message_get_sender(msg);
 
