@@ -3,44 +3,41 @@
 hciattach \- attach serial devices via UART HCI to BlueZ stack
 .SH SYNOPSIS
 .B hciattach
-[ -n ] [ -p ] [ -t timeout ] <
+.RB [\| \-n \|]
+.RB [\| \-p \|]
+.RB [\| \-t 
+.IR timeout \|]
 .I tty
-> <
-.I type
-|
-.I id
-> [
+.IR type \||\| id
 .I speed
-] [
 .I flow
-]
 .SH DESCRIPTION
 .LP
 Hciattach is used to attach a serial UART to the Bluetooth stack as HCI
 transport interface.
 .SH OPTIONS
 .TP
-.BI -n
+.B \-n
 Don't detach from controlling terminal.
 .TP
-.BI -p
+.B \-p
 Print the PID when detaching.
 .TP
-.BI -t timeout
+.BI \-t " timeout"
 Specify an initialization timeout.  (Default is 5 seconds.)
 .TP
-.I <tty>
+.I tty
 This specifies the serial device to attach. A leading
 .B /dev
 can be omitted. Examples:
 .B /dev/ttyS1
 .B ttyS2
 .TP
-.I <type | id>
+.IR type \||\| id
 The
-.B type
+.I type
 or
-.B id
+.I id
 of the Bluetooth device that is to be attached, i.e. vendor or other device
 specific identifier. Currently supported types are
 .RS
@@ -48,45 +45,45 @@ specific identifier. Currently supported types are
 .B type
 .B description
 .TP
-any
+.B any
 Unspecified HCI_UART interface, no vendor specific options
 .TP
-ericsson
+.B ericsson
 Ericsson based modules
 .TP
-digi
+.B digi
 Digianswer based cards
 .TP
-xircom
+.B xircom
 Xircom PCMCIA cards: Credit Card Adapter and Real Port Adapter
 .TP
-csr
+.B csr
 CSR Casira serial adapter or BrainBoxes serial dongle (BL642)
 .TP
-bboxes
+.B bboxes
 BrainBoxes PCMCIA card (BL620)
 .TP
-swave
+.B swave
 Silicon Wave kits
 .TP
-bcsp
+.B bcsp
 Serial adapters using CSR chips with BCSP serial protocol
 .RE
 
 Supported IDs are (manufacturer id, product id)
 .RS
 .TP
-0x0105, 0x080a
+.B 0x0105, 0x080a
 Xircom PCMCIA cards: Credit Card Adapter and Real Port Adapter
 .TP
-0x0160, 0x0002
+.B 0x0160, 0x0002
 BrainBoxes PCMCIA card (BL620)
 .RE
 
 .TP
-.I <speed>
+.I speed
 The
-.B speed
+.I speed
 specifies the UART speed to use. Baudrates higher than 115.200bps require
 vendor specific initializations that are not implemented for all types of
 devices. In general the following speeds are supported:
@@ -96,9 +93,9 @@ devices. In general the following speeds are supported:
 Supported vendor devices are automatically initialised to their respective
 best settings.
 .TP
-.I <flow>
+.I flow
 If the keyword
-.B flow
+.I flow
 is appended to the list of options then hardware flow control is forced on
 the serial link (
 .B CRTSCTS

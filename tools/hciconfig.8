@@ -2,89 +2,95 @@
 .SH NAME
 hciconfig \- configure Bluetooth devices
 .SH SYNOPSIS
-.B hciconfig -h
+.B hciconfig
+.B \-h
 .br
-.B hciconfig [-a]
+.B hciconfig
+.RB [\| \-a \|]
 .br
-.B hciconfig [-a] <hciX> [command [command parameters]]
+.B hciconfig
+.RB [\| \-a \|]
+.RI [\| command
+.RI [\| "command parameters" \|]\|]
 
 .SH DESCRIPTION
 .LP
-.B
-hciconfig
-is used to configure Bluetooth devices. <hciX> is the name of a Bluetooth
-device installed in the system. If <hciX> is not given,
-.B
-hciconfig
+.B hciconfig
+is used to configure Bluetooth devices.
+.I hciX
+is the name of a Bluetooth device installed in the system. If
+.I hciX
+is not given,
+.B hciconfig
 prints name and basic information about all the Bluetooth devices installed in
-the system. If <hciX> is given but no command is given,
-it prints basic information on device <hciX> only. Basic information is 
+the system. If
+.I hciX
+is given but no command is given, it prints basic information on device
+.I hciX
+only. Basic information is 
 interface type, BD address, ACL MTU, SCO MTU, flags (up, init, running, raw,
 page scan enabled, inquiry scan enabled, inquiry, authentication enabled,
 encryption enabled).
 .SH OPTIONS
 .TP
-.BI -h
+.B \-h, \-\-help
 Gives a list of possible commands.
 .TP
-.BI -a
+.B \-a, \-\-all
 Other than the basic info, print features, packet type, link policy, link mode,
 name, class, version.
 .SH COMMANDS
 .TP
-.BI up
+.B up
 Open and initialize HCI device.
 .TP
-.BI down
+.B down
 Close HCI device.
 .TP
-.BI reset
+.B reset
 Reset HCI device.
 .TP
-.BI rstat
+.B rstat
 Reset statistic counters.
 .TP
-.BI auth
+.B auth
 Enable authentication (sets device to security mode 3).
 .TP
-.BI noauth
+.B noauth
 Disable authentication.
 .TP
-.BI encrypt
+.B encrypt
 Enable encryption (sets device to security mode 3).
 .TP
-.BI noencrypt
+.B noencrypt
 Disable encryption.
 .TP
-.BI secmgr
+.B secmgr
 Enable security manager (current kernel support is limited).
 .TP
-.BI nosecmgr
+.B nosecmgr
 Disable security manager.
 .TP
-.BI piscan
+.B piscan
 Enable page and inquiry scan.
 .TP
-.BI noscan
+.B noscan
 Disable page and inquiry scan.
 .TP
-.BI iscan
+.B iscan
 Enable inquiry scan, disable page scan.
 .TP
-.BI pscan
+.B pscan
 Enable page scan, disable inquiry scan.
 .TP
-.BI ptype " [type]"
+\fBptype\fP [\fItype\fP]
 With no
-.I
-type
+.I type
 , displays the current packet types. Otherwise, all the packet types specified
 by
-.I
-type
+.I type
 are set.
-.I
-type
+.I type
 is a comma-separated list of packet types, where the possible packet types are
 .BR DM1 ,
 .BR DM3 ,
@@ -117,8 +123,7 @@ With no
 .IR voice ,
 prints voice setting. Otherwise, sets voice setting to
 .IR voice .
-.I
-voice
+.I voice
 is a 16-bit hex number describing the voice setting.
 .TP
 .BI iac " [iac]"
@@ -145,9 +150,9 @@ With no
 prints out the current inquiry scan type. Otherwise, sets inquiry scan type to
 .IR type .
 .TP
-.BI inqparms " [win:int]"
+\fBinqparams\fP [\fIwin\fP:\fIint\fP]
 With no
-.IR win:int ,
+.IR win : int ,
 prints inquiry scan window and interval. Otherwise, sets inquiry scan window
 to
 .I win
@@ -155,23 +160,20 @@ slots and inquiry scan interval to
 .I int
 slots.
 .TP
-.BI pageparms " [win:int]"
+\fBpageparms\fP [\fIwin\fP:\fIint\fP]
 With no
-.IR win:int ,
+.IR win : int ,
 prints page scan window and interval. Otherwise, sets page scan window to
-.I
-win
+.I win
 slots and page scan interval to
-.I 
-int
+.I int
 slots.
 .TP
 .BI pageto " [to]"
 With no
 .IR to ,
 prints page timeout. Otherwise, sets page timeout
-to
-.I
+to .I
 to
 slots.
 .TP
@@ -181,19 +183,16 @@ With no
 prints out the current AFH mode. Otherwise, sets AFH mode to
 .IR mode .
 .TP
-.BI aclmtu " <mtu:pkt>"
+\fBaclmtu\fP \fImtu\fP:\fIpkt\fP
 Sets ACL MTU to
 to
-.I
-mtu
+.I mtu
 bytes and ACL buffer size to
-.I
-pkt
+.I pkt
 packets.
 .TP
-.BI scomtu " <mtu:pkt>"
+\fBscomtu\fP \fImtu\fP:\fIpkt\fP
 Sets SCO MTU to
-to
 .I mtu
 bytes and SCO buffer size to
 .I pkt
@@ -223,43 +222,34 @@ Display revision information.
 .TP
 .BI lm " [mode]"
 With no
-.I
-mode
+.I mode
 , prints link mode.
-.B
-MASTER
+.B MASTER
 or
-.B
-SLAVE
+.B SLAVE
 mean, respectively, to ask to become master or to remain slave when a
 connection request comes in. The additional keyword
-.B
-ACCEPT
+.B ACCEPT
 means that baseband  connections will be accepted even if there are no
 listening
 .I AF_BLUETOOTH
 sockets.
 .I mode
 is
-.B
-NONE
+.B NONE
 or a comma-separated list of keywords, where possible keywords are
-.B 
-MASTER
+.B MASTER
 and
 .B "ACCEPT" .
-.B
-NONE
+.B NONE
 sets link policy to the default behaviour of remaining slave and not accepting
 baseband connections when there are no listening
 .I AF_BLUETOOTH
 sockets. If
-.B
-MASTER
+.B MASTER
 is present, the device will ask to become master if a connection request comes
 in. If
-.B
-ACCEPT
+.B ACCEPT
 is present, the device will accept baseband connections even when there are no
 listening
 .I AF_BLUETOOTH
