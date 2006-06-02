@@ -654,7 +654,7 @@ int main(int argc, char *argv[])
 	struct hci_filter flt;
 	struct sigaction sa;
 	GIOChannel *ctl_io;
-	int opt, daemonize = 1, sdp = 0;
+	int opt, daemonize = 1, sdp = 0, experimental = 0;
 
 	/* Default HCId settings */
 	memset(&hcid, 0, sizeof(hcid));
@@ -671,7 +671,7 @@ int main(int argc, char *argv[])
 
 	init_defaults();
 
-	while ((opt = getopt(argc, argv, "nsf:")) != EOF) {
+	while ((opt = getopt(argc, argv, "nsxf:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
@@ -679,6 +679,10 @@ int main(int argc, char *argv[])
 
 		case 's':
 			sdp = 1;
+			break;
+
+		case 'x':
+			experimental = 1;
 			break;
 
 		case 'f':
@@ -744,10 +748,13 @@ int main(int argc, char *argv[])
 
 	init_devices();
 
-	if (hcid_dbus_init() == FALSE) {
+	if (hcid_dbus_init() < 0) {
 		error("Unable to get on D-Bus");
 		exit(1);
 	}
+
+	if (experimental)
+		hcid_dbus_set_experimental();
 
 	init_security_data();
 

@@ -1066,6 +1066,9 @@ DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void
 {
 	service_handler_func_t handler;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	handler = find_service_handler(sdp_services, msg);
 
 	if (handler)

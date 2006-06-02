@@ -142,8 +142,10 @@ void toggle_pairing(int enable);
 
 void set_pin_length(bdaddr_t *sba, int length);
 
-gboolean hcid_dbus_init(void);
+int hcid_dbus_init(void);
 void hcid_dbus_exit(void);
+void hcid_dbus_set_experimental();
+int hcid_dbus_use_experimental();
 gboolean hcid_dbus_register_device(uint16_t id);
 gboolean hcid_dbus_unregister_device(uint16_t id);
 gboolean hcid_dbus_dev_up(uint16_t id);

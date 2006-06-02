@@ -49,8 +49,20 @@ static DBusConnection *connection;
 
 static int default_dev = -1;
 
+static int experimental = 0;
+
 #define MAX_CONN_NUMBER			10
 #define RECONNECT_RETRY_TIMEOUT		5000
+
+void hcid_dbus_set_experimental(void)
+{
+	experimental = 1;
+}
+
+int hcid_dbus_use_experimental(void)
+{
+	return experimental;
+}
 
 void disc_device_info_free(void *data, void *user_data)
 {
@@ -209,22 +221,22 @@ static DBusMessage *dbus_msg_new_authentication_return(DBusMessage *msg, uint8_t
 	case 0x22: /* LMP response timeout */
 	case 0x28: /* instant passed - is this a timeout? */
 		return dbus_message_new_error(msg, ERROR_INTERFACE".AuthenticationTimeout",
-						  	"Authentication Timeout");
+							"Authentication Timeout");
 	case 0x17: /* too frequent pairing attempts */
 		return dbus_message_new_error(msg, ERROR_INTERFACE".RepeatedAttemps",
-						  	"Repeated Attempts");
+							"Repeated Attempts");
 
 	case 0x18: /* pairing not allowed (e.g. gw rejected attempt) */
 		return dbus_message_new_error(msg, ERROR_INTERFACE".AuthenticationRejected",
-						  	"Authentication Rejected");
-	
+							"Authentication Rejected");
+
 	case 0x07: /* memory capacity */
 	case 0x09: /* connection limit */
 	case 0x0a: /* synchronous connection limit */
 	case 0x0d: /* limited resources */
 	case 0x14: /* terminated due to low resources */
 		return dbus_message_new_error(msg, ERROR_INTERFACE".AuthenticationCanceled",
-						  	"Authentication Canceled");
+							"Authentication Canceled");
 
 	case 0x05: /* authentication failure */
 	case 0x06: /* pin missing */
@@ -235,7 +247,7 @@ static DBusMessage *dbus_msg_new_authentication_return(DBusMessage *msg, uint8_t
 	case 0x2f: /* insufficient security - is this auth failure? */
 	default:
 		return dbus_message_new_error(msg, ERROR_INTERFACE".AuthenticationFailed",
-						  	"Authentication Failed");
+							"Authentication Failed");
 	}
 }
 
@@ -1324,7 +1336,7 @@ static void watch_toggled(DBusWatch *watch, void *data)
 		remove_watch(watch, data);
 }
 
-gboolean hcid_dbus_init(void)
+int hcid_dbus_init(void)
 {
 	int ret_val;
 	DBusError err;
@@ -1336,7 +1348,7 @@ gboolean hcid_dbus_init(void)
 	if (dbus_error_is_set(&err)) {
 		error("Can't open system message bus connection: %s", err.message);
 		dbus_error_free(&err);
-		return FALSE;
+		return -1;
 	}
 
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
@@ -1345,27 +1357,27 @@ gboolean hcid_dbus_init(void)
 
 	if (ret_val != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
 		error("Service could not become the primary owner.");
-		return FALSE;
+		return -1;
 	}
 
 	if (dbus_error_is_set(&err)) {
 		error("Can't get system message bus name: %s", err.message);
 		dbus_error_free(&err);
-		return FALSE;
+		return -1;
 	}
 
 	if (!register_dbus_path(BASE_PATH, INVALID_DEV_ID, &obj_mgr_vtable, TRUE))
-		return FALSE;
+		return -1;
 
 	if (!dbus_connection_add_filter(connection, hci_dbus_signal_filter, NULL, NULL)) {
 		error("Can't add new HCI filter");
-		return FALSE;
+		return -1;
 	}
 
 	dbus_connection_set_watch_functions(connection,
 			add_watch, remove_watch, watch_toggled, NULL, NULL);
 
-	return TRUE;
+	return 0;
 }
 
 void hcid_dbus_exit(void)

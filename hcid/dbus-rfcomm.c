@@ -702,6 +702,9 @@ DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg,
 {
 	service_handler_func_t handler;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	if (!data) {
 		error("RFCOMM method called with NULL data pointer!");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
