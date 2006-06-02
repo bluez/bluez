@@ -1783,7 +1783,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	DBusMessage *signal;
 	DBusError err;
 	char filename[PATH_MAX + 1];
-	char *addr_ptr;
+	char *addr_ptr, *str;
 	bdaddr_t bdaddr;
 	int dd;
 
@@ -1807,10 +1807,19 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 
 	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
 
-	/* Delete the link key from storage */
-	if (textfile_del(filename, addr_ptr)) {
+	/* textfile_del doesn't return an error when the key is not found */
+	str = textfile_get(filename, addr_ptr);
+	if (!str) {
 		hci_close_dev(dd);
 		return error_bonding_does_not_exist(conn, msg);
+	}
+
+	free(str);
+
+	/* Delete the link key from storage */
+	if (textfile_del(filename, addr_ptr) < 0) {
+		hci_close_dev(dd);
+		return error_failed(conn, msg, errno);
 	}
 
 	str2ba(addr_ptr, &bdaddr);
