@@ -155,6 +155,7 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_SIM_ACCESS,               "SAP"          }, /* SAP */
 	{ SDP_UUID_PHONEBOOK_ACCESS_PCE,     "PBAP PCE"     }, /* PBAP */
 	{ SDP_UUID_PHONEBOOK_ACCESS_PSE,     "PBAP PSE"     }, /* PBAP */
+	{ SDP_UUID_PHONEBOOK_ACCESS,         "PBAP"         }, /* PBAP */
 	{ SDP_UUID_PNP_INFORMATION,          "PNPInfo"      },
 	{ SDP_UUID_GENERIC_NETWORKING,       "Networking"   },
 	{ SDP_UUID_GENERIC_FILE_TRANSFER,    "FileTrnsf"    },
@@ -208,7 +209,12 @@ static sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
 	{ SDP_ATTR_ID_NET_ACCESS_TYPE,                   "NetAccessType"      }, /* PAN */
 	{ SDP_ATTR_ID_MAX_NET_ACCESS_RATE,               "MaxNetAccessRate"   }, /* PAN */
 	{ SDP_ATTR_ID_IPV4_SUBNET,                       "IPv4Subnet"         }, /* PAN */
-	{ SDP_ATTR_ID_IPV6_SUBNET,                       "IPv6Subnet"         }  /* PAN */
+	{ SDP_ATTR_ID_IPV6_SUBNET,                       "IPv6Subnet"         }, /* PAN */
+	{ SDP_ATTR_ID_SUPPORTED_CAPABILITIES,            "SuppCapabilities"   }, /* Imaging */
+	{ SDP_ATTR_ID_SUPPORTED_FEATURES,                "SuppFeatures"       }, /* Imaging and Hansfree */
+	{ SDP_ATTR_ID_SUPPORTED_FUNCTIONS,               "SuppFunctions"      }, /* Imaging */
+	{ SDP_ATTR_ID_TOTAL_IMAGING_DATA_CAPACITY,       "SuppTotalCapacity"  }, /* Imaging */
+	{ SDP_ATTR_ID_SUPPORTED_REPOSITORIES,            "SuppRepositories"   }, /* PBAP */
 };
 
 #define SDP_ATTR_ID_NAM_LOOKUP_TABLE_SIZE \

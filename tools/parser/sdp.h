@@ -100,6 +100,7 @@
 #define SDP_UUID_SIM_ACCESS                            0x112d /* SAP */
 #define SDP_UUID_PHONEBOOK_ACCESS_PCE                  0x112e /* PBAP */
 #define SDP_UUID_PHONEBOOK_ACCESS_PSE                  0x112f /* PBAP */
+#define SDP_UUID_PHONEBOOK_ACCESS                      0x1130 /* PBAP */
 #define SDP_UUID_PNP_INFORMATION                       0x1200
 #define SDP_UUID_GENERIC_NETWORKING                    0x1201
 #define SDP_UUID_GENERIC_FILE_TRANSFER                 0x1202
