@@ -115,7 +115,7 @@ static int load_file(int dd, uint16_t version, const char *suffix)
 {
 	DIR *dir;
 	struct dirent *d;
-	char filename[NAME_MAX], prefix[20];
+	char pathname[PATH_MAX], filename[NAME_MAX], prefix[20];
 	unsigned char cmd[256];
 	unsigned char buf[256];
 	uint8_t seqnum = 0;
@@ -126,9 +126,14 @@ static int load_file(int dd, uint16_t version, const char *suffix)
 	snprintf(prefix, sizeof(prefix), "STLC2500_R%d_%02d_",
 						version >> 8, version & 0xff);
 
-	dir = opendir(".");
-	if (!dir)
-		return -errno;
+	strcpy(pathname, "/lib/firmware");
+	dir = opendir(pathname);
+	if (!dir) {
+		strcpy(pathname, ".");
+		dir = opendir(pathname);
+		if (!dir)
+			return -errno;
+	}
 
 	while (1) {
 		d = readdir(dir);
@@ -142,7 +147,8 @@ static int load_file(int dd, uint16_t version, const char *suffix)
 		if (strncmp(d->d_name, prefix, strlen(prefix)))
 			continue;
 
-		snprintf(filename, sizeof(filename), "%s", d->d_name);
+		snprintf(filename, sizeof(filename), "%s/%s",
+							pathname, d->d_name);
 	}
 
 	closedir(dir);
