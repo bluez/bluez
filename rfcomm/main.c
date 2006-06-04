@@ -150,7 +150,8 @@ static int create_dev(int ctl, int dev, uint32_t flags, bdaddr_t *bdaddr, int ar
 	bacpy(&req.src, bdaddr);
 
 	if (argc < 2) {
-		if ((err = rfcomm_read_config(rfcomm_config_file)) < 0) {
+		err = rfcomm_read_config(rfcomm_config_file);
+		if (err < 0) {
 			perror("Can't open RFCOMM config file");
 			return err;
 		}
@@ -172,7 +173,10 @@ static int create_dev(int ctl, int dev, uint32_t flags, bdaddr_t *bdaddr, int ar
 			req.channel = 1;
 	}
 
-	if ((err = ioctl(ctl, RFCOMMCREATEDEV, &req)) < 0 )
+	err = ioctl(ctl, RFCOMMCREATEDEV, &req);
+	if (err == EOPNOTSUPP)
+		fprintf(stderr, "RFCOMM TTY support not available\n");
+	else if (err < 0)
 		perror("Can't create device");
 
 	return err;
@@ -183,7 +187,8 @@ static int create_all(int ctl)
 	struct rfcomm_dev_req req;
 	int i, err;
 
-	if ((err = rfcomm_read_config(rfcomm_config_file)) < 0) {
+	err = rfcomm_read_config(rfcomm_config_file);
+	if (err < 0) {
 		perror("Can't open RFCOMM config file");
 		return err;
 	}
@@ -214,7 +219,8 @@ static int release_dev(int ctl, int dev, uint32_t flags)
 	memset(&req, 0, sizeof(req));
 	req.dev_id = dev;
 
-	if ((err = ioctl(ctl, RFCOMMRELEASEDEV, &req)) < 0 )
+	err = ioctl(ctl, RFCOMMRELEASEDEV, &req);
+	if (err < 0)
 		perror("Can't release device");
 
 	return err;
@@ -285,7 +291,8 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 			raddr.rc_channel = 1;
 	}
 
-	if ((sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) < 0) {
+	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0) {
 		perror("Can't create RFCOMM socket");
 		return;
 	}
@@ -317,7 +324,8 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	bacpy(&req.dst, &raddr.rc_bdaddr);
 	req.channel = raddr.rc_channel;
 
-	if ((dev = ioctl(sk, RFCOMMCREATEDEV, &req)) < 0) {
+	dev = ioctl(sk, RFCOMMCREATEDEV, &req);
+	if (dev < 0) {
 		perror("Can't create RFCOMM TTY");
 		close(sk);
 		return;
@@ -399,7 +407,8 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	bacpy(&laddr.rc_bdaddr, bdaddr);
 	laddr.rc_channel = (argc < 2) ? 1 : atoi(argv[1]);
 
-	if ((sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) < 0) {
+	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0) {
 		perror("Can't create RFCOMM socket");
 		return;
 	}
@@ -432,7 +441,8 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	bacpy(&req.dst, &raddr.rc_bdaddr);
 	req.channel = raddr.rc_channel;
 
-	if ((dev = ioctl(nsk, RFCOMMCREATEDEV, &req)) < 0) {
+	dev = ioctl(nsk, RFCOMMCREATEDEV, &req);
+	if (dev < 0) {
 		perror("Can't create RFCOMM TTY");
 		close(sk);
 		return;
@@ -629,7 +639,8 @@ int main(int argc, char *argv[])
 			show_all = 1;
 	}
 
-	if ((ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM)) < 0 ) {
+	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
+	if (ctl < 0) {
 		perror("Can't open RFCOMM control socket");
 		exit(1);
 	}
