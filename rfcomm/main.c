@@ -621,8 +621,13 @@ int main(int argc, char *argv[])
 	argv += optind;
 	optind = 0;
 
-	if (argc < 2)
-		show_all = 1;
+	if (argc < 2) {
+		if (argc != 0) {
+			usage();
+			exit(1);
+		} else
+			show_all = 1;
+	}
 
 	if ((ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM)) < 0 ) {
 		perror("Can't open RFCOMM control socket");
