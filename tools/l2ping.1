@@ -3,56 +3,57 @@
 l2ping \- Send L2CAP echo request and receive answer
 .SH SYNOPSIS
 .B l2ping
-[
-.I -i <hciX>
-] [
-.I -s size
-] [
-.I -c count
-] [
-.I -t timeout
-] [
-.I -f
-] [
-.I -r
-] <
+.RB [\| \-i
+.IR <hciX> \|]
+.RB [\| \-s
+.IR size \|]
+.RB [\| \-c
+.IR count \|]
+.RB [\| \-t
+.IR timeout \|]
+.RB [\| \-f \|]
+.RB [\| \-r \|]
 .I bd_addr
->
+
+.SH DESCRIPTION
+.LP
+.I bd_addr
+
 .SH DESCRIPTION
 .LP
 L2ping sends a L2CAP echo request to the Bluetooth MAC address
-.B bd_addr
+.I bd_addr
 given in dotted hex notation.
 .SH OPTIONS
 .TP
-.I -i " <hciX>"
+.BI \-i " <hciX>"
 The command is applied to device
-.I
+.BI
 hciX
 , which must be the name of an installed Bluetooth device (X = 0, 1, 2, ...)
 If not specified, the command will be sent to the first available Bluetooth
 device.
 .TP
-.I -s size
+.BI \-s " size"
 The
-.B size
+.I size
 of the data packets to be sent.
 .TP
-.I -c count
+.BI \-c " count"
 Send
-.B count
+.I count
 number of packets then exit.
 .TP
-.I -t \fBtimeout\fP
+.BI \-t " timeout"
 Wait
-.B \fBtimeout\fP
+.I timeout
 seconds for the response.
 .TP
-.I -f
+.B \-f
 Kind of flood ping. Use with care! It reduces the delay time between packets
 to 0.
 .TP
-.I -r
+.B \-r
 Reverse ping (gnip?). Send echo response instead of echo request.
 .TP
 .I bd_addr
