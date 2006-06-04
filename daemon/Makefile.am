@@ -3,7 +3,7 @@ noinst_PROGRAMS = bluetoothd
 
 bluetoothd_SOURCES = main.c
 
-bluetoothd_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libtextfile.a
+bluetoothd_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@
 

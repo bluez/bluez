@@ -23,13 +23,9 @@ hcid_SOURCES = main.c security.c device.c logging.c storage.c \
 		dbus.h dbus.c dbus-common.c \
 		dbus-error.c dbus-manager.c dbus-adapter.c \
 		dbus-device.c dbus-service.c dbus-security.c \
-		dbus-sdp.c dbus-rfcomm.c \
-		$(top_builddir)/tools/oui.h $(top_builddir)/tools/oui.c
+		dbus-sdp.c dbus-rfcomm.c
 
-hcid_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ \
-		$(top_builddir)/common/libglib-ectomy.a \
-		$(top_builddir)/common/libtextfile.a \
-		$(top_builddir)/common/liblist.a
+hcid_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 passkey_agent_SOURCES = passkey-agent.c
 
@@ -37,7 +33,7 @@ passkey_agent_LDADD = @DBUS_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@
 
-INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/tools
+INCLUDES = -I$(top_srcdir)/common
 
 man_MANS = hcid.8 hcid.conf.5
 

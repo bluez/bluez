@@ -6,10 +6,7 @@ bin_PROGRAMS = l2test rctest
 
 noinst_PROGRAMS = scotest attest hstest bdaddr
 
-hciemu_LDADD = @BLUEZ_LIBS@ \
-	       $(top_builddir)/common/libglib-ectomy.a \
-	       $(top_builddir)/common/liblist.a
-
+hciemu_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 l2test_LDADD = @BLUEZ_LIBS@
 
@@ -21,16 +18,16 @@ attest_LDADD = @BLUEZ_LIBS@
 
 hstest_LDADD = @BLUEZ_LIBS@
 
-bdaddr_SOURCES = bdaddr.c $(top_builddir)/tools/oui.h $(top_builddir)/tools/oui.c
+bdaddr_SOURCES = bdaddr.c
 
-bdaddr_LDADD = @BLUEZ_LIBS@
+bdaddr_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 noinst_MANS = bdaddr.8
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 endif
 
-INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/tools
+INCLUDES = -I$(top_srcdir)/common
 
 EXTRA_DIST = hsplay hsmicro bdaddr.8
 

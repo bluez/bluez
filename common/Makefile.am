@@ -1,14 +1,11 @@
 
-noinst_LIBRARIES = libtextfile.a libglib-ectomy.a liblist.a
+noinst_LIBRARIES = libhelper.a
 
-liblist_a_SOURCES = list.h list.c
-
-libtextfile_a_SOURCES = textfile.h textfile.c
-
-libglib_ectomy_a_SOURCES = glib-ectomy.h glib-ectomy.c
+libhelper_a_SOURCES = oui.h oui.c list.h list.c \
+	textfile.h textfile.c glib-ectomy.h glib-ectomy.c
 
 noinst_PROGRAMS = test_textfile
 
-test_textfile_LDADD = libtextfile.a
+test_textfile_LDADD = libhelper.a
 
 MAINTAINERCLEANFILES = Makefile.in

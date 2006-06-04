@@ -40,10 +40,10 @@ noinst_PROGRAMS = hcisecfilter ppporc
 hciattach_SOURCES = hciattach.c hciattach_st.c
 
 hciconfig_SOURCES = hciconfig.c csr.h csr.c
-hciconfig_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libtextfile.a
+hciconfig_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
-hcitool_SOURCES = hcitool.c oui.h oui.c
-hcitool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libtextfile.a
+hcitool_SOURCES = hcitool.c
+hcitool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 l2ping_LDADD = @BLUEZ_LIBS@
 
