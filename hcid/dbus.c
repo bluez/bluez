@@ -323,16 +323,16 @@ static const DBusObjectPathVTable obj_mgr_vtable = {
  */
 static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessage *msg, void *data);
 
-static gboolean register_dbus_path(const char *path, uint16_t dev_id,
+static int register_dbus_path(const char *path, uint16_t dev_id,
 				const DBusObjectPathVTable *pvtable, gboolean fallback)
 {
-	gboolean ret = FALSE;
 	struct hci_dbus_data *data = NULL;
+	int ret = -1;
 
 	info("Register path:%s fallback:%d", path, fallback);
 
 	data = malloc(sizeof(struct hci_dbus_data));
-	if (data == NULL) {
+	if (!data) {
 		error("Failed to alloc memory to DBUS path register data (%s)", path);
 		goto failed;
 	}
@@ -355,7 +355,7 @@ static gboolean register_dbus_path(const char *path, uint16_t dev_id,
 		}
 	}
 
-	ret = TRUE;
+	ret = 0;
 
 failed:
 	if (!ret && data)
@@ -364,7 +364,7 @@ failed:
 	return ret;
 }
 
-static gboolean unregister_dbus_path(const char *path)
+static int unregister_dbus_path(const char *path)
 {
 	struct hci_dbus_data *pdata;
 
@@ -396,10 +396,10 @@ static gboolean unregister_dbus_path(const char *path)
 
 	if (!dbus_connection_unregister_object_path (connection, path)) {
 		error("D-Bus failed to unregister %s object", path);
-		return FALSE;
+		return -1;
 	}
 
-	return TRUE;
+	return 0;
 }
 
 /*****************************************************************
@@ -409,13 +409,12 @@ static gboolean unregister_dbus_path(const char *path)
  *
  *****************************************************************/
 
-gboolean hcid_dbus_register_device(uint16_t id)
+int hcid_dbus_register_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
-	gboolean ret = FALSE;
 	DBusMessage *message = NULL;
-	int i, err, dd = -1;
+	int i, err, dd = -1, ret = -1;
 	read_scan_enable_rp rp;
 	struct hci_request rq;
 	struct hci_dbus_data* pdata;
@@ -424,7 +423,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 	if (!register_dbus_path(path, id, &obj_dev_vtable, FALSE))
-		return FALSE;
+		return -1;
 
 	dd = hci_open_dev(id);
 	if (dd < 0) {
@@ -436,7 +435,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 		rq.ocf    = OCF_READ_SCAN_ENABLE;
 		rq.rparam = &rp;
 		rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
-	
+
 		if (hci_send_req(dd, &rq, 500) < 0) {
 			error("Sending read scan enable command failed: %s (%d)",
 								strerror(errno), errno);
@@ -506,7 +505,7 @@ gboolean hcid_dbus_register_device(uint16_t id)
 	for (i = 0; i < cl->conn_num; i++, ci++)
 		active_conn_append(&pdata->active_conn, &ci->bdaddr, ci->handle);
 
-	ret = TRUE;
+	ret = 0;
 
 failed:
 	if (!ret)
@@ -527,12 +526,12 @@ failed:
 	return ret;
 }
 
-gboolean hcid_dbus_unregister_device(uint16_t id)
+int hcid_dbus_unregister_device(uint16_t id)
 {
-	gboolean ret;
 	DBusMessage *message = NULL;
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
+	int ret;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
@@ -561,7 +560,7 @@ failed:
 
 	ret = unregister_dbus_path(path);
 
-	if (ret && default_dev == id)
+	if (ret == 0 && default_dev == id)
 		default_dev = hci_get_route(NULL);
 
 	return ret;

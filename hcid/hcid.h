@@ -146,10 +146,8 @@ int hcid_dbus_init(void);
 void hcid_dbus_exit(void);
 void hcid_dbus_set_experimental();
 int hcid_dbus_use_experimental();
-gboolean hcid_dbus_register_device(uint16_t id);
-gboolean hcid_dbus_unregister_device(uint16_t id);
-gboolean hcid_dbus_dev_up(uint16_t id);
-gboolean hcid_dbus_dev_down(uint16_t id);
+int hcid_dbus_register_device(uint16_t id);
+int hcid_dbus_unregister_device(uint16_t id);
 void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci);
 
 void hcid_dbus_inquiry_start(bdaddr_t *local);
