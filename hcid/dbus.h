@@ -170,6 +170,8 @@ DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg, v
 
 DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
+DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void *data);
+
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
 
 int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);

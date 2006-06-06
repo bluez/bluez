@@ -287,6 +287,30 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 	return 0;
 }
 
+static char simple_xml[] = DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>";
+
+DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *path, *ptr = simple_xml;
+
+	path = dbus_message_get_path(msg);
+
+	info("Introspect path:%s", path);
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
 service_handler_func_t find_service_handler(struct service_data *handlers, DBusMessage *msg)
 {
 	struct service_data *current;

@@ -2257,11 +2257,15 @@ static struct service_data dev_services[] = {
 
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	const char *iface;
+	const char *iface, *name;
 
 	iface = dbus_message_get_interface(msg);
+	name = dbus_message_get_member(msg);
 
-	if (!strcmp(ADAPTER_INTERFACE, iface)) {
+	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
+					!strcmp("Introspect", name)) {
+		return simple_introspect(conn, msg, data);
+	} else if (!strcmp(ADAPTER_INTERFACE, iface)) {
 		service_handler_func_t handler;
 
 		handler = find_service_handler(dev_services, msg);

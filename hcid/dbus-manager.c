@@ -218,15 +218,19 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	service_handler_func_t handler;
-	const char *iface, *path;
+	const char *iface, *path, *name;
 
 	iface = dbus_message_get_interface(msg);
 	path = dbus_message_get_path(msg);
+	name = dbus_message_get_member(msg);
 
 	if (strcmp(BASE_PATH, path))
 		return error_no_such_adapter(conn, msg);
 
-	if (!strcmp(iface, MANAGER_INTERFACE)) {
+	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
+					!strcmp("Introspect", name)) {
+		return simple_introspect(conn, msg, data);
+	} else if (!strcmp(iface, MANAGER_INTERFACE)) {
 		handler = find_service_handler(methods, msg);
 		if (handler)
 			return handler(conn, msg, data);
