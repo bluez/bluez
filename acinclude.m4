@@ -57,234 +57,42 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 ])
 
 AC_DEFUN([AC_PATH_BLUEZ], [
-	bluez_prefix=${prefix}
-
-	AC_ARG_WITH(bluez, AC_HELP_STRING([--with-bluez=DIR], [BlueZ library is installed in DIR]), [
-		if (test "${withval}" != "yes"); then
-			bluez_prefix=${withval}
-		fi
-	])
-
-	ac_save_CPPFLAGS=$CPPFLAGS
-	ac_save_LDFLAGS=$LDFLAGS
-
-	BLUEZ_CFLAGS=""
-	test -d "${bluez_prefix}/include" && BLUEZ_CFLAGS="$BLUEZ_CFLAGS -I${bluez_prefix}/include"
-
-	CPPFLAGS="$CPPFLAGS $BLUEZ_CFLAGS"
-	AC_CHECK_HEADER(bluetooth/bluetooth.h, dummy=yes, AC_MSG_ERROR(Bluetooth header files not found))
-
-	BLUEZ_LIBS=""
-	if (test "${prefix}" = "${bluez_prefix}"); then
-		test -d "${libdir}" && BLUEZ_LIBS="$BLUEZ_LIBS -L${libdir}"
-	else
-		test -d "${bluez_prefix}/lib64" && BLUEZ_LIBS="$BLUEZ_LIBS -L${bluez_prefix}/lib64"
-		test -d "${bluez_prefix}/lib" && BLUEZ_LIBS="$BLUEZ_LIBS -L${bluez_prefix}/lib"
-	fi
-
-	LDFLAGS="$LDFLAGS $BLUEZ_LIBS"
-	AC_CHECK_LIB(bluetooth, hci_open_dev, BLUEZ_LIBS="$BLUEZ_LIBS -lbluetooth", AC_MSG_ERROR(Bluetooth library not found))
-	AC_CHECK_LIB(bluetooth, sdp_connect, dummy=yes, AC_CHECK_LIB(sdp, sdp_connect, BLUEZ_LIBS="$BLUEZ_LIBS -lsdp"))
-
-	CPPFLAGS=$ac_save_CPPFLAGS
-	LDFLAGS=$ac_save_LDFLAGS
-
+	PKG_CHECK_MODULES(BLUEZ, bluez, dummy=yes, AC_MSG_ERROR(Bluetooth library is required))
 	AC_SUBST(BLUEZ_CFLAGS)
 	AC_SUBST(BLUEZ_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
-	dbus_prefix=${prefix}
-
-	AC_ARG_WITH(dbus, AC_HELP_STRING([--with-dbus=DIR], [D-BUS library is installed in DIR]), [
-		if (test "${withval}" != "yes"); then
-			dbus_prefix=${withval}
-		fi
-	])
-
-	ac_save_CPPFLAGS=$CPPFLAGS
-	ac_save_LDFLAGS=$LDFLAGS
-
-	DBUS_CFLAGS="-DDBUS_API_SUBJECT_TO_CHANGE"
-	test -d "${dbus_prefix}/include/dbus-1.0" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/include/dbus-1.0"
-	test -d "/usr/include/dbus-1.0" && DBUS_CFLAGS="$DBUS_CFLAGS -I/usr/include/dbus-1.0"
-	if (test "${prefix}" = "${dbus_prefix}"); then
-		test -d "${libdir}/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${libdir}/dbus-1.0/include"
-		test -d "/usr/lib/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I/usr/lib/dbus-1.0/include"
-	else
-		test -d "${dbus_prefix}/lib64/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib64/dbus-1.0/include"
-		test -d "${dbus_prefix}/lib/dbus-1.0/include" && DBUS_CFLAGS="$DBUS_CFLAGS -I${dbus_prefix}/lib/dbus-1.0/include"
-	fi
-
-	CPPFLAGS="$CPPFLAGS $DBUS_CFLAGS"
-	AC_CHECK_HEADER(dbus/dbus.h, dummy=yes, AC_MSG_ERROR(D-BUS header files not found))
-
-	DBUS_LIBS=""
-	if (test "${prefix}" = "${dbus_prefix}"); then
-		test -d "${libdir}" && DBUS_LIBS="$DBUS_LIBS -L${libdir}"
-	else
-		test -d "${dbus_prefix}/lib64" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib64"
-		test -d "${dbus_prefix}/lib" && DBUS_LIBS="$DBUS_LIBS -L${dbus_prefix}/lib"
-	fi
-
-	LDFLAGS="$LDFLAGS $DBUS_LIBS"
-	AC_CHECK_LIB(dbus-1, dbus_error_init, DBUS_LIBS="$DBUS_LIBS -ldbus-1", AC_MSG_ERROR(D-BUS library not found))
-	AC_CHECK_LIB(dbus-1, dbus_message_iter_get_basic, dummy=yes, AC_MSG_ERROR(D-BUS library not found))
-
-	CPPFLAGS=$ac_save_CPPFLAGS
-	LDFLAGS=$ac_save_LDFLAGS
-
+	PKG_CHECK_MODULES(DBUS, dbus-glib-1 > 0.35, dummy=yes, AC_MSG_ERROR(dbus-glib > 0.35 is required))
+	DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE"
 	AC_SUBST(DBUS_CFLAGS)
 	AC_SUBST(DBUS_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_OPENOBEX], [
-	openobex_prefix=${prefix}
-
-	AC_ARG_WITH(openobex, AC_HELP_STRING([--with-openobex=DIR], [OpenOBEX library is installed in DIR]), [
-		if (test "${withval}" != "yes"); then
-			openobex_prefix=${withval}
-		fi
-	])
-
-	ac_save_CPPFLAGS=$CPPFLAGS
-	ac_save_LDFLAGS=$LDFLAGS
-
-	OPENOBEX_CFLAGS=""
-	test -d "${openobex_prefix}/include" && OPENOBEX_CFLAGS="$OPENOBEX_CFLAGS -I${openobex_prefix}/include"
-
-	CPPFLAGS="$CPPFLAGS $OPENOBEX_CFLAGS"
-	AC_CHECK_HEADER(openobex/obex.h, openobex_found=yes, openobex_found=no)
-
-	OPENOBEX_LIBS=""
-	if (test "${prefix}" = "${openobex_prefix}"); then
-		test -d "${libdir}" && OPENOBEX_LIBS="$OPENOBEX_LIBS -L${libdir}"
-	else
-		test -d "${openobex_prefix}/lib64" && OPENOBEX_LIBS="$OPENOBEX_LIBS -L${openobex_prefix}/lib64"
-		test -d "${openobex_prefix}/lib" && OPENOBEX_LIBS="$OPENOBEX_LIBS -L${openobex_prefix}/lib"
-	fi
-
-	LDFLAGS="$LDFLAGS $OPENOBEX_LIBS"
-	AC_CHECK_LIB(openobex, OBEX_Init, OPENOBEX_LIBS="$OPENOBEX_LIBS -lopenobex", openobex_found=no)
-	AC_CHECK_LIB(openobex, BtOBEX_TransportConnect, AC_DEFINE(HAVE_BTOBEX_TRANSPORT_CONNECT, 1, [Define to 1 if you have the BtOBEX_TransportConnect() function.]))
-
-	CPPFLAGS=$ac_save_CPPFLAGS
-	LDFLAGS=$ac_save_LDFLAGS
-
+	PKG_CHECK_MODULES(OPENOBEX, openobex > 1.1, openobex_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(OPENOBEX_CFLAGS)
 	AC_SUBST(OPENOBEX_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_FUSE], [
-	fuse_prefix=${prefix}
-
-	AC_ARG_WITH(fuse, AC_HELP_STRING([--with-fuse=DIR], [FUSE library is installed in DIR]), [
-		if (test "${withval}" != "yes"); then
-			fuse_prefix=${withval}
-		fi
-	])
-
-	ac_save_CPPFLAGS=$CPPFLAGS
-	ac_save_LDFLAGS=$LDFLAGS
-
-	FUSE_CFLAGS="-D_FILE_OFFSET_BITS=64"
-	test -d "${fuse_prefix}/include" && FUSE_CFLAGS="$FUSE_CFLAGS -I${fuse_prefix}/include"
-
-	CPPFLAGS="$CPPFLAGS $FUSE_CFLAGS"
-	AC_CHECK_HEADER(fuse.h, fuse_found=yes, fuse_found=no)
-
-	FUSE_LIBS=""
-	if (test "${prefix}" = "${fuse_prefix}"); then
-		test -d "${libdir}" && FUSE_LIBS="$FUSE_LIBS -L${libdir}"
-	else
-		test -d "${fuse_prefix}/lib64" && FUSE_LIBS="$FUSE_LIBS -L${fuse_prefix}/lib64"
-		test -d "${fuse_prefix}/lib" && FUSE_LIBS="$FUSE_LIBS -L${fuse_prefix}/lib"
-	fi
-
-	LDFLAGS="$LDFLAGS $FUSE_LIBS"
-	AC_CHECK_LIB(fuse, fuse_main, FUSE_LIBS="$FUSE_LIBS -lfuse", fuse_found=no)
-
-	CPPFLAGS=$ac_save_CPPFLAGS
-	LDFLAGS=$ac_save_LDFLAGS
-
+	PKG_CHECK_MODULES(FUSE, fuse, fuse_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(FUSE_CFLAGS)
 	AC_SUBST(FUSE_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_ALSA], [
-	alsa_prefix=${prefix}
-
-	AC_ARG_WITH(alsa, AC_HELP_STRING([--with-alsa=DIR], [ALSA library is installed in DIR]), [
-		if (test "${withval}" != "yes"); then
-			alsa_prefix=${withval}
-		fi
-	])
-
-	ac_save_CPPFLAGS=$CPPFLAGS
-	ac_save_LDFLAGS=$LDFLAGS
-
-	AC_CHECK_HEADER(sys/soundcard.h, AC_DEFINE(HAVE_SYS_SOUNDCARD_H, 1, [Define to 1 if you have the <sys/soundcard.h> header file.]))
-
-	ALSA_CFLAGS=""
-	test -d "${alsa_prefix}/include" && ALSA_CFLAGS="$ALSA_CFLAGS -I${alsa_prefix}/include"
-
-	CPPFLAGS="$CPPFLAGS $ALSA_CFLAGS -include alsa/asoundlib.h"
-	AC_CHECK_HEADER(alsa/pcm_ioplug.h, alsa_found=yes, alsa_found=no)
-
-	ALSA_LIBS=""
-	if (test "${prefix}" = "${alsa_prefix}"); then
-		test -d "${libdir}" && ALSA_LIBS="$ALSA_LIBS -L${libdir}"
-	else
-		test -d "${alsa_prefix}/lib64" && ALSA_LIBS="$ALSA_LIBS -L${alsa_prefix}/lib64"
-		test -d "${alsa_prefix}/lib" && ALSA_LIBS="$ALSA_LIBS -L${alsa_prefix}/lib"
-	fi
-
-	LDFLAGS="$LDFLAGS $ALSA_LIBS"
-	AC_CHECK_LIB(asound, snd_pcm_ioplug_create, ALSA_LIBS="$ALSA_LIBS -lasound", alsa_found=no)
-
-	CPPFLAGS=$ac_save_CPPFLAGS
-	LDFLAGS=$ac_save_LDFLAGS
-
+	PKG_CHECK_MODULES(ALSA, alsa, alsa_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(ALSA_CFLAGS)
 	AC_SUBST(ALSA_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_USB], [
-	usb_prefix=${prefix}
-
-	AC_ARG_WITH(usb, AC_HELP_STRING([--with-usb=DIR], [USB library is installed in DIR]), [
-		if (test "$withval" != "yes"); then
-			usb_prefix=${withval}
-		fi
-	])
-
-	ac_save_CPPFLAGS=$CPPFLAGS
-	ac_save_LDFLAGS=$LDFLAGS
-
-	USB_CFLAGS=""
-	test -d "${usb_prefix}/include" && USB_CFLAGS="$USB_CFLAGS -I${usb_prefix}/include"
-
-	CPPFLAGS="$CPPFLAGS $USB_CFLAGS"
-	AC_CHECK_HEADER(usb.h, usb_found=yes, usb_found=no)
-
-	USB_LIBS=""
-	if (test "${prefix}" = "${usb_prefix}"); then
-		test -d "${libdir}" && USB_LIBS="$USB_LIBS -L${libdir}"
-	else
-		test -d "${usb_prefix}/lib64" && USB_LIBS="$USB_LIBS -L${usb_prefix}/lib64"
-		test -d "${usb_prefix}/lib" && USB_LIBS="$USB_LIBS -L${usb_prefix}/lib"
-	fi
-
-	LDFLAGS="$LDFLAGS $USB_LIBS"
-	AC_CHECK_LIB(usb, usb_open, USB_LIBS="$USB_LIBS -lusb", usb_found=no)
-	AC_CHECK_LIB(usb, usb_get_busses, dummy=yes, AC_DEFINE(NEED_USB_GET_BUSSES, 1, [Define to 1 if you need the usb_get_busses() function.]))
-	AC_CHECK_LIB(usb, usb_interrupt_read, dummy=yes, AC_DEFINE(NEED_USB_INTERRUPT_READ, 1, [Define to 1 if you need the usb_interrupt_read() function.]))
-
-	CPPFLAGS=$ac_save_CPPFLAGS
-	LDFLAGS=$ac_save_LDFLAGS
-
+	PKG_CHECK_MODULES(USB, libusb, usb_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(USB_CFLAGS)
 	AC_SUBST(USB_LIBS)
+	AC_CHECK_LIB(usb, usb_get_busses, dummy=yes, AC_DEFINE(NEED_USB_GET_BUSSES, 1, [Define to 1 if you need the usb_get_busses() function.]))
+	AC_CHECK_LIB(usb, usb_interrupt_read, dummy=yes, AC_DEFINE(NEED_USB_INTERRUPT_READ, 1, [Define to 1 if you need the usb_interrupt_read() function.]))
 ])
 
 AC_DEFUN([AC_ARG_BLUEZ], [
