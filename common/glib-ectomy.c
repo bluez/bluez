@@ -344,7 +344,7 @@ void g_main_loop_unref(GMainLoop *loop)
 	free(loop->context);
 }
 
-guint g_timeout_add(guint interval, GSourceFunc function, void *data)
+guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)
 {
 	struct timeval tv;
 	guint secs;

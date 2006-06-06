@@ -45,7 +45,7 @@ struct timeout {
 	guint id;
 	guint interval;
 	time_val_t expiration;
-	void *data;
+	gpointer data;
 	GSourceFunc function;
 };
 
@@ -110,7 +110,7 @@ GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running);
 void g_main_loop_run(GMainLoop *loop);
 void g_main_loop_quit(GMainLoop *loop);
 void g_main_loop_unref(GMainLoop *loop);
-guint g_timeout_add(guint interval, GSourceFunc function, void *data);
+guint g_timeout_add(guint interval, GSourceFunc function, gpointer data);
 gint g_timeout_remove(const guint id);
 
 #define g_main_new(is_running)	g_main_loop_new(NULL, is_running);
