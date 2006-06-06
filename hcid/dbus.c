@@ -422,7 +422,7 @@ int hcid_dbus_register_device(uint16_t id)
 	struct hci_conn_info *ci = NULL;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-	if (!register_dbus_path(path, id, &obj_dev_vtable, FALSE))
+	if (register_dbus_path(path, id, &obj_dev_vtable, FALSE) < 0)
 		return -1;
 
 	dd = hci_open_dev(id);
@@ -1365,7 +1365,7 @@ int hcid_dbus_init(void)
 		return -1;
 	}
 
-	if (!register_dbus_path(BASE_PATH, INVALID_DEV_ID, &obj_mgr_vtable, TRUE))
+	if (register_dbus_path(BASE_PATH, INVALID_DEV_ID, &obj_mgr_vtable, TRUE) < 0)
 		return -1;
 
 	if (!dbus_connection_add_filter(connection, hci_dbus_signal_filter, NULL, NULL)) {
