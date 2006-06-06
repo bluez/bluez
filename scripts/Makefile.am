@@ -1,5 +1,5 @@
 
-EXTRA_DIST = bluetooth.init bluetooth.default create_dev
+EXTRA_DIST = bluetooth.init bluetooth.default
 
 MAINTAINERCLEANFILES = Makefile.in
 
