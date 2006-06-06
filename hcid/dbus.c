@@ -326,15 +326,14 @@ static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessag
 static int register_dbus_path(const char *path, uint16_t dev_id,
 				const DBusObjectPathVTable *pvtable, gboolean fallback)
 {
-	struct hci_dbus_data *data = NULL;
-	int ret = -1;
+	struct hci_dbus_data *data;
 
 	info("Register path:%s fallback:%d", path, fallback);
 
 	data = malloc(sizeof(struct hci_dbus_data));
 	if (!data) {
 		error("Failed to alloc memory to DBUS path register data (%s)", path);
-		goto failed;
+		return -1;
 	}
 
 	memset(data, 0, sizeof(struct hci_dbus_data));
@@ -346,22 +345,18 @@ static int register_dbus_path(const char *path, uint16_t dev_id,
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
 			error("D-Bus failed to register %s fallback", path);
-			goto failed;
+			free(data);
+			return -1;
 		}
 	} else {
 		if (!dbus_connection_register_object_path(connection, path, pvtable, data)) {
 			error("D-Bus failed to register %s object", path);
-			goto failed;
+			free(data);
+			return -1;
 		}
 	}
 
-	ret = 0;
-
-failed:
-	if (!ret && data)
-		free(data);
-
-	return ret;
+	return 0;
 }
 
 static int unregister_dbus_path(const char *path)
@@ -508,13 +503,13 @@ int hcid_dbus_register_device(uint16_t id)
 	ret = 0;
 
 failed:
-	if (!ret)
+	if (ret < 0)
 		dbus_connection_unregister_object_path(connection, path);
 
 	if (message)
 		dbus_message_unref(message);
 
-	if (ret && default_dev < 0)
+	if (ret == 0 && default_dev < 0)
 		default_dev = id;
 
 	if (dd >= 0)
