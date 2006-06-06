@@ -34,7 +34,7 @@ typedef struct _GIOChannel {
 	int fd;
 } GIOChannel;
 
-typedef int (timeout_func_t)(void *data);
+typedef gboolean (*GSourceFunc) (gpointer data);
 
 typedef struct {
 	glong tv_sec;
@@ -46,7 +46,7 @@ struct timeout {
 	guint interval;
 	time_val_t expiration;
 	void *data;
-	timeout_func_t *func;
+	GSourceFunc function;
 };
 
 typedef struct _GMainContext {
@@ -110,9 +110,8 @@ GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running);
 void g_main_loop_run(GMainLoop *loop);
 void g_main_loop_quit(GMainLoop *loop);
 void g_main_loop_unref(GMainLoop *loop);
-guint g_timeout_add(guint interval, timeout_func_t *func, void *data);
+guint g_timeout_add(guint interval, GSourceFunc function, void *data);
 gint g_timeout_remove(const guint id);
-
 
 #define g_main_new(is_running)	g_main_loop_new(NULL, is_running);
 #define g_main_run(loop)	g_main_loop_run(loop)

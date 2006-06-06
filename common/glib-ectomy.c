@@ -171,7 +171,6 @@ static void timeout_free(void *data, void *user_data)
 
 static GMainContext *g_main_context_default()
 {
-
 	if (default_context)
 		return default_context;
 
@@ -249,7 +248,7 @@ static void timeout_handlers_check(GMainContext *context)
 			 tv.tv_usec < t->expiration.tv_usec))
 			continue;
 
-		if (t->func(t->data)) {
+		if (t->function(t->data)) {
 			/* if false/expired: remove it from the list */
 			context->ltimeout = slist_remove(context->ltimeout, t);
 			free(t);
@@ -345,14 +344,14 @@ void g_main_loop_unref(GMainLoop *loop)
 	free(loop->context);
 }
 
-guint g_timeout_add(guint interval, timeout_func_t *func, void *data)
+guint g_timeout_add(guint interval, GSourceFunc function, void *data)
 {
 	struct timeval tv;
 	guint secs;
 	guint msecs;
 	struct timeout *t;
 
-	if (!default_context || !func)
+	if (!default_context || !function)
 		return 0;
 
 	t = malloc(sizeof(*t));
@@ -361,7 +360,7 @@ guint g_timeout_add(guint interval, timeout_func_t *func, void *data)
 		return 0;
 
 	t->interval = interval;
-	t->func = func;
+	t->function = function;
 	t->data = data;
 
 	gettimeofday(&tv, NULL);
