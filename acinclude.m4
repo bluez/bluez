@@ -104,7 +104,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	alsa_enable=no
 	test_enable=no
 	cups_enable=no
-	pcmcia_enable=no
 	initscripts_enable=no
 	bccmd_enable=no
 	avctrl_enable=no
@@ -131,7 +130,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		alsa_enable=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
-		pcmcia_enable=${enableval}
 		initscripts_enable=${enableval}
 		bccmd_enable=${enableval}
 		avctrl_enable=${enableval}
@@ -158,10 +156,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(cups, AC_HELP_STRING([--enable-cups], [install CUPS backend support]), [
 		cups_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(pcmcia, AC_HELP_STRING([--enable-pcmcia], [install PCMCIA configuration files ]), [
-		pcmcia_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(initscripts, AC_HELP_STRING([--enable-initscripts], [install Bluetooth boot scripts]), [
@@ -206,7 +200,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
-	AM_CONDITIONAL(PCMCIA, test "${pcmcia_enable}" = "yes")
 	AM_CONDITIONAL(INITSCRIPTS, test "${initscripts_enable}" = "yes")
 	AM_CONDITIONAL(BCCMD, test "${bccmd_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(AVCTRL, test "${avctrl_enable}" = "yes" && test "${usb_found}" = "yes")

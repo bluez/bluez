@@ -12,5 +12,4 @@ fi
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--enable-all \
-		--disable-pcmcia \
 		--disable-initscripts

@@ -31,4 +31,4 @@ AC_PATH_USB
 
 AC_ARG_BLUEZ
 
-AC_OUTPUT(Makefile common/Makefile daemon/Makefile tools/Makefile rfcomm/Makefile hcid/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile fuse/Makefile alsa/Makefile test/Makefile scripts/Makefile pcmcia/Makefile extra/Makefile)
+AC_OUTPUT(Makefile common/Makefile daemon/Makefile tools/Makefile rfcomm/Makefile hcid/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile fuse/Makefile alsa/Makefile test/Makefile scripts/Makefile extra/Makefile)
