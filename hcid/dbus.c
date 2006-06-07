@@ -79,6 +79,7 @@ void bonding_request_free(struct bonding_request_info *dev )
 			dbus_message_unref(dev->rq);
 		if (dev->cancel)
 			dbus_message_unref(dev->cancel);
+		g_timeout_remove(dev->timeout);
 		free(dev);
 	}
 }
