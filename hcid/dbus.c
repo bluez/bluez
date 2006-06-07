@@ -646,7 +646,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 			memset(&cp, 0, sizeof(cp));
 
 			cp.handle = con->handle;
-			cp.reason = HCI_OE_USER_ENDED_CONNECTION;
+			cp.reason = (status ? HCI_AUTHENTICATION_FAILURE : HCI_OE_USER_ENDED_CONNECTION);
 
 			data = hci_req_data_new(pdata->dev_id, peer, OGF_LINK_CTL,
 						OCF_DISCONNECT, EVT_DISCONN_COMPLETE,

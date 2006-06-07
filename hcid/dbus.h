@@ -50,6 +50,8 @@
 
 #define MAX_PATH_LENGTH		64
 
+#define BONDING_TIMEOUT         45000 /* 45 sec */
+
 typedef DBusHandlerResult (*service_handler_func_t) (DBusConnection *conn,
 							DBusMessage *msg,
 							void *user_data);
