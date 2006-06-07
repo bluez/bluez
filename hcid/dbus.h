@@ -63,13 +63,14 @@ typedef enum {
 	STATE_IDLE,
 	STATE_DISCOVER,
 	STATE_RESOLVING_NAMES
-}discover_state_t;
+} discover_state_t;
 
 /* discover type  */
-#define WITHOUT_NAME_RESOLVING		0
-#define RESOLVE_NAMES			1
+#define WITHOUT_NAME_RESOLVING		1 /* D-Bus and non D-Bus request */
+#define RESOLVE_NAME			2	
 
 typedef enum {
+	NAME_ANY,
 	NAME_PENDING,
 	NAME_SENT
 } name_status_t;
@@ -77,6 +78,7 @@ typedef enum {
 struct discovered_dev_info {
 	bdaddr_t bdaddr;
 	name_status_t name_status;
+	int discover_type;
 };
 
 struct bonding_request_info {
@@ -190,7 +192,7 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
 void disc_device_info_free(void *data, void *user_data);
-int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);
+int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status, int discover_type);
 int disc_device_req_name(struct hci_dbus_data *dbus_data);
 
 int discoverable_timeout_handler(void *data);

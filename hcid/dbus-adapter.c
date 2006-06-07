@@ -1248,16 +1248,14 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 
 	/* put the request name in the queue to resolve name */
 	str2ba(peer_addr, &peer_bdaddr);
-	disc_device_append(&dbus_data->disc_devices, &peer_bdaddr, NAME_PENDING);
+	disc_device_append(&dbus_data->disc_devices, &peer_bdaddr, NAME_PENDING, RESOLVE_NAME);
 
 	/* 
 	 * if there is a discover process running, just queue the request.
 	 * Otherwise, send the HCI cmd to get the remote name
 	 */
-	if (dbus_data->discover_state == STATE_IDLE) {
-		if (!disc_device_req_name(dbus_data))
-			dbus_data->discover_state = STATE_RESOLVING_NAMES;
-	}
+	if (dbus_data->discover_state == STATE_IDLE)
+		disc_device_req_name(dbus_data);
 
 	return error_request_deferred(conn, msg);
 }
@@ -2070,7 +2068,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	if (strcmp("DiscoverDevicesWithoutNameResolving", method) == 0)
 		dbus_data->discover_type = WITHOUT_NAME_RESOLVING;
 	else 
-		dbus_data->discover_type = RESOLVE_NAMES;
+		dbus_data->discover_type = RESOLVE_NAME;
 		
 	dbus_data->requestor_name = strdup(dbus_message_get_sender(msg));
 
