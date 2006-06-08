@@ -615,12 +615,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 		goto failed;
 	}
 
-	/* Don't send any signals if a pairing process isn't active */
-	if (!pdata->pairing_active)
-		return;
-
-	pdata->pairing_active = 0;
-
 	/*
 	 * 0x00: authentication request successfully completed
 	 * 0x01-0x0F: authentication request failed
@@ -633,7 +627,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 
 	send_reply_and_unref(connection, message);
 
-	if (!pdata->bonding)
+	if (!pdata->bonding || bacmp(&pdata->bonding->bdaddr, peer))
 		goto failed; /* skip: no bonding req pending */
 
 	if (pdata->bonding->disconnect) {
@@ -1226,7 +1220,8 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 	hci_req_queue_remove(pdata->dev_id, &dev->bdaddr);
 
 	/* Check if there is a pending Bonding */
-	if (pdata->bonding) {
+	if (pdata->bonding && (bacmp(&pdata->bonding->bdaddr, &dev->bdaddr) == 0)) {
+
 		message = dev_signal_factory(pdata->dev_id, "BondingFailed",
 						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_INVALID);

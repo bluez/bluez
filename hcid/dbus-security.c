@@ -483,8 +483,6 @@ int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdad
 
 	adapter = data;
 
-	adapter->pairing_active = 1;
-
 	ba2str(dba, addr);
 
 	for (l = adapter->passkey_agents; l != NULL; l = l->next) {
