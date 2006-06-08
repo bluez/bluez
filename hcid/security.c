@@ -626,6 +626,8 @@ static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)
 				| (evt->dev_class[2] << 16);
 
 	write_remote_class(sba, &evt->bdaddr, class);
+
+	hcid_dbus_remote_class(sba, &evt->bdaddr, class);
 }
 
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)

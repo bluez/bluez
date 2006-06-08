@@ -713,13 +713,19 @@ Signals		void ModeChanged(string mode)
 			This signal indicates that a device discovery
 			procedure has been completed.
 
-		void RemoteDeviceFound(string address, int16 rssi,
-		                       string major, string minor,
-		                       array{string} services)
+		void RemoteDeviceFound(string address, uint32 class, int16 rssi)
 
 			This signal will be send every time an inquiry result
 			has been found by the service daemon. In general they
 			only appear during a device discovery.
+
+		void RemoteClassUpdated(string address, uint32 class)
+
+			This signal will be send every time the remote class
+			of device has been changed. This happens for example
+			after a remote connection attempt. This signal will
+			not be send if the class of device hasn't changed
+			compared to cached one.
 
 		void RemoteNameUpdated(string address, string name)
 

@@ -117,7 +117,7 @@ static int disc_device_find(const struct discovered_dev_info *d1, const struct d
 
 int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status, int discover_type)
 {
-	struct discovered_dev_info *dev = NULL, match;
+	struct discovered_dev_info *dev, match;
 	struct slist *l;
 
 	memset(&match, 0, sizeof(struct discovered_dev_info));
@@ -192,7 +192,7 @@ static int active_conn_find_by_handle(const void *data, const void *user_data)
 
 static int active_conn_append(struct slist **list, bdaddr_t *bdaddr, uint16_t handle)
 {
-	struct active_conn_info *dev = NULL;
+	struct active_conn_info *dev;
 
 	dev = malloc(sizeof(*dev));
 	if (!dev)
@@ -430,7 +430,7 @@ int hcid_dbus_register_device(uint16_t id)
 	struct hci_request rq;
 	struct hci_dbus_data* pdata;
 	struct hci_conn_list_req *cl = NULL;
-	struct hci_conn_info *ci = NULL;
+	struct hci_conn_info *ci;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 	if (register_dbus_path(path, id, &obj_dev_vtable, FALSE) < 0)
@@ -539,7 +539,7 @@ failed:
 
 int hcid_dbus_unregister_device(uint16_t id)
 {
-	DBusMessage *message = NULL;
+	DBusMessage *message;
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
 	int ret;
@@ -591,7 +591,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
 {
 	struct hci_dbus_data *pdata;
-	DBusMessage *message = NULL;
+	DBusMessage *message;
 	char *local_addr, *peer_addr;
 	const char *name;
 	bdaddr_t tmp;
@@ -751,7 +751,9 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	dbus_connection_flush(connection);
 
 failed:
-	dbus_message_unref(message);
+	if (message)
+		dbus_message_unref(message);
+
 	bt_free(local_addr);
 }
 
@@ -763,8 +765,8 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 	bdaddr_t tmp;
 	struct discovered_dev_info *dev, match;
 	DBusMessage *message = NULL;
-	struct slist *l = NULL;
-	char *peer_addr = NULL;
+	struct slist *l;
+	char *peer_addr;
 	int dd, req_sent, ret_val = -ENODATA;
 
 	/* get the next remote address */
@@ -855,8 +857,8 @@ failed:
 
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
-	DBusMessage *message = NULL;
-	struct hci_dbus_data *pdata = NULL;
+	DBusMessage *message;
+	struct hci_dbus_data *pdata;
 	char path[MAX_PATH_LENGTH];
 	char *local_addr;
 	bdaddr_t tmp;
@@ -906,29 +908,22 @@ failed:
 	bt_free(local_addr);
 }
 
-static void append_class_string(const char *class, DBusMessageIter *iter)
-{
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &class);
-}
-
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
 {
 	char filename[PATH_MAX + 1];
-	DBusMessage *signal_device = NULL;
-	DBusMessage *signal_name = NULL;
+	DBusMessage *signal_device;
+	DBusMessage *signal_name;
 	DBusMessageIter iter;
-	DBusMessageIter array_iter;
 	char path[MAX_PATH_LENGTH];
-	struct hci_dbus_data *pdata = NULL;
-	struct slist *l = NULL;
+	struct hci_dbus_data *pdata;
+	struct slist *l;
 	struct discovered_dev_info match;
-	char *local_addr, *peer_addr, *name = NULL;
-	const char *major_ptr, *minor_ptr;
-	struct slist *service_classes;
+	char *local_addr, *peer_addr, *name;
+	const dbus_uint32_t tmp_class = class;
 	const dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
-	int id;
 	name_status_t name_status = NAME_PENDING;
+	int id;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	baswap(&tmp, peer); peer_addr = batostr(&tmp);
@@ -956,26 +951,10 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		goto failed;
 	}
 
-	major_ptr = major_class_str(class);
-	minor_ptr = minor_class_str(class);
-
 	dbus_message_iter_init_append(signal_device, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &peer_addr);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_UINT32, &tmp_class);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_INT16, &tmp_rssi);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &major_ptr);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &minor_ptr);
-
-	service_classes = service_classes_str(class);
-
-	/* add the service classes */
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
-
-	slist_foreach(service_classes, (slist_func_t)append_class_string, &array_iter);
-
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-	slist_free(service_classes);
 
 	send_reply_and_unref(connection, signal_device);
 
@@ -1008,10 +987,51 @@ failed:
 	bt_free(peer_addr);
 }
 
+void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
+{
+	struct hci_dbus_data *pdata;
+	DBusMessage *message;
+	char path[MAX_PATH_LENGTH];
+	char *local_addr, *peer_addr;
+	bdaddr_t tmp;
+	uint32_t old_class = 0;
+	const dbus_uint32_t tmp_class = class;
+	int id;
+
+	read_remote_class(local, peer, &old_class);
+
+	if (old_class == class)
+		return;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		error("No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
+		goto failed;
+
+	message = dev_signal_factory(pdata->dev_id, "RemoteClassUpdated",
+						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_UINT32, &tmp_class,
+						DBUS_TYPE_INVALID);
+
+	send_reply_and_unref(connection, message);
+
+failed:
+	bt_free(local_addr);
+	bt_free(peer_addr);
+}
+
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char *name)
 {
-	struct hci_dbus_data *pdata = NULL;
-	DBusMessage *message = NULL;
+	struct hci_dbus_data *pdata;
+	DBusMessage *message;
 	char path[MAX_PATH_LENGTH];
 	char *local_addr, *peer_addr;
 	bdaddr_t tmp;
@@ -1039,7 +1059,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 						DBUS_TYPE_INVALID);
 	else 
 		message = dev_signal_factory(pdata->dev_id, "RemoteNameUpdated",
-					     	DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_STRING, &name,
 						DBUS_TYPE_INVALID);
 
@@ -1060,7 +1080,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	 */
 	if (pdata->discover_state == STATE_RESOLVING_NAMES) {
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						  "DiscoveryCompleted");
+							"DiscoveryCompleted");
 
 		send_reply_and_unref(connection, message);
 
@@ -1080,11 +1100,11 @@ failed:
 void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer)
 {
 	char path[MAX_PATH_LENGTH];
-	DBusMessage *message = NULL;
+	DBusMessage *message;
 	struct hci_request rq;
 	evt_cmd_status rp;
 	auth_requested_cp cp;
-	struct hci_dbus_data *pdata = NULL;
+	struct hci_dbus_data *pdata;
 	char *local_addr, *peer_addr;
 	bdaddr_t tmp;
 	int dd = -1, id;
@@ -1175,7 +1195,8 @@ bonding_failed:
 	pdata->requestor_name = NULL;
 
 done:
-	hci_close_dev(dd);
+	if (dd >= 0)
+		hci_close_dev(dd);
 
 	bt_free(local_addr);
 	bt_free(peer_addr);
@@ -1184,11 +1205,11 @@ done:
 void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, uint8_t reason)
 {
 	char path[MAX_PATH_LENGTH];
-	struct hci_dbus_data *pdata = NULL;
+	struct hci_dbus_data *pdata;
 	struct active_conn_info *dev;
 	DBusMessage *message;
 	struct slist *l;
-	char *local_addr, *peer_addr = NULL;
+	char *local_addr, *peer_addr;
 	bdaddr_t tmp;
 	int id;
 
@@ -1610,7 +1631,7 @@ failed:
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
 	DBusMessage *message = NULL;
-	struct hci_dbus_data *pdata = NULL;
+	struct hci_dbus_data *pdata;
 	char *local_addr;
 	char path[MAX_PATH_LENGTH];
 	bdaddr_t tmp;
