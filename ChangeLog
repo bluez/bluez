@@ -1,6 +1,9 @@
 ver 3.0:
 	Implement the new BlueZ D-Bus API.
 
+	Note:
+	This version needs at least bluez-libs-3.0
+
 ver 2.25:
 	Use %jx instead of %llx for uint64_t and int64_t.
 	Allow null-terminated text strings.
