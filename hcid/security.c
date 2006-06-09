@@ -625,9 +625,9 @@ static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)
 	uint32_t class = evt->dev_class[0] | (evt->dev_class[1] << 8)
 				| (evt->dev_class[2] << 16);
 
-	write_remote_class(sba, &evt->bdaddr, class);
-
 	hcid_dbus_remote_class(sba, &evt->bdaddr, class);
+
+	write_remote_class(sba, &evt->bdaddr, class);
 }
 
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
