@@ -762,6 +762,8 @@ int hci_devba(int dev_id, bdaddr_t *bdaddr)
 {
 	struct hci_dev_info di;
 
+	memset(&di, 0, sizeof(di));
+
 	if (hci_devinfo(dev_id, &di))
 		return -1;
 
