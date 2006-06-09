@@ -619,6 +619,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	 * 0x00: authentication request successfully completed
 	 * 0x01-0x0F: authentication request failed
 	 */
+#if 0
 	name = status ? "BondingFailed" : "BondingCreated";
 	/* authentication signal */
 	message = dev_signal_factory(pdata->dev_id, name,
@@ -626,6 +627,14 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 					DBUS_TYPE_INVALID);
 
 	send_reply_and_unref(connection, message);
+#endif
+	if (!status) {
+		name = "BondingCreated";
+		message = dev_signal_factory(pdata->dev_id, name,
+					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_INVALID);
+		send_reply_and_unref(connection, message);
+	}
 
 	if (!pdata->bonding || bacmp(&pdata->bonding->bdaddr, peer))
 		goto failed; /* skip: no bonding req pending */
@@ -1242,12 +1251,13 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 
 	/* Check if there is a pending Bonding */
 	if (pdata->bonding && (bacmp(&pdata->bonding->bdaddr, &dev->bdaddr) == 0)) {
-
+#if 0
 		message = dev_signal_factory(pdata->dev_id, "BondingFailed",
 						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_INVALID);
 
 		send_reply_and_unref(connection, message);
+#endif
 
 		message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
 		send_reply_and_unref(connection, message);
