@@ -742,6 +742,10 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	case SDP_TEXT_STR32:
 		src = (unsigned char *)d->val.str;
 		data_size = d->unitSize - sizeof(uint8_t);
+		if (data_size - sizeof(uint8_t) <= UCHAR_MAX)
+			data_size -= sizeof(uint8_t);
+		else
+			data_size -= sizeof(uint16_t);
 		sdp_set_seq_len(seqp, data_size);
 		break;
 	case SDP_URL_STR8:
