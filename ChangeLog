@@ -1,3 +1,11 @@
+ver 3.0:
+	Fix broken behavior with EVT_CMD_STATUS.
+	Add features bit for pause encryption.
+	Add additional EIR error code.
+	Add more company identifiers.
+	Add another Phonebook Access identifier.
+	Update sniff subrating data structures.
+
 ver 2.25:
 	Add definitions for Apple Agent.
 	Add support for record handle on service registration.
