@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <getopt.h>
@@ -81,6 +82,8 @@ static int count = 1;
 
 /* Default delay after sending count number of frames */
 static unsigned long delay = 0;
+
+static char *filename = NULL;
 
 static int flowctl = 0;
 static int master = 0;
@@ -564,15 +567,27 @@ static void recv_mode(int sk)
 	}
 }
 
-static void send_mode(int sk)
+static void do_send(int sk)
 {
 	uint32_t seq;
-	int i, len;
+	int i, fd, len;
 
 	syslog(LOG_INFO, "Sending ...");
 
-	for (i = 6; i < data_size; i++)
-		buf[i] = 0x7f;
+	if (filename) {
+		fd = open(filename, O_RDONLY);
+		if (fd < 0) {
+			syslog(LOG_ERR, "Open failed: %s (%d)",
+							strerror(errno), errno);
+			exit(1);
+		}
+		len = read(fd, buf, data_size);
+		send(sk, buf, len, 0);
+		return;
+	} else {
+		for (i = 6; i < data_size; i++)
+			buf[i] = 0x7f;
+	}
 
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
@@ -582,13 +597,19 @@ static void send_mode(int sk)
 
 		len = send(sk, buf, data_size, 0);
 		if (len < 0 || len != data_size) {
-			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
+			syslog(LOG_ERR, "Send failed: %s (%d)",
+							strerror(errno), errno);
 			exit(1);
 		}
 
 		if (num_frames && delay && count && !(seq % count))
 			usleep(delay);
 	}
+}
+
+static void send_mode(int sk)
+{
+	do_send(sk);
 
 	syslog(LOG_INFO, "Closing channel ...");
 	if (shutdown(sk, SHUT_RDWR) < 0)
@@ -599,28 +620,7 @@ static void send_mode(int sk)
 
 static void senddump_mode(int sk)
 {
-	uint32_t seq;
-	int i;
-
-	syslog(LOG_INFO, "Sending ...");
-
-	for (i = 6; i < data_size; i++)
-		buf[i] = 0x7f;
-
-	seq = 0;
-	while ((num_frames == -1) || (num_frames-- > 0)) {
-		*(uint32_t *) buf = htobl(seq);
-		*(uint16_t *) (buf + 4) = htobs(data_size);
-		seq++;
-
-		if (send(sk, buf, data_size, 0) <= 0) {
-			syslog(LOG_ERR, "Send failed: %s (%d)", strerror(errno), errno);
-			exit(1);
-		}
-
-		if (num_frames && delay && count && !(seq % count))
-			usleep(delay);
-	}
+	do_send(sk);
 
 	dump_mode(sk);
 }
@@ -692,8 +692,9 @@ static void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P psm]\n"
 		"\t[-I imtu] [-O omtu]\n"
-		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
+		"\t[-B filename] use data packets from file\n"
+		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
 		"\t[-D milliseconds] delay after sending num frames (default = 0)\n"
 		"\t[-R] reliable mode\n"
@@ -705,14 +706,14 @@ static void usage(void)
 		"\t[-M] become master\n");
 }
 
-int main(int argc ,char *argv[])
+int main(int argc, char *argv[])
 {
 	struct sigaction sa;
 	int opt, sk, mode = RECV, need_addr = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:N:L:C:D:RGFAESM")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:B:N:L:C:D:RGFAESM")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -786,6 +787,14 @@ int main(int argc ,char *argv[])
 			linger = atoi(optarg);
 			break;
 
+		case 'B':
+			filename = strdup(optarg);
+			break;
+
+		case 'N':
+			num_frames = atoi(optarg);
+			break;
+
 		case 'C':
 			count = atoi(optarg);
 			break;
@@ -820,10 +829,6 @@ int main(int argc ,char *argv[])
 
 		case 'G':
 			socktype = SOCK_DGRAM;
-			break;
-
-		case 'N':
-			num_frames = atoi(optarg);
 			break;
 
 		default:

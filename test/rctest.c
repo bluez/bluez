@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <getopt.h>
@@ -69,6 +70,8 @@ static unsigned long delay = 0;
 /* Default addr and channel */
 static bdaddr_t bdaddr;
 static uint8_t channel = 10;
+
+static char *filename = NULL;
 
 static int master = 0;
 static int auth = 0;
@@ -329,15 +332,27 @@ static void recv_mode(int sk)
 	}
 }
 
-static void send_mode(int sk)
+static void do_send(int sk)
 {
 	uint32_t seq;
-	int i;
+	int i, fd, len;
 
 	syslog(LOG_INFO,"Sending ...");
 
-	for (i = 6; i < data_size; i++)
-		buf[i] = 0x7f;
+	if (filename) {
+		fd = open(filename, O_RDONLY);
+		if (fd < 0) {
+			syslog(LOG_ERR, "Open failed: %s (%d)",
+							strerror(errno), errno);
+			exit(1);
+		}
+		len = read(fd, buf, data_size);
+		send(sk, buf, len, 0);
+		return;
+	} else {
+		for (i = 6; i < data_size; i++)
+			buf[i] = 0x7f;
+	}
 
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
@@ -354,6 +369,11 @@ static void send_mode(int sk)
 		if (num_frames && delay && count && !(seq % count))
 			usleep(delay);
 	}
+}
+
+static void send_mode(int sk)
+{
+	do_send(sk);
 
 	syslog(LOG_INFO, "Closing channel ...");
 	if (shutdown(sk, SHUT_RDWR) < 0)
@@ -407,6 +427,7 @@ static void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P channel]\n"
 		"\t[-L seconds] enabled SO_LINGER option\n"
+		"\t[-B filename] use data packets from file\n"
 		"\t[-N num] number of frames to send\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
 		"\t[-D milliseconds] delay after sending num frames (default = 0)\n"
@@ -416,14 +437,14 @@ static void usage(void)
 		"\t[-M] become master\n");
 }
 
-int main(int argc ,char *argv[])
+int main(int argc, char *argv[])
 {
 	struct sigaction sa;
 	int opt, sk, mode = RECV, need_addr = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:N:MAESL:C:D:")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:B:N:MAESL:C:D:")) != EOF) {
 		switch (opt) {
 		case 'r':
 			mode = RECV;
@@ -495,6 +516,10 @@ int main(int argc ,char *argv[])
 
 		case 'L':
 			linger = atoi(optarg);
+			break;
+
+		case 'B':
+			filename = strdup(optarg);
 			break;
 
 		case 'N':
