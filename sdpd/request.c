@@ -54,17 +54,18 @@
  * sequence. The data type of elements found in the
  * sequence is returned in the reference pDataType
  */
-static int extract_des(uint8_t *buf, sdp_list_t **svcReqSeq, uint8_t *pDataType, uint8_t expectedType)
+static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *pDataType, uint8_t expectedType)
 {
 	uint8_t seqType;
-	int data_size = 0;
-	int scanned = sdp_extract_seqtype(buf, &seqType, &data_size);
+	int scanned, data_size = 0;
 	short numberOfElements = 0;
 	int seqlen = 0;
 	sdp_list_t *pSeq = NULL;
 	uint8_t dataType;
 	int status = 0;
 	const uint8_t *p;
+
+	scanned = sdp_extract_seqtype(buf, &seqType, &data_size);
 
 	SDPDBG("Seq type : %d\n", seqType);
 	if (!scanned || (seqType != SDP_SEQ8 && seqType != SDP_SEQ16)) {
@@ -118,6 +119,8 @@ static int extract_des(uint8_t *buf, sdp_list_t **svcReqSeq, uint8_t *pDataType,
 				p += localSeqLength;
 			}
 			break;
+		default:
+			return -1;
 		}
 		if (status == 0) {
 			pSeq = sdp_list_append(pSeq, pElem);
@@ -126,7 +129,7 @@ static int extract_des(uint8_t *buf, sdp_list_t **svcReqSeq, uint8_t *pDataType,
 
 			if (seqlen == data_size)
 				break;
-			else if (seqlen > data_size)
+			else if (seqlen > data_size || seqlen > len)
 				return -1;
 		} else
 			free(pElem);
@@ -228,7 +231,7 @@ static int sdp_match_uuid(sdp_list_t *search, sdp_list_t *pattern)
  */
 static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 {
-	int status = 0, i, plen, mlen;
+	int status = 0, i, plen, mlen, mtu, scanned;
 	sdp_list_t *pattern = NULL;
 	uint16_t expected, actual;
 	uint8_t dtd;
@@ -238,11 +241,12 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 	uint32_t cStateId = 0;
 	short rsp_count = 0;
 	short *pTotalRecordCount, *pCurrentRecordCount;
-	int mtu;
 	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
-	int scanned = extract_des(pdata, &pattern, &dtd, SDP_TYPE_UUID);
 
 	SDPDBG("");
+
+	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
+					&pattern, &dtd, SDP_TYPE_UUID);
 
 	if (scanned == -1) {
 		status = SDP_INVALID_SYNTAX;
@@ -505,7 +509,8 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	pdata += sizeof(uint16_t);
 
 	/* extract the attribute list */
-	scanned = extract_des(pdata, &seq, &dtd, SDP_TYPE_ANY);
+	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
+						&seq, &dtd, SDP_TYPE_ANY);
 	if (scanned == -1) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
@@ -617,7 +622,8 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	tmpbuf.data = NULL;
 	pdata = req->buf + sizeof(sdp_pdu_hdr_t);
-	scanned = extract_des(pdata, &pattern, &dtd, SDP_TYPE_UUID);
+	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
+					&pattern, &dtd, SDP_TYPE_UUID);
 	if (scanned == -1) {
         	status = SDP_INVALID_SYNTAX;
 		goto done;
@@ -633,7 +639,8 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	SDPDBG("Max Attr expected: %d", max);
 
 	/* extract the attribute list */
-	scanned = extract_des(pdata, &seq, &dtd, SDP_TYPE_ANY);
+	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
+						&seq, &dtd, SDP_TYPE_ANY);
 	if (scanned == -1) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
