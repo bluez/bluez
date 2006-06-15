@@ -2073,7 +2073,7 @@ static int add_hid_keyb(sdp_session_t *session, svc_info_t *si)
 	uuid_t root_uuid, hidkb_uuid, l2cap_uuid, hidp_uuid;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[3];
-	sdp_data_t *channel, *lang_lst, *lang_lst2, *hid_spec_lst, *hid_spec_lst2;
+	sdp_data_t *psm, *lang_lst, *lang_lst2, *hid_spec_lst, *hid_spec_lst2;
 	int i;
 	uint8_t dtd = SDP_UINT16;
 	uint8_t dtd2 = SDP_UINT8;
@@ -2085,8 +2085,8 @@ static int add_hid_keyb(sdp_session_t *session, svc_info_t *si)
 	int leng[2];
 	uint8_t hid_spec_type = 0x22;
 	uint16_t hid_attr_lang[] = { 0x409, 0x100 };
-	static const uint8_t ctrl = 0x11;
-	static const uint8_t intr = 0x13;
+	static const uint16_t ctrl = 0x11;
+	static const uint16_t intr = 0x13;
 	static const uint16_t hid_attr[] = { 0x100, 0x111, 0x40, 0x0d, 0x01, 0x01 };
 	static const uint16_t hid_attr2[] = { 0x0, 0x01, 0x100, 0x1f40, 0x01, 0x01 };
 	const uint8_t hid_spec[] = { 
@@ -2163,8 +2163,8 @@ static int add_hid_keyb(sdp_session_t *session, svc_info_t *si)
 	/* protocols */
 	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
 	proto[1] = sdp_list_append(0, &l2cap_uuid);
-	channel = sdp_data_alloc(SDP_UINT8, &ctrl);
-	proto[1] = sdp_list_append(proto[1], channel);
+	psm = sdp_data_alloc(SDP_UINT16, &ctrl);
+	proto[1] = sdp_list_append(proto[1], psm);
 	apseq = sdp_list_append(0, proto[1]);
 
 	sdp_uuid16_create(&hidp_uuid, HIDP_UUID);
@@ -2176,8 +2176,8 @@ static int add_hid_keyb(sdp_session_t *session, svc_info_t *si)
 
 	/* additional protocols */
 	proto[1] = sdp_list_append(0, &l2cap_uuid);
-	channel = sdp_data_alloc(SDP_UINT8, &intr);
-	proto[1] = sdp_list_append(proto[1], channel);
+	psm = sdp_data_alloc(SDP_UINT16, &intr);
+	proto[1] = sdp_list_append(proto[1], psm);
 	apseq = sdp_list_append(0, proto[1]);
 
 	sdp_uuid16_create(&hidp_uuid, HIDP_UUID);
