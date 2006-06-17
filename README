@@ -14,6 +14,7 @@ Compilation and installation
 In order to compile Bluetooth utilities you need following software packages:
 	- Linux Bluetooth protocol stack (BlueZ)
 	- GCC compiler
+	- D-Bus library
 	- USB library
 	- Lexical Analyzer (flex, lex)
 	- YACC (yacc, bison, byacc)
