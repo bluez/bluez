@@ -131,10 +131,26 @@ int remove_device(uint16_t dev_id)
 	return 0;
 }
 
+static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
+{
+	if (dev->manufacturer == 15 &&
+			dev->hci_rev == 0x09 && dev->lmp_subver == 0x6963)
+		return 1;
+
+	if (dev->features[6] & LMP_EXT_INQ)
+		return 2;
+
+	if (dev->features[3] & LMP_RSSI_INQ)
+		return 1;
+
+	return 0;
+}
+
 int start_device(uint16_t dev_id)
 {
 	struct hci_dev *dev;
 	struct hci_version ver;
+	uint8_t features[8], inqmode;
 	int dd;
 
 	ASSERT_DEV_ID;
@@ -158,6 +174,22 @@ int start_device(uint16_t dev_id)
 	dev->lmp_ver = ver.lmp_ver;
 	dev->lmp_subver = ver.lmp_subver;
 	dev->manufacturer = ver.manufacturer;
+
+	if (hci_read_local_features(dd, features, 1000) < 0) {
+		error("Can't read features for hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	memcpy(dev->features, features, 8);
+
+	inqmode = get_inquiry_mode(dev);
+
+	if (hci_write_inquiry_mode(dd, inqmode, 1000) < 0) {
+		error("Can't write inquiry mode for hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
 
 	hci_close_dev(dd);
 

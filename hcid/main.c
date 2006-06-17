@@ -389,30 +389,6 @@ static void configure_device(int hdev)
 					WRITE_VOICE_SETTING_CP_SIZE, &cp);
 	}
 
-	/* Set inquiry mode */
-	if ((device_opts->flags & (1 << HCID_SET_INQMODE))) {
-		write_inquiry_mode_cp cp;
-
-		switch (device_opts->inqmode) {
-		case 2:
-			if (di.features[6] & LMP_EXT_INQ) {
-				cp.mode = 2;
-				break;
-			}
-		case 1:
-			if (di.features[3] & LMP_RSSI_INQ) {
-				cp.mode = 1;
-				break;
-			}
-		default:
-			cp.mode = 0;
-			break;
-		}
-
-		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
-					WRITE_INQUIRY_MODE_CP_SIZE, &cp);
-	}
-
 	/* Set page timeout */
 	if ((device_opts->flags & (1 << HCID_SET_PAGETO))) {
 		write_page_timeout_cp cp;
