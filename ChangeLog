@@ -1,3 +1,6 @@
+ver 3.1:
+	Add missing placeholders for feature bits.
+
 ver 3.0:
 	Fix broken behavior with EVT_CMD_STATUS.
 	Add features bit for pause encryption.
