@@ -1,3 +1,12 @@
+ver 3.1:
+	Fix handling of raw mode devices.
+	Fix busy loop in UUID extraction routine.
+	Remove inquiry mode setting.
+	Remove auth and encrypt settings.
+
+	Note:
+	This version needs at least bluez-libs-3.1
+
 ver 3.0:
 	Implement the new BlueZ D-Bus API.
 
