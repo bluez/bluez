@@ -427,6 +427,7 @@ int hcid_dbus_register_device(uint16_t id)
 	DBusMessage *message = NULL;
 	int i, err, dd = -1, ret = -1;
 	read_scan_enable_rp rp;
+	struct hci_dev_info di;
 	struct hci_request rq;
 	struct hci_dbus_data* pdata;
 	struct hci_conn_list_req *cl = NULL;
@@ -434,6 +435,14 @@ int hcid_dbus_register_device(uint16_t id)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 	if (register_dbus_path(path, id, &obj_dev_vtable, FALSE) < 0)
+		 return -1;
+
+	if (hci_devinfo(id, &di) < 0) {
+		error("Getting device info failed: hci%d", id);
+		return -1;
+	}
+
+	if (hci_test_bit(HCI_RAW, &di.flags))
 		return -1;
 
 	dd = hci_open_dev(id);
