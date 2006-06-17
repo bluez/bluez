@@ -1734,6 +1734,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_INQUIRY_CANCEL:
 		case OCF_PERIODIC_INQUIRY:
 		case OCF_EXIT_PERIODIC_INQUIRY:
+		case OCF_READ_REMOTE_EXT_FEATURES:
 			status_response_dump(level, frm);
 			return;
 		case OCF_CREATE_CONN_CANCEL:
