@@ -308,28 +308,6 @@ static void configure_device(int hdev)
 				hdev, strerror(errno), errno);
 	}
 
-	/* Set authentication */
-	if (device_opts->auth)
-		dr.dev_opt = AUTH_ENABLED;
-	else
-		dr.dev_opt = AUTH_DISABLED;
-
-	if (ioctl(s, HCISETAUTH, (unsigned long) &dr) < 0) {
-		error("Can't set auth on hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
-	}
-
-	/* Set encryption */
-	if (device_opts->encrypt)
-		dr.dev_opt = ENCRYPT_P2P;
-	else
-		dr.dev_opt = ENCRYPT_DISABLED;
-
-	if (ioctl(s, HCISETENCRYPT, (unsigned long) &dr) < 0) {
-		error("Can't set encrypt on hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
-	}
-
 	/* Set device name */
 	if ((device_opts->flags & (1 << HCID_SET_NAME)) && device_opts->name) {
 		change_local_name_cp cp;

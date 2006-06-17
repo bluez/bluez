@@ -72,8 +72,6 @@ struct device_opts {
 	uint16_t link_mode;
 	uint16_t link_policy;
 	uint16_t scan;
-	uint16_t auth;
-	uint16_t encrypt;
 	int      discovto;
 };
 

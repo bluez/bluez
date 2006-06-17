@@ -59,7 +59,7 @@ int yyerror(char *s);
 
 %token K_OPTIONS K_DEVICE
 %token K_AUTOINIT K_SECURITY K_PAIRING
-%token K_PTYPE K_NAME K_CLASS K_VOICE K_PAGETO K_LM K_LP K_AUTH K_ENCRYPT K_ISCAN K_PSCAN K_DISCOVTO
+%token K_PTYPE K_NAME K_CLASS K_VOICE K_PAGETO K_LM K_LP K_ISCAN K_PSCAN K_DISCOVTO
 %token K_PASSKEY
 %token K_YES K_NO
 
@@ -197,14 +197,6 @@ device_opt:
   | K_DISCOVTO NUM	{
 				parser_device->flags |= (1 << HCID_SET_DISCOVTO);
 				parser_device->discovto = $2;
-			}
-
-  | K_AUTH bool		{
-				parser_device->auth = $2;
-			}
-
-  | K_ENCRYPT bool	{
-				 parser_device->encrypt = $2;
 			}
 
   | K_ISCAN bool	{

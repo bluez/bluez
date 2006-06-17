@@ -58,8 +58,6 @@ struct kword cfg_keyword[] = {
 	{ "voice",		K_VOICE		},
 	{ "pageto",		K_PAGETO	},
 	{ "discovto",		K_DISCOVTO	},
-	{ "auth",		K_AUTH		},
-	{ "encrypt",		K_ENCRYPT	},
 	{ "passkey",		K_PASSKEY	},
 
 	{ "yes",		K_YES		},
