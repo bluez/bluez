@@ -71,6 +71,8 @@ struct hci_conn {
 };
 
 struct hci_dev {
+	int ignore;
+
 	bdaddr_t bdaddr;
 	uint8_t  features[8];
 	uint8_t  lmp_ver;
@@ -105,8 +107,15 @@ int add_device(uint16_t dev_id)
 
 	dev = &devices[dev_id];
 
-	if (hci_devinfo(dev_id, &di) < 0)
+	if (hci_devinfo(dev_id, &di) < 0) {
+		dev->ignore = 1;
 		return -errno;
+	}
+
+	if (hci_test_bit(HCI_RAW, &di.flags)) {
+		info("Device hci%d is using raw mode", dev_id);
+		dev->ignore = 1;
+	}
 
 	bacpy(&dev->bdaddr, &di.bdaddr);
 	memcpy(dev->features, di.features, 8);
@@ -156,6 +165,9 @@ int start_device(uint16_t dev_id)
 	ASSERT_DEV_ID;
 
 	dev = &devices[dev_id];
+
+	if (dev->ignore)
+		return 0;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
