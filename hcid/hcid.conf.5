@@ -94,21 +94,6 @@ the host name.
 
 
 .TP 
-\fBauth\fP  enable|disable
-Enables or disables authentication between local and remote devices when they connect.
-
-Authentication is done following a challenge\-response mechanism described in the Bluetooth Specification 1.2 volume 2 part C section 4.2, and uses the link key generated during pairing as the shared secret.
-
-Activating this option sets the local device into Bluetooth security mode 3.
-
-.TP 
-\fBencrypt\fP  enable|disable
-Enable or disable link encryption. Should be set to enable in most cases, unless one of the devices does not support encryption for some reason.
-
-Encryption can only occur on authenticated connections, as a shared secret key is necessary for encryption to work. The detailed encryption mechanism is described in the bluetooth specification as mentioned above.
-
-
-.TP 
 \fBclass\fP  0x\fISSDDdd\fP (three bytes)
 
 The Bluetooth Device Class is described in the Bluetooth Specification section 1.2 ("Assigned Numbers \- Bluetooth Baseband").
@@ -211,18 +196,10 @@ park:  this is a mode where the device is put on standby on the piconet, for pow
 rswitch: this is a mode that enables role\-switch (master <\-> slave) between two devices in a piconet. It is not clear whether this needs to be enabled in order to make the "lm master" setting work properly or not.
 
 
-
-
-.TP 
-\fBpkt_type\fP  DH1,DM1,HV1, etc.
-
-This fairly obscure option determines the packet types that the bluetooth device will send or accept. This is a very low\-level option that should probably not be changed for normal use. You do not need to specify defaults.
-
-You can check the Bluetooth specification version 1.2 Volume 2, Part B section 6 for more details about this.
 .SH "FILES"
 .TP 
 .I /etc/bluetooth/hcid.conf
 Default location of the global configuration file.
 
 .SH "AUTHOR"
-This manual page was written by Edouard Lafargue, Fredrik Noring and Maxim Krasnyansky.
+This manual page was written by Edouard Lafargue, Fredrik Noring, Maxim Krasnyansky and Marcel Holtmann.
