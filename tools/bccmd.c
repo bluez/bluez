@@ -199,9 +199,9 @@ static char *memorytostr(uint16_t type)
 	}
 }
 
-#define OPT_RANGE(range) \
-		if (argc < (range)) { errno = EINVAL; return -1; } \
-		if (argc > (range)) { errno = E2BIG; return -1; }
+#define OPT_RANGE(min, max) \
+		if (argc < (min)) { errno = EINVAL; return -1; } \
+		if (argc > (max)) { errno = E2BIG; return -1; }
 
 static struct option help_options[] = {
 	{ "help",	0, 0, 'h' },
@@ -227,7 +227,7 @@ static int opt_help(int argc, char *argv[], int *help)
 #define OPT_HELP(range, help) \
 		opt_help(argc, argv, (help)); \
 		argc -= optind; argv += optind; optind = 0; \
-		OPT_RANGE((range))
+		OPT_RANGE((range), (range))
 
 static int cmd_builddef(int transport, int argc, char *argv[])
 {
@@ -564,10 +564,10 @@ static int opt_pskey(int argc, char *argv[], uint16_t *stores, int *reset, int *
 	return optind;
 }
 
-#define OPT_PSKEY(range, stores, reset, help) \
+#define OPT_PSKEY(min, max, stores, reset, help) \
 		opt_pskey(argc, argv, (stores), (reset), (help)); \
 		argc -= optind; argv += optind; optind = 0; \
-		OPT_RANGE((range))
+		OPT_RANGE((min), (max))
 
 static int cmd_psget(int transport, int argc, char *argv[])
 {
@@ -578,7 +578,7 @@ static int cmd_psget(int transport, int argc, char *argv[])
 
 	memset(array, 0, sizeof(array));
 
-	OPT_PSKEY(1, &stores, &reset, NULL);
+	OPT_PSKEY(1, 1, &stores, &reset, NULL);
 
 	if (strncasecmp(argv[0], "0x", 2)) {
 		pskey = atoi(argv[0]);
@@ -653,7 +653,7 @@ static int cmd_psset(int transport, int argc, char *argv[])
 
 	memset(array, 0, sizeof(array));
 
-	OPT_PSKEY(2, &stores, &reset, NULL);
+	OPT_PSKEY(2, 81, &stores, &reset, NULL);
 
 	if (strncasecmp(argv[0], "0x", 2)) {
 		pskey = atoi(argv[0]);
@@ -756,7 +756,7 @@ static int cmd_psclr(int transport, int argc, char *argv[])
 	uint16_t pskey, stores = CSR_STORES_PSRAM;
 	int i, err, reset = 0;
 
-	OPT_PSKEY(1, &stores, &reset, NULL);
+	OPT_PSKEY(1, 1, &stores, &reset, NULL);
 
 	if (strncasecmp(argv[0], "0x", 2)) {
 		pskey = atoi(argv[0]);
@@ -793,7 +793,7 @@ static int cmd_pslist(int transport, int argc, char *argv[])
 	uint16_t pskey = 0x0000, length, stores = CSR_STORES_DEFAULT;
 	int err, reset = 0;
 
-	OPT_PSKEY(0, &stores, &reset, NULL);
+	OPT_PSKEY(0, 0, &stores, &reset, NULL);
 
 	while (1) {
 		memset(array, 0, sizeof(array));
@@ -839,7 +839,7 @@ static int cmd_psread(int transport, int argc, char *argv[])
 	char *str, val[7];
 	int i, err, reset = 0;
 
-	OPT_PSKEY(0, &stores, &reset, NULL);
+	OPT_PSKEY(0, 0, &stores, &reset, NULL);
 
 	while (1) {
 		memset(array, 0, sizeof(array));
@@ -908,7 +908,7 @@ static int cmd_psload(int transport, int argc, char *argv[])
 	char *str, val[7];
 	int err, reset = 0;
 
-	OPT_PSKEY(1, &stores, &reset, NULL);
+	OPT_PSKEY(1, 1, &stores, &reset, NULL);
 
 	psr_read(argv[0]);
 
