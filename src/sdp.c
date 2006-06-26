@@ -432,22 +432,6 @@ sdp_data_t *sdp_data_alloc_with_length(uint8_t dtd, const void *value, uint32_t 
 			}
 
 			memcpy(d->val.str, value, length);
-
-			if (length <= UCHAR_MAX) {
-				d->unitSize += sizeof(uint8_t);
-				if (dtd != SDP_URL_STR8 && dtd != SDP_TEXT_STR8) {
-					if (dtd == SDP_URL_STR16)
-						dtd = SDP_URL_STR8;
-					else
-						dtd = SDP_TEXT_STR8;
-				}
-			} else {
-				d->unitSize += sizeof(uint16_t);
-				if (dtd == SDP_TEXT_STR8)
-					dtd = SDP_TEXT_STR16;
-				else
-					dtd = SDP_URL_STR16;
-			}
 		} else {
 			SDPERR("Strings of size > USHRT_MAX not supported\n");
 			free(d);
@@ -742,10 +726,6 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	case SDP_TEXT_STR32:
 		src = (unsigned char *)d->val.str;
 		data_size = d->unitSize - sizeof(uint8_t);
-		if (data_size - sizeof(uint8_t) <= UCHAR_MAX)
-			data_size -= sizeof(uint8_t);
-		else
-			data_size -= sizeof(uint16_t);
 		sdp_set_seq_len(seqp, data_size);
 		break;
 	case SDP_URL_STR8:
@@ -973,7 +953,7 @@ static sdp_data_t *extract_str(const void *p, int *len)
 	SDPDBG("Str : %s\n", s);
 
 	d->val.str = s;
-	d->unitSize = n;
+	d->unitSize = n + sizeof(uint8_t);
 	return d;
 }
 
