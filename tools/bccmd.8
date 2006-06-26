@@ -1,4 +1,4 @@
-.TH BCCMD 8 "Dec 6 2005" BlueZ "Linux System Administration"
+.TH BCCMD 8 "Jun 20 2006" BlueZ "Linux System Administration"
 .SH NAME
 bccmd \- Utility for the CSR BCCMD interface
 .SH SYNOPSIS
@@ -87,26 +87,33 @@ TXData1 radio test
 .BI memtypes
 Get memory types
 .TP
-.BI psget\ <key>
-Get value for PS key
+.BI psget\ [-r]\ [-s\ <stores>]\ <key>
+Get value for PS key.
+-r sends a warm reset afterwards
 .TP
-.BI psset\ <key>\ <value>
-Set value for PS key
+.BI psset\ [-r]\ [-s\ <stores>]\ <key>\ <value>
+Set value for PS key.
+-r sends a warm reset afterwards
 .TP
-.BI psclr\ <key>
-Clear value for PS key
+.BI psclr\ [-r]\ [-s\ <stores>]\ <key>
+Clear value for PS key.
+-r sends a warm reset afterwards
 .TP
-.BI pslist
-List all PS keys
+.BI pslist\ [-r]\ [-s\ <stores>]
+List all PS keys.
+-r sends a warm reset afterwards
 .TP
-.BI psread
-Read all PS keys
+.BI psread\ [-r]\ [-s\ <stores>]
+Read all PS keys.
+-r sends a warm reset afterwards
 .TP
-.BI psload\ <file>
-Load all PS keys from PSR file
+.BI psload\ [-r]\ [-s\ <stores>]\ <file>
+Load all PS keys from PSR file.
+-r sends a warm reset afterwards
 .TP
-.BI pscheck\ <file>
-Check syntax of PSR file
+.BI pscheck\ [-r]\ [-s\ <stores>]\ <file>
+Check syntax of PSR file.
+-r sends a warm reset afterwards
 .SH KEYS
 bdaddr country devclass keymin keymax features commands version
 remver hciextn mapsco baudrate hostintf anafreq anaftrim usbvid
