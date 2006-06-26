@@ -142,14 +142,18 @@ int remove_device(uint16_t dev_id)
 
 static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
 {
-	if (dev->manufacturer == 15 &&
-			dev->hci_rev == 0x09 && dev->lmp_subver == 0x6963)
-		return 1;
-
 	if (dev->features[6] & LMP_EXT_INQ)
 		return 2;
 
 	if (dev->features[3] & LMP_RSSI_INQ)
+		return 1;
+
+	if (dev->manufacturer == 15 &&
+			dev->hci_rev == 0x09 && dev->lmp_subver == 0x6963)
+		return 1;
+
+	if (dev->manufacturer == 31 &&
+			dev->hci_rev == 0x2005 && dev->lmp_subver == 0x1805)
 		return 1;
 
 	return 0;
