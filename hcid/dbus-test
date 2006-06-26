@@ -36,6 +36,9 @@ dev_cmds = [ "GetAddress",
              "GetRemoteManufacturer",
              "GetRemoteCompany",
              "GetRemoteName",
+             "GetRemoteMajorClass",
+             "GetRemoteMinorClass",
+             "GetRemoteServiceClasses",
              "GetRemoteAlias",
              "SetRemoteAlias",
              "ClearRemoteAlias",
@@ -276,7 +279,7 @@ class Tester:
                    print 'Usage: %s -i <dev> SetName newname' % self.name
            elif self.cmd == 'GetRemoteName':
                if len(self.cmd_args) == 1:
-                   print self.device.GetRemoteName()
+                   print self.device.GetRemoteName(self.cmd_args[0])
                else:
                    print 'Usage: %s -i <dev> GetRemoteName address' % self.name
            elif self.cmd == 'GetRemoteVersion':
@@ -304,6 +307,21 @@ class Tester:
                    print self.device.GetRemoteAlias(self.cmd_args[0])
                else:
                    print 'Usage: %s -i <dev> GetRemoteAlias address' % self.name
+           elif self.cmd == 'GetRemoteMajorClass':
+               if len(self.cmd_args) == 1:
+                   print self.device.GetRemoteMajorClass(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> GetRemoteMajorClass address' % self.name
+           elif self.cmd == 'GetRemoteMinorClass':
+               if len(self.cmd_args) == 1:
+                   print self.device.GetRemoteMinorClass(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> GetRemoteMinorClass address' % self.name
+           elif self.cmd == 'GetRemoteServiceClasses':
+               if len(self.cmd_args) == 1:
+                   print self.device.GetRemoteServiceClasses(self.cmd_args[0])
+               else:
+                   print 'Usage: %s -i <dev> GetRemoteServiceClasses address' % self.name
            elif self.cmd == 'SetRemoteAlias':
                if len(self.cmd_args) == 2:
                    self.device.SetRemoteAlias(self.cmd_args[0], self.cmd_args[1])
@@ -363,6 +381,10 @@ class Tester:
                    print self.device.GetEncryptionKeySize(self.cmd_args[0])
                else:
                    print 'Usage: %s -i <dev> GetEncryptionKeySize address' % self.name
+           elif self.cmd == 'DiscoverDevices':
+               print self.device.DiscoverDevices()
+           elif self.cmd == 'DiscoverDevicesWithoutNameResolving':
+               print self.device.DiscoverDevicesWithoutNameResolving()
            else:
                 # FIXME: remove at future version
                 print 'Script Error: Method %s not found. Maybe a mispelled word.' % (self.cmd_args)

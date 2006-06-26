@@ -28,6 +28,23 @@ Minor classes computer	uncategorized, desktop, server, laptop, handheld,
 Minor classes phone	uncategorized, cellular, cordless, smart phone,
 			modem, isdn
 
+Minor classes access point	fully, 1-17 percent, 17-33 percent,
+			33-50 percent, 50-67 percent, 67-83 percent,
+			83-99 percent, not available
+
+Minor classes audio video	uncategorized, headset, handsfree,microphone,
+			loudspeaker, headphones, portable audio, car audio,
+			set-top box, hifi audio, vcr, video camera, camcorder,
+			video monitor, video display and loudspeaker,
+			video conferencing, gaming/toy, unknown
+
+Minor classes peripheral	uncategorized, keyboard, pointing, combo
+
+Minor classes imaging	display, camera, scanner, printer
+
+Minor classes wearable	wrist watch, pager, jacket, helmet, glasses
+
+Minor classes toy	robot, vehicle, doll, controller, game
 
 Error hierarchy
 ===============

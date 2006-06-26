@@ -87,6 +87,79 @@ static const char *phone_minor_cls[] = {
 	"isdn"
 };
 
+static const char *access_point_minor_cls[] = {
+	"fully",
+	"1-17 percent",
+	"17-33 percent",
+	"33-50 percent",
+	"50-67 percent",
+	"67-83 percent",
+	"83-99 percent",
+	"not available"
+};
+
+static const char *audio_video_minor_cls[] = {
+	"uncategorized",
+	"headset",
+	"handsfree",
+	"unknown",
+	"microphone",
+	"loudspeaker",
+	"headphones",
+	"portable audio",
+	"car audio",
+	"set-top box",
+	"hifi audio",
+	"vcr",
+	"video camera",
+	"camcorder",
+	"video monitor",
+	"video display and loudspeaker",
+	"video conferencing",
+	"unknown",
+	"gaming/toy"
+};
+
+static const char *peripheral_minor_cls[] = {
+	"uncategorized",
+	"keyboard",
+	"pointing",
+	"combo"
+};
+
+static const char *peripheral_2_minor_cls[] = {
+	"uncategorized",
+	"joystick",
+	"gamepad",
+	"remote control",
+	"sensing",
+	"digitizer tablet",
+	"card reader"
+};
+
+static const char *imaging_minor_cls[] = {
+	"display",
+	"camera",
+	"scanner",
+	"printer"
+};
+
+static const char *wearable_minor_cls[] = {
+	"wrist watch",
+	"pager",
+	"jacket",
+	"helmet",
+	"glasses"
+};
+
+static const char *toy_minor_cls[] = {
+	"robot",
+	"vehicle",
+	"doll",
+	"controller",
+	"game"
+};
+
 static int check_address(const char *addr)
 {
 	char tmp[18];
@@ -2199,13 +2272,33 @@ const char *major_class_str(uint32_t class)
 const char *minor_class_str(uint32_t class)
 {
 	uint8_t major_index = (class >> 8) & 0x1F;
-	uint8_t minor_index = (class >> 2) & 0x3F;
+	uint8_t minor_index;
 
 	switch (major_index) {
 	case 1: /* computer */
+		minor_index = (class >> 2) & 0x3F;
 		return computer_minor_cls[minor_index];
 	case 2: /* phone */
+		minor_index = (class >> 2) & 0x3F;
 		return phone_minor_cls[minor_index];
+	case 3: /* access point */
+		minor_index = (class >> 5) & 0x07;
+		return access_point_minor_cls[minor_index];
+	case 4: /* audio/video */
+		minor_index = (class >> 2) & 0x3F;
+		return audio_video_minor_cls[minor_index];
+	case 5: /* peripheral */
+		minor_index = (class >> 6) & 0x03;
+		return peripheral_minor_cls[minor_index];
+	case 6: /* imaging */
+		minor_index = (class >> 4) & 0x0F;
+		return imaging_minor_cls[minor_index];
+	case 7: /* wearable */
+		minor_index = (class >> 2) & 0x3F;
+		return wearable_minor_cls[minor_index];
+	case 8: /* toy */
+		minor_index = (class >> 2) & 0x3F;
+		return toy_minor_cls[minor_index];
 	}
 
 	return "";
