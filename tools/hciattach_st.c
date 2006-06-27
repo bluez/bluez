@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <dirent.h>
+#include <sys/param.h>
 
 static int debug = 0;
 

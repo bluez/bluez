@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>

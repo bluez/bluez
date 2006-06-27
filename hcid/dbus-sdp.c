@@ -32,6 +32,7 @@
 #include <fcntl.h>
 
 #include <sys/types.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>

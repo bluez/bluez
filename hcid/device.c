@@ -32,6 +32,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
