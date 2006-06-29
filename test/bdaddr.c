@@ -40,6 +40,18 @@
 
 static int transient = 0;
 
+static int generic_reset_device(int dd)
+{
+	bdaddr_t bdaddr;
+	int err;
+
+	err = hci_send_cmd(dd, 0x03, 0x0003, 0, NULL);
+	if (err < 0)
+		return err;
+
+	return hci_read_bd_addr(dd, &bdaddr, 10000);
+}
+
 #define OCF_ERICSSON_WRITE_BD_ADDR	0x000d
 typedef struct {
 	bdaddr_t	bdaddr;
@@ -271,18 +283,6 @@ static int st_write_bd_addr(int dd, bdaddr_t *bdaddr)
 	return ericsson_store_in_flash(dd, 0xfe, 6, (uint8_t *) bdaddr);
 }
 
-static int st_reset_device(int dd)
-{
-	bdaddr_t bdaddr;
-	int err;
-
-	err = hci_send_cmd(dd, 0x03, 0x0003, 0, NULL);
-	if (err < 0)
-		return err;
-
-	return hci_read_bd_addr(dd, &bdaddr, 10000);
-}
-
 static struct {
 	uint16_t compid;
 	int (*write_bd_addr)(int dd, bdaddr_t *bdaddr);
@@ -293,7 +293,8 @@ static struct {
 	{ 13,		ti_write_bd_addr,	NULL,			},
 	{ 15,		bcm_write_bd_addr,	NULL,			},
 	{ 18,		zeevo_write_bd_addr,	NULL			},
-	{ 48,		st_write_bd_addr,	st_reset_device		},
+	{ 48,		st_write_bd_addr,	generic_reset_device	},
+	{ 57,		ericsson_write_bd_addr,	generic_reset_device	},
 	{ 65535,	NULL,			NULL			},
 };
 
