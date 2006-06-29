@@ -290,8 +290,8 @@ static struct {
 } vendor[] = {
 	{ 0,		ericsson_write_bd_addr,	NULL			},
 	{ 10,		csr_write_bd_addr,	csr_reset_device	},
-	{ 13,		ti_write_bd_addr,	NULL,			},
-	{ 15,		bcm_write_bd_addr,	NULL,			},
+	{ 13,		ti_write_bd_addr,	NULL			},
+	{ 15,		bcm_write_bd_addr,	generic_reset_device	},
 	{ 18,		zeevo_write_bd_addr,	NULL			},
 	{ 48,		st_write_bd_addr,	generic_reset_device	},
 	{ 57,		ericsson_write_bd_addr,	generic_reset_device	},
