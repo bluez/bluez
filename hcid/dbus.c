@@ -54,6 +54,13 @@ static int experimental = 0;
 
 #define MAX_CONN_NUMBER			10
 #define RECONNECT_RETRY_TIMEOUT		5000
+#define DISPATCH_TIMEOUT		0
+
+typedef struct
+{
+	uint32_t id;
+	DBusTimeout *timeout;
+} timeout_handler_t;
 
 void hcid_dbus_set_experimental(void)
 {
@@ -80,7 +87,6 @@ void bonding_request_free(struct bonding_request_info *dev )
 			dbus_message_unref(dev->rq);
 		if (dev->cancel)
 			dbus_message_unref(dev->cancel);
-		g_timeout_remove(dev->timeout);
 		free(dev);
 	}
 }
@@ -1299,6 +1305,18 @@ failed:
  *  Section reserved to D-Bus watch functions
  *
  *****************************************************************/
+static int message_dispatch_cb(void *data)
+{
+	dbus_connection_ref(connection);
+
+	/* Dispatch messages */
+	while(dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
+
+	dbus_connection_unref(connection);
+
+	return -1;
+}
+
 static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	DBusWatch *watch = (DBusWatch *) data;
@@ -1311,12 +1329,8 @@ static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	dbus_watch_handle(watch, flags);
 
-	dbus_connection_ref(connection);
-
-	/* Dispatch messages */
-	while (dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
-
-	dbus_connection_unref(connection);
+	if (dbus_connection_get_dispatch_status(connection) == DBUS_DISPATCH_DATA_REMAINS)
+		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, NULL);
 
 	return TRUE;
 }
@@ -1371,6 +1385,64 @@ static void watch_toggled(DBusWatch *watch, void *data)
 		remove_watch(watch, data);
 }
 
+static int timeout_handler_dispatch(gpointer data)
+{
+	timeout_handler_t *handler = data;
+
+	dbus_timeout_handle(handler->timeout);
+
+	return -1;
+}
+
+static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
+{
+	timeout_handler_t *handler;
+
+	if (!dbus_timeout_get_enabled (timeout))
+		return TRUE;
+
+	handler = malloc(sizeof(timeout_handler_t));
+	memset(handler, 0, sizeof(timeout_handler_t));
+
+	handler->timeout = timeout;
+	handler->id = g_timeout_add(dbus_timeout_get_interval(timeout),
+					timeout_handler_dispatch, handler);
+
+	dbus_timeout_set_data(timeout, handler, NULL);
+
+	return TRUE;
+}
+
+static void remove_timeout(DBusTimeout *timeout, void *data)
+{
+	timeout_handler_t *handler;
+
+	handler = dbus_timeout_get_data(timeout);
+	if(handler == NULL)
+		return;
+
+	g_timeout_remove(handler->id);
+
+	free(handler);
+}
+
+static void timeout_toggled(DBusTimeout *timeout, void *data)
+{
+	if (dbus_timeout_get_enabled(timeout))
+		add_timeout(timeout, data);
+	else
+		remove_timeout(timeout, data);
+}
+
+static void wakeup_main_cb(void *data)
+{
+	if (!dbus_connection_get_is_connected(connection))
+		return;
+
+	if (dbus_connection_get_dispatch_status(connection) == DBUS_DISPATCH_DATA_REMAINS)
+		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, NULL);
+}
+
 int hcid_dbus_init(void)
 {
 	int ret_val;
@@ -1411,6 +1483,12 @@ int hcid_dbus_init(void)
 
 	dbus_connection_set_watch_functions(connection,
 			add_watch, remove_watch, watch_toggled, NULL, NULL);
+
+	dbus_connection_set_timeout_functions(connection,
+			add_timeout, remove_timeout, timeout_toggled, NULL, NULL);
+
+	dbus_connection_set_wakeup_main_function(connection,
+			wakeup_main_cb, NULL, NULL);
 
 	return 0;
 }

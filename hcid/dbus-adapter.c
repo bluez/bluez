@@ -1626,29 +1626,6 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 
 }
 
-static int bonding_timeout_handler(void *data)
-{
-	struct hci_dbus_data *dbus_data = data;
-	int dd = -1;
-
-	if (!dbus_data->bonding)
-		return -1;
-
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0) {
-		error("HCI device open failed: hci%d", dbus_data->dev_id);
-		return -1;
-	}
-
-	hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, HCI_PIN_OR_KEY_MISSING,
-			&dbus_data->bonding->bdaddr);
-
-	if (dd >= 0)
-		close(dd);
-
-	return -1;
-}
-
 static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	char filename[PATH_MAX + 1];
@@ -1761,11 +1738,6 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	dbus_data->bonding = bonding_request_new(&peer_bdaddr);
 	dbus_data->bonding->disconnect = disconnect;
 	dbus_data->bonding->rq = dbus_message_ref(msg);
-        /*
-	 * Create a timeout to disconnect automatically if no passkey is provided
-	 * Broadcom chips doesn't handle timeout for PIN code request command
-	 */
-	dbus_data->bonding->timeout = g_timeout_add(BONDING_TIMEOUT, bonding_timeout_handler, dbus_data);
 
 	dbus_data->requestor_name = strdup(dbus_message_get_sender(msg));
 

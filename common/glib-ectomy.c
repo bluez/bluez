@@ -231,6 +231,11 @@ static void timeout_handlers_prepare(GMainContext *context)
 	context->timeout = (timeout != LONG_MAX ? timeout: -1);
 }
 
+static int timeout_cmp(const void *t1, const void *t2)
+{
+	return t1-t2;
+}
+
 static void timeout_handlers_check(GMainContext *context)
 {
 	struct slist *l = context->ltimeout;
@@ -249,9 +254,17 @@ static void timeout_handlers_check(GMainContext *context)
 			continue;
 
 		if (t->function(t->data)) {
-			/* if false/expired: remove it from the list */
-			context->ltimeout = slist_remove(context->ltimeout, t);
-			free(t);
+			struct slist *match;
+			/* if false/expired: remove it from the list
+			 * Before remove check again in order to cover the situation
+			 * when the handler is removed/freed by the callback function
+			 */
+			match = slist_find(context->ltimeout, t, timeout_cmp);
+			if (match) {
+				t = match->data;
+				context->ltimeout = slist_remove(context->ltimeout, t);
+				free(t);
+			}
 		} else {
 			glong secs, msecs;
 			/* update the next expiration time */

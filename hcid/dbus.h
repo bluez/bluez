@@ -88,7 +88,6 @@ struct bonding_request_info {
 	DBusMessage *rq;
 	DBusMessage *cancel;
 	int disconnect; /* disconnect after finish */
-	int timeout; /* timeout id */
 };
 
 struct active_conn_info {
