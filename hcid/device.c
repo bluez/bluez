@@ -149,9 +149,12 @@ static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
 	if (dev->features[3] & LMP_RSSI_INQ)
 		return 1;
 
-	if (dev->manufacturer == 15 &&
-			dev->hci_rev == 0x09 && dev->lmp_subver == 0x6963)
-		return 1;
+	if (dev->manufacturer == 15) {
+		if (dev->hci_rev == 0x03 && dev->lmp_subver == 0x6963)
+			return 1;
+		if (dev->hci_rev == 0x09 && dev->lmp_subver == 0x6963)
+			return 1;
+	}
 
 	if (dev->manufacturer == 31 &&
 			dev->hci_rev == 0x2005 && dev->lmp_subver == 0x1805)
