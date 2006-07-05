@@ -655,20 +655,24 @@ static void connect_mode(char *svr)
 	close(sk);
 }
 
-static void multi_connect_mode(char *svr)
+static void multi_connect_mode(int argc, char *argv[])
 {
-	while (1) {
-		int i, s;
-		for (i = 0; i < 10; i++) {
-			if (fork()) continue;
+	int i, n, sk;
 
-			/* Child */
-			s = do_connect(svr);
-			usleep(500);
-			close(s);
-			exit(0);
+	while (1) {
+		for (n = 0; n < argc; n++) {
+			for (i = 0; i < count; i++) {
+				if (fork())
+					continue;
+
+				/* Child */
+				sk = do_connect(argv[n]);
+				usleep(500);
+				close(sk);
+				exit(0);
+			}
 		}
-		sleep(2);
+		sleep(4);
 	}
 }
 
@@ -894,7 +898,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case MULTY:
-			multi_connect_mode(argv[optind]);
+			multi_connect_mode(argc - optind, argv + optind);
 			break;
 
 		case CONNECT:
