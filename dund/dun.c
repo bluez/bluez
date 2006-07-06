@@ -182,7 +182,7 @@ static int dun_create_tty(int sk, char *tty, int size)
 	struct sockaddr_rc sa;
 	struct stat st;
 	socklen_t alen;
-	int id, try = 3;
+	int id, try = 30;
 
 	struct rfcomm_dev_req req = {
 		flags:   (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP),
@@ -210,7 +210,7 @@ static int dun_create_tty(int sk, char *tty, int size)
 		if (stat(tty, &st) < 0) {
 			snprintf(tty, size, "/dev/rfcomm%d", id);
 			if (try--) {
-				sleep(1);
+				usleep(100);
 				continue;
 			}
 
