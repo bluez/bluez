@@ -138,8 +138,8 @@ static int hci_str2uint(hci_map *map, char *str, unsigned int *val)
 char *hci_dtypetostr(int type)
 {
 	switch (type) {
-	case HCI_VHCI:
-		return "VHCI";
+	case HCI_VIRTUAL:
+		return "VIRTUAL";
 	case HCI_USB:
 		return "USB";
 	case HCI_PCCARD:
@@ -150,8 +150,10 @@ char *hci_dtypetostr(int type)
 		return "RS232";
 	case HCI_PCI:
 		return "PCI";
+	case HCI_SDIO:
+		return "SDIO";
 	default:
-		return "UKNW";
+		return "UNKNOWN";
 	}
 }
 
