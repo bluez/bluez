@@ -593,6 +593,36 @@ failed:
 	return ret;
 }
 
+int pending_bonding_cmp(const void *p1, const void *p2)
+{
+	const bdaddr_t *peer1 = p1;
+	const bdaddr_t *peer2 = p2;
+
+	if (peer2)
+		return bacmp(peer1, peer2);
+	return -1;
+}
+
+void hcid_dbus_pending_bonding_add(bdaddr_t *sba, bdaddr_t *dba)
+{
+	char path[MAX_PATH_LENGTH], addr[18];
+	struct hci_dbus_data *pdata;
+	bdaddr_t *peer;
+
+	ba2str(sba, addr);
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, hci_devid(addr));
+
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
+		return;
+	}
+
+	peer = malloc(sizeof(bdaddr_t));
+	bacpy(peer, dba);
+	pdata->pending_bondings = slist_append(pdata->pending_bondings, peer);
+}
+
 void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	char path[MAX_PATH_LENGTH], addr[18];
@@ -609,7 +639,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	struct hci_dbus_data *pdata;
 	DBusMessage *message;
 	char *local_addr, *peer_addr;
-	const char *name;
+	struct slist *l;
 	bdaddr_t tmp;
 	char path[MAX_PATH_LENGTH];
 	int id;
@@ -644,12 +674,20 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 
 	send_reply_and_unref(connection, message);
 #endif
-	if (!status) {
-		name = "BondingCreated";
-		message = dev_signal_factory(pdata->dev_id, name,
+
+	l = slist_find(pdata->pending_bondings, peer, pending_bonding_cmp);
+	if (l) {
+		bdaddr_t *p = l->data;
+		pdata->pending_bondings = slist_remove(pdata->pending_bondings, p);
+		free(p);
+
+		if (!status) {
+			const char *name = "BondingCreated";
+			message = dev_signal_factory(pdata->dev_id, name,
 					DBUS_TYPE_STRING, &peer_addr,
 					DBUS_TYPE_INVALID);
-		send_reply_and_unref(connection, message);
+			send_reply_and_unref(connection, message);
+		}
 	}
 
 	if (!pdata->bonding || bacmp(&pdata->bonding->bdaddr, peer))
