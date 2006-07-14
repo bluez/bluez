@@ -154,6 +154,8 @@ static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
 			return 1;
 		if (dev->hci_rev == 0x09 && dev->lmp_subver == 0x6963)
 			return 1;
+		if (dev->hci_rev == 0x00 && dev->lmp_subver == 0x6965)
+			return 1;
 	}
 
 	if (dev->manufacturer == 31 &&
