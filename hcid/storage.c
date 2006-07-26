@@ -43,6 +43,15 @@
 #include "textfile.h"
 #include "hcid.h"
 
+static int create_filename(char *buf, size_t size, bdaddr_t *bdaddr, char *name)
+{
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+
+	return snprintf(buf, size, "%s/%s/%s", STORAGEDIR, addr, name);
+}
+
 int write_discoverable_timeout(const char *address, int timeout)
 {
 	char filename[PATH_MAX + 1], str[32];
@@ -78,10 +87,9 @@ int read_discoverable_timeout(const char *address, int *timeout)
 
 int write_device_mode(bdaddr_t *bdaddr, const char *mode)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1];
 
-	ba2str(bdaddr, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, bdaddr, "config");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -90,10 +98,9 @@ int write_device_mode(bdaddr_t *bdaddr, const char *mode)
 
 int read_device_mode(bdaddr_t *bdaddr, char *mode, int length)
 {
-	char filename[PATH_MAX + 1], addr[18], *str;
+	char filename[PATH_MAX + 1], *str;
 
-	ba2str(bdaddr, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, bdaddr, "config");
 
 	str = textfile_get(filename, "mode");
 	if (!str)
@@ -109,7 +116,7 @@ int read_device_mode(bdaddr_t *bdaddr, char *mode, int length)
 
 int write_local_name(bdaddr_t *bdaddr, char *name)
 {
-	char filename[PATH_MAX + 1], addr[18], str[249];
+	char filename[PATH_MAX + 1], str[249];
 	int i;
 
 	memset(str, 0, sizeof(str));
@@ -119,8 +126,7 @@ int write_local_name(bdaddr_t *bdaddr, char *name)
 		else
 			str[i] = name[i];
 
-	ba2str(bdaddr, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, bdaddr, "config");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -129,11 +135,10 @@ int write_local_name(bdaddr_t *bdaddr, char *name)
 
 int read_local_name(bdaddr_t *bdaddr, char *name)
 {
-	char filename[PATH_MAX + 1], addr[18], *str;
+	char filename[PATH_MAX + 1], *str;
 	int len;
 
-	ba2str(bdaddr, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, bdaddr, "config");
 
 	str = textfile_get(filename, "name");
 	if (!str)
@@ -151,12 +156,11 @@ int read_local_name(bdaddr_t *bdaddr, char *name)
 
 int write_local_class(bdaddr_t *bdaddr, uint8_t *class)
 {
-	char filename[PATH_MAX + 1], addr[18], str[9];
+	char filename[PATH_MAX + 1], str[9];
 
 	sprintf(str, "0x%2.2x%2.2x%2.2x", class[2], class[1], class[0]);
 
-	ba2str(bdaddr, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, bdaddr, "config");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -165,11 +169,10 @@ int write_local_class(bdaddr_t *bdaddr, uint8_t *class)
 
 int read_local_class(bdaddr_t *bdaddr, uint8_t *class)
 {
-	char filename[PATH_MAX + 1], addr[18], tmp[3], *str;
+	char filename[PATH_MAX + 1], tmp[3], *str;
 	int i;
 
-	ba2str(bdaddr, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, bdaddr, "config");
 
 	str = textfile_get(filename, "class");
 	if (!str)
