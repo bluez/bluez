@@ -1997,7 +1997,7 @@ static DBusHandlerResult handle_dev_list_bondings_req(DBusConnection *conn, DBus
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "linkkeys");
 
 	reply = dbus_message_new_method_return(msg);
 

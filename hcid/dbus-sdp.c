@@ -852,7 +852,7 @@ static DBusHandlerResult get_identifiers(DBusConnection *conn,
 		return error_service_search_in_progress(conn, msg);
 
 	/* check if it is a unknown address */
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
 
 	str = textfile_get(filename, dst);
 	if (!str)
