@@ -2624,9 +2624,10 @@ static inline void sco_dump(int level, struct frame *frm)
 {
 	hci_sco_hdr *hdr = (void *) frm->ptr;
 	uint16_t handle = btohs(hdr->handle);
+	int len;
 
 	if (frm->audio_fd > fileno(stderr))
-		write(frm->audio_fd, frm->ptr + HCI_SCO_HDR_SIZE, hdr->dlen);
+		len = write(frm->audio_fd, frm->ptr + HCI_SCO_HDR_SIZE, hdr->dlen);
 
 	if (!p_filter(FILT_SCO)) {
 		p_indent(level, frm);

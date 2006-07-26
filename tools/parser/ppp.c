@@ -167,7 +167,7 @@ static inline void unslip_frame(int level, struct frame *frm, int len)
 void ppp_dump(int level, struct frame *frm)
 {
 	void *ptr, *end;
-	int len, pos = 0;
+	int err, len, pos = 0;
 
 	if (frm->pppdump_fd > fileno(stderr)) {
 		unsigned char id;
@@ -175,13 +175,13 @@ void ppp_dump(int level, struct frame *frm)
 		uint32_t ts = htonl(frm->ts.tv_sec & 0xffffffff);
 
 		id = 0x07;
-		write(frm->pppdump_fd, &id, 1);
-		write(frm->pppdump_fd, &ts, 4);
+		err = write(frm->pppdump_fd, &id, 1);
+		err = write(frm->pppdump_fd, &ts, 4);
 
 		id = frm->in ? 0x02 : 0x01;
-		write(frm->pppdump_fd, &id, 1);
-		write(frm->pppdump_fd, &len, 2);
-		write(frm->pppdump_fd, frm->ptr, frm->len);
+		err = write(frm->pppdump_fd, &id, 1);
+		err = write(frm->pppdump_fd, &len, 2);
+		err = write(frm->pppdump_fd, frm->ptr, frm->len);
 	}
 
 	if (!ppp_traffic) {
