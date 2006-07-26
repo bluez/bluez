@@ -464,6 +464,7 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 	DBusMessage *reply;
 	DBusError err;
 	uint32_t timeout;
+	bdaddr_t bdaddr;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -490,7 +491,8 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 
 	dbus_data->discoverable_timeout = timeout;
 
-	write_discoverable_timeout(dbus_data->address, timeout);
+	str2ba(dbus_data->address, &bdaddr);
+	write_discoverable_timeout(&bdaddr, timeout);
 
 	return send_reply_and_unref(conn, reply);
 }

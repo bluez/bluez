@@ -52,24 +52,24 @@ static int create_filename(char *buf, size_t size, bdaddr_t *bdaddr, char *name)
 	return snprintf(buf, size, "%s/%s/%s", STORAGEDIR, addr, name);
 }
 
-int write_discoverable_timeout(const char *address, int timeout)
+int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout)
 {
 	char filename[PATH_MAX + 1], str[32];
 
 	snprintf(str, sizeof(str), "%d", timeout);
 
-	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, address);
+	create_filename(filename, PATH_MAX, bdaddr, "config");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	return textfile_put(filename, "discovto", str);
 }
 
-int read_discoverable_timeout(const char *address, int *timeout)
+int read_discoverable_timeout(bdaddr_t *bdaddr, int *timeout)
 {
 	char filename[PATH_MAX + 1], *str;
 
-	snprintf(filename, PATH_MAX, "%s/%s/config", STORAGEDIR, address);
+	create_filename(filename, PATH_MAX, bdaddr, "config");
 
 	str = textfile_get(filename, "discovto");
 	if (!str)
@@ -193,8 +193,7 @@ int write_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 {
 	char filename[PATH_MAX + 1], addr[18], str[9];
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/classes", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "classes");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -208,8 +207,7 @@ int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class)
 {
 	char filename[PATH_MAX + 1], addr[18], *str;
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/classes", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "classes");
 
 	ba2str(peer, addr);
 
@@ -239,8 +237,7 @@ int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 		else
 			str[i] = name[i];
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "names");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -253,8 +250,7 @@ int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	char filename[PATH_MAX + 1], addr[18], *str;
 	int len;
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "names");
 
 	ba2str(peer, addr);
 	str = textfile_get(filename, addr);
@@ -278,8 +274,7 @@ int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, u
 	memset(str, 0, sizeof(str));
 	sprintf(str, "%d %d %d", manufacturer, lmp_ver, lmp_subver);
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "manufacturers");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -296,8 +291,7 @@ int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features
 	for (i = 0; i < 8; i++)
 		sprintf(str + (i * 2), "%2.2X", features[i]);
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "features");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -312,8 +306,7 @@ int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
 	memset(str, 0, sizeof(str));
 	strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S %Z", tm);
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "lastseen");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -328,8 +321,7 @@ int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
 	memset(str, 0, sizeof(str));
 	strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S %Z", tm);
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/lastused", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "lastused");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -347,8 +339,7 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type
 		sprintf(str + (i * 2), "%2.2X", key[i]);
 	sprintf(str + 32, " %d %d", type, length);
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "linkkeys");
 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
@@ -371,8 +362,7 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key)
 	char filename[PATH_MAX + 1], addr[18], tmp[3], *str;
 	int i;
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "linkkeys");
 
 	ba2str(peer, addr);
 	str = textfile_get(filename, addr);
@@ -395,8 +385,7 @@ int read_pin_length(bdaddr_t *local, bdaddr_t *peer)
 	char filename[PATH_MAX + 1], addr[18], *str;
 	int len;
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "linkkeys");
 
 	ba2str(peer, addr);
 	str = textfile_get(filename, addr);
@@ -420,8 +409,7 @@ int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin)
 	char filename[PATH_MAX + 1], addr[18], *str;
 	int len;
 
-	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/pincodes", STORAGEDIR, addr);
+	create_filename(filename, PATH_MAX, local, "pincodes");
 
 	ba2str(peer, addr);
 	str = textfile_get(filename, addr);

@@ -180,8 +180,8 @@ int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
 
 int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr);
 
-int write_discoverable_timeout(const char *address, int timeout);
-int read_discoverable_timeout(const char *address, int *timeout);
+int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout);
+int read_discoverable_timeout(bdaddr_t *bdaddr, int *timeout);
 int write_device_mode(bdaddr_t *bdaddr, const char *mode);
 int read_device_mode(bdaddr_t *bdaddr, char *mode, int length);
 int write_local_name(bdaddr_t *bdaddr, char *name);

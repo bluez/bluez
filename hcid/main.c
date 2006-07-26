@@ -151,9 +151,9 @@ static struct device_opts *get_device_opts(int sock, int hdev)
 int get_discoverable_timeout(int hdev)
 {
 	int sock, timeout;
-	char address[18];
 	struct device_opts *device_opts = NULL;
 	struct hci_dev_info di;
+	char addr[18];
 
 	if (hdev < 0)
 		return HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
@@ -163,19 +163,18 @@ int get_discoverable_timeout(int hdev)
 		goto no_address;
 
 	di.dev_id = hdev;
-	if (!ioctl(sock, HCIGETDEVINFO, (void *) &di))
-		ba2str(&di.bdaddr, address);
-	else {
+	if (ioctl(sock, HCIGETDEVINFO, (void *) &di) < 0) {
 		close(sock);
 		goto no_address;
 	}
 
 	close(sock);
 
-	if (!read_discoverable_timeout(address, &timeout))
+	if (read_discoverable_timeout(&di.bdaddr, &timeout) == 0)
 		return timeout;
 
-	device_opts = find_device_opts(address);
+	ba2str(&di.bdaddr, addr);
+	device_opts = find_device_opts(addr);
 
 no_address:
 	if (!device_opts) {
