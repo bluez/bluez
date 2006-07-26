@@ -1029,7 +1029,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	if (l)
 		goto failed;
 
-	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, local_addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "names");
 	name = textfile_get(filename, peer_addr);
 	if (name) {
 		signal_name = dev_signal_factory(pdata->dev_id, "RemoteNameUpdated",

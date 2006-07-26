@@ -582,8 +582,7 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 	baswap(&tmp, sba); local_addr = batostr(&tmp);
 	baswap(&tmp, &evt->bdaddr); peer_addr = batostr(&tmp);
 
-	snprintf(filename, sizeof(filename), "%s/%s/manufacturers",
-			STORAGEDIR, local_addr);
+	create_name(filename, sizeof(filename), STORAGEDIR, local_addr, "manufacturers");
 
 	str = textfile_get(filename, peer_addr);
 	if (!str) {

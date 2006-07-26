@@ -444,7 +444,7 @@ int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_
 	ASSERT_DEV_ID;
 
 	ba2str(&devices[dev_id].bdaddr, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/aliases", STORAGEDIR, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "aliases");
 
 	ba2str(bdaddr, addr);
 
@@ -466,7 +466,7 @@ int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
 	ASSERT_DEV_ID;
 
 	ba2str(&devices[dev_id].bdaddr, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/aliases", STORAGEDIR, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "aliases");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 

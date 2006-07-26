@@ -976,7 +976,7 @@ static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn,
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "manufacturers");
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -995,7 +995,7 @@ static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn,
 	/* default value */
 	snprintf(info, 64, "Bluetooth %s", str_ver);
 
-	snprintf(filename, PATH_MAX, "%s/%s/features", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "features");
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1054,7 +1054,7 @@ static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "manufacturers");
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1097,7 +1097,7 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	snprintf(filename, PATH_MAX, "%s/%s/manufacturers", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "manufacturers");
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1301,7 +1301,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 		return error_invalid_arguments(conn, msg);
 
 	/* check if it is a unknown address */
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
 
 	str = textfile_get(filename, peer_addr);
 
@@ -1311,7 +1311,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	free(str);
 
 	/* check if it is in the cache */
-	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "names");
 
 	str = textfile_get(filename, peer_addr);
 
@@ -1411,7 +1411,7 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 	}
 
 	/* check if it is a unknown address */
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
 
 	find_ptr = textfile_get(filename, addr_ptr);
 
@@ -1518,7 +1518,7 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1560,7 +1560,7 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	snprintf(filename, PATH_MAX, "%s/%s/lastused", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastused");
 
 	str = textfile_get(filename, addr_ptr);
 	if (!str)
@@ -1676,7 +1676,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		return error_discover_in_progress(conn, msg); 
 
 	/* check if a link key already exists */
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "linkkeys");
 
 	str = textfile_get(filename, peer_addr);
 	if (str) {
@@ -1685,7 +1685,8 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	}
 
 	/* check if the address belongs to the last seen cache */
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
+
 	str = textfile_get(filename, peer_addr);
 	if (!str)
 		return error_unknown_address(conn, msg);
@@ -1887,7 +1888,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "linkkeys");
 
 	/* textfile_del doesn't return an error when the key is not found */
 	str = textfile_get(filename, addr_ptr);
@@ -1961,7 +1962,7 @@ static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMe
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, dbus_data->address);
+	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "linkkeys");
 
 	str = textfile_get(filename, addr_ptr);
 	if (str) {
