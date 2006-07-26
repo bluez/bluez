@@ -62,7 +62,7 @@ static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	sdp_pdu_hdr_t *hdr;
 	gsize len;
 	GIOError err;
-	int sk;
+	int sk, ret;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		return FALSE;
@@ -81,7 +81,7 @@ static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	write(sk, ptr, 7);
+	ret = write(sk, ptr, 7);
 
 	return TRUE;
 }
