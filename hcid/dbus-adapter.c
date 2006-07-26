@@ -878,21 +878,15 @@ static DBusHandlerResult handle_dev_get_name_req(DBusConnection *conn, DBusMessa
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
 	char str[249], *str_ptr = str;
-	int err = -1;
-	struct hci_dev_info di;
+	int err;
+	bdaddr_t ba;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	/* If the device is DOWN, try to read the name from storage file */
-	if (hci_devinfo(dbus_data->dev_id, &di) == 0 && !hci_test_bit(HCI_UP, &di.flags)) {
-		bdaddr_t ba;
+	str2ba(dbus_data->address, &ba);
 
-		str2ba(dbus_data->address, &ba);
-
-		err = read_local_name(&ba, str);
-	}
-
+	err = read_local_name(&ba, str);
 	if (err < 0)
 		err = get_device_name(dbus_data->dev_id, str, sizeof(str));
 
