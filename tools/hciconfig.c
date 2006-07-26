@@ -734,7 +734,7 @@ static int get_link_key(const bdaddr_t *local, const bdaddr_t *peer, uint8_t *ke
 	int i;
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/linkkeys", STORAGEDIR, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "linkkeys");
 
 	ba2str(peer, addr);
 	str = textfile_get(filename, addr);

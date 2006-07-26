@@ -43,13 +43,13 @@
 #include "textfile.h"
 #include "hcid.h"
 
-static int create_filename(char *buf, size_t size, bdaddr_t *bdaddr, char *name)
+static inline int create_filename(char *buf, size_t size, bdaddr_t *bdaddr, const char *name)
 {
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 
-	return snprintf(buf, size, "%s/%s/%s", STORAGEDIR, addr, name);
+	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
 int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout)

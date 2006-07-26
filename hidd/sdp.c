@@ -76,7 +76,7 @@ static int store_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hi
 	int i, size;
 
 	ba2str(src, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/hidd", STORAGEDIR, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "hidd");
 
 	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9 + strlen(req->name) + 2;
 	str = malloc(size);
@@ -117,7 +117,7 @@ int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp
 	memset(desc, 0, 4096);
 
 	ba2str(src, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/hidd", STORAGEDIR, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "hidd");
 
 	ba2str(dst, addr);
 	str = textfile_get(filename, addr);

@@ -281,7 +281,7 @@ static char *get_device_name(const bdaddr_t *local, const bdaddr_t *peer)
 	char filename[PATH_MAX + 1], addr[18];
 
 	ba2str(local, addr);
-	snprintf(filename, PATH_MAX, "%s/%s/names", STORAGEDIR, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "names");
 
 	ba2str(peer, addr);
 	return textfile_get(filename, addr);
