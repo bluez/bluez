@@ -26,6 +26,7 @@
 
 int create_dirs(const char *filename, const mode_t mode);
 int create_file(const char *filename, const mode_t mode);
+int create_name(char *buf, size_t size, char *address, char *name);
 
 int textfile_put(const char *pathname, const char *key, const char *value);
 int textfile_del(const char *pathname, const char *key);

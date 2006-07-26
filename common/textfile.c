@@ -88,6 +88,11 @@ int create_file(const char *filename, const mode_t mode)
 	return 0;
 }
 
+int create_name(char *buf, size_t size, char *address, char *name)
+{
+	return snprintf(buf, size, "%s/%s/%s", STORAGEDIR, address, name);
+}
+
 static inline char *find_key(char *map, const char *key, size_t len)
 {
 	char *off = strstr(map, key);
