@@ -128,6 +128,7 @@ static const char *peripheral_minor_cls[] = {
 	"combo"
 };
 
+#if 0
 static const char *peripheral_2_minor_cls[] = {
 	"uncategorized",
 	"joystick",
@@ -137,6 +138,7 @@ static const char *peripheral_2_minor_cls[] = {
 	"digitizer tablet",
 	"card reader"
 };
+#endif
 
 static const char *imaging_minor_cls[] = {
 	"display",
