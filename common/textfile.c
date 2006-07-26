@@ -182,10 +182,14 @@ static int write_key(const char *pathname, const char *key, const char *value)
 	len = size - (end - map);
 	if (!len) {
 		munmap(map, size);
-		ftruncate(fd, base);
+		if (ftruncate(fd, base) < 0) {
+			err = errno;
+			goto unlock;
+		}
 		pos = lseek(fd, base, SEEK_SET);
 		if (value)
 			err = write_key_value(fd, key, value);
+
 		goto unlock;
 	}
 
@@ -203,12 +207,16 @@ static int write_key(const char *pathname, const char *key, const char *value)
 	memcpy(str, end, len);
 
 	munmap(map, size);
-	ftruncate(fd, base);
+	if (ftruncate(fd, base) < 0) {
+		err = errno;
+		goto unlock;
+	}
 	pos = lseek(fd, base, SEEK_SET);
 	if (value)
 		err = write_key_value(fd, key, value);
 
-	write(fd, str, len);
+	if (write(fd, str, len) < 0)
+		err = errno;
 
 	free(str);
 
