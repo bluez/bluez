@@ -166,7 +166,8 @@ static struct usb_dev_handle *open_device(char *device, struct dfu_suffix *suffi
 		printf("\rSelect device (abort with 0): ");
 		fflush(stdout);
 		memset(str, 0, sizeof(str));
-		fgets(str, sizeof(str) - 1, stdin);
+		if (!fgets(str, sizeof(str) - 1, stdin))
+			continue;
 		sel = atoi(str);
 	} while (!isdigit(str[0]) || sel < 0 || sel > num );
 
@@ -666,8 +667,12 @@ static void cmd_archive(char *device, int argc, char **argv)
 		for (i = 0; i < len; i++)
 			crc = crc32_byte(crc, buf[i]);
 
-		if (len > 0)
-			write(fd, buf, len);
+		if (len > 0) {
+			if (write(fd, buf, len) < 0) {
+				printf("\rCan't write next block: %s (%d)\n", strerror(errno), errno);
+				goto done;
+			}
+		}
 
 		n++;
 		if (len != 1023)
@@ -687,7 +692,8 @@ static void cmd_archive(char *device, int argc, char **argv)
 
 	suffix.dwCRC = cpu_to_le32(crc);
 
-	write(fd, &suffix, DFU_SUFFIX_SIZE);
+	if (write(fd, &suffix, DFU_SUFFIX_SIZE) < 0)
+		printf("Can't write suffix block: %s (%d)\n", strerror(errno), errno);
 
 done:
 	close(fd);

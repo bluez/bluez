@@ -638,8 +638,8 @@ int main(int argc, char *argv[])
 	uint8_t subclass = 0x00;
 	char addr[18];
 	int log_option = LOG_NDELAY | LOG_PID;
-	int opt, fd, ctl, csk, isk;
-	int mode = SHOW, daemon = 1, nosdp = 0, nocheck = 0, bootonly = 0;
+	int opt, ctl, csk, isk;
+	int mode = SHOW, detach = 1, nosdp = 0, nocheck = 0, bootonly = 0;
 	int fakehid = 1, encrypt = 0, timeout = 30, lm = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
@@ -653,7 +653,7 @@ int main(int argc, char *argv[])
 				str2ba(optarg, &bdaddr);
 			break;
 		case 'n':
-			daemon = 0;
+			detach = 0;
 			break;
 		case 't':
 			timeout = atoi(optarg);
@@ -760,16 +760,11 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-	if (daemon) {
-		if (fork())
-			exit(0);
-
-		fd = open("/dev/null", O_RDWR);
-		dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
-		close(fd);
-
-		setsid();
-		chdir("/");
+        if (detach) {
+		if (daemon(0, 0)) {
+			perror("Can't start daemon");
+        	        exit(1);
+		}
 	} else
 		log_option |= LOG_PERROR;
 

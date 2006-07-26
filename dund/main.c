@@ -598,18 +598,9 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
 
-	if (detach) {
-		int fd;
-
-		if (fork()) exit(0);
-
-		/* Direct stdin,stdout,stderr to '/dev/null' */
-		fd = open("/dev/null", O_RDWR);
-		dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
-		close(fd);
-
-		setsid();
-		chdir("/");
+	if (detach && daemon(0, 0)) {
+		perror("Can't start daemon");
+		exit(1);
 	}
 
 	openlog("dund", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);

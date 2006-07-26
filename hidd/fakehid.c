@@ -47,6 +47,7 @@
 static void event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
 	struct uinput_event event;
+	int len;
 
 	if (fd <= fileno(stderr))
 		return;
@@ -56,7 +57,7 @@ static void event(int fd, uint16_t type, uint16_t code, int32_t value)
 	event.code = code;
 	event.value = value;
 
-	write(fd, &event, sizeof(event));
+	len = write(fd, &event, sizeof(event));
 }
 
 static void func(int fd)

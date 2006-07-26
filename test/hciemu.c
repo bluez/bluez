@@ -219,6 +219,7 @@ static int write_snoop(int fd, int type, int incoming, unsigned char *buf, int l
 	struct timeval tv;
 	uint32_t size = len;
 	uint64_t ts;
+	int err;
 
 	if (fd < 0)
 		return -1;
@@ -236,8 +237,8 @@ static int write_snoop(int fd, int type, int incoming, unsigned char *buf, int l
 	if (type == HCI_COMMAND_PKT || type == HCI_EVENT_PKT)
 		pkt.flags |= ntohl(0x02);
 
-	write(fd, &pkt, BTSNOOP_PKT_SIZE);
-	write(fd, buf, size);
+	err = write(fd, &pkt, BTSNOOP_PKT_SIZE);
+	err = write(fd, buf, size);
 
 	return 0;
 }
@@ -872,7 +873,7 @@ static gboolean io_acl_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 	unsigned char buf[HCI_MAX_FRAME_SIZE], *ptr;
 	hci_acl_hdr *ah;
 	uint16_t flags;
-	int len, fd;
+	int fd, err, len;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -907,7 +908,7 @@ static gboolean io_acl_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	write_snoop(vdev.dd, HCI_ACLDATA_PKT, 1, buf, len);
 
-	write(vdev.fd, buf, len);
+	err = write(vdev.fd, buf, len);
 
 	return TRUE;
 }
@@ -1137,7 +1138,7 @@ static int run_proxy(int fd, int dev, bdaddr_t *bdaddr)
 			len = read(fd, buf, sizeof(buf));
 			if (len > 0) {
 				rewrite_bdaddr(buf, len, bdaddr);
-				write(dd, buf, len);
+				err = write(dd, buf, len);
 			}
 		}
 
@@ -1145,7 +1146,7 @@ static int run_proxy(int fd, int dev, bdaddr_t *bdaddr)
 			len = read(dd, buf, sizeof(buf));
 			if (len > 0) {
 				rewrite_bdaddr(buf, len, bdaddr);
-				write(fd, buf, len);
+				err = write(fd, buf, len);
 			}
 		}
 	}
@@ -1185,12 +1186,9 @@ int main(int argc, char *argv[])
 	GIOChannel *dev_io;
 	char *device = NULL, *snoop = NULL;
 	bdaddr_t bdaddr;
-	int fd, dd, opt, daemon, dofork, dev = -1;
+	int fd, dd, opt, detach = 1, dev = -1;
 
 	bacpy(&bdaddr, BDADDR_ANY);
-
-	/* Configure default settings */
-	daemon = 1; dofork = 1;
 
 	while ((opt=getopt_long(argc, argv, "d:b:s:nh", main_options, NULL)) != EOF) {
 		switch(opt) {
@@ -1207,7 +1205,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'n':
-			daemon = 0;
+			detach = 0;
 			break;
 
 		case 'h':
@@ -1237,18 +1235,11 @@ int main(int argc, char *argv[])
 			exit(1);
 	}
 
-	if (daemon) {
-		if (dofork && fork())
-			exit(0);
-
-		/* Direct stdin,stdout,stderr to '/dev/null' */
-		fd = open("/dev/null", O_RDWR);
-		dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
-		close(fd);
-
-		setsid();
-
-		chdir("/");
+	if (detach) {
+		if (daemon(0, 0)) {
+			perror("Can't start daemon");
+			exit(1);
+		}
 	}
 
 	/* Start logging to syslog and stderr */

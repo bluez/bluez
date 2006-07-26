@@ -38,7 +38,7 @@ int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
 {
 	struct sockaddr_rc addr;
 	unsigned char buf[2048];
-	int i, sk, len;
+	int i, sk, err, len;
 
 	if ((sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) < 0) {
 		perror("ERROR: Can't create socket");
@@ -87,7 +87,7 @@ int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
 		}
 
 		while ((len = read(fd, buf, sizeof(buf))) > 0) {
-			write(sk, buf, len);
+			err = write(sk, buf, len);
 		}
 
 	}

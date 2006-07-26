@@ -110,7 +110,7 @@ static snd_pcm_sframes_t a2dp_transfer(snd_pcm_ioplug_t *io,
 {
 	snd_pcm_a2dp_t *a2dp = io->private_data;
 	unsigned char *buf;
-	int len;
+	int err, len;
 
 	buf = (unsigned char *) areas->addr + (areas->first + areas->step * offset) / 8;
 
@@ -119,7 +119,7 @@ static snd_pcm_sframes_t a2dp_transfer(snd_pcm_ioplug_t *io,
 		return len;
 
 	if (a2dp->len + a2dp->sbc.len > sizeof(a2dp->buf)) {
-		write(a2dp->sk, a2dp->buf, a2dp->len);
+		err = write(a2dp->sk, a2dp->buf, a2dp->len);
 		a2dp->len = 0;
 	}
 

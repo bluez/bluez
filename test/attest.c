@@ -45,7 +45,7 @@ static int at_command(int fd, char *cmd, int to)
 	char buf[1024];
 	int sel, len, i, n;
 
-	write(fd, cmd, strlen(cmd));
+	len = write(fd, cmd, strlen(cmd));
 
 	for (i = 0; i < 100; i++) {
 

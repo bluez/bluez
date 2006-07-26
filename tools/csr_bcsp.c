@@ -136,7 +136,8 @@ int csr_open_bcsp(char *device)
 
 void put_uart(uint8_t ch)
 {
-	write(fd, &ch, 1);
+	if (write(fd, &ch, 1) < 0)
+		fprintf(stderr, "UART write error\n");
 }
 
 uint8_t get_uart(uint8_t *ch)

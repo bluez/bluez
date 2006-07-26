@@ -443,7 +443,7 @@ static int write_pidfile(void)
 		if (fd == -1) {
 			/* Try to open the file for read. */
 			fd = open(pidfile, O_RDONLY);
-			if(fd == -1) {
+			if (fd < 0) {
 				syslog(LOG_ERR, "Could not read old pidfile: %s(%d)",
 							strerror(errno), errno);
 				return -1;
@@ -464,7 +464,8 @@ static int write_pidfile(void)
 			}
 
 			pid = 0;
-			fscanf(f, "%d", &pid);
+			if (fscanf(f, "%d", &pid) != 1)
+				pid = 0;
 			fclose(f);
 
 			if (pid) {
@@ -706,19 +707,9 @@ int main(int argc, char *argv[])
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT,  &sa, NULL);
 
-	if (detach) {
-		if (fork())
-			exit(0);
-
-		/* Direct stdin,stdout,stderr to '/dev/null' */
-		{
-			int fd = open("/dev/null", O_RDWR);
-			dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
-			close(fd);
-		}
-
-		setsid();
-		chdir("/");
+	if (detach && daemon(0, 0)) {
+		perror("Can't start daemon");
+		exit(1);
 	}
 
 	openlog("pand", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);

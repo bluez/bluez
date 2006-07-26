@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 
 	char *filename;
 	mode_t filemode;
-	int mode = 0;
+	int err, mode = 0;
 	int dd, rd, sd, fd;
 	uint16_t sco_handle, sco_mtu, vs;
 
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "SCO audio channel connected (handle %d, mtu %d)\n", sco_handle, sco_mtu);
 
 	if (mode == RECORD)
-		write(rd, "RING\r\n", 6);
+		err = write(rd, "RING\r\n", 6);
 
 	maxfd = (rd > sd) ? rd : sd;
 

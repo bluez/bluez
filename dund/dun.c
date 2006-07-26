@@ -98,7 +98,9 @@ static int uses_rfcomm(char *path, char *dev)
 	dir = opendir(path);
 	if (!dir)
 		return 0;
-	chdir(path);
+
+	if (chdir(path) < 0)
+		return 0;
 
 	while ((de = readdir(dir)) != NULL) {
 		char link[PATH_MAX + 1];
@@ -109,7 +111,9 @@ static int uses_rfcomm(char *path, char *dev)
 				return 1;
 		}
 	}
+
 	closedir(dir);
+
 	return 0;
 }
 
