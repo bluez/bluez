@@ -255,6 +255,7 @@ enum {
 
 #define LMP_EXT_INQ	0x01
 
+#define LMP_LSTO	0x01
 #define LMP_EXT_FEAT	0x80
 
 /* Link policies */

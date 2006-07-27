@@ -605,7 +605,7 @@ static hci_map lmp_features_map[8][9] = {
 		{ NULL }
 	},
 	{	/* Byte 7 */
-		{ "<no. 56>",		0x01		},	/* Bit 1 */
+		{ "<LSTO>",		LMP_LSTO	},	/* Bit 1 */
 		{ "<no. 57>",		0x02		},	/* Bit 1 */
 		{ "<no. 58>",		0x04		},	/* Bit 2 */
 		{ "<no. 59>",		0x08		},	/* Bit 3 */
