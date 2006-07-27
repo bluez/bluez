@@ -337,10 +337,11 @@ static void bcsp_tshy_sig_alarm(int sig)
 {
 	static int retries=0;
 	unsigned char bcsp_sync_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xda,0xdc,0xed,0xed,0xc0};
+	int len;
 
 	if (retries < 10) {
 		retries++;
-		write(serial_fd, &bcsp_sync_pkt, 10);
+		len = write(serial_fd, &bcsp_sync_pkt, 10);
 		alarm(1);
 		return;
 	}
@@ -354,10 +355,11 @@ static void bcsp_tconf_sig_alarm(int sig)
 {
 	static int retries=0;
 	unsigned char bcsp_conf_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xad,0xef,0xac,0xed,0xc0};
+	int len;
 
 	if (retries < 10){
 		retries++;
-		write(serial_fd, &bcsp_conf_pkt, 10);
+		len = write(serial_fd, &bcsp_conf_pkt, 10);
 		alarm(1);
 		return;
 	}
@@ -377,6 +379,7 @@ static int bcsp(int fd, struct uart_t *u, struct termios *ti)
 		bcspconf[4]     = {0xad,0xef,0xac,0xed},
 		bcspconfresp[4] = {0xde,0xad,0xd0,0xd0};
 	struct sigaction sa;
+	int len;
 
 	if (set_speed(fd, ti, u->speed) < 0) {
 		perror("Can't set default baud rate");
@@ -433,7 +436,7 @@ static int bcsp(int fd, struct uart_t *u, struct termios *ti)
 		}
 
 		if (!memcmp(bcspp, bcspsync, 4)) {
-			write(fd, &bcsp_sync_resp_pkt,10);
+			len = write(fd, &bcsp_sync_resp_pkt,10);
 		} else if (!memcmp(bcspp, bcspsyncresp, 4))
 			break;
 	}
@@ -477,9 +480,9 @@ static int bcsp(int fd, struct uart_t *u, struct termios *ti)
 		}
 
 		if (!memcmp(bcspp, bcspsync, 4))
-			write(fd, &bcsp_sync_resp_pkt, 10);
+			len = write(fd, &bcsp_sync_resp_pkt, 10);
 		else if (!memcmp(bcspp, bcspconf, 4))
-			write(fd, &bcsp_conf_resp_pkt, 10);
+			len = write(fd, &bcsp_conf_resp_pkt, 10);
 		else if (!memcmp(bcspp, bcspconfresp,  4))
 			break;
 	}
