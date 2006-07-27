@@ -33,8 +33,7 @@ namespace Bluetooth
 		[Method] public abstract string FindAdapter(string pattern);
 	}
 
-	public delegate void RemoteDeviceFoundHandler(string address, Int16 rssi,
-				string major, string minor, string[] services);
+	public delegate void RemoteDeviceFoundHandler(string address, Int class, Int16 rssi);
 	public delegate void RemoteNameUpdatedHandler(string address, string name);
 
 	[Interface("org.bluez.Adapter")]
