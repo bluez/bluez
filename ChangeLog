@@ -1,3 +1,8 @@
+ver 3.2
+	Fix handling of SDP strings.
+	Add adapter type for SDIO cards.
+	Add features bit for link supervision timeout.
+
 ver 3.1:
 	Add missing placeholders for feature bits.
 
