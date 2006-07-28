@@ -189,6 +189,7 @@ int start_device(uint16_t dev_id)
 	if (hci_read_local_version(dd, &ver, 1000) < 0) {
 		error("Can't read version info for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
+		hci_close_dev(dd);
 		return -errno;
 	}
 
@@ -200,19 +201,24 @@ int start_device(uint16_t dev_id)
 	if (hci_read_local_features(dd, features, 1000) < 0) {
 		error("Can't read features for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
+		hci_close_dev(dd);
 		return -errno;
 	}
 
 	memcpy(dev->features, features, 8);
 
 	inqmode = get_inquiry_mode(dev);
+	if (inqmode < 1)
+		goto done;
 
 	if (hci_write_inquiry_mode(dd, inqmode, 1000) < 0) {
 		error("Can't write inquiry mode for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
+		hci_close_dev(dd);
 		return -errno;
 	}
 
+done:
 	hci_close_dev(dd);
 
 	info("Device hci%d has been activated", dev_id);
