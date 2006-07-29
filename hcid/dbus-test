@@ -186,7 +186,7 @@ class Tester:
     @dbus.decorators.explicitly_pass_message
     def mgr_signal_handler(*args, **keywords):
         dbus_message = keywords["dbus_message"]
-        print '%s: ' % dbus_messsage.get_member()
+        print '%s: ' % dbus_message.get_member()
         for arg in args[1:]:
             print '%s   ' % arg,
         print
