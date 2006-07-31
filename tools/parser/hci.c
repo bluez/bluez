@@ -50,7 +50,7 @@ static inline uint16_t get_manufacturer(void)
 	return (manufacturer == DEFAULT_COMPID ? parser.defcompid : manufacturer);
 }
 
-#define EVENT_NUM 47
+#define EVENT_NUM 55
 static char *event_str[EVENT_NUM + 1] = {
 	"Unknown",
 	"Inquiry Complete",
@@ -100,6 +100,14 @@ static char *event_str[EVENT_NUM + 1] = {
 	"Synchronous Connect Changed",
 	"Sniff Subrate",
 	"Extended Inquiry Result",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Link Supervision Timeout Change",
 };
 
 #define CMD_LINKCTL_NUM 41
@@ -962,7 +970,7 @@ static inline void write_link_supervision_timeout_dump(int level, struct frame *
 
 	p_indent(level, frm);
 	printf("handle %d timeout %d\n",
-				btohs(cp->handle), btohs(cp->link_sup_to));
+				btohs(cp->handle), btohs(cp->timeout));
 }
 
 static inline void write_ext_inquiry_response_dump(int level, struct frame *frm)
@@ -1487,7 +1495,7 @@ static inline void read_link_supervision_timeout_dump(int level, struct frame *f
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d timeout %d\n",
-			rp->status, btohs(rp->handle), btohs(rp->link_sup_to));
+			rp->status, btohs(rp->handle), btohs(rp->timeout));
 
 	if (rp->status > 0) {
 		p_indent(level, frm);
@@ -2415,6 +2423,15 @@ static inline void extended_inq_result_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void link_supervision_timeout_dump(int level, struct frame *frm)
+{
+	evt_link_supervision_timeout *evt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d timeout %d\n",
+				btohs(evt->handle), btohs(evt->timeout));
+}
+
 static inline void event_dump(int level, struct frame *frm)
 {
 	hci_event_hdr *hdr = frm->ptr;
@@ -2588,6 +2605,9 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_EXTENDED_INQUIRY_RESULT:
 		extended_inq_result_dump(level + 1, frm);
+		break;
+	case EVT_LINK_SUPERVISION_TIMEOUT:
+		link_supervision_timeout_dump(level + 1, frm);
 		break;
 	default:
 		raw_dump(level, frm);
