@@ -98,12 +98,6 @@ enum {
 
 #define HCIINQUIRY	_IOR('H', 240, int)
 
-/* HCI timeouts */
-
-#define HCI_CONN_TIMEOUT	(HZ * 40)
-#define HCI_DISCONN_TIMEOUT	(HZ * 2)
-#define HCI_CONN_IDLE_TIMEOUT	(HZ * 60)
-
 #ifndef __NO_HCI_DEFS
 
 /* HCI Packet types */
