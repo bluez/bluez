@@ -835,14 +835,14 @@ typedef struct {
 typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
-	uint16_t	link_sup_to;
+	uint16_t	timeout;
 } __attribute__ ((packed)) read_link_supervision_timeout_rp;
 #define READ_LINK_SUPERVISION_TIMEOUT_RP_SIZE 5
 
 #define OCF_WRITE_LINK_SUPERVISION_TIMEOUT	0x0037
 typedef struct {
 	uint16_t	handle;
-	uint16_t	link_sup_to;
+	uint16_t	timeout;
 } __attribute__ ((packed)) write_link_supervision_timeout_cp;
 #define WRITE_LINK_SUPERVISION_TIMEOUT_CP_SIZE 4
 typedef struct {
@@ -1400,6 +1400,13 @@ typedef struct {
 	uint8_t		data[240];
 } __attribute__ ((packed)) extended_inquiry_info;
 #define EXTENDED_INQUIRY_INFO_SIZE 254
+
+#define EVT_LINK_SUPERVISION_TIMEOUT	0x38
+typedef struct {
+	uint16_t	handle;
+	uint16_t	timeout;
+} __attribute__ ((packed)) evt_link_supervision_timeout;
+#define EVT_LINK_SUPERVISION_TIMEOUT_SIZE 4
 
 #define EVT_TESTING			0xFE
 
