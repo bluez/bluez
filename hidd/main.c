@@ -438,12 +438,18 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, 
 		goto connect;
 
 	case SERIAL_PORT_SVCLASS_ID:
-		epox_presenter(src, dst, channel);
+		if (epox_presenter(src, dst, channel) < 0) {
+			close(ctl);
+			exit(1);
+		}
 		break;
 
 	case HEADSET_SVCLASS_ID:
 	case HANDSFREE_SVCLASS_ID:
-		headset_presenter(src, dst, channel);
+		if (headset_presenter(src, dst, channel) < 0) {
+			close(ctl);
+			exit(1);
+		}
 		break;
 	}
 

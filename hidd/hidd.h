@@ -28,5 +28,5 @@ int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp
 int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req);
 int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t *uuid, uint8_t *channel);
 
-void epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
-void headset_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
+int epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
+int headset_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);

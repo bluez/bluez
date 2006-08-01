@@ -277,7 +277,7 @@ static void sig_term(int sig)
 	__io_canceled = 1;
 }
 
-void epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
+int epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 {
 	unsigned char buf[16];
 	struct sigaction sa;
@@ -287,12 +287,12 @@ void epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 
 	sk = rfcomm_connect(src, dst, channel);
 	if (sk < 0)
-		return;
+		return -1;
 
 	fd = uinput_create("Bluetooth Presenter", 0, 1);
 	if (fd < 0) {
 		close(sk);
-		return;
+		return -1;
 	}
 
 	ba2str(dst, addr);
@@ -335,9 +335,12 @@ void epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 
 	close(fd);
 	close(sk);
+
+	return 0;
 }
 
-void headset_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
+int headset_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 {
 	printf("Not implemented\n");
+	return -1;
 }
