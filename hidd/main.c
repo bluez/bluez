@@ -614,6 +614,7 @@ static struct option main_options[] = {
 	{ "nosdp",	0, 0, 'D' },
 	{ "nocheck",	0, 0, 'Z' },
 	{ "bootonly",	0, 0, 'B' },
+	{ "hidonly",	0, 0, 'H' },
 	{ "show",	0, 0, 'l' },
 	{ "list",	0, 0, 'l' },
 	{ "server",	0, 0, 'd' },
@@ -644,7 +645,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:nt:b:MEDZBldsc:k:Ku:h", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:nt:b:MEDZBHldsc:k:Ku:h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (!strncasecmp(optarg, "hci", 3))
@@ -678,6 +679,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'B':
 			bootonly = 1;
+			break;
+		case 'H':
+			fakehid = 0;
 			break;
 		case 'l':
 			mode = SHOW;
