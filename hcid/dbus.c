@@ -1472,12 +1472,14 @@ static void timeout_toggled(DBusTimeout *timeout, void *data)
 		remove_timeout(timeout, data);
 }
 
-static void wakeup_main_cb(void *data)
+static void dispatch_status_cb(DBusConnection *conn,
+				DBusDispatchStatus new_status,
+				void *data)
 {
-	if (!dbus_connection_get_is_connected(connection))
-		return;
+	if (!dbus_connection_get_is_connected(conn))
+			return;
 
-	if (dbus_connection_get_dispatch_status(connection) == DBUS_DISPATCH_DATA_REMAINS)
+	if (new_status == DBUS_DISPATCH_DATA_REMAINS)
 		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, NULL);
 }
 
@@ -1525,8 +1527,8 @@ int hcid_dbus_init(void)
 	dbus_connection_set_timeout_functions(connection,
 			add_timeout, remove_timeout, timeout_toggled, NULL, NULL);
 
-	dbus_connection_set_wakeup_main_function(connection,
-			wakeup_main_cb, NULL, NULL);
+	dbus_connection_set_dispatch_status_function(connection,
+			dispatch_status_cb, NULL, NULL);
 
 	return 0;
 }
