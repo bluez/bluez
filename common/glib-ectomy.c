@@ -233,7 +233,16 @@ static void timeout_handlers_prepare(GMainContext *context)
 
 static int timeout_cmp(const void *t1, const void *t2)
 {
-	return t1-t2;
+	const struct timeout *tout1 = t1;
+	const struct timeout *tout2 = t2;
+
+	if (!tout2)
+		return -1;
+
+	if (tout1 != tout2)
+		return -1;
+
+	return tout1->id - tout2->id;
 }
 
 static void timeout_handlers_check(GMainContext *context)
@@ -248,9 +257,7 @@ static void timeout_handlers_check(GMainContext *context)
 		t = l->data;
 		l = l->next;
 
-		if ((tv.tv_sec < t->expiration.tv_sec) ||
-			(tv.tv_sec == t->expiration.tv_sec &&
-			 tv.tv_usec < t->expiration.tv_usec))
+		if (timercmp(&tv, &t->expiration, <))
 			continue;
 
 		if (t->function(t->data)) {
@@ -372,6 +379,7 @@ guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)
 	if (!t)
 		return 0;
 
+	memset(t, 0, sizeof(*t));
 	t->interval = interval;
 	t->function = function;
 	t->data = data;

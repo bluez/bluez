@@ -36,15 +36,10 @@ typedef struct _GIOChannel {
 
 typedef gboolean (*GSourceFunc) (gpointer data);
 
-typedef struct {
-	glong tv_sec;
-	glong tv_usec;
-} time_val_t;
-
 struct timeout {
 	guint id;
 	guint interval;
-	time_val_t expiration;
+	struct timeval expiration;
 	gpointer data;
 	GSourceFunc function;
 };

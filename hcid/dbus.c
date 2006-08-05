@@ -1427,9 +1427,23 @@ static int timeout_handler_dispatch(gpointer data)
 {
 	timeout_handler_t *handler = data;
 
+	/* if not enabled should not be polled by the main loop */
+	if (dbus_timeout_get_enabled(handler->timeout) != TRUE)
+		return -1;
+
 	dbus_timeout_handle(handler->timeout);
 
 	return -1;
+}
+
+static void timeout_handler_free(void *data)
+{
+	timeout_handler_t *handler = data;
+	if (!handler)
+		return;
+
+	g_timeout_remove(handler->id);
+	free(handler);
 }
 
 static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
@@ -1446,22 +1460,14 @@ static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
 	handler->id = g_timeout_add(dbus_timeout_get_interval(timeout),
 					timeout_handler_dispatch, handler);
 
-	dbus_timeout_set_data(timeout, handler, NULL);
+	dbus_timeout_set_data(timeout, handler, timeout_handler_free);
 
 	return TRUE;
 }
 
 static void remove_timeout(DBusTimeout *timeout, void *data)
 {
-	timeout_handler_t *handler;
 
-	handler = dbus_timeout_get_data(timeout);
-	if(handler == NULL)
-		return;
-
-	g_timeout_remove(handler->id);
-
-	free(handler);
 }
 
 static void timeout_toggled(DBusTimeout *timeout, void *data)
