@@ -461,6 +461,14 @@ Methods		string GetAddress()
 			Possible errors: org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.NotAvailable
 
+		uint32 GetRemoteClass(string address)
+
+			Get the remote major, minor, and service classes 
+			encoded as 32 bit integer.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+			                 org.bluez.Error.NotAvailable
+
 		string GetRemoteName(string address)
 
 			Get adapter name for a remote device. This request

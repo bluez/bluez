@@ -204,7 +204,7 @@ static int check_address(const char *addr)
 static struct bonding_request_info *bonding_request_new(bdaddr_t *peer)
 {
 	struct bonding_request_info *bonding;
-	
+
 	bonding = malloc(sizeof(*bonding));
 
 	if (!bonding)
@@ -1194,9 +1194,7 @@ static int get_remote_class(DBusConnection *conn, DBusMessage *msg, void *data, 
 	return 0;
 }
 
-static DBusHandlerResult handle_dev_get_remote_major_class_req(DBusConnection *conn,
-								DBusMessage *msg,
-								void *data)
+static DBusHandlerResult handle_dev_get_remote_major_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *major_class;
@@ -1217,9 +1215,7 @@ static DBusHandlerResult handle_dev_get_remote_major_class_req(DBusConnection *c
 	return send_reply_and_unref(conn, reply);
 }
 
-static DBusHandlerResult handle_dev_get_remote_minor_class_req(DBusConnection *conn,
-								DBusMessage *msg,
-								void *data)
+static DBusHandlerResult handle_dev_get_remote_minor_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *major_class;
@@ -1245,9 +1241,7 @@ static void append_class_string(const char *class, DBusMessageIter *iter)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &class);
 }
 
-static DBusHandlerResult handle_dev_get_remote_service_cls_req(DBusConnection *conn,
-								DBusMessage *msg,
-								void *data)
+static DBusHandlerResult handle_dev_get_remote_service_cls_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
@@ -1272,6 +1266,24 @@ static DBusHandlerResult handle_dev_get_remote_service_cls_req(DBusConnection *c
 	dbus_message_iter_close_container(&iter, &array_iter);
 
 	slist_free(service_classes);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_get_remote_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	uint32_t class;
+
+	if (get_remote_class(conn, msg, data, &class) < 0)
+		return DBUS_HANDLER_RESULT_HANDLED;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &class,
+					DBUS_TYPE_INVALID);
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -2333,6 +2345,7 @@ static struct service_data dev_services[] = {
 	{ "GetRemoteMajorClass",			handle_dev_get_remote_major_class_req	},
 	{ "GetRemoteMinorClass",			handle_dev_get_remote_minor_class_req	},
 	{ "GetRemoteServiceClasses",			handle_dev_get_remote_service_cls_req	},
+	{ "GetRemoteClass",				handle_dev_get_remote_class_req		},
 	{ "GetRemoteName",				handle_dev_get_remote_name_req		},
 	{ "GetRemoteAlias",				handle_dev_get_remote_alias_req		},
 	{ "SetRemoteAlias",				handle_dev_set_remote_alias_req		},
