@@ -1218,19 +1218,19 @@ static DBusHandlerResult handle_dev_get_remote_major_class_req(DBusConnection *c
 static DBusHandlerResult handle_dev_get_remote_minor_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	const char *major_class;
+	const char *minor_class;
 	uint32_t class;
 
 	if (get_remote_class(conn, msg, data, &class) < 0)
 		return DBUS_HANDLER_RESULT_HANDLED;
 
-	major_class = minor_class_str(class);
+	minor_class = minor_class_str(class);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &major_class,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &minor_class,
 					DBUS_TYPE_INVALID);
 
 	return send_reply_and_unref(conn, reply);
@@ -2287,8 +2287,17 @@ const char *minor_class_str(uint32_t class)
 		minor_index = (class >> 6) & 0x03;
 		return peripheral_minor_cls[minor_index];
 	case 6: /* imaging */
-		minor_index = (class >> 4) & 0x0F;
-		return imaging_minor_cls[minor_index];
+		{
+			uint8_t shift_minor = 0;
+
+			minor_index = (class >> 4) & 0x0F;
+			while (shift_minor < (sizeof(imaging_minor_cls) / sizeof(*imaging_minor_cls))) {
+				if (((minor_index >> shift_minor) & 0x01) == 0x01)
+					return imaging_minor_cls[shift_minor];
+				shift_minor++;
+			}
+		}
+		break;
 	case 7: /* wearable */
 		minor_index = (class >> 2) & 0x3F;
 		return wearable_minor_cls[minor_index];
