@@ -3,7 +3,11 @@ rulesdir = $(sysconfdir)/udev
 
 rules_DATA = bluetooth.rules
 
-EXTRA_DIST = $(rules_DATA) bluetooth.init bluetooth.default
+udevdir = /lib/udev
+
+udev_SCRIPTS = bluetooth_serial
+
+EXTRA_DIST = $(rules_DATA) $(udev_SCRIPTS) bluetooth.init bluetooth.default
 
 MAINTAINERCLEANFILES = Makefile.in
 

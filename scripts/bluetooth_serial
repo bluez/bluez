@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# bluetooth_serial
+#
+# Bluetooth serial PCMCIA card initialization
+#
+
+start_serial()
+{
+	if [ ! -x /bin/setserial -o ! -x /usr/sbin/hciattach ]; then
+		logger "$0: setserial or hciattach not executable, cannot start $DEVNAME"
+		return 1
+	fi
+
+	IRQ=`/bin/setserial $DEVNAME | sed -e 's/.*IRQ: //'`
+	/bin/setserial $DEVNAME irq 0 ; /bin/setserial $DEVNAME irq $IRQ
+
+	MANF_CARD_ID="${MANF_ID},${CARD_ID}"
+	# I don't have a generic solution, sorry
+	if [ $MANF_CARD_ID = "0x0160,0x0002" ]; then
+		/usr/sbin/hciattach $DEVNAME $MANF_CARD_ID 115200
+	else
+		/usr/sbin/hciattach $DEVNAME $MANF_CARD_ID
+	fi
+}
+
+stop_serial()
+{
+	[ -x /bin/fuser ] || return 1 
+
+	/bin/fuser -k -HUP $DEVNAME > /dev/null
+}
+
+case "$ACTION" in
+   add)
+	start_serial
+	;;
+   remove)
+	stop_serial
+	;;
+   *)
+	logger "Unknown action received $0: $ACTION"
+	;;
+esac
