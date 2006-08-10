@@ -3,7 +3,7 @@ rulesdir = $(sysconfdir)/udev
 
 rules_DATA = bluetooth.rules
 
-udevdir = /lib/udev
+udevdir = $(udevexecdir)
 
 udev_SCRIPTS = bluetooth_serial
 

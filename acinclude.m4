@@ -52,6 +52,8 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 		storagedir="${localstatedir}/lib/bluetooth"
 	fi
 
+	AC_SUBST([udevexecdir], ['/lib/udev'])
+
 	AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}", [Directory for the configuration files])
 	AC_DEFINE_UNQUOTED(STORAGEDIR, "${storagedir}", [Directory for the storage files])
 ])
