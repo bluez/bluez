@@ -29,7 +29,7 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 		fi
 
 		dnl no prefix and no libexecdir, so default to /lib
-		if (test "$libexecdir" = '${prefix}/lib'); then
+		if (test "$libexecdir" = '${prefix}/libexec'); then
 			AC_SUBST([libexecdir], ['/lib'])
 		fi
 
