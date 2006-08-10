@@ -837,7 +837,7 @@ void stop_security_manager(int hdev)
 	if (!chan)
 		return;
 
-	info("Stoping security manager %d", hdev);
+	info("Stopping security manager %d", hdev);
 
 	/* this is a bit sneaky. closing the fd will cause the event
 	   loop to call us right back with G_IO_NVAL set, at which
