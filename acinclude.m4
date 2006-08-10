@@ -28,6 +28,11 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 			AC_SUBST([localstatedir], ['/var'])
 		fi
 
+		dnl no prefix and no libexecdir, so default to /lib
+		if (test "$libexecdir" = '${prefix}/lib'); then
+			AC_SUBST([libexecdir], ['/lib'])
+		fi
+
 		dnl no prefix and no mandir, so use ${prefix}/share/man as default
 		if (test "$mandir" = '${prefix}/man'); then
 			AC_SUBST([mandir], ['${prefix}/share/man'])
@@ -51,8 +56,6 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 	else
 		storagedir="${localstatedir}/lib/bluetooth"
 	fi
-
-	AC_SUBST([udevexecdir], ['/lib/udev'])
 
 	AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}", [Directory for the configuration files])
 	AC_DEFINE_UNQUOTED(STORAGEDIR, "${storagedir}", [Directory for the storage files])

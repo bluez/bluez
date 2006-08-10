@@ -11,5 +11,6 @@ fi
 		--mandir=/usr/share/man \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
+		--libexecdir=/lib \
 		--enable-all \
 		--disable-initscripts
