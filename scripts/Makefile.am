@@ -1,5 +1,9 @@
 
-EXTRA_DIST = bluetooth.init bluetooth.default
+rulesdir = $(sysconfdir)/udev
+
+rules_DATA = bluetooth.rules
+
+EXTRA_DIST = $(rules_DATA) bluetooth.init bluetooth.default
 
 MAINTAINERCLEANFILES = Makefile.in
 
