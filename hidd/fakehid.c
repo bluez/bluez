@@ -318,7 +318,7 @@ int epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 100) < 1)
+		if (poll(&p, 1, 500) < 1)
 			continue;
 
 		len = read(sk, buf, sizeof(buf));

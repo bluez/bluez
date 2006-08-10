@@ -383,7 +383,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 100))
+		if (poll(&p, 1, 500))
 			break;
 	}
 
@@ -501,7 +501,7 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 100))
+		if (poll(&p, 1, 500))
 			break;
 	}
 

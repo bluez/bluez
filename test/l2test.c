@@ -646,7 +646,7 @@ static void connect_mode(char *svr)
 
 	while (1) {
 		p.revents = 0;
-		if (poll(&p, 1, 100))
+		if (poll(&p, 1, 500))
 			break;
 	}
 

@@ -380,7 +380,7 @@ static void cmd_loopback(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 100))
+		if (poll(&p, 1, 500))
 			break;
 	}
 

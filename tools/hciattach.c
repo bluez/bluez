@@ -1265,7 +1265,7 @@ int main(int argc, char *argv[])
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 100))
+		if (poll(&p, 1, 500))
 			break;
 	}
 

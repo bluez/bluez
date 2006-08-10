@@ -1128,7 +1128,7 @@ static int run_proxy(int fd, int dev, bdaddr_t *bdaddr)
 	while (!__io_canceled) {
 		p[0].revents = 0;
 		p[1].revents = 0;
-		err = poll(p, 2, 100);
+		err = poll(p, 2, 500);
 		if (err < 0)
 			break;
 		if (!err)

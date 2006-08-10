@@ -340,7 +340,7 @@ static void run_server(int ctl, int csk, int isk, uint8_t subclass, int nosdp, i
 		p[0].revents = 0;
 		p[1].revents = 0;
 
-		err = poll(p, 2, 100);
+		err = poll(p, 2, 500);
 		if (err <= 0)
 			continue;
 
