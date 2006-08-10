@@ -567,9 +567,11 @@ static void usage(void)
 		"\n");
 
 	printf("Options:\n"
-		"\t-i [hciX|bdaddr]   Local HCI device or BD Address\n"
-		"\t-h, --help         Display help\n"
-		"\t-a                 Show all devices (default)\n"
+		"\t-i [hciX|bdaddr]      Local HCI device or BD Address\n"
+		"\t-h, --help            Display help\n"
+		"\t-r, --raw             Switch TTY into raw mode\n"
+		"\t-f, --config [file]   Specify alternate config file\n" 
+		"\t-a                    Show all devices (default)\n"
 		"\n");
 
 	printf("Commands:\n");
