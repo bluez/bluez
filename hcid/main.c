@@ -532,12 +532,10 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		if (hcid.auto_init)
 			init_device(sd->dev_id);
 		add_device(sd->dev_id);
-		hcid_dbus_register_device(sd->dev_id);
 		break;
 
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", sd->dev_id);
-		hcid_dbus_unregister_device(sd->dev_id);
 		remove_device(sd->dev_id);
 		break;
 
@@ -548,10 +546,12 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		if (hcid.security)
 			start_security_manager(sd->dev_id);
 		start_device(sd->dev_id);
+		hcid_dbus_register_device(sd->dev_id);
 		break;
 
 	case HCI_DEV_DOWN:
 		info("HCI dev %d down", sd->dev_id);
+		hcid_dbus_unregister_device(sd->dev_id);
 		if (hcid.security)
 			stop_security_manager(sd->dev_id);
 		stop_device(sd->dev_id);
