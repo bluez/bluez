@@ -97,6 +97,7 @@ struct active_conn_info {
 
 struct hci_dbus_data {
 	uint16_t dev_id;
+	int up;
 	char address[18];		   /* adapter Bluetooth Address */
 	uint32_t timeout_id;		   /* discoverable timeout id */
 	uint32_t discoverable_timeout;	   /* discoverable time(msec) */
@@ -134,6 +135,7 @@ DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const in
 int get_default_dev_id(void);
 
 DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err);
+DBusHandlerResult error_not_ready(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);

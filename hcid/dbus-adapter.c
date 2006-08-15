@@ -2382,6 +2382,7 @@ static struct service_data dev_services[] = {
 
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
 {
+	const struct hci_dbus_data *pdata = data; 
 	const char *iface, *name;
 
 	iface = dbus_message_get_interface(msg);
@@ -2390,7 +2391,12 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
 					!strcmp("Introspect", name)) {
 		return simple_introspect(conn, msg, data);
-	} else if (!strcmp(ADAPTER_INTERFACE, iface)) {
+	}
+
+	if (!pdata->up)
+		return error_not_ready(conn, msg);	
+	else 
+		if (!strcmp(ADAPTER_INTERFACE, iface)) {
 		service_handler_func_t handler;
 
 		handler = find_service_handler(dev_services, msg);

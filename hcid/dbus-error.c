@@ -41,6 +41,12 @@ DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err)
 		dbus_message_new_error(msg, ERROR_INTERFACE ".Failed", str));
 }
 
+DBusHandlerResult error_not_ready(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".NotReady", "Adapter is not ready"));
+}
+
 DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_reply_and_unref(conn,

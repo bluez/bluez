@@ -361,9 +361,6 @@ static int register_dbus_path(const char *path, uint16_t dev_id,
 	memset(data, 0, sizeof(struct hci_dbus_data));
 
 	data->dev_id = dev_id;
-	data->mode = SCAN_DISABLED;
-	data->discoverable_timeout = get_discoverable_timeout(dev_id);
-	data->discover_type = WITHOUT_NAME_RESOLVING; /* default discover type */
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path, pvtable, data)) {
@@ -432,6 +429,74 @@ int hcid_dbus_register_device(uint16_t id)
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
 	DBusMessage *message = NULL;
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+
+	if (register_dbus_path(path, id, &obj_dev_vtable, FALSE) < 0)
+		return -1;
+
+	/*
+	 * Send the adapter added signal
+	 */
+	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
+							"AdapterAdded");
+	if (message == NULL) {
+		error("Can't allocate D-Bus message");
+		dbus_connection_unregister_object_path(connection, path);
+		return -1;
+	}
+
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, &pptr,
+					DBUS_TYPE_INVALID);
+
+	send_reply_and_unref(connection, message);
+
+	return 0;
+}
+
+int hcid_dbus_unregister_device(uint16_t id)
+{
+	DBusMessage *message;
+	char path[MAX_PATH_LENGTH];
+	char *pptr = path;
+	int ret;
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+
+	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
+							"AdapterRemoved");
+	if (message == NULL) {
+		error("Can't allocate D-Bus message");
+		goto failed;
+	}
+
+	dbus_message_append_args(message,
+					DBUS_TYPE_STRING, &pptr,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send(connection, message, NULL)) {
+		error("Can't send D-Bus added device message");
+		goto failed;
+	}
+
+	dbus_connection_flush(connection);
+
+failed:
+	if (message)
+		dbus_message_unref(message);
+
+	ret = unregister_dbus_path(path);
+
+	if (ret == 0 && default_dev == id)
+		default_dev = hci_get_route(NULL);
+
+	return ret;
+}
+
+int hcid_dbus_start_device(uint16_t id)
+{
+	char path[MAX_PATH_LENGTH];
 	int i, err, dd = -1, ret = -1;
 	read_scan_enable_rp rp;
 	struct hci_dev_info di;
@@ -441,9 +506,8 @@ int hcid_dbus_register_device(uint16_t id)
 	struct hci_conn_info *ci;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-	if (register_dbus_path(path, id, &obj_dev_vtable, FALSE) < 0)
-		 return -1;
 
+	/* FIXME: check dupplicated code - configure_device() */
 	if (hci_devinfo(id, &di) < 0) {
 		error("Getting device info failed: hci%d", id);
 		return -1;
@@ -480,6 +544,9 @@ int hcid_dbus_register_device(uint16_t id)
 	}
 
 	pdata->mode = rp.enable;	/* Keep the current scan status */
+	pdata->up = 1;
+	pdata->discoverable_timeout = get_discoverable_timeout(id);
+	pdata->discover_type = WITHOUT_NAME_RESOLVING; /* default discover type */
 
 	/*
 	 * Get the adapter Bluetooth address
@@ -488,28 +555,6 @@ int hcid_dbus_register_device(uint16_t id)
 	if (err < 0)
 		goto failed;
 
-	/*
-	 * Send the adapter added signal
-	 */
-	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-							"AdapterAdded");
-	if (message == NULL) {
-		error("Can't allocate D-Bus message");
-		goto failed;
-	}
-
-	/*FIXME: append a friendly name instead of device path */
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &pptr,
-					DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send(connection, message, NULL)) {
-		error("Can't send D-BUS adapter added message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-	
 	/* 
 	 * retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started
@@ -535,12 +580,6 @@ int hcid_dbus_register_device(uint16_t id)
 	ret = 0;
 
 failed:
-	if (ret < 0)
-		dbus_connection_unregister_object_path(connection, path);
-
-	if (message)
-		dbus_message_unref(message);
-
 	if (ret == 0 && default_dev < 0)
 		default_dev = id;
 
@@ -553,45 +592,23 @@ failed:
 	return ret;
 }
 
-int hcid_dbus_unregister_device(uint16_t id)
+int hcid_dbus_stop_device(uint16_t id)
 {
-	DBusMessage *message;
 	char path[MAX_PATH_LENGTH];
-	char *pptr = path;
-	int ret;
+	struct hci_dbus_data* pdata;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-							"AdapterRemoved");
-	if (message == NULL) {
-		error("Can't allocate D-Bus message");
-		goto failed;
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
+		return -1;
 	}
 
-	/*FIXME: append a friendly name instead of device path */
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &pptr,
-					DBUS_TYPE_INVALID);
+	pdata->up = 0;
 
-	if (!dbus_connection_send(connection, message, NULL)) {
-		error("Can't send D-Bus added device message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
-
-failed:
-	if (message)
-		dbus_message_unref(message);
-
-	ret = unregister_dbus_path(path);
-
-	if (ret == 0 && default_dev == id)
-		default_dev = hci_get_route(NULL);
-
-	return ret;
+	return 0;
 }
+
 
 int pending_bonding_cmp(const void *p1, const void *p2)
 {
