@@ -457,6 +457,11 @@ int main(int argc, char *argv[])
 	signal(SIGPIPE, SIG_IGN);
 
 	sigfillset(&sigs);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGABRT);
+	sigdelset(&sigs, SIGQUIT);
+	sigdelset(&sigs, SIGPIPE);
 
 	for (;;) {
 		int num, nfd;

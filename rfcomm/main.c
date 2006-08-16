@@ -385,6 +385,11 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	sigaction(SIGHUP, &sa, NULL);
 
 	sigfillset(&sigs);
+	sigdelset(&sigs, SIGCHLD);
+	sigdelset(&sigs, SIGPIPE);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGHUP);
 
 	p.fd = fd;
 	p.events = POLLERR | POLLHUP;
@@ -506,6 +511,11 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	sigaction(SIGHUP, &sa, NULL);
 
 	sigfillset(&sigs);
+	sigdelset(&sigs, SIGCHLD);
+	sigdelset(&sigs, SIGPIPE);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGHUP);
 
 	p.fd = fd;
 	p.events = POLLERR | POLLHUP;

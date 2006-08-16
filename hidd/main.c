@@ -337,6 +337,11 @@ static void run_server(int ctl, int csk, int isk, uint8_t subclass, int nosdp, i
 	int err, ncsk, nisk;
 
 	sigfillset(&sigs);
+	sigdelset(&sigs, SIGCHLD);
+	sigdelset(&sigs, SIGPIPE);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGHUP);
 
 	p[0].fd = csk;
 	p[0].events = POLLIN | POLLERR | POLLHUP;

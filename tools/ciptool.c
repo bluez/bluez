@@ -382,6 +382,11 @@ static void cmd_loopback(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 	sigaction(SIGHUP, &sa, NULL);
 
 	sigfillset(&sigs);
+	sigdelset(&sigs, SIGCHLD);
+	sigdelset(&sigs, SIGPIPE);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGHUP);
 
 	p.fd = sk;
 	p.events = POLLERR | POLLHUP;

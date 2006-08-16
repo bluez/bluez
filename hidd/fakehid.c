@@ -320,6 +320,11 @@ int epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 	sigaction(SIGHUP, &sa, NULL);
 
 	sigfillset(&sigs);
+	sigdelset(&sigs, SIGCHLD);
+	sigdelset(&sigs, SIGPIPE);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGHUP);
 
 	p.fd = sk;
 	p.events = POLLIN | POLLERR | POLLHUP;

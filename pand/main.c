@@ -235,6 +235,11 @@ static int w4_hup(int sk)
 	int n;
 
 	sigfillset(&sigs);
+	sigdelset(&sigs, SIGCHLD);
+	sigdelset(&sigs, SIGPIPE);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGHUP);
 
 	while (!terminate) {
 		pf.fd = sk;
