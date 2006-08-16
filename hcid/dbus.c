@@ -91,6 +91,14 @@ void bonding_request_free(struct bonding_request_info *dev )
 	}
 }
 
+static void pending_bonding_free(void *p1, void *p2)
+{
+	bdaddr_t *peer1 = p1;
+
+	if (peer1)
+		free(peer1);
+}
+
 static void active_conn_info_free(void *data, void *user_data)
 {
 	struct active_conn_info *dev = data;
@@ -379,6 +387,26 @@ static int register_dbus_path(const char *path, uint16_t dev_id,
 	return 0;
 }
 
+static void reply_pending_requests(const char *path, const struct hci_dbus_data *pdata)
+{
+	DBusMessage *message = NULL;
+
+	if (!path || !pdata)
+		return;
+
+	/* pending bonding */
+	if (pdata->bonding)
+		error_authentication_canceled(connection, pdata->bonding->rq);
+	else if (pdata->requestor_name) {
+		/* pending inquiry */
+
+		/* Send discovery completed signal if there isn't name to resolve */
+		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+						"DiscoveryCompleted");
+		send_reply_and_unref(connection, message);
+	}
+}
+
 static int unregister_dbus_path(const char *path)
 {
 	struct hci_dbus_data *pdata;
@@ -386,6 +414,10 @@ static int unregister_dbus_path(const char *path)
 	info("Unregister path:%s", path);
 
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata) && pdata) {
+
+		/* check pending requests */
+		reply_pending_requests(path, pdata);
+
 		if (pdata->requestor_name)
 			free(pdata->requestor_name);
 
@@ -398,6 +430,12 @@ static int unregister_dbus_path(const char *path)
 		if (pdata->bonding) {
 			bonding_request_free(pdata->bonding);
 			pdata->bonding = NULL;
+		}
+
+		if (pdata->pending_bondings) {
+			slist_foreach(pdata->pending_bondings, pending_bonding_free, NULL);
+			slist_free(pdata->pending_bondings);
+			pdata->pending_bondings = NULL;
 		}
 
 		if (pdata->active_conn) {
@@ -604,13 +642,50 @@ int hcid_dbus_stop_device(uint16_t id)
 		return -1;
 	}
 
+	/* cancel pending timeout */
+	if (pdata->timeout_id) {
+		g_timeout_remove(pdata->timeout_id);
+		pdata->timeout_id = 0;
+	}
+
+	/* check pending requests */
+	reply_pending_requests(path, pdata);
+
+	if (pdata->requestor_name) {
+		free(pdata->requestor_name);
+		pdata->requestor_name = NULL;
+	}
+
+	if (pdata->disc_devices) {
+		slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
+		slist_free(pdata->disc_devices);
+		pdata->disc_devices = NULL;
+	}
+
+	if (pdata->bonding) {
+		bonding_request_free(pdata->bonding);
+		pdata->bonding = NULL;
+	}
+
+	if (pdata->pending_bondings) {
+		slist_foreach(pdata->pending_bondings, pending_bonding_free, NULL);
+		slist_free(pdata->pending_bondings);
+		pdata->pending_bondings = NULL;
+	}
+
+	if (pdata->active_conn) {
+		slist_foreach(pdata->active_conn, active_conn_info_free, NULL);
+		slist_free(pdata->active_conn);
+		pdata->active_conn = NULL;
+	}
+
 	pdata->up = 0;
+	pdata->discover_state = STATE_IDLE;
 
 	return 0;
 }
 
-
-int pending_bonding_cmp(const void *p1, const void *p2)
+static int pending_bonding_cmp(const void *p1, const void *p2)
 {
 	const bdaddr_t *peer1 = p1;
 	const bdaddr_t *peer2 = p2;
