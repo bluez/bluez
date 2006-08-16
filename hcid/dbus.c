@@ -397,7 +397,7 @@ static void reply_pending_requests(const char *path, const struct hci_dbus_data 
 	/* pending bonding */
 	if (pdata->bonding)
 		error_authentication_canceled(connection, pdata->bonding->rq);
-	else if (pdata->requestor_name) {
+	else if (pdata->discover_state != STATE_IDLE) {
 		/* pending inquiry */
 
 		/* Send discovery completed signal if there isn't name to resolve */
@@ -634,6 +634,8 @@ int hcid_dbus_stop_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
 	struct hci_dbus_data* pdata;
+	const char *scan_mode = MODE_OFF;
+	DBusMessage *message;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
@@ -641,6 +643,12 @@ int hcid_dbus_stop_device(uint16_t id)
 		error("Getting %s path data failed!", path);
 		return -1;
 	}
+
+	message = dev_signal_factory(pdata->dev_id, "ModeChanged",
+						DBUS_TYPE_STRING, &scan_mode,
+						DBUS_TYPE_INVALID);
+
+	send_reply_and_unref(connection, message);
 
 	/* cancel pending timeout */
 	if (pdata->timeout_id) {
