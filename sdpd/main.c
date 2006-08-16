@@ -409,6 +409,7 @@ static struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
+	sigset_t sigs;
 	uint16_t mtu = 0;
 	int daemonize = 1, public = 0, master = 0;
 	int opt;
@@ -455,6 +456,8 @@ int main(int argc, char *argv[])
 	signal(SIGQUIT, sig_term);
 	signal(SIGPIPE, SIG_IGN);
 
+	sigfillset(&sigs);
+
 	for (;;) {
 		int num, nfd;
 		fd_set mask;
@@ -462,7 +465,7 @@ int main(int argc, char *argv[])
 		FD_ZERO(&mask);
 		mask = active_fdset;
 
-		num = select(active_maxfd + 1, &mask, NULL, NULL, NULL);
+		num = pselect(active_maxfd + 1, &mask, NULL, NULL, NULL, &sigs);
 		if (num <= 0) {
 			SDPDBG("Select error:%s", strerror(errno));
 			goto exit;

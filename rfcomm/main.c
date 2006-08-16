@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -46,6 +47,10 @@
 #include <bluetooth/rfcomm.h>
 
 #include "kword.h"
+
+#ifdef NEED_PPOLL
+#include "ppoll.h"
+#endif
 
 static char *rfcomm_config_file = NULL;
 static int rfcomm_raw_tty = 0;
@@ -259,6 +264,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	struct termios ti;
 	struct sigaction sa;
 	struct pollfd p;
+	sigset_t sigs;
 	socklen_t alen;
 	char dst[18], devname[MAXPATHLEN];
 	int sk, fd, try = 30;
@@ -378,12 +384,14 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
 
+	sigfillset(&sigs);
+
 	p.fd = fd;
 	p.events = POLLERR | POLLHUP;
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 500))
+		if (ppoll(&p, 1, NULL, &sigs) > 0)
 			break;
 	}
 
@@ -399,6 +407,7 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	struct termios ti;
 	struct sigaction sa;
 	struct pollfd p;
+	sigset_t sigs;
 	socklen_t alen;
 	char dst[18], devname[MAXPATHLEN];
 	int sk, nsk, fd, try = 30;
@@ -496,12 +505,14 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
 
+	sigfillset(&sigs);
+
 	p.fd = fd;
 	p.events = POLLERR | POLLHUP;
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 500))
+		if (ppoll(&p, 1, NULL, &sigs) > 0)
 			break;
 	}
 

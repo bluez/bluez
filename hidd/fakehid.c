@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -43,6 +44,10 @@
 #include "uinput.h"
 
 #include <math.h>
+
+#ifdef NEED_PPOLL
+#include "ppoll.h"
+#endif
 
 static void event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
@@ -282,6 +287,7 @@ int epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 	unsigned char buf[16];
 	struct sigaction sa;
 	struct pollfd p;
+	sigset_t sigs;
 	char addr[18];
 	int i, fd, sk, len;
 
@@ -313,12 +319,14 @@ int epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
 
+	sigfillset(&sigs);
+
 	p.fd = sk;
 	p.events = POLLIN | POLLERR | POLLHUP;
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 500) < 1)
+		if (ppoll(&p, 1, NULL, &sigs) < 1)
 			continue;
 
 		len = read(sk, buf, sizeof(buf));

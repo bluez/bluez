@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -43,6 +44,10 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/cmtp.h>
+
+#ifdef NEED_PPOLL
+#include "ppoll.h"
+#endif
 
 static volatile sig_atomic_t __io_canceled = 0;
 
@@ -331,6 +336,7 @@ static void cmd_loopback(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 	struct cmtp_conndel_req req;
 	struct sigaction sa;
 	struct pollfd p;
+	sigset_t sigs;
 	bdaddr_t src, dst;
 	unsigned short psm;
 	int dev_id, sk;
@@ -375,12 +381,14 @@ static void cmd_loopback(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
 
+	sigfillset(&sigs);
+
 	p.fd = sk;
 	p.events = POLLERR | POLLHUP;
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 500))
+		if (ppoll(&p, 1, NULL, &sigs) > 0)
 			break;
 	}
 

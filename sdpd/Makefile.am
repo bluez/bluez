@@ -6,6 +6,8 @@ sdpd_LDADD = @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 
+INCLUDES = -I$(top_srcdir)/common
+
 man_MANS = sdpd.8
 
 EXTRA_DIST = $(man_MANS)

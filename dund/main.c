@@ -37,7 +37,6 @@
 #include <getopt.h>
 
 #include <sys/socket.h>
-#include <sys/poll.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>

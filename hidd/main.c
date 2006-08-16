@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -46,6 +47,10 @@
 #include <bluetooth/hidp.h>
 
 #include "hidd.h"
+
+#ifdef NEED_PPOLL
+#include "ppoll.h"
+#endif
 
 enum {
 	NONE,
@@ -327,8 +332,11 @@ error:
 static void run_server(int ctl, int csk, int isk, uint8_t subclass, int nosdp, int nocheck, int bootonly, int encrypt, int timeout)
 {
 	struct pollfd p[2];
+	sigset_t sigs;
 	short events;
 	int err, ncsk, nisk;
+
+	sigfillset(&sigs);
 
 	p[0].fd = csk;
 	p[0].events = POLLIN | POLLERR | POLLHUP;
@@ -340,8 +348,7 @@ static void run_server(int ctl, int csk, int isk, uint8_t subclass, int nosdp, i
 		p[0].revents = 0;
 		p[1].revents = 0;
 
-		err = poll(p, 2, 500);
-		if (err <= 0)
+		if (ppoll(p, 2, NULL, &sigs) < 1)
 			continue;
 
 		events = p[0].revents | p[1].revents;

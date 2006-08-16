@@ -26,6 +26,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -48,6 +49,10 @@
 
 #include "pand.h"
 
+#ifdef NEED_PPOLL
+#include "ppoll.h"
+#endif
+
 static uint16_t role    = BNEP_SVC_PANU;	/* Local role (ie service) */
 static uint16_t service = BNEP_SVC_NAP;		/* Remote service */
 
@@ -55,10 +60,7 @@ static int detach = 1;
 static int persist;
 static int use_sdp = 1;
 static int use_cache;
-static int auth;
-static int encrypt;
-static int secure;
-static int master;
+static int link_mode = 0;
 static int cleanup;
 static int search_duration = 10;
 
@@ -168,16 +170,7 @@ static int do_listen(void)
 	}
 
 	/* Set link mode */
-	lm = 0;
-	if (master)
-		lm |= L2CAP_LM_MASTER;
-	if (auth)
-		lm |= L2CAP_LM_AUTH;
-	if (encrypt)
-		lm |= L2CAP_LM_ENCRYPT;
-	if (secure)
-		lm |= L2CAP_LM_SECURE;
-
+	lm = link_mode;
 	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
 		syslog(LOG_ERR, "Failed to set link mode. %s(%d)",
 						strerror(errno), errno);
@@ -238,12 +231,15 @@ static int do_listen(void)
 static int w4_hup(int sk)
 {
 	struct pollfd pf;
+	sigset_t sigs;
 	int n;
+
+	sigfillset(&sigs);
 
 	while (!terminate) {
 		pf.fd = sk;
 		pf.events = POLLERR | POLLHUP;
-		n = poll(&pf, 1, -1);
+		n = ppoll(&pf, 1, NULL, &sigs);
 		if (n < 0) {
 			if (errno == EINTR || errno == EAGAIN)
 				continue;
@@ -614,19 +610,19 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'A':
-			auth = 1;
+			link_mode |= L2CAP_LM_AUTH;
 			break;
 
 		case 'E':
-			encrypt = 1;
+			link_mode |= L2CAP_LM_ENCRYPT;
 			break;
 
 		case 'S':
-			secure = 1;
+			link_mode |= L2CAP_LM_SECURE;
 			break;
 
 		case 'M':
-			master = 1;
+			link_mode |= L2CAP_LM_MASTER;
 			break;
 
 		case 'e':
