@@ -72,14 +72,6 @@ int hcid_dbus_use_experimental(void)
 	return experimental;
 }
 
-void disc_device_info_free(void *data, void *user_data)
-{
-	struct discovered_dev_info *dev = data;
-
-	if (dev)
-		free(dev);
-}
-
 void bonding_request_free(struct bonding_request_info *dev )
 {
 	if (dev) {
@@ -89,22 +81,6 @@ void bonding_request_free(struct bonding_request_info *dev )
 			dbus_message_unref(dev->cancel);
 		free(dev);
 	}
-}
-
-static void pending_bonding_free(void *p1, void *p2)
-{
-	bdaddr_t *peer1 = p1;
-
-	if (peer1)
-		free(peer1);
-}
-
-static void active_conn_info_free(void *data, void *user_data)
-{
-	struct active_conn_info *dev = data;
-
-	if (dev)
-		free(dev);
 }
 
 static int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2)
@@ -422,7 +398,7 @@ static int unregister_dbus_path(const char *path)
 			free(pdata->requestor_name);
 
 		if (pdata->disc_devices) {
-			slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
+			slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
 			slist_free(pdata->disc_devices);
 			pdata->disc_devices = NULL;
 		}
@@ -433,13 +409,13 @@ static int unregister_dbus_path(const char *path)
 		}
 
 		if (pdata->pending_bondings) {
-			slist_foreach(pdata->pending_bondings, pending_bonding_free, NULL);
+			slist_foreach(pdata->pending_bondings, (slist_func_t)free, NULL);
 			slist_free(pdata->pending_bondings);
 			pdata->pending_bondings = NULL;
 		}
 
 		if (pdata->active_conn) {
-			slist_foreach(pdata->active_conn, active_conn_info_free, NULL);
+			slist_foreach(pdata->active_conn, (slist_func_t)free, NULL);
 			slist_free(pdata->active_conn);
 			pdata->active_conn = NULL;
 		}
@@ -665,7 +641,7 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 
 	if (pdata->disc_devices) {
-		slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
+		slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
 		slist_free(pdata->disc_devices);
 		pdata->disc_devices = NULL;
 	}
@@ -676,13 +652,13 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 
 	if (pdata->pending_bondings) {
-		slist_foreach(pdata->pending_bondings, pending_bonding_free, NULL);
+		slist_foreach(pdata->pending_bondings, (slist_func_t)free, NULL);
 		slist_free(pdata->pending_bondings);
 		pdata->pending_bondings = NULL;
 	}
 
 	if (pdata->active_conn) {
-		slist_foreach(pdata->active_conn, active_conn_info_free, NULL);
+		slist_foreach(pdata->active_conn, (slist_func_t)free, NULL);
 		slist_free(pdata->active_conn);
 		pdata->active_conn = NULL;
 	}
@@ -1053,7 +1029,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	pdata->discover_state = STATE_IDLE;
 
 	/* free discovered devices list */
-	slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
+	slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
 
@@ -1233,7 +1209,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 		goto failed; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
-	slist_foreach(pdata->disc_devices, disc_device_info_free, NULL);
+	slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
 

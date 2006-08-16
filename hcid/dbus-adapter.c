@@ -2241,7 +2241,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		return error_failed(conn, msg, bt_error(status));
 	}
 
-	slist_foreach(dbus_data->disc_devices, disc_device_info_free, NULL);
+	slist_foreach(dbus_data->disc_devices, (slist_func_t)free, NULL);
 	slist_free(dbus_data->disc_devices);
 	dbus_data->disc_devices = NULL;
 

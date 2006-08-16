@@ -195,7 +195,6 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 
 int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
-void disc_device_info_free(void *data, void *user_data);
 int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status, int discover_type);
 int disc_device_req_name(struct hci_dbus_data *dbus_data);
 
