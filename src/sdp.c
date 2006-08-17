@@ -3301,3 +3301,13 @@ fail:
 	errno = err;
 	return 0;
 }
+
+int sdp_get_socket(const sdp_session_t *session)
+{
+	return session->sock;
+}
+
+uint16_t sdp_gen_tid(sdp_session_t *session)
+{
+	return session->tid++;
+}

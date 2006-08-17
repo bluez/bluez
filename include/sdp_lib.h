@@ -70,6 +70,30 @@ static inline void sdp_list_foreach(sdp_list_t *list, sdp_list_func_t f, void *u
 }
 
 /*
+ * Values of the flags parameter to sdp_record_register
+ */
+#define SDP_RECORD_PERSIST	0x01
+#define SDP_DEVICE_RECORD	0x02
+
+/*
+ * Values of the flags parameter to sdp_connect
+ */
+#define SDP_RETRY_IF_BUSY	0x01
+#define SDP_WAIT_ON_CLOSE	0x02
+
+/*
+ * a session with an SDP server
+ */
+typedef struct {
+	int sock;
+	int state;
+	int local;
+	int flags;
+	uint16_t tid;	// Current transaction ID
+	void *priv;
+} sdp_session_t;
+
+/*
  * create an L2CAP connection to a Bluetooth device
  * 
  * INPUT:
@@ -83,11 +107,9 @@ static inline void sdp_list_foreach(sdp_list_t *list, sdp_list_func_t f, void *u
  */
 sdp_session_t *sdp_connect(const bdaddr_t *src, const bdaddr_t *dst, uint32_t flags);
 int sdp_close(sdp_session_t *session);
+int sdp_get_socket(const sdp_session_t *session);
 
-static inline int sdp_get_socket(const sdp_session_t *s)
-{
-	return s->sock;
-}
+uint16_t sdp_gen_tid(sdp_session_t *session);
 
 /*
  * find all devices in the piconet
@@ -533,14 +555,6 @@ static inline int sdp_get_clnt_exec_url(const sdp_record_t *rec, char *str, int 
 static inline int sdp_get_icon_url(const sdp_record_t *rec, char *str, int len)
 {
 	return sdp_get_string_attr(rec, SDP_ATTR_ICON_URL, str, len);
-}
-
-/*
- * Generate unique transaction identifiers
- */
-static inline uint16_t sdp_gen_tid(sdp_session_t *session)
-{
-	return session->tid++;
 }
 
 sdp_record_t *sdp_extract_pdu(const uint8_t *pdata, int *scanned);

@@ -374,18 +374,6 @@ extern "C" {
 #define SDP_SVC_REMOVE_RSP	0x80
 
 /*
- * Values of the flags parameter to sdp_record_register
- */
-#define SDP_RECORD_PERSIST	0x01
-#define SDP_DEVICE_RECORD	0x02
-
-/*
- * Values of the flags parameter to sdp_connect
- */
-#define SDP_RETRY_IF_BUSY	0x01
-#define SDP_WAIT_ON_CLOSE	0x02
-
-/*
  * SDP Error codes
  */
 #define SDP_INVALID_VERSION		0x0001
@@ -498,17 +486,6 @@ struct sdp_data_struct {
 	sdp_data_t *next;
 	int unitSize;
 };
-
-/*
- * a session with an SDP server
- */
-typedef struct {
-	int      sock;
-	int      state;
-	int      local;
-	int      flags;
-	uint16_t tid;   // Current transaction ID
-} sdp_session_t;
 
 #ifdef __cplusplus
 }
