@@ -672,12 +672,7 @@ int hcid_dbus_stop_device(uint16_t id)
 
 static int pending_bonding_cmp(const void *p1, const void *p2)
 {
-	const bdaddr_t *peer1 = p1;
-	const bdaddr_t *peer2 = p2;
-
-	if (peer2)
-		return bacmp(peer1, peer2);
-	return -1;
+	return p2 ? bacmp(p1, p2) : -1;
 }
 
 void hcid_dbus_pending_bonding_add(bdaddr_t *sba, bdaddr_t *dba)
@@ -700,7 +695,7 @@ void hcid_dbus_pending_bonding_add(bdaddr_t *sba, bdaddr_t *dba)
 	pdata->pending_bondings = slist_append(pdata->pending_bondings, peer);
 }
 
-void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
+int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	char path[MAX_PATH_LENGTH], addr[18];
 
@@ -708,7 +703,7 @@ void hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, hci_devid(addr));
 
-	handle_passkey_request(connection, dev, path, sba, &ci->bdaddr);
+	return handle_passkey_request(connection, dev, path, sba, &ci->bdaddr);
 }
 
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
@@ -752,11 +747,13 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	send_reply_and_unref(connection, message);
 #endif
 
+	if (status)
+		cancel_passkey_agent_requests(pdata->passkey_agents, path, peer);
+
 	l = slist_find(pdata->pending_bondings, peer, pending_bonding_cmp);
 	if (l) {
-		bdaddr_t *p = l->data;
-		pdata->pending_bondings = slist_remove(pdata->pending_bondings, p);
-		free(p);
+		pdata->pending_bondings = slist_remove(pdata->pending_bondings, l->data);
+		free(l->data);
 
 		if (!status) {
 			const char *name = "BondingCreated";
@@ -1380,7 +1377,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 	/* clean pending HCI cmds */
 	hci_req_queue_remove(pdata->dev_id, &dev->bdaddr);
 
-	/* Check if there is a pending Bonding */
+	/* Check if there is a pending CreateBonding request */
 	if (pdata->bonding && (bacmp(&pdata->bonding->bdaddr, &dev->bdaddr) == 0)) {
 #if 0
 		message = dev_signal_factory(pdata->dev_id, "BondingFailed",
@@ -1399,6 +1396,8 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 		free(pdata->requestor_name);
 		pdata->requestor_name = NULL;
 	}
+
+	cancel_passkey_agent_requests(pdata->passkey_agents, path, &dev->bdaddr);
 
 	/* Sent the remote device disconnected signal */
 	message = dev_signal_factory(pdata->dev_id, "RemoteDeviceDisconnected",

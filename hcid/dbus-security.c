@@ -41,12 +41,6 @@
 
 #define TIMEOUT (30 * 1000)		/* 30 seconds */
 
-struct pin_request {
-	int dev;
-	bdaddr_t sba;
-	bdaddr_t bda;
-};
-
 static struct passkey_agent *default_agent = NULL;
 
 static void default_agent_exited(const char *name, void *data)
@@ -342,7 +336,7 @@ static struct service_data sec_services[] = {
 
 static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 {
-	struct pin_request *req = (struct pin_request *) user_data;
+	struct pending_agent_request *req = user_data;
 	pin_code_reply_cp pr;
 	DBusMessage *message;
 	DBusError err;
@@ -394,15 +388,22 @@ done:
 	if (message)
 		dbus_message_unref(message);
 
-	dbus_pending_call_unref(call);
+	req->agent->pending_requests = slist_remove(req->agent->pending_requests, req);
+
+	dbus_pending_call_cancel(req->call);
+	dbus_pending_call_unref(req->call);
+	dbus_connection_unref(req->conn);
+	free(req->path);
+	free(req);
 }
 
-static int call_passkey_agent(DBusConnection *conn, struct passkey_agent *agent,
-		int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba)
+static int call_passkey_agent(DBusConnection *conn,
+				struct passkey_agent *agent, int dev,
+				const char *path, bdaddr_t *sba,
+				bdaddr_t *dba)
 {
 	DBusMessage *message = NULL;
-	DBusPendingCall *pending = NULL;
-	struct pin_request *req;
+	struct pending_agent_request *req = NULL;
 	char bda[18];
 	char *ptr = bda;
 
@@ -423,12 +424,18 @@ static int call_passkey_agent(DBusConnection *conn, struct passkey_agent *agent,
 		goto failed;
 	}
 
-	req = malloc(sizeof(*req));
+	req = malloc(sizeof(struct pending_agent_request));
 	if (!req)
 		goto failed;
+	memset(req, 0, sizeof(struct pending_agent_request));
 	req->dev = dev;
 	bacpy(&req->sba, sba);
 	bacpy(&req->bda, dba);
+	req->agent = agent;
+	req->conn = dbus_connection_ref(conn);
+	req->path = strdup(path);
+	if (!req->path)
+		goto failed;
 
 	dbus_message_append_args(message,
 					DBUS_TYPE_STRING, &path,
@@ -436,12 +443,14 @@ static int call_passkey_agent(DBusConnection *conn, struct passkey_agent *agent,
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(conn, message,
-				&pending, TIMEOUT) == FALSE) {
+				&req->call, TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		goto failed;
 	}
 
-	dbus_pending_call_set_notify(pending, passkey_agent_reply, req, free);
+	dbus_pending_call_set_notify(req->call, passkey_agent_reply, req, NULL);
+
+	agent->pending_requests = slist_append(agent->pending_requests, req);
 
 	dbus_message_unref(message);
 
@@ -450,6 +459,12 @@ static int call_passkey_agent(DBusConnection *conn, struct passkey_agent *agent,
 failed:
 	if (message)
 		dbus_message_unref(message);
+
+	if (req) {
+		dbus_connection_unref(req->conn);
+		free(req->path);
+		free(req);
+	}
 
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 
@@ -468,7 +483,8 @@ DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg,
 	return error_unknown_method(conn, msg);
 }
 
-int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba)
+int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
+					bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct passkey_agent *agent = default_agent;
 	struct hci_dbus_data *adapter = NULL;
@@ -495,4 +511,69 @@ int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdad
 
 done:
 	return call_passkey_agent(conn, agent, dev, path, sba, dba);
+}
+
+static void send_cancel_request(struct passkey_agent *agent, struct pending_agent_request *req)
+{
+	DBusMessage *message;
+	char address[18], *ptr = address;
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+			"org.bluez.PasskeyAgent", "Cancel");
+	if (message == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return;
+	}
+
+	ba2str(&req->bda, address);
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_STRING, &req->path,
+			DBUS_TYPE_STRING, &ptr,
+			DBUS_TYPE_INVALID);
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	send_reply_and_unref(req->conn, message);
+
+	dbus_pending_call_cancel(req->call);
+	dbus_pending_call_unref(req->call);
+	dbus_connection_unref(req->conn);
+	free(req->path);
+	free(req);
+
+	debug("PasskeyAgent.Request(%s, %s) was canceled", req->path, address);
+}
+
+void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdaddr_t *addr)
+{
+	struct slist *l, *next;
+
+	if (!default_agent)
+		return;
+
+	/* First check the default agent */
+	for (l = default_agent->pending_requests; l != NULL; l = next) {
+		struct pending_agent_request *req = l->data;
+		next = l->next;
+		if (!strcmp(path, req->path) && !bacmp(addr, &req->bda)) {
+			send_cancel_request(default_agent, req);
+			default_agent->pending_requests = slist_remove(default_agent->pending_requests,
+									req);
+		}
+	}
+
+	/* and then the adapter specific agents */
+	for (;agents != NULL; agents = agents->next) {
+		struct passkey_agent *agent = agents->data;
+		for (l = agent->pending_requests; l != NULL; l = next) {
+			struct pending_agent_request *req = l->data;
+			next = l->next;
+			if (!strcmp(path, req->path) && !bacmp(addr, &req->bda)) {
+				send_cancel_request(default_agent, req);
+				agent->pending_requests = slist_remove(agent->pending_requests, req);
+			}
+		}
+	}
+
 }
