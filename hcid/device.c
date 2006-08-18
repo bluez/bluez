@@ -432,7 +432,7 @@ int set_device_name(uint16_t dev_id, const char *name)
 	}
 
 	if (hci_write_local_name(dd, name, 5000) < 0) {
-		error("Can't read name for hci%d: %s (%d)",
+		error("Can't write name for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}

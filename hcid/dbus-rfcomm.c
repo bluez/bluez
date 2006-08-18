@@ -700,6 +700,7 @@ static struct service_data rfcomm_services[] = {
 DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
+	const struct hci_dbus_data *pdata = data;
 	service_handler_func_t handler;
 
 	if (!hcid_dbus_use_experimental())
@@ -709,6 +710,9 @@ DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg,
 		error("RFCOMM method called with NULL data pointer!");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
+
+	if (!pdata->up)
+		return error_not_ready(conn, msg);
 
 	/* Initialize the RFCOMM control socket if has not yet been done */
 	if (rfcomm_ctl < 0) {

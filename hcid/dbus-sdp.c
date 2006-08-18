@@ -1111,10 +1111,14 @@ static struct service_data sdp_services[] = {
 
 DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void *data)
 {
+	const struct hci_dbus_data *pdata = data;
 	service_handler_func_t handler;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
+
+	if (!pdata->up)
+		return error_not_ready(conn, msg);
 
 	handler = find_service_handler(sdp_services, msg);
 

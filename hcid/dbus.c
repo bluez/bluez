@@ -665,6 +665,7 @@ int hcid_dbus_stop_device(uint16_t id)
 
 	pdata->up = 0;
 	pdata->discover_state = STATE_IDLE;
+	pdata->mode = SCAN_DISABLED;
 
 	return 0;
 }

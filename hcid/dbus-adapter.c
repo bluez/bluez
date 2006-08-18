@@ -406,6 +406,26 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
+	if (!dbus_data->up) {
+		bdaddr_t local;
+
+		str2ba(dbus_data->address, &local);
+		/* The new value will be loaded when the adapter comes UP */
+		write_device_mode(&local, scan_mode);
+
+		/* Start HCI device */
+		if (ioctl(dd, HCIDEVUP, dbus_data->dev_id) ==  0)
+			goto done; /* on success */
+
+		if (errno != EALREADY) {
+			error("Can't init device hci%d: %s (%d)\n",
+					dbus_data->dev_id, strerror(errno), errno);
+
+			hci_close_dev(dd);
+			return error_failed(conn, msg, errno);
+		}
+	}
+
 	/* Check if the new requested mode is different from the current */
 	if (current_mode != hci_mode) {
 		struct hci_request rq;
@@ -433,6 +453,7 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 		}
 	}
 
+done:
 	hci_close_dev(dd);
 
 	reply = dbus_message_new_method_return(msg);
@@ -467,6 +488,9 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 	DBusError err;
 	uint32_t timeout;
 	bdaddr_t bdaddr;
+
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -654,6 +678,9 @@ static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn,
 	uint8_t major_class;
 	int dd, size, i;
 
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
+
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
@@ -709,6 +736,9 @@ static DBusHandlerResult handle_dev_get_minor_class_req(DBusConnection *conn, DB
 	uint8_t minor_class;
 	int dd;
 
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
+
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
@@ -758,6 +788,9 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 	uint8_t cls[3];
 	uint32_t dev_class = 0xFFFFFFFF;
 	int i, dd;
+
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -841,6 +874,9 @@ static DBusHandlerResult handle_dev_get_service_classes_req(DBusConnection *conn
 	uint8_t cls[3];
 	int dd, i;
 
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
+
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
@@ -915,6 +951,9 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 	bdaddr_t bdaddr;
 	char *str_ptr;
 	int ecode;
+
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1342,6 +1381,9 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 		return send_reply_and_unref(conn, reply);
 	}
 
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
+
 	/* put the request name in the queue to resolve name */
 	str2ba(peer_addr, &peer_bdaddr);
 	disc_device_append(&dbus_data->disc_devices, &peer_bdaddr, NAME_PENDING, RESOLVE_NAME);
@@ -1605,6 +1647,9 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 	int dd;
 	struct active_conn_info *dev;
 
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
+
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &peer_addr,
@@ -1662,6 +1707,9 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	struct slist *l;
 	bdaddr_t peer_bdaddr;
 	int dd, disconnect;
+
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -1779,6 +1827,9 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 	const char *peer_addr;
 	int dd = -1;
 
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
+
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &peer_addr,
@@ -1881,6 +1932,9 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	char *addr_ptr, *str;
 	bdaddr_t bdaddr;
 	int dd;
+
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -2119,6 +2173,9 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	uint32_t lap = 0x9e8b33;
 	int dd;
 
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
+
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
@@ -2186,6 +2243,9 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	struct hci_dbus_data *dbus_data = data;
 	uint8_t status = 0x00;
 	int dd = -1;
+
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
@@ -2382,7 +2442,6 @@ static struct service_data dev_services[] = {
 
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	const struct hci_dbus_data *pdata = data; 
 	const char *iface, *name;
 
 	iface = dbus_message_get_interface(msg);
@@ -2391,12 +2450,7 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
 					!strcmp("Introspect", name)) {
 		return simple_introspect(conn, msg, data);
-	}
-
-	if (!pdata->up)
-		return error_not_ready(conn, msg);	
-	else 
-		if (!strcmp(ADAPTER_INTERFACE, iface)) {
+	} else if (!strcmp(ADAPTER_INTERFACE, iface)) {
 		service_handler_func_t handler;
 
 		handler = find_service_handler(dev_services, msg);
