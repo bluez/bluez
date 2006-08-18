@@ -635,6 +635,8 @@ int hcid_dbus_stop_device(uint16_t id)
 	/* check pending requests */
 	reply_pending_requests(path, pdata);
 
+	cancel_passkey_agent_requests(pdata->passkey_agents, path, NULL);
+
 	if (pdata->requestor_name) {
 		free(pdata->requestor_name);
 		pdata->requestor_name = NULL;
