@@ -536,13 +536,13 @@ static void send_cancel_request(struct passkey_agent *agent, struct pending_agen
 
 	send_reply_and_unref(req->conn, message);
 
+	debug("PasskeyAgent.Request(%s, %s) was canceled", req->path, address);
+
 	dbus_pending_call_cancel(req->call);
 	dbus_pending_call_unref(req->call);
 	dbus_connection_unref(req->conn);
 	free(req->path);
 	free(req);
-
-	debug("PasskeyAgent.Request(%s, %s) was canceled", req->path, address);
 }
 
 void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdaddr_t *addr)
