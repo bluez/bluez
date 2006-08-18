@@ -43,6 +43,34 @@
 
 static struct passkey_agent *default_agent = NULL;
 
+static void passkey_agent_free(struct passkey_agent *agent)
+{
+	struct slist *l;
+
+	if (!agent)
+		return;
+	if (agent->name)
+		free(agent->name);
+	if (agent->path)
+		free(agent->path);
+	if (agent->addr)
+		free(agent->addr);
+
+	for (l = agent->pending_requests; l != NULL; l = l->next) {
+		struct pending_agent_request *req = l->data;
+
+		free(req->path);
+		dbus_pending_call_cancel(req->call);
+		dbus_pending_call_unref(req->call);
+		dbus_connection_unref(req->conn);
+		free(req);
+	}
+
+	slist_free(agent->pending_requests);
+
+	free(agent);
+}
+
 static void default_agent_exited(const char *name, void *data)
 {
 	debug("%s exited without unregistering the default passkey agent", name);
@@ -53,23 +81,8 @@ static void default_agent_exited(const char *name, void *data)
 		return;
 	}
 
-	free(default_agent->path);
-	free(default_agent->name);
-	free(default_agent);
+	passkey_agent_free(default_agent);
 	default_agent = NULL;
-}
-
-static void passkey_agent_free(struct passkey_agent *agent)
-{
-	if (!agent)
-		return;
-	if (agent->name)
-		free(agent->name);
-	if (agent->path)
-		free(agent->path);
-	if (agent->addr)
-		free(agent->addr);
-	free(agent);
 }
 
 static struct passkey_agent *passkey_agent_new(const char *name,
