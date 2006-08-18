@@ -752,8 +752,9 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 
 	l = slist_find(pdata->pending_bondings, peer, pending_bonding_cmp);
 	if (l) {
+		void *d = l->data;
 		pdata->pending_bondings = slist_remove(pdata->pending_bondings, l->data);
-		free(l->data);
+		free(d);
 
 		if (!status) {
 			const char *name = "BondingCreated";
