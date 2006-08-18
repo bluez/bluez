@@ -583,7 +583,7 @@ void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdadd
 			struct pending_agent_request *req = l->data;
 			next = l->next;
 			if (!strcmp(path, req->path) && !bacmp(addr, &req->bda)) {
-				send_cancel_request(default_agent, req);
+				send_cancel_request(agent, req);
 				agent->pending_requests = slist_remove(agent->pending_requests, req);
 			}
 		}
