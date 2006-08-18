@@ -1347,7 +1347,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 	struct active_conn_info *dev;
 	DBusMessage *message;
 	struct slist *l;
-	char *local_addr, *peer_addr;
+	char *local_addr, *peer_addr = NULL;
 	bdaddr_t tmp;
 	int id;
 
