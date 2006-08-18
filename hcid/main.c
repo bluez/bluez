@@ -478,19 +478,7 @@ static void init_all_devices(int ctl)
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		if (hcid.auto_init)
 			init_device(dr->dev_id);
-
-		add_device(dr->dev_id);
-
-		if (hcid.auto_init && hci_test_bit(HCI_UP, &dr->dev_opt))
-			configure_device(dr->dev_id);
-
-		if (hcid.security && hci_test_bit(HCI_UP, &dr->dev_opt))
-			start_security_manager(dr->dev_id);
-
-		start_device(dr->dev_id);
-
 		hcid_dbus_register_device(dr->dev_id);
-		hcid_dbus_start_device(dr->dev_id);
 	}
 
 	free(dl);
@@ -532,7 +520,6 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		info("HCI dev %d registered", sd->dev_id);
 		if (hcid.auto_init)
 			init_device(sd->dev_id);
-		add_device(sd->dev_id);
 		hcid_dbus_register_device(sd->dev_id);
 		break;
 
@@ -544,6 +531,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 
 	case HCI_DEV_UP:
 		info("HCI dev %d up", sd->dev_id);
+		add_device(sd->dev_id);
 		if (hcid.auto_init)
 			configure_device(sd->dev_id);
 		if (hcid.security)
@@ -717,12 +705,12 @@ int main(int argc, char *argv[])
 	/* Create event loop */
 	event_loop = g_main_new(FALSE);
 
-	/* Initialize already connected devices */
-	init_all_devices(hcid.sock);
-
 	ctl_io = g_io_channel_unix_new(hcid.sock);
 
 	g_io_add_watch(ctl_io, G_IO_IN, io_stack_event, NULL);
+
+	/* Initialize already connected devices */
+	init_all_devices(hcid.sock);
 
 	if (sdp)
 		start_sdp_server();
