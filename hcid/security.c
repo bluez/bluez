@@ -614,7 +614,7 @@ static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
 	evt_auth_complete *evt = ptr;
 	bdaddr_t dba;
 
-	if (get_bdaddr(dev, sba, evt->handle, &dba) < 0) 
+	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0) 
 		return;
 
 	if (evt->status)
