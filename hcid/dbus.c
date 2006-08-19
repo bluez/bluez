@@ -394,8 +394,13 @@ static int unregister_dbus_path(const char *path)
 		/* check pending requests */
 		reply_pending_requests(path, pdata);
 
-		if (pdata->requestor_name)
+		cancel_passkey_agent_requests(pdata->passkey_agents, path, NULL);
+
+		if (pdata->requestor_name) {
+			name_listener_remove(connection, pdata->requestor_name,
+					(name_cb_t)create_bond_req_exit, pdata);
 			free(pdata->requestor_name);
+		}
 
 		if (pdata->disc_devices) {
 			slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
@@ -638,6 +643,8 @@ int hcid_dbus_stop_device(uint16_t id)
 	cancel_passkey_agent_requests(pdata->passkey_agents, path, NULL);
 
 	if (pdata->requestor_name) {
+		name_listener_remove(connection, pdata->requestor_name,
+				(name_cb_t)create_bond_req_exit, pdata);
 		free(pdata->requestor_name);
 		pdata->requestor_name = NULL;
 	}
@@ -796,6 +803,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
 
+	name_listener_remove(connection, pdata->requestor_name,
+			(name_cb_t)create_bond_req_exit, pdata);
 	free(pdata->requestor_name);
 	pdata->requestor_name = NULL;
 
@@ -1331,6 +1340,8 @@ bonding_failed:
 	/* free bonding request if the HCI pairing request was not sent */
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
+	name_listener_remove(connection, pdata->requestor_name,
+			(name_cb_t)create_bond_req_exit, pdata);
 	free(pdata->requestor_name);
 	pdata->requestor_name = NULL;
 
@@ -1961,4 +1972,15 @@ failed:
 		close(dd);
 
 	bt_free(local_addr);
+}
+
+void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata)
+{
+	char path[MAX_PATH_LENGTH];
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, pdata->dev_id);
+
+	debug("PasskeyAgent at %s exited before bonding was completed", name);
+
+	cancel_passkey_agent_requests(pdata->passkey_agents, path, &pdata->bonding->bdaddr);
 }

@@ -562,11 +562,8 @@ void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdadd
 {
 	struct slist *l, *next;
 
-	if (!default_agent)
-		return;
-
 	/* First check the default agent */
-	for (l = default_agent->pending_requests; l != NULL; l = next) {
+	for (l = default_agent ? default_agent->pending_requests : NULL; l != NULL; l = next) {
 		struct pending_agent_request *req = l->data;
 		next = l->next;
 		if (!strcmp(path, req->path) && (!addr || !bacmp(addr, &req->bda))) {
@@ -588,5 +585,4 @@ void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdadd
 			}
 		}
 	}
-
 }

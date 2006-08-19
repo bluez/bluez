@@ -1812,6 +1812,9 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 
 	dbus_data->requestor_name = strdup(dbus_message_get_sender(msg));
 
+	name_listener_add(conn, dbus_data->requestor_name,
+			(name_cb_t)create_bond_req_exit, dbus_data);
+
 	hci_close_dev(dd);
 
 	return DBUS_HANDLER_RESULT_HANDLED;

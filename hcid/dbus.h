@@ -191,6 +191,8 @@ DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void
 
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
 
+void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata);
+
 int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
 void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdaddr_t *dba);
 
