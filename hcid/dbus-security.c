@@ -58,6 +58,9 @@ static void passkey_agent_free(struct passkey_agent *agent)
 
 	for (l = agent->pending_requests; l != NULL; l = l->next) {
 		struct pending_agent_request *req = l->data;
+		
+		hci_send_cmd(req->dev, OGF_LINK_CTL,
+				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 
 		free(req->path);
 		dbus_pending_call_cancel(req->call);
