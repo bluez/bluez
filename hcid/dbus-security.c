@@ -49,6 +49,7 @@ static void passkey_agent_free(struct passkey_agent *agent)
 
 	if (!agent)
 		return;
+
 	if (agent->name)
 		free(agent->name);
 	if (agent->path)
@@ -368,9 +369,7 @@ static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 		error("Passkey agent replied with an error: %s, %s",
 				err.name, err.message);
 		dbus_error_free(&err);
-		hci_send_cmd(req->dev, OGF_LINK_CTL,
-				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
-		goto done;
+		goto fail;
 	}
 
 	dbus_error_init(&err);
@@ -379,16 +378,14 @@ static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 				DBUS_TYPE_INVALID)) {
 		error("Wrong passkey reply signature: %s", err.message);
 		dbus_error_free(&err);
-		hci_send_cmd(req->dev, OGF_LINK_CTL,
-				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
-		goto done;
+		goto fail;
 	}
 
 	len = strlen(pin);
 
-	if (len > 16) {
-		error("Too long (%d char) passkey from handler", len);
-		goto done;
+	if (len > 16 || len < 1) {
+		error("Invalid passkey length from handler");
+		goto fail;
 	}
 
 	set_pin_length(&req->sba, len);
@@ -399,6 +396,12 @@ static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 	pr.pin_len = len;
 	hci_send_cmd(req->dev, OGF_LINK_CTL,
 			OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
+
+	goto done;
+
+fail:
+	hci_send_cmd(req->dev, OGF_LINK_CTL,
+			OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 
 done:
 	if (message)
