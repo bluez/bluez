@@ -94,9 +94,57 @@ struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba, uint16_t 
 	return data;
 }
 
+static int hci_req_find_by_devid(const void *data, const void *user_data)
+{
+	const struct hci_req_data *req = data;
+	const int *dev_id = user_data;
+
+	return (*dev_id - req->dev_id);
+}
+
+static void hci_req_queue_process(int dev_id)
+{
+	int dd, ret_val;
+
+	/* send the next pending cmd */
+	dd = hci_open_dev(dev_id);
+	do {
+		struct hci_req_data *data;
+		struct slist *l = slist_find(hci_req_queue, &dev_id, hci_req_find_by_devid);
+
+		if (!l)
+			break;
+
+		data = l->data;
+		data->status = REQ_SENT;
+		
+		ret_val = hci_send_cmd(dd, data->ogf, data->ocf, data->clen, data->cparam);
+		if (ret_val < 0) {
+			hci_req_queue = slist_remove(hci_req_queue, data);
+			free(data->cparam);
+			free(data);
+		}
+
+	} while(ret_val < 0);
+
+	hci_close_dev(dd);
+}
+
 void hci_req_queue_append(struct hci_req_data *data)
 {
+	struct slist *l;
+	struct hci_req_data *match;
+
+
 	hci_req_queue = slist_append(hci_req_queue, data);
+
+	l = slist_find(hci_req_queue, &data->dev_id, hci_req_find_by_devid);
+	match = l->data;
+
+	if (match->status == REQ_SENT)
+		return;
+
+	hci_req_queue_process(data->dev_id);
 }
 
 void hci_req_queue_remove(int dev_id, bdaddr_t *dba)
@@ -116,19 +164,10 @@ void hci_req_queue_remove(int dev_id, bdaddr_t *dba)
 	}
 }
 
-static int hci_req_find_by_devid(const void *data, const void *user_data)
-{
-	const struct hci_req_data *req = data;
-	const int *dev_id = user_data;
-
-	return (*dev_id - req->dev_id);
-}
-
 static void check_pending_hci_req(int dev_id, int event)
 {
 	struct hci_req_data *data;
 	struct slist *l;
-	int dd, ret_val;
 
 	if (!hci_req_queue)
 		return;
@@ -152,30 +191,7 @@ static void check_pending_hci_req(int dev_id, int event)
 		free(data);
 	}
 
-	/* send the next pending cmd */
-	dd = hci_open_dev(dev_id);
-	do {
-		l = slist_find(hci_req_queue, &dev_id, hci_req_find_by_devid);
-
-		if (!l)
-			goto failed;
-
-		data = l->data;
-		data->status = REQ_SENT;
-		
-		ret_val = hci_send_cmd(dd, data->ogf, data->ocf, data->clen, data->cparam);
-		if (ret_val < 0) {
-			hci_req_queue = slist_remove(hci_req_queue, data);
-			free(data->cparam);
-			free(data);
-		}
-
-	} while(ret_val < 0);
-
-failed:
-	hci_close_dev(dd);
-
-	return;
+	hci_req_queue_process(dev_id);
 }
 
 static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)

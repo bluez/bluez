@@ -1980,7 +1980,34 @@ void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, pdata->dev_id);
 
-	debug("PasskeyAgent at %s exited before bonding was completed", name);
+	debug("CreateConnection requestor at %s exited before bonding was completed", name);
 
 	cancel_passkey_agent_requests(pdata->passkey_agents, path, &pdata->bonding->bdaddr);
+
+	if (pdata->bonding->disconnect) {
+		struct slist *l;
+
+		l = slist_find(pdata->active_conn, &pdata->bonding->bdaddr, active_conn_find_by_bdaddr);
+		if (l) {
+			struct active_conn_info *con = l->data;
+			struct hci_req_data *data;
+			disconnect_cp cp;
+			memset(&cp, 0, sizeof(cp));
+
+			cp.handle = con->handle;
+			cp.reason = HCI_OE_USER_ENDED_CONNECTION;
+
+			data = hci_req_data_new(pdata->dev_id, &pdata->bonding->bdaddr, OGF_LINK_CTL,
+						OCF_DISCONNECT, EVT_DISCONN_COMPLETE,
+						&cp, DISCONNECT_CP_SIZE);
+
+			hci_req_queue_append(data);
+		}
+	}
+
+	bonding_request_free(pdata->bonding);
+	pdata->bonding = NULL;
+
+	free(pdata->requestor_name);
+	pdata->requestor_name = NULL;
 }
