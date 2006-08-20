@@ -1,7 +1,7 @@
 
+if CUPS
 cupsdir = $(libdir)/cups/backend
 
-if CUPS
 cups_PROGRAMS = bluetooth
 else
 noinst_PROGRAMS = bluetooth
