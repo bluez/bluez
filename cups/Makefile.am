@@ -1,13 +1,15 @@
 
-if CUPS
 cupsdir = $(libdir)/cups/backend
 
+if CUPS
 cups_PROGRAMS = bluetooth
+else
+noinst_PROGRAMS = bluetooth
+endif
 
 bluetooth_SOURCES = main.c sdp.c spp.c hcrp.c
 bluetooth_LDADD = @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
-endif
 
 MAINTAINERCLEANFILES = Makefile.in
