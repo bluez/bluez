@@ -95,23 +95,6 @@ struct active_conn_info {
 	uint16_t handle;
 };
 
-struct passkey_agent {
-	char *addr;
-	char *name;
-	char *path;
-	struct slist *pending_requests;
-};
-
-struct pending_agent_request {
-	struct passkey_agent *agent;
-	int dev;
-	bdaddr_t sba;
-	bdaddr_t bda;
-	char *path;
-	DBusConnection *conn;
-	DBusPendingCall *call;
-};
-
 struct hci_dbus_data {
 	uint16_t dev_id;
 	int up;
@@ -127,6 +110,25 @@ struct hci_dbus_data {
 	struct bonding_request_info *bonding;
 	struct slist *active_conn;
 	struct slist *pending_bondings;
+};
+
+struct passkey_agent {
+	struct hci_dbus_data *pdata;
+	DBusConnection *conn;
+	char *addr;
+	char *name;
+	char *path;
+	struct slist *pending_requests;
+	int exited;
+};
+
+struct pending_agent_request {
+	struct passkey_agent *agent;
+	int dev;
+	bdaddr_t sba;
+	bdaddr_t bda;
+	char *path;
+	DBusPendingCall *call;
 };
 
 typedef int register_function_t(DBusConnection *conn, uint16_t id);
@@ -194,6 +196,8 @@ service_handler_func_t find_service_handler(struct service_data *services, DBusM
 void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata);
 
 int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
+void release_default_agent(void);
+void release_passkey_agents(struct hci_dbus_data *pdata, bdaddr_t *bda);
 void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdaddr_t *dba);
 
 static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusMessage *reply)

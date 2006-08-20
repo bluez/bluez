@@ -40,6 +40,8 @@ struct slist *slist_remove(struct slist *list, void *data);
 struct slist *slist_find(struct slist *list, const void *data,
 			cmp_func_t cmp_func);
 
+int slist_length(struct slist *list);
+
 void slist_foreach(struct slist *list, slist_func_t func, void *user_data);
 void slist_free(struct slist *list);
 

@@ -161,14 +161,6 @@ guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
 						func, user_data, NULL);
 }
 
-static void timeout_free(void *data, void *user_data)
-{
-	struct timeout *t = data;
-
-	if (t)
-		free (t);
-}
-
 static GMainContext *g_main_context_default()
 {
 	if (default_context)
@@ -342,16 +334,19 @@ void g_main_loop_run(GMainLoop *loop)
 
 void g_main_loop_quit(GMainLoop *loop)
 {
-	struct watch *w;
+	struct watch *w, *next;
 
 	loop->bail = 1;
 
-	for (w = watch_head.next; w; w = w->next) {
+	for (w = watch_head.next; w; w = next) {
+		next = w->next;
 		if (w->destroy)
 			w->destroy(w->user_data);
 		watch_head.next = w->next;
 		free(w);
 	}
+
+	watch_head.next = NULL;
 }
 
 void g_main_loop_unref(GMainLoop *loop)
@@ -359,9 +354,10 @@ void g_main_loop_unref(GMainLoop *loop)
 	if (!loop->context)
 		return;
 
-	slist_foreach(loop->context->ltimeout, timeout_free, NULL);
+	slist_foreach(loop->context->ltimeout, (slist_func_t)free, NULL);
 	slist_free(loop->context->ltimeout);
 	free(loop->context);
+	loop->context = NULL;
 }
 
 guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)

@@ -730,14 +730,14 @@ int main(int argc, char *argv[])
 	/* Start event processor */
 	g_main_run(event_loop);
 
-	g_main_unref(event_loop);
-
 	if (sdp)
 		stop_sdp_server();
 
 	free_device_opts();
 
 	hcid_dbus_exit();
+
+	g_main_unref(event_loop);
 
 	info("Exit");
 

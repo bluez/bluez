@@ -396,6 +396,8 @@ static int unregister_dbus_path(const char *path)
 
 		cancel_passkey_agent_requests(pdata->passkey_agents, path, NULL);
 
+		release_passkey_agents(pdata, NULL);
+
 		if (pdata->requestor_name) {
 			name_listener_remove(connection, pdata->requestor_name,
 					(name_cb_t)create_bond_req_exit, pdata);
@@ -614,7 +616,7 @@ failed:
 int hcid_dbus_stop_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
-	struct hci_dbus_data* pdata;
+	struct hci_dbus_data *pdata;
 	const char *scan_mode = MODE_OFF;
 	DBusMessage *message;
 
@@ -641,6 +643,8 @@ int hcid_dbus_stop_device(uint16_t id)
 	reply_pending_requests(path, pdata);
 
 	cancel_passkey_agent_requests(pdata->passkey_agents, path, NULL);
+
+	release_passkey_agents(pdata, NULL);
 
 	if (pdata->requestor_name) {
 		name_listener_remove(connection, pdata->requestor_name,
@@ -773,6 +777,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 			send_reply_and_unref(connection, message);
 		}
 	}
+
+	release_passkey_agents(pdata, peer);
 
 	if (!pdata->bonding || bacmp(&pdata->bonding->bdaddr, peer))
 		goto failed; /* skip: no bonding req pending */
@@ -1412,6 +1418,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 	}
 
 	cancel_passkey_agent_requests(pdata->passkey_agents, path, &dev->bdaddr);
+	release_passkey_agents(pdata, &dev->bdaddr);
 
 	/* Sent the remote device disconnected signal */
 	message = dev_signal_factory(pdata->dev_id, "RemoteDeviceDisconnected",
@@ -1636,6 +1643,8 @@ void hcid_dbus_exit(void)
 
 	if (!dbus_connection_get_is_connected(connection))
 		return;
+
+	release_default_agent();
 
 	/* Unregister all paths in Adapter path hierarchy */
 	if (!dbus_connection_list_registered(connection, BASE_PATH, &children))
@@ -1983,6 +1992,7 @@ void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata)
 	debug("CreateConnection requestor at %s exited before bonding was completed", name);
 
 	cancel_passkey_agent_requests(pdata->passkey_agents, path, &pdata->bonding->bdaddr);
+	release_passkey_agents(pdata, &pdata->bonding->bdaddr);
 
 	if (pdata->bonding->disconnect) {
 		struct slist *l;
