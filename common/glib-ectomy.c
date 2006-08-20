@@ -225,16 +225,7 @@ static void timeout_handlers_prepare(GMainContext *context)
 
 static int timeout_cmp(const void *t1, const void *t2)
 {
-	const struct timeout *tout1 = t1;
-	const struct timeout *tout2 = t2;
-
-	if (!tout2)
-		return -1;
-
-	if (tout1 != tout2)
-		return -1;
-
-	return tout1->id - tout2->id;
+	return t1 - t2;
 }
 
 static void timeout_handlers_check(GMainContext *context)
@@ -246,24 +237,30 @@ static void timeout_handlers_check(GMainContext *context)
 	gettimeofday(&tv, NULL);
 
 	while (l) {
+		struct slist *match;
+		gboolean ret;
+
 		t = l->data;
 		l = l->next;
 
 		if (timercmp(&tv, &t->expiration, <))
 			continue;
 
-		if (t->function(t->data)) {
-			struct slist *match;
-			/* if false/expired: remove it from the list
-			 * Before remove check again in order to cover the situation
-			 * when the handler is removed/freed by the callback function
-			 */
-			match = slist_find(context->ltimeout, t, timeout_cmp);
-			if (match) {
-				t = match->data;
-				context->ltimeout = slist_remove(context->ltimeout, t);
-				free(t);
-			}
+		ret = t->function(t->data);
+
+		/* Check if the handler was removed/freed by the callback
+		 * function */
+		match = slist_find(context->ltimeout, t, timeout_cmp);
+
+		if (!match)
+			continue;
+
+		/* Update next pointer if callback changed the list */
+		l = match->next;
+
+		if (ret == FALSE) {
+			context->ltimeout = slist_remove(context->ltimeout, t);
+			free(t);
 		} else {
 			glong secs, msecs;
 			/* update the next expiration time */

@@ -1440,16 +1440,16 @@ failed:
  *  Section reserved to D-Bus watch functions
  *
  *****************************************************************/
-static int message_dispatch_cb(void *data)
+static gboolean message_dispatch_cb(void *data)
 {
 	dbus_connection_ref(connection);
 
 	/* Dispatch messages */
-	while(dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
+	while (dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
 
 	dbus_connection_unref(connection);
 
-	return -1;
+	return FALSE;
 }
 
 static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -1520,17 +1520,17 @@ static void watch_toggled(DBusWatch *watch, void *data)
 		remove_watch(watch, data);
 }
 
-static int timeout_handler_dispatch(gpointer data)
+static gboolean timeout_handler_dispatch(gpointer data)
 {
 	timeout_handler_t *handler = data;
 
 	/* if not enabled should not be polled by the main loop */
 	if (dbus_timeout_get_enabled(handler->timeout) != TRUE)
-		return -1;
+		return FALSE;
 
 	dbus_timeout_handle(handler->timeout);
 
-	return -1;
+	return FALSE;
 }
 
 static void timeout_handler_free(void *data)
@@ -1672,21 +1672,21 @@ done:
  *
  *****************************************************************/
 
-int discoverable_timeout_handler(void *data)
+gboolean discoverable_timeout_handler(void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	struct hci_request rq;
 	int dd = -1;
 	uint8_t hci_mode = dbus_data->mode;
 	uint8_t status = 0;
-	int8_t retval = 0;
+	gboolean retval = TRUE;
 
 	hci_mode &= ~SCAN_INQUIRY;
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0) {
 		error("HCI device open failed: hci%d", dbus_data->dev_id);
-		return 0;
+		return TRUE;
 	}
 
 	memset(&rq, 0, sizeof(rq));
@@ -1708,7 +1708,7 @@ int discoverable_timeout_handler(void *data)
 	}
 
 	dbus_data->timeout_id = 0;
-	retval = -1;
+	retval = FALSE;
 
 failed:
 	if (dd >= 0)
@@ -1717,24 +1717,25 @@ failed:
 	return retval;
 }
 
-static int system_bus_reconnect(void *data)
+static gboolean system_bus_reconnect(void *data)
 {
 	struct hci_dev_list_req *dl = NULL;
 	struct hci_dev_req *dr;
-	int sk, i, ret_val = 0;
+	int sk, i;
+	gboolean ret_val = TRUE;
 
 	if (dbus_connection_get_is_connected(connection))
-		return -1;
+		return FALSE;
 
 	if (hcid_dbus_init() == FALSE)
-		return 0;
+		return TRUE;
 
 	/* Create and bind HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0) {
 		error("Can't open HCI socket: %s (%d)",
 							strerror(errno), errno);
-		return 0;
+		return TRUE;
 	}
 
 	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
@@ -1758,7 +1759,7 @@ static int system_bus_reconnect(void *data)
 	for (i = 0; i < dl->dev_num; i++, dr++)
 		hcid_dbus_register_device(dr->dev_id);
 
-	ret_val = -1;
+	ret_val = FALSE;
 
 failed:
 	if (sk >= 0)

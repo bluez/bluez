@@ -120,6 +120,7 @@ struct passkey_agent {
 	char *path;
 	struct slist *pending_requests;
 	int exited;
+	guint timeout;
 };
 
 struct pending_agent_request {

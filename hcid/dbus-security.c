@@ -39,7 +39,8 @@
 #include "dbus.h"
 #include "hcid.h"
 
-#define TIMEOUT (30 * 1000)		/* 30 seconds */
+#define REQUEST_TIMEOUT (30 * 1000)		/* 30 seconds */
+#define AGENT_TIMEOUT (1 * 10 * 1000)		/* 3 minutes */
 
 static struct passkey_agent *default_agent = NULL;
 
@@ -64,6 +65,9 @@ static void passkey_agent_free(struct passkey_agent *agent)
 		free(req);
 	}
 
+	if (agent->timeout)
+		g_timeout_remove(agent->timeout);
+
 	if (!agent->exited)
 		release_agent(agent);
 
@@ -79,6 +83,45 @@ static void passkey_agent_free(struct passkey_agent *agent)
 	slist_free(agent->pending_requests);
 
 	free(agent);
+}
+
+static void agent_exited(const char *name, struct hci_dbus_data *adapter)
+{
+	struct slist *cur, *next;
+
+	debug("Passkey agent %s exited without calling Unregister", name);
+
+	for (cur = adapter->passkey_agents; cur != NULL; cur = next) {
+		struct passkey_agent *agent = cur->data;
+
+		next = cur->next;
+
+		if (strcmp(agent->name, name))
+			continue;
+
+		agent->exited = 1;
+
+		adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
+		passkey_agent_free(agent);
+	}
+}
+
+static gboolean agent_timeout(struct passkey_agent *agent)
+{
+	struct hci_dbus_data *pdata = agent->pdata;
+
+	debug("Passkey Agent at %s, %s timed out", agent->name, agent->path);
+
+	if (pdata)
+		pdata->passkey_agents = slist_remove(pdata->passkey_agents, agent);
+
+	name_listener_remove(agent->conn, agent->name, (name_cb_t)agent_exited, pdata);
+
+	agent->timeout = 0;
+
+	passkey_agent_free(agent);
+
+	return FALSE;
 }
 
 static void default_agent_exited(const char *name, void *data)
@@ -167,27 +210,6 @@ static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *
 	return 0;
 }
 
-static void agent_exited(const char *name, struct hci_dbus_data *adapter)
-{
-	struct slist *cur, *next;
-
-	debug("Passkey agent %s exited without calling Unregister", name);
-
-	for (cur = adapter->passkey_agents; cur != NULL; cur = next) {
-		struct passkey_agent *agent = cur->data;
-
-		next = cur->next;
-
-		if (strcmp(agent->name, name))
-			continue;
-
-		agent->exited = 1;
-
-		adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
-		passkey_agent_free(agent);
-	}
-}
-
 static DBusHandlerResult register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -232,6 +254,11 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	ref.path = NULL;
 	if (!slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp))
 		name_listener_add(conn, ref.name, (name_cb_t)agent_exited, adapter);
+
+	/* Because of bugs in glib-ectonomy.c this doesn't work yet */
+#if 0
+	agent->timeout = g_timeout_add(AGENT_TIMEOUT, (GSourceFunc)agent_timeout, agent);
+#endif
 
 	adapter->passkey_agents = slist_append(adapter->passkey_agents, agent);
 
@@ -486,7 +513,7 @@ static int call_passkey_agent(DBusConnection *conn,
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(conn, message,
-				&req->call, TIMEOUT) == FALSE) {
+				&req->call, REQUEST_TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		goto failed;
 	}
