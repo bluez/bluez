@@ -230,21 +230,26 @@ static int timeout_cmp(const void *t1, const void *t2)
 
 static void timeout_handlers_check(GMainContext *context)
 {
-	struct slist *l = context->ltimeout;
 	struct timeout *t;
 	struct timeval tv;
 
 	gettimeofday(&tv, NULL);
 
-	while (l) {
+	context->processed = NULL;
+
+	while (context->ltimeout) {
 		struct slist *match;
+		glong secs, msecs;
 		gboolean ret;
 
-		t = l->data;
-		l = l->next;
+		t = context->ltimeout->data;
 
-		if (timercmp(&tv, &t->expiration, <))
+		context->ltimeout = slist_remove(context->ltimeout, t);
+
+		if (timercmp(&tv, &t->expiration, <)) {
+			context->processed = slist_append(context->processed, t);
 			continue;
+		}
 
 		ret = t->function(t->data);
 
@@ -255,26 +260,27 @@ static void timeout_handlers_check(GMainContext *context)
 		if (!match)
 			continue;
 
-		/* Update next pointer if callback changed the list */
-		l = match->next;
-
-		if (ret == FALSE) {
-			context->ltimeout = slist_remove(context->ltimeout, t);
+		if (!ret) {
 			free(t);
-		} else {
-			glong secs, msecs;
-			/* update the next expiration time */
-			secs = t->interval / 1000;
-			msecs = t->interval - secs * 1000;
-
-			t->expiration.tv_sec = tv.tv_sec + secs;
-			t->expiration.tv_usec = tv.tv_usec + msecs * 1000;
-			if (t->expiration.tv_usec >= 1000000) {
-				t->expiration.tv_usec -= 1000000;
-				t->expiration.tv_sec++;
-			}
+			continue;
 		}
+
+		/* update the next expiration time */
+		secs = t->interval / 1000;
+		msecs = t->interval - secs * 1000;
+
+		t->expiration.tv_sec = tv.tv_sec + secs;
+		t->expiration.tv_usec = tv.tv_usec + msecs * 1000;
+		if (t->expiration.tv_usec >= 1000000) {
+			t->expiration.tv_usec -= 1000000;
+			t->expiration.tv_sec++;
+		}
+
+		context->processed = slist_append(context->processed, t);
 	}
+
+	context->ltimeout = context->processed;
+	context->processed = NULL;
 }
 
 void g_main_loop_run(GMainLoop *loop)
@@ -415,6 +421,21 @@ gint g_timeout_remove(const guint id)
 			continue;
 
 		default_context->ltimeout = slist_remove(default_context->ltimeout, t);
+		free(t);
+
+		return 0;
+	}
+
+	l = default_context->processed;
+
+	while (l) {
+		t = l->data;
+		l = l->next;
+
+		if (t->id != id)
+			continue;
+
+		default_context->processed = slist_remove(default_context->processed, t);
 		free(t);
 
 		return 0;

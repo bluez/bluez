@@ -48,6 +48,7 @@ typedef struct _GMainContext {
 	guint next_id;
 	glong timeout;
 	struct slist *ltimeout;
+	struct slist *processed;
 } GMainContext;
 
 typedef struct _GMainLoop {

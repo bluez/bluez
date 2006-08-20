@@ -40,7 +40,7 @@
 #include "hcid.h"
 
 #define REQUEST_TIMEOUT (30 * 1000)		/* 30 seconds */
-#define AGENT_TIMEOUT (1 * 10 * 1000)		/* 3 minutes */
+#define AGENT_TIMEOUT (3 * 60 * 1000)		/* 3 minutes */
 
 static struct passkey_agent *default_agent = NULL;
 
@@ -255,10 +255,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	if (!slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp))
 		name_listener_add(conn, ref.name, (name_cb_t)agent_exited, adapter);
 
-	/* Because of bugs in glib-ectonomy.c this doesn't work yet */
-#if 0
 	agent->timeout = g_timeout_add(AGENT_TIMEOUT, (GSourceFunc)agent_timeout, agent);
-#endif
 
 	adapter->passkey_agents = slist_append(adapter->passkey_agents, agent);
 
