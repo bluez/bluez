@@ -114,6 +114,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	test_enable=no
 	cups_enable=no
 	initscripts_enable=no
+	pcmciarules_enable=no
 	bccmd_enable=no
 	avctrl_enable=no
 	hid2hci_enable=${usb_found}
@@ -139,6 +140,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		test_enable=${enableval}
 		cups_enable=${enableval}
 		initscripts_enable=${enableval}
+		pcmciarules_enable=${enableval}
 		bccmd_enable=${enableval}
 		avctrl_enable=${enableval}
 		hid2hci_enable=${enableval}
@@ -167,6 +169,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(initscripts, AC_HELP_STRING([--enable-initscripts], [install Bluetooth boot scripts]), [
 		initscripts_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(pcmciarules, AC_HELP_STRING([--enable-pcmciarules], [install PCMCIA udev rules]), [
+		pcmciarules_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(bccmd, AC_HELP_STRING([--enable-bccmd], [install BCCMD interface utility]), [
@@ -204,6 +210,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(INITSCRIPTS, test "${initscripts_enable}" = "yes")
+	AM_CONDITIONAL(PCMCIARULES, test "${pcmciarules_enable}" = "yes")
 	AM_CONDITIONAL(BCCMD, test "${bccmd_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(AVCTRL, test "${avctrl_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
