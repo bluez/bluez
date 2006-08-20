@@ -1395,11 +1395,11 @@ typedef struct {
 } __attribute__ ((packed)) extended_inquiry_info;
 #define EXTENDED_INQUIRY_INFO_SIZE 254
 
-#define EVT_LINK_SUPERVISION_TIMEOUT	0x38
+#define EVT_LINK_SUPERVISION_TIMEOUT_CHANGE	0x38
 typedef struct {
 	uint16_t	handle;
 	uint16_t	timeout;
-} __attribute__ ((packed)) evt_link_supervision_timeout;
+} __attribute__ ((packed)) evt_link_supervision_timeout_change;
 #define EVT_LINK_SUPERVISION_TIMEOUT_SIZE 4
 
 #define EVT_TESTING			0xFE
