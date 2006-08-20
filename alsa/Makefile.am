@@ -2,7 +2,7 @@
 if ALSA
 alsadir = $(libdir)/alsa-lib
 
-alsa_LTLIBRARIES = libasound_module_pcm_a2dp.la libasound_module_pcm_headset.la
+noinst_LTLIBRARIES = libasound_module_pcm_a2dp.la libasound_module_pcm_headset.la
 
 libasound_module_pcm_a2dp_la_SOURCES = pcm_a2dp.c sbc.h sbc.c
 libasound_module_pcm_a2dp_la_LDFLAGS = -module -avoid-version -export-dynamic
