@@ -2423,9 +2423,9 @@ static inline void extended_inq_result_dump(int level, struct frame *frm)
 	}
 }
 
-static inline void link_supervision_timeout_dump(int level, struct frame *frm)
+static inline void link_supervision_timeout_change_dump(int level, struct frame *frm)
 {
-	evt_link_supervision_timeout *evt = frm->ptr;
+	evt_link_supervision_timeout_change *evt = frm->ptr;
 
 	p_indent(level, frm);
 	printf("handle %d timeout %d\n",
@@ -2606,8 +2606,8 @@ static inline void event_dump(int level, struct frame *frm)
 	case EVT_EXTENDED_INQUIRY_RESULT:
 		extended_inq_result_dump(level + 1, frm);
 		break;
-	case EVT_LINK_SUPERVISION_TIMEOUT:
-		link_supervision_timeout_dump(level + 1, frm);
+	case EVT_LINK_SUPERVISION_TIMEOUT_CHANGE:
+		link_supervision_timeout_change_dump(level + 1, frm);
 		break;
 	default:
 		raw_dump(level, frm);
