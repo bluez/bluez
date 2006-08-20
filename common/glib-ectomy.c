@@ -238,7 +238,6 @@ static void timeout_handlers_check(GMainContext *context)
 	context->processed = NULL;
 
 	while (context->ltimeout) {
-		struct slist *match;
 		glong secs, msecs;
 		gboolean ret;
 
@@ -255,9 +254,7 @@ static void timeout_handlers_check(GMainContext *context)
 
 		/* Check if the handler was removed/freed by the callback
 		 * function */
-		match = slist_find(context->ltimeout, t, timeout_cmp);
-
-		if (!match)
+		if (!slist_find(context->ltimeout, t, timeout_cmp))
 			continue;
 
 		if (!ret) {
