@@ -619,7 +619,7 @@ static void release_agent(struct passkey_agent *agent)
 	debug("Releasing agent %s, %s", agent->name, agent->path);
 
 	message = dbus_message_new_method_call(agent->name, agent->path,
-			"org.bluez.PasskeyAgent", "Cancel");
+			"org.bluez.PasskeyAgent", "Release");
 	if (message == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return;
