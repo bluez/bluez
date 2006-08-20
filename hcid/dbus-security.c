@@ -39,8 +39,8 @@
 #include "dbus.h"
 #include "hcid.h"
 
-#define REQUEST_TIMEOUT (30 * 1000)		/* 30 seconds */
-#define AGENT_TIMEOUT (3 * 60 * 1000)		/* 3 minutes */
+#define REQUEST_TIMEOUT (60 * 1000)		/* 60 seconds */
+#define AGENT_TIMEOUT (10 * 60 * 1000)		/* 10 minutes */
 
 static struct passkey_agent *default_agent = NULL;
 
