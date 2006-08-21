@@ -27,15 +27,29 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <sys/socket.h>
+#include <stdlib.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
-
-#include <dbus/dbus.h>
+#include <dbus/dbus-glib.h>
 
 int main(int argc, char *argv[])
 {
+	GMainLoop *mainloop;
+	DBusGConnection *conn;
+	GError *error = NULL;
+
+	g_type_init();
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+
+	conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
+	if (error != NULL) {
+		g_printerr("Connecting to system bus failed: %s\n",
+							error->message);
+		g_error_free(error);
+		exit(EXIT_FAILURE);
+	}
+
+	g_main_loop_run(mainloop);
+
 	return 0;
 }
