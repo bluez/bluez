@@ -828,6 +828,11 @@ typedef struct {
 #define HOST_BUFFER_SIZE_CP_SIZE 7
 
 #define OCF_HOST_NUM_COMP_PKTS		0x0035
+typedef struct {
+	uint8_t		num_hndl;
+	/* variable length part */
+} __attribute__ ((packed)) host_num_comp_pkts_cp;
+#define HOST_NUM_COMP_PKTS_CP_SIZE 1
 
 #define OCF_READ_LINK_SUPERVISION_TIMEOUT	0x0036
 typedef struct {
