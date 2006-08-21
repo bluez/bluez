@@ -827,6 +827,8 @@ typedef struct {
 } __attribute__ ((packed)) host_buffer_size_cp;
 #define HOST_BUFFER_SIZE_CP_SIZE 7
 
+#define OCF_HOST_NUM_COMP_PKTS		0x0035
+
 #define OCF_READ_LINK_SUPERVISION_TIMEOUT	0x0036
 typedef struct {
 	uint8_t		status;
