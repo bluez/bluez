@@ -821,11 +821,11 @@ void start_security_manager(int hdev)
 		return;
 	}
 
-	di->dev_id = hdev;
-	if (ioctl(dev, HCIGETDEVINFO, (void *)di)) {
+	if (hci_devinfo(hdev, di) < 0) {
 		error("Can't get device info: %s (%d)",
 							strerror(errno), errno);
 		close(dev);
+		free(di);
 		return;
 	}
 

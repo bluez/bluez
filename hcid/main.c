@@ -127,8 +127,7 @@ static struct device_opts *get_device_opts(int sock, int hdev)
 	struct hci_dev_info di;
 
 	/* First try to get BD_ADDR based settings ... */
-	di.dev_id = hdev;
-	if (!ioctl(sock, HCIGETDEVINFO, (void *) &di)) {
+	if (!hci_devinfo(hdev, &di) < 0) {
 		char addr[18];
 		ba2str(&di.bdaddr, addr);
 		device_opts = find_device_opts(addr);
@@ -162,8 +161,7 @@ int get_discoverable_timeout(int hdev)
 	if (sock < 0)
 		goto no_address;
 
-	di.dev_id = hdev;
-	if (ioctl(sock, HCIGETDEVINFO, (void *) &di) < 0) {
+	if (!hci_devinfo(hdev, &di) < 0) {
 		close(sock);
 		goto no_address;
 	}
@@ -272,8 +270,7 @@ static void configure_device(int hdev)
 		exit(1);
 	}
 
-	di.dev_id = hdev;
-	if (ioctl(s, HCIGETDEVINFO, (void *) &di) < 0)
+	if (hci_devinfo(hdev, &di) < 0)
 		exit(1);
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
@@ -410,9 +407,7 @@ static void init_device(int hdev)
 		exit(1);
 	}
 
-	memset(&di, 0, sizeof(di));
-	di.dev_id = dev_id;
-	if (ioctl(dd, HCIGETDEVINFO, (void *) &di) < 0)
+	if (hci_devinfo(dev_id, &di) < 0)
 		exit(1);
 
 	if (hci_test_bit(HCI_RAW, &di.flags))

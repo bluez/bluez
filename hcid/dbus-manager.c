@@ -169,10 +169,7 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 		char path[MAX_PATH_LENGTH], *path_ptr = path;
 		struct hci_dev_info di;
 
-		memset(&di, 0 , sizeof(struct hci_dev_info));
-		di.dev_id = dr->dev_id;
-
-		if (ioctl(sk, HCIGETDEVINFO, &di) < 0)
+		if (hci_devinfo(dr->dev_id, &di) < 0)
 			continue;
 
 		snprintf(path, sizeof(path), "%s/%s", BASE_PATH, di.name);
