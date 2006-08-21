@@ -764,6 +764,8 @@ int hci_devinfo(int dev_id, struct hci_dev_info *di)
 	if (dd < 0)
 		return dd;
 
+	memset(di, 0, sizeof(struct hci_dev_info));
+
 	di->dev_id = dev_id;
 	ret = ioctl(dd, HCIGETDEVINFO, (void *) di);
 
