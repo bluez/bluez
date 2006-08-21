@@ -78,6 +78,12 @@ AC_DEFUN([AC_PATH_DBUS], [
 	AC_SUBST(DBUS_LIBS)
 ])
 
+AC_DEFUN([AC_PATH_GLIB], [
+	PKG_CHECK_MODULES(GLIB, dbus-glib-1 > 0.35, glib_found=yes, AC_MSG_RESULT(no))
+	AC_SUBST(GLIB_CFLAGS)
+	AC_SUBST(GLIB_LIBS)
+])
+
 AC_DEFUN([AC_PATH_OPENOBEX], [
 	PKG_CHECK_MODULES(OPENOBEX, openobex > 1.1, openobex_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(OPENOBEX_CFLAGS)
@@ -108,6 +114,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fortify_enable=yes
 	debug_enable=no
 	pie_enable=no
+	glib_enable=${glib_found}
 	obex_enable=${openobex_found}
 	fuse_enable=no
 	alsa_enable=no
@@ -145,6 +152,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		avctrl_enable=${enableval}
 		hid2hci_enable=${enableval}
 		dfutool_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(glib, AC_HELP_STRING([--enable-glib], [enable GLib support]), [
+		glib_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
@@ -204,6 +215,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		LDFLAGS="$LDFLAGS -pie"
 	fi
 
+	AM_CONDITIONAL(GLIB, test "${glib_enable}" = "yes" && test "${glib_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(FUSE, test "${fuse_enable}" = "yes" && test "${openobex_found}" = "yes" && test "${fuse_found}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
