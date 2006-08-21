@@ -1709,8 +1709,8 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	if (dbus_data->bonding)
 		return error_bonding_in_progress(conn, msg);
 
-	/* check if there is a pending discover */
-	if (dbus_data->discover_state != STATE_IDLE || dbus_data->requestor_name)
+	/* check if there is a pending discover: requested by D-Bus/non clients */
+	if (dbus_data->discover_state != STATE_IDLE || dbus_data->discovery_requestor)
 		return error_discover_in_progress(conn, msg); 
 
 	/* check if a link key already exists */
@@ -1779,9 +1779,9 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	dbus_data->bonding->disconnect = disconnect;
 	dbus_data->bonding->rq = dbus_message_ref(msg);
 
-	dbus_data->requestor_name = strdup(dbus_message_get_sender(msg));
+	dbus_data->bonding_requestor = strdup(dbus_message_get_sender(msg));
 
-	name_listener_add(conn, dbus_data->requestor_name,
+	name_listener_add(conn, dbus_data->bonding_requestor,
 			(name_cb_t)create_bond_req_exit, dbus_data);
 
 	hci_close_dev(dd);
@@ -1824,7 +1824,7 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 		return error_bonding_not_in_progress(conn, msg);
 	}
 
-	if (strcmp(dbus_data->requestor_name, dbus_message_get_sender(msg)))
+	if (strcmp(dbus_data->bonding_requestor, dbus_message_get_sender(msg)))
 		return error_not_authorized(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -2196,7 +2196,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	else 
 		dbus_data->discover_type = RESOLVE_NAME;
 		
-	dbus_data->requestor_name = strdup(dbus_message_get_sender(msg));
+	dbus_data->discovery_requestor = strdup(dbus_message_get_sender(msg));
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -2230,7 +2230,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		return error_not_authorized(conn, msg); /* FIXME: find a better error name */
 
 	/* only the discover requestor can cancel the inquiry process */
-	if (strcmp(dbus_data->requestor_name, requestor_name))
+	if (strcmp(dbus_data->discovery_requestor, requestor_name))
 		return error_not_authorized(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -2277,9 +2277,9 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	slist_free(dbus_data->disc_devices);
 	dbus_data->disc_devices = NULL;
 
-	if (dbus_data->requestor_name) {
-		free(dbus_data->requestor_name);
-		dbus_data->requestor_name = NULL;
+	if (dbus_data->discovery_requestor) {
+		free(dbus_data->discovery_requestor);
+		dbus_data->discovery_requestor = NULL;
 	}
 
 	reply = dbus_message_new_method_return(msg);

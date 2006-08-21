@@ -105,7 +105,8 @@ struct hci_dbus_data {
 	discover_state_t discover_state;   /* discover states */
 	int discover_type;                 /* with/without name resolving */
 	struct slist *disc_devices;
-	char *requestor_name;	           /* requestor unique name */
+	char *discovery_requestor;		/* discovery requestor unique name */
+	char *bonding_requestor;	        /* bonding requestor unique name */
 	struct slist *passkey_agents;
 	struct bonding_request_info *bonding;
 	struct slist *active_conn;
