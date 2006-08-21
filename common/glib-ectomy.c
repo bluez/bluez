@@ -243,9 +243,8 @@ static void timeout_handlers_check(GMainContext *context)
 
 		t = context->ltimeout->data;
 
-		context->ltimeout = slist_remove(context->ltimeout, t);
-
 		if (timercmp(&tv, &t->expiration, <)) {
+			context->ltimeout = slist_remove(context->ltimeout, t);
 			context->processed = slist_append(context->processed, t);
 			continue;
 		}
@@ -256,6 +255,8 @@ static void timeout_handlers_check(GMainContext *context)
 		 * function */
 		if (!slist_find(context->ltimeout, t, timeout_cmp))
 			continue;
+
+		context->ltimeout = slist_remove(context->ltimeout, t);
 
 		if (!ret) {
 			free(t);
