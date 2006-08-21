@@ -205,6 +205,8 @@ static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *
 	if (!cl)
 		return -ENOMEM;
 
+	memset(cl, 0, 10 * sizeof(*ci) + sizeof(*cl));
+
 	ba2str(sba, addr);
 	cl->dev_id = hci_devid(addr);
 	cl->conn_num = 10;
@@ -347,6 +349,8 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	cr = malloc(sizeof(*cr) + sizeof(*ci));
 	if (!cr)
 		return;
+
+	memset(cr, 0, sizeof(*cr) + sizeof(*ci));
 
 	bacpy(&cr->bdaddr, dba);
 	cr->type = ACL_LINK;
