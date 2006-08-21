@@ -77,11 +77,6 @@ Errors		Failed
 			Error returned when the requested adapter doesn't
 			exists. This error is similar to ENODEV.
 
-		UnknownAddress
-
-			Error returned when the remote address haven't been
-			seen by a discovery procedure so far.
-
 		NotAvailable
 
 			Error returned when a specified record is not
@@ -488,7 +483,6 @@ Methods		string GetAddress()
 			Example: "00:11:22:33:44:55", "Nokia 770"
 
 			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.RequestDeferred
 
 		string GetRemoteAlias(string address)
@@ -513,7 +507,6 @@ Methods		string GetAddress()
 			name.
 
 			Possible errors: org.bluez.Error.Failed
-					 org.bluez.Error.UnknownAddress
 					 org.bluez.Error.InvalidArguments
 
 		void ClearRemoteAlias(string address)
@@ -586,7 +579,6 @@ Methods		string GetAddress()
 
 			Possible errors: org.bluez.Error.Failed
 					 org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.AlreadyExists
 			                 org.bluez.Error.InProgress
 					 org.bluez.Error.NoSuchAdapter
@@ -606,7 +598,7 @@ Methods		string GetAddress()
 
 			Possible errors: org.bluez.Error.Failed
 					 org.bluez.Error.InvalidArguments
-					 org.bluez.Error.UnknownAddress
+					 org.bluez.Error.NotInProgress
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NoSuchAdapter
 
@@ -658,7 +650,6 @@ Methods		string GetAddress()
 			has been established.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.UnknownAddress
 			                 org.bluez.Error.NotConnected
 			                 org.bluez.Error.DoesNotExist
 
@@ -842,8 +833,7 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 			pairing succeeds or fails. The application has to
 			take care of that it reregisters the passkey agent.
 
-			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.AlreadyExists
+			Possible errors: org.bluez.Error.AlreadyExists
 
 		void UnregisterPasskeyAgent(string path, string address)
 
@@ -856,8 +846,7 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 			wants to removed the passkey agent and don't wanna
 			wait for the automatic timeout.
 
-			Possible errors: org.bluez.Error.UnknownAddress
-			                 org.bluez.Error.DoesNotExist
+			Possible errors: org.bluez.Error.DoesNotExist
 
 
 PasskeyAgent hierarchy

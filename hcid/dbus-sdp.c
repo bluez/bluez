@@ -723,10 +723,8 @@ fail:
 static DBusHandlerResult get_identifiers(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	char filename[PATH_MAX + 1];
 	struct hci_dbus_data *dbus_data = data;
 	const char *dst;
-	char *str;
 	int err = 0;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -736,15 +734,6 @@ static DBusHandlerResult get_identifiers(DBusConnection *conn,
 
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
-
-	/* check if it is a unknown address */
-	snprintf(filename, PATH_MAX, "%s/%s/lastseen", STORAGEDIR, dbus_data->address);
-
-	str = textfile_get(filename, dst);
-	if (!str)
-		return error_unknown_address(conn, msg);
-
-	free(str);
 
 	if (search_request(conn, msg, dbus_data->dev_id, dst, NULL, &err) < 0) {
 		error("Search request failed: %s (%d)", strerror(err), err);
@@ -757,7 +746,6 @@ static DBusHandlerResult get_identifiers(DBusConnection *conn,
 static DBusHandlerResult get_identifiers_by_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	char filename[PATH_MAX + 1];
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
@@ -768,7 +756,6 @@ static DBusHandlerResult get_identifiers_by_service(DBusConnection *conn,
 	char identifier[MAX_IDENTIFIER_LEN];
 	const char *ptr = identifier;
 	const char *dst, *svc;
-	char *str;
 	int err = 0, nrec = 0;
 	uint32_t class;
 	uuid_t uuid;
@@ -778,15 +765,6 @@ static DBusHandlerResult get_identifiers_by_service(DBusConnection *conn,
 			DBUS_TYPE_STRING, &svc,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-
-	/* check if it is a unknown address */
-	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
-
-	str = textfile_get(filename, dst);
-	if (!str)
-		return error_unknown_address(conn, msg);
-
-	free(str);
 
 	class = sdp_str2svclass(svc);
 	if (!class) {

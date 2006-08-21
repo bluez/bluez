@@ -1351,16 +1351,6 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	/* check if it is a unknown address */
-	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
-
-	str = textfile_get(filename, peer_addr);
-
-	if (!str)
-		return error_unknown_address(conn, msg);
-
-	free(str);
-
 	/* check if it is in the cache */
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "names");
 
@@ -1439,18 +1429,17 @@ static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, D
 
 static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	char filename[PATH_MAX + 1];
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply, *signal;
 	DBusError err;
-	char *str_ptr, *addr_ptr, *find_ptr;
+	char *alias, *addr;
 	bdaddr_t bdaddr;
 	int ecode;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
-				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_STRING, &str_ptr,
+				DBUS_TYPE_STRING, &addr,
+				DBUS_TYPE_STRING, &alias,
 				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&err)) {
@@ -1459,24 +1448,14 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if ((strlen(str_ptr) == 0) || (check_address(addr_ptr) < 0)) {
+	if ((strlen(alias) == 0) || (check_address(addr) < 0)) {
 		error("Alias change failed: Invalid parameter");
 		return error_invalid_arguments(conn, msg);
 	}
 
-	/* check if it is a unknown address */
-	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
+	str2ba(addr, &bdaddr);
 
-	find_ptr = textfile_get(filename, addr_ptr);
-
-	if (!find_ptr)
-		return error_unknown_address(conn, msg);
-
-	free(find_ptr);
-
-	str2ba(addr_ptr, &bdaddr);
-
-	ecode = set_device_alias(dbus_data->dev_id, &bdaddr, str_ptr);
+	ecode = set_device_alias(dbus_data->dev_id, &bdaddr, alias);
 	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
 
@@ -1485,8 +1464,8 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	signal = dev_signal_factory(dbus_data->dev_id, "RemoteAliasChanged",
-						DBUS_TYPE_STRING, &addr_ptr,
-						DBUS_TYPE_STRING, &str_ptr,
+						DBUS_TYPE_STRING, &addr,
+						DBUS_TYPE_STRING, &alias,
 						DBUS_TYPE_INVALID);
 	if (signal) {
 		dbus_connection_send(conn, signal, NULL);
@@ -1701,8 +1680,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	auth_requested_cp ar_cp;
 	evt_cmd_status rp;
 	DBusError err;
-	char *peer_addr = NULL;
-	char *str;
+	char *str, *peer_addr = NULL;
 	struct hci_dbus_data *dbus_data = data;
 	struct slist *l;
 	bdaddr_t peer_bdaddr;
@@ -1743,15 +1721,6 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		free(str);
 		return error_bonding_already_exists(conn, msg);
 	}
-
-	/* check if the address belongs to the last seen cache */
-	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
-
-	str = textfile_get(filename, peer_addr);
-	if (!str)
-		return error_unknown_address(conn, msg);
-
-	free(str);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
@@ -1852,7 +1821,7 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 	/* check if there is a pending bonding request */
 	if (!dbus_data->bonding || bacmp(&dbus_data->bonding->bdaddr, &peer_bdaddr)) {
 		error("No bonding request pending.");
-		return error_unknown_address(conn, msg);
+		return error_bonding_not_in_progress(conn, msg);
 	}
 
 	if (strcmp(dbus_data->requestor_name, dbus_message_get_sender(msg)))

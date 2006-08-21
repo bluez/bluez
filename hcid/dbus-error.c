@@ -90,13 +90,6 @@ DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg)
 							"No such adapter"));
 }
 
-DBusHandlerResult error_unknown_address(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_reply_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownAddress",
-							"Unknown address"));
-}
-
 DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_reply_and_unref(conn,
@@ -180,6 +173,11 @@ DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage
 DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_in_progress(conn, msg, "Bonding in progress");
+}
+
+DBusHandlerResult error_bonding_not_in_progress(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_not_in_progress(conn, msg, "Bonding is not in progress");
 }
 
 DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg)

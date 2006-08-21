@@ -155,7 +155,6 @@ DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_unknown_address(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg);
@@ -164,6 +163,7 @@ DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMess
 DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_bonding_not_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_in_progress(DBusConnection *conn, DBusMessage *msg);
