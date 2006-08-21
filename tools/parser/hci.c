@@ -1176,6 +1176,7 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_WRITE_SCAN_ENABLE:
 		case OCF_WRITE_AUTH_ENABLE:
+		case OCF_SET_CONTROLLER_TO_HOST_FC:
 			write_scan_enable_dump(level + 1, frm);
 			return;
 		case OCF_WRITE_CONN_ACCEPT_TIMEOUT:
@@ -1845,6 +1846,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_AFH_MODE:
 		case OCF_SET_AFH_CLASSIFICATION:
 		case OCF_WRITE_EXT_INQUIRY_RESPONSE:
+		case OCF_SET_CONTROLLER_TO_HOST_FC:
 			status_response_dump(level, frm);
 			return;
 		}
