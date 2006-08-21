@@ -1014,6 +1014,16 @@ static inline void request_clock_dump(int level, struct frame *frm)
 					cp->which_clock ? "piconet" : "local");
 }
 
+static inline void host_buffer_size_dump(int level, struct frame *frm)
+{
+	host_buffer_size_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("ACL MTU %d:%d SCO MTU %d:%d\n",
+				btohs(cp->acl_mtu), btohs(cp->acl_max_pkt),
+				cp->sco_mtu, btohs(cp->sco_max_pkt));
+}
+
 static inline void num_comp_pkts_dump(int level, struct frame *frm)
 {
 	uint8_t num = get_u8(frm);
@@ -1212,6 +1222,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 			request_transmit_power_level_dump(level + 1, frm);
+			return;
+		case OCF_HOST_BUFFER_SIZE:
+			host_buffer_size_dump(level + 1, frm);
 			return;
 		case OCF_HOST_NUM_COMP_PKTS:
 			num_comp_pkts_dump(level + 1, frm);
@@ -1865,6 +1878,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_SET_AFH_CLASSIFICATION:
 		case OCF_WRITE_EXT_INQUIRY_RESPONSE:
 		case OCF_SET_CONTROLLER_TO_HOST_FC:
+		case OCF_HOST_BUFFER_SIZE:
 			status_response_dump(level, frm);
 			return;
 		}
