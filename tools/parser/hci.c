@@ -1014,6 +1014,21 @@ static inline void request_clock_dump(int level, struct frame *frm)
 					cp->which_clock ? "piconet" : "local");
 }
 
+static inline void num_comp_pkts_dump(int level, struct frame *frm)
+{
+	uint8_t num = get_u8(frm);
+	uint16_t handle, packets;
+	int i;
+
+	for (i = 0; i < num; i++) {
+		handle = btohs(htons(get_u16(frm)));
+		packets = btohs(htons(get_u16(frm)));
+
+		p_indent(level, frm);
+		printf("handle %d packets %d\n", handle, packets);
+	}
+}
+
 static inline void command_dump(int level, struct frame *frm)
 {
 	hci_command_hdr *hdr = frm->ptr;
@@ -1197,6 +1212,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 			request_transmit_power_level_dump(level + 1, frm);
+			return;
+		case OCF_HOST_NUM_COMP_PKTS:
+			num_comp_pkts_dump(level + 1, frm);
 			return;
 		case OCF_FLUSH:
 		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
@@ -2132,21 +2150,6 @@ static inline void role_change_dump(int level, struct frame *frm)
 	} else {
 		p_indent(level, frm);
 		printf("Role: %s\n", role2str(evt->role));
-	}
-}
-
-static inline void num_comp_pkts_dump(int level, struct frame *frm)
-{
-	uint8_t num = get_u8(frm);
-	uint16_t handle, packets;
-	int i;
-
-	for (i = 0; i < num; i++) {
-		handle = btohs(htons(get_u16(frm)));
-		packets = btohs(htons(get_u16(frm)));
-
-		p_indent(level, frm);
-		printf("handle %d packets %d\n", handle, packets);
 	}
 }
 
