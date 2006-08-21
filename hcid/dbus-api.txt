@@ -894,8 +894,8 @@ Methods		string Request(string path, string address)
 			gets called it has already been unregistered.
 
 
-RFCOMM hierarchy
-================
+RFCOMM hierarchy (experimental)
+===============================
 
 Service		org.bluez
 Interface	org.bluez.RFCOMM
@@ -970,8 +970,8 @@ Signals		void Connected(string address, byte channel, string service)
 			application disconnects from the D-Bus.
 
 
-SDP hierarchy
-=============
+SDP hierarchy (experimental)
+============================
 
 Service		org.bluez
 Interface	org.bluez.SDP
