@@ -680,6 +680,8 @@ int hci_for_each_dev(int flag, int (*func)(int dd, int dev_id, long arg), long a
 		goto done;
 	}
 
+	memset(dl, 0, HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
+
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
