@@ -99,6 +99,29 @@ void init_devices(void)
 		memset(devices + i, 0, sizeof(struct hci_dev));
 }
 
+static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
+{
+	int dd;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("Can't open device hci%d",
+		      dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	if (hci_read_bd_addr(dd, bdaddr, 2000) < 0) {
+		error("Can't read address for hci%d: %s (%d)",
+		      dev_id, strerror(errno), errno);
+		hci_close_dev(dd);
+		return -errno;
+	}
+
+	hci_close_dev(dd);
+
+	return 0;
+}
+
 int add_device(uint16_t dev_id)
 {
 	struct hci_dev *dev;
@@ -118,7 +141,13 @@ int add_device(uint16_t dev_id)
 		dev->ignore = 1;
 	}
 
-	bacpy(&dev->bdaddr, &di.bdaddr);
+	if (bacmp(&di.bdaddr, BDADDR_ANY))
+		bacpy(&dev->bdaddr, &di.bdaddr);
+	else {
+		int ret = device_read_bdaddr(dev_id, &dev->bdaddr);
+		if (ret < 0)
+			return ret;
+	}
 	memcpy(dev->features, di.features, 8);
 
 	info("Device hci%d has been added", dev_id);
@@ -238,7 +267,6 @@ int stop_device(uint16_t dev_id)
 int get_device_address(uint16_t dev_id, char *address, size_t size)
 {
 	struct hci_dev *dev;
-	int dd;
 
 	ASSERT_DEV_ID;
 
@@ -246,24 +274,6 @@ int get_device_address(uint16_t dev_id, char *address, size_t size)
 		return -ENOBUFS;
 
 	dev = &devices[dev_id];
-
-	if (bacmp(&dev->bdaddr, BDADDR_ANY))
-		return ba2str(&dev->bdaddr, address);
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("Can't open device hci%d",
-					dev_id, strerror(errno), errno);
-		return -errno;
-	}
-
-	if (hci_read_bd_addr(dd, &dev->bdaddr, 2000) < 0) {
-		error("Can't read address for hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		return -errno;
-	}
-
-	hci_close_dev(dd);
 
 	return ba2str(&dev->bdaddr, address);
 }
