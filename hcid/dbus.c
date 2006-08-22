@@ -1346,7 +1346,8 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	}
 
 	if (rp.status) {
-		error("Failed with status 0x%02x", rp.status);
+		error("HCI_Authentication_Requested failed with status 0x%02x",
+				rp.status);
 		error_failed(connection, pdata->bonding->rq, bt_error(rp.status));
 		goto bonding_failed;
 	}

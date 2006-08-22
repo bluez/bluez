@@ -1770,7 +1770,9 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	}
 
 	if (rp.status) {
-		error("Failed with status 0x%02x", rp.status);
+		error("%s failed with status 0x%02x", rq.ocf == OCF_CREATE_CONN ?
+				"HCI_Create_Connection" : "HCI_Authentication_Requested",
+				rp.status);
 		hci_close_dev(dd);
 		return error_failed(conn, msg, bt_error(rp.status));
 	}
@@ -2185,7 +2187,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	}
 
 	if (rp.status) {
-		error("Failed with status 0x%02x", rp.status);
+		error("HCI_Inquiry command failed with status 0x%02x", rp.status);
 		hci_close_dev(dd);
 		return error_failed(conn, msg, bt_error(rp.status));
 	}
