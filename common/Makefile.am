@@ -9,4 +9,6 @@ noinst_PROGRAMS = test_textfile
 
 test_textfile_LDADD = libhelper.a
 
+EXTRA_DIST = ppoll.h
+
 MAINTAINERCLEANFILES = Makefile.in
