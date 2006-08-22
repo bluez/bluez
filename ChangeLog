@@ -1,4 +1,11 @@
-ver 3.2
+ver 3.3:
+	Remove kernel specific timeouts.
+	Add additional private data field for SDP sessions.
+	Add host controller to host flow control defines.
+	Add host number of completed packets defines.
+	Initialize various memory to zero before usage.
+
+ver 3.2:
 	Fix handling of SDP strings.
 	Add adapter type for SDIO cards.
 	Add features bit for link supervision timeout.
