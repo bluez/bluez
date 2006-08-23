@@ -349,7 +349,7 @@ void sdp_uuid_print(const uuid_t *uuid)
 sdp_data_t *sdp_data_alloc_with_length(uint8_t dtd, const void *value, uint32_t length)
 {
 	sdp_data_t *seq;
-	sdp_data_t *d = (sdp_data_t *) malloc(sizeof(sdp_data_t));
+	sdp_data_t *d = malloc(sizeof(sdp_data_t));
 
 	if (!d)
 		return NULL;
@@ -853,7 +853,7 @@ void sdp_data_free(sdp_data_t *d)
 
 static sdp_data_t *extract_int(const void *p, int *len)
 {
-	sdp_data_t *d = (sdp_data_t *) malloc(sizeof(sdp_data_t));
+	sdp_data_t *d = malloc(sizeof(sdp_data_t));
 
 	SDPDBG("Extracting integer\n");
 	memset(d, 0, sizeof(sdp_data_t));
@@ -899,11 +899,11 @@ static sdp_data_t *extract_int(const void *p, int *len)
 
 static sdp_data_t *extract_uuid(const uint8_t *p, int *len, sdp_record_t *rec)
 {
-	sdp_data_t *d = (sdp_data_t *) malloc(sizeof(sdp_data_t));
+	sdp_data_t *d = malloc(sizeof(sdp_data_t));
 
 	SDPDBG("Extracting UUID");
 	memset(d, 0, sizeof(sdp_data_t));
-	if (0 > sdp_uuid_extract(p, &d->val.uuid, len)) {
+	if (sdp_uuid_extract(p, &d->val.uuid, len) < 0) {
 		free(d);
 		return NULL;
 	}
@@ -919,7 +919,7 @@ static sdp_data_t *extract_str(const void *p, int *len)
 {
 	char *s;
 	int n;
-	sdp_data_t *d = (sdp_data_t *) malloc(sizeof(sdp_data_t));
+	sdp_data_t *d = malloc(sizeof(sdp_data_t));
 
 	memset(d, 0, sizeof(sdp_data_t));
 	d->dtd = *(uint8_t *) p;
@@ -961,7 +961,7 @@ static sdp_data_t *extract_seq(const void *p, int *len, sdp_record_t *rec)
 {
 	int seqlen, n = 0;
 	sdp_data_t *curr, *prev;
-	sdp_data_t *d = (sdp_data_t *)malloc(sizeof(sdp_data_t));
+	sdp_data_t *d = malloc(sizeof(sdp_data_t));
 
 	SDPDBG("Extracting SEQ");
 	memset(d, 0, sizeof(sdp_data_t));
@@ -1297,7 +1297,7 @@ int sdp_send_req_w4_rsp(sdp_session_t *session, uint8_t *reqbuf, uint8_t *rspbuf
  */
 sdp_list_t *sdp_list_append(sdp_list_t *p, void *d)
 {
-	sdp_list_t *q, *n = (sdp_list_t *)malloc(sizeof(sdp_list_t));
+	sdp_list_t *q, *n = malloc(sizeof(sdp_list_t));
 
 	if (!n)
 		return 0;
@@ -1335,7 +1335,7 @@ sdp_list_t *sdp_list_insert_sorted(sdp_list_t *list, void *d, sdp_comp_func_t f)
 {
 	sdp_list_t *q, *p, *n;
 
-	n = (sdp_list_t *)malloc(sizeof(sdp_list_t));
+	n = malloc(sizeof(sdp_list_t));
 	if (!n)
 		return 0;
 	n->data = d;
@@ -1471,7 +1471,7 @@ int sdp_get_uuidseq_attr(const sdp_record_t *rec, uint16_t attr, sdp_list_t **se
 	if (sdpdata && sdpdata->dtd >= SDP_SEQ8 && sdpdata->dtd <= SDP_SEQ32) {
 		sdp_data_t *d;
 		for (d = sdpdata->val.dataseq; d; d = d->next) {
-			uuid_t *u = (uuid_t *)malloc(sizeof(uuid_t));
+			uuid_t *u = malloc(sizeof(uuid_t));
 			memset((char *)u, 0, sizeof(uuid_t));
 			if (d->dtd >= SDP_UUID16 && d->dtd <= SDP_UUID128) {
 			  	*u = d->val.uuid;
@@ -1553,7 +1553,7 @@ int sdp_get_lang_attr(const sdp_record_t *rec, sdp_list_t **langSeq)
 		sdp_data_t *pEncoding = pCode->next;
 		sdp_data_t *pOffset = pEncoding->next;
 		if (pCode && pEncoding && pOffset) {
-			lang = (sdp_lang_attr_t *)malloc(sizeof(sdp_lang_attr_t));
+			lang = malloc(sizeof(sdp_lang_attr_t));
 			lang->code_ISO639 = pCode->val.uint16;
 			lang->encoding = pEncoding->val.uint16;
 			lang->base_offset = pOffset->val.uint16;
@@ -1594,7 +1594,7 @@ int sdp_get_profile_descs(const sdp_record_t *rec, sdp_list_t **profDescSeq)
 		}
 
 		if (uuid != NULL) {
-			profDesc = (sdp_profile_desc_t *)malloc(sizeof(sdp_profile_desc_t));
+			profDesc = malloc(sizeof(sdp_profile_desc_t));
 			profDesc->uuid = *uuid;
 			profDesc->version = version;
 #ifdef SDP_DEBUG
@@ -2039,7 +2039,7 @@ uint128_t *sdp_create_base_uuid(void)
 
 	if (bluetooth_base_uuid == NULL) {
 		strcpy(baseStr, BASE_UUID);
-		bluetooth_base_uuid = (uint128_t *)malloc(sizeof(uint128_t));
+		bluetooth_base_uuid = malloc(sizeof(uint128_t));
 		data = bluetooth_base_uuid->data;
 		memset(data, '\0', sizeof(uint128_t));
 		memset(temp, '\0', 10);
@@ -2201,7 +2201,7 @@ void sdp_uuid32_to_uuid128(uuid_t *uuid128, uuid_t *uuid32)
 
 uuid_t *sdp_uuid_to_uuid128(uuid_t *uuid)
 {
-	uuid_t *uuid128 = (uuid_t *)malloc(sizeof(uuid_t));
+	uuid_t *uuid128 = bt_malloc(sizeof(uuid_t));
 	memset(uuid128, 0, sizeof(uuid_t));
 	switch (uuid->type) {
 	case SDP_UUID128:
@@ -2583,7 +2583,7 @@ int sdp_record_update(sdp_session_t *session, const sdp_record_t *rec)
 
 sdp_record_t *sdp_record_alloc()
 {
-	sdp_record_t *rec = (sdp_record_t *)malloc(sizeof(sdp_record_t));
+	sdp_record_t *rec = malloc(sizeof(sdp_record_t));
 	memset((void *)rec, 0, sizeof(sdp_record_t));
 	rec->handle = 0xffffffff;
 	return rec;
@@ -2610,7 +2610,7 @@ void sdp_pattern_add_uuid(sdp_record_t *rec, uuid_t *uuid)
 	if (sdp_list_find(rec->pattern, uuid128, sdp_uuid128_cmp) == NULL)
 		rec->pattern = sdp_list_insert_sorted(rec->pattern, uuid128, sdp_uuid128_cmp);
 	else
-		free(uuid128);
+		bt_free(uuid128);
 
 	SDPDBG("Elements in target pattern : %d\n", sdp_list_len(rec->pattern));
 }
@@ -2636,7 +2636,7 @@ static void extract_record_handle_seq(uint8_t *pdu, sdp_list_t **seq, int count,
 	int n;
 
 	for (n = 0; n < count; n++) {
-		uint32_t *pSvcRec = (uint32_t *) malloc(sizeof(uint32_t));
+		uint32_t *pSvcRec = malloc(sizeof(uint32_t));
 		*pSvcRec = ntohl(bt_get_unaligned((uint32_t *) pdata));
 		pSeq = sdp_list_append(pSeq, pSvcRec);
 		pdata += sizeof(uint32_t);

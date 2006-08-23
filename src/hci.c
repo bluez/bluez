@@ -94,7 +94,7 @@ static int hci_str2bit(hci_map *map, char *str, unsigned int *val)
 
 static char *hci_uint2str(hci_map *m, unsigned int val) 
 {
-	char *str = bt_malloc(50);
+	char *str = malloc(50);
 	char *ptr = str;
 
 	if (!str)
@@ -174,7 +174,7 @@ static hci_map dev_flags_map[] = {
 
 char *hci_dflagstostr(uint32_t flags)
 {
-	char *str = malloc(50);
+	char *str = bt_malloc(50);
 	char *ptr = str;
 	hci_map *m = dev_flags_map;
 
@@ -283,7 +283,7 @@ static hci_map link_mode_map[] = {
 
 char *hci_lmtostr(unsigned int lm)
 {
-	char *s, *str = malloc(50);
+	char *s, *str = bt_malloc(50);
 	if (!str)
 		return NULL;
 
@@ -293,7 +293,7 @@ char *hci_lmtostr(unsigned int lm)
 
 	s = hci_bit2str(link_mode_map, lm);
 	if (!s) {
-		free(str);
+		bt_free(str);
 		return NULL;
 	}
 
