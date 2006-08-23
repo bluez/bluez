@@ -45,6 +45,7 @@
 static struct passkey_agent *default_agent = NULL;
 
 static void release_agent(struct passkey_agent *agent);
+static void send_cancel_request(struct pending_agent_request *req);
 
 static void passkey_agent_free(struct passkey_agent *agent)
 {
@@ -59,10 +60,7 @@ static void passkey_agent_free(struct passkey_agent *agent)
 		hci_send_cmd(req->dev, OGF_LINK_CTL,
 				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 
-		free(req->path);
-		dbus_pending_call_cancel(req->call);
-		dbus_pending_call_unref(req->call);
-		free(req);
+		send_cancel_request(req);
 	}
 
 	if (agent->timeout)
@@ -114,8 +112,6 @@ static gboolean agent_timeout(struct passkey_agent *agent)
 
 	if (pdata)
 		pdata->passkey_agents = slist_remove(pdata->passkey_agents, agent);
-
-	name_listener_remove(agent->conn, agent->name, (name_cb_t)agent_exited, pdata);
 
 	agent->timeout = 0;
 
@@ -231,6 +227,8 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
+	memset(&ref, 0, sizeof(ref));
+
 	ref.name = (char *)dbus_message_get_sender(msg);
 	ref.addr = addr;
 	ref.path = path;
@@ -284,6 +282,8 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
+	memset(&ref, 0, sizeof(ref));
+
 	ref.name = (char *)dbus_message_get_sender(msg);
 	ref.path = path;
 	ref.addr = addr;
@@ -294,16 +294,12 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 
 	agent = match->data;
 
-	agent->exited = 1;
+	name_listener_remove(agent->conn, agent->name,
+			(name_cb_t)agent_exited, adapter);
 
 	adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
+	agent->exited = 1;
 	passkey_agent_free(agent);
-
-	/* Only remove the name listener if there are no more agents for this name */
-	ref.addr = NULL;
-	ref.path = NULL;
-	if (!slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp))
-		name_listener_remove(conn, ref.name, (name_cb_t)agent_exited, adapter);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -344,6 +340,7 @@ static DBusHandlerResult register_default_agent(DBusConnection *conn,
 
 need_memory:
 	if (default_agent) {
+		default_agent->exited = 1;
 		passkey_agent_free(default_agent);
 		default_agent = NULL;
 	}
@@ -381,8 +378,10 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 	info("Default passkey agent (%s, %s) unregistered",
 			default_agent->name, default_agent->path);
 
+	default_agent->exited = 1;
 	passkey_agent_free(default_agent);
 	default_agent = NULL;
+
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -628,15 +627,28 @@ static void release_agent(struct passkey_agent *agent)
 	dbus_message_set_no_reply(message, TRUE);
 
 	send_reply_and_unref(agent->conn, message);
+
+	if (agent == default_agent)
+		name_listener_remove(agent->conn, agent->name,
+				(name_cb_t)default_agent_exited, NULL);
+	else {
+		struct passkey_agent ref;
+
+		/* Only remove the name listener if there are no more agents for this name */
+		memset(&ref, 0, sizeof(ref));
+		ref.name = agent->name;
+		ref.addr = NULL;
+		ref.path = NULL;
+		if (!slist_find(agent->pdata->passkey_agents, &ref, (cmp_func_t)agent_cmp))
+			name_listener_remove(agent->conn, ref.name,
+					(name_cb_t)agent_exited, agent->pdata);
+	}
 }
 
 void release_default_agent(void)
 {
 	if (!default_agent)
 		return;
-
-	name_listener_remove(default_agent->conn, default_agent->name,
-			(name_cb_t)default_agent_exited, NULL);
 
 	passkey_agent_free(default_agent);
 	default_agent = NULL;
@@ -657,9 +669,8 @@ void release_passkey_agents(struct hci_dbus_data *pdata, bdaddr_t *bda)
 				continue;
 		}
 
-		name_listener_remove(agent->conn, agent->name, (name_cb_t)agent_exited, pdata);
-		passkey_agent_free(agent);
 		pdata->passkey_agents = slist_remove(pdata->passkey_agents, agent);
+		passkey_agent_free(agent);
 	}
 }
 
