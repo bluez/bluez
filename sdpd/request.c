@@ -96,7 +96,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		case SDP_UINT16:
 			p += sizeof(uint8_t);
 			seqlen += sizeof(uint8_t);
-			pElem = (char *)malloc(sizeof(uint16_t));
+			pElem = malloc(sizeof(uint16_t));
 			sdp_put_unaligned(ntohs(sdp_get_unaligned((uint16_t *)p)), (uint16_t *)pElem);
 			p += sizeof(uint16_t);
 			seqlen += sizeof(uint16_t);
@@ -104,7 +104,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		case SDP_UINT32:
 			p += sizeof(uint8_t);
 			seqlen += sizeof(uint8_t);
-			pElem = (char *)malloc(sizeof(uint32_t));
+			pElem = malloc(sizeof(uint32_t));
 			sdp_put_unaligned(ntohl(sdp_get_unaligned((uint32_t *)p)), (uint32_t *)pElem);
 			p += sizeof(uint32_t);
 			seqlen += sizeof(uint32_t);
@@ -112,7 +112,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		case SDP_UUID16:
 		case SDP_UUID32:
 		case SDP_UUID128:
-			pElem = (char *)malloc(sizeof(uuid_t));
+			pElem = malloc(sizeof(uuid_t));
 			status = sdp_uuid_extract(p, (uuid_t *)pElem, &localSeqLength);
 			if (status == 0) {
 				seqlen += localSeqLength;
@@ -217,7 +217,7 @@ static int sdp_match_uuid(sdp_list_t *search, sdp_list_t *pattern)
 		// create 128-bit form of the search UUID
 		uuid128 = sdp_uuid_to_uuid128((uuid_t *)data);
 		list = sdp_list_find(pattern, uuid128, sdp_uuid128_cmp);
-		free(uuid128);
+		bt_free(uuid128);
 		if (!list)
 			return 0;
 	}

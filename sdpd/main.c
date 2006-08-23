@@ -174,7 +174,7 @@ static void register_server_service(int public)
 	versionDTDs = (void **)malloc(sdpServerVnumEntries * sizeof(void *));
 	dtd = SDP_UINT16;
 	for (i = 0; i < sdpServerVnumEntries; i++) {
-		uint16_t *version = (uint16_t *)malloc(sizeof(uint16_t));
+		uint16_t *version = malloc(sizeof(uint16_t));
 		*version = sdpVnumArray[i].major;
 		*version = (*version << 8);
 		*version |= sdpVnumArray[i].minor;
