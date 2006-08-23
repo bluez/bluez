@@ -884,7 +884,7 @@ static DBusHandlerResult get_uuid(DBusConnection *conn,
 
 	if (sdp_get_service_classes(rec, &ls) == 0) {
 		char tmp_str[MAX_LEN_UUID_STR];
-		uuid_t *uuid = (uuid_t *)ls->data;
+		uuid_t *uuid = (uuid_t *) ls->data;
 
 		if (sdp_uuid2strn(uuid, tmp_str, MAX_LEN_UUID_STR) != 0)
 			error("Can't convert UUID to string!");
