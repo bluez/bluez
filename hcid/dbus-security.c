@@ -637,8 +637,6 @@ static void release_agent(struct passkey_agent *agent)
 		/* Only remove the name listener if there are no more agents for this name */
 		memset(&ref, 0, sizeof(ref));
 		ref.name = agent->name;
-		ref.addr = NULL;
-		ref.path = NULL;
 		if (!slist_find(agent->pdata->passkey_agents, &ref, (cmp_func_t)agent_cmp))
 			name_listener_remove(agent->conn, ref.name,
 					(name_cb_t)agent_exited, agent->pdata);
