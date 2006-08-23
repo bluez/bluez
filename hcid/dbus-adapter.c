@@ -1826,7 +1826,8 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 		return error_bonding_not_in_progress(conn, msg);
 	}
 
-	if (strcmp(dbus_data->bonding_requestor, dbus_message_get_sender(msg)))
+	if (!dbus_data->bonding_requestor || strcmp(dbus_data->bonding_requestor,
+							dbus_message_get_sender(msg)))
 		return error_not_authorized(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -1879,6 +1880,11 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 
 		/* Reply to the create bonding request */
 		error_authentication_canceled(conn, dbus_data->bonding->rq);
+
+		name_listener_remove(conn, dbus_data->bonding_requestor,
+				(name_cb_t)create_bond_req_exit, dbus_data);
+		free(dbus_data->bonding_requestor);
+		dbus_data->bonding_requestor = NULL;
 
 		/* disconnect from the remote device */
 		if (dbus_data->bonding->disconnect) {
