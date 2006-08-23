@@ -363,7 +363,7 @@ static int register_dbus_path(const char *path, uint16_t dev_id,
 	return 0;
 }
 
-static void reply_pending_requests(const char *path, const struct hci_dbus_data *pdata)
+static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata)
 {
 	DBusMessage *message = NULL;
 
@@ -371,8 +371,13 @@ static void reply_pending_requests(const char *path, const struct hci_dbus_data 
 		return;
 
 	/* pending bonding */
-	if (pdata->bonding)
+	if (pdata->bonding) {
 		error_authentication_canceled(connection, pdata->bonding->rq);
+		name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
+				(name_cb_t)create_bond_req_exit, pdata);
+		bonding_request_free(pdata->bonding);
+		pdata->bonding = NULL;
+	}
 	else if (pdata->discover_state != STATE_IDLE) {
 		/* pending inquiry */
 
@@ -398,13 +403,6 @@ static int unregister_dbus_path(const char *path)
 
 		release_passkey_agents(pdata, NULL);
 
-		if (pdata->bonding_requestor) {
-			name_listener_remove(connection, pdata->bonding_requestor,
-					(name_cb_t)create_bond_req_exit, pdata);
-			free(pdata->bonding_requestor);
-			pdata->bonding_requestor = NULL;
-		}
-
 		if (pdata->discovery_requestor) {
 			free(pdata->discovery_requestor);
 			pdata->discovery_requestor = NULL;
@@ -414,11 +412,6 @@ static int unregister_dbus_path(const char *path)
 			slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
 			slist_free(pdata->disc_devices);
 			pdata->disc_devices = NULL;
-		}
-
-		if (pdata->bonding) {
-			bonding_request_free(pdata->bonding);
-			pdata->bonding = NULL;
 		}
 
 		if (pdata->pending_bondings) {
@@ -652,13 +645,6 @@ int hcid_dbus_stop_device(uint16_t id)
 
 	release_passkey_agents(pdata, NULL);
 
-	if (pdata->bonding_requestor) {
-		name_listener_remove(connection, pdata->bonding_requestor,
-				(name_cb_t)create_bond_req_exit, pdata);
-		free(pdata->bonding_requestor);
-		pdata->bonding_requestor = NULL;
-	}
-
 	if (pdata->discovery_requestor) {
 		free(pdata->discovery_requestor);
 		pdata->discovery_requestor = NULL;
@@ -668,11 +654,6 @@ int hcid_dbus_stop_device(uint16_t id)
 		slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
 		slist_free(pdata->disc_devices);
 		pdata->disc_devices = NULL;
-	}
-
-	if (pdata->bonding) {
-		bonding_request_free(pdata->bonding);
-		pdata->bonding = NULL;
 	}
 
 	if (pdata->pending_bondings) {
@@ -817,13 +798,11 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
 	send_reply_and_unref(connection, message);
 
+	name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
+			(name_cb_t)create_bond_req_exit, pdata);
+
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
-
-	name_listener_remove(connection, pdata->bonding_requestor,
-			(name_cb_t)create_bond_req_exit, pdata);
-	free(pdata->bonding_requestor);
-	pdata->bonding_requestor = NULL;
 
 failed:
 	bt_free(local_addr);
@@ -1356,12 +1335,10 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 
 bonding_failed:
 	/* free bonding request if the HCI pairing request was not sent */
+	name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
+			(name_cb_t)create_bond_req_exit, pdata);
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
-	name_listener_remove(connection, pdata->bonding_requestor,
-			(name_cb_t)create_bond_req_exit, pdata);
-	free(pdata->bonding_requestor);
-	pdata->bonding_requestor = NULL;
 
 done:
 	if (dd >= 0)
@@ -1422,15 +1399,10 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 		message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
 		send_reply_and_unref(connection, message);
 
+		name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
+				(name_cb_t)create_bond_req_exit, pdata);
 		bonding_request_free(pdata->bonding);
 		pdata->bonding = NULL;
-
-		if (pdata->bonding_requestor) {
-			name_listener_remove(connection, pdata->bonding_requestor,
-					(name_cb_t)create_bond_req_exit, pdata);
-			free(pdata->bonding_requestor);
-			pdata->bonding_requestor = NULL;
-		}
 	}
 
 	cancel_passkey_agent_requests(pdata->passkey_agents, path, &dev->bdaddr);
@@ -2034,7 +2006,4 @@ void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata)
 
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
-
-	free(pdata->bonding_requestor);
-	pdata->bonding_requestor = NULL;
 }
