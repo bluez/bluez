@@ -893,8 +893,8 @@ Object path	/org/bluez/{hci0,hci1,...}
 Methods		string Connect(string address, string service)
 
 			This creates a connection to a remote RFCOMM based
-			service. The service string can either be a UUID-16,
-			a UUID-32, a UUID-128 or a service abbreviation.
+			service. The service string can either be a UUID-128,
+			a service abbreviation or a record handle.
 
 			The return value will be the path of the newly
 			created RFCOMM TTY device (for example /dev/rfcomm0).

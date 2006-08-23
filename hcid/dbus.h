@@ -219,4 +219,8 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data);
 
 int discoverable_timeout_handler(void *data);
 
+sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid);
+sdp_record_t *find_record_by_handle(const char *address, int handle);
+uint16_t sdp_str2svclass(const char *str);
+
 #endif /* __H_BLUEZ_DBUS_H__ */

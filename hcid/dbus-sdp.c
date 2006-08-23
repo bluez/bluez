@@ -833,6 +833,77 @@ search_request:
 
 }
 
+static int sdp_uuid_comp_func(const void *key1, const void *key2)
+{	
+	const uuid_t *a = (const uuid_t *)key1;
+	const uuid_t *b = (const uuid_t *)key2;
+
+	if (a->type != b->type)
+		return 1;
+	
+	switch (a->type) {
+	case SDP_UUID16:		
+		return !(a->value.uuid16 == b->value.uuid16);
+		break;
+        case SDP_UUID32:
+		return !(a->value.uuid32 == b->value.uuid32);
+		break;
+        case SDP_UUID128:
+		return !memcmp(&a->value.uuid128, &b->value.uuid128, 
+			       sizeof(uint128_t));
+		break;
+	}
+	return 1;
+}
+
+sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid)
+{
+	struct slist *lp, *lr;
+	struct service_provider *p;
+	struct service_record *r;
+	sdp_list_t *list = 0;
+	
+
+	for (lp = sdp_cache; lp; lp = lp->next) {
+		p = lp->data;
+		if (strcmp(p->prov, address))
+			continue;
+
+		for (lr = p->lrec; lr; lr = lr->next) {
+			r = lr->data;
+			/* Check whether the record has the correct uuid */
+			if (sdp_get_service_classes(r->record, &list) !=0)
+				continue;
+			
+			if (sdp_list_find (list, &uuid, sdp_uuid_comp_func))
+				return r->record;
+		}
+	}
+
+	return NULL;
+}	
+
+sdp_record_t *find_record_by_handle(const char *address, int handle)
+{
+	struct slist *lp, *lr;
+	struct service_provider *p;
+	struct service_record *r;
+
+	for (lp = sdp_cache; lp; lp = lp->next) {
+		p = lp->data;
+		if (strcmp(p->prov, address))
+			continue;
+
+		for (lr = p->lrec; lr; lr = lr->next) {
+			r = lr->data;
+			if (r->record->handle == handle)
+				return r->record;
+		}
+	}
+
+	return NULL;
+}
+
 static sdp_record_t *find_record(const char *address, int id)
 {
 	struct slist *lp, *lr;

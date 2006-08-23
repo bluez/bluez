@@ -33,11 +33,15 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
+
 
 #include <dbus/dbus.h>
 
@@ -452,18 +456,132 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t c
 	return node;
 }
 
+static sdp_record_t *get_record_from_string (const char *dst, 
+					     const char *string)	
+{
+	uuid_t short_uuid;
+	uuid_t *uuid;
+	sdp_record_t *rec = NULL;	
+	unsigned int data0, data4;
+	unsigned short data1, data2, data3, data5;
+	long handle;
+
+	/* Check if the string is a service name */
+	short_uuid.value.uuid16 = sdp_str2svclass (string);
+	
+	if (short_uuid.value.uuid16) {
+		short_uuid.type = SDP_UUID16;
+		uuid = sdp_uuid_to_uuid128 (&short_uuid);
+		rec = find_record_by_uuid (dst, uuid);
+	} else if (sscanf (string, "%8x-%4hx-%4hx-%4hx-%8x%4hx", &data0, 
+			   &data1, &data2, &data3, &data4, &data5) == 6) {
+		data0 = htonl(data0);
+		data1 = htons(data1);
+		data2 = htons(data2);
+		data3 = htons(data3);
+		data4 = htonl(data4);
+		data5 = htons(data5);
+		
+		uuid = malloc (sizeof(uuid_t));
+		uuid->type = SDP_UUID128;
+		memcpy (&uuid->value.uuid128.data[0], &data0, 4);
+		memcpy (&uuid->value.uuid128.data[4], &data1, 2);
+		memcpy (&uuid->value.uuid128.data[6], &data2, 2);
+		memcpy (&uuid->value.uuid128.data[8], &data3, 2);
+		memcpy (&uuid->value.uuid128.data[10], &data4, 4);
+		memcpy (&uuid->value.uuid128.data[14], &data5, 2);
+
+		rec = find_record_by_uuid (dst, uuid);
+	} else if ((handle = strtol (string, (char **)NULL, 0))) {
+		rec = find_record_by_handle (dst, handle);
+	}
+	
+	return rec;
+}
+
 static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	error("RFCOMM.Connect not implemented");
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	int ch = -1;
+	const char *dst;
+	const char *string;
+	sdp_record_t *rec;	
+	sdp_list_t *protos;
+	bdaddr_t bdaddr;
+	struct hci_dbus_data *dbus_data = data;
+	int err;
+
+	if (!dbus_message_get_args(msg, NULL,
+				   DBUS_TYPE_STRING, &dst,
+				   DBUS_TYPE_STRING, &string,
+				   DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	hci_devba(dbus_data->dev_id, &bdaddr);
+
+	rec = get_record_from_string (dst, string);
+
+	if (!rec)
+		return error_record_does_not_exist (conn, msg);
+	
+	if (sdp_get_access_protos(rec, &protos) == 0)
+		ch = sdp_get_proto_port (protos, RFCOMM_UUID);
+
+	if (ch == -1)
+		return error_record_does_not_exist (conn, msg);
+
+	if (find_pending_connect(dst, ch))
+		return error_connect_in_progress(conn, msg);
+	
+	if (rfcomm_connect(conn, msg, &bdaddr, dst, NULL, ch, &err) < 0)
+		return error_failed(conn, msg, err);
+	
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult rfcomm_cancel_connect_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	error("RFCOMM.CancelConnect not implemented");
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	int ch = -1;
+	const char *dst;
+	const char *string;
+	sdp_record_t *rec;	
+	sdp_list_t *protos;
+	bdaddr_t bdaddr;
+	struct hci_dbus_data *dbus_data = data;
+	DBusMessage *reply;
+	struct pending_connect *pending;
+
+	if (!dbus_message_get_args(msg, NULL,
+				   DBUS_TYPE_STRING, &dst,
+				   DBUS_TYPE_STRING, &string,
+				   DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	hci_devba(dbus_data->dev_id, &bdaddr);
+
+	rec = get_record_from_string (dst, string);
+
+	if (!rec)
+		return error_record_does_not_exist (conn, msg);
+	
+	if (sdp_get_access_protos(rec, &protos) == 0)
+		ch = sdp_get_proto_port (protos, RFCOMM_UUID);
+
+	if (ch == -1)
+		return error_record_does_not_exist (conn, msg);
+
+	reply = dbus_message_new_method_return (msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	pending = find_pending_connect(dst, ch);
+	if (!pending)
+		return error_connect_not_in_progress(conn, msg);
+
+	pending->canceled = 1;
+	
+	return send_reply_and_unref(conn, reply);
 }
 
 static DBusHandlerResult rfcomm_connect_by_ch_req(DBusConnection *conn,
