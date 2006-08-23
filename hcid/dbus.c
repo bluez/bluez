@@ -1359,6 +1359,11 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 	bdaddr_t tmp;
 	int id;
 
+	if (status) {
+		error("Disconnection failed: 0x%02x", status);
+		return;
+	}
+
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 
 	id = hci_devid(local_addr);
@@ -1386,6 +1391,10 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 	/* clean pending HCI cmds */
 	hci_req_queue_remove(pdata->dev_id, &dev->bdaddr);
 
+	/* Cancel D-Bus/non D-Bus requests */
+	cancel_passkey_agent_requests(pdata->passkey_agents, path, &dev->bdaddr);
+	release_passkey_agents(pdata, &dev->bdaddr);
+
 	/* Check if there is a pending CreateBonding request */
 	if (pdata->bonding && (bacmp(&pdata->bonding->bdaddr, &dev->bdaddr) == 0)) {
 #if 0
@@ -1396,7 +1405,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 		send_reply_and_unref(connection, message);
 #endif
 
-		message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
+		message = dbus_msg_new_authentication_return(pdata->bonding->rq, HCI_AUTHENTICATION_FAILURE);
 		send_reply_and_unref(connection, message);
 
 		name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
@@ -1404,10 +1413,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 		bonding_request_free(pdata->bonding);
 		pdata->bonding = NULL;
 	}
-
-	cancel_passkey_agent_requests(pdata->passkey_agents, path, &dev->bdaddr);
-	release_passkey_agents(pdata, &dev->bdaddr);
-
 	/* Sent the remote device disconnected signal */
 	message = dev_signal_factory(pdata->dev_id, "RemoteDeviceDisconnected",
 					DBUS_TYPE_STRING, &peer_addr,
