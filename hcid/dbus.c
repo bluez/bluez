@@ -116,7 +116,7 @@ int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name
 	match.name_status = NAME_ANY;
 
 	/* ignore repeated entries */
-	l = slist_find(*list, &match, (cmp_func_t)disc_device_find);
+	l = slist_find(*list, &match, (cmp_func_t) disc_device_find);
 	if (l) {
 		/* device found, update the attributes */
 		dev = l->data;
@@ -150,7 +150,7 @@ static int disc_device_remove(struct slist **list, bdaddr_t *bdaddr)
 	memset(&match, 0, sizeof(struct discovered_dev_info));
 	bacpy(&match.bdaddr, bdaddr);
 
-	l = slist_find(*list, &match, (cmp_func_t)disc_device_find);
+	l = slist_find(*list, &match, (cmp_func_t) disc_device_find);
 
 	if (l) {
 		dev = l->data;
@@ -374,7 +374,7 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 	if (pdata->bonding) {
 		error_authentication_canceled(connection, pdata->bonding->rq);
 		name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
-				(name_cb_t)create_bond_req_exit, pdata);
+				(name_cb_t) create_bond_req_exit, pdata);
 		bonding_request_free(pdata->bonding);
 		pdata->bonding = NULL;
 	}
@@ -409,19 +409,19 @@ static int unregister_dbus_path(const char *path)
 		}
 
 		if (pdata->disc_devices) {
-			slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
+			slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 			slist_free(pdata->disc_devices);
 			pdata->disc_devices = NULL;
 		}
 
 		if (pdata->pending_bondings) {
-			slist_foreach(pdata->pending_bondings, (slist_func_t)free, NULL);
+			slist_foreach(pdata->pending_bondings, (slist_func_t) free, NULL);
 			slist_free(pdata->pending_bondings);
 			pdata->pending_bondings = NULL;
 		}
 
 		if (pdata->active_conn) {
-			slist_foreach(pdata->active_conn, (slist_func_t)free, NULL);
+			slist_foreach(pdata->active_conn, (slist_func_t) free, NULL);
 			slist_free(pdata->active_conn);
 			pdata->active_conn = NULL;
 		}
@@ -651,19 +651,19 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 
 	if (pdata->disc_devices) {
-		slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
+		slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 		slist_free(pdata->disc_devices);
 		pdata->disc_devices = NULL;
 	}
 
 	if (pdata->pending_bondings) {
-		slist_foreach(pdata->pending_bondings, (slist_func_t)free, NULL);
+		slist_foreach(pdata->pending_bondings, (slist_func_t) free, NULL);
 		slist_free(pdata->pending_bondings);
 		pdata->pending_bondings = NULL;
 	}
 
 	if (pdata->active_conn) {
-		slist_foreach(pdata->active_conn, (slist_func_t)free, NULL);
+		slist_foreach(pdata->active_conn, (slist_func_t) free, NULL);
 		slist_free(pdata->active_conn);
 		pdata->active_conn = NULL;
 	}
@@ -799,7 +799,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	send_reply_and_unref(connection, message);
 
 	name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
-			(name_cb_t)create_bond_req_exit, pdata);
+			(name_cb_t) create_bond_req_exit, pdata);
 
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
@@ -923,7 +923,7 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 	match.name_status = NAME_PENDING;
 	match.discover_type = RESOLVE_NAME;
 
-	l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t)disc_device_find);
+	l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t) disc_device_find);
 	if (!l)
 		return ret_val;
 
@@ -982,7 +982,7 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 			free(dev);
 
 			/* get the next element */
-			l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t)disc_device_find);
+			l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t) disc_device_find);
 
 			/* no more devices: exit */
 			if (!l)
@@ -1035,7 +1035,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	pdata->discover_state = STATE_IDLE;
 
 	/* free discovered devices list */
-	slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
+	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
 
@@ -1107,7 +1107,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
 	/* if found: don't sent the name again */
-	l = slist_find(pdata->disc_devices, &match, (cmp_func_t)disc_device_find);
+	l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
 	if (l)
 		goto failed;
 
@@ -1215,7 +1215,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 		goto failed; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
-	slist_foreach(pdata->disc_devices, (slist_func_t)free, NULL);
+	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
 
@@ -1336,7 +1336,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 bonding_failed:
 	/* free bonding request if the HCI pairing request was not sent */
 	name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
-			(name_cb_t)create_bond_req_exit, pdata);
+			(name_cb_t) create_bond_req_exit, pdata);
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
 
@@ -1400,7 +1400,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 		send_reply_and_unref(connection, message);
 
 		name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
-				(name_cb_t)create_bond_req_exit, pdata);
+				(name_cb_t) create_bond_req_exit, pdata);
 		bonding_request_free(pdata->bonding);
 		pdata->bonding = NULL;
 	}

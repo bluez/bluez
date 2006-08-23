@@ -990,7 +990,7 @@ static DBusHandlerResult register_rfcomm(DBusConnection *conn,
 	psearch.owner = (char *)owner;
 
 	if (!slist_find(sdp_cache, &psearch, service_provider_cmp))
-		name_listener_add(conn, owner, (name_cb_t)owner_exited, dbus_data);
+		name_listener_add(conn, owner, (name_cb_t) owner_exited, dbus_data);
 
 	/* add record in the cache */
 	id = sdp_cache_append(owner, dbus_data->address, rec);
@@ -1072,7 +1072,7 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 
 	/* Only remove the D-Bus unique name listener if there are no more record using this name */
 	if (!slist_find(sdp_cache, &psearch, service_provider_cmp))
-		name_listener_remove(conn, owner, (name_cb_t)owner_exited, dbus_data);
+		name_listener_remove(conn, owner, (name_cb_t) owner_exited, dbus_data);
 
 	return send_reply_and_unref(conn, reply);
 }

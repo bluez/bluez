@@ -233,7 +233,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	ref.addr = addr;
 	ref.path = path;
 
-	if (slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp))
+	if (slist_find(adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp))
 		return error_passkey_agent_already_exists(conn, msg);
 
 	agent = passkey_agent_new(adapter, conn, ref.name, path, addr);
@@ -250,8 +250,8 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	/* Only add a name listener if there isn't one already for this name */
 	ref.addr = NULL;
 	ref.path = NULL;
-	if (!slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp))
-		name_listener_add(conn, ref.name, (name_cb_t)agent_exited, adapter);
+	if (!slist_find(adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp))
+		name_listener_add(conn, ref.name, (name_cb_t) agent_exited, adapter);
 
 	agent->timeout = g_timeout_add(AGENT_TIMEOUT, (GSourceFunc)agent_timeout, agent);
 
@@ -288,14 +288,14 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	ref.path = path;
 	ref.addr = addr;
 
-	match = slist_find(adapter->passkey_agents, &ref, (cmp_func_t)agent_cmp);
+	match = slist_find(adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp);
 	if (!match)
 		return error_passkey_agent_does_not_exist(conn, msg);
 
 	agent = match->data;
 
 	name_listener_remove(agent->conn, agent->name,
-			(name_cb_t)agent_exited, adapter);
+			(name_cb_t) agent_exited, adapter);
 
 	adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
 	agent->exited = 1;
@@ -322,7 +322,8 @@ static DBusHandlerResult register_default_agent(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	default_agent = passkey_agent_new(NULL, conn, dbus_message_get_sender(msg), path, NULL);
+	default_agent = passkey_agent_new(NULL, conn, dbus_message_get_sender(msg),
+						path, NULL);
 	if (!default_agent)
 		goto need_memory;
 
@@ -331,7 +332,7 @@ static DBusHandlerResult register_default_agent(DBusConnection *conn,
 		goto need_memory;
 
 	name_listener_add(conn, default_agent->name,
-			(name_cb_t)default_agent_exited, NULL);
+			(name_cb_t) default_agent_exited, NULL);
 
 	info("Default passkey agent (%s, %s) registered",
 			default_agent->name, default_agent->path);
@@ -373,7 +374,7 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	name_listener_remove(conn, default_agent->name,
-			(name_cb_t)default_agent_exited, NULL);
+			(name_cb_t) default_agent_exited, NULL);
 
 	info("Default passkey agent (%s, %s) unregistered",
 			default_agent->name, default_agent->path);
@@ -630,16 +631,16 @@ static void release_agent(struct passkey_agent *agent)
 
 	if (agent == default_agent)
 		name_listener_remove(agent->conn, agent->name,
-				(name_cb_t)default_agent_exited, NULL);
+				(name_cb_t) default_agent_exited, NULL);
 	else {
 		struct passkey_agent ref;
 
 		/* Only remove the name listener if there are no more agents for this name */
 		memset(&ref, 0, sizeof(ref));
 		ref.name = agent->name;
-		if (!slist_find(agent->pdata->passkey_agents, &ref, (cmp_func_t)agent_cmp))
+		if (!slist_find(agent->pdata->passkey_agents, &ref, (cmp_func_t) agent_cmp))
 			name_listener_remove(agent->conn, ref.name,
-					(name_cb_t)agent_exited, agent->pdata);
+					(name_cb_t) agent_exited, agent->pdata);
 	}
 }
 

@@ -1300,7 +1300,7 @@ static DBusHandlerResult handle_dev_get_remote_service_cls_req(DBusConnection *c
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	slist_foreach(service_classes, (slist_func_t)append_class_string, &array_iter);
+	slist_foreach(service_classes, (slist_func_t) append_class_string, &array_iter);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
@@ -1782,7 +1782,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	dbus_data->bonding->rq = dbus_message_ref(msg);
 
 	name_listener_add(conn, dbus_message_get_sender(msg),
-			(name_cb_t)create_bond_req_exit, dbus_data);
+			(name_cb_t) create_bond_req_exit, dbus_data);
 
 	hci_close_dev(dd);
 
@@ -1879,7 +1879,7 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 		error_authentication_canceled(conn, dbus_data->bonding->rq);
 
 		name_listener_remove(conn, dbus_message_get_sender(dbus_data->bonding->rq),
-				(name_cb_t)create_bond_req_exit, dbus_data);
+				(name_cb_t) create_bond_req_exit, dbus_data);
 
 		/* disconnect from the remote device */
 		if (dbus_data->bonding->disconnect) {
@@ -2276,7 +2276,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		return error_failed(conn, msg, bt_error(status));
 	}
 
-	slist_foreach(dbus_data->disc_devices, (slist_func_t)free, NULL);
+	slist_foreach(dbus_data->disc_devices, (slist_func_t) free, NULL);
 	slist_free(dbus_data->disc_devices);
 	dbus_data->disc_devices = NULL;
 
