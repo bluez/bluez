@@ -456,25 +456,25 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t c
 	return node;
 }
 
-static sdp_record_t *get_record_from_string (const char *dst, 
+static sdp_record_t *get_record_from_string(const char *dst, 
 					     const char *string)	
 {
 	uuid_t short_uuid;
-	uuid_t *uuid;
+	uuid_t *uuid = NULL;
 	sdp_record_t *rec = NULL;	
 	unsigned int data0, data4;
 	unsigned short data1, data2, data3, data5;
 	long handle;
 
 	/* Check if the string is a service name */
-	short_uuid.value.uuid16 = sdp_str2svclass (string);
+	short_uuid.value.uuid16 = sdp_str2svclass(string);
 	
 	if (short_uuid.value.uuid16) {
 		short_uuid.type = SDP_UUID16;
-		uuid = sdp_uuid_to_uuid128 (&short_uuid);
-		rec = find_record_by_uuid (dst, uuid);
-	} else if (sscanf (string, "%8x-%4hx-%4hx-%4hx-%8x%4hx", &data0, 
-			   &data1, &data2, &data3, &data4, &data5) == 6) {
+		uuid = sdp_uuid_to_uuid128(&short_uuid);
+		rec = find_record_by_uuid(dst, uuid);
+	} else if (sscanf(string, "%8x-%4hx-%4hx-%4hx-%8x%4hx", &data0, 
+			&data1, &data2, &data3, &data4, &data5) == 6) {
 		data0 = htonl(data0);
 		data1 = htons(data1);
 		data2 = htons(data2);
@@ -482,19 +482,22 @@ static sdp_record_t *get_record_from_string (const char *dst,
 		data4 = htonl(data4);
 		data5 = htons(data5);
 		
-		uuid = malloc (sizeof(uuid_t));
+		uuid = bt_malloc(sizeof(uuid_t));
 		uuid->type = SDP_UUID128;
-		memcpy (&uuid->value.uuid128.data[0], &data0, 4);
-		memcpy (&uuid->value.uuid128.data[4], &data1, 2);
-		memcpy (&uuid->value.uuid128.data[6], &data2, 2);
-		memcpy (&uuid->value.uuid128.data[8], &data3, 2);
-		memcpy (&uuid->value.uuid128.data[10], &data4, 4);
-		memcpy (&uuid->value.uuid128.data[14], &data5, 2);
 
-		rec = find_record_by_uuid (dst, uuid);
-	} else if ((handle = strtol (string, (char **)NULL, 0))) {
-		rec = find_record_by_handle (dst, handle);
-	}
+		memcpy(&uuid->value.uuid128.data[0], &data0, 4);
+		memcpy(&uuid->value.uuid128.data[4], &data1, 2);
+		memcpy(&uuid->value.uuid128.data[6], &data2, 2);
+		memcpy(&uuid->value.uuid128.data[8], &data3, 2);
+		memcpy(&uuid->value.uuid128.data[10], &data4, 4);
+		memcpy(&uuid->value.uuid128.data[14], &data5, 2);
+
+		rec = find_record_by_uuid(dst, uuid);
+	} else if ((handle = strtol(string, NULL, 0)))
+		rec = find_record_by_handle(dst, handle);
+
+	if (uuid)
+		bt_free(uuid);
 	
 	return rec;
 }
@@ -519,16 +522,16 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 
 	hci_devba(dbus_data->dev_id, &bdaddr);
 
-	rec = get_record_from_string (dst, string);
+	rec = get_record_from_string(dst, string);
 
 	if (!rec)
-		return error_record_does_not_exist (conn, msg);
+		return error_record_does_not_exist(conn, msg);
 	
 	if (sdp_get_access_protos(rec, &protos) == 0)
-		ch = sdp_get_proto_port (protos, RFCOMM_UUID);
+		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
 
 	if (ch == -1)
-		return error_record_does_not_exist (conn, msg);
+		return error_record_does_not_exist(conn, msg);
 
 	if (find_pending_connect(dst, ch))
 		return error_connect_in_progress(conn, msg);
@@ -553,25 +556,25 @@ static DBusHandlerResult rfcomm_cancel_connect_req(DBusConnection *conn,
 	struct pending_connect *pending;
 
 	if (!dbus_message_get_args(msg, NULL,
-				   DBUS_TYPE_STRING, &dst,
-				   DBUS_TYPE_STRING, &string,
-				   DBUS_TYPE_INVALID))
+					DBUS_TYPE_STRING, &dst,
+					DBUS_TYPE_STRING, &string,
+					DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
 	hci_devba(dbus_data->dev_id, &bdaddr);
 
-	rec = get_record_from_string (dst, string);
+	rec = get_record_from_string(dst, string);
 
 	if (!rec)
-		return error_record_does_not_exist (conn, msg);
+		return error_record_does_not_exist(conn, msg);
 	
 	if (sdp_get_access_protos(rec, &protos) == 0)
-		ch = sdp_get_proto_port (protos, RFCOMM_UUID);
+		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
 
 	if (ch == -1)
-		return error_record_does_not_exist (conn, msg);
+		return error_record_does_not_exist(conn, msg);
 
-	reply = dbus_message_new_method_return (msg);
+	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
