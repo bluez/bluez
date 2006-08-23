@@ -42,7 +42,6 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-
 #include <dbus/dbus.h>
 
 #include "hcid.h"
@@ -460,11 +459,11 @@ static sdp_record_t *get_record_from_string(const char *dst,
 					     const char *string)	
 {
 	uuid_t short_uuid;
-	uuid_t *uuid = NULL;
-	sdp_record_t *rec = NULL;	
+	uuid_t *uuid;
+	sdp_record_t *rec;
 	unsigned int data0, data4;
 	unsigned short data1, data2, data3, data5;
-	long handle;
+	uint32_t handle;
 
 	/* Check if the string is a service name */
 	short_uuid.value.uuid16 = sdp_str2svclass(string);
@@ -473,6 +472,7 @@ static sdp_record_t *get_record_from_string(const char *dst,
 		short_uuid.type = SDP_UUID16;
 		uuid = sdp_uuid_to_uuid128(&short_uuid);
 		rec = find_record_by_uuid(dst, uuid);
+		bt_free(uuid);
 	} else if (sscanf(string, "%8x-%4hx-%4hx-%4hx-%8x%4hx", &data0, 
 			&data1, &data2, &data3, &data4, &data5) == 6) {
 		data0 = htonl(data0);
@@ -493,12 +493,13 @@ static sdp_record_t *get_record_from_string(const char *dst,
 		memcpy(&uuid->value.uuid128.data[14], &data5, 2);
 
 		rec = find_record_by_uuid(dst, uuid);
+
+		bt_free(uuid);
 	} else if ((handle = strtol(string, NULL, 0)))
 		rec = find_record_by_handle(dst, handle);
+	else
+		rec = NULL;
 
-	if (uuid)
-		bt_free(uuid);
-	
 	return rec;
 }
 
