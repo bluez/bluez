@@ -405,8 +405,8 @@ static int sdp_cache_append(const char *owner, const char *prov, sdp_record_t *r
 		return -1;
 
 	memset(&psearch, 0, sizeof(psearch));
-	psearch.owner = (char *)owner;
-	psearch.prov = (char *)prov;
+	psearch.owner = (char *) owner;
+	psearch.prov = (char *) prov;
 	
 	lp = slist_find(sdp_cache, &psearch, service_provider_cmp);
 	if (!lp) {
@@ -799,7 +799,7 @@ static DBusHandlerResult get_identifiers_by_service(DBusConnection *conn,
 		if (sdp_get_service_classes(r->record, &ls))
 			continue;
 
-		puuid = (uuid_t *)ls->data;
+		puuid = (uuid_t *) ls->data;
 
 		if (sdp_uuid16_cmp(puuid, &uuid) == 0) {
 			snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/%d", p->prov, r->id);
@@ -930,7 +930,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 		return error_failed(conn, msg, errno);
 	}
 
-	puuid = (uuid_t *)ls->data;
+	puuid = (uuid_t *) ls->data;
 
 	ptr = sdp_svclass2str(puuid->value.uuid16);
 	sdp_list_free(ls, free);
@@ -987,7 +987,7 @@ static DBusHandlerResult register_rfcomm(DBusConnection *conn,
 
 	/* Only add a D-Bus unique name listener if there isn't one already registered */
 	memset(&psearch, 0, sizeof(psearch));
-	psearch.owner = (char *)owner;
+	psearch.owner = (char *) owner;
 
 	if (!slist_find(sdp_cache, &psearch, service_provider_cmp))
 		name_listener_add(conn, owner, (name_cb_t) owner_exited, dbus_data);
@@ -1033,7 +1033,7 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 	memset(&psearch, 0, sizeof(psearch));
 
 	psearch.prov = address;
-	psearch.owner = (char *)owner;
+	psearch.owner = (char *) owner;
 
 	lp = slist_find(sdp_cache, &psearch, service_provider_cmp);
 	if (!lp)

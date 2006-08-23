@@ -1803,7 +1803,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	int dd = -1;
 	read_local_name_rp rp;
 	struct hci_request rq;
-	const char *pname = (char*) rp.name;
+	const char *pname = (char *) rp.name;
 	char name[249];
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);

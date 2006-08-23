@@ -308,7 +308,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 
         node->io = g_io_channel_unix_new(fd);
 	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_HUP,
-					(GIOFunc)rfcomm_disconnect_cb, node);
+					(GIOFunc) rfcomm_disconnect_cb, node);
 
 	send_reply_and_unref(c->conn, reply);
 
@@ -371,7 +371,7 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 		goto failed;
 	}
 
-	if (bind(sk, (struct sockaddr *)&c->laddr, sizeof(c->laddr)) < 0) {
+	if (bind(sk, (struct sockaddr *) &c->laddr, sizeof(c->laddr)) < 0) {
 		if (err)
 			*err = errno;
 		goto failed;
@@ -386,7 +386,7 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 
 	c->io = g_io_channel_unix_new(sk);
 
-	if (connect(sk, (struct sockaddr *)&c->raddr, sizeof(c->raddr)) < 0) {
+	if (connect(sk, (struct sockaddr *) &c->raddr, sizeof(c->raddr)) < 0) {
 		/* BlueZ returns EAGAIN eventhough it should return EINPROGRESS */
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
 			if (err)
@@ -396,7 +396,7 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 		}
 
 		debug("Connect in progress");
-		g_io_add_watch(c->io, G_IO_OUT, (GIOFunc)rfcomm_connect_cb, c);
+		g_io_add_watch(c->io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, c);
 		pending_connects = slist_append(pending_connects, c);
 	} else {
 		debug("Connect succeeded with first try");

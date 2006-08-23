@@ -229,7 +229,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 
 	memset(&ref, 0, sizeof(ref));
 
-	ref.name = (char *)dbus_message_get_sender(msg);
+	ref.name = (char *) dbus_message_get_sender(msg);
 	ref.addr = addr;
 	ref.path = path;
 
@@ -284,7 +284,7 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 
 	memset(&ref, 0, sizeof(ref));
 
-	ref.name = (char *)dbus_message_get_sender(msg);
+	ref.name = (char *) dbus_message_get_sender(msg);
 	ref.path = path;
 	ref.addr = addr;
 

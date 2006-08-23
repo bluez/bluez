@@ -2354,7 +2354,7 @@ struct slist *service_classes_str(uint32_t class)
 		if (!(services & (1 << i)))
 			continue;
 
-		l = slist_append(l, (void *)service_cls[i]);
+		l = slist_append(l, (void *) service_cls[i]);
 	}
 
 	return l;
