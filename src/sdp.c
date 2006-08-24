@@ -208,6 +208,24 @@ static char *string_lookup(struct tupla *pt0, int index)
 	return "";
 }
 
+static char *string_lookup_uuid(struct tupla *pt0, const uuid_t* uuid)
+{
+	uuid_t tmp_uuid;
+
+	memcpy(&tmp_uuid, uuid, sizeof(tmp_uuid));
+
+	if (sdp_uuid128_to_uuid(&tmp_uuid)) {
+		switch (tmp_uuid.type) {
+		case SDP_UUID16:
+			return string_lookup(pt0, tmp_uuid.value.uuid16);
+		case SDP_UUID32:
+			return string_lookup(pt0, tmp_uuid.value.uuid32);
+		}
+	}
+
+	return "";
+}
+
 /*
  * Prints into a string the Protocol UUID
  * coping a maximum of n characters.
@@ -231,8 +249,9 @@ static int uuid2str(struct tupla *message, const uuid_t *uuid, char *str, size_t
 		snprintf(str, n, str2);
 		break;
 	case SDP_UUID128:
-		snprintf(str, n, "Error: This is UUID-128");
-		return -4;
+		str2 = string_lookup_uuid(message, uuid);
+		snprintf(str, n, str2);
+		break;
 	default:
 		snprintf(str, n, "Type of UUID (%x) unknown.", uuid->type);
 		return -1;
