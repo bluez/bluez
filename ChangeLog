@@ -1,3 +1,7 @@
+ver 3.4:
+	Fix UUID128 string lookup handling.
+	Fix malloc() versus bt_malloc() usage.
+
 ver 3.3:
 	Remove kernel specific timeouts.
 	Add additional private data field for SDP sessions.
