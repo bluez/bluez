@@ -1793,7 +1793,6 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 {
 	struct hci_dbus_data *dbus_data = data;
 	struct slist *l;
-	DBusMessage *reply = NULL;
 	DBusError err;
 	bdaddr_t peer_bdaddr;
 	const char *peer_addr;
@@ -1831,6 +1830,8 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
+	dbus_data->bonding->cancel = dbus_message_ref(msg);
+
 	l = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
 
 	if (!l) {
@@ -1866,29 +1867,31 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 			return error_failed(conn, msg, bt_error(rp.status));
 		}
 
-		dbus_data->bonding->cancel = dbus_message_ref(msg);
+		/* 
+		 * if the HCI doesn't support cancel create connection cmd let
+		 * the create connection complete event arrives with page timeout.
+		 * Bonding in progress will be returned to requestors.
+		 */
+
 	} else {
 		struct active_conn_info *cinfo = l->data;
-		/* FIXME: if waiting remote PIN, which HCI cmd must be sent? */
 
-		/* reply to cancel bonding */
-		reply = dbus_message_new_method_return(msg);
-		send_reply_and_unref(conn, reply);
+		/* for unlock PIN Code Request */
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &peer_bdaddr);
 
-		/* Reply to the create bonding request */
-		error_authentication_canceled(conn, dbus_data->bonding->rq);
-
-		name_listener_remove(conn, dbus_message_get_sender(dbus_data->bonding->rq),
-				(name_cb_t) create_bond_req_exit, dbus_data);
-
-		/* disconnect from the remote device */
+		/* 
+		 * Disconnect from the remote device for safety, maybe the
+		 * Controller already received the reply for PIN Code Request
+		 */
 		if (dbus_data->bonding->disconnect) {
-			if (hci_disconnect(dd, htobs(cinfo->handle), HCI_OE_USER_ENDED_CONNECTION, 1000) < 0)
+			if (hci_disconnect(dd, htobs(cinfo->handle), HCI_AUTHENTICATION_FAILURE, 1000) < 0)
 				error("Disconnect failed");
 		}
 
-		bonding_request_free(dbus_data->bonding);
-		dbus_data->bonding = NULL;
+		/*
+		 * If disconnect can't be applied and the PIN Code Request
+		 * was already replied let the Controller's timer to expire
+		 */
 	}
 
 	hci_close_dev(dd);

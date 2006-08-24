@@ -232,6 +232,7 @@ static DBusMessage *dbus_msg_new_authentication_return(DBusMessage *msg, uint8_t
 		return dbus_message_new_error(msg, ERROR_INTERFACE".RepeatedAttemps",
 							"Repeated Attempts");
 
+	case 0x06:
 	case 0x18: /* pairing not allowed (e.g. gw rejected attempt) */
 		return dbus_message_new_error(msg, ERROR_INTERFACE".AuthenticationRejected",
 							"Authentication Rejected");
@@ -245,7 +246,6 @@ static DBusMessage *dbus_msg_new_authentication_return(DBusMessage *msg, uint8_t
 							"Authentication Canceled");
 
 	case 0x05: /* authentication failure */
-	case 0x06: /* pin missing */
 	case 0x0E: /* rejected due to security reasons - is this auth failure? */
 	case 0x25: /* encryption mode not acceptable - is this auth failure? */
 	case 0x26: /* link key cannot be changed - is this auth failure? */
@@ -795,8 +795,19 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 		}
 	}
 
-	message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
-	send_reply_and_unref(connection, message);
+	if (pdata->bonding->cancel) {
+		/* reply the cancel bonding */
+		message = dbus_message_new_method_return(pdata->bonding->cancel);
+		send_reply_and_unref(connection, message);
+
+		/* reply authentication canceled */
+		error_authentication_canceled(connection, pdata->bonding->rq);
+	} else {
+
+		/* reply authentication success or an error */
+		message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
+		send_reply_and_unref(connection, message);
+	}
 
 	name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
 			(name_cb_t) create_bond_req_exit, pdata);
@@ -839,20 +850,15 @@ void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr)
 		goto failed;
 	}
 
-	if (!pdata->bonding)
+	if (!pdata->bonding || !pdata->bonding->cancel ||
+			bacmp(&pdata->bonding->bdaddr, &ret->bdaddr))
 		goto failed;
 
-	if (bacmp(&pdata->bonding->bdaddr, &ret->bdaddr))
-		goto failed;
-	
 	if (!ret->status) {
 		reply = dbus_message_new_method_return(pdata->bonding->cancel);
 		send_reply_and_unref(connection, reply);
 	} else
-		error_failed(connection, pdata->bonding->cancel, bt_error(ret->status));	
-
-	dbus_message_unref(pdata->bonding->cancel);
-	pdata->bonding->cancel = NULL;
+		error_failed(connection, pdata->bonding->cancel, bt_error(ret->status));
 
 failed:
 	bt_free(local_addr);
@@ -1285,20 +1291,35 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	}
 
 	/* check if this connection request was requested by a bonding procedure */
-	if (!pdata->bonding)
+	if (!pdata->bonding || bacmp(&pdata->bonding->bdaddr, peer))
 		goto done; /* skip */
-
-	if (bacmp(&pdata->bonding->bdaddr, peer))
-		goto done; /* skip */
-
-	if (status) {
-		error_connection_attempt_failed(connection, pdata->bonding->rq, bt_error(status));
-		goto bonding_failed;
-	}
 
 	dd = hci_open_dev(pdata->dev_id);
 	if (dd < 0) {
 		error_no_such_adapter(connection, pdata->bonding->rq);
+		goto bonding_failed;
+	}
+
+	if (pdata->bonding->cancel) {
+		/* 
+		 * reply to cancel bonding was done in the cancel create connection
+		 * handler or in the beginning if the controller doesn't support
+		 * cancel cmd. Reply authentication canceled only.
+		 */
+		error_authentication_canceled(connection, pdata->bonding->rq);
+
+		/*
+		 * When the controller doesn't support cancel create connection, 
+		 * disconnect the if the connection has been completed later.
+		 */
+		if (!status)
+			hci_disconnect(dd, htobs(handle), HCI_AUTHENTICATION_FAILURE, 1000);
+
+		goto bonding_failed;
+	}
+
+	if (status) {
+		error_connection_attempt_failed(connection, pdata->bonding->rq, bt_error(status));
 		goto bonding_failed;
 	}
 
@@ -1404,9 +1425,18 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 
 		send_reply_and_unref(connection, message);
 #endif
+		if (pdata->bonding->cancel) {
+			/* reply the cancel bonding */
+			message = dbus_message_new_method_return(pdata->bonding->cancel);
+			send_reply_and_unref(connection, message);
 
-		message = dbus_msg_new_authentication_return(pdata->bonding->rq, HCI_AUTHENTICATION_FAILURE);
-		send_reply_and_unref(connection, message);
+			/* reply authentication canceled */
+			error_authentication_canceled(connection, pdata->bonding->rq);
+		} else {
+
+			message = dbus_msg_new_authentication_return(pdata->bonding->rq, HCI_AUTHENTICATION_FAILURE);
+			send_reply_and_unref(connection, message);
+		}
 
 		name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
 				(name_cb_t) create_bond_req_exit, pdata);
