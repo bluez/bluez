@@ -3033,6 +3033,59 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 }
 
 /*
+ * SDP transaction structure for asynchronous search
+ */
+struct sdp_transaction {
+	sdp_callback_t *cb;
+	void *udata;
+	sdp_cstate_t *cstate;
+	uint8_t *reqbuf;
+	sdp_buf_t rsp_concat_buf;
+	uint32_t reqsize;
+	int cstate_len;
+	int attr_list_len;
+};
+
+/*
+ * Creates a new sdp session for asynchronous search
+ * INPUT:
+ *  int sk
+ *	non-blocking L2CAP socket
+ *      
+ * RETURN:
+ *  sdp_session_t *
+ *  NULL - On memory allocation failure
+ */
+sdp_session_t *sdp_create(int sk, uint32_t flags)
+{
+
+	struct sdp_transaction *t;
+	sdp_session_t *session = malloc(sizeof(sdp_session_t));
+	if (!session) {
+		errno = ENOMEM;
+		return NULL;
+	}
+
+	memset(session, 0, sizeof(*session));
+
+	session->flags = flags;
+	session->sock = sk;
+
+	t = malloc(sizeof(struct sdp_transaction));
+	if (!t) {
+		errno = ENOMEM;
+		free(session);
+		return NULL;
+	}
+
+	memset(t, 0, sizeof(*t));
+
+	session->priv = t;
+
+	return session;
+}
+
+/*
  * This is a service search request combined with the service
  * attribute request. First a service class match is done and
  * for matching service, requested attributes are extracted
@@ -3256,7 +3309,25 @@ int sdp_general_inquiry(inquiry_info *ii, int num_dev, int duration, uint8_t *fo
 
 int sdp_close(sdp_session_t *session)
 {
-	int ret = close(session->sock);
+	struct sdp_transaction *t;
+	int ret;
+	
+	if (!session)
+		return -1;
+
+	ret = close(session->sock);
+
+	t = session->priv;
+
+	if (t) {
+		if (t->reqbuf)
+			free(t->reqbuf);
+
+		if (t->rsp_concat_buf.data)
+			free(t->rsp_concat_buf.data);
+
+		free(t);
+	}
 	free(session);
 	return ret;
 }

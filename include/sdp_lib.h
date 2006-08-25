@@ -112,6 +112,12 @@ int sdp_get_socket(const sdp_session_t *session);
 uint16_t sdp_gen_tid(sdp_session_t *session);
 
 /*
+ * SDP transaction: functions for asynchronous search.
+ */
+typedef void sdp_callback_t(uint8_t type, sdp_list_t *rsp, void *udata, int err);
+sdp_session_t *sdp_create(int sk, uint32_t flags);
+
+/*
  * find all devices in the piconet
  */
 int sdp_general_inquiry(inquiry_info *ii, int dev_num, int duration, uint8_t *found);
