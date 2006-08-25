@@ -431,15 +431,17 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
 		hcid_dbus_inquiry_complete(sba);
 		break;
-	case cmd_opcode_pack(OGF_LINK_CTL, OCF_CREATE_CONN_CANCEL):
-		hcid_dbus_create_conn_cancel(sba, ptr);
-		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME):
 		hcid_dbus_setname_complete(sba);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE):
 		hcid_dbus_setscan_enable_complete(sba);
 		break;
+	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PIN_CODE_REPLY):
+	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY):
+		hcid_dbus_pin_code_reply(sba, ptr);
+		break;
+
 	};
 }
 

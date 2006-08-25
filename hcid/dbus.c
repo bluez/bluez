@@ -77,8 +77,6 @@ void bonding_request_free(struct bonding_request_info *dev )
 	if (dev) {
 		if (dev->rq)
 			dbus_message_unref(dev->rq);
-		if (dev->cancel)
-			dbus_message_unref(dev->cancel);
 		free(dev);
 	}
 }
@@ -675,16 +673,19 @@ int hcid_dbus_stop_device(uint16_t id)
 	return 0;
 }
 
-static int pending_bonding_cmp(const void *p1, const void *p2)
+int pending_bonding_cmp(const void *p1, const void *p2)
 {
-	return p2 ? bacmp(p1, p2) : -1;
+	const struct pending_bonding_info *pb1 = p1;
+	const struct pending_bonding_info *pb2 = p2;
+
+	return p2 ? bacmp(&pb1->bdaddr, &pb2->bdaddr) : -1;
 }
 
 void hcid_dbus_pending_bonding_add(bdaddr_t *sba, bdaddr_t *dba)
 {
 	char path[MAX_PATH_LENGTH], addr[18];
 	struct hci_dbus_data *pdata;
-	bdaddr_t *peer;
+	struct pending_bonding_info *peer;
 
 	ba2str(sba, addr);
 
@@ -695,8 +696,10 @@ void hcid_dbus_pending_bonding_add(bdaddr_t *sba, bdaddr_t *dba)
 		return;
 	}
 
-	peer = malloc(sizeof(bdaddr_t));
-	bacpy(peer, dba);
+	peer = malloc(sizeof(*peer));
+	memset(peer, 0, sizeof(*peer));
+
+	bacpy(&peer->bdaddr, dba);
 	pdata->pending_bondings = slist_append(pdata->pending_bondings, peer);
 }
 
@@ -796,14 +799,9 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	}
 
 	if (pdata->bonding->cancel) {
-		/* reply the cancel bonding */
-		message = dbus_message_new_method_return(pdata->bonding->cancel);
-		send_reply_and_unref(connection, message);
-
 		/* reply authentication canceled */
 		error_authentication_canceled(connection, pdata->bonding->rq);
 	} else {
-
 		/* reply authentication success or an error */
 		message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
 		send_reply_and_unref(connection, message);
@@ -814,51 +812,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
-
-failed:
-	bt_free(local_addr);
-	bt_free(peer_addr);
-}
-
-void hcid_dbus_create_conn_cancel(bdaddr_t *local, void *ptr)
-{
-	typedef struct {
-		uint8_t status;
-		bdaddr_t bdaddr;
-	}__attribute__ ((packed)) ret_param_conn_cancel;
-
-	char path[MAX_PATH_LENGTH];
-	bdaddr_t tmp;
-	ret_param_conn_cancel *ret = ptr + sizeof(evt_cmd_complete);
-	DBusMessage *reply;
-	char *local_addr, *peer_addr;
-	struct hci_dbus_data *pdata;
-	int id;
-
-	baswap(&tmp, local); local_addr = batostr(&tmp);
-	baswap(&tmp, &ret->bdaddr); peer_addr = batostr(&tmp);
-
-	id = hci_devid(local_addr);
-	if (id < 0) {
-		error("No matching device id for %s", local_addr);
-		goto failed;
-	}
-
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
-		error("Getting %s path data failed!", path);
-		goto failed;
-	}
-
-	if (!pdata->bonding || !pdata->bonding->cancel ||
-			bacmp(&pdata->bonding->bdaddr, &ret->bdaddr))
-		goto failed;
-
-	if (!ret->status) {
-		reply = dbus_message_new_method_return(pdata->bonding->cancel);
-		send_reply_and_unref(connection, reply);
-	} else
-		error_failed(connection, pdata->bonding->cancel, bt_error(ret->status));
 
 failed:
 	bt_free(local_addr);
@@ -1301,11 +1254,6 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	}
 
 	if (pdata->bonding->cancel) {
-		/* 
-		 * reply to cancel bonding was done in the cancel create connection
-		 * handler or in the beginning if the controller doesn't support
-		 * cancel cmd. Reply authentication canceled only.
-		 */
 		error_authentication_canceled(connection, pdata->bonding->rq);
 
 		/*
@@ -1426,14 +1374,9 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 		send_reply_and_unref(connection, message);
 #endif
 		if (pdata->bonding->cancel) {
-			/* reply the cancel bonding */
-			message = dbus_message_new_method_return(pdata->bonding->cancel);
-			send_reply_and_unref(connection, message);
-
 			/* reply authentication canceled */
 			error_authentication_canceled(connection, pdata->bonding->rq);
 		} else {
-
 			message = dbus_msg_new_authentication_return(pdata->bonding->rq, HCI_AUTHENTICATION_FAILURE);
 			send_reply_and_unref(connection, message);
 		}
@@ -2004,6 +1947,49 @@ failed:
 	if (dd >= 0)
 		close(dd);
 
+	bt_free(local_addr);
+}
+
+void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
+{
+
+	typedef struct {
+		uint8_t status;
+		bdaddr_t bdaddr;
+	} __attribute__ ((packed)) ret_pin_code_req_reply;
+
+	struct hci_dbus_data *pdata;
+	char *local_addr;
+	ret_pin_code_req_reply *ret = ptr + sizeof(evt_cmd_complete);
+	struct slist *l;
+	char path[MAX_PATH_LENGTH];
+	bdaddr_t tmp;
+	int id;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		error("No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
+		goto failed;
+	}
+
+	if (!pdata->pending_bondings)
+		goto failed;
+
+	l = slist_find(pdata->pending_bondings, &ret->bdaddr, pending_bonding_cmp);
+	if (l) {
+		struct pending_bonding_info *p = l->data;
+		p->step = 1;
+	}
+
+failed:
 	bt_free(local_addr);
 }
 

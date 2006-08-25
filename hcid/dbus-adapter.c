@@ -1792,7 +1792,8 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	struct slist *l;
+	struct slist *la;
+	DBusMessage *reply;
 	DBusError err;
 	bdaddr_t peer_bdaddr;
 	const char *peer_addr;
@@ -1830,11 +1831,11 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
-	dbus_data->bonding->cancel = dbus_message_ref(msg);
+	dbus_data->bonding->cancel = 1;
 
-	l = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
+	la = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
 
-	if (!l) {
+	if (!la) {
 		/* connection request is pending */
 		struct hci_request rq;
 		create_conn_cancel_cp cp;
@@ -1874,26 +1875,44 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 		 */
 
 	} else {
-		struct active_conn_info *cinfo = l->data;
-
-		/* for unlock PIN Code Request */
-		hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &peer_bdaddr);
+		struct slist *lb;
+		struct active_conn_info *cinfo = la->data;
 
 		/* 
-		 * Disconnect from the remote device for safety, maybe the
-		 * Controller already received the reply for PIN Code Request
-		 */
-		if (dbus_data->bonding->disconnect) {
-			if (hci_disconnect(dd, htobs(cinfo->handle), HCI_AUTHENTICATION_FAILURE, 1000) < 0)
-				error("Disconnect failed");
-		}
+		 * It is already connected, search in the pending passkey requests to
+		 * figure out the current stage(waiting host passkey/remote passkey)
+		 */ 
+		lb = slist_find(dbus_data->pending_bondings, &peer_bdaddr, pending_bonding_cmp);
+		if (lb) {
+			struct pending_bonding_info *pb = lb->data;
+			/* 0: waiting host passkey 1: waiting remote passkey */
+			if (pb->step) {
+				if (dbus_data->bonding->disconnect) {
 
-		/*
-		 * If disconnect can't be applied and the PIN Code Request
-		 * was already replied let the Controller's timer to expire
-		 */
+					/* disconnect and let disconnect handler reply create bonding */
+					if (hci_disconnect(dd, htobs(cinfo->handle), HCI_AUTHENTICATION_FAILURE, 1000) < 0)
+						error("Disconnect failed");
+				} else {
+					/*
+					 * If disconnect can't be applied and the PIN Code Request
+					 * was already replied it doesn't make sense cancel the
+					 * remote passkey: return not authorized.
+					 */
+
+					error_not_authorized(conn, msg);
+					goto failed;
+				}
+			} else {
+
+				/* for unlock PIN Code Request */
+				hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &peer_bdaddr);
+			}
+		}
 	}
 
+	reply = dbus_message_new_method_return(msg);
+	send_reply_and_unref(conn, reply);
+failed:
 	hci_close_dev(dd);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
