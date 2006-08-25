@@ -3086,6 +3086,34 @@ sdp_session_t *sdp_create(int sk, uint32_t flags)
 }
 
 /*
+ * Set the callback function to called when the transaction finishes
+ *
+ * INPUT:
+ *  sdp_session_t *session
+ *	Current sdp session to be handled
+ *  sdp_callback_t *cb
+ *      callback to be called when the transaction finishes
+ *  void *udata
+ *      user data passed to callback
+ * RETURN:
+ * 	0  - Success
+ * 	-1 - Failure
+ */
+int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
+{
+	struct sdp_transaction *t;
+
+	if (!session || !session->priv)
+		return -1;
+
+	t = session->priv;
+	t->cb = func;
+	t->udata = udata;
+
+	return 0;
+}
+
+/*
  * This is a service search request combined with the service
  * attribute request. First a service class match is done and
  * for matching service, requested attributes are extracted
