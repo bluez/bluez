@@ -36,25 +36,9 @@ typedef struct _GIOChannel {
 
 typedef gboolean (*GSourceFunc) (gpointer data);
 
-struct timeout {
-	guint id;
-	guint interval;
-	struct timeval expiration;
-	gpointer data;
-	GSourceFunc function;
-};
+typedef struct _GMainContext GMainContext;
 
-typedef struct _GMainContext {
-	guint next_id;
-	glong timeout;
-	struct slist *ltimeout;
-	struct slist *processed;
-} GMainContext;
-
-typedef struct _GMainLoop {
-	int bail;
-	GMainContext *context;
-} GMainLoop;
+typedef struct _GMainLoop GMainLoop;
 
 typedef enum {
 	G_IO_ERROR_NONE,

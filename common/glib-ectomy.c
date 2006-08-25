@@ -13,8 +13,34 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "glib-ectomy.h"
 #include "list.h"
+#include "glib-ectomy.h"
+
+struct timeout {
+	guint id;
+	guint interval;
+	struct timeval expiration;
+	gpointer data;
+	GSourceFunc function;
+};
+
+struct _GMainContext {
+	guint next_id;
+	glong next_timeout;
+
+	struct slist *timeouts;
+	struct slist *proc_timeouts;
+	gboolean timeout_lock;
+
+	struct slist *watches;
+	struct slist *proc_watches;
+	gboolean watch_lock;
+};
+
+struct _GMainLoop {
+	int bail;
+	GMainContext *context;
+};
 
 GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count, gsize *bytes_read)
 {
@@ -88,77 +114,48 @@ struct watch {
 	GIOFunc func;
 	gpointer user_data;
 	GDestroyNotify destroy;
-
-	struct watch *prev;
-	struct watch *next;
 };
-
-static struct watch watch_head = { .id = 0, .prev = 0, .next = 0, .revents = 0 };
 
 static GMainContext *default_context = NULL;
 
-static void watch_remove(struct watch *w)
+static void watch_free(struct watch *watch)
 {
-	struct watch *p, *n;
-
-	if (!w)
-		return;
-
-	p = w->prev;
-	n = w->next;
-
-	if (p)
-		p->next = n;
-
-	if (n)
-		n->prev = p;
-
-	free(w);
+	if (watch->destroy)
+		watch->destroy(watch->user_data);
+	free(watch);
 }
 
 void g_io_remove_watch(guint id)
 {
-	struct watch *w, *n;
+	struct slist *l;
+	struct watch *w;
 
-	for (w = watch_head.next; w; w = n) {
-		n = w->next;
+	if (!default_context)
+		return;
+
+	for (l = default_context->watches; l != NULL; l = l->next) {
+		w = l->data;	
+
 		if (w->id != id)
 			continue;
 
-		watch_remove(w);
+		default_context->watches = slist_remove(default_context->watches, w);
+		watch_free(w);
+
 		return;
 	}
-}
 
-guint g_io_add_watch_full(GIOChannel *channel, gint priority,
-				GIOCondition condition, GIOFunc func,
-				gpointer user_data, GDestroyNotify notify)
-{
-	struct watch *watch = malloc(sizeof(struct watch));
+	for (l = default_context->proc_watches; l != NULL; l = l->next) {
+		w = l->data;	
 
-	watch->id = ++watch_head.id;
-	watch->channel = channel;
-	watch->priority = priority;
-	watch->condition = condition;
-	watch->func = func;
-	watch->user_data = user_data;
-	watch->destroy = notify;
+		if (w->id != id)
+			continue;
 
-	watch->prev = &watch_head;
-	watch->next = watch_head.next;
-	if (watch_head.next)
-		watch_head.next->prev = watch;
+		default_context->proc_watches = slist_remove(default_context->proc_watches, w);
+		watch_free(w);
 
-	watch_head.next = watch;
-
-	return watch->id;
-}
-
-guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
-					GIOFunc func, gpointer user_data)
-{
-	return g_io_add_watch_full(channel, 0, condition,
-						func, user_data, NULL);
+		return;
+	}
 }
 
 static GMainContext *g_main_context_default()
@@ -172,9 +169,47 @@ static GMainContext *g_main_context_default()
 
 	memset(default_context, 0, sizeof(GMainContext));
 
-	default_context->timeout = -1;
+	default_context->next_timeout = -1;
+	default_context->next_id = 1;
 
 	return default_context;
+}
+
+guint g_io_add_watch_full(GIOChannel *channel, gint priority,
+				GIOCondition condition, GIOFunc func,
+				gpointer user_data, GDestroyNotify notify)
+{
+	struct watch *watch;
+	GMainContext *context = g_main_context_default();
+
+	if (!context)
+		return 0;
+       
+	watch = malloc(sizeof(struct watch));
+	if (!watch)
+		return 0;
+
+	watch->id = context->next_id++;
+	watch->channel = channel;
+	watch->priority = priority;
+	watch->condition = condition;
+	watch->func = func;
+	watch->user_data = user_data;
+	watch->destroy = notify;
+
+	if (context->watch_lock)
+		context->proc_watches = slist_prepend(context->proc_watches, watch);
+	else
+		context->watches = slist_prepend(context->watches, watch);
+
+	return watch->id;
+}
+
+guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
+					GIOFunc func, gpointer user_data)
+{
+	return g_io_add_watch_full(channel, 0, condition,
+						func, user_data, NULL);
 }
 
 GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running)
@@ -199,16 +234,14 @@ GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running)
 
 static void timeout_handlers_prepare(GMainContext *context)
 {
-	struct slist *l = context->ltimeout;
-	struct timeout *t;
+	struct slist *l;
 	struct timeval tv;
 	glong msec, timeout = LONG_MAX;
 
 	gettimeofday(&tv, NULL);
 
-	while (l) {
-		t = l->data;
-		l = l->next;
+	for (l = context->timeouts; l != NULL; l = l->next) {
+		struct timeout *t = l->data;
 
 		/* calculate the remainning time */
 		msec = (t->expiration.tv_sec - tv.tv_sec) * 1000 +
@@ -220,32 +253,30 @@ static void timeout_handlers_prepare(GMainContext *context)
 	}
 
 	/* set to min value found or NO timeout */
-	context->timeout = (timeout != LONG_MAX ? timeout: -1);
+	context->next_timeout = (timeout != LONG_MAX ? timeout : -1);
 }
 
-static int timeout_cmp(const void *t1, const void *t2)
+static int ptr_cmp(const void *t1, const void *t2)
 {
 	return t1 - t2;
 }
 
 static void timeout_handlers_check(GMainContext *context)
 {
-	struct timeout *t;
 	struct timeval tv;
 
 	gettimeofday(&tv, NULL);
 
-	context->processed = NULL;
+	context->timeout_lock = TRUE;
 
-	while (context->ltimeout) {
+	while (context->timeouts) {
+		struct timeout *t = context->timeouts->data;
 		glong secs, msecs;
 		gboolean ret;
 
-		t = context->ltimeout->data;
-
 		if (timercmp(&tv, &t->expiration, <)) {
-			context->ltimeout = slist_remove(context->ltimeout, t);
-			context->processed = slist_append(context->processed, t);
+			context->timeouts = slist_remove(context->timeouts, t);
+			context->proc_timeouts = slist_append(context->proc_timeouts, t);
 			continue;
 		}
 
@@ -253,10 +284,10 @@ static void timeout_handlers_check(GMainContext *context)
 
 		/* Check if the handler was removed/freed by the callback
 		 * function */
-		if (!slist_find(context->ltimeout, t, timeout_cmp))
+		if (!slist_find(context->timeouts, t, ptr_cmp))
 			continue;
 
-		context->ltimeout = slist_remove(context->ltimeout, t);
+		context->timeouts = slist_remove(context->timeouts, t);
 
 		if (!ret) {
 			free(t);
@@ -274,57 +305,76 @@ static void timeout_handlers_check(GMainContext *context)
 			t->expiration.tv_sec++;
 		}
 
-		context->processed = slist_append(context->processed, t);
+		context->proc_timeouts = slist_append(context->proc_timeouts, t);
 	}
 
-	context->ltimeout = context->processed;
-	context->processed = NULL;
+	context->timeouts = context->proc_timeouts;
+	context->proc_timeouts = NULL;
+	context->timeout_lock = FALSE;
 }
 
 void g_main_loop_run(GMainLoop *loop)
 {
 	int open_max = sysconf(_SC_OPEN_MAX);
 	struct pollfd *ufds;
+	GMainContext *context = loop->context;
 
 	ufds = malloc(open_max * sizeof(struct pollfd));
 	if (!ufds)
 		return;
 
 	while (!loop->bail) {
-		int nfds, rc;
-		struct watch *n, *w;
+		int nfds;
+		struct slist *l;
+		struct watch *w;
 
-		nfds = 0;
-		for (w = watch_head.next; w != NULL; w = w->next) {
+		for (nfds = 0, l = context->watches; l != NULL; l = l->next, nfds++) {
+			w = l->data;
 			ufds[nfds].fd = w->channel->fd;
 			ufds[nfds].events = w->condition;
 			ufds[nfds].revents = 0;
 			w->revents = &ufds[nfds].revents;
-			nfds++;
 		}
 
 		/* calculate the next timeout */
-		timeout_handlers_prepare(loop->context);
+		timeout_handlers_prepare(context);
 
-		rc = poll(ufds, nfds, loop->context->timeout);
-		if (rc < 0)
+		if (poll(ufds, nfds, context->next_timeout) < 0)
 			continue;
 
-		w = watch_head.next;
-		while (w) {
-			if (!*w->revents || w->func(w->channel, *w->revents, w->user_data)) {
-				w = w->next;
+		context->watch_lock = TRUE;
+
+		while (context->watches) {
+			gboolean ret;
+
+			w = context->watches->data;
+
+			if (!*w->revents) {
+				context->watches = slist_remove(context->watches, w);
+				context->proc_watches = slist_append(context->proc_watches, w);
 				continue;
 			}
 
-			n = w->next;
+			ret = w->func(w->channel, *w->revents, w->user_data);
 
-			if (w->destroy)
-				w->destroy(w->user_data);
-			watch_remove(w);
+			/* Check if the watch was removed/freed by the callback
+			 * function */
+			if (!slist_find(context->watches, w, ptr_cmp))
+				continue;
 
-			w = n;
+			context->watches = slist_remove(context->watches, w);
+
+			if (!ret) {
+				watch_free(w);
+				continue;
+			}
+
+			context->proc_watches = slist_append(context->proc_watches, w);
 		}
+
+		context->watches = context->proc_watches;
+		context->proc_watches = NULL;
+		context->watch_lock = FALSE;
 
 		/* check expired timers */
 		timeout_handlers_check(loop->context);
@@ -335,19 +385,7 @@ void g_main_loop_run(GMainLoop *loop)
 
 void g_main_loop_quit(GMainLoop *loop)
 {
-	struct watch *w, *next;
-
 	loop->bail = 1;
-
-	for (w = watch_head.next; w; w = next) {
-		next = w->next;
-		if (w->destroy)
-			w->destroy(w->user_data);
-		watch_head.next = w->next;
-		free(w);
-	}
-
-	watch_head.next = NULL;
 }
 
 void g_main_loop_unref(GMainLoop *loop)
@@ -355,8 +393,12 @@ void g_main_loop_unref(GMainLoop *loop)
 	if (!loop->context)
 		return;
 
-	slist_foreach(loop->context->ltimeout, (slist_func_t)free, NULL);
-	slist_free(loop->context->ltimeout);
+	slist_foreach(loop->context->watches, (slist_func_t)watch_free, NULL);
+	slist_free(loop->context->watches);
+
+	slist_foreach(loop->context->timeouts, (slist_func_t)free, NULL);
+	slist_free(loop->context->timeouts);
+
 	free(loop->context);
 	loop->context = NULL;
 }
@@ -395,8 +437,12 @@ guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)
 	}
 
 	/* attach the timeout the default context */
-	t->id = ++default_context->next_id;
-	default_context->ltimeout = slist_append(default_context->ltimeout, t);
+	t->id = default_context->next_id++;
+
+	if (default_context->timeout_lock)
+		default_context->proc_timeouts = slist_prepend(default_context->proc_timeouts, t);
+	else
+		default_context->timeouts = slist_prepend(default_context->timeouts, t);
 
 	return t->id;
 }
@@ -409,7 +455,7 @@ gint g_timeout_remove(const guint id)
 	if (!default_context)
 		return -1;
 
-	l = default_context->ltimeout;
+	l = default_context->timeouts;
 
 	while (l) {
 		t = l->data;
@@ -418,13 +464,13 @@ gint g_timeout_remove(const guint id)
 		if (t->id != id)
 			continue;
 
-		default_context->ltimeout = slist_remove(default_context->ltimeout, t);
+		default_context->timeouts = slist_remove(default_context->timeouts, t);
 		free(t);
 
 		return 0;
 	}
 
-	l = default_context->processed;
+	l = default_context->proc_timeouts;
 
 	while (l) {
 		t = l->data;
@@ -433,7 +479,7 @@ gint g_timeout_remove(const guint id)
 		if (t->id != id)
 			continue;
 
-		default_context->processed = slist_remove(default_context->processed, t);
+		default_context->proc_timeouts = slist_remove(default_context->proc_timeouts, t);
 		free(t);
 
 		return 0;

@@ -55,6 +55,21 @@ struct slist *slist_append(struct slist *list, void *data)
 	return list;
 }
 
+struct slist *slist_prepend(struct slist *list, void *data)
+{
+	struct slist *entry;
+
+	entry = malloc(sizeof(struct slist));
+	/* FIXME: this currently just silently fails */
+	if (!entry)
+		return list;
+
+	entry->data = data;
+	entry->next = list;
+
+	return entry;
+}
+
 struct slist *slist_remove(struct slist *list, void *data)
 {
 	struct slist *l, *next, *prev = NULL, *match = NULL;

@@ -35,6 +35,8 @@ typedef void (*slist_func_t)(void *data, void *user_data);
 
 struct slist *slist_append(struct slist *list, void *data);
 
+struct slist *slist_prepend(struct slist *list, void *data);
+
 struct slist *slist_remove(struct slist *list, void *data);
 
 struct slist *slist_find(struct slist *list, const void *data,
