@@ -503,6 +503,7 @@ static void close_connection(struct vhci_conn *conn)
 					batostr(&conn->dest), conn->handle);
 
 	g_io_channel_close(conn->chan);
+	g_io_channel_unref(conn->chan);
 
 	vconn[conn->handle - 1] = NULL;
 	disconn_complete(conn);
@@ -875,8 +876,10 @@ static gboolean io_acl_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 	uint16_t flags;
 	int fd, err, len;
 
-	if (cond & G_IO_NVAL)
+	if (cond & G_IO_NVAL) {
+		g_io_channel_unref(chan);
 		return FALSE;
+	}
 
 	if (cond & G_IO_HUP) {
 		close_connection(conn);
@@ -975,6 +978,7 @@ static gboolean io_hci_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 			return TRUE;
 
 		syslog(LOG_ERR, "Read failed: %s (%d)", strerror(errno), errno);
+		g_io_channel_unref(chan);
 		g_main_quit(event_loop);
 		return FALSE;
 	}
