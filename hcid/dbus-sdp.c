@@ -506,7 +506,7 @@ static gboolean search_session_handle_cb(GIOChannel *chan, GIOCondition cond, vo
 		return TRUE;
 
 fail:
-	g_io_channel_close(chan);
+	g_io_channel_unref(chan);
 	return retval;
 }
 
@@ -671,6 +671,7 @@ static int search_request(DBusConnection *conn, DBusMessage *msg, uint16_t dev_i
 	}
 
 	chan = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(chan, TRUE);
 
 	sa.l2_family = AF_BLUETOOTH;
 	sa.l2_psm = 0;
@@ -712,7 +713,7 @@ static int search_request(DBusConnection *conn, DBusMessage *msg, uint16_t dev_i
 	return 0;
 fail:
 	if (chan)
-		g_io_channel_close(chan);
+		g_io_channel_unref(chan);
 
 	if (c)
 		pending_connect_free(c);

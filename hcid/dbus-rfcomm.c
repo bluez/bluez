@@ -88,8 +88,8 @@ static char *rfcomm_node_name_from_id(int16_t id, char *dev, size_t len)
 static void rfcomm_node_free(struct rfcomm_node *node)
 {
 	if (node->io) {
-		g_io_channel_close(node->io);
 		g_io_remove_watch(node->io_id);
+		g_io_channel_unref(node->io);
 	}
 	if (node->owner)
 		free(node->owner);
@@ -131,7 +131,7 @@ static void pending_connect_free(struct pending_connect *c)
 	if (c->svc)
 		free(c->svc);
 	if (c->io)
-		g_io_channel_close(c->io);
+		g_io_channel_unref(c->io);
 	if (c->msg)
 		dbus_message_unref(c->msg);
 	if (c->conn)
@@ -174,8 +174,8 @@ static int rfcomm_release(struct rfcomm_node *node, int *err)
 	debug("rfcomm_release(%s)", node->name);
 
 	if (node->io) {
-		g_io_channel_close(node->io);
 		g_io_remove_watch(node->io_id);
+		g_io_channel_unref(node->io);
 		node->io = NULL;
 	}
 
@@ -310,6 +310,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
         node->io = g_io_channel_unix_new(fd);
+	g_io_channel_set_close_on_unref(node->io, TRUE);
 	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_HUP,
 					(GIOFunc) rfcomm_disconnect_cb, node);
 
@@ -388,6 +389,7 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 	c->conn = dbus_connection_ref(conn);
 
 	c->io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(c->io, TRUE);
 
 	if (connect(sk, (struct sockaddr *) &c->raddr, sizeof(c->raddr)) < 0) {
 		/* BlueZ returns EAGAIN eventhough it should return EINPROGRESS */

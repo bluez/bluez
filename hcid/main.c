@@ -716,6 +716,7 @@ int main(int argc, char *argv[])
 	event_loop = g_main_new(FALSE);
 
 	ctl_io = g_io_channel_unix_new(hcid.sock);
+	g_io_channel_set_close_on_unref(ctl_io, TRUE);
 
 	g_io_add_watch(ctl_io, G_IO_IN, io_stack_event, NULL);
 
@@ -736,6 +737,8 @@ int main(int argc, char *argv[])
 	hcid_dbus_exit();
 
 	g_main_unref(event_loop);
+
+	g_io_channel_unref(ctl_io);
 
 	info("Exit");
 

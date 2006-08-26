@@ -24,6 +24,11 @@ struct timeout {
 	GSourceFunc function;
 };
 
+struct _GIOChannel {
+	int fd;
+	gboolean close_on_unref;
+};
+
 struct _GMainContext {
 	guint next_id;
 	glong next_timeout;
@@ -82,8 +87,17 @@ void g_io_channel_close(GIOChannel *channel)
 		return;
 
 	close(channel->fd);
+	channel->fd = -1;
+}
 
-	memset(channel, 0, sizeof(channel));
+void g_io_channel_unref(GIOChannel *channel)
+{
+	if (!channel)
+		return;
+
+	if (channel->close_on_unref && channel->fd >= 0)
+		g_io_channel_close(channel);
+
 	free(channel);
 }
 
@@ -95,9 +109,16 @@ GIOChannel *g_io_channel_unix_new(int fd)
 	if (!channel)
 		return NULL;
 
+	memset(channel, 0, sizeof(GIOChannel));
+
 	channel->fd = fd;
 
 	return channel;
+}
+
+void g_io_channel_set_close_on_unref(GIOChannel *channel, gboolean do_close)
+{
+	channel->close_on_unref = do_close;
 }
 
 gint g_io_channel_unix_get_fd(GIOChannel *channel)

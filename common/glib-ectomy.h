@@ -30,9 +30,7 @@ typedef ssize_t	gssize;
 
 #define MIN_TIMEOUT(a, b)  (((a) < (b)) ? (a) : (b))
 
-typedef struct _GIOChannel {
-	int fd;
-} GIOChannel;
+typedef struct _GIOChannel GIOChannel;
 
 typedef gboolean (*GSourceFunc) (gpointer data);
 
@@ -78,6 +76,8 @@ GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count, gsize *
 void g_io_channel_close(GIOChannel *channel);
 
 GIOChannel *g_io_channel_unix_new(int fd);
+void g_io_channel_unref(GIOChannel *channel);
+void g_io_channel_set_close_on_unref(GIOChannel *channel, gboolean do_close);
 gint g_io_channel_unix_get_fd(GIOChannel *channel);
 guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
 					GIOFunc func, gpointer user_data);

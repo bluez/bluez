@@ -64,8 +64,10 @@ static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	GIOError err;
 	int sk, ret;
 
-	if (cond & (G_IO_HUP | G_IO_ERR))
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		g_io_channel_unref(chan);
 		return FALSE;
+	}
 
 	debug("Incoming SDP transaction");
 
@@ -131,8 +133,9 @@ static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	session_data->imtu = opts.imtu;
 
 	io = g_io_channel_unix_new(nsk);
+	g_io_channel_set_close_on_unref(io, TRUE);
 
-	g_io_add_watch_full(io, 0, G_IO_IN, session_event,
+	g_io_add_watch_full(io, 0, G_IO_IN | G_IO_HUP | G_IO_ERR, session_event,
 					session_data, session_destory);
 
 	return TRUE;
@@ -167,6 +170,7 @@ int start_sdp_server(void)
 	listen(sk, 5);
 
 	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
 
 	g_io_add_watch(io, G_IO_IN, connect_event, NULL);
 

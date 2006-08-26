@@ -56,11 +56,15 @@ static int experimental = 0;
 #define RECONNECT_RETRY_TIMEOUT		5000
 #define DISPATCH_TIMEOUT		0
 
-typedef struct
-{
+typedef struct {
 	uint32_t id;
 	DBusTimeout *timeout;
 } timeout_handler_t;
+
+struct watch_info {
+	guint watch_id;
+	GIOChannel *io;
+};
 
 void hcid_dbus_set_experimental(void)
 {
@@ -1420,7 +1424,7 @@ static gboolean message_dispatch_cb(void *data)
 
 static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	DBusWatch *watch = (DBusWatch *) data;
+	DBusWatch *watch = data;
 	int flags = 0;
 
 	if (cond & G_IO_IN)  flags |= DBUS_WATCH_READABLE;
@@ -1439,40 +1443,40 @@ static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 static dbus_bool_t add_watch(DBusWatch *watch, void *data)
 {
 	GIOCondition cond = G_IO_HUP | G_IO_ERR;
-	GIOChannel *io;
-	guint *id;
+	struct watch_info *info;
 	int fd, flags;
 
 	if (!dbus_watch_get_enabled(watch))
 		return TRUE;
 
-	id = malloc(sizeof(guint));
-	if (id == NULL)
+	info = malloc(sizeof(struct watch_info));
+	if (info == NULL)
 		return FALSE;
 
 	fd = dbus_watch_get_fd(watch);
-	io = g_io_channel_unix_new(fd);
+	info->io = g_io_channel_unix_new(fd);
 	flags = dbus_watch_get_flags(watch);
 
 	if (flags & DBUS_WATCH_READABLE) cond |= G_IO_IN;
 	if (flags & DBUS_WATCH_WRITABLE) cond |= G_IO_OUT;
 
-	*id = g_io_add_watch(io, cond, watch_func, watch);
+	info->watch_id = g_io_add_watch(info->io, cond, watch_func, watch);
 
-	dbus_watch_set_data(watch, id, NULL);
+	dbus_watch_set_data(watch, info, NULL);
 
 	return TRUE;
 }
 
 static void remove_watch(DBusWatch *watch, void *data)
 {
-	guint *id = dbus_watch_get_data(watch);
+	struct watch_info *info = dbus_watch_get_data(watch);
 
 	dbus_watch_set_data(watch, NULL, NULL);
 
-	if (id) {
-		g_io_remove_watch(*id);
-		free(id);
+	if (info) {
+		g_io_remove_watch(info->watch_id);
+		g_io_channel_unref(info->io);
+		free(info);
 	}
 }
 

@@ -657,23 +657,21 @@ static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
-	struct hci_dev_info *di = (void *) data;
+	struct hci_dev_info *di = data;
 	int type, dev;
 	size_t len;
 	hci_event_hdr *eh;
 	GIOError err;
 
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
-		g_io_channel_close(chan);
-		free(data);
+		g_io_channel_unref(chan);
 		return FALSE;
 	}
 
 	if ((err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len))) {
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
-		g_io_channel_close(chan);
-		free(data);
+		g_io_channel_unref(chan);
 		return FALSE;
 	}
 
@@ -836,9 +834,10 @@ void start_security_manager(int hdev)
 	}
 
 	chan = g_io_channel_unix_new(dev);
-	io_data[hdev].watch_id = g_io_add_watch(chan, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-						io_security_event, (void *) di);
-
+	g_io_channel_set_close_on_unref(chan, TRUE);
+	io_data[hdev].watch_id = g_io_add_watch_full(chan, 0,
+						G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+						io_security_event, di, (GDestroyNotify)free);
 	io_data[hdev].channel = chan;
 	io_data[hdev].pin_length = -1;
 
@@ -861,11 +860,8 @@ void stop_security_manager(int hdev)
 
 	info("Stopping security manager %d", hdev);
 
-	/* this is a bit sneaky. closing the fd will cause the event
-	   loop to call us right back with G_IO_NVAL set, at which
-	   point we will see it and clean things up */
-	close(g_io_channel_unix_get_fd(chan));
 	g_io_remove_watch(io_data[hdev].watch_id);
+	g_io_channel_unref(io_data[hdev].channel);
 	io_data[hdev].watch_id = -1;
 	io_data[hdev].channel = NULL;
 	io_data[hdev].pin_length = -1;
