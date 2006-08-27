@@ -50,6 +50,8 @@ int yyparse(void);
 int yylex(void);
 int yyerror(char *s); 
 
+void yylex_destroy(void);
+
 %}
 
 %union {
@@ -221,23 +223,23 @@ device_opt:
 
 dev_name:
   WORD		{
-			$$ = strdup($1);
+			$$ = $1;
 		}
 
   |  STRING	{
-			$$ = strdup($1);
+			$$ = $1;
 		}
   ;
 
 hci:
   HCI		{
-			$$ = strdup($1);
+			$$ = $1;
 		}
   ;
 
 bdaddr:
   BDADDR	{
-			$$ = strdup($1);
+			$$ = $1;
 		}
   ;
 
@@ -328,6 +330,8 @@ int read_config(char *file)
 	yyparse();
 
 	fclose(yyin);
+
+	yylex_destroy();
 
 	return 0;
 }

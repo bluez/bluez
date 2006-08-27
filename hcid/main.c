@@ -80,7 +80,7 @@ struct device_opts *alloc_device_opts(char *ref)
 		exit(1);
 	}
 
-	device->ref = ref;
+	device->ref = strdup(ref);
 	device->next = device_list;
 	device_list = device;
 
