@@ -3253,7 +3253,7 @@ int sdp_process(sdp_session_t *session)
 		goto end;
 	}
 
-	if (n == 0 || reqhdr->tid != rsphdr->tid)
+	if (n == 0 || reqhdr->tid != rsphdr->tid) {
 		err = EPROTO;
 		goto end;
 	}
