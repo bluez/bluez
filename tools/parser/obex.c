@@ -269,8 +269,10 @@ void obex_dump(int level, struct frame *frm)
 
 		set_status(frm->handle, frm->dlci, status);
 
-		if (frm->len == 0)
+		if (frm->len == 0) {
+			printf("\n");
 			break;
+		}
 
 		switch (opcode & 0x7f) {
 		case 0x00:	/* Connect */
