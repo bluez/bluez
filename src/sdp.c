@@ -3114,6 +3114,220 @@ int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
 }
 
 /*
+ * Set the callback function to called when the transaction finishes and send the
+ * service search attribute request PDU.
+ *
+ * INPUT:
+ *  sdp_session_t *session
+ *	Current sdp session to be handled
+ *  sdp_list_t *search
+ *      UUID pattern to search
+ * RETURN:
+ * 	0  - if the request has been sent properly
+ * 	-1 - On any failure
+ */
+int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search)
+{
+	struct sdp_transaction *t;
+	sdp_pdu_hdr_t *reqhdr;
+	sdp_list_t *attrids;
+	uint8_t *pdata;
+	int seqlen = 0;
+	uint32_t range = 0x0000ffff;
+
+	if (!session || !session->priv) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	t = session->priv;
+	t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
+	if (!t->reqbuf) {
+		errno = ENOMEM;
+		goto end;
+	}
+
+	memset(t->reqbuf, 0, SDP_REQ_BUFFER_SIZE);
+	memset((char *)&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
+
+	reqhdr = (sdp_pdu_hdr_t *) t->reqbuf;
+	reqhdr->tid = htons(sdp_gen_tid(session));
+	reqhdr->pdu_id = SDP_SVC_SEARCH_ATTR_REQ;
+
+	// generate PDU
+	pdata = t->reqbuf + sizeof(sdp_pdu_hdr_t);
+	t->reqsize = sizeof(sdp_pdu_hdr_t);
+
+	// add service class IDs for search
+	seqlen = gen_searchseq_pdu(pdata, search);
+
+	SDPDBG("Data seq added : %d\n", seqlen);
+
+	// now set the length and increment the pointer
+	t->reqsize += seqlen;
+	pdata += seqlen;
+
+	bt_put_unaligned(htons(SDP_MAX_ATTR_LEN), (uint16_t *) pdata);
+	t->reqsize += sizeof(uint16_t);
+	pdata += sizeof(uint16_t);
+
+	SDPDBG("Max attr byte count : %d\n", SDP_MAX_ATTR_LEN);
+
+	// get attr seq PDU form
+	attrids = sdp_list_append(0, &range);
+	seqlen = gen_attridseq_pdu(pdata, attrids, SDP_UINT32);
+	sdp_list_free(attrids, 0);
+
+	if (seqlen == -1) {
+		errno = EINVAL;
+		goto end;
+	}
+
+	pdata += seqlen;
+	SDPDBG("Attr list length : %d\n", seqlen);
+	t->reqsize += seqlen;
+
+	// set the request header's param length
+	t->cstate_len = copy_cstate(pdata, t->cstate);
+
+	reqhdr->plen = htons((t->reqsize + t->cstate_len) - sizeof(sdp_pdu_hdr_t));
+
+	if (sdp_send_req(session, t->reqbuf, t->reqsize + t->cstate_len) < 0) {
+		SDPERR("Error sendind data:%s", strerror(errno));
+		goto end;
+	}
+
+	session->priv = t;
+
+	return 0;
+end:
+
+	if (t) {
+		if (t->reqbuf)
+			free(t->reqbuf);
+		free(t);
+	}
+
+	return -1;
+}
+
+/*
+ * Receive the incomming SDP PDU. This function must be called when there is data
+ * available to be read. On continuation state, the original request (with a new
+ * transaction ID) and the continuation state data will be appended in the initial PDU.
+ * If an error happens or the transaction finishes the callback function will be called.
+ *
+ * INPUT:
+ *  sdp_session_t *session
+ *	Current sdp session to be handled
+ * RETURN:
+ * 	0  - if the transaction is on continuation state
+ * 	-1 - On any failure or the transaction finished
+ */
+int sdp_process(sdp_session_t *session)
+{
+	struct sdp_transaction *t = NULL;
+	sdp_pdu_hdr_t *reqhdr = NULL;
+	sdp_pdu_hdr_t *rsphdr = NULL;
+	uint8_t *pdata = NULL, *rspbuf = NULL;
+	int n, err = 0, rsp_count = 0, status = -1;
+
+	if (!session || !session->priv) {
+		err= EINVAL;
+		goto end;
+	}
+
+	rspbuf = malloc(SDP_RSP_BUFFER_SIZE);
+	if (!rspbuf) {
+		err = ENOMEM;
+		goto end;
+	}
+
+	t = session->priv;
+	reqhdr = (sdp_pdu_hdr_t *)t->reqbuf;
+	rsphdr = (sdp_pdu_hdr_t *)rspbuf;
+
+	n = sdp_read_rsp(session, rspbuf, SDP_RSP_BUFFER_SIZE);
+	if (n < 0) {
+		err = errno;
+		goto end;
+	}
+
+	if (n == 0 || reqhdr->tid != rsphdr->tid || rsphdr->pdu_id == SDP_ERROR_RSP) {
+		err = EPROTO;
+		goto end;
+	}
+
+	pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
+	rsp_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
+	t->attr_list_len += rsp_count;
+	pdata += sizeof(uint16_t);      // pdata points to attribute list
+
+	t->cstate_len = *(uint8_t *) (pdata + rsp_count);
+
+	SDPDBG("Attrlist byte count : %d\n", t->attr_list_len);
+	SDPDBG("Response byte count : %d\n", rsp_count);
+	SDPDBG("Cstate length : %d\n", t->cstate_len);
+	/*
+	 * This is a split response, need to concatenate intermediate
+	 * responses and the last one which will have cstate_len == 0
+	 */
+	if (t->cstate_len > 0 || t->rsp_concat_buf.data_size != 0) {
+		uint8_t *targetPtr = NULL;
+
+		t->cstate = t->cstate_len > 0 ? (sdp_cstate_t *) (pdata + rsp_count) : 0;
+
+		// build concatenated response buffer
+		t->rsp_concat_buf.data = realloc(t->rsp_concat_buf.data, t->rsp_concat_buf.data_size + rsp_count);
+		targetPtr = t->rsp_concat_buf.data + t->rsp_concat_buf.data_size;
+		t->rsp_concat_buf.buf_size = t->rsp_concat_buf.data_size + rsp_count;
+		memcpy(targetPtr, pdata, rsp_count);
+		t->rsp_concat_buf.data_size += rsp_count;
+	}
+
+	if (t->cstate) {
+		int reqsize;
+		reqhdr->tid = htons(sdp_gen_tid(session));
+
+		// add continuation state (can be null)
+		t->cstate_len = copy_cstate(t->reqbuf + t->reqsize, t->cstate);
+
+		reqsize = t->reqsize + t->cstate_len;
+
+		// set the request header's param length
+		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
+	
+		if (sdp_send_req(session, t->reqbuf, reqsize) < 0) {
+			err = errno;
+			goto end;
+		}
+		status = 0;
+	} else {
+		if (t->attr_list_len == 0) {
+			err = ENODATA;
+			goto end;
+		}
+	}
+
+end:
+
+	/* error detected or transaction finished */
+	if (err || !t->cstate) {
+		if (t->rsp_concat_buf.data_size != 0)
+			pdata = t->rsp_concat_buf.data;
+
+		if (t->cb)
+			t->cb(rsphdr->pdu_id, err, pdata,
+				t->attr_list_len, t->udata);
+	}
+
+	if (rspbuf)
+		free(rspbuf);
+
+	return status;
+}
+
+/*
  * This is a service search request combined with the service
  * attribute request. First a service class match is done and
  * for matching service, requested attributes are extracted
