@@ -447,7 +447,7 @@ Methods		string GetAddress()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NotAvailable
 
-		array{string] GetRemoteServiceClasses(string address)
+		array{string} GetRemoteServiceClasses(string address)
 
 			Get the service classes of the specified device.
 
@@ -697,6 +697,12 @@ Methods		string GetAddress()
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NoSuchAdapter
+
+		array{uint32} GetRemoteServiceHandles(string address, string match)
+
+			This method will request the SDP database of a remote
+			device and retrieve the service record handles.
+
 
 Signals		void ModeChanged(string mode)
 
