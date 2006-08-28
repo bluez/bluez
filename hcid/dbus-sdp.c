@@ -126,27 +126,6 @@ const char* sdp_svclass2str(uint16_t class)
 	return NULL;
 }
 
-/* FIXME: stub for bluez-libs changes */
-static inline sdp_session_t *sdp_session_new(int sk)
-{
-	errno = ENOSYS;
-	return NULL;
-}
-
-/* FIXME: stub for bluez-libs changes */
-static inline int sdp_service_search_handle(sdp_session_t *session)
-{
-	return ENODATA;
-}
-
-/* FIXME: stub for bluez-libs changes */
-typedef void sdp_transaction_cb_t(sdp_list_t *rsp, void *udata, int err);
-static inline int sdp_service_search_attr_req_async(sdp_session_t *session, const sdp_list_t *search,
-		sdp_transaction_cb_t *f, void *udata)
-{
-	return 0;
-}
-
 /* FIXME: stub for service registration. Shared with sdptool */
 static inline sdp_record_t *sdp_service_register(const char *name, bdaddr_t *interface,
 		                                   uint8_t channel, int *err)
@@ -475,7 +454,7 @@ static void owner_exited(const char *owner, struct hci_dbus_data *dbus_data)
 	}
 }
 
-static gboolean search_session_handle_cb(GIOChannel *chan, GIOCondition cond, void *udata)
+static gboolean search_process_cb(GIOChannel *chan, GIOCondition cond, void *udata)
 {
 	struct transaction_context *ctxt = udata;
 	int sk, err = 0;
@@ -502,7 +481,7 @@ static gboolean search_session_handle_cb(GIOChannel *chan, GIOCondition cond, vo
 		error("sock error:s(%d)", strerror(err), err);
 		goto fail;
 	}
-	if (!sdp_service_search_handle(ctxt->session))
+	if (!sdp_process(ctxt->session))
 		return TRUE;
 
 fail:
@@ -510,21 +489,30 @@ fail:
 	return retval;
 }
 
-static void search_transaction_completed_cb(sdp_list_t *rsp, struct transaction_context *ctxt, int err)
+static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
 {
+	struct transaction_context *ctxt = udata;
 	char identifier[MAX_IDENTIFIER_LEN];
 	const char *ptr = identifier;
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
-	sdp_list_t *next;
 	const char *dst;
-	int id;
+	uint8_t *pdata;
+	uint8_t dataType = 0;
+	int id, scanned, seqlen = 0;
 
 	if (!ctxt)
 		return;
-		
+
 	if (err) {
+		error("SDP error: %s(%d)", strerror(err), err);
 		error_failed(ctxt->conn, ctxt->rq, err);
+		return;
+	}
+
+	if (type != SDP_SVC_SEARCH_ATTR_RSP || !rsp) {
+		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
+		error_failed(ctxt->conn, ctxt->rq, EPROTO);
 		return;
 	}
 
@@ -537,20 +525,35 @@ static void search_transaction_completed_cb(sdp_list_t *rsp, struct transaction_
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	/* add in the cache */
-	for ( ;rsp; rsp = next) {
-		sdp_record_t *rec = (sdp_record_t *) rsp->data;
+	pdata = rsp;
+	scanned = sdp_extract_seqtype(pdata, &dataType, &seqlen);
+
+	if (!scanned || !seqlen)
+		goto done;
+
+	pdata += scanned;
+	do {
+		int recsize = 0;
+		sdp_record_t *rec = sdp_extract_pdu(pdata, &recsize);
+		if (rec == NULL) {
+			error("SVC REC is null");
+			goto done;
+		}
+		if (!recsize) {
+			sdp_record_free(rec);
+			break;
+		}
+
+		scanned += recsize;
+		pdata += recsize;
 
 		id = sdp_cache_append(NULL, dst, rec);
 		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/%d", dst, id);
 		dbus_message_iter_append_basic(&array_iter,
 				DBUS_TYPE_STRING, &ptr);
+	} while (scanned < size);
 
-		next = rsp->next;
-		free(rsp);
-		/* Don't free the record */
-	}
-
+done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_reply_and_unref(ctxt->conn, reply);
 }
@@ -619,23 +622,24 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 
 	ctxt->conn = dbus_connection_ref(c->conn);
 	ctxt->rq = dbus_message_ref(c->rq);
-	ctxt->session = sdp_session_new(sk);
+	ctxt->session = sdp_create(sk, 0);
 	if (!ctxt->session) {
 		error("error: %s (%d)", strerror(errno), errno);
 		error_failed(c->conn, c->rq, errno);
 		goto fail;
 	}
 
+	sdp_set_notify(ctxt->session, search_completed_cb, ctxt);
+
 	/* Create/send the search request and set the callback to indicate the request completion */
-	if (sdp_service_search_attr_req_async(ctxt->session, search,
-			(sdp_transaction_cb_t *)search_transaction_completed_cb, ctxt) < 0) {
+	if (sdp_service_search_async(ctxt->session, search) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
 		error_failed(c->conn, c->rq, errno);
 		goto fail;
 	}
 
 	/* set the callback responsible for update the transaction data */
-	g_io_add_watch_full(chan, 0, G_IO_IN, search_session_handle_cb,
+	g_io_add_watch_full(chan, 0, G_IO_IN, search_process_cb,
 				ctxt, transaction_context_free);
 	goto done;
 
