@@ -3253,12 +3253,18 @@ int sdp_process(sdp_session_t *session)
 		goto end;
 	}
 
-	if (n == 0 || reqhdr->tid != rsphdr->tid || rsphdr->pdu_id == SDP_ERROR_RSP) {
+	if (n == 0 || reqhdr->tid != rsphdr->tid)
 		err = EPROTO;
 		goto end;
 	}
 
 	pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
+
+        if (rsphdr->pdu_id == SDP_ERROR_RSP) {
+		err = ntohs(bt_get_unaligned((uint16_t *) pdata));
+		goto end;
+	}
+
 	rsp_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
 	t->attr_list_len += rsp_count;
 	pdata += sizeof(uint16_t);      // pdata points to attribute list
