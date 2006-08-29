@@ -3230,38 +3230,34 @@ int sdp_process(sdp_session_t *session)
 	sdp_pdu_hdr_t *reqhdr = NULL;
 	sdp_pdu_hdr_t *rsphdr = NULL;
 	uint8_t *pdata = NULL, *rspbuf = NULL;
-	int n, err = 0, rsp_count = 0, status = -1;
+	int rsp_count = 0, err = -1;
+	uint16_t status = 0;
 
 	if (!session || !session->priv) {
-		err= EINVAL;
-		goto end;
+		SDPERR("Invalid session");
+		return -1;
 	}
 
 	rspbuf = malloc(SDP_RSP_BUFFER_SIZE);
-	if (!rspbuf) {
-		err = ENOMEM;
-		goto end;
-	}
+	if (!rspbuf)
+		return -1;
+
+	memset(rspbuf, 0, SDP_RSP_BUFFER_SIZE);
 
 	t = session->priv;
 	reqhdr = (sdp_pdu_hdr_t *)t->reqbuf;
 	rsphdr = (sdp_pdu_hdr_t *)rspbuf;
 
-	n = sdp_read_rsp(session, rspbuf, SDP_RSP_BUFFER_SIZE);
-	if (n < 0) {
-		err = errno;
+	if (sdp_read_rsp(session, rspbuf, SDP_RSP_BUFFER_SIZE) <= 0)
 		goto end;
-	}
 
-	if (n == 0 || reqhdr->tid != rsphdr->tid) {
-		err = EPROTO;
+	if (reqhdr->tid != rsphdr->tid)
 		goto end;
-	}
 
 	pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
 
         if (rsphdr->pdu_id == SDP_ERROR_RSP) {
-		err = ntohs(bt_get_unaligned((uint16_t *) pdata));
+		status = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		goto end;
 	}
 
@@ -3304,33 +3300,26 @@ int sdp_process(sdp_session_t *session)
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 	
 		if (sdp_send_req(session, t->reqbuf, reqsize) < 0) {
-			err = errno;
+			SDPERR("Error sendind data:%s", strerror(errno));
 			goto end;
 		}
-		status = 0;
-	} else {
-		if (t->attr_list_len == 0) {
-			err = ENODATA;
-			goto end;
-		}
+		err = 0;
 	}
 
 end:
-
-	/* error detected or transaction finished */
-	if (err || !t->cstate) {
+	if (err) {
 		if (t->rsp_concat_buf.data_size != 0)
 			pdata = t->rsp_concat_buf.data;
 
 		if (t->cb)
-			t->cb(rsphdr->pdu_id, err, pdata,
+			t->cb(rsphdr->pdu_id, status, pdata,
 				t->attr_list_len, t->udata);
 	}
 
 	if (rspbuf)
 		free(rspbuf);
 
-	return status;
+	return err;
 }
 
 /*

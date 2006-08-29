@@ -114,7 +114,7 @@ uint16_t sdp_gen_tid(sdp_session_t *session);
 /*
  * SDP transaction: functions for asynchronous search.
  */
-typedef void sdp_callback_t(uint8_t type, int status, uint8_t *rsp, size_t size, void *udata);
+typedef void sdp_callback_t(uint8_t type, uint16_t status, uint8_t *rsp, size_t size, void *udata);
 sdp_session_t *sdp_create(int sk, uint32_t flags);
 int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata);
 int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search);
