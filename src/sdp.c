@@ -3113,6 +3113,18 @@ int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
 	return 0;
 }
 
+int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search_list, uint16_t max_rec_num)
+{
+	/* FIXME: implement! */
+	return 0;
+}
+
+int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list)
+{
+	/* FIXME: implement! */
+	return 0;
+}
+
 /*
  * Set the callback function to called when the transaction finishes and send the
  * service search attribute request PDU.
@@ -3120,20 +3132,39 @@ int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
  * INPUT:
  *  sdp_session_t *session
  *	Current sdp session to be handled
- *  sdp_list_t *search
- *      UUID pattern to search
+ *
+ *   sdp_list_t *search
+ *     Singly linked list containing elements of the search
+ *     pattern. Each entry in the list is a UUID(DataTypeSDP_UUID16)
+ *     of the service to be searched
+ *
+ *   AttributeSpecification attrSpec
+ *     Attribute identifiers are 16 bit unsigned integers specified
+ *     in one of 2 ways described below :
+ *     SDP_ATTR_REQ_INDIVIDUAL - 16bit individual identifiers
+ *        They are the actual attribute identifiers in ascending order
+ *
+ *     SDP_ATTR_REQ_RANGE - 32bit identifier range
+ *        The high-order 16bits is the start of range
+ *        the low-order 16bits are the end of range
+ *        0x0000 to 0xFFFF gets all attributes
+ *
+ *   sdp_list_t *attrids
+ *     Singly linked list containing attribute identifiers desired.
+ *     Every element is either a uint16_t(attrSpec = SDP_ATTR_REQ_INDIVIDUAL)  
+ *     or a uint32_t(attrSpec=SDP_ATTR_REQ_RANGE)
+ *
+
  * RETURN:
  * 	0  - if the request has been sent properly
  * 	-1 - On any failure
  */
-int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search)
+int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *search_list, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list)
 {
 	struct sdp_transaction *t;
 	sdp_pdu_hdr_t *reqhdr;
-	sdp_list_t *attrids;
 	uint8_t *pdata;
 	int seqlen = 0;
-	uint32_t range = 0x0000ffff;
 
 	if (!session || !session->priv) {
 		errno = EINVAL;
@@ -3159,7 +3190,7 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search)
 	t->reqsize = sizeof(sdp_pdu_hdr_t);
 
 	// add service class IDs for search
-	seqlen = gen_searchseq_pdu(pdata, search);
+	seqlen = gen_searchseq_pdu(pdata, search_list);
 
 	SDPDBG("Data seq added : %d\n", seqlen);
 
@@ -3174,10 +3205,8 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search)
 	SDPDBG("Max attr byte count : %d\n", SDP_MAX_ATTR_LEN);
 
 	// get attr seq PDU form
-	attrids = sdp_list_append(0, &range);
-	seqlen = gen_attridseq_pdu(pdata, attrids, SDP_UINT32);
-	sdp_list_free(attrids, 0);
-
+	seqlen = gen_attridseq_pdu(pdata, attrid_list,
+			reqtype == SDP_ATTR_REQ_INDIVIDUAL ? SDP_UINT16 : SDP_UINT32);
 	if (seqlen == -1) {
 		errno = EINVAL;
 		goto end;
