@@ -2423,7 +2423,7 @@ static struct service_data dev_services[] = {
 	{ "DisconnectRemoteDevice",			handle_dev_disconnect_remote_device_req	},
 
 	{ "CreateBonding",				handle_dev_create_bonding_req		},
-	{ "CancelBonding",				handle_dev_cancel_bonding_req		},
+	{ "CancelBondingProcess",			handle_dev_cancel_bonding_req		},
 	{ "RemoveBonding",				handle_dev_remove_bonding_req		},
 	{ "HasBonding",					handle_dev_has_bonding_req		},
 	{ "ListBondings",				handle_dev_list_bondings_req		},
