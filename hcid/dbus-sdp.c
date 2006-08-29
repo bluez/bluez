@@ -585,7 +585,8 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 {
 	struct pending_connect *c = udata;
 	struct transaction_context *ctxt = NULL;
-	sdp_list_t *search = NULL;
+	sdp_list_t *search = NULL, *attrids = NULL;
+	uint32_t range = 0x0000ffff;
 	uint16_t class;
 	int err = 0, sk = 0;
 	socklen_t len;
@@ -635,8 +636,9 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 
 	sdp_set_notify(ctxt->session, search_completed_cb, ctxt);
 
+	attrids = sdp_list_append(NULL, &range);
 	/* Create/send the search request and set the callback to indicate the request completion */
-	if (sdp_service_search_async(ctxt->session, search) < 0) {
+	if (sdp_service_search_attr_async(ctxt->session, search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
 		error_failed(c->conn, c->rq, errno);
 		goto fail;
@@ -652,7 +654,10 @@ fail:
 		transaction_context_free(ctxt);
 done:
 	if (search)
-		sdp_list_free(search, 0);
+		sdp_list_free(search, NULL);
+
+	if (attrids)
+		sdp_list_free(attrids, NULL);
 
 	pending_connects = slist_remove(pending_connects, c);
 	pending_connect_free(c);
