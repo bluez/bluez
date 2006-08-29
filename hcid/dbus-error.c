@@ -236,3 +236,29 @@ DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMes
 	return error_in_progress(conn, msg, "Service search in progress");
 }
 
+static const char *strsdperror(int err)
+{
+	switch (err) {
+	case SDP_INVALID_VERSION:
+		return "Invalid/unsupported SDP version";
+	case SDP_INVALID_RECORD_HANDLE:
+		return "Invalid Service Record Handle";
+	case SDP_INVALID_SYNTAX:
+		return "Invalid request syntax";
+	case SDP_INVALID_PDU_SIZE:
+		return "Invalid PDU size";
+	case SDP_INVALID_CSTATE:
+		return "Invalid Continuation State";
+	default:
+		return "Undefined error";
+	}
+}
+
+DBusHandlerResult error_sdp_failed(DBusConnection *conn, DBusMessage *msg, int err)
+{
+	const char *str = strsdperror(err);
+
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".Failed", str));
+}
+

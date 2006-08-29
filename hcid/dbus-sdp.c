@@ -504,13 +504,13 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	if (!ctxt)
 		return;
 
-	if (err) {
-		error("SDP error: %s(%d)", strerror(err), err);
-		error_failed(ctxt->conn, ctxt->rq, err);
+	if (type == SDP_ERROR_RSP) {
+		error_sdp_failed(ctxt->conn, ctxt->rq, err);
 		return;
 	}
 
-	if (type != SDP_SVC_SEARCH_ATTR_RSP || !rsp) {
+	/* check response PDU ID */
+	if (type != SDP_SVC_SEARCH_ATTR_RSP) {
 		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
 		error_failed(ctxt->conn, ctxt->rq, EPROTO);
 		return;
@@ -525,6 +525,10 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
+	/* 
+	 * FIXME: check rsp? How check for I/O error or wrong transaction id?
+	 * check the type value(Zero) is not reasonable!
+	 */
 	pdata = rsp;
 	scanned = sdp_extract_seqtype(pdata, &dataType, &seqlen);
 

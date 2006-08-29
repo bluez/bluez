@@ -182,6 +182,7 @@ DBusHandlerResult error_service_already_exists(DBusConnection *conn, DBusMessage
 DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_canceled(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_sdp_failed(DBusConnection *conn, DBusMessage *msg, int err);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
