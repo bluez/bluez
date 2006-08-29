@@ -3059,8 +3059,10 @@ struct sdp_transaction {
 sdp_session_t *sdp_create(int sk, uint32_t flags)
 {
 
+	sdp_session_t *session;
 	struct sdp_transaction *t;
-	sdp_session_t *session = malloc(sizeof(sdp_session_t));
+
+	session = malloc(sizeof(sdp_session_t));
 	if (!session) {
 		errno = ENOMEM;
 		return NULL;
@@ -3605,12 +3607,30 @@ static inline int sdp_is_local(const bdaddr_t *device)
 
 sdp_session_t *sdp_connect(const bdaddr_t *src, const bdaddr_t *dst, uint32_t flags)
 {
+	sdp_session_t *session;
+	struct sdp_transaction *t;
 	int err;
-	sdp_session_t *session = malloc(sizeof(sdp_session_t));
+
+	session = malloc(sizeof(sdp_session_t));
 	if (!session)
 		return session;
+
 	memset(session, 0, sizeof(*session));
+
 	session->flags = flags;
+	session->sock = -1;
+
+	t = malloc(sizeof(struct sdp_transaction));
+	if (!t) {
+		errno = ENOMEM;
+		free(session);
+		return NULL;
+	}
+
+	memset(t, 0, sizeof(*t));
+
+	session->priv = t;
+
 	if (sdp_is_local(dst)) {
 		struct sockaddr_un sa;
 
@@ -3649,10 +3669,13 @@ sdp_session_t *sdp_connect(const bdaddr_t *src, const bdaddr_t *dst, uint32_t fl
 			while (errno == EBUSY && (flags & SDP_RETRY_IF_BUSY));
 		}
 	}
+
 fail:
 	err = errno;
 	if (session->sock >= 0)
 		close(session->sock);
+	if (session->priv)
+		free(session->priv);
 	free(session);
 	errno = err;
 	return 0;
