@@ -2735,7 +2735,7 @@ static int copy_cstate(uint8_t *pdata, const sdp_cstate_t *cstate)
  *
  * INPUT :
  *
- *   sdp_list_t *search_list
+ *   sdp_list_t *search
  *     Singly linked list containing elements of the search
  *     pattern. Each entry in the list is a UUID (DataTypeSDP_UUID16)
  *     of the service to be searched
@@ -3127,7 +3127,7 @@ int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
  *  sdp_session_t *session
  *     Current sdp session to be handled
  *
- *   sdp_list_t *search_list
+ *   sdp_list_t *search
  *     Singly linked list containing elements of the search
  *     pattern. Each entry in the list is a UUID (DataTypeSDP_UUID16)
  *     of the service to be searched
@@ -3144,7 +3144,7 @@ int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
  * 	-1 - On any failure and sets errno
  */
 
-int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search_list, uint16_t max_rec_num)
+int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, uint16_t max_rec_num)
 {
 	struct sdp_transaction *t;
 	sdp_pdu_hdr_t *reqhdr;
@@ -3175,7 +3175,7 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search_li
 	t->reqsize = sizeof(sdp_pdu_hdr_t);
 
 	// add service class IDs for search
-	seqlen = gen_searchseq_pdu(pdata, search_list);
+	seqlen = gen_searchseq_pdu(pdata, search);
 
 	SDPDBG("Data seq added : %d\n", seqlen);
 
@@ -3357,7 +3357,7 @@ end:
  * 	 0 - if the request has been sent properly
  * 	-1 - On any failure
  */
-int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *search_list, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list)
+int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *search, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list)
 {
 	struct sdp_transaction *t;
 	sdp_pdu_hdr_t *reqhdr;
@@ -3388,7 +3388,7 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	t->reqsize = sizeof(sdp_pdu_hdr_t);
 
 	// add service class IDs for search
-	seqlen = gen_searchseq_pdu(pdata, search_list);
+	seqlen = gen_searchseq_pdu(pdata, search);
 
 	SDPDBG("Data seq added : %d\n", seqlen);
 

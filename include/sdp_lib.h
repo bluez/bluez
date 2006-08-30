@@ -127,10 +127,9 @@ typedef enum {
 typedef void sdp_callback_t(uint8_t type, uint16_t status, uint8_t *rsp, size_t size, void *udata);
 sdp_session_t *sdp_create(int sk, uint32_t flags);
 int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata);
-int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search_list, uint16_t max_rec_num);
+int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, uint16_t max_rec_num);
 int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list);
 int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *search, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list);
-int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *search_list, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list);
 int sdp_process(sdp_session_t *session);
 
 /*
@@ -311,7 +310,7 @@ void sdp_set_url_attr(sdp_record_t *rec, const char *clientExecURL, const char *
  * 
  *  INPUT :
  * 
- *    sdp_list_t *search_list
+ *    sdp_list_t *search
  *      list containing elements of the search
  *      pattern. Each entry in the list is a UUID
  *      of the service to be searched
@@ -334,7 +333,7 @@ void sdp_set_url_attr(sdp_record_t *rec, const char *clientExecURL, const char *
  *      non-zero service handles. It is a singly linked list of
  *      service record handles (uint16_t)
  */
-int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search_list, uint16_t max_rec_num, sdp_list_t **rsp_list);
+int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search, uint16_t max_rec_num, sdp_list_t **rsp_list);
 
 /*
  *  a service attribute request. 
@@ -378,7 +377,7 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle, sdp_
  * 
  *  INPUT :
  * 
- *    sdp_list_t *search_list
+ *    sdp_list_t *search
  *      Singly linked list containing elements of the search
  *      pattern. Each entry in the list is a UUID(DataTypeSDP_UUID16)
  *      of the service to be searched
@@ -412,7 +411,7 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle, sdp_
  *      service(s) found. Each element of this list is of type
  *      sdp_record_t *.
  */
-int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search_list, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list, sdp_list_t **rsp_list);
+int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list, sdp_list_t **rsp_list);
 
 /*
  * Allocate/free a service record and its attributes
