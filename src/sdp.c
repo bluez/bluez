@@ -3146,8 +3146,67 @@ int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
 
 int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search_list, uint16_t max_rec_num)
 {
-	/* FIXME: implement! */
+	struct sdp_transaction *t;
+	sdp_pdu_hdr_t *reqhdr;
+	uint8_t *pdata;
+	int seqlen = 0;
+
+	if (!session || !session->priv) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	t = session->priv;
+	t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
+	if (!t->reqbuf) {
+		errno = ENOMEM;
+		goto end;
+	}
+
+	memset(t->reqbuf, 0, SDP_REQ_BUFFER_SIZE);
+	memset((char *)&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
+
+	reqhdr = (sdp_pdu_hdr_t *) t->reqbuf;
+	reqhdr->tid = htons(sdp_gen_tid(session));
+	reqhdr->pdu_id = SDP_SVC_SEARCH_REQ;
+
+	// generate PDU
+	pdata = t->reqbuf + sizeof(sdp_pdu_hdr_t);
+	t->reqsize = sizeof(sdp_pdu_hdr_t);
+
+	// add service class IDs for search
+	seqlen = gen_searchseq_pdu(pdata, search_list);
+
+	SDPDBG("Data seq added : %d\n", seqlen);
+
+	// now set the length and increment the pointer
+	t->reqsize += seqlen;
+	pdata += seqlen;
+
+	bt_put_unaligned(htons(max_rec_num), (uint16_t *) pdata);
+	t->reqsize += sizeof(uint16_t);
+	pdata += sizeof(uint16_t);
+
+	// set the request header's param length
+	t->cstate_len = copy_cstate(pdata, t->cstate);
+
+	reqhdr->plen = htons((t->reqsize + t->cstate_len) - sizeof(sdp_pdu_hdr_t));
+
+	if (sdp_send_req(session, t->reqbuf, t->reqsize + t->cstate_len) < 0) {
+		SDPERR("Error sendind data:%s", strerror(errno));
+		goto end;
+	}
+
 	return 0;
+end:
+
+	if (t) {
+		if (t->reqbuf)
+			free(t->reqbuf);
+		free(t);
+	}
+
+	return -1;
 }
 
 /*
