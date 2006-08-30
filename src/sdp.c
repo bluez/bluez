@@ -3088,7 +3088,9 @@ sdp_session_t *sdp_create(int sk, uint32_t flags)
 }
 
 /*
- * Set the callback function to called when the transaction finishes
+ * Sets the callback function/user data used to notify the application
+ * that the asynchronous transaction finished. This function must be
+ * called before request an asynchronous search.
  *
  * INPUT:
  *  sdp_session_t *session
@@ -3098,7 +3100,7 @@ sdp_session_t *sdp_create(int sk, uint32_t flags)
  *  void *udata
  *      user data passed to callback
  * RETURN:
- * 	0  - Success
+ * 	 0 - Success
  * 	-1 - Failure
  */
 int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
@@ -3115,11 +3117,74 @@ int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
 	return 0;
 }
 
+/*
+ * This function starts an asynchronous service search request.
+ * The incomming and outgoing data are stored in the transaction structure 
+ * buffers. When there is incomming data the sdp_process function must be
+ * called to get the data and handle the continuation state.
+ *
+ * INPUT :
+ *  sdp_session_t *session
+ *     Current sdp session to be handled
+ *
+ *   sdp_list_t *search_list
+ *     Singly linked list containing elements of the search
+ *     pattern. Each entry in the list is a UUID (DataTypeSDP_UUID16)
+ *     of the service to be searched
+ *
+ *   uint16_t max_rec_num
+ *      A 16 bit integer which tells the service, the maximum
+ *      entries that the client can handle in the response. The
+ *      server is obliged not to return > max_rec_num entries
+ *
+ * OUTPUT :
+ *
+ *   int return value
+ * 	0  - if the request has been sent properly
+ * 	-1 - On any failure and sets errno
+ */
+
 int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search_list, uint16_t max_rec_num)
 {
 	/* FIXME: implement! */
 	return 0;
 }
+
+/*
+ * This function starts an asynchronous service attribute request.
+ * The incomming and outgoing data are stored in the transaction structure 
+ * buffers. When there is incomming data the sdp_process function must be
+ * called to get the data and handle the continuation state.
+ *
+ * INPUT :
+ *  sdp_session_t *session
+ *	Current sdp session to be handled
+ *
+ *   uint32_t handle
+ *     The handle of the service for which the attribute(s) are
+ *     requested
+ *
+ *   sdp_attrreq_type_t reqtype
+ *     Attribute identifiers are 16 bit unsigned integers specified
+ *     in one of 2 ways described below :
+ *     SDP_ATTR_REQ_INDIVIDUAL - 16bit individual identifiers
+ *        They are the actual attribute identifiers in ascending order
+ *
+ *     SDP_ATTR_REQ_RANGE - 32bit identifier range
+ *        The high-order 16bits is the start of range
+ *        the low-order 16bits are the end of range
+ *        0x0000 to 0xFFFF gets all attributes
+ *
+ *   sdp_list_t *attrid_list
+ *     Singly linked list containing attribute identifiers desired.
+ *     Every element is either a uint16_t(attrSpec = SDP_ATTR_REQ_INDIVIDUAL)  
+ *     or a uint32_t(attrSpec=SDP_ATTR_REQ_RANGE)
+ *
+ * OUTPUT :
+ *   int return value
+ * 	 0 - if the request has been sent properly
+ * 	-1 - On any failure and sets errno
+ */
 
 int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list)
 {
@@ -3128,8 +3193,11 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 }
 
 /*
- * Set the callback function to called when the transaction finishes and send the
- * service search attribute request PDU.
+ * This function starts an asynchronous service search attributes.
+ * It is a service search request combined with attribute request. The incomming
+ * and outgoing data are stored in the transaction structure buffers. When there
+ * is incomming data the sdp_process function must be called to get the data
+ * and handle the continuation state.
  *
  * INPUT:
  *  sdp_session_t *session
@@ -3151,14 +3219,14 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
  *        the low-order 16bits are the end of range
  *        0x0000 to 0xFFFF gets all attributes
  *
- *   sdp_list_t *attrids
+ *   sdp_list_t *attrid_list
  *     Singly linked list containing attribute identifiers desired.
  *     Every element is either a uint16_t(attrSpec = SDP_ATTR_REQ_INDIVIDUAL)  
  *     or a uint32_t(attrSpec=SDP_ATTR_REQ_RANGE)
  *
 
  * RETURN:
- * 	0  - if the request has been sent properly
+ * 	 0 - if the request has been sent properly
  * 	-1 - On any failure
  */
 int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *search_list, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list)
