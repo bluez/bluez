@@ -78,8 +78,12 @@ static void cmd_search(bdaddr_t *src, bdaddr_t *dst)
 
 	attrids = sdp_list_append(NULL, &range);
 
-	sdp_service_search_attr_async(session, search,
-					SDP_ATTR_REQ_RANGE, attrids);
+	//sdp_service_search_attr_async(session, search,
+	//				SDP_ATTR_REQ_RANGE, attrids);
+
+	sdp_service_search_async(session, search, 0xffff);
+
+	sdp_list_free(attrids, NULL);
 
 	sdp_list_free(search, NULL);
 
