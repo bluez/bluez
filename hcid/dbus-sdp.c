@@ -50,17 +50,16 @@
 #include "hcid.h"
 #include "textfile.h"
 
-#define MAX_IDENTIFIER_LEN	24
+#define MAX_IDENTIFIER_LEN	29	/* "XX:XX:XX:XX:XX:XX/0xYYYYYYYY\0" */
 
 struct service_provider {
 	char *owner;	/* null for remote services or unique name if local */
-	char *prov;	/* remote Bluetooth address thar provides the service  */
-	int ttl;	/* time to live */
+	char *prov;	/* remote Bluetooth address that provides the service */
 	struct slist *lrec;
 };
 
 struct service_record {
-	int id;
+	int ttl;	/* time to live */
 	sdp_record_t *record;
 };
 
@@ -217,7 +216,8 @@ static struct pending_connect *find_pending_connect(const char *dst)
 	return NULL;
 }
 
-static int str2identifier(const char *identifier, char *address, int *id)
+static int str2identifier(const char *identifier, char *address,
+			  uint32_t *handle)
 {
 	if (!identifier || !address)
 		return -1;
@@ -226,16 +226,9 @@ static int str2identifier(const char *identifier, char *address, int *id)
 		return -1;
 
 	memset(address, 0, 18);
-
 	snprintf(address, 18, "%s", identifier);
 
-	return (sscanf(identifier + 18, "%d", id) > 0? 0: -1);
-}
-
-static inline int gen_next_record_id()
-{
-	static int id = 0;
-	return id++;
+	return (sscanf(identifier + 18, "%u", handle) > 0 ? 0 : -1);
 }
 
 static struct service_record *service_record_new(sdp_record_t *rec)
@@ -247,7 +240,6 @@ static struct service_record *service_record_new(sdp_record_t *rec)
 		return NULL;
 
 	memset(r, 0, sizeof(*r));
-	r->id = gen_next_record_id();
 	r->record = rec;
 
 	return r;
@@ -273,15 +265,11 @@ static int service_record_cmp(const void *data, const void *udata)
 {
 	const struct service_record *a = data;
 	const struct service_record *b = udata;
-	if (b->id >= 0) {
-		if (a->id != b->id)
-			return -1;
-	}
 
 	if (b->record) {
 		if (b->record->handle != 0xffffffff &&
-			b->record->handle != a->record->handle)
-				return -1;
+		    b->record->handle != a->record->handle)
+			return -1;
 	}
 
 	return 0;
@@ -378,7 +366,7 @@ static int sdp_cache_append(const char *owner, const char *prov, sdp_record_t *r
 	struct slist *lp, *lr;
 	struct service_provider *p;
 	struct service_provider psearch;
-	struct service_record *r;
+	struct service_record r, *sr;
 
 	if (!prov || !rec)
 		return -1;
@@ -386,7 +374,7 @@ static int sdp_cache_append(const char *owner, const char *prov, sdp_record_t *r
 	memset(&psearch, 0, sizeof(psearch));
 	psearch.owner = (char *) owner;
 	psearch.prov = (char *) prov;
-	
+
 	lp = slist_find(sdp_cache, &psearch, service_provider_cmp);
 	if (!lp) {
 		p = service_provider_new(owner, prov);
@@ -394,27 +382,24 @@ static int sdp_cache_append(const char *owner, const char *prov, sdp_record_t *r
 	} else
 		p = lp->data;
 
-	/* check if there is service record already belongs to the cache */
-	r = malloc(sizeof(*r));
-	memset(r, 0, sizeof(*r));
-	r->id = -1;
-	r->record = sdp_record_alloc();
-	r->record->handle = rec->handle;
-	lr = slist_find(p->lrec, r, service_record_cmp);
-	service_record_free(r, NULL);
+	/* check if the service record already belongs to the cache */
+	r.record = sdp_record_alloc();
+	r.record->handle = rec->handle;
+	lr = slist_find(p->lrec, &r, service_record_cmp);
+	sdp_record_free(r.record);
 
 	if (lr) {
 		/* overwrite the record instead of compare */
-		r = lr->data;
-		sdp_record_free(r->record);
-		r->record = rec;
+		sr = lr->data;
+		sdp_record_free(sr->record);
+		sr->record = rec;
 	} else {
 		/* create a new entry */
-		r = service_record_new(rec);
-		p->lrec = slist_append(p->lrec, r);
+		sr = service_record_new(rec);
+		p->lrec = slist_append(p->lrec, sr);
 	}
 
-	return r->id;
+	return 0;
 }
 
 static void owner_exited(const char *owner, struct hci_dbus_data *dbus_data)
@@ -499,7 +484,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	const char *dst;
 	uint8_t *pdata;
 	uint8_t dataType = 0;
-	int id, scanned, seqlen = 0;
+	int scanned, seqlen = 0;
 
 	if (!ctxt)
 		return;
@@ -551,8 +536,8 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 		scanned += recsize;
 		pdata += recsize;
 
-		id = sdp_cache_append(NULL, dst, rec);
-		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/%d", dst, id);
+	        sdp_cache_append(NULL, dst, rec);
+		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, rec->handle);
 		dbus_message_iter_append_basic(&array_iter,
 				DBUS_TYPE_STRING, &ptr);
 	} while (scanned < size);
@@ -816,7 +801,7 @@ static DBusHandlerResult get_identifiers_by_service(DBusConnection *conn,
 		puuid = (uuid_t *) ls->data;
 
 		if (sdp_uuid16_cmp(puuid, &uuid) == 0) {
-			snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/%d", p->prov, r->id);
+			snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", p->prov, r->record->handle);
 			dbus_message_iter_append_basic(&array_iter,
 					DBUS_TYPE_STRING, &ptr);
 			nrec++;
@@ -893,7 +878,7 @@ sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid)
 	return NULL;
 }	
 
-sdp_record_t *find_record_by_handle(const char *address, int handle)
+sdp_record_t *find_record_by_handle(const char *address, uint32_t handle)
 {
 	struct slist *lp, *lr;
 	struct service_provider *p;
@@ -914,27 +899,6 @@ sdp_record_t *find_record_by_handle(const char *address, int handle)
 	return NULL;
 }
 
-static sdp_record_t *find_record(const char *address, int id)
-{
-	struct slist *lp, *lr;
-	struct service_provider *p;
-	struct service_record *r;
-
-	for (lp = sdp_cache; lp; lp = lp->next) {
-		p = lp->data;
-		if (strcmp(p->prov, address))
-			continue;
-
-		for (lr = p->lrec; lr; lr = lr->next) {
-			r = lr->data;
-			if (r->id == id)
-				return r->record;
-		}
-	}
-
-	return NULL;
-}
-
 static DBusHandlerResult get_uuid(DBusConnection *conn,
 					 DBusMessage *msg, void *data)
 {
@@ -945,17 +909,17 @@ static DBusHandlerResult get_uuid(DBusConnection *conn,
 	sdp_record_t *rec;
 	char *ptr = uuid_str;
 	const char *identifier;
-	int id;
+	uint32_t handle;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &identifier,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	if (str2identifier(identifier, address, &id) != 0)
+	if (str2identifier(identifier, address, &handle) != 0)
 		return error_invalid_arguments(conn, msg);
 
-	rec = find_record(address, id);
+	rec = find_record_by_handle(address, handle);
 	if (!rec)
 		return error_record_does_not_exist(conn, msg);
 
@@ -993,17 +957,17 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 	const char *ptr = name;
 	const char *identifier;
 	uuid_t *puuid;
-	int id;
+	uint32_t handle;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &identifier,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	if (str2identifier(identifier, address, &id) != 0)
+	if (str2identifier(identifier, address, &handle) != 0)
 		return error_invalid_arguments(conn, msg);
 
-	rec = find_record(address, id);
+	rec = find_record_by_handle(address, handle);
 	if (!rec)
 		return error_record_does_not_exist(conn, msg);
 
@@ -1040,7 +1004,7 @@ static DBusHandlerResult register_rfcomm(DBusConnection *conn,
 	char identifier[MAX_IDENTIFIER_LEN];
 	const char *ptr = identifier;
 	bdaddr_t sba;
-	int id = 0, err = 0;
+	int err = 0;
 	uint8_t channel;
 
 	owner = dbus_message_get_sender(msg);
@@ -1074,9 +1038,8 @@ static DBusHandlerResult register_rfcomm(DBusConnection *conn,
 		name_listener_add(conn, owner, (name_cb_t) owner_exited, dbus_data);
 
 	/* add record in the cache */
-	id = sdp_cache_append(owner, dbus_data->address, rec);
-
-	snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/%d", dbus_data->address, id);
+	sdp_cache_append(owner, dbus_data->address, rec);
+	snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dbus_data->address, rec->handle);
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &ptr,
 			DBUS_TYPE_INVALID);
@@ -1091,11 +1054,13 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 	struct hci_dbus_data *dbus_data = data;
 	struct service_provider *p, psearch;
 	struct service_record rsearch, *r;
+	sdp_record_t record;
 	struct slist *lp, *lr;
 	DBusMessage *reply;
 	const char *owner, *identifier;
 	bdaddr_t sba;
-	int id = 0, err = 0;
+	int err = 0;
+	uint32_t handle;
 
 	owner = dbus_message_get_sender(msg);
 
@@ -1104,7 +1069,7 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	if (str2identifier(identifier, address, &id) != 0)
+	if (str2identifier(identifier, address, &handle) != 0)
 		return error_invalid_arguments(conn, msg);
 
 	/* check if the local adapter match */
@@ -1122,9 +1087,8 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 
 	p = lp->data;
 
-	memset(&rsearch, 0, sizeof(rsearch));
-	rsearch.id = id;
-	str2ba(dbus_data->address, &sba);
+	rsearch.record = &record;
+	record.handle = handle;
 	lr = slist_find(p->lrec, &rsearch, service_record_cmp);
 	if (!lr)
 		return error_service_does_not_exist(conn, msg);
@@ -1134,6 +1098,7 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	r = lr->data;
+	str2ba(dbus_data->address, &sba);
 	if (sdp_service_unregister(&sba, r->record, &err) < 0)
 		error("service unregister error: %s (%d)", strerror(err), err);
 	else
