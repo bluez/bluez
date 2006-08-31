@@ -1017,7 +1017,7 @@ static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn,
 
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "manufacturers");
 
-	str = textfile_get(filename, addr_ptr);
+	str = textfile_caseget(filename, addr_ptr);
 	if (!str)
 		return error_not_available(conn, msg);
 
@@ -1036,7 +1036,7 @@ static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn,
 
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "features");
 
-	str = textfile_get(filename, addr_ptr);
+	str = textfile_caseget(filename, addr_ptr);
 	if (!str)
 		goto failed;
 
@@ -1095,7 +1095,7 @@ static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn
 
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "manufacturers");
 
-	str = textfile_get(filename, addr_ptr);
+	str = textfile_caseget(filename, addr_ptr);
 	if (!str)
 		return error_not_available(conn, msg);
 
@@ -1138,7 +1138,7 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "manufacturers");
 
-	str = textfile_get(filename, addr_ptr);
+	str = textfile_caseget(filename, addr_ptr);
 	if (!str)
 		return error_not_available(conn, msg);
 
@@ -1354,7 +1354,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	/* check if it is in the cache */
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "names");
 
-	str = textfile_get(filename, peer_addr);
+	str = textfile_caseget(filename, peer_addr);
 
 	if (str) {
 		reply = dbus_message_new_method_return(msg);
@@ -1553,7 +1553,7 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastseen");
 
-	str = textfile_get(filename, addr_ptr);
+	str = textfile_caseget(filename, addr_ptr);
 	if (!str)
 		return error_not_available(conn, msg);
 
@@ -1595,7 +1595,7 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "lastused");
 
-	str = textfile_get(filename, addr_ptr);
+	str = textfile_caseget(filename, addr_ptr);
 	if (!str)
 		return error_not_available(conn, msg);
 
@@ -1716,7 +1716,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	/* check if a link key already exists */
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "linkkeys");
 
-	str = textfile_get(filename, peer_addr);
+	str = textfile_caseget(filename, peer_addr);
 	if (str) {
 		free(str);
 		return error_bonding_already_exists(conn, msg);
@@ -1954,7 +1954,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "linkkeys");
 
 	/* textfile_del doesn't return an error when the key is not found */
-	str = textfile_get(filename, addr_ptr);
+	str = textfile_caseget(filename, addr_ptr);
 	if (!str) {
 		hci_close_dev(dd);
 		return error_bonding_does_not_exist(conn, msg);
@@ -2027,7 +2027,7 @@ static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMe
 
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "linkkeys");
 
-	str = textfile_get(filename, addr_ptr);
+	str = textfile_caseget(filename, addr_ptr);
 	if (str) {
 		result = TRUE;
 		free(str);
