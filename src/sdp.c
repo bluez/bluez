@@ -3043,7 +3043,7 @@ struct sdp_transaction {
 	sdp_buf_t rsp_concat_buf;
 	uint32_t reqsize;
 	int cstate_len;
-	int attr_list_len;
+	int size;
 };
 
 /*
@@ -3454,7 +3454,8 @@ int sdp_process(sdp_session_t *session)
 	struct sdp_transaction *t = NULL;
 	sdp_pdu_hdr_t *reqhdr = NULL;
 	sdp_pdu_hdr_t *rsphdr = NULL;
-	uint8_t *pdata = NULL, *rspbuf = NULL;
+	sdp_cstate_t *pcstate = NULL;
+	uint8_t *pdata = NULL, *rspbuf = NULL, *targetPtr = NULL;
 	int rsp_count = 0, err = -1;
 	uint16_t status = 0;
 
@@ -3486,40 +3487,69 @@ int sdp_process(sdp_session_t *session)
 		goto end;
 	}
 
-	rsp_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
-	t->attr_list_len += rsp_count;
-	pdata += sizeof(uint16_t);      // pdata points to attribute list
+	switch (rsphdr->pdu_id) {
+	uint8_t *ssr_pdata;
+	uint16_t tsrc, csrc;
+	case SDP_SVC_SEARCH_RSP:
+		/*
+		 * TSRC: Total Service Record Count
+		 * CSRC: Current Service Record Count
+		 */
+		ssr_pdata = pdata;
+		ssr_pdata += sizeof(tsrc);
+		tsrc = ntohs(bt_get_unaligned((uint16_t *) ssr_pdata));
+		csrc = ntohs(bt_get_unaligned((uint16_t *) ssr_pdata));
 
-	t->cstate_len = *(uint8_t *) (pdata + rsp_count);
+		if (t->size == 0) {
+			/* first fragment */
+			rsp_count = sizeof(tsrc) + sizeof(csrc) + csrc * 4;
+			SDPDBG("Total svc count: %d\n", tsrc);
+			SDPDBG("Current svc count: %d\n", csrc);
+		} else {
+			pdata += 2 * sizeof(uint16_t); /* Ignore TSRC and CSRC */
+			rsp_count = csrc * 4;
+		}
+		t->size += rsp_count;
+		break;
+	case SDP_SVC_ATTR_RSP:
+	case SDP_SVC_SEARCH_ATTR_RSP:
+		rsp_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
+		SDPDBG("Attrlist byte count : %d\n", rsp_count);
 
-	SDPDBG("Attrlist byte count : %d\n", t->attr_list_len);
-	SDPDBG("Response byte count : %d\n", rsp_count);
-	SDPDBG("Cstate length : %d\n", t->cstate_len);
+		pdata += sizeof(uint16_t); // points to attribute list
+		t->size += rsp_count;
+		break;
+	default:
+		/* FIXME: how handle this situation?  */
+		SDPDBG("Illegal PDU ID!");
+		goto end;
+	}
+
+	pcstate = (sdp_cstate_t *) (pdata + rsp_count);
+
+	SDPDBG("Cstate length : %d\n", pcstate->length);
 	/*
 	 * This is a split response, need to concatenate intermediate
 	 * responses and the last one which will have cstate_len == 0
 	 */
-	if (t->cstate_len > 0 || t->rsp_concat_buf.data_size != 0) {
-		uint8_t *targetPtr = NULL;
 
-		t->cstate = t->cstate_len > 0 ? (sdp_cstate_t *) (pdata + rsp_count) : 0;
 
-		// build concatenated response buffer
-		t->rsp_concat_buf.data = realloc(t->rsp_concat_buf.data, t->rsp_concat_buf.data_size + rsp_count);
-		targetPtr = t->rsp_concat_buf.data + t->rsp_concat_buf.data_size;
-		t->rsp_concat_buf.buf_size = t->rsp_concat_buf.data_size + rsp_count;
-		memcpy(targetPtr, pdata, rsp_count);
-		t->rsp_concat_buf.data_size += rsp_count;
-	}
+	// build concatenated response buffer
+	t->rsp_concat_buf.data = realloc(t->rsp_concat_buf.data, t->rsp_concat_buf.data_size + rsp_count);
+	targetPtr = t->rsp_concat_buf.data + t->rsp_concat_buf.data_size;
+	t->rsp_concat_buf.buf_size = t->rsp_concat_buf.data_size + rsp_count;
+	memcpy(targetPtr, pdata, rsp_count);
+	t->rsp_concat_buf.data_size += rsp_count;
 
-	if (t->cstate) {
-		int reqsize;
+	if (pcstate->length > 0) {
+		int reqsize, cstate_len;
+
 		reqhdr->tid = htons(sdp_gen_tid(session));
 
 		// add continuation state (can be null)
-		t->cstate_len = copy_cstate(t->reqbuf + t->reqsize, t->cstate);
+		cstate_len = copy_cstate(t->reqbuf + t->reqsize, pcstate);
 
-		reqsize = t->reqsize + t->cstate_len;
+		reqsize = t->reqsize + cstate_len;
 
 		// set the request header's param length
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
@@ -3538,7 +3568,7 @@ end:
 
 		if (t->cb)
 			t->cb(rsphdr->pdu_id, status, pdata,
-				t->attr_list_len, t->udata);
+				t->size, t->udata);
 	}
 
 	if (rspbuf)
