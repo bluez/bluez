@@ -196,6 +196,8 @@ DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg,
 DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
 DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void *data);
+DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data);
+DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data);
 
 DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void *data);
 

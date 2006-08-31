@@ -986,6 +986,16 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 	return send_reply_and_unref(conn, reply);
 }
 
+static DBusHandlerResult handle_dev_get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	return get_remote_svc_rec(conn, msg, data);
+}
+
+static DBusHandlerResult handle_dev_get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	return get_remote_svc_handles(conn, msg, data);
+}
+
 static DBusHandlerResult handle_dev_get_remote_version_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
@@ -2404,6 +2414,9 @@ static struct service_data dev_services[] = {
 	{ "GetName",					handle_dev_get_name_req			},
 	{ "SetName",					handle_dev_set_name_req			},
 	
+	{ "GetRemoteServiceRecord",			handle_dev_get_remote_svc_rec		},
+	{ "GetRemoteServiceHandles",			handle_dev_get_remote_svc_handles	},
+
 	{ "GetRemoteVersion",				handle_dev_get_remote_version_req	},
 	{ "GetRemoteRevision",				handle_dev_get_remote_revision_req	},
 	{ "GetRemoteManufacturer",			handle_dev_get_remote_manufacturer_req	},

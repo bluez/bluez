@@ -52,6 +52,10 @@
 
 #define MAX_IDENTIFIER_LEN	29	/* "XX:XX:XX:XX:XX:XX/0xYYYYYYYY\0" */
 
+/* FIXME: debug purpose */
+#define SERVICE_SEARCH_ATTR_REQ 1
+
+
 struct service_provider {
 	char *owner;	/* null for remote services or unique name if local */
 	char *prov;	/* remote Bluetooth address that provides the service */
@@ -63,18 +67,21 @@ struct service_record {
 	sdp_record_t *record;
 };
 
-struct pending_connect {
-	DBusConnection *conn;
-	DBusMessage *rq;
-	char *svc;
-	char *dst;
-};
-
 struct transaction_context {
 	DBusConnection *conn;
 	DBusMessage *rq;
 	sdp_session_t *session;
 };
+
+
+typedef int connect_cb_t (struct transaction_context *t);
+struct pending_connect {
+	DBusConnection *conn;
+	DBusMessage *rq;
+	char *dst;
+	connect_cb_t *conn_cb;
+};
+
 /* FIXME:  move to a common file */
 typedef struct {
 	char            *name;
@@ -149,7 +156,7 @@ static struct slist *sdp_cache = NULL;
 static struct slist *pending_connects  = NULL;
 
 static struct pending_connect *pending_connect_new(DBusConnection *conn, DBusMessage *msg,
-							const char *dst, const char *svc)
+							const char *dst, connect_cb_t *cb)
 {
 	struct pending_connect *c;
 
@@ -160,11 +167,6 @@ static struct pending_connect *pending_connect_new(DBusConnection *conn, DBusMes
 
 	memset(c, 0, sizeof(*c));
 
-	if (svc) {
-		c->svc = strdup(svc);
-		if (!c->svc)
-			goto fail;
-	}
 	if (dst) {
 		c->dst = strdup(dst);
 		if (!c->dst)
@@ -173,12 +175,11 @@ static struct pending_connect *pending_connect_new(DBusConnection *conn, DBusMes
 
 	c->conn = dbus_connection_ref(conn);
 	c->rq = dbus_message_ref(msg);
+	c->conn_cb = cb;
 
 	return c;
 
 fail:
-	if (c->svc)
-		free(c->svc);
 	if (c->dst)
 		free(c->dst);
 	free(c);
@@ -190,9 +191,6 @@ static void pending_connect_free(struct pending_connect *c)
 {
 	if (!c)
 		return;
-
-	if (c->svc)
-		free(c->svc);
 
 	if (c->rq)
 		dbus_message_unref(c->rq);
@@ -474,11 +472,68 @@ fail:
 	return retval;
 }
 
-static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
+static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
 	char identifier[MAX_IDENTIFIER_LEN];
-	const char *ptr = identifier;
+	sdp_record_t *rec = NULL;
+	DBusMessage *reply;
+	DBusMessageIter iter, array_iter;
+	const char *dst;
+	int i, scanned;
+
+	if (!ctxt)
+		return;
+
+	if (type == SDP_ERROR_RSP) {
+		error_sdp_failed(ctxt->conn, ctxt->rq, err);
+		return;
+	}
+
+	/* check response PDU ID */
+	if (type != SDP_SVC_ATTR_RSP) {
+		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
+		error_failed(ctxt->conn, ctxt->rq, EPROTO);
+		return;
+	}
+
+	dbus_message_get_args(ctxt->rq, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_INVALID);
+
+	reply = dbus_message_new_method_return(ctxt->rq);
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_BYTE_AS_STRING, &array_iter);
+
+	/* 
+	 * FIXME: check rsp? How check for I/O error or wrong transaction id?
+	 * check the type value(Zero) is not reasonable!
+	 */
+
+	rec = sdp_extract_pdu(rsp, &scanned);
+	if (rec == NULL) {
+		error("SVC REC is null");
+		goto done;
+	}
+
+	sdp_cache_append(NULL, dst, rec);
+	snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, rec->handle);
+
+	/* FIXME: avoid seg fault / out of bound */
+	for (i = 0; i < size; i++)
+		dbus_message_iter_append_basic(&array_iter,
+				DBUS_TYPE_BYTE, &rsp[i]);
+
+done:
+	dbus_message_iter_close_container(&iter, &array_iter);
+	send_reply_and_unref(ctxt->conn, reply);
+}
+
+static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
+{
+	struct transaction_context *ctxt = udata;
+	char identifier[MAX_IDENTIFIER_LEN];
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
 	const char *dst;
@@ -508,7 +563,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	reply = dbus_message_new_method_return(ctxt->rq);
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_TYPE_STRING_AS_STRING, &array_iter);
+			DBUS_TYPE_UINT32_AS_STRING, &array_iter);
 
 	/* 
 	 * FIXME: check rsp? How check for I/O error or wrong transaction id?
@@ -539,9 +594,122 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	        sdp_cache_append(NULL, dst, rec);
 		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, rec->handle);
 		dbus_message_iter_append_basic(&array_iter,
-				DBUS_TYPE_STRING, &ptr);
+				DBUS_TYPE_UINT32, &rec->handle);
 	} while (scanned < size);
 
+done:
+	dbus_message_iter_close_container(&iter, &array_iter);
+	send_reply_and_unref(ctxt->conn, reply);
+}
+
+static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
+{
+	struct transaction_context *ctxt = udata;
+	char identifier[MAX_IDENTIFIER_LEN];
+	const char *ptr = identifier;
+	DBusMessage *reply;
+	DBusMessageIter iter, array_iter;
+	const char *dst;
+	uint8_t *pdata;
+	int scanned = 0;
+#ifdef SERVICE_SEARCH_ATTR_REQ
+	uint8_t dataType = 0;
+	int seqlen = 0;
+#else
+	int csrc, tsrc; 
+#endif
+
+	if (!ctxt)
+		return;
+
+	if (type == SDP_ERROR_RSP) {
+		error_sdp_failed(ctxt->conn, ctxt->rq, err);
+		return;
+	}
+
+	/* check response PDU ID */
+#ifdef SERVICE_SEARCH_ATTR_REQ
+	if (type != SDP_SVC_SEARCH_ATTR_RSP) {
+#else
+	if (type != SDP_SVC_SEARCH_RSP) {
+#endif
+		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
+		error_failed(ctxt->conn, ctxt->rq, EPROTO);
+		return;
+	}
+
+	dbus_message_get_args(ctxt->rq, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_INVALID);
+
+	reply = dbus_message_new_method_return(ctxt->rq);
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	/* 
+	 * FIXME: check rsp? How check for I/O error or wrong transaction id?
+	 * check the type value(Zero) is not reasonable!
+	 */
+	pdata = rsp;
+
+#ifdef SERVICE_SEARCH_ATTR_REQ
+	scanned = sdp_extract_seqtype(pdata, &dataType, &seqlen);
+
+	if (!scanned || !seqlen)
+		goto done;
+
+	pdata += scanned;
+#else
+	// net service record match count
+	tsrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
+	pdata += sizeof(uint16_t);
+	scanned += sizeof(uint16_t);
+	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
+	pdata += sizeof(uint16_t);
+	scanned += sizeof(uint16_t);
+
+	debug("Total svc count: %d\n", tsrc);
+	debug("Current svc count: %d\n", csrc);
+
+	if (!csrc)
+		goto done;
+#endif
+
+#ifdef SERVICE_SEARCH_ATTR_REQ
+	do {
+		int recsize = 0;
+		sdp_record_t *rec = sdp_extract_pdu(pdata, &recsize);
+		if (rec == NULL) {
+			error("SVC REC is null");
+			goto done;
+		}
+		if (!recsize) {
+			sdp_record_free(rec);
+			break;
+		}
+
+		scanned += recsize;
+		pdata += recsize;
+
+	        sdp_cache_append(NULL, dst, rec);
+		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, rec->handle);
+		dbus_message_iter_append_basic(&array_iter,
+				DBUS_TYPE_STRING, &ptr);
+	} while (scanned < size);
+#else
+	do {
+		uint32_t handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
+		scanned+= sizeof(uint32_t);
+		pdata+=sizeof(uint32_t);
+
+		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, handle);
+
+		dbus_message_iter_append_basic(&array_iter,
+				DBUS_TYPE_STRING, &ptr);
+	} while (--tsrc);
+
+#endif
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_reply_and_unref(ctxt->conn, reply);
@@ -570,12 +738,8 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 {
 	struct pending_connect *c = udata;
 	struct transaction_context *ctxt = NULL;
-	sdp_list_t *search = NULL, *attrids = NULL;
-	uint32_t range = 0x0000ffff;
-	uint16_t class;
 	int err = 0, sk = 0;
 	socklen_t len;
-	uuid_t uuid;
 
 	sk = g_io_channel_unix_get_fd(chan);
 
@@ -583,51 +747,31 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
 		error("getsockopt(): %s, (%d)", strerror(errno), errno);
-		error_connection_attempt_failed(c->conn, c->rq, errno);
+		err = errno;
 		goto fail;
 	}
 
 	if (err != 0) {
 		error("connect(): %s(%d)", strerror(err), err);
-		error_connection_attempt_failed(c->conn, c->rq, err);
 		goto fail;
 	}
 
 	ctxt = malloc(sizeof(*ctxt));
 	if (!ctxt) {
-		error_failed(c->conn, c->rq, ENOMEM);
+		err = ENOMEM;
 		goto fail;
 	}
-	memset(ctxt, 0, sizeof(*ctxt));
 
-	/* FIXME: the sdp search list pattern should be created outside */
-	if (!c->svc) {
-		sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
-		search = sdp_list_append(0, &uuid);
-	} else {
-		class = sdp_str2svclass(c->svc);
-		sdp_uuid16_create(&uuid, class);
-		search = sdp_list_append(0, &uuid);
-	}
+	memset(ctxt, 0, sizeof(*ctxt));
 
 	ctxt->conn = dbus_connection_ref(c->conn);
 	ctxt->rq = dbus_message_ref(c->rq);
 	ctxt->session = sdp_create(sk, 0);
-	if (!ctxt->session) {
-		error("error: %s (%d)", strerror(errno), errno);
-		error_failed(c->conn, c->rq, errno);
-		goto fail;
-	}
 
-	sdp_set_notify(ctxt->session, search_completed_cb, ctxt);
-
-	attrids = sdp_list_append(NULL, &range);
-	/* Create/send the search request and set the callback to indicate the request completion */
-	if (sdp_service_search_attr_async(ctxt->session, search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
-		error("send request failed: %s (%d)", strerror(errno), errno);
-		error_failed(c->conn, c->rq, errno);
+	/* set the complete transaction callback and starts the search request */
+	err = c->conn_cb(ctxt);
+	if (err)
 		goto fail;
-	}
 
 	/* set the callback responsible for update the transaction data */
 	g_io_add_watch_full(chan, 0, G_IO_IN, search_process_cb,
@@ -635,23 +779,20 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 	goto done;
 
 fail:
+	if (err)
+		error_connection_attempt_failed(c->conn, c->rq, err);
+
 	if (ctxt)
 		transaction_context_free(ctxt);
 done:
-	if (search)
-		sdp_list_free(search, NULL);
-
-	if (attrids)
-		sdp_list_free(attrids, NULL);
-
 	pending_connects = slist_remove(pending_connects, c);
 	pending_connect_free(c);
 
 	return FALSE;
 }
 
-static int search_request(DBusConnection *conn, DBusMessage *msg, uint16_t dev_id,
-				const char *dst, const char *svc, int *err)
+static int connect_request(DBusConnection *conn, DBusMessage *msg, uint16_t dev_id,
+				const char *dst, connect_cb_t *cb, int *err)
 {
 	struct pending_connect *c = NULL;
 	GIOChannel *chan = NULL;
@@ -685,7 +826,7 @@ static int search_request(DBusConnection *conn, DBusMessage *msg, uint16_t dev_i
 	sa.l2_psm = htobs(SDP_PSM);
 	str2ba(dst, &sa.l2_bdaddr);
 
-	c = pending_connect_new(conn, msg, dst, svc);
+	c = pending_connect_new(conn, msg, dst, cb);
 	if (!c) {
 		if (err)
 			*err = ENOMEM;
@@ -719,8 +860,99 @@ fail:
 	return -1;
 }
 
-static DBusHandlerResult get_identifiers(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static int remote_svc_rec_conn_cb(struct transaction_context *ctxt)
+{
+	sdp_list_t *attrids = NULL;
+	uint32_t range = 0x0000ffff;
+	const char *dst;
+	uint32_t handle;
+	int err = 0;
+
+	if (sdp_set_notify(ctxt->session, remote_svc_rec_completed_cb, ctxt) < 0) {
+		error("Invalid session data!");
+		err = EINVAL;
+		goto fail;
+	}
+
+	dbus_message_get_args(ctxt->rq, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_INVALID);
+
+	attrids = sdp_list_append(NULL, &range);
+	/* Create/send the search request and set the callback to indicate the request completion */
+	if (sdp_service_attr_async(ctxt->session, handle, SDP_ATTR_REQ_RANGE, attrids) < 0) {
+		error("send request failed: %s (%d)", strerror(errno), errno);
+		err = errno;
+		goto fail;
+	}
+
+fail:
+	if (attrids)
+		sdp_list_free(attrids, NULL);
+
+	return err;
+}
+
+DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	const char *dst;
+	uint32_t handle;
+	int err = 0;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (find_pending_connect(dst))
+		return error_service_search_in_progress(conn, msg);
+
+	if (connect_request(conn, msg, dbus_data->dev_id, dst, remote_svc_rec_conn_cb, &err) < 0) {
+		error("Search request failed: %s (%d)", strerror(err), err);
+		return error_failed(conn, msg, err);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
+{
+	sdp_list_t *search = NULL, *attrids = NULL;
+	uuid_t uuid;
+	uint32_t range = 0x0000ffff;
+	int err = 0;
+
+	if (sdp_set_notify(ctxt->session, remote_svc_handles_completed_cb, ctxt) < 0) {
+		error("Invalid session data!");
+		err = EINVAL;
+		goto fail;
+	}
+
+	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
+	search = sdp_list_append(0, &uuid);
+
+	attrids = sdp_list_append(NULL, &range);
+	/* Create/send the search request and set the callback to indicate the request completion */
+	if (sdp_service_search_attr_async(ctxt->session, search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
+		error("send request failed: %s (%d)", strerror(errno), errno);
+		err = errno;
+		goto fail;
+	}
+
+fail:
+	if (search)
+		sdp_list_free(search, NULL);
+
+	if (attrids)
+		sdp_list_free(attrids, NULL);
+
+	return err;
+}
+
+DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	const char *dst;
@@ -734,12 +966,120 @@ static DBusHandlerResult get_identifiers(DBusConnection *conn,
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (search_request(conn, msg, dbus_data->dev_id, dst, NULL, &err) < 0) {
+	if (connect_request(conn, msg, dbus_data->dev_id, dst, remote_svc_handles_conn_cb, &err) < 0) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static int get_identifiers_conn_cb(struct transaction_context *ctxt)
+{
+	sdp_list_t *search = NULL, *attrids = NULL;
+	uuid_t uuid;
+	uint32_t range = 0x0000ffff;
+	int err = 0;
+
+	if (sdp_set_notify(ctxt->session, search_completed_cb, ctxt) < 0) {
+		error("Invalid session data!");
+		err = -EINVAL;
+		goto fail;
+	}
+
+	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
+	search = sdp_list_append(0, &uuid);
+
+	attrids = sdp_list_append(NULL, &range);
+	/* Create/send the search request and set the callback to indicate the request completion */
+#ifdef SERVICE_SEARCH_ATTR_REQ
+	if (sdp_service_search_attr_async(ctxt->session, search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
+#else
+	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
+#endif
+		error("send request failed: %s (%d)", strerror(errno), errno);
+		err = -errno;
+		goto fail;
+	}
+
+fail:
+	if (search)
+		sdp_list_free(search, NULL);
+
+	if (attrids)
+		sdp_list_free(attrids, NULL);
+
+	return err;
+}
+
+static DBusHandlerResult get_identifiers(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct hci_dbus_data *dbus_data = data;
+	const char *dst;
+	int err = 0;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	/* in progress is not working properly */
+	if (find_pending_connect(dst))
+		return error_service_search_in_progress(conn, msg);
+
+	if (connect_request(conn, msg, dbus_data->dev_id, dst, get_identifiers_conn_cb, &err) < 0) {
+		error("Search request failed: %s (%d)", strerror(err), err);
+		return error_failed(conn, msg, err);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static int get_identifiers_by_service_conn_cb(struct transaction_context *ctxt)
+{
+	sdp_list_t *search = NULL, *attrids = NULL;
+	uint32_t range = 0x0000ffff;
+	const char *dst, *svc;
+	uuid_t uuid;
+	uint16_t class;
+	int err = 0;
+
+	if (sdp_set_notify(ctxt->session, search_completed_cb, ctxt) < 0) {
+		error("Invalid session data!");
+		err = -EINVAL;
+		goto fail;
+	}
+
+	dbus_message_get_args(ctxt->rq, NULL,
+				DBUS_TYPE_STRING, &dst,
+				DBUS_TYPE_STRING, &svc,
+				DBUS_TYPE_INVALID);
+
+	class = sdp_str2svclass(svc);
+	sdp_uuid16_create(&uuid, class);
+	search = sdp_list_append(0, &uuid);
+
+	attrids = sdp_list_append(NULL, &range);
+	/* Create/send the search request and set the callback to indicate the request completion */
+#ifdef SERVICE_SEARCH_ATTR_REQ
+	if (sdp_service_search_attr_async(ctxt->session, search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
+#else
+	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
+#endif
+		error("send request failed: %s (%d)", strerror(errno), errno);
+		err = -errno;
+		goto fail;
+	}
+
+fail:
+	if (search)
+		sdp_list_free(search, NULL);
+
+	if (attrids)
+		sdp_list_free(attrids, NULL);
+
+	return err;
 }
 
 static DBusHandlerResult get_identifiers_by_service(DBusConnection *conn,
@@ -823,7 +1163,8 @@ search_request:
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (search_request(conn, msg, dbus_data->dev_id, dst, svc, &err) < 0) {
+	if (connect_request(conn, msg, dbus_data->dev_id, dst,
+				get_identifiers_by_service_conn_cb, &err) < 0) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
 	}
