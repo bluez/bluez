@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -93,13 +94,17 @@ int create_name(char *buf, size_t size, const char *path, const char *address, c
 	return snprintf(buf, size, "%s/%s/%s", path, address, name);
 }
 
-static inline char *find_key(char *map, const char *key, size_t len)
+static inline char *find_key(char *map, const char *key, size_t len, int icase)
 {
-	char *off = strstr(map, key);
+	char *off = (icase) ? strcasestr(map, key) : strstr(map, key);
 
 	while (off && ((off > map && *(off - 1) != '\r' &&
-				*(off - 1) != '\n') || *(off + len) != ' '))
-		off = strstr(off + len, key);
+				*(off - 1) != '\n') || *(off + len) != ' ')) {
+		if (icase)
+			off = strcasestr(off + len, key);
+		else
+			off = strstr(off + len, key);
+	}
 
 	return off;
 }
@@ -126,7 +131,7 @@ static inline int write_key_value(int fd, const char *key, const char *value)
 	return err;
 }
 
-static int write_key(const char *pathname, const char *key, const char *value)
+static int write_key(const char *pathname, const char *key, const char *value, int icase)
 {
 	struct stat st;
 	char *map, *off, *end, *str;
@@ -163,7 +168,7 @@ static int write_key(const char *pathname, const char *key, const char *value)
 		goto unlock;
 	}
 
-	off = find_key(map, key, strlen(key));
+	off = find_key(map, key, strlen(key), icase);
 	if (!off) {
 		if (value) {
 			munmap(map, size);
@@ -240,17 +245,7 @@ close:
 	return -err;
 }
 
-int textfile_put(const char *pathname, const char *key, const char *value)
-{
-	return write_key(pathname, key, value);
-}
-
-int textfile_del(const char *pathname, const char *key)
-{
-	return write_key(pathname, key, NULL);
-}
-
-char *textfile_get(const char *pathname, const char *key)
+static char *read_key(const char *pathname, const char *key, int icase)
 {
 	struct stat st;
 	char *map, *off, *end, *str = NULL;
@@ -280,7 +275,7 @@ char *textfile_get(const char *pathname, const char *key)
 	}
 
 	len = strlen(key);
-	off = find_key(map, key, len);
+	off = find_key(map, key, len, icase);
 	if (!off) {
 		err = EILSEQ;
 		goto unmap;
@@ -312,6 +307,26 @@ close:
 	errno = err;
 
 	return str;
+}
+
+int textfile_put(const char *pathname, const char *key, const char *value)
+{
+	return write_key(pathname, key, value, 0);
+}
+
+int textfile_del(const char *pathname, const char *key)
+{
+	return write_key(pathname, key, NULL, 0);
+}
+
+char *textfile_get(const char *pathname, const char *key)
+{
+	return read_key(pathname, key, 0);
+}
+
+char *textfile_caseget(const char *pathname, const char *key)
+{
+	return read_key(pathname, key, 1);
 }
 
 int textfile_foreach(const char *pathname,
