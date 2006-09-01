@@ -1,7 +1,9 @@
 
+if CONFIGFILES
 confdir = $(sysconfdir)/bluetooth
 
 conf_DATA = rfcomm.conf
+endif
 
 bin_PROGRAMS = rfcomm
 
@@ -18,6 +20,6 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) $(conf_DATA)
+EXTRA_DIST = $(man_MANS) rfcomm.conf
 
 MAINTAINERCLEANFILES = Makefile.in

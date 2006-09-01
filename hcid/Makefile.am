@@ -1,4 +1,5 @@
 
+if CONFIGFILES
 confdir = $(sysconfdir)/bluetooth
 
 conf_DATA = hcid.conf
@@ -10,6 +11,7 @@ state_DATA =
 dbusdir = $(sysconfdir)/dbus-1/system.d
 
 dbus_DATA = bluez-hcid.conf
+endif
 
 sbin_PROGRAMS = hcid
 
@@ -41,6 +43,6 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) $(conf_DATA) bluez-hcid.conf dbus-test dbus-api.txt
+EXTRA_DIST = $(man_MANS) hcid.conf bluez-hcid.conf dbus-test dbus-api.txt
 
 MAINTAINERCLEANFILES = Makefile.in

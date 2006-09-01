@@ -13,6 +13,7 @@ fi
 		--localstatedir=/var \
 		--libexecdir=/lib \
 		--enable-all \
-		--disable-cups \
+		--disable-configfiles \
 		--disable-initscripts \
-		--disable-pcmciarules
+		--disable-pcmciarules \
+		--disable-cups
