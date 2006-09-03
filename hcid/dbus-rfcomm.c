@@ -87,10 +87,6 @@ static char *rfcomm_node_name_from_id(int16_t id, char *dev, size_t len)
 
 static void rfcomm_node_free(struct rfcomm_node *node)
 {
-	if (node->io) {
-		g_io_remove_watch(node->io_id);
-		g_io_channel_unref(node->io);
-	}
 	if (node->owner)
 		free(node->owner);
 	free(node);
@@ -198,6 +194,7 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io, GIOCondition cond,
 {
 	debug("RFCOMM node %s was disconnected", node->name);
 	connected_nodes = slist_remove(connected_nodes, node);
+	g_io_channel_unref(node->io);
 	rfcomm_node_free(node);
 	return FALSE;
 }
@@ -248,6 +245,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 		error_failed(c->conn, c->msg, ENOMEM);
 		goto failed;
 	}
+	memset(node, 0, sizeof(*node));
 
 	/* Create the rfcomm device node */
 	memset(&req, 0, sizeof(req));
@@ -282,9 +280,6 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 		err = errno;
 		error("Could not open %s: %s (%d)", node->name,
 				strerror(err), err);
-		rfcomm_release(node, NULL);
-		rfcomm_node_free(node);
-
 		error_connection_attempt_failed(c->conn, c->msg, err);
 		goto failed;
 	}
@@ -324,7 +319,8 @@ failed:
 	if (fd >= 0)
 		close(fd);
 	if (node) {
-		rfcomm_release(node, NULL);
+		if (node->id >= 0)
+			rfcomm_release(node, NULL);
 		rfcomm_node_free(node);
 	}
 	if (reply)
