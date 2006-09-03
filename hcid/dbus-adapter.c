@@ -2265,7 +2265,8 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		return error_not_authorized(conn, msg); /* FIXME: find a better error name */
 
 	/* only the discover requestor can cancel the inquiry process */
-	if (strcmp(dbus_data->discovery_requestor, requestor_name))
+	if (!dbus_data->discovery_requestor ||
+			strcmp(dbus_data->discovery_requestor, requestor_name))
 		return error_not_authorized(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
