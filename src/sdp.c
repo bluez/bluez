@@ -3036,14 +3036,11 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
  * SDP transaction structure for asynchronous search
  */
 struct sdp_transaction {
-	sdp_callback_t *cb;
-	void *udata;
-	sdp_cstate_t *cstate;
-	uint8_t *reqbuf;
+	sdp_callback_t *cb;	/* called when the transaction finishes */
+	void *udata;		/* client user data */
+	uint8_t *reqbuf;	/* pointer to request PDU */
 	sdp_buf_t rsp_concat_buf;
-	uint32_t reqsize;
-	int cstate_len;
-	int size;
+	uint32_t reqsize;	/* without cstate */
 };
 
 /*
@@ -3149,7 +3146,7 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	struct sdp_transaction *t;
 	sdp_pdu_hdr_t *reqhdr;
 	uint8_t *pdata;
-	int seqlen = 0;
+	int cstate_len, seqlen = 0;
 
 	if (!session || !session->priv) {
 		errno = EINVAL;
@@ -3187,12 +3184,12 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	t->reqsize += sizeof(uint16_t);
 	pdata += sizeof(uint16_t);
 
+	
 	// set the request header's param length
-	t->cstate_len = copy_cstate(pdata, t->cstate);
+	cstate_len = copy_cstate(pdata, NULL);
+	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
-	reqhdr->plen = htons((t->reqsize + t->cstate_len) - sizeof(sdp_pdu_hdr_t));
-
-	if (sdp_send_req(session, t->reqbuf, t->reqsize + t->cstate_len) < 0) {
+	if (sdp_send_req(session, t->reqbuf, t->reqsize + cstate_len) < 0) {
 		SDPERR("Error sendind data:%s", strerror(errno));
 		goto end;
 	}
@@ -3250,7 +3247,7 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 	struct sdp_transaction *t;
 	sdp_pdu_hdr_t *reqhdr;
 	uint8_t *pdata;
-	int seqlen = 0;
+	int cstate_len, seqlen = 0;
 
 	if (!session || !session->priv) {
 		errno = EINVAL;
@@ -3299,11 +3296,10 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 	SDPDBG("Attr list length : %d\n", seqlen);
 
 	// set the request header's param length
-	t->cstate_len = copy_cstate(pdata, t->cstate);
+	cstate_len = copy_cstate(pdata, NULL);
+	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
-	reqhdr->plen = htons((t->reqsize + t->cstate_len) - sizeof(sdp_pdu_hdr_t));
-
-	if (sdp_send_req(session, t->reqbuf, t->reqsize + t->cstate_len) < 0) {
+	if (sdp_send_req(session, t->reqbuf, t->reqsize + cstate_len) < 0) {
 		SDPERR("Error sendind data:%s", strerror(errno));
 		goto end;
 	}
@@ -3362,7 +3358,7 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	struct sdp_transaction *t;
 	sdp_pdu_hdr_t *reqhdr;
 	uint8_t *pdata;
-	int seqlen = 0;
+	int cstate_len, seqlen = 0;
 
 	if (!session || !session->priv) {
 		errno = EINVAL;
@@ -3415,11 +3411,10 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	t->reqsize += seqlen;
 
 	// set the request header's param length
-	t->cstate_len = copy_cstate(pdata, t->cstate);
+	cstate_len = copy_cstate(pdata, NULL);
+	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
-	reqhdr->plen = htons((t->reqsize + t->cstate_len) - sizeof(sdp_pdu_hdr_t));
-
-	if (sdp_send_req(session, t->reqbuf, t->reqsize + t->cstate_len) < 0) {
+	if (sdp_send_req(session, t->reqbuf, t->reqsize + cstate_len) < 0) {
 		SDPERR("Error sendind data:%s", strerror(errno));
 		goto end;
 	}
@@ -3457,6 +3452,7 @@ int sdp_process(sdp_session_t *session)
 	sdp_cstate_t *pcstate = NULL;
 	uint8_t *pdata = NULL, *rspbuf = NULL, *targetPtr = NULL;
 	int rsp_count = 0, err = -1;
+	size_t size = 0;
 	uint16_t status = 0;
 
 	if (!session || !session->priv) {
@@ -3484,6 +3480,7 @@ int sdp_process(sdp_session_t *session)
 
         if (rsphdr->pdu_id == SDP_ERROR_RSP) {
 		status = ntohs(bt_get_unaligned((uint16_t *) pdata));
+		size = rsphdr->plen;
 		goto end;
 	}
 
@@ -3500,7 +3497,7 @@ int sdp_process(sdp_session_t *session)
 		tsrc = ntohs(bt_get_unaligned((uint16_t *) ssr_pdata));
 		csrc = ntohs(bt_get_unaligned((uint16_t *) ssr_pdata));
 
-		if (t->size == 0) {
+		if (t->rsp_concat_buf.data_size == 0) {
 			/* first fragment */
 			rsp_count = sizeof(tsrc) + sizeof(csrc) + csrc * 4;
 			SDPDBG("Total svc count: %d\n", tsrc);
@@ -3509,7 +3506,6 @@ int sdp_process(sdp_session_t *session)
 			pdata += 2 * sizeof(uint16_t); /* Ignore TSRC and CSRC */
 			rsp_count = csrc * 4;
 		}
-		t->size += rsp_count;
 		break;
 	case SDP_SVC_ATTR_RSP:
 	case SDP_SVC_SEARCH_ATTR_RSP:
@@ -3517,7 +3513,6 @@ int sdp_process(sdp_session_t *session)
 		SDPDBG("Attrlist byte count : %d\n", rsp_count);
 
 		pdata += sizeof(uint16_t); // points to attribute list
-		t->size += rsp_count;
 		break;
 	default:
 		/* FIXME: how handle this situation?  */
@@ -3532,7 +3527,6 @@ int sdp_process(sdp_session_t *session)
 	 * This is a split response, need to concatenate intermediate
 	 * responses and the last one which will have cstate_len == 0
 	 */
-
 
 	// build concatenated response buffer
 	t->rsp_concat_buf.data = realloc(t->rsp_concat_buf.data, t->rsp_concat_buf.data_size + rsp_count);
@@ -3556,6 +3550,7 @@ int sdp_process(sdp_session_t *session)
 	
 		if (sdp_send_req(session, t->reqbuf, reqsize) < 0) {
 			SDPERR("Error sendind data:%s", strerror(errno));
+			/* FIXME: how handle this error ? */
 			goto end;
 		}
 		err = 0;
@@ -3563,12 +3558,14 @@ int sdp_process(sdp_session_t *session)
 
 end:
 	if (err) {
-		if (t->rsp_concat_buf.data_size != 0)
+		if (t->rsp_concat_buf.data_size != 0) {
 			pdata = t->rsp_concat_buf.data;
+			size = t->rsp_concat_buf.data_size;
+		}
 
 		if (t->cb)
 			t->cb(rsphdr->pdu_id, status, pdata,
-				t->size, t->udata);
+				size, t->udata);
 	}
 
 	if (rspbuf)
