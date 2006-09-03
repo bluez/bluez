@@ -382,6 +382,8 @@ char *bt_compidtostr(int compid)
 		return "CONWISE Technology Corporation Ltd";
 	case 67:
 		return "PARROT SA";
+	case 68:
+		return "Socket Communications";
 	case 65535:
 		return "internal use";
 	default:
