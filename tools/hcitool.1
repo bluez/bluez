@@ -42,7 +42,7 @@ Inquire remote devices. For each discovered device, Bluetooth device address,
 clock offset and class are printed.
 .TP
 .BI scan
-Inquire remote devices. For each discovered device, device name is printed.
+Inquire remote devices. For each discovered device, device name are printed.
 .TP
 .BI name " <bdaddr>"
 Print device name of remote device with Bluetooth address
@@ -53,13 +53,19 @@ Print device name, version and supported features of remote device with
 Bluetooth address
 .IR bdaddr .
 .TP
+.BI spinq
+Start periodic inquiry process. No inquiry results are printed.
+.TP
+.BI epinq
+Exit periodic inquiry process.
+.TP
 .BI cmd " <ogf> <ocf> [parameters]"
 Submit an arbitrary HCI command to local device.
 .IR ogf ,
 .IR ocf
 and
 .IR parameters
-are hexadecimal bytes
+are hexadecimal bytes.
 .TP
 .BI con
 Display active baseband connections

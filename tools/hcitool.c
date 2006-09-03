@@ -301,6 +301,7 @@ static char *dev_help =
 static void cmd_dev(int dev_id, int argc, char **argv)
 {
 	int opt;
+
 	for_each_opt(opt, dev_options, NULL) {
 		switch (opt) {
 		default:
@@ -310,6 +311,7 @@ static void cmd_dev(int dev_id, int argc, char **argv)
 	}
 
 	printf("Devices:\n");
+
 	hci_for_each_dev(HCI_UP, dev_info, 0);
 }
 
@@ -379,6 +381,7 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 	}
 
 	printf("Inquiring ...\n");
+
 	num_rsp = hci_inquiry(dev_id, length, num_rsp, lap, &info, flags);
 	if (num_rsp < 0) {
 		perror("Inquiry failed.");
@@ -658,8 +661,9 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		printf("\n");
 	}
 
-	close(dd);
 	bt_free(info);
+
+	hci_close_dev(dd);
 }
 
 /* Remote name */
@@ -713,7 +717,7 @@ static void cmd_name(int dev_id, int argc, char **argv)
 	if (hci_read_remote_name(dd, &bdaddr, sizeof(name), name, 25000) == 0)
 		printf("%s\n", name);
 
-	close(dd);
+	hci_close_dev(dd);
 }
 
 /* Info about remote device */
@@ -844,7 +848,104 @@ static void cmd_info(int dev_id, int argc, char **argv)
 		hci_disconnect(dd, handle, HCI_OE_USER_ENDED_CONNECTION, 10000);
 	}
 
-	close(dd);
+	hci_close_dev(dd);
+}
+
+/* Start periodic inquiry */
+
+static struct option spinq_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static char *spinq_help =
+	"Usage:\n"
+	"\tspinq\n";
+
+static void cmd_spinq(int dev_id, int argc, char **argv)
+{
+	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
+	struct hci_request rq;
+	periodic_inquiry_cp cp;
+	int opt, dd;
+
+	for_each_opt(opt, spinq_options, NULL) {
+		switch (opt) {
+		default:
+			printf(spinq_help);
+			return;
+		}
+	}
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Device open failed");
+		exit(EXIT_FAILURE);
+	}
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.lap, lap, 3);
+	cp.max_period = 16;
+	cp.min_period = 10;
+	cp.length     = 8;
+	cp.num_rsp    = 0;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_PERIODIC_INQUIRY;
+	rq.cparam = &cp;
+	rq.clen   = PERIODIC_INQUIRY_CP_SIZE;
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		perror("Periodic inquiry failed");
+		exit(EXIT_FAILURE);
+	}
+
+	hci_close_dev(dd);
+}
+
+/* Exit periodic inquiry */
+
+static struct option epinq_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static char *epinq_help =
+	"Usage:\n"
+	"\tspinq\n";
+
+static void cmd_epinq(int dev_id, int argc, char **argv)
+{
+	int opt, dd;
+
+	for_each_opt(opt, epinq_options, NULL) {
+		switch (opt) {
+		default:
+			printf(epinq_help);
+			return;
+		}
+	}
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Device open failed");
+		exit(EXIT_FAILURE);
+	}
+
+	if (hci_send_cmd(dd, OGF_LINK_CTL,
+				OCF_EXIT_PERIODIC_INQUIRY, 0, NULL) < 0) {
+		perror("Exit periodic inquiry failed");
+		exit(EXIT_FAILURE);
+	}
+
+	hci_close_dev(dd);
 }
 
 /* Send arbitrary HCI commands */
@@ -961,6 +1062,7 @@ static void cmd_con(int dev_id, int argc, char **argv)
 	}
 
 	printf("Connections:\n");
+
 	hci_for_each_dev(HCI_UP, conn_list, dev_id);
 }
 
@@ -1033,6 +1135,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 	if (hci_create_connection(dd, &bdaddr, htobs(ptype),
 				htobs(0x0000), role, &handle, 25000) < 0)
 		perror("Can't create connection");
+
 	hci_close_dev(dd);
 }
 
@@ -1101,8 +1204,9 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 				HCI_OE_USER_ENDED_CONNECTION, 10000) < 0)
 		perror("Disconnect failed");
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Role switch */
@@ -1169,7 +1273,7 @@ static void cmd_sr(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	close(dd);
+	hci_close_dev(dd);
 }
 
 /* Read RSSI */
@@ -1241,8 +1345,9 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 
 	printf("RSSI return value: %d\n", rssi);
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Get link quality */
@@ -1314,8 +1419,9 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 
 	printf("Link quality: %d\n", lq);
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Get transmit power level */
@@ -1390,8 +1496,9 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 	printf("%s transmit power level: %d\n",
 		(type == 0) ? "Current" : "Maximum", level);
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Get AFH channel map */
@@ -1473,8 +1580,9 @@ static void cmd_afh(int dev_id, int argc, char **argv)
 	} else
 		printf("AFH disabled\n");
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Set connection packet type */
@@ -1560,8 +1668,9 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Get/Set link supervision timeout */
@@ -1648,8 +1757,9 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 		}
 	}
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Request authentication */
@@ -1718,8 +1828,9 @@ static void cmd_auth(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Activate encryption */
@@ -1791,8 +1902,9 @@ static void cmd_enc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Change connection link key */
@@ -1861,8 +1973,9 @@ static void cmd_key(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Read clock offset */
@@ -1934,8 +2047,9 @@ static void cmd_clkoff(int dev_id, int argc, char **argv)
 
 	printf("Clock offset: 0x%4.4x\n", btohs(offset));
 
-	close(dd);
 	free(cr);
+
+	hci_close_dev(dd);
 }
 
 /* Read clock */
@@ -2024,7 +2138,7 @@ static void cmd_clock(int dev_id, int argc, char **argv)
 	printf("Clock:    0x%4.4x\n", btohl(clock));
 	printf("Accuracy: %.2f msec\n", (float) accuracy * 0.3125);
 
-	close(dd);
+	hci_close_dev(dd);
 }
 
 static struct {
@@ -2037,6 +2151,8 @@ static struct {
 	{ "scan",   cmd_scan,   "Scan for remote devices"              },
 	{ "name",   cmd_name,   "Get name from remote device"          },
 	{ "info",   cmd_info,   "Get information from remote device"   },
+	{ "spinq",  cmd_spinq,  "Start periodic inquiry"               },
+	{ "epinq",  cmd_epinq,  "Exit periodic inquiry"                },
 	{ "cmd",    cmd_cmd,    "Submit arbitrary HCI commands"        },
 	{ "con",    cmd_con,    "Display active connections"           },
 	{ "cc",     cmd_cc,     "Create connection to remote device"   },
