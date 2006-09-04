@@ -444,7 +444,6 @@ static gboolean search_process_cb(GIOChannel *chan, GIOCondition cond, void *uda
 	int sk, err = 0;
 	socklen_t len;
 	const char *dst;
-	int retval = FALSE;
 
 	dbus_message_get_args(ctxt->rq, NULL,
 			DBUS_TYPE_STRING, &dst,
@@ -470,7 +469,7 @@ static gboolean search_process_cb(GIOChannel *chan, GIOCondition cond, void *uda
 
 fail:
 	g_io_channel_unref(chan);
-	return retval;
+	return FALSE;
 }
 
 static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
@@ -782,9 +781,9 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 fail:
 	if (err)
 		error_connection_attempt_failed(c->conn, c->rq, err);
-
 	if (ctxt)
 		transaction_context_free(ctxt);
+	g_io_channel_unref(chan);
 done:
 	pending_connects = slist_remove(pending_connects, c);
 	pending_connect_free(c);
@@ -819,13 +818,8 @@ static int connect_request(DBusConnection *conn, DBusMessage *msg,
 		return -1;
 	}
 
-	chan = g_io_channel_unix_new(c->session->sock);
+	chan = g_io_channel_unix_new(sdp_get_socket(c->session));
 	g_io_channel_set_close_on_unref(chan, TRUE);
-
-	if (sdp_is_connected(c->session)) {
-		sdp_client_connect_cb(chan, G_IO_OUT, c);
-		return 0;
-	}
 
 	g_io_add_watch(chan, G_IO_OUT, sdp_client_connect_cb, c);
 	pending_connects = slist_append(pending_connects, c);
