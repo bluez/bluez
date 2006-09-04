@@ -78,6 +78,7 @@ typedef int connect_cb_t (struct transaction_context *t);
 struct pending_connect {
 	DBusConnection *conn;
 	DBusMessage *rq;
+	sdp_session_t *session;
 	char *dst;
 	connect_cb_t *conn_cb;
 };
@@ -766,7 +767,7 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 
 	ctxt->conn = dbus_connection_ref(c->conn);
 	ctxt->rq = dbus_message_ref(c->rq);
-	ctxt->session = sdp_create(sk, 0);
+	ctxt->session = c->session;
 
 	/* set the complete transaction callback and starts the search request */
 	err = c->conn_cb(ctxt);
@@ -791,73 +792,45 @@ done:
 	return FALSE;
 }
 
-static int connect_request(DBusConnection *conn, DBusMessage *msg, uint16_t dev_id,
-				const char *dst, connect_cb_t *cb, int *err)
+static int connect_request(DBusConnection *conn, DBusMessage *msg,
+			   uint16_t dev_id, const char *dst,
+			   connect_cb_t *cb, int *err)
 {
 	struct pending_connect *c = NULL;
 	GIOChannel *chan = NULL;
-	struct sockaddr_l2 sa;
-	int sk, watch = 0;
-
-	// create L2CAP connection
-	/* FIXME: use set_nonblocking */
-	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sk < 0) {
-		if (err)
-			*err = errno;
-
-		return -1;
-	}
-
-	chan = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(chan, TRUE);
-
-	sa.l2_family = AF_BLUETOOTH;
-	sa.l2_psm = 0;
-
-	hci_devba(dev_id, &sa.l2_bdaddr);
-
-	if (bind(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
-		if (err)
-			*err = errno;
-		goto fail;
-	}
-
-	sa.l2_psm = htobs(SDP_PSM);
-	str2ba(dst, &sa.l2_bdaddr);
+	bdaddr_t srcba, dstba;
 
 	c = pending_connect_new(conn, msg, dst, cb);
 	if (!c) {
 		if (err)
 			*err = ENOMEM;
-		goto fail;
+		return -1;
 	}
 
-	fcntl(sk, F_SETFL, fcntl(sk, F_GETFL, 0)|O_NONBLOCK);
-	if (connect(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			if (err)
-				*err = errno;
-			error("connect() failed:%s (%d)", strerror(errno), errno);
-			goto fail;
-		}
+	hci_devba(dev_id, &srcba);
+	str2ba(dst, &dstba);
 
-		watch = g_io_add_watch(chan, G_IO_OUT,
-					sdp_client_connect_cb, c);
-		pending_connects = slist_append(pending_connects, c);
-	} else {
+	c->session = sdp_connect(&srcba, &dstba, SDP_NON_BLOCKING);
+	if (!c->session) {
+		if (err)
+			*err = errno;
+		error("sdp_connect() failed:%s (%d)", strerror(errno), errno);
+		pending_connect_free(c);
+		return -1;
+	}
+
+	chan = g_io_channel_unix_new(c->session->sock);
+	g_io_channel_set_close_on_unref(chan, TRUE);
+
+	if (sdp_is_connected(c->session)) {
 		sdp_client_connect_cb(chan, G_IO_OUT, c);
+		return 0;
 	}
+
+	g_io_add_watch(chan, G_IO_OUT, sdp_client_connect_cb, c);
+	pending_connects = slist_append(pending_connects, c);
 
 	return 0;
-fail:
-	if (chan)
-		g_io_channel_unref(chan);
-
-	if (c)
-		pending_connect_free(c);
-
-	return -1;
 }
 
 static int remote_svc_rec_conn_cb(struct transaction_context *ctxt)
