@@ -3042,20 +3042,7 @@ struct sdp_transaction {
 	uint8_t *reqbuf;	/* pointer to request PDU */
 	sdp_buf_t rsp_concat_buf;
 	uint32_t reqsize;	/* without cstate */
-	uint8_t connected;
 };
-
-inline int sdp_is_connected(sdp_session_t *session)
-{
-	struct sdp_transaction *t = session->priv;
-	return t->connected;
-}
-
-static inline void sdp_set_connected(sdp_session_t *session)
-{
-	struct sdp_transaction *t = session->priv;
-	t->connected = 1;
-}
 
 /*
  * Creates a new sdp session for asynchronous search
@@ -3840,7 +3827,6 @@ static inline int sdp_is_local(const bdaddr_t *device)
 static int sdp_connect_local(sdp_session_t *session)
 {
 	struct sockaddr_un sa;
-	int ret;
 
 	session->sock = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (session->sock < 0)
@@ -3850,11 +3836,7 @@ static int sdp_connect_local(sdp_session_t *session)
 	sa.sun_family = AF_UNIX;
 	strcpy(sa.sun_path, SDP_UNIX_PATH);
 
-	ret = connect(session->sock, (struct sockaddr *)&sa, sizeof(sa));
-	if (!ret)
-		sdp_set_connected(session);
-
-	return ret;
+	return connect(session->sock, (struct sockaddr *)&sa, sizeof(sa));
 }
 
 static int sdp_connect_l2cap(const bdaddr_t *src,
@@ -3895,10 +3877,8 @@ static int sdp_connect_l2cap(const bdaddr_t *src,
 
 	do {
 		int ret = connect(sk, (struct sockaddr *) &sa, sizeof(sa));
-		if (!ret) {
-			sdp_set_connected(session);
+		if (!ret)
 			return 0;
-		}
 		if (ret < 0 && (flags & SDP_NON_BLOCKING) &&
 		    (errno == EAGAIN || errno == EINPROGRESS))
 			return 0;
