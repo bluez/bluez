@@ -73,8 +73,9 @@ typedef enum {
 
 typedef enum {
 	NAME_ANY,
-	NAME_PENDING,
-	NAME_SENT
+	NAME_PENDING,    /* remote name needs be resolved       */
+	NAME_REQUESTED,  /* HCI remote name request was sent    */
+	NAME_SENT        /* D-Bus signal RemoteNameUpdated sent */
 } name_status_t;
 
 struct discovered_dev_info {
@@ -225,6 +226,7 @@ int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
 int pending_bonding_cmp(const void *p1, const void *p2);
 int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status, int discover_type);
+int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2);
 int disc_device_req_name(struct hci_dbus_data *dbus_data);
 
 int discoverable_timeout_handler(void *data);

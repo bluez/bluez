@@ -85,7 +85,7 @@ void bonding_request_free(struct bonding_request_info *dev )
 	}
 }
 
-static int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2)
+int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2)
 {
 	int ret;
 
@@ -909,6 +909,9 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 
 	/* send at least one request or return failed if the list is empty */
 	do {
+		 /* flag to indicate the current remote name requested */ 
+		dev->name_status = NAME_REQUESTED;
+
 		req_sent = 1;
 
 		memset(&cp, 0, sizeof(cp));
