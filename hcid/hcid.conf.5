@@ -195,6 +195,15 @@ park:  this is a mode where the device is put on standby on the piconet, for pow
 
 rswitch: this is a mode that enables role\-switch (master <\-> slave) between two devices in a piconet. It is not clear whether this needs to be enabled in order to make the "lm master" setting work properly or not.
 
+.TP 
+\fBpageto\fP  \fIn\fP
+
+Page Timeout measured in number of baseband slots. Interval length = N * 0.625 msec (1 baseband slot)
+
+.TP 
+\fBdiscovto\fP  \fIn\fP
+
+The time in seconds that the device will stay in discoverable mode. 0 disables this feature and forces the device to be always discoverable.
 
 .SH "FILES"
 .TP 
