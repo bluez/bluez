@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <malloc.h>
 #include <syslog.h>
@@ -3041,21 +3042,33 @@ struct sdp_transaction {
 	uint8_t *reqbuf;	/* pointer to request PDU */
 	sdp_buf_t rsp_concat_buf;
 	uint32_t reqsize;	/* without cstate */
+	uint8_t connected;
 };
+
+inline int sdp_is_connected(sdp_session_t *session)
+{
+	struct sdp_transaction *t = session->priv;
+	return t->connected;
+}
+
+static inline void sdp_set_connected(sdp_session_t *session)
+{
+	struct sdp_transaction *t = session->priv;
+	t->connected = 1;
+}
 
 /*
  * Creates a new sdp session for asynchronous search
  * INPUT:
  *  int sk
- *	non-blocking L2CAP socket
- *      
+ *     non-blocking L2CAP socket
+ *
  * RETURN:
  *  sdp_session_t *
  *  NULL - On memory allocation failure
  */
 sdp_session_t *sdp_create(int sk, uint32_t flags)
 {
-
 	sdp_session_t *session;
 	struct sdp_transaction *t;
 
@@ -3064,7 +3077,6 @@ sdp_session_t *sdp_create(int sk, uint32_t flags)
 		errno = ENOMEM;
 		return NULL;
 	}
-
 	memset(session, 0, sizeof(*session));
 
 	session->flags = flags;
@@ -3076,7 +3088,6 @@ sdp_session_t *sdp_create(int sk, uint32_t flags)
 		free(session);
 		return NULL;
 	}
-
 	memset(t, 0, sizeof(*t));
 
 	session->priv = t;
@@ -3826,70 +3837,100 @@ static inline int sdp_is_local(const bdaddr_t *device)
 	return memcmp(device, BDADDR_LOCAL, sizeof(bdaddr_t)) == 0;
 }
 
-sdp_session_t *sdp_connect(const bdaddr_t *src, const bdaddr_t *dst, uint32_t flags)
+static int sdp_connect_local(sdp_session_t *session)
+{
+	struct sockaddr_un sa;
+	int ret;
+
+	session->sock = socket(PF_UNIX, SOCK_STREAM, 0);
+	if (session->sock < 0)
+		return -1;
+	session->local = 1;
+
+	sa.sun_family = AF_UNIX;
+	strcpy(sa.sun_path, SDP_UNIX_PATH);
+
+	ret = connect(session->sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (!ret)
+		sdp_set_connected(session);
+
+	return ret;
+}
+
+static int sdp_connect_l2cap(const bdaddr_t *src,
+			     const bdaddr_t *dst, sdp_session_t *session)
+{
+	uint32_t flags = session->flags;
+	struct sockaddr_l2 sa;
+	int sk;
+
+	session->sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+	if (session->sock < 0)
+		return -1;
+	session->local = 0;
+
+	sk = session->sock;
+
+	if (flags & SDP_NON_BLOCKING) {
+		long arg = fcntl(sk, F_GETFL, 0);
+		fcntl(sk, F_SETFL, arg | O_NONBLOCK);
+	}
+
+	sa.l2_family = AF_BLUETOOTH;
+	sa.l2_psm = 0;
+
+	if (bacmp(src, BDADDR_ANY)) {
+		sa.l2_bdaddr = *src;
+		if (bind(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0)
+			return -1;
+	}
+
+	if (flags & SDP_WAIT_ON_CLOSE) {
+		struct linger l = { .l_onoff = 1, .l_linger = 1 };
+		setsockopt(sk, SOL_SOCKET, SO_LINGER, &l, sizeof(l));
+	}
+
+	sa.l2_psm = htobs(SDP_PSM);
+	sa.l2_bdaddr = *dst;
+
+	do {
+		int ret = connect(sk, (struct sockaddr *) &sa, sizeof(sa));
+		if (!ret) {
+			sdp_set_connected(session);
+			return 0;
+		}
+		if (ret < 0 && (flags & SDP_NON_BLOCKING) &&
+		    (errno == EAGAIN || errno == EINPROGRESS))
+			return 0;
+	} while (errno == EBUSY && (flags & SDP_RETRY_IF_BUSY));
+
+	return -1;
+}
+
+sdp_session_t *sdp_connect(const bdaddr_t *src,
+			   const bdaddr_t *dst, uint32_t flags)
 {
 	sdp_session_t *session;
-	struct sdp_transaction *t;
 	int err;
 
-	session = malloc(sizeof(sdp_session_t));
-	if (!session)
-		return session;
-
-	memset(session, 0, sizeof(*session));
-
-	session->flags = flags;
-	session->sock = -1;
-
-	t = malloc(sizeof(struct sdp_transaction));
-	if (!t) {
-		errno = ENOMEM;
-		free(session);
+	if ((flags & SDP_RETRY_IF_BUSY) && (flags & SDP_NON_BLOCKING)) {
+		errno = EINVAL;
 		return NULL;
 	}
 
-	memset(t, 0, sizeof(*t));
-
-	session->priv = t;
+	session = sdp_create(-1, flags);
+	if (!session)
+		return NULL;
 
 	if (sdp_is_local(dst)) {
-		struct sockaddr_un sa;
-
-		// create local unix connection
-		session->sock = socket(PF_UNIX, SOCK_STREAM, 0);
-		session->local = 1;
-		if (session->sock >= 0) {
-			sa.sun_family = AF_UNIX;
-			strcpy(sa.sun_path, SDP_UNIX_PATH);
-			if (connect(session->sock, (struct sockaddr *)&sa, sizeof(sa)) == 0)
-				return session;
-		}
+		if (sdp_connect_local(session) < 0)
+			goto fail;
 	} else {
-		struct sockaddr_l2 sa;
-
-		// create L2CAP connection
-		session->sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-		session->local = 0;
-		if (session->sock >= 0) {
-			sa.l2_family = AF_BLUETOOTH;
-			sa.l2_psm = 0;
-			if (bacmp(src, BDADDR_ANY) != 0) {
-				sa.l2_bdaddr = *src;
-				if (bind(session->sock, (struct sockaddr *) &sa, sizeof(sa)) < 0)
-					goto fail;
-			}
-			if (flags & SDP_WAIT_ON_CLOSE) {
-				struct linger l = { .l_onoff = 1, .l_linger = 1 };
-				setsockopt(session->sock, SOL_SOCKET, SO_LINGER, &l, sizeof(l));
-			}
-			sa.l2_psm = htobs(SDP_PSM);
-			sa.l2_bdaddr = *dst;
-			do
-				if (connect(session->sock, (struct sockaddr *) &sa, sizeof(sa)) == 0)
-					return session;
-			while (errno == EBUSY && (flags & SDP_RETRY_IF_BUSY));
-		}
+		if (sdp_connect_l2cap(src, dst, session) < 0)
+			goto fail;
 	}
+
+	return session;
 
 fail:
 	err = errno;
@@ -3899,7 +3940,8 @@ fail:
 		free(session->priv);
 	free(session);
 	errno = err;
-	return 0;
+
+	return NULL;
 }
 
 int sdp_get_socket(const sdp_session_t *session)
