@@ -53,7 +53,7 @@
 #define MAX_IDENTIFIER_LEN	29	/* "XX:XX:XX:XX:XX:XX/0xYYYYYYYY\0" */
 
 /* FIXME: debug purpose */
-#define SERVICE_SEARCH_ATTR_REQ 0
+//#define SERVICE_SEARCH_ATTR_REQ 1
 
 
 struct service_provider {
