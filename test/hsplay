@@ -9,7 +9,7 @@ then
 	HSTEST="./hstest"
 fi
 
-if [ -z "$1" -o -z "$2" ]
+if [ -z "$1" ] || [ -z "$2" ]
 then
 	echo -e "Usage:\n\thsplay <file> <bdaddr> [channel]"
 	exit

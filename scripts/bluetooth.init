@@ -45,7 +45,7 @@ PAND_OPTIONS=""
 case "$1" in
   start)
 	echo -n "Starting $DESC:"
-	if $HCID_ENABLE && [ -x "$HCID_EXEC" -a -f "$HCID_CONFIG" ] ; then
+	if $HCID_ENABLE && [ -x "$HCID_EXEC" ] && [ -f "$HCID_CONFIG" ] ; then
 		$HCID_EXEC -f $HCID_CONFIG
 		echo -n " $HCID_NAME"
 	fi
@@ -61,15 +61,15 @@ case "$1" in
 		$HID2HCI_EXEC --tohci > /dev/null 2>&1 || true
 		echo -n " $HID2HCI_NAME"
 	fi
-	if $RFCOMM_ENABLE && [ -x "$RFCOMM_EXEC" -a -f "$RFCOMM_CONFIG" ] ; then
+	if $RFCOMM_ENABLE && [ -x "$RFCOMM_EXEC" ] && [ -f "$RFCOMM_CONFIG" ] ; then
 		$RFCOMM_EXEC -f $RFCOMM_CONFIG bind all || true
 		echo -n " $RFCOMM_NAME"
 	fi
-	if $DUND_ENABLE && [ -x "$DUND_EXEC" -a -n "$DUND_OPTIONS" ] ; then
+	if $DUND_ENABLE && [ -x "$DUND_EXEC" ] && [ -n "$DUND_OPTIONS" ] ; then
 		$DUND_EXEC $DUND_OPTIONS
 		echo -n " $DUND_NAME"
 	fi
-	if $PAND_ENABLE && [ -x "$PAND_EXEC" -a -n "$PAND_OPTIONS" ] ; then
+	if $PAND_ENABLE && [ -x "$PAND_EXEC" ] && [ -n "$PAND_OPTIONS" ] ; then
 		$PAND_EXEC $PAND_OPTIONS
 		echo -n " $PAND_NAME"
 	fi
