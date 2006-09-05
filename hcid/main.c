@@ -519,6 +519,8 @@ static void sig_hup(int sig)
 {
 	info("Reloading config file");
 
+	free_device_opts();
+
 	init_defaults();
 
 	if (read_config(hcid.config_file) < 0)
