@@ -2720,6 +2720,11 @@ static int gen_attridseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dataTy
 	return gen_dataseq_pdu(dst, seq, dataType);
 }
 
+typedef struct {
+	uint8_t length;
+	unsigned char data[16];
+} __attribute__ ((packed)) sdp_cstate_t;
+
 static int copy_cstate(uint8_t *pdata, const sdp_cstate_t *cstate)
 {
 	if (cstate) {

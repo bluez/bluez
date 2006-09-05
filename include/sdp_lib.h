@@ -592,11 +592,6 @@ void sdp_pattern_add_uuidseq(sdp_record_t *rec, sdp_list_t *seq);
 
 int sdp_send_req_w4_rsp(sdp_session_t *session, uint8_t *req, uint8_t *rsp, uint32_t reqsize, uint32_t *rspsize);
 
-typedef struct {
-	uint8_t length;
-	unsigned char data[16];
-} __attribute__ ((packed)) sdp_cstate_t;
-
 #ifdef __cplusplus
 }
 #endif
