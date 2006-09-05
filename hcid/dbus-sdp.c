@@ -837,7 +837,7 @@ static int remote_svc_rec_conn_cb(struct transaction_context *ctxt)
 
 	if (sdp_set_notify(ctxt->session, remote_svc_rec_completed_cb, ctxt) < 0) {
 		error("Invalid session data!");
-		err = EINVAL;
+		err = -EINVAL;
 		goto fail;
 	}
 
@@ -850,7 +850,7 @@ static int remote_svc_rec_conn_cb(struct transaction_context *ctxt)
 	/* Create/send the search request and set the callback to indicate the request completion */
 	if (sdp_service_attr_async(ctxt->session, handle, SDP_ATTR_REQ_RANGE, attrids) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
-		err = errno;
+		err = -errno;
 		goto fail;
 	}
 
@@ -894,7 +894,7 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 
 	if (sdp_set_notify(ctxt->session, remote_svc_handles_completed_cb, ctxt) < 0) {
 		error("Invalid session data!");
-		err = EINVAL;
+		err = -EINVAL;
 		goto fail;
 	}
 
@@ -905,7 +905,7 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 	/* Create/send the search request and set the callback to indicate the request completion */
 	if (sdp_service_search_attr_async(ctxt->session, search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
-		err = errno;
+		err = -errno;
 		goto fail;
 	}
 
