@@ -381,7 +381,14 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 		pdata->bonding = NULL;
 	}
 	else if (pdata->discover_state != STATE_IDLE) {
-		/* pending inquiry */
+
+		/* If there is a pending reply for discovery cancel */
+		if (pdata->discovery_cancel) {
+			message = dbus_message_new_method_return(pdata->discovery_cancel);
+			send_reply_and_unref(connection, message);
+			dbus_message_unref(pdata->discovery_cancel);
+			pdata->discovery_cancel = NULL;
+		}
 
 		/* Send discovery completed signal if there isn't name to resolve */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
@@ -1009,6 +1016,14 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		pdata->discovery_requestor = NULL;
 	}
 
+	/* If there is a pending reply for discovery cancel */
+	if (pdata->discovery_cancel) {
+		message = dbus_message_new_method_return(pdata->discovery_cancel);
+		send_reply_and_unref(connection, message);
+		dbus_message_unref(pdata->discovery_cancel);
+		pdata->discovery_cancel = NULL;
+	}
+
 	/* Send discovery completed signal if there isn't name to resolve */
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"DiscoveryCompleted");
@@ -1189,10 +1204,6 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	 * devices request WITH name resolving
 	 */
 	if (pdata->discover_state == STATE_RESOLVING_NAMES) {
-		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-							"DiscoveryCompleted");
-
-		send_reply_and_unref(connection, message);
 
 		if (pdata->discovery_requestor) {
 			name_listener_remove(connection, pdata->discovery_requestor,
@@ -1200,6 +1211,18 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 			free(pdata->discovery_requestor);
 			pdata->discovery_requestor = NULL;
 		}
+
+		/* If there is a pending reply for discovery cancel */
+		if (pdata->discovery_cancel) {
+			message = dbus_message_new_method_return(pdata->discovery_cancel);
+			send_reply_and_unref(connection, message);
+			dbus_message_unref(pdata->discovery_cancel);
+			pdata->discovery_cancel = NULL;
+		}
+
+		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+							"DiscoveryCompleted");
+		send_reply_and_unref(connection, message);
 	}
 
 	pdata->discover_state = STATE_IDLE;

@@ -2246,7 +2246,6 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 
 static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	DBusMessage *reply = NULL;
 	const char *requestor_name;
 	struct hci_dbus_data *dbus_data = data;
 	int err;
@@ -2259,9 +2258,10 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 
 	requestor_name = dbus_message_get_sender(msg);
 
-	/* is there discover pending? */
-	if (dbus_data->discover_state != STATE_DISCOVER &&
-		dbus_data->discover_state != STATE_RESOLVING_NAMES)
+	/* is there discover pending? or discovery cancel was requested previously */
+	if ((dbus_data->discover_state != STATE_DISCOVER &&
+	     dbus_data->discover_state != STATE_RESOLVING_NAMES) ||
+		dbus_data->discovery_cancel)
 		return error_not_authorized(conn, msg); /* FIXME: find a better error name */
 
 	/* only the discover requestor can cancel the inquiry process */
@@ -2281,8 +2281,9 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 
 	}
 
-	reply = dbus_message_new_method_return(msg);
-	return send_reply_and_unref(conn, reply);
+	/* Reply before send DiscoveryCompleted */
+	dbus_data->discovery_cancel = dbus_message_ref(msg);
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 const char *major_class_str(uint32_t class)
