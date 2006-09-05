@@ -331,7 +331,9 @@ int read_config(char *file)
 
 	fclose(yyin);
 
+#if 0
 	yylex_destroy();
+#endif
 
 	return 0;
 }
