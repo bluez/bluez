@@ -703,6 +703,11 @@ Methods		string GetAddress()
 			This method will request the SDP database of a remote
 			device and retrieve the service record handles.
 
+		array{byte} GetRemoteServiceRecord(string address, uint32 handle)
+
+			This method will request the SDP database of a remote
+			device for a service record and return the binary
+			stream of it.
 
 Signals		void ModeChanged(string mode)
 
