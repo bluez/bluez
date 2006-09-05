@@ -90,9 +90,6 @@ static inline void ntoh128(uint128_t *src, uint128_t *dst)
 
 static uint128_t *bluetooth_base_uuid = NULL;
 
-#define SDP_BASIC_ATTR_PDUFORM_SIZE 32
-#define SDP_SEQ_PDUFORM_SIZE 128
-#define SDP_UUID_SEQ_SIZE 256
 #define SDP_MAX_ATTR_LEN 65535
 
 /* Message structure. */
@@ -808,14 +805,15 @@ static void sdp_attr_pdu(void *value, void *udata)
 int sdp_gen_record_pdu(const sdp_record_t *rec, sdp_buf_t *buf)
 {
 	buf->data = malloc(SDP_PDU_CHUNK_SIZE);
-	if (buf->data) {
-		buf->buf_size = SDP_PDU_CHUNK_SIZE;
-		buf->data_size = 0;
-		memset(buf->data, 0, buf->buf_size);
-		sdp_list_foreach(rec->attrlist, sdp_attr_pdu, buf);
-		return 0;
-	}
-	return -1;
+	if (!buf->data)
+		return -ENOMEM;
+
+	buf->buf_size = SDP_PDU_CHUNK_SIZE;
+	buf->data_size = 0;
+	memset(buf->data, 0, buf->buf_size);
+	sdp_list_foreach(rec->attrlist, sdp_attr_pdu, buf);
+
+	return 0;
 }
 
 void sdp_attr_replace(sdp_record_t *rec, uint16_t attr, sdp_data_t *d)
@@ -2376,12 +2374,14 @@ void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 
 void sdp_append_to_pdu(sdp_buf_t *pdu, sdp_data_t *d)
 {
-	uint8_t buf[SDP_SEQ_PDUFORM_SIZE];
+	uint8_t buf[256];
 	sdp_buf_t append;
 
+	memset(&append, 0, sizeof(sdp_buf_t));
 	append.data = buf;
 	append.buf_size = sizeof(buf);
 	append.data_size = 0;
+
 	sdp_set_attrid(&append, d->attrId);
 	sdp_gen_pdu(&append, d);
 	sdp_append_to_buf(pdu, append.data, append.data_size);
@@ -2679,8 +2679,11 @@ static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 	SDPDBG("");
 	
 	memset(&buf, 0, sizeof(sdp_buf_t));
-	buf.data = malloc(SDP_UUID_SEQ_SIZE);
-	buf.buf_size = SDP_UUID_SEQ_SIZE;
+	buf.data = malloc(256);
+	buf.buf_size = 256;
+
+	if (!buf.data)
+		return -ENOMEM;
 
 	SDPDBG("Seq length : %d\n", seqlen);
 
