@@ -870,16 +870,13 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 	struct hci_request rq;
 	evt_cmd_status rp;
 	remote_name_req_cp cp;
-	bdaddr_t tmp;
-	struct discovered_dev_info *dev, match;
-	DBusMessage *message = NULL;
+	struct discovered_dev_info match;
 	struct slist *l;
-	char *peer_addr;
-	int dd, req_sent, ret_val = -ENODATA;
+	int dd, req_sent = 0;
 
 	/* get the next remote address */
 	if (!dbus_data->disc_devices)
-		return ret_val;
+		return -ENODATA;
 
 	memset(&match, 0, sizeof(struct discovered_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
@@ -888,11 +885,7 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 
 	l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t) disc_device_find);
 	if (!l)
-		return ret_val;
-
-	dev = l->data;
-	if (!dev)
-		return ret_val;
+		return -ENODATA;
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
@@ -909,10 +902,13 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 
 	/* send at least one request or return failed if the list is empty */
 	do {
+		DBusMessage *failed_signal = NULL;
+		struct discovered_dev_info *dev = l->data;
+		char *peer_addr;
+		bdaddr_t tmp;
+
 		 /* flag to indicate the current remote name requested */ 
 		dev->name_status = NAME_REQUESTED;
-
-		req_sent = 1;
 
 		memset(&cp, 0, sizeof(cp));
 		bacpy(&cp.bdaddr, &dev->bdaddr);
@@ -923,47 +919,44 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 		if (hci_send_req(dd, &rq, 100) < 0) {
 			error("Unable to send the HCI remote name request: %s (%d)",
 				strerror(errno), errno);
-			message = dev_signal_factory(dbus_data->dev_id, "RemoteNameFailed",
+			failed_signal = dev_signal_factory(dbus_data->dev_id, "RemoteNameFailed",
 							DBUS_TYPE_STRING, &peer_addr,
 							DBUS_TYPE_INVALID);
-			req_sent = 0;
 		}
 
 		if (rp.status) {
 			error("Remote name request failed with status 0x%02x", rp.status);
-			message = dev_signal_factory(dbus_data->dev_id, "RemoteNameFailed",
+			failed_signal = dev_signal_factory(dbus_data->dev_id, "RemoteNameFailed",
 							DBUS_TYPE_STRING, &peer_addr,
 							DBUS_TYPE_INVALID);
-			req_sent = 0;
 		}
-
-		send_reply_and_unref(connection, message);
 
 		free(peer_addr);
 
-		/* if failed, request the next element */
-		if (!req_sent) {
-			/* remove the element from the list */
-			dbus_data->disc_devices = slist_remove(dbus_data->disc_devices, dev);
-			free(dev);
-
-			/* get the next element */
-			l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t) disc_device_find);
-
-			/* no more devices: exit */
-			if (!l)
-				goto failed;
-
-			dev = l->data;
+		if (!failed_signal) {
+			req_sent = 1;
+			break;
 		}
-	} while (!req_sent);
 
-	ret_val = 0;
+		send_reply_and_unref(connection, failed_signal);
+		failed_signal = NULL;
 
-failed:
+		/* if failed, request the next element */
+		/* remove the element from the list */
+		dbus_data->disc_devices = slist_remove(dbus_data->disc_devices, dev);
+		free(dev);
+
+		/* get the next element */
+		l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t) disc_device_find);
+
+	} while (l);
+
 	hci_close_dev(dd);
 
-	return ret_val;
+	if (!req_sent)
+		return -ENODATA;
+
+	return 0;
 }
 
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
@@ -980,14 +973,14 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		goto done;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting %s path data failed!", path);
-		goto failed;
+		goto done;
 	}
 
 	/* reset the discover type to be able to handle D-Bus and non D-Bus requests */
@@ -995,7 +988,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 	if (!disc_device_req_name(pdata)) {
 		pdata->discover_state = STATE_RESOLVING_NAMES;
-		goto failed; /* skip - there is name to resolve */
+		goto done; /* skip - there is name to resolve */
 	}
 
 	pdata->discover_state = STATE_IDLE;
@@ -1015,7 +1008,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 						"DiscoveryCompleted");
 	send_reply_and_unref(connection, message);
 
-failed:
+done:
 	bt_free(local_addr);
 }
 
@@ -1154,7 +1147,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		goto done;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1178,7 +1171,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 
 	/* check if there is more devices to request names */
 	if (!disc_device_req_name(pdata))
-		goto failed; /* skip if a new request has been sent */
+		goto done; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
 	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
@@ -1203,7 +1196,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 
 	pdata->discover_state = STATE_IDLE;
 
-failed:
+done:
 	bt_free(local_addr);
 	bt_free(peer_addr);
 }
