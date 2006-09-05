@@ -418,11 +418,12 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 			goto done; /* on success */
 
 		if (errno != EALREADY) {
+			int err = errno;
 			error("Can't init device hci%d: %s (%d)\n",
 					dbus_data->dev_id, strerror(errno), errno);
 
 			hci_close_dev(dd);
-			return error_failed(conn, msg, errno);
+			return error_failed(conn, msg, err);
 		}
 	}
 
@@ -440,10 +441,11 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 		rq.rlen   = sizeof(status);
 
 		if (hci_send_req(dd, &rq, 100) < 0) {
+			int err = errno;
 			error("Sending write scan enable command failed: %s (%d)",
 							strerror(errno), errno);
 			hci_close_dev(dd);
-			return error_failed(conn, msg, errno);
+			return error_failed(conn, msg, err);
 		}
 
 		if (status) {
@@ -689,10 +691,11 @@ static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn,
 		return error_no_such_adapter(conn, msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		int err = errno;
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
+		return error_failed(conn, msg, err);
 	}
 
 	hci_close_dev(dd);
@@ -747,10 +750,11 @@ static DBusHandlerResult handle_dev_get_minor_class_req(DBusConnection *conn, DB
 		return error_no_such_adapter(conn, msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		int err = errno;
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, -errno);
+		return error_failed(conn, msg, err);
 	}
 
 	hci_close_dev(dd);
@@ -825,10 +829,11 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 		return error_no_such_adapter(conn, msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		int err = errno;
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
+		return error_failed(conn, msg, err);
 	}
 
 	dev_class |= (cls[2] << 16) | (cls[1] << 8);
@@ -842,10 +847,11 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 	write_local_class(&bdaddr, cls);
 
 	if (hci_write_class_of_dev(dd, dev_class, 2000) < 0) {
+		int err = errno;
 		error("Can't write class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
+		return error_failed(conn, msg, err);
 	}
 
 	signal = dev_signal_factory(dbus_data->dev_id, "MinorClassChanged",
@@ -885,10 +891,11 @@ static DBusHandlerResult handle_dev_get_service_classes_req(DBusConnection *conn
 		return error_no_such_adapter(conn, msg);
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		int err = errno;
 		error("Can't read class of device on hci%d: %s(%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
+		return error_failed(conn, msg, err);
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -1667,9 +1674,10 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 
 	/* Send the HCI disconnect command */
 	if (hci_disconnect(dd, dev->handle, HCI_OE_USER_ENDED_CONNECTION, 100) < 0) {
+		int err = errno;
 		error("Disconnect failed");
 		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
+		return error_failed(conn, msg, err);
 	}
 
 	hci_close_dev(dd);
@@ -1773,10 +1781,11 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	}
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
+		int err = errno;
 		error("Unable to send the HCI request: %s (%d)",
 				strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
+		return error_failed(conn, msg, err);
 	}
 
 	if (rp.status) {
@@ -1866,10 +1875,11 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 		rq.clen    = CREATE_CONN_CANCEL_CP_SIZE;
 
 		if (hci_send_req(dd, &rq, 100) < 0) {
+			int err = errno;
 			error("Cancel bonding - unable to send the HCI request: %s (%d)",
 			      strerror(errno), errno);
 			hci_close_dev(dd);
-			return error_failed(conn, msg, errno);
+			return error_failed(conn, msg, err);
 		}
 
 		if (rp.status) {
@@ -1974,8 +1984,9 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 
 	/* Delete the link key from storage */
 	if (textfile_del(filename, addr_ptr) < 0) {
+		int err = errno;
 		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
+		return error_failed(conn, msg, err);
 	}
 
 	str2ba(addr_ptr, &bdaddr);
@@ -1989,9 +2000,10 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 		struct active_conn_info *con = l->data;
 		/* Send the HCI disconnect command */
 		if (hci_disconnect(dd, htobs(con->handle), HCI_OE_USER_ENDED_CONNECTION, 1000) < 0) {
+			int err = errno;
 			error("Disconnect failed");
 			hci_close_dev(dd);
-			return error_failed(conn, msg, errno);
+			return error_failed(conn, msg, err);
 		}
 	}
 
@@ -2213,10 +2225,11 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
+		int err = errno;
 		error("Unable to start inquiry: %s (%d)",
 							strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, errno);
+		return error_failed(conn, msg, err);
 	}
 
 	if (rp.status) {

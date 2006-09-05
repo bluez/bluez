@@ -111,10 +111,11 @@ static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 	}
 
 	if (hci_read_bd_addr(dd, bdaddr, 2000) < 0) {
+		int err = errno;
 		error("Can't read address for hci%d: %s (%d)",
 		      dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return -errno;
+		return -err;
 	}
 
 	hci_close_dev(dd);
@@ -216,10 +217,11 @@ int start_device(uint16_t dev_id)
 	}
 
 	if (hci_read_local_version(dd, &ver, 1000) < 0) {
+		int err = errno;
 		error("Can't read version info for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return -errno;
+		return -err;
 	}
 
 	dev->hci_rev = ver.hci_rev;
@@ -228,10 +230,11 @@ int start_device(uint16_t dev_id)
 	dev->manufacturer = ver.manufacturer;
 
 	if (hci_read_local_features(dd, features, 1000) < 0) {
+		int err = errno;
 		error("Can't read features for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return -errno;
+		return -err;
 	}
 
 	memcpy(dev->features, features, 8);
@@ -241,10 +244,11 @@ int start_device(uint16_t dev_id)
 		goto done;
 
 	if (hci_write_inquiry_mode(dd, inqmode, 1000) < 0) {
+		int err = errno;
 		error("Can't write inquiry mode for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return -errno;
+		return -err;
 	}
 
 done:

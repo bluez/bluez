@@ -146,9 +146,10 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 	dr = dl->dev_req;
 
 	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
+		int err = errno;
 		close(sk);
 		free(dl);
-		return error_failed(conn, msg, errno);
+		return error_failed(conn, msg, err);
 	}
 
 	dr = dl->dev_req;
