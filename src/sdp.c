@@ -1149,13 +1149,13 @@ void sdp_record_print(const sdp_record_t *rec)
 {
 	sdp_data_t *d = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
 	if (d)
-		printf("Service Name: %s\n", d->val.str);
+		printf("Service Name: %.*s\n", d->unitSize, d->val.str);
 	d = sdp_data_get(rec, SDP_ATTR_SVCDESC_PRIMARY);
 	if (d)
-		printf("Service Description: %s\n", d->val.str);
+		printf("Service Description: %.*s\n", d->unitSize, d->val.str);
 	d = sdp_data_get(rec, SDP_ATTR_PROVNAME_PRIMARY);
 	if (d)
-		printf("Service Provider: %s\n", d->val.str);
+		printf("Service Provider: %.*s\n", d->unitSize, d->val.str);
 }
 
 #ifdef SDP_DEBUG
