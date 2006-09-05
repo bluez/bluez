@@ -94,6 +94,19 @@ typedef struct {
 	void *priv;
 } sdp_session_t;
 
+typedef enum {
+	/*
+	 *  Attributes are specified as individual elements
+	 */
+	SDP_ATTR_REQ_INDIVIDUAL = 1,
+	/*
+	 *  Attributes are specified as a range
+	 */
+	SDP_ATTR_REQ_RANGE
+} sdp_attrreq_type_t;
+
+typedef void sdp_callback_t(uint8_t type, uint16_t status, uint8_t *rsp, size_t size, void *udata);
+
 /*
  * create an L2CAP connection to a Bluetooth device
  * 
@@ -110,28 +123,18 @@ sdp_session_t *sdp_connect(const bdaddr_t *src, const bdaddr_t *dst, uint32_t fl
 int sdp_close(sdp_session_t *session);
 int sdp_get_socket(const sdp_session_t *session);
 
-uint16_t sdp_gen_tid(sdp_session_t *session);
-
-typedef enum {
-	/*
-	 *  Attributes are specified as individual elements
-	 */
-	SDP_ATTR_REQ_INDIVIDUAL = 1,
-	/*
-	 *  Attributes are specified as a range
-	 */
-	SDP_ATTR_REQ_RANGE
-} sdp_attrreq_type_t;
 /*
  * SDP transaction: functions for asynchronous search.
  */
-typedef void sdp_callback_t(uint8_t type, uint16_t status, uint8_t *rsp, size_t size, void *udata);
 sdp_session_t *sdp_create(int sk, uint32_t flags);
+int sdp_process(sdp_session_t *session);
 int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata);
+
 int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, uint16_t max_rec_num);
 int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list);
 int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *search, sdp_attrreq_type_t reqtype, const sdp_list_t *attrid_list);
-int sdp_process(sdp_session_t *session);
+
+uint16_t sdp_gen_tid(sdp_session_t *session);
 
 /*
  * find all devices in the piconet
