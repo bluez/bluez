@@ -205,6 +205,8 @@ DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
 
 void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata);
+void discover_devices_req_exit(const char *name, struct hci_dbus_data *pdata);
+int cancel_discovery(struct hci_dbus_data *pdata);
 
 int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
 void release_default_agent(void);
@@ -226,7 +228,6 @@ int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
 int pending_bonding_cmp(const void *p1, const void *p2);
 int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status, int discover_type);
-int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2);
 int disc_device_req_name(struct hci_dbus_data *dbus_data);
 
 int discoverable_timeout_handler(void *data);

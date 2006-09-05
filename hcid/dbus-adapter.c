@@ -2237,6 +2237,10 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 
 	hci_close_dev(dd);
 
+	/* track the request owner to cancel it automatically if the owner exits */
+	name_listener_add(conn, dbus_message_get_sender(msg),
+				(name_cb_t) discover_devices_req_exit, dbus_data);
+
 	return send_reply_and_unref(conn, reply);
 }
 
@@ -2244,14 +2248,8 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 {
 	DBusMessage *reply = NULL;
 	const char *requestor_name;
-	struct discovered_dev_info *dev, match;
-	struct slist *l;
-	struct hci_request rq;
-	remote_name_req_cancel_cp cp;
 	struct hci_dbus_data *dbus_data = data;
-	uint8_t status = 0x00;
-	int dd = -1;
-	DBusHandlerResult ret_val =  DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	int err;
 
 	if (!dbus_data->up)
 		return error_not_ready(conn, msg);
@@ -2270,74 +2268,21 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	if (!dbus_data->discovery_requestor ||
 			strcmp(dbus_data->discovery_requestor, requestor_name))
 		return error_not_authorized(conn, msg);
-
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
-	memset(&rq, 0, sizeof(rq));
-	memset(&cp, 0, sizeof(cp));
-
-	rq.ogf    = OGF_LINK_CTL;
-
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-	rq.event = EVT_CMD_COMPLETE;
-
-	switch (dbus_data->discover_state) {
-	case STATE_RESOLVING_NAMES:
-		/* find the pending remote name request */
-		memset(&match, 0, sizeof(struct discovered_dev_info));
-		bacpy(&match.bdaddr, BDADDR_ANY);
-		match.name_status = NAME_REQUESTED;
-		match.discover_type = RESOLVE_NAME;
-
-		l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t) disc_device_find);
-		if (!l)
-			goto done; /* no request pending */
-
-		dev = l->data;
-
-		bacpy(&cp.bdaddr, &dev->bdaddr);
-
-		rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
-		rq.cparam = &cp;
-		rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
-		break;
-	default: /* STATE_DISCOVER */
-		rq.ocf = OCF_INQUIRY_CANCEL;
-		break;
-	}
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		error("Sending command failed: %s (%d)", strerror(errno), errno);
-		ret_val = error_failed(conn, msg, errno);
-		goto cleanup;
-	}
-
-	if (status) {
-		error("Cancel failed with status 0x%02x", status);
-		ret_val = error_failed(conn, msg, bt_error(status));
-		goto cleanup;
-	}
-
-done:
-	reply = dbus_message_new_method_return(msg);
-	ret_val = send_reply_and_unref(conn, reply);
-
-cleanup:
-	/*
-	 * Reset discovery_requestor and discover_state in the remote name
-	 * request event handler or in the inquiry complete handler.
+	/* 
+	 * Cleanup the discovered devices list and send the cmd
+	 * to cancel inquiry or cancel remote name request
 	 */
-	slist_foreach(dbus_data->disc_devices, (slist_func_t) free, NULL);
-	slist_free(dbus_data->disc_devices);
-	dbus_data->disc_devices = NULL;
+	err = cancel_discovery(dbus_data);
+	if (err < 0) {
+		if (err == -ENODEV)
+			return error_no_such_adapter(conn, msg);
+		else
+			return error_failed(conn, msg, -err);
 
-	if (dd >= 0)
-		hci_close_dev(dd);
+	}
 
-	return ret_val;
+	reply = dbus_message_new_method_return(msg);
+	return send_reply_and_unref(conn, reply);
 }
 
 const char *major_class_str(uint32_t class)

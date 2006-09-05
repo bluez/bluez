@@ -85,7 +85,7 @@ void bonding_request_free(struct bonding_request_info *dev )
 	}
 }
 
-int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2)
+static int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2)
 {
 	int ret;
 
@@ -406,6 +406,8 @@ static int unregister_dbus_path(const char *path)
 		release_passkey_agents(pdata, NULL);
 
 		if (pdata->discovery_requestor) {
+			name_listener_remove(connection, pdata->discovery_requestor,
+						(name_cb_t) discover_devices_req_exit, pdata);
 			free(pdata->discovery_requestor);
 			pdata->discovery_requestor = NULL;
 		}
@@ -648,6 +650,8 @@ int hcid_dbus_stop_device(uint16_t id)
 	release_passkey_agents(pdata, NULL);
 
 	if (pdata->discovery_requestor) {
+		name_listener_remove(connection, pdata->discovery_requestor,
+					(name_cb_t) discover_devices_req_exit, pdata);
 		free(pdata->discovery_requestor);
 		pdata->discovery_requestor = NULL;
 	}
@@ -999,6 +1003,8 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	pdata->disc_devices = NULL;
 
 	if (pdata->discovery_requestor) {
+		name_listener_remove(connection, pdata->discovery_requestor,
+					(name_cb_t) discover_devices_req_exit, pdata);
 		free(pdata->discovery_requestor);
 		pdata->discovery_requestor = NULL;
 	}
@@ -1189,6 +1195,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 		send_reply_and_unref(connection, message);
 
 		if (pdata->discovery_requestor) {
+			name_listener_remove(connection, pdata->discovery_requestor,
+						(name_cb_t) discover_devices_req_exit, pdata);
 			free(pdata->discovery_requestor);
 			pdata->discovery_requestor = NULL;
 		}
@@ -2027,4 +2035,94 @@ void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata)
 
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
+}
+
+void discover_devices_req_exit(const char *name, struct hci_dbus_data *pdata)
+{
+	debug("DiscoverDevices requestor at %s exited before the operation finishes", name);
+
+	/* 
+	 * Cleanup the discovered devices list and send the cmd to cancel inquiry
+	 * or cancel remote name request. The return value can be ignored.
+	 */
+	cancel_discovery(pdata);
+}
+
+int cancel_discovery(struct hci_dbus_data *pdata)
+{
+	struct discovered_dev_info *dev, match;
+	struct slist *l;
+	struct hci_request rq;
+	remote_name_req_cancel_cp cp;
+	int dd = -1, err = 0;
+	uint8_t status = 0x00;
+
+	dd = hci_open_dev(pdata->dev_id);
+	if (dd < 0) {
+		err = -ENODEV;
+		goto cleanup;
+	}
+
+	memset(&rq, 0, sizeof(rq));
+	memset(&cp, 0, sizeof(cp));
+
+	rq.ogf    = OGF_LINK_CTL;
+
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event = EVT_CMD_COMPLETE;
+
+	switch (pdata->discover_state) {
+	case STATE_RESOLVING_NAMES:
+		/* find the pending remote name request */
+		memset(&match, 0, sizeof(struct discovered_dev_info));
+		bacpy(&match.bdaddr, BDADDR_ANY);
+		match.name_status = NAME_REQUESTED;
+		match.discover_type = RESOLVE_NAME;
+
+		l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
+		if (!l)
+			goto cleanup; /* no request pending */
+
+		dev = l->data;
+
+		bacpy(&cp.bdaddr, &dev->bdaddr);
+
+		rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
+		rq.cparam = &cp;
+		rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
+		break;
+	case STATE_DISCOVER:
+		rq.ocf = OCF_INQUIRY_CANCEL;
+		break;
+	default:
+		/* discover is not pending */
+		goto cleanup;
+	}
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		error("Sending command failed: %s (%d)", strerror(errno), errno);
+		err = -errno;
+		goto cleanup;
+	}
+
+	if (status) {
+		error("Cancel failed with status 0x%02x", status);
+		err = -bt_error(status);
+		goto cleanup;
+	}
+
+cleanup:
+	/*
+	 * Reset discovery_requestor and discover_state in the remote name
+	 * request event handler or in the inquiry complete handler.
+	 */
+	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
+	slist_free(pdata->disc_devices);
+	pdata->disc_devices = NULL;
+
+	if (dd >= 0)
+		hci_close_dev(dd);
+
+	return err;
 }
