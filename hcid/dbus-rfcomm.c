@@ -50,8 +50,8 @@
 #include "dbus.h"
 
 /* Waiting for udev to create the device node */
-#define MAX_OPEN_TRIES 6
-#define OPEN_WAIT (1000 * 300)
+#define MAX_OPEN_TRIES	5
+#define OPEN_WAIT	300  /* ms */
 
 static int rfcomm_ctl = -1;
 
@@ -73,6 +73,10 @@ struct pending_connect {
 	int			canceled;
 	struct sockaddr_rc	laddr;
 	struct sockaddr_rc	raddr;
+
+	/* Used only when we wait for udev to create the device node */
+	struct rfcomm_node	*node;
+	int			ntries;
 };
 
 static struct slist *pending_connects = NULL;
@@ -199,15 +203,94 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
-					struct pending_connect *c)
+static void rfcomm_connect_cb_devnode_opened(int fd,
+					     struct pending_connect *c,
+					     struct rfcomm_node *node)
 {
-	int sk, ret, err, fd = -1, i;
-	socklen_t len;
-	char *ptr;
-	struct rfcomm_dev_req req;
-	struct rfcomm_node *node = NULL;
 	DBusMessage *reply = NULL;
+	char *ptr;
+
+	reply = dbus_message_new_method_return(c->msg);
+	if (!reply) {
+		error_failed(c->conn, c->msg, ENOMEM);
+		goto failed;
+	}
+
+	ptr = node->name;
+	if (!dbus_message_append_args(reply,
+				      DBUS_TYPE_STRING, &ptr,
+				      DBUS_TYPE_INVALID)) {
+		error_failed(c->conn, c->msg, ENOMEM);
+		goto failed;
+	}
+
+	node->owner = strdup(dbus_message_get_sender(c->msg));
+	if (!node->owner) {
+		error_failed(c->conn, c->msg, ENOMEM);
+		goto failed;
+	}
+
+	node->io = g_io_channel_unix_new(fd);
+	g_io_channel_set_close_on_unref(node->io, TRUE);
+	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_HUP,
+				     (GIOFunc) rfcomm_disconnect_cb, node);
+
+	send_reply_and_unref(c->conn, reply);
+
+	connected_nodes = slist_append(connected_nodes, node);
+
+	goto done;
+
+failed:
+	close(fd);
+	rfcomm_release(node, NULL);
+	rfcomm_node_free(node);
+	if (reply)
+		dbus_message_unref(reply);
+done:
+	pending_connects = slist_remove(pending_connects, c);
+	pending_connect_free(c);
+}
+
+static gboolean rfcomm_connect_cb_continue(void *data)
+{
+	struct pending_connect *c = data;
+	struct rfcomm_node *node = c->node;
+	int fd;
+
+	fd = open(node->name, O_RDONLY | O_NOCTTY);
+	if (fd < 0) {
+		if (++c->ntries >= MAX_OPEN_TRIES) {
+			int err = errno;
+			error("Could not open %s: %s (%d)",
+			      node->name, strerror(err), err);
+			error_connection_attempt_failed(c->conn, c->msg, err);
+			goto failed;
+		}
+		return TRUE;
+	}
+
+	rfcomm_connect_cb_devnode_opened(fd, c, node);
+
+	return FALSE;
+
+failed:
+	rfcomm_release(node, NULL);
+	rfcomm_node_free(node);
+
+	pending_connects = slist_remove(pending_connects, c);
+	pending_connect_free(c);
+
+	return FALSE;
+}
+
+static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
+				  struct pending_connect *c)
+{
+	struct rfcomm_node *node = NULL;
+	struct rfcomm_dev_req req;
+	int sk, ret, err, fd = -1;
+	socklen_t len;
 
 	if (c->canceled) {
 		error_connect_canceled(c->conn, c->msg);
@@ -267,65 +350,22 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	rfcomm_node_name_from_id(node->id, node->name, sizeof(node->name));
 
-	/* FIXME: instead of looping here we should create a timer and
-	 * return to the mainloop */
-	for (i = 0; i < MAX_OPEN_TRIES; i++) {
-		fd = open(node->name, O_RDONLY | O_NOCTTY);
-		if (fd >= 0)
-			break;
-		usleep(OPEN_WAIT);
-	}
-
+	fd = open(node->name, O_RDONLY | O_NOCTTY);
 	if (fd < 0) {
-		err = errno;
-		error("Could not open %s: %s (%d)", node->name,
-				strerror(err), err);
-		error_connection_attempt_failed(c->conn, c->msg, err);
-		goto failed;
+		c->node = node;
+		c->ntries = 0;
+		g_timeout_add(OPEN_WAIT, rfcomm_connect_cb_continue, c);
+		return FALSE;
 	}
 
-	reply = dbus_message_new_method_return(c->msg);
-	if (!reply) {
-		error_failed(c->conn, c->msg, ENOMEM);
-		goto failed;
-	}
+	rfcomm_connect_cb_devnode_opened(fd, c, node);
 
-	ptr = node->name;
-	if (!dbus_message_append_args(reply,
-				DBUS_TYPE_STRING, &ptr,
-				DBUS_TYPE_INVALID)) {
-		error_failed(c->conn, c->msg, ENOMEM);
-		goto failed;
-	}
-
-	node->owner = strdup(dbus_message_get_sender(c->msg));
-	if (!node->owner) {
-		error_failed(c->conn, c->msg, ENOMEM);
-		goto failed;
-	}
-
-        node->io = g_io_channel_unix_new(fd);
-	g_io_channel_set_close_on_unref(node->io, TRUE);
-	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_HUP,
-					(GIOFunc) rfcomm_disconnect_cb, node);
-
-	send_reply_and_unref(c->conn, reply);
-
-	connected_nodes = slist_append(connected_nodes, node);
-
-	goto done;
+	return FALSE;
 
 failed:
-	if (fd >= 0)
-		close(fd);
-	if (node) {
-		if (node->id >= 0)
-			rfcomm_release(node, NULL);
+	if (node)
 		rfcomm_node_free(node);
-	}
-	if (reply)
-		dbus_message_unref(reply);
-done:
+
 	pending_connects = slist_remove(pending_connects, c);
 	pending_connect_free(c);
 
