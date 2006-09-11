@@ -105,6 +105,15 @@ typedef enum {
 	SDP_ATTR_REQ_RANGE
 } sdp_attrreq_type_t;
 
+/*
+ * 	When the pdu_id(type) is a sdp error response, check the status value
+ * 	to figure out the error reason. For status values 0x0001-0x0006 check
+ * 	Bluetooth SPEC. If the status is 0xffff, call sdp_get_error function
+ * 	to get the real reason:
+ * 	    - wrong transaction ID(EPROTO)
+ * 	    - wrong PDU id or(EPROTO)
+ * 	    - I/O error
+ */
 typedef void sdp_callback_t(uint8_t type, uint16_t status, uint8_t *rsp, size_t size, void *udata);
 
 /*
@@ -127,6 +136,7 @@ int sdp_get_socket(const sdp_session_t *session);
  * SDP transaction: functions for asynchronous search.
  */
 sdp_session_t *sdp_create(int sk, uint32_t flags);
+int sdp_get_error(sdp_session_t *session);
 int sdp_process(sdp_session_t *session);
 int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata);
 

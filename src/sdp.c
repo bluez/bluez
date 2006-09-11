@@ -3050,6 +3050,7 @@ struct sdp_transaction {
 	uint8_t *reqbuf;	/* pointer to request PDU */
 	sdp_buf_t rsp_concat_buf;
 	uint32_t reqsize;	/* without cstate */
+	int err;		/* ZERO if success or the errno if failed */
 };
 
 /*
@@ -3438,6 +3439,35 @@ end:
 }
 
 /*
+ * Function used to get the error reason after sdp_callback_t function has been called
+ * and the status is 0xffff. It indicates that an error NOT related to SDP_ErrorResponse
+ * happened. Get errno directly is not safe because multiple transactions can be triggered.
+ * This function must be used with asynchronous sdp functions only.
+ *
+ * INPUT:
+ *  sdp_session_t *session
+ *	Current sdp session to be handled
+ * RETURN:
+ * 	 0 = No error in the current transaction
+ * 	-1 - if the session is invalid
+ * 	positive value - the errno value
+ *
+ */
+int sdp_get_error(sdp_session_t *session)
+{
+	struct sdp_transaction *t;
+
+	if (!session || !session->priv) {
+		SDPERR("Invalid session");
+		return -1;
+	}
+
+	t = session->priv;
+
+	return t->err;
+}
+
+/*
  * Receive the incomming SDP PDU. This function must be called when there is data
  * available to be read. On continuation state, the original request (with a new
  * transaction ID) and the continuation state data will be appended in the initial PDU.
@@ -3452,14 +3482,14 @@ end:
  */
 int sdp_process(sdp_session_t *session)
 {
-	struct sdp_transaction *t = NULL;
-	sdp_pdu_hdr_t *reqhdr = NULL;
-	sdp_pdu_hdr_t *rsphdr = NULL;
-	sdp_cstate_t *pcstate = NULL;
-	uint8_t *pdata = NULL, *rspbuf = NULL, *targetPtr = NULL;
-	int rsp_count = 0, err = -1;
+	struct sdp_transaction *t;
+	sdp_pdu_hdr_t *reqhdr, *rsphdr;
+	sdp_cstate_t *pcstate;
+	uint8_t *pdata, *rspbuf, *targetPtr;
+	int rsp_count, err = -1;
 	size_t size = 0;
-	uint16_t status = 0;
+	uint16_t status = 0xffff;
+	uint8_t pdu_id = 0x00;
 
 	if (!session || !session->priv) {
 		SDPERR("Invalid session");
@@ -3467,8 +3497,11 @@ int sdp_process(sdp_session_t *session)
 	}
 
 	rspbuf = malloc(SDP_RSP_BUFFER_SIZE);
-	if (!rspbuf)
+	if (!rspbuf) {
+		SDPERR("Response buffer alloc failure:%s (%d)",
+				strerror(errno), errno);
 		return -1;
+	}
 
 	memset(rspbuf, 0, SDP_RSP_BUFFER_SIZE);
 
@@ -3476,20 +3509,21 @@ int sdp_process(sdp_session_t *session)
 	reqhdr = (sdp_pdu_hdr_t *)t->reqbuf;
 	rsphdr = (sdp_pdu_hdr_t *)rspbuf;
 
-	if (sdp_read_rsp(session, rspbuf, SDP_RSP_BUFFER_SIZE) <= 0)
-		goto end;
-
-	if (reqhdr->tid != rsphdr->tid)
-		goto end;
-
 	pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
 
-        if (rsphdr->pdu_id == SDP_ERROR_RSP) {
-		status = ntohs(bt_get_unaligned((uint16_t *) pdata));
-		size = rsphdr->plen;
+	if (sdp_read_rsp(session, rspbuf, SDP_RSP_BUFFER_SIZE) <= 0) {
+		SDPERR("Read response:%s (%d)", strerror(errno), errno);
+		t->err = errno;
 		goto end;
 	}
 
+	if (reqhdr->tid != rsphdr->tid) {
+		t->err = EPROTO;
+		SDPERR("Wrong transaction ID.");
+		goto end;
+	}
+
+	pdu_id = rsphdr->pdu_id;
 	switch (rsphdr->pdu_id) {
 	uint8_t *ssr_pdata;
 	uint16_t tsrc, csrc;
@@ -3512,6 +3546,7 @@ int sdp_process(sdp_session_t *session)
 			pdata += 2 * sizeof(uint16_t); /* Ignore TSRC and CSRC */
 			rsp_count = csrc * 4;
 		}
+		status = 0x0000;
 		break;
 	case SDP_SVC_ATTR_RSP:
 	case SDP_SVC_SEARCH_ATTR_RSP:
@@ -3519,10 +3554,15 @@ int sdp_process(sdp_session_t *session)
 		SDPDBG("Attrlist byte count : %d\n", rsp_count);
 
 		pdata += sizeof(uint16_t); // points to attribute list
+		status = 0x0000;
 		break;
+	case SDP_ERROR_RSP:
+		status = ntohs(bt_get_unaligned((uint16_t *) pdata));
+		size = rsphdr->plen;
+		goto end;
 	default:
-		/* FIXME: how handle this situation?  */
-		SDPDBG("Illegal PDU ID!");
+		t->err = EPROTO;
+		SDPERR("Illegal PDU ID: 0x%x", rsphdr->pdu_id);
 		goto end;
 	}
 
@@ -3531,7 +3571,7 @@ int sdp_process(sdp_session_t *session)
 	SDPDBG("Cstate length : %d\n", pcstate->length);
 	/*
 	 * This is a split response, need to concatenate intermediate
-	 * responses and the last one which will have cstate_len == 0
+	 * responses and the last one which will have cstate length == 0
 	 */
 
 	// build concatenated response buffer
@@ -3546,7 +3586,7 @@ int sdp_process(sdp_session_t *session)
 
 		reqhdr->tid = htons(sdp_gen_tid(session));
 
-		// add continuation state (can be null)
+		// add continuation state
 		cstate_len = copy_cstate(t->reqbuf + t->reqsize, pcstate);
 
 		reqsize = t->reqsize + cstate_len;
@@ -3555,8 +3595,9 @@ int sdp_process(sdp_session_t *session)
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 	
 		if (sdp_send_req(session, t->reqbuf, reqsize) < 0) {
-			SDPERR("Error sendind data:%s", strerror(errno));
-			/* FIXME: how handle this error ? */
+			SDPERR("Error sendind data:%s(%d)", strerror(errno), errno);
+			status = 0xffff;
+			t->err = errno;
 			goto end;
 		}
 		err = 0;
@@ -3568,10 +3609,8 @@ end:
 			pdata = t->rsp_concat_buf.data;
 			size = t->rsp_concat_buf.data_size;
 		}
-
 		if (t->cb)
-			t->cb(rsphdr->pdu_id, status, pdata,
-				size, t->udata);
+			t->cb(pdu_id, status, pdata, size, t->udata);
 	}
 
 	if (rspbuf)
