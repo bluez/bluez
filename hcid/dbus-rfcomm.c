@@ -258,6 +258,11 @@ static gboolean rfcomm_connect_cb_continue(void *data)
 	struct rfcomm_node *node = c->node;
 	int fd;
 
+	if (c->canceled) {
+		error_connect_canceled(c->conn, c->msg);
+		goto failed;
+	}
+
 	fd = open(node->name, O_RDONLY | O_NOCTTY);
 	if (fd < 0) {
 		if (++c->ntries >= MAX_OPEN_TRIES) {
