@@ -1220,7 +1220,7 @@ sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid)
 			if (sdp_get_service_classes(r->record, &list) != 0)
 				continue;
 			
-			if (sdp_list_find(list, &uuid, sdp_uuid_comp_func))
+			if (sdp_list_find(list, uuid, sdp_uuid_comp_func))
 				return r->record;
 		}
 	}
