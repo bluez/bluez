@@ -485,6 +485,20 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 	if (!ctxt)
 		return;
 
+	if (err == 0xffff) {
+		/* Check for protocol error or I/O error */
+		int sdp_err = sdp_get_error(ctxt->session);
+		if (sdp_err < 0) {
+			error("search failed: Invalid session!");
+			error_failed(ctxt->conn, ctxt->rq, EINVAL);
+			return;
+		}
+
+		error("search failed :%s (%d)", strerror(sdp_err), sdp_err);
+		error_failed(ctxt->conn, ctxt->rq, sdp_err);
+		return;
+	}
+
 	if (type == SDP_ERROR_RSP) {
 		error_sdp_failed(ctxt->conn, ctxt->rq, err);
 		return;
@@ -543,6 +557,20 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 
 	if (!ctxt)
 		return;
+
+	if (err == 0xffff) {
+		/* Check for protocol error or I/O error */
+		int sdp_err = sdp_get_error(ctxt->session);
+		if (sdp_err < 0) {
+			error("search failed: Invalid session!");
+			error_failed(ctxt->conn, ctxt->rq, EINVAL);
+			return;
+		}
+
+		error("search failed :%s (%d)", strerror(sdp_err), sdp_err);
+		error_failed(ctxt->conn, ctxt->rq, sdp_err);
+		return;
+	}
 
 	if (type == SDP_ERROR_RSP) {
 		error_sdp_failed(ctxt->conn, ctxt->rq, err);
@@ -621,6 +649,20 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 
 	if (!ctxt)
 		return;
+
+	if (err == 0xffff) {
+		/* Check for protocol error or I/O error */
+		int sdp_err = sdp_get_error(ctxt->session);
+		if (sdp_err < 0) {
+			error("search failed: Invalid session!");
+			error_failed(ctxt->conn, ctxt->rq, EINVAL);
+			return;
+		}
+
+		error("search failed :%s (%d)", strerror(sdp_err), sdp_err);
+		error_failed(ctxt->conn, ctxt->rq, sdp_err);
+		return;
+	}
 
 	if (type == SDP_ERROR_RSP) {
 		error_sdp_failed(ctxt->conn, ctxt->rq, err);
