@@ -181,6 +181,7 @@ static int rfcomm_release(struct rfcomm_node *node, int *err)
 
 	memset(&req, 0, sizeof(req));
 	req.dev_id = node->id;
+	req.flags = (1 << RFCOMM_HANGUP_NOW);
 
 	if (ioctl(rfcomm_ctl, RFCOMMRELEASEDEV, &req) < 0) {
 		if (err)
