@@ -227,7 +227,7 @@ static int str2identifier(const char *identifier, char *address,
 	memset(address, 0, 18);
 	snprintf(address, 18, "%s", identifier);
 
-	return (sscanf(identifier + 18, "%u", handle) > 0 ? 0 : -1);
+	return (sscanf(identifier + 18, "%x", handle) > 0 ? 0 : -1);
 }
 
 static struct service_record *service_record_new(sdp_record_t *rec)
