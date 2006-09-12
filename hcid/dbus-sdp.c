@@ -520,11 +520,6 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_BYTE_AS_STRING, &array_iter);
 
-	/* 
-	 * FIXME: check rsp? How check for I/O error or wrong transaction id?
-	 * check the type value(Zero) is not reasonable!
-	 */
-
 	rec = sdp_extract_pdu(rsp, &scanned);
 	if (rec == NULL) {
 		error("SVC REC is null");
@@ -593,10 +588,6 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_UINT32_AS_STRING, &array_iter);
 
-	/* 
-	 * FIXME: check rsp? How check for I/O error or wrong transaction id?
-	 * check the type value(Zero) is not reasonable!
-	 */
 	pdata = rsp;
 	scanned = sdp_extract_seqtype(pdata, &dataType, &seqlen);
 
@@ -689,10 +680,6 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	/* 
-	 * FIXME: check rsp? How check for I/O error or wrong transaction id?
-	 * check the type value(Zero) is not reasonable!
-	 */
 	pdata = rsp;
 
 #ifdef SERVICE_SEARCH_ATTR_REQ
