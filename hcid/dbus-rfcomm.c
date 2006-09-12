@@ -59,6 +59,8 @@ struct rfcomm_node {
 	int16_t		id;		/* Device id */
 	char		name[16];       /* Node filename */
 
+	DBusConnection	*conn;		/* for name listener handling */
+
 	/* The following members are only valid for connected nodes */
 	GIOChannel	*io;		/* IO Channel for the connection */
 	guint		io_id;		/* ID for IO channel */
@@ -93,6 +95,12 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 {
 	if (node->owner)
 		free(node->owner);
+	if (node->io) {
+		g_io_remove_watch(node->io_id);
+		g_io_channel_unref(node->io);
+	}
+	if (node->conn)
+		dbus_connection_unref(node->conn);
 	free(node);
 }
 
@@ -173,12 +181,6 @@ static int rfcomm_release(struct rfcomm_node *node, int *err)
 
 	debug("rfcomm_release(%s)", node->name);
 
-	if (node->io) {
-		g_io_remove_watch(node->io_id);
-		g_io_channel_unref(node->io);
-		node->io = NULL;
-	}
-
 	memset(&req, 0, sizeof(req));
 	req.dev_id = node->id;
 	req.flags = (1 << RFCOMM_HANGUP_NOW);
@@ -194,12 +196,23 @@ static int rfcomm_release(struct rfcomm_node *node, int *err)
 	return 0;
 }
 
+static void rfcomm_connect_req_exit(const char *name, void *data)
+{
+	struct rfcomm_node *node = data;
+	debug("RFCOMM.Connect() requestor %s exited. Releasing %s node",
+	      name, node->name);
+	rfcomm_release(node, NULL);
+	connected_nodes = slist_remove(connected_nodes, node);
+	rfcomm_node_free(node);
+}
+
 static gboolean rfcomm_disconnect_cb(GIOChannel *io, GIOCondition cond,
-					struct rfcomm_node *node)
+				     struct rfcomm_node *node)
 {
 	debug("RFCOMM node %s was disconnected", node->name);
+	name_listener_remove(node->conn, node->owner,
+			     rfcomm_connect_req_exit, node);
 	connected_nodes = slist_remove(connected_nodes, node);
-	g_io_channel_unref(node->io);
 	rfcomm_node_free(node);
 	return FALSE;
 }
@@ -239,6 +252,10 @@ static void rfcomm_connect_cb_devnode_opened(int fd,
 	send_reply_and_unref(c->conn, reply);
 
 	connected_nodes = slist_append(connected_nodes, node);
+
+	node->conn = dbus_connection_ref(c->conn);
+	name_listener_add(node->conn, node->owner,
+			  rfcomm_connect_req_exit, node);
 
 	goto done;
 
@@ -683,21 +700,24 @@ static DBusHandlerResult rfcomm_cancel_connect_by_ch_req(DBusConnection *conn,
 }
 
 static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+					       DBusMessage *msg, void *data)
 {
+	struct rfcomm_node *node;
 	DBusMessage *reply;
 	const char *name;
-	struct rfcomm_node *node;
 	int err;
 
 	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_INVALID))
+				   DBUS_TYPE_STRING, &name,
+				   DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
 	node = find_node_by_name(connected_nodes, name);
 	if (!node)
 		return error_not_connected(conn, msg);
+
+	if (strcmp(node->owner, dbus_message_get_sender(msg)))
+		return error_not_authorized(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -708,6 +728,8 @@ static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
 		return error_failed(conn, msg, err);
 	}
 
+	name_listener_remove(node->conn, node->owner,
+			     rfcomm_connect_req_exit, node);
 	connected_nodes = slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
 
