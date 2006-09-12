@@ -52,10 +52,6 @@
 
 #define MAX_IDENTIFIER_LEN	29	/* "XX:XX:XX:XX:XX:XX/0xYYYYYYYY\0" */
 
-/* FIXME: debug purpose */
-//#define SERVICE_SEARCH_ATTR_REQ 1
-
-
 struct service_provider {
 	char *owner;	/* null for remote services or unique name if local */
 	char *prov;	/* remote Bluetooth address that provides the service */
@@ -591,7 +587,7 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 	pdata = rsp;
 	scanned = sdp_extract_seqtype(pdata, &dataType, &seqlen);
 
-	if (!scanned || !seqlen)
+	if (scanned <=0  || seqlen <= 0)
 		goto done;
 
 	pdata += scanned;
@@ -630,13 +626,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	DBusMessageIter iter, array_iter;
 	const char *dst;
 	uint8_t *pdata;
-	int scanned = 0;
-#ifdef SERVICE_SEARCH_ATTR_REQ
-	uint8_t dataType = 0;
-	int seqlen = 0;
-#else
-	int csrc, tsrc; 
-#endif
+	int scanned, csrc, tsrc;
 
 	if (!ctxt)
 		return;
@@ -661,11 +651,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	}
 
 	/* check response PDU ID */
-#ifdef SERVICE_SEARCH_ATTR_REQ
-	if (type != SDP_SVC_SEARCH_ATTR_RSP) {
-#else
 	if (type != SDP_SVC_SEARCH_RSP) {
-#endif
 		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
 		error_failed(ctxt->conn, ctxt->rq, EPROTO);
 		return;
@@ -682,55 +668,24 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 
 	pdata = rsp;
 
-#ifdef SERVICE_SEARCH_ATTR_REQ
-	scanned = sdp_extract_seqtype(pdata, &dataType, &seqlen);
-
-	if (!scanned || !seqlen)
-		goto done;
-
-	pdata += scanned;
-#else
-	// net service record match count
 	tsrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
-	pdata += sizeof(uint16_t);
-	scanned += sizeof(uint16_t);
-	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
-	pdata += sizeof(uint16_t);
-	scanned += sizeof(uint16_t);
-
-	debug("Total svc count: %d\n", tsrc);
-	debug("Current svc count: %d\n", csrc);
-
-	if (!csrc)
+	if (tsrc <= 0)
 		goto done;
-#endif
 
-#ifdef SERVICE_SEARCH_ATTR_REQ
-	do {
-		int recsize = 0;
-		sdp_record_t *rec = sdp_extract_pdu(pdata, &recsize);
-		if (rec == NULL) {
-			error("SVC REC is null");
-			goto done;
-		}
-		if (!recsize) {
-			sdp_record_free(rec);
-			break;
-		}
+	pdata += sizeof(uint16_t);
+	scanned = sizeof(uint16_t);
 
-		scanned += recsize;
-		pdata += recsize;
+	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
+	if (csrc <= 0) 
+		goto done;
 
-	        sdp_cache_append(NULL, dst, rec);
-		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, rec->handle);
-		dbus_message_iter_append_basic(&array_iter,
-				DBUS_TYPE_STRING, &ptr);
-	} while (scanned < size);
-#else
+	pdata += sizeof(uint16_t);
+	scanned += sizeof(uint16_t);
+
 	do {
 		uint32_t handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
-		scanned+= sizeof(uint32_t);
-		pdata+=sizeof(uint32_t);
+		scanned += sizeof(uint32_t);
+		pdata += sizeof(uint32_t);
 
 		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, handle);
 
@@ -738,7 +693,6 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 				DBUS_TYPE_STRING, &ptr);
 	} while (--tsrc);
 
-#endif
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_reply_and_unref(ctxt->conn, reply);
@@ -988,11 +942,7 @@ static int get_identifiers_conn_cb(struct transaction_context *ctxt)
 
 	attrids = sdp_list_append(NULL, &range);
 	/* Create/send the search request and set the callback to indicate the request completion */
-#ifdef SERVICE_SEARCH_ATTR_REQ
-	if (sdp_service_search_attr_async(ctxt->session, search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
-#else
 	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
-#endif
 		error("send request failed: %s (%d)", strerror(errno), errno);
 		err = -errno;
 		goto fail;
@@ -1058,11 +1008,7 @@ static int get_identifiers_by_service_conn_cb(struct transaction_context *ctxt)
 
 	attrids = sdp_list_append(NULL, &range);
 	/* Create/send the search request and set the callback to indicate the request completion */
-#ifdef SERVICE_SEARCH_ATTR_REQ
-	if (sdp_service_search_attr_async(ctxt->session, search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
-#else
 	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
-#endif
 		error("send request failed: %s (%d)", strerror(errno), errno);
 		err = -errno;
 		goto fail;
