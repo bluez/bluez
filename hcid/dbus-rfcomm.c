@@ -510,13 +510,10 @@ static sdp_record_t *get_record_from_string(const char *dst,
 	uint32_t handle;
 
 	/* Check if the string is a service name */
-	short_uuid.value.uuid16 = sdp_str2svclass(string);
+	sdp_uuid16_create(&short_uuid, sdp_str2svclass(string));
 	
 	if (short_uuid.value.uuid16) {
-		short_uuid.type = SDP_UUID16;
-		uuid = sdp_uuid_to_uuid128(&short_uuid);
-		rec = find_record_by_uuid(dst, uuid);
-		bt_free(uuid);
+		rec = find_record_by_uuid(dst, &short_uuid);
 	} else if (sscanf(string, "%8x-%4hx-%4hx-%4hx-%8x%4hx", &data0, 
 			&data1, &data2, &data3, &data4, &data5) == 6) {
 		data0 = htonl(data0);

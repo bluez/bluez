@@ -1169,24 +1169,21 @@ search_request:
 
 }
 
-static int sdp_uuid_comp_func(const void *key1, const void *key2)
-{	
-	const uuid_t *a = key1;
-	const uuid_t *b = key2;
+static int uuid_cmp(const void *key1, const void *key2)
+{
+	uuid_t *a, *b;
+	int ret_val;
 
-	if (a->type != b->type)
-		return 1;
+	/* converting to uuid128 */
+	a = sdp_uuid_to_uuid128((uuid_t *) key1);
+	b = sdp_uuid_to_uuid128((uuid_t *) key2);
 	
-	switch (a->type) {
-	case SDP_UUID16:		
-		return !(a->value.uuid16 == b->value.uuid16);
-        case SDP_UUID32:
-		return !(a->value.uuid32 == b->value.uuid32);
-        case SDP_UUID128:
-		return !memcmp(&a->value.uuid128, &b->value.uuid128, 
-			       sizeof(uint128_t));
-	}
-	return 1;
+	ret_val = sdp_uuid128_cmp(a, b);
+
+	bt_free(a);
+	bt_free(b);
+
+	return ret_val;
 }
 
 sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid)
@@ -1207,7 +1204,7 @@ sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid)
 			if (sdp_get_service_classes(r->record, &list) != 0)
 				continue;
 			
-			if (sdp_list_find(list, uuid, sdp_uuid_comp_func))
+			if (sdp_list_find(list, uuid, uuid_cmp))
 				return r->record;
 		}
 	}
