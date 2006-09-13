@@ -710,7 +710,7 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 {
 	struct pending_connect *c = udata;
 	struct transaction_context *ctxt = NULL;
-	int err = 0, sk = 0;
+	int sdp_err, err = 0, sk = 0;
 	socklen_t len;
 
 	sk = g_io_channel_unix_get_fd(chan);
@@ -741,9 +741,12 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 	ctxt->session = c->session;
 
 	/* set the complete transaction callback and starts the search request */
-	err = c->conn_cb(ctxt);
-	if (err)
+	sdp_err = c->conn_cb(ctxt);
+	if (sdp_err < 0) {
+		err = -sdp_err;
+		error("search failed: %s (%d)", strerror(err), err);
 		goto fail;
+	}
 
 	/* set the callback responsible for update the transaction data */
 	g_io_add_watch_full(chan, 0, G_IO_IN, search_process_cb,
@@ -808,7 +811,6 @@ static int remote_svc_rec_conn_cb(struct transaction_context *ctxt)
 	int err = 0;
 
 	if (sdp_set_notify(ctxt->session, remote_svc_rec_completed_cb, ctxt) < 0) {
-		error("Invalid session data!");
 		err = -EINVAL;
 		goto fail;
 	}
@@ -821,8 +823,7 @@ static int remote_svc_rec_conn_cb(struct transaction_context *ctxt)
 	attrids = sdp_list_append(NULL, &range);
 	/* Create/send the search request and set the callback to indicate the request completion */
 	if (sdp_service_attr_async(ctxt->session, handle, SDP_ATTR_REQ_RANGE, attrids) < 0) {
-		error("send request failed: %s (%d)", strerror(errno), errno);
-		err = -errno;
+		err = -sdp_get_error(ctxt->session);
 		goto fail;
 	}
 
@@ -864,7 +865,6 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 	int err = 0;
 
 	if (sdp_set_notify(ctxt->session, remote_svc_handles_completed_cb, ctxt) < 0) {
-		error("Invalid session data!");
 		err = -EINVAL;
 		goto fail;
 	}
@@ -875,7 +875,7 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 	/* Create/send the search request and set the callback to indicate the request completion */
 	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
-		err = -errno;
+		err = -sdp_get_error(ctxt->session);
 		goto fail;
 	}
 
@@ -915,7 +915,6 @@ static int get_identifiers_conn_cb(struct transaction_context *ctxt)
 	int err = 0;
 
 	if (sdp_set_notify(ctxt->session, search_completed_cb, ctxt) < 0) {
-		error("Invalid session data!");
 		err = -EINVAL;
 		goto fail;
 	}
@@ -925,8 +924,7 @@ static int get_identifiers_conn_cb(struct transaction_context *ctxt)
 
 	/* Create/send the search request and set the callback to indicate the request completion */
 	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
-		error("send request failed: %s (%d)", strerror(errno), errno);
-		err = -errno;
+		err = -sdp_get_error(ctxt->session);
 		goto fail;
 	}
 
@@ -970,7 +968,6 @@ static int get_identifiers_by_service_conn_cb(struct transaction_context *ctxt)
 	int err = 0;
 
 	if (sdp_set_notify(ctxt->session, search_completed_cb, ctxt) < 0) {
-		error("Invalid session data!");
 		err = -EINVAL;
 		goto fail;
 	}
@@ -986,8 +983,7 @@ static int get_identifiers_by_service_conn_cb(struct transaction_context *ctxt)
 
 	/* Create/send the search request and set the callback to indicate the request completion */
 	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
-		error("send request failed: %s (%d)", strerror(errno), errno);
-		err = -errno;
+		err = -sdp_get_error(ctxt->session);
 		goto fail;
 	}
 
