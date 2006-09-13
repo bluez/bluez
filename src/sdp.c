@@ -3204,10 +3204,9 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	return 0;
 end:
 
-	if (t) {
-		if (t->reqbuf)
-			free(t->reqbuf);
-		free(t);
+	if (t->reqbuf) {
+		free(t->reqbuf);
+		t->reqbuf = NULL;
 	}
 
 	return -1;
@@ -3314,10 +3313,9 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 	return 0;
 end:
 
-	if (t) {
-		if (t->reqbuf)
-			free(t->reqbuf);
-		free(t);
+	if (t->reqbuf) {
+		free(t->reqbuf);
+		t->reqbuf = NULL;
 	}
 
 	return -1;
@@ -3429,10 +3427,9 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	return 0;
 end:
 
-	if (t) {
-		if (t->reqbuf)
-			free(t->reqbuf);
-		free(t);
+	if (t->reqbuf) {
+		free(t->reqbuf);
+		t->reqbuf = NULL;
 	}
 
 	return -1;
