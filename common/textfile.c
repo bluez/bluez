@@ -219,6 +219,7 @@ static int write_key(const char *pathname, const char *key, const char *value, i
 	munmap(map, size);
 	if (ftruncate(fd, base) < 0) {
 		err = errno;
+		free(str);
 		goto unlock;
 	}
 	pos = lseek(fd, base, SEEK_SET);
@@ -384,6 +385,7 @@ int textfile_foreach(const char *pathname,
 		end = strpbrk(off, "\r\n");
 		if (!end) {
 			err = EILSEQ;
+			free(key);
 			break;
 		}
 
@@ -392,6 +394,7 @@ int textfile_foreach(const char *pathname,
 		value = malloc(len + 1);
 		if (!value) {
 			err = errno;
+			free(key);
 			break;
 		}
 
