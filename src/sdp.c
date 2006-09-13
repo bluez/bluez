@@ -3159,14 +3159,20 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 		return -1;
 
 	t = session->priv;
-	t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
-	if (!t->reqbuf) {
-		t->err = ENOMEM;
-		goto end;
-	}
 
+	/* check if the buffer is already allocated */
+	if (t->rsp_concat_buf.data)
+		free(t->rsp_concat_buf.data);
+	memset(&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
+
+	if (!t->reqbuf) {
+		t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
+		if (!t->reqbuf) {
+			t->err = ENOMEM;
+			goto end;
+		}
+	}
 	memset(t->reqbuf, 0, SDP_REQ_BUFFER_SIZE);
-	memset((char *)&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
 
 	reqhdr = (sdp_pdu_hdr_t *) t->reqbuf;
 	reqhdr->tid = htons(sdp_gen_tid(session));
@@ -3257,14 +3263,20 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 		return -1;
 
 	t = session->priv;
-	t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
-	if (!t->reqbuf) {
-		t->err = ENOMEM;
-		goto end;
-	}
 
+	/* check if the buffer is already allocated */
+	if (t->rsp_concat_buf.data)
+		free(t->rsp_concat_buf.data);
+	memset(&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
+
+	if (!t->reqbuf) {
+		t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
+		if (!t->reqbuf) {
+			t->err = ENOMEM;
+			goto end;
+		}
+	}
 	memset(t->reqbuf, 0, SDP_REQ_BUFFER_SIZE);
-	memset((char *)&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
 
 	reqhdr = (sdp_pdu_hdr_t *) t->reqbuf;
 	reqhdr->tid = htons(sdp_gen_tid(session));
@@ -3366,14 +3378,20 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 		return -1;
 
 	t = session->priv;
-	t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
-	if (!t->reqbuf) {
-		t->err = ENOMEM;
-		goto end;
-	}
 
+	/* check if the buffer is already allocated */
+	if (t->rsp_concat_buf.data)
+		free(t->rsp_concat_buf.data);
+	memset(&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
+
+	if (!t->reqbuf) {
+		t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
+		if (!t->reqbuf) {
+			t->err = ENOMEM;
+			goto end;
+		}
+	}
 	memset(t->reqbuf, 0, SDP_REQ_BUFFER_SIZE);
-	memset((char *)&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
 
 	reqhdr = (sdp_pdu_hdr_t *) t->reqbuf;
 	reqhdr->tid = htons(sdp_gen_tid(session));
