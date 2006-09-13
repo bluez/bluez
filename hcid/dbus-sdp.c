@@ -912,9 +912,8 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 
 static int get_identifiers_conn_cb(struct transaction_context *ctxt)
 {
-	sdp_list_t *search = NULL, *attrids = NULL;
+	sdp_list_t *search = NULL;
 	uuid_t uuid;
-	uint32_t range = 0x0000ffff;
 	int err = 0;
 
 	if (sdp_set_notify(ctxt->session, search_completed_cb, ctxt) < 0) {
@@ -926,7 +925,6 @@ static int get_identifiers_conn_cb(struct transaction_context *ctxt)
 	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
 	search = sdp_list_append(0, &uuid);
 
-	attrids = sdp_list_append(NULL, &range);
 	/* Create/send the search request and set the callback to indicate the request completion */
 	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
@@ -937,9 +935,6 @@ static int get_identifiers_conn_cb(struct transaction_context *ctxt)
 fail:
 	if (search)
 		sdp_list_free(search, NULL);
-
-	if (attrids)
-		sdp_list_free(attrids, NULL);
 
 	return err;
 }
@@ -970,8 +965,7 @@ static DBusHandlerResult get_identifiers(DBusConnection *conn,
 
 static int get_identifiers_by_service_conn_cb(struct transaction_context *ctxt)
 {
-	sdp_list_t *search = NULL, *attrids = NULL;
-	uint32_t range = 0x0000ffff;
+	sdp_list_t *search = NULL;
 	const char *dst, *svc;
 	uuid_t uuid;
 	uint16_t class;
@@ -992,7 +986,6 @@ static int get_identifiers_by_service_conn_cb(struct transaction_context *ctxt)
 	sdp_uuid16_create(&uuid, class);
 	search = sdp_list_append(0, &uuid);
 
-	attrids = sdp_list_append(NULL, &range);
 	/* Create/send the search request and set the callback to indicate the request completion */
 	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
@@ -1003,9 +996,6 @@ static int get_identifiers_by_service_conn_cb(struct transaction_context *ctxt)
 fail:
 	if (search)
 		sdp_list_free(search, NULL);
-
-	if (attrids)
-		sdp_list_free(attrids, NULL);
 
 	return err;
 }
