@@ -3155,15 +3155,13 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	uint8_t *pdata;
 	int cstate_len, seqlen = 0;
 
-	if (!session || !session->priv) {
-		errno = EINVAL;
+	if (!session || !session->priv)
 		return -1;
-	}
 
 	t = session->priv;
 	t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
 	if (!t->reqbuf) {
-		errno = ENOMEM;
+		t->err = ENOMEM;
 		goto end;
 	}
 
@@ -3191,13 +3189,13 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	t->reqsize += sizeof(uint16_t);
 	pdata += sizeof(uint16_t);
 
-	
 	// set the request header's param length
 	cstate_len = copy_cstate(pdata, NULL);
 	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
 	if (sdp_send_req(session, t->reqbuf, t->reqsize + cstate_len) < 0) {
 		SDPERR("Error sendind data:%s", strerror(errno));
+		t->err = errno;
 		goto end;
 	}
 
@@ -3255,15 +3253,13 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 	uint8_t *pdata;
 	int cstate_len, seqlen = 0;
 
-	if (!session || !session->priv) {
-		errno = EINVAL;
+	if (!session || !session->priv)
 		return -1;
-	}
 
 	t = session->priv;
 	t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
 	if (!t->reqbuf) {
-		errno = ENOMEM;
+		t->err = ENOMEM;
 		goto end;
 	}
 
@@ -3292,7 +3288,7 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 	seqlen = gen_attridseq_pdu(pdata, attrid_list,
 			reqtype == SDP_ATTR_REQ_INDIVIDUAL? SDP_UINT16 : SDP_UINT32);
 	if (seqlen == -1) {
-		errno = EINVAL;
+		t->err = EINVAL;
 		goto end;
 	}
 
@@ -3307,6 +3303,7 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 
 	if (sdp_send_req(session, t->reqbuf, t->reqsize + cstate_len) < 0) {
 		SDPERR("Error sendind data:%s", strerror(errno));
+		t->err = errno;
 		goto end;
 	}
 
@@ -3365,15 +3362,13 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	uint8_t *pdata;
 	int cstate_len, seqlen = 0;
 
-	if (!session || !session->priv) {
-		errno = EINVAL;
+	if (!session || !session->priv)
 		return -1;
-	}
 
 	t = session->priv;
 	t->reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
 	if (!t->reqbuf) {
-		errno = ENOMEM;
+		t->err = ENOMEM;
 		goto end;
 	}
 
@@ -3407,7 +3402,7 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	seqlen = gen_attridseq_pdu(pdata, attrid_list,
 			reqtype == SDP_ATTR_REQ_INDIVIDUAL ? SDP_UINT16 : SDP_UINT32);
 	if (seqlen == -1) {
-		errno = EINVAL;
+		t->err = EINVAL;
 		goto end;
 	}
 
@@ -3421,6 +3416,7 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 
 	if (sdp_send_req(session, t->reqbuf, t->reqsize + cstate_len) < 0) {
 		SDPERR("Error sendind data:%s", strerror(errno));
+		t->err = errno;
 		goto end;
 	}
 
@@ -3437,8 +3433,9 @@ end:
 
 /*
  * Function used to get the error reason after sdp_callback_t function has been called
- * and the status is 0xffff. It indicates that an error NOT related to SDP_ErrorResponse
- * happened. Get errno directly is not safe because multiple transactions can be triggered.
+ * and the status is 0xffff or if sdp_service_{search, attr, search_attr}_async returns -1.
+ * It indicates that an error NOT related to SDP_ErrorResponse happened. Get errno directly
+ * is not safe because multiple transactions can be triggered.
  * This function must be used with asynchronous sdp functions only.
  *
  * INPUT:
