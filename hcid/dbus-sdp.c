@@ -189,6 +189,9 @@ static void pending_connect_free(struct pending_connect *c)
 	if (!c)
 		return;
 
+	if (c->dst)
+		free(c->dst);
+
 	if (c->rq)
 		dbus_message_unref(c->rq);
 
