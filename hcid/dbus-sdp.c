@@ -442,25 +442,20 @@ static gboolean search_process_cb(GIOChannel *chan, GIOCondition cond, void *uda
 	struct transaction_context *ctxt = udata;
 	int sk, err = 0;
 	socklen_t len;
-	const char *dst;
-
-	dbus_message_get_args(ctxt->rq, NULL,
-			DBUS_TYPE_STRING, &dst,
-			DBUS_TYPE_INVALID);
 
 	sk = g_io_channel_unix_get_fd(chan);
 
 	len = sizeof(err);
 
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
-		error("getsockopt(): %s, (%d)", strerror(errno), errno);
+		error("getsockopt(): %s (%d)", strerror(errno), errno);
 		error_failed(ctxt->conn, ctxt->rq, errno);
 		goto fail;
 	}
 
 	if (err != 0) {
 		error_failed(ctxt->conn, ctxt->rq, err);
-		error("sock error:s(%d)", strerror(err), err);
+		error("sock error: %s (%d)", strerror(err), err);
 		goto fail;
 	}
 	if (!sdp_process(ctxt->session))
@@ -493,7 +488,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 			return;
 		}
 
-		error("search failed :%s (%d)", strerror(sdp_err), sdp_err);
+		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
 		error_failed(ctxt->conn, ctxt->rq, sdp_err);
 		return;
 	}
@@ -505,7 +500,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 
 	/* check response PDU ID */
 	if (type != SDP_SVC_ATTR_RSP) {
-		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
+		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
 		error_failed(ctxt->conn, ctxt->rq, EPROTO);
 		return;
 	}
@@ -558,7 +553,7 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 			return;
 		}
 
-		error("search failed :%s (%d)", strerror(sdp_err), sdp_err);
+		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
 		error_failed(ctxt->conn, ctxt->rq, sdp_err);
 		return;
 	}
@@ -570,7 +565,7 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 
 	/* check response PDU ID */
 	if (type != SDP_SVC_SEARCH_RSP) {
-		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
+		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
 		error_failed(ctxt->conn, ctxt->rq, EPROTO);
 		return;
 	}
@@ -634,7 +629,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 			return;
 		}
 
-		error("search failed :%s (%d)", strerror(sdp_err), sdp_err);
+		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
 		error_failed(ctxt->conn, ctxt->rq, sdp_err);
 		return;
 	}
@@ -646,7 +641,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 
 	/* check response PDU ID */
 	if (type != SDP_SVC_SEARCH_RSP) {
-		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
+		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
 		error_failed(ctxt->conn, ctxt->rq, EPROTO);
 		return;
 	}
@@ -723,13 +718,13 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void 
 	len = sizeof(err);
 
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
-		error("getsockopt(): %s, (%d)", strerror(errno), errno);
+		error("getsockopt(): %s (%d)", strerror(errno), errno);
 		err = errno;
 		goto fail;
 	}
 
 	if (err != 0) {
-		error("connect(): %s(%d)", strerror(err), err);
+		error("connect(): %s (%d)", strerror(err), err);
 		goto fail;
 	}
 
@@ -790,7 +785,7 @@ static int connect_request(DBusConnection *conn, DBusMessage *msg,
 	if (!c->session) {
 		if (err)
 			*err = errno;
-		error("sdp_connect() failed:%s (%d)", strerror(errno), errno);
+		error("sdp_connect() failed: %s (%d)", strerror(errno), errno);
 		pending_connect_free(c);
 		return -1;
 	}
