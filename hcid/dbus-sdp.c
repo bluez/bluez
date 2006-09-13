@@ -538,13 +538,10 @@ done:
 static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
-	char identifier[MAX_IDENTIFIER_LEN];
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
-	const char *dst;
 	uint8_t *pdata;
-	uint8_t dataType = 0;
-	int scanned, seqlen = 0;
+	int scanned, csrc, tsrc;
 
 	if (!ctxt)
 		return;
@@ -569,15 +566,11 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 	}
 
 	/* check response PDU ID */
-	if (type != SDP_SVC_SEARCH_ATTR_RSP) {
+	if (type != SDP_SVC_SEARCH_RSP) {
 		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
 		error_failed(ctxt->conn, ctxt->rq, EPROTO);
 		return;
 	}
-
-	dbus_message_get_args(ctxt->rq, NULL,
-			DBUS_TYPE_STRING, &dst,
-			DBUS_TYPE_INVALID);
 
 	reply = dbus_message_new_method_return(ctxt->rq);
 	dbus_message_iter_init_append(reply, &iter);
@@ -585,32 +578,30 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 			DBUS_TYPE_UINT32_AS_STRING, &array_iter);
 
 	pdata = rsp;
-	scanned = sdp_extract_seqtype(pdata, &dataType, &seqlen);
 
-	if (scanned <=0  || seqlen <= 0)
+	tsrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
+	if (tsrc <= 0)
 		goto done;
 
-	pdata += scanned;
+	pdata += sizeof(uint16_t);
+	scanned = sizeof(uint16_t);
+
+	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
+	if (csrc <= 0) 
+		goto done;
+
+	pdata += sizeof(uint16_t);
+	scanned += sizeof(uint16_t);
+
 	do {
-		int recsize = 0;
-		sdp_record_t *rec = sdp_extract_pdu(pdata, &recsize);
-		if (rec == NULL) {
-			error("SVC REC is null");
-			goto done;
-		}
-		if (!recsize) {
-			sdp_record_free(rec);
-			break;
-		}
+		uint32_t handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
+		scanned += sizeof(uint32_t);
+		pdata += sizeof(uint32_t);
 
-		scanned += recsize;
-		pdata += recsize;
-
-	        sdp_cache_append(NULL, dst, rec);
-		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, rec->handle);
 		dbus_message_iter_append_basic(&array_iter,
-				DBUS_TYPE_UINT32, &rec->handle);
-	} while (scanned < size);
+				DBUS_TYPE_UINT32, &handle);
+	} while (--tsrc);
+
 
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
@@ -870,9 +861,8 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, voi
 
 static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 {
-	sdp_list_t *search = NULL, *attrids = NULL;
+	sdp_list_t *search = NULL;
 	uuid_t uuid;
-	uint32_t range = 0x0000ffff;
 	int err = 0;
 
 	if (sdp_set_notify(ctxt->session, remote_svc_handles_completed_cb, ctxt) < 0) {
@@ -884,9 +874,8 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
 	search = sdp_list_append(0, &uuid);
 
-	attrids = sdp_list_append(NULL, &range);
 	/* Create/send the search request and set the callback to indicate the request completion */
-	if (sdp_service_search_attr_async(ctxt->session, search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
+	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
 		err = -errno;
 		goto fail;
@@ -895,9 +884,6 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 fail:
 	if (search)
 		sdp_list_free(search, NULL);
-
-	if (attrids)
-		sdp_list_free(attrids, NULL);
 
 	return err;
 }
