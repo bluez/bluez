@@ -2064,15 +2064,14 @@ static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMe
 	return send_reply_and_unref(conn, reply);
 }
 
+static void list_bondings_do_append(char *key, char *value, void *data)
+{
+	DBusMessageIter *iter = data;
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
+}
+
 static DBusHandlerResult handle_dev_list_bondings_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	void do_append(char *key, char *value, void *data)
-	{
-		DBusMessageIter *iter = data;
-
-		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
-	}
-
 	struct hci_dbus_data *dbus_data = data;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
@@ -2091,7 +2090,7 @@ static DBusHandlerResult handle_dev_list_bondings_req(DBusConnection *conn, DBus
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	textfile_foreach(filename, do_append, &array_iter);
+	textfile_foreach(filename, list_bondings_do_append, &array_iter);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
