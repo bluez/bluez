@@ -1307,6 +1307,13 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 	cancel_passkey_agent_requests(pdata->passkey_agents, path, &dev->bdaddr);
 	release_passkey_agents(pdata, &dev->bdaddr);
 
+	l = slist_find(pdata->pin_reqs, &dev->bdaddr, pin_req_cmp);
+	if (l) {
+		struct pending_pin_req *p = l->data;
+		pdata->pin_reqs = slist_remove(pdata->pin_reqs, p);
+		free(p);
+	}
+
 	/* Check if there is a pending CreateBonding request */
 	if (pdata->bonding && (bacmp(&pdata->bonding->bdaddr, &dev->bdaddr) == 0)) {
 		if (pdata->bonding->cancel) {
