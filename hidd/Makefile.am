@@ -10,6 +10,6 @@ INCLUDES = -I$(top_srcdir)/common
 
 man_MANS = hidd.1
 
-EXTRA_DIST = $(man_MANS)
+EXTRA_DIST = $(man_MANS) fakehid.txt
 
 MAINTAINERCLEANFILES = Makefile.in
