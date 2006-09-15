@@ -1951,8 +1951,6 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 
 	dbus_data->bonding->cancel = 1;
 
-	g_io_channel_close(dbus_data->bonding->io);
-
 	l = slist_find(dbus_data->pin_reqs, &peer_bdaddr, pin_req_cmp);
 	if (l) {
 		struct pending_pin_info *pin_req = l->data;
@@ -1963,6 +1961,7 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 			 * was already replied it doesn't make sense cancel the
 			 * remote passkey: return not authorized.
 			 */
+			g_io_channel_close(dbus_data->bonding->io);
 			return error_not_authorized(conn, msg);
 		} else {
 			int dd = hci_open_dev(dbus_data->dev_id);
@@ -1980,6 +1979,8 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 		dbus_data->pin_reqs = slist_remove(dbus_data->pin_reqs, pin_req);
 		free(pin_req);
 	}
+
+	g_io_channel_close(dbus_data->bonding->io);
 
 	reply = dbus_message_new_method_return(msg);
 	send_reply_and_unref(conn, reply);
