@@ -86,15 +86,16 @@ struct discovered_dev_info {
 
 struct bonding_request_info {
 	bdaddr_t bdaddr;
+	DBusConnection *conn;
 	DBusMessage *rq;
+	GIOChannel *io;
+	guint io_id;
 	int cancel;
-	int disconnect; /* disconnect after finish */
 };
 
-struct pending_bonding_info {
+struct pending_pin_info {
 	bdaddr_t bdaddr;
-	int step;   /* 0: waiting host passkey  1:waiting remote passkey */
-
+	int replied;	/* If we've already replied to the request */
 };
 
 struct active_conn_info {
@@ -115,9 +116,9 @@ struct hci_dbus_data {
 	char *discovery_requestor;		/* discovery requestor unique name */
 	DBusMessage *discovery_cancel;		/* discovery cancel message request */
 	struct slist *passkey_agents;
-	struct bonding_request_info *bonding;
 	struct slist *active_conn;
-	struct slist *pending_bondings;    /* track D-Bus and non D-Bus requests */
+	struct bonding_request_info *bonding;
+	struct slist *pin_reqs;
 };
 
 struct passkey_agent {
@@ -227,7 +228,7 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 
 int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
-int pending_bonding_cmp(const void *p1, const void *p2);
+int pin_req_cmp(const void *p1, const void *p2);
 int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status, int discover_type);
 int disc_device_req_name(struct hci_dbus_data *dbus_data);
 

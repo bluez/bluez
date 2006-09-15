@@ -399,7 +399,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		hcid_dbus_request_pin(dev, sba, ci);
 	}
 
-	hcid_dbus_pending_bonding_add(sba, &ci->bdaddr);
+	hcid_dbus_pending_pin_req_add(sba, &ci->bdaddr);
 
 	free(cr);
 

@@ -27,14 +27,16 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <unistd.h>
 #include <ctype.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/l2cap.h>
 
 #include <dbus/dbus.h>
 
@@ -201,7 +203,8 @@ static int check_address(const char *addr)
 	return 0;
 }
 
-static struct bonding_request_info *bonding_request_new(bdaddr_t *peer)
+static struct bonding_request_info *bonding_request_new(bdaddr_t *peer, DBusConnection *conn,
+							DBusMessage *msg)
 {
 	struct bonding_request_info *bonding;
 
@@ -213,6 +216,9 @@ static struct bonding_request_info *bonding_request_new(bdaddr_t *peer)
 	memset(bonding, 0, sizeof(*bonding));
 
 	bacpy(&bonding->bdaddr, peer);
+
+	bonding->conn = dbus_connection_ref(conn);
+	bonding->rq = dbus_message_ref(msg);
 
 	return bonding;
 }
@@ -1690,19 +1696,164 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 
 }
 
+static int l2raw_connect(const char *local, const bdaddr_t *remote)
+{
+	struct sockaddr_l2 addr;
+	long arg;
+	int sk;
+
+	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
+	if (sk < 0) {
+		error("Can't create socket: %s (%d)", strerror(errno), errno);
+		return sk;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	str2ba(local, &addr.l2_bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		error("Can't bind socket: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	arg = fcntl(sk, F_GETFL);
+	if (arg < 0) {
+		error("Can't get file flags: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	arg |= O_NONBLOCK;
+	if (fcntl(sk, F_SETFL, arg) < 0) {
+		error("Can't set file flags: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, remote);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		if (errno == EAGAIN || errno == EINPROGRESS)
+			return sk;
+		error("Can't connect socket: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	return sk;
+
+failed:
+	close(sk);
+	return -1;
+}
+
+static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
+						struct hci_dbus_data *pdata)
+{
+	struct hci_request rq;
+	auth_requested_cp cp;
+	evt_cmd_status rp;
+	struct l2cap_conninfo cinfo;
+	socklen_t len;
+	int sk, dd, ret;
+
+	if (!pdata->bonding) {
+		/* If we come here it implies a bug somewhere */
+		debug("create_bonding_conn_complete: no pending bonding!");
+		g_io_channel_close(io);
+		g_io_channel_unref(io);
+		return FALSE;
+	}
+
+	if (cond & G_IO_NVAL) {
+		error_authentication_canceled(pdata->bonding->conn, pdata->bonding->rq);
+		goto cleanup;
+	}
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	len = sizeof(ret);
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		error("Can't get socket error: %s (%d)", strerror(errno), errno);
+		error_failed(pdata->bonding->conn, pdata->bonding->rq, errno);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		error_connection_attempt_failed(pdata->bonding->conn, pdata->bonding->rq, ret);
+		goto failed;
+	}
+
+	len = sizeof(cinfo);
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &cinfo, &len) < 0) {
+		error("Can't get connection info: %s (%d)", strerror(errno), errno);
+		error_failed(pdata->bonding->conn, pdata->bonding->rq, errno);
+		goto failed;
+	}
+
+	dd = hci_open_dev(pdata->dev_id);
+	if (dd < 0) {
+		error_no_such_adapter(pdata->bonding->conn, pdata->bonding->rq);
+		goto failed;
+	}
+
+	memset(&rp, 0, sizeof(rp));
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = cinfo.hci_handle;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_AUTH_REQUESTED;
+	rq.event  = EVT_CMD_STATUS;
+	rq.cparam = &cp;
+	rq.clen   = AUTH_REQUESTED_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_CMD_STATUS_SIZE;
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		error("Unable to send HCI request: %s (%d)",
+					strerror(errno), errno);
+		error_failed(pdata->bonding->conn, pdata->bonding->rq, errno);
+		hci_close_dev(dd);
+		goto failed;
+	}
+
+	if (rp.status) {
+		error("HCI_Authentication_Requested failed with status 0x%02x",
+				rp.status);
+		error_failed(pdata->bonding->conn, pdata->bonding->rq, bt_error(rp.status));
+		hci_close_dev(dd);
+		goto failed;
+	}
+
+	hci_close_dev(dd);
+
+	pdata->bonding->io_id = 0;
+
+	return FALSE;
+
+failed:
+	g_io_channel_close(io);
+
+cleanup:
+	name_listener_remove(pdata->bonding->conn, dbus_message_get_sender(pdata->bonding->rq),
+			(name_cb_t) create_bond_req_exit, pdata);
+
+	bonding_request_free(pdata->bonding);
+	pdata->bonding = NULL;
+
+	return FALSE;
+}
+
 static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	char filename[PATH_MAX + 1];
-	struct hci_request rq;
-	create_conn_cp cc_cp;
-	auth_requested_cp ar_cp;
-	evt_cmd_status rp;
 	DBusError err;
 	char *str, *peer_addr = NULL;
 	struct hci_dbus_data *dbus_data = data;
-	struct slist *l;
 	bdaddr_t peer_bdaddr;
-	int dd, disconnect;
+	int sk;
 
 	if (!dbus_data->up)
 		return error_not_ready(conn, msg);
@@ -1723,13 +1874,15 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 
 	str2ba(peer_addr, &peer_bdaddr);
 
-	/* check if there is a pending bonding request */
-	if (dbus_data->bonding)
-		return error_bonding_in_progress(conn, msg);
-
 	/* check if there is a pending discover: requested by D-Bus/non clients */
 	if (dbus_data->discover_state != STATE_IDLE || dbus_data->discovery_requestor)
 		return error_discover_in_progress(conn, msg); 
+
+	if (dbus_data->bonding)
+		return error_bonding_in_progress(conn, msg);
+
+	if (slist_find(dbus_data->pin_reqs, &peer_bdaddr, pin_req_cmp))
+		return error_bonding_in_progress(conn, msg);
 
 	/* check if a link key already exists */
 	create_name(filename, PATH_MAX, STORAGEDIR, dbus_data->address, "linkkeys");
@@ -1740,70 +1893,24 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 		return error_bonding_already_exists(conn, msg);
 	}
 
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
+	sk = l2raw_connect(dbus_data->address, &peer_bdaddr);
+	if (sk < 0)
+		return error_connection_attempt_failed(conn, msg, 0);
 
-	memset(&rq, 0, sizeof(rq));
-	memset(&rp, 0, sizeof(rp));
-
-	rq.ogf    = OGF_LINK_CTL;
-	rq.event = EVT_CMD_STATUS;
-	rq.rparam = &rp;
-	rq.rlen = EVT_CMD_STATUS_SIZE;
-
-	/* check if there is an active connection */
-	l = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
-
-	if (!l) {
-		memset(&cc_cp, 0, sizeof(cc_cp));
-		/* create a new connection */
-		bacpy(&cc_cp.bdaddr, &peer_bdaddr);
-		cc_cp.pkt_type       = htobs(HCI_DM1);
-		cc_cp.pscan_rep_mode = 0x02;
-		cc_cp.clock_offset   = htobs(0x0000);
-		cc_cp.role_switch    = 0x01;
-
-		rq.ocf    = OCF_CREATE_CONN;
-		rq.cparam = &cc_cp;
-		rq.clen   = CREATE_CONN_CP_SIZE;
-		disconnect = 1;
-	} else {
-		struct active_conn_info *dev = l->data;
-
-		memset(&ar_cp, 0, sizeof(ar_cp));
-
-		ar_cp.handle = dev->handle;
-		rq.ocf    = OCF_AUTH_REQUESTED;
-		rq.cparam = &ar_cp;
-		rq.clen   = AUTH_REQUESTED_CP_SIZE;
-		disconnect = 0;
+	dbus_data->bonding = bonding_request_new(&peer_bdaddr, conn, msg);
+	if (!dbus_data->bonding) {
+		close(sk);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		int err = errno;
-		error("Unable to send the HCI request: %s (%d)",
-				strerror(errno), errno);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
-	}
-
-	if (rp.status) {
-		error("%s failed with status 0x%02x", rq.ocf == OCF_CREATE_CONN ?
-				"HCI_Create_Connection" : "HCI_Authentication_Requested",
-				rp.status);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, bt_error(rp.status));
-	}
-
-	dbus_data->bonding = bonding_request_new(&peer_bdaddr);
-	dbus_data->bonding->disconnect = disconnect;
-	dbus_data->bonding->rq = dbus_message_ref(msg);
+	dbus_data->bonding->io = g_io_channel_unix_new(sk);
+	dbus_data->bonding->io_id = g_io_add_watch(dbus_data->bonding->io,
+							G_IO_OUT | G_IO_NVAL,
+							(GIOFunc) create_bonding_conn_complete,
+							dbus_data);
 
 	name_listener_add(conn, dbus_message_get_sender(msg),
 			(name_cb_t) create_bond_req_exit, dbus_data);
-
-	hci_close_dev(dd);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1811,12 +1918,11 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	struct slist *la;
 	DBusMessage *reply;
 	DBusError err;
 	bdaddr_t peer_bdaddr;
 	const char *peer_addr;
-	int dd = -1;
+	struct slist *l;
 
 	if (!dbus_data->up)
 		return error_not_ready(conn, msg);
@@ -1837,103 +1943,46 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 
 	str2ba(peer_addr, &peer_bdaddr);
 
-	/* check if there is a pending bonding request */
-	if (!dbus_data->bonding || bacmp(&dbus_data->bonding->bdaddr, &peer_bdaddr)) {
-		error("No bonding request pending.");
+	if (!dbus_data->bonding || bacmp(&dbus_data->bonding->bdaddr, &peer_bdaddr))
 		return error_bonding_not_in_progress(conn, msg);
-	}
 
 	if (strcmp(dbus_message_get_sender(dbus_data->bonding->rq), dbus_message_get_sender(msg)))
 		return error_not_authorized(conn, msg);
 
-	dd = hci_open_dev(dbus_data->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
 	dbus_data->bonding->cancel = 1;
 
-	la = slist_find(dbus_data->active_conn, &peer_bdaddr, active_conn_find_by_bdaddr);
+	g_io_channel_close(dbus_data->bonding->io);
 
-	if (!la) {
-		/* connection request is pending */
-		struct hci_request rq;
-		create_conn_cancel_cp cp;
-		evt_cmd_status rp;
+	l = slist_find(dbus_data->pin_reqs, &peer_bdaddr, pin_req_cmp);
+	if (l) {
+		struct pending_pin_info *pin_req = l->data;
 
-		memset(&rq, 0, sizeof(rq));
-		memset(&cp, 0, sizeof(cp));
-		memset(&rp, 0, sizeof(rp));
-
-		bacpy(&cp.bdaddr, &dbus_data->bonding->bdaddr);
-
-		rq.ogf     = OGF_LINK_CTL;
-		rq.ocf     = OCF_CREATE_CONN_CANCEL;
-		rq.rparam  = &rp;
-		rq.rlen    = EVT_CMD_STATUS_SIZE;
-		rq.event   = EVT_CMD_STATUS;
-		rq.cparam  = &cp;
-		rq.clen    = CREATE_CONN_CANCEL_CP_SIZE;
-
-		if (hci_send_req(dd, &rq, 100) < 0) {
-			int err = errno;
-			error("Cancel bonding - unable to send the HCI request: %s (%d)",
-			      strerror(errno), errno);
-			hci_close_dev(dd);
-			return error_failed(conn, msg, err);
-		}
-
-		if (rp.status) {
-			error("Cancel bonding - Failed with status 0x%02x", rp.status);
-			hci_close_dev(dd);
-			return error_failed(conn, msg, bt_error(rp.status));
-		}
-
-		/* 
-		 * if the HCI doesn't support cancel create connection cmd let
-		 * the create connection complete event arrives with page timeout.
-		 * Bonding in progress will be returned to requestors.
-		 */
-
-	} else {
-		struct slist *lb;
-		struct active_conn_info *cinfo = la->data;
-
-		/* 
-		 * It is already connected, search in the pending passkey requests to
-		 * figure out the current stage(waiting host passkey/remote passkey)
-		 */ 
-		lb = slist_find(dbus_data->pending_bondings, &peer_bdaddr, pending_bonding_cmp);
-		if (lb) {
-			struct pending_bonding_info *pb = lb->data;
-			/* 0: waiting host passkey 1: waiting remote passkey */
-			if (pb->step) {
-				if (dbus_data->bonding->disconnect) {
-
-					/* disconnect and let disconnect handler reply create bonding */
-					if (hci_disconnect(dd, htobs(cinfo->handle), HCI_AUTHENTICATION_FAILURE, 1000) < 0)
-						error("Disconnect failed");
-				} else {
-					/*
-					 * If disconnect can't be applied and the PIN Code Request
-					 * was already replied it doesn't make sense cancel the
-					 * remote passkey: return not authorized.
-					 */
-
-					error_not_authorized(conn, msg);
-					goto failed;
-				}
-			} else {
-
-				/* for unlock PIN Code Request */
-				hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &peer_bdaddr);
+		if (pin_req->replied) {
+			/*
+			 * If disconnect can't be applied and the PIN Code Request
+			 * was already replied it doesn't make sense cancel the
+			 * remote passkey: return not authorized.
+			 */
+			return error_not_authorized(conn, msg);
+		} else {
+			int dd = hci_open_dev(dbus_data->dev_id);
+			if (dd < 0) {
+				error("Can't open hci%d: %s (%d)",
+					dbus_data->dev_id, strerror(errno), errno);
+				return DBUS_HANDLER_RESULT_HANDLED;
 			}
-		}
+
+			hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, &peer_bdaddr);
+
+			hci_close_dev(dd);
+		} 
+
+		dbus_data->pin_reqs = slist_remove(dbus_data->pin_reqs, pin_req);
+		free(pin_req);
 	}
 
 	reply = dbus_message_new_method_return(msg);
 	send_reply_and_unref(conn, reply);
-failed:
-	hci_close_dev(dd);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }

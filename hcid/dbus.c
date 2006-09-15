@@ -76,13 +76,21 @@ int hcid_dbus_use_experimental(void)
 	return experimental;
 }
 
-void bonding_request_free(struct bonding_request_info *dev )
+void bonding_request_free(struct bonding_request_info *bonding)
 {
-	if (dev) {
-		if (dev->rq)
-			dbus_message_unref(dev->rq);
-		free(dev);
-	}
+	if (!bonding)
+		return;
+
+	if (bonding->rq)
+		dbus_message_unref(bonding->rq);
+
+	if (bonding->conn)
+		dbus_connection_unref(bonding->conn);
+
+	if (bonding->io)
+		g_io_channel_unref(bonding->io);
+
+	free(bonding);
 }
 
 static int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2)
@@ -377,6 +385,9 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 		error_authentication_canceled(connection, pdata->bonding->rq);
 		name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
 				(name_cb_t) create_bond_req_exit, pdata);
+		if (pdata->bonding->io_id)
+			g_io_remove_watch(pdata->bonding->io_id);
+		g_io_channel_close(pdata->bonding->io);
 		bonding_request_free(pdata->bonding);
 		pdata->bonding = NULL;
 	}
@@ -425,10 +436,10 @@ static int unregister_dbus_path(const char *path)
 			pdata->disc_devices = NULL;
 		}
 
-		if (pdata->pending_bondings) {
-			slist_foreach(pdata->pending_bondings, (slist_func_t) free, NULL);
-			slist_free(pdata->pending_bondings);
-			pdata->pending_bondings = NULL;
+		if (pdata->pin_reqs) {
+			slist_foreach(pdata->pin_reqs, (slist_func_t) free, NULL);
+			slist_free(pdata->pin_reqs);
+			pdata->pin_reqs = NULL;
 		}
 
 		if (pdata->active_conn) {
@@ -669,10 +680,10 @@ int hcid_dbus_stop_device(uint16_t id)
 		pdata->disc_devices = NULL;
 	}
 
-	if (pdata->pending_bondings) {
-		slist_foreach(pdata->pending_bondings, (slist_func_t) free, NULL);
-		slist_free(pdata->pending_bondings);
-		pdata->pending_bondings = NULL;
+	if (pdata->pin_reqs) {
+		slist_foreach(pdata->pin_reqs, (slist_func_t) free, NULL);
+		slist_free(pdata->pin_reqs);
+		pdata->pin_reqs = NULL;
 	}
 
 	if (pdata->active_conn) {
@@ -688,19 +699,19 @@ int hcid_dbus_stop_device(uint16_t id)
 	return 0;
 }
 
-int pending_bonding_cmp(const void *p1, const void *p2)
+int pin_req_cmp(const void *p1, const void *p2)
 {
-	const struct pending_bonding_info *pb1 = p1;
-	const struct pending_bonding_info *pb2 = p2;
+	const struct pending_pin_info *pb1 = p1;
+	const struct pending_pin_info *pb2 = p2;
 
 	return p2 ? bacmp(&pb1->bdaddr, &pb2->bdaddr) : -1;
 }
 
-void hcid_dbus_pending_bonding_add(bdaddr_t *sba, bdaddr_t *dba)
+void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 {
 	char path[MAX_PATH_LENGTH], addr[18];
 	struct hci_dbus_data *pdata;
-	struct pending_bonding_info *peer;
+	struct pending_pin_info *info;
 
 	ba2str(sba, addr);
 
@@ -711,11 +722,15 @@ void hcid_dbus_pending_bonding_add(bdaddr_t *sba, bdaddr_t *dba)
 		return;
 	}
 
-	peer = malloc(sizeof(*peer));
-	memset(peer, 0, sizeof(*peer));
+	info = malloc(sizeof(struct pending_pin_info));
+	if (!info) {
+		error("Out of memory when adding new pin request");
+		return;
+	}
 
-	bacpy(&peer->bdaddr, dba);
-	pdata->pending_bondings = slist_append(pdata->pending_bondings, peer);
+	memset(info, 0, sizeof(struct pending_pin_info));
+	bacpy(&info->bdaddr, dba);
+	pdata->pin_reqs = slist_append(pdata->pin_reqs, info);
 }
 
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
@@ -729,7 +744,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	return handle_passkey_request(connection, dev, path, sba, &ci->bdaddr);
 }
 
-void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const uint8_t status)
+void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
 {
 	struct hci_dbus_data *pdata;
 	DBusMessage *message;
@@ -756,34 +771,19 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 		goto failed;
 	}
 
-	/*
-	 * 0x00: authentication request successfully completed
-	 * 0x01-0x0F: authentication request failed
-	 */
-#if 0
-	name = status ? "BondingFailed" : "BondingCreated";
-	/* authentication signal */
-	message = dev_signal_factory(pdata->dev_id, name,
-					DBUS_TYPE_STRING, &peer_addr,
-					DBUS_TYPE_INVALID);
-
-	send_reply_and_unref(connection, message);
-#endif
-
 	if (status)
 		cancel_passkey_agent_requests(pdata->passkey_agents, path, peer);
 
-	l = slist_find(pdata->pending_bondings, peer, pending_bonding_cmp);
+	l = slist_find(pdata->pin_reqs, peer, pin_req_cmp);
 	if (l) {
 		void *d = l->data;
-		pdata->pending_bondings = slist_remove(pdata->pending_bondings, l->data);
+		pdata->pin_reqs = slist_remove(pdata->pin_reqs, l->data);
 		free(d);
 
 		if (!status) {
-			const char *name = "BondingCreated";
-			message = dev_signal_factory(pdata->dev_id, name,
-					DBUS_TYPE_STRING, &peer_addr,
-					DBUS_TYPE_INVALID);
+			message = dev_signal_factory(pdata->dev_id, "BondingCreated",
+							DBUS_TYPE_STRING, &peer_addr,
+							DBUS_TYPE_INVALID);
 			send_reply_and_unref(connection, message);
 		}
 	}
@@ -792,26 +792,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 
 	if (!pdata->bonding || bacmp(&pdata->bonding->bdaddr, peer))
 		goto failed; /* skip: no bonding req pending */
-
-	if (pdata->bonding->disconnect) {
-		struct slist *l;
-
-		l = slist_find(pdata->active_conn, peer, active_conn_find_by_bdaddr);
-		if (l) {
-			struct active_conn_info *con = l->data;
-			struct hci_req_data *data;
-			disconnect_cp cp;
-			memset(&cp, 0, sizeof(cp));
-
-			cp.handle = con->handle;
-			cp.reason = (status ? HCI_AUTHENTICATION_FAILURE : HCI_OE_USER_ENDED_CONNECTION);
-
-			data = hci_req_data_new(pdata->dev_id, peer, OGF_LINK_CTL,
-						OCF_DISCONNECT, EVT_DISCONN_COMPLETE,
-						&cp, DISCONNECT_CP_SIZE);
-			hci_req_queue_append(data);
-		}
-	}
 
 	if (pdata->bonding->cancel) {
 		/* reply authentication canceled */
@@ -825,6 +805,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, const u
 	name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
 			(name_cb_t) create_bond_req_exit, pdata);
 
+	g_io_channel_close(pdata->bonding->io);
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
 
@@ -1236,9 +1217,6 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 {
 	char path[MAX_PATH_LENGTH];
 	DBusMessage *message;
-	struct hci_request rq;
-	evt_cmd_status rp;
-	auth_requested_cp cp;
 	struct hci_dbus_data *pdata;
 	char *local_addr, *peer_addr;
 	bdaddr_t tmp;
@@ -1273,72 +1251,6 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 		/* add in the active connetions list */
 		active_conn_append(&pdata->active_conn, peer, handle);
 	}
-
-	/* check if this connection request was requested by a bonding procedure */
-	if (!pdata->bonding || bacmp(&pdata->bonding->bdaddr, peer))
-		goto done; /* skip */
-
-	dd = hci_open_dev(pdata->dev_id);
-	if (dd < 0) {
-		error_no_such_adapter(connection, pdata->bonding->rq);
-		goto bonding_failed;
-	}
-
-	if (pdata->bonding->cancel) {
-		error_authentication_canceled(connection, pdata->bonding->rq);
-
-		/*
-		 * When the controller doesn't support cancel create connection, 
-		 * disconnect the if the connection has been completed later.
-		 */
-		if (!status)
-			hci_disconnect(dd, htobs(handle), HCI_AUTHENTICATION_FAILURE, 1000);
-
-		goto bonding_failed;
-	}
-
-	if (status) {
-		error_connection_attempt_failed(connection, pdata->bonding->rq, bt_error(status));
-		goto bonding_failed;
-	}
-
-	/* request authentication */
-	memset(&rq, 0, sizeof(rq));
-	memset(&rp, 0, sizeof(rp));
-	memset(&cp, 0, sizeof(cp));
-
-	cp.handle = handle;
-
-	rq.ogf    = OGF_LINK_CTL;
-	rq.event  = EVT_CMD_STATUS;
-	rq.rparam = &rp;
-	rq.rlen   = EVT_CMD_STATUS_SIZE;
-	rq.ocf    = OCF_AUTH_REQUESTED;
-	rq.cparam = &cp;
-	rq.clen   = AUTH_REQUESTED_CP_SIZE;
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		error("Unable to send the HCI request: %s (%d)",
-				strerror(errno), errno);
-		error_failed(connection, pdata->bonding->rq, errno);
-		goto bonding_failed;
-	}
-
-	if (rp.status) {
-		error("HCI_Authentication_Requested failed with status 0x%02x",
-				rp.status);
-		error_failed(connection, pdata->bonding->rq, bt_error(rp.status));
-		goto bonding_failed;
-	}
-
-	goto done; /* skip: authentication requested */
-
-bonding_failed:
-	/* free bonding request if the HCI pairing request was not sent */
-	name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
-			(name_cb_t) create_bond_req_exit, pdata);
-	bonding_request_free(pdata->bonding);
-	pdata->bonding = NULL;
 
 done:
 	if (dd >= 0)
@@ -1397,13 +1309,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 
 	/* Check if there is a pending CreateBonding request */
 	if (pdata->bonding && (bacmp(&pdata->bonding->bdaddr, &dev->bdaddr) == 0)) {
-#if 0
-		message = dev_signal_factory(pdata->dev_id, "BondingFailed",
-						DBUS_TYPE_STRING, &peer_addr,
-						DBUS_TYPE_INVALID);
-
-		send_reply_and_unref(connection, message);
-#endif
 		if (pdata->bonding->cancel) {
 			/* reply authentication canceled */
 			error_authentication_canceled(connection, pdata->bonding->rq);
@@ -1414,6 +1319,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 
 		name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
 				(name_cb_t) create_bond_req_exit, pdata);
+		g_io_channel_close(pdata->bonding->io);
 		bonding_request_free(pdata->bonding);
 		pdata->bonding = NULL;
 	}
@@ -2011,13 +1917,10 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 		goto failed;
 	}
 
-	if (!pdata->pending_bondings)
-		goto failed;
-
-	l = slist_find(pdata->pending_bondings, &ret->bdaddr, pending_bonding_cmp);
+	l = slist_find(pdata->pin_reqs, &ret->bdaddr, pin_req_cmp);
 	if (l) {
-		struct pending_bonding_info *p = l->data;
-		p->step = 1;
+		struct pending_pin_info *p = l->data;
+		p->replied = 1;
 	}
 
 failed:
@@ -2027,6 +1930,7 @@ failed:
 void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata)
 {
 	char path[MAX_PATH_LENGTH];
+	struct slist *l;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, pdata->dev_id);
 
@@ -2035,27 +1939,28 @@ void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata)
 	cancel_passkey_agent_requests(pdata->passkey_agents, path, &pdata->bonding->bdaddr);
 	release_passkey_agents(pdata, &pdata->bonding->bdaddr);
 
-	if (pdata->bonding->disconnect) {
-		struct slist *l;
+	l = slist_find(pdata->pin_reqs, &pdata->bonding->bdaddr, pin_req_cmp);
+	if (l) {
+		struct pending_pin_info *p = l->data;
 
-		l = slist_find(pdata->active_conn, &pdata->bonding->bdaddr, active_conn_find_by_bdaddr);
-		if (l) {
-			struct active_conn_info *con = l->data;
-			struct hci_req_data *data;
-			disconnect_cp cp;
-			memset(&cp, 0, sizeof(cp));
+		if (!p->replied) {
+			int dd;
 
-			cp.handle = con->handle;
-			cp.reason = HCI_OE_USER_ENDED_CONNECTION;
-
-			data = hci_req_data_new(pdata->dev_id, &pdata->bonding->bdaddr, OGF_LINK_CTL,
-						OCF_DISCONNECT, EVT_DISCONN_COMPLETE,
-						&cp, DISCONNECT_CP_SIZE);
-
-			hci_req_queue_append(data);
+			dd = hci_open_dev(pdata->dev_id);
+			if (dd >= 0) {
+				hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY,
+						6, &pdata->bonding->bdaddr);
+				hci_close_dev(dd);
+			}
 		}
+
+		pdata->pin_reqs = slist_remove(pdata->pin_reqs, p);
+		free(p);
 	}
 
+	g_io_channel_close(pdata->bonding->io);
+	if (pdata->bonding->io_id)
+		g_io_remove_watch(pdata->bonding->io_id);
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
 }
