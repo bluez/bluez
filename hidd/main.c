@@ -431,13 +431,15 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, 
 	struct hidp_connadd_req req;
 	uint16_t uuid = HID_SVCLASS_ID;
 	uint8_t channel = 0;
+	char name[256];
 	int csk, isk, err;
 
 	memset(&req, 0, sizeof(req));
 
 	err = get_sdp_device_info(src, dst, &req);
 	if (err < 0 && fakehid)
-		err = get_alternate_device_info(src, dst, &uuid, &channel);
+		err = get_alternate_device_info(src, dst,
+				&uuid, &channel, name, sizeof(name) - 1);
 
 	if (err < 0) {
 		perror("Can't get device information");
@@ -450,9 +452,19 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, 
 		goto connect;
 
 	case SERIAL_PORT_SVCLASS_ID:
-		if (epox_presenter(src, dst, channel) < 0) {
-			close(ctl);
-			exit(1);
+		if (subclass == 0x40 || !strcmp(name, "Cable Replacement")) {
+			if (epox_presenter(src, dst, channel) < 0) {
+				close(ctl);
+				exit(1);
+			}
+			break;
+		}
+		if (subclass == 0x1f || !strcmp(name, "SPP slave")) {
+			if (jthree_keyboard(src, dst, channel) < 0) {
+				close(ctl);
+				exit(1);
+			}
+			break;
 		}
 		break;
 

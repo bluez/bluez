@@ -271,9 +271,10 @@ int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_co
 	return 0;
 }
 
-int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t *uuid, uint8_t *channel)
+int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t *uuid, uint8_t *channel, char *name, size_t len)
 {
-	uint16_t attr = SDP_ATTR_PROTO_DESC_LIST;
+	uint16_t attr1 = SDP_ATTR_PROTO_DESC_LIST;
+	uint16_t attr2 = SDP_ATTR_SVCNAME_PRIMARY;
 	sdp_session_t *s;
 	sdp_list_t *search, *attrid, *rsp;
 	uuid_t svclass;
@@ -285,7 +286,8 @@ int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t
 
 	sdp_uuid16_create(&svclass, HEADSET_SVCLASS_ID);
 	search = sdp_list_append(NULL, &svclass);
-	attrid = sdp_list_append(NULL, &attr);
+	attrid = sdp_list_append(NULL, &attr1);
+	attrid = sdp_list_append(attrid, &attr2);
 
 	err = sdp_service_search_attr_req(s, search,
 					SDP_ATTR_REQ_INDIVIDUAL, attrid, &rsp);
@@ -296,7 +298,8 @@ int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t
 	if (err <= 0) {
 		sdp_uuid16_create(&svclass, SERIAL_PORT_SVCLASS_ID);
 		search = sdp_list_append(NULL, &svclass);
-		attrid = sdp_list_append(NULL, &attr);
+		attrid = sdp_list_append(NULL, &attr1);
+		attrid = sdp_list_append(attrid, &attr2);
 
 		err = sdp_service_search_attr_req(s, search,
 					SDP_ATTR_REQ_INDIVIDUAL, attrid, &rsp);
@@ -321,6 +324,8 @@ int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t
 	for (; rsp; rsp = rsp->next) {
 		sdp_record_t *rec = (sdp_record_t *) rsp->data;
 		sdp_list_t *protos;
+
+		sdp_get_service_name(rec, name, len);
 
 		if (!sdp_get_access_protos(rec, &protos)) {
 			uint8_t ch = sdp_get_proto_port(protos, RFCOMM_UUID);
