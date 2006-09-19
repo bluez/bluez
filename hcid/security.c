@@ -431,11 +431,11 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 
 	switch (evt->opcode) {
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PERIODIC_INQUIRY):
-		status = *((uint8_t *) ptr + sizeof(evt_cmd_complete));
+		status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
 		hcid_dbus_periodic_inquiry_start(sba, status);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY):
-		status = *((uint8_t *) ptr + sizeof(evt_cmd_complete));
+		status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
 		hcid_dbus_periodic_inquiry_exit(sba, status);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):

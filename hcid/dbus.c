@@ -2034,7 +2034,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 
 	struct hci_dbus_data *pdata;
 	char *local_addr;
-	ret_pin_code_req_reply *ret = ptr + sizeof(evt_cmd_complete);
+	ret_pin_code_req_reply *ret = ptr + EVT_CMD_COMPLETE_SIZE;
 	struct slist *l;
 	char path[MAX_PATH_LENGTH];
 	bdaddr_t tmp;

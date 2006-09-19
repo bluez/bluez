@@ -2399,7 +2399,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	evt_cmd_status rp;
 	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
-	uint32_t lap = 0x9e8b33;
+	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int dd;
 
 	if (!dbus_data->up)
@@ -2421,9 +2421,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 		return error_no_such_adapter(conn, msg);
 
 	memset(&cp, 0, sizeof(cp));
-	cp.lap[0]  = lap & 0xff;
-	cp.lap[1]  = (lap >> 8) & 0xff;
-	cp.lap[2]  = (lap >> 16) & 0xff;
+	memcpy(&cp.lap, lap, 3);
 	cp.length  = 0x08;
 	cp.num_rsp = 0x00;
 
@@ -2490,7 +2488,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 
 	/* only the discover requestor can cancel the inquiry process */
 	if (!dbus_data->discovery_requestor ||
-			strcmp(dbus_data->discovery_requestor,  dbus_message_get_sender(msg)))
+			strcmp(dbus_data->discovery_requestor, dbus_message_get_sender(msg)))
 		return error_not_authorized(conn, msg);
 	/* 
 	 * Cleanup the discovered devices list and send the cmd
