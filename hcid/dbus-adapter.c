@@ -995,11 +995,14 @@ static DBusHandlerResult handle_dev_get_name_req(DBusConnection *conn, DBusMessa
 	str2ba(dbus_data->address, &ba);
 
 	err = read_local_name(&ba, str);
-	if (err < 0)
-		err = get_device_name(dbus_data->dev_id, str, sizeof(str));
+	if (err < 0) {
+		if (!dbus_data->up)
+			return error_not_ready(conn, msg);
 
-	if (err < 0)
-		return error_failed(conn, msg, -err);
+		err = get_device_name(dbus_data->dev_id, str, sizeof(str));
+		if (err < 0)
+			return error_failed(conn, msg, -err);
+	}
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

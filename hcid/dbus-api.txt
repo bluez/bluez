@@ -77,6 +77,10 @@ Errors		Failed
 			Error returned when the requested adapter doesn't
 			exists. This error is similar to ENODEV.
 
+		NotReady
+			
+			Error returned when the adapter is DOWN.
+
 		NotAvailable
 
 			Error returned when a specified record is not
@@ -366,7 +370,7 @@ Methods		string GetAddress()
 
 			Returns the local adapter name (friendly name) in UTF-8.
 
-			Possible errors: none
+			Possible errors: org.bluez.Error.NotReady 
 
 		void SetName(string name)
 
