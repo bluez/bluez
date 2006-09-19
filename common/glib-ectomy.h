@@ -93,6 +93,8 @@ void g_main_loop_unref(GMainLoop *loop);
 guint g_timeout_add(guint interval, GSourceFunc function, gpointer data);
 gint g_timeout_remove(const guint id);
 
+gboolean g_utf8_validate(const gchar *str, gssize max_len, const gchar **end);
+
 #define g_main_new(is_running)	g_main_loop_new(NULL, is_running);
 #define g_main_run(loop)	g_main_loop_run(loop)
 #define g_main_quit(loop)	g_main_loop_quit(loop)

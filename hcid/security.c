@@ -464,7 +464,10 @@ static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 	bacpy(&dba, &evt->bdaddr);
 
 	if (!evt->status) {
+		char *end;
 		memcpy(name, evt->name, 248);
+		if (!g_utf8_validate(name, -1, &end))
+			*end = '\0';
 		write_device_name(sba, &dba, name);
 	}
 

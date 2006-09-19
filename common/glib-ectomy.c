@@ -515,3 +515,90 @@ gint g_timeout_remove(const guint id)
 
 	return -1;
 }
+
+/* UTF-8 Validation: approximate copy/paste from glib2. */
+
+#define UNICODE_VALID(c)			\
+	((c) < 0x110000 &&			\
+	(((c) & 0xFFFFF800) != 0xD800) &&	\
+	((c) < 0xFDD0 || (c) > 0xFDEF) &&	\
+	((c) & 0xFFFE) != 0xFFFE)
+
+#define CONTINUATION_CHAR(c, val)				\
+	do {							\
+  		if (((c) & 0xc0) != 0x80) /* 10xxxxxx */	\
+  			goto failed;				\
+  		(val) <<= 6;					\
+  		(val) |= (c) & 0x3f;				\
+	} while (0)
+
+#define INCREMENT_AND_CHECK_MAX(i, max_len)		\
+	do {						\
+		(i)++;					\
+		if ((max_len) >= 0 && (i) >= (max_len))	\
+			goto failed;			\
+	} while (0)
+				
+
+gboolean g_utf8_validate(const gchar *str, gssize max_len, const gchar **end)
+{
+	unsigned long val, min, i;
+	const unsigned char *p, *last;
+
+	min = val = 0;
+
+	for (p = (unsigned char *) str, i = 0; p[i]; i++) {
+		if (max_len >= 0 && i >= max_len)
+			break;
+
+		if (p[i] < 128)
+			continue;
+
+		last = &p[i];
+
+		if ((p[i] & 0xe0) == 0xc0) { /* 110xxxxx */
+			if ((p[i] & 0x1e) == 0)
+				goto failed;
+			INCREMENT_AND_CHECK_MAX(i, max_len);
+			if ((p[i] & 0xc0) != 0x80)
+				goto failed; /* 10xxxxxx */
+		} else {
+			if ((p[i] & 0xf0) == 0xe0) {
+				/* 1110xxxx */
+				min = (1 << 11);
+				val = p[i] & 0x0f;
+				goto two_remaining;
+			} else if ((p[i] & 0xf8) == 0xf0) {
+				/* 11110xxx */
+				min = (1 << 16);
+				val = p[i] & 0x07;
+			} else
+				goto failed;
+
+			INCREMENT_AND_CHECK_MAX(i, max_len);
+			CONTINUATION_CHAR(p[i], val);
+two_remaining:
+			INCREMENT_AND_CHECK_MAX(i, max_len);
+			CONTINUATION_CHAR(p[i], val);
+
+			INCREMENT_AND_CHECK_MAX(i, max_len);
+			CONTINUATION_CHAR(p[i], val);
+
+			if (val < min || !UNICODE_VALID(val))
+				goto failed;
+		} 
+	}
+
+	if (end)
+		*end = (const gchar *) &p[i];
+
+	return TRUE;
+
+failed:
+	if (end)
+		*end = (const gchar *) last;
+
+	return FALSE;
+}
+
+

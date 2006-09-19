@@ -1036,8 +1036,8 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
-
-	if (strlen(str_ptr) == 0) {
+	
+	if (strlen(str_ptr) == 0 || !g_utf8_validate(str_ptr, -1, NULL)) {
 		error("Name change failed: Invalid parameter");
 		return error_invalid_arguments(conn, msg);
 	}
