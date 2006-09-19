@@ -203,6 +203,61 @@ static int check_address(const char *addr)
 	return 0;
 }
 
+static int cancel_remote_name(struct hci_dbus_data *pdata)
+{
+	struct discovered_dev_info *dev, match;
+	struct slist *l;
+	struct hci_request rq;
+	remote_name_req_cancel_cp cp;
+	int dd, err = 0;
+	uint8_t status;
+
+	/* find the pending remote name request */
+	memset(&match, 0, sizeof(struct discovered_dev_info));
+	bacpy(&match.bdaddr, BDADDR_ANY);
+	match.name_status = NAME_REQUESTED;
+
+	l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
+	if (!l) /* no pending request */
+		return 0;
+
+	dd = hci_open_dev(pdata->dev_id);
+	if (dd < 0)
+		return -ENODEV;
+
+	dev = l->data;
+
+	bacpy(&cp.bdaddr, &dev->bdaddr);
+
+	rq.ogf    = OGF_LINK_CTL;
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event = EVT_CMD_COMPLETE;
+	rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
+	rq.cparam = &cp;
+	rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		error("Sending command failed: %s (%d)", strerror(errno), errno);
+		err = -errno;
+		goto failed;
+	}
+
+	if (status) {
+		error("Cancel failed with status 0x%02x", status);
+		err = -bt_error(status);
+	}
+failed:
+
+	/* free discovered devices list */
+	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
+	slist_free(pdata->disc_devices);
+	pdata->disc_devices = NULL;
+
+	hci_close_dev(dd);
+	return err;
+}
+
 static struct bonding_request_info *bonding_request_new(bdaddr_t *peer, DBusConnection *conn,
 							DBusMessage *msg)
 {
@@ -1399,13 +1454,13 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 
 	/* put the request name in the queue to resolve name */
 	str2ba(peer_addr, &peer_bdaddr);
-	disc_device_append(&dbus_data->disc_devices, &peer_bdaddr, NAME_PENDING, RESOLVE_NAME);
+	disc_device_append(&dbus_data->disc_devices, &peer_bdaddr, NAME_REQUIRED);
 
 	/* 
 	 * if there is a discover process running, just queue the request.
 	 * Otherwise, send the HCI cmd to get the remote name
 	 */
-	if (dbus_data->discover_state == STATE_IDLE)
+	if (!(dbus_data->inq_active ||  dbus_data->pinq_active))
 		disc_device_req_name(dbus_data);
 
 	return error_request_deferred(conn, msg);
@@ -1875,8 +1930,10 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	str2ba(peer_addr, &peer_bdaddr);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
-	if (dbus_data->discover_state != STATE_IDLE || dbus_data->discovery_requestor)
-		return error_discover_in_progress(conn, msg); 
+	if (dbus_data->inq_active || !dbus_data->pinq_idle)
+		return error_discover_in_progress(conn, msg);
+
+	cancel_remote_name(dbus_data);
 
 	if (dbus_data->bonding)
 		return error_bonding_in_progress(conn, msg);
@@ -2229,15 +2286,118 @@ static DBusHandlerResult handle_dev_get_encryption_key_size_req(DBusConnection *
 	return send_reply_and_unref(conn, reply);
 }
 
+static DBusHandlerResult handle_dev_start_periodic_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	periodic_inquiry_cp cp;
+	struct hci_request rq;
+	struct hci_dbus_data *dbus_data = data;
+	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
+	uint8_t status;
+	int dd;
+
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
+	if (dbus_data->inq_active || dbus_data->pinq_active)
+		return error_discover_in_progress(conn, msg);
+
+	cancel_remote_name(dbus_data);
+
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0)
+		return error_no_such_adapter(conn, msg);
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.lap, lap, 3);
+	cp.max_period = 24;
+	cp.min_period = 16;
+	cp.length  = 0x08;
+	cp.num_rsp = 0x00;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_PERIODIC_INQUIRY;
+	rq.cparam = &cp;
+	rq.clen   = PERIODIC_INQUIRY_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event  = EVT_CMD_COMPLETE;
+
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		int err = errno;
+		error("Unable to start periodic inquiry: %s (%d)",
+							strerror(errno), errno);
+		hci_close_dev(dd);
+		return error_failed(conn, msg, err);
+	}
+
+	if (status) {
+		error("HCI_Periodic_Inquiry_Mode command failed with status 0x%02x", status);
+		hci_close_dev(dd);
+		return error_failed(conn, msg, bt_error(status));
+	}
+
+	dbus_data->pdiscovery_requestor = strdup(dbus_message_get_sender(msg));
+	dbus_data->discover_type = PERIODIC_INQUIRY | RESOLVE_NAME;
+
+	reply = dbus_message_new_method_return(msg);
+
+	hci_close_dev(dd);
+
+	/* track the request owner to cancel it automatically if the owner exits */
+	name_listener_add(conn, dbus_message_get_sender(msg),
+				(name_cb_t) periodic_discover_req_exit, dbus_data);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_stop_periodic_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	struct hci_dbus_data *dbus_data = data;
+	int err;
+
+	if (!dbus_data->up)
+		return error_not_ready(conn, msg);
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
+	/* allow cancel if the periodic inquiry was requested by a NON D-Bus client */
+	if (dbus_data->pdiscovery_requestor && strcmp(dbus_data->pdiscovery_requestor, dbus_message_get_sender(msg)))
+		return error_not_authorized(conn, msg);
+
+	if (!dbus_data->pinq_active)
+		return error_not_authorized(conn, msg); /* find a better name */
+
+	/* 
+	 * Cleanup the discovered devices list and send the cmd to exit
+	 * from periodic inquiry mode or cancel remote name request.
+	 */
+	err = cancel_periodic_discovery(dbus_data);
+	if (err < 0) {
+		if (err == -ENODEV)
+			return error_no_such_adapter(conn, msg);
+		else
+			return error_failed(conn, msg, -err);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	return send_reply_and_unref(conn, reply);
+}
+
 static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	DBusMessage *reply = NULL;
+	DBusMessage *reply;
 	const char *method;
 	inquiry_cp cp;
 	evt_cmd_status rp;
 	struct hci_request rq;
 	struct hci_dbus_data *dbus_data = data;
-	uint8_t length = 8, num_rsp = 0;
 	uint32_t lap = 0x9e8b33;
 	int dd;
 
@@ -2247,8 +2407,10 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	if (dbus_data->discover_state != STATE_IDLE)
+	if (dbus_data->inq_active || dbus_data->pinq_active)
 		return error_discover_in_progress(conn, msg);
+
+	cancel_remote_name(dbus_data);
 
 	if (dbus_data->bonding)
 		return error_bonding_in_progress(conn, msg);
@@ -2261,8 +2423,8 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	cp.lap[0]  = lap & 0xff;
 	cp.lap[1]  = (lap >> 8) & 0xff;
 	cp.lap[2]  = (lap >> 16) & 0xff;
-	cp.length  = length;
-	cp.num_rsp = num_rsp;
+	cp.length  = 0x08;
+	cp.num_rsp = 0x00;
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
@@ -2288,10 +2450,14 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	}
 
 	method = dbus_message_get_member(msg);
+	/*
+	 * In the future, if we allow standard inquiry when there is active
+	 * periodic inquiry: the name resolve flag must NOT be overwritten. 
+	 */
 	if (strcmp("DiscoverDevicesWithoutNameResolving", method) == 0)
-		dbus_data->discover_type = WITHOUT_NAME_RESOLVING;
+		dbus_data->discover_type |= STD_INQUIRY;
 	else 
-		dbus_data->discover_type = RESOLVE_NAME;
+		dbus_data->discover_type |= (STD_INQUIRY | RESOLVE_NAME);
 		
 	dbus_data->discovery_requestor = strdup(dbus_message_get_sender(msg));
 
@@ -2308,7 +2474,6 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 
 static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	const char *requestor_name;
 	struct hci_dbus_data *dbus_data = data;
 	int err;
 
@@ -2318,17 +2483,13 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	requestor_name = dbus_message_get_sender(msg);
-
 	/* is there discover pending? or discovery cancel was requested previously */
-	if ((dbus_data->discover_state != STATE_DISCOVER &&
-	     dbus_data->discover_state != STATE_RESOLVING_NAMES) ||
-		dbus_data->discovery_cancel)
+	if (!dbus_data->inq_active || dbus_data->discovery_cancel)
 		return error_not_authorized(conn, msg); /* FIXME: find a better error name */
 
 	/* only the discover requestor can cancel the inquiry process */
 	if (!dbus_data->discovery_requestor ||
-			strcmp(dbus_data->discovery_requestor, requestor_name))
+			strcmp(dbus_data->discovery_requestor,  dbus_message_get_sender(msg)))
 		return error_not_authorized(conn, msg);
 	/* 
 	 * Cleanup the discovered devices list and send the cmd
@@ -2468,6 +2629,9 @@ static struct service_data dev_services[] = {
 	{ "ListBondings",				handle_dev_list_bondings_req		},
 	{ "GetPinCodeLength",				handle_dev_get_pin_code_length_req	},
 	{ "GetEncryptionKeySize",			handle_dev_get_encryption_key_size_req	},
+
+	{ "StartPeriodicDiscovery",			handle_dev_start_periodic_req		},
+	{ "StopPeriodicDiscovery",			handle_dev_stop_periodic_req		},
 
 	{ "DiscoverDevices",				handle_dev_discover_devices_req		},
 	{ "DiscoverDevicesWithoutNameResolving",	handle_dev_discover_devices_req		},

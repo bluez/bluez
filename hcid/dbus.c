@@ -93,7 +93,7 @@ void bonding_request_free(struct bonding_request_info *bonding)
 	free(bonding);
 }
 
-static int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2)
+int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2)
 {
 	int ret;
 
@@ -110,13 +110,10 @@ static int disc_device_find(const struct discovered_dev_info *d1, const struct d
 			return ret;
 	}
 
-	if (d2->discover_type)
-		return (d1->discover_type - d2->discover_type);
-
 	return 0;
 }
 
-int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status, int discover_type)
+int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status)
 {
 	struct discovered_dev_info *dev, match;
 	struct slist *l;
@@ -130,10 +127,13 @@ int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name
 	if (l) {
 		/* device found, update the attributes */
 		dev = l->data;
-		dev->name_status = name_status;
-		/* get remote name received while discovering */
-		if (dev->discover_type != RESOLVE_NAME)
-			dev->discover_type = discover_type; 
+
+		 /* Get remote name can be received while inquiring.
+		  * Keep in mind that multiple inquiry result events can
+		  * be received from the same remote device.
+		  */
+		if (name_status != NAME_NOT_REQUIRED)
+			dev->name_status = name_status;
 		return -EALREADY;
 	}
 
@@ -144,7 +144,6 @@ int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name
 	memset(dev, 0, sizeof(*dev));
 	bacpy(&dev->bdaddr, bdaddr);
 	dev->name_status = name_status;
-	dev->discover_type = discover_type;
 
 	*list = slist_append(*list, dev);
 
@@ -391,19 +390,26 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 		bonding_request_free(pdata->bonding);
 		pdata->bonding = NULL;
 	}
-	else if (pdata->discover_state != STATE_IDLE) {
 
-		/* If there is a pending reply for discovery cancel */
-		if (pdata->discovery_cancel) {
-			message = dbus_message_new_method_return(pdata->discovery_cancel);
-			send_reply_and_unref(connection, message);
-			dbus_message_unref(pdata->discovery_cancel);
-			pdata->discovery_cancel = NULL;
-		}
+	/* If there is a pending reply for discovery cancel */
+	if (pdata->discovery_cancel) {
+		message = dbus_message_new_method_return(pdata->discovery_cancel);
+		send_reply_and_unref(connection, message);
+		dbus_message_unref(pdata->discovery_cancel);
+		pdata->discovery_cancel = NULL;
+	}
 
+	if (pdata->discovery_requestor) {
 		/* Send discovery completed signal if there isn't name to resolve */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"DiscoveryCompleted");
+				"DiscoveryCompleted");
+		send_reply_and_unref(connection, message);
+	}
+
+	if (pdata->pdiscovery_requestor) {
+		/* Send periodic discovery signal */
+		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+				"PeriodicDiscoveryStopped");
 		send_reply_and_unref(connection, message);
 	}
 }
@@ -428,6 +434,13 @@ static int unregister_dbus_path(const char *path)
 						(name_cb_t) discover_devices_req_exit, pdata);
 			free(pdata->discovery_requestor);
 			pdata->discovery_requestor = NULL;
+		}
+
+		if (pdata->pdiscovery_requestor) {
+			name_listener_remove(connection, pdata->pdiscovery_requestor,
+						(name_cb_t) periodic_discover_req_exit, pdata);
+			free(pdata->pdiscovery_requestor);
+			pdata->pdiscovery_requestor = NULL;
 		}
 
 		if (pdata->disc_devices) {
@@ -585,10 +598,15 @@ int hcid_dbus_start_device(uint16_t id)
 		goto failed;
 	}
 
+	if (hci_test_bit(HCI_INQUIRY, &di.flags))
+		pdata->inq_active = 1;
+	else
+		pdata->inq_active = 0;
+
 	pdata->mode = rp.enable;	/* Keep the current scan status */
 	pdata->up = 1;
 	pdata->discoverable_timeout = get_discoverable_timeout(id);
-	pdata->discover_type = WITHOUT_NAME_RESOLVING; /* default discover type */
+	pdata->discover_type = DISCOVER_TYPE_NONE;
 
 	/*
 	 * Get the adapter Bluetooth address
@@ -674,6 +692,13 @@ int hcid_dbus_stop_device(uint16_t id)
 		pdata->discovery_requestor = NULL;
 	}
 
+	if (pdata->pdiscovery_requestor) {
+		name_listener_remove(connection, pdata->pdiscovery_requestor,
+					(name_cb_t) periodic_discover_req_exit, pdata);
+		free(pdata->pdiscovery_requestor);
+		pdata->pdiscovery_requestor = NULL;
+	}
+
 	if (pdata->disc_devices) {
 		slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 		slist_free(pdata->disc_devices);
@@ -693,8 +718,11 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 
 	pdata->up = 0;
-	pdata->discover_state = STATE_IDLE;
 	pdata->mode = SCAN_DISABLED;
+	pdata->inq_active = 0;
+	pdata->pinq_active = 0;
+	pdata->pinq_idle = 0;
+	pdata->discover_type = DISCOVER_TYPE_NONE;
 
 	return 0;
 }
@@ -834,7 +862,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
-		pdata->discover_state = STATE_DISCOVER;
+		pdata->inq_active = 1;
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"DiscoveryStarted");
@@ -872,8 +900,7 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 
 	memset(&match, 0, sizeof(struct discovered_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
-	match.name_status = NAME_PENDING;
-	match.discover_type = RESOLVE_NAME;
+	match.name_status = NAME_REQUIRED;
 
 	l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t) disc_device_find);
 	if (!l)
@@ -975,51 +1002,141 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		goto done;
 	}
 
-	/* reset the discover type to be able to handle D-Bus and non D-Bus requests */
-	pdata->discover_type = WITHOUT_NAME_RESOLVING;
+	pdata->pinq_idle = 1;
 
-	if (!disc_device_req_name(pdata)) {
-		pdata->discover_state = STATE_RESOLVING_NAMES;
+	if (!disc_device_req_name(pdata))
 		goto done; /* skip - there is name to resolve */
-	}
-
-	pdata->discover_state = STATE_IDLE;
 
 	/* free discovered devices list */
 	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
 
-	if (pdata->discovery_requestor) {
+	 /* Don't send signal if it is a periodic inquiry */
+	if (pdata->pinq_active)
+		goto done; 
+
+	if (pdata->discovery_requestor) { 
 		name_listener_remove(connection, pdata->discovery_requestor,
-					(name_cb_t) discover_devices_req_exit, pdata);
+				(name_cb_t) discover_devices_req_exit, pdata);
 		free(pdata->discovery_requestor);
 		pdata->discovery_requestor = NULL;
+
+		/* If there is a pending reply for discovery cancel */
+		if (pdata->discovery_cancel) {
+			message = dbus_message_new_method_return(pdata->discovery_cancel);
+			send_reply_and_unref(connection, message);
+			dbus_message_unref(pdata->discovery_cancel);
+			pdata->discovery_cancel = NULL;
+		}
+
+		if (pdata->inq_active) {
+			/* Send discovery completed signal if there isn't name to resolve */
+			message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+					"DiscoveryCompleted");
+			send_reply_and_unref(connection, message);
+		}
+
+		/* reset the discover type for standard inquiry only */
+		pdata->discover_type &= ~STD_INQUIRY; 
 	}
 
-	/* If there is a pending reply for discovery cancel */
-	if (pdata->discovery_cancel) {
-		message = dbus_message_new_method_return(pdata->discovery_cancel);
-		send_reply_and_unref(connection, message);
-		dbus_message_unref(pdata->discovery_cancel);
-		pdata->discovery_cancel = NULL;
+	/* tracks D-Bus and NON D-Bus */
+	pdata->inq_active = 0;
+done:
+	bt_free(local_addr);
+}
+
+void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
+{
+	struct hci_dbus_data *pdata;
+	DBusMessage *message;
+	char path[MAX_PATH_LENGTH];
+	char *local_addr;
+	bdaddr_t tmp;
+	int id;
+
+	/* Don't send the signal if the cmd failed */
+	if (status)
+		return;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		error("No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
+		pdata->pinq_active = 1;
+
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+						"PeriodicDiscoveryStarted");
+	send_reply_and_unref(connection, message);
+failed:
+	bt_free(local_addr);
+}
+
+void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
+{
+	DBusMessage *message;
+	struct hci_dbus_data *pdata;
+	char path[MAX_PATH_LENGTH];
+	char *local_addr;
+	bdaddr_t tmp;
+	int id;
+
+	/* Don't send the signal if the cmd failed */
+	if (status)
+		return;
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		error("No matching device id for %s", local_addr);
+		goto done;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
+		goto done;
+	}
+
+	/* reset the discover type to be able to handle D-Bus and non D-Bus requests */
+	pdata->pinq_active = 0;
+	pdata->discover_type &= ~(PERIODIC_INQUIRY | RESOLVE_NAME);
+
+	/* free discovered devices list */
+	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
+	slist_free(pdata->disc_devices);
+	pdata->disc_devices = NULL;
+
+	if (pdata->pdiscovery_requestor) {
+		name_listener_remove(connection, pdata->pdiscovery_requestor,
+					(name_cb_t) periodic_discover_req_exit, pdata);
+		free(pdata->pdiscovery_requestor);
+		pdata->pdiscovery_requestor = NULL;
 	}
 
 	/* Send discovery completed signal if there isn't name to resolve */
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"DiscoveryCompleted");
+						"PeriodicDiscoveryStopped");
 	send_reply_and_unref(connection, message);
 
 done:
 	bt_free(local_addr);
 }
-
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
 {
 	char filename[PATH_MAX + 1];
 	DBusMessage *signal_device;
 	DBusMessage *signal_name;
-	DBusMessageIter iter;
 	char path[MAX_PATH_LENGTH];
 	struct hci_dbus_data *pdata;
 	struct slist *l;
@@ -1028,7 +1145,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	const dbus_uint32_t tmp_class = class;
 	const dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
-	name_status_t name_status = NAME_PENDING;
+	name_status_t name_status;
 	int id;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
@@ -1049,18 +1166,32 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 
 	write_remote_class(local, peer, class);
 
-	/* send the device found signal */
-	signal_device = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"RemoteDeviceFound");
-	if (signal_device == NULL) {
-		error("Can't allocate D-Bus message");
-		goto failed;
+	/*
+	 * workaround to identify situation when the daemon started and
+	 * a standard inquiry or periodic inquiry was already running
+	 */
+	if (!pdata->inq_active && !pdata->pinq_active) {
+		pdata->discover_type |= (PERIODIC_INQUIRY | RESOLVE_NAME);
+		pdata->pinq_active = 1;
 	}
 
-	dbus_message_iter_init_append(signal_device, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &peer_addr);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_UINT32, &tmp_class);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_INT16, &tmp_rssi);
+	 /* reset the idle flag when the inquiry complete event arrives */
+	if (pdata->pinq_active)
+		pdata->pinq_idle = 0;
+
+	/* the inquiry result can be triggered by NON D-Bus client */
+	if (pdata->discover_type & RESOLVE_NAME)
+		name_status = NAME_REQUIRED;
+	else
+		name_status = NAME_NOT_REQUIRED;
+
+
+	/* send the device found signal */
+	signal_device = dev_signal_factory(pdata->dev_id, "RemoteDeviceFound",
+						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_UINT32, &tmp_class,
+						DBUS_TYPE_INT16, &tmp_rssi,
+						DBUS_TYPE_INVALID);
 
 	send_reply_and_unref(connection, signal_device);
 
@@ -1084,9 +1215,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		free(name);
 		name_status = NAME_SENT;
 	} 
-
 	/* add in the list to track name sent/pending */
-	disc_device_append(&pdata->disc_devices, peer, name_status, pdata->discover_type);
+	disc_device_append(&pdata->disc_devices, peer, name_status);
 
 failed:
 	bt_free(local_addr);
@@ -1154,11 +1284,11 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	/* remove from remote name request list */
-	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
-		disc_device_remove(&pdata->disc_devices, peer);
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
+		error("Getting %s path data failed!", path);
+		goto done;
+	}
 
-	/* if the requested name failed, don't send signal and request the next name */
 	if (status)
 		message = dev_signal_factory(pdata->dev_id, "RemoteNameFailed",
 						DBUS_TYPE_STRING, &peer_addr,
@@ -1170,6 +1300,9 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 						DBUS_TYPE_INVALID);
 
 	send_reply_and_unref(connection, message);
+
+	/* remove from remote name request list */
+	disc_device_remove(&pdata->disc_devices, peer);
 
 	/* check if there is more devices to request names */
 	if (!disc_device_req_name(pdata))
@@ -1184,14 +1317,11 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	 * The discovery completed signal must be sent only for discover 
 	 * devices request WITH name resolving
 	 */
-	if (pdata->discover_state == STATE_RESOLVING_NAMES) {
-
-		if (pdata->discovery_requestor) {
-			name_listener_remove(connection, pdata->discovery_requestor,
-						(name_cb_t) discover_devices_req_exit, pdata);
-			free(pdata->discovery_requestor);
-			pdata->discovery_requestor = NULL;
-		}
+	if (pdata->discovery_requestor) {
+		name_listener_remove(connection, pdata->discovery_requestor,
+				(name_cb_t) discover_devices_req_exit, pdata);
+		free(pdata->discovery_requestor);
+		pdata->discovery_requestor = NULL;
 
 		/* If there is a pending reply for discovery cancel */
 		if (pdata->discovery_cancel) {
@@ -1201,13 +1331,13 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 			pdata->discovery_cancel = NULL;
 		}
 
-		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-							"DiscoveryCompleted");
-		send_reply_and_unref(connection, message);
+		if (pdata->discover_type & RESOLVE_NAME) {
+			message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+					"DiscoveryCompleted");
+			send_reply_and_unref(connection, message);
+		}
 	}
-
-	pdata->discover_state = STATE_IDLE;
-
+	pdata->inq_active = 0;
 done:
 	bt_free(local_addr);
 	bt_free(peer_addr);
@@ -1974,7 +2104,7 @@ void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata)
 
 void discover_devices_req_exit(const char *name, struct hci_dbus_data *pdata)
 {
-	debug("DiscoverDevices requestor at %s exited before the operation finishes", name);
+	debug("DiscoverDevices requestor at %s exited before the operation finished", name);
 
 	/* 
 	 * Cleanup the discovered devices list and send the cmd to cancel inquiry
@@ -1989,8 +2119,8 @@ int cancel_discovery(struct hci_dbus_data *pdata)
 	struct slist *l;
 	struct hci_request rq;
 	remote_name_req_cancel_cp cp;
-	int dd = -1, err = 0;
-	uint8_t status = 0x00;
+	int dd, err = 0;
+	uint8_t status;
 
 	dd = hci_open_dev(pdata->dev_id);
 	if (dd < 0) {
@@ -2007,13 +2137,13 @@ int cancel_discovery(struct hci_dbus_data *pdata)
 	rq.rlen   = sizeof(status);
 	rq.event = EVT_CMD_COMPLETE;
 
-	switch (pdata->discover_state) {
-	case STATE_RESOLVING_NAMES:
+	if (pdata->inq_active) {
+		rq.ocf = OCF_INQUIRY_CANCEL;
+	} else {
 		/* find the pending remote name request */
 		memset(&match, 0, sizeof(struct discovered_dev_info));
 		bacpy(&match.bdaddr, BDADDR_ANY);
 		match.name_status = NAME_REQUESTED;
-		match.discover_type = RESOLVE_NAME;
 
 		l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
 		if (!l)
@@ -2026,13 +2156,6 @@ int cancel_discovery(struct hci_dbus_data *pdata)
 		rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
 		rq.cparam = &cp;
 		rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
-		break;
-	case STATE_DISCOVER:
-		rq.ocf = OCF_INQUIRY_CANCEL;
-		break;
-	default:
-		/* discover is not pending */
-		goto cleanup;
 	}
 
 	if (hci_send_req(dd, &rq, 100) < 0) {
@@ -2058,6 +2181,106 @@ cleanup:
 
 	if (dd >= 0)
 		hci_close_dev(dd);
+
+	return err;
+}
+
+void periodic_discover_req_exit(const char *name, struct hci_dbus_data *pdata)
+{
+	debug("Periodic Discover  requestor at %s exited before the operation finishes", name);
+
+	/* 
+	 * Cleanup the discovered devices list and send the cmd to exit from periodic inquiry
+	 * or cancel remote name request. The return value can be ignored.
+	 */
+	cancel_periodic_discovery(pdata);
+
+	if (pdata->pdiscovery_requestor) {
+		free(pdata->pdiscovery_requestor);
+		pdata->pdiscovery_requestor = NULL;
+	}
+
+	pdata->pinq_active = 0;
+}
+
+int cancel_periodic_discovery(struct hci_dbus_data *pdata)
+{
+	struct discovered_dev_info *dev, match;
+	struct slist *l;
+	struct hci_request rq;
+	remote_name_req_cancel_cp cp;
+	int dd, err = 0;
+	uint8_t status = 0x00;
+	
+	dd = hci_open_dev(pdata->dev_id);
+	if (dd < 0) {
+		err = -ENODEV;
+		goto cleanup;
+	}
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf = OCF_EXIT_PERIODIC_INQUIRY;
+	rq.cparam = 0;
+	rq.clen = 0;
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event = EVT_CMD_COMPLETE;
+	
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		error("Sending command failed: %s (%d)", strerror(errno), errno);
+		err = -errno;
+		goto cleanup;
+	}
+
+	if (status) {
+		error("exit periodic inquiry failed with status 0x%02x", status);
+		err = -bt_error(status);
+		goto cleanup;
+	}
+
+	/* find the pending remote name request */
+	memset(&match, 0, sizeof(struct discovered_dev_info));
+	bacpy(&match.bdaddr, BDADDR_ANY);
+	match.name_status = NAME_REQUESTED;
+
+	l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
+	if (!l)
+		goto cleanup; /* no request pending */
+
+	dev = l->data;
+
+	bacpy(&cp.bdaddr, &dev->bdaddr);
+
+	memset(&rq, 0, sizeof(rq));
+	memset(&cp, 0, sizeof(cp));
+
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
+	rq.cparam = &cp;
+	rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event = EVT_CMD_COMPLETE;
+	
+	if (hci_send_req(dd, &rq, 100) < 0) {
+		error("Sending command failed: %s (%d)", strerror(errno), errno);
+		err = -errno;
+		goto cleanup;
+	}
+
+	if (status) {
+		error("Remote name cancel failed with status 0x%02x", status);
+		err = -bt_error(status);
+		goto cleanup;
+	}
+
+cleanup:
+	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
+	slist_free(pdata->disc_devices);
+	pdata->disc_devices = NULL;
+
+	hci_close_dev(dd);
 
 	return err;
 }

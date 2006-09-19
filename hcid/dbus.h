@@ -61,27 +61,25 @@ struct service_data {
 	service_handler_func_t	handler_func;
 };
 
-typedef enum {
-	STATE_IDLE,
-	STATE_DISCOVER,
-	STATE_RESOLVING_NAMES
-} discover_state_t;
+/* Discover types */
+#define DISCOVER_TYPE_NONE	0x00
+#define STD_INQUIRY		0x01
+#define PERIODIC_INQUIRY	0x02
 
-/* discover type  */
-#define WITHOUT_NAME_RESOLVING		1 /* D-Bus and non D-Bus request */
-#define RESOLVE_NAME			2	
+/* Actions executed after inquiry complete */
+#define RESOLVE_NAME		0x10
 
 typedef enum {
 	NAME_ANY,
-	NAME_PENDING,    /* remote name needs be resolved       */
-	NAME_REQUESTED,  /* HCI remote name request was sent    */
-	NAME_SENT        /* D-Bus signal RemoteNameUpdated sent */
+	NAME_NOT_REQUIRED, /* used by get remote name without name resolving */
+	NAME_REQUIRED,      /* remote name needs be resolved       */
+	NAME_REQUESTED,    /* HCI remote name request was sent    */
+	NAME_SENT          /* D-Bus signal RemoteNameUpdated sent */
 } name_status_t;
 
 struct discovered_dev_info {
 	bdaddr_t bdaddr;
 	name_status_t name_status;
-	int discover_type;
 };
 
 struct bonding_request_info {
@@ -110,9 +108,12 @@ struct hci_dbus_data {
 	uint32_t timeout_id;		   /* discoverable timeout id */
 	uint32_t discoverable_timeout;	   /* discoverable time(msec) */
 	uint8_t mode;		           /* scan mode */
-	discover_state_t discover_state;   /* discover states */
-	int discover_type;                 /* with/without name resolving */
+	int inq_active;				/* standard inquiry active: includes name resolution step */
+	int pinq_active;			/* periodic inquiry active */
+	int pinq_idle;				/* tracks the idle time for periodic inquiry */
+	int discover_type;			/* type requested */
 	struct slist *disc_devices;
+	char *pdiscovery_requestor;		/* periodic discovery requestor unique name */
 	char *discovery_requestor;		/* discovery requestor unique name */
 	DBusMessage *discovery_cancel;		/* discovery cancel message request */
 	struct slist *passkey_agents;
@@ -209,6 +210,8 @@ service_handler_func_t find_service_handler(struct service_data *services, DBusM
 void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata);
 void discover_devices_req_exit(const char *name, struct hci_dbus_data *pdata);
 int cancel_discovery(struct hci_dbus_data *pdata);
+void periodic_discover_req_exit(const char *name, struct hci_dbus_data *pdata);
+int cancel_periodic_discovery(struct hci_dbus_data *pdata);
 
 int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
 void release_default_agent(void);
@@ -229,7 +232,8 @@ static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusM
 int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
 int pin_req_cmp(const void *p1, const void *p2);
-int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status, int discover_type);
+int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2);
+int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);
 int disc_device_req_name(struct hci_dbus_data *dbus_data);
 
 int discoverable_timeout_handler(void *data);

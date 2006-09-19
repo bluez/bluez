@@ -698,6 +698,26 @@ Methods		string GetAddress()
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NoSuchAdapter
 
+		void StartPeriodicDiscovery()
+
+			This method starts a periodic discovery.
+
+			Possible errors:
+					org.bluez.Error.Failed
+					org.bluez.Error.InProgress
+					org.bluez.Error.NoSuchAdapter
+
+		void StopPeriodicDiscovery()
+
+			This method stops a periodic discovery that was started using
+			the StartPeriodicDiscovery method.
+
+			Possible errors:
+					org.bluez.Error.Failed
+					org.bluez.Error.NotAuthorized
+					org.bluez.Error.NotInProgress
+					org.bluez.Error.NoSuchAdapter
+
 		array{uint32} GetRemoteServiceHandles(string address, string match)
 
 			This method will request the SDP database of a remote
