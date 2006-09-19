@@ -67,16 +67,22 @@ struct transaction_context {
 	DBusConnection *conn;
 	DBusMessage *rq;
 	sdp_session_t *session;
+
+	/* Used for internal async get remote service record implementation */
+	void *priv;
 };
 
-
-typedef int connect_cb_t (struct transaction_context *t);
+typedef int connect_cb_t(struct transaction_context *t);
 struct pending_connect {
 	DBusConnection *conn;
 	DBusMessage *rq;
-	sdp_session_t *session;
+
 	char *dst;
+	sdp_session_t *session;
 	connect_cb_t *conn_cb;
+
+	/* Used for internal async get remote service record implementation */
+	void *priv;
 };
 
 /* FIXME:  move to a common file */
@@ -161,13 +167,16 @@ static struct pending_connect *pending_connect_new(DBusConnection *conn, DBusMes
 		return NULL;
 
 	c = malloc(sizeof(*c));
-
+	if (!c)
+		return NULL;
 	memset(c, 0, sizeof(*c));
 
 	if (dst) {
 		c->dst = strdup(dst);
-		if (!c->dst)
-			goto fail;
+		if (!c->dst) {
+			free(c);
+			return NULL;
+		}
 	}
 
 	c->conn = dbus_connection_ref(conn);
@@ -175,13 +184,6 @@ static struct pending_connect *pending_connect_new(DBusConnection *conn, DBusMes
 	c->conn_cb = cb;
 
 	return c;
-
-fail:
-	if (c->dst)
-		free(c->dst);
-	free(c);
-
-	return NULL;
 }
 
 static void pending_connect_free(struct pending_connect *c)
@@ -400,6 +402,69 @@ static int sdp_cache_append(const char *owner, const char *prov, sdp_record_t *r
 	return 0;
 }
 
+static void transaction_context_free(void *udata)
+{
+	struct transaction_context *ctxt = udata;
+
+	if (!ctxt)
+		return;
+
+	if (ctxt->conn)
+		dbus_connection_unref(ctxt->conn);
+
+	if (ctxt->rq)
+		dbus_message_unref(ctxt->rq);
+
+	if (ctxt->session)
+		sdp_close(ctxt->session);
+
+	free(ctxt);
+}
+
+typedef struct {
+	uint16_t dev_id;
+	char *dst;
+	void *search_data;
+	get_record_cb_t *cb;
+	void *data;
+} get_record_data_t;
+
+static get_record_data_t *get_record_data_new(uint16_t dev_id, const char *dst,
+					void *search_data,
+					get_record_cb_t *cb, void *data)
+{
+	get_record_data_t *n;
+
+	n = malloc(sizeof(*n));
+	if (!n)
+		return NULL;
+
+	n->dst = strdup(dst);
+	if (!n->dst) {
+		free(n);
+		return NULL;
+	}
+
+	n->dev_id = dev_id;
+	n->search_data = search_data;
+	n->cb = cb;
+	n->data = data;
+
+	return n;
+}
+
+static void get_record_data_free(get_record_data_t *d)
+{
+	free(d->dst);
+	free(d);
+}
+
+static inline void get_record_data_call_cb(get_record_data_t *d,
+						sdp_record_t *rec, int err)
+{
+	d->cb(rec, d->data, err);
+}
+
 static void owner_exited(const char *owner, struct hci_dbus_data *dbus_data)
 {
 	struct slist *lp, *next, *lr;
@@ -412,7 +477,7 @@ static void owner_exited(const char *owner, struct hci_dbus_data *dbus_data)
 
 		next = lp->next;
 		p = lp->data;
-		
+
 		if (!p->owner || strcmp(p->owner, owner))
 			continue;
 
@@ -437,7 +502,8 @@ static void owner_exited(const char *owner, struct hci_dbus_data *dbus_data)
 	}
 }
 
-static gboolean search_process_cb(GIOChannel *chan, GIOCondition cond, void *udata)
+static gboolean search_process_cb(GIOChannel *chan,
+				GIOCondition cond, void *udata)
 {
 	struct transaction_context *ctxt = udata;
 	int sk, err = 0;
@@ -446,22 +512,27 @@ static gboolean search_process_cb(GIOChannel *chan, GIOCondition cond, void *uda
 	sk = g_io_channel_unix_get_fd(chan);
 
 	len = sizeof(err);
-
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
 		error("getsockopt(): %s (%d)", strerror(errno), errno);
-		error_failed(ctxt->conn, ctxt->rq, errno);
-		goto fail;
+		err = errno;
+		goto failed;
+	}
+	if (err != 0) {
+		error("sock error: %s (%d)", strerror(err), err);
+		goto failed;
 	}
 
-	if (err != 0) {
-		error_failed(ctxt->conn, ctxt->rq, err);
-		error("sock error: %s (%d)", strerror(err), err);
-		goto fail;
-	}
 	if (!sdp_process(ctxt->session))
 		return TRUE;
 
-fail:
+failed:
+	if (err) {
+		if (ctxt->priv) {
+			get_record_data_call_cb(ctxt->priv, NULL, err);
+			get_record_data_free(ctxt->priv);
+		} else
+			error_failed(ctxt->conn, ctxt->rq, err);
+	}
 	g_io_channel_unref(chan);
 	return FALSE;
 }
@@ -687,75 +758,62 @@ done:
 	send_reply_and_unref(ctxt->conn, reply);
 }
 
-static void transaction_context_free(void *udata)
-{
-	struct transaction_context *ctxt = udata;
-
-	if (!ctxt)
-		return;
-
-	if (ctxt->conn)
-		dbus_connection_unref(ctxt->conn);
-
-	if (ctxt->rq)
-		dbus_message_unref(ctxt->rq);
-
-	if (ctxt->session)
-		sdp_close(ctxt->session);
-
-	free(ctxt);
-}
-
-static gboolean sdp_client_connect_cb(GIOChannel *chan, GIOCondition cond, void *udata)
+static gboolean sdp_client_connect_cb(GIOChannel *chan,
+					GIOCondition cond, void *udata)
 {
 	struct pending_connect *c = udata;
 	struct transaction_context *ctxt = NULL;
-	int sdp_err, err = 0, sk = 0;
+	int sdp_err, err = 0, sk;
 	socklen_t len;
 
 	sk = g_io_channel_unix_get_fd(chan);
 
 	len = sizeof(err);
-
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
 		error("getsockopt(): %s (%d)", strerror(errno), errno);
 		err = errno;
-		goto fail;
+		goto failed;
 	}
-
 	if (err != 0) {
 		error("connect(): %s (%d)", strerror(err), err);
-		goto fail;
+		goto failed;
 	}
 
 	ctxt = malloc(sizeof(*ctxt));
 	if (!ctxt) {
 		err = ENOMEM;
-		goto fail;
+		goto failed;
 	}
-
 	memset(ctxt, 0, sizeof(*ctxt));
 
 	ctxt->conn = dbus_connection_ref(c->conn);
 	ctxt->rq = dbus_message_ref(c->rq);
 	ctxt->session = c->session;
+	if (c->priv)
+		ctxt->priv = c->priv;
 
-	/* set the complete transaction callback and starts the search request */
+	/* set the complete transaction callback and send the search request */
 	sdp_err = c->conn_cb(ctxt);
 	if (sdp_err < 0) {
 		err = -sdp_err;
 		error("search failed: %s (%d)", strerror(err), err);
-		goto fail;
+		goto failed;
 	}
 
 	/* set the callback responsible for update the transaction data */
-	g_io_add_watch_full(chan, 0, G_IO_IN, search_process_cb,
-				ctxt, transaction_context_free);
+	g_io_add_watch_full(chan, 0, G_IO_IN,
+			search_process_cb, ctxt, transaction_context_free);
 	goto done;
 
-fail:
-	if (err)
-		error_connection_attempt_failed(c->conn, c->rq, err);
+failed:
+	if (err) {
+		if (c->priv)
+			get_record_data_call_cb(c->priv, NULL, err);
+		else
+			error_connection_attempt_failed(c->conn, c->rq, err);
+	}
+	if (c->priv)
+		get_record_data_free(c->priv);
 	if (ctxt)
 		transaction_context_free(ctxt);
 	g_io_channel_unref(chan);
@@ -766,19 +824,21 @@ done:
 	return FALSE;
 }
 
-static int connect_request(DBusConnection *conn, DBusMessage *msg,
-			   uint16_t dev_id, const char *dst,
-			   connect_cb_t *cb, int *err)
+static struct pending_connect *connect_request(DBusConnection *conn,
+					DBusMessage *msg,
+					uint16_t dev_id,
+					const char *dst,
+					connect_cb_t *cb, int *err)
 {
-	struct pending_connect *c = NULL;
-	GIOChannel *chan = NULL;
+	struct pending_connect *c;
 	bdaddr_t srcba, dstba;
+	GIOChannel *chan;
 
 	c = pending_connect_new(conn, msg, dst, cb);
 	if (!c) {
 		if (err)
 			*err = ENOMEM;
-		return -1;
+		return NULL;
 	}
 
 	hci_devba(dev_id, &srcba);
@@ -790,7 +850,7 @@ static int connect_request(DBusConnection *conn, DBusMessage *msg,
 			*err = errno;
 		error("sdp_connect() failed: %s (%d)", strerror(errno), errno);
 		pending_connect_free(c);
-		return -1;
+		return NULL;
 	}
 
 	chan = g_io_channel_unix_new(sdp_get_socket(c->session));
@@ -799,7 +859,7 @@ static int connect_request(DBusConnection *conn, DBusMessage *msg,
 	g_io_add_watch(chan, G_IO_OUT, sdp_client_connect_cb, c);
 	pending_connects = slist_append(pending_connects, c);
 
-	return 0;
+	return c;
 }
 
 static int remote_svc_rec_conn_cb(struct transaction_context *ctxt)
@@ -850,7 +910,8 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, voi
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (connect_request(conn, msg, dbus_data->dev_id, dst, remote_svc_rec_conn_cb, &err) < 0) {
+	if (!connect_request(conn, msg, dbus_data->dev_id,
+				dst, remote_svc_rec_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
 	}
@@ -900,7 +961,8 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (connect_request(conn, msg, dbus_data->dev_id, dst, remote_svc_handles_conn_cb, &err) < 0) {
+	if (!connect_request(conn, msg, dbus_data->dev_id,
+				dst, remote_svc_handles_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
 	}
@@ -951,7 +1013,8 @@ static DBusHandlerResult get_identifiers(DBusConnection *conn,
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (connect_request(conn, msg, dbus_data->dev_id, dst, get_identifiers_conn_cb, &err) < 0) {
+	if (!connect_request(conn, msg, dbus_data->dev_id,
+				dst, get_identifiers_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
 	}
@@ -1075,8 +1138,8 @@ search_request:
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (connect_request(conn, msg, dbus_data->dev_id, dst,
-				get_identifiers_by_service_conn_cb, &err) < 0) {
+	if (!connect_request(conn, msg, dbus_data->dev_id,
+			dst, get_identifiers_by_service_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
 	}
@@ -1093,7 +1156,7 @@ static int uuid_cmp(const void *key1, const void *key2)
 	/* converting to uuid128 */
 	a = sdp_uuid_to_uuid128((uuid_t *) key1);
 	b = sdp_uuid_to_uuid128((uuid_t *) key2);
-	
+
 	ret_val = sdp_uuid128_cmp(a, b);
 
 	bt_free(a);
@@ -1102,7 +1165,7 @@ static int uuid_cmp(const void *key1, const void *key2)
 	return ret_val;
 }
 
-sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid)
+static sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid)
 {
 	struct slist *lp, *lr;
 	struct service_provider *p;
@@ -1119,16 +1182,17 @@ sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid)
 			/* Check whether the record has the correct uuid */
 			if (sdp_get_service_classes(r->record, &list) != 0)
 				continue;
-			
+
 			if (sdp_list_find(list, uuid, uuid_cmp))
 				return r->record;
 		}
 	}
 
 	return NULL;
-}	
+}
 
-sdp_record_t *find_record_by_handle(const char *address, uint32_t handle)
+static sdp_record_t *find_record_by_handle(const char *address,
+						uint32_t handle)
 {
 	struct slist *lp, *lr;
 	struct service_provider *p;
@@ -1405,4 +1469,228 @@ DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void
 void dbus_sdp_cache_free()
 {
 	slist_foreach(sdp_cache, service_provider_free, NULL);
+}
+
+/*
+ * Internal async get remote service record implementation
+ */
+
+static void get_rec_with_handle_comp_cb(uint8_t type, uint16_t err,
+					uint8_t *rsp, size_t size, void *udata)
+{
+	struct transaction_context *ctxt = udata;
+	int scanned, cb_err = 0;
+	sdp_record_t *rec = NULL;
+
+	if (err == 0xffff) {
+		int sdp_err = sdp_get_error(ctxt->session);
+		if (sdp_err < 0) {
+			error("search failed: Invalid session!");
+			cb_err = EINVAL;
+			goto failed;
+		}
+		error("search failed :%s (%d)", strerror(sdp_err), sdp_err);
+		cb_err = sdp_err;
+		goto failed;
+	}
+
+	if (type == SDP_ERROR_RSP || type != SDP_SVC_ATTR_RSP) {
+		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
+		cb_err = EPROTO;
+		goto failed;
+	}
+
+	rec = sdp_extract_pdu(rsp, &scanned);
+	if (!rec) {
+		error("Service record is NULL");
+		cb_err = EPROTO;
+		goto failed;
+	}
+
+	/* FIXME: add record to the cache! */
+
+failed:
+	get_record_data_call_cb(ctxt->priv, rec, cb_err);
+	get_record_data_free(ctxt->priv);
+}
+
+static int get_rec_with_handle_conn_cb(struct transaction_context *ctxt)
+{
+	get_record_data_t *d = ctxt->priv;
+	uint32_t range = 0x0000ffff;
+	sdp_list_t *attrids = NULL;
+	uint32_t handle;
+	int err = 0;
+
+	if (sdp_set_notify(ctxt->session,
+				get_rec_with_handle_comp_cb, ctxt) < 0) {
+		error("Invalid session data!");
+		err = -EINVAL;
+		goto failed;
+	}
+
+	handle = *((uint32_t *)d->search_data);
+	attrids = sdp_list_append(NULL, &range);
+
+	if (sdp_service_attr_async(ctxt->session, handle,
+					SDP_ATTR_REQ_RANGE, attrids) < 0) {
+		error("send request failed: %s (%d)", strerror(errno), errno);
+		err = -errno;
+		goto failed;
+	}
+
+failed:
+	free(d->search_data);
+	if (attrids)
+		sdp_list_free(attrids, NULL);
+
+	return err;
+}
+
+int get_record_with_handle(DBusConnection *conn, DBusMessage *msg,
+			uint16_t dev_id, const char *dst,
+			uint32_t *handle, get_record_cb_t *cb, void *data)
+{
+	struct pending_connect *c;
+	get_record_data_t *d;
+	int err;
+
+	/* FIXME: search the cache first! */
+
+	if (find_pending_connect(dst)) {
+		error("SDP search in progress!");
+		return -EINPROGRESS;
+	}
+
+	d = get_record_data_new(dev_id, dst, handle, cb, data);
+	if (!d)
+		return -ENOMEM;
+
+	if (!(c = connect_request(conn, msg, dev_id, dst,
+				get_rec_with_handle_conn_cb, &err))) {
+		error("Search request failed: %s (%d)", strerror(err), err);
+		get_record_data_free(d);
+		return -err;
+	}
+
+	c->priv = d;
+
+	return 0;
+}
+
+static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
+					uint8_t *rsp, size_t size, void *udata)
+{
+	struct transaction_context *ctxt = udata;
+	get_record_data_t *d = ctxt->priv;
+	int csrc, tsrc, cb_err = 0;
+	sdp_record_t *rec = NULL;
+	uint32_t *handle;
+	uint8_t *pdata;
+
+	if (err == 0xffff) {
+		int sdp_err = sdp_get_error(ctxt->session);
+		if (sdp_err < 0) {
+			error("search failed: Invalid session!");
+			cb_err = EINVAL;
+			goto failed;
+		}
+		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
+		cb_err = sdp_err;
+		goto failed;
+	}
+
+	if (type == SDP_ERROR_RSP || type != SDP_SVC_SEARCH_RSP) {
+		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
+		cb_err = EPROTO;
+		goto failed;
+	}
+
+	pdata = rsp;
+	tsrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
+	if (tsrc <= 0)
+		goto failed;
+	pdata += sizeof(uint16_t);
+
+	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
+	if (csrc <= 0)
+		goto failed;
+	pdata += sizeof(uint16_t);
+
+	/* FIXME: what should we do with the other handles?? */
+	handle = malloc(sizeof(*handle));
+	if (!handle) {
+		cb_err = ENOMEM;
+		goto failed;
+	}
+
+	*handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
+	get_record_with_handle(ctxt->conn, ctxt->rq, d->dev_id,
+				d->dst, handle, d->cb, d->data);
+	get_record_data_free(ctxt->priv);
+	return;
+
+failed:
+	get_record_data_call_cb(ctxt->priv, rec, cb_err);
+	get_record_data_free(ctxt->priv);
+}
+
+static int get_rec_with_uuid_conn_cb(struct transaction_context *ctxt)
+{
+	get_record_data_t *d = ctxt->priv;
+	sdp_list_t *search = NULL;
+	uuid_t *uuid;
+	int err = 0;
+
+	if (sdp_set_notify(ctxt->session,
+			get_rec_with_uuid_comp_cb, ctxt) < 0) {
+		err = -EINVAL;
+		goto failed;
+	}
+
+	uuid = (uuid_t *)d->search_data;
+	search = sdp_list_append(NULL, uuid);
+
+	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
+		error("send request failed: %s (%d)", strerror(errno), errno);
+		err = -sdp_get_error(ctxt->session);
+	}
+
+failed:
+	free(d->search_data);
+	if (search)
+		sdp_list_free(search, NULL);
+
+	return err;
+}
+
+int get_record_with_uuid(DBusConnection *conn, DBusMessage *msg,
+			uint16_t dev_id, const char *dst,
+			uuid_t *uuid, get_record_cb_t *cb, void *data)
+{
+	struct pending_connect *c;
+	get_record_data_t *d;
+	int err;
+
+	/* FIXME: search the cache first! */
+
+	if (find_pending_connect(dst)) {
+		error("SDP search in progress!");
+		return -EINPROGRESS;
+	}
+
+	d = get_record_data_new(dev_id, dst, uuid, cb, data);
+	if (!d)
+		return -ENOMEM;
+
+	if (!(c = connect_request(conn, msg, dev_id, dst,
+				get_rec_with_uuid_conn_cb, &err))) {
+		error("Search request failed: %s (%d)", strerror(err), err);
+		get_record_data_free(d);
+		return -err;
+	}
+
+	c->priv = d;
+
+	return 0;
 }

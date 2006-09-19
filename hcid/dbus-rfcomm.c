@@ -117,7 +117,8 @@ static struct rfcomm_node *find_node_by_name(struct slist *nodes, const char *na
 	return NULL;
 }
 
-static struct pending_connect *find_pending_connect(const char *bda, uint8_t ch)
+static struct pending_connect *find_pending_connect_by_channel(const char *bda,
+								uint8_t ch)
 {
 	struct slist *l;
 	bdaddr_t dba;
@@ -126,8 +127,26 @@ static struct pending_connect *find_pending_connect(const char *bda, uint8_t ch)
 
 	for (l = pending_connects; l != NULL; l = l->next) {
 		struct pending_connect *pending = l->data;
-		if (!bacmp(&dba, &pending->raddr.rc_bdaddr)
-				&& pending->raddr.rc_channel == ch)
+		if (!bacmp(&dba, &pending->raddr.rc_bdaddr) &&
+			pending->raddr.rc_channel == ch)
+			return pending;
+	}
+
+	return NULL;
+}
+
+static struct pending_connect *find_pending_connect_by_service(const char *bda,
+								const char *svc)
+{
+	struct slist *l;
+	bdaddr_t dba;
+
+	str2ba(bda, &dba);
+
+	for (l = pending_connects; l != NULL; l = l->next) {
+		struct pending_connect *pending = l->data;
+		if (!bacmp(&dba, &pending->raddr.rc_bdaddr) &&
+			!strcmp(pending->svc, svc))
 			return pending;
 	}
 
@@ -329,7 +348,6 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 		error_failed(c->conn, c->msg, err);
 		goto failed;
 	}
-
 	if (ret != 0) {
 		error("connect(): %s (%d)", strerror(ret), ret);
 		error_connection_attempt_failed(c->conn, c->msg, ret);
@@ -407,7 +425,6 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 			*err = ENOMEM;
 		goto failed;
 	}
-
 	memset(c, 0, sizeof(struct pending_connect));
 
 	if (svc) {
@@ -516,133 +533,222 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t c
 	return node;
 }
 
-static sdp_record_t *get_record_from_string(const char *dst, 
-					     const char *string)	
-{
-	uuid_t short_uuid;
-	uuid_t *uuid;
-	sdp_record_t *rec;
-	unsigned int data0, data4;
-	unsigned short data1, data2, data3, data5;
-	uint32_t handle;
+typedef struct {
+	DBusConnection *conn;
+	DBusMessage *msg;
+	char *dst;
+	char *svc;
+	struct hci_dbus_data *dbus_data;
+} rfcomm_conn_cont_data_t;
 
-	/* Check if the string is a service name */
+static rfcomm_conn_cont_data_t *rfcomm_conn_cont_data_new(DBusConnection *conn,
+							DBusMessage *msg,
+							const char *dst,
+							const char *svc,
+							struct hci_dbus_data *dbus_data)
+{
+	rfcomm_conn_cont_data_t *new;
+
+	new = malloc(sizeof(*new));
+	if (!new)
+		return NULL;
+
+	new->dst = strdup(dst);
+	if (!new->dst) {
+		free(new);
+		return NULL;
+	}
+
+	new->svc = strdup(svc);
+	if (!new->svc) {
+		free(new->dst);
+		free(new);
+		return NULL;
+	}
+
+	new->conn = dbus_connection_ref(conn);
+	new->msg = dbus_message_ref(msg);
+	new->dbus_data = dbus_data;
+
+	return new;
+}
+
+static void rfcomm_conn_cont_data_free(rfcomm_conn_cont_data_t *d)
+{
+	dbus_connection_unref(d->conn);
+	dbus_message_unref(d->msg);
+	free(d->svc);
+	free(d->dst);
+	free(d);
+}
+
+static void rfcomm_conn_req_continue(sdp_record_t *rec, void *data, int err)
+{
+	rfcomm_conn_cont_data_t *cdata = data;
+	int ch = -1, conn_err;
+	sdp_list_t *protos;
+	bdaddr_t bdaddr;
+
+	if (err || !rec) {
+		error_record_does_not_exist(cdata->conn, cdata->msg);
+		goto failed;
+	}
+
+	if (!sdp_get_access_protos(rec, &protos))
+		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+	if (ch == -1) {
+		error_record_does_not_exist(cdata->conn, cdata->msg);
+		goto failed;
+	}
+
+	if (find_pending_connect_by_channel(cdata->dst, ch)) {
+		error_connect_in_progress(cdata->conn, cdata->msg);
+		goto failed;
+	}
+
+	hci_devba(cdata->dbus_data->dev_id, &bdaddr);
+	if (rfcomm_connect(cdata->conn, cdata->msg, &bdaddr,
+				cdata->dst, cdata->svc, ch, &conn_err) < 0)
+		error_failed(cdata->conn, cdata->msg, conn_err);
+
+failed:
+	rfcomm_conn_cont_data_free(cdata);
+}
+
+static uuid_t *str2uuid128(const char *string)
+{
+	uint16_t data1, data2, data3, data5;
+	uint32_t data0, data4;
+	uuid_t short_uuid;
+
 	sdp_uuid16_create(&short_uuid, sdp_str2svclass(string));
-	
-	if (short_uuid.value.uuid16) {
-		rec = find_record_by_uuid(dst, &short_uuid);
-	} else if (sscanf(string, "%8x-%4hx-%4hx-%4hx-%8x%4hx", &data0, 
-			&data1, &data2, &data3, &data4, &data5) == 6) {
+	if (short_uuid.value.uuid16)
+		return sdp_uuid_to_uuid128(&short_uuid);
+
+	if (strlen(string) == 36 &&
+	    string[8] == '-' &&
+	    string[13] == '-' &&
+	    string[18] == '-' &&
+	    string[23] == '-' &&
+	    sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
+			&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
+		uint8_t val[16];
+		uuid_t *uuid;
+
+		uuid = malloc(sizeof(*uuid));
+		if (!uuid)
+			return NULL;
+
 		data0 = htonl(data0);
 		data1 = htons(data1);
 		data2 = htons(data2);
 		data3 = htons(data3);
 		data4 = htonl(data4);
 		data5 = htons(data5);
-		
-		uuid = bt_malloc(sizeof(uuid_t));
-		uuid->type = SDP_UUID128;
 
-		memcpy(&uuid->value.uuid128.data[0], &data0, 4);
-		memcpy(&uuid->value.uuid128.data[4], &data1, 2);
-		memcpy(&uuid->value.uuid128.data[6], &data2, 2);
-		memcpy(&uuid->value.uuid128.data[8], &data3, 2);
-		memcpy(&uuid->value.uuid128.data[10], &data4, 4);
-		memcpy(&uuid->value.uuid128.data[14], &data5, 2);
+		memcpy(&val[0], &data0, 4);
+		memcpy(&val[4], &data1, 2);
+		memcpy(&val[6], &data2, 2);
+		memcpy(&val[8], &data3, 2);
+		memcpy(&val[10], &data4, 4);
+		memcpy(&val[14], &data5, 2);
 
-		rec = find_record_by_uuid(dst, uuid);
+		return sdp_uuid128_create(uuid, val);
+	}
 
-		bt_free(uuid);
-	} else if ((handle = strtol(string, NULL, 0)))
-		rec = find_record_by_handle(dst, handle);
-	else
-		rec = NULL;
+	return NULL;
+}
 
-	return rec;
+static uint32_t *str2handle(const char *string)
+{
+	uint32_t *handle;
+
+	handle = malloc(sizeof(*handle));
+	if (!handle)
+		return NULL;
+
+	*handle = strtol(string, NULL, 0);
+	if (*handle)
+		return handle;
+
+	free(handle);
+	return NULL;
 }
 
 static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	int ch = -1;
-	const char *dst;
-	const char *string;
-	sdp_record_t *rec;	
-	sdp_list_t *protos;
-	bdaddr_t bdaddr;
 	struct hci_dbus_data *dbus_data = data;
+	rfcomm_conn_cont_data_t *cdata;
+	uint32_t *handle = NULL;
+	uuid_t *uuid = NULL;
+	const char *string;
+	const char *dst;
 	int err;
 
 	if (!dbus_message_get_args(msg, NULL,
-				   DBUS_TYPE_STRING, &dst,
-				   DBUS_TYPE_STRING, &string,
-				   DBUS_TYPE_INVALID))
+				DBUS_TYPE_STRING, &dst,
+				DBUS_TYPE_STRING, &string,
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	hci_devba(dbus_data->dev_id, &bdaddr);
+	cdata = rfcomm_conn_cont_data_new(conn, msg, dst, string, dbus_data);
+	if (!cdata)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	rec = get_record_from_string(dst, string);
+	if ((uuid = str2uuid128(string))) {
+		if ((err = get_record_with_uuid(conn, msg, dbus_data->dev_id,
+						dst, uuid,
+						rfcomm_conn_req_continue,
+						cdata)) < 0)
+			goto failed;
+	} else if ((handle = str2handle(string))) {
+		if ((err = get_record_with_handle(conn, msg, dbus_data->dev_id,
+						dst, handle,
+						rfcomm_conn_req_continue,
+						cdata)) < 0)
+			goto failed;
+	} else {
+		rfcomm_conn_cont_data_free(cdata);
+		return error_invalid_arguments(conn, msg);
+	}
 
-	if (!rec)
-		return error_record_does_not_exist(conn, msg);
-	
-	if (sdp_get_access_protos(rec, &protos) == 0)
-		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-
-	if (ch == -1)
-		return error_record_does_not_exist(conn, msg);
-
-	if (find_pending_connect(dst, ch))
-		return error_connect_in_progress(conn, msg);
-	
-	if (rfcomm_connect(conn, msg, &bdaddr, dst, NULL, ch, &err) < 0)
-		return error_failed(conn, msg, err);
-	
 	return DBUS_HANDLER_RESULT_HANDLED;
+
+failed:
+	if (uuid)
+		free(uuid);
+	if (handle)
+		free(handle);
+	rfcomm_conn_cont_data_free(cdata);
+	return error_failed(conn, msg, err);
 }
 
 static DBusHandlerResult rfcomm_cancel_connect_req(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+						DBusMessage *msg,
+						void *data)
 {
-	int ch = -1;
-	const char *dst;
-	const char *string;
-	sdp_record_t *rec;	
-	sdp_list_t *protos;
-	bdaddr_t bdaddr;
-	struct hci_dbus_data *dbus_data = data;
-	DBusMessage *reply;
 	struct pending_connect *pending;
+	DBusMessage *reply;
+	const char *string;
+	const char *dst;
 
 	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_STRING, &dst,
-					DBUS_TYPE_STRING, &string,
-					DBUS_TYPE_INVALID))
+				DBUS_TYPE_STRING, &dst,
+				DBUS_TYPE_STRING, &string,
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	hci_devba(dbus_data->dev_id, &bdaddr);
-
-	rec = get_record_from_string(dst, string);
-
-	if (!rec)
-		return error_record_does_not_exist(conn, msg);
-	
-	if (sdp_get_access_protos(rec, &protos) == 0)
-		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-
-	if (ch == -1)
-		return error_record_does_not_exist(conn, msg);
+	pending = find_pending_connect_by_service(dst, string);
+	if (!pending)
+		return error_connect_not_in_progress(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	pending = find_pending_connect(dst, ch);
-	if (!pending)
-		return error_connect_not_in_progress(conn, msg);
-
 	pending->canceled = 1;
-	
+
 	return send_reply_and_unref(conn, reply);
 }
 
@@ -663,7 +769,7 @@ static DBusHandlerResult rfcomm_connect_by_ch_req(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	if (find_pending_connect(dst, ch))
+	if (find_pending_connect_by_channel(dst, ch))
 		return error_connect_in_progress(conn, msg);
 
 	if (rfcomm_connect(conn, msg, &bdaddr, dst, NULL, ch, &err) < 0)
@@ -686,7 +792,7 @@ static DBusHandlerResult rfcomm_cancel_connect_by_ch_req(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	pending = find_pending_connect(dst, ch);
+	pending = find_pending_connect_by_channel(dst, ch);
 	if (!pending)
 		return error_connect_not_in_progress(conn, msg);
 
@@ -737,7 +843,7 @@ static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
 }
 
 static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+					DBusMessage *msg, void *data)
 {
 	error("RFCOMM.Bind not implemented");
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
