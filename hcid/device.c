@@ -336,9 +336,11 @@ static int digi_revision(uint16_t dev_id, char *revision, size_t size)
 	rq.rlen   = sizeof(buf);
 
 	if (hci_send_req(dd, &rq, 2000) < 0) {
+		int err = errno;
 		error("Can't read revision for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
-		return -errno;
+		hci_close_dev(dd);
+		return -err;
 	}
 
 	hci_close_dev(dd);
@@ -420,9 +422,11 @@ int get_device_name(uint16_t dev_id, char *name, size_t size)
 	}
 
 	if (hci_read_local_name(dd, sizeof(tmp), tmp, 2000) < 0) {
+		int err = errno;
 		error("Can't read name for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
-		return -errno;
+		hci_close_dev(dd);
+		return -err;
 	}
 
 	hci_close_dev(dd);
@@ -446,9 +450,11 @@ int set_device_name(uint16_t dev_id, const char *name)
 	}
 
 	if (hci_write_local_name(dd, name, 5000) < 0) {
+		int err = errno;
 		error("Can't write name for hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
-		return -errno;
+		hci_close_dev(dd);
+		return -err;
 	}
 
 	hci_close_dev(dd);
