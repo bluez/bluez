@@ -532,11 +532,11 @@ gint g_timeout_remove(const guint id)
   		(val) |= (c) & 0x3f;				\
 	} while (0)
 
-#define INCREMENT_AND_CHECK_MAX(i, max_len)		\
-	do {						\
-		(i)++;					\
-		if ((max_len) >= 0 && (i) >= (max_len))	\
-			goto failed;			\
+#define INCREMENT_AND_CHECK_MAX(p, i, max_len)					\
+	do {									\
+		(i)++;								\
+		if ((p)[(i)] == '\0' || ((max_len) >= 0 && (i) >= (max_len)))	\
+			goto failed;						\
 	} while (0)
 				
 
@@ -559,7 +559,7 @@ gboolean g_utf8_validate(const gchar *str, gssize max_len, const gchar **end)
 		if ((p[i] & 0xe0) == 0xc0) { /* 110xxxxx */
 			if ((p[i] & 0x1e) == 0)
 				goto failed;
-			INCREMENT_AND_CHECK_MAX(i, max_len);
+			INCREMENT_AND_CHECK_MAX(p, i, max_len);
 			if ((p[i] & 0xc0) != 0x80)
 				goto failed; /* 10xxxxxx */
 		} else {
@@ -575,13 +575,13 @@ gboolean g_utf8_validate(const gchar *str, gssize max_len, const gchar **end)
 			} else
 				goto failed;
 
-			INCREMENT_AND_CHECK_MAX(i, max_len);
+			INCREMENT_AND_CHECK_MAX(p, i, max_len);
 			CONTINUATION_CHAR(p[i], val);
 two_remaining:
-			INCREMENT_AND_CHECK_MAX(i, max_len);
+			INCREMENT_AND_CHECK_MAX(p, i, max_len);
 			CONTINUATION_CHAR(p[i], val);
 
-			INCREMENT_AND_CHECK_MAX(i, max_len);
+			INCREMENT_AND_CHECK_MAX(p, i, max_len);
 			CONTINUATION_CHAR(p[i], val);
 
 			if (val < min || !UNICODE_VALID(val))
