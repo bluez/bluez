@@ -2367,12 +2367,13 @@ static DBusHandlerResult handle_dev_stop_periodic_req(DBusConnection *conn, DBus
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	/* allow cancel if the periodic inquiry was requested by a NON D-Bus client */
-	if (dbus_data->pdiscovery_requestor && strcmp(dbus_data->pdiscovery_requestor, dbus_message_get_sender(msg)))
+	if (!dbus_data->pinq_active)
 		return error_not_authorized(conn, msg);
 
-	if (!dbus_data->pinq_active)
-		return error_not_authorized(conn, msg); /* find a better name */
+	/* only the requestor can stop the periodic inquiry */
+	if (!dbus_data->pdiscovery_requestor ||
+		strcmp(dbus_data->pdiscovery_requestor, dbus_message_get_sender(msg)))
+		return error_not_authorized(conn, msg);
 
 	/* 
 	 * Cleanup the discovered devices list and send the cmd to exit
@@ -2485,7 +2486,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 
 	/* is there discover pending? or discovery cancel was requested previously */
 	if (!dbus_data->inq_active || dbus_data->discovery_cancel)
-		return error_not_authorized(conn, msg); /* FIXME: find a better error name */
+		return error_not_authorized(conn, msg);
 
 	/* only the discover requestor can cancel the inquiry process */
 	if (!dbus_data->discovery_requestor ||
