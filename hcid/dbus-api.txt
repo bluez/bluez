@@ -694,7 +694,6 @@ Methods		string GetAddress()
 			or DiscoverDevicesWithoutNameResolving actions.
 
 			Possible errors: org.bluez.Error.Failed
-					 org.bluez.Error.InProgress
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NoSuchAdapter
 
