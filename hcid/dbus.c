@@ -1140,6 +1140,18 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 done:
 	bt_free(local_addr);
 }
+
+static char *extract_eir_name(uint8_t *data, uint8_t *type)
+{
+	if (!data)
+		return NULL;
+
+	if (type)
+		*type = 0x08;
+
+	return strdup("Extended Inquiry Response");
+}
+
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi, uint8_t *data)
 {
 	char filename[PATH_MAX + 1];
@@ -1153,6 +1165,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	const dbus_uint32_t tmp_class = class;
 	const dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
+	uint8_t name_type = 0x00;
 	name_status_t name_status;
 	int id;
 
@@ -1162,14 +1175,14 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		goto done;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting %s path data failed!", path);
-		goto failed;
+		goto done;
 	}
 
 	write_remote_class(local, peer, class);
@@ -1187,13 +1200,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	if (pdata->pdisc_active)
 		pdata->pinq_idle = 0;
 
-	/* the inquiry result can be triggered by NON D-Bus client */
-	if (pdata->discover_type & RESOLVE_NAME)
-		name_status = NAME_REQUIRED;
-	else
-		name_status = NAME_NOT_REQUIRED;
-
-
 	/* send the device found signal */
 	signal_device = dev_signal_factory(pdata->dev_id, "RemoteDeviceFound",
 						DBUS_TYPE_STRING, &peer_addr,
@@ -1209,10 +1215,26 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	/* if found: don't sent the name again */
 	l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
 	if (l)
-		goto failed;
+		goto done;
 
-	create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "names");
-	name = textfile_get(filename, peer_addr);
+	/* the inquiry result can be triggered by NON D-Bus client */
+	if (pdata->discover_type & RESOLVE_NAME)
+		name_status = NAME_REQUIRED;
+	else
+		name_status = NAME_NOT_REQUIRED;
+
+	name = extract_eir_name(data, &name_type);
+
+	if (name) {
+		if (name_type == 0x09) {
+			write_device_name(local, peer, name);
+			name_status = NAME_NOT_REQUIRED;
+		}
+	} else {
+		create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "names");
+		name = textfile_get(filename, peer_addr);
+	}
+
 	if (name) {
 		signal_name = dev_signal_factory(pdata->dev_id, "RemoteNameUpdated",
 							DBUS_TYPE_STRING, &peer_addr,
@@ -1221,12 +1243,15 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 		send_reply_and_unref(connection, signal_name);
 
 		free(name);
-		name_status = NAME_SENT;
+
+		if (name_type != 0x08)
+			name_status = NAME_SENT;
 	} 
+
 	/* add in the list to track name sent/pending */
 	disc_device_append(&pdata->disc_devices, peer, name_status);
 
-failed:
+done:
 	bt_free(local_addr);
 	bt_free(peer_addr);
 }
