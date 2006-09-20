@@ -1463,7 +1463,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 	 * if there is a discover process running, just queue the request.
 	 * Otherwise, send the HCI cmd to get the remote name
 	 */
-	if (!(dbus_data->inq_active ||  dbus_data->pinq_active))
+	if (!(dbus_data->disc_active ||  dbus_data->pdisc_active))
 		disc_device_req_name(dbus_data);
 
 	return error_request_deferred(conn, msg);
@@ -1933,7 +1933,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	str2ba(peer_addr, &peer_bdaddr);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
-	if (dbus_data->inq_active || !dbus_data->pinq_idle)
+	if (dbus_data->disc_active || !dbus_data->pinq_idle)
 		return error_discover_in_progress(conn, msg);
 
 	cancel_remote_name(dbus_data);
@@ -2305,7 +2305,7 @@ static DBusHandlerResult handle_dev_start_periodic_req(DBusConnection *conn, DBu
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	if (dbus_data->inq_active || dbus_data->pinq_active)
+	if (dbus_data->disc_active || dbus_data->pdisc_active)
 		return error_discover_in_progress(conn, msg);
 
 	cancel_remote_name(dbus_data);
@@ -2370,7 +2370,7 @@ static DBusHandlerResult handle_dev_stop_periodic_req(DBusConnection *conn, DBus
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	if (!dbus_data->pinq_active)
+	if (!dbus_data->pdisc_active)
 		return error_not_authorized(conn, msg);
 
 	/* only the requestor can stop the periodic inquiry */
@@ -2411,7 +2411,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	if (dbus_data->inq_active || dbus_data->pinq_active)
+	if (dbus_data->disc_active || dbus_data->pdisc_active)
 		return error_discover_in_progress(conn, msg);
 
 	cancel_remote_name(dbus_data);
@@ -2486,7 +2486,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 		return error_invalid_arguments(conn, msg);
 
 	/* is there discover pending? or discovery cancel was requested previously */
-	if (!dbus_data->inq_active || dbus_data->discovery_cancel)
+	if (!dbus_data->disc_active || dbus_data->discovery_cancel)
 		return error_not_authorized(conn, msg);
 
 	/* only the discover requestor can cancel the inquiry process */

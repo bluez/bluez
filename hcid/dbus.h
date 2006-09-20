@@ -108,8 +108,8 @@ struct hci_dbus_data {
 	uint32_t timeout_id;		   /* discoverable timeout id */
 	uint32_t discoverable_timeout;	   /* discoverable time(msec) */
 	uint8_t mode;		           /* scan mode */
-	int inq_active;				/* standard inquiry active: includes name resolution step */
-	int pinq_active;			/* periodic inquiry active */
+	int disc_active;			/* standard discovery active: includes name resolution step */
+	int pdisc_active;			/* periodic discovery active */
 	int pinq_idle;				/* tracks the idle time for periodic inquiry */
 	int discover_type;			/* type requested */
 	struct slist *disc_devices;
