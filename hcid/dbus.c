@@ -399,7 +399,7 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 		pdata->discovery_cancel = NULL;
 	}
 
-	if (pdata->discovery_requestor) {
+	if (pdata->disc_active) {
 		/* Send discovery completed signal if there isn't name to resolve */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 				"DiscoveryCompleted");
@@ -665,13 +665,6 @@ int hcid_dbus_stop_device(uint16_t id)
 		error("Getting %s path data failed!", path);
 		return -1;
 	}
-
-	message = dev_signal_factory(pdata->dev_id, "ModeChanged",
-						DBUS_TYPE_STRING, &scan_mode,
-						DBUS_TYPE_INVALID);
-
-	send_reply_and_unref(connection, message);
-
 	/* cancel pending timeout */
 	if (pdata->timeout_id) {
 		g_timeout_remove(pdata->timeout_id);
@@ -680,6 +673,13 @@ int hcid_dbus_stop_device(uint16_t id)
 
 	/* check pending requests */
 	reply_pending_requests(path, pdata);
+
+	message = dev_signal_factory(pdata->dev_id, "ModeChanged",
+						DBUS_TYPE_STRING, &scan_mode,
+						DBUS_TYPE_INVALID);
+
+	send_reply_and_unref(connection, message);
+
 
 	cancel_passkey_agent_requests(pdata->passkey_agents, path, NULL);
 
@@ -1030,15 +1030,15 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 			pdata->discovery_cancel = NULL;
 		}
 
-		if (pdata->disc_active) {
-			/* Send discovery completed signal if there isn't name to resolve */
-			message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-					"DiscoveryCompleted");
-			send_reply_and_unref(connection, message);
-		}
-
 		/* reset the discover type for standard inquiry only */
 		pdata->discover_type &= ~STD_INQUIRY; 
+	}
+
+	if (pdata->disc_active) {
+		/* Send discovery completed signal if there isn't name to resolve */
+		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+				"DiscoveryCompleted");
+		send_reply_and_unref(connection, message);
 	}
 
 	/* tracks D-Bus and NON D-Bus */
