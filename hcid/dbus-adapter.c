@@ -2316,8 +2316,8 @@ static DBusHandlerResult handle_dev_start_periodic_req(DBusConnection *conn, DBu
 
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.lap, lap, 3);
-	cp.max_period = 24;
-	cp.min_period = 16;
+	cp.max_period = htobs(24);
+	cp.min_period = htobs(16);
 	cp.length  = 0x08;
 	cp.num_rsp = 0x00;
 

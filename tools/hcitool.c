@@ -888,8 +888,8 @@ static void cmd_spinq(int dev_id, int argc, char **argv)
 
 	memset(&cp, 0, sizeof(cp));
 	memcpy(cp.lap, lap, 3);
-	cp.max_period = 16;
-	cp.min_period = 10;
+	cp.max_period = htobs(16);
+	cp.min_period = htobs(10);
 	cp.length     = 8;
 	cp.num_rsp    = 0;
 
