@@ -207,10 +207,7 @@ static int cancel_remote_name(struct hci_dbus_data *pdata)
 {
 	struct discovered_dev_info *dev, match;
 	struct slist *l;
-	struct hci_request rq;
-	remote_name_req_cancel_cp cp;
 	int dd, err = 0;
-	uint8_t status;
 
 	/* find the pending remote name request */
 	memset(&match, 0, sizeof(struct discovered_dev_info));
@@ -227,27 +224,10 @@ static int cancel_remote_name(struct hci_dbus_data *pdata)
 
 	dev = l->data;
 
-	bacpy(&cp.bdaddr, &dev->bdaddr);
-
-	rq.ogf    = OGF_LINK_CTL;
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-	rq.event = EVT_CMD_COMPLETE;
-	rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
-	rq.cparam = &cp;
-	rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		error("Sending command failed: %s (%d)", strerror(errno), errno);
+	if (hci_read_remote_name_cancel(dd, &dev->bdaddr, 100) < 0) {
+		error("Remote name cancel failed: %s(%d)", strerror(errno), errno);
 		err = -errno;
-		goto failed;
 	}
-
-	if (status) {
-		error("Cancel failed with status 0x%02x", status);
-		err = -bt_error(status);
-	}
-failed:
 
 	/* free discovered devices list */
 	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);

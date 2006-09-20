@@ -411,7 +411,7 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 	}
 
 	if (pdata->pdisc_active) {
-		/* Send periodic discovery signal */
+		/* Send periodic discovery stopped signal exit or stop the device */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 				"PeriodicDiscoveryStopped");
 		send_reply_and_unref(connection, message);
@@ -2146,14 +2146,64 @@ void discover_devices_req_exit(const char *name, struct hci_dbus_data *pdata)
 	cancel_discovery(pdata);
 }
 
+static int inquiry_cancel(int dd, int to)
+{
+	struct hci_request rq;
+	uint8_t status;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_INQUIRY_CANCEL;
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event = EVT_CMD_COMPLETE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (status) {
+		errno = bt_error(status);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int remote_name_cancel(int dd, bdaddr_t *dba, int to)
+{
+	remote_name_req_cancel_cp cp;
+	struct hci_request rq;
+	uint8_t status;
+
+	memset(&rq, 0, sizeof(rq));
+	memset(&cp, 0, sizeof(cp));
+
+	bacpy(&cp.bdaddr, dba);
+
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_REMOTE_NAME_REQ_CANCEL;
+	rq.cparam = &cp;
+	rq.clen   = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = sizeof(status);
+	rq.event = EVT_CMD_COMPLETE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (status) {
+		errno = bt_error(status);
+		return -1;
+	}
+
+	return 0;
+}
+
 int cancel_discovery(struct hci_dbus_data *pdata)
 {
 	struct discovered_dev_info *dev, match;
 	struct slist *l;
-	struct hci_request rq;
-	remote_name_req_cancel_cp cp;
 	int dd, err = 0;
-	uint8_t status;
 
 	if (!pdata->disc_active)
 		goto cleanup;
@@ -2164,42 +2214,26 @@ int cancel_discovery(struct hci_dbus_data *pdata)
 		goto cleanup;
 	}
 
-	memset(&rq, 0, sizeof(rq));
-	memset(&cp, 0, sizeof(cp));
-
-	rq.ogf = OGF_LINK_CTL;
-	rq.rparam = &status;
-	rq.rlen = sizeof(status);
-	rq.event = EVT_CMD_COMPLETE;
-
-	/* find the pending remote name request */
+	/* 
+	 * If there is a pending read remote name request means
+	 * that the inquiry complete event was already received
+	 */
 	memset(&match, 0, sizeof(struct discovered_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
 	l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
-
 	if (l) {
 		dev = l->data;
-
-		bacpy(&cp.bdaddr, &dev->bdaddr);
-
-		rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
-		rq.cparam = &cp;
-		rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
-	} else
-		rq.ocf = OCF_INQUIRY_CANCEL;
-
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		error("Sending command failed: %s (%d)", strerror(errno), errno);
-		err = -errno;
-		hci_close_dev(dd);
-		goto cleanup;
-	}
-
-	if (status) {
-		error("Cancel failed with status 0x%02x", status);
-		err = -bt_error(status);
+		if (remote_name_cancel(dd, &dev->bdaddr, 100) < 0) {
+			error("Read remote name cancel failed: %s, (%d)", strerror(errno), errno);
+			err = -errno;
+		}
+	} else {
+		if (inquiry_cancel(dd, 100) < 0) {
+			error("Inquiry cancel failed:%s (%d)", strerror(errno), errno);
+			err = -errno;
+		}
 	}
 
 	hci_close_dev(dd);
@@ -2224,94 +2258,76 @@ void periodic_discover_req_exit(const char *name, struct hci_dbus_data *pdata)
 	 * Cleanup the discovered devices list and send the cmd to exit from periodic inquiry
 	 * or cancel remote name request. The return value can be ignored.
 	 */
-	cancel_periodic_discovery(pdata);
 
-	if (pdata->pdiscovery_requestor) {
-		free(pdata->pdiscovery_requestor);
-		pdata->pdiscovery_requestor = NULL;
+	cancel_periodic_discovery(pdata);
+}
+
+static int periodic_inquiry_exit(int dd, int to)
+{
+	struct hci_request rq;
+	uint8_t status;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_EXIT_PERIODIC_INQUIRY;
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event = EVT_CMD_COMPLETE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (status) {
+		errno = status;
+		return -1;
 	}
 
-	pdata->pdisc_active = 0;
+	return 0;
 }
 
 int cancel_periodic_discovery(struct hci_dbus_data *pdata)
 {
 	struct discovered_dev_info *dev, match;
 	struct slist *l;
-	struct hci_request rq;
-	remote_name_req_cancel_cp cp;
 	int dd, err = 0;
-	uint8_t status = 0x00;
 	
+	if (!pdata->pdisc_active)
+		goto cleanup;
+
 	dd = hci_open_dev(pdata->dev_id);
 	if (dd < 0) {
 		err = -ENODEV;
 		goto cleanup;
 	}
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf = OCF_EXIT_PERIODIC_INQUIRY;
-	rq.cparam = 0;
-	rq.clen = 0;
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-	rq.event = EVT_CMD_COMPLETE;
-	
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		error("Sending command failed: %s (%d)", strerror(errno), errno);
-		err = -errno;
-		goto cleanup;
-	}
-
-	if (status) {
-		error("exit periodic inquiry failed with status 0x%02x", status);
-		err = -bt_error(status);
-		goto cleanup;
-	}
-
 	/* find the pending remote name request */
 	memset(&match, 0, sizeof(struct discovered_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
 	l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
-	if (!l)
-		goto cleanup; /* no request pending */
+	if (l) {
+		dev = l->data;
+		if (remote_name_cancel(dd, &dev->bdaddr, 100) < 0) {
+			error("Read remote name cancel failed: %s, (%d)", strerror(errno), errno);
+			err = -errno;
+		}
+	}
 
-	dev = l->data;
-
-	memset(&rq, 0, sizeof(rq));
-	memset(&cp, 0, sizeof(cp));
-
-	bacpy(&cp.bdaddr, &dev->bdaddr);
-
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
-	rq.cparam = &cp;
-	rq.clen = REMOTE_NAME_REQ_CANCEL_CP_SIZE;
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-	rq.event = EVT_CMD_COMPLETE;
-	
-	if (hci_send_req(dd, &rq, 100) < 0) {
-		error("Sending command failed: %s (%d)", strerror(errno), errno);
+	/* ovewrite err if necessary: stop periodic inquiry has higher priority */
+	if (periodic_inquiry_exit(dd, 100) < 0) {
+		error("Periodic Inquiry exit failed:%s (%d)", strerror(errno), errno);
 		err = -errno;
-		goto cleanup;
 	}
 
-	if (status) {
-		error("Remote name cancel failed with status 0x%02x", status);
-		err = -bt_error(status);
-		goto cleanup;
-	}
-
+	hci_close_dev(dd);
 cleanup:
+	/*
+	 * Reset pdiscovery_requestor and pdisc_active is done when the
+	 * cmd complete event for exit periodic inquiry mode cmd arrives.
+	 */
 	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
-
-	hci_close_dev(dd);
 
 	return err;
 }
