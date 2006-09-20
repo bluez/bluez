@@ -406,7 +406,7 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 		send_reply_and_unref(connection, message);
 	}
 
-	if (pdata->pdiscovery_requestor) {
+	if (pdata->pdisc_active) {
 		/* Send periodic discovery signal */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 				"PeriodicDiscoveryStopped");
