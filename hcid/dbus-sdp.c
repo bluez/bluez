@@ -1148,6 +1148,7 @@ search_request:
 
 }
 
+#if 0
 static int uuid_cmp(const void *key1, const void *key2)
 {
 	uuid_t *a, *b;
@@ -1190,6 +1191,7 @@ static sdp_record_t *find_record_by_uuid(const char *address, uuid_t *uuid)
 
 	return NULL;
 }
+#endif
 
 static sdp_record_t *find_record_by_handle(const char *address,
 						uint32_t handle)
