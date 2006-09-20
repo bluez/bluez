@@ -416,20 +416,22 @@ reject:
 static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_status *evt = ptr;
+	uint16_t opcode = btohs(evt->opcode);
 
 	if (evt->status)
 		return;
 
-	if (evt->opcode == cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY))
+	if (opcode == cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY))
 		hcid_dbus_inquiry_start(sba);
 }
 
 static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_complete *evt = ptr;
+	uint16_t opcode = btohs(evt->opcode);
 	uint8_t status;
 
-	switch (evt->opcode) {
+	switch (opcode) {
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PERIODIC_INQUIRY):
 		status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
 		hcid_dbus_periodic_inquiry_start(sba, status);
