@@ -2373,11 +2373,6 @@ static DBusHandlerResult handle_dev_stop_periodic_req(DBusConnection *conn, DBus
 	if (!dbus_data->pdisc_active)
 		return error_not_authorized(conn, msg);
 
-	/* only the requestor can stop the periodic inquiry */
-	if (!dbus_data->pdiscovery_requestor ||
-		strcmp(dbus_data->pdiscovery_requestor, dbus_message_get_sender(msg)))
-		return error_not_authorized(conn, msg);
-
 	/* 
 	 * Cleanup the discovered devices list and send the cmd to exit
 	 * from periodic inquiry mode or cancel remote name request.

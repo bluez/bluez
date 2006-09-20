@@ -712,13 +712,11 @@ Methods		string GetAddress()
 
 		void StopPeriodicDiscovery()
 
-			This method stops a periodic discovery that was started using
-			the StartPeriodicDiscovery method.
+			This method stops a periodic discovery.
 
 			Possible errors:
 					org.bluez.Error.Failed
 					org.bluez.Error.NotAuthorized
-					org.bluez.Error.NotInProgress
 					org.bluez.Error.NoSuchAdapter
 
 		array{uint32} GetRemoteServiceHandles(string address, string match)
