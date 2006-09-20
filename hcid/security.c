@@ -468,7 +468,9 @@ static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 	if (!evt->status) {
 		char *end;
 		memcpy(name, evt->name, 248);
-		if (!g_utf8_validate(name, -1, &end))
+		/* It's ok to cast end between const and non-const since
+		 * we know it points to inside of name which is non-const */
+		if (!g_utf8_validate(name, -1, (const char **) &end))
 			*end = '\0';
 		write_device_name(sba, &dba, name);
 	}
