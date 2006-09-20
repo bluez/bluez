@@ -404,6 +404,10 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 				"DiscoveryCompleted");
 		send_reply_and_unref(connection, message);
+
+		/* Cancel inquiry initiated by D-Bus client */
+		if (pdata->discovery_requestor)
+			cancel_discovery(pdata);
 	}
 
 	if (pdata->pdisc_active) {
@@ -411,6 +415,10 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 				"PeriodicDiscoveryStopped");
 		send_reply_and_unref(connection, message);
+
+		/* Stop periodic inquiry initiated by D-Bus client */
+		if (pdata->pdiscovery_requestor)
+			cancel_periodic_discovery(pdata);
 	}
 }
 
@@ -2248,10 +2256,10 @@ int cancel_periodic_discovery(struct hci_dbus_data *pdata)
 
 	dev = l->data;
 
-	bacpy(&cp.bdaddr, &dev->bdaddr);
-
 	memset(&rq, 0, sizeof(rq));
 	memset(&cp, 0, sizeof(cp));
+
+	bacpy(&cp.bdaddr, &dev->bdaddr);
 
 	rq.ogf    = OGF_LINK_CTL;
 	rq.ocf = OCF_REMOTE_NAME_REQ_CANCEL;
