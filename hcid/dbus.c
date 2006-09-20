@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -1143,13 +1144,21 @@ done:
 
 static char *extract_eir_name(uint8_t *data, uint8_t *type)
 {
-	if (!data)
+	if (!data || !type)
 		return NULL;
 
-	if (type)
-		*type = 0x08;
+	if (data[0] == 0)
+		return NULL;
 
-	return strdup("Extended Inquiry Response");
+	*type = data[1];
+
+	switch (*type) {
+	case 0x08:
+	case 0x09:
+		return strndup((char *) (data + 2), data[0] - 1);
+	}
+
+	return NULL;
 }
 
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi, uint8_t *data)
@@ -1161,7 +1170,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	struct hci_dbus_data *pdata;
 	struct slist *l;
 	struct discovered_dev_info match;
-	char *local_addr, *peer_addr, *name;
+	char *local_addr, *peer_addr, *name, *tmp_name;
 	const dbus_uint32_t tmp_class = class;
 	const dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
@@ -1223,16 +1232,25 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	else
 		name_status = NAME_NOT_REQUIRED;
 
-	name = extract_eir_name(data, &name_type);
+	create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "names");
+	name = textfile_get(filename, peer_addr);
 
-	if (name) {
+	tmp_name = extract_eir_name(data, &name_type);
+	if (tmp_name) {
 		if (name_type == 0x09) {
-			write_device_name(local, peer, name);
+			write_device_name(local, peer, tmp_name);
 			name_status = NAME_NOT_REQUIRED;
+
+			if (name)
+				free(name);
+
+			name = tmp_name;
+		} else {
+			if (name)
+				free(tmp_name);
+			else
+				name = tmp_name;
 		}
-	} else {
-		create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "names");
-		name = textfile_get(filename, peer_addr);
 	}
 
 	if (name) {
