@@ -438,9 +438,12 @@ int get_device_name(uint16_t dev_id, char *name, size_t size)
 
 int set_device_name(uint16_t dev_id, const char *name)
 {
+	struct hci_dev *dev;
 	int dd;
 
 	ASSERT_DEV_ID;
+
+	dev = &devices[dev_id];
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
@@ -455,6 +458,29 @@ int set_device_name(uint16_t dev_id, const char *name)
 					dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
 		return -err;
+	}
+
+	if (dev->features[6] & LMP_EXT_INQ) {
+		uint8_t fec = 0, data[240];
+		int len;
+
+		memset(data, 0, sizeof(data));
+		len = strlen(name);
+		if (len > 48) {
+			len = 48;
+			data[1] = 0x08;
+		} else
+			data[1] = 0x09;
+		data[0] = len + 1;
+		memcpy(data + 2, name, len);
+
+		if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0) {
+			int err = errno;
+			error("Can't write extended inquiry response for hci%d: %s (%d)",
+							dev_id, strerror(errno), errno);
+			hci_close_dev(dd);
+			return -err;
+		}
 	}
 
 	hci_close_dev(dd);
