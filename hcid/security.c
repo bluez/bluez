@@ -509,7 +509,7 @@ static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 			| (info->dev_class[1] << 8)
 			| (info->dev_class[2] << 16);
 
-		hcid_dbus_inquiry_result(sba, &info->bdaddr, class, 0);
+		hcid_dbus_inquiry_result(sba, &info->bdaddr, class, 0, NULL);
 
 		update_lastseen(sba, &info->bdaddr);
 
@@ -533,7 +533,7 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, vo
 				| (info->dev_class[2] << 16);
 
 			hcid_dbus_inquiry_result(sba, &info->bdaddr,
-							class, info->rssi);
+						class, info->rssi, NULL);
 
 			update_lastseen(sba, &info->bdaddr);
 
@@ -547,7 +547,7 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, vo
 				| (info->dev_class[2] << 16);
 
 			hcid_dbus_inquiry_result(sba, &info->bdaddr,
-							class, info->rssi);
+						class, info->rssi, NULL);
 
 			update_lastseen(sba, &info->bdaddr);
 
@@ -567,7 +567,8 @@ static inline void extended_inquiry_result(int dev, bdaddr_t *sba, int plen, voi
 			| (info->dev_class[1] << 8)
 			| (info->dev_class[2] << 16);
 
-		hcid_dbus_inquiry_result(sba, &info->bdaddr, class, info->rssi);
+		hcid_dbus_inquiry_result(sba, &info->bdaddr, class,
+						info->rssi, info->data);
 
 		update_lastseen(sba, &info->bdaddr);
 

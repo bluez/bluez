@@ -1140,7 +1140,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 done:
 	bt_free(local_addr);
 }
-void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi)
+void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi, uint8_t *data)
 {
 	char filename[PATH_MAX + 1];
 	DBusMessage *signal_device;
