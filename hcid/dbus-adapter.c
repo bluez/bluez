@@ -203,7 +203,7 @@ static int check_address(const char *addr)
 	return 0;
 }
 
-static int cancel_remote_name(struct hci_dbus_data *pdata)
+int pending_remote_name_cancel(struct hci_dbus_data *pdata)
 {
 	struct discovered_dev_info *dev, match;
 	struct slist *l;
@@ -1916,7 +1916,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	if (dbus_data->disc_active || !dbus_data->pinq_idle)
 		return error_discover_in_progress(conn, msg);
 
-	cancel_remote_name(dbus_data);
+	pending_remote_name_cancel(dbus_data);
 
 	if (dbus_data->bonding)
 		return error_bonding_in_progress(conn, msg);
@@ -2288,7 +2288,7 @@ static DBusHandlerResult handle_dev_start_periodic_req(DBusConnection *conn, DBu
 	if (dbus_data->disc_active || dbus_data->pdisc_active)
 		return error_discover_in_progress(conn, msg);
 
-	cancel_remote_name(dbus_data);
+	pending_remote_name_cancel(dbus_data);
 
 	dd = hci_open_dev(dbus_data->dev_id);
 	if (dd < 0)
@@ -2389,7 +2389,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	if (dbus_data->disc_active || dbus_data->pdisc_active)
 		return error_discover_in_progress(conn, msg);
 
-	cancel_remote_name(dbus_data);
+	pending_remote_name_cancel(dbus_data);
 
 	if (dbus_data->bonding)
 		return error_bonding_in_progress(conn, msg);

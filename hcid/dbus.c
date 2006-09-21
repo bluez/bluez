@@ -870,8 +870,19 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		pdata->disc_active = 1;
+		/* 
+		 * Cancel pending remote name request and clean the device list
+		 * when inquiry is supported in periodic inquiry idle state.
+		 */
+		if (pdata->pdisc_active)
+			pending_remote_name_cancel(pdata);
+
+		/* disable name resolution for NON D-Bus requests */
+		if (!pdata->discovery_requestor)
+			pdata->discover_type &= ~RESOLVE_NAME;
+	}
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"DiscoveryStarted");
@@ -1012,18 +1023,38 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	}
 
 	pdata->pinq_idle = 1;
+	/* 
+	 * Enable resolution again: standard inquiry can be 
+	 * received in the periodic inquiry idle state.
+	 */
+	if (pdata->pdiscovery_requestor)
+		pdata->discover_type |= RESOLVE_NAME;
+
+	/*
+	 * The following scenarios can happen:
+	 * 1. standard inquiry: always send discovery completed signal
+	 * 2. standard inquiry + name resolving: send discovery completed after name resolving 
+	 * 3. periodic inquiry: skip discovery completed signal
+	 * 4. periodic inquiry + standard inquiry: always send discovery completed signal 
+	 *
+	 * Keep in mind that non D-Bus requests can arrive.
+	 */
 
 	if (!disc_device_req_name(pdata))
 		goto done; /* skip - there is name to resolve */
+
+	if (pdata->disc_active) {
+		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+				"DiscoveryCompleted");
+		send_reply_and_unref(connection, message);
+
+		pdata->disc_active = 0;
+	}
 
 	/* free discovered devices list */
 	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
-
-	 /* Don't send signal if it is a periodic inquiry */
-	if (pdata->pdisc_active)
-		goto done; 
 
 	if (pdata->discovery_requestor) { 
 		name_listener_remove(connection, pdata->discovery_requestor,
@@ -1043,15 +1074,6 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		pdata->discover_type &= ~STD_INQUIRY; 
 	}
 
-	if (pdata->disc_active) {
-		/* Send discovery completed signal if there isn't name to resolve */
-		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-				"DiscoveryCompleted");
-		send_reply_and_unref(connection, message);
-	}
-
-	/* tracks D-Bus and NON D-Bus */
-	pdata->disc_active = 0;
 done:
 	bt_free(local_addr);
 }
@@ -1079,8 +1101,13 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata))
+	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		pdata->pdisc_active = 1;
+
+		/* disable name resolution for NON D-Bus requests */
+		if (!pdata->pdiscovery_requestor)
+			pdata->discover_type &= ~RESOLVE_NAME;
+	}
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"PeriodicDiscoveryStarted");
@@ -1200,10 +1227,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	 * workaround to identify situation when the daemon started and
 	 * a standard inquiry or periodic inquiry was already running
 	 */
-	if (!pdata->disc_active && !pdata->pdisc_active) {
-		pdata->discover_type |= (PERIODIC_INQUIRY | RESOLVE_NAME);
+	if (!pdata->disc_active && !pdata->pdisc_active)
 		pdata->pdisc_active = 1;
-	}
 
 	 /* reset the idle flag when the inquiry complete event arrives */
 	if (pdata->pdisc_active)

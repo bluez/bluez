@@ -212,6 +212,7 @@ void discover_devices_req_exit(const char *name, struct hci_dbus_data *pdata);
 int cancel_discovery(struct hci_dbus_data *pdata);
 void periodic_discover_req_exit(const char *name, struct hci_dbus_data *pdata);
 int cancel_periodic_discovery(struct hci_dbus_data *pdata);
+int pending_remote_name_cancel(struct hci_dbus_data *pdata);
 
 int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
 void release_default_agent(void);
