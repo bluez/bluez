@@ -634,15 +634,19 @@ failed:
 	rfcomm_continue_data_free(cdata);
 }
 
-static uuid_t *str2uuid128(const char *string)
+static uuid_t *str2uuid(const char *string)
 {
-	uint16_t data1, data2, data3, data5;
+	uint16_t svclass, data1, data2, data3, data5;
 	uint32_t data0, data4;
-	uuid_t short_uuid;
+	uuid_t *uuid;
 
-	sdp_uuid16_create(&short_uuid, sdp_str2svclass(string));
-	if (short_uuid.value.uuid16)
-		return sdp_uuid_to_uuid128(&short_uuid);
+	uuid = malloc(sizeof(uuid_t));
+	if (!uuid)
+		return NULL;
+
+	svclass = sdp_str2svclass(string);
+	if (svclass)
+		return sdp_uuid16_create(uuid, sdp_str2svclass(string));
 
 	if (strlen(string) == 36 &&
 			string[8] == '-' &&
@@ -652,11 +656,6 @@ static uuid_t *str2uuid128(const char *string)
 			sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
 				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
 		uint8_t val[16];
-		uuid_t *uuid;
-
-		uuid = malloc(sizeof(*uuid));
-		if (!uuid)
-			return NULL;
 
 		data0 = htonl(data0);
 		data1 = htons(data1);
@@ -674,6 +673,8 @@ static uuid_t *str2uuid128(const char *string)
 
 		return sdp_uuid128_create(uuid, val);
 	}
+
+	free(uuid);
 
 	return NULL;
 }
@@ -715,7 +716,7 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 	if (!cdata)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if ((uuid = str2uuid128(string)))
+	if ((uuid = str2uuid(string)))
 		err = get_record_with_uuid(conn, msg, dbus_data->dev_id, dst,
 					uuid, rfcomm_conn_req_continue, cdata);
 	else if ((handle = str2handle(string)))
@@ -940,7 +941,7 @@ static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 	if (!cdata)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if ((uuid = str2uuid128(string)))
+	if ((uuid = str2uuid(string)))
 		err = get_record_with_uuid(conn, msg, dbus_data->dev_id, dst,
 					uuid, rfcomm_bind_req_continue, cdata);
 	else if ((handle = str2handle(string)))
