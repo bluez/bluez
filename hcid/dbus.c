@@ -1160,11 +1160,6 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 		pdata->pdiscovery_requestor = NULL;
 	}
 
-	/* Send discovery completed signal if there isn't name to resolve */
-	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"PeriodicDiscoveryStopped");
-	send_reply_and_unref(connection, message);
-
 	 /* workaround: inquiry completed is not sent when exiting from periodic inquiry */
 	if (pdata->disc_active) {
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
@@ -1173,6 +1168,11 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 
 		pdata->disc_active = 0;
 	}
+
+	/* Send discovery completed signal if there isn't name to resolve */
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+						"PeriodicDiscoveryStopped");
+	send_reply_and_unref(connection, message);
 done:
 	bt_free(local_addr);
 }
