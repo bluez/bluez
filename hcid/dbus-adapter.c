@@ -2386,7 +2386,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	if (dbus_data->disc_active || dbus_data->pdisc_active)
+	if (dbus_data->disc_active)
 		return error_discover_in_progress(conn, msg);
 
 	pending_remote_name_cancel(dbus_data);
@@ -2427,15 +2427,11 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	}
 
 	method = dbus_message_get_member(msg);
-	/*
-	 * In the future, if we allow standard inquiry when there is active
-	 * periodic inquiry: the name resolve flag must NOT be overwritten. 
-	 */
 	if (strcmp("DiscoverDevicesWithoutNameResolving", method) == 0)
 		dbus_data->discover_type |= STD_INQUIRY;
-	else 
+	else
 		dbus_data->discover_type |= (STD_INQUIRY | RESOLVE_NAME);
-		
+
 	dbus_data->discovery_requestor = strdup(dbus_message_get_sender(msg));
 
 	reply = dbus_message_new_method_return(msg);
@@ -2468,6 +2464,7 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 	if (!dbus_data->discovery_requestor ||
 			strcmp(dbus_data->discovery_requestor, dbus_message_get_sender(msg)))
 		return error_not_authorized(conn, msg);
+
 	/* 
 	 * Cleanup the discovered devices list and send the cmd
 	 * to cancel inquiry or cancel remote name request
@@ -2478,11 +2475,11 @@ static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, D
 			return error_no_such_adapter(conn, msg);
 		else
 			return error_failed(conn, msg, -err);
-
 	}
 
 	/* Reply before send DiscoveryCompleted */
 	dbus_data->discovery_cancel = dbus_message_ref(msg);
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
