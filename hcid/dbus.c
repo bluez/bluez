@@ -1019,7 +1019,7 @@ static void send_out_of_range(const char *path, struct slist *l)
 		peer_addr = l->data;
 
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"RemoteDeviceLost");
+						"RemoteDeviceDisappeared");
 		dbus_message_append_args(message,
 				DBUS_TYPE_STRING, &peer_addr,
 				DBUS_TYPE_INVALID);

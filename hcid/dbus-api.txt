@@ -767,6 +767,12 @@ Signals		void ModeChanged(string mode)
 			has been found by the service daemon. In general they
 			only appear during a device discovery.
 
+		void RemoteDeviceDisappeared(string address)
+
+			This signal will be send when an inquiry session for
+			a periodic discovery finishes and previously found
+			devices are no longer in range or visible.
+
 		void RemoteClassUpdated(string address, uint32 class)
 
 			This signal will be send every time the remote class
