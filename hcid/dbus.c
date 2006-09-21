@@ -401,9 +401,10 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 	}
 
 	if (pdata->disc_active) {
-		/* Send discovery completed signal if there isn't name to resolve */
+		/* Send discovery completed signal if there isn't name
+		 * to resolve */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-				"DiscoveryCompleted");
+							"DiscoveryCompleted");
 		send_reply_and_unref(connection, message);
 
 		/* Cancel inquiry initiated by D-Bus client */
@@ -412,9 +413,10 @@ static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata
 	}
 
 	if (pdata->pdisc_active) {
-		/* Send periodic discovery stopped signal exit or stop the device */
+		/* Send periodic discovery stopped signal exit or stop
+		 * the device */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-				"PeriodicDiscoveryStopped");
+						"PeriodicDiscoveryStopped");
 		send_reply_and_unref(connection, message);
 
 		/* Stop periodic inquiry initiated by D-Bus client */
@@ -439,39 +441,45 @@ static int unregister_dbus_path(const char *path)
 		release_passkey_agents(pdata, NULL);
 
 		if (pdata->discovery_requestor) {
-			name_listener_remove(connection, pdata->discovery_requestor,
-						(name_cb_t) discover_devices_req_exit, pdata);
+			name_listener_remove(connection,
+				pdata->discovery_requestor,
+				(name_cb_t) discover_devices_req_exit, pdata);
 			free(pdata->discovery_requestor);
 			pdata->discovery_requestor = NULL;
 		}
 
 		if (pdata->pdiscovery_requestor) {
-			name_listener_remove(connection, pdata->pdiscovery_requestor,
-						(name_cb_t) periodic_discover_req_exit, pdata);
+			name_listener_remove(connection,
+				pdata->pdiscovery_requestor,
+				(name_cb_t) periodic_discover_req_exit, pdata);
 			free(pdata->pdiscovery_requestor);
 			pdata->pdiscovery_requestor = NULL;
 		}
 
 		if (pdata->disc_devices) {
-			slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
+			slist_foreach(pdata->disc_devices,
+					(slist_func_t) free, NULL);
 			slist_free(pdata->disc_devices);
 			pdata->disc_devices = NULL;
 		}
 
 		if (pdata->oor_devices) {
-			slist_foreach(pdata->oor_devices, (slist_func_t) free, NULL);
+			slist_foreach(pdata->oor_devices,
+					(slist_func_t) free, NULL);
 			slist_free(pdata->oor_devices);
 			pdata->oor_devices = NULL;
 		}
 
 		if (pdata->pin_reqs) {
-			slist_foreach(pdata->pin_reqs, (slist_func_t) free, NULL);
+			slist_foreach(pdata->pin_reqs,
+					(slist_func_t) free, NULL);
 			slist_free(pdata->pin_reqs);
 			pdata->pin_reqs = NULL;
 		}
 
 		if (pdata->active_conn) {
-			slist_foreach(pdata->active_conn, (slist_func_t) free, NULL);
+			slist_foreach(pdata->active_conn,
+					(slist_func_t) free, NULL);
 			slist_free(pdata->active_conn);
 			pdata->active_conn = NULL;
 		}
@@ -650,7 +658,8 @@ int hcid_dbus_start_device(uint16_t id)
 	}
 
 	for (i = 0; i < cl->conn_num; i++, ci++)
-		active_conn_append(&pdata->active_conn, &ci->bdaddr, ci->handle);
+		active_conn_append(&pdata->active_conn,
+					&ci->bdaddr, ci->handle);
 
 	ret = 0;
 
@@ -891,7 +900,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		if (pdata->pdisc_active)
 			pending_remote_name_cancel(pdata);
 
-		/* disable name resolution for NON D-Bus requests */
+		/* Disable name resolution for non D-Bus clients */
 		if (!pdata->discovery_requestor)
 			pdata->discover_type &= ~RESOLVE_NAME;
 	}
@@ -934,7 +943,8 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUIRED;
 
-	l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t) disc_device_find);
+	l = slist_find(dbus_data->disc_devices, &match,
+					(cmp_func_t) disc_device_find);
 	if (!l)
 		return -ENODATA;
 
@@ -969,17 +979,19 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 
 		if (hci_send_req(dd, &rq, 100) < 0) {
 			error("Unable to send the HCI remote name request: %s (%d)",
-				strerror(errno), errno);
-			failed_signal = dev_signal_factory(dbus_data->dev_id, "RemoteNameFailed",
-							DBUS_TYPE_STRING, &peer_addr,
-							DBUS_TYPE_INVALID);
+						strerror(errno), errno);
+			failed_signal = dev_signal_factory(dbus_data->dev_id,
+						"RemoteNameFailed",
+						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_INVALID);
 		}
 
 		if (rp.status) {
 			error("Remote name request failed with status 0x%02x", rp.status);
-			failed_signal = dev_signal_factory(dbus_data->dev_id, "RemoteNameFailed",
-							DBUS_TYPE_STRING, &peer_addr,
-							DBUS_TYPE_INVALID);
+			failed_signal = dev_signal_factory(dbus_data->dev_id,
+						"RemoteNameFailed",
+						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_INVALID);
 		}
 
 		free(peer_addr);
@@ -998,7 +1010,8 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 		free(dev);
 
 		/* get the next element */
-		l = slist_find(dbus_data->disc_devices, &match, (cmp_func_t) disc_device_find);
+		l = slist_find(dbus_data->disc_devices, &match,
+					(cmp_func_t) disc_device_find);
 
 	} while (l);
 
@@ -1073,6 +1086,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	}
 
 	pdata->pinq_idle = 1;
+
 	/* 
 	 * Enable resolution again: standard inquiry can be 
 	 * received in the periodic inquiry idle state.
@@ -1083,9 +1097,11 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	/*
 	 * The following scenarios can happen:
 	 * 1. standard inquiry: always send discovery completed signal
-	 * 2. standard inquiry + name resolving: send discovery completed after name resolving 
+	 * 2. standard inquiry + name resolving: send discovery completed
+	 *    after name resolving 
 	 * 3. periodic inquiry: skip discovery completed signal
-	 * 4. periodic inquiry + standard inquiry: always send discovery completed signal 
+	 * 4. periodic inquiry + standard inquiry: always send discovery
+	 *    completed signal 
 	 *
 	 * Keep in mind that non D-Bus requests can arrive.
 	 */
@@ -1095,7 +1111,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 	if (pdata->disc_active) {
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-				"DiscoveryCompleted");
+							"DiscoveryCompleted");
 		send_reply_and_unref(connection, message);
 
 		pdata->disc_active = 0;
@@ -1154,7 +1170,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 	if (dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		pdata->pdisc_active = 1;
 
-		/* disable name resolution for NON D-Bus requests */
+		/* Disable name resolution for non D-Bus clients */
 		if (!pdata->pdiscovery_requestor)
 			pdata->discover_type &= ~RESOLVE_NAME;
 	}
@@ -1162,6 +1178,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"PeriodicDiscoveryStarted");
 	send_reply_and_unref(connection, message);
+
 failed:
 	bt_free(local_addr);
 }
@@ -1435,11 +1452,13 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	}
 
 	if (status)
-		message = dev_signal_factory(pdata->dev_id, "RemoteNameFailed",
+		message = dev_signal_factory(pdata->dev_id,
+						"RemoteNameFailed",
 						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_INVALID);
 	else 
-		message = dev_signal_factory(pdata->dev_id, "RemoteNameUpdated",
+		message = dev_signal_factory(pdata->dev_id,
+						"RemoteNameUpdated",
 						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_STRING, &name,
 						DBUS_TYPE_INVALID);
@@ -1477,12 +1496,18 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 		}
 
 		if (pdata->discover_type & RESOLVE_NAME) {
-			message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-					"DiscoveryCompleted");
+			message = dbus_message_new_signal(path,
+				ADAPTER_INTERFACE, "DiscoveryCompleted");
 			send_reply_and_unref(connection, message);
 		}
+
+		/* Disable name resolution for non D-Bus clients */
+		if (!pdata->pdiscovery_requestor)
+			pdata->discover_type &= ~RESOLVE_NAME;
 	}
+
 	pdata->disc_active = 0;
+
 done:
 	bt_free(local_addr);
 	bt_free(peer_addr);
@@ -2252,8 +2277,9 @@ void discover_devices_req_exit(const char *name, struct hci_dbus_data *pdata)
 	debug("DiscoverDevices requestor at %s exited before the operation finished", name);
 
 	/* 
-	 * Cleanup the discovered devices list and send the cmd to cancel inquiry
-	 * or cancel remote name request. The return value can be ignored.
+	 * Cleanup the discovered devices list and send the command to
+	 * cancel inquiry or cancel remote name request. The return
+	 * can be ignored.
 	 */
 	cancel_discovery(pdata);
 }
@@ -2334,16 +2360,19 @@ int cancel_discovery(struct hci_dbus_data *pdata)
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
+	l = slist_find(pdata->disc_devices, &match,
+				(cmp_func_t) disc_device_find);
 	if (l) {
 		dev = l->data;
 		if (remote_name_cancel(dd, &dev->bdaddr, 100) < 0) {
-			error("Read remote name cancel failed: %s, (%d)", strerror(errno), errno);
+			error("Read remote name cancel failed: %s, (%d)",
+						strerror(errno), errno);
 			err = -errno;
 		}
 	} else {
 		if (inquiry_cancel(dd, 100) < 0) {
-			error("Inquiry cancel failed:%s (%d)", strerror(errno), errno);
+			error("Inquiry cancel failed:%s (%d)",
+						strerror(errno), errno);
 			err = -errno;
 		}
 	}
@@ -2358,6 +2387,10 @@ cleanup:
 	slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
+
+	/* Disable name resolution for non D-Bus clients */
+	if (!pdata->pdiscovery_requestor)
+		pdata->discover_type &= ~RESOLVE_NAME;
 
 	return err;
 }
