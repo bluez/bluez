@@ -455,6 +455,7 @@ static get_record_data_t *get_record_data_new(uint16_t dev_id, const char *dst,
 
 static void get_record_data_free(get_record_data_t *d)
 {
+	free(d->search_data);
 	free(d->dst);
 	free(d);
 }
@@ -506,24 +507,22 @@ static gboolean search_process_cb(GIOChannel *chan,
 				GIOCondition cond, void *udata)
 {
 	struct transaction_context *ctxt = udata;
-	int sk, err = 0;
-	socklen_t len;
+	int err = 0;
 
-	sk = g_io_channel_unix_get_fd(chan);
-
-	len = sizeof(err);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
-		error("getsockopt(): %s (%d)", strerror(errno), errno);
-		err = errno;
-		goto failed;
+	if (cond & G_IO_NVAL) {
+		g_io_channel_unref(chan);
+		return FALSE;
 	}
-	if (err != 0) {
-		error("sock error: %s (%d)", strerror(err), err);
+
+	if (cond & G_IO_ERR & G_IO_HUP) {
+		err = EIO;
 		goto failed;
 	}
 
-	if (!sdp_process(ctxt->session))
-		return TRUE;
+	if (sdp_process(ctxt->session) < 0)
+		goto failed;
+
+	return TRUE;
 
 failed:
 	if (err) {
@@ -532,9 +531,11 @@ failed:
 			get_record_data_free(ctxt->priv);
 		} else
 			error_failed(ctxt->conn, ctxt->rq, err);
+
+		transaction_context_free(ctxt);
 	}
-	g_io_channel_unref(chan);
-	return FALSE;
+
+	return TRUE;
 }
 
 static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
@@ -556,24 +557,24 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 		if (sdp_err < 0) {
 			error("search failed: Invalid session!");
 			error_failed(ctxt->conn, ctxt->rq, EINVAL);
-			return;
+			goto failed;
 		}
 
 		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
 		error_failed(ctxt->conn, ctxt->rq, sdp_err);
-		return;
+		goto failed;
 	}
 
 	if (type == SDP_ERROR_RSP) {
 		error_sdp_failed(ctxt->conn, ctxt->rq, err);
-		return;
+		goto failed;
 	}
 
 	/* check response PDU ID */
 	if (type != SDP_SVC_ATTR_RSP) {
 		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
 		error_failed(ctxt->conn, ctxt->rq, EPROTO);
-		return;
+		goto failed;
 	}
 
 	dbus_message_get_args(ctxt->rq, NULL,
@@ -602,6 +603,8 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_reply_and_unref(ctxt->conn, reply);
+failed:
+	transaction_context_free(ctxt);
 }
 
 static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
@@ -621,24 +624,24 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 		if (sdp_err < 0) {
 			error("search failed: Invalid session!");
 			error_failed(ctxt->conn, ctxt->rq, EINVAL);
-			return;
+			goto failed;
 		}
 
 		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
 		error_failed(ctxt->conn, ctxt->rq, sdp_err);
-		return;
+		goto failed;
 	}
 
 	if (type == SDP_ERROR_RSP) {
 		error_sdp_failed(ctxt->conn, ctxt->rq, err);
-		return;
+		goto failed;
 	}
 
 	/* check response PDU ID */
 	if (type != SDP_SVC_SEARCH_RSP) {
 		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
 		error_failed(ctxt->conn, ctxt->rq, EPROTO);
-		return;
+		goto failed;
 	}
 
 	reply = dbus_message_new_method_return(ctxt->rq);
@@ -656,7 +659,7 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 	scanned = sizeof(uint16_t);
 
 	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
-	if (csrc <= 0) 
+	if (csrc <= 0)
 		goto done;
 
 	pdata += sizeof(uint16_t);
@@ -675,6 +678,8 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_reply_and_unref(ctxt->conn, reply);
+failed:
+	transaction_context_free(ctxt);
 }
 
 static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
@@ -697,24 +702,24 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 		if (sdp_err < 0) {
 			error("search failed: Invalid session!");
 			error_failed(ctxt->conn, ctxt->rq, EINVAL);
-			return;
+			goto failed;
 		}
 
 		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
 		error_failed(ctxt->conn, ctxt->rq, sdp_err);
-		return;
+		goto failed;
 	}
 
 	if (type == SDP_ERROR_RSP) {
 		error_sdp_failed(ctxt->conn, ctxt->rq, err);
-		return;
+		goto failed;
 	}
 
 	/* check response PDU ID */
 	if (type != SDP_SVC_SEARCH_RSP) {
 		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
 		error_failed(ctxt->conn, ctxt->rq, EPROTO);
-		return;
+		goto failed;
 	}
 
 	dbus_message_get_args(ctxt->rq, NULL,
@@ -736,7 +741,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	scanned = sizeof(uint16_t);
 
 	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
-	if (csrc <= 0) 
+	if (csrc <= 0)
 		goto done;
 
 	pdata += sizeof(uint16_t);
@@ -756,6 +761,8 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_reply_and_unref(ctxt->conn, reply);
+failed:
+	transaction_context_free(ctxt);
 }
 
 static gboolean sdp_client_connect_cb(GIOChannel *chan,
@@ -801,17 +808,15 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan,
 	}
 
 	/* set the callback responsible for update the transaction data */
-	g_io_add_watch_full(chan, 0, G_IO_IN,
-			search_process_cb, ctxt, transaction_context_free);
+	g_io_add_watch(chan, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			search_process_cb, ctxt);
 	goto done;
 
 failed:
-	if (err) {
-		if (c->priv)
-			get_record_data_call_cb(c->priv, NULL, err);
-		else
-			error_connection_attempt_failed(c->conn, c->rq, err);
-	}
+	if (c->priv)
+		get_record_data_call_cb(c->priv, NULL, err);
+	else
+		error_connection_attempt_failed(c->conn, c->rq, err);
 	if (c->priv)
 		get_record_data_free(c->priv);
 	if (ctxt)
@@ -854,8 +859,6 @@ static struct pending_connect *connect_request(DBusConnection *conn,
 	}
 
 	chan = g_io_channel_unix_new(sdp_get_socket(c->session));
-	g_io_channel_set_close_on_unref(chan, TRUE);
-
 	g_io_add_watch(chan, G_IO_OUT, sdp_client_connect_cb, c);
 	pending_connects = slist_append(pending_connects, c);
 
@@ -1514,6 +1517,7 @@ static void get_rec_with_handle_comp_cb(uint8_t type, uint16_t err,
 failed:
 	get_record_data_call_cb(ctxt->priv, rec, cb_err);
 	get_record_data_free(ctxt->priv);
+	transaction_context_free(ctxt);
 }
 
 static int get_rec_with_handle_conn_cb(struct transaction_context *ctxt)
@@ -1542,7 +1546,6 @@ static int get_rec_with_handle_conn_cb(struct transaction_context *ctxt)
 	}
 
 failed:
-	free(d->search_data);
 	if (attrids)
 		sdp_list_free(attrids, NULL);
 
@@ -1596,7 +1599,7 @@ static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
 	get_record_data_t *d = ctxt->priv;
 	int csrc, tsrc, cb_err = 0;
 	sdp_record_t *rec = NULL;
-	uint32_t handle;
+	uint32_t *handle;
 	uint8_t *pdata;
 
 	if (err == 0xffff) {
@@ -1628,15 +1631,26 @@ static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
 		goto failed;
 	pdata += sizeof(uint16_t);
 
-	handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
-	get_record_with_handle(ctxt->conn, ctxt->rq, d->dev_id,
-				d->dst, handle, d->cb, d->data);
-	get_record_data_free(ctxt->priv);
+	handle = malloc(sizeof(*handle));
+	if (!handle) {
+		cb_err = ENOMEM;
+		goto failed;
+	}
+	*handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
+
+	free(d->search_data);
+	d->search_data = handle;
+
+	cb_err = get_rec_with_handle_conn_cb(ctxt);
+	if (cb_err)
+		goto failed;
+
 	return;
 
 failed:
-	get_record_data_call_cb(ctxt->priv, rec, cb_err);
-	get_record_data_free(ctxt->priv);
+	get_record_data_call_cb(d, rec, cb_err);
+	get_record_data_free(d);
+	transaction_context_free(ctxt);
 }
 
 static int get_rec_with_uuid_conn_cb(struct transaction_context *ctxt)
@@ -1658,10 +1672,10 @@ static int get_rec_with_uuid_conn_cb(struct transaction_context *ctxt)
 	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
 		err = -sdp_get_error(ctxt->session);
+		goto failed;
 	}
 
 failed:
-	free(d->search_data);
 	if (search)
 		sdp_list_free(search, NULL);
 
