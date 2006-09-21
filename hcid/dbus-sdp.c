@@ -1551,10 +1551,11 @@ failed:
 
 int get_record_with_handle(DBusConnection *conn, DBusMessage *msg,
 			uint16_t dev_id, const char *dst,
-			uint32_t *handle, get_record_cb_t *cb, void *data)
+			uint32_t handle, get_record_cb_t *cb, void *data)
 {
 	struct pending_connect *c;
 	get_record_data_t *d;
+	uint32_t *rec_handle;
 	int err;
 
 	/* FIXME: search the cache first! */
@@ -1564,9 +1565,17 @@ int get_record_with_handle(DBusConnection *conn, DBusMessage *msg,
 		return -EINPROGRESS;
 	}
 
-	d = get_record_data_new(dev_id, dst, handle, cb, data);
-	if (!d)
+	rec_handle = malloc(sizeof(uint32_t));
+	if (!rec_handle)
 		return -ENOMEM;
+
+	*rec_handle = handle;
+
+	d = get_record_data_new(dev_id, dst, rec_handle, cb, data);
+	if (!d) {
+		free(rec_handle);
+		return -ENOMEM;
+	}
 
 	if (!(c = connect_request(conn, msg, dev_id, dst,
 				get_rec_with_handle_conn_cb, &err))) {
@@ -1587,7 +1596,7 @@ static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
 	get_record_data_t *d = ctxt->priv;
 	int csrc, tsrc, cb_err = 0;
 	sdp_record_t *rec = NULL;
-	uint32_t *handle;
+	uint32_t handle;
 	uint8_t *pdata;
 
 	if (err == 0xffff) {
@@ -1619,14 +1628,7 @@ static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
 		goto failed;
 	pdata += sizeof(uint16_t);
 
-	/* FIXME: what should we do with the other handles?? */
-	handle = malloc(sizeof(*handle));
-	if (!handle) {
-		cb_err = ENOMEM;
-		goto failed;
-	}
-
-	*handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
+	handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
 	get_record_with_handle(ctxt->conn, ctxt->rq, d->dev_id,
 				d->dst, handle, d->cb, d->data);
 	get_record_data_free(ctxt->priv);
@@ -1668,11 +1670,12 @@ failed:
 
 int get_record_with_uuid(DBusConnection *conn, DBusMessage *msg,
 			uint16_t dev_id, const char *dst,
-			uuid_t *uuid, get_record_cb_t *cb, void *data)
+			const uuid_t *uuid, get_record_cb_t *cb, void *data)
 {
 	struct pending_connect *c;
 	get_record_data_t *d;
 	int err;
+	uuid_t *sdp_uuid;
 
 	/* FIXME: search the cache first! */
 
@@ -1681,9 +1684,17 @@ int get_record_with_uuid(DBusConnection *conn, DBusMessage *msg,
 		return -EINPROGRESS;
 	}
 
-	d = get_record_data_new(dev_id, dst, uuid, cb, data);
-	if (!d)
+	sdp_uuid = malloc(sizeof(uuid_t));
+	if (!sdp_uuid)
 		return -ENOMEM;
+
+	memcpy(sdp_uuid, uuid, sizeof(uuid_t));
+
+	d = get_record_data_new(dev_id, dst, sdp_uuid, cb, data);
+	if (!d) {
+		free(sdp_uuid);
+		return -ENOMEM;
+	}
 
 	if (!(c = connect_request(conn, msg, dev_id, dst,
 				get_rec_with_uuid_conn_cb, &err))) {

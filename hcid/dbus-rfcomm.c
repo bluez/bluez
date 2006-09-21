@@ -634,19 +634,16 @@ failed:
 	rfcomm_continue_data_free(cdata);
 }
 
-static uuid_t *str2uuid(const char *string)
+static int str2uuid(uuid_t *uuid, const char *string)
 {
 	uint16_t svclass, data1, data2, data3, data5;
 	uint32_t data0, data4;
-	uuid_t *uuid;
-
-	uuid = malloc(sizeof(uuid_t));
-	if (!uuid)
-		return NULL;
 
 	svclass = sdp_str2svclass(string);
-	if (svclass)
-		return sdp_uuid16_create(uuid, sdp_str2svclass(string));
+	if (svclass) {
+		sdp_uuid16_create(uuid, sdp_str2svclass(string));
+		return 0;
+	}
 
 	if (strlen(string) == 36 &&
 			string[8] == '-' &&
@@ -671,28 +668,11 @@ static uuid_t *str2uuid(const char *string)
 		memcpy(&val[10], &data4, 4);
 		memcpy(&val[14], &data5, 2);
 
-		return sdp_uuid128_create(uuid, val);
+		sdp_uuid128_create(uuid, val);
+		return 0;
 	}
 
-	free(uuid);
-
-	return NULL;
-}
-
-static uint32_t *str2handle(const char *string)
-{
-	uint32_t *handle;
-
-	handle = malloc(sizeof(*handle));
-	if (!handle)
-		return NULL;
-
-	*handle = strtol(string, NULL, 0);
-	if (*handle)
-		return handle;
-
-	free(handle);
-	return NULL;
+	return -1;
 }
 
 static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
@@ -700,8 +680,8 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 {
 	struct hci_dbus_data *dbus_data = data;
 	rfcomm_continue_data_t *cdata;
-	uint32_t *handle = NULL;
-	uuid_t *uuid = NULL;
+	uint32_t handle;
+	uuid_t uuid;
 	const char *string;
 	const char *dst;
 	int err;
@@ -716,10 +696,10 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 	if (!cdata)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if ((uuid = str2uuid(string)))
+	if (str2uuid(&uuid, string) == 0)
 		err = get_record_with_uuid(conn, msg, dbus_data->dev_id, dst,
-					uuid, rfcomm_conn_req_continue, cdata);
-	else if ((handle = str2handle(string)))
+					&uuid, rfcomm_conn_req_continue, cdata);
+	else if ((handle = strtol(string, NULL, 0)))
 		err = get_record_with_handle(conn, msg, dbus_data->dev_id, dst,
 					handle, rfcomm_conn_req_continue, cdata);
 	else {
@@ -730,12 +710,10 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 	if (!err)
 		return DBUS_HANDLER_RESULT_HANDLED;
 
-	if (uuid)
-		free(uuid);
-	if (handle)
-		free(handle);
-
 	rfcomm_continue_data_free(cdata);
+
+	if (err == -ENOMEM)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	return error_failed(conn, msg, err);
 }
@@ -925,8 +903,8 @@ static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 {
 	struct hci_dbus_data *dbus_data = data;
 	rfcomm_continue_data_t *cdata;
-	uint32_t *handle = NULL;
-	uuid_t *uuid = NULL;
+	uint32_t handle;
+	uuid_t uuid;
 	const char *string;
 	const char *dst;
 	int err;
@@ -941,10 +919,10 @@ static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 	if (!cdata)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if ((uuid = str2uuid(string)))
+	if (str2uuid(&uuid, string) == 0)
 		err = get_record_with_uuid(conn, msg, dbus_data->dev_id, dst,
-					uuid, rfcomm_bind_req_continue, cdata);
-	else if ((handle = str2handle(string)))
+					&uuid, rfcomm_bind_req_continue, cdata);
+	else if ((handle = strtol(string, NULL, 0)))
 		err = get_record_with_handle(conn, msg, dbus_data->dev_id, dst,
 					handle, rfcomm_bind_req_continue, cdata);
 	else {
@@ -955,12 +933,10 @@ static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 	if (!err)
 		return DBUS_HANDLER_RESULT_HANDLED;
 
-	if (uuid)
-		free(uuid);
-	if (handle)
-		free(handle);
-
 	rfcomm_continue_data_free(cdata);
+
+	if (err == -ENOMEM)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	return error_failed(conn, msg, err);
 }
