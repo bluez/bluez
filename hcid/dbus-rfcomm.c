@@ -727,13 +727,13 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
+	if (!err)
+		return DBUS_HANDLER_RESULT_HANDLED;
+
 	if (uuid)
 		free(uuid);
 	if (handle)
 		free(handle);
-
-	if (!err)
-		return DBUS_HANDLER_RESULT_HANDLED;
 
 	rfcomm_continue_data_free(cdata);
 
@@ -952,13 +952,13 @@ static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
+	if (!err)
+		return DBUS_HANDLER_RESULT_HANDLED;
+
 	if (uuid)
 		free(uuid);
 	if (handle)
 		free(handle);
-
-	if (!err)
-		return DBUS_HANDLER_RESULT_HANDLED;
 
 	rfcomm_continue_data_free(cdata);
 
