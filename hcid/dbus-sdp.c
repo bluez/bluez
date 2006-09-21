@@ -1516,6 +1516,10 @@ static void get_rec_with_handle_comp_cb(uint8_t type, uint16_t err,
 
 failed:
 	get_record_data_call_cb(ctxt->priv, rec, cb_err);
+
+	/* FIXME: when start using cache don't free the service record */
+	if (rec)
+		sdp_record_free(rec);
 	get_record_data_free(ctxt->priv);
 	transaction_context_free(ctxt);
 }
@@ -1598,7 +1602,6 @@ static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
 	struct transaction_context *ctxt = udata;
 	get_record_data_t *d = ctxt->priv;
 	int csrc, tsrc, cb_err = 0;
-	sdp_record_t *rec = NULL;
 	uint32_t *handle;
 	uint8_t *pdata;
 
@@ -1648,7 +1651,7 @@ static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
 	return;
 
 failed:
-	get_record_data_call_cb(d, rec, cb_err);
+	get_record_data_call_cb(d, NULL, cb_err);
 	get_record_data_free(d);
 	transaction_context_free(ctxt);
 }

@@ -613,8 +613,11 @@ static void rfcomm_conn_req_continue(sdp_record_t *rec, void *data, int err)
 		goto failed;
 	}
 
-	if (!sdp_get_access_protos(rec, &protos))
+	if (!sdp_get_access_protos(rec, &protos)) {
 		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+		sdp_list_foreach(protos, (sdp_list_func_t)sdp_list_free, NULL);
+		sdp_list_free(protos, NULL);
+	}
 	if (ch == -1) {
 		error_record_does_not_exist(cdata->conn, cdata->msg);
 		goto failed;
@@ -851,8 +854,11 @@ static void rfcomm_bind_req_continue(sdp_record_t *rec, void *data, int err)
 		goto failed;
 	}
 
-	if (!sdp_get_access_protos(rec, &protos))
+	if (!sdp_get_access_protos(rec, &protos)) {
 		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+		sdp_list_foreach(protos, (sdp_list_func_t)sdp_list_free, NULL);
+		sdp_list_free(protos, NULL);
+	}
 	if (ch == -1) {
 		error_record_does_not_exist(cdata->conn, cdata->msg);
 		goto failed;
