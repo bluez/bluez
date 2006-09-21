@@ -113,6 +113,7 @@ struct hci_dbus_data {
 	int pinq_idle;				/* tracks the idle time for periodic inquiry */
 	int discover_type;			/* type requested */
 	struct slist *disc_devices;
+	struct slist *oor_devices;		/* out of range device list */
 	char *pdiscovery_requestor;		/* periodic discovery requestor unique name */
 	char *discovery_requestor;		/* discovery requestor unique name */
 	DBusMessage *discovery_cancel;		/* discovery cancel message request */

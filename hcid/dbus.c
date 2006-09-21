@@ -458,6 +458,12 @@ static int unregister_dbus_path(const char *path)
 			pdata->disc_devices = NULL;
 		}
 
+		if (pdata->oor_devices) {
+			slist_foreach(pdata->oor_devices, (slist_func_t) free, NULL);
+			slist_free(pdata->oor_devices);
+			pdata->oor_devices = NULL;
+		}
+
 		if (pdata->pin_reqs) {
 			slist_foreach(pdata->pin_reqs, (slist_func_t) free, NULL);
 			slist_free(pdata->pin_reqs);
@@ -712,6 +718,12 @@ int hcid_dbus_stop_device(uint16_t id)
 		slist_foreach(pdata->disc_devices, (slist_func_t) free, NULL);
 		slist_free(pdata->disc_devices);
 		pdata->disc_devices = NULL;
+	}
+
+	if (pdata->oor_devices) {
+		slist_foreach(pdata->oor_devices, (slist_func_t) free, NULL);
+		slist_free(pdata->oor_devices);
+		pdata->oor_devices = NULL;
 	}
 
 	if (pdata->pin_reqs) {
@@ -998,12 +1010,33 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 	return 0;
 }
 
+static void send_out_of_range(const char *path, struct slist *l)
+{
+	DBusMessage *message;
+	const char *peer_addr;
+
+	while (l) {
+		peer_addr = l->data;
+
+		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+						"RemoteDeviceLost");
+		dbus_message_append_args(message,
+				DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_INVALID);
+
+		send_reply_and_unref(connection, message);
+		l = l->next;
+	}
+}
+
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
 	DBusMessage *message;
 	struct hci_dbus_data *pdata;
+	struct slist *l;
 	char path[MAX_PATH_LENGTH];
 	char *local_addr;
+	struct discovered_dev_info *dev;
 	bdaddr_t tmp;
 	int id;
 
@@ -1020,6 +1053,23 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &pdata)) {
 		error("Getting %s path data failed!", path);
 		goto done;
+	}
+
+	/* Out of range verification */
+	if (pdata->pdisc_active && !pdata->disc_active) {
+		send_out_of_range(path, pdata->oor_devices);
+
+		slist_foreach(pdata->oor_devices, (slist_func_t) free, NULL);
+		slist_free(pdata->oor_devices);
+		pdata->oor_devices = NULL;
+
+		l = pdata->disc_devices;
+		while (l) {
+			dev = l->data;
+			baswap(&tmp, &dev->bdaddr);
+			pdata->oor_devices = slist_append(pdata->oor_devices, batostr(&tmp));
+			l = l->next;
+		}
 	}
 
 	pdata->pinq_idle = 1;
@@ -1153,6 +1203,11 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	slist_free(pdata->disc_devices);
 	pdata->disc_devices = NULL;
 
+	/* free out of range devices list */
+	slist_foreach(pdata->oor_devices, (slist_func_t) free, NULL);
+	slist_free(pdata->oor_devices);
+	pdata->oor_devices = NULL;
+
 	if (pdata->pdiscovery_requestor) {
 		name_listener_remove(connection, pdata->pdiscovery_requestor,
 					(name_cb_t) periodic_discover_req_exit, pdata);
@@ -1238,9 +1293,15 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	if (!pdata->disc_active && !pdata->pdisc_active)
 		pdata->pdisc_active = 1;
 
-	 /* reset the idle flag when the inquiry complete event arrives */
-	if (pdata->pdisc_active)
+	/* reset the idle flag when the inquiry complete event arrives */
+	if (pdata->pdisc_active) {
 		pdata->pinq_idle = 0;
+
+		/* Out of range list update */
+		l = slist_find(pdata->oor_devices, peer_addr, (cmp_func_t) strcmp);
+		if (l)
+			pdata->oor_devices = slist_remove(pdata->oor_devices, l->data);
+	}
 
 	/* send the device found signal */
 	signal_device = dev_signal_factory(pdata->dev_id, "RemoteDeviceFound",
