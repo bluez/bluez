@@ -87,8 +87,8 @@ static struct slist *bound_nodes = NULL;
 
 static char *rfcomm_node_name_from_id(int16_t id, char *dev, size_t len)
 {
-    snprintf(dev, len, "/dev/rfcomm%d", id);
-    return dev;
+	snprintf(dev, len, "/dev/rfcomm%d", id);
+	return dev;
 }
 
 static void rfcomm_node_free(struct rfcomm_node *node)
@@ -218,27 +218,26 @@ static int rfcomm_release(struct rfcomm_node *node, int *err)
 static void rfcomm_connect_req_exit(const char *name, void *data)
 {
 	struct rfcomm_node *node = data;
-	debug("RFCOMM.Connect() requestor %s exited. Releasing %s node",
-	      name, node->name);
+	debug("Connect requestor %s exited. Releasing %s node",
+		name, node->name);
 	rfcomm_release(node, NULL);
 	connected_nodes = slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
 }
 
 static gboolean rfcomm_disconnect_cb(GIOChannel *io, GIOCondition cond,
-				     struct rfcomm_node *node)
+					struct rfcomm_node *node)
 {
 	debug("RFCOMM node %s was disconnected", node->name);
 	name_listener_remove(node->conn, node->owner,
-			     rfcomm_connect_req_exit, node);
+				rfcomm_connect_req_exit, node);
 	connected_nodes = slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
 	return FALSE;
 }
 
-static void rfcomm_connect_cb_devnode_opened(int fd,
-					     struct pending_connect *c,
-					     struct rfcomm_node *node)
+static void rfcomm_connect_cb_devnode_opened(int fd, struct pending_connect *c,
+						struct rfcomm_node *node)
 {
 	DBusMessage *reply = NULL;
 	char *ptr;
@@ -251,8 +250,8 @@ static void rfcomm_connect_cb_devnode_opened(int fd,
 
 	ptr = node->name;
 	if (!dbus_message_append_args(reply,
-				      DBUS_TYPE_STRING, &ptr,
-				      DBUS_TYPE_INVALID)) {
+					DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_INVALID)) {
 		error_failed(c->conn, c->msg, ENOMEM);
 		goto failed;
 	}
@@ -266,7 +265,7 @@ static void rfcomm_connect_cb_devnode_opened(int fd,
 	node->io = g_io_channel_unix_new(fd);
 	g_io_channel_set_close_on_unref(node->io, TRUE);
 	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_HUP,
-				     (GIOFunc) rfcomm_disconnect_cb, node);
+					(GIOFunc) rfcomm_disconnect_cb, node);
 
 	send_reply_and_unref(c->conn, reply);
 
@@ -305,7 +304,7 @@ static gboolean rfcomm_connect_cb_continue(void *data)
 		if (++c->ntries >= MAX_OPEN_TRIES) {
 			int err = errno;
 			error("Could not open %s: %s (%d)",
-			      node->name, strerror(err), err);
+					node->name, strerror(err), err);
 			error_connection_attempt_failed(c->conn, c->msg, err);
 			goto failed;
 		}
@@ -327,7 +326,7 @@ failed:
 }
 
 static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
-				  struct pending_connect *c)
+					struct pending_connect *c)
 {
 	struct rfcomm_node *node = NULL;
 	struct rfcomm_dev_req req;
@@ -494,7 +493,17 @@ failed:
 	return -1;
 }
 
-static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t ch, int *err)
+static void rfcomm_bind_req_exit(const char *name, void *data)
+{
+	struct rfcomm_node *node = data;
+	debug("Bind requestor %s exited. Releasing %s node", name, node->name);
+	rfcomm_release(node, NULL);
+	bound_nodes = slist_remove(bound_nodes, node);
+	rfcomm_node_free(node);
+}
+
+static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda,
+		uint8_t ch, DBusConnection *conn, const char *owner, int *err)
 {
 	struct rfcomm_dev_req req;
 	struct rfcomm_node *node;
@@ -515,8 +524,15 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t c
 			*err = ENOMEM;
 		return NULL;
 	}
-
 	memset(node, 0, sizeof(struct rfcomm_node));
+
+	node->owner = strdup(owner);
+	if (!node->owner) {
+		if (err)
+			*err = ENOMEM;
+		rfcomm_node_free(node);
+		return NULL;
+	}
 
 	node->id = ioctl(rfcomm_ctl, RFCOMMCREATEDEV, &req);
 	if (node->id < 0) {
@@ -530,6 +546,9 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda, uint8_t c
 	rfcomm_node_name_from_id(node->id, node->name, sizeof(node->name));
 	bound_nodes = slist_append(bound_nodes, node);
 
+	node->conn = dbus_connection_ref(conn);
+	name_listener_add(node->conn, node->owner, rfcomm_bind_req_exit, node);
+
 	return node;
 }
 
@@ -539,15 +558,15 @@ typedef struct {
 	char *dst;
 	char *svc;
 	struct hci_dbus_data *dbus_data;
-} rfcomm_conn_cont_data_t;
+} rfcomm_continue_data_t;
 
-static rfcomm_conn_cont_data_t *rfcomm_conn_cont_data_new(DBusConnection *conn,
+static rfcomm_continue_data_t *rfcomm_continue_data_new(DBusConnection *conn,
 							DBusMessage *msg,
 							const char *dst,
 							const char *svc,
 							struct hci_dbus_data *dbus_data)
 {
-	rfcomm_conn_cont_data_t *new;
+	rfcomm_continue_data_t *new;
 
 	new = malloc(sizeof(*new));
 	if (!new)
@@ -573,7 +592,7 @@ static rfcomm_conn_cont_data_t *rfcomm_conn_cont_data_new(DBusConnection *conn,
 	return new;
 }
 
-static void rfcomm_conn_cont_data_free(rfcomm_conn_cont_data_t *d)
+static void rfcomm_continue_data_free(rfcomm_continue_data_t *d)
 {
 	dbus_connection_unref(d->conn);
 	dbus_message_unref(d->msg);
@@ -584,7 +603,7 @@ static void rfcomm_conn_cont_data_free(rfcomm_conn_cont_data_t *d)
 
 static void rfcomm_conn_req_continue(sdp_record_t *rec, void *data, int err)
 {
-	rfcomm_conn_cont_data_t *cdata = data;
+	rfcomm_continue_data_t *cdata = data;
 	int ch = -1, conn_err;
 	sdp_list_t *protos;
 	bdaddr_t bdaddr;
@@ -612,7 +631,7 @@ static void rfcomm_conn_req_continue(sdp_record_t *rec, void *data, int err)
 		error_failed(cdata->conn, cdata->msg, conn_err);
 
 failed:
-	rfcomm_conn_cont_data_free(cdata);
+	rfcomm_continue_data_free(cdata);
 }
 
 static uuid_t *str2uuid128(const char *string)
@@ -626,12 +645,12 @@ static uuid_t *str2uuid128(const char *string)
 		return sdp_uuid_to_uuid128(&short_uuid);
 
 	if (strlen(string) == 36 &&
-	    string[8] == '-' &&
-	    string[13] == '-' &&
-	    string[18] == '-' &&
-	    string[23] == '-' &&
-	    sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
-			&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
+			string[8] == '-' &&
+			string[13] == '-' &&
+			string[18] == '-' &&
+			string[23] == '-' &&
+			sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
+				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
 		uint8_t val[16];
 		uuid_t *uuid;
 
@@ -679,7 +698,7 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	rfcomm_conn_cont_data_t *cdata;
+	rfcomm_continue_data_t *cdata;
 	uint32_t *handle = NULL;
 	uuid_t *uuid = NULL;
 	const char *string;
@@ -692,35 +711,31 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	cdata = rfcomm_conn_cont_data_new(conn, msg, dst, string, dbus_data);
+	cdata = rfcomm_continue_data_new(conn, msg, dst, string, dbus_data);
 	if (!cdata)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if ((uuid = str2uuid128(string))) {
-		if ((err = get_record_with_uuid(conn, msg, dbus_data->dev_id,
-						dst, uuid,
-						rfcomm_conn_req_continue,
-						cdata)) < 0)
-			goto failed;
-	} else if ((handle = str2handle(string))) {
-		if ((err = get_record_with_handle(conn, msg, dbus_data->dev_id,
-						dst, handle,
-						rfcomm_conn_req_continue,
-						cdata)) < 0)
-			goto failed;
-	} else {
-		rfcomm_conn_cont_data_free(cdata);
+	if ((uuid = str2uuid128(string)))
+		err = get_record_with_uuid(conn, msg, dbus_data->dev_id, dst,
+					uuid, rfcomm_conn_req_continue, cdata);
+	else if ((handle = str2handle(string)))
+		err = get_record_with_handle(conn, msg, dbus_data->dev_id, dst,
+					handle, rfcomm_conn_req_continue, cdata);
+	else {
+		rfcomm_continue_data_free(cdata);
 		return error_invalid_arguments(conn, msg);
 	}
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	if (!err)
+		return DBUS_HANDLER_RESULT_HANDLED;
 
-failed:
 	if (uuid)
 		free(uuid);
 	if (handle)
 		free(handle);
-	rfcomm_conn_cont_data_free(cdata);
+
+	rfcomm_continue_data_free(cdata);
+
 	return error_failed(conn, msg, err);
 }
 
@@ -806,7 +821,7 @@ static DBusHandlerResult rfcomm_cancel_connect_by_ch_req(DBusConnection *conn,
 }
 
 static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
-					       DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct rfcomm_node *node;
 	DBusMessage *reply;
@@ -814,8 +829,8 @@ static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
 	int err;
 
 	if (!dbus_message_get_args(msg, NULL,
-				   DBUS_TYPE_STRING, &name,
-				   DBUS_TYPE_INVALID))
+				DBUS_TYPE_STRING, &name,
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
 	node = find_node_by_name(connected_nodes, name);
@@ -842,11 +857,111 @@ static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
 	return send_reply_and_unref(conn, reply);
 }
 
+static void rfcomm_bind_req_continue(sdp_record_t *rec, void *data, int err)
+{
+	rfcomm_continue_data_t *cdata = data;
+	struct rfcomm_node *node = NULL;
+	DBusMessage *reply = NULL;
+	int ch = -1, bind_err;
+	sdp_list_t *protos;
+	const char *name;
+	bdaddr_t bdaddr;
+
+	if (err || !rec) {
+		error_record_does_not_exist(cdata->conn, cdata->msg);
+		goto failed;
+	}
+
+	if (!sdp_get_access_protos(rec, &protos))
+		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+	if (ch == -1) {
+		error_record_does_not_exist(cdata->conn, cdata->msg);
+		goto failed;
+	}
+
+	hci_devba(cdata->dbus_data->dev_id, &bdaddr);
+
+	node = rfcomm_bind(&bdaddr, cdata->dst, ch, cdata->conn,
+			dbus_message_get_sender(cdata->msg), &bind_err);
+	if (!node) {
+		error_failed(cdata->conn, cdata->msg, bind_err);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(cdata->msg);
+	if (!reply) {
+		error_failed(cdata->conn, cdata->msg, ENOMEM);
+		goto failed;
+	}
+
+	name = node->name;
+	if (!dbus_message_append_args(reply, DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_INVALID)) {
+		error_failed(cdata->conn, cdata->msg, ENOMEM);
+		goto failed;
+	}
+
+	send_reply_and_unref(cdata->conn, reply);
+
+	rfcomm_continue_data_free(cdata);
+
+	return;
+
+failed:
+	if (reply)
+		dbus_message_unref(reply);
+	if (node) {
+		bound_nodes = slist_remove(bound_nodes, node);
+		rfcomm_release(node, NULL);
+		rfcomm_node_free(node);
+	}
+
+	rfcomm_continue_data_free(cdata);
+}
+
 static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	error("RFCOMM.Bind not implemented");
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct hci_dbus_data *dbus_data = data;
+	rfcomm_continue_data_t *cdata;
+	uint32_t *handle = NULL;
+	uuid_t *uuid = NULL;
+	const char *string;
+	const char *dst;
+	int err;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &dst,
+				DBUS_TYPE_STRING, &string,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	cdata = rfcomm_continue_data_new(conn, msg, dst, string, dbus_data);
+	if (!cdata)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if ((uuid = str2uuid128(string)))
+		err = get_record_with_uuid(conn, msg, dbus_data->dev_id, dst,
+					uuid, rfcomm_bind_req_continue, cdata);
+	else if ((handle = str2handle(string)))
+		err = get_record_with_handle(conn, msg, dbus_data->dev_id, dst,
+					handle, rfcomm_bind_req_continue, cdata);
+	else {
+		rfcomm_continue_data_free(cdata);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (!err)
+		return DBUS_HANDLER_RESULT_HANDLED;
+
+	if (uuid)
+		free(uuid);
+	if (handle)
+		free(handle);
+
+	rfcomm_continue_data_free(cdata);
+
+	return error_failed(conn, msg, err);
 }
 
 static DBusHandlerResult rfcomm_bind_by_ch_req(DBusConnection *conn,
@@ -868,8 +983,8 @@ static DBusHandlerResult rfcomm_bind_by_ch_req(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-
-	node = rfcomm_bind(&bdaddr, dst, ch, &err);
+	node = rfcomm_bind(&bdaddr, dst, ch, conn,
+			dbus_message_get_sender(msg), &err);
 	if (!node)
 		return error_failed(conn, msg, err);
 
@@ -912,6 +1027,9 @@ static DBusHandlerResult rfcomm_release_req(DBusConnection *conn,
 	if (!node)
 		return error_binding_does_not_exist(conn, msg);
 
+	if (strcmp(node->owner, dbus_message_get_sender(msg)))
+		return error_not_authorized(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -921,6 +1039,8 @@ static DBusHandlerResult rfcomm_release_req(DBusConnection *conn,
 		return error_failed(conn, msg, err);
 	}
 
+	name_listener_remove(node->conn, node->owner,
+				rfcomm_bind_req_exit, node);
 	bound_nodes = slist_remove(bound_nodes, node);
 	rfcomm_node_free(node);
 
