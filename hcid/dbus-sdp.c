@@ -817,11 +817,17 @@ failed:
 		get_record_data_call_cb(c->priv, NULL, err);
 	else
 		error_connection_attempt_failed(c->conn, c->rq, err);
+
 	if (c->priv)
 		get_record_data_free(c->priv);
+
 	if (ctxt)
 		transaction_context_free(ctxt);
+	else
+		sdp_close(c->session);
+
 	g_io_channel_unref(chan);
+
 done:
 	pending_connects = slist_remove(pending_connects, c);
 	pending_connect_free(c);
