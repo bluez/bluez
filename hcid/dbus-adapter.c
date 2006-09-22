@@ -1913,7 +1913,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 	str2ba(peer_addr, &peer_bdaddr);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
-	if (dbus_data->disc_active || !dbus_data->pinq_idle)
+	if (dbus_data->disc_active || (dbus_data->pdisc_active && !dbus_data->pinq_idle))
 		return error_discover_in_progress(conn, msg);
 
 	pending_remote_name_cancel(dbus_data);
