@@ -264,7 +264,7 @@ static void rfcomm_connect_cb_devnode_opened(int fd, struct pending_connect *c,
 
 	/* Check if the caller is still present */
 	if (!dbus_bus_name_has_owner(c->conn, node->owner, NULL)) {
-		error("RFCOMM.Connect requestor %s exited");
+		error("RFCOMM.Connect requestor %s exited", node->owner);
 		goto failed;
 	}
 
