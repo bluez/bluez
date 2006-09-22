@@ -262,6 +262,12 @@ static void rfcomm_connect_cb_devnode_opened(int fd, struct pending_connect *c,
 		goto failed;
 	}
 
+	/* Check if the caller is still present */
+	if (!dbus_bus_name_has_owner(c->conn, node->owner, NULL)) {
+		error("RFCOMM.Connect requestor %s exited");
+		goto failed;
+	}
+
 	node->io = g_io_channel_unix_new(fd);
 	g_io_channel_set_close_on_unref(node->io, TRUE);
 	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_HUP,
