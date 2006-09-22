@@ -1495,18 +1495,18 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 			pdata->discovery_cancel = NULL;
 		}
 
-		if (pdata->discover_type & RESOLVE_NAME) {
-			message = dbus_message_new_signal(path,
-				ADAPTER_INTERFACE, "DiscoveryCompleted");
-			send_reply_and_unref(connection, message);
-		}
-
 		/* Disable name resolution for non D-Bus clients */
 		if (!pdata->pdiscovery_requestor)
 			pdata->discover_type &= ~RESOLVE_NAME;
 	}
 
-	pdata->disc_active = 0;
+	if (pdata->disc_active) {
+		message = dbus_message_new_signal(path,
+				ADAPTER_INTERFACE, "DiscoveryCompleted");
+		send_reply_and_unref(connection, message);
+
+		pdata->disc_active = 0;
+	}
 
 done:
 	bt_free(local_addr);
