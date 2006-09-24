@@ -1,3 +1,6 @@
+ver 3.6:
+	Fix issues with the asynchronous API for SDP.
+
 ver 3.5:
 	Add asynchronous API for SDP.
 
