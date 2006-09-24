@@ -714,7 +714,7 @@ static void info_request(char *svr)
 
 	memset(buf, 0, sizeof(buf));
 	cmd->code  = L2CAP_INFO_REQ;
-	cmd->ident = 0;
+	cmd->ident = 42;
 	cmd->len   = htobs(2);
 	req->type  = htobs(0x0001);
 
@@ -741,7 +741,7 @@ static void info_request(char *svr)
 
 	memset(buf, 0, sizeof(buf));
 	cmd->code  = L2CAP_INFO_REQ;
-	cmd->ident = 0;
+	cmd->ident = 42;
 	cmd->len   = htobs(2);
 	req->type  = htobs(0x0002);
 
