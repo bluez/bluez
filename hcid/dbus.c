@@ -863,6 +863,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t
 	name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
 			(name_cb_t) create_bond_req_exit, pdata);
 
+	if (pdata->bonding->io_id)
+		g_io_remove_watch(pdata->bonding->io_id);
 	g_io_channel_close(pdata->bonding->io);
 	bonding_request_free(pdata->bonding);
 	pdata->bonding = NULL;
@@ -1626,6 +1628,8 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 
 		name_listener_remove(connection, dbus_message_get_sender(pdata->bonding->rq),
 				(name_cb_t) create_bond_req_exit, pdata);
+		if (pdata->bonding->io_id)
+			g_io_remove_watch(pdata->bonding->io_id);
 		g_io_channel_close(pdata->bonding->io);
 		bonding_request_free(pdata->bonding);
 		pdata->bonding = NULL;
