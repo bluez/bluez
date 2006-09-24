@@ -83,7 +83,7 @@ retry:
 
 void g_io_channel_close(GIOChannel *channel)
 {
-	if (!channel)
+	if (!channel || channel->fd < 0)
 		return;
 
 	close(channel->fd);
