@@ -58,7 +58,8 @@ enum {
 	CRECV,
 	LSEND,
 	SENDDUMP,
-	LSENDDUMP
+	LSENDDUMP,
+	INFOREQ
 };
 
 static unsigned char *buf;
@@ -676,6 +677,105 @@ static void multi_connect_mode(int argc, char *argv[])
 	}
 }
 
+static void info_request(char *svr)
+{
+	unsigned char buf[48];
+	l2cap_cmd_hdr *cmd = (l2cap_cmd_hdr *) buf;
+	l2cap_info_req *req = (l2cap_info_req *) (buf + L2CAP_CMD_HDR_SIZE);
+	l2cap_info_rsp *rsp = (l2cap_info_rsp *) (buf + L2CAP_CMD_HDR_SIZE);
+	uint16_t mtu;
+	uint32_t mask;
+	struct sockaddr_l2 addr;
+	int sk, err;
+
+	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
+	if (sk < 0) {
+		perror("Can't create socket");
+		return;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, &bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Can't bind socket");
+		goto failed;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	str2ba(svr, &addr.l2_bdaddr);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0 ) {
+		perror("Can't connect socket");
+		goto failed;
+	}
+
+	memset(buf, 0, sizeof(buf));
+	cmd->code  = L2CAP_INFO_REQ;
+	cmd->ident = 0;
+	cmd->len   = htobs(2);
+	req->type  = htobs(0x0001);
+
+	if (send(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_REQ_SIZE, 0) < 0) {
+		perror("Can't send info request");
+		goto failed;
+	}
+
+	err = recv(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_RSP_SIZE + 2, 0);
+	if (err < 0) {
+		perror("Can't receive info response");
+		goto failed;
+	}
+
+	switch (btohs(rsp->result)) {
+	case 0x0000:
+		mtu = btohs(bt_get_unaligned((uint16_t *) rsp->data));
+		printf("Connectionless MTU size is %d\n", mtu);
+		break;
+	case 0x0001:
+		printf("Connectionless MTU is not supported\n");
+		break;
+	}
+
+	memset(buf, 0, sizeof(buf));
+	cmd->code  = L2CAP_INFO_REQ;
+	cmd->ident = 0;
+	cmd->len   = htobs(2);
+	req->type  = htobs(0x0002);
+
+	if (send(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_REQ_SIZE, 0) < 0) {
+		perror("Can't send info request");
+		goto failed;
+	}
+
+	err = recv(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_RSP_SIZE + 4, 0);
+	if (err < 0) {
+		perror("Can't receive info response");
+		goto failed;
+	}
+
+	switch (btohs(rsp->result)) {
+	case 0x0000:
+		mask = btohl(bt_get_unaligned((uint32_t *) rsp->data));
+		printf("Extended feature mask is 0x%04x\n", mask);
+		if (mask & 0x01)
+			printf("  Flow control mode\n");
+		if (mask & 0x02)
+			printf("  Retransmission mode\n");
+		if (mask & 0x04)
+			printf("  Bi-directional QoS\n");
+		break;
+	case 0x0001:
+		printf("Extended feature mask is not supported\n");
+		break;
+	}
+
+failed:
+	close(sk);
+}
+
 static void usage(void)
 {
 	printf("l2test - L2CAP testing\n"
@@ -691,7 +791,8 @@ static void usage(void)
 		"\t-n connect and be silent\n"
 		"\t-y connect, then send, then dump incoming data\n"
 		"\t-c connect, disconnect, connect, ...\n"
-		"\t-m multiple connects\n");
+		"\t-m multiple connects\n"
+		"\t-z information request\n");
 
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P psm]\n"
@@ -717,7 +818,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyb:i:P:I:O:B:N:L:C:D:RGFAESM")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyzb:i:P:I:O:B:N:L:C:D:RGFAESM")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -756,16 +857,21 @@ int main(int argc, char *argv[])
 			need_addr = 1;
 			break;
 
-		case 'b':
-			data_size = atoi(optarg);
-			break;
-
 		case 'x':
 			mode = LSENDDUMP;
 			break;
 
 		case 'y':
 			mode = SENDDUMP;
+			break;
+
+		case 'z':
+			mode = INFOREQ;
+			need_addr = 1;
+			break;
+
+		case 'b':
+			data_size = atoi(optarg);
 			break;
 
 		case 'i':
@@ -915,6 +1021,10 @@ int main(int argc, char *argv[])
 		case LSENDDUMP:
 			do_listen(senddump_mode);
 			break;
+
+		case INFOREQ:
+			info_request(argv[optind]);
+			exit(0);
 	}
 
 	syslog(LOG_INFO, "Exit");
