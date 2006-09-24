@@ -87,7 +87,9 @@ static void name_data_free(struct name_data *data)
 
 	slist_free(data->callbacks);
 
-	free(data->name);
+	if (data->name)
+		free(data->name);
+
 	free(data);
 }
 
