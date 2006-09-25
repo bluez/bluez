@@ -1808,7 +1808,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 		goto cleanup;
 	}
 
-	if (cond & G_IO_HUP & G_IO_ERR) {
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		debug("Hangup or error on bonding IO channel");
 		error_failed(pdata->bonding->conn, pdata->bonding->rq, EIO);
 		goto failed;
