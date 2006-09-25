@@ -1808,6 +1808,12 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 		goto cleanup;
 	}
 
+	if (cond & G_IO_HUP & G_IO_ERR) {
+		debug("Hangup or error on bonding IO channel");
+		error_failed(pdata->bonding->conn, pdata->bonding->rq, EIO);
+		goto failed;
+	}
+
 	sk = g_io_channel_unix_get_fd(io);
 
 	len = sizeof(ret);
@@ -1867,7 +1873,9 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 
 	hci_close_dev(dd);
 
-	pdata->bonding->io_id = 0;
+	pdata->bonding->io_id = g_io_add_watch(io, G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+						(GIOFunc) create_bonding_conn_complete,
+						pdata);
 
 	return FALSE;
 
