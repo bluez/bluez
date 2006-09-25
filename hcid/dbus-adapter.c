@@ -1844,7 +1844,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	memset(&rp, 0, sizeof(rp));
 
 	memset(&cp, 0, sizeof(cp));
-	cp.handle = cinfo.hci_handle;
+	cp.handle = htobs(cinfo.hci_handle);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
