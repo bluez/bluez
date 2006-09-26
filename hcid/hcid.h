@@ -25,7 +25,6 @@
 
 #include <time.h>
 #include <sys/types.h>
-#include <sys/ioctl.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
