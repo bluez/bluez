@@ -26,6 +26,7 @@ struct timeout {
 
 struct _GIOChannel {
 	int fd;
+	gboolean closed;
 	gboolean close_on_unref;
 };
 
@@ -51,6 +52,9 @@ GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count, gsize *
 {
 	int fd = channel->fd;
 	gssize result;
+
+	if (channel->closed)
+		return G_IO_STATUS_ERROR;
 
 	/* At least according to the Debian manpage for read */
 	if (count > SSIZE_MAX)
@@ -83,11 +87,12 @@ retry:
 
 void g_io_channel_close(GIOChannel *channel)
 {
-	if (!channel || channel->fd < 0)
+	if (!channel || channel->closed)
 		return;
 
 	close(channel->fd);
-	channel->fd = -1;
+
+	channel->closed = TRUE;
 }
 
 void g_io_channel_unref(GIOChannel *channel)
@@ -123,6 +128,9 @@ void g_io_channel_set_close_on_unref(GIOChannel *channel, gboolean do_close)
 
 gint g_io_channel_unix_get_fd(GIOChannel *channel)
 {
+	if (channel->closed)
+		return -1;
+
 	return channel->fd;
 }
 
