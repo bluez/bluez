@@ -1786,6 +1786,19 @@ failed:
 	return -1;
 }
 
+static void reply_authentication_failure(struct bonding_request_info *bonding)
+{
+	DBusMessage *reply;
+	int status;
+
+	status = bonding->hci_status ?
+			bonding->hci_status : HCI_AUTHENTICATION_FAILURE;
+
+	reply = new_authentication_return(bonding->rq, status);
+	if (reply)
+		send_reply_and_unref(bonding->conn, reply);
+}
+
 static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 						struct hci_dbus_data *pdata)
 {
@@ -1811,10 +1824,12 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		debug("Hangup or error on bonding IO channel");
-		if (!pdata->bonding->connected)
+
+		if (!pdata->bonding->auth_active)
 			error_connection_attempt_failed(pdata->bonding->conn, pdata->bonding->rq, ENETDOWN);
 		else
-			error_authentication_failed(pdata->bonding->conn, pdata->bonding->rq);
+			reply_authentication_failure(pdata->bonding);
+
 		goto failed;
 	}
 
@@ -1828,11 +1843,12 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	}
 
 	if (ret != 0) {
-		error_connection_attempt_failed(pdata->bonding->conn, pdata->bonding->rq, ret);
+		if (pdata->bonding->auth_active)
+			reply_authentication_failure(pdata->bonding);
+		else
+			error_connection_attempt_failed(pdata->bonding->conn, pdata->bonding->rq, ret);
 		goto failed;
 	}
-
-	pdata->bonding->connected = 1;
 
 	len = sizeof(cinfo);
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &cinfo, &len) < 0) {
@@ -1878,6 +1894,8 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	}
 
 	hci_close_dev(dd);
+
+	pdata->bonding->auth_active = 1;
 
 	pdata->bonding->io_id = g_io_add_watch(io, G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 						(GIOFunc) create_bonding_conn_complete,

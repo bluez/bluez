@@ -225,7 +225,7 @@ static int active_conn_remove(struct slist **list, uint16_t *handle)
 	return ret_val;
 }
 
-static DBusMessage *dbus_msg_new_authentication_return(DBusMessage *msg, uint8_t status)
+DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 {
 	switch (status) {
 	case 0x00: /* success */
@@ -789,6 +789,9 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 	memset(info, 0, sizeof(struct pending_pin_info));
 	bacpy(&info->bdaddr, dba);
 	pdata->pin_reqs = slist_append(pdata->pin_reqs, info);
+
+	if (pdata->bonding && !bacmp(dba, &pdata->bonding->bdaddr))
+		pdata->bonding->auth_active = 1;
 }
 
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
@@ -856,7 +859,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t
 		error_authentication_canceled(connection, pdata->bonding->rq);
 	} else {
 		/* reply authentication success or an error */
-		message = dbus_msg_new_authentication_return(pdata->bonding->rq, status);
+		message = new_authentication_return(pdata->bonding->rq, status);
 		send_reply_and_unref(connection, message);
 	}
 
@@ -1552,6 +1555,9 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 			pdata->pin_reqs = slist_remove(pdata->pin_reqs, p);
 			free(p);
 		}
+
+		if (pdata->bonding)
+			pdata->bonding->hci_status = status;
 	} else {
 		/* Sent the remote device connected signal */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE, "RemoteDeviceConnected");
@@ -1634,7 +1640,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 			/* reply authentication canceled */
 			error_authentication_canceled(connection, pdata->bonding->rq);
 		} else {
-			message = dbus_msg_new_authentication_return(pdata->bonding->rq, HCI_AUTHENTICATION_FAILURE);
+			message = new_authentication_return(pdata->bonding->rq, HCI_AUTHENTICATION_FAILURE);
 			send_reply_and_unref(connection, message);
 		}
 

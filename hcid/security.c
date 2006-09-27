@@ -852,7 +852,7 @@ void start_security_manager(int hdev)
 
 	chan = g_io_channel_unix_new(dev);
 	g_io_channel_set_close_on_unref(chan, TRUE);
-	io_data[hdev].watch_id = g_io_add_watch_full(chan, 0,
+	io_data[hdev].watch_id = g_io_add_watch_full(chan, G_PRIORITY_HIGH,
 						G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 						io_security_event, di, (GDestroyNotify)free);
 	io_data[hdev].channel = chan;

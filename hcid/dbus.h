@@ -88,8 +88,9 @@ struct bonding_request_info {
 	DBusMessage *rq;
 	GIOChannel *io;
 	guint io_id;
+	int hci_status;
 	int cancel;
-	int connected;
+	int auth_active;
 };
 
 struct pending_pin_info {
@@ -158,6 +159,8 @@ DBusHandlerResult bluez_new_failure_msg(DBusConnection *conn, DBusMessage *msg, 
 
 DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...);
 
+DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
+
 int get_default_dev_id(void);
 
 DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err);
@@ -177,7 +180,6 @@ DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage
 DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_not_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_authentication_failed(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_not_in_progress(DBusConnection *conn, DBusMessage *msg);
