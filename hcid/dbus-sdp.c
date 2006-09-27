@@ -514,7 +514,7 @@ static gboolean search_process_cb(GIOChannel *chan,
 		return FALSE;
 	}
 
-	if (cond & G_IO_ERR & G_IO_HUP) {
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		err = EIO;
 		goto failed;
 	}
