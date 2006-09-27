@@ -605,7 +605,7 @@ int hcid_dbus_start_device(uint16_t id)
 		rq.rparam = &rp;
 		rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
 
-		if (hci_send_req(dd, &rq, 500) < 0) {
+		if (hci_send_req(dd, &rq, 1000) < 0) {
 			error("Sending read scan enable command failed: %s (%d)",
 								strerror(errno), errno);
 			rp.enable = SCAN_PAGE | SCAN_INQUIRY;
@@ -982,7 +982,7 @@ int disc_device_req_name(struct hci_dbus_data *dbus_data)
 
 		baswap(&tmp, &dev->bdaddr); peer_addr = batostr(&tmp);
 
-		if (hci_send_req(dd, &rq, 100) < 0) {
+		if (hci_send_req(dd, &rq, 500) < 0) {
 			error("Unable to send the HCI remote name request: %s (%d)",
 						strerror(errno), errno);
 			failed_signal = dev_signal_factory(dbus_data->dev_id,
@@ -1929,7 +1929,7 @@ gboolean discoverable_timeout_handler(void *data)
 	rq.rparam = &status;
 	rq.rlen   = sizeof(status);
 
-	if (hci_send_req(dd, &rq, 100) < 0) {
+	if (hci_send_req(dd, &rq, 1000) < 0) {
 		error("Sending write scan enable command to hci%d failed: %s (%d)",
 				dbus_data->dev_id, strerror(errno), errno);
 		goto failed;
@@ -2069,7 +2069,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 		rq.rparam = &rp;
 		rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
 
-		if (hci_send_req(dd, &rq, 100) < 0) {
+		if (hci_send_req(dd, &rq, 1000) < 0) {
 			error("Sending getting name command failed: %s (%d)",
 						strerror(errno), errno);
 			rp.name[0] = '\0';
@@ -2138,7 +2138,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	rq.rparam = &rp;
 	rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
 
-	if (hci_send_req(dd, &rq, 100) < 0) {
+	if (hci_send_req(dd, &rq, 1000) < 0) {
 		error("Sending read scan enable command failed: %s (%d)",
 							strerror(errno), errno);
 		goto failed;
@@ -2386,13 +2386,13 @@ int cancel_discovery(struct hci_dbus_data *pdata)
 				(cmp_func_t) disc_device_find);
 	if (l) {
 		dev = l->data;
-		if (remote_name_cancel(dd, &dev->bdaddr, 100) < 0) {
+		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
 			error("Read remote name cancel failed: %s, (%d)",
 						strerror(errno), errno);
 			err = -errno;
 		}
 	} else {
-		if (inquiry_cancel(dd, 100) < 0) {
+		if (inquiry_cancel(dd, 1000) < 0) {
 			error("Inquiry cancel failed:%s (%d)",
 						strerror(errno), errno);
 			err = -errno;
@@ -2474,14 +2474,14 @@ int cancel_periodic_discovery(struct hci_dbus_data *pdata)
 	l = slist_find(pdata->disc_devices, &match, (cmp_func_t) disc_device_find);
 	if (l) {
 		dev = l->data;
-		if (remote_name_cancel(dd, &dev->bdaddr, 100) < 0) {
+		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
 			error("Read remote name cancel failed: %s, (%d)", strerror(errno), errno);
 			err = -errno;
 		}
 	}
 
 	/* ovewrite err if necessary: stop periodic inquiry has higher priority */
-	if (periodic_inquiry_exit(dd, 100) < 0) {
+	if (periodic_inquiry_exit(dd, 1000) < 0) {
 		error("Periodic Inquiry exit failed:%s (%d)", strerror(errno), errno);
 		err = -errno;
 	}

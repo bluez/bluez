@@ -225,7 +225,7 @@ int pending_remote_name_cancel(struct hci_dbus_data *pdata)
 
 	dev = l->data;
 
-	if (hci_read_remote_name_cancel(dd, &dev->bdaddr, 100) < 0) {
+	if (hci_read_remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
 		error("Remote name cancel failed: %s(%d)", strerror(errno), errno);
 		err = -errno;
 	}
@@ -482,7 +482,7 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 		rq.rparam = &status;
 		rq.rlen   = sizeof(status);
 
-		if (hci_send_req(dd, &rq, 100) < 0) {
+		if (hci_send_req(dd, &rq, 1000) < 0) {
 			int err = errno;
 			error("Sending write scan enable command failed: %s (%d)",
 							strerror(errno), errno);
@@ -1718,7 +1718,7 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 		return error_no_such_adapter(conn, msg);
 
 	/* Send the HCI disconnect command */
-	if (hci_disconnect(dd, dev->handle, HCI_OE_USER_ENDED_CONNECTION, 100) < 0) {
+	if (hci_disconnect(dd, dev->handle, HCI_OE_USER_ENDED_CONNECTION, 500) < 0) {
 		int err = errno;
 		error("Disconnect failed");
 		hci_close_dev(dd);
@@ -1877,7 +1877,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	rq.rparam = &rp;
 	rq.rlen   = EVT_CMD_STATUS_SIZE;
 
-	if (hci_send_req(dd, &rq, 100) < 0) {
+	if (hci_send_req(dd, &rq, 500) < 0) {
 		error("Unable to send HCI request: %s (%d)",
 					strerror(errno), errno);
 		error_failed(pdata->bonding->conn, pdata->bonding->rq, errno);
@@ -2121,7 +2121,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	if (l) {
 		struct active_conn_info *con = l->data;
 		/* Send the HCI disconnect command */
-		if (hci_disconnect(dd, htobs(con->handle), HCI_OE_USER_ENDED_CONNECTION, 1000) < 0) {
+		if (hci_disconnect(dd, htobs(con->handle), HCI_OE_USER_ENDED_CONNECTION, 500) < 0) {
 			int err = errno;
 			error("Disconnect failed");
 			hci_close_dev(dd);
@@ -2342,7 +2342,7 @@ static DBusHandlerResult handle_dev_start_periodic_req(DBusConnection *conn, DBu
 	rq.rlen   = sizeof(status);
 	rq.event  = EVT_CMD_COMPLETE;
 
-	if (hci_send_req(dd, &rq, 100) < 0) {
+	if (hci_send_req(dd, &rq, 1000) < 0) {
 		int err = errno;
 		error("Unable to start periodic inquiry: %s (%d)",
 							strerror(errno), errno);
@@ -2444,7 +2444,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	rq.rlen   = EVT_CMD_STATUS_SIZE;
 	rq.event  = EVT_CMD_STATUS;
 
-	if (hci_send_req(dd, &rq, 100) < 0) {
+	if (hci_send_req(dd, &rq, 500) < 0) {
 		int err = errno;
 		error("Unable to start inquiry: %s (%d)",
 							strerror(errno), errno);
