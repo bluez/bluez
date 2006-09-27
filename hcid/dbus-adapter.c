@@ -802,13 +802,13 @@ static DBusHandlerResult handle_dev_get_minor_class_req(DBusConnection *conn, DB
 
 	hci_close_dev(dd);
 
+	/* FIXME: Currently, only computer major class is supported */
+	if ((cls[1] & 0x1f) != 1)
+		return error_unsupported_major_class(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	/* FIXME: Currently, only computer major class is supported */
-	if ((cls[1] & 0x1f) != 1)
-		goto failed;
 
 	minor_class = cls[0] >> 2;
 
