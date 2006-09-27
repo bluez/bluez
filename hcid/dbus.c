@@ -375,7 +375,7 @@ static int register_dbus_path(const char *path, uint16_t dev_id,
 
 static void reply_pending_requests(const char *path, struct hci_dbus_data *pdata)
 {
-	DBusMessage *message = NULL;
+	DBusMessage *message;
 
 	if (!path || !pdata)
 		return;
@@ -506,7 +506,7 @@ int hcid_dbus_register_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
-	DBusMessage *message = NULL;
+	DBusMessage *message;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
@@ -1526,7 +1526,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	struct hci_dbus_data *pdata;
 	char *local_addr, *peer_addr;
 	bdaddr_t tmp;
-	int dd = -1, id;
+	int id;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	baswap(&tmp, peer); peer_addr = batostr(&tmp);
@@ -1574,9 +1574,6 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	}
 
 done:
-	if (dd >= 0)
-		hci_close_dev(dd);
-
 	bt_free(local_addr);
 	bt_free(peer_addr);
 }
@@ -1871,8 +1868,8 @@ int hcid_dbus_init(void)
 
 void hcid_dbus_exit(void)
 {
-	char **children = NULL;
-	int i = 0;
+	char **children;
+	int i;
 
 	if (!dbus_connection_get_is_connected(connection))
 		return;
@@ -1883,7 +1880,7 @@ void hcid_dbus_exit(void)
 	if (!dbus_connection_list_registered(connection, BASE_PATH, &children))
 		goto done;
 
-	for (; children[i]; i++) {
+	for (i = 0; children[i]; i++) {
 		char dev_path[MAX_PATH_LENGTH];
 
 		snprintf(dev_path, sizeof(dev_path), "%s/%s", BASE_PATH, children[i]);
@@ -1909,7 +1906,7 @@ gboolean discoverable_timeout_handler(void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
 	struct hci_request rq;
-	int dd = -1;
+	int dd;
 	uint8_t hci_mode = dbus_data->mode;
 	uint8_t status = 0;
 	gboolean retval = TRUE;
