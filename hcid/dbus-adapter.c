@@ -481,6 +481,7 @@ static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessa
 		rq.clen   = sizeof(hci_mode);
 		rq.rparam = &status;
 		rq.rlen   = sizeof(status);
+		rq.event = EVT_CMD_COMPLETE;
 
 		if (hci_send_req(dd, &rq, 1000) < 0) {
 			int err = errno;
@@ -1871,11 +1872,11 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
 	rq.ocf    = OCF_AUTH_REQUESTED;
-	rq.event  = EVT_CMD_STATUS;
 	rq.cparam = &cp;
 	rq.clen   = AUTH_REQUESTED_CP_SIZE;
 	rq.rparam = &rp;
 	rq.rlen   = EVT_CMD_STATUS_SIZE;
+	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, 500) < 0) {
 		error("Unable to send HCI request: %s (%d)",

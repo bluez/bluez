@@ -604,6 +604,7 @@ int hcid_dbus_start_device(uint16_t id)
 		rq.ocf    = OCF_READ_SCAN_ENABLE;
 		rq.rparam = &rp;
 		rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
+		rq.event  = EVT_CMD_COMPLETE;
 
 		if (hci_send_req(dd, &rq, 1000) < 0) {
 			error("Sending read scan enable command failed: %s (%d)",
@@ -1928,6 +1929,7 @@ gboolean discoverable_timeout_handler(void *data)
 	rq.clen   = sizeof(hci_mode);
 	rq.rparam = &status;
 	rq.rlen   = sizeof(status);
+	rq.event  = EVT_CMD_COMPLETE;
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
 		error("Sending write scan enable command to hci%d failed: %s (%d)",
@@ -2068,6 +2070,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 		rq.ocf    = OCF_READ_LOCAL_NAME;
 		rq.rparam = &rp;
 		rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
+		rq.event  = EVT_CMD_COMPLETE;
 
 		if (hci_send_req(dd, &rq, 1000) < 0) {
 			error("Sending getting name command failed: %s (%d)",
@@ -2137,6 +2140,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	rq.ocf    = OCF_READ_SCAN_ENABLE;
 	rq.rparam = &rp;
 	rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
+	rq.event  = EVT_CMD_COMPLETE; 
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
 		error("Sending read scan enable command failed: %s (%d)",
