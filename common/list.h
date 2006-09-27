@@ -37,6 +37,8 @@ struct slist *slist_append(struct slist *list, void *data);
 
 struct slist *slist_prepend(struct slist *list, void *data);
 
+struct slist *slist_insert_before(struct slist *list, struct slist *sibling, void *data);
+
 struct slist *slist_remove(struct slist *list, void *data);
 
 struct slist *slist_find(struct slist *list, const void *data,

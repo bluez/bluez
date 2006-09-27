@@ -205,6 +205,20 @@ void g_io_remove_watch(guint id)
 	}
 }
 
+static struct slist *watch_list_add(struct slist *l, struct watch *watch)
+{
+	struct slist *cur;
+
+	for (cur = l; cur != NULL; cur = cur->next) {
+		struct watch *w = cur->data;
+
+		if (w->priority >= watch->priority)
+			break;
+	}
+
+	return slist_insert_before(l, cur, watch);
+}
+
 guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 				GIOCondition condition, GIOFunc func,
 				gpointer user_data, GDestroyNotify notify)
@@ -228,9 +242,9 @@ guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 	watch->destroy = notify;
 
 	if (context->watch_lock)
-		context->proc_watches = slist_prepend(context->proc_watches, watch);
+		context->proc_watches = watch_list_add(context->proc_watches, watch);
 	else
-		context->watches = slist_prepend(context->watches, watch);
+		context->watches = watch_list_add(context->watches, watch);
 
 	return watch->id;
 }
@@ -385,7 +399,7 @@ void g_main_loop_run(GMainLoop *loop)
 
 			if (!*w->revents) {
 				context->watches = slist_remove(context->watches, w);
-				context->proc_watches = slist_append(context->proc_watches, w);
+				context->proc_watches = watch_list_add(context->proc_watches, w);
 				continue;
 			}
 
@@ -403,7 +417,7 @@ void g_main_loop_run(GMainLoop *loop)
 				continue;
 			}
 
-			context->proc_watches = slist_append(context->proc_watches, w);
+			context->proc_watches = watch_list_add(context->proc_watches, w);
 		}
 
 		context->watches = context->proc_watches;
