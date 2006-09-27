@@ -1543,7 +1543,10 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 	if (status) {
 		struct slist *l;
 
-		l = slist_find(pdata->pin_reqs, &peer, pin_req_cmp);
+		cancel_passkey_agent_requests(pdata->passkey_agents, path, peer);
+		release_passkey_agents(pdata, peer);
+
+		l = slist_find(pdata->pin_reqs, peer, pin_req_cmp);
 		if (l) {
 			struct pending_pin_req *p = l->data;
 			pdata->pin_reqs = slist_remove(pdata->pin_reqs, p);
