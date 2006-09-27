@@ -1814,7 +1814,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 		if (!pdata->bonding->connected)
 			error_connection_attempt_failed(pdata->bonding->conn, pdata->bonding->rq, ENETDOWN);
 		else
-			error_failed(pdata->bonding->conn, pdata->bonding->rq, EIO);
+			error_authentication_failed(pdata->bonding->conn, pdata->bonding->rq);
 		goto failed;
 	}
 

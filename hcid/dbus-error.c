@@ -186,6 +186,14 @@ DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessag
 				    dbus_message_new_error(msg, ERROR_INTERFACE ".AuthenticationCanceled",
 							   "Authentication Canceled"));
 }
+
+DBusHandlerResult error_authentication_failed(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_reply_and_unref(conn,
+			dbus_message_new_error(msg, ERROR_INTERFACE ".AuthenticationFailed",
+						"Authentication failed"));
+}
+			
 DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_in_progress(conn, msg, "Discover in progress");

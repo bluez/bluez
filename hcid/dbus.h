@@ -177,6 +177,7 @@ DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage
 DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_not_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_authentication_failed(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_not_in_progress(DBusConnection *conn, DBusMessage *msg);
