@@ -1,3 +1,10 @@
+ver 3.6.1:
+	Fix IO channel race conditions.
+	Fix pairing issues on big endian systems.
+	Fix pairing issues with page timeout errors.
+	Fix pairing state for security mode 3 requests.
+	Switch to user as default security manager mode.
+
 ver 3.6:
 	Update D-Bus based RFCOMM interface support.
 	Use L2CAP raw sockets for HCI connection creation.
