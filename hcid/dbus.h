@@ -89,6 +89,7 @@ struct bonding_request_info {
 	GIOChannel *io;
 	guint io_id;
 	int cancel;
+	int connected;
 };
 
 struct pending_pin_info {

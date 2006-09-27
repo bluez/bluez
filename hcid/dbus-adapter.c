@@ -1811,7 +1811,10 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		debug("Hangup or error on bonding IO channel");
-		error_failed(pdata->bonding->conn, pdata->bonding->rq, EIO);
+		if (!pdata->bonding->connected)
+			error_connection_attempt_failed(pdata->bonding->conn, pdata->bonding->rq, ENETDOWN);
+		else
+			error_failed(pdata->bonding->conn, pdata->bonding->rq, EIO);
 		goto failed;
 	}
 
@@ -1828,6 +1831,8 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 		error_connection_attempt_failed(pdata->bonding->conn, pdata->bonding->rq, ret);
 		goto failed;
 	}
+
+	pdata->bonding->connected = 1;
 
 	len = sizeof(cinfo);
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &cinfo, &len) < 0) {
@@ -1954,7 +1959,7 @@ static DBusHandlerResult handle_dev_create_bonding_req(DBusConnection *conn, DBu
 
 	dbus_data->bonding->io = g_io_channel_unix_new(sk);
 	dbus_data->bonding->io_id = g_io_add_watch(dbus_data->bonding->io,
-							G_IO_OUT | G_IO_NVAL,
+							G_IO_OUT | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 							(GIOFunc) create_bonding_conn_complete,
 							dbus_data);
 
