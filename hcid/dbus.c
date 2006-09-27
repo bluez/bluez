@@ -1540,7 +1540,16 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 		goto done;
 	}
 
-	if (!status) {
+	if (status) {
+		struct slist *l;
+
+		l = slist_find(pdata->pin_reqs, &peer, pin_req_cmp);
+		if (l) {
+			struct pending_pin_req *p = l->data;
+			pdata->pin_reqs = slist_remove(pdata->pin_reqs, p);
+			free(p);
+		}
+	} else {
 		/* Sent the remote device connected signal */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE, "RemoteDeviceConnected");
 
