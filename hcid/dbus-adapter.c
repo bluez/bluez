@@ -695,8 +695,11 @@ static DBusHandlerResult handle_dev_list_connections_req(DBusConnection *conn, D
 
 static DBusHandlerResult handle_dev_get_major_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
+	const struct hci_dbus_data *dbus_data = data;
 	DBusMessage *reply;
 	const char *str_ptr = "computer";
+	uint8_t cls[3];
+	int dd;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
@@ -705,7 +708,24 @@ static DBusHandlerResult handle_dev_get_major_class_req(DBusConnection *conn, DB
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	/*FIXME: Check the real device major class */
+	dd = hci_open_dev(dbus_data->dev_id);
+	if (dd < 0)
+		return error_no_such_adapter(conn, msg);
+
+	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		int err = errno;
+		error("Can't read class of device on hci%d: %s(%d)",
+				dbus_data->dev_id, strerror(errno), errno);
+		hci_close_dev(dd);
+		return error_failed(conn, msg, err);
+	}
+
+	hci_close_dev(dd);
+
+	/* FIXME: Currently, only computer major class is supported */
+	if ((cls[1] & 0x1f) != 1)
+		return error_unsupported_major_class(conn, msg);
+
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
