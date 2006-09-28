@@ -870,21 +870,7 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 		return error_invalid_arguments(conn, msg);
 	}
 
-	/* FIXME: check if the major class is computer. If not, return UnsupportedMajorClass */
-
 	if (!minor)
-		return error_invalid_arguments(conn, msg);
-
-	/* FIXME: currently, only computer minor classes are allowed */
-	for (i = 0; i < sizeof(computer_minor_cls) / sizeof(*computer_minor_cls); i++)
-		if (!strcasecmp(minor, computer_minor_cls[i])) {
-			/* Remove the format type */
-			dev_class = i << 2;
-			break;
-		}
-
-	/* Check if it's a valid minor class */
-	if (dev_class == 0xFFFFFFFF)
 		return error_invalid_arguments(conn, msg);
 
 	dd = hci_open_dev(dbus_data->dev_id);
@@ -899,11 +885,26 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 		return error_failed(conn, msg, err);
 	}
 
-	dev_class |= (cls[2] << 16) | (cls[1] << 8);
+	/* Currently, only computer major class is supported */
+	if ((cls[1] & 0x1f) != 1)
+		return error_unsupported_major_class(conn, msg);
 
-	cls[2] = 0x00;	/* no service classes */
-	cls[1] = 0x01;	/* major class computer */
+	for (i = 0; i < sizeof(computer_minor_cls) / sizeof(*computer_minor_cls); i++)
+		if (!strcasecmp(minor, computer_minor_cls[i])) {
+			/* Remove the format type */
+			dev_class = i << 2;
+			break;
+		}
+
+	/* Check if it's a valid minor class */
+	if (dev_class == 0xFFFFFFFF)
+		return error_invalid_arguments(conn, msg);
+
+	/* update the minor class before store */
 	cls[0] = (dev_class & 0xff);
+
+	/* set the service class and major class  */
+	dev_class |= (cls[2] << 16) | (cls[1] << 8);
 
 	hci_devba(dbus_data->dev_id, &bdaddr);
 
