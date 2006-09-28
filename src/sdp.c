@@ -3569,7 +3569,17 @@ int sdp_process(sdp_session_t *session)
 			/* first fragment */
 			rsp_count = sizeof(tsrc) + sizeof(csrc) + csrc * 4;
 		} else {
-			pdata += 2 * sizeof(uint16_t); /* Ignore TSRC and CSRC */
+			/* point to the first csrc */
+			uint16_t *pcsrc = (uint16_t *) (t->rsp_concat_buf.data + 2);
+
+			/* FIXME: update the interface later. csrc doesn't need be passed to clients */
+
+			pdata += sizeof(uint16_t); /* point to csrc */
+
+			/* the first csrc contains the sum of partial csrc responses */
+			*pcsrc += bt_get_unaligned((uint16_t *) pdata); 
+
+			pdata += sizeof(uint16_t); /* point to the first handle */
 			rsp_count = csrc * 4;
 		}
 		status = 0x0000;
