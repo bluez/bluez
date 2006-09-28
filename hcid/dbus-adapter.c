@@ -2688,6 +2688,8 @@ DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *
 			return error_unknown_method(conn, msg);
 	} else if (!strcmp(SECURITY_INTERFACE, iface))
 		return handle_security_method(conn, msg, data);
+	else if (!strcmp(TEST_INTERFACE, iface))
+		return handle_test_method(conn, msg, data);
 	else if (!strcmp(RFCOMM_INTERFACE, iface))
 		return handle_rfcomm_method(conn, msg, data);
 	else if (!strcmp(SDP_INTERFACE, iface))

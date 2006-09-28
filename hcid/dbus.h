@@ -42,6 +42,8 @@
 
 #define SECURITY_INTERFACE	BASE_INTERFACE ".Security"
 
+#define TEST_INTERFACE		BASE_INTERFACE ".Test"
+
 #define RFCOMM_INTERFACE	BASE_INTERFACE ".RFCOMM"
 
 #define SDP_INTERFACE		BASE_INTERFACE ".SDP"
@@ -199,6 +201,8 @@ int name_listener_add(DBusConnection *connection, const char *name,
 				name_cb_t func, void *user_data);
 int name_listener_remove(DBusConnection *connection, const char *name,
 				name_cb_t func, void *user_data);
+
+DBusHandlerResult handle_test_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);
 

@@ -27,3 +27,46 @@
 
 #include <stdio.h>
 #include <errno.h>
+
+#include <dbus/dbus.h>
+
+#include "hcid.h"
+#include "dbus.h"
+
+static DBusHandlerResult audit_device(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *address;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static struct service_data methods[] = {
+	{ "AuditRemoteDevice",	audit_device	},
+	{ NULL, NULL }
+};
+
+DBusHandlerResult handle_test_method(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	service_handler_func_t handler;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
+	handler = find_service_handler(methods, msg);
+
+	if (handler)
+		return handler(conn, msg, data);
+
+	return error_unknown_method(conn, msg);
+}
