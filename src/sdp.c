@@ -3500,6 +3500,7 @@ int sdp_process(sdp_session_t *session)
 	uint8_t *pdata, *rspbuf, *targetPtr;
 	int rsp_count, err = -1;
 	size_t size = 0;
+	int n, plen;
 	uint16_t status = 0xffff;
 	uint8_t pdu_id = 0x00;
 
@@ -3523,15 +3524,17 @@ int sdp_process(sdp_session_t *session)
 
 	pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
 
-	if (sdp_read_rsp(session, rspbuf, SDP_RSP_BUFFER_SIZE) <= 0) {
+	n = sdp_read_rsp(session, rspbuf, SDP_RSP_BUFFER_SIZE);
+	if (n < 0) {
 		SDPERR("Read response:%s (%d)", strerror(errno), errno);
 		t->err = errno;
 		goto end;
 	}
 
-	if (reqhdr->tid != rsphdr->tid) {
+	if (n == 0 || reqhdr->tid != rsphdr->tid ||
+		(n != (ntohs(rsphdr->plen) + sizeof(sdp_pdu_hdr_t)))) {
 		t->err = EPROTO;
-		SDPERR("Wrong transaction ID.");
+		SDPERR("Protocol error.");
 		goto end;
 	}
 
@@ -3541,19 +3544,30 @@ int sdp_process(sdp_session_t *session)
 	uint16_t tsrc, csrc;
 	case SDP_SVC_SEARCH_RSP:
 		/*
-		 * TSRC: Total Service Record Count
-		 * CSRC: Current Service Record Count
+		 * TSRC: Total Service Record Count (2 bytes)
+		 * CSRC: Current Service Record Count (2 bytes)
 		 */
 		ssr_pdata = pdata;
-		ssr_pdata += sizeof(tsrc);
 		tsrc = ntohs(bt_get_unaligned((uint16_t *) ssr_pdata));
+		ssr_pdata += sizeof(uint16_t);
 		csrc = ntohs(bt_get_unaligned((uint16_t *) ssr_pdata));
+
+		/* csrc should never be larger than tsrc */
+		if (csrc > tsrc) {
+			t->err = EPROTO;
+			SDPERR("Protocol error: wrong current service record count value.");
+			goto end;
+		}
+
+		SDPDBG("Total svc count: %d\n", tsrc);
+		SDPDBG("Current svc count: %d\n", csrc);
+
+		/* parameter length without continuation state */
+		plen = sizeof(tsrc) + sizeof(csrc) + csrc * 4;
 
 		if (t->rsp_concat_buf.data_size == 0) {
 			/* first fragment */
 			rsp_count = sizeof(tsrc) + sizeof(csrc) + csrc * 4;
-			SDPDBG("Total svc count: %d\n", tsrc);
-			SDPDBG("Current svc count: %d\n", csrc);
 		} else {
 			pdata += 2 * sizeof(uint16_t); /* Ignore TSRC and CSRC */
 			rsp_count = csrc * 4;
@@ -3564,13 +3578,22 @@ int sdp_process(sdp_session_t *session)
 	case SDP_SVC_SEARCH_ATTR_RSP:
 		rsp_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		SDPDBG("Attrlist byte count : %d\n", rsp_count);
+	
+		/* 
+		 * Number of bytes in the AttributeLists parameter(without
+		 * continuation state) + AttributeListsByteCount field size.
+		 */
+		plen = sizeof(uint16_t) + rsp_count;
 
 		pdata += sizeof(uint16_t); // points to attribute list
 		status = 0x0000;
 		break;
 	case SDP_ERROR_RSP:
 		status = ntohs(bt_get_unaligned((uint16_t *) pdata));
-		size = rsphdr->plen;
+		size = ntohs(rsphdr->plen);
+
+		/* error code + error info */
+		plen = size;
 		goto end;
 	default:
 		t->err = EPROTO;
@@ -3581,12 +3604,22 @@ int sdp_process(sdp_session_t *session)
 	pcstate = (sdp_cstate_t *) (pdata + rsp_count);
 
 	SDPDBG("Cstate length : %d\n", pcstate->length);
+
+	/* 
+	 * Check out of bound. Continuation state must have at least
+	 * 1 byte: ZERO to indicate that it is not a partial response.
+	 */
+	if ((n - sizeof(sdp_pdu_hdr_t))  != (plen + pcstate->length + 1)) {
+		t->err = EPROTO;
+		SDPERR("Protocol error: wrong PDU size.");
+		status = 0xffff;
+		goto end;
+	}
+
 	/*
 	 * This is a split response, need to concatenate intermediate
 	 * responses and the last one which will have cstate length == 0
 	 */
-
-	// build concatenated response buffer
 	t->rsp_concat_buf.data = realloc(t->rsp_concat_buf.data, t->rsp_concat_buf.data_size + rsp_count);
 	targetPtr = t->rsp_concat_buf.data + t->rsp_concat_buf.data_size;
 	t->rsp_concat_buf.buf_size = t->rsp_concat_buf.data_size + rsp_count;
