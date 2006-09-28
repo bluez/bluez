@@ -209,10 +209,10 @@ static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *
 static DBusHandlerResult register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	char *path, *addr;
 	struct passkey_agent *agent, ref;
 	struct hci_dbus_data *adapter;
 	DBusMessage *reply;
+	const char *path, *addr;
 
 	if (!data) {
 		error("register_agent called without any adapter info!");
@@ -230,8 +230,8 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	memset(&ref, 0, sizeof(ref));
 
 	ref.name = (char *) dbus_message_get_sender(msg);
-	ref.addr = addr;
-	ref.path = path;
+	ref.addr = (char *) addr;
+	ref.path = (char *) path;
 
 	if (slist_find(adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp))
 		return error_passkey_agent_already_exists(conn, msg);
@@ -263,11 +263,11 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 static DBusHandlerResult unregister_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	char *path, *addr;
 	struct hci_dbus_data *adapter;
 	struct slist *match;
 	struct passkey_agent ref, *agent;
 	DBusMessage *reply;
+	const char *path, *addr;
 
 	if (!data) {
 		error("uregister_agent called without any adapter info!");
@@ -285,8 +285,8 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	memset(&ref, 0, sizeof(ref));
 
 	ref.name = (char *) dbus_message_get_sender(msg);
-	ref.path = path;
-	ref.addr = addr;
+	ref.path = (char *) path;
+	ref.addr = (char *) addr;
 
 	match = slist_find(adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp);
 	if (!match)
@@ -311,8 +311,8 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 static DBusHandlerResult register_default_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	char *path;
 	DBusMessage *reply;
+	const char *path;
 
 	if (default_agent)
 		return error_passkey_agent_already_exists(conn, msg);
@@ -353,8 +353,7 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	char *path;
-	const char *name;
+	const char *path, *name;
 
 	if (!default_agent)
 		return error_passkey_agent_does_not_exist(conn, msg);
@@ -382,7 +381,6 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 	default_agent->exited = 1;
 	passkey_agent_free(default_agent);
 	default_agent = NULL;
-
 
 	return send_reply_and_unref(conn, reply);
 }
