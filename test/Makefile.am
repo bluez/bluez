@@ -33,6 +33,6 @@ endif
 
 INCLUDES = -I$(top_srcdir)/common
 
-EXTRA_DIST = hsplay hsmicro bdaddr.8
+EXTRA_DIST = apitest hsplay hsmicro bdaddr.8
 
 MAINTAINERCLEANFILES = Makefile.in
