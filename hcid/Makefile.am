@@ -17,15 +17,13 @@ sbin_PROGRAMS = hcid
 
 noinst_PROGRAMS = passkey-agent
 
-noinst_SCRIPTS = dbus-test
-
 hcid_SOURCES = main.c security.c device.c logging.c storage.c \
 		sdp.c sdp.h hcid.h parser.h parser.y \
 		lexer.l kword.c kword.h \
 		dbus.h dbus.c dbus-common.c \
 		dbus-error.c dbus-manager.c dbus-adapter.c \
 		dbus-device.c dbus-service.c dbus-security.c \
-		dbus-sdp.c dbus-rfcomm.c
+		dbus-test.c dbus-sdp.c dbus-rfcomm.c
 
 hcid_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
