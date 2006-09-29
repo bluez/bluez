@@ -945,14 +945,9 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 			DBUS_TYPE_STRING, &svc,
 			DBUS_TYPE_INVALID);
 
-	if (strlen(svc) > 0) {
-		/* Check if it is a service name string */
-		if (str2uuid(&uuid, svc) < 0) {
-			/* check if the service string is a hex */
-			uint32_t uuid_hex = strtol(svc, NULL, 16);
-			sdp_uuid16_create(&uuid, uuid_hex);
-		}
-	} else
+	if (strlen(svc) > 0)
+		str2uuid(&uuid, svc);
+	else
 		sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
 
 	search = sdp_list_append(0, &uuid);
@@ -987,12 +982,8 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 	if (strlen(svc) > 0) {
 		/* Check if it is a service name string */
 		if (str2uuid(&uuid, svc) < 0) {
-			/* check if the service string is a hex */
-			uint32_t uuid_hex = strtol(svc, NULL, 16);
-			if (!uuid_hex) {
-				error("Invalid service class name");
-				return error_invalid_arguments(conn, msg);
-			}
+			error("Invalid service class name");
+			return error_invalid_arguments(conn, msg);
 		}
 	}
 
