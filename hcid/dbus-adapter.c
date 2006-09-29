@@ -2423,6 +2423,22 @@ static DBusHandlerResult handle_dev_stop_periodic_req(DBusConnection *conn, DBus
 	return send_reply_and_unref(conn, reply);
 }
 
+static DBusHandlerResult handle_dev_is_periodic_req(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	struct hci_dbus_data *dbus_data = data;
+	dbus_bool_t active = dbus_data->pdisc_active;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &active,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
 static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
@@ -2660,6 +2676,7 @@ static struct service_data dev_services[] = {
 
 	{ "StartPeriodicDiscovery",			handle_dev_start_periodic_req		},
 	{ "StopPeriodicDiscovery",			handle_dev_stop_periodic_req		},
+	{ "IsPeriodicDiscovery",			handle_dev_is_periodic_req		},
 
 	{ "DiscoverDevices",				handle_dev_discover_devices_req		},
 	{ "DiscoverDevicesWithoutNameResolving",	handle_dev_discover_devices_req		},
