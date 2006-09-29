@@ -619,7 +619,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		if (extcls) {
 			memcpy(cls, (info+i)->dev_class, 3);
 			printf("Device class:\t");
-			if ((cls[1] & 0x1f) > sizeof(*major_classes))
+			if ((cls[1] & 0x1f) > sizeof(major_classes) / sizeof(char *))
 				printf("Invalid");
 			else
 				printf("%s, %s", major_classes[cls[1] & 0x1f],
