@@ -33,7 +33,25 @@
 #include "hcid.h"
 #include "dbus.h"
 
-static DBusHandlerResult audit_device(DBusConnection *conn,
+static DBusHandlerResult audit_remote_device(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *address;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
@@ -52,7 +70,8 @@ static DBusHandlerResult audit_device(DBusConnection *conn,
 }
 
 static struct service_data methods[] = {
-	{ "AuditRemoteDevice",	audit_device	},
+	{ "AuditRemoteDevice",		audit_remote_device		},
+	{ "CancelAuditRemoteDevice",	cancel_audit_remote_device	},
 	{ NULL, NULL }
 };
 
