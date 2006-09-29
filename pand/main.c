@@ -210,7 +210,7 @@ static int do_listen(void)
 			ba2str(&l2a.l2_bdaddr, str);
 
 			syslog(LOG_INFO, "New connection from %s %s",
-								str, netdev);
+								str, devname);
 
 			run_devup(devname, str, sk, nsk);
 		} else {
