@@ -269,7 +269,8 @@ Methods		string GetAddress()
 			Changing this value doesn't set the adapter into
 			discoverable mode. The SetMode method must be used.
 
-			Possible errors: org.bluez.Error.InvalidArguments
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.InvalidArguments
 
 		boolean IsConnectable()
 
@@ -326,7 +327,10 @@ Methods		string GetAddress()
 			If the major class is not "computer" an error should
 			be returned.
 
-			Possible errors: org.bluez.Error.UnsupportedMajorClass
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.Failed
+					 org.bluez.Error.UnsupportedMajorClass
 
 		string GetMinorClass()
 
@@ -341,7 +345,10 @@ Methods		string GetAddress()
 
 			The default value is "uncategorized".
 
-			Possible errors: org.bluez.Error.UnsupportedMajorClass
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.Failed
+					 org.bluez.Error.UnsupportedMajorClass
 
 		void SetMinorClass(string minor)
 
@@ -351,7 +358,10 @@ Methods		string GetAddress()
 			If the major class is not "computer" an error should
 			be returned.
 
-			Possible errors: org.bluez.Error.InvalidArguments
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.Failed
 					 org.bluez.Error.UnsupportedMajorClass
 
 		array{string} GetServiceClasses()
@@ -366,13 +376,16 @@ Methods		string GetAddress()
 			              "capturing", "object transfer", "audio",
 			              "telephony", "information"
 
-			Possible errors: none
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.Failed
 
 		string GetName()
 
 			Returns the local adapter name (friendly name) in UTF-8.
 
 			Possible errors: org.bluez.Error.NotReady 
+					 org.bluez.Error.Failed
 
 		void SetName(string name)
 
@@ -380,7 +393,8 @@ Methods		string GetAddress()
 			the local hardware this modifies also the extended
 			response data value.
 
-			Possible errors: org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
 
 			Questions: What to do (in case of EIR) if one
 			           low-level API call fails.
@@ -489,6 +503,7 @@ Methods		string GetAddress()
 			Example: "00:11:22:33:44:55", "Nokia 770"
 
 			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotReady
 			                 org.bluez.Error.RequestDeferred
 
 		string GetRemoteAlias(string address)
@@ -559,7 +574,8 @@ Methods		string GetAddress()
 			of this method should be restricted to administrator
 			use only.
 
-			Possible errors: org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
 					 org.bluez.Error.NoSuchAdapter
 					 org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.NotConnected
@@ -583,7 +599,8 @@ Methods		string GetAddress()
 			In case of success it will send a BondingCreated
 			signal.
 
-			Possible errors: org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
 					 org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.AlreadyExists
 			                 org.bluez.Error.InProgress
@@ -602,11 +619,11 @@ Methods		string GetAddress()
 			AuthenticationCanceled to signal that an attempt to
 			create a bonding has been canceled.
 
-			Possible errors: org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
 					 org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NotInProgress
 					 org.bluez.Error.NotAuthorized
-					 org.bluez.Error.NoSuchAdapter
 
 		void RemoveBonding(string address)
 
@@ -622,7 +639,8 @@ Methods		string GetAddress()
 			After deleting the link key this method will send a
 			BondingRemoved signal.
 
-			Possible errors: org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
 					 org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NoSuchAdapter
 					 org.bluez.Error.DoesNotExist
@@ -656,8 +674,7 @@ Methods		string GetAddress()
 			has been established.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.NotConnected
-			                 org.bluez.Error.DoesNotExist
+			                 org.bluez.Error.Failed
 
 		void DiscoverDevices()
 
@@ -670,7 +687,8 @@ Methods		string GetAddress()
 			RemoteNameUpdated signals. If the procedure has been
 			finished an DiscoveryCompleted signal will be sent.
 
-			Possible errors: org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.NoSuchAdapter
 
@@ -690,7 +708,8 @@ Methods		string GetAddress()
 			case it will only happen if GetRemoteName has been
 			called and no previously stored name is available.
 
-			Possible errors: org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.NoSuchAdapter
 
@@ -699,7 +718,8 @@ Methods		string GetAddress()
 			This method will cancel any previous DiscoverDevices
 			or DiscoverDevicesWithoutNameResolving actions.
 
-			Possible errors: org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NoSuchAdapter
 
@@ -707,19 +727,23 @@ Methods		string GetAddress()
 
 			This method starts a periodic discovery.
 
-			Possible errors:
-					org.bluez.Error.Failed
-					org.bluez.Error.InProgress
-					org.bluez.Error.NoSuchAdapter
+			Possible errors: org.bluez.error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NoSuchAdapter
 
 		void StopPeriodicDiscovery()
 
-			This method stops a periodic discovery.
+			This method stops a periodic discovery. If the
+			adapter is not in the periodic inquiry mode an
+			error(not authorized) is returned. Everyone can
+			request exit from this mode, it is not restricted
+			to start requestor.
 
-			Possible errors:
-					org.bluez.Error.Failed
-					org.bluez.Error.NotAuthorized
-					org.bluez.Error.NoSuchAdapter
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NoSuchAdapter
 
                 boolean IsPeriodicDiscovery()
 
@@ -733,11 +757,20 @@ Methods		string GetAddress()
 			This method will request the SDP database of a remote
 			device and retrieve the service record handles.
 
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.Failed
+
 		array{byte} GetRemoteServiceRecord(string address, uint32 handle)
 
 			This method will request the SDP database of a remote
 			device for a service record and return the binary
 			stream of it.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.Failed
+
 
 Signals		void ModeChanged(string mode)
 
