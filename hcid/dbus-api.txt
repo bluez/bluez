@@ -721,6 +721,13 @@ Methods		string GetAddress()
 					org.bluez.Error.NotAuthorized
 					org.bluez.Error.NoSuchAdapter
 
+                boolean IsPeriodicDiscovery()
+
+			Returns true if the periodic inquiry is active and
+			false if it is switched off.
+
+			Possible errors: none
+
 		array{uint32} GetRemoteServiceHandles(string address, string match)
 
 			This method will request the SDP database of a remote
