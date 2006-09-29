@@ -931,15 +931,23 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, voi
 static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 {
 	sdp_list_t *search = NULL;
+	const char *dst, *svc;
 	uuid_t uuid;
 	int err = 0;
+	uint32_t class;
 
 	if (sdp_set_notify(ctxt->session, remote_svc_handles_completed_cb, ctxt) < 0) {
 		err = -EINVAL;
 		goto fail;
 	}
 
-	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
+	dbus_message_get_args(ctxt->rq, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_STRING, &svc,
+			DBUS_TYPE_INVALID);
+
+	class = sdp_str2svclass(svc);
+	sdp_uuid16_create(&uuid, class);
 	search = sdp_list_append(0, &uuid);
 
 	/* Create/send the search request and set the callback to indicate the request completion */
@@ -959,13 +967,21 @@ fail:
 DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct hci_dbus_data *dbus_data = data;
-	const char *dst;
+	const char *dst, *svc;
 	int err = 0;
+	uint32_t class;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_STRING, &svc,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
+
+	class = sdp_str2svclass(svc);
+	if (!class) {
+		error("Invalid service class name");
+		return error_invalid_arguments(conn, msg);
+	}
 
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
