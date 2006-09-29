@@ -1,3 +1,13 @@
+ver 3.7:
+	Fix class of device handling.
+	Fix error replies with pairing and security mode 3.
+	Fix disconnect method for RFCOMM connections.
+	Add match pattern for service searches.
+	Add support for prioritized watches.
+
+	Note:
+	This version needs at least bluez-libs-3.7
+
 ver 3.6.1:
 	Fix IO channel race conditions.
 	Fix pairing issues on big endian systems.
