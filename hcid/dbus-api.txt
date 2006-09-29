@@ -1023,22 +1023,6 @@ Methods		string Connect(string address, string service)
 		array{string} ListBindings()
 
 
-Signals		void Connected(string address, byte channel, string service)
-
-			This signal will be issued once a RFCOMM connection
-			has been established through Connect or ConnectByChannel
-			and the service will be translated into a profile if
-			it is known. Otherwise the UUID will be listed. If
-			no UUID or service name is available it will be an
-			empty string.
-
-		void Disconnected(string address, byte channel, string service)
-
-			This signal will be issued if a RFCOMM connection
-			gets terminated through Disconnect or of the caller
-			application disconnects from the D-Bus.
-
-
 SDP hierarchy (experimental)
 ============================
 
