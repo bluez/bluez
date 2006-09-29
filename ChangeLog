@@ -1,3 +1,7 @@
+ver 3.7:
+	Add additional PDU length checks.
+	Fix CSRC value for partial responses.
+
 ver 3.6:
 	Fix issues with the asynchronous API for SDP.
 
