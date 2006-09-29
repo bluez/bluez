@@ -946,8 +946,12 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 			DBUS_TYPE_STRING, &svc,
 			DBUS_TYPE_INVALID);
 
-	class = sdp_str2svclass(svc);
-	sdp_uuid16_create(&uuid, class);
+	if (strlen(svc) > 0 ){
+		class = sdp_str2svclass(svc);
+		sdp_uuid16_create(&uuid, class);
+	} else
+		sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
+
 	search = sdp_list_append(0, &uuid);
 
 	/* Create/send the search request and set the callback to indicate the request completion */
@@ -977,10 +981,12 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	class = sdp_str2svclass(svc);
-	if (!class) {
-		error("Invalid service class name");
-		return error_invalid_arguments(conn, msg);
+	if (strlen(svc) > 0) {
+		class = sdp_str2svclass(svc);
+		if (!class) {
+			error("Invalid service class name");
+			return error_invalid_arguments(conn, msg);
+		}
 	}
 
 	if (find_pending_connect(dst))

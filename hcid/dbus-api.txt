@@ -755,7 +755,8 @@ Methods		string GetAddress()
 		array{uint32} GetRemoteServiceHandles(string address, string match)
 
 			This method will request the SDP database of a remote
-			device and retrieve the service record handles.
+			device and retrieve the service record handles. To request
+			service browse send an empty match string.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.InProgress
