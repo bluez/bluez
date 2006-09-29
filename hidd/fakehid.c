@@ -452,3 +452,70 @@ int jthree_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 
 	return 0;
 }
+
+int celluon_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
+{
+	unsigned char buf[16];
+	struct sigaction sa;
+	struct pollfd p;
+	sigset_t sigs;
+	char addr[18];
+	int fd, sk, len;
+
+	sk = rfcomm_connect(src, dst, channel);
+	if (sk < 0)
+		return -1;
+
+	fd = uinput_create("Celluon Keyboard", 1, 0);
+	if (fd < 0) {
+		close(sk);
+		return -1;
+	}
+
+	ba2str(dst, addr);
+
+	printf("Connected to %s on channel %d\n", addr, channel);
+	printf("Press CTRL-C for hangup\n");
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags   = SA_NOCLDSTOP;
+	sa.sa_handler = SIG_IGN;
+	sigaction(SIGCHLD, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
+
+	sa.sa_handler = sig_term;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT,  &sa, NULL);
+
+	sa.sa_handler = sig_hup;
+	sigaction(SIGHUP, &sa, NULL);
+
+	sigfillset(&sigs);
+	sigdelset(&sigs, SIGCHLD);
+	sigdelset(&sigs, SIGPIPE);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGHUP);
+
+	p.fd = sk;
+	p.events = POLLIN | POLLERR | POLLHUP;
+
+	while (!__io_canceled) {
+		p.revents = 0;
+		if (ppoll(&p, 1, NULL, &sigs) < 1)
+			continue;
+
+		len = read(sk, buf, sizeof(buf));
+		if (len < 0)
+			break;
+	}
+
+	printf("Disconnected\n");
+
+	ioctl(fd, UI_DEV_DESTROY);
+
+	close(fd);
+	close(sk);
+
+	return 0;
+}

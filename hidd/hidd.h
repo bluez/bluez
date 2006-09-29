@@ -31,3 +31,4 @@ int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t
 int epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
 int headset_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
 int jthree_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
+int celluon_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);

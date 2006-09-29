@@ -470,6 +470,13 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, 
 			}
 			break;
 		}
+		if (subclass == 0x02 || !strcmp(name, "Serial Port")) {
+			if (celluon_keyboard(src, dst, channel) < 0) {
+				close(ctl);
+				exit(1);
+			}
+			break;
+		}
 		break;
 
 	case HEADSET_SVCLASS_ID:
@@ -551,8 +558,9 @@ static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int fakehid, 
 
 	for (i = 0; i < num_rsp; i++) {
 		memcpy(class, (info+i)->dev_class, 3);
-		if (class[0] == 0x00 && class[2] == 0x00 && 
-				(class[1] == 0x40 || class[1] == 0x1f)) {
+		if ((class[0] == 0x00 && class[2] == 0x00 && 
+				(class[1] == 0x40 || class[1] == 0x1f)) ||
+				(class[0] == 0x10 && class[1] == 0x02 && class[2] == 0x40)) {
 			bacpy(&dst, &(info+i)->bdaddr);
 			ba2str(&dst, addr);
 
