@@ -204,7 +204,7 @@ Methods		string GetAddress()
 
 			Example: "HCI 19.2"
 
-			Possible errors: none
+			Possible errors: org.bluez.Error.Failed
 
 		string GetManufacturer()
 
@@ -215,7 +215,7 @@ Methods		string GetAddress()
 
 			Example: "Cambridge Silicon Radio"
 
-			Possible errors: none
+			Possible errors: org.bluez.Error.Failed
 
 		string GetCompany()
 
@@ -231,7 +231,7 @@ Methods		string GetAddress()
 
 			Example: "Apple Computer"
 
-			Possible errors: none
+			Possible errors: org.bluez.Error.Failed
 
 		string GetMode()
 
@@ -246,7 +246,8 @@ Methods		string GetAddress()
 			Sets mode of the adapter. See GetMode for valid strings
 			for the mode parameter.
 
-			Possible errors: org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.NoSuchAdapter 
+					 org.bluez.Error.Failed
 
 		uint32 GetDiscoverableTimeout()
 
@@ -307,12 +308,13 @@ Methods		string GetAddress()
 		string GetMajorClass()
 
 			Returns the current major class value for this
-			system. This value is set to "computer" for now.
+			system. Currently, only "computer" is supported.
+			For the other values, unsupported major class
+			error is returned.
 
-			If the major class can't be matched by a string
-			the decimal value as string should be returned.
-
-			Possible errors: none
+			Possible errors: org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.UnsupportedMajorClass
+					 org.bluez.Error.Failed
 
 		array{string} ListAvailableMinorClasses()
 
