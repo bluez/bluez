@@ -934,7 +934,6 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 	const char *dst, *svc;
 	uuid_t uuid;
 	int err = 0;
-	uint32_t class;
 
 	if (sdp_set_notify(ctxt->session, remote_svc_handles_completed_cb, ctxt) < 0) {
 		err = -EINVAL;
@@ -946,9 +945,13 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 			DBUS_TYPE_STRING, &svc,
 			DBUS_TYPE_INVALID);
 
-	if (strlen(svc) > 0 ){
-		class = sdp_str2svclass(svc);
-		sdp_uuid16_create(&uuid, class);
+	if (strlen(svc) > 0) {
+		/* Check if it is a service name string */
+		if (str2uuid(&uuid, svc) < 0) {
+			/* check if the service string is a hex */
+			uint32_t uuid_hex = strtol(svc, NULL, 16);
+			sdp_uuid16_create(&uuid, uuid_hex);
+		}
 	} else
 		sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
 
@@ -973,7 +976,7 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 	struct hci_dbus_data *dbus_data = data;
 	const char *dst, *svc;
 	int err = 0;
-	uint32_t class;
+	uuid_t uuid;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &dst,
@@ -982,10 +985,14 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 		return error_invalid_arguments(conn, msg);
 
 	if (strlen(svc) > 0) {
-		class = sdp_str2svclass(svc);
-		if (!class) {
-			error("Invalid service class name");
-			return error_invalid_arguments(conn, msg);
+		/* Check if it is a service name string */
+		if (str2uuid(&uuid, svc) < 0) {
+			/* check if the service string is a hex */
+			uint32_t uuid_hex = strtol(svc, NULL, 16);
+			if (!uuid_hex) {
+				error("Invalid service class name");
+				return error_invalid_arguments(conn, msg);
+			}
 		}
 	}
 

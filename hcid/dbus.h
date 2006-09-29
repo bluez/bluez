@@ -215,6 +215,7 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, voi
 DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void *data);
 
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
+int str2uuid(uuid_t *uuid, const char *string);
 
 void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata);
 void discover_devices_req_exit(const char *name, struct hci_dbus_data *pdata);

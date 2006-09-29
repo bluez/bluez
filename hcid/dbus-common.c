@@ -31,6 +31,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
+
 #include <dbus/dbus.h>
 
 #include "hcid.h"
@@ -327,3 +330,46 @@ service_handler_func_t find_service_handler(struct service_data *handlers, DBusM
 
 	return NULL;
 }
+
+int str2uuid(uuid_t *uuid, const char *string)
+{
+	uint16_t svclass, data1, data2, data3, data5;
+	uint32_t data0, data4;
+
+	svclass = sdp_str2svclass(string);
+	if (svclass) {
+		sdp_uuid16_create(uuid, sdp_str2svclass(string));
+		return 0;
+	}
+
+	if (strlen(string) == 36 &&
+			string[8] == '-' &&
+			string[13] == '-' &&
+			string[18] == '-' &&
+			string[23] == '-' &&
+			sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
+				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
+		uint8_t val[16];
+
+		data0 = htonl(data0);
+		data1 = htons(data1);
+		data2 = htons(data2);
+		data3 = htons(data3);
+		data4 = htonl(data4);
+		data5 = htons(data5);
+
+		memcpy(&val[0], &data0, 4);
+		memcpy(&val[4], &data1, 2);
+		memcpy(&val[6], &data2, 2);
+		memcpy(&val[8], &data3, 2);
+		memcpy(&val[10], &data4, 4);
+		memcpy(&val[14], &data5, 2);
+
+		sdp_uuid128_create(uuid, val);
+		return 0;
+	}
+
+	return -1;
+}
+
+
