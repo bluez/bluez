@@ -94,14 +94,14 @@ typedef struct {
 
 /* FIXME:  move to a common file */
 sdp_service_t sdp_service[] = {
-	{ "vcp",	VIDEO_CONF_SVCLASS_ID,		NULL			},
+	{ "vcp",	VIDEO_CONF_SVCLASS_ID,		"Video Conference"	},
 	{ "map",	0,				NULL			},
-	{ "pbap",	0,				NULL			},
+	{ "pbap",	PBAP_SVCLASS_ID,		"Phone Book Access"	},
 	{ "sap",	SAP_SVCLASS_ID,			"SIM Access"		},
 	{ "ftp",	OBEX_FILETRANS_SVCLASS_ID,	"OBEX File Transfer"	},
-	{ "bpp",	DIRECT_PRINTING_SVCLASS_ID,	"Direct Printing"	},
-	{ "bip",	0,				NULL			},
-	{ "synch",	0,				NULL			},
+	{ "bpp",	BASIC_PRINTING_SVCLASS_ID,	"Printing"		},
+	{ "bip",	IMAGING_SVCLASS_ID,		"Imaging"		},
+	{ "synch",	IRMC_SYNC_SVCLASS_ID,		"Synchronization"	},
 	{ "dun",	DIALUP_NET_SVCLASS_ID,		"Dial-Up Networking"	},
 	{ "opp",	OBEX_OBJPUSH_SVCLASS_ID,	"OBEX Object Push"	},
 	{ "fax",	FAX_SVCLASS_ID,			"Fax"			},
