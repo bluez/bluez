@@ -12,16 +12,11 @@ start_serial()
 		return 1
 	fi
 
-	IRQ=`/bin/setserial $DEVNAME | sed -e 's/.*IRQ: //'`
-	/bin/setserial $DEVNAME irq 0 ; /bin/setserial $DEVNAME irq $IRQ
-
-	MANF_CARD_ID="${MANF_ID},${CARD_ID}"
-	# I don't have a generic solution, sorry
-	if [ $MANF_CARD_ID = "0x0160,0x0002" ]; then
-		/usr/sbin/hciattach $DEVNAME $MANF_CARD_ID 115200
-	else
-		/usr/sbin/hciattach $DEVNAME $MANF_CARD_ID
+	if [ "$BAUDBASE" != "" ]; then
+		/bin/setserial $DEVNAME baud_base $BAUDBASE
 	fi
+
+	/usr/sbin/hciattach $DEVNAME $HCIOPTS 2>&1 | logger -t hciattach
 }
 
 stop_serial()
