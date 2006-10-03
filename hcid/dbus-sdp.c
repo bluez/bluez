@@ -541,7 +541,6 @@ failed:
 static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
-	char identifier[MAX_IDENTIFIER_LEN];
 	sdp_record_t *rec = NULL;
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
@@ -593,9 +592,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 	}
 
 	sdp_cache_append(NULL, dst, rec);
-	snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, rec->handle);
 
-	/* FIXME: avoid seg fault / out of bound */
 	for (i = 0; i < size; i++)
 		dbus_message_iter_append_basic(&array_iter,
 				DBUS_TYPE_BYTE, &rsp[i]);
@@ -613,7 +610,7 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
 	uint8_t *pdata;
-	int scanned, csrc, tsrc;
+	int csrc, tsrc;
 
 	if (!ctxt)
 		return;
@@ -656,18 +653,15 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 		goto done;
 
 	pdata += sizeof(uint16_t);
-	scanned = sizeof(uint16_t);
 
 	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
 	if (csrc <= 0)
 		goto done;
 
 	pdata += sizeof(uint16_t);
-	scanned += sizeof(uint16_t);
 
 	do {
 		uint32_t handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
-		scanned += sizeof(uint32_t);
 		pdata += sizeof(uint32_t);
 
 		dbus_message_iter_append_basic(&array_iter,
@@ -691,7 +685,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 	DBusMessageIter iter, array_iter;
 	const char *dst;
 	uint8_t *pdata;
-	int scanned, csrc, tsrc;
+	int csrc, tsrc;
 
 	if (!ctxt)
 		return;
@@ -738,18 +732,15 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 		goto done;
 
 	pdata += sizeof(uint16_t);
-	scanned = sizeof(uint16_t);
 
 	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
 	if (csrc <= 0)
 		goto done;
 
 	pdata += sizeof(uint16_t);
-	scanned += sizeof(uint16_t);
 
 	do {
 		uint32_t handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
-		scanned += sizeof(uint32_t);
 		pdata += sizeof(uint32_t);
 
 		snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dst, handle);
