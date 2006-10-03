@@ -49,7 +49,7 @@ struct audit {
 	guint io_id;
 };
 
-struct slist *audits;
+static struct slist *audits = NULL;
 
 static struct audit *audit_new(DBusConnection *conn, DBusMessage *msg, bdaddr_t *addr)
 {
