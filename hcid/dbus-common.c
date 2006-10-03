@@ -30,9 +30,16 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include <arpa/inet.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -374,4 +381,92 @@ int str2uuid(uuid_t *uuid, const char *string)
 	return -1;
 }
 
+int l2raw_connect(const char *local, const bdaddr_t *remote)
+{
+	struct sockaddr_l2 addr;
+	long arg;
+	int sk;
+
+	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
+	if (sk < 0) {
+		error("Can't create socket: %s (%d)", strerror(errno), errno);
+		return sk;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	str2ba(local, &addr.l2_bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		error("Can't bind socket: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	arg = fcntl(sk, F_GETFL);
+	if (arg < 0) {
+		error("Can't get file flags: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	arg |= O_NONBLOCK;
+	if (fcntl(sk, F_SETFL, arg) < 0) {
+		error("Can't set file flags: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, remote);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		if (errno == EAGAIN || errno == EINPROGRESS)
+			return sk;
+		error("Can't connect socket: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	return sk;
+
+failed:
+	close(sk);
+	return -1;
+}
+
+int check_address(const char *addr)
+{
+	char tmp[18];
+	char *ptr = tmp;
+
+	if (!addr)
+		return -1;
+
+	if (strlen(addr) != 17)
+		return -1;
+
+	memcpy(tmp, addr, 18);
+
+	while (*ptr) {
+
+		*ptr = toupper(*ptr);
+		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
+			return -1;
+
+		ptr++;
+		*ptr = toupper(*ptr);
+		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
+			return -1;
+
+		ptr++;
+		*ptr = toupper(*ptr);
+		if (*ptr == 0)
+			break;
+
+		if (*ptr != ':')
+			return -1;
+
+		ptr++;
+	}
+
+	return 0;
+}
 

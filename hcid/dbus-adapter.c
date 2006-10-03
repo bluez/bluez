@@ -27,7 +27,6 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/param.h>
@@ -165,44 +164,6 @@ static const char *toy_minor_cls[] = {
 	"controller",
 	"game"
 };
-
-static int check_address(const char *addr)
-{
-	char tmp[18];
-	char *ptr = tmp;
-
-	if (!addr)
-		return -1;
-
-	if (strlen(addr) != 17)
-		return -1;
-
-	memcpy(tmp, addr, 18);
-
-	while (*ptr) {
-
-		*ptr = toupper(*ptr);
-		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
-			return -1;
-
-		ptr++;
-		*ptr = toupper(*ptr);
-		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
-			return -1;
-
-		ptr++;
-		*ptr = toupper(*ptr);
-		if (*ptr == 0)
-			break;
-
-		if (*ptr != ':')
-			return -1;
-
-		ptr++;
-	}
-
-	return 0;
-}
 
 int pending_remote_name_cancel(struct hci_dbus_data *pdata)
 {
@@ -1755,57 +1716,6 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 
 	return send_reply_and_unref(conn, reply);
 
-}
-
-static int l2raw_connect(const char *local, const bdaddr_t *remote)
-{
-	struct sockaddr_l2 addr;
-	long arg;
-	int sk;
-
-	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
-	if (sk < 0) {
-		error("Can't create socket: %s (%d)", strerror(errno), errno);
-		return sk;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	str2ba(local, &addr.l2_bdaddr);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("Can't bind socket: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	arg = fcntl(sk, F_GETFL);
-	if (arg < 0) {
-		error("Can't get file flags: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	arg |= O_NONBLOCK;
-	if (fcntl(sk, F_SETFL, arg) < 0) {
-		error("Can't set file flags: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, remote);
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		if (errno == EAGAIN || errno == EINPROGRESS)
-			return sk;
-		error("Can't connect socket: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	return sk;
-
-failed:
-	close(sk);
-	return -1;
 }
 
 static void reply_authentication_failure(struct bonding_request_info *bonding)

@@ -175,6 +175,7 @@ DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str);
 DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMessage *msg, int err);
 DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg);
@@ -201,6 +202,10 @@ int name_listener_add(DBusConnection *connection, const char *name,
 				name_cb_t func, void *user_data);
 int name_listener_remove(DBusConnection *connection, const char *name,
 				name_cb_t func, void *user_data);
+
+int l2raw_connect(const char *local, const bdaddr_t *remote);
+
+int check_address(const char *addr);
 
 DBusHandlerResult handle_test_method(DBusConnection *conn, DBusMessage *msg, void *data);
 

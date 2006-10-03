@@ -143,16 +143,16 @@ static DBusHandlerResult error_in_progress(DBusConnection *conn, DBusMessage *ms
 		dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str));
 }
 
-static DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str)
-{
-	return send_reply_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".NotInProgress", str));
-}
-
 static DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
 	return send_reply_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".Canceled", str));
+}
+
+DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str)
+{
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".NotInProgress", str));
 }
 
 DBusHandlerResult error_connect_canceled(DBusConnection *conn, DBusMessage *msg)
