@@ -173,6 +173,7 @@ DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_not_supported(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str);
@@ -195,6 +196,7 @@ DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage
 DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_connect_canceled(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_sdp_failed(DBusConnection *conn, DBusMessage *msg, int err);
+DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *msg);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 

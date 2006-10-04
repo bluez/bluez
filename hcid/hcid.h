@@ -195,6 +195,12 @@ int write_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class);
 int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class);
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
+int write_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
+			uint16_t mtu_result, uint16_t mtu,
+			uint16_t mask_result, uint32_t mask);
+int read_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
+			uint16_t *mtu_result, uint16_t *mtu,
+			uint16_t *mask_result, uint32_t *mask);
 int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, uint8_t lmp_ver, uint16_t lmp_subver);
 int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features);
 int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);

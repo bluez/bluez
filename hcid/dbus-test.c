@@ -44,7 +44,8 @@ enum {
 };
 
 struct audit {
-	bdaddr_t addr;
+	bdaddr_t peer;
+	bdaddr_t local;
 
 	/* We need to store the path instead of a pointer to the data
 	 * because by the time the audit is processed the adapter
@@ -62,16 +63,20 @@ struct audit {
 
 	int state;
 
-	gboolean got_mtu;
-	gboolean got_mask;
-
+	uint16_t mtu_result;
 	uint16_t mtu;
+
+	uint16_t mask_result;
 	uint32_t mask;
 };
 
 static struct slist *audits = NULL;
 
-static struct audit *audit_new(DBusConnection *conn, DBusMessage *msg, bdaddr_t *addr)
+static gboolean l2raw_connect_complete(GIOChannel *io, GIOCondition cond,
+					struct audit *audit);
+
+static struct audit *audit_new(DBusConnection *conn, DBusMessage *msg,
+				bdaddr_t *peer, bdaddr_t *local)
 {
 	struct audit *audit;
 	const char *path;
@@ -91,7 +96,8 @@ static struct audit *audit_new(DBusConnection *conn, DBusMessage *msg, bdaddr_t 
 		return NULL;
 	}
 
-	bacpy(&audit->addr, addr);
+	bacpy(&audit->peer, peer);
+	bacpy(&audit->local, local);
 	strncpy(audit->adapter_path, path, sizeof(audit->adapter_path) - 1);
 	audit->conn = dbus_connection_ref(conn);
 
@@ -105,12 +111,33 @@ static void audit_free(struct audit *audit)
 	free(audit);
 }
 
+static void send_audit_status(struct audit *audit, const char *name)
+{
+	DBusMessage *signal;
+	char addr[18], *addr_ptr = addr;
+
+	signal = dbus_message_new_signal(audit->adapter_path, TEST_INTERFACE, name);
+	if (!signal) {
+		error("Failed to allocate new D-Bus message");
+		return;
+	}
+
+	ba2str(&audit->peer, addr);
+
+	dbus_message_append_args(signal, DBUS_TYPE_STRING, &addr_ptr,
+					DBUS_TYPE_INVALID);
+
+	send_reply_and_unref(audit->conn, signal);
+}
+
 static void audit_requestor_exited(const char *name, struct audit *audit)
 {
 	debug("AuditRemoteDevice requestor %s exited", name);
 	audits = slist_remove(audits, audit);
-	if (audit->io)
+	if (audit->io) {
+		send_audit_status(audit, "AuditRemoteDeviceComplete");
 		g_io_channel_close(audit->io);
+	}
 	if (audit->timeout)
 		g_timeout_remove(audit->timeout);
 	audit_free(audit);
@@ -121,7 +148,7 @@ int audit_addr_cmp(const void *a, const void *b)
 	const struct audit *audit = a;
 	const bdaddr_t *addr = b;
 
-	return bacmp(&audit->addr, addr);
+	return bacmp(&audit->peer, addr);
 }
 
 static gboolean audit_in_progress(void)
@@ -137,9 +164,52 @@ static gboolean audit_in_progress(void)
 	return FALSE;
 }
 
+static void process_audits_list(void)
+{
+	while (audits) {
+		struct adapter *adapter;
+		struct audit *audit;
+		int sk;
+
+		audit = audits->data;
+
+		adapter = NULL;
+
+		dbus_connection_get_object_path_data(audit->conn,
+							audit->adapter_path,
+							(void *) &adapter);
+
+		if (!adapter) {
+			audits = slist_remove(audits, audit);
+			name_listener_remove(audit->conn, audit->requestor,
+					(name_cb_t) audit_requestor_exited, audit);
+			audit_free(audit);
+			continue;
+		}
+
+		sk = l2raw_connect(adapter->address, &audit->peer);
+		if (sk < 0) {
+			send_audit_status(audit, "AuditRemoteDeviceFailed");
+			audits = slist_remove(audits, audit);
+			name_listener_remove(audit->conn, audit->requestor,
+					(name_cb_t) audit_requestor_exited, audit);
+			audit_free(audit);
+			continue;
+		}
+
+		audit->io = g_io_channel_unix_new(sk);
+		audit->io_id = g_io_add_watch(audit->io,
+						G_IO_OUT | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+						(GIOFunc) l2raw_connect_complete, audit);
+		return;
+	}
+}
+
 static gboolean l2raw_input_timer(struct audit *audit)
 {
 	error("l2raw_input_timer: Timed out while waiting for input");
+
+	send_audit_status(audit, "AuditRemoteDeviceComplete");
 
 	g_io_channel_close(audit->io);
 	audits = slist_remove(audits, audit);
@@ -152,10 +222,11 @@ static gboolean l2raw_input_timer(struct audit *audit)
 
 static void handle_mtu_response(struct audit *audit, const l2cap_info_rsp *rsp)
 {
-	switch (btohs(rsp->result)) {
+	audit->mtu_result = btohs(rsp->result);
+
+	switch (audit->mtu_result) {
 	case 0x0000:
 		audit->mtu = btohs(bt_get_unaligned((uint16_t *) rsp->data));
-		audit->got_mtu = TRUE;
 		debug("Connectionless MTU size is %d", audit->mtu);
 		break;
 	case 0x0001:
@@ -166,10 +237,11 @@ static void handle_mtu_response(struct audit *audit, const l2cap_info_rsp *rsp)
 
 static void handle_features_response(struct audit *audit, const l2cap_info_rsp *rsp)
 {
-	switch (btohs(rsp->result)) {
+	audit->mask_result = btohs(rsp->result);
+
+	switch (audit->mask_result) {
 	case 0x0000:
 		audit->mask = btohl(bt_get_unaligned((uint32_t *) rsp->data));
-		audit->got_mask = TRUE;
 		debug("Extended feature mask is 0x%04x", audit->mask);
 		if (audit->mask & 0x01)
 			debug("  Flow control mode");
@@ -241,13 +313,21 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 		break;
 	}
 
+	write_l2cap_info(&audit->local, &audit->peer,
+				audit->mtu_result, audit->mtu,
+				audit->mask_result, audit->mask);
+
 failed:
+	send_audit_status(audit, "AuditRemoteDeviceComplete");
+
 	g_io_channel_close(io);
 	g_io_channel_unref(io);
 	audits = slist_remove(audits, audit);
 	name_listener_remove(audit->conn, audit->requestor,
 				(name_cb_t) audit_requestor_exited, audit);
 	audit_free(audit);
+
+	process_audits_list();
 
 	return FALSE;
 }
@@ -307,6 +387,8 @@ static gboolean l2raw_connect_complete(GIOChannel *io, GIOCondition cond, struct
 	return FALSE;
 
 failed:
+	send_audit_status(audit, "AuditRemoteDeviceFailed");
+
 	g_io_channel_close(io);
 	g_io_channel_unref(io);
 	audits = slist_remove(audits, audit);
@@ -322,7 +404,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusError err;
-	bdaddr_t dba;
+	bdaddr_t peer, local;
 	const char *address;
 	struct audit *audit;
 	struct adapter *adapter = data;
@@ -340,7 +422,8 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	str2ba(address, &dba);
+	str2ba(address, &peer);
+	str2ba(adapter->address, &local);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
 	if (adapter->disc_active || (adapter->pdisc_active && !adapter->pinq_idle))
@@ -351,14 +434,17 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	if (adapter->bonding)
 		return error_bonding_in_progress(conn, msg);
 
-	if (slist_find(adapter->pin_reqs, &dba, pin_req_cmp))
+	if (slist_find(adapter->pin_reqs, &peer, pin_req_cmp))
 		return error_bonding_in_progress(conn, msg);
+
+	if (!read_l2cap_info(&local, &peer, NULL, NULL, NULL, NULL))
+		return error_audit_already_exists(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	audit = audit_new(conn, msg, &dba);
+	audit = audit_new(conn, msg, &peer, &local);
 	if (!audit) {
 		dbus_message_unref(reply);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -367,7 +453,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	if (!audit_in_progress()) {
 		int sk;
 
-		sk = l2raw_connect(adapter->address, &dba);
+		sk = l2raw_connect(adapter->address, &peer);
 		if (sk < 0) {
 			audit_free(audit);
 			dbus_message_unref(reply);
@@ -391,10 +477,11 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct adapter *adapter = data;
 	DBusMessage *reply;
 	DBusError err;
 	const char *address;
-	bdaddr_t dba;
+	bdaddr_t peer, local;
 	struct slist *l;
 	struct audit *audit;
 
@@ -411,19 +498,26 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	str2ba(address, &dba);
+	str2ba(address, &peer);
+	str2ba(adapter->address, &local);
 
-	l = slist_find(audits, &dba, audit_addr_cmp);
+	l = slist_find(audits, &peer, audit_addr_cmp);
 	if (!l)
 		return error_not_in_progress(conn, msg, "Audit not in progress");
 
 	audit = l->data;
 
+	/* Check that the audit wasn't for another adapter */
+	if (bacmp(&audit->local, &local))
+		return error_not_in_progress(conn, msg, "Audit not in progress");
+
 	if (strcmp(audit->requestor, dbus_message_get_sender(msg)))
 		return error_not_authorized(conn, msg);
 
-	if (audit->io)
+	if (audit->io) {
+		send_audit_status(audit, "AuditRemoteDeviceComplete");
 		g_io_channel_close(audit->io);
+	}
 	if (audit->timeout)
 		g_timeout_remove(audit->timeout);
 
@@ -439,9 +533,96 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 	return send_reply_and_unref(conn, reply);
 }
 
+static DBusHandlerResult get_l2cap_feature_mask(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct adapter *adapter = data;
+	DBusMessage *reply;
+	DBusError err;
+	const char *address;
+	bdaddr_t peer, local;
+	uint32_t mask;
+	uint16_t result;
+
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_INVALID);
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	str2ba(address, &peer);
+	str2ba(adapter->address, &local);
+
+	if (read_l2cap_info(&local, &peer, NULL, NULL, &result, &mask) < 0)
+		return error_not_available(conn, msg);
+
+	if (result)
+		return error_not_supported(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &mask,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
+static DBusHandlerResult get_l2cap_mtu_size(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct adapter *adapter = data;
+	DBusMessage *reply;
+	DBusError err;
+	const char *address;
+	bdaddr_t peer, local;
+	uint16_t result, mtu;
+
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_INVALID);
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	str2ba(address, &peer);
+	str2ba(adapter->address, &local);
+
+	if (read_l2cap_info(&local, &peer, &result, &mtu, NULL, NULL) < 0)
+		return error_not_available(conn, msg);
+
+	if (result)
+		return error_not_supported(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT16, &mtu,
+					DBUS_TYPE_INVALID);
+
+	return send_reply_and_unref(conn, reply);
+}
+
 static struct service_data methods[] = {
 	{ "AuditRemoteDevice",		audit_remote_device		},
 	{ "CancelAuditRemoteDevice",	cancel_audit_remote_device	},
+	{ "GetL2capFeatureMask",	get_l2cap_feature_mask		},
+	{ "GetL2capMtuSize",		get_l2cap_mtu_size		},
 	{ NULL, NULL }
 };
 

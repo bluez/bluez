@@ -97,6 +97,13 @@ DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg)
 							"Not available"));
 }
 
+DBusHandlerResult error_not_supported(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_reply_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".NotSupported",
+							"Not supported"));
+}
+
 DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_reply_and_unref(conn,
@@ -235,6 +242,11 @@ DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage
 DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_in_progress(conn, msg, "Service search in progress");
+}
+
+DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_already_exists(conn, msg, "Audit already performed");
 }
 
 static const char *strsdperror(int err)

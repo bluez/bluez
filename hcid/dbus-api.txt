@@ -116,6 +116,9 @@ Errors		Failed
 			about what is in progress. For example "Bonding in
 			progress".
 
+		NotSupported
+			The feature is not supported by the remote device
+
 		AuthenticationFailed
 
 		AuthenticationTimeout
