@@ -30,8 +30,18 @@
 
 #include <dbus/dbus.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
+
 #include "hcid.h"
 #include "dbus.h"
+
+#define L2INFO_TIMEOUT (2 * 1000)
+
+enum {
+	AUDIT_STATE_MTU = 0,
+	AUDIT_STATE_FEATURES
+};
 
 struct audit {
 	bdaddr_t addr;
@@ -47,6 +57,16 @@ struct audit {
 
 	GIOChannel *io;
 	guint io_id;
+
+	guint timeout;
+
+	int state;
+
+	gboolean got_mtu;
+	gboolean got_mask;
+
+	uint16_t mtu;
+	uint32_t mask;
 };
 
 static struct slist *audits = NULL;
@@ -91,6 +111,8 @@ static void audit_requestor_exited(const char *name, struct audit *audit)
 	audits = slist_remove(audits, audit);
 	if (audit->io)
 		g_io_channel_close(audit->io);
+	if (audit->timeout)
+		g_timeout_remove(audit->timeout);
 	audit_free(audit);
 }
 
@@ -115,8 +137,129 @@ static gboolean audit_in_progress(void)
 	return FALSE;
 }
 
+static gboolean l2raw_input_timer(struct audit *audit)
+{
+	error("l2raw_input_timer: Timed out while waiting for input");
+
+	g_io_channel_close(audit->io);
+	audits = slist_remove(audits, audit);
+	name_listener_remove(audit->conn, audit->requestor,
+				(name_cb_t) audit_requestor_exited, audit);
+	audit_free(audit);
+
+	return FALSE;
+}
+
+static void handle_mtu_response(struct audit *audit, const l2cap_info_rsp *rsp)
+{
+	switch (btohs(rsp->result)) {
+	case 0x0000:
+		audit->mtu = btohs(bt_get_unaligned((uint16_t *) rsp->data));
+		audit->got_mtu = TRUE;
+		debug("Connectionless MTU size is %d", audit->mtu);
+		break;
+	case 0x0001:
+		debug("Connectionless MTU is not supported");
+		break;
+	}
+}
+
+static void handle_features_response(struct audit *audit, const l2cap_info_rsp *rsp)
+{
+	switch (btohs(rsp->result)) {
+	case 0x0000:
+		audit->mask = btohl(bt_get_unaligned((uint32_t *) rsp->data));
+		audit->got_mask = TRUE;
+		debug("Extended feature mask is 0x%04x", audit->mask);
+		if (audit->mask & 0x01)
+			debug("  Flow control mode");
+		if (audit->mask & 0x02)
+			debug("  Retransmission mode");
+		if (audit->mask & 0x04)
+			debug("  Bi-directional QoS");
+		break;
+	case 0x0001:
+		debug("Extended feature mask is not supported");
+		break;
+	}
+}
+
+static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct audit *audit)
+{
+	unsigned char buf[48];
+	l2cap_cmd_hdr *cmd = (l2cap_cmd_hdr *) buf;
+	l2cap_info_req *req = (l2cap_info_req *) (buf + L2CAP_CMD_HDR_SIZE);
+	l2cap_info_rsp *rsp = (l2cap_info_rsp *) (buf + L2CAP_CMD_HDR_SIZE);
+	int sk;
+
+	if (cond & G_IO_NVAL) {
+		g_io_channel_unref(io);
+		return FALSE;
+	}
+
+	if (audit->timeout) {
+		g_timeout_remove(audit->timeout);
+		audit->timeout = 0;
+	}
+
+	if (cond & (G_IO_ERR | G_IO_HUP))
+		goto failed;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	memset(buf, 0, sizeof(buf));
+
+	if (recv(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_RSP_SIZE + 2, 0) < 0) {
+		error("Can't receive info response: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	switch (audit->state) {
+	case AUDIT_STATE_MTU:
+		handle_mtu_response(audit, rsp);
+
+		memset(buf, 0, sizeof(buf));
+		cmd->code  = L2CAP_INFO_REQ;
+		cmd->ident = 42;
+		cmd->len   = htobs(2);
+		req->type  = htobs(0x0002);
+
+		if (send(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_REQ_SIZE, 0) < 0) {
+			error("Can't send info request:", strerror(errno), errno);
+			goto failed;
+		}
+
+		audit->timeout = g_timeout_add(L2INFO_TIMEOUT, (GSourceFunc)
+						l2raw_input_timer, audit);
+
+		audit->state = AUDIT_STATE_FEATURES;
+
+		return TRUE;
+
+	case AUDIT_STATE_FEATURES:
+		handle_features_response(audit, rsp);
+		break;
+	}
+
+failed:
+	g_io_channel_close(io);
+	g_io_channel_unref(io);
+	audits = slist_remove(audits, audit);
+	name_listener_remove(audit->conn, audit->requestor,
+				(name_cb_t) audit_requestor_exited, audit);
+	audit_free(audit);
+
+	return FALSE;
+}
+
 static gboolean l2raw_connect_complete(GIOChannel *io, GIOCondition cond, struct audit *audit)
 {
+	unsigned char buf[48];
+	l2cap_cmd_hdr *cmd = (l2cap_cmd_hdr *) buf;
+	l2cap_info_req *req = (l2cap_info_req *) (buf + L2CAP_CMD_HDR_SIZE);
+	socklen_t len;
+	int sk, ret;
+
 	if (cond & G_IO_NVAL) {
 		g_io_channel_unref(io);
 		return FALSE;
@@ -124,13 +267,46 @@ static gboolean l2raw_connect_complete(GIOChannel *io, GIOCondition cond, struct
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		error("Error on raw l2cap socket");
-		g_io_channel_close(io);
-		return FALSE;
+		goto failed;
+	}
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	len = sizeof(ret);
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		error("Can't get socket error: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		error("l2raw_connect failed: %s (%d)", strerror(ret), ret);
+		goto failed;
 	}
 
 	debug("AuditRemoteDevice: connected");
 
-	/* FIXME: Instead of closing and unrefing we should proceed with the audit */
+	/* Send L2CAP info request */
+	memset(buf, 0, sizeof(buf));
+	cmd->code  = L2CAP_INFO_REQ;
+	cmd->ident = 42;
+	cmd->len   = htobs(2);
+	req->type  = htobs(0x0001);
+
+	if (send(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_REQ_SIZE, 0) < 0) {
+		error("Can't send info request: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	audit->timeout = g_timeout_add(L2INFO_TIMEOUT, (GSourceFunc)
+			l2raw_input_timer, audit);
+
+	audit->io_id = g_io_add_watch(audit->io,
+					G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+					(GIOFunc) l2raw_data_callback, audit);
+
+	return FALSE;
+
+failed:
 	g_io_channel_close(io);
 	g_io_channel_unref(io);
 	audits = slist_remove(audits, audit);
@@ -248,6 +424,8 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 
 	if (audit->io)
 		g_io_channel_close(audit->io);
+	if (audit->timeout)
+		g_timeout_remove(audit->timeout);
 
 	audits = slist_remove(audits, audit);
 	name_listener_remove(audit->conn, audit->requestor,
