@@ -83,7 +83,7 @@ static void passkey_agent_free(struct passkey_agent *agent)
 	free(agent);
 }
 
-static void agent_exited(const char *name, struct hci_dbus_data *adapter)
+static void agent_exited(const char *name, struct adapter *adapter)
 {
 	struct slist *cur, *next;
 
@@ -106,12 +106,12 @@ static void agent_exited(const char *name, struct hci_dbus_data *adapter)
 
 static gboolean agent_timeout(struct passkey_agent *agent)
 {
-	struct hci_dbus_data *pdata = agent->pdata;
+	struct adapter *adapter = agent->adapter;
 
 	debug("Passkey Agent at %s, %s timed out", agent->name, agent->path);
 
-	if (pdata)
-		pdata->passkey_agents = slist_remove(pdata->passkey_agents, agent);
+	if (adapter)
+		adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
 
 	agent->timeout = 0;
 
@@ -136,7 +136,7 @@ static void default_agent_exited(const char *name, void *data)
 	default_agent = NULL;
 }
 
-static struct passkey_agent *passkey_agent_new(struct hci_dbus_data *pdata, DBusConnection *conn,
+static struct passkey_agent *passkey_agent_new(struct adapter *adapter, DBusConnection *conn,
 						const char *name, const char *path,
 						const char *addr)
 {
@@ -148,7 +148,7 @@ static struct passkey_agent *passkey_agent_new(struct hci_dbus_data *pdata, DBus
 
 	memset(agent, 0, sizeof(struct passkey_agent));
 
-	agent->pdata = pdata;
+	agent->adapter = adapter;
 
 	agent->name = strdup(name);
 	if (!agent->name)
@@ -210,7 +210,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct passkey_agent *agent, ref;
-	struct hci_dbus_data *adapter;
+	struct adapter *adapter;
 	DBusMessage *reply;
 	const char *path, *addr;
 
@@ -263,7 +263,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 static DBusHandlerResult unregister_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct hci_dbus_data *adapter;
+	struct adapter *adapter;
 	struct slist *match;
 	struct passkey_agent ref, *agent;
 	DBusMessage *reply;
@@ -457,7 +457,7 @@ done:
 	free(req);
 
 	if (agent != default_agent) {
-		agent->pdata->passkey_agents = slist_remove(agent->pdata->passkey_agents,
+		agent->adapter->passkey_agents = slist_remove(agent->adapter->passkey_agents,
 								agent);
 		passkey_agent_free(agent);
 	}
@@ -551,7 +551,7 @@ int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
 					bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct passkey_agent *agent = default_agent;
-	struct hci_dbus_data *adapter = NULL;
+	struct adapter *adapter = NULL;
 	struct slist *l;
 	char addr[18];
 	void *data;
@@ -636,9 +636,9 @@ static void release_agent(struct passkey_agent *agent)
 		/* Only remove the name listener if there are no more agents for this name */
 		memset(&ref, 0, sizeof(ref));
 		ref.name = agent->name;
-		if (!slist_find(agent->pdata->passkey_agents, &ref, (cmp_func_t) agent_cmp))
+		if (!slist_find(agent->adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp))
 			name_listener_remove(agent->conn, ref.name,
-					(name_cb_t) agent_exited, agent->pdata);
+					(name_cb_t) agent_exited, agent->adapter);
 	}
 }
 
@@ -651,11 +651,11 @@ void release_default_agent(void)
 	default_agent = NULL;
 }
 
-void release_passkey_agents(struct hci_dbus_data *pdata, bdaddr_t *bda)
+void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda)
 {
 	struct slist *l, *next;
 
-	for (l = pdata->passkey_agents; l != NULL; l = next) {
+	for (l = adapter->passkey_agents; l != NULL; l = next) {
 		struct passkey_agent *agent = l->data;
 		next = l->next;
 		
@@ -666,7 +666,7 @@ void release_passkey_agents(struct hci_dbus_data *pdata, bdaddr_t *bda)
 				continue;
 		}
 
-		pdata->passkey_agents = slist_remove(pdata->passkey_agents, agent);
+		adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
 		passkey_agent_free(agent);
 	}
 }

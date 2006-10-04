@@ -466,7 +466,7 @@ static inline void get_record_data_call_cb(get_record_data_t *d,
 	d->cb(rec, d->data, err);
 }
 
-static void owner_exited(const char *owner, struct hci_dbus_data *dbus_data)
+static void owner_exited(const char *owner, struct adapter *adapter)
 {
 	struct slist *lp, *next, *lr;
 	struct service_provider *p;
@@ -486,7 +486,7 @@ static void owner_exited(const char *owner, struct hci_dbus_data *dbus_data)
 		 * Unregister all service records related to this owner.
 		 * One owner can use multiple local adapter(provider)
 		 */
-		str2ba(dbus_data->address, &sba);
+		str2ba(adapter->address, &sba);
 		for (lr = p->lrec; lr; lr = lr->next) {
 			struct service_record *r = lr->data;
 			if (sdp_service_unregister(&sba, r->record, &err) < 0)
@@ -896,7 +896,7 @@ fail:
 
 DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	const char *dst;
 	uint32_t handle;
 	int err = 0;
@@ -910,7 +910,7 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, voi
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (!connect_request(conn, msg, dbus_data->dev_id,
+	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, remote_svc_rec_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
@@ -959,7 +959,7 @@ fail:
 
 DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	const char *dst, *svc;
 	int err = 0;
 	uuid_t uuid;
@@ -981,7 +981,7 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (!connect_request(conn, msg, dbus_data->dev_id,
+	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, remote_svc_handles_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
@@ -1020,7 +1020,7 @@ fail:
 static DBusHandlerResult get_identifiers(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	const char *dst;
 	int err = 0;
 
@@ -1033,7 +1033,7 @@ static DBusHandlerResult get_identifiers(DBusConnection *conn,
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (!connect_request(conn, msg, dbus_data->dev_id,
+	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, get_identifiers_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
@@ -1080,7 +1080,7 @@ fail:
 static DBusHandlerResult get_identifiers_by_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
 	struct slist *lp;
@@ -1158,7 +1158,7 @@ search_request:
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
-	if (!connect_request(conn, msg, dbus_data->dev_id,
+	if (!connect_request(conn, msg, adapter->dev_id,
 			dst, get_identifiers_by_service_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
@@ -1332,7 +1332,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 static DBusHandlerResult register_rfcomm(DBusConnection *conn,
 		DBusMessage *msg, void *data)
 {
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	struct service_provider psearch;
 	DBusMessage *reply;
 	sdp_record_t *rec;
@@ -1355,7 +1355,7 @@ static DBusHandlerResult register_rfcomm(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	str2ba(dbus_data->address, &sba);
+	str2ba(adapter->address, &sba);
 	/* register service */
 	if (!(rec = sdp_service_register(name, &sba, channel, &err))) {
 		dbus_message_unref(reply);
@@ -1371,11 +1371,11 @@ static DBusHandlerResult register_rfcomm(DBusConnection *conn,
 	psearch.owner = (char *) owner;
 
 	if (!slist_find(sdp_cache, &psearch, service_provider_cmp))
-		name_listener_add(conn, owner, (name_cb_t) owner_exited, dbus_data);
+		name_listener_add(conn, owner, (name_cb_t) owner_exited, adapter);
 
 	/* add record in the cache */
-	sdp_cache_append(owner, dbus_data->address, rec);
-	snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", dbus_data->address, rec->handle);
+	sdp_cache_append(owner, adapter->address, rec);
+	snprintf(identifier, MAX_IDENTIFIER_LEN, "%s/0x%x", adapter->address, rec->handle);
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &ptr,
 			DBUS_TYPE_INVALID);
@@ -1387,7 +1387,7 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	char address[18];
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	struct service_provider *p, psearch;
 	struct service_record rsearch, *r;
 	sdp_record_t record;
@@ -1409,7 +1409,7 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 
 	/* check if the local adapter match */
-	if (strcmp(address, dbus_data->address))
+	if (strcmp(address, adapter->address))
 		return error_not_authorized(conn, msg);
 
 	memset(&psearch, 0, sizeof(psearch));
@@ -1434,7 +1434,7 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	r = lr->data;
-	str2ba(dbus_data->address, &sba);
+	str2ba(adapter->address, &sba);
 	if (sdp_service_unregister(&sba, r->record, &err) < 0)
 		error("service unregister error: %s (%d)", strerror(err), err);
 	else
@@ -1454,7 +1454,7 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 
 	/* Only remove the D-Bus unique name listener if there are no more record using this name */
 	if (!slist_find(sdp_cache, &psearch, service_provider_cmp))
-		name_listener_remove(conn, owner, (name_cb_t) owner_exited, dbus_data);
+		name_listener_remove(conn, owner, (name_cb_t) owner_exited, adapter);
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -1471,13 +1471,13 @@ static struct service_data sdp_services[] = {
 
 DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	const struct hci_dbus_data *pdata = data;
+	const struct adapter *adapter = data;
 	service_handler_func_t handler;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
 
-	if (!pdata->up)
+	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
 	handler = find_service_handler(sdp_services, msg);

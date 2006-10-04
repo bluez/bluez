@@ -105,7 +105,7 @@ struct active_conn_info {
 	uint16_t handle;
 };
 
-struct hci_dbus_data {
+struct adapter {
 	uint16_t dev_id;
 	int up;
 	char address[18];		   /* adapter Bluetooth Address */
@@ -128,7 +128,7 @@ struct hci_dbus_data {
 };
 
 struct passkey_agent {
-	struct hci_dbus_data *pdata;
+	struct adapter *adapter;
 	DBusConnection *conn;
 	char *addr;
 	char *name;
@@ -222,16 +222,16 @@ DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void
 service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
 int str2uuid(uuid_t *uuid, const char *string);
 
-void create_bond_req_exit(const char *name, struct hci_dbus_data *pdata);
-void discover_devices_req_exit(const char *name, struct hci_dbus_data *pdata);
-int cancel_discovery(struct hci_dbus_data *pdata);
-void periodic_discover_req_exit(const char *name, struct hci_dbus_data *pdata);
-int cancel_periodic_discovery(struct hci_dbus_data *pdata);
-int pending_remote_name_cancel(struct hci_dbus_data *pdata);
+void create_bond_req_exit(const char *name, struct adapter *adapter);
+void discover_devices_req_exit(const char *name, struct adapter *adapter);
+int cancel_discovery(struct adapter *adapter);
+void periodic_discover_req_exit(const char *name, struct adapter *adapter);
+int cancel_periodic_discovery(struct adapter *adapter);
+int pending_remote_name_cancel(struct adapter *adapter);
 
 int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
 void release_default_agent(void);
-void release_passkey_agents(struct hci_dbus_data *pdata, bdaddr_t *bda);
+void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda);
 void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdaddr_t *dba);
 
 static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusMessage *reply)
@@ -250,7 +250,7 @@ void bonding_request_free(struct bonding_request_info *dev);
 int pin_req_cmp(const void *p1, const void *p2);
 int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2);
 int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);
-int disc_device_req_name(struct hci_dbus_data *dbus_data);
+int disc_device_req_name(struct adapter *dbus_data);
 
 int discoverable_timeout_handler(void *data);
 

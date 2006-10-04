@@ -570,14 +570,14 @@ typedef struct {
 	DBusMessage *msg;
 	char *dst;
 	char *svc;
-	struct hci_dbus_data *dbus_data;
+	struct adapter *adapter;
 } rfcomm_continue_data_t;
 
 static rfcomm_continue_data_t *rfcomm_continue_data_new(DBusConnection *conn,
 							DBusMessage *msg,
 							const char *dst,
 							const char *svc,
-							struct hci_dbus_data *dbus_data)
+							struct adapter *adapter)
 {
 	rfcomm_continue_data_t *new;
 
@@ -600,7 +600,7 @@ static rfcomm_continue_data_t *rfcomm_continue_data_new(DBusConnection *conn,
 
 	new->conn = dbus_connection_ref(conn);
 	new->msg = dbus_message_ref(msg);
-	new->dbus_data = dbus_data;
+	new->adapter = adapter;
 
 	return new;
 }
@@ -641,7 +641,7 @@ static void rfcomm_conn_req_continue(sdp_record_t *rec, void *data, int err)
 		goto failed;
 	}
 
-	hci_devba(cdata->dbus_data->dev_id, &bdaddr);
+	hci_devba(cdata->adapter->dev_id, &bdaddr);
 	if (rfcomm_connect(cdata->conn, cdata->msg, &bdaddr,
 				cdata->dst, cdata->svc, ch, &conn_err) < 0)
 		error_failed(cdata->conn, cdata->msg, conn_err);
@@ -653,7 +653,7 @@ failed:
 static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	rfcomm_continue_data_t *cdata;
 	uint32_t handle;
 	uuid_t uuid;
@@ -667,15 +667,15 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	cdata = rfcomm_continue_data_new(conn, msg, dst, string, dbus_data);
+	cdata = rfcomm_continue_data_new(conn, msg, dst, string, adapter);
 	if (!cdata)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	if (str2uuid(&uuid, string) == 0)
-		err = get_record_with_uuid(conn, msg, dbus_data->dev_id, dst,
+		err = get_record_with_uuid(conn, msg, adapter->dev_id, dst,
 					&uuid, rfcomm_conn_req_continue, cdata);
 	else if ((handle = strtol(string, NULL, 0)))
-		err = get_record_with_handle(conn, msg, dbus_data->dev_id, dst,
+		err = get_record_with_handle(conn, msg, adapter->dev_id, dst,
 					handle, rfcomm_conn_req_continue, cdata);
 	else {
 		rfcomm_continue_data_free(cdata);
@@ -728,9 +728,9 @@ static DBusHandlerResult rfcomm_connect_by_ch_req(DBusConnection *conn,
 	const char *dst;
 	uint8_t ch;
 	int err;
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 
-	hci_devba(dbus_data->dev_id, &bdaddr);
+	hci_devba(adapter->dev_id, &bdaddr);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &dst,
@@ -836,7 +836,7 @@ static void rfcomm_bind_req_continue(sdp_record_t *rec, void *data, int err)
 		goto failed;
 	}
 
-	hci_devba(cdata->dbus_data->dev_id, &bdaddr);
+	hci_devba(cdata->adapter->dev_id, &bdaddr);
 
 	node = rfcomm_bind(&bdaddr, cdata->dst, ch, cdata->conn,
 			dbus_message_get_sender(cdata->msg), &bind_err);
@@ -879,7 +879,7 @@ failed:
 static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	rfcomm_continue_data_t *cdata;
 	uint32_t handle;
 	uuid_t uuid;
@@ -893,15 +893,15 @@ static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	cdata = rfcomm_continue_data_new(conn, msg, dst, string, dbus_data);
+	cdata = rfcomm_continue_data_new(conn, msg, dst, string, adapter);
 	if (!cdata)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	if (str2uuid(&uuid, string) == 0)
-		err = get_record_with_uuid(conn, msg, dbus_data->dev_id, dst,
+		err = get_record_with_uuid(conn, msg, adapter->dev_id, dst,
 					&uuid, rfcomm_bind_req_continue, cdata);
 	else if ((handle = strtol(string, NULL, 0)))
-		err = get_record_with_handle(conn, msg, dbus_data->dev_id, dst,
+		err = get_record_with_handle(conn, msg, adapter->dev_id, dst,
 					handle, rfcomm_bind_req_continue, cdata);
 	else {
 		rfcomm_continue_data_free(cdata);
@@ -927,10 +927,10 @@ static DBusHandlerResult rfcomm_bind_by_ch_req(DBusConnection *conn,
 	uint8_t ch;
 	int err;
 	const char *dst, *name;
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	struct rfcomm_node *node = NULL;
 
-	hci_devba(dbus_data->dev_id, &bdaddr);
+	hci_devba(adapter->dev_id, &bdaddr);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &dst,
@@ -1008,10 +1008,10 @@ static DBusHandlerResult rfcomm_list_bindings_req(DBusConnection *conn,
 	bdaddr_t bdaddr;
 	DBusMessage *reply;
 	DBusMessageIter iter, sub;
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 	struct slist *l;
 
-	hci_devba(dbus_data->dev_id, &bdaddr);
+	hci_devba(adapter->dev_id, &bdaddr);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1066,7 +1066,7 @@ static struct service_data rfcomm_services[] = {
 DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	const struct hci_dbus_data *pdata = data;
+	const struct adapter *adapter = data;
 	service_handler_func_t handler;
 
 	if (!hcid_dbus_use_experimental())
@@ -1077,7 +1077,7 @@ DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
-	if (!pdata->up)
+	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
 	/* Initialize the RFCOMM control socket if has not yet been done */

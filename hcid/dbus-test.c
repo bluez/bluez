@@ -325,7 +325,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	bdaddr_t dba;
 	const char *address;
 	struct audit *audit;
-	struct hci_dbus_data *dbus_data = data;
+	struct adapter *adapter = data;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -343,15 +343,15 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	str2ba(address, &dba);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
-	if (dbus_data->disc_active || (dbus_data->pdisc_active && !dbus_data->pinq_idle))
+	if (adapter->disc_active || (adapter->pdisc_active && !adapter->pinq_idle))
 		return error_discover_in_progress(conn, msg);
 
-	pending_remote_name_cancel(dbus_data);
+	pending_remote_name_cancel(adapter);
 
-	if (dbus_data->bonding)
+	if (adapter->bonding)
 		return error_bonding_in_progress(conn, msg);
 
-	if (slist_find(dbus_data->pin_reqs, &dba, pin_req_cmp))
+	if (slist_find(adapter->pin_reqs, &dba, pin_req_cmp))
 		return error_bonding_in_progress(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
@@ -367,7 +367,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	if (!audit_in_progress()) {
 		int sk;
 
-		sk = l2raw_connect(dbus_data->address, &dba);
+		sk = l2raw_connect(adapter->address, &dba);
 		if (sk < 0) {
 			audit_free(audit);
 			dbus_message_unref(reply);
