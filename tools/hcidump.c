@@ -66,7 +66,7 @@ static inline uint64_t ntoh64(uint64_t n)
 #define hton64(x) ntoh64(x)
 
 #define SNAP_LEN 	HCI_MAX_FRAME_SIZE
-#define DEFAULT_PORT	10839;
+#define DEFAULT_PORT	"10839";
 
 /* Modes */
 enum {
@@ -92,8 +92,9 @@ static long filter;
 static char *dump_file = NULL;
 static char *pppdump_file = NULL;
 static char *audio_file = NULL;
-static in_addr_t dump_addr = INADDR_LOOPBACK;
-static in_port_t dump_port = DEFAULT_PORT;
+static char *dump_addr;
+static char *dump_port = DEFAULT_PORT;
+static int af = AF_UNSPEC;
 
 struct hcidump_hdr {
 	uint16_t	len;
@@ -504,88 +505,146 @@ static int open_socket(int dev, unsigned long flags)
 	return sk;
 }
 
-static int open_connection(in_addr_t addr, in_port_t port)
+static int open_connection(char *addr, char *port)
 {
-	struct sockaddr_in sa;
-	int sk, opt;
+	struct sockaddr_storage ss;
+	struct addrinfo hints, *res0, *res;
+	int sk = -1, opt = 1;
+	
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = af;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+	
+	if (getaddrinfo(addr, port, &hints, &res0))
+		if(getaddrinfo(NULL, port, &hints, &res0)) {
+			perror("getaddrinfo");
+			exit(1);
+		}
+	
+	for (res = res0; res; res = res->ai_next) {
+		sk = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+		if (sk < 0) {
+			if (res->ai_next)
+				continue;
 
-	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sk < 0) {
-		perror("Can't create inet socket");
-		exit(1);
+			perror("Can't create socket");
+			freeaddrinfo(res0);
+			exit(1);
+		}
+
+		setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+		
+		memcpy(&ss, res->ai_addr, res->ai_addrlen);
+
+		switch(ss.ss_family) {
+		case AF_INET:
+			((struct sockaddr_in *) &ss)->sin_addr.s_addr = htonl(INADDR_ANY);
+			((struct sockaddr_in *) &ss)->sin_port = 0;
+			break;
+		case AF_INET6:
+			memcpy(&((struct sockaddr_in6 *) &ss)->sin6_addr, &in6addr_any, sizeof(in6addr_any));
+			((struct sockaddr_in6 *) &ss)->sin6_port = 0;
+			break;
+		}
+
+		if (bind(sk, (struct sockaddr *) &ss, sizeof(ss)) < 0) {
+			perror("Can't bind socket");
+			close(sk);
+			freeaddrinfo(res0);
+			exit(1);
+		}
+		
+		if (connect(sk, res->ai_addr, res->ai_addrlen) < 0) {
+			perror("Can't connect socket");
+			close(sk);
+			freeaddrinfo(res0);
+			exit(1);
+		}
 	}
 
-	opt = 1;
-	setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = htonl(INADDR_ANY);
-	sa.sin_port = htons(0);
-	if (bind(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
-		perror("Can't bind inet socket");
-		close(sk);
-		exit(1);
-	}
-
-	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = htonl(addr);
-	sa.sin_port = htons(port);
-	if (connect(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
-		perror("Can't connect inet socket");
-		close(sk);
-		exit(1);
-	}
+	freeaddrinfo(res0);
 
 	return sk;
 }
 
-static int wait_connection(in_addr_t addr, in_port_t port)
+static int wait_connection(char *addr, char *port)
 {
-	struct sockaddr_in sa;
-	struct hostent *host;
+	char hname[100], hport[10];
+	struct sockaddr_storage ss;
+	struct addrinfo hints, *res0, *res;
 	socklen_t len;
-	int sk, nsk, opt;
+	int sk = -1, nsk, opt = 1;
 
-	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sk < 0) {
-		perror("Can't create inet socket");
-		exit(1);
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = af;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	if (getaddrinfo(addr, port, &hints, &res0))
+		if (getaddrinfo(NULL, port, &hints, &res0)) {
+			perror("getaddrinfo");
+			exit(1);
+		}
+ 	
+	for (res = res0; res; res = res->ai_next) {
+		sk = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+		if (sk < 0) {
+			if (res->ai_next)
+				continue;
+
+			perror("Can't create socket");
+ 			freeaddrinfo(res0);
+			exit(1);
+		}
+
+		setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+		if (bind(sk, res->ai_addr, res->ai_addrlen) < 0) {
+			if(res->ai_next) {
+				close(sk);
+				continue;
+			}
+
+			perror("Can't bind socket");
+			close(sk);
+			freeaddrinfo(res0);
+			exit(1);
+ 		}
+
+		getnameinfo(res->ai_addr, res->ai_addrlen, hname, sizeof(hname),
+					hport, sizeof(hport), NI_NUMERICSERV);
+		printf("device: %s:%s snap_len: %d filter: 0x%lx\n", 
+					hname, hport, snap_len, filter);
+		if (listen(sk, 1) < 0) {
+			if (res->ai_next) {
+				close(sk);
+				continue;
+			}
+
+			perror("Can't listen on socket");
+			close(sk);
+			freeaddrinfo(res0);
+			exit(1);
+		}
 	}
 
-	opt = 1;
-	setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+	freeaddrinfo(res0);
 
-	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = htonl(addr);
-	sa.sin_port = htons(port);
-	if (bind(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
-		perror("Can't bind inet socket");
-		close(sk);
-		exit(1);
-	}
-
-	host = gethostbyaddr(&sa.sin_addr, sizeof(sa.sin_addr), AF_INET);
-	printf("device: %s:%d snap_len: %d filter: 0x%lx\n", 
-		host ? host->h_name : inet_ntoa(sa.sin_addr),
-		ntohs(sa.sin_port), snap_len, filter);
-
-	if (listen(sk, 1)) {
-		perror("Can't listen on inet socket");
-		close(sk);
-		exit(1);
-	}
-
-	len = sizeof(sa);
-	nsk = accept(sk, (struct sockaddr *) &sa, &len);
+	len = sizeof(ss);
+	nsk = accept(sk, (struct sockaddr *) &ss, &len);
 	if (nsk < 0) {
-		perror("Can't accept new inet socket");
+		perror("Can't accept new socket");
 		close(sk);
+		freeaddrinfo(res0);
 		exit(1);
 	}
 
-	host = gethostbyaddr(&sa.sin_addr, sizeof(sa.sin_addr), AF_INET);
-	printf("device: %s snap_len: %d filter: 0x%lx\n", 
-		host ? host->h_name : inet_ntoa(sa.sin_addr), snap_len, filter);
+	getnameinfo((struct sockaddr *) &ss, sizeof(ss),
+					hname, sizeof(hname), NULL, 0, 0);
+
+	printf("device: %s snap_len: %d filter: 0x%lx\n",
+						hname, snap_len, filter);
 
 	close(sk);
 
@@ -657,6 +716,8 @@ static void usage(void)
 	"  -V, --verbose              Verbose decoding\n"
 	"  -Y, --novendor             No vendor commands or events\n"
 	"  -N, --noappend             No appending to existing files\n"
+	"  -4, --ipv4                 Use IPv4 as transport\n"
+	"  -6  --ipv6                 Use IPv6 as transport\n"
 	"  -h, --help                 Give this help list\n"
 	"      --usage                Give a short usage message\n"
 	);
@@ -687,19 +748,19 @@ static struct option main_options[] = {
 	{ "novendor",		0, 0, 'Y' },
 	{ "nopermcheck",	0, 0, 'Z' },
 	{ "noappend",		0, 0, 'N' },
+	{ "ipv4",		0, 0, '4' },
+	{ "ipv6",		0, 0, '6' },
 	{ "help",		0, 0, 'h' },
 	{ 0 }
 };
 
 int main(int argc, char *argv[])
 {
-	struct hostent *host;
-	struct in_addr addr;
 	int opt, pppdump_fd = -1, audio_fd = -1;
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:P:D:A:BVYZNh", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:P:D:A:BVYZN46h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -732,28 +793,12 @@ int main(int argc, char *argv[])
 
 		case 's':
 			mode = SEND;
-			host = gethostbyname(optarg);
-			if (host) {
-				bcopy(host->h_addr, &addr, sizeof(struct in_addr));
-				dump_addr = ntohl(addr.s_addr);
-				dump_port = DEFAULT_PORT;
-			} else {
-				dump_addr = INADDR_LOOPBACK;
-				dump_port = DEFAULT_PORT;
-			}
+			dump_addr = optarg;
 			break;
 
 		case 'n':
 			mode = RECEIVE;
-			host = gethostbyname(optarg);
-			if (host) {
-				bcopy(host->h_addr, &addr, sizeof(struct in_addr));
-				dump_addr = ntohl(addr.s_addr);
-				dump_port = DEFAULT_PORT;
-			} else {
-				dump_addr = INADDR_LOOPBACK;
-				dump_port = DEFAULT_PORT;
-			}
+			dump_addr = optarg;
 			break;
 
 		case 't': 
@@ -818,6 +863,14 @@ int main(int argc, char *argv[])
 
 		case 'N':
 			noappend = 1;
+			break;
+
+		case '4':
+			af = AF_INET;
+			break;
+
+		case '6':
+			af = AF_INET6;
 			break;
 
 		case 'h':

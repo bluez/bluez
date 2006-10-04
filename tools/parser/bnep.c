@@ -56,6 +56,10 @@
 /* BNEP Extension Type */
 #define BNEP_EXTENSION_CONTROL			0x00
 
+#ifndef ETHERTYPE_IPV6
+#define ETHERTYPE_IPV6 ETH_P_IPV6
+#endif
+
 static char *get_macaddr(struct frame *frm)
 {
 	static char str[20];
@@ -63,8 +67,10 @@ static char *get_macaddr(struct frame *frm)
 
 	sprintf(str, "%02x:%02x:%02x:%02x:%02x:%02x",
 		buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
+
 	frm->ptr += 6;
 	frm->len -= 6;
+
 	return str;
 }
 
@@ -131,12 +137,14 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 		break;
 
 	case BNEP_SETUP_CONNECTION_RESPONSE_MSG:
-		printf("Setup Rsp(0x%02x) res 0x%04x\n", type, get_u16(frm));
+		printf("Setup Rsp(0x%02x) res 0x%04x\n",
+						type, get_u16(frm));
 		break;
 
 	case BNEP_FILTER_NET_TYPE_SET_MSG:
 		length = get_u16(frm);
-		printf("Filter NetType Set(0x%02x) len 0x%04x\n", type, length);
+		printf("Filter NetType Set(0x%02x) len 0x%04x\n",
+							type, length);
 		for (i = 0; i < length / 4; i++) {
 			p_indent(level + 1, frm);
 			printf("0x%04x - ", get_u16(frm));
@@ -145,12 +153,14 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 		break;
 
 	case BNEP_FILTER_NET_TYPE_RESPONSE_MSG:
-		printf("Filter NetType Rsp(0x%02x) res 0x%04x\n", type, get_u16(frm));
+		printf("Filter NetType Rsp(0x%02x) res 0x%04x\n",
+							type, get_u16(frm));
 		break;
 
 	case BNEP_FILTER_MULT_ADDR_SET_MSG:
 		length = get_u16(frm);
-		printf("Filter MultAddr Set(0x%02x) len 0x%04x\n", type, length);
+		printf("Filter MultAddr Set(0x%02x) len 0x%04x\n",
+							type, length);
 		for (i = 0; i < length / 12; i++) {
 			p_indent(level + 1, frm);
 			printf("%s - ", get_macaddr(frm));
@@ -159,7 +169,8 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 		break;
 
 	case BNEP_FILTER_MULT_ADDR_RESPONSE_MSG:
-		printf("Filter MultAddr Rsp(0x%02x) res 0x%04x\n", type, get_u16(frm));
+		printf("Filter MultAddr Rsp(0x%02x) res 0x%04x\n",
+							type, get_u16(frm));
 		break;
 
 	default:
@@ -174,26 +185,28 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 static void bnep_eval_extension(int level, struct frame *frm)
 {
 	uint8_t type = get_u8(frm);
-	int extension = type & 0x80;
 	uint8_t length = get_u8(frm);
+	int extension = type & 0x80;
 
 	p_indent(level, frm);
+
 	switch (type & 0x7f) {
 	case BNEP_EXTENSION_CONTROL:
-		printf("Ext Control(0x%02x|%s) len 0x%02x\n", type & 0x7f, extension ? "1" : "0", length);
+		printf("Ext Control(0x%02x|%s) len 0x%02x\n",
+				type & 0x7f, extension ? "1" : "0", length);
 		bnep_control(level, frm, length);
 		break;
 
 	default:
-		printf("Ext Unknown(0x%02x|%s) len 0x%02x\n", type & 0x7f, extension ? "1" : "0", length);
+		printf("Ext Unknown(0x%02x|%s) len 0x%02x\n",
+				type & 0x7f, extension ? "1" : "0", length);
 		raw_ndump(level + 1, frm, length);
 		frm->ptr += length;
 		frm->len -= length;
 	}
 
-	if (extension) {
+	if (extension)
 		bnep_eval_extension(level, frm);
-	}
 }
 
 void bnep_dump(int level, struct frame *frm)
@@ -206,19 +219,22 @@ void bnep_dump(int level, struct frame *frm)
 
 	switch (type & 0x7f) {
 	case BNEP_CONTROL:
-		printf("BNEP: Control(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
+		printf("BNEP: Control(0x%02x|%s)\n",
+					type & 0x7f, extension ? "1" : "0");
 		bnep_control(level, frm, -1);
 		break;
 
 	case BNEP_COMPRESSED_ETHERNET:
-		printf("BNEP: Compressed(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
+		printf("BNEP: Compressed(0x%02x|%s)\n",
+					type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
 		proto = get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 		break;
 
 	case BNEP_GENERAL_ETHERNET:
-		printf("BNEP: General ethernet(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
+		printf("BNEP: General ethernet(0x%02x|%s)\n",
+					type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
 		printf("dst %s ", get_macaddr(frm));
 		printf("src %s ", get_macaddr(frm));
@@ -227,7 +243,8 @@ void bnep_dump(int level, struct frame *frm)
 		break;
 
 	case BNEP_COMPRESSED_ETHERNET_DEST_ONLY:
-		printf("BNEP: Compressed DestOnly(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
+		printf("BNEP: Compressed DestOnly(0x%02x|%s)\n",
+					type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
 		printf("dst %s ", get_macaddr(frm));
 		proto = get_u16(frm);
@@ -235,7 +252,8 @@ void bnep_dump(int level, struct frame *frm)
 		break;
 
 	case BNEP_COMPRESSED_ETHERNET_SOURCE_ONLY:
-		printf("BNEP: Compressed SrcOnly(0x%02x|%s)\n", type & 0x7f, extension ? "1" : "0");
+		printf("BNEP: Compressed SrcOnly(0x%02x|%s)\n",
+					type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
 		printf("src %s ", get_macaddr(frm));
 		proto = get_u16(frm);
@@ -284,6 +302,12 @@ void bnep_dump(int level, struct frame *frm)
 	case ETHERTYPE_IP:
 		p_indent(++level, frm);
 		printf("IP: ");
+		ip_dump(level, frm);
+		break;
+
+	case ETHERTYPE_IPV6:
+		p_indent(++level, frm);
+		printf("IPV6: ");
 		ip_dump(level, frm);
 		break;
 
