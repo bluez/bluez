@@ -882,11 +882,7 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 	signal = dev_signal_factory(dbus_data->dev_id, "MinorClassChanged",
 						DBUS_TYPE_STRING, &minor,
 						DBUS_TYPE_INVALID);
-	if (signal) {
-		dbus_connection_send(conn, signal, NULL);
-		dbus_connection_flush(conn);
-		dbus_message_unref(signal);
-	}
+	send_reply_and_unref(conn, signal);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1512,11 +1508,7 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 						DBUS_TYPE_STRING, &addr,
 						DBUS_TYPE_STRING, &alias,
 						DBUS_TYPE_INVALID);
-	if (signal) {
-		dbus_connection_send(conn, signal, NULL);
-		dbus_connection_flush(conn);
-		dbus_message_unref(signal);
-	}
+	send_reply_and_unref(conn, signal);
 
 	return send_reply_and_unref(conn, reply);
 }
@@ -1564,11 +1556,7 @@ static DBusHandlerResult handle_dev_clear_remote_alias_req(DBusConnection *conn,
 		signal = dev_signal_factory(dbus_data->dev_id, "RemoteAliasCleared",
 							DBUS_TYPE_STRING, &addr_ptr,
 							DBUS_TYPE_INVALID);
-		if (signal) {
-			dbus_connection_send(conn, signal, NULL);
-			dbus_connection_flush(conn);
-			dbus_message_unref(signal);
-		}
+		send_reply_and_unref(conn, signal);
 	}
 
 	return send_reply_and_unref(conn, reply);
@@ -2065,11 +2053,7 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	signal = dev_signal_factory(dbus_data->dev_id, "BondingRemoved",
 					DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
-	if (signal) {
-		dbus_connection_send(conn, signal, NULL);
-		dbus_connection_flush(conn);
-		dbus_message_unref(signal);
-	}
+	send_reply_and_unref(conn, signal);
 
 	reply = dbus_message_new_method_return(msg);
 

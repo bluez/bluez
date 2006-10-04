@@ -553,17 +553,9 @@ int hcid_dbus_unregister_device(uint16_t id)
 					DBUS_TYPE_STRING, &pptr,
 					DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send(connection, message, NULL)) {
-		error("Can't send D-Bus added device message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
+	send_reply_and_unref(connection, message);
 
 failed:
-	if (message)
-		dbus_message_unref(message);
-
 	ret = unregister_dbus_path(path);
 
 	if (ret == 0 && default_dev == id)
@@ -669,7 +661,7 @@ failed:
 		default_dev = id;
 
 	if (dd >= 0)
-		close(dd);
+		hci_close_dev(dd);
 
 	if (cl)
 		free(cl);
@@ -881,7 +873,7 @@ failed:
 void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	struct hci_dbus_data *pdata;
-	DBusMessage *message = NULL;
+	DBusMessage *message;
 	char path[MAX_PATH_LENGTH];
 	char *local_addr;
 	bdaddr_t tmp;
@@ -911,24 +903,12 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 			pdata->discover_type &= ~RESOLVE_NAME;
 	}
 
-	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"DiscoveryStarted");
-	if (message == NULL) {
-		error("Can't allocate D-Bus message");
-		goto failed;
-	}
+	message = dev_signal_factory(pdata->dev_id, "DiscoveryStarted",
+					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		error("Can't send D-Bus inquiry start message");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
+	send_reply_and_unref(connection, message);
 
 failed:
-	if (message)
-		dbus_message_unref(message);
-
 	bt_free(local_addr);
 }
 
@@ -1561,10 +1541,8 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 			pdata->bonding->hci_status = status;
 	} else {
 		/* Sent the remote device connected signal */
-		message = dbus_message_new_signal(path, ADAPTER_INTERFACE, "RemoteDeviceConnected");
-
-		dbus_message_append_args(message,
-					 	DBUS_TYPE_STRING, &peer_addr,
+		message = dev_signal_factory(pdata->dev_id, "RemoteDeviceConnected",
+						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_INVALID);
 
 		send_reply_and_unref(connection, message);
@@ -1943,7 +1921,7 @@ gboolean discoverable_timeout_handler(void *data)
 
 failed:
 	if (dd >= 0)
-		close(dd);
+		hci_close_dev(dd);
 
 	return retval;
 }
@@ -2039,7 +2017,7 @@ static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn, DBusMessag
  *****************************************************************/
 void hcid_dbus_setname_complete(bdaddr_t *local)
 {
-	DBusMessage *signal = NULL;
+	DBusMessage *signal;
 	char *local_addr;
 	bdaddr_t tmp;
 	int id;
@@ -2087,26 +2065,18 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 
 	signal = dev_signal_factory(id, "NameChanged",
 				DBUS_TYPE_STRING, &pname, DBUS_TYPE_INVALID);
-	if (dbus_connection_send(connection, signal, NULL) == FALSE) {
-		error("Can't send D-Bus name changed signal");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
+	send_reply_and_unref(connection, signal);
 
 failed:
-	if (signal)
-		dbus_message_unref(signal);
-
 	if (dd >= 0)
-		close(dd);
+		hci_close_dev(dd);
 
 	bt_free(local_addr);
 }
 
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
-	DBusMessage *message = NULL;
+	DBusMessage *message;
 	struct hci_dbus_data *pdata;
 	char *local_addr;
 	char path[MAX_PATH_LENGTH];
@@ -2189,30 +2159,14 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 
 	write_device_mode(local, scan_mode);
 
-	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-						"ModeChanged");
-	if (message == NULL) {
-		error("Can't allocate D-Bus message");
-		goto failed;
-	}
-
-	dbus_message_append_args(message,
+	message = dev_signal_factory(pdata->dev_id, "ModeChanged",
 					DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send(connection, message, NULL) == FALSE) {
-		error("Can't send D-Bus mode changed signal");
-		goto failed;
-	}
-
-	dbus_connection_flush(connection);
+	send_reply_and_unref(connection, message);
 
 failed:
-	if (message)
-		dbus_message_unref(message);
-
 	if (dd >= 0)
-		close(dd);
+		hci_close_dev(dd);
 
 	bt_free(local_addr);
 }
