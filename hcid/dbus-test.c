@@ -425,8 +425,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	str2ba(address, &peer);
 	str2ba(adapter->address, &local);
 
-	/* check if there is a pending discover: requested by D-Bus/non clients */
-	if (adapter->disc_active || (adapter->pdisc_active && !adapter->pinq_idle))
+	if (adapter->disc_active)
 		return error_discover_in_progress(conn, msg);
 
 	pending_remote_name_cancel(adapter);
