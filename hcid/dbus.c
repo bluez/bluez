@@ -294,7 +294,7 @@ static inline int dev_append_signal_args(DBusMessage *signal, int first, va_list
 	return 0;
 }
 
-DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...)
+DBusMessage *dev_signal_factory(int devid, const char *prop_name, int first, ...)
 {
 	va_list var_args;
 	DBusMessage *signal;
@@ -1264,8 +1264,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	struct slist *l;
 	struct discovered_dev_info match;
 	char *local_addr, *peer_addr, *name, *tmp_name;
-	const dbus_uint32_t tmp_class = class;
-	const dbus_int16_t tmp_rssi = rssi;
+	dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
@@ -1309,7 +1308,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	/* send the device found signal */
 	signal_device = dev_signal_factory(adapter->dev_id, "RemoteDeviceFound",
 						DBUS_TYPE_STRING, &peer_addr,
-						DBUS_TYPE_UINT32, &tmp_class,
+						DBUS_TYPE_UINT32, &class,
 						DBUS_TYPE_INT16, &tmp_rssi,
 						DBUS_TYPE_INVALID);
 
@@ -1379,7 +1378,6 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	char *local_addr, *peer_addr;
 	bdaddr_t tmp;
 	uint32_t old_class = 0;
-	const dbus_uint32_t tmp_class = class;
 	int id;
 
 	read_remote_class(local, peer, &old_class);
@@ -1402,7 +1400,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 
 	message = dev_signal_factory(adapter->dev_id, "RemoteClassUpdated",
 						DBUS_TYPE_STRING, &peer_addr,
-						DBUS_TYPE_UINT32, &tmp_class,
+						DBUS_TYPE_UINT32, &class,
 						DBUS_TYPE_INVALID);
 
 	send_message_and_unref(connection, message);
