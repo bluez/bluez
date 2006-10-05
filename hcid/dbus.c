@@ -395,7 +395,7 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 	/* If there is a pending reply for discovery cancel */
 	if (adapter->discovery_cancel) {
 		message = dbus_message_new_method_return(adapter->discovery_cancel);
-		send_reply_and_unref(connection, message);
+		send_message_and_unref(connection, message);
 		dbus_message_unref(adapter->discovery_cancel);
 		adapter->discovery_cancel = NULL;
 	}
@@ -405,7 +405,7 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 		 * to resolve */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 							"DiscoveryCompleted");
-		send_reply_and_unref(connection, message);
+		send_message_and_unref(connection, message);
 
 		/* Cancel inquiry initiated by D-Bus client */
 		if (adapter->discovery_requestor)
@@ -417,7 +417,7 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 		 * the device */
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"PeriodicDiscoveryStopped");
-		send_reply_and_unref(connection, message);
+		send_message_and_unref(connection, message);
 
 		/* Stop periodic inquiry initiated by D-Bus client */
 		if (adapter->pdiscovery_requestor)
@@ -528,7 +528,7 @@ int hcid_dbus_register_device(uint16_t id)
 					DBUS_TYPE_STRING, &pptr,
 					DBUS_TYPE_INVALID);
 
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 
 	return 0;
 }
@@ -553,7 +553,7 @@ int hcid_dbus_unregister_device(uint16_t id)
 					DBUS_TYPE_STRING, &pptr,
 					DBUS_TYPE_INVALID);
 
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 
 failed:
 	ret = unregister_dbus_path(path);
@@ -695,7 +695,7 @@ int hcid_dbus_stop_device(uint16_t id)
 						DBUS_TYPE_STRING, &scan_mode,
 						DBUS_TYPE_INVALID);
 
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 
 
 	cancel_passkey_agent_requests(adapter->passkey_agents, path, NULL);
@@ -838,7 +838,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t
 			message = dev_signal_factory(adapter->dev_id, "BondingCreated",
 							DBUS_TYPE_STRING, &peer_addr,
 							DBUS_TYPE_INVALID);
-			send_reply_and_unref(connection, message);
+			send_message_and_unref(connection, message);
 		}
 	}
 
@@ -853,7 +853,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t
 	} else {
 		/* reply authentication success or an error */
 		message = new_authentication_return(adapter->bonding->rq, status);
-		send_reply_and_unref(connection, message);
+		send_message_and_unref(connection, message);
 	}
 
 	name_listener_remove(connection, dbus_message_get_sender(adapter->bonding->rq),
@@ -906,7 +906,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	message = dev_signal_factory(adapter->dev_id, "DiscoveryStarted",
 					DBUS_TYPE_INVALID);
 
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 
 failed:
 	bt_free(local_addr);
@@ -987,7 +987,7 @@ int disc_device_req_name(struct adapter *adapter)
 			break;
 		}
 
-		send_reply_and_unref(connection, failed_signal);
+		send_message_and_unref(connection, failed_signal);
 		failed_signal = NULL;
 
 		/* if failed, request the next element */
@@ -1023,7 +1023,7 @@ static void send_out_of_range(const char *path, struct slist *l)
 				DBUS_TYPE_STRING, &peer_addr,
 				DBUS_TYPE_INVALID);
 
-		send_reply_and_unref(connection, message);
+		send_message_and_unref(connection, message);
 		l = l->next;
 	}
 }
@@ -1098,7 +1098,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	if (adapter->disc_active) {
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 							"DiscoveryCompleted");
-		send_reply_and_unref(connection, message);
+		send_message_and_unref(connection, message);
 
 		adapter->disc_active = 0;
 	}
@@ -1117,7 +1117,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		/* If there is a pending reply for discovery cancel */
 		if (adapter->discovery_cancel) {
 			message = dbus_message_new_method_return(adapter->discovery_cancel);
-			send_reply_and_unref(connection, message);
+			send_message_and_unref(connection, message);
 			dbus_message_unref(adapter->discovery_cancel);
 			adapter->discovery_cancel = NULL;
 		}
@@ -1163,7 +1163,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"PeriodicDiscoveryStarted");
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 
 failed:
 	bt_free(local_addr);
@@ -1222,7 +1222,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	if (adapter->disc_active) {
 		message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 				"DiscoveryCompleted");
-		send_reply_and_unref(connection, message);
+		send_message_and_unref(connection, message);
 
 		adapter->disc_active = 0;
 	}
@@ -1230,7 +1230,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	/* Send discovery completed signal if there isn't name to resolve */
 	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
 						"PeriodicDiscoveryStopped");
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 done:
 	bt_free(local_addr);
 }
@@ -1313,7 +1313,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 						DBUS_TYPE_INT16, &tmp_rssi,
 						DBUS_TYPE_INVALID);
 
-	send_reply_and_unref(connection, signal_device);
+	send_message_and_unref(connection, signal_device);
 
 	memset(&match, 0, sizeof(struct discovered_dev_info));
 	bacpy(&match.bdaddr, peer);
@@ -1355,7 +1355,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 							DBUS_TYPE_STRING, &peer_addr,
 							DBUS_TYPE_STRING, &name,
 							DBUS_TYPE_INVALID);
-		send_reply_and_unref(connection, signal_name);
+		send_message_and_unref(connection, signal_name);
 
 		free(name);
 
@@ -1405,7 +1405,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 						DBUS_TYPE_UINT32, &tmp_class,
 						DBUS_TYPE_INVALID);
 
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 
 failed:
 	bt_free(local_addr);
@@ -1449,7 +1449,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 						DBUS_TYPE_STRING, &name,
 						DBUS_TYPE_INVALID);
 
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 
 	/* remove from remote name request list */
 	disc_device_remove(&adapter->disc_devices, peer);
@@ -1476,7 +1476,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 		/* If there is a pending reply for discovery cancel */
 		if (adapter->discovery_cancel) {
 			message = dbus_message_new_method_return(adapter->discovery_cancel);
-			send_reply_and_unref(connection, message);
+			send_message_and_unref(connection, message);
 			dbus_message_unref(adapter->discovery_cancel);
 			adapter->discovery_cancel = NULL;
 		}
@@ -1489,7 +1489,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char
 	if (adapter->disc_active) {
 		message = dbus_message_new_signal(path,
 				ADAPTER_INTERFACE, "DiscoveryCompleted");
-		send_reply_and_unref(connection, message);
+		send_message_and_unref(connection, message);
 
 		adapter->disc_active = 0;
 	}
@@ -1545,7 +1545,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, b
 						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_INVALID);
 
-		send_reply_and_unref(connection, message);
+		send_message_and_unref(connection, message);
 
 		/* add in the active connetions list */
 		active_conn_append(&adapter->active_conn, peer, handle);
@@ -1617,7 +1617,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 			error_authentication_canceled(connection, adapter->bonding->rq);
 		} else {
 			message = new_authentication_return(adapter->bonding->rq, HCI_AUTHENTICATION_FAILURE);
-			send_reply_and_unref(connection, message);
+			send_message_and_unref(connection, message);
 		}
 
 		name_listener_remove(connection, dbus_message_get_sender(adapter->bonding->rq),
@@ -1633,7 +1633,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 					DBUS_TYPE_STRING, &peer_addr,
 					DBUS_TYPE_INVALID);
 
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 	active_conn_remove(&adapter->active_conn, &handle);
 
 failed:
@@ -2065,7 +2065,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 
 	signal = dev_signal_factory(id, "NameChanged",
 				DBUS_TYPE_STRING, &pname, DBUS_TYPE_INVALID);
-	send_reply_and_unref(connection, signal);
+	send_message_and_unref(connection, signal);
 
 failed:
 	if (dd >= 0)
@@ -2162,7 +2162,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	message = dev_signal_factory(adapter->dev_id, "ModeChanged",
 					DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
-	send_reply_and_unref(connection, message);
+	send_message_and_unref(connection, message);
 
 failed:
 	if (dd >= 0)

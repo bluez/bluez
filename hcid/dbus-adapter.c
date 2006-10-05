@@ -236,7 +236,7 @@ static DBusHandlerResult handle_dev_get_address_req(DBusConnection *conn, DBusMe
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &paddr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_version_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -260,7 +260,7 @@ static DBusHandlerResult handle_dev_get_version_req(DBusConnection *conn, DBusMe
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_revision_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -284,7 +284,7 @@ static DBusHandlerResult handle_dev_get_revision_req(DBusConnection *conn, DBusM
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_manufacturer_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -308,7 +308,7 @@ static DBusHandlerResult handle_dev_get_manufacturer_req(DBusConnection *conn, D
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_company_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -332,7 +332,7 @@ static DBusHandlerResult handle_dev_get_company_req(DBusConnection *conn, DBusMe
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_mode_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -369,7 +369,7 @@ static DBusHandlerResult handle_dev_get_mode_req(DBusConnection *conn, DBusMessa
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_set_mode_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -466,7 +466,7 @@ done:
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_discoverable_to_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -484,7 +484,7 @@ static DBusHandlerResult handle_dev_get_discoverable_to_req(DBusConnection *conn
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &adapter->discoverable_timeout,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -526,7 +526,7 @@ static DBusHandlerResult handle_dev_set_discoverable_to_req(DBusConnection *conn
 	str2ba(adapter->address, &bdaddr);
 	write_discoverable_timeout(&bdaddr, timeout);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_is_connectable_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -549,7 +549,7 @@ static DBusHandlerResult handle_dev_is_connectable_req(DBusConnection *conn, DBu
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connectable,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_is_discoverable_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -572,7 +572,7 @@ static DBusHandlerResult handle_dev_is_discoverable_req(DBusConnection *conn, DB
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &discoverable,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_is_connected_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -614,7 +614,7 @@ static DBusHandlerResult handle_dev_is_connected_req(DBusConnection *conn, DBusM
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_list_connections_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -651,7 +651,7 @@ static DBusHandlerResult handle_dev_list_connections_req(DBusConnection *conn, D
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_major_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -690,7 +690,7 @@ static DBusHandlerResult handle_dev_get_major_class_req(DBusConnection *conn, DB
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -751,7 +751,7 @@ static DBusHandlerResult handle_dev_list_minor_classes_req(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_minor_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -803,7 +803,7 @@ failed:
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -882,13 +882,13 @@ static DBusHandlerResult handle_dev_set_minor_class_req(DBusConnection *conn, DB
 	signal = dev_signal_factory(adapter->dev_id, "MinorClassChanged",
 						DBUS_TYPE_STRING, &minor,
 						DBUS_TYPE_INVALID);
-	send_reply_and_unref(conn, signal);
+	send_message_and_unref(conn, signal);
 
 	reply = dbus_message_new_method_return(msg);
 
 	hci_close_dev(dd);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_service_classes_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -938,7 +938,7 @@ static DBusHandlerResult handle_dev_get_service_classes_req(DBusConnection *conn
 
 	hci_close_dev(dd);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_name_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -971,7 +971,7 @@ static DBusHandlerResult handle_dev_get_name_req(DBusConnection *conn, DBusMessa
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1014,7 +1014,7 @@ static DBusHandlerResult handle_dev_set_name_req(DBusConnection *conn, DBusMessa
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1100,7 +1100,7 @@ failed:
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &info,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1148,7 +1148,7 @@ static DBusHandlerResult handle_dev_get_remote_revision_req(DBusConnection *conn
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &info,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1195,7 +1195,7 @@ static DBusHandlerResult handle_dev_get_remote_manufacturer_req(DBusConnection *
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &info,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_remote_company_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1234,7 +1234,7 @@ static DBusHandlerResult handle_dev_get_remote_company_req(DBusConnection *conn,
 
 	free(tmp);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static int get_remote_class(DBusConnection *conn, DBusMessage *msg, void *data, uint32_t *class)
@@ -1292,7 +1292,7 @@ static DBusHandlerResult handle_dev_get_remote_major_class_req(DBusConnection *c
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &major_class,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_remote_minor_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1313,7 +1313,7 @@ static DBusHandlerResult handle_dev_get_remote_minor_class_req(DBusConnection *c
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &minor_class,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static void append_class_string(const char *class, DBusMessageIter *iter)
@@ -1347,7 +1347,7 @@ static DBusHandlerResult handle_dev_get_remote_service_cls_req(DBusConnection *c
 
 	slist_free(service_classes);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_remote_class_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1365,7 +1365,7 @@ static DBusHandlerResult handle_dev_get_remote_class_req(DBusConnection *conn, D
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &class,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1409,7 +1409,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 						DBUS_TYPE_INVALID);
 
 		free(str);
-		return send_reply_and_unref(conn, reply);
+		return send_message_and_unref(conn, reply);
 	}
 
 	if (!adapter->up)
@@ -1465,7 +1465,7 @@ static DBusHandlerResult handle_dev_get_remote_alias_req(DBusConnection *conn, D
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1508,9 +1508,9 @@ static DBusHandlerResult handle_dev_set_remote_alias_req(DBusConnection *conn, D
 						DBUS_TYPE_STRING, &addr,
 						DBUS_TYPE_STRING, &alias,
 						DBUS_TYPE_INVALID);
-	send_reply_and_unref(conn, signal);
+	send_message_and_unref(conn, signal);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_clear_remote_alias_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1556,10 +1556,10 @@ static DBusHandlerResult handle_dev_clear_remote_alias_req(DBusConnection *conn,
 		signal = dev_signal_factory(adapter->dev_id, "RemoteAliasCleared",
 							DBUS_TYPE_STRING, &addr_ptr,
 							DBUS_TYPE_INVALID);
-		send_reply_and_unref(conn, signal);
+		send_message_and_unref(conn, signal);
 	}
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1601,7 +1601,7 @@ static DBusHandlerResult handle_dev_last_seen_req(DBusConnection *conn, DBusMess
 
 	free(str);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1643,7 +1643,7 @@ static DBusHandlerResult handle_dev_last_used_req(DBusConnection *conn, DBusMess
 
 	free(str);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -1702,7 +1702,7 @@ static DBusHandlerResult handle_dev_disconnect_remote_device_req(DBusConnection 
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 
 }
 
@@ -1716,7 +1716,7 @@ static void reply_authentication_failure(struct bonding_request_info *bonding)
 
 	reply = new_authentication_return(bonding->rq, status);
 	if (reply)
-		send_reply_and_unref(bonding->conn, reply);
+		send_message_and_unref(bonding->conn, reply);
 }
 
 static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
@@ -1975,7 +1975,7 @@ static DBusHandlerResult handle_dev_cancel_bonding_req(DBusConnection *conn, DBu
 	g_io_channel_close(adapter->bonding->io);
 
 	reply = dbus_message_new_method_return(msg);
-	send_reply_and_unref(conn, reply);
+	send_message_and_unref(conn, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -2053,13 +2053,13 @@ static DBusHandlerResult handle_dev_remove_bonding_req(DBusConnection *conn, DBu
 	signal = dev_signal_factory(adapter->dev_id, "BondingRemoved",
 					DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
-	send_reply_and_unref(conn, signal);
+	send_message_and_unref(conn, signal);
 
 	reply = dbus_message_new_method_return(msg);
 
 	hci_close_dev(dd);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -2099,7 +2099,7 @@ static DBusHandlerResult handle_dev_has_bonding_req(DBusConnection *conn, DBusMe
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &result,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static void list_bondings_do_append(char *key, char *value, void *data)
@@ -2132,7 +2132,7 @@ static DBusHandlerResult handle_dev_list_bondings_req(DBusConnection *conn, DBus
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -2174,7 +2174,7 @@ static DBusHandlerResult handle_dev_get_pin_code_length_req(DBusConnection *conn
 	dbus_message_append_args(reply, DBUS_TYPE_BYTE, &length,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_get_encryption_key_size_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -2214,7 +2214,7 @@ static DBusHandlerResult handle_dev_get_encryption_key_size_req(DBusConnection *
 	dbus_message_append_args(reply, DBUS_TYPE_BYTE, &size,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_start_periodic_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -2283,7 +2283,7 @@ static DBusHandlerResult handle_dev_start_periodic_req(DBusConnection *conn, DBu
 	name_listener_add(conn, dbus_message_get_sender(msg),
 				(name_cb_t) periodic_discover_req_exit, adapter);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_stop_periodic_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -2314,7 +2314,7 @@ static DBusHandlerResult handle_dev_stop_periodic_req(DBusConnection *conn, DBus
 	}
 
 	reply = dbus_message_new_method_return(msg);
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_is_periodic_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -2330,7 +2330,7 @@ static DBusHandlerResult handle_dev_is_periodic_req(DBusConnection *conn, DBusMe
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &active,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, DBusMessage *msg, void *data)
@@ -2406,7 +2406,7 @@ static DBusHandlerResult handle_dev_discover_devices_req(DBusConnection *conn, D
 	name_listener_add(conn, dbus_message_get_sender(msg),
 				(name_cb_t) discover_devices_req_exit, adapter);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult handle_dev_cancel_discovery_req(DBusConnection *conn, DBusMessage *msg, void *data)

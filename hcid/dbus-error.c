@@ -37,19 +37,19 @@ DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err)
 {
 	const char *str = strerror(err);
 
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".Failed", str));
 }
 
 DBusHandlerResult error_not_ready(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotReady", "Adapter is not ready"));
 }
 
 DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".InvalidArguments",
 							"Invalid arguments"));
 }
@@ -64,101 +64,101 @@ DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg)
 	snprintf(error, 128, "Method \"%s\" with signature \"%s\" on interface \"%s\" doesn't exist",
 			method, signature, interface);
 	
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownMethod",
 							error));
 }
 
 DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotAuthorized",
 							"Not authorized"));
 }
 
 DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".OutOfMemory",
 							"Out of memory"));
 }
 
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
 							"No such adapter"));
 }
 
 DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotAvailable",
 							"Not available"));
 }
 
 DBusHandlerResult error_not_supported(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotSupported",
 							"Not supported"));
 }
 
 DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".RequestDeferred",
 							"Request Deferred"));
 }
 
 DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotConnected",
 							"Not connected"));
 }
 
 DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".UnsupportedMajorClass",
 							"Unsupported Major Class"));
 }
 
 DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMessage *msg, int err)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
 					err ? strerror(err) : "Connection attempt failed"));
 }
 
 static DBusHandlerResult error_already_exists(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".AlreadyExists", str));
 }
 
 static DBusHandlerResult error_does_not_exist(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".DoesNotExist", str));
 }
 
 static DBusHandlerResult error_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str));
 }
 
 static DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".Canceled", str));
 }
 
 DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotInProgress", str));
 }
 
@@ -189,7 +189,7 @@ DBusHandlerResult error_bonding_not_in_progress(DBusConnection *conn, DBusMessag
 
 DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg)
 {
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 				    dbus_message_new_error(msg, ERROR_INTERFACE ".AuthenticationCanceled",
 							   "Authentication Canceled"));
 }
@@ -271,7 +271,7 @@ DBusHandlerResult error_sdp_failed(DBusConnection *conn, DBusMessage *msg, int e
 {
 	const char *str = strsdperror(err);
 
-	return send_reply_and_unref(conn,
+	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".Failed", str));
 }
 

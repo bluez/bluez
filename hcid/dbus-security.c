@@ -257,7 +257,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 
 	adapter->passkey_agents = slist_append(adapter->passkey_agents, agent);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult unregister_agent(DBusConnection *conn,
@@ -305,7 +305,7 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult register_default_agent(DBusConnection *conn,
@@ -337,7 +337,7 @@ static DBusHandlerResult register_default_agent(DBusConnection *conn,
 	info("Default passkey agent (%s, %s) registered",
 			default_agent->name, default_agent->path);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 
 need_memory:
 	if (default_agent) {
@@ -382,7 +382,7 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 	passkey_agent_free(default_agent);
 	default_agent = NULL;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static struct service_data sec_services[] = {
@@ -600,7 +600,7 @@ static void send_cancel_request(struct pending_agent_request *req)
 
 	dbus_message_set_no_reply(message, TRUE);
 
-	send_reply_and_unref(req->agent->conn, message);
+	send_message_and_unref(req->agent->conn, message);
 
 	debug("PasskeyAgent.Request(%s, %s) was canceled", req->path, address);
 
@@ -625,7 +625,7 @@ static void release_agent(struct passkey_agent *agent)
 
 	dbus_message_set_no_reply(message, TRUE);
 
-	send_reply_and_unref(agent->conn, message);
+	send_message_and_unref(agent->conn, message);
 
 	if (agent == default_agent)
 		name_listener_remove(agent->conn, agent->name,

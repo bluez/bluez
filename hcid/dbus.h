@@ -236,7 +236,7 @@ void release_default_agent(void);
 void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda);
 void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdaddr_t *dba);
 
-static inline DBusHandlerResult send_reply_and_unref(DBusConnection *conn, DBusMessage *reply)
+static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn, DBusMessage *reply)
 {
 	if (reply) {
 		dbus_connection_send(conn, reply, NULL);

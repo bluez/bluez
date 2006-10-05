@@ -280,7 +280,7 @@ static void rfcomm_connect_cb_devnode_opened(int fd, struct pending_connect *c,
 	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_HUP,
 					(GIOFunc) rfcomm_disconnect_cb, node);
 
-	send_reply_and_unref(c->conn, reply);
+	send_message_and_unref(c->conn, reply);
 
 	connected_nodes = slist_append(connected_nodes, node);
 
@@ -718,7 +718,7 @@ static DBusHandlerResult rfcomm_cancel_connect_req(DBusConnection *conn,
 
 	pending->canceled = 1;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult rfcomm_connect_by_ch_req(DBusConnection *conn,
@@ -771,7 +771,7 @@ static DBusHandlerResult rfcomm_cancel_connect_by_ch_req(DBusConnection *conn,
 
 	pending->canceled = 1;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
@@ -808,7 +808,7 @@ static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
 	connected_nodes = slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static void rfcomm_bind_req_continue(sdp_record_t *rec, void *data, int err)
@@ -858,7 +858,7 @@ static void rfcomm_bind_req_continue(sdp_record_t *rec, void *data, int err)
 		goto failed;
 	}
 
-	send_reply_and_unref(cdata->conn, reply);
+	send_message_and_unref(cdata->conn, reply);
 
 	rfcomm_continue_data_free(cdata);
 
@@ -952,7 +952,7 @@ static DBusHandlerResult rfcomm_bind_by_ch_req(DBusConnection *conn,
 					DBUS_TYPE_INVALID))
 		goto need_memory;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 
 need_memory:
 	if (reply)
@@ -999,7 +999,7 @@ static DBusHandlerResult rfcomm_release_req(DBusConnection *conn,
 	bound_nodes = slist_remove(bound_nodes, node);
 	rfcomm_node_free(node);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult rfcomm_list_bindings_req(DBusConnection *conn,
@@ -1047,7 +1047,7 @@ static DBusHandlerResult rfcomm_list_bindings_req(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static struct service_data rfcomm_services[] = {

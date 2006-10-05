@@ -56,7 +56,7 @@ static DBusHandlerResult interface_version(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &version,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult default_adapter(DBusConnection *conn,
@@ -81,7 +81,7 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult find_adapter(DBusConnection *conn,
@@ -117,7 +117,7 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult list_adapters(DBusConnection *conn,
@@ -186,7 +186,7 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 
 	close(sk);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult list_services(DBusConnection *conn,
@@ -201,7 +201,7 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static struct service_data methods[] = {

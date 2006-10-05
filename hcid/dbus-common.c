@@ -322,7 +322,7 @@ DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 service_handler_func_t find_service_handler(struct service_data *handlers, DBusMessage *msg)

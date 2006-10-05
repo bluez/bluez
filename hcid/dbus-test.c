@@ -127,7 +127,7 @@ static void send_audit_status(struct audit *audit, const char *name)
 	dbus_message_append_args(signal, DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
 
-	send_reply_and_unref(audit->conn, signal);
+	send_message_and_unref(audit->conn, signal);
 }
 
 static void audit_requestor_exited(const char *name, struct audit *audit)
@@ -470,7 +470,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 
 	audits = slist_append(audits, audit);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
@@ -529,7 +529,7 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult get_l2cap_feature_mask(DBusConnection *conn,
@@ -572,7 +572,7 @@ static DBusHandlerResult get_l2cap_feature_mask(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &mask,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult get_l2cap_mtu_size(DBusConnection *conn,
@@ -614,7 +614,7 @@ static DBusHandlerResult get_l2cap_mtu_size(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_UINT16, &mtu,
 					DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static struct service_data methods[] = {

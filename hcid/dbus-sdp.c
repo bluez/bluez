@@ -599,7 +599,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
-	send_reply_and_unref(ctxt->conn, reply);
+	send_message_and_unref(ctxt->conn, reply);
 failed:
 	transaction_context_free(ctxt);
 }
@@ -671,7 +671,7 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
-	send_reply_and_unref(ctxt->conn, reply);
+	send_message_and_unref(ctxt->conn, reply);
 failed:
 	transaction_context_free(ctxt);
 }
@@ -751,7 +751,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
-	send_reply_and_unref(ctxt->conn, reply);
+	send_message_and_unref(ctxt->conn, reply);
 failed:
 	transaction_context_free(ctxt);
 }
@@ -1149,7 +1149,7 @@ static DBusHandlerResult get_identifiers_by_service(DBusConnection *conn,
 	dbus_message_iter_close_container(&iter, &array_iter);
 
 	if (nrec > 0)
-		return send_reply_and_unref(conn, reply);
+		return send_message_and_unref(conn, reply);
 
 	/* no record found: request search */
 	dbus_message_unref(reply);
@@ -1279,7 +1279,7 @@ static DBusHandlerResult get_uuid(DBusConnection *conn,
 			DBUS_TYPE_STRING, &ptr,
 			DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult get_name(DBusConnection *conn,
@@ -1326,7 +1326,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 			DBUS_TYPE_STRING, &ptr,
 			DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult register_rfcomm(DBusConnection *conn,
@@ -1380,7 +1380,7 @@ static DBusHandlerResult register_rfcomm(DBusConnection *conn,
 			DBUS_TYPE_STRING, &ptr,
 			DBUS_TYPE_INVALID);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
@@ -1456,7 +1456,7 @@ static DBusHandlerResult unregister_rfcomm(DBusConnection *conn,
 	if (!slist_find(sdp_cache, &psearch, service_provider_cmp))
 		name_listener_remove(conn, owner, (name_cb_t) owner_exited, adapter);
 
-	return send_reply_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static struct service_data sdp_services[] = {
