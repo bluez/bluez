@@ -763,10 +763,17 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 	char path[MAX_PATH_LENGTH], addr[18];
 	struct adapter *adapter;
 	struct pending_pin_info *info;
+	int id;
 
 	ba2str(sba, addr);
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, hci_devid(addr));
+	id = hci_devid(addr);
+	if (id < 0) {
+		error("No matching device id for %s", addr);
+		return;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &adapter)) {
 		error("Getting %s path data failed!", path);
@@ -790,10 +797,17 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	char path[MAX_PATH_LENGTH], addr[18];
+	int id;
 
 	ba2str(sba, addr);
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, hci_devid(addr));
+	id = hci_devid(addr);
+	if (id < 0) {
+		error("No matching device id for %s", addr);
+		return -1;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	return handle_passkey_request(connection, dev, path, sba, &ci->bdaddr);
 }
