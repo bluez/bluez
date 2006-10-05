@@ -209,6 +209,8 @@ int l2raw_connect(const char *local, const bdaddr_t *remote);
 
 int check_address(const char *addr);
 
+void process_audits_list(const char *adapter_path);
+
 DBusHandlerResult handle_test_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);

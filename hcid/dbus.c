@@ -1058,7 +1058,8 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto done;
+		bt_free(local_addr);
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1141,6 +1142,9 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	}
 
 done:
+	/* Proceed with any queued up audits */
+	process_audits_list(path);
+
 	bt_free(local_addr);
 }
 

@@ -164,47 +164,6 @@ static gboolean audit_in_progress(void)
 	return FALSE;
 }
 
-static void process_audits_list(void)
-{
-	while (audits) {
-		struct adapter *adapter;
-		struct audit *audit;
-		int sk;
-
-		audit = audits->data;
-
-		adapter = NULL;
-
-		dbus_connection_get_object_path_data(audit->conn,
-							audit->adapter_path,
-							(void *) &adapter);
-
-		if (!adapter) {
-			audits = slist_remove(audits, audit);
-			name_listener_remove(audit->conn, audit->requestor,
-					(name_cb_t) audit_requestor_exited, audit);
-			audit_free(audit);
-			continue;
-		}
-
-		sk = l2raw_connect(adapter->address, &audit->peer);
-		if (sk < 0) {
-			send_audit_status(audit, "AuditRemoteDeviceFailed");
-			audits = slist_remove(audits, audit);
-			name_listener_remove(audit->conn, audit->requestor,
-					(name_cb_t) audit_requestor_exited, audit);
-			audit_free(audit);
-			continue;
-		}
-
-		audit->io = g_io_channel_unix_new(sk);
-		audit->io_id = g_io_add_watch(audit->io,
-						G_IO_OUT | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-						(GIOFunc) l2raw_connect_complete, audit);
-		return;
-	}
-}
-
 static gboolean l2raw_input_timer(struct audit *audit)
 {
 	error("l2raw_input_timer: Timed out while waiting for input");
@@ -325,9 +284,10 @@ failed:
 	audits = slist_remove(audits, audit);
 	name_listener_remove(audit->conn, audit->requestor,
 				(name_cb_t) audit_requestor_exited, audit);
-	audit_free(audit);
 
-	process_audits_list();
+	process_audits_list(audit->adapter_path);
+
+	audit_free(audit);
 
 	return FALSE;
 }
@@ -408,6 +368,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	const char *address;
 	struct audit *audit;
 	struct adapter *adapter = data;
+	gboolean queue;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
@@ -425,9 +386,6 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	str2ba(address, &peer);
 	str2ba(adapter->address, &local);
 
-	if (adapter->disc_active)
-		return error_discover_in_progress(conn, msg);
-
 	pending_remote_name_cancel(adapter);
 
 	if (adapter->bonding)
@@ -436,8 +394,17 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	if (slist_find(adapter->pin_reqs, &peer, pin_req_cmp))
 		return error_bonding_in_progress(conn, msg);
 
+	/* Just return if an audit for the same device is already queued */
+	if (slist_find(audits, &peer, audit_addr_cmp))
+		return DBUS_HANDLER_RESULT_HANDLED;
+
 	if (!read_l2cap_info(&local, &peer, NULL, NULL, NULL, NULL))
 		return error_audit_already_exists(conn, msg);
+
+	if (adapter->disc_active || (adapter->pdisc_active && !adapter->pinq_idle))
+		queue = TRUE;
+	else
+		queue = audit_in_progress();
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -449,7 +416,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
-	if (!audit_in_progress()) {
+	if (!queue) {
 		int sk;
 
 		sk = l2raw_connect(adapter->address, &peer);
@@ -639,3 +606,57 @@ DBusHandlerResult handle_test_method(DBusConnection *conn, DBusMessage *msg, voi
 
 	return error_unknown_method(conn, msg);
 }
+
+void process_audits_list(const char *adapter_path)
+{
+	struct slist *l, *next;
+
+	for (l = audits; l != NULL; l = next) {
+		struct adapter *adapter;
+		struct audit *audit;
+		int sk;
+
+		audit = l->data;
+		next = l->next;
+
+		if (strcmp(adapter_path, audit->adapter_path))
+			continue;
+
+		if (audit->io)
+			return;
+
+		adapter = NULL;
+
+		dbus_connection_get_object_path_data(audit->conn,
+							audit->adapter_path,
+							(void *) &adapter);
+
+		if (!adapter) {
+			audits = slist_remove(audits, audit);
+			name_listener_remove(audit->conn, audit->requestor,
+					(name_cb_t) audit_requestor_exited, audit);
+			audit_free(audit);
+			continue;
+		}
+
+		if (adapter->disc_active || (adapter->pdisc_active && !adapter->pinq_idle))
+			continue;
+
+		sk = l2raw_connect(adapter->address, &audit->peer);
+		if (sk < 0) {
+			send_audit_status(audit, "AuditRemoteDeviceFailed");
+			audits = slist_remove(audits, audit);
+			name_listener_remove(audit->conn, audit->requestor,
+					(name_cb_t) audit_requestor_exited, audit);
+			audit_free(audit);
+			continue;
+		}
+
+		audit->io = g_io_channel_unix_new(sk);
+		audit->io_id = g_io_add_watch(audit->io,
+						G_IO_OUT | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+						(GIOFunc) l2raw_connect_complete, audit);
+		return;
+	}
+}
+

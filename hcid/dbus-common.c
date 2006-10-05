@@ -219,8 +219,6 @@ int name_listener_add(DBusConnection *connection, const char *name,
 	char match_string[128];
 	int first;
 
-	debug("name_listener_add(%s)", name);
-
 	if (!name_listener_initialized) {
 		if (!dbus_connection_add_filter(connection, name_exit_filter, NULL, NULL)) {
 			error("dbus_connection_add_filter() failed");
@@ -234,6 +232,8 @@ int name_listener_add(DBusConnection *connection, const char *name,
 	 * registration for the name */
 	if (!first)
 		return 0;
+
+	debug("name_listener_add(%s)", name);
 
 	snprintf(match_string, sizeof(match_string),
 			"interface=%s,member=NameOwnerChanged,arg0=%s",
