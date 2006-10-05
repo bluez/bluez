@@ -1372,9 +1372,7 @@ done:
 
 void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 {
-	struct adapter *adapter;
 	DBusMessage *message;
-	char path[MAX_PATH_LENGTH];
 	char *local_addr, *peer_addr;
 	bdaddr_t tmp;
 	uint32_t old_class = 0;
@@ -1392,13 +1390,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 		error("No matching device id for %s", local_addr);
 		goto failed;
 	}
-
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-
-	if (dbus_connection_get_object_path_data(connection, path, (void *) &adapter))
-		goto failed;
-
-	message = dev_signal_factory(adapter->dev_id, "RemoteClassUpdated",
+	message = dev_signal_factory(id, "RemoteClassUpdated",
 						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_UINT32, &class,
 						DBUS_TYPE_INVALID);
