@@ -70,36 +70,6 @@ struct slist *slist_prepend(struct slist *list, void *data)
 	return entry;
 }
 
-struct slist *slist_insert_before(struct slist *list, struct slist *sibling, void *data)
-{
-	struct slist *entry, *prev, *cur;
-
-	entry = malloc(sizeof(struct slist));
-	if (!entry)
-		return list;
-
-	entry->data = data;
-	entry->next = NULL;
-
-	if (!list)
-		return entry;
-
-	for (cur = list, prev = NULL; cur != NULL; prev = cur, cur = prev->next) {
-		if (cur == sibling)
-			break;
-	}
-
-	if (!prev) {
-		entry->next = list;
-		return entry;
-	}
-
-	entry->next = prev->next;
-	prev->next = entry;
-
-	return list;
-}
-
 struct slist *slist_insert_sorted(struct slist *list, void *data, cmp_func_t cmp_func)
 {
 	struct slist *tmp, *prev, *entry;
