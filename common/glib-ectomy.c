@@ -205,19 +205,12 @@ void g_io_remove_watch(guint id)
 	}
 }
 
-static struct slist *watch_list_add(struct slist *l, struct watch *watch)
+int watch_prio_cmp(struct watch *w1, struct watch *w2)
 {
-	struct slist *cur;
-
-	for (cur = l; cur != NULL; cur = cur->next) {
-		struct watch *w = cur->data;
-
-		if (w->priority >= watch->priority)
-			break;
-	}
-
-	return slist_insert_before(l, cur, watch);
+	return w1->priority - w2->priority;
 }
+
+#define watch_list_add(l, w) slist_insert_sorted((l), (w), (cmp_func_t) watch_prio_cmp)
 
 guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 				GIOCondition condition, GIOFunc func,
