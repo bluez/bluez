@@ -124,6 +124,7 @@ struct adapter {
 	char *discov_requestor;		/* discovery requestor unique name */
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
 	struct slist *passkey_agents;
+	bdaddr_t agents_disabled;	/* temporarely disable agents for bda */
 	struct slist *active_conn;
 	struct bonding_request_info *bonding;
 	struct slist *pin_reqs;

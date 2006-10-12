@@ -135,7 +135,16 @@ static void audit_requestor_exited(const char *name, struct audit *audit)
 	debug("AuditRemoteDevice requestor %s exited", name);
 	audits = slist_remove(audits, audit);
 	if (audit->io) {
+		struct adapter *adapter = NULL;
+
 		send_audit_status(audit, "AuditRemoteDeviceComplete");
+
+		dbus_connection_get_object_path_data(audit->conn,
+							audit->adapter_path,
+							(void *) &adapter);
+		if (adapter)
+			bacpy(&adapter->agents_disabled, BDADDR_ANY);
+
 		g_io_channel_close(audit->io);
 	}
 	if (audit->timeout)
@@ -299,11 +308,17 @@ static gboolean l2raw_connect_complete(GIOChannel *io, GIOCondition cond, struct
 	l2cap_info_req *req = (l2cap_info_req *) (buf + L2CAP_CMD_HDR_SIZE);
 	socklen_t len;
 	int sk, ret;
+	struct adapter *adapter = NULL;
 
 	if (cond & G_IO_NVAL) {
 		g_io_channel_unref(io);
 		return FALSE;
 	}
+
+	dbus_connection_get_object_path_data(audit->conn, audit->adapter_path,
+						(void *) &adapter);
+	if (adapter)
+		bacpy(&adapter->agents_disabled, BDADDR_ANY);
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		error("Error on raw l2cap socket");
@@ -394,21 +409,21 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	if (slist_find(adapter->pin_reqs, &peer, pin_req_cmp))
 		return error_bonding_in_progress(conn, msg);
 
-	/* Just return if an audit for the same device is already queued */
-	if (slist_find(audits, &peer, audit_addr_cmp))
-		return DBUS_HANDLER_RESULT_HANDLED;
-
 	if (!read_l2cap_info(&local, &peer, NULL, NULL, NULL, NULL))
 		return error_audit_already_exists(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	/* Just return if an audit for the same device is already queued */
+	if (slist_find(audits, &peer, audit_addr_cmp))
+		return send_message_and_unref(conn, reply);
 
 	if (adapter->discov_active || (adapter->pdiscov_active && !adapter->pinq_idle))
 		queue = TRUE;
 	else
 		queue = audit_in_progress();
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	audit = audit_new(conn, msg, &peer, &local);
 	if (!audit) {
@@ -425,6 +440,8 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 			dbus_message_unref(reply);
 			return error_connection_attempt_failed(conn, msg, 0);
 		}
+
+		bacpy(&adapter->agents_disabled, &peer);
 
 		audit->io = g_io_channel_unix_new(sk);
 		audit->io_id = g_io_add_watch(audit->io,
@@ -482,6 +499,7 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 
 	if (audit->io) {
 		send_audit_status(audit, "AuditRemoteDeviceComplete");
+		bacpy(&adapter->agents_disabled, BDADDR_ANY);
 		g_io_channel_close(audit->io);
 	}
 	if (audit->timeout)
@@ -652,6 +670,8 @@ void process_audits_list(const char *adapter_path)
 			audit_free(audit);
 			continue;
 		}
+
+		bacpy(&adapter->agents_disabled, &audit->peer);
 
 		audit->io = g_io_channel_unix_new(sk);
 		audit->io_id = g_io_add_watch(audit->io,

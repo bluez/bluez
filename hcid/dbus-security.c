@@ -476,7 +476,7 @@ static int call_passkey_agent(DBusConnection *conn,
 	ba2str(dba, bda);
 
 	if (!agent) {
-		debug("call_passkey_agent(): no agent registered");
+		debug("call_passkey_agent(): no agent available");
 		goto failed;
 	}
 
@@ -562,6 +562,9 @@ int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
 		goto done;
 
 	adapter = data;
+
+	if (!bacmp(&adapter->agents_disabled, dba))
+		goto done;
 
 	ba2str(dba, addr);
 
