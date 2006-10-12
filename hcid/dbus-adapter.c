@@ -167,16 +167,17 @@ static const char *toy_minor_cls[] = {
 
 int pending_remote_name_cancel(struct adapter *adapter)
 {
-	struct discovered_dev_info *dev, match;
+	struct remote_dev_info *dev, match;
 	struct slist *l;
 	int dd, err = 0;
 
 	/* find the pending remote name request */
-	memset(&match, 0, sizeof(struct discovered_dev_info));
+	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = slist_find(adapter->disc_devices, &match, (cmp_func_t) disc_device_find);
+	l = slist_find(adapter->found_devices, &match,
+			(cmp_func_t) found_device_cmp);
 	if (!l) /* no pending request */
 		return 0;
 
@@ -192,9 +193,9 @@ int pending_remote_name_cancel(struct adapter *adapter)
 	}
 
 	/* free discovered devices list */
-	slist_foreach(adapter->disc_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->disc_devices);
-	adapter->disc_devices = NULL;
+	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
+	slist_free(adapter->found_devices);
+	adapter->found_devices = NULL;
 
 	hci_close_dev(dd);
 	return err;
@@ -1468,14 +1469,14 @@ static DBusHandlerResult adapter_get_remote_name(DBusConnection *conn,
 
 	/* put the request name in the queue to resolve name */
 	str2ba(peer_addr, &peer_bdaddr);
-	disc_device_add(&adapter->disc_devices, &peer_bdaddr, 0, NAME_REQUIRED);
+	found_device_add(&adapter->found_devices, &peer_bdaddr, 0, NAME_REQUIRED);
 
 	/* 
 	 * if there is a discover process running, just queue the request.
 	 * Otherwise, send the HCI cmd to get the remote name
 	 */
 	if (!(adapter->discov_active ||  adapter->pdiscov_active))
-		disc_device_req_name(adapter);
+		found_device_req_name(adapter);
 
 	return error_request_deferred(conn, msg);
 }

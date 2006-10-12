@@ -79,7 +79,7 @@ typedef enum {
 	NAME_SENT          /* D-Bus signal RemoteNameUpdated sent */
 } name_status_t;
 
-struct discovered_dev_info {
+struct remote_dev_info {
 	bdaddr_t bdaddr;
 	int8_t rssi;
 	name_status_t name_status;
@@ -110,7 +110,7 @@ struct adapter {
 	uint16_t dev_id;
 	int up;
 	char address[18];		/* adapter Bluetooth Address */
-	uint32_t timeout_id;		/* discoverable timeout id */
+	guint timeout_id;		/* discoverable timeout id */
 	uint32_t discov_timeout;	/* discoverable time(msec) */
 	uint8_t mode;			/* scan mode */
 	int discov_active;		/* standard discovery active: includes name resolution step */
@@ -118,7 +118,7 @@ struct adapter {
 	int pinq_idle;			/* tracks the idle time for periodic inquiry */
 	int discov_type;		/* type requested */
 	int pdiscov_resolve_names;	/* Resolve names when doing periodic discovery */
-	struct slist *disc_devices;
+	struct slist *found_devices;
 	struct slist *oor_devices;	/* out of range device list */
 	char *pdiscov_requestor;	/* periodic discovery requestor unique name */
 	char *discov_requestor;		/* discovery requestor unique name */
@@ -159,7 +159,8 @@ const char *major_class_str(uint32_t class);
 const char *minor_class_str(uint32_t class);
 struct slist *service_classes_str(uint32_t class);
 
-DBusHandlerResult bluez_new_failure_msg(DBusConnection *conn, DBusMessage *msg, const uint32_t ecode);
+DBusHandlerResult bluez_new_failure_msg(DBusConnection *conn, DBusMessage *msg,
+					const uint32_t ecode);
 
 DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...);
 
@@ -235,7 +236,8 @@ void periodic_discover_req_exit(const char *name, struct adapter *adapter);
 int cancel_periodic_discovery(struct adapter *adapter);
 int pending_remote_name_cancel(struct adapter *adapter);
 
-int handle_passkey_request(DBusConnection *conn, int dev, const char *path, bdaddr_t *sba, bdaddr_t *dba);
+int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
+				bdaddr_t *sba, bdaddr_t *dba);
 void release_default_agent(void);
 void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda);
 void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdaddr_t *dba);
@@ -254,9 +256,11 @@ static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn, DBu
 int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
 int pin_req_cmp(const void *p1, const void *p2);
-int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2);
-int disc_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi, name_status_t name_status);
-int disc_device_req_name(struct adapter *dbus_data);
+int found_device_cmp(const struct remote_dev_info *d1,
+			const struct remote_dev_info *d2);
+int found_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi,
+			name_status_t name_status);
+int found_device_req_name(struct adapter *dbus_data);
 
 int discov_timeout_handler(void *data);
 

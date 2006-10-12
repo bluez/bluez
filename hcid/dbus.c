@@ -94,8 +94,8 @@ void bonding_request_free(struct bonding_request_info *bonding)
 	free(bonding);
 }
 
-int disc_device_find(const struct discovered_dev_info *d1,
-			const struct discovered_dev_info *d2)
+int found_device_cmp(const struct remote_dev_info *d1,
+			const struct remote_dev_info *d2)
 {
 	int ret;
 
@@ -114,7 +114,7 @@ int disc_device_find(const struct discovered_dev_info *d1,
 	return 0;
 }
 
-int dev_rssi_cmp(struct discovered_dev_info *d1, struct discovered_dev_info *d2)
+int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
 {
 	int rssi1, rssi2;
 
@@ -124,18 +124,18 @@ int dev_rssi_cmp(struct discovered_dev_info *d1, struct discovered_dev_info *d2)
 	return rssi1 - rssi2;
 }
 
-int disc_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi,
+int found_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi,
 			name_status_t name_status)
 {
-	struct discovered_dev_info *dev, match;
+	struct remote_dev_info *dev, match;
 	struct slist *l;
 
-	memset(&match, 0, sizeof(struct discovered_dev_info));
+	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, bdaddr);
 	match.name_status = NAME_ANY;
 
 	/* ignore repeated entries */
-	l = slist_find(*list, &match, (cmp_func_t) disc_device_find);
+	l = slist_find(*list, &match, (cmp_func_t) found_device_cmp);
 	if (l) {
 		/* device found, update the attributes */
 		dev = l->data;
@@ -168,15 +168,15 @@ int disc_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi,
 	return 0;
 }
 
-static int disc_device_remove(struct slist **list, bdaddr_t *bdaddr)
+static int found_device_remove(struct slist **list, bdaddr_t *bdaddr)
 {
-	struct discovered_dev_info *dev, match;
+	struct remote_dev_info *dev, match;
 	struct slist *l;
 
-	memset(&match, 0, sizeof(struct discovered_dev_info));
+	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, bdaddr);
 
-	l = slist_find(*list, &match, (cmp_func_t) disc_device_find);
+	l = slist_find(*list, &match, (cmp_func_t) found_device_cmp);
 	if (!l)
 		return -1;
 
@@ -491,11 +491,11 @@ static int unregister_dbus_path(const char *path)
 		adapter->pdiscov_requestor = NULL;
 	}
 
-	if (adapter->disc_devices) {
-		slist_foreach(adapter->disc_devices,
+	if (adapter->found_devices) {
+		slist_foreach(adapter->found_devices,
 				(slist_func_t) free, NULL);
-		slist_free(adapter->disc_devices);
-		adapter->disc_devices = NULL;
+		slist_free(adapter->found_devices);
+		adapter->found_devices = NULL;
 	}
 
 	if (adapter->oor_devices) {
@@ -756,10 +756,10 @@ int hcid_dbus_stop_device(uint16_t id)
 		adapter->pdiscov_requestor = NULL;
 	}
 
-	if (adapter->disc_devices) {
-		slist_foreach(adapter->disc_devices, (slist_func_t) free, NULL);
-		slist_free(adapter->disc_devices);
-		adapter->disc_devices = NULL;
+	if (adapter->found_devices) {
+		slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
+		slist_free(adapter->found_devices);
+		adapter->found_devices = NULL;
 	}
 
 	if (adapter->oor_devices) {
@@ -974,25 +974,25 @@ failed:
 	bt_free(local_addr);
 }
 
-int disc_device_req_name(struct adapter *adapter)
+int found_device_req_name(struct adapter *adapter)
 {
 	struct hci_request rq;
 	evt_cmd_status rp;
 	remote_name_req_cp cp;
-	struct discovered_dev_info match;
+	struct remote_dev_info match;
 	struct slist *l;
 	int dd, req_sent = 0;
 
 	/* get the next remote address */
-	if (!adapter->disc_devices)
+	if (!adapter->found_devices)
 		return -ENODATA;
 
-	memset(&match, 0, sizeof(struct discovered_dev_info));
+	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUIRED;
 
-	l = slist_find(adapter->disc_devices, &match,
-					(cmp_func_t) disc_device_find);
+	l = slist_find(adapter->found_devices, &match,
+					(cmp_func_t) found_device_cmp);
 	if (!l)
 		return -ENODATA;
 
@@ -1012,7 +1012,7 @@ int disc_device_req_name(struct adapter *adapter)
 	/* send at least one request or return failed if the list is empty */
 	do {
 		DBusMessage *failed_signal = NULL;
-		struct discovered_dev_info *dev = l->data;
+		struct remote_dev_info *dev = l->data;
 		char *peer_addr;
 		bdaddr_t tmp;
 
@@ -1055,12 +1055,12 @@ int disc_device_req_name(struct adapter *adapter)
 
 		/* if failed, request the next element */
 		/* remove the element from the list */
-		adapter->disc_devices = slist_remove(adapter->disc_devices, dev);
+		adapter->found_devices = slist_remove(adapter->found_devices, dev);
 		free(dev);
 
 		/* get the next element */
-		l = slist_find(adapter->disc_devices, &match,
-					(cmp_func_t) disc_device_find);
+		l = slist_find(adapter->found_devices, &match,
+					(cmp_func_t) found_device_cmp);
 
 	} while (l);
 
@@ -1098,7 +1098,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	struct slist *l;
 	char path[MAX_PATH_LENGTH];
 	char *local_addr;
-	struct discovered_dev_info *dev;
+	struct remote_dev_info *dev;
 	bdaddr_t tmp;
 	int id;
 
@@ -1127,7 +1127,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		slist_free(adapter->oor_devices);
 		adapter->oor_devices = NULL;
 
-		l = adapter->disc_devices;
+		l = adapter->found_devices;
 		while (l) {
 			dev = l->data;
 			baswap(&tmp, &dev->bdaddr);
@@ -1158,7 +1158,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	 * Keep in mind that non D-Bus requests can arrive.
 	 */
 
-	if (!disc_device_req_name(adapter))
+	if (!found_device_req_name(adapter))
 		goto done; /* skip - there is name to resolve */
 
 	if (adapter->discov_active) {
@@ -1170,9 +1170,9 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	}
 
 	/* free discovered devices list */
-	slist_foreach(adapter->disc_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->disc_devices);
-	adapter->disc_devices = NULL;
+	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
+	slist_free(adapter->found_devices);
+	adapter->found_devices = NULL;
 
 	if (adapter->discov_requestor) { 
 		name_listener_remove(connection, adapter->discov_requestor,
@@ -1274,9 +1274,9 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	adapter->discov_type &= ~(PERIODIC_INQUIRY | RESOLVE_NAME);
 
 	/* free discovered devices list */
-	slist_foreach(adapter->disc_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->disc_devices);
-	adapter->disc_devices = NULL;
+	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
+	slist_free(adapter->found_devices);
+	adapter->found_devices = NULL;
 
 	/* free out of range devices list */
 	slist_foreach(adapter->oor_devices, (slist_func_t) free, NULL);
@@ -1337,7 +1337,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	char path[MAX_PATH_LENGTH];
 	struct adapter *adapter;
 	struct slist *l;
-	struct discovered_dev_info match;
+	struct remote_dev_info match;
 	char *local_addr, *peer_addr, *name, *tmp_name;
 	dbus_int16_t tmp_rssi = rssi;
 	bdaddr_t tmp;
@@ -1392,12 +1392,12 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 	send_message_and_unref(connection, signal_device);
 
-	memset(&match, 0, sizeof(struct discovered_dev_info));
+	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
 	/* if found: don't sent the name again */
-	l = slist_find(adapter->disc_devices, &match,
-			(cmp_func_t) disc_device_find);
+	l = slist_find(adapter->found_devices, &match,
+			(cmp_func_t) found_device_cmp);
 	if (l)
 		goto done;
 
@@ -1442,7 +1442,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	} 
 
 	/* add in the list to track name sent/pending */
-	disc_device_add(&adapter->disc_devices, peer, rssi, name_status);
+	found_device_add(&adapter->found_devices, peer, rssi, name_status);
 
 done:
 	bt_free(local_addr);
@@ -1523,16 +1523,16 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	send_message_and_unref(connection, message);
 
 	/* remove from remote name request list */
-	disc_device_remove(&adapter->disc_devices, peer);
+	found_device_remove(&adapter->found_devices, peer);
 
 	/* check if there is more devices to request names */
-	if (!disc_device_req_name(adapter))
+	if (!found_device_req_name(adapter))
 		goto done; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
-	slist_foreach(adapter->disc_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->disc_devices);
-	adapter->disc_devices = NULL;
+	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
+	slist_free(adapter->found_devices);
+	adapter->found_devices = NULL;
 
 	/*
 	 * The discovery completed signal must be sent only for discover 
@@ -2418,7 +2418,7 @@ static int remote_name_cancel(int dd, bdaddr_t *dba, int to)
 
 int cancel_discovery(struct adapter *adapter)
 {
-	struct discovered_dev_info *dev, match;
+	struct remote_dev_info *dev, match;
 	struct slist *l;
 	int dd, err = 0;
 
@@ -2435,12 +2435,12 @@ int cancel_discovery(struct adapter *adapter)
 	 * If there is a pending read remote name request means
 	 * that the inquiry complete event was already received
 	 */
-	memset(&match, 0, sizeof(struct discovered_dev_info));
+	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = slist_find(adapter->disc_devices, &match,
-				(cmp_func_t) disc_device_find);
+	l = slist_find(adapter->found_devices, &match,
+				(cmp_func_t) found_device_cmp);
 	if (l) {
 		dev = l->data;
 		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
@@ -2463,9 +2463,9 @@ cleanup:
 	 * Reset discov_requestor and discover_state in the remote name
 	 * request event handler or in the inquiry complete handler.
 	 */
-	slist_foreach(adapter->disc_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->disc_devices);
-	adapter->disc_devices = NULL;
+	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
+	slist_free(adapter->found_devices);
+	adapter->found_devices = NULL;
 
 	/* Disable name resolution for non D-Bus clients */
 	if (!adapter->pdiscov_requestor)
@@ -2512,7 +2512,7 @@ static int periodic_inquiry_exit(int dd, int to)
 
 int cancel_periodic_discovery(struct adapter *adapter)
 {
-	struct discovered_dev_info *dev, match;
+	struct remote_dev_info *dev, match;
 	struct slist *l;
 	int dd, err = 0;
 	
@@ -2525,12 +2525,12 @@ int cancel_periodic_discovery(struct adapter *adapter)
 		goto cleanup;
 	}
 	/* find the pending remote name request */
-	memset(&match, 0, sizeof(struct discovered_dev_info));
+	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = slist_find(adapter->disc_devices, &match,
-			(cmp_func_t) disc_device_find);
+	l = slist_find(adapter->found_devices, &match,
+			(cmp_func_t) found_device_cmp);
 	if (l) {
 		dev = l->data;
 		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
@@ -2554,9 +2554,9 @@ cleanup:
 	 * Reset pdiscov_requestor and pdiscov_active is done when the
 	 * cmd complete event for exit periodic inquiry mode cmd arrives.
 	 */
-	slist_foreach(adapter->disc_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->disc_devices);
-	adapter->disc_devices = NULL;
+	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
+	slist_free(adapter->found_devices);
+	adapter->found_devices = NULL;
 
 	return err;
 }
