@@ -2273,7 +2273,11 @@ static DBusHandlerResult handle_dev_start_periodic_req(DBusConnection *conn, DBu
 	}
 
 	adapter->pdiscovery_requestor = strdup(dbus_message_get_sender(msg));
-	adapter->discover_type = PERIODIC_INQUIRY | RESOLVE_NAME;
+
+	if (adapter->pdiscov_resolve_names)
+		adapter->discover_type = PERIODIC_INQUIRY | RESOLVE_NAME;
+	else
+		adapter->discover_type = PERIODIC_INQUIRY;
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -2328,6 +2332,61 @@ static DBusHandlerResult handle_dev_is_periodic_req(DBusConnection *conn, DBusMe
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &active,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_set_pdiscov_name_resolve(DBusConnection *conn,
+								DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusError err;
+	struct adapter *adapter = data;
+	dbus_bool_t resolve;
+
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_BOOLEAN, &resolve,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	adapter->pdiscov_resolve_names = resolve;
+
+	if (adapter->pdisc_active) {
+		if (resolve)
+			adapter->discover_type |= RESOLVE_NAME;
+		else
+			adapter->discover_type &= ~RESOLVE_NAME;
+	}
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult handle_dev_get_pdiscov_name_resolve(DBusConnection *conn,
+								DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	struct adapter *adapter = data;
+	dbus_bool_t resolve = adapter->pdiscov_resolve_names;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &resolve,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -2571,6 +2630,8 @@ static struct service_data dev_services[] = {
 	{ "StartPeriodicDiscovery",			handle_dev_start_periodic_req		},
 	{ "StopPeriodicDiscovery",			handle_dev_stop_periodic_req		},
 	{ "IsPeriodicDiscovery",			handle_dev_is_periodic_req		},
+	{ "SetPeriodicDiscoveryNameResolving",		handle_dev_set_pdiscov_name_resolve	},
+	{ "GetPeriodicDiscoveryNameResolving",		handle_dev_get_pdiscov_name_resolve	},
 
 	{ "DiscoverDevices",				handle_dev_discover_devices_req		},
 	{ "DiscoverDevicesWithoutNameResolving",	handle_dev_discover_devices_req		},

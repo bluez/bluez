@@ -117,6 +117,7 @@ struct adapter {
 	int pdisc_active;			/* periodic discovery active */
 	int pinq_idle;				/* tracks the idle time for periodic inquiry */
 	int discover_type;			/* type requested */
+	int pdiscov_resolve_names;		/* Resolve names when doing periodic discovery */
 	struct slist *disc_devices;
 	struct slist *oor_devices;		/* out of range device list */
 	char *pdiscovery_requestor;		/* periodic discovery requestor unique name */

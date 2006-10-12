@@ -755,6 +755,20 @@ Methods		string GetAddress()
 
 			Possible errors: none
 
+		void SetPeriodicDiscoveryNameResolving(boolean resolve_names)
+			
+			Enable or disable automatic remote name resolving for
+			periodic discovery.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		boolean GetPeriodicDiscoveryNameResolving()
+
+			Check if automatic remote name resolving is enabled or not
+			for periodic discovery.
+
+			Possible error: org.bluez.Error.InvalidArguments
+
 		array{uint32} GetRemoteServiceHandles(string address, string match)
 
 			This method will request the SDP database of a remote
