@@ -230,7 +230,7 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 	l2cap_cmd_hdr *cmd = (l2cap_cmd_hdr *) buf;
 	l2cap_info_req *req = (l2cap_info_req *) (buf + L2CAP_CMD_HDR_SIZE);
 	l2cap_info_rsp *rsp = (l2cap_info_rsp *) (buf + L2CAP_CMD_HDR_SIZE);
-	int sk;
+	int sk, ret, expected;
 
 	if (cond & G_IO_NVAL) {
 		g_io_channel_unref(io);
@@ -244,26 +244,45 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 
 	memset(buf, 0, sizeof(buf));
 
-	if (recv(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_RSP_SIZE + 2, 0) < 0) {
+	if (audit->state == AUDIT_STATE_MTU)
+		expected = L2CAP_CMD_HDR_SIZE + L2CAP_INFO_RSP_SIZE + 2;
+	else
+		expected = L2CAP_CMD_HDR_SIZE + L2CAP_INFO_RSP_SIZE + 4;
+
+	ret = recv(sk, buf, expected, 0);
+	if (ret < 0) {
 		error("Can't receive info response: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	if (ret < L2CAP_CMD_HDR_SIZE) {
+		error("Too little data for l2cap response");
 		goto failed;
 	}
 
 	if (cmd->code != L2CAP_INFO_RSP)
 		return TRUE;
 
-	if (audit->timeout) {
-		g_timeout_remove(audit->timeout);
-		audit->timeout = 0;
+	if (ret < expected) {
+		error("Too little data for l2cap info response");
+		goto failed;
 	}
 
 	switch (audit->state) {
 	case AUDIT_STATE_MTU:
+		if (rsp->type != htobs(0x0001))
+			return TRUE;
+
+		if (audit->timeout) {
+			g_timeout_remove(audit->timeout);
+			audit->timeout = 0;
+		}
+
 		handle_mtu_response(audit, rsp);
 
 		memset(buf, 0, sizeof(buf));
 		cmd->code  = L2CAP_INFO_REQ;
-		cmd->ident = 42;
+		cmd->ident = 43;
 		cmd->len   = htobs(2);
 		req->type  = htobs(0x0002);
 
@@ -280,6 +299,14 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 		return TRUE;
 
 	case AUDIT_STATE_FEATURES:
+		if (rsp->type != htobs(0x0002))
+			return TRUE;
+
+		if (audit->timeout) {
+			g_timeout_remove(audit->timeout);
+			audit->timeout = 0;
+		}
+
 		handle_features_response(audit, rsp);
 		break;
 	}
