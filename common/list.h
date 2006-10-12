@@ -39,10 +39,14 @@ struct slist *slist_prepend(struct slist *list, void *data);
 
 struct slist *slist_insert_before(struct slist *list, struct slist *sibling, void *data);
 
+struct slist *slist_insert_sorted(struct slist *list, void *data, cmp_func_t cmp_func);
+
 struct slist *slist_remove(struct slist *list, void *data);
 
 struct slist *slist_find(struct slist *list, const void *data,
 			cmp_func_t cmp_func);
+
+struct slist *slist_sort(struct slist *list, cmp_func_t cmp_func);
 
 int slist_length(struct slist *list);
 
