@@ -367,33 +367,35 @@ static int register_dbus_path(const char *path, uint16_t dev_id,
 				const DBusObjectPathVTable *pvtable,
 				gboolean fallback)
 {
-	struct adapter *data;
+	struct adapter *adapter;
 
 	info("Register path:%s fallback:%d", path, fallback);
 
-	data = malloc(sizeof(struct adapter));
-	if (!data) {
+	adapter = malloc(sizeof(struct adapter));
+	if (!adapter) {
 		error("Failed to alloc memory to DBUS path register data (%s)",
 				path);
 		return -1;
 	}
 
-	memset(data, 0, sizeof(struct adapter));
+	memset(adapter, 0, sizeof(struct adapter));
 
-	data->dev_id = dev_id;
+	adapter->dev_id = dev_id;
+
+	adapter->pdiscov_resolve_names = 1;
 
 	if (fallback) {
 		if (!dbus_connection_register_fallback(connection, path,
-							pvtable, data)) {
+							pvtable, adapter)) {
 			error("D-Bus failed to register %s fallback", path);
-			free(data);
+			free(adapter);
 			return -1;
 		}
 	} else {
 		if (!dbus_connection_register_object_path(connection, path,
-							pvtable, data)) {
+							pvtable, adapter)) {
 			error("D-Bus failed to register %s object", path);
-			free(data);
+			free(adapter);
 			return -1;
 		}
 	}
