@@ -1417,7 +1417,7 @@ static DBusHandlerResult handle_dev_get_remote_name_req(DBusConnection *conn, DB
 
 	/* put the request name in the queue to resolve name */
 	str2ba(peer_addr, &peer_bdaddr);
-	disc_device_append(&adapter->disc_devices, &peer_bdaddr, NAME_REQUIRED);
+	disc_device_add(&adapter->disc_devices, &peer_bdaddr, 0, NAME_REQUIRED);
 
 	/* 
 	 * if there is a discover process running, just queue the request.

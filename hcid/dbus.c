@@ -104,8 +104,7 @@ int disc_device_find(const struct discovered_dev_info *d1, const struct discover
 			return ret;
 	}
 
-	/* if not any */
-	if (d2->name_status) {
+	if (d2->name_status != NAME_ANY) {
 		ret = (d1->name_status - d2->name_status);
 		if (ret)
 			return ret;
@@ -114,7 +113,18 @@ int disc_device_find(const struct discovered_dev_info *d1, const struct discover
 	return 0;
 }
 
-int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status)
+int dev_rssi_cmp(struct discovered_dev_info *d1, struct discovered_dev_info *d2)
+{
+	int rssi1, rssi2;
+
+	rssi1 = d1->rssi < 0 ? -d1->rssi : d1->rssi;
+	rssi2 = d2->rssi < 0 ? -d2->rssi : d2->rssi;
+
+	return rssi1 - rssi2;
+}
+
+int disc_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi,
+			name_status_t name_status)
 {
 	struct discovered_dev_info *dev, match;
 	struct slist *l;
@@ -129,12 +139,17 @@ int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name
 		/* device found, update the attributes */
 		dev = l->data;
 
+		dev->rssi = rssi;
+
 		 /* Get remote name can be received while inquiring.
 		  * Keep in mind that multiple inquiry result events can
 		  * be received from the same remote device.
 		  */
 		if (name_status != NAME_NOT_REQUIRED)
 			dev->name_status = name_status;
+
+		*list = slist_sort(*list, (cmp_func_t) dev_rssi_cmp);
+
 		return -EALREADY;
 	}
 
@@ -144,9 +159,10 @@ int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name
 
 	memset(dev, 0, sizeof(*dev));
 	bacpy(&dev->bdaddr, bdaddr);
+	dev->rssi = rssi;
 	dev->name_status = name_status;
 
-	*list = slist_append(*list, dev);
+	*list = slist_insert_sorted(*list, dev, (cmp_func_t) dev_rssi_cmp);
 
 	return 0;
 }
@@ -1381,7 +1397,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, i
 	} 
 
 	/* add in the list to track name sent/pending */
-	disc_device_append(&adapter->disc_devices, peer, name_status);
+	disc_device_add(&adapter->disc_devices, peer, rssi, name_status);
 
 done:
 	bt_free(local_addr);

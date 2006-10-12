@@ -81,6 +81,7 @@ typedef enum {
 
 struct discovered_dev_info {
 	bdaddr_t bdaddr;
+	int8_t rssi;
 	name_status_t name_status;
 };
 
@@ -253,7 +254,7 @@ int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
 int pin_req_cmp(const void *p1, const void *p2);
 int disc_device_find(const struct discovered_dev_info *d1, const struct discovered_dev_info *d2);
-int disc_device_append(struct slist **list, bdaddr_t *bdaddr, name_status_t name_status);
+int disc_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi, name_status_t name_status);
 int disc_device_req_name(struct adapter *dbus_data);
 
 int discoverable_timeout_handler(void *data);
