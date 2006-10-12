@@ -109,20 +109,20 @@ struct active_conn_info {
 struct adapter {
 	uint16_t dev_id;
 	int up;
-	char address[18];		   /* adapter Bluetooth Address */
-	uint32_t timeout_id;		   /* discoverable timeout id */
-	uint32_t discoverable_timeout;	   /* discoverable time(msec) */
-	uint8_t mode;		           /* scan mode */
-	int disc_active;			/* standard discovery active: includes name resolution step */
-	int pdisc_active;			/* periodic discovery active */
-	int pinq_idle;				/* tracks the idle time for periodic inquiry */
-	int discover_type;			/* type requested */
-	int pdiscov_resolve_names;		/* Resolve names when doing periodic discovery */
+	char address[18];		/* adapter Bluetooth Address */
+	uint32_t timeout_id;		/* discoverable timeout id */
+	uint32_t discov_timeout;	/* discoverable time(msec) */
+	uint8_t mode;			/* scan mode */
+	int discov_active;		/* standard discovery active: includes name resolution step */
+	int pdiscov_active;		/* periodic discovery active */
+	int pinq_idle;			/* tracks the idle time for periodic inquiry */
+	int discov_type;		/* type requested */
+	int pdiscov_resolve_names;	/* Resolve names when doing periodic discovery */
 	struct slist *disc_devices;
-	struct slist *oor_devices;		/* out of range device list */
-	char *pdiscovery_requestor;		/* periodic discovery requestor unique name */
-	char *discovery_requestor;		/* discovery requestor unique name */
-	DBusMessage *discovery_cancel;		/* discovery cancel message request */
+	struct slist *oor_devices;	/* out of range device list */
+	char *pdiscov_requestor;	/* periodic discovery requestor unique name */
+	char *discov_requestor;		/* discovery requestor unique name */
+	DBusMessage *discovery_cancel;	/* discovery cancel message request */
 	struct slist *passkey_agents;
 	struct slist *active_conn;
 	struct bonding_request_info *bonding;
@@ -258,7 +258,7 @@ int disc_device_find(const struct discovered_dev_info *d1, const struct discover
 int disc_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi, name_status_t name_status);
 int disc_device_req_name(struct adapter *dbus_data);
 
-int discoverable_timeout_handler(void *data);
+int discov_timeout_handler(void *data);
 
 uint16_t sdp_str2svclass(const char *str);
 typedef void get_record_cb_t(sdp_record_t *rec, void *data, int err);

@@ -401,7 +401,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	if (!read_l2cap_info(&local, &peer, NULL, NULL, NULL, NULL))
 		return error_audit_already_exists(conn, msg);
 
-	if (adapter->disc_active || (adapter->pdisc_active && !adapter->pinq_idle))
+	if (adapter->discov_active || (adapter->pdiscov_active && !adapter->pinq_idle))
 		queue = TRUE;
 	else
 		queue = audit_in_progress();
@@ -639,7 +639,8 @@ void process_audits_list(const char *adapter_path)
 			continue;
 		}
 
-		if (adapter->disc_active || (adapter->pdisc_active && !adapter->pinq_idle))
+		if (adapter->discov_active || (adapter->pdiscov_active
+					&& !adapter->pinq_idle))
 			continue;
 
 		sk = l2raw_connect(adapter->address, &audit->peer);
