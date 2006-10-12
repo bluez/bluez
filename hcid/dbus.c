@@ -171,21 +171,19 @@ static int disc_device_remove(struct slist **list, bdaddr_t *bdaddr)
 {
 	struct discovered_dev_info *dev, match;
 	struct slist *l;
-	int ret_val = -1;
 
 	memset(&match, 0, sizeof(struct discovered_dev_info));
 	bacpy(&match.bdaddr, bdaddr);
 
 	l = slist_find(*list, &match, (cmp_func_t) disc_device_find);
+	if (!l)
+		return -1;
 
-	if (l) {
-		dev = l->data;
-		*list = slist_remove(*list, dev);
-		free(dev);
-		ret_val = 0;
-	}
+	dev = l->data;
+	*list = slist_remove(*list, dev);
+	free(dev);
 
-	return ret_val;
+	return 0;
 }
 
 int active_conn_find_by_bdaddr(const void *data, const void *user_data)
