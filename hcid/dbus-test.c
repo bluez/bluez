@@ -237,11 +237,6 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 		return FALSE;
 	}
 
-	if (audit->timeout) {
-		g_timeout_remove(audit->timeout);
-		audit->timeout = 0;
-	}
-
 	if (cond & (G_IO_ERR | G_IO_HUP))
 		goto failed;
 
@@ -252,6 +247,14 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 	if (recv(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_RSP_SIZE + 2, 0) < 0) {
 		error("Can't receive info response: %s (%d)", strerror(errno), errno);
 		goto failed;
+	}
+
+	if (cmd->code != L2CAP_INFO_RSP)
+		return TRUE;
+
+	if (audit->timeout) {
+		g_timeout_remove(audit->timeout);
+		audit->timeout = 0;
 	}
 
 	switch (audit->state) {
@@ -286,6 +289,11 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 				audit->mask_result, audit->mask);
 
 failed:
+	if (audit->timeout) {
+		g_timeout_remove(audit->timeout);
+		audit->timeout = 0;
+	}
+
 	send_audit_status(audit, "AuditRemoteDeviceComplete");
 
 	g_io_channel_close(io);
