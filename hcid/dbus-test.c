@@ -263,7 +263,7 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 	if (cmd->code != L2CAP_INFO_RSP)
 		return TRUE;
 
-	if (ret < expected) {
+	if (ret < L2CAP_CMD_HDR_SIZE + L2CAP_INFO_RSP_SIZE) {
 		error("Too little data for l2cap info response");
 		goto failed;
 	}
