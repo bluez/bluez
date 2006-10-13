@@ -2460,6 +2460,9 @@ static DBusHandlerResult adapter_set_pdiscov_resolve(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	debug("SetPeriodicDiscoveryNameResolving(%s)",
+			resolve ? "TRUE" : "FALSE");
+
 	adapter->pdiscov_resolve_names = resolve;
 
 	if (adapter->pdiscov_active) {

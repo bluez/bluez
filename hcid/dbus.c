@@ -1145,7 +1145,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	 * Enable resolution again: standard inquiry can be 
 	 * received in the periodic inquiry idle state.
 	 */
-	if (adapter->pdiscov_requestor)
+	if (adapter->pdiscov_requestor && adapter->pdiscov_resolve_names)
 		adapter->discov_type |= RESOLVE_NAME;
 
 	/*
