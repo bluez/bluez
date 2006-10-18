@@ -1962,7 +1962,7 @@ void hcid_dbus_exit(void)
 done:
 	unregister_dbus_path(BASE_PATH);
 
-	dbus_connection_close(connection);
+	dbus_connection_unref(connection);
 }
 
 /*****************************************************************
