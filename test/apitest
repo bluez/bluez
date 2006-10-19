@@ -399,7 +399,8 @@ class Tester:
             self.dbus_mgr_sig_setup()
             self.dbus_dev_sig_setup()
             print 'Listening for events...'
-        elif self.cmd in mgr_cmds:
+
+        if self.cmd in mgr_cmds:
             try:
                 self.dbus_mgr_setup()
             except dbus.DBusException, e:
@@ -413,7 +414,7 @@ class Tester:
                 print 'Failed to setup device interface: %s' % e
                 sys.exit(1)
             self.call_dev_dbus_func()
-        else:
+        elif not self.listen:
             print 'Unknown command: %s' % self.cmd
             self.usage()
             sys.exit(1)
