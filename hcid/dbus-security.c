@@ -470,6 +470,7 @@ static int call_passkey_agent(DBusConnection *conn,
 {
 	DBusMessage *message = NULL;
 	struct pending_agent_request *req = NULL;
+	dbus_bool_t numeric = FALSE;
 	char bda[18];
 	char *ptr = bda;
 
@@ -505,6 +506,7 @@ static int call_passkey_agent(DBusConnection *conn,
 	dbus_message_append_args(message,
 					DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_BOOLEAN, &numeric,
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(conn, message,
