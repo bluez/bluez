@@ -76,12 +76,14 @@ static DBusHandlerResult request_message(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	const char *path, *address;
+	dbus_bool_t numeric;
 
 	if (!passkey)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_STRING, &address, DBUS_TYPE_INVALID)) {
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &path, DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_BOOLEAN, &numeric, DBUS_TYPE_INVALID)) {
 		fprintf(stderr, "Invalid arguments for passkey Request method");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
@@ -104,15 +106,24 @@ static DBusHandlerResult request_message(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult release_message(DBusConnection *conn,
+static DBusHandlerResult confirm_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	const char *path, *address, *value;
+	dbus_bool_t result;
 
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID)) {
-		fprintf(stderr, "Invalid arguments for passkey Release method");
+	if (!passkey)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &path, DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_STRING, &value, DBUS_TYPE_INVALID)) {
+		fprintf(stderr, "Invalid arguments for passkey Confirm method");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
+
+	result = strcmp(value, passkey) == 0 ? TRUE : FALSE;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -120,13 +131,31 @@ static DBusHandlerResult release_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &result,
+					DBUS_TYPE_INVALID);
 
 	dbus_connection_send(conn, reply, NULL);
 
 	dbus_connection_flush(conn);
 
 	dbus_message_unref(reply);
+	
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult cancel_message(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult release_message(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID)) {
+		fprintf(stderr, "Invalid arguments for passkey Release method");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
 
 	if (!__io_canceled)
 		fprintf(stderr, "Passkey service has been released\n");
@@ -141,6 +170,12 @@ static DBusHandlerResult agent_message(DBusConnection *conn,
 {
 	if (dbus_message_is_method_call(msg, "org.bluez.PasskeyAgent", "Request"))
 		return request_message(conn, msg, data);
+
+	if (dbus_message_is_method_call(msg, "org.bluez.PasskeyAgent", "Confirm"))
+		return confirm_message(conn, msg, data);
+
+	if (dbus_message_is_method_call(msg, "org.bluez.PasskeyAgent", "Cancel"))
+		return cancel_message(conn, msg, data);
 
 	if (dbus_message_is_method_call(msg, "org.bluez.PasskeyAgent", "Release"))
 		return release_message(conn, msg, data);
@@ -226,7 +261,7 @@ static int unregister_agent(DBusConnection *conn, const char *agent_path,
 	msg = dbus_message_new_method_call("org.bluez", path, INTERFACE, method);
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");
-		dbus_connection_close(conn);
+		dbus_connection_unref(conn);
 		exit(1);
 	}
 
@@ -334,7 +369,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (register_agent(conn, agent_path, address, use_default) < 0) {
-		dbus_connection_close(conn);
+		dbus_connection_unref(conn);
 		exit(1);
 	}
 
@@ -354,7 +389,7 @@ int main(int argc, char *argv[])
 	sigaction(SIGINT,  &sa, NULL);
 
 	while (!__io_canceled && !__io_terminated) {
-		if (dbus_connection_read_write_dispatch(conn, 100) != TRUE)
+		if (dbus_connection_read_write_dispatch(conn, 500) != TRUE)
 			break;
 	}
 
@@ -364,7 +399,7 @@ int main(int argc, char *argv[])
 	if (passkey)
 		free(passkey);
 
-	dbus_connection_close(conn);
+	dbus_connection_unref(conn);
 
 	return 0;
 }

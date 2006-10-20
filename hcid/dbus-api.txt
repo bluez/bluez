@@ -954,21 +954,35 @@ Service		unique name
 Interface	org.bluez.PasskeyAgent
 Object path	freely definable
 
-Methods		string Request(string path, string address)
+Methods		string Request(string path, string address, boolean numeric)
 
 			This method gets called when the service daemon
 			needs to get the passkey for an authentication. The
 			return value is actual passkey.
 
 			The first argument contains the path of the local
-			adapter and the second one the remote address.
+			adapter and the second one the remote address. The
+			third argument signals if a numeric PIN code is
+			expected or not. The default is a 1 to 16 byte PIN
+			code in UTF-8 format.
+
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
+		boolean Confirm(string path, string address, string value)
+
+			This method gets called when the service daemon
+			needs to verify a passkey. The verification is
+			done by showing the value to the passkey agent
+			and returnin true means a successful confirmation
+			while false means that the values don't match.
 
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
 		void Cancel(string path, string address)
 
-			This method is called to indicate that the
+			This method gets called to indicate that the
 			authentication request failed before a reply was
 			returned by the Request method.
 
