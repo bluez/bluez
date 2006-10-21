@@ -167,6 +167,10 @@ Signals		void AdapterAdded(string path)
 
 			Parameter is object path of removed adapter.
 
+		void DefaultAdapterChanged(string path)
+
+			Parameter is object path of the new default adapoter.
+
 
 Adapter hierarchy
 =================
@@ -797,6 +801,11 @@ Signals		void ModeChanged(string mode)
 
 			This signal can also be triggered by low-level HCI
 			commands.
+
+		void DiscoverableTimeoutChanged(uint32 timeout)
+
+			After changing the discoverable timeout this signal
+			provide the new timeout value.
 
 		void MinorClassChanged(string minor)
 
