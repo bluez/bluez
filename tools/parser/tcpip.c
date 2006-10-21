@@ -75,8 +75,8 @@ void ip_dump(int level, struct frame *frm)
 {
 	char src[50], dst[50];
 	struct ip *ip = (struct ip *) (frm->ptr);
+	uint8_t proto;
 	int len;
-	uint8_t proto = 0;
 
 	if (ip->ip_v == 4) {
 		struct sockaddr_in sai;
@@ -103,6 +103,9 @@ void ip_dump(int level, struct frame *frm)
 		memcpy(&sai6.sin6_addr, &ip6->ip6_dst, sizeof(struct in6_addr));
 		getnameinfo((struct sockaddr *) &sai6, sizeof(sai6),
 			    dst, sizeof(dst), NULL, 0, NI_NUMERICHOST);
+	} else {
+		raw_dump(level, frm);
+		return;
 	}
 
 	printf("src %s ", src);
