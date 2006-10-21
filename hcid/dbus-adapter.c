@@ -1027,8 +1027,8 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 	
-	if (strlen(str_ptr) == 0 || !g_utf8_validate(str_ptr, -1, NULL)) {
-		error("Name change failed: Invalid parameter");
+	if (!g_utf8_validate(str_ptr, -1, NULL)) {
+		error("Name change failed: the supplied name isn't valid UTF-8");
 		return error_invalid_arguments(conn, msg);
 	}
 
