@@ -393,6 +393,45 @@ static struct service_data sec_services[] = {
 	{ NULL, NULL }
 };
 
+static DBusPendingCall *agent_request(const char *path, bdaddr_t *bda,
+					struct passkey_agent *agent,
+					dbus_bool_t numeric, int old_if)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+	char bda_str[18], *ptr = bda_str;
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+					"org.bluez.PasskeyAgent", "Request");
+	if (message == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return NULL;
+	}
+
+	ba2str(bda, bda_str);
+
+	if (old_if)
+		dbus_message_append_args(message,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_STRING, &ptr,
+				DBUS_TYPE_INVALID);
+	else
+		dbus_message_append_args(message,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_STRING, &ptr,
+				DBUS_TYPE_BOOLEAN, &numeric,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(agent->conn, message,
+				&call, REQUEST_TIMEOUT) == FALSE) {
+		error("D-Bus send failed");
+		dbus_message_unref(message);
+		return NULL;
+	}
+
+	return call;
+}
+
 static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 {
 	struct pending_agent_request *req = user_data;
@@ -411,6 +450,24 @@ static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 	if (dbus_set_error_from_message(&err, message)) {
 		error("Passkey agent replied with an error: %s, %s",
 				err.name, err.message);
+		if (!req->old_if && !strcmp(err.name, DBUS_ERROR_UNKNOWN_METHOD)) {
+			debug("New Request API failed, trying old one");
+			req->old_if = 1;
+			dbus_error_free(&err);
+			dbus_pending_call_unref(req->call);
+			req->call = agent_request(req->path, &req->bda, agent,
+							FALSE, 1);
+			if (!req->call)
+				goto fail;
+
+			dbus_message_unref(message);
+
+			dbus_pending_call_set_notify(req->call,
+							passkey_agent_reply,
+							req, NULL);
+			return;
+		}
+
 		dbus_error_free(&err);
 		goto fail;
 	}
@@ -452,7 +509,8 @@ done:
 
 	agent->pending_requests = slist_remove(agent->pending_requests, req);
 	dbus_pending_call_cancel(req->call);
-	dbus_pending_call_unref(req->call);
+	if (req->call)
+		dbus_pending_call_unref(req->call);
 	free(req->path);
 	free(req);
 
@@ -468,13 +526,7 @@ static int call_passkey_agent(DBusConnection *conn,
 				const char *path, bdaddr_t *sba,
 				bdaddr_t *dba)
 {
-	DBusMessage *message = NULL;
 	struct pending_agent_request *req = NULL;
-	dbus_bool_t numeric = FALSE;
-	char bda[18];
-	char *ptr = bda;
-
-	ba2str(dba, bda);
 
 	if (!agent) {
 		debug("call_passkey_agent(): no agent available");
@@ -483,13 +535,6 @@ static int call_passkey_agent(DBusConnection *conn,
 
 	debug("Calling PasskeyAgent.Request: name=%s, path=%s",
 						agent->name, agent->path);
-
-	message = dbus_message_new_method_call(agent->name, agent->path,
-					"org.bluez.PasskeyAgent", "Request");
-	if (message == NULL) {
-		error("Couldn't allocate D-Bus message");
-		goto failed;
-	}
 
 	req = malloc(sizeof(struct pending_agent_request));
 	if (!req)
@@ -503,30 +548,17 @@ static int call_passkey_agent(DBusConnection *conn,
 	if (!req->path)
 		goto failed;
 
-	dbus_message_append_args(message,
-					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_STRING, &ptr,
-					DBUS_TYPE_BOOLEAN, &numeric,
-					DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(conn, message,
-				&req->call, REQUEST_TIMEOUT) == FALSE) {
-		error("D-Bus send failed");
+	req->call = agent_request(path, dba, agent, FALSE, 0);
+	if (!req->call)
 		goto failed;
-	}
 
 	dbus_pending_call_set_notify(req->call, passkey_agent_reply, req, NULL);
 
 	agent->pending_requests = slist_append(agent->pending_requests, req);
 
-	dbus_message_unref(message);
-
 	return 0;
 
 failed:
-	if (message)
-		dbus_message_unref(message);
-
 	if (req) {
 		free(req->path);
 		free(req);

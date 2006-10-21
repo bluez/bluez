@@ -148,6 +148,7 @@ struct pending_agent_request {
 	bdaddr_t bda;
 	char *path;
 	DBusPendingCall *call;
+	int old_if;
 };
 
 typedef int register_function_t(DBusConnection *conn, uint16_t id);
