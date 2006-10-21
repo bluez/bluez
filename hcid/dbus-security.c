@@ -448,8 +448,6 @@ static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, message)) {
-		error("Passkey agent replied with an error: %s, %s",
-				err.name, err.message);
 		if (!req->old_if && !strcmp(err.name, DBUS_ERROR_UNKNOWN_METHOD)) {
 			debug("New Request API failed, trying old one");
 			req->old_if = 1;
@@ -467,6 +465,9 @@ static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 							req, NULL);
 			return;
 		}
+
+		error("Passkey agent replied with an error: %s, %s",
+				err.name, err.message);
 
 		dbus_error_free(&err);
 		goto fail;
