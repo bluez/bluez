@@ -595,8 +595,27 @@ int hcid_dbus_unregister_device(uint16_t id)
 failed:
 	ret = unregister_dbus_path(path);
 
-	if (ret == 0 && default_dev == id)
+	if (ret == 0 && default_dev == id) {
 		default_dev = hci_get_route(NULL);
+		if (default_dev >= 0) {
+			snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH,
+					default_dev);
+			message = dbus_message_new_signal(BASE_PATH,
+							MANAGER_INTERFACE,
+							"DefaultAdapterChanged");
+			if (!message) {
+				error("Can't allocate D-Bus message");
+				/* Return success since actual unregistering
+				 * succeeded */
+				return ret;
+			}
+
+			dbus_message_append_args(message,
+						DBUS_TYPE_STRING, &pptr,
+						DBUS_TYPE_INVALID);
+			send_message_and_unref(connection, message);
+		}
+	}
 
 	return ret;
 }
