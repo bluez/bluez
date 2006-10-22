@@ -504,7 +504,7 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 							void *data)
 {
 	struct adapter *adapter = data;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
 	DBusError err;
 	uint32_t timeout;
 	bdaddr_t bdaddr;
@@ -541,6 +541,11 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 
 	str2ba(adapter->address, &bdaddr);
 	write_discoverable_timeout(&bdaddr, timeout);
+
+	signal = dev_signal_factory(adapter->dev_id, "DiscoverableTimeoutChanged",
+						DBUS_TYPE_UINT32, &timeout,
+						DBUS_TYPE_INVALID);
+	send_message_and_unref(conn, signal);
 
 	return send_message_and_unref(conn, reply);
 }
