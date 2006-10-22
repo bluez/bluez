@@ -684,6 +684,9 @@ static void confirm_agent_reply(DBusPendingCall *call, void *user_data)
 		goto fail;
 	}
 
+	if (result == FALSE)
+		goto fail;
+
 	len = strlen(req->pin);
 
 	set_pin_length(&req->sba, len);
