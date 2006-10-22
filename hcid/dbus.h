@@ -240,6 +240,8 @@ int pending_remote_name_cancel(struct adapter *adapter);
 
 int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
 				bdaddr_t *sba, bdaddr_t *dba);
+int handle_confirm_request(DBusConnection *conn, int dev, const char *path,
+				bdaddr_t *sba, bdaddr_t *dba, const char *pin);
 void release_default_agent(void);
 void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda);
 void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdaddr_t *dba);

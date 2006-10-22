@@ -390,13 +390,18 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 				hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
 					PIN_CODE_REPLY_CP_SIZE, &pr);
 			} else {
-				/* Let PIN helper handle that */ 
+				/* Request PIN from passkey agent */
 				hcid_dbus_request_pin(dev, sba, ci);
 			}
 		}
 	} else {
-		/* Let PIN helper handle that */ 
-		hcid_dbus_request_pin(dev, sba, ci);
+		if (pinlen > 0) {
+			/* Confirm PIN by passkey agent */
+			hcid_dbus_confirm_pin(dev, sba, ci, pin);
+		} else {
+			/* Request PIN from passkey agent */ 
+			hcid_dbus_request_pin(dev, sba, ci);
+		}
 	}
 
 	hcid_dbus_pending_pin_req_add(sba, &ci->bdaddr);

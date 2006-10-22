@@ -617,6 +617,14 @@ done:
 	return call_passkey_agent(conn, agent, dev, path, sba, dba);
 }
 
+int handle_confirm_request(DBusConnection *conn, int dev, const char *path,
+				bdaddr_t *sba, bdaddr_t *dba, const char *pin)
+{
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
+
+	return -1;
+}
+
 static void send_cancel_request(struct pending_agent_request *req)
 {
 	DBusMessage *message;

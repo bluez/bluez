@@ -855,6 +855,24 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	return handle_passkey_request(connection, dev, path, sba, &ci->bdaddr);
 }
 
+int hcid_dbus_confirm_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci, char *pin)
+{
+	char path[MAX_PATH_LENGTH], addr[18];
+	int id;
+
+	ba2str(sba, addr);
+
+	id = hci_devid(addr);
+	if (id < 0) {
+		error("No matching device id for %s", addr);
+		return -1;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+
+	return handle_confirm_request(connection, dev, path, sba, &ci->bdaddr, pin);
+}
+
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 					uint8_t status)
 {
