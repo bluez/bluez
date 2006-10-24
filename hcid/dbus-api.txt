@@ -159,6 +159,15 @@ Methods		uint32 InterfaceVersion()
 
 			Returns list of service connection identifiers.
 
+		void RegisterService(string path)
+
+		void UnregisterService(string path)
+
+		void RegisterShadowService(string path)
+
+		void UnregisterShadowService(string path)
+
+
 Signals		void AdapterAdded(string path)
 
 			Parameter is object path of added adapter.
@@ -956,6 +965,38 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 			Possible errors: org.bluez.Error.DoesNotExist
 
 
+Service hierarchy (experimental)
+================================
+
+Service		org.bluez
+Interface	org.bluez.Service
+Object path	/org/bluez
+
+Methods		array{string} GetInterfaceNames()
+
+		string GetConnectionName()
+
+		string GetName()
+
+		string GetDescription()
+
+		void Start()
+
+		void Stop()
+
+		boolean IsRunning()
+
+		array{string} ListUsers(string address)
+
+		void RemoveUser(string address)
+
+		void SetTrusted(string address)
+
+		boolean IsTrusted(string address)
+
+		void RemoveTrust(string address)
+
+
 PasskeyAgent hierarchy
 ======================
 
@@ -1002,6 +1043,28 @@ Methods		string Request(string path, string address, boolean numeric)
 			it to do cleanup tasks. There is no need to
 			unregister the agent, because when this method
 			gets called it has already been unregistered.
+
+
+ServiceAgent hierarchy (experimental)
+=====================================
+
+Service		unique name
+Interface	org.bluez.ServiceAgent
+Object path	freely definable
+
+Methods		array{string} Interfaces()
+
+		string Name()
+
+		string Description()
+
+		void Start()
+
+		void Stop()
+
+		array{byte} Record()
+
+		void Release()
 
 
 RFCOMM hierarchy (experimental)
