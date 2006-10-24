@@ -1112,7 +1112,7 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 
 	str_ver = lmp_vertostr(ver);
 
-	/* default value */
+	/* Default value */
 	snprintf(info, 64, "Bluetooth %s", str_ver);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
@@ -1122,7 +1122,9 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 	if (!str)
 		goto failed;
 
-	/* check if the data is not corrupted */
+	printf("%s\n", str);
+
+	/* Check if the data is not corrupted */
 	if (strlen(str) == 16) {
 		/* Getting the third byte */
 		features  = ((str[6] - 48) << 4) | (str[7] - 48);
@@ -1133,7 +1135,6 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 	free(str);
 
 failed:
-
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
