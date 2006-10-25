@@ -970,7 +970,7 @@ Service hierarchy (experimental)
 
 Service		org.bluez
 Interface	org.bluez.Service
-Object path	/org/bluez
+Object path	one path returned by org.bluez.Manager.ListServices()
 
 Methods		array{string} GetInterfaceNames()
 
@@ -986,7 +986,7 @@ Methods		array{string} GetInterfaceNames()
 
 		boolean IsRunning()
 
-		array{string} ListUsers(string address)
+		array{string} ListUsers()
 
 		void RemoveUser(string address)
 
