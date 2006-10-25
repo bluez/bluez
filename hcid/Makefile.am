@@ -15,7 +15,7 @@ endif
 
 sbin_PROGRAMS = hcid
 
-noinst_PROGRAMS = passkey-agent
+noinst_PROGRAMS = passkey-agent service-agent
 
 hcid_SOURCES = main.c security.c device.c logging.c storage.c \
 		sdp.c sdp.h hcid.h parser.h parser.y \
@@ -30,6 +30,10 @@ hcid_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 passkey_agent_SOURCES = passkey-agent.c
 
 passkey_agent_LDADD = @DBUS_LIBS@
+
+service_agent_SOURCES = service-agent.c
+
+service_agent_LDADD = @DBUS_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@
 
