@@ -525,7 +525,7 @@ static int unregister_dbus_path(const char *path)
 
 unreg:
 	if (!dbus_connection_unregister_object_path (connection, path)) {
-		error("d-bus failed to unregister %s object", path);
+		error("D-Bus failed to unregister %s object", path);
 		return -1;
 	}
 
