@@ -970,7 +970,7 @@ Service hierarchy (experimental)
 
 Service		org.bluez
 Interface	org.bluez.Service
-Object path	one path returned by org.bluez.Manager.ListServices()
+Object path	path from org.bluez.Manager.ListServices()
 
 Methods		array{string} GetInterfaceNames()
 
