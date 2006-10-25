@@ -158,6 +158,10 @@ typedef int unregister_function_t(DBusConnection *conn, uint16_t id);
 DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data);
 DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void *data);
 
+int register_service_agent(DBusConnection *conn, const char *sender, const char *path);
+int unregister_service_agent(DBusConnection *conn, const char *sender, const char *path);
+void append_available_services(DBusMessage *msg);
+
 const char *major_class_str(uint32_t class);
 const char *minor_class_str(uint32_t class);
 struct slist *service_classes_str(uint32_t class);

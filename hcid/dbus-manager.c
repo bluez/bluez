@@ -39,6 +39,7 @@
 
 #include "hcid.h"
 #include "dbus.h"
+#include "list.h"
 
 static DBusHandlerResult interface_version(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -52,7 +53,7 @@ static DBusHandlerResult interface_version(DBusConnection *conn,
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
- 
+
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &version,
 					DBUS_TYPE_INVALID);
 
@@ -201,15 +202,85 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	append_available_services(msg);
+
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult register_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *path;
+	DBusError err;
+	int reg_err;
+	
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+	/* FIXME: send a signal to notify the new registered service? */
+	reg_err = register_service_agent(conn, dbus_message_get_sender(msg), path);
+	if (reg_err < 0)
+		return error_failed(conn, msg, -reg_err);
+
+	return send_message_and_unref(conn, dbus_message_new_method_return(msg));
+}
+
+static DBusHandlerResult unregister_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *path;
+	DBusError err;
+	int unreg_err;
+
+	dbus_error_init(&err);
+	dbus_message_get_args(msg, &err,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't extract message arguments:%s", err.message);
+		dbus_error_free(&err);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	unreg_err = unregister_service_agent(conn, dbus_message_get_sender(msg), path);
+	if (unreg_err < 0)
+		return error_failed(conn, msg, -unreg_err);
+
+	return send_message_and_unref(conn, dbus_message_new_method_return(msg));
+}
+
+static DBusHandlerResult register_shadow_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+
+static DBusHandlerResult unregister_shadow_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static struct service_data methods[] = {
-	{ "InterfaceVersion",	interface_version	},
-	{ "DefaultAdapter",	default_adapter		},
-	{ "FindAdapter",	find_adapter		},
-	{ "ListAdapters",	list_adapters		},
-	{ "ListServices",	list_services		},
+	{ "InterfaceVersion",	interface_version			},
+	{ "DefaultAdapter",	default_adapter				},
+	{ "FindAdapter",	find_adapter				},
+	{ "ListAdapters",	list_adapters				},
+	{ "ListServices",	list_services				},
+	{ "RegisterService",	register_service			},
+	{ "UnregisterService",	unregister_service			},
+	{ "RegisterShadowService",	register_shadow_service		},
+	{ "UnregistershadowService",	unregister_shadow_service	},
+
 	{ NULL, NULL }
 };
 
