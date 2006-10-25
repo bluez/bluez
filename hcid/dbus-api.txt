@@ -157,16 +157,41 @@ Methods		uint32 InterfaceVersion()
 
 		array{string} ListServices()
 
-			Returns list of service connection identifiers.
+			Returns list of object paths of registered
+			service agents.
 
 		void RegisterService(string path)
 
+			This registers a new service agent.
+
+			The path parameter defines the object path of the
+			service agent that will be called when someone
+			requests information through org.bluez.Service
+			interface.
+
 		void UnregisterService(string path)
+
+			This unregisters a service agent that has been
+			previously registered. The path parameter must
+			match the same value that has been used on
+			registration.
 
 		void RegisterShadowService(string path)
 
+			This registers a new shadow service agent. The
+			service will not be available through ListServices().
+
+			The path parameter defines the object path of the
+			service agent that will be called when someone
+			requests information through org.bluez.Service
+			interface.
+
 		void UnregisterShadowService(string path)
 
+			This unregisters a shadow service agent that has
+			been previously registered. The path parameter
+			must match the same value that has been used on
+			registration.
 
 Signals		void AdapterAdded(string path)
 
@@ -974,27 +999,62 @@ Object path	path from org.bluez.Manager.ListServices()
 
 Methods		array{string} GetInterfaceNames()
 
+			This methods gets the names of the interfaces
+			implemented by the service agent and returns them.
+
 		string GetConnectionName()
+
+			This method returns the name of the connection to
+			the service agent.
 
 		string GetName()
 
+			This method gets the service name from the service
+			agent and returns it.
+
 		string GetDescription()
+
+			This method gets the service description from the
+			service agent and returns it.
 
 		void Start()
 
+			This method tells the service agent to actually
+			start the service.
+
 		void Stop()
+
+			This method tells the service agent to stop the
+			service.
 
 		boolean IsRunning()
 
+			Returns true if the service has been started and
+			is currently active. Otherwise, it returns false.
+
 		array{string} ListUsers()
+
+			Returns list of current users (device addresses)
+			of the service.
 
 		void RemoveUser(string address)
 
+			Removes a user of the service. The address parameter
+			must match one of the current users of the service.
+
 		void SetTrusted(string address)
+
+			Marks the user as trusted.
 
 		boolean IsTrusted(string address)
 
+			Returns true if the user is trusted or false otherwise.
+			The address parameter must match one of the
+			current users of the service.
+
 		void RemoveTrust(string address)
+
+			Marks the user as not trusted.
 
 
 PasskeyAgent hierarchy
@@ -1054,17 +1114,42 @@ Object path	freely definable
 
 Methods		array{string} Interfaces()
 
+			This method must return the name of other interfaces
+			the agent implements and wants to export. The service
+			daemon does not know anything about these interfaces
+			so they can be service specific.
+
 		string Name()
+
+			This method must return the service name.
 
 		string Description()
 
+			This method must return a description of which
+			service the agent provides.
+
 		void Start()
+
+			This method gets called when the service daemon
+			wants to start the service provided by the agent.
 
 		void Stop()
 
-		array{byte} Record()
+			This method gets called when the service daemon
+			wants to stop the service provided by the agent.
+
+		string Record()
+
+			This method must return the SDP record in XML
+			format.
 
 		void Release()
+
+			This method gets called when the service daemon
+			unregisters a service agent. An agent can use
+			it to do cleanup tasks. There is no need to
+			unregister the agent, because when this method
+			gets called it has already been unregistered.
 
 
 RFCOMM hierarchy (experimental)
