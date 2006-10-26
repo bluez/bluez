@@ -1980,6 +1980,7 @@ void hcid_dbus_exit(void)
 		return;
 
 	release_default_agent();
+	release_service_agents(connection);
 
 	/* Unregister all paths in Adapter path hierarchy */
 	if (!dbus_connection_list_registered(connection, BASE_PATH, &children))

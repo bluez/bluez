@@ -161,6 +161,7 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn, DBusMessage *msg, void 
 int register_service_agent(DBusConnection *conn, const char *sender, const char *path,
 				const char *name, const char *description);
 int unregister_service_agent(DBusConnection *conn, const char *sender, const char *path);
+void release_service_agents(DBusConnection *conn);
 void append_available_services(DBusMessageIter *iter);
 
 const char *major_class_str(uint32_t class);

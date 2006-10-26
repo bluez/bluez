@@ -105,6 +105,7 @@ static void service_agent_free(struct service_agent *agent)
 
 	if (agent->description)
 		free(agent->description);
+
 	free(agent);
 }
 
@@ -163,7 +164,7 @@ static void forward_reply(DBusPendingCall *call, void *udata)
 	dbus_message_set_no_reply(source_reply, TRUE);
 	dbus_message_set_reply_serial(source_reply, dbus_message_get_serial(call_data->msg));
 
-	/* FIXME: Handle send error */
+	/* FIXME: send fails only due to lack of memory */
 	dbus_connection_send(call_data->conn, source_reply, NULL);
 
 	dbus_message_unref(reply);
@@ -196,20 +197,19 @@ static DBusHandlerResult get_interface_names(DBusConnection *conn,
 
 	dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
 	dbus_message_unref(forward);
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult get_connection_name(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct service_agent *agent = data;
 	DBusMessage *reply;
-	struct service_agent *agent;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	agent = data;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &agent->id,
@@ -243,15 +243,13 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 static DBusHandlerResult get_description(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct service_agent *agent = data;
 	DBusMessage *reply;
-	struct service_agent *agent;
 	const char *description = "";
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	agent = data;
 
 	if (agent->description)
 		description = agent->description;
@@ -403,7 +401,7 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	struct slist *l;
 
 	debug("Unregistering service object: %s", path);
-	
+
 	if (!dbus_connection_get_object_path_data(conn, path, (void *) &agent))
 		return -1;
 
@@ -419,10 +417,46 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	return 0;
 }
 
+void send_release(DBusConnection *conn, const char *id, const char *path)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(id, path,
+				"org.bluez.ServiceAgent", "Release");
+	if (!msg)
+		return;
+
+	dbus_message_set_no_reply(msg, TRUE);
+	dbus_connection_send(conn, msg, NULL);
+	dbus_message_unref(msg);
+}
+
+void release_service_agents(DBusConnection *conn)
+{
+	struct slist *l = services;
+	struct service_agent *agent;
+	const char *path;
+
+	while (l) {
+		path = l->data;
+
+		l = l->next;
+
+		if (dbus_connection_get_object_path_data(conn, path, (void *) &agent)) {
+			send_release(conn, agent->id, path); 
+			service_agent_free(agent);
+		}
+
+		dbus_connection_unregister_object_path (conn, path);
+	}
+
+}
+
 void append_available_services(DBusMessageIter *array_iter)
 {
 	struct slist *l = services;
 	const char *path;
+
 	while (l) {
 		path = l->data;
 		dbus_message_iter_append_basic(array_iter,
