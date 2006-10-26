@@ -53,12 +53,17 @@ static struct slist *services = NULL;
 static void service_call_free(void *data)
 {
 	struct service_call *call = data;
-	if (call) {
-		if (call->conn)
-			dbus_connection_unref(call->conn);
-		if(call->msg)
-			dbus_message_unref(call->msg);
-	}
+
+	if (!call)
+		return;
+
+	if (call->conn)
+		dbus_connection_unref(call->conn);
+
+	if(call->msg)
+		dbus_message_unref(call->msg);
+	
+	free(call);
 }
 
 static int service_agent_cmp(const struct service_agent *a, const struct service_agent *b)
@@ -160,7 +165,7 @@ static void service_agent_exit(const char *name, void *data)
 		if (dbus_connection_get_object_path_data(conn, path, (void *) &agent))
 			service_agent_free(agent);
 
-		dbus_connection_unregister_object_path (conn, path);
+		dbus_connection_unregister_object_path(conn, path);
 
 		message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
 						"ServiceUnregistered");
@@ -350,32 +355,34 @@ static struct service_data services_methods[] = {
 static DBusHandlerResult msg_func_services(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct service_agent *agent = data;
 	service_handler_func_t handler;
-	const char *iface, *path, *sender;
-	struct service_agent *agent;
 	DBusPendingCall *pending;
 	DBusMessage *forward;
 	struct service_call *call_data;
-
-	iface = dbus_message_get_interface(msg);
-	path = dbus_message_get_path(msg);
-	sender = dbus_message_get_sender(msg);
 
 	handler = find_service_handler(services_methods, msg);
 	if (handler)
 		return handler(conn, msg, data);
 
-	agent = data;
-
 	forward = dbus_message_copy(msg);
+	if(!forward)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
 	dbus_message_set_destination(forward, agent->id);
-	dbus_message_set_path(forward, path);
+	dbus_message_set_path(forward, dbus_message_get_path(msg));
 
 	call_data = malloc(sizeof(struct service_call));
+	if (!call_data) {
+		dbus_message_unref(forward);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
 	call_data->conn = dbus_connection_ref(conn);
 	call_data->msg = dbus_message_ref(msg);
 
 	if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
+		service_call_free(call_data);
 		dbus_message_unref(forward);
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
@@ -426,7 +433,7 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	if (dbus_connection_get_object_path_data(conn, path, (void *) &agent))
 		service_agent_free(agent);
 
-	if (!dbus_connection_unregister_object_path (conn, path))
+	if (!dbus_connection_unregister_object_path(conn, path))
 		return -1;
 
 	l = slist_find(services, path, (cmp_func_t) strcmp);
@@ -465,7 +472,7 @@ void release_service_agents(DBusConnection *conn)
 			service_agent_free(agent);
 		}
 
-		dbus_connection_unregister_object_path (conn, path);
+		dbus_connection_unregister_object_path(conn, path);
 	}
 
 	slist_foreach(services, (slist_func_t) free, NULL);
