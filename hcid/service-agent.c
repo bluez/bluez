@@ -105,64 +105,6 @@ static DBusHandlerResult interfaces_message(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult name_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	const char *name = "Example service";
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID)) {
-		fprintf(stderr, "Invalid arguments for service Name method");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		fprintf(stderr, "Can't create reply message\n");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &name,
-					DBUS_TYPE_INVALID);
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_connection_flush(conn);
-
-	dbus_message_unref(reply);
-	
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-static DBusHandlerResult description_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	const char *text = "This is an example service";
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID)) {
-		fprintf(stderr, "Invalid arguments for service Description method");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		fprintf(stderr, "Can't create reply message\n");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &text,
-					DBUS_TYPE_INVALID);
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_connection_flush(conn);
-
-	dbus_message_unref(reply);
-	
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
 static DBusHandlerResult start_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -207,12 +149,6 @@ static DBusHandlerResult service_message(DBusConnection *conn,
 	if (dbus_message_is_method_call(msg, "org.bluez.ServiceAgent", "Interfaces"))
 		return interfaces_message(conn, msg, data);
 
-	if (dbus_message_is_method_call(msg, "org.bluez.ServiceAgent", "Name"))
-		return name_message(conn, msg, data);
-
-	if (dbus_message_is_method_call(msg, "org.bluez.ServiceAgent", "Description"))
-		return description_message(conn, msg, data);
-
 	if (dbus_message_is_method_call(msg, "org.bluez.ServiceAgent", "Start"))
 		return start_message(conn, msg, data);
 
@@ -233,6 +169,8 @@ static int register_service(DBusConnection *conn, const char *service_path)
 {
 	DBusMessage *msg, *reply;
 	DBusError err;
+	const char *name = "Example service";
+	const char *description = "A really simple example service";
 
 	if (!dbus_connection_register_object_path(conn, service_path,
 							&service_table, NULL)) {
@@ -248,6 +186,8 @@ static int register_service(DBusConnection *conn, const char *service_path)
 	}
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &service_path,
+					DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_STRING, &description,
 							DBUS_TYPE_INVALID);
 
 	dbus_error_init(&err);
