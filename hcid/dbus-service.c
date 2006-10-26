@@ -326,9 +326,7 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	if (handler)
 		return handler(conn, msg, data);
 
-	/* Forward to the real service object */
-	if (!dbus_connection_get_object_path_data(conn, path, (void *) &agent))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	agent = (struct service_agent*) data;
 
 	forward = dbus_message_copy(msg);
 	dbus_message_set_destination(forward, agent->id);
