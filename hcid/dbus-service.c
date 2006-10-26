@@ -48,7 +48,7 @@ struct service_agent {
 	char *description;
 };
 
-static struct slist *services;
+static struct slist *services = NULL;
 
 static void service_call_free(void *data)
 {
@@ -145,9 +145,25 @@ mem_fail:
 
 static void service_agent_exit(const char *name, void *data)
 {
-
+	DBusConnection *conn = data;
+	struct slist *l = services;
+	struct service_agent *agent;
+	const char *path;
+	
 	debug("Service Agent exited:%s", name);
-	/* FIXME: free the dbus path data and unregister the path */
+
+	while (l) {
+		path = l->data;
+		l = l->next;
+
+		if (dbus_connection_get_object_path_data(conn, path, (void *) &agent))
+			service_agent_free(agent);
+
+		dbus_connection_unregister_object_path (conn, path);
+	}
+
+	slist_foreach(services, (slist_func_t) free, NULL);
+	services = NULL;
 }
 
 static void forward_reply(DBusPendingCall *call, void *udata)
@@ -388,7 +404,7 @@ int register_service_agent(DBusConnection *conn, const char *sender,
 	services = slist_append(services, strdup(path));
 
 	/* FIXME: only one listener per sender */
-	name_listener_add(conn, sender, (name_cb_t) service_agent_exit, NULL);
+	name_listener_add(conn, sender, (name_cb_t) service_agent_exit, conn);
 
 	return 0;
 }
@@ -400,10 +416,8 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 
 	debug("Unregistering service object: %s", path);
 
-	if (!dbus_connection_get_object_path_data(conn, path, (void *) &agent))
-		return -1;
-
-	service_agent_free(agent);
+	if (dbus_connection_get_object_path_data(conn, path, (void *) &agent))
+		service_agent_free(agent);
 
 	if (!dbus_connection_unregister_object_path (conn, path))
 		return -1;
@@ -447,6 +461,9 @@ void release_service_agents(DBusConnection *conn)
 		dbus_connection_unregister_object_path (conn, path);
 	}
 
+	slist_foreach(services, (slist_func_t) free, NULL);
+	slist_free(services);
+	services = NULL;
 }
 
 void append_available_services(DBusMessageIter *array_iter)
