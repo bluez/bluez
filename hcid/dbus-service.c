@@ -401,14 +401,14 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	return 0;
 }
 
-void append_available_services(DBusMessageIter *iter)
+void append_available_services(DBusMessageIter *array_iter)
 {
 	struct slist *l = services;
 	const char *path;
 	while (l) {
 		path = l->data;
-		dbus_message_iter_append_basic(iter,
-				DBUS_TYPE_STRING, &path);
+		dbus_message_iter_append_basic(array_iter,
+					DBUS_TYPE_STRING, &path);
 		l = l->next;
 	}
 }

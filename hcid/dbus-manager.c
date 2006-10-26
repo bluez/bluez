@@ -195,6 +195,7 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter iter;
+	DBusMessageIter array_iter;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
@@ -204,7 +205,12 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_iter_init_append(reply, &iter);
-	append_available_services(&iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	append_available_services(&array_iter);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
 
 	return send_message_and_unref(conn, reply);
 }
