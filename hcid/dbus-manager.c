@@ -194,6 +194,7 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	DBusMessageIter iter;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
@@ -202,7 +203,8 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	append_available_services(msg);
+	dbus_message_iter_init_append(reply, &iter);
+	append_available_services(&iter);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -293,6 +295,9 @@ DBusHandlerResult msg_func_manager(DBusConnection *conn,
 	iface = dbus_message_get_interface(msg);
 	path = dbus_message_get_path(msg);
 	name = dbus_message_get_member(msg);
+
+	if ((strcmp(BASE_PATH, path)) && !strcmp(iface, "org.bluez.ServiceAgent")) 
+		return error_unknown_method(conn, msg);
 
 	if (strcmp(BASE_PATH, path))
 		return error_no_such_adapter(conn, msg);

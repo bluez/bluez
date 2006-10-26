@@ -43,11 +43,10 @@ struct service_call {
 };
 
 struct service_agent {
-	char *id;
-	char *path;
+	char *id;	/* Connection id */
+	char *name;
+	char *description;
 };
-
-static struct slist *services;
 
 static void service_call_free(void *data)
 {
@@ -72,10 +71,20 @@ static int service_agent_cmp(const struct service_agent *a, const struct service
 			return ret;
 	}
 
-	if (b->path) {
-		if (!a->path)
+	if (b->name) {
+		if (!a->name)
 			return -1;
-		return strcmp(a->path, b->path);
+		ret = strcmp(a->name, b->name);
+		if (ret)
+			return ret;
+	}
+
+	if (b->description) {
+		if (!a->description)
+			return -1;
+		ret = strcmp(a->description, b->description);
+		if (ret)
+			return ret;
 	}
 
 	return 0;
@@ -85,17 +94,19 @@ static void service_agent_free(struct service_agent *agent)
 {
 	if (!agent)
 		return;
-	
+
 	if (agent->id)
 		free(agent->id);
 
-	if (agent->path)
-		free(agent->path);
+	if (agent->name)
+		free(agent->name);
 
+	if (agent->description)
+		free(agent->description);
 	free(agent);
 }
 
-static struct service_agent *service_agent_new(const char *name, const char *path)
+static struct service_agent *service_agent_new(const char *id, const char *name, const char *description)
 {
 	struct service_agent *agent = malloc(sizeof(struct service_agent));
 
@@ -103,17 +114,25 @@ static struct service_agent *service_agent_new(const char *name, const char *pat
 		return NULL;
 
 	memset(agent, 0, sizeof(struct service_agent));
-	if (name) {
-		agent->id = strdup(name);
+
+	if (id) {	
+		agent->id = strdup(id);
 		if (!agent->id)
 			goto mem_fail;
 	}
 
-	if (path) {	
-		agent->path = strdup(path);
-		if (!agent->path)
+	if (name) {
+		agent->name = strdup(name);
+		if (!agent->name)
 			goto mem_fail;
 	}
+
+	if (description) {
+		agent->description = strdup(description);
+		if (!agent->description)
+			goto mem_fail;
+	}
+
 	return agent;
 
 mem_fail:
@@ -124,55 +143,30 @@ mem_fail:
 static void service_agent_exit(const char *name, void *data)
 {
 
-	struct slist *l = services;
-	struct service_agent *agent;
-
 	debug("Service Agent exited:%s", name);
-#if 0
-	/* FIXME: commented for testing purpose */	
-	while (l) {
-		agent = l->data;
-		l = l->next;
-
-		if (strcmp(agent->id, name))
-			continue;
-
-		debug("Unregistering service: %s", name);
-		services = slist_remove(services, agent);
-		service_agent_free(agent);
-	}
-#endif
-	
+	/* FIXME: free the dbus path data and unregister the path */
 }
 
 static void forward_reply(DBusPendingCall *call, void *udata)
 {
 	struct service_call *call_data = udata;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusMessage *ret;
-	DBusError err;
+	DBusMessage *source_reply;
 	const char *sender;
-
-	dbus_error_init (&err);
-	if (dbus_set_error_from_message (&err, reply)) {
-		error("forward reply: %s, %s",
-				err.name, err.message);
-		/* FIXME: reply the error */
-		goto done;
-	}
 
 	sender = dbus_message_get_sender(call_data->msg);
 
-	ret = dbus_message_copy(reply);
-	dbus_message_set_destination(ret, sender);
-	dbus_message_set_no_reply(ret, TRUE);
-	dbus_message_set_reply_serial(ret, dbus_message_get_serial(call_data->msg));
-	dbus_connection_send(call_data->conn, ret, NULL);
-done:
+	source_reply = dbus_message_copy(reply);
+	dbus_message_set_destination(source_reply, sender);
+	dbus_message_set_no_reply(source_reply, TRUE);
+	dbus_message_set_reply_serial(source_reply, dbus_message_get_serial(call_data->msg));
+
+	/* FIXME: Handle send error */
+	dbus_connection_send(call_data->conn, source_reply, NULL);
+
 	dbus_message_unref(reply);
+	dbus_message_unref(source_reply);
 	dbus_pending_call_unref (call);
-
-
 }
 
 static DBusHandlerResult get_interface_names(DBusConnection *conn,
@@ -186,26 +180,17 @@ static DBusHandlerResult get_connection_name(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	struct service_agent *agent;
-	struct slist *match;
-	const char *path;
-
-	/* Check if the name is already used? */
-	path = dbus_message_get_path(msg);
-
-	agent = service_agent_new(dbus_message_get_sender(msg), path);
-	if (!agent)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	/* FIXME: There is at least one service agent, right?  */
-	match = slist_find(services, agent, (cmp_func_t) service_agent_cmp);
 
 	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	/* FIXME: Check the return value */
+	dbus_connection_get_object_path_data(conn, dbus_message_get_path(msg), (void *) &agent);
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &agent->id,
 			DBUS_TYPE_INVALID);
-
-	service_agent_free(agent);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -213,50 +198,51 @@ static DBusHandlerResult get_connection_name(DBusConnection *conn,
 static DBusHandlerResult get_name(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	DBusMessage *reply;
 	struct service_agent *agent;
-	struct slist *match;
-	DBusPendingCall *pending;
-	DBusMessage *forward = dbus_message_copy(msg);
-	struct service_call *call_data;
+	char empty[] = "";
+	const char *name = empty;
 
-	agent = service_agent_new(NULL, dbus_message_get_path(msg));
-	if (!agent)
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	match = slist_find(services, agent, (cmp_func_t) service_agent_cmp);
+	/* FIXME: Check the return value */
+	dbus_connection_get_object_path_data(conn, dbus_message_get_path(msg), (void *) &agent);
 
-	service_agent_free(agent);
-	/* FIXME: There is at least one agent */
+	if (agent->name)
+		name = agent->name;
+	
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_INVALID);
 
-	/* Forward the msg */
-	agent = match->data;
-	dbus_message_set_destination(forward, agent->id);
-	dbus_message_set_path(forward, agent->path);
-	dbus_message_set_member(forward, "Name");
-	dbus_message_set_interface(forward, "org.bluez.ServiceAgent");
-
-	call_data = malloc(sizeof(struct service_call));
-	call_data->conn = dbus_connection_ref(conn);
-	call_data->msg = dbus_message_ref(msg);
-
-	if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
-		/* FIXME: How handle this? */
-		error("Can't foward the message.");
-		dbus_message_unref(forward);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
-
-	dbus_message_unref(forward);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult get_description(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	struct service_agent *agent;
+	char empty[] = "";
+	const char *description = empty;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	/* FIXME: Check the return value */
+	dbus_connection_get_object_path_data(conn, dbus_message_get_path(msg), (void *) &agent);
+
+	if (agent->description)
+		description = agent->description;
+	
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &description,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult start(DBusConnection *conn,
@@ -312,7 +298,7 @@ static struct service_data services_methods[] = {
 	{ "GetInterfaceNames",	get_interface_names	},
 	{ "GetConnectionName",	get_connection_name	},
 	{ "GetName",		get_name		},
-	//{ "GetDescription",	get_description		},
+	{ "GetDescription",	get_description		},
 	{ "Start",		start			},
 	{ "Stop",		stop			},
 	{ "IsRunning",		is_running		},
@@ -331,7 +317,9 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	service_handler_func_t handler;
 	const char *iface, *path, *sender;
 	struct service_agent *agent;
-	struct slist *match;
+	DBusPendingCall *pending;
+	DBusMessage *forward;
+	struct service_call *call_data;
 
 	iface = dbus_message_get_interface(msg);
 	path = dbus_message_get_path(msg);
@@ -341,42 +329,28 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	if (handler)
 		return handler(conn, msg, data);
 
-	/* Forward the message to the real service object */
-	agent = service_agent_new(NULL, path);
-	if (!agent)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	/* Forward to the real service object */
+	if (!dbus_connection_get_object_path_data(conn, path, (void *) &agent))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	match = slist_find(services, agent, (cmp_func_t) service_agent_cmp);
+	forward = dbus_message_copy(msg);
+	dbus_message_set_destination(forward, agent->id);
+	dbus_message_set_path(forward, path);
 
-	service_agent_free(agent);
+	call_data = malloc(sizeof(struct service_call));
+	call_data->conn = dbus_connection_ref(conn);
+	call_data->msg = dbus_message_ref(msg);
 
-	if (match) {
-		/* Forward the msg */
-		DBusPendingCall *pending;
-		DBusMessage *forward = dbus_message_copy(msg);
-		struct service_call *call_data;
-
-		agent = match->data;
-		dbus_message_set_destination(forward, agent->id);
-		dbus_message_set_path(forward, agent->path);
-
-		call_data = malloc(sizeof(struct service_call));
-		call_data->conn = dbus_connection_ref(conn);
-		call_data->msg = dbus_message_ref(msg);
-
-		if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
-			/* FIXME: How handle this? */
-			error("Can't foward the message.");
-			dbus_message_unref(forward);
-			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-		}
-
-		dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
-		dbus_message_unref(forward);	
-		return DBUS_HANDLER_RESULT_HANDLED;
+	if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
+		/* FIXME: How handle this? */
+		error("Can't foward the message.");
+		dbus_message_unref(forward);
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
+	dbus_message_unref(forward);
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static const DBusObjectPathVTable services_vtable = {
@@ -387,25 +361,18 @@ static const DBusObjectPathVTable services_vtable = {
 int register_service_agent(DBusConnection *conn, const char *sender ,const char *path)
 {
 	struct service_agent *agent;
-	struct slist *match;
 
+	debug("Registering service object: %s", path);
+	
 	/* FIXME: the manager fallback '/org/bluez' should not return no such adapter */
-	if (!dbus_connection_register_object_path(conn, path, &services_vtable, NULL))
-		return -1;
 
 	/* Check if the name is already used? */
-	agent = service_agent_new(sender, path);
+	agent = service_agent_new(sender, NULL, NULL);
 	if (!agent)
 		return -ENOMEM;
 
-	match = slist_find(services, agent, (cmp_func_t) service_agent_cmp);
-
-	if (match) {
-		service_agent_free(agent);
-		return -EALREADY;
-	}
-
-	services = slist_append(services, agent);
+	if (!dbus_connection_register_object_path(conn, path, &services_vtable, agent))
+		return -1;
 
 	/* FIXME: only one listener per sender */
 	name_listener_add(conn, sender, (name_cb_t) service_agent_exit, NULL);
@@ -416,55 +383,21 @@ int register_service_agent(DBusConnection *conn, const char *sender ,const char 
 int unregister_service_agent(DBusConnection *conn, const char *sender, const char *path)
 {
 	struct service_agent *agent;
-	struct slist *match;
 
-	agent = service_agent_new(sender, path);
-	if (!agent)
-		return -ENOMEM;
-
-	match = slist_find(services, agent, (cmp_func_t) service_agent_cmp);
-
-	service_agent_free(agent);
-
-	if (!match) /* FIXME: find a better name */
-		return -ENODATA;
-
-	/* Remove from the list */	
-	agent = match->data;
-	services = slist_remove(services, agent);
-	service_agent_free(agent);
-
-	/* Only remove the listener if there is no more services related to this owner */
-	agent = service_agent_new(sender, NULL);
-	if (!agent) /* FIXME: logic is not correct if the memory allocation fails */
-		return -ENOMEM;
+	debug("Unregistering service object: %s", path);
 	
-	match = slist_find(services, agent, (cmp_func_t) service_agent_cmp);
+	if (!dbus_connection_get_object_path_data(conn, path, (void *) &agent))
+		return -1;
 
 	service_agent_free(agent);
 
-	if (!match)
-		name_listener_remove(conn, sender,
-				(name_cb_t) service_agent_exit, NULL);
-	
 	if (!dbus_connection_unregister_object_path (conn, path))
 		return -1;
 
 	return 0;
 }
 
-void append_available_services(DBusMessage *msg)
+void append_available_services(DBusMessageIter *iter)
 {
-	struct slist *l = services;
-	if (!msg)
-		return;
-
-	while (l) {
-		const struct service_agent *agent = l->data;
-
-		dbus_message_append_args(msg, DBUS_TYPE_STRING, &agent->path,
-						DBUS_TYPE_INVALID);
-
-		l = l->next;
-	}
+	/* FIXME: */
 }
