@@ -203,7 +203,15 @@ Signals		void AdapterAdded(string path)
 
 		void DefaultAdapterChanged(string path)
 
-			Parameter is object path of the new default adapoter.
+			Parameter is object path of the new default adapter.
+
+		void ServiceRegistered(string path)
+
+			Parameter is object path of registered service agent.
+
+		void ServiceUnregistered(string path)
+
+			Parameter is object path of unregistered service agent.
 
 
 Adapter hierarchy
