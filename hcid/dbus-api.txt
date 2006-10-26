@@ -160,14 +160,17 @@ Methods		uint32 InterfaceVersion()
 			Returns list of object paths of registered
 			service agents.
 
-		void RegisterService(string path)
+		void RegisterService(string path, string name,
+					string description)
 
 			This registers a new service agent.
 
 			The path parameter defines the object path of the
 			service agent that will be called when someone
 			requests information through org.bluez.Service
-			interface.
+			interface. The name and description parameters can
+			provide the name of the service and a description of
+			what it does or they can be empty strings.
 
 		void UnregisterService(string path)
 
@@ -176,7 +179,8 @@ Methods		uint32 InterfaceVersion()
 			match the same value that has been used on
 			registration.
 
-		void RegisterShadowService(string path)
+		void RegisterShadowService(string path, string name,
+						string description)
 
 			This registers a new shadow service agent. The
 			service will not be available through ListServices().
@@ -184,7 +188,9 @@ Methods		uint32 InterfaceVersion()
 			The path parameter defines the object path of the
 			service agent that will be called when someone
 			requests information through org.bluez.Service
-			interface.
+			interface. The name and description parameters can
+			provide the name of the service and a description of
+			what it does or they can be empty strings.
 
 		void UnregisterShadowService(string path)
 
