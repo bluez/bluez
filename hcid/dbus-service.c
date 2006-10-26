@@ -164,11 +164,9 @@ static void forward_reply(DBusPendingCall *call, void *udata)
 	dbus_message_set_no_reply(source_reply, TRUE);
 	dbus_message_set_reply_serial(source_reply, dbus_message_get_serial(call_data->msg));
 
-	/* FIXME: send fails only due to lack of memory */
-	dbus_connection_send(call_data->conn, source_reply, NULL);
+	send_message_and_unref(call_data->conn, source_reply);
 
 	dbus_message_unref(reply);
-	dbus_message_unref(source_reply);
 	dbus_pending_call_unref (call);
 }
 
@@ -427,8 +425,7 @@ void send_release(DBusConnection *conn, const char *id, const char *path)
 		return;
 
 	dbus_message_set_no_reply(msg, TRUE);
-	dbus_connection_send(conn, msg, NULL);
-	dbus_message_unref(msg);
+	send_message_and_unref(conn, msg);
 }
 
 void release_service_agents(DBusConnection *conn)
