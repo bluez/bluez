@@ -218,14 +218,16 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 static DBusHandlerResult register_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	const char *path, *name, *description;
 	DBusMessage *message;
-	const char *path;
 	DBusError err;
 	int reg_err;
 
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_STRING, &name,
+				DBUS_TYPE_STRING, &description,
 				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&err)) {
@@ -235,7 +237,8 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 	}
 
 	reg_err = register_service_agent(conn, dbus_message_get_sender(msg),
-						path);
+					path, name, description);
+
 	if (reg_err < 0)
 		return error_failed(conn, msg, -reg_err);
 

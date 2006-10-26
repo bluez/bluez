@@ -174,7 +174,29 @@ static void forward_reply(DBusPendingCall *call, void *udata)
 static DBusHandlerResult get_interface_names(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusPendingCall *pending;
+	struct service_call *call_data;
+	struct service_agent *agent  = data;
+	DBusMessage *forward = dbus_message_copy(msg);
+	const char *path = dbus_message_get_path(msg);
+
+	dbus_message_set_destination(forward, agent->id);
+	dbus_message_set_interface(forward, "org.bluez.ServiceAgent");
+	dbus_message_set_path(forward, path);
+	dbus_message_set_member(forward, "Interfaces");
+
+	call_data = malloc(sizeof(struct service_call));
+	call_data->conn = dbus_connection_ref(conn);
+	call_data->msg = dbus_message_ref(msg);
+
+	if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
+		dbus_message_unref(forward);
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
+	dbus_message_unref(forward);
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult get_connection_name(DBusConnection *conn,
@@ -199,15 +221,14 @@ static DBusHandlerResult get_connection_name(DBusConnection *conn,
 static DBusHandlerResult get_name(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+
+	struct service_agent *agent = data;
 	DBusMessage *reply;
-	struct service_agent *agent;
 	const char *name = "";
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	agent = data;
 
 	if (agent->name)
 		name = agent->name;
@@ -292,10 +313,10 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 }
 
 static struct service_data services_methods[] = {
-	{ "GetInterfaceNames",	get_interface_names	},
-	{ "GetConnectionName",	get_connection_name	},
 	{ "GetName",		get_name		},
 	{ "GetDescription",	get_description		},
+	{ "GetInterfaceNames",  get_interface_names	},
+	{ "GetConnectionName",	get_connection_name	},
 	{ "Start",		start			},
 	{ "Stop",		stop			},
 	{ "IsRunning",		is_running		},
@@ -306,7 +327,6 @@ static struct service_data services_methods[] = {
 	{ "RemoveTrust",	remove_trust		},
 	{ NULL, NULL }
 };
-
 
 static DBusHandlerResult msg_func_services(DBusConnection *conn,
 					DBusMessage *msg, void *data)
@@ -337,14 +357,13 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	call_data->msg = dbus_message_ref(msg);
 
 	if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
-		/* FIXME: How handle this? */
-		error("Can't foward the message.");
 		dbus_message_unref(forward);
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
 	dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
 	dbus_message_unref(forward);
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
@@ -353,21 +372,22 @@ static const DBusObjectPathVTable services_vtable = {
 	.unregister_function	= NULL
 };
 
-int register_service_agent(DBusConnection *conn, const char *sender ,const char *path)
+int register_service_agent(DBusConnection *conn, const char *sender,
+				const char *path, const char *name, const char *description)
 {
 	struct service_agent *agent;
 
 	debug("Registering service object: %s", path);
-	
-	/* FIXME: the manager fallback '/org/bluez' should not return no such adapter */
 
 	/* Check if the name is already used? */
-	agent = service_agent_new(sender, NULL, NULL);
+	agent = service_agent_new(sender, name, description);
 	if (!agent)
 		return -ENOMEM;
 
-	if (!dbus_connection_register_object_path(conn, path, &services_vtable, agent))
+	if (!dbus_connection_register_object_path(conn, path, &services_vtable, agent)) {
+		free(agent);
 		return -1;
+	}
 
 	services = slist_append(services, strdup(path));
 
@@ -392,7 +412,7 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	if (!dbus_connection_unregister_object_path (conn, path))
 		return -1;
 
-	l = slist_find(services, path, strcmp);
+	l = slist_find(services, path, (cmp_func_t) strcmp);
 	if (l)
 		services = slist_remove(services, l->data);
 
