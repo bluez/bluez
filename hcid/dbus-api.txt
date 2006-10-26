@@ -1020,13 +1020,11 @@ Methods		array{string} GetInterfaceNames()
 
 		string GetName()
 
-			This method gets the service name from the service
-			agent and returns it.
+			This method returns the service name.
 
 		string GetDescription()
 
-			This method gets the service description from the
-			service agent and returns it.
+			This method returns the service description.
 
 		void Start()
 
@@ -1129,15 +1127,6 @@ Methods		array{string} Interfaces()
 			the agent implements and wants to export. The service
 			daemon does not know anything about these interfaces
 			so they can be service specific.
-
-		string Name()
-
-			This method must return the service name.
-
-		string Description()
-
-			This method must return a description of which
-			service the agent provides.
 
 		void Start()
 
