@@ -187,8 +187,7 @@ static DBusHandlerResult get_connection_name(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	/* FIXME: Check the return value */
-	dbus_connection_get_object_path_data(conn, dbus_message_get_path(msg), (void *) &agent);
+	agent = (struct service_agent*) data;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &agent->id,
@@ -208,8 +207,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	/* FIXME: Check the return value */
-	dbus_connection_get_object_path_data(conn, dbus_message_get_path(msg), (void *) &agent);
+	agent = (struct service_agent*) data;
 
 	if (agent->name)
 		name = agent->name;
@@ -232,8 +230,7 @@ static DBusHandlerResult get_description(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	/* FIXME: Check the return value */
-	dbus_connection_get_object_path_data(conn, dbus_message_get_path(msg), (void *) &agent);
+	agent = (struct service_agent*) data;
 
 	if (agent->description)
 		description = agent->description;
