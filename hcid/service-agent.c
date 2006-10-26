@@ -37,6 +37,9 @@
 
 #define INTERFACE "org.bluez.Manager"
 
+static char *name = NULL;
+static char *description = NULL;
+
 static volatile sig_atomic_t __io_canceled = 0;
 static volatile sig_atomic_t __io_terminated = 0;
 
@@ -169,8 +172,6 @@ static int register_service(DBusConnection *conn, const char *service_path)
 {
 	DBusMessage *msg, *reply;
 	DBusError err;
-	const char *name = "Example service";
-	const char *description = "A really simple example service";
 
 	if (!dbus_connection_register_object_path(conn, service_path,
 							&service_table, NULL)) {
@@ -257,13 +258,17 @@ static void usage(void)
 	printf("Bluetooth service agent ver %s\n\n", VERSION);
 
 	printf("Usage:\n"
-		"\tservice-agent [--path service-path]\n"
+		"\tservice-agent [--name service-name]"
+			" [--description service-description]"
+			" [--path service-path]\n"
 		"\n");
 }
 
 static struct option main_options[] = {
-	{ "path",	1, 0, 'p' },
-	{ "help",	0, 0, 'h' },
+	{ "name",		1, 0, 'n' },
+	{ "description",	1, 0, 'd' },
+	{ "path",		1, 0, 'p' },
+	{ "help",		0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -277,8 +282,14 @@ int main(int argc, char *argv[])
 	snprintf(default_path, sizeof(default_path),
 				"/org/bluez/service_agent_%d", getpid());
 
-	while ((opt = getopt_long(argc, argv, "+p:h", main_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+n:d:p:h", main_options, NULL)) != EOF) {
 		switch(opt) {
+		case 'n':
+			name = strdup(optarg);
+			break;
+		case 'd':
+			description = strdup(optarg);
+			break;
 		case 'p':
 			if (optarg[0] != '/') {
 				fprintf(stderr, "Invalid path\n");
@@ -307,6 +318,12 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (!name)
+		name = strdup("Example service");
+
+	if (!description)
+		description = strdup("Service agent with an example");
+
 	if (register_service(conn, service_path) < 0) {
 		dbus_connection_unref(conn);
 		exit(1);
@@ -334,6 +351,12 @@ int main(int argc, char *argv[])
 
 	if (!__io_terminated)
 		unregister_service(conn, service_path);
+
+	if (name)
+		free(name);
+
+	if (description)
+		free(description);
 
 	dbus_connection_unref(conn);
 
