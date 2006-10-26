@@ -187,7 +187,7 @@ static DBusHandlerResult get_connection_name(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	agent = (struct service_agent*) data;
+	agent = data;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &agent->id,
@@ -207,7 +207,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	agent = (struct service_agent*) data;
+	agent = data;
 
 	if (agent->name)
 		name = agent->name;
@@ -230,7 +230,7 @@ static DBusHandlerResult get_description(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	agent = (struct service_agent*) data;
+	agent = data;
 
 	if (agent->description)
 		description = agent->description;
@@ -326,7 +326,7 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	if (handler)
 		return handler(conn, msg, data);
 
-	agent = (struct service_agent*) data;
+	agent = data;
 
 	forward = dbus_message_copy(msg);
 	dbus_message_set_destination(forward, agent->id);
