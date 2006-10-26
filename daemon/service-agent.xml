@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/">
+  <interface name="org.bluez.ServiceAgent">
+    <method name="Interfaces">
+      <arg type="as" direction="out"/>
+    </method>
+
+    <method name="Start">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
+    </method>
+
+    <method name="Stop">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
+    </method>
+
+    <method name="Record">
+      <arg type="s" direction="out"/>
+    </method>
+
+    <method name="Release">
+    </method>
+
+  </interface>
+</node>
