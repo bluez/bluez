@@ -146,6 +146,7 @@ mem_fail:
 static void service_agent_exit(const char *name, void *data)
 {
 	DBusConnection *conn = data;
+	DBusMessage *message;
 	struct slist *l = services;
 	struct service_agent *agent;
 	const char *path;
@@ -160,6 +161,12 @@ static void service_agent_exit(const char *name, void *data)
 			service_agent_free(agent);
 
 		dbus_connection_unregister_object_path (conn, path);
+
+		message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
+						"ServiceUnregistered");
+		dbus_message_append_args(message, DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID);
+		send_message_and_unref(conn, message);
 	}
 
 	slist_foreach(services, (slist_func_t) free, NULL);
