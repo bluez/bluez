@@ -48,6 +48,8 @@ struct service_agent {
 	char *description;
 };
 
+static struct slist *services;
+
 static void service_call_free(void *data)
 {
 	struct service_call *call = data;
@@ -374,6 +376,8 @@ int register_service_agent(DBusConnection *conn, const char *sender ,const char 
 	if (!dbus_connection_register_object_path(conn, path, &services_vtable, agent))
 		return -1;
 
+	services = slist_append(services, strdup(path));
+
 	/* FIXME: only one listener per sender */
 	name_listener_add(conn, sender, (name_cb_t) service_agent_exit, NULL);
 
@@ -383,6 +387,7 @@ int register_service_agent(DBusConnection *conn, const char *sender ,const char 
 int unregister_service_agent(DBusConnection *conn, const char *sender, const char *path)
 {
 	struct service_agent *agent;
+	struct slist *l;
 
 	debug("Unregistering service object: %s", path);
 	
@@ -394,10 +399,21 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	if (!dbus_connection_unregister_object_path (conn, path))
 		return -1;
 
+	l = slist_find(services, path, strcmp);
+	if (l)
+		services = slist_remove(services, l->data);
+
 	return 0;
 }
 
 void append_available_services(DBusMessageIter *iter)
 {
-	/* FIXME: */
+	struct slist *l = services;
+	const char *path;
+	while (l) {
+		path = l->data;
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &path);
+		l = l->next;
+	}
 }
