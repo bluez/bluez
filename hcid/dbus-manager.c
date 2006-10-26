@@ -218,10 +218,11 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 static DBusHandlerResult register_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	DBusMessage *message;
 	const char *path;
 	DBusError err;
 	int reg_err;
-	
+
 	dbus_error_init(&err);
 	dbus_message_get_args(msg, &err,
 				DBUS_TYPE_STRING, &path,
@@ -232,10 +233,18 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 		dbus_error_free(&err);
 		return error_invalid_arguments(conn, msg);
 	}
-	/* FIXME: send a signal to notify the new registered service? */
-	reg_err = register_service_agent(conn, dbus_message_get_sender(msg), path);
+
+	reg_err = register_service_agent(conn, dbus_message_get_sender(msg),
+						path);
 	if (reg_err < 0)
 		return error_failed(conn, msg, -reg_err);
+
+	/* Report that a new service was registered */
+	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
+					"ServiceRegistered");
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID);
+	send_message_and_unref(conn, message);
 
 	return send_message_and_unref(conn, dbus_message_new_method_return(msg));
 }
@@ -243,6 +252,7 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 static DBusHandlerResult unregister_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	DBusMessage *message;
 	const char *path;
 	DBusError err;
 	int unreg_err;
@@ -258,9 +268,17 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
-	unreg_err = unregister_service_agent(conn, dbus_message_get_sender(msg), path);
+	unreg_err = unregister_service_agent(conn,
+					dbus_message_get_sender(msg), path);
 	if (unreg_err < 0)
 		return error_failed(conn, msg, -unreg_err);
+
+	/* Report that the service was unregistered */
+	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
+					"ServiceUnregistered");
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID);
+	send_message_and_unref(conn, message);
 
 	return send_message_and_unref(conn, dbus_message_new_method_return(msg));
 }
