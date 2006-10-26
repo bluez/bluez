@@ -202,8 +202,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	struct service_agent *agent;
-	char empty[] = "";
-	const char *name = empty;
+	const char *name = "";
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -227,8 +226,7 @@ static DBusHandlerResult get_description(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	struct service_agent *agent;
-	char empty[] = "";
-	const char *description = empty;
+	const char *description = "";
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
