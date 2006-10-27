@@ -529,7 +529,33 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 static DBusHandlerResult remove_trust(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct service_agent *agent = data;
+	struct slist *l;
+	DBusMessage *reply;
+	const char *address;
+	void *paddress;
+
+	/* FIXME: Missing define security policy */
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcmp);
+	if (!l)
+		return error_invalid_arguments(conn, msg); /* FIXME: find a better error name */
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	paddress = l->data;
+	agent->trusted_devices = slist_remove(agent->trusted_devices, l->data);
+	free(paddress);
+
+	return send_message_and_unref(conn, reply);
+
 }
 
 static struct service_data services_methods[] = {
