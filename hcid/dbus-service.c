@@ -110,6 +110,8 @@ static void service_agent_free(struct service_agent *agent)
 	if (agent->description)
 		free(agent->description);
 
+	slist_foreach(agent->trusted_devices, (slist_func_t) free, NULL);
+
 	free(agent);
 }
 
@@ -471,7 +473,29 @@ static DBusHandlerResult remove_user(DBusConnection *conn,
 static DBusHandlerResult set_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct service_agent *agent = data;
+	struct slist *l;
+	DBusMessage *reply;
+	const char *address;
+
+	/* FIXME: Missing define security policy */
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcmp);
+	if (l) 
+		return error_failed(conn, msg, EINVAL);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	agent->trusted_devices = slist_append(agent->trusted_devices, strdup(address));
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult is_trusted(DBusConnection *conn,

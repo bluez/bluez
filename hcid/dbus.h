@@ -162,6 +162,7 @@ struct service_agent {
 	char *name;
 	char *description;
 	int running;
+	struct slist *trusted_devices;
 };
 
 typedef int register_function_t(DBusConnection *conn, uint16_t id);
