@@ -1000,6 +1000,16 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 
 			Possible errors: org.bluez.Error.DoesNotExist
 
+		void RegisterDefaultAuthorizationAgent(string path)
+
+		void UnregisterDefaultAuthorizationAgent(string path)
+
+		void AuthorizeService(string service_path, string address,
+					string action)
+
+		void CancelAuthorizationProcess(string service_path,
+						string address, string action)
+
 
 Service hierarchy (experimental)
 ================================
@@ -1093,7 +1103,7 @@ Methods		string Request(string path, string address, boolean numeric)
 			This method gets called when the service daemon
 			needs to verify a passkey. The verification is
 			done by showing the value to the passkey agent
-			and returnin true means a successful confirmation
+			and returning true means a successful confirmation
 			while false means that the values don't match.
 
 			Possible errors: org.bluez.Error.Rejected
@@ -1112,6 +1122,22 @@ Methods		string Request(string path, string address, boolean numeric)
 			it to do cleanup tasks. There is no need to
 			unregister the agent, because when this method
 			gets called it has already been unregistered.
+
+
+AuthorizationAgent hierarchy (experimental)
+===========================================
+
+Service		unique name
+Interface	org.bluez.AuthorizationAgent
+Object path	freely definable
+
+Methods		boolean Authorize(string adapter_path, string address,
+				string service_path, string action)
+
+		void Cancel(string adapter_path, string address,
+				string service_path, string action)
+
+		void Release()
 
 
 ServiceAgent hierarchy (experimental)
