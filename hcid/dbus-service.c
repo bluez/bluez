@@ -501,7 +501,29 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 static DBusHandlerResult is_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct service_agent *agent = data;
+	struct slist *l;
+	DBusMessage *reply;
+	const char *address;
+	dbus_bool_t trusted;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcmp);
+	trusted = (l? TRUE : FALSE);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(msg,
+				DBUS_TYPE_BOOLEAN, &trusted,
+				DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult remove_trust(DBusConnection *conn,
