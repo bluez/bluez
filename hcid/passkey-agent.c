@@ -146,12 +146,30 @@ static DBusHandlerResult confirm_message(DBusConnection *conn,
 static DBusHandlerResult cancel_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		fprintf(stderr, "Can't create reply message\n");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	dbus_connection_send(conn, reply, NULL);
+
+	dbus_connection_flush(conn);
+
+	dbus_message_unref(reply);
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult release_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	DBusMessage *reply;
+
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID)) {
 		fprintf(stderr, "Invalid arguments for passkey Release method");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -161,6 +179,20 @@ static DBusHandlerResult release_message(DBusConnection *conn,
 		fprintf(stderr, "Passkey service has been released\n");
 
 	__io_terminated = 1;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		fprintf(stderr, "Can't create reply message\n");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	dbus_connection_send(conn, reply, NULL);
+
+	dbus_connection_flush(conn);
+
+	dbus_message_unref(reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
