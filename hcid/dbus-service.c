@@ -503,37 +503,45 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	DBusPendingCall *pending;
 	DBusMessage *forward;
 	struct service_call *call_data;
+	const char *iface;
 
-	handler = find_service_handler(services_methods, msg);
-	if (handler)
-		return handler(conn, msg, data);
+	iface = dbus_message_get_interface(msg);
 
-	forward = dbus_message_copy(msg);
-	if(!forward)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	if (strcmp("org.bluez.Service", iface) == 0) {
 
-	dbus_message_set_destination(forward, agent->id);
-	dbus_message_set_path(forward, dbus_message_get_path(msg));
+		handler = find_service_handler(services_methods, msg);
+		if (handler)
+			return handler(conn, msg, data);
 
-	call_data = malloc(sizeof(struct service_call));
-	if (!call_data) {
-		dbus_message_unref(forward);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
+		forward = dbus_message_copy(msg);
+		if(!forward)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	call_data->conn = dbus_connection_ref(conn);
-	call_data->msg = dbus_message_ref(msg);
+		dbus_message_set_destination(forward, agent->id);
+		dbus_message_set_path(forward, dbus_message_get_path(msg));
 
-	if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
-		service_call_free(call_data);
-		dbus_message_unref(forward);
+		call_data = malloc(sizeof(struct service_call));
+		if (!call_data) {
+			dbus_message_unref(forward);
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		}
+
+		call_data->conn = dbus_connection_ref(conn);
+		call_data->msg = dbus_message_ref(msg);
+
+		if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
+			service_call_free(call_data);
+			dbus_message_unref(forward);
+			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		}
+
+		dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
+
+		return send_message_and_unref(conn, forward);
+	} else if (strcmp("org.bluez.Security", iface) == 0)
+		return handle_security_method(conn, msg, data);
+	else 
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
-	dbus_message_unref(forward);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static const DBusObjectPathVTable services_vtable = {

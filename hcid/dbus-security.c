@@ -385,11 +385,26 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult authorize_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult cancel_service_authorization(DBusConnection *conn,
+							DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+
 static struct service_data sec_services[] = {
 	{ "RegisterDefaultPasskeyAgent",	register_default_agent		},
 	{ "UnregisterDefaultPasskeyAgent",	unregister_default_agent	},
 	{ "RegisterPasskeyAgent",		register_agent			},
 	{ "UnregisterPasskeyAgent",		unregister_agent		},
+	{ "Authorize",				authorize_service		},
+	{ "CancelAuthorization",		cancel_service_authorization	},
 	{ NULL, NULL }
 };
 
