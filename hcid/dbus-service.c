@@ -366,10 +366,66 @@ static DBusHandlerResult start(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static void stop_reply(DBusPendingCall *call, void *udata)
+{
+	struct service_call *call_data = udata;
+	DBusMessage *agent_reply = dbus_pending_call_steal_reply(call);
+	DBusMessage *source_reply;
+	DBusError err;
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, agent_reply)) {
+		/* Keep the old running value */
+		dbus_error_free(&err);
+	} else {
+		DBusMessage *message;
+		call_data->agent->running = SERVICE_NOT_RUNNING;
+
+		/* Send a signal to indicate that the service started properly */
+		message = dbus_message_new_signal(dbus_message_get_path(call_data->msg),
+							dbus_message_get_interface(call_data->msg),
+							"Stopped");
+
+		send_message_and_unref(call_data->conn, message);
+	}
+
+	source_reply = dbus_message_copy(agent_reply);
+	dbus_message_set_destination(source_reply, dbus_message_get_sender(call_data->msg));
+	dbus_message_set_no_reply(source_reply, TRUE);
+	dbus_message_set_reply_serial(source_reply, dbus_message_get_serial(call_data->msg));
+
+	send_message_and_unref(call_data->conn, source_reply);
+
+	dbus_message_unref(agent_reply);
+	dbus_pending_call_unref (call);
+}
+
 static DBusHandlerResult stop(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusPendingCall *pending;
+	struct service_call *call_data;
+	struct service_agent *agent  = data;
+	DBusMessage *forward = dbus_message_copy(msg);
+
+	dbus_message_set_destination(forward, agent->id);
+	dbus_message_set_interface(forward, "org.bluez.ServiceAgent");
+	dbus_message_set_path(forward, dbus_message_get_path(msg));
+
+	call_data = malloc(sizeof(struct service_call));
+	call_data->conn = dbus_connection_ref(conn);
+	call_data->msg = dbus_message_ref(msg);
+	call_data->agent = data;
+
+	if (dbus_connection_send_with_reply(conn, forward, &pending, START_REPLY_TIMEOUT) == FALSE) {
+		dbus_message_unref(forward);
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	dbus_pending_call_set_notify(pending, stop_reply, call_data, service_call_free);
+	dbus_message_unref(forward);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult is_running(DBusConnection *conn,
