@@ -1165,7 +1165,9 @@ Methods		boolean Authorize(string adapter_path, string address,
 
 			This method gets called when the service daemon wants
 			to get an authorization for an action a remote device
-			is trying to perform.
+			is trying to perform. This method returns true if
+			the remote user is authorized to perform that action
+			and false otherwise.
 
 			The adapter_path parameter is the object path of the
 			local adapter. The address, service_path and action
