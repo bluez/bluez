@@ -446,8 +446,9 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 
 	l = slist_find(services, path, (cmp_func_t) strcmp);
 	if (l) {
+		void *p = l->data;
 		services = slist_remove(services, l->data);
-		free(l->data);
+		free(p);
 	}
 
 	return 0;
