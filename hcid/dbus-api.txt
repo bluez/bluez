@@ -1163,10 +1163,31 @@ Object path	freely definable
 Methods		boolean Authorize(string adapter_path, string address,
 				string service_path, string action)
 
+			This method gets called when the service daemon wants
+			to get an authorization for an action a remote device
+			is trying to perform.
+
+			The adapter_path parameter is the object path of the
+			local adapter. The address, service_path and action
+			parameters correspond to the remote device address,
+			the object path of the service and the action the
+			remote device is trying to perform.
+
 		void Cancel(string adapter_path, string address,
 				string service_path, string action)
 
+			This method cancels a previous authorization request.
+			The adapter_path, address, service_path and action
+			parameters must match the same values that have been
+			used when the Authorize() method was called.
+
 		void Release()
+
+			This method gets called when the service daemon
+			unregisters an authorization agent. An agent can
+			use it to do cleanup tasks. There is no need to
+			unregister the agent, because when this method
+			gets called it has already been unregistered.
 
 
 ServiceAgent hierarchy (experimental)
