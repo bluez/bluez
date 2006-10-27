@@ -337,7 +337,14 @@ static DBusHandlerResult start(DBusConnection *conn,
 	DBusPendingCall *pending;
 	struct service_call *call_data;
 	struct service_agent *agent  = data;
-	DBusMessage *forward = dbus_message_copy(msg);
+	DBusMessage *forward;
+
+	if (agent->running)
+		return error_failed(conn, msg, EPERM);
+
+	forward = dbus_message_copy(msg);
+	if (!forward)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_set_destination(forward, agent->id);
 	dbus_message_set_interface(forward, "org.bluez.ServiceAgent");
