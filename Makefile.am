@@ -1,5 +1,6 @@
 
-SUBDIRS = common daemon tools rfcomm hcid sdpd dund pand hidd \
+SUBDIRS = common daemon network input audio \
+	tools rfcomm hcid sdpd dund pand hidd \
 	cups fuse alsa test scripts
 
 MAINTAINERCLEANFILES = Makefile.in \
