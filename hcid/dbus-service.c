@@ -54,7 +54,6 @@ struct service_call {
 	struct service_agent *agent;
 };
 
-
 static struct slist *services = NULL;
 
 static void service_call_free(void *data)
@@ -147,6 +146,9 @@ static struct service_agent *service_agent_new(const char *id, const char *name,
 		if (!agent->description)
 			goto mem_fail;
 	}
+
+	/* by default when the service agent registers the service must not be running */
+	agent->running = SERVICE_NOT_RUNNING;
 
 	return agent;
 
@@ -373,7 +375,21 @@ static DBusHandlerResult stop(DBusConnection *conn,
 static DBusHandlerResult is_running(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct service_agent *agent = data;
+	DBusMessage *reply;
+	dbus_bool_t running;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	running = (agent->running ? TRUE : FALSE);
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_BOOLEAN, &running,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult list_users(DBusConnection *conn,
