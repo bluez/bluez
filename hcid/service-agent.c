@@ -116,6 +116,8 @@ static DBusHandlerResult start_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
+	printf("Starting example service\n");
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
@@ -126,6 +128,8 @@ static DBusHandlerResult stop_message(DBusConnection *conn,
 		fprintf(stderr, "Invalid arguments for service Stop method");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
+
+	printf("Stopping example service\n");
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
