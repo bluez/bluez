@@ -196,7 +196,7 @@ static int register_agent(DBusConnection *conn, const char *agent_path,
 
 	if (!dbus_connection_register_object_path(conn, agent_path,
 							&agent_table, NULL)) {
-		fprintf(stderr, "Can't register path object path for agent\n");
+		fprintf(stderr, "Can't register object path for agent\n");
 		return -1;
 	}
 

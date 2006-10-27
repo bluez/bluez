@@ -175,7 +175,7 @@ static int register_service(DBusConnection *conn, const char *service_path)
 
 	if (!dbus_connection_register_object_path(conn, service_path,
 							&service_table, NULL)) {
-		fprintf(stderr, "Can't register path object path for service\n");
+		fprintf(stderr, "Can't register object path for service\n");
 		return -1;
 	}
 
