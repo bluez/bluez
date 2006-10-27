@@ -43,6 +43,7 @@
 #define AGENT_TIMEOUT (10 * 60 * 1000)		/* 10 minutes */
 
 static struct passkey_agent *default_agent = NULL;
+static struct authorization_agent *default_auth_agent = NULL;
 
 static void release_agent(struct passkey_agent *agent);
 static void send_cancel_request(struct pending_agent_request *req);
@@ -56,7 +57,7 @@ static void passkey_agent_free(struct passkey_agent *agent)
 
 	for (l = agent->pending_requests; l != NULL; l = l->next) {
 		struct pending_agent_request *req = l->data;
-		
+
 		hci_send_cmd(req->dev, OGF_LINK_CTL,
 				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 
@@ -204,6 +205,66 @@ static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *
 	}
 
 	return 0;
+}
+
+static void auth_agent_free(struct authorization_agent *agent)
+{
+	/* FIXME: release the agent if necessary */
+
+	if (agent->name)
+		free(agent->name);
+	if (agent->path)
+		free(agent->path);
+	if (agent->conn)
+		dbus_connection_unref(agent->conn);
+
+	free(agent);
+}
+
+static struct authorization_agent *auth_agent_new(DBusConnection *conn,
+						const char *name,
+						const char *path)
+{
+	struct authorization_agent *agent;
+
+	agent = malloc(sizeof(*agent));
+	if (!agent)
+		return NULL;
+	memset(agent, 0, sizeof(*agent));
+
+	agent->name = strdup(name);
+	if (!agent->name)
+		goto mem_fail;
+
+	agent->path = strdup(path);
+	if (!agent->path)
+		goto mem_fail;
+
+	agent->conn = dbus_connection_ref(conn);
+
+	return agent;
+
+mem_fail:
+	agent->exited = 1;
+	auth_agent_free(agent);
+	return NULL;
+}
+
+static void default_auth_agent_exited(const char *name, void *data)
+{
+	debug("%s exited without unregistering the "
+		"default authorization agent", name);
+
+	if (!default_auth_agent || strcmp(name, default_auth_agent->name)) {
+		/* This should never happen! */
+		debug("default_auth_agent_exited: mismatch with "
+			"actual default_auth_agent");
+		return;
+	}
+
+	default_auth_agent->exited = 1;
+	auth_agent_free(default_auth_agent);
+	default_auth_agent = NULL;
 }
 
 static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
@@ -386,15 +447,83 @@ static DBusHandlerResult unregister_default_passkey_agent(DBusConnection *conn,
 }
 
 static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
-							DBusMessage *msg, void *data)
+							DBusMessage *msg,
+							void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	const char *path;
+
+	if (default_auth_agent)
+		return error_auth_agent_already_exists(conn, msg);
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	default_auth_agent = auth_agent_new(conn,
+					dbus_message_get_sender(msg), path);
+	if (!default_auth_agent)
+		goto need_memory;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		goto need_memory;
+
+	name_listener_add(conn, default_auth_agent->name,
+			(name_cb_t) default_auth_agent_exited, NULL);
+
+	info("Default authorization agent (%s, %s) registered",
+		default_auth_agent->name, default_auth_agent->path);
+
+	return send_message_and_unref(conn, reply);
+
+need_memory:
+	if (default_auth_agent) {
+		default_auth_agent->exited = 1;
+		auth_agent_free(default_auth_agent);
+		default_auth_agent = NULL;
+	}
+
+	return DBUS_HANDLER_RESULT_NEED_MEMORY;
 }
 
 static DBusHandlerResult unregister_default_auth_agent(DBusConnection *conn,
-							DBusMessage *msg, void *data)
+							DBusMessage *msg,
+							void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	const char *path, *name;
+	DBusMessage *reply;
+
+	if (!default_auth_agent)
+		return error_auth_agent_does_not_exist(conn, msg);
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	name = dbus_message_get_sender(msg);
+
+	if (strcmp(name, default_auth_agent->name) ||
+		strcmp(path, default_auth_agent->path))
+		return error_auth_agent_does_not_exist(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	name_listener_remove(conn, default_auth_agent->name,
+			(name_cb_t) default_auth_agent_exited, NULL);
+
+	info("Default authorization agent (%s, %s) unregistered",
+		default_auth_agent->name, default_auth_agent->path);
+
+	default_auth_agent->exited = 1;
+	auth_agent_free(default_auth_agent);
+	default_auth_agent = NULL;
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult authorize_service(DBusConnection *conn,
@@ -434,8 +563,8 @@ static struct service_data sec_services[] = {
 	{ "UnregisterDefaultPasskeyAgent",		unregister_default_passkey_agent	},
 	{ "RegisterPasskeyAgent",			register_passkey_agent			},
 	{ "UnregisterPasskeyAgent",			unregister_passkey_agent		},
-	{ "RegisterDefaultAuthenticationAgent",		register_default_auth_agent		},
-	{ "UnregisterDefaultAuthenticationAgent",	unregister_default_auth_agent		},
+	{ "RegisterDefaultAuthorizationAgent",		register_default_auth_agent		},
+	{ "UnregisterDefaultAuthorizationAgent",	unregister_default_auth_agent		},
 	{ "AuthorizeService",				authorize_service			},
 	{ "CancelAuthorizationProcess",			cancel_service_authorization		},
 	{ NULL, NULL }

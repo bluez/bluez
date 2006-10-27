@@ -154,7 +154,10 @@ struct pending_agent_request {
 };
 
 struct authorization_agent {
-
+	DBusConnection *conn;
+	char *name;
+	char *path;
+	int exited;
 };
 
 struct service_agent {
@@ -215,6 +218,8 @@ DBusHandlerResult error_connect_not_in_progress(DBusConnection *conn, DBusMessag
 DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_passkey_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_auth_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_auth_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_binding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_service_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage *msg);

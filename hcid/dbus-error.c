@@ -224,6 +224,16 @@ DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusM
 	return error_does_not_exist(conn, msg, "Passkey agent does not exist");
 }
 
+DBusHandlerResult error_auth_agent_already_exists(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_already_exists(conn, msg, "Authorization agent already exists");
+}
+
+DBusHandlerResult error_auth_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_does_not_exist(conn, msg, "Authorization agent does not exist");
+}
+
 DBusHandlerResult error_binding_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_does_not_exist(conn, msg, "Binding does not exist");
