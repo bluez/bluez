@@ -1002,13 +1002,42 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 
 		void RegisterDefaultAuthorizationAgent(string path)
 
+			This registers the default authorization agent. It can
+			register an authorization agent for all adapters or
+			for a specific one depending on which object path has
+			been used.
+
+			The path parameter defines the object path of the
+			authorization agent that will be called when an
+			authorization request needs to be answered.
+
 		void UnregisterDefaultAuthorizationAgent(string path)
+
+			This unregisters a default authorization agent that has
+			been previously registered. The path parameter must
+			match the same value that has been used on
+			registration.
 
 		void AuthorizeService(string service_path, string address,
 					string action)
 
+			This method gets called when a service wants to check
+			if a remote device is authorized to perform some
+			action. The authorization request is forwarded to an
+			authorization agent.
+
+			The service_path parameter must be the object
+			path of the service. The address and action parameters
+			correspond to the remote device address and the action
+			the remote device is trying to perform.
+
 		void CancelAuthorizationProcess(string service_path,
 						string address, string action)
+
+			This method cancels an authorization process requested
+			by a previous call to AuthorizeService(). The
+			service_path, address and action parameters must match
+			the same values that have been used on registration.
 
 
 Service hierarchy (experimental)
