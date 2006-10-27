@@ -27,7 +27,12 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 #include <stdlib.h>
+#include <sys/socket.h>
+
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/rfcomm.h>
 
 #include <dbus/dbus-glib.h>
 
@@ -37,6 +42,7 @@ static DBusGConnection *conn;
 
 typedef struct {
 	GObject parent;
+	GIOChannel *server;
 } ServiceAgent;
 
 typedef struct {
@@ -59,6 +65,7 @@ static void service_agent_finalize(GObject *obj)
 
 static void service_agent_init(ServiceAgent *obj)
 {
+	obj->server = NULL;
 }
 
 static void service_agent_class_init(ServiceAgentClass *klass)
@@ -87,9 +94,87 @@ static gboolean service_agent_interfaces(ServiceAgent *agent, GError **error)
 	return FALSE;
 }
 
+static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+{
+	unsigned char buf[672];
+	gsize len;
+	GIOError err;
+	int sk, ret;
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		g_io_channel_unref(chan);
+		return FALSE;
+	}
+
+	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
+	if (err == G_IO_ERROR_AGAIN)
+		return TRUE;
+
+	sk = g_io_channel_unix_get_fd(chan);
+
+	ret = write(sk, buf, len);
+
+	return TRUE;
+}
+
+static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+{
+	GIOChannel *io;
+        struct sockaddr_rc addr;
+        socklen_t optlen;
+	int sk, nsk;
+
+	sk = g_io_channel_unix_get_fd(chan);
+
+	memset(&addr, 0, sizeof(addr));
+	optlen = sizeof(addr);
+
+	nsk = accept(sk, (struct sockaddr *) &addr, &optlen);
+	if (nsk < 0)
+		return TRUE;
+
+	io = g_io_channel_unix_new(nsk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR,
+						session_event, NULL);
+
+	return TRUE;
+}
+
 static gboolean service_agent_start(ServiceAgent *agent,
 					DBusGMethodInvocation *context)
 {
+	struct sockaddr_rc addr;
+	int sk;
+
+	if (agent->server)
+		return FALSE;
+
+	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0)
+		return FALSE;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
+	addr.rc_channel = 23;
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		close(sk);
+		return FALSE;
+	}
+
+	if (listen(sk, 10)) {
+		close(sk);
+		return FALSE;
+	}
+
+	agent->server = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(agent->server, TRUE);
+
+	g_io_add_watch(agent->server, G_IO_IN, connect_event, NULL);
+
 	dbus_g_method_return(context, NULL);
 
 	return TRUE;
@@ -98,6 +183,12 @@ static gboolean service_agent_start(ServiceAgent *agent,
 static gboolean service_agent_stop(ServiceAgent *agent,
 					DBusGMethodInvocation *context)
 {
+	if (agent->server) {
+		g_io_channel_close(agent->server);
+		g_io_channel_unref(agent->server);
+		agent->server = NULL;
+	}
+
 	dbus_g_method_return(context, NULL);
 
 	return TRUE;
@@ -110,6 +201,12 @@ static gboolean service_agent_record(ServiceAgent *agent, GError **error)
 
 static gboolean service_agent_release(ServiceAgent *agent, GError **error)
 {
+	if (agent->server) {
+		g_io_channel_close(agent->server);
+		g_io_channel_unref(agent->server);
+		agent->server = NULL;
+	}
+
 	return TRUE;
 }
 
@@ -160,6 +257,9 @@ int main(int argc, char *argv[])
 		g_error_free(error);
 		exit(EXIT_FAILURE);
 	}
+
+	dbus_g_object_type_install_info(SERVICE_AGENT_OBJECT_TYPE,
+					&dbus_glib_service_agent_object_info);
 
 	register_service_agent();
 
