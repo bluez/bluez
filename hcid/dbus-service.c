@@ -152,18 +152,23 @@ static void service_agent_exit(const char *name, void *data)
 {
 	DBusConnection *conn = data;
 	DBusMessage *message;
-	struct slist *l = services;
+	struct slist *l, *lremove = NULL;
 	struct service_agent *agent;
 	const char *path;
 	
 	debug("Service Agent exited:%s", name);
 
-	while (l) {
+	/* Remove all service agents assigned to this owner */
+	for (l = services; l; l = l->next) {
 		path = l->data;
-		l = l->next;
 
-		if (dbus_connection_get_object_path_data(conn, path, (void *) &agent))
-			service_agent_free(agent);
+		if (!dbus_connection_get_object_path_data(conn, path, (void *) &agent))
+			continue;
+
+		if (strcmp(name, agent->id))
+			continue;
+
+		service_agent_free(agent);
 
 		dbus_connection_unregister_object_path(conn, path);
 
@@ -172,10 +177,13 @@ static void service_agent_exit(const char *name, void *data)
 		dbus_message_append_args(message, DBUS_TYPE_STRING, &path,
 						DBUS_TYPE_INVALID);
 		send_message_and_unref(conn, message);
+
+		lremove = slist_append(lremove, l->data);
+		services = slist_remove(services, l->data);
 	}
 
-	slist_foreach(services, (slist_func_t) free, NULL);
-	services = NULL;
+	slist_foreach(lremove, (slist_func_t) free, NULL);
+	slist_free(lremove);
 }
 
 static void forward_reply(DBusPendingCall *call, void *udata)
@@ -437,8 +445,10 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 		return -1;
 
 	l = slist_find(services, path, (cmp_func_t) strcmp);
-	if (l)
+	if (l) {
 		services = slist_remove(services, l->data);
+		free(l->data);
+	}
 
 	return 0;
 }
