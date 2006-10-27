@@ -39,14 +39,7 @@
 #define START_REPLY_TIMEOUT	5000
 
 #define SERVICE_RUNNING		1
-#define SERVICE_NOT_RUNNING	0	
-
-struct service_agent {
-	char *id;	/* Connection id */
-	char *name;
-	char *description;
-	int running;
-};
+#define SERVICE_NOT_RUNNING	0
 
 struct service_call {
 	DBusConnection *conn;
@@ -541,9 +534,7 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 		dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
 
 		return send_message_and_unref(conn, forward);
-	} else if (strcmp("org.bluez.Security", iface) == 0)
-		return handle_security_method(conn, msg, data);
-	else 
+	} else 
 		return error_unknown_method(conn, msg);
 }
 

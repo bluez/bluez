@@ -124,6 +124,7 @@ struct adapter {
 	char *discov_requestor;		/* discovery requestor unique name */
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
 	struct slist *passkey_agents;
+	struct slist *auth_agents;	/* Authorization agents */
 	bdaddr_t agents_disabled;	/* temporarely disable agents for bda */
 	struct slist *active_conn;
 	struct bonding_request_info *bonding;
@@ -150,6 +151,17 @@ struct pending_agent_request {
 	DBusPendingCall *call;
 	int old_if;
 	char *pin;
+};
+
+struct authorization_agent {
+
+};
+
+struct service_agent {
+	char *id;	/* Connection id */
+	char *name;
+	char *description;
+	int running;
 };
 
 typedef int register_function_t(DBusConnection *conn, uint16_t id);

@@ -206,7 +206,7 @@ static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *
 	return 0;
 }
 
-static DBusHandlerResult register_agent(DBusConnection *conn,
+static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct passkey_agent *agent, ref;
@@ -215,7 +215,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	const char *path, *addr;
 
 	if (!data) {
-		error("register_agent called without any adapter info!");
+		error("register_passkey_agent called without any adapter info!");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
@@ -260,7 +260,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult unregister_agent(DBusConnection *conn,
+static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter;
@@ -270,7 +270,7 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	const char *path, *addr;
 
 	if (!data) {
-		error("uregister_agent called without any adapter info!");
+		error("unregister_passkey_agent called without any adapter info!");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
@@ -308,8 +308,8 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult register_default_agent(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusHandlerResult register_default_passkey_agent(DBusConnection *conn,
+							DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *path;
@@ -349,7 +349,7 @@ need_memory:
 	return DBUS_HANDLER_RESULT_NEED_MEMORY;
 }
 
-static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
+static DBusHandlerResult unregister_default_passkey_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
@@ -385,9 +385,40 @@ static DBusHandlerResult unregister_default_agent(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
+							DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult unregister_default_auth_agent(DBusConnection *conn,
+							DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult authorize_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct service_agent *sagent;
+	const char *service, *address, *action;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &service,
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_STRING, &action,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (!dbus_connection_get_object_path_data(conn, service, (void*) &sagent))
+		return error_not_authorized(conn, msg);
+
+	/* Check if the connection id match */
+	if (strcmp(dbus_message_get_sender(msg), sagent->id))
+		return error_not_authorized(conn, msg);
+
+	/* FIXME: Forward to the default authentication agent */
+
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
@@ -399,12 +430,14 @@ static DBusHandlerResult cancel_service_authorization(DBusConnection *conn,
 
 
 static struct service_data sec_services[] = {
-	{ "RegisterDefaultPasskeyAgent",	register_default_agent		},
-	{ "UnregisterDefaultPasskeyAgent",	unregister_default_agent	},
-	{ "RegisterPasskeyAgent",		register_agent			},
-	{ "UnregisterPasskeyAgent",		unregister_agent		},
-	{ "Authorize",				authorize_service		},
-	{ "CancelAuthorization",		cancel_service_authorization	},
+	{ "RegisterDefaultPasskeyAgent",		register_default_passkey_agent		},
+	{ "UnregisterDefaultPasskeyAgent",		unregister_default_passkey_agent	},
+	{ "RegisterPasskeyAgent",			register_passkey_agent			},
+	{ "UnregisterPasskeyAgent",			unregister_passkey_agent		},
+	{ "RegisterDefaultAuthenticationAgent",		register_default_auth_agent		},
+	{ "UnregisterDefaultAuthenticationAgent",	unregister_default_auth_agent		},
+	{ "AuthorizeService",				authorize_service			},
+	{ "CancelAuthorizationProcess",			cancel_service_authorization		},
 	{ NULL, NULL }
 };
 
