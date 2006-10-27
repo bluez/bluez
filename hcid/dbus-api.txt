@@ -78,7 +78,7 @@ Errors		Failed
 			exists. This error is similar to ENODEV.
 
 		NotReady
-			
+
 			Error returned when the adapter is DOWN.
 
 		NotAvailable
@@ -298,7 +298,7 @@ Methods		string GetAddress()
 			Sets mode of the adapter. See GetMode for valid strings
 			for the mode parameter.
 
-			Possible errors: org.bluez.Error.NoSuchAdapter 
+			Possible errors: org.bluez.Error.NoSuchAdapter
 					 org.bluez.Error.Failed
 
 		uint32 GetDiscoverableTimeout()
@@ -436,7 +436,7 @@ Methods		string GetAddress()
 
 			Returns the local adapter name (friendly name) in UTF-8.
 
-			Possible errors: org.bluez.Error.NotReady 
+			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
 
 		void SetName(string name)
@@ -530,7 +530,7 @@ Methods		string GetAddress()
 
 		uint32 GetRemoteClass(string address)
 
-			Get the remote major, minor, and service classes 
+			Get the remote major, minor, and service classes
 			encoded as 32 bit integer.
 
 			Possible errors: org.bluez.Error.InvalidArguments
@@ -805,7 +805,7 @@ Methods		string GetAddress()
 			Possible errors: none
 
 		void SetPeriodicDiscoveryNameResolving(boolean resolve_names)
-			
+
 			Enable or disable automatic remote name resolving for
 			periodic discovery.
 
