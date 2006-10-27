@@ -507,7 +507,10 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 
 	iface = dbus_message_get_interface(msg);
 
-	if (strcmp("org.bluez.Service", iface) == 0) {
+	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
+			!strcmp("Introspect", dbus_message_get_member(msg))) {
+		return simple_introspect(conn, msg, data);
+	} else if (strcmp("org.bluez.Service", iface) == 0) {
 
 		handler = find_service_handler(services_methods, msg);
 		if (handler)
@@ -541,7 +544,7 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	} else if (strcmp("org.bluez.Security", iface) == 0)
 		return handle_security_method(conn, msg, data);
 	else 
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return error_unknown_method(conn, msg);
 }
 
 static const DBusObjectPathVTable services_vtable = {
