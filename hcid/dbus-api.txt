@@ -838,6 +838,16 @@ Methods		string GetAddress()
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.Failed
 
+		string GetRemoteServiceRecordAsXML(string address, uint32 handle)
+
+			This method will request the SDP database of a remote
+			device for a service record and return its data in XML
+			format.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+			                 org.bluez.Error.InProgress
+			                 org.bluez.Error.Failed
+
 Signals		void ModeChanged(string mode)
 
 			If the current mode is changed with SetMode this signal
