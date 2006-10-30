@@ -485,6 +485,9 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg);
+
 	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcmp);
 	if (l) 
 		return error_failed(conn, msg, EINVAL);
