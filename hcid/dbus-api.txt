@@ -1152,6 +1152,24 @@ Methods		string Request(string path, string address, boolean numeric)
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
+		void Display(string path, string address, string value)
+
+			This method gets called when the service daemon
+			needs to display the passkey value. No return
+			value is needed. A successful paring will be
+			indicated by the Complete method and a failure
+			will be signaled with Cancel.
+
+		void Keypress(string path, string address)
+
+			This method indicates keypresses from the remote
+			device. This can happen when pairing with a keyboard.
+
+		void Complete(string path, string address)
+
+			This method gets called to indicate that the
+			authentication has been completed.
+
 		void Cancel(string path, string address)
 
 			This method gets called to indicate that the
