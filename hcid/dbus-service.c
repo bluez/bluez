@@ -49,6 +49,20 @@ struct service_call {
 
 static struct slist *services = NULL;
 
+static struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg, struct service_agent *agent)
+{
+	struct service_call *call;
+	call = malloc(sizeof(struct service_call));
+	if (!call)
+		return NULL;
+	memset(call, 0, sizeof(struct service_call));
+	call->conn = dbus_connection_ref(conn);
+	call->msg = dbus_message_ref(msg);
+	call->agent = agent;
+
+	return call;
+}
+
 static void service_call_free(void *data)
 {
 	struct service_call *call = data;
@@ -323,12 +337,14 @@ static DBusHandlerResult start(DBusConnection *conn,
 	dbus_message_set_interface(forward, "org.bluez.ServiceAgent");
 	dbus_message_set_path(forward, dbus_message_get_path(msg));
 
-	call_data = malloc(sizeof(struct service_call));
-	call_data->conn = dbus_connection_ref(conn);
-	call_data->msg = dbus_message_ref(msg);
-	call_data->agent = data;
+	call_data = service_call_new(conn, msg, agent);
+	if (!call_data) {
+		dbus_message_unref(forward);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
 
 	if (dbus_connection_send_with_reply(conn, forward, &pending, START_REPLY_TIMEOUT) == FALSE) {
+		service_call_free(call_data);
 		dbus_message_unref(forward);
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
@@ -392,12 +408,14 @@ static DBusHandlerResult stop(DBusConnection *conn,
 	dbus_message_set_interface(forward, "org.bluez.ServiceAgent");
 	dbus_message_set_path(forward, dbus_message_get_path(msg));
 
-	call_data = malloc(sizeof(struct service_call));
-	call_data->conn = dbus_connection_ref(conn);
-	call_data->msg = dbus_message_ref(msg);
-	call_data->agent = data;
+	call_data = service_call_new(conn, msg, agent);
+	if (!call_data) {
+		dbus_message_unref(forward);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
 
 	if (dbus_connection_send_with_reply(conn, forward, &pending, START_REPLY_TIMEOUT) == FALSE) {
+		service_call_free(call_data);
 		dbus_message_unref(forward);
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
@@ -575,14 +593,11 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 		dbus_message_set_destination(forward, agent->id);
 		dbus_message_set_path(forward, dbus_message_get_path(msg));
 
-		call_data = malloc(sizeof(struct service_call));
+		call_data = service_call_new(conn, msg, agent);
 		if (!call_data) {
 			dbus_message_unref(forward);
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 		}
-
-		call_data->conn = dbus_connection_ref(conn);
-		call_data->msg = dbus_message_ref(msg);
 
 		if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
 			service_call_free(call_data);
