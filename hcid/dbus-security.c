@@ -46,6 +46,7 @@ static struct passkey_agent *default_agent = NULL;
 static struct authorization_agent *default_auth_agent = NULL;
 
 static void release_agent(struct passkey_agent *agent);
+static void release_auth_agent(struct authorization_agent *agent);
 static void send_cancel_request(struct pending_agent_request *req);
 
 static void passkey_agent_free(struct passkey_agent *agent)
@@ -209,7 +210,10 @@ static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *
 
 static void auth_agent_free(struct authorization_agent *agent)
 {
-	/* FIXME: release the agent if necessary */
+	/* FIXME: cancel all requests */
+
+	if (!agent->exited)
+		release_auth_agent(agent);
 
 	if (agent->name)
 		free(agent->name);
@@ -265,6 +269,28 @@ static void default_auth_agent_exited(const char *name, void *data)
 	default_auth_agent->exited = 1;
 	auth_agent_free(default_auth_agent);
 	default_auth_agent = NULL;
+}
+
+static void release_auth_agent(struct authorization_agent *agent)
+{
+	DBusMessage *message;
+
+	debug("Releasing authorization agent %s, %s",
+		agent->name, agent->path);
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+			"org.bluez.AuthorizationAgent", "Release");
+	if (!message) {
+		error("Couldn't allocate D-Bus message");
+		return;
+	}
+
+	dbus_message_set_no_reply(message, TRUE);
+	send_message_and_unref(agent->conn, message);
+
+	if (agent == default_auth_agent)
+		name_listener_remove(agent->conn, agent->name,
+				(name_cb_t) default_auth_agent_exited, NULL);
 }
 
 static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
@@ -1061,6 +1087,15 @@ void release_default_agent(void)
 
 	passkey_agent_free(default_agent);
 	default_agent = NULL;
+}
+
+void release_default_auth_agent(void)
+{
+	if (!default_auth_agent)
+		return;
+
+	auth_agent_free(default_auth_agent);
+	default_auth_agent = NULL;
 }
 
 void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda)
