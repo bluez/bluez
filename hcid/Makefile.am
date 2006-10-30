@@ -17,7 +17,7 @@ sbin_PROGRAMS = hcid
 
 noinst_PROGRAMS = passkey-agent service-agent auth-agent
 
-hcid_SOURCES = main.c security.c device.c logging.c storage.c \
+hcid_SOURCES = main.c security.c device.c storage.c \
 		sdp.c sdp.h hcid.h parser.h parser.y \
 		lexer.l kword.c kword.h \
 		dbus.h dbus.c dbus-common.c \

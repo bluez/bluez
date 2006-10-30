@@ -26,11 +26,8 @@
 #endif
 
 #include <stdio.h>
-#include <errno.h>
 #include <stdarg.h>
 #include <syslog.h>
-
-#include "hcid.h"
 
 static volatile int debug_enabled = 0;
 

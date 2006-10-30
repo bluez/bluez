@@ -29,6 +29,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 
+#include "logging.h"
 #include "glib-ectomy.h"
 
 #define HCID_CONFIG_FILE CONFIGDIR "/hcid.conf"
@@ -211,10 +212,3 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key);
 int read_pin_length(bdaddr_t *local, bdaddr_t *peer);
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
 
-void info(const char *format, ...);
-void error(const char *format, ...);
-void debug(const char *format, ...);
-void enable_debug();
-void disable_debug();
-void start_logging(const char *ident, const char *message);
-void stop_logging(void);
