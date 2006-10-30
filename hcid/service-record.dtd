@@ -1,0 +1,12 @@
+<!ELEMENT record (attribute)*>
+
+<!ELEMENT attribute (data|sequence|alternate)+>
+<!ATTLIST attribute id CDATA #REQUIRED>
+
+<!ELEMENT sequence (data|sequence|alternate)+>
+
+<!ELEMENT alternate (data|sequence|alternate)+>
+
+<!ELEMENT data EMPTY>
+<!ATTLIST data type CDATA #REQUIRED>
+<!ATTLIST data value CDATA #REQUIRED>
