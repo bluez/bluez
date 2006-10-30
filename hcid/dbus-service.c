@@ -383,7 +383,7 @@ static void stop_reply(DBusPendingCall *call, void *udata)
 		DBusMessage *message;
 		call_data->agent->running = SERVICE_NOT_RUNNING;
 
-		/* Send a signal to indicate that the service started properly */
+		/* Send a signal to indicate that the service stopped properly */
 		message = dbus_message_new_signal(dbus_message_get_path(call_data->msg),
 							dbus_message_get_interface(call_data->msg),
 							"Stopped");
