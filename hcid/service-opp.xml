@@ -38,7 +38,7 @@
   </attribute>
 
   <attribute id="0x0100">
-    <string value="OBEX Object Push"/>
+    <text value="OBEX Object Push"/>
   </attribute>
 
   <attribute id="0x0303">
