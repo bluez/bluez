@@ -1046,12 +1046,7 @@ Service		org.bluez
 Interface	org.bluez.Service
 Object path	path from org.bluez.Manager.ListServices()
 
-Methods		array{string} GetInterfaceNames()
-
-			This methods gets the names of the interfaces
-			implemented by the service agent and returns them.
-
-		string GetConnectionName()
+Methods		string GetConnectionName()
 
 			This method returns the name of the connection to
 			the service agent.
@@ -1208,14 +1203,7 @@ Service		unique name
 Interface	org.bluez.ServiceAgent
 Object path	freely definable
 
-Methods		array{string} Interfaces()
-
-			This method must return the name of other interfaces
-			the agent implements and wants to export. The service
-			daemon does not know anything about these interfaces
-			so they can be service specific.
-
-		void Start()
+Methods		void Start()
 
 			This method gets called when the service daemon
 			wants to start the service provided by the agent.

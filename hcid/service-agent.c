@@ -71,43 +71,6 @@ static DBusHandlerResult agent_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static DBusHandlerResult interfaces_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-        DBusMessageIter iter, array_iter;
-	const char *intf = "org.bluez.Example";
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID)) {
-		fprintf(stderr, "Invalid arguments for service Interfaces method");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		fprintf(stderr, "Can't create reply message\n");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_STRING_AS_STRING, &array_iter);
-
-	dbus_message_iter_append_basic(&array_iter,
-					DBUS_TYPE_STRING, &intf);
-
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_connection_flush(conn);
-
-	dbus_message_unref(reply);
-	
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
 static DBusHandlerResult start_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -201,9 +164,6 @@ static DBusHandlerResult release_message(DBusConnection *conn,
 static DBusHandlerResult service_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	if (dbus_message_is_method_call(msg, "org.bluez.ServiceAgent", "Interfaces"))
-		return interfaces_message(conn, msg, data);
-
 	if (dbus_message_is_method_call(msg, "org.bluez.ServiceAgent", "Start"))
 		return start_message(conn, msg, data);
 

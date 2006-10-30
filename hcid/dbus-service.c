@@ -210,35 +210,6 @@ static void forward_reply(DBusPendingCall *call, void *udata)
 	dbus_pending_call_unref (call);
 }
 
-static DBusHandlerResult get_interface_names(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusPendingCall *pending;
-	struct service_call *call_data;
-	struct service_agent *agent  = data;
-	DBusMessage *forward = dbus_message_copy(msg);
-	const char *path = dbus_message_get_path(msg);
-
-	dbus_message_set_destination(forward, agent->id);
-	dbus_message_set_interface(forward, "org.bluez.ServiceAgent");
-	dbus_message_set_path(forward, path);
-	dbus_message_set_member(forward, "Interfaces");
-
-	call_data = malloc(sizeof(struct service_call));
-	call_data->conn = dbus_connection_ref(conn);
-	call_data->msg = dbus_message_ref(msg);
-
-	if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
-		dbus_message_unref(forward);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
-	dbus_message_unref(forward);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
 static DBusHandlerResult get_connection_name(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -564,7 +535,6 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 static struct service_data services_methods[] = {
 	{ "GetName",		get_name		},
 	{ "GetDescription",	get_description		},
-	{ "GetInterfaceNames",  get_interface_names	},
 	{ "GetConnectionName",	get_connection_name	},
 	{ "Start",		start			},
 	{ "Stop",		stop			},
