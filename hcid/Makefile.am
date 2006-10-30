@@ -49,6 +49,7 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) hcid.conf bluez-hcid.conf service-record.dtd dbus-api.txt
+EXTRA_DIST = $(man_MANS) hcid.conf bluez-hcid.conf \
+	service-record.dtd service-opp.xml dbus-api.txt
 
 MAINTAINERCLEANFILES = Makefile.in

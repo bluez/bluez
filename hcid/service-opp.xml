@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<record>
+  <attribute id="0x0001">
+    <sequence>
+      <uuid value="0x1105"/>
+    </sequence>
+  </attribute>
+
+  <attribute id="0x0004">
+    <sequence>
+      <sequence>
+        <uuid value="0x0100"/>
+      </sequence>
+      <sequence>
+        <uuid value="0x0003"/>
+        <uint8 value="23"/>
+      </sequence>
+      <sequence>
+        <uuid value="0x0008"/>
+      </sequence>
+    </sequence>
+  </attribute>
+
+  <attribute id="0x0005">
+    <sequence>
+      <uuid value="0x1002"/>
+    </sequence>
+  </attribute>
+
+  <attribute id="0x0009">
+    <sequence>
+      <sequence>
+        <uuid value="0x1105"/>
+        <uint16 value="0x0100"/>
+      </sequence>
+    </sequence8>
+  </attribute>
+
+  <attribute id="0x0100">
+    <string value="OBEX Object Push"/>
+  </attribute>
+
+  <attribute id="0x0303">
+    <sequence>
+      <uint8 value="0x01"/>
+      <uint8 value="0x01"/>
+      <uint8 value="0x02"/>
+      <uint8 value="0x03"/>
+      <uint8 value="0x04"/>
+      <uint8 value="0x05"/>
+      <uint8 value="0x06"/>
+      <uint8 value="0xff"/>
+    </sequence>
+  </attribute>
+</record>
