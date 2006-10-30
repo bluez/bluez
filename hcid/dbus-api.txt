@@ -1213,11 +1213,6 @@ Methods		void Start()
 			This method gets called when the service daemon
 			wants to stop the service provided by the agent.
 
-		string Record()
-
-			This method must return the SDP record in XML
-			format.
-
 		void Release()
 
 			This method gets called when the service daemon
