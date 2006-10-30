@@ -838,7 +838,6 @@ Methods		string GetAddress()
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.Failed
 
-
 Signals		void ModeChanged(string mode)
 
 			If the current mode is changed with SetMode this signal
@@ -1103,6 +1102,16 @@ Methods		array{string} GetInterfaceNames()
 		void RemoveTrust(string address)
 
 			Marks the user as not trusted.
+
+Signals		void Started()
+
+			The object path of this signal contains which service
+			was started.
+
+		void Stopped()
+
+			The object path of this signal contains which service
+			was stopped.
 
 
 PasskeyAgent hierarchy
