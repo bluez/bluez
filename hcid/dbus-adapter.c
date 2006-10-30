@@ -1058,6 +1058,23 @@ static DBusHandlerResult adapter_get_remote_svc(DBusConnection *conn,
 	return get_remote_svc_rec(conn, msg, data);
 }
 
+static DBusHandlerResult adapter_get_remote_svc_xml(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *result = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+				"<record></record>";
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &result,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult adapter_get_remote_svc_handles(DBusConnection *conn,
 							DBusMessage *msg,
 							void *data)
@@ -2714,6 +2731,7 @@ static struct service_data dev_services[] = {
 	{ "SetName",				adapter_set_name		},
 	
 	{ "GetRemoteServiceRecord",		adapter_get_remote_svc		},
+	{ "GetRemoteServiceRecordAsXML",	adapter_get_remote_svc_xml	},
 	{ "GetRemoteServiceHandles",		adapter_get_remote_svc_handles	},
 
 	{ "GetRemoteVersion",			adapter_get_remote_version	},
