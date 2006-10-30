@@ -38,6 +38,10 @@
 
 #include "dbus.h"
 #include "hcid.h"
+#include "dbus-common.h"
+#include "dbus-service.h"
+#include "dbus-error.h"
+#include "dbus-security.h"
 
 #define REQUEST_TIMEOUT (60 * 1000)		/* 60 seconds */
 #define AGENT_TIMEOUT (10 * 60 * 1000)		/* 10 minutes */

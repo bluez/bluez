@@ -32,6 +32,8 @@
 
 #include "hcid.h"
 #include "dbus.h"
+#include "dbus-common.h"
+#include "dbus-error.h"
 
 DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err)
 {

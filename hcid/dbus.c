@@ -46,6 +46,15 @@
 #include "dbus.h"
 #include "textfile.h"
 #include "list.h"
+#include "dbus-common.h"
+#include "dbus-error.h"
+#include "dbus-test.h"
+#include "dbus-security.h"
+#include "dbus-service.h"
+#include "dbus-manager.h"
+#include "dbus-adapter.h"
+
+#define BLUEZ_NAME "org.bluez"
 
 static DBusConnection *connection;
 
@@ -347,13 +356,13 @@ DBusMessage *dev_signal_factory(int devid, const char *prop_name, int first,
  * Virtual table that handle the object path hierarchy
  */
 
-static const DBusObjectPathVTable obj_dev_vtable = {
-	.message_function	= &msg_func_device,
+static const DBusObjectPathVTable adapter_vtable = {
+	.message_function	= &handle_method_call,
 	.unregister_function	= NULL
 };
 
-static const DBusObjectPathVTable obj_mgr_vtable = {
-	.message_function	= &msg_func_manager,
+static const DBusObjectPathVTable manager_vtable = {
+	.message_function	= &handle_manager_method,
 	.unregister_function	= NULL
 };
 
@@ -362,46 +371,6 @@ static const DBusObjectPathVTable obj_mgr_vtable = {
  */
 static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data);
-
-static int register_dbus_path(const char *path, uint16_t dev_id,
-				const DBusObjectPathVTable *pvtable,
-				gboolean fallback)
-{
-	struct adapter *adapter;
-
-	info("Register path:%s fallback:%d", path, fallback);
-
-	adapter = malloc(sizeof(struct adapter));
-	if (!adapter) {
-		error("Failed to alloc memory to DBUS path register data (%s)",
-				path);
-		return -1;
-	}
-
-	memset(adapter, 0, sizeof(struct adapter));
-
-	adapter->dev_id = dev_id;
-
-	adapter->pdiscov_resolve_names = 1;
-
-	if (fallback) {
-		if (!dbus_connection_register_fallback(connection, path,
-							pvtable, adapter)) {
-			error("D-Bus failed to register %s fallback", path);
-			free(adapter);
-			return -1;
-		}
-	} else {
-		if (!dbus_connection_register_object_path(connection, path,
-							pvtable, adapter)) {
-			error("D-Bus failed to register %s object", path);
-			free(adapter);
-			return -1;
-		}
-	}
-
-	return 0;
-}
 
 static void reply_pending_requests(const char *path, struct adapter *adapter)
 {
@@ -544,11 +513,28 @@ int hcid_dbus_register_device(uint16_t id)
 	char path[MAX_PATH_LENGTH];
 	char *pptr = path;
 	DBusMessage *message;
+	struct adapter *adapter;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (register_dbus_path(path, id, &obj_dev_vtable, FALSE) < 0)
+	adapter = malloc(sizeof(struct adapter));
+	if (!adapter) {
+		error("Failed to alloc memory to D-Bus path register data (%s)",
+				path);
 		return -1;
+	}
+
+	memset(adapter, 0, sizeof(struct adapter));
+
+	adapter->dev_id = id;
+	adapter->pdiscov_resolve_names = 1;
+
+	if (!dbus_connection_register_object_path(connection, path,
+						&adapter_vtable, adapter)) {
+		error("D-Bus failed to register %s object", path);
+		free(adapter);
+		return -1;
+	}
 
 	/*
 	 * Send the adapter added signal
@@ -1935,7 +1921,7 @@ int hcid_dbus_init(void)
 
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
 
-	ret_val = dbus_bus_request_name(connection, BASE_INTERFACE, 0, &err);
+	ret_val = dbus_bus_request_name(connection, BLUEZ_NAME, 0, &err);
 
 	if (ret_val != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
 		error("Service could not become the primary owner.");
@@ -1948,9 +1934,11 @@ int hcid_dbus_init(void)
 		return -1;
 	}
 
-	if (register_dbus_path(BASE_PATH, INVALID_DEV_ID, &obj_mgr_vtable,
-				TRUE) < 0)
+	if (!dbus_connection_register_fallback(connection, BASE_PATH,
+						&manager_vtable, NULL)) {
+		error("D-Bus failed to register %s fallback", BASE_PATH);
 		return -1;
+	}
 
 	if (!dbus_connection_add_filter(connection, hci_dbus_signal_filter,
 					NULL, NULL)) {

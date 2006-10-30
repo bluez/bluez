@@ -49,6 +49,9 @@
 #include "dbus.h"
 #include "hcid.h"
 #include "textfile.h"
+#include "dbus-common.h"
+#include "dbus-error.h"
+#include "dbus-sdp.h"
 
 #define MAX_IDENTIFIER_LEN	29	/* "XX:XX:XX:XX:XX:XX/0xYYYYYYYY\0" */
 

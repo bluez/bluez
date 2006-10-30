@@ -35,6 +35,11 @@
 #include "hcid.h"
 #include "dbus.h"
 #include "list.h"
+#include "dbus-common.h"
+#include "dbus-error.h"
+#include "dbus-manager.h"
+#include "dbus-adapter.h"
+#include "dbus-service.h"
 
 #define START_REPLY_TIMEOUT	5000
 

@@ -20,10 +20,12 @@ noinst_PROGRAMS = passkey-agent service-agent auth-agent
 hcid_SOURCES = main.c security.c device.c storage.c \
 		sdp.c sdp.h hcid.h parser.h parser.y \
 		lexer.l kword.c kword.h \
-		dbus.h dbus.c dbus-common.c \
-		dbus-error.c dbus-manager.c dbus-adapter.c \
-		dbus-device.c dbus-service.c dbus-security.c \
-		dbus-test.c dbus-sdp.c dbus-rfcomm.c
+		dbus.h dbus.c dbus-common.c dbus-common.h \
+		dbus-error.c dbus-error.h dbus-manager.c dbus-manager.h \
+		dbus-adapter.c dbus-adapter.h \
+		dbus-device.c dbus-device.h dbus-service.c dbus-service.h \
+		dbus-security.c dbus-security.h dbus-test.c dbus-test.h \
+		dbus-sdp.c dbus-sdp.h dbus-rfcomm.c dbus-rfcomm.h
 
 hcid_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 

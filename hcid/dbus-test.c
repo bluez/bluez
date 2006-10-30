@@ -35,6 +35,9 @@
 
 #include "hcid.h"
 #include "dbus.h"
+#include "dbus-common.h"
+#include "dbus-error.h"
+#include "dbus-test.h"
 
 #define L2INFO_TIMEOUT (2 * 1000)
 

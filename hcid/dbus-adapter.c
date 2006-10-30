@@ -42,10 +42,15 @@
 
 #include "hcid.h"
 #include "dbus.h"
+#include "dbus-adapter.h"
 
 #include "textfile.h"
 #include "oui.h"
 #include "list.h"
+#include "dbus-common.h"
+#include "dbus-sdp.h"
+#include "dbus-error.h"
+#include "dbus-adapter.h"
 
 static const char *service_cls[] = {
 	"positioning",
@@ -2773,33 +2778,14 @@ static struct service_data dev_services[] = {
 	{ NULL, NULL }
 };
 
-DBusHandlerResult msg_func_device(DBusConnection *conn, DBusMessage *msg, void *data)
+DBusHandlerResult handle_adapter_method(DBusConnection *conn, DBusMessage *msg, void *data)
 {
-	const char *iface, *name;
+	service_handler_func_t handler;
 
-	iface = dbus_message_get_interface(msg);
-	name = dbus_message_get_member(msg);
+	handler = find_service_handler(dev_services, msg);
 
-	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
-					!strcmp("Introspect", name)) {
-		return simple_introspect(conn, msg, data);
-	} else if (!strcmp(ADAPTER_INTERFACE, iface)) {
-		service_handler_func_t handler;
-
-		handler = find_service_handler(dev_services, msg);
-
-		if (handler)
-			return handler(conn, msg, data);
-		else
-			return error_unknown_method(conn, msg);
-	} else if (!strcmp(SECURITY_INTERFACE, iface))
-		return handle_security_method(conn, msg, data);
-	else if (!strcmp(TEST_INTERFACE, iface))
-		return handle_test_method(conn, msg, data);
-	else if (!strcmp(RFCOMM_INTERFACE, iface))
-		return handle_rfcomm_method(conn, msg, data);
-	else if (!strcmp(SDP_INTERFACE, iface))
-		return handle_sdp_method(conn, msg, data);
+	if (handler)
+		return handler(conn, msg, data);
 	else
 		return error_unknown_method(conn, msg);
 }

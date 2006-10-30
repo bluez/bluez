@@ -40,6 +40,11 @@
 #include "hcid.h"
 #include "dbus.h"
 #include "list.h"
+#include "dbus-common.h"
+#include "dbus-error.h"
+#include "dbus-security.h"
+#include "dbus-service.h"
+#include "dbus-manager.h"
 
 static DBusHandlerResult interface_version(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -313,7 +318,7 @@ static struct service_data methods[] = {
 	{ NULL, NULL }
 };
 
-DBusHandlerResult msg_func_manager(DBusConnection *conn,
+DBusHandlerResult handle_manager_method(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	service_handler_func_t handler;

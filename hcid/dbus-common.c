@@ -48,6 +48,13 @@
 #include "hcid.h"
 #include "list.h"
 #include "dbus.h"
+#include "dbus-error.h"
+#include "dbus-adapter.h"
+#include "dbus-security.h"
+#include "dbus-test.h"
+#include "dbus-rfcomm.h"
+#include "dbus-sdp.h"
+#include "dbus-common.h"
 
 static int name_listener_initialized = 0;
 
@@ -468,5 +475,29 @@ int check_address(const char *addr)
 	}
 
 	return 0;
+}
+
+DBusHandlerResult handle_method_call(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	const char *iface, *name;
+	
+	iface = dbus_message_get_interface(msg);
+	name = dbus_message_get_member(msg);
+
+	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
+					!strcmp("Introspect", name))
+		return simple_introspect(conn, msg, data);
+	else if (!strcmp(ADAPTER_INTERFACE, iface))
+		return handle_adapter_method(conn, msg, data);
+	else if (!strcmp(SECURITY_INTERFACE, iface))
+		return handle_security_method(conn, msg, data);
+	else if (!strcmp(TEST_INTERFACE, iface))
+		return handle_test_method(conn, msg, data);
+	else if (!strcmp(RFCOMM_INTERFACE, iface))
+		return handle_rfcomm_method(conn, msg, data);
+	else if (!strcmp(SDP_INTERFACE, iface))
+		return handle_sdp_method(conn, msg, data);
+	else
+		return error_unknown_method(conn, msg);
 }
 

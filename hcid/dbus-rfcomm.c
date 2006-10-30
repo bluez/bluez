@@ -47,6 +47,10 @@
 #include "list.h"
 #include "glib-ectomy.h"
 #include "dbus.h"
+#include "dbus-common.h"
+#include "dbus-error.h"
+#include "dbus-sdp.h"
+#include "dbus-rfcomm.h"
 
 /* Waiting for udev to create the device node */
 #define MAX_OPEN_TRIES	5
