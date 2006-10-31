@@ -865,7 +865,6 @@ static void confirm_agent_reply(DBusPendingCall *call, void *user_data)
 	pin_code_reply_cp pr;
 	DBusMessage *message;
 	DBusError err;
-	dbus_bool_t result;
 	int len;
 
 	/* steal_reply will always return non-NULL since the callback
@@ -883,16 +882,11 @@ static void confirm_agent_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	dbus_error_init(&err);
-	if (!dbus_message_get_args(message, &err,
-				DBUS_TYPE_BOOLEAN, &result,
-				DBUS_TYPE_INVALID)) {
-		error("Wrong passkey reply signature: %s", err.message);
+	if (!dbus_message_get_args(message, &err, DBUS_TYPE_INVALID)) {
+		error("Wrong confirm reply signature: %s", err.message);
 		dbus_error_free(&err);
 		goto fail;
 	}
-
-	if (result == FALSE)
-		goto fail;
 
 	len = strlen(req->pin);
 

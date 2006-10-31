@@ -111,7 +111,6 @@ static DBusHandlerResult confirm_message(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	const char *path, *address, *value;
-	dbus_bool_t result;
 
 	if (!passkey)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -123,16 +122,13 @@ static DBusHandlerResult confirm_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
-	result = strcmp(value, passkey) == 0 ? TRUE : FALSE;
-
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
 		fprintf(stderr, "Can't create reply message\n");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &result,
-					DBUS_TYPE_INVALID);
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	dbus_connection_send(conn, reply, NULL);
 
