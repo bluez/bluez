@@ -1141,13 +1141,14 @@ Methods		string Request(string path, string address, boolean numeric)
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
-		boolean Confirm(string path, string address, string value)
+		void Confirm(string path, string address, string value)
 
 			This method gets called when the service daemon
 			needs to verify a passkey. The verification is
 			done by showing the value to the passkey agent
-			and returning true means a successful confirmation
-			while false means that the values don't match.
+			and returning means a successful confirmation.
+			In case the values don't match an error must
+			be returned.
 
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
@@ -1192,14 +1193,14 @@ Service		unique name
 Interface	org.bluez.AuthorizationAgent
 Object path	freely definable
 
-Methods		boolean Authorize(string adapter_path, string address,
-				string service_path, string action)
+Methods		void Authorize(string adapter_path, string address,
+					string service_path, string action)
 
 			This method gets called when the service daemon wants
 			to get an authorization for an action a remote device
-			is trying to perform. This method returns true if
-			the remote user is authorized to perform that action
-			and false otherwise.
+			is trying to perform. This method should return if the
+			remote user is authorized to perform that action and
+			an error otherwise.
 
 			The adapter_path parameter is the object path of the
 			local adapter. The address, service_path and action
@@ -1207,8 +1208,11 @@ Methods		boolean Authorize(string adapter_path, string address,
 			the object path of the service and the action the
 			remote device is trying to perform.
 
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
 		void Cancel(string adapter_path, string address,
-				string service_path, string action)
+					string service_path, string action)
 
 			This method cancels a previous authorization request.
 			The adapter_path, address, service_path and action
