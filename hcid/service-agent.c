@@ -180,6 +180,67 @@ static const DBusObjectPathVTable service_table = {
 	.message_function = service_message,
 };
 
+static int register_record(DBusConnection *conn, const char *service_path)
+{
+	DBusMessage *msg, *reply;
+	DBusMessageIter iter, array_iter;
+	DBusError err;
+	unsigned char record[] = {
+			0x35, 0x61, 0x09, 0x00, 0x00, 0x0a, 0x00, 0x01,
+			0x00, 0x00, 0x09, 0x00, 0x01, 0x35, 0x03, 0x19,
+			0x11, 0x01, 0x09, 0x00, 0x04, 0x35, 0x0c, 0x35,
+			0x03, 0x19, 0x01, 0x00, 0x35, 0x05, 0x19, 0x00,
+			0x03, 0x08, 0x17, 0x09, 0x00, 0x05, 0x35, 0x03,
+			0x19, 0x10, 0x02, 0x09, 0x00, 0x06, 0x35, 0x09,
+			0x09, 0x65, 0x6e, 0x09, 0x00, 0x6a, 0x09, 0x01,
+			0x00, 0x09, 0x00, 0x09, 0x35, 0x08, 0x35, 0x06,
+			0x19, 0x11, 0x01, 0x09, 0x01, 0x00, 0x09, 0x01,
+			0x00, 0x25, 0x0b, 0x53, 0x65, 0x72, 0x69, 0x61,
+			0x6c, 0x20, 0x50, 0x6f, 0x72, 0x74, 0x09, 0x01,
+			0x01, 0x25, 0x08, 0x43, 0x4f, 0x4d, 0x20, 0x50,
+			0x6f, 0x72, 0x74 };
+	int i;
+
+	msg = dbus_message_new_method_call("org.bluez", service_path,
+				"org.bluez.Service", "RegisterServiceRecord");
+	if (!msg) {
+		fprintf(stderr, "Can't allocate new method call\n");
+		return -1;
+	}
+
+	dbus_message_iter_init_append(msg, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_BYTE_AS_STRING, &array_iter);
+
+	for (i = 0; i < sizeof(record); i++)
+		dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_BYTE, &record[i]);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	dbus_error_init(&err);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+
+	dbus_message_unref(msg);
+
+	if (!reply) {
+		fprintf(stderr, "Can't register service record\n");
+		if (dbus_error_is_set(&err)) {
+			fprintf(stderr, "%s\n", err.message);
+			dbus_error_free(&err);
+		}
+		return -1;
+	}
+
+	dbus_message_unref(reply);
+
+	dbus_connection_flush(conn);
+
+	return 0;
+}
+
 static int register_service(DBusConnection *conn, const char *service_path)
 {
 	DBusMessage *msg, *reply;
@@ -222,7 +283,7 @@ static int register_service(DBusConnection *conn, const char *service_path)
 
 	dbus_connection_flush(conn);
 
-	return 0;
+	return register_record(conn, service_path);
 }
 
 static int unregister_service(DBusConnection *conn, const char *service_path)
