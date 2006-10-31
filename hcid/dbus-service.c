@@ -30,6 +30,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
+
 #include <dbus/dbus.h>
 
 #include "hcid.h"
@@ -38,7 +41,6 @@
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-manager.h"
-#include "dbus-adapter.h"
 #include "dbus-service.h"
 
 #define START_REPLY_TIMEOUT	5000
@@ -53,6 +55,7 @@ struct service_call {
 };
 
 static struct slist *services = NULL;
+static uint32_t	next_handle = 0x10000;
 
 static struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg, struct service_agent *agent)
 {
@@ -129,7 +132,16 @@ static void service_agent_free(struct service_agent *agent)
 	if (agent->description)
 		free(agent->description);
 
-	slist_foreach(agent->trusted_devices, (slist_func_t) free, NULL);
+	if (agent->trusted_devices) {
+		slist_foreach(agent->trusted_devices, (slist_func_t) free, NULL);
+		slist_free(agent->trusted_devices);
+	}
+
+	if (agent->records) {
+		/* FIXME: currently sdp_device_record_unregister free the service record */
+		//slist_foreach(agent->records, (slist_func_t) sdp_record_free, NULL);
+		slist_free(agent->records);
+	}
 
 	free(agent);
 }
@@ -171,6 +183,55 @@ mem_fail:
 	return NULL;
 }
 
+static int register_agent_records(struct slist *lrecords)
+{
+	sdp_session_t *sess;
+	sdp_record_t *rec;
+
+	/* FIXME: attach to a specific adapter */
+	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
+	if (!sess) {
+		error("Can't connect to sdp daemon:(%s, %d)", strerror(errno), errno);
+		return -1;
+	}
+
+	while (lrecords) {
+		rec = lrecords->data;
+		if (sdp_device_record_register(sess, BDADDR_ANY, rec, SDP_RECORD_PERSIST) < 0) {
+			/* FIXME: If just one of the service record registration fails */
+			error("Service Record registration failed:(%s, %d)", strerror(errno), errno);
+		}
+
+		lrecords = lrecords->next;
+	}
+	sdp_close(sess);
+	return 0;
+}
+
+static int unregister_agent_records(struct slist *lrecords)
+{
+	sdp_session_t *sess;
+	sdp_record_t *rec;
+
+	/* FIXME: attach to a specific adapter */
+	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
+	if (!sess) {
+		error("Can't connect to sdp daemon:(%s, %d)", strerror(errno), errno);
+		return -1;
+	}
+
+	while (lrecords) {
+		rec = lrecords->data;
+		if (sdp_device_record_unregister(sess, BDADDR_ANY, rec) < 0) {
+			/* FIXME: If just one of the service record registration fails */
+			error("Service Record unregistration failed:(%s, %d)", strerror(errno), errno);
+		}
+		lrecords = lrecords->next;
+	}
+	sdp_close(sess);
+	return 0;
+}
+
 static void service_agent_exit(const char *name, void *data)
 {
 	DBusConnection *conn = data;
@@ -191,6 +252,9 @@ static void service_agent_exit(const char *name, void *data)
 		if (strcmp(name, agent->id))
 			continue;
 
+		if (agent->records)
+			unregister_agent_records(agent->records);
+
 		service_agent_free(agent);
 
 		dbus_connection_unregister_object_path(conn, path);
@@ -207,6 +271,7 @@ static void service_agent_exit(const char *name, void *data)
 
 	slist_foreach(lremove, (slist_func_t) free, NULL);
 	slist_free(lremove);
+
 }
 
 static void forward_reply(DBusPendingCall *call, void *udata)
@@ -310,6 +375,8 @@ static void start_reply(DBusPendingCall *call, void *udata)
 							"Started");
 
 		send_message_and_unref(call_data->conn, message);
+
+		register_agent_records(call_data->agent->records);
 	}
 
 	source_reply = dbus_message_copy(agent_reply);
@@ -381,6 +448,8 @@ static void stop_reply(DBusPendingCall *call, void *udata)
 							"Stopped");
 
 		send_message_and_unref(call_data->conn, message);
+		unregister_agent_records(call_data->agent->records);
+
 	}
 
 	source_reply = dbus_message_copy(agent_reply);
@@ -457,7 +526,6 @@ static DBusHandlerResult list_users(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-
 static DBusHandlerResult remove_user(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -483,7 +551,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 
 	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcmp);
-	if (l) 
+	if (l)
 		return error_failed(conn, msg, EINVAL);
 
 	reply = dbus_message_new_method_return(msg);
@@ -552,7 +620,68 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 	free(paddress);
 
 	return send_message_and_unref(conn, reply);
+}
 
+static sdp_record_t *service_record_extract(DBusMessageIter *iter)
+{
+	uint8_t buff[SDP_RSP_BUFFER_SIZE];
+	sdp_record_t *record;
+	int recsize, index = 0;
+	uint8_t value;
+
+	memset(buff, 0, SDP_RSP_BUFFER_SIZE);
+
+	/* FIXME why get fixed array doesn't work? dbus_message_iter_get_fixed_array */
+	while (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
+		dbus_message_iter_get_basic(iter, &value);
+		buff[index++] = value;
+		dbus_message_iter_next(iter);
+	}
+
+	record = sdp_extract_pdu(buff, &recsize);
+
+	return record;
+}
+
+static DBusHandlerResult register_service_record(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct service_agent *agent = data;
+	DBusMessageIter iter, array_iter;
+	DBusMessage *reply;
+	sdp_record_t *record;
+
+	/* Check if it is an array of bytes */
+	if (strcmp(dbus_message_get_signature(msg), "ay"))
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array_iter);
+
+	record = service_record_extract(&array_iter);
+	if (!record) {
+		dbus_message_unref(reply);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	record->handle = next_handle++;
+	agent->records = slist_append(agent->records, record);
+
+	dbus_message_append_args(msg,
+				DBUS_TYPE_UINT32, &record->handle),
+				DBUS_TYPE_INVALID;
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult unregister_service_record(DBusConnection *conn,
+							DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static struct service_data services_methods[] = {
@@ -567,6 +696,8 @@ static struct service_data services_methods[] = {
 	{ "SetTrusted",		set_trusted		},
 	{ "IsTrusted",		is_trusted		},
 	{ "RemoveTrust",	remove_trust		},
+	{ "RegisterServiceRecord",	register_service_record		},
+	{ "UnregisterServiceRecord",	unregister_service_record 	},
 	{ NULL, NULL }
 };
 
@@ -613,7 +744,7 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 		dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
 
 		return send_message_and_unref(conn, forward);
-	} else 
+	} else
 		return error_unknown_method(conn, msg);
 }
 
@@ -695,7 +826,7 @@ void release_service_agents(DBusConnection *conn)
 		l = l->next;
 
 		if (dbus_connection_get_object_path_data(conn, path, (void *) &agent)) {
-			send_release(conn, agent->id, path); 
+			send_release(conn, agent->id, path);
 			service_agent_free(agent);
 		}
 

@@ -30,6 +30,7 @@ struct service_agent {
 	char *description;
 	int running;
 	struct slist *trusted_devices;
+	struct slist *records;
 };
 
 int register_service_agent(DBusConnection *conn, const char *sender, const char *path,
