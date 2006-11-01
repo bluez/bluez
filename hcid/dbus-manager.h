@@ -28,4 +28,8 @@
 
 DBusHandlerResult handle_manager_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
+int get_default_adapter(void);
+
+void set_default_adapter(int new_default);
+
 #endif /* __MANAGER_H */

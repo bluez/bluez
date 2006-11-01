@@ -51,6 +51,7 @@
 #include "hcid.h"
 #include "textfile.h"
 #include "list.h"
+#include "dbus-hci.h"
 
 struct g_io_info {
 	GIOChannel	*channel;

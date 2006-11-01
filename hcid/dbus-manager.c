@@ -46,6 +46,8 @@
 #include "dbus-service.h"
 #include "dbus-manager.h"
 
+static int default_adapter_id = -1;
+
 static DBusHandlerResult interface_version(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -70,19 +72,18 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
-	int default_dev = get_default_dev_id();
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	if (default_dev < 0)
+	if (default_adapter_id < 0)
 		return error_no_such_adapter(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, default_dev);
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, default_adapter_id);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
 					DBUS_TYPE_INVALID);
@@ -349,4 +350,14 @@ DBusHandlerResult handle_manager_method(DBusConnection *conn,
 		return handle_security_method(conn, msg, data);
 
 	return error_unknown_method(conn, msg);
+}
+
+int get_default_adapter(void)
+{
+	return default_adapter_id;
+}
+
+void set_default_adapter(int new_default)
+{
+	default_adapter_id = new_default;
 }

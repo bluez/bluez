@@ -53,38 +53,9 @@
 #include "dbus-service.h"
 #include "dbus-manager.h"
 #include "dbus-adapter.h"
+#include "dbus-hci.h"
 
-#define BLUEZ_NAME "org.bluez"
-
-static DBusConnection *connection;
-
-static int default_dev = -1;
-
-static int experimental = 0;
-
-#define MAX_CONN_NUMBER			10
-#define RECONNECT_RETRY_TIMEOUT		5000
-#define DISPATCH_TIMEOUT		0
-
-typedef struct {
-	uint32_t id;
-	DBusTimeout *timeout;
-} timeout_handler_t;
-
-struct watch_info {
-	guint watch_id;
-	GIOChannel *io;
-};
-
-void hcid_dbus_set_experimental(void)
-{
-	experimental = 1;
-}
-
-int hcid_dbus_use_experimental(void)
-{
-	return experimental;
-}
+static DBusConnection *connection = NULL;
 
 void bonding_request_free(struct bonding_request_info *bonding)
 {
@@ -232,22 +203,22 @@ static int active_conn_append(struct slist **list, bdaddr_t *bdaddr,
 	return 0;
 }
 
-static int active_conn_remove(struct slist **list, uint16_t *handle)
+static int active_conn_remove(struct slist **list, uint16_t handle)
 {
 	struct active_conn_info *dev;
 	struct slist *l;
-	int ret_val = -1;
 
-	l = slist_find(*list, handle, active_conn_find_by_handle);
+	l = slist_find(*list, &handle, active_conn_find_by_handle);
+	if (!l)
+		return -1;
 
-	if (l) {
-		dev = l->data;
-		*list = slist_remove(*list, dev);
-		free(dev);
-		ret_val = 0;
-	}
+	dev = l->data;
 
-	return ret_val;
+	*list = slist_remove(*list, dev);
+
+	free(dev);
+
+	return 0;
 }
 
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
@@ -295,11 +266,6 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 					ERROR_INTERFACE ".AuthenticationFailed",
 					"Authentication Failed");
 	}
-}
-
-int get_default_dev_id(void)
-{
-	return default_dev;
 }
 
 static inline int dev_append_signal_args(DBusMessage *signal, int first,
@@ -361,17 +327,9 @@ static const DBusObjectPathVTable adapter_vtable = {
 	.unregister_function	= NULL
 };
 
-static const DBusObjectPathVTable manager_vtable = {
-	.message_function	= &handle_manager_method,
-	.unregister_function	= NULL
-};
-
 /*
  * HCI D-Bus services
  */
-static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn,
-						DBusMessage *msg, void *data);
-
 static void reply_pending_requests(const char *path, struct adapter *adapter)
 {
 	DBusMessage *message;
@@ -426,7 +384,7 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 	}
 }
 
-static int unregister_dbus_path(const char *path)
+int unregister_adapter_path(const char *path)
 {
 	struct adapter *adapter = NULL;
 
@@ -579,13 +537,14 @@ int hcid_dbus_unregister_device(uint16_t id)
 	send_message_and_unref(connection, message);
 
 failed:
-	ret = unregister_dbus_path(path);
+	ret = unregister_adapter_path(path);
 
-	if (ret == 0 && default_dev == id) {
-		default_dev = hci_get_route(NULL);
-		if (default_dev >= 0) {
+	if (ret == 0 && get_default_adapter() == id) {
+		int new_default = hci_get_route(NULL);
+		set_default_adapter(new_default);
+		if (new_default >= 0) {
 			snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH,
-					default_dev);
+					new_default);
 			message = dbus_message_new_signal(BASE_PATH,
 							MANAGER_INTERFACE,
 							"DefaultAdapterChanged");
@@ -701,8 +660,8 @@ int hcid_dbus_start_device(uint16_t id)
 	ret = 0;
 
 failed:
-	if (ret == 0 && default_dev < 0)
-		default_dev = id;
+	if (ret == 0 && get_default_adapter() < 0)
+		set_default_adapter(id);
 
 	if (dd >= 0)
 		hci_close_dev(dd);
@@ -1743,7 +1702,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					DBUS_TYPE_INVALID);
 
 	send_message_and_unref(connection, message);
-	active_conn_remove(&adapter->active_conn, &handle);
+	active_conn_remove(&adapter->active_conn, handle);
 
 failed:
 	if (peer_addr)
@@ -1751,252 +1710,6 @@ failed:
 
 	free(local_addr);
 }
-
-/*****************************************************************
- *
- *  Section reserved to D-Bus watch functions
- *
- *****************************************************************/
-static gboolean message_dispatch_cb(void *data)
-{
-	dbus_connection_ref(connection);
-
-	/* Dispatch messages */
-	while (dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
-
-	dbus_connection_unref(connection);
-
-	return FALSE;
-}
-
-static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
-{
-	DBusWatch *watch = data;
-	int flags = 0;
-
-	if (cond & G_IO_IN)  flags |= DBUS_WATCH_READABLE;
-	if (cond & G_IO_OUT) flags |= DBUS_WATCH_WRITABLE;
-	if (cond & G_IO_HUP) flags |= DBUS_WATCH_HANGUP;
-	if (cond & G_IO_ERR) flags |= DBUS_WATCH_ERROR;
-
-	dbus_watch_handle(watch, flags);
-
-	if (dbus_connection_get_dispatch_status(connection) == DBUS_DISPATCH_DATA_REMAINS)
-		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, NULL);
-
-	return TRUE;
-}
-
-static dbus_bool_t add_watch(DBusWatch *watch, void *data)
-{
-	GIOCondition cond = G_IO_HUP | G_IO_ERR;
-	struct watch_info *info;
-	int fd, flags;
-
-	if (!dbus_watch_get_enabled(watch))
-		return TRUE;
-
-	info = malloc(sizeof(struct watch_info));
-	if (info == NULL)
-		return FALSE;
-
-	fd = dbus_watch_get_fd(watch);
-	info->io = g_io_channel_unix_new(fd);
-	flags = dbus_watch_get_flags(watch);
-
-	if (flags & DBUS_WATCH_READABLE) cond |= G_IO_IN;
-	if (flags & DBUS_WATCH_WRITABLE) cond |= G_IO_OUT;
-
-	info->watch_id = g_io_add_watch(info->io, cond, watch_func, watch);
-
-	dbus_watch_set_data(watch, info, NULL);
-
-	return TRUE;
-}
-
-static void remove_watch(DBusWatch *watch, void *data)
-{
-	struct watch_info *info = dbus_watch_get_data(watch);
-
-	dbus_watch_set_data(watch, NULL, NULL);
-
-	if (info) {
-		g_io_remove_watch(info->watch_id);
-		g_io_channel_unref(info->io);
-		free(info);
-	}
-}
-
-static void watch_toggled(DBusWatch *watch, void *data)
-{
-	/* Because we just exit on OOM, enable/disable is
-	 * no different from add/remove */
-	if (dbus_watch_get_enabled(watch))
-		add_watch(watch, data);
-	else
-		remove_watch(watch, data);
-}
-
-static gboolean timeout_handler_dispatch(gpointer data)
-{
-	timeout_handler_t *handler = data;
-
-	/* if not enabled should not be polled by the main loop */
-	if (dbus_timeout_get_enabled(handler->timeout) != TRUE)
-		return FALSE;
-
-	dbus_timeout_handle(handler->timeout);
-
-	return FALSE;
-}
-
-static void timeout_handler_free(void *data)
-{
-	timeout_handler_t *handler = data;
-	if (!handler)
-		return;
-
-	g_timeout_remove(handler->id);
-	free(handler);
-}
-
-static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
-{
-	timeout_handler_t *handler;
-
-	if (!dbus_timeout_get_enabled (timeout))
-		return TRUE;
-
-	handler = malloc(sizeof(timeout_handler_t));
-	memset(handler, 0, sizeof(timeout_handler_t));
-
-	handler->timeout = timeout;
-	handler->id = g_timeout_add(dbus_timeout_get_interval(timeout),
-					timeout_handler_dispatch, handler);
-
-	dbus_timeout_set_data(timeout, handler, timeout_handler_free);
-
-	return TRUE;
-}
-
-static void remove_timeout(DBusTimeout *timeout, void *data)
-{
-
-}
-
-static void timeout_toggled(DBusTimeout *timeout, void *data)
-{
-	if (dbus_timeout_get_enabled(timeout))
-		add_timeout(timeout, data);
-	else
-		remove_timeout(timeout, data);
-}
-
-static void dispatch_status_cb(DBusConnection *conn,
-				DBusDispatchStatus new_status,
-				void *data)
-{
-	if (!dbus_connection_get_is_connected(conn))
-			return;
-
-	if (new_status == DBUS_DISPATCH_DATA_REMAINS)
-		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, NULL);
-}
-
-int hcid_dbus_init(void)
-{
-	int ret_val;
-	DBusError err;
-
-	dbus_error_init(&err);
-
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't open system message bus connection: %s",
-				err.message);
-		dbus_error_free(&err);
-		return -1;
-	}
-
-	dbus_connection_set_exit_on_disconnect(connection, FALSE);
-
-	ret_val = dbus_bus_request_name(connection, BLUEZ_NAME, 0, &err);
-
-	if (ret_val != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
-		error("Service could not become the primary owner.");
-		return -1;
-	}
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't get system message bus name: %s", err.message);
-		dbus_error_free(&err);
-		return -1;
-	}
-
-	if (!dbus_connection_register_fallback(connection, BASE_PATH,
-						&manager_vtable, NULL)) {
-		error("D-Bus failed to register %s fallback", BASE_PATH);
-		return -1;
-	}
-
-	if (!dbus_connection_add_filter(connection, hci_dbus_signal_filter,
-					NULL, NULL)) {
-		error("Can't add new HCI filter");
-		return -1;
-	}
-
-	dbus_connection_set_watch_functions(connection,
-			add_watch, remove_watch, watch_toggled, NULL, NULL);
-
-	dbus_connection_set_timeout_functions(connection,
-			add_timeout, remove_timeout, timeout_toggled, NULL,
-			NULL);
-
-	dbus_connection_set_dispatch_status_function(connection,
-			dispatch_status_cb, NULL, NULL);
-
-	return 0;
-}
-
-void hcid_dbus_exit(void)
-{
-	char **children;
-	int i;
-
-	if (!dbus_connection_get_is_connected(connection))
-		return;
-
-	release_default_agent();
-	release_default_auth_agent();
-	release_service_agents(connection);
-
-	/* Unregister all paths in Adapter path hierarchy */
-	if (!dbus_connection_list_registered(connection, BASE_PATH, &children))
-		goto done;
-
-	for (i = 0; children[i]; i++) {
-		char dev_path[MAX_PATH_LENGTH];
-
-		snprintf(dev_path, sizeof(dev_path), "%s/%s", BASE_PATH,
-				children[i]);
-
-		unregister_dbus_path(dev_path);
-	}
-
-	dbus_free_string_array(children);
-
-done:
-	unregister_dbus_path(BASE_PATH);
-
-	dbus_connection_unref(connection);
-}
-
-/*****************************************************************
- *
- *  Section reserved to re-connection timer
- *
- *****************************************************************/
 
 gboolean discov_timeout_handler(void *data)
 {
@@ -2042,92 +1755,6 @@ failed:
 		hci_close_dev(dd);
 
 	return retval;
-}
-
-static gboolean system_bus_reconnect(void *data)
-{
-	struct hci_dev_list_req *dl = NULL;
-	struct hci_dev_req *dr;
-	int sk, i;
-	gboolean ret_val = TRUE;
-
-	if (dbus_connection_get_is_connected(connection))
-		return FALSE;
-
-	if (hcid_dbus_init() == FALSE)
-		return TRUE;
-
-	/* Create and bind HCI socket */
-	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (sk < 0) {
-		error("Can't open HCI socket: %s (%d)",
-				strerror(errno), errno);
-		return TRUE;
-	}
-
-	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
-	if (!dl) {
-		error("Can't allocate memory");
-		goto failed;
-	}
-
-	dl->dev_num = HCI_MAX_DEV;
-	dr = dl->dev_req;
-
-	if (ioctl(sk, HCIGETDEVLIST, (void *) dl) < 0) {
-		info("Can't get device list: %s (%d)",
-			strerror(errno), errno);
-		goto failed;
-	}
-
-	/* reset the default device */
-	default_dev = -1;
-
-	for (i = 0; i < dl->dev_num; i++, dr++)
-		hcid_dbus_register_device(dr->dev_id);
-
-	ret_val = FALSE;
-
-failed:
-	if (sk >= 0)
-		close(sk);
-
-	if (dl)
-		free(dl);
-
-	return ret_val;
-}
-
-/*****************************************************************
- *
- *  Section reserved to D-Bus signal/messages handling function
- *
- *****************************************************************/
-static DBusHandlerResult hci_dbus_signal_filter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusHandlerResult ret = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	const char *iface;
-	const char *method;
-
-	if (!msg || !conn)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (dbus_message_get_type (msg) != DBUS_MESSAGE_TYPE_SIGNAL)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	iface = dbus_message_get_interface(msg);
-	method = dbus_message_get_member(msg);
-
-	if ((strcmp(iface, DBUS_INTERFACE_LOCAL) == 0) &&
-			(strcmp(method, "Disconnected") == 0)) {
-		error("Got disconnected from the system message bus");
-		dbus_connection_unref(conn);
-		g_timeout_add(RECONNECT_RETRY_TIMEOUT, system_bus_reconnect,
-				NULL);
-	}
-
-	return ret;
 }
 
 /*****************************************************************
@@ -2578,6 +2205,7 @@ int cancel_periodic_discovery(struct adapter *adapter)
 	}
 
 	hci_close_dev(dd);
+
 cleanup:
 	/*
 	 * Reset pdiscov_requestor and pdiscov_active is done when the
@@ -2588,4 +2216,18 @@ cleanup:
 	adapter->found_devices = NULL;
 
 	return err;
+}
+
+/* Most of the functions in this module require easy access to a connection so
+ * we keep it global here and provide these access functions the other (few)
+ * modules that require access to it */
+
+void set_dbus_connection(DBusConnection *conn)
+{
+	connection = conn;
+}
+
+DBusConnection *get_dbus_connection(void)
+{
+	return connection;
 }

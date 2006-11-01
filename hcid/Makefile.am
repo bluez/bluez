@@ -20,7 +20,7 @@ noinst_PROGRAMS = passkey-agent service-agent auth-agent
 hcid_SOURCES = main.c security.c device.c storage.c \
 		sdp.c sdp.h hcid.h parser.h parser.y \
 		lexer.l kword.c kword.h \
-		dbus.h dbus.c dbus-common.c dbus-common.h \
+		dbus-hci.h dbus-hci.c dbus-common.c dbus-common.h \
 		dbus-error.c dbus-error.h dbus-manager.c dbus-manager.h \
 		dbus-adapter.c dbus-adapter.h \
 		dbus-device.c dbus-device.h dbus-service.c dbus-service.h \

@@ -21,38 +21,30 @@
  *
  */
 
-#ifndef __BLUEZ_DBUS_COMMON_H
-#define __BLUEZ_DBUS_COMMON_H
+#ifndef __H_BLUEZ_DBUS_H__
+#define __H_BLUEZ_DBUS_H__
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
 #include <dbus/dbus.h>
 
-#define BASE_PATH		"/org/bluez"
+DBusConnection *init_dbus(void (*disconnect_cb)(void *), void *user_data);
 
-#define MAX_PATH_LENGTH 64
+typedef void (*name_cb_t)(const char *name, void *user_data);
 
-typedef DBusHandlerResult (*service_handler_func_t) (DBusConnection *conn,
-							DBusMessage *msg,
-							void *user_data);
+int name_listener_add(DBusConnection *connection, const char *name,
+				name_cb_t func, void *user_data);
+int name_listener_remove(DBusConnection *connection, const char *name,
+				name_cb_t func, void *user_data);
 
-struct service_data {
-	const char		*name;
-	service_handler_func_t	handler_func;
-};
+DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void *data);
 
-service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
+static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn, DBusMessage *msg)
+{
+	if (msg) {
+		dbus_connection_send(conn, msg, NULL);
+		dbus_message_unref(msg);
+	}
 
-int str2uuid(uuid_t *uuid, const char *string);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
 
-int l2raw_connect(const char *local, const bdaddr_t *remote);
-
-int check_address(const char *addr);
-
-DBusHandlerResult handle_method_call(DBusConnection *conn, DBusMessage *msg, void *data);
-
-void hcid_dbus_exit(void);
-
-int hcid_dbus_init(void);
-
-#endif /* __BLUEZ_DBUS_COMMON_H */
+#endif /* __H_BLUEZ_DBUS_H__ */

@@ -48,6 +48,7 @@
 #include "oui.h"
 #include "list.h"
 #include "dbus-common.h"
+#include "dbus-hci.h"
 #include "dbus-sdp.h"
 #include "dbus-error.h"
 #include "dbus-adapter.h"

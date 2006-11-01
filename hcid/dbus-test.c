@@ -33,9 +33,12 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 
+#include "list.h"
 #include "hcid.h"
 #include "dbus.h"
 #include "dbus-common.h"
+#include "dbus-hci.h"
+#include "dbus-adapter.h"
 #include "dbus-error.h"
 #include "dbus-test.h"
 

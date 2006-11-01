@@ -1,9 +1,12 @@
 
+AM_CFLAGS = @DBUS_CFLAGS@
+
 noinst_LIBRARIES = libhelper.a
 
 libhelper_a_SOURCES = oui.h oui.c list.h list.c \
 	textfile.h textfile.c helper.h helper.c \
-	glib-ectomy.h glib-ectomy.c logging.h logging.c
+	glib-ectomy.h glib-ectomy.c logging.h logging.c \
+	dbus.h dbus.c
 
 noinst_PROGRAMS = test_textfile
 

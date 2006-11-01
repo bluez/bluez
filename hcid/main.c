@@ -46,6 +46,8 @@
 
 #include "hcid.h"
 #include "sdp.h"
+#include "dbus-common.h"
+#include "dbus-hci.h"
 
 struct hcid_opts hcid;
 struct device_opts default_device;

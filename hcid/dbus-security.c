@@ -39,6 +39,7 @@
 #include "dbus.h"
 #include "hcid.h"
 #include "dbus-common.h"
+#include "dbus-adapter.h"
 #include "dbus-service.h"
 #include "dbus-error.h"
 #include "dbus-security.h"

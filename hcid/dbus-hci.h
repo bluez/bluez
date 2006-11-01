@@ -21,13 +21,39 @@
  *
  */
 
-#ifndef __H_BLUEZ_DBUS_H__
-#define __H_BLUEZ_DBUS_H__
+#ifndef __H_BLUEZ_DBUS_HCI_H__
+#define __H_BLUEZ_DBUS_HCI_H__
 
 #include <dbus/dbus.h>
 #include "dbus-adapter.h"
 
-DBusMessage *dev_signal_factory(const int devid, const char *prop_name, const int first, ...);
+void hcid_dbus_set_experimental();
+int hcid_dbus_use_experimental();
+int hcid_dbus_register_device(uint16_t id);
+int hcid_dbus_unregister_device(uint16_t id);
+int hcid_dbus_start_device(uint16_t id);
+int hcid_dbus_stop_device(uint16_t id);
+void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba);
+int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci);
+int hcid_dbus_confirm_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci, char *pin);
+
+void hcid_dbus_inquiry_start(bdaddr_t *local);
+void hcid_dbus_inquiry_complete(bdaddr_t *local);
+void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status);
+void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status);
+void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class, int8_t rssi, uint8_t *data);
+void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class);
+void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char *name);
+void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer);
+void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, uint8_t reason);
+void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t status);
+void hcid_dbus_setname_complete(bdaddr_t *local);
+void hcid_dbus_setscan_enable_complete(bdaddr_t *local);
+void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr);
+
+int unregister_adapter_path(const char *path);
+
+DBusMessage *dev_signal_factory(int devid, const char *prop_name, int first, ...);
 
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 
@@ -50,4 +76,8 @@ int found_device_req_name(struct adapter *dbus_data);
 
 int discov_timeout_handler(void *data);
 
-#endif /* __H_BLUEZ_DBUS_H__ */
+void set_dbus_connection(DBusConnection *conn);
+
+DBusConnection *get_dbus_connection(void);
+
+#endif /* __H_BLUEZ_DBUS_HCI_H__ */

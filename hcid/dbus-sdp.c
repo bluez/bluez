@@ -46,10 +46,13 @@
 
 #include <dbus/dbus.h>
 
+#include "list.h"
 #include "dbus.h"
 #include "hcid.h"
 #include "textfile.h"
+#include "dbus-hci.h"
 #include "dbus-common.h"
+#include "dbus-adapter.h"
 #include "dbus-error.h"
 #include "dbus-sdp.h"
 

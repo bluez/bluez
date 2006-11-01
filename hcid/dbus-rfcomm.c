@@ -48,6 +48,8 @@
 #include "glib-ectomy.h"
 #include "dbus.h"
 #include "dbus-common.h"
+#include "dbus-hci.h"
+#include "dbus-adapter.h"
 #include "dbus-error.h"
 #include "dbus-sdp.h"
 #include "dbus-rfcomm.h"
