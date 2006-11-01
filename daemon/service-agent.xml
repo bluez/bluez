@@ -20,6 +20,9 @@
 
     <method name="Release">
     </method>
+  </interface>
 
+  <interface name="org.bluez.EchoService">
+    <property name="channel" type="u" access="readwrite"/>
   </interface>
 </node>
