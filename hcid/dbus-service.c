@@ -651,6 +651,9 @@ static DBusHandlerResult register_service_record(DBusConnection *conn,
 	DBusMessage *reply;
 	sdp_record_t *record;
 
+	if (strcmp(dbus_message_get_sender(msg), agent->id))
+		return error_not_authorized(conn, msg);
+
 	/* Check if it is an array of bytes */
 	if (strcmp(dbus_message_get_signature(msg), "ay"))
 		return error_invalid_arguments(conn, msg);
@@ -691,6 +694,9 @@ static DBusHandlerResult unregister_service_record(DBusConnection *conn,
 	struct slist *l;
 	uint32_t handle;
 	void *rec;
+
+	if (strcmp(dbus_message_get_sender(msg), agent->id))
+		return error_not_authorized(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_UINT32, &handle,
