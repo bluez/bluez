@@ -72,7 +72,6 @@ static DBusHandlerResult authorize_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	dbus_bool_t result = TRUE;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID)) {
 		fprintf(stderr, "Invalid arguments for Authorize method");
@@ -85,8 +84,7 @@ static DBusHandlerResult authorize_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &result,
-					DBUS_TYPE_INVALID);
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	dbus_connection_send(conn, reply, NULL);
 
