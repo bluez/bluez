@@ -785,8 +785,12 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 
 	debug("Unregistering service object: %s", path);
 
-	if (dbus_connection_get_object_path_data(conn, path, (void *) &agent))
+	if (dbus_connection_get_object_path_data(conn, path, (void *) &agent)) {
+		if (agent->records)
+			unregister_agent_records(agent->records);
+
 		service_agent_free(agent);
+	}
 
 	if (!dbus_connection_unregister_object_path(conn, path))
 		return -1;
