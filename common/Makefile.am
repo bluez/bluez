@@ -1,6 +1,4 @@
 
-AM_CFLAGS = @DBUS_CFLAGS@
-
 noinst_LIBRARIES = libhelper.a
 
 libhelper_a_SOURCES = oui.h oui.c list.h list.c \
@@ -11,6 +9,8 @@ libhelper_a_SOURCES = oui.h oui.c list.h list.c \
 noinst_PROGRAMS = test_textfile
 
 test_textfile_LDADD = libhelper.a
+
+AM_CFLAGS = @DBUS_CFLAGS@
 
 EXTRA_DIST = ppoll.h
 
