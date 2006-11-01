@@ -678,10 +678,49 @@ static DBusHandlerResult register_service_record(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static int sdp_record_cmp(sdp_record_t *a, uint32_t *handle)
+{
+	return (a->handle - *handle);
+}
+
 static DBusHandlerResult unregister_service_record(DBusConnection *conn,
 							DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct service_agent *agent = data;
+	DBusMessage *reply;
+	struct slist *l;
+	uint32_t handle;
+	void *rec;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	l = slist_find(agent->records, &handle, (cmp_func_t) sdp_record_cmp);
+	if (!l)
+		return error_record_does_not_exist(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	rec = l->data;
+	agent->records = slist_remove(agent->records, rec);
+
+	/* If the service agent is running: remove it from the from sdpd */
+	if (agent->running) {
+		struct slist *lunreg = NULL;
+		lunreg = slist_append(lunreg, rec);
+		unregister_agent_records(lunreg);
+		lunreg = slist_remove(lunreg, rec);
+		slist_free(lunreg);
+	}
+
+	/* FIXME: currently sdp_device_record_unregister free the service record */
+	//sdp_record_free(rec);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static struct service_data services_methods[] = {
