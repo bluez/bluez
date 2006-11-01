@@ -89,11 +89,6 @@ static ServiceAgent *service_agent_new(const char *path)
 	return agent;
 }
 
-static gboolean service_agent_interfaces(ServiceAgent *agent, GError **error)
-{
-	return FALSE;
-}
-
 static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[672];
@@ -192,11 +187,6 @@ static gboolean service_agent_stop(ServiceAgent *agent,
 	dbus_g_method_return(context, NULL);
 
 	return TRUE;
-}
-
-static gboolean service_agent_record(ServiceAgent *agent, GError **error)
-{
-	return FALSE;
 }
 
 static gboolean service_agent_release(ServiceAgent *agent, GError **error)
