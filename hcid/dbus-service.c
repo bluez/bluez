@@ -55,7 +55,6 @@ struct service_call {
 };
 
 static struct slist *services = NULL;
-static uint32_t	next_handle = 0x10000;
 
 static struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg, struct service_agent *agent)
 {
@@ -622,113 +621,6 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static sdp_record_t *service_record_extract(DBusMessageIter *iter)
-{
-	uint8_t buff[SDP_RSP_BUFFER_SIZE];
-	sdp_record_t *record;
-	int recsize, index = 0;
-	uint8_t value;
-
-	memset(buff, 0, SDP_RSP_BUFFER_SIZE);
-
-	/* FIXME why get fixed array doesn't work? dbus_message_iter_get_fixed_array */
-	while (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
-		dbus_message_iter_get_basic(iter, &value);
-		buff[index++] = value;
-		dbus_message_iter_next(iter);
-	}
-
-	record = sdp_extract_pdu(buff, &recsize);
-
-	return record;
-}
-
-static DBusHandlerResult register_service_record(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct service_agent *agent = data;
-	DBusMessageIter iter, array_iter;
-	DBusMessage *reply;
-	sdp_record_t *record;
-
-	if (strcmp(dbus_message_get_sender(msg), agent->id))
-		return error_not_authorized(conn, msg);
-
-	/* Check if it is an array of bytes */
-	if (strcmp(dbus_message_get_signature(msg), "ay"))
-		return error_invalid_arguments(conn, msg);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_recurse(&iter, &array_iter);
-
-	record = service_record_extract(&array_iter);
-	if (!record) {
-		dbus_message_unref(reply);
-		return error_invalid_arguments(conn, msg);
-	}
-
-	record->handle = next_handle++;
-	agent->records = slist_append(agent->records, record);
-
-	dbus_message_append_args(msg,
-				DBUS_TYPE_UINT32, &record->handle),
-				DBUS_TYPE_INVALID;
-
-	return send_message_and_unref(conn, reply);
-}
-
-static int sdp_record_cmp(sdp_record_t *a, uint32_t *handle)
-{
-	return (a->handle - *handle);
-}
-
-static DBusHandlerResult unregister_service_record(DBusConnection *conn,
-							DBusMessage *msg, void *data)
-{
-	struct service_agent *agent = data;
-	DBusMessage *reply;
-	struct slist *l;
-	uint32_t handle;
-	void *rec;
-
-	if (strcmp(dbus_message_get_sender(msg), agent->id))
-		return error_not_authorized(conn, msg);
-
-	if (!dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_UINT32, &handle,
-			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
-
-	l = slist_find(agent->records, &handle, (cmp_func_t) sdp_record_cmp);
-	if (!l)
-		return error_record_does_not_exist(conn, msg);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	rec = l->data;
-	agent->records = slist_remove(agent->records, rec);
-
-	/* If the service agent is running: remove it from the from sdpd */
-	if (agent->running) {
-		struct slist *lunreg = NULL;
-		lunreg = slist_append(lunreg, rec);
-		unregister_agent_records(lunreg);
-		lunreg = slist_remove(lunreg, rec);
-		slist_free(lunreg);
-	}
-
-	/* FIXME: currently sdp_device_record_unregister free the service record */
-	//sdp_record_free(rec);
-
-	return send_message_and_unref(conn, reply);
-}
-
 static struct service_data services_methods[] = {
 	{ "GetName",		get_name		},
 	{ "GetDescription",	get_description		},
@@ -741,8 +633,6 @@ static struct service_data services_methods[] = {
 	{ "SetTrusted",		set_trusted		},
 	{ "IsTrusted",		is_trusted		},
 	{ "RemoveTrust",	remove_trust		},
-	{ "RegisterServiceRecord",	register_service_record		},
-	{ "UnregisterServiceRecord",	unregister_service_record 	},
 	{ NULL, NULL }
 };
 

@@ -34,6 +34,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <dbus/dbus.h>
 
@@ -47,6 +49,7 @@
 #include "dbus-manager.h"
 
 static int default_adapter_id = -1;
+static uint32_t	next_handle = 0x10000;
 
 static DBusHandlerResult interface_version(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -305,6 +308,132 @@ static DBusHandlerResult unregister_shadow_service(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static sdp_record_t *service_record_extract(DBusMessageIter *iter)
+{
+	uint8_t buff[SDP_RSP_BUFFER_SIZE];
+	sdp_record_t *record;
+	int recsize, index = 0;
+	uint8_t value;
+
+	memset(buff, 0, SDP_RSP_BUFFER_SIZE);
+
+	/* FIXME why get fixed array doesn't work? dbus_message_iter_get_fixed_array */
+	while (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
+		dbus_message_iter_get_basic(iter, &value);
+		buff[index++] = value;
+		dbus_message_iter_next(iter);
+	}
+
+	record = sdp_extract_pdu(buff, &recsize);
+
+	return record;
+}
+
+static DBusHandlerResult add_service_record(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct service_agent *agent;
+	DBusMessageIter iter, array_iter;
+	DBusMessage *reply;
+	sdp_record_t *record;
+	const char *path;
+
+	/* Check if it is an array of bytes */
+	if (strcmp(dbus_message_get_signature(msg), "say"))
+		return error_invalid_arguments(conn, msg);
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &path);
+
+	if(!dbus_connection_get_object_path_data(conn, path,
+						(void *) &agent)) {
+		/* If failed the path is invalid! */
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (strcmp(dbus_message_get_sender(msg), agent->id))
+		return error_not_authorized(conn, msg);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &array_iter);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	record = service_record_extract(&array_iter);
+	if (!record) {
+		dbus_message_unref(reply);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	record->handle = next_handle++;
+	agent->records = slist_append(agent->records, record);
+
+	dbus_message_append_args(msg,
+				DBUS_TYPE_UINT32, &record->handle),
+				DBUS_TYPE_INVALID;
+
+	return send_message_and_unref(conn, reply);
+}
+
+static int sdp_record_cmp(sdp_record_t *a, uint32_t *handle)
+{
+	return (a->handle - *handle);
+}
+
+static DBusHandlerResult remove_service_record(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct service_agent *agent;
+	DBusMessage *reply;
+	struct slist *l;
+	const char *path;
+	uint32_t handle;
+	void *rec;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_UINT32, &handle,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if(!dbus_connection_get_object_path_data(conn, path,
+						(void *) &agent)) {
+		/* If failed the path is invalid! */
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (strcmp(dbus_message_get_sender(msg), agent->id))
+		return error_not_authorized(conn, msg);
+
+
+	l = slist_find(agent->records, &handle, (cmp_func_t) sdp_record_cmp);
+	if (!l)
+		return error_record_does_not_exist(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	rec = l->data;
+	agent->records = slist_remove(agent->records, rec);
+
+	/* If the service agent is running: remove it from the from sdpd */
+	if (agent->running) {
+		struct slist *lunreg = NULL;
+		lunreg = slist_append(lunreg, rec);
+		//unregister_agent_records(lunreg);
+		lunreg = slist_remove(lunreg, rec);
+		slist_free(lunreg);
+	}
+
+	/* FIXME: currently sdp_device_record_unregister free the service record */
+	//sdp_record_free(rec);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static struct service_data methods[] = {
 	{ "InterfaceVersion",	interface_version			},
 	{ "DefaultAdapter",	default_adapter				},
@@ -315,7 +444,8 @@ static struct service_data methods[] = {
 	{ "UnregisterService",	unregister_service			},
 	{ "RegisterShadowService",	register_shadow_service		},
 	{ "UnregistershadowService",	unregister_shadow_service	},
-
+	{ "AddServiceRecord",		add_service_record		},
+	{ "RemoveServiceRecord",	remove_service_record		},
 	{ NULL, NULL }
 };
 
