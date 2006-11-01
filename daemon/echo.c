@@ -43,6 +43,7 @@ static DBusGConnection *conn;
 typedef struct {
 	GObject parent;
 	GIOChannel *server;
+	guint channel;
 } ServiceAgent;
 
 typedef struct {
@@ -66,6 +67,38 @@ static void service_agent_finalize(GObject *obj)
 static void service_agent_init(ServiceAgent *obj)
 {
 	obj->server = NULL;
+	obj->channel = 23;
+}
+
+enum {
+	PROP_0,
+	PROP_CHANNEL
+};
+
+static void service_agent_set_property(GObject *object, guint prop_id,
+					const GValue *value, GParamSpec *pspec)
+{
+	switch (prop_id) {
+	case PROP_CHANNEL:
+		SERVICE_AGENT(object)->channel = g_value_get_uint(value);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+		break;
+	}
+}
+
+static void service_agent_get_property(GObject *object, guint prop_id,
+					GValue *value, GParamSpec *pspec)
+{
+	switch (prop_id) {
+	case PROP_CHANNEL:
+		g_value_set_uint(value, SERVICE_AGENT(object)->channel);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+		break;
+	}
 }
 
 static void service_agent_class_init(ServiceAgentClass *klass)
@@ -76,6 +109,13 @@ static void service_agent_class_init(ServiceAgentClass *klass)
 
 	gobject_class = G_OBJECT_CLASS(klass);
 	gobject_class->finalize = service_agent_finalize;
+
+	gobject_class->set_property = service_agent_set_property;
+	gobject_class->get_property = service_agent_get_property;
+
+	g_object_class_install_property(G_OBJECT_CLASS(klass), PROP_CHANNEL,
+			g_param_spec_uint("channel", NULL, NULL,
+					1, 30, 23, G_PARAM_READWRITE));
 }
 
 static ServiceAgent *service_agent_new(const char *path)
@@ -153,7 +193,7 @@ static gboolean service_agent_start(ServiceAgent *agent,
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
 	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
-	addr.rc_channel = 23;
+	addr.rc_channel = agent->channel;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);
