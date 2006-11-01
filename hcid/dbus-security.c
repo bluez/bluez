@@ -51,7 +51,6 @@ static struct passkey_agent *default_agent = NULL;
 static struct authorization_agent *default_auth_agent = NULL;
 
 static void release_agent(struct passkey_agent *agent);
-static void release_auth_agent(struct authorization_agent *agent);
 static void send_cancel_request(struct pending_agent_request *req);
 
 static void passkey_agent_free(struct passkey_agent *agent)
@@ -211,91 +210,6 @@ static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *
 	}
 
 	return 0;
-}
-
-static void auth_agent_free(struct authorization_agent *agent)
-{
-	/* FIXME: cancel all requests */
-
-	if (!agent->exited)
-		release_auth_agent(agent);
-
-	if (agent->name)
-		free(agent->name);
-	if (agent->path)
-		free(agent->path);
-	if (agent->conn)
-		dbus_connection_unref(agent->conn);
-
-	free(agent);
-}
-
-static struct authorization_agent *auth_agent_new(DBusConnection *conn,
-						const char *name,
-						const char *path)
-{
-	struct authorization_agent *agent;
-
-	agent = malloc(sizeof(*agent));
-	if (!agent)
-		return NULL;
-	memset(agent, 0, sizeof(*agent));
-
-	agent->name = strdup(name);
-	if (!agent->name)
-		goto mem_fail;
-
-	agent->path = strdup(path);
-	if (!agent->path)
-		goto mem_fail;
-
-	agent->conn = dbus_connection_ref(conn);
-
-	return agent;
-
-mem_fail:
-	agent->exited = 1;
-	auth_agent_free(agent);
-	return NULL;
-}
-
-static void default_auth_agent_exited(const char *name, void *data)
-{
-	debug("%s exited without unregistering the "
-		"default authorization agent", name);
-
-	if (!default_auth_agent || strcmp(name, default_auth_agent->name)) {
-		/* This should never happen! */
-		debug("default_auth_agent_exited: mismatch with "
-			"actual default_auth_agent");
-		return;
-	}
-
-	default_auth_agent->exited = 1;
-	auth_agent_free(default_auth_agent);
-	default_auth_agent = NULL;
-}
-
-static void release_auth_agent(struct authorization_agent *agent)
-{
-	DBusMessage *message;
-
-	debug("Releasing authorization agent %s, %s",
-		agent->name, agent->path);
-
-	message = dbus_message_new_method_call(agent->name, agent->path,
-			"org.bluez.AuthorizationAgent", "Release");
-	if (!message) {
-		error("Couldn't allocate D-Bus message");
-		return;
-	}
-
-	dbus_message_set_no_reply(message, TRUE);
-	send_message_and_unref(agent->conn, message);
-
-	if (agent == default_auth_agent)
-		name_listener_remove(agent->conn, agent->name,
-				(name_cb_t) default_auth_agent_exited, NULL);
 }
 
 static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
@@ -477,6 +391,185 @@ static DBusHandlerResult unregister_default_passkey_agent(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static struct pend_auth_agent_req *pend_auth_agent_req_new(DBusMessage *msg,
+					struct authorization_agent *agent,
+					const char *adapter_path,
+					const char *address,
+					const char *service_path,
+					const char *action)
+{
+	struct pend_auth_agent_req *req;
+
+	req = malloc(sizeof(*req));
+	if (!req)
+		return NULL;
+	memset(req, 0, sizeof(*req));
+
+	req->adapter_path = strdup(adapter_path);
+	if (!req->adapter_path)
+		goto failed;
+
+	req->address = strdup(address);
+	if (!req->address)
+		goto failed;
+
+	req->service_path = strdup(service_path);
+	if (!req->service_path)
+		goto failed;
+
+	req->action = strdup(action);
+	if (!req->action)
+		goto failed;
+
+	req->agent = agent;
+	req->msg = dbus_message_ref(msg);
+
+	return req;
+
+failed:
+	if (req->adapter_path)
+		free(req->adapter_path);
+	if (req->address)
+		free(req->address);
+	if (req->service_path)
+		free(req->service_path);
+	free(req);
+
+	return NULL;
+}
+
+static void pend_auth_agent_req_free(struct pend_auth_agent_req *req)
+{
+	dbus_message_unref(req->msg);
+	free(req->adapter_path);
+	free(req->address);
+	free(req->service_path);
+	free(req->action);
+	if (req->call)
+		dbus_pending_call_unref(req->call);
+	free(req);
+}
+
+static void pend_auth_agent_req_cancel(struct pend_auth_agent_req *req)
+{
+	dbus_pending_call_cancel(req->call);
+	error_canceled(req->agent->conn, req->msg,
+			"Authorization process was canceled");
+}
+
+static void auth_agent_cancel_requests(struct authorization_agent *agent)
+{
+	struct slist *l;
+
+	for (l = agent->pending_requests; l != NULL; l = l->next) {
+		struct pend_auth_agent_req *req = l->data;
+		pend_auth_agent_req_cancel(req);
+		pend_auth_agent_req_free(req);
+	}
+}
+
+static void auth_agent_call_cancel(struct pend_auth_agent_req *req)
+{
+	struct authorization_agent *agent = req->agent;
+	DBusMessage *message;
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+				"org.bluez.AuthorizationAgent", "Cancel");
+	if (!message) {
+		error("Couldn't allocate D-Bus message");
+		return;
+	}
+
+	dbus_message_append_args(message,
+				DBUS_TYPE_STRING, &req->adapter_path,
+				DBUS_TYPE_STRING, &req->address,
+				DBUS_TYPE_STRING, &req->service_path,
+				DBUS_TYPE_STRING, &req->action,
+				DBUS_TYPE_INVALID);
+
+	dbus_message_set_no_reply(message, TRUE);
+	send_message_and_unref(agent->conn, message);
+}
+
+static void auth_agent_free(struct authorization_agent *agent)
+{
+	free(agent->name);
+	free(agent->path);
+	dbus_connection_unref(agent->conn);
+	slist_free(agent->pending_requests);
+	free(agent);
+}
+
+static struct authorization_agent *auth_agent_new(DBusConnection *conn,
+						const char *name,
+						const char *path)
+{
+	struct authorization_agent *agent;
+
+	agent = malloc(sizeof(*agent));
+	if (!agent)
+		return NULL;
+	memset(agent, 0, sizeof(*agent));
+
+	agent->name = strdup(name);
+	if (!agent->name)
+		goto failed;
+
+	agent->path = strdup(path);
+	if (!agent->path)
+		goto failed;
+
+	agent->conn = dbus_connection_ref(conn);
+
+	return agent;
+
+failed:
+	if (agent->name)
+		free(agent->name);
+	free(agent);
+
+	return NULL;
+}
+
+static void default_auth_agent_exited(const char *name, void *data)
+{
+	debug("%s exited without unregistering the "
+		"default authorization agent", name);
+
+	if (!default_auth_agent || strcmp(name, default_auth_agent->name)) {
+		/* This should never happen! */
+		debug("default_auth_agent_exited: mismatch with "
+			"actual default_auth_agent");
+		return;
+	}
+
+	auth_agent_cancel_requests(default_auth_agent);
+	auth_agent_free(default_auth_agent);
+	default_auth_agent = NULL;
+}
+
+static void auth_agent_release(struct authorization_agent *agent)
+{
+	DBusMessage *message;
+
+	debug("Releasing authorization agent %s, %s",
+		agent->name, agent->path);
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+			"org.bluez.AuthorizationAgent", "Release");
+	if (!message) {
+		error("Couldn't allocate D-Bus message");
+		return;
+	}
+
+	dbus_message_set_no_reply(message, TRUE);
+	send_message_and_unref(agent->conn, message);
+
+	if (agent == default_auth_agent)
+		name_listener_remove(agent->conn, agent->name,
+				(name_cb_t) default_auth_agent_exited, NULL);
+}
+
 static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
 							DBusMessage *msg,
 							void *data)
@@ -511,7 +604,6 @@ static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
 
 need_memory:
 	if (default_auth_agent) {
-		default_auth_agent->exited = 1;
 		auth_agent_free(default_auth_agent);
 		default_auth_agent = NULL;
 	}
@@ -550,44 +642,207 @@ static DBusHandlerResult unregister_default_auth_agent(DBusConnection *conn,
 	info("Default authorization agent (%s, %s) unregistered",
 		default_auth_agent->name, default_auth_agent->path);
 
-	default_auth_agent->exited = 1;
+	auth_agent_cancel_requests(default_auth_agent);
 	auth_agent_free(default_auth_agent);
 	default_auth_agent = NULL;
 
 	return send_message_and_unref(conn, reply);
 }
 
+static void auth_agent_req_reply(DBusPendingCall *call, void *data)
+{
+	struct pend_auth_agent_req *req = data;
+	struct authorization_agent *agent = req->agent;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusMessage *message;
+	DBusError err;
+
+       	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("Authorization agent replied with an error: %s, %s",
+				err.name, err.message);
+		dbus_error_free(&err);
+		goto reject;
+	}
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(reply, &err,	DBUS_TYPE_INVALID)) {
+		error("Wrong authorization agent reply signature: %s",
+			err.message);
+		dbus_error_free(&err);
+		goto reject;
+	}
+
+	message = dbus_message_new_method_return(req->msg);
+	if (!message)
+		goto reject;
+
+	send_message_and_unref(agent->conn, message);
+
+	goto done;
+
+reject:
+	error_rejected(agent->conn, req->msg);
+
+done:
+	dbus_message_unref(reply);
+
+	agent->pending_requests = slist_remove(agent->pending_requests, req);
+
+	pend_auth_agent_req_free(req);
+}
+
+static DBusPendingCall *auth_agent_call_authorize(struct authorization_agent *agent,
+						const char *adapter_path,
+						const char *address,
+						const char *service_path,
+						const char *action)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+				"org.bluez.AuthorizationAgent", "Authorize");
+	if (!message) {
+		error("Couldn't allocate D-Bus message");
+		return NULL;
+	}
+
+	dbus_message_append_args(message,
+				DBUS_TYPE_STRING, &adapter_path,
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_STRING, &service_path,
+				DBUS_TYPE_STRING, &action,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(agent->conn, message,
+					&call, REQUEST_TIMEOUT) == FALSE) {
+		error("D-Bus send failed");
+		dbus_message_unref(message);
+		return NULL;
+	}
+
+	return call;
+}
+
+static DBusHandlerResult call_auth_agent(DBusMessage *msg,
+					struct authorization_agent *agent,
+					const char *adapter_path,
+					const char *address,
+					const char *service_path,
+					const char *action)
+{
+	struct pend_auth_agent_req *req;
+
+	req = pend_auth_agent_req_new(msg, agent, adapter_path,
+					address, service_path, action);
+	if (!req)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	req->call = auth_agent_call_authorize(agent, adapter_path, address,
+							service_path, action);
+	if (!req->call) {
+		pend_auth_agent_req_free(req);
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	dbus_pending_call_set_notify(req->call,
+					auth_agent_req_reply, req, NULL);
+	agent->pending_requests = slist_append(agent->pending_requests, req);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static DBusHandlerResult authorize_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	const char *service_path, *adapter_path, *address, *action;
 	struct service_agent *sagent;
-	const char *service, *address, *action;
 
 	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &service,
+				DBUS_TYPE_STRING, &service_path,
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_STRING, &action,
+				DBUS_TYPE_INVALID))
+		return error_rejected(conn, msg);
+
+	adapter_path = dbus_message_get_path(msg);
+	if (!strcmp(adapter_path, BASE_PATH))
+		return error_rejected(conn, msg);
+
+	if (!dbus_connection_get_object_path_data(conn, service_path,
+						(void *) &sagent))
+		return error_rejected(conn, msg);
+
+	if (strcmp(dbus_message_get_sender(msg), sagent->id))
+		return error_rejected(conn, msg);
+
+	return call_auth_agent(msg, default_auth_agent,	adapter_path,
+					address, service_path, action);
+}
+
+static DBusHandlerResult auth_agent_send_cancel(DBusMessage *msg,
+					struct authorization_agent *agent,
+					const char *adapter_path,
+					const char *address,
+					const char *service_path,
+					const char *action)
+{
+	struct pend_auth_agent_req *req = NULL;
+	DBusMessage *message;
+	struct slist *l;
+
+	for (l = agent->pending_requests; l != NULL; l = l->next) {
+		req = l->data;
+		if (!strcmp(adapter_path, req->adapter_path) &&
+			!strcmp(address, req->address) &&
+			!strcmp(service_path, req->service_path) &&
+			!strcmp(action, req->action))
+			break;
+	}
+
+	if (!req)
+		return error_does_not_exist(agent->conn, msg,
+					"No such authorization process");
+
+	message = dbus_message_new_method_return(msg);
+	if (!message)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	auth_agent_call_cancel(req);
+	pend_auth_agent_req_cancel(req);
+	pend_auth_agent_req_free(req);
+
+	return send_message_and_unref(agent->conn, message);
+}
+
+static DBusHandlerResult cancel_authorization_process(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *service_path, *adapter_path, *address, *action;
+	struct service_agent *sagent;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &service_path,
 				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_STRING, &action,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	if (!dbus_connection_get_object_path_data(conn, service, (void*) &sagent))
+	adapter_path = dbus_message_get_path(msg);
+	if (!strcmp(adapter_path, BASE_PATH))
+		return error_no_such_adapter(conn, msg);
+
+	if (!dbus_connection_get_object_path_data(conn, service_path,
+						(void *) &sagent))
 		return error_not_authorized(conn, msg);
 
-	/* Check if the connection id match */
 	if (strcmp(dbus_message_get_sender(msg), sagent->id))
 		return error_not_authorized(conn, msg);
 
-	/* FIXME: Forward to the default authentication agent */
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return auth_agent_send_cancel(msg, default_auth_agent, adapter_path,
+						address, service_path, action);
 }
-
-static DBusHandlerResult cancel_service_authorization(DBusConnection *conn,
-							DBusMessage *msg, void *data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 
 static struct service_data sec_services[] = {
 	{ "RegisterDefaultPasskeyAgent",		register_default_passkey_agent		},
@@ -597,7 +852,7 @@ static struct service_data sec_services[] = {
 	{ "RegisterDefaultAuthorizationAgent",		register_default_auth_agent		},
 	{ "UnregisterDefaultAuthorizationAgent",	unregister_default_auth_agent		},
 	{ "AuthorizeService",				authorize_service			},
-	{ "CancelAuthorizationProcess",			cancel_service_authorization		},
+	{ "CancelAuthorizationProcess",			cancel_authorization_process		},
 	{ NULL, NULL }
 };
 
@@ -1092,6 +1347,9 @@ void release_default_auth_agent(void)
 {
 	if (!default_auth_agent)
 		return;
+
+	auth_agent_cancel_requests(default_auth_agent);
+	auth_agent_release(default_auth_agent);
 
 	auth_agent_free(default_auth_agent);
 	default_auth_agent = NULL;

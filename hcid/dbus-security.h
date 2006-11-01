@@ -52,7 +52,17 @@ struct authorization_agent {
 	DBusConnection *conn;
 	char *name;
 	char *path;
-	int exited;
+	struct slist *pending_requests;
+};
+
+struct pend_auth_agent_req {
+	DBusMessage *msg;
+	struct authorization_agent *agent;
+	char *adapter_path;
+	char *address;
+	char *service_path;
+	char *action;
+	DBusPendingCall *call;
 };
 
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);
