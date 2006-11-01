@@ -180,7 +180,7 @@ static const DBusObjectPathVTable service_table = {
 	.message_function = service_message,
 };
 
-static int register_record(DBusConnection *conn, const char *service_path)
+static int add_record(DBusConnection *conn, const char *service_path)
 {
 	DBusMessage *msg, *reply;
 	DBusMessageIter iter, array_iter;
@@ -201,12 +201,15 @@ static int register_record(DBusConnection *conn, const char *service_path)
 			0x6f, 0x72, 0x74 };
 	int i;
 
-	msg = dbus_message_new_method_call("org.bluez", service_path,
-				"org.bluez.Service", "RegisterServiceRecord");
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+					INTERFACE, "AddServiceRecord");
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");
 		return -1;
 	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &service_path,
+							DBUS_TYPE_INVALID);
 
 	dbus_message_iter_init_append(msg, &iter);
 
@@ -283,7 +286,7 @@ static int register_service(DBusConnection *conn, const char *service_path)
 
 	dbus_connection_flush(conn);
 
-	return register_record(conn, service_path);
+	return add_record(conn, service_path);
 }
 
 static int unregister_service(DBusConnection *conn, const char *service_path)
