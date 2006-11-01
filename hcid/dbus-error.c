@@ -78,6 +78,13 @@ DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg)
 							"Not authorized"));
 }
 
+DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".Rejected",
+							"Rejected"));
+}
+
 DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,
@@ -140,7 +147,7 @@ static DBusHandlerResult error_already_exists(DBusConnection *conn, DBusMessage 
 		dbus_message_new_error(msg, ERROR_INTERFACE ".AlreadyExists", str));
 }
 
-static DBusHandlerResult error_does_not_exist(DBusConnection *conn, DBusMessage *msg, const char *str)
+DBusHandlerResult error_does_not_exist(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
 	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".DoesNotExist", str));
@@ -152,7 +159,7 @@ static DBusHandlerResult error_in_progress(DBusConnection *conn, DBusMessage *ms
 		dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str));
 }
 
-static DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg, const char *str)
+DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
 	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".Canceled", str));
