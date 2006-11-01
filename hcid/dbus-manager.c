@@ -337,6 +337,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	DBusMessage *reply;
 	sdp_record_t *record;
 	const char *path;
+	int err;
 
 	/* Check if it is an array of bytes */
 	if (strcmp(dbus_message_get_signature(msg), "say"))
@@ -368,6 +369,30 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	}
 
 	record->handle = next_handle++;
+
+	if (agent->running) {
+		sdp_session_t *sess;
+		sess  = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
+		if (!sess) {
+			err = errno;
+			error("Can't connect to sdp daemon: %s (%d)",
+					strerror(err), err);
+			goto fail;
+		}
+
+		if (sdp_device_record_register(sess, BDADDR_ANY, record,
+						SDP_RECORD_PERSIST) < 0) {
+			err = errno;
+			sdp_close(sess);
+			error("Record registration failed: %s (%d)",
+					strerror(err), err);
+			goto fail;
+		}
+
+		sdp_close(sess);
+	}
+
+
 	agent->records = slist_append(agent->records, record);
 
 	dbus_message_append_args(msg,
@@ -375,6 +400,10 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 				DBUS_TYPE_INVALID;
 
 	return send_message_and_unref(conn, reply);
+fail:
+	sdp_record_free(record);
+	dbus_message_unref(reply);
+	return error_failed(conn, msg, err);
 }
 
 static int sdp_record_cmp(sdp_record_t *a, uint32_t *handle)
