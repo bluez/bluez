@@ -1,5 +1,5 @@
 
-SUBDIRS = common daemon network input audio \
+SUBDIRS = common daemon network input audio sync \
 	tools rfcomm hcid sdpd dund pand hidd \
 	cups fuse alsa test scripts
 
