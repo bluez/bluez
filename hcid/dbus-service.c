@@ -43,20 +43,11 @@
 #include "dbus-manager.h"
 #include "dbus-service.h"
 
-#define START_REPLY_TIMEOUT	5000
-
-#define SERVICE_RUNNING		1
-#define SERVICE_NOT_RUNNING	0
-
-struct service_call {
-	DBusConnection *conn;
-	DBusMessage *msg;
-	struct service_agent *agent;
-};
 
 static struct slist *services = NULL;
 
-static struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg, struct service_agent *agent)
+struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
+					struct service_agent *agent)
 {
 	struct service_call *call;
 	call = malloc(sizeof(struct service_call));
@@ -70,7 +61,7 @@ static struct service_call *service_call_new(DBusConnection *conn, DBusMessage *
 	return call;
 }
 
-static void service_call_free(void *data)
+void service_call_free(void *data)
 {
 	struct service_call *call = data;
 
@@ -182,7 +173,7 @@ mem_fail:
 	return NULL;
 }
 
-static int register_agent_records(struct slist *lrecords)
+int register_agent_records(struct slist *lrecords)
 {
 	sdp_session_t *sess;
 	sdp_record_t *rec;

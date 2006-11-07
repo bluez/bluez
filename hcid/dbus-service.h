@@ -24,6 +24,10 @@
 #ifndef __BLUEZ_DBUS_SERVICE_H
 #define __BLUEZ_DBUS_SERVICE_H
 
+#define START_REPLY_TIMEOUT	5000
+#define SERVICE_RUNNING		1
+#define SERVICE_NOT_RUNNING	0
+
 struct service_agent {
 	char *id;	/* Connection id */
 	char *name;
@@ -33,10 +37,24 @@ struct service_agent {
 	struct slist *records;
 };
 
+struct service_call {
+	DBusConnection *conn;
+	DBusMessage *msg;
+	struct service_agent *agent;
+};
+
 int register_service_agent(DBusConnection *conn, const char *sender, const char *path,
 				const char *name, const char *description);
-int unregister_service_agent(DBusConnection *conn, const char *sender, const char *path);
+int unregister_service_agent(DBusConnection *conn, const char *sender,
+				const char *path);
+
 void release_service_agents(DBusConnection *conn);
 void append_available_services(DBusMessageIter *iter);
+
+int register_agent_records(struct slist *lrecords);
+
+struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
+					struct service_agent *agent);
+void service_call_free(void *data);
 
 #endif /* __BLUEZ_DBUS_SERVICE_H */

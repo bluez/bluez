@@ -50,6 +50,7 @@
 
 static int default_adapter_id = -1;
 static uint32_t	next_handle = 0x10000;
+static int autostart = 1;
 
 static DBusHandlerResult interface_version(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -224,6 +225,35 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void autostart_reply(DBusPendingCall *pcall, void *udata)
+{
+	struct service_call *call = udata;
+	DBusMessage *agent_reply = dbus_pending_call_steal_reply(pcall);
+	DBusError err;
+
+	dbus_error_init(&err);
+
+	/* Ignore if the result is an error */
+	if (!dbus_set_error_from_message(&err, agent_reply)) {
+		DBusMessage *message;
+
+		/* Send a signal to indicate that the service started properly */
+		message = dbus_message_new_signal(dbus_message_get_path(call->msg),
+						dbus_message_get_interface(call->msg),
+						"Started");
+
+		send_message_and_unref(call->conn, message);
+
+		if (call->agent) {
+			call->agent->running = SERVICE_RUNNING;
+			register_agent_records(call->agent->records);
+		}
+	}
+
+	dbus_message_unref(agent_reply);
+	dbus_pending_call_unref (pcall);
+}
+
 static DBusHandlerResult register_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -258,6 +288,32 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 				DBUS_TYPE_INVALID);
 	send_message_and_unref(conn, message);
 
+	/* If autostart feature is enabled: send the Start message to the service agent */
+	if (autostart) {
+		DBusPendingCall *pending;
+		struct service_agent *agent;
+		struct service_call *call;
+
+		message = dbus_message_new_method_call(NULL, path,
+				"org.bluez.ServiceAgent", "Start");
+
+		dbus_message_set_destination(message, dbus_message_get_sender(msg));
+
+		if (dbus_connection_send_with_reply(conn, message, &pending, START_REPLY_TIMEOUT) == FALSE) {
+			dbus_message_unref(message);
+			goto fail;
+		}
+
+		dbus_connection_get_object_path_data(conn, path, (void *) &agent);
+
+		call = service_call_new(conn, message, agent);
+		dbus_message_unref(message);
+		if (!call)
+			goto fail;
+
+		dbus_pending_call_set_notify(pending, autostart_reply, call, service_call_free);
+	}
+fail:
 	return send_message_and_unref(conn, dbus_message_new_method_return(msg));
 }
 
@@ -488,7 +544,7 @@ DBusHandlerResult handle_manager_method(DBusConnection *conn,
 	path = dbus_message_get_path(msg);
 	name = dbus_message_get_member(msg);
 
-	if ((strcmp(BASE_PATH, path)) && !strcmp(iface, "org.bluez.ServiceAgent")) 
+	if ((strcmp(BASE_PATH, path)) && !strcmp(iface, "org.bluez.ServiceAgent"))
 		return error_unknown_method(conn, msg);
 
 	if (strcmp(BASE_PATH, path))
