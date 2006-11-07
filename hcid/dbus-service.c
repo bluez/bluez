@@ -361,7 +361,7 @@ static void start_reply(DBusPendingCall *call, void *udata)
 
 		/* Send a signal to indicate that the service started properly */
 		message = dbus_message_new_signal(dbus_message_get_path(call_data->msg),
-							dbus_message_get_interface(call_data->msg),
+							"org.bluez.Service",
 							"Started");
 
 		send_message_and_unref(call_data->conn, message);
@@ -434,7 +434,7 @@ static void stop_reply(DBusPendingCall *call, void *udata)
 
 		/* Send a signal to indicate that the service stopped properly */
 		message = dbus_message_new_signal(dbus_message_get_path(call_data->msg),
-							dbus_message_get_interface(call_data->msg),
+							"org.bluez.Service",
 							"Stopped");
 
 		send_message_and_unref(call_data->conn, message);

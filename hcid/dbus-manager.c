@@ -239,7 +239,7 @@ static void autostart_reply(DBusPendingCall *pcall, void *udata)
 
 		/* Send a signal to indicate that the service started properly */
 		message = dbus_message_new_signal(dbus_message_get_path(call->msg),
-						dbus_message_get_interface(call->msg),
+						"org.bluez.Service",
 						"Started");
 
 		send_message_and_unref(call->conn, message);
