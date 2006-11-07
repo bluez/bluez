@@ -2137,7 +2137,7 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 	free(str);
 
 	/* Delete the link key from storage */
-	if (textfile_del(filename, addr_ptr) < 0) {
+	if (textfile_casedel(filename, addr_ptr) < 0) {
 		int err = errno;
 		hci_close_dev(dd);
 		return error_failed(conn, msg, err);
