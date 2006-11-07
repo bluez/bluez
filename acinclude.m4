@@ -94,7 +94,7 @@ AC_DEFUN([AC_PATH_OPENOBEX], [
 ])
 
 AC_DEFUN([AC_PATH_OPENSYNC], [
-	PKG_CHECK_MODULES(OPENSYNC, opensync-1.0, opensync_found=yes, AC_MSG_RESULT(no))
+	PKG_CHECK_MODULES(OPENSYNC, opensync-1.0 osengine-1.0, opensync_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(OPENSYNC_CFLAGS)
 	AC_SUBST(OPENSYNC_LIBS)
 ])
