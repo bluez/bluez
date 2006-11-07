@@ -27,8 +27,45 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+#include <opensync/opensync.h>
+#include <osengine/engine.h>
+
+#include <dbus/dbus-glib.h>
+
+static DBusGConnection *conn;
 
 int main(int argc, char *argv[])
 {
+	GMainLoop *mainloop;
+	GError *error = NULL;
+	OSyncEnv *env;
+
+	g_type_init();
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+
+	conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
+	if (error != NULL) {
+		g_printerr("Connecting to system bus failed: %s\n",
+							error->message);
+		g_error_free(error);
+		exit(EXIT_FAILURE);
+	}
+
+	env = osync_env_new();
+
+	osync_env_initialize(env, NULL);
+
+	g_main_loop_run(mainloop);
+
+	osync_env_finalize(env, NULL);
+
+	osync_env_free(env);
+
+	dbus_g_connection_unref(conn);
+
 	return 0;
 }
