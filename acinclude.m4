@@ -125,6 +125,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	pie_enable=no
 	glib_enable=${glib_found}
 	obex_enable=${openobex_found}
+	sync_enable=${opensync_found}
 	fuse_enable=no
 	alsa_enable=no
 	test_enable=no
@@ -171,6 +172,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
 		obex_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(sync, AC_HELP_STRING([--enable-sync], [enable SYNC support]), [
+		sync_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(fuse, AC_HELP_STRING([--enable-fuse], [enable FUSE support]), [
