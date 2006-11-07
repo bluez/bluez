@@ -443,22 +443,25 @@ void sdp_record_free(sdp_record_t *rec);
  * the service record visible to SDP clients.  This function returns 0
  * on success or -1 on failure (and sets errno).
  */
-int sdp_record_register(sdp_session_t *sess, sdp_record_t *rec, uint8_t flags);
-int sdp_device_record_register(sdp_session_t *sess, bdaddr_t *device, sdp_record_t *rec, uint8_t flags);
+int sdp_device_record_register_binary(sdp_session_t *session, bdaddr_t *device, uint8_t *data, uint32_t size, uint8_t flags, uint32_t *handle);
+int sdp_device_record_register(sdp_session_t *session, bdaddr_t *device, sdp_record_t *rec, uint8_t flags);
+int sdp_record_register(sdp_session_t *session, sdp_record_t *rec, uint8_t flags);
 
 /*
  * Unregister a service record.
  */
-int sdp_record_unregister(sdp_session_t *sess, sdp_record_t *rec);
-int sdp_device_record_unregister(sdp_session_t *sess, bdaddr_t *device, sdp_record_t *rec);
+int sdp_device_record_unregister_binary(sdp_session_t *session, bdaddr_t *device, uint32_t handle);
+int sdp_device_record_unregister(sdp_session_t *session, bdaddr_t *device, sdp_record_t *rec);
+int sdp_record_unregister(sdp_session_t *session, sdp_record_t *rec);
 
 /*
  * Update an existing service record.  (Calling this function
  * before a previous call to sdp_record_register() will result
  * in an error.)
  */
+int sdp_device_record_update_binary(sdp_session_t *session, bdaddr_t *device, uint32_t handle, uint8_t *data, uint32_t size);
+int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp_record_t *rec);
 int sdp_record_update(sdp_session_t *sess, const sdp_record_t *rec);
-int sdp_device_record_update(sdp_session_t *sess, bdaddr_t *device, const sdp_record_t *rec);
 
 void sdp_record_print(const sdp_record_t *rec);
 

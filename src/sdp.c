@@ -2395,13 +2395,12 @@ void sdp_append_to_pdu(sdp_buf_t *pdu, sdp_data_t *d)
  *
  * Returns zero on success, otherwise -1 (and sets errno).
  */
-int sdp_device_record_register(sdp_session_t *session, bdaddr_t *device, sdp_record_t *rec, uint8_t flags)
+int sdp_device_record_register_binary(sdp_session_t *session, bdaddr_t *device, uint8_t *data, uint32_t size, uint8_t flags, uint32_t *handle)
 {
-	int status = 0;
 	uint8_t *req, *rsp, *p;
 	uint32_t reqsize, rspsize;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
-	sdp_buf_t pdu;
+	int status;
 
 	SDPDBG("");
 
@@ -2416,16 +2415,13 @@ int sdp_device_record_register(sdp_session_t *session, bdaddr_t *device, sdp_rec
 		errno = ENOMEM;
 		goto end;
 	}
-	if (rec->handle && rec->handle != 0xffffffff) {
-		uint32_t handle = rec->handle;
-		sdp_data_t *data = sdp_data_alloc(SDP_UINT32, &handle);
-		sdp_attr_replace(rec, SDP_ATTR_RECORD_HANDLE, data);
-	}
+
 	reqhdr = (sdp_pdu_hdr_t *)req;
 	reqhdr->pdu_id = SDP_SVC_REGISTER_REQ;
 	reqhdr->tid    = htons(sdp_gen_tid(session));
 	reqsize = sizeof(sdp_pdu_hdr_t) + 1;
 	p = req + sizeof(sdp_pdu_hdr_t);
+
 	if (bacmp(device, BDADDR_ANY)) {
 		*p++ = flags | SDP_DEVICE_RECORD;
 		bacpy((bdaddr_t *) p, device);
@@ -2433,33 +2429,64 @@ int sdp_device_record_register(sdp_session_t *session, bdaddr_t *device, sdp_rec
 		reqsize += sizeof(bdaddr_t);
 	} else
 		*p++ = flags;
-	if (sdp_gen_record_pdu(rec, &pdu) < 0) {
-		status = -1;
-		errno = ENOMEM;
-		goto end;
-	}
-	memcpy(p, pdu.data, pdu.data_size);
-	free(pdu.data);
-	reqsize += pdu.data_size;
+
+	memcpy(p, data, size);
+	reqsize += size;
 	reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 
 	status = sdp_send_req_w4_rsp(session, req, rsp, reqsize, &rspsize);
 	if (status < 0)
 		goto end;
+
 	rsphdr = (sdp_pdu_hdr_t *) rsp;
 	p = rsp + sizeof(sdp_pdu_hdr_t);
+
 	if (rsphdr->pdu_id == SDP_SVC_REGISTER_RSP) {
-		uint32_t handle  = ntohl(bt_get_unaligned((uint32_t *) p));
+		if (handle)
+			*handle  = ntohl(bt_get_unaligned((uint32_t *) p));
+	}
+
+end:
+	if (req)
+		free(req);
+
+	if (rsp)
+		free(rsp);
+
+	return status;
+}
+
+int sdp_device_record_register(sdp_session_t *session, bdaddr_t *device, sdp_record_t *rec, uint8_t flags)
+{
+	sdp_buf_t pdu;
+	uint32_t handle;
+	int err;
+
+	SDPDBG("");
+
+	if (rec->handle && rec->handle != 0xffffffff) {
+		uint32_t handle = rec->handle;
+		sdp_data_t *data = sdp_data_alloc(SDP_UINT32, &handle);
+		sdp_attr_replace(rec, SDP_ATTR_RECORD_HANDLE, data);
+	}
+
+	if (sdp_gen_record_pdu(rec, &pdu) < 0) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	err = sdp_device_record_register_binary(session, device,
+				pdu.data, pdu.data_size, flags, &handle);
+
+	free(pdu.data);
+
+	if (err == 0) {
 		sdp_data_t *data = sdp_data_alloc(SDP_UINT32, &handle);
 		rec->handle = handle;
 		sdp_attr_replace(rec, SDP_ATTR_RECORD_HANDLE, data);
 	}
-end:
-	if (req)
-		free(req);
-	if (rsp)
-		free(rsp);
-	return status;
+
+	return err;
 }
 
 int sdp_record_register(sdp_session_t *session, sdp_record_t *rec, uint8_t flags)
@@ -2470,25 +2497,25 @@ int sdp_record_register(sdp_session_t *session, sdp_record_t *rec, uint8_t flags
 /*
  * unregister a service record
  */
-int sdp_device_record_unregister(sdp_session_t *session, bdaddr_t *device, sdp_record_t *rec)
+int sdp_device_record_unregister_binary(sdp_session_t *session, bdaddr_t *device, uint32_t handle)
 {
-	int status = 0;
 	uint8_t *reqbuf, *rspbuf, *p;
 	uint32_t reqsize = 0, rspsize = 0;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
-	uint32_t handle = 0;
+	int status;
 
 	SDPDBG("");
 
-	handle = rec->handle;
 	if (handle == SDP_SERVER_RECORD_HANDLE) {
 		errno = EINVAL;
 		return -1;
 	}
+
 	if (!session->local) {
 		errno = EREMOTE;
 		return -1;
 	}
+
 	reqbuf = malloc(SDP_REQ_BUFFER_SIZE);
 	rspbuf = malloc(SDP_RSP_BUFFER_SIZE);
 	if (!reqbuf || !rspbuf) {
@@ -2511,17 +2538,29 @@ int sdp_device_record_unregister(sdp_session_t *session, bdaddr_t *device, sdp_r
 		rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 		p = rspbuf + sizeof(sdp_pdu_hdr_t);
 		status = bt_get_unaligned((uint16_t *) p);
-		if (status == 0 && rsphdr->pdu_id == SDP_SVC_REMOVE_RSP) {
-			SDPDBG("Removing local copy\n");
-			sdp_record_free(rec);
-		}
+		if (status != 0 || rsphdr->pdu_id != SDP_SVC_REMOVE_RSP)
+			status = -1;
 	}
+
 end:
 	if (reqbuf)
 		free(reqbuf);
+
 	if (rspbuf)
 		free(rspbuf);
+
 	return status;
+}
+
+int sdp_device_record_unregister(sdp_session_t *session, bdaddr_t *device, sdp_record_t *rec)
+{
+	int err;
+
+	err = sdp_device_record_unregister_binary(session, device, rec->handle);
+	if (err == 0)
+		sdp_record_free(rec);
+
+	return err;
 }
 
 int sdp_record_unregister(sdp_session_t *session, sdp_record_t *rec)
@@ -2532,16 +2571,22 @@ int sdp_record_unregister(sdp_session_t *session, sdp_record_t *rec)
 /*
  * modify an existing service record
  */
+int sdp_device_record_update_binary(sdp_session_t *session, bdaddr_t *device, uint32_t handle, uint8_t *data, uint32_t size)
+{
+	return -1;
+}
+
 int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp_record_t *rec)
 {
-	int status = 0;
 	uint8_t *reqbuf, *rspbuf, *p;
 	uint32_t reqsize, rspsize;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
 	uint32_t handle;
 	sdp_buf_t pdu;
+	int status;
 
 	SDPDBG("");
+
 	handle = rec->handle;
 
 	if (handle == SDP_SERVER_RECORD_HANDLE) {
