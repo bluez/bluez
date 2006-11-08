@@ -236,6 +236,12 @@ static void autostart_reply(DBusPendingCall *pcall, void *udata)
 	if (!dbus_set_error_from_message(&err, agent_reply)) {
 		DBusMessage *message;
 
+		if (!call->agent)
+			goto fail;
+
+		if (register_agent_records(call->agent->records) < 0)
+			goto fail;
+
 		/* Send a signal to indicate that the service started properly */
 		message = dbus_message_new_signal(dbus_message_get_path(call->msg),
 						"org.bluez.Service",
@@ -243,14 +249,11 @@ static void autostart_reply(DBusPendingCall *pcall, void *udata)
 
 		send_message_and_unref(call->conn, message);
 
-		if (call->agent) {
-			call->agent->running = SERVICE_RUNNING;
-			register_agent_records(call->agent->records);
-		}
+		call->agent->running = SERVICE_RUNNING;
 	}
-
+fail:
 	dbus_message_unref(agent_reply);
-	dbus_pending_call_unref (pcall);
+	dbus_pending_call_unref(pcall);
 }
 
 static DBusHandlerResult register_service(DBusConnection *conn,

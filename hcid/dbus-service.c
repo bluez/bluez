@@ -210,6 +210,7 @@ int register_agent_records(struct slist *lrecords)
 	sdp_session_t *sess;
 	struct binary_record *rec;
 	uint32_t handle;
+	int err;
 
 	/* FIXME: attach to a specific adapter */
 	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
@@ -234,7 +235,11 @@ int register_agent_records(struct slist *lrecords)
 		}
 		rec->handle = handle;
 	}
+
+	err = errno;
 	sdp_close(sess);
+	errno = err;
+
 	return 0;
 }
 
@@ -324,7 +329,7 @@ static void forward_reply(DBusPendingCall *call, void *udata)
 	send_message_and_unref(call_data->conn, source_reply);
 
 	dbus_message_unref(reply);
-	dbus_pending_call_unref (call);
+	dbus_pending_call_unref(call);
 }
 
 static DBusHandlerResult get_connection_name(DBusConnection *conn,
@@ -398,8 +403,17 @@ static void start_reply(DBusPendingCall *call, void *udata)
 	if (dbus_set_error_from_message(&err, agent_reply)) {
 		call_data->agent->running = SERVICE_NOT_RUNNING;
 		dbus_error_free(&err);
+		/* Forward the error to the requestor */
 	} else {
 		DBusMessage *message;
+
+		if (register_agent_records(call_data->agent->records) < 0) {
+			/* FIXME: define a better error name */
+			source_reply = dbus_message_new_error(call_data->msg,
+					ERROR_INTERFACE ".Failed", strerror(errno));
+			goto fail;
+		}
+
 		call_data->agent->running = SERVICE_RUNNING;
 
 		/* Send a signal to indicate that the service started properly */
@@ -408,11 +422,11 @@ static void start_reply(DBusPendingCall *call, void *udata)
 							"Started");
 
 		send_message_and_unref(call_data->conn, message);
-
-		register_agent_records(call_data->agent->records);
 	}
 
+	/* Copy the service agent reply: error message or any reply content */
 	source_reply = dbus_message_copy(agent_reply);
+fail:
 	dbus_message_set_destination(source_reply, dbus_message_get_sender(call_data->msg));
 	dbus_message_set_no_reply(source_reply, TRUE);
 	dbus_message_set_reply_serial(source_reply, dbus_message_get_serial(call_data->msg));
@@ -420,7 +434,7 @@ static void start_reply(DBusPendingCall *call, void *udata)
 	send_message_and_unref(call_data->conn, source_reply);
 
 	dbus_message_unref(agent_reply);
-	dbus_pending_call_unref (call);
+	dbus_pending_call_unref(call);
 }
 
 static DBusHandlerResult start(DBusConnection *conn,
@@ -493,7 +507,7 @@ static void stop_reply(DBusPendingCall *call, void *udata)
 	send_message_and_unref(call_data->conn, source_reply);
 
 	dbus_message_unref(agent_reply);
-	dbus_pending_call_unref (call);
+	dbus_pending_call_unref(call);
 }
 
 static DBusHandlerResult stop(DBusConnection *conn,
