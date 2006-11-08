@@ -772,6 +772,8 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	if (!dbus_connection_unregister_object_path(conn, path))
 		return -ENOMEM;
 
+	name_listener_remove(conn, sender, (name_cb_t) service_agent_exit, conn);
+
 	l = slist_find(services, path, (cmp_func_t) strcmp);
 	if (l) {
 		void *p = l->data;
