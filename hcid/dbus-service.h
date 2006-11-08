@@ -34,7 +34,7 @@ struct service_agent {
 	char *description;
 	int running;
 	struct slist *trusted_devices;
-	struct slist *records;
+	struct slist *records; 	/* list of binary records */
 };
 
 struct service_call {
@@ -42,6 +42,15 @@ struct service_call {
 	DBusMessage *msg;
 	struct service_agent *agent;
 };
+
+struct binary_record {
+	uint32_t handle;
+	sdp_buf_t *buf;
+};
+
+struct binary_record *binary_record_new();
+void binary_record_free(struct binary_record *rec);
+int binary_record_cmp(struct binary_record *rec, uint32_t *handle);
 
 int register_service_agent(DBusConnection *conn, const char *sender, const char *path,
 				const char *name, const char *description);

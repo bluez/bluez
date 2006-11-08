@@ -46,6 +46,39 @@
 
 static struct slist *services = NULL;
 
+struct binary_record *binary_record_new()
+{
+	struct binary_record *rec;
+	rec = malloc(sizeof(struct binary_record));
+	if (!rec)
+		return NULL;
+
+	memset(rec, 0, sizeof(struct binary_record));
+	rec->handle = 0xffffffff;
+
+	return rec;
+}
+
+void binary_record_free(struct binary_record *rec)
+{
+	if (!rec)
+		return;
+
+	if (rec->buf) {
+		if (rec->buf->data)
+			free(rec->buf->data);
+		free(rec->buf);
+	}
+	
+	free(rec);
+}
+
+int binary_record_cmp(struct binary_record *rec, uint32_t *handle)
+{
+	return (rec->handle - *handle);
+}
+
+
 struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
 					struct service_agent *agent)
 {
@@ -128,8 +161,7 @@ static void service_agent_free(struct service_agent *agent)
 	}
 
 	if (agent->records) {
-		/* FIXME: currently sdp_device_record_unregister free the service record */
-		//slist_foreach(agent->records, (slist_func_t) sdp_record_free, NULL);
+		slist_foreach(agent->records, (slist_func_t) binary_record_free, NULL);
 		slist_free(agent->records);
 	}
 
@@ -176,7 +208,8 @@ mem_fail:
 int register_agent_records(struct slist *lrecords)
 {
 	sdp_session_t *sess;
-	sdp_record_t *rec;
+	struct binary_record *rec;
+	uint32_t handle;
 
 	/* FIXME: attach to a specific adapter */
 	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
@@ -187,12 +220,19 @@ int register_agent_records(struct slist *lrecords)
 
 	while (lrecords) {
 		rec = lrecords->data;
-		if (sdp_device_record_register(sess, BDADDR_ANY, rec, SDP_RECORD_PERSIST) < 0) {
-			/* FIXME: If just one of the service record registration fails */
-			error("Service Record registration failed:(%s, %d)", strerror(errno), errno);
-		}
-
 		lrecords = lrecords->next;
+
+		if (!rec || !rec->buf)
+			continue;
+
+		handle = 0;
+		if (sdp_device_record_register_binary(sess, BDADDR_LOCAL, rec->buf->data,
+				rec->buf->data_size, SDP_RECORD_PERSIST, &handle) < 0) {
+			/* FIXME: If just one of the service record registration fails */
+			error("Service Record registration failed:(%s, %d)",
+				strerror(errno), errno);
+		}
+		rec->handle = handle;
 	}
 	sdp_close(sess);
 	return 0;
@@ -201,7 +241,7 @@ int register_agent_records(struct slist *lrecords)
 static int unregister_agent_records(struct slist *lrecords)
 {
 	sdp_session_t *sess;
-	sdp_record_t *rec;
+	struct binary_record *rec;
 
 	/* FIXME: attach to a specific adapter */
 	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
@@ -212,11 +252,15 @@ static int unregister_agent_records(struct slist *lrecords)
 
 	while (lrecords) {
 		rec = lrecords->data;
-		if (sdp_device_record_unregister(sess, BDADDR_ANY, rec) < 0) {
-			/* FIXME: If just one of the service record registration fails */
-			error("Service Record unregistration failed:(%s, %d)", strerror(errno), errno);
-		}
 		lrecords = lrecords->next;
+		if (!rec)
+			continue;
+
+		if (sdp_device_record_unregister_binary(sess, BDADDR_ANY, rec->handle) < 0) {
+			/* FIXME: If just one of the service record registration fails */
+			error("Service Record unregistration failed:(%s, %d)",
+				strerror(errno), errno);
+		}
 	}
 	sdp_close(sess);
 	return 0;

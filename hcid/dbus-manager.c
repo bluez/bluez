@@ -49,7 +49,6 @@
 #include "dbus-manager.h"
 
 static int default_adapter_id = -1;
-static uint32_t	next_handle = 0x10000;
 static int autostart = 1;
 
 static DBusHandlerResult interface_version(DBusConnection *conn,
@@ -364,11 +363,11 @@ static DBusHandlerResult unregister_shadow_service(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static sdp_record_t *service_record_extract(DBusMessageIter *iter)
+static sdp_buf_t *service_record_extract(DBusMessageIter *iter)
 {
+	sdp_buf_t *sdp_buf;
 	uint8_t buff[SDP_RSP_BUFFER_SIZE];
-	sdp_record_t *record;
-	int recsize, index = 0;
+	int index = 0;
 	uint8_t value;
 
 	memset(buff, 0, SDP_RSP_BUFFER_SIZE);
@@ -380,9 +379,17 @@ static sdp_record_t *service_record_extract(DBusMessageIter *iter)
 		dbus_message_iter_next(iter);
 	}
 
-	record = sdp_extract_pdu(buff, &recsize);
+	sdp_buf = malloc(sizeof(sdp_buf_t));
+	if (!sdp_buf)
+		return NULL;
 
-	return record;
+	memset(sdp_buf, 0, sizeof(sdp_buf_t));
+	sdp_buf->data = malloc(index);
+	sdp_buf->data_size = index;
+	sdp_buf->buf_size = index;
+	memcpy(sdp_buf->data, buff, index);
+
+	return sdp_buf;
 }
 
 static DBusHandlerResult add_service_record(DBusConnection *conn,
@@ -391,7 +398,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	struct service_agent *agent;
 	DBusMessageIter iter, array_iter;
 	DBusMessage *reply;
-	sdp_record_t *record;
+	struct binary_record *rec;
 	const char *path;
 	int err;
 
@@ -418,16 +425,21 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	record = service_record_extract(&array_iter);
-	if (!record) {
+	rec = binary_record_new();
+	if (!rec)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	rec->buf = service_record_extract(&array_iter);
+	if (!rec->buf) {
+		binary_record_free(rec);
 		dbus_message_unref(reply);
 		return error_invalid_arguments(conn, msg);
 	}
 
-	record->handle = next_handle++;
-
 	if (agent->running) {
 		sdp_session_t *sess;
+		uint32_t handle = 0;
+
 		sess  = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
 		if (!sess) {
 			err = errno;
@@ -436,8 +448,8 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 			goto fail;
 		}
 
-		if (sdp_device_record_register(sess, BDADDR_ANY, record,
-						SDP_RECORD_PERSIST) < 0) {
+		if (sdp_device_record_register_binary(sess, BDADDR_LOCAL, rec->buf->data,
+					rec->buf->data_size, SDP_RECORD_PERSIST, &handle) < 0) {
 			err = errno;
 			sdp_close(sess);
 			error("Record registration failed: %s (%d)",
@@ -445,37 +457,34 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 			goto fail;
 		}
 
+		rec->handle = handle;
+
 		sdp_close(sess);
 	}
 
 
-	agent->records = slist_append(agent->records, record);
+	agent->records = slist_append(agent->records, rec);
 
 	dbus_message_append_args(msg,
-				DBUS_TYPE_UINT32, &record->handle),
+				DBUS_TYPE_UINT32, &rec->handle),
 				DBUS_TYPE_INVALID;
 
 	return send_message_and_unref(conn, reply);
 fail:
-	sdp_record_free(record);
+	binary_record_free(rec);
 	dbus_message_unref(reply);
 	return error_failed(conn, msg, err);
-}
-
-static int sdp_record_cmp(sdp_record_t *a, uint32_t *handle)
-{
-	return (a->handle - *handle);
 }
 
 static DBusHandlerResult remove_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct service_agent *agent;
+	struct binary_record *rec;
 	DBusMessage *reply;
 	struct slist *l;
 	const char *path;
 	uint32_t handle;
-	void *rec;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
@@ -493,7 +502,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 		return error_not_authorized(conn, msg);
 
 
-	l = slist_find(agent->records, &handle, (cmp_func_t) sdp_record_cmp);
+	l = slist_find(agent->records, &handle, (cmp_func_t) binary_record_cmp);
 	if (!l)
 		return error_record_does_not_exist(conn, msg);
 
@@ -506,15 +515,26 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 
 	/* If the service agent is running: remove it from the from sdpd */
 	if (agent->running) {
-		struct slist *lunreg = NULL;
-		lunreg = slist_append(lunreg, rec);
-		//unregister_agent_records(lunreg);
-		lunreg = slist_remove(lunreg, rec);
-		slist_free(lunreg);
+		sdp_session_t *sess;
+
+		/* FIXME: attach to a specific adapter */
+		sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
+		if (!sess) {
+			error("Can't connect to sdp daemon:(%s, %d)",
+				strerror(errno), errno);
+			goto fail;
+		}
+
+		if (sdp_device_record_unregister_binary(sess, BDADDR_ANY,
+					rec->handle) < 0) {
+			error("Service Record unregistration failed:(%s, %d)",
+				strerror(errno), errno);
+		}
+		sdp_close(sess);
 	}
 
-	/* FIXME: currently sdp_device_record_unregister free the service record */
-	//sdp_record_free(rec);
+fail:
+	binary_record_free(rec);
 
 	return send_message_and_unref(conn, reply);
 }
