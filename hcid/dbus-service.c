@@ -283,7 +283,7 @@ static void service_agent_exit(const char *name, void *data)
 		if (!dbus_connection_get_object_path_data(conn, path, (void *) &agent))
 			continue;
 
-		if (strcmp(name, agent->id))
+		if (!agent || strcmp(name, agent->id))
 			continue;
 
 		if (agent->records)
@@ -305,7 +305,6 @@ static void service_agent_exit(const char *name, void *data)
 
 	slist_foreach(lremove, (slist_func_t) free, NULL);
 	slist_free(lremove);
-
 }
 
 static void forward_reply(DBusPendingCall *call, void *udata)
@@ -808,6 +807,9 @@ void release_service_agents(DBusConnection *conn)
 		l = l->next;
 
 		if (dbus_connection_get_object_path_data(conn, path, (void *) &agent)) {
+			if (!agent)
+				continue;
+
 			send_release(conn, agent->id, path);
 			service_agent_free(agent);
 		}

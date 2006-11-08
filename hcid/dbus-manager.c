@@ -418,7 +418,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (strcmp(dbus_message_get_sender(msg), agent->id))
+	if (!agent || strcmp(dbus_message_get_sender(msg), agent->id))
 		return error_not_authorized(conn, msg);
 
 	dbus_message_iter_next(&iter);
@@ -501,7 +501,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (strcmp(dbus_message_get_sender(msg), agent->id))
+	if (!agent || strcmp(dbus_message_get_sender(msg), agent->id))
 		return error_not_authorized(conn, msg);
 
 
