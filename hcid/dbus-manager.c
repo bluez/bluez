@@ -366,28 +366,22 @@ static DBusHandlerResult unregister_shadow_service(DBusConnection *conn,
 static sdp_buf_t *service_record_extract(DBusMessageIter *iter)
 {
 	sdp_buf_t *sdp_buf;
-	uint8_t buff[SDP_RSP_BUFFER_SIZE];
-	int index = 0;
-	uint8_t value;
+	const uint8_t *buff;
+	int len = -1;
 
-	memset(buff, 0, SDP_RSP_BUFFER_SIZE);
-
-	/* FIXME why get fixed array doesn't work? dbus_message_iter_get_fixed_array */
-	while (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
-		dbus_message_iter_get_basic(iter, &value);
-		buff[index++] = value;
-		dbus_message_iter_next(iter);
-	}
+	dbus_message_iter_get_fixed_array(iter, &buff, &len);
+	if (len < 0)
+		return NULL;
 
 	sdp_buf = malloc(sizeof(sdp_buf_t));
 	if (!sdp_buf)
 		return NULL;
 
 	memset(sdp_buf, 0, sizeof(sdp_buf_t));
-	sdp_buf->data = malloc(index);
-	sdp_buf->data_size = index;
-	sdp_buf->buf_size = index;
-	memcpy(sdp_buf->data, buff, index);
+	sdp_buf->data = malloc(len);
+	sdp_buf->data_size = len;
+	sdp_buf->buf_size = len;
+	memcpy(sdp_buf->data, buff, len);
 
 	return sdp_buf;
 }
@@ -465,9 +459,9 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 
 	agent->records = slist_append(agent->records, rec);
 
-	dbus_message_append_args(msg,
-				DBUS_TYPE_UINT32, &rec->handle),
-				DBUS_TYPE_INVALID;
+	dbus_message_append_args(reply,
+				DBUS_TYPE_UINT32, &rec->handle,
+				DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
 fail:
