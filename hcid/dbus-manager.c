@@ -359,19 +359,6 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 	return send_message_and_unref(conn, dbus_message_new_method_return(msg));
 }
 
-static DBusHandlerResult register_shadow_service(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-
-static DBusHandlerResult unregister_shadow_service(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static sdp_buf_t *service_record_extract(DBusMessageIter *iter)
 {
 	sdp_buf_t *sdp_buf;
@@ -550,8 +537,6 @@ static struct service_data methods[] = {
 	{ "ListServices",	list_services				},
 	{ "RegisterService",	register_service			},
 	{ "UnregisterService",	unregister_service			},
-	{ "RegisterShadowService",	register_shadow_service		},
-	{ "UnregistershadowService",	unregister_shadow_service	},
 	{ "AddServiceRecord",		add_service_record		},
 	{ "RemoveServiceRecord",	remove_service_record		},
 	{ NULL, NULL }

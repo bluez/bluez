@@ -179,23 +179,6 @@ Methods		uint32 InterfaceVersion()
 			match the same value that has been used on
 			registration.
 
-		void RegisterShadowService(string path)
-
-			This registers a new shadow service agent. The
-			service will not be available through ListServices().
-
-			The path parameter defines the object path of the
-			service agent that will be called when someone
-			requests information through org.bluez.Service
-			interface.
-
-		void UnregisterShadowService(string path)
-
-			This unregisters a shadow service agent that has
-			been previously registered. The path parameter
-			must match the same value that has been used on
-			registration.
-
 		uint32 AddServiceRecord(string path, array{byte})
 
 			Add a new service record to the service agent
