@@ -277,8 +277,12 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 	reg_err = register_service_agent(conn, dbus_message_get_sender(msg),
 					path, name, description);
 
-	if (reg_err < 0)
+	if (reg_err < 0) {
+		if (reg_err == -EADDRNOTAVAIL)
+			return error_service_already_exists(conn, msg);
+
 		return error_failed(conn, msg, -reg_err);
+	}
 
 	/* Report that a new service was registered */
 	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
@@ -337,8 +341,13 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 
 	unreg_err = unregister_service_agent(conn,
 					dbus_message_get_sender(msg), path);
-	if (unreg_err < 0)
+	if (unreg_err < 0) {
+		/* Only the owner can unregister it */
+		if (unreg_err == -EPERM)
+			return error_not_authorized(conn, msg);
+
 		return error_failed(conn, msg, -unreg_err);
+	}
 
 	/* Report that the service was unregistered */
 	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,

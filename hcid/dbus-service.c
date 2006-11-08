@@ -727,6 +727,7 @@ int register_service_agent(DBusConnection *conn, const char *sender,
 				const char *path, const char *name, const char *description)
 {
 	struct service_agent *agent;
+	struct slist *l;
 
 	debug("Registering service object: %s", path);
 
@@ -735,14 +736,17 @@ int register_service_agent(DBusConnection *conn, const char *sender,
 	if (!agent)
 		return -ENOMEM;
 
+	l = slist_find(services, path, (cmp_func_t) strcmp);
+	if (l)
+		return -EADDRNOTAVAIL;
+
 	if (!dbus_connection_register_object_path(conn, path, &services_vtable, agent)) {
 		free(agent);
-		return -1;
+		return -ENOMEM;
 	}
 
 	services = slist_append(services, strdup(path));
 
-	/* FIXME: only one listener per sender */
 	name_listener_add(conn, sender, (name_cb_t) service_agent_exit, conn);
 
 	return 0;
@@ -756,6 +760,10 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	debug("Unregistering service object: %s", path);
 
 	if (dbus_connection_get_object_path_data(conn, path, (void *) &agent)) {
+		/* No data assigned to this path or it is not the owner */
+		if (!agent || strcmp(sender, agent->id))
+			return -EPERM;
+
 		if (agent->records)
 			unregister_agent_records(agent->records);
 
@@ -763,7 +771,7 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	}
 
 	if (!dbus_connection_unregister_object_path(conn, path))
-		return -1;
+		return -ENOMEM;
 
 	l = slist_find(services, path, (cmp_func_t) strcmp);
 	if (l) {
