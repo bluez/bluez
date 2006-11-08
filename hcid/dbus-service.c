@@ -812,6 +812,9 @@ void release_service_agents(DBusConnection *conn)
 			if (!agent)
 				continue;
 
+			if (agent->records)
+				unregister_agent_records(agent->records);
+
 			send_release(conn, agent->id, path);
 			service_agent_free(agent);
 		}
