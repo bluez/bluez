@@ -2441,7 +2441,14 @@ int sdp_device_record_register_binary(sdp_session_t *session, bdaddr_t *device, 
 	rsphdr = (sdp_pdu_hdr_t *) rsp;
 	p = rsp + sizeof(sdp_pdu_hdr_t);
 
-	if (rsphdr->pdu_id == SDP_SVC_REGISTER_RSP) {
+	if (rsphdr->pdu_id == SDP_ERROR_RSP) {
+		/* Invalid service record */
+		errno = EINVAL;
+		status = -1;
+	} else if (rsphdr->pdu_id != SDP_SVC_REGISTER_RSP) {
+		errno = EPROTO;
+		status = -1;
+	} else {
 		if (handle)
 			*handle  = ntohl(bt_get_unaligned((uint32_t *) p));
 	}
@@ -2534,14 +2541,21 @@ int sdp_device_record_unregister_binary(sdp_session_t *session, bdaddr_t *device
 
 	reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 	status = sdp_send_req_w4_rsp(session, reqbuf, rspbuf, reqsize, &rspsize);
-	if (status == 0) {
-		rsphdr = (sdp_pdu_hdr_t *) rspbuf;
-		p = rspbuf + sizeof(sdp_pdu_hdr_t);
-		status = bt_get_unaligned((uint16_t *) p);
-		if (status != 0 || rsphdr->pdu_id != SDP_SVC_REMOVE_RSP)
-			status = -1;
-	}
+	if (status < 0)
+		goto end;
 
+	rsphdr = (sdp_pdu_hdr_t *) rspbuf;
+	p = rspbuf + sizeof(sdp_pdu_hdr_t);
+	status = bt_get_unaligned((uint16_t *) p);
+
+	if (rsphdr->pdu_id == SDP_ERROR_RSP) {
+		/* For this case the status always is invalid record handle */
+		errno = EINVAL;
+		status = -1;
+	} else if (rsphdr->pdu_id != SDP_SVC_REMOVE_RSP) {
+		errno = EPROTO;
+		status = -1;
+	}
 end:
 	if (reqbuf)
 		free(reqbuf);
@@ -2625,13 +2639,22 @@ int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp
 
 	reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 	status = sdp_send_req_w4_rsp(session, reqbuf, rspbuf, reqsize, &rspsize);
+	if (status < 0)
+		goto end;
 
 	SDPDBG("Send req status : %d\n", status);
 
-	if (status == 0) {
-		rsphdr = (sdp_pdu_hdr_t *) rspbuf;
-		p = rspbuf + sizeof(sdp_pdu_hdr_t);
-		status = bt_get_unaligned((uint16_t *) p);
+	rsphdr = (sdp_pdu_hdr_t *) rspbuf;
+	p = rspbuf + sizeof(sdp_pdu_hdr_t);
+	status = bt_get_unaligned((uint16_t *) p);
+
+	if (rsphdr->pdu_id == SDP_ERROR_RSP) {
+		/* The status can be invalid sintax or invalid record handle */
+		errno = EINVAL;
+		status = -1;
+	} else if (rsphdr->pdu_id != SDP_SVC_UPDATE_RSP) {
+		errno = EPROTO;
+		status = -1;
 	}
 end:
 	if (reqbuf)
