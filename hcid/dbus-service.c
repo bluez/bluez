@@ -247,6 +247,7 @@ static int unregister_agent_records(struct slist *lrecords)
 {
 	sdp_session_t *sess;
 	struct binary_record *rec;
+	int err;
 
 	/* FIXME: attach to a specific adapter */
 	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
@@ -267,7 +268,11 @@ static int unregister_agent_records(struct slist *lrecords)
 				strerror(errno), errno);
 		}
 	}
+
+	err = errno;
 	sdp_close(sess);
+	errno = err;
+
 	return 0;
 }
 
