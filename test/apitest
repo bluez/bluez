@@ -55,7 +55,9 @@ dev_cmds = [ "GetAddress",
              "GetEncryptionKeySize",
              "DiscoverDevices",
              "DiscoverDevicesWithoutNameResolving",
-             "CancelDiscovery" ]
+             "CancelDiscovery",
+             "ListRemoteDevices",
+             "ListRecentRemoteDevices" ]
 dev_signals = [ "ModeChanged",
                 "NameChanged",
                 "MinorClassChanged",
@@ -386,6 +388,17 @@ class Tester:
                print self.device.DiscoverDevices()
            elif self.cmd == 'DiscoverDevicesWithoutNameResolving':
                print self.device.DiscoverDevicesWithoutNameResolving()
+           elif self.cmd == 'ListRemoteDevices':
+               devices = self.device.ListRemoteDevices()
+               for device in devices: 
+                   print device,
+           elif self.cmd == 'ListRecentRemoteDevices':
+               if len(self.cmd_args) == 1:
+                   devices = self.device.ListRecentRemoteDevices(self.cmd_args[0])
+                   for device in devices: 
+                       print device,
+               else:
+                   print 'Usage: %s -i <dev> ListRecentRemoteDevices date' % self.name
            else:
                 # FIXME: remove at future version
                 print 'Script Error: Method %s not found. Maybe a mispelled word.' % (self.cmd_args)
