@@ -947,6 +947,20 @@ Signals		void ModeChanged(string mode)
 
 			Signals that a bonding was removed.
 
+		array{string} ListRemoteDevices()
+
+			List addresses of all known remote devices (seen, used or bonded).
+
+			Possible errors: none
+
+		array{string} ListRecentRemoteDevices(string date)
+
+			List addresses of all used or bonded remote devices since date.
+
+			date format is "YYYY-MM-DD HH:MM:SS GMT"
+
+			Possible errors: none
+
 
 Security hierarchy
 ==================
