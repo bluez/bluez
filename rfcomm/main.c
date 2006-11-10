@@ -261,10 +261,8 @@ static int release_all(int ctl)
 static void run_cmdline(struct pollfd *p, sigset_t* sigs, char *devname,
 			int argc, char **argv)
 {
-	int i = 0;
-	pid_t pid, child;
-	struct timespec ts;
-	int status = 0;
+	int i;
+	pid_t pid;
 	char **cmdargv;
        
 	cmdargv = malloc((argc + 1) * sizeof(char*));
@@ -289,6 +287,10 @@ static void run_cmdline(struct pollfd *p, sigset_t* sigs, char *devname,
 		break;
 	default:
 		while (1) {
+			int status;
+			pid_t child;
+			struct timespec ts;
+
 			child = waitpid(-1, &status, WNOHANG);
 			if (child == pid || (child < 0 && errno != EAGAIN))
 				break;
