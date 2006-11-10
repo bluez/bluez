@@ -40,6 +40,7 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -255,6 +256,56 @@ static int release_all(int ctl)
 		release_dev(ctl, (di + i)->id, 0);
 
 	return 0;
+}
+
+static void run_cmdline(struct pollfd *p, sigset_t* sigs, char *devname,
+			int argc, char **argv)
+{
+	int i = 0;
+	pid_t pid, child;
+	struct timespec ts;
+	int status = 0;
+	char **cmdargv;
+       
+	cmdargv = malloc((argc + 1) * sizeof(char*));
+	if (!cmdargv)
+		return;
+
+	for (i = 0; i < argc; i++)
+		cmdargv[i] = (strcmp(argv[i], "{}") == 0) ? devname : argv[i];
+	cmdargv[i] = NULL;
+
+	pid = fork();
+
+	switch (pid) {
+	case 0:
+		i = execvp(cmdargv[0], cmdargv);
+		fprintf(stderr, "Couldn't execute command %s (errno=%d:%s)\n",
+				cmdargv[0], errno, strerror(errno));
+		break;
+	case -1:
+		fprintf(stderr, "Couldn't fork to execute command %s\n",
+				cmdargv[0]);
+		break;
+	default:
+		while (1) {
+			child = waitpid(-1, &status, WNOHANG);
+			if (child == pid || (child < 0 && errno != EAGAIN))
+				break;
+
+			p->revents = 0;
+			ts.tv_sec  = 0;
+			ts.tv_nsec = 200;
+			if (ppoll(p, 1, &ts, sigs) || __io_canceled) {
+				kill(pid, SIGTERM);
+				waitpid(pid, &status, 0);
+				break;
+			}
+		}
+		break;
+	}
+
+	free(cmdargv);
 }
 
 static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv)
@@ -520,15 +571,30 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	p.fd = fd;
 	p.events = POLLERR | POLLHUP;
 
-	while (!__io_canceled) {
-		p.revents = 0;
-		if (ppoll(&p, 1, NULL, &sigs) > 0)
-			break;
-	}
+	if (argc <= 2) {
+		while (!__io_canceled) {
+			p.revents = 0;
+			if (ppoll(&p, 1, NULL, &sigs) > 0)
+				break;
+		}
+	} else
+		run_cmdline(&p, &sigs, devname, argc - 2, argv + 2);
+
+	sa.sa_handler = NULL;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT,  &sa, NULL);
 
 	printf("Disconnected\n");
 
 	close(fd);
+}
+
+static void cmd_watch(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv)
+{
+	while (!__io_canceled) {
+		cmd_listen(ctl, dev, bdaddr, argc, argv);
+		usleep(10000);
+	}
 }
 
 static void cmd_create(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv)
@@ -573,7 +639,8 @@ struct {
 	{ "release", "unbind", cmd_release, "<dev>",                    "Release device" },
 	{ "show",    "info",   cmd_show,    "<dev>",                    "Show device"    },
 	{ "connect", "conn",   cmd_connect, "<dev> <bdaddr> [channel]", "Connect device" },
-	{ "listen",  "server", cmd_listen,  "<dev> [channel]",          "Listen"         },
+	{ "listen",  "server", cmd_listen,  "<dev> [channel [cmd]]",    "Listen"         },
+	{ "watch",   "watch",  cmd_watch,   "<dev> [channel [cmd]]",    "Watch"          },
 	{ NULL, NULL, NULL, 0, 0 }
 };
 
