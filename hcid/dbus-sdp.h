@@ -30,11 +30,16 @@
 
 #define SDP_INTERFACE "org.bluez.SDP"
 
+typedef enum {
+	SDP_FORMAT_XML,
+	SDP_FORMAT_BINARY
+} sdp_format_t;
+
 DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
 DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data);
 
-DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data);
+DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data, sdp_format_t format);
 
 uint16_t sdp_str2svclass(const char *str);
 

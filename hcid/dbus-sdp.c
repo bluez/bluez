@@ -55,8 +55,10 @@
 #include "dbus-adapter.h"
 #include "dbus-error.h"
 #include "dbus-sdp.h"
+#include "sdp-xml.h"
 
 #define MAX_IDENTIFIER_LEN	29	/* "XX:XX:XX:XX:XX:XX/0xYYYYYYYY\0" */
+#define DEFAULT_XML_BUFFER_SIZE 1024
 
 struct service_provider {
 	char *owner;	/* null for remote services or unique name if local */
@@ -97,6 +99,33 @@ typedef struct {
 	uint16_t        class;
 	char            *info_name;
 } sdp_service_t;
+
+typedef struct {
+	int size;
+	char *str;
+} string_t;
+
+static void append_and_grow_string(void *data, const char *str)
+{
+	string_t *string = (string_t *)data;
+	char *newbuf;
+
+	int oldlen = strlen(string->str);
+	int newlen = strlen(str);
+	
+	if ((oldlen + newlen + 1) > string->size) {
+		newbuf = (char *) malloc(string->size * 2);
+		if (!newbuf)
+			return;
+
+		memcpy(newbuf, string->str, oldlen+1);
+		string->size *= 2;
+		free(string->str);
+		string->str = newbuf;		
+	}
+
+	strcat(string->str, str);
+}
 
 /* FIXME:  move to a common file */
 sdp_service_t sdp_service[] = {
@@ -610,6 +639,78 @@ failed:
 	transaction_context_free(ctxt);
 }
 
+static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
+						uint8_t *rsp, size_t size,
+						void *udata)
+{
+	struct transaction_context *ctxt = udata;
+	sdp_record_t *rec = NULL;
+	DBusMessage *reply;
+	const char *dst;
+	int scanned;
+	string_t result;
+	
+	if (!ctxt)
+		return;
+
+	if (err == 0xffff) {
+		/* Check for protocol error or I/O error */
+		int sdp_err = sdp_get_error(ctxt->session);
+		if (sdp_err < 0) {
+			error("search failed: Invalid session!");
+			error_failed(ctxt->conn, ctxt->rq, EINVAL);
+			goto failed;
+		}
+
+		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
+		error_failed(ctxt->conn, ctxt->rq, sdp_err);
+		goto failed;
+	}
+
+	if (type == SDP_ERROR_RSP) {
+		error_sdp_failed(ctxt->conn, ctxt->rq, err);
+		goto failed;
+	}
+
+	/* check response PDU ID */
+	if (type != SDP_SVC_ATTR_RSP) {
+		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
+		error_failed(ctxt->conn, ctxt->rq, EPROTO);
+		goto failed;
+	}
+
+	dbus_message_get_args(ctxt->rq, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_INVALID);
+
+	reply = dbus_message_new_method_return(ctxt->rq);
+
+	result.str = 0;
+	
+	rec = sdp_extract_pdu(rsp, &scanned);
+	if (rec == NULL) {
+		error("SVC REC is null");
+		goto done;
+	}
+
+	result.str = malloc(sizeof(char) * DEFAULT_XML_BUFFER_SIZE);
+	result.size = DEFAULT_XML_BUFFER_SIZE;
+	
+	sdp_cache_append(NULL, dst, rec);
+
+	convert_sdp_record_to_xml(rec, &result, append_and_grow_string);
+
+	dbus_message_append_args(reply,
+		DBUS_TYPE_STRING, &result.str,
+		DBUS_TYPE_INVALID);
+
+done:
+	send_message_and_unref(ctxt->conn, reply);
+	free(result.str);
+failed:
+	transaction_context_free(ctxt);
+}
+
 static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
@@ -900,12 +1001,45 @@ fail:
 	return err;
 }
 
-DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data)
+static int remote_svc_rec_conn_xml_cb(struct transaction_context *ctxt)
+{
+	sdp_list_t *attrids = NULL;
+	uint32_t range = 0x0000ffff;
+	const char *dst;
+	uint32_t handle;
+	int err = 0;
+
+	if (sdp_set_notify(ctxt->session, remote_svc_rec_completed_xml_cb, ctxt) < 0) {
+		err = -EINVAL;
+		goto fail;
+	}
+
+	dbus_message_get_args(ctxt->rq, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_INVALID);
+
+	attrids = sdp_list_append(NULL, &range);
+	/* Create/send the search request and set the callback to indicate the request completion */
+	if (sdp_service_attr_async(ctxt->session, handle, SDP_ATTR_REQ_RANGE, attrids) < 0) {
+		err = -sdp_get_error(ctxt->session);
+		goto fail;
+	}
+
+fail:
+	if (attrids)
+		sdp_list_free(attrids, NULL);
+
+	return err;
+}
+
+DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data, sdp_format_t format)
 {
 	struct adapter *adapter = data;
 	const char *dst;
 	uint32_t handle;
 	int err = 0;
+	connect_cb_t *cb;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &dst,
@@ -916,8 +1050,12 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, voi
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
 
+	cb = remote_svc_rec_conn_cb;
+	if (format == SDP_FORMAT_XML)
+		cb = remote_svc_rec_conn_xml_cb;
+
 	if (!connect_request(conn, msg, adapter->dev_id,
-				dst, remote_svc_rec_conn_cb, &err)) {
+				dst, cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
 	}

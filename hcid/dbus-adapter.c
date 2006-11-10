@@ -1063,24 +1063,13 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 static DBusHandlerResult adapter_get_remote_svc(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return get_remote_svc_rec(conn, msg, data);
+	return get_remote_svc_rec(conn, msg, data, SDP_FORMAT_BINARY);
 }
 
 static DBusHandlerResult adapter_get_remote_svc_xml(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
-	const char *result = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
-				"<record></record>";
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &result,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return get_remote_svc_rec(conn, msg, data, SDP_FORMAT_XML);
 }
 
 static DBusHandlerResult adapter_get_remote_svc_handles(DBusConnection *conn,

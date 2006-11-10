@@ -1,14 +1,15 @@
 <!ELEMENT record (attribute)*>
 
-<!ELEMENT attribute (sequence|alternate|text|url|uuid|boolean|uint8|uint16|uint32|uint64|nil|data)+>
+<!ELEMENT attribute (sequence|alternate|text|url|uuid|boolean|uint8|uint16|uint32|uint64|nil)+>
 <!ATTLIST attribute id CDATA #REQUIRED>
 
-<!ELEMENT sequence (sequence|alternate|text|url|uuid|boolean|uint8|uint16|uint32|uint64|nil|data)+>
+<!ELEMENT sequence (sequence|alternate|text|url|uuid|boolean|uint8|uint16|uint32|uint64|uint128|int8|int16|int32|int64|int128|nil)+>
 
-<!ELEMENT alternate (sequence|alternate|text|url|uuid|boolean|uint8|uint16|uint32|uint64|nil|data)+>
+<!ELEMENT alternate (sequence|alternate|text|url|uuid|boolean|uint8|uint16|uint32|uint64|uint128|int8|int16|int32|int64|int128|nil)+>
 
 <!ELEMENT text EMPTY>
 <!ATTLIST text value CDATA #REQUIRED>
+<!ATTLIST text encoding (normal|hex) "normal">
 
 <!ELEMENT url EMPTY>
 <!ATTLIST url value CDATA #REQUIRED>
@@ -31,8 +32,22 @@
 <!ELEMENT uint64 EMPTY>
 <!ATTLIST uint64 value CDATA #REQUIRED>
 
-<!ELEMENT nil EMPTY>
+<!ELEMENT uint128 EMPTY>
+<!ATTLIST uint128 value CDATA #REQUIRED>
 
-<!ELEMENT data EMPTY>
-<!ATTLIST data type CDATA #REQUIRED>
-<!ATTLIST data value CDATA #REQUIRED>
+<!ELEMENT int8 EMPTY>
+<!ATTLIST int8 value CDATA #REQUIRED>
+
+<!ELEMENT int16 EMPTY>
+<!ATTLIST int16 value CDATA #REQUIRED>
+
+<!ELEMENT int32 EMPTY>
+<!ATTLIST int32 value CDATA #REQUIRED>
+
+<!ELEMENT int64 EMPTY>
+<!ATTLIST int64 value CDATA #REQUIRED>
+
+<!ELEMENT int128 EMPTY>
+<!ATTLIST int128 value CDATA #REQUIRED>
+
+<!ELEMENT nil EMPTY>
