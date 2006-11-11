@@ -1,7 +1,7 @@
 
 noinst_PROGRAMS = bt.inputd
 
-bt_inputd_SOURCES = main.c
+bt_inputd_SOURCES = main.c input-service.h input-service.c
 
 bt_inputd_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
