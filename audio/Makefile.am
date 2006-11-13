@@ -1,9 +1,13 @@
 
-noinst_PROGRAMS = bt.audiod
+noinst_PROGRAMS = bt.audiod bt.headsetd
 
 bt_audiod_SOURCES = main.c
 
 bt_audiod_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+
+bt_headsetd_SOURCES = headset.c
+
+bt_headsetd_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@
 
