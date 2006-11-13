@@ -483,19 +483,18 @@ static void dispatch_status_cb(DBusConnection *conn,
 		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, data);
 }
 
-DBusConnection *init_dbus(void (*disconnect_cb)(void *), void *user_data)
+DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void *user_data)
 {
+	struct disconnect_data *dc_data;
 	DBusConnection *conn;
 	DBusError err;
-	struct disconnect_data *dc_data;
 
 	dbus_error_init(&err);
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
 
 	if (dbus_error_is_set(&err)) {
-		error("Can't open system message bus connection: %s",
-				err.message);
+		error("Can't connect to system message bus: %s", err.message);
 		dbus_error_free(&err);
 		return NULL;
 	}
@@ -507,7 +506,23 @@ DBusConnection *init_dbus(void (*disconnect_cb)(void *), void *user_data)
 						timeout_toggled, conn, NULL);
 
 	dbus_connection_set_dispatch_status_function(conn, dispatch_status_cb,
-							conn, NULL);
+								conn, NULL);
+
+	if (name) {
+		dbus_error_init(&err);
+
+		if (dbus_bus_request_name(conn, name, 0, &err) !=
+				DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
+			error("Could not become the primary owner of %s.", name);
+			return NULL;
+		}
+
+		if (dbus_error_is_set(&err)) {
+			error("Can't get bus name %s: %s", name, err.message);
+			dbus_error_free(&err);
+			return NULL;
+		}
+	}
 
 	if (!disconnect_cb)
 		return conn;

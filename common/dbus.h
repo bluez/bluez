@@ -26,7 +26,7 @@
 
 #include <dbus/dbus.h>
 
-DBusConnection *init_dbus(void (*disconnect_cb)(void *), void *user_data);
+DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void *user_data);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 

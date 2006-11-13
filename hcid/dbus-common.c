@@ -351,29 +351,11 @@ done:
 
 int hcid_dbus_init(void)
 {
-	DBusError err;
 	DBusConnection *conn;
-	int ret_val;
 
-	conn = init_dbus(disconnect_callback, NULL);
+	conn = init_dbus(BLUEZ_NAME, disconnect_callback, NULL);
 	if (!conn)
 		return -1;
-
-	dbus_error_init(&err);
-
-	ret_val = dbus_bus_request_name(conn, BLUEZ_NAME, 0, &err);
-
-	if (ret_val != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
-		error("Could not become the primary owner of %s.", BLUEZ_NAME);
-		return -1;
-	}
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't get system bus name %s: %s", BLUEZ_NAME,
-				err.message);
-		dbus_error_free(&err);
-		return -1;
-	}
 
 	if (!dbus_connection_register_fallback(conn, BASE_PATH,
 						&manager_vtable, NULL)) {
