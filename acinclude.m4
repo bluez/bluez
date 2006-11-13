@@ -73,7 +73,7 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 
 AC_DEFUN([AC_PATH_DBUS], [
 	PKG_CHECK_MODULES(DBUS, dbus-1 > 0.35, dummy=yes, AC_MSG_ERROR(dbus > 0.35 is required))
-	DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE"
+	PKG_CHECK_EXISTS(dbus-1 < 0.94, DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE")
 	AC_SUBST(DBUS_CFLAGS)
 	AC_SUBST(DBUS_LIBS)
 ])
@@ -121,14 +121,22 @@ AC_DEFUN([AC_PATH_USB], [
 	PKG_CHECK_MODULES(USB, libusb, usb_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(USB_CFLAGS)
 	AC_SUBST(USB_LIBS)
-	AC_CHECK_LIB(usb, usb_get_busses, dummy=yes, AC_DEFINE(NEED_USB_GET_BUSSES, 1, [Define to 1 if you need the usb_get_busses() function.]))
-	AC_CHECK_LIB(usb, usb_interrupt_read, dummy=yes, AC_DEFINE(NEED_USB_INTERRUPT_READ, 1, [Define to 1 if you need the usb_interrupt_read() function.]))
+	AC_CHECK_LIB(usb, usb_get_busses, dummy=yes,
+		AC_DEFINE(NEED_USB_GET_BUSSES, 1, [Define to 1 if you need the usb_get_busses() function.]))
+	AC_CHECK_LIB(usb, usb_interrupt_read, dummy=yes,
+		AC_DEFINE(NEED_USB_INTERRUPT_READ, 1, [Define to 1 if you need the usb_interrupt_read() function.]))
+])
+
+AC_DEFUN([AC_PATH_EXPAT], [
+	AC_CHECK_LIB(expat, XML_ParserCreate_MM, expat_found=yes, expat_found=no)
+	AC_CHECK_HEADERS(expat.h, dummy=yes, expat_found=no)
 ])
 
 AC_DEFUN([AC_ARG_BLUEZ], [
 	fortify_enable=yes
 	debug_enable=no
 	pie_enable=no
+	expat_enable=${expat_found}
 	glib_enable=${glib_found}
 	obex_enable=${openobex_found}
 	sync_enable=${opensync_found}
@@ -170,6 +178,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		avctrl_enable=${enableval}
 		hid2hci_enable=${enableval}
 		dfutool_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(expat, AC_HELP_STRING([--enable-expat], [enable Expat support]), [
+		expat_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(glib, AC_HELP_STRING([--enable-glib], [enable GLib support]), [
@@ -241,6 +253,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		LDFLAGS="$LDFLAGS -pie"
 	fi
 
+	AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
 	AM_CONDITIONAL(GLIB, test "${glib_enable}" = "yes" && test "${glib_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(SYNC, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
