@@ -27,10 +27,9 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <unistd.h>
-
 #include <fcntl.h>
-
+#include <unistd.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -398,6 +397,44 @@ static int service_provider_cmp(const void *data, const void *udata)
 	return 0;
 }
 
+static const char *get_address_from_message(DBusConnection *conn, DBusMessage *msg)
+{
+	struct adapter *adapter;
+	const char *path;
+
+	path = dbus_message_get_path(msg);
+	if (!path)
+		return NULL;
+
+	if (dbus_connection_get_object_path_data(conn, path, (void *) &adapter) == FALSE)
+		return NULL;
+
+	return adapter->address;
+}
+
+static int sdp_store_record(const char *src, const char *dst, uint32_t handle, uint8_t *buf, size_t size)
+{
+	char filename[PATH_MAX + 1], key[28], *value;
+	int i;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	snprintf(key, sizeof(key), "%s#%08X", dst, handle);
+
+	value = malloc(size * 2 + 1);
+	if (!value)
+		return -ENOMEM;
+
+	value[0] = '\0';
+
+	for (i = 0; i < size; i++)
+		sprintf(value + (i * 2), "%02X", buf[i]);
+
+	return textfile_put(filename, key, value);
+}
+
 static int sdp_cache_append(const char *owner, const char *prov, sdp_record_t *rec)
 {
 	struct slist *lp, *lr;
@@ -581,7 +618,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 	sdp_record_t *rec = NULL;
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
-	const char *dst;
+	const char *src, *dst;
 	int i, scanned;
 
 	if (!ctxt)
@@ -617,6 +654,8 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_INVALID);
 
+	src = get_address_from_message(ctxt->conn, ctxt->rq);
+
 	reply = dbus_message_new_method_return(ctxt->rq);
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -628,6 +667,8 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 		goto done;
 	}
 
+	sdp_store_record(src, dst, rec->handle, rsp, size);
+
 	sdp_cache_append(NULL, dst, rec);
 
 	for (i = 0; i < size; i++)
@@ -637,6 +678,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_message_and_unref(ctxt->conn, reply);
+
 failed:
 	transaction_context_free(ctxt);
 }
@@ -648,7 +690,7 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 	struct transaction_context *ctxt = udata;
 	sdp_record_t *rec = NULL;
 	DBusMessage *reply;
-	const char *dst;
+	const char *src, *dst;
 	int scanned;
 	sdp_buf_t result;
 
@@ -685,8 +727,9 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_INVALID);
 
-	reply = dbus_message_new_method_return(ctxt->rq);
+	src = get_address_from_message(ctxt->conn, ctxt->rq);
 
+	reply = dbus_message_new_method_return(ctxt->rq);
 	
 	rec = sdp_extract_pdu(rsp, &scanned);
 	if (rec == NULL) {
@@ -694,9 +737,11 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 		goto done;
 	}
 
-	memset(&result, 0, sizeof(sdp_buf_t));
+	sdp_store_record(src, dst, rec->handle, rsp, size);
 
 	sdp_cache_append(NULL, dst, rec);
+
+	memset(&result, 0, sizeof(sdp_buf_t));
 
 	convert_sdp_record_to_xml(rec, &result, append_and_grow_string);
 
@@ -709,6 +754,7 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 	}
 done:
 	send_message_and_unref(ctxt->conn, reply);
+
 failed:
 	transaction_context_free(ctxt);
 }
@@ -781,6 +827,7 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t 
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_message_and_unref(ctxt->conn, reply);
+
 failed:
 	transaction_context_free(ctxt);
 }
@@ -861,6 +908,7 @@ static void search_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_message_and_unref(ctxt->conn, reply);
+
 failed:
 	transaction_context_free(ctxt);
 }
@@ -1683,7 +1731,9 @@ failed:
 	/* FIXME: when start using cache don't free the service record */
 	if (rec)
 		sdp_record_free(rec);
+
 	get_record_data_free(ctxt->priv);
+
 	transaction_context_free(ctxt);
 }
 
@@ -1815,7 +1865,9 @@ static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
 
 failed:
 	get_record_data_call_cb(d, NULL, cb_err);
+
 	get_record_data_free(d);
+
 	transaction_context_free(ctxt);
 }
 
