@@ -136,10 +136,27 @@ static const DBusObjectPathVTable input_table = {
 	.message_function = input_message,
 };
 
+static void register_reply(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("Registering failed: %s", err.message);
+		dbus_error_free(&err);
+		raise(SIGTERM);
+	}
+	else 
+		debug("Successfully registered");
+
+	dbus_message_unref(reply);
+}
+
 int input_dbus_init(void)
 {
-	DBusError err;
-	DBusMessage *msg, *reply;
+	DBusMessage *msg;
+	DBusPendingCall *pending;
 	const char *name = "Input service";
 	const char *description = "A service for input devices";
 	const char *input_path = INPUT_PATH;
@@ -147,8 +164,6 @@ int input_dbus_init(void)
 	connection = init_dbus("org.bluez.input", NULL, NULL);
 	if (!connection)
 		return -1;
-
-	dbus_error_init(&err);
 
 	if (!dbus_connection_register_object_path(connection, input_path,
 						&input_table, NULL)) {
@@ -168,23 +183,14 @@ int input_dbus_init(void)
 					DBUS_TYPE_STRING, &description,
 					DBUS_TYPE_INVALID);
 
-	dbus_error_init(&err);
-
-	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1,
-								&err);
-
-	dbus_message_unref(msg);
-
-	if (!reply) {
-		error("Can't register service agent");
-		if (dbus_error_is_set(&err)) {
-			error("%s", err.message);
-			dbus_error_free(&err);
-		}
+	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
+		error("Sending Register method call failed");
+		dbus_message_unref(msg);
 		return -1;
 	}
 
-	dbus_message_unref(reply);
+	dbus_pending_call_set_notify(pending, register_reply, NULL, NULL);
+	dbus_message_unref(msg);
 
 	return 0;
 }
