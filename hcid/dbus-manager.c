@@ -260,6 +260,7 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	const char *path, *name, *description;
+	DBusHandlerResult result;
 	DBusMessage *message;
 	DBusError err;
 	int reg_err;
@@ -290,9 +291,15 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 	/* Report that a new service was registered */
 	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
 					"ServiceRegistered");
+
 	dbus_message_append_args(message, DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID);
+						DBUS_TYPE_INVALID);
+
 	send_message_and_unref(conn, message);
+
+	result = send_message_and_unref(conn, dbus_message_new_method_return(msg));
+
+	dbus_connection_flush(conn);
 
 	/* If autostart feature is enabled: send the Start message to the service agent */
 	if (autostart) {
@@ -307,20 +314,22 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 
 		if (dbus_connection_send_with_reply(conn, message, &pending, START_REPLY_TIMEOUT) == FALSE) {
 			dbus_message_unref(message);
-			goto fail;
+			return result;
 		}
+
+		dbus_connection_flush(conn);
 
 		dbus_connection_get_object_path_data(conn, path, (void *) &agent);
 
 		call = service_call_new(conn, message, agent);
 		dbus_message_unref(message);
 		if (!call)
-			goto fail;
+			return result;
 
 		dbus_pending_call_set_notify(pending, autostart_reply, call, service_call_free);
 	}
-fail:
-	return send_message_and_unref(conn, dbus_message_new_method_return(msg));
+
+	return result;
 }
 
 static DBusHandlerResult unregister_service(DBusConnection *conn,
