@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2005-2006  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -22,14 +22,12 @@
  */
 
 
-#ifndef __SDP_XML_H__
-#define __SDP_XML_H__
+#ifndef __SDP_XML_H
+#define __SDP_XML_H
 
-#include <ctype.h>
 #include <bluetooth/sdp.h>
 
-void convert_sdp_record_to_xml(sdp_record_t * rec,
-			       void *userData,
-			       void (*appendFunc) (void *, const char *));
+void convert_sdp_record_to_xml(sdp_record_t *rec,
+		void *user_data, void (*append_func) (void *, const char *));
 
-#endif /* __SDP_XML_H__ */
+#endif /* __SDP_XML_H */

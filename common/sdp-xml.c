@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2005-2006  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -25,20 +25,23 @@
 #include <config.h>
 #endif
 
-#include "sdp-xml.h"
-
 #include <stdio.h>
-#include <string.h>
-#include <bluetooth/sdp_lib.h>
+#include <errno.h>
+#include <ctype.h>
 #include <malloc.h>
+#include <string.h>
 #include <limits.h>
+
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
+
+#include "sdp-xml.h"
 
 #define STRBUFSIZE 256
 #define MAXINDENT 64
 
 static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
-				    void *data,
-				    void (*appender) (void *, const char *))
+		void *data, void (*appender) (void *, const char *))
 {
 	int i, hex;
 	char buf[STRBUFSIZE];
@@ -381,8 +384,7 @@ static void convert_raw_attr_to_xml_func(void *val, void *data)
     (containing parts of the generated XML) to append.
 */
 void convert_sdp_record_to_xml(sdp_record_t *rec,
-			       void *data,
-			       void (*appender) (void *, const char *))
+		void *data, void (*appender) (void *, const char *))
 {
 	struct conversion_data cd;
 
@@ -397,4 +399,3 @@ void convert_sdp_record_to_xml(sdp_record_t *rec,
 		appender(data, "</record>\n");
 	}
 }
-
