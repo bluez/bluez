@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <string.h>
 #include <signal.h>
 
 #include "dbus.h"
@@ -104,22 +105,32 @@ static DBusHandlerResult release_message(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-
 static DBusHandlerResult input_message(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	if (dbus_message_is_method_call(msg, "org.bluez.ServiceAgent", "Start"))
-		return start_message(conn, msg, data);
+	const char *interface;
+	const char *member;
 
-	if (dbus_message_is_method_call(msg, "org.bluez.ServiceAgent", "Stop"))
-		return stop_message(conn, msg, data);
+	interface = dbus_message_get_interface(msg);
+	member = dbus_message_get_member(msg);
 
-	if (dbus_message_is_method_call(msg, "org.bluez.ServiceAgent", "Release"))
-		return release_message(conn, msg, data);
+	if (strcmp(interface, "org.bluez.ServiceAgent") == 0) {
+		if (strcmp(member, "Start") == 0)
+			return start_message(conn, msg, data);
+		if (strcmp(member, "Stop") == 0)
+			return stop_message(conn, msg, data);
+		if (strcmp(member, "Release") == 0)
+			return release_message(conn, msg, data);
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	if (strcmp(interface, "org.bluez.Input") != 0)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	/* Handle Input interface methods here */
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
-
 
 static const DBusObjectPathVTable input_table = {
 	.message_function = input_message,
