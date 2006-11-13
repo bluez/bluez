@@ -10,7 +10,7 @@ state_DATA =
 
 dbusdir = $(sysconfdir)/dbus-1/system.d
 
-dbus_DATA = bluez-hcid.conf
+dbus_DATA = bluetooth.conf
 endif
 
 sbin_PROGRAMS = hcid
@@ -51,7 +51,7 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) hcid.conf bluez-hcid.conf \
+EXTRA_DIST = $(man_MANS) hcid.conf bluetooth.conf \
 	service-record.dtd service-opp.xml dbus-api.txt
 
 MAINTAINERCLEANFILES = Makefile.in
