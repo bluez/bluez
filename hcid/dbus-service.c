@@ -563,7 +563,7 @@ static DBusHandlerResult is_running(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	running = (agent->running ? TRUE : FALSE);
+	running = (agent->running == SERVICE_RUNNING ? TRUE : FALSE);
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_BOOLEAN, &running,
