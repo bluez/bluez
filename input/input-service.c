@@ -34,6 +34,8 @@
 
 #define INPUT_PATH "/org/bluez/input"
 
+static int started = 0;
+
 static DBusConnection *connection = NULL;
 
 static DBusHandlerResult start_message(DBusConnection *conn,
@@ -41,27 +43,7 @@ static DBusHandlerResult start_message(DBusConnection *conn,
 {
 	DBusMessage *reply;
 
-	info("Starting example service");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		error("Can't create reply message");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_message_unref(reply);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-static DBusHandlerResult stop_message(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	info("Stopping example service");
+	info("Starting input service");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -72,6 +54,30 @@ static DBusHandlerResult stop_message(DBusConnection *conn,
 	dbus_connection_send(conn, reply, NULL);
 
 	dbus_message_unref(reply);
+
+	started = 1;
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult stop_message(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+
+	info("Stopping input service");
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		error("Can't create reply message");
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	dbus_connection_send(conn, reply, NULL);
+
+	dbus_message_unref(reply);
+
+	started = 0;
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -166,6 +172,8 @@ int input_dbus_init(void)
 		}
 		return -1;
 	}
+
+	dbus_message_unref(reply);
 
 	return 0;
 }
