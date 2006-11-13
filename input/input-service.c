@@ -144,7 +144,7 @@ int input_dbus_init(void)
 	const char *description = "A service for input devices";
 	const char *input_path = INPUT_PATH;
 
-	connection = init_dbus(NULL, NULL, NULL);
+	connection = init_dbus("org.bluez.input", NULL, NULL);
 	if (!connection)
 		return -1;
 
