@@ -58,7 +58,7 @@
 #include "sdp-xml.h"
 
 #define MAX_IDENTIFIER_LEN	29	/* "XX:XX:XX:XX:XX:XX/0xYYYYYYYY\0" */
-#define DEFAULT_XML_BUFFER_SIZE 1024
+#define DEFAULT_XML_BUF_SIZE	1024
 
 struct service_provider {
 	char *owner;	/* null for remote services or unique name if local */
@@ -100,31 +100,33 @@ typedef struct {
 	char            *info_name;
 } sdp_service_t;
 
-typedef struct {
-	int size;
-	char *str;
-} string_t;
-
 static void append_and_grow_string(void *data, const char *str)
 {
-	string_t *string = (string_t *)data;
-	char *newbuf;
+	sdp_buf_t *buff = (sdp_buf_t *) data;
+	int len;
 
-	int oldlen = strlen(string->str);
-	int newlen = strlen(str);
-	
-	if ((oldlen + newlen + 1) > string->size) {
-		newbuf = (char *) malloc(string->size * 2);
-		if (!newbuf)
+	len = strlen(str);
+
+	if (!buff->data) {
+		buff->buf_size = DEFAULT_XML_BUF_SIZE;
+		buff->data = realloc(buff->data, buff->buf_size);
+		if (!buff->data)
 			return;
-
-		memcpy(newbuf, string->str, oldlen+1);
-		string->size *= 2;
-		free(string->str);
-		string->str = newbuf;		
 	}
 
-	strcat(string->str, str);
+	/* Grow string */
+	while (buff->buf_size < (buff->data_size + len + 1)) {
+		/* Grow buffer by a factor of 2 */
+		buff->buf_size = (buff->buf_size << 1);
+
+		buff->data = realloc(buff->data, buff->buf_size);
+		if (!buff->data)
+			return;
+	}
+
+	/* Include the NULL character */
+	memcpy(buff->data + buff->data_size, str, len + 1);
+	buff->data_size += len;
 }
 
 /* FIXME:  move to a common file */
@@ -648,8 +650,8 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 	DBusMessage *reply;
 	const char *dst;
 	int scanned;
-	string_t result;
-	
+	sdp_buf_t result;
+
 	if (!ctxt)
 		return;
 
@@ -685,7 +687,6 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 
 	reply = dbus_message_new_method_return(ctxt->rq);
 
-	result.str = 0;
 	
 	rec = sdp_extract_pdu(rsp, &scanned);
 	if (rec == NULL) {
@@ -693,20 +694,21 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 		goto done;
 	}
 
-	result.str = malloc(sizeof(char) * DEFAULT_XML_BUFFER_SIZE);
-	result.size = DEFAULT_XML_BUFFER_SIZE;
-	
+	memset(&result, 0, sizeof(sdp_buf_t));
+
 	sdp_cache_append(NULL, dst, rec);
 
 	convert_sdp_record_to_xml(rec, &result, append_and_grow_string);
 
-	dbus_message_append_args(reply,
-		DBUS_TYPE_STRING, &result.str,
-		DBUS_TYPE_INVALID);
+	if (result.data) {
+		dbus_message_append_args(reply,
+				DBUS_TYPE_STRING, &result.data,
+				DBUS_TYPE_INVALID);
 
+		free(result.data);
+	}
 done:
 	send_message_and_unref(ctxt->conn, reply);
-	free(result.str);
 failed:
 	transaction_context_free(ctxt);
 }
