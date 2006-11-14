@@ -647,7 +647,7 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	int opt, daemonize = 1;
 
-	while ((opt = getopt(argc, argv, "nc:")) != EOF) {
+	while ((opt = getopt(argc, argv, "n")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
