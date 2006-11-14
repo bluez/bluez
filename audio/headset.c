@@ -654,7 +654,7 @@ int main(int argc, char *argv[])
 			break;
 
 		default:
-			printf("Usage: %s [-n] [-c channel] [bdaddr]\n", argv[0]);
+			printf("Usage: %s [-n] [bdaddr]\n", argv[0]);
 			exit(1);
 		}
 	}
