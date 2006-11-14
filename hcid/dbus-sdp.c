@@ -357,7 +357,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
 	const char *src, *dst;
-	int i, scanned;
+	int scanned;
 
 	if (!ctxt)
 		return;
@@ -409,9 +409,8 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 
 	sdp_record_free(rec);
 
-	for (i = 0; i < size; i++)
-		dbus_message_iter_append_basic(&array_iter,
-				DBUS_TYPE_BYTE, &rsp[i]);
+	dbus_message_iter_append_fixed_array(&array_iter,
+			DBUS_TYPE_BYTE, &rsp, size);
 
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
