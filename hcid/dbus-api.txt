@@ -1330,23 +1330,3 @@ Methods		string Connect(string address, string service)
 		void Release(string device)
 
 		array{string} ListBindings()
-
-
-SDP hierarchy (experimental)
-============================
-
-Service		org.bluez
-Interface	org.bluez.SDP
-Object path	/org/bluez/{hci0,hci1,...}
-
-Methods		array{string} GetIdentifiers(string address)
-
-		array{string} GetIdentifiersByService(string address, string service)
-
-		string GetUUID(string identifier)
-
-		string GetName(string identifier)
-
-		string RegisterRFCOMM(string service, byte channel)
-
-		void UnregisterRFCOMM(string identifier)
