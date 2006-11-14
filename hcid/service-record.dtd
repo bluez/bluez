@@ -9,45 +9,58 @@
 
 <!ELEMENT text EMPTY>
 <!ATTLIST text value CDATA #REQUIRED>
+<!ATTLIST text name CDATA>
 <!ATTLIST text encoding (normal|hex) "normal">
 
 <!ELEMENT url EMPTY>
 <!ATTLIST url value CDATA #REQUIRED>
+<!ATTLIST url name CDATA>
 
 <!ELEMENT uuid EMPTY>
 <!ATTLIST uuid value CDATA #REQUIRED>
 
 <!ELEMENT boolean EMPTY>
 <!ATTLIST boolean value CDATA #REQUIRED>
+<!ATTLIST boolean name CDATA>
 
 <!ELEMENT uint8 EMPTY>
 <!ATTLIST uint8 value CDATA #REQUIRED>
+<!ATTLIST uint8 name CDATA>
 
 <!ELEMENT uint16 EMPTY>
 <!ATTLIST uint16 value CDATA #REQUIRED>
+<!ATTLIST uint16 name CDATA>
 
 <!ELEMENT uint32 EMPTY>
 <!ATTLIST uint32 value CDATA #REQUIRED>
+<!ATTLIST uint32 name CDATA>
 
 <!ELEMENT uint64 EMPTY>
 <!ATTLIST uint64 value CDATA #REQUIRED>
+<!ATTLIST uint64 name CDATA>
 
 <!ELEMENT uint128 EMPTY>
 <!ATTLIST uint128 value CDATA #REQUIRED>
+<!ATTLIST uint128 name CDATA>
 
 <!ELEMENT int8 EMPTY>
 <!ATTLIST int8 value CDATA #REQUIRED>
+<!ATTLIST int8 name CDATA>
 
 <!ELEMENT int16 EMPTY>
 <!ATTLIST int16 value CDATA #REQUIRED>
+<!ATTLIST int16 name CDATA>
 
 <!ELEMENT int32 EMPTY>
 <!ATTLIST int32 value CDATA #REQUIRED>
+<!ATTLIST int32 name CDATA>
 
 <!ELEMENT int64 EMPTY>
 <!ATTLIST int64 value CDATA #REQUIRED>
+<!ATTLIST int64 name CDATA>
 
 <!ELEMENT int128 EMPTY>
 <!ATTLIST int128 value CDATA #REQUIRED>
+<!ATTLIST int128 name CDATA>
 
 <!ELEMENT nil EMPTY>
