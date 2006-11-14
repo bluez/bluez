@@ -66,7 +66,6 @@ struct hs_connection {
 };
 
 static char *on_init_bda = NULL;
-static int on_init_ch = 2;
 
 static int started = 0;
 
@@ -75,6 +74,8 @@ static DBusConnection *connection = NULL;
 static GMainLoop *main_loop = NULL;
 
 static struct hs_connection *connected_hs = NULL;
+
+static int hs_connect(const char *address);
 
 static int set_nonblocking(int fd, int *err)
 {
@@ -411,7 +412,6 @@ static void register_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
-	int err;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -427,10 +427,9 @@ static void register_reply(DBusPendingCall *call, void *data)
 	if (!on_init_bda)
 		return;
 
-	if (rfcomm_connect(NULL, NULL, BDADDR_ANY, on_init_bda, on_init_ch, &err) < 0)
+	if (hs_connect(on_init_bda) < 0)
 		exit(1);
 }
-
 
 int headset_dbus_init(char *bda)
 {
@@ -474,6 +473,172 @@ int headset_dbus_init(char *bda)
 	return 0;
 }
 
+static void record_reply(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply;
+	DBusError derr;
+	uint8_t *array;
+	int array_len, record_len, ch = -1;
+	sdp_record_t *record = NULL;
+	sdp_list_t *protos;
+	char *address = data;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("GetRemoteServiceRecord failed: %s", derr.message);
+		dbus_error_free(&derr);
+		goto failed;
+	}
+
+	dbus_message_get_args(reply, NULL,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &array, &array_len,
+				DBUS_TYPE_INVALID);
+
+	if (!array) {
+		error("Unable to get handle array from reply");
+		goto failed;
+	}
+
+	record = sdp_extract_pdu(array, &record_len);
+	if (!record) {
+		error("Unable to extract service record from reply");
+		goto failed;
+	}
+
+	if (record_len != array_len)
+		debug("warning: array len (%d) != record len (%d)",
+				array_len, record_len);
+
+	if (!sdp_get_access_protos(record, &protos)) {
+		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+		sdp_list_foreach(protos, (sdp_list_func_t)sdp_list_free, NULL);
+		sdp_list_free(protos, NULL);
+	}
+
+	if (ch == -1) {
+		error("Unable to extract RFCOMM channel from service record");
+		goto failed;
+	}
+
+	if (rfcomm_connect(NULL, NULL, BDADDR_ANY, address, ch, NULL) < 0) {
+		error("Unable to connect to %s", address);
+		goto failed;
+	}
+
+failed:
+	if (record)
+		sdp_record_free(record);
+	dbus_message_unref(reply);
+	free(data);
+}
+
+static void handles_reply(DBusPendingCall *call, void *data)
+{
+	DBusMessage *msg = NULL, *reply;
+	DBusPendingCall *pending;
+	DBusError derr;
+	char *address = data;
+	dbus_uint32_t *array = NULL;
+	dbus_uint32_t handle;
+	int array_len;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("GetRemoteServiceHandles failed: %s", derr.message);
+		dbus_error_free(&derr);
+		goto failed;
+	}
+
+	dbus_message_get_args(reply, NULL,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &array, &array_len,
+				DBUS_TYPE_INVALID);
+
+	if (!array) {
+		error("Unable to get handle array from reply");
+		goto failed;
+	}
+
+	if (array_len < 1) {
+		debug("No record handles found");
+		goto failed;
+	}
+
+	if (array_len > 1)
+		debug("Multiple records found. Using the first one.");
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+						"org.bluez.Adapter",
+						"GetRemoteServiceRecord");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		goto failed;
+	}
+
+	handle = array[0];
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_UINT32, &handle,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
+		error("Sending GetRemoteServiceRecord failed");
+		goto failed;
+	}
+
+	dbus_pending_call_set_notify(pending, record_reply, data, NULL);
+	dbus_message_unref(msg);
+
+	dbus_message_unref(reply);
+
+	return;
+
+failed:
+	if (msg)
+		dbus_message_unref(msg);
+	dbus_message_unref(reply);
+	free(data);
+}
+
+static int hs_connect(const char *address)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+	char *data;
+	const char *hs_svc = "hsp";
+
+	data = strdup(address);
+	if (!data)
+		return -ENOMEM;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+						"org.bluez.Adapter",
+						"GetRemoteServiceHandles");
+	if (!msg) {
+		free(data);
+		return -ENOMEM;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_STRING, &hs_svc,
+					DBUS_TYPE_INVALID);
+
+
+	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
+		error("Sending GetRemoteServiceHandles failed");
+		free(data);
+		dbus_message_unref(msg);
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, handles_reply, data, NULL);
+	dbus_message_unref(msg);
+
+	return 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -484,14 +649,6 @@ int main(int argc, char *argv[])
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
-			break;
-
-		case 'c':
-			on_init_ch = strtol(optarg, NULL, 0);
-			if (on_init_ch < 0 || on_init_ch > 255) {
-				error("Invalid channel");
-				exit(1);
-			}
 			break;
 
 		default:
