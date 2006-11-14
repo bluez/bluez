@@ -60,7 +60,7 @@ void yylex_destroy(void);
 }
 
 %token K_OPTIONS K_DEVICE
-%token K_AUTOINIT K_SECURITY K_PAIRING
+%token K_AUTOINIT K_SECURITY K_PAIRING K_OFFMODE
 %token K_PTYPE K_NAME K_CLASS K_VOICE K_PAGETO K_LM K_LP K_ISCAN K_PSCAN K_DISCOVTO
 %token K_PASSKEY
 %token K_YES K_NO
@@ -68,7 +68,7 @@ void yylex_destroy(void);
 %token <str> WORD PATH STRING LIST HCI BDADDR
 %token <num> NUM
 
-%type  <num> bool pkt_type link_mode link_policy sec_mode pair_mode
+%type  <num> bool pkt_type link_mode link_policy sec_mode pair_mode off_mode
 %type  <str> dev_name hci bdaddr
 
 %%
@@ -116,6 +116,10 @@ hcid_opt:
 				hcid.pairing = $2;
 			}
 
+  | K_OFFMODE off_mode	{
+				hcid.offmode = $2;
+			}
+
   | K_PASSKEY STRING	{
   				strncpy((char *) hcid.pin_code, $2, 16);
 				hcid.pin_len = strlen($2);
@@ -149,6 +153,17 @@ pair_mode:
 			int opt = find_keyword(pair_param, $1);
 			if (opt < 0) {
 				cfg_error("Unknown pairing mode '%s'", $1);
+				$$ = 0;
+			} else
+				$$ = opt;
+		}
+  ;
+
+off_mode:
+  WORD		{
+			int opt = find_keyword(off_param, $1);
+			if (opt < 0) {
+				cfg_error("Unknown off mode '%s'", $1);
 				$$ = 0;
 			} else
 				$$ = opt;

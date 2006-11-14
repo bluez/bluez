@@ -48,6 +48,7 @@ struct kword cfg_keyword[] = {
 	{ "autoinit",		K_AUTOINIT	},
 	{ "security",		K_SECURITY	},
 	{ "pairing",		K_PAIRING	},
+	{ "offmode",		K_OFFMODE	},
 	{ "pkt_type",		K_PTYPE		},
 	{ "lm", 		K_LM		},
 	{ "lp", 		K_LP		},
@@ -78,6 +79,12 @@ struct kword pair_param[] = {
 	{ "none",	HCID_PAIRING_NONE	},
 	{ "multi",	HCID_PAIRING_MULTI	},
 	{ "once",	HCID_PAIRING_ONCE	},
+	{ NULL , 0 }
+};
+
+struct kword off_param[] = {
+	{ "devdown",	HCID_OFFMODE_DEVDOWN	},
+	{ "noscan",	HCID_OFFMODE_NOSCAN	},
 	{ NULL , 0 }
 };
 

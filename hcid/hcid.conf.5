@@ -45,6 +45,13 @@ with already paired devices. \fIonce\fP allows pairing once and denies
 successive attempts. The default hcid configuration is shipped with \fBmulti\fP
 enabled
 
+.TP 
+\fBoffmode\fP  noscan|devdown
+
+\fInoscan\fP means that page and inquiry scans are disabled when you call
+SetMode("off"). \fIdevdown\fP sets the adapter into down state (same what
+\fIhciconfig hci0 down\fP does).
+
 .TP
 \fBpasskey\fP "\fIpin\fP"
 

@@ -89,6 +89,7 @@ struct hcid_opts {
 	int     auto_init;
 	int     security;
 	int     pairing;
+	int	offmode;
 
 	char   *config_file;
 
@@ -126,6 +127,9 @@ void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
 #define HCID_PAIRING_NONE	0
 #define HCID_PAIRING_MULTI	1
 #define HCID_PAIRING_ONCE	2
+
+#define HCID_OFFMODE_DEVDOWN	0
+#define HCID_OFFMODE_NOSCAN	1
 
 int read_config(char *file);
 

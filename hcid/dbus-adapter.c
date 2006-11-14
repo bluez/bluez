@@ -426,7 +426,10 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
-	if (!adapter->up) {
+	if (!adapter->up &&
+			(hcid.offmode == HCID_OFFMODE_NOSCAN ||
+			 (hcid.offmode == HCID_OFFMODE_DEVDOWN &&
+			  hci_mode != SCAN_DISABLED))) {
 		bdaddr_t local;
 
 		str2ba(adapter->address, &local);
@@ -434,7 +437,7 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 		write_device_mode(&local, scan_mode);
 
 		/* Start HCI device */
-		if (ioctl(dd, HCIDEVUP, adapter->dev_id) ==  0)
+		if (ioctl(dd, HCIDEVUP, adapter->dev_id) == 0)
 			goto done; /* on success */
 
 		if (errno != EALREADY) {
@@ -445,6 +448,16 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			hci_close_dev(dd);
 			return error_failed(conn, msg, err);
 		}
+	}
+
+	if (adapter->up && hci_mode == SCAN_DISABLED &&
+			hcid.offmode == HCID_OFFMODE_DEVDOWN) {
+		if (ioctl(dd, HCIDEVDOWN, adapter->dev_id) < 0) {
+			hci_close_dev(dd);
+			return error_failed(conn, msg, errno);
+		}
+
+		goto done;
 	}
 
 	/* Check if the new requested mode is different from the current */

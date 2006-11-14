@@ -32,5 +32,6 @@ extern int lineno;
 extern struct kword cfg_keyword[];
 extern struct kword sec_param[];
 extern struct kword pair_param[];
+extern struct kword off_param[];
 
 int find_keyword(struct kword *kw, char *str);

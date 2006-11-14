@@ -620,6 +620,7 @@ int main(int argc, char *argv[])
 	hcid.config_file = HCID_CONFIG_FILE;
 	hcid.security    = HCID_SEC_AUTO;
 	hcid.pairing     = HCID_PAIRING_MULTI;
+	hcid.offmode     = HCID_OFFMODE_NOSCAN;
 
 	if (gethostname(hcid.host_name, sizeof(hcid.host_name) - 1) < 0)
 		strcpy(hcid.host_name, "noname");
