@@ -91,7 +91,7 @@ int str2uuid(uuid_t *uuid, const char *string)
 
 	svclass = sdp_str2svclass(string);
 	if (svclass) {
-		sdp_uuid16_create(uuid, sdp_str2svclass(string));
+		sdp_uuid16_create(uuid, svclass);
 		return 0;
 	}
 
