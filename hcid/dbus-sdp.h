@@ -28,14 +28,10 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 
-#define SDP_INTERFACE "org.bluez.SDP"
-
 typedef enum {
 	SDP_FORMAT_XML,
 	SDP_FORMAT_BINARY
 } sdp_format_t;
-
-DBusHandlerResult handle_sdp_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
 DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data);
 

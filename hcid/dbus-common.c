@@ -232,8 +232,6 @@ DBusHandlerResult handle_method_call(DBusConnection *conn, DBusMessage *msg, voi
 		return handle_test_method(conn, msg, data);
 	else if (!strcmp(RFCOMM_INTERFACE, iface))
 		return handle_rfcomm_method(conn, msg, data);
-	else if (!strcmp(SDP_INTERFACE, iface))
-		return handle_sdp_method(conn, msg, data);
 	else
 		return error_unknown_method(conn, msg);
 }
