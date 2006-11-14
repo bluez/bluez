@@ -417,10 +417,12 @@ static void register_reply(DBusPendingCall *call, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Registering failed: %s", derr.message);
 		dbus_error_free(&derr);
+		dbus_message_unref(reply);
 		raise(SIGTERM);
+		return;
 	}
-	else 
-		debug("Successfully registered");
+
+	debug("Successfully registered headset service");
 
 	dbus_message_unref(reply);
 
