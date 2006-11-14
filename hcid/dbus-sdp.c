@@ -142,6 +142,7 @@ sdp_service_t sdp_service[] = {
 	{ "opp",	OBEX_OBJPUSH_SVCLASS_ID,	"OBEX Object Push"	},
 	{ "fax",	FAX_SVCLASS_ID,			"Fax"			},
 	{ "spp",	SERIAL_PORT_SVCLASS_ID,		"Serial Port"		},
+	{ "hsp",	HEADSET_SVCLASS_ID,		"Headset"		},
 	{ NULL }
 };
 
