@@ -227,7 +227,7 @@ static const char *get_address_from_message(DBusConnection *conn, DBusMessage *m
 static int sdp_store_record(const char *src, const char *dst, uint32_t handle, uint8_t *buf, size_t size)
 {
 	char filename[PATH_MAX + 1], key[28], *value;
-	int i;
+	int i, status = 0;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
 
@@ -244,7 +244,12 @@ static int sdp_store_record(const char *src, const char *dst, uint32_t handle, u
 	for (i = 0; i < size; i++)
 		sprintf(value + (i * 2), "%02X", buf[i]);
 
-	return textfile_put(filename, key, value);
+	if (textfile_put(filename, key, value) < 0)
+		status = -errno;
+
+	free(value);
+
+	return status;
 }
 
 static void transaction_context_free(void *udata)
@@ -403,6 +408,8 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp
 
 	sdp_store_record(src, dst, rec->handle, rsp, size);
 
+	sdp_record_free(rec);
+
 	for (i = 0; i < size; i++)
 		dbus_message_iter_append_basic(&array_iter,
 				DBUS_TYPE_BYTE, &rsp[i]);
@@ -474,6 +481,8 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 	memset(&result, 0, sizeof(sdp_buf_t));
 
 	convert_sdp_record_to_xml(rec, &result, append_and_grow_string);
+
+	sdp_record_free(rec);
 
 	if (result.data) {
 		dbus_message_append_args(reply,
@@ -869,12 +878,9 @@ static void get_rec_with_handle_comp_cb(uint8_t type, uint16_t err,
 		goto failed;
 	}
 
-	/* FIXME: add record to the cache! */
-
 failed:
 	get_record_data_call_cb(ctxt->priv, rec, cb_err);
 
-	/* FIXME: when start using cache don't free the service record */
 	if (rec)
 		sdp_record_free(rec);
 
@@ -923,8 +929,6 @@ int get_record_with_handle(DBusConnection *conn, DBusMessage *msg,
 	get_record_data_t *d;
 	uint32_t *rec_handle;
 	int err;
-
-	/* FIXME: search the cache first! */
 
 	if (find_pending_connect(dst)) {
 		error("SDP search in progress!");
@@ -1054,8 +1058,6 @@ int get_record_with_uuid(DBusConnection *conn, DBusMessage *msg,
 	get_record_data_t *d;
 	int err;
 	uuid_t *sdp_uuid;
-
-	/* FIXME: search the cache first! */
 
 	if (find_pending_connect(dst)) {
 		error("SDP search in progress!");
