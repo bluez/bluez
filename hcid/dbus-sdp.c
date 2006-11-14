@@ -227,7 +227,7 @@ static const char *get_address_from_message(DBusConnection *conn, DBusMessage *m
 static int sdp_store_record(const char *src, const char *dst, uint32_t handle, uint8_t *buf, size_t size)
 {
 	char filename[PATH_MAX + 1], key[28], *value;
-	int i, status = 0;
+	int i, err;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
 
@@ -244,12 +244,11 @@ static int sdp_store_record(const char *src, const char *dst, uint32_t handle, u
 	for (i = 0; i < size; i++)
 		sprintf(value + (i * 2), "%02X", buf[i]);
 
-	if (textfile_put(filename, key, value) < 0)
-		status = -errno;
+	err = textfile_put(filename, key, value);
 
 	free(value);
 
-	return status;
+	return err;
 }
 
 static void transaction_context_free(void *udata)
