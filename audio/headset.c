@@ -54,6 +54,7 @@
 
 struct pending_connect {
 	bdaddr_t bda;
+	int ch;
 	DBusConnection *conn;
 	DBusMessage *msg;
 	GIOChannel *io;
@@ -75,7 +76,9 @@ static GMainLoop *main_loop = NULL;
 
 static struct hs_connection *connected_hs = NULL;
 
-static int hs_connect(const char *address);
+static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
+					const char *address);
+static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg);
 
 static int set_nonblocking(int fd, int *err)
 {
@@ -116,21 +119,52 @@ static void pending_connect_free(struct pending_connect *c, gboolean unref_io)
 	free(c);
 }
 
-static void connect_failed(DBusConnection *conn, DBusMessage *msg, int err)
+static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
+					const char *name, const char *descr)
 {
 	DBusMessage *derr;
 
 	if (!conn)
-		return;
+		return DBUS_HANDLER_RESULT_HANDLED;
 
-	derr = dbus_message_new_error(msg, "org.bluez.Error.ConnectFailed",
-					strerror(err));
-	if (!derr) {
-		error("Unable to allocate new error return");
-		return;
+	derr = dbus_message_new_error(msg, name, descr);
+	if (derr) {
+		dbus_connection_send(conn, derr, NULL);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	} else {
+	       	error("Unable to allocate new error return");
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
+}
 
-	dbus_connection_send(conn, derr, NULL);
+static DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg,
+						const char *descr)
+{
+	return error_reply(conn, msg, "org.bluez.Error.InvalidArguments",
+			descr ? descr : "Invalid arguments in method call");
+}
+
+static DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_reply(conn, msg, "org.bluez.Error.AlreadyConnected",
+				"Already connected to a device");
+}
+
+static DBusHandlerResult err_not_connected(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_reply(conn, msg, "org.bluez.Error.NotConnected",
+				"Not connected to any device");
+}
+
+static DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_reply(conn, msg, "org.bluez.Error.NotSupported",
+			"The service is not supported by the remote device");
+}
+
+static DBusHandlerResult err_connect_failed(DBusConnection *conn, DBusMessage *msg, int err)
+{
+	return error_reply(conn, msg, "org.bluez.Error.ConnectFailed", strerror(err));
 }
 
 static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, struct hs_connection *hs)
@@ -218,41 +252,33 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct pe
 	return FALSE;
 
 failed:
-	connect_failed(c->conn, c->msg, err);
+	err_connect_failed(c->conn, c->msg, err);
 	pending_connect_free(c, TRUE);
 
 	return FALSE;
 }
 
-static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
-				const char *bda, uint8_t ch, int *err)
+static int rfcomm_connect(struct pending_connect *c, int *err)
 {
-	struct pending_connect *c = NULL;
 	struct sockaddr_rc addr;
+	char address[18];
 	int sk;
 
-	debug("Connecting to %s channel %d", bda, ch);
+	ba2str(&c->bda, address);
+
+	debug("Connecting to %s channel %d", address, c->ch);
 
 	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sk < 0) {
 		if (err)
 			*err = errno;
 		error("socket: %s (%d)", strerror(errno), errno);
-		return -1;
-	}
-
-	c = malloc(sizeof(struct pending_connect));
-	if (!c) {
-		if (err)
-			*err = ENOMEM;
 		goto failed;
 	}
 
-	memset(c, 0, sizeof(struct pending_connect));
-
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, src);
+	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
 	addr.rc_channel = 0;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
@@ -265,17 +291,10 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 	if (set_nonblocking(sk, err) < 0)
 		goto failed;
 
-	str2ba(bda, &c->bda);
-
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
 	bacpy(&addr.rc_bdaddr, &c->bda);
-	addr.rc_channel = ch;
-
-	if (conn && msg) {
-		c->conn = dbus_connection_ref(conn);
-		c->msg = dbus_message_ref(msg);
-	}
+	addr.rc_channel = c->ch;
 
 	c->io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(c->io, TRUE);
@@ -299,8 +318,6 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 	return 0;
 
 failed:
-	if (c)
-		pending_connect_free(c, TRUE);
 	if (sk >= 0)
 		close(sk);
 	return -1;
@@ -380,8 +397,7 @@ static DBusHandlerResult release_message(DBusConnection *conn,
 static DBusHandlerResult hs_message(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const char *interface;
-	const char *member;
+	const char *interface, *member;
 
 	interface = dbus_message_get_interface(msg);
 	member = dbus_message_get_member(msg);
@@ -398,6 +414,12 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 
 	if (strcmp(interface, "org.bluez.Headset") != 0)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (strcmp(member, "Connect") == 0)
+		return hs_connect(conn, msg, NULL);
+
+	if (strcmp(member, "Disconnect") == 0)
+		return hs_disconnect(conn, msg);
 
 	/* Handle Headset interface methods here */
 
@@ -426,11 +448,8 @@ static void register_reply(DBusPendingCall *call, void *data)
 
 	dbus_message_unref(reply);
 
-	if (!on_init_bda)
-		return;
-
-	if (hs_connect(on_init_bda) < 0)
-		exit(1);
+	if (on_init_bda)
+		hs_connect(NULL, NULL, on_init_bda);
 }
 
 int headset_dbus_init(char *bda)
@@ -480,16 +499,17 @@ static void record_reply(DBusPendingCall *call, void *data)
 	DBusMessage *reply;
 	DBusError derr;
 	uint8_t *array;
-	int array_len, record_len, ch = -1;
+	int array_len, record_len, err = EIO;
 	sdp_record_t *record = NULL;
 	sdp_list_t *protos;
-	char *address = data;
+	struct pending_connect *c = data;
 
 	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("GetRemoteServiceRecord failed: %s", derr.message);
+		err_not_supported(c->conn, c->msg);
 		dbus_error_free(&derr);
 		goto failed;
 	}
@@ -500,12 +520,14 @@ static void record_reply(DBusPendingCall *call, void *data)
 
 	if (!array) {
 		error("Unable to get handle array from reply");
+		err_not_supported(c->conn, c->msg);
 		goto failed;
 	}
 
 	record = sdp_extract_pdu(array, &record_len);
 	if (!record) {
 		error("Unable to extract service record from reply");
+		err_not_supported(c->conn, c->msg);
 		goto failed;
 	}
 
@@ -514,26 +536,33 @@ static void record_reply(DBusPendingCall *call, void *data)
 				array_len, record_len);
 
 	if (!sdp_get_access_protos(record, &protos)) {
-		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+		c->ch = sdp_get_proto_port(protos, RFCOMM_UUID);
 		sdp_list_foreach(protos, (sdp_list_func_t)sdp_list_free, NULL);
 		sdp_list_free(protos, NULL);
 	}
 
-	if (ch == -1) {
+	if (c->ch == -1) {
 		error("Unable to extract RFCOMM channel from service record");
+		err_not_supported(c->conn, c->msg);
 		goto failed;
 	}
 
-	if (rfcomm_connect(NULL, NULL, BDADDR_ANY, address, ch, NULL) < 0) {
-		error("Unable to connect to %s", address);
+	if (rfcomm_connect(c, &err) < 0) {
+		error("Unable to connect");
+		err_connect_failed(c->conn, c->msg, err);
 		goto failed;
 	}
+
+	sdp_record_free(record);
+	dbus_message_unref(reply);
+
+	return;
 
 failed:
 	if (record)
 		sdp_record_free(record);
 	dbus_message_unref(reply);
-	free(data);
+	pending_connect_free(c, TRUE);
 }
 
 static void handles_reply(DBusPendingCall *call, void *data)
@@ -541,7 +570,8 @@ static void handles_reply(DBusPendingCall *call, void *data)
 	DBusMessage *msg = NULL, *reply;
 	DBusPendingCall *pending;
 	DBusError derr;
-	char *address = data;
+	struct pending_connect *c = data;
+	char address[18], *addr_ptr = address;
 	dbus_uint32_t *array = NULL;
 	dbus_uint32_t handle;
 	int array_len;
@@ -551,6 +581,10 @@ static void handles_reply(DBusPendingCall *call, void *data)
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("GetRemoteServiceHandles failed: %s", derr.message);
+		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectFailed"))
+			err_connect_failed(c->conn, c->msg, EHOSTDOWN);
+		else
+			err_not_supported(c->conn, c->msg);
 		dbus_error_free(&derr);
 		goto failed;
 	}
@@ -561,11 +595,13 @@ static void handles_reply(DBusPendingCall *call, void *data)
 
 	if (!array) {
 		error("Unable to get handle array from reply");
+		err_not_supported(c->conn, c->msg);
 		goto failed;
 	}
 
 	if (array_len < 1) {
 		debug("No record handles found");
+		err_not_supported(c->conn, c->msg);
 		goto failed;
 	}
 
@@ -577,21 +613,25 @@ static void handles_reply(DBusPendingCall *call, void *data)
 						"GetRemoteServiceRecord");
 	if (!msg) {
 		error("Unable to allocate new method call");
+		err_connect_failed(c->conn, c->msg, ENOMEM);
 		goto failed;
 	}
 
+	ba2str(&c->bda, address);
+
 	handle = array[0];
 
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &address,
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_UINT32, &handle,
 					DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceRecord failed");
+		err_connect_failed(c->conn, c->msg, EIO);
 		goto failed;
 	}
 
-	dbus_pending_call_set_notify(pending, record_reply, data, NULL);
+	dbus_pending_call_set_notify(pending, record_reply, c, NULL);
 	dbus_message_unref(msg);
 
 	dbus_message_unref(reply);
@@ -602,26 +642,89 @@ failed:
 	if (msg)
 		dbus_message_unref(msg);
 	dbus_message_unref(reply);
-	free(data);
+	pending_connect_free(c, TRUE);
 }
 
-static int hs_connect(const char *address)
+static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg)
 {
-	DBusMessage *msg;
+	DBusError derr;
+	DBusMessage *reply;
+	const char *address;
+
+	dbus_error_init(&derr);
+
+	dbus_message_get_args(msg, &derr,
+			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	if (!connected_hs || strcasecmp(address, connected_hs->address) != 0)
+		return err_not_connected(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (connected_hs->sco)
+		g_io_channel_close(connected_hs->sco);
+	if (connected_hs->rfcomm)
+		g_io_channel_close(connected_hs->rfcomm);
+
+	free(connected_hs);
+	connected_hs = NULL;
+
+	dbus_connection_send(conn, reply, NULL);
+
+	dbus_message_unref(reply);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
+					const char *address)
+{
 	DBusPendingCall *pending;
-	char *data;
+	struct pending_connect *c;
 	const char *hs_svc = "hsp";
 
-	data = strdup(address);
-	if (!data)
-		return -ENOMEM;
+	if (!address) {
+		DBusError derr;
+
+		dbus_error_init(&derr);
+
+		dbus_message_get_args(msg, &derr,
+					DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_INVALID);
+
+		if (dbus_error_is_set(&derr)) {
+			err_invalid_args(conn, msg, derr.message);
+			dbus_error_free(&derr);
+			return DBUS_HANDLER_RESULT_HANDLED;
+		}
+	}
+
+	if (connected_hs)
+		return err_already_connected(conn, msg);
+
+	c = malloc(sizeof(struct pending_connect));
+	if (!c) {
+		error("Out of memory when allocating new struct pending_connect");
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}       
+
+	memset(c, 0, sizeof(struct pending_connect));
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
 						"org.bluez.Adapter",
 						"GetRemoteServiceHandles");
 	if (!msg) {
-		free(data);
-		return -ENOMEM;
+		pending_connect_free(c, TRUE);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &address,
@@ -631,15 +734,15 @@ static int hs_connect(const char *address)
 
 	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceHandles failed");
-		free(data);
+		pending_connect_free(c, TRUE);
 		dbus_message_unref(msg);
-		return -1;
+		return err_connect_failed(connection, msg, EIO);
 	}
 
-	dbus_pending_call_set_notify(pending, handles_reply, data, NULL);
+	dbus_pending_call_set_notify(pending, handles_reply, c, NULL);
 	dbus_message_unref(msg);
 
-	return 0;
+	return DBUS_HANDLER_RESULT_HANDLED;;
 }
 
 int main(int argc, char *argv[])
