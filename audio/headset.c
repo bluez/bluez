@@ -51,6 +51,7 @@
 #include "glib-ectomy.c"
 
 #define HEADSET_PATH "/org/bluez/headset"
+static const char *hs_path = HEADSET_PATH;
 
 struct pending_connect {
 	bdaddr_t bda;
@@ -66,6 +67,12 @@ struct hs_connection {
 	GIOChannel *sco;
 };
 
+static gboolean connect_in_progress = FALSE;
+
+static uint8_t config_channel = 0;
+
+static uint32_t record_id = 0;
+
 static char *on_init_bda = NULL;
 
 static int started = 0;
@@ -75,6 +82,8 @@ static DBusConnection *connection = NULL;
 static GMainLoop *main_loop = NULL;
 
 static struct hs_connection *connected_hs = NULL;
+
+static GIOChannel *server_sk = NULL;
 
 static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 					const char *address);
@@ -117,6 +126,8 @@ static void pending_connect_free(struct pending_connect *c, gboolean unref_io)
 	if (c->conn)
 		dbus_connection_unref(c->conn);
 	free(c);
+
+	connect_in_progress = FALSE;
 }
 
 static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
@@ -201,6 +212,69 @@ failed:
 	connected_hs = NULL;
 	return FALSE;
 }
+
+static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
+{
+	int srv_sk, cli_sk;
+	struct sockaddr_rc addr;
+	socklen_t size;
+
+	if (cond & G_IO_NVAL) {
+		g_io_channel_unref(chan);
+		return FALSE;
+	}
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		error("Hangup or error on rfcomm server socket");
+		g_io_channel_close(chan);
+		server_sk = NULL;
+		return TRUE;
+	}
+
+	srv_sk = g_io_channel_unix_get_fd(chan);
+
+	size = sizeof(struct sockaddr_rc);
+	cli_sk = accept(srv_sk, (struct sockaddr *) &addr, &size);
+	if (cli_sk < 0) {
+		error("accept: %s (%d)", strerror(errno), errno);
+		return TRUE;
+	}
+
+	if (connected_hs || connect_in_progress) {
+		debug("Refusing new connection since one already exists");
+		close(cli_sk);
+		return TRUE;
+	}
+
+	connected_hs = malloc(sizeof(struct hs_connection));
+	if (!connected_hs) {
+		error("Allocating new hs connection struct failed!");
+		close(cli_sk);
+		return TRUE;
+	}
+
+	memset(connected_hs, 0, sizeof(struct hs_connection));
+
+	connected_hs->rfcomm = g_io_channel_unix_new(cli_sk);
+	if (!connected_hs->rfcomm) {
+		error("Allocating new GIOChannel failed!");
+		close(cli_sk);
+		free(connected_hs);
+		connected_hs = NULL;
+		return TRUE;
+	}
+
+	ba2str(&addr.rc_bdaddr, connected_hs->address);
+
+	debug("rfcomm_connect_cb: connected to %s", connected_hs->address);
+
+	g_io_add_watch(connected_hs->rfcomm,
+			G_IO_ERR | G_IO_HUP | G_IO_IN | G_IO_NVAL,
+			(GIOFunc) rfcomm_io_cb, connected_hs);
+
+	return TRUE;
+}
+
 
 static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct pending_connect *c)
 {
@@ -328,6 +402,217 @@ static void sig_term(int sig)
 	g_main_quit(main_loop);
 }
 
+static int server_socket(uint8_t *channel)
+{
+	int sock;
+	struct sockaddr_rc addr;
+	socklen_t sa_len;
+
+	sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sock < 0) {
+		error("server socket: %s (%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
+	addr.rc_channel = 0;
+
+	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		error("server bind: %s", strerror(errno), errno);
+		close(sock);
+		return -1;
+	}
+
+	if (listen(sock, 1) < 0) {
+		error("server listen: %s", strerror(errno), errno);
+		close(sock);
+		return -1;
+	}
+
+	sa_len = sizeof(struct sockaddr_rc);
+	getsockname(sock, (struct sockaddr *) &addr, &sa_len);
+	*channel = addr.rc_channel;
+
+	return sock;
+}
+
+static int create_ag_record(sdp_buf_t *buf, uint8_t ch)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	uuid_t root_uuid, svclass_uuid, ga_svclass_uuid, l2cap_uuid, rfcomm_uuid;
+	sdp_profile_desc_t profile;
+	sdp_list_t *aproto, *proto[2];
+	sdp_record_t record;
+	sdp_data_t *channel;
+	int ret;
+
+	memset(&record, 0, sizeof(sdp_record_t));
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(0, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&svclass_uuid, HEADSET_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &svclass_uuid);
+	sdp_uuid16_create(&ga_svclass_uuid, GENERIC_AUDIO_SVCLASS_ID);
+	svclass_id = sdp_list_append(svclass_id, &ga_svclass_uuid);
+	sdp_set_service_classes(&record, svclass_id);
+
+	sdp_uuid16_create(&profile.uuid, HEADSET_PROFILE_ID);
+	profile.version = 0x0100;
+	pfseq = sdp_list_append(0, &profile);
+	sdp_set_profile_descs(&record, pfseq);
+
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap_uuid);
+	apseq = sdp_list_append(0, proto[0]);
+
+	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	proto[1] = sdp_list_append(0, &rfcomm_uuid);
+	channel = sdp_data_alloc(SDP_UINT8, &ch);
+	proto[1] = sdp_list_append(proto[1], channel);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(0, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	sdp_set_info_attr(&record, "Headset", 0, 0);
+
+	if (sdp_gen_record_pdu(&record, buf) < 0)
+		ret = -1;
+	else
+		ret = 0;
+
+	sdp_data_free(channel);
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(pfseq, 0);
+	sdp_list_free(aproto, 0);
+	sdp_list_free(root, 0);
+	sdp_list_free(svclass_id, 0);
+	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
+	sdp_list_free(record.pattern, free);
+
+	return ret;
+}
+
+static uint32_t add_ag_record(uint8_t channel)
+{
+	DBusMessage *msg, *reply;
+	DBusError derr;
+	dbus_uint32_t rec_id;
+	sdp_buf_t buf;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+					"org.bluez.Manager", "AddServiceRecord");
+	if (!msg) {
+		error("Can't allocate new method call");
+		return 0;
+	}
+
+	if (create_ag_record(&buf, channel) < 0) {
+		error("Unable to allocate new service record");
+		dbus_message_unref(msg);
+		return 0;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &hs_path,
+					DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &buf.data, buf.data_size,
+					DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, &derr);
+
+	free(buf.data);
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
+		error("Adding service record failed: %s", derr.message);
+		dbus_error_free(&derr);
+		return 0;
+	}
+
+	dbus_message_get_args(reply, &derr, DBUS_TYPE_UINT32, &rec_id,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		error("Invalid arguments to AddServiceRecord reply: %s", derr.message);
+		dbus_message_unref(reply);
+		dbus_error_free(&derr);
+		return 0;
+	}
+
+	dbus_message_unref(reply);
+
+	return rec_id;
+}
+
+static int remove_ag_record(uint32_t rec_id)
+{
+	DBusMessage *msg, *reply;
+	DBusError derr;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+					"org.bluez.Manager", "RemoveServiceRecord");
+	if (!msg) {
+		error("Can't allocate new method call");
+		return 0;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &hs_path,
+					DBUS_TYPE_UINT32, &rec_id,
+					DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, &derr);
+
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr)) {
+		error("Removing service record failed: %s", derr.message);
+		dbus_error_free(&derr);
+		return 0;
+	}
+
+	dbus_message_unref(reply);
+
+	return 0;
+}
+
+static void create_server_socket(void)
+{
+	uint8_t chan = config_channel;
+	int srv_sk;
+
+	srv_sk = server_socket(&chan);
+	if (srv_sk < 0) {
+		error("Unable to create server socket");
+		return;
+	}
+
+	record_id = add_ag_record(chan);
+
+	if (!record_id) {
+		error("Unable to register service record");
+		close(srv_sk);
+		return;
+	}
+
+	server_sk = g_io_channel_unix_new(srv_sk);
+	if (!server_sk) {
+		error("Unable to allocate new GIOChannel");
+		remove_ag_record(record_id);
+		return;
+	}
+
+	g_io_add_watch(server_sk, G_IO_IN | G_IO_ERR | G_IO_HUP,
+			(GIOFunc) server_io_cb, NULL);
+}
+
+
 static DBusHandlerResult start_message(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -340,6 +625,9 @@ static DBusHandlerResult start_message(DBusConnection *conn,
 		error("Can't create reply message");
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
+
+	if (!record_id)
+		create_server_socket();
 
 	dbus_connection_send(conn, reply, NULL);
 
@@ -366,6 +654,25 @@ static DBusHandlerResult stop_message(DBusConnection *conn,
 	dbus_connection_send(conn, reply, NULL);
 
 	dbus_message_unref(reply);
+
+	if (connected_hs) {
+		if (connected_hs->sco)
+			g_io_channel_close(connected_hs->sco);
+		if (connected_hs->rfcomm)
+			g_io_channel_close(connected_hs->rfcomm);
+		free(connected_hs);
+		connected_hs = NULL;
+	}
+
+	if (!config_channel) {
+		remove_ag_record(record_id);
+		record_id = 0;
+	}
+
+	if (server_sk) {
+		g_io_channel_close(server_sk);
+		server_sk = NULL;
+	}
 
 	started = 0;
 
@@ -448,6 +755,9 @@ static void register_reply(DBusPendingCall *call, void *data)
 
 	dbus_message_unref(reply);
 
+	if (config_channel)
+		record_id = add_ag_record(config_channel);
+
 	if (on_init_bda)
 		hs_connect(NULL, NULL, on_init_bda);
 }
@@ -458,7 +768,6 @@ int headset_dbus_init(char *bda)
 	DBusPendingCall *pending;
 	const char *name = "Headset service";
 	const char *description = "A service for headsets";
-	const char *hs_path = HEADSET_PATH;
 
 	connection = init_dbus(NULL, NULL, NULL);
 	if (!connection)
@@ -717,6 +1026,8 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}       
 
+	connect_in_progress = TRUE;
+
 	memset(c, 0, sizeof(struct pending_connect));
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
@@ -750,10 +1061,14 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	int opt, daemonize = 1;
 
-	while ((opt = getopt(argc, argv, "n")) != EOF) {
+	while ((opt = getopt(argc, argv, "nc:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
+			break;
+
+		case 'c':
+			config_channel = strtol(optarg, NULL, 0);
 			break;
 
 		default:
