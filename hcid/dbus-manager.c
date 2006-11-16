@@ -233,7 +233,11 @@ static void autostart_reply(DBusPendingCall *pcall, void *udata)
 	dbus_error_init(&err);
 
 	/* Ignore if the result is an error */
-	if (!dbus_set_error_from_message(&err, agent_reply)) {
+	if (dbus_set_error_from_message(&err, agent_reply)) {
+		error("Service auto start failed: %s(%s)",
+			err.message, call->agent->name);
+		dbus_error_free(&err);
+	} else {
 		DBusMessage *message;
 
 		if (!call->agent)
