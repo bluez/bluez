@@ -1075,9 +1075,14 @@ int main(int argc, char *argv[])
 			break;
 
 		default:
-			printf("Usage: %s [-n] [bdaddr]\n", argv[0]);
+			printf("Usage: %s -c local_channel [-n] [bdaddr]\n", argv[0]);
 			exit(1);
 		}
+	}
+
+	if (!config_channel) {
+		printf("You need to supply a local channel with the -c switch\n");
+		exit(1);
 	}
 
 	if (argv[optind]) {
