@@ -547,6 +547,8 @@ static uint32_t add_ag_record(uint8_t channel)
 
 	dbus_message_unref(reply);
 
+	debug("add_ag_record: got record id 0x%x");
+
 	return rec_id;
 }
 
@@ -572,7 +574,7 @@ static int remove_ag_record(uint32_t rec_id)
 	dbus_message_unref(msg);
 
 	if (dbus_error_is_set(&derr)) {
-		error("Removing service record failed: %s", derr.message);
+		error("Removing service record 0x%x failed: %s", derr.message);
 		dbus_error_free(&derr);
 		return 0;
 	}
@@ -593,7 +595,8 @@ static void create_server_socket(void)
 		return;
 	}
 
-	record_id = add_ag_record(chan);
+	if (!record_id)
+		record_id = add_ag_record(chan);
 
 	if (!record_id) {
 		error("Unable to register service record");
@@ -605,6 +608,7 @@ static void create_server_socket(void)
 	if (!server_sk) {
 		error("Unable to allocate new GIOChannel");
 		remove_ag_record(record_id);
+		record_id = 0;
 		return;
 	}
 
@@ -626,8 +630,7 @@ static DBusHandlerResult start_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
-	if (!record_id)
-		create_server_socket();
+	create_server_socket();
 
 	dbus_connection_send(conn, reply, NULL);
 
@@ -664,7 +667,7 @@ static DBusHandlerResult stop_message(DBusConnection *conn,
 		connected_hs = NULL;
 	}
 
-	if (!config_channel) {
+	if (!config_channel && record_id) {
 		remove_ag_record(record_id);
 		record_id = 0;
 	}
