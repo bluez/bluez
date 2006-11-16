@@ -547,7 +547,7 @@ static uint32_t add_ag_record(uint8_t channel)
 
 	dbus_message_unref(reply);
 
-	debug("add_ag_record: got record id 0x%x");
+	debug("add_ag_record: got record id 0x%x", rec_id);
 
 	return rec_id;
 }
@@ -574,7 +574,7 @@ static int remove_ag_record(uint32_t rec_id)
 	dbus_message_unref(msg);
 
 	if (dbus_error_is_set(&derr)) {
-		error("Removing service record 0x%x failed: %s", derr.message);
+		error("Removing service record 0x%x failed: %s", rec_id, derr.message);
 		dbus_error_free(&derr);
 		return 0;
 	}
