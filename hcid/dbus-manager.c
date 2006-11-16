@@ -51,6 +51,8 @@
 static int default_adapter_id = -1;
 static int autostart = 1;
 
+static uint32_t next_handle = 0x10000;
+
 static DBusHandlerResult interface_version(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -442,6 +444,9 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
+	/* Assign a new handle */
+	rec->ext_handle = next_handle++;
+
 	if (agent->running) {
 		sdp_session_t *sess;
 		uint32_t handle = 0;
@@ -472,7 +477,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	agent->records = slist_append(agent->records, rec);
 
 	dbus_message_append_args(reply,
-				DBUS_TYPE_UINT32, &rec->handle,
+				DBUS_TYPE_UINT32, &rec->ext_handle,
 				DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -520,9 +525,9 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 	agent->records = slist_remove(agent->records, rec);
 
 	/* If the service agent is running: remove it from the from sdpd */
-	if (agent->running) {
+	if (agent->running && rec->handle != 0xffffffff) {
 		sdp_session_t *sess;
-
+		
 		/* FIXME: attach to a specific adapter */
 		sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
 		if (!sess) {

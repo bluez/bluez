@@ -54,6 +54,7 @@ struct binary_record *binary_record_new()
 		return NULL;
 
 	memset(rec, 0, sizeof(struct binary_record));
+	rec->ext_handle = 0xffffffff;
 	rec->handle = 0xffffffff;
 
 	return rec;
@@ -75,7 +76,7 @@ void binary_record_free(struct binary_record *rec)
 
 int binary_record_cmp(struct binary_record *rec, uint32_t *handle)
 {
-	return (rec->handle - *handle);
+	return (rec->ext_handle - *handle);
 }
 
 
@@ -223,7 +224,7 @@ int register_agent_records(struct slist *lrecords)
 		rec = lrecords->data;
 		lrecords = lrecords->next;
 
-		if (!rec || !rec->buf)
+		if (!rec || !rec->buf || rec->handle != 0xffffffff)
 			continue;
 
 		handle = 0;
@@ -259,7 +260,7 @@ static int unregister_agent_records(struct slist *lrecords)
 	while (lrecords) {
 		rec = lrecords->data;
 		lrecords = lrecords->next;
-		if (!rec)
+		if (!rec || rec->handle == 0xffffffff)
 			continue;
 
 		if (sdp_device_record_unregister_binary(sess, BDADDR_ANY, rec->handle) < 0) {
@@ -267,6 +268,7 @@ static int unregister_agent_records(struct slist *lrecords)
 			error("Service Record unregistration failed:(%s, %d)",
 				strerror(errno), errno);
 		}
+		rec->handle = 0xffffffff;
 	}
 
 	err = errno;

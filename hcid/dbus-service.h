@@ -44,6 +44,7 @@ struct service_call {
 };
 
 struct binary_record {
+	uint32_t ext_handle;
 	uint32_t handle;
 	sdp_buf_t *buf;
 };
