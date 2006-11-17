@@ -13,21 +13,25 @@ dbusdir = $(sysconfdir)/dbus-1/system.d
 dbus_DATA = bluetooth.conf
 endif
 
+noinst_LIBRARIES = libhciserver.a
+
+libhciserver_a_SOURCES = hcid.h security.c device.c storage.c \
+	sdp.c sdp.h parser.h parser.y lexer.l kword.c kword.h \
+	dbus-hci.h dbus-hci.c dbus-common.c dbus-common.h \
+	dbus-error.c dbus-error.h dbus-manager.c dbus-manager.h \
+	dbus-adapter.c dbus-adapter.h dbus-device.c dbus-device.h \
+	dbus-service.c dbus-service.h dbus-security.c dbus-security.h \
+	dbus-sdp.c dbus-sdp.h dbus-rfcomm.c dbus-rfcomm.h \
+	dbus-test.c dbus-test.h
+
 sbin_PROGRAMS = hcid
 
 noinst_PROGRAMS = passkey-agent service-agent auth-agent
 
-hcid_SOURCES = main.c security.c device.c storage.c \
-		sdp.c sdp.h hcid.h parser.h parser.y \
-		lexer.l kword.c kword.h \
-		dbus-hci.h dbus-hci.c dbus-common.c dbus-common.h \
-		dbus-error.c dbus-error.h dbus-manager.c dbus-manager.h \
-		dbus-adapter.c dbus-adapter.h \
-		dbus-device.c dbus-device.h dbus-service.c dbus-service.h \
-		dbus-security.c dbus-security.h dbus-test.c dbus-test.h \
-		dbus-sdp.c dbus-sdp.h dbus-rfcomm.c dbus-rfcomm.h
+hcid_SOURCES = main.c
 
-hcid_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+hcid_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ \
+		libhciserver.a $(top_builddir)/common/libhelper.a
 
 if EXPAT
 hcid_LDADD += -lexpat
