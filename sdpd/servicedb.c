@@ -169,10 +169,9 @@ void sdp_record_add(bdaddr_t *device, sdp_record_t *rec)
 {
 	sdp_access_t *dev;
 
-#ifdef SDP_DEBUG
 	debug("Adding rec : 0x%lx\n", (long) rec);
 	debug("with handle : 0x%x\n", rec->handle);
-#endif
+
 	service_db = sdp_list_insert_sorted(service_db, rec, record_sort);
 
 	dev = malloc(sizeof(*dev));

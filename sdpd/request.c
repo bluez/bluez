@@ -426,13 +426,13 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 	if (!rec)
 		return SDP_INVALID_RECORD_HANDLE;
 
-#ifdef SDP_DEBUG
 	if (seq)
 		debug("Entries in attr seq : %d\n", sdp_list_len(seq));
 	else
 		debug("NULL attribute descriptor\n");
+
 	debug("AttrDataType : %d\n", dtd);
-#endif
+
 	if (seq == NULL) {
 		debug("Attribute sequence is NULL\n");
 		return 0;
