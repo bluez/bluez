@@ -29,6 +29,10 @@ hcid_SOURCES = main.c security.c device.c storage.c \
 
 hcid_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
+if EXPAT
+hcid_LDADD += -lexpat
+endif
+
 passkey_agent_SOURCES = passkey-agent.c
 
 passkey_agent_LDADD = @DBUS_LIBS@
