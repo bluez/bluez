@@ -228,7 +228,7 @@ int register_agent_records(struct slist *lrecords)
 			continue;
 
 		handle = 0;
-		if (sdp_device_record_register_binary(sess, BDADDR_LOCAL, rec->buf->data,
+		if (sdp_device_record_register_binary(sess, BDADDR_ANY, rec->buf->data,
 				rec->buf->data_size, SDP_RECORD_PERSIST, &handle) < 0) {
 			/* FIXME: If just one of the service record registration fails */
 			error("Service Record registration failed:(%s, %d)",

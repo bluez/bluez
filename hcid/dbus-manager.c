@@ -459,7 +459,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 			goto fail;
 		}
 
-		if (sdp_device_record_register_binary(sess, BDADDR_LOCAL, rec->buf->data,
+		if (sdp_device_record_register_binary(sess, BDADDR_ANY, rec->buf->data,
 					rec->buf->data_size, SDP_RECORD_PERSIST, &handle) < 0) {
 			err = errno;
 			sdp_close(sess);
