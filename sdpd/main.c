@@ -393,10 +393,9 @@ static void check_active(fd_set *mask, int num)
 
 static void usage(void)
 {
-	printf("sdpd version %s\n", VERSION);
-	printf("Usage:\n"
-		"sdpd [-n]\n"
-	);
+	printf("sdpd - SDP daemon ver %s\n", VERSION);
+	printf("Usage: \n");
+	printf("\tsdpd [-n]\n");
 }
 
 static struct option main_options[] = {
@@ -415,24 +414,34 @@ int main(int argc, char *argv[])
 	int daemonize = 1, public = 0, master = 0;
 	int opt;
 
-	while ((opt = getopt_long(argc, argv, "nm:pM", main_options, NULL)) != -1)
+	while ((opt = getopt_long(argc, argv, "nm:pM", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
 			break;
+
 		case 'm':
 			mtu = atoi(optarg);
 			break;
+
 		case 'p':
 			public = 1;
 			break;
+
 		case 'M':
 			master = 1;
 			break;
+
 		default:
 			usage();
-			exit(0);
+			exit(1);
 		}
+	}
+
+	if (daemonize && daemon(0, 0)) {
+		error("Server startup failed: %s (%d)", strerror(errno), errno);
+		exit(1);
+	}
 
 	start_logging("sdpd", "Bluetooth SDP daemon");
 
@@ -440,17 +449,9 @@ int main(int argc, char *argv[])
 	enable_debug();
 #endif
 
-	if (daemonize && daemon(0, 0)) {
-		error("Server startup failed: %s (%d)", strerror(errno), errno);
-		return -1;
-	}
-
-	argc -= optind;
-	argv += optind;
-
 	if (init_server(mtu, master, public) < 0) {
 		error("Server initialization failed");
-		return -1;
+		exit(1);
 	}
 
 	signal(SIGINT,  sig_term);
