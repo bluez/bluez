@@ -722,6 +722,7 @@ static DBusPendingCall *auth_agent_call_authorize(struct authorization_agent *ag
 		return NULL;
 	}
 
+	dbus_message_unref(message);
 	return call;
 }
 
@@ -911,6 +912,7 @@ static DBusPendingCall *agent_request(const char *path, bdaddr_t *bda,
 		return NULL;
 	}
 
+	dbus_message_unref(message);
 	return call;
 }
 
@@ -1117,6 +1119,7 @@ static DBusPendingCall *agent_confirm(const char *path, bdaddr_t *bda,
 		return NULL;
 	}
 
+	dbus_message_unref(message);
 	return call;
 }
 
