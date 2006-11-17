@@ -476,7 +476,7 @@ int main(int argc, char *argv[])
 		num = pselect(active_maxfd + 1, &mask, NULL, NULL, NULL, &sigs);
 		if (num <= 0) {
 			debug("Select error:%s", strerror(errno));
-			goto exit;
+			break;
 		}
 
 		if (FD_ISSET(l2cap_sock, &mask)) {
@@ -505,7 +505,9 @@ int main(int argc, char *argv[])
 			check_active(&mask, num);
 	}
 
-exit:
 	sdp_svcdb_reset();
+
+	stop_logging();
+
 	return 0;
 }
