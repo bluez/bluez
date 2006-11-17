@@ -1,7 +1,8 @@
 
-SUBDIRS = common daemon network input audio sync \
-	tools rfcomm hcid sdpd dund pand hidd \
-	cups fuse alsa test scripts
+SUBDIRS = common hcid sdpd daemon \
+		network input audio sync \
+		tools rfcomm dund pand hidd \
+		cups fuse alsa test scripts
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
