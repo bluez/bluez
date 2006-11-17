@@ -30,9 +30,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
-
 #include <dbus/dbus.h>
 
 #include "hcid.h"
@@ -42,7 +39,6 @@
 #include "dbus-error.h"
 #include "dbus-manager.h"
 #include "dbus-service.h"
-
 
 static struct slist *services = NULL;
 
@@ -208,72 +204,43 @@ mem_fail:
 
 int register_agent_records(struct slist *lrecords)
 {
-	sdp_session_t *sess;
-	struct binary_record *rec;
-	uint32_t handle;
-	int err;
-
-	/* FIXME: attach to a specific adapter */
-	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-	if (!sess) {
-		error("Can't connect to sdp daemon:(%s, %d)", strerror(errno), errno);
-		return -1;
-	}
-
 	while (lrecords) {
-		rec = lrecords->data;
+		struct binary_record *rec = lrecords->data;
 		lrecords = lrecords->next;
+		uint32_t handle = 0;
 
 		if (!rec || !rec->buf || rec->handle != 0xffffffff)
 			continue;
 
-		handle = 0;
-		if (sdp_device_record_register_binary(sess, BDADDR_ANY, rec->buf->data,
-				rec->buf->data_size, SDP_RECORD_PERSIST, &handle) < 0) {
+		if (register_sdp_record(rec->buf->data, rec->buf->data_size, &handle) < 0) {
 			/* FIXME: If just one of the service record registration fails */
 			error("Service Record registration failed:(%s, %d)",
 				strerror(errno), errno);
 		}
+
 		rec->handle = handle;
 	}
-
-	err = errno;
-	sdp_close(sess);
-	errno = err;
 
 	return 0;
 }
 
 static int unregister_agent_records(struct slist *lrecords)
 {
-	sdp_session_t *sess;
-	struct binary_record *rec;
-	int err;
-
-	/* FIXME: attach to a specific adapter */
-	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-	if (!sess) {
-		error("Can't connect to sdp daemon:(%s, %d)", strerror(errno), errno);
-		return -1;
-	}
-
 	while (lrecords) {
-		rec = lrecords->data;
+		struct binary_record *rec = lrecords->data;
 		lrecords = lrecords->next;
+
 		if (!rec || rec->handle == 0xffffffff)
 			continue;
 
-		if (sdp_device_record_unregister_binary(sess, BDADDR_ANY, rec->handle) < 0) {
+		if (unregister_sdp_record(rec->handle) < 0) {
 			/* FIXME: If just one of the service record registration fails */
 			error("Service Record unregistration failed:(%s, %d)",
 				strerror(errno), errno);
 		}
+
 		rec->handle = 0xffffffff;
 	}
-
-	err = errno;
-	sdp_close(sess);
-	errno = err;
 
 	return 0;
 }

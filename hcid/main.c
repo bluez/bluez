@@ -741,6 +741,8 @@ int main(int argc, char *argv[])
 
 	hcid_dbus_exit();
 
+	cleanup_sdp_session();
+
 	g_main_unref(event_loop);
 
 	g_io_channel_unref(ctl_io);

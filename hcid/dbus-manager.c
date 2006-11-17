@@ -34,8 +34,6 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
 
 #include <dbus/dbus.h>
 
@@ -417,7 +415,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_get_basic(&iter, &path);
 
-	if(!dbus_connection_get_object_path_data(conn, path,
+	if (!dbus_connection_get_object_path_data(conn, path,
 						(void *) &agent)) {
 		/* If failed the path is invalid! */
 		return error_invalid_arguments(conn, msg);
@@ -448,31 +446,17 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	rec->ext_handle = next_handle++;
 
 	if (agent->running) {
-		sdp_session_t *sess;
 		uint32_t handle = 0;
 
-		sess  = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-		if (!sess) {
+		if (register_sdp_record(rec->buf->data,	rec->buf->data_size, &handle) < 0) {
 			err = errno;
-			error("Can't connect to sdp daemon: %s (%d)",
-					strerror(err), err);
-			goto fail;
-		}
-
-		if (sdp_device_record_register_binary(sess, BDADDR_ANY, rec->buf->data,
-					rec->buf->data_size, SDP_RECORD_PERSIST, &handle) < 0) {
-			err = errno;
-			sdp_close(sess);
-			error("Record registration failed: %s (%d)",
-					strerror(err), err);
+			error("Service record registration failed: %s (%d)",
+							strerror(err), err);
 			goto fail;
 		}
 
 		rec->handle = handle;
-
-		sdp_close(sess);
 	}
-
 
 	agent->records = slist_append(agent->records, rec);
 
@@ -481,9 +465,11 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 				DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
+
 fail:
 	binary_record_free(rec);
 	dbus_message_unref(reply);
+
 	return error_failed(conn, msg, err);
 }
 
@@ -503,7 +489,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	if(!dbus_connection_get_object_path_data(conn, path,
+	if (!dbus_connection_get_object_path_data(conn, path,
 						(void *) &agent)) {
 		/* If failed the path is invalid! */
 		return error_invalid_arguments(conn, msg);
@@ -526,25 +512,12 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 
 	/* If the service agent is running: remove it from the from sdpd */
 	if (agent->running && rec->handle != 0xffffffff) {
-		sdp_session_t *sess;
-		
-		/* FIXME: attach to a specific adapter */
-		sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-		if (!sess) {
-			error("Can't connect to sdp daemon:(%s, %d)",
-				strerror(errno), errno);
-			goto fail;
+		if (unregister_sdp_record(rec->handle) < 0) {
+			error("Service record unregistration failed: %s (%d)",
+							strerror(errno), errno);
 		}
-
-		if (sdp_device_record_unregister_binary(sess, BDADDR_ANY,
-					rec->handle) < 0) {
-			error("Service Record unregistration failed:(%s, %d)",
-				strerror(errno), errno);
-		}
-		sdp_close(sess);
 	}
 
-fail:
 	binary_record_free(rec);
 
 	return send_message_and_unref(conn, reply);
