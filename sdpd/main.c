@@ -34,9 +34,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <getopt.h>
-#define _XOPEN_SOURCE 600
 #include <sys/stat.h>
-#include <sys/select.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -47,12 +45,14 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 
+#include "glib-ectomy.h"
+
 #include "sdpd.h"
 #include "logging.h"
 
+static GMainLoop *event_loop;
+
 static int l2cap_sock, unix_sock;
-static fd_set active_fdset;
-static int active_maxfd;
 
 static sdp_record_t *server;
 
@@ -244,10 +244,12 @@ static int init_server(uint16_t mtu, int master, int public)
 		return -1;
 	}
 
-	l2addr.l2_bdaddr = *BDADDR_ANY;
+	memset(&l2addr, 0, sizeof(l2addr));
 	l2addr.l2_family = AF_BLUETOOTH;
-	l2addr.l2_psm    = htobs(SDP_PSM);
-	if (bind(l2cap_sock, (struct sockaddr *)&l2addr, sizeof(l2addr)) < 0) {
+	bacpy(&l2addr.l2_bdaddr, BDADDR_ANY);
+	l2addr.l2_psm = htobs(SDP_PSM);
+
+	if (bind(l2cap_sock, (struct sockaddr *) &l2addr, sizeof(l2addr)) < 0) {
 		error("binding L2CAP socket: %s", strerror(errno));
 		return -1;
 	}
@@ -278,8 +280,6 @@ static int init_server(uint16_t mtu, int master, int public)
 	}
 
 	listen(l2cap_sock, 5);
-	FD_SET(l2cap_sock, &active_fdset);
-	active_maxfd = l2cap_sock;
 
 	/* Create local Unix socket */
 	unix_sock = socket(PF_UNIX, SOCK_STREAM, 0);
@@ -288,29 +288,22 @@ static int init_server(uint16_t mtu, int master, int public)
 		return -1;
 	}
 
+	memset(&unaddr, 0, sizeof(unaddr));
 	unaddr.sun_family = AF_UNIX;
 	strcpy(unaddr.sun_path, SDP_UNIX_PATH);
+
 	unlink(unaddr.sun_path);
-	if (bind(unix_sock, (struct sockaddr *)&unaddr, sizeof(unaddr)) < 0) {
+
+	if (bind(unix_sock, (struct sockaddr *) &unaddr, sizeof(unaddr)) < 0) {
 		error("binding UNIX socket: %s", strerror(errno));
 		return -1;
 	}
 
 	listen(unix_sock, 5);
-	FD_SET(unix_sock, &active_fdset);
-	active_maxfd = unix_sock;
+
 	chmod(SDP_UNIX_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 
 	return 0;
-}
-
-static void sig_term(int sig)
-{
-	info("terminating...");
-	sdp_svcdb_reset();
-	close(l2cap_sock);
-	close(unix_sock);
-	exit(0);
 }
 
 static inline void handle_request(int sk, uint8_t *data, int len)
@@ -349,46 +342,74 @@ static inline void handle_request(int sk, uint8_t *data, int len)
 	process_request(&req);
 }
 
-static void close_sock(int fd, int r)
-{
-	if (r < 0)
-		error("Read error: %s", strerror(errno));
-	FD_CLR(fd, &active_fdset);
-	close(fd);
-	sdp_svcdb_collect_all(fd);
-	if (fd == active_maxfd)
-		active_maxfd--;
-}
-
-static void check_active(fd_set *mask, int num)
+static gboolean io_session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	sdp_pdu_hdr_t hdr;
-	int size, fd, count, r;
 	uint8_t *buf;
+	int sk, len, size;
 
-	for (fd = 0, count = 0; fd <= active_maxfd && count < num; fd++) {
-		if (fd == l2cap_sock || fd == unix_sock || !FD_ISSET(fd, mask))
-			continue;
-
-		count++;
-
-		r = recv(fd, (void *)&hdr, sizeof(sdp_pdu_hdr_t), MSG_PEEK);
-		if (r <= 0) {
-			close_sock(fd, r);
-			continue;
-		}
-
-		size = sizeof(sdp_pdu_hdr_t) + ntohs(hdr.plen);
-		buf = malloc(size);
-		if (!buf)
-			continue;
-
-		r = recv(fd, buf, size, 0);
-		if (r <= 0)
-			close_sock(fd, r);
-		else
-			handle_request(fd, buf, r);
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		g_io_channel_unref(chan);
+		return FALSE;
 	}
+
+	sk = g_io_channel_unix_get_fd(chan);
+
+	len = recv(sk, &hdr, sizeof(sdp_pdu_hdr_t), MSG_PEEK);
+	if (len <= 0) {
+		sdp_svcdb_collect_all(sk);
+		return FALSE;
+	}
+
+	size = sizeof(sdp_pdu_hdr_t) + ntohs(hdr.plen);
+	buf = malloc(size);
+	if (!buf)
+		return TRUE;
+
+	len = recv(sk, buf, size, 0);
+	if (len <= 0) {
+		sdp_svcdb_collect_all(sk);
+		return FALSE;
+	}
+		
+	handle_request(sk, buf, len);
+
+	return TRUE;
+}
+
+static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+{
+	GIOChannel *io;
+	int nsk;
+
+	if (data == &l2cap_sock) {
+		struct sockaddr_l2 addr;
+		socklen_t len = sizeof(addr);
+
+		nsk = accept(l2cap_sock, (struct sockaddr *) &addr, &len);
+	} else if (data == &unix_sock) {
+		struct sockaddr_un addr;
+		socklen_t len = sizeof(addr);
+
+		nsk = accept(unix_sock, (struct sockaddr *) &addr, &len);
+	} else
+		return FALSE;
+
+	io = g_io_channel_unix_new(nsk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	g_io_add_watch(io, G_IO_IN, io_session_event, data);
+
+	return TRUE;
+}
+
+static void sig_term(int sig)
+{
+	g_main_quit(event_loop);
+}
+
+static void sig_hup(int sig)
+{
 }
 
 static void usage(void)
@@ -409,10 +430,10 @@ static struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	sigset_t sigs;
+	struct sigaction sa;
+	GIOChannel *l2cap_io, *unix_io;
 	uint16_t mtu = 0;
-	int daemonize = 1, public = 0, master = 0;
-	int opt;
+	int opt, daemonize = 1, public = 0, master = 0;
 
 	while ((opt = getopt_long(argc, argv, "nm:pM", main_options, NULL)) != -1) {
 		switch (opt) {
@@ -443,7 +464,21 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	umask(0077);
+
 	start_logging("sdpd", "Bluetooth SDP daemon");
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NOCLDSTOP;
+	sa.sa_handler = sig_term;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT,  &sa, NULL);
+	sa.sa_handler = sig_hup;
+	sigaction(SIGHUP, &sa, NULL);
+
+	sa.sa_handler = SIG_IGN;
+	sigaction(SIGCHLD, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
 
 #ifdef SDP_DEBUG
 	enable_debug();
@@ -454,59 +489,31 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	signal(SIGINT,  sig_term);
-	signal(SIGTERM, sig_term);
-	signal(SIGABRT, sig_term);
-	signal(SIGQUIT, sig_term);
-	signal(SIGPIPE, SIG_IGN);
+	/* Create event loop */
+	event_loop = g_main_new(FALSE);
 
-	sigfillset(&sigs);
-	sigdelset(&sigs, SIGINT);
-	sigdelset(&sigs, SIGTERM);
-	sigdelset(&sigs, SIGABRT);
-	sigdelset(&sigs, SIGQUIT);
-	sigdelset(&sigs, SIGPIPE);
+	l2cap_io = g_io_channel_unix_new(l2cap_sock);
+	g_io_channel_set_close_on_unref(l2cap_io, TRUE);
 
-	for (;;) {
-		int num, nfd;
-		fd_set mask;
+	g_io_add_watch(l2cap_io, G_IO_IN, io_accept_event, &l2cap_sock);
 
-		FD_ZERO(&mask);
-		mask = active_fdset;
+	unix_io = g_io_channel_unix_new(unix_sock);
+	g_io_channel_set_close_on_unref(unix_io, TRUE);
 
-		num = pselect(active_maxfd + 1, &mask, NULL, NULL, NULL, &sigs);
-		if (num <= 0) {
-			debug("Select error:%s", strerror(errno));
-			break;
-		}
+	g_io_add_watch(unix_io, G_IO_IN, io_accept_event, &unix_sock);
 
-		if (FD_ISSET(l2cap_sock, &mask)) {
-			/* New L2CAP connection  */
-			struct sockaddr_l2 caddr;
-			socklen_t len = sizeof(caddr);
-
-			nfd = accept(l2cap_sock, (struct sockaddr *)&caddr, &len);
-			if (nfd >= 0) {
-				if (nfd > active_maxfd)
-					active_maxfd = nfd;
-				FD_SET(nfd, &active_fdset);
-			}
-		} else if (FD_ISSET(unix_sock, &mask)) {
-			/* New unix connection */
-			struct sockaddr_un caddr;
-			socklen_t len = sizeof(caddr);
-
-			nfd = accept(unix_sock, (struct sockaddr *)&caddr, &len);
-			if (nfd != -1) {
-				if (nfd > active_maxfd)
-					active_maxfd = nfd;
-				FD_SET(nfd, &active_fdset);
-			}
-		} else
-			check_active(&mask, num);
-	}
+	/* Start event processor */
+	g_main_run(event_loop);
 
 	sdp_svcdb_reset();
+
+	g_main_unref(event_loop);
+
+	g_io_channel_unref(unix_io);
+
+	g_io_channel_unref(l2cap_io);
+
+        info("Exit");
 
 	stop_logging();
 
