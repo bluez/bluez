@@ -7,7 +7,7 @@ sbin_PROGRAMS = sdpd
 
 sdpd_SOURCES = main.c
 
-sdpd_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a libsdpserver.a
+sdpd_LDADD = @BLUEZ_LIBS@ libsdpserver.a $(top_builddir)/common/libhelper.a
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 
