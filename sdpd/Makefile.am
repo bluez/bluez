@@ -1,9 +1,13 @@
 
+noinst_LIBRARIES = libsdpserver.a
+
+libsdpserver_a_SOURCES = sdpd.h cstate.c request.c service.c servicedb.c
+
 sbin_PROGRAMS = sdpd
 
-sdpd_SOURCES = main.c request.c service.c cstate.c servicedb.c sdpd.h
+sdpd_SOURCES = main.c
 
-sdpd_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+sdpd_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a libsdpserver.a
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 
