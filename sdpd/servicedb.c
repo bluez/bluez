@@ -60,7 +60,7 @@ static int record_sort(const void *r1, const void *r2)
 	const sdp_record_t *rec2 = (const sdp_record_t *) r2;
 
 	if (!rec1 || !rec2) {
-		error("NULL RECORD LIST FATAL\n");
+		error("NULL RECORD LIST FATAL");
 		return -1;
 	}
 
@@ -73,7 +73,7 @@ static int access_sort(const void *r1, const void *r2)
 	const sdp_access_t *rec2 = (const sdp_access_t *) r2;
 
 	if (!rec1 || !rec2) {
-		error("NULL RECORD LIST FATAL\n");
+		error("NULL RECORD LIST FATAL");
 		return -1;
 	}
 
@@ -169,8 +169,8 @@ void sdp_record_add(bdaddr_t *device, sdp_record_t *rec)
 {
 	sdp_access_t *dev;
 
-	debug("Adding rec : 0x%lx\n", (long) rec);
-	debug("with handle : 0x%x\n", rec->handle);
+	debug("Adding rec : 0x%lx", (long) rec);
+	debug("with handle : 0x%x", rec->handle);
 
 	service_db = sdp_list_insert_sorted(service_db, rec, record_sort);
 
@@ -195,7 +195,7 @@ static sdp_list_t *record_locate(uint32_t handle)
 		return p;
 	}
 
-	debug("Could not find svcRec for : 0x%x\n", handle);
+	debug("Could not find svcRec for : 0x%x", handle);
 	return NULL;
 }
 
@@ -210,7 +210,7 @@ static sdp_list_t *access_locate(uint32_t handle)
 		return p;
 	}
 
-	debug("Could not find access data for : 0x%x\n", handle);
+	debug("Could not find access data for : 0x%x", handle);
 	return NULL;
 }
 
@@ -222,7 +222,7 @@ sdp_record_t *sdp_record_find(uint32_t handle)
 	sdp_list_t *p = record_locate(handle);
 
         if (!p) {
-		debug("Couldn't find record for : 0x%x\n", handle);
+		debug("Couldn't find record for : 0x%x", handle);
 		return 0;
 	}
 
@@ -239,7 +239,7 @@ int sdp_record_remove(uint32_t handle)
 	sdp_access_t *a;
 
 	if (!p) {
-		error("Remove : Couldn't find record for : 0x%x\n", handle);
+		error("Remove : Couldn't find record for : 0x%x", handle);
 		return -1;
 	}
 

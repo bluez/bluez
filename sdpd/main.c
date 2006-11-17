@@ -307,7 +307,7 @@ static int init_server(uint16_t mtu, int master, int public)
 
 static void sig_term(int sig)
 {
-	info("terminating... \n");
+	info("terminating...");
 	sdp_svcdb_reset();
 	close(l2cap_sock);
 	close(unix_sock);

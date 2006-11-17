@@ -58,13 +58,13 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 	p += *scanned;
 	lookAheadAttrId = ntohs(sdp_get_unaligned((uint16_t *) (p + sizeof(uint8_t))));
 
-	debug("Look ahead attr id : %d\n", lookAheadAttrId);
+	debug("Look ahead attr id : %d", lookAheadAttrId);
 
 	if (lookAheadAttrId == SDP_ATTR_RECORD_HANDLE) {
 		handle = ntohl(sdp_get_unaligned((uint32_t *) (p +
 				sizeof(uint8_t) + sizeof(uint16_t) +
 				sizeof(uint8_t))));
-		debug("SvcRecHandle : 0x%x\n", handle);
+		debug("SvcRecHandle : 0x%x", handle);
 		rec = sdp_record_find(handle);
 	} else if (handleExpected != 0xffffffff)
 		rec = sdp_record_find(handleExpected);
@@ -91,11 +91,11 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 		attrId = ntohs(sdp_get_unaligned((uint16_t *) (p + attrSize)));
 		attrSize += sizeof(uint16_t);
 		
-		debug("DTD of attrId : %d Attr id : 0x%x \n", dtd, attrId);
+		debug("DTD of attrId : %d Attr id : 0x%x", dtd, attrId);
 
 		pAttr = sdp_extract_attr(p + attrSize, &attrValueLength, rec);
 
-		debug("Attr id : 0x%x attrValueLength : %d\n", attrId, attrValueLength);
+		debug("Attr id : 0x%x attrValueLength : %d", attrId, attrValueLength);
 
 		attrSize += attrValueLength;
 		if (pAttr == NULL) {
@@ -111,7 +111,7 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 	}
 
 	if (extractStatus == 0) {
-		debug("Successful extracting of Svc Rec attributes\n");
+		debug("Successful extracting of Svc Rec attributes");
 #ifdef SDP_DEBUG
 		sdp_print_service_attr(rec->attrlist);
 #endif
@@ -192,26 +192,24 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
 	uint32_t handle = ntohl(sdp_get_unaligned((uint32_t *) p));
 
-	debug("");
-
-	debug("Svc Rec Handle: 0x%x\n", handle);
+	debug("Svc Rec Handle: 0x%x", handle);
 
 	p += sizeof(uint32_t);
 
 	orec = sdp_record_find(handle);
 
-	debug("SvcRecOld: %p\n", orec);
+	debug("SvcRecOld: %p", orec);
 
 	if (orec) {
 		sdp_record_t *nrec = extract_pdu_server(BDADDR_ANY, p, handle, &scanned);
 		if (nrec && handle == nrec->handle)
 			update_db_timestamp();
 		else {
-			debug("SvcRecHandle : 0x%x\n", handle);
-			debug("SvcRecHandleNew : 0x%x\n", nrec->handle);
-			debug("SvcRecNew : %p\n", nrec);
-			debug("SvcRecOld : %p\n", orec);
-			debug("Failure to update, restore old value\n");
+			debug("SvcRecHandle : 0x%x", handle);
+			debug("SvcRecHandleNew : 0x%x", nrec->handle);
+			debug("SvcRecNew : %p", nrec);
+			debug("SvcRecOld : %p", orec);
+			debug("Failure to update, restore old value");
 
 			if (nrec)
 				sdp_record_free(nrec);
@@ -236,8 +234,6 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 	sdp_record_t *rec;
 	int status = 0;
 
-	debug("");
-	
 	/* extract service record handle */
 	p += sizeof(uint32_t);
 
@@ -250,7 +246,7 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 			update_db_timestamp();
 	} else {
 		status = SDP_INVALID_RECORD_HANDLE;
-		debug("Could not find record : 0x%x\n", handle);
+		debug("Could not find record : 0x%x", handle);
 	}
 
 	p = rsp->data;
