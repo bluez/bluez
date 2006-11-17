@@ -3,9 +3,9 @@ noinst_PROGRAMS = bluetoothd
 
 bluetoothd_SOURCES = main.c
 
-bluetoothd_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@
-			$(top_builddir)/hcid/libhciserver.a
-			$(top_builddir)/sdpd/libsdpserver.a
+bluetoothd_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ \
+			$(top_builddir)/hcid/libhciserver.a \
+			$(top_builddir)/sdpd/libsdpserver.a \
 			$(top_builddir)/common/libhelper.a
 
 if EXPAT
