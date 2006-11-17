@@ -24,6 +24,8 @@
  *
  */
 
+#include <bluetooth/sdp.h>
+
 typedef struct request {
 	bdaddr_t device;
 	bdaddr_t bdaddr;
