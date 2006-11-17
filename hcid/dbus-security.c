@@ -774,6 +774,9 @@ static DBusHandlerResult authorize_service(DBusConnection *conn,
 						(void *) &sagent))
 		return error_rejected(conn, msg);
 
+	if (!sagent)
+		return error_service_does_not_exist(conn, msg);
+
 	if (strcmp(dbus_message_get_sender(msg), sagent->id))
 		return error_rejected(conn, msg);
 
@@ -836,6 +839,9 @@ static DBusHandlerResult cancel_authorization_process(DBusConnection *conn,
 	if (!dbus_connection_get_object_path_data(conn, service_path,
 						(void *) &sagent))
 		return error_not_authorized(conn, msg);
+
+	if (!sagent)
+		return error_service_does_not_exist(conn, msg);
 
 	if (strcmp(dbus_message_get_sender(msg), sagent->id))
 		return error_not_authorized(conn, msg);
