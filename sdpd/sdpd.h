@@ -24,9 +24,6 @@
  *
  */
 
-#define sdp_get_unaligned bt_get_unaligned
-#define sdp_put_unaligned bt_put_unaligned
-
 typedef struct request {
 	bdaddr_t device;
 	bdaddr_t bdaddr;

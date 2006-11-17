@@ -98,7 +98,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			p += sizeof(uint8_t);
 			seqlen += sizeof(uint8_t);
 			pElem = malloc(sizeof(uint16_t));
-			sdp_put_unaligned(ntohs(sdp_get_unaligned((uint16_t *)p)), (uint16_t *)pElem);
+			bt_put_unaligned(ntohs(bt_get_unaligned((uint16_t *)p)), (uint16_t *)pElem);
 			p += sizeof(uint16_t);
 			seqlen += sizeof(uint16_t);
 			break;
@@ -106,7 +106,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			p += sizeof(uint8_t);
 			seqlen += sizeof(uint8_t);
 			pElem = malloc(sizeof(uint32_t));
-			sdp_put_unaligned(ntohl(sdp_get_unaligned((uint32_t *)p)), (uint32_t *)pElem);
+			bt_put_unaligned(ntohl(bt_get_unaligned((uint32_t *)p)), (uint32_t *)pElem);
 			p += sizeof(uint32_t);
 			seqlen += sizeof(uint32_t);
 			break;
@@ -259,7 +259,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		goto done;
 	}
 
-	expected = ntohs(sdp_get_unaligned((uint16_t *)pdata));
+	expected = ntohs(bt_get_unaligned((uint16_t *)pdata));
 	
 	debug("Expected count: %d", expected);
 	debug("Bytes scanned : %d", scanned);
@@ -280,13 +280,13 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	/* total service record count = 0 */
 	pTotalRecordCount = (short *)pdata;
-	sdp_put_unaligned(0, (uint16_t *)pdata);
+	bt_put_unaligned(0, (uint16_t *)pdata);
 	pdata += sizeof(uint16_t);
 	buf->data_size += sizeof(uint16_t);
 
 	/* current service record count = 0 */
 	pCurrentRecordCount = (short *)pdata;
-	sdp_put_unaligned(0, (uint16_t *)pdata);
+	bt_put_unaligned(0, (uint16_t *)pdata);
 	pdata += sizeof(uint16_t);
 	buf->data_size += sizeof(uint16_t);
 
@@ -303,7 +303,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 			if (sdp_match_uuid(pattern, rec->pattern) > 0 &&
 					sdp_check_access(rec->handle, &req->device)) {
 				rsp_count++;
-				sdp_put_unaligned(htonl(rec->handle), (uint32_t *)pdata);
+				bt_put_unaligned(htonl(rec->handle), (uint32_t *)pdata);
 				pdata += sizeof(uint32_t);
 				handleSize += sizeof(uint32_t);
 			}
@@ -312,8 +312,8 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		debug("Match count: %d", rsp_count);
 
 		buf->data_size += handleSize;
-		sdp_put_unaligned(htons(rsp_count), (uint16_t *)pTotalRecordCount);
-		sdp_put_unaligned(htons(rsp_count), (uint16_t *)pCurrentRecordCount);
+		bt_put_unaligned(htons(rsp_count), (uint16_t *)pTotalRecordCount);
+		bt_put_unaligned(htons(rsp_count), (uint16_t *)pCurrentRecordCount);
 
 		if (rsp_count > actual) {
 			/* cache the rsp and generate a continuation state */
@@ -342,7 +342,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 			if (pCache) {
 				pCacheBuffer = pCache->data;
 				/* get the rsp_count from the cached buffer */
-				rsp_count = ntohs(sdp_get_unaligned((uint16_t *)pCacheBuffer));
+				rsp_count = ntohs(bt_get_unaligned((uint16_t *)pCacheBuffer));
 
 				/* get index of the last sdp_record_t sent */
 				lastIndex = cstate->cStateValue.lastIndexSent;
@@ -368,7 +368,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		if (cstate) {
 			handleSize = 0;
 			for (i = lastIndex; (i - lastIndex) < actual && i < rsp_count; i++) {
-				sdp_put_unaligned(sdp_get_unaligned((uint32_t *)(pCacheBuffer + i * sizeof(uint32_t))), (uint32_t *)pdata);
+				bt_put_unaligned(bt_get_unaligned((uint32_t *)(pCacheBuffer + i * sizeof(uint32_t))), (uint32_t *)pdata);
 				pdata += sizeof(uint32_t);
 				handleSize += sizeof(uint32_t);
 			}
@@ -378,8 +378,8 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		}
 
 		buf->data_size += handleSize;
-		sdp_put_unaligned(htons(rsp_count), (uint16_t *)pTotalRecordCount);
-		sdp_put_unaligned(htons(i - lastIndex), (uint16_t *)pCurrentRecordCount);
+		bt_put_unaligned(htons(rsp_count), (uint16_t *)pTotalRecordCount);
+		bt_put_unaligned(htons(i - lastIndex), (uint16_t *)pCurrentRecordCount);
 
 		if (i == rsp_count) {
 			/* set "null" continuationState */
@@ -436,7 +436,7 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 	}
 	if (dtd == SDP_UINT16)
 		for (; seq; seq = seq->next) {
-			uint16_t attr = sdp_get_unaligned((uint16_t *)seq->data);
+			uint16_t attr = bt_get_unaligned((uint16_t *)seq->data);
 			sdp_data_t *a = (sdp_data_t *)sdp_data_get(rec, attr);
 			if (a)
 				sdp_append_to_pdu(buf, a);
@@ -445,7 +445,7 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 		sdp_buf_t pdu;
 		sdp_gen_record_pdu(rec, &pdu);
 		for (; seq; seq = seq->next) {
-			uint32_t range = sdp_get_unaligned((uint32_t *)seq->data);
+			uint32_t range = bt_get_unaligned((uint32_t *)seq->data);
 			uint16_t attr;
 			uint16_t low = (0xffff0000 & range) >> 16;
 			uint16_t high = 0x0000ffff & range;
@@ -497,10 +497,10 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	int max_rsp_size;
 	int status = 0, plen, mlen;
 	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
-	uint32_t handle = ntohl(sdp_get_unaligned((uint32_t *)pdata));
+	uint32_t handle = ntohl(bt_get_unaligned((uint32_t *)pdata));
 
 	pdata += sizeof(uint32_t);
-	max_rsp_size = ntohs(sdp_get_unaligned((uint16_t *)pdata));
+	max_rsp_size = ntohs(bt_get_unaligned((uint16_t *)pdata));
 	pdata += sizeof(uint16_t);
 
 	/* extract the attribute list */
@@ -596,7 +596,7 @@ done:
 		return status;
 
 	/* set attribute list byte count */
-	sdp_put_unaligned(htons(buf->data_size - cstate_size), (uint16_t *)buf->data);
+	bt_put_unaligned(htons(buf->data_size - cstate_size), (uint16_t *)buf->data);
 	buf->data_size += sizeof(uint16_t);
 	return 0;
 }
@@ -628,7 +628,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	debug("Bytes scanned: %d", scanned);
 
 	pdata += scanned;
-	max = ntohs(sdp_get_unaligned((uint16_t *)pdata));
+	max = ntohs(bt_get_unaligned((uint16_t *)pdata));
 	pdata += sizeof(uint16_t);
 
 	debug("Max Attr expected: %d", max);
@@ -746,7 +746,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	if (!status) {
 		/* set attribute list byte count */
-		sdp_put_unaligned(htons(buf->data_size - cstate_size), (uint16_t *)buf->data);
+		bt_put_unaligned(htons(buf->data_size - cstate_size), (uint16_t *)buf->data);
 		buf->data_size += sizeof(uint16_t);
 	}
 
@@ -831,7 +831,7 @@ void process_request(sdp_req_t *req)
 send_rsp:
 	if (status) {
 		rsphdr->pdu_id = SDP_ERROR_RSP;
-		sdp_put_unaligned(htons(status), (uint16_t *)rsp.data);
+		bt_put_unaligned(htons(status), (uint16_t *)rsp.data);
 		rsp.data_size = sizeof(uint16_t);
 	}
 	

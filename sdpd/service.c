@@ -56,12 +56,12 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 
 	*scanned = sdp_extract_seqtype(p, &dtd, &seqlen);
 	p += *scanned;
-	lookAheadAttrId = ntohs(sdp_get_unaligned((uint16_t *) (p + sizeof(uint8_t))));
+	lookAheadAttrId = ntohs(bt_get_unaligned((uint16_t *) (p + sizeof(uint8_t))));
 
 	debug("Look ahead attr id : %d", lookAheadAttrId);
 
 	if (lookAheadAttrId == SDP_ATTR_RECORD_HANDLE) {
-		handle = ntohl(sdp_get_unaligned((uint32_t *) (p +
+		handle = ntohl(bt_get_unaligned((uint32_t *) (p +
 				sizeof(uint8_t) + sizeof(uint16_t) +
 				sizeof(uint8_t))));
 		debug("SvcRecHandle : 0x%x", handle);
@@ -88,7 +88,7 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 		debug("Extract PDU, sequenceLength: %d localExtractedLength: %d", seqlen, localExtractedLength);
 		dtd = *(uint8_t *) p;
 
-		attrId = ntohs(sdp_get_unaligned((uint16_t *) (p + attrSize)));
+		attrId = ntohs(bt_get_unaligned((uint16_t *) (p + attrSize)));
 		attrSize += sizeof(uint16_t);
 		
 		debug("DTD of attrId : %d Attr id : 0x%x", dtd, attrId);
@@ -170,13 +170,13 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 	update_db_timestamp();
 
 	/* Build a rsp buffer */
-	sdp_put_unaligned(htonl(rec->handle), (uint32_t *) rsp->data);
+	bt_put_unaligned(htonl(rec->handle), (uint32_t *) rsp->data);
 	rsp->data_size = sizeof(uint32_t);
 
 	return 0;
 
 invalid:
-	sdp_put_unaligned(htons(SDP_INVALID_SYNTAX), (uint16_t *) rsp->data);
+	bt_put_unaligned(htons(SDP_INVALID_SYNTAX), (uint16_t *) rsp->data);
 	rsp->data_size = sizeof(uint16_t);
 
 	return -1;
@@ -190,7 +190,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 	sdp_record_t *orec;
 	int status = 0, scanned = 0;
 	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
-	uint32_t handle = ntohl(sdp_get_unaligned((uint32_t *) p));
+	uint32_t handle = ntohl(bt_get_unaligned((uint32_t *) p));
 
 	debug("Svc Rec Handle: 0x%x", handle);
 
@@ -219,7 +219,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 		status = SDP_INVALID_RECORD_HANDLE;
 
 	p = rsp->data;
-	sdp_put_unaligned(htons(status), (uint16_t *) p);
+	bt_put_unaligned(htons(status), (uint16_t *) p);
 	rsp->data_size = sizeof(uint16_t);
 	return status;
 }
@@ -230,7 +230,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 {
 	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
-	uint32_t handle = ntohl(sdp_get_unaligned((uint32_t *) p));
+	uint32_t handle = ntohl(bt_get_unaligned((uint32_t *) p));
 	sdp_record_t *rec;
 	int status = 0;
 
@@ -250,7 +250,7 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 	}
 
 	p = rsp->data;
-	sdp_put_unaligned(htons(status), (uint16_t *) p);
+	bt_put_unaligned(htons(status), (uint16_t *) p);
 	rsp->data_size = sizeof(uint16_t);
 
 	return status;
