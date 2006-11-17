@@ -33,10 +33,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <syslog.h>
 #include <getopt.h>
 #include <sys/stat.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #define _XOPEN_SOURCE 600
@@ -51,6 +49,7 @@
 #include <netinet/in.h>
 
 #include "sdpd.h"
+#include "logging.h"
 
 static int l2cap_sock, unix_sock;
 static fd_set active_fdset;
@@ -242,7 +241,7 @@ static int init_server(uint16_t mtu, int master, int public)
 	/* Create L2CAP socket */
 	l2cap_sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (l2cap_sock < 0) {
-		SDPERR("opening L2CAP socket: %s", strerror(errno));
+		error("opening L2CAP socket: %s", strerror(errno));
 		return -1;
 	}
 
@@ -250,14 +249,14 @@ static int init_server(uint16_t mtu, int master, int public)
 	l2addr.l2_family = AF_BLUETOOTH;
 	l2addr.l2_psm    = htobs(SDP_PSM);
 	if (bind(l2cap_sock, (struct sockaddr *)&l2addr, sizeof(l2addr)) < 0) {
-		SDPERR("binding L2CAP socket: %s", strerror(errno));
+		error("binding L2CAP socket: %s", strerror(errno));
 		return -1;
 	}
 
 	if (master) {
 		int opt = L2CAP_LM_MASTER;
 		if (setsockopt(l2cap_sock, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
-			SDPERR("setsockopt: %s", strerror(errno));
+			error("setsockopt: %s", strerror(errno));
 			return -1;
 		}
 	}
@@ -267,14 +266,14 @@ static int init_server(uint16_t mtu, int master, int public)
 		optlen = sizeof(opts);
 
 		if (getsockopt(l2cap_sock, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen) < 0) {
-			SDPERR("getsockopt: %s", strerror(errno));
+			error("getsockopt: %s", strerror(errno));
 			return -1;
 		}
 
 		opts.imtu = mtu;
 
 		if (setsockopt(l2cap_sock, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
-			SDPERR("setsockopt: %s", strerror(errno));
+			error("setsockopt: %s", strerror(errno));
 			return -1;
 		}
 	}
@@ -286,7 +285,7 @@ static int init_server(uint16_t mtu, int master, int public)
 	/* Create local Unix socket */
 	unix_sock = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (unix_sock < 0) {
-		SDPERR("opening UNIX socket: %s", strerror(errno));
+		error("opening UNIX socket: %s", strerror(errno));
 		return -1;
 	}
 
@@ -294,7 +293,7 @@ static int init_server(uint16_t mtu, int master, int public)
 	strcpy(unaddr.sun_path, SDP_UNIX_PATH);
 	unlink(unaddr.sun_path);
 	if (bind(unix_sock, (struct sockaddr *)&unaddr, sizeof(unaddr)) < 0) {
-		SDPERR("binding UNIX socket: %s", strerror(errno));
+		error("binding UNIX socket: %s", strerror(errno));
 		return -1;
 	}
 
@@ -308,7 +307,7 @@ static int init_server(uint16_t mtu, int master, int public)
 
 static void sig_term(int sig)
 {
-	SDPINF("terminating... \n");
+	info("terminating... \n");
 	sdp_svcdb_reset();
 	close(l2cap_sock);
 	close(unix_sock);
@@ -354,7 +353,7 @@ static inline void handle_request(int sk, uint8_t *data, int len)
 static void close_sock(int fd, int r)
 {
 	if (r < 0)
-		SDPERR("Read error: %s", strerror(errno));
+		error("Read error: %s", strerror(errno));
 	FD_CLR(fd, &active_fdset);
 	close(fd);
 	sdp_svcdb_collect_all(fd);
@@ -436,10 +435,14 @@ int main(int argc, char *argv[])
 			exit(0);
 		}
 
-	openlog("sdpd", LOG_PID | LOG_NDELAY, LOG_DAEMON);
+	start_logging("sdpd", "Bluetooth SDP daemon");
+
+#ifdef SDP_DEBUG
+	enable_debug();
+#endif
 
 	if (daemonize && daemon(0, 0)) {
-		SDPERR("Server startup failed: %s (%d)", strerror(errno), errno);
+		error("Server startup failed: %s (%d)", strerror(errno), errno);
 		return -1;
 	}
 
@@ -447,11 +450,9 @@ int main(int argc, char *argv[])
 	argv += optind;
 
 	if (init_server(mtu, master, public) < 0) {
-		SDPERR("Server initialization failed");
+		error("Server initialization failed");
 		return -1;
 	}
-
-	SDPINF("Bluetooth SDP daemon");
 
 	signal(SIGINT,  sig_term);
 	signal(SIGTERM, sig_term);
@@ -475,7 +476,7 @@ int main(int argc, char *argv[])
 
 		num = pselect(active_maxfd + 1, &mask, NULL, NULL, NULL, &sigs);
 		if (num <= 0) {
-			SDPDBG("Select error:%s", strerror(errno));
+			debug("Select error:%s", strerror(errno));
 			goto exit;
 		}
 

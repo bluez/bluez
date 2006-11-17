@@ -31,7 +31,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <malloc.h>
-#include <syslog.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -41,6 +40,7 @@
 #include <netinet/in.h>
 
 #include "sdpd.h"
+#include "logging.h"
 
 #define MIN(x, y) ((x) < (y))? (x): (y)
 
@@ -67,28 +67,28 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 
 	scanned = sdp_extract_seqtype(buf, &seqType, &data_size);
 
-	SDPDBG("Seq type : %d\n", seqType);
+	debug("Seq type : %d\n", seqType);
 	if (!scanned || (seqType != SDP_SEQ8 && seqType != SDP_SEQ16)) {
-		SDPERR("Unknown seq type \n");
+		error("Unknown seq type \n");
 		return -1;
 	}
 	p = buf + scanned;
 
-	SDPDBG("Data size : %d\n", data_size);
+	debug("Data size : %d\n", data_size);
 	for (;;) {
 		char *pElem = NULL;
 		int localSeqLength = 0;
 
 		dataType = *(uint8_t *)p;
-		SDPDBG("Data type: 0x%02x\n", dataType);
+		debug("Data type: 0x%02x\n", dataType);
 
 		if (expectedType == SDP_TYPE_UUID) {
 			if (dataType != SDP_UUID16 && dataType != SDP_UUID32 && dataType != SDP_UUID128) {
-				SDPDBG("->Unexpected Data type (expected UUID_ANY)\n");
+				debug("->Unexpected Data type (expected UUID_ANY)\n");
 				return -1;
 			}
 		} else if (expectedType != SDP_TYPE_ANY && dataType != expectedType) {
-			SDPDBG("->Unexpected Data type (expected 0x%02x)\n", expectedType);
+			debug("->Unexpected Data type (expected 0x%02x)\n", expectedType);
 			return -1;
 		}
 
@@ -125,7 +125,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		if (status == 0) {
 			pSeq = sdp_list_append(pSeq, pElem);
 			numberOfElements++;
-			SDPDBG("No of elements : %d\n", numberOfElements);
+			debug("No of elements : %d\n", numberOfElements);
 
 			if (seqlen == data_size)
 				break;
@@ -146,7 +146,7 @@ static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
 	int length = 0;
 
 	if (cstate) {
-		SDPDBG("Non null sdp_cstate_t id : 0x%lx\n", cstate->timestamp);
+		debug("Non null sdp_cstate_t id : 0x%lx\n", cstate->timestamp);
 		*(uint8_t *)pdata = sizeof(sdp_cont_state_t);
 		pdata += sizeof(uint8_t);
 		length += sizeof(uint8_t);
@@ -171,13 +171,13 @@ static sdp_cont_state_t *sdp_cstate_get(uint8_t *buffer)
 	 * Check if continuation state exists, if yes attempt
 	 * to get response remainder from cache, else send error
 	 */
-	SDPDBG("Continuation State size : %d\n", cStateSize);
+	debug("Continuation State size : %d\n", cStateSize);
 
 	pdata += sizeof(uint8_t);
 	if (cStateSize != 0) {
 		sdp_cont_state_t *cstate = (sdp_cont_state_t *)pdata;
-		SDPDBG("Cstate TS : 0x%lx\n", cstate->timestamp);
-		SDPDBG("Bytes sent : %d\n", cstate->cStateValue.maxBytesSent);
+		debug("Cstate TS : 0x%lx\n", cstate->timestamp);
+		debug("Bytes sent : %d\n", cstate->cStateValue.maxBytesSent);
 		return cstate;
 	}
 	return NULL;
@@ -203,7 +203,7 @@ static int sdp_match_uuid(sdp_list_t *search, sdp_list_t *pattern)
 	 */
 	int patlen = sdp_list_len(pattern);
 
-	SDPDBG("");
+	debug("");
 
 	if (patlen < sdp_list_len(search))
 		return -1;
@@ -243,7 +243,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 	short *pTotalRecordCount, *pCurrentRecordCount;
 	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
 
-	SDPDBG("");
+	debug("");
 
 	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
 					&pattern, &dtd, SDP_TYPE_UUID);
@@ -264,8 +264,8 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	expected = ntohs(sdp_get_unaligned((uint16_t *)pdata));
 	
-	SDPDBG("Expected count: %d\n", expected);
-	SDPDBG("Bytes scanned : %d\n", scanned);
+	debug("Expected count: %d\n", expected);
+	debug("Bytes scanned : %d\n", scanned);
 
 	pdata += sizeof(uint16_t);
 
@@ -301,7 +301,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		for (; list && rsp_count < expected; list = list->next) {
 			sdp_record_t *rec = (sdp_record_t *) list->data;
 
-			SDPDBG("Checking svcRec : 0x%x\n", rec->handle);
+			debug("Checking svcRec : 0x%x\n", rec->handle);
 				
 			if (sdp_match_uuid(pattern, rec->pattern) > 0 &&
 					sdp_check_access(rec->handle, &req->device)) {
@@ -312,7 +312,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 			}
 		}
 		
-		SDPDBG("Match count: %d\n", rsp_count);
+		debug("Match count: %d\n", rsp_count);
 
 		buf->data_size += handleSize;
 		sdp_put_unaligned(htons(rsp_count), (uint16_t *)pTotalRecordCount);
@@ -394,7 +394,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 			 */
 			sdp_cont_state_t newState;
 
-			SDPDBG("Setting non-NULL sdp_cstate_t\n");
+			debug("Setting non-NULL sdp_cstate_t\n");
 
 			if (cstate)
 				memcpy((char *)&newState, cstate, sizeof(sdp_cont_state_t));
@@ -428,13 +428,13 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 
 #ifdef SDP_DEBUG
 	if (seq)
-		SDPDBG("Entries in attr seq : %d\n", sdp_list_len(seq));
+		debug("Entries in attr seq : %d\n", sdp_list_len(seq));
 	else
-		SDPDBG("NULL attribute descriptor\n");
-	SDPDBG("AttrDataType : %d\n", dtd);
+		debug("NULL attribute descriptor\n");
+	debug("AttrDataType : %d\n", dtd);
 #endif
 	if (seq == NULL) {
-		SDPDBG("Attribute sequence is NULL\n");
+		debug("Attribute sequence is NULL\n");
 		return 0;
 	}
 	if (dtd == SDP_UINT16)
@@ -454,9 +454,9 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 			uint16_t high = 0x0000ffff & range;
 			sdp_data_t *data;
 
-			SDPDBG("attr range : 0x%x\n", range);
-			SDPDBG("Low id : 0x%x\n", low);
-			SDPDBG("High id : 0x%x\n", high);
+			debug("attr range : 0x%x\n", range);
+			debug("Low id : 0x%x\n", low);
+			debug("High id : 0x%x\n", high);
 
 			if (low == 0x0000 && high == 0xffff && pdu.data_size <= buf->buf_size) {
 				/* copy it */
@@ -476,8 +476,8 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 		}
 		free(pdu.data);
 	} else {
-		SDPERR("Unexpected data type : 0x%x\n", dtd);
-		SDPERR("Expect uint16_t or uint32_t\n");
+		error("Unexpected data type : 0x%x\n", dtd);
+		error("Expect uint16_t or uint32_t\n");
 		return SDP_INVALID_SYNTAX;
 	}
 	return 0;
@@ -502,7 +502,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
 	uint32_t handle = ntohl(sdp_get_unaligned((uint32_t *)pdata));
 
-	SDPDBG("");
+	debug("");
 
 	pdata += sizeof(uint32_t);
 	max_rsp_size = ntohs(sdp_get_unaligned((uint16_t *)pdata));
@@ -531,8 +531,8 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	 */
 	cstate = sdp_cstate_get(pdata);
 
-	SDPDBG("SvcRecHandle : 0x%x\n", handle);
-	SDPDBG("max_rsp_size : %d\n", max_rsp_size);
+	debug("SvcRecHandle : 0x%x\n", handle);
+	debug("max_rsp_size : %d\n", max_rsp_size);
 
 	/* 
 	 * Calculate Attribute size acording to MTU
@@ -548,7 +548,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	if (cstate) {
 		sdp_buf_t *pCache = sdp_get_cached_rsp(cstate);
 
-		SDPDBG("Obtained cached rsp : %p\n", pCache);
+		debug("Obtained cached rsp : %p\n", pCache);
 
 		if (pCache) {
 			short sent = MIN(max_rsp_size, pCache->data_size - cstate->cStateValue.maxBytesSent);
@@ -557,7 +557,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 			buf->data_size += sent;
 			cstate->cStateValue.maxBytesSent += sent;
 
-			SDPDBG("Response size : %d sending now : %d bytes sent so far : %d\n",
+			debug("Response size : %d sending now : %d bytes sent so far : %d\n",
 				pCache->data_size, sent, cstate->cStateValue.maxBytesSent);
 			if (cstate->cStateValue.maxBytesSent == pCache->data_size)
 				cstate_size = sdp_set_cstate_pdu(buf, NULL);
@@ -565,7 +565,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 				cstate_size = sdp_set_cstate_pdu(buf, cstate);
 		} else {
 			status = SDP_INVALID_CSTATE;
-			SDPERR("NULL cache buffer and non-NULL continuation state\n");
+			error("NULL cache buffer and non-NULL continuation state\n");
 		}
 	} else {
 		sdp_record_t *rec = sdp_record_find(handle);
@@ -579,7 +579,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 			 * Reset the buffer size to the maximum expected and
 			 * set the sdp_cont_state_t
 			 */
-			SDPDBG("Creating continuation state of size : %d\n", buf->data_size);
+			debug("Creating continuation state of size : %d\n", buf->data_size);
 			buf->data_size = max_rsp_size;
 			newState.cStateValue.maxBytesSent = max_rsp_size;
 			cstate_size = sdp_set_cstate_pdu(buf, &newState);
@@ -630,13 +630,13 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	}
 	totscanned = scanned;
 
-	SDPDBG("Bytes scanned: %d", scanned);
+	debug("Bytes scanned: %d", scanned);
 
 	pdata += scanned;
 	max = ntohs(sdp_get_unaligned((uint16_t *)pdata));
 	pdata += sizeof(uint16_t);
 
-	SDPDBG("Max Attr expected: %d", max);
+	debug("Max Attr expected: %d", max);
 
 	/* extract the attribute list */
 	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
@@ -687,10 +687,10 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 				rsp_count++;
 				status = extract_attrs(rec, seq, dtd, &tmpbuf);
 
-				SDPDBG("Response count : %d\n", rsp_count);
-				SDPDBG("Local PDU size : %d\n", tmpbuf.data_size);
+				debug("Response count : %d\n", rsp_count);
+				debug("Local PDU size : %d\n", tmpbuf.data_size);
 				if (status) {
-					SDPDBG("Extract attr from record returns err\n");
+					debug("Extract attr from record returns err\n");
 					break;
 				}
 				if (buf->data_size + tmpbuf.data_size < buf->buf_size) {
@@ -699,10 +699,10 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 					tmpbuf.data_size = 0;
 					memset(tmpbuf.data, 0, USHRT_MAX);
 				} else {
-					SDPERR("Relocation needed\n");
+					error("Relocation needed\n");
 					break;
 				}
-				SDPDBG("Net PDU size : %d\n", buf->data_size);
+				debug("Net PDU size : %d\n", buf->data_size);
 			}
 		}
 		if (buf->data_size > max) {
@@ -734,7 +734,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 				cstate_size = sdp_set_cstate_pdu(buf, cstate);
 		} else {
 			status = SDP_INVALID_CSTATE;
-			SDPDBG("Non-null continuation state, but null cache buffer\n");
+			debug("Non-null continuation state, but null cache buffer\n");
 		}
 	}
 
@@ -779,7 +779,7 @@ void process_request(sdp_req_t *req)
 	int sent = 0;
 	int status = SDP_INVALID_SYNTAX;
 
-	SDPDBG("");
+	debug("");
 
 	memset(buf, 0, USHRT_MAX);
 	rsp.data = buf + sizeof(sdp_pdu_hdr_t);
@@ -793,44 +793,44 @@ void process_request(sdp_req_t *req)
 	}
 	switch (reqhdr->pdu_id) {
 	case SDP_SVC_SEARCH_REQ:
-		SDPDBG("Got a svc srch req\n");
+		debug("Got a svc srch req\n");
 		status = service_search_req(req, &rsp);
 		rsphdr->pdu_id = SDP_SVC_SEARCH_RSP;
 		break;
 	case SDP_SVC_ATTR_REQ:
-		SDPDBG("Got a svc attr req\n");
+		debug("Got a svc attr req\n");
 		status = service_attr_req(req, &rsp);
 		rsphdr->pdu_id = SDP_SVC_ATTR_RSP;
 		break;
 	case SDP_SVC_SEARCH_ATTR_REQ:
-		SDPDBG("Got a svc srch attr req\n");
+		debug("Got a svc srch attr req\n");
 		status = service_search_attr_req(req, &rsp);
 		rsphdr->pdu_id = SDP_SVC_SEARCH_ATTR_RSP;
 		break;
 	/* Following requests are allowed only for local connections */
 	case SDP_SVC_REGISTER_REQ:
-		SDPDBG("Service register request\n");
+		debug("Service register request\n");
 		if (req->local) {
 			status = service_register_req(req, &rsp);
 			rsphdr->pdu_id = SDP_SVC_REGISTER_RSP;
 		}
 		break;
 	case SDP_SVC_UPDATE_REQ:
-		SDPDBG("Service update request\n");
+		debug("Service update request\n");
 		if (req->local) {
 			status = service_update_req(req, &rsp);
 			rsphdr->pdu_id = SDP_SVC_UPDATE_RSP;
 		}
 		break;
 	case SDP_SVC_REMOVE_REQ:
-		SDPDBG("Service removal request\n");
+		debug("Service removal request\n");
 		if (req->local) {
 			status = service_remove_req(req, &rsp);
 			rsphdr->pdu_id = SDP_SVC_REMOVE_RSP;
 		}
 		break;
 	default:
-		SDPERR("Unknown PDU ID : 0x%x received\n", reqhdr->pdu_id);
+		error("Unknown PDU ID : 0x%x received\n", reqhdr->pdu_id);
 		status = SDP_INVALID_SYNTAX;
 		break;
 	}
@@ -842,7 +842,7 @@ send_rsp:
 		rsp.data_size = sizeof(uint16_t);
 	}
 	
-	SDPDBG("Sending rsp. status %d", status);
+	debug("Sending rsp. status %d", status);
 
 	rsphdr->tid  = reqhdr->tid;
 	rsphdr->plen = htons(rsp.data_size);
@@ -854,7 +854,7 @@ send_rsp:
 	/* stream the rsp PDU */
 	sent = send(req->sock, rsp.data, rsp.data_size, 0);
 
-	SDPDBG("Bytes Sent : %d\n", sent);
+	debug("Bytes Sent : %d\n", sent);
 
 	free(rsp.data);
 	free(req->buf);

@@ -30,7 +30,6 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <syslog.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -40,6 +39,7 @@
 #include <netinet/in.h>
 
 #include "sdpd.h"
+#include "logging.h"
 
 extern void update_db_timestamp(void);
 
@@ -58,13 +58,13 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 	p += *scanned;
 	lookAheadAttrId = ntohs(sdp_get_unaligned((uint16_t *) (p + sizeof(uint8_t))));
 
-	SDPDBG("Look ahead attr id : %d\n", lookAheadAttrId);
+	debug("Look ahead attr id : %d\n", lookAheadAttrId);
 
 	if (lookAheadAttrId == SDP_ATTR_RECORD_HANDLE) {
 		handle = ntohl(sdp_get_unaligned((uint32_t *) (p +
 				sizeof(uint8_t) + sizeof(uint16_t) +
 				sizeof(uint8_t))));
-		SDPDBG("SvcRecHandle : 0x%x\n", handle);
+		debug("SvcRecHandle : 0x%x\n", handle);
 		rec = sdp_record_find(handle);
 	} else if (handleExpected != 0xffffffff)
 		rec = sdp_record_find(handleExpected);
@@ -85,33 +85,33 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 		int attrSize = sizeof(uint8_t);
 		int attrValueLength = 0;
 
-		SDPDBG("Extract PDU, sequenceLength: %d localExtractedLength: %d", seqlen, localExtractedLength);
+		debug("Extract PDU, sequenceLength: %d localExtractedLength: %d", seqlen, localExtractedLength);
 		dtd = *(uint8_t *) p;
 
 		attrId = ntohs(sdp_get_unaligned((uint16_t *) (p + attrSize)));
 		attrSize += sizeof(uint16_t);
 		
-		SDPDBG("DTD of attrId : %d Attr id : 0x%x \n", dtd, attrId);
+		debug("DTD of attrId : %d Attr id : 0x%x \n", dtd, attrId);
 
 		pAttr = sdp_extract_attr(p + attrSize, &attrValueLength, rec);
 
-		SDPDBG("Attr id : 0x%x attrValueLength : %d\n", attrId, attrValueLength);
+		debug("Attr id : 0x%x attrValueLength : %d\n", attrId, attrValueLength);
 
 		attrSize += attrValueLength;
 		if (pAttr == NULL) {
-			SDPDBG("Terminating extraction of attributes");
+			debug("Terminating extraction of attributes");
 			break;
 		}
 		localExtractedLength += attrSize;
 		p += attrSize;
 		sdp_attr_replace(rec, attrId, pAttr);
 		extractStatus = 0;
-		SDPDBG("Extract PDU, seqLength: %d localExtractedLength: %d",
+		debug("Extract PDU, seqLength: %d localExtractedLength: %d",
 					seqlen, localExtractedLength);
 	}
 
 	if (extractStatus == 0) {
-		SDPDBG("Successful extracting of Svc Rec attributes\n");
+		debug("Successful extracting of Svc Rec attributes\n");
 #ifdef SDP_DEBUG
 		sdp_print_service_attr(rec->attrlist);
 #endif
@@ -192,26 +192,26 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
 	uint32_t handle = ntohl(sdp_get_unaligned((uint32_t *) p));
 
-	SDPDBG("");
+	debug("");
 
-	SDPDBG("Svc Rec Handle: 0x%x\n", handle);
+	debug("Svc Rec Handle: 0x%x\n", handle);
 
 	p += sizeof(uint32_t);
 
 	orec = sdp_record_find(handle);
 
-	SDPDBG("SvcRecOld: 0x%x\n", (uint32_t)orec);
+	debug("SvcRecOld: %p\n", orec);
 
 	if (orec) {
 		sdp_record_t *nrec = extract_pdu_server(BDADDR_ANY, p, handle, &scanned);
 		if (nrec && handle == nrec->handle)
 			update_db_timestamp();
 		else {
-			SDPDBG("SvcRecHandle : 0x%x\n", handle);
-			SDPDBG("SvcRecHandleNew : 0x%x\n", nrec->handle);
-			SDPDBG("SvcRecNew : 0x%x\n", (uint32_t) nrec);
-			SDPDBG("SvcRecOld : 0x%x\n", (uint32_t) orec);
-			SDPDBG("Failure to update, restore old value\n");
+			debug("SvcRecHandle : 0x%x\n", handle);
+			debug("SvcRecHandleNew : 0x%x\n", nrec->handle);
+			debug("SvcRecNew : %p\n", nrec);
+			debug("SvcRecOld : %p\n", orec);
+			debug("Failure to update, restore old value\n");
 
 			if (nrec)
 				sdp_record_free(nrec);
@@ -236,7 +236,7 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 	sdp_record_t *rec;
 	int status = 0;
 
-	SDPDBG("");
+	debug("");
 	
 	/* extract service record handle */
 	p += sizeof(uint32_t);
@@ -250,7 +250,7 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 			update_db_timestamp();
 	} else {
 		status = SDP_INVALID_RECORD_HANDLE;
-		SDPDBG("Could not find record : 0x%x\n", handle);
+		debug("Could not find record : 0x%x\n", handle);
 	}
 
 	p = rsp->data;

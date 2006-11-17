@@ -2,7 +2,8 @@
 sbin_PROGRAMS = sdpd
 
 sdpd_SOURCES = main.c request.c service.c cstate.c servicedb.c sdpd.h
-sdpd_LDADD = @BLUEZ_LIBS@
+
+sdpd_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 

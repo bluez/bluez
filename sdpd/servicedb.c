@@ -31,7 +31,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <malloc.h>
-#include <syslog.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -40,6 +39,7 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "sdpd.h"
+#include "logging.h"
 
 static sdp_list_t *service_db;
 static sdp_list_t *access_db;
@@ -60,7 +60,7 @@ static int record_sort(const void *r1, const void *r2)
 	const sdp_record_t *rec2 = (const sdp_record_t *) r2;
 
 	if (!rec1 || !rec2) {
-		SDPERR("NULL RECORD LIST FATAL\n");
+		error("NULL RECORD LIST FATAL\n");
 		return -1;
 	}
 
@@ -73,7 +73,7 @@ static int access_sort(const void *r1, const void *r2)
 	const sdp_access_t *rec2 = (const sdp_access_t *) r2;
 
 	if (!rec1 || !rec2) {
-		SDPERR("NULL RECORD LIST FATAL\n");
+		error("NULL RECORD LIST FATAL\n");
 		return -1;
 	}
 
@@ -170,8 +170,8 @@ void sdp_record_add(bdaddr_t *device, sdp_record_t *rec)
 	sdp_access_t *dev;
 
 #ifdef SDP_DEBUG
-	SDPDBG("Adding rec : 0x%lx\n", (long) rec);
-	SDPDBG("with handle : 0x%x\n", rec->handle);
+	debug("Adding rec : 0x%lx\n", (long) rec);
+	debug("with handle : 0x%x\n", rec->handle);
 #endif
 	service_db = sdp_list_insert_sorted(service_db, rec, record_sort);
 
@@ -196,7 +196,7 @@ static sdp_list_t *record_locate(uint32_t handle)
 		return p;
 	}
 
-	SDPDBG("Could not find svcRec for : 0x%x\n", handle);
+	debug("Could not find svcRec for : 0x%x\n", handle);
 	return NULL;
 }
 
@@ -211,7 +211,7 @@ static sdp_list_t *access_locate(uint32_t handle)
 		return p;
 	}
 
-	SDPDBG("Could not find access data for : 0x%x\n", handle);
+	debug("Could not find access data for : 0x%x\n", handle);
 	return NULL;
 }
 
@@ -223,7 +223,7 @@ sdp_record_t *sdp_record_find(uint32_t handle)
 	sdp_list_t *p = record_locate(handle);
 
         if (!p) {
-		SDPDBG("Couldn't find record for : 0x%x\n", handle);
+		debug("Couldn't find record for : 0x%x\n", handle);
 		return 0;
 	}
 
@@ -240,7 +240,7 @@ int sdp_record_remove(uint32_t handle)
 	sdp_access_t *a;
 
 	if (!p) {
-		SDPERR("Remove : Couldn't find record for : 0x%x\n", handle);
+		error("Remove : Couldn't find record for : 0x%x\n", handle);
 		return -1;
 	}
 
