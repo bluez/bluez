@@ -733,7 +733,9 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 
 		dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
 
-		return send_message_and_unref(conn, forward);
+		dbus_message_unref(forward);
+
+		return DBUS_HANDLER_RESULT_HANDLED;
 	} else
 		return error_unknown_method(conn, msg);
 }
