@@ -34,11 +34,10 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <getopt.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-
 #define _XOPEN_SOURCE 600
+#include <sys/stat.h>
 #include <sys/select.h>
+#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
