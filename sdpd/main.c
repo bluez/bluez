@@ -400,6 +400,11 @@ static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer da
 	} else
 		return FALSE;
 
+	if (nsk < 0) {
+		error("Can't accept connection: %s", strerror(errno));
+		return TRUE;
+	}
+
 	io = g_io_channel_unix_new(nsk);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
