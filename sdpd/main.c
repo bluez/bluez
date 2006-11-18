@@ -382,6 +382,11 @@ static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer da
 	GIOChannel *io;
 	int nsk;
 
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		g_io_channel_unref(chan);
+		return FALSE;
+	}
+
 	if (data == &l2cap_sock) {
 		struct sockaddr_l2 addr;
 		socklen_t len = sizeof(addr);
