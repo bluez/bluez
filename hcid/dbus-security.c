@@ -850,6 +850,9 @@ static DBusHandlerResult cancel_authorization_process(DBusConnection *conn,
 	if (strcmp(dbus_message_get_sender(msg), sagent->id))
 		return error_not_authorized(conn, msg);
 
+	if (!default_auth_agent)
+		return error_auth_agent_does_not_exist(conn, msg);
+
 	return auth_agent_send_cancel(msg, default_auth_agent, adapter_path,
 						address, service_path, action);
 }
