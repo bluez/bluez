@@ -171,6 +171,9 @@ int dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel, int type)
 	case ACTIVESYNC:
 		sdp_uuid128_create(&svclass, (void *) async_uuid);
 		break;
+	case DIALUP:
+		sdp_uuid16_create(&svclass, DIALUP_NET_SVCLASS_ID);
+		break;
 	default:
 		sdp_uuid16_create(&svclass, LAN_ACCESS_SVCLASS_ID);
 		break;
