@@ -14,6 +14,8 @@ AM_CFLAGS = @BLUEZ_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
+BUILT_SOURCES = parser.h
+
 man_MANS = rfcomm.1
 
 AM_YFLAGS = -d
