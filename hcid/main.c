@@ -289,7 +289,7 @@ static void configure_device(int hdev)
 
 	/* Set scan mode */
 	if (!read_device_mode(&di.bdaddr, mode, sizeof(mode))) {
-		if (!strcmp(mode, MODE_OFF))
+		if (!strcmp(mode, MODE_OFF) && hcid.offmode == HCID_OFFMODE_NOSCAN)
 			device_opts->scan = SCAN_DISABLED;
 		else if (!strcmp(mode, MODE_CONNECTABLE))
 			device_opts->scan = SCAN_PAGE;
@@ -302,12 +302,10 @@ static void configure_device(int hdev)
 		}
 	}
 
-	if (!(hcid.offmode == HCID_OFFMODE_DEVDOWN && !strcmp(mode, MODE_OFF))) {
-		dr.dev_opt = device_opts->scan;
-		if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
-			error("Can't set scan mode on hci%d: %s (%d)",
-					hdev, strerror(errno), errno);
-		}
+	dr.dev_opt = device_opts->scan;
+	if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
+		error("Can't set scan mode on hci%d: %s (%d)",
+				hdev, strerror(errno), errno);
 	}
 
 	/* Set device name */
