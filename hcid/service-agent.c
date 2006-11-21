@@ -27,11 +27,14 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <getopt.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #include <dbus/dbus.h>
 
@@ -39,6 +42,7 @@
 
 static char *name = NULL;
 static char *description = NULL;
+static char *filename = NULL;
 
 static volatile sig_atomic_t __io_canceled = 0;
 static volatile sig_atomic_t __io_terminated = 0;
@@ -180,11 +184,12 @@ static const DBusObjectPathVTable service_table = {
 	.message_function = service_message,
 };
 
-static int add_record(DBusConnection *conn, const char *service_path)
+static int append_record_from_blob(DBusMessage *msg)
 {
-	DBusMessage *msg, *reply;
 	DBusMessageIter iter, array_iter;
-	DBusError err;
+	dbus_message_iter_init_append(msg, &iter);
+	int i;
+
 	unsigned char record[] = {
 			0x35, 0x59, 0x09, 0x00, 0x01, 0x35, 0x03, 0x19,
 	  		0x11, 0x01, 0x09, 0x00, 0x04, 0x35, 0x0c, 0x35,
@@ -199,10 +204,60 @@ static int add_record(DBusConnection *conn, const char *service_path)
 	  		0x01, 0x25, 0x08, 0x43, 0x4f, 0x4d, 0x20, 0x50,
 	  		0x6f, 0x72, 0x74 };
 
-	int i;
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_BYTE_AS_STRING, &array_iter);
 
+	for (i = 0; i < sizeof(record); i++)
+		dbus_message_iter_append_basic(&array_iter,
+					DBUS_TYPE_BYTE, &record[i]);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return 0;
+}
+
+static int append_record_from_file(DBusMessage *msg)
+{
+	struct stat st;
+	char *record;
+	int fd;
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0)
+		return -1;
+
+	if (fstat(fd, &st) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	record = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (!record || record == MAP_FAILED) {
+		close(fd);
+		return -1;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &record,
+						DBUS_TYPE_INVALID);
+
+	munmap(record, st.st_size);
+
+	close(fd);
+
+	return 0;
+}
+
+static int add_record(DBusConnection *conn, const char *service_path)
+{
+	DBusMessage *msg, *reply;
+	DBusError error;
+	const char *method;
+	int err;
+
+	method = filename ? "AddServiceRecordAsXML" : "AddServiceRecord";
+		
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-					INTERFACE, "AddServiceRecord");
+						INTERFACE, method);
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");
 		return -1;
@@ -211,28 +266,28 @@ static int add_record(DBusConnection *conn, const char *service_path)
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &service_path,
 							DBUS_TYPE_INVALID);
 
-	dbus_message_iter_init_append(msg, &iter);
+	if (filename)
+		err = append_record_from_file(msg);
+	else
+		err = append_record_from_blob(msg);
 
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_BYTE_AS_STRING, &array_iter);
+	if (err < 0) {
+		fprintf(stderr, "Can't create service record\n");
+		dbus_message_unref(msg);
+		return -1;
+	}
 
-	for (i = 0; i < sizeof(record); i++)
-		dbus_message_iter_append_basic(&array_iter,
-						DBUS_TYPE_BYTE, &record[i]);
+	dbus_error_init(&error);
 
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-	dbus_error_init(&err);
-
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &error);
 
 	dbus_message_unref(msg);
 
 	if (!reply) {
 		fprintf(stderr, "Can't register service record\n");
-		if (dbus_error_is_set(&err)) {
-			fprintf(stderr, "%s\n", err.message);
-			dbus_error_free(&err);
+		if (dbus_error_is_set(&error)) {
+			fprintf(stderr, "%s\n", error.message);
+			dbus_error_free(&error);
 		}
 		return -1;
 	}
@@ -247,7 +302,7 @@ static int add_record(DBusConnection *conn, const char *service_path)
 static int register_service(DBusConnection *conn, const char *service_path)
 {
 	DBusMessage *msg, *reply;
-	DBusError err;
+	DBusError error;
 
 	if (!dbus_connection_register_object_path(conn, service_path,
 							&service_table, NULL)) {
@@ -267,17 +322,17 @@ static int register_service(DBusConnection *conn, const char *service_path)
 					DBUS_TYPE_STRING, &description,
 							DBUS_TYPE_INVALID);
 
-	dbus_error_init(&err);
+	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &error);
 
 	dbus_message_unref(msg);
 
 	if (!reply) {
 		fprintf(stderr, "Can't register service agent\n");
-		if (dbus_error_is_set(&err)) {
-			fprintf(stderr, "%s\n", err.message);
-			dbus_error_free(&err);
+		if (dbus_error_is_set(&error)) {
+			fprintf(stderr, "%s\n", error.message);
+			dbus_error_free(&error);
 		}
 		return -1;
 	}
@@ -292,7 +347,7 @@ static int register_service(DBusConnection *conn, const char *service_path)
 static int unregister_service(DBusConnection *conn, const char *service_path)
 {
 	DBusMessage *msg, *reply;
-	DBusError err;
+	DBusError error;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 					INTERFACE, "UnregisterService");
@@ -305,17 +360,17 @@ static int unregister_service(DBusConnection *conn, const char *service_path)
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &service_path,
 							DBUS_TYPE_INVALID);
 
-	dbus_error_init(&err);
+	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &error);
 
 	dbus_message_unref(msg);
 
 	if (!reply) {
 		fprintf(stderr, "Can't unregister service agent\n");
-		if (dbus_error_is_set(&err)) {
-			fprintf(stderr, "%s\n", err.message);
-			dbus_error_free(&err);
+		if (dbus_error_is_set(&error)) {
+			fprintf(stderr, "%s\n", error.message);
+			dbus_error_free(&error);
 		}
 		return -1;
 	}
@@ -336,7 +391,8 @@ static void usage(void)
 	printf("Usage:\n"
 		"\tservice-agent [--name service-name]"
 			" [--description service-description]"
-			" [--path service-path]\n"
+			" [--path service-path]"
+			" [--file service-record]\n"
 		"\n");
 }
 
@@ -344,6 +400,7 @@ static struct option main_options[] = {
 	{ "name",		1, 0, 'n' },
 	{ "description",	1, 0, 'd' },
 	{ "path",		1, 0, 'p' },
+	{ "file",		1, 0, 'f' },
 	{ "help",		0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
@@ -358,7 +415,7 @@ int main(int argc, char *argv[])
 	snprintf(default_path, sizeof(default_path),
 				"/org/bluez/service_agent_%d", getpid());
 
-	while ((opt = getopt_long(argc, argv, "+n:d:p:h", main_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+n:d:p:f:h", main_options, NULL)) != EOF) {
 		switch(opt) {
 		case 'n':
 			name = strdup(optarg);
@@ -372,6 +429,9 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 			service_path = strdup(optarg);
+			break;
+		case 'f':
+			filename = strdup(optarg);
 			break;
 		case 'h':
 			usage();
@@ -433,6 +493,9 @@ int main(int argc, char *argv[])
 
 	if (description)
 		free(description);
+
+	if (filename);
+		free(filename);
 
 	dbus_connection_unref(conn);
 
