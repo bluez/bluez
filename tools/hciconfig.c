@@ -253,11 +253,6 @@ static void cmd_up(int ctl, int hdev, char *opt)
 						hdev, strerror(errno), errno);
 		exit(1);
 	}
-	if (ioctl(ctl, HCIGETDEVINFO, (void *) &di) < 0)
-		return;
-	if (hci_test_bit(HCI_RAW, &di.flags))
-		return;
-	cmd_scan(ctl, hdev, "piscan");
 }
 
 static void cmd_down(int ctl, int hdev, char *opt)
