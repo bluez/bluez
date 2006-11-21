@@ -397,6 +397,7 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	const char* scan_mode;
 	uint8_t hci_mode;
 	const uint8_t current_mode = adapter->mode;
+	bdaddr_t local;
 	int dd;
 
 	dbus_error_init(&err);
@@ -422,6 +423,8 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	else
 		return error_invalid_arguments(conn, msg);
 
+	str2ba(adapter->address, &local);
+
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
@@ -430,9 +433,6 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			(hcid.offmode == HCID_OFFMODE_NOSCAN ||
 			 (hcid.offmode == HCID_OFFMODE_DEVDOWN &&
 			  hci_mode != SCAN_DISABLED))) {
-		bdaddr_t local;
-
-		str2ba(adapter->address, &local);
 		/* The new value will be loaded when the adapter comes UP */
 		write_device_mode(&local, scan_mode);
 
@@ -456,6 +456,8 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			hci_close_dev(dd);
 			return error_failed(conn, msg, errno);
 		}
+
+		write_device_mode(&local, scan_mode);
 
 		goto done;
 	}

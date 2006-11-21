@@ -302,10 +302,12 @@ static void configure_device(int hdev)
 		}
 	}
 
-	dr.dev_opt = device_opts->scan;
-	if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
-		error("Can't set scan mode on hci%d: %s (%d)",
-				hdev, strerror(errno), errno);
+	if (!(hcid.offmode == HCID_OFFMODE_DEVDOWN && !strcmp(mode, MODE_OFF))) {
+		dr.dev_opt = device_opts->scan;
+		if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
+			error("Can't set scan mode on hci%d: %s (%d)",
+					hdev, strerror(errno), errno);
+		}
 	}
 
 	/* Set device name */
@@ -416,6 +418,16 @@ static void init_device(int hdev)
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		exit(0);
+
+	if (hcid.offmode == HCID_OFFMODE_DEVDOWN) {
+		char mode[16];
+
+		if (read_device_mode(&di.bdaddr, mode, sizeof(mode)) == 0
+				&& strcmp(mode, "off") == 0) {
+			ioctl(dd, HCIDEVDOWN, dev_id);
+			exit(0);
+		}
+	}
 
 	memset(&dr, 0, sizeof(dr));
 	dr.dev_id   = dev_id;
