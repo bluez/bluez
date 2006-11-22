@@ -28,12 +28,15 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <malloc.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <dbus/dbus.h>
 
@@ -45,6 +48,7 @@
 #include "dbus-security.h"
 #include "dbus-service.h"
 #include "dbus-manager.h"
+#include "sdp-xml.h"
 
 static int default_adapter_id = -1;
 static int autostart = 1;
@@ -473,6 +477,104 @@ fail:
 	return error_failed(conn, msg, err);
 }
 
+static DBusHandlerResult add_service_record_xml(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct service_agent *agent;
+	DBusMessage *reply;
+	struct binary_record *rec;
+	sdp_record_t *sdp_rec;
+	const char *path;
+	const char *record;
+	int err;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_STRING, &record,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (!dbus_connection_get_object_path_data(conn, path,
+						(void *) &agent)) {
+		/* If failed the path is invalid! */
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (!agent || strcmp(dbus_message_get_sender(msg), agent->id))
+		return error_not_authorized(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	sdp_rec = sdp_xml_parse_record(record, strlen(record));
+	if (!sdp_rec) {
+		error("Parsing of XML service record failed");
+		dbus_message_unref(reply);
+		return error_invalid_arguments(conn, msg);
+	}
+
+        /* TODO: Is this correct? We remove the record handle attribute
+	   (if it exists) so SDP server assigns a new one */
+        sdp_attr_remove(sdp_rec, 0x0);
+
+	rec = binary_record_new();
+	if (!rec) {
+		sdp_record_free(sdp_rec);
+		dbus_message_unref(reply);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	rec->buf = malloc(sizeof(sdp_buf_t));
+
+	if (!rec->buf) {
+		sdp_record_free(sdp_rec);
+		binary_record_free(rec);
+		dbus_message_unref(reply);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	/* Generate binary record */
+	if (sdp_gen_record_pdu(sdp_rec, rec->buf) != 0) {
+		sdp_record_free(sdp_rec);
+		binary_record_free(rec);
+		dbus_message_unref(reply);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	sdp_record_free(sdp_rec);
+
+	/* Assign a new handle */
+	rec->ext_handle = next_handle++;
+
+	if (agent->running) {
+		uint32_t handle = 0;
+
+		if (register_sdp_record(rec->buf->data,	rec->buf->data_size, &handle) < 0) {
+			err = errno;
+			error("Service record registration failed: %s (%d)",
+							strerror(err), err);
+			goto fail;
+		}
+
+		rec->handle = handle;
+	}
+
+	agent->records = slist_append(agent->records, rec);
+
+	dbus_message_append_args(reply,
+				DBUS_TYPE_UINT32, &rec->ext_handle,
+				DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+
+fail:
+	binary_record_free(rec);
+	dbus_message_unref(reply);
+
+	return error_failed(conn, msg, err);
+}
+
 static DBusHandlerResult remove_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -532,6 +634,7 @@ static struct service_data methods[] = {
 	{ "RegisterService",	register_service			},
 	{ "UnregisterService",	unregister_service			},
 	{ "AddServiceRecord",		add_service_record		},
+	{ "AddServiceRecordAsXML", 	add_service_record_xml		},
 	{ "RemoveServiceRecord",	remove_service_record		},
 	{ NULL, NULL }
 };

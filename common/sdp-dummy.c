@@ -25,4 +25,15 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <errno.h>
+
+#include "logging.h"
 #include "sdp-xml.h"
+
+sdp_record_t *sdp_xml_parse_record(const char *data, int size)
+{
+	error("No XML parser available");
+
+	return -1;
+}
