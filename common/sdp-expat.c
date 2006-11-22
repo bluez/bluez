@@ -112,7 +112,7 @@ static sdp_data_t *sdp_xml_parse_datatype(const char *el,
 {
 	const char *data = context->stack_head->text;
 
-	if (!strcmp(el, "bool"))
+	if (!strcmp(el, "boolean"))
 		return sdp_xml_parse_int(data, SDP_BOOL);
 	else if (!strcmp(el, "uint8"))
 		return sdp_xml_parse_int(data, SDP_UINT8);
