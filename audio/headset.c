@@ -88,6 +88,7 @@ static GIOChannel *server_sk = NULL;
 static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 					const char *address);
 static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg);
+static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg);
 
 static int set_nonblocking(int fd, int *err)
 {
@@ -176,6 +177,11 @@ static DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *ms
 static DBusHandlerResult err_connect_failed(DBusConnection *conn, DBusMessage *msg, int err)
 {
 	return error_reply(conn, msg, "org.bluez.Error.ConnectFailed", strerror(err));
+}
+
+static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_reply(conn, msg, "org.bluez.Error.Failed", "Failed");
 }
 
 static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, struct hs_connection *hs)
@@ -449,7 +455,7 @@ static int create_ag_record(sdp_buf_t *buf, uint8_t ch)
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
 
-	sdp_uuid16_create(&svclass_uuid, HEADSET_SVCLASS_ID);
+	sdp_uuid16_create(&svclass_uuid, HEADSET_AGW_SVCLASS_ID);
 	svclass_id = sdp_list_append(0, &svclass_uuid);
 	sdp_uuid16_create(&ga_svclass_uuid, GENERIC_AUDIO_SVCLASS_ID);
 	svclass_id = sdp_list_append(svclass_id, &ga_svclass_uuid);
@@ -724,6 +730,9 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 
 	if (strcmp(member, "Disconnect") == 0)
 		return hs_disconnect(conn, msg);
+
+	if (strcmp(member, "Ring") == 0)
+		return hs_ring(conn, msg);
 
 	/* Handle Headset interface methods here */
 
@@ -1027,6 +1036,8 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 
 	memset(c, 0, sizeof(struct pending_connect));
 
+	str2ba(address, &c->bda);
+
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
 						"org.bluez.Adapter",
 						"GetRemoteServiceHandles");
@@ -1051,6 +1062,33 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 	dbus_message_unref(msg);
 
 	return DBUS_HANDLER_RESULT_HANDLED;;
+}
+
+static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	const char *ring_str = "RING\r";
+	int sk, ret;
+
+	if (!connected_hs)
+		return err_not_connected(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	sk = g_io_channel_unix_get_fd(connected_hs->rfcomm);
+
+	ret = write(sk, ring_str, strlen(ring_str));
+	if (ret < strlen(ring_str)) {
+		dbus_message_unref(reply);
+		return err_failed(conn, msg);
+	}
+
+	dbus_connection_send(conn, reply, NULL);
+	dbus_message_unref(reply);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 int main(int argc, char *argv[])
