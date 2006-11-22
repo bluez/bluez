@@ -50,6 +50,8 @@
 #include "logging.h"
 #include "glib-ectomy.c"
 
+#define RING_INTERVAL 3000
+
 #define HEADSET_PATH "/org/bluez/headset"
 static const char *hs_path = HEADSET_PATH;
 
@@ -65,6 +67,7 @@ struct hs_connection {
 	char address[18];
 	GIOChannel *rfcomm;
 	GIOChannel *sco;
+	guint ring_timer;
 };
 
 static gboolean connect_in_progress = FALSE;
@@ -89,6 +92,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 					const char *address);
 static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg);
 static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg);
+static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn, DBusMessage *msg);
 
 static int set_nonblocking(int fd, int *err)
 {
@@ -205,6 +209,11 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, struct hs_conn
 	if (ret > 0) {
 		buf[ret] = '\0';
 		printf("%s\n", buf);
+	}
+
+	if (connected_hs->ring_timer) {
+		g_timeout_remove(connected_hs->ring_timer);
+		connected_hs->ring_timer = 0;
 	}
 
 	return TRUE;
@@ -734,6 +743,9 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 	if (strcmp(member, "Ring") == 0)
 		return hs_ring(conn, msg);
 
+	if (strcmp(member, "CancelRinging") == 0)
+		return hs_cancel_ringing(conn, msg);
+
 	/* Handle Headset interface methods here */
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -1064,11 +1076,41 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_HANDLED;;
 }
 
+static int send_ring(GIOChannel *io)
+{
+	const char *ring_str = "\r\nRING\r\n";
+	int sk, written, len;
+
+	sk = g_io_channel_unix_get_fd(connected_hs->rfcomm);
+
+	len = strlen(ring_str);
+	written = 0;
+
+	while (written < len) {
+		int ret;
+
+		ret = write(sk, ring_str + written, len - written);
+
+		if (ret < 0)
+			return ret;
+
+		written += ret;
+	}
+
+	return 0;
+}
+
+static gboolean ring_timer(gpointer user_data)
+{
+	if (send_ring(connected_hs->rfcomm) < 0)
+		error("Sending RING failed");
+
+	return TRUE;
+}
+
 static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg)
 {
 	DBusMessage *reply;
-	const char *ring_str = "\r\nRING\r\n";
-	int sk, ret;
 
 	if (!connected_hs)
 		return err_not_connected(conn, msg);
@@ -1077,14 +1119,45 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg)
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	sk = g_io_channel_unix_get_fd(connected_hs->rfcomm);
+	if (connected_hs->ring_timer) {
+		debug("Got Ring method call while ringing already in progress");
+		goto done;
+	}
 
-	ret = write(sk, ring_str, strlen(ring_str));
-	if (ret < strlen(ring_str)) {
+	if (send_ring(connected_hs->rfcomm) < 0) {
 		dbus_message_unref(reply);
 		return err_failed(conn, msg);
 	}
 
+	connected_hs->ring_timer = g_timeout_add(RING_INTERVAL, ring_timer, NULL);
+
+done:
+	dbus_connection_send(conn, reply, NULL);
+	dbus_message_unref(reply);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn, DBusMessage *msg)
+{
+	DBusMessage *reply;
+
+	if (!connected_hs)
+		return err_not_connected(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (!connected_hs->ring_timer) {
+		debug("Got CancelRinging method call but ringing is not in progress");
+		goto done;
+	}
+
+	g_timeout_remove(connected_hs->ring_timer);
+	connected_hs->ring_timer = 0;
+
+done:
 	dbus_connection_send(conn, reply, NULL);
 	dbus_message_unref(reply);
 
