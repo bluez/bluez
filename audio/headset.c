@@ -268,9 +268,8 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 
 	debug("rfcomm_connect_cb: connected to %s", connected_hs->address);
 
-	g_io_add_watch(connected_hs->rfcomm,
-			G_IO_ERR | G_IO_HUP | G_IO_IN | G_IO_NVAL,
-			(GIOFunc) rfcomm_io_cb, connected_hs);
+	g_io_add_watch(connected_hs->rfcomm, G_IO_IN, (GIOFunc) rfcomm_io_cb,
+			connected_hs);
 
 	return TRUE;
 }
@@ -280,7 +279,6 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct pe
 {
 	int sk, ret, err;
 	socklen_t len;
-	struct hs_connection *hs;
 
 	if (cond & G_IO_NVAL) {
 		g_io_channel_unref(chan);
@@ -302,24 +300,21 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct pe
 		goto failed;
 	}
 
-	hs = malloc(sizeof(struct hs_connection));
-	if (!hs) {
+	connected_hs = malloc(sizeof(struct hs_connection));
+	if (!connected_hs) {
 		err = ENOMEM;
 		error("Allocating new hs connection struct failed!");
 		goto failed;
 	}
 
-	memset(hs, 0, sizeof(struct hs_connection));
+	memset(connected_hs, 0, sizeof(struct hs_connection));
 
-	ba2str(&c->bda, hs->address);
-	hs->rfcomm = chan;
+	ba2str(&c->bda, connected_hs->address);
+	connected_hs->rfcomm = chan;
 
-	debug("rfcomm_connect_cb: connected to %s", hs->address);
+	debug("rfcomm_connect_cb: connected to %s", connected_hs->address);
 
-	connected_hs = hs;
-
-	g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_IN | G_IO_NVAL,
-			(GIOFunc) rfcomm_io_cb, hs);
+	g_io_add_watch(chan, G_IO_IN, (GIOFunc) rfcomm_io_cb, connected_hs);
 
 	pending_connect_free(c, FALSE);
 
@@ -612,8 +607,7 @@ static void create_server_socket(void)
 		return;
 	}
 
-	g_io_add_watch(server_sk, G_IO_IN | G_IO_ERR | G_IO_HUP,
-			(GIOFunc) server_io_cb, NULL);
+	g_io_add_watch(server_sk, G_IO_IN, (GIOFunc) server_io_cb, NULL);
 }
 
 
