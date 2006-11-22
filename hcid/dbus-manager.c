@@ -634,7 +634,7 @@ static struct service_data methods[] = {
 	{ "RegisterService",	register_service			},
 	{ "UnregisterService",	unregister_service			},
 	{ "AddServiceRecord",		add_service_record		},
-	{ "AddServiceRecordAsXML", 	add_service_record_xml		},
+	{ "AddServiceRecordFromXML", 	add_service_record_xml		},
 	{ "RemoveServiceRecord",	remove_service_record		},
 	{ NULL, NULL }
 };

@@ -191,7 +191,7 @@ Methods		uint32 InterfaceVersion()
 			registered, otherwise the record will be available
 			when the service agent Start method is called.
 
-		uint32 AddServiceRecordAsXML(string path, string record)
+		uint32 AddServiceRecordFromXML(string path, string record)
 
 			Add a new service record to the service agent
 			and returns the assigned handle.

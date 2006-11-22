@@ -254,7 +254,7 @@ static int add_record(DBusConnection *conn, const char *service_path)
 	const char *method;
 	int err;
 
-	method = filename ? "AddServiceRecordAsXML" : "AddServiceRecord";
+	method = filename ? "AddServiceRecordFromXML" : "AddServiceRecord";
 		
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 						INTERFACE, method);
