@@ -34,7 +34,7 @@
         <uuid value="0x1105"/>
         <uint16 value="0x0100"/>
       </sequence>
-    </sequence8>
+    </sequence>
   </attribute>
 
   <attribute id="0x0100">
