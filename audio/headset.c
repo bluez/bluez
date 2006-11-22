@@ -1067,7 +1067,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg)
 {
 	DBusMessage *reply;
-	const char *ring_str = "RING\r";
+	const char *ring_str = "\r\nRING\r\n";
 	int sk, ret;
 
 	if (!connected_hs)
