@@ -445,7 +445,7 @@ sdp_data_t *sdp_xml_parse_uuid(const char *data)
 	int len;
 	char *endptr;
 	uint32_t val;
-	uint16_t val2 = val;
+	uint16_t val2;
 
 	len = strlen(data);
 
@@ -460,6 +460,8 @@ sdp_data_t *sdp_xml_parse_uuid(const char *data)
 
 	if (val > USHRT_MAX)
 		return sdp_data_alloc(SDP_UUID32, &val);
+
+	val2 = val;
 
 	return sdp_data_alloc(SDP_UUID16, &val2);
 
