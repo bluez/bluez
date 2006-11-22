@@ -14,7 +14,7 @@
       </sequence>
       <sequence>
         <uuid value="0x0003"/>
-        <uint8 value="23"/>
+        <uint8 value="23" name="channel"/>
       </sequence>
       <sequence>
         <uuid value="0x0008"/>
@@ -22,23 +22,17 @@
     </sequence>
   </attribute>
 
-  <attribute id="0x0005">
-    <sequence>
-      <uuid value="0x1002"/>
-    </sequence>
-  </attribute>
-
   <attribute id="0x0009">
     <sequence>
       <sequence>
         <uuid value="0x1105"/>
-        <uint16 value="0x0100"/>
+        <uint16 value="0x0100" name="version"/>
       </sequence>
     </sequence>
   </attribute>
 
   <attribute id="0x0100">
-    <text value="OBEX Object Push"/>
+    <text value="OBEX Object Push" name="name"/>
   </attribute>
 
   <attribute id="0x0303">

@@ -61,7 +61,7 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) hcid.conf bluetooth.conf \
-	service-record.dtd service-opp.xml dbus-api.txt
+EXTRA_DIST = $(man_MANS) hcid.conf bluetooth.conf dbus-api.txt \
+	service-record.dtd service-did.xml service-opp.xml
 
 MAINTAINERCLEANFILES = Makefile.in
