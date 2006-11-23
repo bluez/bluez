@@ -47,7 +47,7 @@ hcitool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 l2ping_LDADD = @BLUEZ_LIBS@
 
-sdptool_LDADD = @BLUEZ_LIBS@
+sdptool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 ciptool_LDADD = @BLUEZ_LIBS@
 

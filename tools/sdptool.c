@@ -45,6 +45,8 @@
 
 #include <netinet/in.h>
 
+#include "sdp-xml.h"
+
 #ifndef APPLE_AGENT_SVCLASS_ID
 #define APPLE_AGENT_SVCLASS_ID 0x2112
 #endif
@@ -67,6 +69,7 @@ static int estr2ba(char *str, bdaddr_t *ba)
 #define DEFAULT_VIEW	0	/* Display only known attribute */
 #define TREE_VIEW	1	/* Display full attribute tree */
 #define RAW_VIEW	2	/* Display raw tree */
+#define XML_VIEW	3	/* Display xml tree */
 
 /* Pass args to the inquiry/search handler */
 struct search_context {
@@ -3329,6 +3332,11 @@ static void inquiry(handler_t handler, void *arg)
 		handler(&ii[i].bdaddr, arg);
 }
 
+static void doprintf(void *data, const char *str)
+{
+	printf(str);
+}
+
 /*
  * Search for a specific SDP service
  */
@@ -3383,6 +3391,10 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 			print_tree_attr(rec);
 			printf("\n");
 			break;
+		case XML_VIEW:
+			/* Display raw XML tree */
+			convert_sdp_record_to_xml(rec, 0, doprintf);
+			break;
 		default:
 			/* Display raw tree */
 			print_raw_attr(rec);
@@ -3409,6 +3421,7 @@ static struct option browse_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "tree",	0, 0, 't' },
 	{ "raw",	0, 0, 'r' },
+	{ "xml",	0, 0, 'x' },
 	{ "uuid",	1, 0, 'u' },
 	{ "l2cap",	0, 0, 'l' },
 	{ 0, 0, 0, 0 }
@@ -3416,7 +3429,7 @@ static struct option browse_options[] = {
 
 static char *browse_help = 
 	"Usage:\n"
-	"\tbrowse [--tree] [--raw] [--uuid uuid] [--l2cap] [bdaddr]\n";
+	"\tbrowse [--tree] [--raw] [--xml] [--uuid uuid] [--l2cap] [bdaddr]\n";
 
 /*
  * Browse the full SDP database (i.e. list all services starting from the
@@ -3439,6 +3452,9 @@ static int cmd_browse(int argc, char **argv)
 			break;
 		case 'r':
 			context.view = RAW_VIEW;
+			break;
+		case 'x':
+			context.view = XML_VIEW;
 			break;
 		case 'u':
 			if (sscanf(optarg, "%i", &num) != 1 || num < 0 || num > 0xffff) {
@@ -3473,12 +3489,13 @@ static struct option search_options[] = {
 	{ "bdaddr",	1, 0, 'b' },
 	{ "tree",	0, 0, 't' },
 	{ "raw",	0, 0, 'r' },
+	{ "xml",	0, 0, 'x' },
 	{ 0, 0, 0, 0}
 };
 
 static char *search_help = 
 	"Usage:\n"
-	"\tsearch [--bdaddr bdaddr] [--tree] [--raw] SERVICE\n"
+	"\tsearch [--bdaddr bdaddr] [--tree] [--raw] [--xml] SERVICE\n"
 	"SERVICE is a name (string) or UUID (0x1002)\n";
 
 /*
@@ -3513,6 +3530,9 @@ static int cmd_search(int argc, char **argv)
 			break;
 		case 'r':
 			context.view = RAW_VIEW;
+			break;
+		case 'x':
+			context.view = XML_VIEW;
 			break;
 		default:
 			printf(search_help);
@@ -3610,6 +3630,10 @@ static int get_service(bdaddr_t *bdaddr, struct search_context *context, int qui
 		print_tree_attr(rec);
 		printf("\n");
 		break;
+	case XML_VIEW:
+		/* Display raw XML tree */
+		convert_sdp_record_to_xml(rec, 0, doprintf);
+		break;
 	default:
 		/* Display raw tree */
 		print_raw_attr(rec);
@@ -3624,12 +3648,13 @@ static struct option records_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "tree",	0, 0, 't' },
 	{ "raw",	0, 0, 'r' },
+	{ "xml",	0, 0, 'x' },
 	{ 0, 0, 0, 0 }
 };
 
 static char *records_help = 
 	"Usage:\n"
-	"\trecords [--tree] [--raw] bdaddr\n";
+	"\trecords [--tree] [--raw] [--xml] bdaddr\n";
 
 /*
  * Request possible SDP service records
@@ -3651,6 +3676,9 @@ static int cmd_records(int argc, char **argv)
 			break;
 		case 'r':
 			context.view = RAW_VIEW;
+			break;
+		case 'x':
+			context.view = XML_VIEW;
 			break;
 		default:
 			printf(records_help);
@@ -3686,12 +3714,13 @@ static struct option get_options[] = {
 	{ "bdaddr",	1, 0, 'b' },
 	{ "tree",	0, 0, 't' },
 	{ "raw",	0, 0, 'r' },
+	{ "xml",	0, 0, 'x' },
 	{ 0, 0, 0, 0 }
 };
 
 static char *get_help = 
 	"Usage:\n"
-	"\tget [--tree] [--raw] [--bdaddr bdaddr] record_handle\n";
+	"\tget [--tree] [--raw] [--xml] [--bdaddr bdaddr] record_handle\n";
 
 /*
  * Get a specific SDP record on the local SDP server
@@ -3717,6 +3746,9 @@ static int cmd_get(int argc, char **argv)
 			break;
 		case 'r':
 			context.view = RAW_VIEW;
+			break;
+		case 'x':
+			context.view = XML_VIEW;
 			break;
 		default:
 			printf(get_help);
