@@ -142,23 +142,37 @@ Methods		uint32 InterfaceVersion()
 			Returns the current interface version. At the moment
 			only version 0 is supported.
 
+			Possible errors: org.bluez.Error.InvalidArguments
+
 		string DefaultAdapter()
 
 			Returns object path for the default adapter.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
 
 		string FindAdapter(string pattern)
 
 			Returns object path for the specified adapter. Valid
 			patterns are "hci0" or "00:11:22:33:44:55".
 
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
+
 		array{string} ListAdapters()
 
 			Returns list of adapter object paths under /org/bluez
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+					 org.bluez.Error.OutOfMemory
 
 		array{string} ListServices()
 
 			Returns list of object paths of registered
 			service agents.
+
+			Possible errors: org.bluez.Error.InvalidArguments
 
 		void RegisterService(string path, string name,
 					string description)
@@ -172,12 +186,20 @@ Methods		uint32 InterfaceVersion()
 			provide the name of the service and a description of
 			what it does or they can be empty strings.
 
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+					 org.bluez.Eroor.Failed
+
 		void UnregisterService(string path)
 
 			This unregisters a service agent that has been
 			previously registered. The path parameter must
 			match the same value that has been used on
 			registration.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.Failed
 
 		uint32 AddServiceRecord(string path, array{byte})
 
@@ -191,6 +213,10 @@ Methods		uint32 InterfaceVersion()
 			registered, otherwise the record will be available
 			when the service agent Start method is called.
 
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.Failed
+
 		uint32 AddServiceRecordFromXML(string path, string record)
 
 			Add a new service record to the service agent
@@ -203,6 +229,11 @@ Methods		uint32 InterfaceVersion()
 			registered, otherwise the record will be available
 			when the service agent Start method is called.
 
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.Failed
+
+
 		void  RemoveServiceRecord(string path, uint32 handle)
 
 			Remove a service record from the service agent
@@ -211,6 +242,11 @@ Methods		uint32 InterfaceVersion()
 			The path parameter is the object path of the service
 			agent. The second parameter is service record handle.
 	
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
+
 Signals		void AdapterAdded(string path)
 
 			Parameter is object path of added adapter.
