@@ -50,6 +50,8 @@
 #include "logging.h"
 #include "glib-ectomy.c"
 
+#define BUF_SIZE 1024
+
 #define RING_INTERVAL 3000
 
 #define HEADSET_PATH "/org/bluez/headset"
@@ -65,9 +67,15 @@ struct pending_connect {
 
 struct hs_connection {
 	char address[18];
+
 	GIOChannel *rfcomm;
 	GIOChannel *sco;
+
 	guint ring_timer;
+
+	char buf[BUF_SIZE];
+	int data_start;
+	int data_length;
 };
 
 static gboolean connect_in_progress = FALSE;
@@ -188,12 +196,49 @@ static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg)
 	return error_reply(conn, msg, "org.bluez.Error.Failed", "Failed");
 }
 
+static void send_gain_setting(const char *buf)
+{
+}
+
+static void send_button_press(void)
+{
+	DBusMessage *signal;
+
+	signal = dbus_message_new_signal(HEADSET_PATH, "org.bluez.Headset",
+						"AnswerRequested");
+	if (!signal) {
+		error("Unable to allocate new AnswerRequested signal");
+		return;
+	}
+
+	dbus_connection_send(connection, signal, NULL);
+	dbus_message_unref(signal);
+}
+
+static void parse_headset_event(const char *buf, char *rsp, int rsp_len)
+{
+	printf("Received: %s\n", buf);
+
+	/* Return an error if this is not a proper AT command */
+	if (strncmp(buf, "AT", 2)) {
+		snprintf(rsp, rsp_len, "\r\nERROR\r\n");
+		return;
+	}
+
+	buf += 2;
+
+	if (!strncmp(buf, "+CKPD", 5))
+		send_button_press();
+	else if (!strncmp(buf, "+VG", 3))
+		send_gain_setting(buf);
+
+	snprintf(rsp, rsp_len, "\r\nOK\r\n");
+}
+
 static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, struct hs_connection *hs)
 {
 	int sk, ret;
-	unsigned char buf[1024];
-
-	debug("rfcomm_io_cb");
+	unsigned char buf[BUF_SIZE];
 
 	if (cond & G_IO_NVAL) {
 		g_io_channel_unref(chan);
@@ -207,8 +252,59 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, struct hs_conn
 
 	ret = read(sk, buf, sizeof(buf) - 1);
 	if (ret > 0) {
-		buf[ret] = '\0';
-		printf("%s\n", buf);
+		int free_space = sizeof(connected_hs->buf) -
+					connected_hs->data_start -
+					connected_hs->data_length - 1;
+		char *cr;
+
+		if (free_space < ret) {
+			error("Too much data to fit incomming buffer");
+			goto failed;
+		}
+
+		memcpy(&connected_hs->buf[connected_hs->data_start], buf, ret);
+		connected_hs->data_length += ret;
+
+		/* Make sure the data is null terminated so we can use string
+		 * functions */
+		connected_hs->buf[connected_hs->data_length] = '\0';
+
+		cr = strchr(&connected_hs->buf[connected_hs->data_start], '\r');
+		if (cr) {
+			char rsp[BUF_SIZE];
+			int len, written = 0;
+			off_t cmd_len = 1 + (off_t) cr -
+					(off_t) &connected_hs->buf[connected_hs->data_start];
+
+			*cr = '\0';
+
+			memset(rsp, 0, sizeof(rsp));
+
+			parse_headset_event(&connected_hs->buf[connected_hs->data_start],
+						rsp, sizeof(rsp));
+
+			len = strlen(rsp);
+
+			while (written < len) {
+				int ret;
+
+				ret = write(sk, &rsp[written], len - written);
+				if (ret < 0) {
+					error("write: %s (%d)", errno, strerror(errno));
+					break;
+				}
+
+				written += ret;
+			}
+
+			connected_hs->data_start += cmd_len;
+			connected_hs->data_length -= cmd_len;
+
+			if (!connected_hs->data_length)
+				connected_hs->data_start = 0;
+
+		}
+
 	}
 
 	if (connected_hs->ring_timer) {
@@ -281,7 +377,7 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 
 	ba2str(&addr.rc_bdaddr, connected_hs->address);
 
-	debug("rfcomm_connect_cb: connected to %s", connected_hs->address);
+	debug("Accepted connection from %s", connected_hs->address);
 
 	g_io_add_watch(connected_hs->rfcomm, G_IO_IN, (GIOFunc) rfcomm_io_cb,
 			connected_hs);
@@ -327,9 +423,19 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct pe
 	ba2str(&c->bda, connected_hs->address);
 	connected_hs->rfcomm = chan;
 
-	debug("rfcomm_connect_cb: connected to %s", connected_hs->address);
+	debug("Connected to %s", connected_hs->address);
 
 	g_io_add_watch(chan, G_IO_IN, (GIOFunc) rfcomm_io_cb, connected_hs);
+
+	if (c->msg) {
+		DBusMessage *reply;
+
+		reply = dbus_message_new_method_return(c->msg);
+		if (reply) {
+			dbus_connection_send(c->conn, reply, NULL);
+			dbus_message_unref(reply);
+		}
+	}
 
 	pending_connect_free(c, FALSE);
 
@@ -1002,6 +1108,8 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg)
 	if (connected_hs->rfcomm)
 		g_io_channel_close(connected_hs->rfcomm);
 
+	info("Disconnected from %s", connected_hs->address);
+
 	free(connected_hs);
 	connected_hs = NULL;
 
@@ -1050,6 +1158,9 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 
 	str2ba(address, &c->bda);
 
+	c->conn = dbus_connection_ref(conn);
+	c->msg = dbus_message_ref(msg);
+
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
 						"org.bluez.Adapter",
 						"GetRemoteServiceHandles");
@@ -1063,7 +1174,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 					DBUS_TYPE_INVALID);
 
 
-	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
+	if (!dbus_connection_send_with_reply(conn, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceHandles failed");
 		pending_connect_free(c, TRUE);
 		dbus_message_unref(msg);
