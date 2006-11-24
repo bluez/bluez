@@ -65,7 +65,7 @@ struct pending_connect {
 	GIOChannel *io;
 };
 
-struct hs_connection {
+struct headset {
 	char address[18];
 
 	GIOChannel *rfcomm;
@@ -78,7 +78,7 @@ struct hs_connection {
 	int data_length;
 };
 
-static gboolean connect_in_progress = FALSE;
+static struct pending_connect *connect_in_progress = NULL;
 
 static uint8_t config_channel = 0;
 
@@ -92,7 +92,7 @@ static DBusConnection *connection = NULL;
 
 static GMainLoop *main_loop = NULL;
 
-static struct hs_connection *connected_hs = NULL;
+static struct headset *hs = NULL;
 
 static GIOChannel *server_sk = NULL;
 
@@ -101,6 +101,8 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg);
 static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg);
 static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn, DBusMessage *msg);
+static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg);
+static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg);
 
 static int set_nonblocking(int fd, int *err)
 {
@@ -140,7 +142,7 @@ static void pending_connect_free(struct pending_connect *c, gboolean unref_io)
 		dbus_connection_unref(c->conn);
 	free(c);
 
-	connect_in_progress = FALSE;
+	connect_in_progress = NULL;
 }
 
 static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
@@ -198,14 +200,14 @@ static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg)
 
 static void send_gain_setting(const char *buf)
 {
+	/* Not yet implemented */
 }
 
-static void send_button_press(void)
+static void send_simple_signal(const char *name)
 {
 	DBusMessage *signal;
 
-	signal = dbus_message_new_signal(HEADSET_PATH, "org.bluez.Headset",
-						"AnswerRequested");
+	signal = dbus_message_new_signal(HEADSET_PATH, "org.bluez.Headset", name);
 	if (!signal) {
 		error("Unable to allocate new AnswerRequested signal");
 		return;
@@ -228,14 +230,14 @@ static void parse_headset_event(const char *buf, char *rsp, int rsp_len)
 	buf += 2;
 
 	if (!strncmp(buf, "+CKPD", 5))
-		send_button_press();
+		send_simple_signal("AnswerRequested");
 	else if (!strncmp(buf, "+VG", 3))
 		send_gain_setting(buf);
 
 	snprintf(rsp, rsp_len, "\r\nOK\r\n");
 }
 
-static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, struct hs_connection *hs)
+static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_data)
 {
 	int sk, ret;
 	unsigned char buf[BUF_SIZE];
@@ -252,75 +254,81 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, struct hs_conn
 
 	ret = read(sk, buf, sizeof(buf) - 1);
 	if (ret > 0) {
-		int free_space = sizeof(connected_hs->buf) -
-					connected_hs->data_start -
-					connected_hs->data_length - 1;
+		int free_space;
 		char *cr;
 
+		free_space = sizeof(hs->buf) - hs->data_start
+				- hs->data_length - 1;
+
 		if (free_space < ret) {
+			/* Very likely that the HS is sending us garbage so
+			 * just ignore the data and disconnect */
 			error("Too much data to fit incomming buffer");
 			goto failed;
 		}
 
-		memcpy(&connected_hs->buf[connected_hs->data_start], buf, ret);
-		connected_hs->data_length += ret;
+		memcpy(&hs->buf[hs->data_start], buf, ret);
+		hs->data_length += ret;
 
 		/* Make sure the data is null terminated so we can use string
 		 * functions */
-		connected_hs->buf[connected_hs->data_length] = '\0';
+		hs->buf[hs->data_length] = '\0';
 
-		cr = strchr(&connected_hs->buf[connected_hs->data_start], '\r');
+		cr = strchr(&hs->buf[hs->data_start], '\r');
 		if (cr) {
 			char rsp[BUF_SIZE];
-			int len, written = 0;
-			off_t cmd_len = 1 + (off_t) cr -
-					(off_t) &connected_hs->buf[connected_hs->data_start];
-
+			int len, written;
+			off_t cmd_len;
+		       
+			cmd_len	= 1 + (off_t) cr - (off_t) &hs->buf[hs->data_start];
 			*cr = '\0';
 
 			memset(rsp, 0, sizeof(rsp));
 
-			parse_headset_event(&connected_hs->buf[connected_hs->data_start],
+			parse_headset_event(&hs->buf[hs->data_start],
 						rsp, sizeof(rsp));
 
 			len = strlen(rsp);
+			written = 0;
 
 			while (written < len) {
 				int ret;
 
 				ret = write(sk, &rsp[written], len - written);
 				if (ret < 0) {
-					error("write: %s (%d)", errno, strerror(errno));
+					error("write: %s (%d)",
+							strerror(errno), errno);
 					break;
 				}
 
 				written += ret;
 			}
 
-			connected_hs->data_start += cmd_len;
-			connected_hs->data_length -= cmd_len;
+			hs->data_start += cmd_len;
+			hs->data_length -= cmd_len;
 
-			if (!connected_hs->data_length)
-				connected_hs->data_start = 0;
+			if (!hs->data_length)
+				hs->data_start = 0;
 
 		}
 
 	}
 
-	if (connected_hs->ring_timer) {
-		g_timeout_remove(connected_hs->ring_timer);
-		connected_hs->ring_timer = 0;
+	if (hs->ring_timer) {
+		g_timeout_remove(hs->ring_timer);
+		hs->ring_timer = 0;
 	}
 
 	return TRUE;
 
 failed:
 	info("Disconnected from %s", hs->address);
+	send_simple_signal("Disconnected");
 	if (hs->sco)
 		g_io_channel_close(hs->sco);
 	g_io_channel_close(chan);
 	free(hs);
-	connected_hs = NULL;
+	hs = NULL;
 	return FALSE;
 }
 
@@ -351,40 +359,110 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	if (connected_hs || connect_in_progress) {
+	if (hs || connect_in_progress) {
 		debug("Refusing new connection since one already exists");
 		close(cli_sk);
 		return TRUE;
 	}
 
-	connected_hs = malloc(sizeof(struct hs_connection));
-	if (!connected_hs) {
+	hs = malloc(sizeof(struct headset));
+	if (!hs) {
 		error("Allocating new hs connection struct failed!");
 		close(cli_sk);
 		return TRUE;
 	}
 
-	memset(connected_hs, 0, sizeof(struct hs_connection));
+	memset(hs, 0, sizeof(struct headset));
 
-	connected_hs->rfcomm = g_io_channel_unix_new(cli_sk);
-	if (!connected_hs->rfcomm) {
+	hs->rfcomm = g_io_channel_unix_new(cli_sk);
+	if (!hs->rfcomm) {
 		error("Allocating new GIOChannel failed!");
 		close(cli_sk);
-		free(connected_hs);
-		connected_hs = NULL;
+		free(hs);
+		hs = NULL;
 		return TRUE;
 	}
 
-	ba2str(&addr.rc_bdaddr, connected_hs->address);
+	ba2str(&addr.rc_bdaddr, hs->address);
 
-	debug("Accepted connection from %s", connected_hs->address);
+	debug("Accepted connection from %s", hs->address);
 
-	g_io_add_watch(connected_hs->rfcomm, G_IO_IN, (GIOFunc) rfcomm_io_cb,
-			connected_hs);
+	send_simple_signal("Connected");
+
+	g_io_add_watch(hs->rfcomm, G_IO_IN, (GIOFunc) rfcomm_io_cb,
+			hs);
 
 	return TRUE;
 }
 
+static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_data)
+{
+	if (cond & G_IO_NVAL) {
+		g_io_channel_unref(chan);
+		return FALSE;
+	}
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		error("Audio connection got disconnected");
+		g_io_channel_close(chan);
+		hs->sco = NULL;
+		send_simple_signal("Stopped");
+		return FALSE;
+	}
+
+	debug("sco_io_cb: Unhandled IO condition");
+
+	return TRUE;
+}
+
+static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
+				struct pending_connect *c)
+{
+	int ret, sk, err;
+	DBusMessage *reply;
+	socklen_t len;
+
+	if (cond & G_IO_NVAL) {
+		g_io_channel_unref(chan);
+		return FALSE;
+	}
+
+	sk = g_io_channel_unix_get_fd(chan);
+
+	len = sizeof(ret);
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		err = ret;
+		error("connect(): %s (%d)", strerror(ret), ret);
+		goto failed;
+	}
+
+	hs->sco = chan;
+	g_io_add_watch(chan, 0, sco_io_cb, NULL);
+
+	reply = dbus_message_new_method_return(c->msg);
+	if (reply) {
+		dbus_connection_send(c->conn, reply, NULL);
+		dbus_message_unref(reply);
+	}
+
+	pending_connect_free(c, FALSE);
+
+	send_simple_signal("Playing");
+
+	return FALSE;
+
+failed:
+	err_connect_failed(c->conn, c->msg, err);
+	pending_connect_free(c, TRUE);
+
+	return FALSE;
+}
 
 static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct pending_connect *c)
 {
@@ -411,21 +489,23 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct pe
 		goto failed;
 	}
 
-	connected_hs = malloc(sizeof(struct hs_connection));
-	if (!connected_hs) {
+	hs = malloc(sizeof(struct headset));
+	if (!hs) {
 		err = ENOMEM;
 		error("Allocating new hs connection struct failed!");
 		goto failed;
 	}
 
-	memset(connected_hs, 0, sizeof(struct hs_connection));
+	memset(hs, 0, sizeof(struct headset));
 
-	ba2str(&c->bda, connected_hs->address);
-	connected_hs->rfcomm = chan;
+	ba2str(&c->bda, hs->address);
+	hs->rfcomm = chan;
 
-	debug("Connected to %s", connected_hs->address);
+	send_simple_signal("Connected");
 
-	g_io_add_watch(chan, G_IO_IN, (GIOFunc) rfcomm_io_cb, connected_hs);
+	debug("Connected to %s", hs->address);
+
+	g_io_add_watch(chan, G_IO_IN, (GIOFunc) rfcomm_io_cb, hs);
 
 	if (c->msg) {
 		DBusMessage *reply;
@@ -773,13 +853,13 @@ static DBusHandlerResult stop_message(DBusConnection *conn,
 
 	dbus_message_unref(reply);
 
-	if (connected_hs) {
-		if (connected_hs->sco)
-			g_io_channel_close(connected_hs->sco);
-		if (connected_hs->rfcomm)
-			g_io_channel_close(connected_hs->rfcomm);
-		free(connected_hs);
-		connected_hs = NULL;
+	if (hs) {
+		if (hs->sco)
+			g_io_channel_close(hs->sco);
+		if (hs->rfcomm)
+			g_io_channel_close(hs->rfcomm);
+		free(hs);
+		hs = NULL;
 	}
 
 	if (!config_channel && record_id) {
@@ -852,7 +932,11 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 	if (strcmp(member, "CancelRinging") == 0)
 		return hs_cancel_ringing(conn, msg);
 
-	/* Handle Headset interface methods here */
+	if (strcmp(member, "Play") == 0)
+		return hs_play(conn, msg);
+
+	if (strcmp(member, "Stop") == 0)
+		return hs_stop(conn, msg);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -1096,22 +1180,24 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg)
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	if (!connected_hs || strcasecmp(address, connected_hs->address) != 0)
+	if (!hs || strcasecmp(address, hs->address) != 0)
 		return err_not_connected(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (connected_hs->sco)
-		g_io_channel_close(connected_hs->sco);
-	if (connected_hs->rfcomm)
-		g_io_channel_close(connected_hs->rfcomm);
+	if (hs->sco)
+		g_io_channel_close(hs->sco);
+	if (hs->rfcomm)
+		g_io_channel_close(hs->rfcomm);
 
-	info("Disconnected from %s", connected_hs->address);
+	info("Disconnected from %s", hs->address);
 
-	free(connected_hs);
-	connected_hs = NULL;
+	send_simple_signal("Disconnected");
+
+	free(hs);
+	hs = NULL;
 
 	dbus_connection_send(conn, reply, NULL);
 
@@ -1143,7 +1229,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 		}
 	}
 
-	if (connected_hs)
+	if (hs)
 		return err_already_connected(conn, msg);
 
 	c = malloc(sizeof(struct pending_connect));
@@ -1152,7 +1238,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}       
 
-	connect_in_progress = TRUE;
+	connect_in_progress = c;
 
 	memset(c, 0, sizeof(struct pending_connect));
 
@@ -1192,7 +1278,7 @@ static int send_ring(GIOChannel *io)
 	const char *ring_str = "\r\nRING\r\n";
 	int sk, written, len;
 
-	sk = g_io_channel_unix_get_fd(connected_hs->rfcomm);
+	sk = g_io_channel_unix_get_fd(hs->rfcomm);
 
 	len = strlen(ring_str);
 	written = 0;
@@ -1213,7 +1299,7 @@ static int send_ring(GIOChannel *io)
 
 static gboolean ring_timer(gpointer user_data)
 {
-	if (send_ring(connected_hs->rfcomm) < 0)
+	if (send_ring(hs->rfcomm) < 0)
 		error("Sending RING failed");
 
 	return TRUE;
@@ -1223,24 +1309,24 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg)
 {
 	DBusMessage *reply;
 
-	if (!connected_hs)
+	if (!hs)
 		return err_not_connected(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (connected_hs->ring_timer) {
+	if (hs->ring_timer) {
 		debug("Got Ring method call while ringing already in progress");
 		goto done;
 	}
 
-	if (send_ring(connected_hs->rfcomm) < 0) {
+	if (send_ring(hs->rfcomm) < 0) {
 		dbus_message_unref(reply);
 		return err_failed(conn, msg);
 	}
 
-	connected_hs->ring_timer = g_timeout_add(RING_INTERVAL, ring_timer, NULL);
+	hs->ring_timer = g_timeout_add(RING_INTERVAL, ring_timer, NULL);
 
 done:
 	dbus_connection_send(conn, reply, NULL);
@@ -1253,22 +1339,125 @@ static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn, DBusMessage *ms
 {
 	DBusMessage *reply;
 
-	if (!connected_hs)
+	if (!hs)
 		return err_not_connected(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (!connected_hs->ring_timer) {
+	if (!hs->ring_timer) {
 		debug("Got CancelRinging method call but ringing is not in progress");
 		goto done;
 	}
 
-	g_timeout_remove(connected_hs->ring_timer);
-	connected_hs->ring_timer = 0;
+	g_timeout_remove(hs->ring_timer);
+	hs->ring_timer = 0;
 
 done:
+	dbus_connection_send(conn, reply, NULL);
+	dbus_message_unref(reply);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg)
+{
+	struct sockaddr_sco addr;
+	struct pending_connect *c;
+	int sk, err;
+
+	if (!hs)
+		return err_not_connected(conn, msg);
+
+	if (hs->sco)
+		return err_already_connected(conn, msg);
+
+	c = malloc(sizeof(struct pending_connect));
+	if (!c)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	memset(c, 0, sizeof(struct pending_connect));
+
+	c->conn = dbus_connection_ref(conn);
+	c->msg = dbus_message_ref(msg);
+
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+	if (sk < 0) {
+		err = errno;
+		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
+		err_connect_failed(conn, msg, err);
+		goto failed;
+	}
+
+	c->io = g_io_channel_unix_new(sk);
+	if (!c->io) {
+		close(sk);
+		pending_connect_free(c, TRUE);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	g_io_channel_set_close_on_unref(c->io, TRUE);
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sco_family = AF_BLUETOOTH;
+	bacpy(&addr.sco_bdaddr, BDADDR_ANY);
+	if (bind(sk, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		err = errno;
+		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
+		err_connect_failed(conn, msg, err);
+		goto failed;
+	}
+
+	if (set_nonblocking(sk, &err) < 0) {
+		err_connect_failed(conn, msg, err);
+		goto failed;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sco_family = AF_BLUETOOTH;
+	str2ba(hs->address, &addr.sco_bdaddr);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
+			err = errno;
+			error("connect: %s (%d)", strerror(errno), errno);
+			goto failed;
+		}
+
+		debug("Connect in progress");
+
+		g_io_add_watch(c->io, G_IO_OUT, (GIOFunc) sco_connect_cb, c);
+	} else {
+		debug("Connect succeeded with first try");
+		sco_connect_cb(c->io, G_IO_OUT, c);
+	}
+
+	return 0;
+
+failed:
+	if (c)
+		pending_connect_free(c, TRUE);
+	close(sk);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg)
+{
+	DBusMessage *reply;
+
+	if (!hs || !hs->sco)
+		return err_not_connected(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	g_io_channel_close(hs->sco);
+	hs->sco = NULL;
+
+	send_simple_signal("Stopped");
+
 	dbus_connection_send(conn, reply, NULL);
 	dbus_message_unref(reply);
 
