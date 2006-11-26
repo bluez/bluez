@@ -473,9 +473,11 @@ static void cmd_name(int ctl, int hdev, char *opt)
 			exit(1);
 		}
 
-		for (i = 0; i < 248 && name[i]; i++)
-			if (!isprint(name[i]))
+		for (i = 0; i < 248 && name[i]; i++) {
+			if ((unsigned char) name[i] < 32 || name[i] == 127)
 				name[i] = '.';
+		}
+
 		name[248] = '\0';
 
 		print_dev_hdr(&di);
@@ -1002,9 +1004,11 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 				str = malloc(len);
 				if (str) {
 					snprintf(str, len, "%s", ptr);
-					for (i = 0; i < len - 1; i++)
-						if (!isprint(str[i]))
+					for (i = 0; i < len - 1; i++) {
+						if ((unsigned char) str[i] < 32 || str[i] == 127)
 							str[i] = '.';
+					}
+
 					printf("\t%s local name: \'%s\'\n",
 						type == 0x08 ? "Shortened" : "Complete", str);
 					free(str);

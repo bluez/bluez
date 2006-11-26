@@ -546,9 +546,11 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 					sizeof(name), name, 100000) < 0)
 				strcpy(name, "n/a");
 
-			for (n = 0; n < 248 && name[n]; n++)
-				if (!isprint(name[n]))
-					name[n] = '.';
+			for (n = 0; n < 248 && name[n]; n++) {
+				if ((unsigned char) name[i] < 32 || name[i] == 127)
+					name[i] = '.';
+			}
+
 			name[248] = '\0';
 
 			printf("\t%s\t%s\n", addr, name);
@@ -605,9 +607,11 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 				if (!nc)
 					strcpy(name, "n/a");
 			} else {
-				for (n = 0; n < 248 && name[n]; n++)
-					if (!isprint(name[n]))
-						name[n] = '.';
+				for (n = 0; n < 248 && name[n]; n++) {
+					if ((unsigned char) name[i] < 32 || name[i] == 127)
+						name[i] = '.';
+				}
+
 				name[248] = '\0';
 				nc = 0;
 			}
