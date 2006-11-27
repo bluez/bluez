@@ -7,6 +7,23 @@ Date: 2006/04/11
 Description: Review these errors. The usage of "Does not exists"
 and "Not available" are confusing.
 
-* code standard for sending msg function
-Date: 2006/04/13
-Description: use send_reply_and_unref when possible.
+* dbus_message_get_args usage standard
+Data: 2006/11/26
+Description: dbus_message_get_args returns FALSE if the error is set.
+Therefore, it is better get the function call return value than call
+dbus_error_is_set. Some call inside dbus-manager.c and dbus-adapter.c
+are not following this standard.
+
+* Authorization and services methods errors
+Date: 2006/11/26
+Define/review the errors for authorization and services methods
+
+* D-Bus policies for Service Agents
+Date: 2006/11/26
+Define D-Bus policies to avoid clients call the service agent methods
+directly.
+
+* Resolve Name
+Date: 2006/11/26
+Re-design the name resolving to avoid adapter busy "state" with paging when
+the remote device is not reachable.
