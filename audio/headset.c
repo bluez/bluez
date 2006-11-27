@@ -200,7 +200,40 @@ static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg)
 
 static void send_gain_setting(const char *buf)
 {
-	/* Not yet implemented */
+	const char *name;
+	DBusMessage *signal;
+	dbus_uint16_t gain;
+
+	if (strlen(buf) < 6) {
+		error("Too short string for Gain setting");
+		return;
+	}
+
+	switch (buf[3]) {
+	case 'S':
+		name = "SpeakerGainChanged";
+		break;
+	case 'M':
+		name = "MicrophoneGainChanged";
+		break;
+	default:
+		error("Unknown gain setting");
+		return;
+	}
+
+	signal = dbus_message_new_signal(HEADSET_PATH, "org.bluez.Headset", name);
+	if (!signal) {
+		error("Unable to allocate new GainChanged signal");
+		return;
+	}
+
+	gain = (dbus_uint16_t) strtol(&buf[5], NULL, 10);
+
+	dbus_message_append_args(signal, DBUS_TYPE_UINT16, &gain,
+					DBUS_TYPE_INVALID);
+
+	dbus_connection_send(connection, signal, NULL);
+	dbus_message_unref(signal);
 }
 
 static void send_simple_signal(const char *name)
