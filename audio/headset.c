@@ -950,6 +950,10 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
+	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, interface) &&
+			!strcmp("Introspect", member))
+		return simple_introspect(conn, msg, data);
+
 	if (strcmp(interface, "org.bluez.Headset") != 0)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
