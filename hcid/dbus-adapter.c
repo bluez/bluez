@@ -393,23 +393,16 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 {
 	const struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	const char* scan_mode;
 	uint8_t hci_mode;
 	const uint8_t current_mode = adapter->mode;
 	bdaddr_t local;
 	int dd;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &scan_mode,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (!scan_mode)
 		return error_invalid_arguments(conn, msg);
@@ -528,23 +521,16 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply, *signal;
-	DBusError err;
 	uint32_t timeout;
 	bdaddr_t bdaddr;
 
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_UINT32, &timeout,
-				DBUS_TYPE_INVALID);
- 
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -625,7 +611,6 @@ static DBusHandlerResult adapter_is_connected(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	DBusError err;
 	dbus_bool_t connected = FALSE;
 
 	struct adapter *adapter = data;
@@ -634,16 +619,10 @@ static DBusHandlerResult adapter_is_connected(DBusConnection *conn,
 	const char *peer_addr;
 	bdaddr_t peer_bdaddr;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -864,7 +843,6 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply, *signal;
-	DBusError err;
 	bdaddr_t bdaddr;
 	const char *minor;
 	uint8_t cls[3];
@@ -874,16 +852,10 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &minor,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (!minor)
 		return error_invalid_arguments(conn, msg);
@@ -1036,7 +1008,6 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	bdaddr_t bdaddr;
 	char *str_ptr;
 	int ecode;
@@ -1044,17 +1015,11 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &str_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
-	
+
 	if (!g_utf8_validate(str_ptr, -1, NULL)) {
 		error("Name change failed: the supplied name isn't valid UTF-8");
 		return error_invalid_arguments(conn, msg);
@@ -1099,7 +1064,6 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	char filename[PATH_MAX + 1];
 	char *addr_ptr, *str;
 	const char *str_ver;
@@ -1107,19 +1071,12 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 	int compid, ver, subver;
 	uint8_t features;
 
-	dbus_error_init(&err);
-
 	memset(info_array, 0, 64);
 
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -1179,25 +1136,17 @@ static DBusHandlerResult adapter_get_remote_revision(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	char filename[PATH_MAX + 1];
 	char *addr_ptr, *str;
 	char info_array[16], *info = info_array;
 	int compid, ver, subver;
 
-	dbus_error_init(&err);
-
 	memset(info_array, 0, 16);
 
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -1230,24 +1179,17 @@ static DBusHandlerResult adapter_get_remote_manufacturer(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	char filename[PATH_MAX + 1];
 	char *addr_ptr, *str;
 	char info_array[64], *info = info_array;
 	int compid, ver, subver;
-	dbus_error_init(&err);
 
 	memset(info_array, 0, 64);
 
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -1278,20 +1220,13 @@ static DBusHandlerResult adapter_get_remote_company(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	DBusError err;
 	bdaddr_t bdaddr;
 	char oui[9], *str_bdaddr, *tmp;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &str_bdaddr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	str2ba(str_bdaddr, &bdaddr);
 	ba2oui(&bdaddr, oui);
@@ -1319,18 +1254,12 @@ static int get_remote_class(DBusConnection *conn, DBusMessage *msg, void *data,
 {
 	struct adapter *adapter = data;
 	char *addr_peer;
-	DBusError err;
 	bdaddr_t local, peer;
 	int ecode;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_peer,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID)) {
 		error_invalid_arguments(conn, msg);
 		return -1;
 	}
@@ -1460,21 +1389,14 @@ static DBusHandlerResult adapter_get_remote_name(DBusConnection *conn,
 	char filename[PATH_MAX + 1];
 	struct adapter *adapter = data;
 	DBusMessage *reply = NULL;
-	DBusError err;
 	const char *peer_addr;
 	bdaddr_t peer_bdaddr;
 	char *str;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -1521,21 +1443,14 @@ static DBusHandlerResult adapter_get_remote_alias(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	char str[249], *str_ptr = str, *addr_ptr;
 	bdaddr_t bdaddr;
 	int ecode;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -1561,22 +1476,15 @@ static DBusHandlerResult adapter_set_remote_alias(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply, *signal;
-	DBusError err;
 	char *alias, *addr;
 	bdaddr_t bdaddr;
 	int ecode;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_STRING, &alias,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if ((strlen(alias) == 0) || (check_address(addr) < 0)) {
 		error("Alias change failed: Invalid parameter");
@@ -1607,21 +1515,14 @@ static DBusHandlerResult adapter_clear_remote_alias(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply, *signal;
-	DBusError err;
 	char *addr_ptr;
 	bdaddr_t bdaddr;
 	int ecode, had_alias = 1;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message argument:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0) {
 		error("Alias clear failed: Invalid parameter");
@@ -1658,20 +1559,13 @@ static DBusHandlerResult adapter_last_seen(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	char filename[PATH_MAX + 1];
 	char *addr_ptr, *str;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -1702,20 +1596,13 @@ static DBusHandlerResult adapter_last_used(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	char filename[PATH_MAX + 1];
 	char *addr_ptr, *str;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -1745,7 +1632,6 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	DBusError err;
 
 	struct adapter *adapter = data;
 	struct slist *l = adapter->active_conn;
@@ -1758,16 +1644,10 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -1951,7 +1831,6 @@ static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	char filename[PATH_MAX + 1];
-	DBusError err;
 	char *str, *peer_addr = NULL;
 	struct adapter *adapter = data;
 	bdaddr_t peer_bdaddr;
@@ -1960,16 +1839,10 @@ static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -2025,7 +1898,6 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	bdaddr_t peer_bdaddr;
 	const char *peer_addr;
 	struct slist *l;
@@ -2033,16 +1905,10 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(peer_addr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -2103,7 +1969,6 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 	struct slist *l;
 	DBusMessage *reply;
 	DBusMessage *signal;
-	DBusError err;
 	char filename[PATH_MAX + 1];
 	char *addr_ptr, *str;
 	bdaddr_t bdaddr;
@@ -2112,16 +1977,10 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -2187,21 +2046,14 @@ static DBusHandlerResult adapter_has_bonding(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	char filename[PATH_MAX + 1];
 	char *addr_ptr, *str;
 	dbus_bool_t result;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -2265,22 +2117,15 @@ static DBusHandlerResult adapter_get_pin_code_length(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	bdaddr_t local, peer;
 	char *addr_ptr;
 	uint8_t length;
 	int len;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -2309,22 +2154,15 @@ static DBusHandlerResult adapter_get_encryption_key_size(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	DBusError err;
 	bdaddr_t bdaddr;
 	char *addr_ptr;
 	uint8_t size;
 	int val;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	if (check_address(addr_ptr) < 0)
 		return error_invalid_arguments(conn, msg);
@@ -2476,20 +2314,13 @@ static DBusHandlerResult adapter_set_pdiscov_resolve(DBusConnection *conn,
 							void *data)
 {
 	DBusMessage *reply;
-	DBusError err;
 	struct adapter *adapter = data;
 	dbus_bool_t resolve;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_BOOLEAN, &resolve,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

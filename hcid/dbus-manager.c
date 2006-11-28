@@ -102,21 +102,14 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	DBusError err;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
 	const char *pattern;
 	int dev_id;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
 	dev_id = hci_devid(pattern);
 	if (dev_id < 0)
@@ -270,30 +263,23 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 	const char *path, *name, *description;
 	DBusHandlerResult result;
 	DBusMessage *message;
-	DBusError err;
-	int reg_err;
+	int err;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_STRING, &description,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
-	reg_err = register_service_agent(conn, dbus_message_get_sender(msg),
+	err = register_service_agent(conn, dbus_message_get_sender(msg),
 					path, name, description);
 
-	if (reg_err < 0) {
-		if (reg_err == -EADDRNOTAVAIL)
+	if (err < 0) {
+		if (err == -EADDRNOTAVAIL)
 			return error_service_already_exists(conn, msg);
 
-		return error_failed(conn, msg, -reg_err);
+		return error_failed(conn, msg, -err);
 	}
 
 	/* Report that a new service was registered */
@@ -345,28 +331,21 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 {
 	DBusMessage *message;
 	const char *path;
-	DBusError err;
-	int unreg_err;
+	int err;
 
-	dbus_error_init(&err);
-	dbus_message_get_args(msg, &err,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&err)) {
-		error("Can't extract message arguments:%s", err.message);
-		dbus_error_free(&err);
+				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
-	}
 
-	unreg_err = unregister_service_agent(conn,
-					dbus_message_get_sender(msg), path);
-	if (unreg_err < 0) {
+	err = unregister_service_agent(conn,
+				dbus_message_get_sender(msg), path);
+	if (err < 0) {
 		/* Only the owner can unregister it */
-		if (unreg_err == -EPERM)
+		if (err == -EPERM)
 			return error_not_authorized(conn, msg);
 
-		return error_failed(conn, msg, -unreg_err);
+		return error_failed(conn, msg, -err);
 	}
 
 	/* Report that the service was unregistered */
