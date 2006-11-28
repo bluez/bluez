@@ -20,3 +20,13 @@ directly.
 Date: 2006/11/26
 Re-design the name resolving to avoid adapter busy "state" with paging when
 the remote device is not reachable.
+
+* Service Agent path
+Date: 2006/11/28
+If a client sends a message to an invalid service agent path it is necessary
+reply a standard message. eg: invalid service or service not registered
+It is not correct register a fallback '/', maybe should be better filter the
+message(use add_match) and check if the path belongs to the service list.
+The manager path is a fallback path, but the service path can not include
+'/org/bluez' prefix.
+
