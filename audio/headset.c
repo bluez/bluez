@@ -71,6 +71,9 @@ struct headset {
 	GIOChannel *rfcomm;
 	GIOChannel *sco;
 
+	GIOChannel *audio_input;
+	int out;
+
 	guint ring_timer;
 
 	char buf[BUF_SIZE];
@@ -95,6 +98,9 @@ static GMainLoop *main_loop = NULL;
 static struct headset *hs = NULL;
 
 static GIOChannel *server_sk = NULL;
+
+static char *audio_input = NULL;
+static char *audio_output = NULL;
 
 static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 					const char *address);
@@ -359,6 +365,8 @@ failed:
 	send_simple_signal("Disconnected");
 	if (hs->sco)
 		g_io_channel_close(hs->sco);
+	if (hs->out >= 0)
+		close(hs->out);
 	g_io_channel_close(chan);
 	free(hs);
 	hs = NULL;
@@ -407,6 +415,8 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 
 	memset(hs, 0, sizeof(struct headset));
 
+	hs->out = -1;
+
 	hs->rfcomm = g_io_channel_unix_new(cli_sk);
 	if (!hs->rfcomm) {
 		error("Allocating new GIOChannel failed!");
@@ -428,10 +438,87 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	return TRUE;
 }
 
-static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_data)
+static gboolean audio_input_cb(GIOChannel *chan, GIOCondition cond, gpointer user_data)
 {
+	int in, out, data_size, written;
+	char buf[1024];
+
 	if (cond & G_IO_NVAL) {
 		g_io_channel_unref(chan);
+		hs->audio_input = NULL;
+		return FALSE;
+	}
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		g_io_channel_close(hs->audio_input);
+		hs->audio_input = NULL;
+		if (hs->out >= 0) {
+			close(hs->out);
+			hs->out = -1;
+		}
+		return FALSE;
+	}
+
+	in = g_io_channel_unix_get_fd(chan);
+	out = g_io_channel_unix_get_fd(hs->sco);
+
+	data_size = read(in, buf, sizeof(buf));
+	if (data_size < 0) {
+		error("read: %s (%d)", strerror(errno), errno);
+		g_io_channel_close(chan);
+		hs->audio_input = NULL;
+		return TRUE;
+	}
+
+	/* EOF */
+	if (data_size == 0) {
+		debug("Reached end of file");
+		g_io_channel_close(chan);
+		hs->audio_input = NULL;
+		return TRUE;
+	}
+
+	written = 0;
+
+	while (written < data_size) {
+		int ret;
+
+		ret = write(out, &buf[written], data_size - written);
+
+		if (ret < 0) {
+			error("write(%d, %p, %d): %s (%d)", out, &buf[data_size],
+					data_size - written, strerror(errno), errno);
+			g_io_channel_close(chan);
+			hs->audio_input = NULL;
+			return TRUE;
+		}
+
+		debug("wrote %d bytes to %s", ret, audio_output); 
+
+		written += ret;
+	}
+
+	return TRUE;
+}
+
+static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_data)
+{
+	int in, ret;
+	char buf[1024];
+
+	if (cond & G_IO_NVAL) {
+		g_io_channel_unref(chan);
+		if (hs) {
+			if (hs->audio_input) {
+				g_io_channel_close(hs->audio_input);
+				hs->audio_input = NULL;
+			}
+			if (hs->out >= 0) {
+				close(hs->out);
+				hs->out = -1;
+			}
+		}
+
 		return FALSE;
 	}
 
@@ -439,11 +526,32 @@ static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_dat
 		error("Audio connection got disconnected");
 		g_io_channel_close(chan);
 		hs->sco = NULL;
+		if (hs->audio_input) {
+			g_io_channel_close(hs->audio_input);
+			hs->audio_input = NULL;
+		}
 		send_simple_signal("Stopped");
 		return FALSE;
 	}
 
-	debug("sco_io_cb: Unhandled IO condition");
+	if (!audio_output) {
+		debug("sco_io_cb: Unhandled IO condition");
+		return TRUE;
+	}
+
+	in = g_io_channel_unix_get_fd(chan);
+	if (hs->out < 0)
+		hs->out = open(audio_output, O_WRONLY | O_SYNC | O_CREAT);
+
+	if (hs->out < 0) {
+		error("open(%s): %s (%d)", audio_output, strerror(errno), errno);
+		g_io_channel_close(chan);
+		return TRUE;
+	}
+
+	ret = read(in, buf, sizeof(buf));
+	if (ret > 0)
+		ret = write(hs->out, buf, ret);
 
 	return TRUE;
 }
@@ -451,7 +559,7 @@ static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_dat
 static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 				struct pending_connect *c)
 {
-	int ret, sk, err;
+	int ret, sk, err, flags;
 	DBusMessage *reply;
 	socklen_t len;
 
@@ -475,13 +583,34 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
+	debug("SCO socket %d opened", sk);
+
+	if (audio_output)
+		flags = G_IO_IN;
+	else
+		flags = 0;
+
 	hs->sco = chan;
-	g_io_add_watch(chan, 0, sco_io_cb, NULL);
+	g_io_add_watch(chan, flags, sco_io_cb, NULL);
 
 	reply = dbus_message_new_method_return(c->msg);
 	if (reply) {
 		dbus_connection_send(c->conn, reply, NULL);
 		dbus_message_unref(reply);
+	}
+
+	if (audio_input) {
+		int in;
+	       
+		in = open(audio_input, O_RDONLY | O_NOCTTY);
+
+		if (in < 0)
+			error("open(%s): %s %d", audio_input, strerror(errno), errno);
+		else {
+			hs->audio_input = g_io_channel_unix_new(in);
+			g_io_add_watch(hs->audio_input, G_IO_IN, audio_input_cb, NULL);
+		}
+		
 	}
 
 	pending_connect_free(c, FALSE);
@@ -530,6 +659,8 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct pe
 	}
 
 	memset(hs, 0, sizeof(struct headset));
+
+	hs->out = -1;
 
 	ba2str(&c->bda, hs->address);
 	hs->rfcomm = chan;
@@ -891,6 +1022,10 @@ static DBusHandlerResult stop_message(DBusConnection *conn,
 			g_io_channel_close(hs->sco);
 		if (hs->rfcomm)
 			g_io_channel_close(hs->rfcomm);
+		if (hs->out >= 0) {
+			close(hs->out);
+			hs->out = -1;
+		}
 		free(hs);
 		hs = NULL;
 	}
@@ -1226,6 +1361,10 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg)
 
 	if (hs->sco)
 		g_io_channel_close(hs->sco);
+	if (hs->out >= 0) {
+		close(hs->out);
+		hs->out = -1;
+	}
 	if (hs->rfcomm)
 		g_io_channel_close(hs->rfcomm);
 
@@ -1493,6 +1632,11 @@ static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg)
 	g_io_channel_close(hs->sco);
 	hs->sco = NULL;
 
+	if (hs->out >= 0) {
+		close(hs->out);
+		hs->out = -1;
+	}
+
 	send_simple_signal("Stopped");
 
 	dbus_connection_send(conn, reply, NULL);
@@ -1506,7 +1650,7 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	int opt, daemonize = 1;
 
-	while ((opt = getopt(argc, argv, "nc:")) != EOF) {
+	while ((opt = getopt(argc, argv, "nc:o:i:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
@@ -1516,8 +1660,16 @@ int main(int argc, char *argv[])
 			config_channel = strtol(optarg, NULL, 0);
 			break;
 
+		case 'i':
+			audio_input = optarg;
+			break;
+
+		case 'o':
+			audio_output = optarg;
+			break;
+
 		default:
-			printf("Usage: %s -c local_channel [-n] [bdaddr]\n", argv[0]);
+			printf("Usage: %s -c local_channel [-n] [-o output] [-i input] [bdaddr]\n", argv[0]);
 			exit(1);
 		}
 	}
