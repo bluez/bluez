@@ -672,6 +672,23 @@ failed:
 	return ret;
 }
 
+static void send_dc_signal(struct active_conn_info *dev, const char *path)
+{
+	DBusMessage *message;
+	char addr[18];
+	const char *paddr = addr;
+
+	ba2str(&dev->bdaddr, addr);
+
+	message = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+					"RemoteDeviceDisconnected");
+	dbus_message_append_args(message,
+				DBUS_TYPE_STRING, &paddr,
+				DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, message);
+}
+
 int hcid_dbus_stop_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
@@ -694,13 +711,6 @@ int hcid_dbus_stop_device(uint16_t id)
 
 	/* check pending requests */
 	reply_pending_requests(path, adapter);
-
-	message = dev_signal_factory(adapter->dev_id, "ModeChanged",
-						DBUS_TYPE_STRING, &scan_mode,
-						DBUS_TYPE_INVALID);
-
-	send_message_and_unref(connection, message);
-
 
 	cancel_passkey_agent_requests(adapter->passkey_agents, path, NULL);
 
@@ -741,10 +751,17 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 
 	if (adapter->active_conn) {
+		slist_foreach(adapter->active_conn, (slist_func_t) send_dc_signal, path);
 		slist_foreach(adapter->active_conn, (slist_func_t) free, NULL);
 		slist_free(adapter->active_conn);
 		adapter->active_conn = NULL;
 	}
+
+	message = dev_signal_factory(adapter->dev_id, "ModeChanged",
+						DBUS_TYPE_STRING, &scan_mode,
+						DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, message);
 
 	adapter->up = 0;
 	adapter->mode = SCAN_DISABLED;
