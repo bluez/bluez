@@ -30,3 +30,8 @@ message(use add_match) and check if the path belongs to the service list.
 The manager path is a fallback path, but the service path can not include
 '/org/bluez' prefix.
 
+* Authorization path
+AuthorizeService and CancelAuthorizationProcess are not compliant with the dbus-api.
+Currently, only the messages sent to the manager path(base) "/org/bluez" are
+accepted. Adapter paths must be handled too.
+
