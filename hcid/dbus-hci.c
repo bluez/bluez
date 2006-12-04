@@ -327,6 +327,49 @@ static const DBusObjectPathVTable adapter_vtable = {
 	.unregister_function	= NULL
 };
 
+static void adapter_mode_changed(struct adapter *adapter, uint8_t mode)
+{
+	bdaddr_t local;
+	DBusMessage *message;
+	const char *scan_mode;
+
+	adapter->mode = mode;
+
+	switch (mode) {
+	case SCAN_DISABLED:
+		scan_mode = MODE_OFF;
+		break; 
+	case SCAN_PAGE:
+		scan_mode = MODE_CONNECTABLE;
+		break;
+	case (SCAN_PAGE | SCAN_INQUIRY):
+		scan_mode = MODE_DISCOVERABLE;
+		if (adapter->discov_timeout != 0)
+			adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
+					discov_timeout_handler, adapter);
+		break;
+	case SCAN_INQUIRY:
+		/* Address the scenario where another app changed the scan mode */
+		if (adapter->discov_timeout != 0)
+			adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
+					discov_timeout_handler, adapter);
+		/* ignore, this event should not be sent*/
+	default:
+		/* ignore, reserved */
+		return;
+	}
+
+	str2ba(adapter->address, &local);
+
+	write_device_mode(&local, scan_mode);
+
+	message = dev_signal_factory(adapter->dev_id, "ModeChanged",
+					DBUS_TYPE_STRING, &scan_mode,
+					DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, message);
+}       
+
 /*
  * HCI D-Bus services
  */
@@ -621,7 +664,6 @@ int hcid_dbus_start_device(uint16_t id)
 	else
 		adapter->discov_active = 0;
 
-	adapter->mode = rp.enable;	/* Keep the current scan status */
 	adapter->up = 1;
 	adapter->discov_timeout = get_discoverable_timeout(id);
 	adapter->discov_type = DISCOVER_TYPE_NONE;
@@ -633,6 +675,8 @@ int hcid_dbus_start_device(uint16_t id)
 					sizeof(adapter->address));
 	if (err < 0)
 		goto failed;
+
+	adapter_mode_changed(adapter, rp.enable);
 
 	/* 
 	 * retrieve the active connections: address the scenario where
@@ -1841,7 +1885,6 @@ failed:
 
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
-	DBusMessage *message;
 	struct adapter *adapter;
 	char *local_addr;
 	char path[MAX_PATH_LENGTH];
@@ -1850,7 +1893,6 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	struct hci_request rq;
 	int id;
 	int dd = -1;
-	const char *scan_mode;
 
 	baswap(&tmp, local); local_addr = batostr(&tmp);
 	id = hci_devid(local_addr);
@@ -1892,47 +1934,13 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 	
-	/* update the current scan mode value */
-	adapter->mode = rp.enable;
-
 	if (adapter->timeout_id) {
 		g_timeout_remove(adapter->timeout_id);
 		adapter->timeout_id = 0;
 	}
 
-	switch (rp.enable) {
-	case SCAN_DISABLED:
-		scan_mode = MODE_OFF;
-		break;
-	case SCAN_PAGE:
-		scan_mode = MODE_CONNECTABLE;
-		break;
-	case (SCAN_PAGE | SCAN_INQUIRY):
-		scan_mode = MODE_DISCOVERABLE;
-		if (adapter->discov_timeout != 0)
-			adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
-							  discov_timeout_handler,
-							  adapter);
-		break;
-	case SCAN_INQUIRY:
-		/* Address the scenario when another app changed the scan
-		 * mode */
-		if (adapter->discov_timeout != 0)
-			adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
-							  discov_timeout_handler,
-							  adapter);
-		/* ignore, this event should not be sent*/
-	default:
-		/* ignore, reserved */
-		goto failed;
-	}
-
-	write_device_mode(local, scan_mode);
-
-	message = dev_signal_factory(adapter->dev_id, "ModeChanged",
-					DBUS_TYPE_STRING, &scan_mode,
-					DBUS_TYPE_INVALID);
-	send_message_and_unref(connection, message);
+	if (adapter->mode != rp.enable)
+		adapter_mode_changed(adapter, rp.enable);
 
 failed:
 	if (dd >= 0)
