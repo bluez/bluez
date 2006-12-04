@@ -43,3 +43,7 @@ However, "void" is being used to indicate that no reply is required. eg:
 org.bluez.PasskeyAgent.Cancel, org.bluez.AuthorizationAgent.Cancel,
 org.bluez.AuthorizationAgent.Release
 
+* Authorization requests cancel
+Date: 2006/12/04
+When stopping the adapter/unregistering the adapter D-Bus path pending
+authorization requests must be cancelled.
