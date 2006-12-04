@@ -47,3 +47,8 @@ org.bluez.AuthorizationAgent.Release
 Date: 2006/12/04
 When stopping the adapter/unregistering the adapter D-Bus path pending
 authorization requests must be cancelled.
+
+* Service agent automatic start
+Date: 2006/12/04
+Currently, service agent "auto start" feature is hardcoded. It is necessary define
+requirements to make it configurable.
