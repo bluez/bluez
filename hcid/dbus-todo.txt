@@ -31,7 +31,15 @@ The manager path is a fallback path, but the service path can not include
 '/org/bluez' prefix.
 
 * Authorization path
+Date: 2006/12/04
 AuthorizeService and CancelAuthorizationProcess are not compliant with the dbus-api.
 Currently, only the messages sent to the manager path(base) "/org/bluez" are
 accepted. Adapter paths must be handled too.
+
+* "void" in the D-Bus API has confuse meaning
+Date: 2006/12/04
+For some methods, "void" means that a method return without arguments is required.
+However, "void" is being used to indicate that no reply is required. eg: 
+org.bluez.PasskeyAgent.Cancel, org.bluez.AuthorizationAgent.Cancel,
+org.bluez.AuthorizationAgent.Release
 
