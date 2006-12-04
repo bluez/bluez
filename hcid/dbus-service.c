@@ -561,8 +561,6 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *address;
 
-	/* FIXME: Missing define security policy */
-
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
@@ -571,9 +569,9 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcmp);
+	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcasecmp);
 	if (l)
-		return error_failed(conn, msg, EINVAL);
+		return error_trusted_device_already_exists(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -598,7 +596,7 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcmp);
+	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcasecmp);
 	trusted = (l? TRUE : FALSE);
 
 	reply = dbus_message_new_method_return(msg);
@@ -621,16 +619,14 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 	const char *address;
 	void *paddress;
 
-	/* FIXME: Missing define security policy */
-
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcmp);
+	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcasecmp);
 	if (!l)
-		return error_invalid_arguments(conn, msg); /* FIXME: find a better error name */
+		return error_trusted_device_does_not_exists(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

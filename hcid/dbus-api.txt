@@ -1163,15 +1163,23 @@ Methods		string GetConnectionName()
 
 			Marks the user as trusted.
 
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+
 		boolean IsTrusted(string address)
 
 			Returns true if the user is trusted or false otherwise.
 			The address parameter must match one of the
 			current users of the service.
 
+			Possible errors: org.bluez.Error.InvalidArguments
+
 		void RemoveTrust(string address)
 
 			Marks the user as not trusted.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.DoesNotExist
 
 Signals		void Started()
 

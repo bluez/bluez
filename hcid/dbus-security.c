@@ -761,6 +761,7 @@ static DBusHandlerResult authorize_service(DBusConnection *conn,
 {
 	const char *service_path, *adapter_path, *address, *action;
 	struct service_agent *sagent;
+	struct slist *l;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &service_path,
@@ -782,6 +783,12 @@ static DBusHandlerResult authorize_service(DBusConnection *conn,
 
 	if (strcmp(dbus_message_get_sender(msg), sagent->id))
 		return error_rejected(conn, msg);
+
+	/* Check it is a trusted device */
+	l = slist_find(sagent->trusted_devices, address, (cmp_func_t) strcasecmp);
+	if (l)
+		return send_message_and_unref(conn,
+				dbus_message_new_method_return(msg));
 
 	if (!default_auth_agent)
 		return error_auth_agent_does_not_exist(conn, msg);

@@ -268,6 +268,17 @@ DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *
 	return error_already_exists(conn, msg, "Audit already performed");
 }
 
+DBusHandlerResult error_trusted_device_already_exists(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_already_exists(conn, msg, "Trusted device already exists");
+}
+
+DBusHandlerResult error_trusted_device_does_not_exists(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_does_not_exist(conn, msg, "Trusted device does not exist");
+}
+
+
 static const char *strsdperror(int err)
 {
 	switch (err) {
