@@ -13,4 +13,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
+EXTRA_DIST = audio-api.txt
+
 MAINTAINERCLEANFILES = Makefile.in
