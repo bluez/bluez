@@ -203,24 +203,6 @@ static int active_conn_append(struct slist **list, bdaddr_t *bdaddr,
 	return 0;
 }
 
-static int active_conn_remove(struct slist **list, uint16_t handle)
-{
-	struct active_conn_info *dev;
-	struct slist *l;
-
-	l = slist_find(*list, &handle, active_conn_find_by_handle);
-	if (!l)
-		return -1;
-
-	dev = l->data;
-
-	*list = slist_remove(*list, dev);
-
-	free(dev);
-
-	return 0;
-}
-
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 {
 	switch (status) {
@@ -1440,7 +1422,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
-	/* if found: don't sent the name again */
+	/* if found: don't send the name again */
 	l = slist_find(adapter->found_devices, &match,
 			(cmp_func_t) found_device_cmp);
 	if (l)
@@ -1659,7 +1641,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		if (adapter->bonding)
 			adapter->bonding->hci_status = status;
 	} else {
-		/* Sent the remote device connected signal */
+		/* Send the remote device connected signal */
 		message = dev_signal_factory(adapter->dev_id,
 						"RemoteDeviceConnected",
 						DBUS_TYPE_STRING, &peer_addr,
@@ -1756,14 +1738,16 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		bonding_request_free(adapter->bonding);
 		adapter->bonding = NULL;
 	}
-	/* Sent the remote device disconnected signal */
+
+	/* Send the remote device disconnected signal */
 	message = dev_signal_factory(adapter->dev_id,
 					"RemoteDeviceDisconnected",
 					DBUS_TYPE_STRING, &peer_addr,
 					DBUS_TYPE_INVALID);
-
 	send_message_and_unref(connection, message);
-	active_conn_remove(&adapter->active_conn, handle);
+
+	adapter->active_conn = slist_remove(adapter->active_conn, dev);
+	free(dev);
 
 failed:
 	if (peer_addr)
