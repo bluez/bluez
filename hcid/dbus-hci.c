@@ -1405,9 +1405,12 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		/* Out of range list update */
 		l = slist_find(adapter->oor_devices, peer_addr,
 				(cmp_func_t) strcmp);
-		if (l)
+		if (l) {
+			char *dev = l->data;
 			adapter->oor_devices = slist_remove(adapter->oor_devices,
-								l->data);
+								dev);
+			free(dev);
+		}
 	}
 
 	/* send the device found signal */
