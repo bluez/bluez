@@ -348,9 +348,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_
 
 			if (!hs->data_length)
 				hs->data_start = 0;
-
 		}
-
 	}
 
 	if (hs->ring_timer) {
@@ -1092,16 +1090,16 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 	if (strcmp(interface, "org.bluez.Headset") != 0)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	if (strcmp(member, "Connect") == 0)
+	if (strcmp(member, "ConnectHeadset") == 0)
 		return hs_connect(conn, msg, NULL);
 
 	if (strcmp(member, "Disconnect") == 0)
 		return hs_disconnect(conn, msg);
 
-	if (strcmp(member, "Ring") == 0)
+	if (strcmp(member, "IndicateCall") == 0)
 		return hs_ring(conn, msg);
 
-	if (strcmp(member, "CancelRinging") == 0)
+	if (strcmp(member, "CancelCall") == 0)
 		return hs_cancel_ringing(conn, msg);
 
 	if (strcmp(member, "Play") == 0)
