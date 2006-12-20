@@ -245,16 +245,51 @@ static char *get_minor_device_name(int major, int minor)
 			return "Gaming/Toy";
 		}
 		break;
-	case 5:	/* peripheral */
-		switch(minor) {
+	case 5:	/* peripheral */ {
+		static char cls_str[48]; cls_str[0] = 0;
+
+		switch(minor & 48) {
 		case 16:
-			return "Keyboard";
+			strncpy(cls_str, "Keyboard", sizeof(cls_str));
+			break;
 		case 32:
-			return "Pointing device";
+			strncpy(cls_str, "Pointing device", sizeof(cls_str));
+			break;
 		case 48:
-			return "Combo keyboard/pointing device";
+			strncpy(cls_str, "Combo keyboard/pointing device", sizeof(cls_str));
+			break;
 		}
+		if((minor & 15) && (strlen(cls_str) > 0))
+			strcat(cls_str, "/");
+
+		switch(minor & 15) {
+		case 0:
+			break;
+		case 1:
+			strncat(cls_str, "Joystick", sizeof(cls_str) - strlen(cls_str));
+			break;
+		case 2:
+			strncat(cls_str, "Gamepad", sizeof(cls_str) - strlen(cls_str));
+			break;
+		case 3:
+			strncat(cls_str, "Remote control", sizeof(cls_str) - strlen(cls_str));
+			break;
+		case 4:
+			strncat(cls_str, "Sensing device", sizeof(cls_str) - strlen(cls_str));
+			break;
+		case 5:
+			strncat(cls_str, "Digitizer tablet", sizeof(cls_str) - strlen(cls_str));
 		break;
+		case 6:
+			strncat(cls_str, "Card reader", sizeof(cls_str) - strlen(cls_str));
+			break;
+		default:
+			strncat(cls_str, "(reserved)", sizeof(cls_str) - strlen(cls_str));
+			break;
+		}
+		if(strlen(cls_str) > 0)
+			return cls_str;
+	}
 	case 6:	/* imaging */
 		if (minor & 4)
 			return "Display";
@@ -264,6 +299,34 @@ static char *get_minor_device_name(int major, int minor)
 			return "Scanner";
 		if (minor & 32)
 			return "Printer";
+		break;
+	case 7: /* wearable */
+		switch(minor) {
+		case 1:
+			return "Wrist Watch";
+		case 2:
+			return "Pager";
+		case 3:
+			return "Jacket";
+		case 4:
+			return "Helmet";
+		case 5:
+			return "Glasses";
+		}
+		break;
+	case 8: /* toy */
+		switch(minor) {
+		case 1:
+			return "Robot";
+		case 2:
+			return "Vehicle";
+		case 3:
+			return "Doll / Action Figure";
+		case 4:
+			return "Controller";
+		case 5:
+			return "Game";
+		}
 		break;
 	case 63:	/* uncategorised */
 		return "";
