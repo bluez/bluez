@@ -55,9 +55,10 @@
 
 static char *rfcomm_config_file = NULL;
 static int rfcomm_raw_tty = 0;
-
-extern int optind, opterr, optopt;
-extern char *optarg;
+static int auth = 0;
+static int encryption = 0;
+static int secure = 0;
+static int master = 0;
 
 static char *rfcomm_state[] = {
 	"unknown",
@@ -468,7 +469,7 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	sigset_t sigs;
 	socklen_t alen;
 	char dst[18], devname[MAXPATHLEN];
-	int sk, nsk, fd, try = 30;
+	int sk, nsk, fd, lm, try = 30;
 
 	laddr.rc_family = AF_BLUETOOTH;
 	bacpy(&laddr.rc_bdaddr, bdaddr);
@@ -477,6 +478,22 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sk < 0) {
 		perror("Can't create RFCOMM socket");
+		return;
+	}
+
+	lm = 0;
+	if (master)
+		lm |= RFCOMM_LM_MASTER;
+	if (auth)
+		lm |= RFCOMM_LM_AUTH;
+	if (encryption)
+		lm |= RFCOMM_LM_ENCRYPT;
+	if (secure)
+		lm |= RFCOMM_LM_SECURE;
+
+	if (lm && setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
+		perror("Can't set RFCOMM link mode");
+		close(sk);
 		return;
 	}
 
@@ -660,6 +677,10 @@ static void usage(void)
 		"\t-i [hciX|bdaddr]      Local HCI device or BD Address\n"
 		"\t-h, --help            Display help\n"
 		"\t-r, --raw             Switch TTY into raw mode\n"
+		"\t-A, --auth            Enable authentication\n"
+		"\t-E, --encrypt         Enable encryption\n"
+		"\t-S, --secure          Secure connection\n"
+		"\t-M, --master          Become the master of a piconet\n"
 		"\t-f, --config [file]   Specify alternate config file\n" 
 		"\t-a                    Show all devices (default)\n"
 		"\n");
@@ -679,18 +700,21 @@ static struct option main_options[] = {
 	{ "device",	1, 0, 'i' },
 	{ "config",	1, 0, 'f' },
 	{ "raw",	0, 0, 'r' },
+	{ "auth",	0, 0, 'A' },
+	{ "encrypt",	0, 0, 'E' },
+	{ "secure",	0, 0, 'S' },
+	{ "master",	0, 0, 'M' },
 	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char *argv[]) 
 {
-
 	bdaddr_t bdaddr;
 	int i, opt, ctl, dev_id, show_all = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:f:rah", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:f:rahAESM", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strncmp(optarg, "hci", 3) == 0)
@@ -713,6 +737,22 @@ int main(int argc, char *argv[])
 		case 'h':
 			usage();
 			exit(0);
+
+		case 'A':
+			auth = 1;
+			break;
+
+		case 'E':
+			encryption = 1;
+			break;
+
+		case 'S':
+			secure = 1;
+			break;
+
+		case 'M':
+			master = 1;
+			break;
 
 		default:
 			exit(0);
