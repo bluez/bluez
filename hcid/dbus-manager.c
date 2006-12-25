@@ -48,6 +48,7 @@
 #include "dbus-security.h"
 #include "dbus-service.h"
 #include "dbus-manager.h"
+#include "dbus-hci.h"
 #include "sdp-xml.h"
 
 static int default_adapter_id = -1;
@@ -203,6 +204,9 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
@@ -264,6 +268,9 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 	DBusHandlerResult result;
 	DBusMessage *message;
 	int err;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
@@ -333,6 +340,9 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 	const char *path;
 	int err;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID))
@@ -390,6 +400,9 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	struct binary_record *rec;
 	const char *path;
 	int err;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
 
 	/* Check if it is an array of bytes */
 	if (strcmp(dbus_message_get_signature(msg), "say"))
@@ -466,6 +479,9 @@ static DBusHandlerResult add_service_record_xml(DBusConnection *conn,
 	const char *path;
 	const char *record;
 	int err;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
@@ -564,6 +580,9 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 	const char *path;
 	uint32_t handle;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_UINT32, &handle,
@@ -605,13 +624,13 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 }
 
 static struct service_data methods[] = {
-	{ "InterfaceVersion",	interface_version			},
-	{ "DefaultAdapter",	default_adapter				},
-	{ "FindAdapter",	find_adapter				},
-	{ "ListAdapters",	list_adapters				},
-	{ "ListServices",	list_services				},
-	{ "RegisterService",	register_service			},
-	{ "UnregisterService",	unregister_service			},
+	{ "InterfaceVersion",		interface_version		},
+	{ "DefaultAdapter",		default_adapter			},
+	{ "FindAdapter",		find_adapter			},
+	{ "ListAdapters",		list_adapters			},
+	{ "ListServices",		list_services			},
+	{ "RegisterService",		register_service		},
+	{ "UnregisterService",		unregister_service		},
 	{ "AddServiceRecord",		add_service_record		},
 	{ "AddServiceRecordFromXML", 	add_service_record_xml		},
 	{ "RemoveServiceRecord",	remove_service_record		},

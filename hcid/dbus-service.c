@@ -39,6 +39,7 @@
 #include "dbus-error.h"
 #include "dbus-manager.h"
 #include "dbus-service.h"
+#include "dbus-hci.h"
 
 static struct slist *services = NULL;
 
@@ -107,6 +108,7 @@ void service_call_free(void *data)
 	free(call);
 }
 
+#if 0
 static int service_agent_cmp(const struct service_agent *a, const struct service_agent *b)
 {
 	int ret;
@@ -137,6 +139,7 @@ static int service_agent_cmp(const struct service_agent *a, const struct service
 
 	return 0;
 }
+#endif
 
 static void service_agent_free(struct service_agent *agent)
 {
@@ -663,6 +666,9 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	DBusMessage *forward;
 	struct service_call *call_data;
 	const char *iface;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
 
 	iface = dbus_message_get_interface(msg);
 

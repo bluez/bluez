@@ -577,6 +577,9 @@ static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *path;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	if (default_auth_agent)
 		return error_auth_agent_already_exists(conn, msg);
 
@@ -618,6 +621,9 @@ static DBusHandlerResult unregister_default_auth_agent(DBusConnection *conn,
 	const char *path, *name;
 	DBusMessage *reply;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	if (!default_auth_agent)
 		return error_auth_agent_does_not_exist(conn, msg);
 
@@ -657,7 +663,7 @@ static void auth_agent_req_reply(DBusPendingCall *call, void *data)
 	DBusMessage *message;
 	DBusError err;
 
-       	dbus_error_init(&err);
+	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, reply)) {
 		if (strcmp(err.name, DBUS_ERROR_NO_REPLY) == 0)
 			auth_agent_call_cancel(req);
@@ -763,6 +769,9 @@ static DBusHandlerResult authorize_service(DBusConnection *conn,
 	struct service_agent *sagent;
 	struct slist *l;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &service_path,
 				DBUS_TYPE_STRING, &address,
@@ -837,6 +846,9 @@ static DBusHandlerResult cancel_authorization_process(DBusConnection *conn,
 {
 	const char *service_path, *adapter_path, *address, *action;
 	struct service_agent *sagent;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &service_path,
