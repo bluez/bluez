@@ -1,3 +1,16 @@
+ver 3.8:
+	Sort discovered devices list based on their RSSI.
+	Send DiscoverableTimeoutChanged signal.
+	Fix local and remote name validity checking.
+	Add ListRemoteDevices and ListRecentRemoteDevices methods.
+	Add basic integration of confirmation concept.
+	Add support for service record description via XML.
+	Add support for external commands to the RFCOMM utility.
+	Add experimental service and authorization API.
+
+	Note:
+	This version needs at least bluez-libs-3.8
+
 ver 3.7:
 	Fix class of device handling.
 	Fix error replies with pairing and security mode 3.
