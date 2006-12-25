@@ -586,6 +586,13 @@ Methods		string GetAddress()
 			Possible errors: org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.NotAvailable
 
+		array{byte} GetRemoteFeatures(string address)
+
+			Get the remote features encoded as bit mask.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+			                 org.bluez.Error.NotAvailable
+
 		string GetRemoteName(string address)
 
 			Get adapter name for a remote device. This request

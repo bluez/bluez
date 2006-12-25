@@ -1383,6 +1383,58 @@ static DBusHandlerResult adapter_get_remote_class(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult adapter_get_remote_features(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	char filename[PATH_MAX + 1];
+	struct adapter *adapter = data;
+	DBusMessage *reply = NULL;
+	DBusMessageIter iter, array_iter;
+	uint8_t features[8], *ptr = features;
+	const char *addr;
+	char tmp[3], *str;
+	int i;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &addr,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (check_address(addr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "features");
+
+	str = textfile_caseget(filename, addr);
+	if (!str)
+		return error_not_available(conn, msg);
+
+	memset(features, 0, sizeof(features));
+	for (i = 0; i < sizeof(features); i++) {
+		memcpy(tmp, str + (i * 2), 2);
+		features[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		free(str);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_BYTE_AS_STRING, &array_iter);
+
+	dbus_message_iter_append_fixed_array(&array_iter,
+				DBUS_TYPE_BYTE, &ptr, sizeof(features));
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	free(str);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult adapter_get_remote_name(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -2709,6 +2761,7 @@ static struct service_data dev_services[] = {
 	{ "GetRemoteMinorClass",		adapter_get_remote_minor_class	},
 	{ "GetRemoteServiceClasses",		adapter_get_remote_service_cls	},
 	{ "GetRemoteClass",			adapter_get_remote_class	},
+	{ "GetRemoteFeatures",			adapter_get_remote_features	},
 	{ "GetRemoteName",			adapter_get_remote_name		},
 	{ "GetRemoteAlias",			adapter_get_remote_alias	},
 	{ "SetRemoteAlias",			adapter_set_remote_alias	},
