@@ -167,15 +167,14 @@ Methods		uint32 InterfaceVersion()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.OutOfMemory
 
-		array{string} ListServices()
+		array{string} ListServices() [experimental]
 
 			Returns list of object paths of registered
 			service agents.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 
-		void RegisterService(string path, string name,
-					string description)
+		void RegisterService(string path, string name, string description) [experimental]
 
 			This registers a new service agent.
 
@@ -190,7 +189,7 @@ Methods		uint32 InterfaceVersion()
 					 org.bluez.Error.AlreadyExists
 					 org.bluez.Eroor.Failed
 
-		void UnregisterService(string path)
+		void UnregisterService(string path) [experimental]
 
 			This unregisters a service agent that has been
 			previously registered. The path parameter must
@@ -201,7 +200,7 @@ Methods		uint32 InterfaceVersion()
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.Failed
 
-		uint32 AddServiceRecord(string path, array{byte})
+		uint32 AddServiceRecord(string path, array{byte}) [experimental]
 
 			Add a new service record to the service agent
 			and returns the assigned handle.
@@ -217,7 +216,7 @@ Methods		uint32 InterfaceVersion()
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.Failed
 
-		uint32 AddServiceRecordFromXML(string path, string record)
+		uint32 AddServiceRecordFromXML(string path, string record) [experimental]
 
 			Add a new service record to the service agent
 			and returns the assigned handle.
@@ -234,7 +233,7 @@ Methods		uint32 InterfaceVersion()
 					 org.bluez.Error.Failed
 
 
-		void  RemoveServiceRecord(string path, uint32 handle)
+		void  RemoveServiceRecord(string path, uint32 handle) [experimental]
 
 			Remove a service record from the service agent
 			records list.
@@ -259,11 +258,11 @@ Signals		void AdapterAdded(string path)
 
 			Parameter is object path of the new default adapter.
 
-		void ServiceRegistered(string path)
+		void ServiceRegistered(string path) [experimental]
 
 			Parameter is object path of registered service agent.
 
-		void ServiceUnregistered(string path)
+		void ServiceUnregistered(string path) [experimental]
 
 			Parameter is object path of unregistered service agent.
 
