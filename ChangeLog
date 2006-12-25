@@ -1,3 +1,6 @@
+ver 3.8:
+	Add functions for registering binary records.
+
 ver 3.7:
 	Add additional PDU length checks.
 	Fix CSRC value for partial responses.
