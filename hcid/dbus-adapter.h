@@ -34,6 +34,8 @@
 
 #define BONDING_TIMEOUT         45000 /* 45 sec */
 
+#define DC_PENDING_TIMEOUT      2000  /* 2 secs */
+
 /* Discover types */
 #define DISCOVER_TYPE_NONE	0x00
 #define STD_INQUIRY		0x01
@@ -77,6 +79,13 @@ struct active_conn_info {
 	uint16_t handle;
 };
 
+struct pending_dc_info {
+	DBusConnection *conn;
+	DBusMessage *msg;
+	uint16_t conn_handle;
+	guint timeout_id;
+};
+
 struct adapter {
 	uint16_t dev_id;
 	int up;
@@ -100,6 +109,7 @@ struct adapter {
 	struct slist *active_conn;
 	struct bonding_request_info *bonding;
 	struct slist *pin_reqs;
+	struct pending_dc_info *pending_dc;
 };
 
 DBusHandlerResult handle_adapter_method(DBusConnection *conn, DBusMessage *msg, void *data);
@@ -111,5 +121,7 @@ const char *minor_class_str(uint32_t class);
 struct slist *service_classes_str(uint32_t class);
 
 int pending_remote_name_cancel(struct adapter *adapter);
+
+void dc_pending_timeout_cleanup(struct adapter *adapter);
 
 #endif /* __ADAPTER_H */

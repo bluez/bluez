@@ -1680,18 +1680,61 @@ static DBusHandlerResult adapter_last_used(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+
+gboolean dc_pending_timeout_handler(void *data)
+{
+	int dd;
+	struct adapter *adapter = data;
+	struct pending_dc_info *pending_dc = adapter->pending_dc;
+	DBusMessage *reply;
+
+	dd = hci_open_dev(adapter->dev_id);
+
+	if (dd < 0) {
+ 		error_no_such_adapter(pending_dc->conn,
+				      pending_dc->msg);
+		dc_pending_timeout_cleanup(adapter);
+		return FALSE;
+	}
+
+	/* Send the HCI disconnect command */
+	if (hci_disconnect(dd, pending_dc->conn_handle,
+				HCI_OE_USER_ENDED_CONNECTION,
+			   	500) < 0) {
+		int err = errno;
+		error("Disconnect failed");
+		error_failed(pending_dc->conn, pending_dc->msg, err);
+	} else {
+		reply = dbus_message_new_method_return(pending_dc->msg);
+		if (!reply)
+			error("Failed to allocate disconnect reply");
+		else
+			send_message_and_unref(pending_dc->conn, reply);
+	}
+
+	hci_close_dev(dd);
+	dc_pending_timeout_cleanup(adapter);
+
+	return FALSE;
+}
+
+void dc_pending_timeout_cleanup(struct adapter *adapter)
+{
+	dbus_connection_unref(adapter->pending_dc->conn);
+	dbus_message_unref(adapter->pending_dc->msg);
+	free(adapter->pending_dc);
+	adapter->pending_dc = NULL;
+}
+
 static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
-
 	struct adapter *adapter = data;
 	struct slist *l = adapter->active_conn;
 
 	const char *peer_addr;
 	bdaddr_t peer_bdaddr;
-	int dd;
-	struct active_conn_info *dev;
+	DBusMessage *signal;
 
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
@@ -1710,29 +1753,38 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 	if (!l)
 		return error_not_connected(conn, msg);
 
-	dev = l->data;
+	if(adapter->pending_dc)
+		return error_disconnect_in_progress(conn, msg);
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
-	/* Send the HCI disconnect command */
-	if (hci_disconnect(dd, dev->handle, HCI_OE_USER_ENDED_CONNECTION,
-				500) < 0) {
-		int err = errno;
-		error("Disconnect failed");
-		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
-	}
-
-	hci_close_dev(dd);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
+	adapter->pending_dc = malloc(sizeof(*adapter->pending_dc));
+	if(!adapter->pending_dc)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	return send_message_and_unref(conn, reply);
+	/* Start waiting... */
+	adapter->pending_dc->timeout_id =
+		g_timeout_add(DC_PENDING_TIMEOUT,
+			      dc_pending_timeout_handler,
+			      adapter);
 
+	if(!adapter->pending_dc->timeout_id) {
+		free(adapter->pending_dc);
+		adapter->pending_dc = NULL;
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	adapter->pending_dc->conn = dbus_connection_ref(conn);
+	adapter->pending_dc->msg = dbus_message_ref(msg);
+	adapter->pending_dc->conn_handle =
+		((struct active_conn_info *) l->data)->handle;
+
+	/* ...and send a signal */
+	signal = dev_signal_factory(adapter->dev_id, "RemoteDeviceDisconnectRequested",
+						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_INVALID);
+	send_message_and_unref(conn, signal);
+
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static void reply_authentication_failure(struct bonding_request_info *bonding)

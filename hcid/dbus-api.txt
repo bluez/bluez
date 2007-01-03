@@ -679,15 +679,22 @@ Methods		string GetAddress()
 		void DisconnectRemoteDevice(string address)
 
 			This method disconnects a specific remote device by
-			terminating the low-level ACL connection. The use
-			of this method should be restricted to administrator
-			use only.
+			terminating the low-level ACL connection. The use of
+			this method should be restricted to administrator
+			use.
+
+			A RemoteDeviceDisconnectRequested signal will be
+			sent and the actual disconnection will only happen 2
+			seconds later.  This enables upper-level applications
+			to terminate their connections gracefully before the
+			ACL connection is terminated.
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
 					 org.bluez.Error.NoSuchAdapter
 					 org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.NotConnected
+			                 org.bluez.Error.InProgress
 
 		void CreateBonding(string address)
 
@@ -1000,6 +1007,12 @@ Signals		void ModeChanged(string mode)
 
 			This signal will be send if a low level connection
 			between two devices has been created.
+
+		void RemoteDeviceDisconnectRequested(string address)
+
+			This signal will be sent when a low level
+			disconnection to a remote device has been requested.
+			The actual disconnection will happen 2 seconds later.
 
 		void RemoteDeviceDisconnected(string address)
 

@@ -278,6 +278,11 @@ DBusHandlerResult error_trusted_device_does_not_exists(DBusConnection *conn, DBu
 	return error_does_not_exist(conn, msg, "Trusted device does not exist");
 }
 
+DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_in_progress(conn, msg, "Disconnection in progress");
+}
+
 
 static const char *strsdperror(int err)
 {

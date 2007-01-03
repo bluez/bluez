@@ -69,6 +69,7 @@ dev_signals = [ "ModeChanged",
                 "RemoteAliasChanged"
                 "RemoteAliasCleared",
                 "RemoteDeviceConnected",
+                "RemoteDeviceDisconnectRequested",
                 "RemoteDeviceDisconnected",
                 "BondingCreated",
                 "BondingRemoved" ]

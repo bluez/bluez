@@ -473,6 +473,14 @@ int unregister_adapter_path(const char *path)
 		adapter->active_conn = NULL;
 	}
 
+	/* Check if there is a pending RemoteDeviceDisconnect request */
+	if (adapter->pending_dc) {
+ 		error_no_such_adapter(adapter->pending_dc->conn,
+				      adapter->pending_dc->msg);
+		g_timeout_remove(adapter->pending_dc->timeout_id);
+		dc_pending_timeout_cleanup(adapter);
+	}
+
 	free (adapter);
 
 unreg:
@@ -1740,6 +1748,20 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		g_io_channel_close(adapter->bonding->io);
 		bonding_request_free(adapter->bonding);
 		adapter->bonding = NULL;
+	}
+
+	/* Check if there is a pending RemoteDeviceDisconnect request */
+	if (adapter->pending_dc) {
+		DBusMessage *reply;
+
+		reply = dbus_message_new_method_return(adapter->pending_dc->msg);
+		if (!reply)
+			error("Failed to allocate disconnect reply");
+		else
+			send_message_and_unref(adapter->pending_dc->conn, reply);
+
+		g_timeout_remove(adapter->pending_dc->timeout_id);
+		dc_pending_timeout_cleanup(adapter);
 	}
 
 	/* Send the remote device disconnected signal */
