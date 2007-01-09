@@ -35,5 +35,5 @@ sdp_record_t *sdp_xml_parse_record(const char *data, int size)
 {
 	error("No XML parser available");
 
-	return -1;
+	return NULL;
 }
