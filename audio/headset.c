@@ -278,8 +278,9 @@ static void parse_headset_event(const char *buf, char *rsp, int rsp_len)
 
 static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_data)
 {
-	int sk, ret;
+	int sk, ret, free_space;
 	unsigned char buf[BUF_SIZE];
+	char *cr;
 
 	if (cond & G_IO_NVAL) {
 		g_io_channel_unref(chan);
@@ -292,63 +293,59 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_
 	sk = g_io_channel_unix_get_fd(chan);
 
 	ret = read(sk, buf, sizeof(buf) - 1);
-	if (ret > 0) {
-		int free_space;
-		char *cr;
+	if (ret <= 0)
+		goto failed;
 
-		free_space = sizeof(hs->buf) - hs->data_start
-				- hs->data_length - 1;
+	free_space = sizeof(hs->buf) - hs->data_start - hs->data_length - 1;
 
-		if (free_space < ret) {
-			/* Very likely that the HS is sending us garbage so
-			 * just ignore the data and disconnect */
-			error("Too much data to fit incomming buffer");
-			goto failed;
-		}
+	if (free_space < ret) {
+		/* Very likely that the HS is sending us garbage so
+		 * just ignore the data and disconnect */
+		error("Too much data to fit incomming buffer");
+		goto failed;
+	}
 
-		memcpy(&hs->buf[hs->data_start], buf, ret);
-		hs->data_length += ret;
+	memcpy(&hs->buf[hs->data_start], buf, ret);
+	hs->data_length += ret;
 
-		/* Make sure the data is null terminated so we can use string
-		 * functions */
-		hs->buf[hs->data_length] = '\0';
+	/* Make sure the data is null terminated so we can use string
+	 * functions */
+	hs->buf[hs->data_length] = '\0';
 
-		cr = strchr(&hs->buf[hs->data_start], '\r');
-		if (cr) {
-			char rsp[BUF_SIZE];
-			int len, written;
-			off_t cmd_len;
-		       
-			cmd_len	= 1 + (off_t) cr - (off_t) &hs->buf[hs->data_start];
-			*cr = '\0';
+	cr = strchr(&hs->buf[hs->data_start], '\r');
+	if (cr) {
+		char rsp[BUF_SIZE];
+		int len, written;
+		off_t cmd_len;
 
-			memset(rsp, 0, sizeof(rsp));
+		cmd_len	= 1 + (off_t) cr - (off_t) &hs->buf[hs->data_start];
+		*cr = '\0';
 
-			parse_headset_event(&hs->buf[hs->data_start],
-						rsp, sizeof(rsp));
+		memset(rsp, 0, sizeof(rsp));
 
-			len = strlen(rsp);
-			written = 0;
+		parse_headset_event(&hs->buf[hs->data_start],
+				rsp, sizeof(rsp));
 
-			while (written < len) {
-				int ret;
+		len = strlen(rsp);
+		written = 0;
 
-				ret = write(sk, &rsp[written], len - written);
-				if (ret < 0) {
-					error("write: %s (%d)",
-							strerror(errno), errno);
-					break;
-				}
+		while (written < len) {
+			int ret;
 
-				written += ret;
+			ret = write(sk, &rsp[written], len - written);
+			if (ret < 0) {
+				error("write: %s (%d)", strerror(errno), errno);
+				break;
 			}
 
-			hs->data_start += cmd_len;
-			hs->data_length -= cmd_len;
-
-			if (!hs->data_length)
-				hs->data_start = 0;
+			written += ret;
 		}
+
+		hs->data_start += cmd_len;
+		hs->data_length -= cmd_len;
+
+		if (!hs->data_length)
+			hs->data_start = 0;
 	}
 
 	if (hs->ring_timer) {
