@@ -310,7 +310,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_
 
 	/* Make sure the data is null terminated so we can use string
 	 * functions */
-	hs->buf[hs->data_length] = '\0';
+	hs->buf[hs->data_start + hs->data_length] = '\0';
 
 	cr = strchr(&hs->buf[hs->data_start], '\r');
 	if (cr) {
