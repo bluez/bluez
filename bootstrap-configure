@@ -16,4 +16,4 @@ fi
 		--disable-configfiles \
 		--disable-initscripts \
 		--disable-pcmciarules \
-		--disable-cups
+		--disable-cups $*
