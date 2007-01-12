@@ -1,4 +1,12 @@
 
+if GLIB
+glib_cflags = @GLIB_CFLAGS@
+glib_ldadd  = @GLIB_LIBS@
+else
+glib_cflags =
+glib_ldadd  =
+endif
+
 if TEST
 sbin_PROGRAMS = hciemu
 
@@ -6,7 +14,7 @@ bin_PROGRAMS = l2test rctest
 
 noinst_PROGRAMS = sdptest scotest attest hstest bdaddr sttest
 
-hciemu_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+hciemu_LDADD = $(glib_ldadd) @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 l2test_LDADD = @BLUEZ_LIBS@
 
@@ -28,7 +36,7 @@ sttest_LDADD = @BLUEZ_LIBS@
 
 noinst_MANS = bdaddr.8
 
-AM_CFLAGS = @BLUEZ_CFLAGS@
+AM_CFLAGS = @BLUEZ_CFLAGS@ $(glib_cflags)
 endif
 
 INCLUDES = -I$(top_srcdir)/common
