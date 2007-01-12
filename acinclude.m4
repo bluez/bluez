@@ -79,12 +79,9 @@ AC_DEFUN([AC_PATH_DBUS], [
 ])
 
 AC_DEFUN([AC_PATH_GLIB], [
-	PKG_CHECK_MODULES(GLIB, dbus-glib-1 > 0.35, glib_found=yes, AC_MSG_RESULT(no))
+	PKG_CHECK_MODULES(GLIB, glib-2.0, glib_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(GLIB_CFLAGS)
 	AC_SUBST(GLIB_LIBS)
-
-	DBUS_BINDING_TOOL="dbus-binding-tool"
-	AC_SUBST(DBUS_BINDING_TOOL)
 ])
 
 AC_DEFUN([AC_PATH_OPENOBEX], [
@@ -94,7 +91,7 @@ AC_DEFUN([AC_PATH_OPENOBEX], [
 ])
 
 AC_DEFUN([AC_PATH_OPENSYNC], [
-	PKG_CHECK_MODULES(OPENSYNC, opensync-1.0 osengine-1.0, opensync_found=yes, AC_MSG_RESULT(no))
+	PKG_CHECK_MODULES(OPENSYNC, glib-2.0 opensync-1.0 osengine-1.0, opensync_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(OPENSYNC_CFLAGS)
 	AC_SUBST(OPENSYNC_LIBS)
 ])
@@ -137,7 +134,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	debug_enable=no
 	pie_enable=no
 	expat_enable=${expat_found}
-	glib_enable=${glib_found}
+	glib_enable=no
 	obex_enable=${openobex_found}
 	sync_enable=${opensync_found}
 	fuse_enable=no
@@ -251,6 +248,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	if (test "${pie_enable}" = "yes" && test "${ac_cv_prog_cc_pie}" = "yes"); then
 		CFLAGS="$CFLAGS -fPIE"
 		LDFLAGS="$LDFLAGS -pie"
+	fi
+
+	if (test "${glib_enable}" = "yes" && test "${glib_found}" = "yes"); then
+		AC_DEFINE(HAVE_GLIB, 1, [Define to 1 if you have GLib support.])
 	fi
 
 	AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
