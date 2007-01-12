@@ -500,7 +500,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Create event loop */
-	event_loop = g_main_new(FALSE);
+	event_loop = g_main_loop_new(NULL, FALSE);
 
 	l2cap_io = g_io_channel_unix_new(l2cap_sock);
 	g_io_channel_set_close_on_unref(l2cap_io, TRUE);
@@ -517,7 +517,7 @@ int main(int argc, char *argv[])
 
 	sdp_svcdb_reset();
 
-	g_main_unref(event_loop);
+	g_main_loop_unref(event_loop);
 
 	g_io_channel_unref(unix_io);
 

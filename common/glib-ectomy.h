@@ -1,6 +1,12 @@
 #ifndef __GLIB_ECTOMY_H
 #define __GLIB_ECTOMY_H
 
+#ifdef HAVE_GLIB
+#include <glib.h>
+#define g_timeout_remove g_source_remove
+#define g_io_remove_watch g_source_remove
+#else
+
 #include <stdlib.h>
 #include <sys/poll.h>
 
@@ -105,5 +111,7 @@ gboolean g_utf8_validate(const gchar *str, gssize max_len, const gchar **end);
 #define g_main_run(loop)	g_main_loop_run(loop)
 #define g_main_quit(loop)	g_main_loop_quit(loop)
 #define g_main_unref(loop)	g_main_loop_unref(loop)
+
+#endif
 
 #endif /* __GLIB_ECTOMY_H */

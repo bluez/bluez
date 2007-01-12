@@ -27,12 +27,12 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <getopt.h>
-#include <stdlib.h>
-#include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <signal.h>
+#include <string.h>
+#include <getopt.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -48,7 +48,7 @@
 
 #include "dbus.h"
 #include "logging.h"
-#include "glib-ectomy.c"
+#include "glib-ectomy.h"
 
 #define BUF_SIZE 1024
 

@@ -108,11 +108,11 @@ int main(int argc, char *argv[])
 
 	enable_debug();
 
-	event_loop = g_main_new(FALSE);
+	event_loop = g_main_loop_new(NULL, FALSE);
 
 	g_main_run(event_loop);
 
-	g_main_unref(event_loop);
+	g_main_loop_unref(event_loop);
 
 	info("Exit");
 

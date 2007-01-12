@@ -524,7 +524,7 @@ static void init_defaults(void)
 
 static void sig_term(int sig)
 {
-	g_main_quit(event_loop);
+	g_main_loop_quit(event_loop);
 }
 
 static void sig_hup(int sig)
@@ -728,7 +728,7 @@ int main(int argc, char *argv[])
 	init_security_data();
 
 	/* Create event loop */
-	event_loop = g_main_new(FALSE);
+	event_loop = g_main_loop_new(NULL, FALSE);
 
 	ctl_io = g_io_channel_unix_new(hcid.sock);
 	g_io_channel_set_close_on_unref(ctl_io, TRUE);
@@ -753,7 +753,7 @@ int main(int argc, char *argv[])
 
 	cleanup_sdp_session();
 
-	g_main_unref(event_loop);
+	g_main_loop_unref(event_loop);
 
 	g_io_channel_unref(ctl_io);
 
