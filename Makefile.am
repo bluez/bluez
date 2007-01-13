@@ -1,5 +1,5 @@
 
-SUBDIRS = common hcid sdpd daemon \
+SUBDIRS = common sdpd hcid daemon \
 		network input audio sync \
 		tools rfcomm dund pand hidd \
 		cups fuse alsa test scripts
