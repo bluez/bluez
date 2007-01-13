@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -575,4 +575,3 @@ DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void
 
 	return send_message_and_unref(conn, reply);
 }
-

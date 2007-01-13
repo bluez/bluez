@@ -4,7 +4,7 @@
  *
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2002-2006  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2007  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -189,4 +189,3 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type
 int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key);
 int read_pin_length(bdaddr_t *local, bdaddr_t *peer);
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
-
