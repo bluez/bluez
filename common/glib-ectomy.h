@@ -112,6 +112,36 @@ gboolean g_utf8_validate(const gchar *str, gssize max_len, const gchar **end);
 #define g_main_quit(loop)	g_main_loop_quit(loop)
 #define g_main_unref(loop)	g_main_loop_unref(loop)
 
+/* Begin GSList declarations */
+
+typedef struct _GSList {
+	void *data;
+	struct _GSList *next;
+} GSList;
+
+typedef int (*GCompareFunc)(const void *a, const void *b);
+typedef void (*GFunc)(void *data, void *user_data);
+
+GSList *g_slist_append(GSList *list, void *data);
+
+GSList *g_slist_prepend(GSList *list, void *data);
+
+GSList *g_slist_insert_sorted(GSList *list, void *data, GCompareFunc cmp_func);
+
+GSList *g_slist_remove(GSList *list, void *data);
+
+GSList *g_slist_find_custom(GSList *list, const void *data,
+			GCompareFunc cmp_func);
+
+GSList *g_slist_sort(GSList *list, GCompareFunc cmp_func);
+
+int g_slist_length(GSList *list);
+
+void g_slist_foreach(GSList *list, GFunc func, void *user_data);
+void g_slist_free(GSList *list);
+
+/* End GSList declarations */
+
 #endif
 
 #endif /* __GLIB_ECTOMY_H */

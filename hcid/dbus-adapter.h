@@ -25,7 +25,6 @@
 #define __ADAPTER_H
 
 #include <dbus/dbus.h>
-#include "list.h"
 #include "glib-ectomy.h"
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter"
@@ -98,17 +97,17 @@ struct adapter {
 	int pinq_idle;			/* tracks the idle time for periodic inquiry */
 	int discov_type;		/* type requested */
 	int pdiscov_resolve_names;	/* Resolve names when doing periodic discovery */
-	struct slist *found_devices;
-	struct slist *oor_devices;	/* out of range device list */
+	GSList *found_devices;
+	GSList *oor_devices;	/* out of range device list */
 	char *pdiscov_requestor;	/* periodic discovery requestor unique name */
 	char *discov_requestor;		/* discovery requestor unique name */
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
-	struct slist *passkey_agents;
-	struct slist *auth_agents;	/* Authorization agents */
+	GSList *passkey_agents;
+	GSList *auth_agents;	/* Authorization agents */
 	bdaddr_t agents_disabled;	/* temporarely disable agents for bda */
-	struct slist *active_conn;
+	GSList *active_conn;
 	struct bonding_request_info *bonding;
-	struct slist *pin_reqs;
+	GSList *pin_reqs;
 	struct pending_dc_info *pending_dc;
 };
 
@@ -118,7 +117,7 @@ const char *major_class_str(uint32_t class);
 
 const char *minor_class_str(uint32_t class);
 
-struct slist *service_classes_str(uint32_t class);
+GSList *service_classes_str(uint32_t class);
 
 int pending_remote_name_cancel(struct adapter *adapter);
 

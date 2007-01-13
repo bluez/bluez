@@ -37,13 +37,12 @@
 #include "glib-ectomy.h"
 #include "dbus.h"
 #include "logging.h"
-#include "list.h"
 
 #define DISPATCH_TIMEOUT	0
 
 static int name_listener_initialized = 0;
 
-static struct slist *name_listeners = NULL;
+static GSList *name_listeners = NULL;
 
 typedef struct {
 	uint32_t id;
@@ -68,12 +67,12 @@ struct name_callback {
 
 struct name_data {
 	char *name;
-	struct slist *callbacks;
+	GSList *callbacks;
 };
 
 static struct name_data *name_data_find(const char *name)
 {
-	struct slist *current;
+	GSList *current;
 
 	for (current = name_listeners; current != NULL; current = current->next) {
 		struct name_data *data = current->data;
@@ -84,10 +83,10 @@ static struct name_data *name_data_find(const char *name)
 	return NULL;
 }
 
-static struct name_callback *name_callback_find(struct slist *callbacks,
+static struct name_callback *name_callback_find(GSList *callbacks,
 						name_cb_t func, void *user_data)
 {
-	struct slist *current;
+	GSList *current;
 
 	for (current = callbacks; current != NULL; current = current->next) {
 		struct name_callback *cb = current->data;
@@ -100,12 +99,12 @@ static struct name_callback *name_callback_find(struct slist *callbacks,
 
 static void name_data_free(struct name_data *data)
 {
-	struct slist *l;
+	GSList *l;
 
 	for (l = data->callbacks; l != NULL; l = l->next)
 		free(l->data);
 
-	slist_free(data->callbacks);
+	g_slist_free(data->callbacks);
 
 	if (data->name)
 		free(data->name);
@@ -142,10 +141,10 @@ static int name_data_add(const char *name, name_cb_t func, void *user_data)
 	if (!data->name)
 		goto failed;
 
-	name_listeners = slist_append(name_listeners, data);
+	name_listeners = g_slist_append(name_listeners, data);
 
 done:
-	data->callbacks = slist_append(data->callbacks, cb);
+	data->callbacks = g_slist_append(data->callbacks, cb);
 	return first;
 
 failed:
@@ -169,12 +168,12 @@ static void name_data_remove(const char *name, name_cb_t func, void *user_data)
 
 	cb = name_callback_find(data->callbacks, func, user_data);
 	if (cb) {
-		data->callbacks = slist_remove(data->callbacks, cb);
+		data->callbacks = g_slist_remove(data->callbacks, cb);
 		free(cb);
 	}
 
 	if (!data->callbacks) {
-		name_listeners = slist_remove(name_listeners, data);
+		name_listeners = g_slist_remove(name_listeners, data);
 		name_data_free(data);
 	}
 }
@@ -182,7 +181,7 @@ static void name_data_remove(const char *name, name_cb_t func, void *user_data)
 static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	struct slist *l;
+	GSList *l;
 	struct name_data *data;
 	char *name, *old, *new;
 
@@ -214,7 +213,7 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 		cb->func(name, cb->user_data);
 	}
 
-	name_listeners = slist_remove(name_listeners, data);
+	name_listeners = g_slist_remove(name_listeners, data);
 	name_data_free(data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -283,7 +282,7 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 		return -1;
 	}
 
-	data->callbacks = slist_remove(data->callbacks, cb);
+	data->callbacks = g_slist_remove(data->callbacks, cb);
 	free(cb);
 
 	/* Don't remove the filter if other callbacks exist */

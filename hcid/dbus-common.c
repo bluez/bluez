@@ -47,7 +47,6 @@
 #include <dbus/dbus.h>
 
 #include "hcid.h"
-#include "list.h"
 #include "dbus.h"
 #include "dbus-error.h"
 #include "dbus-hci.h"

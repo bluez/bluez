@@ -33,8 +33,8 @@ struct service_agent {
 	char *name;
 	char *description;
 	int running;
-	struct slist *trusted_devices;
-	struct slist *records; 	/* list of binary records */
+	GSList *trusted_devices;
+	GSList *records; 	/* list of binary records */
 };
 
 struct service_call {
@@ -61,7 +61,7 @@ int unregister_service_agent(DBusConnection *conn, const char *sender,
 void release_service_agents(DBusConnection *conn);
 void append_available_services(DBusMessageIter *iter);
 
-int register_agent_records(struct slist *lrecords);
+int register_agent_records(GSList *lrecords);
 
 struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
 					struct service_agent *agent);

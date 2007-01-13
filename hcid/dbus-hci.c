@@ -46,7 +46,6 @@
 #include "hcid.h"
 #include "dbus.h"
 #include "textfile.h"
-#include "list.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-test.h"
@@ -105,18 +104,18 @@ int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
 	return rssi1 - rssi2;
 }
 
-int found_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi,
+int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,
 			name_status_t name_status)
 {
 	struct remote_dev_info *dev, match;
-	struct slist *l;
+	GSList *l;
 
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, bdaddr);
 	match.name_status = NAME_ANY;
 
 	/* ignore repeated entries */
-	l = slist_find(*list, &match, (cmp_func_t) found_device_cmp);
+	l = g_slist_find_custom(*list, &match, (GCompareFunc) found_device_cmp);
 	if (l) {
 		/* device found, update the attributes */
 		dev = l->data;
@@ -130,7 +129,7 @@ int found_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi,
 		if (name_status != NAME_NOT_REQUIRED)
 			dev->name_status = name_status;
 
-		*list = slist_sort(*list, (cmp_func_t) dev_rssi_cmp);
+		*list = g_slist_sort(*list, (GCompareFunc) dev_rssi_cmp);
 
 		return -EALREADY;
 	}
@@ -144,25 +143,25 @@ int found_device_add(struct slist **list, bdaddr_t *bdaddr, int8_t rssi,
 	dev->rssi = rssi;
 	dev->name_status = name_status;
 
-	*list = slist_insert_sorted(*list, dev, (cmp_func_t) dev_rssi_cmp);
+	*list = g_slist_insert_sorted(*list, dev, (GCompareFunc) dev_rssi_cmp);
 
 	return 0;
 }
 
-static int found_device_remove(struct slist **list, bdaddr_t *bdaddr)
+static int found_device_remove(GSList **list, bdaddr_t *bdaddr)
 {
 	struct remote_dev_info *dev, match;
-	struct slist *l;
+	GSList *l;
 
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, bdaddr);
 
-	l = slist_find(*list, &match, (cmp_func_t) found_device_cmp);
+	l = g_slist_find_custom(*list, &match, (GCompareFunc) found_device_cmp);
 	if (!l)
 		return -1;
 
 	dev = l->data;
-	*list = slist_remove(*list, dev);
+	*list = g_slist_remove(*list, dev);
 	free(dev);
 
 	return 0;
@@ -187,7 +186,7 @@ static int active_conn_find_by_handle(const void *data, const void *user_data)
 	return -1;
 }
 
-static int active_conn_append(struct slist **list, bdaddr_t *bdaddr,
+static int active_conn_append(GSList **list, bdaddr_t *bdaddr,
 				uint16_t handle)
 {
 	struct active_conn_info *dev;
@@ -200,7 +199,7 @@ static int active_conn_append(struct slist **list, bdaddr_t *bdaddr,
 	bacpy(&dev->bdaddr, bdaddr);
 	dev->handle = handle;
 
-	*list = slist_append(*list, dev);
+	*list = g_slist_append(*list, dev);
 	return 0;
 }
 
@@ -447,30 +446,30 @@ int unregister_adapter_path(const char *path)
 	}
 
 	if (adapter->found_devices) {
-		slist_foreach(adapter->found_devices,
-				(slist_func_t) free, NULL);
-		slist_free(adapter->found_devices);
+		g_slist_foreach(adapter->found_devices,
+				(GFunc) free, NULL);
+		g_slist_free(adapter->found_devices);
 		adapter->found_devices = NULL;
 	}
 
 	if (adapter->oor_devices) {
-		slist_foreach(adapter->oor_devices,
-				(slist_func_t) free, NULL);
-		slist_free(adapter->oor_devices);
+		g_slist_foreach(adapter->oor_devices,
+				(GFunc) free, NULL);
+		g_slist_free(adapter->oor_devices);
 		adapter->oor_devices = NULL;
 	}
 
 	if (adapter->pin_reqs) {
-		slist_foreach(adapter->pin_reqs,
-				(slist_func_t) free, NULL);
-		slist_free(adapter->pin_reqs);
+		g_slist_foreach(adapter->pin_reqs,
+				(GFunc) free, NULL);
+		g_slist_free(adapter->pin_reqs);
 		adapter->pin_reqs = NULL;
 	}
 
 	if (adapter->active_conn) {
-		slist_foreach(adapter->active_conn,
-				(slist_func_t) free, NULL);
-		slist_free(adapter->active_conn);
+		g_slist_foreach(adapter->active_conn,
+				(GFunc) free, NULL);
+		g_slist_free(adapter->active_conn);
 		adapter->active_conn = NULL;
 	}
 
@@ -768,27 +767,27 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 
 	if (adapter->found_devices) {
-		slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
-		slist_free(adapter->found_devices);
+		g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+		g_slist_free(adapter->found_devices);
 		adapter->found_devices = NULL;
 	}
 
 	if (adapter->oor_devices) {
-		slist_foreach(adapter->oor_devices, (slist_func_t) free, NULL);
-		slist_free(adapter->oor_devices);
+		g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
+		g_slist_free(adapter->oor_devices);
 		adapter->oor_devices = NULL;
 	}
 
 	if (adapter->pin_reqs) {
-		slist_foreach(adapter->pin_reqs, (slist_func_t) free, NULL);
-		slist_free(adapter->pin_reqs);
+		g_slist_foreach(adapter->pin_reqs, (GFunc) free, NULL);
+		g_slist_free(adapter->pin_reqs);
 		adapter->pin_reqs = NULL;
 	}
 
 	if (adapter->active_conn) {
-		slist_foreach(adapter->active_conn, (slist_func_t) send_dc_signal, path);
-		slist_foreach(adapter->active_conn, (slist_func_t) free, NULL);
-		slist_free(adapter->active_conn);
+		g_slist_foreach(adapter->active_conn, (GFunc) send_dc_signal, path);
+		g_slist_foreach(adapter->active_conn, (GFunc) free, NULL);
+		g_slist_free(adapter->active_conn);
 		adapter->active_conn = NULL;
 	}
 
@@ -847,7 +846,7 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 
 	memset(info, 0, sizeof(struct pending_pin_info));
 	bacpy(&info->bdaddr, dba);
-	adapter->pin_reqs = slist_append(adapter->pin_reqs, info);
+	adapter->pin_reqs = g_slist_append(adapter->pin_reqs, info);
 
 	if (adapter->bonding && !bacmp(dba, &adapter->bonding->bdaddr))
 		adapter->bonding->auth_active = 1;
@@ -895,7 +894,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct adapter *adapter;
 	DBusMessage *message;
 	char *local_addr, *peer_addr;
-	struct slist *l;
+	GSList *l;
 	bdaddr_t tmp;
 	char path[MAX_PATH_LENGTH];
 	int id;
@@ -922,10 +921,10 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		cancel_passkey_agent_requests(adapter->passkey_agents, path,
 						peer);
 
-	l = slist_find(adapter->pin_reqs, peer, pin_req_cmp);
+	l = g_slist_find_custom(adapter->pin_reqs, peer, pin_req_cmp);
 	if (l) {
 		void *d = l->data;
-		adapter->pin_reqs = slist_remove(adapter->pin_reqs, l->data);
+		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, l->data);
 		free(d);
 
 		if (!status) {
@@ -1016,7 +1015,7 @@ int found_device_req_name(struct adapter *adapter)
 	evt_cmd_status rp;
 	remote_name_req_cp cp;
 	struct remote_dev_info match;
-	struct slist *l;
+	GSList *l;
 	int dd, req_sent = 0;
 
 	/* get the next remote address */
@@ -1027,8 +1026,8 @@ int found_device_req_name(struct adapter *adapter)
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUIRED;
 
-	l = slist_find(adapter->found_devices, &match,
-					(cmp_func_t) found_device_cmp);
+	l = g_slist_find_custom(adapter->found_devices, &match,
+					(GCompareFunc) found_device_cmp);
 	if (!l)
 		return -ENODATA;
 
@@ -1091,12 +1090,12 @@ int found_device_req_name(struct adapter *adapter)
 
 		/* if failed, request the next element */
 		/* remove the element from the list */
-		adapter->found_devices = slist_remove(adapter->found_devices, dev);
+		adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
 		free(dev);
 
 		/* get the next element */
-		l = slist_find(adapter->found_devices, &match,
-					(cmp_func_t) found_device_cmp);
+		l = g_slist_find_custom(adapter->found_devices, &match,
+					(GCompareFunc) found_device_cmp);
 
 	} while (l);
 
@@ -1108,7 +1107,7 @@ int found_device_req_name(struct adapter *adapter)
 	return 0;
 }
 
-static void send_out_of_range(const char *path, struct slist *l)
+static void send_out_of_range(const char *path, GSList *l)
 {
 	DBusMessage *message;
 	const char *peer_addr;
@@ -1131,7 +1130,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
 	DBusMessage *message;
 	struct adapter *adapter;
-	struct slist *l;
+	GSList *l;
 	char path[MAX_PATH_LENGTH];
 	char *local_addr;
 	struct remote_dev_info *dev;
@@ -1159,15 +1158,15 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	if (adapter->pdiscov_active && !adapter->discov_active) {
 		send_out_of_range(path, adapter->oor_devices);
 
-		slist_foreach(adapter->oor_devices, (slist_func_t) free, NULL);
-		slist_free(adapter->oor_devices);
+		g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
+		g_slist_free(adapter->oor_devices);
 		adapter->oor_devices = NULL;
 
 		l = adapter->found_devices;
 		while (l) {
 			dev = l->data;
 			baswap(&tmp, &dev->bdaddr);
-			adapter->oor_devices = slist_append(adapter->oor_devices,
+			adapter->oor_devices = g_slist_append(adapter->oor_devices,
 								batostr(&tmp));
 			l = l->next;
 		}
@@ -1206,8 +1205,8 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	}
 
 	/* free discovered devices list */
-	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->found_devices);
+	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
 	if (adapter->discov_requestor) { 
@@ -1310,13 +1309,13 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	adapter->discov_type &= ~(PERIODIC_INQUIRY | RESOLVE_NAME);
 
 	/* free discovered devices list */
-	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->found_devices);
+	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
 	/* free out of range devices list */
-	slist_foreach(adapter->oor_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->oor_devices);
+	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
+	g_slist_free(adapter->oor_devices);
 	adapter->oor_devices = NULL;
 
 	if (adapter->pdiscov_requestor) {
@@ -1372,7 +1371,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	DBusMessage *signal_name;
 	char path[MAX_PATH_LENGTH];
 	struct adapter *adapter;
-	struct slist *l;
+	GSList *l;
 	struct remote_dev_info match;
 	char *local_addr, *peer_addr, *name, *tmp_name;
 	dbus_int16_t tmp_rssi = rssi;
@@ -1412,11 +1411,11 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		adapter->pinq_idle = 0;
 
 		/* Out of range list update */
-		l = slist_find(adapter->oor_devices, peer_addr,
-				(cmp_func_t) strcmp);
+		l = g_slist_find_custom(adapter->oor_devices, peer_addr,
+				(GCompareFunc) strcmp);
 		if (l) {
 			char *dev = l->data;
-			adapter->oor_devices = slist_remove(adapter->oor_devices,
+			adapter->oor_devices = g_slist_remove(adapter->oor_devices,
 								dev);
 			free(dev);
 		}
@@ -1435,8 +1434,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
 	/* if found: don't send the name again */
-	l = slist_find(adapter->found_devices, &match,
-			(cmp_func_t) found_device_cmp);
+	l = g_slist_find_custom(adapter->found_devices, &match,
+			(GCompareFunc) found_device_cmp);
 	if (l)
 		goto done;
 
@@ -1569,8 +1568,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 		goto done; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
-	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->found_devices);
+	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
 	/*
@@ -1637,16 +1636,16 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	}
 
 	if (status) {
-		struct slist *l;
+		GSList *l;
 
 		cancel_passkey_agent_requests(adapter->passkey_agents, path,
 						peer);
 		release_passkey_agents(adapter, peer);
 
-		l = slist_find(adapter->pin_reqs, peer, pin_req_cmp);
+		l = g_slist_find_custom(adapter->pin_reqs, peer, pin_req_cmp);
 		if (l) {
 			struct pending_pin_req *p = l->data;
-			adapter->pin_reqs = slist_remove(adapter->pin_reqs, p);
+			adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
 			free(p);
 		}
 
@@ -1677,7 +1676,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	struct adapter *adapter;
 	struct active_conn_info *dev;
 	DBusMessage *message;
-	struct slist *l;
+	GSList *l;
 	char *local_addr, *peer_addr = NULL;
 	bdaddr_t tmp;
 	int id;
@@ -1703,7 +1702,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		goto failed;
 	}
 
-	l = slist_find(adapter->active_conn, &handle,
+	l = g_slist_find_custom(adapter->active_conn, &handle,
 			active_conn_find_by_handle);
 
 	if (!l)
@@ -1721,10 +1720,10 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					&dev->bdaddr);
 	release_passkey_agents(adapter, &dev->bdaddr);
 
-	l = slist_find(adapter->pin_reqs, &dev->bdaddr, pin_req_cmp);
+	l = g_slist_find_custom(adapter->pin_reqs, &dev->bdaddr, pin_req_cmp);
 	if (l) {
 		struct pending_pin_req *p = l->data;
-		adapter->pin_reqs = slist_remove(adapter->pin_reqs, p);
+		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
 		free(p);
 	}
 
@@ -1772,7 +1771,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					DBUS_TYPE_INVALID);
 	send_message_and_unref(connection, message);
 
-	adapter->active_conn = slist_remove(adapter->active_conn, dev);
+	adapter->active_conn = g_slist_remove(adapter->active_conn, dev);
 	free(dev);
 
 failed:
@@ -1970,7 +1969,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	struct adapter *adapter;
 	char *local_addr;
 	ret_pin_code_req_reply *ret = ptr + EVT_CMD_COMPLETE_SIZE;
-	struct slist *l;
+	GSList *l;
 	char path[MAX_PATH_LENGTH];
 	bdaddr_t tmp;
 	int id;
@@ -1990,7 +1989,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 		goto failed;
 	}
 
-	l = slist_find(adapter->pin_reqs, &ret->bdaddr, pin_req_cmp);
+	l = g_slist_find_custom(adapter->pin_reqs, &ret->bdaddr, pin_req_cmp);
 	if (l) {
 		struct pending_pin_info *p = l->data;
 		p->replied = 1;
@@ -2003,7 +2002,7 @@ failed:
 void create_bond_req_exit(const char *name, struct adapter *adapter)
 {
 	char path[MAX_PATH_LENGTH];
-	struct slist *l;
+	GSList *l;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
 
@@ -2014,7 +2013,7 @@ void create_bond_req_exit(const char *name, struct adapter *adapter)
 					&adapter->bonding->bdaddr);
 	release_passkey_agents(adapter, &adapter->bonding->bdaddr);
 
-	l = slist_find(adapter->pin_reqs, &adapter->bonding->bdaddr,
+	l = g_slist_find_custom(adapter->pin_reqs, &adapter->bonding->bdaddr,
 			pin_req_cmp);
 	if (l) {
 		struct pending_pin_info *p = l->data;
@@ -2031,7 +2030,7 @@ void create_bond_req_exit(const char *name, struct adapter *adapter)
 			}
 		}
 
-		adapter->pin_reqs = slist_remove(adapter->pin_reqs, p);
+		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
 		free(p);
 	}
 
@@ -2110,7 +2109,7 @@ static int remote_name_cancel(int dd, bdaddr_t *dba, int to)
 int cancel_discovery(struct adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
-	struct slist *l;
+	GSList *l;
 	int dd, err = 0;
 
 	if (!adapter->discov_active)
@@ -2130,8 +2129,8 @@ int cancel_discovery(struct adapter *adapter)
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = slist_find(adapter->found_devices, &match,
-				(cmp_func_t) found_device_cmp);
+	l = g_slist_find_custom(adapter->found_devices, &match,
+				(GCompareFunc) found_device_cmp);
 	if (l) {
 		dev = l->data;
 		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
@@ -2154,8 +2153,8 @@ cleanup:
 	 * Reset discov_requestor and discover_state in the remote name
 	 * request event handler or in the inquiry complete handler.
 	 */
-	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->found_devices);
+	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
 	/* Disable name resolution for non D-Bus clients */
@@ -2204,7 +2203,7 @@ static int periodic_inquiry_exit(int dd, int to)
 int cancel_periodic_discovery(struct adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
-	struct slist *l;
+	GSList *l;
 	int dd, err = 0;
 	
 	if (!adapter->pdiscov_active)
@@ -2220,8 +2219,8 @@ int cancel_periodic_discovery(struct adapter *adapter)
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = slist_find(adapter->found_devices, &match,
-			(cmp_func_t) found_device_cmp);
+	l = g_slist_find_custom(adapter->found_devices, &match,
+			(GCompareFunc) found_device_cmp);
 	if (l) {
 		dev = l->data;
 		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
@@ -2246,8 +2245,8 @@ cleanup:
 	 * Reset pdiscov_requestor and pdiscov_active is done when the
 	 * cmd complete event for exit periodic inquiry mode cmd arrives.
 	 */
-	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->found_devices);
+	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
 	return err;

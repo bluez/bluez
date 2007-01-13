@@ -42,7 +42,6 @@
 
 #include "hcid.h"
 #include "dbus.h"
-#include "list.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-security.h"
@@ -454,7 +453,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 		rec->handle = handle;
 	}
 
-	agent->records = slist_append(agent->records, rec);
+	agent->records = g_slist_append(agent->records, rec);
 
 	dbus_message_append_args(reply,
 				DBUS_TYPE_UINT32, &rec->ext_handle,
@@ -555,7 +554,7 @@ static DBusHandlerResult add_service_record_xml(DBusConnection *conn,
 		rec->handle = handle;
 	}
 
-	agent->records = slist_append(agent->records, rec);
+	agent->records = g_slist_append(agent->records, rec);
 
 	dbus_message_append_args(reply,
 				DBUS_TYPE_UINT32, &rec->ext_handle,
@@ -576,7 +575,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 	struct service_agent *agent;
 	struct binary_record *rec;
 	DBusMessage *reply;
-	struct slist *l;
+	GSList *l;
 	const char *path;
 	uint32_t handle;
 
@@ -599,7 +598,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 		return error_not_authorized(conn, msg);
 
 
-	l = slist_find(agent->records, &handle, (cmp_func_t) binary_record_cmp);
+	l = g_slist_find_custom(agent->records, &handle, (GCompareFunc) binary_record_cmp);
 	if (!l)
 		return error_record_does_not_exist(conn, msg);
 
@@ -608,7 +607,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	rec = l->data;
-	agent->records = slist_remove(agent->records, rec);
+	agent->records = g_slist_remove(agent->records, rec);
 
 	/* If the service agent is running: remove it from the from sdpd */
 	if (agent->running && rec->handle != 0xffffffff) {

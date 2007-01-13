@@ -57,7 +57,7 @@ static void send_cancel_request(struct pending_agent_request *req);
 
 static void passkey_agent_free(struct passkey_agent *agent)
 {
-	struct slist *l;
+	GSList *l;
 
 	if (!agent)
 		return;
@@ -86,14 +86,14 @@ static void passkey_agent_free(struct passkey_agent *agent)
 	if (agent->conn)
 		dbus_connection_unref(agent->conn);
 
-	slist_free(agent->pending_requests);
+	g_slist_free(agent->pending_requests);
 
 	free(agent);
 }
 
 static void agent_exited(const char *name, struct adapter *adapter)
 {
-	struct slist *cur, *next;
+	GSList *cur, *next;
 
 	debug("Passkey agent %s exited without calling Unregister", name);
 
@@ -107,7 +107,7 @@ static void agent_exited(const char *name, struct adapter *adapter)
 
 		agent->exited = 1;
 
-		adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
+		adapter->passkey_agents = g_slist_remove(adapter->passkey_agents, agent);
 		passkey_agent_free(agent);
 	}
 }
@@ -119,7 +119,7 @@ static gboolean agent_timeout(struct passkey_agent *agent)
 	debug("Passkey Agent at %s, %s timed out", agent->name, agent->path);
 
 	if (adapter)
-		adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
+		adapter->passkey_agents = g_slist_remove(adapter->passkey_agents, agent);
 
 	agent->timeout = 0;
 
@@ -241,7 +241,7 @@ static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
 	ref.addr = (char *) addr;
 	ref.path = (char *) path;
 
-	if (slist_find(adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp))
+	if (g_slist_find_custom(adapter->passkey_agents, &ref, (GCompareFunc) agent_cmp))
 		return error_passkey_agent_already_exists(conn, msg);
 
 	agent = passkey_agent_new(adapter, conn, ref.name, path, addr);
@@ -258,12 +258,12 @@ static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
 	/* Only add a name listener if there isn't one already for this name */
 	ref.addr = NULL;
 	ref.path = NULL;
-	if (!slist_find(adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp))
+	if (!g_slist_find_custom(adapter->passkey_agents, &ref, (GCompareFunc) agent_cmp))
 		name_listener_add(conn, ref.name, (name_cb_t) agent_exited, adapter);
 
 	agent->timeout = g_timeout_add(AGENT_TIMEOUT, (GSourceFunc)agent_timeout, agent);
 
-	adapter->passkey_agents = slist_append(adapter->passkey_agents, agent);
+	adapter->passkey_agents = g_slist_append(adapter->passkey_agents, agent);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -272,7 +272,7 @@ static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter;
-	struct slist *match;
+	GSList *match;
 	struct passkey_agent ref, *agent;
 	DBusMessage *reply;
 	const char *path, *addr;
@@ -296,7 +296,7 @@ static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
 	ref.path = (char *) path;
 	ref.addr = (char *) addr;
 
-	match = slist_find(adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp);
+	match = g_slist_find_custom(adapter->passkey_agents, &ref, (GCompareFunc) agent_cmp);
 	if (!match)
 		return error_passkey_agent_does_not_exist(conn, msg);
 
@@ -305,7 +305,7 @@ static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
 	name_listener_remove(agent->conn, agent->name,
 			(name_cb_t) agent_exited, adapter);
 
-	adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
+	adapter->passkey_agents = g_slist_remove(adapter->passkey_agents, agent);
 	agent->exited = 1;
 	passkey_agent_free(agent);
 
@@ -461,7 +461,7 @@ static void pend_auth_agent_req_cancel(struct pend_auth_agent_req *req)
 
 static void auth_agent_cancel_requests(struct authorization_agent *agent)
 {
-	struct slist *l;
+	GSList *l;
 
 	for (l = agent->pending_requests; l != NULL; l = l->next) {
 		struct pend_auth_agent_req *req = l->data;
@@ -498,7 +498,7 @@ static void auth_agent_free(struct authorization_agent *agent)
 	free(agent->name);
 	free(agent->path);
 	dbus_connection_unref(agent->conn);
-	slist_free(agent->pending_requests);
+	g_slist_free(agent->pending_requests);
 	free(agent);
 }
 
@@ -697,7 +697,7 @@ reject:
 done:
 	dbus_message_unref(reply);
 
-	agent->pending_requests = slist_remove(agent->pending_requests, req);
+	agent->pending_requests = g_slist_remove(agent->pending_requests, req);
 
 	pend_auth_agent_req_free(req);
 }
@@ -759,7 +759,7 @@ static DBusHandlerResult call_auth_agent(DBusMessage *msg,
 
 	dbus_pending_call_set_notify(req->call,
 					auth_agent_req_reply, req, NULL);
-	agent->pending_requests = slist_append(agent->pending_requests, req);
+	agent->pending_requests = g_slist_append(agent->pending_requests, req);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -769,7 +769,7 @@ static DBusHandlerResult authorize_service(DBusConnection *conn,
 {
 	const char *service_path, *adapter_path, *address, *action;
 	struct service_agent *sagent;
-	struct slist *l;
+	GSList *l;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
@@ -796,7 +796,7 @@ static DBusHandlerResult authorize_service(DBusConnection *conn,
 		return error_rejected(conn, msg);
 
 	/* Check it is a trusted device */
-	l = slist_find(sagent->trusted_devices, address, (cmp_func_t) strcasecmp);
+	l = g_slist_find_custom(sagent->trusted_devices, address, (GCompareFunc) strcasecmp);
 	if (l)
 		return send_message_and_unref(conn,
 				dbus_message_new_method_return(msg));
@@ -817,7 +817,7 @@ static DBusHandlerResult auth_agent_send_cancel(DBusMessage *msg,
 {
 	struct pend_auth_agent_req *req = NULL;
 	DBusMessage *message;
-	struct slist *l;
+	GSList *l;
 
 	for (l = agent->pending_requests; l != NULL; l = l->next) {
 		req = l->data;
@@ -1021,7 +1021,7 @@ done:
 	if (message)
 		dbus_message_unref(message);
 
-	agent->pending_requests = slist_remove(agent->pending_requests, req);
+	agent->pending_requests = g_slist_remove(agent->pending_requests, req);
 	dbus_pending_call_cancel(req->call);
 	if (req->call)
 		dbus_pending_call_unref(req->call);
@@ -1029,7 +1029,7 @@ done:
 	free(req);
 
 	if (agent != default_agent) {
-		agent->adapter->passkey_agents = slist_remove(agent->adapter->passkey_agents,
+		agent->adapter->passkey_agents = g_slist_remove(agent->adapter->passkey_agents,
 								agent);
 		passkey_agent_free(agent);
 	}
@@ -1068,7 +1068,7 @@ static int call_passkey_agent(DBusConnection *conn,
 
 	dbus_pending_call_set_notify(req->call, passkey_agent_reply, req, NULL);
 
-	agent->pending_requests = slist_append(agent->pending_requests, req);
+	agent->pending_requests = g_slist_append(agent->pending_requests, req);
 
 	return 0;
 
@@ -1088,7 +1088,7 @@ int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
 {
 	struct passkey_agent *agent = default_agent;
 	struct adapter *adapter = NULL;
-	struct slist *l;
+	GSList *l;
 	char addr[18];
 	void *data;
 
@@ -1106,7 +1106,7 @@ int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
 
 	for (l = adapter->passkey_agents; l != NULL; l = l->next) {
 		struct passkey_agent *a = l->data;
-		if (a != default_agent && slist_length(a->pending_requests) >= 1)
+		if (a != default_agent && g_slist_length(a->pending_requests) >= 1)
 			continue;
 		if (!strcmp(a->addr, addr)) {
 			agent = a;
@@ -1203,7 +1203,7 @@ done:
 	if (message)
 		dbus_message_unref(message);
 
-	agent->pending_requests = slist_remove(agent->pending_requests, req);
+	agent->pending_requests = g_slist_remove(agent->pending_requests, req);
 	dbus_pending_call_cancel(req->call);
 	if (req->call)
 		dbus_pending_call_unref(req->call);
@@ -1213,7 +1213,7 @@ done:
 	free(req);
 
 	if (agent != default_agent) {
-		agent->adapter->passkey_agents = slist_remove(agent->adapter->passkey_agents,
+		agent->adapter->passkey_agents = g_slist_remove(agent->adapter->passkey_agents,
 								agent);
 		passkey_agent_free(agent);
 	}
@@ -1255,7 +1255,7 @@ static int call_confirm_agent(DBusConnection *conn,
 
 	dbus_pending_call_set_notify(req->call, confirm_agent_reply, req, NULL);
 
-	agent->pending_requests = slist_append(agent->pending_requests, req);
+	agent->pending_requests = g_slist_append(agent->pending_requests, req);
 
 	return 0;
 
@@ -1277,7 +1277,7 @@ int handle_confirm_request(DBusConnection *conn, int dev, const char *path,
 {
 	struct passkey_agent *agent = default_agent;
 	struct adapter *adapter = NULL;
-	struct slist *l;
+	GSList *l;
 	char addr[18];
 	void *data;
 
@@ -1295,7 +1295,7 @@ int handle_confirm_request(DBusConnection *conn, int dev, const char *path,
 
 	for (l = adapter->passkey_agents; l != NULL; l = l->next) {
 		struct passkey_agent *a = l->data;
-		if (a != default_agent && slist_length(a->pending_requests) >= 1)
+		if (a != default_agent && g_slist_length(a->pending_requests) >= 1)
 			continue;
 		if (!strcmp(a->addr, addr)) {
 			agent = a;
@@ -1366,7 +1366,7 @@ static void release_agent(struct passkey_agent *agent)
 		/* Only remove the name listener if there are no more agents for this name */
 		memset(&ref, 0, sizeof(ref));
 		ref.name = agent->name;
-		if (!slist_find(agent->adapter->passkey_agents, &ref, (cmp_func_t) agent_cmp))
+		if (!g_slist_find_custom(agent->adapter->passkey_agents, &ref, (GCompareFunc) agent_cmp))
 			name_listener_remove(agent->conn, ref.name,
 					(name_cb_t) agent_exited, agent->adapter);
 	}
@@ -1395,7 +1395,7 @@ void release_default_auth_agent(void)
 
 void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda)
 {
-	struct slist *l, *next;
+	GSList *l, *next;
 
 	for (l = adapter->passkey_agents; l != NULL; l = next) {
 		struct passkey_agent *agent = l->data;
@@ -1408,15 +1408,15 @@ void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda)
 				continue;
 		}
 
-		adapter->passkey_agents = slist_remove(adapter->passkey_agents, agent);
+		adapter->passkey_agents = g_slist_remove(adapter->passkey_agents, agent);
 		passkey_agent_free(agent);
 	}
 }
 
-void cancel_passkey_agent_requests(struct slist *agents, const char *path,
+void cancel_passkey_agent_requests(GSList *agents, const char *path,
 					bdaddr_t *addr)
 {
-	struct slist *l, *next;
+	GSList *l, *next;
 
 	/* First check the default agent */
 	for (l = default_agent ? default_agent->pending_requests : NULL; l != NULL; l = next) {
@@ -1424,7 +1424,7 @@ void cancel_passkey_agent_requests(struct slist *agents, const char *path,
 		next = l->next;
 		if (!strcmp(path, req->path) && (!addr || !bacmp(addr, &req->bda))) {
 			send_cancel_request(req);
-			default_agent->pending_requests = slist_remove(default_agent->pending_requests,
+			default_agent->pending_requests = g_slist_remove(default_agent->pending_requests,
 									req);
 		}
 	}
@@ -1438,7 +1438,7 @@ void cancel_passkey_agent_requests(struct slist *agents, const char *path,
 			next = l->next;
 			if (!strcmp(path, req->path) && (!addr || !bacmp(addr, &req->bda))) {
 				send_cancel_request(req);
-				agent->pending_requests = slist_remove(agent->pending_requests, req);
+				agent->pending_requests = g_slist_remove(agent->pending_requests, req);
 			}
 		}
 	}

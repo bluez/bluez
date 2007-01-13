@@ -50,7 +50,6 @@
 
 #include "hcid.h"
 #include "textfile.h"
-#include "list.h"
 #include "dbus-hci.h"
 
 struct g_io_info {
@@ -63,7 +62,7 @@ static struct g_io_info io_data[HCI_MAX_DEV];
 
 static int pairing = HCID_PAIRING_MULTI;
 
-static struct slist *hci_req_queue = NULL;
+static GSList *hci_req_queue = NULL;
 
 struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba, uint16_t ogf, uint16_t ocf, int event, const void *cparam, int clen)
 {
@@ -111,7 +110,7 @@ static void hci_req_queue_process(int dev_id)
 	dd = hci_open_dev(dev_id);
 	do {
 		struct hci_req_data *data;
-		struct slist *l = slist_find(hci_req_queue, &dev_id, hci_req_find_by_devid);
+		GSList *l = g_slist_find_custom(hci_req_queue, &dev_id, hci_req_find_by_devid);
 
 		if (!l)
 			break;
@@ -121,7 +120,7 @@ static void hci_req_queue_process(int dev_id)
 		
 		ret_val = hci_send_cmd(dd, data->ogf, data->ocf, data->clen, data->cparam);
 		if (ret_val < 0) {
-			hci_req_queue = slist_remove(hci_req_queue, data);
+			hci_req_queue = g_slist_remove(hci_req_queue, data);
 			free(data->cparam);
 			free(data);
 		}
@@ -133,13 +132,13 @@ static void hci_req_queue_process(int dev_id)
 
 void hci_req_queue_append(struct hci_req_data *data)
 {
-	struct slist *l;
+	GSList *l;
 	struct hci_req_data *match;
 
 
-	hci_req_queue = slist_append(hci_req_queue, data);
+	hci_req_queue = g_slist_append(hci_req_queue, data);
 
-	l = slist_find(hci_req_queue, &data->dev_id, hci_req_find_by_devid);
+	l = g_slist_find_custom(hci_req_queue, &data->dev_id, hci_req_find_by_devid);
 	match = l->data;
 
 	if (match->status == REQ_SENT)
@@ -150,7 +149,7 @@ void hci_req_queue_append(struct hci_req_data *data)
 
 void hci_req_queue_remove(int dev_id, bdaddr_t *dba)
 {
-	struct slist *cur, *next;
+	GSList *cur, *next;
 	struct hci_req_data *req;
 
 	for (cur = hci_req_queue; cur != NULL; cur = next) {
@@ -159,7 +158,7 @@ void hci_req_queue_remove(int dev_id, bdaddr_t *dba)
 		if ((req->dev_id != dev_id) || (bacmp(&req->dba, dba)))
 			continue;
 
-		hci_req_queue = slist_remove(hci_req_queue, req);
+		hci_req_queue = g_slist_remove(hci_req_queue, req);
 		free(req->cparam);
 		free(req);
 	}
@@ -168,13 +167,13 @@ void hci_req_queue_remove(int dev_id, bdaddr_t *dba)
 static void check_pending_hci_req(int dev_id, int event)
 {
 	struct hci_req_data *data;
-	struct slist *l;
+	GSList *l;
 
 	if (!hci_req_queue)
 		return;
 
 	/* find the first element(pending)*/
-	l = slist_find(hci_req_queue, &dev_id, hci_req_find_by_devid);
+	l = g_slist_find_custom(hci_req_queue, &dev_id, hci_req_find_by_devid);
 
 	if (!l)
 		return;
@@ -187,7 +186,7 @@ static void check_pending_hci_req(int dev_id, int event)
 			return;
 
 		/* remove the confirmed cmd */
-		hci_req_queue = slist_remove(hci_req_queue, data);
+		hci_req_queue = g_slist_remove(hci_req_queue, data);
 		free(data->cparam);
 		free(data);
 	}

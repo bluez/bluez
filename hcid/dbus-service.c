@@ -34,14 +34,13 @@
 
 #include "hcid.h"
 #include "dbus.h"
-#include "list.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-manager.h"
 #include "dbus-service.h"
 #include "dbus-hci.h"
 
-static struct slist *services = NULL;
+static GSList *services = NULL;
 
 struct binary_record *binary_record_new()
 {
@@ -156,13 +155,13 @@ static void service_agent_free(struct service_agent *agent)
 		free(agent->description);
 
 	if (agent->trusted_devices) {
-		slist_foreach(agent->trusted_devices, (slist_func_t) free, NULL);
-		slist_free(agent->trusted_devices);
+		g_slist_foreach(agent->trusted_devices, (GFunc) free, NULL);
+		g_slist_free(agent->trusted_devices);
 	}
 
 	if (agent->records) {
-		slist_foreach(agent->records, (slist_func_t) binary_record_free, NULL);
-		slist_free(agent->records);
+		g_slist_foreach(agent->records, (GFunc) binary_record_free, NULL);
+		g_slist_free(agent->records);
 	}
 
 	free(agent);
@@ -205,7 +204,7 @@ mem_fail:
 	return NULL;
 }
 
-int register_agent_records(struct slist *lrecords)
+int register_agent_records(GSList *lrecords)
 {
 	while (lrecords) {
 		struct binary_record *rec = lrecords->data;
@@ -227,7 +226,7 @@ int register_agent_records(struct slist *lrecords)
 	return 0;
 }
 
-static int unregister_agent_records(struct slist *lrecords)
+static int unregister_agent_records(GSList *lrecords)
 {
 	while (lrecords) {
 		struct binary_record *rec = lrecords->data;
@@ -252,7 +251,7 @@ static void service_agent_exit(const char *name, void *data)
 {
 	DBusConnection *conn = data;
 	DBusMessage *message;
-	struct slist *l, *lremove = NULL;
+	GSList *l, *lremove = NULL;
 	struct service_agent *agent;
 	const char *path;
 	
@@ -281,12 +280,12 @@ static void service_agent_exit(const char *name, void *data)
 						DBUS_TYPE_INVALID);
 		send_message_and_unref(conn, message);
 
-		lremove = slist_append(lremove, l->data);
-		services = slist_remove(services, l->data);
+		lremove = g_slist_append(lremove, l->data);
+		services = g_slist_remove(services, l->data);
 	}
 
-	slist_foreach(lremove, (slist_func_t) free, NULL);
-	slist_free(lremove);
+	g_slist_foreach(lremove, (GFunc) free, NULL);
+	g_slist_free(lremove);
 }
 
 static void forward_reply(DBusPendingCall *call, void *udata)
@@ -560,7 +559,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service_agent *agent = data;
-	struct slist *l;
+	GSList *l;
 	DBusMessage *reply;
 	const char *address;
 
@@ -572,7 +571,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcasecmp);
+	l = g_slist_find_custom(agent->trusted_devices, address, (GCompareFunc) strcasecmp);
 	if (l)
 		return error_trusted_device_already_exists(conn, msg);
 
@@ -580,7 +579,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	agent->trusted_devices = slist_append(agent->trusted_devices, strdup(address));
+	agent->trusted_devices = g_slist_append(agent->trusted_devices, strdup(address));
 
 	return send_message_and_unref(conn, reply);
 }
@@ -589,7 +588,7 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service_agent *agent = data;
-	struct slist *l;
+	GSList *l;
 	DBusMessage *reply;
 	const char *address;
 	dbus_bool_t trusted;
@@ -599,7 +598,7 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcasecmp);
+	l = g_slist_find_custom(agent->trusted_devices, address, (GCompareFunc) strcasecmp);
 	trusted = (l? TRUE : FALSE);
 
 	reply = dbus_message_new_method_return(msg);
@@ -617,7 +616,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service_agent *agent = data;
-	struct slist *l;
+	GSList *l;
 	DBusMessage *reply;
 	const char *address;
 	void *paddress;
@@ -627,7 +626,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	l = slist_find(agent->trusted_devices, address, (cmp_func_t) strcasecmp);
+	l = g_slist_find_custom(agent->trusted_devices, address, (GCompareFunc) strcasecmp);
 	if (!l)
 		return error_trusted_device_does_not_exists(conn, msg);
 
@@ -636,7 +635,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	paddress = l->data;
-	agent->trusted_devices = slist_remove(agent->trusted_devices, l->data);
+	agent->trusted_devices = g_slist_remove(agent->trusted_devices, l->data);
 	free(paddress);
 
 	return send_message_and_unref(conn, reply);
@@ -718,7 +717,7 @@ int register_service_agent(DBusConnection *conn, const char *sender,
 				const char *path, const char *name, const char *description)
 {
 	struct service_agent *agent;
-	struct slist *l;
+	GSList *l;
 
 	debug("Registering service object: %s", path);
 
@@ -727,7 +726,7 @@ int register_service_agent(DBusConnection *conn, const char *sender,
 	if (!agent)
 		return -ENOMEM;
 
-	l = slist_find(services, path, (cmp_func_t) strcmp);
+	l = g_slist_find_custom(services, path, (GCompareFunc) strcmp);
 	if (l)
 		return -EADDRNOTAVAIL;
 
@@ -736,7 +735,7 @@ int register_service_agent(DBusConnection *conn, const char *sender,
 		return -ENOMEM;
 	}
 
-	services = slist_append(services, strdup(path));
+	services = g_slist_append(services, strdup(path));
 
 	name_listener_add(conn, sender, (name_cb_t) service_agent_exit, conn);
 
@@ -746,7 +745,7 @@ int register_service_agent(DBusConnection *conn, const char *sender,
 int unregister_service_agent(DBusConnection *conn, const char *sender, const char *path)
 {
 	struct service_agent *agent;
-	struct slist *l;
+	GSList *l;
 
 	debug("Unregistering service object: %s", path);
 
@@ -766,10 +765,10 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 
 	name_listener_remove(conn, sender, (name_cb_t) service_agent_exit, conn);
 
-	l = slist_find(services, path, (cmp_func_t) strcmp);
+	l = g_slist_find_custom(services, path, (GCompareFunc) strcmp);
 	if (l) {
 		void *p = l->data;
-		services = slist_remove(services, l->data);
+		services = g_slist_remove(services, l->data);
 		free(p);
 	}
 
@@ -791,7 +790,7 @@ void send_release(DBusConnection *conn, const char *id, const char *path)
 
 void release_service_agents(DBusConnection *conn)
 {
-	struct slist *l = services;
+	GSList *l = services;
 	struct service_agent *agent;
 	const char *path;
 
@@ -814,14 +813,14 @@ void release_service_agents(DBusConnection *conn)
 		dbus_connection_unregister_object_path(conn, path);
 	}
 
-	slist_foreach(services, (slist_func_t) free, NULL);
-	slist_free(services);
+	g_slist_foreach(services, (GFunc) free, NULL);
+	g_slist_free(services);
 	services = NULL;
 }
 
 void append_available_services(DBusMessageIter *array_iter)
 {
-	struct slist *l = services;
+	GSList *l = services;
 	const char *path;
 
 	while (l) {

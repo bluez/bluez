@@ -34,7 +34,6 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 
-#include "list.h"
 #include "hcid.h"
 #include "dbus.h"
 #include "dbus-common.h"
@@ -77,7 +76,7 @@ struct audit {
 	uint32_t mask;
 };
 
-static struct slist *audits = NULL;
+static GSList *audits = NULL;
 
 static gboolean l2raw_connect_complete(GIOChannel *io, GIOCondition cond,
 					struct audit *audit);
@@ -140,7 +139,7 @@ static void send_audit_status(struct audit *audit, const char *name)
 static void audit_requestor_exited(const char *name, struct audit *audit)
 {
 	debug("AuditRemoteDevice requestor %s exited", name);
-	audits = slist_remove(audits, audit);
+	audits = g_slist_remove(audits, audit);
 	if (audit->io) {
 		struct adapter *adapter = NULL;
 
@@ -169,7 +168,7 @@ int audit_addr_cmp(const void *a, const void *b)
 
 static gboolean audit_in_progress(void)
 {
-	struct slist *l;
+	GSList *l;
 
 	for (l = audits; l != NULL; l = l->next) {
 		struct audit *audit = l->data;
@@ -187,7 +186,7 @@ static gboolean l2raw_input_timer(struct audit *audit)
 	send_audit_status(audit, "AuditRemoteDeviceComplete");
 
 	g_io_channel_close(audit->io);
-	audits = slist_remove(audits, audit);
+	audits = g_slist_remove(audits, audit);
 	name_listener_remove(audit->conn, audit->requestor,
 				(name_cb_t) audit_requestor_exited, audit);
 	audit_free(audit);
@@ -332,7 +331,7 @@ failed:
 
 	g_io_channel_close(io);
 	g_io_channel_unref(io);
-	audits = slist_remove(audits, audit);
+	audits = g_slist_remove(audits, audit);
 	name_listener_remove(audit->conn, audit->requestor,
 				(name_cb_t) audit_requestor_exited, audit);
 
@@ -408,7 +407,7 @@ failed:
 
 	g_io_channel_close(io);
 	g_io_channel_unref(io);
-	audits = slist_remove(audits, audit);
+	audits = g_slist_remove(audits, audit);
 	name_listener_remove(audit->conn, audit->requestor,
 				(name_cb_t) audit_requestor_exited, audit);
 	audit_free(audit);
@@ -448,7 +447,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	if (adapter->bonding)
 		return error_bonding_in_progress(conn, msg);
 
-	if (slist_find(adapter->pin_reqs, &peer, pin_req_cmp))
+	if (g_slist_find_custom(adapter->pin_reqs, &peer, pin_req_cmp))
 		return error_bonding_in_progress(conn, msg);
 
 	if (!read_l2cap_info(&local, &peer, NULL, NULL, NULL, NULL))
@@ -459,7 +458,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	/* Just return if an audit for the same device is already queued */
-	if (slist_find(audits, &peer, audit_addr_cmp))
+	if (g_slist_find_custom(audits, &peer, audit_addr_cmp))
 		return send_message_and_unref(conn, reply);
 
 	if (adapter->discov_active || (adapter->pdiscov_active && !adapter->pinq_idle))
@@ -494,7 +493,7 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	name_listener_add(conn, dbus_message_get_sender(msg),
 				(name_cb_t) audit_requestor_exited, audit);
 
-	audits = slist_append(audits, audit);
+	audits = g_slist_append(audits, audit);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -507,7 +506,7 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 	DBusError err;
 	const char *address;
 	bdaddr_t peer, local;
-	struct slist *l;
+	GSList *l;
 	struct audit *audit;
 
 	dbus_error_init(&err);
@@ -526,7 +525,7 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 	str2ba(address, &peer);
 	str2ba(adapter->address, &local);
 
-	l = slist_find(audits, &peer, audit_addr_cmp);
+	l = g_slist_find_custom(audits, &peer, audit_addr_cmp);
 	if (!l)
 		return error_not_in_progress(conn, msg, "Audit not in progress");
 
@@ -547,7 +546,7 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 	if (audit->timeout)
 		g_timeout_remove(audit->timeout);
 
-	audits = slist_remove(audits, audit);
+	audits = g_slist_remove(audits, audit);
 	name_listener_remove(audit->conn, audit->requestor,
 				(name_cb_t) audit_requestor_exited, audit);
 	audit_free(audit);
@@ -669,7 +668,7 @@ DBusHandlerResult handle_test_method(DBusConnection *conn, DBusMessage *msg, voi
 
 void process_audits_list(const char *adapter_path)
 {
-	struct slist *l, *next;
+	GSList *l, *next;
 
 	for (l = audits; l != NULL; l = next) {
 		struct adapter *adapter;
@@ -692,7 +691,7 @@ void process_audits_list(const char *adapter_path)
 							(void *) &adapter);
 
 		if (!adapter) {
-			audits = slist_remove(audits, audit);
+			audits = g_slist_remove(audits, audit);
 			name_listener_remove(audit->conn, audit->requestor,
 					(name_cb_t) audit_requestor_exited, audit);
 			audit_free(audit);
@@ -706,7 +705,7 @@ void process_audits_list(const char *adapter_path)
 		sk = l2raw_connect(adapter->address, &audit->peer);
 		if (sk < 0) {
 			send_audit_status(audit, "AuditRemoteDeviceFailed");
-			audits = slist_remove(audits, audit);
+			audits = g_slist_remove(audits, audit);
 			name_listener_remove(audit->conn, audit->requestor,
 					(name_cb_t) audit_requestor_exited, audit);
 			audit_free(audit);

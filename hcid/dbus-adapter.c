@@ -49,7 +49,6 @@
 
 #include "textfile.h"
 #include "oui.h"
-#include "list.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
 #include "dbus-sdp.h"
@@ -177,7 +176,7 @@ static const char *toy_minor_cls[] = {
 int pending_remote_name_cancel(struct adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
-	struct slist *l;
+	GSList *l;
 	int dd, err = 0;
 
 	/* find the pending remote name request */
@@ -185,8 +184,8 @@ int pending_remote_name_cancel(struct adapter *adapter)
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = slist_find(adapter->found_devices, &match,
-			(cmp_func_t) found_device_cmp);
+	l = g_slist_find_custom(adapter->found_devices, &match,
+			(GCompareFunc) found_device_cmp);
 	if (!l) /* no pending request */
 		return 0;
 
@@ -202,8 +201,8 @@ int pending_remote_name_cancel(struct adapter *adapter)
 	}
 
 	/* free discovered devices list */
-	slist_foreach(adapter->found_devices, (slist_func_t) free, NULL);
-	slist_free(adapter->found_devices);
+	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
 	hci_close_dev(dd);
@@ -615,7 +614,7 @@ static DBusHandlerResult adapter_is_connected(DBusConnection *conn,
 	dbus_bool_t connected = FALSE;
 
 	struct adapter *adapter = data;
-	struct slist *l = adapter->active_conn;
+	GSList *l = adapter->active_conn;
 
 	const char *peer_addr;
 	bdaddr_t peer_bdaddr;
@@ -630,7 +629,7 @@ static DBusHandlerResult adapter_is_connected(DBusConnection *conn,
 
 	str2ba(peer_addr, &peer_bdaddr);
 
-	l = slist_find(l, &peer_bdaddr, active_conn_find_by_bdaddr);
+	l = g_slist_find_custom(l, &peer_bdaddr, active_conn_find_by_bdaddr);
 	if (l)
 		connected = TRUE;
 
@@ -651,7 +650,7 @@ static DBusHandlerResult adapter_list_connections(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 	struct adapter *adapter = data;
-	struct slist *l = adapter->active_conn;
+	GSList *l = adapter->active_conn;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
@@ -1339,7 +1338,7 @@ static DBusHandlerResult adapter_get_remote_service_cls(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
-	struct slist *service_classes;
+	GSList *service_classes;
 	uint32_t class;
 
 	if (get_remote_class(conn, msg, data, &class) < 0)
@@ -1355,12 +1354,12 @@ static DBusHandlerResult adapter_get_remote_service_cls(DBusConnection *conn,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	slist_foreach(service_classes, (slist_func_t) append_class_string,
+	g_slist_foreach(service_classes, (GFunc) append_class_string,
 			&array_iter);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	slist_free(service_classes);
+	g_slist_free(service_classes);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -1731,7 +1730,7 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	struct slist *l = adapter->active_conn;
+	GSList *l = adapter->active_conn;
 
 	const char *peer_addr;
 	bdaddr_t peer_bdaddr;
@@ -1750,7 +1749,7 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 
 	str2ba(peer_addr, &peer_bdaddr);
 
-	l = slist_find(l, &peer_bdaddr, active_conn_find_by_bdaddr);
+	l = g_slist_find_custom(l, &peer_bdaddr, active_conn_find_by_bdaddr);
 	if (!l)
 		return error_not_connected(conn, msg);
 
@@ -1963,7 +1962,7 @@ static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
 	if (adapter->bonding)
 		return error_bonding_in_progress(conn, msg);
 
-	if (slist_find(adapter->pin_reqs, &peer_bdaddr, pin_req_cmp))
+	if (g_slist_find_custom(adapter->pin_reqs, &peer_bdaddr, pin_req_cmp))
 		return error_bonding_in_progress(conn, msg);
 
 	/* check if a link key already exists */
@@ -2005,7 +2004,7 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 	DBusMessage *reply;
 	bdaddr_t peer_bdaddr;
 	const char *peer_addr;
-	struct slist *l;
+	GSList *l;
 
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
@@ -2029,7 +2028,7 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 
 	adapter->bonding->cancel = 1;
 
-	l = slist_find(adapter->pin_reqs, &peer_bdaddr, pin_req_cmp);
+	l = g_slist_find_custom(adapter->pin_reqs, &peer_bdaddr, pin_req_cmp);
 	if (l) {
 		struct pending_pin_info *pin_req = l->data;
 
@@ -2055,7 +2054,7 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 			hci_close_dev(dd);
 		} 
 
-		adapter->pin_reqs = slist_remove(adapter->pin_reqs, pin_req);
+		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, pin_req);
 		free(pin_req);
 	}
 
@@ -2071,7 +2070,7 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	struct slist *l;
+	GSList *l;
 	DBusMessage *reply;
 	DBusMessage *signal;
 	char filename[PATH_MAX + 1];
@@ -2119,7 +2118,7 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 	hci_delete_stored_link_key(dd, &bdaddr, 0, 1000);
 
 	/* find the connection */
-	l = slist_find(adapter->active_conn, &bdaddr,
+	l = g_slist_find_custom(adapter->active_conn, &bdaddr,
 			active_conn_find_by_bdaddr);
 	if (l) {
 		struct active_conn_info *con = l->data;
@@ -2587,7 +2586,7 @@ static DBusHandlerResult adapter_cancel_discovery(DBusConnection *conn,
 }
 
 struct remote_device_list_t {
-	struct slist *list;
+	GSList *list;
 	time_t time;
 };
 
@@ -2597,7 +2596,7 @@ static void list_remote_devices_do_append(char *key, char *value, void *data)
 	char *address;
 	struct tm date;
 
-	if (slist_find(param->list, key, (cmp_func_t) strcasecmp))
+	if (g_slist_find_custom(param->list, key, (GCompareFunc) strcasecmp))
 		return;
 
 	if (param->time){
@@ -2610,7 +2609,7 @@ static void list_remote_devices_do_append(char *key, char *value, void *data)
 	if (!address)
 		return;
 
-	param->list = slist_append(param->list, address);
+	param->list = g_slist_append(param->list, address);
 }
 
 static void remote_devices_do_append(void *data, void *user_data)
@@ -2653,10 +2652,10 @@ static DBusHandlerResult adapter_list_remote_devices(DBusConnection *conn,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	slist_foreach(param.list, remote_devices_do_append, &array_iter);
+	g_slist_foreach(param.list, remote_devices_do_append, &array_iter);
 
-	slist_foreach(param.list, (slist_func_t) free, NULL);
-	slist_free(param.list);
+	g_slist_foreach(param.list, (GFunc) free, NULL);
+	g_slist_free(param.list);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
@@ -2700,10 +2699,10 @@ static DBusHandlerResult adapter_list_recent_remote_devices(DBusConnection *conn
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	slist_foreach(param.list, remote_devices_do_append, &array_iter);
+	g_slist_foreach(param.list, remote_devices_do_append, &array_iter);
 
-	slist_foreach(param.list, (slist_func_t) free, NULL);
-	slist_free(param.list);
+	g_slist_foreach(param.list, (GFunc) free, NULL);
+	g_slist_free(param.list);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
@@ -2764,17 +2763,17 @@ const char *minor_class_str(uint32_t class)
 	return "";
 }
 
-struct slist *service_classes_str(uint32_t class)
+GSList *service_classes_str(uint32_t class)
 {
 	uint8_t services = class >> 16;
-	struct slist *l = NULL;
+	GSList *l = NULL;
 	int i;
 
 	for (i = 0; i < (sizeof(service_cls) / sizeof(*service_cls)); i++) {
 		if (!(services & (1 << i)))
 			continue;
 
-		l = slist_append(l, (void *) service_cls[i]);
+		l = g_slist_append(l, (void *) service_cls[i]);
 	}
 
 	return l;

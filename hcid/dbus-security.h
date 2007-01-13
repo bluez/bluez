@@ -32,7 +32,7 @@ struct passkey_agent {
 	char *addr;
 	char *name;
 	char *path;
-	struct slist *pending_requests;
+	GSList *pending_requests;
 	int exited;
 	guint timeout;
 };
@@ -52,7 +52,7 @@ struct authorization_agent {
 	DBusConnection *conn;
 	char *name;
 	char *path;
-	struct slist *pending_requests;
+	GSList *pending_requests;
 };
 
 struct pend_auth_agent_req {
@@ -79,6 +79,6 @@ void release_default_auth_agent(void);
 
 void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda);
 
-void cancel_passkey_agent_requests(struct slist *agents, const char *path, bdaddr_t *dba);
+void cancel_passkey_agent_requests(GSList *agents, const char *path, bdaddr_t *dba);
 
 #endif /* __BLUEZ_DBUS_SECURITY_H */

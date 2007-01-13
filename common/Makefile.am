@@ -15,7 +15,7 @@ endif
 
 noinst_LIBRARIES = libhelper.a
 
-libhelper_a_SOURCES = oui.h oui.c list.h list.c \
+libhelper_a_SOURCES = oui.h oui.c \
 	textfile.h textfile.c helper.h helper.c \
 	logging.h logging.c dbus.h dbus.c \
 	sdp-xml.h sdp-xml.c $(sdp_sources) \

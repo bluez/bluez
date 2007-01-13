@@ -45,7 +45,6 @@
 #include <dbus/dbus.h>
 
 #include "hcid.h"
-#include "list.h"
 #include "glib-ectomy.h"
 #include "dbus.h"
 #include "dbus-common.h"
@@ -87,9 +86,9 @@ struct pending_connect {
 	int			ntries;
 };
 
-static struct slist *pending_connects = NULL;
-static struct slist *connected_nodes = NULL;
-static struct slist *bound_nodes = NULL;
+static GSList *pending_connects = NULL;
+static GSList *connected_nodes = NULL;
+static GSList *bound_nodes = NULL;
 
 static char *rfcomm_node_name_from_id(int16_t id, char *dev, size_t len)
 {
@@ -110,9 +109,9 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 	free(node);
 }
 
-static struct rfcomm_node *find_node_by_name(struct slist *nodes, const char *name)
+static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *name)
 {
-	struct slist *l;
+	GSList *l;
 
 	for (l = nodes; l != NULL; l = l->next) {
 		struct rfcomm_node *node = l->data;
@@ -126,7 +125,7 @@ static struct rfcomm_node *find_node_by_name(struct slist *nodes, const char *na
 static struct pending_connect *find_pending_connect_by_channel(const char *bda,
 								uint8_t ch)
 {
-	struct slist *l;
+	GSList *l;
 	bdaddr_t dba;
 
 	str2ba(bda, &dba);
@@ -144,7 +143,7 @@ static struct pending_connect *find_pending_connect_by_channel(const char *bda,
 static struct pending_connect *find_pending_connect_by_service(const char *bda,
 								const char *svc)
 {
-	struct slist *l;
+	GSList *l;
 	bdaddr_t dba;
 
 	str2ba(bda, &dba);
@@ -235,7 +234,7 @@ static void rfcomm_connect_req_exit(const char *name, void *data)
 	debug("Connect requestor %s exited. Releasing %s node",
 		name, node->name);
 	rfcomm_release(node, NULL);
-	connected_nodes = slist_remove(connected_nodes, node);
+	connected_nodes = g_slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
 }
 
@@ -245,7 +244,7 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io, GIOCondition cond,
 	debug("RFCOMM node %s was disconnected", node->name);
 	name_listener_remove(node->conn, node->owner,
 				rfcomm_connect_req_exit, node);
-	connected_nodes = slist_remove(connected_nodes, node);
+	connected_nodes = g_slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
 	return FALSE;
 }
@@ -289,7 +288,7 @@ static void rfcomm_connect_cb_devnode_opened(int fd, struct pending_connect *c,
 
 	send_message_and_unref(c->conn, reply);
 
-	connected_nodes = slist_append(connected_nodes, node);
+	connected_nodes = g_slist_append(connected_nodes, node);
 
 	node->conn = dbus_connection_ref(c->conn);
 	name_listener_add(node->conn, node->owner,
@@ -304,7 +303,7 @@ failed:
 	if (reply)
 		dbus_message_unref(reply);
 done:
-	pending_connects = slist_remove(pending_connects, c);
+	pending_connects = g_slist_remove(pending_connects, c);
 	pending_connect_free(c);
 }
 
@@ -339,7 +338,7 @@ failed:
 	rfcomm_release(node, NULL);
 	rfcomm_node_free(node);
 
-	pending_connects = slist_remove(pending_connects, c);
+	pending_connects = g_slist_remove(pending_connects, c);
 	pending_connect_free(c);
 
 	return FALSE;
@@ -426,7 +425,7 @@ failed:
 	if (node)
 		rfcomm_node_free(node);
 
-	pending_connects = slist_remove(pending_connects, c);
+	pending_connects = g_slist_remove(pending_connects, c);
 	pending_connect_free(c);
 
 	return FALSE;
@@ -497,7 +496,7 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 
 		debug("Connect in progress");
 		g_io_add_watch(c->io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, c);
-		pending_connects = slist_append(pending_connects, c);
+		pending_connects = g_slist_append(pending_connects, c);
 	} else {
 		debug("Connect succeeded with first try");
 		(void) rfcomm_connect_cb(c->io, G_IO_OUT, c);
@@ -518,7 +517,7 @@ static void rfcomm_bind_req_exit(const char *name, void *data)
 	struct rfcomm_node *node = data;
 	debug("Bind requestor %s exited. Releasing %s node", name, node->name);
 	rfcomm_release(node, NULL);
-	bound_nodes = slist_remove(bound_nodes, node);
+	bound_nodes = g_slist_remove(bound_nodes, node);
 	rfcomm_node_free(node);
 }
 
@@ -564,7 +563,7 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda,
 	}
 
 	rfcomm_node_name_from_id(node->id, node->name, sizeof(node->name));
-	bound_nodes = slist_append(bound_nodes, node);
+	bound_nodes = g_slist_append(bound_nodes, node);
 
 	node->conn = dbus_connection_ref(conn);
 	name_listener_add(node->conn, node->owner, rfcomm_bind_req_exit, node);
@@ -812,7 +811,7 @@ static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
 
 	name_listener_remove(node->conn, node->owner,
 			     rfcomm_connect_req_exit, node);
-	connected_nodes = slist_remove(connected_nodes, node);
+	connected_nodes = g_slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
 
 	return send_message_and_unref(conn, reply);
@@ -875,7 +874,7 @@ failed:
 	if (reply)
 		dbus_message_unref(reply);
 	if (node) {
-		bound_nodes = slist_remove(bound_nodes, node);
+		bound_nodes = g_slist_remove(bound_nodes, node);
 		rfcomm_release(node, NULL);
 		rfcomm_node_free(node);
 	}
@@ -965,7 +964,7 @@ need_memory:
 	if (reply)
 		dbus_message_unref(reply);
 	if (node) {
-		bound_nodes = slist_remove(bound_nodes, node);
+		bound_nodes = g_slist_remove(bound_nodes, node);
 		rfcomm_release(node, NULL);
 		rfcomm_node_free(node);
 	}
@@ -1003,7 +1002,7 @@ static DBusHandlerResult rfcomm_release_req(DBusConnection *conn,
 
 	name_listener_remove(node->conn, node->owner,
 				rfcomm_bind_req_exit, node);
-	bound_nodes = slist_remove(bound_nodes, node);
+	bound_nodes = g_slist_remove(bound_nodes, node);
 	rfcomm_node_free(node);
 
 	return send_message_and_unref(conn, reply);
@@ -1016,7 +1015,7 @@ static DBusHandlerResult rfcomm_list_bindings_req(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter, sub;
 	struct adapter *adapter = data;
-	struct slist *l;
+	GSList *l;
 
 	hci_devba(adapter->dev_id, &bdaddr);
 

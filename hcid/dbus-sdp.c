@@ -46,7 +46,6 @@
 
 #include <dbus/dbus.h>
 
-#include "list.h"
 #include "dbus.h"
 #include "hcid.h"
 #include "textfile.h"
@@ -158,7 +157,7 @@ uint16_t sdp_str2svclass(const char *str)
 }
 
 /* list of remote and local service records */
-static struct slist *pending_connects  = NULL;
+static GSList *pending_connects  = NULL;
 
 static struct pending_connect *pending_connect_new(DBusConnection *conn, DBusMessage *msg,
 							const char *dst, connect_cb_t *cb)
@@ -207,7 +206,7 @@ static void pending_connect_free(struct pending_connect *c)
 
 static struct pending_connect *find_pending_connect(const char *dst)
 {
-	struct slist *l;
+	GSList *l;
 
 	for (l = pending_connects; l != NULL; l = l->next) {
 		struct pending_connect *pending = l->data;
@@ -634,7 +633,7 @@ failed:
 	g_io_channel_unref(chan);
 
 done:
-	pending_connects = slist_remove(pending_connects, c);
+	pending_connects = g_slist_remove(pending_connects, c);
 	pending_connect_free(c);
 
 	return FALSE;
@@ -671,7 +670,7 @@ static struct pending_connect *connect_request(DBusConnection *conn,
 
 	chan = g_io_channel_unix_new(sdp_get_socket(c->session));
 	g_io_add_watch(chan, G_IO_OUT, sdp_client_connect_cb, c);
-	pending_connects = slist_append(pending_connects, c);
+	pending_connects = g_slist_append(pending_connects, c);
 
 	return c;
 }
