@@ -163,7 +163,15 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (start_sdp_server(0, SDP_SERVER_COMPAT) < 0) {
+		dbus_connection_unref(system_bus);
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
+
 	g_main_loop_run(main_loop);
+
+	stop_sdp_server();
 
 	dbus_connection_unref(system_bus);
 
