@@ -26,6 +26,7 @@
 #endif
 
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/inotify.h>
 
@@ -37,6 +38,8 @@ static GIOChannel *io = NULL;
 
 static int fd = -1;
 static int wd = -1;
+
+static char *name = NULL;
 
 static gboolean io_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
@@ -53,20 +56,26 @@ static gboolean io_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	if (len < sizeof(struct inotify_event))
 		return TRUE;
 
+	if (evt->wd != wd)
+		return TRUE;
+
 	if (evt->mask & (IN_CREATE | IN_MOVED_TO))
-		debug("File %s/%s created", CONFIGDIR, evt->name);
+		debug("File %s/%s created", name, evt->name);
 
 	if (evt->mask & (IN_DELETE | IN_MOVED_FROM))
-		debug("File %s/%s deleted", CONFIGDIR, evt->name);
+		debug("File %s/%s deleted", name, evt->name);
 
 	if (evt->mask & IN_MODIFY)
-		debug("File %s/%s modified", CONFIGDIR, evt->name);
+		debug("File %s/%s modified", name, evt->name);
 
 	return TRUE;
 }
 
 void notify_init(void)
 {
+	if (fd != -1)
+		return;
+
 	fd = inotify_init();
 	if (fd < 0) {
 		error("Creation of inotify context failed");
@@ -80,15 +89,13 @@ void notify_init(void)
 	}
 
 	g_io_add_watch(io, G_IO_IN, io_event, NULL);
-
-	wd = inotify_add_watch(fd, CONFIGDIR,
-		IN_ONLYDIR | IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVE);
-	if (wd < 0)
-		error("Creation of watch for %s failed", CONFIGDIR);
 }
 
 void notify_close(void)
 {
+	if (fd == -1)
+		return;
+
 	if (wd != -1) {
 		inotify_rm_watch(fd, wd);
 		wd = -1;
@@ -99,8 +106,38 @@ void notify_close(void)
 		io = NULL;
 	}
 
-	if (fd != -1) {
-		close(fd);
-		fd = -1;
+	close(fd);
+	fd = -1;
+
+	if (name) {
+		free(name);
+		name = NULL;
 	}
+}
+
+void notify_add(const char *pathname)
+{
+	if (fd == -1 || wd != -1)
+		return;
+
+	if (name)
+		free(name);
+
+	name = strdup(pathname);
+	if (!name)
+		return;
+
+	wd = inotify_add_watch(fd, pathname,
+		IN_ONLYDIR | IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVE);
+	if (wd < 0)
+		error("Creation of watch for %s failed", pathname);
+}
+
+void notify_remove(const char *pathname)
+{
+	if (fd == -1 || wd == -1)
+		return;
+
+	inotify_rm_watch(fd, wd);
+	wd = -1;
 }

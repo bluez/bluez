@@ -34,3 +34,11 @@ void notify_init(void)
 void notify_close(void)
 {
 }
+
+void notify_add(const char *pathname)
+{
+}
+
+void notify_remove(const char *pathname)
+{
+}
