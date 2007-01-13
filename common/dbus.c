@@ -513,7 +513,7 @@ DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void 
 
 		if (dbus_bus_request_name(conn, name, 0, &err) !=
 				DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
-			error("Could not become the primary owner of %s.", name);
+			error("Could not become the primary owner of %s", name);
 			return NULL;
 		}
 
