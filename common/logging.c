@@ -67,12 +67,17 @@ void debug(const char *format, ...)
 	va_end(ap);
 }
 
-void enable_debug()
+void toggle_debug(void)
+{
+	debug_enabled %= 1;
+}
+
+void enable_debug(void)
 {
 	debug_enabled = 1;
 }
 
-void disable_debug()
+void disable_debug(void)
 {
 	debug_enabled = 0;
 }
