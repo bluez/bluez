@@ -47,6 +47,23 @@ static GMainLoop *main_loop = NULL;
 
 static DBusConnection *system_bus = NULL;
 
+static void config_notify(int action, const char *name, void *data)
+{
+	switch (action) {
+	case NOTIFY_CREATE:
+		debug("File %s/%s created", CONFIGDIR, name);
+		break;
+
+	case NOTIFY_DELETE:
+		debug("File %s/%s deleted", CONFIGDIR, name);
+		break;
+
+	case NOTIFY_MODIFY:
+		debug("File %s/%s modified", CONFIGDIR, name);
+		break;
+	}
+}
+
 static void sig_term(int sig)
 {
 	g_main_loop_quit(main_loop);
@@ -138,6 +155,8 @@ int main(int argc, char *argv[])
 
 	notify_init();
 
+	notify_add(CONFIGDIR, config_notify, NULL);
+
 	system_bus = init_dbus("org.bluez", NULL, NULL);
 	if (!system_bus) {
 		g_main_loop_unref(main_loop);
@@ -147,6 +166,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	dbus_connection_unref(system_bus);
+
+	notify_remove(CONFIGDIR);
 
 	notify_close();
 
