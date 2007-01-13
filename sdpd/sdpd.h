@@ -37,11 +37,14 @@ typedef struct request {
 	int      len;
 } sdp_req_t;
 
-void process_request(sdp_req_t *req);
+void handle_request(int sk, uint8_t *data, int len);
 
 int service_register_req(sdp_req_t *req, sdp_buf_t *rsp);
 int service_update_req(sdp_req_t *req, sdp_buf_t *rsp);
 int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp);
+
+void register_public_browse_group(int public);
+void register_server_service(int public);
 
 typedef struct {
 	uint32_t timestamp;

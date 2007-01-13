@@ -30,10 +30,12 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <malloc.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -765,7 +767,7 @@ done:
  * function based on request type. Handles service registration
  * client requests also.
  */
-void process_request(sdp_req_t *req)
+static void process_request(sdp_req_t *req)
 {
 	sdp_pdu_hdr_t *reqhdr = (sdp_pdu_hdr_t *)req->buf;
 	sdp_pdu_hdr_t *rsphdr;
@@ -851,4 +853,40 @@ send_rsp:
 
 	free(rsp.data);
 	free(req->buf);
+}
+
+void handle_request(int sk, uint8_t *data, int len)
+{
+	struct sockaddr_l2 sa;
+	socklen_t size;
+	sdp_req_t req;
+
+	size = sizeof(sa);
+	if (getpeername(sk, (struct sockaddr *) &sa, &size) < 0)
+		return;
+
+	if (sa.l2_family == AF_BLUETOOTH) { 
+		struct l2cap_options lo;
+		memset(&lo, 0, sizeof(lo));
+		size = sizeof(lo);
+		getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &lo, &size);
+		bacpy(&req.bdaddr, &sa.l2_bdaddr);
+		req.mtu = lo.omtu;
+		req.local = 0;
+		memset(&sa, 0, sizeof(sa));
+		size = sizeof(sa);
+		getsockname(sk, (struct sockaddr *) &sa, &size);
+		bacpy(&req.device, &sa.l2_bdaddr);
+	} else {
+		bacpy(&req.device, BDADDR_ANY);
+		bacpy(&req.bdaddr, BDADDR_LOCAL);
+		req.mtu = 2048;
+		req.local = 1;
+	}
+
+	req.sock = sk;
+	req.buf  = data;
+	req.len  = len;
+
+	process_request(&req);
 }
