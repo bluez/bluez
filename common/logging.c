@@ -74,7 +74,7 @@ void debug(const char *format, ...)
 
 void toggle_debug(void)
 {
-	debug_enabled %= 1;
+	debug_enabled = (debug_enabled + 1) % 2;
 }
 
 void enable_debug(void)
