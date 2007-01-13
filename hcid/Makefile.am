@@ -32,9 +32,8 @@ libhciserver_a_SOURCES = hcid.h security.c device.c \
 	dbus-sdp.c dbus-sdp.h dbus-rfcomm.c dbus-rfcomm.h \
 	dbus-test.c dbus-test.h
 
+if HCID
 sbin_PROGRAMS = hcid
-
-noinst_PROGRAMS = passkey-agent service-agent auth-agent
 
 hcid_SOURCES = main.c
 
@@ -46,6 +45,9 @@ hcid_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ \
 if EXPAT
 hcid_LDADD += -lexpat
 endif
+endif
+
+noinst_PROGRAMS = passkey-agent service-agent auth-agent
 
 passkey_agent_SOURCES = passkey-agent.c
 

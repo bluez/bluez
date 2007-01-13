@@ -145,6 +145,8 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	sync_enable=${opensync_found}
 	fuse_enable=no
 	alsa_enable=no
+	hcid_enable=yes
+	sdpd_enable=no
 	test_enable=no
 	cups_enable=no
 	configfiles_enable=yes
@@ -172,6 +174,8 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		obex_enable=${enableval}
 		fuse_enable=${enableval}
 		alsa_enable=${enableval}
+		hcid_enable=${enableval}
+		sdpd_enable=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
 		configfiles_enable=${enableval}
@@ -209,6 +213,14 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
 		alsa_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(hcid, AC_HELP_STRING([--enable-hcid], [install HCI daemon]), [
+		hcid_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(sdpd, AC_HELP_STRING([--enable-sdpd], [install SDP daemon]), [
+		sdpd_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
@@ -271,6 +283,8 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(SYNC, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
 	AM_CONDITIONAL(FUSE, test "${fuse_enable}" = "yes" && test "${openobex_found}" = "yes" && test "${fuse_found}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
+	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")
+	AM_CONDITIONAL(SDPD, test "${sdpd_enable}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(CONFIGFILES, test "${configfiles_enable}" = "yes")

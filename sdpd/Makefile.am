@@ -11,11 +11,13 @@ noinst_LIBRARIES = libsdpserver.a
 
 libsdpserver_a_SOURCES = sdpd.h server.c cstate.c request.c service.c servicedb.c
 
+if SDPD
 sbin_PROGRAMS = sdpd
 
 sdpd_SOURCES = main.c
 
 sdpd_LDADD = $(glib_ldadd) @BLUEZ_LIBS@ libsdpserver.a $(top_builddir)/common/libhelper.a
+endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ $(glib_cflags)
 
