@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -36,43 +36,63 @@
 #include <dbus/dbus.h>
 
 #include "glib-ectomy.h"
+#include "dbus.h"
+#include "notify.h"
 #include "logging.h"
 
 #include "hcid.h"
 #include "sdpd.h"
 
-static GMainLoop *event_loop;
+static GMainLoop *main_loop = NULL;
+
+static DBusConnection *system_bus = NULL;
 
 static void sig_term(int sig)
 {
-	g_main_quit(event_loop);
+	g_main_loop_quit(main_loop);
 }
 
 static void sig_hup(int sig)
 {
 }
 
+static void sig_debug(int sig)
+{
+	toggle_debug();
+}
+
 static void usage(void)
 {
 	printf("bluetoothd - Bluetooth daemon ver %s\n\n", VERSION);
-	printf("Usage:\n\tbluetoothd [-n]\n");
+
+	printf("Usage:\n\tbluetoothd [options]\n\n");
+
+	printf("Options:\n"
+		"\t--help        Display help\n"
+		"\t--debug       Enable debug information\n"
+		"\t--nodaemon    Run daemon in foreground\n");
 }
 
 static struct option main_options[] = {
-	{ "help",	0, 0, 'h' },
 	{ "nodaemon",	0, 0, 'n' },
+	{ "debug",	0, 0, 'd' },
+	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0}
 };
 
 int main(int argc, char *argv[])
 {
 	struct sigaction sa;
-	int opt, daemonize = 1;
+	int opt, debug = 0, daemonize = 1;
 
-	while ((opt = getopt_long(argc, argv, "nh", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ndh", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
+			break;
+
+		case 'd':
+			debug = 1;
 			break;
 
 		case 'h':
@@ -92,7 +112,7 @@ int main(int argc, char *argv[])
 
 	umask(0077);
 
-	start_logging("bluetoothd", "Bluetooth daemon");
+	start_logging("bluetoothd", "Bluetooth daemon ver %s", VERSION);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
@@ -102,17 +122,35 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
 
+	sa.sa_handler = sig_debug;
+	sigaction(SIGUSR2, &sa, NULL);
+
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
-	enable_debug();
+	if (debug) {
+		info("Enabling debug information");
+		enable_debug();
+	}
 
-	event_loop = g_main_loop_new(NULL, FALSE);
+	main_loop = g_main_loop_new(NULL, FALSE);
 
-	g_main_run(event_loop);
+	notify_init();
 
-	g_main_loop_unref(event_loop);
+	system_bus = init_dbus("org.bluez", NULL, NULL);
+	if (!system_bus) {
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
+
+	g_main_loop_run(main_loop);
+
+	dbus_connection_unref(system_bus);
+
+	notify_close();
+
+	g_main_loop_unref(main_loop);
 
 	info("Exit");
 
