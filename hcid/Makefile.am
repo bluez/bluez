@@ -23,8 +23,8 @@ endif
 
 noinst_LIBRARIES = libhciserver.a
 
-libhciserver_a_SOURCES = hcid.h security.c device.c storage.c \
-	sdp.c sdp.h parser.h parser.y lexer.l kword.c kword.h \
+libhciserver_a_SOURCES = hcid.h security.c device.c \
+	storage.c parser.h parser.y lexer.l kword.c kword.h \
 	dbus-hci.h dbus-hci.c dbus-common.c dbus-common.h \
 	dbus-error.c dbus-error.h dbus-manager.c dbus-manager.h \
 	dbus-adapter.c dbus-adapter.h dbus-device.c dbus-device.h \
@@ -39,7 +39,9 @@ noinst_PROGRAMS = passkey-agent service-agent auth-agent
 hcid_SOURCES = main.c
 
 hcid_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ \
-		libhciserver.a $(top_builddir)/common/libhelper.a
+		libhciserver.a \
+		$(top_builddir)/sdpd/libsdpserver.a \
+		$(top_builddir)/common/libhelper.a
 
 if EXPAT
 hcid_LDADD += -lexpat
@@ -59,7 +61,7 @@ auth_agent_LDADD = @DBUS_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(glib_cflags)
 
-INCLUDES = -I$(top_srcdir)/common
+INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 
 BUILT_SOURCES = parser.h
 

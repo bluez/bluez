@@ -45,7 +45,7 @@
 #include "glib-ectomy.h"
 
 #include "hcid.h"
-#include "sdp.h"
+#include "sdpd.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
 
@@ -739,7 +739,7 @@ int main(int argc, char *argv[])
 	init_all_devices(hcid.sock);
 
 	if (sdp)
-		start_sdp_server();
+		start_sdp_server(0, SDP_SERVER_COMPAT);
 
 	/* Start event processor */
 	g_main_run(event_loop);
