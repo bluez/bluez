@@ -35,7 +35,7 @@ void notify_close(void)
 {
 }
 
-void notify_add(const char *pathname)
+void notify_add(const char *pathname, notify_func func, void *user_data)
 {
 }
 

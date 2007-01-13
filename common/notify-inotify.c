@@ -41,6 +41,8 @@ static int wd = -1;
 
 static char *name = NULL;
 
+static notify_func callback = NULL;
+
 static gboolean io_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[129];
@@ -56,17 +58,17 @@ static gboolean io_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	if (len < sizeof(struct inotify_event))
 		return TRUE;
 
-	if (evt->wd != wd)
+	if (evt->wd != wd || !callback)
 		return TRUE;
 
 	if (evt->mask & (IN_CREATE | IN_MOVED_TO))
-		debug("File %s/%s created", name, evt->name);
+		callback(NOTIFY_CREATE, evt->name, NULL);
 
 	if (evt->mask & (IN_DELETE | IN_MOVED_FROM))
-		debug("File %s/%s deleted", name, evt->name);
+		callback(NOTIFY_DELETE, evt->name, NULL);
 
 	if (evt->mask & IN_MODIFY)
-		debug("File %s/%s modified", name, evt->name);
+		callback(NOTIFY_MODIFY, evt->name, NULL);
 
 	return TRUE;
 }
@@ -115,7 +117,7 @@ void notify_close(void)
 	}
 }
 
-void notify_add(const char *pathname)
+void notify_add(const char *pathname, notify_func func, void *user_data)
 {
 	if (fd == -1 || wd != -1)
 		return;
@@ -131,6 +133,8 @@ void notify_add(const char *pathname)
 		IN_ONLYDIR | IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVE);
 	if (wd < 0)
 		error("Creation of watch for %s failed", pathname);
+
+	callback = func;
 }
 
 void notify_remove(const char *pathname)
@@ -140,4 +144,6 @@ void notify_remove(const char *pathname)
 
 	inotify_rm_watch(fd, wd);
 	wd = -1;
+
+	callback = NULL;
 }

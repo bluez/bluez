@@ -21,7 +21,15 @@
  *
  */
 
+typedef void (*notify_func)(int action, const char *name, void *user_data);
+
+enum {
+	NOTIFY_CREATE,
+	NOTIFY_DELETE,
+	NOTIFY_MODIFY,
+};
+
 void notify_init(void);
 void notify_close(void);
-void notify_add(const char *pathname);
+void notify_add(const char *pathname, notify_func func, void *user_data);
 void notify_remove(const char *pathname);
