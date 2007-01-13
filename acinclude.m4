@@ -129,10 +129,16 @@ AC_DEFUN([AC_PATH_EXPAT], [
 	AC_CHECK_HEADERS(expat.h, dummy=yes, expat_found=no)
 ])
 
+AC_DEFUN([AC_PATH_INOTIFY], [
+	AC_CHECK_LIB(c ,inotify_init, inotify_found=yes, inotify_found=no)
+	AC_CHECK_HEADERS(sys/inotify.h, dummy=yes, inotify_found=no)
+])
+
 AC_DEFUN([AC_ARG_BLUEZ], [
 	fortify_enable=yes
 	debug_enable=no
 	pie_enable=no
+	inotify_enable=${inotify_found}
 	expat_enable=${expat_found}
 	glib_enable=no
 	obex_enable=${openobex_found}
@@ -175,6 +181,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		avctrl_enable=${enableval}
 		hid2hci_enable=${enableval}
 		dfutool_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(inotify, AC_HELP_STRING([--enable-inotify], [enable inotify support]), [
+		inotify_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(expat, AC_HELP_STRING([--enable-expat], [enable Expat support]), [
@@ -254,6 +264,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AC_DEFINE(HAVE_GLIB, 1, [Define to 1 if you have GLib support.])
 	fi
 
+	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
 	AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
 	AM_CONDITIONAL(GLIB, test "${glib_enable}" = "yes" && test "${glib_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
