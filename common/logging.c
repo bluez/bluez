@@ -31,13 +31,18 @@
 
 static volatile int debug_enabled = 0;
 
+static inline void vinfo(const char *format, va_list ap)
+{
+	vsyslog(LOG_INFO, format, ap);
+}
+
 void info(const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
 
-	vsyslog(LOG_INFO, format, ap);
+	vinfo(format, ap);
 
 	va_end(ap);
 }
@@ -82,11 +87,17 @@ void disable_debug(void)
 	debug_enabled = 0;
 }
 
-void start_logging(const char *ident, const char *message)
+void start_logging(const char *ident, const char *message, ...)
 {
+	va_list ap;
+
 	openlog(ident, LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
 
-	info(message);
+	va_start(ap, message);
+
+	vinfo(message, ap);
+
+	va_end(ap);
 }
 
 void stop_logging(void)

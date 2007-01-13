@@ -30,7 +30,7 @@ void debug(const char *format, ...);
 void toggle_debug(void);
 void enable_debug(void);
 void disable_debug(void);
-void start_logging(const char *ident, const char *message);
+void start_logging(const char *ident, const char *message, ...);
 void stop_logging(void);
 
 #endif /* __LOGGING_H */
