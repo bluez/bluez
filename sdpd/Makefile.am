@@ -9,7 +9,7 @@ endif
 
 noinst_LIBRARIES = libsdpserver.a
 
-libsdpserver_a_SOURCES = sdpd.h cstate.c request.c service.c servicedb.c
+libsdpserver_a_SOURCES = sdpd.h server.c cstate.c request.c service.c servicedb.c
 
 sbin_PROGRAMS = sdpd
 

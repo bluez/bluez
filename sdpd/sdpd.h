@@ -24,6 +24,7 @@
  *
  */
 
+#include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 
 typedef struct request {
@@ -74,3 +75,10 @@ int sdp_check_access(uint32_t handle, bdaddr_t *device);
 uint32_t sdp_next_handle(void);
 
 uint32_t sdp_get_time();
+
+#define SDP_SERVER_COMPAT (1 << 0)
+#define SDP_SERVER_MASTER (1 << 1)
+#define SDP_SERVER_PUBLIC (1 << 2)
+
+int start_sdp_server(uint16_t mtu, uint32_t flags);
+void stop_sdp_server(void);
