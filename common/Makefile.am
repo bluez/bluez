@@ -5,6 +5,12 @@ else
 sdp_sources = sdp-dummy.c
 endif
 
+if INOTIFY
+notify_sources = notify-inotify.c
+else
+notify_sources = notify-dummy.c
+endif
+
 if GLIB
 glib_sources =
 glib_cflags  = @GLIB_CFLAGS@
@@ -19,6 +25,7 @@ libhelper_a_SOURCES = oui.h oui.c \
 	textfile.h textfile.c helper.h helper.c \
 	logging.h logging.c dbus.h dbus.c \
 	sdp-xml.h sdp-xml.c $(sdp_sources) \
+	notify.h $(notify_sources) \
 	glib-ectomy.h $(glib_sources)
 
 noinst_PROGRAMS = test_textfile
@@ -27,6 +34,7 @@ test_textfile_LDADD = libhelper.a
 
 AM_CFLAGS = @DBUS_CFLAGS@ $(glib_cflags)
 
-EXTRA_DIST = ppoll.h sdp-dummy.c sdp-expat.c glib-ectomy.c
+EXTRA_DIST = ppoll.h sdp-dummy.c sdp-expat.c \
+	notify-dummy.c notify-inotify.c glib-ectomy.c
 
 MAINTAINERCLEANFILES = Makefile.in
