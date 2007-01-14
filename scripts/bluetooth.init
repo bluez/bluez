@@ -26,10 +26,10 @@ PAND_EXEC="`which $PAND_NAME || true`"
 DUND_EXEC="`which $DUND_NAME || true`"
 
 HCID_ENABLE=true
-SDPD_ENABLE=true
+SDPD_ENABLE=false
 HIDD_ENABLE=false
 HID2HCI_ENABLE=false
-RFCOMM_ENABLE=true
+RFCOMM_ENABLE=false
 DUND_ENABLE=false
 PAND_ENABLE=false
 
@@ -46,7 +46,11 @@ case "$1" in
   start)
 	echo -n "Starting $DESC:"
 	if $HCID_ENABLE && [ -x "$HCID_EXEC" ] && [ -f "$HCID_CONFIG" ] ; then
-		$HCID_EXEC -f $HCID_CONFIG
+		if $SDPD_ENABLE ; then
+			$HCID_EXEC -f $HCID_CONFIG
+		else
+			$HCID_EXEC -s -f $HCID_CONFIG
+		fi
 		echo -n " $HCID_NAME"
 	fi
 	if $SDPD_ENABLE && [ -x "$SDPD_EXEC" ] ; then

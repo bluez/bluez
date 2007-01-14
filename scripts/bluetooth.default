@@ -7,7 +7,7 @@ HCID_ENABLE=true
 HCID_CONFIG="/etc/bluetooth/hcid.conf"
 
 # Start sdpd (allowed values are "true" and "false")
-SDPD_ENABLE=true
+SDPD_ENABLE=false
 
 # Start hidd (allowed values are "true" and "false")
 HIDD_ENABLE=true
@@ -19,7 +19,7 @@ HIDD_OPTIONS=""
 HID2HCI_ENABLE=true
 
 # Bind rfcomm devices (allowed values are "true" and "false")
-RFCOMM_ENABLE=true
+RFCOMM_ENABLE=false
 
 # Config file for rfcomm
 RFCOMM_CONFIG="/etc/bluetooth/rfcomm.conf"
