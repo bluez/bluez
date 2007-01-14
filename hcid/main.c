@@ -543,6 +543,11 @@ static void sig_hup(int sig)
 	init_all_devices(hcid.sock);
 }
 
+static void sig_debug(int sig)
+{
+	toggle_debug();
+}
+
 static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 {
 	evt_si_device *sd = (void *) &si->data;
@@ -622,7 +627,7 @@ int main(int argc, char *argv[])
 	struct hci_filter flt;
 	struct sigaction sa;
 	GIOChannel *ctl_io;
-	int opt, daemonize = 1, sdp = 0, experimental = 0;
+	int opt, daemonize = 1, debug = 0, sdp = 0, experimental = 0;
 
 	/* Default HCId settings */
 	memset(&hcid, 0, sizeof(hcid));
@@ -640,10 +645,14 @@ int main(int argc, char *argv[])
 
 	init_defaults();
 
-	while ((opt = getopt(argc, argv, "nsxf:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ndsxf:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
+			break;
+
+		case 'd':
+			debug = 1;
 			break;
 
 		case 's':
@@ -681,11 +690,17 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
 
+	sa.sa_handler = sig_debug;
+	sigaction(SIGUSR2, &sa, NULL);
+
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
-	enable_debug();
+	if (debug) {
+		info("Enabling debug information");
+		enable_debug();
+	}
 
 	/* Create and bind HCI socket */
 	if ((hcid.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {

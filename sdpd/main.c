@@ -51,6 +51,11 @@ static void sig_hup(int sig)
 {
 }
 
+static void sig_debug(int sig)
+{
+	toggle_debug();
+}
+
 static void usage(void)
 {
 	printf("sdpd - SDP daemon ver %s\n", VERSION);
@@ -72,12 +77,16 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	uint16_t mtu = 0;
 	uint32_t flags = SDP_SERVER_COMPAT;
-	int opt, daemonize = 1;
+	int opt, daemonize = 1, debug = 0;
 
-	while ((opt = getopt_long(argc, argv, "nm:pM", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ndm:pM", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
+			break;
+
+		case 'd':
+			debug = 1;
 			break;
 
 		case 'm':
@@ -115,9 +124,17 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
 
+	sa.sa_handler = sig_debug;
+	sigaction(SIGUSR2, &sa, NULL);
+
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
+
+	if (debug) {
+		info("Enabling debug information");
+		enable_debug();
+	}
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 
