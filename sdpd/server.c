@@ -55,7 +55,7 @@ static int l2cap_sock, unix_sock;
  * l2cap and unix sockets over which discovery and registration clients
  * access us respectively
  */
-static int init_server(uint16_t mtu, int master, int public)
+static int init_server(uint16_t mtu, int master, int public, int compat)
 {
 	struct l2cap_options opts;
 	struct sockaddr_l2 l2addr;
@@ -111,6 +111,11 @@ static int init_server(uint16_t mtu, int master, int public)
 	}
 
 	listen(l2cap_sock, 5);
+
+	if (!compat) {
+		unix_sock = -1;
+		return 0;
+	}
 
 	/* Create local Unix socket */
 	unix_sock = socket(PF_UNIX, SOCK_STREAM, 0);
@@ -210,12 +215,13 @@ static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer da
 
 int start_sdp_server(uint16_t mtu, uint32_t flags)
 {
+	int compat = flags & SDP_SERVER_COMPAT;
 	int master = flags & SDP_SERVER_MASTER;
 	int public = flags & SDP_SERVER_PUBLIC;
 
 	info("Starting SDP server");
 
-	if (init_server(mtu, master, public) < 0) {
+	if (init_server(mtu, master, public, compat) < 0) {
 		error("Server initialization failed");
 		return -1;
 	}
@@ -225,10 +231,13 @@ int start_sdp_server(uint16_t mtu, uint32_t flags)
 
 	g_io_add_watch(l2cap_io, G_IO_IN, io_accept_event, &l2cap_sock);
 
-	unix_io = g_io_channel_unix_new(unix_sock);
-	g_io_channel_set_close_on_unref(unix_io, TRUE);
+	if (compat) {
+		unix_io = g_io_channel_unix_new(unix_sock);
+		g_io_channel_set_close_on_unref(unix_io, TRUE);
 
-	g_io_add_watch(unix_io, G_IO_IN, io_accept_event, &unix_sock);
+		g_io_add_watch(unix_io, G_IO_IN, io_accept_event, &unix_sock);
+	} else
+		unix_io = NULL;
 
 	return 0;
 }
@@ -239,7 +248,8 @@ void stop_sdp_server(void)
 
 	sdp_svcdb_reset();
 
-	g_io_channel_unref(unix_io);
+	if (unix_io)
+		g_io_channel_unref(unix_io);
 
 	g_io_channel_unref(l2cap_io);
 }
