@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (ver.manufacturer != 48) {
+	if (ver.manufacturer != 37 && ver.manufacturer != 48) {
 		fprintf(stderr, "Can't find supported device hci%d: %s (%d)\n",
 						dev, strerror(ENOSYS), ENOSYS);
 		hci_close_dev(dd);
