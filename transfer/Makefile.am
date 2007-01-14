@@ -18,6 +18,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @OPENOBEX_CFLAGS@ @DBUS_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
-EXTRA_DIST = bluetooth-transfer.conf
+EXTRA_DIST = bluetooth-transfer.conf transfer-api.txt
 
 MAINTAINERCLEANFILES = Makefile.in
