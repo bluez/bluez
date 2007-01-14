@@ -700,14 +700,14 @@ int init_services(const char *path)
 
 	d = opendir(path);
 	if (!d) {
-		error("Unable to open service dir %s: %s", strerror(errno));
+		error("Unable to open service dir %s: %s", path, strerror(errno));
 		return -1;
 	}
 
 	while ((e = readdir(d)) != NULL) {
 		char full_path[PATH_MAX];
 		struct service *service;
-		size_t len= strlen(e->d_name);
+		size_t len = strlen(e->d_name);
 
 		if (len < (strlen(SERVICE_SUFFIX) + 1))
 			continue;
