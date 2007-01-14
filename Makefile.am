@@ -1,6 +1,6 @@
 
 SUBDIRS = common sdpd hcid daemon \
-		network input audio sync \
+		transfer network input audio sync \
 		tools rfcomm dund pand hidd \
 		cups alsa test scripts
 
