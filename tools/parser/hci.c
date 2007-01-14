@@ -2479,6 +2479,7 @@ static inline void event_dump(int level, struct frame *frm)
 
 		switch (manufacturer) {
 		case 0:
+		case 37:
 		case 48:
 			frm->ptr += HCI_EVENT_HDR_SIZE;
 			frm->len -= HCI_EVENT_HDR_SIZE;
