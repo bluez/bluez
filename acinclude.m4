@@ -102,12 +102,6 @@ AC_DEFUN([AC_PATH_GSTREAMER], [
 	AC_SUBST(GSTREAMER_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_FUSE], [
-	PKG_CHECK_MODULES(FUSE, fuse, fuse_found=yes, AC_MSG_RESULT(no))
-	AC_SUBST(FUSE_CFLAGS)
-	AC_SUBST(FUSE_LIBS)
-])
-
 AC_DEFUN([AC_PATH_ALSA], [
 	PKG_CHECK_MODULES(ALSA, alsa, alsa_found=yes, AC_MSG_RESULT(no))
 	AC_SUBST(ALSA_CFLAGS)
@@ -143,7 +137,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	glib_enable=no
 	obex_enable=${openobex_found}
 	sync_enable=${opensync_found}
-	fuse_enable=no
 	alsa_enable=no
 	hcid_enable=yes
 	sdpd_enable=no
@@ -172,7 +165,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		dbus_enable=${enableval}
 		obex_enable=${enableval}
-		fuse_enable=${enableval}
 		alsa_enable=${enableval}
 		hcid_enable=${enableval}
 		sdpd_enable=${enableval}
@@ -205,10 +197,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(sync, AC_HELP_STRING([--enable-sync], [enable SYNC support]), [
 		sync_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(fuse, AC_HELP_STRING([--enable-fuse], [enable FUSE support]), [
-		fuse_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
@@ -281,7 +269,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(GLIB, test "${glib_enable}" = "yes" && test "${glib_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(SYNC, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
-	AM_CONDITIONAL(FUSE, test "${fuse_enable}" = "yes" && test "${openobex_found}" = "yes" && test "${fuse_found}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
 	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")
 	AM_CONDITIONAL(SDPD, test "${sdpd_enable}" = "yes")
