@@ -47,6 +47,7 @@
 #include "hcid.h"
 #include "sdpd.h"
 #include "dbus-common.h"
+#include "dbus-service.h"
 #include "dbus-hci.h"
 
 struct hcid_opts hcid;
@@ -755,6 +756,8 @@ int main(int argc, char *argv[])
 
 	if (sdp)
 		start_sdp_server(0, SDP_SERVER_COMPAT);
+
+	init_services(CONFIGDIR);
 
 	/* Start event processor */
 	g_main_run(event_loop);

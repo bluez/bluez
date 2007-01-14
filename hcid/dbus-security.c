@@ -768,7 +768,7 @@ static DBusHandlerResult authorize_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	const char *service_path, *adapter_path, *address, *action;
-	struct service_agent *sagent;
+	struct service *service;
 	GSList *l;
 
 	if (!hcid_dbus_use_experimental())
@@ -786,17 +786,17 @@ static DBusHandlerResult authorize_service(DBusConnection *conn,
 		return error_rejected(conn, msg);
 
 	if (!dbus_connection_get_object_path_data(conn, service_path,
-						(void *) &sagent))
+						(void *) &service))
 		return error_rejected(conn, msg);
 
-	if (!sagent)
+	if (!service)
 		return error_service_does_not_exist(conn, msg);
 
-	if (strcmp(dbus_message_get_sender(msg), sagent->id))
+	if (strcmp(dbus_message_get_sender(msg), service->id))
 		return error_rejected(conn, msg);
 
 	/* Check it is a trusted device */
-	l = g_slist_find_custom(sagent->trusted_devices, address, (GCompareFunc) strcasecmp);
+	l = g_slist_find_custom(service->trusted_devices, address, (GCompareFunc) strcasecmp);
 	if (l)
 		return send_message_and_unref(conn,
 				dbus_message_new_method_return(msg));
@@ -847,7 +847,7 @@ static DBusHandlerResult cancel_authorization_process(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	const char *service_path, *adapter_path, *address, *action;
-	struct service_agent *sagent;
+	struct service *service;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
@@ -864,13 +864,13 @@ static DBusHandlerResult cancel_authorization_process(DBusConnection *conn,
 		return error_no_such_adapter(conn, msg);
 
 	if (!dbus_connection_get_object_path_data(conn, service_path,
-						(void *) &sagent))
+						(void *) &service))
 		return error_not_authorized(conn, msg);
 
-	if (!sagent)
+	if (!service)
 		return error_service_does_not_exist(conn, msg);
 
-	if (strcmp(dbus_message_get_sender(msg), sagent->id))
+	if (strcmp(dbus_message_get_sender(msg), service->id))
 		return error_not_authorized(conn, msg);
 
 	if (!default_auth_agent)

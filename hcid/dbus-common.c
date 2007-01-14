@@ -324,7 +324,7 @@ void hcid_dbus_exit(void)
 
 	release_default_agent();
 	release_default_auth_agent();
-	release_service_agents(conn);
+	release_services(conn);
 
 	/* Unregister all paths in Adapter path hierarchy */
 	if (!dbus_connection_list_registered(conn, BASE_PATH, &children))

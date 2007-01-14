@@ -51,7 +51,6 @@
 #include "sdp-xml.h"
 
 static int default_adapter_id = -1;
-static int autostart = 1;
 
 static uint32_t next_handle = 0x10000;
 
@@ -224,149 +223,6 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static void autostart_reply(DBusPendingCall *pcall, void *udata)
-{
-	struct service_call *call = udata;
-	DBusMessage *agent_reply = dbus_pending_call_steal_reply(pcall);
-	DBusError err;
-
-	dbus_error_init(&err);
-
-	/* Ignore if the result is an error */
-	if (dbus_set_error_from_message(&err, agent_reply)) {
-		error("Service auto start failed: %s(%s)",
-			err.message, call->agent->name);
-		dbus_error_free(&err);
-	} else {
-		DBusMessage *message;
-
-		if (!call->agent)
-			goto fail;
-
-		if (register_agent_records(call->agent->records) < 0)
-			goto fail;
-
-		/* Send a signal to indicate that the service started properly */
-		message = dbus_message_new_signal(dbus_message_get_path(call->msg),
-						"org.bluez.Service",
-						"Started");
-
-		send_message_and_unref(call->conn, message);
-
-		call->agent->running = SERVICE_RUNNING;
-	}
-fail:
-	dbus_message_unref(agent_reply);
-	dbus_pending_call_unref(pcall);
-}
-
-static DBusHandlerResult register_service(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *path, *name, *description;
-	DBusHandlerResult result;
-	DBusMessage *message;
-	int err;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_STRING, &description,
-				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
-
-	err = register_service_agent(conn, dbus_message_get_sender(msg),
-					path, name, description);
-
-	if (err < 0) {
-		if (err == -EADDRNOTAVAIL)
-			return error_service_already_exists(conn, msg);
-
-		return error_failed(conn, msg, -err);
-	}
-
-	/* Report that a new service was registered */
-	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-					"ServiceRegistered");
-
-	dbus_message_append_args(message, DBUS_TYPE_STRING, &path,
-						DBUS_TYPE_INVALID);
-
-	send_message_and_unref(conn, message);
-
-	result = send_message_and_unref(conn, dbus_message_new_method_return(msg));
-
-	dbus_connection_flush(conn);
-
-	/* If autostart feature is enabled: send the Start message to the service agent */
-	if (autostart) {
-		DBusPendingCall *pending;
-		struct service_agent *agent;
-		struct service_call *call;
-
-		message = dbus_message_new_method_call(NULL, path,
-				"org.bluez.ServiceAgent", "Start");
-
-		dbus_message_set_destination(message, dbus_message_get_sender(msg));
-
-		if (dbus_connection_send_with_reply(conn, message, &pending, START_REPLY_TIMEOUT) == FALSE) {
-			dbus_message_unref(message);
-			return result;
-		}
-
-		dbus_connection_flush(conn);
-
-		dbus_connection_get_object_path_data(conn, path, (void *) &agent);
-
-		call = service_call_new(conn, message, agent);
-		dbus_message_unref(message);
-		if (!call)
-			return result;
-
-		dbus_pending_call_set_notify(pending, autostart_reply, call, service_call_free);
-	}
-
-	return result;
-}
-
-static DBusHandlerResult unregister_service(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *message;
-	const char *path;
-	int err;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
-
-	err = unregister_service_agent(conn,
-				dbus_message_get_sender(msg), path);
-	if (err < 0) {
-		/* Only the owner can unregister it */
-		if (err == -EPERM)
-			return error_not_authorized(conn, msg);
-
-		return error_failed(conn, msg, -err);
-	}
-
-	/* Report that the service was unregistered */
-	message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-					"ServiceUnregistered");
-	dbus_message_append_args(message, DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, message);
-
-	return send_message_and_unref(conn, dbus_message_new_method_return(msg));
-}
-
 static sdp_buf_t *service_record_extract(DBusMessageIter *iter)
 {
 	sdp_buf_t *sdp_buf;
@@ -393,7 +249,7 @@ static sdp_buf_t *service_record_extract(DBusMessageIter *iter)
 static DBusHandlerResult add_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct service_agent *agent;
+	struct service *service;
 	DBusMessageIter iter, array_iter;
 	DBusMessage *reply;
 	struct binary_record *rec;
@@ -411,12 +267,12 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	dbus_message_iter_get_basic(&iter, &path);
 
 	if (!dbus_connection_get_object_path_data(conn, path,
-						(void *) &agent)) {
+						(void *) &service)) {
 		/* If failed the path is invalid! */
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (!agent || strcmp(dbus_message_get_sender(msg), agent->id))
+	if (!service || strcmp(dbus_message_get_sender(msg), service->id))
 		return error_not_authorized(conn, msg);
 
 	dbus_message_iter_next(&iter);
@@ -440,7 +296,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	/* Assign a new handle */
 	rec->ext_handle = next_handle++;
 
-	if (agent->running) {
+	if (service->id) {
 		uint32_t handle = 0;
 
 		if (register_sdp_record(rec->buf->data,	rec->buf->data_size, &handle) < 0) {
@@ -453,7 +309,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 		rec->handle = handle;
 	}
 
-	agent->records = g_slist_append(agent->records, rec);
+	service->records = g_slist_append(service->records, rec);
 
 	dbus_message_append_args(reply,
 				DBUS_TYPE_UINT32, &rec->ext_handle,
@@ -471,7 +327,7 @@ fail:
 static DBusHandlerResult add_service_record_xml(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct service_agent *agent;
+	struct service *service;
 	DBusMessage *reply;
 	struct binary_record *rec;
 	sdp_record_t *sdp_rec;
@@ -489,12 +345,12 @@ static DBusHandlerResult add_service_record_xml(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 
 	if (!dbus_connection_get_object_path_data(conn, path,
-						(void *) &agent)) {
+						(void *) &service)) {
 		/* If failed the path is invalid! */
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (!agent || strcmp(dbus_message_get_sender(msg), agent->id))
+	if (!service || strcmp(dbus_message_get_sender(msg), service->id))
 		return error_not_authorized(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
@@ -541,7 +397,7 @@ static DBusHandlerResult add_service_record_xml(DBusConnection *conn,
 	/* Assign a new handle */
 	rec->ext_handle = next_handle++;
 
-	if (agent->running) {
+	if (service->id) {
 		uint32_t handle = 0;
 
 		if (register_sdp_record(rec->buf->data,	rec->buf->data_size, &handle) < 0) {
@@ -554,7 +410,7 @@ static DBusHandlerResult add_service_record_xml(DBusConnection *conn,
 		rec->handle = handle;
 	}
 
-	agent->records = g_slist_append(agent->records, rec);
+	service->records = g_slist_append(service->records, rec);
 
 	dbus_message_append_args(reply,
 				DBUS_TYPE_UINT32, &rec->ext_handle,
@@ -572,7 +428,7 @@ fail:
 static DBusHandlerResult remove_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct service_agent *agent;
+	struct service *service;
 	struct binary_record *rec;
 	DBusMessage *reply;
 	GSList *l;
@@ -589,16 +445,16 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 
 	if (!dbus_connection_get_object_path_data(conn, path,
-						(void *) &agent)) {
+						(void *) &service)) {
 		/* If failed the path is invalid! */
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (!agent || strcmp(dbus_message_get_sender(msg), agent->id))
+	if (!service || strcmp(dbus_message_get_sender(msg), service->id))
 		return error_not_authorized(conn, msg);
 
 
-	l = g_slist_find_custom(agent->records, &handle, (GCompareFunc) binary_record_cmp);
+	l = g_slist_find_custom(service->records, &handle, (GCompareFunc) binary_record_cmp);
 	if (!l)
 		return error_record_does_not_exist(conn, msg);
 
@@ -607,10 +463,10 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	rec = l->data;
-	agent->records = g_slist_remove(agent->records, rec);
+	service->records = g_slist_remove(service->records, rec);
 
-	/* If the service agent is running: remove it from the from sdpd */
-	if (agent->running && rec->handle != 0xffffffff) {
+	/* If the service is running: remove it from the from sdpd */
+	if (service->id && rec->handle != 0xffffffff) {
 		if (unregister_sdp_record(rec->handle) < 0) {
 			error("Service record unregistration failed: %s (%d)",
 							strerror(errno), errno);
@@ -628,8 +484,6 @@ static struct service_data methods[] = {
 	{ "FindAdapter",		find_adapter			},
 	{ "ListAdapters",		list_adapters			},
 	{ "ListServices",		list_services			},
-	{ "RegisterService",		register_service		},
-	{ "UnregisterService",		unregister_service		},
 	{ "AddServiceRecord",		add_service_record		},
 	{ "AddServiceRecordFromXML", 	add_service_record_xml		},
 	{ "RemoveServiceRecord",	remove_service_record		},
@@ -640,17 +494,10 @@ DBusHandlerResult handle_manager_method(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	service_handler_func_t handler;
-	const char *iface, *path, *name;
+	const char *iface, *name;
 
 	iface = dbus_message_get_interface(msg);
-	path = dbus_message_get_path(msg);
 	name = dbus_message_get_member(msg);
-
-	if ((strcmp(BASE_PATH, path)) && !strcmp(iface, "org.bluez.ServiceAgent"))
-		return error_unknown_method(conn, msg);
-
-	if (strcmp(BASE_PATH, path))
-		return error_no_such_adapter(conn, msg);
 
 	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
 					!strcmp("Introspect", name)) {

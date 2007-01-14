@@ -25,14 +25,17 @@
 #define __BLUEZ_DBUS_SERVICE_H
 
 #define START_REPLY_TIMEOUT	5000
-#define SERVICE_RUNNING		1
-#define SERVICE_NOT_RUNNING	0
 
-struct service_agent {
-	char *id;	/* Connection id */
+struct service {
+	/* These two are set when the service is running */
+	pid_t pid;
+	char *id;		/* Connection id */
+
+	/* Information parsed from the service file */
+	char *exec;		/* Location of executable */
 	char *name;
-	char *description;
-	int running;
+	char *descr;
+
 	GSList *trusted_devices;
 	GSList *records; 	/* list of binary records */
 };
@@ -40,7 +43,7 @@ struct service_agent {
 struct service_call {
 	DBusConnection *conn;
 	DBusMessage *msg;
-	struct service_agent *agent;
+	struct service *service;
 };
 
 struct binary_record {
@@ -53,18 +56,16 @@ struct binary_record *binary_record_new();
 void binary_record_free(struct binary_record *rec);
 int binary_record_cmp(struct binary_record *rec, uint32_t *handle);
 
-int register_service_agent(DBusConnection *conn, const char *sender, const char *path,
-				const char *name, const char *description);
-int unregister_service_agent(DBusConnection *conn, const char *sender,
-				const char *path);
+void release_services(DBusConnection *conn);
 
-void release_service_agents(DBusConnection *conn);
 void append_available_services(DBusMessageIter *iter);
 
-int register_agent_records(GSList *lrecords);
+int register_service_records(GSList *lrecords);
 
 struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
-					struct service_agent *agent);
+					struct service *service);
 void service_call_free(void *data);
+
+int init_services(const char *path);
 
 #endif /* __BLUEZ_DBUS_SERVICE_H */

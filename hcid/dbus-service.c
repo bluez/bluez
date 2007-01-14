@@ -29,6 +29,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <dirent.h>
+#include <sys/types.h>
 
 #include <dbus/dbus.h>
 
@@ -39,6 +41,9 @@
 #include "dbus-manager.h"
 #include "dbus-service.h"
 #include "dbus-hci.h"
+
+#define SERVICE_SUFFIX ".service"
+#define SERVICE_GROUP "Bluetooth Service"
 
 static GSList *services = NULL;
 
@@ -77,7 +82,7 @@ int binary_record_cmp(struct binary_record *rec, uint32_t *handle)
 
 
 struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
-					struct service_agent *agent)
+					struct service *service)
 {
 	struct service_call *call;
 	call = malloc(sizeof(struct service_call));
@@ -86,7 +91,7 @@ struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
 	memset(call, 0, sizeof(struct service_call));
 	call->conn = dbus_connection_ref(conn);
 	call->msg = dbus_message_ref(msg);
-	call->agent = agent;
+	call->service = service;
 
 	return call;
 }
@@ -108,7 +113,7 @@ void service_call_free(void *data)
 }
 
 #if 0
-static int service_agent_cmp(const struct service_agent *a, const struct service_agent *b)
+static int service_cmp(const struct service *a, const struct service *b)
 {
 	int ret;
 
@@ -140,71 +145,37 @@ static int service_agent_cmp(const struct service_agent *a, const struct service
 }
 #endif
 
-static void service_agent_free(struct service_agent *agent)
+static void service_free(struct service *service)
 {
-	if (!agent)
+	if (!service)
 		return;
 
-	if (agent->id)
-		free(agent->id);
+	if (service->id)
+		free(service->id);
 
-	if (agent->name)
-		free(agent->name);
+	if (service->exec)
+		free(service->exec);
 
-	if (agent->description)
-		free(agent->description);
+	if (service->name)
+		free(service->name);
 
-	if (agent->trusted_devices) {
-		g_slist_foreach(agent->trusted_devices, (GFunc) free, NULL);
-		g_slist_free(agent->trusted_devices);
+	if (service->descr)
+		free(service->descr);
+
+	if (service->trusted_devices) {
+		g_slist_foreach(service->trusted_devices, (GFunc) free, NULL);
+		g_slist_free(service->trusted_devices);
 	}
 
-	if (agent->records) {
-		g_slist_foreach(agent->records, (GFunc) binary_record_free, NULL);
-		g_slist_free(agent->records);
+	if (service->records) {
+		g_slist_foreach(service->records, (GFunc) binary_record_free, NULL);
+		g_slist_free(service->records);
 	}
 
-	free(agent);
+	free(service);
 }
 
-static struct service_agent *service_agent_new(const char *id, const char *name, const char *description)
-{
-	struct service_agent *agent = malloc(sizeof(struct service_agent));
-
-	if (!agent)
-		return NULL;
-
-	memset(agent, 0, sizeof(struct service_agent));
-
-	if (id) {	
-		agent->id = strdup(id);
-		if (!agent->id)
-			goto mem_fail;
-	}
-
-	if (name) {
-		agent->name = strdup(name);
-		if (!agent->name)
-			goto mem_fail;
-	}
-
-	if (description) {
-		agent->description = strdup(description);
-		if (!agent->description)
-			goto mem_fail;
-	}
-
-	/* by default when the service agent registers the service must not be running */
-	agent->running = SERVICE_NOT_RUNNING;
-
-	return agent;
-
-mem_fail:
-	service_agent_free(agent);
-	return NULL;
-}
-
-int register_agent_records(GSList *lrecords)
+int register_service_records(GSList *lrecords)
 {
 	while (lrecords) {
 		struct binary_record *rec = lrecords->data;
@@ -226,7 +197,7 @@ int register_agent_records(GSList *lrecords)
 	return 0;
 }
 
-static int unregister_agent_records(GSList *lrecords)
+static int unregister_service_records(GSList *lrecords)
 {
 	while (lrecords) {
 		struct binary_record *rec = lrecords->data;
@@ -247,30 +218,30 @@ static int unregister_agent_records(GSList *lrecords)
 	return 0;
 }
 
-static void service_agent_exit(const char *name, void *data)
+static void service_exit(const char *name, void *data)
 {
 	DBusConnection *conn = data;
 	DBusMessage *message;
 	GSList *l, *lremove = NULL;
-	struct service_agent *agent;
+	struct service *service;
 	const char *path;
 	
 	debug("Service Agent exited:%s", name);
 
-	/* Remove all service agents assigned to this owner */
+	/* Remove all service services assigned to this owner */
 	for (l = services; l; l = l->next) {
 		path = l->data;
 
-		if (!dbus_connection_get_object_path_data(conn, path, (void *) &agent))
+		if (!dbus_connection_get_object_path_data(conn, path, (void *) &service))
 			continue;
 
-		if (!agent || strcmp(name, agent->id))
+		if (!service || strcmp(name, service->id))
 			continue;
 
-		if (agent->records)
-			unregister_agent_records(agent->records);
+		if (service->records)
+			unregister_service_records(service->records);
 
-		service_agent_free(agent);
+		service_free(service);
 
 		dbus_connection_unregister_object_path(conn, path);
 
@@ -311,7 +282,7 @@ static void forward_reply(DBusPendingCall *call, void *udata)
 static DBusHandlerResult get_connection_name(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct service_agent *agent = data;
+	struct service *service = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
@@ -319,7 +290,7 @@ static DBusHandlerResult get_connection_name(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &agent->id,
+			DBUS_TYPE_STRING, &service->id,
 			DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -329,7 +300,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 
-	struct service_agent *agent = data;
+	struct service *service = data;
 	DBusMessage *reply;
 	const char *name = "";
 
@@ -337,8 +308,8 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (agent->name)
-		name = agent->name;
+	if (service->name)
+		name = service->name;
 	
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &name,
@@ -350,7 +321,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 static DBusHandlerResult get_description(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct service_agent *agent = data;
+	struct service *service = data;
 	DBusMessage *reply;
 	const char *description = "";
 
@@ -358,8 +329,8 @@ static DBusHandlerResult get_description(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (agent->description)
-		description = agent->description;
+	if (service->descr)
+		description = service->descr;
 	
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &description,
@@ -368,157 +339,24 @@ static DBusHandlerResult get_description(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static void start_reply(DBusPendingCall *call, void *udata)
-{
-	struct service_call *call_data = udata;
-	DBusMessage *agent_reply = dbus_pending_call_steal_reply(call);
-	DBusMessage *source_reply;
-	DBusError err;
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, agent_reply)) {
-		call_data->agent->running = SERVICE_NOT_RUNNING;
-		dbus_error_free(&err);
-		/* Forward the error to the requestor */
-	} else {
-		DBusMessage *message;
-
-		if (register_agent_records(call_data->agent->records) < 0) {
-			/* FIXME: define a better error name */
-			source_reply = dbus_message_new_error(call_data->msg,
-					ERROR_INTERFACE ".Failed", strerror(errno));
-			goto fail;
-		}
-
-		call_data->agent->running = SERVICE_RUNNING;
-
-		/* Send a signal to indicate that the service started properly */
-		message = dbus_message_new_signal(dbus_message_get_path(call_data->msg),
-							"org.bluez.Service",
-							"Started");
-
-		send_message_and_unref(call_data->conn, message);
-	}
-
-	/* Copy the service agent reply: error message or any reply content */
-	source_reply = dbus_message_copy(agent_reply);
-fail:
-	dbus_message_set_destination(source_reply, dbus_message_get_sender(call_data->msg));
-	dbus_message_set_no_reply(source_reply, TRUE);
-	dbus_message_set_reply_serial(source_reply, dbus_message_get_serial(call_data->msg));
-
-	send_message_and_unref(call_data->conn, source_reply);
-
-	dbus_message_unref(agent_reply);
-	dbus_pending_call_unref(call);
-}
-
 static DBusHandlerResult start(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	DBusPendingCall *pending;
-	struct service_call *call_data;
-	struct service_agent *agent  = data;
-	DBusMessage *forward;
+	struct service *service = data;
 
-	if (agent->running)
+	if (service->pid)
 		return error_failed(conn, msg, EPERM);
 
-	forward = dbus_message_copy(msg);
-	if (!forward)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_set_destination(forward, agent->id);
-	dbus_message_set_interface(forward, "org.bluez.ServiceAgent");
-	dbus_message_set_path(forward, dbus_message_get_path(msg));
-
-	call_data = service_call_new(conn, msg, agent);
-	if (!call_data) {
-		dbus_message_unref(forward);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	if (dbus_connection_send_with_reply(conn, forward, &pending, START_REPLY_TIMEOUT) == FALSE) {
-		service_call_free(call_data);
-		dbus_message_unref(forward);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	dbus_pending_call_set_notify(pending, start_reply, call_data, service_call_free);
-	dbus_message_unref(forward);
-
 	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-static void stop_reply(DBusPendingCall *call, void *udata)
-{
-	struct service_call *call_data = udata;
-	DBusMessage *agent_reply = dbus_pending_call_steal_reply(call);
-	DBusMessage *source_reply;
-	DBusError err;
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, agent_reply)) {
-		/* Keep the old running value */
-		dbus_error_free(&err);
-	} else {
-		DBusMessage *message;
-		call_data->agent->running = SERVICE_NOT_RUNNING;
-
-		/* Send a signal to indicate that the service stopped properly */
-		message = dbus_message_new_signal(dbus_message_get_path(call_data->msg),
-							"org.bluez.Service",
-							"Stopped");
-
-		send_message_and_unref(call_data->conn, message);
-		unregister_agent_records(call_data->agent->records);
-
-	}
-
-	source_reply = dbus_message_copy(agent_reply);
-	dbus_message_set_destination(source_reply, dbus_message_get_sender(call_data->msg));
-	dbus_message_set_no_reply(source_reply, TRUE);
-	dbus_message_set_reply_serial(source_reply, dbus_message_get_serial(call_data->msg));
-
-	send_message_and_unref(call_data->conn, source_reply);
-
-	dbus_message_unref(agent_reply);
-	dbus_pending_call_unref(call);
 }
 
 static DBusHandlerResult stop(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	DBusPendingCall *pending;
-	struct service_call *call_data;
-	struct service_agent *agent  = data;
-	DBusMessage *forward;
+	struct service *service  = data;
 
-	if (!agent->running)
+	if (!service->id)
 		return error_failed(conn, msg, EPERM);
-
-	forward = dbus_message_copy(msg);
-	if (!forward)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_set_destination(forward, agent->id);
-	dbus_message_set_interface(forward, "org.bluez.ServiceAgent");
-	dbus_message_set_path(forward, dbus_message_get_path(msg));
-
-	call_data = service_call_new(conn, msg, agent);
-	if (!call_data) {
-		dbus_message_unref(forward);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	if (dbus_connection_send_with_reply(conn, forward, &pending, START_REPLY_TIMEOUT) == FALSE) {
-		service_call_free(call_data);
-		dbus_message_unref(forward);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	dbus_pending_call_set_notify(pending, stop_reply, call_data, service_call_free);
-	dbus_message_unref(forward);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -526,7 +364,7 @@ static DBusHandlerResult stop(DBusConnection *conn,
 static DBusHandlerResult is_running(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct service_agent *agent = data;
+	struct service *service = data;
 	DBusMessage *reply;
 	dbus_bool_t running;
 
@@ -534,7 +372,7 @@ static DBusHandlerResult is_running(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	running = (agent->running == SERVICE_RUNNING ? TRUE : FALSE);
+	running = service->id ? TRUE : FALSE;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_BOOLEAN, &running,
@@ -558,7 +396,7 @@ static DBusHandlerResult remove_user(DBusConnection *conn,
 static DBusHandlerResult set_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct service_agent *agent = data;
+	struct service *service = data;
 	GSList *l;
 	DBusMessage *reply;
 	const char *address;
@@ -571,7 +409,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	l = g_slist_find_custom(agent->trusted_devices, address, (GCompareFunc) strcasecmp);
+	l = g_slist_find_custom(service->trusted_devices, address, (GCompareFunc) strcasecmp);
 	if (l)
 		return error_trusted_device_already_exists(conn, msg);
 
@@ -579,7 +417,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	agent->trusted_devices = g_slist_append(agent->trusted_devices, strdup(address));
+	service->trusted_devices = g_slist_append(service->trusted_devices, strdup(address));
 
 	return send_message_and_unref(conn, reply);
 }
@@ -587,7 +425,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 static DBusHandlerResult is_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct service_agent *agent = data;
+	struct service *service = data;
 	GSList *l;
 	DBusMessage *reply;
 	const char *address;
@@ -598,7 +436,7 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	l = g_slist_find_custom(agent->trusted_devices, address, (GCompareFunc) strcasecmp);
+	l = g_slist_find_custom(service->trusted_devices, address, (GCompareFunc) strcasecmp);
 	trusted = (l? TRUE : FALSE);
 
 	reply = dbus_message_new_method_return(msg);
@@ -615,7 +453,7 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 static DBusHandlerResult remove_trust(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct service_agent *agent = data;
+	struct service *service = data;
 	GSList *l;
 	DBusMessage *reply;
 	const char *address;
@@ -626,7 +464,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	l = g_slist_find_custom(agent->trusted_devices, address, (GCompareFunc) strcasecmp);
+	l = g_slist_find_custom(service->trusted_devices, address, (GCompareFunc) strcasecmp);
 	if (!l)
 		return error_trusted_device_does_not_exists(conn, msg);
 
@@ -635,7 +473,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	paddress = l->data;
-	agent->trusted_devices = g_slist_remove(agent->trusted_devices, l->data);
+	service->trusted_devices = g_slist_remove(service->trusted_devices, l->data);
 	free(paddress);
 
 	return send_message_and_unref(conn, reply);
@@ -659,7 +497,7 @@ static struct service_data services_methods[] = {
 static DBusHandlerResult msg_func_services(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct service_agent *agent = data;
+	struct service *service = data;
 	service_handler_func_t handler;
 	DBusPendingCall *pending;
 	DBusMessage *forward;
@@ -684,10 +522,10 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 		if(!forward)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-		dbus_message_set_destination(forward, agent->id);
+		dbus_message_set_destination(forward, service->id);
 		dbus_message_set_path(forward, dbus_message_get_path(msg));
 
-		call_data = service_call_new(conn, msg, agent);
+		call_data = service_call_new(conn, msg, service);
 		if (!call_data) {
 			dbus_message_unref(forward);
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -713,57 +551,50 @@ static const DBusObjectPathVTable services_vtable = {
 	.unregister_function	= NULL
 };
 
-int register_service_agent(DBusConnection *conn, const char *sender,
-				const char *path, const char *name, const char *description)
+int register_service(char *path, struct service *service)
 {
-	struct service_agent *agent;
-	GSList *l;
+	char obj_path[PATH_MAX], *slash;
+	DBusConnection *conn = get_dbus_connection();
 
-	debug("Registering service object: %s", path);
+	path[strlen(path) - strlen(SERVICE_SUFFIX)] = '\0';
+	slash = strrchr(path, '/');
 
-	/* Check if the name is already used? */
-	agent = service_agent_new(sender, name, description);
-	if (!agent)
+	snprintf(obj_path, sizeof(obj_path) - 1, "/org/bluez/service-%s", &slash[1]);
+
+	debug("Registering service object: %s (%s)", service->name, obj_path);
+
+	if (!dbus_connection_register_object_path(conn, obj_path,
+						&services_vtable, service))
 		return -ENOMEM;
 
-	l = g_slist_find_custom(services, path, (GCompareFunc) strcmp);
-	if (l)
-		return -EADDRNOTAVAIL;
-
-	if (!dbus_connection_register_object_path(conn, path, &services_vtable, agent)) {
-		free(agent);
-		return -ENOMEM;
-	}
-
-	services = g_slist_append(services, strdup(path));
-
-	name_listener_add(conn, sender, (name_cb_t) service_agent_exit, conn);
+	services = g_slist_append(services, strdup(obj_path));
 
 	return 0;
 }
 
-int unregister_service_agent(DBusConnection *conn, const char *sender, const char *path)
+int unregister_service(const char *sender, const char *path)
 {
-	struct service_agent *agent;
+	struct service *service;
+	DBusConnection *conn = get_dbus_connection();
 	GSList *l;
 
 	debug("Unregistering service object: %s", path);
 
-	if (dbus_connection_get_object_path_data(conn, path, (void *) &agent)) {
+	if (dbus_connection_get_object_path_data(conn, path, (void *) &service)) {
 		/* No data assigned to this path or it is not the owner */
-		if (!agent || strcmp(sender, agent->id))
+		if (!service || strcmp(sender, service->id))
 			return -EPERM;
 
-		if (agent->records)
-			unregister_agent_records(agent->records);
+		if (service->records)
+			unregister_service_records(service->records);
 
-		service_agent_free(agent);
+		service_free(service);
 	}
 
 	if (!dbus_connection_unregister_object_path(conn, path))
 		return -ENOMEM;
 
-	name_listener_remove(conn, sender, (name_cb_t) service_agent_exit, conn);
+	name_listener_remove(conn, sender, (name_cb_t) service_exit, conn);
 
 	l = g_slist_find_custom(services, path, (GCompareFunc) strcmp);
 	if (l) {
@@ -775,39 +606,27 @@ int unregister_service_agent(DBusConnection *conn, const char *sender, const cha
 	return 0;
 }
 
-void send_release(DBusConnection *conn, const char *id, const char *path)
-{
-	DBusMessage *msg;
-
-	msg = dbus_message_new_method_call(id, path,
-				"org.bluez.ServiceAgent", "Release");
-	if (!msg)
-		return;
-
-	dbus_message_set_no_reply(msg, TRUE);
-	send_message_and_unref(conn, msg);
-}
-
-void release_service_agents(DBusConnection *conn)
+void release_services(DBusConnection *conn)
 {
 	GSList *l = services;
-	struct service_agent *agent;
+	struct service *service;
 	const char *path;
+
+	debug("release_services");
 
 	while (l) {
 		path = l->data;
 
 		l = l->next;
 
-		if (dbus_connection_get_object_path_data(conn, path, (void *) &agent)) {
-			if (!agent)
+		if (dbus_connection_get_object_path_data(conn, path, (void *) &service)) {
+			if (!service)
 				continue;
 
-			if (agent->records)
-				unregister_agent_records(agent->records);
+			if (service->records)
+				unregister_service_records(service->records);
 
-			send_release(conn, agent->id, path);
-			service_agent_free(agent);
+			service_free(service);
 		}
 
 		dbus_connection_unregister_object_path(conn, path);
@@ -820,13 +639,97 @@ void release_service_agents(DBusConnection *conn)
 
 void append_available_services(DBusMessageIter *array_iter)
 {
-	GSList *l = services;
-	const char *path;
+	GSList *l;
 
-	while (l) {
-		path = l->data;
+	for (l = services; l != NULL; l = l->next)
 		dbus_message_iter_append_basic(array_iter,
-					DBUS_TYPE_STRING, &path);
-		l = l->next;
-	}
+					DBUS_TYPE_STRING, &l->data);
 }
+
+static struct service *create_service(const char *file)
+{
+	GKeyFile *keyfile;
+	struct service *service;
+
+	service = malloc(sizeof(struct service));
+	if (!service) {
+		error("Unable to allocate new service");
+		return NULL;
+	}
+
+	memset(service, 0, sizeof(struct service));
+
+	keyfile = g_key_file_new();
+
+	if (!g_key_file_load_from_file(keyfile, file, 0, NULL)) {
+		error("Parsing %s failed", file);
+		goto failed;
+	}
+
+	service->exec = g_key_file_get_string(keyfile, SERVICE_GROUP,
+						"Exec", NULL);
+	if (!service->exec) {
+		error("%s doesn't contain a Exec attribute", file);
+		goto failed;
+	}
+
+	service->name = g_key_file_get_string(keyfile, SERVICE_GROUP,
+						"Name", NULL);
+	if (!service->name) {
+		error("%s doesn't contain a Name attribute", file);
+		goto failed;
+	}
+
+	service->descr = g_key_file_get_string(keyfile, SERVICE_GROUP,
+						"Description", NULL);
+
+	g_key_file_free(keyfile);
+
+	return service;
+
+failed:
+	g_key_file_free(keyfile);
+	service_free(service);
+	return NULL;
+}
+
+int init_services(const char *path)
+{
+	DIR *d;
+	struct dirent *e;
+
+	d = opendir(path);
+	if (!d) {
+		error("Unable to open service dir %s: %s", strerror(errno));
+		return -1;
+	}
+
+	while ((e = readdir(d)) != NULL) {
+		char full_path[PATH_MAX];
+		struct service *service;
+		size_t len= strlen(e->d_name);
+
+		if (len < (strlen(SERVICE_SUFFIX) + 1))
+			continue;
+
+		/* Skip if the file doesn't end in .service */
+		if (strcmp(&e->d_name[len - strlen(SERVICE_SUFFIX)], SERVICE_SUFFIX))
+			continue;
+
+		snprintf(full_path, sizeof(full_path) - 1, "%s/%s", path, e->d_name);
+
+		service = create_service(full_path);
+		if (!service) {
+			error("Unable to read %s", full_path);
+			continue;
+		}
+
+		register_service(full_path, service);
+	}
+
+	closedir(d);
+
+	return 0;
+}
+
+
