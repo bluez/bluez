@@ -46,6 +46,7 @@
 #define SERVICE_INTERFACE "org.bluez.Service"
 
 #define STARTUP_TIMEOUT (10 * 1000) /* 10 seconds */
+#define SHUTDOWN_TIMEOUT (2 * 1000) /* 2 seconds */
 
 #define SERVICE_SUFFIX ".service"
 #define SERVICE_GROUP "Bluetooth Service"
@@ -308,6 +309,11 @@ static void service_died(GPid pid, gint status, gpointer data)
 		service->startup_timer = 0;
 	}
 
+	if (service->shutdown_timer) {
+		g_timeout_remove(service->shutdown_timer);
+		service->shutdown_timer = 0;
+	}
+
 	g_spawn_close_pid(pid);
 
 	service->pid = 0;
@@ -364,6 +370,28 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static gboolean service_shutdown_timeout(gpointer data)
+{
+	struct service *service = data;
+
+	debug("Sending SIGKILL to %s since it didn't exit yet",
+			service->exec);
+
+	kill(service->pid, SIGKILL);
+
+	service->shutdown_timer = 0;
+
+	return FALSE;
+}
+
+static void stop_service(struct service *service)
+{
+	kill(service->pid, SIGTERM);
+	service->shutdown_timer = g_timeout_add(SHUTDOWN_TIMEOUT,
+						service_shutdown_timeout,
+						service);
+}
+
 static gboolean service_startup_timeout(gpointer data)
 {
 	struct service *service = data;
@@ -371,7 +399,9 @@ static gboolean service_startup_timeout(gpointer data)
 	debug("Killing %s because it did not connect to D-Bus in time",
 			service->exec);
 
-	kill(service->pid, SIGTERM);
+	stop_service(service);
+
+	service->startup_timer = 0;
 
 	return FALSE;
 }
@@ -437,7 +467,7 @@ static DBusHandlerResult stop(DBusConnection *conn,
 	if (!service->bus_name)
 		return error_failed(conn, msg, EPERM);
 
-	kill(service->pid, SIGTERM);
+	stop_service(service);
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply)

@@ -30,6 +30,7 @@ struct service {
 	char *object_path;
 
 	guint startup_timer;
+	guint shutdown_timer;
 
 	/* These are set when the service is running */
 	GPid pid;		/* Process id */
