@@ -272,7 +272,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (!service || strcmp(dbus_message_get_sender(msg), service->id))
+	if (!service || strcmp(dbus_message_get_sender(msg), service->bus_name))
 		return error_not_authorized(conn, msg);
 
 	dbus_message_iter_next(&iter);
@@ -296,7 +296,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	/* Assign a new handle */
 	rec->ext_handle = next_handle++;
 
-	if (service->id) {
+	if (service->bus_name) {
 		uint32_t handle = 0;
 
 		if (register_sdp_record(rec->buf->data,	rec->buf->data_size, &handle) < 0) {
@@ -350,7 +350,7 @@ static DBusHandlerResult add_service_record_xml(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (!service || strcmp(dbus_message_get_sender(msg), service->id))
+	if (!service || strcmp(dbus_message_get_sender(msg), service->bus_name))
 		return error_not_authorized(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
@@ -397,7 +397,7 @@ static DBusHandlerResult add_service_record_xml(DBusConnection *conn,
 	/* Assign a new handle */
 	rec->ext_handle = next_handle++;
 
-	if (service->id) {
+	if (service->bus_name) {
 		uint32_t handle = 0;
 
 		if (register_sdp_record(rec->buf->data,	rec->buf->data_size, &handle) < 0) {
@@ -450,7 +450,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
-	if (!service || strcmp(dbus_message_get_sender(msg), service->id))
+	if (!service || strcmp(dbus_message_get_sender(msg), service->bus_name))
 		return error_not_authorized(conn, msg);
 
 
@@ -466,7 +466,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 	service->records = g_slist_remove(service->records, rec);
 
 	/* If the service is running: remove it from the from sdpd */
-	if (service->id && rec->handle != 0xffffffff) {
+	if (service->bus_name && rec->handle != 0xffffffff) {
 		if (unregister_sdp_record(rec->handle) < 0) {
 			error("Service record unregistration failed: %s (%d)",
 							strerror(errno), errno);

@@ -792,7 +792,7 @@ static DBusHandlerResult authorize_service(DBusConnection *conn,
 	if (!service)
 		return error_service_does_not_exist(conn, msg);
 
-	if (strcmp(dbus_message_get_sender(msg), service->id))
+	if (strcmp(dbus_message_get_sender(msg), service->bus_name))
 		return error_rejected(conn, msg);
 
 	/* Check it is a trusted device */
@@ -870,7 +870,7 @@ static DBusHandlerResult cancel_authorization_process(DBusConnection *conn,
 	if (!service)
 		return error_service_does_not_exist(conn, msg);
 
-	if (strcmp(dbus_message_get_sender(msg), service->id))
+	if (strcmp(dbus_message_get_sender(msg), service->bus_name))
 		return error_not_authorized(conn, msg);
 
 	if (!default_auth_agent)

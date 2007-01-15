@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <dirent.h>
+#include <signal.h>
 #include <sys/types.h>
 
 #include <dbus/dbus.h>
@@ -112,46 +113,13 @@ void service_call_free(void *data)
 	free(call);
 }
 
-#if 0
-static int service_cmp(const struct service *a, const struct service *b)
-{
-	int ret;
-
-	if (b->id) {
-		if (!a->id)
-			return -1;
-		ret = strcmp(a->id, b->id);
-		if (ret)
-			return ret;
-	}
-
-	if (b->name) {
-		if (!a->name)
-			return -1;
-		ret = strcmp(a->name, b->name);
-		if (ret)
-			return ret;
-	}
-
-	if (b->description) {
-		if (!a->description)
-			return -1;
-		ret = strcmp(a->description, b->description);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
-}
-#endif
-
 static void service_free(struct service *service)
 {
 	if (!service)
 		return;
 
-	if (service->id)
-		free(service->id);
+	if (service->bus_name)
+		free(service->bus_name);
 
 	if (service->exec)
 		free(service->exec);
@@ -235,7 +203,7 @@ static void service_exit(const char *name, void *data)
 		if (!dbus_connection_get_object_path_data(conn, path, (void *) &service))
 			continue;
 
-		if (!service || strcmp(name, service->id))
+		if (!service || strcmp(name, service->bus_name))
 			continue;
 
 		if (service->records)
@@ -290,7 +258,7 @@ static DBusHandlerResult get_connection_name(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &service->id,
+			DBUS_TYPE_STRING, &service->bus_name,
 			DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -339,13 +307,48 @@ static DBusHandlerResult get_description(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult start(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static void service_setup(gpointer data)
+{
+	/* struct service *service = data; */
+}
+
+static void service_died(GPid pid, gint status, gpointer data)
 {
 	struct service *service = data;
 
+	debug("%s (%s) exited with status %d", service->exec, service->name,
+			status);
+
+	g_spawn_close_pid(pid);
+
+	service->pid = 0;
+}
+
+static DBusHandlerResult start(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	struct service *service = data;
+	char *argv[2];
+
 	if (service->pid)
-		return error_failed(conn, msg, EPERM);
+		return error_failed(conn, msg, EALREADY);
+
+	argv[0] = service->exec;
+	argv[1] = NULL;
+
+	if (!g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
+				service_setup, service, &service->pid, NULL)) {
+		error("Unable to execute %s", service->exec);
+		return error_failed(conn, msg, ENOEXEC);
+	}
+
+	service->watch_id = g_child_watch_add(service->pid, service_died,
+						service);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply)
+		send_message_and_unref(conn, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -353,10 +356,17 @@ static DBusHandlerResult start(DBusConnection *conn,
 static DBusHandlerResult stop(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
+	DBusMessage *reply;
 	struct service *service  = data;
 
-	if (!service->id)
+	if (!service->bus_name)
 		return error_failed(conn, msg, EPERM);
+
+	kill(service->pid, SIGTERM);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply)
+		send_message_and_unref(conn, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -372,7 +382,7 @@ static DBusHandlerResult is_running(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	running = service->id ? TRUE : FALSE;
+	running = service->bus_name ? TRUE : FALSE;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_BOOLEAN, &running,
@@ -522,7 +532,7 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 		if(!forward)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-		dbus_message_set_destination(forward, service->id);
+		dbus_message_set_destination(forward, service->bus_name);
 		dbus_message_set_path(forward, dbus_message_get_path(msg));
 
 		call_data = service_call_new(conn, msg, service);
@@ -559,7 +569,7 @@ int register_service(char *path, struct service *service)
 	path[strlen(path) - strlen(SERVICE_SUFFIX)] = '\0';
 	slash = strrchr(path, '/');
 
-	snprintf(obj_path, sizeof(obj_path) - 1, "/org/bluez/service-%s", &slash[1]);
+	snprintf(obj_path, sizeof(obj_path) - 1, "/org/bluez/service_%s", &slash[1]);
 
 	debug("Registering service object: %s (%s)", service->name, obj_path);
 
@@ -582,7 +592,7 @@ int unregister_service(const char *sender, const char *path)
 
 	if (dbus_connection_get_object_path_data(conn, path, (void *) &service)) {
 		/* No data assigned to this path or it is not the owner */
-		if (!service || strcmp(sender, service->id))
+		if (!service || strcmp(sender, service->bus_name))
 			return -EPERM;
 
 		if (service->records)

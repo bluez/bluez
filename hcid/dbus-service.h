@@ -28,8 +28,9 @@
 
 struct service {
 	/* These two are set when the service is running */
-	pid_t pid;
-	char *id;		/* Connection id */
+	pid_t pid;		/* Process id */
+	char *bus_name;		/* D-Bus unique name */
+	guint watch_id;		/* Id for the child watch */
 
 	/* Information parsed from the service file */
 	char *exec;		/* Location of executable */
