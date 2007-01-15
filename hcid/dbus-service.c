@@ -379,14 +379,6 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 	}
 	dbus_connection_remove_filter(conn, service_filter, service);
 
-	msg = dbus_message_new_signal(service->object_path,
-					SERVICE_INTERFACE, "Started");
-	if (msg) {
-		dbus_message_append_args(msg, DBUS_TYPE_STRING, &new,
-					DBUS_TYPE_INVALID);
-		send_message_and_unref(conn, msg);
-	}
-
 	if (service->action) {
 		msg = dbus_message_new_method_return(service->action);
 		if (msg) {
@@ -403,6 +395,14 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 	service->startup_timer = 0;
 
 	name_listener_add(conn, new, (name_cb_t) service_exit, service);
+
+	msg = dbus_message_new_signal(service->object_path,
+					SERVICE_INTERFACE, "Started");
+	if (msg) {
+		dbus_message_append_args(msg, DBUS_TYPE_STRING, &new,
+						DBUS_TYPE_INVALID);
+		send_message_and_unref(conn, msg);
+	}
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
