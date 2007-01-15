@@ -12,7 +12,7 @@ sbin_PROGRAMS = hciemu
 
 bin_PROGRAMS = l2test rctest
 
-noinst_PROGRAMS = sdptest scotest attest hstest bdaddr sttest
+noinst_PROGRAMS = sdptest scotest attest hstest bdaddr lmptest
 
 hciemu_LDADD = $(glib_ldadd) @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
@@ -32,7 +32,7 @@ bdaddr_SOURCES = bdaddr.c
 
 bdaddr_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
-sttest_LDADD = @BLUEZ_LIBS@
+lmptest_LDADD = @BLUEZ_LIBS@
 
 noinst_MANS = bdaddr.8
 
