@@ -341,6 +341,7 @@ static void service_died(GPid pid, gint status, gpointer data)
 static DBusHandlerResult service_filter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	DBusError err;
 	struct service *service = data;
 	const char *name, *old, *new;
 	unsigned long pid;
@@ -370,7 +371,12 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 
 	service->bus_name = strdup(new);
 
-	dbus_bus_remove_match(conn, NAME_MATCH, NULL);
+	dbus_error_init(&err);
+	dbus_bus_remove_match(conn, NAME_MATCH, &err);
+	if (dbus_error_is_set(&err)) {
+		error("Remove match \"%s\" failed: %s" NAME_MATCH, err.message);
+		dbus_error_free(&err);
+	}
 	dbus_connection_remove_filter(conn, service_filter, service);
 
 	msg = dbus_message_new_signal(service->object_path,
@@ -447,6 +453,7 @@ static DBusHandlerResult start(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	GError *err = NULL;
+	DBusError derr;
 	struct service *service = data;
 	char **argv;
 	int argc;
@@ -481,7 +488,12 @@ static DBusHandlerResult start(DBusConnection *conn,
 		kill(service->pid, SIGKILL);
 	}
 
-	dbus_bus_add_match(conn, NAME_MATCH, NULL);
+	dbus_error_init(&derr);
+	dbus_bus_add_match(conn, NAME_MATCH, &derr);
+	if (dbus_error_is_set(&derr)) {
+		error("Add match \"%s\" failed: %s", derr.message);
+		dbus_error_free(&derr);
+	}
 
 	service->startup_timer = g_timeout_add(STARTUP_TIMEOUT,
 						service_startup_timeout,
