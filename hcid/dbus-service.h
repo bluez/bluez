@@ -29,6 +29,8 @@
 struct service {
 	char *object_path;
 
+	DBusMessage *action;	/* Either Start or Stop method call */
+
 	guint startup_timer;
 	guint shutdown_timer;
 

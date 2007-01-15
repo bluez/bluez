@@ -126,6 +126,9 @@ static void service_free(struct service *service)
 	if (service->object_path)
 		free(service->object_path);
 
+	if (service->action)
+		dbus_message_unref(service->action);
+
 	if (service->bus_name)
 		free(service->bus_name);
 
@@ -197,16 +200,23 @@ static int unregister_service_records(GSList *lrecords)
 static void service_exit(const char *name, struct service *service)
 {
 	DBusConnection *conn = get_dbus_connection();
-	DBusMessage *signal;
+	DBusMessage *msg;
 	
 	debug("Service owner exited: %s", name);
 
 	if (service->records)
 		unregister_service_records(service->records);
 
-	signal = dbus_message_new_signal(service->object_path,
+	msg = dbus_message_new_signal(service->object_path,
 					SERVICE_INTERFACE, "Stopped");
-	send_message_and_unref(conn, signal);
+	send_message_and_unref(conn, msg);
+
+	if (service->action) {
+		msg = dbus_message_new_method_return(service->action);
+		send_message_and_unref(conn, msg);
+		dbus_message_unref(service->action);
+		service->action = NULL;
+	}
 
 	free(service->bus_name);
 	service->bus_name = NULL;
@@ -307,6 +317,13 @@ static void service_died(GPid pid, gint status, gpointer data)
 	if (service->startup_timer) {
 		g_timeout_remove(service->startup_timer);
 		service->startup_timer = 0;
+
+		if (service->action) {
+			error_failed(get_dbus_connection(), service->action,
+					ECANCELED);
+			dbus_message_unref(service->action);
+			service->action = NULL;
+		}
 	}
 
 	if (service->shutdown_timer) {
@@ -324,7 +341,6 @@ static void service_died(GPid pid, gint status, gpointer data)
 static DBusHandlerResult service_filter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	DBusMessage *signal;
 	struct service *service = data;
 	const char *name, *old, *new;
 	unsigned long pid;
@@ -357,10 +373,25 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 	dbus_bus_remove_match(conn, NAME_MATCH, NULL);
 	dbus_connection_remove_filter(conn, service_filter, service);
 
-	signal = dbus_message_new_signal(service->object_path,
+	msg = dbus_message_new_signal(service->object_path,
 					SERVICE_INTERFACE, "Started");
-	if (signal)
-		send_message_and_unref(conn, signal);
+	if (msg) {
+		dbus_message_append_args(msg, DBUS_TYPE_STRING, &new,
+					DBUS_TYPE_INVALID);
+		send_message_and_unref(conn, msg);
+	}
+
+	if (service->action) {
+		msg = dbus_message_new_method_return(service->action);
+		if (msg) {
+			dbus_message_append_args(msg, DBUS_TYPE_STRING, &new,
+						DBUS_TYPE_INVALID);
+			send_message_and_unref(conn, msg);
+		}
+
+		dbus_message_unref(service->action);
+		service->action = NULL;
+	}
 
 	g_timeout_remove(service->startup_timer);
 	service->startup_timer = 0;
@@ -399,6 +430,12 @@ static gboolean service_startup_timeout(gpointer data)
 	debug("Killing %s because it did not connect to D-Bus in time",
 			service->exec);
 
+	if (service->action) {
+		error_failed(get_dbus_connection(), service->action, ETIME);
+		dbus_message_unref(service->action);
+		service->action = NULL;
+	}
+
 	stop_service(service);
 
 	service->startup_timer = 0;
@@ -409,7 +446,6 @@ static gboolean service_startup_timeout(gpointer data)
 static DBusHandlerResult start(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	GError *err = NULL;
 	struct service *service = data;
 	char **argv;
@@ -451,9 +487,7 @@ static DBusHandlerResult start(DBusConnection *conn,
 						service_startup_timeout,
 						service);
 
-	reply = dbus_message_new_method_return(msg);
-	if (reply)
-		send_message_and_unref(conn, reply);
+	service->action = dbus_message_ref(msg);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -461,7 +495,6 @@ static DBusHandlerResult start(DBusConnection *conn,
 static DBusHandlerResult stop(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	struct service *service  = data;
 
 	if (!service->bus_name)
@@ -469,9 +502,7 @@ static DBusHandlerResult stop(DBusConnection *conn,
 
 	stop_service(service);
 
-	reply = dbus_message_new_method_return(msg);
-	if (reply)
-		send_message_and_unref(conn, reply);
+	service->action = dbus_message_ref(msg);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
