@@ -216,15 +216,15 @@ static void service_exit(const char *name, void *data)
 		if (service->records)
 			unregister_service_records(service->records);
 
-		service_free(service);
-
 		dbus_connection_unregister_object_path(conn, path);
 
-		message = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-						"ServiceUnregistered");
+		message = dbus_message_new_signal(service->object_path,
+						SERVICE_INTERFACE, "Stopped");
 		dbus_message_append_args(message, DBUS_TYPE_STRING, &path,
 						DBUS_TYPE_INVALID);
 		send_message_and_unref(conn, message);
+
+		service_free(service);
 
 		lremove = g_slist_append(lremove, l->data);
 		services = g_slist_remove(services, l->data);
