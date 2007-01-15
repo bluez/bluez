@@ -755,6 +755,30 @@ int unregister_service(const char *sender, const char *path)
 	return 0;
 }
 
+static void release_service(struct service *service)
+{
+	if (service->records)
+		unregister_service_records(service->records);
+
+	if (service->bus_name)
+		name_listener_remove(get_dbus_connection(), service->bus_name,
+					(name_cb_t) service_exit, service);
+
+	if (service->watch_id)
+		g_source_remove(service->watch_id);
+
+	if (service->pid)
+		kill(service->pid, SIGKILL);
+
+	if (service->startup_timer)
+		g_timeout_remove(service->startup_timer);
+
+	if (service->shutdown_timer)
+		g_timeout_remove(service->shutdown_timer);
+
+	service_free(service);
+}
+
 void release_services(DBusConnection *conn)
 {
 	GSList *l = services;
@@ -772,10 +796,7 @@ void release_services(DBusConnection *conn)
 			if (!service)
 				continue;
 
-			if (service->records)
-				unregister_service_records(service->records);
-
-			service_free(service);
+			release_service(service);
 		}
 
 		dbus_connection_unregister_object_path(conn, path);
