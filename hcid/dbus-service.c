@@ -193,45 +193,22 @@ static int unregister_service_records(GSList *lrecords)
 	return 0;
 }
 
-static void service_exit(const char *name, void *data)
+static void service_exit(const char *name, struct service *service)
 {
-	DBusConnection *conn = data;
-	DBusMessage *message;
-	GSList *l, *lremove = NULL;
-	struct service *service;
-	const char *path;
+	DBusConnection *conn = get_dbus_connection();
+	DBusMessage *signal;
 	
-	debug("Service Agent exited:%s", name);
+	debug("Service owner exited: %s", name);
 
-	/* Remove all service services assigned to this owner */
-	for (l = services; l; l = l->next) {
-		path = l->data;
+	if (service->records)
+		unregister_service_records(service->records);
 
-		if (!dbus_connection_get_object_path_data(conn, path, (void *) &service))
-			continue;
+	signal = dbus_message_new_signal(service->object_path,
+					SERVICE_INTERFACE, "Stopped");
+	send_message_and_unref(conn, signal);
 
-		if (!service || strcmp(name, service->bus_name))
-			continue;
-
-		if (service->records)
-			unregister_service_records(service->records);
-
-		dbus_connection_unregister_object_path(conn, path);
-
-		message = dbus_message_new_signal(service->object_path,
-						SERVICE_INTERFACE, "Stopped");
-		dbus_message_append_args(message, DBUS_TYPE_STRING, &path,
-						DBUS_TYPE_INVALID);
-		send_message_and_unref(conn, message);
-
-		service_free(service);
-
-		lremove = g_slist_append(lremove, l->data);
-		services = g_slist_remove(services, l->data);
-	}
-
-	g_slist_foreach(lremove, (GFunc) free, NULL);
-	g_slist_free(lremove);
+	free(service->bus_name);
+	service->bus_name = NULL;
 }
 
 static void forward_reply(DBusPendingCall *call, void *udata)
@@ -382,7 +359,7 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 	g_timeout_remove(service->startup_timer);
 	service->startup_timer = 0;
 
-	name_listener_add(conn, new, service_exit, conn);
+	name_listener_add(conn, new, (name_cb_t) service_exit, service);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -705,7 +682,7 @@ int unregister_service(const char *sender, const char *path)
 	if (!dbus_connection_unregister_object_path(conn, path))
 		return -ENOMEM;
 
-	name_listener_remove(conn, sender, (name_cb_t) service_exit, conn);
+	name_listener_remove(conn, sender, (name_cb_t) service_exit, service);
 
 	l = g_slist_find_custom(services, path, (GCompareFunc) strcmp);
 	if (l) {
