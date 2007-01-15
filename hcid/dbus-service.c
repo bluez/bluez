@@ -411,10 +411,12 @@ static gboolean service_shutdown_timeout(gpointer data)
 {
 	struct service *service = data;
 
-	debug("Sending SIGKILL to %s since it didn't exit yet",
-			service->exec);
+	debug("Sending SIGKILL to \"%s\" (PID %d) since it didn't exit yet",
+			service->exec, service->pid);
 
-	kill(service->pid, SIGKILL);
+	if (kill(service->pid, SIGKILL) < 0)
+		error("kill(%d, SIGKILL): %s (%d)", service->pid,
+				strerror(errno), errno);
 
 	service->shutdown_timer = 0;
 
@@ -423,7 +425,9 @@ static gboolean service_shutdown_timeout(gpointer data)
 
 static void stop_service(struct service *service)
 {
-	kill(service->pid, SIGTERM);
+	if (kill(service->pid, SIGTERM) < 0)
+		error("kill(%d, SIGTERM): %s (%d)", service->pid,
+				strerror(errno), errno);
 	service->shutdown_timer = g_timeout_add(SHUTDOWN_TIMEOUT,
 						service_shutdown_timeout,
 						service);
@@ -433,8 +437,8 @@ static gboolean service_startup_timeout(gpointer data)
 {
 	struct service *service = data;
 
-	debug("Killing %s because it did not connect to D-Bus in time",
-			service->exec);
+	debug("Killing \"%s\" (PID %d) because it did not connect to D-Bus in time",
+			service->exec, service->pid);
 
 	if (service->action) {
 		error_failed(get_dbus_connection(), service->action, ETIME);
@@ -485,7 +489,9 @@ static DBusHandlerResult start(DBusConnection *conn,
 
 	if (!dbus_connection_add_filter(conn, service_filter, service, NULL)) {
 		error("Unable to add signal filter");
-		kill(service->pid, SIGKILL);
+		if (kill(service->pid, SIGKILL) < 0)
+			error("kill(%d, SIGKILL): %s (%d)", service->pid,
+					strerror(errno), errno);
 	}
 
 	dbus_error_init(&derr);
@@ -802,8 +808,9 @@ static void release_service(struct service *service)
 	if (service->watch_id)
 		g_source_remove(service->watch_id);
 
-	if (service->pid)
-		kill(service->pid, SIGKILL);
+	if (service->pid && kill(service->pid, SIGKILL) < 0)
+		error("kill(%d, SIGKILL): %s (%d)", service->pid,
+				strerror(errno), errno);
 
 	if (service->startup_timer)
 		g_timeout_remove(service->startup_timer);
