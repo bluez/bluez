@@ -29,6 +29,8 @@
 struct service {
 	char *object_path;
 
+	guint startup_timer;
+
 	/* These are set when the service is running */
 	GPid pid;		/* Process id */
 	char *bus_name;		/* D-Bus unique name */
