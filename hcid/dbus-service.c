@@ -701,6 +701,7 @@ int register_service(char *path, struct service *service)
 {
 	char obj_path[PATH_MAX], *slash;
 	DBusConnection *conn = get_dbus_connection();
+	DBusMessage *signal;
 
 	path[strlen(path) - strlen(SERVICE_SUFFIX)] = '\0';
 	slash = strrchr(path, '/');
@@ -717,6 +718,17 @@ int register_service(char *path, struct service *service)
 	service->object_path = strdup(obj_path);
 
 	services = g_slist_append(services, strdup(obj_path));
+
+	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
+					"ServiceRegistered");
+	if (!signal)
+		return -ENOMEM;
+
+	dbus_message_append_args(signal,
+				DBUS_TYPE_STRING, &service->object_path,
+				DBUS_TYPE_INVALID);
+
+	send_message_and_unref(conn, signal);
 
 	return 0;
 }
@@ -757,6 +769,17 @@ int unregister_service(const char *sender, const char *path)
 
 static void release_service(struct service *service)
 {
+	DBusMessage *signal;
+
+	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
+					"ServiceUnregistered");
+	if (signal) {
+		dbus_message_append_args(signal,
+					DBUS_TYPE_STRING, &service->object_path,
+					DBUS_TYPE_INVALID);
+		send_message_and_unref(get_dbus_connection(), signal);
+	}
+
 	if (service->records)
 		unregister_service_records(service->records);
 
