@@ -308,6 +308,51 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 	return 0;
 }
 
+dbus_bool_t dbus_bus_get_unix_process_id(DBusConnection *conn, const char *name,
+						unsigned long *pid)
+{
+	DBusMessage *msg, *reply;
+	dbus_uint32_t pid_arg;
+
+	msg = dbus_message_new_method_call("org.freedesktop.DBus",
+						"/org/freedesktop/DBus",
+						"org.freedesktop.DBus",
+						"GetConnectionUnixProcessID");
+	if (!msg) {
+		error("Unable to allocate new message");
+		return FALSE;
+	}
+
+	if (!dbus_message_append_args(msg, DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_INVALID)) {
+		error("Unable to append arguments to message");
+		dbus_message_unref(msg);
+		return FALSE;
+	}
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+	if (!reply) {
+		error("Sending GetConnectionUnixProcessID failed");
+		dbus_message_unref(msg);
+		return FALSE;
+	}
+
+	if (!dbus_message_get_args(reply, NULL, DBUS_TYPE_UINT32, &pid_arg,
+					DBUS_TYPE_INVALID)) {
+		error("Getting GetConnectionUnixProcessID args failed");
+		dbus_message_unref(msg);
+		dbus_message_unref(reply);
+		return FALSE;
+	}
+
+	*pid = (unsigned long) pid_arg;
+
+	dbus_message_unref(msg);
+	dbus_message_unref(reply);
+
+	return TRUE;
+}
+
 static DBusHandlerResult disconnect_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {

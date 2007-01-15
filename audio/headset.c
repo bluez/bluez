@@ -1040,28 +1040,6 @@ static DBusHandlerResult stop_message(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult release_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		error("Can't create reply message");
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_message_unref(reply);
-
-	info("Got Release method. Exiting.");
-
-	raise(SIGTERM);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
 static DBusHandlerResult hs_message(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -1075,8 +1053,6 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 			return start_message(conn, msg, data);
 		if (strcmp(member, "Stop") == 0)
 			return stop_message(conn, msg, data);
-		if (strcmp(member, "Release") == 0)
-			return release_message(conn, msg, data);
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
@@ -1112,38 +1088,8 @@ static const DBusObjectPathVTable hs_table = {
 	.message_function = hs_message,
 };
 
-static void register_reply(DBusPendingCall *call, void *data)
-{
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError derr;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("Registering failed: %s", derr.message);
-		dbus_error_free(&derr);
-		dbus_message_unref(reply);
-		raise(SIGTERM);
-		return;
-	}
-
-	debug("Successfully registered headset service");
-
-	dbus_message_unref(reply);
-
-	if (config_channel)
-		record_id = add_ag_record(config_channel);
-
-	if (on_init_bda)
-		hs_connect(NULL, NULL, on_init_bda);
-}
-
 int headset_dbus_init(char *bda)
 {
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-	const char *name = "Headset service";
-	const char *description = "A service for headsets";
-
 	connection = init_dbus(NULL, NULL, NULL);
 	if (!connection)
 		return -1;
@@ -1154,26 +1100,11 @@ int headset_dbus_init(char *bda)
 		return -1;
 	}
 
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-					"org.bluez.Manager", "RegisterService");
-	if (!msg) {
-		error("Can't allocate new method call");
-		return -1;
-	}
+	if (config_channel)
+		record_id = add_ag_record(config_channel);
 
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &hs_path,
-					DBUS_TYPE_STRING, &name,
-					DBUS_TYPE_STRING, &description,
-					DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
-		error("Sending Register method call failed");
-		dbus_message_unref(msg);
-		return -1;
-	}
-
-	dbus_pending_call_set_notify(pending, register_reply, NULL, NULL);
-	dbus_message_unref(msg);
+	if (on_init_bda)
+		hs_connect(NULL, NULL, on_init_bda);
 
 	return 0;
 }

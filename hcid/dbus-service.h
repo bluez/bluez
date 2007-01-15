@@ -27,8 +27,10 @@
 #define START_REPLY_TIMEOUT	5000
 
 struct service {
-	/* These two are set when the service is running */
-	pid_t pid;		/* Process id */
+	char *object_path;
+
+	/* These are set when the service is running */
+	GPid pid;		/* Process id */
 	char *bus_name;		/* D-Bus unique name */
 	guint watch_id;		/* Id for the child watch */
 

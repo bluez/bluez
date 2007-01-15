@@ -43,6 +43,8 @@
 #include "dbus-service.h"
 #include "dbus-hci.h"
 
+#define SERVICE_INTERFACE "org.bluez.Service"
+
 #define SERVICE_SUFFIX ".service"
 #define SERVICE_GROUP "Bluetooth Service"
 
@@ -117,6 +119,9 @@ static void service_free(struct service *service)
 {
 	if (!service)
 		return;
+
+	if (service->object_path)
+		free(service->object_path);
 
 	if (service->bus_name)
 		free(service->bus_name);
@@ -324,27 +329,92 @@ static void service_died(GPid pid, gint status, gpointer data)
 	service->pid = 0;
 }
 
+#define NAME_MATCH "interface=" DBUS_INTERFACE_DBUS ",member=NameOwnerChanged"
+
+static DBusHandlerResult service_filter(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *signal;
+	struct service *service = data;
+	const char *name, *old, *new;
+	unsigned long pid;
+
+	if (!dbus_message_is_signal(msg, DBUS_INTERFACE_DBUS, "NameOwnerChanged"))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &old,
+				DBUS_TYPE_STRING, &new, DBUS_TYPE_INVALID)) {
+		error("Invalid arguments for NameOwnerChanged signal");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	if (*new == '\0' || *old != '\0' || *new != ':')
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (!dbus_bus_get_unix_process_id(conn, new, &pid)) {
+		error("Could not get PID of %s", new);
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	if ((GPid) pid != service->pid)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	debug("Child PID %d got the unique bus name %s", service->pid, new);
+
+	service->bus_name = strdup(new);
+
+	dbus_bus_remove_match(conn, NAME_MATCH, NULL);
+	dbus_connection_remove_filter(conn, service_filter, service);
+
+	signal = dbus_message_new_signal(service->object_path,
+					SERVICE_INTERFACE, "Started");
+	if (signal)
+		send_message_and_unref(conn, signal);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult start(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	GError *err = NULL;
 	struct service *service = data;
-	char *argv[2];
+	char **argv;
+	int argc;
 
 	if (service->pid)
 		return error_failed(conn, msg, EALREADY);
 
-	argv[0] = service->exec;
-	argv[1] = NULL;
+	g_shell_parse_argv(service->exec, &argc, &argv, &err);
+
+	if (err != NULL) {
+		error("Unable to parse exec line \"%s\": %s", service->exec, err->message);
+		g_error_free(err);
+		return error_failed(conn, msg, ENOEXEC);
+	}
 
 	if (!g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
 				service_setup, service, &service->pid, NULL)) {
 		error("Unable to execute %s", service->exec);
+		g_strfreev(argv);
 		return error_failed(conn, msg, ENOEXEC);
 	}
 
+	g_strfreev(argv);
+
 	service->watch_id = g_child_watch_add(service->pid, service_died,
 						service);
+
+	debug("%s executed with PID %d", service->exec, service->pid);
+
+	if (!dbus_connection_add_filter(conn, service_filter, service, NULL)) {
+		error("Unable to add signal filter");
+		kill(service->pid, SIGKILL);
+	}
+
+	dbus_bus_add_match(conn, NAME_MATCH, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply)
@@ -522,7 +592,7 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
 			!strcmp("Introspect", dbus_message_get_member(msg))) {
 		return simple_introspect(conn, msg, data);
-	} else if (strcmp("org.bluez.Service", iface) == 0) {
+	} else if (strcmp(SERVICE_INTERFACE, iface) == 0) {
 
 		handler = find_service_handler(services_methods, msg);
 		if (handler)
@@ -569,13 +639,16 @@ int register_service(char *path, struct service *service)
 	path[strlen(path) - strlen(SERVICE_SUFFIX)] = '\0';
 	slash = strrchr(path, '/');
 
-	snprintf(obj_path, sizeof(obj_path) - 1, "/org/bluez/service_%s", &slash[1]);
+	snprintf(obj_path, sizeof(obj_path) - 1, "/org/bluez/service_%s", slash + 1);
 
-	debug("Registering service object: %s (%s)", service->name, obj_path);
+	debug("Registering service object: exec=%s, name=%s (%s)",
+			service->exec, service->name, obj_path);
 
 	if (!dbus_connection_register_object_path(conn, obj_path,
 						&services_vtable, service))
 		return -ENOMEM;
+
+	service->object_path = strdup(obj_path);
 
 	services = g_slist_append(services, strdup(obj_path));
 

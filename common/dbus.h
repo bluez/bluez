@@ -35,6 +35,9 @@ int name_listener_add(DBusConnection *connection, const char *name,
 int name_listener_remove(DBusConnection *connection, const char *name,
 				name_cb_t func, void *user_data);
 
+dbus_bool_t dbus_bus_get_unix_process_id(DBusConnection *conn, const char *name,
+						unsigned long *pid);
+
 DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void *data);
 
 static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn, DBusMessage *msg)
