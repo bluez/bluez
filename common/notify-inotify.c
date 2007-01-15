@@ -30,6 +30,10 @@
 #include <string.h>
 #include <sys/inotify.h>
 
+#ifndef IN_ONLYDIR
+#define IN_ONLYDIR 0x01000000
+#endif
+
 #include "glib-ectomy.h"
 #include "logging.h"
 #include "notify.h"
