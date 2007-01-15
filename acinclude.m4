@@ -79,37 +79,37 @@ AC_DEFUN([AC_PATH_DBUS], [
 ])
 
 AC_DEFUN([AC_PATH_GLIB], [
-	PKG_CHECK_MODULES(GLIB, glib-2.0, glib_found=yes)
+	PKG_CHECK_MODULES(GLIB, glib-2.0, glib_found=yes, glib_found=no)
 	AC_SUBST(GLIB_CFLAGS)
 	AC_SUBST(GLIB_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_OPENOBEX], [
-	PKG_CHECK_MODULES(OPENOBEX, openobex > 1.1, openobex_found=yes)
+	PKG_CHECK_MODULES(OPENOBEX, openobex > 1.1, openobex_found=yes, openobex_found=no)
 	AC_SUBST(OPENOBEX_CFLAGS)
 	AC_SUBST(OPENOBEX_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_OPENSYNC], [
-	PKG_CHECK_MODULES(OPENSYNC, glib-2.0 opensync-1.0 osengine-1.0, opensync_found=yes)
+	PKG_CHECK_MODULES(OPENSYNC, glib-2.0 opensync-1.0 osengine-1.0, opensync_found=yes, opensync_found=no)
 	AC_SUBST(OPENSYNC_CFLAGS)
 	AC_SUBST(OPENSYNC_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_GSTREAMER], [
-	PKG_CHECK_MODULES(GSTREAMER, gstreamer-0.10, gstreamer_found=yes)
+	PKG_CHECK_MODULES(GSTREAMER, gstreamer-0.10, gstreamer_found=yes, gstreamer_found=no)
 	AC_SUBST(GSTREAMER_CFLAGS)
 	AC_SUBST(GSTREAMER_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_ALSA], [
-	PKG_CHECK_MODULES(ALSA, alsa, alsa_found=yes)
+	PKG_CHECK_MODULES(ALSA, alsa, alsa_found=yes, alsa_found=no)
 	AC_SUBST(ALSA_CFLAGS)
 	AC_SUBST(ALSA_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_USB], [
-	PKG_CHECK_MODULES(USB, libusb, usb_found=yes)
+	PKG_CHECK_MODULES(USB, libusb, usb_found=yes, usb_found=no)
 	AC_SUBST(USB_CFLAGS)
 	AC_SUBST(USB_LIBS)
 	AC_CHECK_LIB(usb, usb_get_busses, dummy=yes,
