@@ -167,10 +167,9 @@ Methods		uint32 InterfaceVersion()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.OutOfMemory
 
-		array{string} ListServices() [experimental]
+		array{string} ListServices()
 
-			Returns list of object paths of registered
-			service agents.
+			Returns list of object paths of current services.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 
@@ -232,11 +231,11 @@ Signals		void AdapterAdded(string path)
 
 			Parameter is object path of the new default adapter.
 
-		void ServiceRegistered(string path) [experimental]
+		void ServiceAdded(string path)
 
 			Parameter is object path of registered service agent.
 
-		void ServiceUnregistered(string path) [experimental]
+		void ServiceRemoved(string path)
 
 			Parameter is object path of unregistered service agent.
 

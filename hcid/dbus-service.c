@@ -754,7 +754,7 @@ int register_service(char *path, struct service *service)
 	services = g_slist_append(services, strdup(obj_path));
 
 	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-					"ServiceRegistered");
+						"ServiceAdded");
 	if (!signal)
 		return -ENOMEM;
 
@@ -806,7 +806,7 @@ static void release_service(struct service *service)
 	DBusMessage *signal;
 
 	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-					"ServiceUnregistered");
+						"ServiceRemoved");
 	if (signal) {
 		dbus_message_append_args(signal,
 					DBUS_TYPE_STRING, &service->object_path,
