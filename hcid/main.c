@@ -43,6 +43,7 @@
 #include <bluetooth/hci_lib.h>
 
 #include "glib-ectomy.h"
+#include "notify.h"
 
 #include "hcid.h"
 #include "sdpd.h"
@@ -757,6 +758,8 @@ int main(int argc, char *argv[])
 	if (sdp)
 		start_sdp_server(0, SDP_SERVER_COMPAT);
 
+	notify_init();
+
 	init_services(CONFIGDIR);
 
 	/* Start event processor */
@@ -768,6 +771,8 @@ int main(int argc, char *argv[])
 	free_device_opts();
 
 	hcid_dbus_exit();
+
+	notify_close();
 
 	cleanup_sdp_session();
 

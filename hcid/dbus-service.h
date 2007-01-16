@@ -27,6 +27,7 @@
 #define START_REPLY_TIMEOUT	5000
 
 struct service {
+	char *filename;
 	char *object_path;
 
 	DBusMessage *action;	/* Either Start or Stop method call */

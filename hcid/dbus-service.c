@@ -37,6 +37,7 @@
 
 #include "hcid.h"
 #include "dbus.h"
+#include "notify.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-manager.h"
@@ -124,6 +125,9 @@ static void service_free(struct service *service)
 {
 	if (!service)
 		return;
+
+	if (service->filename)
+		free(service->filename);
 
 	if (service->object_path)
 		free(service->object_path);
@@ -735,16 +739,18 @@ static const DBusObjectPathVTable services_vtable = {
 	.unregister_function	= NULL
 };
 
-int register_service(char *path, struct service *service)
+static int register_service(struct service *service)
 {
-	char obj_path[PATH_MAX], *slash;
+	char obj_path[PATH_MAX], *suffix;
 	DBusConnection *conn = get_dbus_connection();
 	DBusMessage *signal;
 
-	path[strlen(path) - strlen(SERVICE_SUFFIX)] = '\0';
-	slash = strrchr(path, '/');
+	snprintf(obj_path, sizeof(obj_path) - 1, "/org/bluez/service_%s",
+			service->filename);
 
-	snprintf(obj_path, sizeof(obj_path) - 1, "/org/bluez/service_%s", slash + 1);
+	/* Don't include the .service part in the path */
+	suffix = strstr(obj_path, SERVICE_SUFFIX);
+	*suffix = '\0';
 
 	debug("Registering service object: exec=%s, name=%s (%s)",
 			service->exec, service->name, obj_path);
@@ -755,7 +761,7 @@ int register_service(char *path, struct service *service)
 
 	service->object_path = strdup(obj_path);
 
-	services = g_slist_append(services, strdup(obj_path));
+	services = g_slist_append(services, service);
 
 	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
 						"ServiceAdded");
@@ -771,43 +777,15 @@ int register_service(char *path, struct service *service)
 	return 0;
 }
 
-int unregister_service(const char *sender, const char *path)
-{
-	struct service *service;
-	DBusConnection *conn = get_dbus_connection();
-	GSList *l;
-
-	debug("Unregistering service object: %s", path);
-
-	if (dbus_connection_get_object_path_data(conn, path, (void *) &service)) {
-		/* No data assigned to this path or it is not the owner */
-		if (!service || strcmp(sender, service->bus_name))
-			return -EPERM;
-
-		if (service->records)
-			unregister_service_records(service->records);
-
-		service_free(service);
-	}
-
-	if (!dbus_connection_unregister_object_path(conn, path))
-		return -ENOMEM;
-
-	name_listener_remove(conn, sender, (name_cb_t) service_exit, service);
-
-	l = g_slist_find_custom(services, path, (GCompareFunc) strcmp);
-	if (l) {
-		void *p = l->data;
-		services = g_slist_remove(services, l->data);
-		free(p);
-	}
-
-	return 0;
-}
-
-static void release_service(struct service *service)
+static int unregister_service(struct service *service)
 {
 	DBusMessage *signal;
+	DBusConnection *conn = get_dbus_connection();
+
+	debug("Unregistering service object: %s", service->object_path);
+
+	if (!dbus_connection_unregister_object_path(conn, service->object_path))
+		return -ENOMEM;
 
 	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
 						"ServiceRemoved");
@@ -815,7 +793,7 @@ static void release_service(struct service *service)
 		dbus_message_append_args(signal,
 					DBUS_TYPE_STRING, &service->object_path,
 					DBUS_TYPE_INVALID);
-		send_message_and_unref(get_dbus_connection(), signal);
+		send_message_and_unref(conn, signal);
 	}
 
 	if (service->records)
@@ -850,33 +828,16 @@ static void release_service(struct service *service)
 	if (service->shutdown_timer)
 		g_timeout_remove(service->shutdown_timer);
 
+	services = g_slist_remove(services, service);
+
 	service_free(service);
 }
 
 void release_services(DBusConnection *conn)
 {
-	GSList *l = services;
-	struct service *service;
-	const char *path;
-
 	debug("release_services");
 
-	while (l) {
-		path = l->data;
-
-		l = l->next;
-
-		if (dbus_connection_get_object_path_data(conn, path, (void *) &service)) {
-			if (!service)
-				continue;
-
-			release_service(service);
-		}
-
-		dbus_connection_unregister_object_path(conn, path);
-	}
-
-	g_slist_foreach(services, (GFunc) free, NULL);
+	g_slist_foreach(services, (GFunc) unregister_service, NULL);
 	g_slist_free(services);
 	services = NULL;
 }
@@ -909,15 +870,19 @@ void append_available_services(DBusMessageIter *array_iter)
 {
 	GSList *l;
 
-	for (l = services; l != NULL; l = l->next)
+	for (l = services; l != NULL; l = l->next) {
+		struct service *service = l->data;
+
 		dbus_message_iter_append_basic(array_iter,
-					DBUS_TYPE_STRING, &l->data);
+					DBUS_TYPE_STRING, &service->object_path);
+	}
 }
 
 static struct service *create_service(const char *file)
 {
 	GKeyFile *keyfile;
 	struct service *service;
+	const char *slash;
 
 	service = malloc(sizeof(struct service));
 	if (!service) {
@@ -948,6 +913,14 @@ static struct service *create_service(const char *file)
 		goto failed;
 	}
 
+	slash = strrchr(file, '/');
+	if (!slash) {
+		error("No slash in service file path!?");
+		goto failed;
+	}
+
+	service->filename = strdup(slash + 1);
+
 	service->descr = g_key_file_get_string(keyfile, SERVICE_GROUP,
 						"Description", NULL);
 
@@ -962,6 +935,54 @@ failed:
 	g_key_file_free(keyfile);
 	service_free(service);
 	return NULL;
+}
+
+static gint service_filename_cmp(struct service *service, const char *filename)
+{
+	return strcmp(service->filename, filename);
+}
+
+static void service_notify(int action, const char *name, void *user_data)
+{
+	GSList *l;
+	struct service *service;
+	size_t len;
+	char fullpath[PATH_MAX];
+
+	len = strlen(name);
+	if (len < (strlen(SERVICE_SUFFIX) + 1))
+		return;
+
+	if (strcmp(name + (len - strlen(SERVICE_SUFFIX)), SERVICE_SUFFIX))
+		return;
+
+	switch (action) {
+	case NOTIFY_CREATE:
+		debug("%s was created", name);
+		snprintf(fullpath, sizeof(fullpath) - 1, "%s/%s", CONFIGDIR, name);
+		service = create_service(fullpath);
+		if (!service) {
+			error("Unable to read %s", fullpath);
+			break;
+		}
+
+		register_service(service);
+
+		break;
+	case NOTIFY_DELETE:
+		debug("%s was deleted", name);
+		l = g_slist_find_custom(services, name,
+					(GCompareFunc) service_filename_cmp);
+		if (l)
+			unregister_service(l->data);
+		break;
+	case NOTIFY_MODIFY:
+		debug("%s was modified", name);
+		break;
+	default:
+		debug("Unknown notify action %d", action);
+		break;
+	}
 }
 
 int init_services(const char *path)
@@ -995,10 +1016,12 @@ int init_services(const char *path)
 			continue;
 		}
 
-		register_service(full_path, service);
+		register_service(service);
 	}
 
 	closedir(d);
+
+	notify_add(path, service_notify, NULL);
 
 	return 0;
 }
