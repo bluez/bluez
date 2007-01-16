@@ -34,6 +34,7 @@ DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_no_such_service(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_supported(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg);

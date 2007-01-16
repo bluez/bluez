@@ -99,6 +99,13 @@ DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg)
 							"No such adapter"));
 }
 
+DBusHandlerResult error_no_such_service(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".NoSuchService",
+							"No such service"));
+}
+
 DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,

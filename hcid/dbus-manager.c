@@ -198,7 +198,26 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 static DBusHandlerResult find_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	const char *pattern, *path;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &pattern,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	path = search_service(conn, pattern);
+	if (!path)
+		return error_no_such_service(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult list_services(DBusConnection *conn,

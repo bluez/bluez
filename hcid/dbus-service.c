@@ -877,6 +877,30 @@ void release_services(DBusConnection *conn)
 	services = NULL;
 }
 
+const char *search_service(DBusConnection *conn, const char *pattern)
+{
+	GSList *l = services;
+	struct service *service;
+	const char *path;
+
+	while (l) {
+		path = l->data;
+
+		l = l->next;
+
+		if (!dbus_connection_get_object_path_data(conn, path, (void *) &service))
+			continue;
+
+		if (!service)
+			continue;
+
+		if (service->ident && !strcmp(service->ident, pattern))
+			return path;
+	}
+
+	return NULL;
+}
+
 void append_available_services(DBusMessageIter *array_iter)
 {
 	GSList *l;
