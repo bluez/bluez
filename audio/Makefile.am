@@ -21,6 +21,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(glib_cflags)
 
 INCLUDES = -I$(top_srcdir)/common
 
-EXTRA_DIST = audio-api.txt
+EXTRA_DIST = headset.service audio-api.txt
 
 MAINTAINERCLEANFILES = Makefile.in
