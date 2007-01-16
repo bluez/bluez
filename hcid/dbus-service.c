@@ -362,8 +362,11 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 		service->action = NULL;
 	}
 
-	g_timeout_remove(service->startup_timer);
-	service->startup_timer = 0;
+	if (service->startup_timer) {
+		g_timeout_remove(service->startup_timer);
+		service->startup_timer = 0;
+	} else
+		debug("service_filter: timeout was already removed!");
 
 	name_listener_add(conn, new, (name_cb_t) service_exit, service);
 
