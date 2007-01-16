@@ -174,32 +174,6 @@ Methods		uint32 InterfaceVersion()
 
 			Possible errors: org.bluez.Error.InvalidArguments
 
-		void RegisterService(string path, string name, string description) [experimental]
-
-			This registers a new service agent.
-
-			The path parameter defines the object path of the
-			service agent that will be called when someone
-			requests information through org.bluez.Service
-			interface. The name and description parameters can
-			provide the name of the service and a description of
-			what it does or they can be empty strings.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.AlreadyExists
-					 org.bluez.Eroor.Failed
-
-		void UnregisterService(string path) [experimental]
-
-			This unregisters a service agent that has been
-			previously registered. The path parameter must
-			match the same value that has been used on
-			registration.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.NotAuthorized
-					 org.bluez.Error.Failed
-
 		uint32 AddServiceRecord(string path, array{byte}) [experimental]
 
 			Add a new service record to the service agent
@@ -1131,8 +1105,8 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 			the same values that have been used on registration.
 
 
-Service hierarchy (experimental)
-================================
+Service hierarchy
+=================
 
 Service		org.bluez
 Interface	org.bluez.Service
@@ -1314,32 +1288,6 @@ Methods		void Authorize(string adapter_path, string address,
 			This method gets called when the service daemon
 			unregisters an authorization agent. An agent can
 			use it to do cleanup tasks. There is no need to
-			unregister the agent, because when this method
-			gets called it has already been unregistered.
-
-
-ServiceAgent hierarchy (experimental)
-=====================================
-
-Service		unique name
-Interface	org.bluez.ServiceAgent
-Object path	freely definable
-
-Methods		void Start()
-
-			This method gets called when the service daemon
-			wants to start the service provided by the agent.
-
-		void Stop()
-
-			This method gets called when the service daemon
-			wants to stop the service provided by the agent.
-
-		void Release()
-
-			This method gets called when the service daemon
-			unregisters a service agent. An agent can use
-			it to do cleanup tasks. There is no need to
 			unregister the agent, because when this method
 			gets called it has already been unregistered.
 
