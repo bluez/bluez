@@ -167,6 +167,14 @@ Methods		uint32 InterfaceVersion()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.OutOfMemory
 
+		string FindService(string pattern)
+
+			Returns object path for the specified service. Valid
+			patterns are well known or unique bus names.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+			                 org.bluez.Error.NoSuchService
+
 		array{string} ListServices()
 
 			Returns list of object paths of current services.

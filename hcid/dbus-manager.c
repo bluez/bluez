@@ -195,6 +195,12 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult find_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult list_services(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -480,6 +486,7 @@ static struct service_data methods[] = {
 	{ "DefaultAdapter",		default_adapter			},
 	{ "FindAdapter",		find_adapter			},
 	{ "ListAdapters",		list_adapters			},
+	{ "FindService",		find_service			},
 	{ "ListServices",		list_services			},
 	{ "AddServiceRecord",		add_service_record		},
 	{ "AddServiceRecordFromXML", 	add_service_record_xml		},
