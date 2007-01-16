@@ -1,5 +1,5 @@
-# Example service file for bt.headsetd
 [Bluetooth Service]
 Name=Headset service
 Exec=/usr/bin/bt.headsetd -c 3 -n
-Description=This is a headset service
+Description=Bluetooth headset service
+Identifier=headset
