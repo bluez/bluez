@@ -181,6 +181,12 @@ Methods		uint32 InterfaceVersion()
 
 			Possible errors: org.bluez.Error.InvalidArguments
 
+		string ActivateService(string pattern)
+
+			Returns the unqiue bus id of the specified service.
+			Valid patterns are the same as for FindService(). If
+			the service is not running it will be started.
+
 		uint32 AddServiceRecord(string path, array{byte}) [experimental]
 
 			Add a new service record to the service agent
