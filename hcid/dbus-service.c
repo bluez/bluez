@@ -143,6 +143,9 @@ static void service_free(struct service *service)
 	if (service->descr)
 		free(service->descr);
 
+	if (service->ident)
+		free(service->ident);
+
 	if (service->trusted_devices) {
 		g_slist_foreach(service->trusted_devices, (GFunc) free, NULL);
 		g_slist_free(service->trusted_devices);
