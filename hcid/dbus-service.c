@@ -51,6 +51,8 @@
 #define SERVICE_SUFFIX ".service"
 #define SERVICE_GROUP "Bluetooth Service"
 
+#define NAME_MATCH "interface=" DBUS_INTERFACE_DBUS ",member=NameOwnerChanged"
+
 static GSList *services = NULL;
 
 struct binary_record *binary_record_new()
@@ -307,37 +309,6 @@ static void service_setup(gpointer data)
 	/* struct service *service = data; */
 }
 
-static void service_died(GPid pid, gint status, gpointer data)
-{
-	struct service *service = data;
-
-	debug("%s (%s) exited with status %d", service->exec, service->name,
-			status);
-
-	if (service->startup_timer) {
-		g_timeout_remove(service->startup_timer);
-		service->startup_timer = 0;
-
-		if (service->action) {
-			error_failed(get_dbus_connection(), service->action,
-					ECANCELED);
-			dbus_message_unref(service->action);
-			service->action = NULL;
-		}
-	}
-
-	if (service->shutdown_timer) {
-		g_timeout_remove(service->shutdown_timer);
-		service->shutdown_timer = 0;
-	}
-
-	g_spawn_close_pid(pid);
-
-	service->pid = 0;
-}
-
-#define NAME_MATCH "interface=" DBUS_INTERFACE_DBUS ",member=NameOwnerChanged"
-
 static DBusHandlerResult service_filter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -406,6 +377,48 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
+
+static void service_died(GPid pid, gint status, gpointer data)
+{
+	struct service *service = data;
+
+	debug("%s (%s) exited with status %d", service->exec, service->name,
+			status);
+
+	if (service->startup_timer) {
+		DBusError err;
+
+		dbus_error_init(&err);
+		dbus_bus_remove_match(get_dbus_connection(), NAME_MATCH, &err);
+		if (dbus_error_is_set(&err)) {
+			error("Remove match \"%s\" failed: %s" NAME_MATCH, err.message);
+			dbus_error_free(&err);
+		}
+
+		dbus_connection_remove_filter(get_dbus_connection(),
+						service_filter, service);
+
+		g_timeout_remove(service->startup_timer);
+		service->startup_timer = 0;
+
+		if (service->action) {
+			error_failed(get_dbus_connection(), service->action,
+					ECANCELED);
+			dbus_message_unref(service->action);
+			service->action = NULL;
+		}
+	}
+
+	if (service->shutdown_timer) {
+		g_timeout_remove(service->shutdown_timer);
+		service->shutdown_timer = 0;
+	}
+
+	g_spawn_close_pid(pid);
+
+	service->pid = 0;
+}
+
 
 static gboolean service_shutdown_timeout(gpointer data)
 {
@@ -812,8 +825,20 @@ static void release_service(struct service *service)
 		error("kill(%d, SIGKILL): %s (%d)", service->pid,
 				strerror(errno), errno);
 
-	if (service->startup_timer)
+	if (service->startup_timer) {
+		DBusError err;
+
+		dbus_error_init(&err);
+		dbus_bus_remove_match(get_dbus_connection(), NAME_MATCH, &err);
+		if (dbus_error_is_set(&err)) {
+			error("Remove match \"%s\" failed: %s" NAME_MATCH, err.message);
+			dbus_error_free(&err);
+		}
+
+		dbus_connection_remove_filter(get_dbus_connection(), service_filter, service);
+
 		g_timeout_remove(service->startup_timer);
+	}
 
 	if (service->shutdown_timer)
 		g_timeout_remove(service->shutdown_timer);
