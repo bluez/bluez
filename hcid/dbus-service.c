@@ -684,9 +684,6 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 	struct service_call *call_data;
 	const char *iface;
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
 	iface = dbus_message_get_interface(msg);
 
 	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&

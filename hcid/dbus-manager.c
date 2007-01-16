@@ -202,9 +202,6 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
