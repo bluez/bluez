@@ -206,7 +206,7 @@ Methods		uint32 InterfaceVersion()
 					 org.bluez.Error.Failed
 
 
-		void  RemoveServiceRecord(string path, uint32 handle) [experimental]
+		void RemoveServiceRecord(string path, uint32 handle) [experimental]
 
 			Remove a service record from the service agent
 			records list.
