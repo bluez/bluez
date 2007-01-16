@@ -43,6 +43,7 @@ struct service {
 	char *exec;		/* Location of executable */
 	char *name;
 	char *descr;
+	char *ident;
 
 	GSList *trusted_devices;
 	GSList *records; 	/* list of binary records */

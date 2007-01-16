@@ -920,6 +920,9 @@ static struct service *create_service(const char *file)
 	service->descr = g_key_file_get_string(keyfile, SERVICE_GROUP,
 						"Description", NULL);
 
+	service->ident = g_key_file_get_string(keyfile, SERVICE_GROUP,
+						"Identifier", NULL);
+
 	g_key_file_free(keyfile);
 
 	return service;
