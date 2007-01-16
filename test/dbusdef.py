@@ -2,6 +2,7 @@ import dbus
 
 bus = dbus.SystemBus()
 
+
 manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'), 'org.bluez.Manager')
 
 adapter = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.Adapter')
@@ -10,19 +11,22 @@ test = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'or
 
 rfcomm = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.RFCOMM')
 
-sdp = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.SDP')
 
-echo = dbus.Interface(bus.get_object('org.bluez', '/org/bluez/echo'), 'org.bluez.Service')
+def create_service(identifier):
+	try:
+		path = manager.FindService(identifier)
+	except:
+		path = ""
 
-network = dbus.Interface(bus.get_object('org.bluez', '/org/bluez/network'), 'org.bluez.Service')
+	if (path != ""):
+		return dbus.Interface(bus.get_object('org.bluez', path), 'org.bluez.Service')
 
-input = dbus.Interface(bus.get_object('org.bluez', '/org/bluez/input'), 'org.bluez.Service')
+transfer = create_service("transfer")
 
-audio = dbus.Interface(bus.get_object('org.bluez', '/org/bluez/audio'), 'org.bluez.Service')
+network = create_service("network")
 
-def connect_echo() :
-	return dbus.Interface(bus.get_object(echo.GetConnectionName(), '/org/bluez/echo'), 'org.freedesktop.DBus.Introspectable')
+input = create_service("input")
 
-def connect_holtmann() :
-	holtmann = dbus.Interface(bus.get_object('org.bluez', '/org/holtmann'), 'org.bluez.Service')
-	return dbus.Interface(bus.get_object(holtmann.GetConnectionName(), '/org/holtmann'), 'org.freedesktop.DBus.Introspectable')
+audio = create_service("audio")
+
+headset = create_service("headset")
