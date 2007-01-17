@@ -344,8 +344,9 @@ void hcid_dbus_exit(void)
 done:
 	unregister_adapter_path(BASE_PATH);
 
-	dbus_connection_unref(conn);
 	set_dbus_connection(NULL);
+
+	dbus_connection_unref(conn);
 }
 
 int hcid_dbus_init(void)
@@ -363,8 +364,6 @@ int hcid_dbus_init(void)
 	}
 
 	set_dbus_connection(conn);
-
-	dbus_connection_unref(conn);
 
 	return 0;
 }
