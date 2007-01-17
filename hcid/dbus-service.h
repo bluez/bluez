@@ -45,6 +45,7 @@ struct service {
 	char *name;
 	char *descr;
 	char *ident;
+	gboolean autostart;
 
 	GSList *trusted_devices;
 	GSList *records; 	/* list of binary records */

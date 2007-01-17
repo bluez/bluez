@@ -392,6 +392,30 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static void abort_startup(struct service *service, DBusConnection *conn, int ecode)
+{
+	DBusError err;
+
+	dbus_error_init(&err);
+	dbus_bus_remove_match(get_dbus_connection(), NAME_MATCH, &err);
+	if (dbus_error_is_set(&err)) {
+		error("Remove match \"%s\" failed: %s" NAME_MATCH, err.message);
+		dbus_error_free(&err);
+	}
+
+	dbus_connection_remove_filter(get_dbus_connection(),
+			service_filter, service);
+
+	g_timeout_remove(service->startup_timer);
+	service->startup_timer = 0;
+
+	if (service->action) {
+		error_failed(get_dbus_connection(), service->action, ecode);
+		dbus_message_unref(service->action);
+		service->action = NULL;
+	}
+}
+
 static void service_died(GPid pid, gint status, gpointer data)
 {
 	struct service *service = data;
@@ -399,29 +423,8 @@ static void service_died(GPid pid, gint status, gpointer data)
 	debug("%s (%s) exited with status %d", service->exec, service->name,
 			status);
 
-	if (service->startup_timer) {
-		DBusError err;
-
-		dbus_error_init(&err);
-		dbus_bus_remove_match(get_dbus_connection(), NAME_MATCH, &err);
-		if (dbus_error_is_set(&err)) {
-			error("Remove match \"%s\" failed: %s" NAME_MATCH, err.message);
-			dbus_error_free(&err);
-		}
-
-		dbus_connection_remove_filter(get_dbus_connection(),
-						service_filter, service);
-
-		g_timeout_remove(service->startup_timer);
-		service->startup_timer = 0;
-
-		if (service->action) {
-			error_failed(get_dbus_connection(), service->action,
-					ECANCELED);
-			dbus_message_unref(service->action);
-			service->action = NULL;
-		}
-	}
+	if (service->startup_timer)
+		abort_startup(service, get_dbus_connection(), ECANCELED);
 
 	if (service->shutdown_timer) {
 		g_timeout_remove(service->shutdown_timer);
@@ -467,44 +470,31 @@ static gboolean service_startup_timeout(gpointer data)
 	debug("Killing \"%s\" (PID %d) because it did not connect to D-Bus in time",
 			service->exec, service->pid);
 
-	if (service->action) {
-		error_failed(get_dbus_connection(), service->action, ETIME);
-		dbus_message_unref(service->action);
-		service->action = NULL;
-	}
-
-	stop_service(service);
-
-	service->startup_timer = 0;
+	abort_startup(service, get_dbus_connection(), ETIME);
 
 	return FALSE;
 }
 
-static DBusHandlerResult start(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static int start_service(struct service *service, DBusConnection *conn)
 {
 	GError *err = NULL;
 	DBusError derr;
-	struct service *service = data;
 	char **argv;
 	int argc;
-
-	if (service->pid)
-		return error_failed(conn, msg, EALREADY);
 
 	g_shell_parse_argv(service->exec, &argc, &argv, &err);
 
 	if (err != NULL) {
 		error("Unable to parse exec line \"%s\": %s", service->exec, err->message);
 		g_error_free(err);
-		return error_failed(conn, msg, ENOEXEC);
+		return -1;
 	}
 
 	if (!g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
 				service_setup, service, &service->pid, NULL)) {
 		error("Unable to execute %s", service->exec);
 		g_strfreev(argv);
-		return error_failed(conn, msg, ENOEXEC);
+		return -1;
 	}
 
 	g_strfreev(argv);
@@ -519,6 +509,7 @@ static DBusHandlerResult start(DBusConnection *conn,
 		if (kill(service->pid, SIGKILL) < 0)
 			error("kill(%d, SIGKILL): %s (%d)", service->pid,
 					strerror(errno), errno);
+		return -1;
 	}
 
 	dbus_error_init(&derr);
@@ -526,11 +517,26 @@ static DBusHandlerResult start(DBusConnection *conn,
 	if (dbus_error_is_set(&derr)) {
 		error("Add match \"%s\" failed: %s", derr.message);
 		dbus_error_free(&derr);
+		return -1;
 	}
 
 	service->startup_timer = g_timeout_add(STARTUP_TIMEOUT,
 						service_startup_timeout,
 						service);
+
+	return 0;
+}
+
+static DBusHandlerResult start(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	struct service *service = data;
+
+	if (service->pid)
+		return error_failed(conn, msg, EALREADY);
+
+	if (start_service(service, conn) < 0)
+		return error_failed(conn, msg, ENOEXEC);
 
 	service->action = dbus_message_ref(msg);
 
@@ -765,8 +771,10 @@ static int register_service(struct service *service)
 
 	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
 						"ServiceAdded");
-	if (!signal)
+	if (!signal) {
+		dbus_connection_unregister_object_path(conn, service->object_path);
 		return -ENOMEM;
+	}
 
 	dbus_message_append_args(signal,
 				DBUS_TYPE_STRING, &service->object_path,
@@ -810,20 +818,8 @@ static int unregister_service(struct service *service)
 		error("kill(%d, SIGKILL): %s (%d)", service->pid,
 				strerror(errno), errno);
 
-	if (service->startup_timer) {
-		DBusError err;
-
-		dbus_error_init(&err);
-		dbus_bus_remove_match(get_dbus_connection(), NAME_MATCH, &err);
-		if (dbus_error_is_set(&err)) {
-			error("Remove match \"%s\" failed: %s" NAME_MATCH, err.message);
-			dbus_error_free(&err);
-		}
-
-		dbus_connection_remove_filter(get_dbus_connection(), service_filter, service);
-
-		g_timeout_remove(service->startup_timer);
-	}
+	if (service->startup_timer)
+		abort_startup(service, get_dbus_connection(), ECANCELED);
 
 	if (service->shutdown_timer)
 		g_timeout_remove(service->shutdown_timer);
@@ -883,7 +879,9 @@ void append_available_services(DBusMessageIter *array_iter)
 static struct service *create_service(const char *file)
 {
 	GKeyFile *keyfile;
+	GError *err = NULL;
 	struct service *service;
+	gboolean autostart;
 	const char *slash;
 
 	service = malloc(sizeof(struct service));
@@ -896,22 +894,25 @@ static struct service *create_service(const char *file)
 
 	keyfile = g_key_file_new();
 
-	if (!g_key_file_load_from_file(keyfile, file, 0, NULL)) {
-		error("Parsing %s failed", file);
+	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
+		error("Parsing %s failed: %s", file, err->message);
+		g_error_free(err);
 		goto failed;
 	}
 
 	service->exec = g_key_file_get_string(keyfile, SERVICE_GROUP,
-						"Exec", NULL);
+						"Exec", &err);
 	if (!service->exec) {
-		error("%s doesn't contain a Exec attribute", file);
+		error("%s: %s", file, err->message);
+		g_error_free(err);
 		goto failed;
 	}
 
 	service->name = g_key_file_get_string(keyfile, SERVICE_GROUP,
-						"Name", NULL);
+						"Name", &err);
 	if (!service->name) {
-		error("%s doesn't contain a Name attribute", file);
+		error("%s: %s", file, err->message);
+		g_error_free(err);
 		goto failed;
 	}
 
@@ -924,10 +925,29 @@ static struct service *create_service(const char *file)
 	service->filename = strdup(slash + 1);
 
 	service->descr = g_key_file_get_string(keyfile, SERVICE_GROUP,
-						"Description", NULL);
+						"Description", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
 
 	service->ident = g_key_file_get_string(keyfile, SERVICE_GROUP,
-						"Identifier", NULL);
+						"Identifier", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
+
+	autostart = g_key_file_get_boolean(keyfile, SERVICE_GROUP,
+						"Autostart", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	} else
+		service->autostart = autostart;
 
 	g_key_file_free(keyfile);
 
@@ -968,7 +988,14 @@ static void service_notify(int action, const char *name, void *user_data)
 			break;
 		}
 
-		register_service(service);
+		if (register_service(service) < 0) {
+			error("Unable to register service");
+			service_free(service);
+			break;
+		}
+
+		if (service->autostart)
+			start_service(service, get_dbus_connection());
 
 		break;
 	case NOTIFY_DELETE:
@@ -1018,7 +1045,14 @@ int init_services(const char *path)
 			continue;
 		}
 
-		register_service(service);
+		if (register_service(service) < 0) {
+			error("Unable to register service");
+			service_free(service);
+			continue;
+		}
+
+		if (service->autostart)
+			start_service(service, get_dbus_connection());
 	}
 
 	closedir(d);
