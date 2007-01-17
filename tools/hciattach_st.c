@@ -35,6 +35,8 @@
 #include <dirent.h>
 #include <sys/param.h>
 
+#include <bluetooth/bluetooth.h>
+
 static int debug = 0;
 
 static int do_command(int fd, uint8_t ogf, uint16_t ocf,
@@ -186,7 +188,7 @@ static int load_file(int dd, uint16_t version, const char *suffix)
 	return 0;
 }
 
-int stlc2500_init(int dd)
+int stlc2500_init(int dd, bdaddr_t *bdaddr)
 {
 	unsigned char cmd[16];
 	unsigned char buf[254];
@@ -221,12 +223,34 @@ int stlc2500_init(int dd)
 
 	cmd[0] = 0xfe;
 	cmd[1] = 0x06;
-	cmd[2] = 0xba;
-	cmd[3] = 0xab;
-	cmd[4] = 0x00;
-	cmd[5] = 0xe1;
-	cmd[6] = 0x80;
-	cmd[7] = 0x00;
+	bacpy((bdaddr_t *) (cmd + 2), bdaddr);
+
+	len = do_command(dd, 0xff, 0x0022, cmd, 8, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
+
+	len = do_command(dd, 0x03, 0x0003, NULL, 0, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
+
+	return 0;
+}
+
+int bgb2xx_init(int dd, bdaddr_t *bdaddr)
+{
+	unsigned char cmd[16];
+	unsigned char buf[254];
+	int len;
+
+	len = do_command(dd, 0xff, 0x000f, NULL, 0, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
+
+	printf("%s\n", buf);
+
+	cmd[0] = 0xfe;
+	cmd[1] = 0x06;
+	bacpy((bdaddr_t *) (cmd + 2), bdaddr);
 
 	len = do_command(dd, 0xff, 0x0022, cmd, 8, buf, sizeof(buf));
 	if (len < 0)

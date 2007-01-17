@@ -825,11 +825,26 @@ static int st(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
-extern int stlc2500_init(int fd);
+extern int stlc2500_init(int fd, bdaddr_t *bdaddr);
 
 static int stlc2500(int fd, struct uart_t *u, struct termios *ti)
 {
-	return stlc2500_init(fd);
+	bdaddr_t bdaddr;
+
+	str2ba("00:80:E1:00:AB:BA", &bdaddr);
+
+	return stlc2500_init(fd, &bdaddr);
+}
+
+extern int bgb2xx_init(int fd, bdaddr_t *bdaddr);
+
+static int bgb2xx(int fd, struct uart_t *u, struct termios *ti)
+{
+	bdaddr_t bdaddr;
+
+	str2ba("BD:B2:10:00:AB:BA", &bdaddr);
+
+	return bgb2xx_init(fd, &bdaddr);
 }
 
 /*
@@ -975,6 +990,12 @@ struct uart_t uart[] = {
 
 	/* ST Microelectronics minikits based on STLC2500 */
 	{ "stlc2500",   0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, stlc2500 },
+
+	/* Philips generic Ericsson IP core based */
+	{ "philips",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL     },
+
+	/* Philips BGB2xx Module */
+	{ "bgb2xx",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, bgb2xx   },
 
 	/* Sphinx Electronics PICO Card */
 	{ "picocard",   0x025e, 0x1000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL     },
