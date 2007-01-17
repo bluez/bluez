@@ -571,12 +571,14 @@ DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void 
 		if (dbus_bus_request_name(conn, name, 0, &err) !=
 				DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
 			error("Could not become the primary owner of %s", name);
+			dbus_connection_unref(conn);
 			return NULL;
 		}
 
 		if (dbus_error_is_set(&err)) {
 			error("Can't get bus name %s: %s", name, err.message);
 			dbus_error_free(&err);
+			dbus_connection_unref(conn);
 			return NULL;
 		}
 	}
