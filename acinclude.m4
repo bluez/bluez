@@ -71,17 +71,22 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 	AC_SUBST(BLUEZ_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_DBUS], [
-	PKG_CHECK_MODULES(DBUS, dbus-1 > 0.35, dummy=yes, AC_MSG_ERROR(dbus > 0.35 is required))
-	PKG_CHECK_EXISTS(dbus-1 < 0.95, DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE")
-	AC_SUBST(DBUS_CFLAGS)
-	AC_SUBST(DBUS_LIBS)
-])
-
 AC_DEFUN([AC_PATH_GLIB], [
 	PKG_CHECK_MODULES(GLIB, glib-2.0, glib_found=yes, glib_found=no)
 	AC_SUBST(GLIB_CFLAGS)
 	AC_SUBST(GLIB_LIBS)
+])
+
+AC_DEFUN([AC_PATH_DBUS], [
+	PKG_CHECK_MODULES(DBUS, dbus-1 > 0.35, dummy=yes, AC_MSG_ERROR(dbus > 0.35 is required))
+	PKG_CHECK_EXISTS(dbus-1 < 0.95, DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE")
+	if (test "${glib_found}" = "yes"); then
+		PKG_CHECK_MODULES(DBUS_GLIB, dbus-glib-1 > 0.70, dbus_glib_found=yes, dbus_glib_found=no)
+	else
+		dbus_glib_found=no
+	fi
+	AC_SUBST(DBUS_CFLAGS)
+	AC_SUBST(DBUS_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_OPENOBEX], [
@@ -262,6 +267,11 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	if (test "${glib_enable}" = "yes" && test "${glib_found}" = "yes"); then
 		AC_DEFINE(HAVE_GLIB, 1, [Define to 1 if you have GLib support.])
+		if (test "${dbus_glib_found}" = "yes"); then
+			AC_DEFINE(HAVE_DBUS_GLIB, 1, [Define to 1 if you have D-Bus GLib bindings.])
+			DBUS_CFLAGS="$DBUS_CFLAGS $DBUS_GLIB_CFLAGS"
+			DBUS_LIBS="$DBUS_GLIB_LIBS"
+		fi
 	fi
 
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
