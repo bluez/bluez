@@ -831,6 +831,8 @@ static int unregister_service(struct service *service)
 	services = g_slist_remove(services, service);
 
 	service_free(service);
+
+	return 0;
 }
 
 void release_services(DBusConnection *conn)
