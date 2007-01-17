@@ -48,6 +48,7 @@ static int name_listener_initialized = 0;
 
 static GSList *name_listeners = NULL;
 
+#ifdef HAVE_DBUS_GLIB
 typedef struct {
 	uint32_t id;
 	DBusTimeout *timeout;
@@ -58,6 +59,7 @@ struct watch_info {
 	GIOChannel *io;
 	DBusConnection *conn;
 };
+#endif
 
 struct disconnect_data {
 	void (*disconnect_cb)(void *);
