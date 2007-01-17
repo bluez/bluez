@@ -34,6 +34,10 @@
 
 #include <dbus/dbus.h>
 
+#ifdef HAVE_DBUS_GLIB
+#include <dbus/dbus-glib-lowlevel.h>
+#endif
+
 #include "glib-ectomy.h"
 #include "dbus.h"
 #include "logging.h"
@@ -375,6 +379,7 @@ static DBusHandlerResult disconnect_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+#ifndef HAVE_DBUS_GLIB
 static gboolean message_dispatch_cb(void *data)
 {
 	DBusConnection *connection = data;
@@ -527,6 +532,7 @@ static void dispatch_status_cb(DBusConnection *conn,
 	if (new_status == DBUS_DISPATCH_DATA_REMAINS)
 		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, data);
 }
+#endif
 
 DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void *user_data)
 {
@@ -544,6 +550,9 @@ DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void 
 		return NULL;
 	}
 
+#ifdef HAVE_DBUS_GLIB
+	dbus_connection_setup_with_g_main(conn, NULL);
+#else
 	dbus_connection_set_watch_functions(conn, add_watch, remove_watch,
 						watch_toggled, conn, NULL);
 
@@ -552,6 +561,7 @@ DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void 
 
 	dbus_connection_set_dispatch_status_function(conn, dispatch_status_cb,
 								conn, NULL);
+#endif
 
 	if (name) {
 		dbus_error_init(&err);
