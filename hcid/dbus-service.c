@@ -414,6 +414,10 @@ static void abort_startup(struct service *service, DBusConnection *conn, int eco
 		dbus_message_unref(service->action);
 		service->action = NULL;
 	}
+
+	if (service->pid && kill(service->pid, SIGKILL) < 0)
+		error("kill(%d, SIGKILL): %s (%d)", service->pid,
+				strerror(errno), errno);
 }
 
 static void service_died(GPid pid, gint status, gpointer data)
@@ -423,6 +427,9 @@ static void service_died(GPid pid, gint status, gpointer data)
 	debug("%s (%s) exited with status %d", service->exec, service->name,
 			status);
 
+	g_spawn_close_pid(pid);
+	service->pid = 0;
+
 	if (service->startup_timer)
 		abort_startup(service, get_dbus_connection(), ECANCELED);
 
@@ -431,9 +438,6 @@ static void service_died(GPid pid, gint status, gpointer data)
 		service->shutdown_timer = 0;
 	}
 
-	g_spawn_close_pid(pid);
-
-	service->pid = 0;
 }
 
 
