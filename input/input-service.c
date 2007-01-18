@@ -99,7 +99,7 @@ static DBusHandlerResult manager_list_devices(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-        dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_STRING_AS_STRING, &iter_array);
 
