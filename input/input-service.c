@@ -107,7 +107,28 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 static DBusHandlerResult manager_list_devices(DBusConnection *conn,
 				DBusMessage *msg, void *udata)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct input_manager *mgr = udata;
+	DBusMessageIter iter, iter_array;
+	DBusMessage *reply;
+	GList *paths;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+        dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING_AS_STRING, &iter_array);
+
+	for (paths = mgr->paths; paths != NULL; paths = paths->next) {
+		const char *ppath = paths->data;
+		dbus_message_iter_append_basic(&iter_array,
+				DBUS_TYPE_STRING, &ppath);
+	}
+
+	dbus_message_iter_close_container(&iter, &iter_array);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult manager_message(DBusConnection *conn,
