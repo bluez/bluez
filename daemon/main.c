@@ -35,6 +35,8 @@
 
 #include <dbus/dbus.h>
 
+#include "dbus-helper.h"
+
 #include "glib-ectomy.h"
 #include "dbus.h"
 #include "notify.h"
@@ -42,7 +44,9 @@
 
 #include "sdpd.h"
 
+#include "system.h"
 #include "manager.h"
+#include "database.h"
 
 static GMainLoop *main_loop = NULL;
 
@@ -63,6 +67,46 @@ static void config_notify(int action, const char *name, void *data)
 		debug("File %s/%s modified", CONFIGDIR, name);
 		break;
 	}
+}
+
+static int setup_dbus(void)
+{
+	system_bus = init_dbus("org.bluez", NULL, NULL);
+	if (!system_bus)
+		return -1;
+
+	if (dbus_connection_create_object_path(system_bus,
+					SYSTEM_PATH, NULL, NULL) == FALSE) {
+		error("System path registration failed");
+		dbus_connection_unref(system_bus);
+		return -1;
+	}
+
+	if (manager_init(system_bus) < 0) {
+		dbus_connection_destroy_object_path(system_bus, SYSTEM_PATH);
+		dbus_connection_unref(system_bus);
+		return -1;
+	}
+
+	if (database_init(system_bus) < 0) {
+		manager_exit();
+		dbus_connection_destroy_object_path(system_bus, SYSTEM_PATH);
+		dbus_connection_unref(system_bus);
+		return -1;
+	}
+
+	return 0;
+}
+
+static void cleanup_dbus(void)
+{
+	database_exit();
+
+	manager_exit();
+
+	dbus_connection_destroy_object_path(system_bus, SYSTEM_PATH);
+
+	dbus_connection_unref(system_bus);
 }
 
 static void sig_term(int sig)
@@ -158,21 +202,13 @@ int main(int argc, char *argv[])
 
 	notify_add(CONFIGDIR, config_notify, NULL);
 
-	system_bus = init_dbus("org.bluez", NULL, NULL);
-	if (!system_bus) {
-		g_main_loop_unref(main_loop);
-		exit(1);
-	}
-
-	if (manager_init(system_bus) < 0) {
-		dbus_connection_unref(system_bus);
+	if (setup_dbus() < 0) {
 		g_main_loop_unref(main_loop);
 		exit(1);
 	}
 
 	if (start_sdp_server(0, SDP_SERVER_COMPAT) < 0) {
-		manager_exit();
-		dbus_connection_unref(system_bus);
+		cleanup_dbus();
 		g_main_loop_unref(main_loop);
 		exit(1);
 	}
@@ -181,9 +217,7 @@ int main(int argc, char *argv[])
 
 	stop_sdp_server();
 
-	manager_exit();
-
-	dbus_connection_unref(system_bus);
+	cleanup_dbus();
 
 	notify_remove(CONFIGDIR);
 
