@@ -696,7 +696,6 @@ int main(int argc, char *argv[])
 	sigaction(SIGUSR2, &sa, NULL);
 
 	sa.sa_handler = SIG_IGN;
-	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
 	if (debug) {
