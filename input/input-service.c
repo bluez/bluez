@@ -25,173 +25,226 @@
 #include <config.h>
 #endif
 
-#include <string.h>
-#include <signal.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
 
 #include "dbus.h"
 #include "logging.h"
+#include "input-service.h"
+#include "glib-ectomy.h"
 
 #include <dbus/dbus.h>
 
-#define INPUT_PATH "/org/bluez/input"
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 
-static int started = 0;
+#define INPUT_SERVICE "org.bluez.input"
+#define INPUT_PATH "/org/bluez/input"
+#define INPUT_MANAGER_INTERFACE	"org.bluez.input.Manager"
+#define INPUT_DEVICE_INTERFACE	"org.bluez.input.Device"
+#define INPUT_ERROR_INTERFACE	"org.bluez.Error"
+
 
 static DBusConnection *connection = NULL;
 
-static DBusHandlerResult start_message(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusHandlerResult manager_message(DBusConnection *conn,
+				DBusMessage *msg, void *data);
+static DBusHandlerResult device_message(DBusConnection *conn,
+				DBusMessage *msg, void *data);
+
+static const DBusObjectPathVTable manager_table = {
+	.message_function = manager_message,
+};
+
+static const DBusObjectPathVTable device_table = {
+	.message_function = device_message,
+};
+
+/*
+ * Common D-Bus BlueZ input error functions
+ */
+static DBusHandlerResult err_unknown_device(DBusConnection *conn, DBusMessage *msg)
 {
-	DBusMessage *reply;
-
-	info("Starting input service");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		error("Can't create reply message");
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_message_unref(reply);
-
-	started = 1;
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".UnknownDevice",
+				"Invalid device"));
 }
 
-static DBusHandlerResult stop_message(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusHandlerResult err_unknown_method(DBusConnection *conn, DBusMessage *msg)
 {
-	DBusMessage *reply;
-
-	info("Stopping input service");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		error("Can't create reply message");
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_message_unref(reply);
-
-	started = 0;
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".UnknownMethod",
+				"Unknown input method"));
 }
 
-static DBusHandlerResult release_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+/*
+ * Input Manager methods
+ */
+static DBusHandlerResult manager_create_device(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
 {
-	DBusMessage *reply;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		error("Can't create reply message");
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_message_unref(reply);
-
-	info("Got Release method. Exiting.");
-
-	raise(SIGTERM);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static DBusHandlerResult input_message(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusHandlerResult manager_remove_device(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
 {
-	const char *interface;
-	const char *member;
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
 
-	interface = dbus_message_get_interface(msg);
+static DBusHandlerResult manager_list_devices(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult manager_message(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	const char *path, *iface, *member;
+
+	path = dbus_message_get_path(msg);
+	iface = dbus_message_get_interface(msg);
 	member = dbus_message_get_member(msg);
 
-	if (strcmp(interface, "org.bluez.ServiceAgent") == 0) {
-		if (strcmp(member, "Start") == 0)
-			return start_message(conn, msg, data);
-		if (strcmp(member, "Stop") == 0)
-			return stop_message(conn, msg, data);
-		if (strcmp(member, "Release") == 0)
-			return release_message(conn, msg, data);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
+	/* Catching fallback paths */
+	if (strcmp(INPUT_PATH, path) != 0)
+		return err_unknown_device(conn, msg);
 
-	if (strcmp(interface, "org.bluez.Input") != 0)
+	/* Accept messages from the input manager interface only */
+	if (strcmp(INPUT_MANAGER_INTERFACE, iface))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	/* Handle Input interface methods here */
+	if (strcmp(member, "ListDevices") == 0)
+		return manager_list_devices(conn, msg, data);
+
+	if (strcmp(member, "CreateDevice") == 0)
+		return manager_create_device(conn, msg, data);
+
+	if (strcmp(member, "RemoveDevice") == 0)
+		return manager_remove_device(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static const DBusObjectPathVTable input_table = {
-	.message_function = input_message,
-};
-
-static void register_reply(DBusPendingCall *call, void *data)
+/*
+ * Input Device methods
+ */
+static DBusHandlerResult device_connect(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
 {
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError err;
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
 
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, reply)) {
-		error("Registering failed: %s", err.message);
-		dbus_error_free(&err);
-		raise(SIGTERM);
-	}
-	else 
-		debug("Successfully registered");
+static DBusHandlerResult device_disconnect(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
 
-	dbus_message_unref(reply);
+static DBusHandlerResult device_unplug(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult device_is_connected(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult device_get_address(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult device_get_name(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult device_get_product_id(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult device_get_vendor_id(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult device_set_timeout(DBusConnection *conn,
+				DBusMessage *msg, void *udata)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+
+static DBusHandlerResult device_message(DBusConnection *conn,
+		DBusMessage *msg, void *data)
+{
+	const char *iface, *member;
+
+	iface = dbus_message_get_interface(msg);
+	member = dbus_message_get_member(msg);
+
+	/* Accept messages from the input interface only */
+	if (strcmp(INPUT_DEVICE_INTERFACE, iface))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (strcmp(member, "Connect") == 0)
+		return device_connect(conn, msg, data);
+
+	if (strcmp(member, "Disconnect") == 0)
+		return device_disconnect(conn, msg, data);
+
+	if (strcmp(member, "Unplug") == 0)
+		return device_unplug(conn, msg, data);
+
+	if (strcmp(member, "IsConnected") == 0)
+		return device_is_connected(conn, msg, data);
+
+	if (strcmp(member, "GetAddress") == 0)
+		return device_get_address(conn, msg, data);
+
+	if (strcmp(member, "GetName") == 0)
+		return device_get_name(conn, msg, data);
+
+	if (strcmp(member, "GetProductId") == 0)
+		return device_get_product_id(conn, msg, data);
+
+	if (strcmp(member, "GetVendorId") == 0)
+		return device_get_vendor_id(conn, msg, data);
+
+	if (strcmp(member, "SetTimeout") == 0)
+		return device_set_timeout(conn, msg, data);
+
+	return err_unknown_method(conn, msg);
 }
 
 int input_dbus_init(void)
 {
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-	const char *name = "Input service";
-	const char *description = "A service for input devices";
-	const char *input_path = INPUT_PATH;
-
-	connection = init_dbus("org.bluez.input", NULL, NULL);
+	connection = init_dbus(INPUT_SERVICE, NULL, NULL);
 	if (!connection)
 		return -1;
 
-	if (!dbus_connection_register_object_path(connection, input_path,
-						&input_table, NULL)) {
+	/* Fallback to catch invalid device path */
+	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
+						&manager_table, NULL)) {
 		error("D-Bus failed to register %s path", INPUT_PATH);
 		return -1;
 	}
 
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-					"org.bluez.Manager", "RegisterService");
-	if (!msg) {
-		error("Can't allocate new method call");
-		return -1;
-	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &input_path,
-					DBUS_TYPE_STRING, &name,
-					DBUS_TYPE_STRING, &description,
-					DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
-		error("Sending Register method call failed");
-		dbus_message_unref(msg);
-		return -1;
-	}
-
-	dbus_pending_call_set_notify(pending, register_reply, NULL, NULL);
-	dbus_message_unref(msg);
+	info("Registered input manager path:%s", INPUT_PATH);
 
 	return 0;
 }
-

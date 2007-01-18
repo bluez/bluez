@@ -1,0 +1,93 @@
+Bluetooth input service API description
+******************************************
+
+Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
+
+Error hierarchy
+===============
+
+Interface	org.bluez.Error
+
+Errors		Failed
+
+			An unknown error occured. The error messages is
+			taken from the strerror(errno) function.
+
+		UnknownDevice
+
+			Error returned when the input device path is invalid
+
+		UnknownMethod
+
+			Error returned when the input device path doesn't
+			implement the requested method.
+
+
+Input Manager hierarchy
+=================
+
+Service		org.bluez.input
+Interface	org.bluez.input.Manager
+Object path	/org/bluez/input
+
+Methods
+		array{string} ListDevices()
+
+			Returns an array of available input devices path.
+
+		void CreateDevice(string address)
+
+			Create an input device object: HID service record is 
+			retrieved and bonding(if applied) is created.
+
+		void RemoveDevice(string path)
+
+			Remove the input device object for a given path.	
+
+
+Input hierarchy
+=================
+
+Service		org.bluez.input
+Interface	org.bluez.input
+Object path	/org/bluez/input_*
+
+Methods		string GetAddress()
+
+			Returns the device address.
+
+			Example: "00:11:22:33:44:55"
+
+		string GetName()
+
+			Returns the service name.
+
+		string GetProductId()
+
+			Returns the product id.
+
+		string GetVendorId()
+
+			Returns the vendor id.
+
+		boolean IsConnected()
+
+			Returns the connection status.
+
+		void Connect()
+			
+			Connect to the input device.
+
+		void Disconnect()
+
+			Disconnect from the input device.
+
+		void Unplug()
+
+			Unplug the virtual cable device.
+
+		void SetTimeout(uint32 timeout)
+
+			Set the idle timeout.
+
+
