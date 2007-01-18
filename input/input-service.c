@@ -49,23 +49,6 @@
 
 static DBusConnection *connection = NULL;
 
-static DBusHandlerResult manager_message(DBusConnection *conn,
-				DBusMessage *msg, void *data);
-
-static void manager_unregister(DBusConnection *conn, void *data);
-
-static DBusHandlerResult device_message(DBusConnection *conn,
-				DBusMessage *msg, void *data);
-
-static const DBusObjectPathVTable manager_table = {
-	.message_function = manager_message,
-	.unregister_function = manager_unregister,
-};
-
-static const DBusObjectPathVTable device_table = {
-	.message_function = device_message,
-};
-
 /*
  * Common D-Bus BlueZ input error functions
  */
@@ -93,21 +76,21 @@ struct input_manager {
 };
 
 static DBusHandlerResult manager_create_device(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult manager_remove_device(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult manager_list_devices(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
-	struct input_manager *mgr = udata;
+	struct input_manager *mgr = data;
 	DBusMessageIter iter, iter_array;
 	DBusMessage *reply;
 	GList *paths;
@@ -172,63 +155,68 @@ static void manager_unregister(DBusConnection *conn, void *data)
 	free(mgr);
 }
 
+/* Virtual table to handle manager object path hierarchy */
+static const DBusObjectPathVTable manager_table = {
+	.message_function = manager_message,
+	.unregister_function = manager_unregister,
+};
+
 /*
  * Input Device methods
  */
 static DBusHandlerResult device_connect(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult device_disconnect(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult device_unplug(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult device_is_connected(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult device_get_address(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult device_get_name(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult device_get_product_id(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult device_get_vendor_id(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult device_set_timeout(DBusConnection *conn,
-				DBusMessage *msg, void *udata)
+				DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
-
 
 static DBusHandlerResult device_message(DBusConnection *conn,
 		DBusMessage *msg, void *data)
@@ -271,6 +259,11 @@ static DBusHandlerResult device_message(DBusConnection *conn,
 
 	return err_unknown_method(conn, msg);
 }
+
+/* Virtual table to handle device object path hierarchy */
+static const DBusObjectPathVTable device_table = {
+	.message_function = device_message,
+};
 
 int input_dbus_init(void)
 {
