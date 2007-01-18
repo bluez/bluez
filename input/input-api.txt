@@ -1,56 +1,41 @@
 Bluetooth input service API description
-******************************************
+***************************************
 
 Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
 
-Error hierarchy
-===============
-
-Interface	org.bluez.Error
-
-Errors		Failed
-
-			An unknown error occured. The error messages is
-			taken from the strerror(errno) function.
-
-		UnknownDevice
-
-			Error returned when the input device path is invalid
-
-		UnknownMethod
-
-			Error returned when the input device path doesn't
-			implement the requested method.
-
 
 Input Manager hierarchy
-=================
+=======================
 
 Service		org.bluez.input
 Interface	org.bluez.input.Manager
 Object path	/org/bluez/input
 
-Methods
-		array{string} ListDevices()
+Methods		array{string} ListDevices()
 
 			Returns an array of available input devices path.
 
 		void CreateDevice(string address)
 
-			Create an input device object: HID service record is 
-			retrieved and bonding(if applied) is created.
+			Create an input device object. The HID service
+			record will be retrieved and the pairing will
+			be initiated if needed.
 
 		void RemoveDevice(string path)
 
 			Remove the input device object for a given path.	
 
+Signals		void DeviceCreated(string path)
 
-Input hierarchy
-=================
+		void DeviceRemoved(string path)
+
+
+Input Device hierarchy
+======================
 
 Service		org.bluez.input
-Interface	org.bluez.input
-Object path	/org/bluez/input_*
+Interface	org.bluez.input.Device
+Object path	/org/bluez/input/{keyboard*|mouse*|...}
 
 Methods		string GetAddress()
 
@@ -89,5 +74,3 @@ Methods		string GetAddress()
 		void SetTimeout(uint32 timeout)
 
 			Set the idle timeout.
-
-
