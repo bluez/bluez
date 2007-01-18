@@ -41,12 +41,30 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	dbus_uint32_t handle = 0x10000;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &handle,
+					DBUS_TYPE_INVALID);
+
+	return dbus_connection_send_and_unref(conn, reply);
+}
+
+static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	dbus_uint32_t handle = 0x10000;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &handle,
+					DBUS_TYPE_INVALID);
 
 	return dbus_connection_send_and_unref(conn, reply);
 }
@@ -68,6 +86,8 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 static DBusMethodVTable database_table[] = {
 	{ "AddServiceRecord", add_service_record,
 		DBUS_TYPE_BYTE_ARRAY_AS_STRING, DBUS_TYPE_UINT32_AS_STRING },
+	{ "AddServiceRecordFromXML", add_service_record_from_xml,
+		DBUS_TYPE_STRING_AS_STRING, DBUS_TYPE_UINT32_AS_STRING },
 	{ "RemoveServiceRecord", remove_service_record,
 		DBUS_TYPE_UINT32_AS_STRING, DBUS_TYPE_INVALID_AS_STRING },
 	{ }
