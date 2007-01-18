@@ -40,8 +40,9 @@
 #include "notify.h"
 #include "logging.h"
 
-#include "hcid.h"
 #include "sdpd.h"
+
+#include "manager.h"
 
 static GMainLoop *main_loop = NULL;
 
@@ -163,7 +164,14 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (manager_init(system_bus) < 0) {
+		dbus_connection_unref(system_bus);
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
+
 	if (start_sdp_server(0, SDP_SERVER_COMPAT) < 0) {
+		manager_exit();
 		dbus_connection_unref(system_bus);
 		g_main_loop_unref(main_loop);
 		exit(1);
@@ -172,6 +180,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	stop_sdp_server();
+
+	manager_exit();
 
 	dbus_connection_unref(system_bus);
 
