@@ -28,6 +28,7 @@
 #include <dbus/dbus.h>
 
 #include "logging.h"
+#include "dbus.h"
 
 #include "manager.h"
 
@@ -35,14 +36,25 @@
 
 static DBusConnection *connection = NULL;
 
-static DBusHandlerResult manager_handler(DBusConnection *conn,
+static DBusHandlerResult default_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	const char path[] = "/org/bluez/hci0", *ptr = path;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
-static DBusObjectPathVTable manager_table = {
-	.message_function = manager_handler,
+static struct message_table manager_table[] = {
+	{ "org.bluez.Manager", "DefaultAdapter", DBUS_TYPE_INVALID_AS_STRING, default_adapter },
+	{ }
 };
 
 int manager_init(DBusConnection *conn)
@@ -51,8 +63,8 @@ int manager_init(DBusConnection *conn)
 
 	info("Starting manager interface");
 
-	if (dbus_connection_register_object_path(connection,
-			MANAGER_PATH, &manager_table, NULL) == FALSE) {
+	if (dbus_connection_register_object_path(connection, MANAGER_PATH,
+			&generic_object_path, &manager_table) == FALSE) {
 		error("Manager path registration failed");
 		dbus_connection_unref(connection);
 		return -1;
