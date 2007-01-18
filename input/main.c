@@ -102,5 +102,7 @@ int main(int argc, char *argv[])
 
 	g_main_run(main_loop);
 
+	input_dbus_exit();
+
 	return 0;
 }

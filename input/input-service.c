@@ -51,11 +51,15 @@ static DBusConnection *connection = NULL;
 
 static DBusHandlerResult manager_message(DBusConnection *conn,
 				DBusMessage *msg, void *data);
+
+static void manager_unregister(DBusConnection *conn, void *data);
+
 static DBusHandlerResult device_message(DBusConnection *conn,
 				DBusMessage *msg, void *data);
 
 static const DBusObjectPathVTable manager_table = {
 	.message_function = manager_message,
+	.unregister_function = manager_unregister,
 };
 
 static const DBusObjectPathVTable device_table = {
@@ -84,6 +88,10 @@ static DBusHandlerResult err_unknown_method(DBusConnection *conn, DBusMessage *m
 /*
  * Input Manager methods
  */
+struct input_manager {
+	GList *paths;
+};
+
 static DBusHandlerResult manager_create_device(DBusConnection *conn,
 				DBusMessage *msg, void *udata)
 {
@@ -129,6 +137,18 @@ static DBusHandlerResult manager_message(DBusConnection *conn,
 		return manager_remove_device(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static void manager_unregister(DBusConnection *conn, void *data)
+{
+	struct input_manager *mgr = data;
+
+	info("Unregistered manager path");
+
+	if (mgr->paths)
+		g_list_foreach(mgr->paths, (GFunc) free, NULL);
+
+	free(mgr);
 }
 
 /*
@@ -233,13 +253,19 @@ static DBusHandlerResult device_message(DBusConnection *conn,
 
 int input_dbus_init(void)
 {
+	struct input_manager *mgr;
 	connection = init_dbus(INPUT_SERVICE, NULL, NULL);
 	if (!connection)
 		return -1;
 
+	dbus_connection_set_exit_on_disconnect(connection, TRUE);
+
+	mgr = malloc(sizeof(struct input_manager));
+	memset(mgr, 0, sizeof(struct input_manager));
+
 	/* Fallback to catch invalid device path */
 	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
-						&manager_table, NULL)) {
+						&manager_table, mgr)) {
 		error("D-Bus failed to register %s path", INPUT_PATH);
 		return -1;
 	}
@@ -248,3 +274,11 @@ int input_dbus_init(void)
 
 	return 0;
 }
+
+void input_dbus_exit(void)
+{
+	dbus_connection_unregister_object_path(connection, INPUT_PATH);
+
+	dbus_connection_unref(connection);
+}
+

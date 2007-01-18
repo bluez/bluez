@@ -25,5 +25,6 @@
 #define __INPUT_SERVICE_H
 
 int input_dbus_init(void);
+void input_dbus_exit(void);
 
 #endif /* __INPUT_SERVICE_H */
