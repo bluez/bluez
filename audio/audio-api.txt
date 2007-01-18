@@ -1,41 +1,53 @@
-Audio API description for BlueZ
-*******************************
+Bluetooth audio service API description
+***************************************
 
-Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
 Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
 Copyright (C) 2005-2006  Brad Midgley <bmidgley@xmission.com>
 
 
-Audio hierarchy
-===============
+Audio Manager hierarchy
+=======================
 
 Service		org.bluez.audio
-Interface	org.bluez.Audio
+Interface	org.bluez.audio.Manager
 Object path	/org/bluez/audio
 
 Methods		array{string} ListHeadsets()
 
-			Returns list of Bluetooth addresses for devices that
-			are configured as headsets.
+			Returns list of headset objects that
+			are configured.
 
-		string GetDefaultHeadset()
+		string DefaultHeadset()
 
-			Returns the Bluetooth address of the default headset
-			device.
+			Returns the object path for the default
+			headset device.
 
-		void SetDefaultHeadset(string address)
+		string CreateHeadset(string address)
 
-		void CreateHeadset(string address)
+			Create a new headset device and returns
+			its object path on return.
 
-		void RemoveHeadset(string address)
+		void RemoveHeadset(string path)
 
-		string ConnectHeadset(string address)
+Signals		void HeadsetCreated(string path)
 
-			Connects to the headset and setups a new stream. The
-			new stream identifier is returned.
+		void HeadsetRemoved(string path)
 
-Signals		void HeadsetCreated(string address)
+		void DefaultHeadsetChanged(string path)
 
-		void HeadsetRemoved(string address)
 
-		void DefaultHeadsetChanged(string address)
+Audio Headset hierarchy
+=======================
+
+Service		org.bluez.audio
+Interface	org.bluez.audio.Headset
+Object path	/org/bluez/audio/headset*
+
+Methods		string GetAddress()
+
+		string GetName()
+
+		void Connect()
+
+		void Disconnect()
