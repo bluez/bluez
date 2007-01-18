@@ -15,11 +15,14 @@ Methods		array{string} ListDevices()
 
 			Returns an array of available input devices path.
 
-		void CreateDevice(string address)
+		string CreateDevice(string address)
 
 			Create an input device object. The HID service
 			record will be retrieved and the pairing will
 			be initiated if needed.
+
+			On success it will return the path of the
+			newly created device object.
 
 		void RemoveDevice(string path)
 
