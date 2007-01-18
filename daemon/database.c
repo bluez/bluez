@@ -67,7 +67,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 
 static DBusMethodVTable database_table[] = {
 	{ "AddServiceRecord", add_service_record,
-		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_UINT32_AS_STRING },
+		DBUS_TYPE_BYTE_ARRAY_AS_STRING, DBUS_TYPE_UINT32_AS_STRING },
 	{ "RemoveServiceRecord", remove_service_record,
 		DBUS_TYPE_UINT32_AS_STRING, DBUS_TYPE_INVALID_AS_STRING },
 	{ }
@@ -92,6 +92,9 @@ int database_init(DBusConnection *conn)
 void database_exit(void)
 {
 	info("Stopping database interface");
+
+	dbus_connection_unregister_interface(connection,
+					SYSTEM_PATH, DATABASE_INTERFACE);
 
 	dbus_connection_unref(connection);
 

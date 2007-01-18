@@ -94,7 +94,7 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 
 static DBusMethodVTable manager_table[] = {
 	{ "ListAdapters", list_adapters,
-		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_ARRAY_AS_STRING },
+		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_ARRAY_AS_STRING },
 	{ "FindAdapter", find_adapter,
 		DBUS_TYPE_STRING_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
 	{ "DefaultAdapter", default_adapter,
@@ -121,6 +121,9 @@ int manager_init(DBusConnection *conn)
 void manager_exit(void)
 {
 	info("Stopping manager interface");
+
+	dbus_connection_unregister_interface(connection,
+					SYSTEM_PATH, MANAGER_INTERFACE);
 
 	dbus_connection_unref(connection);
 
