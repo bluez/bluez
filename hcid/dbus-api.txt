@@ -1,7 +1,7 @@
 D-Bus API description for BlueZ
 *******************************
 
-Copyright (C) 2004-2006  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
 Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
 Copyright (C) 2005-2006  Claudio Takahasi <claudio.takahasi@indt.org.br>
 Copyright (C) 2005-2006  Eduardo Rocha <eduardo.rocha@indt.org.br>
@@ -173,7 +173,7 @@ Methods		uint32 InterfaceVersion()
 			patterns are well known or unique bus names.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.NoSuchService
+					 org.bluez.Error.NoSuchService
 
 		array{string} ListServices()
 
@@ -186,52 +186,6 @@ Methods		uint32 InterfaceVersion()
 			Returns the unqiue bus id of the specified service.
 			Valid patterns are the same as for FindService(). If
 			the service is not running it will be started.
-
-		uint32 AddServiceRecord(string path, array{byte}) [experimental]
-
-			Add a new service record to the service agent
-			and returns the assigned handle.
-
-			The path parameter is the object path of the
-			service agent. The second parameter is the binary
-			representation of a service record. If the service
-			agent is running the service record will be automatically
-			registered, otherwise the record will be available
-			when the service agent Start method is called.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.NotAuthorized
-					 org.bluez.Error.Failed
-
-		uint32 AddServiceRecordFromXML(string path, string record) [experimental]
-
-			Add a new service record to the service agent
-			and returns the assigned handle.
-
-			The path parameter is the object path of the
-			service agent. The record parameter is the XML
-			representation of a service record. If the service
-			agent is running the service record will be automatically
-			registered, otherwise the record will be available
-			when the service agent Start method is called.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.NotAuthorized
-					 org.bluez.Error.Failed
-
-
-		void RemoveServiceRecord(string path, uint32 handle) [experimental]
-
-			Remove a service record from the service agent
-			records list.
-
-			The path parameter is the object path of the service
-			agent. The second parameter is service record handle.
-	
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.NotAuthorized
-					 org.bluez.Error.DoesNotExist
-					 org.bluez.Error.Failed
 
 Signals		void AdapterAdded(string path)
 
@@ -252,6 +206,42 @@ Signals		void AdapterAdded(string path)
 		void ServiceRemoved(string path)
 
 			Parameter is object path of unregistered service agent.
+
+
+Database hierarchy
+==================
+
+Service		org.bluez
+Interface	org.bluez.Database
+Object path	/org/bluez or /org/bluez/{hci0,hci1,...}
+
+		uint32 AddServiceRecord(array{byte})
+
+			Adds a new service record and returns the assigned
+			record handle.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		uint32 AddServiceRecordFromXML(string record)
+
+			Adds a new service record and returns the assigned
+			record handle.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		void RemoveServiceRecord(uint32 handle)
+
+			Remove a service record identified by its handle.
+
+			It is only possible to remove service records that
+			where added by the current connection.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
 
 
 Adapter hierarchy
