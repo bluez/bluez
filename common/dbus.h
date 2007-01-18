@@ -28,6 +28,21 @@
 
 DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void *user_data);
 
+typedef DBusHandlerResult (*message_func_t) (DBusConnection *conn,
+					DBusMessage *msg, void *user_data);
+
+struct message_table {
+	const char *interface;
+	const char *member;
+	const char *signature;
+	message_func_t handler;
+};
+
+extern DBusObjectPathVTable generic_object_path;
+
+DBusHandlerResult simple_introspect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data);
+
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
 int name_listener_add(DBusConnection *connection, const char *name,
@@ -37,8 +52,6 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 
 dbus_bool_t dbus_bus_get_unix_process_id(DBusConnection *conn, const char *name,
 						unsigned long *pid);
-
-DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void *data);
 
 static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn, DBusMessage *msg)
 {

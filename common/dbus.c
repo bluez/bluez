@@ -611,7 +611,8 @@ DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void 
 
 static char simple_xml[] = DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>";
 
-DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void *data)
+DBusHandlerResult simple_introspect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
 {
 	DBusMessage *reply;
 	const char *path, *ptr = simple_xml;
@@ -634,3 +635,29 @@ DBusHandlerResult simple_introspect(DBusConnection *conn, DBusMessage *msg, void
 
 	return send_message_and_unref(conn, reply);
 }
+
+static DBusHandlerResult generic_message_function(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct message_table *table = user_data;
+	struct message_table *current;
+	const char *member;
+
+	if (dbus_message_is_method_call(msg, DBUS_INTERFACE_INTROSPECTABLE,
+							"Introspect") == TRUE)
+		return simple_introspect(conn, msg, user_data);
+
+	member = dbus_message_get_member(msg);
+
+	for (current = table; current->handler; current++) {
+		if (dbus_message_is_method_call(msg, current->interface, current->member) == TRUE &&
+				dbus_message_has_signature(msg, current->signature) == TRUE)
+			return current->handler(conn, msg, user_data);
+	}
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+DBusObjectPathVTable generic_object_path = {
+	.message_function = generic_message_function,
+};
