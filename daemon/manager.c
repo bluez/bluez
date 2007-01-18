@@ -30,11 +30,54 @@
 #include "logging.h"
 #include "dbus.h"
 
+#include "dbus-helper.h"
+
 #include "manager.h"
+
+#define MANAGER_INTERFACE "org.bluez.Manager"
 
 #define MANAGER_PATH "/org/bluez"
 
 static DBusConnection *connection = NULL;
+
+static DBusHandlerResult list_adapters(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter, array;
+	DBusMessage *reply;
+	const char path[] = "/org/bluez/hci0", *ptr = path;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &array);
+
+	dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &ptr);
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult find_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char path[] = "/org/bluez/hci0", *ptr = path;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
 
 static DBusHandlerResult default_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -52,8 +95,13 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static struct message_table manager_table[] = {
-	{ "org.bluez.Manager", "DefaultAdapter", DBUS_TYPE_INVALID_AS_STRING, default_adapter },
+static DBusMethodVTable manager_table[] = {
+	{ "ListAdapters", list_adapters,
+		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_ARRAY_AS_STRING },
+	{ "FindAdapter", find_adapter,
+		DBUS_TYPE_STRING_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
+	{ "DefaultAdapter", default_adapter,
+		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
 	{ }
 };
 
@@ -63,9 +111,17 @@ int manager_init(DBusConnection *conn)
 
 	info("Starting manager interface");
 
-	if (dbus_connection_register_object_path(connection, MANAGER_PATH,
-			&generic_object_path, &manager_table) == FALSE) {
+	if (dbus_connection_create_object_path(connection,
+					MANAGER_PATH, NULL, NULL) == FALSE) {
 		error("Manager path registration failed");
+		dbus_connection_unref(connection);
+		return -1;
+	}
+
+	if (dbus_connection_register_interface(connection, MANAGER_PATH,
+			MANAGER_INTERFACE, manager_table, NULL) == FALSE) {
+		error("Manager interface registration failed");
+		dbus_connection_destroy_object_path(connection, MANAGER_PATH);
 		dbus_connection_unref(connection);
 		return -1;
 	}
@@ -77,7 +133,7 @@ void manager_exit(void)
 {
 	info("Stopping manager interface");
 
-	dbus_connection_unregister_object_path(connection, MANAGER_PATH);
+	dbus_connection_destroy_object_path(connection, MANAGER_PATH);
 
 	dbus_connection_unref(connection);
 
