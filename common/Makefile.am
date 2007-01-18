@@ -23,6 +23,7 @@ noinst_LIBRARIES = libhelper.a
 
 libhelper_a_SOURCES = oui.h oui.c dbus.h dbus.c \
 	textfile.h textfile.c logging.h logging.c \
+	dbus-helper.h dbus-helper.c \
 	sdp-xml.h sdp-xml.c $(sdp_sources) \
 	notify.h $(notify_sources) \
 	glib-ectomy.h $(glib_sources)
