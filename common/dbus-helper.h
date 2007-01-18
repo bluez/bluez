@@ -21,6 +21,9 @@
  *
  */
 
+#define DBUS_TYPE_STRING_ARRAY_AS_STRING (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING)
+#define DBUS_TYPE_BYTE_ARRAY_AS_STRING   (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING)
+
 DBusHandlerResult dbus_connection_send_and_unref(DBusConnection *connection,
 							DBusMessage *message);
 
