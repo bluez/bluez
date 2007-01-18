@@ -49,3 +49,6 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 					const char *path, const char *interface,
 					DBusMethodVTable *methods,
 					DBusPropertyVTable *properties);
+
+dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
+					const char *path, const char *interface);

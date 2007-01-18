@@ -30,6 +30,7 @@
 
 #include <dbus/dbus.h>
 
+#include "glib-ectomy.h"
 #include "logging.h"
 
 #include "dbus-helper.h"
@@ -37,9 +38,13 @@
 struct generic_data {
 	void *user_data;
 	DBusObjectPathUnregisterFunction unregister_function;
+	GSList *interfaces;
+	char *introspect;
+};
+
+struct interface_data {
 	const char *interface;
 	DBusMethodVTable *methods;
-	char *introspect;
 };
 
 DBusHandlerResult dbus_connection_send_and_unref(DBusConnection *connection,
@@ -87,20 +92,42 @@ static void generic_unregister(DBusConnection *connection, void *user_data)
 	free(data);
 }
 
+static struct interface_data *find_interface(GSList *interfaces,
+							const char *interface)
+{
+	GSList *list;
+
+	for (list = interfaces; list; list = list->next) {
+		struct interface_data *iface = list->data;
+		if (!strcmp(interface, iface->interface))
+			return iface;
+	}
+
+	return NULL;
+}
+
 static DBusHandlerResult generic_message(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct generic_data *data = user_data;
+	struct interface_data *iface;
 	DBusMethodVTable *current;
+	const char *interface;
 
 	if (dbus_message_is_method_call(message, DBUS_INTERFACE_INTROSPECTABLE,
 							"Introspect") == TRUE)
 		return introspect(connection, message, data);
 
-	for (current = data->methods;
+	interface = dbus_message_get_interface(message);
+
+	iface = find_interface(data->interfaces, interface);
+	if (!iface)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	for (current = iface->methods;
 			current->name && current->message_function; current++) {
 		if (dbus_message_is_method_call(message,
-				data->interface, current->name) == FALSE)
+				iface->interface, current->name) == FALSE)
 			continue;
 
 		if (dbus_message_has_signature(message,
@@ -117,6 +144,8 @@ static DBusObjectPathVTable generic_table = {
 	.message_function	= generic_message,
 };
 
+static char simple_xml[] = DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>";
+
 dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 					const char *path, void *user_data,
 					DBusObjectPathUnregisterFunction function)
@@ -131,6 +160,9 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 
 	data->user_data = user_data;
 	data->unregister_function = function;
+
+	data->interfaces = NULL;
+	data->introspect = simple_xml;
 
 	if (dbus_connection_register_object_path(connection, path,
 					&generic_table, data) == FALSE) {
@@ -147,29 +179,40 @@ dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
 	return dbus_connection_unregister_object_path(connection, path);
 }
 
-static char simple_xml[] = DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>";
-
 dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 					const char *path, const char *interface,
 					DBusMethodVTable *methods,
 					DBusPropertyVTable *properties)
 {
 	struct generic_data *data;
+	struct interface_data *iface;
 	DBusMethodVTable *current;
 
 	if (dbus_connection_get_object_path_data(connection, path,
 						(void *) &data) == FALSE)
 		return FALSE;
 
-	data->interface = interface;
-	data->methods = methods;
+	iface = malloc(sizeof(*iface));
+	if (!iface)
+		return FALSE;
 
-	for (current = data->methods; current->name; current++) {
+	memset(iface, 0, sizeof(*iface));
+
+	iface->interface = interface;
+	iface->methods = methods;
+
+	for (current = iface->methods; current->name; current++) {
 		debug("Adding introspection data for %s.%s",
 						interface, current->name);
 	}
 
-	data->introspect = simple_xml;
+	data->interfaces = g_slist_append(data->interfaces, iface);
 
+	return TRUE;
+}
+
+dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
+					const char *path, const char *interface)
+{
 	return TRUE;
 }
