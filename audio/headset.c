@@ -1574,14 +1574,10 @@ static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg)
 int main(int argc, char *argv[])
 {
 	struct sigaction sa;
-	int opt, daemonize = 1;
+	int opt;
 
-	while ((opt = getopt(argc, argv, "nc:o:i:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:o:i:")) != EOF) {
 		switch (opt) {
-		case 'n':
-			daemonize = 0;
-			break;
-
 		case 'c':
 			config_channel = strtol(optarg, NULL, 0);
 			break;
@@ -1605,17 +1601,10 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (argv[optind]) {
+	if (argv[optind])
 		on_init_bda = argv[optind];
-		daemonize = 0;
-	}
 
-	if (daemonize && daemon(0, 0)) {
-		error("Can't daemonize: %s (%d)", strerror(errno), errno);
-		exit(1);
-	}
-
-	start_logging("bt.headsetd", "Bluetooth Headset daemon");
+	start_logging("headset", "Bluetooth Headset daemon");
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
