@@ -380,6 +380,42 @@ static int get_handles(struct pending_req *pr, const char *uuid,
 	return 0;
 }
 
+static void hid_record_reply(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	struct pending_req *pr = data;
+	DBusError derr;
+	uint8_t *rec_bin;
+	int len, scanned;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
+				DBUS_TYPE_INVALID)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	if (len == 0) {
+		err_failed(pr->conn, pr->msg, "SDP error");
+		goto fail;
+	}
+
+	pr->hid_rec = sdp_extract_pdu(rec_bin, &scanned);
+	/* FIXME: parse SDP records */
+fail:
+	pending_req_free(pr);
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+}
+
 static void hid_handle_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
@@ -404,14 +440,13 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	if (len == 0) {
-		err_failed(pr->conn, pr->msg, "SDP error");
-		goto fail;
-	} else {
-		info("FIXME: request HID record");
+	if (len != 0) {
+		if (get_record(pr, *phandle, hid_record_reply) < 0)
+			error("HID record search error");
+		else
+			goto done;
 	}
-
-	goto done;
+	err_failed(pr->conn, pr->msg, "SDP error");
 fail:
 	pending_req_free(pr);
 done:
@@ -457,7 +492,6 @@ done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 }
-
 
 static void pnp_handle_reply(DBusPendingCall *call, void *data)
 {
