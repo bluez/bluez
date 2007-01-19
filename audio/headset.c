@@ -862,7 +862,7 @@ static uint32_t add_ag_record(uint8_t channel)
 	sdp_buf_t buf;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-					"org.bluez.Manager", "AddServiceRecord");
+				"org.bluez.Database", "AddServiceRecord");
 	if (!msg) {
 		error("Can't allocate new method call");
 		return 0;
@@ -874,9 +874,8 @@ static uint32_t add_ag_record(uint8_t channel)
 		return 0;
 	}
 
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &hs_path,
-					DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &buf.data, buf.data_size,
-					DBUS_TYPE_INVALID);
+	dbus_message_append_args(msg, DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+				&buf.data, buf.data_size, DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
 	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, &derr);
@@ -913,15 +912,14 @@ static int remove_ag_record(uint32_t rec_id)
 	DBusError derr;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-					"org.bluez.Manager", "RemoveServiceRecord");
+				"org.bluez.Database", "RemoveServiceRecord");
 	if (!msg) {
 		error("Can't allocate new method call");
 		return 0;
 	}
 
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &hs_path,
-					DBUS_TYPE_UINT32, &rec_id,
-					DBUS_TYPE_INVALID);
+	dbus_message_append_args(msg, DBUS_TYPE_UINT32, &rec_id,
+						DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
 	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, &derr);
