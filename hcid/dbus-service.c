@@ -91,37 +91,6 @@ int binary_record_cmp(struct binary_record *rec, uint32_t *handle)
 }
 
 
-struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
-					struct service *service)
-{
-	struct service_call *call;
-	call = malloc(sizeof(struct service_call));
-	if (!call)
-		return NULL;
-	memset(call, 0, sizeof(struct service_call));
-	call->conn = dbus_connection_ref(conn);
-	call->msg = dbus_message_ref(msg);
-	call->service = service;
-
-	return call;
-}
-
-void service_call_free(void *data)
-{
-	struct service_call *call = data;
-
-	if (!call)
-		return;
-
-	if (call->conn)
-		dbus_connection_unref(call->conn);
-
-	if(call->msg)
-		dbus_message_unref(call->msg);
-	
-	free(call);
-}
-
 static void service_free(struct service *service)
 {
 	if (!service)
@@ -230,26 +199,6 @@ static void service_exit(const char *name, struct service *service)
 
 	free(service->bus_name);
 	service->bus_name = NULL;
-}
-
-static void forward_reply(DBusPendingCall *call, void *udata)
-{
-	struct service_call *call_data = udata;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusMessage *source_reply;
-	const char *sender;
-
-	sender = dbus_message_get_sender(call_data->msg);
-
-	source_reply = dbus_message_copy(reply);
-	dbus_message_set_destination(source_reply, sender);
-	dbus_message_set_no_reply(source_reply, TRUE);
-	dbus_message_set_reply_serial(source_reply, dbus_message_get_serial(call_data->msg));
-
-	send_message_and_unref(call_data->conn, source_reply);
-
-	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 static DBusHandlerResult get_connection_name(DBusConnection *conn,
@@ -709,11 +658,7 @@ static struct service_data services_methods[] = {
 static DBusHandlerResult msg_func_services(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct service *service = data;
 	service_handler_func_t handler;
-	DBusPendingCall *pending;
-	DBusMessage *forward;
-	struct service_call *call_data;
 	const char *iface;
 
 	iface = dbus_message_get_interface(msg);
@@ -727,30 +672,7 @@ static DBusHandlerResult msg_func_services(DBusConnection *conn,
 		if (handler)
 			return handler(conn, msg, data);
 
-		forward = dbus_message_copy(msg);
-		if(!forward)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-		dbus_message_set_destination(forward, service->bus_name);
-		dbus_message_set_path(forward, dbus_message_get_path(msg));
-
-		call_data = service_call_new(conn, msg, service);
-		if (!call_data) {
-			dbus_message_unref(forward);
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		}
-
-		if (dbus_connection_send_with_reply(conn, forward, &pending, -1) == FALSE) {
-			service_call_free(call_data);
-			dbus_message_unref(forward);
-			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-		}
-
-		dbus_pending_call_set_notify(pending, forward_reply, call_data, service_call_free);
-
-		dbus_message_unref(forward);
-
-		return DBUS_HANDLER_RESULT_HANDLED;
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	} else
 		return error_unknown_method(conn, msg);
 }

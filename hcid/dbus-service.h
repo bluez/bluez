@@ -50,12 +50,6 @@ struct service {
 	GSList *records; 	/* list of binary records */
 };
 
-struct service_call {
-	DBusConnection *conn;
-	DBusMessage *msg;
-	struct service *service;
-};
-
 struct binary_record {
 	uint32_t ext_handle;
 	uint32_t handle;
@@ -73,10 +67,6 @@ void append_available_services(DBusMessageIter *iter);
 struct service *search_service(DBusConnection *conn, const char *pattern);
 
 int register_service_records(GSList *lrecords);
-
-struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
-					struct service *service);
-void service_call_free(void *data);
 
 int service_start(struct service *service, DBusConnection *conn);
 
