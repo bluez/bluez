@@ -33,6 +33,7 @@
 #include "logging.h"
 #include "input-service.h"
 #include "glib-ectomy.h"
+#include "textfile.h"
 
 #include <dbus/dbus.h>
 
@@ -48,6 +49,25 @@
 
 
 static DBusConnection *connection = NULL;
+
+struct input_device {
+	char addr[18];
+};
+
+struct input_device *input_device_new(const char *addr)
+{
+	struct input_device *idev;
+
+	idev = malloc(sizeof(struct input_device));
+	if (!idev)
+		return NULL;
+
+	memset(idev, 0, sizeof(struct input_device));
+
+	memcpy(idev->addr, addr, 18);
+
+	return idev;
+}
 
 /*
  * Common D-Bus BlueZ input error functions
@@ -68,98 +88,60 @@ static DBusHandlerResult err_unknown_method(DBusConnection *conn, DBusMessage *m
 				"Unknown input method"));
 }
 
-/*
- * Input Manager methods
- */
-struct input_manager {
-	GList *paths;
-};
-
-static DBusHandlerResult manager_create_device(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
+				const char *str)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".Failed", str));
 }
 
-static DBusHandlerResult manager_remove_device(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static DBusHandlerResult err_already_exists(DBusConnection *conn,
+				DBusMessage *msg, const char *str)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".AlreadyExists", str));
 }
 
-static DBusHandlerResult manager_list_devices(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static DBusHandlerResult err_generic(DBusConnection *conn, DBusMessage *msg,
+				const char *name, const char *str)
 {
-	struct input_manager *mgr = data;
-	DBusMessageIter iter, iter_array;
-	DBusMessage *reply;
-	GList *paths;
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg, name, str));
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_TYPE_STRING_AS_STRING, &iter_array);
-
-	for (paths = mgr->paths; paths != NULL; paths = paths->next) {
-		const char *ppath = paths->data;
-		dbus_message_iter_append_basic(&iter_array,
-				DBUS_TYPE_STRING, &ppath);
-	}
-
-	dbus_message_iter_close_container(&iter, &iter_array);
-
-	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult manager_message(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static inline int create_filename(char *buf, size_t size,
+			bdaddr_t *bdaddr, const char *name)
 {
-	const char *path, *iface, *member;
+	char addr[18];
 
-	path = dbus_message_get_path(msg);
-	iface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
+	ba2str(bdaddr, addr);
 
-	/* Catching fallback paths */
-	if (strcmp(INPUT_PATH, path) != 0)
-		return err_unknown_device(conn, msg);
-
-	/* Accept messages from the input manager interface only */
-	if (strcmp(INPUT_MANAGER_INTERFACE, iface))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (strcmp(member, "ListDevices") == 0)
-		return manager_list_devices(conn, msg, data);
-
-	if (strcmp(member, "CreateDevice") == 0)
-		return manager_create_device(conn, msg, data);
-
-	if (strcmp(member, "RemoveDevice") == 0)
-		return manager_remove_device(conn, msg, data);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
-static void manager_unregister(DBusConnection *conn, void *data)
+static int has_hid_record(const char *local, const char *peer)
 {
-	struct input_manager *mgr = data;
+	char filename[PATH_MAX + 1], *str;
 
-	info("Unregistered manager path");
+	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
 
-	if (mgr->paths)
-		g_list_foreach(mgr->paths, (GFunc) free, NULL);
+	str = textfile_get(filename, peer);
+	if (!str)
+		return 0;
 
-	free(mgr);
+	free(str);
+	return 1;
 }
 
-/* Virtual table to handle manager object path hierarchy */
-static const DBusObjectPathVTable manager_table = {
-	.message_function = manager_message,
-	.unregister_function = manager_unregister,
-};
+static int search_request(DBusConnection *conn,
+		DBusMessage *msg, const char *peer)
+{
+	info("FIXME: service search");
+	return 0;
+}
 
 /*
  * Input Device methods
@@ -260,14 +242,177 @@ static DBusHandlerResult device_message(DBusConnection *conn,
 	return err_unknown_method(conn, msg);
 }
 
+static DBusHandlerResult device_message(DBusConnection *conn,
+				DBusMessage *msg, void *data);
 /* Virtual table to handle device object path hierarchy */
 static const DBusObjectPathVTable device_table = {
 	.message_function = device_message,
 };
 
+/*
+ * Input Manager methods
+ */
+struct input_manager {
+	char adapter[18];
+	GList *paths;
+};
+
+static int path_addr_cmp(const char *path, const char *addr)
+{
+	struct input_device *idev;
+
+	if (!dbus_connection_get_object_path_data(connection, path,
+				(void *) &idev))
+		return -1;
+
+	if (!idev)
+		return -1;
+
+	return strcasecmp(idev->addr, addr);
+}
+
+static DBusHandlerResult manager_create_device(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	struct input_manager *mgr = data;
+	struct input_device *idev;
+	DBusMessage *reply;
+	DBusError derr;
+	const char *addr;
+	const char *keyb_path = "/org/bluez/input/keyboard0";
+	GList *path;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &addr,
+				DBUS_TYPE_INVALID)) {
+		err_generic(conn, msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	path = g_list_find_custom(mgr->paths, addr,
+			(GCompareFunc) path_addr_cmp);
+	if (path)
+		return err_already_exists(conn, msg, "Input Already exists");
+
+	if (!has_hid_record(mgr->adapter, addr)) {
+		if (search_request(conn, msg, addr) < 0)
+			return err_failed(conn, msg, "SDP error");
+
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	idev = input_device_new(addr);
+	if (!idev)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		free(idev);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	if (!dbus_connection_register_object_path(conn,
+				keyb_path, &device_table, idev)) {
+		error("Input device path registration failed");
+		free(idev);
+		return err_failed(conn, msg, "Path registration failed");
+	}
+
+	mgr->paths = g_list_append(mgr->paths, strdup(keyb_path));
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &keyb_path,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult manager_remove_device(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult manager_list_devices(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	struct input_manager *mgr = data;
+	DBusMessageIter iter, iter_array;
+	DBusMessage *reply;
+	GList *paths;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING_AS_STRING, &iter_array);
+
+	for (paths = mgr->paths; paths != NULL; paths = paths->next) {
+		const char *ppath = paths->data;
+		dbus_message_iter_append_basic(&iter_array,
+				DBUS_TYPE_STRING, &ppath);
+	}
+
+	dbus_message_iter_close_container(&iter, &iter_array);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult manager_message(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	const char *path, *iface, *member;
+
+	path = dbus_message_get_path(msg);
+	iface = dbus_message_get_interface(msg);
+	member = dbus_message_get_member(msg);
+
+	/* Catching fallback paths */
+	if (strcmp(INPUT_PATH, path) != 0)
+		return err_unknown_device(conn, msg);
+
+	/* Accept messages from the input manager interface only */
+	if (strcmp(INPUT_MANAGER_INTERFACE, iface))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (strcmp(member, "ListDevices") == 0)
+		return manager_list_devices(conn, msg, data);
+
+	if (strcmp(member, "CreateDevice") == 0)
+		return manager_create_device(conn, msg, data);
+
+	if (strcmp(member, "RemoveDevice") == 0)
+		return manager_remove_device(conn, msg, data);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static void manager_unregister(DBusConnection *conn, void *data)
+{
+	struct input_manager *mgr = data;
+
+	info("Unregistered manager path");
+
+	if (mgr->paths)
+		g_list_foreach(mgr->paths, (GFunc) free, NULL);
+
+	free(mgr);
+}
+
+/* Virtual table to handle manager object path hierarchy */
+static const DBusObjectPathVTable manager_table = {
+	.message_function = manager_message,
+	.unregister_function = manager_unregister,
+};
+
 int input_dbus_init(void)
 {
 	struct input_manager *mgr;
+	bdaddr_t sba;
+
 	connection = init_dbus(INPUT_SERVICE, NULL, NULL);
 	if (!connection)
 		return -1;
@@ -276,6 +421,13 @@ int input_dbus_init(void)
 
 	mgr = malloc(sizeof(struct input_manager));
 	memset(mgr, 0, sizeof(struct input_manager));
+
+	/* Get the local adapter */
+	if (hci_devba(0, &sba) < 0) {
+		error("Can't access local adapter");
+		return -1;
+	}
+	ba2str(&sba, mgr->adapter);
 
 	/* Fallback to catch invalid device path */
 	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
