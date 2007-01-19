@@ -268,7 +268,7 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 		if (!reply)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-		dbus_message_append_args(msg,
+		dbus_message_append_args(reply,
 					DBUS_TYPE_STRING, &service->bus_name,
 					DBUS_TYPE_INVALID);
 
