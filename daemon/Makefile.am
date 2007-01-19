@@ -1,4 +1,6 @@
 
+servicedir = $(libdir)/bluetooth
+
 if GLIB
 glib_cflags = @GLIB_CFLAGS@
 glib_ldadd  = @GLIB_LIBS@
@@ -7,7 +9,9 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-noinst_PROGRAMS = bluetoothd bluetoothd_echo
+noinst_PROGRAMS = bluetoothd
+
+service_PROGRAMS = bluetoothd-service-echo
 
 bluetoothd_SOURCES = main.c system.h \
 	manager.h manager.c database.h database.c \
@@ -17,10 +21,11 @@ bluetoothd_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ \
 			$(top_builddir)/sdpd/libsdpserver.a \
 			$(top_builddir)/common/libhelper.a
 
-bluetoothd_echo_SOURCES = echo.c
+bluetoothd_service_echo_SOURCES = echo.c
 
-bluetoothd_echo_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ \
-			$(top_builddir)/common/libhelper.a
+bluetoothd_service_echo_LDADD = \
+	$(top_builddir)/common/libhelper.a \
+	$(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@
 
 if EXPAT
 bluetoothd_LDADD += -lexpat
@@ -28,6 +33,6 @@ endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(glib_cflags)
 
-INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/hcid -I$(top_srcdir)/sdpd
+INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 
 MAINTAINERCLEANFILES = Makefile.in
