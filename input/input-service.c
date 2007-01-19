@@ -254,8 +254,20 @@ static const DBusObjectPathVTable device_table = {
  */
 struct input_manager {
 	char adapter[18];
+	char *adapter_path;
 	GList *paths;
 };
+
+void input_manager_free(struct input_manager *mgr)
+{
+	if (!mgr)
+		return;
+	if (mgr->paths)
+		g_list_foreach(mgr->paths, (GFunc) free, NULL);
+	if (mgr->adapter_path)
+		free(mgr->adapter_path);
+	free(mgr);
+}
 
 static int path_addr_cmp(const char *path, const char *addr)
 {
@@ -396,10 +408,7 @@ static void manager_unregister(DBusConnection *conn, void *data)
 
 	info("Unregistered manager path");
 
-	if (mgr->paths)
-		g_list_foreach(mgr->paths, (GFunc) free, NULL);
-
-	free(mgr);
+	input_manager_free(mgr);
 }
 
 /* Virtual table to handle manager object path hierarchy */
@@ -411,7 +420,9 @@ static const DBusObjectPathVTable manager_table = {
 int input_dbus_init(void)
 {
 	struct input_manager *mgr;
-	bdaddr_t sba;
+	DBusMessage *msg, *reply;
+	DBusError derr;
+	const char *adapter;
 
 	connection = init_dbus(INPUT_SERVICE, NULL, NULL);
 	if (!connection)
@@ -422,23 +433,75 @@ int input_dbus_init(void)
 	mgr = malloc(sizeof(struct input_manager));
 	memset(mgr, 0, sizeof(struct input_manager));
 
-	/* Get the local adapter */
-	if (hci_devba(0, &sba) < 0) {
-		error("Can't access local adapter");
-		return -1;
+	/* Get the default adapter path */
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+			"org.bluez.Manager", "DefaultAdapter");
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(connection,
+			msg, -1, &derr);
+	dbus_message_unref(msg);
+
+	if (!reply) {
+		error("input init failed: %s (%s)", derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
 	}
-	ba2str(&sba, mgr->adapter);
+
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_STRING, &adapter,
+				DBUS_TYPE_INVALID)) {
+		error("input init failed: %s (%s)", derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	mgr->adapter_path = strdup(adapter);
+	dbus_message_unref(reply);
+
+	/* Get the adapter address */
+	msg = dbus_message_new_method_call("org.bluez", adapter,
+			"org.bluez.Adapter", "GetAddress");
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(connection,
+			msg, -1, &derr);
+	dbus_message_unref(msg);
+
+	if (!reply) {
+		error("input init failed: %s (%s)", derr.name, derr.message);
+		dbus_error_free(&derr);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_STRING, &adapter,
+				DBUS_TYPE_INVALID)) {
+		error("input init failed: %s (%s)", derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	strncpy(mgr->adapter, adapter, 18);
+	dbus_message_unref(reply);
+
+	info("Default adapter: %s (%s)", mgr->adapter_path, mgr->adapter);
 
 	/* Fallback to catch invalid device path */
 	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
 						&manager_table, mgr)) {
 		error("D-Bus failed to register %s path", INPUT_PATH);
-		return -1;
+		goto fail;
 	}
 
 	info("Registered input manager path:%s", INPUT_PATH);
 
 	return 0;
+fail:
+	input_manager_free(mgr);
+
+	return -1;
 }
 
 void input_dbus_exit(void)
