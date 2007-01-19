@@ -47,27 +47,11 @@
 #include "system.h"
 #include "manager.h"
 #include "database.h"
+#include "service.h"
 
 static GMainLoop *main_loop = NULL;
 
 static DBusConnection *system_bus = NULL;
-
-static void config_notify(int action, const char *name, void *data)
-{
-	switch (action) {
-	case NOTIFY_CREATE:
-		debug("File %s/%s created", CONFIGDIR, name);
-		break;
-
-	case NOTIFY_DELETE:
-		debug("File %s/%s deleted", CONFIGDIR, name);
-		break;
-
-	case NOTIFY_MODIFY:
-		debug("File %s/%s modified", CONFIGDIR, name);
-		break;
-	}
-}
 
 static int setup_dbus(void)
 {
@@ -95,11 +79,21 @@ static int setup_dbus(void)
 		return -1;
 	}
 
+	if (service_init(system_bus) < 0) {
+		database_exit();
+		manager_exit();
+		dbus_connection_destroy_object_path(system_bus, SYSTEM_PATH);
+		dbus_connection_unref(system_bus);
+		return -1;
+	}
+
 	return 0;
 }
 
 static void cleanup_dbus(void)
 {
+	service_exit();
+
 	database_exit();
 
 	manager_exit();
@@ -200,8 +194,6 @@ int main(int argc, char *argv[])
 
 	notify_init();
 
-	notify_add(CONFIGDIR, config_notify, NULL);
-
 	if (setup_dbus() < 0) {
 		g_main_loop_unref(main_loop);
 		exit(1);
@@ -218,8 +210,6 @@ int main(int argc, char *argv[])
 	stop_sdp_server();
 
 	cleanup_dbus();
-
-	notify_remove(CONFIGDIR);
 
 	notify_close();
 

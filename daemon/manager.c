@@ -92,6 +92,54 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 	return dbus_connection_send_and_unref(conn, reply);
 }
 
+static DBusHandlerResult list_services(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter, array;
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &array);
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return dbus_connection_send_and_unref(conn, reply);
+}
+
+static DBusHandlerResult find_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return dbus_connection_send_and_unref(conn, reply);
+}
+
+static DBusHandlerResult activate_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return dbus_connection_send_and_unref(conn, reply);
+}
+
 static DBusMethodVTable manager_table[] = {
 	{ "ListAdapters", list_adapters,
 		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_ARRAY_AS_STRING },
@@ -99,6 +147,12 @@ static DBusMethodVTable manager_table[] = {
 		DBUS_TYPE_STRING_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
 	{ "DefaultAdapter", default_adapter,
 		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
+	{ "ListServices", list_services,
+		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_ARRAY_AS_STRING },
+	{ "FindService", find_service,
+		DBUS_TYPE_STRING_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
+	{ "ActivateService", activate_service,
+		DBUS_TYPE_STRING_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
 	{ }
 };
 

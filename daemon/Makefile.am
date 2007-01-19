@@ -10,7 +10,8 @@ endif
 noinst_PROGRAMS = bluetoothd
 
 bluetoothd_SOURCES = main.c system.h \
-	manager.h manager.c database.h database.c
+	manager.h manager.c database.h database.c \
+	service.h service.c
 
 bluetoothd_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ \
 			$(top_builddir)/sdpd/libsdpserver.a \
