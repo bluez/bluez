@@ -1,10 +1,11 @@
 
 if SYNC
-noinst_PROGRAMS = bt.syncd
+noinst_PROGRAMS = bluetoothd-service-sync
 
-bt_syncd_SOURCES = main.c
+bluetoothd_service_sync_SOURCES = main.c
 
-bt_syncd_LDADD = @OPENSYNC_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+LDADD = $(top_builddir)/common/libhelper.a \
+	@OPENSYNC_LIBS@ @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @OPENSYNC_CFLAGS@
 
