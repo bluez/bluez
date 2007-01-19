@@ -40,6 +40,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #define INPUT_SERVICE "org.bluez.input"
 #define INPUT_PATH "/org/bluez/input"
@@ -48,6 +50,8 @@
 #define INPUT_ERROR_INTERFACE	"org.bluez.Error"
 
 static DBusConnection *connection = NULL;
+const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
+const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 
 struct input_device {
 	char addr[18];
@@ -58,6 +62,8 @@ struct pending_req {
 	char peer[18];
 	DBusConnection *conn;
 	DBusMessage *msg;
+	sdp_record_t *pnp_rec;
+	sdp_record_t *hid_rec;
 };
 
 struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
@@ -87,6 +93,10 @@ void pending_req_free(struct pending_req *pr)
 		dbus_connection_unref(pr->conn);
 	if (pr->msg)
 		dbus_message_unref(pr->msg);
+	if (pr->pnp_rec)
+		sdp_record_free(pr->pnp_rec);
+	if (pr->hid_rec)
+		sdp_record_free(pr->hid_rec);
 	free(pr);
 }
 
@@ -312,6 +322,35 @@ static int path_addr_cmp(const char *path, const char *addr)
 	return strcasecmp(idev->addr, addr);
 }
 
+static int get_record(struct pending_req *pr, uint32_t handle,
+			DBusPendingCallNotifyFunction cb)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+	const char *paddr;
+
+	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
+			"org.bluez.Adapter", "GetRemoteServiceRecord");
+	if (!msg)
+		return -1;
+
+	paddr = pr->peer;
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &paddr,
+			DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
+		error("Can't send D-Bus message.");
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, cb, pr, NULL);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
 static int get_handles(struct pending_req *pr, const char *uuid,
 			DBusPendingCallNotifyFunction cb)
 {
@@ -380,13 +419,52 @@ done:
 	dbus_pending_call_unref(call);
 }
 
+static void pnp_record_reply(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	struct pending_req *pr = data;
+	DBusError derr;
+	uint8_t *rec_bin;
+	int len;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
+				DBUS_TYPE_INVALID)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	if (len != 0) {
+		int scanned;
+		pr->pnp_rec = sdp_extract_pdu(rec_bin, &scanned);
+		if (get_handles(pr, hid_uuid, hid_handle_reply) < 0)
+			error("HID record search error");
+		else
+			goto done;
+	}
+	err_failed(pr->conn, pr->msg, "SDP error");
+fail:
+	pending_req_free(pr);
+done:
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+}
+
+
 static void pnp_handle_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	struct pending_req *pr = data;
 	DBusError derr;
 	uint32_t *phandle;
-	const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 	int len;
 
 	dbus_error_init(&derr);
@@ -413,7 +491,10 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 		}
 	} else {
 		/* Request PnP record */
-		info("FIXME: Request PnP Record");
+		if (get_record(pr, *phandle, pnp_record_reply) < 0) {
+			err_failed(pr->conn, pr->msg, "SDP error");
+			goto fail;
+		}
 	}
 
 	goto done;
@@ -433,7 +514,6 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	DBusError derr;
 	const char *addr;
 	const char *keyb_path = "/org/bluez/input/keyboard0";
-	const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 	GList *path;
 
 	dbus_error_init(&derr);
