@@ -47,15 +47,11 @@ hcid_LDADD += -lexpat
 endif
 endif
 
-noinst_PROGRAMS = passkey-agent service-agent auth-agent
+noinst_PROGRAMS = passkey-agent auth-agent
 
 passkey_agent_SOURCES = passkey-agent.c
 
 passkey_agent_LDADD = @DBUS_LIBS@
-
-service_agent_SOURCES = service-agent.c
-
-service_agent_LDADD = @DBUS_LIBS@
 
 auth_agent_SOURCES = auth-agent.c
 
