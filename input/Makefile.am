@@ -5,6 +5,8 @@ dbusdir = $(sysconfdir)/dbus-1/system.d
 dbus_DATA = bluetooth-input.conf
 endif
 
+servicedir = $(libdir)/bluetooth
+
 if GLIB
 glib_cflags = @GLIB_CFLAGS@
 glib_ldadd  = @GLIB_LIBS@
@@ -13,11 +15,13 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-noinst_PROGRAMS = bluetoothd_input
+service_PROGRAMS = bluetoothd-service-input
 
-bluetoothd_input_SOURCES = main.c input-service.h input-service.c
+bluetoothd_service_input_SOURCES = \
+		main.c input-service.h input-service.c
 
-bluetoothd_input_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+LDADD = $(top_builddir)/common/libhelper.a $(glib_ldadd) \
+	@DBUS_LIBS@ @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(glib_cflags)
 
