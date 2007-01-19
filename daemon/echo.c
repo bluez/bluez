@@ -25,277 +25,60 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
 #include <stdlib.h>
-#include <sys/socket.h>
+#include <string.h>
+#include <signal.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/rfcomm.h>
+#include <dbus/dbus.h>
 
-#include <dbus/dbus-glib.h>
+#include "dbus.h"
+#include "glib-ectomy.h"
+#include "logging.h"
 
-#define AGENT_PATH "/org/bluez/echo"
+static GMainLoop *main_loop = NULL;
 
-static DBusGConnection *conn;
+static DBusConnection *system_bus = NULL;
 
-typedef struct {
-	GObject parent;
-	GIOChannel *server;
-	guint channel;
-} ServiceAgent;
-
-typedef struct {
-	GObjectClass parent;
-} ServiceAgentClass;
-
-static GObjectClass *parent_class;
-
-G_DEFINE_TYPE(ServiceAgent, service_agent, G_TYPE_OBJECT)
-
-#define SERVICE_AGENT_OBJECT_TYPE (service_agent_get_type())
-
-#define SERVICE_AGENT(obj) (G_TYPE_CHECK_INSTANCE_CAST((obj), \
-			SERVICE_AGENT_OBJECT_TYPE, ServiceAgent))
-
-static void service_agent_finalize(GObject *obj)
+static void sig_term(int sig)
 {
-	parent_class->finalize(obj);
+	g_main_loop_quit(main_loop);
 }
 
-static void service_agent_init(ServiceAgent *obj)
+static void sig_hup(int sig)
 {
-	obj->server = NULL;
-	obj->channel = 23;
-}
-
-enum {
-	PROP_0,
-	PROP_CHANNEL
-};
-
-static void service_agent_set_property(GObject *object, guint prop_id,
-					const GValue *value, GParamSpec *pspec)
-{
-	switch (prop_id) {
-	case PROP_CHANNEL:
-		SERVICE_AGENT(object)->channel = g_value_get_uint(value);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
-		break;
-	}
-}
-
-static void service_agent_get_property(GObject *object, guint prop_id,
-					GValue *value, GParamSpec *pspec)
-{
-	switch (prop_id) {
-	case PROP_CHANNEL:
-		g_value_set_uint(value, SERVICE_AGENT(object)->channel);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
-		break;
-	}
-}
-
-static void service_agent_class_init(ServiceAgentClass *klass)
-{
-	GObjectClass *gobject_class;
-
-	parent_class = g_type_class_peek_parent(klass);
-
-	gobject_class = G_OBJECT_CLASS(klass);
-	gobject_class->finalize = service_agent_finalize;
-
-	gobject_class->set_property = service_agent_set_property;
-	gobject_class->get_property = service_agent_get_property;
-
-	g_object_class_install_property(G_OBJECT_CLASS(klass), PROP_CHANNEL,
-			g_param_spec_uint("channel", NULL, NULL,
-					1, 30, 23, G_PARAM_READWRITE));
-}
-
-static ServiceAgent *service_agent_new(const char *path)
-{
-	ServiceAgent *agent;
-
-	agent = g_object_new(SERVICE_AGENT_OBJECT_TYPE, NULL);
-
-	dbus_g_connection_register_g_object(conn, path, G_OBJECT(agent));
-
-	return agent;
-}
-
-static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
-{
-	unsigned char buf[672];
-	gsize len;
-	GIOError err;
-	int sk, ret;
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		g_io_channel_unref(chan);
-		return FALSE;
-	}
-
-	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
-	if (err == G_IO_ERROR_AGAIN)
-		return TRUE;
-
-	sk = g_io_channel_unix_get_fd(chan);
-
-	ret = write(sk, buf, len);
-
-	return TRUE;
-}
-
-static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data)
-{
-	GIOChannel *io;
-        struct sockaddr_rc addr;
-        socklen_t optlen;
-	int sk, nsk;
-
-	sk = g_io_channel_unix_get_fd(chan);
-
-	memset(&addr, 0, sizeof(addr));
-	optlen = sizeof(addr);
-
-	nsk = accept(sk, (struct sockaddr *) &addr, &optlen);
-	if (nsk < 0)
-		return TRUE;
-
-	io = g_io_channel_unix_new(nsk);
-	g_io_channel_set_close_on_unref(io, TRUE);
-
-	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR,
-						session_event, NULL);
-
-	return TRUE;
-}
-
-static gboolean service_agent_start(ServiceAgent *agent,
-					DBusGMethodInvocation *context)
-{
-	struct sockaddr_rc addr;
-	int sk;
-
-	if (agent->server)
-		return FALSE;
-
-	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sk < 0)
-		return FALSE;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
-	addr.rc_channel = agent->channel;
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		close(sk);
-		return FALSE;
-	}
-
-	if (listen(sk, 10)) {
-		close(sk);
-		return FALSE;
-	}
-
-	agent->server = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(agent->server, TRUE);
-
-	g_io_add_watch(agent->server, G_IO_IN, connect_event, NULL);
-
-	dbus_g_method_return(context, NULL);
-
-	return TRUE;
-}
-
-static gboolean service_agent_stop(ServiceAgent *agent,
-					DBusGMethodInvocation *context)
-{
-	if (agent->server) {
-		g_io_channel_close(agent->server);
-		g_io_channel_unref(agent->server);
-		agent->server = NULL;
-	}
-
-	dbus_g_method_return(context, NULL);
-
-	return TRUE;
-}
-
-static gboolean service_agent_release(ServiceAgent *agent, GError **error)
-{
-	if (agent->server) {
-		g_io_channel_close(agent->server);
-		g_io_channel_unref(agent->server);
-		agent->server = NULL;
-	}
-
-	return TRUE;
-}
-
-#include "service-agent-glue.h"
-
-static int register_service_agent(void)
-{
-	DBusGProxy *object;
-	GError *error = NULL;
-	const char *name = "Echo service";
-	const char *desc = "Simple serial port profile based echo service";
-	void *agent;
-
-	agent = service_agent_new(AGENT_PATH);
-	if (!agent)
-		return -1;
-
-	object = dbus_g_proxy_new_for_name(conn, "org.bluez",
-					"/org/bluez", "org.bluez.Manager");
-
-	dbus_g_proxy_call(object, "RegisterService", &error,
-				G_TYPE_STRING, AGENT_PATH,
-				G_TYPE_STRING, name,
-				G_TYPE_STRING, desc,
-				G_TYPE_INVALID, G_TYPE_INVALID);
-
-	if (error != NULL) {
-		g_error_free(error);
-		return -1;
-	}
-
-	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	GMainLoop *mainloop;
-	GError *error = NULL;
+	struct sigaction sa;
 
-	g_type_init();
+	start_logging("echo", "Bluetooth echo service ver %s", VERSION);
 
-	mainloop = g_main_loop_new(NULL, FALSE);
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NOCLDSTOP;
+	sa.sa_handler = sig_term;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT,  &sa, NULL);
+	sa.sa_handler = sig_hup;
+	sigaction(SIGHUP, &sa, NULL);
 
-	conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
-	if (error != NULL) {
-		g_printerr("Connecting to system bus failed: %s\n",
-							error->message);
-		g_error_free(error);
-		exit(EXIT_FAILURE);
+	main_loop = g_main_loop_new(NULL, FALSE);
+
+	system_bus = init_dbus(NULL, NULL, NULL);
+	if (!system_bus) {
+		error("Connection to system bus failed");
+		exit(1);
 	}
 
-	dbus_g_object_type_install_info(SERVICE_AGENT_OBJECT_TYPE,
-					&dbus_glib_service_agent_object_info);
+	g_main_loop_run(main_loop);
 
-	register_service_agent();
+	dbus_connection_unref(system_bus);
 
-	g_main_loop_run(mainloop);
+	g_main_loop_unref(main_loop);
 
-	dbus_g_connection_unref(conn);
+	info("Exit");
+
+	stop_logging();
 
 	return 0;
 }

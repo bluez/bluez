@@ -7,7 +7,7 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-noinst_PROGRAMS = bluetoothd
+noinst_PROGRAMS = bluetoothd bluetoothd_echo
 
 bluetoothd_SOURCES = main.c system.h \
 	manager.h manager.c database.h database.c \
@@ -15,6 +15,11 @@ bluetoothd_SOURCES = main.c system.h \
 
 bluetoothd_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ \
 			$(top_builddir)/sdpd/libsdpserver.a \
+			$(top_builddir)/common/libhelper.a
+
+bluetoothd_echo_SOURCES = echo.c
+
+bluetoothd_echo_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ \
 			$(top_builddir)/common/libhelper.a
 
 if EXPAT
