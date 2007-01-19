@@ -32,7 +32,6 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
-#include <getopt.h>
 
 #include <dbus/dbus.h>
 
@@ -52,23 +51,6 @@ static void sig_term(int sig)
 int main(int argc, char *argv[])
 {
 	struct sigaction sa;
-	int opt, daemonize = 1;
-
-	while ((opt = getopt(argc, argv, "n")) != EOF) {
-		switch (opt) {
-		case 'n':
-			daemonize = 0;
-			break;
-
-		default:
-			exit(1);
-		}
-	}
-
-	if (daemonize && daemon(0, 0)) {
-		error("Can't daemonize: %s (%d)", strerror(errno), errno);
-		exit(1);
-	}
 
 	start_logging("input", "Bluetooth Input daemon");
 
