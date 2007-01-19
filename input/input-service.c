@@ -47,12 +47,44 @@
 #define INPUT_DEVICE_INTERFACE	"org.bluez.input.Device"
 #define INPUT_ERROR_INTERFACE	"org.bluez.Error"
 
-
 static DBusConnection *connection = NULL;
 
 struct input_device {
 	char addr[18];
 };
+
+struct pending_req {
+	char addr[18];
+	DBusConnection *conn;
+	DBusMessage *msg;
+};
+
+struct pending_req *pending_req_new(DBusConnection *conn,
+				DBusMessage *msg, const char *addr)
+{
+	struct pending_req *pr;
+	pr = malloc(sizeof(struct pending_req));
+	if (!pr)
+		return NULL;
+
+	memset(pr, 0, sizeof(struct pending_req));
+	memcpy(pr->addr, addr, 18);
+	pr->conn = dbus_connection_ref(conn);
+	pr->msg = dbus_message_ref(msg);
+
+	return pr;
+}
+
+void pending_req_free(struct pending_req *pr)
+{
+	if (!pr)
+		return;
+	if (pr->conn)
+		dbus_connection_unref(pr->conn);
+	if (pr->msg)
+		dbus_message_unref(pr->msg);
+	free(pr);
+}
 
 struct input_device *input_device_new(const char *addr)
 {
@@ -134,13 +166,6 @@ static int has_hid_record(const char *local, const char *peer)
 
 	free(str);
 	return 1;
-}
-
-static int search_request(DBusConnection *conn,
-		DBusMessage *msg, const char *peer)
-{
-	info("FIXME: service search");
-	return 0;
 }
 
 /*
@@ -283,6 +308,72 @@ static int path_addr_cmp(const char *path, const char *addr)
 	return strcasecmp(idev->addr, addr);
 }
 
+static void pnp_handle_reply(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	struct pending_req *pr = data;
+	DBusError derr;
+	uint32_t *phandle;
+	int len;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
+				DBUS_TYPE_INVALID)) {
+
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	if (len == 0) {
+		/* PnP is optional */
+		info("FIXME: PnP is optional, request HID record");
+	} else {
+		/* Request PnP record */
+		info("FIXME: Request PnP Record");
+	}
+fail:
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+}
+
+static int get_handles(struct input_manager *mgr, struct pending_req *pr,
+		const char *uuid, DBusPendingCallNotifyFunction cb)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+	const char *paddr;
+
+	msg  = dbus_message_new_method_call("org.bluez", mgr->adapter_path,
+			"org.bluez.Adapter", "GetRemoteServiceHandles");
+	if (!msg)
+		return -1;
+
+	paddr = pr->addr;
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &paddr,
+			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_INVALID);
+	
+	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
+		error("Can't send D-Bus message.");
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, cb, pr,
+			(DBusFreeFunction) pending_req_free);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
 static DBusHandlerResult manager_create_device(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
@@ -292,6 +383,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	DBusError derr;
 	const char *addr;
 	const char *keyb_path = "/org/bluez/input/keyboard0";
+	const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 	GList *path;
 
 	dbus_error_init(&derr);
@@ -309,8 +401,15 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return err_already_exists(conn, msg, "Input Already exists");
 
 	if (!has_hid_record(mgr->adapter, addr)) {
-		if (search_request(conn, msg, addr) < 0)
+		struct pending_req *pr;
+		pr = pending_req_new(conn, msg, addr);
+		if (!pr)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+		if (get_handles(mgr, pr, pnp_uuid, pnp_handle_reply) < 0) {
+			pending_req_free(pr);
 			return err_failed(conn, msg, "SDP error");
+		}
 
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
