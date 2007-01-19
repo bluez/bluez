@@ -83,7 +83,7 @@ struct headset {
 
 static struct pending_connect *connect_in_progress = NULL;
 
-static uint8_t config_channel = 0;
+static uint8_t config_channel = 12;
 
 static uint32_t record_id = 0;
 
@@ -1592,11 +1592,6 @@ int main(int argc, char *argv[])
 			printf("Usage: %s -c local_channel [-n] [-o output] [-i input] [bdaddr]\n", argv[0]);
 			exit(1);
 		}
-	}
-
-	if (!config_channel) {
-		printf("You need to supply a local channel with the -c switch\n");
-		exit(1);
 	}
 
 	if (argv[optind])
