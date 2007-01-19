@@ -96,29 +96,16 @@ static void service_free(struct service *service)
 	if (!service)
 		return;
 
-	if (service->filename)
-		free(service->filename);
-
-	if (service->object_path)
-		free(service->object_path);
-
 	if (service->action)
 		dbus_message_unref(service->action);
 
-	if (service->bus_name)
-		free(service->bus_name);
-
-	if (service->name)
-		free(service->name);
-
-	if (service->descr)
-		free(service->descr);
-
-	if (service->ident)
-		free(service->ident);
-
-	if (service->opts)
-		free(service->opts);
+	g_free(service->bus_name);
+	g_free(service->filename);
+	g_free(service->object_path);
+	g_free(service->name);
+	g_free(service->descr);
+	g_free(service->ident);
+	g_free(service->opts);
 
 	if (service->trusted_devices) {
 		g_slist_foreach(service->trusted_devices, (GFunc) free, NULL);
@@ -130,7 +117,7 @@ static void service_free(struct service *service)
 		g_slist_free(service->records);
 	}
 
-	free(service);
+	g_free(service);
 }
 
 static int unregister_service_records(GSList *lrecords)
@@ -175,7 +162,7 @@ static void service_exit(const char *name, struct service *service)
 		service->action = NULL;
 	}
 
-	free(service->bus_name);
+	g_free(service->bus_name);
 	service->bus_name = NULL;
 }
 
@@ -279,7 +266,7 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 
 	debug("Child PID %d got the unique bus name %s", service->pid, new);
 
-	service->bus_name = strdup(new);
+	service->bus_name = g_strdup(new);
 
 	dbus_error_init(&err);
 	dbus_bus_remove_match(conn, NAME_MATCH, &err);
@@ -687,7 +674,7 @@ static int register_service(struct service *service)
 						&services_vtable, service))
 		return -ENOMEM;
 
-	service->object_path = strdup(obj_path);
+	service->object_path = g_strdup(obj_path);
 
 	services = g_slist_append(services, service);
 
@@ -796,13 +783,11 @@ static struct service *create_service(const char *file)
 	gboolean autostart;
 	const char *slash;
 
-	service = malloc(sizeof(struct service));
+	service = g_try_new0(struct service, 1);
 	if (!service) {
-		error("Unable to allocate new service");
+		error("OOM while allocating new service");
 		return NULL;
 	}
-
-	memset(service, 0, sizeof(struct service));
 
 	keyfile = g_key_file_new();
 
@@ -834,7 +819,7 @@ static struct service *create_service(const char *file)
 		goto failed;
 	}
 
-	service->filename = strdup(slash + 1);
+	service->filename = g_strdup(slash + 1);
 
 	service->descr = g_key_file_get_string(keyfile, SERVICE_GROUP,
 						"Description", &err);
