@@ -386,11 +386,8 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 
 	msg = dbus_message_new_signal(service->object_path,
 					SERVICE_INTERFACE, "Started");
-	if (msg) {
-		dbus_message_append_args(msg, DBUS_TYPE_STRING, &new,
-						DBUS_TYPE_INVALID);
+	if (msg)
 		send_message_and_unref(conn, msg);
-	}
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
