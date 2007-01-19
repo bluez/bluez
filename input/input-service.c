@@ -54,13 +54,14 @@ struct input_device {
 };
 
 struct pending_req {
-	char addr[18];
+	char *adapter_path;
+	char peer[18];
 	DBusConnection *conn;
 	DBusMessage *msg;
 };
 
-struct pending_req *pending_req_new(DBusConnection *conn,
-				DBusMessage *msg, const char *addr)
+struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
+				const char *adapter_path, const char *peer)
 {
 	struct pending_req *pr;
 	pr = malloc(sizeof(struct pending_req));
@@ -68,7 +69,8 @@ struct pending_req *pending_req_new(DBusConnection *conn,
 		return NULL;
 
 	memset(pr, 0, sizeof(struct pending_req));
-	memcpy(pr->addr, addr, 18);
+	pr->adapter_path = strdup(adapter_path);
+	strncpy(pr->peer, peer, 18);
 	pr->conn = dbus_connection_ref(conn);
 	pr->msg = dbus_message_ref(msg);
 
@@ -79,6 +81,8 @@ void pending_req_free(struct pending_req *pr)
 {
 	if (!pr)
 		return;
+	if (pr->adapter_path)
+		free(pr->adapter_path);
 	if (pr->conn)
 		dbus_connection_unref(pr->conn);
 	if (pr->msg)
@@ -308,12 +312,41 @@ static int path_addr_cmp(const char *path, const char *addr)
 	return strcasecmp(idev->addr, addr);
 }
 
-static void pnp_handle_reply(DBusPendingCall *call, void *data)
+static int get_handles(struct pending_req *pr, const char *uuid,
+			DBusPendingCallNotifyFunction cb)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+	const char *paddr;
+
+	msg  = dbus_message_new_method_call("org.bluez", pr->adapter_path,
+			"org.bluez.Adapter", "GetRemoteServiceHandles");
+	if (!msg)
+		return -1;
+
+	paddr = pr->peer;
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &paddr,
+			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_INVALID);
+	
+	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
+		error("Can't send D-Bus message.");
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, cb, pr, NULL);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
+static void hid_handle_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	struct pending_req *pr = data;
-	DBusError derr;
 	uint32_t *phandle;
+	DBusError derr;
 	int len;
 
 	dbus_error_init(&derr);
@@ -333,45 +366,62 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 	}
 
 	if (len == 0) {
-		/* PnP is optional */
-		info("FIXME: PnP is optional, request HID record");
+		err_failed(pr->conn, pr->msg, "SDP error");
+		goto fail;
 	} else {
-		/* Request PnP record */
-		info("FIXME: Request PnP Record");
+		info("FIXME: request HID record");
 	}
+
+	goto done;
 fail:
+	pending_req_free(pr);
+done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 }
 
-static int get_handles(struct input_manager *mgr, struct pending_req *pr,
-		const char *uuid, DBusPendingCallNotifyFunction cb)
+static void pnp_handle_reply(DBusPendingCall *call, void *data)
 {
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-	const char *paddr;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	struct pending_req *pr = data;
+	DBusError derr;
+	uint32_t *phandle;
+	const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
+	int len;
 
-	msg  = dbus_message_new_method_call("org.bluez", mgr->adapter_path,
-			"org.bluez.Adapter", "GetRemoteServiceHandles");
-	if (!msg)
-		return -1;
-
-	paddr = pr->addr;
-	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &paddr,
-			DBUS_TYPE_STRING, &uuid,
-			DBUS_TYPE_INVALID);
-	
-	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
-		error("Can't send D-Bus message.");
-		return -1;
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
 	}
 
-	dbus_pending_call_set_notify(pending, cb, pr,
-			(DBusFreeFunction) pending_req_free);
-	dbus_message_unref(msg);
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
+				DBUS_TYPE_INVALID)) {
 
-	return 0;
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	if (len == 0) {
+		/* PnP is optional: Ignore it and request the HID handle  */
+		if (get_handles(pr, hid_uuid, hid_handle_reply) < 0) {
+			err_failed(pr->conn, pr->msg, "SDP error");
+			goto fail;
+		}
+	} else {
+		/* Request PnP record */
+		info("FIXME: Request PnP Record");
+	}
+
+	goto done;
+fail:
+	pending_req_free(pr);
+done:
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
 }
 
 static DBusHandlerResult manager_create_device(DBusConnection *conn,
@@ -402,11 +452,11 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 
 	if (!has_hid_record(mgr->adapter, addr)) {
 		struct pending_req *pr;
-		pr = pending_req_new(conn, msg, addr);
+		pr = pending_req_new(conn, msg, mgr->adapter_path, addr);
 		if (!pr)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-		if (get_handles(mgr, pr, pnp_uuid, pnp_handle_reply) < 0) {
+		if (get_handles(pr, pnp_uuid, pnp_handle_reply) < 0) {
 			pending_req_free(pr);
 			return err_failed(conn, msg, "SDP error");
 		}
