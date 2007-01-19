@@ -1,9 +1,12 @@
 
-noinst_PROGRAMS = bt.networkd
+servicedir = $(libdir)/bluetooth
 
-bt_networkd_SOURCES = main.c
+service_PROGRAMS = bluetoothd-service-network
 
-bt_networkd_LDADD = @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+bluetoothd_service_network_SOURCES = main.c
+
+LDADD = $(top_builddir)/common/libhelper.a \
+	@DBUS_LIBS@ @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@
 
