@@ -3,7 +3,13 @@ import dbus
 bus = dbus.SystemBus()
 
 
+dummy = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'), 'org.freedesktop.DBus.Introspectable')
+
+#print dummy.Introspect()
+
 manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'), 'org.bluez.Manager')
+
+database = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'), 'org.bluez.Database')
 
 adapter = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.Adapter')
 
@@ -20,6 +26,8 @@ def create_service(identifier):
 
 	if (path != ""):
 		return dbus.Interface(bus.get_object('org.bluez', path), 'org.bluez.Service')
+
+echo = create_service("echo")
 
 transfer = create_service("transfer")
 
