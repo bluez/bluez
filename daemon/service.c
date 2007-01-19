@@ -25,6 +25,9 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
+#include <string.h>
+
 #include <dbus/dbus.h>
 
 #include "dbus-helper.h"
@@ -37,6 +40,8 @@
 #define SERVICE_INTERFACE "org.bluez.Service"
 
 static DBusConnection *connection = NULL;
+
+static char *test_conn_name = NULL;
 
 DBusHandlerResult manager_list_services(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -141,27 +146,22 @@ static DBusHandlerResult service_start(DBusConnection *conn,
 
 	debug("Starting service");
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	if (test_conn_name) {
+		reply = dbus_message_new_error(msg, ERROR_INTERFACE ".AlreadyRunning",
+						"Service is already running");
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	} else {
+		reply = dbus_message_new_method_return(msg);
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+		test_conn_name = strdup("org.bluez.service");
+		if (!test_conn_name)
+			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	return dbus_connection_send_and_unref(conn, reply);
-}
-
-static DBusHandlerResult service_is_running(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	dbus_bool_t running = FALSE;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &running,
-					DBUS_TYPE_INVALID);
+		dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+	}
 
 	return dbus_connection_send_and_unref(conn, reply);
 }
@@ -173,11 +173,39 @@ static DBusHandlerResult service_stop(DBusConnection *conn,
 
 	debug("Stopping service");
 
+	if (test_conn_name) {
+		reply = dbus_message_new_method_return(msg);
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+		free(test_conn_name);
+		test_conn_name = NULL;
+
+		dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+	} else {
+		reply = dbus_message_new_error(msg, ERROR_INTERFACE ".NotRunning",
+						"Service is not running");
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	return dbus_connection_send_and_unref(conn, reply);
+}
+
+static DBusHandlerResult service_is_running(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	dbus_bool_t running;
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+	running = test_conn_name ? TRUE : FALSE;
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &running,
+					DBUS_TYPE_INVALID);
 
 	return dbus_connection_send_and_unref(conn, reply);
 }
