@@ -1,4 +1,6 @@
 
+servicedir = $(libdir)/bluetooth
+
 if GLIB
 glib_cflags = @GLIB_CFLAGS@
 glib_ldadd  = @GLIB_LIBS@
@@ -7,15 +9,16 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-noinst_PROGRAMS = bt.audiod bt.headsetd
+service_PROGRAMS = bluetoothd-service-audio
 
-bt_audiod_SOURCES = main.c
+noinst_PROGRAMS = bluetoothd-service-headset
 
-bt_audiod_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+bluetoothd_service_audio_SOURCES = main.c
 
-bt_headsetd_SOURCES = headset.c
+bluetoothd_service_headset_SOURCES = headset.c
 
-bt_headsetd_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+LDADD = $(top_builddir)/common/libhelper.a $(glib_ldadd) \
+	@DBUS_LIBS@ @BLUEZ_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(glib_cflags)
 
