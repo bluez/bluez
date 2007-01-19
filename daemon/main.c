@@ -47,6 +47,7 @@
 #include "system.h"
 #include "manager.h"
 #include "database.h"
+#include "adapter.h"
 #include "service.h"
 
 static GMainLoop *main_loop = NULL;
@@ -79,7 +80,16 @@ static int setup_dbus(void)
 		return -1;
 	}
 
+	if (adapter_init(system_bus) < 0) {
+		database_exit();
+		manager_exit();
+		dbus_connection_destroy_object_path(system_bus, SYSTEM_PATH);
+		dbus_connection_unref(system_bus);
+		return -1;
+	}
+
 	if (service_init(system_bus) < 0) {
+		adapter_exit();
 		database_exit();
 		manager_exit();
 		dbus_connection_destroy_object_path(system_bus, SYSTEM_PATH);
@@ -93,6 +103,8 @@ static int setup_dbus(void)
 static void cleanup_dbus(void)
 {
 	service_exit();
+
+	adapter_exit();
 
 	database_exit();
 

@@ -31,6 +31,7 @@
 #include "logging.h"
 
 #include "system.h"
+#include "adapter.h"
 #include "service.h"
 #include "manager.h"
 
@@ -41,22 +42,11 @@ static DBusConnection *connection = NULL;
 static DBusHandlerResult list_adapters(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessageIter iter, array;
 	DBusMessage *reply;
-	const char path[] = "/org/bluez/hci0", *ptr = path;
 
-	reply = dbus_message_new_method_return(msg);
+	reply = adapter_list(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &array);
-
-	dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &ptr);
-
-	dbus_message_iter_close_container(&iter, &array);
 
 	return dbus_connection_send_and_unref(conn, reply);
 }
@@ -65,14 +55,10 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	const char path[] = "/org/bluez/hci0", *ptr = path;
 
-	reply = dbus_message_new_method_return(msg);
+	reply = adapter_find(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
-					DBUS_TYPE_INVALID);
 
 	return dbus_connection_send_and_unref(conn, reply);
 }
@@ -81,14 +67,10 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	const char path[] = "/org/bluez/hci0", *ptr = path;
 
-	reply = dbus_message_new_method_return(msg);
+	reply = adapter_default(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
-					DBUS_TYPE_INVALID);
 
 	return dbus_connection_send_and_unref(conn, reply);
 }
