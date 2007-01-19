@@ -14,9 +14,9 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-noinst_PROGRAMS = transferd
+noinst_PROGRAMS = bluetoothd_transfer
 
-transferd_SOURCES = main.c
+bluetoothd_transfer_SOURCES = main.c session.h session.c
 
 LDADD = $(top_builddir)/common/libhelper.a $(glib_ldadd) \
 	@DBUS_LIBS@ @OPENOBEX_LIBS@ @BLUEZ_LIBS@
