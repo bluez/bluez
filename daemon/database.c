@@ -84,7 +84,20 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	DBusMessageIter iter, array;
 	dbus_uint32_t handle = 0x12345;
+	const uint8_t *record;
+	int i, len = -1;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	dbus_message_iter_get_fixed_array(&array, &record, &len);
+	if (len < 0)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	for (i = 0; i < len; i++)
+		debug("0x%02x", record[i]);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
