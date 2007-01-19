@@ -31,6 +31,7 @@
 #include "logging.h"
 
 #include "system.h"
+#include "service.h"
 #include "manager.h"
 
 #define MANAGER_INTERFACE "org.bluez.Manager"
@@ -95,19 +96,11 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 static DBusHandlerResult list_services(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessageIter iter, array;
 	DBusMessage *reply;
 
-	reply = dbus_message_new_method_return(msg);
+	reply = service_list(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &array);
-
-	dbus_message_iter_close_container(&iter, &array);
 
 	return dbus_connection_send_and_unref(conn, reply);
 }
@@ -117,11 +110,9 @@ static DBusHandlerResult find_service(DBusConnection *conn,
 {
 	DBusMessage *reply;
 
-	reply = dbus_message_new_method_return(msg);
+	reply = service_find(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	return dbus_connection_send_and_unref(conn, reply);
 }
@@ -131,11 +122,9 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 {
 	DBusMessage *reply;
 
-	reply = dbus_message_new_method_return(msg);
+	reply = service_activate(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	return dbus_connection_send_and_unref(conn, reply);
 }

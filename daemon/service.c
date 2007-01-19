@@ -38,6 +38,63 @@
 
 static DBusConnection *connection = NULL;
 
+DBusMessage *service_list(DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &array);
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return reply;
+}
+
+DBusMessage *service_find(DBusMessage *msg)
+{
+	DBusMessage *reply;
+	const char *pattern;
+
+	dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &pattern, DBUS_TYPE_INVALID);
+
+	debug("Searching service with pattern \"%s\"", pattern);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return 0;
+}
+
+DBusMessage *service_activate(DBusMessage *msg)
+{
+	DBusMessage *reply;
+	const char *pattern;
+
+	dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &pattern, DBUS_TYPE_INVALID);
+
+	debug("Activating service with pattern \"%s\"", pattern);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return 0;
+}
+
 static void config_notify(int action, const char *name, void *data)
 {
 	switch (action) {
