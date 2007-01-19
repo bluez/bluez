@@ -108,9 +108,6 @@ static void service_free(struct service *service)
 	if (service->bus_name)
 		free(service->bus_name);
 
-	if (service->exec)
-		free(service->exec);
-
 	if (service->name)
 		free(service->name);
 
@@ -119,6 +116,9 @@ static void service_free(struct service *service)
 
 	if (service->ident)
 		free(service->ident);
+
+	if (service->opts)
+		free(service->opts);
 
 	if (service->trusted_devices) {
 		g_slist_foreach(service->trusted_devices, (GFunc) free, NULL);
@@ -351,8 +351,8 @@ static void service_died(GPid pid, gint status, gpointer data)
 {
 	struct service *service = data;
 
-	debug("%s (%s) exited with status %d", service->exec, service->name,
-			status);
+	debug("%s (%s) exited with status %d", service->name,
+			service->ident, status);
 
 	g_spawn_close_pid(pid);
 	service->pid = 0;
@@ -377,7 +377,7 @@ static gboolean service_shutdown_timeout(gpointer data)
 	struct service *service = data;
 
 	debug("Sending SIGKILL to \"%s\" (PID %d) since it didn't exit yet",
-			service->exec, service->pid);
+			service->name, service->pid);
 
 	if (kill(service->pid, SIGKILL) < 0)
 		error("kill(%d, SIGKILL): %s (%d)", service->pid,
@@ -409,7 +409,7 @@ static gboolean service_startup_timeout(gpointer data)
 	struct service *service = data;
 
 	debug("Killing \"%s\" (PID %d) because it did not connect to D-Bus in time",
-			service->exec, service->pid);
+			service->name, service->pid);
 
 	abort_startup(service, get_dbus_connection(), ETIME);
 
@@ -420,20 +420,11 @@ int service_start(struct service *service, DBusConnection *conn)
 {
 	GError *err = NULL;
 	DBusError derr;
-	char **argv;
+	char **argv, *cmdline;
 	int argc;
-
-	g_shell_parse_argv(service->exec, &argc, &argv, &err);
-
-	if (err != NULL) {
-		error("Unable to parse exec line \"%s\": %s", service->exec, err->message);
-		g_error_free(err);
-		return -1;
-	}
 
 	if (!dbus_connection_add_filter(conn, service_filter, service, NULL)) {
 		error("Unable to add signal filter");
-		g_strfreev(argv);
 		return -1;
 	}
 
@@ -443,24 +434,40 @@ int service_start(struct service *service, DBusConnection *conn)
 		error("Add match \"%s\" failed: %s", derr.message);
 		dbus_error_free(&derr);
 		dbus_connection_remove_filter(conn, service_filter, service);
-		g_strfreev(argv);
 		return -1;
 	}
 
-	if (!g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
+	cmdline = g_strdup_printf("%s/bluetoothd_%s %s",
+				SERVICEDIR, service->ident,
+				service->opts ? service->opts : "");
+
+	g_shell_parse_argv(cmdline, &argc, &argv, &err);
+	if (err != NULL) {
+		error("Unable to parse cmdline \"%s\": %s", cmdline,
+				err->message);
+		g_error_free(err);
+		dbus_connection_remove_filter(conn, service_filter, service);
+		dbus_bus_remove_match(conn, NAME_MATCH, NULL);
+		g_free(cmdline);
+		return -1;
+	}
+
+	g_free(cmdline);
+
+	if (!g_spawn_async(SERVICEDIR, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
 				service_setup, service, &service->pid, NULL)) {
-		error("Unable to execute %s", service->exec);
+		error("Unable to execute %s", argv[0]);
 		dbus_connection_remove_filter(conn, service_filter, service);
 		dbus_bus_remove_match(conn, NAME_MATCH, NULL);
 		g_strfreev(argv);
 		return -1;
 	}
 
-	g_strfreev(argv);
-
 	g_child_watch_add(service->pid, service_died, service);
 
-	debug("%s executed with PID %d", service->exec, service->pid);
+	debug("%s executed with PID %d", argv[0], service->pid);
+
+	g_strfreev(argv);
 
 	service->startup_timer = g_timeout_add(STARTUP_TIMEOUT,
 						service_startup_timeout,
@@ -673,8 +680,8 @@ static int register_service(struct service *service)
 	suffix = strstr(obj_path, SERVICE_SUFFIX);
 	*suffix = '\0';
 
-	debug("Registering service object: exec=%s, name=%s (%s)",
-			service->exec, service->name, obj_path);
+	debug("Registering service object: ident=%s, name=%s (%s)",
+			service->ident, service->name, obj_path);
 
 	if (!dbus_connection_register_object_path(conn, obj_path,
 						&services_vtable, service))
@@ -805,10 +812,10 @@ static struct service *create_service(const char *file)
 		goto failed;
 	}
 
-	service->exec = g_key_file_get_string(keyfile, SERVICE_GROUP,
-						"Exec", &err);
-	if (!service->exec) {
-		error("%s: %s", file, err->message);
+	service->ident = g_key_file_get_string(keyfile, SERVICE_GROUP,
+						"Identifier", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
 		g_error_free(err);
 		goto failed;
 	}
@@ -837,8 +844,8 @@ static struct service *create_service(const char *file)
 		err = NULL;
 	}
 
-	service->ident = g_key_file_get_string(keyfile, SERVICE_GROUP,
-						"Identifier", &err);
+	service->opts = g_key_file_get_string(keyfile, SERVICE_GROUP,
+						"Options", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);

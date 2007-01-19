@@ -40,10 +40,10 @@ struct service {
 	char *bus_name;		/* D-Bus unique name */
 
 	/* Information parsed from the service file */
-	char *exec;		/* Location of executable */
 	char *name;
 	char *descr;
 	char *ident;
+	char *opts;
 	gboolean autostart;
 
 	GSList *trusted_devices;
