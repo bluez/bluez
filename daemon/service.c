@@ -66,16 +66,19 @@ DBusHandlerResult manager_find_service(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	const char *pattern;
+	const char path[] = "/org/bluez/service", *ptr = path;
 
 	dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &pattern, DBUS_TYPE_INVALID);
 
 	debug("Searching service with pattern \"%s\"", pattern);
 
-	reply = dbus_message_new_error(msg, ERROR_INTERFACE ".NotFound",
-						"Service does not exists");
+	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_INVALID);
 
 	return dbus_connection_send_and_unref(conn, reply);
 }
