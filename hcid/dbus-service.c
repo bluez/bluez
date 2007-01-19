@@ -365,8 +365,10 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 	if (service->action) {
 		msg = dbus_message_new_method_return(service->action);
 		if (msg) {
-			dbus_message_append_args(msg, DBUS_TYPE_STRING, &new,
-						DBUS_TYPE_INVALID);
+			if (dbus_message_is_method_call(msg, MANAGER_INTERFACE,
+							"ActivateService"))
+				dbus_message_append_args(msg, DBUS_TYPE_STRING, &new,
+							DBUS_TYPE_INVALID);
 			send_message_and_unref(conn, msg);
 		}
 
@@ -490,7 +492,7 @@ static gboolean service_startup_timeout(gpointer data)
 	return FALSE;
 }
 
-static int start_service(struct service *service, DBusConnection *conn)
+int service_start(struct service *service, DBusConnection *conn)
 {
 	GError *err = NULL;
 	DBusError derr;
@@ -551,7 +553,7 @@ static DBusHandlerResult start(DBusConnection *conn,
 	if (service->pid)
 		return error_failed(conn, msg, EALREADY);
 
-	if (start_service(service, conn) < 0)
+	if (service_start(service, conn) < 0)
 		return error_failed(conn, msg, ENOEXEC);
 
 	service->action = dbus_message_ref(msg);
@@ -858,23 +860,13 @@ void release_services(DBusConnection *conn)
 
 const char *search_service(DBusConnection *conn, const char *pattern)
 {
-	GSList *l = services;
-	struct service *service;
-	const char *path;
+	GSList *l;
 
-	while (l) {
-		path = l->data;
-
-		l = l->next;
-
-		if (!dbus_connection_get_object_path_data(conn, path, (void *) &service))
-			continue;
-
-		if (!service)
-			continue;
+	for (l = services; l != NULL; l = l->next) {
+		struct service *service = l->data;
 
 		if (service->ident && !strcmp(service->ident, pattern))
-			return path;
+			return service->object_path;
 	}
 
 	return NULL;
@@ -1011,7 +1003,7 @@ static void service_notify(int action, const char *name, void *user_data)
 		}
 
 		if (service->autostart)
-			start_service(service, get_dbus_connection());
+			service_start(service, get_dbus_connection());
 
 		break;
 	case NOTIFY_DELETE:
@@ -1038,7 +1030,7 @@ static gboolean startup_services(gpointer user_data)
 		struct service *service = l->data;
 
 		if (service->autostart)
-			start_service(service, get_dbus_connection());
+			service_start(service, get_dbus_connection());
 
 	}
 

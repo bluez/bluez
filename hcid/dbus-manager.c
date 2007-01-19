@@ -245,6 +245,34 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult activate_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *pattern, *path;
+	struct service *service;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &pattern,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	path = search_service(conn, pattern);
+	if (!path)
+		return error_no_such_service(conn, msg);
+
+	if (!dbus_connection_get_object_path_data(conn, path,
+						(void *) &service))
+		return error_no_such_service(conn, msg);
+
+	if (service_start(service, conn) < 0)
+		return error_failed(conn, msg, ENOEXEC);
+
+	service->action = dbus_message_ref(msg);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+
 static sdp_buf_t *service_record_extract(DBusMessageIter *iter)
 {
 	sdp_buf_t *sdp_buf;
@@ -507,6 +535,7 @@ static struct service_data methods[] = {
 	{ "ListAdapters",		list_adapters			},
 	{ "FindService",		find_service			},
 	{ "ListServices",		list_services			},
+	{ "ActivateService",		activate_service		},
 	{ "AddServiceRecord",		add_service_record		},
 	{ "AddServiceRecordFromXML", 	add_service_record_xml		},
 	{ "RemoveServiceRecord",	remove_service_record		},

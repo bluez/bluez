@@ -78,6 +78,8 @@ struct service_call *service_call_new(DBusConnection *conn, DBusMessage *msg,
 					struct service *service);
 void service_call_free(void *data);
 
+int service_start(struct service *service, DBusConnection *conn);
+
 int init_services(const char *path);
 
 #endif /* __BLUEZ_DBUS_SERVICE_H */
