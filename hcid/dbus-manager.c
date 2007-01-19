@@ -44,6 +44,7 @@
 #include "dbus.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
+#include "dbus-database.h"
 #include "dbus-security.h"
 #include "dbus-service.h"
 #include "dbus-manager.h"
@@ -571,10 +572,11 @@ DBusHandlerResult handle_manager_method(DBusConnection *conn,
 			return handler(conn, msg, data);
 		else
 			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	if (!strcmp(iface, SECURITY_INTERFACE))
+	} else if (!strcmp(iface, DATABASE_INTERFACE)) {
+		return handle_database_method(conn, msg, data);
+	} else if (!strcmp(iface, SECURITY_INTERFACE)) {
 		return handle_security_method(conn, msg, data);
+	}
 
 	return error_unknown_method(conn, msg);
 }

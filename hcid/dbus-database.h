@@ -20,3 +20,12 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+#ifndef __BLUEZ_DBUS_DATABASE_H
+#define __BLUEZ_DBUS_DATABASE_H
+
+#define DATABASE_INTERFACE "org.bluez.Database"
+
+DBusHandlerResult handle_database_method(DBusConnection *conn, DBusMessage *msg, void *data);
+
+#endif /* __BLUEZ_DBUS_DATABSE_H */
