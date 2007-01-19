@@ -23,7 +23,3 @@
 
 int adapter_init(DBusConnection *conn);
 void adapter_exit(void);
-
-DBusMessage *adapter_list(DBusMessage *msg);
-DBusMessage *adapter_find(DBusMessage *msg);
-DBusMessage *adapter_default(DBusMessage *msg);

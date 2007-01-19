@@ -39,90 +39,36 @@
 
 static DBusConnection *connection = NULL;
 
-static DBusHandlerResult list_adapters(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
+extern DBusHandlerResult manager_list_adapters(DBusConnection *conn,
+						DBusMessage *msg, void *data);
 
-	reply = adapter_list(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+extern DBusHandlerResult manager_find_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data);
 
-	return dbus_connection_send_and_unref(conn, reply);
-}
+extern DBusHandlerResult manager_default_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data);
 
-static DBusHandlerResult find_adapter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
+extern DBusHandlerResult manager_list_services(DBusConnection *conn,
+						DBusMessage *msg, void *data);
 
-	reply = adapter_find(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+extern DBusHandlerResult manager_find_service(DBusConnection *conn,
+						DBusMessage *msg, void *data);
 
-	return dbus_connection_send_and_unref(conn, reply);
-}
-
-static DBusHandlerResult default_adapter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	reply = adapter_default(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return dbus_connection_send_and_unref(conn, reply);
-}
-
-static DBusHandlerResult list_services(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	reply = service_list(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return dbus_connection_send_and_unref(conn, reply);
-}
-
-static DBusHandlerResult find_service(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	reply = service_find(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return dbus_connection_send_and_unref(conn, reply);
-}
-
-static DBusHandlerResult activate_service(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	reply = service_activate(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return dbus_connection_send_and_unref(conn, reply);
-}
+extern DBusHandlerResult manager_activate_service(DBusConnection *conn,
+						DBusMessage *msg, void *data);
 
 static DBusMethodVTable manager_table[] = {
-	{ "ListAdapters", list_adapters,
+	{ "ListAdapters", manager_list_adapters,
 		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_ARRAY_AS_STRING },
-	{ "FindAdapter", find_adapter,
+	{ "FindAdapter", manager_find_adapter,
 		DBUS_TYPE_STRING_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
-	{ "DefaultAdapter", default_adapter,
+	{ "DefaultAdapter", manager_default_adapter,
 		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
-	{ "ListServices", list_services,
+	{ "ListServices", manager_list_services,
 		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_ARRAY_AS_STRING },
-	{ "FindService", find_service,
+	{ "FindService", manager_find_service,
 		DBUS_TYPE_STRING_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
-	{ "ActivateService", activate_service,
+	{ "ActivateService", manager_activate_service,
 		DBUS_TYPE_STRING_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
 	{ }
 };

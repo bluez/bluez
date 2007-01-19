@@ -38,7 +38,8 @@
 
 static DBusConnection *connection = NULL;
 
-DBusMessage *adapter_list(DBusMessage *msg)
+DBusHandlerResult manager_list_adapters(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
@@ -46,7 +47,7 @@ DBusMessage *adapter_list(DBusMessage *msg)
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return NULL;
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -57,10 +58,11 @@ DBusMessage *adapter_list(DBusMessage *msg)
 
 	dbus_message_iter_close_container(&iter, &array);
 
-	return reply;
+	return dbus_connection_send_and_unref(conn, reply);
 }
 
-DBusMessage *adapter_find(DBusMessage *msg)
+DBusHandlerResult manager_find_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *pattern;
@@ -73,27 +75,28 @@ DBusMessage *adapter_find(DBusMessage *msg)
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return NULL;
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return dbus_connection_send_and_unref(conn, reply);
 }
 
-DBusMessage *adapter_default(DBusMessage *msg)
+DBusHandlerResult manager_default_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char path[] = "/org/bluez/hci0", *ptr = path;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return NULL;
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
 					DBUS_TYPE_INVALID);
 
-	return reply;
+	return dbus_connection_send_and_unref(conn, reply);
 }
 
 int adapter_init(DBusConnection *conn)

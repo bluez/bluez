@@ -23,7 +23,3 @@
 
 int service_init(DBusConnection *conn);
 void service_exit(void);
-
-DBusMessage *service_list(DBusMessage *msg);
-DBusMessage *service_find(DBusMessage *msg);
-DBusMessage *service_activate(DBusMessage *msg);
