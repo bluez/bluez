@@ -437,7 +437,7 @@ int service_start(struct service *service, DBusConnection *conn)
 		return -1;
 	}
 
-	cmdline = g_strdup_printf("%s/bluetoothd_%s %s",
+	cmdline = g_strdup_printf("%s/bluetoothd-service-%s %s",
 				SERVICEDIR, service->ident,
 				service->opts ? service->opts : "");
 
