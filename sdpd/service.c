@@ -207,6 +207,52 @@ void register_server_service(int public)
 	update_db_timestamp();
 }
 
+int add_record_to_server(sdp_record_t *rec)
+{
+	sdp_data_t *data;
+
+	if (rec->handle == 0xffffffff) {
+		rec->handle = sdp_next_handle();
+		if (rec->handle < 0x10000)
+			return -1;
+	} else {
+		if (sdp_record_find(rec->handle))
+			return -1; 
+	}
+
+	debug("Adding record with handle 0x%05x", rec->handle);
+
+	sdp_record_add(BDADDR_ANY, rec);
+
+	data = sdp_data_alloc(SDP_UINT32, &rec->handle);
+	sdp_attr_replace(rec, SDP_ATTR_RECORD_HANDLE, data);
+
+	if (sdp_data_get(rec, SDP_ATTR_BROWSE_GRP_LIST) == NULL) {
+		uuid_t uuid;
+		sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
+		sdp_pattern_add_uuid(rec, &uuid);
+	}
+
+	update_db_timestamp();
+
+	return 0;
+}
+
+void remove_record_from_server(uint32_t handle)
+{
+	sdp_record_t *rec;
+
+	debug("Removing record with handle 0x%05x", handle);
+
+	rec = sdp_record_find(handle);
+	if (rec) {
+		if (sdp_record_remove(handle) == 0)
+			update_db_timestamp();
+
+		sdp_record_free(rec);
+	}
+}
+
 // FIXME: refactor for server-side
 static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t handleExpected, int *scanned)
 {
