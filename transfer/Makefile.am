@@ -6,6 +6,8 @@ dbusdir = $(sysconfdir)/dbus-1/system.d
 dbus_DATA = bluetooth-transfer.conf
 endif
 
+servicedir = $(libdir)/bluetooth
+
 if GLIB
 glib_cflags = @GLIB_CFLAGS@
 glib_ldadd  = @GLIB_LIBS@
@@ -14,9 +16,10 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-noinst_PROGRAMS = bluetoothd_transfer
+service_PROGRAMS = bluetoothd-service-transfer
 
-bluetoothd_transfer_SOURCES = main.c session.h session.c
+bluetoothd_service_transfer_SOURCES = \
+		main.c session.h session.c
 
 LDADD = $(top_builddir)/common/libhelper.a $(glib_ldadd) \
 	@DBUS_LIBS@ @OPENOBEX_LIBS@ @BLUEZ_LIBS@
