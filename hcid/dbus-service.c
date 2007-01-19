@@ -133,28 +133,6 @@ static void service_free(struct service *service)
 	free(service);
 }
 
-int register_service_records(GSList *lrecords)
-{
-	while (lrecords) {
-		struct binary_record *rec = lrecords->data;
-		lrecords = lrecords->next;
-		uint32_t handle = 0;
-
-		if (!rec || !rec->buf || rec->handle != 0xffffffff)
-			continue;
-
-		if (register_sdp_record(rec->buf->data, rec->buf->data_size, &handle) < 0) {
-			/* FIXME: If just one of the service record registration fails */
-			error("Service Record registration failed:(%s, %d)",
-				strerror(errno), errno);
-		}
-
-		rec->handle = handle;
-	}
-
-	return 0;
-}
-
 static int unregister_service_records(GSList *lrecords)
 {
 	while (lrecords) {
@@ -1002,5 +980,4 @@ int init_services(const char *path)
 
 	return 0;
 }
-
 

@@ -66,8 +66,6 @@ void append_available_services(DBusMessageIter *iter);
 
 struct service *search_service(DBusConnection *conn, const char *pattern);
 
-int register_service_records(GSList *lrecords);
-
 int service_start(struct service *service, DBusConnection *conn);
 
 int init_services(const char *path);
