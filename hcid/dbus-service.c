@@ -108,7 +108,7 @@ static void service_free(struct service *service)
 	g_free(service->opts);
 
 	if (service->trusted_devices) {
-		g_slist_foreach(service->trusted_devices, (GFunc) free, NULL);
+		g_slist_foreach(service->trusted_devices, (GFunc) g_free, NULL);
 		g_slist_free(service->trusted_devices);
 	}
 
@@ -550,7 +550,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	service->trusted_devices = g_slist_append(service->trusted_devices, strdup(address));
+	service->trusted_devices = g_slist_append(service->trusted_devices, g_strdup(address));
 
 	return send_message_and_unref(conn, reply);
 }
@@ -607,7 +607,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 
 	paddress = l->data;
 	service->trusted_devices = g_slist_remove(service->trusted_devices, l->data);
-	free(paddress);
+	g_free(paddress);
 
 	return send_message_and_unref(conn, reply);
 }
