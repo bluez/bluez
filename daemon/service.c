@@ -67,13 +67,10 @@ DBusMessage *service_find(DBusMessage *msg)
 
 	debug("Searching service with pattern \"%s\"", pattern);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
+	reply = dbus_message_new_error(msg, ERROR_INTERFACE ".NotFound",
+						"Service does not exists");
 
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	return 0;
+	return reply;
 }
 
 DBusMessage *service_activate(DBusMessage *msg)
@@ -86,13 +83,10 @@ DBusMessage *service_activate(DBusMessage *msg)
 
 	debug("Activating service with pattern \"%s\"", pattern);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
+	reply = dbus_message_new_error(msg, ERROR_INTERFACE ".NotFound",
+						"Service does not exists");
 
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	return 0;
+	return reply;
 }
 
 static void config_notify(int action, const char *name, void *data)

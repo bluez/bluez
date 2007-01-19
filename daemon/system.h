@@ -21,4 +21,6 @@
  *
  */
 
+#define ERROR_INTERFACE "org.bluez.Error"
+
 #define SYSTEM_PATH "/org/bluez"
