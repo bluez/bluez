@@ -365,7 +365,7 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 	if (service->action) {
 		msg = dbus_message_new_method_return(service->action);
 		if (msg) {
-			if (dbus_message_is_method_call(msg, MANAGER_INTERFACE,
+			if (dbus_message_is_method_call(service->action, MANAGER_INTERFACE,
 							"ActivateService"))
 				dbus_message_append_args(msg, DBUS_TYPE_STRING, &new,
 							DBUS_TYPE_INVALID);
