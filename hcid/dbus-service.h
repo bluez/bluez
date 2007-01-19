@@ -70,7 +70,7 @@ void release_services(DBusConnection *conn);
 
 void append_available_services(DBusMessageIter *iter);
 
-const char *search_service(DBusConnection *conn, const char *pattern);
+struct service *search_service(DBusConnection *conn, const char *pattern);
 
 int register_service_records(GSList *lrecords);
 

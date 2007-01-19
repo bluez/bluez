@@ -858,7 +858,7 @@ void release_services(DBusConnection *conn)
 	services = NULL;
 }
 
-const char *search_service(DBusConnection *conn, const char *pattern)
+struct service *search_service(DBusConnection *conn, const char *pattern)
 {
 	GSList *l;
 
@@ -866,7 +866,7 @@ const char *search_service(DBusConnection *conn, const char *pattern)
 		struct service *service = l->data;
 
 		if (service->ident && !strcmp(service->ident, pattern))
-			return service->object_path;
+			return service;
 	}
 
 	return NULL;

@@ -199,22 +199,23 @@ static DBusHandlerResult find_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	const char *pattern, *path;
+	const char *pattern;
+	struct service *service;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	path = search_service(conn, pattern);
-	if (!path)
+	service = search_service(conn, pattern);
+	if (!service)
 		return error_no_such_service(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &service->object_path,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -248,7 +249,7 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 static DBusHandlerResult activate_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	const char *pattern, *path;
+	const char *pattern;
 	struct service *service;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -256,13 +257,23 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	path = search_service(conn, pattern);
-	if (!path)
+	service = search_service(conn, pattern);
+	if (!service)
 		return error_no_such_service(conn, msg);
 
-	if (!dbus_connection_get_object_path_data(conn, path,
-						(void *) &service))
-		return error_no_such_service(conn, msg);
+	if (service->bus_name) {
+		DBusMessage *reply;
+
+		reply = dbus_message_new_method_return(msg);
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+		dbus_message_append_args(msg,
+					DBUS_TYPE_STRING, &service->object_path,
+					DBUS_TYPE_INVALID);
+
+		return send_message_and_unref(conn, reply);
+	}
 
 	if (service_start(service, conn) < 0)
 		return error_failed(conn, msg, ENOEXEC);
