@@ -55,6 +55,7 @@
 #define NAME_MATCH "interface=" DBUS_INTERFACE_DBUS ",member=NameOwnerChanged"
 
 static GSList *services = NULL;
+static GSList *removed = NULL;
 
 struct binary_record *binary_record_new()
 {
@@ -438,6 +439,10 @@ static void service_died(GPid pid, gint status, gpointer data)
 		service->shutdown_timer = 0;
 	}
 
+	if (g_slist_find(removed, service)) {
+		removed = g_slist_remove(removed, service);
+		service_free(service);
+	}
 }
 
 
@@ -457,14 +462,20 @@ static gboolean service_shutdown_timeout(gpointer data)
 	return FALSE;
 }
 
-static void stop_service(struct service *service)
+static void stop_service(struct service *service, gboolean remove)
 {
 	if (kill(service->pid, SIGTERM) < 0)
 		error("kill(%d, SIGTERM): %s (%d)", service->pid,
 				strerror(errno), errno);
+
 	service->shutdown_timer = g_timeout_add(SHUTDOWN_TIMEOUT,
 						service_shutdown_timeout,
 						service);
+
+	if (remove) {
+		services = g_slist_remove(services, service);
+		removed = g_slist_append(removed, service);
+	}
 }
 
 static gboolean service_startup_timeout(gpointer data)
@@ -521,8 +532,7 @@ static int start_service(struct service *service, DBusConnection *conn)
 
 	g_strfreev(argv);
 
-	service->watch_id = g_child_watch_add(service->pid, service_died,
-						service);
+	g_child_watch_add(service->pid, service_died, service);
 
 	debug("%s executed with PID %d", service->exec, service->pid);
 
@@ -557,7 +567,7 @@ static DBusHandlerResult stop(DBusConnection *conn,
 	if (!service->bus_name)
 		return error_failed(conn, msg, EPERM);
 
-	stop_service(service);
+	stop_service(service, FALSE);
 
 	service->action = dbus_message_ref(msg);
 
@@ -801,6 +811,17 @@ static int unregister_service(struct service *service)
 	if (!dbus_connection_unregister_object_path(conn, service->object_path))
 		return -ENOMEM;
 
+	if (service->records)
+		unregister_service_records(service->records);
+
+	if (service->bus_name)
+		name_listener_remove(get_dbus_connection(), service->bus_name,
+					(name_cb_t) service_exit, service);
+
+	signal = dbus_message_new_signal(service->object_path,
+					SERVICE_INTERFACE, "Stopped");
+	send_message_and_unref(conn, signal);
+
 	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
 						"ServiceRemoved");
 	if (signal) {
@@ -810,30 +831,19 @@ static int unregister_service(struct service *service)
 		send_message_and_unref(conn, signal);
 	}
 
-	if (service->records)
-		unregister_service_records(service->records);
 
-	if (service->bus_name)
-		name_listener_remove(get_dbus_connection(), service->bus_name,
-					(name_cb_t) service_exit, service);
-
-	if (service->watch_id)
-		g_source_remove(service->watch_id);
-
-	if (service->pid && kill(service->pid, SIGKILL) < 0)
-		error("kill(%d, SIGKILL): %s (%d)", service->pid,
-				strerror(errno), errno);
-
-	if (service->startup_timer)
-		abort_startup(service, get_dbus_connection(), ECANCELED);
-
-	if (service->shutdown_timer)
-		g_timeout_remove(service->shutdown_timer);
-
-	services = g_slist_remove(services, service);
-
-	service_free(service);
-
+	if (service->pid) {
+		if (service->startup_timer) {
+			abort_startup(service, get_dbus_connection(), ECANCELED);
+			services = g_slist_remove(services, service);
+			removed = g_slist_append(removed, service);
+		} else if (!service->shutdown_timer)
+			stop_service(service, TRUE);
+	} else {
+		services = g_slist_remove(services, service);
+		service_free(service);
+	}
+	
 	return 0;
 }
 

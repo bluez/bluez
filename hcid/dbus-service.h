@@ -38,7 +38,6 @@ struct service {
 	/* These are set when the service is running */
 	GPid pid;		/* Process id */
 	char *bus_name;		/* D-Bus unique name */
-	guint watch_id;		/* Id for the child watch */
 
 	/* Information parsed from the service file */
 	char *exec;		/* Location of executable */
