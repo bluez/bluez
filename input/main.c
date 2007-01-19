@@ -44,13 +44,6 @@
 
 static GMainLoop *main_loop;
 
-static void usage(void)
-{
-	printf("bt.inputd - Bluetooth Input daemon ver %s\n", VERSION);
-	printf("Usage: \n");
-	printf("\tbt.inputd [-n not_daemon]\n");
-}
-
 static void sig_term(int sig)
 {
 	g_main_quit(main_loop);
@@ -68,7 +61,6 @@ int main(int argc, char *argv[])
 			break;
 
 		default:
-			usage();
 			exit(1);
 		}
 	}
@@ -78,7 +70,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	start_logging("bt.inputd", "Bluetooth Input daemon");
+	start_logging("input", "Bluetooth Input daemon");
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;

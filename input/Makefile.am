@@ -13,11 +13,11 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-noinst_PROGRAMS = bt.inputd
+noinst_PROGRAMS = bluetoothd_input
 
-bt_inputd_SOURCES = main.c input-service.h input-service.c
+bluetoothd_input_SOURCES = main.c input-service.h input-service.c
 
-bt_inputd_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+bluetoothd_input_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(glib_cflags)
 
