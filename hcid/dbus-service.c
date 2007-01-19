@@ -494,9 +494,27 @@ static int start_service(struct service *service, DBusConnection *conn)
 		return -1;
 	}
 
+	if (!dbus_connection_add_filter(conn, service_filter, service, NULL)) {
+		error("Unable to add signal filter");
+		g_strfreev(argv);
+		return -1;
+	}
+
+	dbus_error_init(&derr);
+	dbus_bus_add_match(conn, NAME_MATCH, &derr);
+	if (dbus_error_is_set(&derr)) {
+		error("Add match \"%s\" failed: %s", derr.message);
+		dbus_error_free(&derr);
+		dbus_connection_remove_filter(conn, service_filter, service);
+		g_strfreev(argv);
+		return -1;
+	}
+
 	if (!g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
 				service_setup, service, &service->pid, NULL)) {
 		error("Unable to execute %s", service->exec);
+		dbus_connection_remove_filter(conn, service_filter, service);
+		dbus_bus_remove_match(conn, NAME_MATCH, NULL);
 		g_strfreev(argv);
 		return -1;
 	}
@@ -507,22 +525,6 @@ static int start_service(struct service *service, DBusConnection *conn)
 						service);
 
 	debug("%s executed with PID %d", service->exec, service->pid);
-
-	if (!dbus_connection_add_filter(conn, service_filter, service, NULL)) {
-		error("Unable to add signal filter");
-		if (kill(service->pid, SIGKILL) < 0)
-			error("kill(%d, SIGKILL): %s (%d)", service->pid,
-					strerror(errno), errno);
-		return -1;
-	}
-
-	dbus_error_init(&derr);
-	dbus_bus_add_match(conn, NAME_MATCH, &derr);
-	if (dbus_error_is_set(&derr)) {
-		error("Add match \"%s\" failed: %s", derr.message);
-		dbus_error_free(&derr);
-		return -1;
-	}
 
 	service->startup_timer = g_timeout_add(STARTUP_TIMEOUT,
 						service_startup_timeout,
