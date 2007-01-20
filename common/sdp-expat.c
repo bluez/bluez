@@ -25,9 +25,7 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <errno.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
@@ -186,21 +184,17 @@ static void convert_xml_to_sdp_start(void *data, const char *el, const char **at
 		/* Parse value, name, encoding */
 		for (i = 0; attr[i]; i += 2) {
 			if (!strcmp(attr[i], "value")) {
-				int curlen =
-				    strlen(context->stack_head->text);
+				int curlen = strlen(context->stack_head->text);
 				int attrlen = strlen(attr[i + 1]);
 
 				/* Ensure we're big enough */
-				while ((curlen + 1 + attrlen) >
-				       context->stack_head->size) {
-					sdp_xml_data_expand(context->
-							    stack_head);
+				while ((curlen + 1 + attrlen) > context->stack_head->size) {
+					sdp_xml_data_expand(context->stack_head);
 				}
 
 				memcpy(&context->stack_head->text[curlen],
-				       attr[i + 1], attrlen);
-				context->stack_head->text[curlen +
-							  attrlen] = '\0';
+							attr[i + 1], attrlen);
+				context->stack_head->text[curlen + attrlen] = '\0';
 			}
 
 			if (!strcmp(attr[i], "encoding")) {
@@ -209,13 +203,11 @@ static void convert_xml_to_sdp_start(void *data, const char *el, const char **at
 			}
 
 			if (!strcmp(attr[i], "name")) {
-				context->stack_head->name =
-				    strdup(attr[i + 1]);
+				context->stack_head->name = strdup(attr[i + 1]);
 			}
 		}
 
-		context->stack_head->data =
-		    sdp_xml_parse_datatype(type, context);
+		context->stack_head->data = sdp_xml_parse_datatype(type, context);
 
 		/* Could not parse an entry */
 		if (context->stack_head->data == NULL)
@@ -244,9 +236,8 @@ static void convert_xml_to_sdp_end(void *data, const char *el)
 
 	if (!strcmp(el, "attribute")) {
 		if (context->stack_head && context->stack_head->data) {
-			int ret = sdp_attr_add(context->sdprec,
-					       context->attrId,
-					       context->stack_head->data);
+			int ret = sdp_attr_add(context->sdprec, context->attrId,
+							context->stack_head->data);
 			if (ret == -1)
 				debug("Trouble adding attribute\n");
 
@@ -254,42 +245,33 @@ static void convert_xml_to_sdp_end(void *data, const char *el)
 			sdp_xml_data_free(context->stack_head);
 			context->stack_head = 0;
 		} else {
-			debug("No Data for attribute: %d\n",
-			      context->attrId);
+			debug("No Data for attribute: %d\n", context->attrId);
 		}
 
 		return;
 	} else if (!strcmp(el, "sequence")) {
-		context->stack_head->data->unitSize =
-		    compute_seq_size(context->stack_head->data);
+		context->stack_head->data->unitSize = compute_seq_size(context->stack_head->data);
 
 		if (context->stack_head->data->unitSize > USHRT_MAX) {
-			context->stack_head->data->unitSize +=
-			    sizeof(uint32_t);
+			context->stack_head->data->unitSize += sizeof(uint32_t);
 			context->stack_head->data->dtd = SDP_SEQ32;
 		} else if (context->stack_head->data->unitSize > UCHAR_MAX) {
-			context->stack_head->data->unitSize +=
-			    sizeof(uint16_t);
+			context->stack_head->data->unitSize += sizeof(uint16_t);
 			context->stack_head->data->dtd = SDP_SEQ16;
 		} else {
-			context->stack_head->data->unitSize +=
-			    sizeof(uint8_t);
+			context->stack_head->data->unitSize += sizeof(uint8_t);
 		}
 	} else if (!strcmp(el, "alternate")) {
-		context->stack_head->data->unitSize =
-		    compute_seq_size(context->stack_head->data);
+		context->stack_head->data->unitSize = compute_seq_size(context->stack_head->data);
 
 		if (context->stack_head->data->unitSize > USHRT_MAX) {
-			context->stack_head->data->unitSize +=
-			    sizeof(uint32_t);
+			context->stack_head->data->unitSize += sizeof(uint32_t);
 			context->stack_head->data->dtd = SDP_ALT32;
 		} else if (context->stack_head->data->unitSize > UCHAR_MAX) {
-			context->stack_head->data->unitSize +=
-			    sizeof(uint16_t);
+			context->stack_head->data->unitSize += sizeof(uint16_t);
 			context->stack_head->data->dtd = SDP_ALT16;
 		} else {
-			context->stack_head->data->unitSize +=
-			    sizeof(uint8_t);
+			context->stack_head->data->unitSize += sizeof(uint8_t);
 		}
 	}
 
@@ -305,13 +287,9 @@ static void convert_xml_to_sdp_end(void *data, const char *el)
 		case SDP_ALT8:
 		case SDP_ALT16:
 		case SDP_ALT32:
-			context->stack_head->next->data->val.
-			    dataseq =
-			    sdp_seq_append(context->
-					   stack_head->
-					   next->data->
-					   val.dataseq,
-					   context->stack_head->data);
+			context->stack_head->next->data->val.dataseq =
+				sdp_seq_append(context->stack_head->next->data->val.dataseq,
+								context->stack_head->data);
 			context->stack_head->data = 0;
 			break;
 		}
@@ -338,7 +316,7 @@ static struct sdp_xml_context *sdp_xml_init_context()
 
 	context->parser = XML_ParserCreate(NULL);
 	XML_SetElementHandler(context->parser, convert_xml_to_sdp_start,
-			      convert_xml_to_sdp_end);
+						convert_xml_to_sdp_end);
 	XML_SetUserData(context->parser, context);
 
 	if (!context->parser)
