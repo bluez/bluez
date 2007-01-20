@@ -136,4 +136,24 @@ void g_slist_free(GSList *list);
 
 /* End GSList declarations */
 
+/* Memory allocation related */
+
+gpointer g_malloc(gulong n_bytes);
+gpointer g_malloc0(gulong n_bytes);
+gpointer g_try_malloc(gulong n_bytes);
+gpointer g_try_malloc0(gulong n_bytes);
+
+void g_free(gpointer mem);
+
+gchar *g_strdup(const gchar *str);
+
+#define g_new(struct_type, n_structs) \
+	((struct_type *) g_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
+#define g_new0(struct_type, n_structs) \
+	((struct_type *) g_malloc0 (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
+#define g_try_new(struct_type, n_structs)               \
+	((struct_type *) g_try_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
+#define g_try_new0(struct_type, n_structs)              \
+	((struct_type *) g_try_malloc0 (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
+
 #endif /* __GMAIN_H */

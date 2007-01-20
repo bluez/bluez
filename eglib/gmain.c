@@ -813,3 +813,78 @@ void g_slist_free(GSList *list)
 		free(l);
 	}
 }
+
+/* Memory allocation functions */
+
+gpointer g_malloc(gulong n_bytes)
+{
+	gpointer mem;
+
+	if (!n_bytes)
+		return NULL;
+
+	mem = malloc((size_t) n_bytes);
+	if (!mem) {
+		fprintf(stderr, "g_malloc: failed to allocate %lu bytes",
+				n_bytes);
+		abort();
+	}
+
+	return mem;
+}
+
+gpointer g_malloc0(gulong n_bytes)
+{
+	gpointer mem;
+
+	if (!n_bytes)
+		return NULL;
+
+	mem = g_malloc(n_bytes);
+
+	memset(mem, 0, (size_t) n_bytes);
+
+	return mem;
+}
+
+gpointer g_try_malloc(gulong n_bytes)
+{
+	if (!n_bytes)
+		return NULL;
+
+	return malloc((size_t) n_bytes);
+}
+
+gpointer g_try_malloc0(gulong n_bytes)
+{
+	gpointer mem;
+
+	mem = g_try_malloc(n_bytes);
+	if (mem)
+		memset(mem, 0, (size_t) n_bytes);
+
+	return mem;
+}
+
+void g_free(gpointer mem)
+{
+	if (mem)
+		free(mem);
+}
+
+gchar *g_strdup(const gchar *str)
+{
+	gchar *s;
+
+	if (!str)
+		return NULL;
+
+	s = strdup(str);
+	if (!s) {
+		fprintf(stderr, "strdup: failed to allocate new string");
+		abort();
+	}
+
+	return s;
+}
+
