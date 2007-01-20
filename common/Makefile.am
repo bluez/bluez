@@ -1,8 +1,12 @@
 
+if GLIB
+sdp_sources = sdp-glib.c
+else
 if EXPAT
 sdp_sources = sdp-expat.c
 else
 sdp_sources = sdp-dummy.c
+endif
 endif
 
 if INOTIFY
@@ -25,7 +29,7 @@ test_textfile_LDADD = libhelper.a
 
 AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
-EXTRA_DIST = ppoll.h sdp-dummy.c sdp-expat.c \
-		notify-dummy.c notify-inotify.c
+EXTRA_DIST = ppoll.h notify-dummy.c notify-inotify.c \
+		sdp-dummy.c sdp-expat.c sdp-glib.c
 
 MAINTAINERCLEANFILES = Makefile.in

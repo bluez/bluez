@@ -270,14 +270,16 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 			DBUS_CFLAGS="$DBUS_CFLAGS $DBUS_GLIB_CFLAGS"
 			DBUS_LIBS="$DBUS_GLIB_LIBS"
 		fi
+		AM_CONDITIONAL(GLIB, true)
+		AM_CONDITIONAL(EXPAT, false)
 	else
 		AC_SUBST([GLIB_CFLAGS], ['-I$(top_srcdir)/eglib'])
 		AC_SUBST([GLIB_LIBS], ['-L$(top_builddir)/eglib -leglib'])
+		AM_CONDITIONAL(GLIB, false)
+		AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
 	fi
 
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
-	AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
-	AM_CONDITIONAL(GLIB, test "${glib_enable}" = "yes" && test "${glib_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(SYNC, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
 	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")
