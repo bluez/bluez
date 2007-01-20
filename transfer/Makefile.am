@@ -16,7 +16,7 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-service_PROGRAMS = bluetoothd-service-transfer
+noinst_PROGRAMS = bluetoothd-service-transfer
 
 bluetoothd_service_transfer_SOURCES = \
 		main.c session.h session.c

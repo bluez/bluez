@@ -1,7 +1,7 @@
 
 servicedir = $(libdir)/bluetooth
 
-service_PROGRAMS = bluetoothd-service-network
+noinst_PROGRAMS = bluetoothd-service-network
 
 bluetoothd_service_network_SOURCES = main.c
 

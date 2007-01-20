@@ -9,9 +9,8 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-service_PROGRAMS = bluetoothd-service-audio
-
-noinst_PROGRAMS = bluetoothd-service-headset
+noinst_PROGRAMS = bluetoothd-service-audio \
+			bluetoothd-service-headset
 
 bluetoothd_service_audio_SOURCES = main.c
 

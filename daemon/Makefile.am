@@ -1,4 +1,10 @@
 
+if CONFIGFILES
+confdir = $(sysconfdir)/bluetooth
+
+conf_DATA = echo.service
+endif
+
 servicedir = $(libdir)/bluetooth
 
 if GLIB
@@ -34,5 +40,7 @@ endif
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(glib_cflags)
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
+
+EXTRA_DIST = echo.service
 
 MAINTAINERCLEANFILES = Makefile.in

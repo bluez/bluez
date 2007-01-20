@@ -15,7 +15,7 @@ glib_cflags =
 glib_ldadd  =
 endif
 
-service_PROGRAMS = bluetoothd-service-input
+noinst_PROGRAMS = bluetoothd-service-input
 
 bluetoothd_service_input_SOURCES = \
 		main.c input-service.h input-service.c
