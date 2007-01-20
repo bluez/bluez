@@ -147,7 +147,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	sync_enable=${opensync_found}
 	alsa_enable=no
 	hcid_enable=yes
-	sdpd_enable=no
+	sdpd_enable=yes
 	test_enable=no
 	cups_enable=no
 	configfiles_enable=yes
