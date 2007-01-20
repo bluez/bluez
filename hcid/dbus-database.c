@@ -96,6 +96,8 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	if (!user_record)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	memset(user_record, 0, sizeof(*user_record));
+
 	size = len;
 
 	if (register_sdp_record((uint8_t *) record, size,
@@ -138,6 +140,8 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 	user_record = malloc(sizeof(*user_record));
 	if (!user_record)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	memset(user_record, 0, sizeof(*user_record));
 
 	sdp_record = sdp_xml_parse_record(record, strlen(record));
 	if (!sdp_record) {
