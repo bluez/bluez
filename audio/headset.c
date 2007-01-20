@@ -89,8 +89,6 @@ static uint32_t record_id = 0;
 
 static char *on_init_bda = NULL;
 
-static int started = 0;
-
 static DBusConnection *connection = NULL;
 
 static GMainLoop *main_loop = NULL;
@@ -968,76 +966,6 @@ static void create_server_socket(void)
 	g_io_add_watch(server_sk, G_IO_IN, (GIOFunc) server_io_cb, NULL);
 }
 
-
-static DBusHandlerResult start_message(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	info("Starting headset service");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		error("Can't create reply message");
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	create_server_socket();
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_message_unref(reply);
-
-	started = 1;
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-static DBusHandlerResult stop_message(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	info("Stopping headset service");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		error("Can't create reply message");
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_message_unref(reply);
-
-	if (hs) {
-		if (hs->sco)
-			g_io_channel_close(hs->sco);
-		if (hs->rfcomm)
-			g_io_channel_close(hs->rfcomm);
-		if (hs->out >= 0) {
-			close(hs->out);
-			hs->out = -1;
-		}
-		free(hs);
-		hs = NULL;
-	}
-
-	if (!config_channel && record_id) {
-		remove_ag_record(record_id);
-		record_id = 0;
-	}
-
-	if (server_sk) {
-		g_io_channel_close(server_sk);
-		server_sk = NULL;
-	}
-
-	started = 0;
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
 static DBusHandlerResult hs_message(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -1045,14 +973,6 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 
 	interface = dbus_message_get_interface(msg);
 	member = dbus_message_get_member(msg);
-
-	if (strcmp(interface, "org.bluez.ServiceAgent") == 0) {
-		if (strcmp(member, "Start") == 0)
-			return start_message(conn, msg, data);
-		if (strcmp(member, "Stop") == 0)
-			return stop_message(conn, msg, data);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
 
 	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, interface) &&
 			!strcmp("Introspect", member))
@@ -1617,6 +1537,8 @@ int main(int argc, char *argv[])
 		error("Unable to get on D-Bus");
 		exit(1);
 	}
+
+	create_server_socket();
 
 	g_main_run(main_loop);
 
