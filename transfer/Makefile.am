@@ -15,6 +15,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @OPENOBEX_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
-EXTRA_DIST = transfer-api.txt
+EXTRA_DIST = transfer.service transfer-api.txt
 
 MAINTAINERCLEANFILES = Makefile.in
