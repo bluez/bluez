@@ -54,7 +54,8 @@ DBusHandlerResult handle_method_call(DBusConnection *conn, DBusMessage *msg, voi
 void hcid_dbus_exit(void);
 int hcid_dbus_init(void);
 
-int register_sdp_record(uint8_t *data, uint32_t size, uint32_t *handle);
+int register_sdp_binary(uint8_t *data, uint32_t size, uint32_t *handle);
+int register_sdp_record(sdp_record_t *rec);
 int unregister_sdp_record(uint32_t handle);
 void cleanup_sdp_session(void);
 

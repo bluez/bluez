@@ -368,7 +368,7 @@ int hcid_dbus_init(void)
 	return 0;
 }
 
-int register_sdp_record(uint8_t *data, uint32_t size, uint32_t *handle)
+int register_sdp_binary(uint8_t *data, uint32_t size, uint32_t *handle)
 {
 	if (!sess) {
 		sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
@@ -381,6 +381,20 @@ int register_sdp_record(uint8_t *data, uint32_t size, uint32_t *handle)
 
 	return sdp_device_record_register_binary(sess, BDADDR_ANY,
 						data, size, 0, handle);
+}
+
+int register_sdp_record(sdp_record_t *rec)
+{
+	if (!sess) {
+		sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
+		if (!sess) {
+			error("Can't connect to SDP daemon:(%s, %d)",
+						strerror(errno), errno);
+			return -1;
+		}
+	}
+
+	return sdp_device_record_register(sess, BDADDR_ANY, rec, 0);
 }
 
 int unregister_sdp_record(uint32_t handle)

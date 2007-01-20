@@ -49,6 +49,7 @@
 #include "sdpd.h"
 #include "dbus-common.h"
 #include "dbus-service.h"
+#include "dbus-database.h"
 #include "dbus-hci.h"
 
 struct hcid_opts hcid;
@@ -755,8 +756,10 @@ int main(int argc, char *argv[])
 	/* Initialize already connected devices */
 	init_all_devices(hcid.sock);
 
-	if (sdp)
+	if (sdp) {
+		set_sdp_server_enable();
 		start_sdp_server(0, SDP_SERVER_COMPAT);
+	}
 
 	notify_init();
 

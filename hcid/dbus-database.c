@@ -43,6 +43,8 @@
 #include "dbus-error.h"
 #include "dbus-database.h"
 
+static int sdp_server_enable = 0;
+
 static GSList *records = NULL;
 
 struct record_data {
@@ -69,7 +71,10 @@ static void exit_callback(const char *name, void *user_data)
 
 	records = g_slist_remove(records, user_record);
 
-	remove_record_from_server(user_record->handle);
+	if (sdp_server_enable)
+		remove_record_from_server(user_record->handle);
+	else
+		unregister_sdp_record(user_record->handle);
 
 	free(user_record);
 }
@@ -82,7 +87,6 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	const char *sender;
 	struct record_data *user_record;
 	const uint8_t *record;
-	uint32_t size = 0;
 	int len = -1;
 
 	dbus_message_iter_init(msg, &iter);
@@ -98,13 +102,17 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 
 	memset(user_record, 0, sizeof(*user_record));
 
-	size = len;
+	if (sdp_server_enable) {
+		return error_failed(conn, msg, EIO);
+	} else {
+		uint32_t size = len;
 
-	if (register_sdp_record((uint8_t *) record, size,
+		if (register_sdp_binary((uint8_t *) record, size,
 						&user_record->handle) < 0) {
-		error("Failed to register service record");
-		free(user_record);
-		return error_failed(conn, msg, errno);
+			error("Failed to register service record");
+			free(user_record);
+			return error_failed(conn, msg, errno);
+		}
 	}
 
 	sender = dbus_message_get_sender(msg);
@@ -150,11 +158,20 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 		return error_failed(conn, msg, EIO);
 	}
 
-	if (add_record_to_server(sdp_record) < 0) {
-		error("Failed to register service record");
-		free(user_record);
-		sdp_record_free(sdp_record);
-		return error_failed(conn, msg, EIO);
+	if (sdp_server_enable) {
+		if (add_record_to_server(sdp_record) < 0) {
+			error("Failed to register service record");
+			free(user_record);
+			sdp_record_free(sdp_record);
+			return error_failed(conn, msg, EIO);
+		}
+	} else {
+		if (register_sdp_record(sdp_record) < 0) {
+			error("Failed to register service record");
+			free(user_record);
+			sdp_record_free(sdp_record);
+			return error_failed(conn, msg, EIO);
+		}
 	}
 
 	sender = dbus_message_get_sender(msg);
@@ -196,7 +213,10 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 
 	name_listener_remove(conn, sender, exit_callback, user_record);
 
-	remove_record_from_server(handle);
+	if (sdp_server_enable)
+		remove_record_from_server(handle);
+	else
+		unregister_sdp_record(handle);
 
 	free(user_record);
 
@@ -225,4 +245,9 @@ DBusHandlerResult handle_database_method(DBusConnection *conn,
 		return handler(conn, msg, data);
 
 	return error_unknown_method(conn, msg);
+}
+
+void set_sdp_server_enable(void)
+{
+	sdp_server_enable = 1;
 }

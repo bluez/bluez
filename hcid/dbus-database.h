@@ -28,4 +28,6 @@
 
 DBusHandlerResult handle_database_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
+void set_sdp_server_enable(void);
+
 #endif /* __BLUEZ_DBUS_DATABSE_H */
