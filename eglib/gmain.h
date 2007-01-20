@@ -92,6 +92,7 @@ GIOError g_io_channel_write(GIOChannel *channel, const gchar *buf, gsize count,
 void g_io_channel_close(GIOChannel *channel);
 
 GIOChannel *g_io_channel_unix_new(int fd);
+GIOChannel *g_io_channel_ref(GIOChannel *channel);
 void g_io_channel_unref(GIOChannel *channel);
 void g_io_channel_set_close_on_unref(GIOChannel *channel, gboolean do_close);
 gint g_io_channel_unix_get_fd(GIOChannel *channel);

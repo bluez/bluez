@@ -22,6 +22,7 @@ struct timeout {
 
 struct _GIOChannel {
 	int fd;
+	int ref_count;
 	gboolean closed;
 	gboolean close_on_unref;
 };
@@ -98,7 +99,7 @@ retry:
 	result = write(fd, buf, count);
 
 	if (result < 0) {
-		*bytes_read = 0;
+		*bytes_written = 0;
 
 		switch (errno) {
 #ifdef EINTR
@@ -131,6 +132,9 @@ void g_io_channel_close(GIOChannel *channel)
 
 void g_io_channel_unref(GIOChannel *channel)
 {
+	if (--channel->ref_count > 0)
+		return;
+
 	if (!channel)
 		return;
 
@@ -140,6 +144,12 @@ void g_io_channel_unref(GIOChannel *channel)
 	g_free(channel);
 }
 
+GIOChannel *g_io_channel_ref(GIOChannel *channel)
+{
+	channel->ref_count++;
+	return channel;
+}
+
 GIOChannel *g_io_channel_unix_new(int fd)
 {
 	GIOChannel *channel;
@@ -147,6 +157,7 @@ GIOChannel *g_io_channel_unix_new(int fd)
 	channel = g_new0(GIOChannel, 1);
 
 	channel->fd = fd;
+	channel->ref_count = 1;
 
 	return channel;
 }
@@ -181,6 +192,7 @@ static void watch_free(struct watch *watch)
 {
 	if (watch->destroy)
 		watch->destroy(watch->user_data);
+	g_io_channel_unref(watch->channel);
 	g_free(watch);
 }
 
@@ -297,7 +309,7 @@ guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 	watch = g_new(struct watch, 1);
 
 	watch->id = context->next_id++;
-	watch->channel = channel;
+	watch->channel = g_io_channel_ref(channel);
 	watch->priority = priority;
 	watch->condition = condition;
 	watch->func = func;
