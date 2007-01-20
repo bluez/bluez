@@ -875,6 +875,8 @@ static void service_notify(int action, const char *name, void *user_data)
 	size_t len;
 	char fullpath[PATH_MAX];
 
+	debug("Received notify event %d for %s", action, name);
+
 	len = strlen(name);
 	if (len < (strlen(SERVICE_SUFFIX) + 1))
 		return;
