@@ -84,8 +84,39 @@ retry:
 GIOError g_io_channel_write(GIOChannel *channel, const gchar *buf, gsize count,
 				gsize *bytes_written)
 {
-	/* Not implemented */
-	return G_IO_STATUS_ERROR;
+	int fd = channel->fd;
+	gssize result;
+
+	if (channel->closed)
+		return G_IO_STATUS_ERROR;
+
+	/* At least according to the Debian manpage for read */
+	if (count > SSIZE_MAX)
+		count = SSIZE_MAX;
+
+retry:
+	result = write(fd, buf, count);
+
+	if (result < 0) {
+		*bytes_read = 0;
+
+		switch (errno) {
+#ifdef EINTR
+		case EINTR:
+			goto retry;
+#endif
+#ifdef EAGAIN
+		case EAGAIN:
+			return G_IO_STATUS_AGAIN;
+#endif
+		default:
+			return G_IO_STATUS_ERROR;
+		}
+	}
+
+	*bytes_written = result;
+
+	return (result > 0) ? G_IO_STATUS_NORMAL : G_IO_STATUS_EOF;
 }
 
 void g_io_channel_close(GIOChannel *channel)
