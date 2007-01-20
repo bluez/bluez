@@ -78,6 +78,9 @@ static void exit_callback(const char *name, void *user_data)
 	else
 		unregister_sdp_record(user_record->handle);
 
+	if (user_record->sender)
+		free(user_record->sender);
+
 	free(user_record);
 }
 
@@ -174,6 +177,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 			sdp_record_free(sdp_record);
 			return error_failed(conn, msg, EIO);
 		}
+		sdp_record_free(sdp_record);
 	}
 
 	sender = dbus_message_get_sender(msg);
@@ -215,10 +219,15 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 
 	name_listener_remove(conn, sender, exit_callback, user_record);
 
+	records = g_slist_remove(records, user_record);
+
 	if (sdp_server_enable)
 		remove_record_from_server(handle);
 	else
 		unregister_sdp_record(handle);
+
+	if (user_record->sender)
+		free(user_record->sender);
 
 	free(user_record);
 
