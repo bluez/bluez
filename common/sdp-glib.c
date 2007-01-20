@@ -27,9 +27,37 @@
 
 #include <glib.h>
 
+#include "logging.h"
 #include "sdp-xml.h"
+
+static void element_start(GMarkupParseContext *context,
+		const gchar *element_name, const gchar **attribute_names,
+		const gchar **attribute_values, gpointer user_data, GError **error)
+{
+	debug("<%s>", element_name);
+}
+
+static void element_end(GMarkupParseContext *context,
+		const gchar *element_name, gpointer user_data, GError **error)
+{
+	debug("</%s>", element_name);
+}
+
+static GMarkupParser parser = {
+	element_start, element_end, NULL, NULL, NULL
+};
 
 sdp_record_t *sdp_xml_parse_record(const char *data, int size)
 {
+	GMarkupParseContext *ctx;
+
+	ctx = g_markup_parse_context_new(&parser, 0, NULL, NULL);
+
+	if (g_markup_parse_context_parse(ctx, data, size, NULL) == FALSE) {
+		error("XML parsing error");
+	}
+
+	g_markup_parse_context_free(ctx);
+
 	return NULL;
 }
