@@ -66,8 +66,6 @@
 #define MAX_CONN_NUMBER		10
 #define RECONNECT_RETRY_TIMEOUT	5000
 
-static DBusConnection *conn = NULL;
-
 static sdp_session_t *sess = NULL;
 
 static int experimental = 0;
@@ -251,13 +249,16 @@ int hcid_dbus_use_experimental(void)
 
 static gboolean system_bus_reconnect(void *data)
 {
+	DBusConnection *conn = get_dbus_connection();
 	struct hci_dev_list_req *dl = NULL;
 	struct hci_dev_req *dr;
 	int sk, i;
 	gboolean ret_val = TRUE;
 
-	if (dbus_connection_get_is_connected(conn))
-		return FALSE;
+	if (conn) {
+		if (dbus_connection_get_is_connected(conn))
+			return FALSE;
+	}
 
 	if (hcid_dbus_init() < 0)
 		return TRUE;
