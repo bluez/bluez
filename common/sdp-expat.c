@@ -82,7 +82,7 @@ static void convert_xml_to_sdp_start(void *data, const char *el, const char **at
 		context->stack_head = newelem;
 	} else {
 		context->stack_head = sdp_xml_data_alloc();
-		context->stack_head->next = 0;
+		context->stack_head->next = NULL;
 	}
 
 	if (!strcmp(el, "sequence"))
@@ -90,7 +90,6 @@ static void convert_xml_to_sdp_start(void *data, const char *el, const char **at
 	else if (!strcmp(el, "alternate"))
 		context->stack_head->data = sdp_data_alloc(SDP_ALT8, NULL);
 	else {
-		const char *type = el;
 		/* Parse value, name, encoding */
 		for (i = 0; attr[i]; i += 2) {
 			if (!strcmp(attr[i], "value")) {
@@ -117,7 +116,7 @@ static void convert_xml_to_sdp_start(void *data, const char *el, const char **at
 			}
 		}
 
-		context->stack_head->data = sdp_xml_parse_datatype(type, context->stack_head);
+		context->stack_head->data = sdp_xml_parse_datatype(el, context->stack_head);
 
 		/* Could not parse an entry */
 		if (context->stack_head->data == NULL)
@@ -140,9 +139,9 @@ static void convert_xml_to_sdp_end(void *data, const char *el)
 			if (ret == -1)
 				debug("Trouble adding attribute\n");
 
-			context->stack_head->data = 0;
+			context->stack_head->data = NULL;
 			sdp_xml_data_free(context->stack_head);
-			context->stack_head = 0;
+			context->stack_head = NULL;
 		} else {
 			debug("No Data for attribute: %d\n", context->attrId);
 		}
@@ -177,8 +176,8 @@ static void convert_xml_to_sdp_end(void *data, const char *el)
 	/* If we're not inside a seq or alt, then we're inside an attribute
 	   which will be taken care of later
 	 */
-	if (context->stack_head->next &&
-		context->stack_head->data && context->stack_head->next->data) {
+	if (context->stack_head->next && context->stack_head->data &&
+					context->stack_head->next->data) {
 		switch (context->stack_head->next->data->dtd) {
 		case SDP_SEQ8:
 		case SDP_SEQ16:
@@ -189,7 +188,7 @@ static void convert_xml_to_sdp_end(void *data, const char *el)
 			context->stack_head->next->data->val.dataseq =
 				sdp_seq_append(context->stack_head->next->data->val.dataseq,
 								context->stack_head->data);
-			context->stack_head->data = 0;
+			context->stack_head->data = NULL;
 			break;
 		}
 
