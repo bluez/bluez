@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <malloc.h>
 #include <string.h>
 #include <limits.h>
@@ -78,6 +79,13 @@ retry:
 	*bytes_read = result;
 
 	return (result > 0) ? G_IO_STATUS_NORMAL : G_IO_STATUS_EOF;
+}
+
+GIOError g_io_channel_write(GIOChannel *channel, const gchar *buf, gsize count,
+				gsize *bytes_written)
+{
+	/* Not implemented */
+	return G_IO_STATUS_ERROR;
 }
 
 void g_io_channel_close(GIOChannel *channel)
@@ -164,6 +172,12 @@ static GMainContext *g_main_context_default()
 	default_context->next_id = 1;
 
 	return default_context;
+}
+
+gboolean g_source_remove(guint tag)
+{
+	/* Not implemented yet */
+	return FALSE;
 }
 
 void g_io_remove_watch(guint id)
@@ -526,6 +540,44 @@ gint g_timeout_remove(const guint id)
 	return -1;
 }
 
+guint g_idle_add(GSourceFunc func, gpointer user_data)
+{
+	/* Not implemented */
+	return 0;
+}
+
+/* GError */
+void g_error_free(GError *err)
+{
+	g_free(err->message);
+	g_free(err);
+}
+
+/* Spawning related functions */
+
+gboolean g_spawn_async(const gchar *working_directory,
+			gchar **argv, gchar **envp,
+			GSpawnFlags flags,
+			GSpawnChildSetupFunc child_setup,
+			gpointer user_data,
+			GPid *child_pid,
+			GError **error)
+{
+	/* Not implemented */
+	return FALSE;
+}
+
+void g_spawn_close_pid(GPid pid)
+{
+	return;
+}
+
+guint g_child_watch_add(GPid pid, GChildWatchFunc func, gpointer user_data)
+{
+	/* Not implemented */
+	return 0;
+}
+
 /* UTF-8 Validation: approximate copy/paste from glib2. */
 
 #define UNICODE_VALID(c)			\
@@ -724,6 +776,18 @@ GSList *g_slist_remove(GSList *list, void *data)
 	return list;
 }
 
+GSList *g_slist_find(GSList *list, gconstpointer data)
+{
+	GSList *l;
+
+	for (l = list; l != NULL; l = l->next) {
+		if (l->data == data)
+			return l;
+	}
+
+	return NULL;
+}
+
 GSList *g_slist_find_custom(GSList *list, const void *data,
 			GCompareFunc cmp_func)
 {
@@ -886,5 +950,129 @@ gchar *g_strdup(const gchar *str)
 	}
 
 	return s;
+}
+
+gchar *g_strdup_printf(const gchar *format, ...)
+{
+	gchar str[1024];
+	va_list ap;
+
+	memset(str, 0, sizeof(str));
+
+	va_start(ap, format);
+
+	vsnprintf(str, sizeof(str) - 1, format, ap);
+
+	va_end(ap);
+
+	return g_strdup(str);
+}
+
+void g_strfreev(gchar **str_array)
+{
+	int i;
+
+	if (!str_array)
+		return;
+	
+	for (i = 0; str_array[i] != NULL; i++)
+		g_free(str_array[i]);
+
+	g_free(str_array);
+}
+
+/* g_shell_* */
+
+gboolean g_shell_parse_argv(const gchar *command_line,
+				gint *argcp,
+				gchar ***argvp,
+				GError **error)
+{
+	/* Not implemented */
+	return FALSE;
+}
+
+/* GKeyFile */
+
+typedef gpointer GHashTable;
+
+typedef struct _GKeyFileGroup GKeyFileGroup;
+
+struct _GKeyFile {
+	GSList *groups;
+
+	GKeyFileGroup *start_group;
+	GKeyFileGroup *current_group;
+
+	/* Holds up to one line of not-yet-parsed data */
+	gchar *parse_buffer;
+
+	/* Used for sizing the output buffer during serialization */
+	gsize approximate_size;
+
+	gchar list_separator;
+
+	GKeyFileFlags flags;
+};
+
+typedef struct _GKeyFileKeyValuePair GKeyFileKeyValuePair;
+
+struct _GKeyFileGroup {
+	/* NULL for above first group (which will be comments) */
+	const gchar *name;
+
+	/* Special comment that is stuck to the top of a group */
+	GKeyFileKeyValuePair *comment;
+
+	GSList *key_value_pairs;
+
+	/* Used in parallel with key_value_pairs for
+	 * increased lookup performance
+	 */
+	GHashTable *lookup_map;
+};
+
+struct _GKeyFileKeyValuePair {
+	gchar *key;  /* NULL for comments */
+	gchar *value;
+};
+
+GKeyFile *g_key_file_new(void)
+{
+	/* Not implemented */
+	return NULL;
+}
+
+void g_key_file_free(GKeyFile *key_file)
+{
+	/* Not implemented fully */
+	g_free(key_file);
+}
+
+gboolean g_key_file_load_from_file(GKeyFile *key_file,
+				const gchar *file,
+				GKeyFileFlags flags,
+				GError **error)
+{
+	/* Not implemented */
+	return FALSE;
+}
+
+gchar *g_key_file_get_string(GKeyFile *key_file,
+				const gchar *group_name,
+				const gchar *key,
+				GError **error)
+{
+	/* Not implemented */
+	return NULL;
+}
+
+gboolean g_key_file_get_boolean(GKeyFile *key_file,
+				const gchar *group_name,
+				const gchar *key,
+				GError **error)
+{
+	/* Not implemented */
+	return FALSE;
 }
 

@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 #include <sys/poll.h>
+#include <sys/types.h>
+#include <inttypes.h>
 
 typedef char	gchar;
 typedef short	gshort;
@@ -14,6 +16,8 @@ typedef unsigned char	guchar;
 typedef unsigned short	gushort;
 typedef unsigned long	gulong;
 typedef unsigned int	guint;
+
+typedef uint32_t guint32;
 
 typedef float	gfloat;
 typedef double	gdouble;
@@ -27,6 +31,8 @@ typedef ssize_t	gssize;
 #ifndef SSIZE_MAX
 #define SSIZE_MAX	INT_MAX
 #endif
+
+typedef pid_t GPid;
 
 #define MIN_TIMEOUT(a, b)  (((a) < (b)) ? (a) : (b))
 
@@ -79,6 +85,10 @@ typedef void (*GDestroyNotify) (gpointer data);
 typedef gboolean (*GIOFunc) (GIOChannel *source, GIOCondition condition, gpointer data);
 
 GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count, gsize *bytes_read);
+GIOError g_io_channel_write(GIOChannel *channel, const gchar *buf, gsize count,
+				gsize *bytes_written);
+
+
 void g_io_channel_close(GIOChannel *channel);
 
 GIOChannel *g_io_channel_unix_new(int fd);
@@ -98,6 +108,50 @@ void g_main_loop_quit(GMainLoop *loop);
 void g_main_loop_unref(GMainLoop *loop);
 guint g_timeout_add(guint interval, GSourceFunc function, gpointer data);
 gint g_timeout_remove(const guint id);
+gboolean g_source_remove(guint tag);
+guint g_idle_add(GSourceFunc func, gpointer user_data);
+
+/* GError */
+
+typedef guint32 GQuark;
+
+typedef struct {
+	GQuark       domain;
+	gint         code;
+	gchar       *message;
+} GError;
+
+void g_error_free(GError *err);
+
+/* Spawning related functions */
+
+typedef enum {
+	G_SPAWN_LEAVE_DESCRIPTORS_OPEN = 1 << 0,
+	G_SPAWN_DO_NOT_REAP_CHILD      = 1 << 1,
+	/* look for argv[0] in the path i.e. use execvp() */
+	G_SPAWN_SEARCH_PATH            = 1 << 2,
+	/* Dump output to /dev/null */
+	G_SPAWN_STDOUT_TO_DEV_NULL     = 1 << 3,
+	G_SPAWN_STDERR_TO_DEV_NULL     = 1 << 4,
+	G_SPAWN_CHILD_INHERITS_STDIN   = 1 << 5,
+	G_SPAWN_FILE_AND_ARGV_ZERO     = 1 << 6
+} GSpawnFlags;
+
+typedef void (*GSpawnChildSetupFunc) (gpointer user_data);
+
+gboolean g_spawn_async(const gchar *working_directory,
+			gchar **argv, gchar **envp,
+			GSpawnFlags flags,
+			GSpawnChildSetupFunc child_setup,
+			gpointer user_data,
+			GPid *child_pid,
+			GError **error);
+
+void g_spawn_close_pid(GPid pid);
+
+typedef void (*GChildWatchFunc) (GPid pid, gint status, gpointer data);
+
+guint g_child_watch_add(GPid pid, GChildWatchFunc func, gpointer user_data);
 
 gboolean g_utf8_validate(const gchar *str, gssize max_len, const gchar **end);
 
@@ -124,6 +178,8 @@ GSList *g_slist_insert_sorted(GSList *list, void *data, GCompareFunc cmp_func);
 
 GSList *g_slist_remove(GSList *list, void *data);
 
+GSList *g_slist_find(GSList *list, gconstpointer data);
+
 GSList *g_slist_find_custom(GSList *list, const void *data,
 			GCompareFunc cmp_func);
 
@@ -146,6 +202,8 @@ gpointer g_try_malloc0(gulong n_bytes);
 void g_free(gpointer mem);
 
 gchar *g_strdup(const gchar *str);
+gchar *g_strdup_printf(const gchar *format, ...);
+void g_strfreev(gchar **str_array);
 
 #define g_new(struct_type, n_structs) \
 	((struct_type *) g_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
@@ -155,5 +213,40 @@ gchar *g_strdup(const gchar *str);
 	((struct_type *) g_try_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
 #define g_try_new0(struct_type, n_structs)              \
 	((struct_type *) g_try_malloc0 (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
+
+/* g_shell_* */
+gboolean g_shell_parse_argv(const gchar *command_line,
+				gint *argcp,
+				gchar ***argvp,
+				GError **error);
+
+/* GKeyFile */
+
+typedef enum {
+	G_KEY_FILE_NONE              = 0,
+	G_KEY_FILE_KEEP_COMMENTS     = 1 << 0,
+	G_KEY_FILE_KEEP_TRANSLATIONS = 1 << 1
+} GKeyFileFlags;
+
+typedef struct _GKeyFile GKeyFile;
+
+GKeyFile *g_key_file_new(void);
+
+void g_key_file_free(GKeyFile *key_file);
+
+gboolean g_key_file_load_from_file(GKeyFile *key_file,
+				const gchar *file,
+				GKeyFileFlags flags,
+				GError **error);
+
+gchar *g_key_file_get_string(GKeyFile *key_file,
+				const gchar *group_name,
+				const gchar *key,
+				GError **error);
+
+gboolean g_key_file_get_boolean(GKeyFile *key_file,
+				const gchar *group_name,
+				const gchar *key,
+				GError **error);
 
 #endif /* __GMAIN_H */
