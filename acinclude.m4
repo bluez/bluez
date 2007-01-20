@@ -145,7 +145,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	glib_enable=no
 	obex_enable=${openobex_found}
 	sync_enable=${opensync_found}
-	alsa_enable=no
 	hcid_enable=yes
 	sdpd_enable=yes
 	test_enable=no
@@ -173,7 +172,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		dbus_enable=${enableval}
 		obex_enable=${enableval}
-		alsa_enable=${enableval}
 		hcid_enable=${enableval}
 		sdpd_enable=${enableval}
 		test_enable=${enableval}
