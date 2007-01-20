@@ -106,18 +106,14 @@ void g_io_channel_unref(GIOChannel *channel)
 	if (channel->close_on_unref && channel->fd >= 0)
 		g_io_channel_close(channel);
 
-	free(channel);
+	g_free(channel);
 }
 
 GIOChannel *g_io_channel_unix_new(int fd)
 {
 	GIOChannel *channel;
 
-	channel = malloc(sizeof(GIOChannel));
-	if (!channel)
-		return NULL;
-
-	memset(channel, 0, sizeof(GIOChannel));
+	channel = g_new0(GIOChannel, 1);
 
 	channel->fd = fd;
 
@@ -154,7 +150,7 @@ static void watch_free(struct watch *watch)
 {
 	if (watch->destroy)
 		watch->destroy(watch->user_data);
-	free(watch);
+	g_free(watch);
 }
 
 static GMainContext *g_main_context_default()
@@ -162,11 +158,7 @@ static GMainContext *g_main_context_default()
 	if (default_context)
 		return default_context;
 
-	default_context = malloc(sizeof(GMainContext));
-	if (!default_context)
-		return NULL;
-
-	memset(default_context, 0, sizeof(GMainContext));
+	default_context = g_new0(GMainContext, 1);
 
 	default_context->next_timeout = -1;
 	default_context->next_id = 1;
@@ -221,7 +213,7 @@ static gboolean g_timeout_remove(GMainContext *context, const guint id)
 			continue;
 
 		context->timeouts = g_slist_remove(context->timeouts, t);
-		free(t);
+		g_free(t);
 
 		return TRUE;
 	}
@@ -236,7 +228,7 @@ static gboolean g_timeout_remove(GMainContext *context, const guint id)
 			continue;
 
 		context->proc_timeouts = g_slist_remove(context->proc_timeouts, t);
-		free(t);
+		g_free(t);
 
 		return TRUE;
 	}
@@ -247,9 +239,6 @@ static gboolean g_timeout_remove(GMainContext *context, const guint id)
 gboolean g_source_remove(guint tag)
 {
 	GMainContext *context = g_main_context_default();
-
-	if (!context)
-		return FALSE;
 
 	if (g_io_remove_watch(context, tag))
 		return TRUE;
@@ -274,12 +263,7 @@ guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 	struct watch *watch;
 	GMainContext *context = g_main_context_default();
 
-	if (!context)
-		return 0;
-       
-	watch = malloc(sizeof(struct watch));
-	if (!watch)
-		return 0;
+	watch = g_new(struct watch, 1);
 
 	watch->id = context->next_id++;
 	watch->channel = channel;
@@ -311,14 +295,7 @@ GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running)
 	if (!context)
 		context = g_main_context_default();
 
-	if (!context)
-		return NULL;
-
-	ml = malloc(sizeof(GMainLoop));
-	if (!ml)
-		return NULL;
-
-	memset(ml, 0, sizeof(GMainLoop));
+	ml = g_new0(GMainLoop, 1);
 
 	ml->context = context;
 	ml->is_running = is_running;
@@ -384,7 +361,7 @@ static void timeout_handlers_check(GMainContext *context)
 		context->timeouts = g_slist_remove(context->timeouts, t);
 
 		if (!ret) {
-			free(t);
+			g_free(t);
 			continue;
 		}
 
@@ -413,9 +390,7 @@ void g_main_loop_run(GMainLoop *loop)
 	struct pollfd *ufds;
 	GMainContext *context = loop->context;
 
-	ufds = malloc(open_max * sizeof(struct pollfd));
-	if (!ufds)
-		return;
+	ufds = g_new(struct pollfd, open_max);
 
 	loop->is_running = TRUE;
 
@@ -476,7 +451,7 @@ void g_main_loop_run(GMainLoop *loop)
 		timeout_handlers_check(loop->context);
 	}
 
-	free(ufds);
+	g_free(ufds);
 }
 
 void g_main_loop_quit(GMainLoop *loop)
@@ -492,10 +467,10 @@ void g_main_loop_unref(GMainLoop *loop)
 	g_slist_foreach(loop->context->watches, (GFunc)watch_free, NULL);
 	g_slist_free(loop->context->watches);
 
-	g_slist_foreach(loop->context->timeouts, (GFunc)free, NULL);
+	g_slist_foreach(loop->context->timeouts, (GFunc)g_free, NULL);
 	g_slist_free(loop->context->timeouts);
 
-	free(loop->context);
+	g_free(loop->context);
 	loop->context = NULL;
 }
 
@@ -507,15 +482,8 @@ guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)
 	guint msecs;
 	struct timeout *t;
 
-	if (!context || !function)
-		return 0;
+	t = g_new0(struct timeout, 1);
 
-	t = malloc(sizeof(*t));
-
-	if (!t)
-		return 0;
-
-	memset(t, 0, sizeof(*t));
 	t->interval = interval;
 	t->function = function;
 	t->data = data;
@@ -667,10 +635,7 @@ GSList *g_slist_append(GSList *list, void *data)
 {
 	GSList *entry, *tail;
 
-	entry = malloc(sizeof(GSList));
-	/* FIXME: this currently just silently fails */
-	if (!entry)
-		return list;
+	entry = g_new(GSList, 1);
 
 	entry->data = data;
 	entry->next = NULL;
@@ -690,10 +655,7 @@ GSList *g_slist_prepend(GSList *list, void *data)
 {
 	GSList *entry;
 
-	entry = malloc(sizeof(GSList));
-	/* FIXME: this currently just silently fails */
-	if (!entry)
-		return list;
+	entry = g_new(GSList, 1);
 
 	entry->data = data;
 	entry->next = list;
@@ -706,9 +668,7 @@ GSList *g_slist_insert_sorted(GSList *list, void *data, GCompareFunc cmp_func)
 	GSList *tmp, *prev, *entry;
 	int cmp;
 
-	entry = malloc(sizeof(GSList));
-	if (!entry)
-		return list;
+	entry = g_new(GSList, 1);
 
 	entry->data = data;
 	entry->next = NULL;
@@ -763,7 +723,7 @@ GSList *g_slist_remove(GSList *list, void *data)
 
 	next = match->next;
 
-	free(match);
+	g_free(match);
 
 	/* If the head was removed, return the next element */
 	if (!prev)
@@ -872,7 +832,7 @@ void g_slist_free(GSList *list)
 
 	for (l = list; l != NULL; l = next) {
 		next = l->next;
-		free(l);
+		g_free(l);
 	}
 }
 
