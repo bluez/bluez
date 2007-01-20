@@ -113,6 +113,7 @@ void sdp_svcdb_collect_all(int sock)
 		if (item->sock == sock) {
 			sdp_list_t *next = p->next;
 			sdp_record_remove(item->record->handle);
+			sdp_record_free(item->record);
 			free(item);
 			if (q)
 				q->next = next;
