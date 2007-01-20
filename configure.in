@@ -36,4 +36,4 @@ AC_PATH_INOTIFY
 
 AC_ARG_BLUEZ
 
-AC_OUTPUT(Makefile common/Makefile daemon/Makefile transfer/Makefile network/Makefile input/Makefile audio/Makefile sync/Makefile tools/Makefile rfcomm/Makefile hcid/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile alsa/Makefile test/Makefile scripts/Makefile)
+AC_OUTPUT(Makefile common/Makefile daemon/Makefile transfer/Makefile network/Makefile serial/Makefile input/Makefile audio/Makefile sync/Makefile tools/Makefile rfcomm/Makefile hcid/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile alsa/Makefile test/Makefile scripts/Makefile)
