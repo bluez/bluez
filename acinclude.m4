@@ -269,12 +269,14 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	if (test "${glib_enable}" = "yes" && test "${glib_found}" = "yes"); then
-		AC_DEFINE(HAVE_GLIB, 1, [Define to 1 if you have GLib support.])
 		if (test "${dbus_glib_found}" = "yes"); then
 			AC_DEFINE(HAVE_DBUS_GLIB, 1, [Define to 1 if you have D-Bus GLib bindings.])
 			DBUS_CFLAGS="$DBUS_CFLAGS $DBUS_GLIB_CFLAGS"
 			DBUS_LIBS="$DBUS_GLIB_LIBS"
 		fi
+	else
+		AC_SUBST([GLIB_CFLAGS], ['-I$(top_srcdir)/eglib'])
+		AC_SUBST([GLIB_LIBS], ['-L$(top_builddir)/eglib -leglib'])
 	fi
 
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
