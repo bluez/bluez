@@ -47,18 +47,7 @@ struct service {
 	gboolean autostart;
 
 	GSList *trusted_devices;
-	GSList *records; 	/* list of binary records */
 };
-
-struct binary_record {
-	uint32_t ext_handle;
-	uint32_t handle;
-	sdp_buf_t *buf;
-};
-
-struct binary_record *binary_record_new();
-void binary_record_free(struct binary_record *rec);
-int binary_record_cmp(struct binary_record *rec, uint32_t *handle);
 
 void release_services(DBusConnection *conn);
 

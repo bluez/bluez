@@ -59,39 +59,6 @@
 static GSList *services = NULL;
 static GSList *removed = NULL;
 
-struct binary_record *binary_record_new()
-{
-	struct binary_record *rec;
-	rec = malloc(sizeof(struct binary_record));
-	if (!rec)
-		return NULL;
-
-	memset(rec, 0, sizeof(struct binary_record));
-	rec->ext_handle = 0xffffffff;
-	rec->handle = 0xffffffff;
-
-	return rec;
-}
-
-void binary_record_free(struct binary_record *rec)
-{
-	if (!rec)
-		return;
-
-	if (rec->buf) {
-		if (rec->buf->data)
-			free(rec->buf->data);
-		free(rec->buf);
-	}
-	
-	free(rec);
-}
-
-int binary_record_cmp(struct binary_record *rec, uint32_t *handle)
-{
-	return (rec->ext_handle - *handle);
-}
-
 static void service_free(struct service *service)
 {
 	if (!service)
@@ -113,33 +80,7 @@ static void service_free(struct service *service)
 		g_slist_free(service->trusted_devices);
 	}
 
-	if (service->records) {
-		g_slist_foreach(service->records, (GFunc) binary_record_free, NULL);
-		g_slist_free(service->records);
-	}
-
 	g_free(service);
-}
-
-static int unregister_service_records(GSList *lrecords)
-{
-	while (lrecords) {
-		struct binary_record *rec = lrecords->data;
-		lrecords = lrecords->next;
-
-		if (!rec || rec->handle == 0xffffffff)
-			continue;
-
-		if (unregister_sdp_record(rec->handle) < 0) {
-			/* FIXME: If just one of the service record registration fails */
-			error("Service Record unregistration failed:(%s, %d)",
-				strerror(errno), errno);
-		}
-
-		rec->handle = 0xffffffff;
-	}
-
-	return 0;
 }
 
 static void service_exit(const char *name, struct service *service)
@@ -148,9 +89,6 @@ static void service_exit(const char *name, struct service *service)
 	DBusMessage *msg;
 	
 	debug("Service owner exited: %s", name);
-
-	if (service->records)
-		unregister_service_records(service->records);
 
 	msg = dbus_message_new_signal(service->object_path,
 					SERVICE_INTERFACE, "Stopped");
@@ -312,21 +250,23 @@ static void abort_startup(struct service *service, DBusConnection *conn, int eco
 {
 	DBusError err;
 
-	dbus_error_init(&err);
-	dbus_bus_remove_match(get_dbus_connection(), NAME_MATCH, &err);
-	if (dbus_error_is_set(&err)) {
-		error("Remove match \"%s\" failed: %s" NAME_MATCH, err.message);
+	if (conn) {
+		dbus_error_init(&err);
+		dbus_bus_remove_match(conn, NAME_MATCH, &err);
+		if (dbus_error_is_set(&err)) {
+			error("Remove match \"%s\" failed: %s" NAME_MATCH, err.message);
 		dbus_error_free(&err);
-	}
+		}
 
-	dbus_connection_remove_filter(get_dbus_connection(),
-			service_filter, service);
+		dbus_connection_remove_filter(conn, service_filter, service);
+	}
 
 	g_source_remove(service->startup_timer);
 	service->startup_timer = 0;
 
 	if (service->action) {
-		error_failed(get_dbus_connection(), service->action, ecode);
+		if (conn)
+			error_failed(conn, service->action, ecode);
 		dbus_message_unref(service->action);
 		service->action = NULL;
 	}
@@ -703,14 +643,14 @@ static int unregister_service(struct service *service)
 
 	debug("Unregistering service object: %s", service->object_path);
 
+	if (!conn)
+		goto cleanup;
+
 	if (!dbus_connection_unregister_object_path(conn, service->object_path))
 		return -ENOMEM;
 
-	if (service->records)
-		unregister_service_records(service->records);
-
 	if (service->bus_name)
-		name_listener_remove(get_dbus_connection(), service->bus_name,
+		name_listener_remove(conn, service->bus_name,
 					(name_cb_t) service_exit, service);
 
 	signal = dbus_message_new_signal(service->object_path,
@@ -726,10 +666,10 @@ static int unregister_service(struct service *service)
 		send_message_and_unref(conn, signal);
 	}
 
-
+cleanup:
 	if (service->pid) {
 		if (service->startup_timer) {
-			abort_startup(service, get_dbus_connection(), ECANCELED);
+			abort_startup(service, conn, ECANCELED);
 			services = g_slist_remove(services, service);
 			removed = g_slist_append(removed, service);
 		} else if (!service->shutdown_timer)

@@ -306,8 +306,11 @@ failed:
 static void disconnect_callback(void *user_data)
 {
 	set_dbus_connection(NULL);
-	g_timeout_add(RECONNECT_RETRY_TIMEOUT, system_bus_reconnect,
-			NULL);
+
+	release_services(NULL);
+
+	g_timeout_add(RECONNECT_RETRY_TIMEOUT,
+				system_bus_reconnect, NULL);
 }
 
 static const DBusObjectPathVTable manager_vtable = {
