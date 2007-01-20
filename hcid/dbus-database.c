@@ -25,25 +25,99 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
+
 #include <dbus/dbus.h>
 
 #include "dbus.h"
 #include "hcid.h"
+#include "sdpd.h"
+#include "sdp-xml.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-database.h"
+
+static GSList *records = NULL;
+
+struct record_data {
+	uint32_t handle;
+	char *sender;
+};
+
+static struct record_data *find_record(uint32_t handle, const char *sender)
+{
+	GSList *list;
+
+	for (list = records; list; list = list->next) {
+		struct record_data *data = list->data;
+		if (handle == data->handle && !strcmp(sender, data->sender))
+			return data;
+	}
+
+	return NULL;
+}
+
+static void exit_callback(const char *name, void *user_data)
+{
+	struct record_data *user_record = user_data;
+
+	records = g_slist_remove(records, user_record);
+
+	remove_record_from_server(user_record->handle);
+
+	free(user_record);
+}
 
 static DBusHandlerResult add_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	dbus_uint32_t handle = 0x12345;
+	DBusMessageIter iter, array;
+	const char *sender;
+	struct record_data *user_record;
+	const uint8_t *record;
+	uint32_t size = 0;
+	int len = -1;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	dbus_message_iter_get_fixed_array(&array, &record, &len);
+	if (len <= 0)
+		return error_invalid_arguments(conn, msg);
+
+	user_record = malloc(sizeof(*user_record));
+	if (!user_record)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	size = len;
+
+	if (register_sdp_record((uint8_t *) record, size,
+						&user_record->handle) < 0) {
+		error("Failed to register service record");
+		free(user_record);
+		return error_failed(conn, msg, errno);
+	}
+
+	sender = dbus_message_get_sender(msg);
+
+	user_record->sender = strdup(sender);
+
+	records = g_slist_append(records, user_record);
+
+	name_listener_add(conn, sender, exit_callback, user_record);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &handle,
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &user_record->handle,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -53,13 +127,46 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	dbus_uint32_t handle = 0x12345;
+	const char *sender, *record;
+	struct record_data *user_record;
+	sdp_record_t *sdp_record;
+
+	if (dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg);
+
+	user_record = malloc(sizeof(*user_record));
+	if (!user_record)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	sdp_record = sdp_xml_parse_record(record, strlen(record));
+	if (!sdp_record) {
+		error("Parsing of XML service record failed");
+		free(user_record);
+		return error_failed(conn, msg, EIO);
+	}
+
+	if (add_record_to_server(sdp_record) < 0) {
+		error("Failed to register service record");
+		free(user_record);
+		sdp_record_free(sdp_record);
+		return error_failed(conn, msg, EIO);
+	}
+
+	sender = dbus_message_get_sender(msg);
+
+	user_record->handle = sdp_record->handle;
+	user_record->sender = strdup(sender);
+
+	records = g_slist_append(records, user_record);
+
+	name_listener_add(conn, sender, exit_callback, user_record);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &handle,
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &user_record->handle,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -69,6 +176,25 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	dbus_uint32_t handle;
+	const char *sender;
+	struct record_data *user_record;
+
+	if (dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_UINT32, &handle, DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg);
+
+	sender = dbus_message_get_sender(msg);
+
+	user_record = find_record(handle, sender);
+	if (!user_record)
+		return error_not_available(conn, msg);
+
+	name_listener_remove(conn, sender, exit_callback, user_record);
+
+	remove_record_from_server(handle);
+
+	free(user_record);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
