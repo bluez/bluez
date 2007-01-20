@@ -182,6 +182,55 @@ static int has_hid_record(const char *local, const char *peer)
 	return 1;
 }
 
+static const char *create_input_path(uint8_t minor)
+{
+	static char path[48];
+	char subpath[32];
+	static int next_id = 0;
+
+	switch (minor & 0xc0) {
+	case 0x40:
+		strcpy(subpath, "keyboard");
+		break;
+	case 0x80:
+		strcpy(subpath, "pointing");
+		break;
+	case 0xc0:
+		strcpy(subpath, "combo");
+		break;
+	}
+
+	if ((minor & 0x3f) && (strlen(subpath) > 0))
+		strcat(subpath, "/");
+
+	switch (minor & 0x3f) {
+	case 0x01:
+		strcat(subpath, "joystick");
+		break;
+	case 0x02:
+		strcat(subpath, "gamepad");
+		break;
+	case 0x03:
+		strcat(subpath, "remotecontrol");
+		break;
+	case 0x04:
+		strcat(subpath, "sensing");
+		break;
+	case 0x05:
+		strcat(subpath, "digitizertablet");
+		break;
+	case 0x06:
+		strcat(subpath, "cardreader");
+		break;
+	default:
+		strcat(subpath, "reserved");
+		break;
+	}
+
+	snprintf(path, 48, "%s/%s%d", INPUT_PATH, subpath, next_id++);
+	return path;
+}
+
 /*
  * Input Device methods
  */
@@ -547,7 +596,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusError derr;
 	const char *addr;
-	const char *keyb_path = "/org/bluez/input/keyboard0";
+	const char *keyb_path;
 	GSList *path;
 
 	dbus_error_init(&derr);
@@ -588,6 +637,8 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
+	/* FIXME: use HIDDeviceSubclass HID record attribute*/
+	keyb_path = create_input_path(0x40);
 	if (!dbus_connection_register_object_path(conn,
 				keyb_path, &device_table, idev)) {
 		error("Input device path registration failed");
