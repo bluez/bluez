@@ -244,10 +244,8 @@ int sdp_record_remove(uint32_t handle)
 	}
 
 	r = (sdp_record_t *) p->data;
-	if (r) {
+	if (r)
 		service_db = sdp_list_remove(service_db, r);
-		sdp_record_free(r);
-	}
 
 	p = access_locate(handle);
 	if (p) {
