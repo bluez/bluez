@@ -25,7 +25,6 @@
 #define __ADAPTER_H
 
 #include <dbus/dbus.h>
-#include "glib-ectomy.h"
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter"
 

@@ -13,14 +13,6 @@ dbusdir = $(sysconfdir)/dbus-1/system.d
 dbus_DATA = bluetooth.conf
 endif
 
-if GLIB
-glib_cflags = @GLIB_CFLAGS@
-glib_ldadd  = @GLIB_LIBS@
-else
-glib_cflags =
-glib_ldadd  =
-endif
-
 noinst_LIBRARIES = libhciserver.a
 
 libhciserver_a_SOURCES = hcid.h security.c device.c \
@@ -37,10 +29,10 @@ sbin_PROGRAMS = hcid
 
 hcid_SOURCES = main.c
 
-hcid_LDADD = $(glib_ldadd) @DBUS_LIBS@ @BLUEZ_LIBS@ \
-		libhciserver.a \
-		$(top_builddir)/sdpd/libsdpserver.a \
-		$(top_builddir)/common/libhelper.a
+hcid_LDADD = libhciserver.a \
+	$(top_builddir)/sdpd/libsdpserver.a \
+	$(top_builddir)/common/libhelper.a \
+	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 
 if EXPAT
 hcid_LDADD += -lexpat
@@ -57,7 +49,7 @@ auth_agent_SOURCES = auth-agent.c
 
 auth_agent_LDADD = @DBUS_LIBS@
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ $(glib_cflags)
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 

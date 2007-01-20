@@ -32,13 +32,14 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <glib.h>
+
 #include <dbus/dbus.h>
 
 #ifdef HAVE_DBUS_GLIB
 #include <dbus/dbus-glib-lowlevel.h>
 #endif
 
-#include "glib-ectomy.h"
 #include "dbus.h"
 #include "logging.h"
 

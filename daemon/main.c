@@ -33,11 +33,12 @@
 #include <getopt.h>
 #include <sys/stat.h>
 
+#include <glib.h>
+
 #include <dbus/dbus.h>
 
 #include "dbus-helper.h"
 
-#include "glib-ectomy.h"
 #include "dbus.h"
 #include "notify.h"
 #include "logging.h"

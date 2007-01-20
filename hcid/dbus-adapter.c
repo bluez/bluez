@@ -41,6 +41,8 @@
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 
+#include <glib.h>
+
 #include <dbus/dbus.h>
 
 #include "hcid.h"

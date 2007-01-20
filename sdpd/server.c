@@ -42,7 +42,8 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 
-#include "glib-ectomy.h"
+#include <glib.h>
+
 #include "logging.h"
 #include "sdpd.h"
 

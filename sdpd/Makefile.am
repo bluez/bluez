@@ -1,12 +1,4 @@
 
-if GLIB
-glib_cflags = @GLIB_CFLAGS@
-glib_ldadd  = @GLIB_LIBS@
-else
-glib_cflags =
-glib_ldadd  =
-endif
-
 noinst_LIBRARIES = libsdpserver.a
 
 libsdpserver_a_SOURCES = sdpd.h server.c cstate.c request.c service.c servicedb.c
@@ -16,10 +8,12 @@ sbin_PROGRAMS = sdpd
 
 sdpd_SOURCES = main.c
 
-sdpd_LDADD = $(glib_ldadd) @BLUEZ_LIBS@ libsdpserver.a $(top_builddir)/common/libhelper.a
+sdpd_LDADD = libsdpserver.a \
+	$(top_builddir)/common/libhelper.a \
+	@GLIB_LIBS@ @BLUEZ_LIBS@
 endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ $(glib_cflags)
+AM_CFLAGS = @BLUEZ_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 

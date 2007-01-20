@@ -11,30 +11,21 @@ else
 notify_sources = notify-dummy.c
 endif
 
-if GLIB
-glib_sources =
-glib_cflags  = @GLIB_CFLAGS@
-else
-glib_sources = glib-ectomy.c
-glib_cflags  =
-endif
-
 noinst_LIBRARIES = libhelper.a
 
 libhelper_a_SOURCES = oui.h oui.c dbus.h dbus.c \
 	textfile.h textfile.c logging.h logging.c \
 	dbus-helper.h dbus-helper.c \
 	sdp-xml.h sdp-xml.c $(sdp_sources) \
-	notify.h $(notify_sources) \
-	glib-ectomy.h $(glib_sources)
+	notify.h $(notify_sources)
 
 noinst_PROGRAMS = test_textfile
 
 test_textfile_LDADD = libhelper.a
 
-AM_CFLAGS = @DBUS_CFLAGS@ $(glib_cflags)
+AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 EXTRA_DIST = ppoll.h sdp-dummy.c sdp-expat.c \
-	notify-dummy.c notify-inotify.c glib-ectomy.c
+		notify-dummy.c notify-inotify.c
 
 MAINTAINERCLEANFILES = Makefile.in

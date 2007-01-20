@@ -25,13 +25,14 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <sys/stat.h>
 
 #include <dbus/dbus.h>
 
-#include "glib-ectomy.h"
+#include <glib.h>
 
 #include "logging.h"
 #include "dbus.h"

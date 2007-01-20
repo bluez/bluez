@@ -33,6 +33,8 @@
 #include <signal.h>
 #include <sys/types.h>
 
+#include <glib.h>
+
 #include <dbus/dbus.h>
 
 #include "hcid.h"

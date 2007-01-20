@@ -44,11 +44,12 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include <glib.h>
+
 #include <dbus/dbus.h>
 
 #include "dbus.h"
 #include "logging.h"
-#include "glib-ectomy.h"
 
 #define BUF_SIZE 1024
 
@@ -347,7 +348,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer user_
 	}
 
 	if (hs->ring_timer) {
-		g_timeout_remove(hs->ring_timer);
+		g_source_remove(hs->ring_timer);
 		hs->ring_timer = 0;
 	}
 
@@ -752,7 +753,7 @@ failed:
 
 static void sig_term(int sig)
 {
-	g_main_quit(main_loop);
+	g_main_loop_quit(main_loop);
 }
 
 static int server_socket(uint8_t *channel)
@@ -1371,7 +1372,7 @@ static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn, DBusMessage *ms
 		goto done;
 	}
 
-	g_timeout_remove(hs->ring_timer);
+	g_source_remove(hs->ring_timer);
 	hs->ring_timer = 0;
 
 done:
@@ -1531,7 +1532,7 @@ int main(int argc, char *argv[])
 
 	enable_debug();
 
-	main_loop = g_main_new(FALSE);
+	main_loop = g_main_loop_new(NULL, FALSE);
 
 	if (headset_dbus_init(NULL) < 0) {
 		error("Unable to get on D-Bus");
@@ -1540,7 +1541,7 @@ int main(int argc, char *argv[])
 
 	create_server_socket();
 
-	g_main_run(main_loop);
+	g_main_loop_run(main_loop);
 
 	return 0;
 }

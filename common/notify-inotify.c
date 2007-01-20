@@ -34,7 +34,8 @@
 #define IN_ONLYDIR 0x01000000
 #endif
 
-#include "glib-ectomy.h"
+#include <glib.h>
+
 #include "logging.h"
 #include "notify.h"
 

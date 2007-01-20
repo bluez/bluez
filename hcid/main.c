@@ -42,7 +42,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#include "glib-ectomy.h"
+#include <glib.h>
+
 #include "notify.h"
 
 #include "hcid.h"
@@ -599,7 +600,7 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer dat
 
 		error("Read from control socket failed: %s (%d)",
 							strerror(errno), errno);
-		g_main_quit(event_loop);
+		g_main_loop_quit(event_loop);
 		return FALSE;
 	}
 
@@ -766,7 +767,7 @@ int main(int argc, char *argv[])
 	init_services(CONFIGDIR);
 
 	/* Start event processor */
-	g_main_run(event_loop);
+	g_main_loop_run(event_loop);
 
 	if (sdp)
 		stop_sdp_server();

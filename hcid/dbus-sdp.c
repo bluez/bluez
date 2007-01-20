@@ -44,6 +44,8 @@
 
 #include <netinet/in.h>
 
+#include <glib.h>
+
 #include <dbus/dbus.h>
 
 #include "dbus.h"

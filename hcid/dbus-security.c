@@ -35,6 +35,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include <glib.h>
+
 #include <dbus/dbus.h>
 
 #include "dbus.h"

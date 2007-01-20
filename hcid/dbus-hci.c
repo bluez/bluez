@@ -39,9 +39,9 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#include <dbus/dbus.h>
+#include <glib.h>
 
-#include "glib-ectomy.h"
+#include <dbus/dbus.h>
 
 #include "hcid.h"
 #include "dbus.h"

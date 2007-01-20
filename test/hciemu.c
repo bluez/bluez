@@ -50,7 +50,7 @@
 
 #include <netdb.h>
 
-#include "glib-ectomy.h"
+#include <glib.h>
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t ntoh64(uint64_t n)
@@ -144,7 +144,7 @@ static inline void io_cancel(void)
 static void sig_term(int sig)
 {
 	io_cancel();
-	g_main_quit(event_loop);
+	g_main_loop_quit(event_loop);
 }
 
 static gboolean io_acl_data(GIOChannel *chan, GIOCondition cond, gpointer data);
@@ -979,7 +979,7 @@ static gboolean io_hci_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 		syslog(LOG_ERR, "Read failed: %s (%d)", strerror(errno), errno);
 		g_io_channel_unref(chan);
-		g_main_quit(event_loop);
+		g_main_loop_quit(event_loop);
 		return FALSE;
 	}
 
@@ -1298,7 +1298,7 @@ int main(int argc, char *argv[])
 		dd = -1;
 
 	/* Create event loop */
-	event_loop = g_main_new(FALSE);
+	event_loop = g_main_loop_new(NULL, FALSE);
 
 	if (dev >= 0)
 		return run_proxy(fd, dev, &bdaddr);
@@ -1333,7 +1333,7 @@ int main(int argc, char *argv[])
 	setpriority(PRIO_PROCESS, 0, -19);
 
 	/* Start event processor */
-	g_main_run(event_loop);
+	g_main_loop_run(event_loop);
 
 	close(fd);
 

@@ -23,6 +23,9 @@
  *
  */
 
+#define g_io_remove_watch g_source_remove
+#define g_timeout_remove g_source_remove
+
 #include <time.h>
 #include <sys/types.h>
 
@@ -30,7 +33,6 @@
 #include <bluetooth/hci.h>
 
 #include "logging.h"
-#include "glib-ectomy.h"
 
 #define HCID_CONFIG_FILE CONFIGDIR "/hcid.conf"
 

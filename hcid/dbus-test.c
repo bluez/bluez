@@ -29,10 +29,12 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include <dbus/dbus.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
+
+#include <glib.h>
+
+#include <dbus/dbus.h>
 
 #include "hcid.h"
 #include "dbus.h"

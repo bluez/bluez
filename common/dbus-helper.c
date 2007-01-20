@@ -28,9 +28,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <glib.h>
+
 #include <dbus/dbus.h>
 
-#include "glib-ectomy.h"
 #include "logging.h"
 
 #include "dbus-helper.h"

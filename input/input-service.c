@@ -29,19 +29,20 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "dbus.h"
-#include "logging.h"
-#include "input-service.h"
-#include "glib-ectomy.h"
-#include "textfile.h"
-
-#include <dbus/dbus.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+
+#include <glib.h>
+
+#include <dbus/dbus.h>
+
+#include "dbus.h"
+#include "logging.h"
+#include "textfile.h"
+#include "input-service.h"
 
 #define INPUT_SERVICE "org.bluez.input"
 #define INPUT_PATH "/org/bluez/input"
@@ -294,7 +295,7 @@ static const DBusObjectPathVTable device_table = {
 struct input_manager {
 	char adapter[18];
 	char *adapter_path;
-	GList *paths;
+	GSList *paths;
 };
 
 void input_manager_free(struct input_manager *mgr)
@@ -302,7 +303,7 @@ void input_manager_free(struct input_manager *mgr)
 	if (!mgr)
 		return;
 	if (mgr->paths)
-		g_list_foreach(mgr->paths, (GFunc) free, NULL);
+		g_slist_foreach(mgr->paths, (GFunc) free, NULL);
 	if (mgr->adapter_path)
 		free(mgr->adapter_path);
 	free(mgr);
@@ -548,7 +549,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	DBusError derr;
 	const char *addr;
 	const char *keyb_path = "/org/bluez/input/keyboard0";
-	GList *path;
+	GSList *path;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -559,7 +560,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	path = g_list_find_custom(mgr->paths, addr,
+	path = g_slist_find_custom(mgr->paths, addr,
 			(GCompareFunc) path_addr_cmp);
 	if (path)
 		return err_already_exists(conn, msg, "Input Already exists");
@@ -595,7 +596,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return err_failed(conn, msg, "Path registration failed");
 	}
 
-	mgr->paths = g_list_append(mgr->paths, strdup(keyb_path));
+	mgr->paths = g_slist_append(mgr->paths, strdup(keyb_path));
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &keyb_path,
 			DBUS_TYPE_INVALID);
@@ -615,7 +616,7 @@ static DBusHandlerResult manager_list_devices(DBusConnection *conn,
 	struct input_manager *mgr = data;
 	DBusMessageIter iter, iter_array;
 	DBusMessage *reply;
-	GList *paths;
+	GSList *paths;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

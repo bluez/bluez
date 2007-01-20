@@ -36,7 +36,8 @@
 #include <signal.h>
 #include <sys/stat.h>
 
-#include "glib-ectomy.h"
+#include <glib.h>
+
 #include "logging.h"
 #include "sdpd.h"
 
@@ -44,7 +45,7 @@ static GMainLoop *event_loop;
 
 static void sig_term(int sig)
 {
-	g_main_quit(event_loop);
+	g_main_loop_quit(event_loop);
 }
 
 static void sig_hup(int sig)
@@ -143,7 +144,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	g_main_run(event_loop);
+	g_main_loop_run(event_loop);
 
 	stop_sdp_server();
 
