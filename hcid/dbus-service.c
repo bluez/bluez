@@ -913,21 +913,6 @@ static void service_notify(int action, const char *name, void *user_data)
 	}
 }
 
-static gboolean startup_services(gpointer user_data)
-{
-	GSList *l;
-
-	for (l = services; l != NULL; l = l->next) {
-		struct service *service = l->data;
-
-		if (service->autostart)
-			service_start(service, get_dbus_connection());
-
-	}
-
-	return FALSE;
-}
-
 int init_services(const char *path)
 {
 	DIR *d;
@@ -964,13 +949,14 @@ int init_services(const char *path)
 			service_free(service);
 			continue;
 		}
+
+		if (service->autostart)
+			service_start(service, get_dbus_connection());
 	}
 
 	closedir(d);
 
 	notify_add(path, service_notify, NULL);
-
-	g_idle_add(startup_services, NULL);
 
 	return 0;
 }

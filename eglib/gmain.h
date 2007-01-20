@@ -107,7 +107,6 @@ void g_main_loop_quit(GMainLoop *loop);
 void g_main_loop_unref(GMainLoop *loop);
 guint g_timeout_add(guint interval, GSourceFunc function, gpointer data);
 gboolean g_source_remove(guint tag);
-guint g_idle_add(GSourceFunc func, gpointer user_data);
 
 /* GError */
 

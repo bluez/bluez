@@ -544,12 +544,6 @@ guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)
 	return t->id;
 }
 
-guint g_idle_add(GSourceFunc func, gpointer user_data)
-{
-	/* Not implemented */
-	return 0;
-}
-
 /* GError */
 void g_error_free(GError *err)
 {
