@@ -1,5 +1,4 @@
 [Bluetooth Service]
-Name=Headset service
-Exec=/usr/bin/bt.headsetd -c 3 -n
-Description=Bluetooth headset service
 Identifier=headset
+Name=Headset service
+Description=Bluetooth Headset and Handsfree service
