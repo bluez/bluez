@@ -1,11 +1,5 @@
 
 if OBEX
-if CONFIGFILES
-dbusdir = $(sysconfdir)/dbus-1/system.d
-
-dbus_DATA = bluetooth-transfer.conf
-endif
-
 servicedir = $(libdir)/bluetooth
 
 noinst_PROGRAMS = bluetoothd-service-transfer
@@ -21,6 +15,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @OPENOBEX_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
-EXTRA_DIST = bluetooth-transfer.conf transfer-api.txt
+EXTRA_DIST = transfer-api.txt
 
 MAINTAINERCLEANFILES = Makefile.in
