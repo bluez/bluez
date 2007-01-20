@@ -1,0 +1,4 @@
+[Bluetooth Service]
+Identifier=echo
+Name=Echo service
+Description=Bluetooth RFCOMM based Echo service
