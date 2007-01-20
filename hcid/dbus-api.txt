@@ -1114,12 +1114,7 @@ Service		org.bluez
 Interface	org.bluez.Service
 Object path	path from org.bluez.Manager.ListServices()
 
-Methods		string GetConnectionName()
-
-			This method returns the name of the connection to
-			the service agent.
-
-		string GetName()
+Methods		string GetName()
 
 			This method returns the service name.
 
@@ -1129,12 +1124,12 @@ Methods		string GetConnectionName()
 
 		void Start()
 
-			This method tells the service agent to actually
-			start the service.
+			This method tells the system to start the
+			service.
 
 		void Stop()
 
-			This method tells the service agent to stop the
+			This method tells the system to stop the
 			service.
 
 		boolean IsRunning()

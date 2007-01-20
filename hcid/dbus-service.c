@@ -168,27 +168,6 @@ static void service_exit(const char *name, struct service *service)
 	service->bus_name = NULL;
 }
 
-static DBusHandlerResult get_connection_name(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct service *service = data;
-	DBusMessage *reply;
-	const char *bus_name;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	if (service->bus_name)
-		bus_name = service->bus_name;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &bus_name,
-			DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
-}
-
 static DBusHandlerResult get_name(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -617,7 +596,6 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 static struct service_data services_methods[] = {
 	{ "GetName",		get_name		},
 	{ "GetDescription",	get_description		},
-	{ "GetConnectionName",	get_connection_name	},
 	{ "Start",		start			},
 	{ "Stop",		stop			},
 	{ "IsRunning",		is_running		},
