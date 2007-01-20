@@ -29,11 +29,10 @@ AC_PATH_GLIB
 AC_PATH_DBUS
 AC_PATH_OPENOBEX
 AC_PATH_OPENSYNC
-AC_PATH_ALSA
 AC_PATH_USB
 AC_PATH_EXPAT
 AC_PATH_INOTIFY
 
 AC_ARG_BLUEZ
 
-AC_OUTPUT(Makefile eglib/Makefile common/Makefile daemon/Makefile transfer/Makefile network/Makefile serial/Makefile input/Makefile audio/Makefile sync/Makefile tools/Makefile rfcomm/Makefile hcid/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile alsa/Makefile test/Makefile scripts/Makefile)
+AC_OUTPUT(Makefile eglib/Makefile common/Makefile daemon/Makefile transfer/Makefile network/Makefile serial/Makefile input/Makefile audio/Makefile sync/Makefile tools/Makefile rfcomm/Makefile hcid/Makefile sdpd/Makefile dund/Makefile pand/Makefile hidd/Makefile cups/Makefile test/Makefile scripts/Makefile)
