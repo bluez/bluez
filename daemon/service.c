@@ -27,6 +27,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
+
+#include <glib.h>
 
 #include <dbus/dbus.h>
 
@@ -42,6 +45,8 @@
 static DBusConnection *connection = NULL;
 
 static char *test_conn_name = NULL;
+static GPid test_service_pid = 0;
+static guint test_watch_id = -1;
 
 DBusHandlerResult manager_list_services(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -139,10 +144,21 @@ static DBusHandlerResult service_get_description(DBusConnection *conn,
 	return dbus_connection_send_and_unref(conn, reply);
 }
 
+static void service_died(GPid pid, gint status, gpointer data)
+{
+	debug("Child with PID %d died with status %d", pid, status);
+
+	g_spawn_close_pid(pid);
+	test_service_pid = 0;
+}
+
 static DBusHandlerResult service_start(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	GPid pid;
+	char **argv;
+	int argc;
 
 	debug("Starting service");
 
@@ -161,6 +177,18 @@ static DBusHandlerResult service_start(DBusConnection *conn,
 			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 		dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+		g_shell_parse_argv("/data/bluez/utils/daemon/bluetoothd_echo", &argc, &argv, NULL);
+
+		g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, NULL);
+
+		g_strfreev(argv);
+
+		test_watch_id = g_child_watch_add(pid, service_died, NULL);
+
+		debug("New process with PID %d executed", pid);
+
+		test_service_pid = pid;
 	}
 
 	return dbus_connection_send_and_unref(conn, reply);
@@ -180,6 +208,9 @@ static DBusHandlerResult service_stop(DBusConnection *conn,
 
 		free(test_conn_name);
 		test_conn_name = NULL;
+
+		kill(test_service_pid, SIGTERM);
+		test_service_pid = 0;
 
 		dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 	} else {

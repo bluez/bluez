@@ -51,10 +51,8 @@ static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	gsize len, written;
 	GIOError err;
 
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		g_io_channel_unref(chan);
+	if (cond & (G_IO_HUP | G_IO_ERR))
 		return FALSE;
-	}
 
 	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
 	if (err == G_IO_ERROR_AGAIN)
