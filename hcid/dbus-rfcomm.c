@@ -102,7 +102,7 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 	if (node->owner)
 		free(node->owner);
 	if (node->io) {
-		g_io_remove_watch(node->io_id);
+		g_source_remove(node->io_id);
 		g_io_channel_unref(node->io);
 	}
 	if (node->conn)

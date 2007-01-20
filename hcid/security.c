@@ -882,7 +882,7 @@ void stop_security_manager(int hdev)
 
 	info("Stopping security manager %d", hdev);
 
-	g_io_remove_watch(io_data[hdev].watch_id);
+	g_source_remove(io_data[hdev].watch_id);
 	g_io_channel_unref(io_data[hdev].channel);
 	io_data[hdev].watch_id = -1;
 	io_data[hdev].channel = NULL;

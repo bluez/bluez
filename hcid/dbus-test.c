@@ -156,7 +156,7 @@ static void audit_requestor_exited(const char *name, struct audit *audit)
 		g_io_channel_close(audit->io);
 	}
 	if (audit->timeout)
-		g_timeout_remove(audit->timeout);
+		g_source_remove(audit->timeout);
 	audit_free(audit);
 }
 
@@ -282,7 +282,7 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 			return TRUE;
 
 		if (audit->timeout) {
-			g_timeout_remove(audit->timeout);
+			g_source_remove(audit->timeout);
 			audit->timeout = 0;
 		}
 
@@ -311,7 +311,7 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 			return TRUE;
 
 		if (audit->timeout) {
-			g_timeout_remove(audit->timeout);
+			g_source_remove(audit->timeout);
 			audit->timeout = 0;
 		}
 
@@ -325,7 +325,7 @@ static gboolean l2raw_data_callback(GIOChannel *io, GIOCondition cond, struct au
 
 failed:
 	if (audit->timeout) {
-		g_timeout_remove(audit->timeout);
+		g_source_remove(audit->timeout);
 		audit->timeout = 0;
 	}
 
@@ -546,7 +546,7 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 		g_io_channel_close(audit->io);
 	}
 	if (audit->timeout)
-		g_timeout_remove(audit->timeout);
+		g_source_remove(audit->timeout);
 
 	audits = g_slist_remove(audits, audit);
 	name_listener_remove(audit->conn, audit->requestor,

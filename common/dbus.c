@@ -453,7 +453,7 @@ static void remove_watch(DBusWatch *watch, void *data)
 	dbus_watch_set_data(watch, NULL, NULL);
 
 	if (info) {
-		g_io_remove_watch(info->watch_id);
+		g_source_remove(info->watch_id);
 		g_io_channel_unref(info->io);
 		dbus_connection_unref(info->conn);
 		free(info);
@@ -489,7 +489,7 @@ static void timeout_handler_free(void *data)
 	if (!handler)
 		return;
 
-	g_timeout_remove(handler->id);
+	g_source_remove(handler->id);
 	free(handler);
 }
 

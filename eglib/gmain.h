@@ -100,14 +100,12 @@ guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
 guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 				GIOCondition condition, GIOFunc func,
 				gpointer user_data, GDestroyNotify notify);
-void g_io_remove_watch(guint id);
 
 GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running);
 void g_main_loop_run(GMainLoop *loop);
 void g_main_loop_quit(GMainLoop *loop);
 void g_main_loop_unref(GMainLoop *loop);
 guint g_timeout_add(guint interval, GSourceFunc function, gpointer data);
-gint g_timeout_remove(const guint id);
 gboolean g_source_remove(guint tag);
 guint g_idle_add(GSourceFunc func, gpointer user_data);
 

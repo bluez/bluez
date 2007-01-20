@@ -370,7 +370,7 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 					(name_cb_t) create_bond_req_exit,
 					adapter);
 		if (adapter->bonding->io_id)
-			g_io_remove_watch(adapter->bonding->io_id);
+			g_source_remove(adapter->bonding->io_id);
 		g_io_channel_close(adapter->bonding->io);
 		bonding_request_free(adapter->bonding);
 		adapter->bonding = NULL;
@@ -477,7 +477,7 @@ int unregister_adapter_path(const char *path)
 	if (adapter->pending_dc) {
  		error_no_such_adapter(adapter->pending_dc->conn,
 				      adapter->pending_dc->msg);
-		g_timeout_remove(adapter->pending_dc->timeout_id);
+		g_source_remove(adapter->pending_dc->timeout_id);
 		dc_pending_timeout_cleanup(adapter);
 	}
 
@@ -739,7 +739,7 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 	/* cancel pending timeout */
 	if (adapter->timeout_id) {
-		g_timeout_remove(adapter->timeout_id);
+		g_source_remove(adapter->timeout_id);
 		adapter->timeout_id = 0;
 	}
 
@@ -956,7 +956,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 				(name_cb_t) create_bond_req_exit, adapter);
 
 	if (adapter->bonding->io_id)
-		g_io_remove_watch(adapter->bonding->io_id);
+		g_source_remove(adapter->bonding->io_id);
 	g_io_channel_close(adapter->bonding->io);
 	bonding_request_free(adapter->bonding);
 	adapter->bonding = NULL;
@@ -1744,7 +1744,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					(name_cb_t) create_bond_req_exit,
 					adapter);
 		if (adapter->bonding->io_id)
-			g_io_remove_watch(adapter->bonding->io_id);
+			g_source_remove(adapter->bonding->io_id);
 		g_io_channel_close(adapter->bonding->io);
 		bonding_request_free(adapter->bonding);
 		adapter->bonding = NULL;
@@ -1760,7 +1760,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		else
 			send_message_and_unref(adapter->pending_dc->conn, reply);
 
-		g_timeout_remove(adapter->pending_dc->timeout_id);
+		g_source_remove(adapter->pending_dc->timeout_id);
 		dc_pending_timeout_cleanup(adapter);
 	}
 
@@ -1944,7 +1944,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	}
 	
 	if (adapter->timeout_id) {
-		g_timeout_remove(adapter->timeout_id);
+		g_source_remove(adapter->timeout_id);
 		adapter->timeout_id = 0;
 	}
 
@@ -2036,7 +2036,7 @@ void create_bond_req_exit(const char *name, struct adapter *adapter)
 
 	g_io_channel_close(adapter->bonding->io);
 	if (adapter->bonding->io_id)
-		g_io_remove_watch(adapter->bonding->io_id);
+		g_source_remove(adapter->bonding->io_id);
 	bonding_request_free(adapter->bonding);
 	adapter->bonding = NULL;
 }

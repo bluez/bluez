@@ -23,9 +23,6 @@
  *
  */
 
-#define g_io_remove_watch g_source_remove
-#define g_timeout_remove g_source_remove
-
 #include <time.h>
 #include <sys/types.h>
 

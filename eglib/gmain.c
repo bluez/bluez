@@ -174,20 +174,10 @@ static GMainContext *g_main_context_default()
 	return default_context;
 }
 
-gboolean g_source_remove(guint tag)
+static gboolean g_io_remove_watch(GMainContext *context, guint id)
 {
-	/* Not implemented yet */
-	return FALSE;
-}
-
-void g_io_remove_watch(guint id)
-{
-	GMainContext *context = g_main_context_default();
 	GSList *l;
 	struct watch *w;
-
-	if (!context)
-		return;
 
 	for (l = context->watches; l != NULL; l = l->next) {
 		w = l->data;	
@@ -198,7 +188,7 @@ void g_io_remove_watch(guint id)
 		context->watches = g_slist_remove(context->watches, w);
 		watch_free(w);
 
-		return;
+		return TRUE;
 	}
 
 	for (l = context->proc_watches; l != NULL; l = l->next) {
@@ -210,8 +200,64 @@ void g_io_remove_watch(guint id)
 		context->proc_watches = g_slist_remove(context->proc_watches, w);
 		watch_free(w);
 
-		return;
+		return TRUE;
 	}
+
+	return FALSE;
+}
+
+static gboolean g_timeout_remove(GMainContext *context, const guint id)
+{
+	GSList *l;
+	struct timeout *t;
+
+	l = context->timeouts;
+
+	while (l) {
+		t = l->data;
+		l = l->next;
+
+		if (t->id != id)
+			continue;
+
+		context->timeouts = g_slist_remove(context->timeouts, t);
+		free(t);
+
+		return TRUE;
+	}
+
+	l = context->proc_timeouts;
+
+	while (l) {
+		t = l->data;
+		l = l->next;
+
+		if (t->id != id)
+			continue;
+
+		context->proc_timeouts = g_slist_remove(context->proc_timeouts, t);
+		free(t);
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+gboolean g_source_remove(guint tag)
+{
+	GMainContext *context = g_main_context_default();
+
+	if (!context)
+		return FALSE;
+
+	if (g_io_remove_watch(context, tag))
+		return TRUE;
+
+	if (g_timeout_remove(context, tag))
+		return TRUE;
+
+	return FALSE;
 }
 
 int watch_prio_cmp(struct watch *w1, struct watch *w2)
@@ -496,48 +542,6 @@ guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)
 		context->timeouts = g_slist_prepend(context->timeouts, t);
 
 	return t->id;
-}
-
-gint g_timeout_remove(const guint id)
-{
-	GMainContext *context = g_main_context_default();
-	GSList *l;
-	struct timeout *t;
-
-	if (!context)
-		return -1;
-
-	l = context->timeouts;
-
-	while (l) {
-		t = l->data;
-		l = l->next;
-
-		if (t->id != id)
-			continue;
-
-		context->timeouts = g_slist_remove(context->timeouts, t);
-		free(t);
-
-		return 0;
-	}
-
-	l = context->proc_timeouts;
-
-	while (l) {
-		t = l->data;
-		l = l->next;
-
-		if (t->id != id)
-			continue;
-
-		context->proc_timeouts = g_slist_remove(context->proc_timeouts, t);
-		free(t);
-
-		return 0;
-	}
-
-	return -1;
 }
 
 guint g_idle_add(GSourceFunc func, gpointer user_data)

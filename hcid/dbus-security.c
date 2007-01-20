@@ -74,7 +74,7 @@ static void passkey_agent_free(struct passkey_agent *agent)
 	}
 
 	if (agent->timeout)
-		g_timeout_remove(agent->timeout);
+		g_source_remove(agent->timeout);
 
 	if (!agent->exited)
 		release_agent(agent);

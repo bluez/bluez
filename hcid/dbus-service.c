@@ -293,7 +293,7 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 	}
 
 	if (service->startup_timer) {
-		g_timeout_remove(service->startup_timer);
+		g_source_remove(service->startup_timer);
 		service->startup_timer = 0;
 	} else
 		debug("service_filter: timeout was already removed!");
@@ -322,7 +322,7 @@ static void abort_startup(struct service *service, DBusConnection *conn, int eco
 	dbus_connection_remove_filter(get_dbus_connection(),
 			service_filter, service);
 
-	g_timeout_remove(service->startup_timer);
+	g_source_remove(service->startup_timer);
 	service->startup_timer = 0;
 
 	if (service->action) {
@@ -350,7 +350,7 @@ static void service_died(GPid pid, gint status, gpointer data)
 		abort_startup(service, get_dbus_connection(), ECANCELED);
 
 	if (service->shutdown_timer) {
-		g_timeout_remove(service->shutdown_timer);
+		g_source_remove(service->shutdown_timer);
 		service->shutdown_timer = 0;
 	}
 

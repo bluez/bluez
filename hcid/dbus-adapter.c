@@ -539,7 +539,7 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	if (adapter->timeout_id) {
-		g_timeout_remove(adapter->timeout_id);
+		g_source_remove(adapter->timeout_id);
 		adapter->timeout_id = 0;
 	}
 
