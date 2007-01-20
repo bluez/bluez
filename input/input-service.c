@@ -44,7 +44,6 @@
 #include "textfile.h"
 #include "input-service.h"
 
-#define INPUT_SERVICE "org.bluez.input"
 #define INPUT_PATH "/org/bluez/input"
 #define INPUT_MANAGER_INTERFACE	"org.bluez.input.Manager"
 #define INPUT_DEVICE_INTERFACE	"org.bluez.input.Device"
@@ -688,7 +687,7 @@ int input_dbus_init(void)
 	DBusError derr;
 	const char *adapter;
 
-	connection = init_dbus(INPUT_SERVICE, NULL, NULL);
+	connection = init_dbus(NULL, NULL, NULL);
 	if (!connection)
 		return -1;
 

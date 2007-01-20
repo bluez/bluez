@@ -1,10 +1,4 @@
 
-if CONFIGFILES
-dbusdir = $(sysconfdir)/dbus-1/system.d
-
-dbus_DATA = bluetooth-input.conf
-endif
-
 servicedir = $(libdir)/bluetooth
 
 noinst_PROGRAMS = bluetoothd-service-input
@@ -19,6 +13,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
-EXTRA_DIST = bluetooth-input.conf
+EXTRA_DIST = input-api.txt
 
 MAINTAINERCLEANFILES = Makefile.in
