@@ -676,6 +676,8 @@ static sdp_data_t *sdp_xml_parse_text_with_size(const char *data, char encoding,
 
 	debug("Unit size %d length %d: -->%s<--\n", ret->unitSize, length, text);
 
+	free(text);
+
 	return ret;
 }
 #endif
@@ -696,6 +698,8 @@ sdp_data_t *sdp_xml_parse_text(const char *data, char encoding)
 
 	debug("Unit size %d length %d: -->%s<--\n", ret->unitSize, length, text);
 
+	free(text);
+
 	return ret;
 }
 
@@ -711,17 +715,15 @@ struct sdp_xml_data *sdp_xml_data_alloc()
 	struct sdp_xml_data *elem;
 
 	elem = malloc(sizeof(struct sdp_xml_data));
+	if (!elem)
+		return NULL;
+
+	memset(elem, 0, sizeof(struct sdp_xml_data));
 
 	/* Null terminate the text */
 	elem->size = DEFAULT_XML_DATA_SIZE;
 	elem->text = malloc(DEFAULT_XML_DATA_SIZE);
 	elem->text[0] = '\0';
-
-	elem->next = 0;
-	elem->data = 0;
-
-	elem->type = 0;
-	elem->name = 0;
 
 	return elem;
 }
@@ -734,7 +736,9 @@ void sdp_xml_data_free(struct sdp_xml_data *elem)
 	if (elem->name)
 		free(elem->name);
 
-	free(elem->text);
+	if (elem->text)
+
+		free(elem->text);
 	free(elem);
 }
 

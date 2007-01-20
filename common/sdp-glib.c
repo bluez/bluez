@@ -230,6 +230,8 @@ sdp_record_t *sdp_xml_parse_record(const char *data, int size)
 		return NULL;
 	}
 
+	g_markup_parse_context_free(ctx);
+
 	free(ctx_data);
 
 	return record;
