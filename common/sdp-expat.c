@@ -35,17 +35,18 @@
 #include "logging.h"
 #include "sdp-xml.h"
 
-/* Expat specific implementation of the context struct */
+static int compute_seq_size(sdp_data_t *data)
+{
+	int unit_size = data->unitSize;
+	sdp_data_t *seq = data->val.dataseq;
 
-struct sdp_xml_data {
-	char *text;			/* Pointer to the current buffer */
-	int size;			/* Size of the current buffer */
-	sdp_data_t *data;		/* The current item being built */
-	struct sdp_xml_data *next;	/* Next item on the stack */
-	char type;			/* 0 = Text or Hexadecimal */
-	char *name;			/* Name, optional in the dtd */
-	/* TODO: What is it used for? */
-};
+	for (; seq; seq = seq->next)
+		unit_size += seq->unitSize;
+
+	return unit_size;
+}
+
+/* Expat specific implementation of the context struct */
 
 struct sdp_xml_context {
 	XML_Parser parser;			/* Parser object being used */
@@ -53,96 +54,6 @@ struct sdp_xml_context {
 	struct sdp_xml_data *stack_head;	/* Top of the stack of attributes */
 	int attrId;				/* Id of the most recently processed attribute */
 };
-
-#define DEFAULT_XML_DATA_SIZE 1024
-
-static struct sdp_xml_data *sdp_xml_data_alloc()
-{
-	struct sdp_xml_data *elem;
-
-	elem = malloc(sizeof(struct sdp_xml_data));
-
-	/* Null terminate the text */
-	elem->size = DEFAULT_XML_DATA_SIZE;
-	elem->text = malloc(DEFAULT_XML_DATA_SIZE);
-	elem->text[0] = '\0';
-
-	elem->next = 0;
-	elem->data = 0;
-
-	elem->type = 0;
-	elem->name = 0;
-
-	return elem;
-}
-
-static void sdp_xml_data_free(struct sdp_xml_data *elem)
-{
-	if (elem->data)
-		sdp_data_free(elem->data);
-
-	if (elem->name)
-		free(elem->name);
-
-	free(elem->text);
-	free(elem);
-}
-
-static struct sdp_xml_data *sdp_xml_data_expand(struct sdp_xml_data *elem)
-{
-	char *newbuf;
-
-	newbuf = malloc(elem->size * 2);
-	if (!newbuf)
-		return NULL;
-
-	memcpy(newbuf, elem->text, elem->size);
-	elem->size *= 2;
-	free(elem->text);
-
-	elem->text = newbuf;
-
-	return elem;
-}
-
-static sdp_data_t *sdp_xml_parse_datatype(const char *el,
-					struct sdp_xml_context *context)
-{
-	const char *data = context->stack_head->text;
-
-	if (!strcmp(el, "boolean"))
-		return sdp_xml_parse_int(data, SDP_BOOL);
-	else if (!strcmp(el, "uint8"))
-		return sdp_xml_parse_int(data, SDP_UINT8);
-	else if (!strcmp(el, "uint16"))
-		return sdp_xml_parse_int(data, SDP_UINT16);
-	else if (!strcmp(el, "uint32"))
-		return sdp_xml_parse_int(data, SDP_UINT32);
-	else if (!strcmp(el, "uint64"))
-		return sdp_xml_parse_int(data, SDP_UINT64);
-	else if (!strcmp(el, "uint128"))
-		return sdp_xml_parse_int(data, SDP_UINT128);
-	else if (!strcmp(el, "int8"))
-		return sdp_xml_parse_int(data, SDP_INT8);
-	else if (!strcmp(el, "int16"))
-		return sdp_xml_parse_int(data, SDP_INT16);
-	else if (!strcmp(el, "int32"))
-		return sdp_xml_parse_int(data, SDP_INT32);
-	else if (!strcmp(el, "int64"))
-		return sdp_xml_parse_int(data, SDP_INT64);
-	else if (!strcmp(el, "int128"))
-		return sdp_xml_parse_int(data, SDP_INT128);
-	else if (!strcmp(el, "uuid"))
-		return sdp_xml_parse_uuid(data);
-	else if (!strcmp(el, "url"))
-		return sdp_xml_parse_url(data);
-	else if (!strcmp(el, "text"))
-		return sdp_xml_parse_text(data, context->stack_head->type);
-	else if (!strcmp(el, "nil"))
-		return sdp_xml_parse_nil(data);
-
-	return NULL;
-}
 
 static void convert_xml_to_sdp_start(void *data, const char *el, const char **attr)
 {
@@ -206,23 +117,12 @@ static void convert_xml_to_sdp_start(void *data, const char *el, const char **at
 			}
 		}
 
-		context->stack_head->data = sdp_xml_parse_datatype(type, context);
+		context->stack_head->data = sdp_xml_parse_datatype(type, context->stack_head);
 
 		/* Could not parse an entry */
 		if (context->stack_head->data == NULL)
 			XML_StopParser(context->parser, 0);
 	}
-}
-
-static int compute_seq_size(sdp_data_t *data)
-{
-	int unit_size = data->unitSize;
-	sdp_data_t *seq = data->val.dataseq;
-
-	for (; seq; seq = seq->next)
-		unit_size += seq->unitSize;
-
-	return unit_size;
 }
 
 static void convert_xml_to_sdp_end(void *data, const char *el)

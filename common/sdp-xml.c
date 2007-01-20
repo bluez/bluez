@@ -703,3 +703,92 @@ sdp_data_t *sdp_xml_parse_nil(const char *data)
 {
 	return sdp_data_alloc(SDP_DATA_NIL, 0);
 }
+
+#define DEFAULT_XML_DATA_SIZE 1024
+
+struct sdp_xml_data *sdp_xml_data_alloc()
+{
+	struct sdp_xml_data *elem;
+
+	elem = malloc(sizeof(struct sdp_xml_data));
+
+	/* Null terminate the text */
+	elem->size = DEFAULT_XML_DATA_SIZE;
+	elem->text = malloc(DEFAULT_XML_DATA_SIZE);
+	elem->text[0] = '\0';
+
+	elem->next = 0;
+	elem->data = 0;
+
+	elem->type = 0;
+	elem->name = 0;
+
+	return elem;
+}
+
+void sdp_xml_data_free(struct sdp_xml_data *elem)
+{
+	if (elem->data)
+		sdp_data_free(elem->data);
+
+	if (elem->name)
+		free(elem->name);
+
+	free(elem->text);
+	free(elem);
+}
+
+struct sdp_xml_data *sdp_xml_data_expand(struct sdp_xml_data *elem)
+{
+	char *newbuf;
+
+	newbuf = malloc(elem->size * 2);
+	if (!newbuf)
+		return NULL;
+
+	memcpy(newbuf, elem->text, elem->size);
+	elem->size *= 2;
+	free(elem->text);
+
+	elem->text = newbuf;
+
+	return elem;
+}
+
+sdp_data_t *sdp_xml_parse_datatype(const char *el, struct sdp_xml_data *elem)
+{
+	const char *data = elem->text;
+
+	if (!strcmp(el, "boolean"))
+		return sdp_xml_parse_int(data, SDP_BOOL);
+	else if (!strcmp(el, "uint8"))
+		return sdp_xml_parse_int(data, SDP_UINT8);
+	else if (!strcmp(el, "uint16"))
+		return sdp_xml_parse_int(data, SDP_UINT16);
+	else if (!strcmp(el, "uint32"))
+		return sdp_xml_parse_int(data, SDP_UINT32);
+	else if (!strcmp(el, "uint64"))
+		return sdp_xml_parse_int(data, SDP_UINT64);
+	else if (!strcmp(el, "uint128"))
+		return sdp_xml_parse_int(data, SDP_UINT128);
+	else if (!strcmp(el, "int8"))
+		return sdp_xml_parse_int(data, SDP_INT8);
+	else if (!strcmp(el, "int16"))
+		return sdp_xml_parse_int(data, SDP_INT16);
+	else if (!strcmp(el, "int32"))
+		return sdp_xml_parse_int(data, SDP_INT32);
+	else if (!strcmp(el, "int64"))
+		return sdp_xml_parse_int(data, SDP_INT64);
+	else if (!strcmp(el, "int128"))
+		return sdp_xml_parse_int(data, SDP_INT128);
+	else if (!strcmp(el, "uuid"))
+		return sdp_xml_parse_uuid(data);
+	else if (!strcmp(el, "url"))
+		return sdp_xml_parse_url(data);
+	else if (!strcmp(el, "text"))
+		return sdp_xml_parse_text(data, elem->type);
+	else if (!strcmp(el, "nil"))
+		return sdp_xml_parse_nil(data);
+
+	return NULL;
+}
