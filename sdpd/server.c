@@ -211,6 +211,8 @@ static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer da
 
 	g_io_add_watch(io, G_IO_IN, io_session_event, data);
 
+	g_io_channel_unref(io);
+
 	return TRUE;
 }
 

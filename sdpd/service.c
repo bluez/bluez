@@ -353,11 +353,15 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 
 	if (rec->handle == 0xffffffff) {
 		rec->handle = sdp_next_handle();
-		if (rec->handle < 0x10000)
+		if (rec->handle < 0x10000) {
+			sdp_record_free(rec);
 			goto invalid;
+		}
 	} else {
-		if (sdp_record_find(rec->handle))
+		if (sdp_record_find(rec->handle)) {
+			sdp_record_free(rec);
 			goto invalid;
+		}
 	}
 
 	sdp_record_add(&req->device, rec);
