@@ -263,6 +263,8 @@ static gboolean system_bus_reconnect(void *data)
 	if (hcid_dbus_init() < 0)
 		return TRUE;
 
+	init_services(CONFIGDIR);
+
 	/* Create and bind HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0) {
