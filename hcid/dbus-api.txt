@@ -1010,8 +1010,7 @@ Security hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Security
-Object path	/org/bluez
-		/org/bluez/{hci0,hci1,...}
+Object path	/org/bluez or /org/bluez/{hci0,hci1,...}
 
 Methods		void RegisterDefaultPasskeyAgent(string path)
 
@@ -1143,24 +1142,24 @@ Methods		string GetConnectionName()
 			Returns true if the service has been started and
 			is currently active. Otherwise, it returns false.
 
-		array{string} ListUsers()
+		array{string} ListUsers() [experimental]
 
 			Returns list of current users (device addresses)
 			of the service.
 
-		void RemoveUser(string address)
+		void RemoveUser(string address) [experimental]
 
 			Removes a user of the service. The address parameter
 			must match one of the current users of the service.
 
-		void SetTrusted(string address)
+		void SetTrusted(string address) [experimental]
 
 			Marks the user as trusted.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.AlreadyExists
 
-		boolean IsTrusted(string address)
+		boolean IsTrusted(string address) [experimental]
 
 			Returns true if the user is trusted or false otherwise.
 			The address parameter must match one of the
@@ -1168,7 +1167,7 @@ Methods		string GetConnectionName()
 
 			Possible errors: org.bluez.Error.InvalidArguments
 
-		void RemoveTrust(string address)
+		void RemoveTrust(string address) [experimental]
 
 			Marks the user as not trusted.
 
