@@ -112,6 +112,22 @@ DBusHandlerResult manager_activate_service(DBusConnection *conn,
 	return dbus_connection_send_and_unref(conn, reply);
 }
 
+static DBusHandlerResult service_get_identifier(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char name[] = "service", *ptr = name;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_INVALID);
+
+	return dbus_connection_send_and_unref(conn, reply);
+}
+
 static DBusHandlerResult service_get_name(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -178,7 +194,7 @@ static DBusHandlerResult service_start(DBusConnection *conn,
 
 		dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
-		g_shell_parse_argv("/data/bluez/utils/daemon/bluetoothd_echo", &argc, &argv, NULL);
+		g_shell_parse_argv(SERVICEDIR "bluetoothd-service-echo", &argc, &argv, NULL);
 
 		g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, NULL);
 
@@ -242,6 +258,8 @@ static DBusHandlerResult service_is_running(DBusConnection *conn,
 }
 
 static DBusMethodVTable service_table[] = {
+	{ "GetIdentifier", service_get_identifier,
+		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
 	{ "GetName", service_get_name,
 		DBUS_TYPE_INVALID_AS_STRING, DBUS_TYPE_STRING_AS_STRING },
 	{ "GetDescription", service_get_description,
