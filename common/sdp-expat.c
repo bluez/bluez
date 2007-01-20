@@ -156,8 +156,7 @@ static void convert_xml_to_sdp_start(void *data, const char *el, const char **at
 		/* Get the ID */
 		for (i = 0; attr[i]; i += 1) {
 			if (!strcmp(attr[i], "id")) {
-				context->attrId =
-				    strtol(attr[i + 1], 0, 0);
+				context->attrId = strtol(attr[i + 1], 0, 0);
 				break;
 			}
 		}
