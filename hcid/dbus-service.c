@@ -92,7 +92,6 @@ int binary_record_cmp(struct binary_record *rec, uint32_t *handle)
 	return (rec->ext_handle - *handle);
 }
 
-
 static void service_free(struct service *service)
 {
 	if (!service)
@@ -166,6 +165,28 @@ static void service_exit(const char *name, struct service *service)
 
 	g_free(service->bus_name);
 	service->bus_name = NULL;
+}
+
+static DBusHandlerResult get_identifier(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+
+	struct service *service = data;
+	DBusMessage *reply;
+	const char *identifier = "";
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (service->ident)
+		identifier = service->ident;
+	
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &identifier,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult get_name(DBusConnection *conn,
@@ -594,6 +615,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 }
 
 static struct service_data services_methods[] = {
+	{ "GetIdentifier",	get_identifier		},
 	{ "GetName",		get_name		},
 	{ "GetDescription",	get_description		},
 	{ "Start",		start			},
@@ -943,4 +965,3 @@ int init_services(const char *path)
 
 	return 0;
 }
-

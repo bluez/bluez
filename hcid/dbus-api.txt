@@ -1114,7 +1114,11 @@ Service		org.bluez
 Interface	org.bluez.Service
 Object path	path from org.bluez.Manager.ListServices()
 
-Methods		string GetName()
+Methods		string GetIdentifier()
+
+			This method returns the service identifier.
+
+		string GetName()
 
 			This method returns the service name.
 
