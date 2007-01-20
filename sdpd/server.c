@@ -149,10 +149,8 @@ static gboolean io_session_event(GIOChannel *chan, GIOCondition cond, gpointer d
 	uint8_t *buf;
 	int sk, len, size;
 
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		g_io_channel_unref(chan);
+	if (cond & (G_IO_HUP | G_IO_ERR))
 		return FALSE;
-	}
 
 	sk = g_io_channel_unix_get_fd(chan);
 
