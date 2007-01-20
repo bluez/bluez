@@ -50,30 +50,37 @@ static notify_func callback = NULL;
 
 static gboolean io_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	unsigned char buf[129];
-	struct inotify_event *evt = (struct inotify_event *) buf;
-	int len;
+	unsigned char buf[129], *ptr = buf;
+	gsize len;
+	GIOError err;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		return FALSE;
 
 	memset(buf, 0, sizeof(buf));
 
-	len = read(fd, buf, sizeof(buf) - 1);
-	if (len < sizeof(struct inotify_event))
+	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1, &len);
+	if (err == G_IO_ERROR_AGAIN)
 		return TRUE;
 
-	if (evt->wd != wd || !callback)
-		return TRUE;
+	while (len >= sizeof(struct inotify_event)) {
+		struct inotify_event *evt = (struct inotify_event *) ptr;
 
-	if (evt->mask & (IN_CREATE | IN_MOVED_TO))
-		callback(NOTIFY_CREATE, evt->name, NULL);
+		if (evt->wd != wd || !callback)
+			continue;
 
-	if (evt->mask & (IN_DELETE | IN_MOVED_FROM))
-		callback(NOTIFY_DELETE, evt->name, NULL);
+		if (evt->mask & (IN_CREATE | IN_MOVED_TO))
+			callback(NOTIFY_CREATE, evt->name, NULL);
 
-	if (evt->mask & IN_MODIFY)
-		callback(NOTIFY_MODIFY, evt->name, NULL);
+		if (evt->mask & (IN_DELETE | IN_MOVED_FROM))
+			callback(NOTIFY_DELETE, evt->name, NULL);
+
+		if (evt->mask & IN_MODIFY)
+			callback(NOTIFY_MODIFY, evt->name, NULL);
+
+		len -= sizeof(struct inotify_event) + evt->len;
+		ptr += sizeof(struct inotify_event) + evt->len;
+	}
 
 	return TRUE;
 }
