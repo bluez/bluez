@@ -5,7 +5,7 @@ servicedir = $(libdir)/bluetooth
 noinst_PROGRAMS = bluetoothd-service-transfer
 
 bluetoothd_service_transfer_SOURCES = \
-		main.c session.h session.c
+		main.c server.h server.c session.h session.c
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GLIB_LIBS@ @DBUS_LIBS@ @OPENOBEX_LIBS@ @BLUEZ_LIBS@
