@@ -62,6 +62,16 @@ int main(int argc, char *argv[])
 	else
 		free(str);
 
+	snprintf(value, sizeof(value), "Test");
+	if (textfile_put(filename, key, value) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	if (textfile_put(filename, key, value) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
+	if (textfile_put(filename, key, value) < 0)
+		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+
 	if (textfile_del(filename, key) < 0) 
 		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
 

@@ -168,7 +168,8 @@ static int write_key(const char *pathname, const char *key, const char *value, i
 		goto unlock;
 	}
 
-	off = find_key(map, key, strlen(key), icase);
+	len = strlen(key);
+	off = find_key(map, key, len, icase);
 	if (!off) {
 		if (value) {
 			munmap(map, size);
@@ -185,6 +186,10 @@ static int write_key(const char *pathname, const char *key, const char *value, i
 		err = EILSEQ;
 		goto unmap;
 	}
+
+	if (value && (strlen(value) == end - off - len - 1) &&
+			!strncmp(off + len + 1, value, end - off - len - 1))
+		goto unmap;
 
 	len = strspn(end, "\r\n");
 	end += len;
