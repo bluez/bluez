@@ -206,7 +206,19 @@ static void do_listen(void (*handler)(int sk))
 		goto error;
 	}
 
-	syslog(LOG_INFO,"Waiting for connection on channel %d ...", channel);
+	/* Check for socket address */
+	memset(&addr, 0, sizeof(addr));
+	optlen = sizeof(addr);
+
+	if (getsockname(sk, (struct sockaddr *) &addr, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get socket name: %s (%d)",
+							strerror(errno), errno);
+		goto error;
+	}
+
+	channel = addr.rc_channel;
+
+	syslog(LOG_INFO, "Waiting for connection on channel %d ...", channel);
 
 	while(1) {
 		memset(&addr, 0, sizeof(addr));

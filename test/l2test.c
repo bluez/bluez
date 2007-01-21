@@ -370,6 +370,18 @@ static void do_listen(void (*handler)(int sk))
 		goto error;
 	}
 
+	/* Check for socket address */
+	memset(&addr, 0, sizeof(addr));
+	optlen = sizeof(addr);
+
+	if (getsockname(sk, (struct sockaddr *) &addr, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get socket name: %s (%d)",
+							strerror(errno), errno);
+		goto error;
+	}
+
+	psm = btohs(addr.l2_psm);
+
 	syslog(LOG_INFO, "Waiting for connection on psm %d ...", psm);
 
 	while(1) {
