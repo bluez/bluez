@@ -34,6 +34,7 @@
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+#include <bluetooth/hidp.h>
 
 #include <glib.h>
 
@@ -180,6 +181,75 @@ static int has_hid_record(const char *local, const char *peer)
 
 	free(str);
 	return 1;
+}
+
+static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
+{
+	sdp_data_t *pdlist, *pdlist2;
+	uint8_t attr_val;
+
+	pdlist = sdp_data_get(rec, 0x0101);
+	pdlist2 = sdp_data_get(rec, 0x0102);
+	if (pdlist) {
+		if (pdlist2) {
+			if (strncmp(pdlist->val.str, pdlist2->val.str, 5)) {
+				strncpy(req->name, pdlist2->val.str, 127);
+				strcat(req->name, " ");
+			}
+			strncat(req->name, pdlist->val.str, 127 - strlen(req->name));
+		} else
+			strncpy(req->name, pdlist->val.str, 127);
+	} else {
+		pdlist2 = sdp_data_get(rec, 0x0100);
+		if (pdlist2)
+			strncpy(req->name, pdlist2->val.str, 127);
+ 	}
+ 
+	pdlist = sdp_data_get(rec, 0x0201);
+	req->parser = pdlist ? pdlist->val.uint16 : 0x0100;
+ 
+	pdlist = sdp_data_get(rec, 0x0202);
+	req->subclass = pdlist ? pdlist->val.uint8 : 0;
+
+	pdlist = sdp_data_get(rec, 0x0203);
+	req->country = pdlist ? pdlist->val.uint8 : 0;
+
+	pdlist = sdp_data_get(rec, 0x0204);
+	attr_val = pdlist ? pdlist->val.uint8 : 0;
+	if (attr_val)
+		req->flags |= (1 << HIDP_VIRTUAL_CABLE_UNPLUG);
+
+	pdlist = sdp_data_get(rec, 0x020E);
+	attr_val = pdlist ? pdlist->val.uint8 : 0;
+	if (attr_val)
+		req->flags |= (1 << HIDP_BOOT_PROTOCOL_MODE);
+
+	pdlist = sdp_data_get(rec, 0x0206);
+	if (pdlist) {
+		pdlist = pdlist->val.dataseq;
+		pdlist = pdlist->val.dataseq;
+		pdlist = pdlist->next;
+
+		req->rd_data = malloc(pdlist->unitSize);
+		if (req->rd_data) {
+			memcpy(req->rd_data, (unsigned char *) pdlist->val.str, pdlist->unitSize);
+			req->rd_size = pdlist->unitSize;
+		}
+	}
+}
+
+static void extract_pnp_record(sdp_record_t *rec, struct hidp_connadd_req *req)
+{
+	sdp_data_t *pdlist;
+
+	pdlist = sdp_data_get(rec, 0x0201);
+	req->vendor = pdlist ? pdlist->val.uint16 : 0x0000;
+
+	pdlist = sdp_data_get(rec, 0x0202);
+	req->product = pdlist ? pdlist->val.uint16 : 0x0000;
+
+	pdlist = sdp_data_get(rec, 0x0203);
+	req->version = pdlist ? pdlist->val.uint16 : 0x0000;
 }
 
 static const char *create_input_path(uint8_t minor)
@@ -433,6 +503,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	struct pending_req *pr = data;
+	struct hidp_connadd_req req;
 	DBusError derr;
 	uint8_t *rec_bin;
 	int len, scanned;
@@ -458,7 +529,14 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 	}
 
 	pr->hid_rec = sdp_extract_pdu(rec_bin, &scanned);
-	/* FIXME: parse SDP records */
+	memset(&req, 0, sizeof(struct hidp_connadd_req));
+	if (pr->hid_rec)
+		extract_hid_record(pr->hid_rec, &req);
+	if (pr->pnp_rec)
+		extract_pnp_record(pr->pnp_rec, &req);
+
+	/* FIXME: Register the Input device path */
+	/* FIXME: Store HID record data and free req */
 fail:
 	pending_req_free(pr);
 	dbus_message_unref(reply);
