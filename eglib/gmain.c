@@ -9,6 +9,9 @@
 #include <limits.h>
 #include <sys/time.h>
 #include <time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 #include <gmain.h>
 
@@ -27,6 +30,13 @@ struct _GIOChannel {
 	gboolean close_on_unref;
 };
 
+struct child_watch {
+	guint id;
+	GPid pid;
+	GChildWatchFunc function;
+	gpointer user_data;
+};
+
 struct _GMainContext {
 	guint next_id;
 	glong next_timeout;
@@ -35,9 +45,13 @@ struct _GMainContext {
 	GSList *proc_timeouts;
 	gboolean timeout_lock;
 
-	GSList *watches;
-	GSList *proc_watches;
-	gboolean watch_lock;
+	GSList *io_watches;
+	GSList *proc_io_watches;
+	gboolean io_lock;
+
+	GSList *child_watches;
+	GSList *proc_child_watches;
+	gboolean child_lock;
 };
 
 struct _GMainLoop {
@@ -175,7 +189,7 @@ gint g_io_channel_unix_get_fd(GIOChannel *channel)
 	return channel->fd;
 }
 
-struct watch {
+struct io_watch {
 	guint id;
 	GIOChannel *channel;
 	gint priority;
@@ -188,7 +202,7 @@ struct watch {
 
 static GMainContext *default_context = NULL;
 
-static void watch_free(struct watch *watch)
+static void watch_free(struct io_watch *watch)
 {
 	if (watch->destroy)
 		watch->destroy(watch->user_data);
@@ -212,27 +226,27 @@ static GMainContext *g_main_context_default()
 static gboolean g_io_remove_watch(GMainContext *context, guint id)
 {
 	GSList *l;
-	struct watch *w;
+	struct io_watch *w;
 
-	for (l = context->watches; l != NULL; l = l->next) {
+	for (l = context->io_watches; l != NULL; l = l->next) {
 		w = l->data;	
 
 		if (w->id != id)
 			continue;
 
-		context->watches = g_slist_remove(context->watches, w);
+		context->io_watches = g_slist_remove(context->io_watches, w);
 		watch_free(w);
 
 		return TRUE;
 	}
 
-	for (l = context->proc_watches; l != NULL; l = l->next) {
+	for (l = context->proc_io_watches; l != NULL; l = l->next) {
 		w = l->data;	
 
 		if (w->id != id)
 			continue;
 
-		context->proc_watches = g_slist_remove(context->proc_watches, w);
+		context->proc_io_watches = g_slist_remove(context->proc_io_watches, w);
 		watch_free(w);
 
 		return TRUE;
@@ -279,20 +293,7 @@ static gboolean g_timeout_remove(GMainContext *context, const guint id)
 	return FALSE;
 }
 
-gboolean g_source_remove(guint tag)
-{
-	GMainContext *context = g_main_context_default();
-
-	if (g_io_remove_watch(context, tag))
-		return TRUE;
-
-	if (g_timeout_remove(context, tag))
-		return TRUE;
-
-	return FALSE;
-}
-
-int watch_prio_cmp(struct watch *w1, struct watch *w2)
+int watch_prio_cmp(struct io_watch *w1, struct io_watch *w2)
 {
 	return w1->priority - w2->priority;
 }
@@ -303,10 +304,10 @@ guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 				GIOCondition condition, GIOFunc func,
 				gpointer user_data, GDestroyNotify notify)
 {
-	struct watch *watch;
+	struct io_watch *watch;
 	GMainContext *context = g_main_context_default();
 
-	watch = g_new(struct watch, 1);
+	watch = g_new(struct io_watch, 1);
 
 	watch->id = context->next_id++;
 	watch->channel = g_io_channel_ref(channel);
@@ -316,10 +317,10 @@ guint g_io_add_watch_full(GIOChannel *channel, gint priority,
 	watch->user_data = user_data;
 	watch->destroy = notify;
 
-	if (context->watch_lock)
-		context->proc_watches = watch_list_add(context->proc_watches, watch);
+	if (context->io_lock)
+		context->proc_io_watches = watch_list_add(context->proc_io_watches, watch);
 	else
-		context->watches = watch_list_add(context->watches, watch);
+		context->io_watches = watch_list_add(context->io_watches, watch);
 
 	return watch->id;
 }
@@ -440,9 +441,9 @@ void g_main_loop_run(GMainLoop *loop)
 	while (loop->is_running) {
 		int nfds;
 		GSList *l;
-		struct watch *w;
+		struct io_watch *w;
 
-		for (nfds = 0, l = context->watches; l != NULL; l = l->next, nfds++) {
+		for (nfds = 0, l = context->io_watches; l != NULL; l = l->next, nfds++) {
 			w = l->data;
 			ufds[nfds].fd = w->channel->fd;
 			ufds[nfds].events = w->condition;
@@ -456,16 +457,16 @@ void g_main_loop_run(GMainLoop *loop)
 		if (poll(ufds, nfds, context->next_timeout) < 0)
 			continue;
 
-		context->watch_lock = TRUE;
+		context->io_lock = TRUE;
 
-		while (context->watches) {
+		while (context->io_watches) {
 			gboolean ret;
 
-			w = context->watches->data;
+			w = context->io_watches->data;
 
 			if (!*w->revents) {
-				context->watches = g_slist_remove(context->watches, w);
-				context->proc_watches = watch_list_add(context->proc_watches, w);
+				context->io_watches = g_slist_remove(context->io_watches, w);
+				context->proc_io_watches = watch_list_add(context->proc_io_watches, w);
 				continue;
 			}
 
@@ -473,22 +474,22 @@ void g_main_loop_run(GMainLoop *loop)
 
 			/* Check if the watch was removed/freed by the callback
 			 * function */
-			if (!g_slist_find_custom(context->watches, w, ptr_cmp))
+			if (!g_slist_find_custom(context->io_watches, w, ptr_cmp))
 				continue;
 
-			context->watches = g_slist_remove(context->watches, w);
+			context->io_watches = g_slist_remove(context->io_watches, w);
 
 			if (!ret) {
 				watch_free(w);
 				continue;
 			}
 
-			context->proc_watches = watch_list_add(context->proc_watches, w);
+			context->proc_io_watches = watch_list_add(context->proc_io_watches, w);
 		}
 
-		context->watches = context->proc_watches;
-		context->proc_watches = NULL;
-		context->watch_lock = FALSE;
+		context->io_watches = context->proc_io_watches;
+		context->proc_io_watches = NULL;
+		context->io_lock = FALSE;
 
 		/* check expired timers */
 		timeout_handlers_check(loop->context);
@@ -507,8 +508,8 @@ void g_main_loop_unref(GMainLoop *loop)
 	if (!loop->context)
 		return;
 
-	g_slist_foreach(loop->context->watches, (GFunc)watch_free, NULL);
-	g_slist_free(loop->context->watches);
+	g_slist_foreach(loop->context->io_watches, (GFunc)watch_free, NULL);
+	g_slist_free(loop->context->io_watches);
 
 	g_slist_foreach(loop->context->timeouts, (GFunc)g_free, NULL);
 	g_slist_free(loop->context->timeouts);
@@ -564,6 +565,112 @@ void g_error_free(GError *err)
 
 /* Spawning related functions */
 
+static int child_watch_pipe[2] = { -1, -1 };
+
+static void sigchld_handler(int signal)
+{
+	int ret;
+	ret = write(child_watch_pipe[1], "B", 1);
+}
+
+static gboolean child_watch_remove(GMainContext *context, guint id)
+{
+	GSList *l;
+	struct child_watch *w;
+
+	for (l = context->child_watches; l != NULL; l = l->next) {
+		w = l->data;
+
+		if (w->id != id)
+			continue;
+
+		context->child_watches =
+			g_slist_remove(context->child_watches, w);
+		g_free(w);
+
+		return TRUE;
+	}
+
+	for (l = context->proc_child_watches; l != NULL; l = l->next) {
+		w = l->data;
+
+		if (w->id != id)
+			continue;
+
+		context->proc_child_watches =
+			g_slist_remove(context->proc_child_watches, w);
+		g_free(w);
+
+		return TRUE;
+	}
+
+
+	return FALSE;
+}
+
+gboolean child_watch(GIOChannel *io, GIOCondition cond, gpointer user_data)
+{
+	int ret;
+	char b[20];
+	GMainContext *context = g_main_context_default();
+
+	ret = read(child_watch_pipe[0], b, 20);
+
+	context->child_lock = TRUE;
+
+	while (context->child_watches) {
+		gint status;
+		struct child_watch *w = context->child_watches->data;
+
+		if (waitpid(w->pid, &status, WNOHANG) <= 0) {
+			context->child_watches =
+				g_slist_remove(context->child_watches, w);
+			context->proc_child_watches =
+				watch_list_add(context->proc_child_watches, w);
+			continue;
+		}
+
+		w->function(w->pid, status, w->user_data);
+
+		/* Check if the callback already removed us */
+		if (!g_slist_find(context->child_watches, w))
+			continue;
+
+		context->child_watches = g_slist_remove(context->child_watches, w);
+		g_free(w);
+	}
+
+	context->child_watches = context->proc_child_watches;
+	context->proc_child_watches = NULL;
+	context->child_lock = FALSE;
+
+	return TRUE;
+}
+
+static void init_child_pipe(void)
+{  
+	struct sigaction action;
+	GIOChannel *io;
+
+	if (pipe(child_watch_pipe) < 0) {
+		fprintf(stderr, "Unable to initialize child watch pipe: %s (%d)\n",
+				strerror(errno), errno);
+		abort();
+	}
+
+	fcntl(child_watch_pipe[1], F_SETFL,
+			O_NONBLOCK | fcntl(child_watch_pipe[1], F_GETFL));
+
+	action.sa_handler = sigchld_handler;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = SA_NOCLDSTOP;
+	sigaction(SIGCHLD, &action, NULL);
+
+	io = g_io_channel_unix_new(child_watch_pipe[0]);
+	g_io_add_watch(io, G_IO_IN, child_watch, NULL);
+	g_io_channel_unref(io);
+}
+
 gboolean g_spawn_async(const gchar *working_directory,
 			gchar **argv, gchar **envp,
 			GSpawnFlags flags,
@@ -572,7 +679,9 @@ gboolean g_spawn_async(const gchar *working_directory,
 			GPid *child_pid,
 			GError **error)
 {
-	/* Not implemented */
+	if (child_watch_pipe[0] < 0)
+		init_child_pipe();
+
 	return FALSE;
 }
 
@@ -583,8 +692,43 @@ void g_spawn_close_pid(GPid pid)
 
 guint g_child_watch_add(GPid pid, GChildWatchFunc func, gpointer user_data)
 {
-	/* Not implemented */
-	return 0;
+	struct child_watch *w;
+	GMainContext *context = g_main_context_default();
+
+	if (child_watch_pipe[0] < 0)
+		init_child_pipe();
+
+	w = g_new(struct child_watch, 1);
+
+	w->id = context->next_id++;
+	w->pid = pid;
+	w->function = func;
+	w->user_data = user_data;
+
+	if (context->child_lock)
+		context->proc_child_watches =
+			watch_list_add(context->proc_child_watches, w);
+	else
+		context->child_watches =
+			watch_list_add(context->child_watches, w);
+
+	return w->id;
+}
+
+gboolean g_source_remove(guint tag)
+{
+	GMainContext *context = g_main_context_default();
+
+	if (g_io_remove_watch(context, tag))
+		return TRUE;
+
+	if (g_timeout_remove(context, tag))
+		return TRUE;
+
+	if (child_watch_remove(context, tag))
+		return TRUE;
+
+	return FALSE;
 }
 
 /* UTF-8 Validation: approximate copy/paste from glib2. */
