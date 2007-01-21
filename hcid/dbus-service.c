@@ -714,11 +714,6 @@ static struct service *create_service(const char *file)
 	}
 
 	keyfile = g_key_file_new();
-	if (!keyfile) {
-		error("OOM while allocating key file");
-		service_free(service);
-		return NULL;
-	}
 
 	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
 		error("Parsing %s failed: %s", file, err->message);
