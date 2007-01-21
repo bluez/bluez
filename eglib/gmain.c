@@ -1324,7 +1324,7 @@ gboolean g_key_file_get_boolean(GKeyFile *key_file,
 	if (!str)
 		return FALSE;
 
-	if (strcmp(str, str) == 0)
+	if (strcmp(str, "true") == 0 || strcmp(str, "1") == 0)
 		ret = TRUE;
 	else
 		ret = FALSE;
