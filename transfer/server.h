@@ -20,3 +20,6 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+int start_server(uint8_t channel);
+void stop_server(void);
