@@ -73,7 +73,6 @@ static void service_free(struct service *service)
 	g_free(service->name);
 	g_free(service->descr);
 	g_free(service->ident);
-	g_free(service->opts);
 
 	if (service->trusted_devices) {
 		g_slist_foreach(service->trusted_devices, (GFunc) g_free, NULL);
@@ -347,10 +346,8 @@ static gboolean service_startup_timeout(gpointer data)
 
 int service_start(struct service *service, DBusConnection *conn)
 {
-	GError *err = NULL;
 	DBusError derr;
-	char **argv, *cmdline;
-	int argc;
+	char *argv[2], command[PATH_MAX];
 
 	if (!dbus_connection_add_filter(conn, service_filter, service, NULL)) {
 		error("Unable to add signal filter");
@@ -366,37 +363,22 @@ int service_start(struct service *service, DBusConnection *conn)
 		return -1;
 	}
 
-	cmdline = g_strdup_printf("%s/bluetoothd-service-%s %s",
-				SERVICEDIR, service->ident,
-				service->opts ? service->opts : "");
-
-	g_shell_parse_argv(cmdline, &argc, &argv, &err);
-	if (err != NULL) {
-		error("Unable to parse cmdline \"%s\": %s", cmdline,
-				err->message);
-		g_error_free(err);
-		dbus_connection_remove_filter(conn, service_filter, service);
-		dbus_bus_remove_match(conn, NAME_MATCH, NULL);
-		g_free(cmdline);
-		return -1;
-	}
-
-	g_free(cmdline);
+	snprintf(command, sizeof(command) - 1, "%s/bluetoothd-service-%s",
+			SERVICEDIR, service->ident);
+	argv[0] = command;
+	argv[1] = NULL;
 
 	if (!g_spawn_async(SERVICEDIR, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
 				service_setup, service, &service->pid, NULL)) {
 		error("Unable to execute %s", argv[0]);
 		dbus_connection_remove_filter(conn, service_filter, service);
 		dbus_bus_remove_match(conn, NAME_MATCH, NULL);
-		g_strfreev(argv);
 		return -1;
 	}
 
 	g_child_watch_add(service->pid, service_died, service);
 
 	debug("%s executed with PID %d", argv[0], service->pid);
-
-	g_strfreev(argv);
 
 	service->startup_timer = g_timeout_add(STARTUP_TIMEOUT,
 						service_startup_timeout,
@@ -770,14 +752,6 @@ static struct service *create_service(const char *file)
 
 	service->descr = g_key_file_get_string(keyfile, SERVICE_GROUP,
 						"Description", &err);
-	if (err) {
-		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
-	}
-
-	service->opts = g_key_file_get_string(keyfile, SERVICE_GROUP,
-						"Options", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);

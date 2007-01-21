@@ -43,7 +43,6 @@ struct service {
 	char *name;
 	char *descr;
 	char *ident;
-	char *opts;
 	gboolean autostart;
 
 	GSList *trusted_devices;
