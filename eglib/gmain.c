@@ -673,13 +673,32 @@ static void init_child_pipe(void)
 
 static void exec_child(const gchar *working_directory,
 			gchar **argv, gchar **envp,
-			GSpawnFlags flags)
+			GSpawnFlags flags,
+			GSpawnChildSetupFunc child_setup,
+			gpointer user_data)
 {
-	if (chdir(working_directory) < 0)
+	int null;
+
+	if (working_directory && chdir(working_directory) < 0)
 		_exit(EXIT_FAILURE);
 
-	if (execv(argv[0], argv) < 0)
-		_exit(EXIT_FAILURE);
+	null = open("/dev/null", O_RDWR);
+	dup2(null, STDIN_FILENO);
+	dup2(null, STDOUT_FILENO);
+	dup2(null, STDERR_FILENO);
+	if (null > 2)
+		close(null);
+
+	if (child_setup)
+		child_setup(user_data);
+
+	if (envp)
+		execve(argv[0], argv, envp);
+	else
+		execv(argv[0], argv);
+
+	/* exec failed if we get here */
+	_exit(EXIT_FAILURE);
 }
 
 gboolean g_spawn_async(const gchar *working_directory,
@@ -692,16 +711,21 @@ gboolean g_spawn_async(const gchar *working_directory,
 {
 	GPid pid;
 
+	if (access(argv[0], X_OK) < 0)
+		return FALSE;
+
 	if (child_watch_pipe[0] < 0)
 		init_child_pipe();
+
+	/* Flush output streams so child doesn't get them */
+	fflush(NULL);
 
 	switch (pid = fork()) {
 	case -1:
 		return FALSE;
 	case 0:	
-		if (child_setup)
-			child_setup(user_data);
-		exec_child(working_directory, argv, envp, flags);
+		exec_child(working_directory, argv, envp, flags,
+				child_setup, user_data);
 		break;
 	default:
 		if (child_pid)
