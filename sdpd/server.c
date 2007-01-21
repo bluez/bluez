@@ -47,7 +47,7 @@
 #include "logging.h"
 #include "sdpd.h"
 
-static GIOChannel *l2cap_io, *unix_io;
+static GIOChannel *l2cap_io = NULL, *unix_io = NULL;
 
 static int l2cap_sock, unix_sock;
 
@@ -237,8 +237,7 @@ int start_sdp_server(uint16_t mtu, uint32_t flags)
 		g_io_channel_set_close_on_unref(unix_io, TRUE);
 
 		g_io_add_watch(unix_io, G_IO_IN, io_accept_event, &unix_sock);
-	} else
-		unix_io = NULL;
+	}
 
 	return 0;
 }
@@ -252,5 +251,6 @@ void stop_sdp_server(void)
 	if (unix_io)
 		g_io_channel_unref(unix_io);
 
-	g_io_channel_unref(l2cap_io);
+	if (l2cap_io)
+		g_io_channel_unref(l2cap_io);
 }
