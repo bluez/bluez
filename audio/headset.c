@@ -964,7 +964,11 @@ static void create_server_socket(void)
 		return;
 	}
 
+	g_io_channel_set_close_on_unref(server_sk, TRUE);
+
 	g_io_add_watch(server_sk, G_IO_IN, (GIOFunc) server_io_cb, NULL);
+
+	g_io_channel_unref(server_sk);
 }
 
 static DBusHandlerResult hs_message(DBusConnection *conn,
@@ -1007,13 +1011,9 @@ static const DBusObjectPathVTable hs_table = {
 	.message_function = hs_message,
 };
 
-int headset_dbus_init(char *bda)
+int setup_dbus(DBusConnection *conn)
 {
-	connection = init_dbus(NULL, NULL, NULL);
-	if (!connection)
-		return -1;
-
-	if (!dbus_connection_register_object_path(connection, hs_path,
+	if (!dbus_connection_register_object_path(conn, hs_path,
 						&hs_table, NULL)) {
 		error("D-Bus failed to register %s path", hs_path);
 		return -1;
@@ -1492,6 +1492,7 @@ static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg)
 
 int main(int argc, char *argv[])
 {
+	DBusConnection *system_bus;
 	struct sigaction sa;
 	int opt;
 
@@ -1534,14 +1535,27 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	if (headset_dbus_init(NULL) < 0) {
-		error("Unable to get on D-Bus");
+	system_bus = init_dbus(NULL, NULL, NULL);
+	if (!system_bus) {
+		error("Connection to system bus failed");
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
+
+	if (setup_dbus(system_bus) < 0) {
+		error("Connection setup failed");
+		dbus_connection_unref(system_bus);
+		g_main_loop_unref(main_loop);
 		exit(1);
 	}
 
 	create_server_socket();
 
 	g_main_loop_run(main_loop);
+
+	dbus_connection_unref(system_bus);
+
+	g_main_loop_unref(main_loop);
 
 	return 0;
 }
