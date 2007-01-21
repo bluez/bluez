@@ -812,9 +812,11 @@ static const DBusObjectPathVTable manager_table = {
 int input_dbus_init(void)
 {
 	struct input_manager *mgr;
+#if 0
 	DBusMessage *msg, *reply;
 	DBusError derr;
 	const char *adapter;
+#endif
 
 	connection = init_dbus(NULL, NULL, NULL);
 	if (!connection)
@@ -825,6 +827,7 @@ int input_dbus_init(void)
 	mgr = malloc(sizeof(struct input_manager));
 	memset(mgr, 0, sizeof(struct input_manager));
 
+#if 0
 	/* Get the default adapter path */
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 			"org.bluez.Manager", "DefaultAdapter");
@@ -879,6 +882,7 @@ int input_dbus_init(void)
 	dbus_message_unref(reply);
 
 	info("Default adapter: %s (%s)", mgr->adapter_path, mgr->adapter);
+#endif
 
 	/* Fallback to catch invalid device path */
 	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
@@ -902,4 +906,3 @@ void input_dbus_exit(void)
 
 	dbus_connection_unref(connection);
 }
-
