@@ -12,6 +12,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/file.h>
 
 #include <gmain.h>
 
@@ -569,6 +572,24 @@ GError* g_error_new_literal(GQuark domain, gint code, const gchar *message)
 	err->message = g_strdup(message);
 
 	return err;
+}
+
+void g_set_error(GError **err, GQuark domain, gint code,
+			const gchar *format, ...)
+{
+	gchar msg[1024];
+	va_list ap;
+
+	if (!err)
+		return;
+
+	va_start(ap, format);
+
+	vsnprintf(msg, sizeof(msg) - 1, format, ap);
+
+	va_end(ap);
+
+	*err = g_error_new_literal(domain, code, msg);
 }
 
 void g_error_free(GError *err)
@@ -1180,11 +1201,6 @@ struct _GKeyFile {
 	gchar *filename;
 };
 
-struct _GKeyFileKeyValuePair {
-	gchar *key;  /* NULL for comments */
-	gchar *value;
-};
-
 GKeyFile *g_key_file_new(void)
 {
 	return g_new0(GKeyFile, 1);
@@ -1210,10 +1226,90 @@ gchar *g_key_file_get_string(GKeyFile *key_file,
 				const gchar *key,
 				GError **error)
 {
-	/* Not implemented */
-	if (error)
-		*error = g_error_new_literal(0, 0, "Not implemented");
-	return NULL;
+	struct stat st;
+	char *map, *nl, *off, *group = NULL, *value = NULL, tmp[1024];
+	off_t size;
+	size_t key_len, to_copy, value_len;
+	int fd, err = 0;
+
+	fd = open(key_file->filename, O_RDONLY);
+	if (fd < 0) {
+		g_set_error(error, 0, 0, "%s: %s", key_file->filename,
+				strerror(errno));
+		return NULL;
+	}
+
+	if (flock(fd, LOCK_SH) < 0) {
+		err = errno;
+		goto close;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		err = errno;
+		goto unlock;
+	}
+
+	size = st.st_size;
+
+	map = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+	if (!map || map == MAP_FAILED) {
+		err = errno;
+		goto unlock;
+	}
+
+	group = strstr(map, group_name);
+	if (!group)
+		goto unmap;
+
+	nl = strchr(group, '\n');
+	if (!nl)
+		goto unmap;
+
+	off = strstr(nl + 1, key);
+	if (!off)
+		goto unmap;
+
+	key_len = strlen(key);
+
+	if (off[key_len] != '=')
+		goto unmap;
+
+	off += key_len + 1;
+
+	nl = strchr(off, '\n');
+	if (!nl)
+		goto unmap;
+
+	value_len = nl - off;
+
+	to_copy = value_len > (sizeof(tmp) - 1) ? sizeof(tmp) - 1 : value_len;
+
+	memset(tmp, 0, sizeof(tmp));
+
+	strncpy(tmp, off, to_copy);
+
+	value = g_strdup(tmp);
+		
+unmap:
+	munmap(map, size);
+
+unlock:
+	flock(fd, LOCK_UN);
+
+close:
+	close(fd);
+
+	if (err)
+		g_set_error(error, 0, 0, "%s: %s", key_file->filename,
+				strerror(err));
+	else if (!group)
+		g_set_error(error, 0, 0, "%s: group %s not found",
+				key_file->filename, group_name);
+	else if (!value)
+		g_set_error(error, 0, 0, "%s: key %s not found",
+				key_file->filename, key);
+
+	return value;
 }
 
 gboolean g_key_file_get_boolean(GKeyFile *key_file,
@@ -1221,9 +1317,20 @@ gboolean g_key_file_get_boolean(GKeyFile *key_file,
 				const gchar *key,
 				GError **error)
 {
-	/* Not implemented */
-	if (error)
-		*error = g_error_new_literal(0, 0, "Not implemented");
-	return FALSE;
+	gboolean ret;
+	gchar *str;
+
+	str = g_key_file_get_string(key_file, group_name, key, error);
+	if (!str)
+		return FALSE;
+
+	if (strcmp(str, str) == 0)
+		ret = TRUE;
+	else
+		ret = FALSE;
+
+	g_free(str);
+
+	return ret;
 }
 
