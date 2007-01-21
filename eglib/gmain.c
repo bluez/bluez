@@ -1294,7 +1294,7 @@ gchar *g_key_file_get_string(GKeyFile *key_file,
 		if (strncmp(line, key, key_len))
 			continue;
 
-		for (i = 0; line[i] != '\n'; i++) {
+		for (i = key_len; line[i] != '\n'; i++) {
 			if (line[i] == '=')
 				break;
 			if (!isspace(line[i]))
