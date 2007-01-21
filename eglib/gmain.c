@@ -608,7 +608,7 @@ static gboolean child_watch_remove(GMainContext *context, guint id)
 	return FALSE;
 }
 
-gboolean child_watch(GIOChannel *io, GIOCondition cond, gpointer user_data)
+static gboolean child_watch(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	int ret;
 	char b[20];
