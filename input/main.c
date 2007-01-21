@@ -79,5 +79,11 @@ int main(int argc, char *argv[])
 
 	input_dbus_exit();
 
+	g_main_loop_unref(main_loop);
+
+	info("Exit");
+
+	stop_logging();
+
 	return 0;
 }
