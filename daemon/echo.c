@@ -120,8 +120,6 @@ static GIOChannel *setup_rfcomm(uint8_t channel)
 
 	g_io_add_watch(io, G_IO_IN, connect_event, NULL);
 
-	g_io_channel_unref(io);
-
 	return io;
 }
 
