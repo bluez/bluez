@@ -38,3 +38,13 @@ input = create_service("input")
 audio = create_service("audio")
 
 headset = create_service("headset")
+
+
+def connect_transfer():
+	try:
+		conn = manager.ActivateService("transfer")
+	except:
+		conn = ""
+
+	if (conn != ""):
+		return dbus.Interface(bus.get_object(conn, "/org/bluez/transfer"), 'org.bluez.transfer.Manager')
