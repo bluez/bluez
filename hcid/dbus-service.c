@@ -32,6 +32,7 @@
 #include <dirent.h>
 #include <signal.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <glib.h>
 
@@ -279,8 +280,12 @@ static void service_died(GPid pid, gint status, gpointer data)
 {
 	struct service *service = data;
 
-	debug("%s (%s) exited with status %d", service->name,
-			service->ident, status);
+	if (WIFEXITED(status))
+		debug("%s (%s) exited with status %d", service->name,
+				service->ident, WEXITSTATUS(status));
+	else
+		debug("%s (%s) was killed by signal %d", service->name,
+				service->ident, WTERMSIG(status));
 
 	g_spawn_close_pid(pid);
 	service->pid = 0;
