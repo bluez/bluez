@@ -198,8 +198,6 @@ static DBusHandlerResult service_start(DBusConnection *conn,
 
 		g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, NULL);
 
-		g_strfreev(argv);
-
 		test_watch_id = g_child_watch_add(pid, service_died, NULL);
 
 		debug("New process with PID %d executed", pid);
