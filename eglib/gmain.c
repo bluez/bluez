@@ -671,6 +671,17 @@ static void init_child_pipe(void)
 	g_io_channel_unref(io);
 }
 
+static void exec_child(const gchar *working_directory,
+			gchar **argv, gchar **envp,
+			GSpawnFlags flags)
+{
+	if (chdir(working_directory) < 0)
+		_exit(EXIT_FAILURE);
+
+	if (execv(argv[0], argv) < 0)
+		_exit(EXIT_FAILURE);
+}
+
 gboolean g_spawn_async(const gchar *working_directory,
 			gchar **argv, gchar **envp,
 			GSpawnFlags flags,
@@ -679,9 +690,25 @@ gboolean g_spawn_async(const gchar *working_directory,
 			GPid *child_pid,
 			GError **error)
 {
+	GPid pid;
+
 	if (child_watch_pipe[0] < 0)
 		init_child_pipe();
 
+	switch (pid = fork()) {
+	case -1:
+		return FALSE;
+	case 0:	
+		if (child_setup)
+			child_setup(user_data);
+		exec_child(working_directory, argv, envp, flags);
+		break;
+	default:
+		if (child_pid)
+			*child_pid = pid;
+		return TRUE;
+	}
+		
 	return FALSE;
 }
 
