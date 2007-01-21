@@ -319,6 +319,7 @@ dbus_bool_t dbus_bus_get_unix_process_id(DBusConnection *conn, const char *name,
 						unsigned long *pid)
 {
 	DBusMessage *msg, *reply;
+	DBusError err;
 	dbus_uint32_t pid_arg;
 
 	msg = dbus_message_new_method_call("org.freedesktop.DBus",
@@ -337,16 +338,22 @@ dbus_bool_t dbus_bus_get_unix_process_id(DBusConnection *conn, const char *name,
 		return FALSE;
 	}
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
-	if (!reply) {
-		error("Sending GetConnectionUnixProcessID failed");
+	dbus_error_init(&err);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+	if (dbus_error_is_set(&err)) {
+		error("Sending GetConnectionUnixProcessID failed: %s", err.message);
+		dbus_error_free(&err);
 		dbus_message_unref(msg);
 		return FALSE;
 	}
 
-	if (!dbus_message_get_args(reply, NULL, DBUS_TYPE_UINT32, &pid_arg,
-					DBUS_TYPE_INVALID)) {
-		error("Getting GetConnectionUnixProcessID args failed");
+	dbus_error_init(&err);
+	dbus_message_get_args(reply, &err, DBUS_TYPE_UINT32, &pid_arg,
+					DBUS_TYPE_INVALID);
+	if (dbus_error_is_set(&err)) {
+		error("Getting GetConnectionUnixProcessID args failed: %s",
+				err.message);
+		dbus_error_free(&err);
 		dbus_message_unref(msg);
 		dbus_message_unref(reply);
 		return FALSE;
