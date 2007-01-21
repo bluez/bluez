@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/file.h>
+#include <ctype.h>
 
 #include <gmain.h>
 
@@ -1221,15 +1222,29 @@ gboolean g_key_file_load_from_file(GKeyFile *key_file,
 	return TRUE;
 }
 
+static char *next_line(const char *ptr)
+{
+	char *nl;
+
+	nl = strchr(ptr, '\n');
+	if (!nl)
+		return NULL;
+
+	if (nl[1] == '\0')
+		return NULL;
+
+	return nl + 1;
+}
+
 gchar *g_key_file_get_string(GKeyFile *key_file,
 				const gchar *group_name,
 				const gchar *key,
 				GError **error)
 {
 	struct stat st;
-	char *map, *nl, *off, *group = NULL, *value = NULL, tmp[1024];
+	char *map, *line, *group = NULL, *value = NULL;
 	off_t size;
-	size_t key_len, to_copy, value_len;
+	size_t key_len, group_len; 
 	int fd, err = 0;
 
 	fd = open(key_file->filename, O_RDONLY);
@@ -1257,40 +1272,50 @@ gchar *g_key_file_get_string(GKeyFile *key_file,
 		goto unlock;
 	}
 
-	group = strstr(map, group_name);
-	if (!group)
-		goto unmap;
-
-	nl = strchr(group, '\n');
-	if (!nl)
-		goto unmap;
-
-	off = strstr(nl + 1, key);
-	if (!off)
-		goto unmap;
-
+	group_len = strlen(group_name);
 	key_len = strlen(key);
 
-	if (off[key_len] != '=')
-		goto unmap;
+	for (line = map; line != NULL; line = next_line(line)) {
+		int i;
+		size_t to_copy, value_len;
+		char tmp[1024], *nl;
 
-	off += key_len + 1;
+		if (*line == '#')
+			continue;
 
-	nl = strchr(off, '\n');
-	if (!nl)
-		goto unmap;
+		if (!group) {
+			if (line[0] != '[' || strcmp(line + 1, group_name))
+				continue;
+			if (line[group_len + 1] == ']')
+				group = line + 1;
+			continue;
+		}
 
-	value_len = nl - off;
+		if (strncmp(line, key, key_len))
+			continue;
 
-	to_copy = value_len > (sizeof(tmp) - 1) ? sizeof(tmp) - 1 : value_len;
+		for (i = 0; line[i] != '\n'; i++) {
+			if (line[i] == '=')
+				break;
+			if (!isspace(line[i]))
+				break;
+		}
 
-	memset(tmp, 0, sizeof(tmp));
+		if (line[i] != '=')
+			continue;
 
-	strncpy(tmp, off, to_copy);
+		nl = strchr(line, '\n');
+		if (!nl)
+			continue;
 
-	value = g_strdup(tmp);
-		
-unmap:
+		value_len = nl - (line + i + 1);
+		to_copy = value_len > (sizeof(tmp) - 1) ? sizeof(tmp) - 1 : value_len;
+		memset(tmp, 0, sizeof(tmp));
+		strncpy(tmp, line + i + 1, to_copy);
+
+		value = g_strdup(tmp);
+	}
+
 	munmap(map, size);
 
 unlock:
