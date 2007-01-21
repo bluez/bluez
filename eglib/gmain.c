@@ -759,8 +759,10 @@ gboolean g_spawn_async(const gchar *working_directory,
 {
 	GPid pid;
 
-	if (access(argv[0], X_OK) < 0)
+	if (access(argv[0], X_OK) < 0) {
+		g_set_error(error, 0, 0, "%s is not executable", argv[0]);
 		return FALSE;
+	}
 
 	if (child_watch_pipe[0] < 0)
 		init_child_pipe();
@@ -770,6 +772,7 @@ gboolean g_spawn_async(const gchar *working_directory,
 
 	switch (pid = fork()) {
 	case -1:
+		g_set_error(error, 0, 0, "fork failed: %s", strerror(errno));
 		return FALSE;
 	case 0:	
 		exec_child(working_directory, argv, envp, flags,
@@ -781,6 +784,7 @@ gboolean g_spawn_async(const gchar *working_directory,
 		return TRUE;
 	}
 		
+	/* Never reached */
 	return FALSE;
 }
 
