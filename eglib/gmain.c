@@ -1314,6 +1314,7 @@ gchar *g_key_file_get_string(GKeyFile *key_file,
 		strncpy(tmp, line + i + 1, to_copy);
 
 		value = g_strdup(tmp);
+		break;
 	}
 
 	munmap(map, size);
