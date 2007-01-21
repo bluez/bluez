@@ -1542,6 +1542,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	connection = system_bus;
+
 	if (setup_dbus(system_bus) < 0) {
 		error("Connection setup failed");
 		dbus_connection_unref(system_bus);
