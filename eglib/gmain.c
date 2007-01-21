@@ -722,7 +722,7 @@ static void exec_child(const gchar *working_directory,
 
 		ret = 0;
 		open_max = sysconf(_SC_OPEN_MAX);
-		for (fd = 0; fd < open_max && ret == 0; fd++)
+		for (fd = 3; fd < open_max && ret == 0; fd++)
 			ret = fcntl(fd, F_SETFD, FD_CLOEXEC);
 	}
 
