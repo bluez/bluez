@@ -274,6 +274,8 @@ static const char *create_input_path(uint8_t minor)
 		strcat(subpath, "/");
 
 	switch (minor & 0x3f) {
+	case 0x00:
+		break;
 	case 0x01:
 		strcat(subpath, "joystick");
 		break;
