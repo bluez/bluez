@@ -557,6 +557,20 @@ guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)
 }
 
 /* GError */
+
+GError* g_error_new_literal(GQuark domain, gint code, const gchar *message)
+{
+	GError *err;
+
+	err = g_new(GError, 1);
+
+	err->domain = domain;
+	err->code = code;
+	err->message = g_strdup(message);
+
+	return err;
+}
+
 void g_error_free(GError *err)
 {
 	g_free(err->message);
@@ -1162,42 +1176,8 @@ gchar *g_strdup(const gchar *str)
 
 /* GKeyFile */
 
-typedef gpointer GHashTable;
-
-typedef struct _GKeyFileGroup GKeyFileGroup;
-
 struct _GKeyFile {
-	GSList *groups;
-
-	GKeyFileGroup *start_group;
-	GKeyFileGroup *current_group;
-
-	/* Holds up to one line of not-yet-parsed data */
-	gchar *parse_buffer;
-
-	/* Used for sizing the output buffer during serialization */
-	gsize approximate_size;
-
-	gchar list_separator;
-
-	GKeyFileFlags flags;
-};
-
-typedef struct _GKeyFileKeyValuePair GKeyFileKeyValuePair;
-
-struct _GKeyFileGroup {
-	/* NULL for above first group (which will be comments) */
-	const gchar *name;
-
-	/* Special comment that is stuck to the top of a group */
-	GKeyFileKeyValuePair *comment;
-
-	GSList *key_value_pairs;
-
-	/* Used in parallel with key_value_pairs for
-	 * increased lookup performance
-	 */
-	GHashTable *lookup_map;
+	gchar *filename;
 };
 
 struct _GKeyFileKeyValuePair {
@@ -1207,13 +1187,12 @@ struct _GKeyFileKeyValuePair {
 
 GKeyFile *g_key_file_new(void)
 {
-	/* Not implemented */
-	return NULL;
+	return g_new0(GKeyFile, 1);
 }
 
 void g_key_file_free(GKeyFile *key_file)
 {
-	/* Not implemented fully */
+	g_free(key_file->filename);
 	g_free(key_file);
 }
 
@@ -1222,8 +1201,8 @@ gboolean g_key_file_load_from_file(GKeyFile *key_file,
 				GKeyFileFlags flags,
 				GError **error)
 {
-	/* Not implemented */
-	return FALSE;
+	key_file->filename = g_strdup(file);
+	return TRUE;
 }
 
 gchar *g_key_file_get_string(GKeyFile *key_file,
@@ -1232,6 +1211,8 @@ gchar *g_key_file_get_string(GKeyFile *key_file,
 				GError **error)
 {
 	/* Not implemented */
+	if (error)
+		*error = g_error_new_literal(0, 0, "Not implemented");
 	return NULL;
 }
 
@@ -1241,6 +1222,8 @@ gboolean g_key_file_get_boolean(GKeyFile *key_file,
 				GError **error)
 {
 	/* Not implemented */
+	if (error)
+		*error = g_error_new_literal(0, 0, "Not implemented");
 	return FALSE;
 }
 

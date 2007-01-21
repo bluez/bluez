@@ -119,6 +119,7 @@ typedef struct {
 	gchar       *message;
 } GError;
 
+GError* g_error_new_literal(GQuark domain, gint code, const gchar *message);
 void g_error_free(GError *err);
 
 /* Spawning related functions */
