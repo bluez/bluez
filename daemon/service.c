@@ -173,8 +173,7 @@ static DBusHandlerResult service_start(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	GPid pid;
-	char **argv;
-	int argc;
+	char *argv[2];
 
 	debug("Starting service");
 
@@ -194,7 +193,8 @@ static DBusHandlerResult service_start(DBusConnection *conn,
 
 		dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
-		g_shell_parse_argv(SERVICEDIR "bluetoothd-service-echo", &argc, &argv, NULL);
+		argv[0] = SERVICEDIR "bluetoothd-service-echo";
+		argv[1] = NULL;
 
 		g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, NULL);
 
