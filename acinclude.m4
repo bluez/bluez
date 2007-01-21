@@ -272,7 +272,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AM_CONDITIONAL(EXPAT, false)
 	else
 		AC_SUBST([GLIB_CFLAGS], ['-I$(top_srcdir)/eglib'])
-		AC_SUBST([GLIB_LIBS], ['-L$(top_builddir)/eglib -leglib'])
+		AC_SUBST([GLIB_LIBS], ['$(top_builddir)/eglib/libeglib.la'])
 		AM_CONDITIONAL(GLIB, false)
 		AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
 	fi
