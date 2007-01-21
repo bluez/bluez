@@ -682,10 +682,22 @@ static void exec_child(const gchar *working_directory,
 	if (working_directory && chdir(working_directory) < 0)
 		_exit(EXIT_FAILURE);
 
+	if (!(flags & G_SPAWN_LEAVE_DESCRIPTORS_OPEN)) {
+		int open_max, fd, ret;
+
+		ret = 0;
+		open_max = sysconf(_SC_OPEN_MAX);
+		for (fd = 0; fd < open_max && ret == 0; fd++)
+			ret = fcntl(fd, F_SETFD, FD_CLOEXEC);
+	}
+
 	null = open("/dev/null", O_RDWR);
-	dup2(null, STDIN_FILENO);
-	dup2(null, STDOUT_FILENO);
-	dup2(null, STDERR_FILENO);
+	if (!(flags & G_SPAWN_CHILD_INHERITS_STDIN))
+		dup2(null, STDIN_FILENO);
+	if (flags & G_SPAWN_STDOUT_TO_DEV_NULL)
+		dup2(null, STDOUT_FILENO);
+	if (flags & G_SPAWN_STDERR_TO_DEV_NULL)
+		dup2(null, STDERR_FILENO);
 	if (null > 2)
 		close(null);
 
