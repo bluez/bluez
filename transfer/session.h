@@ -20,3 +20,21 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+#include <bluetooth/bluetooth.h>
+
+struct session_data {
+	DBusConnection *conn;
+	DBusMessage *msg;
+	uid_t uid;
+	bdaddr_t bdaddr;
+	uint8_t channel;
+	char *identifier;
+	GIOChannel *rfcomm_io;
+};
+
+struct session_data *session_create(DBusConnection *conn, DBusMessage *msg);
+void session_destroy(struct session_data *session);
+
+const char *session_connect(struct session_data *session,
+				const char *address, const char *pathname);
