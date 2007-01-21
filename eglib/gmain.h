@@ -200,7 +200,6 @@ gpointer g_try_malloc0(gulong n_bytes);
 void g_free(gpointer mem);
 
 gchar *g_strdup(const gchar *str);
-gchar *g_strdup_printf(const gchar *format, ...);
 void g_strfreev(gchar **str_array);
 
 #define g_new(struct_type, n_structs) \
@@ -211,12 +210,6 @@ void g_strfreev(gchar **str_array);
 	((struct_type *) g_try_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
 #define g_try_new0(struct_type, n_structs)              \
 	((struct_type *) g_try_malloc0 (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
-
-/* g_shell_* */
-gboolean g_shell_parse_argv(const gchar *command_line,
-				gint *argcp,
-				gchar ***argvp,
-				GError **error);
 
 /* GKeyFile */
 

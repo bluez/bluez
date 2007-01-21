@@ -1160,22 +1160,6 @@ gchar *g_strdup(const gchar *str)
 	return s;
 }
 
-gchar *g_strdup_printf(const gchar *format, ...)
-{
-	gchar str[1024];
-	va_list ap;
-
-	memset(str, 0, sizeof(str));
-
-	va_start(ap, format);
-
-	vsnprintf(str, sizeof(str) - 1, format, ap);
-
-	va_end(ap);
-
-	return g_strdup(str);
-}
-
 void g_strfreev(gchar **str_array)
 {
 	int i;
@@ -1187,17 +1171,6 @@ void g_strfreev(gchar **str_array)
 		g_free(str_array[i]);
 
 	g_free(str_array);
-}
-
-/* g_shell_* */
-
-gboolean g_shell_parse_argv(const gchar *command_line,
-				gint *argcp,
-				gchar ***argvp,
-				GError **error)
-{
-	/* Not implemented */
-	return FALSE;
 }
 
 /* GKeyFile */
