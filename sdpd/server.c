@@ -232,7 +232,7 @@ int start_sdp_server(uint16_t mtu, uint32_t flags)
 
 	g_io_add_watch(l2cap_io, G_IO_IN, io_accept_event, &l2cap_sock);
 
-	if (compat) {
+	if (compat && unix_sock > fileno(stderr)) {
 		unix_io = g_io_channel_unix_new(unix_sock);
 		g_io_channel_set_close_on_unref(unix_io, TRUE);
 
