@@ -200,7 +200,6 @@ gpointer g_try_malloc0(gulong n_bytes);
 void g_free(gpointer mem);
 
 gchar *g_strdup(const gchar *str);
-void g_strfreev(gchar **str_array);
 
 #define g_new(struct_type, n_structs) \
 	((struct_type *) g_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))

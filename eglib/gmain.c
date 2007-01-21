@@ -1160,19 +1160,6 @@ gchar *g_strdup(const gchar *str)
 	return s;
 }
 
-void g_strfreev(gchar **str_array)
-{
-	int i;
-
-	if (!str_array)
-		return;
-	
-	for (i = 0; str_array[i] != NULL; i++)
-		g_free(str_array[i]);
-
-	g_free(str_array);
-}
-
 /* GKeyFile */
 
 typedef gpointer GHashTable;
