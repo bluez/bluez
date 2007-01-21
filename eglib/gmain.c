@@ -1284,7 +1284,7 @@ gchar *g_key_file_get_string(GKeyFile *key_file,
 			continue;
 
 		if (!group) {
-			if (line[0] != '[' || strcmp(line + 1, group_name))
+			if (line[0] != '[' || strncmp(line + 1, group_name, group_len))
 				continue;
 			if (line[group_len + 1] == ']')
 				group = line + 1;
