@@ -2955,6 +2955,9 @@ static int add_pcsuite(sdp_session_t *session, svc_info_t *si)
 	return 0;
 }
 
+static unsigned char nftp_uuid[] = {	0x00, 0x00, 0x50, 0x05, 0x00, 0x00, 0x10, 0x00,
+					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x01 };
+
 static unsigned char ngage_uuid[] = {	0x00, 0x00, 0x13, 0x01, 0x00, 0x00, 0x10, 0x00,
 					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x01 };
 
@@ -3136,6 +3139,7 @@ struct {
 	{ "PALMOS",	0,				add_palmos,	palmos_uuid	},
 	{ "NOKID",	0,				add_nokiaid,	nokid_uuid	},
 	{ "PCSUITE",	0,				add_pcsuite,	pcsuite_uuid	},
+	{ "NFTP",	0,				NULL,		nftp_uuid	},
 	{ "NGAGE",	0,				NULL,		ngage_uuid	},
 	{ "APPLE",	0,				add_apple,	apple_uuid	},
 
