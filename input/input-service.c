@@ -485,8 +485,10 @@ void input_manager_free(struct input_manager *mgr)
 {
 	if (!mgr)
 		return;
-	if (mgr->paths)
+	if (mgr->paths) {
 		g_slist_foreach(mgr->paths, (GFunc) free, NULL);
+		g_slist_free(mgr->paths);
+	}
 	if (mgr->adapter_path)
 		free(mgr->adapter_path);
 	free(mgr);
@@ -897,6 +899,7 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 		return err_failed(conn, msg, "D-Bus path unregistration failed");
 	}
 
+	free(l->data);
 	mgr->paths = g_slist_remove(mgr->paths, l->data);
 
 	return send_message_and_unref(conn, reply);
