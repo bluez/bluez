@@ -40,6 +40,7 @@
 #include "dbus.h"
 #include "logging.h"
 
+#include "server.h"
 #include "input-service.h"
 
 static GMainLoop *main_loop;
