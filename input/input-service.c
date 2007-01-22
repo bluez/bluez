@@ -187,18 +187,59 @@ static inline int create_filename(char *buf, size_t size,
 	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
-static int has_hid_record(const char *local, const char *peer)
+/* FIXME: copied from hidd, move to a common library */
+static int get_stored_info(const char *local, const char *peer,
+			struct hidp_connadd_req *req)
 {
-	char filename[PATH_MAX + 1], *str;
+	char filename[PATH_MAX + 1], tmp[3], *str, *desc;
+	unsigned int vendor, product, version, subclass, country, parser, pos;
+	int i;
+
+	desc = malloc(4096);
+	if (!desc)
+		return -ENOMEM;
+
+	memset(desc, 0, 4096);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
 
 	str = textfile_get(filename, peer);
-	if (!str)
-		return 0;
+	if (!str) {
+		free(desc);
+		return -ENOENT;
+	}
+
+	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
+			&vendor, &product, &version, &subclass, &country,
+			&parser, desc, &req->flags, &pos);
 
 	free(str);
-	return 1;
+
+	req->vendor   = vendor;
+	req->product  = product;
+	req->version  = version;
+	req->subclass = subclass;
+	req->country  = country;
+	req->parser   = parser;
+
+	snprintf(req->name, 128, str + pos);
+
+	req->rd_size = strlen(desc) / 2;
+	req->rd_data = malloc(req->rd_size);
+	if (!req->rd_data) {
+		free(desc);
+		return -ENOMEM;
+	}
+
+	memset(tmp, 0, sizeof(tmp));
+	for (i = 0; i < req->rd_size; i++) {
+		memcpy(tmp, desc + (i * 2), 2);
+		req->rd_data[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	free(desc);
+
+	return 0;
 }
 
 static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
@@ -786,9 +827,15 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
 
-	/* FIXME: Retrieve the stored data instead of only check if it exists */
-	if (!has_hid_record(mgr->adapter, addr)) {
+	idev = input_device_new(addr);
+	if (!idev)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (get_stored_info(mgr->adapter, addr, &idev->hidp) < 0) {
 		struct pending_req *pr;
+
+		/* Data not found: create the input device later */
+		input_device_free(idev);
 		pr = pending_req_new(conn, msg, mgr->adapter_path, addr);
 		if (!pr)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -801,12 +848,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	idev = input_device_new(addr);
-	if (!idev)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	/* FIXME: use HIDDeviceSubclass HID record attribute*/
-	path = create_input_path(0x40);
+	path = create_input_path(idev->hidp.subclass);
 	if (register_input_device(conn, idev, path) < 0) {
 		input_device_free(idev);
 		return err_failed(conn, msg, "D-Bus path registration failed");
