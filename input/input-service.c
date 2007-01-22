@@ -161,6 +161,14 @@ static DBusHandlerResult err_already_exists(DBusConnection *conn,
 				INPUT_ERROR_INTERFACE ".AlreadyExists", str));
 }
 
+static DBusHandlerResult err_does_not_exist(DBusConnection *conn,
+				DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".DoesNotExist", str));
+}
+
 static DBusHandlerResult err_generic(DBusConnection *conn, DBusMessage *msg,
 				const char *name, const char *str)
 {
@@ -412,11 +420,15 @@ static DBusHandlerResult device_message(DBusConnection *conn,
 	return err_unknown_method(conn, msg);
 }
 
-static DBusHandlerResult device_message(DBusConnection *conn,
-				DBusMessage *msg, void *data);
+static void device_unregister(DBusConnection *conn, void *data)
+{
+	input_device_free(data);
+}
+
 /* Virtual table to handle device object path hierarchy */
 static const DBusObjectPathVTable device_table = {
 	.message_function = device_message,
+	.unregister_function = device_unregister,
 };
 
 /*
@@ -456,6 +468,29 @@ static int register_input_device(DBusConnection *conn,
 
 	msg = dbus_message_new_signal(INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceCreated");
+	if (!msg)
+		return -1;
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
+	send_message_and_unref(conn, msg);
+
+	return 0;
+}
+
+static int unregister_input_device(DBusConnection *conn, const char *path)
+{
+	DBusMessage *msg;
+
+	if (!dbus_connection_unregister_object_path(conn, path)) {
+		error("Input device path unregister failed");
+		return -1;
+	}
+
+	msg = dbus_message_new_signal(INPUT_PATH,
+			INPUT_MANAGER_INTERFACE, "DeviceRemoved");
 	if (!msg)
 		return -1;
 
@@ -793,7 +828,37 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct input_manager *mgr = data;
+	DBusMessage *reply;
+	DBusError derr;
+	GSList *l;
+	const char *path;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID)) {
+		err_generic(conn, msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	l = g_slist_find_custom(mgr->paths, path, (GCompareFunc) strcmp);
+	if (!l)
+		return err_does_not_exist(conn, msg, "Input doesn't exist");
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (unregister_input_device(conn, path) < 0) {
+		dbus_message_unref(reply);
+		return err_failed(conn, msg, "D-Bus path unregistration failed");
+	}
+
+	mgr->paths = g_slist_remove(mgr->paths, l->data);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult manager_list_devices(DBusConnection *conn,
