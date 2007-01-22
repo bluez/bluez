@@ -91,8 +91,9 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	DBusMessageIter iter, array;
 	const char *sender;
 	struct record_data *user_record;
+	sdp_record_t *sdp_record;
 	const uint8_t *record;
-	int len = -1;
+	int scanned, len = -1;
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_recurse(&iter, &array);
@@ -108,7 +109,28 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	memset(user_record, 0, sizeof(*user_record));
 
 	if (sdp_server_enable) {
-		return error_failed(conn, msg, EIO);
+		sdp_record = sdp_extract_pdu(record, &scanned);
+		if (!sdp_record) {
+			error("Parsing of service record failed");
+			free(user_record);
+			return error_failed(conn, msg, EIO);
+		}
+
+		if (scanned != len) {
+			error("Size mismatch of service record");
+			free(user_record);
+			sdp_record_free(sdp_record);
+			return error_failed(conn, msg, EIO);
+		}
+
+		if (add_record_to_server(sdp_record) < 0) {
+			error("Failed to register service record");
+			free(user_record);
+			sdp_record_free(sdp_record);
+			return error_failed(conn, msg, EIO);
+		}
+
+		user_record->handle = sdp_record->handle;
 	} else {
 		uint32_t size = len;
 
@@ -170,6 +192,8 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 			sdp_record_free(sdp_record);
 			return error_failed(conn, msg, EIO);
 		}
+
+		user_record->handle = sdp_record->handle;
 	} else {
 		if (register_sdp_record(sdp_record) < 0) {
 			error("Failed to register service record");
@@ -177,12 +201,14 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 			sdp_record_free(sdp_record);
 			return error_failed(conn, msg, EIO);
 		}
+
+		user_record->handle = sdp_record->handle;
+
 		sdp_record_free(sdp_record);
 	}
 
 	sender = dbus_message_get_sender(msg);
 
-	user_record->handle = sdp_record->handle;
 	user_record->sender = strdup(sender);
 
 	records = g_slist_append(records, user_record);
