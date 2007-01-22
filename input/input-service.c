@@ -769,9 +769,8 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	struct input_device *idev;
 	DBusMessage *reply;
 	DBusError derr;
-	const char *addr;
-	const char *keyb_path;
-	GSList *path;
+	const char *addr, *path;
+	GSList *l;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -782,9 +781,9 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	path = g_slist_find_custom(mgr->paths, addr,
+	l = g_slist_find_custom(mgr->paths, addr,
 			(GCompareFunc) path_addr_cmp);
-	if (path)
+	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
 
 	/* FIXME: Retrieve the stored data instead of only check if it exists */
@@ -807,8 +806,8 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	/* FIXME: use HIDDeviceSubclass HID record attribute*/
-	keyb_path = create_input_path(0x40);
-	if (register_input_device(conn, idev, keyb_path) < 0) {
+	path = create_input_path(0x40);
+	if (register_input_device(conn, idev, path) < 0) {
 		input_device_free(idev);
 		return err_failed(conn, msg, "D-Bus path registration failed");
 	}
@@ -819,7 +818,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &keyb_path,
+			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
