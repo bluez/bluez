@@ -419,7 +419,19 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 static DBusHandlerResult device_get_name(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct input_device *idev = data;
+	DBusMessage *reply;
+	const char *pname = idev->hidp.name;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &pname,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult device_get_product_id(DBusConnection *conn,
