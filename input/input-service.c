@@ -56,6 +56,7 @@ const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 
 struct input_device {
 	char addr[18];
+	struct hidp_connadd_req hidp;
 };
 
 struct pending_req {
@@ -114,6 +115,15 @@ struct input_device *input_device_new(const char *addr)
 	memcpy(idev->addr, addr, 18);
 
 	return idev;
+}
+
+void input_device_free(struct input_device *idev)
+{
+	if (!idev)
+		return;
+	if (idev->hidp.rd_data)
+		free(idev->hidp.rd_data);
+	free(idev);
 }
 
 /*
@@ -429,6 +439,35 @@ void input_manager_free(struct input_manager *mgr)
 	free(mgr);
 }
 
+static int register_input_device(DBusConnection *conn,
+			struct input_device *idev, const char *path)
+{
+	DBusMessage *msg;
+	struct input_manager *mgr;
+
+	if (!dbus_connection_register_object_path(conn,
+				path, &device_table, idev)) {
+		error("Input device path registration failed");
+		return -1;
+	}
+
+	dbus_connection_get_object_path_data(conn, INPUT_PATH, (void *) &mgr);
+	mgr->paths = g_slist_append(mgr->paths, strdup(path));
+
+	msg = dbus_message_new_signal(INPUT_PATH,
+			INPUT_MANAGER_INTERFACE, "DeviceCreated");
+	if (!msg)
+		return -1;
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
+	send_message_and_unref(conn, msg);
+
+	return 0;
+}
+
 static int path_addr_cmp(const char *path, const char *addr)
 {
 	struct input_device *idev;
@@ -504,10 +543,12 @@ static int get_handles(struct pending_req *pr, const char *uuid,
 static void hid_record_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusMessage *pr_reply;
 	struct pending_req *pr = data;
-	struct hidp_connadd_req req;
+	struct input_device *idev;
 	DBusError derr;
 	uint8_t *rec_bin;
+	const char *path;
 	int len, scanned;
 
 	dbus_error_init(&derr);
@@ -531,13 +572,31 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 	}
 
 	pr->hid_rec = sdp_extract_pdu(rec_bin, &scanned);
-	memset(&req, 0, sizeof(struct hidp_connadd_req));
-	if (pr->hid_rec)
-		extract_hid_record(pr->hid_rec, &req);
-	if (pr->pnp_rec)
-		extract_pnp_record(pr->pnp_rec, &req);
+	if (!pr->hid_rec) {
+		err_failed(pr->conn, pr->msg, "HID not supported");
+		goto fail;
+	}
 
-	/* FIXME: Register the Input device path */
+	idev = input_device_new(pr->peer);
+
+	extract_hid_record(pr->hid_rec, &idev->hidp);
+	if (pr->pnp_rec)
+		extract_pnp_record(pr->pnp_rec, &idev->hidp);
+
+	path = create_input_path(idev->hidp.subclass);
+
+	if (register_input_device(pr->conn, idev, path) < 0) {
+		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
+		input_device_free(idev);
+		goto fail;
+	}
+
+	pr_reply = dbus_message_new_method_return(pr->msg);
+	dbus_message_append_args(pr_reply,
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+	send_message_and_unref(pr->conn, pr_reply);
+
 	/* FIXME: Store HID record data and free req */
 fail:
 	pending_req_free(pr);
@@ -693,6 +752,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	if (path)
 		return err_already_exists(conn, msg, "Input Already exists");
 
+	/* FIXME: Retrieve the stored data instead of only check if it exists */
 	if (!has_hid_record(mgr->adapter, addr)) {
 		struct pending_req *pr;
 		pr = pending_req_new(conn, msg, mgr->adapter_path, addr);
@@ -711,22 +771,18 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	if (!idev)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		free(idev);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
 	/* FIXME: use HIDDeviceSubclass HID record attribute*/
 	keyb_path = create_input_path(0x40);
-	if (!dbus_connection_register_object_path(conn,
-				keyb_path, &device_table, idev)) {
-		error("Input device path registration failed");
-		free(idev);
-		return err_failed(conn, msg, "Path registration failed");
+	if (register_input_device(conn, idev, keyb_path) < 0) {
+		input_device_free(idev);
+		return err_failed(conn, msg, "D-Bus path registration failed");
 	}
 
-	mgr->paths = g_slist_append(mgr->paths, strdup(keyb_path));
+	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		input_device_free(idev);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &keyb_path,
 			DBUS_TYPE_INVALID);
