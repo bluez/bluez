@@ -38,6 +38,8 @@
 #include "logging.h"
 #include "server.h"
 
+static sdp_session_t *sdp_session = NULL;
+
 static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	if (cond & (G_IO_HUP | G_IO_ERR))
@@ -110,7 +112,6 @@ static GIOChannel *setup_rfcomm(uint8_t channel)
 
 static int setup_sdp_for_push(uint8_t channel)
 {
-	sdp_session_t *session;
 	sdp_record_t *record;
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, opush_uuid, l2cap_uuid, rfcomm_uuid, obex_uuid;
@@ -123,10 +124,12 @@ static int setup_sdp_for_push(uint8_t channel)
 	uint8_t dtd = SDP_UINT8;
 	sdp_data_t *sflist;
 
-	session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-	if (!session) {
-		error("Connection to SDP server failed");
-		return -1;
+	if (!sdp_session) {
+		sdp_session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
+		if (!sdp_session) {
+			error("Connection to SDP server failed");
+			return -1;
+		}
 	}
 
 	record = sdp_record_alloc();
@@ -174,7 +177,7 @@ static int setup_sdp_for_push(uint8_t channel)
 
 	sdp_set_info_attr(record, "OBEX Object Push", 0, 0);
 
-	if (sdp_record_register(session, record, 0) < 0) {
+	if (sdp_record_register(sdp_session, record, 0) < 0) {
 		error("Registration of service record failed");
 		sdp_record_free(record);
 		return -1;
@@ -187,7 +190,6 @@ static int setup_sdp_for_push(uint8_t channel)
 
 static int setup_sdp_for_ftp(uint8_t channel)
 {
-	sdp_session_t *session;
 	sdp_record_t *record;
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, opush_uuid, l2cap_uuid, rfcomm_uuid, obex_uuid;
@@ -195,10 +197,12 @@ static int setup_sdp_for_ftp(uint8_t channel)
 	sdp_list_t *aproto, *proto[3];
 	sdp_data_t *chan;
 
-	session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-	if (!session) {
-		error("Connection to SDP server failed");
-		return -1;
+	if (!sdp_session) {
+		sdp_session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
+		if (!sdp_session) {
+			error("Connection to SDP server failed");
+			return -1;
+		}
 	}
 
 	record = sdp_record_alloc();
@@ -239,7 +243,7 @@ static int setup_sdp_for_ftp(uint8_t channel)
 
 	sdp_set_info_attr(record, "OBEX File Transfer", 0, 0);
 
-	if (sdp_record_register(session, record, 0) < 0) {
+	if (sdp_record_register(sdp_session, record, 0) < 0) {
 		error("Registration of service record failed");
 		sdp_record_free(record);
 		return -1;
@@ -270,6 +274,8 @@ int start_server(uint8_t channel)
 
 void stop_server(void)
 {
+	sdp_close(sdp_session);
+
 	if (server_io)
 		g_io_channel_unref(server_io);
 }
