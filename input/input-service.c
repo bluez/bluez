@@ -187,11 +187,9 @@ static inline int create_filename(char *buf, size_t size,
 	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
-/* FIXME: copied from hidd, move to a common library */
-static int get_stored_info(const char *local, const char *peer,
-			struct hidp_connadd_req *req)
+static int parse_stored_info(const char *str, struct hidp_connadd_req *req)
 {
-	char filename[PATH_MAX + 1], tmp[3], *str, *desc;
+	char tmp[3], *desc;
 	unsigned int vendor, product, version, subclass, country, parser, pos;
 	int i;
 
@@ -201,19 +199,10 @@ static int get_stored_info(const char *local, const char *peer,
 
 	memset(desc, 0, 4096);
 
-	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
-
-	str = textfile_get(filename, peer);
-	if (!str) {
-		free(desc);
-		return -ENOENT;
-	}
 
 	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
 			&vendor, &product, &version, &subclass, &country,
 			&parser, desc, &req->flags, &pos);
-
-	free(str);
 
 	req->vendor   = vendor;
 	req->product  = product;
@@ -240,6 +229,26 @@ static int get_stored_info(const char *local, const char *peer,
 	free(desc);
 
 	return 0;
+}
+
+/* FIXME: copied from hidd, move to a common library */
+static int get_stored_info(const char *local, const char *peer,
+			struct hidp_connadd_req *req)
+{
+	char filename[PATH_MAX + 1], *str;
+	int ret;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
+
+	str = textfile_get(filename, peer);
+	if (!str)
+		return -ENOENT;
+
+	ret = parse_stored_info(str, req);
+
+	free(str);
+
+	return ret;
 }
 
 static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
@@ -519,6 +528,8 @@ static int register_input_device(DBusConnection *conn,
 			DBUS_TYPE_INVALID);
 
 	send_message_and_unref(conn, msg);
+
+	info("Created input device: %s", path);
 
 	return 0;
 }
@@ -976,6 +987,33 @@ static const DBusObjectPathVTable manager_table = {
 	.unregister_function = manager_unregister,
 };
 
+static void stored_input(char *key, char *value, void *data)
+{
+	DBusConnection *conn = data;
+	struct input_device *idev;
+	const char *path;
+
+	idev = input_device_new(key);
+	if (parse_stored_info(value, &idev->hidp) < 0) {
+		input_device_free(idev);
+		return;
+	}
+
+	path = create_input_path(idev->hidp.subclass);
+	if (register_input_device(conn, idev, path) < 0)
+		input_device_free(idev);
+}
+
+static int register_stored_inputs(DBusConnection *conn, const char *local)
+{
+	char filename[PATH_MAX + 1];
+
+	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
+	textfile_foreach(filename, stored_input, conn);
+
+	return 0;
+}
+
 int input_dbus_init(void)
 {
 	struct input_manager *mgr;
@@ -1055,6 +1093,8 @@ int input_dbus_init(void)
 	}
 
 	info("Registered input manager path:%s", INPUT_PATH);
+
+	register_stored_inputs(connection, mgr->adapter);
 
 	return 0;
 fail:
