@@ -1,4 +1,5 @@
 
+if ECHOSERVICE
 if CONFIGFILES
 confdir = $(sysconfdir)/bluetooth
 
@@ -7,9 +8,16 @@ endif
 
 servicedir = $(libdir)/bluetooth
 
-noinst_PROGRAMS = bluetoothd
-
 service_PROGRAMS = bluetoothd-service-echo
+
+bluetoothd_service_echo_SOURCES = echo.c
+
+bluetoothd_service_echo_LDADD = \
+	$(top_builddir)/common/libhelper.a \
+	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+endif
+
+noinst_PROGRAMS = bluetoothd
 
 bluetoothd_SOURCES = main.c system.h \
 	manager.h manager.c database.h database.c \
@@ -18,12 +26,6 @@ bluetoothd_SOURCES = main.c system.h \
 bluetoothd_LDADD = \
 	$(top_builddir)/common/libhelper.a \
 	$(top_builddir)/sdpd/libsdpserver.a \
-	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
-
-bluetoothd_service_echo_SOURCES = echo.c
-
-bluetoothd_service_echo_LDADD = \
-	$(top_builddir)/common/libhelper.a \
 	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 
 if EXPAT

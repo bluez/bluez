@@ -144,7 +144,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	expat_enable=${expat_found}
 	glib_enable=no
 	obex_enable=${openobex_found}
-	sync_enable=${opensync_found}
+	input_enable=no
+	sync_enable=no
+	echo_enable=no
 	hcid_enable=yes
 	sdpd_enable=yes
 	test_enable=no
@@ -172,6 +174,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		dbus_enable=${enableval}
 		obex_enable=${enableval}
+		input_enable=${enableval}
+		sync_enable=${enableval}
+		echo_enable=${enableval}
 		hcid_enable=${enableval}
 		sdpd_enable=${enableval}
 		test_enable=${enableval}
@@ -201,8 +206,16 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		obex_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(sync, AC_HELP_STRING([--enable-sync], [enable SYNC support]), [
+	AC_ARG_ENABLE(input, AC_HELP_STRING([--enable-input], [enable input service]), [
+		input_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(sync, AC_HELP_STRING([--enable-sync], [enable synchronization service]), [
 		sync_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(echo, AC_HELP_STRING([--enable-echo], [enable echo example service]), [
+		echo_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(hcid, AC_HELP_STRING([--enable-hcid], [install HCI daemon]), [
@@ -279,7 +292,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
-	AM_CONDITIONAL(SYNC, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
+	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
+	AM_CONDITIONAL(SYNCSERVICE, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
+	AM_CONDITIONAL(ECHOSERVICE, test "${echo_enable}" = "yes")
 	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")
 	AM_CONDITIONAL(SDPD, test "${sdpd_enable}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")

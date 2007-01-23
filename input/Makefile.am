@@ -1,7 +1,14 @@
 
+if INPUTSERVICE
+if CONFIGFILES
+confdir = $(sysconfdir)/bluetooth
+
+conf_DATA = input.service
+endif
+
 servicedir = $(libdir)/bluetooth
 
-noinst_PROGRAMS = bluetoothd-service-input
+service_PROGRAMS = bluetoothd-service-input
 
 bluetoothd_service_input_SOURCES = \
 		main.c server.h server.c \
@@ -9,6 +16,7 @@ bluetoothd_service_input_SOURCES = \
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
