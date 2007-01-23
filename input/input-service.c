@@ -205,6 +205,15 @@ static DBusHandlerResult err_connection_failed(DBusConnection *conn,
 				str));
 }
 
+static DBusHandlerResult err_not_connected(DBusConnection *conn,
+				DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE".NotConnected",
+				"Input device not connected"));
+}
+
 static DBusHandlerResult err_already_exists(DBusConnection *conn,
 				DBusMessage *msg, const char *str)
 {
@@ -654,7 +663,42 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 static DBusHandlerResult device_disconnect(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct input_device *idev = data;
+	struct hidp_conndel_req req;
+	int ctl;
+
+	if ((idev->hidp.intr_sock < 0) || (idev->hidp.ctrl_sock < 0))
+		return err_not_connected(conn, msg);
+
+	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
+	if (ctl < 0) {
+		error("Can't open HIDP control socket");
+		goto fail;
+	}
+
+	memset(&req, 0, sizeof(struct hidp_conndel_req));
+
+	req.flags = idev->hidp.flags;
+	str2ba(idev->addr, &req.bdaddr);
+
+	if (ioctl(ctl, HIDPCONNDEL, &req) < 0) {
+		error("Can't delete the HID device: %s(%d)",
+				strerror(errno), errno);
+		goto fail;
+	}
+
+	close(ctl);
+
+	close(idev->hidp.intr_sock);
+	idev->hidp.intr_sock = -1;
+
+	close(idev->hidp.ctrl_sock);
+	idev->hidp.ctrl_sock = -1;
+
+	return send_message_and_unref(conn,
+			dbus_message_new_method_return(msg));
+fail:
+	return err_failed(conn, msg, strerror(errno));
 }
 
 static DBusHandlerResult device_unplug(DBusConnection *conn,
