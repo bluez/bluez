@@ -127,7 +127,7 @@ static inline struct device_opts *find_device_opts(char *ref)
 	return NULL;
 }
 
-static struct device_opts *get_device_opts(int sock, int hdev)
+static struct device_opts *get_device_opts(int hdev)
 {
 	struct device_opts *device_opts = NULL;
 	struct hci_dev_info di;
@@ -296,34 +296,7 @@ static void configure_device(int dev_id)
 	char mode[14];
 	int dd;
 
-	/* Do configuration in the separate process */
-	switch (fork()) {
-		case 0:
-			break;
-		case -1:
-			error("Fork failed. Can't init device hci%d: %s (%d)",
-						dev_id, strerror(errno), errno);
-		default:
-			return;
-	}
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("Can't open device hci%d: %s (%d)",
-						dev_id, strerror(errno), errno);
-		exit(1);
-	}
-
-	if (hci_devinfo(dev_id, &di) < 0)
-		exit(1);
-
-	if (hci_test_bit(HCI_RAW, &di.flags))
-		exit(0);
-
-	memset(&dr, 0, sizeof(dr));
-	dr.dev_id = dev_id;
-
-	device_opts = get_device_opts(dd, dev_id);
+	device_opts = get_device_opts(dev_id);
 
 	/* Set default discoverable timeout if not set */
 	if (!(device_opts->flags & (1 << HCID_SET_DISCOVTO)))
@@ -343,6 +316,33 @@ static void configure_device(int dev_id)
 				device_opts->scan = SCAN_PAGE;
 		}
 	}
+
+	/* Do configuration in the separate process */
+	switch (fork()) {
+		case 0:
+			break;
+		case -1:
+			error("Fork failed. Can't init device hci%d: %s (%d)",
+						dev_id, strerror(errno), errno);
+		default:
+			return;
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("Can't open device hci%d: %s (%d)",
+						dev_id, strerror(errno), errno);
+		return;
+	}
+
+	if (hci_devinfo(dev_id, &di) < 0)
+		exit(1);
+
+	if (hci_test_bit(HCI_RAW, &di.flags))
+		exit(0);
+
+	memset(&dr, 0, sizeof(dr));
+	dr.dev_id = dev_id;
 
 	/* Set packet type */
 	if ((device_opts->flags & (1 << HCID_SET_PTYPE))) {
