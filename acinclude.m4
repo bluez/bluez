@@ -82,12 +82,17 @@ AC_DEFUN([AC_PATH_GLIB], [
 
 AC_DEFUN([AC_PATH_DBUS], [
 	PKG_CHECK_MODULES(DBUS, dbus-1 > 0.35, dummy=yes, AC_MSG_ERROR(dbus > 0.35 is required))
-	PKG_CHECK_EXISTS(dbus-1 < 0.95, DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE")
-	if (test "${glib_found}" = "yes"); then
-		PKG_CHECK_MODULES(DBUS_GLIB, dbus-glib-1 > 0.60, dbus_glib_found=yes, dbus_glib_found=no)
-	else
+	m4_ifdef([PKG_CHECK_EXISTS], [
+		PKG_CHECK_EXISTS(dbus-1 < 0.95, DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE")
+		if (test "${glib_found}" = "yes"); then
+			PKG_CHECK_MODULES(DBUS_GLIB, dbus-glib-1 > 0.60, dbus_glib_found=yes, dbus_glib_found=no)
+		else
+			dbus_glib_found=no
+		fi
+	], [
+		DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE"
 		dbus_glib_found=no
-	fi
+	])
 	AC_SUBST(DBUS_CFLAGS)
 	AC_SUBST(DBUS_LIBS)
 ])
