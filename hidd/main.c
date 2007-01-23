@@ -273,7 +273,7 @@ static int create_device(int ctl, int csk, int isk, uint8_t subclass, int nosdp,
 
 	if (!nocheck) {
 		ba2str(&dst, bda);
-		syslog(LOG_ERR, "Rejected connection from unknown device %s\n", bda);
+		syslog(LOG_ERR, "Rejected connection from unknown device %s", bda);
 		/* Return no error to avoid run_server() complaining too */
 		return 0;
 	}
