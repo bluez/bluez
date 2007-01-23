@@ -46,7 +46,8 @@ enum {
 	RECV,
 	RECONNECT,
 	MULTY,
-	DUMP
+	DUMP,
+	CONNECT
 };
 
 static unsigned char *buf;
@@ -334,15 +335,16 @@ static void usage(void)
 		"\t-c reconnect (client)\n"
 		"\t-m multiple connects (client)\n"
 		"\t-r receive (server)\n"
-		"\t-s send (client)\n");
+		"\t-s connect and send (client)\n"
+		"\t-n connect and be silent (client)\n");
 }
 
 int main(int argc ,char *argv[])
 {
 	struct sigaction sa;
-	int opt, mode = RECV;
+	int opt, sk, mode = RECV;
 
-	while ((opt=getopt(argc,argv,"rdscmb:")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscmnb:")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -362,6 +364,10 @@ int main(int argc ,char *argv[])
 
 		case 'm':
 			mode = MULTY;
+			break;
+
+		case 'n':
+			mode = CONNECT;
 			break;
 
 		case 'b':
@@ -410,6 +416,13 @@ int main(int argc ,char *argv[])
 
 		case MULTY:
 			multy_connect_mode(argv[optind]);
+			break;
+
+		case CONNECT:
+			sk = do_connect(argv[optind]);
+			if (sk < 0)
+				exit(1);
+			dump_mode(sk);
 			break;
 	}
 
