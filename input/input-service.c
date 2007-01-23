@@ -29,7 +29,10 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
-
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+ 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
@@ -505,7 +508,60 @@ failed:
 static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 			struct pending_connect *pc)
 {
-	info("FIXME: interrupt connect callback");
+	struct input_device *idev;
+	int ctl, ret, err = EHOSTDOWN, isk = -1;
+	socklen_t len;
+	const char *path;
+
+	path = dbus_message_get_path(pc->msg);
+	dbus_connection_get_object_path_data(pc->conn, path, (void *) &idev);
+
+	if (cond & G_IO_NVAL)
+		goto failed;
+
+	isk = g_io_channel_unix_get_fd(chan);
+	idev->hidp.intr_sock = isk;
+
+	len = sizeof(ret);
+	if (getsockopt(isk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		err = ret;
+		error("connect(): %s (%d)", strerror(ret), ret);
+		goto failed;
+	}
+
+	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
+	if (ctl < 0) {
+		err = errno;
+		error("Can't open HIDP control socket");
+		goto failed;
+	}
+	if (ioctl(ctl, HIDPCONNADD, &idev->hidp) < 0) {
+		err = errno;
+		close(ctl);
+		goto failed;
+	}
+	close(ctl);
+
+	send_message_and_unref(pc->conn,
+			dbus_message_new_method_return(pc->msg));
+
+	pending_connect_free(pc);
+
+	return FALSE;
+failed:
+	if (isk > 0)
+		close(isk);
+
+	idev->hidp.intr_sock = -1;
+	err_connection_failed(pc->conn, pc->msg, strerror(err));
+	pending_connect_free(pc);
+
 	return FALSE;
 }
 
