@@ -28,10 +28,12 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/hidp.h>
@@ -50,6 +52,9 @@
 #define INPUT_DEVICE_INTERFACE	"org.bluez.input.Device"
 #define INPUT_ERROR_INTERFACE	"org.bluez.Error"
 
+#define L2CAP_PSM_HIDP_CTRL		0x11
+#define L2CAP_PSM_HIDP_INTR		0x13
+
 static DBusConnection *connection = NULL;
 const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
@@ -67,6 +72,37 @@ struct pending_req {
 	sdp_record_t *pnp_rec;
 	sdp_record_t *hid_rec;
 };
+
+struct pending_connect {
+	bdaddr_t sba;
+	bdaddr_t dba;
+	DBusConnection *conn;
+	DBusMessage *msg;
+};
+
+struct input_device *input_device_new(const char *addr)
+{
+	struct input_device *idev;
+
+	idev = malloc(sizeof(struct input_device));
+	if (!idev)
+		return NULL;
+
+	memset(idev, 0, sizeof(struct input_device));
+
+	memcpy(idev->addr, addr, 18);
+
+	return idev;
+}
+
+void input_device_free(struct input_device *idev)
+{
+	if (!idev)
+		return;
+	if (idev->hidp.rd_data)
+		free(idev->hidp.rd_data);
+	free(idev);
+}
 
 struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
 				const char *adapter_path, const char *peer)
@@ -102,28 +138,32 @@ void pending_req_free(struct pending_req *pr)
 	free(pr);
 }
 
-struct input_device *input_device_new(const char *addr)
+static struct pending_connect *pending_connect_new(bdaddr_t *sba, bdaddr_t *dba,
+					DBusConnection *conn, DBusMessage *msg)
 {
-	struct input_device *idev;
-
-	idev = malloc(sizeof(struct input_device));
-	if (!idev)
+	struct pending_connect *pc;
+	pc = malloc(sizeof(struct pending_connect));
+	if (!pc)
 		return NULL;
 
-	memset(idev, 0, sizeof(struct input_device));
+	memset(pc, 0, sizeof(struct pending_connect));
+	bacpy(&pc->sba, sba);
+	bacpy(&pc->dba, dba);
+	pc->conn = dbus_connection_ref(conn);
+	pc->msg = dbus_message_ref(msg);
 
-	memcpy(idev->addr, addr, 18);
-
-	return idev;
+	return pc;
 }
 
-void input_device_free(struct input_device *idev)
+static void pending_connect_free(struct pending_connect *pc)
 {
-	if (!idev)
+	if (!pc)
 		return;
-	if (idev->hidp.rd_data)
-		free(idev->hidp.rd_data);
-	free(idev);
+	if (pc->conn)
+		dbus_connection_unref(pc->conn);
+	if (pc->msg)
+		dbus_message_unref(pc->msg);
+	free(pc);
 }
 
 /*
@@ -151,6 +191,15 @@ static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 	return send_message_and_unref(conn,
 			dbus_message_new_error(msg,
 				INPUT_ERROR_INTERFACE ".Failed", str));
+}
+
+static DBusHandlerResult err_connection_failed(DBusConnection *conn,
+					DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE".ConnectionAttemptFailed",
+				str));
 }
 
 static DBusHandlerResult err_already_exists(DBusConnection *conn,
@@ -371,13 +420,120 @@ static const char *create_input_path(uint8_t minor)
 	return path;
 }
 
+static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
+			struct pending_connect *pc)
+{
+	info("FIXME: Control connect callback");
+	return FALSE;
+}
+
+/* FIXME: Move to a common file. It is already used by audio and rfcomm */
+static int set_nonblocking(int fd)
+{
+	long arg;
+
+	arg = fcntl(fd, F_GETFL);
+	if (arg < 0) {
+		error("fcntl(F_GETFL): %s (%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	/* Return if already nonblocking */
+	if (arg & O_NONBLOCK)
+		return 0;
+
+	arg |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, arg) < 0) {
+		error("fcntl(F_SETFL, O_NONBLOCK): %s (%d)",
+				strerror(errno), errno);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int l2cap_connect(struct pending_connect *pc,
+		unsigned short psm, GIOFunc cb)
+{
+	GIOChannel *io;
+	struct sockaddr_l2 addr;
+	struct l2cap_options opts;
+	int sk, err;
+
+	if ((sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0)
+		return -1;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family  = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, &pc->sba);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
+		goto failed;
+
+	if (set_nonblocking(sk) < 0)
+		goto failed;
+
+	memset(&opts, 0, sizeof(opts));
+	opts.imtu = HIDP_DEFAULT_MTU;
+	opts.omtu = HIDP_DEFAULT_MTU;
+	opts.flush_to = 0xffff;
+
+	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0)
+		goto failed;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family  = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, &pc->dba);
+	addr.l2_psm = htobs(psm);
+
+	/* FIXME: check leaking io channel */
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, FALSE);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		if (!(errno == EAGAIN || errno == EINPROGRESS))
+			goto failed;
+
+		g_io_add_watch(io, G_IO_OUT, (GIOFunc) cb, pc);
+	} else {
+		cb(io, G_IO_OUT, pc);
+	}
+
+	return 0;
+
+failed:
+	err = errno;
+	close(sk);
+	errno = err;
+
+	return -1;
+}
+
 /*
  * Input Device methods
  */
 static DBusHandlerResult device_connect(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct input_device *idev = data;
+	struct pending_connect *pc;
+	bdaddr_t dba;
+
+	/* FIXME: check if it is already connected */
+	str2ba(idev->addr, &dba);
+
+	pc = pending_connect_new(BDADDR_ANY, &dba, conn, msg);
+	if (!pc)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (l2cap_connect(pc, L2CAP_PSM_HIDP_CTRL,
+			(GIOFunc) control_connect_cb) < 0) {
+		error("L2CAP connect failed: %s(%d)", strerror(errno), errno);
+		pending_connect_free(pc);
+		return err_connection_failed(conn, msg, strerror(errno));
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult device_disconnect(DBusConnection *conn,
