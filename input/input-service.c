@@ -509,15 +509,18 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 			struct pending_connect *pc)
 {
 	struct input_device *idev;
-	int ctl, ret, err = EHOSTDOWN, isk = -1;
+	int ctl, isk, ret, err;
 	socklen_t len;
 	const char *path;
 
 	path = dbus_message_get_path(pc->msg);
 	dbus_connection_get_object_path_data(pc->conn, path, (void *) &idev);
 
-	if (cond & G_IO_NVAL)
+	if (cond & G_IO_NVAL) {
+		err = EHOSTDOWN;
+		isk = -1;
 		goto failed;
+	}
 
 	isk = g_io_channel_unix_get_fd(chan);
 	idev->hidp.intr_sock = isk;
@@ -569,14 +572,22 @@ static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
 			struct pending_connect *pc)
 {
 	struct input_device *idev;
-	int csk, ret, err = EHOSTDOWN;
+	int ret, csk, err;
 	socklen_t len;
 	const char *path;
 
-	if (cond & G_IO_NVAL)
+	path = dbus_message_get_path(pc->msg);
+	dbus_connection_get_object_path_data(pc->conn, path, (void *) &idev);
+
+	if (cond & G_IO_NVAL) {
+		err = EHOSTDOWN;
+		csk = -1;
 		goto failed;
+	}
 
 	csk = g_io_channel_unix_get_fd(chan);
+	/* Set HID control channel */
+	idev->hidp.ctrl_sock = csk;
 
 	len = sizeof(ret);
 	if (getsockopt(csk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
@@ -590,28 +601,23 @@ static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
 		error("connect(): %s (%d)", strerror(ret), ret);
 		goto failed;
 	}
-
-	path = dbus_message_get_path(pc->msg);
-	dbus_connection_get_object_path_data(pc->conn, path, (void *) &idev);
-
-	/* Set HID control channel */
-	idev->hidp.ctrl_sock = csk;
-
 	/* Connect to the HID interrupt channel */
 	if (l2cap_connect(pc, L2CAP_PSM_HIDP_INTR,
 			(GIOFunc) interrupt_connect_cb) < 0) {
 
-		error("L2CAP connect failed:%s (%d)", strerror(errno), errno);
 		err = errno;
-		close(csk);
-		idev->hidp.ctrl_sock = -1;
+		error("L2CAP connect failed:%s (%d)", strerror(errno), errno);
 		goto failed;
 	}
 
+	pending_connect_free(pc);
 	return FALSE;
 
 failed:
+	if (csk > 0)
+		close(csk);
 
+	idev->hidp.ctrl_sock = -1;
 	err_connection_failed(pc->conn, pc->msg, strerror(err));
 	pending_connect_free(pc);
 
