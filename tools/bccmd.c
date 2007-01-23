@@ -64,8 +64,10 @@ static inline int transport_open(int transport, char *device)
 	switch (transport) {
 	case CSR_TRANSPORT_HCI:
 		return csr_open_hci(device);
+#ifdef HAVE_LIBUSB
 	case CSR_TRANSPORT_USB:
 		return csr_open_usb(device);
+#endif
 	case CSR_TRANSPORT_BCSP:
 		return csr_open_bcsp(device);
 	case CSR_TRANSPORT_H4:
@@ -83,8 +85,10 @@ static inline int transport_read(int transport, uint16_t varid, uint8_t *value, 
 	switch (transport) {
 	case CSR_TRANSPORT_HCI:
 		return csr_read_hci(varid, value, length);
+#ifdef HAVE_LIBUSB
 	case CSR_TRANSPORT_USB:
 		return csr_read_usb(varid, value, length);
+#endif
 	case CSR_TRANSPORT_BCSP:
 		return csr_read_bcsp(varid, value, length);
 	case CSR_TRANSPORT_H4:
@@ -102,8 +106,10 @@ static inline int transport_write(int transport, uint16_t varid, uint8_t *value,
 	switch (transport) {
 	case CSR_TRANSPORT_HCI:
 		return csr_write_hci(varid, value, length);
+#ifdef HAVE_LIBUSB
 	case CSR_TRANSPORT_USB:
 		return csr_write_usb(varid, value, length);
+#endif
 	case CSR_TRANSPORT_BCSP:
 		return csr_write_bcsp(varid, value, length);
 	case CSR_TRANSPORT_H4:
@@ -122,9 +128,11 @@ static inline void transport_close(int transport)
 	case CSR_TRANSPORT_HCI:
 		csr_close_hci();
 		break;
+#ifdef HAVE_LIBUSB
 	case CSR_TRANSPORT_USB:
 		csr_close_usb();
 		break;
+#endif
 	case CSR_TRANSPORT_BCSP:
 		csr_close_bcsp();
 		break;

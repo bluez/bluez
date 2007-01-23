@@ -142,6 +142,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	pie_enable=no
 	inotify_enable=${inotify_found}
 	expat_enable=${expat_found}
+	usb_enable=${usb_found}
 	glib_enable=no
 	obex_enable=${openobex_found}
 	input_enable=no
@@ -196,6 +197,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(expat, AC_HELP_STRING([--enable-expat], [enable Expat support]), [
 		expat_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
+		usb_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(glib, AC_HELP_STRING([--enable-glib], [enable GLib support]), [
@@ -275,6 +280,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		LDFLAGS="$LDFLAGS -pie"
 	fi
 
+	if (test "${usb_enable}" = "yes" && test "${usb_found}" = "yes"); then
+		AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
+	fi
+
 	if (test "${glib_enable}" = "yes" && test "${glib_found}" = "yes"); then
 		if (test "${dbus_glib_found}" = "dummy"); then
 			AC_DEFINE(HAVE_DBUS_GLIB, 1, [Define to 1 if you have D-Bus GLib bindings.])
@@ -291,6 +300,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
+	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(SYNCSERVICE, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
@@ -302,7 +312,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(CONFIGFILES, test "${configfiles_enable}" = "yes")
 	AM_CONDITIONAL(INITSCRIPTS, test "${initscripts_enable}" = "yes")
 	AM_CONDITIONAL(PCMCIARULES, test "${pcmciarules_enable}" = "yes")
-	AM_CONDITIONAL(BCCMD, test "${bccmd_enable}" = "yes" && test "${usb_found}" = "yes")
+	AM_CONDITIONAL(BCCMD, test "${bccmd_enable}" = "yes")
 	AM_CONDITIONAL(AVCTRL, test "${avctrl_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")

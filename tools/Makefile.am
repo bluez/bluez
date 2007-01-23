@@ -55,8 +55,12 @@ ciptool_LDADD = @BLUEZ_LIBS@
 ppporc_LDADD = @BLUEZ_LIBS@
 
 if BCCMD
-bccmd_SOURCES = bccmd.c csr.h csr.c csr_hci.c csr_usb.c csr_bcsp.c csr_h4.c csr_3wire.c ubcsp.h ubcsp.c
-bccmd_LDADD = @USB_LIBS@ @BLUEZ_LIBS@
+bccmd_SOURCES = bccmd.c csr.h csr.c csr_hci.c csr_bcsp.c csr_h4.c csr_3wire.c ubcsp.h ubcsp.c
+bccmd_LDADD = @BLUEZ_LIBS@
+if USB
+bccmd_SOURCES += csr_usb.c
+bccmd_LDADD += @USB_LIBS@
+endif
 endif
 
 if AVCTRL
