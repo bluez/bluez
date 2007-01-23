@@ -25,50 +25,220 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
+#include <bluetooth/hidp.h>
 
 #include <glib.h>
 
 #include "logging.h"
+#include "textfile.h"
 #include "server.h"
+
+struct session_data {
+	bdaddr_t src;
+	bdaddr_t dst;
+	int ctrl_sk;
+	int intr_sk;
+};
+
+static GSList *sessions = NULL;
+
+static struct session_data *find_session(bdaddr_t *src, bdaddr_t *dst)
+{
+	GSList *list;
+
+	for (list = sessions; list != NULL; list = list->next) {
+		struct session_data *session = list->data;
+
+		if (!bacmp(&session->src, src) && !bacmp(&session->dst, dst))
+			return session;
+	}
+
+	return NULL;
+}
 
 static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		return FALSE;
 
-	debug("Incoming data session");
+	return TRUE;
+}
 
-	return FALSE;
+static int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst,
+						struct hidp_connadd_req *req)
+{
+	char filename[PATH_MAX + 1], addr[18], tmp[3], *str, *desc;
+	unsigned int vendor, product, version, subclass, country, parser, pos;
+	int i;
+
+	desc = malloc(4096);
+	if (!desc)
+		return -ENOMEM;
+
+	memset(desc, 0, 4096);
+
+	ba2str(src, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "hidd");
+
+	ba2str(dst, addr);
+	str = textfile_get(filename, addr);
+	if (!str) {
+		free(desc);
+		return -EIO;
+	}
+
+	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
+			&vendor, &product, &version, &subclass, &country,
+			&parser, desc, &req->flags, &pos);
+
+	free(str);
+
+	req->vendor   = vendor;
+	req->product  = product;
+	req->version  = version;
+	req->subclass = subclass;
+	req->country  = country;
+	req->parser   = parser;
+
+	snprintf(req->name, 128, str + pos);
+
+	req->rd_size = strlen(desc) / 2;
+	req->rd_data = malloc(req->rd_size);
+	if (!req->rd_data)
+		return -ENOMEM;
+
+	memset(tmp, 0, sizeof(tmp));
+	for (i = 0; i < req->rd_size; i++) {
+		memcpy(tmp, desc + (i * 2), 2);
+		req->rd_data[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	return 0;
+}
+
+static void create_device(struct session_data *session)
+{
+	struct hidp_connadd_req req;
+	char addr[18];
+	int ctl, err, timeout = 30;
+
+	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
+	if (ctl < 0) {
+		error("Can't open HIDP interface");
+		goto cleanup;
+	}
+
+	ba2str(&session->dst, addr);
+
+	memset(&req, 0, sizeof(req));
+	req.ctrl_sock = session->ctrl_sk;
+	req.intr_sock = session->intr_sk;
+	req.flags     = 0;
+	req.idle_to   = timeout * 60;
+
+	if (get_stored_device_info(&session->src, &session->dst, &req) < 0) {
+		error("Rejected connection from unknown device %s", addr);
+		goto cleanup;
+	}
+
+	info("New input device %s (%s)", addr, req.name);
+
+	err = ioctl(ctl, HIDPCONNADD, &req);
+
+	close(ctl);
+
+	if (req.rd_data)
+		free(req.rd_data);
+
+cleanup:
+	sessions = g_slist_remove(sessions, session);
+
+	close(session->intr_sk);
+	close(session->ctrl_sk);
+
+	g_free(session);
+}
+
+static void create_watch(int sk, struct session_data *session)
+{
+	GIOChannel *io;
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR,
+						session_event, session);
+
+	g_io_channel_unref(io);
 }
 
 static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	GIOChannel *io;
+	struct session_data *session;
 	struct sockaddr_l2 addr;
-	socklen_t optlen;
+	socklen_t addrlen;
+	bdaddr_t src, dst;
+	unsigned char psm;
 	int sk, nsk;
 
 	sk = g_io_channel_unix_get_fd(chan);
 
 	memset(&addr, 0, sizeof(addr));
-	optlen = sizeof(addr);
+	addrlen = sizeof(addr);
 
-	nsk = accept(sk, (struct sockaddr *) &addr, &optlen);
+	nsk = accept(sk, (struct sockaddr *) &addr, &addrlen);
 	if (nsk < 0)
 		return TRUE;
 
-	io = g_io_channel_unix_new(nsk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	bacpy(&dst, &addr.l2_bdaddr);
+	psm = btohs(addr.l2_psm);
 
-	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR,
-						session_event, NULL);
+	memset(&addr, 0, sizeof(addr));
+	addrlen = sizeof(addr);
 
-	g_io_channel_unref(io);
+	if (getsockname(nsk, (struct sockaddr *) &addr, &addrlen) < 0) {
+		close(nsk);
+		return TRUE;
+	}
+
+	bacpy(&src, &addr.l2_bdaddr);
+
+	debug("Incoming connection on PSM %d", psm);
+
+	session = find_session(&src, &dst);
+	if (session) {
+		if (psm == 19) {
+			session->intr_sk = nsk;
+			create_device(session);
+		} else {
+			error("Control channel already established");
+			close(nsk);
+		}
+	} else {
+		if (psm == 17) {
+			session = g_new0(struct session_data, 1);
+
+			bacpy(&session->src, &src);
+			bacpy(&session->dst, &dst);
+			session->ctrl_sk = nsk;
+			session->intr_sk = -1;
+
+			sessions = g_slist_append(sessions, session);
+
+			create_watch(nsk, session);
+		} else {
+			error("No control channel available");
+			close(nsk);
+		}
+	}
 
 	return TRUE;
 }
