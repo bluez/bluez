@@ -17,6 +17,12 @@ bluetoothd_service_echo_LDADD = \
 	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 endif
 
+if CONFIGFILES
+dbusdir = $(sysconfdir)/dbus-1/system.d
+
+dbus_DATA = bluetooth.conf
+endif
+
 noinst_PROGRAMS = bluetoothd
 
 bluetoothd_SOURCES = main.c system.h \

@@ -7,10 +7,6 @@ conf_DATA = hcid.conf
 statedir = $(localstatedir)/lib/bluetooth
 
 state_DATA =
-
-dbusdir = $(sysconfdir)/dbus-1/system.d
-
-dbus_DATA = bluetooth.conf
 endif
 
 noinst_LIBRARIES = libhciserver.a
@@ -61,7 +57,7 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) hcid.conf bluetooth.conf dbus-api.txt \
+EXTRA_DIST = $(man_MANS) hcid.conf dbus-api.txt \
 	service-record.dtd service-did.xml service-spp.xml \
 	service-opp.xml service-ftp.xml
 
