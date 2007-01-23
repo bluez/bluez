@@ -289,6 +289,9 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 			rec->handle = handleExpected;
 			sdp_record_add(device, rec);
 		}
+	} else {
+		sdp_list_free(rec->attrlist, (sdp_free_func_t) sdp_data_free);
+		rec->attrlist = NULL;
 	}
 
 	while (localExtractedLength < seqlen) {
