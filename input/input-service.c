@@ -564,6 +564,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 			dbus_message_new_method_return(pc->msg));
 
 	pending_connect_free(pc);
+	g_io_channel_unref(chan);
 
 	return FALSE;
 failed:
@@ -573,6 +574,7 @@ failed:
 	idev->hidp.intr_sock = -1;
 	err_connection_failed(pc->conn, pc->msg, strerror(err));
 	pending_connect_free(pc);
+	g_io_channel_unref(chan);
 
 	return FALSE;
 }
@@ -619,6 +621,7 @@ static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
+	g_io_channel_unref(chan);
 	return FALSE;
 
 failed:
@@ -628,6 +631,7 @@ failed:
 	idev->hidp.ctrl_sock = -1;
 	err_connection_failed(pc->conn, pc->msg, strerror(err));
 	pending_connect_free(pc);
+	g_io_channel_unref(chan);
 
 	return FALSE;
 }
@@ -1183,6 +1187,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		error("Bluetooth device not available");
 		return err_failed(conn, msg, "Bluetooth adapter not available");
 	}
+	memset(&di, 0, sizeof(struct hci_dev_info));
 	if (hci_devinfo(dev_id, &di) < 0) {
 		error("Can't get local adapter device info");
 		return err_failed(conn, msg, "Bluetooth adapter not available");
@@ -1366,6 +1371,7 @@ static int register_stored_inputs(DBusConnection *conn)
 		error("Bluetooth device not available");
 		return -1;
 	}
+	memset(&di, 0, sizeof(struct hci_dev_info));
 	if (hci_devinfo(dev_id, &di) < 0) {
 		error("Can't get local adapter device info");
 		return -1;
