@@ -619,7 +619,6 @@ static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	pending_connect_free(pc);
 	return FALSE;
 
 failed:
