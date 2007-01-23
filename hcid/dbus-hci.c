@@ -350,7 +350,7 @@ static void adapter_mode_changed(struct adapter *adapter, uint8_t mode)
 					DBUS_TYPE_INVALID);
 
 	send_message_and_unref(connection, message);
-}       
+}
 
 /*
  * HCI D-Bus services
@@ -601,17 +601,15 @@ failed:
 int hcid_dbus_start_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
-	int i, err, dd = -1, ret = -1;
-	read_scan_enable_rp rp;
 	struct hci_dev_info di;
-	struct hci_request rq;
 	struct adapter* adapter;
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci;
+	uint8_t mode;
+	int i, err, dd = -1, ret = -1;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	/* FIXME: check dupplicated code - configure_device() */
 	if (hci_devinfo(id, &di) < 0) {
 		error("Getting device info failed: hci%d", id);
 		return -1;
@@ -620,33 +618,10 @@ int hcid_dbus_start_device(uint16_t id)
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		return -1;
 
-	dd = hci_open_dev(id);
-	if (dd < 0) {
-		error("HCI device open failed: hci%d", id);
-		rp.enable = SCAN_PAGE | SCAN_INQUIRY;
-	} else {
-		memset(&rq, 0, sizeof(rq));
-		rq.ogf    = OGF_HOST_CTL;
-		rq.ocf    = OCF_READ_SCAN_ENABLE;
-		rq.rparam = &rp;
-		rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
-		rq.event  = EVT_CMD_COMPLETE;
-
-		if (hci_send_req(dd, &rq, 1000) < 0) {
-			error("Sending read scan enable command failed: %s (%d)",
-					strerror(errno), errno);
-			rp.enable = SCAN_PAGE | SCAN_INQUIRY;
-		} else if (rp.status) {
-			error("Getting scan enable failed with status 0x%02x",
-					rp.status);
-			rp.enable = SCAN_PAGE | SCAN_INQUIRY;
-		}
-	}
-
 	if (!dbus_connection_get_object_path_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto failed;
+		return -1;
 	}
 
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
@@ -658,6 +633,14 @@ int hcid_dbus_start_device(uint16_t id)
 	adapter->discov_timeout = get_discoverable_timeout(id);
 	adapter->discov_type = DISCOVER_TYPE_NONE;
 
+	mode = get_startup_mode(id);
+
+	dd = hci_open_dev(id);
+	if (dd < 0)
+		goto failed;
+
+	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE, 1, &mode);
+
 	/*
 	 * Get the adapter Bluetooth address
 	 */
@@ -666,7 +649,7 @@ int hcid_dbus_start_device(uint16_t id)
 	if (err < 0)
 		goto failed;
 
-	adapter_mode_changed(adapter, rp.enable);
+	adapter_mode_changed(adapter, mode);
 
 	/* 
 	 * retrieve the active connections: address the scenario where

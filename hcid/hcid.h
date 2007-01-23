@@ -134,6 +134,7 @@ int read_config(char *file);
 
 struct device_opts *alloc_device_opts(char *ref);
 
+uint8_t get_startup_mode(int hdev);
 int get_discoverable_timeout(int dev_id);
 
 void init_security_data(void);

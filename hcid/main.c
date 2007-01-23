@@ -153,12 +153,49 @@ static struct device_opts *get_device_opts(int sock, int hdev)
 	return device_opts;
 }
 
-int get_discoverable_timeout(int hdev)
+uint8_t get_startup_mode(int hdev)
 {
-	int sock, timeout;
 	struct device_opts *device_opts = NULL;
 	struct hci_dev_info di;
 	char addr[18];
+	int sock;
+
+	if (hdev < 0)
+		return SCAN_DISABLED;
+
+	sock = hci_open_dev(hdev);
+	if (sock < 0)
+		goto no_address;
+
+	if (!hci_devinfo(hdev, &di) < 0) {
+		close(sock);
+		goto no_address;
+	}
+
+	close(sock);
+
+	ba2str(&di.bdaddr, addr);
+	device_opts = find_device_opts(addr);
+
+no_address:
+	if (!device_opts) {
+		char ref[8];
+		snprintf(ref, sizeof(ref) - 1, "hci%d", hdev);
+		device_opts = find_device_opts(ref);
+	}
+
+	if (!device_opts)
+		device_opts = &default_device;
+
+	return device_opts->scan;
+}
+
+int get_discoverable_timeout(int hdev)
+{
+	struct device_opts *device_opts = NULL;
+	struct hci_dev_info di;
+	char addr[18];
+	int sock, timeout;
 
 	if (hdev < 0)
 		return HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
@@ -288,6 +325,25 @@ static void configure_device(int dev_id)
 
 	device_opts = get_device_opts(dd, dev_id);
 
+	/* Set default discoverable timeout if not set */
+	if (!(device_opts->flags & (1 << HCID_SET_DISCOVTO)))
+		device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
+
+	/* Set scan mode */
+	if (!read_device_mode(&di.bdaddr, mode, sizeof(mode))) {
+		if (!strcmp(mode, MODE_OFF) && hcid.offmode == HCID_OFFMODE_NOSCAN)
+			device_opts->scan = SCAN_DISABLED;
+		else if (!strcmp(mode, MODE_CONNECTABLE))
+			device_opts->scan = SCAN_PAGE;
+		else if (!strcmp(mode, MODE_DISCOVERABLE)) {
+			/* Set discoverable only if timeout is 0 */
+			if (!get_discoverable_timeout(dev_id))
+				device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
+			else
+				device_opts->scan = SCAN_PAGE;
+		}
+	}
+
 	/* Set packet type */
 	if ((device_opts->flags & (1 << HCID_SET_PTYPE))) {
 		dr.dev_opt = device_opts->pkt_type;
@@ -365,15 +421,6 @@ static void configure_device(int dev_id)
 					WRITE_CLASS_OF_DEV_CP_SIZE, &cp);
 	}
 
-	/* Set voice setting */
-	if ((device_opts->flags & (1 << HCID_SET_VOICE))) {
-		write_voice_setting_cp cp;
-
-		cp.voice_setting = htobl(device_opts->voice);
-		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_VOICE_SETTING,
-					WRITE_VOICE_SETTING_CP_SIZE, &cp);
-	}
-
 	/* Set page timeout */
 	if ((device_opts->flags & (1 << HCID_SET_PAGETO))) {
 		write_page_timeout_cp cp;
@@ -383,27 +430,14 @@ static void configure_device(int dev_id)
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
 
-	/* Set default discoverable timeout if not set */
-	if (!(device_opts->flags & (1 << HCID_SET_DISCOVTO)))
-		device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
+	/* Set voice setting */
+	if ((device_opts->flags & (1 << HCID_SET_VOICE))) {
+		write_voice_setting_cp cp;
 
-	/* Set scan mode */
-	if (!read_device_mode(&di.bdaddr, mode, sizeof(mode))) {
-		if (!strcmp(mode, MODE_OFF) && hcid.offmode == HCID_OFFMODE_NOSCAN)
-			device_opts->scan = SCAN_DISABLED;
-		else if (!strcmp(mode, MODE_CONNECTABLE))
-			device_opts->scan = SCAN_PAGE;
-		else if (!strcmp(mode, MODE_DISCOVERABLE)) {
-			/* Set discoverable only if timeout is 0 */
-			if (!get_discoverable_timeout(dev_id))
-				device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
-			else
-				device_opts->scan = SCAN_PAGE;
-		}
+		cp.voice_setting = htobl(device_opts->voice);
+		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_VOICE_SETTING,
+					WRITE_VOICE_SETTING_CP_SIZE, &cp);
 	}
-
-	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE, 1,
-							&device_opts->scan);
 
 	exit(0);
 }
