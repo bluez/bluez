@@ -251,13 +251,13 @@ static char *expand_name(char *dst, int size, char *str, int dev_id)
 	return dst;
 }
 
-static void configure_device(int hdev)
+static void configure_device(int dev_id)
 {
 	struct device_opts *device_opts;
 	struct hci_dev_req dr;
 	struct hci_dev_info di;
 	char mode[14];
-	int s;
+	int dd;
 
 	/* Do configuration in the separate process */
 	switch (fork()) {
@@ -265,27 +265,55 @@ static void configure_device(int hdev)
 			break;
 		case -1:
 			error("Fork failed. Can't init device hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
+						dev_id, strerror(errno), errno);
 		default:
 			return;
 	}
 
-	if ((s = hci_open_dev(hdev)) < 0) {
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
 		error("Can't open device hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
+						dev_id, strerror(errno), errno);
 		exit(1);
 	}
 
-	if (hci_devinfo(hdev, &di) < 0)
+	if (hci_devinfo(dev_id, &di) < 0)
 		exit(1);
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		exit(0);
 
 	memset(&dr, 0, sizeof(dr));
+	dr.dev_id = dev_id;
 
-	dr.dev_id   = hdev;
-	device_opts = get_device_opts(s, hdev);
+	device_opts = get_device_opts(dd, dev_id);
+
+	/* Set packet type */
+	if ((device_opts->flags & (1 << HCID_SET_PTYPE))) {
+		dr.dev_opt = device_opts->pkt_type;
+		if (ioctl(dd, HCISETPTYPE, (unsigned long) &dr) < 0) {
+			error("Can't set packet type on hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		}
+	}
+
+	/* Set link mode */
+	if ((device_opts->flags & (1 << HCID_SET_LM))) {
+		dr.dev_opt = device_opts->link_mode;
+		if (ioctl(dd, HCISETLINKMODE, (unsigned long) &dr) < 0) {
+			error("Can't set link mode on hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		}
+	}
+
+	/* Set link policy */
+	if ((device_opts->flags & (1 << HCID_SET_LP))) {
+		dr.dev_opt = device_opts->link_policy;
+		if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0) {
+			error("Can't set link policy on hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		}
+	}
 
 	/* Set default discoverable timeout if not set */
 	if (!(device_opts->flags & (1 << HCID_SET_DISCOVTO)))
@@ -299,7 +327,7 @@ static void configure_device(int hdev)
 			device_opts->scan = SCAN_PAGE;
 		else if (!strcmp(mode, MODE_DISCOVERABLE)) {
 			/* Set discoverable only if timeout is 0 */
-			if (!get_discoverable_timeout(hdev))
+			if (!get_discoverable_timeout(dev_id))
 				device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
 			else
 				device_opts->scan = SCAN_PAGE;
@@ -307,9 +335,9 @@ static void configure_device(int hdev)
 	}
 
 	dr.dev_opt = device_opts->scan;
-	if (ioctl(s, HCISETSCAN, (unsigned long) &dr) < 0) {
+	if (ioctl(dd, HCISETSCAN, (unsigned long) &dr) < 0) {
 		error("Can't set scan mode on hci%d: %s (%d)",
-				hdev, strerror(errno), errno);
+				dev_id, strerror(errno), errno);
 	}
 
 	/* Set device name */
@@ -323,7 +351,7 @@ static void configure_device(int hdev)
 		if (read_local_name(&di.bdaddr, name) < 0) {
 			memset(cp.name, 0, sizeof(cp.name));
 			expand_name((char *) cp.name, sizeof(cp.name),
-						device_opts->name, hdev);
+						device_opts->name, dev_id);
 		} else
 			memcpy(cp.name, name, sizeof(cp.name));
 
@@ -338,11 +366,11 @@ static void configure_device(int hdev)
 		ip.data[0] = len + 1;
 		memcpy(ip.data + 2, cp.name, len);
 
-		hci_send_cmd(s, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
+		hci_send_cmd(dd, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
 					CHANGE_LOCAL_NAME_CP_SIZE, &cp);
 
 		if (di.features[6] & LMP_EXT_INQ)
-			hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_EXT_INQUIRY_RESPONSE,
+			hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_EXT_INQUIRY_RESPONSE,
 					WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &ip);
 	}
 
@@ -358,7 +386,7 @@ static void configure_device(int hdev)
 		} else
 			memcpy(cp.dev_class, cls, 3);
 
-		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
+		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
 					WRITE_CLASS_OF_DEV_CP_SIZE, &cp);
 	}
 
@@ -367,7 +395,7 @@ static void configure_device(int hdev)
 		write_voice_setting_cp cp;
 
 		cp.voice_setting = htobl(device_opts->voice);
-		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_VOICE_SETTING,
+		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_VOICE_SETTING,
 					WRITE_VOICE_SETTING_CP_SIZE, &cp);
 	}
 
@@ -376,19 +404,17 @@ static void configure_device(int hdev)
 		write_page_timeout_cp cp;
 
 		cp.timeout = htobs(device_opts->pageto);
-		hci_send_cmd(s, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
+		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
 
 	exit(0);
 }
 
-static void init_device(int hdev)
+static void init_device(int dev_id)
 {
-	struct device_opts *device_opts;
-	struct hci_dev_req dr;
 	struct hci_dev_info di;
-	int dd, dev_id = hdev;
+	int dd;
 
 	/* Do initialization in the separate process */
 	switch (fork()) {
@@ -431,36 +457,7 @@ static void init_device(int hdev)
 		}
 	}
 
-	memset(&dr, 0, sizeof(dr));
-	dr.dev_id   = dev_id;
-	device_opts = get_device_opts(dd, dev_id);
-
-	/* Set packet type */
-	if ((device_opts->flags & (1 << HCID_SET_PTYPE))) {
-		dr.dev_opt = device_opts->pkt_type;
-		if (ioctl(dd, HCISETPTYPE, (unsigned long) &dr) < 0) {
-			error("Can't set packet type on hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		}
-	}
-
-	/* Set link mode */
-	if ((device_opts->flags & (1 << HCID_SET_LM))) {
-		dr.dev_opt = device_opts->link_mode;
-		if (ioctl(dd, HCISETLINKMODE, (unsigned long) &dr) < 0) {
-			error("Can't set link mode on hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		}
-	}
-
-	/* Set link policy */
-	if ((device_opts->flags & (1 << HCID_SET_LP))) {
-		dr.dev_opt = device_opts->link_policy;
-		if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0) {
-			error("Can't set link policy on hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		}
-	}
+	hci_close_dev(dd);
 
 	exit(0);
 }
