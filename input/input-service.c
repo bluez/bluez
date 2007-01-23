@@ -823,8 +823,6 @@ static const DBusObjectPathVTable device_table = {
  * Input Manager methods
  */
 struct input_manager {
-	char adapter[18];
-	char *adapter_path;
 	GSList *paths;
 };
 
@@ -836,8 +834,6 @@ void input_manager_free(struct input_manager *mgr)
 		g_slist_foreach(mgr->paths, (GFunc) free, NULL);
 		g_slist_free(mgr->paths);
 	}
-	if (mgr->adapter_path)
-		free(mgr->adapter_path);
 	free(mgr);
 }
 
@@ -1159,10 +1155,13 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 {
 	struct input_manager *mgr = data;
 	struct input_device *idev;
+	struct hci_dev_info di;
 	DBusMessage *reply;
 	DBusError derr;
+	char adapter_addr[18], adapter_path[32];
 	const char *addr, *path;
 	GSList *l;
+	int dev_id;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -1178,16 +1177,29 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
 
+	/* Request the default adapter */
+	dev_id = hci_get_route(NULL);
+	if (dev_id < 0) {
+		error("Bluetooth device not available");
+		return err_failed(conn, msg, "Bluetooth adapter not available");
+	}
+	if (hci_devinfo(dev_id, &di) < 0) {
+		error("Can't get local adapter device info");
+		return err_failed(conn, msg, "Bluetooth adapter not available");
+	}
+
+	ba2str(&di.bdaddr, adapter_addr);
+	snprintf(adapter_path, 32, "/org/bluez/hci%d", dev_id);
+
 	idev = input_device_new(addr);
 	if (!idev)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	if (get_stored_info(mgr->adapter, addr, &idev->hidp) < 0) {
+	if (get_stored_info(adapter_addr, addr, &idev->hidp) < 0) {
 		struct pending_req *pr;
 
 		/* Data not found: create the input device later */
 		input_device_free(idev);
-		pr = pending_req_new(conn, msg, mgr->adapter_path, addr);
+		pr = pending_req_new(conn, msg, adapter_path, addr);
 		if (!pr)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
@@ -1342,10 +1354,24 @@ static void stored_input(char *key, char *value, void *data)
 		input_device_free(idev);
 }
 
-static int register_stored_inputs(DBusConnection *conn, const char *local)
+static int register_stored_inputs(DBusConnection *conn)
 {
+	struct hci_dev_info di;
 	char filename[PATH_MAX + 1];
+	char local[18];
+	int dev_id;
 
+	dev_id = hci_get_route(NULL);
+	if (dev_id < 0) {
+		error("Bluetooth device not available");
+		return -1;
+	}
+	if (hci_devinfo(dev_id, &di) < 0) {
+		error("Can't get local adapter device info");
+		return -1;
+	}
+
+	ba2str(&di.bdaddr, local);
 	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
 	textfile_foreach(filename, stored_input, conn);
 
@@ -1355,9 +1381,6 @@ static int register_stored_inputs(DBusConnection *conn, const char *local)
 int input_dbus_init(void)
 {
 	struct input_manager *mgr;
-	DBusMessage *msg, *reply;
-	DBusError derr;
-	const char *adapter;
 
 	connection = init_dbus(NULL, NULL, NULL);
 	if (!connection)
@@ -1367,62 +1390,6 @@ int input_dbus_init(void)
 
 	mgr = malloc(sizeof(struct input_manager));
 	memset(mgr, 0, sizeof(struct input_manager));
-
-	/* Get the default adapter path */
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-			"org.bluez.Manager", "DefaultAdapter");
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(connection,
-			msg, -1, &derr);
-	dbus_message_unref(msg);
-
-	if (!reply) {
-		error("input init failed: %s (%s)", derr.name, derr.message);
-		dbus_error_free(&derr);
-		goto fail;
-	}
-
-	if (!dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_STRING, &adapter,
-				DBUS_TYPE_INVALID)) {
-		error("input init failed: %s (%s)", derr.name, derr.message);
-		dbus_error_free(&derr);
-		goto fail;
-	}
-
-	mgr->adapter_path = strdup(adapter);
-	dbus_message_unref(reply);
-
-	/* Get the adapter address */
-	msg = dbus_message_new_method_call("org.bluez", adapter,
-			"org.bluez.Adapter", "GetAddress");
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(connection,
-			msg, -1, &derr);
-	dbus_message_unref(msg);
-
-	if (!reply) {
-		error("input init failed: %s (%s)", derr.name, derr.message);
-		dbus_error_free(&derr);
-		dbus_error_free(&derr);
-		goto fail;
-	}
-
-	if (!dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_STRING, &adapter,
-				DBUS_TYPE_INVALID)) {
-		error("input init failed: %s (%s)", derr.name, derr.message);
-		dbus_error_free(&derr);
-		goto fail;
-	}
-
-	strncpy(mgr->adapter, adapter, 18);
-	dbus_message_unref(reply);
-
-	info("Default adapter: %s (%s)", mgr->adapter_path, mgr->adapter);
-
 	/* Fallback to catch invalid device path */
 	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
 						&manager_table, mgr)) {
@@ -1432,7 +1399,7 @@ int input_dbus_init(void)
 
 	info("Registered input manager path:%s", INPUT_PATH);
 
-	register_stored_inputs(connection, mgr->adapter);
+	register_stored_inputs(connection);
 
 	return 0;
 fail:
