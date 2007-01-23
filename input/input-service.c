@@ -420,13 +420,6 @@ static const char *create_input_path(uint8_t minor)
 	return path;
 }
 
-static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
-			struct pending_connect *pc)
-{
-	info("FIXME: Control connect callback");
-	return FALSE;
-}
-
 /* FIXME: Move to a common file. It is already used by audio and rfcomm */
 static int set_nonblocking(int fd)
 {
@@ -507,6 +500,66 @@ failed:
 	errno = err;
 
 	return -1;
+}
+
+static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
+			struct pending_connect *pc)
+{
+	info("FIXME: interrupt connect callback");
+	return FALSE;
+}
+
+static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
+			struct pending_connect *pc)
+{
+	struct input_device *idev;
+	int csk, ret, err = EHOSTDOWN;
+	socklen_t len;
+	const char *path;
+
+	if (cond & G_IO_NVAL)
+		goto failed;
+
+	csk = g_io_channel_unix_get_fd(chan);
+
+	len = sizeof(ret);
+	if (getsockopt(csk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		err = ret;
+		error("connect(): %s (%d)", strerror(ret), ret);
+		goto failed;
+	}
+
+	path = dbus_message_get_path(pc->msg);
+	dbus_connection_get_object_path_data(pc->conn, path, (void *) &idev);
+
+	/* Set HID control channel */
+	idev->hidp.ctrl_sock = csk;
+
+	/* Connect to the HID interrupt channel */
+	if (l2cap_connect(pc, L2CAP_PSM_HIDP_INTR,
+			(GIOFunc) interrupt_connect_cb) < 0) {
+
+		error("L2CAP connect failed:%s (%d)", strerror(errno), errno);
+		err = errno;
+		close(csk);
+		idev->hidp.ctrl_sock = -1;
+		goto failed;
+	}
+
+	return FALSE;
+
+failed:
+
+	err_connection_failed(pc->conn, pc->msg, strerror(err));
+	pending_connect_free(pc);
+
+	return FALSE;
 }
 
 /*
