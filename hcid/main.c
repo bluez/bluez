@@ -481,8 +481,8 @@ static void init_device(int dev_id)
 	if (hcid.offmode == HCID_OFFMODE_DEVDOWN) {
 		char mode[16];
 
-		if (read_device_mode(&di.bdaddr, mode, sizeof(mode)) == 0
-				&& strcmp(mode, "off") == 0) {
+		if (read_device_mode(&di.bdaddr, mode, sizeof(mode)) == 0 &&
+						strcmp(mode, MODE_OFF) == 0) {
 			ioctl(dd, HCIDEVDOWN, dev_id);
 			exit(0);
 		}
