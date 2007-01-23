@@ -298,12 +298,18 @@ static void configure_device(int dev_id)
 
 	device_opts = get_device_opts(dev_id);
 
+	if (hci_devinfo(dev_id, &di) < 0)
+		return;
+
+	if (hci_test_bit(HCI_RAW, &di.flags))
+		return;
+
 	/* Set default discoverable timeout if not set */
 	if (!(device_opts->flags & (1 << HCID_SET_DISCOVTO)))
 		device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
 
 	/* Set scan mode */
-	if (!read_device_mode(&di.bdaddr, mode, sizeof(mode))) {
+	if (read_device_mode(&di.bdaddr, mode, sizeof(mode)) == 0) {
 		if (!strcmp(mode, MODE_OFF) && hcid.offmode == HCID_OFFMODE_NOSCAN)
 			device_opts->scan = SCAN_DISABLED;
 		else if (!strcmp(mode, MODE_CONNECTABLE))
@@ -334,12 +340,6 @@ static void configure_device(int dev_id)
 						dev_id, strerror(errno), errno);
 		return;
 	}
-
-	if (hci_devinfo(dev_id, &di) < 0)
-		exit(1);
-
-	if (hci_test_bit(HCI_RAW, &di.flags))
-		exit(0);
 
 	memset(&dr, 0, sizeof(dr));
 	dr.dev_id = dev_id;
