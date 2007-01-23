@@ -70,7 +70,7 @@ struct device_opts {
 	uint16_t pkt_type;
 	uint16_t link_mode;
 	uint16_t link_policy;
-	uint16_t scan;
+	uint8_t  scan;
 	int      discovto;
 };
 
