@@ -1043,6 +1043,8 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 	DBusMessage *reply = NULL;
 	char hs_address[18];
 
+	assert(hs);
+
 	if (msg) {
 		reply = dbus_message_new_method_return(msg);
 		if (!reply)
@@ -1064,7 +1066,8 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 		hs->state = HEADSET_STATE_DISCONNECTED;
 	}
 
-	info("Disconnected from %s, %s", hs_address, hs->object_path);
+	ba2str(&hs->bda, hs_address);
+	info("Disconnected from %s, %s", &hs_address, hs->object_path ? hs->object_path : "null");
 
 	hs_signal(hs, "Disconnected");
 
@@ -1176,6 +1179,7 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 {
 	DBusPendingCall *pending;
 	const char *hs_svc = "hsp";
+	const char *addr_ptr;
 	char hs_address[18];
 
 	assert(hs != NULL);
@@ -1212,7 +1216,8 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 	}
 
 	ba2str(&hs->bda, hs_address);
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &hs_address,
+	addr_ptr = hs_address;
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_STRING, &hs_svc,
 					DBUS_TYPE_INVALID);
 
@@ -1670,8 +1675,6 @@ void audio_manager_create_headset_server(struct manager *amanager, uint8_t chan)
 	g_io_channel_set_close_on_unref(amanager->server_sk, TRUE);
 
 	g_io_add_watch(amanager->server_sk, G_IO_IN, (GIOFunc) server_io_cb, amanager);
-
-	g_io_channel_unref(amanager->server_sk);
 }
 
 static gint headset_bda_cmp(gconstpointer aheadset, gconstpointer bda)
