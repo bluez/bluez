@@ -679,6 +679,8 @@ static void auth_agent_req_reply(DBusPendingCall *call, void *data)
 	DBusMessage *message;
 	DBusError err;
 
+	debug("authorize reply");
+
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, reply)) {
 		if (strcmp(err.name, DBUS_ERROR_NO_REPLY) == 0)
@@ -703,6 +705,8 @@ static void auth_agent_req_reply(DBusPendingCall *call, void *data)
 
 	send_message_and_unref(agent->conn, message);
 
+	debug("successfull reply was sent");
+
 	goto done;
 
 reject:
@@ -714,6 +718,8 @@ done:
 	agent->pending_requests = g_slist_remove(agent->pending_requests, req);
 
 	auth_agent_req_free(req);
+
+	debug("auth_agent_reply: returning");
 }
 
 static DBusPendingCall *auth_agent_call_authorize(struct authorization_agent *agent,
@@ -790,14 +796,20 @@ DBusHandlerResult handle_authorize_request(DBusConnection *conn,
 	bdaddr_t bdaddr;
 	int adapter_id;
 
-	if (!default_auth_agent)
+	debug("handle_authorize_request");
+
+	if (!default_auth_agent) {
+		debug("no default agent");
 		return error_auth_agent_does_not_exist(conn, msg);
+	}
 
 	str2ba(address, &bdaddr);
 
 	adapter_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
 	if (adapter_id < 0)
 		return error_not_connected(conn, msg);
+
+	debug("Found %s connected to hci%d", address, adapter_id);
 
 	snprintf(adapter_path, sizeof(adapter_path), "/org/bluez/hci%d",
 			adapter_id);
@@ -817,6 +829,8 @@ DBusHandlerResult handle_authorize_request(DBusConnection *conn,
 					NULL);
 	default_agent->pending_requests =
 		g_slist_append(default_agent->pending_requests, req);
+
+	debug("authorize request was forwarded");
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }

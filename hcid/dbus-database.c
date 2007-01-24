@@ -332,6 +332,8 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 	const char *sender, *address, *path;
 	struct service *service;
 
+	debug("RequestAuthorization");
+
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
 
