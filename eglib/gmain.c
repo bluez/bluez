@@ -150,10 +150,10 @@ void g_io_channel_close(GIOChannel *channel)
 
 void g_io_channel_unref(GIOChannel *channel)
 {
-	if (--channel->ref_count > 0)
+	if (!channel)
 		return;
 
-	if (!channel)
+	if (--channel->ref_count > 0)
 		return;
 
 	if (channel->close_on_unref && channel->fd >= 0)
