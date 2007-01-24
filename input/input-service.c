@@ -696,12 +696,8 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 static int disconnect(struct input_device *idev,  uint32_t flags)
 {
 	struct hidp_conndel_req req;
-	int ctl, err;
-
-	if ((idev->hidp.intr_sock < 0) || (idev->hidp.ctrl_sock < 0)) {
-		errno = ENOTCONN;
-		return -1;
-	}
+	struct hidp_conninfo ci;
+	int ctl, err, ret = 0;
 
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
 	if (ctl < 0) {
@@ -709,26 +705,39 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 		return -1;
 	}
 
+	memset(&ci, 0, sizeof(struct hidp_conninfo));
+	str2ba(idev->addr, &ci.bdaddr);
+	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
+		error("Can't retrive HID information: %s(%d)",
+				strerror(errno), errno);
+		goto fail;
+	}
+
+	if (ci.state != BT_CONNECTED) {
+		errno = ENOTCONN;
+		goto fail;
+	}
+
 	memset(&req, 0, sizeof(struct hidp_conndel_req));
 
 	str2ba(idev->addr, &req.bdaddr);
 	req.flags = flags;
-
 	if (ioctl(ctl, HIDPCONNDEL, &req) < 0) {
-		err = errno;
 		error("Can't delete the HID device: %s(%d)",
 				strerror(errno), errno);
-		close(ctl);
-		errno = err;
-		return -1;
+		goto fail;
 	}
 
+	ret = 0;
+fail:
+	err = errno;
 	close(ctl);
+	errno = err;
 
 	idev->hidp.intr_sock = -1;
 	idev->hidp.ctrl_sock = -1;
 
-	return 0;
+	return ret;
 }
 
 static DBusHandlerResult device_disconnect(DBusConnection *conn,
@@ -1283,6 +1292,7 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct input_manager *mgr = data;
+	struct input_device *idev;
 	DBusMessage *reply;
 	DBusError derr;
 	GSList *l;
@@ -1304,6 +1314,12 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	/* Try disconnect */
+	if (dbus_connection_get_object_path_data(conn, path, (void *) &idev) && idev)
+		disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
+
+	/* FIXME: Remove stored data */
 
 	if (unregister_input_device(conn, path) < 0) {
 		dbus_message_unref(reply);
