@@ -61,7 +61,7 @@ static void usage(void)
 {
 	printf("sdpd - SDP daemon ver %s\n", VERSION);
 	printf("Usage: \n");
-	printf("\tsdpd [-n]\n");
+	printf("\tsdpd [-n] [-d] [-m mtu] [-p]\n");
 }
 
 static struct option main_options[] = {
