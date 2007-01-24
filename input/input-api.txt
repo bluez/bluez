@@ -54,7 +54,7 @@ Methods		string GetAddress()
 
 			Returns the product id.
 
-		string GetVendorId()
+		uint16 GetVendorId()
 
 			Returns the vendor id.
 
