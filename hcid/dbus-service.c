@@ -686,6 +686,9 @@ struct service *search_service(DBusConnection *conn, const char *pattern)
 
 		if (service->ident && !strcmp(service->ident, pattern))
 			return service;
+
+		if (service->bus_name && !strcmp(service->bus_name, pattern))
+			return service;
 	}
 
 	return NULL;
