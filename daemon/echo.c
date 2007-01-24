@@ -73,7 +73,7 @@ static void authorization_callback(DBusPendingCall *call, void *data)
 	dbus_error_init(&err);
 
 	if (dbus_set_error_from_message(&err, reply)) {
-		error("Access to the service has been %s", err.message);
+		error("Access denied: %s", err.message);
 		dbus_error_free(&err);
 	} else {
 		info("Accepting incoming connection");
