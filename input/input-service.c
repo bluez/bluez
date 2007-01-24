@@ -545,6 +545,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	isk = g_io_channel_unix_get_fd(chan);
 	idev->hidp.intr_sock = isk;
+	idev->hidp.idle_to = 1800; /* 30 sec */
 
 	len = sizeof(ret);
 	if (getsockopt(isk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
