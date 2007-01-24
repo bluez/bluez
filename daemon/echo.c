@@ -66,11 +66,60 @@ static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	return TRUE;
 }
 
+static void authorization_callback(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	GIOChannel *io = data;
+
+	debug("Authorization request returned");
+
+	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_INVALID) == TRUE)
+		g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR,
+						session_event, NULL);
+
+	g_io_channel_unref(io);
+
+	dbus_message_unref(reply);
+}
+
+static int request_authorization(DBusConnection *conn,
+					GIOChannel *io, const char *address)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+	const char *path = "";
+
+	info("Requesting authorization for %s", address);
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "RequestAuthorization");
+	if (!msg) {
+		error("Allocation of method message failed");
+		return -1;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(conn, msg, &pending, -1) == FALSE) {
+		error("Sending of authorization request failed");
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, authorization_callback, io, NULL);
+
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
 static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
+	DBusConnection *conn = data;
 	GIOChannel *io;
 	struct sockaddr_rc addr;
 	socklen_t optlen;
+	char address[18];
 	int sk, nsk;
 
 	sk = g_io_channel_unix_get_fd(chan);
@@ -85,15 +134,17 @@ static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	io = g_io_channel_unix_new(nsk);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
-	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR,
-						session_event, NULL);
+	ba2str(&addr.rc_bdaddr, address);
 
-	g_io_channel_unref(io);
+	if (request_authorization(conn, io, address) < 0) {
+		close(nsk);
+		return TRUE;
+	}
 
 	return TRUE;
 }
 
-static GIOChannel *setup_rfcomm(uint8_t channel)
+static GIOChannel *setup_rfcomm(DBusConnection *conn, uint8_t channel)
 {
 	GIOChannel *io;
 	struct sockaddr_rc addr;
@@ -121,7 +172,7 @@ static GIOChannel *setup_rfcomm(uint8_t channel)
 	io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
-	g_io_add_watch(io, G_IO_IN, connect_event, NULL);
+	g_io_add_watch(io, G_IO_IN, connect_event, conn);
 
 	return io;
 }
@@ -182,6 +233,37 @@ static int setup_sdp(uint8_t channel)
 	return 0;
 }
 
+static int register_standalone(DBusConnection *conn)
+{
+	DBusMessage *msg, *reply;
+	const char *ident = "echo", *name = "Echo service", *desc = "";
+
+	info("Registering service");
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "RegisterService");
+	if (!msg) {
+		error("Allocation of method message failed");
+		return -1;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &ident,
+				DBUS_TYPE_STRING, &name,
+				DBUS_TYPE_STRING, &desc, DBUS_TYPE_INVALID);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+	if (!reply) {
+		error("Registration of service failed");
+		return -1;
+	}
+
+	dbus_message_unref(reply);
+
+	dbus_connection_flush(conn);
+
+	return 0;
+}
+
 static void sig_term(int sig)
 {
 	g_main_loop_quit(main_loop);
@@ -209,22 +291,25 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	server_io = setup_rfcomm(23);
+	system_bus = init_dbus(NULL, NULL, NULL);
+	if (!system_bus) {
+		error("Connection to system bus failed");
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
+
+	server_io = setup_rfcomm(system_bus, 23);
 	if (!server_io) {
 		error("Creation of server channel failed");
+		dbus_connection_unref(system_bus);
 		g_main_loop_unref(main_loop);
 		exit(1);
 	}
 
 	setup_sdp(23);
 
-	system_bus = init_dbus(NULL, NULL, NULL);
-	if (!system_bus) {
-		error("Connection to system bus failed");
-		g_io_channel_unref(server_io);
-		g_main_loop_unref(main_loop);
-		exit(1);
-	}
+	if (argc > 1 && !strcmp(argv[1], "-s"))
+		register_standalone(system_bus);
 
 	g_main_loop_run(main_loop);
 
