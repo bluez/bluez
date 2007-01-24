@@ -27,4 +27,6 @@
 int input_dbus_init(void);
 void input_dbus_exit(void);
 
+void internal_service(const char *identifier);
+
 #endif /* __INPUT_SERVICE_H */

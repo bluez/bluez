@@ -1426,3 +1426,32 @@ void input_dbus_exit(void)
 
 	dbus_connection_unref(connection);
 }
+
+void internal_service(const char *identifier)
+{
+	DBusMessage *msg, *reply;
+	const char *name = "Input Service Debug", *desc = "";
+
+	info("Registering service");
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "RegisterService");
+	if (!msg) {
+		error("Can't create service register method");
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &identifier,
+				DBUS_TYPE_STRING, &name,
+				DBUS_TYPE_STRING, &desc, DBUS_TYPE_INVALID);
+
+	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, NULL);
+	if (!reply) {
+		error("Can't register service");
+		return;
+	}
+
+	dbus_message_unref(reply);
+
+	dbus_connection_flush(connection);
+}

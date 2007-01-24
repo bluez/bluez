@@ -76,6 +76,9 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (argc > 1 && !strcmp(argv[1], "-s"))
+		internal_service("input");
+
 	server_start();
 
 	g_main_loop_run(main_loop);
