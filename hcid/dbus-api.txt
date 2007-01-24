@@ -187,18 +187,6 @@ Methods		uint32 InterfaceVersion()
 			Valid patterns are the same as for FindService(). If
 			the service is not running it will be started.
 
-		void RegisterService(string identifier, string name, string description)
-
-			This method registers a new service specified by
-			its unique identifier. This is only needed for
-			services that are not started through the
-			Bluetooth daemon.
-
-		void UnregisterService(string identifier)
-
-			This method unregisters a service specified by
-			its unique identifier.
-
 Signals		void AdapterAdded(string path)
 
 			Parameter is object path of added adapter.
@@ -227,6 +215,18 @@ Service		org.bluez
 Interface	org.bluez.Database
 Object path	/org/bluez or /org/bluez/{hci0,hci1,...}
 
+Methods		void RegisterService(string identifier, string name, string description) [experimental]
+
+			This method registers a new service specified by
+			its unique identifier. This is only needed for
+			services that are not started through the
+			Bluetooth daemon.
+
+		void UnregisterService(string identifier) [experimental]
+
+			This method unregisters a service specified by
+			its unique identifier.
+
 		uint32 AddServiceRecord(array{byte})
 
 			Adds a new service record and returns the assigned
@@ -254,6 +254,23 @@ Object path	/org/bluez or /org/bluez/{hci0,hci1,...}
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.DoesNotExist
 					 org.bluez.Error.Failed
+
+		void RequestAuthorization(string address, string path) [experimental]
+
+			This method gets called when a service wants to check
+			if a remote device is authorized to perform some
+			action. The authorization request is forwarded to an
+			authorization agent.
+
+			The address parameter is the Bluetooth address of the
+			remote device and the path is an object path provided
+			by the service requesting the authorization.
+
+		void CancelAuthorizationRequest(string address, string path) [experimental]
+
+			This method cancels an authorization process requested
+			by a previous call to RequestAuthorization(). The
+			address and path parameters must match.
 
 
 Adapter hierarchy
@@ -504,7 +521,7 @@ Methods		string GetAddress()
 			Example: "Bluetooth 2.0 + EDR"
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.NotAvailable
+					 org.bluez.Error.NotAvailable
 
 		string GetRemoteRevision(string address)
 
@@ -516,7 +533,7 @@ Methods		string GetAddress()
 			Example: "HCI 19.2"
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.NotAvailable
+					 org.bluez.Error.NotAvailable
 
 		string GetRemoteManufacturer(string address)
 
@@ -525,7 +542,7 @@ Methods		string GetAddress()
 			Example: "Nokia Mobile Phones"
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.NotAvailable
+					 org.bluez.Error.NotAvailable
 
 		string GetRemoteCompany(string address)
 
@@ -565,7 +582,7 @@ Methods		string GetAddress()
 			Example: ["networking", "object transfer"]
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.NotAvailable
+					 org.bluez.Error.NotAvailable
 
 		uint32 GetRemoteClass(string address)
 
@@ -573,14 +590,14 @@ Methods		string GetAddress()
 			encoded as 32 bit integer.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.NotAvailable
+					 org.bluez.Error.NotAvailable
 
 		array{byte} GetRemoteFeatures(string address)
 
 			Get the remote features encoded as bit mask.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.NotAvailable
+					 org.bluez.Error.NotAvailable
 
 		string GetRemoteName(string address)
 
@@ -602,7 +619,7 @@ Methods		string GetAddress()
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NotReady
-			                 org.bluez.Error.RequestDeferred
+					 org.bluez.Error.RequestDeferred
 
 		string GetRemoteAlias(string address)
 
@@ -682,8 +699,8 @@ Methods		string GetAddress()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.NoSuchAdapter
 					 org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.NotConnected
-			                 org.bluez.Error.InProgress
+					 org.bluez.Error.NotConnected
+					 org.bluez.Error.InProgress
 
 		void CreateBonding(string address)
 
@@ -707,14 +724,14 @@ Methods		string GetAddress()
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
 					 org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.AlreadyExists
-			                 org.bluez.Error.InProgress
+					 org.bluez.Error.AlreadyExists
+					 org.bluez.Error.InProgress
 					 org.bluez.Error.NoSuchAdapter
-			                 org.bluez.Error.ConnectionAttemptFailed
-			                 org.bluez.Error.AuthenticationFailed
-			                 org.bluez.Error.AuthenticationTimeout
-			                 org.bluez.Error.AuthenticationRejected
-			                 org.bluez.Error.AuthenticationCanceled
+					 org.bluez.Error.ConnectionAttemptFailed
+					 org.bluez.Error.AuthenticationFailed
+					 org.bluez.Error.AuthenticationTimeout
+					 org.bluez.Error.AuthenticationRejected
+					 org.bluez.Error.AuthenticationCanceled
 
 		void CancelBondingProcess(string address)
 
@@ -779,7 +796,7 @@ Methods		string GetAddress()
 			has been established.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.Failed
+					 org.bluez.Error.Failed
 
 		void DiscoverDevices()
 
@@ -850,7 +867,7 @@ Methods		string GetAddress()
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NoSuchAdapter
 
-                boolean IsPeriodicDiscovery()
+		boolean IsPeriodicDiscovery()
 
 			Returns true if the periodic inquiry is active and
 			false if it is switched off.
@@ -898,8 +915,8 @@ Methods		string GetAddress()
 			format.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			                 org.bluez.Error.InProgress
-			                 org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.Failed
 
 		array{string} ListRemoteDevices()
 
@@ -1017,6 +1034,83 @@ Signals		void ModeChanged(string mode)
 			Signals that a bonding was removed.
 
 
+Service hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Service
+Object path	path from org.bluez.Manager.ListServices()
+
+Methods		string GetIdentifier()
+
+			This method returns the service identifier.
+
+		string GetName()
+
+			This method returns the service name.
+
+		string GetDescription()
+
+			This method returns the service description.
+
+		void Start()
+
+			This method tells the system to start the
+			service.
+
+		void Stop()
+
+			This method tells the system to stop the
+			service.
+
+		boolean IsRunning()
+
+			Returns true if the service has been started and
+			is currently active. Otherwise, it returns false.
+
+		array{string} ListUsers() [experimental]
+
+			Returns list of current users (device addresses)
+			of the service.
+
+		void RemoveUser(string address) [experimental]
+
+			Removes a user of the service. The address parameter
+			must match one of the current users of the service.
+
+		void SetTrusted(string address) [experimental]
+
+			Marks the user as trusted.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+
+		boolean IsTrusted(string address) [experimental]
+
+			Returns true if the user is trusted or false otherwise.
+			The address parameter must match one of the
+			current users of the service.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		void RemoveTrust(string address) [experimental]
+
+			Marks the user as not trusted.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.DoesNotExist
+
+Signals		void Started()
+
+			The object path of this signal contains which service
+			was started.
+
+		void Stopped()
+
+			The object path of this signal contains which service
+			was stopped.
+
+
 Security hierarchy
 ==================
 
@@ -1098,102 +1192,6 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 			been previously registered. The path parameter must
 			match the same value that has been used on
 			registration.
-
-		void AuthorizeService(string service_path, string address, string action) [experimental]
-
-			This method gets called when a service wants to check
-			if a remote device is authorized to perform some
-			action. The authorization request is forwarded to an
-			authorization agent.
-
-			The service_path parameter must be the object
-			path of the service. The address and action parameters
-			correspond to the remote device address and the action
-			the remote device is trying to perform.
-
-		void CancelAuthorizationProcess(string service_path, string address, string action) [experimental]
-
-			This method cancels an authorization process requested
-			by a previous call to AuthorizeService(). The
-			service_path, address and action parameters must match
-			the same values that have been used on registration.
-
-
-Service hierarchy
-=================
-
-Service		org.bluez
-Interface	org.bluez.Service
-Object path	path from org.bluez.Manager.ListServices()
-
-Methods		string GetIdentifier()
-
-			This method returns the service identifier.
-
-		string GetName()
-
-			This method returns the service name.
-
-		string GetDescription()
-
-			This method returns the service description.
-
-		void Start()
-
-			This method tells the system to start the
-			service.
-
-		void Stop()
-
-			This method tells the system to stop the
-			service.
-
-		boolean IsRunning()
-
-			Returns true if the service has been started and
-			is currently active. Otherwise, it returns false.
-
-		array{string} ListUsers() [experimental]
-
-			Returns list of current users (device addresses)
-			of the service.
-
-		void RemoveUser(string address) [experimental]
-
-			Removes a user of the service. The address parameter
-			must match one of the current users of the service.
-
-		void SetTrusted(string address) [experimental]
-
-			Marks the user as trusted.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.AlreadyExists
-
-		boolean IsTrusted(string address) [experimental]
-
-			Returns true if the user is trusted or false otherwise.
-			The address parameter must match one of the
-			current users of the service.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-
-		void RemoveTrust(string address) [experimental]
-
-			Marks the user as not trusted.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.DoesNotExist
-
-Signals		void Started()
-
-			The object path of this signal contains which service
-			was started.
-
-		void Stopped()
-
-			The object path of this signal contains which service
-			was stopped.
 
 
 PasskeyAgent hierarchy
