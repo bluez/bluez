@@ -761,18 +761,6 @@ static DBusHandlerResult device_disconnect(DBusConnection *conn,
 			dbus_message_new_method_return(msg));
 }
 
-static DBusHandlerResult device_unplug(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct input_device *idev = data;
-
-	if (disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG)) < 0)
-		return err_failed(conn, msg, strerror(errno));
-
-	return send_message_and_unref(conn,
-			dbus_message_new_method_return(msg));
-}
-
 static DBusHandlerResult device_is_connected(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
@@ -850,9 +838,6 @@ static DBusHandlerResult device_message(DBusConnection *conn,
 
 	if (strcmp(member, "Disconnect") == 0)
 		return device_disconnect(conn, msg, data);
-
-	if (strcmp(member, "Unplug") == 0)
-		return device_unplug(conn, msg, data);
 
 	if (strcmp(member, "IsConnected") == 0)
 		return device_is_connected(conn, msg, data);

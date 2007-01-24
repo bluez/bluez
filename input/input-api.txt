@@ -70,10 +70,6 @@ Methods		string GetAddress()
 
 			Disconnect from the input device.
 
-		void Unplug()
-
-			Unplug the virtual cable device.
-
 		void SetTimeout(uint32 timeout)
 
 			Set the idle timeout.
