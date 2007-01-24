@@ -50,7 +50,7 @@ Methods		string GetAddress()
 
 			Returns the service name.
 
-		string GetProductId()
+		uint16 GetProductId()
 
 			Returns the product id.
 
