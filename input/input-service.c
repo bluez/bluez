@@ -881,7 +881,8 @@ static const DBusObjectPathVTable device_table = {
  * Input Manager methods
  */
 struct input_manager {
-	GSList *paths;
+	char adapter[18];	/* Local adapter BT address */
+	GSList *paths;		/* Input registered paths */
 };
 
 void input_manager_free(struct input_manager *mgr)
@@ -1213,10 +1214,9 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 {
 	struct input_manager *mgr = data;
 	struct input_device *idev;
-	struct hci_dev_info di;
 	DBusMessage *reply;
 	DBusError derr;
-	char adapter[18], adapter_path[32];
+	char adapter_path[32];
 	const char *addr, *path;
 	GSList *l;
 	int dev_id;
@@ -1235,30 +1235,18 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
 
-	/* Request the default adapter */
-	dev_id = hci_get_route(NULL);
-	if (dev_id < 0) {
-		error("Bluetooth device not available");
-		return err_failed(conn, msg, "Bluetooth adapter not available");
-	}
-	memset(&di, 0, sizeof(struct hci_dev_info));
-	if (hci_devinfo(dev_id, &di) < 0) {
-		error("Can't get local adapter device info");
-		return err_failed(conn, msg, "Bluetooth adapter not available");
-	}
-
-	ba2str(&di.bdaddr, adapter);
+	dev_id = hci_devid(mgr->adapter);
 	snprintf(adapter_path, 32, "/org/bluez/hci%d", dev_id);
 
 	idev = input_device_new(addr);
 	if (!idev)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	if (get_stored_info(adapter, addr, &idev->hidp) < 0) {
+	if (get_stored_info(mgr->adapter, addr, &idev->hidp) < 0) {
 		struct pending_req *pr;
 
 		/* Data not found: create the input device later */
 		input_device_free(idev);
-		pr = pending_req_new(conn, msg, adapter_path, adapter, addr);
+		pr = pending_req_new(conn, msg, adapter_path, mgr->adapter, addr);
 		if (!pr)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
@@ -1420,25 +1408,10 @@ static void stored_input(char *key, char *value, void *data)
 		input_device_free(idev);
 }
 
-static int register_stored_inputs(DBusConnection *conn)
+static int register_stored_inputs(DBusConnection *conn, const char *local)
 {
-	struct hci_dev_info di;
 	char filename[PATH_MAX + 1];
-	char local[18];
-	int dev_id;
 
-	dev_id = hci_get_route(NULL);
-	if (dev_id < 0) {
-		error("Bluetooth device not available");
-		return -1;
-	}
-	memset(&di, 0, sizeof(struct hci_dev_info));
-	if (hci_devinfo(dev_id, &di) < 0) {
-		error("Can't get local adapter device info");
-		return -1;
-	}
-
-	ba2str(&di.bdaddr, local);
 	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
 	textfile_foreach(filename, stored_input, conn);
 
@@ -1448,6 +1421,8 @@ static int register_stored_inputs(DBusConnection *conn)
 int input_dbus_init(void)
 {
 	struct input_manager *mgr;
+	bdaddr_t sba;
+	int dev_id;
 
 	connection = init_dbus(NULL, NULL, NULL);
 	if (!connection)
@@ -1466,7 +1441,23 @@ int input_dbus_init(void)
 
 	info("Registered input manager path:%s", INPUT_PATH);
 
-	register_stored_inputs(connection);
+	/* Set the default adapter */
+	bacpy(&sba, BDADDR_ANY);
+	dev_id = hci_get_route(&sba);
+	if (dev_id < 0) {
+		error("Bluetooth device not available");
+		goto fail;
+	}
+
+	if (hci_devba(dev_id, &sba) < 0) {
+		error("Can't get local adapter device info");
+		goto fail;
+	}
+
+	ba2str(&sba, mgr->adapter);
+
+	/* Register well known HID devices */
+	register_stored_inputs(connection, mgr->adapter);
 
 	return 0;
 fail:
