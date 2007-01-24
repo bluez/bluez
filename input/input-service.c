@@ -305,6 +305,15 @@ static int get_stored_info(const char *local, const char *peer,
 	return ret;
 }
 
+static int del_stored_info(const char *local, const char *peer)
+{
+	char filename[PATH_MAX + 1];
+
+	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
+
+	return textfile_del(filename, peer);
+}
+
 static int store_info(const char *local, const char *peer,
 		struct hidp_connadd_req *req)
 {
@@ -1307,7 +1316,7 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 	if (dbus_connection_get_object_path_data(conn, path, (void *) &idev) && idev)
 		disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
 
-	/* FIXME: Remove stored data */
+	del_stored_info(mgr->adapter, idev->addr);
 
 	if (unregister_input_device(conn, path) < 0) {
 		dbus_message_unref(reply);
