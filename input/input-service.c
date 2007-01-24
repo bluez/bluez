@@ -674,47 +674,6 @@ failed:
 	return FALSE;
 }
 
-/*
- * Input Device methods
- */
-static DBusHandlerResult device_connect(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct input_device *idev = data;
-	struct hidp_conninfo ci;
-	struct pending_connect *pc;
-	bdaddr_t dba;
-	int ctl;
-
-	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
-	if (ctl < 0)
-		return err_connection_failed(conn, msg, strerror(errno));
-
-	/* Check if it is already connected */
-	memset(&ci, 0, sizeof(struct hidp_conninfo));
-	str2ba(idev->addr, &ci.bdaddr);
-	if (!ioctl(ctl, HIDPGETCONNINFO, &ci) && (ci.state == BT_CONNECTED)) {
-		close(ctl);
-		return err_connection_failed(conn, msg, "Already connected");
-	}
-
-	close(ctl);
-
-	str2ba(idev->addr, &dba);
-	pc = pending_connect_new(BDADDR_ANY, &dba, conn, msg);
-	if (!pc)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	if (l2cap_connect(pc, L2CAP_PSM_HIDP_CTRL,
-			(GIOFunc) control_connect_cb) < 0) {
-		error("L2CAP connect failed: %s(%d)", strerror(errno), errno);
-		pending_connect_free(pc);
-		return err_connection_failed(conn, msg, strerror(errno));
-	}
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
 static int disconnect(struct input_device *idev,  uint32_t flags)
 {
 	struct hidp_conndel_req req;
@@ -762,6 +721,58 @@ fail:
 	return ret;
 }
 
+static int is_connected(const char *addr)
+{
+	struct hidp_conninfo ci;
+	int ctl;
+
+	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
+	if (ctl < 0)
+		return 0;
+
+	memset(&ci, 0, sizeof(struct hidp_conninfo));
+	str2ba(addr, &ci.bdaddr);
+	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
+		close(ctl);
+		return 0;
+	}
+
+	close(ctl);
+
+	if (ci.state != BT_CONNECTED)
+		return 0;
+	else
+		return 1;
+}
+
+/*
+ * Input Device methods
+ */
+static DBusHandlerResult device_connect(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	struct input_device *idev = data;
+	struct pending_connect *pc;
+	bdaddr_t dba;
+
+	if (is_connected(idev->addr))
+		return err_connection_failed(conn, msg, "Already connected");
+
+	str2ba(idev->addr, &dba);
+	pc = pending_connect_new(BDADDR_ANY, &dba, conn, msg);
+	if (!pc)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (l2cap_connect(pc, L2CAP_PSM_HIDP_CTRL,
+			(GIOFunc) control_connect_cb) < 0) {
+		error("L2CAP connect failed: %s(%d)", strerror(errno), errno);
+		pending_connect_free(pc);
+		return err_connection_failed(conn, msg, strerror(errno));
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static DBusHandlerResult device_disconnect(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
@@ -777,7 +788,20 @@ static DBusHandlerResult device_disconnect(DBusConnection *conn,
 static DBusHandlerResult device_is_connected(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct input_device *idev = data;
+	DBusMessage *reply;
+	dbus_bool_t connected;
+
+	connected = is_connected(idev->addr);
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_BOOLEAN, &connected,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult device_get_address(DBusConnection *conn,
