@@ -170,7 +170,7 @@ Methods		uint32 InterfaceVersion()
 		string FindService(string pattern)
 
 			Returns object path for the specified service. Valid
-			patterns are well known or unique bus names.
+			patterns are the unqiue identifier or a bus name.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NoSuchService
@@ -186,6 +186,18 @@ Methods		uint32 InterfaceVersion()
 			Returns the unqiue bus id of the specified service.
 			Valid patterns are the same as for FindService(). If
 			the service is not running it will be started.
+
+		void RegisterService(string identifier, string name, string description)
+
+			This method registers a new service specified by
+			its unique identifier. This is only needed for
+			services that are not started through the
+			Bluetooth daemon.
+
+		void UnregisterService(string identifier)
+
+			This method unregisters a service specified by
+			its unique identifier.
 
 Signals		void AdapterAdded(string path)
 
