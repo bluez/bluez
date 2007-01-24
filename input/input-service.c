@@ -1435,7 +1435,7 @@ void internal_service(const char *identifier)
 	info("Registering service");
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "RegisterService");
+				"org.bluez.Manager", "RegisterService");
 	if (!msg) {
 		error("Can't create service register method");
 		return;
