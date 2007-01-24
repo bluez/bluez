@@ -68,8 +68,9 @@ struct input_device {
 };
 
 struct pending_req {
-	char *adapter_path;
-	char peer[18];
+	char *adapter_path;	/* Local adapter D-Bus path */
+	char adapter[18];	/* Local adapter BT address */
+	char peer[18];		/* Peer BT address */
 	DBusConnection *conn;
 	DBusMessage *msg;
 	sdp_record_t *pnp_rec;
@@ -108,7 +109,7 @@ void input_device_free(struct input_device *idev)
 }
 
 struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
-				const char *adapter_path, const char *peer)
+		const char *adapter_path, const char *adapter, const char *peer)
 {
 	struct pending_req *pr;
 	pr = malloc(sizeof(struct pending_req));
@@ -117,6 +118,7 @@ struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
 
 	memset(pr, 0, sizeof(struct pending_req));
 	pr->adapter_path = strdup(adapter_path);
+	strncpy(pr->adapter, adapter, 18);
 	strncpy(pr->peer, peer, 18);
 	pr->conn = dbus_connection_ref(conn);
 	pr->msg = dbus_message_ref(msg);
@@ -298,6 +300,43 @@ static int get_stored_info(const char *local, const char *peer,
 
 	ret = parse_stored_info(str, req);
 
+	free(str);
+
+	return ret;
+}
+
+static int store_info(const char *local, const char *peer,
+		struct hidp_connadd_req *req)
+{
+	char filename[PATH_MAX + 1], *str, *desc;
+	int i, size, ret;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
+
+	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9 + strlen(req->name) + 2;
+	str = malloc(size);
+	if (!str)
+		return -ENOMEM;
+
+	desc = malloc((req->rd_size * 2) + 1);
+	if (!desc) {
+		free(str);
+		return -ENOMEM;
+	}
+
+	memset(desc, 0, (req->rd_size * 2) + 1);
+	for (i = 0; i < req->rd_size; i++)
+		sprintf(desc + (i * 2), "%2.2X", req->rd_data[i]);
+
+	snprintf(str, size - 1, "%04X:%04X:%04X %02X %02X %04X %s %08X %s",
+			req->vendor, req->product, req->version,
+			req->subclass, req->country, req->parser, desc,
+			req->flags, req->name);
+	free(desc);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ret = textfile_put(filename, peer, str);
 	free(str);
 
 	return ret;
@@ -1030,7 +1069,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 			DBUS_TYPE_INVALID);
 	send_message_and_unref(pr->conn, pr_reply);
 
-	/* FIXME: Store HID record data and free req */
+	store_info(pr->adapter, pr->peer, &idev->hidp);
 fail:
 	pending_req_free(pr);
 	dbus_message_unref(reply);
@@ -1168,7 +1207,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	struct hci_dev_info di;
 	DBusMessage *reply;
 	DBusError derr;
-	char adapter_addr[18], adapter_path[32];
+	char adapter[18], adapter_path[32];
 	const char *addr, *path;
 	GSList *l;
 	int dev_id;
@@ -1199,18 +1238,18 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return err_failed(conn, msg, "Bluetooth adapter not available");
 	}
 
-	ba2str(&di.bdaddr, adapter_addr);
+	ba2str(&di.bdaddr, adapter);
 	snprintf(adapter_path, 32, "/org/bluez/hci%d", dev_id);
 
 	idev = input_device_new(addr);
 	if (!idev)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	if (get_stored_info(adapter_addr, addr, &idev->hidp) < 0) {
+	if (get_stored_info(adapter, addr, &idev->hidp) < 0) {
 		struct pending_req *pr;
 
 		/* Data not found: create the input device later */
 		input_device_free(idev);
-		pr = pending_req_new(conn, msg, adapter_path, addr);
+		pr = pending_req_new(conn, msg, adapter_path, adapter, addr);
 		if (!pr)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
