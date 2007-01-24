@@ -51,4 +51,6 @@ static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn, DBu
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+int set_nonblocking(int fd, int *err);
+
 #endif /* __H_BLUEZ_DBUS_H__ */

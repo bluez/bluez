@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
@@ -642,4 +643,32 @@ DBusHandlerResult simple_introspect(DBusConnection *conn,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
+}
+
+int set_nonblocking(int fd, int *err)
+{
+	long arg;
+
+	arg = fcntl(fd, F_GETFL);
+	if (arg < 0) {
+		if (err)
+			*err = errno;
+		error("fcntl(F_GETFL): %s (%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	/* Return if already nonblocking */
+	if (arg & O_NONBLOCK)
+		return 0;
+
+	arg |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, arg) < 0) {
+		if (err)
+			*err = errno;
+		error("fcntl(F_SETFL, O_NONBLOCK): %s (%d)",
+				strerror(errno), errno);
+		return -1;
+	}
+
+	return 0;
 }

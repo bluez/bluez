@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -471,31 +470,6 @@ static const char *create_input_path(uint8_t minor)
 	return path;
 }
 
-/* FIXME: Move to a common file. It is already used by audio and rfcomm */
-static int set_nonblocking(int fd)
-{
-	long arg;
-
-	arg = fcntl(fd, F_GETFL);
-	if (arg < 0) {
-		error("fcntl(F_GETFL): %s (%d)", strerror(errno), errno);
-		return -1;
-	}
-
-	/* Return if already nonblocking */
-	if (arg & O_NONBLOCK)
-		return 0;
-
-	arg |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, arg) < 0) {
-		error("fcntl(F_SETFL, O_NONBLOCK): %s (%d)",
-				strerror(errno), errno);
-		return -1;
-	}
-
-	return 0;
-}
-
 static int l2cap_connect(struct pending_connect *pc,
 		unsigned short psm, GIOFunc cb)
 {
@@ -514,7 +488,7 @@ static int l2cap_connect(struct pending_connect *pc,
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
 		goto failed;
 
-	if (set_nonblocking(sk) < 0)
+	if (set_nonblocking(sk, NULL) < 0)
 		goto failed;
 
 	memset(&opts, 0, sizeof(opts));
