@@ -43,8 +43,6 @@
 #include "dbus.h"
 #include "logging.h"
 
-static GMainLoop *main_loop = NULL;
-
 static sdp_session_t *sdp_session = NULL;
 static sdp_record_t *sdp_record = NULL;
 
@@ -70,12 +68,18 @@ static void authorization_callback(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	GIOChannel *io = data;
+	DBusError err;
 
-	debug("Authorization request returned");
+	dbus_error_init(&err);
 
-	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_INVALID) == TRUE)
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("Access to the service has been %s", err.message);
+		dbus_error_free(&err);
+	} else {
+		info("Accepting incoming connection");
 		g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR,
 						session_event, NULL);
+	}
 
 	g_io_channel_unref(io);
 
@@ -263,6 +267,8 @@ static int register_standalone(DBusConnection *conn)
 
 	return 0;
 }
+
+static GMainLoop *main_loop = NULL;
 
 static void sig_term(int sig)
 {
