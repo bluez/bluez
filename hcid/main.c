@@ -58,15 +58,6 @@ struct device_opts default_device;
 struct device_opts *parser_device;
 static struct device_list *device_list = NULL;
 
-static GMainLoop *event_loop;
-
-static void usage(void)
-{
-	printf("hcid - HCI daemon ver %s\n", VERSION);
-	printf("Usage: \n");
-	printf("\thcid [-n not_daemon] [-f config file]\n");
-}
-
 static inline void init_device_defaults(struct device_opts *device_opts)
 {
 	memset(device_opts, 0, sizeof(*device_opts));
@@ -554,32 +545,6 @@ static void init_defaults(void)
 	init_device_defaults(&default_device);
 }
 
-static void sig_term(int sig)
-{
-	g_main_loop_quit(event_loop);
-}
-
-static void sig_hup(int sig)
-{
-	info("Reloading config file");
-
-	free_device_opts();
-
-	init_defaults();
-
-	if (read_config(hcid.config_file) < 0)
-		error("Config reload failed");
-
-	init_security_data();
-
-	init_all_devices(hcid.sock);
-}
-
-static void sig_debug(int sig)
-{
-	toggle_debug();
-}
-
 static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 {
 	evt_si_device *sd = (void *) &si->data;
@@ -628,7 +593,6 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer dat
 
 		error("Read from control socket failed: %s (%d)",
 							strerror(errno), errno);
-		g_main_loop_quit(event_loop);
 		return FALSE;
 	}
 
@@ -651,6 +615,41 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer dat
 	}
 
 	return TRUE;
+}
+
+static GMainLoop *event_loop;
+
+static void sig_term(int sig)
+{
+	g_main_loop_quit(event_loop);
+}
+
+static void sig_hup(int sig)
+{
+	info("Reloading config file");
+
+	free_device_opts();
+
+	init_defaults();
+
+	if (read_config(hcid.config_file) < 0)
+		error("Config reload failed");
+
+	init_security_data();
+
+	init_all_devices(hcid.sock);
+}
+
+static void sig_debug(int sig)
+{
+	toggle_debug();
+}
+
+static void usage(void)
+{
+	printf("hcid - HCI daemon ver %s\n", VERSION);
+	printf("Usage: \n");
+	printf("\thcid [-n] [-d] [-s] [-f config file]\n");
 }
 
 int main(int argc, char *argv[])
@@ -781,6 +780,8 @@ int main(int argc, char *argv[])
 	g_io_channel_set_close_on_unref(ctl_io, TRUE);
 
 	g_io_add_watch(ctl_io, G_IO_IN, io_stack_event, NULL);
+
+	g_io_channel_unref(ctl_io);
 
 	/* Initialize already connected devices */
 	init_all_devices(hcid.sock);
