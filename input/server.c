@@ -282,11 +282,14 @@ static GIOChannel *intr_io = NULL;
 int server_start(void)
 {
 	ctrl_io = setup_l2cap(17);
-	if (!ctrl_io)
+	if (!ctrl_io) {
+		error("Failed to listen on control channel");
 		return -1;
+	}
 
 	intr_io = setup_l2cap(19);
 	if (!intr_io) {
+		error("Failed to listen on interrupt channel");
 		g_io_channel_unref(ctrl_io);
 		ctrl_io = NULL;
 	}
