@@ -396,7 +396,7 @@ static DBusHandlerResult start(DBusConnection *conn,
 {
 	struct service *service = data;
 
-	if (service->internal || service->pid)
+	if (service->external || service->pid)
 		return error_failed(conn, msg, EALREADY);
 
 	if (service_start(service, conn) < 0)
@@ -412,7 +412,7 @@ static DBusHandlerResult stop(DBusConnection *conn,
 {
 	struct service *service  = data;
 
-	if (service->internal || !service->bus_name)
+	if (service->external || !service->bus_name)
 		return error_failed(conn, msg, EPERM);
 
 	stop_service(service, FALSE);
@@ -433,7 +433,7 @@ static DBusHandlerResult is_running(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	running = (service->internal || service->bus_name) ? TRUE : FALSE;
+	running = (service->external || service->bus_name) ? TRUE : FALSE;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_BOOLEAN, &running,
@@ -720,7 +720,7 @@ static struct service *create_service(const char *file)
 		return NULL;
 	}
 
-	service->internal = FALSE;
+	service->external = FALSE;
 
 	keyfile = g_key_file_new();
 
@@ -886,28 +886,28 @@ int init_services(const char *path)
 	return 0;
 }
 
-static struct service *create_internal_service(const char *ident,
+static struct service *create_external_service(const char *ident,
 				const char *name, const char *description)
 {
 	struct service *service;
 
 	service = g_try_new0(struct service, 1);
 	if (!service) {
-		error("OOM while allocating new internal service");
+		error("OOM while allocating new external service");
 		return NULL;
 	}
 
-	service->filename = g_strdup("internal.service");
+	service->filename = g_strdup("external.service");
 	service->name = g_strdup(name);
 	service->descr = g_strdup(description);
 	service->ident = g_strdup(ident);
 
-	service->internal = TRUE;
+	service->external = TRUE;
 
 	return service;
 }
 
-static void internal_service_exit(const char *name, struct service *service)
+static void external_service_exit(const char *name, struct service *service)
 {
 	DBusConnection *conn = get_dbus_connection();
 	DBusMessage *signal;
@@ -943,7 +943,7 @@ int service_register(const char *bus_name, const char *ident,
 	if (!conn)
 		return -1;
 
-	service = create_internal_service(ident, name, description);
+	service = create_external_service(ident, name, description);
 	if (!service)
 		return -1;
 
@@ -954,7 +954,7 @@ int service_register(const char *bus_name, const char *ident,
 		return -1;
 	}
 
-	name_listener_add(conn, bus_name, (name_cb_t) internal_service_exit, service);
+	name_listener_add(conn, bus_name, (name_cb_t) external_service_exit, service);
 
 	msg = dbus_message_new_signal(service->object_path,
 						SERVICE_INTERFACE, "Started");

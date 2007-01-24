@@ -46,7 +46,7 @@ struct service {
 	gboolean autostart;
 
 	/* Services without a *.service file */
-	gboolean internal;
+	gboolean external;
 
 	GSList *trusted_devices;
 };

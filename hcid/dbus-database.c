@@ -312,7 +312,7 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 	if (!service)
 		return error_service_does_not_exist(conn, msg);
 
-	if (!service->internal || strcmp(sender, service->bus_name))
+	if (!service->external || strcmp(sender, service->bus_name))
 		return error_not_authorized(conn, msg);
 
 	if (service_unregister(service) < 0)
