@@ -530,7 +530,6 @@ static int l2cap_connect(struct pending_connect *pc,
 	bacpy(&addr.l2_bdaddr, &pc->dba);
 	addr.l2_psm = htobs(psm);
 
-	/* FIXME: check leaking io channel */
 	io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(io, FALSE);
 
@@ -682,12 +681,26 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
+	struct hidp_conninfo ci;
 	struct pending_connect *pc;
 	bdaddr_t dba;
+	int ctl;
 
-	/* FIXME: check if it is already connected */
+	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
+	if (ctl < 0)
+		return err_connection_failed(conn, msg, strerror(errno));
+
+	/* Check if it is already connected */
+	memset(&ci, 0, sizeof(struct hidp_conninfo));
+	str2ba(idev->addr, &ci.bdaddr);
+	if (!ioctl(ctl, HIDPGETCONNINFO, &ci) && (ci.state == BT_CONNECTED)) {
+		close(ctl);
+		return err_connection_failed(conn, msg, "Already connected");
+	}
+
+	close(ctl);
+
 	str2ba(idev->addr, &dba);
-
 	pc = pending_connect_new(BDADDR_ANY, &dba, conn, msg);
 	if (!pc)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
