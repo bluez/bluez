@@ -45,6 +45,9 @@ struct service {
 	char *ident;
 	gboolean autostart;
 
+	/* Services without a *.service file */
+	gboolean internal;
+
 	GSList *trusted_devices;
 };
 
@@ -57,5 +60,8 @@ struct service *search_service(DBusConnection *conn, const char *pattern);
 int service_start(struct service *service, DBusConnection *conn);
 
 int init_services(const char *path);
+
+int service_register(const char *bus_name, const char *ident,
+				const char *name, const char *description);
 
 #endif /* __BLUEZ_DBUS_SERVICE_H */

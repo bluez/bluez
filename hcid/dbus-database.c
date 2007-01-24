@@ -43,6 +43,8 @@
 #include "sdp-xml.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
+#include "dbus-hci.h"
+#include "dbus-service.h"
 #include "dbus-database.h"
 
 static int sdp_server_enable = 0;
@@ -264,10 +266,38 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult register_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *ident, *name, *desc;
+	const char *sender;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &ident,
+			DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &desc,
+						DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg);
+
+	sender = dbus_message_get_sender(msg);
+
+	if (service_register(sender, ident, name, desc) < 0)
+		return error_failed(conn, msg, EIO);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	return send_message_and_unref(conn, reply);
+}
+
 static struct service_data database_services[] = {
 	{ "AddServiceRecord",		add_service_record		},
 	{ "AddServiceRecordFromXML",	add_service_record_from_xml	},
 	{ "RemoveServiceRecord",	remove_service_record		},
+	{ "RegisterService",		register_service		},
 	{ NULL, NULL }
 };
 

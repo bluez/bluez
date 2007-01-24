@@ -304,7 +304,6 @@ static void service_died(GPid pid, gint status, gpointer data)
 	}
 }
 
-
 static gboolean service_shutdown_timeout(gpointer data)
 {
 	struct service *service = data;
@@ -397,7 +396,7 @@ static DBusHandlerResult start(DBusConnection *conn,
 {
 	struct service *service = data;
 
-	if (service->pid)
+	if (service->internal || service->pid)
 		return error_failed(conn, msg, EALREADY);
 
 	if (service_start(service, conn) < 0)
@@ -413,7 +412,7 @@ static DBusHandlerResult stop(DBusConnection *conn,
 {
 	struct service *service  = data;
 
-	if (!service->bus_name)
+	if (service->internal || !service->bus_name)
 		return error_failed(conn, msg, EPERM);
 
 	stop_service(service, FALSE);
@@ -434,7 +433,7 @@ static DBusHandlerResult is_running(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	running = service->bus_name ? TRUE : FALSE;
+	running = (service->internal || service->bus_name) ? TRUE : FALSE;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_BOOLEAN, &running,
@@ -718,6 +717,8 @@ static struct service *create_service(const char *file)
 		return NULL;
 	}
 
+	service->internal = FALSE;
+
 	keyfile = g_key_file_new();
 
 	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
@@ -878,6 +879,84 @@ int init_services(const char *path)
 	closedir(d);
 
 	notify_add(path, service_notify, NULL);
+
+	return 0;
+}
+
+static struct service *create_internal_service(const char *ident,
+				const char *name, const char *description)
+{
+	struct service *service;
+
+	service = g_try_new0(struct service, 1);
+	if (!service) {
+		error("OOM while allocating new internal service");
+		return NULL;
+	}
+
+	service->filename = g_strdup("internal.service");
+	service->name = g_strdup(name);
+	service->descr = g_strdup(description);
+	service->ident = g_strdup(ident);
+
+	service->internal = TRUE;
+
+	return service;
+}
+
+static void internal_service_exit(const char *name, struct service *service)
+{
+	DBusConnection *conn = get_dbus_connection();
+	DBusMessage *signal;
+
+	service_exit(name, service);
+
+	if (!conn)
+		return;
+
+	if (!dbus_connection_unregister_object_path(conn, service->object_path))
+		return;
+
+	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
+							"ServiceRemoved");
+	if (signal) {
+		dbus_message_append_args(signal,
+					DBUS_TYPE_STRING, &service->object_path,
+					DBUS_TYPE_INVALID);
+		send_message_and_unref(conn, signal);
+	}
+
+	services = g_slist_remove(services, service);
+	service_free(service);
+}
+
+int service_register(const char *bus_name, const char *ident,
+				const char *name, const char *description)
+{
+	DBusConnection *conn = get_dbus_connection();
+	DBusMessage *msg;
+	struct service *service;
+
+	if (!conn)
+		return -1;
+
+	service = create_internal_service(ident, name, description);
+	if (!service)
+		return -1;
+
+	service->bus_name = g_strdup(bus_name);
+
+	if (register_service(service) < 0) {
+		service_free(service);
+		return -1;
+	}
+
+	name_listener_add(conn, bus_name, (name_cb_t) internal_service_exit, service);
+
+	msg = dbus_message_new_signal(service->object_path,
+						SERVICE_INTERFACE, "Started");
+	if (msg)
+		send_message_and_unref(conn, msg);
 
 	return 0;
 }
