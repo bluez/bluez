@@ -297,6 +297,7 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	const char *sender, *ident;
+	struct service *service;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
@@ -306,6 +307,16 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 
 	sender = dbus_message_get_sender(msg);
+
+	service = search_service(conn, ident);
+	if (!service)
+		return error_service_does_not_exist(conn, msg);
+
+	if (!service->internal || strcmp(sender, service->bus_name))
+		return error_not_authorized(conn, msg);
+
+	if (service_unregister(service) < 0)
+		return error_failed(conn, msg, EIO);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

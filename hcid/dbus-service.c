@@ -963,3 +963,9 @@ int service_register(const char *bus_name, const char *ident,
 
 	return 0;
 }
+
+int service_unregister(struct service *service)
+{
+	return unregister_service(service);
+}
+

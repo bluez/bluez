@@ -64,4 +64,6 @@ int init_services(const char *path);
 int service_register(const char *bus_name, const char *ident,
 				const char *name, const char *description);
 
+int service_unregister(struct service *service);
+
 #endif /* __BLUEZ_DBUS_SERVICE_H */
