@@ -24,46 +24,10 @@
 #ifndef __BLUEZ_DBUS_SECURITY_H
 #define __BLUEZ_DBUS_SECURITY_H
 
+#include "dbus-adapter.h"
+#include "dbus-service.h"
+
 #define SECURITY_INTERFACE "org.bluez.Security"
-
-struct passkey_agent {
-	struct adapter *adapter;
-	DBusConnection *conn;
-	char *addr;
-	char *name;
-	char *path;
-	GSList *pending_requests;
-	int exited;
-	guint timeout;
-};
-
-struct pending_agent_request {
-	struct passkey_agent *agent;
-	int dev;
-	bdaddr_t sba;
-	bdaddr_t bda;
-	char *path;
-	DBusPendingCall *call;
-	int old_if;
-	char *pin;
-};
-
-struct authorization_agent {
-	DBusConnection *conn;
-	char *name;
-	char *path;
-	GSList *pending_requests;
-};
-
-struct pend_auth_agent_req {
-	DBusMessage *msg;
-	struct authorization_agent *agent;
-	char *adapter_path;
-	char *address;
-	char *service_path;
-	char *action;
-	DBusPendingCall *call;
-};
 
 DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);
 
@@ -80,5 +44,17 @@ void release_default_auth_agent(void);
 void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda);
 
 void cancel_passkey_agent_requests(GSList *agents, const char *path, bdaddr_t *dba);
+
+DBusHandlerResult handle_authorize_request(DBusConnection *conn,
+					DBusMessage *msg,
+					struct service *service,
+					const char *address,
+					const char *path);
+
+DBusHandlerResult cancel_authorize_request(DBusConnection *conn,
+						DBusMessage *msg,
+						struct service *service,
+						const char *address,
+						const char *path);
 
 #endif /* __BLUEZ_DBUS_SECURITY_H */

@@ -811,8 +811,6 @@ int main(int argc, char *argv[])
 
 	g_main_loop_unref(event_loop);
 
-	g_io_channel_unref(ctl_io);
-
 	info("Exit");
 
 	stop_logging();

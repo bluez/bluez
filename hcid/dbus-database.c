@@ -45,6 +45,7 @@
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-service.h"
+#include "dbus-security.h"
 #include "dbus-database.h"
 
 static int sdp_server_enable = 0;
@@ -328,8 +329,8 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 static DBusHandlerResult request_authorization(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	const char *sender, *address, *path;
+	struct service *service;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
@@ -340,18 +341,29 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	service = search_service(conn, sender);
+	if (!service)
+		return error_not_authorized(conn, msg);
 
-	return send_message_and_unref(conn, reply);
+	if (g_slist_find_custom(service->trusted_devices, address,
+				(GCompareFunc) strcasecmp)) {
+		DBusMessage *reply;
+
+		reply = dbus_message_new_method_return(msg);
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+		return send_message_and_unref(conn, reply);
+	}
+
+	return handle_authorize_request(conn, msg, service, address, path);
 }
 
 static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	const char *sender, *address, *path;
+	struct service *service;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
@@ -362,11 +374,11 @@ static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	service = search_service(conn, sender);
+	if (!service)
+		return error_not_authorized(conn, msg);
 
-	return send_message_and_unref(conn, reply);
+	return cancel_authorize_request(conn, msg, service, address, path);
 }
 
 static struct service_data database_services[] = {
