@@ -83,7 +83,7 @@ struct pending_connect {
 	DBusMessage *msg;
 };
 
-struct input_device *input_device_new(const char *addr)
+static struct input_device *input_device_new(const char *addr)
 {
 	struct input_device *idev;
 
@@ -98,7 +98,7 @@ struct input_device *input_device_new(const char *addr)
 	return idev;
 }
 
-void input_device_free(struct input_device *idev)
+static void input_device_free(struct input_device *idev)
 {
 	if (!idev)
 		return;
@@ -107,7 +107,7 @@ void input_device_free(struct input_device *idev)
 	free(idev);
 }
 
-struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
+static struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
 		const char *adapter_path, const char *adapter, const char *peer)
 {
 	struct pending_req *pr;
@@ -125,7 +125,7 @@ struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
 	return pr;
 }
 
-void pending_req_free(struct pending_req *pr)
+static void pending_req_free(struct pending_req *pr)
 {
 	if (!pr)
 		return;
@@ -913,7 +913,7 @@ struct input_manager {
 	GSList *paths;		/* Input registered paths */
 };
 
-void input_manager_free(struct input_manager *mgr)
+static void input_manager_free(struct input_manager *mgr)
 {
 	if (!mgr)
 		return;
