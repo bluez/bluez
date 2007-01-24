@@ -155,6 +155,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	echo_enable=no
 	hcid_enable=yes
 	sdpd_enable=yes
+	hidd_enable=yes
 	test_enable=no
 	cups_enable=no
 	configfiles_enable=yes
@@ -185,6 +186,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		echo_enable=${enableval}
 		hcid_enable=${enableval}
 		sdpd_enable=${enableval}
+		hidd_enable=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
 		configfiles_enable=${enableval}
@@ -234,6 +236,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(sdpd, AC_HELP_STRING([--enable-sdpd], [install SDP daemon]), [
 		sdpd_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(hidd, AC_HELP_STRING([--enable-hidd], [install HID daemon]), [
+		hidd_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
@@ -312,6 +318,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(ECHOSERVICE, test "${echo_enable}" = "yes")
 	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")
 	AM_CONDITIONAL(SDPD, test "${sdpd_enable}" = "yes")
+	AM_CONDITIONAL(HIDD, test "${sdpd_enable}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(CONFIGFILES, test "${configfiles_enable}" = "yes")
