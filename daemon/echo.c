@@ -43,9 +43,6 @@
 #include "dbus.h"
 #include "logging.h"
 
-static sdp_session_t *sdp_session = NULL;
-static sdp_record_t *sdp_record = NULL;
-
 static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[672];
@@ -91,7 +88,7 @@ static int request_authorization(DBusConnection *conn,
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
-	const char *path = "";
+	const char *string = "";
 
 	info("Requesting authorization for %s", address);
 
@@ -103,7 +100,7 @@ static int request_authorization(DBusConnection *conn,
 	}
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID);
+				DBUS_TYPE_STRING, &string, DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(conn, msg, &pending, -1) == FALSE) {
 		error("Sending of authorization request failed");
@@ -178,33 +175,28 @@ static GIOChannel *setup_rfcomm(DBusConnection *conn, uint8_t channel)
 
 	g_io_add_watch(io, G_IO_IN, connect_event, conn);
 
-	g_io_channel_unref(io);
-
 	return io;
 }
 
-static int setup_sdp(uint8_t channel)
+static int setup_sdp(DBusConnection *conn, uint8_t channel)
 {
+	DBusMessage *msg, *reply;
+	sdp_record_t *record;
+	sdp_buf_t buf;
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
 	uuid_t root_uuid, l2cap, rfcomm, spp;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *proto[2];
 
-	sdp_session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-	if (!sdp_session) {
-		error("Connection to SDP server failed");
-		return -1;
-	}
-
-	sdp_record = sdp_record_alloc();
-	if (!sdp_record) {
+	record = sdp_record_alloc();
+	if (!record) {
 		error("Allocation of service record failed");
 		return -1;
 	}
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
-	sdp_set_browse_groups(sdp_record, root);
+	sdp_set_browse_groups(record, root);
 
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
 	proto[0] = sdp_list_append(NULL, &l2cap);
@@ -216,25 +208,47 @@ static int setup_sdp(uint8_t channel)
 	apseq    = sdp_list_append(apseq, proto[1]);
 
 	aproto   = sdp_list_append(NULL, apseq);
-	sdp_set_access_protos(sdp_record, aproto);
+	sdp_set_access_protos(record, aproto);
 
 	sdp_uuid16_create(&spp, SERIAL_PORT_SVCLASS_ID);
 	svclass = sdp_list_append(NULL, &spp);
-	sdp_set_service_classes(sdp_record, svclass);
+	sdp_set_service_classes(record, svclass);
 
 	sdp_uuid16_create(&profile[0].uuid, SERIAL_PORT_PROFILE_ID);
 	profile[0].version = 0x0100;
 	pfseq = sdp_list_append(NULL, &profile[0]);
-	sdp_set_profile_descs(sdp_record, pfseq);
+	sdp_set_profile_descs(record, pfseq);
 
-	sdp_set_info_attr(sdp_record, "Echo service", NULL, NULL);
+	sdp_set_info_attr(record, "Echo service", NULL, NULL);
 
-	if (sdp_record_register(sdp_session, sdp_record, 0) < 0) {
-		error("Registration of service record failed");
-		sdp_record_free(sdp_record);
-		sdp_record = NULL;
+	if (sdp_gen_record_pdu(record, &buf) < 0) {
+		error("Generation of service record failed");
+		sdp_record_free(record);
 		return -1;
 	}
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "AddServiceRecord");
+	if (!msg) {
+		error("Allocation of method message failed");
+		return -1;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+				&buf.data, buf.data_size, DBUS_TYPE_INVALID);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+
+	free(buf.data);
+
+	if (!reply) {
+		error("Registration of service record failed");
+		return -1;
+	}
+
+	dbus_message_unref(reply);
+
+	dbus_connection_flush(conn);
 
 	return 0;
 }
@@ -318,7 +332,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	setup_sdp(23);
+	setup_sdp(system_bus, 23);
 
 	if (argc > 1 && !strcmp(argv[1], "-s"))
 		register_standalone(system_bus);
@@ -328,13 +342,6 @@ int main(int argc, char *argv[])
 	g_io_channel_unref(server_io);
 
 	dbus_connection_unref(system_bus);
-
-	if (sdp_record) {
-		if (sdp_record_unregister(sdp_session, sdp_record) < 0)
-			sdp_record_free(sdp_record);
-	}
-
-	sdp_close(sdp_session);
 
 	g_main_loop_unref(main_loop);
 
