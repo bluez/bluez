@@ -442,6 +442,23 @@ static DBusHandlerResult is_running(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult is_external(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct service *service = data;
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_BOOLEAN, &service->external,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult list_users(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -547,6 +564,7 @@ static struct service_data services_methods[] = {
 	{ "Start",		start			},
 	{ "Stop",		stop			},
 	{ "IsRunning",		is_running		},
+	{ "IsExternal",		is_external		},
 	{ "ListUsers",		list_users		},
 	{ "RemoveUser",		remove_user		},
 	{ "SetTrusted",		set_trusted		},
