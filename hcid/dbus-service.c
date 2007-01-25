@@ -322,7 +322,7 @@ static gboolean service_shutdown_timeout(gpointer data)
 
 static void stop_service(struct service *service, gboolean remove)
 {
-	if (kill(service->pid, SIGTERM) < 0)
+	if (service->pid > 0 && kill(service->pid, SIGTERM) < 0)
 		error("kill(%d, SIGTERM): %s (%d)", service->pid,
 				strerror(errno), errno);
 
