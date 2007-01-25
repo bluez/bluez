@@ -35,16 +35,6 @@ hcid_LDADD += -lexpat
 endif
 endif
 
-noinst_PROGRAMS = passkey-agent auth-agent
-
-passkey_agent_SOURCES = passkey-agent.c
-
-passkey_agent_LDADD = @DBUS_LIBS@
-
-auth_agent_SOURCES = auth-agent.c
-
-auth_agent_LDADD = @DBUS_LIBS@
-
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd

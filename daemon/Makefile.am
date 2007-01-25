@@ -23,7 +23,7 @@ dbusdir = $(sysconfdir)/dbus-1/system.d
 dbus_DATA = bluetooth.conf
 endif
 
-noinst_PROGRAMS = bluetoothd
+noinst_PROGRAMS = bluetoothd passkey-agent auth-agent
 
 bluetoothd_SOURCES = main.c system.h \
 	manager.h manager.c database.h database.c \
@@ -37,6 +37,14 @@ bluetoothd_LDADD = \
 if EXPAT
 bluetoothd_LDADD += -lexpat
 endif
+
+passkey_agent_SOURCES = passkey-agent.c
+
+passkey_agent_LDADD = @DBUS_LIBS@
+
+auth_agent_SOURCES = auth-agent.c
+
+auth_agent_LDADD = @DBUS_LIBS@
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
