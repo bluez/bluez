@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <signal.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -605,11 +606,26 @@ static const DBusObjectPathVTable services_vtable = {
 	.unregister_function	= NULL
 };
 
+static int service_cmp_path(struct service *service, const char *path)
+{
+	return strcmp(service->object_path, path);
+}
+
+static int service_cmp_ident(struct service *service, const char *ident)
+{
+	return strcmp(service->ident, ident);
+}
+
 static int register_service(struct service *service)
 {
 	char obj_path[PATH_MAX], *suffix;
 	DBusConnection *conn = get_dbus_connection();
 	DBusMessage *signal;
+	int i;
+
+	if (g_slist_find_custom(services, service->ident,
+				(GCompareFunc) service_cmp_ident))
+		return -EADDRINUSE;
 
 	if (service->external) {
 		snprintf(obj_path, sizeof(obj_path) - 1,
@@ -622,6 +638,16 @@ static int register_service(struct service *service)
 		suffix = strstr(obj_path, SERVICE_SUFFIX);
 		*suffix = '\0';
 	}
+
+	/* Make the path valid for D-Bus */
+	for (i = strlen("/org/bluez/"); obj_path[i]; i++) {
+		if (!isalnum(obj_path[i]) || obj_path[i] != '_')
+			obj_path[i] = '_';
+	}
+
+	if (g_slist_find_custom(services, obj_path,
+				(GCompareFunc) service_cmp_path))
+		return -EADDRINUSE;
 
 	debug("Registering service object: ident=%s, name=%s (%s)",
 			service->ident, service->name, obj_path);
