@@ -73,7 +73,7 @@ static void epox_endian_quirk(unsigned char *data, int size)
 static int store_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req)
 {
 	char filename[PATH_MAX + 1], addr[18], *str, *desc;
-	int i, size;
+	int i, err, size;
 
 	ba2str(src, addr);
 	create_name(filename, PATH_MAX, STORAGEDIR, addr, "hidd");
@@ -98,10 +98,16 @@ static int store_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hi
 			req->subclass, req->country, req->parser, desc,
 			req->flags, req->name);
 
+	free(desc);
+
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(dst, addr);
-	return textfile_put(filename, addr, str);
+	err = textfile_put(filename, addr, str);
+
+	free(str);
+
+	return err;
 }
 
 int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req)
@@ -143,14 +149,18 @@ int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp
 
 	req->rd_size = strlen(desc) / 2;
 	req->rd_data = malloc(req->rd_size);
-	if (!req->rd_data)
+	if (!req->rd_data) {
+		free(desc);
 		return -ENOMEM;
+	}
 
 	memset(tmp, 0, sizeof(tmp));
 	for (i = 0; i < req->rd_size; i++) {
 		memcpy(tmp, desc + (i * 2), 2);
 		req->rd_data[i] = (uint8_t) strtol(tmp, NULL, 16);
 	}
+
+	free(desc);
 
 	return 0;
 }
