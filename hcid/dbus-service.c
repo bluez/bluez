@@ -611,12 +611,17 @@ static int register_service(struct service *service)
 	DBusConnection *conn = get_dbus_connection();
 	DBusMessage *signal;
 
-	snprintf(obj_path, sizeof(obj_path) - 1, "/org/bluez/service_%s",
-			service->filename);
+	if (service->external) {
+		snprintf(obj_path, sizeof(obj_path) - 1,
+				"/org/bluez/external_%s", service->ident);
+	} else {
+		snprintf(obj_path, sizeof(obj_path) - 1,
+				"/org/bluez/service_%s", service->filename);
 
-	/* Don't include the .service part in the path */
-	suffix = strstr(obj_path, SERVICE_SUFFIX);
-	*suffix = '\0';
+		/* Don't include the .service part in the path */
+		suffix = strstr(obj_path, SERVICE_SUFFIX);
+		*suffix = '\0';
+	}
 
 	debug("Registering service object: ident=%s, name=%s (%s)",
 			service->ident, service->name, obj_path);
@@ -920,7 +925,7 @@ static struct service *create_external_service(const char *ident,
 		return NULL;
 	}
 
-	service->filename = g_strdup("external.service");
+	service->filename = NULL;
 	service->name = g_strdup(name);
 	service->descr = g_strdup(description);
 	service->ident = g_strdup(ident);
