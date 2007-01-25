@@ -72,19 +72,23 @@ static DBusHandlerResult authorize_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	const char *adapter, *address, *service, *string;
 
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID)) {
-		fprintf(stderr, "Invalid arguments for Authorize method");
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &adapter, DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_STRING, &service, DBUS_TYPE_STRING, &string,
+							DBUS_TYPE_INVALID)) {
+		fprintf(stderr, "Invalid arguments for passkey Confirm method");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
+
+	printf("Authorization request for device %s\n", address);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
 		fprintf(stderr, "Can't create reply message\n");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	dbus_connection_send(conn, reply, NULL);
 
@@ -99,14 +103,23 @@ static DBusHandlerResult cancel_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	const char *adapter, *address, *service, *string;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &adapter, DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_STRING, &service, DBUS_TYPE_STRING, &string,
+							DBUS_TYPE_INVALID)) {
+		fprintf(stderr, "Invalid arguments for passkey Confirm method");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	printf("Request canceled for device %s\n", address);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
 		fprintf(stderr, "Can't create reply message\n");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	dbus_connection_send(conn, reply, NULL);
 
@@ -135,10 +148,8 @@ static DBusHandlerResult release_message(DBusConnection *conn,
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
 		fprintf(stderr, "Can't create reply message\n");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	dbus_connection_send(conn, reply, NULL);
 
