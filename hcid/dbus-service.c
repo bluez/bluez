@@ -271,7 +271,7 @@ static void abort_startup(struct service *service, DBusConnection *conn, int eco
 		service->action = NULL;
 	}
 
-	if (service->pid && kill(service->pid, SIGKILL) < 0)
+	if (service->pid > 0 && kill(service->pid, SIGKILL) < 0)
 		error("kill(%d, SIGKILL): %s (%d)", service->pid,
 				strerror(errno), errno);
 }
@@ -311,7 +311,7 @@ static gboolean service_shutdown_timeout(gpointer data)
 	debug("Sending SIGKILL to \"%s\" (PID %d) since it didn't exit yet",
 			service->name, service->pid);
 
-	if (kill(service->pid, SIGKILL) < 0)
+	if (service->pid > 0 && kill(service->pid, SIGKILL) < 0)
 		error("kill(%d, SIGKILL): %s (%d)", service->pid,
 				strerror(errno), errno);
 
