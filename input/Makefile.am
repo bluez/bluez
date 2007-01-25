@@ -12,7 +12,8 @@ service_PROGRAMS = bluetoothd-service-input
 
 bluetoothd_service_input_SOURCES = \
 		main.c server.h server.c \
-		input-service.h input-service.c
+		input-service.h input-service.c \
+		storage.h storage.c
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@

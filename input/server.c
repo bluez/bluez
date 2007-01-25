@@ -38,8 +38,9 @@
 #include <glib.h>
 
 #include "logging.h"
-#include "textfile.h"
+
 #include "server.h"
+#include "storage.h"
 
 struct session_data {
 	bdaddr_t src;
@@ -70,58 +71,6 @@ static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data
 		return FALSE;
 
 	return TRUE;
-}
-
-static int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst,
-						struct hidp_connadd_req *req)
-{
-	char filename[PATH_MAX + 1], addr[18], tmp[3], *str, *desc;
-	unsigned int vendor, product, version, subclass, country, parser, pos;
-	int i;
-
-	desc = malloc(4096);
-	if (!desc)
-		return -ENOMEM;
-
-	memset(desc, 0, 4096);
-
-	ba2str(src, addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, addr, "hidd");
-
-	ba2str(dst, addr);
-	str = textfile_get(filename, addr);
-	if (!str) {
-		free(desc);
-		return -EIO;
-	}
-
-	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
-			&vendor, &product, &version, &subclass, &country,
-			&parser, desc, &req->flags, &pos);
-
-	free(str);
-
-	req->vendor   = vendor;
-	req->product  = product;
-	req->version  = version;
-	req->subclass = subclass;
-	req->country  = country;
-	req->parser   = parser;
-
-	snprintf(req->name, 128, str + pos);
-
-	req->rd_size = strlen(desc) / 2;
-	req->rd_data = malloc(req->rd_size);
-	if (!req->rd_data)
-		return -ENOMEM;
-
-	memset(tmp, 0, sizeof(tmp));
-	for (i = 0; i < req->rd_size; i++) {
-		memcpy(tmp, desc + (i * 2), 2);
-		req->rd_data[i] = (uint8_t) strtol(tmp, NULL, 16);
-	}
-
-	return 0;
 }
 
 static void create_device(struct session_data *session)

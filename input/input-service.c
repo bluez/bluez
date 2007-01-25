@@ -47,7 +47,9 @@
 #include "dbus.h"
 #include "logging.h"
 #include "textfile.h"
+
 #include "input-service.h"
+#include "storage.h"
 
 #define INPUT_PATH "/org/bluez/input"
 #define INPUT_MANAGER_INTERFACE	"org.bluez.input.Manager"
@@ -62,14 +64,14 @@ const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 
 struct input_device {
-	char addr[18];
+	bdaddr_t dba;
 	struct hidp_connadd_req hidp;
 };
 
 struct pending_req {
 	char *adapter_path;	/* Local adapter D-Bus path */
-	char adapter[18];	/* Local adapter BT address */
-	char peer[18];		/* Peer BT address */
+	bdaddr_t sba;		/* Local adapter BT address */
+	bdaddr_t dba;		/* Peer BT address */
 	DBusConnection *conn;
 	DBusMessage *msg;
 	sdp_record_t *pnp_rec;
@@ -83,7 +85,7 @@ struct pending_connect {
 	DBusMessage *msg;
 };
 
-static struct input_device *input_device_new(const char *addr)
+static struct input_device *input_device_new(bdaddr_t *dba)
 {
 	struct input_device *idev;
 
@@ -93,7 +95,7 @@ static struct input_device *input_device_new(const char *addr)
 
 	memset(idev, 0, sizeof(struct input_device));
 
-	memcpy(idev->addr, addr, 18);
+	bacpy(&idev->dba, dba);
 
 	return idev;
 }
@@ -107,8 +109,9 @@ static void input_device_free(struct input_device *idev)
 	free(idev);
 }
 
-static struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
-		const char *adapter_path, const char *adapter, const char *peer)
+static struct pending_req *pending_req_new(DBusConnection *conn,
+		DBusMessage *msg, const char *adapter_path,
+		bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct pending_req *pr;
 	pr = malloc(sizeof(struct pending_req));
@@ -117,8 +120,8 @@ static struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *ms
 
 	memset(pr, 0, sizeof(struct pending_req));
 	pr->adapter_path = strdup(adapter_path);
-	strncpy(pr->adapter, adapter, 18);
-	strncpy(pr->peer, peer, 18);
+	bacpy(&pr->sba, sba);
+	bacpy(&pr->dba, dba);
 	pr->conn = dbus_connection_ref(conn);
 	pr->msg = dbus_message_ref(msg);
 
@@ -228,126 +231,6 @@ static DBusHandlerResult err_generic(DBusConnection *conn, DBusMessage *msg,
 	return send_message_and_unref(conn,
 			dbus_message_new_error(msg, name, str));
 
-}
-
-static inline int create_filename(char *buf, size_t size,
-			bdaddr_t *bdaddr, const char *name)
-{
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-
-	return create_name(buf, size, STORAGEDIR, addr, name);
-}
-
-static int parse_stored_info(const char *str, struct hidp_connadd_req *req)
-{
-	char tmp[3], *desc;
-	unsigned int vendor, product, version, subclass, country, parser, pos;
-	int i;
-
-	desc = malloc(4096);
-	if (!desc)
-		return -ENOMEM;
-
-	memset(desc, 0, 4096);
-
-
-	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
-			&vendor, &product, &version, &subclass, &country,
-			&parser, desc, &req->flags, &pos);
-
-	req->vendor   = vendor;
-	req->product  = product;
-	req->version  = version;
-	req->subclass = subclass;
-	req->country  = country;
-	req->parser   = parser;
-
-	snprintf(req->name, 128, str + pos);
-
-	req->rd_size = strlen(desc) / 2;
-	req->rd_data = malloc(req->rd_size);
-	if (!req->rd_data) {
-		free(desc);
-		return -ENOMEM;
-	}
-
-	memset(tmp, 0, sizeof(tmp));
-	for (i = 0; i < req->rd_size; i++) {
-		memcpy(tmp, desc + (i * 2), 2);
-		req->rd_data[i] = (uint8_t) strtol(tmp, NULL, 16);
-	}
-
-	free(desc);
-
-	return 0;
-}
-
-/* FIXME: copied from hidd, move to a common library */
-static int get_stored_info(const char *local, const char *peer,
-			struct hidp_connadd_req *req)
-{
-	char filename[PATH_MAX + 1], *str;
-	int ret;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
-
-	str = textfile_get(filename, peer);
-	if (!str)
-		return -ENOENT;
-
-	ret = parse_stored_info(str, req);
-
-	free(str);
-
-	return ret;
-}
-
-static int del_stored_info(const char *local, const char *peer)
-{
-	char filename[PATH_MAX + 1];
-
-	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
-
-	return textfile_del(filename, peer);
-}
-
-static int store_info(const char *local, const char *peer,
-		struct hidp_connadd_req *req)
-{
-	char filename[PATH_MAX + 1], *str, *desc;
-	int i, size, ret;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
-
-	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9 + strlen(req->name) + 2;
-	str = malloc(size);
-	if (!str)
-		return -ENOMEM;
-
-	desc = malloc((req->rd_size * 2) + 1);
-	if (!desc) {
-		free(str);
-		return -ENOMEM;
-	}
-
-	memset(desc, 0, (req->rd_size * 2) + 1);
-	for (i = 0; i < req->rd_size; i++)
-		sprintf(desc + (i * 2), "%2.2X", req->rd_data[i]);
-
-	snprintf(str, size - 1, "%04X:%04X:%04X %02X %02X %04X %s %08X %s",
-			req->vendor, req->product, req->version,
-			req->subclass, req->country, req->parser, desc,
-			req->flags, req->name);
-	free(desc);
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ret = textfile_put(filename, peer, str);
-	free(str);
-
-	return ret;
 }
 
 static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
@@ -662,7 +545,7 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 	}
 
 	memset(&ci, 0, sizeof(struct hidp_conninfo));
-	str2ba(idev->addr, &ci.bdaddr);
+	bacpy(&ci.bdaddr, &idev->dba);
 	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
 		error("Can't retrive HID information: %s(%d)",
 				strerror(errno), errno);
@@ -676,7 +559,7 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 
 	memset(&req, 0, sizeof(struct hidp_conndel_req));
 
-	str2ba(idev->addr, &req.bdaddr);
+	bacpy(&req.bdaddr, &idev->dba);
 	req.flags = flags;
 	if (ioctl(ctl, HIDPCONNDEL, &req) < 0) {
 		error("Can't delete the HID device: %s(%d)",
@@ -696,7 +579,7 @@ fail:
 	return ret;
 }
 
-static int is_connected(const char *addr)
+static int is_connected(bdaddr_t *dba)
 {
 	struct hidp_conninfo ci;
 	int ctl;
@@ -706,7 +589,7 @@ static int is_connected(const char *addr)
 		return 0;
 
 	memset(&ci, 0, sizeof(struct hidp_conninfo));
-	str2ba(addr, &ci.bdaddr);
+	bacpy(&ci.bdaddr, dba);
 	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
 		close(ctl);
 		return 0;
@@ -728,13 +611,11 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 {
 	struct input_device *idev = data;
 	struct pending_connect *pc;
-	bdaddr_t dba;
 
-	if (is_connected(idev->addr))
+	if (is_connected(&idev->dba))
 		return err_connection_failed(conn, msg, "Already connected");
 
-	str2ba(idev->addr, &dba);
-	pc = pending_connect_new(BDADDR_ANY, &dba, conn, msg);
+	pc = pending_connect_new(BDADDR_ANY, &idev->dba, conn, msg);
 	if (!pc)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
@@ -767,7 +648,7 @@ static DBusHandlerResult device_is_connected(DBusConnection *conn,
 	DBusMessage *reply;
 	dbus_bool_t connected;
 
-	connected = is_connected(idev->addr);
+	connected = is_connected(&idev->dba);
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -784,7 +665,10 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 {
 	struct input_device *idev = data;
 	DBusMessage *reply;
-	const char *paddr = idev->addr;
+	char addr[18];
+	const char *paddr = addr;
+	
+	ba2str(&idev->dba, addr);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -909,7 +793,7 @@ static const DBusObjectPathVTable device_table = {
  * Input Manager methods
  */
 struct input_manager {
-	char adapter[18];	/* Local adapter BT address */
+	bdaddr_t sba;		/* Local adapter BT address */
 	GSList *paths;		/* Input registered paths */
 };
 
@@ -978,7 +862,7 @@ static int unregister_input_device(DBusConnection *conn, const char *path)
 	return 0;
 }
 
-static int path_addr_cmp(const char *path, const char *addr)
+static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
 {
 	struct input_device *idev;
 
@@ -989,7 +873,7 @@ static int path_addr_cmp(const char *path, const char *addr)
 	if (!idev)
 		return -1;
 
-	return strcasecmp(idev->addr, addr);
+	return bacmp(&idev->dba, bdaddr);
 }
 
 static int get_record(struct pending_req *pr, uint32_t handle,
@@ -997,14 +881,15 @@ static int get_record(struct pending_req *pr, uint32_t handle,
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
-	const char *paddr;
+	char addr[18];
+	const char *paddr = addr;
 
 	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
 			"org.bluez.Adapter", "GetRemoteServiceRecord");
 	if (!msg)
 		return -1;
 
-	paddr = pr->peer;
+	ba2str(&pr->dba, addr);
 	dbus_message_append_args(msg,
 			DBUS_TYPE_STRING, &paddr,
 			DBUS_TYPE_UINT32, &handle,
@@ -1026,14 +911,15 @@ static int get_handles(struct pending_req *pr, const char *uuid,
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
-	const char *paddr;
+	char addr[18];
+	const char *paddr = addr;
 
 	msg  = dbus_message_new_method_call("org.bluez", pr->adapter_path,
 			"org.bluez.Adapter", "GetRemoteServiceHandles");
 	if (!msg)
 		return -1;
 
-	paddr = pr->peer;
+	ba2str(&pr->dba, addr);
 	dbus_message_append_args(msg,
 			DBUS_TYPE_STRING, &paddr,
 			DBUS_TYPE_STRING, &uuid,
@@ -1087,7 +973,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	idev = input_device_new(pr->peer);
+	idev = input_device_new(&pr->dba);
 
 	extract_hid_record(pr->hid_rec, &idev->hidp);
 	if (pr->pnp_rec)
@@ -1107,7 +993,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 			DBUS_TYPE_INVALID);
 	send_message_and_unref(pr->conn, pr_reply);
 
-	store_info(pr->adapter, pr->peer, &idev->hidp);
+	store_device_info(&pr->sba, &pr->dba, &idev->hidp);
 fail:
 	pending_req_free(pr);
 	dbus_message_unref(reply);
@@ -1244,9 +1130,10 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	struct input_device *idev;
 	DBusMessage *reply;
 	DBusError derr;
-	char adapter_path[32];
+	char adapter[18], adapter_path[32];
 	const char *addr, *path;
 	GSList *l;
+	bdaddr_t dba;
 	int dev_id;
 
 	dbus_error_init(&derr);
@@ -1258,23 +1145,26 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	l = g_slist_find_custom(mgr->paths, addr,
-			(GCompareFunc) path_addr_cmp);
+	str2ba(addr, &dba);
+	l = g_slist_find_custom(mgr->paths, &dba,
+			(GCompareFunc) path_bdaddr_cmp);
 	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
 
-	dev_id = hci_devid(mgr->adapter);
+	ba2str(&mgr->sba, adapter);
+	dev_id = hci_devid(adapter);
 	snprintf(adapter_path, 32, "/org/bluez/hci%d", dev_id);
 
-	idev = input_device_new(addr);
+	idev = input_device_new(&dba);
 	if (!idev)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	if (get_stored_info(mgr->adapter, addr, &idev->hidp) < 0) {
+
+	if (get_stored_device_info(&mgr->sba, &idev->dba, &idev->hidp) < 0) {
 		struct pending_req *pr;
 
 		/* Data not found: create the input device later */
 		input_device_free(idev);
-		pr = pending_req_new(conn, msg, adapter_path, mgr->adapter, addr);
+		pr = pending_req_new(conn, msg, adapter_path, &mgr->sba, &dba);
 		if (!pr)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
@@ -1335,7 +1225,7 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 	if (dbus_connection_get_object_path_data(conn, path, (void *) &idev) && idev)
 		disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
 
-	del_stored_info(mgr->adapter, idev->addr);
+	del_stored_device_info(&mgr->sba, &idev->dba);
 
 	if (unregister_input_device(conn, path) < 0) {
 		dbus_message_unref(reply);
@@ -1424,9 +1314,11 @@ static void stored_input(char *key, char *value, void *data)
 	DBusConnection *conn = data;
 	struct input_device *idev;
 	const char *path;
+	bdaddr_t dba;
 
-	idev = input_device_new(key);
-	if (parse_stored_info(value, &idev->hidp) < 0) {
+	str2ba(key, &dba);
+	idev = input_device_new(&dba);
+	if (parse_stored_device_info(value, &idev->hidp) < 0) {
 		input_device_free(idev);
 		return;
 	}
@@ -1436,11 +1328,13 @@ static void stored_input(char *key, char *value, void *data)
 		input_device_free(idev);
 }
 
-static int register_stored_inputs(DBusConnection *conn, const char *local)
+static int register_stored_inputs(DBusConnection *conn, bdaddr_t *sba)
 {
 	char filename[PATH_MAX + 1];
+	char addr[18];
 
-	create_name(filename, PATH_MAX, STORAGEDIR, local, "hidd");
+	ba2str(sba, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "hidd");
 	textfile_foreach(filename, stored_input, conn);
 
 	return 0;
@@ -1482,10 +1376,9 @@ int input_dbus_init(void)
 		goto fail;
 	}
 
-	ba2str(&sba, mgr->adapter);
-
+	bacpy(&mgr->sba, &sba);
 	/* Register well known HID devices */
-	register_stored_inputs(connection, mgr->adapter);
+	register_stored_inputs(connection, &sba);
 
 	return 0;
 fail:
