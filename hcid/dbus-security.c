@@ -827,8 +827,8 @@ DBusHandlerResult handle_authorize_request(DBusConnection *conn,
 
 	dbus_pending_call_set_notify(req->call, auth_agent_req_reply, req,
 					NULL);
-	default_agent->pending_requests =
-		g_slist_append(default_agent->pending_requests, req);
+	default_auth_agent->pending_requests =
+		g_slist_append(default_auth_agent->pending_requests, req);
 
 	debug("authorize request was forwarded");
 
