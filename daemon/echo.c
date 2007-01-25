@@ -178,6 +178,8 @@ static GIOChannel *setup_rfcomm(DBusConnection *conn, uint8_t channel)
 
 	g_io_add_watch(io, G_IO_IN, connect_event, conn);
 
+	g_io_channel_unref(io);
+
 	return io;
 }
 
@@ -294,6 +296,10 @@ int main(int argc, char *argv[])
 	sigaction(SIGINT,  &sa, NULL);
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
+
+	sa.sa_handler = SIG_IGN;
+	sigaction(SIGCHLD, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
