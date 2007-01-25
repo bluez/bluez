@@ -45,7 +45,7 @@
 #include "storage.h"
 
 static inline int create_filename(char *buf, size_t size,
-			bdaddr_t *bdaddr, const char *name)
+					bdaddr_t *bdaddr, const char *name)
 {
 	char addr[18];
 
@@ -65,7 +65,6 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 		return -ENOMEM;
 
 	memset(desc, 0, 4096);
-
 
 	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
 			&vendor, &product, &version, &subclass, &country,
@@ -99,11 +98,11 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 }
 
 int get_stored_device_info(bdaddr_t *sba, bdaddr_t *dba,
-		struct hidp_connadd_req *req)
+					struct hidp_connadd_req *req)
 {
 	char filename[PATH_MAX + 1], *str;
 	char peer[18];
-	int ret;
+	int err;
 
 	create_filename(filename, PATH_MAX, sba, "hidd");
 
@@ -112,11 +111,11 @@ int get_stored_device_info(bdaddr_t *sba, bdaddr_t *dba,
 	if (!str)
 		return -ENOENT;
 
-	ret = parse_stored_device_info(str, req);
+	err = parse_stored_device_info(str, req);
 
 	free(str);
 
-	return ret;
+	return err;
 }
 
 int del_stored_device_info(bdaddr_t *sba, bdaddr_t *dba)
@@ -134,7 +133,7 @@ int del_stored_device_info(bdaddr_t *sba, bdaddr_t *dba)
 int store_device_info(bdaddr_t *sba, bdaddr_t *dba, struct hidp_connadd_req *req)
 {
 	char filename[PATH_MAX + 1], *str, *desc;
-	int i, size, ret;
+	int i, err, size;
 	char addr[18];
 
 	create_filename(filename, PATH_MAX, sba, "hidd");
@@ -158,14 +157,16 @@ int store_device_info(bdaddr_t *sba, bdaddr_t *dba, struct hidp_connadd_req *req
 			req->vendor, req->product, req->version,
 			req->subclass, req->country, req->parser, desc,
 			req->flags, req->name);
+
 	free(desc);
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(dba, addr);
 
-	ret = textfile_put(filename, addr, str);
+	err = textfile_put(filename, addr, str);
+
 	free(str);
 
-	return ret;
+	return err;
 }
