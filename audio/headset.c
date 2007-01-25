@@ -697,8 +697,10 @@ static int rfcomm_connect(struct headset *hs, int *err)
 		goto failed;
 	}
 
-	if (set_nonblocking(sk, err) < 0)
+	if (set_nonblocking(sk) < 0) {
+		*err = errno;
 		goto failed;
+	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
@@ -1367,7 +1369,8 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 		goto failed;
 	}
 
-	if (set_nonblocking(sk, &err) < 0) {
+	if (set_nonblocking(sk) < 0) {
+		err = errno;
 		err_connect_failed(connection, msg, err);
 		goto failed;
 	}

@@ -374,7 +374,7 @@ static int l2cap_connect(struct pending_connect *pc,
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
 		goto failed;
 
-	if (set_nonblocking(sk, NULL) < 0)
+	if (set_nonblocking(sk) < 0)
 		goto failed;
 
 	memset(&opts, 0, sizeof(opts));

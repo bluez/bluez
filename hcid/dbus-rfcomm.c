@@ -448,8 +448,10 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 		goto failed;
 	}
 
-	if (set_nonblocking(sk, err) < 0)
+	if (set_nonblocking(sk) < 0) {
+		*err = errno;
 		goto failed;
+	}
 
 	/* So we can reply to the message later */
 	c->msg = dbus_message_ref(msg);

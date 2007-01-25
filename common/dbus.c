@@ -645,16 +645,14 @@ DBusHandlerResult simple_introspect(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-int set_nonblocking(int fd, int *err)
+int set_nonblocking(int fd)
 {
 	long arg;
 
 	arg = fcntl(fd, F_GETFL);
 	if (arg < 0) {
-		if (err)
-			*err = errno;
 		error("fcntl(F_GETFL): %s (%d)", strerror(errno), errno);
-		return -1;
+		return -errno;
 	}
 
 	/* Return if already nonblocking */
@@ -663,11 +661,9 @@ int set_nonblocking(int fd, int *err)
 
 	arg |= O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, arg) < 0) {
-		if (err)
-			*err = errno;
 		error("fcntl(F_SETFL, O_NONBLOCK): %s (%d)",
 				strerror(errno), errno);
-		return -1;
+		return -errno;
 	}
 
 	return 0;
