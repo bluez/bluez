@@ -318,6 +318,9 @@ static const char *create_input_path(uint8_t minor)
 	case 0xc0:
 		strcpy(subpath, "combo");
 		break;
+	default:
+		subpath[0] = '\0';
+		break;
 	}
 
 	if ((minor & 0x3f) && (strlen(subpath) > 0))
