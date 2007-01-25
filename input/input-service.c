@@ -539,23 +539,18 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 {
 	struct hidp_conndel_req req;
 	struct hidp_conninfo ci;
-	int ctl, err, ret = -1;
+	int ctl, err;
 
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
 	if (ctl < 0) {
 		error("Can't open HIDP control socket");
-		return -1;
+		return -errno;
 	}
 
 	memset(&ci, 0, sizeof(struct hidp_conninfo));
 	bacpy(&ci.bdaddr, &idev->dba);
-	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
-		error("Can't retrive HID information: %s(%d)",
-				strerror(errno), errno);
-		goto fail;
-	}
-
-	if (ci.state != BT_CONNECTED) {
+	if ((ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) ||
+			(ci.state != BT_CONNECTED)) {
 		errno = ENOTCONN;
 		goto fail;
 	}
@@ -569,7 +564,9 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 		goto fail;
 	}
 
-	ret = 0;
+	close(ctl);
+
+	return 0;
 fail:
 	err = errno;
 	close(ctl);
@@ -578,7 +575,7 @@ fail:
 	idev->hidp.intr_sock = -1;
 	idev->hidp.ctrl_sock = -1;
 
-	return ret;
+	return -errno;
 }
 
 static int is_connected(bdaddr_t *dba)
