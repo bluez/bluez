@@ -308,12 +308,14 @@ static gboolean service_shutdown_timeout(gpointer data)
 {
 	struct service *service = data;
 
-	debug("Sending SIGKILL to \"%s\" (PID %d) since it didn't exit yet",
+	if (service->pid > 0) {
+		debug("SIGKILL for \"%s\" (PID %d) since it didn't exit yet",
 			service->name, service->pid);
 
-	if (service->pid > 0 && kill(service->pid, SIGKILL) < 0)
-		error("kill(%d, SIGKILL): %s (%d)", service->pid,
-				strerror(errno), errno);
+		if (kill(service->pid, SIGKILL) < 0)
+			error("kill(%d, SIGKILL): %s (%d)", service->pid,
+						strerror(errno), errno);
+	}
 
 	service->shutdown_timer = 0;
 
