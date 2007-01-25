@@ -641,7 +641,7 @@ static int register_service(struct service *service)
 
 	/* Make the path valid for D-Bus */
 	for (i = strlen("/org/bluez/"); obj_path[i]; i++) {
-		if (!isalnum(obj_path[i]) || obj_path[i] != '_')
+		if (!isalnum(obj_path[i]))
 			obj_path[i] = '_';
 	}
 
