@@ -448,6 +448,9 @@ static DBusHandlerResult is_external(DBusConnection *conn,
 	struct service *service = data;
 	DBusMessage *reply;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
