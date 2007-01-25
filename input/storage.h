@@ -21,17 +21,13 @@
  *
  */
 
-#ifndef __H_INPUT_STORAGE_H
-#define __H_INPUT_STORAGE_H
-
 int get_stored_device_info(bdaddr_t *sba, bdaddr_t *dba,
-		struct hidp_connadd_req *req);
+				struct hidp_connadd_req *req);
 
 int del_stored_device_info(bdaddr_t *sba, bdaddr_t *dba);
 
 int store_device_info(bdaddr_t *sba, bdaddr_t *dba,
-		struct hidp_connadd_req *req);
+				struct hidp_connadd_req *req);
 
 int parse_stored_device_info(const char *str,
-		struct hidp_connadd_req *req);
-#endif /* __H_INPUT_STORAGE_H */
+				struct hidp_connadd_req *req);
