@@ -536,7 +536,7 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 {
 	struct hidp_conndel_req req;
 	struct hidp_conninfo ci;
-	int ctl, err, ret = 0;
+	int ctl, err, ret = -1;
 
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
 	if (ctl < 0) {
@@ -558,7 +558,6 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 	}
 
 	memset(&req, 0, sizeof(struct hidp_conndel_req));
-
 	bacpy(&req.bdaddr, &idev->dba);
 	req.flags = flags;
 	if (ioctl(ctl, HIDPCONNDEL, &req) < 0) {
@@ -1418,6 +1417,7 @@ void internal_service(const char *identifier)
 		return;
 	}
 
+	dbus_message_unref(msg);
 	dbus_message_unref(reply);
 
 	dbus_connection_flush(connection);
