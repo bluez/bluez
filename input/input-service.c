@@ -65,19 +65,19 @@ const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 
 struct input_device {
-	bdaddr_t dba;
+	bdaddr_t dst;
 	struct hidp_connadd_req hidp;
 };
 
 struct input_manager {
-	bdaddr_t sba;		/* Local adapter BT address */
+	bdaddr_t src;		/* Local adapter BT address */
 	GSList *paths;		/* Input registered paths */
 };
 
 struct pending_req {
 	char *adapter_path;	/* Local adapter D-Bus path */
-	bdaddr_t sba;		/* Local adapter BT address */
-	bdaddr_t dba;		/* Peer BT address */
+	bdaddr_t src;		/* Local adapter BT address */
+	bdaddr_t dst;		/* Peer BT address */
 	DBusConnection *conn;
 	DBusMessage *msg;
 	sdp_record_t *pnp_rec;
@@ -85,13 +85,13 @@ struct pending_req {
 };
 
 struct pending_connect {
-	bdaddr_t sba;
-	bdaddr_t dba;
+	bdaddr_t src;
+	bdaddr_t dst;
 	DBusConnection *conn;
 	DBusMessage *msg;
 };
 
-static struct input_device *input_device_new(bdaddr_t *dba)
+static struct input_device *input_device_new(bdaddr_t *dst)
 {
 	struct input_device *idev;
 
@@ -101,7 +101,7 @@ static struct input_device *input_device_new(bdaddr_t *dba)
 
 	memset(idev, 0, sizeof(struct input_device));
 
-	bacpy(&idev->dba, dba);
+	bacpy(&idev->dst, dst);
 
 	return idev;
 }
@@ -117,7 +117,7 @@ static void input_device_free(struct input_device *idev)
 
 static struct pending_req *pending_req_new(DBusConnection *conn,
 				DBusMessage *msg, const char *adapter_path,
-						bdaddr_t *sba, bdaddr_t *dba)
+						bdaddr_t *src, bdaddr_t *dst)
 {
 	struct pending_req *pr;
 	pr = malloc(sizeof(struct pending_req));
@@ -126,8 +126,8 @@ static struct pending_req *pending_req_new(DBusConnection *conn,
 
 	memset(pr, 0, sizeof(struct pending_req));
 	pr->adapter_path = strdup(adapter_path);
-	bacpy(&pr->sba, sba);
-	bacpy(&pr->dba, dba);
+	bacpy(&pr->src, src);
+	bacpy(&pr->dst, dst);
 	pr->conn = dbus_connection_ref(conn);
 	pr->msg = dbus_message_ref(msg);
 
@@ -151,7 +151,7 @@ static void pending_req_free(struct pending_req *pr)
 	free(pr);
 }
 
-static struct pending_connect *pending_connect_new(bdaddr_t *sba, bdaddr_t *dba,
+static struct pending_connect *pending_connect_new(bdaddr_t *src, bdaddr_t *dst,
 					DBusConnection *conn, DBusMessage *msg)
 {
 	struct pending_connect *pc;
@@ -160,8 +160,8 @@ static struct pending_connect *pending_connect_new(bdaddr_t *sba, bdaddr_t *dba,
 		return NULL;
 
 	memset(pc, 0, sizeof(struct pending_connect));
-	bacpy(&pc->sba, sba);
-	bacpy(&pc->dba, dba);
+	bacpy(&pc->src, src);
+	bacpy(&pc->dst, dst);
 	pc->conn = dbus_connection_ref(conn);
 	pc->msg = dbus_message_ref(msg);
 
@@ -375,7 +375,7 @@ static int l2cap_connect(struct pending_connect *pc,
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family  = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, &pc->sba);
+	bacpy(&addr.l2_bdaddr, &pc->src);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
 		goto failed;
@@ -393,7 +393,7 @@ static int l2cap_connect(struct pending_connect *pc,
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family  = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, &pc->dba);
+	bacpy(&addr.l2_bdaddr, &pc->dst);
 	addr.l2_psm = htobs(psm);
 
 	io = g_io_channel_unix_new(sk);
@@ -460,7 +460,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	if (idev->hidp.subclass & 0x40) {
-		err = encrypt_link(&pc->sba, &pc->dba);
+		err = encrypt_link(&pc->src, &pc->dst);
 		if (err < 0) {
 			close(ctl);
 			goto failed;
@@ -566,7 +566,7 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 	}
 
 	memset(&ci, 0, sizeof(struct hidp_conninfo));
-	bacpy(&ci.bdaddr, &idev->dba);
+	bacpy(&ci.bdaddr, &idev->dst);
 	if ((ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) ||
 				(ci.state != BT_CONNECTED)) {
 		errno = ENOTCONN;
@@ -574,7 +574,7 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 	}
 
 	memset(&req, 0, sizeof(struct hidp_conndel_req));
-	bacpy(&req.bdaddr, &idev->dba);
+	bacpy(&req.bdaddr, &idev->dst);
 	req.flags = flags;
 	if (ioctl(ctl, HIDPCONNDEL, &req) < 0) {
 		error("Can't delete the HID device: %s(%d)",
@@ -596,7 +596,7 @@ fail:
 	return -errno;
 }
 
-static int is_connected(bdaddr_t *dba)
+static int is_connected(bdaddr_t *dst)
 {
 	struct hidp_conninfo ci;
 	int ctl;
@@ -606,7 +606,7 @@ static int is_connected(bdaddr_t *dba)
 		return 0;
 
 	memset(&ci, 0, sizeof(struct hidp_conninfo));
-	bacpy(&ci.bdaddr, dba);
+	bacpy(&ci.bdaddr, dst);
 	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
 		close(ctl);
 		return 0;
@@ -630,11 +630,11 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	struct input_manager *mgr;
 	struct pending_connect *pc;
 
-	if (is_connected(&idev->dba))
+	if (is_connected(&idev->dst))
 		return err_connection_failed(conn, msg, "Already connected");
 
 	dbus_connection_get_object_path_data(conn, INPUT_PATH, (void *) &mgr);
-	pc = pending_connect_new(&mgr->sba, &idev->dba, conn, msg);
+	pc = pending_connect_new(&mgr->src, &idev->dst, conn, msg);
 	if (!pc)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
@@ -667,7 +667,7 @@ static DBusHandlerResult device_is_connected(DBusConnection *conn,
 	DBusMessage *reply;
 	dbus_bool_t connected;
 
-	connected = is_connected(&idev->dba);
+	connected = is_connected(&idev->dst);
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -687,7 +687,7 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 	char addr[18];
 	const char *paddr = addr;
 
-	ba2str(&idev->dba, addr);
+	ba2str(&idev->dst, addr);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -889,7 +889,7 @@ static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
 	if (!idev)
 		return -1;
 
-	return bacmp(&idev->dba, bdaddr);
+	return bacmp(&idev->dst, bdaddr);
 }
 
 static int get_record(struct pending_req *pr, uint32_t handle,
@@ -905,7 +905,7 @@ static int get_record(struct pending_req *pr, uint32_t handle,
 	if (!msg)
 		return -1;
 
-	ba2str(&pr->dba, addr);
+	ba2str(&pr->dst, addr);
 	dbus_message_append_args(msg,
 			DBUS_TYPE_STRING, &paddr,
 			DBUS_TYPE_UINT32, &handle,
@@ -935,7 +935,7 @@ static int get_handles(struct pending_req *pr, const char *uuid,
 	if (!msg)
 		return -1;
 
-	ba2str(&pr->dba, addr);
+	ba2str(&pr->dst, addr);
 	dbus_message_append_args(msg,
 			DBUS_TYPE_STRING, &paddr,
 			DBUS_TYPE_STRING, &uuid,
@@ -989,7 +989,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	idev = input_device_new(&pr->dba);
+	idev = input_device_new(&pr->dst);
 
 	extract_hid_record(pr->hid_rec, &idev->hidp);
 	if (pr->pnp_rec)
@@ -1009,7 +1009,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 			DBUS_TYPE_INVALID);
 	send_message_and_unref(pr->conn, pr_reply);
 
-	store_device_info(&pr->sba, &pr->dba, &idev->hidp);
+	store_device_info(&pr->src, &pr->dst, &idev->hidp);
 fail:
 	pending_req_free(pr);
 	dbus_message_unref(reply);
@@ -1154,7 +1154,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	char adapter[18], adapter_path[32];
 	const char *addr, *path;
 	GSList *l;
-	bdaddr_t dba;
+	bdaddr_t dst;
 	int dev_id;
 
 	dbus_error_init(&derr);
@@ -1166,26 +1166,26 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	str2ba(addr, &dba);
-	l = g_slist_find_custom(mgr->paths, &dba,
+	str2ba(addr, &dst);
+	l = g_slist_find_custom(mgr->paths, &dst,
 			(GCompareFunc) path_bdaddr_cmp);
 	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
 
-	ba2str(&mgr->sba, adapter);
+	ba2str(&mgr->src, adapter);
 	dev_id = hci_devid(adapter);
 	snprintf(adapter_path, 32, "/org/bluez/hci%d", dev_id);
 
-	idev = input_device_new(&dba);
+	idev = input_device_new(&dst);
 	if (!idev)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (get_stored_device_info(&mgr->sba, &idev->dba, &idev->hidp) < 0) {
+	if (get_stored_device_info(&mgr->src, &idev->dst, &idev->hidp) < 0) {
 		struct pending_req *pr;
 
 		/* Data not found: create the input device later */
 		input_device_free(idev);
-		pr = pending_req_new(conn, msg, adapter_path, &mgr->sba, &dba);
+		pr = pending_req_new(conn, msg, adapter_path, &mgr->src, &dst);
 		if (!pr)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
@@ -1247,7 +1247,7 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 	if (dbus_connection_get_object_path_data(conn, path, (void *) &idev) && idev)
 		disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
 
-	del_stored_device_info(&mgr->sba, &idev->dba);
+	del_stored_device_info(&mgr->src, &idev->dst);
 
 	if (unregister_input_device(conn, path) < 0) {
 		dbus_message_unref(reply);
@@ -1336,10 +1336,10 @@ static void stored_input(char *key, char *value, void *data)
 	DBusConnection *conn = data;
 	struct input_device *idev;
 	const char *path;
-	bdaddr_t dba;
+	bdaddr_t dst;
 
-	str2ba(key, &dba);
-	idev = input_device_new(&dba);
+	str2ba(key, &dst);
+	idev = input_device_new(&dst);
 	if (parse_stored_device_info(value, &idev->hidp) < 0) {
 		input_device_free(idev);
 		return;
@@ -1350,12 +1350,12 @@ static void stored_input(char *key, char *value, void *data)
 		input_device_free(idev);
 }
 
-static int register_stored_inputs(DBusConnection *conn, bdaddr_t *sba)
+static int register_stored_inputs(DBusConnection *conn, bdaddr_t *src)
 {
 	char filename[PATH_MAX + 1];
 	char addr[18];
 
-	ba2str(sba, addr);
+	ba2str(src, addr);
 	create_name(filename, PATH_MAX, STORAGEDIR, addr, "hidd");
 	textfile_foreach(filename, stored_input, conn);
 
@@ -1365,7 +1365,7 @@ static int register_stored_inputs(DBusConnection *conn, bdaddr_t *sba)
 int input_dbus_init(void)
 {
 	struct input_manager *mgr;
-	bdaddr_t sba;
+	bdaddr_t src;
 	int dev_id;
 
 	connection = init_dbus(NULL, NULL, NULL);
@@ -1386,21 +1386,21 @@ int input_dbus_init(void)
 	info("Registered input manager path:%s", INPUT_PATH);
 
 	/* Set the default adapter */
-	bacpy(&sba, BDADDR_ANY);
-	dev_id = hci_get_route(&sba);
+	bacpy(&src, BDADDR_ANY);
+	dev_id = hci_get_route(&src);
 	if (dev_id < 0) {
 		error("Bluetooth device not available");
 		goto fail;
 	}
 
-	if (hci_devba(dev_id, &sba) < 0) {
+	if (hci_devba(dev_id, &src) < 0) {
 		error("Can't get local adapter device info");
 		goto fail;
 	}
 
-	bacpy(&mgr->sba, &sba);
+	bacpy(&mgr->src, &src);
 	/* Register well known HID devices */
-	register_stored_inputs(connection, &sba);
+	register_stored_inputs(connection, &src);
 
 	return 0;
 

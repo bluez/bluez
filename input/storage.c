@@ -101,16 +101,16 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 	return 0;
 }
 
-int get_stored_device_info(bdaddr_t *sba, bdaddr_t *dba,
+int get_stored_device_info(bdaddr_t *src, bdaddr_t *dst,
 					struct hidp_connadd_req *req)
 {
 	char filename[PATH_MAX + 1], *str;
 	char peer[18];
 	int err;
 
-	create_filename(filename, PATH_MAX, sba, "hidd");
+	create_filename(filename, PATH_MAX, src, "hidd");
 
-	ba2str(dba, peer);
+	ba2str(dst, peer);
 	str = textfile_get(filename, peer);
 	if (!str)
 		return -ENOENT;
@@ -122,25 +122,25 @@ int get_stored_device_info(bdaddr_t *sba, bdaddr_t *dba,
 	return err;
 }
 
-int del_stored_device_info(bdaddr_t *sba, bdaddr_t *dba)
+int del_stored_device_info(bdaddr_t *src, bdaddr_t *dst)
 {
 	char filename[PATH_MAX + 1];
 	char addr[18];
 
-	create_filename(filename, PATH_MAX, sba, "hidd");
+	create_filename(filename, PATH_MAX, src, "hidd");
 
-	ba2str(dba, addr);
+	ba2str(dst, addr);
 
 	return textfile_del(filename, addr);
 }
 
-int store_device_info(bdaddr_t *sba, bdaddr_t *dba, struct hidp_connadd_req *req)
+int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req)
 {
 	char filename[PATH_MAX + 1], *str, *desc;
 	int i, err, size;
 	char addr[18];
 
-	create_filename(filename, PATH_MAX, sba, "hidd");
+	create_filename(filename, PATH_MAX, src, "hidd");
 
 	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9 + strlen(req->name) + 2;
 	str = malloc(size);
@@ -166,7 +166,7 @@ int store_device_info(bdaddr_t *sba, bdaddr_t *dba, struct hidp_connadd_req *req
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(dba, addr);
+	ba2str(dst, addr);
 
 	err = textfile_put(filename, addr, str);
 

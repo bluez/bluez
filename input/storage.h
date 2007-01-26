@@ -21,12 +21,12 @@
  *
  */
 
-int get_stored_device_info(bdaddr_t *sba, bdaddr_t *dba,
+int get_stored_device_info(bdaddr_t *src, bdaddr_t *dst,
 				struct hidp_connadd_req *req);
 
-int del_stored_device_info(bdaddr_t *sba, bdaddr_t *dba);
+int del_stored_device_info(bdaddr_t *src, bdaddr_t *dst);
 
-int store_device_info(bdaddr_t *sba, bdaddr_t *dba,
+int store_device_info(bdaddr_t *src, bdaddr_t *dst,
 				struct hidp_connadd_req *req);
 
 int parse_stored_device_info(const char *str,
