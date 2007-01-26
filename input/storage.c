@@ -219,6 +219,11 @@ int encrypt_link(bdaddr_t *src, bdaddr_t *dst)
 	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0)
 		goto fail;
 
+	if (cr->conn_info->link_mode & HCI_LM_ENCRYPT) {
+		/* Already encrypted */
+		goto done;
+	}
+
 	if (hci_authenticate_link(dd, htobs(cr->conn_info->handle), 1000) < 0) {
 		error("Link authentication failed: %s (%d)",
 						strerror(errno), errno);
@@ -231,6 +236,7 @@ int encrypt_link(bdaddr_t *src, bdaddr_t *dst)
 		goto fail;
 	}
 
+done:
 	free(cr);
 
 	hci_close_dev(dd);
