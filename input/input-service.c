@@ -473,22 +473,24 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	close(ctl);
 
 	send_message_and_unref(pc->conn,
 			dbus_message_new_method_return(pc->msg));
 
-	pending_connect_free(pc);
-	g_io_channel_unref(chan);
-
-	return FALSE;
-
+	close (ctl);
+	goto cleanup;
 failed:
+	err_connection_failed(pc->conn, pc->msg, strerror(err));
+
+cleanup:
 	if (isk > 0)
 		close(isk);
 
+	close(idev->hidp.ctrl_sock);
+
 	idev->hidp.intr_sock = -1;
-	err_connection_failed(pc->conn, pc->msg, strerror(err));
+	idev->hidp.ctrl_sock = -1;
+
 	pending_connect_free(pc);
 	g_io_channel_unref(chan);
 
