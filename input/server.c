@@ -34,6 +34,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/hidp.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 
 #include <glib.h>
 
@@ -96,6 +98,14 @@ static void create_device(struct session_data *session)
 	if (get_stored_device_info(&session->src, &session->dst, &req) < 0) {
 		error("Rejected connection from unknown device %s", addr);
 		goto cleanup;
+	}
+
+	if (req.subclass & 0x40) {
+		if (encrypt_link(&session->src, &session->dst) < 0) {
+			if (req.rd_data)
+				free(req.rd_data);
+			goto cleanup;
+		}
 	}
 
 	info("New input device %s (%s)", addr, req.name);

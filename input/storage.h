@@ -31,3 +31,5 @@ int store_device_info(bdaddr_t *sba, bdaddr_t *dba,
 
 int parse_stored_device_info(const char *str,
 				struct hidp_connadd_req *req);
+
+int encrypt_link(bdaddr_t *src, bdaddr_t *dst);

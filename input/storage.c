@@ -35,12 +35,16 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/param.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hidp.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 
 #include "textfile.h"
+#include "logging.h"
 
 #include "storage.h"
 
@@ -169,4 +173,75 @@ int store_device_info(bdaddr_t *sba, bdaddr_t *dba, struct hidp_connadd_req *req
 	free(str);
 
 	return err;
+}
+
+int encrypt_link(bdaddr_t *src, bdaddr_t *dst)
+{
+	char filename[PATH_MAX + 1];
+	struct hci_conn_info_req *cr;
+	int dd, err, dev_id;
+	char addr[18], *str;
+
+	create_filename(filename, PATH_MAX, src, "linkkeys");
+
+	ba2str(dst, addr);
+
+	str = textfile_get(filename, addr);
+	if (!str) {
+		error("Encryption link key not found");
+		return -ENOKEY;
+	}
+
+	free(str);
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return -ENOMEM;
+
+	ba2str(src, addr);
+
+	dev_id = hci_devid(addr);
+	if (dev_id < 0) {
+		free(cr);
+		return -errno;
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		free(cr);
+		return -errno;
+	}
+
+	memset(cr, 0, sizeof(*cr) + sizeof(struct hci_conn_info));
+	bacpy(&cr->bdaddr, dst);
+	cr->type = ACL_LINK;
+
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0)
+		goto fail;
+
+	if (hci_authenticate_link(dd, htobs(cr->conn_info->handle), 1000) < 0) {
+		error("Link authentication failed: %s (%d)",
+						strerror(errno), errno);
+		goto fail;
+	}
+
+	if (hci_encrypt_link(dd, htobs(cr->conn_info->handle), 1, 1000) < 0) {
+		error("Link encryption failed: %s (%d)",
+						strerror(errno), errno);
+		goto fail;
+	}
+
+	free(cr);
+
+	hci_close_dev(dd);
+
+	return 0;
+
+fail:
+	free(cr);
+
+	err = errno;
+	hci_close_dev(dd);
+
+	return -err;
 }

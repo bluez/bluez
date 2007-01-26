@@ -60,12 +60,18 @@
 #define L2CAP_PSM_HIDP_INTR		0x13
 
 static DBusConnection *connection = NULL;
+
 const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 
 struct input_device {
 	bdaddr_t dba;
 	struct hidp_connadd_req hidp;
+};
+
+struct input_manager {
+	bdaddr_t sba;		/* Local adapter BT address */
+	GSList *paths;		/* Input registered paths */
 };
 
 struct pending_req {
@@ -110,8 +116,8 @@ static void input_device_free(struct input_device *idev)
 }
 
 static struct pending_req *pending_req_new(DBusConnection *conn,
-		DBusMessage *msg, const char *adapter_path,
-		bdaddr_t *sba, bdaddr_t *dba)
+				DBusMessage *msg, const char *adapter_path,
+						bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct pending_req *pr;
 	pr = malloc(sizeof(struct pending_req));
@@ -357,7 +363,7 @@ static const char *create_input_path(uint8_t minor)
 }
 
 static int l2cap_connect(struct pending_connect *pc,
-		unsigned short psm, GIOFunc cb)
+					unsigned short psm, GIOFunc cb)
 {
 	GIOChannel *io;
 	struct sockaddr_l2 addr;
@@ -413,7 +419,7 @@ failed:
 }
 
 static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
-			struct pending_connect *pc)
+						struct pending_connect *pc)
 {
 	struct input_device *idev;
 	int ctl, isk, ret, err;
@@ -431,7 +437,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	isk = g_io_channel_unix_get_fd(chan);
 	idev->hidp.intr_sock = isk;
-	idev->hidp.idle_to = 1800; /* 30 sec */
+	idev->hidp.idle_to = 30 * 60;	/* 30 minutes */
 
 	len = sizeof(ret);
 	if (getsockopt(isk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
@@ -452,11 +458,21 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 		error("Can't open HIDP control socket");
 		goto failed;
 	}
+
+	if (idev->hidp.subclass & 0x40) {
+		err = encrypt_link(&pc->sba, &pc->dba);
+		if (err < 0) {
+			close(ctl);
+			goto failed;
+		}
+	}
+
 	if (ioctl(ctl, HIDPCONNADD, &idev->hidp) < 0) {
 		err = errno;
 		close(ctl);
 		goto failed;
 	}
+
 	close(ctl);
 
 	send_message_and_unref(pc->conn,
@@ -466,6 +482,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 	g_io_channel_unref(chan);
 
 	return FALSE;
+
 failed:
 	if (isk > 0)
 		close(isk);
@@ -479,7 +496,7 @@ failed:
 }
 
 static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
-			struct pending_connect *pc)
+						struct pending_connect *pc)
 {
 	struct input_device *idev;
 	int ret, csk, err;
@@ -511,6 +528,7 @@ static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
 		error("connect(): %s (%d)", strerror(ret), ret);
 		goto failed;
 	}
+
 	/* Connect to the HID interrupt channel */
 	if (l2cap_connect(pc, L2CAP_PSM_HIDP_INTR,
 			(GIOFunc) interrupt_connect_cb) < 0) {
@@ -550,7 +568,7 @@ static int disconnect(struct input_device *idev,  uint32_t flags)
 	memset(&ci, 0, sizeof(struct hidp_conninfo));
 	bacpy(&ci.bdaddr, &idev->dba);
 	if ((ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) ||
-			(ci.state != BT_CONNECTED)) {
+				(ci.state != BT_CONNECTED)) {
 		errno = ENOTCONN;
 		goto fail;
 	}
@@ -606,15 +624,17 @@ static int is_connected(bdaddr_t *dba)
  * Input Device methods
  */
 static DBusHandlerResult device_connect(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
+	struct input_manager *mgr;
 	struct pending_connect *pc;
 
 	if (is_connected(&idev->dba))
 		return err_connection_failed(conn, msg, "Already connected");
 
-	pc = pending_connect_new(BDADDR_ANY, &idev->dba, conn, msg);
+	dbus_connection_get_object_path_data(conn, INPUT_PATH, (void *) &mgr);
+	pc = pending_connect_new(&mgr->sba, &idev->dba, conn, msg);
 	if (!pc)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
@@ -629,7 +649,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 }
 
 static DBusHandlerResult device_disconnect(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
 
@@ -641,7 +661,7 @@ static DBusHandlerResult device_disconnect(DBusConnection *conn,
 }
 
 static DBusHandlerResult device_is_connected(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
 	DBusMessage *reply;
@@ -660,13 +680,13 @@ static DBusHandlerResult device_is_connected(DBusConnection *conn,
 }
 
 static DBusHandlerResult device_get_address(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
 	DBusMessage *reply;
 	char addr[18];
 	const char *paddr = addr;
-	
+
 	ba2str(&idev->dba, addr);
 
 	reply = dbus_message_new_method_return(msg);
@@ -681,7 +701,7 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 }
 
 static DBusHandlerResult device_get_name(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
 	DBusMessage *reply;
@@ -699,7 +719,7 @@ static DBusHandlerResult device_get_name(DBusConnection *conn,
 }
 
 static DBusHandlerResult device_get_product_id(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
 	DBusMessage *reply;
@@ -716,7 +736,7 @@ static DBusHandlerResult device_get_product_id(DBusConnection *conn,
 }
 
 static DBusHandlerResult device_get_vendor_id(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
 	DBusMessage *reply;
@@ -733,13 +753,13 @@ static DBusHandlerResult device_get_vendor_id(DBusConnection *conn,
 }
 
 static DBusHandlerResult device_set_timeout(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult device_message(DBusConnection *conn,
-		DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	const char *iface, *member;
 
@@ -791,19 +811,16 @@ static const DBusObjectPathVTable device_table = {
 /*
  * Input Manager methods
  */
-struct input_manager {
-	bdaddr_t sba;		/* Local adapter BT address */
-	GSList *paths;		/* Input registered paths */
-};
-
 static void input_manager_free(struct input_manager *mgr)
 {
 	if (!mgr)
 		return;
+
 	if (mgr->paths) {
 		g_slist_foreach(mgr->paths, (GFunc) free, NULL);
 		g_slist_free(mgr->paths);
 	}
+
 	free(mgr);
 }
 
@@ -876,7 +893,7 @@ static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
 }
 
 static int get_record(struct pending_req *pr, uint32_t handle,
-			DBusPendingCallNotifyFunction cb)
+					DBusPendingCallNotifyFunction cb)
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
@@ -906,7 +923,7 @@ static int get_record(struct pending_req *pr, uint32_t handle,
 }
 
 static int get_handles(struct pending_req *pr, const char *uuid,
-			DBusPendingCallNotifyFunction cb)
+					DBusPendingCallNotifyFunction cb)
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
@@ -1068,9 +1085,12 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 		else
 			goto done;
 	}
+
 	err_failed(pr->conn, pr->msg, "SDP error");
+
 fail:
 	pending_req_free(pr);
+
 done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
@@ -1115,15 +1135,17 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 	}
 
 	goto done;
+
 fail:
 	pending_req_free(pr);
+
 done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 }
 
 static DBusHandlerResult manager_create_device(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_manager *mgr = data;
 	struct input_device *idev;
@@ -1186,6 +1208,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		input_device_free(idev);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
+
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
@@ -1194,7 +1217,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 }
 
 static DBusHandlerResult manager_remove_device(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_manager *mgr = data;
 	struct input_device *idev;
@@ -1238,7 +1261,7 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 }
 
 static DBusHandlerResult manager_list_devices(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct input_manager *mgr = data;
 	DBusMessageIter iter, iter_array;
@@ -1265,7 +1288,7 @@ static DBusHandlerResult manager_list_devices(DBusConnection *conn,
 }
 
 static DBusHandlerResult manager_message(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	const char *path, *iface, *member;
 
@@ -1380,6 +1403,7 @@ int input_dbus_init(void)
 	register_stored_inputs(connection, &sba);
 
 	return 0;
+
 fail:
 	input_manager_free(mgr);
 
