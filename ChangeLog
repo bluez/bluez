@@ -1,3 +1,13 @@
+ver 3.9:
+	Add RemoteDeviceDisconnectRequested signal.
+	Add updated service framework.
+	Add embedded GLib library.
+	Add support for using system GLib library.
+	Create internal SDP server library.
+
+	Note:
+	This version needs at least bluez-libs-3.9
+
 ver 3.8:
 	Sort discovered devices list based on their RSSI.
 	Send DiscoverableTimeoutChanged signal.
