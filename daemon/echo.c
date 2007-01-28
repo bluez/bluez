@@ -187,6 +187,7 @@ static int setup_sdp(DBusConnection *conn, uint8_t channel)
 	uuid_t root_uuid, l2cap, rfcomm, spp;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *proto[2];
+	sdp_data_t *chan;
 
 	record = sdp_record_alloc();
 	if (!record) {
@@ -202,9 +203,10 @@ static int setup_sdp(DBusConnection *conn, uint8_t channel)
 	proto[0] = sdp_list_append(NULL, &l2cap);
 	apseq    = sdp_list_append(NULL, proto[0]);
 
+	chan = sdp_data_alloc(SDP_UINT8, &channel);
 	sdp_uuid16_create(&rfcomm, RFCOMM_UUID);
 	proto[1] = sdp_list_append(NULL, &rfcomm);
-	proto[1] = sdp_list_append(proto[1], sdp_data_alloc(SDP_UINT8, &channel));
+	proto[1] = sdp_list_append(proto[1], chan);
 	apseq    = sdp_list_append(apseq, proto[1]);
 
 	aproto   = sdp_list_append(NULL, apseq);
@@ -227,6 +229,17 @@ static int setup_sdp(DBusConnection *conn, uint8_t channel)
 		return -1;
 	}
 
+	sdp_data_free(chan);
+	sdp_list_free(root, NULL);
+	sdp_list_free(apseq, NULL);
+	sdp_list_free(pfseq, NULL);
+	sdp_list_free(aproto, NULL);
+	sdp_list_free(svclass, NULL);
+	sdp_list_free(proto[0], NULL);
+	sdp_list_free(proto[1], NULL);
+
+	sdp_record_free(record);
+
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 				"org.bluez.Database", "AddServiceRecord");
 	if (!msg) {
@@ -238,6 +251,8 @@ static int setup_sdp(DBusConnection *conn, uint8_t channel)
 				&buf.data, buf.data_size, DBUS_TYPE_INVALID);
 
 	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+
+	dbus_message_unref(msg);
 
 	free(buf.data);
 
@@ -272,6 +287,9 @@ static int register_standalone(DBusConnection *conn)
 				DBUS_TYPE_STRING, &desc, DBUS_TYPE_INVALID);
 
 	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+
+	dbus_message_unref(msg);
+
 	if (!reply) {
 		error("Registration of service failed");
 		return -1;
