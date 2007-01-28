@@ -41,7 +41,7 @@
 #include "logging.h"
 
 #include "server.h"
-#include "input-service.h"
+#include "device.h"
 
 static GMainLoop *main_loop;
 
