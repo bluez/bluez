@@ -485,6 +485,8 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			hci_close_dev(dd);
 			return error_failed(conn, msg, bt_error(status));
 		}
+
+		write_device_mode(&local, scan_mode);
 	}
 
 done:

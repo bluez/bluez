@@ -311,7 +311,6 @@ static const DBusObjectPathVTable adapter_vtable = {
 
 static void adapter_mode_changed(struct adapter *adapter, uint8_t mode)
 {
-	bdaddr_t local;
 	DBusMessage *message;
 	const char *scan_mode;
 
@@ -340,10 +339,6 @@ static void adapter_mode_changed(struct adapter *adapter, uint8_t mode)
 		/* ignore, reserved */
 		return;
 	}
-
-	str2ba(adapter->address, &local);
-
-	write_device_mode(&local, scan_mode);
 
 	message = dev_signal_factory(adapter->dev_id, "ModeChanged",
 					DBUS_TYPE_STRING, &scan_mode,
