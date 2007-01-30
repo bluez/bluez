@@ -352,7 +352,8 @@ failed:
 	return TRUE;
 }
 
-static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
+static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
+			uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
 	sdp_record_t *rec = NULL;
@@ -498,7 +499,8 @@ failed:
 	transaction_context_free(ctxt);
 }
 
-static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err, uint8_t *rsp, size_t size, void *udata)
+static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err,
+			uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
 	DBusMessage *reply;
@@ -679,16 +681,13 @@ static struct pending_connect *connect_request(DBusConnection *conn,
 
 static int remote_svc_rec_conn_cb(struct transaction_context *ctxt)
 {
-	sdp_list_t *attrids = NULL;
+	sdp_list_t *attrids;
 	uint32_t range = 0x0000ffff;
 	const char *dst;
 	uint32_t handle;
-	int err = 0;
 
-	if (sdp_set_notify(ctxt->session, remote_svc_rec_completed_cb, ctxt) < 0) {
-		err = -EINVAL;
-		goto fail;
-	}
+	if (sdp_set_notify(ctxt->session, remote_svc_rec_completed_cb, ctxt) < 0)
+		return -EINVAL;
 
 	dbus_message_get_args(ctxt->rq, NULL,
 			DBUS_TYPE_STRING, &dst,
@@ -696,31 +695,30 @@ static int remote_svc_rec_conn_cb(struct transaction_context *ctxt)
 			DBUS_TYPE_INVALID);
 
 	attrids = sdp_list_append(NULL, &range);
-	/* Create/send the search request and set the callback to indicate the request completion */
-	if (sdp_service_attr_async(ctxt->session, handle, SDP_ATTR_REQ_RANGE, attrids) < 0) {
-		err = -sdp_get_error(ctxt->session);
-		goto fail;
+	/*
+	 * Create/send the search request and set the
+	 * callback to indicate the request completion
+	 */
+	if (sdp_service_attr_async(ctxt->session, handle,
+				SDP_ATTR_REQ_RANGE, attrids) < 0) {
+		sdp_list_free(attrids, NULL);
+		return -sdp_get_error(ctxt->session);
 	}
 
-fail:
-	if (attrids)
-		sdp_list_free(attrids, NULL);
+	sdp_list_free(attrids, NULL);
 
-	return err;
+	return 0;
 }
 
 static int remote_svc_rec_conn_xml_cb(struct transaction_context *ctxt)
 {
-	sdp_list_t *attrids = NULL;
+	sdp_list_t *attrids;
 	uint32_t range = 0x0000ffff;
 	const char *dst;
 	uint32_t handle;
-	int err = 0;
 
-	if (sdp_set_notify(ctxt->session, remote_svc_rec_completed_xml_cb, ctxt) < 0) {
-		err = -EINVAL;
-		goto fail;
-	}
+	if (sdp_set_notify(ctxt->session, remote_svc_rec_completed_xml_cb, ctxt) < 0)
+		return -EINVAL;
 
 	dbus_message_get_args(ctxt->rq, NULL,
 			DBUS_TYPE_STRING, &dst,
@@ -728,25 +726,28 @@ static int remote_svc_rec_conn_xml_cb(struct transaction_context *ctxt)
 			DBUS_TYPE_INVALID);
 
 	attrids = sdp_list_append(NULL, &range);
-	/* Create/send the search request and set the callback to indicate the request completion */
-	if (sdp_service_attr_async(ctxt->session, handle, SDP_ATTR_REQ_RANGE, attrids) < 0) {
-		err = -sdp_get_error(ctxt->session);
-		goto fail;
+	/* 
+	 * Create/send the search request and set the
+	 * callback to indicate the request completion
+	 */
+	if (sdp_service_attr_async(ctxt->session, handle,
+				SDP_ATTR_REQ_RANGE, attrids) < 0) {
+		sdp_list_free(attrids, NULL);
+		return -sdp_get_error(ctxt->session);
 	}
 
-fail:
-	if (attrids)
-		sdp_list_free(attrids, NULL);
+	sdp_list_free(attrids, NULL);
 
-	return err;
+	return 0;
 }
 
-DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data, sdp_format_t format)
+DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
+				void *data, sdp_format_t format)
 {
 	struct adapter *adapter = data;
 	const char *dst;
 	uint32_t handle;
-	int err = 0;
+	int err;
 	connect_cb_t *cb;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -776,12 +777,9 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 	sdp_list_t *search = NULL;
 	const char *dst, *svc;
 	uuid_t uuid;
-	int err = 0;
 
-	if (sdp_set_notify(ctxt->session, remote_svc_handles_completed_cb, ctxt) < 0) {
-		err = -EINVAL;
-		goto fail;
-	}
+	if (sdp_set_notify(ctxt->session, remote_svc_handles_completed_cb, ctxt) < 0)
+		return -EINVAL;
 
 	dbus_message_get_args(ctxt->rq, NULL,
 			DBUS_TYPE_STRING, &dst,
@@ -798,22 +796,20 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 	/* Create/send the search request and set the callback to indicate the request completion */
 	if (sdp_service_search_async(ctxt->session, search, 64) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
-		err = -sdp_get_error(ctxt->session);
-		goto fail;
+		sdp_list_free(search, NULL);
+		return -sdp_get_error(ctxt->session);
 	}
 
-fail:
-	if (search)
-		sdp_list_free(search, NULL);
+	sdp_list_free(search, NULL);
 
-	return err;
+	return 0;
 }
 
 DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
 	const char *dst, *svc;
-	int err = 0;
+	int err;
 	uuid_t uuid;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -892,15 +888,13 @@ failed:
 static int get_rec_with_handle_conn_cb(struct transaction_context *ctxt)
 {
 	uint32_t range = 0x0000ffff;
-	sdp_list_t *attrids = NULL;
+	sdp_list_t *attrids;
 	uint32_t handle;
-	int err = 0;
 
 	if (sdp_set_notify(ctxt->session,
 				get_rec_with_handle_comp_cb, ctxt) < 0) {
 		error("Invalid session data!");
-		err = -EINVAL;
-		goto failed;
+		return -EINVAL;
 	}
 
 	handle = *((uint32_t *)ctxt->call->search_data);
@@ -909,15 +903,13 @@ static int get_rec_with_handle_conn_cb(struct transaction_context *ctxt)
 	if (sdp_service_attr_async(ctxt->session, handle,
 					SDP_ATTR_REQ_RANGE, attrids) < 0) {
 		error("send request failed: %s (%d)", strerror(errno), errno);
-		err = -errno;
-		goto failed;
+		sdp_list_free(attrids, NULL);
+		return -errno;
 	}
 
-failed:
-	if (attrids)
-		sdp_list_free(attrids, NULL);
+	sdp_list_free(attrids, NULL);
 
-	return err;
+	return 0;
 }
 
 int get_record_with_handle(DBusConnection *conn, DBusMessage *msg,
