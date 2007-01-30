@@ -428,9 +428,6 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			(hcid.offmode == HCID_OFFMODE_NOSCAN ||
 			 (hcid.offmode == HCID_OFFMODE_DEVDOWN &&
 			  hci_mode != SCAN_DISABLED))) {
-		/* The new value will be loaded when the adapter comes UP */
-		write_device_mode(&local, scan_mode);
-
 		/* Start HCI device */
 		if (ioctl(dd, HCIDEVUP, adapter->dev_id) == 0)
 			goto done; /* on success */
@@ -451,8 +448,6 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			hci_close_dev(dd);
 			return error_failed(conn, msg, errno);
 		}
-
-		write_device_mode(&local, scan_mode);
 
 		goto done;
 	}
@@ -485,11 +480,11 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			hci_close_dev(dd);
 			return error_failed(conn, msg, bt_error(status));
 		}
-
-		write_device_mode(&local, scan_mode);
 	}
 
 done:
+	write_device_mode(&local, scan_mode);
+
 	hci_close_dev(dd);
 
 	reply = dbus_message_new_method_return(msg);
