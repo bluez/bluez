@@ -310,6 +310,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
 	fi
 
+	AC_SUBST([SBC_CFLAGS], ['-I$(top_srcdir)/sbc'])
+	AC_SUBST([SBC_LIBS], ['$(top_builddir)/sbc/libsbc.la'])
+
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")

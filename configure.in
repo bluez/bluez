@@ -37,6 +37,7 @@ AC_ARG_BLUEZ
 
 AC_OUTPUT([
 	Makefile
+	sbc/Makefile
 	eglib/Makefile
 	common/Makefile
 	daemon/Makefile
