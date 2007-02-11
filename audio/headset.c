@@ -1318,14 +1318,16 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 {
 	struct sockaddr_sco addr;
 	struct pending_connect *c;
-	char hs_address[18];
 	int sk, err;
 
 	if (!hs)
 		return err_not_connected(connection, msg);
 
-	if (hs->state <= HEADSET_STATE_PLAY_IN_PROGRESS || hs->connect_in_progress)
-		return err_already_connected(connection, msg); /* FIXME: in progress error? */
+	if (hs->state < HEADSET_STATE_CONNECTED)
+		return err_not_connected(connection, msg); /* FIXME: in progress error? */
+
+	if (hs->state >= HEADSET_STATE_PLAY_IN_PROGRESS || hs->connect_in_progress)
+		return err_already_connected(connection, msg);
 
 	if (hs->sco)
 		return err_already_connected(connection, msg);
@@ -1377,7 +1379,7 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
-	str2ba(hs_address, &addr.sco_bdaddr);
+	bacpy(&addr.sco_bdaddr, &hs->bda);
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
@@ -1652,9 +1654,9 @@ void audio_manager_create_headset_server(struct manager *amanager, uint8_t chan)
 	g_io_add_watch(amanager->server_sk, G_IO_IN, (GIOFunc) server_io_cb, amanager);
 }
 
-static gint headset_bda_cmp(gconstpointer aheadset, gconstpointer bda)
+static gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
 {
-	const struct headset *hs = aheadset;
+	const struct headset *hs = headset;
 
 	return bacmp(&hs->bda, bda);
 }
@@ -1682,6 +1684,7 @@ void audio_manager_add_headset(struct manager *amanager, struct headset *hs)
 static DBusHandlerResult am_create_headset(struct manager *amanager, 
 						DBusMessage *msg)
 {
+	const char *object_path;
 	const char *address;
 	struct headset *hs;
 	bdaddr_t bda;
@@ -1709,12 +1712,13 @@ static DBusHandlerResult am_create_headset(struct manager *amanager,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	str2ba(address, &bda);
-	if (!(hs = audio_manager_find_headset_by_bda(amanager, &bda))) {
+	hs = audio_manager_find_headset_by_bda(amanager, &bda);
+	if (!hs)
 		hs = audio_headset_new(connection, &bda);
-	}
 	/* FIXME: we could send an error if the headset was already created or silently fail */
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &hs->object_path,
+	object_path = hs->object_path;
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &object_path,
 					DBUS_TYPE_INVALID);
 	dbus_connection_send(connection, reply, NULL);
 	dbus_message_unref(reply);
@@ -1727,6 +1731,7 @@ static DBusHandlerResult am_get_default_headset(struct manager *amanager,
 {
 	DBusMessage *reply;
 	char object_path[128];
+	const char *opath = object_path;
 
 	if (!amanager)
 		return err_not_connected(connection, msg);
@@ -1736,7 +1741,7 @@ static DBusHandlerResult am_get_default_headset(struct manager *amanager,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	snprintf(object_path, sizeof(object_path), AUDIO_HEADSET_PATH_BASE "%d", 0);
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &object_path,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &opath,
 					DBUS_TYPE_INVALID);
 
 	dbus_connection_send(connection, reply, NULL);
@@ -1844,7 +1849,7 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "c:o:i:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:o:i:d")) != EOF) {
 		switch (opt) {
 		case 'c':
 			opt_channel = strtol(optarg, NULL, 0);
@@ -1858,8 +1863,12 @@ int main(int argc, char *argv[])
 			opt_output = optarg;
 			break;
 
+		case 'd':
+			enable_debug();
+			break;
+
 		default:
-			printf("Usage: %s -c local_channel [-o output] [-i input] [bdaddr]\n", argv[0]);
+			printf("Usage: %s -c local_channel [-d] [-o output] [-i input] [bdaddr]\n", argv[0]);
 			exit(1);
 		}
 	}
@@ -1879,11 +1888,9 @@ int main(int argc, char *argv[])
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
-	enable_debug();
-
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	connection = init_dbus(NULL, NULL, NULL);
+	connection = init_dbus("org.bluez.audio", NULL, NULL);
 	if (!connection) {
 		error("Connection to system bus failed");
 		g_main_loop_unref(main_loop);
