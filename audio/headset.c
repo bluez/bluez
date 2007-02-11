@@ -424,6 +424,7 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 
 	debug("Accepted connection from %s, %s", hs_address, hs->object_path);
 
+	hs->state = HEADSET_STATE_CONNECTED;
 	hs_signal(hs, "Connected");
 
 	return TRUE;
