@@ -453,6 +453,148 @@ int jthree_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 	return 0;
 }
 
+static const int celluon_xlate_num[10] = {
+	KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9
+};
+
+static const int celluon_xlate_char[26] = {
+	KEY_A, KEY_B, KEY_C, KEY_D, KEY_E, KEY_F, KEY_G, KEY_H, KEY_I, KEY_J,
+	KEY_K, KEY_L, KEY_M, KEY_N, KEY_O, KEY_P, KEY_Q, KEY_R, KEY_S, KEY_T,
+	KEY_U, KEY_V, KEY_W, KEY_X, KEY_Y, KEY_Z
+};
+
+static int celluon_xlate(int c)
+{
+	if (c >= '0' && c <= '9')
+		return celluon_xlate_num[c - '0'];
+
+	if (c >= 'A' && c <= 'Z')
+		return celluon_xlate_char[c - 'A'];
+
+	switch (c) {
+	case 0x08:
+		return KEY_BACKSPACE;
+	case 0x09:
+		return KEY_TAB;
+	case 0x0d:
+		return KEY_ENTER;
+	case 0x11:
+		return KEY_LEFTCTRL;
+	case 0x14:
+		return KEY_CAPSLOCK;
+	case 0x20:
+		return KEY_SPACE;
+	case 0x25:
+		return KEY_LEFT;
+	case 0x26:
+		return KEY_UP;
+	case 0x27:
+		return KEY_RIGHT;
+	case 0x28:
+		return KEY_DOWN;
+	case 0x2e:
+		return KEY_DELETE;
+	case 0x5b:
+		return KEY_MENU;
+	case 0xa1:
+		return KEY_RIGHTSHIFT;
+	case 0xa0:
+		return KEY_LEFTSHIFT;
+	case 0xba:
+		return KEY_SEMICOLON;
+	case 0xbd:
+		return KEY_MINUS;
+	case 0xbc:
+		return KEY_COMMA;
+	case 0xbb:
+		return KEY_EQUAL;
+	case 0xbe:
+		return KEY_DOT;
+	case 0xbf:
+		return KEY_SLASH;
+	case 0xc0:
+		return KEY_GRAVE;
+	case 0xdb:
+		return KEY_LEFTBRACE;
+	case 0xdc:
+		return KEY_BACKSLASH;
+	case 0xdd:
+		return KEY_RIGHTBRACE;
+	case 0xde:
+		return KEY_APOSTROPHE;
+	case 0xff03:
+		return KEY_HOMEPAGE;
+	case 0xff04:
+		return KEY_TIME;
+	case 0xff06:
+		return KEY_OPEN;
+	case 0xff07:
+		return KEY_LIST;
+	case 0xff08:
+		return KEY_MAIL;
+	case 0xff30:
+		return KEY_CALC;
+	case 0xff1a: /* Map FN to ALT */
+		return KEY_LEFTALT;
+	case 0xff2f:
+		return KEY_INFO;
+	default:
+		printf("Unknown key %x\n", c);
+		return c;
+	}
+}
+
+struct celluon_state {
+	int len;	/* Expected length of current packet */
+	int count;	/* Number of bytes received */
+	int action;
+	int key;
+};
+
+static void celluon_decode(int fd, struct celluon_state *s, uint8_t c)
+{
+	if (s->count < 2 && c != 0xa5) {
+		/* Lost Sync */
+		s->count = 0;
+		return;
+	}
+
+	switch (s->count) {
+	case 0:
+		/* New packet - Reset state */
+		s->len = 30;
+		s->key = 0;
+		break;
+	case 1:
+		break;
+	case 6:
+		s->action = c;
+		break;
+	case 28:
+		s->key = c;
+		if (c == 0xff)
+			s->len = 31;
+		break;
+	case 29:
+	case 30:
+		if (s->count == s->len - 1) {
+			/* TODO: Verify checksum */
+			if (s->action < 2) {
+				send_event(fd, EV_KEY, celluon_xlate(s->key),
+								s->action);
+			}
+			s->count = -1;
+		} else {
+			s->key = (s->key << 8) | c;
+		}
+		break;
+	}
+
+	s->count++;
+
+	return;
+}
+
 int celluon_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 {
 	unsigned char buf[16];
@@ -460,7 +602,8 @@ int celluon_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 	struct pollfd p;
 	sigset_t sigs;
 	char addr[18];
-	int fd, sk, len;
+	int i, fd, sk, len;
+	struct celluon_state s;
 
 	sk = rfcomm_connect(src, dst, channel);
 	if (sk < 0)
@@ -500,6 +643,8 @@ int celluon_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 	p.fd = sk;
 	p.events = POLLIN | POLLERR | POLLHUP;
 
+	memset(&s, 0, sizeof(s));
+
 	while (!__io_canceled) {
 		p.revents = 0;
 		if (ppoll(&p, 1, NULL, &sigs) < 1)
@@ -508,6 +653,9 @@ int celluon_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel)
 		len = read(sk, buf, sizeof(buf));
 		if (len < 0)
 			break;
+
+		for (i = 0; i < len; i++)
+			celluon_decode(fd, &s, buf[i]);
 	}
 
 	printf("Disconnected\n");

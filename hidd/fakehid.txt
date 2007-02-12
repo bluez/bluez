@@ -117,3 +117,18 @@ Sequence
                                  UINT8 0x01
          Attribute 0x0100
                  String Serial Port
+
+Packet format is as follows (all fields little-endian):
+     0 uint16  magic            # 0x5a5a
+     2 uint32  unknown          # ???
+     6 uint8   action           # 0 = keyup, 1 = keydown, 2 = repeat
+                                # 3, 4, 5, 6 = ??? (Mouse mode)
+     7 uint8   unknown[9]       # ???
+    16 uint8   action2          # ??? same as action
+    17 uint16  x                # Horizontal coordinate
+    19 uint16  y                # Vertical coordinate
+    21 uint16  time             # Some sort of timestamp
+    23 uint8   unknown[5]       # ???
+    28 uint8   key[]            # single byte keycode or 0xff byte
+                                # follwed by special keycode byte.
+    Each packet followed by a checksum byte.
