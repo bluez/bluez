@@ -265,7 +265,7 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 		if (hex) {
 			appender(data, "encoding=\"hex\" ");
 			strBuf = (char *) malloc(sizeof(char)
-						 * (value->unitSize * 2 + 1));
+						 * ((value->unitSize-1) * 2 + 1));
 
 			/* Unit Size seems to include the size for dtd
 			   It is thus off by 1
@@ -276,7 +276,7 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 					"%02x",
 					(unsigned char) value->val.str[i]);
 
-			strBuf[value->unitSize * 2] = '\0';
+			strBuf[(value->unitSize-1) * 2] = '\0';
 		}
 		else {
 			int j;
@@ -603,7 +603,7 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 			buf[0] = data[i];
 			buf[1] = data[i + 1];
 
-			val.data[i] = strtoul(buf, 0, 16);
+			val.data[i >> 1] = strtoul(buf, 0, 16);
 		}
 
 		ret = sdp_data_alloc(dtd, &val);
