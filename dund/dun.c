@@ -213,7 +213,7 @@ static int dun_create_tty(int sk, char *tty, int size)
 		if (stat(tty, &st) < 0) {
 			snprintf(tty, size, "/dev/rfcomm%d", id);
 			if (try--) {
-				usleep(100);
+				usleep(100 * 1000);
 				continue;
 			}
 

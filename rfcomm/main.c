@@ -397,7 +397,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 		if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
 			if (try--) {
 				snprintf(devname, MAXPATHLEN - 1, "/dev/rfcomm%d", dev);
-				usleep(100);
+				usleep(100 * 1000);
 				continue;
 			}
 			perror("Can't open RFCOMM device");
