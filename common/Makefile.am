@@ -29,7 +29,8 @@ test_textfile_LDADD = libhelper.a
 
 AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
-EXTRA_DIST = ppoll.h notify-dummy.c notify-inotify.c \
+EXTRA_DIST = ppoll.h uinput.h \
+		notify-dummy.c notify-inotify.c \
 		sdp-dummy.c sdp-expat.c sdp-glib.c
 
 MAINTAINERCLEANFILES = Makefile.in
