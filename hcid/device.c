@@ -299,7 +299,7 @@ int get_device_version(uint16_t dev_id, char *version, size_t size)
 
 	dev = &devices[dev_id];
 
-	if (dev->lmp_ver == 0x03 &&
+	if ((dev->lmp_ver == 0x03 || dev->lmp_ver == 0x04) &&
 			(dev->features[3] & (LMP_EDR_ACL_2M | LMP_EDR_ACL_3M)))
 		sprintf(edr, " + EDR");
 	else
