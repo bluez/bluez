@@ -206,6 +206,14 @@ static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 				INPUT_ERROR_INTERFACE ".Failed", str));
 }
 
+static DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			INPUT_ERROR_INTERFACE ".NotSupported",
+			"The service is not supported by the remote device"));
+}
+
 static DBusHandlerResult err_connection_failed(DBusConnection *conn,
 					DBusMessage *msg, const char *str)
 {
@@ -967,7 +975,8 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -975,19 +984,20 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
 				DBUS_TYPE_INVALID)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
 
 	if (len == 0) {
-		err_failed(pr->conn, pr->msg, "SDP error");
+		err_not_supported(pr->conn, pr->msg);
 		goto fail;
 	}
 
 	pr->hid_rec = sdp_extract_pdu(rec_bin, &scanned);
 	if (!pr->hid_rec) {
-		err_failed(pr->conn, pr->msg, "HID not supported");
+		err_not_supported(pr->conn, pr->msg);
 		goto fail;
 	}
 
@@ -1028,7 +1038,8 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -1036,8 +1047,8 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
 				DBUS_TYPE_INVALID)) {
-
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -1048,7 +1059,7 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 		else
 			goto done;
 	}
-	err_failed(pr->conn, pr->msg, "SDP error");
+	err_not_supported(pr->conn, pr->msg);
 fail:
 	pending_req_free(pr);
 done:
@@ -1066,7 +1077,8 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -1074,7 +1086,8 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
 				DBUS_TYPE_INVALID)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -1088,8 +1101,7 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 			goto done;
 	}
 
-	err_failed(pr->conn, pr->msg, "SDP error");
-
+	err_not_supported(pr->conn, pr->msg);
 fail:
 	pending_req_free(pr);
 
@@ -1108,7 +1120,8 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -1116,8 +1129,8 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
 				DBUS_TYPE_INVALID)) {
-
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -1125,13 +1138,13 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 	if (len == 0) {
 		/* PnP is optional: Ignore it and request the HID handle  */
 		if (get_handles(pr, hid_uuid, hid_handle_reply) < 0) {
-			err_failed(pr->conn, pr->msg, "SDP error");
+			err_not_supported(pr->conn, pr->msg);
 			goto fail;
 		}
 	} else {
 		/* Request PnP record */
 		if (get_record(pr, *phandle, pnp_record_reply) < 0) {
-			err_failed(pr->conn, pr->msg, "SDP error");
+			err_not_supported(pr->conn, pr->msg);
 			goto fail;
 		}
 	}
@@ -1193,7 +1206,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 
 		if (get_handles(pr, pnp_uuid, pnp_handle_reply) < 0) {
 			pending_req_free(pr);
-			return err_failed(conn, msg, "SDP error");
+			return err_not_supported(conn, msg);
 		}
 
 		return DBUS_HANDLER_RESULT_HANDLED;
