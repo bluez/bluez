@@ -111,16 +111,16 @@ struct manager* audio_manager_new(DBusConnection *conn);
 void audio_manager_free(struct manager* amanager);
 struct headset* audio_manager_find_headset_by_bda(struct manager *amanager, const bdaddr_t *bda);
 void audio_manager_add_headset(struct manager *amanager, struct headset *hs);
-void audio_manager_create_headset_server(struct manager *amanager, uint8_t chan);
+gboolean audio_manager_create_headset_server(struct manager *amanager, uint8_t chan);
 static DBusHandlerResult am_get_default_headset(struct manager *amanager, DBusMessage *msg);
 static DBusHandlerResult am_create_headset(struct manager *amanager, DBusMessage *msg);
 
 struct headset* audio_headset_new(DBusConnection *conn, const bdaddr_t *bda);
 void audio_headset_unref(struct headset* hs);
-int audio_headset_close_input(struct headset* hs);
-int audio_headset_open_input(struct headset* hs, const char *audio_input);
-int audio_headset_close_output(struct headset* hs);
-int audio_headset_open_output(struct headset* hs, const char *audio_output);
+gboolean audio_headset_close_input(struct headset* hs);
+gboolean audio_headset_open_input(struct headset* hs, const char *audio_input);
+gboolean audio_headset_close_output(struct headset* hs);
+gboolean audio_headset_open_output(struct headset* hs, const char *audio_output);
 GIOError audio_headset_send_ring(struct headset *hs);
 
 static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg);
@@ -455,8 +455,10 @@ static gboolean audio_input_to_sco_cb(GIOChannel *chan, GIOCondition cond, gpoin
 	}
 
 	err = g_io_channel_read(chan, buf, sizeof(buf), &bytes_read);
-	if (err != G_IO_ERROR_NONE)
+	if (err != G_IO_ERROR_NONE) {
+		audio_headset_close_input(hs);
 		return FALSE;
+	}
 	
 	total_bytes_written = bytes_written = 0;
 	err = G_IO_ERROR_NONE;
@@ -660,6 +662,7 @@ failed:
 		pending_connect_free(hs->connect_in_progress);
 		hs->connect_in_progress = NULL;
 	}
+
 	hs->state = HEADSET_STATE_DISCONNECTED;
 
 	return FALSE;
@@ -979,7 +982,7 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 
 	if (!sdp_get_access_protos(record, &protos)) {
 		c->ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-		sdp_list_foreach(protos, (sdp_list_func_t)sdp_list_free, NULL);
+		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
 		sdp_list_free(protos, NULL);
 		protos = NULL;
 	}
@@ -1168,14 +1171,14 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	hs->connect_in_progress = malloc(sizeof(struct pending_connect));
+	hs->connect_in_progress = g_try_new0(struct pending_connect, 1);
 	if (!hs->connect_in_progress) {
 		error("Out of memory when allocating new struct pending_connect");
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
+
 	hs->state = HEADSET_STATE_CONNECT_IN_PROGRESS;
 
-	memset(hs->connect_in_progress, 0, sizeof(struct pending_connect));
 	hs->connect_in_progress->conn = dbus_connection_ref(connection);
 	hs->connect_in_progress->msg = msg ? dbus_message_ref(msg) : NULL;
 
@@ -1488,22 +1491,22 @@ static const DBusObjectPathVTable hs_table = {
 
 /*
 ** audio_headset_new:
-** Create a unique dbus object path for the headset and allocates a new headset or return NULL if fail
+** Create a unique dbus object path for the headset and allocates a new
+** headset or return NULL if fail
 */
-struct headset* audio_headset_new(DBusConnection *conn, const bdaddr_t *bda)
+struct headset *audio_headset_new(DBusConnection *conn, const bdaddr_t *bda)
 {
 	static int headset_uid = 0;
 	struct headset *hs;
 
-	hs = malloc(sizeof(struct headset));
+	hs = g_try_new0(struct headset, 1);
 	if (!hs) {
 		error("Allocating new hs connection struct failed!");
 		return NULL;
 	}
 
-	memset(hs, 0, sizeof(struct headset));
-
-	snprintf(hs->object_path, sizeof(hs->object_path), AUDIO_HEADSET_PATH_BASE "%d", headset_uid++);
+	snprintf(hs->object_path, sizeof(hs->object_path),
+			AUDIO_HEADSET_PATH_BASE "%d", headset_uid++);
 
 	if (!dbus_connection_register_object_path(conn, hs->object_path,
 						&hs_table, hs)) {
@@ -1517,14 +1520,14 @@ struct headset* audio_headset_new(DBusConnection *conn, const bdaddr_t *bda)
 	return hs;
 }
 
-void audio_headset_unref(struct headset* hs)
+void audio_headset_unref(struct headset *hs)
 {
 	assert(hs != NULL);
 
 	free(hs);
 }
 
-int audio_headset_close_output(struct headset* hs)
+gboolean audio_headset_close_output(struct headset *hs)
 {
 	assert(hs != NULL);
 
@@ -1533,11 +1536,12 @@ int audio_headset_close_output(struct headset* hs)
 
 	g_io_channel_unref(hs->audio_output);
 	hs->audio_output = NULL;
-	return FALSE;
+
+	return TRUE;
 }
 
 /* FIXME: in the furture, that would be great to provide user space alsa driver (not plugin) */
-int audio_headset_open_output(struct headset* hs, const char *output)
+gboolean audio_headset_open_output(struct headset *hs, const char *output)
 {
 	int out;
 
@@ -1555,21 +1559,21 @@ int audio_headset_open_output(struct headset* hs, const char *output)
 
 	if (out < 0) {
 		error("open(%s): %s %d", hs->output, strerror(errno), errno);
-		return TRUE;
+		return FALSE;
 	}
 
 	hs->audio_output = g_io_channel_unix_new(out);
 	if (!hs->audio_output) {
 		error("Allocating new channel for audio output!");
-		return TRUE;
+		return FALSE;
 	}
 
 	g_io_channel_set_close_on_unref(hs->audio_output, TRUE);
 
-	return FALSE;
+	return TRUE;
 }
 
-int audio_headset_close_input(struct headset* hs)
+gboolean audio_headset_close_input(struct headset *hs)
 {
 	assert(hs != NULL);
 
@@ -1579,10 +1583,12 @@ int audio_headset_close_input(struct headset* hs)
 	g_io_channel_unref(hs->audio_input);
 	hs->audio_input = NULL;
 
-	return FALSE;
+	hs->state = HEADSET_STATE_CONNECTED;
+
+	return TRUE;
 }
 
-int audio_headset_open_input(struct headset* hs, const char *input)
+gboolean audio_headset_open_input(struct headset *hs, const char *input)
 {
 	int in;
 
@@ -1602,20 +1608,21 @@ int audio_headset_open_input(struct headset* hs, const char *input)
 
 	if (in < 0) {
 		error("open(%s): %s %d", hs->input, strerror(errno), errno);
-		return TRUE;
+		return FALSE;
 	}
 
 	hs->audio_input = g_io_channel_unix_new(in);
 	if (!hs->audio_input) {
 		error("Allocating new channel for audio input!");
-		return TRUE;
+		return FALSE;
 	}
+
 	g_io_channel_set_close_on_unref(hs->audio_input, TRUE);
 
-	return FALSE;
+	return TRUE;
 }
 
-void audio_manager_create_headset_server(struct manager *amanager, uint8_t chan)
+gboolean audio_manager_create_headset_server(struct manager *amanager, uint8_t chan)
 {
 	int srv_sk;
 
@@ -1623,13 +1630,13 @@ void audio_manager_create_headset_server(struct manager *amanager, uint8_t chan)
 
 	if (amanager->server_sk) {
 		error("Server socket already created");
-		return;
+		return FALSE;
 	}
 
 	srv_sk = server_socket(&chan);
 	if (srv_sk < 0) {
 		error("Unable to create server socket");
-		return;
+		return FALSE;
 	}
 
 	if (!amanager->record_id)
@@ -1638,7 +1645,7 @@ void audio_manager_create_headset_server(struct manager *amanager, uint8_t chan)
 	if (!amanager->record_id) {
 		error("Unable to register service record");
 		close(srv_sk);
-		return;
+		return FALSE;
 	}
 
 	amanager->server_sk = g_io_channel_unix_new(srv_sk);
@@ -1647,12 +1654,14 @@ void audio_manager_create_headset_server(struct manager *amanager, uint8_t chan)
 		remove_ag_record(amanager->record_id);
 		amanager->record_id = 0;
 		close(srv_sk);
-		return;
+		return FALSE;
 	}
 
 	g_io_channel_set_close_on_unref(amanager->server_sk, TRUE);
 
 	g_io_add_watch(amanager->server_sk, G_IO_IN, (GIOFunc) server_io_cb, amanager);
+
+	return TRUE;
 }
 
 static gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
@@ -1662,7 +1671,7 @@ static gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
 	return bacmp(&hs->bda, bda);
 }
 
-struct headset* audio_manager_find_headset_by_bda(struct manager *amanager, const bdaddr_t *bda)
+struct headset *audio_manager_find_headset_by_bda(struct manager *amanager, const bdaddr_t *bda)
 {
 	GSList *elem;
 
@@ -1803,13 +1812,6 @@ struct manager* audio_manager_new(DBusConnection *conn)
 	return amanager;
 }
 
-static void headset_list_unref_each(gpointer aheadset, gpointer am)
-{
-	struct headset *hs = aheadset;
-
-	audio_headset_unref(hs);
-}
-
 void audio_manager_free(struct manager* amanager)
 {
 	assert(amanager != NULL);
@@ -1825,7 +1827,8 @@ void audio_manager_free(struct manager* amanager)
 	}
 
 	if (amanager->headset_list) {
-		g_slist_foreach(amanager->headset_list, headset_list_unref_each, amanager);
+		g_slist_foreach(amanager->headset_list, (GFunc) audio_headset_unref,
+				amanager);
 		g_slist_free(amanager->headset_list);
 		amanager->headset_list = NULL;
 	}
