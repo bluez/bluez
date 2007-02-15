@@ -572,7 +572,10 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	hs->sco = chan;
 	hs->pending_connect->io = NULL;
 
-	flags = hs->audio_output ? G_IO_IN : 0;
+	flags = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
+	if (hs->audio_output)
+		flags |= G_IO_IN;
+
 	g_io_add_watch(hs->sco, flags, sco_input_to_audio_output_cb, hs);
 
 	if (hs->pending_connect->msg) {
