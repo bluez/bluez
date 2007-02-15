@@ -282,8 +282,6 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	gsize free_space;
 	GIOError err;
 
-	debug("rfcomm_io_cb: entered");
-
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
