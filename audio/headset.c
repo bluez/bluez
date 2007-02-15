@@ -94,7 +94,7 @@ struct headset {
 	int data_length;
 
 	headset_state_t state;
-	struct pending_connect *connect_in_progress;
+	struct pending_connect *pending_connect;
 };
 
 struct manager {
@@ -102,7 +102,6 @@ struct manager {
 	uint32_t record_id;
 	GSList *headset_list;
 };
-
 
 static DBusConnection *connection = NULL;
 static GMainLoop *main_loop = NULL;
@@ -279,10 +278,8 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	gsize free_space;
 	GIOError err;
 
-	if (cond & G_IO_NVAL) {
-		g_io_channel_unref(chan);
+	if (cond & G_IO_NVAL)
 		return FALSE;
-	}
 
 	if (cond & (G_IO_ERR | G_IO_HUP))
 		goto failed;
@@ -368,16 +365,14 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 
 	assert(amanager != NULL);
 
-	if (cond & G_IO_NVAL) {
-		g_io_channel_unref(chan);
+	if (cond & G_IO_NVAL)
 		return FALSE;
-	}
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		error("Hangup or error on rfcomm server socket");
 		g_io_channel_close(chan);
-		amanager->server_sk = NULL;
-		return TRUE;
+		raise(SIGTERM);
+		return FALSE;
 	}
 
 	srv_sk = g_io_channel_unix_get_fd(chan);
@@ -417,6 +412,7 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	}
 
 	g_io_add_watch(hs->rfcomm, G_IO_IN, (GIOFunc) rfcomm_io_cb, hs);
+	g_io_channel_unref(hs->rfcomm);
 
 	ba2str(&addr.rc_bdaddr, hs_address);
 
@@ -481,14 +477,13 @@ static gboolean sco_input_to_audio_output_cb(GIOChannel *chan, GIOCondition cond
 	gsize bytes_written, total_bytes_written;
 	GIOError err;
 
-	if (cond & G_IO_NVAL) {
-		g_io_channel_unref(chan);
+	if (cond & G_IO_NVAL)
 		return FALSE;
-	}
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		error("Audio connection got disconnected");
 		g_io_channel_close(chan);
+		g_io_channel_unref(hs->sco);
 		hs->sco = NULL;
 		if (hs->audio_output) {
 			g_io_channel_close(hs->audio_output);
@@ -536,13 +531,11 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	DBusMessage *reply;
 	socklen_t len;
 
-	assert(hs != NULL && hs->connect_in_progress != NULL && 
-		hs->sco == NULL && hs->state == HEADSET_STATE_PLAY_IN_PROGRESS);
-
-	if (cond & G_IO_NVAL) {
-		g_io_channel_unref(chan);
+	if (cond & G_IO_NVAL)
 		return FALSE;
-	}
+
+	assert(hs != NULL && hs->pending_connect != NULL && 
+		hs->sco == NULL && hs->state == HEADSET_STATE_PLAY_IN_PROGRESS);
 
 	sk = g_io_channel_unix_get_fd(chan);
 
@@ -562,13 +555,13 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	debug("SCO socket opened for headset %s", hs->object_path);
 
 	hs->sco = chan;
-	hs->connect_in_progress->io = NULL;
+	hs->pending_connect->io = NULL;
 
 	flags = hs->audio_output ? G_IO_IN : 0;
 	g_io_add_watch(hs->sco, flags, sco_input_to_audio_output_cb, hs);
 
-	if (hs->connect_in_progress->msg) {
-		reply = dbus_message_new_method_return(hs->connect_in_progress->msg);
+	if (hs->pending_connect->msg) {
+		reply = dbus_message_new_method_return(hs->pending_connect->msg);
 		if (reply)
 			send_message_and_unref(connection, reply);
 	}
@@ -577,8 +570,8 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	if (hs->audio_input)
 		g_io_add_watch(hs->audio_input, G_IO_IN, audio_input_to_sco_cb, hs);
 
-	pending_connect_free(hs->connect_in_progress);
-	hs->connect_in_progress = NULL;
+	pending_connect_free(hs->pending_connect);
+	hs->pending_connect = NULL;
 
 	hs->state = HEADSET_STATE_PLAYING;
 	hs_signal(hs, "Playing");
@@ -586,10 +579,12 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 
 failed:
-	if (hs->connect_in_progress) {
-		err_connect_failed(hs->connect_in_progress->conn, hs->connect_in_progress->msg, err);
-		pending_connect_free(hs->connect_in_progress);
-		hs->connect_in_progress = NULL;
+	if (hs->pending_connect) {
+		err_connect_failed(hs->pending_connect->conn, hs->pending_connect->msg, err);
+		if (hs->pending_connect->io)
+			g_io_channel_close(hs->pending_connect->io);
+		pending_connect_free(hs->pending_connect);
+		hs->pending_connect = NULL;
 	}
 
 	assert(hs->rfcomm);
@@ -604,14 +599,12 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct he
 	int sk, ret, err;
 	socklen_t len;
 	
-	assert(hs != NULL && hs->connect_in_progress != NULL && 
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	assert(hs != NULL && hs->pending_connect != NULL && 
 			hs->rfcomm == NULL &&
 			hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS);
-
-	if (cond & G_IO_NVAL) {
-		g_io_channel_unref(chan);
-		return FALSE;
-	}
 
 	sk = g_io_channel_unix_get_fd(chan);
 
@@ -630,6 +623,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct he
 
 	ba2str(&hs->bda, hs_address);
 	hs->rfcomm = chan;
+	hs->pending_connect->io = NULL;
 
 	hs->state = HEADSET_STATE_CONNECTED;
 	hs_signal(hs, "Connected");
@@ -638,23 +632,25 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct he
 
 	g_io_add_watch(chan, G_IO_IN, (GIOFunc) rfcomm_io_cb, hs);
 
-	if (hs->connect_in_progress->msg) {
+	if (hs->pending_connect->msg) {
 		DBusMessage *reply;
 
-		reply = dbus_message_new_method_return(hs->connect_in_progress->msg);
+		reply = dbus_message_new_method_return(hs->pending_connect->msg);
 		if (reply)
 			send_message_and_unref(connection, reply);
-		pending_connect_free(hs->connect_in_progress);
-		hs->connect_in_progress = NULL;
+		pending_connect_free(hs->pending_connect);
+		hs->pending_connect = NULL;
 	}
 
 	return FALSE;
 
 failed:
-	if (hs->connect_in_progress) {
-		err_connect_failed(hs->connect_in_progress->conn, hs->connect_in_progress->msg, err);
-		pending_connect_free(hs->connect_in_progress);
-		hs->connect_in_progress = NULL;
+	if (hs->pending_connect) {
+		err_connect_failed(hs->pending_connect->conn, hs->pending_connect->msg, err);
+		if (hs->pending_connect->io)
+			g_io_channel_close(hs->pending_connect->io);
+		pending_connect_free(hs->pending_connect);
+		hs->pending_connect = NULL;
 	}
 
 	hs->state = HEADSET_STATE_DISCONNECTED;
@@ -668,12 +664,12 @@ static int rfcomm_connect(struct headset *hs, int *err)
 	char address[18];
 	int sk;
 
-	assert(hs != NULL && hs->connect_in_progress != NULL && 
+	assert(hs != NULL && hs->pending_connect != NULL && 
 			hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS);
 
 	ba2str(&hs->bda, address);
 
-	debug("Connecting to %s channel %d", address, hs->connect_in_progress->ch);
+	debug("Connecting to %s channel %d", address, hs->pending_connect->ch);
 
 	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sk < 0) {
@@ -703,14 +699,13 @@ static int rfcomm_connect(struct headset *hs, int *err)
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
 	bacpy(&addr.rc_bdaddr, &hs->bda);
-	addr.rc_channel = hs->connect_in_progress->ch;
+	addr.rc_channel = hs->pending_connect->ch;
 
-	hs->connect_in_progress->io = g_io_channel_unix_new(sk);
-	if (!hs->connect_in_progress->io) {
+	hs->pending_connect->io = g_io_channel_unix_new(sk);
+	if (!hs->pending_connect->io) {
 		error("channel_unix_new failed in rfcomm connect");
 		goto failed;
 	}
-	g_io_channel_set_close_on_unref(hs->connect_in_progress->io, TRUE);
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
@@ -722,22 +717,18 @@ static int rfcomm_connect(struct headset *hs, int *err)
 
 		debug("Connect in progress");
 
-		g_io_add_watch(hs->connect_in_progress->io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, hs);
+		g_io_add_watch(hs->pending_connect->io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, hs);
 	} else {
 		debug("Connect succeeded with first try");
-		rfcomm_connect_cb(hs->connect_in_progress->io, G_IO_OUT, hs);
+		rfcomm_connect_cb(hs->pending_connect->io, G_IO_OUT, hs);
 	}
 
 	return 0;
 
 failed:
-	if (hs->connect_in_progress->io) {
-		g_io_channel_close(hs->connect_in_progress->io);
-		hs->connect_in_progress->io = NULL;
-	} else {
-		if (sk >= 0)
-			close(sk);
-	}
+	if (!hs->pending_connect->io && sk >= 0)
+		close(sk);
+
 	return -1;
 }
 
@@ -932,8 +923,8 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	struct headset *hs = data;
 	struct pending_connect *c;
 
-	assert(hs != NULL && hs->connect_in_progress && !hs->rfcomm);
-	c = hs->connect_in_progress;
+	assert(hs != NULL && hs->pending_connect && !hs->rfcomm);
+	c = hs->pending_connect;
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -1005,8 +996,8 @@ failed:
 		sdp_record_free(record);
 	if (reply)
 		dbus_message_unref(reply);
-	pending_connect_free(hs->connect_in_progress);
-	hs->connect_in_progress = NULL;
+	pending_connect_free(hs->pending_connect);
+	hs->pending_connect = NULL;
 	hs->state = HEADSET_STATE_DISCONNECTED;
 }
 
@@ -1028,18 +1019,21 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 
 	if (hs->rfcomm) {
 		g_io_channel_close(hs->rfcomm);
+		g_io_channel_unref(hs->rfcomm);
 		hs->rfcomm = NULL;
 	}
 
-	if (hs->connect_in_progress) {
-		pending_connect_free(hs->connect_in_progress);
-		hs->connect_in_progress = NULL;
+	if (hs->pending_connect) {
+		if (hs->pending_connect->io)
+			g_io_channel_close(hs->pending_connect->io);
+		pending_connect_free(hs->pending_connect);
+		hs->pending_connect = NULL;
 	}
 
 	hs->state = HEADSET_STATE_DISCONNECTED;
 
 	ba2str(&hs->bda, hs_address);
-	info("Disconnected from %s, %s", &hs_address, hs->object_path ? hs->object_path : "null");
+	info("Disconnected from %s, %s", &hs_address, hs->object_path);
 
 	hs_signal(hs, "Disconnected");
 
@@ -1061,8 +1055,8 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	dbus_uint32_t handle;
 	int array_len;
 
-	assert(hs != NULL && hs->connect_in_progress);
-	c = hs->connect_in_progress;
+	assert(hs != NULL && hs->pending_connect);
+	c = hs->pending_connect;
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -1158,29 +1152,29 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 		error("This headset has not been audiothorized");
 	}
 
-	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->connect_in_progress) {
+	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->pending_connect) {
 		error("Already connected");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	hs->connect_in_progress = g_try_new0(struct pending_connect, 1);
-	if (!hs->connect_in_progress) {
+	hs->pending_connect = g_try_new0(struct pending_connect, 1);
+	if (!hs->pending_connect) {
 		error("Out of memory when allocating new struct pending_connect");
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
 	hs->state = HEADSET_STATE_CONNECT_IN_PROGRESS;
 
-	hs->connect_in_progress->conn = dbus_connection_ref(connection);
-	hs->connect_in_progress->msg = msg ? dbus_message_ref(msg) : NULL;
+	hs->pending_connect->conn = dbus_connection_ref(connection);
+	hs->pending_connect->msg = msg ? dbus_message_ref(msg) : NULL;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
 						"org.bluez.Adapter",
 						"GetRemoteServiceHandles");
 	if (!msg) {
 		error("Could not create a new dbus message");
-		pending_connect_free(hs->connect_in_progress);
-		hs->connect_in_progress = NULL;
+		pending_connect_free(hs->pending_connect);
+		hs->pending_connect = NULL;
 		hs->state = HEADSET_STATE_DISCONNECTED;
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
@@ -1193,8 +1187,8 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 
 	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceHandles failed");
-		pending_connect_free(hs->connect_in_progress);
-		hs->connect_in_progress = NULL;
+		pending_connect_free(hs->pending_connect);
+		hs->pending_connect = NULL;
 		hs->state = HEADSET_STATE_DISCONNECTED;
 		dbus_message_unref(msg);
 		return err_connect_failed(connection, msg, EIO);
@@ -1318,20 +1312,19 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 	if (hs->state < HEADSET_STATE_CONNECTED)
 		return err_not_connected(connection, msg); /* FIXME: in progress error? */
 
-	if (hs->state >= HEADSET_STATE_PLAY_IN_PROGRESS || hs->connect_in_progress)
+	if (hs->state >= HEADSET_STATE_PLAY_IN_PROGRESS || hs->pending_connect)
 		return err_already_connected(connection, msg);
 
 	if (hs->sco)
 		return err_already_connected(connection, msg);
 
-	hs->connect_in_progress = malloc(sizeof(struct pending_connect));
-	if (!hs->connect_in_progress)
+	hs->pending_connect = g_try_new0(struct pending_connect, 1);
+	if (!hs->pending_connect)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
-	memset(hs->connect_in_progress, 0, sizeof(struct pending_connect));
 
-	c = hs->connect_in_progress;
+	c = hs->pending_connect;
 	c->conn = dbus_connection_ref(connection);
 	c->msg = msg ? dbus_message_ref(msg) : NULL;
 
@@ -1349,8 +1342,6 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 		pending_connect_free(c);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
-
-	g_io_channel_set_close_on_unref(c->io, TRUE);
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
@@ -1391,9 +1382,9 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 	return 0;
 
 failed:
-	if (hs->connect_in_progress) {
-		pending_connect_free(hs->connect_in_progress);
-		hs->connect_in_progress = NULL; 
+	if (hs->pending_connect) {
+		pending_connect_free(hs->pending_connect);
+		hs->pending_connect = NULL; 
 	}
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1411,9 +1402,10 @@ static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
-	if (hs->state == HEADSET_STATE_PLAY_IN_PROGRESS && hs->connect_in_progress) {
-		pending_connect_free(hs->connect_in_progress);
-		hs->connect_in_progress = NULL;
+	if (hs->state == HEADSET_STATE_PLAY_IN_PROGRESS && hs->pending_connect) {
+		g_io_channel_close(hs->pending_connect->io);
+		pending_connect_free(hs->pending_connect);
+		hs->pending_connect = NULL;
 		hs->state = HEADSET_STATE_CONNECTED;
 	}
 
@@ -1642,8 +1634,6 @@ gboolean audio_manager_create_headset_server(struct manager *amanager, uint8_t c
 		close(srv_sk);
 		return FALSE;
 	}
-
-	g_io_channel_set_close_on_unref(amanager->server_sk, TRUE);
 
 	g_io_add_watch(amanager->server_sk, G_IO_IN, (GIOFunc) server_io_cb, amanager);
 
