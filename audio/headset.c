@@ -278,13 +278,15 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	gsize free_space;
 	GIOError err;
 
+	debug("rfcomm_io_cb: entered");
+
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
 	if (cond & (G_IO_ERR | G_IO_HUP))
 		goto failed;
 
-	err = g_io_channel_read(chan, (gchar *)buf, sizeof(buf) - 1, &bytes_read);
+	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1, &bytes_read);
 	if (err != G_IO_ERROR_NONE)
 		goto failed;
 
@@ -392,11 +394,11 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 			close(cli_sk);
 			return TRUE;
 		}
+
+		audio_manager_add_headset(amanager, hs);
 	}
 
 	/* audio_headset_authorize(hs); */
-
-	debug("Incoming connection on the server_sk for object %s", hs->object_path);
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->rfcomm) {
 		debug("Refusing new connection since one already exists");
@@ -411,7 +413,8 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	g_io_add_watch(hs->rfcomm, G_IO_IN, (GIOFunc) rfcomm_io_cb, hs);
+	g_io_add_watch(hs->rfcomm, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			(GIOFunc) rfcomm_io_cb, hs);
 
 	ba2str(&addr.rc_bdaddr, hs_address);
 
@@ -629,7 +632,8 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct he
 
 	debug("Connected to %s", hs_address);
 
-	g_io_add_watch(chan, G_IO_IN, (GIOFunc) rfcomm_io_cb, hs);
+	g_io_add_watch(chan, G_IO_IN | G_IO_ERR | G_IO_HUP| G_IO_NVAL,
+			(GIOFunc) rfcomm_io_cb, hs);
 
 	if (hs->pending_connect->msg) {
 		DBusMessage *reply;
@@ -1147,10 +1151,6 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 
 	assert(hs != NULL);
 
-	if (hs->state == HEADSET_STATE_UNAUTHORIZED) {
-		error("This headset has not been audiothorized");
-	}
-
 	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->pending_connect) {
 		error("Already connected");
 		return DBUS_HANDLER_RESULT_HANDLED;
@@ -1634,7 +1634,9 @@ gboolean audio_manager_create_headset_server(struct manager *amanager, uint8_t c
 		return FALSE;
 	}
 
-	g_io_add_watch(amanager->server_sk, G_IO_IN, (GIOFunc) server_io_cb, amanager);
+	g_io_add_watch(amanager->server_sk,
+			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			(GIOFunc) server_io_cb, amanager);
 
 	return TRUE;
 }
@@ -1704,6 +1706,7 @@ static DBusHandlerResult am_create_headset(struct manager *amanager,
 			return error_reply(connection, msg,
 					"org.bluez.Error.Failed",
 					"Unable to create new headset object");
+		audio_manager_add_headset(amanager, hs);
 	}
 
 	object_path = hs->object_path;
