@@ -107,20 +107,20 @@ struct manager {
 static DBusConnection *connection = NULL;
 static GMainLoop *main_loop = NULL;
 
-struct manager* audio_manager_new(DBusConnection *conn);
-void audio_manager_free(struct manager* amanager);
-struct headset* audio_manager_find_headset_by_bda(struct manager *amanager, const bdaddr_t *bda);
+struct manager *audio_manager_new(DBusConnection *conn);
+void audio_manager_free(struct manager *amanager);
+struct headset *audio_manager_find_headset_by_bda(struct manager *amanager, const bdaddr_t *bda);
 void audio_manager_add_headset(struct manager *amanager, struct headset *hs);
 gboolean audio_manager_create_headset_server(struct manager *amanager, uint8_t chan);
 static DBusHandlerResult am_get_default_headset(struct manager *amanager, DBusMessage *msg);
 static DBusHandlerResult am_create_headset(struct manager *amanager, DBusMessage *msg);
 
-struct headset* audio_headset_new(DBusConnection *conn, const bdaddr_t *bda);
-void audio_headset_unref(struct headset* hs);
-gboolean audio_headset_close_input(struct headset* hs);
-gboolean audio_headset_open_input(struct headset* hs, const char *audio_input);
-gboolean audio_headset_close_output(struct headset* hs);
-gboolean audio_headset_open_output(struct headset* hs, const char *audio_output);
+struct headset *audio_headset_new(DBusConnection *conn, const bdaddr_t *bda);
+void audio_headset_unref(struct headset *hs);
+gboolean audio_headset_close_input(struct headset *hs);
+gboolean audio_headset_open_input(struct headset *hs, const char *audio_input);
+gboolean audio_headset_close_output(struct headset *hs);
+gboolean audio_headset_open_output(struct headset *hs, const char *audio_output);
 GIOError audio_headset_send_ring(struct headset *hs);
 
 static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg);
@@ -152,13 +152,12 @@ static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
 		return DBUS_HANDLER_RESULT_HANDLED;
 
 	derr = dbus_message_new_error(msg, name, descr);
-	if (derr) {
-		dbus_connection_send(conn, derr, NULL);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	} else {
+	if (!derr) {
 	       	error("Unable to allocate new error return");
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
+
+	return send_message_and_unref(conn, derr);
 }
 
 static DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg,
@@ -230,8 +229,7 @@ static void hs_signal_gain_setting(struct headset *hs, const char *buf)
 	dbus_message_append_args(signal, DBUS_TYPE_UINT16, &gain,
 					DBUS_TYPE_INVALID);
 
-	dbus_connection_send(connection, signal, NULL);
-	dbus_message_unref(signal);
+	send_message_and_unref(connection, signal);
 }
 
 static void hs_signal(struct headset *hs, const char *name)
@@ -244,8 +242,7 @@ static void hs_signal(struct headset *hs, const char *name)
 		return;
 	}
 
-	dbus_connection_send(connection, signal, NULL);
-	dbus_message_unref(signal);
+	send_message_and_unref(connection, signal);
 }
 
 static int parse_headset_event(const char *buf, char *rsp, int rsp_len)
@@ -392,18 +389,19 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	if ((hs = audio_manager_find_headset_by_bda(amanager, &addr.rc_bdaddr)) != NULL) {
-		debug("Audio manager server accept() find a matching headset in its list");
-		if (!hs->object_path) {
-			debug("But something is wrong with the headset object path");
+	hs = audio_manager_find_headset_by_bda(amanager, &addr.rc_bdaddr);
+	if (!hs) {
+		hs = audio_headset_new(connection, &addr.rc_bdaddr);
+		if (!hs) {
+			error("Unable to create a new headset object");
+			close(cli_sk);
 			return TRUE;
 		}
-		debug("Incoming connection on the server_sk for object %s", hs->object_path);
-	} else {
-		/* FIXME: make authorization dbus calls *here or in headset code? */
-		hs = audio_headset_new(connection, &addr.rc_bdaddr);
-		/* 		audio_headset_authorize(hs); */
 	}
+
+	/* audio_headset_authorize(hs); */
+
+	debug("Incoming connection on the server_sk for object %s", hs->object_path);
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->rfcomm) {
 		debug("Refusing new connection since one already exists");
@@ -571,10 +569,8 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	if (hs->connect_in_progress->msg) {
 		reply = dbus_message_new_method_return(hs->connect_in_progress->msg);
-		if (reply) {
-			dbus_connection_send(connection, reply, NULL);
-			dbus_message_unref(reply);
-		}
+		if (reply)
+			send_message_and_unref(connection, reply);
 	}
 
 	/* FIXME: do we allow both? pull & push model at the same time on sco && audio_input? */
@@ -646,10 +642,8 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct he
 		DBusMessage *reply;
 
 		reply = dbus_message_new_method_return(hs->connect_in_progress->msg);
-		if (reply) {
-			dbus_connection_send(connection, reply, NULL);
-			dbus_message_unref(reply);
-		}
+		if (reply)
+			send_message_and_unref(connection, reply);
 		pending_connect_free(hs->connect_in_progress);
 		hs->connect_in_progress = NULL;
 	}
@@ -1035,24 +1029,22 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 	if (hs->rfcomm) {
 		g_io_channel_close(hs->rfcomm);
 		hs->rfcomm = NULL;
-		hs->state = HEADSET_STATE_DISCONNECTED;
 	}
 
 	if (hs->connect_in_progress) {
 		pending_connect_free(hs->connect_in_progress);
 		hs->connect_in_progress = NULL;
-		hs->state = HEADSET_STATE_DISCONNECTED;
 	}
+
+	hs->state = HEADSET_STATE_DISCONNECTED;
 
 	ba2str(&hs->bda, hs_address);
 	info("Disconnected from %s, %s", &hs_address, hs->object_path ? hs->object_path : "null");
 
 	hs_signal(hs, "Disconnected");
 
-	if (reply) {
-		dbus_connection_send(connection, reply, NULL);
-		dbus_message_unref(reply);
-	}
+	if (reply)
+		send_message_and_unref(connection, reply);
 	
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1246,7 +1238,7 @@ static gboolean ring_timer_cb(gpointer data)
 
 	assert(hs != NULL);
 
-	if (audio_headset_send_ring(hs) < 0)
+	if (audio_headset_send_ring(hs) != G_IO_ERROR_NONE)
 		error("Sending RING failed");
 
 	return TRUE;
@@ -1272,7 +1264,7 @@ static DBusHandlerResult hs_ring(struct headset *hs, DBusMessage *msg)
 		goto done;
 	}
 
-	if (audio_headset_send_ring(hs) < 0) {
+	if (audio_headset_send_ring(hs) != G_IO_ERROR_NONE) {
 		dbus_message_unref(reply);
 		return err_failed(connection, msg);
 	}
@@ -1280,10 +1272,8 @@ static DBusHandlerResult hs_ring(struct headset *hs, DBusMessage *msg)
 	hs->ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb, hs);
 
 done:
-	if (reply) {
-		dbus_connection_send(connection, reply, NULL);
-		dbus_message_unref(reply);
-	}
+	if (reply)
+		send_message_and_unref(connection, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1310,10 +1300,8 @@ static DBusHandlerResult hs_cancel_ringing(struct headset *hs, DBusMessage *msg)
 	hs->ring_timer = 0;
 
 done:
-	if (reply) {
-		dbus_connection_send(connection, reply, NULL);
-		dbus_message_unref(reply);
-	}
+	if (reply)
+		send_message_and_unref(connection, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1438,10 +1426,8 @@ static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
 	hs_signal(hs, "Stopped");
 	hs->state = HEADSET_STATE_CONNECTED;
 
-	if (reply) {
-		dbus_connection_send(connection, reply, NULL);
-		dbus_message_unref(reply);
-	}
+	if (reply)
+		send_message_and_unref(connection, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1723,17 +1709,19 @@ static DBusHandlerResult am_create_headset(struct manager *amanager,
 
 	str2ba(address, &bda);
 	hs = audio_manager_find_headset_by_bda(amanager, &bda);
-	if (!hs)
+	if (!hs) {
 		hs = audio_headset_new(connection, &bda);
-	/* FIXME: we could send an error if the headset was already created or silently fail */
+		if (!hs)
+			return error_reply(connection, msg,
+					"org.bluez.Error.Failed",
+					"Unable to create new headset object");
+	}
 
 	object_path = hs->object_path;
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &object_path,
 					DBUS_TYPE_INVALID);
-	dbus_connection_send(connection, reply, NULL);
-	dbus_message_unref(reply);
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(connection, reply);
 }
 
 static DBusHandlerResult am_get_default_headset(struct manager *amanager, 
@@ -1754,10 +1742,7 @@ static DBusHandlerResult am_get_default_headset(struct manager *amanager,
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &opath,
 					DBUS_TYPE_INVALID);
 
-	dbus_connection_send(connection, reply, NULL);
-	dbus_message_unref(reply);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(connection, reply);
 }
 
 static DBusHandlerResult am_message(DBusConnection *conn,
