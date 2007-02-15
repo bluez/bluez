@@ -412,7 +412,6 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	}
 
 	g_io_add_watch(hs->rfcomm, G_IO_IN, (GIOFunc) rfcomm_io_cb, hs);
-	g_io_channel_unref(hs->rfcomm);
 
 	ba2str(&addr.rc_bdaddr, hs_address);
 
