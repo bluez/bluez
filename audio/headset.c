@@ -530,7 +530,6 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 				struct headset *hs)
 {
 	int ret, sk, err, flags;
-	DBusMessage *reply;
 	socklen_t len;
 
 	if (cond & G_IO_NVAL)
@@ -563,6 +562,8 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	g_io_add_watch(hs->sco, flags, sco_input_to_audio_output_cb, hs);
 
 	if (hs->pending_connect->msg) {
+		DBusMessage *reply;
+
 		reply = dbus_message_new_method_return(hs->pending_connect->msg);
 		if (reply)
 			send_message_and_unref(connection, reply);
@@ -635,12 +636,15 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct he
 	g_io_add_watch(chan, G_IO_IN | G_IO_ERR | G_IO_HUP| G_IO_NVAL,
 			(GIOFunc) rfcomm_io_cb, hs);
 
-	if (hs->pending_connect->msg) {
-		DBusMessage *reply;
+	if (hs->pending_connect) {
+		if (hs->pending_connect->msg) {
+			DBusMessage *reply;
 
-		reply = dbus_message_new_method_return(hs->pending_connect->msg);
-		if (reply)
-			send_message_and_unref(connection, reply);
+			reply = dbus_message_new_method_return(hs->pending_connect->msg);
+			if (reply)
+				send_message_and_unref(hs->pending_connect->conn, reply);
+		}
+
 		pending_connect_free(hs->pending_connect);
 		hs->pending_connect = NULL;
 	}
@@ -1029,6 +1033,10 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 	if (hs->pending_connect) {
 		if (hs->pending_connect->io)
 			g_io_channel_close(hs->pending_connect->io);
+		if (hs->pending_connect->msg)
+			err_connect_failed(hs->pending_connect->conn,
+						hs->pending_connect->msg,
+						EINTR);
 		pending_connect_free(hs->pending_connect);
 		hs->pending_connect = NULL;
 	}
@@ -1317,13 +1325,12 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 	if (hs->sco)
 		return err_already_connected(connection, msg);
 
-	hs->pending_connect = g_try_new0(struct pending_connect, 1);
-	if (!hs->pending_connect)
+	c = g_try_new0(struct pending_connect, 1);
+	if (!c)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
 
-	c = hs->pending_connect;
 	c->conn = dbus_connection_ref(connection);
 	c->msg = msg ? dbus_message_ref(msg) : NULL;
 
@@ -1378,13 +1385,14 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 		sco_connect_cb(c->io, G_IO_OUT, hs);
 	}
 
+	hs->pending_connect = c;
+
 	return 0;
 
 failed:
-	if (hs->pending_connect) {
-		pending_connect_free(hs->pending_connect);
-		hs->pending_connect = NULL; 
-	}
+	if (c)
+		pending_connect_free(c);
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
@@ -1403,6 +1411,10 @@ static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
 
 	if (hs->state == HEADSET_STATE_PLAY_IN_PROGRESS && hs->pending_connect) {
 		g_io_channel_close(hs->pending_connect->io);
+		if (hs->pending_connect->msg)
+			err_connect_failed(hs->pending_connect->conn,
+						hs->pending_connect->msg,
+						EINTR);
 		pending_connect_free(hs->pending_connect);
 		hs->pending_connect = NULL;
 		hs->state = HEADSET_STATE_CONNECTED;
