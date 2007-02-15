@@ -1821,6 +1821,38 @@ void audio_manager_free(struct manager* amanager)
 	free(amanager);
 }
 
+static gboolean register_service(const char *ident, const char *name,
+					const char *desc)
+{
+	DBusMessage *msg, *reply;
+	DBusError derr;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+					"org.bluez.Database", "RegisterService");
+
+	if (!msg) {
+		error("Unable to allocate new message");
+		return FALSE;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &ident,
+					DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_STRING, &desc,
+					DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, &derr);
+	if (dbus_error_is_set(&derr)) {
+		error("RegisterService: %s", derr.message);
+		dbus_error_free(&derr);
+		return FALSE;
+	}
+
+	dbus_message_unref(reply);
+
+	return TRUE;
+}
+
 static void sig_term(int sig)
 {
 	g_main_loop_quit(main_loop);
@@ -1832,13 +1864,14 @@ int main(int argc, char *argv[])
 	char *opt_bda = NULL;
 	char *opt_input = NULL;
 	char *opt_output = NULL;
+	gboolean register_svc = FALSE;
 	bdaddr_t bda;
 	struct headset *hs;
 	struct manager *manager;
 	struct sigaction sa;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "c:o:i:d")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:o:i:dr")) != EOF) {
 		switch (opt) {
 		case 'c':
 			opt_channel = strtol(optarg, NULL, 0);
@@ -1854,6 +1887,10 @@ int main(int argc, char *argv[])
 
 		case 'd':
 			enable_debug();
+			break;
+
+		case 'r':
+			register_svc = TRUE;
 			break;
 
 		default:
@@ -1882,6 +1919,14 @@ int main(int argc, char *argv[])
 	connection = init_dbus("org.bluez.audio", NULL, NULL);
 	if (!connection) {
 		error("Connection to system bus failed");
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
+
+	if (register_svc && !register_service("headset", "Headset service",
+						"Headset service")) {
+		error("Unable to register service");
+		dbus_connection_unref(connection);
 		g_main_loop_unref(main_loop);
 		exit(1);
 	}
