@@ -107,12 +107,12 @@ static DBusConnection *connection = NULL;
 static GMainLoop *main_loop = NULL;
 
 struct manager *audio_manager_new(DBusConnection *conn);
-void audio_manager_free(struct manager *amanager);
-struct headset *audio_manager_find_headset_by_bda(struct manager *amanager, const bdaddr_t *bda);
-void audio_manager_add_headset(struct manager *amanager, struct headset *hs);
-gboolean audio_manager_create_headset_server(struct manager *amanager, uint8_t chan);
-static DBusHandlerResult am_get_default_headset(struct manager *amanager, DBusMessage *msg);
-static DBusHandlerResult am_create_headset(struct manager *amanager, DBusMessage *msg);
+void audio_manager_free(struct manager *manager);
+struct headset *audio_manager_find_headset_by_bda(struct manager *manager, const bdaddr_t *bda);
+void audio_manager_add_headset(struct manager *manager, struct headset *hs);
+gboolean audio_manager_create_headset_server(struct manager *manager, uint8_t chan);
+static DBusHandlerResult am_get_default_headset(struct manager *manager, DBusMessage *msg);
+static DBusHandlerResult am_create_headset(struct manager *manager, DBusMessage *msg);
 
 struct headset *audio_headset_new(DBusConnection *conn, const bdaddr_t *bda);
 void audio_headset_unref(struct headset *hs);
@@ -139,7 +139,7 @@ static void pending_connect_free(struct pending_connect *c)
 		dbus_message_unref(c->msg);
 	if (c->conn)
 		dbus_connection_unref(c->conn);
-	free(c);
+	g_free(c);
 }
 
 static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
@@ -269,9 +269,9 @@ static int parse_headset_event(const char *buf, char *rsp, int rsp_len)
 	return rv;
 }
 
-static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
+				struct headset *hs)
 {
-	struct headset *hs = data;
 	unsigned char buf[BUF_SIZE];
 	char *cr;
 	gsize bytes_read = 0;
@@ -356,16 +356,16 @@ failed:
 	return FALSE;
 }
 
-static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
+static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond,
+				struct manager *manager)
 {
 	int srv_sk, cli_sk;
 	struct sockaddr_rc addr;
 	socklen_t size;
 	char hs_address[18];
 	struct headset *hs = NULL;
-	struct manager *amanager = (struct manager *) data;
 
-	assert(amanager != NULL);
+	assert(manager != NULL);
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -386,7 +386,7 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	hs = audio_manager_find_headset_by_bda(amanager, &addr.rc_bdaddr);
+	hs = audio_manager_find_headset_by_bda(manager, &addr.rc_bdaddr);
 	if (!hs) {
 		hs = audio_headset_new(connection, &addr.rc_bdaddr);
 		if (!hs) {
@@ -395,7 +395,7 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 			return TRUE;
 		}
 
-		audio_manager_add_headset(amanager, hs);
+		audio_manager_add_headset(manager, hs);
 	}
 
 	/* audio_headset_authorize(hs); */
@@ -434,27 +434,15 @@ static gboolean audio_input_to_sco_cb(GIOChannel *chan, GIOCondition cond, gpoin
 	gsize bytes_written, total_bytes_written;
 	GIOError err;
 
-	if (!hs || !hs->sco) {
-		error("The headset is invalid or does not have a SCO connection up");
-		audio_headset_close_input(hs);
+	if (cond & G_IO_NVAL)
 		return FALSE;
-	}
 
-	if (cond & G_IO_NVAL) {
-		g_io_channel_unref(chan);
-		return FALSE;
-	}
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		audio_headset_close_input(hs);
-		return FALSE;
-	}
+	if (cond & (G_IO_HUP | G_IO_ERR))
+		goto failed;
 
 	err = g_io_channel_read(chan, buf, sizeof(buf), &bytes_read);
-	if (err != G_IO_ERROR_NONE) {
-		audio_headset_close_input(hs);
-		return FALSE;
-	}
+	if (err != G_IO_ERROR_NONE)
+		goto failed;
 	
 	total_bytes_written = bytes_written = 0;
 	err = G_IO_ERROR_NONE;
@@ -469,6 +457,26 @@ static gboolean audio_input_to_sco_cb(GIOChannel *chan, GIOCondition cond, gpoin
 	};
 
 	return TRUE;
+
+failed:
+	audio_headset_close_input(hs);
+	return FALSE;
+}
+
+static void close_sco(struct headset *hs)
+{
+	g_io_channel_close(hs->sco);
+	g_io_channel_unref(hs->sco);
+	hs->sco = NULL;
+	if (hs->audio_output) {
+		g_io_channel_unref(hs->audio_output);
+		hs->audio_output = NULL;
+	}
+	if (hs->audio_input)
+		audio_headset_close_input(hs);
+	assert(hs->rfcomm);
+	hs->state = HEADSET_STATE_CONNECTED;
+	hs_signal(hs, "Stopped");
 }
 
 static gboolean sco_input_to_audio_output_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -482,20 +490,8 @@ static gboolean sco_input_to_audio_output_cb(GIOChannel *chan, GIOCondition cond
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		error("Audio connection got disconnected");
-		g_io_channel_close(chan);
-		g_io_channel_unref(hs->sco);
-		hs->sco = NULL;
-		if (hs->audio_output) {
-			g_io_channel_close(hs->audio_output);
-			hs->audio_output = NULL;
-		}
-		assert(hs->rfcomm);
-		hs->state = HEADSET_STATE_CONNECTED;
-		hs_signal(hs, "Stopped");
-		return FALSE;
-	}
+	if (cond & (G_IO_HUP | G_IO_ERR))
+		goto disconn;
 
 	if (!hs->audio_output && hs->output)
 		audio_headset_open_output(hs, hs->output);
@@ -503,10 +499,10 @@ static gboolean sco_input_to_audio_output_cb(GIOChannel *chan, GIOCondition cond
 	err = g_io_channel_read(chan, buf, sizeof(buf), &bytes_read);
 
 	if (err != G_IO_ERROR_NONE)
-		return FALSE;
+		goto disconn;
 	
 	if (!hs->audio_output) {
-		error("no audio output");
+		error("got %d bytes audio but have nowhere to write it", bytes_read);
 		return TRUE;
 	}
 
@@ -524,6 +520,11 @@ static gboolean sco_input_to_audio_output_cb(GIOChannel *chan, GIOCondition cond
 	};
 
 	return TRUE;
+
+disconn:
+	error("Audio connection got disconnected");
+	close_sco(hs);
+	return FALSE;
 }
 
 static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
@@ -1423,14 +1424,7 @@ static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
 		hs->state = HEADSET_STATE_CONNECTED;
 	}
 
-	if (hs->sco) {
-		g_io_channel_close(hs->sco);
-		hs->sco = NULL;
-		hs->state = HEADSET_STATE_CONNECTED;
-	}
-
-	hs_signal(hs, "Stopped");
-	hs->state = HEADSET_STATE_CONNECTED;
+	close_sco(hs);
 
 	if (reply)
 		send_message_and_unref(connection, reply);
@@ -1516,7 +1510,7 @@ void audio_headset_unref(struct headset *hs)
 {
 	assert(hs != NULL);
 
-	free(hs);
+	g_free(hs);
 }
 
 gboolean audio_headset_close_output(struct headset *hs)
@@ -1526,6 +1520,7 @@ gboolean audio_headset_close_output(struct headset *hs)
 	if (hs->audio_output == NULL) 
 		return FALSE;
 
+	g_io_channel_close(hs->audio_output);
 	g_io_channel_unref(hs->audio_output);
 	hs->audio_output = NULL;
 
@@ -1541,8 +1536,8 @@ gboolean audio_headset_open_output(struct headset *hs, const char *output)
 
 	audio_headset_close_output(hs);
 	if (output && hs->output) {
-		free(hs->output);
-		hs->output = strdup(output);
+		g_free(hs->output);
+		hs->output = g_strdup(output);
 	}
 
 	assert(hs->output);
@@ -1572,10 +1567,9 @@ gboolean audio_headset_close_input(struct headset *hs)
 	if (hs->audio_input == NULL) 
 		return FALSE;
 
+	g_io_channel_close(hs->audio_input);
 	g_io_channel_unref(hs->audio_input);
 	hs->audio_input = NULL;
-
-	hs->state = HEADSET_STATE_CONNECTED;
 
 	return TRUE;
 }
@@ -1586,12 +1580,10 @@ gboolean audio_headset_open_input(struct headset *hs, const char *input)
 
 	assert(hs != NULL);
 	
-	audio_headset_close_input(hs);
-
 	/* we keep the input name, and NULL can be use to reopen */
 	if (input && hs->input) {
-		free(hs->input);
-		hs->input = strdup(input);
+		g_free(hs->input);
+		hs->input = g_strdup(input);
 	}
 
 	assert(hs->input);
@@ -1609,18 +1601,16 @@ gboolean audio_headset_open_input(struct headset *hs, const char *input)
 		return FALSE;
 	}
 
-	g_io_channel_set_close_on_unref(hs->audio_input, TRUE);
-
 	return TRUE;
 }
 
-gboolean audio_manager_create_headset_server(struct manager *amanager, uint8_t chan)
+gboolean audio_manager_create_headset_server(struct manager *manager, uint8_t chan)
 {
 	int srv_sk;
 
-	assert(amanager != NULL);
+	assert(manager != NULL);
 
-	if (amanager->server_sk) {
+	if (manager->server_sk) {
 		error("Server socket already created");
 		return FALSE;
 	}
@@ -1631,27 +1621,27 @@ gboolean audio_manager_create_headset_server(struct manager *amanager, uint8_t c
 		return FALSE;
 	}
 
-	if (!amanager->record_id)
-		amanager->record_id = add_ag_record(chan);
+	if (!manager->record_id)
+		manager->record_id = add_ag_record(chan);
 
-	if (!amanager->record_id) {
+	if (!manager->record_id) {
 		error("Unable to register service record");
 		close(srv_sk);
 		return FALSE;
 	}
 
-	amanager->server_sk = g_io_channel_unix_new(srv_sk);
-	if (!amanager->server_sk) {
+	manager->server_sk = g_io_channel_unix_new(srv_sk);
+	if (!manager->server_sk) {
 		error("Unable to allocate new GIOChannel");
-		remove_ag_record(amanager->record_id);
-		amanager->record_id = 0;
+		remove_ag_record(manager->record_id);
+		manager->record_id = 0;
 		close(srv_sk);
 		return FALSE;
 	}
 
-	g_io_add_watch(amanager->server_sk,
+	g_io_add_watch(manager->server_sk,
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			(GIOFunc) server_io_cb, amanager);
+			(GIOFunc) server_io_cb, manager);
 
 	return TRUE;
 }
@@ -1663,27 +1653,27 @@ static gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
 	return bacmp(&hs->bda, bda);
 }
 
-struct headset *audio_manager_find_headset_by_bda(struct manager *amanager, const bdaddr_t *bda)
+struct headset *audio_manager_find_headset_by_bda(struct manager *manager, const bdaddr_t *bda)
 {
 	GSList *elem;
 
-	assert(amanager);
-	elem = g_slist_find_custom(amanager->headset_list, bda, headset_bda_cmp);
+	assert(manager);
+	elem = g_slist_find_custom(manager->headset_list, bda, headset_bda_cmp);
 
 	return elem ? elem->data : NULL;
 }
 
-void audio_manager_add_headset(struct manager *amanager, struct headset *hs)
+void audio_manager_add_headset(struct manager *manager, struct headset *hs)
 {
-	assert(amanager && hs);
+	assert(manager && hs);
 
-	if (g_slist_find(amanager->headset_list, hs))
+	if (g_slist_find(manager->headset_list, hs))
 		return;
 
-	amanager->headset_list = g_slist_append(amanager->headset_list, hs);
+	manager->headset_list = g_slist_append(manager->headset_list, hs);
 }
 
-static DBusHandlerResult am_create_headset(struct manager *amanager, 
+static DBusHandlerResult am_create_headset(struct manager *manager, 
 						DBusMessage *msg)
 {
 	const char *object_path;
@@ -1693,7 +1683,7 @@ static DBusHandlerResult am_create_headset(struct manager *amanager,
 	DBusMessage *reply;
 	DBusError derr;
 
-	if (!amanager)
+	if (!manager)
 		return err_not_connected(connection, msg);
 	
 	dbus_error_init(&derr);
@@ -1714,14 +1704,14 @@ static DBusHandlerResult am_create_headset(struct manager *amanager,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	str2ba(address, &bda);
-	hs = audio_manager_find_headset_by_bda(amanager, &bda);
+	hs = audio_manager_find_headset_by_bda(manager, &bda);
 	if (!hs) {
 		hs = audio_headset_new(connection, &bda);
 		if (!hs)
 			return error_reply(connection, msg,
 					"org.bluez.Error.Failed",
 					"Unable to create new headset object");
-		audio_manager_add_headset(amanager, hs);
+		audio_manager_add_headset(manager, hs);
 	}
 
 	object_path = hs->object_path;
@@ -1731,14 +1721,14 @@ static DBusHandlerResult am_create_headset(struct manager *amanager,
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_get_default_headset(struct manager *amanager, 
+static DBusHandlerResult am_get_default_headset(struct manager *manager, 
 						DBusMessage *msg)
 {
 	DBusMessage *reply;
 	char object_path[128];
 	const char *opath = object_path;
 
-	if (!amanager)
+	if (!manager)
 		return err_not_connected(connection, msg);
 
 	reply = dbus_message_new_method_return(msg);
@@ -1756,7 +1746,7 @@ static DBusHandlerResult am_message(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *interface, *member;
-	struct manager *amanager = (struct manager *)data;
+	struct manager *manager = data;
 
 	interface = dbus_message_get_interface(msg);
 	member = dbus_message_get_member(msg);
@@ -1769,10 +1759,10 @@ static DBusHandlerResult am_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (strcmp(member, "CreateHeadset") == 0)
-		return am_create_headset(amanager, msg);
+		return am_create_headset(manager, msg);
 
 	if (strcmp(member, "DefaultHeadset") == 0)
-		return am_get_default_headset(amanager, msg);
+		return am_get_default_headset(manager, msg);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -1781,51 +1771,44 @@ static const DBusObjectPathVTable am_table = {
 	.message_function = am_message,
 };
 
-struct manager* audio_manager_new(DBusConnection *conn)
+struct manager *audio_manager_new(DBusConnection *conn)
 {
-	struct manager *amanager;
+	struct manager *manager;
 
-	amanager = malloc(sizeof(struct manager));
-
-	if (!amanager) {
-		error("Allocating new hs connection struct failed!");
-		return NULL;
-	}
-
-	memset(amanager, 0, sizeof(struct manager));
+	manager = g_new0(struct manager, 1);
 
 	if (!dbus_connection_register_object_path(conn, AUDIO_MANAGER_PATH,
-						&am_table, amanager)) {
+						&am_table, manager)) {
 		error("D-Bus failed to register %s path", AUDIO_MANAGER_PATH);
-		free(amanager);
+		g_free(manager);
 		return NULL;
 	}
 
-	return amanager;
+	return manager;
 }
 
-void audio_manager_free(struct manager* amanager)
+void audio_manager_free(struct manager *manager)
 {
-	assert(amanager != NULL);
+	assert(manager != NULL);
 
-	if (amanager->record_id) {
-		remove_ag_record(amanager->record_id);
-		amanager->record_id = 0;
+	if (manager->record_id) {
+		remove_ag_record(manager->record_id);
+		manager->record_id = 0;
 	}
 
-	if (amanager->server_sk) {
-		g_io_channel_unref(amanager->server_sk);
-		amanager->server_sk = NULL;
+	if (manager->server_sk) {
+		g_io_channel_unref(manager->server_sk);
+		manager->server_sk = NULL;
 	}
 
-	if (amanager->headset_list) {
-		g_slist_foreach(amanager->headset_list, (GFunc) audio_headset_unref,
-				amanager);
-		g_slist_free(amanager->headset_list);
-		amanager->headset_list = NULL;
+	if (manager->headset_list) {
+		g_slist_foreach(manager->headset_list, (GFunc) audio_headset_unref,
+				manager);
+		g_slist_free(manager->headset_list);
+		manager->headset_list = NULL;
 	}
 
-	free(amanager);
+	g_free(manager);
 }
 
 static gboolean register_service(const char *ident, const char *name,
