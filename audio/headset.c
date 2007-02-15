@@ -59,12 +59,12 @@
 #define AUDIO_MANAGER_PATH "/org/bluez/audio"
 #define AUDIO_HEADSET_PATH_BASE "/org/bluez/audio/headset"
 
-struct pending_connect {
-	int ch;
-	DBusConnection *conn;
-	DBusMessage *msg;
-	GIOChannel *io;
-};
+typedef enum {
+	HEADSET_EVENT_KEYPRESS,
+	HEADSET_EVENT_GAIN,
+	HEADSET_EVENT_UNKNOWN,
+	HEADSET_EVENT_INVALID
+} headset_event_t; 
 
 typedef enum {
 	HEADSET_STATE_UNAUTHORIZED,
@@ -74,6 +74,13 @@ typedef enum {
 	HEADSET_STATE_PLAY_IN_PROGRESS,
 	HEADSET_STATE_PLAYING,
 } headset_state_t;
+
+struct pending_connect {
+	int ch;
+	DBusConnection *conn;
+	DBusMessage *msg;
+	GIOChannel *io;
+};
 
 struct headset {
 	char object_path[128];
@@ -244,29 +251,26 @@ static void hs_signal(struct headset *hs, const char *name)
 	send_message_and_unref(connection, signal);
 }
 
-static int parse_headset_event(const char *buf, char *rsp, int rsp_len)
+static headset_event_t parse_headset_event(const char *buf, char *rsp, int rsp_len)
 {
-	int rv = 0;
-
 	printf("Received: %s\n", buf);
 
 	/* Return an error if this is not a proper AT command */
 	if (strncmp(buf, "AT", 2)) {
 		snprintf(rsp, rsp_len, "\r\nERROR\r\n");
-		return rv;
+		return HEADSET_EVENT_INVALID;
 	}
 
 	buf += 2;
 
-	if (!strncmp(buf, "+CKPD", 5))
-		rv = 0;
-	else if (!strncmp(buf, "+VG", 3))
-		rv = 1;
-
 	snprintf(rsp, rsp_len, "\r\nOK\r\n");
 
-	/* return 1 if gain event */
-	return rv;
+	if (!strncmp(buf, "+CKPD", 5))
+		return HEADSET_EVENT_KEYPRESS;
+	else if (!strncmp(buf, "+VG", 3))
+		return HEADSET_EVENT_GAIN;
+	else
+		return HEADSET_EVENT_UNKNOWN;
 }
 
 static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
@@ -318,10 +322,21 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 		memset(rsp, 0, sizeof(rsp));
 
 		/* FIXME: make a better parse function */
-		if (parse_headset_event(&hs->buf[hs->data_start], rsp, sizeof(rsp)) == 1)
+		switch (parse_headset_event(&hs->buf[hs->data_start], rsp, sizeof(rsp))) {
+		case HEADSET_EVENT_GAIN:
 			hs_signal_gain_setting(hs, &hs->buf[hs->data_start] + 2);
-		else
+			break;
+
+		case HEADSET_EVENT_KEYPRESS:
 			hs_signal(hs, "AnswerRequested");
+			break;
+
+		case HEADSET_EVENT_INVALID:
+		case HEADSET_EVENT_UNKNOWN:
+		default:
+			debug("Unknown headset event");
+			break;
+		}
 
 		count = strlen(rsp);
 		total_bytes_written = bytes_written = 0;
