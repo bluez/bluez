@@ -1860,7 +1860,7 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "c:o:i:d")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:o:i:ds")) != EOF) {
 		switch (opt) {
 		case 'c':
 			opt_channel = strtol(optarg, NULL, 0);
@@ -1876,6 +1876,9 @@ int main(int argc, char *argv[])
 
 		case 'd':
 			enable_debug();
+			break;
+
+		case 's':
 			register_svc = TRUE;
 			break;
 
