@@ -273,6 +273,23 @@ static headset_event_t parse_headset_event(const char *buf, char *rsp, int rsp_l
 		return HEADSET_EVENT_UNKNOWN;
 }
 
+static void close_sco(struct headset *hs)
+{
+	g_io_channel_close(hs->sco);
+	g_io_channel_unref(hs->sco);
+	hs->sco = NULL;
+	if (hs->audio_output) {
+		g_io_channel_unref(hs->audio_output);
+		hs->audio_output = NULL;
+	}
+	if (hs->audio_input)
+		audio_headset_close_input(hs);
+	assert(hs->rfcomm);
+	hs->state = HEADSET_STATE_CONNECTED;
+	hs_signal(hs, "Stopped");
+}
+
+
 static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 				struct headset *hs)
 {
@@ -364,6 +381,8 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 
 failed:
+	if (hs->sco)
+		close_sco(hs);
 	hs_disconnect(hs, NULL);
 
 	return FALSE;
@@ -476,22 +495,6 @@ failed:
 	return FALSE;
 }
 
-static void close_sco(struct headset *hs)
-{
-	g_io_channel_close(hs->sco);
-	g_io_channel_unref(hs->sco);
-	hs->sco = NULL;
-	if (hs->audio_output) {
-		g_io_channel_unref(hs->audio_output);
-		hs->audio_output = NULL;
-	}
-	if (hs->audio_input)
-		audio_headset_close_input(hs);
-	assert(hs->rfcomm);
-	hs->state = HEADSET_STATE_CONNECTED;
-	hs_signal(hs, "Stopped");
-}
-
 static gboolean sco_input_to_audio_output_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct headset *hs = data;
@@ -536,7 +539,8 @@ static gboolean sco_input_to_audio_output_cb(GIOChannel *chan, GIOCondition cond
 
 disconn:
 	error("Audio connection got disconnected");
-	close_sco(hs);
+	if (hs->sco)
+		close_sco(hs);
 	return FALSE;
 }
 
