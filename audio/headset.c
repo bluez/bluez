@@ -1067,6 +1067,9 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 
 	hs_signal(hs, "Disconnected");
 
+	hs->data_start = 0;
+	hs->data_length = 0;
+
 	if (reply)
 		send_message_and_unref(connection, reply);
 	
