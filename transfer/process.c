@@ -74,7 +74,8 @@ int create_reader(uid_t uid, const char *pathname,
 		io = g_io_channel_unix_new(pfd[0]);
 		g_io_channel_set_close_on_unref(io, TRUE);
 
-		g_io_add_watch(io, G_IO_IN, func, user_data);
+		g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP, func,
+				user_data);
 
 		g_io_channel_unref(io);
 

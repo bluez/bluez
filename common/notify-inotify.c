@@ -102,7 +102,7 @@ void notify_init(void)
 		return;
 	}
 
-	g_io_add_watch(io, G_IO_IN, io_event, NULL);
+	g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP, io_event, NULL);
 }
 
 void notify_close(void)
