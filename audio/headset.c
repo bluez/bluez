@@ -1929,7 +1929,7 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	connection = init_dbus("org.bluez.audio", NULL, NULL);
+	connection = init_dbus(NULL, NULL, NULL);
 	if (!connection) {
 		error("Connection to system bus failed");
 		g_main_loop_unref(main_loop);
