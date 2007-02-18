@@ -728,6 +728,25 @@ static inline void sniff_mode_dump(int level, struct frame *frm)
 		btohs(cp->min_interval), btohs(cp->attempt), btohs(cp->timeout));
 }
 
+static inline void qos_setup_dump(int level, struct frame *frm)
+{
+	qos_setup_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d flags 0x%2.2x\n", btohs(cp->handle), cp->flags);
+
+	p_indent(level, frm);
+	printf("Service type: %d\n", cp->qos.service_type);
+	p_indent(level, frm);
+	printf("Token rate: %d\n", btohl(cp->qos.token_rate));
+	p_indent(level, frm);
+	printf("Peak bandwith: %d\n", btohl(cp->qos.peak_bandwidth));
+	p_indent(level, frm);
+	printf("Latency: %d\n", btohl(cp->qos.latency));
+	p_indent(level, frm);
+	printf("Delay variation: %d\n", btohl(cp->qos.delay_variation));
+}
+
 static inline void write_link_policy_dump(int level, struct frame *frm)
 {
 	write_link_policy_cp *cp = frm->ptr;
@@ -1168,6 +1187,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_SWITCH_ROLE:
 			accept_conn_req_dump(level + 1, frm);
+			return;
+		case OCF_QOS_SETUP:
+			qos_setup_dump(level + 1, frm);
 			return;
 		case OCF_WRITE_LINK_POLICY:
 			write_link_policy_dump(level + 1, frm);
