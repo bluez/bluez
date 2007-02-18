@@ -60,7 +60,8 @@ struct frame {
 #define DUMP_TSTAMP	0x0100
 #define DUMP_VERBOSE	0x0200
 #define DUMP_BTSNOOP	0x1000
-#define DUMP_NOVENDOR	0x2000
+#define DUMP_PKTLOG	0x2000
+#define DUMP_NOVENDOR	0x4000
 #define DUMP_TYPE_MASK	(DUMP_ASCII | DUMP_HEX | DUMP_EXT)
 
 /* Parser filter */

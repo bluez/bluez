@@ -127,6 +127,13 @@ static uint8_t btsnoop_id[] = { 0x62, 0x74, 0x73, 0x6e, 0x6f, 0x6f, 0x70, 0x00 }
 static uint32_t btsnoop_version = 0;
 static uint32_t btsnoop_type = 0;
 
+struct pktlog_hdr {
+	uint32_t	len;
+	uint64_t	ts;
+	uint8_t		type;
+} __attribute__ ((packed));
+#define PKTLOG_HDR_SIZE (sizeof(struct pktlog_hdr))
+
 static inline int read_n(int fd, char *buf, int len)
 {
 	register int t = 0, w;
@@ -282,6 +289,7 @@ static void read_dump(int fd)
 {
 	struct hcidump_hdr dh;
 	struct btsnoop_pkt dp;
+	struct pktlog_hdr ph;
 	struct frame frm;
 	uint8_t pkt_type;
 	int err;
@@ -293,7 +301,9 @@ static void read_dump(int fd)
 	}
 
 	while (1) {
-		if (parser.flags & DUMP_BTSNOOP)
+		if (parser.flags & DUMP_PKTLOG)
+			err = read_n(fd, (void *) &ph, PKTLOG_HDR_SIZE);
+		else if (parser.flags & DUMP_BTSNOOP)
 			err = read_n(fd, (void *) &dp, BTSNOOP_PKT_SIZE);
 		else
 			err = read_n(fd, (void *) &dh, HCIDUMP_HDR_SIZE);
@@ -303,7 +313,32 @@ static void read_dump(int fd)
 		if (!err)
 			return;
 
-		if (parser.flags & DUMP_BTSNOOP) {
+		if (parser.flags & DUMP_PKTLOG) {
+			switch (ph.type) {
+			case 0x00:
+				((uint8_t *) frm.data)[0] = HCI_COMMAND_PKT;
+				frm.in = 0;
+				break;
+			case 0x01:
+				((uint8_t *) frm.data)[0] = HCI_EVENT_PKT;
+				frm.in = 1;
+				break;
+			case 0x02:
+				((uint8_t *) frm.data)[0] = HCI_ACLDATA_PKT;
+				frm.in = 0;
+				break;
+			case 0x03:
+				((uint8_t *) frm.data)[0] = HCI_ACLDATA_PKT;
+				frm.in = 1;
+				break;
+			default:
+				lseek(fd, ntohl(ph.len) - 9, SEEK_CUR);
+				continue;
+			}
+
+			frm.data_len = ntohl(ph.len) - 8;
+			err = read_n(fd, frm.data + 1, frm.data_len - 1);
+		} else if (parser.flags & DUMP_BTSNOOP) {
 			switch (btsnoop_type) {
 			case 1001:
 				if (ntohl(dp.flags) & 0x02) {
@@ -338,12 +373,17 @@ static void read_dump(int fd)
 		frm.ptr = frm.data;
 		frm.len = frm.data_len;
 
-		if (parser.flags & DUMP_BTSNOOP) {
+		if (parser.flags & DUMP_PKTLOG) {
+			uint64_t ts;
+			ts = ntoh64(ph.ts);
+			frm.ts.tv_sec = ts >> 32;
+			frm.ts.tv_usec = ts & 0xffffffff;
+		} else if (parser.flags & DUMP_BTSNOOP) {
 			uint64_t ts;
 			frm.in = ntohl(dp.flags) & 0x01;
 			ts = ntoh64(dp.ts) - 0x00E03AB44A676000ll;
 			frm.ts.tv_sec = (ts / 1000000ll) + 946684800ll;
-			frm.ts.tv_usec = ts % 1000000ll; 
+			frm.ts.tv_usec = ts % 1000000ll;
 		} else {
 			frm.in = dh.in;
 			frm.ts.tv_sec  = btohl(dh.ts_sec);
@@ -360,7 +400,8 @@ failed:
 
 static int open_file(char *file, int mode, unsigned long flags)
 {
-	struct btsnoop_hdr hdr;
+	unsigned char buf[BTSNOOP_HDR_SIZE];
+	struct btsnoop_hdr *hdr = (struct btsnoop_hdr *) buf;
 	int fd, len, open_flags;
 
 	if (mode == WRITE || mode == PPPDUMP || mode == AUDIO) {
@@ -378,17 +419,17 @@ static int open_file(char *file, int mode, unsigned long flags)
 	}
 
 	if (mode == READ) {
-		len = read(fd, &hdr, BTSNOOP_HDR_SIZE);
+		len = read(fd, buf, BTSNOOP_HDR_SIZE);
 		if (len != BTSNOOP_HDR_SIZE) {
 			lseek(fd, 0, SEEK_SET);
 			return fd;
 		}
 
-		if (!memcmp(hdr.id, btsnoop_id, sizeof(btsnoop_id))) {
+		if (!memcmp(hdr->id, btsnoop_id, sizeof(btsnoop_id))) {
 			parser.flags |= DUMP_BTSNOOP;
 
-			btsnoop_version = ntohl(hdr.version);
-			btsnoop_type = ntohl(hdr.type);
+			btsnoop_version = ntohl(hdr->version);
+			btsnoop_type = ntohl(hdr->type);
 
 			printf("btsnoop version: %d datalink type: %d\n",
 						btsnoop_version, btsnoop_type);
@@ -403,6 +444,11 @@ static int open_file(char *file, int mode, unsigned long flags)
 				exit(1);
 			}
 		} else {
+			if (buf[0] == 0x00 && buf[1] == 0x00) {
+				parser.flags |= DUMP_PKTLOG;
+				printf("packet logger data format\n");
+			}
+
 			parser.flags &= ~DUMP_BTSNOOP;
 			lseek(fd, 0, SEEK_SET);
 			return fd;
@@ -412,14 +458,14 @@ static int open_file(char *file, int mode, unsigned long flags)
 			btsnoop_version = 1;
 			btsnoop_type = 1002;
 
-			memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
-			hdr.version = htonl(btsnoop_version);
-			hdr.type = htonl(btsnoop_type);
+			memcpy(hdr->id, btsnoop_id, sizeof(btsnoop_id));
+			hdr->version = htonl(btsnoop_version);
+			hdr->type = htonl(btsnoop_type);
 
 			printf("btsnoop version: %d datalink type: %d\n",
 						btsnoop_version, btsnoop_type);
 
-			len = write(fd, &hdr, BTSNOOP_HDR_SIZE);
+			len = write(fd, buf, BTSNOOP_HDR_SIZE);
 			if (len < 0) {
 				perror("Can't create dump header");
 				exit(1);
