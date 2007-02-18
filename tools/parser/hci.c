@@ -964,6 +964,18 @@ static inline void write_inquiry_mode_dump(int level, struct frame *frm)
 	printf("mode %d\n", cp->mode);
 }
 
+static inline void set_afh_classification_dump(int level, struct frame *frm)
+{
+	set_afh_classification_cp *cp = frm->ptr;
+	int i;
+
+	p_indent(level, frm);
+	printf("map 0x");
+	for (i = 0; i < 10; i++)
+		printf("%02x", cp->map[i]);
+	printf("\n");
+}
+
 static inline void write_link_supervision_timeout_dump(int level, struct frame *frm)
 {
 	write_link_supervision_timeout_cp *cp = frm->ptr;
@@ -1219,6 +1231,9 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_WRITE_INQUIRY_MODE:
 		case OCF_WRITE_AFH_MODE:
 			write_inquiry_mode_dump(level + 1, frm);
+			return;
+		case OCF_SET_AFH_CLASSIFICATION:
+			set_afh_classification_dump(level + 1, frm);
 			return;
 		case OCF_READ_TRANSMIT_POWER_LEVEL:
 			request_transmit_power_level_dump(level + 1, frm);
