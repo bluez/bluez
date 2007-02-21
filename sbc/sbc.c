@@ -25,4 +25,9 @@
 #include <config.h>
 #endif
 
+#include <stdint.h>
+
+#include "sbc_math.h"
+#include "sbc_tables.h"
+
 #include "sbc.h"
