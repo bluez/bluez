@@ -1186,20 +1186,73 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusMessage *pr_reply;
-	struct pending_req *pr = data;
 	DBusError derr;
+	struct pending_req *pr = data;
+	struct input_device *idev;
+	uint8_t *rec_bin;
+	sdp_record_t *rec;
+	sdp_list_t *protos;
+	int len, scanned;
+	uint8_t ch;
 	const char *path = "/org/bluez/input/headset0";
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		dbus_error_free(&derr);
 		goto fail;
 	}
 
-	/* FIXME: extract the record */
-	/* FIXME: Register the fake input path */
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
+				DBUS_TYPE_INVALID)) {
+		err_not_supported(pr->conn, pr->msg);
+		error("%s: %s", derr.name, derr.message);
+		goto fail;
+	}
+
+	if (len == 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("Invalid headset service record length");
+		goto fail;
+	}
+
+	rec = sdp_extract_pdu(rec_bin, &scanned);
+	if (!rec) {
+		err_not_supported(pr->conn, pr->msg);
+		goto fail;
+	}
+
+	if (sdp_get_access_protos(rec, &protos) < 0) {
+		err_not_supported(pr->conn, pr->msg);
+		goto fail;
+	}
+
+	ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+	sdp_list_foreach(protos, (sdp_list_func_t)sdp_list_free, NULL);
+	sdp_list_free(protos, NULL);
+	sdp_record_free(rec);
+
+	if (ch <= 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("Invalid RFCOMM channel");
+		goto fail;
+	}
+
+	idev = input_device_new(&pr->dst);
+	if (!idev) {
+		error("Out of memory when allocating new input");
+		goto fail;
+	}
+
+	/* FIXME: Store the ch and create the fake input path */
+
+	if (register_input_device(pr->conn, idev, path) < 0) {
+		error("D-Bus path registration failed:%s", path);
+		err_failed(pr->conn, pr->msg, "Path registration failed");
+		input_device_free(idev);
+		goto fail;
+	}
 
 	pr_reply = dbus_message_new_method_return(pr->msg);
 	dbus_message_append_args(pr_reply,
@@ -1207,6 +1260,7 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 			DBUS_TYPE_INVALID);
 	send_message_and_unref(pr->conn, pr_reply);
 fail:
+	dbus_error_free(&derr);
 	pending_req_free(pr);
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
@@ -1237,13 +1291,13 @@ static void headset_handle_reply(DBusPendingCall *call, void *data)
 
 	if (len == 0) {
 		err_not_supported(pr->conn, pr->msg);
-		error("headset record handle not found");
+		error("Headset record handle not found");
 		goto fail;
 	}
 
 	if (get_record(pr, *phandle, headset_record_reply) < 0) {
 		err_not_supported(pr->conn, pr->msg);
-		error("headset service attribute request failed");
+		error("Headset service attribute request failed");
 		goto fail;
 	}
 
