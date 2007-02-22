@@ -1182,22 +1182,77 @@ done:
 	dbus_pending_call_unref(call);
 }
 
+static void headset_record_reply(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusMessage *pr_reply;
+	struct pending_req *pr = data;
+	DBusError derr;
+	const char *path = "/org/bluez/input/headset0";
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	/* FIXME: extract the record */
+	/* FIXME: Register the fake input path */
+
+	pr_reply = dbus_message_new_method_return(pr->msg);
+	dbus_message_append_args(pr_reply,
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+	send_message_and_unref(pr->conn, pr_reply);
+fail:
+	pending_req_free(pr);
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+}
+
 static void headset_handle_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	struct pending_req *pr = data;
 	DBusError derr;
+	uint32_t *phandle;
+	int len;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		err_not_supported(pr->conn, pr->msg);
-		dbus_error_free(&derr);
+		goto fail;
 	}
 
-	/*FIXME: Parse the content */
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
+				DBUS_TYPE_INVALID)) {
+		err_not_supported(pr->conn, pr->msg);
+		error("%s: %s", derr.name, derr.message);
+		goto fail;
+	}
 
+	if (len == 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("headset record handle not found");
+		goto fail;
+	}
+
+	if (get_record(pr, *phandle, headset_record_reply) < 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("headset service attribute request failed");
+		goto fail;
+	}
+
+	/* Wait record reply */
+	goto done;
+fail:
+	dbus_error_free(&derr);
 	pending_req_free(pr);
+done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 }
