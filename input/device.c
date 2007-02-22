@@ -998,8 +998,8 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -1061,8 +1061,8 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -1100,8 +1100,8 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
@@ -1143,8 +1143,8 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		err_not_supported(pr->conn, pr->msg);
 		dbus_error_free(&derr);
 		goto fail;
 	}
