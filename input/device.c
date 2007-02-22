@@ -63,6 +63,7 @@ static DBusConnection *connection = NULL;
 
 const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
+const char *headset_uuid = "00001108-0000-1000-8000-00805f9b34fb";
 
 struct input_device {
 	bdaddr_t dst;
@@ -932,6 +933,28 @@ static int get_record(struct pending_req *pr, uint32_t handle,
 	return 0;
 }
 
+static int get_class(bdaddr_t *src, bdaddr_t *dst, uint32_t *cls)
+{
+	char filename[PATH_MAX + 1], *str;
+	char addr[18];
+
+	ba2str(src, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "classes");
+
+	ba2str(dst, addr);
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
+
+	*cls = strtol(str, NULL, 16);
+
+	free(str);
+	if ((*cls == LONG_MIN) || (*cls == LONG_MAX))
+		return -ERANGE;
+
+	return 0;
+}
+
 static int get_handles(struct pending_req *pr, const char *uuid,
 					DBusPendingCallNotifyFunction cb)
 {
@@ -1159,6 +1182,26 @@ done:
 	dbus_pending_call_unref(call);
 }
 
+static void headset_handle_reply(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	struct pending_req *pr = data;
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("%s: %s", derr.name, derr.message);
+		err_not_supported(pr->conn, pr->msg);
+		dbus_error_free(&derr);
+	}
+
+	/*FIXME: Parse the content */
+
+	pending_req_free(pr);
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+}
+
 static DBusHandlerResult manager_create_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -1170,6 +1213,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	const char *addr, *path;
 	GSList *l;
 	bdaddr_t dst;
+	uint32_t cls = 0;
 	int dev_id;
 
 	dbus_error_init(&derr);
@@ -1195,16 +1239,33 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	if (!idev)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	if (get_class(&mgr->src, &dst, &cls) < 0)
+		return err_not_supported(conn, msg);
+
 	if (get_stored_device_info(&mgr->src, &idev->dst, &idev->hidp) < 0) {
 		struct pending_req *pr;
-
 		/* Data not found: create the input device later */
 		input_device_free(idev);
+
 		pr = pending_req_new(conn, msg, adapter_path, &mgr->src, &dst);
 		if (!pr)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-		if (get_handles(pr, pnp_uuid, pnp_handle_reply) < 0) {
+		switch (cls & 0x1f00) {
+		case 0x0500: /* Peripheral */
+			if (get_handles(pr, pnp_uuid, pnp_handle_reply) < 0) {
+				pending_req_free(pr);
+				return err_not_supported(conn, msg);
+			}
+			break;
+		case 0x0400: /* Fake input */
+			if (get_handles(pr, headset_uuid,
+						headset_handle_reply) < 0) {
+				pending_req_free(pr);
+				return err_not_supported(conn, msg);
+			}
+			break;
+		default:
 			pending_req_free(pr);
 			return err_not_supported(conn, msg);
 		}
@@ -1212,6 +1273,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
+	/* FIXME: Stored data found, create a fake input or a standard HID */
 	path = create_input_path(idev->hidp.subclass);
 	if (register_input_device(conn, idev, path) < 0) {
 		input_device_free(idev);
