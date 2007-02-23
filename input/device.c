@@ -406,6 +406,18 @@ static const char *create_input_path(uint8_t major, uint8_t minor)
 	return path;
 }
 
+static int rfcomm_connect(struct pending_connect *pc, uint8_t ch)
+{
+	char addr[18];
+	/* FIXME: not implemented */
+
+	ba2str(&pc->dst, addr);
+	debug("RFCOMM connecting to %s on channel:%d", addr, ch);
+	errno = EIO;
+
+	return -EIO;
+}
+
 static int l2cap_connect(struct pending_connect *pc,
 					unsigned short psm, GIOFunc cb)
 {
@@ -673,17 +685,33 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
+	struct fake_input *fake = idev->fake;
 	struct input_manager *mgr;
 	struct pending_connect *pc;
 
+	/* FIXME: check if the fake input is connected */
 	if (is_connected(&idev->dst))
 		return err_connection_failed(conn, msg, "Already connected");
+
+	/* FIXME: Check if there is a pending connection */
 
 	dbus_connection_get_object_path_data(conn, INPUT_PATH, (void *) &mgr);
 	pc = pending_connect_new(&mgr->src, &idev->dst, conn, msg);
 	if (!pc)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	/* Fake input device */
+	if (fake) {
+		if (rfcomm_connect(pc, fake->ch) < 0) {
+			const char *str = strerror(errno);
+			error("RFCOMM connect failed: %s(%d)", str, errno);
+			pending_connect_free(pc);
+			return err_connection_failed(conn, msg, str);
+		}
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	/* HID devices */
 	if (l2cap_connect(pc, L2CAP_PSM_HIDP_CTRL,
 			(GIOFunc) control_connect_cb) < 0) {
 		error("L2CAP connect failed: %s(%d)", strerror(errno), errno);
