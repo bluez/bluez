@@ -65,9 +65,17 @@ const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 const char *headset_uuid = "00001108-0000-1000-8000-00805f9b34fb";
 
+struct fake_input {
+	uint8_t ch;
+};
+
 struct input_device {
 	bdaddr_t dst;
-	struct hidp_connadd_req hidp;
+	uint8_t			major;
+	uint8_t			minor;
+	struct hidp_connadd_req hidp; /* FIXME: Use dynamic alloc? */
+	struct fake_input	*fake;
+
 };
 
 struct input_manager {
@@ -92,7 +100,7 @@ struct pending_connect {
 	DBusMessage *msg;
 };
 
-static struct input_device *input_device_new(bdaddr_t *dst)
+static struct input_device *input_device_new(bdaddr_t *dst, uint32_t cls)
 {
 	struct input_device *idev;
 
@@ -103,6 +111,9 @@ static struct input_device *input_device_new(bdaddr_t *dst)
 	memset(idev, 0, sizeof(struct input_device));
 
 	bacpy(&idev->dst, dst);
+
+	idev->major = (cls >> 8) & 0x1f;
+	idev->minor = (cls >> 2) & 0x3f;
 
 	return idev;
 }
@@ -317,54 +328,76 @@ static void extract_pnp_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 	req->version = pdlist ? pdlist->val.uint16 : 0x0000;
 }
 
-static const char *create_input_path(uint8_t minor)
+static const char *create_input_path(uint8_t major, uint8_t minor)
 {
 	static char path[48];
 	char subpath[32];
 	static int next_id = 0;
 
-	switch (minor & 0xc0) {
-	case 0x40:
-		strcpy(subpath, "keyboard");
+	switch (major) {
+	case 0x04: /* Audio */
+		switch (minor) {
+		/* FIXME: Testing required */
+		case 0x01: /* Wearable Headset Device */
+			strcpy(subpath, "wearable");
+			break;
+		case 0x02: /* Hands-free */
+			strcpy(subpath, "handsfree");
+			break;
+		case 0x06: /* Headphone */
+			strcpy(subpath, "headphone");
+			break;
+		default:
+			return NULL;
+		}
 		break;
-	case 0x80:
-		strcpy(subpath, "pointing");
-		break;
-	case 0xc0:
-		strcpy(subpath, "combo");
+	case 0x05: /* Peripheral */
+		switch (minor & 0x30) {
+		case 0x10:
+			strcpy(subpath, "keyboard");
+			break;
+		case 0x20:
+			strcpy(subpath, "pointing");
+			break;
+		case 0x30:
+			strcpy(subpath, "combo");
+			break;
+		default:
+			subpath[0] = '\0';
+			break;
+		}
+
+		if ((minor & 0x0f) && (strlen(subpath) > 0))
+			strcat(subpath, "/");
+
+		switch (minor & 0x0f) {
+		case 0x00:
+			break;
+		case 0x01:
+			strcat(subpath, "joystick");
+			break;
+		case 0x02:
+			strcat(subpath, "gamepad");
+			break;
+		case 0x03:
+			strcat(subpath, "remotecontrol");
+			break;
+		case 0x04:
+			strcat(subpath, "sensing");
+			break;
+		case 0x05:
+			strcat(subpath, "digitizertablet");
+			break;
+		case 0x06:
+			strcat(subpath, "cardreader");
+			break;
+		default:
+			strcat(subpath, "reserved");
+			break;
+		}
 		break;
 	default:
-		subpath[0] = '\0';
-		break;
-	}
-
-	if ((minor & 0x3f) && (strlen(subpath) > 0))
-		strcat(subpath, "/");
-
-	switch (minor & 0x3f) {
-	case 0x00:
-		break;
-	case 0x01:
-		strcat(subpath, "joystick");
-		break;
-	case 0x02:
-		strcat(subpath, "gamepad");
-		break;
-	case 0x03:
-		strcat(subpath, "remotecontrol");
-		break;
-	case 0x04:
-		strcat(subpath, "sensing");
-		break;
-	case 0x05:
-		strcat(subpath, "digitizertablet");
-		break;
-	case 0x06:
-		strcat(subpath, "cardreader");
-		break;
-	default:
-		strcat(subpath, "reserved");
-		break;
+			return NULL;
 	}
 
 	snprintf(path, 48, "%s/%s%d", INPUT_PATH, subpath, next_id++);
@@ -995,6 +1028,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 	uint8_t *rec_bin;
 	const char *path;
 	int len, scanned;
+	uint32_t cls;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -1023,13 +1057,19 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	idev = input_device_new(&pr->dst);
+	if (get_class(&pr->src, &pr->dst, &cls) < 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("Device class not available");
+		goto fail;
+	}
+
+	idev = input_device_new(&pr->dst, cls);
 
 	extract_hid_record(pr->hid_rec, &idev->hidp);
 	if (pr->pnp_rec)
 		extract_pnp_record(pr->pnp_rec, &idev->hidp);
 
-	path = create_input_path(idev->hidp.subclass);
+	path = create_input_path(idev->major, idev->minor);
 
 	if (register_input_device(pr->conn, idev, path) < 0) {
 		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
@@ -1203,9 +1243,10 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 	uint8_t *rec_bin;
 	sdp_record_t *rec;
 	sdp_list_t *protos;
+	const char *path;
 	int len, scanned;
+	uint32_t cls;
 	uint8_t ch;
-	const char *path = "/org/bluez/input/headset0";
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -1250,14 +1291,28 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	idev = input_device_new(&pr->dst);
+	if (get_class(&pr->src, &pr->dst, &cls) < 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("Device class not available");
+		goto fail;
+	}
+
+	idev = input_device_new(&pr->dst, cls);
 	if (!idev) {
 		error("Out of memory when allocating new input");
 		goto fail;
 	}
 
-	/* FIXME: Store the ch and create the fake input path */
+	idev->fake = malloc(sizeof(struct fake_input));
+	if (!idev->fake) {
+		error("Out of memory when allocating new fake input");
+		input_device_free(idev);
+		goto fail;
+	}
+	memset(idev->fake, 0, sizeof(struct fake_input));
+	idev->fake->ch = ch;
 
+	path = create_input_path(idev->major, idev->minor);
 	if (register_input_device(pr->conn, idev, path) < 0) {
 		error("D-Bus path registration failed:%s", path);
 		err_failed(pr->conn, pr->msg, "Path registration failed");
@@ -1355,12 +1410,14 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	dev_id = hci_devid(adapter);
 	snprintf(adapter_path, 32, "/org/bluez/hci%d", dev_id);
 
-	idev = input_device_new(&dst);
+	if (get_class(&mgr->src, &dst, &cls) < 0) {
+		error("Device class not available");
+		return err_not_supported(conn, msg);
+	}
+
+	idev = input_device_new(&dst, cls);
 	if (!idev)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	if (get_class(&mgr->src, &dst, &cls) < 0)
-		return err_not_supported(conn, msg);
 
 	if (get_stored_device_info(&mgr->src, &idev->dst, &idev->hidp) < 0) {
 		struct pending_req *pr;
@@ -1393,8 +1450,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	/* FIXME: Stored data found, create a fake input or a standard HID */
-	path = create_input_path(idev->hidp.subclass);
+	path = create_input_path(idev->major, idev->minor);
 	if (register_input_device(conn, idev, path) < 0) {
 		input_device_free(idev);
 		return err_failed(conn, msg, "D-Bus path registration failed");
@@ -1530,31 +1586,36 @@ static const DBusObjectPathVTable manager_table = {
 
 static void stored_input(char *key, char *value, void *data)
 {
-	DBusConnection *conn = data;
+	bdaddr_t *src = data;
 	struct input_device *idev;
 	const char *path;
 	bdaddr_t dst;
+	uint32_t cls;
 
 	str2ba(key, &dst);
-	idev = input_device_new(&dst);
+
+	if (get_class(src, &dst, &cls) < 0)
+		return;
+
+	idev = input_device_new(&dst, cls);
 	if (parse_stored_device_info(value, &idev->hidp) < 0) {
 		input_device_free(idev);
 		return;
 	}
 
-	path = create_input_path(idev->hidp.subclass);
-	if (register_input_device(conn, idev, path) < 0)
+	path = create_input_path(idev->major, idev->minor);
+	if (register_input_device(connection, idev, path) < 0)
 		input_device_free(idev);
 }
 
-static int register_stored_inputs(DBusConnection *conn, bdaddr_t *src)
+static int register_stored_inputs(bdaddr_t *src)
 {
 	char filename[PATH_MAX + 1];
 	char addr[18];
 
 	ba2str(src, addr);
 	create_name(filename, PATH_MAX, STORAGEDIR, addr, "hidd");
-	textfile_foreach(filename, stored_input, conn);
+	textfile_foreach(filename, stored_input, src);
 
 	return 0;
 }
@@ -1597,7 +1658,7 @@ int input_dbus_init(void)
 
 	bacpy(&mgr->src, &src);
 	/* Register well known HID devices */
-	register_stored_inputs(connection, &src);
+	register_stored_inputs(&src);
 
 	return 0;
 
