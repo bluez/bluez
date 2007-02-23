@@ -67,6 +67,7 @@ const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 const char *headset_uuid = "00001108-0000-1000-8000-00805f9b34fb";
 
 struct fake_input {
+	int rfcomm;
 	uint8_t ch;
 };
 
@@ -410,8 +411,63 @@ static const char *create_input_path(uint8_t major, uint8_t minor)
 static gboolean rfcomm_connect_cb(GIOChannel *chan,
 				GIOCondition cond, struct pending_connect *pc)
 {
-	int err = EIO;
+	struct input_device *idev;
+	struct fake_input *fake;
+	DBusMessage *reply;
+	const char *path;
+	socklen_t len;
+	int ret, err;
 
+	path = dbus_message_get_path(pc->msg);
+	dbus_connection_get_object_path_data(pc->conn, path, (void *) &idev);
+	fake = idev->fake;
+
+	if (cond & G_IO_NVAL) {
+		g_io_channel_unref(chan);
+		return FALSE;
+	}
+
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		err = EIO;
+		goto failed;
+	}
+
+	fake->rfcomm = g_io_channel_unix_get_fd(chan);
+
+	len = sizeof(ret);
+	if (getsockopt(fake->rfcomm, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		err = ret;
+		error("connect(): %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	/* 
+	 * FIXME: Some headsets required a sco connection
+	 * first to report volume gain key events
+	 */
+
+	/* FIXME: Create the uinput */
+
+	/* FIXME: Add the watch to listen on rfcomm channel */
+
+	reply = dbus_message_new_method_return(pc->msg);
+	if (reply) {
+		dbus_connection_send(connection, reply, NULL);
+		dbus_message_unref(reply);
+	}
+
+	pending_connect_free(pc);
+	g_io_channel_unref(chan);
+	return FALSE;
+
+failed:
+	/* FIXME: close the rfcomm socket */
 	err_connection_failed(pc->conn, pc->msg, strerror(err));
 	pending_connect_free(pc);
 	g_io_channel_unref(chan);
