@@ -124,6 +124,8 @@ static void input_device_free(struct input_device *idev)
 		return;
 	if (idev->hidp.rd_data)
 		free(idev->hidp.rd_data);
+	if (idev->fake)
+		free(idev->fake);
 	free(idev);
 }
 
@@ -1311,6 +1313,8 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 	}
 	memset(idev->fake, 0, sizeof(struct fake_input));
 	idev->fake->ch = ch;
+
+	/* FIXME: Store the fake input data */
 
 	path = create_input_path(idev->major, idev->minor);
 	if (register_input_device(pr->conn, idev, path) < 0) {
