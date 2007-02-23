@@ -36,6 +36,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
+#include <bluetooth/rfcomm.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/hidp.h>
@@ -406,16 +407,88 @@ static const char *create_input_path(uint8_t major, uint8_t minor)
 	return path;
 }
 
+static gboolean rfcomm_connect_cb(GIOChannel *chan,
+				GIOCondition cond, struct pending_connect *pc)
+{
+	int err = EIO;
+
+	err_connection_failed(pc->conn, pc->msg, strerror(err));
+	pending_connect_free(pc);
+	g_io_channel_unref(chan);
+	return FALSE;
+}
+
 static int rfcomm_connect(struct pending_connect *pc, uint8_t ch)
 {
-	char addr[18];
-	/* FIXME: not implemented */
+	struct sockaddr_rc addr;
+	GIOChannel *io;
+	int sk, err;
 
-	ba2str(&pc->dst, addr);
-	debug("RFCOMM connecting to %s on channel:%d", addr, ch);
-	errno = EIO;
+	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0) {
+		err = errno;
+		error("socket: %s (%d)", strerror(err), err);
+		return -err;
+	}
 
-	return -EIO;
+	io = g_io_channel_unix_new(sk);
+	if (!io) {
+		err = -EIO;
+		error("channel_unix_new failed in rfcomm connect");
+		goto failed;
+	}
+
+	g_io_channel_set_close_on_unref(io, FALSE);
+
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, &pc->src);
+	addr.rc_channel =  0;
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = errno;
+		error("bind: %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	if (set_nonblocking(sk) < 0) {
+		err = errno;
+		error("Set non blocking: %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, &pc->dst);
+	addr.rc_channel = ch;
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		char peer[18]; /* FIXME: debug purpose */
+		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
+			err = errno;
+			error("connect() failed: %s (%d)",
+					strerror(err), err);
+			goto failed;
+		}
+
+		ba2str(&pc->dst, peer);
+		debug("RFCOMM connection in progress: %s channel:%d", peer, ch);
+		g_io_add_watch(io, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				(GIOFunc) rfcomm_connect_cb, pc);
+	} else {
+		debug("Connect succeeded with first try");
+		rfcomm_connect_cb(io, G_IO_OUT, pc);
+	}
+
+	return 0;
+
+failed:
+	if (io)
+		g_io_channel_unref(io);
+
+	close(sk);
+	errno = err;
+
+	return -err;
 }
 
 static int l2cap_connect(struct pending_connect *pc,
