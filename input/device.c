@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -48,6 +49,7 @@
 #include "dbus.h"
 #include "logging.h"
 #include "textfile.h"
+#include "uinput.h"
 
 #include "storage.h"
 #include "device.h"
@@ -67,8 +69,9 @@ const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 const char *headset_uuid = "00001108-0000-1000-8000-00805f9b34fb";
 
 struct fake_input {
-	int rfcomm;
-	uint8_t ch;
+	int		rfcomm; /* RFCOMM socket */
+	int		uinput;	/* uinput socket */
+	uint8_t		ch;	/* RFCOMM channel number */
 };
 
 struct input_device {
@@ -332,6 +335,64 @@ static void extract_pnp_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 	req->version = pdlist ? pdlist->val.uint16 : 0x0000;
 }
 
+static int uinput_create(char *name)
+{
+	struct uinput_dev dev;
+	int fd, err;
+
+	fd = open("/dev/uinput", O_RDWR);
+	if (fd < 0) {
+		fd = open("/dev/input/uinput", O_RDWR);
+		if (fd < 0) {
+			fd = open("/dev/misc/uinput", O_RDWR);
+			if (fd < 0) {
+				err = errno;
+				error("Can't open input device: %s (%d)",
+							strerror(err), err);
+				return -err;
+			}
+		}
+	}
+
+	memset(&dev, 0, sizeof(dev));
+	if (name)
+		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE);
+
+	dev.id.bustype = BUS_BLUETOOTH;
+	dev.id.vendor  = 0x0000;
+	dev.id.product = 0x0000;
+	dev.id.version = 0x0000;
+
+	if (write(fd, &dev, sizeof(dev)) < 0) {
+		err = errno;
+		error("Can't write device information: %s (%d)",
+						strerror(err), err);
+		close(fd);
+		errno = err;
+		return -err;
+	}
+
+	ioctl(fd, UI_SET_EVBIT, EV_KEY);
+	ioctl(fd, UI_SET_EVBIT, EV_REL);
+	ioctl(fd, UI_SET_EVBIT, EV_REP);
+
+	ioctl(fd, UI_SET_KEYBIT, KEY_UP);
+	ioctl(fd, UI_SET_KEYBIT, KEY_PAGEUP);
+	ioctl(fd, UI_SET_KEYBIT, KEY_DOWN);
+	ioctl(fd, UI_SET_KEYBIT, KEY_PAGEDOWN);
+
+	if (ioctl(fd, UI_DEV_CREATE, NULL) < 0) {
+		err = errno;
+		error("Can't create uinput device: %s (%d)",
+						strerror(err), err);
+		close(fd);
+		errno = err;
+		return -err;
+	}
+
+	return fd;
+}
+
 static const char *create_input_path(uint8_t major, uint8_t minor)
 {
 	static char path[48];
@@ -453,6 +514,11 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	 */
 
 	/* FIXME: Create the uinput */
+	fake->uinput = uinput_create("Fake input");
+	if (fake->uinput < 0) {
+		err = errno;
+		goto failed;
+	}
 
 	/* FIXME: Add the watch to listen on rfcomm channel */
 
@@ -467,7 +533,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	return FALSE;
 
 failed:
-	/* FIXME: close the rfcomm socket */
+	/* FIXME: close the rfcomm and uinput socket */
 	err_connection_failed(pc->conn, pc->msg, strerror(err));
 	pending_connect_free(pc);
 	g_io_channel_unref(chan);
