@@ -1000,21 +1000,20 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		dbus_error_free(&derr);
 		goto fail;
 	}
 
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
 				DBUS_TYPE_INVALID)) {
-		error("%s: %s", derr.name, derr.message);
 		err_not_supported(pr->conn, pr->msg);
-		dbus_error_free(&derr);
+		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
 	if (len == 0) {
 		err_not_supported(pr->conn, pr->msg);
+		error("Invalid HID service record length");
 		goto fail;
 	}
 
@@ -1046,6 +1045,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 
 	store_device_info(&pr->src, &pr->dst, &idev->hidp);
 fail:
+	dbus_error_free(&derr);
 	pending_req_free(pr);
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
@@ -1063,27 +1063,33 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		dbus_error_free(&derr);
 		goto fail;
 	}
 
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
 				DBUS_TYPE_INVALID)) {
-		error("%s: %s", derr.name, derr.message);
 		err_not_supported(pr->conn, pr->msg);
-		dbus_error_free(&derr);
+		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
-	if (len != 0) {
-		if (get_record(pr, *phandle, hid_record_reply) < 0)
-			error("HID record search error");
-		else
-			goto done;
+	if (len == 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("HID record handle not found");
+		goto fail;
 	}
-	err_not_supported(pr->conn, pr->msg);
+
+	if (get_record(pr, *phandle, hid_record_reply) < 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("HID service attribute request failed");
+		goto fail;
+	} else {
+		/* Wait record reply */
+		goto done;
+	}
 fail:
+	dbus_error_free(&derr);
 	pending_req_free(pr);
 done:
 	dbus_message_unref(reply);
@@ -1096,38 +1102,42 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 	struct pending_req *pr = data;
 	DBusError derr;
 	uint8_t *rec_bin;
-	int len;
+	int len, scanned;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		dbus_error_free(&derr);
 		goto fail;
 	}
 
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
 				DBUS_TYPE_INVALID)) {
-		error("%s: %s", derr.name, derr.message);
 		err_not_supported(pr->conn, pr->msg);
-		dbus_error_free(&derr);
+		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
-	if (len != 0) {
-		int scanned;
-		pr->pnp_rec = sdp_extract_pdu(rec_bin, &scanned);
-		if (get_handles(pr, hid_uuid, hid_handle_reply) < 0)
-			error("HID record search error");
-		else
-			goto done;
+	if (len == 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("Invalid PnP service record length");
+		goto fail;
 	}
 
-	err_not_supported(pr->conn, pr->msg);
-fail:
-	pending_req_free(pr);
+	pr->pnp_rec = sdp_extract_pdu(rec_bin, &scanned);
+	if (get_handles(pr, hid_uuid, hid_handle_reply) < 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("HID service search request failed");
+		goto fail;
+	} else {
+		/* Wait handle reply */
+		goto done;
+	}
 
+fail:
+	dbus_error_free(&derr);
+	pending_req_free(pr);
 done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
@@ -1145,16 +1155,14 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		err_generic(pr->conn, pr->msg, derr.name, derr.message);
 		error("%s: %s", derr.name, derr.message);
-		dbus_error_free(&derr);
 		goto fail;
 	}
 
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
 				DBUS_TYPE_INVALID)) {
-		error("%s: %s", derr.name, derr.message);
 		err_not_supported(pr->conn, pr->msg);
-		dbus_error_free(&derr);
+		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
@@ -1162,21 +1170,24 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 		/* PnP is optional: Ignore it and request the HID handle  */
 		if (get_handles(pr, hid_uuid, hid_handle_reply) < 0) {
 			err_not_supported(pr->conn, pr->msg);
+			error("HID service search request failed");
 			goto fail;
 		}
 	} else {
 		/* Request PnP record */
 		if (get_record(pr, *phandle, pnp_record_reply) < 0) {
 			err_not_supported(pr->conn, pr->msg);
+			error("PnP service attribute request failed");
 			goto fail;
 		}
 	}
 
+	/* Wait HID handle reply or PnP record reply */
 	goto done;
 
 fail:
+	dbus_error_free(&derr);
 	pending_req_free(pr);
-
 done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
@@ -1299,10 +1310,10 @@ static void headset_handle_reply(DBusPendingCall *call, void *data)
 		err_not_supported(pr->conn, pr->msg);
 		error("Headset service attribute request failed");
 		goto fail;
+	} else {
+		/* Wait record reply */
+		goto done;
 	}
-
-	/* Wait record reply */
-	goto done;
 fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
