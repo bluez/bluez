@@ -685,7 +685,7 @@ static void auth_agent_req_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, reply)) {
-		if (strcmp(err.name, DBUS_ERROR_NO_REPLY) == 0)
+		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
 			auth_agent_call_cancel(req);
 		error("Authorization agent replied with an error: %s, %s",
 				err.name, err.message);
