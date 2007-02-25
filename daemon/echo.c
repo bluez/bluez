@@ -81,6 +81,8 @@ static void authorization_callback(DBusPendingCall *call, void *data)
 	g_io_channel_unref(io);
 
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static int request_authorization(DBusConnection *conn,
