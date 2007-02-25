@@ -420,7 +420,6 @@ static void auth_callback(DBusPendingCall *call, void *data)
 	}
 
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond,
@@ -499,7 +498,7 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	dbus_pending_call_set_notify(pending, auth_callback, hs, NULL);
-
+	dbus_pending_call_unref(pending);
 	dbus_message_unref(auth);
 
 	return TRUE;
@@ -1072,7 +1071,6 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 
 	sdp_record_free(record);
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 
 	return;
 
@@ -1081,7 +1079,6 @@ failed:
 		sdp_record_free(record);
 	if (reply)
 		dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 	pending_connect_free(hs->pending_connect);
 	hs->pending_connect = NULL;
 	hs->state = HEADSET_STATE_DISCONNECTED;
@@ -1219,9 +1216,9 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	}
 
 	dbus_pending_call_set_notify(pending, get_record_reply, hs, NULL);
+	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 
 	return;
 
@@ -1229,7 +1226,6 @@ failed:
 	if (msg)
 		dbus_message_unref(msg);
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 	hs_disconnect(hs, NULL);
 }
 
@@ -1285,6 +1281,7 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 	}
 
 	dbus_pending_call_set_notify(pending, get_handles_reply, hs, NULL);
+	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 
 	return DBUS_HANDLER_RESULT_HANDLED;;
