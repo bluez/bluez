@@ -255,7 +255,7 @@ Methods		void RegisterService(string identifier, string name, string description
 					 org.bluez.Error.DoesNotExist
 					 org.bluez.Error.Failed
 
-		void RequestAuthorization(string address, string path) [experimental]
+		void RequestAuthorization(string address, string uuid) [experimental]
 
 			This method gets called when a service wants to check
 			if a remote device is authorized to perform some
@@ -263,14 +263,15 @@ Methods		void RegisterService(string identifier, string name, string description
 			authorization agent.
 
 			The address parameter is the Bluetooth address of the
-			remote device and the path is an object path provided
-			by the service requesting the authorization.
+			remote device and the uuid is the identifier of the
+			profile requesting the authorization. This parameter
+			can also be left blank.
 
-		void CancelAuthorizationRequest(string address, string path) [experimental]
+		void CancelAuthorizationRequest(string address, string uuid) [experimental]
 
 			This method cancels an authorization process requested
 			by a previous call to RequestAuthorization(). The
-			address and path parameters must match.
+			address and uuid parameters must match.
 
 
 Adapter hierarchy
@@ -1275,28 +1276,27 @@ Interface	org.bluez.AuthorizationAgent
 Object path	freely definable
 
 Methods		void Authorize(string adapter_path, string address,
-					string service_path, string action)
+					string service_path, string uuid)
 
 			This method gets called when the service daemon wants
-			to get an authorization for an action a remote device
-			is trying to perform. This method should return if the
-			remote user is authorized to perform that action and
-			an error otherwise.
+			to get an authorization for accessing a service. This
+			method should return if the remote user is granted
+			access or an error otherwise.
 
 			The adapter_path parameter is the object path of the
 			local adapter. The address, service_path and action
 			parameters correspond to the remote device address,
-			the object path of the service and the action the
-			remote device is trying to perform.
+			the object path of the service and the uuid of the
+			profile.
 
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
 		void Cancel(string adapter_path, string address,
-					string service_path, string action)
+					string service_path, string uuid)
 
 			This method cancels a previous authorization request.
-			The adapter_path, address, service_path and action
+			The adapter_path, address, service_path and uuid
 			parameters must match the same values that have been
 			used when the Authorize() method was called.
 
