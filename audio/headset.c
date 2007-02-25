@@ -388,14 +388,52 @@ failed:
 	return FALSE;
 }
 
+static void auth_callback(DBusPendingCall *call, void *data)
+{
+	struct headset *hs = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("Access denied: %s", err.message);
+		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
+			debug("Canceling authorization request");
+			//send_cancel();
+		}
+		dbus_error_free(&err);
+		g_io_channel_close(hs->rfcomm);
+		g_io_channel_unref(hs->rfcomm);
+		hs->rfcomm = NULL;
+	} else {
+		char hs_address[18];
+
+		g_io_add_watch(hs->rfcomm, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				(GIOFunc) rfcomm_io_cb, hs);
+
+		ba2str(&hs->bda, hs_address);
+
+		debug("Accepted connection from %s for %s", hs_address, hs->object_path);
+
+		hs->state = HEADSET_STATE_CONNECTED;
+		hs_signal(hs, "Connected");
+	}
+
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+}
+
 static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond,
 				struct manager *manager)
 {
 	int srv_sk, cli_sk;
 	struct sockaddr_rc addr;
 	socklen_t size;
-	char hs_address[18];
+	char hs_address[18], *address = hs_address;
+	const char *uuid = "";
 	struct headset *hs = NULL;
+	DBusMessage *auth;
+	DBusPendingCall *pending;
 
 	assert(manager != NULL);
 
@@ -430,8 +468,6 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond,
 		audio_manager_add_headset(manager, hs);
 	}
 
-	/* audio_headset_authorize(hs); */
-
 	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->rfcomm) {
 		debug("Refusing new connection since one already exists");
 		close(cli_sk);
@@ -445,15 +481,35 @@ static gboolean server_io_cb(GIOChannel *chan, GIOCondition cond,
 		return TRUE;
 	}
 
-	g_io_add_watch(hs->rfcomm, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			(GIOFunc) rfcomm_io_cb, hs);
+	auth = dbus_message_new_method_call("org.bluez", "/org/bluez", "org.bluez.Database",
+						"RequestAuthorization");
+	if (!auth) {
+		error("Unable to allocat new RequestAuthorization method call");
+		goto failed;
+	}
 
-	ba2str(&addr.rc_bdaddr, hs_address);
+	ba2str(&hs->bda, hs_address);
 
-	debug("Accepted connection from %s, %s", hs_address, hs->object_path);
+	dbus_message_append_args(auth, DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID);
 
-	hs->state = HEADSET_STATE_CONNECTED;
-	hs_signal(hs, "Connected");
+	if (dbus_connection_send_with_reply(connection, auth, &pending, -1) == FALSE) {
+		error("Sending of authorization request failed");
+		goto failed;
+	}
+
+	dbus_pending_call_set_notify(pending, auth_callback, hs, NULL);
+
+	dbus_message_unref(auth);
+
+	return TRUE;
+
+failed:
+	if (hs->rfcomm) {
+		g_io_channel_close(hs->rfcomm);
+		g_io_channel_unref(hs->rfcomm);
+		hs->rfcomm = NULL;
+	}
 
 	return TRUE;
 }
