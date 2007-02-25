@@ -388,6 +388,28 @@ failed:
 	return FALSE;
 }
 
+static void send_cancel_auth(struct headset *hs)
+{
+	DBusMessage *cancel;
+	char addr[18], *address = addr;
+	const char *uuid = "";
+
+	cancel = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.Database",
+						"CancelAuthorizationRequest");
+	if (!cancel) {
+		error("Unable to allocate new method call");
+		return;
+	}
+
+	ba2str(&hs->bda, addr);
+
+	dbus_message_append_args(cancel, DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, cancel);
+}
+
 static void auth_callback(DBusPendingCall *call, void *data)
 {
 	struct headset *hs = data;
@@ -399,7 +421,7 @@ static void auth_callback(DBusPendingCall *call, void *data)
 		error("Access denied: %s", err.message);
 		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			//send_cancel();
+			send_cancel_auth(hs);
 		}
 		dbus_error_free(&err);
 		g_io_channel_close(hs->rfcomm);
