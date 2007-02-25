@@ -43,6 +43,12 @@
 #include "dbus.h"
 #include "logging.h"
 
+struct auth_data {
+	DBusConnection *conn;
+	GIOChannel *io;
+	char *address;
+};
+
 static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[672];
@@ -61,26 +67,58 @@ static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	return TRUE;
 }
 
+static void cancel_authorization(DBusConnection *conn, const char *address)
+{
+	DBusMessage *msg;
+	const char *string = "";
+
+	info("Canceling authorization for %s", address);
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "CancelAuthorizationRequest");
+	if (!msg) {
+		error("Allocation of method message failed");
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_STRING, &string, DBUS_TYPE_INVALID);
+
+	dbus_connection_send(conn, msg, NULL);
+
+	dbus_message_unref(msg);
+}
+
 static void authorization_callback(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	GIOChannel *io = data;
+	struct auth_data *auth = data;
 	DBusError err;
 
 	dbus_error_init(&err);
 
 	if (dbus_set_error_from_message(&err, reply)) {
 		error("Access denied: %s", err.message);
+		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
+			cancel_authorization(auth->conn, auth->address);
 		dbus_error_free(&err);
 	} else {
 		info("Accepting incoming connection");
-		g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR,
+		g_io_add_watch(auth->io, G_IO_IN | G_IO_HUP | G_IO_ERR,
 						session_event, NULL);
 	}
 
-	g_io_channel_unref(io);
+	g_io_channel_unref(auth->io);
 
 	dbus_message_unref(reply);
+}
+
+static void authorization_free(void *data)
+{
+	struct auth_data *auth = data;
+
+	g_free(auth->address);
+	g_free(auth);
 }
 
 static int request_authorization(DBusConnection *conn,
@@ -88,14 +126,22 @@ static int request_authorization(DBusConnection *conn,
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
+	struct auth_data *auth;
 	const char *string = "";
 
 	info("Requesting authorization for %s", address);
+
+	auth = g_try_malloc0(sizeof(*auth));
+	if (!auth) {
+		error("Allocation of auth object failed");
+		return -1;
+	}
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 				"org.bluez.Database", "RequestAuthorization");
 	if (!msg) {
 		error("Allocation of method message failed");
+		g_free(auth);
 		return -1;
 	}
 
@@ -104,10 +150,17 @@ static int request_authorization(DBusConnection *conn,
 
 	if (dbus_connection_send_with_reply(conn, msg, &pending, -1) == FALSE) {
 		error("Sending of authorization request failed");
+		dbus_message_unref(msg);
+		g_free(auth);
 		return -1;
 	}
 
-	dbus_pending_call_set_notify(pending, authorization_callback, io, NULL);
+	auth->conn = conn;
+	auth->io = io;
+	auth->address = g_strdup(address);
+
+	dbus_pending_call_set_notify(pending, authorization_callback,
+						auth, authorization_free);
 
 	dbus_pending_call_unref(pending);
 
