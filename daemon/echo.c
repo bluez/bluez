@@ -81,8 +81,6 @@ static void authorization_callback(DBusPendingCall *call, void *data)
 	g_io_channel_unref(io);
 
 	dbus_message_unref(reply);
-
-	dbus_pending_call_unref(call);
 }
 
 static int request_authorization(DBusConnection *conn,
@@ -110,6 +108,8 @@ static int request_authorization(DBusConnection *conn,
 	}
 
 	dbus_pending_call_set_notify(pending, authorization_callback, io, NULL);
+
+	dbus_pending_call_unref(pending);
 
 	dbus_message_unref(msg);
 
