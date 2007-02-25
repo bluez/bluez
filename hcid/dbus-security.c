@@ -87,7 +87,7 @@ struct auth_agent_req {
 	char *adapter_path;
 	char *address;
 	char *service_path;
-	char *path;
+	char *uuid;
 	DBusPendingCall *call;
 };
 
@@ -439,7 +439,8 @@ static struct auth_agent_req *auth_agent_req_new(DBusMessage *msg,
 						struct authorization_agent *agent,
 						const char *adapter_path,
 						const char *address,
-						const char *path)
+						const char *service_path,
+						const char *uuid)
 {
 	struct auth_agent_req *req;
 
@@ -449,7 +450,8 @@ static struct auth_agent_req *auth_agent_req_new(DBusMessage *msg,
 	req->msg = dbus_message_ref(msg);
 	req->adapter_path = g_strdup(adapter_path);
 	req->address = g_strdup(address);
-	req->path = g_strdup(path);
+	req->service_path = g_strdup(service_path);
+	req->uuid = g_strdup(uuid);
 
 	return req;
 }
@@ -457,13 +459,13 @@ static struct auth_agent_req *auth_agent_req_new(DBusMessage *msg,
 static void auth_agent_req_free(struct auth_agent_req *req)
 {
 	dbus_message_unref(req->msg);
-	free(req->adapter_path);
-	free(req->address);
-	free(req->service_path);
-	free(req->path);
+	g_free(req->adapter_path);
+	g_free(req->address);
+	g_free(req->service_path);
+	g_free(req->uuid);
 	if (req->call)
 		dbus_pending_call_unref(req->call);
-	free(req);
+	g_free(req);
 }
 
 static void auth_agent_req_cancel(struct auth_agent_req *req)
@@ -500,7 +502,7 @@ static void auth_agent_call_cancel(struct auth_agent_req *req)
 				DBUS_TYPE_STRING, &req->adapter_path,
 				DBUS_TYPE_STRING, &req->address,
 				DBUS_TYPE_STRING, &req->service_path,
-				DBUS_TYPE_STRING, &req->path,
+				DBUS_TYPE_STRING, &req->uuid,
 				DBUS_TYPE_INVALID);
 
 	dbus_message_set_no_reply(message, TRUE);
@@ -789,7 +791,7 @@ DBusHandlerResult handle_authorize_request(DBusConnection *conn,
 					DBusMessage *msg,
 					struct service *service,
 					const char *address,
-					const char *path)
+					const char *uuid)
 {
 	struct auth_agent_req *req;
 	char adapter_path[PATH_MAX];
@@ -815,11 +817,11 @@ DBusHandlerResult handle_authorize_request(DBusConnection *conn,
 			adapter_id);
 
 	req = auth_agent_req_new(msg, default_auth_agent, adapter_path,
-					address, path);
+					address, service->object_path, uuid);
 
 	req->call = auth_agent_call_authorize(default_auth_agent, adapter_path,
 						service->object_path, address,
-						path);
+						uuid);
 	if (!req->call) {
 		auth_agent_req_free(req);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -851,7 +853,7 @@ static DBusHandlerResult auth_agent_send_cancel(DBusMessage *msg,
 		if (!strcmp(adapter_path, req->adapter_path) &&
 			!strcmp(address, req->address) &&
 			!strcmp(service->object_path, req->service_path) &&
-			!strcmp(path, req->path))
+			!strcmp(path, req->uuid))
 			break;
 	}
 
