@@ -53,6 +53,20 @@ void bnep_sdp_unregister(void)
 	sdp_close(session);
 }
 
+static void add_lang_attr(sdp_record_t *r)
+{
+	sdp_lang_attr_t base_lang;
+	sdp_list_t *langs = 0;
+
+	/* UTF-8 MIBenum (http://www.iana.org/assignments/character-sets) */
+	base_lang.code_ISO639 = (0x65 << 8) | 0x6e;
+	base_lang.encoding = 106;
+	base_lang.base_offset = SDP_PRIMARY_LANG_BASE;
+	langs = sdp_list_append(0, &base_lang);
+	sdp_set_lang_attr(r, langs);
+	sdp_list_free(langs, 0);
+}
+
 int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
@@ -61,19 +75,24 @@ int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 	sdp_list_t *proto[2];
 	sdp_data_t *v, *p;
 	uint16_t psm = 15, version = 0x0100;
+	uint16_t security_desc = 0;
+	uint16_t net_access_type = 0xfffe;
+	uint32_t max_net_access_rate = 0;
+	char *name = "BlueZ PAN";
+	char *desc = "BlueZ PAN Service";
 	int status;
 
 	session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
 	if (!session) {
-		syslog(LOG_ERR, "Failed to connect to the local SDP server. %s(%d)", 
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Failed to connect to the local SDP server. %s(%d)",
+							strerror(errno), errno);
 		return -1;
 	}
 
 	record = sdp_record_alloc();
 	if (!record) {
-		syslog(LOG_ERR, "Failed to allocate service record %s(%d)", 
-				strerror(errno), errno);
+		syslog(LOG_ERR, "Failed to allocate service record %s(%d)",
+							strerror(errno), errno);
 		sdp_close(session);
 		return -1;
 	}
@@ -114,16 +133,20 @@ int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 		proto[1] = sdp_list_append(proto[1], pseq);
 	}
 
-	apseq    = sdp_list_append(apseq, proto[1]);
-	
-	aproto   = sdp_list_append(NULL, apseq);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
+
+	add_lang_attr(record);
+
 	sdp_list_free(proto[0], NULL);
 	sdp_list_free(proto[1], NULL);
 	sdp_list_free(apseq, NULL);
 	sdp_list_free(aproto, NULL);
 	sdp_data_free(p);
 	sdp_data_free(v);
+	sdp_attr_add_new(record, SDP_ATTR_SECURITY_DESC, SDP_UINT16, &security_desc);
 
 	switch (role) {
 	case BNEP_SVC_NAP:
@@ -136,7 +159,10 @@ int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 		pfseq = sdp_list_append(NULL, &profile[0]);
 		sdp_set_profile_descs(record, pfseq);
 
-		sdp_set_info_attr(record, "Network Access Point", NULL, NULL);
+		sdp_set_info_attr(record, "Network Access Point", name, desc);
+
+		sdp_attr_add_new(record, SDP_ATTR_NET_ACCESS_TYPE, SDP_UINT16, &net_access_type);
+		sdp_attr_add_new(record, SDP_ATTR_MAX_NET_ACCESSRATE, SDP_UINT32, &max_net_access_rate);
 		break;
 
 	case BNEP_SVC_GN:
@@ -149,7 +175,7 @@ int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 		pfseq = sdp_list_append(NULL, &profile[0]);
 		sdp_set_profile_descs(record, pfseq);
 		
-		sdp_set_info_attr(record, "Group Network Service", NULL, NULL);
+		sdp_set_info_attr(record, "Group Network Service", name, desc);
 		break;
 
 	case BNEP_SVC_PANU:
@@ -164,7 +190,7 @@ int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 		sdp_set_profile_descs(record, pfseq);
 		sdp_list_free(pfseq, 0);
 
-		sdp_set_info_attr(record, "PAN User", NULL, NULL);
+		sdp_set_info_attr(record, "PAN User", name, desc);
 		break;
 	}
 
@@ -175,6 +201,7 @@ int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 		sdp_close(session);
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -198,13 +225,13 @@ int bnep_sdp_search(bdaddr_t *src, bdaddr_t *dst, uint16_t service)
 		sdp_uuid16_create(&svclass, GN_SVCLASS_ID);
 		break;
 	}
-		
+
 	srch = sdp_list_append(NULL, &svclass);
 
 	s = sdp_connect(src, dst, 0);
 	if (!s) {
 		syslog(LOG_ERR, "Failed to connect to the SDP server. %s(%d)",
-				strerror(errno), errno);
+							strerror(errno), errno);
 		return 0;
 	}
 
