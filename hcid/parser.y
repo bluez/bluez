@@ -37,6 +37,8 @@
 #include <sys/socket.h>
 #include <asm/types.h>
 
+#include <glib.h>
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
@@ -191,9 +193,9 @@ device_opt:
 
   | K_NAME dev_name	{
 				if (parser_device->name)
-					free(parser_device->name);
+					g_free(parser_device->name);
 				parser_device->flags |= (1 << HCID_SET_NAME);
-				parser_device->name = strdup($2);
+				parser_device->name = g_strdup($2);
 			}
 
   | K_CLASS NUM		{
