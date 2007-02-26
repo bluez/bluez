@@ -867,6 +867,7 @@ static DBusHandlerResult auth_agent_send_cancel(DBusMessage *msg,
 
 	auth_agent_call_cancel(req);
 	auth_agent_req_cancel(req);
+	agent->pending_requests = g_slist_remove(agent->pending_requests, req);
 	auth_agent_req_free(req);
 
 	return send_message_and_unref(agent->conn, message);
