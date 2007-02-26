@@ -200,7 +200,7 @@ static struct passkey_agent *passkey_agent_new(struct adapter *adapter, DBusConn
 	agent->path = g_strdup(path);
 
 	if (addr)
-		agent->addr = strdup(addr);
+		agent->addr = g_strdup(addr);
 
 	agent->conn = dbus_connection_ref(conn);
 
@@ -1039,9 +1039,7 @@ static int call_passkey_agent(DBusConnection *conn,
 	bacpy(&req->sba, sba);
 	bacpy(&req->bda, dba);
 	req->agent = agent;
-	req->path = strdup(path);
-	if (!req->path)
-		goto failed;
+	req->path = g_strdup(path);
 
 	req->call = agent_request(path, dba, agent, FALSE, 0);
 	if (!req->call)
@@ -1217,12 +1215,8 @@ static int call_confirm_agent(DBusConnection *conn,
 	bacpy(&req->sba, sba);
 	bacpy(&req->bda, dba);
 	req->agent = agent;
-	req->path = strdup(path);
-	if (!req->path)
-		goto failed;
-	req->pin = strdup(pin);
-	if (!req->pin)
-		goto failed;
+	req->path = g_strdup(path);
+	req->pin = g_strdup(pin);
 
 	req->call = agent_confirm(path, dba, agent, pin);
 	if (!req->call)

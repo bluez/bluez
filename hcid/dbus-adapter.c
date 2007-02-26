@@ -2336,7 +2336,7 @@ static DBusHandlerResult adapter_start_periodic(DBusConnection *conn,
 		return error_failed(conn, msg, bt_error(status));
 	}
 
-	adapter->pdiscov_requestor = strdup(dbus_message_get_sender(msg));
+	adapter->pdiscov_requestor = g_strdup(dbus_message_get_sender(msg));
 
 	if (adapter->pdiscov_resolve_names)
 		adapter->discov_type = PERIODIC_INQUIRY | RESOLVE_NAME;
@@ -2523,7 +2523,7 @@ static DBusHandlerResult adapter_discover_devices(DBusConnection *conn,
 	else
 		adapter->discov_type |= (STD_INQUIRY | RESOLVE_NAME);
 
-	adapter->discov_requestor = strdup(dbus_message_get_sender(msg));
+	adapter->discov_requestor = g_strdup(dbus_message_get_sender(msg));
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -2597,9 +2597,7 @@ static void list_remote_devices_do_append(char *key, char *value, void *data)
 			return;
 	}
 
-	address = strdup(key);
-	if (!address)
-		return;
+	address = g_strdup(key);
 
 	param->list = g_slist_append(param->list, address);
 }

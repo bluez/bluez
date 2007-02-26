@@ -29,7 +29,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <string.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/param.h>

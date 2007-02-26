@@ -95,11 +95,7 @@ static struct audit *audit_new(DBusConnection *conn, DBusMessage *msg,
 
 	audit = g_new0(struct audit, 1);
 
-	audit->requestor = strdup(requestor);
-	if (!audit->requestor) {
-		free(audit);
-		return NULL;
-	}
+	audit->requestor = g_strdup(requestor);
 
 	bacpy(&audit->peer, peer);
 	bacpy(&audit->local, local);

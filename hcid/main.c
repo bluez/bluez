@@ -62,7 +62,7 @@ static inline void init_device_defaults(struct device_opts *device_opts)
 {
 	memset(device_opts, 0, sizeof(*device_opts));
 	device_opts->scan = SCAN_PAGE;
-	device_opts->name = strdup("BlueZ");
+	device_opts->name = g_strdup("BlueZ");
 	device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
 }
 
@@ -91,10 +91,7 @@ static void free_device_opts(void)
 {
 	struct device_list *device, *next;
 
-	if (default_device.name) {
-		free(default_device.name);
-		default_device.name = NULL;
-	}
+	g_free(default_device.name);
 
 	for (device = device_list; device; device = next) {
 		g_free(device->ref);
@@ -693,7 +690,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'f':
-			hcid.config_file = strdup(optarg);
+			hcid.config_file = g_strdup(optarg);
 			break;
 
 		default:
