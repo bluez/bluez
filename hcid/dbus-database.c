@@ -339,8 +339,7 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 	if (!service)
 		return error_not_authorized(conn, msg);
 
-	if (g_slist_find_custom(service->trusted_devices, address,
-				(GCompareFunc) strcasecmp)) {
+	if (read_trust(address, service->ident)) {
 		DBusMessage *reply;
 
 		reply = dbus_message_new_method_return(msg);

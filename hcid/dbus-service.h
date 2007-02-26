@@ -47,8 +47,6 @@ struct service {
 
 	/* Services without a *.service file */
 	gboolean external;
-
-	GSList *trusted_devices;
 };
 
 void release_services(DBusConnection *conn);

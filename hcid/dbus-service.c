@@ -76,11 +76,6 @@ static void service_free(struct service *service)
 	g_free(service->descr);
 	g_free(service->ident);
 
-	if (service->trusted_devices) {
-		g_slist_foreach(service->trusted_devices, (GFunc) g_free, NULL);
-		g_slist_free(service->trusted_devices);
-	}
-
 	g_free(service);
 }
 
@@ -481,7 +476,6 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
-	GSList *l;
 	DBusMessage *reply;
 	const char *address;
 
@@ -493,15 +487,11 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	l = g_slist_find_custom(service->trusted_devices, address, (GCompareFunc) strcasecmp);
-	if (l)
-		return error_trusted_device_already_exists(conn, msg);
-
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	service->trusted_devices = g_slist_append(service->trusted_devices, g_strdup(address));
+	write_trust(address, service->ident, TRUE);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -510,7 +500,6 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
-	GSList *l;
 	DBusMessage *reply;
 	const char *address;
 	dbus_bool_t trusted;
@@ -520,14 +509,16 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	l = g_slist_find_custom(service->trusted_devices, address, (GCompareFunc) strcasecmp);
-	trusted = (l? TRUE : FALSE);
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	trusted = read_trust(address, service->ident);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(msg,
+	dbus_message_append_args(reply,
 				DBUS_TYPE_BOOLEAN, &trusted,
 				DBUS_TYPE_INVALID);
 
@@ -538,27 +529,22 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
-	GSList *l;
 	DBusMessage *reply;
 	const char *address;
-	void *paddress;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	l = g_slist_find_custom(service->trusted_devices, address, (GCompareFunc) strcasecmp);
-	if (!l)
-		return error_trusted_device_does_not_exists(conn, msg);
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	write_trust(address, service->ident, FALSE);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	paddress = l->data;
-	service->trusted_devices = g_slist_remove(service->trusted_devices, l->data);
-	g_free(paddress);
 
 	return send_message_and_unref(conn, reply);
 }

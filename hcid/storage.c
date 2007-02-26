@@ -37,6 +37,8 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 
+#include <glib.h>
+
 #include <bluetooth/bluetooth.h>
 
 #include "textfile.h"
@@ -485,4 +487,131 @@ int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin)
 	free(str);
 
 	return len;
+}
+
+static GSList *service_string_to_list(char *services)
+{
+	GSList *l = NULL;
+	char *start = services;
+	int i, finished = 0;
+
+	for (i = 0; ; i++) {
+		if (services[i] == '\0')
+			finished = 1;
+
+		if (services[i] == ' ' || services[i] == '\0') {
+			services[i] = '\0';
+			l = g_slist_append(l, start);
+			start = services + i + 1;
+		}
+
+		if (finished)
+			break;
+	}
+
+	return l;
+}
+
+static char *service_list_to_string(GSList *services)
+{
+	char str[1024];
+	int len = 0;
+
+	if (!services)
+		return g_strdup("");
+
+	memset(str, 0, sizeof(str));
+
+	while (services) {
+		int ret;
+		char *ident = services->data;
+
+		if (services->next)
+			ret = snprintf(str + len, sizeof(str) - len - 1, "%s ",
+					ident);
+					
+		else
+			ret = snprintf(str + len, sizeof(str) - len - 1, "%s",
+					ident);
+
+		if (ret > 0)
+			len += ret;
+
+		services = services->next;
+	}
+
+	return g_strdup(str);
+}
+
+int write_trust(const char *addr, const char *service, gboolean trust)
+{
+	char filename[PATH_MAX + 1], *str;
+	GSList *services = NULL, *match;
+	gboolean trusted;
+	int ret;
+
+	create_filename(filename, PATH_MAX, BDADDR_ANY, "trusts");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	str = textfile_caseget(filename, addr);
+	if (str)
+		services = service_string_to_list(str);
+
+	match = g_slist_find_custom(services, service, (GCompareFunc) strcmp);
+	trusted = match ? TRUE : FALSE;
+
+	/* If the old setting is the same as the requested one, we're done */
+	if (trusted == trust) {
+		g_slist_free(services);
+		if (str)
+			free(str);
+		return 0;
+	}
+
+	if (trust)
+		services = g_slist_append(services, (void *) service);
+	else
+		services = g_slist_remove(services, match->data);
+
+	/* Remove the entry if the last trusted service was removed */
+	if (!trust && !services)
+		ret = textfile_casedel(filename, addr);
+	else {
+		char *new_str = service_list_to_string(services);
+		ret = textfile_caseput(filename, addr, new_str);
+		free(new_str);
+	}
+
+	g_slist_free(services);
+
+	if (str)
+		free(str);
+
+	return ret;
+}
+
+gboolean read_trust(const char *addr, const char *service)
+{
+	char filename[PATH_MAX + 1], *str;
+	GSList *services;
+	gboolean ret;
+
+	create_filename(filename, PATH_MAX, BDADDR_ANY, "trusts");
+
+	str = textfile_caseget(filename, addr);
+	if (!str)
+		return FALSE;
+
+	services = service_string_to_list(str);
+
+	if (g_slist_find_custom(services, service, (GCompareFunc) strcmp))
+		ret = TRUE;
+	else
+		ret = FALSE;
+
+	g_slist_free(services);
+	free(str);
+
+	return ret;
 }
