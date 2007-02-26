@@ -62,6 +62,8 @@
 #define L2CAP_PSM_HIDP_CTRL		0x11
 #define L2CAP_PSM_HIDP_INTR		0x13
 
+#define BUF_SIZE	16
+
 static DBusConnection *connection = NULL;
 
 const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
@@ -69,6 +71,7 @@ const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";
 const char *headset_uuid = "00001108-0000-1000-8000-00805f9b34fb";
 
 struct fake_input {
+	GIOChannel	*io;
 	int		rfcomm; /* RFCOMM socket */
 	int		uinput;	/* uinput socket */
 	uint8_t		ch;	/* RFCOMM channel number */
@@ -469,6 +472,50 @@ static const char *create_input_path(uint8_t major, uint8_t minor)
 	return path;
 }
 
+static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
+{
+	struct fake_input *fake = data;
+	const char *ok = "\r\nOK\r\n";
+	GError *gerr = NULL;
+	char buf[BUF_SIZE];
+	gsize bread = 0, bwritten;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+	
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		error("Hangup or error on rfcomm server socket");
+		goto failed;
+	}
+
+	memset(buf, 0, BUF_SIZE);
+	if (g_io_channel_read_chars(chan, (gchar *)buf, sizeof(buf) - 1,
+					&bread, &gerr) != G_IO_STATUS_NORMAL) {
+		error("IO Channel read error: %s", gerr->message);
+		g_error_free(gerr);
+		goto failed;
+	}
+
+	if (g_io_channel_write_chars(chan, ok, 6, &bwritten,
+					&gerr) != G_IO_STATUS_NORMAL) {
+		error("IO Channel write error: %s", gerr->message);
+		g_error_free(gerr);
+		goto failed;
+	}
+
+	debug("FIXME: decode %s", buf);
+
+	return TRUE;
+
+failed:
+	g_io_channel_shutdown(fake->io, FALSE, NULL);
+	g_io_channel_unref(chan);
+	ioctl(fake->uinput, UI_DEV_DESTROY);
+	close(fake->uinput);
+	fake->uinput = -1;
+	return FALSE;
+}
+
 static gboolean rfcomm_connect_cb(GIOChannel *chan,
 				GIOCondition cond, struct pending_connect *pc)
 {
@@ -513,14 +560,16 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	 * first to report volume gain key events
 	 */
 
-	/* FIXME: Create the uinput */
 	fake->uinput = uinput_create("Fake input");
 	if (fake->uinput < 0) {
 		err = errno;
 		goto failed;
 	}
 
-	/* FIXME: Add the watch to listen on rfcomm channel */
+	fake->io = g_io_channel_unix_new(fake->rfcomm);
+	g_io_channel_set_close_on_unref(fake->io, TRUE);
+	g_io_add_watch(fake->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+						(GIOFunc) rfcomm_io_cb, fake);
 
 	reply = dbus_message_new_method_return(pc->msg);
 	if (reply) {
