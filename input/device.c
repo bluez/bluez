@@ -1291,11 +1291,12 @@ static int get_class(bdaddr_t *src, bdaddr_t *dst, uint32_t *cls)
 	if (!str)
 		return -ENOENT;
 
-	*cls = strtol(str, NULL, 16);
+	if (sscanf(str, "%x", cls) != 1) {
+		free(str);
+		return -ENOENT;
+	}
 
 	free(str);
-	if ((*cls == LONG_MIN) || (*cls == LONG_MAX))
-		return -ERANGE;
 
 	return 0;
 }
