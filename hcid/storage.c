@@ -526,13 +526,8 @@ static char *service_list_to_string(GSList *services)
 		int ret;
 		char *ident = services->data;
 
-		if (services->next)
-			ret = snprintf(str + len, sizeof(str) - len - 1, "%s ",
-					ident);
-					
-		else
-			ret = snprintf(str + len, sizeof(str) - len - 1, "%s",
-					ident);
+		ret = snprintf(str + len, sizeof(str) - len - 1, "%s%s",
+				ident, services->next ? " " : "");
 
 		if (ret > 0)
 			len += ret;
