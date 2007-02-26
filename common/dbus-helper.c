@@ -90,7 +90,7 @@ static void generic_unregister(DBusConnection *connection, void *user_data)
 	if (data->unregister_function)
 		data->unregister_function(connection, data->user_data);
 
-	free(data);
+	g_free(data);
 }
 
 static struct interface_data *find_interface(GSList *interfaces,
@@ -153,11 +153,7 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 {
 	struct generic_data *data;
 
-	data = malloc(sizeof(*data));
-	if (!data)
-		return FALSE;
-
-	memset(data, 0, sizeof(*data));
+	data = g_new0(struct generic_data, 1);
 
 	data->user_data = user_data;
 	data->unregister_function = function;
@@ -167,7 +163,7 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 
 	if (dbus_connection_register_object_path(connection, path,
 					&generic_table, data) == FALSE) {
-		free(data);
+		g_free(data);
 		return FALSE;
 	}
 
@@ -193,11 +189,7 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 						(void *) &data) == FALSE)
 		return FALSE;
 
-	iface = malloc(sizeof(*iface));
-	if (!iface)
-		return FALSE;
-
-	memset(iface, 0, sizeof(*iface));
+	iface = g_new0(struct interface_data, 1);
 
 	iface->interface = interface;
 	iface->methods = methods;

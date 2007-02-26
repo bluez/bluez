@@ -119,18 +119,16 @@ static void passkey_agent_free(struct passkey_agent *agent)
 	if (!agent->exited)
 		release_agent(agent);
 
-	if (agent->name)
-		free(agent->name);
-	if (agent->path)
-		free(agent->path);
-	if (agent->addr)
-		free(agent->addr);
+	g_free(agent->name);
+	g_free(agent->path);
+	g_free(agent->addr);
+
 	if (agent->conn)
 		dbus_connection_unref(agent->conn);
 
 	g_slist_free(agent->pending_requests);
 
-	free(agent);
+	g_free(agent);
 }
 
 static void agent_exited(const char *name, struct adapter *adapter)

@@ -84,7 +84,7 @@ static void exit_callback(const char *name, void *user_data)
 	if (user_record->sender)
 		g_free(user_record->sender);
 
-	free(user_record);
+	g_free(user_record);
 }
 
 static DBusHandlerResult add_service_record(DBusConnection *conn,
@@ -111,20 +111,20 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 		sdp_record = sdp_extract_pdu(record, &scanned);
 		if (!sdp_record) {
 			error("Parsing of service record failed");
-			free(user_record);
+			g_free(user_record);
 			return error_failed(conn, msg, EIO);
 		}
 
 		if (scanned != len) {
 			error("Size mismatch of service record");
-			free(user_record);
+			g_free(user_record);
 			sdp_record_free(sdp_record);
 			return error_failed(conn, msg, EIO);
 		}
 
 		if (add_record_to_server(sdp_record) < 0) {
 			error("Failed to register service record");
-			free(user_record);
+			g_free(user_record);
 			sdp_record_free(sdp_record);
 			return error_failed(conn, msg, EIO);
 		}
@@ -136,7 +136,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 		if (register_sdp_binary((uint8_t *) record, size,
 						&user_record->handle) < 0) {
 			error("Failed to register service record");
-			free(user_record);
+			g_free(user_record);
 			return error_failed(conn, msg, errno);
 		}
 	}
@@ -250,7 +250,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 	if (user_record->sender)
 		g_free(user_record->sender);
 
-	free(user_record);
+	g_free(user_record);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

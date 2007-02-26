@@ -110,14 +110,11 @@ static void name_data_free(struct name_data *data)
 	GSList *l;
 
 	for (l = data->callbacks; l != NULL; l = l->next)
-		free(l->data);
+		g_free(l->data);
 
 	g_slist_free(data->callbacks);
-
-	if (data->name)
-		free(data->name);
-
-	free(data);
+	g_free(data->name);
+	g_free(data);
 }
 
 static int name_data_add(const char *name, name_cb_t func, void *user_data)
@@ -126,9 +123,7 @@ static int name_data_add(const char *name, name_cb_t func, void *user_data)
 	struct name_data *data = NULL;
 	struct name_callback *cb = NULL;
 
-	cb = malloc(sizeof(struct name_callback));
-	if (!cb)
-		goto failed;
+	cb = g_new(struct name_callback, 1);
 
 	cb->func = func;
 	cb->user_data = user_data;
@@ -139,30 +134,15 @@ static int name_data_add(const char *name, name_cb_t func, void *user_data)
 		goto done;
 	}
 
-	data = malloc(sizeof(struct name_data));
-	if (!data)
-		goto failed;
+	data = g_new0(struct name_data, 1);
 
-	memset(data, 0, sizeof(struct name_data));
-
-	data->name = strdup(name);
-	if (!data->name)
-		goto failed;
+	data->name = g_strdup(name);
 
 	name_listeners = g_slist_append(name_listeners, data);
 
 done:
 	data->callbacks = g_slist_append(data->callbacks, cb);
 	return first;
-
-failed:
-	if (data)
-		name_data_free(data);
-
-	if (cb)
-		free(cb);
-
-	return 0;
 }
 
 static void name_data_remove(const char *name, name_cb_t func, void *user_data)
@@ -177,7 +157,7 @@ static void name_data_remove(const char *name, name_cb_t func, void *user_data)
 	cb = name_callback_find(data->callbacks, func, user_data);
 	if (cb) {
 		data->callbacks = g_slist_remove(data->callbacks, cb);
-		free(cb);
+		g_free(cb);
 	}
 
 	if (!data->callbacks) {
@@ -291,7 +271,7 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 	}
 
 	data->callbacks = g_slist_remove(data->callbacks, cb);
-	free(cb);
+	g_free(cb);
 
 	/* Don't remove the filter if other callbacks exist */
 	if (data->callbacks)
@@ -434,9 +414,7 @@ static dbus_bool_t add_watch(DBusWatch *watch, void *data)
 	if (!dbus_watch_get_enabled(watch))
 		return TRUE;
 
-	info = malloc(sizeof(struct watch_info));
-	if (info == NULL)
-		return FALSE;
+	info = g_new(struct watch_info, 1);
 
 	fd = dbus_watch_get_fd(watch);
 	info->io = g_io_channel_unix_new(fd);
@@ -464,7 +442,7 @@ static void remove_watch(DBusWatch *watch, void *data)
 		g_source_remove(info->watch_id);
 		g_io_channel_unref(info->io);
 		dbus_connection_unref(info->conn);
-		free(info);
+		g_free(info);
 	}
 }
 
@@ -498,7 +476,7 @@ static void timeout_handler_free(void *data)
 		return;
 
 	g_source_remove(handler->id);
-	free(handler);
+	g_free(handler);
 }
 
 static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
@@ -508,8 +486,7 @@ static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
 	if (!dbus_timeout_get_enabled (timeout))
 		return TRUE;
 
-	handler = malloc(sizeof(timeout_handler_t));
-	memset(handler, 0, sizeof(timeout_handler_t));
+	handler = g_new0(timeout_handler_t, 1);
 
 	handler->timeout = timeout;
 	handler->id = g_timeout_add(dbus_timeout_get_interval(timeout),
@@ -595,12 +572,7 @@ DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void 
 	if (!disconnect_cb)
 		return conn;
 
-	dc_data = malloc(sizeof(struct disconnect_data));
-	if (!dc_data) {
-		error("Allocating disconnect data failed");
-		dbus_connection_unref(conn);
-		return NULL;
-	}
+	dc_data = g_new(struct disconnect_data, 1);
 
 	dc_data->disconnect_cb = disconnect_cb;
 	dc_data->user_data = user_data;
@@ -608,9 +580,9 @@ DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void 
 	dbus_connection_set_exit_on_disconnect(conn, FALSE);
 
 	if (!dbus_connection_add_filter(conn, disconnect_filter,
-				dc_data, free)) {
+				dc_data, g_free)) {
 		error("Can't add D-Bus disconnect filter");
-		free(dc_data);
+		g_free(dc_data);
 		dbus_connection_unref(conn);
 		return NULL;
 	}

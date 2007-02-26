@@ -107,9 +107,9 @@ static struct audit *audit_new(DBusConnection *conn, DBusMessage *msg,
 
 static void audit_free(struct audit *audit)
 {
-	free(audit->requestor);
+	g_free(audit->requestor);
 	dbus_connection_unref(audit->conn);
-	free(audit);
+	g_free(audit);
 }
 
 static void send_audit_status(struct audit *audit, const char *name)

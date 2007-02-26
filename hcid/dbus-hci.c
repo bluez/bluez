@@ -71,7 +71,7 @@ void bonding_request_free(struct bonding_request_info *bonding)
 	if (bonding->io)
 		g_io_channel_unref(bonding->io);
 
-	free(bonding);
+	g_free(bonding);
 }
 
 int found_device_cmp(const struct remote_dev_info *d1,
@@ -159,7 +159,7 @@ static int found_device_remove(GSList **list, bdaddr_t *bdaddr)
 
 	dev = l->data;
 	*list = g_slist_remove(*list, dev);
-	free(dev);
+	g_free(dev);
 
 	return 0;
 }
@@ -421,7 +421,7 @@ int unregister_adapter_path(const char *path)
 		name_listener_remove(connection,
 				adapter->discov_requestor,
 				(name_cb_t) discover_devices_req_exit, adapter);
-		free(adapter->discov_requestor);
+		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 	}
 
@@ -430,7 +430,7 @@ int unregister_adapter_path(const char *path)
 				adapter->pdiscov_requestor,
 				(name_cb_t) periodic_discover_req_exit,
 				adapter);
-		free(adapter->pdiscov_requestor);
+		g_free(adapter->pdiscov_requestor);
 		adapter->pdiscov_requestor = NULL;
 	}
 
@@ -510,7 +510,7 @@ int hcid_dbus_register_device(uint16_t id)
 	if (!dbus_connection_register_object_path(connection, path,
 						&adapter_vtable, adapter)) {
 		error("D-Bus failed to register %s object", path);
-		free(adapter);
+		g_free(adapter);
 		return -1;
 	}
 
@@ -718,7 +718,7 @@ int hcid_dbus_stop_device(uint16_t id)
 		name_listener_remove(connection, adapter->discov_requestor,
 					(name_cb_t) discover_devices_req_exit,
 					adapter);
-		free(adapter->discov_requestor);
+		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 	}
 
@@ -726,7 +726,7 @@ int hcid_dbus_stop_device(uint16_t id)
 		name_listener_remove(connection, adapter->pdiscov_requestor,
 					(name_cb_t) periodic_discover_req_exit,
 					adapter);
-		free(adapter->pdiscov_requestor);
+		g_free(adapter->pdiscov_requestor);
 		adapter->pdiscov_requestor = NULL;
 	}
 
@@ -1171,7 +1171,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	if (adapter->discov_requestor) { 
 		name_listener_remove(connection, adapter->discov_requestor,
 				(name_cb_t) discover_devices_req_exit, adapter);
-		free(adapter->discov_requestor);
+		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 
 		/* If there is a pending reply for discovery cancel */
@@ -1281,7 +1281,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 		name_listener_remove(connection, adapter->pdiscov_requestor,
 					(name_cb_t) periodic_discover_req_exit,
 					adapter);
-		free(adapter->pdiscov_requestor);
+		g_free(adapter->pdiscov_requestor);
 		adapter->pdiscov_requestor = NULL;
 	}
 
@@ -1376,7 +1376,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 			char *dev = l->data;
 			adapter->oor_devices = g_slist_remove(adapter->oor_devices,
 								dev);
-			free(dev);
+			g_free(dev);
 		}
 	}
 
@@ -1414,7 +1414,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 			name_status = NAME_NOT_REQUIRED;
 
 			if (name)
-				free(name);
+				g_free(name);
 
 			name = tmp_name;
 		} else {
@@ -1432,7 +1432,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 							DBUS_TYPE_INVALID);
 		send_message_and_unref(connection, signal_name);
 
-		free(name);
+		g_free(name);
 
 		if (name_type != 0x08)
 			name_status = NAME_SENT;
@@ -1538,7 +1538,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	if (adapter->discov_requestor) {
 		name_listener_remove(connection, adapter->discov_requestor,
 				(name_cb_t) discover_devices_req_exit, adapter);
-		free(adapter->discov_requestor);
+		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 
 		/* If there is a pending reply for discovery cancel */

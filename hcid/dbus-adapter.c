@@ -1716,7 +1716,7 @@ void dc_pending_timeout_cleanup(struct adapter *adapter)
 {
 	dbus_connection_unref(adapter->pending_dc->conn);
 	dbus_message_unref(adapter->pending_dc->msg);
-	free(adapter->pending_dc);
+	g_free(adapter->pending_dc);
 	adapter->pending_dc = NULL;
 }
 
