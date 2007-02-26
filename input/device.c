@@ -496,13 +496,35 @@ static int decode_key(const char *str)
 
 	new_gain = strtol(&str[7], NULL, 10);
 	if (new_gain <= gain)
-		key = (mode == UPDOWN_ENABLED ? KEY_DOWN : KEY_PAGEDOWN);
-	else
 		key = (mode == UPDOWN_ENABLED ? KEY_UP : KEY_PAGEUP);
+	else
+		key = (mode == UPDOWN_ENABLED ? KEY_DOWN : KEY_PAGEDOWN);
 
 	gain = new_gain;
 
 	return key;
+}
+
+static void send_event(int fd, uint16_t type, uint16_t code, int32_t value)
+{
+	struct uinput_event event;
+
+	memset(&event, 0, sizeof(event));
+	event.type	= type;
+	event.code	= code;
+	event.value	= value;
+
+	write(fd, &event, sizeof(event));
+}
+
+static void send_key(int fd, uint16_t key)
+{
+	/* Key press */
+	send_event(fd, EV_KEY, key, 1);
+	send_event(fd, EV_SYN, SYN_REPORT, 0);
+	/* Key release */
+	send_event(fd, EV_KEY, key, 0);
+	send_event(fd, EV_SYN, SYN_REPORT, 0);
 }
 
 static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -530,6 +552,8 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		goto failed;
 	}
 
+	debug("Received: %s", buf);
+
 	if (g_io_channel_write_chars(chan, ok, 6, &bwritten,
 					&gerr) != G_IO_STATUS_NORMAL) {
 		error("IO Channel write error: %s", gerr->message);
@@ -538,10 +562,8 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	}
 
 	key = decode_key(buf);
-	if (key != KEY_RESERVED) {
-		/* FIXME: send the key to uinput */
-		debug("Key code: %d", key);
-	}
+	if (key != KEY_RESERVED)
+		send_key(fake->uinput, key);
 
 	return TRUE;
 
