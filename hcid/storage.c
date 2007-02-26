@@ -495,7 +495,7 @@ static GSList *service_string_to_list(char *services)
 	char *start = services;
 	int i, finished = 0;
 
-	for (i = 0; ; i++) {
+	for (i = 0; !finished; i++) {
 		if (services[i] == '\0')
 			finished = 1;
 
@@ -504,9 +504,6 @@ static GSList *service_string_to_list(char *services)
 			l = g_slist_append(l, start);
 			start = services + i + 1;
 		}
-
-		if (finished)
-			break;
 	}
 
 	return l;
