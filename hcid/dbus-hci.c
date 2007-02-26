@@ -134,11 +134,8 @@ int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,
 		return -EALREADY;
 	}
 
-	dev = malloc(sizeof(*dev));
-	if (!dev)
-		return -ENOMEM;
+	dev = g_new0(struct remote_dev_info, 1);
 
-	memset(dev, 0, sizeof(*dev));
 	bacpy(&dev->bdaddr, bdaddr);
 	dev->rssi = rssi;
 	dev->name_status = name_status;
@@ -191,11 +188,8 @@ static int active_conn_append(GSList **list, bdaddr_t *bdaddr,
 {
 	struct active_conn_info *dev;
 
-	dev = malloc(sizeof(*dev));
-	if (!dev)
-		return -1;
+	dev = g_new0(struct active_conn_info, 1);
 
-	memset(dev, 0 , sizeof(*dev));
 	bacpy(&dev->bdaddr, bdaddr);
 	dev->handle = handle;
 
@@ -442,7 +436,7 @@ int unregister_adapter_path(const char *path)
 
 	if (adapter->found_devices) {
 		g_slist_foreach(adapter->found_devices,
-				(GFunc) free, NULL);
+				(GFunc) g_free, NULL);
 		g_slist_free(adapter->found_devices);
 		adapter->found_devices = NULL;
 	}
@@ -456,7 +450,7 @@ int unregister_adapter_path(const char *path)
 
 	if (adapter->pin_reqs) {
 		g_slist_foreach(adapter->pin_reqs,
-				(GFunc) free, NULL);
+				(GFunc) g_free, NULL);
 		g_slist_free(adapter->pin_reqs);
 		adapter->pin_reqs = NULL;
 	}
@@ -476,7 +470,7 @@ int unregister_adapter_path(const char *path)
 		dc_pending_timeout_cleanup(adapter);
 	}
 
-	free (adapter);
+	g_free (adapter);
 
 unreg:
 	if (!dbus_connection_unregister_object_path (connection, path)) {
@@ -503,14 +497,12 @@ int hcid_dbus_register_device(uint16_t id)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	adapter = malloc(sizeof(struct adapter));
+	adapter = g_try_new0(struct adapter, 1);
 	if (!adapter) {
 		error("Failed to alloc memory to D-Bus path register data (%s)",
 				path);
 		return -1;
 	}
-
-	memset(adapter, 0, sizeof(struct adapter));
 
 	adapter->dev_id = id;
 	adapter->pdiscov_resolve_names = 1;
@@ -651,19 +643,14 @@ int hcid_dbus_start_device(uint16_t id)
 	 * the are active connections before the daemon've started
 	 */
 
-	cl = malloc(10 * sizeof(*ci) + sizeof(*cl));
-	if (!cl)
-		goto failed;
+	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
 
 	cl->dev_id = id;
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(dd, HCIGETCONNLIST, (void *) cl) < 0) {
-		free(cl);
-		cl = NULL;
+	if (ioctl(dd, HCIGETCONNLIST, cl) < 0)
 		goto failed;
-	}
 
 	for (i = 0; i < cl->conn_num; i++, ci++)
 		active_conn_append(&adapter->active_conn,
@@ -678,8 +665,7 @@ failed:
 	if (dd >= 0)
 		hci_close_dev(dd);
 
-	if (cl)
-		free(cl);
+	g_free(cl);
 
 	return ret;
 }
@@ -745,7 +731,7 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 
 	if (adapter->found_devices) {
-		g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+		g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
 		g_slist_free(adapter->found_devices);
 		adapter->found_devices = NULL;
 	}
@@ -757,14 +743,14 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 
 	if (adapter->pin_reqs) {
-		g_slist_foreach(adapter->pin_reqs, (GFunc) free, NULL);
+		g_slist_foreach(adapter->pin_reqs, (GFunc) g_free, NULL);
 		g_slist_free(adapter->pin_reqs);
 		adapter->pin_reqs = NULL;
 	}
 
 	if (adapter->active_conn) {
 		g_slist_foreach(adapter->active_conn, (GFunc) send_dc_signal, path);
-		g_slist_foreach(adapter->active_conn, (GFunc) free, NULL);
+		g_slist_foreach(adapter->active_conn, (GFunc) g_free, NULL);
 		g_slist_free(adapter->active_conn);
 		adapter->active_conn = NULL;
 	}
@@ -816,13 +802,8 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 		return;
 	}
 
-	info = malloc(sizeof(struct pending_pin_info));
-	if (!info) {
-		error("Out of memory when adding new pin request");
-		return;
-	}
+	info = g_new0(struct pending_pin_info, 1);
 
-	memset(info, 0, sizeof(struct pending_pin_info));
 	bacpy(&info->bdaddr, dba);
 	adapter->pin_reqs = g_slist_append(adapter->pin_reqs, info);
 
@@ -903,7 +884,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	if (l) {
 		void *d = l->data;
 		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, l->data);
-		free(d);
+		g_free(d);
 
 		if (!status) {
 			message = dev_signal_factory(adapter->dev_id,
@@ -1069,7 +1050,7 @@ int found_device_req_name(struct adapter *adapter)
 		/* if failed, request the next element */
 		/* remove the element from the list */
 		adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
-		free(dev);
+		g_free(dev);
 
 		/* get the next element */
 		l = g_slist_find_custom(adapter->found_devices, &match,
@@ -1183,7 +1164,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	}
 
 	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
@@ -1287,7 +1268,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	adapter->discov_type &= ~(PERIODIC_INQUIRY | RESOLVE_NAME);
 
 	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
@@ -1546,7 +1527,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 		goto done; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
@@ -1624,7 +1605,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		if (l) {
 			struct pending_pin_req *p = l->data;
 			adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
-			free(p);
+			g_free(p);
 		}
 
 		if (adapter->bonding)
@@ -1702,7 +1683,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	if (l) {
 		struct pending_pin_req *p = l->data;
 		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
-		free(p);
+		g_free(p);
 	}
 
 	/* Check if there is a pending CreateBonding request */
@@ -1750,7 +1731,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	send_message_and_unref(connection, message);
 
 	adapter->active_conn = g_slist_remove(adapter->active_conn, dev);
-	free(dev);
+	g_free(dev);
 
 failed:
 	if (peer_addr)
@@ -2009,7 +1990,7 @@ void create_bond_req_exit(const char *name, struct adapter *adapter)
 		}
 
 		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
-		free(p);
+		g_free(p);
 	}
 
 	g_io_channel_close(adapter->bonding->io);
@@ -2131,7 +2112,7 @@ cleanup:
 	 * Reset discov_requestor and discover_state in the remote name
 	 * request event handler or in the inquiry complete handler.
 	 */
-	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
@@ -2223,7 +2204,7 @@ cleanup:
 	 * Reset pdiscov_requestor and pdiscov_active is done when the
 	 * cmd complete event for exit periodic inquiry mode cmd arrives.
 	 */
-	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 

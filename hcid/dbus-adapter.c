@@ -203,7 +203,7 @@ int pending_remote_name_cancel(struct adapter *adapter)
 	}
 
 	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) free, NULL);
+	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
@@ -217,12 +217,7 @@ static struct bonding_request_info *bonding_request_new(bdaddr_t *peer,
 {
 	struct bonding_request_info *bonding;
 
-	bonding = malloc(sizeof(*bonding));
-
-	if (!bonding)
-		return NULL;
-
-	memset(bonding, 0, sizeof(*bonding));
+	bonding = g_new0(struct bonding_request_info, 1);
 
 	bacpy(&bonding->bdaddr, peer);
 
@@ -1755,9 +1750,7 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 	if(adapter->pending_dc)
 		return error_disconnect_in_progress(conn, msg);
 
-	adapter->pending_dc = malloc(sizeof(*adapter->pending_dc));
-	if(!adapter->pending_dc)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	adapter->pending_dc = g_new0(struct pending_dc_info, 1);
 
 	/* Start waiting... */
 	adapter->pending_dc->timeout_id =
@@ -1766,7 +1759,7 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 			      adapter);
 
 	if(!adapter->pending_dc->timeout_id) {
-		free(adapter->pending_dc);
+		g_free(adapter->pending_dc);
 		adapter->pending_dc = NULL;
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
@@ -2054,7 +2047,7 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 		} 
 
 		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, pin_req);
-		free(pin_req);
+		g_free(pin_req);
 	}
 
 	g_io_channel_close(adapter->bonding->io);

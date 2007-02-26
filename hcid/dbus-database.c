@@ -82,7 +82,7 @@ static void exit_callback(const char *name, void *user_data)
 		unregister_sdp_record(user_record->handle);
 
 	if (user_record->sender)
-		free(user_record->sender);
+		g_free(user_record->sender);
 
 	free(user_record);
 }
@@ -105,11 +105,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	if (len <= 0)
 		return error_invalid_arguments(conn, msg);
 
-	user_record = malloc(sizeof(*user_record));
-	if (!user_record)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	memset(user_record, 0, sizeof(*user_record));
+	user_record = g_new0(struct record_data, 1);
 
 	if (sdp_server_enable) {
 		sdp_record = sdp_extract_pdu(record, &scanned);
@@ -147,7 +143,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	user_record->sender = strdup(sender);
+	user_record->sender = g_strdup(sender);
 
 	records = g_slist_append(records, user_record);
 
@@ -175,23 +171,19 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg);
 
-	user_record = malloc(sizeof(*user_record));
-	if (!user_record)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	memset(user_record, 0, sizeof(*user_record));
+	user_record = g_new0(struct record_data, 1);
 
 	sdp_record = sdp_xml_parse_record(record, strlen(record));
 	if (!sdp_record) {
 		error("Parsing of XML service record failed");
-		free(user_record);
+		g_free(user_record);
 		return error_failed(conn, msg, EIO);
 	}
 
 	if (sdp_server_enable) {
 		if (add_record_to_server(sdp_record) < 0) {
 			error("Failed to register service record");
-			free(user_record);
+			g_free(user_record);
 			sdp_record_free(sdp_record);
 			return error_failed(conn, msg, EIO);
 		}
@@ -200,7 +192,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 	} else {
 		if (register_sdp_record(sdp_record) < 0) {
 			error("Failed to register service record");
-			free(user_record);
+			g_free(user_record);
 			sdp_record_free(sdp_record);
 			return error_failed(conn, msg, EIO);
 		}
@@ -212,7 +204,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	user_record->sender = strdup(sender);
+	user_record->sender = g_strdup(sender);
 
 	records = g_slist_append(records, user_record);
 
@@ -256,7 +248,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 		unregister_sdp_record(handle);
 
 	if (user_record->sender)
-		free(user_record->sender);
+		g_free(user_record->sender);
 
 	free(user_record);
 

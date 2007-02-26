@@ -68,18 +68,9 @@ struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba, uint16_t 
 {
 	struct hci_req_data *data;
 
-	data = malloc(sizeof(*data));
-	if (!data)
-		return NULL;
+	data = g_new0(struct hci_req_data, 1);
 
-	memset(data, 0, sizeof(*data));
-
-	data->cparam = malloc(clen);
-	if (!data->cparam) {
-		free(data);
-		return NULL;
-	}
-
+	data->cparam = g_malloc(clen);
 	memcpy(data->cparam, cparam, clen);
 
 	bacpy(&data->dba, dba);
@@ -121,8 +112,8 @@ static void hci_req_queue_process(int dev_id)
 		ret_val = hci_send_cmd(dd, data->ogf, data->ocf, data->clen, data->cparam);
 		if (ret_val < 0) {
 			hci_req_queue = g_slist_remove(hci_req_queue, data);
-			free(data->cparam);
-			free(data);
+			g_free(data->cparam);
+			g_free(data);
 		}
 
 	} while(ret_val < 0);
@@ -159,8 +150,8 @@ void hci_req_queue_remove(int dev_id, bdaddr_t *dba)
 			continue;
 
 		hci_req_queue = g_slist_remove(hci_req_queue, req);
-		free(req->cparam);
-		free(req);
+		g_free(req->cparam);
+		g_free(req);
 	}
 }
 
@@ -187,8 +178,8 @@ static void check_pending_hci_req(int dev_id, int event)
 
 		/* remove the confirmed cmd */
 		hci_req_queue = g_slist_remove(hci_req_queue, data);
-		free(data->cparam);
-		free(data);
+		g_free(data->cparam);
+		g_free(data);
 	}
 
 	hci_req_queue_process(dev_id);
@@ -201,11 +192,7 @@ static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *
 	char addr[18];
 	int i;
 
-	cl = malloc(10 * sizeof(*ci) + sizeof(*cl));
-	if (!cl)
-		return -ENOMEM;
-
-	memset(cl, 0, 10 * sizeof(*ci) + sizeof(*cl));
+	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
 
 	ba2str(sba, addr);
 	cl->dev_id = hci_devid(addr);
@@ -213,18 +200,18 @@ static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *
 	ci = cl->conn_info;
 
 	if (ioctl(dev, HCIGETCONNLIST, (void *) cl) < 0) {
-		free(cl);
+		g_free(cl);
 		return -EIO;
 	}
 
 	for (i = 0; i < cl->conn_num; i++, ci++)
 		if (ci->handle == handle) {
 			bacpy(dba, &ci->bdaddr);
-			free(cl);
+			g_free(cl);
 			return 0;
 		}
 
-	free(cl);
+	g_free(cl);
 
 	return -ENOENT;
 }
@@ -346,11 +333,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	ba2str(sba, sa); ba2str(dba, da);
 	info("pin_code_request (sba=%s, dba=%s)", sa, da);
 
-	cr = malloc(sizeof(*cr) + sizeof(*ci));
-	if (!cr)
-		return;
-
-	memset(cr, 0, sizeof(*cr) + sizeof(*ci));
+	cr = g_malloc0(sizeof(*cr) + sizeof(*ci));
 
 	bacpy(&cr->bdaddr, dba);
 	cr->type = ACL_LINK;
@@ -406,12 +389,12 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 
 	hcid_dbus_pending_pin_req_add(sba, &ci->bdaddr);
 
-	free(cr);
+	g_free(cr);
 
 	return;
 
 reject:
-	free(cr);
+	g_free(cr);
 
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 
@@ -839,19 +822,12 @@ void start_security_manager(int hdev)
 		return;
 	}
 
-	di = malloc(sizeof(*di));
-	if (!di) {
-		error("Can't allocate device info buffer: %s (%d)",
-							strerror(errno), errno);
-		close(dev);
-		return;
-	}
-
+	di = g_new(struct hci_dev_info, 1);
 	if (hci_devinfo(hdev, di) < 0) {
 		error("Can't get device info: %s (%d)",
 							strerror(errno), errno);
 		close(dev);
-		free(di);
+		g_free(di);
 		return;
 	}
 
@@ -859,7 +835,7 @@ void start_security_manager(int hdev)
 	g_io_channel_set_close_on_unref(chan, TRUE);
 	io_data[hdev].watch_id = g_io_add_watch_full(chan, G_PRIORITY_HIGH,
 						G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-						io_security_event, di, (GDestroyNotify)free);
+						io_security_event, di, (GDestroyNotify) g_free);
 	io_data[hdev].channel = chan;
 	io_data[hdev].pin_length = -1;
 

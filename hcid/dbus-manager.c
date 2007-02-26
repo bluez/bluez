@@ -144,11 +144,7 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 	if (sk < 0)
 		return error_failed(conn, msg, errno);
 
-	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
-	if (!dl) {
-		close(sk);
-		return error_out_of_memory(conn, msg);
-	}
+	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
@@ -165,7 +161,7 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
 		close(sk);
-		free(dl);
+		g_free(dl);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
@@ -189,7 +185,7 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	free(dl);
+	g_free(dl);
 
 	close(sk);
 

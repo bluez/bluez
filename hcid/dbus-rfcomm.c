@@ -99,15 +99,14 @@ static char *rfcomm_node_name_from_id(int16_t id, char *dev, size_t len)
 
 static void rfcomm_node_free(struct rfcomm_node *node)
 {
-	if (node->owner)
-		free(node->owner);
+	g_free(node->owner);
 	if (node->io) {
 		g_source_remove(node->io_id);
 		g_io_channel_unref(node->io);
 	}
 	if (node->conn)
 		dbus_connection_unref(node->conn);
-	free(node);
+	g_free(node);
 }
 
 static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *name)
@@ -161,15 +160,14 @@ static struct pending_connect *find_pending_connect_by_service(const char *bda,
 
 static void pending_connect_free(struct pending_connect *c)
 {
-	if (c->svc)
-		free(c->svc);
+	g_free(c->svc);
 	if (c->io)
 		g_io_channel_unref(c->io);
 	if (c->msg)
 		dbus_message_unref(c->msg);
 	if (c->conn)
 		dbus_connection_unref(c->conn);
-	free(c);
+	g_free(c);
 }
 
 static int rfcomm_release(struct rfcomm_node *node, int *err)
@@ -242,11 +240,7 @@ static void rfcomm_connect_cb_devnode_opened(int fd, struct pending_connect *c,
 		goto failed;
 	}
 
-	node->owner = strdup(dbus_message_get_sender(c->msg));
-	if (!node->owner) {
-		error_failed(c->conn, c->msg, ENOMEM);
-		goto failed;
-	}
+	node->owner = g_strdup(dbus_message_get_sender(c->msg));
 
 	/* Check if the caller is still present */
 	if (!dbus_bus_name_has_owner(c->conn, node->owner, NULL)) {
@@ -355,12 +349,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	node = malloc(sizeof(struct rfcomm_node));
-	if (!node) {
-		error_failed(c->conn, c->msg, ENOMEM);
-		goto failed;
-	}
-	memset(node, 0, sizeof(*node));
+	node = g_new0(struct rfcomm_node, 1);
 
 	/* Create the rfcomm device node */
 	memset(&req, 0, sizeof(req));
@@ -410,22 +399,10 @@ static int rfcomm_connect(DBusConnection *conn, DBusMessage *msg, bdaddr_t *src,
 	int sk = -1;
 	struct pending_connect *c = NULL;
 
-	c = malloc(sizeof(struct pending_connect));
-	if (!c) {
-		if (err)
-			*err = ENOMEM;
-		goto failed;
-	}
-	memset(c, 0, sizeof(struct pending_connect));
+	c = g_new0(struct pending_connect, 1);
 
-	if (svc) {
-		c->svc = strdup(svc);
-		if (!c->svc) {
-			if (err)
-				*err = ENOMEM;
-			goto failed;
-		}
-	}
+	if (svc)
+		c->svc = g_strdup(svc);
 
 	c->laddr.rc_family = AF_BLUETOOTH;
 	bacpy(&c->laddr.rc_bdaddr, src);
@@ -512,21 +489,9 @@ static struct rfcomm_node *rfcomm_bind(bdaddr_t *src, const char *bda,
 	str2ba(bda, &req.dst);
 	req.channel = ch;
 
-	node = malloc(sizeof(struct rfcomm_node));
-	if (!node) {
-		if (err)
-			*err = ENOMEM;
-		return NULL;
-	}
-	memset(node, 0, sizeof(struct rfcomm_node));
+	node = g_new0(struct rfcomm_node, 1);
 
-	node->owner = strdup(owner);
-	if (!node->owner) {
-		if (err)
-			*err = ENOMEM;
-		rfcomm_node_free(node);
-		return NULL;
-	}
+	node->owner = g_strdup(owner);
 
 	node->id = ioctl(rfcomm_ctl, RFCOMMCREATEDEV, &req);
 	if (node->id < 0) {
@@ -562,23 +527,15 @@ static rfcomm_continue_data_t *rfcomm_continue_data_new(DBusConnection *conn,
 {
 	rfcomm_continue_data_t *new;
 
-	new = malloc(sizeof(*new));
-	if (!new)
-		return NULL;
+	new = g_new(rfcomm_continue_data_t, 1);
 
-	new->dst = strdup(dst);
+	new->dst = g_strdup(dst);
 	if (!new->dst) {
-		free(new);
+		g_free(new);
 		return NULL;
 	}
 
-	new->svc = strdup(svc);
-	if (!new->svc) {
-		free(new->dst);
-		free(new);
-		return NULL;
-	}
-
+	new->svc = g_strdup(svc);
 	new->conn = dbus_connection_ref(conn);
 	new->msg = dbus_message_ref(msg);
 	new->adapter = adapter;
@@ -590,9 +547,9 @@ static void rfcomm_continue_data_free(rfcomm_continue_data_t *d)
 {
 	dbus_connection_unref(d->conn);
 	dbus_message_unref(d->msg);
-	free(d->svc);
-	free(d->dst);
-	free(d);
+	g_free(d->svc);
+	g_free(d->dst);
+	g_free(d);
 }
 
 static void rfcomm_conn_req_continue(sdp_record_t *rec, void *data, int err)
@@ -609,7 +566,7 @@ static void rfcomm_conn_req_continue(sdp_record_t *rec, void *data, int err)
 
 	if (!sdp_get_access_protos(rec, &protos)) {
 		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-		sdp_list_foreach(protos, (sdp_list_func_t)sdp_list_free, NULL);
+		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
 		sdp_list_free(protos, NULL);
 	}
 	if (ch == -1) {
@@ -809,7 +766,7 @@ static void rfcomm_bind_req_continue(sdp_record_t *rec, void *data, int err)
 
 	if (!sdp_get_access_protos(rec, &protos)) {
 		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-		sdp_list_foreach(protos, (sdp_list_func_t)sdp_list_free, NULL);
+		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
 		sdp_list_free(protos, NULL);
 	}
 	if (ch == -1) {

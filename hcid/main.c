@@ -70,19 +70,19 @@ struct device_opts *alloc_device_opts(char *ref)
 {
 	struct device_list *device;
 
-	device = malloc(sizeof(struct device_list));
+	device = g_try_new(struct device_list, 1);
 	if (!device) {
 		info("Can't allocate devlist opts buffer: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
 	}
 
-	device->ref = strdup(ref);
+	device->ref = g_strdup(ref);
 	device->next = device_list;
 	device_list = device;
 
 	memcpy(&device->opts, &default_device, sizeof(struct device_opts));
-	device->opts.name = strdup(default_device.name);
+	device->opts.name = g_strdup(default_device.name);
 
 	return &device->opts;
 }
@@ -97,11 +97,10 @@ static void free_device_opts(void)
 	}
 
 	for (device = device_list; device; device = next) {
-		free(device->ref);
-		if (device->opts.name)
-			free(device->opts.name);
+		g_free(device->ref);
+		g_free(device->opts.name);
 		next = device->next;
-		free(device);
+		g_free(device);
 	}
 
 	device_list = NULL;
@@ -508,14 +507,13 @@ static void init_all_devices(int ctl)
 	struct hci_dev_req *dr;
 	int i;
 
-	dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
+	dl = g_try_malloc0(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
 	if (!dl) {
 		info("Can't allocate devlist buffer: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
 	}
 
-	memset(dl, 0, HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
@@ -534,7 +532,7 @@ static void init_all_devices(int ctl)
 		}
 	}
 
-	free(dl);
+	g_free(dl);
 }
 
 static void init_defaults(void)

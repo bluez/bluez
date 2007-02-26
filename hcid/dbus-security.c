@@ -192,37 +192,19 @@ static struct passkey_agent *passkey_agent_new(struct adapter *adapter, DBusConn
 {
 	struct passkey_agent *agent;
 
-	agent = malloc(sizeof(struct passkey_agent));
-	if (!agent)
-		return NULL;
-
-	memset(agent, 0, sizeof(struct passkey_agent));
+	agent = g_new0(struct passkey_agent, 1);
 
 	agent->adapter = adapter;
 
-	agent->name = strdup(name);
-	if (!agent->name)
-		goto mem_fail;
+	agent->name = g_strdup(name);
+	agent->path = g_strdup(path);
 
-	agent->path = strdup(path);
-	if (!agent->path)
-		goto mem_fail;
-
-	if (addr) {
+	if (addr)
 		agent->addr = strdup(addr);
-		if (!agent->addr)
-			goto mem_fail;
-	}
 
 	agent->conn = dbus_connection_ref(conn);
 
 	return agent;
-
-mem_fail:
-	/* So passkey_agent_free doesn't try to call Relese */
-	agent->exited = 1;
-	passkey_agent_free(agent);
-	return NULL;
 }
 
 static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *b)
@@ -511,11 +493,11 @@ static void auth_agent_call_cancel(struct auth_agent_req *req)
 
 static void auth_agent_free(struct authorization_agent *agent)
 {
-	free(agent->name);
-	free(agent->path);
+	g_free(agent->name);
+	g_free(agent->path);
 	dbus_connection_unref(agent->conn);
 	g_slist_free(agent->pending_requests);
-	free(agent);
+	g_free(agent);
 }
 
 static struct authorization_agent *auth_agent_new(DBusConnection *conn,
@@ -524,29 +506,14 @@ static struct authorization_agent *auth_agent_new(DBusConnection *conn,
 {
 	struct authorization_agent *agent;
 
-	agent = malloc(sizeof(*agent));
-	if (!agent)
-		return NULL;
-	memset(agent, 0, sizeof(*agent));
+	agent = g_new0(struct authorization_agent, 1);
 
-	agent->name = strdup(name);
-	if (!agent->name)
-		goto failed;
-
-	agent->path = strdup(path);
-	if (!agent->path)
-		goto failed;
+	agent->name = g_strdup(name);
+	agent->path = g_strdup(path);
 
 	agent->conn = dbus_connection_ref(conn);
 
 	return agent;
-
-failed:
-	if (agent->name)
-		free(agent->name);
-	free(agent);
-
-	return NULL;
 }
 
 static void default_auth_agent_exited(const char *name, void *data)
@@ -1042,8 +1009,8 @@ done:
 	dbus_pending_call_cancel(req->call);
 	if (req->call)
 		dbus_pending_call_unref(req->call);
-	free(req->path);
-	free(req);
+	g_free(req->path);
+	g_free(req);
 
 	if (agent != default_agent) {
 		agent->adapter->passkey_agents = g_slist_remove(agent->adapter->passkey_agents,
@@ -1067,10 +1034,7 @@ static int call_passkey_agent(DBusConnection *conn,
 	debug("Calling PasskeyAgent.Request: name=%s, path=%s",
 						agent->name, agent->path);
 
-	req = malloc(sizeof(struct pending_agent_request));
-	if (!req)
-		goto failed;
-	memset(req, 0, sizeof(struct pending_agent_request));
+	req = g_new0(struct pending_agent_request, 1);
 	req->dev = dev;
 	bacpy(&req->sba, sba);
 	bacpy(&req->bda, dba);
@@ -1090,10 +1054,8 @@ static int call_passkey_agent(DBusConnection *conn,
 	return 0;
 
 failed:
-	if (req) {
-		free(req->path);
-		free(req);
-	}
+	g_free(req->path);
+	g_free(req);
 
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 
@@ -1224,10 +1186,9 @@ done:
 	dbus_pending_call_cancel(req->call);
 	if (req->call)
 		dbus_pending_call_unref(req->call);
-	if (req->pin)
-		free(req->pin);
-	free(req->path);
-	free(req);
+	g_free(req->pin);
+	g_free(req->path);
+	g_free(req);
 
 	if (agent != default_agent) {
 		agent->adapter->passkey_agents = g_slist_remove(agent->adapter->passkey_agents,
@@ -1251,10 +1212,7 @@ static int call_confirm_agent(DBusConnection *conn,
 	debug("Calling PasskeyAgent.Confirm: name=%s, path=%s",
 						agent->name, agent->path);
 
-	req = malloc(sizeof(struct pending_agent_request));
-	if (!req)
-		goto failed;
-	memset(req, 0, sizeof(struct pending_agent_request));
+	req = g_new0(struct pending_agent_request, 1);
 	req->dev = dev;
 	bacpy(&req->sba, sba);
 	bacpy(&req->bda, dba);
@@ -1278,10 +1236,9 @@ static int call_confirm_agent(DBusConnection *conn,
 
 failed:
 	if (req) {
-		if (req->pin)
-			free(req->pin);
-		free(req->path);
-		free(req);
+		g_free(req->pin);
+		g_free(req->path);
+		g_free(req);
 	}
 
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
@@ -1351,10 +1308,9 @@ static void send_cancel_request(struct pending_agent_request *req)
 
 	dbus_pending_call_cancel(req->call);
 	dbus_pending_call_unref(req->call);
-	if (req->pin)
-		free(req->pin);
-	free(req->path);
-	free(req);
+	g_free(req->pin);
+	g_free(req->path);
+	g_free(req);
 }
 
 static void release_agent(struct passkey_agent *agent)

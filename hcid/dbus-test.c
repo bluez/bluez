@@ -93,10 +93,7 @@ static struct audit *audit_new(DBusConnection *conn, DBusMessage *msg,
 	path = dbus_message_get_path(msg);
 	requestor = dbus_message_get_sender(msg);
 
-	audit = malloc(sizeof(struct audit));
-	if (!audit)
-		return NULL;
-	memset(audit, 0, sizeof(struct audit));
+	audit = g_new0(struct audit, 1);
 
 	audit->requestor = strdup(requestor);
 	if (!audit->requestor) {

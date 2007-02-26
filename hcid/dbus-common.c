@@ -273,11 +273,7 @@ static gboolean system_bus_reconnect(void *data)
 		return TRUE;
 	}
 
-	dl = malloc(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
-	if (!dl) {
-		error("Can't allocate memory");
-		goto failed;
-	}
+	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
@@ -300,8 +296,7 @@ failed:
 	if (sk >= 0)
 		close(sk);
 
-	if (dl)
-		free(dl);
+	g_free(dl);
 
 	return ret_val;
 }

@@ -169,18 +169,10 @@ static struct pending_connect *pending_connect_new(DBusConnection *conn, DBusMes
 	if (!dst)
 		return NULL;
 
-	c = malloc(sizeof(*c));
-	if (!c)
-		return NULL;
-	memset(c, 0, sizeof(*c));
+	c = g_new0(struct pending_connect, 1);
 
-	if (dst) {
-		c->dst = strdup(dst);
-		if (!c->dst) {
-			free(c);
-			return NULL;
-		}
-	}
+	if (dst)
+		c->dst = g_strdup(dst);
 
 	c->conn = dbus_connection_ref(conn);
 	c->rq = dbus_message_ref(msg);
@@ -194,8 +186,7 @@ static void pending_connect_free(struct pending_connect *c)
 	if (!c)
 		return;
 
-	if (c->dst)
-		free(c->dst);
+	g_free(c->dst);
 
 	if (c->rq)
 		dbus_message_unref(c->rq);
@@ -203,7 +194,7 @@ static void pending_connect_free(struct pending_connect *c)
 	if (c->conn)
 		dbus_connection_unref(c->conn);
 
-	free(c);
+	g_free(c);
 }
 
 static struct pending_connect *find_pending_connect(const char *dst)
@@ -245,9 +236,7 @@ static int sdp_store_record(const char *src, const char *dst, uint32_t handle, u
 
 	snprintf(key, sizeof(key), "%s#%08X", dst, handle);
 
-	value = malloc(size * 2 + 1);
-	if (!value)
-		return -ENOMEM;
+	value = g_malloc(size * 2 + 1);
 
 	value[0] = '\0';
 
@@ -256,7 +245,7 @@ static int sdp_store_record(const char *src, const char *dst, uint32_t handle, u
 
 	err = textfile_put(filename, key, value);
 
-	free(value);
+	g_free(value);
 
 	return err;
 }
@@ -277,7 +266,7 @@ static void transaction_context_free(void *udata)
 	if (ctxt->session)
 		sdp_close(ctxt->session);
 
-	free(ctxt);
+	g_free(ctxt);
 }
 
 static get_record_data_t *get_record_data_new(uint16_t dev_id, const char *dst,
@@ -286,16 +275,9 @@ static get_record_data_t *get_record_data_new(uint16_t dev_id, const char *dst,
 {
 	get_record_data_t *n;
 
-	n = malloc(sizeof(*n));
-	if (!n)
-		return NULL;
+	n = g_new(get_record_data_t, 1);
 
-	n->dst = strdup(dst);
-	if (!n->dst) {
-		free(n);
-		return NULL;
-	}
-
+	n->dst = g_strdup(dst);
 	n->dev_id = dev_id;
 	n->search_data = search_data;
 	n->cb = cb;
@@ -306,9 +288,9 @@ static get_record_data_t *get_record_data_new(uint16_t dev_id, const char *dst,
 
 static void get_record_data_free(get_record_data_t *d)
 {
-	free(d->search_data);
-	free(d->dst);
-	free(d);
+	g_free(d->search_data);
+	g_free(d->dst);
+	g_free(d);
 }
 
 static inline void get_record_data_call_cb(get_record_data_t *d,
@@ -594,12 +576,7 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan,
 		goto failed;
 	}
 
-	ctxt = malloc(sizeof(*ctxt));
-	if (!ctxt) {
-		err = ENOMEM;
-		goto failed;
-	}
-	memset(ctxt, 0, sizeof(*ctxt));
+	ctxt = g_new0(struct transaction_context, 1);
 
 	ctxt->conn = dbus_connection_ref(c->conn);
 	ctxt->rq = dbus_message_ref(c->rq);
@@ -926,17 +903,11 @@ int get_record_with_handle(DBusConnection *conn, DBusMessage *msg,
 		return -EINPROGRESS;
 	}
 
-	rec_handle = malloc(sizeof(uint32_t));
-	if (!rec_handle)
-		return -ENOMEM;
+	rec_handle = g_new(uint32_t, 1);
 
 	*rec_handle = handle;
 
 	d = get_record_data_new(dev_id, dst, rec_handle, cb, data);
-	if (!d) {
-		free(rec_handle);
-		return -ENOMEM;
-	}
 
 	if (!(c = connect_request(conn, msg, dev_id, dst,
 				get_rec_with_handle_conn_cb, &err))) {
@@ -988,14 +959,10 @@ static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
 		goto failed;
 	pdata += sizeof(uint16_t);
 
-	handle = malloc(sizeof(*handle));
-	if (!handle) {
-		cb_err = ENOMEM;
-		goto failed;
-	}
-	*handle = ntohl(bt_get_unaligned((uint32_t*)pdata));
+	handle = g_new(uint32_t, 1);
+	*handle = ntohl(bt_get_unaligned((uint32_t*) pdata));
 
-	free(d->search_data);
+	g_free(d->search_data);
 	d->search_data = handle;
 
 	cb_err = get_rec_with_handle_conn_cb(ctxt);
@@ -1055,17 +1022,11 @@ int get_record_with_uuid(DBusConnection *conn, DBusMessage *msg,
 		return -EINPROGRESS;
 	}
 
-	sdp_uuid = malloc(sizeof(uuid_t));
-	if (!sdp_uuid)
-		return -ENOMEM;
+	sdp_uuid = g_new(uuid_t, 1);
 
 	memcpy(sdp_uuid, uuid, sizeof(uuid_t));
 
 	d = get_record_data_new(dev_id, dst, sdp_uuid, cb, data);
-	if (!d) {
-		free(sdp_uuid);
-		return -ENOMEM;
-	}
 
 	if (!(c = connect_request(conn, msg, dev_id, dst,
 				get_rec_with_uuid_conn_cb, &err))) {
