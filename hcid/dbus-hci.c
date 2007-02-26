@@ -1013,6 +1013,7 @@ int found_device_req_name(struct adapter *adapter)
 		 /* flag to indicate the current remote name requested */ 
 		dev->name_status = NAME_REQUESTED;
 
+		memset(&rp, 0, sizeof(rp));
 		memset(&cp, 0, sizeof(cp));
 		bacpy(&cp.bdaddr, &dev->bdaddr);
 		cp.pscan_rep_mode = 0x02;
