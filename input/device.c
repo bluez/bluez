@@ -64,6 +64,8 @@
 
 #define BUF_SIZE	16
 
+#define UPDOWN_ENABLED		1
+
 static DBusConnection *connection = NULL;
 
 const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
@@ -472,6 +474,37 @@ static const char *create_input_path(uint8_t major, uint8_t minor)
 	return path;
 }
 
+static int decode_key(const char *str)
+{
+	static int mode = UPDOWN_ENABLED, gain = 0;
+	
+	uint16_t key;
+	int new_gain;
+
+	/* Switch from key up/down to page up/down */
+	if (strncmp("AT+CKPD=200", str, 11) == 0) {
+		mode = ~mode;
+		return KEY_RESERVED;
+	}
+
+	if (strncmp("AT+VG", str, 5))
+		return KEY_RESERVED;
+
+	/* Gain key pressed */
+	if (strlen(str) != 10)
+		return KEY_RESERVED;
+
+	new_gain = strtol(&str[7], NULL, 10);
+	if (new_gain <= gain)
+		key = (mode == UPDOWN_ENABLED ? KEY_DOWN : KEY_PAGEDOWN);
+	else
+		key = (mode == UPDOWN_ENABLED ? KEY_UP : KEY_PAGEUP);
+
+	gain = new_gain;
+
+	return key;
+}
+
 static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct fake_input *fake = data;
@@ -479,6 +512,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	GError *gerr = NULL;
 	char buf[BUF_SIZE];
 	gsize bread = 0, bwritten;
+	uint16_t key;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -503,7 +537,11 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		goto failed;
 	}
 
-	debug("FIXME: decode %s", buf);
+	key = decode_key(buf);
+	if (key != KEY_RESERVED) {
+		/* FIXME: send the key to uinput */
+		debug("Key code: %d", key);
+	}
 
 	return TRUE;
 
