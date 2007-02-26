@@ -320,6 +320,11 @@ int textfile_put(const char *pathname, const char *key, const char *value)
 	return write_key(pathname, key, value, 0);
 }
 
+int textfile_caseput(const char *pathname, const char *key, const char *value)
+{
+	return write_key(pathname, key, value, 1);
+}
+
 int textfile_del(const char *pathname, const char *key)
 {
 	return write_key(pathname, key, NULL, 0);
