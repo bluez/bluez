@@ -73,6 +73,7 @@ static struct {
 static char netdev[16] = "bnep%d";
 static char *pidfile = NULL;
 static char *devupcmd = NULL;
+static char *devdowncmd = NULL;
 
 static bdaddr_t src_addr = *BDADDR_ANY;
 static int src_dev = -1;
@@ -89,15 +90,22 @@ enum {
 	KILL
 } modes;
 
-static void run_devup(char *dev, char *dst, int sk, int nsk)
+struct script_arg {
+	char	dev[20];
+	char	dst[20];
+	int	sk;
+	int	nsk;
+};
+
+static void run_script(char *script, char *dev, char *dst, int sk, int nsk)
 {
 	char *argv[4];
 	struct sigaction sa;
 
-	if (!devupcmd)
+	if (!script)
 		return;
 
-	if (access(devupcmd, R_OK | X_OK))
+	if (access(script, R_OK | X_OK))
 		return;
 
 	if (fork())
@@ -114,14 +122,67 @@ static void run_devup(char *dev, char *dst, int sk, int nsk)
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
-	argv[0] = devupcmd;
+	argv[0] = script;
 	argv[1] = dev;
 	argv[2] = dst;
 	argv[3] = NULL;
 
-	execv(devupcmd, argv);
+	execv(script, argv);
 
 	exit(1);
+}
+
+/* Wait for disconnect or error condition on the socket */
+static int w4_hup(int sk, struct script_arg *down_cmd)
+{
+	struct pollfd pf;
+	sigset_t sigs;
+	int n;
+
+	sigfillset(&sigs);
+	sigdelset(&sigs, SIGCHLD);
+	sigdelset(&sigs, SIGPIPE);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGHUP);
+
+	while (!terminate) {
+		pf.fd = sk;
+		pf.events = POLLERR | POLLHUP;
+
+		n = ppoll(&pf, 1, NULL, &sigs);
+
+		if (n < 0) {
+			if (errno == EINTR || errno == EAGAIN)
+				continue;
+
+			syslog(LOG_ERR, "Poll failed. %s(%d)",
+						strerror(errno), errno);
+
+			return 1;
+		}
+
+		if (n) {
+			int err = 0;
+			socklen_t olen = sizeof(err);
+
+			getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &olen);
+
+			syslog(LOG_INFO, "%s disconnected%s%s", netdev,
+				err ? " : " : "", err ? strerror(err) : "");
+
+			if (down_cmd)
+				run_script(devdowncmd,
+						down_cmd->dev, down_cmd->dst,
+						down_cmd->sk, down_cmd->nsk);
+
+			close(sk);
+
+			return 0;
+		}
+	}
+
+	return 0;
 }
 
 static int do_listen(void)
@@ -207,12 +268,21 @@ static int do_listen(void)
 
 		if (!bnep_accept_connection(nsk, role, devname)) {
 			char str[40];
+			struct script_arg down_cmd;
+
 			ba2str(&l2a.l2_bdaddr, str);
 
 			syslog(LOG_INFO, "New connection from %s %s",
-								str, devname);
+								str, netdev);
 
-			run_devup(devname, str, sk, nsk);
+			run_script(devupcmd, devname, str, sk, nsk);
+
+			memset(&down_cmd, 0, sizeof(struct script_arg));
+			strncpy(down_cmd.dev, devname, strlen(devname) + 1);
+			strncpy(down_cmd.dst, str, strlen(str) + 1);
+			down_cmd.sk = sk;
+			down_cmd.nsk = nsk;
+			w4_hup(nsk, &down_cmd);
 		} else {
 			syslog(LOG_ERR, "Connection failed. %s(%d)",
 						strerror(errno), errno);
@@ -224,46 +294,7 @@ static int do_listen(void)
 
 	if (use_sdp)
 		bnep_sdp_unregister();
-	return 0;
-}
 
-/* Wait for disconnect or error condition on the socket */
-static int w4_hup(int sk)
-{
-	struct pollfd pf;
-	sigset_t sigs;
-	int n;
-
-	sigfillset(&sigs);
-	sigdelset(&sigs, SIGCHLD);
-	sigdelset(&sigs, SIGPIPE);
-	sigdelset(&sigs, SIGTERM);
-	sigdelset(&sigs, SIGINT);
-	sigdelset(&sigs, SIGHUP);
-
-	while (!terminate) {
-		pf.fd = sk;
-		pf.events = POLLERR | POLLHUP;
-		n = ppoll(&pf, 1, NULL, &sigs);
-		if (n < 0) {
-			if (errno == EINTR || errno == EAGAIN)
-				continue;
-			syslog(LOG_ERR, "Poll failed. %s(%d)",
-						strerror(errno), errno);
-			return 1;
-		}
-
-		if (n) {
-			int err = 0;
-			socklen_t olen = sizeof(err);
-			getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &olen);
-			syslog(LOG_INFO, "%s disconnected%s%s", netdev,
-				err ? " : " : "", err ? strerror(err) : "");
-
-			close(sk);
-			return 0;
-		}
-	}
 	return 0;
 }
 
@@ -279,6 +310,7 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 	struct sockaddr_l2 l2a;
 	socklen_t olen;
 	int sk, r = 0;
+	struct script_arg down_cmd;
 
 	syslog(LOG_INFO, "Connecting to %s", dst);
 
@@ -314,10 +346,15 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 
 		syslog(LOG_INFO, "%s connected", netdev);
 
-		run_devup(netdev, dst, sk, -1);
+		run_script(devupcmd, netdev, dst, sk, -1);
 
-		if (persist) {
-			w4_hup(sk);
+		if (persist || devdowncmd) {
+				memset(&down_cmd, 0, sizeof(struct script_arg));
+				strncpy(down_cmd.dev, netdev, strlen(netdev) + 1);
+				strncpy(down_cmd.dst, dst, strlen(dst) + 1);
+				down_cmd.sk = sk;
+				down_cmd.nsk = -1;
+				w4_hup(sk, &down_cmd);
 
 			if (terminate && cleanup) {
 				syslog(LOG_INFO, "Disconnecting from %s.", dst);
@@ -525,11 +562,12 @@ static struct option main_lopts[] = {
 	{ "cache",    0, 0, 'C' },
 	{ "pidfile",  1, 0, 'P' },
 	{ "devup",    1, 0, 'u' },
+	{ "devdown",  1, 0, 'o' },
 	{ "autozap",  0, 0, 'z' },
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:d:e:i:lnp::DQ::AESMC::P:u:z";
+static char main_sopts[] = "hsc:k:Kr:d:e:i:lnp::DQ::AESMC::P:u:o:z";
 
 static char main_help[] = 
 	"Bluetooth PAN daemon version " VERSION " \n"
@@ -556,7 +594,8 @@ static char main_help[] =
 	"\t--persist -p[interval]    Persist mode\n"
 	"\t--cache -C[valid]         Cache addresses\n"
 	"\t--pidfile -P <pidfile>    Create PID file\n"
-	"\t--devup -u <script>       Script to run when interface comes up\n";
+	"\t--devup -u <script>       Script to run when interface comes up\n"
+	"\t--devdown -o <script>     Script to run when interface comes down\n";
 
 int main(int argc, char *argv[])
 {
@@ -659,6 +698,10 @@ int main(int argc, char *argv[])
 
 		case 'u':
 			devupcmd = strdup(optarg);
+			break;
+
+		case 'o':
+			devdowncmd = strdup(optarg);
 			break;
 
 		case 'z':
