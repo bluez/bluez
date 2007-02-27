@@ -839,13 +839,20 @@ failed:
 
 static int server_socket(uint8_t *channel)
 {
-	int sock;
+	int sock, lm;
 	struct sockaddr_rc addr;
 	socklen_t sa_len;
 
 	sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sock < 0) {
 		error("server socket: %s (%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	lm = RFCOMM_LM_SECURE;
+	if (setsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
+		error("server setsockopt: %s", strerror(errno), errno);
+		close(sock);
 		return -1;
 	}
 
