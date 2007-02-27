@@ -564,6 +564,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 
 failed:
+	/* FIXME: Missing clean/free fake io channel */
 	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
 	ioctl(fake->uinput, UI_DEV_DESTROY);
@@ -638,7 +639,6 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	return FALSE;
 
 failed:
-	/* FIXME: close the rfcomm and uinput socket */
 	err_connection_failed(pc->conn, pc->msg, strerror(err));
 	pending_connect_free(pc);
 	g_io_channel_unref(chan);
@@ -973,17 +973,27 @@ fail:
 	return -errno;
 }
 
-static int is_connected(bdaddr_t *dst)
+static int is_connected(struct input_device *idev)
 {
+	struct fake_input *fake = idev->fake;
 	struct hidp_conninfo ci;
 	int ctl;
 
+	/* Fake input */
+	if (fake) {
+		if (fake->io)
+			return 1;
+		else
+			return 0;
+	}
+
+	/* Standard HID */
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
 	if (ctl < 0)
 		return 0;
 
 	memset(&ci, 0, sizeof(struct hidp_conninfo));
-	bacpy(&ci.bdaddr, dst);
+	bacpy(&ci.bdaddr, &idev->dst);
 	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
 		close(ctl);
 		return 0;
@@ -1008,8 +1018,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	struct input_manager *mgr;
 	struct pending_connect *pc;
 
-	/* FIXME: check if the fake input is connected */
-	if (is_connected(&idev->dst))
+	if (is_connected(idev))
 		return err_connection_failed(conn, msg, "Already connected");
 
 	/* FIXME: Check if there is a pending connection */
@@ -1060,7 +1069,7 @@ static DBusHandlerResult device_is_connected(DBusConnection *conn,
 	DBusMessage *reply;
 	dbus_bool_t connected;
 
-	connected = is_connected(&idev->dst);
+	connected = is_connected(idev);
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
