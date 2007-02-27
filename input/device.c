@@ -79,13 +79,19 @@ struct fake_input {
 	uint8_t		ch;	/* RFCOMM channel number */
 };
 
+struct pending_connect {
+	DBusConnection *conn;
+	DBusMessage *msg;
+};
+
 struct input_device {
+	bdaddr_t src;
 	bdaddr_t dst;
 	uint8_t			major;
 	uint8_t			minor;
 	struct hidp_connadd_req hidp; /* FIXME: Use dynamic alloc? */
 	struct fake_input	*fake;
-
+	struct pending_connect *pending_connect;
 };
 
 struct input_manager {
@@ -103,14 +109,7 @@ struct pending_req {
 	sdp_record_t *hid_rec;
 };
 
-struct pending_connect {
-	bdaddr_t src;
-	bdaddr_t dst;
-	DBusConnection *conn;
-	DBusMessage *msg;
-};
-
-static struct input_device *input_device_new(bdaddr_t *dst, uint32_t cls)
+static struct input_device *input_device_new(bdaddr_t *src, bdaddr_t *dst, uint32_t cls)
 {
 	struct input_device *idev;
 
@@ -120,12 +119,24 @@ static struct input_device *input_device_new(bdaddr_t *dst, uint32_t cls)
 
 	memset(idev, 0, sizeof(struct input_device));
 
+	bacpy(&idev->src, src);
 	bacpy(&idev->dst, dst);
 
 	idev->major = (cls >> 8) & 0x1f;
 	idev->minor = (cls >> 2) & 0x3f;
 
 	return idev;
+}
+
+static void pending_connect_free(struct pending_connect *pc)
+{
+	if (!pc)
+		return;
+	if (pc->conn)
+		dbus_connection_unref(pc->conn);
+	if (pc->msg)
+		dbus_message_unref(pc->msg);
+	free(pc);
 }
 
 static void input_device_free(struct input_device *idev)
@@ -136,6 +147,9 @@ static void input_device_free(struct input_device *idev)
 		free(idev->hidp.rd_data);
 	if (idev->fake)
 		free(idev->fake);
+	if (idev->pending_connect) 
+		pending_connect_free(idev->pending_connect);
+
 	free(idev);
 }
 
@@ -173,34 +187,6 @@ static void pending_req_free(struct pending_req *pr)
 	if (pr->hid_rec)
 		sdp_record_free(pr->hid_rec);
 	free(pr);
-}
-
-static struct pending_connect *pending_connect_new(bdaddr_t *src, bdaddr_t *dst,
-					DBusConnection *conn, DBusMessage *msg)
-{
-	struct pending_connect *pc;
-	pc = malloc(sizeof(struct pending_connect));
-	if (!pc)
-		return NULL;
-
-	memset(pc, 0, sizeof(struct pending_connect));
-	bacpy(&pc->src, src);
-	bacpy(&pc->dst, dst);
-	pc->conn = dbus_connection_ref(conn);
-	pc->msg = dbus_message_ref(msg);
-
-	return pc;
-}
-
-static void pending_connect_free(struct pending_connect *pc)
-{
-	if (!pc)
-		return;
-	if (pc->conn)
-		dbus_connection_unref(pc->conn);
-	if (pc->msg)
-		dbus_message_unref(pc->msg);
-	free(pc);
 }
 
 /*
@@ -573,18 +559,14 @@ failed:
 	return FALSE;
 }
 
-static gboolean rfcomm_connect_cb(GIOChannel *chan,
-				GIOCondition cond, struct pending_connect *pc)
+static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
+						struct input_device *idev)
 {
-	struct input_device *idev;
 	struct fake_input *fake;
 	DBusMessage *reply;
-	const char *path;
 	socklen_t len;
 	int ret, err;
 
-	path = dbus_message_get_path(pc->msg);
-	dbus_connection_get_object_path_data(pc->conn, path, (void *) &idev);
 	fake = idev->fake;
 
 	if (cond & G_IO_NVAL) {
@@ -628,24 +610,27 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	g_io_add_watch(fake->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 						(GIOFunc) rfcomm_io_cb, fake);
 
-	reply = dbus_message_new_method_return(pc->msg);
+	reply = dbus_message_new_method_return(idev->pending_connect->msg);
 	if (reply) {
 		dbus_connection_send(connection, reply, NULL);
 		dbus_message_unref(reply);
 	}
 
-	pending_connect_free(pc);
+	pending_connect_free(idev->pending_connect);
+	idev->pending_connect = NULL;
 	g_io_channel_unref(chan);
 	return FALSE;
 
 failed:
-	err_connection_failed(pc->conn, pc->msg, strerror(err));
-	pending_connect_free(pc);
+	err_connection_failed(idev->pending_connect->conn,
+			idev->pending_connect->msg, strerror(err));
+	pending_connect_free(idev->pending_connect);
+	idev->pending_connect = NULL;
 	g_io_channel_unref(chan);
 	return FALSE;
 }
 
-static int rfcomm_connect(struct pending_connect *pc, uint8_t ch)
+static int rfcomm_connect(struct input_device *idev)
 {
 	struct sockaddr_rc addr;
 	GIOChannel *io;
@@ -669,7 +654,7 @@ static int rfcomm_connect(struct pending_connect *pc, uint8_t ch)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, &pc->src);
+	bacpy(&addr.rc_bdaddr, &idev->src);
 	addr.rc_channel =  0;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
@@ -686,8 +671,8 @@ static int rfcomm_connect(struct pending_connect *pc, uint8_t ch)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, &pc->dst);
-	addr.rc_channel = ch;
+	bacpy(&addr.rc_bdaddr, &idev->dst);
+	addr.rc_channel = idev->fake->ch;
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		char peer[18]; /* FIXME: debug purpose */
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
@@ -697,13 +682,13 @@ static int rfcomm_connect(struct pending_connect *pc, uint8_t ch)
 			goto failed;
 		}
 
-		ba2str(&pc->dst, peer);
-		debug("RFCOMM connection in progress: %s channel:%d", peer, ch);
+		ba2str(&idev->dst, peer);
+		debug("RFCOMM connection in progress: %s channel:%d", peer, idev->fake->ch);
 		g_io_add_watch(io, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				(GIOFunc) rfcomm_connect_cb, pc);
+				(GIOFunc) rfcomm_connect_cb, idev);
 	} else {
 		debug("Connect succeeded with first try");
-		rfcomm_connect_cb(io, G_IO_OUT, pc);
+		rfcomm_connect_cb(io, G_IO_OUT, idev);
 	}
 
 	return 0;
@@ -718,8 +703,8 @@ failed:
 	return -err;
 }
 
-static int l2cap_connect(struct pending_connect *pc,
-					unsigned short psm, GIOFunc cb)
+static int l2cap_connect(struct input_device *idev,
+				unsigned short psm, GIOFunc cb)
 {
 	GIOChannel *io;
 	struct sockaddr_l2 addr;
@@ -731,7 +716,7 @@ static int l2cap_connect(struct pending_connect *pc,
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family  = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, &pc->src);
+	bacpy(&addr.l2_bdaddr, &idev->src);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
 		goto failed;
@@ -749,7 +734,7 @@ static int l2cap_connect(struct pending_connect *pc,
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family  = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, &pc->dst);
+	bacpy(&addr.l2_bdaddr, &idev->dst);
 	addr.l2_psm = htobs(psm);
 
 	io = g_io_channel_unix_new(sk);
@@ -759,9 +744,9 @@ static int l2cap_connect(struct pending_connect *pc,
 		if (!(errno == EAGAIN || errno == EINPROGRESS))
 			goto failed;
 
-		g_io_add_watch(io, G_IO_OUT, (GIOFunc) cb, pc);
+		g_io_add_watch(io, G_IO_OUT, (GIOFunc) cb, idev);
 	} else {
-		cb(io, G_IO_OUT, pc);
+		cb(io, G_IO_OUT, idev);
 	}
 
 	return 0;
@@ -775,15 +760,10 @@ failed:
 }
 
 static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
-						struct pending_connect *pc)
+						struct input_device *idev)
 {
-	struct input_device *idev;
 	int ctl, isk, ret, err;
 	socklen_t len;
-	const char *path;
-
-	path = dbus_message_get_path(pc->msg);
-	dbus_connection_get_object_path_data(pc->conn, path, (void *) &idev);
 
 	if (cond & G_IO_NVAL) {
 		err = EHOSTDOWN;
@@ -816,7 +796,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	if (idev->hidp.subclass & 0x40) {
-		err = encrypt_link(&pc->src, &pc->dst);
+		err = encrypt_link(&idev->src, &idev->dst);
 		if (err < 0) {
 			close(ctl);
 			goto failed;
@@ -830,13 +810,14 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 
-	send_message_and_unref(pc->conn,
-			dbus_message_new_method_return(pc->msg));
+	send_message_and_unref(idev->pending_connect->conn,
+		dbus_message_new_method_return(idev->pending_connect->msg));
 
 	close (ctl);
 	goto cleanup;
 failed:
-	err_connection_failed(pc->conn, pc->msg, strerror(err));
+	err_connection_failed(idev->pending_connect->conn,
+				idev->pending_connect->msg, strerror(err));
 
 cleanup:
 	if (isk > 0)
@@ -847,22 +828,18 @@ cleanup:
 	idev->hidp.intr_sock = -1;
 	idev->hidp.ctrl_sock = -1;
 
-	pending_connect_free(pc);
+	pending_connect_free(idev->pending_connect);
+	idev->pending_connect = NULL;
 	g_io_channel_unref(chan);
 
 	return FALSE;
 }
 
 static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
-						struct pending_connect *pc)
+						struct input_device *idev)
 {
-	struct input_device *idev;
 	int ret, csk, err;
 	socklen_t len;
-	const char *path;
-
-	path = dbus_message_get_path(pc->msg);
-	dbus_connection_get_object_path_data(pc->conn, path, (void *) &idev);
 
 	if (cond & G_IO_NVAL) {
 		err = EHOSTDOWN;
@@ -888,7 +865,7 @@ static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	/* Connect to the HID interrupt channel */
-	if (l2cap_connect(pc, L2CAP_PSM_HIDP_INTR,
+	if (l2cap_connect(idev, L2CAP_PSM_HIDP_INTR,
 			(GIOFunc) interrupt_connect_cb) < 0) {
 
 		err = errno;
@@ -904,8 +881,10 @@ failed:
 		close(csk);
 
 	idev->hidp.ctrl_sock = -1;
-	err_connection_failed(pc->conn, pc->msg, strerror(err));
-	pending_connect_free(pc);
+	err_connection_failed(idev->pending_connect->conn,
+			idev->pending_connect->msg, strerror(err));
+	pending_connect_free(idev->pending_connect);
+	idev->pending_connect = NULL;
 	g_io_channel_unref(chan);
 
 	return FALSE;
@@ -970,7 +949,7 @@ fail:
 	idev->hidp.intr_sock = -1;
 	idev->hidp.ctrl_sock = -1;
 
-	return -errno;
+	return -err;
 }
 
 static int is_connected(struct input_device *idev)
@@ -1014,36 +993,41 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
-	struct fake_input *fake = idev->fake;
-	struct input_manager *mgr;
-	struct pending_connect *pc;
+
+	if (idev->pending_connect)
+		return err_connection_failed(conn, msg, "Connection in progress");
 
 	if (is_connected(idev))
 		return err_connection_failed(conn, msg, "Already connected");
 
-	/* FIXME: Check if there is a pending connection */
-
-	dbus_connection_get_object_path_data(conn, INPUT_PATH, (void *) &mgr);
-	pc = pending_connect_new(&mgr->src, &idev->dst, conn, msg);
-	if (!pc)
+	idev->pending_connect = malloc(sizeof(struct pending_connect));
+	if (!idev->pending_connect) {
+		error("Out of memory when allocating new struct pending_connect");
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	memset(idev->pending_connect, 0, sizeof(struct pending_connect));
+	idev->pending_connect->conn = dbus_connection_ref(conn);
+	idev->pending_connect->msg = dbus_message_ref(msg);
 
 	/* Fake input device */
-	if (fake) {
-		if (rfcomm_connect(pc, fake->ch) < 0) {
+	if (idev->fake) {
+		if (rfcomm_connect(idev) < 0) {
 			const char *str = strerror(errno);
 			error("RFCOMM connect failed: %s(%d)", str, errno);
-			pending_connect_free(pc);
+			pending_connect_free(idev->pending_connect);
+			idev->pending_connect = NULL;
 			return err_connection_failed(conn, msg, str);
 		}
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	/* HID devices */
-	if (l2cap_connect(pc, L2CAP_PSM_HIDP_CTRL,
+	if (l2cap_connect(idev, L2CAP_PSM_HIDP_CTRL,
 			(GIOFunc) control_connect_cb) < 0) {
 		error("L2CAP connect failed: %s(%d)", strerror(errno), errno);
-		pending_connect_free(pc);
+		pending_connect_free(idev->pending_connect);
+		idev->pending_connect = NULL;
 		return err_connection_failed(conn, msg, strerror(errno));
 	}
 
@@ -1422,7 +1406,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	idev = input_device_new(&pr->dst, cls);
+	idev = input_device_new(&pr->src, &pr->dst, cls);
 
 	extract_hid_record(pr->hid_rec, &idev->hidp);
 	if (pr->pnp_rec)
@@ -1656,7 +1640,7 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	idev = input_device_new(&pr->dst, cls);
+	idev = input_device_new(&pr->src, &pr->dst, cls);
 	if (!idev) {
 		error("Out of memory when allocating new input");
 		goto fail;
@@ -1776,7 +1760,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return err_not_supported(conn, msg);
 	}
 
-	idev = input_device_new(&dst, cls);
+	idev = input_device_new(&mgr->src, &dst, cls);
 	if (!idev)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
@@ -1958,7 +1942,7 @@ static void stored_input(char *key, char *value, void *data)
 	if (get_class(src, &dst, &cls) < 0)
 		return;
 
-	idev = input_device_new(&dst, cls);
+	idev = input_device_new(src, &dst, cls);
 	if (parse_stored_device_info(value, &idev->hidp) < 0) {
 		input_device_free(idev);
 		return;
