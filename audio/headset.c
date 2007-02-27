@@ -851,7 +851,7 @@ static int server_socket(uint8_t *channel)
 
 	lm = RFCOMM_LM_SECURE;
 	if (setsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
-		error("server setsockopt: %s", strerror(errno), errno);
+		error("server setsockopt: %s (%d)", strerror(errno), errno);
 		close(sock);
 		return -1;
 	}
