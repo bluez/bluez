@@ -915,11 +915,30 @@ failed:
 	return FALSE;
 }
 
-static int disconnect(struct input_device *idev,  uint32_t flags)
+static int disconnect(struct input_device *idev, uint32_t flags)
 {
+	struct fake_input *fake = idev->fake;
 	struct hidp_conndel_req req;
 	struct hidp_conninfo ci;
 	int ctl, err;
+
+	/* Fake input disconnect */
+	if (fake) {
+		if (fake->io) {
+			g_io_channel_shutdown(fake->io, FALSE, NULL);
+			g_io_channel_unref(fake->io);
+			fake->io = NULL;
+		}
+		if (fake->uinput >= 0) {
+			ioctl(fake->uinput, UI_DEV_DESTROY);
+			close(fake->uinput);
+			fake->uinput = -1;
+		}
+
+		return 0;
+	}
+
+	/* Standard HID disconnect */
 
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
 	if (ctl < 0) {
