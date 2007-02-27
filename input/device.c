@@ -531,7 +531,6 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct fake_input *fake = data;
 	const char *ok = "\r\nOK\r\n";
-	GError *gerr = NULL;
 	char buf[BUF_SIZE];
 	gsize bread = 0, bwritten;
 	uint16_t key;
@@ -545,19 +544,16 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	}
 
 	memset(buf, 0, BUF_SIZE);
-	if (g_io_channel_read_chars(chan, (gchar *)buf, sizeof(buf) - 1,
-					&bread, &gerr) != G_IO_STATUS_NORMAL) {
-		error("IO Channel read error: %s", gerr->message);
-		g_error_free(gerr);
+	if (g_io_channel_read(chan, buf, sizeof(buf) - 1,
+				&bread) != G_IO_ERROR_NONE) {
+		error("IO Channel read error");
 		goto failed;
 	}
 
 	debug("Received: %s", buf);
 
-	if (g_io_channel_write_chars(chan, ok, 6, &bwritten,
-					&gerr) != G_IO_STATUS_NORMAL) {
-		error("IO Channel write error: %s", gerr->message);
-		g_error_free(gerr);
+	if (g_io_channel_write(chan, ok, 6, &bwritten) != G_IO_ERROR_NONE) {
+		error("IO Channel write error");
 		goto failed;
 	}
 
@@ -568,7 +564,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 
 failed:
-	g_io_channel_shutdown(fake->io, FALSE, NULL);
+	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
 	ioctl(fake->uinput, UI_DEV_DESTROY);
 	close(fake->uinput);
@@ -925,7 +921,7 @@ static int disconnect(struct input_device *idev, uint32_t flags)
 	/* Fake input disconnect */
 	if (fake) {
 		if (fake->io) {
-			g_io_channel_shutdown(fake->io, FALSE, NULL);
+			g_io_channel_close(fake->io);
 			g_io_channel_unref(fake->io);
 			fake->io = NULL;
 		}
