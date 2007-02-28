@@ -31,7 +31,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -42,6 +41,8 @@
 #include <bluetooth/hidp.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+
+#include <glib.h>
 
 #include "textfile.h"
 #include "logging.h"
@@ -64,11 +65,9 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 	unsigned int vendor, product, version, subclass, country, parser, pos;
 	int i;
 
-	desc = malloc(4096);
+	desc = g_try_malloc0(4096);
 	if (!desc)
 		return -ENOMEM;
-
-	memset(desc, 0, 4096);
 
 	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
 			&vendor, &product, &version, &subclass, &country,
@@ -84,9 +83,9 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 	snprintf(req->name, 128, str + pos);
 
 	req->rd_size = strlen(desc) / 2;
-	req->rd_data = malloc(req->rd_size);
+	req->rd_data = g_try_malloc0(req->rd_size);
 	if (!req->rd_data) {
-		free(desc);
+		g_free(desc);
 		return -ENOMEM;
 	}
 
@@ -96,7 +95,7 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 		req->rd_data[i] = (uint8_t) strtol(tmp, NULL, 16);
 	}
 
-	free(desc);
+	g_free(desc);
 
 	return 0;
 }
@@ -143,17 +142,16 @@ int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req
 	create_filename(filename, PATH_MAX, src, "hidd");
 
 	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9 + strlen(req->name) + 2;
-	str = malloc(size);
+	str = g_try_malloc0(size);
 	if (!str)
 		return -ENOMEM;
 
-	desc = malloc((req->rd_size * 2) + 1);
+	desc = g_try_malloc0((req->rd_size * 2) + 1);
 	if (!desc) {
-		free(str);
+		g_free(str);
 		return -ENOMEM;
 	}
 
-	memset(desc, 0, (req->rd_size * 2) + 1);
 	for (i = 0; i < req->rd_size; i++)
 		sprintf(desc + (i * 2), "%2.2X", req->rd_data[i]);
 
@@ -162,7 +160,7 @@ int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req
 			req->subclass, req->country, req->parser, desc,
 			req->flags, req->name);
 
-	free(desc);
+	g_free(desc);
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -170,7 +168,7 @@ int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req
 
 	err = textfile_put(filename, addr, str);
 
-	free(str);
+	g_free(str);
 
 	return err;
 }
@@ -194,7 +192,7 @@ int encrypt_link(bdaddr_t *src, bdaddr_t *dst)
 
 	free(str);
 
-	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	cr = g_try_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
 	if (!cr)
 		return -ENOMEM;
 
@@ -202,17 +200,16 @@ int encrypt_link(bdaddr_t *src, bdaddr_t *dst)
 
 	dev_id = hci_devid(addr);
 	if (dev_id < 0) {
-		free(cr);
+		g_free(cr);
 		return -errno;
 	}
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		free(cr);
+		g_free(cr);
 		return -errno;
 	}
 
-	memset(cr, 0, sizeof(*cr) + sizeof(struct hci_conn_info));
 	bacpy(&cr->bdaddr, dst);
 	cr->type = ACL_LINK;
 
@@ -237,14 +234,14 @@ int encrypt_link(bdaddr_t *src, bdaddr_t *dst)
 	}
 
 done:
-	free(cr);
+	g_free(cr);
 
 	hci_close_dev(dd);
 
 	return 0;
 
 fail:
-	free(cr);
+	g_free(cr);
 
 	err = errno;
 	hci_close_dev(dd);

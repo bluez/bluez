@@ -113,11 +113,7 @@ static struct input_device *input_device_new(bdaddr_t *src, bdaddr_t *dst, uint3
 {
 	struct input_device *idev;
 
-	idev = malloc(sizeof(struct input_device));
-	if (!idev)
-		return NULL;
-
-	memset(idev, 0, sizeof(struct input_device));
+	idev = g_new0(struct input_device, 1);
 
 	bacpy(&idev->src, src);
 	bacpy(&idev->dst, dst);
@@ -136,7 +132,7 @@ static void pending_connect_free(struct pending_connect *pc)
 		dbus_connection_unref(pc->conn);
 	if (pc->msg)
 		dbus_message_unref(pc->msg);
-	free(pc);
+	g_free(pc);
 }
 
 static void input_device_free(struct input_device *idev)
@@ -144,13 +140,13 @@ static void input_device_free(struct input_device *idev)
 	if (!idev)
 		return;
 	if (idev->hidp.rd_data)
-		free(idev->hidp.rd_data);
+		g_free(idev->hidp.rd_data);
 	if (idev->fake)
-		free(idev->fake);
+		g_free(idev->fake);
 	if (idev->pending_connect) 
 		pending_connect_free(idev->pending_connect);
 
-	free(idev);
+	g_free(idev);
 }
 
 static struct pending_req *pending_req_new(DBusConnection *conn,
@@ -158,12 +154,11 @@ static struct pending_req *pending_req_new(DBusConnection *conn,
 						bdaddr_t *src, bdaddr_t *dst)
 {
 	struct pending_req *pr;
-	pr = malloc(sizeof(struct pending_req));
+	pr = g_try_new0(struct pending_req, 1);
 	if (!pr)
 		return NULL;
 
-	memset(pr, 0, sizeof(struct pending_req));
-	pr->adapter_path = strdup(adapter_path);
+	pr->adapter_path = g_strdup(adapter_path);
 	bacpy(&pr->src, src);
 	bacpy(&pr->dst, dst);
 	pr->conn = dbus_connection_ref(conn);
@@ -177,7 +172,7 @@ static void pending_req_free(struct pending_req *pr)
 	if (!pr)
 		return;
 	if (pr->adapter_path)
-		free(pr->adapter_path);
+		g_free(pr->adapter_path);
 	if (pr->conn)
 		dbus_connection_unref(pr->conn);
 	if (pr->msg)
@@ -186,7 +181,7 @@ static void pending_req_free(struct pending_req *pr)
 		sdp_record_free(pr->pnp_rec);
 	if (pr->hid_rec)
 		sdp_record_free(pr->hid_rec);
-	free(pr);
+	g_free(pr);
 }
 
 /*
@@ -304,7 +299,7 @@ static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 		pdlist = pdlist->val.dataseq;
 		pdlist = pdlist->next;
 
-		req->rd_data = malloc(pdlist->unitSize);
+		req->rd_data = g_try_malloc0(pdlist->unitSize);
 		if (req->rd_data) {
 			memcpy(req->rd_data, (unsigned char *) pdlist->val.str, pdlist->unitSize);
 			req->rd_size = pdlist->unitSize;
@@ -1000,13 +995,12 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	if (is_connected(idev))
 		return err_connection_failed(conn, msg, "Already connected");
 
-	idev->pending_connect = malloc(sizeof(struct pending_connect));
+	idev->pending_connect = g_try_new0(struct pending_connect, 1);
 	if (!idev->pending_connect) {
 		error("Out of memory when allocating new struct pending_connect");
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
-	memset(idev->pending_connect, 0, sizeof(struct pending_connect));
 	idev->pending_connect->conn = dbus_connection_ref(conn);
 	idev->pending_connect->msg = dbus_message_ref(msg);
 
@@ -1207,7 +1201,7 @@ static void input_manager_free(struct input_manager *mgr)
 		g_slist_free(mgr->paths);
 	}
 
-	free(mgr);
+	g_free(mgr);
 }
 
 static int register_input_device(DBusConnection *conn,
@@ -1223,7 +1217,7 @@ static int register_input_device(DBusConnection *conn,
 	}
 
 	dbus_connection_get_object_path_data(conn, INPUT_PATH, (void *) &mgr);
-	mgr->paths = g_slist_append(mgr->paths, strdup(path));
+	mgr->paths = g_slist_append(mgr->paths, g_strdup(path));
 
 	msg = dbus_message_new_signal(INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceCreated");
@@ -1322,11 +1316,11 @@ static int get_class(bdaddr_t *src, bdaddr_t *dst, uint32_t *cls)
 		return -ENOENT;
 
 	if (sscanf(str, "%x", cls) != 1) {
-		free(str);
+		g_free(str);
 		return -ENOENT;
 	}
 
-	free(str);
+	g_free(str);
 
 	return 0;
 }
@@ -1641,18 +1635,8 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 	}
 
 	idev = input_device_new(&pr->src, &pr->dst, cls);
-	if (!idev) {
-		error("Out of memory when allocating new input");
-		goto fail;
-	}
 
-	idev->fake = malloc(sizeof(struct fake_input));
-	if (!idev->fake) {
-		error("Out of memory when allocating new fake input");
-		input_device_free(idev);
-		goto fail;
-	}
-	memset(idev->fake, 0, sizeof(struct fake_input));
+	idev->fake = g_new0(struct fake_input, 1);
 	idev->fake->ch = ch;
 
 	/* FIXME: Store the fake input data */
@@ -1761,8 +1745,6 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	}
 
 	idev = input_device_new(&mgr->src, &dst, cls);
-	if (!idev)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	if (get_stored_device_info(&mgr->src, &idev->dst, &idev->hidp) < 0) {
 		struct pending_req *pr;
@@ -1852,7 +1834,7 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 		return err_failed(conn, msg, "D-Bus path unregistration failed");
 	}
 
-	free(l->data);
+	g_free(l->data);
 	mgr->paths = g_slist_remove(mgr->paths, l->data);
 
 	return send_message_and_unref(conn, reply);
@@ -1943,6 +1925,7 @@ static void stored_input(char *key, char *value, void *data)
 		return;
 
 	idev = input_device_new(src, &dst, cls);
+
 	if (parse_stored_device_info(value, &idev->hidp) < 0) {
 		input_device_free(idev);
 		return;
@@ -1977,8 +1960,8 @@ int input_dbus_init(void)
 
 	dbus_connection_set_exit_on_disconnect(connection, TRUE);
 
-	mgr = malloc(sizeof(struct input_manager));
-	memset(mgr, 0, sizeof(struct input_manager));
+	mgr = g_new0(struct input_manager, 1);
+
 	/* Fallback to catch invalid device path */
 	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
 						&manager_table, mgr)) {
