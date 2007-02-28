@@ -274,26 +274,26 @@ static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 			strncpy(req->name, pdlist2->val.str, 127);
  	}
  
-	pdlist = sdp_data_get(rec, 0x0201);
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_PARSER_VERSION);
 	req->parser = pdlist ? pdlist->val.uint16 : 0x0100;
  
-	pdlist = sdp_data_get(rec, 0x0202);
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_DEVICE_SUBCLASS);
 	req->subclass = pdlist ? pdlist->val.uint8 : 0;
 
-	pdlist = sdp_data_get(rec, 0x0203);
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_COUNTRY_CODE);
 	req->country = pdlist ? pdlist->val.uint8 : 0;
 
-	pdlist = sdp_data_get(rec, 0x0204);
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_VIRTUAL_CABLE);
 	attr_val = pdlist ? pdlist->val.uint8 : 0;
 	if (attr_val)
 		req->flags |= (1 << HIDP_VIRTUAL_CABLE_UNPLUG);
 
-	pdlist = sdp_data_get(rec, 0x020E);
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_BOOT_DEVICE);
 	attr_val = pdlist ? pdlist->val.uint8 : 0;
 	if (attr_val)
 		req->flags |= (1 << HIDP_BOOT_PROTOCOL_MODE);
 
-	pdlist = sdp_data_get(rec, 0x0206);
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_DESCRIPTOR_LIST);
 	if (pdlist) {
 		pdlist = pdlist->val.dataseq;
 		pdlist = pdlist->val.dataseq;
@@ -311,13 +311,13 @@ static void extract_pnp_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 {
 	sdp_data_t *pdlist;
 
-	pdlist = sdp_data_get(rec, 0x0201);
+	pdlist = sdp_data_get(rec, SDP_ATTR_VENDOR_ID);
 	req->vendor = pdlist ? pdlist->val.uint16 : 0x0000;
 
-	pdlist = sdp_data_get(rec, 0x0202);
+	pdlist = sdp_data_get(rec, SDP_ATTR_PRODUCT_ID);
 	req->product = pdlist ? pdlist->val.uint16 : 0x0000;
 
-	pdlist = sdp_data_get(rec, 0x0203);
+	pdlist = sdp_data_get(rec, SDP_ATTR_VERSION);
 	req->version = pdlist ? pdlist->val.uint16 : 0x0000;
 }
 
