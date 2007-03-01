@@ -85,8 +85,9 @@ struct pending_connect {
 };
 
 struct input_device {
-	bdaddr_t src;
-	bdaddr_t dst;
+	bdaddr_t		src;
+	bdaddr_t		dst;
+	char			*name;
 	uint8_t			major;
 	uint8_t			minor;
 	struct hidp_connadd_req hidp; /* FIXME: Use dynamic alloc? */
@@ -121,6 +122,11 @@ static struct input_device *input_device_new(bdaddr_t *src, bdaddr_t *dst, uint3
 	idev->major = (cls >> 8) & 0x1f;
 	idev->minor = (cls >> 2) & 0x3f;
 
+	read_device_name(src, dst, &idev->name);
+
+	/* FIXME:  hidp could be alloc dynamically */
+	snprintf(idev->hidp.name, 128, "%s", idev->name);
+
 	return idev;
 }
 
@@ -139,6 +145,8 @@ static void input_device_free(struct input_device *idev)
 {
 	if (!idev)
 		return;
+	if (idev->name)
+		g_free(idev->name);
 	if (idev->hidp.rd_data)
 		g_free(idev->hidp.rd_data);
 	if (idev->fake)
@@ -594,7 +602,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 	 * first to report volume gain key events
 	 */
 
-	fake->uinput = uinput_create("Fake input");
+	fake->uinput = uinput_create(idev->name);
 	if (fake->uinput < 0) {
 		err = errno;
 		goto failed;

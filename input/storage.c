@@ -71,7 +71,6 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 			&vendor, &product, &version, &subclass, &country,
 			&parser, &req->flags, &pos);
 
-
 	desc  = &str[pos];
 	len = strlen(desc);
 	if (len <= 0)
@@ -83,8 +82,6 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 	req->subclass = subclass;
 	req->country  = country;
 	req->parser   = parser;
-
-	/* FIXME: Retrieve the name from the filesystem file "names" */
 
 	req->rd_size = len / 2;
 	req->rd_data = g_try_malloc0(req->rd_size);
@@ -172,6 +169,37 @@ int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req
 	g_free(str);
 
 	return err;
+}
+
+int read_device_name(bdaddr_t *local, bdaddr_t *peer, char **name)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+	int len;
+
+	create_filename(filename, PATH_MAX, local, "names");
+
+	ba2str(peer, addr);
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
+
+	len = strlen(str);
+
+	/* HID max name size is 128 chars */
+	if (len < 128) {
+		*name = str;
+		return 0;
+	}
+
+	*name = g_try_malloc0(128);
+	if (!*name)
+		return -ENOMEM;
+
+	snprintf(*name, 128, "%s", str);
+
+	free(str);
+
+	return 0;
 }
 
 int encrypt_link(bdaddr_t *src, bdaddr_t *dst)
