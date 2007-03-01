@@ -107,7 +107,7 @@ int get_stored_device_info(bdaddr_t *src, bdaddr_t *dst,
 	char peer[18];
 	int err;
 
-	create_filename(filename, PATH_MAX, src, "hidd");
+	create_filename(filename, PATH_MAX, src, "input");
 
 	ba2str(dst, peer);
 	str = textfile_get(filename, peer);
@@ -126,7 +126,7 @@ int del_stored_device_info(bdaddr_t *src, bdaddr_t *dst)
 	char filename[PATH_MAX + 1];
 	char addr[18];
 
-	create_filename(filename, PATH_MAX, src, "hidd");
+	create_filename(filename, PATH_MAX, src, "input");
 
 	ba2str(dst, addr);
 
@@ -139,8 +139,9 @@ int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req
 	int i, err, size;
 	char addr[18];
 
-	create_filename(filename, PATH_MAX, src, "hidd");
+	create_filename(filename, PATH_MAX, src, "input");
 
+	/* FIXME: name is not required */
 	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9 + strlen(req->name) + 2;
 	str = g_try_malloc0(size);
 	if (!str)

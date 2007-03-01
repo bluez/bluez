@@ -1942,7 +1942,7 @@ static int register_stored_inputs(bdaddr_t *src)
 	char addr[18];
 
 	ba2str(src, addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, addr, "hidd");
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "input");
 	textfile_foreach(filename, stored_input, src);
 
 	return 0;
