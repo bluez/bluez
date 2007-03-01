@@ -61,17 +61,21 @@ static inline int create_filename(char *buf, size_t size,
 
 int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 {
-	char tmp[3], *desc;
+	char tmp[3];
+	const char *desc;
 	unsigned int vendor, product, version, subclass, country, parser, pos;
+	size_t len;
 	int i;
 
-	desc = g_try_malloc0(4096);
-	if (!desc)
-		return -ENOMEM;
-
-	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
+	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %08X %n",
 			&vendor, &product, &version, &subclass, &country,
-			&parser, desc, &req->flags, &pos);
+			&parser, &req->flags, &pos);
+
+
+	desc  = &str[pos];
+	len = strlen(desc);
+	if (len <= 0)
+		return -ENOENT;
 
 	req->vendor   = vendor;
 	req->product  = product;
@@ -80,12 +84,11 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 	req->country  = country;
 	req->parser   = parser;
 
-	snprintf(req->name, 128, str + pos);
+	/* FIXME: Retrieve the name from the filesystem file "names" */
 
-	req->rd_size = strlen(desc) / 2;
+	req->rd_size = len / 2;
 	req->rd_data = g_try_malloc0(req->rd_size);
 	if (!req->rd_data) {
-		g_free(desc);
 		return -ENOMEM;
 	}
 
@@ -94,8 +97,6 @@ int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 		memcpy(tmp, desc + (i * 2), 2);
 		req->rd_data[i] = (uint8_t) strtol(tmp, NULL, 16);
 	}
-
-	g_free(desc);
 
 	return 0;
 }
@@ -141,8 +142,7 @@ int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req
 
 	create_filename(filename, PATH_MAX, src, "input");
 
-	/* FIXME: name is not required */
-	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9 + strlen(req->name) + 2;
+	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9;
 	str = g_try_malloc0(size);
 	if (!str)
 		return -ENOMEM;
@@ -156,10 +156,10 @@ int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req
 	for (i = 0; i < req->rd_size; i++)
 		sprintf(desc + (i * 2), "%2.2X", req->rd_data[i]);
 
-	snprintf(str, size - 1, "%04X:%04X:%04X %02X %02X %04X %s %08X %s",
+	snprintf(str, size - 1, "%04X:%04X:%04X %02X %02X %04X %08X %s",
 			req->vendor, req->product, req->version,
-			req->subclass, req->country, req->parser, desc,
-			req->flags, req->name);
+			req->subclass, req->country, req->parser,
+			req->flags, desc);
 
 	g_free(desc);
 
