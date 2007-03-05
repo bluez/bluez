@@ -747,7 +747,8 @@ static int l2cap_connect(struct input_device *idev,
 		if (!(errno == EAGAIN || errno == EINPROGRESS))
 			goto failed;
 
-		g_io_add_watch(io, G_IO_OUT, (GIOFunc) cb, idev);
+		g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+				(GIOFunc) cb, idev);
 	} else {
 		cb(io, G_IO_OUT, idev);
 	}
@@ -772,6 +773,14 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 		err = EHOSTDOWN;
 		isk = -1;
 		goto failed;
+	}
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		err = EINTR;
+		isk = -1;
+		error("Hangup or error on HIDP interrupt socket");
+		goto failed;
+
 	}
 
 	isk = g_io_channel_unix_get_fd(chan);
@@ -848,6 +857,14 @@ static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
 		err = EHOSTDOWN;
 		csk = -1;
 		goto failed;
+	}
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		err = EINTR;
+		csk = -1;
+		error("Hangup or error on HIDP control socket");
+		goto failed;
+
 	}
 
 	csk = g_io_channel_unix_get_fd(chan);
