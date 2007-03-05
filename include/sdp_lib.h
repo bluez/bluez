@@ -475,6 +475,7 @@ int sdp_uuid16_cmp(const void *p1, const void *p2);
 int sdp_uuid128_cmp(const void *p1, const void *p2);
 uuid_t *sdp_uuid_to_uuid128(uuid_t *uuid);
 void sdp_uuid16_to_uuid128(uuid_t *uuid128, uuid_t *uuid16);
+void sdp_uuid32_to_uuid128(uuid_t *uuid128, uuid_t *uuid32);
 int sdp_uuid128_to_uuid(uuid_t *uuid);
 int sdp_uuid_to_proto(uuid_t *uuid);
 int sdp_uuid_extract(const uint8_t *buffer, uuid_t *uuid, int *scanned);
