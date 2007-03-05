@@ -797,7 +797,29 @@ Methods		string GetAddress()
 			has been established.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.Failed
+			                 org.bluez.Error.Failed
+
+		void SetTrusted(string address) [experimental]
+
+			Marks the user as trusted.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+			                 org.bluez.Error.AlreadyExists
+
+		boolean IsTrusted(string address) [experimental]
+
+			Returns true if the user is trusted or false otherwise.
+			The address parameter must match one of the
+			current users of the service.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		void RemoveTrust(string address) [experimental]
+
+			Marks the user as not trusted.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.DoesNotExist
 
 		void DiscoverDevices()
 
