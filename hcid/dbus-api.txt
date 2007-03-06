@@ -827,7 +827,7 @@ Methods		string GetAddress()
 			includes an inquiry procedure and remote device name
 			resolving.
 
-			On start up this process will generate a DiscoveryStart
+			On start up this process will generate a DiscoveryStarted
 			signal and then return RemoteDeviceFound and also
 			RemoteNameUpdated signals. If the procedure has been
 			finished an DiscoveryCompleted signal will be sent.
