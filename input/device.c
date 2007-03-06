@@ -601,7 +601,6 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 	 * FIXME: Some headsets required a sco connection
 	 * first to report volume gain key events
 	 */
-
 	fake->uinput = uinput_create(idev->name);
 	if (fake->uinput < 0) {
 		err = errno;
@@ -1735,11 +1734,10 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct input_manager *mgr = data;
-	struct input_device *idev;
-	DBusMessage *reply;
+	struct pending_req *pr;
 	DBusError derr;
 	char adapter[18], adapter_path[32];
-	const char *addr, *path;
+	const char *addr;
 	GSList *l;
 	bdaddr_t dst;
 	uint32_t cls = 0;
@@ -1769,18 +1767,11 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		return err_not_supported(conn, msg);
 	}
 
-	idev = input_device_new(&mgr->src, &dst, cls);
+	pr = pending_req_new(conn, msg, adapter_path, &mgr->src, &dst);
+	if (!pr)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (get_stored_device_info(&mgr->src, &idev->dst, &idev->hidp) < 0) {
-		struct pending_req *pr;
-		/* Data not found: create the input device later */
-		input_device_free(idev);
-
-		pr = pending_req_new(conn, msg, adapter_path, &mgr->src, &dst);
-		if (!pr)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-		switch (cls & 0x1f00) {
+	switch (cls & 0x1f00) {
 		case 0x0500: /* Peripheral */
 			if (get_handles(pr, pnp_uuid, pnp_handle_reply) < 0) {
 				pending_req_free(pr);
@@ -1797,28 +1788,9 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 		default:
 			pending_req_free(pr);
 			return err_not_supported(conn, msg);
-		}
-
-		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	path = create_input_path(idev->major, idev->minor);
-	if (register_input_device(conn, idev, path) < 0) {
-		input_device_free(idev);
-		return err_failed(conn, msg, "D-Bus path registration failed");
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		input_device_free(idev);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult manager_remove_device(DBusConnection *conn,
