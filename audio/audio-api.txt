@@ -64,6 +64,16 @@ Methods		string GetAddress()
 
 			Gain is 0..15
 
+		void IndicateCall()
+
+			Indicate an incoming call on the headset
+			connected to the stream. Will continue to
+			ring the headset about every 3 seconds.
+
+		void CancelCall()
+
+			Cancel the incoming call indication.
+
 Signals		void SpeakerGainChanged(uint16 gain)
 
 			The speaker gain changed.
@@ -71,3 +81,11 @@ Signals		void SpeakerGainChanged(uint16 gain)
 		void MicrophoneGainChanged(uint16 gain)
 
 			The microphone gain changed.
+
+		void CallIndicated()
+
+			An incoming call was indicated.
+
+		void CallCanceled()
+
+			Incoming call was canceled.
