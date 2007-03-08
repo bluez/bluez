@@ -51,3 +51,23 @@ Methods		string GetAddress()
 		void Connect()
 
 		void Disconnect()
+
+		uint16 GetSpeakerGain()
+
+		uint16 GetMicrophoneGain()
+
+		void SetSpeakerGain(uint16 gain)
+
+			Gain is 0..15
+
+		void SetMicrophoneGain(uint16 gain)
+
+			Gain is 0..15
+
+Signals		void SpeakerGainChanged(uint16 gain)
+
+			The speaker gain changed.
+
+		void MicrophoneGainChanged(uint16 gain)
+
+			The microphone gain changed.
