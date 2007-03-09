@@ -497,13 +497,14 @@ static int decode_key(const char *str)
 static void send_event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
 	struct uinput_event event;
+	int err;
 
 	memset(&event, 0, sizeof(event));
 	event.type	= type;
 	event.code	= code;
 	event.value	= value;
 
-	write(fd, &event, sizeof(event));
+	err = write(fd, &event, sizeof(event));
 }
 
 static void send_key(int fd, uint16_t key)
