@@ -4,7 +4,7 @@ servicedir = $(libdir)/bluetooth
 noinst_PROGRAMS = bluetoothd-service-audio \
 			bluetoothd-service-headset
 
-bluetoothd_service_audio_SOURCES = main.c
+bluetoothd_service_audio_SOURCES = main.c manager.h manager.c
 
 bluetoothd_service_audio_LDADD = $(top_builddir)/common/libhelper.a \
 			@SBC_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@

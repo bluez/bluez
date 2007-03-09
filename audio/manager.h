@@ -21,20 +21,5 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#include <stdio.h>
-#include <errno.h>
-
-#include "manager.h"
-
-int main(int argc, char *argv[])
-{
-	audio_init();
-
-	audio_exit();
-
-	return 0;
-}
+int audio_init(void);
+void audio_exit(void);

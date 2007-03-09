@@ -25,16 +25,13 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <errno.h>
-
 #include "manager.h"
 
-int main(int argc, char *argv[])
+int audio_init(void)
 {
-	audio_init();
-
-	audio_exit();
-
 	return 0;
+}
+
+void audio_exit(void)
+{
 }
