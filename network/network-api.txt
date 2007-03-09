@@ -1,0 +1,12 @@
+Bluetooth network service API description
+*****************************************
+
+Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
+
+
+Network Manager hierarchy
+=========================
+
+Service		org.bluez.network
+Interface	org.bluez.network.Manager
+Object path	/org/bluez/network
