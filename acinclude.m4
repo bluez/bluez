@@ -150,6 +150,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	usb_enable=${usb_found}
 	glib_enable=no
 	obex_enable=${openobex_found}
+	network_enable=no
 	input_enable=no
 	sync_enable=no
 	echo_enable=no
@@ -181,6 +182,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		dbus_enable=${enableval}
 		obex_enable=${enableval}
+		network_enable=${enableval}
 		input_enable=${enableval}
 		sync_enable=${enableval}
 		echo_enable=${enableval}
@@ -216,6 +218,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
 		obex_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
+		network_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(input, AC_HELP_STRING([--enable-input], [enable input service]), [
@@ -316,6 +322,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
+	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(SYNCSERVICE, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
 	AM_CONDITIONAL(ECHOSERVICE, test "${echo_enable}" = "yes")
