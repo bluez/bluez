@@ -28,7 +28,13 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include "manager.h"
+
 int main(int argc, char *argv[])
 {
+	network_init();
+
+	network_exit();
+
 	return 0;
 }

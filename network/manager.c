@@ -26,3 +26,12 @@
 #endif
 
 #include "manager.h"
+
+int network_init(void)
+{
+	return 0;
+}
+
+void network_exit(void)
+{
+}
