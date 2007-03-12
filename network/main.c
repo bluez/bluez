@@ -68,6 +68,9 @@ int main(int argc, char *argv[])
 
 	network_init();
 
+	if (argc > 1 && !strcmp(argv[1], "-s"))
+		internal_service("network");
+
 	g_main_loop_run(main_loop);
 
 	network_exit();
