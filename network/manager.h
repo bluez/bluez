@@ -23,3 +23,4 @@
 
 int network_init(void);
 void network_exit(void);
+void internal_service(const char *identifier);
