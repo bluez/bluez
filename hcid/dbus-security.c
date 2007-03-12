@@ -1022,11 +1022,11 @@ static int call_passkey_agent(DBusConnection *conn,
 				const char *path, bdaddr_t *sba,
 				bdaddr_t *dba)
 {
-	struct pending_agent_request *req = NULL;
+	struct pending_agent_request *req;
 
 	if (!agent) {
 		debug("call_passkey_agent(): no agent available");
-		goto failed;
+		goto send;
 	}
 
 	debug("Calling PasskeyAgent.Request: name=%s, path=%s",
@@ -1053,6 +1053,7 @@ failed:
 	g_free(req->path);
 	g_free(req);
 
+send:
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 
 	return -1;
@@ -1198,11 +1199,11 @@ static int call_confirm_agent(DBusConnection *conn,
 				const char *path, bdaddr_t *sba,
 				bdaddr_t *dba, const char *pin)
 {
-	struct pending_agent_request *req = NULL;
+	struct pending_agent_request *req;
 
 	if (!agent) {
 		debug("call_passkey_agent(): no agent available");
-		goto failed;
+		goto send;
 	}
 
 	debug("Calling PasskeyAgent.Confirm: name=%s, path=%s",
@@ -1227,12 +1228,11 @@ static int call_confirm_agent(DBusConnection *conn,
 	return 0;
 
 failed:
-	if (req) {
-		g_free(req->pin);
-		g_free(req->path);
-		g_free(req);
-	}
+	g_free(req->pin);
+	g_free(req->path);
+	g_free(req);
 
+send:
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 
 	return -1;
