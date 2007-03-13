@@ -11,7 +11,8 @@ servicedir = $(libdir)/bluetooth
 service_PROGRAMS = bluetoothd-service-input
 
 bluetoothd_service_input_SOURCES = main.c \
-	server.h server.c device.h device.c storage.h storage.c
+	manager.h manager.c server.h server.c \
+	device.h device.c storage.h storage.c
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@

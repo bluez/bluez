@@ -39,6 +39,7 @@
 #include "dbus.h"
 #include "logging.h"
 
+#include "manager.h"
 #include "server.h"
 #include "device.h"
 
