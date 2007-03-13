@@ -50,7 +50,10 @@ static DBusConnection *connection = NULL;
 static DBusHandlerResult err_unknown_connection(DBusConnection *conn,
 							DBusMessage *msg)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				NETWORK_ERROR_INTERFACE ".UnknownConnection",
+				"Unknown connection path"));
 }
 
 static DBusHandlerResult list_servers(DBusConnection *conn,
@@ -134,6 +137,7 @@ static void manager_free(struct manager *mgr)
 
 	g_free (mgr);
 }
+
 static void manager_unregister(DBusConnection *conn, void *data)
 {
 	struct manager *mgr = data;
