@@ -59,7 +59,30 @@ static DBusHandlerResult err_unknown_connection(DBusConnection *conn,
 static DBusHandlerResult list_servers(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct manager *mgr = data;
+	DBusMessage *reply;
+	GSList *l;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	for (l = mgr->servers; l; l = l->next) {
+		const char *server = l->data;
+
+		dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING, &server);
+	}
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult create_server(DBusConnection *conn,
