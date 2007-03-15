@@ -25,4 +25,131 @@
 #include <config.h>
 #endif
 
+#include <bluetooth/bluetooth.h>
+
+#include <glib.h>
+
+#include "logging.h"
+#include "dbus.h"
+
+#define NETWORK_CONNECTION_INTERFACE "org.bluez.network.Manager"
+#define NETWORK_ERROR_INTERFACE "org.bluez.Error"
+
 #include "connection.h"
+
+struct network_conn {
+	char *path;
+};
+
+static DBusHandlerResult get_address(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult get_uuid(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult get_name(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult get_descriptor(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult get_interface(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult connect(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult is_connected(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult connection_message(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *iface, *member;
+
+	iface = dbus_message_get_interface(msg);
+	member = dbus_message_get_member(msg);
+
+	if (strcmp(NETWORK_CONNECTION_INTERFACE, iface))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (strcmp(member, "GetAddress") == 0)
+		return get_address(conn, msg, data);
+
+	if (strcmp(member, "GetUUID") == 0)
+		return get_uuid(conn, msg, data);
+
+	if (strcmp(member, "GetName") == 0)
+		return get_name(conn, msg, data);
+
+	if (strcmp(member, "GetDescription") == 0)
+		return get_descriptor(conn, msg, data);
+
+	if (strcmp(member, "GetInterface") == 0)
+		return get_interface(conn, msg, data);
+
+	if (strcmp(member, "Connect") == 0)
+		return connect(conn, msg, data);
+
+	if (strcmp(member, "Disconnect") == 0)
+		return disconnect(conn, msg, data);
+
+	if (strcmp(member, "IsConnected") == 0)
+		return is_connected(conn, msg, data);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static void connection_free(struct network_conn *nc)
+{
+	if (!nc)
+		return;
+
+	if (nc->path)
+		g_free(nc->path);
+
+	g_free(nc);
+}
+
+static void connection_unregister(DBusConnection *conn, void *data)
+{
+	struct network_conn *nc = data;
+
+	info("Unregistered connection path %s", nc->path);
+
+	connection_free(nc);
+}
+
+/* Virtual table to handle connection object path hierarchy */
+static const DBusObjectPathVTable connection_table = {
+	.message_function = connection_message,
+	.unregister_function = connection_unregister,
+};
+
