@@ -38,6 +38,7 @@
 #define NETWORK_MANAGER_INTERFACE "org.bluez.network.Manager"
 #define NETWORK_ERROR_INTERFACE "org.bluez.Error"
 
+#include "bridge.h"
 #include "manager.h"
 
 struct manager {
@@ -262,10 +263,26 @@ void internal_service(const char *identifier)
 int network_init(void)
 {
 	network_dbus_init();
+
+	if (bridge_init() < 0) {
+		error("Can't init bridge module");
+		return -1;
+	}
+
+	if (bridge_create("pan0") < 0) {
+		error("Can't create bridge");
+		return -1;
+	}
+
 	return 0;
 }
 
 void network_exit(void)
 {
+	if (bridge_remove("pan0") < 0)
+		error("Can't remove bridge");
+
+	bridge_cleanup();
+
 	network_dbus_exit();
 }
