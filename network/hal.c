@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <errno.h>
 
 #include <dbus/dbus.h>
@@ -39,6 +40,8 @@ static LibHalContext *hal_ctx = NULL;
 
 int hal_init(DBusConnection *conn)
 {
+	char str[64], *udi;
+
 	hal_ctx = libhal_ctx_new();
 	if (!hal_ctx)
 		return -ENOMEM;
@@ -57,6 +60,14 @@ int hal_init(DBusConnection *conn)
 		libhal_ctx_free(hal_ctx);
 		hal_ctx = NULL;
 		return -EIO;
+	}
+
+	udi = libhal_new_device(hal_ctx, NULL);
+
+	sprintf(str, "/org/freedesktop/Hal/devices/bluetooth_pan");
+
+	if (libhal_device_commit_to_gdl(hal_ctx, udi, str, NULL) == FALSE) {
+		error("Failed to add new HAL device");
 	}
 
 	return 0;
