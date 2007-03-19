@@ -31,10 +31,9 @@
 
 #include "logging.h"
 #include "dbus.h"
+#include "error.h"
 
 #define NETWORK_CONNECTION_INTERFACE "org.bluez.network.Manager"
-#define NETWORK_CONNECTION_PATH "/org/bluez/network/connection"
-#define NETWORK_ERROR_INTERFACE "org.bluez.Error"
 
 #include "connection.h"
 
@@ -157,7 +156,6 @@ static const DBusObjectPathVTable connection_table = {
 int connection_register(DBusConnection *conn, const char *path)
 {
 	struct network_conn *nc;
-	static int nc_uid = 0;
 
 	if (!conn)
 		return -1;

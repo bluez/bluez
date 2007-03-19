@@ -32,12 +32,11 @@
 #include <glib.h>
 
 #include "logging.h"
-#include "dbus.h"
 
 #define NETWORK_PATH "/org/bluez/network"
 #define NETWORK_MANAGER_INTERFACE "org.bluez.network.Manager"
-#define NETWORK_ERROR_INTERFACE "org.bluez.Error"
 
+#include "error.h"
 #include "bridge.h"
 #include "manager.h"
 
@@ -47,15 +46,6 @@ struct manager {
 };
 
 static DBusConnection *connection = NULL;
-
-static DBusHandlerResult err_unknown_connection(DBusConnection *conn,
-							DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-				NETWORK_ERROR_INTERFACE ".UnknownConnection",
-				"Unknown connection path"));
-}
 
 static DBusHandlerResult list_servers(DBusConnection *conn,
 					DBusMessage *msg, void *data)

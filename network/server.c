@@ -161,3 +161,28 @@ static const DBusObjectPathVTable server_table = {
 	.message_function = server_message,
 	.unregister_function = server_unregister,
 };
+
+int server_register(DBusConnection *conn, const char *path)
+{
+	struct network_server *ns;
+
+	if (!conn)
+		return -1;
+
+	ns = g_new0(struct network_server, 1);
+
+	/* register path */
+	if (!dbus_connection_register_object_path(conn, path,
+						&server_table, ns)) {
+		error("D-Bus failed to register %s path", path);
+		goto fail;
+	}
+
+	ns->path = g_strdup(path);
+	info("Registered server path:%s", path);
+
+	return 0;
+fail:
+	server_free(ns);
+	return -1;
+}

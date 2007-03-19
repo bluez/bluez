@@ -26,3 +26,15 @@
 #endif
 
 #include "error.h"
+
+#define NETWORK_ERROR_INTERFACE "org.bluez.Error"
+
+DBusHandlerResult err_unknown_connection(DBusConnection *conn,
+						DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				NETWORK_ERROR_INTERFACE ".UnknownConnection",
+				"Unknown connection path"));
+}
+
