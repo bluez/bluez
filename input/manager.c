@@ -68,14 +68,20 @@ struct input_manager {
 
 static DBusConnection *connection = NULL;
 
-static struct pending_req *pending_req_new(DBusConnection *conn,
-				DBusMessage *msg, const char *adapter_path,
+static struct pending_req *pending_req_new(DBusConnection *conn, DBusMessage *msg,
 						bdaddr_t *src, bdaddr_t *dst)
 {
+	char adapter[18], adapter_path[32];
 	struct pending_req *pr;
+	int dev_id;
+
 	pr = g_try_new0(struct pending_req, 1);
 	if (!pr)
 		return NULL;
+
+	ba2str(src, adapter);
+	dev_id = hci_devid(adapter);
+	snprintf(adapter_path, 32, "/org/bluez/hci%d", dev_id);
 
 	pr->adapter_path = g_strdup(adapter_path);
 	bacpy(&pr->src, src);
@@ -586,12 +592,10 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	struct input_manager *mgr = data;
 	struct pending_req *pr;
 	DBusError derr;
-	char adapter[18], adapter_path[32];
 	const char *addr;
 	GSList *l;
 	bdaddr_t dst;
 	uint32_t cls = 0;
-	int dev_id;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -609,17 +613,12 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
 
-	/* FIXME: Move the following code to pending_req_new() */
-	ba2str(&mgr->src, adapter);
-	dev_id = hci_devid(adapter);
-	snprintf(adapter_path, 32, "/org/bluez/hci%d", dev_id);
-
 	if (read_device_class(&mgr->src, &dst, &cls) < 0) {
 		error("Device class not available");
 		return err_not_supported(conn, msg);
 	}
 
-	pr = pending_req_new(conn, msg, adapter_path, &mgr->src, &dst);
+	pr = pending_req_new(conn, msg, &mgr->src, &dst);
 	if (!pr)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
