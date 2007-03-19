@@ -612,8 +612,10 @@ static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	if (idev->hidp.subclass & 0x40) {
-		err = encrypt_link(&idev->src, &idev->dst);
-		if (err < 0) {
+		int ret;
+		ret = encrypt_link(&idev->src, &idev->dst);
+		if (ret < 0) {
+			err = -ret;
 			close(ctl);
 			goto failed;
 		}
