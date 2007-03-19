@@ -121,6 +121,12 @@ AC_DEFUN([AC_PATH_ALSA], [
 	AC_SUBST(ALSA_LIBS)
 ])
 
+AC_DEFUN([AC_PATH_HAL], [
+	PKG_CHECK_MODULES(HAL, hal >= 0.5.8, hal_found=yes, hal_found=no)
+	AC_SUBST(HAL_CFLAGS)
+	AC_SUBST(HAL_LIBS)
+])
+
 AC_DEFUN([AC_PATH_USB], [
 	PKG_CHECK_MODULES(USB, libusb, usb_found=yes, usb_found=no)
 	AC_SUBST(USB_CFLAGS)

@@ -16,10 +16,10 @@ bluetoothd_service_network_SOURCES = main.c \
 	hal.h hal.c connection.h connection.c
 
 LDADD = $(top_builddir)/common/libhelper.a \
-		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+		@GLIB_LIBS@ @HAL_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @HAL_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
