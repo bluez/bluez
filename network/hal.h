@@ -21,5 +21,7 @@
  *
  */
 
-int hal_init(void);
+#include <dbus/dbus.h>
+
+int hal_init(DBusConnection *conn);
 void hal_cleanup(void);

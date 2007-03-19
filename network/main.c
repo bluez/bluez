@@ -37,6 +37,7 @@
 #include "logging.h"
 
 #include "manager.h"
+#include "hal.h"
 
 static GMainLoop *main_loop;
 
@@ -66,6 +67,8 @@ int main(int argc, char *argv[])
 	/* Create event loop */
 	main_loop = g_main_loop_new(NULL, FALSE);
 
+	hal_init(NULL);
+
 	if (network_init() == -1)
 		goto fail;
 
@@ -75,6 +78,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	network_exit();
+
+	hal_cleanup();
 
 fail:
 	g_main_loop_unref(main_loop);

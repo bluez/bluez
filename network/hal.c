@@ -25,13 +25,47 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
+#include <dbus/dbus.h>
+#include <hal/libhal.h>
+
+#include "logging.h"
+
 #include "hal.h"
 
-int hal_init(void)
+static LibHalContext *hal_ctx = NULL;
+
+int hal_init(DBusConnection *conn)
 {
+	hal_ctx = libhal_ctx_new();
+	if (!hal_ctx)
+		return -ENOMEM;
+
+	if (libhal_ctx_set_dbus_connection(hal_ctx, conn) == FALSE) {
+		libhal_ctx_free(hal_ctx);
+		hal_ctx = NULL;
+		return -EIO;
+	}
+
+	if (libhal_ctx_init(hal_ctx, NULL) == FALSE) {
+		error("Unable to init HAL context");
+		libhal_ctx_free(hal_ctx);
+		hal_ctx = NULL;
+		return -EIO;
+	}
+
 	return 0;
 }
 
 void hal_cleanup(void)
 {
+	if (!hal_ctx)
+		return;
+
+	libhal_ctx_shutdown(hal_ctx, NULL);
+
+	libhal_ctx_free(hal_ctx);
+
+	hal_ctx = NULL;
 }
