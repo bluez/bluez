@@ -21,6 +21,29 @@
  *
  */
 
+struct fake_input {
+	GIOChannel	*io;
+	int		rfcomm; /* RFCOMM socket */
+	int		uinput;	/* uinput socket */
+	uint8_t		ch;	/* RFCOMM channel number */
+};
+
+struct pending_connect {
+	DBusConnection *conn;
+	DBusMessage *msg;
+};
+
+struct input_device {
+	bdaddr_t		src;
+	bdaddr_t		dst;
+	char			*name;
+	uint8_t			major;
+	uint8_t			minor;
+	struct hidp_connadd_req hidp; /* FIXME: Use dynamic alloc? */
+	struct fake_input	*fake;
+	struct pending_connect *pending_connect;
+};
+
 int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 				struct hidp_connadd_req *hidp, const char **path);
 int fake_input_register(DBusConnection *conn, bdaddr_t *src,

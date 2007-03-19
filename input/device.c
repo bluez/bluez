@@ -61,29 +61,6 @@
 
 #define UPDOWN_ENABLED		1
 
-struct fake_input {
-	GIOChannel	*io;
-	int		rfcomm; /* RFCOMM socket */
-	int		uinput;	/* uinput socket */
-	uint8_t		ch;	/* RFCOMM channel number */
-};
-
-struct pending_connect {
-	DBusConnection *conn;
-	DBusMessage *msg;
-};
-
-struct input_device {
-	bdaddr_t		src;
-	bdaddr_t		dst;
-	char			*name;
-	uint8_t			major;
-	uint8_t			minor;
-	struct hidp_connadd_req hidp; /* FIXME: Use dynamic alloc? */
-	struct fake_input	*fake;
-	struct pending_connect *pending_connect;
-};
-
 static struct input_device *input_device_new(bdaddr_t *src, bdaddr_t *dst)
 {
 	struct input_device *idev;

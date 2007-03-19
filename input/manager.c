@@ -103,7 +103,6 @@ static void pending_req_free(struct pending_req *pr)
 	g_free(pr);
 }
 
-#if 0
 static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
 {
 	struct input_device *idev;
@@ -117,7 +116,7 @@ static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
 
 	return bacmp(&idev->dst, bdaddr);
 }
-#endif
+
 static int get_record(struct pending_req *pr, uint32_t handle,
 					DBusPendingCallNotifyFunction cb)
 {
@@ -589,6 +588,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	DBusError derr;
 	char adapter[18], adapter_path[32];
 	const char *addr;
+	GSList *l;
 	bdaddr_t dst;
 	uint32_t cls = 0;
 	int dev_id;
@@ -603,13 +603,12 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	}
 
 	str2ba(addr, &dst);
-#if 0
-	/* FIXME */
+
 	l = g_slist_find_custom(mgr->paths, &dst,
 			(GCompareFunc) path_bdaddr_cmp);
 	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
-#endif
+
 	/* FIXME: Move the following code to pending_req_new() */
 	ba2str(&mgr->src, adapter);
 	dev_id = hci_devid(adapter);
