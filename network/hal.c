@@ -31,6 +31,7 @@
 #include <hal/libhal.h>
 
 #include "logging.h"
+#include "dbus.h"
 
 #include "hal.h"
 
@@ -42,7 +43,10 @@ int hal_init(DBusConnection *conn)
 	if (!hal_ctx)
 		return -ENOMEM;
 
+	conn = init_dbus(NULL, NULL, NULL);
+
 	if (libhal_ctx_set_dbus_connection(hal_ctx, conn) == FALSE) {
+		error("Failed to connect HAL via system bus");
 		libhal_ctx_free(hal_ctx);
 		hal_ctx = NULL;
 		return -EIO;
