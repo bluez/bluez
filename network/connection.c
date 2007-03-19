@@ -33,6 +33,7 @@
 #include "dbus.h"
 
 #define NETWORK_CONNECTION_INTERFACE "org.bluez.network.Manager"
+#define NETWORK_CONNECTION_PATH "/org/bluez/network/connection"
 #define NETWORK_ERROR_INTERFACE "org.bluez.Error"
 
 #include "connection.h"
@@ -153,3 +154,28 @@ static const DBusObjectPathVTable connection_table = {
 	.unregister_function = connection_unregister,
 };
 
+int connection_register(DBusConnection *conn, const char *path)
+{
+	struct network_conn *nc;
+	static int nc_uid = 0;
+
+	if (!conn)
+		return -1;
+
+	nc = g_new0(struct network_conn, 1);
+
+	/* register path */
+	if (!dbus_connection_register_object_path(conn, path,
+						&connection_table, nc)) {
+		error("D-Bus failed to register %s path", path);
+		goto fail;
+	}
+
+	nc->path = g_strdup(path);
+	info("Registered connection path:%s", path);
+
+	return 0;
+fail:
+	connection_free(nc);
+	return -1;
+}

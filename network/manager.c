@@ -191,7 +191,7 @@ int network_dbus_init(void)
 
 	mgr = g_new0(struct manager, 1);
 
-	/* Fallback to catch invalid device path */
+	/* Fallback to catch invalid network path */
 	if (!dbus_connection_register_fallback(connection, NETWORK_PATH,
 						&manager_table, mgr)) {
 		error("D-Bus failed to register %s path", NETWORK_PATH);
@@ -262,8 +262,6 @@ void internal_service(const char *identifier)
 
 int network_init(void)
 {
-	network_dbus_init();
-
 	if (bridge_init() < 0) {
 		error("Can't init bridge module");
 		return -1;
@@ -274,7 +272,7 @@ int network_init(void)
 		return -1;
 	}
 
-	return 0;
+	return network_dbus_init();
 }
 
 void network_exit(void)
