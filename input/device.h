@@ -21,7 +21,8 @@
  *
  */
 
-int input_dbus_init(void);
-void input_dbus_exit(void);
-
-void internal_service(const char *identifier);
+int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
+				struct hidp_connadd_req *hidp, const char **path);
+int fake_input_register(DBusConnection *conn, bdaddr_t *src,
+			bdaddr_t *dst, uint8_t ch, const char **path);
+int input_device_unregister(DBusConnection *conn, const char *path);

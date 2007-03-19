@@ -44,8 +44,8 @@
 
 #include <glib.h>
 
-#include "textfile.h"
 #include "logging.h"
+#include "textfile.h"
 
 #include "storage.h"
 
@@ -171,14 +171,14 @@ int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req
 	return err;
 }
 
-int read_device_name(bdaddr_t *local, bdaddr_t *peer, char **name)
+int read_device_name(bdaddr_t *src, bdaddr_t *dst, char **name)
 {
 	char filename[PATH_MAX + 1], addr[18], *str;
 	int len;
 
-	create_filename(filename, PATH_MAX, local, "names");
+	create_filename(filename, PATH_MAX, src, "names");
 
-	ba2str(peer, addr);
+	ba2str(dst, addr);
 	str = textfile_get(filename, addr);
 	if (!str)
 		return -ENOENT;
@@ -198,6 +198,29 @@ int read_device_name(bdaddr_t *local, bdaddr_t *peer, char **name)
 	snprintf(*name, 128, "%s", str);
 
 	free(str);
+
+	return 0;
+}
+
+int read_device_class(bdaddr_t *src, bdaddr_t *dst, uint32_t *cls)
+{
+	char filename[PATH_MAX + 1], *str;
+	char addr[18];
+
+	ba2str(src, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "classes");
+
+	ba2str(dst, addr);
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
+
+	if (sscanf(str, "%x", cls) != 1) {
+		g_free(str);
+		return -ENOENT;
+	}
+
+	g_free(str);
 
 	return 0;
 }

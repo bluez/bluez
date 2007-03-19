@@ -20,3 +20,25 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+DBusHandlerResult err_unknown_device(DBusConnection *conn,
+					DBusMessage *msg);
+
+DBusHandlerResult err_generic(DBusConnection *conn, DBusMessage *msg,
+				const char *name, const char *str);
+
+DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
+				const char *str);
+
+DBusHandlerResult err_connection_failed(DBusConnection *conn,
+					DBusMessage *msg, const char *str);
+
+DBusHandlerResult err_already_exists(DBusConnection *conn,
+					DBusMessage *msg, const char *str);
+
+DBusHandlerResult err_does_not_exist(DBusConnection *conn,
+					DBusMessage *msg, const char *str);
+
+DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg);
+
+

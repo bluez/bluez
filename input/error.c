@@ -25,4 +25,68 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
+#include <dbus.h>
+
 #include "error.h"
+
+#define INPUT_ERROR_INTERFACE	"org.bluez.input.Error"
+
+DBusHandlerResult err_unknown_device(DBusConnection *conn,
+					DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".UnknownDevice",
+				"Invalid device"));
+}
+
+DBusHandlerResult err_generic(DBusConnection *conn, DBusMessage *msg,
+				const char *name, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg, name, str));
+
+}
+
+DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
+				const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".Failed", str));
+}
+
+DBusHandlerResult err_connection_failed(DBusConnection *conn,
+					DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE".ConnectionAttemptFailed",
+				str));
+}
+
+DBusHandlerResult err_already_exists(DBusConnection *conn,
+					DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".AlreadyExists", str));
+}
+
+DBusHandlerResult err_does_not_exist(DBusConnection *conn,
+					DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".DoesNotExist", str));
+}
+
+DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			INPUT_ERROR_INTERFACE ".NotSupported",
+			"The service is not supported by the remote device"));
+}
+

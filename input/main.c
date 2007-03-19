@@ -41,7 +41,6 @@
 
 #include "manager.h"
 #include "server.h"
-#include "device.h"
 
 static GMainLoop *main_loop;
 
@@ -71,7 +70,7 @@ int main(int argc, char *argv[])
 	/* Create event loop */
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	if (input_dbus_init() < 0) {
+	if (input_init() < 0) {
 		error("Unable to get on D-Bus");
 		exit(1);
 	}
@@ -85,7 +84,7 @@ int main(int argc, char *argv[])
 
 	server_stop();
 
-	input_dbus_exit();
+	input_exit();
 
 	g_main_loop_unref(main_loop);
 
