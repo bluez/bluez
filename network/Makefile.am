@@ -13,7 +13,7 @@ noinst_PROGRAMS = bluetoothd-service-network
 bluetoothd_service_network_SOURCES = main.c \
 	manager.h manager.c error.h error.c \
 	server.h server.c bridge.h bridge.c \
-	connection.h connection.c
+	hal.h hal.c connection.h connection.c
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
