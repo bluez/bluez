@@ -114,7 +114,7 @@ static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
 	struct input_device *idev;
 
 	if (!dbus_connection_get_object_path_data(connection, path,
-				(void *) &idev))
+							(void *) &idev))
 		return -1;
 
 	if (!idev)
@@ -648,6 +648,7 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct input_manager *mgr = data;
+	struct input_device *idev;
 	DBusMessage *reply;
 	DBusError derr;
 	GSList *l;
@@ -673,8 +674,10 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 	g_free(l->data);
 	mgr->paths = g_slist_remove(mgr->paths, l->data);
 
-	/* FIXME: how retrieve the destination address */
-	//del_stored_device_info(&mgr->src, &idev->dst);
+	if (!dbus_connection_get_object_path_data(connection, path, (void *) &idev))
+		return err_does_not_exist(conn, msg, "Input doesn't exist");
+
+	del_stored_device_info(&mgr->src, &idev->dst);
 
 	if (input_device_unregister(conn, path) < 0) {
 		dbus_message_unref(reply);
