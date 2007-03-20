@@ -38,3 +38,17 @@ DBusHandlerResult err_unknown_connection(DBusConnection *conn,
 				"Unknown connection path"));
 }
 
+DBusHandlerResult err_generic(DBusConnection *conn, DBusMessage *msg,
+				const char *name, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg, name, str));
+}
+
+DBusHandlerResult err_does_not_exist(DBusConnection *conn, DBusMessage *msg,
+					const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				NETWORK_ERROR_INTERFACE ".DoesNotExist", str));
+}

@@ -32,6 +32,7 @@
 #include <glib.h>
 
 #include "logging.h"
+#include "dbus.h"
 
 #define NETWORK_PATH "/org/bluez/network"
 #define NETWORK_MANAGER_INTERFACE "org.bluez.network.Manager"
@@ -39,6 +40,7 @@
 #include "error.h"
 #include "bridge.h"
 #include "manager.h"
+#include "server.h"
 
 struct manager {
 	bdaddr_t src;		/* Local adapter BT address */
@@ -79,13 +81,73 @@ static DBusHandlerResult list_servers(DBusConnection *conn,
 static DBusHandlerResult create_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct manager *mgr = data;
+	DBusMessage *reply;
+	DBusError derr;
+	const char *uuid;
+	char *path;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &uuid,
+				DBUS_TYPE_INVALID)) {
+		err_generic(conn, msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	path = g_new0(char, 32);
+	snprintf(path, 32, NETWORK_PATH "/server/%s", uuid);
+	if (!g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp)) {
+		if (server_register(conn, path) != -1) {
+			mgr->servers = g_slist_append(mgr->servers,
+							g_strdup(path));
+		}
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	g_free(path);
+	return send_message_and_unref(connection, reply);
 }
 
 static DBusHandlerResult remove_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct manager *mgr = data;
+	const char *path;
+	DBusMessage *reply;
+	DBusError derr;
+	GSList *l;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID)) {
+		err_generic(conn, msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	l = g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp);
+	if (!l)
+		return err_does_not_exist(conn, msg, "Server doesn't exist");
+
+	mgr->servers = g_slist_remove(mgr->servers, l->data);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (!dbus_connection_unregister_object_path(conn, path))
+		error("Network server path unregister failed");
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult list_connections(DBusConnection *conn,
@@ -148,6 +210,9 @@ static void manager_free(struct manager *mgr)
 {
 	if (!mgr)
 		return;
+
+	if (mgr->servers)
+		g_slist_free(mgr->servers);
 
 	g_free (mgr);
 }

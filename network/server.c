@@ -179,7 +179,7 @@ int server_register(DBusConnection *conn, const char *path)
 	}
 
 	ns->path = g_strdup(path);
-	info("Registered server path:%s", path);
+	info("Registered server path:%s", ns->path);
 
 	return 0;
 fail:
