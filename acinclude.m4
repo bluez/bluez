@@ -153,6 +153,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	pie_enable=no
 	inotify_enable=${inotify_found}
 	expat_enable=${expat_found}
+	hal_enable=${hal_found}
 	usb_enable=${usb_found}
 	glib_enable=no
 	obex_enable=${openobex_found}
@@ -212,6 +213,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(expat, AC_HELP_STRING([--enable-expat], [enable Expat support]), [
 		expat_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(hal, AC_HELP_STRING([--enable-hal], [enable HAL support]), [
+		hal_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
@@ -326,6 +331,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_SUBST([SBC_LIBS], ['$(top_builddir)/sbc/libsbc.la'])
 
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
+	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes" && test "${hal_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")

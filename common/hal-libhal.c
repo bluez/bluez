@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -63,6 +63,10 @@ int hal_init(DBusConnection *conn)
 	}
 
 	udi = libhal_new_device(hal_ctx, NULL);
+
+	if (libhal_device_add_capability(hal_ctx, udi, "net", NULL) == FALSE) {
+		error("Failed to add device capability");
+	}
 
 	sprintf(str, "/org/freedesktop/Hal/devices/bluetooth_pan");
 
