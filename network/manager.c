@@ -41,20 +41,20 @@
 #include "bridge.h"
 #include "manager.h"
 #include "server.h"
+#include "connection.h"
 
 struct manager {
 	bdaddr_t src;		/* Local adapter BT address */
 	GSList *servers;	/* Network registered servers paths */
+	GSList *connections;	/* Network registered connections paths */
 };
 
 static DBusConnection *connection = NULL;
 
-static DBusHandlerResult list_servers(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusHandlerResult list_paths(DBusConnection *conn, DBusMessage *msg,
+					GSList *list)
 {
-	struct manager *mgr = data;
 	DBusMessage *reply;
-	GSList *l;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 
@@ -66,16 +66,25 @@ static DBusHandlerResult list_servers(DBusConnection *conn,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	for (l = mgr->servers; l; l = l->next) {
-		const char *server = l->data;
-
-		dbus_message_iter_append_basic(&array_iter,
-						DBUS_TYPE_STRING, &server);
+	if (g_slist_length(list)) {
+		for (; list; list = list->next) {
+			dbus_message_iter_append_basic(&array_iter,
+							DBUS_TYPE_STRING,
+							&list->data);
+		}
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
 	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult list_servers(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	struct manager *mgr = data;
+
+	return list_paths(conn, msg, mgr->servers);
 }
 
 static DBusHandlerResult create_server(DBusConnection *conn,
@@ -116,10 +125,9 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult remove_server(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusHandlerResult remove_path(DBusConnection *conn,
+					DBusMessage *msg, GSList **list)
 {
-	struct manager *mgr = data;
 	const char *path;
 	DBusMessage *reply;
 	DBusError derr;
@@ -134,11 +142,12 @@ static DBusHandlerResult remove_server(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	l = g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp);
+	l = g_slist_find_custom(*list, path, (GCompareFunc) strcmp);
 	if (!l)
 		return err_does_not_exist(conn, msg, "Server doesn't exist");
 
-	mgr->servers = g_slist_remove(mgr->servers, l->data);
+	g_free(l->data);
+	*list = g_slist_remove(*list, l->data);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -150,22 +159,67 @@ static DBusHandlerResult remove_server(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult remove_server(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct manager *mgr = data;
+
+	return remove_path(conn, msg, &mgr->servers);
+}
+
 static DBusHandlerResult list_connections(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct manager *mgr = data;
+
+	return list_paths(conn, msg, mgr->connections);
 }
 
 static DBusHandlerResult create_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct manager *mgr = data;
+	static int uid = 0;
+	DBusMessage *reply;
+	DBusError derr;
+	const char *addr;
+	const char *uuid;
+	char *path;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &addr,
+				DBUS_TYPE_STRING, &uuid,
+				DBUS_TYPE_INVALID)) {
+		err_generic(conn, msg, derr.name, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	path = g_new0(char, 32);
+	snprintf(path, 32, NETWORK_PATH "/connection%d", uid++);
+	if (connection_register(conn, path) != -1) {
+		mgr->connections = g_slist_append(mgr->connections,
+							g_strdup(path));
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	g_free(path);
+	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult remove_connections(DBusConnection *conn,
+static DBusHandlerResult remove_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct manager *mgr = data;
+
+	return remove_path(conn, msg, &mgr->connections);
 }
 
 static DBusHandlerResult manager_message(DBusConnection *conn,
@@ -200,8 +254,8 @@ static DBusHandlerResult manager_message(DBusConnection *conn,
 	if (strcmp(member, "CreateConnection") == 0)
 		return create_connection(conn, msg, data);
 
-	if (strcmp(member, "RemoveConnections") == 0)
-		return remove_connections(conn, msg, data);
+	if (strcmp(member, "RemoveConnection") == 0)
+		return remove_connection(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -213,6 +267,9 @@ static void manager_free(struct manager *mgr)
 
 	if (mgr->servers)
 		g_slist_free(mgr->servers);
+
+	if (mgr->connections)
+		g_slist_free(mgr->connections);
 
 	g_free (mgr);
 }
@@ -303,7 +360,8 @@ void internal_service(const char *identifier)
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_STRING, &desc, DBUS_TYPE_INVALID);
 
-	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, NULL);
+	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, 
+							  NULL);
 	if (!reply) {
 		error("Can't register service");
 		return;
