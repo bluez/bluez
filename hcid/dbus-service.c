@@ -101,35 +101,6 @@ static void service_exit(const char *name, struct service *service)
 	service->bus_name = NULL;
 }
 
-static void append_dict_entry(DBusMessageIter *dict, const char *key,
-							int type, void *val)
-{
-	DBusMessageIter entry;
-	DBusMessageIter value;
-	char *sig;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	switch (type) {
-	case DBUS_TYPE_STRING:
-		sig = DBUS_TYPE_STRING_AS_STRING;
-		break;
-	default:
-		sig = DBUS_TYPE_VARIANT_AS_STRING;
-		break;
-	}
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, sig, &value);
-
-	dbus_message_iter_append_basic(&value, type, &val);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static DBusHandlerResult get_info(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {

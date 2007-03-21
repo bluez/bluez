@@ -36,6 +36,9 @@ typedef DBusHandlerResult (*service_handler_func_t) (DBusConnection *conn,
 							DBusMessage *msg,
 							void *user_data);
 
+void append_dict_entry(DBusMessageIter *dict, const char *key,
+							int type, void *val);
+
 struct service_data {
 	const char		*name;
 	service_handler_func_t	handler_func;
