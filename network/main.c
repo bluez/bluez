@@ -69,6 +69,8 @@ int main(int argc, char *argv[])
 
 	hal_init(NULL);
 
+	hal_add_device(NULL);
+
 	if (network_init() == -1)
 		goto fail;
 

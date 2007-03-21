@@ -40,8 +40,6 @@ static LibHalContext *hal_ctx = NULL;
 
 int hal_init(DBusConnection *conn)
 {
-	char str[64], *udi;
-
 	hal_ctx = libhal_ctx_new();
 	if (!hal_ctx)
 		return -ENOMEM;
@@ -62,18 +60,6 @@ int hal_init(DBusConnection *conn)
 		return -EIO;
 	}
 
-	udi = libhal_new_device(hal_ctx, NULL);
-
-	if (libhal_device_add_capability(hal_ctx, udi, "net", NULL) == FALSE) {
-		error("Failed to add device capability");
-	}
-
-	sprintf(str, "/org/freedesktop/Hal/devices/bluetooth_pan");
-
-	if (libhal_device_commit_to_gdl(hal_ctx, udi, str, NULL) == FALSE) {
-		error("Failed to add new HAL device");
-	}
-
 	return 0;
 }
 
@@ -87,4 +73,39 @@ void hal_cleanup(void)
 	libhal_ctx_free(hal_ctx);
 
 	hal_ctx = NULL;
+}
+
+int hal_add_device(struct hal_device *device)
+{
+	char udi[128], *dev;
+	char *str = "00000000-0000-1000-8000-00805f9b34fb";
+
+	dev = libhal_new_device(hal_ctx, NULL);
+
+	if (libhal_device_add_capability(hal_ctx, dev,
+					"bluetooth", NULL) == FALSE) {
+		error("Failed to add device capability");
+	}
+
+	if (libhal_device_set_property_string(hal_ctx, dev,
+				"bluetooth.uuid", str, NULL) == FALSE) {
+		error("Failed to add UUID property");
+	}
+
+	if (libhal_device_set_property_bool(hal_ctx, dev,
+				"bluetooth.is_connected", FALSE, NULL) == FALSE) {
+		error("Failed to add connected state property");
+	}
+
+	sprintf(udi, "/org/freedesktop/Hal/devices/bluetooth_network_connection_aabbccddeeff");
+
+	if (libhal_remove_device(hal_ctx, udi, NULL) == FALSE) {
+		error("Can't remove old HAL device");
+	}
+
+	if (libhal_device_commit_to_gdl(hal_ctx, dev, udi, NULL) == FALSE) {
+		error("Failed to add new HAL device");
+	}
+
+	return 0;
 }

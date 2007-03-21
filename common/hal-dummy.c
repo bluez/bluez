@@ -35,3 +35,8 @@ int hal_init(DBusConnection *conn)
 void hal_cleanup(void)
 {
 }
+
+int hal_add_device(struct hal_device *device)
+{
+	return 0;
+}

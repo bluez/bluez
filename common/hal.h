@@ -25,3 +25,10 @@
 
 int hal_init(DBusConnection *conn);
 void hal_cleanup(void);
+
+struct hal_device {
+	char *udi;
+	char uuid[37];
+};
+
+int hal_add_device(struct hal_device *);
