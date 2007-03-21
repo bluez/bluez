@@ -1860,7 +1860,7 @@ static DBusHandlerResult am_message(DBusConnection *conn,
 			!strcmp("Introspect", member))
 		return simple_introspect(conn, msg, data);
 
-	if (strcmp(interface, "org.bluez.audio.Headset") != 0)
+	if (strcmp(interface, "org.bluez.audio.Manager") != 0)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (strcmp(member, "CreateHeadset") == 0)
