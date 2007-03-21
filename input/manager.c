@@ -266,8 +266,12 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
-		error("%s: %s", derr.name, derr.message);
+		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+			err_connection_failed(pr->conn, pr->msg, derr.message);
+		else
+			err_not_supported(pr->conn, pr->msg);
+
+		error("GetRemoteServiceRecord failed: %s(%s)", derr.name, derr.message);
 		goto fail;
 	}
 
@@ -329,8 +333,12 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
-		error("%s: %s", derr.name, derr.message);
+		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+			err_connection_failed(pr->conn, pr->msg, derr.message);
+		else
+			err_not_supported(pr->conn, pr->msg);
+
+		error("GetRemoteServiceHandles: %s(%s)", derr.name, derr.message);
 		goto fail;
 	}
 
@@ -374,8 +382,12 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
-		error("%s: %s", derr.name, derr.message);
+		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+			err_connection_failed(pr->conn, pr->msg, derr.message);
+		else
+			err_not_supported(pr->conn, pr->msg);
+
+		error("GetRemoteServiceRecord: %s(%s)", derr.name, derr.message);
 		goto fail;
 	}
 
@@ -421,8 +433,12 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
-		error("%s: %s", derr.name, derr.message);
+		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+			err_connection_failed(pr->conn, pr->msg, derr.message);
+		else
+			err_not_supported(pr->conn, pr->msg);
+
+		error("GetRemoteServiceHandles: %s(%s)", derr.name, derr.message);
 		goto fail;
 	}
 
@@ -477,8 +493,12 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
-		error("%s: %s", derr.name, derr.message);
+		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+			err_connection_failed(pr->conn, pr->msg, derr.message);
+		else
+			err_not_supported(pr->conn, pr->msg);
+
+		error("GetRemoteServiceRecord: %s(%s)", derr.name, derr.message);
 		goto fail;
 	}
 
@@ -551,8 +571,12 @@ static void headset_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		err_generic(pr->conn, pr->msg, derr.name, derr.message);
-		error("%s: %s", derr.name, derr.message);
+		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+			err_connection_failed(pr->conn, pr->msg, derr.message);
+		else
+			err_not_supported(pr->conn, pr->msg);
+
+		error("GetRemoteServiceHandles: %s(%s)", derr.name, derr.message);
 		goto fail;
 	}
 
@@ -601,7 +625,7 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_INVALID)) {
-		err_generic(conn, msg, derr.name, derr.message);
+		err_invalid_args(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -658,7 +682,7 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID)) {
-		err_generic(conn, msg, derr.name, derr.message);
+		err_invalid_args(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}

@@ -41,14 +41,6 @@ DBusHandlerResult err_unknown_device(DBusConnection *conn,
 				"Invalid device"));
 }
 
-DBusHandlerResult err_generic(DBusConnection *conn, DBusMessage *msg,
-				const char *name, const char *str)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg, name, str));
-
-}
-
 DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 				const char *str)
 {
@@ -98,3 +90,10 @@ DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg)
 			"The service is not supported by the remote device"));
 }
 
+DBusHandlerResult err_invalid_args(DBusConnection *conn,
+					DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE ".InvalidArguments", str));
+}
