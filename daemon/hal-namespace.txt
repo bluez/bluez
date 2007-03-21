@@ -1,0 +1,19 @@
+HAL namespace description for Bluetooth
+***************************************
+
+Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
+
+
+bluetooth namespace
+===================
+
+bluetooth.uuid (string)			Service or device UUID (128-bit)
+
+bluetooth.name (string)			Service or device name
+
+bluetooth.description (string)		Service or device description
+
+bluetooth.address (string)		Remote device address
+
+bluetooth.is_connected (bool)		Connection status of service or device
+
