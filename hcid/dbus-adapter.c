@@ -227,6 +227,12 @@ static struct bonding_request_info *bonding_request_new(bdaddr_t *peer,
 	return bonding;
 }
 
+static DBusHandlerResult adapter_get_info(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult adapter_get_address(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -1032,6 +1038,12 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult adapter_get_remote_svc(DBusConnection *conn,
@@ -2770,6 +2782,7 @@ GSList *service_classes_str(uint32_t class)
 }
 
 static struct service_data dev_services[] = {
+	{ "GetInfo",				adapter_get_info		},
 	{ "GetAddress",				adapter_get_address		},
 	{ "GetVersion",				adapter_get_version		},
 	{ "GetRevision",			adapter_get_revision		},
@@ -2791,6 +2804,7 @@ static struct service_data dev_services[] = {
 	{ "GetName",				adapter_get_name		},
 	{ "SetName",				adapter_set_name		},
 	
+	{ "GetRemoteInfo",			adapter_get_remote_info		},
 	{ "GetRemoteServiceRecord",		adapter_get_remote_svc		},
 	{ "GetRemoteServiceRecordAsXML",	adapter_get_remote_svc_xml	},
 	{ "GetRemoteServiceHandles",		adapter_get_remote_svc_handles	},

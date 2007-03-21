@@ -101,6 +101,12 @@ static void service_exit(const char *name, struct service *service)
 	service->bus_name = NULL;
 }
 
+static DBusHandlerResult get_info(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult get_identifier(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -550,6 +556,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 }
 
 static struct service_data services_methods[] = {
+	{ "GetInfo",		get_info		},
 	{ "GetIdentifier",	get_identifier		},
 	{ "GetName",		get_name		},
 	{ "GetDescription",	get_description		},
