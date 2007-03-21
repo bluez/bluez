@@ -38,7 +38,10 @@
 #include "connection.h"
 
 struct network_conn {
+	char *raddr;
 	char *path;
+	char *uuid;
+	gboolean up;
 };
 
 static DBusHandlerResult get_address(DBusConnection *conn, DBusMessage *msg,
@@ -135,6 +138,9 @@ static void connection_free(struct network_conn *nc)
 	if (nc->path)
 		g_free(nc->path);
 
+	if (nc->uuid)
+		g_free(nc->uuid);
+
 	g_free(nc);
 }
 
@@ -142,7 +148,7 @@ static void connection_unregister(DBusConnection *conn, void *data)
 {
 	struct network_conn *nc = data;
 
-	info("Unregistered connection path %s", nc->path);
+	info("Unregistered connection path:%s", nc->path);
 
 	connection_free(nc);
 }
@@ -153,7 +159,8 @@ static const DBusObjectPathVTable connection_table = {
 	.unregister_function = connection_unregister,
 };
 
-int connection_register(DBusConnection *conn, const char *path)
+int connection_register(DBusConnection *conn, const char *path,
+			const char *addr, const char *uuid)
 {
 	struct network_conn *nc;
 
@@ -170,8 +177,10 @@ int connection_register(DBusConnection *conn, const char *path)
 	}
 
 	nc->path = g_strdup(path);
+	nc->raddr = g_strdup(addr);
+	nc->uuid = g_strdup(uuid);
+	nc->up = FALSE;
 	info("Registered connection path:%s", path);
-
 	return 0;
 fail:
 	connection_free(nc);

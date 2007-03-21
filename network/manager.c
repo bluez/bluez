@@ -66,12 +66,10 @@ static DBusHandlerResult list_paths(DBusConnection *conn, DBusMessage *msg,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	if (g_slist_length(list)) {
-		for (; list; list = list->next) {
-			dbus_message_iter_append_basic(&array_iter,
-							DBUS_TYPE_STRING,
-							&list->data);
-		}
+	for (; list; list = list->next) {
+		dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING,
+						&list->data);
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
@@ -87,11 +85,39 @@ static DBusHandlerResult list_servers(DBusConnection *conn, DBusMessage *msg,
 	return list_paths(conn, msg, mgr->servers);
 }
 
+static DBusHandlerResult create_path(DBusConnection *conn,
+					DBusMessage *msg, char *path,
+					const char *sname)
+{
+	DBusMessage *reply, *signal;
+
+	/* emit signal when it is a new path */
+	if (sname) {
+		signal = dbus_message_new_signal(NETWORK_PATH,
+			NETWORK_MANAGER_INTERFACE, sname);
+
+		dbus_message_append_args(signal,
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
+		send_message_and_unref(conn, signal);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	g_free(path);
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult create_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct manager *mgr = data;
-	DBusMessage *reply;
 	DBusError derr;
 	const char *uuid;
 	char *path;
@@ -107,29 +133,28 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 
 	path = g_new0(char, 32);
 	snprintf(path, 32, NETWORK_PATH "/server/%s", uuid);
-	if (!g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp)) {
-		if (server_register(conn, path) != -1) {
-			mgr->servers = g_slist_append(mgr->servers,
-							g_strdup(path));
-		}
+
+	/* Path already registered */
+	if (g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp))
+		return create_path(conn, msg, path, NULL);
+
+	if (server_register(conn, path) == -1) {
+		err_failed(conn, msg, "D-Bus path registration failed");
+		g_free(path);
+		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	mgr->servers = g_slist_append(mgr->servers, g_strdup(path));
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID);
-
-	g_free(path);
-	return send_message_and_unref(connection, reply);
+	return create_path(conn, msg, path, "ServerCreated");
 }
 
 static DBusHandlerResult remove_path(DBusConnection *conn,
-					DBusMessage *msg, GSList **list)
+					DBusMessage *msg, GSList **list,
+					const char *sname)
 {
 	const char *path;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
 	DBusError derr;
 	GSList *l;
 
@@ -144,7 +169,7 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 
 	l = g_slist_find_custom(*list, path, (GCompareFunc) strcmp);
 	if (!l)
-		return err_does_not_exist(conn, msg, "Server doesn't exist");
+		return err_does_not_exist(conn, msg, "Path doesn't exist");
 
 	g_free(l->data);
 	*list = g_slist_remove(*list, l->data);
@@ -154,7 +179,16 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	if (!dbus_connection_unregister_object_path(conn, path))
-		error("Network server path unregister failed");
+		error("Network path unregister failed");
+
+	signal = dbus_message_new_signal(NETWORK_PATH,
+			NETWORK_MANAGER_INTERFACE, sname);
+
+	dbus_message_append_args(signal,
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
+	send_message_and_unref(conn, signal);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -164,7 +198,7 @@ static DBusHandlerResult remove_server(DBusConnection *conn,
 {
 	struct manager *mgr = data;
 
-	return remove_path(conn, msg, &mgr->servers);
+	return remove_path(conn, msg, &mgr->servers, "ServerRemoved");
 }
 
 static DBusHandlerResult list_connections(DBusConnection *conn,
@@ -180,7 +214,6 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 {
 	struct manager *mgr = data;
 	static int uid = 0;
-	DBusMessage *reply;
 	DBusError derr;
 	const char *addr;
 	const char *uuid;
@@ -198,20 +231,16 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 
 	path = g_new0(char, 32);
 	snprintf(path, 32, NETWORK_PATH "/connection%d", uid++);
-	if (connection_register(conn, path) != -1) {
-		mgr->connections = g_slist_append(mgr->connections,
-							g_strdup(path));
+
+	if (connection_register(conn, path, addr, uuid) == -1) {
+		err_failed(conn, msg, "D-Bus path registration failed");
+		g_free(path);
+		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	mgr->connections = g_slist_append(mgr->connections, g_strdup(path));
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID);
-
-	g_free(path);
-	return send_message_and_unref(connection, reply);
+	return create_path(conn, msg, path, "ConnectionCreated");
 }
 
 static DBusHandlerResult remove_connection(DBusConnection *conn,
@@ -219,7 +248,7 @@ static DBusHandlerResult remove_connection(DBusConnection *conn,
 {
 	struct manager *mgr = data;
 
-	return remove_path(conn, msg, &mgr->connections);
+	return remove_path(conn, msg, &mgr->connections, "ConnectionRemoved");
 }
 
 static DBusHandlerResult manager_message(DBusConnection *conn,
@@ -360,7 +389,7 @@ void internal_service(const char *identifier)
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_STRING, &desc, DBUS_TYPE_INVALID);
 
-	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, 
+	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1,
 							  NULL);
 	if (!reply) {
 		error("Can't register service");

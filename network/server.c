@@ -151,7 +151,7 @@ static void server_unregister(DBusConnection *conn, void *data)
 {
 	struct network_server *ns = data;
 
-	info("Unregistered server path %s", ns->path);
+	info("Unregistered server path:%s", ns->path);
 
 	server_free(ns);
 }
