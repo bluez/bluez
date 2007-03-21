@@ -33,6 +33,8 @@ DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 DBusHandlerResult err_connection_failed(DBusConnection *conn,
 					DBusMessage *msg, const char *str);
 
+DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg);
+
 DBusHandlerResult err_already_exists(DBusConnection *conn,
 					DBusMessage *msg, const char *str);
 

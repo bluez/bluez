@@ -801,7 +801,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 		return err_connection_failed(conn, msg, "Connection in progress");
 
 	if (is_connected(idev))
-		return err_connection_failed(conn, msg, "Already connected");
+		return err_already_connected(conn, msg);
 
 	idev->pending_connect = g_try_new0(struct pending_connect, 1);
 	if (!idev->pending_connect) {
