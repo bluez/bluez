@@ -31,4 +31,5 @@ struct hal_device {
 	char uuid[37];
 };
 
-int hal_add_device(struct hal_device *);
+int hal_create_device(struct hal_device *);
+int hal_remove_device(struct hal_device *);

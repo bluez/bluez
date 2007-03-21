@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 
 	hal_init(NULL);
 
-	hal_add_device(NULL);
+	hal_create_device(NULL);
 
 	if (network_init() == -1)
 		goto fail;
@@ -80,6 +80,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	network_exit();
+
+	hal_remove_device(NULL);
 
 	hal_cleanup();
 

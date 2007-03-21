@@ -36,7 +36,12 @@ void hal_cleanup(void)
 {
 }
 
-int hal_add_device(struct hal_device *device)
+int hal_create_device(struct hal_device *device)
+{
+	return 0;
+}
+
+int hal_remove_device(struct hal_device *device)
 {
 	return 0;
 }

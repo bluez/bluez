@@ -38,6 +38,19 @@
 
 static LibHalContext *hal_ctx = NULL;
 
+static DBusHandlerResult filter_function(DBusConnection *connection,
+					DBusMessage *message, void *userdata)
+{
+	info("filter_function: sender=%s destination=%s obj_path=%s interface=%s method=%s",
+	     dbus_message_get_sender (message),
+	     dbus_message_get_destination (message),
+	     dbus_message_get_path (message),
+	     dbus_message_get_interface (message),
+	     dbus_message_get_member (message));
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 int hal_init(DBusConnection *conn)
 {
 	hal_ctx = libhal_ctx_new();
@@ -45,6 +58,8 @@ int hal_init(DBusConnection *conn)
 		return -ENOMEM;
 
 	conn = init_dbus(NULL, NULL, NULL);
+
+	dbus_connection_add_filter(conn, filter_function, NULL, NULL);
 
 	if (libhal_ctx_set_dbus_connection(hal_ctx, conn) == FALSE) {
 		error("Failed to connect HAL via system bus");
@@ -75,17 +90,13 @@ void hal_cleanup(void)
 	hal_ctx = NULL;
 }
 
-int hal_add_device(struct hal_device *device)
+int hal_create_device(struct hal_device *device)
 {
+	DBusError err;
 	char udi[128], *dev;
 	char *str = "00000000-0000-1000-8000-00805f9b34fb";
 
 	dev = libhal_new_device(hal_ctx, NULL);
-
-	if (libhal_device_add_capability(hal_ctx, dev,
-					"bluetooth", NULL) == FALSE) {
-		error("Failed to add device capability");
-	}
 
 	if (libhal_device_set_property_string(hal_ctx, dev,
 				"bluetooth.uuid", str, NULL) == FALSE) {
@@ -97,14 +108,39 @@ int hal_add_device(struct hal_device *device)
 		error("Failed to add connected state property");
 	}
 
-	sprintf(udi, "/org/freedesktop/Hal/devices/bluetooth_network_connection_aabbccddeeff");
+	if (libhal_device_add_capability(hal_ctx, dev,
+					"bluetooth", NULL) == FALSE) {
+		error("Failed to add device capability");
+	}
 
-	if (libhal_remove_device(hal_ctx, udi, NULL) == FALSE) {
-		error("Can't remove old HAL device");
+	sprintf(udi, "/org/freedesktop/Hal/devices/bluetooth_test");
+
+	dbus_error_init(&err);
+	if (libhal_device_claim_interface(hal_ctx, dev,
+			"org.freedesktop.Hal.Device.MyBluetooth",
+				"    <method name=\"Connect\">\n"
+				"    </method>\n"
+				"    <method name=\"Disconnect\">\n"
+				"    </method>\n",
+			&err) == FALSE) {
+		error("Failed to claim to interface: ", err.message);
 	}
 
 	if (libhal_device_commit_to_gdl(hal_ctx, dev, udi, NULL) == FALSE) {
-		error("Failed to add new HAL device");
+		error("Failed to create HAL device");
+	}
+
+	return 0;
+}
+
+int hal_remove_device(struct hal_device *device)
+{
+	char udi[128];
+
+	sprintf(udi, "/org/freedesktop/Hal/devices/bluetooth_test");
+
+	if (libhal_remove_device(hal_ctx, udi, NULL) == FALSE) {
+		error("Failed to remove HAL device");
 	}
 
 	return 0;
