@@ -101,6 +101,35 @@ static void service_exit(const char *name, struct service *service)
 	service->bus_name = NULL;
 }
 
+static void append_dict_entry(DBusMessageIter *dict, const char *key,
+							int type, void *val)
+{
+	DBusMessageIter entry;
+	DBusMessageIter value;
+	char *sig;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	switch (type) {
+	case DBUS_TYPE_STRING:
+		sig = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	default:
+		sig = DBUS_TYPE_VARIANT_AS_STRING;
+		break;
+	}
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, sig, &value);
+
+	dbus_message_iter_append_basic(&value, type, &val);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static DBusHandlerResult get_info(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -108,10 +137,6 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	DBusMessageIter entry;
-	DBusMessageIter value;
-	const char *key = "identifier";
-	const char *val = service->ident;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -124,18 +149,9 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	/* Begin key value pair */
-	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	append_dict_entry(&dict, "identifier", DBUS_TYPE_STRING, service->ident);
 
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &val);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(&dict, &entry);
-	/* End key value pair */
+	append_dict_entry(&dict, "name", DBUS_TYPE_STRING, service->name);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
