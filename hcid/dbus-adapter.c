@@ -230,7 +230,28 @@ static struct bonding_request_info *bonding_request_new(bdaddr_t *peer,
 static DBusHandlerResult adapter_get_info(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct adapter *adapter = data;
+	const char *addr = adapter->address;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	append_dict_entry(&dict, "address", DBUS_TYPE_STRING, &addr);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult adapter_get_address(DBusConnection *conn,
@@ -1043,7 +1064,35 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	const char *addr_ptr;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (check_address(addr_ptr) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* append dict entries here */
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult adapter_get_remote_svc(DBusConnection *conn,
