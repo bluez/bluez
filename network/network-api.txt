@@ -7,6 +7,110 @@ Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
 Network Manager hierarchy
 =========================
 
-Service		org.bluez.network
 Interface	org.bluez.network.Manager
 Object path	/org/bluez/network
+
+Methods		string CreateServer(string uuid)
+
+			Creates a network server object(GN or NAP).
+
+			Possible errors: TBD
+
+		void RemoveServer(string path)
+			Removes the network server object for given path.
+
+			Possible errors: TBD
+
+		array{string} ListServers()
+
+			Returns an array of available network devices paths.
+			Currently only NAP and GN are supported.
+
+		string CreateConnection(string address, string uuid)
+
+			Creates a network connection object(NAP or GN).
+
+		string RemoveConnection(string path)
+
+			Removes a network connection object for a given path.
+
+			Possible errors: TBD
+
+		array{string} ListConnections()
+
+			Returns an array of available network connections paths.
+
+Signals
+
+		void ServerCreated(string path)
+
+		void ServerRemoved(string path)
+
+		void ConnectionCreated(string path)
+
+		void ConnectionRemoved(string path)
+
+Network Server hierarchy (experimental)
+=======================================
+
+Interface	org.bluez.network.Server
+Object path	/org/bluez/network/server*
+
+Methods		string GetUUID()
+			Returns the uuid 128 string representation of the server.
+
+		void Enable()              // do this automatically?
+		void Disable()             // do this automatically?
+		void SetName(string name)
+
+			Sets the name attribute.
+
+		string GetName()
+			Returns the service name.
+
+		void SetAddressRange(string start, string end)
+			TBD
+
+		void SetRouting(string interface)
+			TBD
+
+		void SetSecurity(bool enable)
+			TBD
+
+		bool GetSecurity()
+			TBD
+
+Signals
+
+Network Connection hierarchy (experimental)
+===========================================
+
+Interface	org.bluez.network.Connection
+Object path	/org/bluez/network/connection*
+
+Methods		string GetAddress()
+			Returns the Bluetooth address of the ending point.
+
+		string GetUUID()
+			Returns the uuid 128 string representation of
+			the connected service.
+
+		string GetName()
+			TBD
+
+		string GetDescription()
+			TBD
+
+		string GetInterface()
+			TBD
+
+		void Connect()
+			TBD
+
+		void Disconnect()
+			TBD
+
+		bool IsConnected()
+			Returns the connection status.
+
+Signals
