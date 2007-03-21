@@ -17,3 +17,10 @@ bluetooth.address (string)		Remote device address
 
 bluetooth.is_connected (bool)		Connection status of service or device
 
+
+bluetooth methods
+=================
+
+org.freedesktop.Hal.Device.Bluetooth.Connect		Connect to service or device
+
+org.freedesktop.Hal.Device.Bluetooth.Disconnect		Disconnect from service or device
