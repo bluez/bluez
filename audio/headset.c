@@ -1183,7 +1183,7 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("GetRemoteServiceHandles failed: %s", derr.message);
 		if (c->msg) {
-			if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectFailed"))
+			if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
 				err_connect_failed(c->conn, c->msg, EHOSTDOWN);
 			else
 				err_not_supported(c->conn, c->msg);
