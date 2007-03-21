@@ -919,6 +919,7 @@ Methods		string GetAddress()
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.InProgress
+					 org.bluez.Error.ConnectionAttemptFailed
 					 org.bluez.Error.Failed
 
 		array{byte} GetRemoteServiceRecord(string address, uint32 handle)
