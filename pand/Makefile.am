@@ -1,8 +1,11 @@
 
+if PAND
 bin_PROGRAMS = pand
 
 pand_SOURCES = main.c pand.h bnep.c sdp.c
+
 pand_LDADD = @BLUEZ_LIBS@
+endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
 
