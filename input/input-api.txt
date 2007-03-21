@@ -24,9 +24,17 @@ Methods		array{string} ListDevices()
 			On success it will return the path of the
 			newly created device object.
 
+			Possible errors:org.bluez.input.AlreadyExists
+					org.bluez.input.NotSupported
+					org.bluez.input.ConnectionAttemptFailed
+					org.bluez.input.Failed
+
 		void RemoveDevice(string path)
 
 			Remove the input device object for a given path.	
+
+			Possible errors:org.bluez.input.DoesNotExist
+					org.bluez.input.Failed
 
 Signals		void DeviceCreated(string path)
 
@@ -66,10 +74,11 @@ Methods		string GetAddress()
 			
 			Connect to the input device.
 
+			Possible errors:org.bluez.input.AlreadyConnected
+					org.bluez.input.ConnectionAttemptFailed
+
 		void Disconnect()
 
 			Disconnect from the input device.
 
-		void SetTimeout(uint32 timeout)
-
-			Set the idle timeout.
+			Possible errors:org.bluez.input.Failed
