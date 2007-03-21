@@ -104,7 +104,42 @@ static void service_exit(const char *name, struct service *service)
 static DBusHandlerResult get_info(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct service *service = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	DBusMessageIter entry;
+	DBusMessageIter value;
+	const char *key = "identifier";
+	const char *val = service->ident;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* Begin key value pair */
+	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_STRING_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &val);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(&dict, &entry);
+	/* End key value pair */
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult get_identifier(DBusConnection *conn,
@@ -1015,4 +1050,3 @@ int service_unregister(struct service *service)
 {
 	return unregister_service(service);
 }
-
