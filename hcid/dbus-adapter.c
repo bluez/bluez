@@ -227,14 +227,40 @@ static struct bonding_request_info *bonding_request_new(bdaddr_t *peer,
 	return bonding;
 }
 
+static const char *hcimode2str(uint8_t mode)
+{
+	const char *scan_mode;
+
+	switch (mode) {
+	case SCAN_DISABLED:
+		scan_mode = MODE_OFF;
+		break;
+	case SCAN_PAGE:
+		scan_mode = MODE_CONNECTABLE;
+		break;
+	case (SCAN_PAGE | SCAN_INQUIRY):
+		scan_mode = MODE_DISCOVERABLE;
+		break;
+	case SCAN_INQUIRY:
+		/* inquiry scan mode is not handled, return unknown */
+	default:
+		/* reserved */
+		scan_mode = MODE_UNKNOWN;
+	}
+	return scan_mode;
+}
+
 static DBusHandlerResult adapter_get_info(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	const char *addr = adapter->address;
+	const char *property = adapter->address;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
+	bdaddr_t ba;
+	char str[249];
+	uint8_t cls[3];
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -247,7 +273,47 @@ static DBusHandlerResult adapter_get_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	append_dict_entry(&dict, "address", DBUS_TYPE_STRING, &addr);
+	append_dict_entry(&dict, "address", DBUS_TYPE_STRING, &property);
+
+	memset(str, 0, sizeof(str));
+	property = str;
+	str2ba(adapter->address, &ba);
+
+	if (!read_local_name(&ba, str))
+		append_dict_entry(&dict, "name", DBUS_TYPE_STRING, &property);
+
+	get_device_version(adapter->dev_id, str, sizeof(str));
+	append_dict_entry(&dict, "version", DBUS_TYPE_STRING, &property);
+
+	get_device_revision(adapter->dev_id, str, sizeof(str));
+	append_dict_entry(&dict, "revision", DBUS_TYPE_STRING, &property);
+
+	get_device_manufacturer(adapter->dev_id, str, sizeof(str));
+	append_dict_entry(&dict, "manufacturer", DBUS_TYPE_STRING, &property);
+
+	get_device_company(adapter->dev_id, str, sizeof(str));
+	append_dict_entry(&dict, "company", DBUS_TYPE_STRING, &property);
+
+	property = hcimode2str(adapter->mode);
+	append_dict_entry(&dict, "mode", DBUS_TYPE_STRING, &property);
+
+	append_dict_entry(&dict, "discoverable_timeout",
+				DBUS_TYPE_UINT32, &adapter->discov_timeout);
+
+	if (!read_local_class(&ba, cls)) {
+		uint32_t class;
+
+		memcpy(cls, &class, 3);
+		append_dict_entry(&dict, "class", DBUS_TYPE_UINT32, &class);
+
+		property = major_class_str(class);
+		append_dict_entry(&dict, "major_class",
+			DBUS_TYPE_STRING, &property);
+
+		property = minor_class_str(class);
+		append_dict_entry(&dict, "minor_class",
+			DBUS_TYPE_STRING, &property);
+	}
 
 	dbus_message_iter_close_container(&iter, &dict);
 
@@ -379,33 +445,16 @@ static DBusHandlerResult adapter_get_mode(DBusConnection *conn,
 {
 	const struct adapter *adapter = data;
 	DBusMessage *reply = NULL;
-	const uint8_t hci_mode = adapter->mode;
 	const char *scan_mode;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	switch (hci_mode) {
-	case SCAN_DISABLED:
-		scan_mode = MODE_OFF;
-		break;
-	case SCAN_PAGE:
-		scan_mode = MODE_CONNECTABLE;
-		break;
-	case (SCAN_PAGE | SCAN_INQUIRY):
-		scan_mode = MODE_DISCOVERABLE;
-		break;
-	case SCAN_INQUIRY:
-	/* inquiry scan mode is not handled, return unknown */
-	default:
-		/* reserved */
-		scan_mode = MODE_UNKNOWN;
-	}
-
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	scan_mode = hcimode2str(adapter->mode);
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &scan_mode,
 					DBUS_TYPE_INVALID);
 
