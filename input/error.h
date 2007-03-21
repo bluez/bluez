@@ -40,5 +40,3 @@ DBusHandlerResult err_does_not_exist(DBusConnection *conn,
 					DBusMessage *msg, const char *str);
 
 DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg);
-
-

@@ -30,9 +30,9 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/hidp.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/hidp.h>
 
 #include <glib.h>
 
@@ -42,10 +42,10 @@
 #include "logging.h"
 #include "textfile.h"
 
-#include "error.h"
-#include "storage.h"
 #include "device.h"
+#include "error.h"
 #include "manager.h"
+#include "storage.h"
 
 const char *pnp_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 const char *hid_uuid = "00001124-0000-1000-8000-00805f9b34fb";

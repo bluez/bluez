@@ -34,9 +34,9 @@
 #include <sys/socket.h>
  
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hidp.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/rfcomm.h>
-#include <bluetooth/hidp.h>
 
 #include <glib.h>
 
@@ -47,10 +47,10 @@
 #include "textfile.h"
 #include "uinput.h"
 
-#include "storage.h"
+#include "device.h"
 #include "error.h"
 #include "manager.h"
-#include "device.h"
+#include "storage.h"
 
 #define INPUT_DEVICE_INTERFACE	"org.bluez.input.Device"
 
@@ -1003,21 +1003,11 @@ static const DBusObjectPathVTable device_table = {
 /*
  * Input registration functions
  */
-int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
-			struct hidp_connadd_req *hid, const char **path)
+static int register_path(DBusConnection *conn, const char *path, struct input_device *idev)
 {
 	DBusMessage *msg;
-	struct input_device *idev;
-
-	idev = input_device_new(src, dst);
-	*path = create_input_path(idev->major, idev->minor);
-
-	memcpy(&idev->hidp, hid, sizeof(struct hidp_connadd_req));
-
-	/* FIXME: rd_data is a pointer - hacking */
-
-	if (!dbus_connection_register_object_path(conn,
-				*path, &device_table, idev)) {
+	if (!dbus_connection_register_object_path(conn, path,
+							&device_table, idev)) {
 		error("Input device path registration failed");
 		return -1;
 	}
@@ -1028,50 +1018,56 @@ int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 		return -1;
 
 	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &*path,
+			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
 
 	send_message_and_unref(conn, msg);
 
-	info("Created input device: %s", *path);
+	info("Created input device: %s", path);
+
+	return 0;
+}
+
+int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
+				struct hidp_connadd_req *hid, const char **ppath)
+{
+	struct input_device *idev;
+	const char *path;
+
+	idev = input_device_new(src, dst);
+	path = create_input_path(idev->major, idev->minor);
+
+	/* rd_data must not be deallocated since the memory address is copied */
+	memcpy(&idev->hidp, hid, sizeof(struct hidp_connadd_req));
+
+	if (register_path(conn, path, idev) < 0)
+		return -1;
+
+	if (*ppath)
+		*ppath = path;
 
 	return 0;
 }
 
 int fake_input_register(DBusConnection *conn, bdaddr_t *src,
-			bdaddr_t *dst, uint8_t ch, const char **path)
+			bdaddr_t *dst, uint8_t ch, const char **ppath)
 {
-	DBusMessage *msg;
 	struct input_device *idev;
+	const char *path;
 
 	idev = input_device_new(src, dst);
-	*path = create_input_path(idev->major, idev->minor);
+	path = create_input_path(idev->major, idev->minor);
 
 	idev->fake = g_new0(struct fake_input, 1);
 	idev->fake->ch = ch;
 
-	if (!dbus_connection_register_object_path(conn,
-				*path, &device_table, idev)) {
-		error("Fake input device path registration failed");
-		return -1;
-	}
-
-	/* FIXME: dupplicated code */
-	msg = dbus_message_new_signal(INPUT_PATH,
-			INPUT_MANAGER_INTERFACE, "DeviceCreated");
-	if (!msg)
+	if (register_path(conn, path, idev) < 0)
 		return -1;
 
-	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &*path,
-			DBUS_TYPE_INVALID);
-
-	send_message_and_unref(conn, msg);
-
-	info("Created input device: %s", *path);
+	if (*ppath)
+		*ppath = path;
 
 	return 0;
-
 }
 
 int input_device_unregister(DBusConnection *conn, const char *path)
