@@ -33,7 +33,7 @@ struct pending_connect {
 	DBusMessage *msg;
 };
 
-struct input_device {
+struct device {
 	bdaddr_t		src;
 	bdaddr_t		dst;
 	char			*name;

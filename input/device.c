@@ -61,12 +61,12 @@
 
 #define UPDOWN_ENABLED		1
 
-static struct input_device *input_device_new(bdaddr_t *src, bdaddr_t *dst)
+static struct device *device_new(bdaddr_t *src, bdaddr_t *dst)
 {
-	struct input_device *idev;
+	struct device *idev;
 	uint32_t cls;
 
-	idev = g_new0(struct input_device, 1);
+	idev = g_new0(struct device, 1);
 
 	bacpy(&idev->src, src);
 	bacpy(&idev->dst, dst);
@@ -94,7 +94,7 @@ static void pending_connect_free(struct pending_connect *pc)
 	g_free(pc);
 }
 
-static void input_device_free(struct input_device *idev)
+static void device_free(struct device *idev)
 {
 	if (!idev)
 		return;
@@ -344,8 +344,8 @@ failed:
 	return FALSE;
 }
 
-static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
-						struct input_device *idev)
+static gboolean rfcomm_connect_cb(GIOChannel *chan,
+			GIOCondition cond, struct device *idev)
 {
 	struct fake_input *fake;
 	DBusMessage *reply;
@@ -414,7 +414,7 @@ failed:
 	return FALSE;
 }
 
-static int rfcomm_connect(struct input_device *idev)
+static int rfcomm_connect(struct device *idev)
 {
 	struct sockaddr_rc addr;
 	GIOChannel *io;
@@ -487,7 +487,7 @@ failed:
 	return -err;
 }
 
-static int l2cap_connect(struct input_device *idev,
+static int l2cap_connect(struct device *idev,
 				unsigned short psm, GIOFunc cb)
 {
 	GIOChannel *io;
@@ -544,8 +544,8 @@ failed:
 	return -1;
 }
 
-static gboolean interrupt_connect_cb(GIOChannel *chan, GIOCondition cond,
-						struct input_device *idev)
+static gboolean interrupt_connect_cb(GIOChannel *chan,
+			GIOCondition cond, struct device *idev)
 {
 	int ctl, isk, ret, err;
 	socklen_t len;
@@ -630,8 +630,8 @@ cleanup:
 	return FALSE;
 }
 
-static gboolean control_connect_cb(GIOChannel *chan, GIOCondition cond,
-						struct input_device *idev)
+static gboolean control_connect_cb(GIOChannel *chan,
+			GIOCondition cond, struct device *idev)
 {
 	int ret, csk, err;
 	socklen_t len;
@@ -693,7 +693,7 @@ failed:
 	return FALSE;
 }
 
-static int disconnect(struct input_device *idev, uint32_t flags)
+static int disconnect(struct device *idev, uint32_t flags)
 {
 	struct fake_input *fake = idev->fake;
 	struct hidp_conndel_req req;
@@ -755,7 +755,7 @@ fail:
 	return -err;
 }
 
-static int is_connected(struct input_device *idev)
+static int is_connected(struct device *idev)
 {
 	struct fake_input *fake = idev->fake;
 	struct hidp_conninfo ci;
@@ -793,9 +793,9 @@ static int is_connected(struct input_device *idev)
  * Input Device methods
  */
 static DBusHandlerResult device_connect(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+					DBusMessage *msg, void *data)
 {
-	struct input_device *idev = data;
+	struct device *idev = data;
 
 	if (idev->pending_connect)
 		return err_connection_failed(conn, msg, "Connection in progress");
@@ -839,7 +839,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 static DBusHandlerResult device_disconnect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct input_device *idev = data;
+	struct device *idev = data;
 
 	if (disconnect(idev, 0) < 0)
 		return err_failed(conn, msg, strerror(errno));
@@ -851,7 +851,7 @@ static DBusHandlerResult device_disconnect(DBusConnection *conn,
 static DBusHandlerResult device_is_connected(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct input_device *idev = data;
+	struct device *idev = data;
 	DBusMessage *reply;
 	dbus_bool_t connected;
 
@@ -870,7 +870,7 @@ static DBusHandlerResult device_is_connected(DBusConnection *conn,
 static DBusHandlerResult device_get_address(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct input_device *idev = data;
+	struct device *idev = data;
 	DBusMessage *reply;
 	char addr[18];
 	const char *paddr = addr;
@@ -891,7 +891,7 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 static DBusHandlerResult device_get_name(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct input_device *idev = data;
+	struct device *idev = data;
 	DBusMessage *reply;
 	const char *pname = idev->hidp.name;
 
@@ -909,7 +909,7 @@ static DBusHandlerResult device_get_name(DBusConnection *conn,
 static DBusHandlerResult device_get_product_id(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct input_device *idev = data;
+	struct device *idev = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
@@ -926,7 +926,7 @@ static DBusHandlerResult device_get_product_id(DBusConnection *conn,
 static DBusHandlerResult device_get_vendor_id(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct input_device *idev = data;
+	struct device *idev = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
@@ -987,11 +987,11 @@ static DBusHandlerResult device_message(DBusConnection *conn,
 
 static void device_unregister(DBusConnection *conn, void *data)
 {
-	struct input_device *idev = data;
+	struct device *idev = data;
 
 	/* Disconnect if applied */
 	disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
-	input_device_free(idev);
+	device_free(idev);
 }
 
 /* Virtual table to handle device object path hierarchy */
@@ -1003,7 +1003,7 @@ static const DBusObjectPathVTable device_table = {
 /*
  * Input registration functions
  */
-static int register_path(DBusConnection *conn, const char *path, struct input_device *idev)
+static int register_path(DBusConnection *conn, const char *path, struct device *idev)
 {
 	DBusMessage *msg;
 	if (!dbus_connection_register_object_path(conn, path,
@@ -1031,10 +1031,10 @@ static int register_path(DBusConnection *conn, const char *path, struct input_de
 int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 				struct hidp_connadd_req *hid, const char **ppath)
 {
-	struct input_device *idev;
+	struct device *idev;
 	const char *path;
 
-	idev = input_device_new(src, dst);
+	idev = device_new(src, dst);
 	path = create_input_path(idev->major, idev->minor);
 
 	/* rd_data must not be deallocated since the memory address is copied */
@@ -1052,10 +1052,10 @@ int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 			bdaddr_t *dst, uint8_t ch, const char **ppath)
 {
-	struct input_device *idev;
+	struct device *idev;
 	const char *path;
 
-	idev = input_device_new(src, dst);
+	idev = device_new(src, dst);
 	path = create_input_path(idev->major, idev->minor);
 
 	idev->fake = g_new0(struct fake_input, 1);

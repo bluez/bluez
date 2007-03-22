@@ -61,7 +61,7 @@ struct pending_req {
 	sdp_record_t *hid_rec;
 };
 
-struct input_manager {
+struct manager {
 	bdaddr_t src;		/* Local adapter BT address */
 	GSList *paths;		/* Input registered paths */
 };
@@ -111,7 +111,7 @@ static void pending_req_free(struct pending_req *pr)
 
 static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
 {
-	struct input_device *idev;
+	struct device *idev;
 
 	if (!dbus_connection_get_object_path_data(connection, path,
 							(void *) &idev))
@@ -256,7 +256,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusMessage *pr_reply;
-	struct input_manager *mgr;
+	struct manager *mgr;
 	struct pending_req *pr = data;
 	struct hidp_connadd_req hidp;
 	DBusError derr;
@@ -482,7 +482,7 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusMessage *pr_reply;
 	DBusError derr;
-	struct input_manager *mgr;
+	struct manager *mgr;
 	struct pending_req *pr = data;
 	uint8_t *rec_bin;
 	sdp_record_t *rec;
@@ -610,10 +610,10 @@ done:
 	dbus_pending_call_unref(call);
 }
 
-static DBusHandlerResult manager_create_device(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusHandlerResult create_device(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
-	struct input_manager *mgr = data;
+	struct manager *mgr = data;
 	struct pending_req *pr;
 	DBusError derr;
 	const char *addr;
@@ -668,11 +668,11 @@ static DBusHandlerResult manager_create_device(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult manager_remove_device(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusHandlerResult remove_device(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
-	struct input_manager *mgr = data;
-	struct input_device *idev;
+	struct manager *mgr = data;
+	struct device *idev;
 	DBusMessage *reply;
 	DBusError derr;
 	GSList *l;
@@ -711,10 +711,10 @@ static DBusHandlerResult manager_remove_device(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult manager_list_devices(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusHandlerResult list_devices(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
-	struct input_manager *mgr = data;
+	struct manager *mgr = data;
 	DBusMessageIter iter, iter_array;
 	DBusMessage *reply;
 	GSList *paths;
@@ -755,18 +755,18 @@ static DBusHandlerResult manager_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (strcmp(member, "ListDevices") == 0)
-		return manager_list_devices(conn, msg, data);
+		return list_devices(conn, msg, data);
 
 	if (strcmp(member, "CreateDevice") == 0)
-		return manager_create_device(conn, msg, data);
+		return create_device(conn, msg, data);
 
 	if (strcmp(member, "RemoveDevice") == 0)
-		return manager_remove_device(conn, msg, data);
+		return remove_device(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static void input_manager_free(struct input_manager *mgr)
+static void manager_free(struct manager *mgr)
 {
 	if (!mgr)
 		return;
@@ -781,11 +781,11 @@ static void input_manager_free(struct input_manager *mgr)
 
 static void manager_unregister(DBusConnection *conn, void *data)
 {
-	struct input_manager *mgr = data;
+	struct manager *mgr = data;
 
 	info("Unregistered manager path");
 
-	input_manager_free(mgr);
+	manager_free(mgr);
 }
 
 /* Virtual table to handle manager object path hierarchy */
@@ -800,7 +800,7 @@ static const DBusObjectPathVTable manager_table = {
 
 static void stored_input(char *key, char *value, void *data)
 {
-	struct input_manager *mgr = data;
+	struct manager *mgr = data;
 	const char *path;
 	struct hidp_connadd_req hidp; 
 	bdaddr_t dst;
@@ -818,7 +818,7 @@ static void stored_input(char *key, char *value, void *data)
 	mgr->paths = g_slist_append(mgr->paths, g_strdup(path));
 }
 
-static int register_stored_inputs(struct input_manager *mgr)
+static int register_stored_inputs(struct manager *mgr)
 {
 	char filename[PATH_MAX + 1];
 	char addr[18];
@@ -832,7 +832,7 @@ static int register_stored_inputs(struct input_manager *mgr)
 
 int input_init(void)
 {
-	struct input_manager *mgr;
+	struct manager *mgr;
 	bdaddr_t src;
 	int dev_id;
 
@@ -842,7 +842,7 @@ int input_init(void)
 
 	dbus_connection_set_exit_on_disconnect(connection, TRUE);
 
-	mgr = g_new0(struct input_manager, 1);
+	mgr = g_new0(struct manager, 1);
 
 	/* Fallback to catch invalid device path */
 	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
@@ -873,7 +873,7 @@ int input_init(void)
 	return 0;
 
 fail:
-	input_manager_free(mgr);
+	manager_free(mgr);
 
 	return -1;
 }
