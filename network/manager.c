@@ -126,7 +126,7 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &uuid,
 				DBUS_TYPE_INVALID)) {
-		err_generic(conn, msg, derr.name, derr.message);
+		err_invalid_args(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -162,7 +162,7 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID)) {
-		err_generic(conn, msg, derr.name, derr.message);
+		err_invalid_args(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -224,7 +224,7 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_STRING, &uuid,
 				DBUS_TYPE_INVALID)) {
-		err_generic(conn, msg, derr.name, derr.message);
+		err_invalid_args(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
