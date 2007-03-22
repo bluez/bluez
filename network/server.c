@@ -40,10 +40,10 @@
 #include "server.h"
 
 struct network_server {
-
+	char		*iface;		/* Routing interface */
 	char		*name;
-	char		*path;
-	char		*uuid;
+	char		*path; 
+	char		*uuid;		/* UUID 128 */
 	dbus_bool_t	secure;
 };
 
@@ -132,7 +132,33 @@ static DBusHandlerResult set_address_range(DBusConnection *conn,
 static DBusHandlerResult set_routing(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct network_server *ns = data;
+	DBusMessage *reply;
+	DBusError derr;
+	const char *iface;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &iface,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	/* FIXME: Check if the interface is valid/UP */
+	if (!iface || (strlen(iface) == 0))
+		return err_invalid_args(conn, msg, "Invalid interface");
+
+	if (ns->iface)
+		g_free(ns->iface);
+	ns->iface = g_strdup(iface);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult set_security(DBusConnection *conn,
@@ -223,6 +249,12 @@ static void server_free(struct network_server *ns)
 {
 	if (!ns)
 		return;
+
+	if (ns->iface)
+		g_free(ns->iface);
+
+	if (ns->name)
+		g_free(ns->name);
 
 	if (ns->path)
 		g_free(ns->path);
