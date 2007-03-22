@@ -29,5 +29,8 @@ DBusHandlerResult err_does_not_exist(DBusConnection *conn,
 					DBusMessage *msg, const char *str);
 DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 				const char *str);
+DBusHandlerResult err_connection_failed(DBusConnection *conn,
+					DBusMessage *msg, const char *str);
+
 DBusHandlerResult err_invalid_args(DBusConnection *conn,
 					DBusMessage *msg, const char *str);
