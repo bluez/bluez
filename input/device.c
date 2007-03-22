@@ -853,12 +853,21 @@ static DBusHandlerResult device_disconnect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
+	DBusMessage *signal;
+	const char *path;
 
 	if (disconnect(idev, 0) < 0)
 		return err_failed(conn, msg, strerror(errno));
 
-	return send_message_and_unref(conn,
+	/* Replying to the requestor */
+	send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
+
+	/* Sending the Disconnect signal */ 
+	path = dbus_message_get_path(msg);
+	signal = dbus_message_new_signal(path,
+			INPUT_DEVICE_INTERFACE, "Disconnected");
+	return send_message_and_unref(conn, signal);
 }
 
 static DBusHandlerResult device_is_connected(DBusConnection *conn,
