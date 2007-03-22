@@ -20,3 +20,14 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+/* BNEP functions */
+int bnep_init(void);
+int bnep_cleanup(void);
+
+int bnep_str2svc(char *svc, uint16_t *uuid);
+char *bnep_svc2str(uint16_t uuid);
+
+int bnep_kill_connection(const char *addr);
+int bnep_kill_all_connections(void);
+
+int bnep_connadd(int sk, uint16_t role, char *dev);
