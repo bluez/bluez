@@ -60,3 +60,11 @@ DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 			dbus_message_new_error(msg,
 				NETWORK_ERROR_INTERFACE ".Failed", str));
 }
+
+DBusHandlerResult err_invalid_args(DBusConnection *conn,
+					DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				NETWORK_ERROR_INTERFACE ".InvalidArguments", str));
+}

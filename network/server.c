@@ -75,10 +75,32 @@ static DBusHandlerResult disable(DBusConnection *conn, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static DBusHandlerResult set_name(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static DBusHandlerResult set_name(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct network_server *ns = data;
+	DBusMessage *reply;
+	const char *name;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &name,
+				DBUS_TYPE_INVALID))
+		return err_invalid_args(conn, msg, "Invalid name");
+
+	if (!name || (strlen(name) == 0))
+		return err_invalid_args(conn, msg, "Invalid name");
+
+	if (ns->name)
+		g_free(ns->name);
+	ns->name = g_strdup(name);
+
+	/* FIXME: Update the service record attribute */
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult get_name(DBusConnection *conn,
