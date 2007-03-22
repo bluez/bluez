@@ -135,10 +135,30 @@ static DBusHandlerResult set_routing(DBusConnection *conn, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static DBusHandlerResult set_security(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static DBusHandlerResult set_security(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct network_server *ns = data;
+	DBusMessage *reply;
+	DBusError derr;
+	dbus_bool_t secure;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_BOOLEAN, &secure,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	ns->secure = secure;
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult get_security(DBusConnection *conn,
