@@ -40,8 +40,10 @@
 #include "server.h"
 
 struct network_server {
-	char *uuid;
+
+	char *name;
 	char *path;
+	char *uuid;
 };
 
 static DBusHandlerResult get_uuid(DBusConnection *conn,
@@ -79,10 +81,23 @@ static DBusHandlerResult set_name(DBusConnection *conn, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static DBusHandlerResult get_name(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static DBusHandlerResult get_name(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct network_server *ns = data;
+	char name[] = "";
+	const char *pname = (ns->name ? ns->name : name);
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &pname,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult set_address_range(DBusConnection *conn,
