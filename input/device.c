@@ -604,7 +604,6 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 		goto failed;
 	}
 
-
 	send_message_and_unref(idev->pending_connect->conn,
 		dbus_message_new_method_return(idev->pending_connect->msg));
 
@@ -940,12 +939,6 @@ static DBusHandlerResult device_get_vendor_id(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult device_set_timeout(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static DBusHandlerResult device_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -978,9 +971,6 @@ static DBusHandlerResult device_message(DBusConnection *conn,
 
 	if (strcmp(member, "GetVendorId") == 0)
 		return device_get_vendor_id(conn, msg, data);
-
-	if (strcmp(member, "SetTimeout") == 0)
-		return device_set_timeout(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
