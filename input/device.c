@@ -348,7 +348,8 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 			GIOCondition cond, struct device *idev)
 {
 	struct fake_input *fake;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
+	const char *path;
 	socklen_t len;
 	int ret, err;
 
@@ -394,11 +395,15 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	g_io_add_watch(fake->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 						(GIOFunc) rfcomm_io_cb, fake);
 
+	/* Replying to the requestor */
 	reply = dbus_message_new_method_return(idev->pending_connect->msg);
-	if (reply) {
-		dbus_connection_send(idev->pending_connect->conn, reply, NULL);
-		dbus_message_unref(reply);
-	}
+	send_message_and_unref(idev->pending_connect->conn, reply);
+
+	/* Sending the Connected signal */
+	path = dbus_message_get_path(idev->pending_connect->msg);
+	signal = dbus_message_new_signal(path,
+			INPUT_DEVICE_INTERFACE, "Connected");
+	send_message_and_unref(idev->pending_connect->conn, signal);
 
 	pending_connect_free(idev->pending_connect);
 	idev->pending_connect = NULL;
@@ -548,6 +553,8 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 			GIOCondition cond, struct device *idev)
 {
 	int ctl, isk, ret, err;
+	DBusMessage *signal;
+	const char *path;
 	socklen_t len;
 
 	if (cond & G_IO_NVAL) {
@@ -604,8 +611,15 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 		goto failed;
 	}
 
+	/* Replying to the requestor */
 	send_message_and_unref(idev->pending_connect->conn,
 		dbus_message_new_method_return(idev->pending_connect->msg));
+
+	/* Sending the Connected signal */
+	path = dbus_message_get_path(idev->pending_connect->msg);
+	signal = dbus_message_new_signal(path,
+			INPUT_DEVICE_INTERFACE, "Connected");
+	send_message_and_unref(idev->pending_connect->conn, signal);
 
 	close (ctl);
 	goto cleanup;
