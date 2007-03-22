@@ -81,16 +81,21 @@ static DBusHandlerResult set_name(DBusConnection *conn,
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
+	DBusError derr;
 	const char *name;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (!dbus_message_get_args(msg, NULL,
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_INVALID))
-		return err_invalid_args(conn, msg, "Invalid name");
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
 
 	if (!name || (strlen(name) == 0))
 		return err_invalid_args(conn, msg, "Invalid name");
