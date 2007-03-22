@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include <bluetooth/bluetooth.h>
 
 #include <glib.h>
@@ -38,13 +40,25 @@
 #include "server.h"
 
 struct network_server {
+	char *uuid;
 	char *path;
 };
 
-static DBusHandlerResult get_uuid(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static DBusHandlerResult get_uuid(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct network_server *ns = data;
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &ns->uuid,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult enable(DBusConnection *conn, DBusMessage *msg,
@@ -144,6 +158,9 @@ static void server_free(struct network_server *ns)
 	if (ns->path)
 		g_free(ns->path);
 
+	if (ns->uuid)
+		g_free(ns->uuid);
+
 	g_free(ns);
 }
 
@@ -162,12 +179,15 @@ static const DBusObjectPathVTable server_table = {
 	.unregister_function = server_unregister,
 };
 
-int server_register(DBusConnection *conn, const char *path)
+int server_register(DBusConnection *conn, const char *path, const char *uuid)
 {
 	struct network_server *ns;
 
 	if (!conn)
-		return -1;
+		return -EINVAL;
+
+	if (!path || !uuid)
+		return -EINVAL;
 
 	ns = g_new0(struct network_server, 1);
 
@@ -179,6 +199,7 @@ int server_register(DBusConnection *conn, const char *path)
 	}
 
 	ns->path = g_strdup(path);
+	ns->uuid = g_strdup(uuid);
 	info("Registered server path:%s", ns->path);
 
 	return 0;

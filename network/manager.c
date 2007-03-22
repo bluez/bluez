@@ -138,7 +138,7 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	if (g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp))
 		return create_path(conn, msg, path, NULL);
 
-	if (server_register(conn, path) == -1) {
+	if (server_register(conn, path, uuid) == -1) {
 		err_failed(conn, msg, "D-Bus path registration failed");
 		g_free(path);
 		return DBUS_HANDLER_RESULT_HANDLED;
