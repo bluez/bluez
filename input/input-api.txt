@@ -82,3 +82,9 @@ Methods		string GetAddress()
 			Disconnect from the input device.
 
 			Possible errors:org.bluez.input.Failed
+
+Signals		void Connected() 
+
+		void Disconnected()
+
+
