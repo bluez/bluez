@@ -42,6 +42,7 @@
 #include "manager.h"
 #include "server.h"
 #include "connection.h"
+#include "common.h"
 
 struct manager {
 	bdaddr_t src;		/* Local adapter BT address */
@@ -301,6 +302,7 @@ static void manager_free(struct manager *mgr)
 		g_slist_free(mgr->connections);
 
 	g_free (mgr);
+	bnep_kill_all_connections();
 }
 
 static void manager_unregister(DBusConnection *conn, void *data)
@@ -414,6 +416,11 @@ int network_init(void)
 		return -1;
 	}
 
+	if (bnep_init()) {
+		error("Can't init bnep module");
+		return -1;
+	}
+
 	return network_dbus_init();
 }
 
@@ -422,6 +429,7 @@ void network_exit(void)
 	if (bridge_remove("pan0") < 0)
 		error("Can't remove bridge");
 
+	bnep_cleanup();
 	bridge_cleanup();
 
 	network_dbus_exit();
