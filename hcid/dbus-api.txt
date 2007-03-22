@@ -281,7 +281,11 @@ Service		org.bluez
 Interface	org.bluez.Adapter
 Object path	/org/bluez/{hci0,hci1,...}
 
-Methods		string GetAddress()
+Methods		dict GetInfo()
+
+			Returns the properties of the local adapter.
+
+		string GetAddress()
 
 			Returns the device address for a given path.
 
@@ -507,6 +511,10 @@ Methods		string GetAddress()
 
 			Questions: What to do (in case of EIR) if one
 			           low-level API call fails.
+
+		dict GetRemoteInfo(string address)
+
+			Returns the properties for a remote device.
 
 		string GetRemoteVersion(string address)
 
@@ -1065,7 +1073,11 @@ Service		org.bluez
 Interface	org.bluez.Service
 Object path	path from org.bluez.Manager.ListServices()
 
-Methods		string GetIdentifier()
+Methods		dict GetInfo()
+
+			Returns the service properties.
+
+		string GetIdentifier()
 
 			This method returns the service identifier.
 
