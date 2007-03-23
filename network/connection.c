@@ -50,7 +50,8 @@
 
 struct network_conn {
 	DBusConnection *conn;
-	char *raddr;	/* Remote Bluetooth Address */
+	bdaddr_t src;
+	bdaddr_t dst;
 	char *path;	/* D-Bus path */
 	char *dev;	/* BNEP interface name */
 	uint16_t id;	/* Service Class Identifier */
@@ -62,7 +63,8 @@ struct __service_16 {
 	uint16_t src;
 } __attribute__ ((packed));
 
-static gboolean l2cap_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean l2cap_io_cb(GIOChannel *chan, GIOCondition cond,
+				gpointer data)
 {
 	struct network_conn *nc = data;
 	struct bnep_control_rsp *rsp;
@@ -167,12 +169,14 @@ static DBusHandlerResult get_address(DBusConnection *conn, DBusMessage *msg,
 {
 	struct network_conn *nc = data;
 	DBusMessage *reply;
+	char raddr[18];
 
+	ba2str(&nc->dst, raddr);
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &nc->raddr,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, raddr,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -218,7 +222,7 @@ static DBusHandlerResult get_interface(DBusConnection *conn, DBusMessage *msg,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &nc->raddr,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &nc->dev,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -235,7 +239,7 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 	int sk;
 	DBusError derr;
 	DBusMessage *reply;
-	bdaddr_t src_addr = *BDADDR_ANY;
+	char addr[18];
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -245,7 +249,8 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	info("Connecting to %s", nc->raddr);
+	ba2str(&nc->dst, addr);
+	info("Connecting to %s", addr);
 
 	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (sk < 0) {
@@ -253,7 +258,6 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 				errno);
 		goto fail;
 	}
-	set_nonblocking(sk);
 
 	/* Setup L2CAP options according to BNEP spec */
 	memset(&l2o, 0, sizeof(l2o));
@@ -264,7 +268,7 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 
 	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
-	bacpy(&l2a.l2_bdaddr, &src_addr);
+	bacpy(&l2a.l2_bdaddr, &nc->src);
 
 	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
 		error("Bind failed. %s(%d)", strerror(errno), errno);
@@ -273,18 +277,22 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 
 	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
-	str2ba(nc->raddr, &l2a.l2_bdaddr);
+	bacpy(&l2a.l2_bdaddr, &nc->dst);
 	l2a.l2_psm = htobs(BNEP_PSM);
 
-	if (!connect(sk, (struct sockaddr *) &l2a, sizeof(l2a)) &&
-		!bnep_create_connection(sk, nc)) {
-		info("%s connected", nc->dev);
+	/* FIXME: connection must be non-blocking */
+	if (connect(sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
+		error("Connect failed. %s(%d)", strerror(errno), errno);
+		goto fail;
+	}
 
-	} else {
-		error("Connect to %s failed. %s(%d)", nc->raddr,
+	if (bnep_create_connection(sk, nc)) {
+		error("Connection to %s failed. %s(%d)", addr,
 				strerror(errno), errno);
 		goto fail;
 	}
+
+	info("%s connected", nc->dev);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -302,17 +310,20 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 {
 	struct network_conn *nc = data;
 	DBusMessage *reply, *signal;
+	char addr[18];
 
 	if (!nc->up) {
 		err_failed(conn, msg, "Device not connected");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	if (!bnep_kill_connection(nc->raddr)) {
+	ba2str(&nc->dst, addr);
+	if (!bnep_kill_connection(addr)) {
 		signal = dbus_message_new_signal(nc->path,
 				NETWORK_CONNECTION_INTERFACE, "Disconnected");
 
 		send_message_and_unref(nc->conn, signal);
+		info("%s disconnected", nc->dev);
 		nc->up = FALSE;
 	}
 
@@ -379,17 +390,18 @@ static DBusHandlerResult connection_message(DBusConnection *conn,
 
 static void connection_free(struct network_conn *nc)
 {
+	char addr[18];
+
 	if (!nc)
 		return;
 
 	if (nc->path)
 		g_free(nc->path);
 
-	if (nc->up)
-		bnep_kill_connection(nc->raddr);
-
-	if (nc->raddr)
-		g_free(nc->raddr);
+	if (nc->up) {
+		ba2str(&nc->dst, addr);
+		bnep_kill_connection(addr);
+	}
 
 	if (nc->dev)
 		g_free(nc->dev);
@@ -431,7 +443,8 @@ int connection_register(DBusConnection *conn, const char *path,
 	}
 
 	nc->path = g_strdup(path);
-	nc->raddr = g_strdup(addr);
+	bacpy(&nc->src, BDADDR_ANY);
+	str2ba(addr, &nc->dst);
 	nc->id = id;
 	/* FIXME: Check for device */
 	nc->dev = g_new(char, 16);
