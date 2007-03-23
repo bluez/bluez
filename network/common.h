@@ -24,8 +24,8 @@
 int bnep_init(void);
 int bnep_cleanup(void);
 
-int bnep_str2svc(char *svc, uint16_t *uuid);
-char *bnep_svc2str(uint16_t uuid);
+uint16_t bnep_service_id(const char *svc);
+const char *bnep_uuid(uint16_t uuid);
 
 int bnep_kill_connection(const char *addr);
 int bnep_kill_all_connections(void);

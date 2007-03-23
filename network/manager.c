@@ -28,6 +28,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/bnep.h>
 
 #include <glib.h>
 
@@ -120,26 +121,32 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 {
 	struct manager *mgr = data;
 	DBusError derr;
-	const char *uuid;
+	const char *str;
 	char *path;
+	uint16_t id;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_STRING, &uuid,
+				DBUS_TYPE_STRING, &str,
 				DBUS_TYPE_INVALID)) {
 		err_invalid_args(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
+	id = bnep_service_id(str);
+	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
+		return err_invalid_args(conn, msg, "Not supported");
+
 	path = g_new0(char, 32);
-	snprintf(path, 32, NETWORK_PATH "/server/%s", uuid);
+	snprintf(path, 32, NETWORK_PATH "/server/%X", id);
 
 	/* Path already registered */
 	if (g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp))
-		return create_path(conn, msg, path, NULL);
+		return create_path(conn, msg, path, NULL); /* Return already exist error */
 
-	if (server_register(conn, path, uuid) == -1) {
+	/* FIXME: define which type should be used -- string/uuid str/uui128 */
+	if (server_register(conn, path, str) == -1) {
 		err_failed(conn, msg, "D-Bus path registration failed");
 		g_free(path);
 		return DBUS_HANDLER_RESULT_HANDLED;
@@ -217,23 +224,25 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	static int uid = 0;
 	DBusError derr;
 	const char *addr;
-	const char *uuid;
+	const char *str;
 	char *path;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &addr,
-				DBUS_TYPE_STRING, &uuid,
+				DBUS_TYPE_STRING, &str,
 				DBUS_TYPE_INVALID)) {
 		err_invalid_args(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
+	/* FIXME: Check for supported/implemented client connection */
+
 	path = g_new0(char, 32);
 	snprintf(path, 32, NETWORK_PATH "/connection%d", uid++);
 
-	if (connection_register(conn, path, addr, uuid) == -1) {
+	if (connection_register(conn, path, addr, str) == -1) {
 		err_failed(conn, msg, "D-Bus path registration failed");
 		g_free(path);
 		return DBUS_HANDLER_RESULT_HANDLED;

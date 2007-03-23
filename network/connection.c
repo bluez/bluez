@@ -50,10 +50,10 @@
 
 struct network_conn {
 	DBusConnection *conn;
-	char *raddr;
-	char *path;
-	char *dev;
-	uint16_t uuid;
+	char *raddr;	/* Remote Bluetooth Address */
+	char *path;	/* D-Bus path */
+	char *dev;	/* BNEP interface name */
+	uint16_t id;	/* Service Class Identifier */
 	gboolean up;
 };
 
@@ -149,7 +149,7 @@ int bnep_create_connection(int sk, struct network_conn *nc)
 	req->ctrl = BNEP_SETUP_CONN_REQ;
 	req->uuid_size = 2;	/* 16bit UUID */
 	s = (void *) req->service;
-	s->dst = htons(nc->uuid);
+	s->dst = htons(nc->id);
 	s->src = htons(BNEP_SVC_PANU);
 
 	if (send(sk, pkt, sizeof(*req) + sizeof(*s), 0) != -1) {
@@ -182,15 +182,15 @@ static DBusHandlerResult get_uuid(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
 	struct network_conn *nc = data;
-	char *svc;
+	const char *uuid;
 	DBusMessage *reply;
 
-	svc = bnep_svc2str(nc->uuid);
+	uuid = bnep_uuid(nc->id);
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &svc,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &uuid,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -433,7 +433,7 @@ int connection_register(DBusConnection *conn, const char *path,
 	nc->path = g_strdup(path);
 	nc->raddr = g_strdup(addr);
 	/* FIXME: Check uuid format */
-	bnep_str2svc(uuid, &nc->uuid);
+	nc->id = bnep_service_id(uuid);
 	/* FIXME: Check for device */
 	nc->dev = g_new(char, 16);
 	snprintf(nc->dev, 16, "bnep%d", bnep++);

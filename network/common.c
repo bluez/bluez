@@ -40,6 +40,10 @@
 
 static int ctl;
 
+#define PANU_UUID	"00001115-0000-1000-8000-00805f9b34fb"
+#define NAP_UUID	"00001116-0000-1000-8000-00805f9b34fb"
+#define GN_UUID		"00001117-0000-1000-8000-00805f9b34fb"
+
 /* Compatibility with old ioctls */
 #define OLD_BNEPCONADD      1
 #define OLD_BNEPCONDEL      2
@@ -52,32 +56,44 @@ static unsigned long bnepgetconnlist;
 static unsigned long bnepgetconninfo;
 
 static struct {
-	char     *str;
-	uint16_t uuid;
+	const char	*name;		/* Friendly name */
+	const char	*uuid128;	/* UUID 128 */
+	uint16_t	id;		/* Service class identifier */
 } __svc[] = {
-	{ "PANU", BNEP_SVC_PANU },
-	{ "NAP",  BNEP_SVC_NAP  },
-	{ "GN",   BNEP_SVC_GN   },
+	{ "PANU",	PANU_UUID,	BNEP_SVC_PANU	},
+	{ "GN",		GN_UUID,	BNEP_SVC_GN	},
+	{ "NAP",	NAP_UUID,	BNEP_SVC_NAP	},
 	{ NULL }
 };
 
-int bnep_str2svc(char *svc, uint16_t *uuid)
+uint16_t bnep_service_id(const char *svc)
 {
 	int i;
-	for (i = 0; __svc[i].str; i++)
-		if (!strcasecmp(svc, __svc[i].str)) {
-			*uuid = __svc[i].uuid;
-			return 0;
+
+	/* Friendly service name */
+	for (i = 0; __svc[i].name; i++)
+		if (!strcasecmp(svc, __svc[i].name)) {
+			return __svc[i].id;
 		}
-	return -1;
+
+	/* UUID 128 string */
+	for (i = 0; __svc[i].uuid128; i++)
+		if (!strcasecmp(svc, __svc[i].uuid128)) {
+			return __svc[i].id;
+		}
+
+	/* FIXME: Missing HEX string verification */
+
+	return 0;
 }
 
-char *bnep_svc2str(uint16_t uuid)
+const char *bnep_uuid(uint16_t id)
 {
 	int i;
-	for (i = 0; __svc[i].str; i++)
-		if (__svc[i].uuid == uuid)
-			return __svc[i].str;
+
+	for (i = 0; __svc[i].uuid128; i++)
+		if (__svc[i].id == id)
+			return __svc[i].uuid128;
 	return NULL;
 }
 
