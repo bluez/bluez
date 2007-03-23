@@ -60,9 +60,9 @@ static struct {
 	const char	*uuid128;	/* UUID 128 */
 	uint16_t	id;		/* Service class identifier */
 } __svc[] = {
-	{ "PANU",	PANU_UUID,	BNEP_SVC_PANU	},
-	{ "GN",		GN_UUID,	BNEP_SVC_GN	},
-	{ "NAP",	NAP_UUID,	BNEP_SVC_NAP	},
+	{ "panu",	PANU_UUID,	BNEP_SVC_PANU	},
+	{ "gn",		GN_UUID,	BNEP_SVC_GN	},
+	{ "nap",	NAP_UUID,	BNEP_SVC_NAP	},
 	{ NULL }
 };
 
@@ -98,6 +98,16 @@ const char *bnep_uuid(uint16_t id)
 	for (i = 0; __svc[i].uuid128; i++)
 		if (__svc[i].id == id)
 			return __svc[i].uuid128;
+	return NULL;
+}
+
+const char *bnep_name(uint16_t id)
+{
+	int i;
+
+	for (i = 0; __svc[i].name; i++)
+		if (__svc[i].id == id)
+			return __svc[i].name;
 	return NULL;
 }
 

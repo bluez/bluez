@@ -37,14 +37,15 @@
 
 #define NETWORK_SERVER_INTERFACE "org.bluez.network.Server"
 
+#include "common.h"
 #include "server.h"
 
 struct network_server {
 	char		*iface;		/* Routing interface */
 	char		*name;
 	char		*path; 
-	char		*uuid;		/* UUID 128 */
 	dbus_bool_t	secure;
+	uint16_t	id;		/* Service class identifier */
 };
 
 static DBusHandlerResult get_uuid(DBusConnection *conn,
@@ -52,13 +53,15 @@ static DBusHandlerResult get_uuid(DBusConnection *conn,
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
+	const char *uuid;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	uuid = bnep_uuid(ns->id);
 	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &ns->uuid,
+			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -264,9 +267,6 @@ static void server_free(struct network_server *ns)
 	if (ns->path)
 		g_free(ns->path);
 
-	if (ns->uuid)
-		g_free(ns->uuid);
-
 	g_free(ns);
 }
 
@@ -285,14 +285,14 @@ static const DBusObjectPathVTable server_table = {
 	.unregister_function = server_unregister,
 };
 
-int server_register(DBusConnection *conn, const char *path, const char *uuid)
+int server_register(DBusConnection *conn, const char *path, uint16_t id)
 {
 	struct network_server *ns;
 
 	if (!conn)
 		return -EINVAL;
 
-	if (!path || !uuid)
+	if (!path)
 		return -EINVAL;
 
 	ns = g_new0(struct network_server, 1);
@@ -305,7 +305,7 @@ int server_register(DBusConnection *conn, const char *path, const char *uuid)
 	}
 
 	ns->path = g_strdup(path);
-	ns->uuid = g_strdup(uuid);
+	ns->id = id;
 	info("Registered server path:%s", ns->path);
 
 	return 0;
