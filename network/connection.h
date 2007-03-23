@@ -21,4 +21,4 @@
  *
  */
 int connection_register(DBusConnection *conn, const char *path,
-			const char *addr, const char *uuid);
+			const char *addr, uint16_t id);

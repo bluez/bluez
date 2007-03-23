@@ -225,6 +225,7 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	const char *addr;
 	const char *str;
 	char *path;
+	uint16_t id;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -236,12 +237,14 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	/* FIXME: Check for supported/implemented client connection */
+	id = bnep_service_id(str);
+	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
+		return err_invalid_args(conn, msg, "Not supported");
 
 	path = g_new0(char, 32);
 	snprintf(path, 32, NETWORK_PATH "/connection%d", uid++);
 
-	if (connection_register(conn, path, addr, str) == -1) {
+	if (connection_register(conn, path, addr, id) == -1) {
 		err_failed(conn, msg, "D-Bus path registration failed");
 		g_free(path);
 		return DBUS_HANDLER_RESULT_HANDLED;

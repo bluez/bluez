@@ -413,7 +413,7 @@ static const DBusObjectPathVTable connection_table = {
 };
 
 int connection_register(DBusConnection *conn, const char *path,
-			const char *addr, const char *uuid)
+			const char *addr, uint16_t id)
 {
 	struct network_conn *nc;
 	static int bnep = 0;
@@ -432,8 +432,7 @@ int connection_register(DBusConnection *conn, const char *path,
 
 	nc->path = g_strdup(path);
 	nc->raddr = g_strdup(addr);
-	/* FIXME: Check uuid format */
-	nc->id = bnep_service_id(uuid);
+	nc->id = id;
 	/* FIXME: Check for device */
 	nc->dev = g_new(char, 16);
 	snprintf(nc->dev, 16, "bnep%d", bnep++);
