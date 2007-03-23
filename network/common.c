@@ -69,6 +69,7 @@ static struct {
 uint16_t bnep_service_id(const char *svc)
 {
 	int i;
+	uint16_t id;
 
 	/* Friendly service name */
 	for (i = 0; __svc[i].name; i++)
@@ -82,9 +83,12 @@ uint16_t bnep_service_id(const char *svc)
 			return __svc[i].id;
 		}
 
-	/* FIXME: Missing HEX string verification */
+	/* Try convert to HEX */
+	id = strtol(svc, NULL, 16);
+	if ((id < BNEP_SVC_PANU) || (id > BNEP_SVC_GN))
+		return 0;
 
-	return 0;
+	return id;
 }
 
 const char *bnep_uuid(uint16_t id)
