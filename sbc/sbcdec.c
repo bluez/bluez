@@ -122,11 +122,11 @@ static void decode(char *filename, char *audiodevice, int tofile)
 			// buffer is too full to stuff decoded audio in
 			// so it must be written to the device
 			written = write(ad, buf, count);
-			if(written > 0) count -= written;
+			if (written > 0) count -= written;
 		}
 
 		// sanity check
-		if(count + sbc.len > BUF_SIZE) {
+		if (count + sbc.len > BUF_SIZE) {
 			fprintf(stderr, "buffer size of %d is too small for decoded data (%d)\n", BUF_SIZE, sbc.len + count);
 			exit(1);
 		}
@@ -143,7 +143,7 @@ static void decode(char *filename, char *audiodevice, int tofile)
 
 	if (count > 0) {
 		written = write(ad, buf, count);
-		if(written > 0) count -= written;
+		if (written > 0) count -= written;
 	}
 
 close:

@@ -594,7 +594,7 @@ static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 	for(i = 0; i < 8; i++) {
 		/* Shifting */
 		state->offset[ch][i]--;
-		if(state->offset[ch][i] < 0) {
+		if (state->offset[ch][i] < 0) {
 			state->offset[ch][i] = 79;
 			for(j = 0; j < 9; j++) {
 				state->V[ch][j+80] = state->V[ch][j];
@@ -634,7 +634,7 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 	for(i = 0; i < 16; i++) {
 		/* Shifting */
 		state->offset[ch][i]--;
-		if(state->offset[ch][i] < 0) {
+		if (state->offset[ch][i] < 0) {
 			state->offset[ch][i] = 159;
 			for(j = 0; j < 9; j++) {
 				state->V[ch][j+160] = state->V[ch][j]; 
