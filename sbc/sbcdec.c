@@ -46,7 +46,7 @@ static void decode(char *filename, char *audiodevice, int tofile)
 	struct stat st;
 	off_t filesize;
 	sbc_t sbc;
-	int fd, ad, pos, streamlen, framelen, count, format = AFMT_S16_BE, written;
+	int fd, ad, pos, streamlen, framelen, count, written, format = AFMT_S16_BE;
 
 	if (stat(filename, &st) < 0) {
 		fprintf(stderr, "Can't get size of file %s: %s\n",
@@ -122,7 +122,8 @@ static void decode(char *filename, char *audiodevice, int tofile)
 			// buffer is too full to stuff decoded audio in
 			// so it must be written to the device
 			written = write(ad, buf, count);
-			if (written > 0) count -= written;
+			if (written > 0)
+				count -= written;
 		}
 
 		// sanity check
@@ -143,7 +144,8 @@ static void decode(char *filename, char *audiodevice, int tofile)
 
 	if (count > 0) {
 		written = write(ad, buf, count);
-		if (written > 0) count -= written;
+		if (written > 0)
+			count -= written;
 	}
 
 close:
