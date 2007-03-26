@@ -437,11 +437,11 @@ int network_init(void)
 
 void network_exit(void)
 {
+	network_dbus_exit();
+
 	if (bridge_remove("pan0") < 0)
 		error("Can't remove bridge");
 
 	bnep_cleanup();
 	bridge_cleanup();
-
-	network_dbus_exit();
 }
