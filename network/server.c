@@ -29,6 +29,7 @@
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/bnep.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -52,13 +53,134 @@ struct network_server {
 	uint16_t	id;		/* Service class identifier */
 };
 
+void add_lang_attr(sdp_record_t *r)
+{
+	sdp_lang_attr_t base_lang;
+	sdp_list_t *langs = 0;
+
+	/* UTF-8 MIBenum (http://www.iana.org/assignments/character-sets) */
+	base_lang.code_ISO639 = (0x65 << 8) | 0x6e;
+	base_lang.encoding = 106;
+	base_lang.base_offset = SDP_PRIMARY_LANG_BASE;
+	langs = sdp_list_append(0, &base_lang);
+	sdp_set_lang_attr(r, langs);
+	sdp_list_free(langs, 0);
+}
+
 static int create_server_record(sdp_buf_t *buf, uint16_t id)
 {
+	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
+	uuid_t root_uuid, pan, l2cap, bnep;
+	sdp_profile_desc_t profile[1];
+	sdp_list_t *proto[2];
+	sdp_data_t *v, *p;
+	uint16_t psm = BNEP_PSM, version = 0x0100;
+	uint16_t security_desc = 0;
+	uint16_t net_access_type = 0xfffe;
+	uint32_t max_net_access_rate = 0;
+	const char *name = "BlueZ PAN";
+	const char *desc = "BlueZ PAN Service";
+	sdp_record_t record;
+	int ret;
+
 	/* FIXME: service name must be configurable */
 
-	/* FIXME: Create the service record */
+	memset(&record, 0, sizeof(sdp_record_t));
 
-	return -1;
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(NULL, &l2cap);
+	p = sdp_data_alloc(SDP_UINT16, &psm);
+	proto[0] = sdp_list_append(proto[0], p);
+	apseq    = sdp_list_append(NULL, proto[0]);
+
+	sdp_uuid16_create(&bnep, BNEP_UUID);
+	proto[1] = sdp_list_append(NULL, &bnep);
+	v = sdp_data_alloc(SDP_UINT16, &version);
+	proto[1] = sdp_list_append(proto[1], v);
+
+	/* Supported protocols */
+	{
+		uint16_t ptype[] = { 
+			0x0800,  /* IPv4 */
+			0x0806,  /* ARP */
+		};
+		sdp_data_t *head, *pseq;
+		int p;
+
+		for (p = 0, head = NULL; p < 2; p++) {
+			sdp_data_t *data = sdp_data_alloc(SDP_UINT16, &ptype[p]);
+			if (head)
+				sdp_seq_append(head, data);
+			else
+				head = data;
+		}
+		pseq = sdp_data_alloc(SDP_SEQ16, head);
+		proto[1] = sdp_list_append(proto[1], pseq);
+	}
+
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(NULL, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	add_lang_attr(&record);
+
+	/* FIXME: Missing check the security attribute */
+	sdp_attr_add_new(&record, SDP_ATTR_SECURITY_DESC,
+				SDP_UINT16, &security_desc);
+
+	if (id == BNEP_SVC_NAP) {
+		sdp_uuid16_create(&pan, NAP_SVCLASS_ID);
+		svclass = sdp_list_append(NULL, &pan);
+		sdp_set_service_classes(&record, svclass);
+
+		sdp_uuid16_create(&profile[0].uuid, NAP_PROFILE_ID);
+		profile[0].version = 0x0100;
+		pfseq = sdp_list_append(NULL, &profile[0]);
+		sdp_set_profile_descs(&record, pfseq);
+
+		sdp_set_info_attr(&record, "Network Access Point", name, desc);
+
+		sdp_attr_add_new(&record, SDP_ATTR_NET_ACCESS_TYPE,
+					SDP_UINT16, &net_access_type);
+		sdp_attr_add_new(&record, SDP_ATTR_MAX_NET_ACCESSRATE,
+					SDP_UINT32, &max_net_access_rate);
+	} else {
+		/* BNEP_SVC_GN */
+		sdp_uuid16_create(&pan, GN_SVCLASS_ID);
+		svclass = sdp_list_append(NULL, &pan);
+		sdp_set_service_classes(&record, svclass);
+
+		sdp_uuid16_create(&profile[0].uuid, GN_PROFILE_ID);
+		profile[0].version = 0x0100;
+		pfseq = sdp_list_append(NULL, &profile[0]);
+		sdp_set_profile_descs(&record, pfseq);
+		
+		sdp_set_info_attr(&record, "Group Network Service", name, desc);
+	}
+
+	if (sdp_gen_record_pdu(&record, buf) < 0)
+		ret = -1;
+	else
+		ret = 0;
+
+	sdp_data_free(p);
+	sdp_data_free(v);
+	sdp_list_free(apseq, NULL);
+	sdp_list_free(root, NULL);
+	sdp_list_free(aproto, NULL);
+	sdp_list_free(proto[0], NULL);
+	sdp_list_free(proto[1], NULL);
+	sdp_list_free(svclass, NULL);
+	sdp_list_free(pfseq, NULL);
+	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
+	sdp_list_free(record.pattern, free);
+
+	return ret;
 }
 
 static uint32_t add_server_record(DBusConnection *conn, uint16_t id)
