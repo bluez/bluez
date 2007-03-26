@@ -25,9 +25,12 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -42,11 +45,73 @@
 
 struct network_server {
 	char		*iface;		/* Routing interface */
-	char		*name;
-	char		*path; 
+	char		*name;		/* Server service name */
+	char		*path; 		/* D-Bus path */
 	dbus_bool_t	secure;
+	uint32_t	record_id;	/* Service record id */
 	uint16_t	id;		/* Service class identifier */
 };
+
+static int create_server_record(sdp_buf_t *buf, uint16_t id)
+{
+	/* FIXME: service name must be configurable */
+
+	/* FIXME: Create the service record */
+
+	return -1;
+}
+
+static uint32_t add_server_record(DBusConnection *conn, uint16_t id)
+{
+	DBusMessage *msg, *reply;
+	DBusError derr;
+	dbus_uint32_t rec_id;
+	sdp_buf_t buf;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "AddServiceRecord");
+	if (!msg) {
+		error("Can't allocate new method call");
+		return 0;
+	}
+
+	if (create_server_record(&buf, id) < 0) {
+		error("Unable to allocate new service record");
+		dbus_message_unref(msg);
+		return 0;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+				&buf.data, buf.data_size, DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
+
+	free(buf.data);
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
+		error("Adding service record failed: %s", derr.message);
+		dbus_error_free(&derr);
+		return 0;
+	}
+
+	dbus_message_get_args(reply, &derr, DBUS_TYPE_UINT32, &rec_id,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		error("Invalid arguments to AddServiceRecord reply: %s", derr.message);
+		dbus_message_unref(reply);
+		dbus_error_free(&derr);
+		return 0;
+	}
+
+	dbus_message_unref(reply);
+
+	debug("add_server_record: got record id 0x%x", rec_id);
+
+	return rec_id;
+}
 
 static DBusHandlerResult get_uuid(DBusConnection *conn,
 					DBusMessage *msg, void *data)
@@ -67,10 +132,28 @@ static DBusHandlerResult get_uuid(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult enable(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static DBusHandlerResult enable(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct network_server *ns = data;
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	/* Add the service record */
+	ns->record_id = add_server_record(conn, ns->id);
+	if (!ns->record_id) {
+		error("Unable to register the server(0x%x) service record", ns->id);
+		return err_failed(conn, msg, "Unable to register the service record");
+	}
+
+	/* FIXME: Check security */
+
+	/* FIXME: Start listen */
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult disable(DBusConnection *conn, DBusMessage *msg,
@@ -297,7 +380,7 @@ int server_register(DBusConnection *conn, const char *path, uint16_t id)
 
 	ns = g_new0(struct network_server, 1);
 
-	/* register path */
+	/* Register path */
 	if (!dbus_connection_register_object_path(conn, path,
 						&server_table, ns)) {
 		error("D-Bus failed to register %s path", path);
