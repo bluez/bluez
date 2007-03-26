@@ -64,6 +64,20 @@ struct __service_16 {
 	uint16_t src;
 } __attribute__ ((packed));
 
+static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
+				gpointer data)
+{
+	struct network_conn *nc = data;
+	DBusMessage *signal;
+
+	signal = dbus_message_new_signal(nc->path,
+			NETWORK_CONNECTION_INTERFACE, "Disconnected");
+
+	send_message_and_unref(nc->conn, signal);
+	info("%s disconnected", nc->dev);
+	return (nc->up = FALSE);
+}
+
 static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
@@ -136,7 +150,9 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	nc->up = TRUE;
 
 	info("%s connected", nc->dev);
-	g_io_channel_unref(chan);
+	/* Start watchdog */
+	g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+			(GIOFunc) bnep_watchdog_cb, nc);
 	return FALSE;
 failed:
 	err_connection_failed(nc->conn, nc->msg, "bnep failed");
@@ -337,7 +353,6 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
-	int sk;
 	DBusError derr;
 
 	dbus_error_init(&derr);
@@ -381,14 +396,7 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 
 	close(nc->sk);
 	ba2str(&nc->dst, addr);
-	if (!bnep_kill_connection(addr)) {
-		signal = dbus_message_new_signal(nc->path,
-				NETWORK_CONNECTION_INTERFACE, "Disconnected");
-
-		send_message_and_unref(nc->conn, signal);
-		info("%s disconnected", nc->dev);
-		nc->up = FALSE;
-	}
+	bnep_kill_connection(addr);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
