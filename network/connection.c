@@ -45,17 +45,18 @@
 #include "common.h"
 
 #define NETWORK_CONNECTION_INTERFACE "org.bluez.network.Connection"
-
 #include "connection.h"
 
 struct network_conn {
 	DBusConnection *conn;
+	DBusMessage *msg;
 	bdaddr_t src;
 	bdaddr_t dst;
 	char *path;	/* D-Bus path */
 	char *dev;	/* BNEP interface name */
 	uint16_t id;	/* Service Class Identifier */
 	gboolean up;
+	int sk;
 };
 
 struct __service_16 {
@@ -71,7 +72,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	char pkt[BNEP_MTU];
 	gsize r;
 	int sk;
-	DBusMessage *signal;
+	DBusMessage *reply, *signal;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -112,7 +113,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	r = ntohs(rsp->resp);
 
 	if (r != BNEP_SUCCESS) {
-		error("bnep connection failed");
+		error("bnep failed");
 		goto failed;
 	}
 
@@ -123,28 +124,33 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	nc->up = TRUE;
-
 	signal = dbus_message_new_signal(nc->path,
 			NETWORK_CONNECTION_INTERFACE, "Connected");
 
 	send_message_and_unref(nc->conn, signal);
-	info("%s connected", nc->dev);
-failed:
-	signal = dbus_message_new_signal(nc->path,
-			NETWORK_CONNECTION_INTERFACE, "Disconnected");
 
-	send_message_and_unref(nc->conn, signal);
+	reply = dbus_message_new_method_return(nc->msg);
+
+	send_message_and_unref(nc->conn, reply);
+
+	nc->up = TRUE;
+
+	info("%s connected", nc->dev);
+	g_io_channel_unref(chan);
+	return FALSE;
+failed:
+	err_connection_failed(nc->conn, nc->msg, "bnep failed");
+	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
 	return FALSE;
 }
 
-int bnep_connect(GIOChannel *io, struct network_conn *nc)
+static int bnep_connect(struct network_conn *nc)
 {
 	struct bnep_setup_conn_req *req;
 	struct __service_16 *s;
 	unsigned char pkt[BNEP_MTU];
-	int sk;
+	GIOChannel *io;
 
 	/* Send request */
 	req = (void *) pkt;
@@ -155,8 +161,9 @@ int bnep_connect(GIOChannel *io, struct network_conn *nc)
 	s->dst = htons(nc->id);
 	s->src = htons(BNEP_SVC_PANU);
 
-	sk = g_io_channel_unix_get_fd(io);
-	if (send(sk, pkt, sizeof(*req) + sizeof(*s), 0) != -1) {
+	io = g_io_channel_unix_new(nc->sk);
+	g_io_channel_set_close_on_unref(io, FALSE);
+	if (send(nc->sk, pkt, sizeof(*req) + sizeof(*s), 0) != -1) {
 		g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) bnep_connect_cb, nc);
 		return 0;
@@ -170,7 +177,6 @@ static gboolean l2cap_connect_cb(GIOChannel *chan,
 			GIOCondition cond, gpointer data)
 {
 	struct network_conn *nc = data;
-	DBusMessage *signal;
 	socklen_t len;
 	int sk, ret;
 
@@ -190,21 +196,21 @@ static gboolean l2cap_connect_cb(GIOChannel *chan,
 		goto failed;
 	}
 
-	if (bnep_connect(chan, nc)) {
+	if (bnep_connect(nc)) {
 		error("connect(): %s (%d)", strerror(errno), errno);
-		signal = dbus_message_new_signal(nc->path,
-				NETWORK_CONNECTION_INTERFACE, "Disconnected");
-		send_message_and_unref(nc->conn, signal);
 		goto failed;
 	}
 
+	g_io_channel_unref(chan);
 	return FALSE;
 failed:
+	err_connection_failed(nc->conn, nc->msg, strerror(errno));
+	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
 	return FALSE;
 }
 
-static int l2cap_connect(int sk, struct network_conn *nc)
+static int l2cap_connect(struct network_conn *nc)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
@@ -218,15 +224,15 @@ static int l2cap_connect(int sk, struct network_conn *nc)
 	/* Setup L2CAP options according to BNEP spec */
 	memset(&l2o, 0, sizeof(l2o));
 	olen = sizeof(l2o);
-	getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen);
+	getsockopt(nc->sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen);
 	l2o.imtu = l2o.omtu = BNEP_MTU;
-	setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o));
+	setsockopt(nc->sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o));
 
 	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
 	bacpy(&l2a.l2_bdaddr, &nc->src);
 
-	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
+	if (bind(nc->sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
 		error("Bind failed. %s(%d)", strerror(errno), errno);
 		return -1;
 	}
@@ -236,18 +242,19 @@ static int l2cap_connect(int sk, struct network_conn *nc)
 	bacpy(&l2a.l2_bdaddr, &nc->dst);
 	l2a.l2_psm = htobs(BNEP_PSM);
 
-	if (set_nonblocking(sk) < 0) {
+	if (set_nonblocking(nc->sk) < 0) {
 		error("Set non blocking: %s (%d)", strerror(errno), errno);
 		return -1;
 	}
 
-	io = g_io_channel_unix_new(sk);
+	io = g_io_channel_unix_new(nc->sk);
 	g_io_channel_set_close_on_unref(io, FALSE);
 
-	if (connect(sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
+	if (connect(nc->sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
 			error("Connect failed. %s(%d)", strerror(errno),
 					errno);
+			g_io_channel_close(io);
 			g_io_channel_unref(io);
 			return -1;
 		}
@@ -256,7 +263,6 @@ static int l2cap_connect(int sk, struct network_conn *nc)
 
 	} else {
 		l2cap_connect_cb(io, G_IO_OUT, nc);
-		g_io_channel_unref(io);
 	}
 
 	return 0;
@@ -333,7 +339,6 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 	struct network_conn *nc = data;
 	int sk;
 	DBusError derr;
-	DBusMessage *reply, *signal;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -343,29 +348,22 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sk < 0) {
+	nc->sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+	if (nc->sk < 0) {
 		error("Cannot create L2CAP socket. %s(%d)", strerror(errno),
 				errno);
 		goto fail;
 	}
 
-	if(l2cap_connect(sk, nc)) {
+	if(l2cap_connect(nc)) {
 		error("Connect failed. %s(%d)", strerror(errno), errno);
 		goto fail;
 	}
 
-	/* FIXME: Do not replay until connection be connected */
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return send_message_and_unref(conn, reply);
+	nc->msg = dbus_message_ref(msg);
+	return DBUS_HANDLER_RESULT_HANDLED;
 fail:
 	err_connection_failed(conn, msg, strerror(errno));
-	signal = dbus_message_new_signal(nc->path,
-			NETWORK_CONNECTION_INTERFACE, "Disconnected");
-	send_message_and_unref(nc->conn, signal);
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
@@ -381,6 +379,7 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
+	close(nc->sk);
 	ba2str(&nc->dst, addr);
 	if (!bnep_kill_connection(addr)) {
 		signal = dbus_message_new_signal(nc->path,
