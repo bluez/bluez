@@ -25,11 +25,14 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/bnep.h>
+#include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -51,6 +54,7 @@ struct network_server {
 	dbus_bool_t	secure;
 	uint32_t	record_id;	/* Service record id */
 	uint16_t	id;		/* Service class identifier */
+	GIOChannel	*io;		/* GIOChannel when listening */
 };
 
 void add_lang_attr(sdp_record_t *r)
@@ -183,6 +187,86 @@ static int create_server_record(sdp_buf_t *buf, uint16_t id)
 	return ret;
 }
 
+static gboolean connect_event(GIOChannel *chan,
+				GIOCondition cond, gpointer data)
+{
+	info("FIXME: Connect event");
+	return FALSE;
+}
+
+static int l2cap_listen(struct network_server *ns)
+{
+	struct l2cap_options l2o;
+	struct sockaddr_l2 l2a;
+	socklen_t olen;
+	int sk, lm, err;
+
+	/* Create L2CAP socket and bind it to PSM BNEP */
+	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+	if (sk < 0) {
+		err = errno;
+		error("Cannot create L2CAP socket. %s(%d)",
+					strerror(err), err);
+		return -err;
+	}
+
+	memset(&l2a, 0, sizeof(l2a));
+	l2a.l2_family = AF_BLUETOOTH;
+	bacpy(&l2a.l2_bdaddr, BDADDR_ANY);
+	l2a.l2_psm = htobs(BNEP_PSM);
+
+	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
+		err = errno;
+		error("Bind failed. %s(%d)", strerror(err), err);
+		goto fail;
+	}
+
+	/* Setup L2CAP options according to BNEP spec */
+	memset(&l2o, 0, sizeof(l2o));
+	olen = sizeof(l2o);
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen) < 0) {
+		err = errno;
+		error("Failed to get L2CAP options. %s(%d)",
+					strerror(err), err);
+		goto fail;
+	}
+
+	l2o.imtu = l2o.omtu = BNEP_MTU;
+	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o)) < 0) {
+		err = errno;
+		error("Failed to set L2CAP options. %s(%d)",
+					strerror(err), err);
+		goto fail;
+	}
+
+	/* Set link mode */
+	lm = (ns->secure ? L2CAP_LM_SECURE : 0);
+	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
+		err = errno;
+		error("Failed to set link mode. %s(%d)",
+					strerror(err), err);
+		goto fail;
+	}
+
+	if (listen(sk, 10) < 0) {
+		err = errno;
+		error("Listen failed. %s(%d)", strerror(err), err);
+		goto fail;
+	}
+
+	ns->io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(ns->io, TRUE);
+
+	g_io_add_watch(ns->io, G_IO_IN, connect_event, NULL);
+
+	return 0;
+fail:
+
+	close(sk);
+	errno = err;
+	return -err;
+}
+
 static uint32_t add_server_record(DBusConnection *conn, uint16_t id)
 {
 	DBusMessage *msg, *reply;
@@ -259,6 +343,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
+	int err;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -273,7 +358,9 @@ static DBusHandlerResult enable(DBusConnection *conn,
 
 	/* FIXME: Check security */
 
-	/* FIXME: Start listen */
+	err = l2cap_listen(ns);
+	if (err < 0) 
+		return err_failed(conn, msg, strerror(-err));
 
 	return send_message_and_unref(conn, reply);
 }
