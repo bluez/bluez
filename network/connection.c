@@ -386,7 +386,7 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	char addr[18];
 
 	if (!nc->up) {
