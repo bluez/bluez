@@ -306,11 +306,15 @@ static void manager_free(struct manager *mgr)
 	if (!mgr)
 		return;
 
-	if (mgr->servers)
+	if (mgr->servers) {
+		g_slist_foreach(mgr->servers, (GFunc)g_free, NULL);
 		g_slist_free(mgr->servers);
+	}
 
-	if (mgr->connections)
+	if (mgr->connections) {
+		g_slist_foreach(mgr->connections, (GFunc)g_free, NULL);
 		g_slist_free(mgr->connections);
+	}
 
 	g_free (mgr);
 	bnep_kill_all_connections();
