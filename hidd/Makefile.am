@@ -11,8 +11,10 @@ AM_CFLAGS = @BLUEZ_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
+if HIDD
 man_MANS = hidd.1
+endif
 
-EXTRA_DIST = $(man_MANS) fakehid.txt
+EXTRA_DIST = hidd.1 fakehid.txt
 
 MAINTAINERCLEANFILES = Makefile.in

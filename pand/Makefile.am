@@ -11,8 +11,10 @@ AM_CFLAGS = @BLUEZ_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
+if PAND
 man_MANS = pand.1
+endif
 
-EXTRA_DIST = $(man_MANS)
+EXTRA_DIST = pand.1
 
 MAINTAINERCLEANFILES = Makefile.in

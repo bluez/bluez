@@ -17,8 +17,10 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
+if SDPD
 man_MANS = sdpd.8
+endif
 
-EXTRA_DIST = $(man_MANS)
+EXTRA_DIST = sdpd.8
 
 MAINTAINERCLEANFILES = Makefile.in

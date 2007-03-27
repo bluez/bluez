@@ -41,13 +41,15 @@ INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 
 BUILT_SOURCES = parser.h
 
+if HCID
 man_MANS = hcid.8 hcid.conf.5
+endif
 
 AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) hcid.conf dbus-api.txt \
+EXTRA_DIST = hcid.8 hcid.conf.5 hcid.conf dbus-api.txt \
 	service-record.dtd service-did.xml service-spp.xml \
 	service-opp.xml service-ftp.xml
 
