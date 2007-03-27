@@ -339,7 +339,9 @@ int network_dbus_init(void)
 {
 	struct manager *mgr;
 	bdaddr_t src;
+#if 0
 	int dev_id;
+#endif
 
 	dbus_connection_set_exit_on_disconnect(connection, TRUE);
 
@@ -356,6 +358,7 @@ int network_dbus_init(void)
 
 	/* Set the default adapter */
 	bacpy(&src, BDADDR_ANY);
+#if 0
 	dev_id = hci_get_route(&src);
 	if (dev_id < 0) {
 		error("Bluetooth device not available");
@@ -366,6 +369,7 @@ int network_dbus_init(void)
 		error("Can't get local adapter device info");
 		goto fail;
 	}
+#endif
 
 	bacpy(&mgr->src, &src);
 
