@@ -51,6 +51,7 @@ static void sig_term(int sig)
 
 int main(int argc, char *argv[])
 {
+	DBusConnection *conn;
 	struct sigaction sa;
 
 	start_logging("input", "Bluetooth Input daemon");
@@ -67,16 +68,22 @@ int main(int argc, char *argv[])
 
 	enable_debug();
 
-	/* Create event loop */
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	if (input_init() < 0) {
-		error("Unable to get on D-Bus");
+	conn = dbus_bus_system_setup_with_main_loop(NULL, NULL, NULL);
+	if (!conn) {
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
+
+	if (input_init(conn) < 0) {
+		dbus_connection_unref(conn);
+		g_main_loop_unref(main_loop);
 		exit(1);
 	}
 
 	if (argc > 1 && !strcmp(argv[1], "-s"))
-		internal_service("input");
+		register_external_service(conn, "input", "Input service", "");
 
 	server_start();
 
@@ -85,6 +92,8 @@ int main(int argc, char *argv[])
 	server_stop();
 
 	input_exit();
+
+	dbus_connection_unref(conn);
 
 	g_main_loop_unref(main_loop);
 

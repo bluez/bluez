@@ -830,15 +830,13 @@ static int register_stored_inputs(struct manager *mgr)
 	return 0;
 }
 
-int input_init(void)
+int input_init(DBusConnection *conn)
 {
 	struct manager *mgr;
 	bdaddr_t src;
 	int dev_id;
 
-	connection = init_dbus(NULL, NULL, NULL);
-	if (!connection)
-		return -1;
+	connection = dbus_connection_ref(conn);
 
 	dbus_connection_set_exit_on_disconnect(connection, TRUE);
 
@@ -883,34 +881,6 @@ void input_exit(void)
 	dbus_connection_unregister_object_path(connection, INPUT_PATH);
 
 	dbus_connection_unref(connection);
-}
 
-void internal_service(const char *identifier)
-{
-	DBusMessage *msg, *reply;
-	const char *name = "Input Service Debug", *desc = "";
-
-	info("Registering service");
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "RegisterService");
-	if (!msg) {
-		error("Can't create service register method");
-		return;
-	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &identifier,
-				DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_STRING, &desc, DBUS_TYPE_INVALID);
-
-	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1, NULL);
-	if (!reply) {
-		error("Can't register service");
-		return;
-	}
-
-	dbus_message_unref(msg);
-	dbus_message_unref(reply);
-
-	dbus_connection_flush(connection);
+	connection = NULL;
 }
