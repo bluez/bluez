@@ -645,3 +645,33 @@ int set_nonblocking(int fd)
 
 	return 0;
 }
+
+void register_service(DBusConnection *conn, const char *identifier,
+				const char *name, const char *description)
+{
+	DBusMessage *msg, *reply;
+
+	info("Registering service");
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "RegisterService");
+	if (!msg) {
+		error("Can't create service register method");
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &identifier,
+			DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_STRING, &description, DBUS_TYPE_INVALID);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+	if (!reply) {
+		error("Can't register service");
+		return;
+	}
+
+	dbus_message_unref(msg);
+	dbus_message_unref(reply);
+
+	dbus_connection_flush(conn);
+}
