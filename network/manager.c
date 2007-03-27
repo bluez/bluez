@@ -51,40 +51,28 @@ struct manager {
 	GSList *connections;	/* Network registered connections paths */
 };
 
+struct pending_reply {
+	DBusConnection *conn;
+	DBusMessage *msg;
+	struct manager *mgr;
+	uint16_t id;
+	char *addr;
+	char *path;
+	char *adapter_path;
+};
+
 static DBusConnection *connection = NULL;
 
-static DBusHandlerResult list_paths(DBusConnection *conn, DBusMessage *msg,
-					GSList *list)
+static void pending_reply_free(struct pending_reply *pr)
 {
-	DBusMessage *reply;
-	DBusMessageIter iter;
-	DBusMessageIter array_iter;
+	if (pr->addr)
+		g_free(pr->addr);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	if (pr->path)
+		g_free(pr->path);
 
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_STRING_AS_STRING, &array_iter);
-
-	for (; list; list = list->next) {
-		dbus_message_iter_append_basic(&array_iter,
-						DBUS_TYPE_STRING,
-						&list->data);
-	}
-
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-	return send_message_and_unref(conn, reply);
-}
-
-static DBusHandlerResult list_servers(DBusConnection *conn, DBusMessage *msg,
-					void *data)
-{
-	struct manager *mgr = data;
-
-	return list_paths(conn, msg, mgr->servers);
+	if (pr->adapter_path)
+		g_free(pr->adapter_path);
 }
 
 static DBusHandlerResult create_path(DBusConnection *conn,
@@ -116,44 +104,29 @@ static DBusHandlerResult create_path(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult create_server(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusHandlerResult list_paths(DBusConnection *conn, DBusMessage *msg,
+					GSList *list)
 {
-	struct manager *mgr = data;
-	DBusError derr;
-	const char *str;
-	char *path;
-	uint16_t id;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_STRING, &str,
-				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	for (; list; list = list->next) {
+		dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING,
+						&list->data);
 	}
+	dbus_message_iter_close_container(&iter, &array_iter);
 
-	id = bnep_service_id(str);
-	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
-		return err_invalid_args(conn, msg, "Not supported");
-
-	path = g_new0(char, 32);
-	snprintf(path, 32, NETWORK_PATH "/server/%s", bnep_name(id));
-
-	/* Path already registered */
-	if (g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp))
-		return create_path(conn, msg, path, NULL); /* Return already exist error */
-
-	if (server_register(conn, path, id) < 0) {
-		err_failed(conn, msg, "D-Bus path registration failed");
-		g_free(path);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-
-	mgr->servers = g_slist_append(mgr->servers, g_strdup(path));
-
-	return create_path(conn, msg, path, "ServerCreated");
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult remove_path(DBusConnection *conn,
@@ -200,6 +173,206 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void pan_record_reply(DBusPendingCall *call, void *data)
+{
+	struct pending_reply *pr = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError derr;
+	int len;
+	uint8_t *rec_bin;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+			err_connection_failed(pr->conn, pr->msg, derr.message);
+		else
+			err_not_supported(pr->conn, pr->msg);
+
+		error("GetRemoteServiceRecord failed: %s(%s)", derr.name,
+			derr.message);
+		goto fail;
+	}
+
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
+				DBUS_TYPE_INVALID)) {
+		err_not_supported(pr->conn, pr->msg);
+		error("%s: %s", derr.name, derr.message);
+		goto fail;
+	}
+
+	if (len == 0) {
+		err_not_supported(pr->conn, pr->msg);
+		error("Invalid PAN service record length");
+		goto fail;
+	}
+
+
+	if (connection_register(pr->conn, pr->path, pr->addr, pr->id) == -1) {
+		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
+		goto fail;
+	}
+
+	pr->mgr->connections = g_slist_append(pr->mgr->connections,
+						g_strdup(pr->path));
+
+	create_path(pr->conn, pr->msg, g_strdup (pr->path), "ConnectionCreated");
+fail:
+	dbus_error_free(&derr);
+	pending_reply_free(pr);
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+}
+
+static int get_record(struct pending_reply *pr, uint32_t handle,
+					DBusPendingCallNotifyFunction cb)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+
+	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
+			"org.bluez.Adapter", "GetRemoteServiceRecord");
+	if (!msg)
+		return -1;
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &pr->addr,
+			DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
+		error("Can't send D-Bus message.");
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, cb, pr, NULL);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
+static void pan_handle_reply(DBusPendingCall *call, void *data)
+{
+	struct pending_reply *pr = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError derr;
+	uint32_t *phandle;
+	int len;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+			err_connection_failed(pr->conn, pr->msg, derr.message);
+		else
+			err_not_supported(pr->conn, pr->msg);
+
+		error("GetRemoteServiceHandles: %s(%s)", derr.name, derr.message);
+		goto fail;
+	}
+
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
+				DBUS_TYPE_INVALID)) {
+		err_not_supported(pr->conn, pr->msg);
+		error("%s: %s", derr.name, derr.message);
+		goto fail;
+	}
+
+	if (!len) {
+		err_not_supported(pr->conn, pr->msg);
+		goto fail;
+	}
+
+	if (get_record(pr, *phandle, pan_record_reply) < 0) {
+		err_not_supported(pr->conn, pr->msg);
+		goto fail;
+	}
+
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+	return;
+fail:
+	dbus_error_free(&derr);
+	pending_reply_free(pr);
+}
+
+static int get_handles(struct pending_reply *pr, DBusPendingCallNotifyFunction cb)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+	const char *uuid;
+
+	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
+			"org.bluez.Adapter", "GetRemoteServiceHandles");
+	if (!msg)
+		return -1;
+
+	uuid = bnep_uuid(pr->id);
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &pr->addr,
+			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
+		error("Can't send D-Bus message.");
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, cb, pr, NULL);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
+static DBusHandlerResult list_servers(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	struct manager *mgr = data;
+
+	return list_paths(conn, msg, mgr->servers);
+}
+
+static DBusHandlerResult create_server(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct manager *mgr = data;
+	DBusError derr;
+	const char *str;
+	char *path;
+	int id;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &str,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	id = bnep_service_id(str);
+	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
+		return err_invalid_args(conn, msg, "Not supported");
+
+	path = g_new0(char, 32);
+	snprintf(path, 32, NETWORK_PATH "/server/%X", id);
+
+	/* Path already registered */
+	if (g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp))
+		return create_path(conn, msg, path, NULL); /* Return already exist error */
+
+	/* FIXME: define which type should be used -- string/uuid str/uui128 */
+	if (server_register(conn, path, id) == -1) {
+		err_failed(conn, msg, "D-Bus path registration failed");
+		g_free(path);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	mgr->servers = g_slist_append(mgr->servers, g_strdup(path));
+
+	return create_path(conn, msg, path, "ServerCreated");
+}
+
 static DBusHandlerResult remove_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -220,11 +393,12 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct manager *mgr = data;
+	struct pending_reply *pr;
 	static int uid = 0;
 	DBusError derr;
+	char src_addr[18];
 	const char *addr;
 	const char *str;
-	char *path;
 	uint16_t id;
 
 	dbus_error_init(&derr);
@@ -241,18 +415,24 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
 		return err_invalid_args(conn, msg, "Not supported");
 
-	path = g_new0(char, 32);
-	snprintf(path, 32, NETWORK_PATH "/connection%d", uid++);
+	pr = g_new(struct pending_reply, 1);
+	pr->conn = conn;
+	pr->msg = dbus_message_ref(msg);
+	pr->mgr = mgr;
+	pr->addr = g_strdup(addr);
+	pr->id = id;
+	pr->path = g_new0(char, 48);
+	snprintf(pr->path, 48, NETWORK_PATH "/connection%d", uid++);
+	ba2str(&mgr->src, src_addr);
+	pr->adapter_path = g_new0(char, 32);
+	snprintf(pr->adapter_path , 32, "/org/bluez/hci%d", hci_devid(src_addr));
 
-	if (connection_register(conn, path, addr, id) == -1) {
+	if (get_handles(pr, pan_handle_reply) < 0) {
 		err_failed(conn, msg, "D-Bus path registration failed");
-		g_free(path);
-		return DBUS_HANDLER_RESULT_HANDLED;
+		pending_reply_free(pr);
 	}
 
-	mgr->connections = g_slist_append(mgr->connections, g_strdup(path));
-
-	return create_path(conn, msg, path, "ConnectionCreated");
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult remove_connection(DBusConnection *conn,
