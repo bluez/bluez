@@ -341,17 +341,13 @@ int network_dbus_init(void)
 	bdaddr_t src;
 	int dev_id;
 
-	connection = init_dbus(NULL, NULL, NULL);
-	if (!connection)
-		return -1;
-
 	dbus_connection_set_exit_on_disconnect(connection, TRUE);
 
 	mgr = g_new0(struct manager, 1);
 
 	/* Fallback to catch invalid network path */
-	if (!dbus_connection_register_fallback(connection, NETWORK_PATH,
-						&manager_table, mgr)) {
+	if (dbus_connection_register_fallback(connection, NETWORK_PATH,
+						&manager_table, mgr) == FALSE) {
 		error("D-Bus failed to register %s path", NETWORK_PATH);
 		goto fail;
 	}
@@ -384,43 +380,12 @@ fail:
 void network_dbus_exit(void)
 {
 	dbus_connection_unregister_object_path(connection, NETWORK_PATH);
-
-	dbus_connection_unref(connection);
 }
 
-void internal_service(const char *identifier)
+int network_init(DBusConnection *conn)
 {
-	DBusMessage *msg, *reply;
-	const char *name = "Network service", *desc = "";
+	int err;
 
-	info("Registering service");
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "RegisterService");
-	if (!msg) {
-		error("Can't create service register method");
-		return;
-	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &identifier,
-				DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_STRING, &desc, DBUS_TYPE_INVALID);
-
-	reply = dbus_connection_send_with_reply_and_block(connection, msg, -1,
-							  NULL);
-	if (!reply) {
-		error("Can't register service");
-		return;
-	}
-
-	dbus_message_unref(msg);
-	dbus_message_unref(reply);
-
-	dbus_connection_flush(connection);
-}
-
-int network_init(void)
-{
 	if (bridge_init() < 0) {
 		error("Can't init bridge module");
 		return -1;
@@ -436,12 +401,22 @@ int network_init(void)
 		return -1;
 	}
 
-	return network_dbus_init();
+	connection = dbus_connection_ref(conn);
+
+	err = network_dbus_init();
+	if (err < 0)
+		dbus_connection_unref(connection);
+
+	return err;
 }
 
 void network_exit(void)
 {
 	network_dbus_exit();
+
+	dbus_connection_unref(connection);
+
+	connection = NULL;
 
 	if (bridge_remove("pan0") < 0)
 		error("Can't remove bridge");

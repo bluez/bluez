@@ -20,4 +20,5 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
 int server_register(DBusConnection *conn, const char *path, uint16_t id);

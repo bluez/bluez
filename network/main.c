@@ -48,6 +48,7 @@ static void sig_term(int sig)
 
 int main(int argc, char *argv[])
 {
+	DBusConnection *conn;
 	struct sigaction sa;
 
 	start_logging("network", "Bluetooth Network daemon");
@@ -64,18 +65,26 @@ int main(int argc, char *argv[])
 
 	enable_debug();
 
-	/* Create event loop */
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	hal_init(NULL);
+	conn = dbus_bus_system_setup_with_main_loop(NULL, NULL, NULL);
+	if (!conn) {
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
+
+	hal_init(conn);
 
 	hal_create_device(NULL);
 
-	if (network_init() == -1)
-		goto fail;
+	if (network_init(conn) < 0) {
+		dbus_connection_unref(conn);
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
 
 	if (argc > 1 && !strcmp(argv[1], "-s"))
-		internal_service("network");
+		register_external_service(conn, "network", "Network service", "");
 
 	g_main_loop_run(main_loop);
 
@@ -85,7 +94,8 @@ int main(int argc, char *argv[])
 
 	hal_cleanup();
 
-fail:
+	dbus_connection_unref(conn);
+
 	g_main_loop_unref(main_loop);
 
 	info("Exit");

@@ -21,6 +21,5 @@
  *
  */
 
-int network_init(void);
+int network_init(DBusConnection *conn);
 void network_exit(void);
-void internal_service(const char *identifier);
