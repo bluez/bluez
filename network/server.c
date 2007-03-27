@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -35,6 +36,8 @@
 #include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+
+#include <netinet/in.h>
 
 #include <glib.h>
 
@@ -47,17 +50,40 @@
 #include "common.h"
 #include "server.h"
 
-struct network_server {
-	char		*iface;		/* Routing interface */
-	char		*name;		/* Server service name */
-	char		*path; 		/* D-Bus path */
-	dbus_bool_t	secure;
-	uint32_t	record_id;	/* Service record id */
-	uint16_t	id;		/* Service class identifier */
-	GIOChannel	*io;		/* GIOChannel when listening */
+/* Pending Authorization */
+struct pending_auth {
+	char				*addr;	/* Bluetooth Address */
+	GIOChannel			*io;	/* BNEP connection setup io channel */
 };
 
-void add_lang_attr(sdp_record_t *r)
+/* Main server structure */
+struct network_server {
+	char			*iface;		/* Routing interface */
+	char			*name;		/* Server service name */
+	char			*path; 		/* D-Bus path */
+	dbus_bool_t		secure;
+	uint32_t		record_id;	/* Service record id */
+	uint16_t		id;		/* Service class identifier */
+	GIOChannel		*io;		/* GIOChannel when listening */
+	DBusConnection 		*conn;		/* D-Bus connection */
+	struct pending_auth	*pauth;		/* Pending incomming connection/authorization */
+};
+
+static char netdev[16] = "bnep%d";
+
+static void pending_auth_free(struct pending_auth *pauth)
+{
+	if (!pauth)
+		return;
+	if (pauth->addr)
+		g_free(pauth->addr);
+	/* FIXME: Is it necessary close the BNEP socket? */
+	if (pauth->io)
+		g_io_channel_unref(pauth->io);
+	g_free(pauth);
+}
+
+static void add_lang_attr(sdp_record_t *r)
 {
 	sdp_lang_attr_t base_lang;
 	sdp_list_t *langs = 0;
@@ -187,11 +213,228 @@ static int create_server_record(sdp_buf_t *buf, uint16_t id)
 	return ret;
 }
 
+static int send_bnep_ctrl_rsp(GIOChannel *chan, uint16_t response)
+{
+	struct bnep_control_rsp rsp;
+	GIOError gerr;
+	gsize n;
+
+	rsp.type = BNEP_CONTROL;
+	rsp.ctrl = BNEP_SETUP_CONN_RSP;
+	rsp.resp = htons(response);
+
+	gerr = g_io_channel_write(chan, (gchar *)&rsp, sizeof(rsp), &n);
+
+	return -gerr;
+}
+
+static void authorization_callback(DBusPendingCall *pcall, void *data)
+{
+	struct network_server *ns = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(pcall);
+	DBusError derr;
+	uint16_t response;
+
+	if (!ns->pauth)
+		goto failed;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("Access denied: %s", derr.message);
+		response = BNEP_CONN_NOT_ALLOWED;
+	} else {
+		char devname[16];
+		int sk;
+
+		response = BNEP_SUCCESS;
+
+		memset(devname, 0, 16);
+		strncpy(devname, netdev, 16);
+
+		/* FIXME: Is it the correct order? */
+		sk = g_io_channel_unix_get_fd(ns->pauth->io);
+		bnep_connadd(sk, BNEP_SVC_PANU, devname);
+
+		info("Authorization succedded. New connection: %s", devname);
+
+		/* FIXME: send the D-Bus message to notify the new bnep iface */
+	}
+
+	send_bnep_ctrl_rsp(ns->pauth->io, response);
+
+	pending_auth_free(ns->pauth);
+	ns->pauth = NULL;
+
+failed:
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(pcall);
+}
+
+static int authorize_connection(struct network_server *ns)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+	const char *uuid = ""; /* FIXME: */
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "RequestAuthorization");
+	if (!msg) {
+		error("Unable to allocat new RequestAuthorization method call");
+		return -ENOMEM;
+	}
+
+	debug("Requesting authorization for %s UUID:%s", ns->pauth->addr, uuid);
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &ns->pauth->addr,
+			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(ns->conn, msg, &pending, -1) == FALSE) {
+		error("Sending of authorization request failed");
+		return -EACCES;
+	}
+
+	dbus_pending_call_set_notify(pending, authorization_callback, ns, NULL);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
+static gboolean connect_setup_event(GIOChannel *chan,
+					GIOCondition cond, gpointer data)
+{
+	struct network_server *ns = data;
+	struct bnep_setup_conn_req *req;
+	unsigned char pkt[BNEP_MTU];
+	gsize n;
+	GIOError gerr;
+	uint8_t *pservice;
+	uint16_t role, response;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		error("Hangup or error on L2CAP socket");
+		/* FIXME: Cancel the pending authorization if applied */
+		return FALSE;
+	}
+
+	/* FIXME: Missing address setup connection request retries */
+
+	gerr = g_io_channel_read(chan, (gchar *)pkt, sizeof(pkt) - 1, &n);
+	if (gerr != G_IO_ERROR_NONE)
+		return FALSE;
+
+	if (n < sizeof(*req)) {
+		error("Invalid BNEP packet size");
+		return FALSE;
+	}
+
+	req = (void *)pkt;
+	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ) {
+		error("Invalid BNEP control packet content");
+		return FALSE;
+	}
+
+	/* 
+	 * FIXME: According to BNEP SPEC the UUID size can be
+	 * 2-16 bytes. Currently only 2 bytes size is supported
+	 */
+	if (req->uuid_size != 2) {
+		response = BNEP_CONN_INVALID_SVC; 
+		goto reply;
+	}
+
+	pservice = req->service;
+	/* Getting destination service: considering 2 bytes size */
+	role = ntohs(bt_get_unaligned((uint16_t *) pservice));
+
+	pservice += req->uuid_size;
+	/* Getting source service: considering 2 bytes size */
+	role = ntohs(bt_get_unaligned((uint16_t *) pservice));
+
+	if (role != BNEP_SVC_PANU) {
+		response = BNEP_CONN_INVALID_SRC;
+		goto reply;
+	}
+
+	/* Wait authorization before reply success */
+	if (authorize_connection(ns) < 0) {
+		response = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+
+	}
+
+	return TRUE;
+reply:
+	send_bnep_ctrl_rsp(chan, response);
+	return FALSE;
+}
+
+static void connect_setup_destroy(gpointer data)
+{
+	struct network_server *ns = data;
+
+	if (ns->pauth) {
+		pending_auth_free(ns->pauth);
+		ns->pauth = NULL;
+	}
+}
+
 static gboolean connect_event(GIOChannel *chan,
 				GIOCondition cond, gpointer data)
 {
-	info("FIXME: Connect event");
-	return FALSE;
+	struct network_server *ns = data;
+	struct sockaddr_l2 addr;
+	socklen_t addrlen;
+	char peer[18];
+	bdaddr_t dst;
+	unsigned short psm;
+	int sk, nsk;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		error("Hangup or error on L2CAP socket PSM 15");
+		/* FIXME: Notify the userspace? */
+		return FALSE;
+	}
+
+	sk = g_io_channel_unix_get_fd(chan);
+
+	memset(&addr, 0, sizeof(addr));
+	addrlen = sizeof(addr);
+
+	nsk = accept(sk, (struct sockaddr *) &addr, &addrlen);
+	if (nsk < 0)
+		return TRUE;
+
+	bacpy(&dst, &addr.l2_bdaddr);
+	psm = btohs(addr.l2_psm);
+
+	/* FIXME: Maybe keep a list of connected devices */
+
+	ba2str(&dst, peer);
+	info("Incoming connection from:%s on PSM %d", peer, psm);
+
+	/* FIXME: HOW handle multiple incomming connections? */
+
+	/* Setting the pending incomming connection setup */
+	ns->pauth = g_new0(struct pending_auth, 1);
+	ns->pauth->addr = g_strdup(peer);
+	ns->pauth->io = g_io_channel_unix_new(nsk);
+
+	g_io_channel_set_close_on_unref(ns->pauth->io, FALSE);
+
+	/* New watch for BNEP setup */
+	g_io_add_watch_full(ns->pauth->io, G_PRIORITY_DEFAULT,
+		G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+		connect_setup_event, ns, &connect_setup_destroy);
+
+	return TRUE;
 }
 
 static int l2cap_listen(struct network_server *ns)
@@ -248,7 +491,7 @@ static int l2cap_listen(struct network_server *ns)
 		goto fail;
 	}
 
-	if (listen(sk, 10) < 0) {
+	if (listen(sk, 1) < 0) {
 		err = errno;
 		error("Listen failed. %s(%d)", strerror(err), err);
 		goto fail;
@@ -257,7 +500,8 @@ static int l2cap_listen(struct network_server *ns)
 	ns->io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(ns->io, TRUE);
 
-	g_io_add_watch(ns->io, G_IO_IN, connect_event, NULL);
+	g_io_add_watch(ns->io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+							connect_event, ns);
 
 	return 0;
 fail:
@@ -559,6 +803,14 @@ static void server_free(struct network_server *ns)
 	if (ns->path)
 		g_free(ns->path);
 
+	if (ns->conn)
+		dbus_connection_unref(ns->conn);
+
+	if (ns->io)
+		g_io_channel_unref(ns->io);
+
+	/* FIXME: Missing release/free all bnepX interfaces */
+
 	g_free(ns);
 }
 
@@ -598,6 +850,7 @@ int server_register(DBusConnection *conn, const char *path, uint16_t id)
 
 	ns->path = g_strdup(path);
 	ns->id = id;
+	ns->conn = dbus_connection_ref(conn);
 	info("Registered server path:%s", ns->path);
 
 	return 0;
