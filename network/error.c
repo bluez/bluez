@@ -70,3 +70,11 @@ DBusHandlerResult err_invalid_args(DBusConnection *conn,
 			dbus_message_new_error(msg,
 				NETWORK_ERROR_INTERFACE ".InvalidArguments", str));
 }
+
+DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			NETWORK_ERROR_INTERFACE ".NotSupported",
+			"The service is not supported by the remote device"));
+}
