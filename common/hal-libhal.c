@@ -57,8 +57,6 @@ int hal_init(DBusConnection *conn)
 	if (!hal_ctx)
 		return -ENOMEM;
 
-	conn = init_dbus(NULL, NULL, NULL);
-
 	dbus_connection_add_filter(conn, filter_function, NULL, NULL);
 
 	if (libhal_ctx_set_dbus_connection(hal_ctx, conn) == FALSE) {
