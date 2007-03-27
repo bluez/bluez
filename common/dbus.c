@@ -646,7 +646,7 @@ int set_nonblocking(int fd)
 	return 0;
 }
 
-void register_service(DBusConnection *conn, const char *identifier,
+void register_external_service(DBusConnection *conn, const char *identifier,
 				const char *name, const char *description)
 {
 	DBusMessage *msg, *reply;
