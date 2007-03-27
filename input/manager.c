@@ -834,7 +834,9 @@ int input_init(DBusConnection *conn)
 {
 	struct manager *mgr;
 	bdaddr_t src;
+#if 0
 	int dev_id;
+#endif
 
 	connection = dbus_connection_ref(conn);
 
@@ -853,6 +855,7 @@ int input_init(DBusConnection *conn)
 
 	/* Set the default adapter */
 	bacpy(&src, BDADDR_ANY);
+#if 0
 	dev_id = hci_get_route(&src);
 	if (dev_id < 0) {
 		error("Bluetooth device not available");
@@ -863,6 +866,7 @@ int input_init(DBusConnection *conn)
 		error("Can't get local adapter device info");
 		goto fail;
 	}
+#endif
 
 	bacpy(&mgr->src, &src);
 	/* Register well known HID devices */
