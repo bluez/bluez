@@ -44,17 +44,6 @@ static int ctl;
 #define NAP_UUID	"00001116-0000-1000-8000-00805f9b34fb"
 #define GN_UUID		"00001117-0000-1000-8000-00805f9b34fb"
 
-/* Compatibility with old ioctls */
-#define OLD_BNEPCONADD      1
-#define OLD_BNEPCONDEL      2
-#define OLD_BNEPGETCONLIST  3
-#define OLD_BNEPGETCONINFO  4
-
-static unsigned long bnepconnadd;
-static unsigned long bnepconndel;
-static unsigned long bnepgetconnlist;
-static unsigned long bnepgetconninfo;
-
 static struct {
 	const char	*name;		/* Friendly name */
 	const char	*uuid128;	/* UUID 128 */
@@ -114,32 +103,10 @@ const char *bnep_name(uint16_t id)
 int bnep_init(void)
 {
 	ctl = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_BNEP);
+
 	if (ctl < 0) {
 		error("Failed to open control socket");
-		return 1;
-	}
-
-	/* Temporary ioctl compatibility hack */
-	{
-		struct bnep_connlist_req req;
-		struct bnep_conninfo ci[1];
-
-		req.cnum = 1;
-		req.ci   = ci;
-
-		if (!ioctl(ctl, BNEPGETCONNLIST, &req)) {
-			/* New ioctls */
-			bnepconnadd     = BNEPCONNADD;
-			bnepconndel     = BNEPCONNDEL;
-			bnepgetconnlist = BNEPGETCONNLIST;
-			bnepgetconninfo = BNEPGETCONNINFO;
-		} else {
-			/* Old ioctls */
-			bnepconnadd     = OLD_BNEPCONADD;
-			bnepconndel     = OLD_BNEPCONDEL;
-			bnepgetconnlist = OLD_BNEPGETCONLIST;
-			bnepgetconninfo = OLD_BNEPGETCONINFO;
-		}
+		return -1;
 	}
 
 	return 0;
@@ -151,14 +118,13 @@ int bnep_cleanup(void)
 	return 0;
 }
 
-int bnep_kill_connection(const char *addr)
+int bnep_kill_connection(bdaddr_t *dst)
 {
 	struct bnep_conndel_req req;
-	uint8_t *dst = (void *) strtoba(addr);
 
-	memcpy(req.dst, dst, ETH_ALEN);
+	baswap((bdaddr_t *)&req.dst, dst);
 	req.flags = 0;
-	if (ioctl(ctl, bnepconndel, &req)) {
+	if (ioctl(ctl, BNEPCONNDEL, &req)) {
 		error("Failed to kill connection");
 		return -1;
 	}
@@ -173,7 +139,7 @@ int bnep_kill_all_connections(void)
 
 	req.cnum = 48;
 	req.ci   = ci;
-	if (ioctl(ctl, bnepgetconnlist, &req)) {
+	if (ioctl(ctl, BNEPGETCONNLIST, &req)) {
 		error("Failed to get connection list");
 		return -1;
 	}
@@ -182,7 +148,8 @@ int bnep_kill_all_connections(void)
 		struct bnep_conndel_req req;
 		memcpy(req.dst, ci[i].dst, ETH_ALEN);
 		req.flags = 0;
-		ioctl(ctl, bnepconndel, &req);
+		if (ioctl(ctl, BNEPCONNDEL, &req))
+			error("Failed to kill connection");
 	}
 	return 0;
 }
@@ -195,7 +162,7 @@ int bnep_connadd(int sk, uint16_t role, char *dev)
 	req.device[15] = '\0';
 	req.sock = sk;
 	req.role = role;
-	if (ioctl(ctl, bnepconnadd, &req)) {
+	if (ioctl(ctl, BNEPCONNADD, &req)) {
 		error("Failed to add device %s", dev);
 		return -1;
 	}

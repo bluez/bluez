@@ -387,7 +387,6 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 {
 	struct network_conn *nc = data;
 	DBusMessage *reply;
-	char addr[18];
 
 	if (!nc->up) {
 		err_failed(conn, msg, "Device not connected");
@@ -395,8 +394,7 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 	}
 
 	close(nc->sk);
-	ba2str(&nc->dst, addr);
-	bnep_kill_connection(addr);
+	bnep_kill_connection(&nc->dst);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -461,18 +459,14 @@ static DBusHandlerResult connection_message(DBusConnection *conn,
 
 static void connection_free(struct network_conn *nc)
 {
-	char addr[18];
-
 	if (!nc)
 		return;
 
 	if (nc->path)
 		g_free(nc->path);
 
-	if (nc->up) {
-		ba2str(&nc->dst, addr);
-		bnep_kill_connection(addr);
-	}
+	if (nc->up)
+		bnep_kill_connection(&nc->dst);
 
 	if (nc->dev)
 		g_free(nc->dev);
