@@ -26,7 +26,11 @@
 
 #include <dbus/dbus.h>
 
-DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void *user_data);
+DBusConnection *init_dbus(const char *name,
+				void (*disconnect_cb)(void *), void *user_data);
+
+DBusConnection *dbus_bus_system_setup_with_main_loop(const char *name,
+				void (*disconnect_cb)(void *), void *user_data);
 
 DBusHandlerResult simple_introspect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data);

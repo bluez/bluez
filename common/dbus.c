@@ -483,7 +483,7 @@ static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
 {
 	timeout_handler_t *handler;
 
-	if (!dbus_timeout_get_enabled (timeout))
+	if (!dbus_timeout_get_enabled(timeout))
 		return TRUE;
 
 	handler = g_new0(timeout_handler_t, 1);
@@ -499,7 +499,6 @@ static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
 
 static void remove_timeout(DBusTimeout *timeout, void *data)
 {
-
 }
 
 static void timeout_toggled(DBusTimeout *timeout, void *data)
@@ -511,8 +510,7 @@ static void timeout_toggled(DBusTimeout *timeout, void *data)
 }
 
 static void dispatch_status_cb(DBusConnection *conn,
-				DBusDispatchStatus new_status,
-				void *data)
+				DBusDispatchStatus new_status, void *data)
 {
 	if (!dbus_connection_get_is_connected(conn))
 		return;
@@ -522,7 +520,8 @@ static void dispatch_status_cb(DBusConnection *conn,
 }
 #endif
 
-DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void *user_data)
+DBusConnection *init_dbus(const char *name,
+				void (*disconnect_cb)(void *), void *user_data)
 {
 	struct disconnect_data *dc_data;
 	DBusConnection *conn;
@@ -588,6 +587,12 @@ DBusConnection *init_dbus(const char *name, void (*disconnect_cb)(void *), void 
 	}
 
 	return conn;
+}
+
+DBusConnection *dbus_bus_system_setup_with_main_loop(const char *name,
+				void (*disconnect_cb)(void *), void *user_data)
+{
+	return init_dbus(name, disconnect_cb, user_data);
 }
 
 static char simple_xml[] = DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>";
