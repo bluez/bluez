@@ -563,6 +563,39 @@ static uint32_t add_server_record(DBusConnection *conn, uint16_t id)
 	return rec_id;
 }
 
+static int remove_server_record(DBusConnection *conn, uint32_t rec_id)
+{
+	DBusMessage *msg, *reply;
+	DBusError derr;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "RemoveServiceRecord");
+	if (!msg) {
+		error("Can't allocate new method call");
+		return -ENOMEM;
+	}
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_UINT32, &rec_id,
+			DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
+
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr)) {
+		error("Removing service record 0x%x failed: %s",
+						rec_id, derr.message);
+		dbus_error_free(&derr);
+		return -1;
+	}
+
+	dbus_message_unref(reply);
+
+	return 0;
+}
+
 static DBusHandlerResult get_uuid(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -794,6 +827,10 @@ static void server_free(struct network_server *ns)
 	if (!ns)
 		return;
 
+	/* FIXME: Missing release/free all bnepX interfaces */
+	if (ns->record_id)
+		remove_server_record(ns->conn, ns->record_id);
+
 	if (ns->iface)
 		g_free(ns->iface);
 
@@ -808,8 +845,6 @@ static void server_free(struct network_server *ns)
 
 	if (ns->io)
 		g_io_channel_unref(ns->io);
-
-	/* FIXME: Missing release/free all bnepX interfaces */
 
 	g_free(ns);
 }
