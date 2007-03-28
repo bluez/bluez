@@ -253,9 +253,13 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 
 		/* FIXME: Is it the correct order? */
 		sk = g_io_channel_unix_get_fd(ns->pauth->io);
-		bnep_connadd(sk, BNEP_SVC_PANU, devname);
+		bnep_connadd(sk, ns->id, devname);
+
+		/* FIXME: Reply not allowed if bnep connection add fails? */
 
 		info("Authorization succedded. New connection: %s", devname);
+
+		/* Enable routing if applied */
 
 		/* FIXME: send the D-Bus message to notify the new bnep iface */
 	}
@@ -359,6 +363,11 @@ static gboolean connect_setup_event(GIOChannel *chan,
 		response = BNEP_CONN_INVALID_SRC;
 		goto reply;
 	}
+
+	/*
+	 * FIXME: Check if the connection already exists. Check if the
+	 * BNEP SPEC allows return "connection not allowed" for this case
+	 */
 
 	/* Wait authorization before reply success */
 	if (authorize_connection(ns) < 0) {
