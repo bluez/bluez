@@ -163,8 +163,10 @@ int bnep_connadd(int sk, uint16_t role, char *dev)
 	req.sock = sk;
 	req.role = role;
 	if (ioctl(ctl, BNEPCONNADD, &req)) {
-		error("Failed to add device %s", dev);
-		return -1;
+		int err = errno;
+		error("Failed to add device %s: %s(%d)",
+				dev, strerror(err), err);
+		return -err;
 	}
 	strncpy(dev, req.device, 16);
 	return 0;
