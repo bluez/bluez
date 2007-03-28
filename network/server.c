@@ -78,8 +78,10 @@ static void pending_auth_free(struct pending_auth *pauth)
 	if (pauth->addr)
 		g_free(pauth->addr);
 	/* FIXME: Is it necessary close the BNEP socket? */
-	if (pauth->io)
+	if (pauth->io) {
 		g_io_channel_unref(pauth->io);
+		g_io_channel_close(pauth->io);
+	}
 	g_free(pauth);
 }
 
@@ -97,7 +99,8 @@ static void add_lang_attr(sdp_record_t *r)
 	sdp_list_free(langs, 0);
 }
 
-static int create_server_record(sdp_buf_t *buf, uint16_t id)
+static int create_server_record(sdp_buf_t *buf, const char *name,
+					uint16_t id, dbus_bool_t secure)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
 	uuid_t root_uuid, pan, l2cap, bnep;
@@ -105,15 +108,12 @@ static int create_server_record(sdp_buf_t *buf, uint16_t id)
 	sdp_list_t *proto[2];
 	sdp_data_t *v, *p;
 	uint16_t psm = BNEP_PSM, version = 0x0100;
-	uint16_t security_desc = 0;
+	uint16_t security_desc = (secure ? 0x0001 : 0x0000);
 	uint16_t net_access_type = 0xfffe;
 	uint32_t max_net_access_rate = 0;
-	const char *name = "BlueZ PAN";
 	const char *desc = "BlueZ PAN Service";
 	sdp_record_t record;
 	int ret;
-
-	/* FIXME: service name must be configurable */
 
 	memset(&record, 0, sizeof(sdp_record_t));
 
@@ -322,7 +322,7 @@ static gboolean connect_setup_event(GIOChannel *chan,
 		return FALSE;
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		error("Hangup or error on L2CAP socket");
+		error("Hangup or error on BNEP socket");
 		/* FIXME: Cancel the pending authorization if applied */
 		return FALSE;
 	}
@@ -522,7 +522,7 @@ fail:
 	return -err;
 }
 
-static uint32_t add_server_record(DBusConnection *conn, uint16_t id)
+static uint32_t add_server_record(struct network_server *ns)
 {
 	DBusMessage *msg, *reply;
 	DBusError derr;
@@ -536,7 +536,7 @@ static uint32_t add_server_record(DBusConnection *conn, uint16_t id)
 		return 0;
 	}
 
-	if (create_server_record(&buf, id) < 0) {
+	if (create_server_record(&buf, ns->name, ns->id, ns->secure) < 0) {
 		error("Unable to allocate new service record");
 		dbus_message_unref(msg);
 		return 0;
@@ -546,7 +546,7 @@ static uint32_t add_server_record(DBusConnection *conn, uint16_t id)
 				&buf.data, buf.data_size, DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
+	reply = dbus_connection_send_with_reply_and_block(ns->conn, msg, -1, &derr);
 
 	free(buf.data);
 	dbus_message_unref(msg);
@@ -638,7 +638,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	/* Add the service record */
-	ns->record_id = add_server_record(conn, ns->id);
+	ns->record_id = add_server_record(ns);
 	if (!ns->record_id) {
 		error("Unable to register the server(0x%x) service record", ns->id);
 		return err_failed(conn, msg, "Unable to register the service record");
@@ -916,9 +916,16 @@ int server_register(DBusConnection *conn, const char *path, uint16_t id)
 		goto fail;
 	}
 
+	/* Setting a default name */
+	if (id == BNEP_SVC_NAP)
+		ns->name = g_strdup("Bluetooth NAP service");
+	else
+		ns->name = g_strdup("Bluetooth GN service");
+
 	ns->path = g_strdup(path);
 	ns->id = id;
 	ns->conn = dbus_connection_ref(conn);
+
 	info("Registered server path:%s", ns->path);
 
 	return 0;
