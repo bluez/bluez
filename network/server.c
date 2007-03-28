@@ -642,10 +642,30 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult disable(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static DBusHandlerResult disable(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct network_server *ns = data;
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (!ns->io)
+		return err_failed(conn, msg, "Not enabled");
+
+	/* Remove the service record */
+	if (ns->record_id) {
+		remove_server_record(conn, ns->record_id); 
+		ns->record_id = 0;
+	}
+
+	g_io_channel_unref(ns->io);
+	g_io_channel_close(ns->io);
+	ns->io = NULL;
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult set_name(DBusConnection *conn,
@@ -843,8 +863,10 @@ static void server_free(struct network_server *ns)
 	if (ns->conn)
 		dbus_connection_unref(ns->conn);
 
-	if (ns->io)
+	if (ns->io) {
 		g_io_channel_unref(ns->io);
+		g_io_channel_close(ns->io);
+	}
 
 	g_free(ns);
 }
