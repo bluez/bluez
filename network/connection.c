@@ -47,6 +47,12 @@
 #define NETWORK_CONNECTION_INTERFACE "org.bluez.network.Connection"
 #include "connection.h"
 
+typedef enum {
+	CONNECTED,
+	CONNECTING,
+	DISCONNECTED
+} conn_state;
+
 struct network_conn {
 	DBusConnection *conn;
 	DBusMessage *msg;
@@ -55,7 +61,7 @@ struct network_conn {
 	char *path;	/* D-Bus path */
 	char *dev;	/* BNEP interface name */
 	uint16_t id;	/* Service Class Identifier */
-	gboolean up;
+	conn_state state;
 	int sk;
 };
 
@@ -75,7 +81,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 
 	send_message_and_unref(nc->conn, signal);
 	info("%s disconnected", nc->dev);
-	return (nc->up = FALSE);
+	return (!nc->state);
 }
 
 static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
@@ -147,7 +153,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	send_message_and_unref(nc->conn, reply);
 
-	nc->up = TRUE;
+	nc->state = CONNECTED;
 
 	info("%s connected", nc->dev);
 	/* Start watchdog */
@@ -155,6 +161,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 			(GIOFunc) bnep_watchdog_cb, nc);
 	return FALSE;
 failed:
+	nc->state = DISCONNECTED;
 	err_connection_failed(nc->conn, nc->msg, "bnep failed");
 	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
@@ -220,6 +227,7 @@ static gboolean l2cap_connect_cb(GIOChannel *chan,
 	g_io_channel_unref(chan);
 	return FALSE;
 failed:
+	nc->state = DISCONNECTED;
 	err_connection_failed(nc->conn, nc->msg, strerror(errno));
 	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
@@ -290,13 +298,14 @@ static DBusHandlerResult get_address(DBusConnection *conn, DBusMessage *msg,
 	struct network_conn *nc = data;
 	DBusMessage *reply;
 	char raddr[18];
+	const char *paddr = raddr;
 
 	ba2str(&nc->dst, raddr);
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, raddr,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &paddr,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -338,6 +347,11 @@ static DBusHandlerResult get_interface(DBusConnection *conn, DBusMessage *msg,
 	struct network_conn *nc = data;
 	DBusMessage *reply;
 
+	if (nc->state != CONNECTED) {
+		err_failed(conn, msg, "Device not connected");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -355,6 +369,11 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 	struct network_conn *nc = data;
 	DBusError derr;
 
+	if (nc->state != DISCONNECTED) {
+		err_failed(conn, msg, "Device already connected");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_INVALID)) {
@@ -364,6 +383,7 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 	}
 
 	nc->sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+	nc->state = CONNECTING;
 	if (nc->sk < 0) {
 		error("Cannot create L2CAP socket. %s(%d)", strerror(errno),
 				errno);
@@ -378,6 +398,7 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 	nc->msg = dbus_message_ref(msg);
 	return DBUS_HANDLER_RESULT_HANDLED;
 fail:
+	nc->state = DISCONNECTED;
 	err_connection_failed(conn, msg, strerror(errno));
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -388,7 +409,7 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 	struct network_conn *nc = data;
 	DBusMessage *reply;
 
-	if (!nc->up) {
+	if (nc->state != CONNECTED) {
 		err_failed(conn, msg, "Device not connected");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -408,12 +429,14 @@ static DBusHandlerResult is_connected(DBusConnection *conn, DBusMessage *msg,
 {
 	struct network_conn *nc = data;
 	DBusMessage *reply;
+	gboolean up;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &nc->up,
+	up = (nc->state == CONNECTED);
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &up,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -465,7 +488,7 @@ static void connection_free(struct network_conn *nc)
 	if (nc->path)
 		g_free(nc->path);
 
-	if (nc->up)
+	if (nc->state == CONNECTED)
 		bnep_kill_connection(&nc->dst);
 
 	if (nc->dev)
@@ -493,7 +516,6 @@ int connection_register(DBusConnection *conn, const char *path,
 			const char *addr, uint16_t id)
 {
 	struct network_conn *nc;
-	static int bnep = 0;
 
 	if (!conn)
 		return -1;
@@ -512,9 +534,8 @@ int connection_register(DBusConnection *conn, const char *path,
 	str2ba(addr, &nc->dst);
 	nc->id = id;
 	/* FIXME: Check for device */
-	nc->dev = g_new(char, 16);
-	snprintf(nc->dev, 16, "bnep%d", bnep++);
-	nc->up = FALSE;
+	nc->dev = g_strdup("bnep%d");
+	nc->state = DISCONNECTED;
 	nc->conn = conn;
 	info("Registered connection path:%s", path);
 	return 0;
