@@ -159,7 +159,6 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 
 	add_lang_attr(&record);
 
-	/* FIXME: Missing check the security attribute */
 	sdp_attr_add_new(&record, SDP_ATTR_SECURITY_DESC,
 				SDP_UINT16, &security_desc);
 
@@ -707,7 +706,14 @@ static DBusHandlerResult set_name(DBusConnection *conn,
 		g_free(ns->name);
 	ns->name = g_strdup(name);
 
-	/* FIXME: Update the service record attribute */
+	if (ns->io) {
+		/* Server enabled - service record already registred
+		 * Workaround: Currently it is not possible update
+		 * one service record attribute using D-Bus methods
+		 */
+		remove_server_record(ns->conn, ns->record_id);
+		ns->record_id = add_server_record(ns);
+	}
 
 	return send_message_and_unref(conn, reply);
 }
@@ -791,6 +797,15 @@ static DBusHandlerResult set_security(DBusConnection *conn,
 	}
 
 	ns->secure = secure;
+
+	if (ns->io) {
+		/* Server enabled - service record already registred
+		 * Workaround: Currently it is not possible update
+		 * one service record attribute using D-Bus methods
+		 */
+		remove_server_record(ns->conn, ns->record_id);
+		ns->record_id = add_server_record(ns);
+	}
 
 	return send_message_and_unref(conn, reply);
 }
