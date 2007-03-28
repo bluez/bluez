@@ -232,8 +232,10 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 {
 	struct network_server *ns = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(pcall);
+	char devname[16];
 	DBusError derr;
 	uint16_t response;
+	int sk;
 
 	if (!ns->pauth)
 		goto failed;
@@ -242,28 +244,28 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Access denied: %s", derr.message);
 		response = BNEP_CONN_NOT_ALLOWED;
-	} else {
-		char devname[16];
-		int sk;
-
-		response = BNEP_SUCCESS;
-
-		memset(devname, 0, 16);
-		strncpy(devname, netdev, 16);
-
-		/* FIXME: Is it the correct order? */
-		sk = g_io_channel_unix_get_fd(ns->pauth->io);
-		bnep_connadd(sk, ns->id, devname);
-
-		/* FIXME: Reply not allowed if bnep connection add fails? */
-
-		info("Authorization succedded. New connection: %s", devname);
-
-		/* Enable routing if applied */
-
-		/* FIXME: send the D-Bus message to notify the new bnep iface */
+		dbus_error_free(&derr);
+		goto reply;
 	}
 
+	memset(devname, 0, 16);
+	strncpy(devname, netdev, 16);
+
+	/* FIXME: Is it the correct order? */
+	sk = g_io_channel_unix_get_fd(ns->pauth->io);
+	if (bnep_connadd(sk, ns->id, devname) < 0) {
+		response = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+	}
+
+	info("Authorization succedded. New connection: %s", devname);
+	response = BNEP_SUCCESS;
+
+	/* FIXME: Enable routing if applied */
+
+	/* FIXME: send the D-Bus message to notify the new bnep iface */
+
+reply:
 	send_bnep_ctrl_rsp(ns->pauth->io, response);
 
 	pending_auth_free(ns->pauth);
