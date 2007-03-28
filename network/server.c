@@ -111,7 +111,7 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 	uint16_t security_desc = (secure ? 0x0001 : 0x0000);
 	uint16_t net_access_type = 0xfffe;
 	uint32_t max_net_access_rate = 0;
-	const char *desc = "BlueZ PAN Service";
+	const char *desc = "BlueZ PAN service";
 	sdp_record_t record;
 	int ret;
 
@@ -172,7 +172,7 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 		pfseq = sdp_list_append(NULL, &profile[0]);
 		sdp_set_profile_descs(&record, pfseq);
 
-		sdp_set_info_attr(&record, "Network Access Point", name, desc);
+		sdp_set_info_attr(&record, name, NULL, desc);
 
 		sdp_attr_add_new(&record, SDP_ATTR_NET_ACCESS_TYPE,
 					SDP_UINT16, &net_access_type);
@@ -189,7 +189,7 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 		pfseq = sdp_list_append(NULL, &profile[0]);
 		sdp_set_profile_descs(&record, pfseq);
 		
-		sdp_set_info_attr(&record, "Group Network Service", name, desc);
+		sdp_set_info_attr(&record, name, NULL, desc);
 	}
 
 	if (sdp_gen_record_pdu(&record, buf) < 0)
@@ -933,9 +933,9 @@ int server_register(DBusConnection *conn, const char *path, uint16_t id)
 
 	/* Setting a default name */
 	if (id == BNEP_SVC_NAP)
-		ns->name = g_strdup("Bluetooth NAP service");
+		ns->name = g_strdup("BlueZ NAP service");
 	else
-		ns->name = g_strdup("Bluetooth GN service");
+		ns->name = g_strdup("BlueZ GN service");
 
 	ns->path = g_strdup(path);
 	ns->id = id;
