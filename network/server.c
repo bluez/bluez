@@ -326,8 +326,6 @@ static gboolean connect_setup_event(GIOChannel *chan,
 		return FALSE;
 	}
 
-	/* FIXME: Missing address setup connection request retries */
-
 	gerr = g_io_channel_read(chan, (gchar *)pkt, sizeof(pkt) - 1, &n);
 	if (gerr != G_IO_ERROR_NONE)
 		return FALSE;
@@ -428,9 +426,19 @@ static gboolean connect_event(GIOChannel *chan,
 	/* FIXME: Maybe keep a list of connected devices */
 
 	ba2str(&dst, peer);
-	info("Incoming connection from:%s on PSM %d", peer, psm);
+	if (ns->pauth) {
+		GIOChannel *io;
+		error("Rejecting connection from %s\
+				due pending authorization", peer);
+		io = g_io_channel_unix_new(nsk);
+		send_bnep_ctrl_rsp(io, BNEP_CONN_NOT_ALLOWED);
+		g_io_channel_unref(io);
+		g_io_channel_close(io);
+		close(nsk);
+		return TRUE;
+	}
 
-	/* FIXME: HOW handle multiple incomming connections? */
+	info("Incoming connection from:%s on PSM %d", peer, psm);
 
 	/* Setting the pending incomming connection setup */
 	ns->pauth = g_new0(struct pending_auth, 1);
