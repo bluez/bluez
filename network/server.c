@@ -267,9 +267,12 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Access denied: %s", derr.message);
+		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
+			debug("Canceling authorization request");
+			cancel_authorization(ns);
+		}
 		response = BNEP_CONN_NOT_ALLOWED;
 		dbus_error_free(&derr);
-		cancel_authorization(ns);
 		goto failed;
 	}
 
