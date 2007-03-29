@@ -227,6 +227,28 @@ static int send_bnep_ctrl_rsp(GIOChannel *chan, uint16_t response)
 	return -gerr;
 }
 
+static void cancel_authorization(struct network_server *ns)
+{
+	DBusMessage *msg;
+	const char *paddress = ns->pauth->addr;
+	const char *uuid = "";
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.Database",
+						"CancelAuthorizationRequest");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		return;
+	}
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &paddress,
+			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_INVALID);
+
+	send_message_and_unref(ns->conn, msg);
+}
+
 static void authorization_callback(DBusPendingCall *pcall, void *data)
 {
 	struct network_server *ns = data;
@@ -236,15 +258,19 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	uint16_t response;
 	int sk;
 
-	if (!ns->pauth)
-		goto failed;
+	if (!ns->pauth) {
+		dbus_message_unref(reply);
+		dbus_pending_call_unref(pcall);
+		return;
+	}
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Access denied: %s", derr.message);
 		response = BNEP_CONN_NOT_ALLOWED;
 		dbus_error_free(&derr);
-		goto reply;
+		cancel_authorization(ns);
+		goto failed;
 	}
 
 	memset(devname, 0, 16);
@@ -254,7 +280,7 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	sk = g_io_channel_unix_get_fd(ns->pauth->io);
 	if (bnep_connadd(sk, ns->id, devname) < 0) {
 		response = BNEP_CONN_NOT_ALLOWED;
-		goto reply;
+		goto failed;
 	}
 
 	info("Authorization succedded. New connection: %s", devname);
@@ -264,13 +290,12 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 
 	/* FIXME: send the D-Bus message to notify the new bnep iface */
 
-reply:
+failed:
 	send_bnep_ctrl_rsp(ns->pauth->io, response);
 
 	pending_auth_free(ns->pauth);
 	ns->pauth = NULL;
 
-failed:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(pcall);
 }
@@ -428,8 +453,7 @@ static gboolean connect_event(GIOChannel *chan,
 	ba2str(&dst, peer);
 	if (ns->pauth) {
 		GIOChannel *io;
-		error("Rejecting connection from %s\
-				due pending authorization", peer);
+		error("Rejecting %s(pending authorization)", peer);
 		io = g_io_channel_unix_new(nsk);
 		send_bnep_ctrl_rsp(io, BNEP_CONN_NOT_ALLOWED);
 		g_io_channel_unref(io);
@@ -438,7 +462,7 @@ static gboolean connect_event(GIOChannel *chan,
 		return TRUE;
 	}
 
-	info("Incoming connection from:%s on PSM %d", peer, psm);
+	info("Connection from:%s on PSM %d", peer, psm);
 
 	/* Setting the pending incomming connection setup */
 	ns->pauth = g_new0(struct pending_auth, 1);
