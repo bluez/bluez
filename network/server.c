@@ -47,6 +47,7 @@
 
 #define NETWORK_SERVER_INTERFACE "org.bluez.network.Server"
 
+#include "bridge.h"
 #include "common.h"
 #include "server.h"
 
@@ -264,6 +265,8 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 		return;
 	}
 
+	sk = g_io_channel_unix_get_fd(ns->pauth->io);
+
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Access denied: %s", derr.message);
@@ -279,8 +282,6 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	memset(devname, 0, 16);
 	strncpy(devname, netdev, 16);
 
-	/* FIXME: Is it the correct order? */
-	sk = g_io_channel_unix_get_fd(ns->pauth->io);
 	if (bnep_connadd(sk, ns->id, devname) < 0) {
 		response = BNEP_CONN_NOT_ALLOWED;
 		goto failed;
@@ -288,6 +289,13 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 
 	info("Authorization succedded. New connection: %s", devname);
 	response = BNEP_SUCCESS;
+
+	if (bridge_add_interface("pan0", devname) < 0) {
+		error("Can't add %s to the bridge: %s(%d)",
+				devname, strerror(errno), errno);
+		response = BNEP_CONN_NOT_ALLOWED;
+		goto failed;
+	}
 
 	/* FIXME: Enable routing if applied */
 
@@ -298,6 +306,8 @@ failed:
 
 	pending_auth_free(ns->pauth);
 	ns->pauth = NULL;
+
+	close(sk);
 
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(pcall);
@@ -677,8 +687,6 @@ static DBusHandlerResult enable(DBusConnection *conn,
 		error("Unable to register the server(0x%x) service record", ns->id);
 		return err_failed(conn, msg, "Unable to register the service record");
 	}
-
-	/* FIXME: Check security */
 
 	err = l2cap_listen(ns);
 	if (err < 0) 

@@ -26,3 +26,4 @@ void bridge_cleanup(void);
 
 int bridge_create(const char *name);
 int bridge_remove(const char *name);
+int bridge_add_interface(const char *bridge, const char *dev);

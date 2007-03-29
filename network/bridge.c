@@ -74,3 +74,20 @@ int bridge_remove(const char *name)
 
 	return 0;
 }
+
+int bridge_add_interface(const char *bridge, const char *dev)
+{
+	struct ifreq ifr;
+	int ifindex = if_nametoindex(dev);
+
+	if (ifindex == 0) 
+		return -ENODEV;
+
+	strncpy(ifr.ifr_name, bridge, IFNAMSIZ);
+	ifr.ifr_ifindex = ifindex;
+
+	if (ioctl(bridge_socket, SIOCBRADDIF, &ifr) < 0)
+		return -errno;
+
+	return 0;
+}
