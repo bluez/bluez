@@ -61,7 +61,7 @@ struct network_conn {
 	bdaddr_t src;
 	bdaddr_t dst;
 	char *path;	/* D-Bus path */
-	char *dev;	/* BNEP interface name */
+	char dev[16];	/* BNEP interface name */
 	char *name;
 	char *desc;
 	uint16_t id;	/* Service Class Identifier */
@@ -73,6 +73,8 @@ struct __service_16 {
 	uint16_t dst;
 	uint16_t src;
 } __attribute__ ((packed));
+
+static char netdev[16] = "bnep%d";
 
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
@@ -428,14 +430,18 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 		goto fail;
 	}
 
+	nc->msg = dbus_message_ref(msg);
 	if(l2cap_connect(nc)) {
 		error("Connect failed. %s(%d)", strerror(errno), errno);
 		goto fail;
 	}
 
-	nc->msg = dbus_message_ref(msg);
 	return DBUS_HANDLER_RESULT_HANDLED;
 fail:
+	if (nc->msg) {
+		dbus_message_unref(nc->msg);
+		nc->msg = NULL;
+	}
 	nc->state = DISCONNECTED;
 	err_connection_failed(conn, msg, strerror(errno));
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -595,7 +601,9 @@ int connection_register(DBusConnection *conn, const char *path,
 				d->val.str);
 	}
 
-	nc->dev = g_strdup("bnep%d");
+	memset(nc->dev, 0, 16);
+	strncpy(nc->dev, netdev, 16);
+
 	nc->state = DISCONNECTED;
 	nc->conn = conn;
 	info("Registered connection path:%s", path);
