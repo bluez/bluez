@@ -29,6 +29,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/bnep.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -178,8 +180,9 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 	struct pending_reply *pr = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
-	int len;
+	int len, scanned;
 	uint8_t *rec_bin;
+	sdp_record_t *rec;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -207,8 +210,10 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
+	rec = sdp_extract_pdu(rec_bin, &scanned);
 
-	if (connection_register(pr->conn, pr->path, pr->addr, pr->id) == -1) {
+	if (connection_register(pr->conn, pr->path, pr->addr, pr->id,
+				rec) == -1) {
 		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
 		goto fail;
 	}
@@ -218,6 +223,7 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 
 	create_path(pr->conn, pr->msg, g_strdup (pr->path), "ConnectionCreated");
 fail:
+	sdp_record_free(rec);
 	dbus_error_free(&derr);
 	pending_reply_free(pr);
 	dbus_message_unref(reply);

@@ -34,6 +34,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -60,6 +62,8 @@ struct network_conn {
 	bdaddr_t dst;
 	char *path;	/* D-Bus path */
 	char *dev;	/* BNEP interface name */
+	char *name;
+	char *desc;
 	uint16_t id;	/* Service Class Identifier */
 	conn_state state;
 	int sk;
@@ -81,7 +85,10 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 
 	send_message_and_unref(nc->conn, signal);
 	info("%s disconnected", nc->dev);
-	return (!nc->state);
+	nc->state = DISCONNECTED;
+	g_io_channel_close(chan);
+	g_io_channel_unref(chan);
+	return FALSE;
 }
 
 static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
@@ -332,13 +339,44 @@ static DBusHandlerResult get_uuid(DBusConnection *conn, DBusMessage *msg,
 static DBusHandlerResult get_name(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct network_conn *nc = data;
+	DBusMessage *reply;
+
+	if (!nc->name) {
+		err_failed(conn, msg, "Cannot find service name");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &nc->name,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+
 }
 
 static DBusHandlerResult get_description(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct network_conn *nc = data;
+	DBusMessage *reply;
+
+	if (!nc->desc) {
+		err_failed(conn, msg, "Cannot find service description");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &nc->desc,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult get_interface(DBusConnection *conn, DBusMessage *msg,
@@ -494,6 +532,12 @@ static void connection_free(struct network_conn *nc)
 	if (nc->dev)
 		g_free(nc->dev);
 
+	if (nc->name)
+		g_free(nc->name);
+
+	if (nc->desc)
+		g_free(nc->desc);
+
 	g_free(nc);
 }
 
@@ -513,9 +557,10 @@ static const DBusObjectPathVTable connection_table = {
 };
 
 int connection_register(DBusConnection *conn, const char *path,
-			const char *addr, uint16_t id)
+			const char *addr, uint16_t id, const sdp_record_t *rec)
 {
 	struct network_conn *nc;
+	sdp_data_t *d;
 
 	if (!conn)
 		return -1;
@@ -533,7 +578,23 @@ int connection_register(DBusConnection *conn, const char *path,
 	bacpy(&nc->src, BDADDR_ANY);
 	str2ba(addr, &nc->dst);
 	nc->id = id;
-	/* FIXME: Check for device */
+
+	/* Extract service name from record */
+	d = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
+	if (d) {
+		nc->name = g_new0(char, d->unitSize);
+		snprintf(nc->name, d->unitSize, "%.*s", d->unitSize,
+				d->val.str);
+	}
+
+	/* Extract service description from record */
+	d = sdp_data_get(rec, SDP_ATTR_SVCDESC_PRIMARY);
+	if (d) {
+		nc->desc = g_new0(char, d->unitSize);
+		snprintf(nc->desc, d->unitSize, "%.*s", d->unitSize,
+				d->val.str);
+	}
+
 	nc->dev = g_strdup("bnep%d");
 	nc->state = DISCONNECTED;
 	nc->conn = conn;
