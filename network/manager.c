@@ -48,7 +48,6 @@
 #include "common.h"
 
 struct manager {
-	bdaddr_t src;		/* Local adapter BT address */
 	GSList *servers;	/* Network registered servers paths */
 	GSList *connections;	/* Network registered connections paths */
 };
@@ -182,11 +181,12 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 	DBusError derr;
 	int len, scanned;
 	uint8_t *rec_bin;
-	sdp_record_t *rec;
+	sdp_record_t *rec = NULL;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+		if (dbus_error_has_name(&derr,
+				"org.bluez.Error.ConnectionAttemptFailed"))
 			err_connection_failed(pr->conn, pr->msg, derr.message);
 		else
 			err_not_supported(pr->conn, pr->msg);
@@ -267,18 +267,20 @@ static void pan_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+		if (dbus_error_has_name(&derr,
+				"org.bluez.Error.ConnectionAttemptFailed"))
 			err_connection_failed(pr->conn, pr->msg, derr.message);
 		else
 			err_not_supported(pr->conn, pr->msg);
 
-		error("GetRemoteServiceHandles: %s(%s)", derr.name, derr.message);
+		error("GetRemoteServiceHandles: %s(%s)", derr.name,
+				derr.message);
 		goto fail;
 	}
 
 	if (!dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
-				DBUS_TYPE_INVALID)) {
+				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle,
+				&len, DBUS_TYPE_INVALID)) {
 		err_not_supported(pr->conn, pr->msg);
 		error("%s: %s", derr.name, derr.message);
 		goto fail;
@@ -302,7 +304,8 @@ fail:
 	pending_reply_free(pr);
 }
 
-static int get_handles(struct pending_reply *pr, DBusPendingCallNotifyFunction cb)
+static int get_handles(struct pending_reply *pr,
+			DBusPendingCallNotifyFunction cb)
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
@@ -318,6 +321,65 @@ static int get_handles(struct pending_reply *pr, DBusPendingCallNotifyFunction c
 			DBUS_TYPE_STRING, &pr->addr,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
+		error("Can't send D-Bus message.");
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, cb, pr, NULL);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
+static void default_adapter_reply(DBusPendingCall *call, void *data)
+{
+	struct pending_reply *pr = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError derr;
+	const char *adapter;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		err_connection_failed(pr->conn, pr->msg, derr.message);
+		error("DefaultAdapter: %s(%s)", derr.name, derr.message);
+		goto fail;
+	}
+
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_STRING, &adapter,
+				DBUS_TYPE_INVALID)) {
+		err_connection_failed(pr->conn, pr->msg, derr.message);
+		error("%s: %s", derr.name, derr.message);
+		goto fail;
+	}
+
+	pr->adapter_path = g_strdup(adapter);
+
+	if (get_handles(pr, pan_handle_reply) < 0) {
+		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
+		goto fail;
+	}
+
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+	return;
+fail:
+	dbus_error_free(&derr);
+	pending_reply_free(pr);
+}
+
+static int get_default_adapter(struct pending_reply *pr,
+		DBusPendingCallNotifyFunction cb)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+			"org.bluez.Manager", "DefaultAdapter");
+	if (!msg)
+		return -1;
 
 	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
 		error("Can't send D-Bus message.");
@@ -402,7 +464,6 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	struct pending_reply *pr;
 	static int uid = 0;
 	DBusError derr;
-	char src_addr[18];
 	const char *addr;
 	const char *str;
 	uint16_t id;
@@ -429,11 +490,8 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	pr->id = id;
 	pr->path = g_new0(char, 48);
 	snprintf(pr->path, 48, NETWORK_PATH "/connection%d", uid++);
-	ba2str(&mgr->src, src_addr);
-	pr->adapter_path = g_new0(char, 32);
-	snprintf(pr->adapter_path , 32, "/org/bluez/hci%d", hci_devid(src_addr));
 
-	if (get_handles(pr, pan_handle_reply) < 0) {
+	if (get_default_adapter(pr, default_adapter_reply) < 0) {
 		err_failed(conn, msg, "D-Bus path registration failed");
 		pending_reply_free(pr);
 	}
@@ -524,12 +582,6 @@ static const DBusObjectPathVTable manager_table = {
 int network_dbus_init(void)
 {
 	struct manager *mgr;
-	bdaddr_t src;
-#if 0
-	int dev_id;
-#endif
-
-	dbus_connection_set_exit_on_disconnect(connection, TRUE);
 
 	mgr = g_new0(struct manager, 1);
 
@@ -541,23 +593,6 @@ int network_dbus_init(void)
 	}
 
 	info("Registered manager path:%s", NETWORK_PATH);
-
-	/* Set the default adapter */
-	bacpy(&src, BDADDR_ANY);
-#if 0
-	dev_id = hci_get_route(&src);
-	if (dev_id < 0) {
-		error("Bluetooth device not available");
-		goto fail;
-	}
-
-	if (hci_devba(dev_id, &src) < 0) {
-		error("Can't get local adapter device info");
-		goto fail;
-	}
-#endif
-
-	bacpy(&mgr->src, &src);
 
 	return 0;
 
