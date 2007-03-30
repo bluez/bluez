@@ -55,6 +55,7 @@
 struct pending_auth {
 	char				*addr;	/* Bluetooth Address */
 	GIOChannel			*io;	/* BNEP connection setup io channel */
+	int 				attempts; /* BNEP setup conn requests counter */
 };
 
 /* Main server structure */
@@ -377,6 +378,14 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ) {
 		error("Invalid BNEP control packet content");
 		return FALSE;
+	}
+
+	if (++ns->pauth->attempts > 1) {
+		/*
+		 * Ignore repeated BNEP setup connection request: there
+		 * is a pending authorization request for this device.
+		 */
+		return TRUE;
 	}
 
 	/* 
