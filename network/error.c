@@ -78,3 +78,11 @@ DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg)
 			NETWORK_ERROR_INTERFACE ".NotSupported",
 			"The service is not supported by the remote device"));
 }
+
+DBusHandlerResult err_already_exists(DBusConnection *conn,
+					DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				NETWORK_ERROR_INTERFACE ".AlreadyExists", str));
+}
