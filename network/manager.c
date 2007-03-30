@@ -425,11 +425,9 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	path = g_new0(char, 32);
 	snprintf(path, 32, NETWORK_PATH "/server/%X", id);
 
-	/* Path already registered */
 	if (g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp))
-		return create_path(conn, msg, path, NULL); /* Return already exist error */
+		return err_already_exists(conn, msg, "Server Already exists");
 
-	/* FIXME: define which type should be used -- string/uuid str/uui128 */
 	if (server_register(conn, path, id) == -1) {
 		err_failed(conn, msg, "D-Bus path registration failed");
 		g_free(path);
