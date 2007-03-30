@@ -79,10 +79,9 @@ static void pending_auth_free(struct pending_auth *pauth)
 		return;
 	if (pauth->addr)
 		g_free(pauth->addr);
-	/* FIXME: Is it necessary close the BNEP socket? */
 	if (pauth->io) {
-		g_io_channel_unref(pauth->io);
 		g_io_channel_close(pauth->io);
+		g_io_channel_unref(pauth->io);
 	}
 	g_free(pauth);
 }
@@ -478,9 +477,8 @@ static gboolean connect_event(GIOChannel *chan,
 		error("Rejecting %s(pending authorization)", peer);
 		io = g_io_channel_unix_new(nsk);
 		send_bnep_ctrl_rsp(io, BNEP_CONN_NOT_ALLOWED);
-		g_io_channel_unref(io);
 		g_io_channel_close(io);
-		close(nsk);
+		g_io_channel_unref(io);
 		return TRUE;
 	}
 
@@ -724,7 +722,6 @@ static DBusHandlerResult disable(DBusConnection *conn,
 	}
 
 	g_io_channel_unref(ns->io);
-	g_io_channel_close(ns->io);
 	ns->io = NULL;
 
 	return send_message_and_unref(conn, reply);
@@ -942,8 +939,8 @@ static void server_free(struct network_server *ns)
 		dbus_connection_unref(ns->conn);
 
 	if (ns->io) {
-		g_io_channel_unref(ns->io);
 		g_io_channel_close(ns->io);
+		g_io_channel_unref(ns->io);
 	}
 
 	g_free(ns);
