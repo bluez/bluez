@@ -13,7 +13,10 @@ fi
 		--localstatedir=/var \
 		--libexecdir=/lib \
 		--enable-all \
+		--enable-glib \
+		--enable-headset \
 		--disable-configfiles \
 		--disable-initscripts \
 		--disable-pcmciarules \
+		--disable-sdpd \
 		--disable-cups $*

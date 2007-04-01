@@ -157,6 +157,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	usb_enable=${usb_found}
 	glib_enable=no
 	obex_enable=${openobex_found}
+	headset_enable=no
 	network_enable=no
 	input_enable=no
 	sync_enable=no
@@ -231,6 +232,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
 		obex_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(headset, AC_HELP_STRING([--enable-headset], [enable headset service]), [
+		headset_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
@@ -340,6 +345,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes" && test "${hal_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
+	AM_CONDITIONAL(HEADSETSERVICE, test "${headset_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(SYNCSERVICE, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
