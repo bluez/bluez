@@ -1162,6 +1162,30 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult hs_is_connected(struct headset *hs, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	dbus_bool_t connected;
+
+	assert(hs);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (hs->state >= HEADSET_STATE_CONNECTED)
+		connected = TRUE;
+	else
+		connected = FALSE;
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
+					DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, reply);
+	
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static void get_handles_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *msg = NULL, *reply;
@@ -1560,6 +1584,9 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 
 	if (strcmp(member, "Disconnect") == 0)
 		return hs_disconnect(hs, msg);
+
+	if (strcmp(member, "IsConnected") == 0)
+		return hs_is_connected(hs, msg);
 
 	if (strcmp(member, "IndicateCall") == 0)
 		return hs_ring(hs, msg);
