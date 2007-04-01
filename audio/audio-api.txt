@@ -52,6 +52,8 @@ Methods		string GetAddress()
 
 		void Disconnect()
 
+		boolean IsConnected()
+
 		uint16 GetSpeakerGain()
 
 		uint16 GetMicrophoneGain()
