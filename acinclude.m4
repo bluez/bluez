@@ -191,10 +191,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		dbus_enable=${enableval}
 		obex_enable=${enableval}
-		network_enable=${enableval}
-		input_enable=${enableval}
-		sync_enable=${enableval}
-		echo_enable=${enableval}
 		hcid_enable=${enableval}
 		sdpd_enable=${enableval}
 		hidd_enable=${enableval}

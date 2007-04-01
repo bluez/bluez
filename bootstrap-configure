@@ -15,6 +15,9 @@ fi
 		--enable-all \
 		--enable-glib \
 		--enable-headset \
+		--enable-network \
+		--enable-input \
+		--enable-echo \
 		--disable-configfiles \
 		--disable-initscripts \
 		--disable-pcmciarules \
