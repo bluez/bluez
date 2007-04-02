@@ -77,7 +77,7 @@ static void pending_reply_free(struct pending_reply *pr)
 }
 
 static DBusHandlerResult create_path(DBusConnection *conn,
-					DBusMessage *msg, char *path,
+					DBusMessage *msg, const char *path,
 					const char *sname)
 {
 	DBusMessage *reply, *signal;
@@ -101,7 +101,6 @@ static DBusHandlerResult create_path(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID);
 
-	g_free(path);
 	return send_message_and_unref(conn, reply);
 }
 
@@ -221,7 +220,7 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 	pr->mgr->connections = g_slist_append(pr->mgr->connections,
 						g_strdup(pr->path));
 
-	create_path(pr->conn, pr->msg, g_strdup (pr->path), "ConnectionCreated");
+	create_path(pr->conn, pr->msg, pr->path, "ConnectionCreated");
 fail:
 	sdp_record_free(rec);
 	dbus_error_free(&derr);
@@ -333,6 +332,64 @@ static int get_handles(struct pending_reply *pr,
 	return 0;
 }
 
+static void get_address_reply(DBusPendingCall *call, void *data)
+{
+	struct pending_reply *pr = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError derr;
+	const char *address;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("GetAddress: %s(%s)", derr.name, derr.message);
+		goto fail;
+	}
+
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_INVALID)) {
+		error("%s: %s", derr.name, derr.message);
+		goto fail;
+	}
+
+	if (server_register(pr->conn, address, pr->path, pr->id) < 0) {
+		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
+		goto fail;
+	}
+
+	pr->mgr->servers = g_slist_append(pr->mgr->servers,
+						g_strdup(pr->path));
+
+	create_path(pr->conn, pr->msg, pr->path, "ServerCreated");
+fail:
+	dbus_error_free(&derr);
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+	return;
+}
+
+static int get_address(struct pending_reply *pr,
+			DBusPendingCallNotifyFunction cb)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+
+	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
+			"org.bluez.Adapter", "GetAddress");
+	if (!msg)
+		return -1;
+
+	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
+		error("Can't send D-Bus message.");
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, cb, pr, NULL);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
 static void default_adapter_reply(DBusPendingCall *call, void *data)
 {
 	struct pending_reply *pr = data;
@@ -357,7 +414,10 @@ static void default_adapter_reply(DBusPendingCall *call, void *data)
 
 	pr->adapter_path = g_strdup(adapter);
 
-	if (get_handles(pr, pan_handle_reply) < 0) {
+	if (pr->id == BNEP_SVC_PANU && (get_handles(pr, pan_handle_reply) < 0)) {
+		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
+		goto fail;
+	} else if (get_address(pr, get_address_reply) < 0) {
 		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
 		goto fail;
 	}
@@ -404,9 +464,9 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct manager *mgr = data;
+	struct pending_reply *pr;
 	DBusError derr;
 	const char *str;
-	char *path;
 	int id;
 
 	dbus_error_init(&derr);
@@ -422,21 +482,28 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
 		return err_invalid_args(conn, msg, "Not supported");
 
-	path = g_new0(char, 32);
-	snprintf(path, 32, NETWORK_PATH "/server/%X", id);
+	pr = g_new(struct pending_reply, 1);
+	pr->conn = conn;
+	pr->msg = dbus_message_ref(msg);
+	pr->mgr = mgr;
+	pr->addr = NULL;
+	pr->id = id;
+	pr->path = g_new0(char, 32);
+	snprintf(pr->path, 32, NETWORK_PATH "/server/%s", bnep_name(id));
 
-	if (g_slist_find_custom(mgr->servers, path, (GCompareFunc) strcmp))
-		return err_already_exists(conn, msg, "Server Already exists");
-
-	if (server_register(conn, path, id) == -1) {
-		err_failed(conn, msg, "D-Bus path registration failed");
-		g_free(path);
+	if (g_slist_find_custom(mgr->servers, pr->path,
+				(GCompareFunc) strcmp)) {
+		err_already_exists(conn, msg, "Server Already exists");
+		pending_reply_free(pr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	mgr->servers = g_slist_append(mgr->servers, g_strdup(path));
+	if (get_default_adapter(pr, default_adapter_reply) < 0) {
+		err_failed(conn, msg, "D-Bus path registration failed");
+		pending_reply_free(pr);
+	}
 
-	return create_path(conn, msg, path, "ServerCreated");
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult remove_server(DBusConnection *conn,

@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/file.h>
+#include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/bnep.h>
@@ -50,6 +52,7 @@
 #include "bridge.h"
 #include "common.h"
 #include "server.h"
+#include "textfile.h"
 
 /* Pending Authorization */
 struct pending_auth {
@@ -60,6 +63,7 @@ struct pending_auth {
 
 /* Main server structure */
 struct network_server {
+	bdaddr_t		src;		/* Bluetooth Local Address */
 	char			*iface;		/* Routing interface */
 	char			*name;		/* Server service name */
 	char			*path; 		/* D-Bus path */
@@ -72,6 +76,48 @@ struct network_server {
 };
 
 static char netdev[16] = "bnep%d";
+
+static inline int create_filename(char *buf, size_t size,
+					bdaddr_t *bdaddr, const char *name)
+{
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+
+	return create_name(buf, size, STORAGEDIR, addr, name);
+}
+
+static int del_stored_server_info(bdaddr_t *src, uint16_t uuid)
+{
+	char filename[PATH_MAX + 1];
+	const char *str;
+	int err;
+
+	create_filename(filename, PATH_MAX, src, "network");
+
+	str = bnep_uuid(uuid);
+
+	err = textfile_del(filename, str);
+
+	return err;
+}
+
+static int store_server_info(bdaddr_t *src, uint16_t uuid, gboolean enable)
+{
+	char filename[PATH_MAX + 1];
+	const char *str;
+	int err;
+
+	create_filename(filename, PATH_MAX, src, "network");
+
+	str = bnep_uuid(uuid);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	err = textfile_put(filename, str, enable ? "1" : "0");
+
+	return err;
+}
 
 static void pending_auth_free(struct pending_auth *pauth)
 {
@@ -684,6 +730,9 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	DBusMessage *reply;
 	int err;
 
+	if (ns->io)
+		return err_already_exists(conn, msg, "Server already enabled");
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -698,6 +747,8 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	err = l2cap_listen(ns);
 	if (err < 0) 
 		return err_failed(conn, msg, strerror(-err));
+
+	store_server_info(&ns->src, ns->id, TRUE);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -723,6 +774,8 @@ static DBusHandlerResult disable(DBusConnection *conn,
 
 	g_io_channel_unref(ns->io);
 	ns->io = NULL;
+
+	store_server_info(&ns->src, ns->id, FALSE);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -943,6 +996,8 @@ static void server_free(struct network_server *ns)
 		g_io_channel_unref(ns->io);
 	}
 
+	del_stored_server_info(&ns->src, ns->id);
+
 	g_free(ns);
 }
 
@@ -961,7 +1016,8 @@ static const DBusObjectPathVTable server_table = {
 	.unregister_function = server_unregister,
 };
 
-int server_register(DBusConnection *conn, const char *path, uint16_t id)
+int server_register(DBusConnection *conn, const char *addr, const char *path, 
+			uint16_t id)
 {
 	struct network_server *ns;
 
@@ -989,11 +1045,33 @@ int server_register(DBusConnection *conn, const char *path, uint16_t id)
 	ns->path = g_strdup(path);
 	ns->id = id;
 	ns->conn = dbus_connection_ref(conn);
+	str2ba(addr, &ns->src);
 
 	info("Registered server path:%s", ns->path);
+
+	store_server_info(&ns->src, ns->id, FALSE);
 
 	return 0;
 fail:
 	server_free(ns);
 	return -1;
+}
+
+int read_server_uuid(bdaddr_t *src, uint16_t uuid, gboolean *enable)
+{
+	char filename[PATH_MAX + 1], *buff;
+	const char *str;
+
+	create_filename(filename, PATH_MAX, src, "network");
+
+	str = bnep_uuid(uuid);
+	buff = textfile_get(filename, str);
+	if (!buff)
+		return -ENOENT;
+
+	*enable = (strtol(buff, NULL, 10)) ? TRUE : FALSE;
+
+	g_free(buff);
+
+	return 0;
 }
