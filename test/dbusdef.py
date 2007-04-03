@@ -7,15 +7,24 @@ dummy = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'), 'org.freedeskt
 
 #print dummy.Introspect()
 
+
 manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'), 'org.bluez.Manager')
 
 database = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'), 'org.bluez.Database')
 
-adapter = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.Adapter')
 
-test = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.Test')
+try:
+	adapter = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.Adapter')
 
-rfcomm = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.RFCOMM')
+	test = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.Test')
+
+	rfcomm = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.RFCOMM')
+except:
+	adapter = ""
+
+	test = ""
+
+	rfcomm = ""
 
 
 def create_service(identifier):
@@ -40,11 +49,11 @@ audio = create_service("audio")
 headset = create_service("headset")
 
 
-def connect_transfer():
+def connect_headset():
 	try:
-		conn = manager.ActivateService("transfer")
+		conn = manager.ActivateService("headset")
 	except:
 		conn = ""
 
 	if (conn != ""):
-		return dbus.Interface(bus.get_object(conn, "/org/bluez/transfer"), 'org.bluez.transfer.Manager')
+		return dbus.Interface(bus.get_object(conn, "/org/bluez/audio"), 'org.bluez.audio.Manager')
