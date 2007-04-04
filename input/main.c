@@ -40,7 +40,6 @@
 #include "logging.h"
 
 #include "manager.h"
-#include "server.h"
 
 static GMainLoop *main_loop;
 
@@ -85,11 +84,7 @@ int main(int argc, char *argv[])
 	if (argc > 1 && !strcmp(argv[1], "-s"))
 		register_external_service(conn, "input", "Input service", "");
 
-	server_start();
-
 	g_main_loop_run(main_loop);
-
-	server_stop();
 
 	input_exit();
 

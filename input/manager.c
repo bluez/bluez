@@ -43,6 +43,7 @@
 #include "textfile.h"
 
 #include "device.h"
+#include "server.h"
 #include "error.h"
 #include "manager.h"
 #include "storage.h"
@@ -872,6 +873,8 @@ int input_init(DBusConnection *conn)
 	/* Register well known HID devices */
 	register_stored_inputs(mgr);
 
+	server_start(connection);
+
 	return 0;
 
 fail:
@@ -883,6 +886,8 @@ fail:
 void input_exit(void)
 {
 	dbus_connection_unregister_object_path(connection, INPUT_PATH);
+
+	server_stop();
 
 	dbus_connection_unref(connection);
 

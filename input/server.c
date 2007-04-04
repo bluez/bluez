@@ -40,6 +40,7 @@
 #include <glib.h>
 
 #include "logging.h"
+#include "dbus.h"
 
 #include "server.h"
 #include "storage.h"
@@ -52,6 +53,7 @@ struct session_data {
 };
 
 static GSList *sessions = NULL;
+static DBusConnection *connection = NULL;
 
 static struct session_data *find_session(bdaddr_t *src, bdaddr_t *dst)
 {
@@ -126,6 +128,68 @@ cleanup:
 	g_free(session);
 }
 
+static void authorization_callback(DBusPendingCall *pcall, void *data)
+{
+	struct session_data *session = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(pcall);
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("Access denied: %s", derr.message);
+		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
+			debug("FIXME: Cancel authorization request");
+		}
+		dbus_error_free(&derr);
+
+		sessions = g_slist_remove(sessions, session);
+
+		close(session->intr_sk);
+		close(session->ctrl_sk);
+
+		g_free(session);
+
+		goto failed;
+	}
+
+	create_device(session);
+failed:
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(pcall);
+}
+
+static int authorize_device(struct session_data *session)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+	char addr[18];
+	const char *paddr = addr;
+	const char *uuid = ""; /* FIXME: */
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "RequestAuthorization");
+	if (!msg) {
+		error("Unable to allocat new RequestAuthorization method call");
+		return -ENOMEM;
+	}
+
+	memset(addr, 0, sizeof(addr));
+	ba2str(&session->dst, addr);
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &paddr,
+			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection,
+				msg, &pending, -1) == FALSE)
+		return -EACCES;
+
+	dbus_pending_call_set_notify(pending, authorization_callback, session, NULL);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
 static void create_watch(int sk, struct session_data *session)
 {
 	GIOChannel *io;
@@ -176,7 +240,18 @@ static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (session) {
 		if (psm == 19) {
 			session->intr_sk = nsk;
-			create_device(session);
+			if (authorize_device(session) < 0) {
+				error("Authorization request failed");
+				sessions = g_slist_remove(sessions, session);
+
+				close(session->intr_sk);
+				close(session->ctrl_sk);
+
+				g_free(session);
+
+				return TRUE;
+			}
+			debug("Waiting authorization ...");
 		} else {
 			error("Control channel already established");
 			close(nsk);
@@ -238,7 +313,7 @@ static GIOChannel *setup_l2cap(unsigned int psm)
 static GIOChannel *ctrl_io = NULL;
 static GIOChannel *intr_io = NULL;
 
-int server_start(void)
+int server_start(DBusConnection *conn)
 {
 	ctrl_io = setup_l2cap(17);
 	if (!ctrl_io) {
@@ -252,6 +327,8 @@ int server_start(void)
 		g_io_channel_unref(ctrl_io);
 		ctrl_io = NULL;
 	}
+
+	connection = conn;
 
 	return 0;
 }
