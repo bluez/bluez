@@ -1845,7 +1845,7 @@ static DBusHandlerResult am_create_headset(struct manager *manager,
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_create_headset(struct manager *manager, 
+static DBusHandlerResult am_remove_headset(struct manager *manager, 
 						DBusMessage *msg)
 {
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
