@@ -157,6 +157,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	usb_enable=${usb_found}
 	glib_enable=no
 	obex_enable=${openobex_found}
+	alsa_enable=${alsa_found}
 	headset_enable=no
 	network_enable=no
 	input_enable=no
@@ -191,6 +192,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		dbus_enable=${enableval}
 		obex_enable=${enableval}
+		alsa_enable=${enableval}
 		hcid_enable=${enableval}
 		sdpd_enable=${enableval}
 		hidd_enable=${enableval}
@@ -228,6 +230,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
 		obex_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
+		alsa_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(headset, AC_HELP_STRING([--enable-headset], [enable headset service]), [
@@ -341,6 +347,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes" && test "${hal_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
+	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
 	AM_CONDITIONAL(HEADSETSERVICE, test "${headset_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
