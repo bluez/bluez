@@ -24,3 +24,15 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+
+#include <alsa/asoundlib.h>
+#include <alsa/pcm_external.h>
+
+SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
+{
+	printf("Bluetooth PCM plugin\n");
+
+	return -EIO;
+}
+
+SND_PCM_PLUGIN_SYMBOL(bluetooth);

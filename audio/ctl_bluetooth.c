@@ -24,3 +24,15 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+
+#include <alsa/asoundlib.h>
+#include <alsa/control_external.h>
+
+SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
+{
+	printf("Bluetooth control plugin\n");
+
+	return -EIO;
+}
+
+SND_CTL_PLUGIN_SYMBOL(bluetooth);
