@@ -69,7 +69,7 @@ static struct session_data *find_session(bdaddr_t *src, bdaddr_t *dst)
 
 static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	if (cond & (G_IO_HUP | G_IO_ERR))
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		return FALSE;
 
 	return TRUE;
@@ -133,7 +133,7 @@ static void create_watch(int sk, struct session_data *session)
 	io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
-	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR,
+	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 						session_event, session);
 
 	g_io_channel_unref(io);

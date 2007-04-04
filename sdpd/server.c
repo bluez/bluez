@@ -149,7 +149,7 @@ static gboolean io_session_event(GIOChannel *chan, GIOCondition cond, gpointer d
 	uint8_t *buf;
 	int sk, len, size;
 
-	if (cond & (G_IO_HUP | G_IO_ERR))
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		return FALSE;
 
 	sk = g_io_channel_unix_get_fd(chan);
@@ -181,7 +181,7 @@ static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer da
 	GIOChannel *io;
 	int nsk;
 
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
 		g_io_channel_unref(chan);
 		return FALSE;
 	}
@@ -207,8 +207,8 @@ static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer da
 	io = g_io_channel_unix_new(nsk);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
-	g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP, io_session_event,
-			data);
+	g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					io_session_event, data);
 
 	g_io_channel_unref(io);
 
@@ -231,15 +231,15 @@ int start_sdp_server(uint16_t mtu, uint32_t flags)
 	l2cap_io = g_io_channel_unix_new(l2cap_sock);
 	g_io_channel_set_close_on_unref(l2cap_io, TRUE);
 
-	g_io_add_watch(l2cap_io, G_IO_IN | G_IO_ERR | G_IO_HUP,
-			io_accept_event, &l2cap_sock);
+	g_io_add_watch(l2cap_io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					io_accept_event, &l2cap_sock);
 
 	if (compat && unix_sock > fileno(stderr)) {
 		unix_io = g_io_channel_unix_new(unix_sock);
 		g_io_channel_set_close_on_unref(unix_io, TRUE);
 
-		g_io_add_watch(unix_io, G_IO_IN | G_IO_ERR | G_IO_HUP,
-				io_accept_event, &unix_sock);
+		g_io_add_watch(unix_io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					io_accept_event, &unix_sock);
 	}
 
 	return 0;

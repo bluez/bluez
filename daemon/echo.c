@@ -55,7 +55,7 @@ static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	gsize len, written;
 	GIOError err;
 
-	if (cond & (G_IO_HUP | G_IO_ERR))
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		return FALSE;
 
 	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
@@ -104,7 +104,7 @@ static void authorization_callback(DBusPendingCall *call, void *data)
 		dbus_error_free(&err);
 	} else {
 		info("Accepting incoming connection");
-		g_io_add_watch(auth->io, G_IO_IN | G_IO_HUP | G_IO_ERR,
+		g_io_add_watch(auth->io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 						session_event, NULL);
 	}
 
