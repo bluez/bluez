@@ -128,6 +128,27 @@ cleanup:
 	g_free(session);
 }
 
+static void cancel_authorization(const char *addr)
+{
+	DBusMessage *msg;
+	const char *uuid = "";
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.Database",
+						"CancelAuthorizationRequest");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		return;
+	}
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &addr,
+			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, msg);
+}
+
 static void authorization_callback(DBusPendingCall *pcall, void *data)
 {
 	struct session_data *session = data;
@@ -138,7 +159,10 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Access denied: %s", derr.message);
 		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
-			debug("FIXME: Cancel authorization request");
+			char addr[18];
+			memset(addr, 0, sizeof(addr));
+			ba2str(&session->dst, addr);
+			cancel_authorization(addr);
 		}
 		dbus_error_free(&derr);
 
