@@ -107,6 +107,7 @@ struct headset {
 struct manager {
 	GIOChannel *server_sk;
 	uint32_t record_id;
+	int default_hs;
 	GSList *headset_list;
 };
 
@@ -1844,6 +1845,18 @@ static DBusHandlerResult am_create_headset(struct manager *manager,
 	return send_message_and_unref(connection, reply);
 }
 
+static DBusHandlerResult am_create_headset(struct manager *manager, 
+						DBusMessage *msg)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult am_list_headsets(struct manager *manager, 
+						DBusMessage *msg)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult am_get_default_headset(struct manager *manager, 
 						DBusMessage *msg)
 {
@@ -1858,11 +1871,18 @@ static DBusHandlerResult am_get_default_headset(struct manager *manager,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	snprintf(object_path, sizeof(object_path), AUDIO_HEADSET_PATH_BASE "%d", 0);
+	snprintf(object_path, sizeof(object_path), AUDIO_HEADSET_PATH_BASE "%d",
+			manager->default_hs);
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &opath,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(connection, reply);
+}
+
+static DBusHandlerResult am_change_default_headset(struct manager *manager, 
+							DBusMessage *msg)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static DBusHandlerResult am_message(DBusConnection *conn,
@@ -1884,8 +1904,17 @@ static DBusHandlerResult am_message(DBusConnection *conn,
 	if (strcmp(member, "CreateHeadset") == 0)
 		return am_create_headset(manager, msg);
 
+	if (strcmp(member, "RemoveHeadset") == 0)
+		return am_remove_headset(manager, msg);
+
+	if (strcmp(member, "ListHeadsets") == 0)
+		return am_list_headsets(manager, msg);
+
 	if (strcmp(member, "DefaultHeadset") == 0)
 		return am_get_default_headset(manager, msg);
+
+	if (strcmp(member, "ChangeDefaultHeadset") == 0)
+		return am_change_default_headset(manager, msg);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
