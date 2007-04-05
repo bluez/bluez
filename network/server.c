@@ -499,7 +499,7 @@ static gboolean connect_event(GIOChannel *chan,
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		error("Hangup or error on L2CAP socket PSM 15");
-		/* FIXME: Notify the userspace? */
+		g_io_channel_close(chan);
 		return FALSE;
 	}
 
@@ -606,7 +606,7 @@ static int l2cap_listen(struct network_server *ns)
 	}
 
 	ns->io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(ns->io, TRUE);
+	g_io_channel_set_close_on_unref(ns->io, FALSE);
 
 	g_io_add_watch(ns->io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 							connect_event, ns);
@@ -772,6 +772,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 		ns->record_id = 0;
 	}
 
+	g_io_channel_close(ns->io);
 	g_io_channel_unref(ns->io);
 	ns->io = NULL;
 
