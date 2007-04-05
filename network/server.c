@@ -277,8 +277,13 @@ static int send_bnep_ctrl_rsp(GIOChannel *chan, uint16_t response)
 static void cancel_authorization(struct network_server *ns)
 {
 	DBusMessage *msg;
-	const char *paddress = ns->pauth->addr;
+	const char *paddress;
 	const char *uuid = "";
+
+	if (!ns->pauth)
+		return;
+
+	paddress = ns->pauth->addr;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 						"org.bluez.Database",
@@ -406,7 +411,7 @@ static gboolean connect_setup_event(GIOChannel *chan,
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		error("Hangup or error on BNEP socket");
-		/* FIXME: Cancel the pending authorization if applied */
+		cancel_authorization(ns);
 		return FALSE;
 	}
 
