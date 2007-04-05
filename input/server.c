@@ -348,6 +348,7 @@ int server_start(DBusConnection *conn)
 		error("Failed to listen on control channel");
 		return -1;
 	}
+	g_io_channel_set_close_on_unref(ctrl_io, TRUE);
 
 	intr_io = setup_l2cap(19);
 	if (!intr_io) {
@@ -355,6 +356,7 @@ int server_start(DBusConnection *conn)
 		g_io_channel_unref(ctrl_io);
 		ctrl_io = NULL;
 	}
+	g_io_channel_set_close_on_unref(intr_io, TRUE);
 
 	connection = conn;
 
