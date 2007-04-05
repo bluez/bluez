@@ -414,9 +414,11 @@ static void default_adapter_reply(DBusPendingCall *call, void *data)
 
 	pr->adapter_path = g_strdup(adapter);
 
-	if (pr->id == BNEP_SVC_PANU && (get_handles(pr, pan_handle_reply) < 0)) {
-		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
-		goto fail;
+	if (pr->addr) {
+		if (get_handles(pr, pan_handle_reply) < 0) {
+			err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
+			goto fail;
+		}
 	} else if (get_address(pr, get_address_reply) < 0) {
 		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
 		goto fail;

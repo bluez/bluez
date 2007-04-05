@@ -458,7 +458,6 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	close(nc->sk);
 	bnep_kill_connection(&nc->dst);
 
 	reply = dbus_message_new_method_return(msg);
