@@ -49,11 +49,11 @@ audio = create_service("audio")
 headset = create_service("headset")
 
 
-def connect_headset():
+def connect_service(identifier):
 	try:
-		conn = manager.ActivateService("headset")
+		conn = manager.ActivateService(identifier)
 	except:
 		conn = ""
 
 	if (conn != ""):
-		return dbus.Interface(bus.get_object(conn, "/org/bluez/audio"), 'org.bluez.audio.Manager')
+		return dbus.Interface(bus.get_object(conn, "/org/bluez/" + identifier), 'org.bluez.' + identifier + '.Manager')
