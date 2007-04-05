@@ -68,12 +68,14 @@ static void pending_reply_free(struct pending_reply *pr)
 {
 	if (pr->addr)
 		g_free(pr->addr);
-
 	if (pr->path)
 		g_free(pr->path);
-
 	if (pr->adapter_path)
 		g_free(pr->adapter_path);
+	if (pr->msg)
+		dbus_message_unref(pr->msg);
+	if (pr->conn)
+		dbus_connection_unref(pr->conn);
 }
 
 static DBusHandlerResult create_path(DBusConnection *conn,
@@ -484,8 +486,8 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
 		return err_invalid_args(conn, msg, "Not supported");
 
-	pr = g_new(struct pending_reply, 1);
-	pr->conn = conn;
+	pr = g_new0(struct pending_reply, 1);
+	pr->conn = dbus_connection_ref(conn);;
 	pr->msg = dbus_message_ref(msg);
 	pr->mgr = mgr;
 	pr->addr = NULL;
@@ -549,8 +551,8 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
 		return err_invalid_args(conn, msg, "Not supported");
 
-	pr = g_new(struct pending_reply, 1);
-	pr->conn = conn;
+	pr = g_new0(struct pending_reply, 1);
+	pr->conn = dbus_connection_ref(conn);
 	pr->msg = dbus_message_ref(msg);
 	pr->mgr = mgr;
 	pr->addr = g_strdup(addr);
