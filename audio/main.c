@@ -25,16 +25,74 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+
+#include <glib.h>
+
+#include <dbus/dbus.h>
+
+#include "dbus.h"
+#include "logging.h"
 
 #include "manager.h"
+#include "headset.h"
+
+static GMainLoop *main_loop = NULL;
+
+static void sig_term(int sig)
+{
+	g_main_loop_quit(main_loop);
+}
 
 int main(int argc, char *argv[])
 {
+	DBusConnection *conn;
+	struct sigaction sa;
+
+	start_logging("audio", "Bluetooth Audio daemon");
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NOCLDSTOP;
+	sa.sa_handler = sig_term;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT,  &sa, NULL);
+
+	sa.sa_handler = SIG_IGN;
+	sigaction(SIGCHLD, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
+
+	enable_debug();
+
+	main_loop = g_main_loop_new(NULL, FALSE);
+
+	conn = dbus_bus_system_setup_with_main_loop(NULL, NULL, NULL);
+	if (!conn) {
+		g_main_loop_unref(main_loop);
+		exit(1);
+	}
+
 	audio_init();
 
+	headset_init(conn);
+
+	if (argc > 1 && !strcmp(argv[1], "-s"))
+		register_external_service(conn, "audio", "Audio service", "");
+
+	g_main_loop_run(main_loop);
+
+	headset_exit();
+
 	audio_exit();
+
+	dbus_connection_unref(conn);
+
+	g_main_loop_unref(main_loop);
+
+	info("Exit");
+
+	stop_logging();
 
 	return 0;
 }

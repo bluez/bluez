@@ -1963,78 +1963,11 @@ void audio_manager_free(struct manager *manager)
 	g_free(manager);
 }
 
-static void sig_term(int sig)
+static struct manager *manager = NULL;
+
+int headset_init(DBusConnection *conn)
 {
-	g_main_loop_quit(main_loop);
-}
-
-int main(int argc, char *argv[])
-{
-	uint8_t opt_channel = 12;
-	char *opt_bda = NULL;
-	char *opt_input = NULL;
-	char *opt_output = NULL;
-	gboolean register_svc = FALSE;
-	bdaddr_t bda;
-	struct headset *hs;
-	struct manager *manager;
-	struct sigaction sa;
-	int opt;
-
-	while ((opt = getopt(argc, argv, "c:o:i:ds")) != EOF) {
-		switch (opt) {
-		case 'c':
-			opt_channel = strtol(optarg, NULL, 0);
-			break;
-
-		case 'i':
-			opt_input = optarg;
-			break;
-
-		case 'o':
-			opt_output = optarg;
-			break;
-
-		case 'd':
-			enable_debug();
-			break;
-
-		case 's':
-			register_svc = TRUE;
-			break;
-
-		default:
-			printf("Usage: %s -c local_channel [-d] [-o output] [-i input] [bdaddr]\n", argv[0]);
-			exit(1);
-		}
-	}
-
-	if (optind < argc && argv[optind])
-		opt_bda = argv[optind];
-
-	start_logging("audio", "Bluetooth audio service daemon");
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_flags = SA_NOCLDSTOP;
-	sa.sa_handler = sig_term;
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGINT,  &sa, NULL);
-
-	sa.sa_handler = SIG_IGN;
-	sigaction(SIGCHLD, &sa, NULL);
-	sigaction(SIGPIPE, &sa, NULL);
-
-	main_loop = g_main_loop_new(NULL, FALSE);
-
-	connection = init_dbus(NULL, NULL, NULL);
-	if (!connection) {
-		error("Connection to system bus failed");
-		g_main_loop_unref(main_loop);
-		exit(1);
-	}
-
-	if (register_svc)
-		 register_external_service(connection, "audio", "Audio service", "");
+	connection = dbus_connection_ref(conn);
 
 	manager = audio_manager_new(connection);
 	if (!manager) {
@@ -2044,40 +1977,15 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	audio_manager_create_headset_server(manager, opt_channel);
+	audio_manager_create_headset_server(manager, 12);
 
-	if (opt_bda) {
-		str2ba(opt_bda, &bda);
-		hs = audio_headset_new(connection, &bda);
-		if (!hs) {
-			error("Connection setup failed");
-			dbus_connection_unref(connection);
-			g_main_loop_unref(main_loop);
-			exit(1);
-		}
+	return 0;
+}
 
-		if (opt_output)
-			audio_headset_open_output(hs, opt_output);
-		if (opt_input)
-			audio_headset_open_input(hs, opt_input);
-
-		audio_manager_add_headset(manager, hs);
-		/* connect */
-		hs_connect(hs, NULL);
-	}
-
-	g_main_loop_run(main_loop);
-
+void headset_exit(void)
+{
 	audio_manager_free(manager);
 	manager = NULL;
 
 	dbus_connection_unref(connection);
-
-	g_main_loop_unref(main_loop);
-
-	info("Exit");
-
-	stop_logging();
-
-	return 0;
 }
