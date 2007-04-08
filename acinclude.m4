@@ -158,9 +158,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	glib_enable=no
 	obex_enable=${openobex_found}
 	alsa_enable=${alsa_found}
-	headset_enable=no
 	network_enable=no
 	input_enable=no
+	audio_enable=no
 	sync_enable=no
 	echo_enable=no
 	hcid_enable=yes
@@ -236,16 +236,16 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		alsa_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(headset, AC_HELP_STRING([--enable-headset], [enable headset service]), [
-		headset_enable=${enableval}
-	])
-
 	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
 		network_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(input, AC_HELP_STRING([--enable-input], [enable input service]), [
 		input_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(audio, AC_HELP_STRING([--enable-audio], [enable audio service]), [
+		audio_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(sync, AC_HELP_STRING([--enable-sync], [enable synchronization service]), [
@@ -348,9 +348,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
-	AM_CONDITIONAL(HEADSETSERVICE, test "${headset_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
+	AM_CONDITIONAL(AUDIOSERVICE, test "${audio_enable}" = "yes")
 	AM_CONDITIONAL(SYNCSERVICE, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
 	AM_CONDITIONAL(ECHOSERVICE, test "${echo_enable}" = "yes")
 	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")

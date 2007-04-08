@@ -1,0 +1,4 @@
+[Bluetooth Service]
+Identifier=audio
+Name=Audio service
+Description=Bluetooth Audio service

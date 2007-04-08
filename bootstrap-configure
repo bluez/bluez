@@ -14,9 +14,9 @@ fi
 		--libexecdir=/lib \
 		--enable-all \
 		--enable-glib \
-		--enable-headset \
 		--enable-network \
 		--enable-input \
+		--enable-audio \
 		--enable-echo \
 		--disable-configfiles \
 		--disable-initscripts \
