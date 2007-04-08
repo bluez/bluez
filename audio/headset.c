@@ -112,7 +112,6 @@ struct manager {
 };
 
 static DBusConnection *connection = NULL;
-static GMainLoop *main_loop = NULL;
 
 struct manager *audio_manager_new(DBusConnection *conn);
 void audio_manager_free(struct manager *manager);
@@ -1973,8 +1972,7 @@ int headset_init(DBusConnection *conn)
 	if (!manager) {
 		error("Failed to create an audio manager");
 		dbus_connection_unref(connection);
-		g_main_loop_unref(main_loop);
-		exit(1);
+		return -1;
 	}
 
 	audio_manager_create_headset_server(manager, 12);
@@ -1985,7 +1983,10 @@ int headset_init(DBusConnection *conn)
 void headset_exit(void)
 {
 	audio_manager_free(manager);
+
 	manager = NULL;
 
 	dbus_connection_unref(connection);
+
+	connection = NULL;
 }

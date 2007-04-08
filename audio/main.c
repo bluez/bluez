@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	audio_init();
+	audio_init(conn);
 
 	headset_init(conn);
 

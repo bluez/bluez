@@ -25,13 +25,22 @@
 #include <config.h>
 #endif
 
+#include <dbus/dbus.h>
+
 #include "manager.h"
 
-int audio_init(void)
+static DBusConnection *connection = NULL;
+
+int audio_init(DBusConnection *conn)
 {
+	connection = dbus_connection_ref(conn);
+
 	return 0;
 }
 
 void audio_exit(void)
 {
+	dbus_connection_unref(connection);
+
+	connection = NULL;
 }

@@ -21,5 +21,5 @@
  *
  */
 
-int audio_init(void);
+int audio_init(DBusConnection *conn);
 void audio_exit(void);
