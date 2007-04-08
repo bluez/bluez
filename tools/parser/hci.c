@@ -110,7 +110,7 @@ static char *event_str[EVENT_NUM + 1] = {
 	"Link Supervision Timeout Change",
 };
 
-#define CMD_LINKCTL_NUM 41
+#define CMD_LINKCTL_NUM 42
 static char *cmd_linkctl_str[CMD_LINKCTL_NUM + 1] = {
 	"Unknown",
 	"Inquiry",
@@ -144,7 +144,7 @@ static char *cmd_linkctl_str[CMD_LINKCTL_NUM + 1] = {
 	"Read Remote Version Information",
 	"Unknown",
 	"Read Clock Offset",
-	"Read LMP Handle"
+	"Read LMP Handle",
 	"Unknown",
 	"Unknown",
 	"Unknown",
