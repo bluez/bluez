@@ -20,6 +20,31 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#ifndef __AUDIO_MANAGER_H
+#define __AUDIO_MANAGER_H
+
+#include <bluetooth/bluetooth.h>
+
+#include <dbus/dbus.h>
+
+struct manager;
+
+#include "headset.h"
+
+#define AUDIO_MANAGER_PATH "/org/bluez/audio"
+
+#define AUDIO_HEADSET_PATH_BASE "/org/bluez/audio/headset"
+
+void manager_add_headset(struct manager *manager, struct headset *hs);
+
+struct headset *manager_find_headset_by_bda(struct manager *manager,
+						bdaddr_t *bda);
+
+DBusConnection *manager_get_dbus_conn(struct manager *manager);
 
 int audio_init(DBusConnection *conn);
+
 void audio_exit(void);
+
+#endif /* __AUDIO_MANAGER_H_ */
+

@@ -75,14 +75,10 @@ int main(int argc, char *argv[])
 
 	audio_init(conn);
 
-	headset_init(conn);
-
 	if (argc > 1 && !strcmp(argv[1], "-s"))
 		register_external_service(conn, "audio", "Audio service", "");
 
 	g_main_loop_run(main_loop);
-
-	headset_exit();
 
 	audio_exit();
 

@@ -20,6 +20,40 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#ifndef __AUDIO_HEADSET_H
+#define __AUDIO_HEADSET_H
 
-int headset_init(DBusConnection *conn);
-void headset_exit(void);
+#include <bluetooth/bluetooth.h>
+
+#include <dbus/dbus.h>
+
+struct headset;
+
+#include "manager.h"
+
+#define BUF_SIZE 1024
+
+struct headset *audio_headset_new(DBusConnection *conn, const bdaddr_t *bda);
+
+void audio_headset_unref(struct headset *hs);
+
+uint32_t headset_add_ag_record(DBusConnection *conn, uint8_t channel);
+
+int headset_remove_ag_record(DBusConnection *conn, uint32_t rec_id);
+
+gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond,
+				struct manager *manager);
+
+gint headset_bda_cmp(gconstpointer headset, gconstpointer bda);
+
+const char *audio_headset_get_path(struct headset *hs);
+
+gboolean audio_headset_close_output(struct headset *hs);
+
+gboolean audio_headset_open_output(struct headset *hs, const char *output);
+
+gboolean audio_headset_close_input(struct headset *hs);
+
+gboolean audio_headset_open_input(struct headset *hs, const char *input);
+
+#endif /* __AUDIO_HEADSET_H_ */
