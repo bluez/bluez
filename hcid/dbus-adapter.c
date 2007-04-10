@@ -303,7 +303,7 @@ static DBusHandlerResult adapter_get_info(DBusConnection *conn,
 	if (!read_local_class(&ba, cls)) {
 		uint32_t class;
 
-		memcpy(cls, &class, 3);
+		memcpy(&class, cls, 3);
 		append_dict_entry(&dict, "class", DBUS_TYPE_UINT32, &class);
 
 		property = major_class_str(class);
