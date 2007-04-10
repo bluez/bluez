@@ -240,7 +240,7 @@ static void close_sco(struct headset *hs)
 		hs->audio_output = NULL;
 	}
 	if (hs->audio_input)
-		audio_headset_close_input(hs);
+		headset_close_input(hs);
 	assert(hs->rfcomm);
 	hs->state = HEADSET_STATE_CONNECTED;
 	hs_signal(hs, "Stopped");
@@ -436,7 +436,7 @@ gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond,
 
 	hs = manager_find_headset_by_bda(manager, &addr.rc_bdaddr);
 	if (!hs) {
-		hs = audio_headset_new(manager_get_dbus_conn(manager),
+		hs = headset_new(manager_get_dbus_conn(manager),
 					&addr.rc_bdaddr);
 		if (!hs) {
 			error("Unable to create a new headset object");
@@ -526,7 +526,7 @@ static gboolean audio_input_to_sco_cb(GIOChannel *chan, GIOCondition cond, gpoin
 	return TRUE;
 
 failed:
-	audio_headset_close_input(hs);
+	headset_close_input(hs);
 	return FALSE;
 }
 
@@ -545,7 +545,7 @@ static gboolean sco_input_to_audio_output_cb(GIOChannel *chan, GIOCondition cond
 		goto disconn;
 
 	if (!hs->audio_output && hs->output)
-		audio_headset_open_output(hs, hs->output);
+		headset_open_output(hs, hs->output);
 
 	err = g_io_channel_read(chan, buf, sizeof(buf), &bytes_read);
 
@@ -1291,7 +1291,7 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 	return DBUS_HANDLER_RESULT_HANDLED;;
 }
 
-static GIOError audio_headset_send_ring(struct headset *hs)
+static GIOError headset_send_ring(struct headset *hs)
 {
 	const char *ring_str = "\r\nRING\r\n";
 	GIOError err;
@@ -1323,7 +1323,7 @@ static gboolean ring_timer_cb(gpointer data)
 
 	assert(hs != NULL);
 
-	if (audio_headset_send_ring(hs) != G_IO_ERROR_NONE)
+	if (headset_send_ring(hs) != G_IO_ERROR_NONE)
 		error("Sending RING failed");
 
 	return TRUE;
@@ -1349,7 +1349,7 @@ static DBusHandlerResult hs_ring(struct headset *hs, DBusMessage *msg)
 		goto done;
 	}
 
-	if (audio_headset_send_ring(hs) != G_IO_ERROR_NONE) {
+	if (headset_send_ring(hs) != G_IO_ERROR_NONE) {
 		dbus_message_unref(reply);
 		return err_failed(hs->conn, msg);
 	}
@@ -1527,7 +1527,7 @@ static const DBusObjectPathVTable hs_table = {
 ** Create a unique dbus object path for the headset and allocates a new
 ** headset or return NULL if fail
 */
-struct headset *audio_headset_new(DBusConnection *conn, const bdaddr_t *bda)
+struct headset *headset_new(DBusConnection *conn, const bdaddr_t *bda)
 {
 	static int headset_uid = 0;
 	struct headset *hs;
@@ -1539,7 +1539,7 @@ struct headset *audio_headset_new(DBusConnection *conn, const bdaddr_t *bda)
 	}
 
 	snprintf(hs->object_path, sizeof(hs->object_path),
-			AUDIO_HEADSET_PATH_BASE "%d", headset_uid++);
+			HEADSET_PATH_BASE "%d", headset_uid++);
 
 	if (!dbus_connection_register_object_path(conn, hs->object_path,
 						&hs_table, hs)) {
@@ -1555,7 +1555,7 @@ struct headset *audio_headset_new(DBusConnection *conn, const bdaddr_t *bda)
 	return hs;
 }
 
-void audio_headset_unref(struct headset *hs)
+void headset_unref(struct headset *hs)
 {
 	assert(hs != NULL);
 
@@ -1564,7 +1564,7 @@ void audio_headset_unref(struct headset *hs)
 	g_free(hs);
 }
 
-gboolean audio_headset_close_output(struct headset *hs)
+gboolean headset_close_output(struct headset *hs)
 {
 	assert(hs != NULL);
 
@@ -1579,13 +1579,13 @@ gboolean audio_headset_close_output(struct headset *hs)
 }
 
 /* FIXME: in the furture, that would be great to provide user space alsa driver (not plugin) */
-gboolean audio_headset_open_output(struct headset *hs, const char *output)
+gboolean headset_open_output(struct headset *hs, const char *output)
 {
 	int out;
 
 	assert(hs != NULL && output != NULL);
 
-	audio_headset_close_output(hs);
+	headset_close_output(hs);
 	if (output && hs->output) {
 		g_free(hs->output);
 		hs->output = g_strdup(output);
@@ -1611,7 +1611,7 @@ gboolean audio_headset_open_output(struct headset *hs, const char *output)
 	return TRUE;
 }
 
-gboolean audio_headset_close_input(struct headset *hs)
+gboolean headset_close_input(struct headset *hs)
 {
 	assert(hs != NULL);
 
@@ -1625,7 +1625,7 @@ gboolean audio_headset_close_input(struct headset *hs)
 	return TRUE;
 }
 
-gboolean audio_headset_open_input(struct headset *hs, const char *input)
+gboolean headset_open_input(struct headset *hs, const char *input)
 {
 	int in;
 
@@ -1655,7 +1655,7 @@ gboolean audio_headset_open_input(struct headset *hs, const char *input)
 	return TRUE;
 }
 
-const char *audio_headset_get_path(struct headset *hs)
+const char *headset_get_path(struct headset *hs)
 {
 	return hs->object_path;
 }

@@ -169,7 +169,7 @@ static GIOChannel *server_socket(uint8_t *channel)
 	return io;
 }
 
-static gboolean audio_manager_create_headset_server(struct manager *manager, uint8_t chan)
+static gboolean manager_create_headset_server(struct manager *manager, uint8_t chan)
 {
 	assert(manager != NULL);
 
@@ -249,7 +249,7 @@ static DBusHandlerResult am_create_headset(struct manager *manager,
 	str2ba(address, &bda);
 	hs = manager_find_headset_by_bda(manager, &bda);
 	if (!hs) {
-		hs = audio_headset_new(manager->conn, &bda);
+		hs = headset_new(manager->conn, &bda);
 		if (!hs)
 			return error_reply(manager->conn, msg,
 					"org.bluez.Error.Failed",
@@ -257,7 +257,7 @@ static DBusHandlerResult am_create_headset(struct manager *manager,
 		manager_add_headset(manager, hs);
 	}
 
-	object_path = audio_headset_get_path(hs);
+	object_path = headset_get_path(hs);
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &object_path,
 					DBUS_TYPE_INVALID);
 
@@ -287,7 +287,7 @@ static DBusHandlerResult am_get_default_headset(struct manager *manager,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	snprintf(object_path, sizeof(object_path), AUDIO_HEADSET_PATH_BASE "%d",
+	snprintf(object_path, sizeof(object_path), HEADSET_PATH_BASE "%d",
 			manager->default_hs);
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &opath,
 					DBUS_TYPE_INVALID);
@@ -339,7 +339,7 @@ static const DBusObjectPathVTable am_table = {
 	.message_function = am_message,
 };
 
-static struct manager *audio_manager_new(DBusConnection *conn)
+static struct manager *manager_new(DBusConnection *conn)
 {
 	struct manager *manager;
 
@@ -357,7 +357,7 @@ static struct manager *audio_manager_new(DBusConnection *conn)
 	return manager;
 }
 
-static void audio_manager_free(struct manager *manager)
+static void manager_free(struct manager *manager)
 {
 	assert(manager != NULL);
 
@@ -372,7 +372,7 @@ static void audio_manager_free(struct manager *manager)
 	}
 
 	if (manager->headset_list) {
-		g_slist_foreach(manager->headset_list, (GFunc) audio_headset_unref,
+		g_slist_foreach(manager->headset_list, (GFunc) headset_unref,
 				manager);
 		g_slist_free(manager->headset_list);
 		manager->headset_list = NULL;
@@ -421,13 +421,13 @@ int audio_init(DBusConnection *conn)
 
 	g_io_channel_unref(io);
 
-	manager = audio_manager_new(conn);
+	manager = manager_new(conn);
 	if (!manager) {
 		error("Failed to create an audio manager");
 		return -1;
 	}
 
-	audio_manager_create_headset_server(manager, 12);
+	manager_create_headset_server(manager, 12);
 
 	return 0;
 }
@@ -438,7 +438,7 @@ void audio_exit(void)
 
 	unix_sock = -1;
 
-	audio_manager_free(manager);
+	manager_free(manager);
 
 	manager = NULL;
 }

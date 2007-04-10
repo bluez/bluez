@@ -33,9 +33,9 @@ struct headset;
 
 #define BUF_SIZE 1024
 
-struct headset *audio_headset_new(DBusConnection *conn, const bdaddr_t *bda);
+struct headset *headset_new(DBusConnection *conn, const bdaddr_t *bda);
 
-void audio_headset_unref(struct headset *hs);
+void headset_unref(struct headset *hs);
 
 uint32_t headset_add_ag_record(DBusConnection *conn, uint8_t channel);
 
@@ -46,14 +46,14 @@ gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond,
 
 gint headset_bda_cmp(gconstpointer headset, gconstpointer bda);
 
-const char *audio_headset_get_path(struct headset *hs);
+const char *headset_get_path(struct headset *hs);
 
-gboolean audio_headset_close_output(struct headset *hs);
+gboolean headset_close_output(struct headset *hs);
 
-gboolean audio_headset_open_output(struct headset *hs, const char *output);
+gboolean headset_open_output(struct headset *hs, const char *output);
 
-gboolean audio_headset_close_input(struct headset *hs);
+gboolean headset_close_input(struct headset *hs);
 
-gboolean audio_headset_open_input(struct headset *hs, const char *input);
+gboolean headset_open_input(struct headset *hs, const char *input);
 
 #endif /* __AUDIO_HEADSET_H_ */

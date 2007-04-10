@@ -33,7 +33,7 @@ struct manager;
 
 #define AUDIO_MANAGER_PATH "/org/bluez/audio"
 
-#define AUDIO_HEADSET_PATH_BASE "/org/bluez/audio/headset"
+#define HEADSET_PATH_BASE AUDIO_MANAGER_PATH "/headset"
 
 void manager_add_headset(struct manager *manager, struct headset *hs);
 
