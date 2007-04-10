@@ -43,6 +43,7 @@
 #include "dbus.h"
 #include "logging.h"
 
+#include "ipc.h"
 #include "headset.h"
 #include "manager.h"
 

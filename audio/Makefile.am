@@ -10,7 +10,7 @@ servicedir = $(libdir)/bluetooth
 
 service_PROGRAMS = bluetoothd-service-audio
 
-bluetoothd_service_audio_SOURCES = main.c manager.h manager.c headset.c
+bluetoothd_service_audio_SOURCES = main.c manager.h manager.c headset.c ipc.h
 
 bluetoothd_service_audio_LDADD = $(top_builddir)/common/libhelper.a \
 				@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
@@ -21,11 +21,11 @@ alsadir = $(libdir)/alsa-lib
 
 alsa_LTLIBRARIES = libasound_module_pcm_bluetooth.la libasound_module_ctl_bluetooth.la
 
-libasound_module_pcm_bluetooth_la_SOURCES = pcm_bluetooth.c
+libasound_module_pcm_bluetooth_la_SOURCES = pcm_bluetooth.c ipc.h
 libasound_module_pcm_bluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic
 libasound_module_pcm_bluetooth_la_LIBADD = @SBC_LIBS@ @ALSA_LIBS@
 
-libasound_module_ctl_bluetooth_la_SOURCES = ctl_bluetooth.c
+libasound_module_ctl_bluetooth_la_SOURCES = ctl_bluetooth.c ipc.h
 libasound_module_ctl_bluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic
 libasound_module_ctl_bluetooth_la_LIBADD = @ALSA_LIBS@ 
 endif

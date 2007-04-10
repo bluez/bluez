@@ -193,7 +193,7 @@ SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
 	unsigned int id;
 	int sk, err;
 
-	DBG("");
+	DBG("Bluetooth Control plugin");
 
 	snd_config_for_each(iter, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(iter);
@@ -270,6 +270,8 @@ SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
 	return 0;
 
 error:
+	close(sk);
+
 	free(data);
 
 	return err;
