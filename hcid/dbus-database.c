@@ -30,6 +30,8 @@
 #include <string.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -323,6 +325,9 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 {
 	const char *sender, *address, *path;
 	struct service *service;
+	bdaddr_t bdaddr;
+	gboolean trusted;
+	int adapter_id;
 
 	debug("RequestAuthorization");
 
@@ -339,7 +344,18 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 	if (!service)
 		return error_not_authorized(conn, msg);
 
-	if (read_trust(address, service->ident)) {
+	str2ba(address, &bdaddr);
+	adapter_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+	if (adapter_id < 0)
+		return error_not_connected(conn, msg);
+
+	hci_devba(adapter_id, &bdaddr);
+
+	trusted = read_trust(&bdaddr, address, GLOBAL_TRUST);
+	if (!trusted)
+		trusted = read_trust(BDADDR_ANY, address, service->ident);
+
+	if (trusted) {
 		DBusMessage *reply;
 
 		reply = dbus_message_new_method_return(msg);

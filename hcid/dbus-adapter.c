@@ -2809,6 +2809,96 @@ static DBusHandlerResult adapter_list_recent_remote_devices(DBusConnection *conn
 	return send_message_and_unref(conn, reply);
 }
 
+
+static DBusHandlerResult adapter_set_trusted(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	struct adapter *adapter = data;
+	DBusMessage *reply;
+	bdaddr_t local;
+	const char *address;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	str2ba(adapter->address, &local);
+
+	write_trust(&local, address, GLOBAL_TRUST, TRUE);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult adapter_is_trusted(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	struct adapter *adapter = data;
+	DBusMessage *reply;
+	const char *address;
+	dbus_bool_t trusted;
+	bdaddr_t local;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	str2ba(adapter->address, &local);
+
+	trusted = read_trust(&local, address, GLOBAL_TRUST);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+				DBUS_TYPE_BOOLEAN, &trusted,
+				DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	struct adapter *adapter = data;
+	DBusMessage *reply;
+	const char *address;
+	bdaddr_t local;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	str2ba(adapter->address, &local);
+
+	write_trust(&local, address, GLOBAL_TRUST, FALSE);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	return send_message_and_unref(conn, reply);
+}
+
 const char *major_class_str(uint32_t class)
 {
 	uint8_t index = (class >> 8) & 0x1F;
@@ -2946,6 +3036,10 @@ static struct service_data dev_services[] = {
 
 	{ "ListRemoteDevices",			adapter_list_remote_devices	},
 	{ "ListRecentRemoteDevices",		adapter_list_recent_remote_devices	},
+
+	{ "SetTrusted",				adapter_set_trusted		},
+	{ "IsTrusted",				adapter_is_trusted		},
+	{ "RemoveTrust",			adapter_remove_trust		},
 
 	{ NULL, NULL }
 };

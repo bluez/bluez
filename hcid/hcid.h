@@ -37,6 +37,9 @@
 
 #define HCID_DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
 
+/* When all services should trust a remote device */
+#define GLOBAL_TRUST "[all]"
+
 /*
  * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device
@@ -191,5 +194,5 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type
 int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key);
 int read_pin_length(bdaddr_t *local, bdaddr_t *peer);
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
-gboolean read_trust(const char *addr, const char *service);
-int write_trust(const char *addr, const char *service, gboolean trust);
+gboolean read_trust(bdaddr_t *local, const char *addr, const char *service);
+int write_trust(bdaddr_t *local, const char *addr, const char *service, gboolean trust);

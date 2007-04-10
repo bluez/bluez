@@ -526,7 +526,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	write_trust(address, service->ident, TRUE);
+	write_trust(BDADDR_ANY, address, service->ident, TRUE);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -547,7 +547,7 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	trusted = read_trust(address, service->ident);
+	trusted = read_trust(BDADDR_ANY, address, service->ident);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -575,7 +575,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	write_trust(address, service->ident, FALSE);
+	write_trust(BDADDR_ANY, address, service->ident, FALSE);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -646,7 +646,8 @@ static int register_service(struct service *service)
 	int i;
 
 	if (g_slist_find_custom(services, service->ident,
-				(GCompareFunc) service_cmp_ident))
+				(GCompareFunc) service_cmp_ident)
+			|| !strcmp(service->ident, GLOBAL_TRUST))
 		return -EADDRINUSE;
 
 	if (service->external) {

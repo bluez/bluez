@@ -535,14 +535,15 @@ static char *service_list_to_string(GSList *services)
 	return g_strdup(str);
 }
 
-int write_trust(const char *addr, const char *service, gboolean trust)
+int write_trust(bdaddr_t *local, const char *addr, const char *service,
+		gboolean trust)
 {
 	char filename[PATH_MAX + 1], *str;
 	GSList *services = NULL, *match;
 	gboolean trusted;
 	int ret;
 
-	create_filename(filename, PATH_MAX, BDADDR_ANY, "trusts");
+	create_filename(filename, PATH_MAX, local, "trusts");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -583,13 +584,13 @@ int write_trust(const char *addr, const char *service, gboolean trust)
 	return ret;
 }
 
-gboolean read_trust(const char *addr, const char *service)
+gboolean read_trust(bdaddr_t *local, const char *addr, const char *service)
 {
 	char filename[PATH_MAX + 1], *str;
 	GSList *services;
 	gboolean ret;
 
-	create_filename(filename, PATH_MAX, BDADDR_ANY, "trusts");
+	create_filename(filename, PATH_MAX, local, "trusts");
 
 	str = textfile_caseget(filename, addr);
 	if (!str)

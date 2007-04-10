@@ -50,6 +50,8 @@ int str2uuid(uuid_t *uuid, const char *string);
 
 int l2raw_connect(const char *local, const bdaddr_t *remote);
 
+int find_conn(int s, int dev_id, long arg);
+
 int check_address(const char *addr);
 
 DBusHandlerResult handle_method_call(DBusConnection *conn, DBusMessage *msg, void *data);
