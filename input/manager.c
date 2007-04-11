@@ -715,7 +715,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	if (!dbus_connection_get_object_path_data(connection, path, (void *) &idev))
 		return err_does_not_exist(conn, msg, "Input doesn't exist");
 
-	del_stored_device_info(&mgr->src, &idev->dst);
+	del_stored_device_info(&idev->src, &idev->dst);
 
 	if (input_device_unregister(conn, path) < 0) {
 		dbus_message_unref(reply);
