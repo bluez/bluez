@@ -50,9 +50,9 @@
 #include "manager.h"
 #include "storage.h"
 
-const char *pnp_uuid		= "00001200-0000-1000-8000-00805f9b34fb";
-const char *hid_uuid 		= "00001124-0000-1000-8000-00805f9b34fb";
-const char *headset_uuid	= "00001108-0000-1000-8000-00805f9b34fb";
+static const char *pnp_uuid	= "00001200-0000-1000-8000-00805f9b34fb";
+static const char *hid_uuid	= "00001124-0000-1000-8000-00805f9b34fb";
+static const char *headset_uuid	= "00001108-0000-1000-8000-00805f9b34fb";
 
 struct pending_req {
 	char		*adapter_path;	/* Local adapter D-Bus path */
@@ -64,10 +64,7 @@ struct pending_req {
 	sdp_record_t	*hid_rec;
 };
 
-struct manager {
-	bdaddr_t	src;
-	GSList		*paths;		/* Input registered paths */
-};
+static GSList *device_paths = NULL;	/* Input registered paths */
 
 static DBusConnection *connection = NULL;
 
@@ -99,16 +96,22 @@ static void pending_req_free(struct pending_req *pr)
 {
 	if (!pr)
 		return;
+
 	if (pr->adapter_path)
 		g_free(pr->adapter_path);
+
 	if (pr->conn)
 		dbus_connection_unref(pr->conn);
+
 	if (pr->msg)
 		dbus_message_unref(pr->msg);
+
 	if (pr->pnp_rec)
 		sdp_record_free(pr->pnp_rec);
+
 	if (pr->hid_rec)
 		sdp_record_free(pr->hid_rec);
+
 	g_free(pr);
 }
 
@@ -235,7 +238,8 @@ static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 
 		req->rd_data = g_try_malloc0(pdlist->unitSize);
 		if (req->rd_data) {
-			memcpy(req->rd_data, (unsigned char *) pdlist->val.str, pdlist->unitSize);
+			memcpy(req->rd_data, (unsigned char *) pdlist->val.str,
+								pdlist->unitSize);
 			req->rd_size = pdlist->unitSize;
 		}
 	}
@@ -259,7 +263,6 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusMessage *pr_reply;
-	struct manager *mgr;
 	struct pending_req *pr = data;
 	struct hidp_connadd_req hidp;
 	DBusError derr;
@@ -313,14 +316,16 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	dbus_connection_get_object_path_data(pr->conn, INPUT_PATH, (void *) &mgr);
-	mgr->paths = g_slist_append(mgr->paths, g_strdup(path));
+	device_paths = g_slist_append(device_paths, g_strdup(path));
 
 	pr_reply = dbus_message_new_method_return(pr->msg);
+
 	dbus_message_append_args(pr_reply,
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID);
+
 	send_message_and_unref(pr->conn, pr_reply);
+
 fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
@@ -371,9 +376,11 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 		/* Wait record reply */
 		goto done;
 	}
+
 fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
+
 done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
@@ -427,6 +434,7 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
+
 done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
@@ -483,6 +491,7 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
+
 done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
@@ -493,7 +502,6 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusMessage *pr_reply;
 	DBusError derr;
-	struct manager *mgr;
 	struct pending_req *pr = data;
 	uint8_t *rec_bin;
 	sdp_record_t *rec;
@@ -541,7 +549,7 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 	}
 
 	ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-	sdp_list_foreach(protos, (sdp_list_func_t)sdp_list_free, NULL);
+	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
 	sdp_list_free(protos, NULL);
 	sdp_record_free(rec);
 
@@ -559,14 +567,16 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	dbus_connection_get_object_path_data(pr->conn, INPUT_PATH, (void *) &mgr);
-	mgr->paths = g_slist_append(mgr->paths, g_strdup(path));
+	device_paths = g_slist_append(device_paths, g_strdup(path));
 
 	pr_reply = dbus_message_new_method_return(pr->msg);
+
 	dbus_message_append_args(pr_reply,
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
+
 	send_message_and_unref(pr->conn, pr_reply);
+
 fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
@@ -617,9 +627,11 @@ static void headset_handle_reply(DBusPendingCall *call, void *data)
 		/* Wait record reply */
 		goto done;
 	}
+
 fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
+
 done:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
@@ -628,7 +640,6 @@ done:
 static DBusHandlerResult create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct manager *mgr = data;
 	struct pending_req *pr;
 	DBusError derr;
 	const char *addr;
@@ -660,8 +671,8 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 
 	str2ba(addr, &dst);
 
-	l = g_slist_find_custom(mgr->paths, &dst,
-			(GCompareFunc) path_bdaddr_cmp);
+	l = g_slist_find_custom(device_paths, &dst,
+					(GCompareFunc) path_bdaddr_cmp);
 	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
 
@@ -699,7 +710,6 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 static DBusHandlerResult remove_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct manager *mgr = data;
 	struct device *idev;
 	DBusMessage *reply;
 	DBusError derr;
@@ -715,7 +725,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	l = g_slist_find_custom(mgr->paths, path, (GCompareFunc) strcmp);
+	l = g_slist_find_custom(device_paths, path, (GCompareFunc) strcmp);
 	if (!l)
 		return err_does_not_exist(conn, msg, "Input doesn't exist");
 
@@ -724,7 +734,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	g_free(l->data);
-	mgr->paths = g_slist_remove(mgr->paths, l->data);
+	device_paths = g_slist_remove(device_paths, l->data);
 
 	if (!dbus_connection_get_object_path_data(connection,
 					path, (void *) &idev))
@@ -743,7 +753,6 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 static DBusHandlerResult list_devices(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct manager *mgr = data;
 	DBusMessageIter iter, iter_array;
 	DBusMessage *reply;
 	GSList *paths;
@@ -756,16 +765,17 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_STRING_AS_STRING, &iter_array);
 
-	for (paths = mgr->paths; paths != NULL; paths = paths->next) {
+	for (paths = device_paths; paths != NULL; paths = paths->next) {
 		const char *ppath = paths->data;
 		dbus_message_iter_append_basic(&iter_array,
-				DBUS_TYPE_STRING, &ppath);
+					DBUS_TYPE_STRING, &ppath);
 	}
 
 	dbus_message_iter_close_container(&iter, &iter_array);
 
 	return send_message_and_unref(conn, reply);
 }
+
 static DBusHandlerResult manager_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -795,26 +805,13 @@ static DBusHandlerResult manager_message(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static void manager_free(struct manager *mgr)
-{
-	if (!mgr)
-		return;
-
-	if (mgr->paths) {
-		g_slist_foreach(mgr->paths, (GFunc) free, NULL);
-		g_slist_free(mgr->paths);
-	}
-
-	g_free(mgr);
-}
-
 static void manager_unregister(DBusConnection *conn, void *data)
 {
-	struct manager *mgr = data;
-
 	info("Unregistered manager path");
 
-	manager_free(mgr);
+	g_slist_foreach(device_paths, (GFunc) free, NULL);
+
+	g_slist_free(device_paths);
 }
 
 /* Virtual table to handle manager object path hierarchy */
@@ -829,43 +826,31 @@ static const DBusObjectPathVTable manager_table = {
 
 static void stored_input(char *key, char *value, void *data)
 {
-	struct manager *mgr = data;
 	const char *path;
 	struct hidp_connadd_req hidp; 
-	bdaddr_t dst;
+	bdaddr_t dst, *src = data;
 
 	str2ba(key, &dst);
 
 	memset(&hidp, 0, sizeof(struct hidp_connadd_req));
-	if (parse_stored_device_info(value, &hidp) < 0) {
+
+	if (parse_stored_device_info(value, &hidp) < 0)
 		return;
-	}
 
 	/* FIXME: Ignore already registered devices */
-	if (input_device_register(connection, &mgr->src, &dst, &hidp, &path) < 0)
+	if (input_device_register(connection, src, &dst, &hidp, &path) < 0)
 		return;
 
-	mgr->paths = g_slist_append(mgr->paths, g_strdup(path));
+	device_paths = g_slist_append(device_paths, g_strdup(path));
 }
 
-static void register_stored_inputs(struct manager *mgr)
+static void register_stored_inputs(void)
 {
 	char dirname[PATH_MAX + 1];
 	char filename[PATH_MAX + 1];
 	struct dirent *de;
 	DIR *dir;
-	int dev_id;
-
-	dev_id = hci_get_route(BDADDR_ANY);
-	if (dev_id < 0) {
-		error("Bluetooth device not available");
-		return;
-	}
-
-	if (hci_devba(dev_id, &mgr->src) < 0) {
-		error("Can't get local adapter device info");
-		return;
-	}
+	bdaddr_t src;
 
 	snprintf(dirname, PATH_MAX, "%s", STORAGEDIR);
 
@@ -878,8 +863,11 @@ static void register_stored_inputs(struct manager *mgr)
 			continue;
 
 		create_name(filename, PATH_MAX, STORAGEDIR,
-					de->d_name, "input");
-		textfile_foreach(filename, stored_input, mgr);
+						de->d_name, "input");
+
+		str2ba(de->d_name, &src);
+
+		textfile_foreach(filename, stored_input, &src);
 	}
 
 	closedir(dir);
@@ -887,34 +875,25 @@ static void register_stored_inputs(struct manager *mgr)
 
 int input_init(DBusConnection *conn)
 {
-	struct manager *mgr;
-
 	connection = dbus_connection_ref(conn);
 
 	dbus_connection_set_exit_on_disconnect(connection, TRUE);
 
-	mgr = g_new0(struct manager, 1);
-
 	/* Fallback to catch invalid device path */
 	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
-						&manager_table, mgr)) {
+						&manager_table, NULL)) {
 		error("D-Bus failed to register %s path", INPUT_PATH);
-		goto fail;
+		return -1;
 	}
 
 	info("Registered input manager path:%s", INPUT_PATH);
 
 	/* Register well known HID devices */
-	register_stored_inputs(mgr);
+	register_stored_inputs();
 
 	server_start(connection);
 
 	return 0;
-
-fail:
-	manager_free(mgr);
-
-	return -1;
 }
 
 void input_exit(void)
