@@ -313,7 +313,31 @@ static DBusHandlerResult am_remove_headset(struct manager *manager,
 static DBusHandlerResult am_list_headsets(struct manager *manager, 
 						DBusMessage *msg)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	DBusMessage *reply;
+	GSList *l;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	for (l = manager->headset_list; l != NULL; l = l->next) {
+		struct headset *hs = l->data;
+		const char *path = headset_get_path(hs);
+
+		dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING, &path);
+	}
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return send_message_and_unref(manager->conn, reply);
 }
 
 static DBusHandlerResult am_get_default_headset(struct manager *manager, 
