@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <ctype.h>
+#include <dirent.h>
 #include <stdlib.h>
 
 #include <bluetooth/bluetooth.h>
@@ -63,8 +65,8 @@ struct pending_req {
 };
 
 struct manager {
-	bdaddr_t src;		/* Local adapter BT address */
-	GSList *paths;		/* Input registered paths */
+	bdaddr_t	src;
+	GSList		*paths;		/* Input registered paths */
 };
 
 static DBusConnection *connection = NULL;
@@ -826,31 +828,53 @@ static void stored_input(char *key, char *value, void *data)
 		return;
 	}
 
+	/* FIXME: Ignore already registered devices */
 	if (input_device_register(connection, &mgr->src, &dst, &hidp, &path) < 0)
 		return;
 
 	mgr->paths = g_slist_append(mgr->paths, g_strdup(path));
 }
 
-static int register_stored_inputs(struct manager *mgr)
+static void register_stored_inputs(struct manager *mgr)
 {
+	char dirname[PATH_MAX + 1];
 	char filename[PATH_MAX + 1];
-	char addr[18];
+	struct dirent *de;
+	DIR *dir;
+	int dev_id;
 
-	ba2str(&mgr->src, addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, addr, "input");
-	textfile_foreach(filename, stored_input, mgr);
+	dev_id = hci_get_route(BDADDR_ANY);
+	if (dev_id < 0) {
+		error("Bluetooth device not available");
+		return;
+	}
 
-	return 0;
+	if (hci_devba(dev_id, &mgr->src) < 0) {
+		error("Can't get local adapter device info");
+		return;
+	}
+
+	snprintf(dirname, PATH_MAX, "%s", STORAGEDIR);
+
+	dir = opendir(dirname);
+	if (!dir)
+		return;
+
+	while ((de = readdir(dir)) != NULL) {
+		if (!isdigit(de->d_name[0]))
+			continue;
+
+		create_name(filename, PATH_MAX, STORAGEDIR,
+					de->d_name, "input");
+		textfile_foreach(filename, stored_input, mgr);
+	}
+
+	closedir(dir);
 }
 
 int input_init(DBusConnection *conn)
 {
 	struct manager *mgr;
-	bdaddr_t src;
-#if 0
-	int dev_id;
-#endif
 
 	connection = dbus_connection_ref(conn);
 
@@ -867,22 +891,6 @@ int input_init(DBusConnection *conn)
 
 	info("Registered input manager path:%s", INPUT_PATH);
 
-	/* Set the default adapter */
-	bacpy(&src, BDADDR_ANY);
-#if 0
-	dev_id = hci_get_route(&src);
-	if (dev_id < 0) {
-		error("Bluetooth device not available");
-		goto fail;
-	}
-
-	if (hci_devba(dev_id, &src) < 0) {
-		error("Can't get local adapter device info");
-		goto fail;
-	}
-#endif
-
-	bacpy(&mgr->src, &src);
 	/* Register well known HID devices */
 	register_stored_inputs(mgr);
 
