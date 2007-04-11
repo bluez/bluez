@@ -837,7 +837,10 @@ static void stored_input(char *key, char *value, void *data)
 	if (parse_stored_device_info(value, &hidp) < 0)
 		return;
 
-	/* FIXME: Ignore already registered devices */
+	/*
+	 * Repeated entries for the same remote device are
+	 * acceptable since the source is different.
+	 */
 	if (input_device_register(connection, src, &dst, &hidp, &path) < 0)
 		return;
 
