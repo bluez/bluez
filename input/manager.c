@@ -619,8 +619,9 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	DBusError derr;
 	const char *addr;
 	GSList *l;
-	bdaddr_t dst;
+	bdaddr_t src, dst;
 	uint32_t cls = 0;
+	int dev_id;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -631,6 +632,18 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
+	/* Get the default adapter */
+	dev_id = hci_get_route(NULL);
+	if (dev_id < 0) {
+		error("Bluetooth adapter not available");
+		return err_failed(conn, msg, "Adapter not available");
+	}
+
+	if (hci_devba(dev_id, &src) < 0) {
+		error("Can't get local adapter device info");
+		return err_failed(conn, msg, "Adapter not available");
+	}
+
 	str2ba(addr, &dst);
 
 	l = g_slist_find_custom(mgr->paths, &dst,
@@ -638,12 +651,12 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	if (l)
 		return err_already_exists(conn, msg, "Input Already exists");
 
-	if (read_device_class(&mgr->src, &dst, &cls) < 0) {
+	if (read_device_class(&src, &dst, &cls) < 0) {
 		error("Device class not available");
 		return err_not_supported(conn, msg);
 	}
 
-	pr = pending_req_new(conn, msg, &mgr->src, &dst);
+	pr = pending_req_new(conn, msg, &src, &dst);
 	if (!pr)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
