@@ -511,7 +511,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
 	const char *address;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -526,7 +526,16 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	signal = dbus_message_new_signal(service->object_path,
+					SERVICE_INTERFACE, "TrustAdded");
+	if (!signal)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
 	write_trust(BDADDR_ANY, address, service->ident, TRUE);
+
+	dbus_message_append_args(signal, DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_INVALID);
+	send_message_and_unref(conn, signal);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -564,7 +573,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
 	const char *address;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -575,11 +584,20 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
-	write_trust(BDADDR_ANY, address, service->ident, FALSE);
-
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	signal = dbus_message_new_signal(service->object_path,
+					SERVICE_INTERFACE, "TrustRemoved");
+	if (!signal)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	write_trust(BDADDR_ANY, address, service->ident, FALSE);
+
+	dbus_message_append_args(signal, DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_INVALID);
+	send_message_and_unref(conn, signal);
 
 	return send_message_and_unref(conn, reply);
 }

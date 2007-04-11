@@ -1152,6 +1152,14 @@ Signals		void Started()
 			The object path of this signal contains which service
 			was stopped.
 
+		void TrustAdded(string address)
+			
+			Sent when SetTrusted() is called.
+
+		void TrustRemoved(string address)
+
+			Sent when RemoveTrust() is called.
+
 
 Security hierarchy
 ==================

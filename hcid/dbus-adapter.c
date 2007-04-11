@@ -2815,7 +2815,7 @@ static DBusHandlerResult adapter_set_trusted(DBusConnection *conn,
 						void *data)
 {
 	struct adapter *adapter = data;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
 	bdaddr_t local;
 	const char *address;
 
@@ -2834,6 +2834,11 @@ static DBusHandlerResult adapter_set_trusted(DBusConnection *conn,
 	str2ba(adapter->address, &local);
 
 	write_trust(&local, address, GLOBAL_TRUST, TRUE);
+
+	signal = dev_signal_factory(adapter->dev_id, "TrustAdded",
+						DBUS_TYPE_STRING, &address,
+						DBUS_TYPE_INVALID);
+	send_message_and_unref(conn, signal);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -2876,7 +2881,7 @@ static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
 						void *data)
 {
 	struct adapter *adapter = data;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
 	const char *address;
 	bdaddr_t local;
 
@@ -2888,13 +2893,18 @@ static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg);
 
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
 	str2ba(adapter->address, &local);
 
 	write_trust(&local, address, GLOBAL_TRUST, FALSE);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	signal = dev_signal_factory(adapter->dev_id, "TrustRemoved",
+						DBUS_TYPE_STRING, &address,
+						DBUS_TYPE_INVALID);
+	send_message_and_unref(conn, signal);
 
 	return send_message_and_unref(conn, reply);
 }
