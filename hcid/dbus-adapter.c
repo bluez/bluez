@@ -1113,10 +1113,19 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct adapter *adapter = data;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
+	bdaddr_t src, dst;
 	const char *addr_ptr;
+	char filename[PATH_MAX + 1];
+	char buf[64];
+	const char *ptr;
+	char *str;
+	dbus_bool_t boolean;
+	uint32_t class;
+	int compid, ver, subver;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
@@ -1137,8 +1146,103 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	/* append dict entries here */
+	/* Name */
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "names");
+	str = textfile_caseget(filename, addr_ptr);
+	if (str) {
+		append_dict_entry(&dict, "name", DBUS_TYPE_STRING, &str);
+		free(str);
+	}
 
+	str2ba(adapter->address, &src);
+	str2ba(addr_ptr, &dst);
+
+	/* Major/Minor Class */
+	if (read_remote_class(&src, &dst, &class) == 0) {
+		ptr = major_class_str(class);
+		append_dict_entry(&dict, "major_class",
+				DBUS_TYPE_STRING, &ptr);
+
+		ptr = minor_class_str(class);
+		append_dict_entry(&dict, "minor_class",
+				DBUS_TYPE_STRING, &ptr);
+	}
+
+	/* Alias */
+	if (get_device_alias(adapter->dev_id, &dst, buf, sizeof(buf)) > 0) {
+		ptr = buf;
+		append_dict_entry(&dict, "alias",
+				DBUS_TYPE_STRING, &ptr);
+	}
+
+	/* Bonded */
+	create_name(filename, PATH_MAX, STORAGEDIR,
+			adapter->address, "linkkeys");
+	str = textfile_caseget(filename, addr_ptr);
+	if (str) {
+		boolean = TRUE;
+		free(str);
+	} else {
+		boolean = FALSE;
+	}
+
+	append_dict_entry(&dict, "bonded",
+			DBUS_TYPE_BOOLEAN, &boolean);
+
+	/* Trusted */
+	boolean = read_trust(&src, addr_ptr, GLOBAL_TRUST);
+	append_dict_entry(&dict, "trusted",
+			DBUS_TYPE_BOOLEAN, &boolean);
+
+	/* HCI Revision/Manufacturer/Version */
+	create_name(filename, PATH_MAX, STORAGEDIR,
+			adapter->address, "manufacturers");
+
+	str = textfile_caseget(filename, addr_ptr);
+	if (!str)
+		goto done;
+
+	if (sscanf(str, "%d %d %d", &compid, &ver, &subver) != 3) {
+		/* corrupted file data */
+		free(str);
+		goto done;
+	}
+
+	free(str);
+
+	ptr = buf;
+	snprintf(buf, 16, "HCI 0x%X", subver);
+	append_dict_entry(&dict, "revision",
+			DBUS_TYPE_STRING, &ptr);
+
+	ptr = bt_compidtostr(compid);
+	append_dict_entry(&dict, "manufacturer",
+			DBUS_TYPE_STRING, &ptr);
+
+	ptr = lmp_vertostr(ver);
+
+	snprintf(buf, 64, "Bluetooth %s", ptr);
+
+	create_name(filename, PATH_MAX, STORAGEDIR,
+			adapter->address, "features");
+
+	str = textfile_caseget(filename, addr_ptr);
+	if (str) {
+		if (strlen(str) == 16) {
+			uint8_t features;
+			/* Getting the third byte */
+			features  = ((str[6] - 48) << 4) | (str[7] - 48);
+			if (features & (LMP_EDR_ACL_2M | LMP_EDR_ACL_3M))
+				snprintf(buf, 64, "Bluetooth %s + EDR", ptr);
+
+		}
+		free(str);
+	}
+	ptr = buf;
+	append_dict_entry(&dict, "version",
+			DBUS_TYPE_STRING, &ptr);
+
+done:
 	dbus_message_iter_close_container(&iter, &dict);
 
 	return send_message_and_unref(conn, reply);
@@ -1173,7 +1277,6 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 	const char *str_ver;
 	char info_array[64], *info = info_array;
 	int compid, ver, subver;
-	uint8_t features;
 
 	memset(info_array, 0, 64);
 
@@ -1212,10 +1315,9 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 	if (!str)
 		goto failed;
 
-	printf("%s\n", str);
-
 	/* Check if the data is not corrupted */
 	if (strlen(str) == 16) {
+		uint8_t features;
 		/* Getting the third byte */
 		features  = ((str[6] - 48) << 4) | (str[7] - 48);
 		if (features & (LMP_EDR_ACL_2M | LMP_EDR_ACL_3M))
