@@ -401,8 +401,7 @@ static void auth_callback(DBusPendingCall *call, void *data)
 	dbus_message_unref(reply);
 }
 
-gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond,
-				struct manager *manager)
+gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 {
 	int srv_sk, cli_sk;
 	struct sockaddr_rc addr;
@@ -412,8 +411,6 @@ gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond,
 	struct headset *hs = NULL;
 	DBusMessage *auth;
 	DBusPendingCall *pending;
-
-	assert(manager != NULL);
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -434,17 +431,16 @@ gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond,
 		return TRUE;
 	}
 
-	hs = manager_find_headset_by_bda(manager, &addr.rc_bdaddr);
+	hs = manager_find_headset_by_bda(&addr.rc_bdaddr);
 	if (!hs) {
-		hs = headset_new(manager_get_dbus_conn(manager),
-					&addr.rc_bdaddr);
+		hs = headset_new(manager_get_dbus_conn(), &addr.rc_bdaddr);
 		if (!hs) {
 			error("Unable to create a new headset object");
 			close(cli_sk);
 			return TRUE;
 		}
 
-		manager_add_headset(manager, hs);
+		manager_add_headset(hs);
 	}
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->rfcomm) {

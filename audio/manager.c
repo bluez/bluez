@@ -53,17 +53,14 @@
 
 #define SOCKET_NAME "/org/bluez/audio"
 
-struct manager {
-	DBusConnection *conn;
+static DBusConnection *connection = NULL;
 
-	/* Headset specific variables */
-	GIOChannel *hs_server;
-	uint32_t hs_record_id;
-	struct headset *default_hs;
-	GSList *headsets;
-};
+static GIOChannel *hs_server = NULL;
 
-static struct manager *manager = NULL;
+static uint32_t hs_record_id;
+static struct headset *default_hs;
+
+static GSList *headsets = NULL;
 
 static int unix_sock = -1;
 
@@ -78,7 +75,7 @@ static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
 
 	derr = dbus_message_new_error(msg, name, descr);
 	if (!derr) {
-	       	error("Unable to allocate new error return");
+		error("Unable to allocate new error return");
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
@@ -191,65 +188,58 @@ static GIOChannel *server_socket(uint8_t *channel)
 	return io;
 }
 
-static gboolean manager_create_headset_server(struct manager *manager, uint8_t chan)
+static gboolean manager_create_headset_server(uint8_t chan)
 {
-	assert(manager != NULL);
-
-	if (manager->hs_server) {
+	if (hs_server) {
 		error("Server socket already created");
 		return FALSE;
 	}
 
-	manager->hs_server = server_socket(&chan);
-	if (!manager->hs_server)
+	hs_server = server_socket(&chan);
+	if (!hs_server)
 		return FALSE;
 
-	if (!manager->hs_record_id)
-		manager->hs_record_id = headset_add_ag_record(manager->conn, chan);
+	if (!hs_record_id)
+		hs_record_id = headset_add_ag_record(connection, chan);
 
-	if (!manager->hs_record_id) {
+	if (!hs_record_id) {
 		error("Unable to register service record");
-		g_io_channel_unref(manager->hs_server);
-		manager->hs_server = NULL;
+		g_io_channel_unref(hs_server);
+		hs_server = NULL;
 		return FALSE;
 	}
 
-	g_io_add_watch(manager->hs_server,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			(GIOFunc) headset_server_io_cb, manager);
+	g_io_add_watch(hs_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				(GIOFunc) headset_server_io_cb, NULL);
 
 	return TRUE;
 }
 
-struct headset *manager_find_headset_by_bda(struct manager *manager, bdaddr_t *bda)
+struct headset *manager_find_headset_by_bda(bdaddr_t *bda)
 {
 	GSList *elem;
 
-	assert(manager);
-
-	elem = g_slist_find_custom(manager->headsets, bda, headset_bda_cmp);
+	elem = g_slist_find_custom(headsets, bda, headset_bda_cmp);
 
 	return elem ? elem->data : NULL;
 }
 
-void manager_add_headset(struct manager *manager, struct headset *hs)
+void manager_add_headset(struct headset *hs)
 {
-	assert(manager);
 	assert(hs);
 
-	manager->headsets = g_slist_append(manager->headsets, hs);
+	headsets = g_slist_append(headsets, hs);
 
-	manager_signal(manager->conn, "HeadsetCreated", headset_get_path(hs));
+	manager_signal(connection, "HeadsetCreated", headset_get_path(hs));
 
-	if (!manager->default_hs) {
-		manager->default_hs = hs;
-		manager_signal(manager->conn, "DefaultHeadsetChanged",
-				headset_get_path(hs));
+	if (!default_hs) {
+		default_hs = hs;
+		manager_signal(connection, "DefaultHeadsetChanged",
+							headset_get_path(hs));
 	}
 }
 
-static DBusHandlerResult am_create_headset(struct manager *manager, 
-						DBusMessage *msg)
+static DBusHandlerResult am_create_headset(DBusMessage *msg)
 {
 	const char *object_path;
 	const char *address;
@@ -262,11 +252,11 @@ static DBusHandlerResult am_create_headset(struct manager *manager,
 	if (!dbus_message_get_args(msg, &derr,
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID)) {
-		err_invalid_args(manager->conn, msg, derr.message);
+		err_invalid_args(connection, msg, derr.message);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 	if (dbus_error_is_set(&derr)) {
-		err_invalid_args(manager->conn, msg, derr.message);
+		err_invalid_args(connection, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -276,25 +266,24 @@ static DBusHandlerResult am_create_headset(struct manager *manager,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	str2ba(address, &bda);
-	hs = manager_find_headset_by_bda(manager, &bda);
+	hs = manager_find_headset_by_bda(&bda);
 	if (!hs) {
-		hs = headset_new(manager->conn, &bda);
+		hs = headset_new(connection, &bda);
 		if (!hs)
-			return error_reply(manager->conn, msg,
+			return error_reply(connection, msg,
 					"org.bluez.Error.Failed",
 					"Unable to create new headset object");
-		manager_add_headset(manager, hs);
+		manager_add_headset(hs);
 	}
 
 	object_path = headset_get_path(hs);
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &object_path,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(manager->conn, reply);
+	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_remove_headset(struct manager *manager, 
-						DBusMessage *msg)
+static DBusHandlerResult am_remove_headset(DBusMessage *msg)
 {
 	DBusError derr;
 	DBusMessage *reply;
@@ -306,18 +295,18 @@ static DBusHandlerResult am_remove_headset(struct manager *manager,
 	if (!dbus_message_get_args(msg, &derr,
 					DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID)) {
-		err_invalid_args(manager->conn, msg, derr.message);
+		err_invalid_args(connection, msg, derr.message);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 	if (dbus_error_is_set(&derr)) {
-		err_invalid_args(manager->conn, msg, derr.message);
+		err_invalid_args(connection, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	match = g_slist_find_custom(manager->headsets, path, headset_path_cmp);
+	match = g_slist_find_custom(headsets, path, headset_path_cmp);
 	if (!match)
-		return error_reply(manager->conn, msg, "org.bluez.Error.DoesNotExist",
+		return error_reply(connection, msg, "org.bluez.Error.DoesNotExist",
 					"The headset does not exist");
 
 	reply = dbus_message_new_method_return(msg);
@@ -326,27 +315,26 @@ static DBusHandlerResult am_remove_headset(struct manager *manager,
 
 	hs = match->data;
 
-	manager->headsets = g_slist_remove(manager->headsets, hs);
+	headsets = g_slist_remove(headsets, hs);
 
-	if (manager->default_hs == hs) {
-		if (!manager->headsets)
-			manager->default_hs = NULL;
+	if (default_hs == hs) {
+		if (!headsets)
+			default_hs = NULL;
 		else
-			manager->default_hs = manager->headsets->data;
+			default_hs = headsets->data;
 
-		manager_signal(manager->conn, "DefaultHeadsetChanged",
-				manager->default_hs ? headset_get_path(manager->default_hs) : "");
+		manager_signal(connection, "DefaultHeadsetChanged",
+				default_hs ? headset_get_path(default_hs) : "");
 	}
 
-	manager_signal(manager->conn, "HeadsetRemoved", headset_get_path(hs));
+	manager_signal(connection, "HeadsetRemoved", headset_get_path(hs));
 
 	headset_unref(hs);
 
-	return send_message_and_unref(manager->conn, reply);
+	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_list_headsets(struct manager *manager, 
-						DBusMessage *msg)
+static DBusHandlerResult am_list_headsets(DBusMessage *msg)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
@@ -362,7 +350,7 @@ static DBusHandlerResult am_list_headsets(struct manager *manager,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	for (l = manager->headsets; l != NULL; l = l->next) {
+	for (l = headsets; l != NULL; l = l->next) {
 		struct headset *hs = l->data;
 		const char *path = headset_get_path(hs);
 
@@ -372,33 +360,31 @@ static DBusHandlerResult am_list_headsets(struct manager *manager,
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	return send_message_and_unref(manager->conn, reply);
+	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_get_default_headset(struct manager *manager, 
-						DBusMessage *msg)
+static DBusHandlerResult am_get_default_headset(DBusMessage *msg)
 {
 	DBusMessage *reply;
 	const char *opath;
 
-	if (!manager->default_hs)
-		return error_reply(manager->conn, msg, "org.bluez.Error.DoesNotExist",
+	if (!default_hs)
+		return error_reply(connection, msg, "org.bluez.Error.DoesNotExist",
 					"There is no default headset");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	opath = headset_get_path(manager->default_hs);
+	opath = headset_get_path(default_hs);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &opath,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(manager->conn, reply);
+	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_change_default_headset(struct manager *manager, 
-							DBusMessage *msg)
+static DBusHandlerResult am_change_default_headset(DBusMessage *msg)
 {
 	DBusError derr;
 	DBusMessage *reply;
@@ -409,37 +395,36 @@ static DBusHandlerResult am_change_default_headset(struct manager *manager,
 	if (!dbus_message_get_args(msg, &derr,
 					DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID)) {
-		err_invalid_args(manager->conn, msg, derr.message);
+		err_invalid_args(connection, msg, derr.message);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 	if (dbus_error_is_set(&derr)) {
-		err_invalid_args(manager->conn, msg, derr.message);
+		err_invalid_args(connection, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	match = g_slist_find_custom(manager->headsets, path, headset_path_cmp);
+	match = g_slist_find_custom(headsets, path, headset_path_cmp);
 	if (!match)
-		return error_reply(manager->conn, msg, "org.bluez.Error.DoesNotExist",
+		return error_reply(connection, msg, "org.bluez.Error.DoesNotExist",
 					"The headset does not exist");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	manager->default_hs = match->data;
+	default_hs = match->data;
 
-	manager_signal(manager->conn, "DefaultHeadsetChanged",
-			headset_get_path(manager->default_hs));
+	manager_signal(connection, "DefaultHeadsetChanged",
+					headset_get_path(default_hs));
 
-	return send_message_and_unref(manager->conn, reply);
+	return send_message_and_unref(connection, reply);
 }
 
 static DBusHandlerResult am_message(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *interface, *member;
-	struct manager *manager = data;
 
 	interface = dbus_message_get_interface(msg);
 	member = dbus_message_get_member(msg);
@@ -452,19 +437,19 @@ static DBusHandlerResult am_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (strcmp(member, "CreateHeadset") == 0)
-		return am_create_headset(manager, msg);
+		return am_create_headset(msg);
 
 	if (strcmp(member, "RemoveHeadset") == 0)
-		return am_remove_headset(manager, msg);
+		return am_remove_headset(msg);
 
 	if (strcmp(member, "ListHeadsets") == 0)
-		return am_list_headsets(manager, msg);
+		return am_list_headsets(msg);
 
 	if (strcmp(member, "DefaultHeadset") == 0)
-		return am_get_default_headset(manager, msg);
+		return am_get_default_headset(msg);
 
 	if (strcmp(member, "ChangeDefaultHeadset") == 0)
-		return am_change_default_headset(manager, msg);
+		return am_change_default_headset(msg);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -473,53 +458,9 @@ static const DBusObjectPathVTable am_table = {
 	.message_function = am_message,
 };
 
-static struct manager *manager_new(DBusConnection *conn)
+DBusConnection *manager_get_dbus_conn(void)
 {
-	struct manager *manager;
-
-	manager = g_new0(struct manager, 1);
-
-	if (!dbus_connection_register_object_path(conn, AUDIO_MANAGER_PATH,
-						&am_table, manager)) {
-		error("D-Bus failed to register %s path", AUDIO_MANAGER_PATH);
-		g_free(manager);
-		return NULL;
-	}
-
-	manager->conn = dbus_connection_ref(conn);
-
-	return manager;
-}
-
-static void manager_free(struct manager *manager)
-{
-	assert(manager != NULL);
-
-	if (manager->hs_record_id) {
-		headset_remove_ag_record(manager->conn, manager->hs_record_id);
-		manager->hs_record_id = 0;
-	}
-
-	if (manager->hs_server) {
-		g_io_channel_unref(manager->hs_server);
-		manager->hs_server = NULL;
-	}
-
-	if (manager->headsets) {
-		g_slist_foreach(manager->headsets, (GFunc) headset_unref,
-				manager);
-		g_slist_free(manager->headsets);
-		manager->headsets = NULL;
-	}
-
-	dbus_connection_unref(manager->conn);
-
-	g_free(manager);
-}
-
-DBusConnection *manager_get_dbus_conn(struct manager *manager)
-{
-	return manager->conn;
+	return connection;
 }
 
 int audio_init(DBusConnection *conn)
@@ -555,13 +496,16 @@ int audio_init(DBusConnection *conn)
 
 	g_io_channel_unref(io);
 
-	manager = manager_new(conn);
-	if (!manager) {
-		error("Failed to create an audio manager");
+	if (!dbus_connection_register_object_path(conn, AUDIO_MANAGER_PATH,
+							&am_table, NULL)) {
+		error("D-Bus failed to register %s path", AUDIO_MANAGER_PATH);
+		close(sk);
 		return -1;
 	}
 
-	manager_create_headset_server(manager, 12);
+	connection = dbus_connection_ref(conn);
+
+	manager_create_headset_server(12);
 
 	return 0;
 }
@@ -572,7 +516,23 @@ void audio_exit(void)
 
 	unix_sock = -1;
 
-	manager_free(manager);
+	if (hs_record_id) {
+		headset_remove_ag_record(connection, hs_record_id);
+		hs_record_id = 0;
+	}
 
-	manager = NULL;
+	if (hs_server) {
+		g_io_channel_unref(hs_server);
+		hs_server = NULL;
+	}
+
+	if (headsets) {
+		g_slist_foreach(headsets, (GFunc) headset_unref, NULL);
+		g_slist_free(headsets);
+		headsets = NULL;
+	}
+
+	dbus_connection_unref(connection);
+
+	connection = NULL;
 }

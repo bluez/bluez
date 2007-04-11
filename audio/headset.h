@@ -29,8 +29,6 @@
 
 struct headset;
 
-#include "manager.h"
-
 #define BUF_SIZE 1024
 
 struct headset *headset_new(DBusConnection *conn, const bdaddr_t *bda);
@@ -41,8 +39,7 @@ uint32_t headset_add_ag_record(DBusConnection *conn, uint8_t channel);
 
 int headset_remove_ag_record(DBusConnection *conn, uint32_t rec_id);
 
-gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond,
-				struct manager *manager);
+gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data);
 
 gint headset_path_cmp(gconstpointer headset, gconstpointer path);
 gint headset_bda_cmp(gconstpointer headset, gconstpointer bda);
