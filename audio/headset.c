@@ -795,6 +795,13 @@ failed:
 	return -1;
 }
 
+gint headset_path_cmp(gconstpointer headset, gconstpointer path)
+{
+	const struct headset *hs = headset;
+
+	return strcmp(hs->object_path, path);
+}
+
 gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
 {
 	const struct headset *hs = headset;
@@ -1558,6 +1565,12 @@ struct headset *headset_new(DBusConnection *conn, const bdaddr_t *bda)
 void headset_unref(struct headset *hs)
 {
 	assert(hs != NULL);
+
+	if (hs->state > HEADSET_STATE_DISCONNECTED)
+		hs_disconnect(hs, NULL);
+
+	if (!dbus_connection_unregister_object_path(hs->conn, hs->object_path))
+		error("D-Bus failed to unregister %s path", hs->object_path);
 
 	dbus_connection_unref(hs->conn);
 

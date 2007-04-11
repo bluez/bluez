@@ -57,7 +57,7 @@ struct manager {
 	DBusConnection *conn;
 	GIOChannel *hs_server;
 	uint32_t hs_record_id;
-	int default_hs;
+	struct headset *default_hs;
 	GSList *headset_list;
 };
 
@@ -205,6 +205,7 @@ struct headset *manager_find_headset_by_bda(struct manager *manager, bdaddr_t *b
 	GSList *elem;
 
 	assert(manager);
+
 	elem = g_slist_find_custom(manager->headset_list, bda, headset_bda_cmp);
 
 	return elem ? elem->data : NULL;
@@ -212,12 +213,13 @@ struct headset *manager_find_headset_by_bda(struct manager *manager, bdaddr_t *b
 
 void manager_add_headset(struct manager *manager, struct headset *hs)
 {
-	assert(manager && hs);
-
-	if (g_slist_find(manager->headset_list, hs))
-		return;
+	assert(manager);
+	assert(hs);
 
 	manager->headset_list = g_slist_append(manager->headset_list, hs);
+
+	if (!manager->default_hs)
+		manager->default_hs = hs;
 }
 
 static DBusHandlerResult am_create_headset(struct manager *manager, 
@@ -268,7 +270,44 @@ static DBusHandlerResult am_create_headset(struct manager *manager,
 static DBusHandlerResult am_remove_headset(struct manager *manager, 
 						DBusMessage *msg)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusError derr;
+	DBusMessage *reply;
+	GSList *match;
+	const char *path;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+					DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID)) {
+		err_invalid_args(manager->conn, msg, derr.message);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+	if (dbus_error_is_set(&derr)) {
+		err_invalid_args(manager->conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	match = g_slist_find_custom(manager->headset_list, path, headset_path_cmp);
+	if (!match)
+		return error_reply(manager->conn, msg, "org.bluez.Error.DoesNotExist",
+					"The headset does not exist");
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	headset_unref(match->data);
+	manager->headset_list = g_slist_remove(manager->headset_list, match->data);
+
+	if (manager->default_hs == match->data) {
+		if (!manager->headset_list)
+			manager->default_hs = NULL;
+		else
+			manager->default_hs = manager->headset_list->data;
+	}
+
+	return send_message_and_unref(manager->conn, reply);
 }
 
 static DBusHandlerResult am_list_headsets(struct manager *manager, 
@@ -281,15 +320,18 @@ static DBusHandlerResult am_get_default_headset(struct manager *manager,
 						DBusMessage *msg)
 {
 	DBusMessage *reply;
-	char object_path[128];
-	const char *opath = object_path;
+	const char *opath;
+
+	if (!manager->default_hs)
+		return error_reply(manager->conn, msg, "org.bluez.Error.DoesNotExist",
+					"There is no default headset");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	snprintf(object_path, sizeof(object_path), HEADSET_PATH_BASE "%d",
-			manager->default_hs);
+	opath = headset_get_path(manager->default_hs);
+
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &opath,
 					DBUS_TYPE_INVALID);
 
@@ -299,7 +341,36 @@ static DBusHandlerResult am_get_default_headset(struct manager *manager,
 static DBusHandlerResult am_change_default_headset(struct manager *manager, 
 							DBusMessage *msg)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusError derr;
+	DBusMessage *reply;
+	GSList *match;
+	const char *path;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+					DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID)) {
+		err_invalid_args(manager->conn, msg, derr.message);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+	if (dbus_error_is_set(&derr)) {
+		err_invalid_args(manager->conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	match = g_slist_find_custom(manager->headset_list, path, headset_path_cmp);
+	if (!match)
+		return error_reply(manager->conn, msg, "org.bluez.Error.DoesNotExist",
+					"The headset does not exist");
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	manager->default_hs = match->data;
+
+	return send_message_and_unref(manager->conn, reply);
 }
 
 static DBusHandlerResult am_message(DBusConnection *conn,
