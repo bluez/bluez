@@ -31,7 +31,7 @@
 
 #define HEADSET_PATH_BASE AUDIO_MANAGER_PATH "/headset"
 
-void manager_add_headset(struct headset *hs);
+void manager_add_headset(char *path);
 
 struct headset *manager_find_headset_by_bda(bdaddr_t *bda);
 

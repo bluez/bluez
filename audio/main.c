@@ -73,6 +73,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	headset_init(conn);
+
 	audio_init(conn);
 
 	if (argc > 1 && !strcmp(argv[1], "-s"))
@@ -81,6 +83,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	audio_exit();
+
+	headset_exit();
 
 	dbus_connection_unref(conn);
 

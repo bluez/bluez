@@ -27,31 +27,19 @@
 
 #include <dbus/dbus.h>
 
-struct headset;
-
 #define BUF_SIZE 1024
 
-struct headset *headset_new(DBusConnection *conn, const bdaddr_t *bda);
+char *headset_add(const bdaddr_t *bda);
 
-void headset_unref(struct headset *hs);
+void headset_remove(char *path);
 
-uint32_t headset_add_ag_record(DBusConnection *conn, uint8_t channel);
+uint32_t headset_add_ag_record(uint8_t channel);
 
-int headset_remove_ag_record(DBusConnection *conn, uint32_t rec_id);
+int headset_remove_ag_record(uint32_t rec_id);
 
 gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data);
 
-gint headset_path_cmp(gconstpointer headset, gconstpointer path);
-gint headset_bda_cmp(gconstpointer headset, gconstpointer bda);
-
-const char *headset_get_path(struct headset *hs);
-
-gboolean headset_close_output(struct headset *hs);
-
-gboolean headset_open_output(struct headset *hs, const char *output);
-
-gboolean headset_close_input(struct headset *hs);
-
-gboolean headset_open_input(struct headset *hs, const char *input);
+void headset_init(DBusConnection *conn);
+void headset_exit(void);
 
 #endif /* __AUDIO_HEADSET_H_ */

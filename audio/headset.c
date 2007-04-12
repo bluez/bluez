@@ -98,11 +98,13 @@ struct headset {
 
 	headset_state_t state;
 	struct pending_connect *pending_connect;
-
-	DBusConnection *conn;
 };
 
 static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg);
+
+static GSList *headsets = NULL;
+
+static DBusConnection *connection = NULL;
 
 static void pending_connect_free(struct pending_connect *c)
 {
@@ -158,6 +160,99 @@ static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg)
 	return error_reply(conn, msg, "org.bluez.Error.Failed", "Failed");
 }
 
+static gboolean headset_close_output(struct headset *hs)
+{
+	assert(hs != NULL);
+
+	if (hs->audio_output == NULL) 
+		return FALSE;
+
+	g_io_channel_close(hs->audio_output);
+	g_io_channel_unref(hs->audio_output);
+	hs->audio_output = NULL;
+
+	return TRUE;
+}
+
+/* FIXME: in the furture, that would be great to provide user space alsa driver (not plugin) */
+static gboolean headset_open_output(struct headset *hs, const char *output)
+{
+	int out;
+
+	assert(hs != NULL && output != NULL);
+
+	headset_close_output(hs);
+	if (output && hs->output) {
+		g_free(hs->output);
+		hs->output = g_strdup(output);
+	}
+
+	assert(hs->output);
+
+	out = open(hs->output, O_WRONLY | O_SYNC | O_CREAT);
+
+	if (out < 0) {
+		error("open(%s): %s %d", hs->output, strerror(errno), errno);
+		return FALSE;
+	}
+
+	hs->audio_output = g_io_channel_unix_new(out);
+	if (!hs->audio_output) {
+		error("Allocating new channel for audio output!");
+		return FALSE;
+	}
+
+	g_io_channel_set_close_on_unref(hs->audio_output, TRUE);
+
+	return TRUE;
+}
+
+static gboolean headset_close_input(struct headset *hs)
+{
+	assert(hs != NULL);
+
+	if (hs->audio_input == NULL) 
+		return FALSE;
+
+	g_io_channel_close(hs->audio_input);
+	g_io_channel_unref(hs->audio_input);
+	hs->audio_input = NULL;
+
+	return TRUE;
+}
+
+#if 0
+static gboolean headset_open_input(struct headset *hs, const char *input)
+{
+	int in;
+
+	assert(hs != NULL);
+	
+	/* we keep the input name, and NULL can be use to reopen */
+	if (input && hs->input) {
+		g_free(hs->input);
+		hs->input = g_strdup(input);
+	}
+
+	assert(hs->input);
+
+	in = open(hs->input, O_RDONLY | O_NOCTTY);
+
+	if (in < 0) {
+		error("open(%s): %s %d", hs->input, strerror(errno), errno);
+		return FALSE;
+	}
+
+	hs->audio_input = g_io_channel_unix_new(in);
+	if (!hs->audio_input) {
+		error("Allocating new channel for audio input!");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+#endif
+
 static void hs_signal_gain_setting(struct headset *hs, const char *buf)
 {
 	const char *name;
@@ -192,7 +287,7 @@ static void hs_signal_gain_setting(struct headset *hs, const char *buf)
 	dbus_message_append_args(signal, DBUS_TYPE_UINT16, &gain,
 					DBUS_TYPE_INVALID);
 
-	send_message_and_unref(hs->conn, signal);
+	send_message_and_unref(connection, signal);
 }
 
 static void hs_signal(struct headset *hs, const char *name)
@@ -205,7 +300,7 @@ static void hs_signal(struct headset *hs, const char *name)
 		return;
 	}
 
-	send_message_and_unref(hs->conn, signal);
+	send_message_and_unref(connection, signal);
 }
 
 static headset_event_t parse_headset_event(const char *buf, char *rsp, int rsp_len)
@@ -364,7 +459,7 @@ static void send_cancel_auth(struct headset *hs)
 	dbus_message_append_args(cancel, DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID);
 
-	send_message_and_unref(hs->conn, cancel);
+	send_message_and_unref(connection, cancel);
 }
 
 static void auth_callback(DBusPendingCall *call, void *data)
@@ -406,7 +501,7 @@ gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	int srv_sk, cli_sk;
 	struct sockaddr_rc addr;
 	socklen_t size;
-	char hs_address[18], *address = hs_address;
+	char hs_address[18], *address = hs_address, *path;
 	const char *uuid = "";
 	struct headset *hs = NULL;
 	DBusMessage *auth;
@@ -431,17 +526,15 @@ gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	hs = manager_find_headset_by_bda(&addr.rc_bdaddr);
-	if (!hs) {
-		hs = headset_new(manager_get_dbus_conn(), &addr.rc_bdaddr);
-		if (!hs) {
-			error("Unable to create a new headset object");
-			close(cli_sk);
-			return TRUE;
-		}
-
-		manager_add_headset(hs);
+	/* This returns an existing path if the headset already exists */
+	path = headset_add(&addr.rc_bdaddr);
+	if (!path) {
+		error("Unable to create a new headset object");
+		close(cli_sk);
+		return TRUE;
 	}
+
+	manager_add_headset(path);
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->rfcomm) {
 		debug("Refusing new connection since one already exists");
@@ -468,7 +561,7 @@ gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	dbus_message_append_args(auth, DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(hs->conn, auth, &pending, -1) == FALSE) {
+	if (dbus_connection_send_with_reply(connection, auth, &pending, -1) == FALSE) {
 		error("Sending of authorization request failed");
 		goto failed;
 	}
@@ -618,7 +711,7 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 		reply = dbus_message_new_method_return(hs->pending_connect->msg);
 		if (reply)
-			send_message_and_unref(hs->conn, reply);
+			send_message_and_unref(connection, reply);
 	}
 
 	/* FIXME: do we allow both? pull & push model at the same time on sco && audio_input? */
@@ -635,7 +728,7 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 failed:
 	if (hs->pending_connect) {
-		err_connect_failed(hs->conn, hs->pending_connect->msg, err);
+		err_connect_failed(connection, hs->pending_connect->msg, err);
 		if (hs->pending_connect->io)
 			g_io_channel_close(hs->pending_connect->io);
 		pending_connect_free(hs->pending_connect);
@@ -694,7 +787,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct he
 
 			reply = dbus_message_new_method_return(hs->pending_connect->msg);
 			if (reply)
-				send_message_and_unref(hs->conn, reply);
+				send_message_and_unref(connection, reply);
 		}
 
 		pending_connect_free(hs->pending_connect);
@@ -705,7 +798,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct he
 
 failed:
 	if (hs->pending_connect) {
-		err_connect_failed(hs->conn, hs->pending_connect->msg, err);
+		err_connect_failed(connection, hs->pending_connect->msg, err);
 		if (hs->pending_connect->io)
 			g_io_channel_close(hs->pending_connect->io);
 		pending_connect_free(hs->pending_connect);
@@ -791,14 +884,7 @@ failed:
 	return -1;
 }
 
-gint headset_path_cmp(gconstpointer headset, gconstpointer path)
-{
-	const struct headset *hs = headset;
-
-	return strcmp(hs->object_path, path);
-}
-
-gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
+static gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
 {
 	const struct headset *hs = headset;
 
@@ -866,7 +952,7 @@ static int create_ag_record(sdp_buf_t *buf, uint8_t ch)
 	return ret;
 }
 
-uint32_t headset_add_ag_record(DBusConnection *conn, uint8_t channel)
+uint32_t headset_add_ag_record(uint8_t channel)
 {
 	DBusMessage *msg, *reply;
 	DBusError derr;
@@ -890,7 +976,8 @@ uint32_t headset_add_ag_record(DBusConnection *conn, uint8_t channel)
 				&buf.data, buf.data_size, DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
+	reply = dbus_connection_send_with_reply_and_block(connection, msg,
+								-1, &derr);
 
 	free(buf.data);
 	dbus_message_unref(msg);
@@ -918,7 +1005,7 @@ uint32_t headset_add_ag_record(DBusConnection *conn, uint8_t channel)
 	return rec_id;
 }
 
-int headset_remove_ag_record(DBusConnection *conn, uint32_t rec_id)
+int headset_remove_ag_record(uint32_t rec_id)
 {
 	DBusMessage *msg, *reply;
 	DBusError derr;
@@ -934,7 +1021,8 @@ int headset_remove_ag_record(DBusConnection *conn, uint32_t rec_id)
 						DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
+	reply = dbus_connection_send_with_reply_and_block(connection, msg,
+								-1, &derr);
 
 	dbus_message_unref(msg);
 
@@ -969,7 +1057,7 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("GetRemoteServiceRecord failed: %s", derr.message);
 		if (c->msg) 
-			err_not_supported(hs->conn, c->msg);
+			err_not_supported(connection, c->msg);
 		dbus_error_free(&derr);
 		goto failed;
 	}
@@ -979,14 +1067,14 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 				DBUS_TYPE_INVALID)) {
 		error("Unable to get args from GetRecordReply");
 		if (c->msg) 
-			err_not_supported(hs->conn, c->msg);
+			err_not_supported(connection, c->msg);
 		goto failed;
 	}
 
 	if (!array) {
 		error("Unable to get handle array from reply");
 		if (c->msg) 
-			err_not_supported(hs->conn, c->msg);
+			err_not_supported(connection, c->msg);
 		goto failed;
 	}
 
@@ -994,7 +1082,7 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	if (!record) {
 		error("Unable to extract service record from reply");
 		if (c->msg) 
-			err_not_supported(hs->conn, c->msg);
+			err_not_supported(connection, c->msg);
 		goto failed;
 	}
 
@@ -1012,14 +1100,14 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	if (c->ch == -1) {
 		error("Unable to extract RFCOMM channel from service record");
 		if (c->msg) 
-			err_not_supported(hs->conn, c->msg);
+			err_not_supported(connection, c->msg);
 		goto failed;
 	}
 
 	if (rfcomm_connect(hs, &err) < 0) {
 		error("Unable to connect");
 		if (c->msg) 
-			err_connect_failed(hs->conn, c->msg, err);
+			err_connect_failed(connection, c->msg, err);
 		goto failed;
 	}
 
@@ -1043,7 +1131,7 @@ static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
 	DBusMessage *reply = NULL;
 
 	if (!hs || !hs->sco)
-		return err_not_connected(hs->conn, msg);
+		return err_not_connected(connection, msg);
 
 	if (msg) {
 		reply = dbus_message_new_method_return(msg);
@@ -1054,7 +1142,7 @@ static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
 	if (hs->state == HEADSET_STATE_PLAY_IN_PROGRESS && hs->pending_connect) {
 		g_io_channel_close(hs->pending_connect->io);
 		if (hs->pending_connect->msg)
-			err_connect_failed(hs->conn, hs->pending_connect->msg,
+			err_connect_failed(connection, hs->pending_connect->msg,
 						EINTR);
 		pending_connect_free(hs->pending_connect);
 		hs->pending_connect = NULL;
@@ -1064,7 +1152,7 @@ static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
 	close_sco(hs);
 
 	if (reply)
-		send_message_and_unref(hs->conn, reply);
+		send_message_and_unref(connection, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1095,7 +1183,7 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 		if (hs->pending_connect->io)
 			g_io_channel_close(hs->pending_connect->io);
 		if (hs->pending_connect->msg)
-			err_connect_failed(hs->conn, hs->pending_connect->msg,
+			err_connect_failed(connection, hs->pending_connect->msg,
 						EINTR);
 		pending_connect_free(hs->pending_connect);
 		hs->pending_connect = NULL;
@@ -1112,7 +1200,7 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 	hs->data_length = 0;
 
 	if (reply)
-		send_message_and_unref(hs->conn, reply);
+		send_message_and_unref(connection, reply);
 	
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1136,7 +1224,7 @@ static DBusHandlerResult hs_is_connected(struct headset *hs, DBusMessage *msg)
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
 
-	send_message_and_unref(hs->conn, reply);
+	send_message_and_unref(connection, reply);
 	
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1163,9 +1251,9 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 		error("GetRemoteServiceHandles failed: %s", derr.message);
 		if (c->msg) {
 			if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
-				err_connect_failed(hs->conn, c->msg, EHOSTDOWN);
+				err_connect_failed(connection, c->msg, EHOSTDOWN);
 			else
-				err_not_supported(hs->conn, c->msg);
+				err_not_supported(connection, c->msg);
 		}
 		dbus_error_free(&derr);
 		goto failed;
@@ -1177,21 +1265,21 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	  
 		error("Unable to get args from reply");
 		if (c->msg) 
-			err_not_supported(hs->conn, c->msg);
+			err_not_supported(connection, c->msg);
 		goto failed;
 	}
 
 	if (!array) {
 		error("Unable to get handle array from reply");
 		if (c->msg) 
-			err_not_supported(hs->conn, c->msg);
+			err_not_supported(connection, c->msg);
 		goto failed;
 	}
 
 	if (array_len < 1) {
 		debug("No record handles found");
 		if (c->msg) 
-			err_not_supported(hs->conn, c->msg);
+			err_not_supported(connection, c->msg);
 		goto failed;
 	}
 
@@ -1204,7 +1292,7 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	if (!msg) {
 		error("Unable to allocate new method call");
 		if (c->msg) 
-			err_connect_failed(hs->conn, c->msg, ENOMEM);
+			err_connect_failed(connection, c->msg, ENOMEM);
 		goto failed;
 	}
 
@@ -1216,10 +1304,10 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 					DBUS_TYPE_UINT32, &handle,
 					DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(hs->conn, msg, &pending, -1)) {
+	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceRecord failed");
 		if (c->msg) 
-			err_connect_failed(hs->conn, c->msg, EIO);
+			err_connect_failed(connection, c->msg, EIO);
 		goto failed;
 	}
 
@@ -1278,13 +1366,13 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 					DBUS_TYPE_STRING, &hs_svc,
 					DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(hs->conn, msg, &pending, -1)) {
+	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceHandles failed");
 		pending_connect_free(hs->pending_connect);
 		hs->pending_connect = NULL;
 		hs->state = HEADSET_STATE_DISCONNECTED;
 		dbus_message_unref(msg);
-		return err_connect_failed(hs->conn, msg, EIO);
+		return err_connect_failed(connection, msg, EIO);
 	}
 
 	dbus_pending_call_set_notify(pending, get_handles_reply, hs, NULL);
@@ -1339,7 +1427,7 @@ static DBusHandlerResult hs_ring(struct headset *hs, DBusMessage *msg)
 	assert(hs != NULL);
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return err_not_connected(hs->conn, msg);
+		return err_not_connected(connection, msg);
 
 	if (msg) {
 		reply = dbus_message_new_method_return(msg);
@@ -1354,14 +1442,14 @@ static DBusHandlerResult hs_ring(struct headset *hs, DBusMessage *msg)
 
 	if (headset_send_ring(hs) != G_IO_ERROR_NONE) {
 		dbus_message_unref(reply);
-		return err_failed(hs->conn, msg);
+		return err_failed(connection, msg);
 	}
 
 	hs->ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb, hs);
 
 done:
 	if (reply)
-		send_message_and_unref(hs->conn, reply);
+		send_message_and_unref(connection, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1371,7 +1459,7 @@ static DBusHandlerResult hs_cancel_ringing(struct headset *hs, DBusMessage *msg)
 	DBusMessage *reply = NULL;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return err_not_connected(hs->conn, msg);
+		return err_not_connected(connection, msg);
 
 	if (msg) {
 		reply = dbus_message_new_method_return(msg);
@@ -1389,7 +1477,7 @@ static DBusHandlerResult hs_cancel_ringing(struct headset *hs, DBusMessage *msg)
 
 done:
 	if (reply)
-		send_message_and_unref(hs->conn, reply);
+		send_message_and_unref(connection, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1401,13 +1489,13 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 	int sk, err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return err_not_connected(hs->conn, msg); /* FIXME: in progress error? */
+		return err_not_connected(connection, msg); /* FIXME: in progress error? */
 
 	if (hs->state >= HEADSET_STATE_PLAY_IN_PROGRESS || hs->pending_connect)
-		return err_already_connected(hs->conn, msg);
+		return err_already_connected(connection, msg);
 
 	if (hs->sco)
-		return err_already_connected(hs->conn, msg);
+		return err_already_connected(connection, msg);
 
 	c = g_try_new0(struct pending_connect, 1);
 	if (!c)
@@ -1421,7 +1509,7 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 	if (sk < 0) {
 		err = errno;
 		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
-		err_connect_failed(hs->conn, msg, err);
+		err_connect_failed(connection, msg, err);
 		goto failed;
 	}
 
@@ -1439,13 +1527,13 @@ static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
 	if (bind(sk, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		err = errno;
 		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
-		err_connect_failed(hs->conn, msg, err);
+		err_connect_failed(connection, msg, err);
 		goto failed;
 	}
 
 	if (set_nonblocking(sk) < 0) {
 		err = errno;
-		err_connect_failed(hs->conn, msg, err);
+		err_connect_failed(connection, msg, err);
 		goto failed;
 	}
 
@@ -1525,15 +1613,17 @@ static const DBusObjectPathVTable hs_table = {
 	.message_function = hs_message,
 };
 
-/*
-** audio_headset_new:
-** Create a unique dbus object path for the headset and allocates a new
-** headset or return NULL if fail
-*/
-struct headset *headset_new(DBusConnection *conn, const bdaddr_t *bda)
+char *headset_add(const bdaddr_t *bda)
 {
 	static int headset_uid = 0;
 	struct headset *hs;
+	GSList *match;
+
+	match = g_slist_find_custom(headsets, bda, headset_bda_cmp);
+	if (match) {
+		hs = match->data;
+		return hs->object_path;
+	}
 
 	hs = g_try_new0(struct headset, 1);
 	if (!hs) {
@@ -1544,7 +1634,7 @@ struct headset *headset_new(DBusConnection *conn, const bdaddr_t *bda)
 	snprintf(hs->object_path, sizeof(hs->object_path),
 			HEADSET_PATH_BASE "%d", headset_uid++);
 
-	if (!dbus_connection_register_object_path(conn, hs->object_path,
+	if (!dbus_connection_register_object_path(connection, hs->object_path,
 						&hs_table, hs)) {
 		error("D-Bus failed to register %s path", hs->object_path);
 		free (hs);
@@ -1553,118 +1643,38 @@ struct headset *headset_new(DBusConnection *conn, const bdaddr_t *bda)
 
 	bacpy(&hs->bda, bda);
 
-	hs->conn = dbus_connection_ref(conn);
+	headsets = g_slist_append(headsets, hs);
 
-	return hs;
+	return g_strdup(hs->object_path);
 }
 
-void headset_unref(struct headset *hs)
+void headset_remove(char *path)
 {
-	assert(hs != NULL);
+	struct headset *hs;
+
+	if (!dbus_connection_get_object_path_data(connection, path, (void *)
+							&hs))
+		return;
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED)
 		hs_disconnect(hs, NULL);
 
-	if (!dbus_connection_unregister_object_path(hs->conn, hs->object_path))
-		error("D-Bus failed to unregister %s path", hs->object_path);
+	if (!dbus_connection_unregister_object_path(connection, path))
+		error("D-Bus failed to unregister %s path", path);
 
-	dbus_connection_unref(hs->conn);
+	headsets = g_slist_remove(headsets, hs);
 
 	g_free(hs);
+	g_free(path);
 }
 
-gboolean headset_close_output(struct headset *hs)
+void headset_init(DBusConnection *conn)
 {
-	assert(hs != NULL);
-
-	if (hs->audio_output == NULL) 
-		return FALSE;
-
-	g_io_channel_close(hs->audio_output);
-	g_io_channel_unref(hs->audio_output);
-	hs->audio_output = NULL;
-
-	return TRUE;
+	connection = dbus_connection_ref(conn);
 }
 
-/* FIXME: in the furture, that would be great to provide user space alsa driver (not plugin) */
-gboolean headset_open_output(struct headset *hs, const char *output)
+void headset_exit(void)
 {
-	int out;
-
-	assert(hs != NULL && output != NULL);
-
-	headset_close_output(hs);
-	if (output && hs->output) {
-		g_free(hs->output);
-		hs->output = g_strdup(output);
-	}
-
-	assert(hs->output);
-
-	out = open(hs->output, O_WRONLY | O_SYNC | O_CREAT);
-
-	if (out < 0) {
-		error("open(%s): %s %d", hs->output, strerror(errno), errno);
-		return FALSE;
-	}
-
-	hs->audio_output = g_io_channel_unix_new(out);
-	if (!hs->audio_output) {
-		error("Allocating new channel for audio output!");
-		return FALSE;
-	}
-
-	g_io_channel_set_close_on_unref(hs->audio_output, TRUE);
-
-	return TRUE;
-}
-
-gboolean headset_close_input(struct headset *hs)
-{
-	assert(hs != NULL);
-
-	if (hs->audio_input == NULL) 
-		return FALSE;
-
-	g_io_channel_close(hs->audio_input);
-	g_io_channel_unref(hs->audio_input);
-	hs->audio_input = NULL;
-
-	return TRUE;
-}
-
-gboolean headset_open_input(struct headset *hs, const char *input)
-{
-	int in;
-
-	assert(hs != NULL);
-	
-	/* we keep the input name, and NULL can be use to reopen */
-	if (input && hs->input) {
-		g_free(hs->input);
-		hs->input = g_strdup(input);
-	}
-
-	assert(hs->input);
-
-	in = open(hs->input, O_RDONLY | O_NOCTTY);
-
-	if (in < 0) {
-		error("open(%s): %s %d", hs->input, strerror(errno), errno);
-		return FALSE;
-	}
-
-	hs->audio_input = g_io_channel_unix_new(in);
-	if (!hs->audio_input) {
-		error("Allocating new channel for audio input!");
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
-const char *headset_get_path(struct headset *hs)
-{
-	return hs->object_path;
+	dbus_connection_unref(connection);
+	connection = NULL;
 }
