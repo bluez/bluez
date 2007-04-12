@@ -622,7 +622,7 @@ connection_find_data(DBusConnection *conn, const char *path,
 	struct network_conn *nc;
 	char addr[18];
 
-	if (!dbus_connection_get_object_path_data(conn, path, (void *)&nc))
+	if (!dbus_connection_get_object_path_data(conn, path, (void *) &nc))
 		return -1;
 
 	if (strcmp(pattern, nc->dev) == 0)
