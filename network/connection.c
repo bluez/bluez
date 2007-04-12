@@ -385,6 +385,7 @@ static DBusHandlerResult get_interface(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
 	struct network_conn *nc = data;
+	const char *pdev = nc->dev;
 	DBusMessage *reply;
 
 	if (nc->state != CONNECTED) {
@@ -396,7 +397,7 @@ static DBusHandlerResult get_interface(DBusConnection *conn, DBusMessage *msg,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &nc->dev,
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &pdev,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
