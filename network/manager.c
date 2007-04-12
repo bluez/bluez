@@ -53,13 +53,13 @@ struct manager {
 };
 
 struct pending_reply {
-	DBusConnection *conn;
-	DBusMessage *msg;
-	struct manager *mgr;
-	uint16_t id;
-	char *addr;
-	char *path;
-	char *adapter_path;
+	DBusConnection	*conn;
+	DBusMessage	*msg;
+	struct manager	*mgr;
+	char		*addr;
+	char		*path;
+	char		*adapter_path;
+	uint16_t	id;
 };
 
 static DBusConnection *connection = NULL;
@@ -648,37 +648,9 @@ static const DBusObjectPathVTable manager_table = {
 	.unregister_function = manager_unregister,
 };
 
-int network_dbus_init(void)
-{
-	struct manager *mgr;
-
-	mgr = g_new0(struct manager, 1);
-
-	/* Fallback to catch invalid network path */
-	if (dbus_connection_register_fallback(connection, NETWORK_PATH,
-						&manager_table, mgr) == FALSE) {
-		error("D-Bus failed to register %s path", NETWORK_PATH);
-		goto fail;
-	}
-
-	info("Registered manager path:%s", NETWORK_PATH);
-
-	return 0;
-
-fail:
-	manager_free(mgr);
-
-	return -1;
-}
-
-void network_dbus_exit(void)
-{
-	dbus_connection_unregister_object_path(connection, NETWORK_PATH);
-}
-
 int network_init(DBusConnection *conn)
 {
-	int err;
+	struct manager *mgr;
 
 	if (bridge_init() < 0) {
 		error("Can't init bridge module");
@@ -697,16 +669,27 @@ int network_init(DBusConnection *conn)
 
 	connection = dbus_connection_ref(conn);
 
-	err = network_dbus_init();
-	if (err < 0)
+	/* FIXME: make manager global */
+	mgr = g_new0(struct manager, 1);
+
+	/* Fallback to catch invalid network path */
+	if (dbus_connection_register_fallback(connection, NETWORK_PATH,
+						&manager_table, mgr) == FALSE) {
+		error("D-Bus failed to register %s path", NETWORK_PATH);
+		manager_free(mgr);
 		dbus_connection_unref(connection);
 
-	return err;
+		return -1;
+	}
+
+	info("Registered manager path:%s", NETWORK_PATH);
+
+	return 0;
 }
 
 void network_exit(void)
 {
-	network_dbus_exit();
+	dbus_connection_unregister_object_path(connection, NETWORK_PATH);
 
 	dbus_connection_unref(connection);
 
