@@ -33,10 +33,6 @@
 
 void manager_add_headset(char *path);
 
-struct headset *manager_find_headset_by_bda(bdaddr_t *bda);
-
-DBusConnection *manager_get_dbus_conn(void);
-
 int audio_init(DBusConnection *conn);
 
 void audio_exit(void);

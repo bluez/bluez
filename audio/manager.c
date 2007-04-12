@@ -436,11 +436,6 @@ static const DBusObjectPathVTable am_table = {
 	.message_function = am_message,
 };
 
-DBusConnection *manager_get_dbus_conn(void)
-{
-	return connection;
-}
-
 int audio_init(DBusConnection *conn)
 {
 	GIOChannel *io;
