@@ -82,12 +82,16 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	struct network_conn *nc = data;
 	DBusMessage *signal;
 
-	signal = dbus_message_new_signal(nc->path,
-			NETWORK_CONNECTION_INTERFACE, "Disconnected");
+	if (nc->conn != NULL) {
+		signal = dbus_message_new_signal(nc->path,
+				NETWORK_CONNECTION_INTERFACE, "Disconnected");
 
-	send_message_and_unref(nc->conn, signal);
+		send_message_and_unref(nc->conn, signal);
+	}
 	info("%s disconnected", nc->dev);
 	nc->state = DISCONNECTED;
+	memset(nc->dev, 0, 16);
+	strncpy(nc->dev, netdev, 16);
 	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
 	return FALSE;
@@ -535,9 +539,6 @@ static void connection_free(struct network_conn *nc)
 	if (nc->state == CONNECTED)
 		bnep_kill_connection(&nc->dst);
 
-	if (nc->dev)
-		g_free(nc->dev);
-
 	if (nc->name)
 		g_free(nc->name);
 
@@ -545,6 +546,7 @@ static void connection_free(struct network_conn *nc)
 		g_free(nc->desc);
 
 	g_free(nc);
+	nc = NULL;
 }
 
 static void connection_unregister(DBusConnection *conn, void *data)
@@ -610,5 +612,29 @@ int connection_register(DBusConnection *conn, const char *path,
 	return 0;
 fail:
 	connection_free(nc);
+	return -1;
+}
+
+int
+connection_find_data(DBusConnection *conn, const char *path,
+			const char *pattern)
+{
+	struct network_conn *nc;
+	char addr[18];
+
+	if (!dbus_connection_get_object_path_data(conn, path, &nc))
+		return -1;
+
+	if (strcmp(pattern, nc->dev) == 0)
+		return 0;
+
+	if (strcmp(pattern, nc->name) == 0)
+		return 0;
+
+	ba2str(&nc->dst, addr);
+
+	if (strcmp(pattern, addr) == 0)
+		return 0;
+
 	return -1;
 }
