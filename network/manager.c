@@ -28,6 +28,8 @@
 #include <ctype.h>
 #include <dirent.h>
 
+#include <sys/stat.h>
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
@@ -53,9 +55,6 @@
 
 #define MAX_PATH_LENGTH		64 /* D-Bus path */
 
-static GSList *server_paths = NULL;	/* Network registered servers paths */
-static GSList *connection_paths = NULL;	/* Network registered connections paths */
-
 struct pending_reply {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
@@ -65,7 +64,12 @@ struct pending_reply {
 	uint16_t	id;
 };
 
+static GSList *server_paths	= NULL;	/* Network registered servers paths */
+static GSList *connection_paths	= NULL;	/* Network registered connections paths */
+
 static DBusConnection *connection = NULL;
+
+static int net_uid = 0;	/* Network objects identifier */
 
 static void pending_reply_free(struct pending_reply *pr)
 {
@@ -342,6 +346,7 @@ static void get_address_reply(DBusPendingCall *call, void *data)
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
 	const char *address;
+	bdaddr_t src;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -360,6 +365,9 @@ static void get_address_reply(DBusPendingCall *call, void *data)
 		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
 		goto fail;
 	}
+
+	str2ba(address, &src);
+	network_store_info(&src, pr->id, FALSE);
 
 	server_paths = g_slist_append(server_paths, g_strdup(pr->path));
 
@@ -490,7 +498,8 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	pr->addr = NULL;
 	pr->id = id;
 	pr->path = g_new0(char, MAX_PATH_LENGTH);
-	snprintf(pr->path, MAX_PATH_LENGTH, NETWORK_PATH "/server/%s", bnep_name(id));
+	snprintf(pr->path, MAX_PATH_LENGTH, NETWORK_PATH"/server/%s%d",
+							bnep_name(id), net_uid++);
 
 	if (g_slist_find_custom(server_paths, pr->path,
 				(GCompareFunc) strcmp)) {
@@ -510,6 +519,7 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 static DBusHandlerResult remove_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	/* FIXME: Remove from the storage */
 	return remove_path(conn, msg, &server_paths, "ServerRemoved");
 }
 
@@ -562,7 +572,6 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct pending_reply *pr;
-	static int uid = 0;
 	DBusError derr;
 	const char *addr;
 	const char *str;
@@ -588,7 +597,8 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	pr->addr = g_strdup(addr);
 	pr->id = id;
 	pr->path = g_new0(char, MAX_PATH_LENGTH);
-	snprintf(pr->path, MAX_PATH_LENGTH, NETWORK_PATH "/connection%d", uid++);
+	snprintf(pr->path, MAX_PATH_LENGTH,
+			NETWORK_PATH"/connection%d", net_uid++);
 
 	if (get_default_adapter(pr, default_adapter_reply) < 0) {
 		err_failed(conn, msg, "D-Bus path registration failed");
@@ -601,6 +611,7 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 static DBusHandlerResult remove_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	/* FIXME: Remove from the storage */
 	return remove_path(conn, msg, &connection_paths, "ConnectionRemoved");
 }
 
@@ -677,14 +688,12 @@ static void stored_server(char *key, char *value, void *data)
 	const bdaddr_t *src = data; 
 	uint16_t id;
 
-	/* FIXME: we need change the path to support multiple sources */
-
 	ba2str(src, addr);
 	id = bnep_service_id(key);
-	snprintf(path, MAX_PATH_LENGTH, "%s/server/%s", NETWORK_PATH, bnep_name(id));
+	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/server/%s%d",
+						bnep_name(id), net_uid++);
 
-	if (server_register(connection, addr, path, id) < 0)
-		error("Register (%s, %s) path failed", addr, path);
+	server_register(connection, addr, path, id);
 }
 
 static void register_stored_servers(void)
@@ -765,4 +774,46 @@ void network_exit(void)
 
 	bnep_cleanup();
 	bridge_cleanup();
+}
+
+static inline int create_filename(char *buf, size_t size,
+					bdaddr_t *bdaddr, const char *name)
+{
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+
+	return create_name(buf, size, STORAGEDIR, addr, name);
+}
+
+int network_del_stored_info(bdaddr_t *src, uint16_t uuid)
+{
+	char filename[PATH_MAX + 1];
+	const char *str;
+	int err;
+
+	create_filename(filename, PATH_MAX, src, "network");
+
+	str = bnep_uuid(uuid);
+
+	err = textfile_del(filename, str);
+
+	return err;
+}
+
+int network_store_info(bdaddr_t *src, uint16_t uuid, gboolean enable)
+{
+	char filename[PATH_MAX + 1];
+	const char *str;
+	int err;
+
+	create_filename(filename, PATH_MAX, src, "network");
+
+	str = bnep_uuid(uuid);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	err = textfile_put(filename, str, enable ? "1" : "0");
+
+	return err;
 }

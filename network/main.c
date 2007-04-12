@@ -33,6 +33,8 @@
 #include <signal.h>
 #include <glib.h>
 
+#include <bluetooth/bluetooth.h>
+
 #include "dbus.h"
 #include "logging.h"
 
