@@ -25,6 +25,9 @@
 #include <config.h>
 #endif
 
+#include <ctype.h>
+#include <dirent.h>
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
@@ -34,8 +37,9 @@
 
 #include <glib.h>
 
-#include "logging.h"
 #include "dbus.h"
+#include "logging.h"
+#include "textfile.h"
 
 #define NETWORK_PATH "/org/bluez/network"
 #define NETWORK_MANAGER_INTERFACE "org.bluez.network.Manager"
@@ -46,6 +50,8 @@
 #include "server.h"
 #include "connection.h"
 #include "common.h"
+
+#define MAX_PATH_LENGTH		64 /* D-Bus path */
 
 static GSList *server_paths = NULL;	/* Network registered servers paths */
 static GSList *connection_paths = NULL;	/* Network registered connections paths */
@@ -483,8 +489,8 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	pr->msg = dbus_message_ref(msg);
 	pr->addr = NULL;
 	pr->id = id;
-	pr->path = g_new0(char, 32);
-	snprintf(pr->path, 32, NETWORK_PATH "/server/%s", bnep_name(id));
+	pr->path = g_new0(char, MAX_PATH_LENGTH);
+	snprintf(pr->path, MAX_PATH_LENGTH, NETWORK_PATH "/server/%s", bnep_name(id));
 
 	if (g_slist_find_custom(server_paths, pr->path,
 				(GCompareFunc) strcmp)) {
@@ -542,8 +548,8 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	pr->msg = dbus_message_ref(msg);
 	pr->addr = g_strdup(addr);
 	pr->id = id;
-	pr->path = g_new0(char, 48);
-	snprintf(pr->path, 48, NETWORK_PATH "/connection%d", uid++);
+	pr->path = g_new0(char, MAX_PATH_LENGTH);
+	snprintf(pr->path, MAX_PATH_LENGTH, NETWORK_PATH "/connection%d", uid++);
 
 	if (get_default_adapter(pr, default_adapter_reply) < 0) {
 		err_failed(conn, msg, "D-Bus path registration failed");
@@ -622,6 +628,53 @@ static const DBusObjectPathVTable manager_table = {
 	.unregister_function = manager_unregister,
 };
 
+static void stored_server(char *key, char *value, void *data)
+{
+	char path[MAX_PATH_LENGTH];
+	char addr[18];
+	const bdaddr_t *src = data; 
+	uint16_t id;
+
+	/* FIXME: we need change the path to support multiple sources */
+
+	ba2str(src, addr);
+	id = bnep_service_id(key);
+	snprintf(path, MAX_PATH_LENGTH, "%s/server/%s", NETWORK_PATH, bnep_name(id));
+
+	if (server_register(connection, addr, path, id) < 0)
+		error("Register (%s, %s) path failed", addr, path);
+}
+
+static void register_stored_servers(void)
+{
+	char dirname[PATH_MAX + 1];
+	char filename[PATH_MAX + 1];
+	struct dirent *de;
+	DIR *dir;
+	bdaddr_t src;
+
+	snprintf(dirname, PATH_MAX, "%s", STORAGEDIR);
+
+	dir = opendir(dirname);
+	if (!dir)
+		return;
+
+	while ((de = readdir(dir)) != NULL) {
+		if (!isdigit(de->d_name[0]))
+			continue;
+
+		create_name(filename, PATH_MAX, STORAGEDIR,
+						de->d_name, "network");
+
+		str2ba(de->d_name, &src);
+
+		textfile_foreach(filename, stored_server, &src);
+	}
+
+	closedir(dir);
+}
+
+
 int network_init(DBusConnection *conn)
 {
 	if (bridge_init() < 0) {
@@ -652,7 +705,7 @@ int network_init(DBusConnection *conn)
 
 	info("Registered manager path:%s", NETWORK_PATH);
 
-	/* FIXME: Missing register stored servers */
+	register_stored_servers();
 
 	return 0;
 }
