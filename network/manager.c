@@ -47,15 +47,12 @@
 #include "connection.h"
 #include "common.h"
 
-struct manager {
-	GSList *servers;	/* Network registered servers paths */
-	GSList *connections;	/* Network registered connections paths */
-};
+static GSList *server_paths = NULL;	/* Network registered servers paths */
+static GSList *connection_paths = NULL;	/* Network registered connections paths */
 
 struct pending_reply {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
-	struct manager	*mgr;
 	char		*addr;
 	char		*path;
 	char		*adapter_path;
@@ -219,8 +216,7 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	pr->mgr->connections = g_slist_append(pr->mgr->connections,
-						g_strdup(pr->path));
+	connection_paths = g_slist_append(connection_paths, g_strdup(pr->path));
 
 	create_path(pr->conn, pr->msg, pr->path, "ConnectionCreated");
 fail:
@@ -359,8 +355,7 @@ static void get_address_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	pr->mgr->servers = g_slist_append(pr->mgr->servers,
-						g_strdup(pr->path));
+	server_paths = g_slist_append(server_paths, g_strdup(pr->path));
 
 	create_path(pr->conn, pr->msg, pr->path, "ServerCreated");
 fail:
@@ -459,15 +454,12 @@ static int get_default_adapter(struct pending_reply *pr,
 static DBusHandlerResult list_servers(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	struct manager *mgr = data;
-
-	return list_paths(conn, msg, mgr->servers);
+	return list_paths(conn, msg, server_paths);
 }
 
 static DBusHandlerResult create_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct manager *mgr = data;
 	struct pending_reply *pr;
 	DBusError derr;
 	const char *str;
@@ -489,13 +481,12 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	pr = g_new0(struct pending_reply, 1);
 	pr->conn = dbus_connection_ref(conn);;
 	pr->msg = dbus_message_ref(msg);
-	pr->mgr = mgr;
 	pr->addr = NULL;
 	pr->id = id;
 	pr->path = g_new0(char, 32);
 	snprintf(pr->path, 32, NETWORK_PATH "/server/%s", bnep_name(id));
 
-	if (g_slist_find_custom(mgr->servers, pr->path,
+	if (g_slist_find_custom(server_paths, pr->path,
 				(GCompareFunc) strcmp)) {
 		err_already_exists(conn, msg, "Server Already exists");
 		pending_reply_free(pr);
@@ -513,23 +504,18 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 static DBusHandlerResult remove_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct manager *mgr = data;
-
-	return remove_path(conn, msg, &mgr->servers, "ServerRemoved");
+	return remove_path(conn, msg, &server_paths, "ServerRemoved");
 }
 
 static DBusHandlerResult list_connections(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct manager *mgr = data;
-
-	return list_paths(conn, msg, mgr->connections);
+	return list_paths(conn, msg, connection_paths);
 }
 
 static DBusHandlerResult create_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct manager *mgr = data;
 	struct pending_reply *pr;
 	static int uid = 0;
 	DBusError derr;
@@ -554,7 +540,6 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	pr = g_new0(struct pending_reply, 1);
 	pr->conn = dbus_connection_ref(conn);
 	pr->msg = dbus_message_ref(msg);
-	pr->mgr = mgr;
 	pr->addr = g_strdup(addr);
 	pr->id = id;
 	pr->path = g_new0(char, 48);
@@ -571,9 +556,7 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 static DBusHandlerResult remove_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct manager *mgr = data;
-
-	return remove_path(conn, msg, &mgr->connections, "ConnectionRemoved");
+	return remove_path(conn, msg, &connection_paths, "ConnectionRemoved");
 }
 
 static DBusHandlerResult manager_message(DBusConnection *conn,
@@ -614,32 +597,23 @@ static DBusHandlerResult manager_message(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static void manager_free(struct manager *mgr)
-{
-	if (!mgr)
-		return;
-
-	if (mgr->servers) {
-		g_slist_foreach(mgr->servers, (GFunc)g_free, NULL);
-		g_slist_free(mgr->servers);
-	}
-
-	if (mgr->connections) {
-		g_slist_foreach(mgr->connections, (GFunc)g_free, NULL);
-		g_slist_free(mgr->connections);
-	}
-
-	g_free (mgr);
-	bnep_kill_all_connections();
-}
-
 static void manager_unregister(DBusConnection *conn, void *data)
 {
-	struct manager *mgr = data;
-
 	info("Unregistered manager path");
 
-	manager_free(mgr);
+	if (server_paths) {
+		g_slist_foreach(server_paths, (GFunc)g_free, NULL);
+		g_slist_free(server_paths);
+		server_paths = NULL;
+	}
+
+	if (connection_paths) {
+		g_slist_foreach(connection_paths, (GFunc)g_free, NULL);
+		g_slist_free(connection_paths);
+		connection_paths = NULL;
+	}
+
+	bnep_kill_all_connections();
 }
 
 /* Virtual table to handle manager object path hierarchy */
@@ -650,8 +624,6 @@ static const DBusObjectPathVTable manager_table = {
 
 int network_init(DBusConnection *conn)
 {
-	struct manager *mgr;
-
 	if (bridge_init() < 0) {
 		error("Can't init bridge module");
 		return -1;
@@ -669,20 +641,18 @@ int network_init(DBusConnection *conn)
 
 	connection = dbus_connection_ref(conn);
 
-	/* FIXME: make manager global */
-	mgr = g_new0(struct manager, 1);
-
 	/* Fallback to catch invalid network path */
 	if (dbus_connection_register_fallback(connection, NETWORK_PATH,
-						&manager_table, mgr) == FALSE) {
+						&manager_table, NULL) == FALSE) {
 		error("D-Bus failed to register %s path", NETWORK_PATH);
-		manager_free(mgr);
 		dbus_connection_unref(connection);
 
 		return -1;
 	}
 
 	info("Registered manager path:%s", NETWORK_PATH);
+
+	/* FIXME: Missing register stored servers */
 
 	return 0;
 }
