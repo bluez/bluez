@@ -115,20 +115,6 @@ static void pending_req_free(struct pending_req *pr)
 	g_free(pr);
 }
 
-static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
-{
-	struct device *idev;
-
-	if (!dbus_connection_get_object_path_data(connection, path,
-							(void *) &idev))
-		return -1;
-
-	if (!idev)
-		return -1;
-
-	return bacmp(&idev->dst, bdaddr);
-}
-
 static int get_record(struct pending_req *pr, uint32_t handle,
 					DBusPendingCallNotifyFunction cb)
 {
@@ -637,6 +623,16 @@ done:
 	dbus_pending_call_unref(call);
 }
 
+static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
+{
+	bdaddr_t src, dst;
+
+	if (input_device_get_bdaddr(connection, path, &src, &dst) < 0)
+		return -1;
+
+	return bacmp(&dst, bdaddr);
+}
+
 static DBusHandlerResult create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -710,7 +706,6 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 static DBusHandlerResult remove_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct device *idev;
 	DBusMessage *reply;
 	DBusError derr;
 	GSList *l;
@@ -735,12 +730,6 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 
 	g_free(l->data);
 	device_paths = g_slist_remove(device_paths, l->data);
-
-	if (!dbus_connection_get_object_path_data(connection,
-					path, (void *) &idev))
-		return err_does_not_exist(conn, msg, "Input doesn't exist");
-
-	del_stored_device_info(&idev->src, &idev->dst);
 
 	if (input_device_unregister(conn, path) < 0) {
 		dbus_message_unref(reply);

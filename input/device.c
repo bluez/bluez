@@ -61,6 +61,29 @@
 
 #define UPDOWN_ENABLED		1
 
+struct pending_connect {
+	DBusConnection *conn;
+	DBusMessage *msg;
+};
+
+struct fake_input {
+	GIOChannel	*io;
+	int		rfcomm; /* RFCOMM socket */
+	int		uinput;	/* uinput socket */
+	uint8_t		ch;	/* RFCOMM channel number */
+};
+
+struct device {
+	bdaddr_t		src;
+	bdaddr_t		dst;
+	char			*name;
+	uint8_t			major;
+	uint8_t			minor;
+	struct hidp_connadd_req hidp; /* FIXME: Use dynamic alloc? */
+	struct fake_input	*fake;
+	struct pending_connect *pending_connect;
+};
+
 static struct device *device_new(bdaddr_t *src, bdaddr_t *dst)
 {
 	struct device *idev;
@@ -1086,6 +1109,13 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 int input_device_unregister(DBusConnection *conn, const char *path)
 {
 	DBusMessage *msg;
+	struct device *idev;
+
+	if (!dbus_connection_get_object_path_data(conn,
+						path, (void *) &idev))
+		return -1;
+
+	del_stored_device_info(&idev->src, &idev->dst);
 
 	if (!dbus_connection_unregister_object_path(conn, path)) {
 		error("Input device path unregister failed");
@@ -1102,6 +1132,24 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 			DBUS_TYPE_INVALID);
 
 	send_message_and_unref(conn, msg);
+
+	return 0;
+}
+
+int input_device_get_bdaddr(DBusConnection *conn, const char *path,
+						bdaddr_t *src, bdaddr_t *dst)
+{
+	struct device *idev;
+
+	if (!dbus_connection_get_object_path_data(conn, path,
+							(void *) &idev))
+		return -1;
+
+	if (!idev)
+		return -1;
+
+	bacpy(src, &idev->src);
+	bacpy(dst, &idev->dst);
 
 	return 0;
 }
