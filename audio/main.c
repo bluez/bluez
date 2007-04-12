@@ -73,18 +73,24 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	headset_init(conn);
+	if (audio_init(conn) < 0) {
+		error("Audio init failed!");
+		exit(1);
+	}
 
-	audio_init(conn);
+	if (headset_init(conn) < 0) {
+		error("Headset initialization failed!");
+		exit(1);
+	}
 
 	if (argc > 1 && !strcmp(argv[1], "-s"))
 		register_external_service(conn, "audio", "Audio service", "");
 
 	g_main_loop_run(main_loop);
 
-	audio_exit();
-
 	headset_exit();
+
+	audio_exit();
 
 	dbus_connection_unref(conn);
 

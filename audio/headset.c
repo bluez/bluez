@@ -54,6 +54,8 @@
 #include "manager.h"
 #include "headset.h"
 
+#define DEFAULT_HS_AG_CHANNEL 12
+
 #define RING_INTERVAL 3000
 
 typedef enum {
@@ -101,6 +103,10 @@ struct headset {
 };
 
 static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg);
+
+static GIOChannel *hs_server = NULL;
+
+static uint32_t hs_record_id = 0;
 
 static GSList *headsets = NULL;
 
@@ -496,7 +502,7 @@ static void auth_callback(DBusPendingCall *call, void *data)
 	dbus_message_unref(reply);
 }
 
-gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
+static gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 {
 	int srv_sk, cli_sk;
 	struct sockaddr_rc addr;
@@ -952,7 +958,7 @@ static int create_ag_record(sdp_buf_t *buf, uint8_t ch)
 	return ret;
 }
 
-uint32_t headset_add_ag_record(uint8_t channel)
+static uint32_t headset_add_ag_record(uint8_t channel)
 {
 	DBusMessage *msg, *reply;
 	DBusError derr;
@@ -1668,13 +1674,95 @@ void headset_remove(char *path)
 	g_free(path);
 }
 
-void headset_init(DBusConnection *conn)
+static GIOChannel *server_socket(uint8_t *channel)
 {
+	int sock, lm;
+	struct sockaddr_rc addr;
+	socklen_t sa_len;
+	GIOChannel *io;
+
+	sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sock < 0) {
+		error("server socket: %s (%d)", strerror(errno), errno);
+		return NULL;
+	}
+
+	lm = RFCOMM_LM_SECURE;
+	if (setsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
+		error("server setsockopt: %s (%d)", strerror(errno), errno);
+		close(sock);
+		return NULL;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
+	addr.rc_channel = 0;
+
+	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		error("server bind: %s", strerror(errno), errno);
+		close(sock);
+		return NULL;
+	}
+
+	if (listen(sock, 1) < 0) {
+		error("server listen: %s", strerror(errno), errno);
+		close(sock);
+		return NULL;
+	}
+
+	sa_len = sizeof(struct sockaddr_rc);
+	getsockname(sock, (struct sockaddr *) &addr, &sa_len);
+	*channel = addr.rc_channel;
+
+	io = g_io_channel_unix_new(sock);
+	if (!io) {
+		error("Unable to allocate new io channel");
+		close(sock);
+		return NULL;
+	}
+
+	return io;
+}
+
+int headset_init(DBusConnection *conn)
+{
+	uint8_t chan = DEFAULT_HS_AG_CHANNEL;
+
 	connection = dbus_connection_ref(conn);
+
+	hs_server = server_socket(&chan);
+	if (!hs_server)
+		return -1;
+
+	if (!hs_record_id)
+		hs_record_id = headset_add_ag_record(chan);
+
+	if (!hs_record_id) {
+		error("Unable to register service record");
+		g_io_channel_unref(hs_server);
+		hs_server = NULL;
+		return -1;
+	}
+
+	g_io_add_watch(hs_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				(GIOFunc) headset_server_io_cb, NULL);
+
+	return 0;
 }
 
 void headset_exit(void)
 {
+	if (hs_record_id) {
+		headset_remove_ag_record(hs_record_id);
+		hs_record_id = 0;
+	}
+
+	if (hs_server) {
+		g_io_channel_unref(hs_server);
+		hs_server = NULL;
+	}
+
 	dbus_connection_unref(connection);
 	connection = NULL;
 }

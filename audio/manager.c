@@ -55,9 +55,6 @@
 
 static DBusConnection *connection = NULL;
 
-static GIOChannel *hs_server = NULL;
-
-static uint32_t hs_record_id;
 static char *default_hs = NULL;
 
 static GSList *headsets = NULL;
@@ -133,84 +130,6 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	len = recvfrom(sk, buf, sizeof(buf), 0, (struct sockaddr *) &addr, &addrlen);
 
 	debug("path %s len %d", addr.sun_path + 1, len);
-
-	return TRUE;
-}
-
-static GIOChannel *server_socket(uint8_t *channel)
-{
-	int sock, lm;
-	struct sockaddr_rc addr;
-	socklen_t sa_len;
-	GIOChannel *io;
-
-	sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sock < 0) {
-		error("server socket: %s (%d)", strerror(errno), errno);
-		return NULL;
-	}
-
-	lm = RFCOMM_LM_SECURE;
-	if (setsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
-		error("server setsockopt: %s (%d)", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
-	addr.rc_channel = 0;
-
-	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("server bind: %s", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	if (listen(sock, 1) < 0) {
-		error("server listen: %s", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	sa_len = sizeof(struct sockaddr_rc);
-	getsockname(sock, (struct sockaddr *) &addr, &sa_len);
-	*channel = addr.rc_channel;
-
-	io = g_io_channel_unix_new(sock);
-	if (!io) {
-		error("Unable to allocate new io channel");
-		close(sock);
-		return NULL;
-	}
-
-	return io;
-}
-
-static gboolean manager_create_headset_server(uint8_t chan)
-{
-	if (hs_server) {
-		error("Server socket already created");
-		return FALSE;
-	}
-
-	hs_server = server_socket(&chan);
-	if (!hs_server)
-		return FALSE;
-
-	if (!hs_record_id)
-		hs_record_id = headset_add_ag_record(chan);
-
-	if (!hs_record_id) {
-		error("Unable to register service record");
-		g_io_channel_unref(hs_server);
-		hs_server = NULL;
-		return FALSE;
-	}
-
-	g_io_add_watch(hs_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				(GIOFunc) headset_server_io_cb, NULL);
 
 	return TRUE;
 }
@@ -478,8 +397,6 @@ int audio_init(DBusConnection *conn)
 
 	connection = dbus_connection_ref(conn);
 
-	manager_create_headset_server(12);
-
 	return 0;
 }
 
@@ -488,16 +405,6 @@ void audio_exit(void)
 	close(unix_sock);
 
 	unix_sock = -1;
-
-	if (hs_record_id) {
-		headset_remove_ag_record(hs_record_id);
-		hs_record_id = 0;
-	}
-
-	if (hs_server) {
-		g_io_channel_unref(hs_server);
-		hs_server = NULL;
-	}
 
 	if (headsets) {
 		g_slist_foreach(headsets, (GFunc) headset_remove, NULL);

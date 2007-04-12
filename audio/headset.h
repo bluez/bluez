@@ -33,13 +33,8 @@ char *headset_add(const bdaddr_t *bda);
 
 void headset_remove(char *path);
 
-uint32_t headset_add_ag_record(uint8_t channel);
+int headset_init(DBusConnection *conn);
 
-int headset_remove_ag_record(uint32_t rec_id);
-
-gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data);
-
-void headset_init(DBusConnection *conn);
 void headset_exit(void);
 
 #endif /* __AUDIO_HEADSET_H_ */
