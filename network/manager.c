@@ -681,22 +681,65 @@ static const DBusObjectPathVTable manager_table = {
 	.unregister_function = manager_unregister,
 };
 
-static void register_stored_nap(const bdaddr_t *src, const char *filename)
+static void parse_stored_connection(char *key, char *value, void *data)
 {
-	/* FIXME: extract name, description, secure, enabled, address range, routing ...*/
-}
-
-static void register_stored_gn(const bdaddr_t *src, const char *filename)
-{
-	/* FIXME: extract name, description, secure, enabled, address range ...*/
-}
-
-static void register_stored_connection(char *key, char *value, void *data)
-{
+	bdaddr_t dst;
+	char path[MAX_PATH_LENGTH];
+	char addr[18];
+	const char *ptr;
+	char *name;
+	int len, id;
 
 	/* Format: XX:XX:XX:XX:XX:XX#{NAP, GN} name:description */
 
-	info("connection - key:%s value:%s", key, value);
+	/* Parsing the key: address#role */
+	ptr = strchr(key, '#');
+
+	/* Empty address or invalid len */
+	if (!ptr || ((ptr - key) != 17))
+		return;
+
+	memset(addr, 0, 18);
+	strncpy(addr, key, 17);
+	str2ba(addr, &dst);
+
+	/* Empty role */
+	if (++ptr == NULL)
+		return;
+
+	if (strcasecmp("nap", ptr) == 0) {
+		id = BNEP_SVC_NAP;
+		snprintf(path, MAX_PATH_LENGTH,
+				NETWORK_PATH"/server/nap%d", net_uid++);
+	} else if (strcasecmp("gn", ptr) == 0) {
+		id = BNEP_SVC_GN;
+		snprintf(path, MAX_PATH_LENGTH,
+				NETWORK_PATH"/server/gn%d", net_uid++);
+	} else {
+		/* Invalid role */
+		return;
+	}
+
+	/* Parsing the value: name and description */
+	ptr = strchr(value, ':');
+
+	/* Empty name */
+	if (!ptr)
+		return;
+
+	len = ptr-value;
+	name = g_malloc0(len + 1);
+	strncpy(name, value, len);
+
+	/* Empty description */
+	if (++ptr == NULL) {
+		g_free(name);
+		return;
+	}
+
+	/* FIXME: Change the connection_register prototype */
+
+	g_free(name);
 }
 
 static void register_stored(void)
@@ -722,17 +765,17 @@ static void register_stored(void)
 						de->d_name, "network");
 
 		str2ba(de->d_name, &src);
-		textfile_foreach(filename, register_stored_connection, &src);
+		textfile_foreach(filename, parse_stored_connection, &src);
 
 		/* NAP objects */
 		create_name(filename, PATH_MAX, STORAGEDIR,
 						de->d_name, "nap");
-		register_stored_nap(&src, filename);
+		register_nap_from_file(&src, filename);
 
 		/* GN objects */
 		create_name(filename, PATH_MAX, STORAGEDIR,
 				de->d_name, "gn");
-		register_stored_gn(&src, filename);
+		register_gn_from_file(&src, filename);
 	}
 
 	closedir(dir);
