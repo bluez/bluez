@@ -391,12 +391,12 @@ static void get_address_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	if (server_register(pr->conn, address, pr->path, pr->id) < 0) {
+	str2ba(address, &src);
+	if (server_register(pr->conn, pr->path, &src, pr->id) < 0) {
 		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
 		goto fail;
 	}
 
-	str2ba(address, &src);
 	network_store_info(&src, pr->id, FALSE);
 
 	server_paths = g_slist_append(server_paths, g_strdup(pr->path));

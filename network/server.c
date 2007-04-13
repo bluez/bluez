@@ -981,8 +981,8 @@ static const DBusObjectPathVTable server_table = {
 	.unregister_function = server_unregister,
 };
 
-int server_register(DBusConnection *conn, const char *addr, const char *path, 
-			uint16_t id)
+int server_register(DBusConnection *conn, const char *path,
+					bdaddr_t *src, uint16_t id)
 {
 	struct network_server *ns;
 
@@ -998,7 +998,8 @@ int server_register(DBusConnection *conn, const char *addr, const char *path,
 	if (!dbus_connection_register_object_path(conn, path,
 						&server_table, ns)) {
 		error("D-Bus failed to register %s path", path);
-		goto fail;
+		server_free(ns);
+		return -1;
 	}
 
 	/* Setting a default name */
@@ -1010,14 +1011,11 @@ int server_register(DBusConnection *conn, const char *addr, const char *path,
 	ns->path = g_strdup(path);
 	ns->id = id;
 	ns->conn = dbus_connection_ref(conn);
-	str2ba(addr, &ns->src);
+	bacpy(&ns->src, src);
 
 	info("Registered server path:%s", path);
 
 	return 0;
-fail:
-	server_free(ns);
-	return -1;
 }
 
 int server_register_from_file(DBusConnection *conn, const char *path,
@@ -1027,6 +1025,14 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 	char *str;
 
 	ns = g_new0(struct network_server, 1);
+
+	/* Register path */
+	if (!dbus_connection_register_object_path(conn, path,
+						&server_table, ns)) {
+		error("D-Bus failed to register %s path", path);
+		server_free(ns);
+		return -1;
+	}
 
 	ns->id = id;
 	ns->name = textfile_get(filename, "name");
@@ -1046,14 +1052,6 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 
 	ns->range = textfile_get(filename, "address_range");
 	ns->iface = textfile_get(filename, "routing");
-
-	/* Register path */
-	if (!dbus_connection_register_object_path(conn, path,
-						&server_table, ns)) {
-		error("D-Bus failed to register %s path", path);
-		server_free(ns);
-		return -1;
-	}
 
 	/* FIXME: Missing enabled the server(if applied) */
 
