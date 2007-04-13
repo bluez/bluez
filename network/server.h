@@ -21,6 +21,8 @@
  *
  */
 
-int server_register(DBusConnection *conn, const char *addr, const char *path, 
-			uint16_t id);
+int server_register(DBusConnection *conn, const char *addr,
+				const char *path, uint16_t id);
+int register_nap_from_file(const bdaddr_t *src, const char *filename);
+int register_gn_from_file(const bdaddr_t *src, const char *filename);
 int read_server_uuid(bdaddr_t *src, uint16_t uuid, gboolean *enable);

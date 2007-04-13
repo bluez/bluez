@@ -1014,3 +1014,15 @@ fail:
 	server_free(ns);
 	return -1;
 }
+
+int register_nap_from_file(const bdaddr_t *src, const char *filename)
+{
+	/* FIXME: extract name, description, secure, enabled, address range, routing ...*/
+	return 0;
+}
+
+int register_gn_from_file(const bdaddr_t *src, const char *filename)
+{
+	/* FIXME: extract name, description, secure, enabled, address range ...*/
+	return 0;
+}
