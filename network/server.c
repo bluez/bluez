@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/bnep.h>
@@ -266,7 +268,8 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	char devname[16];
 	DBusError derr;
 	uint16_t response;
-	int sk;
+	int sk, sd;
+	struct ifreq ifr;
 
 	if (!ns->pauth) {
 		dbus_message_unref(reply);
@@ -304,6 +307,13 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 				devname, strerror(errno), errno);
 		response = BNEP_CONN_NOT_ALLOWED;
 		goto failed;
+	}
+
+	sd = socket(AF_INET6, SOCK_DGRAM, 0);
+	strcpy(ifr.ifr_name, devname);
+	ifr.ifr_flags |= IFF_UP;
+	if((ioctl(sd, SIOCSIFFLAGS, (caddr_t)&ifr)) == -1) {
+		error("Could not bring up %d", devname);
 	}
 
 	/* FIXME: Enable routing if applied */
