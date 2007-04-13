@@ -31,7 +31,7 @@
 
 #define HEADSET_PATH_BASE AUDIO_MANAGER_PATH "/headset"
 
-void manager_add_headset(char *path);
+void manager_add_headset(const char *path);
 
 int audio_init(DBusConnection *conn);
 

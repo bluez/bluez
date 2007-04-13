@@ -134,24 +134,29 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 }
 
-void manager_add_headset(char *path)
+void manager_add_headset(const char *path)
 {
-	if (g_slist_find_custom(headsets, path, (GCompareFunc) strcmp))
-		return;
+	char *my_path = g_strdup(path);
 
-	headsets = g_slist_append(headsets, path);
+	headsets = g_slist_append(headsets, my_path);
 
-	manager_signal(connection, "HeadsetCreated", path);
+	manager_signal(connection, "HeadsetCreated", my_path);
 
 	if (!default_hs) {
-		default_hs = path;
-		manager_signal(connection, "DefaultHeadsetChanged", path);
+		default_hs = my_path;
+		manager_signal(connection, "DefaultHeadsetChanged", my_path);
 	}
+}
+
+static void manager_remove_headset(char *path)
+{
+	headset_remove(path);
+	g_free(path);
 }
 
 static DBusHandlerResult am_create_headset(DBusMessage *msg)
 {
-	char *hs_path;
+	const char *hs_path;
 	const char *address;
 	bdaddr_t bda;
 	DBusMessage *reply;
@@ -175,13 +180,16 @@ static DBusHandlerResult am_create_headset(DBusMessage *msg)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	str2ba(address, &bda);
-	/* This returns an existing path if the headset already exists */
-	hs_path = headset_add(&bda);
-	if (!hs_path)
-		return error_reply(connection, msg,
-				"org.bluez.Error.Failed",
-				"Unable to create new headset object");
-	manager_add_headset(hs_path);
+
+	hs_path = headset_get(&bda);
+	if (!hs_path) {
+		hs_path = headset_add(&bda);
+		if (!hs_path)
+			return error_reply(connection, msg,
+					"org.bluez.Error.Failed",
+					"Unable to create new headset object");
+		manager_add_headset(hs_path);
+	}
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &hs_path,
 					DBUS_TYPE_INVALID);
@@ -221,6 +229,7 @@ static DBusHandlerResult am_remove_headset(DBusMessage *msg)
 	path = match->data;
 
 	headsets = g_slist_remove(headsets, path);
+	g_free(path);
 
 	if (default_hs == path) {
 		if (!headsets)
@@ -407,7 +416,7 @@ void audio_exit(void)
 	unix_sock = -1;
 
 	if (headsets) {
-		g_slist_foreach(headsets, (GFunc) headset_remove, NULL);
+		g_slist_foreach(headsets, (GFunc) manager_remove_headset, NULL);
 		g_slist_free(headsets);
 		headsets = NULL;
 	}

@@ -88,9 +88,9 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(main_loop);
 
-	headset_exit();
-
 	audio_exit();
+
+	headset_exit();
 
 	dbus_connection_unref(conn);
 

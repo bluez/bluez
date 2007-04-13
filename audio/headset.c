@@ -166,6 +166,13 @@ static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg)
 	return error_reply(conn, msg, "org.bluez.Error.Failed", "Failed");
 }
 
+static gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
+{
+	const struct headset *hs = headset;
+
+	return bacmp(&hs->bda, bda);
+}
+
 static gboolean headset_close_output(struct headset *hs)
 {
 	assert(hs != NULL);
@@ -502,92 +509,6 @@ static void auth_callback(DBusPendingCall *call, void *data)
 	dbus_message_unref(reply);
 }
 
-static gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
-{
-	int srv_sk, cli_sk;
-	struct sockaddr_rc addr;
-	socklen_t size;
-	char hs_address[18], *address = hs_address, *path;
-	const char *uuid = "";
-	struct headset *hs = NULL;
-	DBusMessage *auth;
-	DBusPendingCall *pending;
-
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		error("Hangup or error on rfcomm server socket");
-		g_io_channel_close(chan);
-		raise(SIGTERM);
-		return FALSE;
-	}
-
-	srv_sk = g_io_channel_unix_get_fd(chan);
-
-	size = sizeof(struct sockaddr_rc);
-	cli_sk = accept(srv_sk, (struct sockaddr *) &addr, &size);
-	if (cli_sk < 0) {
-		error("accept: %s (%d)", strerror(errno), errno);
-		return TRUE;
-	}
-
-	/* This returns an existing path if the headset already exists */
-	path = headset_add(&addr.rc_bdaddr);
-	if (!path) {
-		error("Unable to create a new headset object");
-		close(cli_sk);
-		return TRUE;
-	}
-
-	manager_add_headset(path);
-
-	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->rfcomm) {
-		debug("Refusing new connection since one already exists");
-		close(cli_sk);
-		return TRUE;
-	}
-
-	hs->rfcomm = g_io_channel_unix_new(cli_sk);
-	if (!hs->rfcomm) {
-		error("Allocating new GIOChannel failed!");
-		close(cli_sk);
-		return TRUE;
-	}
-
-	auth = dbus_message_new_method_call("org.bluez", "/org/bluez", "org.bluez.Database",
-						"RequestAuthorization");
-	if (!auth) {
-		error("Unable to allocat new RequestAuthorization method call");
-		goto failed;
-	}
-
-	ba2str(&hs->bda, hs_address);
-
-	dbus_message_append_args(auth, DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(connection, auth, &pending, -1) == FALSE) {
-		error("Sending of authorization request failed");
-		goto failed;
-	}
-
-	dbus_pending_call_set_notify(pending, auth_callback, hs, NULL);
-	dbus_pending_call_unref(pending);
-	dbus_message_unref(auth);
-
-	return TRUE;
-
-failed:
-	if (hs->rfcomm) {
-		g_io_channel_close(hs->rfcomm);
-		g_io_channel_unref(hs->rfcomm);
-		hs->rfcomm = NULL;
-	}
-
-	return TRUE;
-}
-
 static gboolean audio_input_to_sco_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct headset *hs = data;
@@ -888,13 +809,6 @@ failed:
 		close(sk);
 
 	return -1;
-}
-
-static gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
-{
-	const struct headset *hs = headset;
-
-	return bacmp(&hs->bda, bda);
 }
 
 static int create_ag_record(sdp_buf_t *buf, uint8_t ch)
@@ -1619,17 +1533,15 @@ static const DBusObjectPathVTable hs_table = {
 	.message_function = hs_message,
 };
 
-char *headset_add(const bdaddr_t *bda)
+static struct headset *headset_add_internal(const bdaddr_t *bda)
 {
 	static int headset_uid = 0;
 	struct headset *hs;
 	GSList *match;
 
 	match = g_slist_find_custom(headsets, bda, headset_bda_cmp);
-	if (match) {
-		hs = match->data;
-		return hs->object_path;
-	}
+	if (match)
+		return match->data;
 
 	hs = g_try_new0(struct headset, 1);
 	if (!hs) {
@@ -1651,15 +1563,40 @@ char *headset_add(const bdaddr_t *bda)
 
 	headsets = g_slist_append(headsets, hs);
 
-	return g_strdup(hs->object_path);
+	return hs;
 }
 
-void headset_remove(char *path)
+const char *headset_add(const bdaddr_t *bda)
 {
 	struct headset *hs;
 
-	if (!dbus_connection_get_object_path_data(connection, path, (void *)
-							&hs))
+	hs = headset_add_internal(bda);
+	if (!hs)
+		return NULL;
+
+	return hs->object_path;
+}
+
+const char *headset_get(const bdaddr_t *bda)
+{
+	GSList *match;
+	struct headset *hs;
+
+	match = g_slist_find_custom(headsets, bda, headset_bda_cmp);
+	if (!match)
+		return NULL;
+
+	hs = match->data;
+
+	return hs->object_path;
+}
+
+void headset_remove(const char *path)
+{
+	struct headset *hs;
+
+	if (!dbus_connection_get_object_path_data(connection, path,
+							(void *) &hs))
 		return;
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED)
@@ -1671,7 +1608,97 @@ void headset_remove(char *path)
 	headsets = g_slist_remove(headsets, hs);
 
 	g_free(hs);
-	g_free(path);
+}
+
+static gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
+{
+	int srv_sk, cli_sk;
+	struct sockaddr_rc addr;
+	socklen_t size;
+	char hs_address[18], *address = hs_address;
+	const char *uuid = "";
+	struct headset *hs = NULL;
+	DBusMessage *auth;
+	DBusPendingCall *pending;
+	GSList *match;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		error("Hangup or error on rfcomm server socket");
+		g_io_channel_close(chan);
+		raise(SIGTERM);
+		return FALSE;
+	}
+
+	srv_sk = g_io_channel_unix_get_fd(chan);
+
+	size = sizeof(struct sockaddr_rc);
+	cli_sk = accept(srv_sk, (struct sockaddr *) &addr, &size);
+	if (cli_sk < 0) {
+		error("accept: %s (%d)", strerror(errno), errno);
+		return TRUE;
+	}
+
+	match = g_slist_find_custom(headsets, &addr.rc_bdaddr, headset_bda_cmp);
+	if (!match) {
+		hs = headset_add_internal(&addr.rc_bdaddr);
+		if (!hs) {
+			error("Unable to create a new headset object");
+			close(cli_sk);
+			return TRUE;
+		}
+
+		manager_add_headset(hs->object_path);
+	}
+	else
+		hs = match->data;
+
+	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->rfcomm) {
+		debug("Refusing new connection since one already exists");
+		close(cli_sk);
+		return TRUE;
+	}
+
+	hs->rfcomm = g_io_channel_unix_new(cli_sk);
+	if (!hs->rfcomm) {
+		error("Allocating new GIOChannel failed!");
+		close(cli_sk);
+		return TRUE;
+	}
+
+	auth = dbus_message_new_method_call("org.bluez", "/org/bluez", "org.bluez.Database",
+						"RequestAuthorization");
+	if (!auth) {
+		error("Unable to allocat new RequestAuthorization method call");
+		goto failed;
+	}
+
+	ba2str(&hs->bda, hs_address);
+
+	dbus_message_append_args(auth, DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, auth, &pending, -1) == FALSE) {
+		error("Sending of authorization request failed");
+		goto failed;
+	}
+
+	dbus_pending_call_set_notify(pending, auth_callback, hs, NULL);
+	dbus_pending_call_unref(pending);
+	dbus_message_unref(auth);
+
+	return TRUE;
+
+failed:
+	if (hs->rfcomm) {
+		g_io_channel_close(hs->rfcomm);
+		g_io_channel_unref(hs->rfcomm);
+		hs->rfcomm = NULL;
+	}
+
+	return TRUE;
 }
 
 static GIOChannel *server_socket(uint8_t *channel)
