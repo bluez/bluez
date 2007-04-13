@@ -312,7 +312,7 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
 	strcpy(ifr.ifr_name, devname);
 	ifr.ifr_flags |= IFF_UP;
-	if((ioctl(sd, SIOCSIFFLAGS, (caddr_t)&ifr)) < 0) {
+	if((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
 		err = errno;
 		error("Could not bring up %d. %s(%d)", devname, strerror(err),
 			err);
