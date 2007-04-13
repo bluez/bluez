@@ -739,18 +739,15 @@ static void parse_stored_connection(char *key, char *value, void *data)
 	if (++ptr == NULL)
 		return;
 
-	if (strcasecmp("nap", ptr) == 0) {
+	if (strcasecmp("nap", ptr) == 0)
 		id = BNEP_SVC_NAP;
-		snprintf(path, MAX_PATH_LENGTH,
-				NETWORK_PATH"/server/nap%d", net_uid++);
-	} else if (strcasecmp("gn", ptr) == 0) {
+	else if (strcasecmp("gn", ptr) == 0)
 		id = BNEP_SVC_GN;
-		snprintf(path, MAX_PATH_LENGTH,
-				NETWORK_PATH"/server/gn%d", net_uid++);
-	} else {
-		/* Invalid role */
+	else
 		return;
-	}
+
+	snprintf(path, MAX_PATH_LENGTH,
+			NETWORK_PATH"/connection%d", net_uid++);
 
 	/* Parsing the value: name and description */
 	ptr = strchr(value, ':');
@@ -778,8 +775,10 @@ static void register_stored(void)
 {
 	char dirname[PATH_MAX + 1];
 	char filename[PATH_MAX + 1];
+	char path[MAX_PATH_LENGTH];
 	struct dirent *de;
 	DIR *dir;
+	struct stat s;
 	bdaddr_t src;
 
 	snprintf(dirname, PATH_MAX, "%s", STORAGEDIR);
@@ -797,17 +796,27 @@ static void register_stored(void)
 						de->d_name, "network");
 
 		str2ba(de->d_name, &src);
-		textfile_foreach(filename, parse_stored_connection, &src);
+
+
+		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG))
+			textfile_foreach(filename, parse_stored_connection, &src);
 
 		/* NAP objects */
-		create_name(filename, PATH_MAX, STORAGEDIR,
-						de->d_name, "nap");
-		register_nap_from_file(&src, filename);
+		create_name(filename, PATH_MAX, STORAGEDIR, de->d_name, "nap");
+
+		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
+			snprintf(path, MAX_PATH_LENGTH,
+					NETWORK_PATH"/server/nap%d", net_uid++);
+			register_nap_from_file(connection, path, &src, filename);
+		}
 
 		/* GN objects */
-		create_name(filename, PATH_MAX, STORAGEDIR,
-				de->d_name, "gn");
-		register_gn_from_file(&src, filename);
+		create_name(filename, PATH_MAX, STORAGEDIR, de->d_name, "gn");
+		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
+			snprintf(path, MAX_PATH_LENGTH,
+					NETWORK_PATH"/server/gn%d", net_uid++);
+			register_gn_from_file(connection, path, &src, filename);
+		}
 	}
 
 	closedir(dir);

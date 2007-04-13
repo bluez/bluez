@@ -44,6 +44,7 @@
 #include "logging.h"
 #include "dbus.h"
 #include "error.h"
+#include "textfile.h"
 
 #define NETWORK_SERVER_INTERFACE "org.bluez.network.Server"
 
@@ -64,6 +65,7 @@ struct network_server {
 	bdaddr_t		src;		/* Bluetooth Local Address */
 	char			*iface;		/* Routing interface */
 	char			*name;		/* Server service name */
+	char			*range;		/* IP Address range */
 	char			*path; 		/* D-Bus path */
 	dbus_bool_t		secure;
 	uint32_t		record_id;	/* Service record id */
@@ -947,6 +949,9 @@ static void server_free(struct network_server *ns)
 	if (ns->name)
 		g_free(ns->name);
 
+	if (ns->range)
+		g_free(ns->range);
+
 	if (ns->path)
 		g_free(ns->path);
 
@@ -1015,13 +1020,47 @@ fail:
 	return -1;
 }
 
-int register_nap_from_file(const bdaddr_t *src, const char *filename)
+int register_nap_from_file(DBusConnection *conn, const char *path,
+				const bdaddr_t *src, const char *filename)
 {
-	/* FIXME: extract name, description, secure, enabled, address range, routing ...*/
+	struct network_server *ns;
+	char *str;
+
+	ns = g_new0(struct network_server, 1);
+
+	ns->id = BNEP_SVC_NAP;
+	ns->name = textfile_get(filename, "name");
+	if (ns->name) {
+		/* Name is mandatory */
+		server_free(ns);
+		return -1;
+	}
+	ns->secure = FALSE;
+	str = textfile_get(filename, "secure");
+	if (str) {
+		if (strcmp("1", str) == 0)
+			ns->secure = TRUE;
+		g_free(str);
+	}
+
+	ns->range = textfile_get(filename, "address_range");
+	ns->iface = textfile_get(filename, "routing");
+
+	/* Register path */
+	if (!dbus_connection_register_object_path(conn, path,
+						&server_table, ns)) {
+		error("D-Bus failed to register %s path", path);
+		server_free(ns);
+		return -1;
+	}
+
+	/* FIXME: Missing enabled the server(if applied) */
+
 	return 0;
 }
 
-int register_gn_from_file(const bdaddr_t *src, const char *filename)
+int register_gn_from_file(DBusConnection *conn, const char *path,
+			const bdaddr_t *src, const char *filename)
 {
 	/* FIXME: extract name, description, secure, enabled, address range ...*/
 	return 0;
