@@ -268,7 +268,7 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	char devname[16];
 	DBusError derr;
 	uint16_t response;
-	int sk, sd;
+	int sk, sd, err;
 	struct ifreq ifr;
 
 	if (!ns->pauth) {
@@ -312,8 +312,10 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
 	strcpy(ifr.ifr_name, devname);
 	ifr.ifr_flags |= IFF_UP;
-	if((ioctl(sd, SIOCSIFFLAGS, (caddr_t)&ifr)) == -1) {
-		error("Could not bring up %d", devname);
+	if((ioctl(sd, SIOCSIFFLAGS, (caddr_t)&ifr)) < 0) {
+		err = errno;
+		error("Could not bring up %d. %s(%d)", devname, strerror(err),
+			err);
 	}
 
 	/* FIXME: Enable routing if applied */
