@@ -31,6 +31,8 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 
+#include <netinet/in.h>
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
@@ -39,15 +41,13 @@
 
 #include <glib.h>
 
-#include <netinet/in.h>
-
 #include "logging.h"
 #include "dbus.h"
 #include "error.h"
 #include "common.h"
+#include "connection.h"
 
 #define NETWORK_CONNECTION_INTERFACE "org.bluez.network.Connection"
-#include "connection.h"
 
 typedef enum {
 	CONNECTED,
@@ -56,17 +56,17 @@ typedef enum {
 } conn_state;
 
 struct network_conn {
-	DBusConnection *conn;
-	DBusMessage *msg;
-	bdaddr_t src;
-	bdaddr_t dst;
-	char *path;	/* D-Bus path */
-	char dev[16];	/* BNEP interface name */
-	char *name;
-	char *desc;
-	uint16_t id;	/* Service Class Identifier */
-	conn_state state;
-	int sk;
+	DBusConnection	*conn;
+	DBusMessage	*msg;
+	bdaddr_t	src;
+	bdaddr_t	dst;
+	char		*path;		/* D-Bus path */
+	char		dev[16];	/* BNEP interface name */
+	char		*name;
+	char		*desc;
+	uint16_t	id;		/* Service Class Identifier */
+	conn_state	state;
+	int		sk;
 };
 
 struct __service_16 {
@@ -579,7 +579,9 @@ int connection_register(DBusConnection *conn, const char *path,
 	if (!dbus_connection_register_object_path(conn, path,
 						&connection_table, nc)) {
 		error("D-Bus failed to register %s path", path);
-		goto fail;
+
+		connection_free(nc);
+		return -1;
 	}
 
 	nc->path = g_strdup(path);
@@ -610,14 +612,10 @@ int connection_register(DBusConnection *conn, const char *path,
 	nc->conn = conn;
 	info("Registered connection path:%s", path);
 	return 0;
-fail:
-	connection_free(nc);
-	return -1;
 }
 
-int
-connection_find_data(DBusConnection *conn, const char *path,
-			const char *pattern)
+int connection_find_data(DBusConnection *conn,
+		const char *path, const char *pattern)
 {
 	struct network_conn *nc;
 	char addr[18];
@@ -625,15 +623,15 @@ connection_find_data(DBusConnection *conn, const char *path,
 	if (!dbus_connection_get_object_path_data(conn, path, (void *) &nc))
 		return -1;
 
-	if (strcmp(pattern, nc->dev) == 0)
+	if (strcasecmp(pattern, nc->dev) == 0)
 		return 0;
 
-	if (strcmp(pattern, nc->name) == 0)
+	if (strcasecmp(pattern, nc->name) == 0)
 		return 0;
 
 	ba2str(&nc->dst, addr);
 
-	if (strcmp(pattern, addr) == 0)
+	if (strcasecmp(pattern, addr) == 0)
 		return 0;
 
 	return -1;
