@@ -1012,7 +1012,7 @@ int server_register(DBusConnection *conn, const char *addr, const char *path,
 	ns->conn = dbus_connection_ref(conn);
 	str2ba(addr, &ns->src);
 
-	info("Registered server path:%s", ns->path);
+	info("Registered server path:%s", path);
 
 	return 0;
 fail:
@@ -1020,21 +1020,22 @@ fail:
 	return -1;
 }
 
-int register_nap_from_file(DBusConnection *conn, const char *path,
-				const bdaddr_t *src, const char *filename)
+int server_register_from_file(DBusConnection *conn, const char *path,
+		const bdaddr_t *src, uint16_t id, const char *filename)
 {
 	struct network_server *ns;
 	char *str;
 
 	ns = g_new0(struct network_server, 1);
 
-	ns->id = BNEP_SVC_NAP;
+	ns->id = id;
 	ns->name = textfile_get(filename, "name");
-	if (ns->name) {
+	if (!ns->name) {
 		/* Name is mandatory */
 		server_free(ns);
 		return -1;
 	}
+
 	ns->secure = FALSE;
 	str = textfile_get(filename, "secure");
 	if (str) {
@@ -1056,12 +1057,7 @@ int register_nap_from_file(DBusConnection *conn, const char *path,
 
 	/* FIXME: Missing enabled the server(if applied) */
 
-	return 0;
-}
+	info("Registered server path:%s", path);
 
-int register_gn_from_file(DBusConnection *conn, const char *path,
-			const bdaddr_t *src, const char *filename)
-{
-	/* FIXME: extract name, description, secure, enabled, address range ...*/
 	return 0;
 }

@@ -803,11 +803,11 @@ static void register_stored(void)
 
 		/* NAP objects */
 		create_name(filename, PATH_MAX, STORAGEDIR, de->d_name, "nap");
-
 		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
 			snprintf(path, MAX_PATH_LENGTH,
 					NETWORK_PATH"/server/nap%d", net_uid++);
-			register_nap_from_file(connection, path, &src, filename);
+			server_register_from_file(connection, path,
+					&src, BNEP_SVC_NAP, filename);
 		}
 
 		/* GN objects */
@@ -815,7 +815,8 @@ static void register_stored(void)
 		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
 			snprintf(path, MAX_PATH_LENGTH,
 					NETWORK_PATH"/server/gn%d", net_uid++);
-			register_gn_from_file(connection, path, &src, filename);
+			server_register_from_file(connection, path,
+					&src, BNEP_SVC_GN, filename);
 		}
 	}
 
