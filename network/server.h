@@ -25,4 +25,3 @@ int server_register(DBusConnection *conn, const char *path,
 					bdaddr_t *src, uint16_t id);
 int server_register_from_file(DBusConnection *conn, const char *path,
 			const bdaddr_t *src, uint16_t id, const char *filename);
-int read_server_uuid(bdaddr_t *src, uint16_t uuid, gboolean *enable);
