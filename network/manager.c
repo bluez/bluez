@@ -681,22 +681,25 @@ static const DBusObjectPathVTable manager_table = {
 	.unregister_function = manager_unregister,
 };
 
-static void stored_server(char *key, char *value, void *data)
+static void register_stored_nap(const bdaddr_t *src, const char *filename)
 {
-	char path[MAX_PATH_LENGTH];
-	char addr[18];
-	const bdaddr_t *src = data; 
-	uint16_t id;
-
-	ba2str(src, addr);
-	id = bnep_service_id(key);
-	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/server/%s%d",
-						bnep_name(id), net_uid++);
-
-	server_register(connection, addr, path, id);
+	/* FIXME: extract name, description, secure, enabled, address range, routing ...*/
 }
 
-static void register_stored_servers(void)
+static void register_stored_gn(const bdaddr_t *src, const char *filename)
+{
+	/* FIXME: extract name, description, secure, enabled, address range ...*/
+}
+
+static void register_stored_connection(char *key, char *value, void *data)
+{
+
+	/* Format: XX:XX:XX:XX:XX:XX#{NAP, GN} name:description */
+
+	info("connection - key:%s value:%s", key, value);
+}
+
+static void register_stored(void)
 {
 	char dirname[PATH_MAX + 1];
 	char filename[PATH_MAX + 1];
@@ -714,17 +717,26 @@ static void register_stored_servers(void)
 		if (!isdigit(de->d_name[0]))
 			continue;
 
+		/* Connection objects */
 		create_name(filename, PATH_MAX, STORAGEDIR,
 						de->d_name, "network");
 
 		str2ba(de->d_name, &src);
+		textfile_foreach(filename, register_stored_connection, &src);
 
-		textfile_foreach(filename, stored_server, &src);
+		/* NAP objects */
+		create_name(filename, PATH_MAX, STORAGEDIR,
+						de->d_name, "nap");
+		register_stored_nap(&src, filename);
+
+		/* GN objects */
+		create_name(filename, PATH_MAX, STORAGEDIR,
+				de->d_name, "gn");
+		register_stored_gn(&src, filename);
 	}
 
 	closedir(dir);
 }
-
 
 int network_init(DBusConnection *conn)
 {
@@ -756,7 +768,7 @@ int network_init(DBusConnection *conn)
 
 	info("Registered manager path:%s", NETWORK_PATH);
 
-	register_stored_servers();
+	register_stored();
 
 	return 0;
 }
