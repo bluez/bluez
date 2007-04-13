@@ -887,30 +887,28 @@ int network_del_stored_info(bdaddr_t *src, uint16_t uuid)
 {
 	char filename[PATH_MAX + 1];
 	const char *str;
-	int err;
 
 	create_filename(filename, PATH_MAX, src, "network");
 
+	/* FIXME: Wrong format */
+
 	str = bnep_uuid(uuid);
 
-	err = textfile_del(filename, str);
-
-	return err;
+	return textfile_del(filename, str);
 }
 
 int network_store_info(bdaddr_t *src, uint16_t uuid, gboolean enable)
 {
 	char filename[PATH_MAX + 1];
 	const char *str;
-	int err;
 
 	create_filename(filename, PATH_MAX, src, "network");
+
+	/* FIXME: Wrong format */
 
 	str = bnep_uuid(uuid);
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	err = textfile_put(filename, str, enable ? "1" : "0");
-
-	return err;
+	return textfile_put(filename, str, enable ? "1" : "0");
 }
