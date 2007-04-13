@@ -28,16 +28,12 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
 
 #include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -564,11 +560,10 @@ static const DBusObjectPathVTable connection_table = {
 	.unregister_function = connection_unregister,
 };
 
-int connection_register(DBusConnection *conn, const char *path,
-			const char *addr, uint16_t id, const sdp_record_t *rec)
+int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
+		bdaddr_t *dst, uint16_t id, const char *name, const char *desc)
 {
 	struct network_conn *nc;
-	sdp_data_t *d;
 
 	if (!conn)
 		return -1;
@@ -578,39 +573,23 @@ int connection_register(DBusConnection *conn, const char *path,
 	/* register path */
 	if (!dbus_connection_register_object_path(conn, path,
 						&connection_table, nc)) {
-		error("D-Bus failed to register %s path", path);
-
 		connection_free(nc);
 		return -1;
 	}
 
 	nc->path = g_strdup(path);
-	bacpy(&nc->src, BDADDR_ANY);
-	str2ba(addr, &nc->dst);
+	bacpy(&nc->src, src);
+	bacpy(&nc->dst, dst);
 	nc->id = id;
-
-	/* Extract service name from record */
-	d = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
-	if (d) {
-		nc->name = g_new0(char, d->unitSize);
-		snprintf(nc->name, d->unitSize, "%.*s", d->unitSize,
-				d->val.str);
-	}
-
-	/* Extract service description from record */
-	d = sdp_data_get(rec, SDP_ATTR_SVCDESC_PRIMARY);
-	if (d) {
-		nc->desc = g_new0(char, d->unitSize);
-		snprintf(nc->desc, d->unitSize, "%.*s", d->unitSize,
-				d->val.str);
-	}
-
+	nc->name = g_strdup(name);
+	nc->desc = g_strdup(desc);
 	memset(nc->dev, 0, 16);
 	strncpy(nc->dev, netdev, 16);
-
 	nc->state = DISCONNECTED;
 	nc->conn = conn;
+
 	info("Registered connection path:%s", path);
+
 	return 0;
 }
 

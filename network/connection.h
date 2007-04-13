@@ -21,8 +21,7 @@
  *
  */
 
-int connection_register(DBusConnection *conn, const char *path,
-			const char *addr, uint16_t id,
-			const sdp_record_t *rec);
+int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
+		bdaddr_t *dst, uint16_t id, const char *name, const char *desc);
 int connection_find_data(DBusConnection *conn, const char *path,
 			const char *pattern);

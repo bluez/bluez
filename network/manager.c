@@ -58,10 +58,11 @@
 struct pending_reply {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
-	char		*addr;
-	char		*path;
-	char		*adapter_path;
-	uint16_t	id;
+	bdaddr_t	src;		/* Source Address */
+	char		*addr;		/* Destination Address*/
+	char		*path;		/* D-Bus object path */
+	char		*adapter_path;	/* Default adapter path */
+	uint16_t	id;		/* Role */
 };
 
 static GSList *server_paths	= NULL;	/* Network registered servers paths */
@@ -187,9 +188,12 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 	struct pending_reply *pr = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
+	bdaddr_t src, dst;
 	int len, scanned;
 	uint8_t *rec_bin;
+	sdp_data_t *d;
 	sdp_record_t *rec = NULL;
+	char *name = NULL, *desc = NULL;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -220,8 +224,28 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 
 	rec = sdp_extract_pdu(rec_bin, &scanned);
 
-	if (connection_register(pr->conn, pr->path, pr->addr, pr->id,
-				rec) == -1) {
+	/* Extract service name from record */
+	d = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
+	if (d) {
+		name = g_new0(char, d->unitSize);
+		snprintf(name, d->unitSize, "%.*s",
+				d->unitSize, d->val.str);
+	}
+
+	/* Extract service description from record */
+	d = sdp_data_get(rec, SDP_ATTR_SVCDESC_PRIMARY);
+	if (d) {
+		desc = g_new0(char, d->unitSize);
+		snprintf(desc, d->unitSize, "%.*s",
+				d->unitSize, d->val.str);
+	}
+
+	/* FIXME: it can' t be hard coded */
+	bacpy(&src, BDADDR_ANY);
+	str2ba(pr->addr, &dst);
+
+	if (connection_register(pr->conn, pr->path, &src,
+				&dst, pr->id, name, desc) < 0) {
 		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
 		goto fail;
 	}
@@ -230,6 +254,12 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 
 	create_path(pr->conn, pr->msg, pr->path, "ConnectionCreated");
 fail:
+
+	if (name)
+		g_free(name);
+	if (desc)
+		g_free(desc);
+
 	sdp_record_free(rec);
 	dbus_error_free(&derr);
 	pending_reply_free(pr);
@@ -508,6 +538,7 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
+	/* FIXME: use hci_get_route */
 	if (get_default_adapter(pr, default_adapter_reply) < 0) {
 		err_failed(conn, msg, "D-Bus path registration failed");
 		pending_reply_free(pr);
@@ -600,6 +631,7 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	snprintf(pr->path, MAX_PATH_LENGTH,
 			NETWORK_PATH"/connection%d", net_uid++);
 
+	/* FIXME: use hci_get_route */
 	if (get_default_adapter(pr, default_adapter_reply) < 0) {
 		err_failed(conn, msg, "D-Bus path registration failed");
 		pending_reply_free(pr);
@@ -683,7 +715,7 @@ static const DBusObjectPathVTable manager_table = {
 
 static void parse_stored_connection(char *key, char *value, void *data)
 {
-	bdaddr_t dst;
+	bdaddr_t dst, *src = data;
 	char path[MAX_PATH_LENGTH];
 	char addr[18];
 	const char *ptr;
@@ -737,7 +769,7 @@ static void parse_stored_connection(char *key, char *value, void *data)
 		return;
 	}
 
-	/* FIXME: Change the connection_register prototype */
+	connection_register(connection, path, src, &dst, id, name, ptr);
 
 	g_free(name);
 }
