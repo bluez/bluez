@@ -397,7 +397,7 @@ static void get_address_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	network_store_info(&src, pr->id, FALSE);
+	server_store(pr->conn, pr->path);
 
 	server_paths = g_slist_append(server_paths, g_strdup(pr->path));
 

@@ -25,3 +25,5 @@ int server_register(DBusConnection *conn, const char *path,
 					bdaddr_t *src, uint16_t id);
 int server_register_from_file(DBusConnection *conn, const char *path,
 			const bdaddr_t *src, uint16_t id, const char *filename);
+
+int server_store(DBusConnection *conn, const char *path);
