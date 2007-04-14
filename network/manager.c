@@ -250,6 +250,7 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
+	connection_store(pr->conn, pr->path);
 	connection_paths = g_slist_append(connection_paths, g_strdup(pr->path));
 
 	create_path(pr->conn, pr->msg, pr->path, "ConnectionCreated");

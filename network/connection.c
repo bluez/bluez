@@ -39,6 +39,8 @@
 
 #include "logging.h"
 #include "dbus.h"
+#include "textfile.h"
+
 #include "error.h"
 #include "common.h"
 #include "connection.h"
@@ -60,7 +62,7 @@ struct network_conn {
 	char		dev[16];	/* BNEP interface name */
 	char		*name;
 	char		*desc;
-	uint16_t	id;		/* Service Class Identifier */
+	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
 	int		sk;
 };
@@ -591,6 +593,41 @@ int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 	info("Registered connection path:%s", path);
 
 	return 0;
+}
+
+int connection_store(DBusConnection *conn, const char *path)
+{
+	struct network_conn *nc;
+	const char *role;
+	char key[32], *value;
+	char filename[PATH_MAX + 1];
+	char src_addr[18], dst_addr[18];
+	int len, err;
+
+	if (!dbus_connection_get_object_path_data(conn, path, (void *) &nc))
+		return -ENOENT;
+
+	if (!nc->name || !nc->desc)
+		return -EINVAL;
+
+	/* FIXME: name and desc validation - remove ':' */
+
+	ba2str(&nc->dst, dst_addr);
+	role = bnep_name(nc->id);
+	snprintf(key, 32, "%s#%s", dst_addr, role);
+
+	len = strlen(nc->name) + strlen(nc->desc)  + 2;
+	value = g_malloc0(len);
+	snprintf(value, len, "%s:%s", nc->name, nc->desc);
+
+	ba2str(&nc->src, src_addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "network");
+
+	err = textfile_put(filename, key, value);
+
+	g_free(value);
+
+	return err; 
 }
 
 int connection_find_data(DBusConnection *conn,
