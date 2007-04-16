@@ -14,12 +14,16 @@ Methods		string CreateServer(string uuid)
 
 			Creates a network server object(GN or NAP).
 
-			Possible errors: TBD
+			Possible errors:org.bluez.network.AlreadyExists
+					org.bluez.network.NotSupported
+					org.bluez.network.ConnectionAttemptFailed
+					org.bluez.network.Failed
 
 		void RemoveServer(string path)
 			Removes the network server object for given path.
 
-			Possible errors: TBD
+			Possible errors:org.bluez.network.DoesNotExist
+					org.bluez.network.Failed
 
 		array{string} ListServers()
 
@@ -30,15 +34,28 @@ Methods		string CreateServer(string uuid)
 
 			Creates a network connection object(NAP or GN).
 
+			Possible errors:org.bluez.network.AlreadyExists
+					org.bluez.network.NotSupported
+					org.bluez.network.ConnectionAttemptFailed
+					org.bluez.network.Failed
+
 		string RemoveConnection(string path)
 
 			Removes a network connection object for a given path.
 
-			Possible errors: TBD
+			Possible errors:org.bluez.network.DoesNotExist
+					org.bluez.network.Failed
 
 		array{string} ListConnections()
 
 			Returns an array of available network connections paths.
+
+		string FindConnection(string pattern)
+
+			Returns an array of available network connections paths.
+
+			Possible errors:org.bluez.network.DoesNotExist
+					org.bluez.network.Failed
 
 Signals
 
@@ -57,30 +74,51 @@ Interface	org.bluez.network.Server
 Object path	/org/bluez/network/server*
 
 Methods		string GetUUID()
+
 			Returns the uuid 128 string representation of the server.
 
-		void Enable()              // do this automatically?
-		void Disable()             // do this automatically?
+		void Enable()
+
+			Enable server and updates service record.
+
+			Possible errors:org.bluez.network.AlreadyExists
+					org.bluez.network.Failed
+
+		void Disable()
+
+			Disable server and remove service record.
+
+			Possible errors:org.bluez.network.Failed
+
 		void SetName(string name)
 
 			Sets the name attribute.
 
 		string GetName()
+
 			Returns the service name.
 
 		void SetAddressRange(string start, string end)
+
 			TBD
 
 		void SetRouting(string interface)
+
 			TBD
 
 		void SetSecurity(bool enable)
-			TBD
+
+			Enable or disable encryption.
 
 		bool GetSecurity()
-			TBD
+
+			Returns server encryption.
 
 Signals
+
+		void Enabled()
+
+		void Disabled()
 
 Network Connection hierarchy (experimental)
 ===========================================
@@ -89,28 +127,51 @@ Interface	org.bluez.network.Connection
 Object path	/org/bluez/network/connection*
 
 Methods		string GetAddress()
+
 			Returns the Bluetooth address of the ending point.
 
 		string GetUUID()
+
 			Returns the uuid 128 string representation of
 			the connected service.
 
 		string GetName()
-			TBD
+
+			Returns the string representation of connected host.
+
+			Possible errors:org.bluez.network.Failed
 
 		string GetDescription()
-			TBD
+
+			Returns the string description of connected host.
+
+			Possible errors:org.bluez.network.Failed
 
 		string GetInterface()
-			TBD
+
+			Returns the string network interface.
+
+			Possible errors:org.bluez.network.Failed
 
 		void Connect()
-			TBD
+
+			Connects to host.
+
+			Possible errors:org.bluez.network.ConnectionAttemptFailed
+					org.bluez.network.Failed
 
 		void Disconnect()
-			TBD
+
+			Disconnects to host.
+
+			Possible errors:org.bluez.network.Failed
 
 		bool IsConnected()
+
 			Returns the connection status.
 
 Signals
+
+		void Connected()
+
+		void Disconnected()
