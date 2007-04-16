@@ -120,7 +120,7 @@ static struct device_opts *get_device_opts(int hdev)
 	struct hci_dev_info di;
 
 	/* First try to get BD_ADDR based settings ... */
-	if (!hci_devinfo(hdev, &di) < 0) {
+	if (hci_devinfo(hdev, &di) == 0) {
 		char addr[18];
 		ba2str(&di.bdaddr, addr);
 		device_opts = find_device_opts(addr);
