@@ -79,6 +79,21 @@ struct network_server {
 
 static char netdev[16] = "bnep%d";
 
+static int store_property(bdaddr_t *src, uint16_t id,
+			const char *key, const char *value)
+{
+	char filename[PATH_MAX + 1];
+	char addr[18];
+
+	ba2str(src, addr);
+	if (id == BNEP_SVC_NAP)
+		create_name(filename, PATH_MAX, STORAGEDIR, addr, "nap");
+	else
+		create_name(filename, PATH_MAX, STORAGEDIR, addr, "gn");
+
+	return textfile_put(filename, key, value);
+}
+
 static void pending_auth_free(struct pending_auth *pauth)
 {
 	if (!pauth)
@@ -723,7 +738,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	if (err < 0) 
 		return err_failed(conn, msg, strerror(-err));
 
-	network_store_info(&ns->src, ns->id, TRUE);
+	store_property(&ns->src, ns->id, "enabled", "1");
 
 	return send_message_and_unref(conn, reply);
 }
@@ -751,7 +766,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 	g_io_channel_unref(ns->io);
 	ns->io = NULL;
 
-	network_store_info(&ns->src, ns->id, FALSE);
+	store_property(&ns->src, ns->id, "enabled", "0");
 
 	return send_message_and_unref(conn, reply);
 }

@@ -889,33 +889,3 @@ static inline int create_filename(char *buf, size_t size,
 
 	return create_name(buf, size, STORAGEDIR, addr, name);
 }
-
-int network_del_stored_info(bdaddr_t *src, uint16_t uuid)
-{
-	char filename[PATH_MAX + 1];
-	const char *str;
-
-	create_filename(filename, PATH_MAX, src, "network");
-
-	/* FIXME: Wrong format */
-
-	str = bnep_uuid(uuid);
-
-	return textfile_del(filename, str);
-}
-
-int network_store_info(bdaddr_t *src, uint16_t uuid, gboolean enable)
-{
-	char filename[PATH_MAX + 1];
-	const char *str;
-
-	create_filename(filename, PATH_MAX, src, "network");
-
-	/* FIXME: Wrong format */
-
-	str = bnep_uuid(uuid);
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	return textfile_put(filename, str, enable ? "1" : "0");
-}
