@@ -656,7 +656,11 @@ static void parse_stored_connection(char *key, char *value, void *data)
 		return;
 	}
 
-	connection_register(connection, path, src, &dst, id, name, ptr);
+	if (connection_register(connection, path, src,
+				&dst, id, name, ptr) == 0) {
+		connection_paths = g_slist_append(connection_paths,
+							g_strdup(path));
+	}
 
 	g_free(name);
 }
