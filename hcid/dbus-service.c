@@ -121,15 +121,19 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	append_dict_entry(&dict, "identifier", DBUS_TYPE_STRING, &service->ident);
+	dbus_message_iter_append_dict_entry(&dict, "identifier",
+			DBUS_TYPE_STRING, &service->ident);
 
-	append_dict_entry(&dict, "name", DBUS_TYPE_STRING, &service->name);
+	dbus_message_iter_append_dict_entry(&dict, "name",
+			DBUS_TYPE_STRING, &service->name);
 
-	append_dict_entry(&dict, "description", DBUS_TYPE_STRING, &service->descr);
+	dbus_message_iter_append_dict_entry(&dict, "description",
+			DBUS_TYPE_STRING, &service->descr);
 
 	running = (service->external || service->bus_name) ? TRUE : FALSE;
 
-	append_dict_entry(&dict, "running", DBUS_TYPE_BOOLEAN, &running);
+	dbus_message_iter_append_dict_entry(&dict, "running",
+			DBUS_TYPE_BOOLEAN, &running);
 
 	dbus_message_iter_close_container(&iter, &dict);
 

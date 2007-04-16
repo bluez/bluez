@@ -55,3 +55,6 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 
 dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
 					const char *path, const char *interface);
+void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
+					const char *key, int type, void *val);
+

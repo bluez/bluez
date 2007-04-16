@@ -273,45 +273,53 @@ static DBusHandlerResult adapter_get_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	append_dict_entry(&dict, "address", DBUS_TYPE_STRING, &property);
+	dbus_message_iter_append_dict_entry(&dict, "address",
+			DBUS_TYPE_STRING, &property);
 
 	memset(str, 0, sizeof(str));
 	property = str;
 	str2ba(adapter->address, &ba);
 
 	if (!read_local_name(&ba, str))
-		append_dict_entry(&dict, "name", DBUS_TYPE_STRING, &property);
+		dbus_message_iter_append_dict_entry(&dict, "name",
+			DBUS_TYPE_STRING, &property);
 
 	get_device_version(adapter->dev_id, str, sizeof(str));
-	append_dict_entry(&dict, "version", DBUS_TYPE_STRING, &property);
+	dbus_message_iter_append_dict_entry(&dict, "version",
+			DBUS_TYPE_STRING, &property);
 
 	get_device_revision(adapter->dev_id, str, sizeof(str));
-	append_dict_entry(&dict, "revision", DBUS_TYPE_STRING, &property);
+	dbus_message_iter_append_dict_entry(&dict, "revision",
+			DBUS_TYPE_STRING, &property);
 
 	get_device_manufacturer(adapter->dev_id, str, sizeof(str));
-	append_dict_entry(&dict, "manufacturer", DBUS_TYPE_STRING, &property);
+	dbus_message_iter_append_dict_entry(&dict, "manufacturer",
+			DBUS_TYPE_STRING, &property);
 
 	get_device_company(adapter->dev_id, str, sizeof(str));
-	append_dict_entry(&dict, "company", DBUS_TYPE_STRING, &property);
+	dbus_message_iter_append_dict_entry(&dict, "company",
+			DBUS_TYPE_STRING, &property);
 
 	property = hcimode2str(adapter->mode);
-	append_dict_entry(&dict, "mode", DBUS_TYPE_STRING, &property);
+	dbus_message_iter_append_dict_entry(&dict, "mode", 
+			DBUS_TYPE_STRING, &property);
 
-	append_dict_entry(&dict, "discoverable_timeout",
+	dbus_message_iter_append_dict_entry(&dict, "discoverable_timeout",
 				DBUS_TYPE_UINT32, &adapter->discov_timeout);
 
 	if (!read_local_class(&ba, cls)) {
 		uint32_t class;
 
 		memcpy(&class, cls, 3);
-		append_dict_entry(&dict, "class", DBUS_TYPE_UINT32, &class);
+		dbus_message_iter_append_dict_entry(&dict, "class",
+			DBUS_TYPE_UINT32, &class);
 
 		property = major_class_str(class);
-		append_dict_entry(&dict, "major_class",
+		dbus_message_iter_append_dict_entry(&dict, "major_class",
 			DBUS_TYPE_STRING, &property);
 
 		property = minor_class_str(class);
-		append_dict_entry(&dict, "minor_class",
+		dbus_message_iter_append_dict_entry(&dict, "minor_class",
 			DBUS_TYPE_STRING, &property);
 	}
 
@@ -1150,7 +1158,8 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "names");
 	str = textfile_caseget(filename, addr_ptr);
 	if (str) {
-		append_dict_entry(&dict, "name", DBUS_TYPE_STRING, &str);
+		dbus_message_iter_append_dict_entry(&dict, "name",
+				DBUS_TYPE_STRING, &str);
 		free(str);
 	}
 
@@ -1160,18 +1169,18 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 	/* Major/Minor Class */
 	if (read_remote_class(&src, &dst, &class) == 0) {
 		ptr = major_class_str(class);
-		append_dict_entry(&dict, "major_class",
+		dbus_message_iter_append_dict_entry(&dict, "major_class",
 				DBUS_TYPE_STRING, &ptr);
 
 		ptr = minor_class_str(class);
-		append_dict_entry(&dict, "minor_class",
+		dbus_message_iter_append_dict_entry(&dict, "minor_class",
 				DBUS_TYPE_STRING, &ptr);
 	}
 
 	/* Alias */
 	if (get_device_alias(adapter->dev_id, &dst, buf, sizeof(buf)) > 0) {
 		ptr = buf;
-		append_dict_entry(&dict, "alias",
+		dbus_message_iter_append_dict_entry(&dict, "alias",
 				DBUS_TYPE_STRING, &ptr);
 	}
 
@@ -1186,12 +1195,12 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 		boolean = FALSE;
 	}
 
-	append_dict_entry(&dict, "bonded",
+	dbus_message_iter_append_dict_entry(&dict, "bonded",
 			DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Trusted */
 	boolean = read_trust(&src, addr_ptr, GLOBAL_TRUST);
-	append_dict_entry(&dict, "trusted",
+	dbus_message_iter_append_dict_entry(&dict, "trusted",
 			DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* HCI Revision/Manufacturer/Version */
@@ -1212,11 +1221,11 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 
 	ptr = buf;
 	snprintf(buf, 16, "HCI 0x%X", subver);
-	append_dict_entry(&dict, "revision",
+	dbus_message_iter_append_dict_entry(&dict, "revision",
 			DBUS_TYPE_STRING, &ptr);
 
 	ptr = bt_compidtostr(compid);
-	append_dict_entry(&dict, "manufacturer",
+	dbus_message_iter_append_dict_entry(&dict, "manufacturer",
 			DBUS_TYPE_STRING, &ptr);
 
 	ptr = lmp_vertostr(ver);
@@ -1239,7 +1248,7 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 		free(str);
 	}
 	ptr = buf;
-	append_dict_entry(&dict, "version",
+	dbus_message_iter_append_dict_entry(&dict, "version",
 			DBUS_TYPE_STRING, &ptr);
 
 done:
