@@ -807,8 +807,11 @@ static void register_stored(void)
 		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
 			snprintf(path, MAX_PATH_LENGTH,
 					NETWORK_PATH"/server/nap%d", net_uid++);
-			server_register_from_file(connection, path,
-					&src, BNEP_SVC_NAP, filename);
+
+			if (server_register_from_file(connection, path,
+					&src, BNEP_SVC_NAP, filename) == 0)
+				server_paths = g_slist_append(server_paths,
+								g_strdup(path));
 		}
 
 		/* GN objects */
@@ -816,8 +819,11 @@ static void register_stored(void)
 		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
 			snprintf(path, MAX_PATH_LENGTH,
 					NETWORK_PATH"/server/gn%d", net_uid++);
-			server_register_from_file(connection, path,
-					&src, BNEP_SVC_GN, filename);
+
+			if (server_register_from_file(connection, path,
+					&src, BNEP_SVC_GN, filename) == 0)
+				server_paths = g_slist_append(server_paths,
+								g_strdup(path));
 		}
 	}
 
