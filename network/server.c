@@ -717,7 +717,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
 	int err;
 
 	if (ns->io)
@@ -740,6 +740,11 @@ static DBusHandlerResult enable(DBusConnection *conn,
 
 	store_property(&ns->src, ns->id, "enabled", "1");
 
+	signal = dbus_message_new_signal(ns->path,
+			NETWORK_SERVER_INTERFACE, "Enabled");
+
+	send_message_and_unref(conn, signal);
+
 	return send_message_and_unref(conn, reply);
 }
 
@@ -747,7 +752,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
-	DBusMessage *reply;
+	DBusMessage *reply, *signal;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -767,6 +772,11 @@ static DBusHandlerResult disable(DBusConnection *conn,
 	ns->io = NULL;
 
 	store_property(&ns->src, ns->id, "enabled", "0");
+
+	signal = dbus_message_new_signal(ns->path,
+			NETWORK_SERVER_INTERFACE, "Disabled");
+
+	send_message_and_unref(conn, signal);
 
 	return send_message_and_unref(conn, reply);
 }
