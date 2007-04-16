@@ -168,6 +168,8 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	/* Remove the nap or gn file from the file system */
+	server_remove_stored(conn, path);
 	if (!dbus_connection_unregister_object_path(conn, path))
 		error("Network path unregister failed");
 
@@ -551,7 +553,6 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 static DBusHandlerResult remove_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	/* FIXME: Remove from the storage */
 	return remove_path(conn, msg, &server_paths, "ServerRemoved");
 }
 
@@ -644,7 +645,6 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 static DBusHandlerResult remove_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	/* FIXME: Remove from the storage */
 	return remove_path(conn, msg, &connection_paths, "ConnectionRemoved");
 }
 

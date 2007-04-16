@@ -1099,3 +1099,21 @@ int server_store(DBusConnection *conn, const char *path)
 
 	return 0;
 }
+
+int server_remove_stored(DBusConnection *conn, const char *path)
+{
+	struct network_server *ns;
+	char filename[PATH_MAX + 1];
+	char addr[18];
+
+	if (!dbus_connection_get_object_path_data(conn, path, (void *) &ns))
+		return -ENOENT;
+
+	ba2str(&ns->src, addr);
+	if (ns->id == BNEP_SVC_NAP)
+		create_name(filename, PATH_MAX, STORAGEDIR, addr, "nap");
+	else
+		create_name(filename, PATH_MAX, STORAGEDIR, addr, "gn");
+
+	return remove(filename);
+}
