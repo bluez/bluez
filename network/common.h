@@ -32,3 +32,4 @@ int bnep_kill_connection(bdaddr_t *dst);
 int bnep_kill_all_connections(void);
 
 int bnep_connadd(int sk, uint16_t role, char *dev);
+int bnep_if_up(const char *devname, int up);

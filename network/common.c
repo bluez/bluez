@@ -30,6 +30,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <net/if.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
@@ -139,13 +142,13 @@ int bnep_kill_all_connections(void)
 {
 	struct bnep_connlist_req req;
 	struct bnep_conninfo ci[7];
-	int i;
+	int i, err;
 
 	memset(&req, 0, sizeof(req));
 	req.cnum = 7;
 	req.ci   = ci;
 	if (ioctl(ctl, BNEPGETCONNLIST, &req)) {
-		int err = errno;
+		err = errno;
 		error("Failed to get connection list: %s (%d)",
 						strerror(err), err);
 		return -err;
@@ -168,12 +171,36 @@ int bnep_connadd(int sk, uint16_t role, char *dev)
 	req.device[15] = '\0';
 	req.sock = sk;
 	req.role = role;
-	if (ioctl(ctl, BNEPCONNADD, &req)) {
+	if (ioctl(ctl, BNEPCONNADD, &req) < 0) {
 		int err = errno;
 		error("Failed to add device %s: %s(%d)",
 				dev, strerror(err), err);
 		return -err;
 	}
+
 	strncpy(dev, req.device, 16);
+	return 0;
+}
+
+int bnep_if_up(const char *devname, int up)
+{
+	int sd, err;
+	struct ifreq ifr;
+
+	sd = socket(AF_INET6, SOCK_DGRAM, 0);
+	strcpy(ifr.ifr_name, devname);
+
+	if (up)
+		ifr.ifr_flags |= IFF_UP;
+	else
+		ifr.ifr_flags &= ~IFF_UP;
+
+	if((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
+		err = errno;
+		error("Could not bring up %d. %s(%d)", devname, strerror(err),
+			err);
+		return -err;
+	}
+
 	return 0;
 }
