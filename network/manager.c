@@ -27,6 +27,7 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <errno.h>
 
 #include <sys/stat.h>
 
@@ -58,8 +59,9 @@
 struct pending_reply {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
-	bdaddr_t	src;		/* Source Address */
-	char		*addr;		/* Destination Address*/
+	bdaddr_t	src;		/* Source address */
+	bdaddr_t	dst;		/* Destination address */
+	char		*addr;		/* Destination address */
 	char		*path;		/* D-Bus object path */
 	char		*adapter_path;	/* Default adapter path */
 	uint16_t	id;		/* Role */
@@ -74,6 +76,7 @@ static int net_uid = 0;	/* Network objects identifier */
 
 static void pending_reply_free(struct pending_reply *pr)
 {
+
 	if (pr->addr)
 		g_free(pr->addr);
 	if (pr->path)
@@ -190,7 +193,6 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 	struct pending_reply *pr = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
-	bdaddr_t src, dst;
 	int len, scanned;
 	uint8_t *rec_bin;
 	sdp_data_t *d;
@@ -242,12 +244,8 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 				d->unitSize, d->val.str);
 	}
 
-	/* FIXME: it can' t be hard coded */
-	bacpy(&src, BDADDR_ANY);
-	str2ba(pr->addr, &dst);
-
-	if (connection_register(pr->conn, pr->path, &src,
-				&dst, pr->id, name, desc) < 0) {
+	if (connection_register(pr->conn, pr->path, &pr->src,
+				&pr->dst, pr->id, name, desc) < 0) {
 		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
 		goto fail;
 	}
@@ -373,131 +371,6 @@ static int get_handles(struct pending_reply *pr,
 	return 0;
 }
 
-static void get_address_reply(DBusPendingCall *call, void *data)
-{
-	struct pending_reply *pr = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError derr;
-	const char *address;
-	bdaddr_t src;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("GetAddress: %s(%s)", derr.name, derr.message);
-		goto fail;
-	}
-
-	if (!dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_INVALID)) {
-		error("%s: %s", derr.name, derr.message);
-		goto fail;
-	}
-
-	str2ba(address, &src);
-	if (server_register(pr->conn, pr->path, &src, pr->id) < 0) {
-		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
-		goto fail;
-	}
-
-	server_store(pr->conn, pr->path);
-
-	server_paths = g_slist_append(server_paths, g_strdup(pr->path));
-
-	create_path(pr->conn, pr->msg, pr->path, "ServerCreated");
-fail:
-	dbus_error_free(&derr);
-	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
-	return;
-}
-
-static int get_address(struct pending_reply *pr,
-			DBusPendingCallNotifyFunction cb)
-{
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-
-	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
-			"org.bluez.Adapter", "GetAddress");
-	if (!msg)
-		return -1;
-
-	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
-		error("Can't send D-Bus message.");
-		return -1;
-	}
-
-	dbus_pending_call_set_notify(pending, cb, pr, NULL);
-	dbus_message_unref(msg);
-
-	return 0;
-}
-
-static void default_adapter_reply(DBusPendingCall *call, void *data)
-{
-	struct pending_reply *pr = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError derr;
-	const char *adapter;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		err_connection_failed(pr->conn, pr->msg, derr.message);
-		error("DefaultAdapter: %s(%s)", derr.name, derr.message);
-		goto fail;
-	}
-
-	if (!dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_STRING, &adapter,
-				DBUS_TYPE_INVALID)) {
-		err_connection_failed(pr->conn, pr->msg, derr.message);
-		error("%s: %s", derr.name, derr.message);
-		goto fail;
-	}
-
-	pr->adapter_path = g_strdup(adapter);
-
-	if (pr->addr) {
-		if (get_handles(pr, pan_handle_reply) < 0) {
-			err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
-			goto fail;
-		}
-	} else if (get_address(pr, get_address_reply) < 0) {
-		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
-		goto fail;
-	}
-
-	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
-	return;
-fail:
-	dbus_error_free(&derr);
-	pending_reply_free(pr);
-}
-
-static int get_default_adapter(struct pending_reply *pr,
-		DBusPendingCallNotifyFunction cb)
-{
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-			"org.bluez.Manager", "DefaultAdapter");
-	if (!msg)
-		return -1;
-
-	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
-		error("Can't send D-Bus message.");
-		return -1;
-	}
-
-	dbus_pending_call_set_notify(pending, cb, pr, NULL);
-	dbus_message_unref(msg);
-
-	return 0;
-}
-
 static DBusHandlerResult list_servers(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
@@ -507,10 +380,12 @@ static DBusHandlerResult list_servers(DBusConnection *conn, DBusMessage *msg,
 static DBusHandlerResult create_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct pending_reply *pr;
+	char path[MAX_PATH_LENGTH];
 	DBusError derr;
 	const char *str;
-	int id;
+	bdaddr_t src;
+	uint16_t id;
+	int dev_id;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -525,27 +400,32 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
 		return err_invalid_args(conn, msg, "Not supported");
 
-	pr = g_new0(struct pending_reply, 1);
-	pr->conn = dbus_connection_ref(conn);;
-	pr->msg = dbus_message_ref(msg);
-	pr->addr = NULL;
-	pr->id = id;
-	pr->path = g_new0(char, MAX_PATH_LENGTH);
-	snprintf(pr->path, MAX_PATH_LENGTH, NETWORK_PATH"/server/%s%d",
+	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/server/%s%d",
 							bnep_name(id), net_uid++);
 
-	if (g_slist_find_custom(server_paths, pr->path,
+	if (g_slist_find_custom(server_paths, path,
 				(GCompareFunc) strcmp)) {
 		err_already_exists(conn, msg, "Server Already exists");
-		pending_reply_free(pr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	/* FIXME: use hci_get_route */
-	if (get_default_adapter(pr, default_adapter_reply) < 0) {
-		err_failed(conn, msg, "D-Bus path registration failed");
-		pending_reply_free(pr);
-	}
+	bacpy(&src, BDADDR_ANY);
+
+	dev_id = hci_get_route(NULL);
+
+	if (dev_id >= 0)
+		hci_devba(dev_id, &src);
+
+	if (server_register(conn, path, &src, id) < 0)
+		return err_failed(conn, msg,
+				"D-Bus path registration failed");
+
+	if (bacmp(&src, BDADDR_ANY) != 0)
+		server_store(conn, path);
+
+	server_paths = g_slist_append(server_paths, g_strdup(path));
+
+	create_path(conn, msg, path, "ServerCreated");
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -608,7 +488,9 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	DBusError derr;
 	const char *addr;
 	const char *str;
+	bdaddr_t src;
 	uint16_t id;
+	int dev_id;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -624,20 +506,27 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
 		return err_invalid_args(conn, msg, "Not supported");
 
+	bacpy(&src, BDADDR_ANY);
+	dev_id = hci_get_route(NULL);
+	if ((dev_id < 0) ||  (hci_devba(dev_id, &src) < 0))
+		return err_failed(conn, msg, "Adapter not available");
+
 	pr = g_new0(struct pending_reply, 1);
 	pr->conn = dbus_connection_ref(conn);
 	pr->msg = dbus_message_ref(msg);
+	bacpy(&pr->src, &src);
+	str2ba(addr, &pr->dst);
 	pr->addr = g_strdup(addr);
 	pr->id = id;
 	pr->path = g_new0(char, MAX_PATH_LENGTH);
 	snprintf(pr->path, MAX_PATH_LENGTH,
 			NETWORK_PATH"/connection%d", net_uid++);
 
-	/* FIXME: use hci_get_route */
-	if (get_default_adapter(pr, default_adapter_reply) < 0) {
-		err_failed(conn, msg, "D-Bus path registration failed");
-		pending_reply_free(pr);
-	}
+	pr->adapter_path = g_malloc0(16);
+	snprintf(pr->adapter_path, 16, "/org/bluez/hci%d", dev_id);
+
+	if (get_handles(pr, pan_handle_reply) < 0)
+		return err_not_supported(conn, msg);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }

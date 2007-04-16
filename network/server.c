@@ -31,9 +31,12 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <net/if.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/bnep.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
@@ -723,6 +726,17 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	if (ns->io)
 		return err_already_exists(conn, msg, "Server already enabled");
 
+	if (bacmp(&ns->src, BDADDR_ANY) == 0) {
+		int dev_id;
+
+		dev_id = hci_get_route(NULL);
+		if ((dev_id < 0) || (hci_devba(dev_id, &ns->src) < 0))
+			return err_failed(conn, msg, "Adapter not available");
+
+		/* Store the server info */
+		server_store(conn, ns->path);
+	}
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -1113,6 +1127,8 @@ int server_store(DBusConnection *conn, const char *path)
 		create_name(filename, PATH_MAX, STORAGEDIR, addr, "nap");
 	else
 		create_name(filename, PATH_MAX, STORAGEDIR, addr, "gn");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	textfile_put(filename, "name", ns->name);
 
