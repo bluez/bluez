@@ -408,6 +408,11 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 			break;
 
 		case HEADSET_EVENT_KEYPRESS:
+			if (hs->ring_timer) {
+				g_source_remove(hs->ring_timer);
+				hs->ring_timer = 0;
+			}
+
 			hs_signal(hs, "AnswerRequested");
 			break;
 
@@ -436,11 +441,6 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 
 		if (!hs->data_length)
 			hs->data_start = 0;
-	}
-
-	if (hs->ring_timer) {
-		g_source_remove(hs->ring_timer);
-		hs->ring_timer = 0;
 	}
 
 	return TRUE;
