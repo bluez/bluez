@@ -39,6 +39,7 @@
 
 #include "logging.h"
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "textfile.h"
 
 #include "error.h"
@@ -491,6 +492,38 @@ static DBusHandlerResult is_connected(DBusConnection *conn, DBusMessage *msg,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult get_info(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct network_conn *nc = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	const char *uuid;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	dbus_message_iter_append_dict_entry(&dict, "name",
+			DBUS_TYPE_STRING, &nc->name);
+
+	uuid = bnep_uuid(nc->id);
+	dbus_message_iter_append_dict_entry(&dict, "uuid",
+			DBUS_TYPE_STRING, &uuid);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult connection_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -525,6 +558,9 @@ static DBusHandlerResult connection_message(DBusConnection *conn,
 
 	if (strcmp(member, "IsConnected") == 0)
 		return is_connected(conn, msg, data);
+
+	if (strcmp(member, "GetInfo") == 0)
+		return get_info(conn, msg, data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
