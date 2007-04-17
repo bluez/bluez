@@ -170,6 +170,10 @@ Methods		string GetAddress()
 
 			Returns the connection status.
 
+		dict GetInfo()
+
+			Returns the connection properties.
+
 Signals
 
 		void Connected()
