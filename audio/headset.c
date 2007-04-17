@@ -359,10 +359,11 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 				struct headset *hs)
 {
 	unsigned char buf[BUF_SIZE];
-	char *cr;
+	char *cr, rsp[BUF_SIZE];
 	gsize bytes_read = 0;
-	gsize free_space;
+	gsize free_space, count, bytes_written, total_bytes_written;
 	GIOError err;
+	off_t cmd_len;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -391,57 +392,53 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	hs->buf[hs->data_start + hs->data_length] = '\0';
 
 	cr = strchr(&hs->buf[hs->data_start], '\r');
-	if (cr) {
-		char rsp[BUF_SIZE];
-		gsize count, bytes_written, total_bytes_written;
-		off_t cmd_len;
+	if (!cr)
+		return TRUE;
 
-		cmd_len	= 1 + (off_t) cr - (off_t) &hs->buf[hs->data_start];
-		*cr = '\0';
+	cmd_len	= 1 + (off_t) cr - (off_t) &hs->buf[hs->data_start];
+	*cr = '\0';
 
-		memset(rsp, 0, sizeof(rsp));
+	memset(rsp, 0, sizeof(rsp));
 
-		/* FIXME: make a better parse function */
-		switch (parse_headset_event(&hs->buf[hs->data_start], rsp, sizeof(rsp))) {
-		case HEADSET_EVENT_GAIN:
-			hs_signal_gain_setting(hs, &hs->buf[hs->data_start] + 2);
-			break;
+	switch (parse_headset_event(&hs->buf[hs->data_start], rsp, sizeof(rsp))) {
+	case HEADSET_EVENT_GAIN:
+		hs_signal_gain_setting(hs, &hs->buf[hs->data_start] + 2);
+		break;
 
-		case HEADSET_EVENT_KEYPRESS:
-			if (hs->ring_timer) {
-				g_source_remove(hs->ring_timer);
-				hs->ring_timer = 0;
-			}
-
-			hs_signal(hs, "AnswerRequested");
-			break;
-
-		case HEADSET_EVENT_INVALID:
-		case HEADSET_EVENT_UNKNOWN:
-		default:
-			debug("Unknown headset event");
-			break;
+	case HEADSET_EVENT_KEYPRESS:
+		if (hs->ring_timer) {
+			g_source_remove(hs->ring_timer);
+			hs->ring_timer = 0;
 		}
 
-		count = strlen(rsp);
-		total_bytes_written = bytes_written = 0;
-		err = G_IO_ERROR_NONE;
+		hs_signal(hs, "AnswerRequested");
+		break;
 
-		while (err == G_IO_ERROR_NONE && total_bytes_written < count) {
-			/* FIXME: make it async */
-			err = g_io_channel_write(hs->rfcomm, rsp + total_bytes_written, 
-						count - total_bytes_written, &bytes_written);
-			if (err != G_IO_ERROR_NONE)
-				error("Error while writting to the audio output channel");
-			total_bytes_written += bytes_written;
-		};
-
-		hs->data_start += cmd_len;
-		hs->data_length -= cmd_len;
-
-		if (!hs->data_length)
-			hs->data_start = 0;
+	case HEADSET_EVENT_INVALID:
+	case HEADSET_EVENT_UNKNOWN:
+	default:
+		debug("Unknown headset event");
+		break;
 	}
+
+	count = strlen(rsp);
+	total_bytes_written = bytes_written = 0;
+	err = G_IO_ERROR_NONE;
+
+	while (err == G_IO_ERROR_NONE && total_bytes_written < count) {
+		/* FIXME: make it async */
+		err = g_io_channel_write(hs->rfcomm, rsp + total_bytes_written, 
+				count - total_bytes_written, &bytes_written);
+		if (err != G_IO_ERROR_NONE)
+			error("Error while writting to the audio output channel");
+		total_bytes_written += bytes_written;
+	};
+
+	hs->data_start += cmd_len;
+	hs->data_length -= cmd_len;
+
+	if (!hs->data_length)
+		hs->data_start = 0;
 
 	return TRUE;
 
