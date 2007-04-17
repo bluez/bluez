@@ -54,9 +54,6 @@
 
 #define INPUT_DEVICE_INTERFACE	"org.bluez.input.Device"
 
-#define L2CAP_PSM_HIDP_CTRL		0x11
-#define L2CAP_PSM_HIDP_INTR		0x13
-
 #define BUF_SIZE	16
 
 #define UPDOWN_ENABLED		1
@@ -515,63 +512,6 @@ failed:
 	return -err;
 }
 
-static int l2cap_connect(struct device *idev,
-				unsigned short psm, GIOFunc cb)
-{
-	GIOChannel *io;
-	struct sockaddr_l2 addr;
-	struct l2cap_options opts;
-	int sk, err;
-
-	if ((sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0)
-		return -1;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family  = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, &idev->src);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
-		goto failed;
-
-	if (set_nonblocking(sk) < 0)
-		goto failed;
-
-	memset(&opts, 0, sizeof(opts));
-	opts.imtu = HIDP_DEFAULT_MTU;
-	opts.omtu = HIDP_DEFAULT_MTU;
-	opts.flush_to = 0xffff;
-
-	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0)
-		goto failed;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family  = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, &idev->dst);
-	addr.l2_psm = htobs(psm);
-
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, FALSE);
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		if (!(errno == EAGAIN || errno == EINPROGRESS))
-			goto failed;
-
-		g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				(GIOFunc) cb, idev);
-	} else {
-		cb(io, G_IO_OUT, idev);
-	}
-
-	return 0;
-
-failed:
-	err = errno;
-	close(sk);
-	errno = err;
-
-	return -1;
-}
-
 static gboolean interrupt_connect_cb(GIOChannel *chan,
 			GIOCondition cond, struct device *idev)
 {
@@ -704,8 +644,8 @@ static gboolean control_connect_cb(GIOChannel *chan,
 	}
 
 	/* Connect to the HID interrupt channel */
-	if (l2cap_connect(idev, L2CAP_PSM_HIDP_INTR,
-			(GIOFunc) interrupt_connect_cb) < 0) {
+	if (l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_INTR,
+				(GIOFunc) interrupt_connect_cb, idev) < 0) {
 
 		err = errno;
 		error("L2CAP connect failed:%s (%d)", strerror(errno), errno);
@@ -861,8 +801,9 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	}
 
 	/* HID devices */
-	if (l2cap_connect(idev, L2CAP_PSM_HIDP_CTRL,
-			(GIOFunc) control_connect_cb) < 0) {
+	if (l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL,
+				(GIOFunc) control_connect_cb, idev) < 0) {
+
 		error("L2CAP connect failed: %s(%d)", strerror(errno), errno);
 		pending_connect_free(idev->pending_connect);
 		idev->pending_connect = NULL;
@@ -1152,4 +1093,62 @@ int input_device_get_bdaddr(DBusConnection *conn, const char *path,
 	bacpy(dst, &idev->dst);
 
 	return 0;
+}
+
+int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm, GIOFunc cb, void *data)
+{
+	GIOChannel *io;
+	struct sockaddr_l2 addr;
+	struct l2cap_options opts;
+	int sk, err;
+
+	if ((sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0)
+		return -1;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family  = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, src);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
+		goto failed;
+
+	if (set_nonblocking(sk) < 0)
+		goto failed;
+
+	memset(&opts, 0, sizeof(opts));
+	opts.imtu = HIDP_DEFAULT_MTU;
+	opts.omtu = HIDP_DEFAULT_MTU;
+	opts.flush_to = 0xffff;
+
+	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0)
+		goto failed;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family  = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, dst);
+	addr.l2_psm = htobs(psm);
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, FALSE);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
+			g_io_channel_unref(io);
+			goto failed;
+		}
+
+		g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+				(GIOFunc) cb, data);
+	} else {
+		cb(io, G_IO_OUT, data);
+	}
+
+	return 0;
+
+failed:
+	err = errno;
+	close(sk);
+	errno = err;
+
+	return -1;
 }

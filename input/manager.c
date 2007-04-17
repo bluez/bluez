@@ -27,7 +27,9 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -62,6 +64,7 @@ struct pending_req {
 	DBusMessage	*msg;
 	sdp_record_t	*pnp_rec;
 	sdp_record_t	*hid_rec;
+	int		ctrl_sock;
 };
 
 static GSList *device_paths = NULL;	/* Input registered paths */
@@ -245,15 +248,151 @@ static void extract_pnp_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 	req->version = pdlist ? pdlist->val.uint16 : 0x0000;
 }
 
+static gboolean interrupt_connect_cb(GIOChannel *chan,
+			GIOCondition cond, struct pending_req *pr)
+{
+	struct hidp_connadd_req hidp;
+	DBusMessage *reply;
+	const char *path;
+	int isk, ret, err;
+	socklen_t len;
+
+	if (cond & G_IO_NVAL) {
+		err = EHOSTDOWN;
+		isk = -1;
+		goto failed;
+	}
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		err = EINTR;
+		isk = -1;
+		error("Hangup or error on HIDP interrupt socket");
+		goto failed;
+
+	}
+
+	isk = g_io_channel_unix_get_fd(chan);
+
+	len = sizeof(ret);
+	if (getsockopt(isk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		err = ret;
+		error("connect(): %s (%d)", strerror(ret), ret);
+		goto failed;
+	}
+
+
+	memset(&hidp, 0, sizeof(struct hidp_connadd_req));
+	extract_hid_record(pr->hid_rec, &hidp);
+	if (pr->pnp_rec)
+		extract_pnp_record(pr->pnp_rec, &hidp);
+
+	store_device_info(&pr->src, &pr->dst, &hidp);
+
+	if (input_device_register(pr->conn, &pr->src,
+					&pr->dst, &hidp, &path) < 0) {
+		err_failed(pr->conn, pr->msg, "path registration failed");
+		goto cleanup;
+	}
+
+	device_paths = g_slist_append(device_paths, g_strdup(path));
+
+	/* Replying to the requestor */
+	reply = dbus_message_new_method_return(pr->msg);
+
+	dbus_message_append_args(reply,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID);
+
+	send_message_and_unref(pr->conn, reply);
+
+	goto cleanup;
+failed:
+	err_connection_failed(pr->conn, pr->msg, strerror(err));
+
+cleanup:
+	if (isk > 0)
+		close(isk);
+
+	close(pr->ctrl_sock);
+	pending_req_free(pr);
+	g_io_channel_unref(chan);
+
+	return FALSE;
+}
+
+static gboolean control_connect_cb(GIOChannel *chan,
+			GIOCondition cond, struct pending_req *pr)
+{
+	int ret, csk, err;
+	socklen_t len;
+
+	if (cond & G_IO_NVAL) {
+		err = EHOSTDOWN;
+		csk = -1;
+		goto failed;
+	}
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		err = EINTR;
+		csk = -1;
+		error("Hangup or error on HIDP control socket");
+		goto failed;
+
+	}
+
+	csk = g_io_channel_unix_get_fd(chan);
+	/* Set HID control channel */
+	pr->ctrl_sock = csk;
+
+	len = sizeof(ret);
+	if (getsockopt(csk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		err = ret;
+		error("connect(): %s (%d)", strerror(ret), ret);
+		goto failed;
+	}
+
+	/* Connect to the HID interrupt channel */
+	if (l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_INTR,
+			(GIOFunc) interrupt_connect_cb, pr) < 0) {
+
+		err = errno;
+		error("L2CAP connect failed:%s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	g_io_channel_unref(chan);
+	return FALSE;
+
+failed:
+	if (csk > 0)
+		close(csk);
+
+	err_connection_failed(pr->conn, pr->msg, strerror(err));
+	pending_req_free(pr);
+
+	g_io_channel_unref(chan);
+
+	return FALSE;
+}
+
 static void hid_record_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusMessage *pr_reply;
 	struct pending_req *pr = data;
-	struct hidp_connadd_req hidp;
 	DBusError derr;
 	uint8_t *rec_bin;
-	const char *path;
 	int len, scanned;
 
 	dbus_error_init(&derr);
@@ -289,29 +428,18 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	memset(&hidp, 0, sizeof(struct hidp_connadd_req));
-	extract_hid_record(pr->hid_rec, &hidp);
-	if (pr->pnp_rec)
-		extract_pnp_record(pr->pnp_rec, &hidp);
-
-	store_device_info(&pr->src, &pr->dst, &hidp);
-
-	if (input_device_register(pr->conn, &pr->src,
-					&pr->dst, &hidp, &path) < 0) {
-		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
+	if (l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_CTRL,
+				(GIOFunc) control_connect_cb, pr) < 0) {
+		int err = errno;
+		error("L2CAP connect failed:%s (%d)", strerror(err), err);
+		err_connection_failed(pr->conn, pr->msg, strerror(err));
 		goto fail;
+
 	}
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
 
-	device_paths = g_slist_append(device_paths, g_strdup(path));
-
-	pr_reply = dbus_message_new_method_return(pr->msg);
-
-	dbus_message_append_args(pr_reply,
-				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID);
-
-	send_message_and_unref(pr->conn, pr_reply);
-
+	return;
 fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
