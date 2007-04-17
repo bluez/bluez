@@ -43,6 +43,7 @@
 #include "dbus.h"
 #include "notify.h"
 #include "dbus-common.h"
+#include "dbus-helper.h"
 #include "dbus-error.h"
 #include "dbus-manager.h"
 #include "dbus-service.h"
