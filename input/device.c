@@ -800,10 +800,12 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	if (l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL,
 				(GIOFunc) control_connect_cb, idev) < 0) {
 
-		error("L2CAP connect failed: %s(%d)", strerror(errno), errno);
+		int err = errno;
+
+		error("L2CAP connect failed: %s(%d)", strerror(err), err);
 		pending_connect_free(idev->pending_connect);
 		idev->pending_connect = NULL;
-		return err_connection_failed(conn, msg, strerror(errno));
+		return err_connection_failed(conn, msg, strerror(err));
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
