@@ -1135,7 +1135,7 @@ static void usage(void)
 int main(int argc, char *argv[])
 {
 	struct uart_t *u = NULL;
-	int detach, printpid, opt, i, n, ld;
+	int detach, printpid, opt, i, n, ld, err;
 	int to = 5; 
 	int init_speed = 0;
 	int send_break = 0;
@@ -1286,7 +1286,10 @@ int main(int argc, char *argv[])
 
 	while (!__io_canceled) {
 		p.revents = 0;
-		if (poll(&p, 1, 500))
+		err = poll(&p, 1, 500);
+		if (err < 0 && errno == EINTR)
+			continue;
+		if (err)
 			break;
 	}
 
