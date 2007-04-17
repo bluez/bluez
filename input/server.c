@@ -177,14 +177,11 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 		close(session->ctrl_sk);
 
 		g_free(session);
-
-		goto failed;
+	} else {
+		create_device(session);
 	}
 
-	create_device(session);
-failed:
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(pcall);
 }
 
 static int authorize_device(struct session_data *session)
@@ -214,6 +211,7 @@ static int authorize_device(struct session_data *session)
 		return -EACCES;
 
 	dbus_pending_call_set_notify(pending, authorization_callback, session, NULL);
+	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 
 	return 0;

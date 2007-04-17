@@ -143,6 +143,7 @@ static int get_record(struct pending_req *pr, uint32_t handle,
 	}
 
 	dbus_pending_call_set_notify(pending, cb, pr, NULL);
+	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 
 	return 0;
@@ -173,6 +174,7 @@ static int get_handles(struct pending_req *pr, const char *uuid,
 	}
 
 	dbus_pending_call_set_notify(pending, cb, pr, NULL);
+	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 
 	return 0;
@@ -431,14 +433,12 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 
 	}
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 
 	return;
 fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 static void hid_handle_reply(DBusPendingCall *call, void *data)
@@ -491,7 +491,6 @@ fail:
 
 done:
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 static void pnp_record_reply(DBusPendingCall *call, void *data)
@@ -545,7 +544,6 @@ fail:
 
 done:
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 static void pnp_handle_reply(DBusPendingCall *call, void *data)
@@ -602,7 +600,6 @@ fail:
 
 done:
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 static void headset_record_reply(DBusPendingCall *call, void *data)
@@ -689,7 +686,6 @@ fail:
 	dbus_error_free(&derr);
 	pending_req_free(pr);
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 static void headset_handle_reply(DBusPendingCall *call, void *data)
@@ -742,7 +738,6 @@ fail:
 
 done:
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
