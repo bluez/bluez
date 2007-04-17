@@ -520,6 +520,8 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 	const char *path;
 	socklen_t len;
 
+	isk = g_io_channel_unix_get_fd(chan);
+
 	if (cond & G_IO_NVAL) {
 		err = EHOSTDOWN;
 		isk = -1;
@@ -527,14 +529,12 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 	}
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		err = EINTR;
-		isk = -1;
+		err = EHOSTDOWN;
 		error("Hangup or error on HIDP interrupt socket");
 		goto failed;
 
 	}
 
-	isk = g_io_channel_unix_get_fd(chan);
 	idev->hidp.intr_sock = isk;
 	idev->hidp.idle_to = 30 * 60;	/* 30 minutes */
 
@@ -601,7 +601,6 @@ cleanup:
 
 	pending_connect_free(idev->pending_connect);
 	idev->pending_connect = NULL;
-	g_io_channel_unref(chan);
 
 	return FALSE;
 }
@@ -612,6 +611,8 @@ static gboolean control_connect_cb(GIOChannel *chan,
 	int ret, csk, err;
 	socklen_t len;
 
+	csk = g_io_channel_unix_get_fd(chan);
+
 	if (cond & G_IO_NVAL) {
 		err = EHOSTDOWN;
 		csk = -1;
@@ -619,14 +620,11 @@ static gboolean control_connect_cb(GIOChannel *chan,
 	}
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		err = EINTR;
-		csk = -1;
+		err = EHOSTDOWN;
 		error("Hangup or error on HIDP control socket");
 		goto failed;
-
 	}
 
-	csk = g_io_channel_unix_get_fd(chan);
 	/* Set HID control channel */
 	idev->hidp.ctrl_sock = csk;
 
@@ -652,7 +650,6 @@ static gboolean control_connect_cb(GIOChannel *chan,
 		goto failed;
 	}
 
-	g_io_channel_unref(chan);
 	return FALSE;
 
 failed:
@@ -664,7 +661,6 @@ failed:
 			idev->pending_connect->msg, strerror(err));
 	pending_connect_free(idev->pending_connect);
 	idev->pending_connect = NULL;
-	g_io_channel_unref(chan);
 
 	return FALSE;
 }
@@ -1142,6 +1138,8 @@ int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm, GIOFunc cb, 
 	} else {
 		cb(io, G_IO_OUT, data);
 	}
+
+	g_io_channel_unref(io);
 
 	return 0;
 
