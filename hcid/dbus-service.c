@@ -205,6 +205,26 @@ static DBusHandlerResult get_description(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult get_bus_name(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct service *service = data;
+	DBusMessage *reply;
+
+	if (!service->bus_name)
+		return error_not_available(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &service->bus_name,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static void service_setup(gpointer data)
 {
 	/* struct service *service = data; */
@@ -611,6 +631,7 @@ static struct service_data services_methods[] = {
 	{ "GetIdentifier",	get_identifier		},
 	{ "GetName",		get_name		},
 	{ "GetDescription",	get_description		},
+	{ "GetBusName",		get_bus_name		},
 	{ "Start",		start			},
 	{ "Stop",		stop			},
 	{ "IsRunning",		is_running		},

@@ -1089,6 +1089,13 @@ Methods		dict GetInfo()
 
 			This method returns the service description.
 
+		string GetBusName() [experimental]
+
+			Returns the unique bus name of the service if it has
+			been started.
+
+			Possible errors: org.bluez.Error.NotAvailable
+
 		void Start()
 
 			This method tells the system to start the
