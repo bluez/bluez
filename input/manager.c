@@ -827,6 +827,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	DBusError derr;
 	GSList *l;
 	const char *path;
+	int err;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -845,13 +846,14 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	err = input_device_unregister(conn, path);
+	if (err < 0) {
+		dbus_message_unref(reply);
+		return err_failed(conn, msg, strerror(-err));
+	}
+
 	g_free(l->data);
 	device_paths = g_slist_remove(device_paths, l->data);
-
-	if (input_device_unregister(conn, path) < 0) {
-		dbus_message_unref(reply);
-		return err_failed(conn, msg, "D-Bus path unregistration failed");
-	}
 
 	return send_message_and_unref(conn, reply);
 }

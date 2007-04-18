@@ -667,11 +667,13 @@ static int disconnect(struct device *idev, uint32_t flags)
 
 	/* Fake input disconnect */
 	if (fake) {
-		if (fake->io) {
-			g_io_channel_close(fake->io);
-			g_io_channel_unref(fake->io);
-			fake->io = NULL;
-		}
+		if (!fake->io)
+			return -ENOTCONN;
+
+		g_io_channel_close(fake->io);
+		g_io_channel_unref(fake->io);
+		fake->io = NULL;
+
 		if (fake->uinput >= 0) {
 			ioctl(fake->uinput, UI_DEV_DESTROY);
 			close(fake->uinput);
@@ -974,16 +976,17 @@ static const DBusObjectPathVTable device_table = {
 static int register_path(DBusConnection *conn, const char *path, struct device *idev)
 {
 	DBusMessage *msg;
+
 	if (!dbus_connection_register_object_path(conn, path,
 							&device_table, idev)) {
 		error("Input device path registration failed");
-		return -1;
+		return -EINVAL;
 	}
 
 	msg = dbus_message_new_signal(INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceCreated");
 	if (!msg)
-		return -1;
+		return -ENOMEM;
 
 	dbus_message_append_args(msg,
 			DBUS_TYPE_STRING, &path,
@@ -1001,6 +1004,7 @@ int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 {
 	struct device *idev;
 	const char *path;
+	int err;
 
 	idev = device_new(src, dst);
 	path = create_input_path(idev->major, idev->minor);
@@ -1008,13 +1012,12 @@ int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 	/* rd_data must not be deallocated since the memory address is copied */
 	memcpy(&idev->hidp, hid, sizeof(struct hidp_connadd_req));
 
-	if (register_path(conn, path, idev) < 0)
-		return -1;
+	err = register_path(conn, path, idev);
 
 	if (*ppath)
 		*ppath = path;
 
-	return 0;
+	return err;
 }
 
 int fake_input_register(DBusConnection *conn, bdaddr_t *src,
@@ -1044,20 +1047,22 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 	struct device *idev;
 
 	if (!dbus_connection_get_object_path_data(conn,
-						path, (void *) &idev))
-		return -1;
+				path, (void *) &idev) || !idev)
+		return -EINVAL;
+
+	if (idev->pending_connect) {
+		/* Pending connection running */
+		return -EBUSY;
+	}
 
 	del_stored_device_info(&idev->src, &idev->dst);
 
-	if (!dbus_connection_unregister_object_path(conn, path)) {
-		error("Input device path unregister failed");
-		return -1;
-	}
+	dbus_connection_unregister_object_path(conn, path);
 
 	msg = dbus_message_new_signal(INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceRemoved");
 	if (!msg)
-		return -1;
+		return -ENOMEM;
 
 	dbus_message_append_args(msg,
 			DBUS_TYPE_STRING, &path,
