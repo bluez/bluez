@@ -92,7 +92,6 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	memset(nc->dev, 0, 16);
 	strncpy(nc->dev, netdev, 16);
 	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
 	return FALSE;
 }
 
@@ -178,7 +177,6 @@ failed:
 	nc->state = DISCONNECTED;
 	err_connection_failed(nc->conn, nc->msg, "bnep failed");
 	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
 	return FALSE;
 }
 
@@ -188,6 +186,7 @@ static int bnep_connect(struct network_conn *nc)
 	struct __service_16 *s;
 	unsigned char pkt[BNEP_MTU];
 	GIOChannel *io;
+	int err = 0;
 
 	/* Send request */
 	req = (void *) pkt;
@@ -200,14 +199,18 @@ static int bnep_connect(struct network_conn *nc)
 
 	io = g_io_channel_unix_new(nc->sk);
 	g_io_channel_set_close_on_unref(io, FALSE);
-	if (send(nc->sk, pkt, sizeof(*req) + sizeof(*s), 0) != -1) {
-		g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				(GIOFunc) bnep_connect_cb, nc);
-		return 0;
+
+	if (send(nc->sk, pkt, sizeof(*req) + sizeof(*s), 0) < 0) {
+		err = -errno;
+		goto out;
 	}
 
+	g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+			(GIOFunc) bnep_connect_cb, nc);
+
+out:
 	g_io_channel_unref(io);
-	return -1;
+	return err;
 }
 
 static gboolean l2cap_connect_cb(GIOChannel *chan,
@@ -217,7 +220,10 @@ static gboolean l2cap_connect_cb(GIOChannel *chan,
 	socklen_t len;
 	int sk, ret;
 
-	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	if (cond & (G_IO_ERR | G_IO_HUP))
 		goto failed;
 
 	sk = g_io_channel_unix_get_fd(chan);
@@ -238,13 +244,11 @@ static gboolean l2cap_connect_cb(GIOChannel *chan,
 		goto failed;
 	}
 
-	g_io_channel_unref(chan);
 	return FALSE;
 failed:
 	nc->state = DISCONNECTED;
 	err_connection_failed(nc->conn, nc->msg, strerror(errno));
 	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
 	return FALSE;
 }
 
@@ -270,9 +274,9 @@ static int l2cap_connect(struct network_conn *nc)
 	l2a.l2_family = AF_BLUETOOTH;
 	bacpy(&l2a.l2_bdaddr, &nc->src);
 
-	if (bind(nc->sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
+	if (bind(nc->sk, (struct sockaddr *) &l2a, sizeof(l2a)) < 0) {
 		error("Bind failed. %s(%d)", strerror(errno), errno);
-		return -1;
+		return -errno;
 	}
 
 	memset(&l2a, 0, sizeof(l2a));
@@ -282,7 +286,7 @@ static int l2cap_connect(struct network_conn *nc)
 
 	if (set_nonblocking(nc->sk) < 0) {
 		error("Set non blocking: %s (%d)", strerror(errno), errno);
-		return -1;
+		return -errno;
 	}
 
 	io = g_io_channel_unix_new(nc->sk);
@@ -294,7 +298,7 @@ static int l2cap_connect(struct network_conn *nc)
 					errno);
 			g_io_channel_close(io);
 			g_io_channel_unref(io);
-			return -1;
+			return -errno;
 		}
 		g_io_add_watch(io, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				(GIOFunc) l2cap_connect_cb, nc);
@@ -303,6 +307,7 @@ static int l2cap_connect(struct network_conn *nc)
 		l2cap_connect_cb(io, G_IO_OUT, nc);
 	}
 
+	g_io_channel_unref(io);
 	return 0;
 }
 
