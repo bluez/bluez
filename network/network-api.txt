@@ -114,6 +114,11 @@ Methods		string GetUUID()
 
 			Returns server encryption.
 
+		dict GetInfo()
+
+			Returns the server properties.
+
+
 Signals
 
 		void Enabled()
