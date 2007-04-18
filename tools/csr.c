@@ -333,6 +333,8 @@ static struct {
 	{ 3415, "Unified 21f"	},
 	{ 3424, "Unified 21f"	},
 	{ 3454, "Unified 21f"	},
+	{ 3684, "Unified 21f"	},
+	{ 3764, "Unified 21f"	},
 	{ 4276, "Unified 22b"	},
 	{ 4277, "Unified 22b"	},
 	{ 4279, "Unified 22b"	},
