@@ -355,12 +355,11 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 
 failed:
-	/* FIXME: Missing clean/free fake io channel */
-	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
 	ioctl(fake->uinput, UI_DEV_DESTROY);
 	close(fake->uinput);
 	fake->uinput = -1;
+	g_io_channel_unref(fake->io);
+
 	return FALSE;
 }
 
@@ -374,18 +373,15 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	int ret, err;
 
 	fake = idev->fake;
+	fake->rfcomm = g_io_channel_unix_get_fd(chan);
 
-	if (cond & G_IO_NVAL) {
-		g_io_channel_unref(chan);
+	if (cond & G_IO_NVAL)
 		return FALSE;
-	}
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		err = EIO;
 		goto failed;
 	}
-
-	fake->rfcomm = g_io_channel_unix_get_fd(chan);
 
 	len = sizeof(ret);
 	if (getsockopt(fake->rfcomm, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
@@ -427,7 +423,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 
 	pending_connect_free(idev->pending_connect);
 	idev->pending_connect = NULL;
-	g_io_channel_unref(chan);
+
 	return FALSE;
 
 failed:
@@ -435,7 +431,9 @@ failed:
 			idev->pending_connect->msg, strerror(err));
 	pending_connect_free(idev->pending_connect);
 	idev->pending_connect = NULL;
-	g_io_channel_unref(chan);
+
+	g_io_channel_close(chan);
+
 	return FALSE;
 }
 
@@ -451,15 +449,6 @@ static int rfcomm_connect(struct device *idev)
 		error("socket: %s (%d)", strerror(err), err);
 		return -err;
 	}
-
-	io = g_io_channel_unix_new(sk);
-	if (!io) {
-		err = -EIO;
-		error("channel_unix_new failed in rfcomm connect");
-		goto failed;
-	}
-
-	g_io_channel_set_close_on_unref(io, FALSE);
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
@@ -482,12 +471,17 @@ static int rfcomm_connect(struct device *idev)
 	addr.rc_family = AF_BLUETOOTH;
 	bacpy(&addr.rc_bdaddr, &idev->dst);
 	addr.rc_channel = idev->fake->ch;
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, FALSE);
+
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		char peer[18]; /* FIXME: debug purpose */
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
 			err = errno;
 			error("connect() failed: %s (%d)",
 					strerror(err), err);
+			g_io_channel_unref(io);
 			goto failed;
 		}
 
@@ -500,12 +494,11 @@ static int rfcomm_connect(struct device *idev)
 		rfcomm_connect_cb(io, G_IO_OUT, idev);
 	}
 
+	g_io_channel_unref(io);
+
 	return 0;
 
 failed:
-	if (io)
-		g_io_channel_unref(io);
-
 	close(sk);
 	errno = err;
 
