@@ -291,6 +291,7 @@ static int get_record(struct pending_reply *pr, uint32_t handle,
 
 	dbus_pending_call_set_notify(pending, cb, pr, NULL);
 	dbus_message_unref(msg);
+	dbus_pending_call_unref(pending);
 
 	return 0;
 }
@@ -367,6 +368,7 @@ static int get_handles(struct pending_reply *pr,
 
 	dbus_pending_call_set_notify(pending, cb, pr, NULL);
 	dbus_message_unref(msg);
+	dbus_pending_call_unref(pending);
 
 	return 0;
 }
