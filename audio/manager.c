@@ -229,7 +229,6 @@ static DBusHandlerResult am_remove_headset(DBusMessage *msg)
 	path = match->data;
 
 	headsets = g_slist_remove(headsets, path);
-	g_free(path);
 
 	if (default_hs == path) {
 		if (!headsets)
@@ -244,6 +243,8 @@ static DBusHandlerResult am_remove_headset(DBusMessage *msg)
 	manager_signal(connection, "HeadsetRemoved", path);
 
 	headset_remove(path);
+
+	g_free(path);
 
 	return send_message_and_unref(connection, reply);
 }
