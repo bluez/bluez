@@ -961,7 +961,8 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	uint8_t *array;
 	int array_len, record_len, err = EIO;
 	sdp_record_t *record = NULL;
-	sdp_list_t *protos;
+	sdp_list_t *protos, *classes = NULL;
+	uuid_t uuid;
 	struct headset *hs = data;
 	struct pending_connect *c;
 
@@ -973,39 +974,49 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("GetRemoteServiceRecord failed: %s", derr.message);
-		if (c->msg) 
-			err_not_supported(connection, c->msg);
 		dbus_error_free(&derr);
-		goto failed;
+		goto failed_not_supported;
 	}
 
 	if (!dbus_message_get_args(reply, NULL,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &array, &array_len,
 				DBUS_TYPE_INVALID)) {
 		error("Unable to get args from GetRecordReply");
-		if (c->msg) 
-			err_not_supported(connection, c->msg);
-		goto failed;
+		goto failed_not_supported;
 	}
 
 	if (!array) {
 		error("Unable to get handle array from reply");
-		if (c->msg) 
-			err_not_supported(connection, c->msg);
-		goto failed;
+		goto failed_not_supported;
 	}
 
 	record = sdp_extract_pdu(array, &record_len);
 	if (!record) {
 		error("Unable to extract service record from reply");
-		if (c->msg) 
-			err_not_supported(connection, c->msg);
-		goto failed;
+		goto failed_not_supported;
 	}
 
 	if (record_len != array_len)
 		debug("warning: array len (%d) != record len (%d)",
 				array_len, record_len);
+
+	if (sdp_get_service_classes(record, &classes) < 0) {
+		error("Unable to get service classes from record");
+		goto failed_not_supported;
+	}
+
+	memcpy(&uuid, classes->data, sizeof(uuid));
+
+	if (!sdp_uuid128_to_uuid(&uuid)) {
+		error("Not a 16 bit UUID");
+		goto failed_not_supported;
+	}
+
+	if ((uuid.type == SDP_UUID32 && uuid.value.uuid32 != HEADSET_SVCLASS_ID) ||
+			(uuid.type == SDP_UUID16 && uuid.value.uuid16 != HEADSET_SVCLASS_ID)) {
+		error("Service classes did not contain the expected UUID");
+		goto failed_not_supported;
+	}
 
 	if (!sdp_get_access_protos(record, &protos)) {
 		c->ch = sdp_get_proto_port(protos, RFCOMM_UUID);
@@ -1016,9 +1027,7 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 
 	if (c->ch == -1) {
 		error("Unable to extract RFCOMM channel from service record");
-		if (c->msg) 
-			err_not_supported(connection, c->msg);
-		goto failed;
+		goto failed_not_supported;
 	}
 
 	if (rfcomm_connect(hs, &err) < 0) {
@@ -1028,12 +1037,18 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 		goto failed;
 	}
 
+	sdp_list_free(classes, free);
 	sdp_record_free(record);
 	dbus_message_unref(reply);
 
 	return;
 
+failed_not_supported:
+	if (c->msg) 
+		err_not_supported(connection, c->msg);
 failed:
+	if (classes)
+		sdp_list_free(classes, free);
 	if (record)
 		sdp_record_free(record);
 	if (reply)
@@ -1251,10 +1266,8 @@ static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
 
 	assert(hs != NULL);
 
-	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->pending_connect) {
-		error("Already connected");
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+	if (hs->state > HEADSET_STATE_DISCONNECTED || hs->pending_connect)
+		return err_already_connected(connection, msg);
 
 	hs->pending_connect = g_try_new0(struct pending_connect, 1);
 	if (!hs->pending_connect) {
