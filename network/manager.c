@@ -164,6 +164,9 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 	if (!l)
 		return err_does_not_exist(conn, msg, "Path doesn't exist");
 
+	if (*list == connection_paths && connection_has_pending (conn, path))
+		return err_failed(conn, msg, "Connection is Busy");
+
 	g_free(l->data);
 	*list = g_slist_remove(*list, l->data);
 

@@ -698,3 +698,14 @@ int connection_find_data(DBusConnection *conn,
 
 	return -1;
 }
+
+gboolean connection_has_pending(DBusConnection *conn, const char *path)
+{
+	struct network_conn *nc;
+
+	if (!dbus_connection_get_object_path_data(conn, path, (void *) &nc))
+		return FALSE;
+
+	return (nc->state == CONNECTING);
+}
+
