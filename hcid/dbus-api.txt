@@ -610,16 +610,18 @@ Methods		dict GetInfo()
 
 		string GetRemoteName(string address)
 
-			Get adapter name for a remote device. This request
-			returns always a cached name. The service daemon is
-			responsible for updating the cache.
+			Get the remote device's name. This request returns always
+			a cached name. The service daemon is responsible for
+			updating the cache.
 
-			If no remote name is available, then this function
-			will return RequestDeferred. In this case the service
-			daemon will try to resolve the name at the next
-			possible opportunity. On success a RemoteNameUpdated
-			signal will be send and if a failure happens it will
-			be indicated by a RemoteNameFailed signal.
+			NotAvailable error is returned if the name is not in
+			the cache. But if there is a discovery running, then
+			this function will return RequestDeferred.  In this
+			case the service daemon will queue the request and
+			it will try to resolve the name at the next possible
+			opportunity. On success a RemoteNameUpdated signal will
+			be send and if a failure happens it will be indicated by
+			a RemoteNameFailed signal.
 
 			If this is an empty string, the UI might want to
 			display the BD_ADDR instead.
@@ -627,6 +629,7 @@ Methods		dict GetInfo()
 			Example: "00:11:22:33:44:55", "Nokia 770"
 
 			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
 					 org.bluez.Error.NotReady
 					 org.bluez.Error.RequestDeferred
 
