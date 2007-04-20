@@ -1692,16 +1692,13 @@ static DBusHandlerResult adapter_get_remote_name(DBusConnection *conn,
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	/* put the request name in the queue to resolve name */
+	/* If the discover process is not running, return an error */
+	if (!adapter->discov_active && !adapter->pdiscov_active)
+		return error_not_available(conn, msg);
+
+	/* Queue the request when there is a discovery running */
 	str2ba(peer_addr, &peer_bdaddr);
 	found_device_add(&adapter->found_devices, &peer_bdaddr, 0, NAME_REQUIRED);
-
-	/* 
-	 * if there is a discover process running, just queue the request.
-	 * Otherwise, send the HCI cmd to get the remote name
-	 */
-	if (!(adapter->discov_active ||  adapter->pdiscov_active))
-		found_device_req_name(adapter);
 
 	return error_request_deferred(conn, msg);
 }
