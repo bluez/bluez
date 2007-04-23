@@ -1,0 +1,12 @@
+Bluetooth serial service API description
+****************************************
+
+Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
+
+
+Manager hierarchy
+=================
+
+Service		org.bluez.serial
+Interface	org.bluez.serial.Manager
+Object path	/org/bluez/serial

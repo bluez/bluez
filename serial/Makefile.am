@@ -10,4 +10,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
+EXTRA_DIST = serial-api.txt
+
 MAINTAINERCLEANFILES = Makefile.in
