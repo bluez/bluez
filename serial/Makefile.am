@@ -1,7 +1,7 @@
 
 noinst_PROGRAMS = bluetoothd-service-serial
 
-bluetoothd_service_serial_SOURCES = main.c
+bluetoothd_service_serial_SOURCES = main.c manager.h manager.c
 
 LDADD = $(top_builddir)/common/libhelper.a \
                 @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
