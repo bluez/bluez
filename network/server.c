@@ -1117,6 +1117,7 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 	bacpy(&ns->src, src);
 	ns->path = g_strdup(path);
 	ns->id = id;
+	ns->conn = dbus_connection_ref(conn);
 	ns->name = textfile_get(filename, "name");
 	if (!ns->name) {
 		/* Name is mandatory */
