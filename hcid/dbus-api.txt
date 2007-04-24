@@ -1033,6 +1033,11 @@ Signals		void ModeChanged(string mode)
 			This signal will be sent every time the service daemon
 			tries to resolve a remote and this fails.
 
+		void RemoteNameRequested(string address)
+
+			This signal will be sent every time the service daemon
+			tries to resolve a remote name during discovery.
+
 		void RemoteAliasChanged(string address, string alias)
 
 			After changing an alias with SetRemoteAlias this

@@ -1005,7 +1005,7 @@ int found_device_req_name(struct adapter *adapter)
 
 	/* send at least one request or return failed if the list is empty */
 	do {
-		DBusMessage *failed_signal = NULL;
+		DBusMessage *signal = NULL;
 		struct remote_dev_info *dev = l->data;
 		char *peer_addr;
 		bdaddr_t tmp;
@@ -1023,7 +1023,7 @@ int found_device_req_name(struct adapter *adapter)
 		if (hci_send_req(dd, &rq, 500) < 0) {
 			error("Unable to send the HCI remote name request: %s (%d)",
 						strerror(errno), errno);
-			failed_signal = dev_signal_factory(adapter->dev_id,
+			signal = dev_signal_factory(adapter->dev_id,
 						"RemoteNameFailed",
 						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_INVALID);
@@ -1032,21 +1032,32 @@ int found_device_req_name(struct adapter *adapter)
 		if (rp.status) {
 			error("Remote name request failed with status 0x%02x",
 					rp.status);
-			failed_signal = dev_signal_factory(adapter->dev_id,
+			signal = dev_signal_factory(adapter->dev_id,
 						"RemoteNameFailed",
 						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_INVALID);
 		}
 
-		free(peer_addr);
-
-		if (!failed_signal) {
+		if (!signal) {
 			req_sent = 1;
-			break;
+			/* if we are in discovery, inform application of getting name */
+			if (adapter->discov_type & (STD_INQUIRY | PERIODIC_INQUIRY)) {
+				signal = dev_signal_factory(adapter->dev_id,
+							"RemoteNameRequested",
+							DBUS_TYPE_STRING, &peer_addr,
+							DBUS_TYPE_INVALID);
+			}
 		}
 
-		send_message_and_unref(connection, failed_signal);
-		failed_signal = NULL;
+		free(peer_addr);
+
+		if (signal) {
+			send_message_and_unref(connection, signal);
+			signal = NULL;
+		}
+
+		if (req_sent)
+			break;
 
 		/* if failed, request the next element */
 		/* remove the element from the list */
