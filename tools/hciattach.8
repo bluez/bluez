@@ -11,6 +11,7 @@ hciattach \- attach serial devices via UART HCI to BlueZ stack
 .IR type \||\| id
 .I speed
 .I flow
+.I bdaddr
 .SH DESCRIPTION
 .LP
 Hciattach is used to attach a serial UART to the Bluetooth stack as HCI
@@ -104,6 +105,16 @@ the serial link (
 set by default. To force no flow control use
 .B noflow
 instead.
+
+.TP
+.I bdaddr
+The 
+.I bdaddr
+specifies the Bluetooth Address to use.  Some devices (like the STLC2500) 
+do not store the Bluetooth address in hardware memory.  Instead it must 
+be uploaded during the initialization process.  If this argument
+is specified, then the address will be used to initialize the device.
+Otherwise, a default address will be used.
 
 .SH AUTHORS
 Written by Maxim Krasnyansky <maxk@qualcomm.com>
