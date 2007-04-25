@@ -268,7 +268,6 @@ fail:
 	dbus_error_free(&derr);
 	pending_reply_free(pr);
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 static int get_record(struct pending_reply *pr, uint32_t handle,
@@ -339,7 +338,6 @@ static void pan_handle_reply(DBusPendingCall *call, void *data)
 	}
 
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 	return;
 fail:
 	dbus_error_free(&derr);
