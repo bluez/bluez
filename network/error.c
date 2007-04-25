@@ -27,7 +27,7 @@
 
 #include "error.h"
 
-#define NETWORK_ERROR_INTERFACE "org.bluez.Error"
+#define NETWORK_ERROR_INTERFACE "org.bluez.network.Error"
 
 DBusHandlerResult err_unknown_connection(DBusConnection *conn,
 						DBusMessage *msg)
