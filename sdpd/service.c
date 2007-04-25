@@ -102,7 +102,8 @@ void register_public_browse_group(int public)
 	sdp_attr_add(browse, SDP_ATTR_RECORD_HANDLE, sdpdata);
 
 	add_lang_attr(browse);
-	sdp_set_info_attr(browse, "Public Browse Group Root", "BlueZ", "Root of public browse hierarchy");
+	sdp_set_info_attr(browse, "Public Browse Group Root", "BlueZ",
+					"Root of public browse hierarchy");
 
 	sdp_uuid16_create(&bgscid, BROWSE_GRP_DESC_SVCLASS_ID);
 	browselist = sdp_list_append(0, &bgscid);
@@ -140,7 +141,8 @@ void register_server_service(int public)
 	server->handle = SDP_SERVER_RECORD_HANDLE;
 
 	sdp_record_add(BDADDR_ANY, server);
-	sdp_attr_add(server, SDP_ATTR_RECORD_HANDLE, sdp_data_alloc(SDP_UINT32, &server->handle));
+	sdp_attr_add(server, SDP_ATTR_RECORD_HANDLE,
+				sdp_data_alloc(SDP_UINT32, &server->handle));
 
 	/*
 	 * Add all attributes to service record. (No need to commit since we 
@@ -203,6 +205,63 @@ void register_server_service(int public)
 		sdp_set_browse_groups(server, browseList);
 		sdp_list_free(browseList, 0);
 	}
+
+	update_db_timestamp();
+}
+
+void register_device_id(const uint16_t vendor, const uint16_t product,
+						const uint16_t version)
+{
+	const uint16_t spec = 0x0102, source = 0x0002;
+	const uint8_t primary = 1;
+	sdp_list_t *class_list, *group_list, *profile_list;
+	uuid_t class_uuid, group_uuid;
+	sdp_data_t *sdp_data, *primary_data, *source_data;
+	sdp_data_t *spec_data, *vendor_data, *product_data, *version_data;
+	sdp_profile_desc_t profile;
+	sdp_record_t *record = sdp_record_alloc();
+
+	info("Adding device id record for %04x:%04x", vendor, product);
+
+	record->handle = sdp_next_handle();
+
+	sdp_record_add(BDADDR_ANY, record);
+	sdp_data = sdp_data_alloc(SDP_UINT32, &record->handle);
+	sdp_attr_add(record, SDP_ATTR_RECORD_HANDLE, sdp_data);
+
+	sdp_uuid16_create(&class_uuid, PNP_INFO_SVCLASS_ID);
+	class_list = sdp_list_append(0, &class_uuid);
+	sdp_set_service_classes(record, class_list);
+	sdp_list_free(class_list, NULL);
+
+	sdp_uuid16_create(&group_uuid, PUBLIC_BROWSE_GROUP);
+	group_list = sdp_list_append(NULL, &group_uuid);
+	sdp_set_browse_groups(record, group_list);
+	sdp_list_free(group_list, NULL);
+
+	sdp_uuid16_create(&profile.uuid, PNP_INFO_PROFILE_ID);
+	profile.version = spec;
+	profile_list = sdp_list_append(NULL, &profile);
+	sdp_set_profile_descs(record, profile_list);
+	sdp_list_free(profile_list, NULL);
+
+	spec_data = sdp_data_alloc(SDP_UINT16, &spec);
+	sdp_attr_add(record, 0x0200, spec_data);
+
+	vendor_data = sdp_data_alloc(SDP_UINT16, &vendor);
+	sdp_attr_add(record, 0x0201, vendor_data);
+
+	product_data = sdp_data_alloc(SDP_UINT16, &product);
+	sdp_attr_add(record, 0x0202, product_data);
+
+	version_data = sdp_data_alloc(SDP_UINT16, &version);
+	sdp_attr_add(record, 0x0203, version_data);
+
+	primary_data = sdp_data_alloc(SDP_BOOL, &primary);
+	sdp_attr_add(record, 0x0204, primary_data);
+
+	source_data = sdp_data_alloc(SDP_UINT16, &source);
+	sdp_attr_add(record, 0x0205, source_data);
 
 	update_db_timestamp();
 }

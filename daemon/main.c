@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (start_sdp_server(0, SDP_SERVER_COMPAT) < 0) {
+	if (start_sdp_server(0, NULL, SDP_SERVER_COMPAT) < 0) {
 		cleanup_dbus();
 		g_main_loop_unref(main_loop);
 		exit(1);

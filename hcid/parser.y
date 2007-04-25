@@ -62,16 +62,16 @@ void yylex_destroy(void);
 }
 
 %token K_OPTIONS K_DEVICE
-%token K_AUTOINIT K_SECURITY K_PAIRING K_OFFMODE
+%token K_AUTOINIT K_SECURITY K_PAIRING K_OFFMODE K_DEVICEID
 %token K_PTYPE K_NAME K_CLASS K_VOICE K_PAGETO K_LM K_LP K_ISCAN K_PSCAN K_DISCOVTO
 %token K_PASSKEY
 %token K_YES K_NO
 
-%token <str> WORD PATH STRING LIST HCI BDADDR
+%token <str> WORD PATH STRING LIST HCI BDADDR ID
 %token <num> NUM
 
 %type  <num> bool pkt_type link_mode link_policy sec_mode pair_mode off_mode
-%type  <str> dev_name hci bdaddr
+%type  <str> dev_name dev_id hci bdaddr
 
 %%
 config: statement | config statement;
@@ -120,6 +120,10 @@ hcid_opt:
 
   | K_OFFMODE off_mode	{
 				hcid.offmode = $2;
+			}
+
+  | K_DEVICEID dev_id	{
+				strncpy((char *) hcid.deviceid, $2, 15);
 			}
 
   | K_PASSKEY STRING	{
@@ -172,6 +176,10 @@ off_mode:
 		}
   ;
 
+dev_id:
+  ID		{
+		}
+  ;
 
 device_options: '{' device_opts '}';
 device_opts: | device_opt ';' | error ';' | device_opts device_opt ';';

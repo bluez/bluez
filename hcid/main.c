@@ -783,7 +783,7 @@ int main(int argc, char *argv[])
 
 	if (sdp) {
 		set_sdp_server_enable();
-		start_sdp_server(0, SDP_SERVER_COMPAT);
+		start_sdp_server(0, hcid.deviceid, SDP_SERVER_COMPAT);
 	}
 
 	notify_init();

@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 
@@ -215,7 +216,7 @@ static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer da
 	return TRUE;
 }
 
-int start_sdp_server(uint16_t mtu, uint32_t flags)
+int start_sdp_server(uint16_t mtu, const char *did, uint32_t flags)
 {
 	int compat = flags & SDP_SERVER_COMPAT;
 	int master = flags & SDP_SERVER_MASTER;
@@ -226,6 +227,21 @@ int start_sdp_server(uint16_t mtu, uint32_t flags)
 	if (init_server(mtu, master, public, compat) < 0) {
 		error("Server initialization failed");
 		return -1;
+	}
+
+	if (did && strlen(did) > 0) {
+		const char *ptr = did;
+		uint16_t vid = 0x0000, pid = 0x0000, ver = 0x0000;
+
+		vid = (uint16_t) strtol(ptr, NULL, 16);
+		ptr = strchr(ptr, ':');
+		if (ptr) {
+			pid = (uint16_t) strtol(ptr + 1, NULL, 16);
+			ptr = strchr(ptr + 1, ':');
+			if (ptr)
+				ver = (uint16_t) strtol(ptr + 1, NULL, 16);
+			register_device_id(vid, pid, ver);
+		}
 	}
 
 	l2cap_io = g_io_channel_unix_new(l2cap_sock);

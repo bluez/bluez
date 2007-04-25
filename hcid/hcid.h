@@ -76,7 +76,7 @@ struct device_opts {
 	uint16_t link_mode;
 	uint16_t link_policy;
 	uint8_t  scan;
-	int      discovto;
+	uint32_t discovto;
 };
 
 extern struct device_opts default_device;
@@ -94,6 +94,7 @@ struct hcid_opts {
 	int     security;
 	int     pairing;
 	int	offmode;
+        char    deviceid[15];
 
 	char   *config_file;
 

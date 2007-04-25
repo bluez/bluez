@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 
-	if (start_sdp_server(mtu, flags) < 0) {
+	if (start_sdp_server(mtu, NULL, flags) < 0) {
 		g_main_loop_unref(event_loop);
 		exit(1);
 	}

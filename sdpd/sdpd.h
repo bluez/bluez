@@ -46,6 +46,8 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp);
 
 void register_public_browse_group(int public);
 void register_server_service(int public);
+void register_device_id(const uint16_t vendor, const uint16_t product,
+						const uint16_t version);
 
 typedef struct {
 	uint32_t timestamp;
@@ -80,7 +82,7 @@ uint32_t sdp_get_time();
 #define SDP_SERVER_MASTER (1 << 1)
 #define SDP_SERVER_PUBLIC (1 << 2)
 
-int start_sdp_server(uint16_t mtu, uint32_t flags);
+int start_sdp_server(uint16_t mtu, const char *did, uint32_t flags);
 void stop_sdp_server(void);
 
 int add_record_to_server(sdp_record_t *rec);

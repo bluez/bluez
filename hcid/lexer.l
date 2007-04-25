@@ -63,7 +63,9 @@ path		(\/{fname})+
 string		\".*\"
 hci		hci[0-9]+
 hextuple	[0-9a-zA-Z][0-9a-zA-Z]
+hexquad		{hextuple}{hextuple}
 bdaddr		{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}
+id		{hexquad}:{hexquad}
 
 %x OPTION PARAM
 
@@ -117,7 +119,7 @@ bdaddr		{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}
 }
 
 {string} {
-	if(yyleng > sizeof(str_buf) - 1){
+	if (yyleng > sizeof(str_buf) - 1) {
 		yyerror("string too long");
 		return 0;
 	}
@@ -137,6 +139,11 @@ bdaddr		{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}:{hextuple}
 {path} {
 	yylval.str = yytext;
 	return PATH;
+}
+
+{id} {
+	yylval.str = yytext;
+	return ID;
 }
 
 . {

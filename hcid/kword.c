@@ -49,6 +49,7 @@ struct kword cfg_keyword[] = {
 	{ "security",		K_SECURITY	},
 	{ "pairing",		K_PAIRING	},
 	{ "offmode",		K_OFFMODE	},
+	{ "deviceid",		K_DEVICEID	},
 	{ "pkt_type",		K_PTYPE		},
 	{ "lm", 		K_LM		},
 	{ "lp", 		K_LP		},
