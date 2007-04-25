@@ -297,19 +297,22 @@ int add_record_to_server(sdp_record_t *rec)
 	return 0;
 }
 
-void remove_record_from_server(uint32_t handle)
+int remove_record_from_server(uint32_t handle)
 {
 	sdp_record_t *rec;
 
 	debug("Removing record with handle 0x%05x", handle);
 
 	rec = sdp_record_find(handle);
-	if (rec) {
-		if (sdp_record_remove(handle) == 0)
-			update_db_timestamp();
+	if (!rec)
+		return -ENOENT;
 
-		sdp_record_free(rec);
-	}
+	if (sdp_record_remove(handle) == 0)
+		update_db_timestamp();
+
+	sdp_record_free(rec);
+
+	return 0;
 }
 
 // FIXME: refactor for server-side

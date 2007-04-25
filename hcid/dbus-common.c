@@ -451,6 +451,23 @@ int register_sdp_record(sdp_record_t *rec)
 	return err;
 }
 
+int update_sdp_record(uint32_t handle, sdp_record_t *rec)
+{
+	if (!get_sdp_session())
+		return -1;
+
+	/* Update on the server */
+	rec->handle = handle;
+	if (sdp_device_record_update(sess, BDADDR_ANY, rec)) {
+		cleanup_sdp_session();
+		error("Service Record update failed: %s(%d).\n",
+						strerror(errno), errno);
+		return -1;
+	}
+
+	return 0;
+}
+
 int unregister_sdp_record(uint32_t handle)
 {
 	int err;

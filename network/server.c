@@ -658,6 +658,47 @@ static uint32_t add_server_record(struct network_server *ns)
 	return rec_id;
 }
 
+static int update_server_record(struct network_server *ns)
+{
+	DBusMessage *msg, *reply;
+	DBusError derr;
+	sdp_buf_t buf;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "UpdateServiceRecord");
+	if (!msg) {
+		error("Can't allocate new method call");
+		return -ENOMEM;
+	}
+
+	if (create_server_record(&buf, ns->name, ns->id, ns->secure) < 0) {
+		error("Unable to allocate new service record");
+		dbus_message_unref(msg);
+		return -1;
+	}
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_UINT32, &ns->record_id,
+			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+			&buf.data, buf.data_size, DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(ns->conn, msg, -1, &derr);
+
+	free(buf.data);
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
+		error("Update service record failed: %s", derr.message);
+		dbus_error_free(&derr);
+		return -1;
+	}
+
+	dbus_message_unref(reply);
+
+	return 0;
+}
+
 static int remove_server_record(DBusConnection *conn, uint32_t rec_id)
 {
 	DBusMessage *msg, *reply;
@@ -818,12 +859,11 @@ static DBusHandlerResult set_name(DBusConnection *conn,
 	ns->name = g_strdup(name);
 
 	if (ns->io) {
-		/* Server enabled - service record already registred
-		 * Workaround: Currently it is not possible update
-		 * one service record attribute using D-Bus methods
-		 */
-		remove_server_record(ns->conn, ns->record_id);
-		ns->record_id = add_server_record(ns);
+		if (update_server_record(ns) < 0) {
+			dbus_message_unref(reply);
+			return err_failed(conn, msg,
+				"Service record attribute update failed");
+		}
 	}
 
 	return send_message_and_unref(conn, reply);
@@ -908,14 +948,12 @@ static DBusHandlerResult set_security(DBusConnection *conn,
 	}
 
 	ns->secure = secure;
-
 	if (ns->io) {
-		/* Server enabled - service record already registred
-		 * Workaround: Currently it is not possible update
-		 * one service record attribute using D-Bus methods
-		 */
-		remove_server_record(ns->conn, ns->record_id);
-		ns->record_id = add_server_record(ns);
+		if (update_server_record(ns) < 0) {
+			dbus_message_unref(reply);
+			return err_failed(conn, msg,
+				"Service record attribute update failed");
+		}
 	}
 
 	return send_message_and_unref(conn, reply);

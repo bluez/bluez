@@ -222,6 +222,67 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult update_service_record(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct record_data *user_record;
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+	sdp_record_t *sdp_record;
+	dbus_uint32_t handle;
+	const uint8_t *bin_record;
+	int err, scanned, size = -1;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &handle);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	dbus_message_iter_get_fixed_array(&array, &bin_record, &size);
+	if (size <= 0)
+		return error_invalid_arguments(conn, msg);
+
+	user_record = find_record(handle, dbus_message_get_sender(msg));
+	if (!user_record)
+		return error_not_available(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	sdp_record = sdp_extract_pdu(bin_record, &scanned);
+	if (!sdp_record) {
+		error("Parsing of service record failed");
+		dbus_message_unref(reply);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (scanned != size) {
+		error("Size mismatch of service record");
+		dbus_message_unref(reply);
+		sdp_record_free(sdp_record);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (sdp_server_enable) {
+		if (remove_record_from_server(handle) < 0)
+			return error_not_available(conn, msg);
+
+		sdp_record->handle = handle;
+		err = add_record_to_server(sdp_record);
+	} else
+		err = update_sdp_record(handle, sdp_record);
+
+	if (err < 0) {
+		error("Failed to update the service record");
+		dbus_message_unref(reply);
+		sdp_record_free(sdp_record);
+		return error_failed(conn, msg, EIO);
+	}
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult remove_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -391,13 +452,14 @@ static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 }
 
 static struct service_data database_services[] = {
-	{ "AddServiceRecord",		add_service_record		},
-	{ "AddServiceRecordFromXML",	add_service_record_from_xml	},
-	{ "RemoveServiceRecord",	remove_service_record		},
-	{ "RegisterService",		register_service		},
-	{ "UnregisterService",		unregister_service		},
-	{ "RequestAuthorization",	request_authorization		},
-	{ "CancelAuthorizationRequest",	cancel_authorization_request	},
+	{ "AddServiceRecord",			add_service_record		},
+	{ "AddServiceRecordFromXML",		add_service_record_from_xml	},
+	{ "UpdateServiceRecord",		update_service_record		},
+	{ "RemoveServiceRecord",		remove_service_record		},
+	{ "RegisterService",			register_service		},
+	{ "UnregisterService",			unregister_service		},
+	{ "RequestAuthorization",		request_authorization		},
+	{ "CancelAuthorizationRequest",		cancel_authorization_request	},
 	{ NULL, NULL }
 };
 

@@ -86,4 +86,4 @@ int start_sdp_server(uint16_t mtu, const char *did, uint32_t flags);
 void stop_sdp_server(void);
 
 int add_record_to_server(sdp_record_t *rec);
-void remove_record_from_server(uint32_t handle);
+int remove_record_from_server(uint32_t handle);
