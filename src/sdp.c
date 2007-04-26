@@ -2629,13 +2629,14 @@ int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp
 	reqsize += sizeof(uint32_t);
 	p += sizeof(uint32_t);
 
-	if (0 > sdp_gen_record_pdu(rec, &pdu)) {
+	if (sdp_gen_record_pdu(rec, &pdu) < 0) {
 		errno = ENOMEM;
 		status = -1;
 		goto end;
 	}
 	memcpy(p, pdu.data, pdu.data_size);
 	reqsize += pdu.data_size;
+	free(pdu.data);
 
 	reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 	status = sdp_send_req_w4_rsp(session, reqbuf, rspbuf, reqsize, &rspsize);
