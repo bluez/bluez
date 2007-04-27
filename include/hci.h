@@ -198,6 +198,7 @@ enum {
 /* Baseband links */
 #define SCO_LINK	0x00
 #define ACL_LINK	0x01
+#define ESCO_LINK	0x02
 
 /* LMP features */
 #define LMP_3SLOT	0x01
