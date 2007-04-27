@@ -82,7 +82,7 @@ static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
 static DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg,
 						const char *descr)
 {
-	return error_reply(conn, msg, "org.bluez.Error.InvalidArguments",
+	return error_reply(conn, msg, "org.bluez.audio.Error.InvalidArguments",
 			descr ? descr : "Invalid arguments in method call");
 }
 
@@ -186,7 +186,7 @@ static DBusHandlerResult am_create_headset(DBusMessage *msg)
 		hs_path = headset_add(&bda);
 		if (!hs_path)
 			return error_reply(connection, msg,
-					"org.bluez.Error.Failed",
+					"org.bluez.audio.Error.Failed",
 					"Unable to create new headset object");
 		manager_add_headset(hs_path);
 	}
@@ -219,7 +219,8 @@ static DBusHandlerResult am_remove_headset(DBusMessage *msg)
 
 	match = g_slist_find_custom(headsets, path, (GCompareFunc) strcmp);
 	if (!match)
-		return error_reply(connection, msg, "org.bluez.Error.DoesNotExist",
+		return error_reply(connection, msg,
+					"org.bluez.audio.Error.DoesNotExist",
 					"The headset does not exist");
 
 	reply = dbus_message_new_method_return(msg);
@@ -279,7 +280,8 @@ static DBusHandlerResult am_get_default_headset(DBusMessage *msg)
 	DBusMessage *reply;
 
 	if (!default_hs)
-		return error_reply(connection, msg, "org.bluez.Error.DoesNotExist",
+		return error_reply(connection, msg,
+					"org.bluez.audio.Error.DoesNotExist",
 					"There is no default headset");
 
 	reply = dbus_message_new_method_return(msg);
@@ -314,7 +316,8 @@ static DBusHandlerResult am_change_default_headset(DBusMessage *msg)
 
 	match = g_slist_find_custom(headsets, path, (GCompareFunc) strcmp);
 	if (!match)
-		return error_reply(connection, msg, "org.bluez.Error.DoesNotExist",
+		return error_reply(connection, msg,
+					"org.bluez.audio.Error.DoesNotExist",
 					"The headset does not exist");
 
 	reply = dbus_message_new_method_return(msg);

@@ -140,30 +140,31 @@ static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
 
 static DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_reply(conn, msg, "org.bluez.Error.AlreadyConnected",
+	return error_reply(conn, msg, "org.bluez.audio.Error.AlreadyConnected",
 				"Already connected to a device");
 }
 
 static DBusHandlerResult err_not_connected(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_reply(conn, msg, "org.bluez.Error.NotConnected",
+	return error_reply(conn, msg, "org.bluez.audio.Error.NotConnected",
 				"Not connected to any device");
 }
 
 static DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_reply(conn, msg, "org.bluez.Error.NotSupported",
+	return error_reply(conn, msg, "org.bluez.audio.Error.NotSupported",
 			"The service is not supported by the remote device");
 }
 
 static DBusHandlerResult err_connect_failed(DBusConnection *conn, DBusMessage *msg, int err)
 {
-	return error_reply(conn, msg, "org.bluez.Error.ConnectFailed", strerror(err));
+	return error_reply(conn, msg, "org.bluez.audio.Error.ConnectFailed",
+				strerror(err));
 }
 
 static DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_reply(conn, msg, "org.bluez.Error.Failed", "Failed");
+	return error_reply(conn, msg, "org.bluez.audio.Error.Failed", "Failed");
 }
 
 static gint headset_bda_cmp(gconstpointer headset, gconstpointer bda)
