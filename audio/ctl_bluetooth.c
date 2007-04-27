@@ -108,7 +108,7 @@ static snd_ctl_ext_key_t bluetooth_find_elem(snd_ctl_ext_t *ext,
 static int bluetooth_get_attribute(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 			int *type, unsigned int *acc, unsigned int *count)
 {
-	DBG("ext %p key %td", ext, key);
+	DBG("ext %p key %ld", ext, key);
 
 	*type  = SND_CTL_ELEM_TYPE_INTEGER;
 	*acc   = SND_CTL_EXT_ACCESS_READWRITE;
@@ -120,7 +120,7 @@ static int bluetooth_get_attribute(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 static int bluetooth_get_integer_info(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 					long *imin, long *imax, long *istep)
 {
-	DBG("ext %p key %td", ext, key);
+	DBG("ext %p key %ld", ext, key);
 
 	*istep = 1;
 	*imin  = BLUETOOTH_MINVOL;
@@ -136,7 +136,7 @@ static int bluetooth_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 	unsigned char buf[] = { 0x00, 0x00 };
 	int len;
 
-	DBG("ext %p key %td", ext, key);
+	DBG("ext %p key %ld", ext, key);
 
 	len = write(data->sock, buf, sizeof(buf));
 
@@ -152,7 +152,7 @@ static int bluetooth_write_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 	unsigned char buf[] = { 0xff, 0xff };
 	int len;
 
-	DBG("ext %p key %td", ext, key);
+	DBG("ext %p key %ld", ext, key);
 
 	len = write(data->sock, buf, sizeof(buf));
 
