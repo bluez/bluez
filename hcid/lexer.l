@@ -51,6 +51,8 @@ int yyerror(char *str);
 
 %}
 
+%option nounput
+
 hex		0x[0-9a-zA-Z]+
 num		[0-9]+
 kword		[A-Za-z0-9\_\-]+

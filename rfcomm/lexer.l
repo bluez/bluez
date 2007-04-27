@@ -44,6 +44,8 @@ int yyerror(char *str);
 
 %}
 
+%option nounput
+
 space		[ \t]
 linebreak	\n
 comment		\#.*\n
