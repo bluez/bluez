@@ -104,6 +104,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	gsize r;
 	int sk;
 	DBusMessage *reply, *signal;
+	const char *pdev;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -164,6 +165,9 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	reply = dbus_message_new_method_return(nc->msg);
 
+	pdev = nc->dev;
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &pdev,
+					DBUS_TYPE_INVALID);
 	send_message_and_unref(nc->conn, reply);
 
 	nc->state = CONNECTED;
