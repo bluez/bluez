@@ -181,6 +181,7 @@ static int port_unregister(DBusConnection *conn,
 				const char *path, const char *owner)
 {
 	struct serial_port *sp;
+	DBusMessage *signal;
 
 	if (!conn || !owner)
 		return -EINVAL;
@@ -194,6 +195,17 @@ static int port_unregister(DBusConnection *conn,
 	/* FIXME: If it is connected return EPERM or disconnect */
 
 	dbus_connection_unregister_object_path(conn, path);
+
+	signal = dbus_message_new_signal(SERIAL_MANAGER_PATH,
+				SERIAL_MANAGER_INTERFACE, "PortRemoved");
+
+	dbus_message_append_args(signal,
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
+	send_message_and_unref(conn, signal);
+
+	info("Unregistered serial port path:%s", path);
 
 	return 0;
 }
