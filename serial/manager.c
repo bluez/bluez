@@ -285,7 +285,27 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 static DBusHandlerResult list_ports(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	GSList *l;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	for (l = port_paths; l; l= l->next) {
+		dbus_message_iter_append_basic(&array_iter,
+				DBUS_TYPE_STRING, &l->data);
+	}
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult manager_message(DBusConnection *conn,
