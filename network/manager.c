@@ -428,9 +428,7 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 
 	server_paths = g_slist_append(server_paths, g_strdup(path));
 
-	create_path(conn, msg, path, "ServerCreated");
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return create_path(conn, msg, path, "ServerCreated");
 }
 
 static DBusHandlerResult remove_server(DBusConnection *conn,
