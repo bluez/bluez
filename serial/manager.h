@@ -20,3 +20,6 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+int serial_init(DBusConnection *conn);
+void serial_exit(void);

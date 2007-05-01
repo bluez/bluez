@@ -25,19 +25,26 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <glib.h>
 
 #include "logging.h"
+#include "dbus.h"
 
 #include "manager.h"
 
+static GMainLoop *main_loop;
+
 static void sig_term(int sig)
 {
+	g_main_loop_quit(main_loop);
 }
 
 int main(int argc, char *argv[])
 {
+	DBusConnection *conn;
 	struct sigaction sa;
 
 	start_logging("serial", "Bluetooth Serial Port daemon");
@@ -53,6 +60,31 @@ int main(int argc, char *argv[])
 	sigaction(SIGPIPE, &sa, NULL);
 
 	enable_debug();
+
+	main_loop = g_main_loop_new(NULL, FALSE);
+
+	conn = dbus_bus_system_setup_with_main_loop(NULL, NULL, NULL);
+	if (!conn) {
+		g_main_loop_unref(main_loop);
+		exit(EXIT_FAILURE);
+	}
+
+	if (serial_init(conn) < 0) {
+		dbus_connection_unref(conn);
+		g_main_loop_unref(main_loop);
+		exit(EXIT_FAILURE);
+	}
+
+	if (argc > 1 && !strcmp(argv[1], "-s"))
+		register_external_service(conn, "serial", "Serial service", "");
+
+	g_main_loop_run(main_loop);
+
+	serial_exit();
+
+	dbus_connection_unref(conn);
+
+	g_main_loop_unref(main_loop);
 
 	info("Exit");
 

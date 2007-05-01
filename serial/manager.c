@@ -24,3 +24,22 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+
+#include "dbus.h"
+
+#include "manager.h"
+
+static DBusConnection *connection = NULL;
+
+int serial_init(DBusConnection *conn)
+{
+	connection = dbus_connection_ref(conn);
+
+	return 0;
+}
+
+void serial_exit(void)
+{
+	dbus_connection_unref(connection);
+	connection = NULL;
+}
