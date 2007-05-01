@@ -4,9 +4,54 @@ Bluetooth serial service API description
 Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
 
 
-Manager hierarchy
+Manager hierarchy (experimental)
 =================
-
-Service		org.bluez.serial
 Interface	org.bluez.serial.Manager
 Object path	/org/bluez/serial
+
+Methods		string CreatePort(string address, string pattern)
+
+			Creates a serial port object.
+
+			Possible errors:org.bluez.serial.Error.AlreadyExists
+					org.bluez.serial.Error.NotSupported
+					org.bluez.serial.Error.ConnectionAttemptFailed
+					org.bluez.serial.Error.Failed
+
+		void RemovePort(string path)
+			Removes the serial port object for given path.
+
+			Possible errors:org.bluez.serial.Error.DoesNotExist
+					org.bluez.serial.Error.Failed
+
+		array{string} ListPorts()
+
+			Returns an array of available serial port paths.
+
+Signals
+
+		void PortCreated(string path)
+
+		void PortRemoved(string path)
+
+Port hierarchy (experimental)
+=======================================
+
+Interface	org.bluez.serial.Port
+Object path	/org/bluez/serial/port*
+
+Methods		string GetAddress()
+			Returns the Bluetooth address of the ending point.
+
+		string Connect()
+
+			Connects to remote device associated to the port object.
+
+			Possible errors:org.bluez.serial.Error.ConnectionAttemptFailed
+					org.bluez.serial.Error.Failed
+
+		void Disconnect()
+
+			Disconnects from remote device.
+
+			Possible errors:org.bluez.serial.Error.Failed
