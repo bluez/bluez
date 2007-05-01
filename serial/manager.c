@@ -62,7 +62,16 @@ static void serial_port_free(struct serial_port *sp)
 	g_free(sp);
 }
 
-DBusHandlerResult err_failed(DBusConnection *conn,
+static DBusHandlerResult err_does_not_exist(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				SERIAL_ERROR_INTERFACE ".DoesNotExist",
+				"Port doesn't exist"));
+}
+
+static DBusHandlerResult err_failed(DBusConnection *conn,
 				DBusMessage *msg, const char *str)
 {
 	return send_message_and_unref(conn,
@@ -120,15 +129,16 @@ static DBusHandlerResult port_message(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static void port_unregister(DBusConnection *conn, void *data)
+static void port_handler_unregister(DBusConnection *conn, void *data)
 {
+	/* FIXME: Disconnect if applied */
 	serial_port_free(data);
 }
 
 /* Virtual table to handle port object path hierarchy */
 static const DBusObjectPathVTable port_table = {
 	.message_function	= port_message,
-	.unregister_function	= port_unregister,
+	.unregister_function	= port_handler_unregister,
 };
 
 static int port_register(DBusConnection *conn,
@@ -136,8 +146,8 @@ static int port_register(DBusConnection *conn,
 {
 	struct serial_port *sp;
 
-	if (!conn)
-		return -1;
+	if (!conn || !owner)
+		return -EINVAL;
 
 	sp = g_new0(struct serial_port, 1);
 
@@ -157,6 +167,27 @@ static int port_register(DBusConnection *conn,
 	return 0;
 }
 
+static int port_unregister(DBusConnection *conn,
+				const char *path, const char *owner)
+{
+	struct serial_port *sp;
+
+	if (!conn || !owner)
+		return -EINVAL;
+
+	if (!dbus_connection_get_object_path_data(conn, path, (void *) &sp) || !sp)
+		return -ENOENT;
+
+	if (strcmp(sp->owner, owner) != 0)
+		return -EACCES;
+
+	/* FIXME: If it is connected return EPERM or disconnect */
+
+	dbus_connection_unregister_object_path(conn, path);
+
+	return 0;
+}
+
 static DBusHandlerResult create_port(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -165,6 +196,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 	DBusError derr;
 	const char *addr;
 	const char *pattern;
+	const char *ppath = port_path;
 
 	/* FIXME: Check if it already exist */
 
@@ -188,6 +220,8 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 
 	snprintf(port_path, PATH_LENGTH, SERIAL_PORT_PATH"%d", next_id++);
 
+	/* FIXME: Send signal */
+
 	if (port_register(conn, port_path, dbus_message_get_sender(msg)) < 0) {
 		dbus_message_unref(reply);
 		return err_failed(conn, msg, "D-Bus path registration failed");
@@ -195,13 +229,49 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 
 	port_paths = g_slist_append(port_paths, g_strdup(port_path));
 
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &ppath,
+			DBUS_TYPE_INVALID);
+
 	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult remove_port(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	DBusError derr;
+	const char *path;
+	GSList *l;
+	int err;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	l = g_slist_find_custom(port_paths, path, (GCompareFunc) strcmp);
+	if (!l)
+		return err_does_not_exist(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	err = port_unregister(conn, path, dbus_message_get_sender(msg));
+	if (err < 0) {
+		dbus_message_unref(reply);
+		return err_failed(conn, msg, strerror(-err));
+	}
+
+	g_free(l->data);
+	port_paths = g_slist_remove(port_paths, l->data);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult list_ports(DBusConnection *conn,
