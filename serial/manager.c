@@ -145,6 +145,7 @@ static int port_register(DBusConnection *conn,
 				const char *path, const char *owner)
 {
 	struct serial_port *sp;
+	DBusMessage *signal;
 
 	if (!conn || !owner)
 		return -EINVAL;
@@ -161,6 +162,15 @@ static int port_register(DBusConnection *conn,
 		serial_port_free(sp);
 		return -1;
 	}
+
+	signal = dbus_message_new_signal(SERIAL_MANAGER_PATH,
+				SERIAL_MANAGER_INTERFACE, "PortCreated");
+
+	dbus_message_append_args(signal,
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
+	send_message_and_unref(conn, signal);
 
 	info("Registered serial port path:%s", path);
 
@@ -219,8 +229,6 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	snprintf(port_path, PATH_LENGTH, SERIAL_PORT_PATH"%d", next_id++);
-
-	/* FIXME: Send signal */
 
 	if (port_register(conn, port_path, dbus_message_get_sender(msg)) < 0) {
 		dbus_message_unref(reply);
