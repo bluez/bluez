@@ -709,6 +709,15 @@ static inline void read_remote_ext_features_dump(int level, struct frame *frm)
 	printf("handle %d page %d\n", btohs(cp->handle), cp->page_num);
 }
 
+static inline void setup_sync_conn_dump(int level, struct frame *frm)
+{
+	setup_sync_conn_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d voice setting 0x%4.4x\n", btohs(cp->handle),
+						btohs(cp->voice_setting));
+}
+
 static inline void hold_mode_dump(int level, struct frame *frm)
 {
 	hold_mode_cp *cp = frm->ptr;
@@ -1155,7 +1164,6 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_READ_REMOTE_VERSION:
 		case OCF_READ_CLOCK_OFFSET:
 		case OCF_READ_LMP_HANDLE:
-		case OCF_SETUP_SYNC_CONN:
 			generic_command_dump(level + 1, frm);
 			return;
 		case OCF_MASTER_LINK_KEY:
@@ -1166,6 +1174,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_REMOTE_NAME_REQ:
 			remote_name_req_dump(level + 1, frm);
+			return;
+		case OCF_SETUP_SYNC_CONN:
+			setup_sync_conn_dump(level + 1, frm);
 			return;
 		}
 		break;
