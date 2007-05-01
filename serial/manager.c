@@ -351,6 +351,14 @@ static DBusHandlerResult manager_message(DBusConnection *conn,
 
 static void manager_unregister(DBusConnection *conn, void *data)
 {
+	GSList *l;
+
+	for (l = port_paths; l; l = l->next)
+		dbus_connection_unregister_object_path(conn, l->data);
+
+	g_slist_foreach(port_paths, (GFunc) g_free, NULL);
+	g_slist_free(port_paths);
+	port_paths = NULL;
 }
 
 /* Virtual table to handle manager object path hierarchy */
