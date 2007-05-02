@@ -58,6 +58,8 @@
 #include "dbus-sdp.h"
 #include "sdp-xml.h"
 
+#define SESSION_TIMEOUT 2000
+
 #define MAX_IDENTIFIER_LEN	29	/* "XX:XX:XX:XX:XX:XX/0xYYYYYYYY\0" */
 #define DEFAULT_XML_BUF_SIZE	1024
 
@@ -73,12 +75,15 @@ struct transaction_context {
 	DBusConnection *conn;
 	DBusMessage *rq;
 	sdp_session_t *session;
+	GIOChannel *io;
+	guint io_id;
 
 	/* Used for internal async get remote service record implementation */
 	get_record_data_t *call;
 };
 
 typedef int connect_cb_t(struct transaction_context *t);
+
 struct pending_connect {
 	DBusConnection *conn;
 	DBusMessage *rq;
@@ -97,6 +102,123 @@ typedef struct {
 	uint16_t        class;
 	char            *info_name;
 } sdp_service_t;
+
+struct cached_session {
+	sdp_session_t *session;
+	guint timeout_id;
+	guint io_id;
+};
+
+static GSList *cached_sessions = NULL;
+
+static gboolean session_timeout(gpointer user_data)
+{
+	struct cached_session *s = user_data;
+
+	debug("sdp session timed out. closing");
+
+	cached_sessions = g_slist_remove(cached_sessions, s);
+
+	g_source_remove(s->io_id);
+	sdp_close(s->session);
+	g_free(s);
+
+	return FALSE;
+}
+
+gboolean idle_callback(GIOChannel *io, GIOCondition cond, gpointer user_data)
+{
+	struct cached_session *s = user_data;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	if (cond & (G_IO_ERR | G_IO_HUP))
+		debug("idle_callback: session got disconnected");
+
+	if (cond & G_IO_IN)
+		debug("got unexpected input on idle SDP socket");
+
+	cached_sessions = g_slist_remove(cached_sessions, s);
+
+	g_source_remove(s->timeout_id);
+	sdp_close(s->session);
+	g_free(s);
+
+	return FALSE;
+}
+
+static void cache_sdp_session(sdp_session_t *sess, GIOChannel *io)
+{
+	struct cached_session *s;
+
+	s = g_new0(struct cached_session, 1);
+
+	s->session = sess;
+	s->timeout_id = g_timeout_add(SESSION_TIMEOUT, session_timeout, s);
+	s->io_id = g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+					idle_callback, s);
+
+	cached_sessions = g_slist_append(cached_sessions, s);
+
+	debug("sdp session added to cache");
+}
+
+static int get_bdaddrs(int sock, bdaddr_t *sba, bdaddr_t *dba)
+{
+	struct sockaddr_l2 a;
+	socklen_t len;
+
+	len = sizeof(a);
+	if (getsockname(sock, (struct sockaddr *) &a, &len) < 0) {
+		error("getsockname: %s (%d)", strerror(errno), errno);
+		return -1;
+	}
+	
+	bacpy(sba, &a.l2_bdaddr);
+
+	len = sizeof(a);
+	if (getpeername(sock, (struct sockaddr *) &a, &len) < 0) {
+		error("getpeername: %s (%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	bacpy(dba, &a.l2_bdaddr);
+
+	return 0;
+}
+
+static sdp_session_t *get_sdp_session(bdaddr_t *src, bdaddr_t *dst)
+{
+	GSList *l;
+
+	for (l = cached_sessions; l != NULL; l = l->next) {
+		struct cached_session *s = l->data;
+		sdp_session_t *session = s->session;
+		int sock = sdp_get_socket(session);
+		bdaddr_t sba, dba;
+
+		if (get_bdaddrs(sock, &sba, &dba) < 0)
+			continue;
+
+		if (bacmp(&sba, src) || bacmp(&dba, dst))
+			continue;
+
+		debug("found matching session, removing from list");
+
+		cached_sessions = g_slist_remove(cached_sessions, s);
+
+		g_source_remove(s->timeout_id);
+		g_source_remove(s->io_id);
+		g_free(s);
+
+		return session;
+	}
+
+	debug("no matching session found. creating a new one");
+
+	return sdp_connect(src, dst, SDP_NON_BLOCKING);
+}
 
 static void append_and_grow_string(void *data, const char *str)
 {
@@ -250,7 +372,7 @@ static int sdp_store_record(const char *src, const char *dst, uint32_t handle, u
 	return err;
 }
 
-static void transaction_context_free(void *udata)
+static void transaction_context_free(void *udata, gboolean cache)
 {
 	struct transaction_context *ctxt = udata;
 
@@ -263,8 +385,19 @@ static void transaction_context_free(void *udata)
 	if (ctxt->rq)
 		dbus_message_unref(ctxt->rq);
 
-	if (ctxt->session)
+	if (ctxt->session && !ctxt->io)
 		sdp_close(ctxt->session);
+
+	if (ctxt->session && ctxt->io) {
+		g_source_remove(ctxt->io_id);
+
+		if (cache)
+			cache_sdp_session(ctxt->session, ctxt->io);
+		else
+			sdp_close(ctxt->session);
+
+		g_io_channel_unref(ctxt->io);
+	}
 
 	g_free(ctxt);
 }
@@ -328,7 +461,7 @@ failed:
 		} else
 			error_failed(ctxt->conn, ctxt->rq, err);
 
-		transaction_context_free(ctxt);
+		transaction_context_free(ctxt, FALSE);
 	}
 
 	return TRUE;
@@ -402,7 +535,7 @@ done:
 	send_message_and_unref(ctxt->conn, reply);
 
 failed:
-	transaction_context_free(ctxt);
+	transaction_context_free(ctxt, TRUE);
 }
 
 static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
@@ -478,7 +611,7 @@ done:
 	send_message_and_unref(ctxt->conn, reply);
 
 failed:
-	transaction_context_free(ctxt);
+	transaction_context_free(ctxt, TRUE);
 }
 
 static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err,
@@ -552,7 +685,7 @@ done:
 	send_message_and_unref(ctxt->conn, reply);
 
 failed:
-	transaction_context_free(ctxt);
+	transaction_context_free(ctxt, TRUE);
 }
 
 static gboolean sdp_client_connect_cb(GIOChannel *chan,
@@ -593,8 +726,11 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan,
 	}
 
 	/* set the callback responsible for update the transaction data */
-	g_io_add_watch(chan, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			search_process_cb, ctxt);
+	ctxt->io_id = g_io_add_watch(chan,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				search_process_cb, ctxt);
+	ctxt->io = g_io_channel_ref(chan);
+
 	goto done;
 
 failed:
@@ -607,11 +743,9 @@ failed:
 		get_record_data_free(c->call);
 
 	if (ctxt)
-		transaction_context_free(ctxt);
+		transaction_context_free(ctxt, FALSE);
 	else
 		sdp_close(c->session);
-
-	g_io_channel_unref(chan);
 
 done:
 	pending_connects = g_slist_remove(pending_connects, c);
@@ -640,7 +774,7 @@ static struct pending_connect *connect_request(DBusConnection *conn,
 	hci_devba(dev_id, &srcba);
 	str2ba(dst, &dstba);
 
-	c->session = sdp_connect(&srcba, &dstba, SDP_NON_BLOCKING);
+	c->session = get_sdp_session(&srcba, &dstba);
 	if (!c->session) {
 		if (err)
 			*err = errno;
@@ -651,6 +785,7 @@ static struct pending_connect *connect_request(DBusConnection *conn,
 
 	chan = g_io_channel_unix_new(sdp_get_socket(c->session));
 	g_io_add_watch(chan, G_IO_OUT, sdp_client_connect_cb, c);
+	g_io_channel_unref(chan);
 	pending_connects = g_slist_append(pending_connects, c);
 
 	return c;
@@ -859,7 +994,7 @@ failed:
 
 	get_record_data_free(ctxt->call);
 
-	transaction_context_free(ctxt);
+	transaction_context_free(ctxt, TRUE);
 }
 
 static int get_rec_with_handle_conn_cb(struct transaction_context *ctxt)
@@ -976,7 +1111,7 @@ failed:
 
 	get_record_data_free(d);
 
-	transaction_context_free(ctxt);
+	transaction_context_free(ctxt, TRUE);
 }
 
 static int get_rec_with_uuid_conn_cb(struct transaction_context *ctxt)
