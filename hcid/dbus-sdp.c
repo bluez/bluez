@@ -222,26 +222,32 @@ static sdp_session_t *get_sdp_session(bdaddr_t *src, bdaddr_t *dst)
 
 static void append_and_grow_string(void *data, const char *str)
 {
-	sdp_buf_t *buff = (sdp_buf_t *) data;
+	sdp_buf_t *buff = data;
 	int len;
 
 	len = strlen(str);
 
 	if (!buff->data) {
-		buff->buf_size = DEFAULT_XML_BUF_SIZE;
-		buff->data = realloc(buff->data, buff->buf_size);
+		buff->data = malloc(DEFAULT_XML_BUF_SIZE);
 		if (!buff->data)
 			return;
+		buff->buf_size = DEFAULT_XML_BUF_SIZE;
 	}
 
 	/* Grow string */
 	while (buff->buf_size < (buff->data_size + len + 1)) {
-		/* Grow buffer by a factor of 2 */
-		buff->buf_size = (buff->buf_size << 1);
+		void *tmp;
+		uint32_t new_size;
 
-		buff->data = realloc(buff->data, buff->buf_size);
-		if (!buff->data)
+		/* Grow buffer by a factor of 2 */
+		new_size = (buff->buf_size << 1);
+
+		tmp = realloc(buff->data, new_size);
+		if (!tmp)
 			return;
+
+		buff->data = tmp;
+		buff->buf_size = new_size;
 	}
 
 	/* Include the NULL character */
