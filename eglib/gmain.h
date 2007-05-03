@@ -82,12 +82,13 @@ typedef enum {
 #define G_PRIORITY_LOW		300
 
 typedef void (*GDestroyNotify) (gpointer data);
-typedef gboolean (*GIOFunc) (GIOChannel *source, GIOCondition condition, gpointer data);
+typedef gboolean (*GIOFunc) (GIOChannel *source, GIOCondition condition,
+				gpointer data);
 
-GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count, gsize *bytes_read);
+GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count,
+				gsize *bytes_read);
 GIOError g_io_channel_write(GIOChannel *channel, const gchar *buf, gsize count,
 				gsize *bytes_written);
-
 
 void g_io_channel_close(GIOChannel *channel);
 

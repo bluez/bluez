@@ -63,7 +63,8 @@ struct _GMainLoop {
 	GMainContext *context;
 };
 
-GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count, gsize *bytes_read)
+GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count,
+				gsize *bytes_read)
 {
 	int fd = channel->fd;
 	gssize result;
