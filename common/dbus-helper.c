@@ -92,6 +92,7 @@ static void generic_unregister(DBusConnection *connection, void *user_data)
 	if (data->unregister_function)
 		data->unregister_function(connection, data->user_data);
 
+	g_free(data->introspect);
 	g_free(data);
 }
 
@@ -147,7 +148,70 @@ static DBusObjectPathVTable generic_table = {
 	.message_function	= generic_message,
 };
 
-static char simple_xml[] = DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>";
+static void print_arguments(GString *gstr, const char *sig, const char *direction)
+{
+	int i;
+
+	for (i = 0; sig[i]; i++) {
+		if (direction)
+			g_string_append_printf(gstr,
+					"\t\t\t<arg type=\"%c\" direction=\"%s\"/>\n",
+					sig[i], direction);
+		else
+			g_string_append_printf(gstr,
+					"\t\t\t<arg type=\"%c\"/>\n",
+					sig[i]);
+	}
+}
+
+static void update_introspection_data(struct generic_data *data, const char *path)
+{
+	GSList *list;
+	GString *gstr;
+
+	g_free(data->introspect);
+
+	gstr = g_string_new(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE);
+
+	g_string_append_printf(gstr, "<node name=\"%s\">\n", path);
+
+	for (list = data->interfaces; list; list = list->next) {
+		struct interface_data *iface = list->data;
+		DBusMethodVTable *method;
+		DBusSignalVTable *signal;
+		DBusPropertyVTable *property;
+
+		g_string_append_printf(gstr, "\t<interface name=\"%s\">\n", iface->name);
+
+		for (method = iface->methods; method && method->name; method++) {
+			debug("Adding introspection data for method %s.%s",
+					iface->name, method->name);
+			g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n", method->name);
+			print_arguments(gstr, method->signature, "in");
+			print_arguments(gstr, method->reply, "out");
+			g_string_append_printf(gstr, "\t\t</method>\n");
+		}
+
+		for (signal = iface->signals; signal && signal->name; signal++) {
+			debug("Adding introspection data for signal %s.%s",
+					iface->name, signal->name);
+			g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n", signal->name);
+			print_arguments(gstr, signal->signature, NULL);
+			g_string_append_printf(gstr, "\t\t</signal>\n");
+		}
+
+		for (property = iface->properties; property && property->name; property++) {
+			debug("Adding introspection data for property %s.%s",
+					iface->name, property->name);
+		}
+
+		g_string_append_printf(gstr, "\t</interface>\n");
+	}
+
+	g_string_append_printf(gstr, "</node>\n");
+
+	data->introspect = g_string_free(gstr, FALSE);
+}
 
 dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 					const char *path, void *user_data,
@@ -160,8 +224,7 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 	data->user_data = user_data;
 	data->unregister_function = function;
 
-	data->interfaces = NULL;
-	data->introspect = simple_xml;
+	data->introspect = g_strdup(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>");
 
 	if (dbus_connection_register_object_path(connection, path,
 					&generic_table, data) == FALSE) {
@@ -186,12 +249,12 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 {
 	struct generic_data *data;
 	struct interface_data *iface;
-	DBusMethodVTable *method;
-	DBusSignalVTable *signal;
-	DBusPropertyVTable *property;
 
 	if (dbus_connection_get_object_path_data(connection, path,
 						(void *) &data) == FALSE)
+		return FALSE;
+
+	if (find_interface(data->interfaces, name))
 		return FALSE;
 
 	iface = g_new0(struct interface_data, 1);
@@ -201,22 +264,9 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 	iface->signals = signals;
 	iface->properties = properties;
 
-	for (method = iface->methods; method && method->name; method++) {
-		debug("Adding introspection data for method %s.%s",
-						iface->name, method->name);
-	}
-
-	for (signal = iface->signals; signal && signal->name; signal++) {
-		debug("Adding introspection data for signal %s.%s",
-						iface->name, signal->name);
-	}
-
-	for (property = iface->properties; property && property->name; property++) {
-		debug("Adding introspection data for property %s.%s",
-						iface->name, property->name);
-	}
-
 	data->interfaces = g_slist_append(data->interfaces, iface);
+
+	update_introspection_data(data, path);
 
 	return TRUE;
 }
@@ -224,6 +274,24 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
 					const char *path, const char *name)
 {
+	struct generic_data *data;
+	struct interface_data *iface;
+
+	if (dbus_connection_get_object_path_data(connection, path,
+						(void *) &data) == FALSE)
+		return FALSE;
+
+	iface = find_interface(data->interfaces, name);
+	if (!iface)
+		return FALSE;
+
+	data->interfaces = g_slist_remove(data->interfaces, iface);
+
+	g_free(iface->name);
+	g_free(iface);
+
+	update_introspection_data(data, path);
+
 	return TRUE;
 }
 
