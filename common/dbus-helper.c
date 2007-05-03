@@ -153,14 +153,56 @@ static void print_arguments(GString *gstr, const char *sig, const char *directio
 	int i;
 
 	for (i = 0; sig[i]; i++) {
+		char type[32];
+		int len, struct_level, dict_level;
+		gboolean complete;
+
+		complete = FALSE;
+		struct_level = dict_level = 0;
+		memset(type, 0, sizeof(type));
+
+		/* Gather enough data to have a single complete type */
+		for (len = 0; len < (sizeof(type) - 1) && sig[i]; len++, i++) {
+			switch (sig[i]){
+			case '(':
+				struct_level++;
+				break;
+			case ')':
+				struct_level--;
+				if (struct_level <= 0 && dict_level <= 0)
+					complete = TRUE;
+				break;
+			case '{':
+				dict_level++;
+				break;
+			case '}':
+				dict_level--;
+				if (struct_level <= 0 && dict_level <= 0)
+					complete = TRUE;
+				break;
+			case 'a':
+				break;
+			default:
+				if (struct_level <= 0 && dict_level <= 0)
+					complete = TRUE;
+				break;
+			}
+
+			type[len] = sig[i];
+
+			if (complete)
+				break;
+		}
+
+
 		if (direction)
 			g_string_append_printf(gstr,
-					"\t\t\t<arg type=\"%c\" direction=\"%s\"/>\n",
-					sig[i], direction);
+					"\t\t\t<arg type=\"%s\" direction=\"%s\"/>\n",
+					type, direction);
 		else
 			g_string_append_printf(gstr,
-					"\t\t\t<arg type=\"%c\"/>\n",
-					sig[i]);
+					"\t\t\t<arg type=\"%s\"/>\n",
+					type);
 	}
 }
 
