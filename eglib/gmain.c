@@ -1179,6 +1179,18 @@ gpointer g_try_malloc0(gulong n_bytes)
 	return mem;
 }
 
+gpointer g_realloc(gpointer mem, gulong n_bytes)
+{
+	mem = realloc(mem, n_bytes);
+	if (!mem) {
+		fprintf(stderr, "g_realloc: failed to allocate %lu bytes",
+				n_bytes);
+		abort();
+	}
+
+	return mem;
+}
+
 void g_free(gpointer mem)
 {
 	if (mem)
@@ -1365,3 +1377,100 @@ gboolean g_key_file_get_boolean(GKeyFile *key_file,
 	return ret;
 }
 
+/* GString */
+
+#define MY_MAXSIZE ((gsize)-1)
+
+static gsize nearest_power(gsize base, gsize num)
+{
+	gsize n = base;
+
+	if (num > MY_MAXSIZE / 2)
+		return MY_MAXSIZE;
+
+	while (n < num)
+		n <<= 1;
+
+	return n;
+}
+
+static void g_string_maybe_expand(GString *string, gsize len)
+{
+	if (string->len + len < string->allocated_len)
+		return;
+
+	string->allocated_len = nearest_power(1, string->len + len + 1);
+	string->str = g_realloc(string->str, string->allocated_len);
+}
+
+static GString *g_string_sized_new(gsize dfl_size)
+{
+	GString *string;
+
+	string = g_new0(GString, 1);
+	
+	g_string_maybe_expand(string, dfl_size);
+	string->str[0] = '\0';
+
+	return string;
+}
+
+static GString *g_string_append_len(GString *string, const gchar *val, gssize len)
+{
+	g_string_maybe_expand(string, len);
+
+	if (len == 1)
+		string->str[string->len] = *val;
+	else
+		memcpy(string->str + string->len, val, len);
+
+	string->len += len;
+	string->str[string->len] = '\0';
+
+	return string;
+}
+
+GString *g_string_new(const gchar *init)
+{
+	GString *string;
+	gint len;
+
+	if (init == NULL || *init == '\0')
+		return g_string_sized_new(2);
+
+	len = strlen(init);
+	string = g_string_sized_new(len + 2);
+
+	g_string_append_len(string, init, len);
+
+	return string;
+}
+
+void g_string_append_printf(GString *string, const gchar *format, ...)
+{
+	gchar buffer[1024];
+	gint length;
+	va_list args;
+
+	va_start(args, format);
+	length = vsnprintf(buffer, sizeof(buffer) - 1, format, args);
+	va_end(args);
+
+	g_string_append_len(string, buffer, length);
+}
+
+gchar *g_string_free(GString *string, gboolean free_segment)
+{
+	gchar *segment;
+
+	if (free_segment) {
+		g_free(string->str);
+		segment = NULL;
+	}
+	else
+		segment = string->str;
+
+	g_free(string);
+
+	return segment;
+}

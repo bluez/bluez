@@ -200,6 +200,7 @@ gpointer g_malloc(gulong n_bytes);
 gpointer g_malloc0(gulong n_bytes);
 gpointer g_try_malloc(gulong n_bytes);
 gpointer g_try_malloc0(gulong n_bytes);
+gpointer g_realloc(gpointer mem, gulong n_bytes);
 
 void g_free(gpointer mem);
 
@@ -242,5 +243,20 @@ gboolean g_key_file_get_boolean(GKeyFile *key_file,
 				const gchar *group_name,
 				const gchar *key,
 				GError **error);
+
+
+/* GString */
+
+typedef struct {
+	gchar *str;
+	gsize len;    
+	gsize allocated_len;
+} GString;
+
+GString *g_string_new(const gchar *init);
+
+void g_string_append_printf(GString *string, const gchar *format, ...);
+
+gchar *g_string_free(GString *string, gboolean free_segment);
 
 #endif /* __GMAIN_H */
