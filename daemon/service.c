@@ -304,7 +304,7 @@ int service_init(DBusConnection *conn)
 	}
 
 	if (dbus_connection_register_interface(connection, "/org/bluez/service",
-			SERVICE_INTERFACE, service_table, NULL) == FALSE) {
+			SERVICE_INTERFACE, service_table, NULL, NULL) == FALSE) {
 		error("Service interface registration failed");
 		dbus_connection_destroy_object_path(connection, "/org/bluez/service");
 		dbus_connection_unref(connection);

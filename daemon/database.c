@@ -207,7 +207,7 @@ int database_init(DBusConnection *conn)
 	info("Starting database interface");
 
 	if (dbus_connection_register_interface(connection, SYSTEM_PATH,
-			DATABASE_INTERFACE, database_table, NULL) == FALSE) {
+			DATABASE_INTERFACE, database_table, NULL, NULL) == FALSE) {
 		error("Database interface registration failed");
 		dbus_connection_unref(connection);
 		return -1;

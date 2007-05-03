@@ -80,7 +80,7 @@ int manager_init(DBusConnection *conn)
 	info("Starting manager interface");
 
 	if (dbus_connection_register_interface(connection, SYSTEM_PATH,
-			MANAGER_INTERFACE, manager_table, NULL) == FALSE) {
+			MANAGER_INTERFACE, manager_table, NULL, NULL) == FALSE) {
 		error("Manager interface registration failed");
 		dbus_connection_unref(connection);
 		return -1;

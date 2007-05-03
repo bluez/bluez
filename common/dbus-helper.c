@@ -44,8 +44,10 @@ struct generic_data {
 };
 
 struct interface_data {
-	const char *interface;
+	char *name;
 	DBusMethodVTable *methods;
+	DBusSignalVTable *signals;
+	DBusPropertyVTable *properties;
 };
 
 DBusHandlerResult dbus_connection_send_and_unref(DBusConnection *connection,
@@ -94,13 +96,13 @@ static void generic_unregister(DBusConnection *connection, void *user_data)
 }
 
 static struct interface_data *find_interface(GSList *interfaces,
-							const char *interface)
+						const char *name)
 {
 	GSList *list;
 
 	for (list = interfaces; list; list = list->next) {
 		struct interface_data *iface = list->data;
-		if (!strcmp(interface, iface->interface))
+		if (!strcmp(name, iface->name))
 			return iface;
 	}
 
@@ -128,7 +130,7 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 	for (current = iface->methods;
 			current->name && current->message_function; current++) {
 		if (dbus_message_is_method_call(message,
-				iface->interface, current->name) == FALSE)
+				iface->name, current->name) == FALSE)
 			continue;
 
 		if (dbus_message_has_signature(message,
@@ -177,13 +179,16 @@ dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
 }
 
 dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
-					const char *path, const char *interface,
+					const char *path, const char *name,
 					DBusMethodVTable *methods,
+					DBusSignalVTable *signals,
 					DBusPropertyVTable *properties)
 {
 	struct generic_data *data;
 	struct interface_data *iface;
-	DBusMethodVTable *current;
+	DBusMethodVTable *method;
+	DBusSignalVTable *signal;
+	DBusPropertyVTable *property;
 
 	if (dbus_connection_get_object_path_data(connection, path,
 						(void *) &data) == FALSE)
@@ -191,12 +196,24 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 
 	iface = g_new0(struct interface_data, 1);
 
-	iface->interface = interface;
+	iface->name = g_strdup(name);
 	iface->methods = methods;
+	iface->signals = signals;
+	iface->properties = properties;
 
-	for (current = iface->methods; current->name; current++) {
-		debug("Adding introspection data for %s.%s",
-						interface, current->name);
+	for (method = iface->methods; method && method->name; method++) {
+		debug("Adding introspection data for method %s.%s",
+						iface->name, method->name);
+	}
+
+	for (signal = iface->signals; signal && signal->name; signal++) {
+		debug("Adding introspection data for signal %s.%s",
+						iface->name, signal->name);
+	}
+
+	for (property = iface->properties; property && property->name; property++) {
+		debug("Adding introspection data for property %s.%s",
+						iface->name, property->name);
 	}
 
 	data->interfaces = g_slist_append(data->interfaces, iface);
@@ -205,7 +222,7 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 }
 
 dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
-					const char *path, const char *interface)
+					const char *path, const char *name)
 {
 	return TRUE;
 }
