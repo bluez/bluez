@@ -3212,7 +3212,7 @@ static DBusMethodVTable adapter_methods[] = {
 	{ "ListRemoteDevices",			adapter_list_remote_devices,
 		"",	"as"	},
 	{ "ListRecentRemoteDevices",		adapter_list_recent_remote_devices,
-		"",	"as"	},
+		"s",	"as"	},
 
 	{ "SetTrusted",				adapter_set_trusted,
 		"s",	""	},
