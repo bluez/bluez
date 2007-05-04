@@ -3090,7 +3090,7 @@ GSList *service_classes_str(uint32_t class)
 
 static DBusMethodVTable adapter_methods[] = {
 	{ "GetInfo",				adapter_get_info,
-		"",	"{}"	},
+		"",	"{sv}"	},
 	{ "GetAddress",				adapter_get_address,
 		"",	"s"	},
 	{ "GetVersion",				adapter_get_version,
@@ -3133,7 +3133,7 @@ static DBusMethodVTable adapter_methods[] = {
 		"s",	""	},
 	
 	{ "GetRemoteInfo",			adapter_get_remote_info,
-		"s",	"{}"	},
+		"s",	"{sv}"	},
 	{ "GetRemoteServiceRecord",		adapter_get_remote_svc,
 		"su",	"ay"	},
 	{ "GetRemoteServiceRecordAsXML",	adapter_get_remote_svc_xml,
