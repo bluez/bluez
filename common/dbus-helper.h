@@ -34,6 +34,10 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
 							const char *path);
 
+dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
+							const char *path,
+							void **data_p);
+
 typedef struct DBusMethodVTable DBusMethodVTable;
 
 struct DBusMethodVTable {

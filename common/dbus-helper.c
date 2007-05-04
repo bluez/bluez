@@ -283,6 +283,21 @@ dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
 	return dbus_connection_unregister_object_path(connection, path);
 }
 
+dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
+							const char *path,
+							void **data_p)
+{
+	struct generic_data *data;
+
+	if (dbus_connection_get_object_path_data(connection, path,
+						(void *) &data) == FALSE)
+		return FALSE;
+
+	*data_p = data->user_data;
+
+	return TRUE;
+}
+
 dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 					const char *path, const char *name,
 					DBusMethodVTable *methods,
