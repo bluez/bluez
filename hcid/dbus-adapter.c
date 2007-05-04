@@ -1611,7 +1611,7 @@ static DBusHandlerResult adapter_get_remote_features(DBusConnection *conn,
 	DBusMessageIter iter, array_iter;
 	uint8_t features[8], *ptr = features;
 	const char *addr;
-	char tmp[3], *str;
+	char *str;
 	int i;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -1630,7 +1630,11 @@ static DBusHandlerResult adapter_get_remote_features(DBusConnection *conn,
 
 	memset(features, 0, sizeof(features));
 	for (i = 0; i < sizeof(features); i++) {
+		char tmp[3];
+
 		memcpy(tmp, str + (i * 2), 2);
+		tmp[2] = '\0';
+
 		features[i] = (uint8_t) strtol(tmp, NULL, 16);
 	}
 
