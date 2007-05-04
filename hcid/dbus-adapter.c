@@ -1229,9 +1229,9 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 	dbus_message_iter_append_dict_entry(&dict, "manufacturer",
 			DBUS_TYPE_STRING, &ptr);
 
-	ptr = lmp_vertostr(ver);
-
-	snprintf(buf, 64, "Bluetooth %s", ptr);
+	str = lmp_vertostr(ver);
+	snprintf(buf, 64, "Bluetooth %s", str);
+	bt_free(str);
 
 	create_name(filename, PATH_MAX, STORAGEDIR,
 			adapter->address, "features");
@@ -1284,7 +1284,7 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 	DBusMessage *reply;
 	char filename[PATH_MAX + 1];
 	char *addr_ptr, *str;
-	const char *str_ver;
+	char *str_ver = NULL;
 	char info_array[64], *info = info_array;
 	int compid, ver, subver;
 
@@ -1337,6 +1337,9 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 	free(str);
 
 failed:
+	if (str_ver)
+		bt_free(str_ver);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
