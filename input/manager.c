@@ -800,6 +800,7 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 
 	switch (cls & 0x1f00) {
 		case 0x0500: /* Peripheral */
+		case 0x0200: /* Phone */
 			if (get_handles(pr, pnp_uuid, pnp_handle_reply) < 0) {
 				pending_req_free(pr);
 				return err_not_supported(conn, msg);

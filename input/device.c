@@ -195,6 +195,9 @@ static const char *create_input_path(uint8_t major, uint8_t minor)
 	static int next_id = 0;
 
 	switch (major) {
+	case 0x02: /* Phone */	
+		strcpy(subpath, "phone");	
+		break;
 	case 0x04: /* Audio */
 		switch (minor) {
 		/* FIXME: Testing required */
