@@ -226,25 +226,37 @@ static void update_introspection_data(struct generic_data *data, const char *pat
 		g_string_append_printf(gstr, "\t<interface name=\"%s\">\n", iface->name);
 
 		for (method = iface->methods; method && method->name; method++) {
-			debug("Adding introspection data for method %s.%s",
-					iface->name, method->name);
-			g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n", method->name);
-			print_arguments(gstr, method->signature, "in");
-			print_arguments(gstr, method->reply, "out");
-			g_string_append_printf(gstr, "\t\t</method>\n");
+			debug("%s: adding method %s.%s",
+					path, iface->name, method->name);
+			if (!strlen(method->signature) && !strlen(method->reply))
+				g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
+							method->name);
+			else {
+				g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n",
+							method->name);
+				print_arguments(gstr, method->signature, "in");
+				print_arguments(gstr, method->reply, "out");
+				g_string_append_printf(gstr, "\t\t</method>\n");
+			}
 		}
 
 		for (signal = iface->signals; signal && signal->name; signal++) {
-			debug("Adding introspection data for signal %s.%s",
-					iface->name, signal->name);
-			g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n", signal->name);
-			print_arguments(gstr, signal->signature, NULL);
-			g_string_append_printf(gstr, "\t\t</signal>\n");
+			debug("%s: adding signal %s.%s",
+					path, iface->name, signal->name);
+			if (!strlen(signal->signature))
+				g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
+							signal->name);
+			else {
+				g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n",
+							signal->name);
+				print_arguments(gstr, signal->signature, NULL);
+				g_string_append_printf(gstr, "\t\t</signal>\n");
+			}
 		}
 
 		for (property = iface->properties; property && property->name; property++) {
-			debug("Adding introspection data for property %s.%s",
-					iface->name, property->name);
+			debug("%s: adding property %s.%s",
+					path, iface->name, property->name);
 		}
 
 		g_string_append_printf(gstr, "\t</interface>\n");
