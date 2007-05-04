@@ -206,10 +206,12 @@ static void print_arguments(GString *gstr, const char *sig, const char *directio
 	}
 }
 
-static void update_introspection_data(struct generic_data *data, const char *path)
+static void update_introspection_data(DBusConnection *conn, struct generic_data *data, const char *path)
 {
 	GSList *list;
 	GString *gstr;
+	char **children;
+	int i;
 
 	g_free(data->introspect);
 
@@ -262,9 +264,45 @@ static void update_introspection_data(struct generic_data *data, const char *pat
 		g_string_append_printf(gstr, "\t</interface>\n");
 	}
 
+	if (!dbus_connection_list_registered(conn, path, &children))
+		goto done;
+
+	for (i = 0; children[i]; i++)
+		g_string_append_printf(gstr, "\t<node name=\"%s\"/>\n", children[i]);
+
+	dbus_free_string_array(children);
+
+done:
 	g_string_append_printf(gstr, "</node>\n");
 
 	data->introspect = g_string_free(gstr, FALSE);
+}
+
+static void update_parent_data(DBusConnection *conn, const char *child_path)
+{
+	struct generic_data *data;
+	char *parent_path, *slash;
+
+	parent_path = g_strdup(child_path);
+	slash = strrchr(parent_path, '/');
+	if (!slash)
+		goto done;
+
+	*slash = '\0';
+	if (!strlen(parent_path))
+		goto done;
+
+	if (!dbus_connection_get_object_path_data(conn, parent_path,
+						(void *) &data))
+		goto done;
+
+	if (!data)
+		goto done;
+
+	update_introspection_data(conn, data, parent_path);
+
+done:
+	g_free(parent_path);
 }
 
 dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
@@ -286,13 +324,20 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 		return FALSE;
 	}
 
+	update_parent_data(connection, path);
+
 	return TRUE;
 }
 
 dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
 							const char *path)
 {
-	return dbus_connection_unregister_object_path(connection, path);
+	if (!dbus_connection_unregister_object_path(connection, path))
+		return FALSE;
+
+	update_parent_data(connection, path);
+
+	return TRUE;
 }
 
 dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
@@ -335,7 +380,7 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 
 	data->interfaces = g_slist_append(data->interfaces, iface);
 
-	update_introspection_data(data, path);
+	update_introspection_data(connection, data, path);
 
 	return TRUE;
 }
@@ -359,7 +404,7 @@ dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
 	g_free(iface->name);
 	g_free(iface);
 
-	update_introspection_data(data, path);
+	update_introspection_data(connection, data, path);
 
 	return TRUE;
 }
