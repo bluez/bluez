@@ -61,6 +61,138 @@ DBusHandlerResult dbus_connection_send_and_unref(DBusConnection *connection,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static void print_arguments(GString *gstr, const char *sig, const char *direction)
+{
+	int i;
+
+	for (i = 0; sig[i]; i++) {
+		char type[32];
+		int len, struct_level, dict_level;
+		gboolean complete;
+
+		complete = FALSE;
+		struct_level = dict_level = 0;
+		memset(type, 0, sizeof(type));
+
+		/* Gather enough data to have a single complete type */
+		for (len = 0; len < (sizeof(type) - 1) && sig[i]; len++, i++) {
+			switch (sig[i]){
+			case '(':
+				struct_level++;
+				break;
+			case ')':
+				struct_level--;
+				if (struct_level <= 0 && dict_level <= 0)
+					complete = TRUE;
+				break;
+			case '{':
+				dict_level++;
+				break;
+			case '}':
+				dict_level--;
+				if (struct_level <= 0 && dict_level <= 0)
+					complete = TRUE;
+				break;
+			case 'a':
+				break;
+			default:
+				if (struct_level <= 0 && dict_level <= 0)
+					complete = TRUE;
+				break;
+			}
+
+			type[len] = sig[i];
+
+			if (complete)
+				break;
+		}
+
+
+		if (direction)
+			g_string_append_printf(gstr,
+					"\t\t\t<arg type=\"%s\" direction=\"%s\"/>\n",
+					type, direction);
+		else
+			g_string_append_printf(gstr,
+					"\t\t\t<arg type=\"%s\"/>\n",
+					type);
+	}
+}
+
+static void generate_introspection_xml(DBusConnection *conn,
+					struct generic_data *data,
+					const char *path)
+{
+	GSList *list;
+	GString *gstr;
+	char **children;
+	int i;
+
+	g_free(data->introspect);
+
+	gstr = g_string_new(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE);
+
+	g_string_append_printf(gstr, "<node name=\"%s\">\n", path);
+
+	for (list = data->interfaces; list; list = list->next) {
+		struct interface_data *iface = list->data;
+		DBusMethodVTable *method;
+		DBusSignalVTable *signal;
+		DBusPropertyVTable *property;
+
+		g_string_append_printf(gstr, "\t<interface name=\"%s\">\n", iface->name);
+
+		for (method = iface->methods; method && method->name; method++) {
+			debug("%s: adding method %s.%s",
+					path, iface->name, method->name);
+			if (!strlen(method->signature) && !strlen(method->reply))
+				g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
+							method->name);
+			else {
+				g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n",
+							method->name);
+				print_arguments(gstr, method->signature, "in");
+				print_arguments(gstr, method->reply, "out");
+				g_string_append_printf(gstr, "\t\t</method>\n");
+			}
+		}
+
+		for (signal = iface->signals; signal && signal->name; signal++) {
+			debug("%s: adding signal %s.%s",
+					path, iface->name, signal->name);
+			if (!strlen(signal->signature))
+				g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
+							signal->name);
+			else {
+				g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n",
+							signal->name);
+				print_arguments(gstr, signal->signature, NULL);
+				g_string_append_printf(gstr, "\t\t</signal>\n");
+			}
+		}
+
+		for (property = iface->properties; property && property->name; property++) {
+			debug("%s: adding property %s.%s",
+					path, iface->name, property->name);
+		}
+
+		g_string_append_printf(gstr, "\t</interface>\n");
+	}
+
+	if (!dbus_connection_list_registered(conn, path, &children))
+		goto done;
+
+	for (i = 0; children[i]; i++)
+		g_string_append_printf(gstr, "\t<node name=\"%s\"/>\n", children[i]);
+
+	dbus_free_string_array(children);
+
+done:
+	g_string_append_printf(gstr, "</node>\n");
+
+	data->introspect = g_string_free(gstr, FALSE);
+}
+
 static DBusHandlerResult introspect(DBusConnection *connection,
 				DBusMessage *message, struct generic_data *data)
 {
@@ -73,7 +205,8 @@ static DBusHandlerResult introspect(DBusConnection *connection,
 	}
 
 	if (!data->introspect)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		generate_introspection_xml(connection, data,
+						dbus_message_get_path(message));
 
 	reply = dbus_message_new_method_return(message);
 	if (!reply)
@@ -148,136 +281,6 @@ static DBusObjectPathVTable generic_table = {
 	.message_function	= generic_message,
 };
 
-static void print_arguments(GString *gstr, const char *sig, const char *direction)
-{
-	int i;
-
-	for (i = 0; sig[i]; i++) {
-		char type[32];
-		int len, struct_level, dict_level;
-		gboolean complete;
-
-		complete = FALSE;
-		struct_level = dict_level = 0;
-		memset(type, 0, sizeof(type));
-
-		/* Gather enough data to have a single complete type */
-		for (len = 0; len < (sizeof(type) - 1) && sig[i]; len++, i++) {
-			switch (sig[i]){
-			case '(':
-				struct_level++;
-				break;
-			case ')':
-				struct_level--;
-				if (struct_level <= 0 && dict_level <= 0)
-					complete = TRUE;
-				break;
-			case '{':
-				dict_level++;
-				break;
-			case '}':
-				dict_level--;
-				if (struct_level <= 0 && dict_level <= 0)
-					complete = TRUE;
-				break;
-			case 'a':
-				break;
-			default:
-				if (struct_level <= 0 && dict_level <= 0)
-					complete = TRUE;
-				break;
-			}
-
-			type[len] = sig[i];
-
-			if (complete)
-				break;
-		}
-
-
-		if (direction)
-			g_string_append_printf(gstr,
-					"\t\t\t<arg type=\"%s\" direction=\"%s\"/>\n",
-					type, direction);
-		else
-			g_string_append_printf(gstr,
-					"\t\t\t<arg type=\"%s\"/>\n",
-					type);
-	}
-}
-
-static void update_introspection_data(DBusConnection *conn, struct generic_data *data, const char *path)
-{
-	GSList *list;
-	GString *gstr;
-	char **children;
-	int i;
-
-	g_free(data->introspect);
-
-	gstr = g_string_new(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE);
-
-	g_string_append_printf(gstr, "<node name=\"%s\">\n", path);
-
-	for (list = data->interfaces; list; list = list->next) {
-		struct interface_data *iface = list->data;
-		DBusMethodVTable *method;
-		DBusSignalVTable *signal;
-		DBusPropertyVTable *property;
-
-		g_string_append_printf(gstr, "\t<interface name=\"%s\">\n", iface->name);
-
-		for (method = iface->methods; method && method->name; method++) {
-			debug("%s: adding method %s.%s",
-					path, iface->name, method->name);
-			if (!strlen(method->signature) && !strlen(method->reply))
-				g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
-							method->name);
-			else {
-				g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n",
-							method->name);
-				print_arguments(gstr, method->signature, "in");
-				print_arguments(gstr, method->reply, "out");
-				g_string_append_printf(gstr, "\t\t</method>\n");
-			}
-		}
-
-		for (signal = iface->signals; signal && signal->name; signal++) {
-			debug("%s: adding signal %s.%s",
-					path, iface->name, signal->name);
-			if (!strlen(signal->signature))
-				g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
-							signal->name);
-			else {
-				g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n",
-							signal->name);
-				print_arguments(gstr, signal->signature, NULL);
-				g_string_append_printf(gstr, "\t\t</signal>\n");
-			}
-		}
-
-		for (property = iface->properties; property && property->name; property++) {
-			debug("%s: adding property %s.%s",
-					path, iface->name, property->name);
-		}
-
-		g_string_append_printf(gstr, "\t</interface>\n");
-	}
-
-	if (!dbus_connection_list_registered(conn, path, &children))
-		goto done;
-
-	for (i = 0; children[i]; i++)
-		g_string_append_printf(gstr, "\t<node name=\"%s\"/>\n", children[i]);
-
-	dbus_free_string_array(children);
-
-done:
-	g_string_append_printf(gstr, "</node>\n");
-
-	data->introspect = g_string_free(gstr, FALSE);
-}
-
 static void update_parent_data(DBusConnection *conn, const char *child_path)
 {
 	struct generic_data *data;
@@ -299,7 +302,8 @@ static void update_parent_data(DBusConnection *conn, const char *child_path)
 	if (!data)
 		goto done;
 
-	update_introspection_data(conn, data, parent_path);
+	g_free(data->introspect);
+	data->introspect = NULL;
 
 done:
 	g_free(parent_path);
@@ -380,7 +384,8 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 
 	data->interfaces = g_slist_append(data->interfaces, iface);
 
-	update_introspection_data(connection, data, path);
+	g_free(data->introspect);
+	data->introspect = NULL;
 
 	return TRUE;
 }
@@ -404,7 +409,8 @@ dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
 	g_free(iface->name);
 	g_free(iface);
 
-	update_introspection_data(connection, data, path);
+	g_free(data->introspect);
+	data->introspect = NULL;
 
 	return TRUE;
 }
