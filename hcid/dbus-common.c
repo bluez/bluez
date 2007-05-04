@@ -50,11 +50,13 @@
 
 #include "hcid.h"
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "dbus-error.h"
 #include "dbus-hci.h"
 #include "dbus-manager.h"
 #include "dbus-adapter.h"
 #include "dbus-service.h"
+#include "dbus-database.h"
 #include "dbus-security.h"
 #include "dbus-test.h"
 #include "dbus-rfcomm.h"
@@ -245,28 +247,6 @@ int check_address(const char *addr)
 	return 0;
 }
 
-DBusHandlerResult handle_method_call(DBusConnection *conn, DBusMessage *msg, void *data)
-{
-	const char *iface, *name;
-	
-	iface = dbus_message_get_interface(msg);
-	name = dbus_message_get_member(msg);
-
-	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
-					!strcmp("Introspect", name))
-		return simple_introspect(conn, msg, data);
-	else if (!strcmp(ADAPTER_INTERFACE, iface))
-		return handle_adapter_method(conn, msg, data);
-	else if (!strcmp(SECURITY_INTERFACE, iface))
-		return handle_security_method(conn, msg, data);
-	else if (!strcmp(TEST_INTERFACE, iface))
-		return handle_test_method(conn, msg, data);
-	else if (!strcmp(RFCOMM_INTERFACE, iface))
-		return handle_rfcomm_method(conn, msg, data);
-	else
-		return error_unknown_method(conn, msg);
-}
-
 void hcid_dbus_set_experimental(void)
 {
 	experimental = 1;
@@ -341,11 +321,6 @@ static void disconnect_callback(void *user_data)
 				system_bus_reconnect, NULL);
 }
 
-static const DBusObjectPathVTable manager_vtable = {
-	.message_function	= &handle_manager_method,
-	.unregister_function	= NULL
-};
-
 void hcid_dbus_exit(void)
 {
 	char **children;
@@ -390,11 +365,17 @@ int hcid_dbus_init(void)
 	if (!conn)
 		return -1;
 
-	if (!dbus_connection_register_fallback(conn, BASE_PATH,
-						&manager_vtable, NULL)) {
-		error("D-Bus failed to register %s fallback", BASE_PATH);
+	if (!dbus_connection_create_object_path(conn, BASE_PATH, NULL, NULL))
 		return -1;
-	}
+
+	if (!manager_init(conn, BASE_PATH))
+		return -1;
+
+	if (!database_init(conn, BASE_PATH))
+		return -1;
+
+	if (!security_init(conn, BASE_PATH))
+		return -1;
 
 	set_dbus_connection(conn);
 

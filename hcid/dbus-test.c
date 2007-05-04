@@ -36,8 +36,9 @@
 
 #include <dbus/dbus.h>
 
-#include "hcid.h"
 #include "dbus.h"
+#include "dbus-helper.h"
+#include "hcid.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
 #include "dbus-adapter.h"
@@ -140,7 +141,7 @@ static void audit_requestor_exited(const char *name, struct audit *audit)
 
 		send_audit_status(audit, "AuditRemoteDeviceComplete");
 
-		dbus_connection_get_object_path_data(audit->conn,
+		dbus_connection_get_object_user_data(audit->conn,
 							audit->adapter_path,
 							(void *) &adapter);
 		if (adapter)
@@ -351,7 +352,7 @@ static gboolean l2raw_connect_complete(GIOChannel *io, GIOCondition cond, struct
 		return FALSE;
 	}
 
-	dbus_connection_get_object_path_data(audit->conn, audit->adapter_path,
+	dbus_connection_get_object_user_data(audit->conn, audit->adapter_path,
 						(void *) &adapter);
 	if (adapter)
 		bacpy(&adapter->agents_disabled, BDADDR_ANY);
@@ -638,27 +639,26 @@ static DBusHandlerResult get_l2cap_mtu_size(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static struct service_data methods[] = {
-	{ "AuditRemoteDevice",		audit_remote_device		},
-	{ "CancelAuditRemoteDevice",	cancel_audit_remote_device	},
-	{ "GetL2capFeatureMask",	get_l2cap_feature_mask		},
-	{ "GetL2capMtuSize",		get_l2cap_mtu_size		},
-	{ NULL, NULL }
+static DBusMethodVTable test_methods[] = {
+	{ "AuditRemoteDevice",		audit_remote_device,
+		"s",	""	},
+	{ "CancelAuditRemoteDevice",	cancel_audit_remote_device,
+		"s",	""	},
+	{ "GetL2capFeatureMask",	get_l2cap_feature_mask,
+		"s",	"u"	},
+	{ "GetL2capMtuSize",		get_l2cap_mtu_size,
+		"s",	"q"	},
+	{ NULL, NULL, NULL, NULL }
 };
 
-DBusHandlerResult handle_test_method(DBusConnection *conn, DBusMessage *msg, void *data)
+dbus_bool_t test_init(DBusConnection *conn, const char *path)
 {
-	service_handler_func_t handler;
-
 	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
+		return TRUE;
 
-	handler = find_service_handler(methods, msg);
-
-	if (handler)
-		return handler(conn, msg, data);
-
-	return error_unknown_method(conn, msg);
+	return dbus_connection_register_interface(conn, path, TEST_INTERFACE,
+							test_methods,
+							NULL, NULL);
 }
 
 void process_audits_list(const char *adapter_path)
@@ -681,7 +681,7 @@ void process_audits_list(const char *adapter_path)
 
 		adapter = NULL;
 
-		dbus_connection_get_object_path_data(audit->conn,
+		dbus_connection_get_object_user_data(audit->conn,
 							audit->adapter_path,
 							(void *) &adapter);
 

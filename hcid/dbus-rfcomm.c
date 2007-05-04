@@ -46,8 +46,9 @@
 
 #include <dbus/dbus.h>
 
-#include "hcid.h"
 #include "dbus.h"
+#include "dbus-helper.h"
+#include "hcid.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
 #include "dbus-adapter.h"
@@ -599,6 +600,9 @@ static DBusHandlerResult rfcomm_connect_req(DBusConnection *conn,
 	const char *dst;
 	int err;
 
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
+
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &dst,
 				DBUS_TYPE_STRING, &string,
@@ -639,6 +643,10 @@ static DBusHandlerResult rfcomm_cancel_connect_req(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *string;
 	const char *dst;
+	struct adapter *adapter = data;
+
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &dst,
@@ -668,6 +676,9 @@ static DBusHandlerResult rfcomm_connect_by_ch_req(DBusConnection *conn,
 	int err;
 	struct adapter *adapter = data;
 
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
+
 	hci_devba(adapter->dev_id, &bdaddr);
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -692,6 +703,10 @@ static DBusHandlerResult rfcomm_cancel_connect_by_ch_req(DBusConnection *conn,
 	uint8_t ch;
 	DBusMessage *reply;
 	struct pending_connect *pending;
+	struct adapter *adapter = data;
+
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &dst,
@@ -719,6 +734,10 @@ static DBusHandlerResult rfcomm_disconnect_req(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *name;
 	int err;
+	struct adapter *adapter = data;
+
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &name,
@@ -825,6 +844,9 @@ static DBusHandlerResult rfcomm_bind_req(DBusConnection *conn,
 	const char *dst;
 	int err;
 
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
+
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &dst,
 				DBUS_TYPE_STRING, &string,
@@ -868,6 +890,9 @@ static DBusHandlerResult rfcomm_bind_by_ch_req(DBusConnection *conn,
 	struct adapter *adapter = data;
 	struct rfcomm_node *node = NULL;
 
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
+
 	hci_devba(adapter->dev_id, &bdaddr);
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -910,6 +935,10 @@ static DBusHandlerResult rfcomm_release_req(DBusConnection *conn,
 	const char *name;
 	struct rfcomm_node *node;
 	int err;
+	struct adapter *adapter = data;
+
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &name,
@@ -948,6 +977,9 @@ static DBusHandlerResult rfcomm_list_bindings_req(DBusConnection *conn,
 	DBusMessageIter iter, sub;
 	struct adapter *adapter = data;
 	GSList *l;
+
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
 
 	hci_devba(adapter->dev_id, &bdaddr);
 
@@ -988,47 +1020,40 @@ static DBusHandlerResult rfcomm_list_bindings_req(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static struct service_data rfcomm_services[] = {
-	{ "Connect",			rfcomm_connect_req,			},
-	{ "CancelConnect",		rfcomm_cancel_connect_req,		},
-	{ "ConnectByChannel",		rfcomm_connect_by_ch_req,		},
-	{ "CancelConnectByChannel",	rfcomm_cancel_connect_by_ch_req,	},
-	{ "Disconnect",			rfcomm_disconnect_req,			},
-	{ "Bind",			rfcomm_bind_req,			},
-	{ "BindByChannel",		rfcomm_bind_by_ch_req,			},
-	{ "Release",			rfcomm_release_req,			},
-	{ "ListBindings",		rfcomm_list_bindings_req,		},
-	{ NULL,				NULL,					}
+static DBusMethodVTable rfcomm_methods[] = {
+	{ "Connect",			rfcomm_connect_req,
+		"ss",	"s"	},
+	{ "CancelConnect",		rfcomm_cancel_connect_req,
+		"ss",	""	},
+	{ "ConnectByChannel",		rfcomm_connect_by_ch_req,
+		"sy",	"s"	},
+	{ "CancelConnectByChannel",	rfcomm_cancel_connect_by_ch_req,
+		"sy",	""	},
+	{ "Disconnect",			rfcomm_disconnect_req,
+		"s",	""	},
+	{ "Bind",			rfcomm_bind_req,
+		"ss",	"s"	},
+	{ "BindByChannel",		rfcomm_bind_by_ch_req,
+		"sy",	"s"	},
+	{ "Release",			rfcomm_release_req,
+		"s",	""	},
+	{ "ListBindings",		rfcomm_list_bindings_req,
+		"",	"as"	},
+	{ NULL,	NULL, NULL, NULL }
 };
 
-DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+dbus_bool_t rfcomm_init(DBusConnection *conn, const char *path)
 {
-	const struct adapter *adapter = data;
-	service_handler_func_t handler;
-
 	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
+		return TRUE;
 
-	if (!data) {
-		error("RFCOMM method called with NULL data pointer!");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	if (!adapter->up)
-		return error_not_ready(conn, msg);
-
-	/* Initialize the RFCOMM control socket if has not yet been done */
 	if (rfcomm_ctl < 0) {
 		rfcomm_ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
 		if (rfcomm_ctl < 0)
-			return error_failed(conn, msg, errno);
+			return FALSE;
 	}
 
-	handler = find_service_handler(rfcomm_services, msg);
-
-	if (handler)
-		return handler(conn, msg, data);
-
-	return error_unknown_method(conn, msg);
+	return dbus_connection_register_interface(conn, path, RFCOMM_INTERFACE,
+							rfcomm_methods,
+							NULL, NULL);
 }

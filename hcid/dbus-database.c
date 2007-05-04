@@ -40,6 +40,7 @@
 #include <dbus/dbus.h>
 
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "hcid.h"
 #include "sdpd.h"
 #include "sdp-xml.h"
@@ -451,29 +452,24 @@ static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 	return cancel_authorize_request(conn, msg, service, address, path);
 }
 
-static struct service_data database_services[] = {
-	{ "AddServiceRecord",			add_service_record		},
-	{ "AddServiceRecordFromXML",		add_service_record_from_xml	},
-	{ "UpdateServiceRecord",		update_service_record		},
-	{ "RemoveServiceRecord",		remove_service_record		},
-	{ "RegisterService",			register_service		},
-	{ "UnregisterService",			unregister_service		},
-	{ "RequestAuthorization",		request_authorization		},
-	{ "CancelAuthorizationRequest",		cancel_authorization_request	},
-	{ NULL, NULL }
+static DBusMethodVTable database_methods[] = {
+	{ "AddServiceRecord",		add_service_record,		"ay",	"u"	},	
+	{ "AddServiceRecordFromXML",	add_service_record_from_xml,	"s",	"u"	},
+	{ "UpdateServiceRecord",	update_service_record,		"uay",	""	},
+	{ "RemoveServiceRecord",	remove_service_record,		"u",	""	},
+	{ "RegisterService",		register_service,		"sss",	""	},
+	{ "UnregisterService",		unregister_service,		"s",	""	},
+	{ "RequestAuthorization",	request_authorization,		"ss",	""	},
+	{ "CancelAuthorizationRequest",	cancel_authorization_request,	"ss",	""	},
+	{ NULL, NULL, NULL, NULL }
 };
 
-DBusHandlerResult handle_database_method(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+dbus_bool_t database_init(DBusConnection *conn, const char *path)
 {
-	service_handler_func_t handler;
-
-	handler = find_service_handler(database_services, msg);
-
-	if (handler)
-		return handler(conn, msg, data);
-
-	return error_unknown_method(conn, msg);
+	return dbus_connection_register_interface(conn, path,
+							DATABASE_INTERFACE,
+							database_methods,
+							NULL, NULL);
 }
 
 void set_sdp_server_enable(void)

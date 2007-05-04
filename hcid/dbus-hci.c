@@ -46,9 +46,11 @@
 #include "hcid.h"
 #include "dbus.h"
 #include "textfile.h"
+#include "dbus-helper.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-test.h"
+#include "dbus-rfcomm.h"
 #include "dbus-security.h"
 #include "dbus-service.h"
 #include "dbus-manager.h"
@@ -298,11 +300,6 @@ DBusMessage *dev_signal_factory(int devid, const char *prop_name, int first,
  * Virtual table that handle the object path hierarchy
  */
 
-static const DBusObjectPathVTable adapter_vtable = {
-	.message_function	= &handle_method_call,
-	.unregister_function	= NULL
-};
-
 static void adapter_mode_changed(struct adapter *adapter, uint8_t mode)
 {
 	DBusMessage *message;
@@ -404,7 +401,7 @@ int unregister_adapter_path(const char *path)
 
 	info("Unregister path: %s", path);
 
-	dbus_connection_get_object_path_data(connection, path,
+	dbus_connection_get_object_user_data(connection, path,
 						(void *) &adapter);
 
 	if (!adapter)
@@ -473,7 +470,7 @@ int unregister_adapter_path(const char *path)
 	g_free (adapter);
 
 unreg:
-	if (!dbus_connection_unregister_object_path (connection, path)) {
+	if (!dbus_connection_destroy_object_path(connection, path)) {
 		error("D-Bus failed to unregister %s object", path);
 		return -1;
 	}
@@ -507,11 +504,31 @@ int hcid_dbus_register_device(uint16_t id)
 	adapter->dev_id = id;
 	adapter->pdiscov_resolve_names = 1;
 
-	if (!dbus_connection_register_object_path(connection, path,
-						&adapter_vtable, adapter)) {
+	if (!dbus_connection_create_object_path(connection, path, adapter,
+						NULL)) {
 		error("D-Bus failed to register %s object", path);
 		g_free(adapter);
 		return -1;
+	}
+
+	if (!adapter_init(connection, path)) {
+		error("Adapter interface init failed");
+		goto failed;
+	}
+
+	if (!security_init(connection, path)) {
+		error("Security interface init failed");
+		goto failed;
+	}
+
+	if (!test_init(connection, path)) {
+		error("Test interface init failed");
+		goto failed;
+	}
+
+	if (!rfcomm_init(connection, path)) {
+		error("RFCOMM interface init failed");
+		goto failed;
 	}
 
 	/*
@@ -521,8 +538,7 @@ int hcid_dbus_register_device(uint16_t id)
 						"AdapterAdded");
 	if (message == NULL) {
 		error("Can't allocate D-Bus message");
-		dbus_connection_unregister_object_path(connection, path);
-		return -1;
+		goto failed;
 	}
 
 	dbus_message_append_args(message,
@@ -532,6 +548,12 @@ int hcid_dbus_register_device(uint16_t id)
 	send_message_and_unref(connection, message);
 
 	return 0;
+
+failed:
+	dbus_connection_destroy_object_path(connection, path);
+	g_free(adapter);
+
+	return -1;
 }
 
 int hcid_dbus_unregister_device(uint16_t id)
@@ -605,7 +627,7 @@ int hcid_dbus_start_device(uint16_t id)
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		return -1;
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		return -1;
@@ -696,7 +718,7 @@ int hcid_dbus_stop_device(uint16_t id)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		return -1;
@@ -796,7 +818,7 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		return;
@@ -870,7 +892,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	/* create the authentication reply */
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		goto failed;
@@ -944,7 +966,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (dbus_connection_get_object_path_data(connection, path,
+	if (dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		adapter->discov_active = 1;
 		/* 
@@ -1119,7 +1141,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		goto done;
@@ -1228,7 +1250,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (dbus_connection_get_object_path_data(connection, path,
+	if (dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		adapter->pdiscov_active = 1;
 
@@ -1268,7 +1290,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		goto done;
@@ -1362,7 +1384,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		goto done;
@@ -1511,7 +1533,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		goto done;
@@ -1600,7 +1622,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		goto done;
@@ -1667,7 +1689,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		goto failed;
@@ -1908,7 +1930,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		goto failed;
@@ -1954,7 +1976,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
 		goto failed;

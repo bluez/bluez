@@ -49,6 +49,7 @@
 #include <dbus/dbus.h>
 
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "hcid.h"
 #include "textfile.h"
 #include "dbus-hci.h"
@@ -347,7 +348,7 @@ static const char *get_address_from_message(DBusConnection *conn, DBusMessage *m
 	if (!path)
 		return NULL;
 
-	if (dbus_connection_get_object_path_data(conn, path, (void *) &adapter) == FALSE)
+	if (dbus_connection_get_object_user_data(conn, path, (void *) &adapter) == FALSE)
 		return NULL;
 
 	return adapter->address;

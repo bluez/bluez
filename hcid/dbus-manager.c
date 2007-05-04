@@ -43,6 +43,7 @@
 
 #include "hcid.h"
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-database.h"
@@ -279,42 +280,31 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static struct service_data methods[] = {
-	{ "InterfaceVersion",		interface_version		},
-	{ "DefaultAdapter",		default_adapter			},
-	{ "FindAdapter",		find_adapter			},
-	{ "ListAdapters",		list_adapters			},
-	{ "FindService",		find_service			},
-	{ "ListServices",		list_services			},
-	{ "ActivateService",		activate_service		},
+static DBusMethodVTable manager_methods[] = {
+	{ "InterfaceVersion",	interface_version,	"",	"u"	},
+	{ "DefaultAdapter",	default_adapter,	"",	"s"	},
+	{ "FindAdapter",	find_adapter,		"s",	"s"	},
+	{ "ListAdapters",	list_adapters,		"",	"as"	},
+	{ "FindService",	find_service,		"s",	"s"	},
+	{ "ListServices",	list_services,		"",	"as"	},
+	{ "ActivateService",	activate_service,	"s",	"s"	},
+	{ NULL, NULL, NULL, NULL }
+};
+
+static DBusSignalVTable manager_signals[] = {
+	{ "AdapterAdded",		"s"	},
+	{ "AdapterRemoved",		"s"	},
+	{ "DefaultAdapterChanged",	"s"	},
+	{ "ServiceAdded",		"s"	},
+	{ "ServiceRemoved",		"s"	},
 	{ NULL, NULL }
 };
 
-DBusHandlerResult handle_manager_method(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+dbus_bool_t manager_init(DBusConnection *conn, const char *path)
 {
-	service_handler_func_t handler;
-	const char *iface, *name;
-
-	iface = dbus_message_get_interface(msg);
-	name = dbus_message_get_member(msg);
-
-	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
-					!strcmp("Introspect", name)) {
-		return simple_introspect(conn, msg, data);
-	} else if (!strcmp(iface, MANAGER_INTERFACE)) {
-		handler = find_service_handler(methods, msg);
-		if (handler)
-			return handler(conn, msg, data);
-		else
-			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	} else if (!strcmp(iface, DATABASE_INTERFACE)) {
-		return handle_database_method(conn, msg, data);
-	} else if (!strcmp(iface, SECURITY_INTERFACE)) {
-		return handle_security_method(conn, msg, data);
-	}
-
-	return error_unknown_method(conn, msg);
+	return dbus_connection_register_interface(conn, path, MANAGER_INTERFACE,
+							manager_methods,
+							manager_signals, NULL);
 }
 
 int get_default_adapter(void)

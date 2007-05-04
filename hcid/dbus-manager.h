@@ -26,7 +26,7 @@
 
 #define MANAGER_INTERFACE	"org.bluez.Manager"
 
-DBusHandlerResult handle_manager_method(DBusConnection *conn, DBusMessage *msg, void *data);
+dbus_bool_t manager_init(DBusConnection *conn, const char *path);
 
 int get_default_adapter(void);
 

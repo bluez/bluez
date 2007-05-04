@@ -29,7 +29,7 @@
 
 #define SECURITY_INTERFACE "org.bluez.Security"
 
-DBusHandlerResult handle_security_method(DBusConnection *conn, DBusMessage *msg, void *data);
+dbus_bool_t security_init(DBusConnection *conn, const char *path);
 
 int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
 				bdaddr_t *sba, bdaddr_t *dba);

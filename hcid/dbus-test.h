@@ -26,7 +26,7 @@
 
 #define TEST_INTERFACE "org.bluez.Test"
 
-DBusHandlerResult handle_test_method(DBusConnection *conn, DBusMessage *msg, void *data);
+dbus_bool_t test_init(DBusConnection *conn, const char *path);
 
 void process_audits_list(const char *adapter_path);
 

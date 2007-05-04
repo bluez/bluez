@@ -110,7 +110,7 @@ struct adapter {
 	struct pending_dc_info *pending_dc;
 };
 
-DBusHandlerResult handle_adapter_method(DBusConnection *conn, DBusMessage *msg, void *data);
+dbus_bool_t adapter_init(DBusConnection *conn, const char *path);
 
 const char *major_class_str(uint32_t class);
 

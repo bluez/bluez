@@ -26,7 +26,7 @@
 
 #define DATABASE_INTERFACE "org.bluez.Database"
 
-DBusHandlerResult handle_database_method(DBusConnection *conn, DBusMessage *msg, void *data);
+dbus_bool_t database_init(DBusConnection *conn, const char *path);
 
 void set_sdp_server_enable(void);
 

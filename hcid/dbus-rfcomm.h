@@ -26,6 +26,6 @@
 
 #define RFCOMM_INTERFACE	"org.bluez.RFCOMM"
 
-DBusHandlerResult handle_rfcomm_method(DBusConnection *conn, DBusMessage *msg, void *data);
+dbus_bool_t rfcomm_init(DBusConnection *conn, const char *path);
 
 #endif /* __BLUEZ_DBUS_RFCOMM_H */

@@ -41,6 +41,7 @@
 #include <dbus/dbus.h>
 
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "hcid.h"
 #include "dbus-common.h"
 #include "dbus-adapter.h"
@@ -835,27 +836,27 @@ DBusHandlerResult cancel_authorize_request(DBusConnection *conn,
 						service, address, path);
 }
 
-static struct service_data sec_services[] = {
-	{ "RegisterDefaultPasskeyAgent",		register_default_passkey_agent		},
-	{ "UnregisterDefaultPasskeyAgent",		unregister_default_passkey_agent	},
-	{ "RegisterPasskeyAgent",			register_passkey_agent			},
-	{ "UnregisterPasskeyAgent",			unregister_passkey_agent		},
-	{ "RegisterDefaultAuthorizationAgent",		register_default_auth_agent		},
-	{ "UnregisterDefaultAuthorizationAgent",	unregister_default_auth_agent		},
-	{ NULL, NULL }
+static DBusMethodVTable security_methods[] = {
+	{ "RegisterDefaultPasskeyAgent",		register_default_passkey_agent,
+		"s",	""	},
+	{ "UnregisterDefaultPasskeyAgent",		unregister_default_passkey_agent,
+		"s",	""	},
+	{ "RegisterPasskeyAgent",			register_passkey_agent,
+		"ss",	""	},
+	{ "UnregisterPasskeyAgent",			unregister_passkey_agent,
+		"ss",	""	},
+	{ "RegisterDefaultAuthorizationAgent",		register_default_auth_agent,
+		"s",	""	},
+	{ "UnregisterDefaultAuthorizationAgent",	unregister_default_auth_agent,
+		"s",	""	},
+	{ NULL, NULL, NULL, NULL }
 };
 
-DBusHandlerResult handle_security_method(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+dbus_bool_t security_init(DBusConnection *conn, const char *path)
 {
-	service_handler_func_t handler;
-
-	handler = find_service_handler(sec_services, msg);
-
-	if (handler)
-		return handler(conn, msg, data);
-
-	return error_unknown_method(conn, msg);
+	return dbus_connection_register_interface(conn, path, SECURITY_INTERFACE,
+							security_methods,
+							NULL, NULL);
 }
 
 static DBusPendingCall *agent_request(const char *path, bdaddr_t *bda,
@@ -1039,7 +1040,7 @@ int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
 	char addr[18];
 	void *data;
 
-	dbus_connection_get_object_path_data(conn, path, &data);
+	dbus_connection_get_object_user_data(conn, path, &data);
 
 	if (!data)
 		goto done;
@@ -1218,7 +1219,7 @@ int handle_confirm_request(DBusConnection *conn, int dev, const char *path,
 	char addr[18];
 	void *data;
 
-	dbus_connection_get_object_path_data(conn, path, &data);
+	dbus_connection_get_object_user_data(conn, path, &data);
 
 	if (!data)
 		goto done;
