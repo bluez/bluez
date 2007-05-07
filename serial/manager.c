@@ -103,6 +103,60 @@ static DBusHandlerResult err_not_supported(DBusConnection *conn,
 			"The service is not supported by the remote device"));
 }
 
+static void record_reply(DBusPendingCall *call, void *data)
+{
+	struct pending_connection *pc = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		if (dbus_error_has_name(&derr,
+				"org.bluez.Error.ConnectionAttemptFailed"))
+			err_connection_failed(pc->conn, pc->msg, derr.message);
+		else
+			err_not_supported(pc->conn, pc->msg);
+
+		error("GetRemoteServiceRecord: %s(%s)",
+					derr.name, derr.message);
+		goto fail;
+	}
+
+	/* FIXME: extract the record */
+fail:
+	dbus_message_unref(reply);
+	dbus_error_free(&derr);
+	pending_connection_free(pc);
+}
+
+static int get_record(struct pending_connection *pc, uint32_t handle,
+					DBusPendingCallNotifyFunction cb)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+
+	msg = dbus_message_new_method_call("org.bluez", pc->adapter_path,
+			"org.bluez.Adapter", "GetRemoteServiceRecord");
+	if (!msg)
+		return -1;
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &pc->addr,
+			DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(pc->conn, msg, &pending, -1) == FALSE) {
+		error("Can't send D-Bus message.");
+		return -1;
+	}
+
+	dbus_pending_call_set_notify(pending, cb, pc, NULL);
+	dbus_message_unref(msg);
+	dbus_pending_call_unref(pending);
+
+	return 0;
+}
+
 static void handles_reply(DBusPendingCall *call, void *data)
 {
 	struct pending_connection *pc = data;
@@ -137,7 +191,11 @@ static void handles_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	/* FIXME: Get the record */
+	if (get_record(pc, *phandle, record_reply) < 0) {
+		err_not_supported(pc->conn, pc->msg);
+		goto fail;
+	}
+
 	dbus_message_unref(reply);
 	return;
 fail:
@@ -247,7 +305,12 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 			return err_invalid_args(conn, msg,
 					"invalid record handle");
 		}
-		/* FIXME: retrieve the record */
+
+		if (get_record(pc, val, record_reply) < 0) {
+			pending_connection_free(pc);
+			return err_not_supported(conn, msg);
+	
+		}
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
