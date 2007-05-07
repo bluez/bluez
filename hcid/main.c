@@ -37,6 +37,8 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -57,6 +59,7 @@ struct hcid_opts hcid;
 struct device_opts default_device;
 struct device_opts *parser_device;
 static struct device_list *device_list = NULL;
+static int child_pipe[2];
 
 static inline void init_device_defaults(struct device_opts *device_opts)
 {
@@ -275,6 +278,32 @@ static char *expand_name(char *dst, int size, char *str, int dev_id)
 	return dst;
 }
 
+static gboolean child_exit(GIOChannel *io, GIOCondition cond, void *user_data)
+{
+	int status, fd = g_io_channel_unix_get_fd(io);
+	pid_t child_pid;
+	
+	if (read(fd, &child_pid, sizeof(child_pid)) != sizeof(child_pid)) {
+		error("child_exit: unable to read child pid from pipe");
+		return TRUE;
+	}
+
+	if (waitpid(child_pid, &status, 0) != child_pid)
+		error("waitpid(%d) failed", child_pid);
+	else
+		debug("child %d exited", child_pid);
+
+	return TRUE;
+}
+
+static void at_child_exit(void)
+{
+	pid_t pid = getpid();
+
+	if (write(child_pipe[1], &pid, sizeof(pid)) != sizeof(pid))
+		error("unable to write to child pipe");
+}
+
 static void configure_device(int dev_id)
 {
 	struct device_opts *device_opts;
@@ -313,6 +342,7 @@ static void configure_device(int dev_id)
 	/* Do configuration in the separate process */
 	switch (fork()) {
 		case 0:
+			atexit(at_child_exit);
 			break;
 		case -1:
 			error("Fork failed. Can't init device hci%d: %s (%d)",
@@ -437,6 +467,7 @@ static void init_device(int dev_id)
 	/* Do initialization in the separate process */
 	switch (fork()) {
 		case 0:
+			atexit(at_child_exit);
 			break;
 		case -1:
 			error("Fork failed. Can't init device hci%d: %s (%d)",
@@ -652,7 +683,7 @@ int main(int argc, char *argv[])
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
 	struct sigaction sa;
-	GIOChannel *ctl_io;
+	GIOChannel *ctl_io, *child_io;
 	int opt, daemonize = 1, debug = 0, sdp = 0, experimental = 0;
 
 	/* Default HCId settings */
@@ -720,7 +751,6 @@ int main(int argc, char *argv[])
 	sigaction(SIGUSR2, &sa, NULL);
 
 	sa.sa_handler = SIG_IGN;
-	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 
 	if (debug) {
@@ -755,6 +785,18 @@ int main(int argc, char *argv[])
 
 	if (read_config(hcid.config_file) < 0)
 		error("Config load failed");
+
+	if (pipe(child_pipe) < 0) {
+		error("pipe(): %s (%d)", strerror(errno), errno);
+		exit(1);
+	}
+
+	child_io = g_io_channel_unix_new(child_pipe[0]);
+	g_io_channel_set_close_on_unref(child_io, TRUE);
+	g_io_add_watch(child_io,
+			G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+			child_exit, NULL);
+	g_io_channel_unref(child_io);
 
 	init_devices();
 
