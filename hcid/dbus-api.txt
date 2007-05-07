@@ -1011,6 +1011,16 @@ Signals		void ModeChanged(string mode)
 			This signal indicates that a device discovery
 			procedure has been completed.
 
+		void PeriodicDiscoveryStarted()
+
+			This signal indicates that a periodic discovery
+			procedure has been started.
+
+		void PeriodicDiscoveryStopped()
+
+			This signal indicates that a periodic discovery
+			procedure has been completed.
+
 		void RemoteDeviceFound(string address, uint32 class, int16 rssi)
 
 			This signal will be send every time an inquiry result
