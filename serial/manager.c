@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <glib.h>
 
@@ -41,6 +42,7 @@
 #define SERIAL_ERROR_INTERFACE		"org.bluez.serial.Error"
 
 #define PATH_LENGTH		32
+#define BASE_UUID			"00000000-0000-1000-8000-00805F9B34FB"
 
 static DBusConnection *connection = NULL;
 
@@ -55,10 +57,10 @@ static DBusHandlerResult err_invalid_args(DBusConnection *conn,
 static DBusHandlerResult connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	DBusError derr;
-	const char *addr;
-	const char *pattern;
+	const char *addr, *pattern;
+	char *endptr;
+	long val;
 
 	/* FIXME: Check if it already exist or if there is pending connect */
 
@@ -72,15 +74,43 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	/* Pattern can be a UUID128, handle or a channel */
+	/* UUID 128*/
+	if (strlen(pattern) == 36) {
+		char tmp[37];
 
-	/* FIXME: Missing SDP search */
+		strcpy(tmp, pattern);
+		tmp[4] = '0';
+		tmp[5] = '0';
+		tmp[6] = '0';
+		tmp[7] = '0';
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		if (strcasecmp(BASE_UUID, tmp) != 0)
+			return err_invalid_args(conn, msg, "invalid UUID");
 
-	return send_message_and_unref(conn, reply);
+		/* FIXME: Retrieve the handle/record */
+
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	errno = 0;
+	val = strtol(pattern, &endptr, 0);
+	if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) ||
+			(errno != 0 && val == 0) || (pattern == endptr))
+		return err_invalid_args(conn, msg, "Invalid pattern");
+
+	if (val < 0x100) {
+		/* RFCOMM Channel range: 0x00 - 0xff */
+		info("Connecting to channel: 0x%x", val);
+		/* FIXME: Connect */
+	} else {
+		/* Service record handle must be > 0x0000ffff */
+		if (val < 0x10000)
+			return err_invalid_args(conn, msg,
+					"invalid record handle");
+		/* FIXME: retrieve the record */
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult disconnect_service(DBusConnection *conn,
