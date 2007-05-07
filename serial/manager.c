@@ -35,6 +35,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include "dbus.h"
 #include "logging.h"
@@ -107,7 +109,11 @@ static void record_reply(DBusPendingCall *call, void *data)
 {
 	struct pending_connection *pc = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	sdp_record_t *rec;
+	const uint8_t *rec_bin;
+	sdp_list_t *protos;
 	DBusError derr;
+	int len, scanned, ch;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -122,7 +128,45 @@ static void record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	/* FIXME: extract the record */
+	if (!dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
+				DBUS_TYPE_INVALID)) {
+		err_not_supported(pc->conn, pc->msg);
+		error("%s: %s", derr.name, derr.message);
+		goto fail;
+	}
+
+	if (len == 0) {
+		err_not_supported(pc->conn, pc->msg);
+		error("Invalid service record length");
+		goto fail;
+	}
+
+	rec = sdp_extract_pdu(rec_bin, &scanned);
+	if (!rec) {
+		error("Can't extract SDP record.");
+		err_not_supported(pc->conn, pc->msg);
+		goto fail;
+	}
+
+	if (len != scanned || (sdp_get_access_protos(rec, &protos) < 0)) {
+		sdp_record_free(rec);
+		err_not_supported(pc->conn, pc->msg);
+		goto fail;
+	}
+
+	ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
+	sdp_list_free(protos, NULL);
+
+	if (ch < 1 || ch > 30) {
+		error("Channel out of range: %d", ch);
+		sdp_record_free(rec);
+		err_not_supported(pc->conn, pc->msg);
+	}
+
+	/* FIXME: Check if there is a pending connection */
+
 fail:
 	dbus_message_unref(reply);
 	dbus_error_free(&derr);
