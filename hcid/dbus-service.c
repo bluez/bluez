@@ -39,11 +39,11 @@
 
 #include <dbus/dbus.h>
 
-#include "hcid.h"
 #include "dbus.h"
+#include "dbus-helper.h"
+#include "hcid.h"
 #include "notify.h"
 #include "dbus-common.h"
-#include "dbus-helper.h"
 #include "dbus-error.h"
 #include "dbus-manager.h"
 #include "dbus-service.h"
@@ -83,17 +83,17 @@ static void service_free(struct service *service)
 static void service_exit(const char *name, struct service *service)
 {
 	DBusConnection *conn = get_dbus_connection();
-	DBusMessage *msg;
 	
 	debug("Service owner exited: %s", name);
 
-	msg = dbus_message_new_signal(service->object_path,
-					SERVICE_INTERFACE, "Stopped");
-	send_message_and_unref(conn, msg);
+	dbus_connection_emit_signal(conn, service->object_path,
+					SERVICE_INTERFACE, "Stopped",
+					DBUS_TYPE_INVALID);
 
 	if (service->action) {
-		msg = dbus_message_new_method_return(service->action);
-		send_message_and_unref(conn, msg);
+		DBusMessage *reply;
+	      	reply = dbus_message_new_method_return(service->action);
+		send_message_and_unref(conn, reply);
 		dbus_message_unref(service->action);
 		service->action = NULL;
 	}
@@ -294,10 +294,9 @@ static DBusHandlerResult service_filter(DBusConnection *conn,
 
 	name_listener_add(conn, new, (name_cb_t) service_exit, service);
 
-	msg = dbus_message_new_signal(service->object_path,
-					SERVICE_INTERFACE, "Started");
-	if (msg)
-		send_message_and_unref(conn, msg);
+	dbus_connection_emit_signal(conn, service->object_path,
+					SERVICE_INTERFACE, "Started",
+					DBUS_TYPE_INVALID);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -536,7 +535,7 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	const char *address;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -551,16 +550,12 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	signal = dbus_message_new_signal(service->object_path,
-					SERVICE_INTERFACE, "TrustAdded");
-	if (!signal)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
 	write_trust(BDADDR_ANY, address, service->ident, TRUE);
 
-	dbus_message_append_args(signal, DBUS_TYPE_STRING, &address,
+	dbus_connection_emit_signal(conn, service->object_path,
+					SERVICE_INTERFACE, "TrustAdded",
+					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -598,7 +593,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	const char *address;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -613,64 +608,48 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	signal = dbus_message_new_signal(service->object_path,
-					SERVICE_INTERFACE, "TrustRemoved");
-	if (!signal)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
 	write_trust(BDADDR_ANY, address, service->ident, FALSE);
 
-	dbus_message_append_args(signal, DBUS_TYPE_STRING, &address,
+	dbus_connection_emit_signal(conn, service->object_path,
+					SERVICE_INTERFACE, "TrustRemoved",
+					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
 
 	return send_message_and_unref(conn, reply);
 }
 
-static struct service_data services_methods[] = {
-	{ "GetInfo",		get_info		},
-	{ "GetIdentifier",	get_identifier		},
-	{ "GetName",		get_name		},
-	{ "GetDescription",	get_description		},
-	{ "GetBusName",		get_bus_name		},
-	{ "Start",		start			},
-	{ "Stop",		stop			},
-	{ "IsRunning",		is_running		},
-	{ "IsExternal",		is_external		},
-	{ "ListUsers",		list_users		},
-	{ "RemoveUser",		remove_user		},
-	{ "SetTrusted",		set_trusted		},
-	{ "IsTrusted",		is_trusted		},
-	{ "RemoveTrust",	remove_trust		},
+static DBusMethodVTable service_methods[] = {
+	{ "GetInfo",		get_info,		"",	"{sv}"	},
+	{ "GetIdentifier",	get_identifier,		"",	"s"	},
+	{ "GetName",		get_name,		"",	"s"	},
+	{ "GetDescription",	get_description,	"",	"s"	},
+	{ "GetBusName",		get_bus_name,		"",	"s"	},
+	{ "Start",		start,			"",	""	},
+	{ "Stop",		stop,			"",	""	},
+	{ "IsRunning",		is_running,		"",	"b"	},
+	{ "IsExternal",		is_external,		"",	"b"	},
+	{ "ListUsers",		list_users,		"",	"as"	},
+	{ "RemoveUser",		remove_user,		"s",	""	},
+	{ "SetTrusted",		set_trusted,		"s",	""	},
+	{ "IsTrusted",		is_trusted,		"s",	"b"	},
+	{ "RemoveTrust",	remove_trust,		"s",	""	},
+	{ NULL, NULL, NULL, NULL }
+};
+
+static DBusSignalVTable service_signals[] = {
+	{ "Started",		""	},
+	{ "Stopped",		""	},	
+	{ "TrustAdded",		"s"	},
+	{ "TrustRemoved",	"s"	},
 	{ NULL, NULL }
 };
 
-static DBusHandlerResult msg_func_services(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static dbus_bool_t service_init(DBusConnection *conn, const char *path)
 {
-	service_handler_func_t handler;
-	const char *iface;
-
-	iface = dbus_message_get_interface(msg);
-
-	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, iface) &&
-			!strcmp("Introspect", dbus_message_get_member(msg))) {
-		return simple_introspect(conn, msg, data);
-	} else if (strcmp(SERVICE_INTERFACE, iface) == 0) {
-
-		handler = find_service_handler(services_methods, msg);
-		if (handler)
-			return handler(conn, msg, data);
-
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	} else
-		return error_unknown_method(conn, msg);
+	return dbus_connection_register_interface(conn, path, SERVICE_INTERFACE,
+							service_methods,
+							service_signals, NULL);
 }
-
-static const DBusObjectPathVTable services_vtable = {
-	.message_function	= &msg_func_services,
-	.unregister_function	= NULL
-};
 
 static int service_cmp_path(struct service *service, const char *path)
 {
@@ -686,7 +665,6 @@ static int register_service(struct service *service)
 {
 	char obj_path[PATH_MAX], *suffix;
 	DBusConnection *conn = get_dbus_connection();
-	DBusMessage *signal;
 	int i;
 
 	if (g_slist_find_custom(services, service->ident,
@@ -719,33 +697,32 @@ static int register_service(struct service *service)
 	debug("Registering service object: ident=%s, name=%s (%s)",
 			service->ident, service->name, obj_path);
 
-	if (!dbus_connection_register_object_path(conn, obj_path,
-						&services_vtable, service))
-		return -ENOMEM;
+
+	if (!dbus_connection_create_object_path(conn, obj_path,
+						service, NULL)) {
+		error("D-Bus failed to register %s object", obj_path);
+		return -1;
+	}
+
+	if (!service_init(conn, obj_path)) {
+		error("Service init failed");
+		return -1;
+	}
 
 	service->object_path = g_strdup(obj_path);
 
 	services = g_slist_append(services, service);
 
-	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-						"ServiceAdded");
-	if (!signal) {
-		dbus_connection_unregister_object_path(conn, service->object_path);
-		return -ENOMEM;
-	}
-
-	dbus_message_append_args(signal,
-				DBUS_TYPE_STRING, &service->object_path,
-				DBUS_TYPE_INVALID);
-
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
+					"ServiceAdded",
+					DBUS_TYPE_STRING, &service->object_path,
+					DBUS_TYPE_INVALID);
 
 	return 0;
 }
 
 static int unregister_service(struct service *service)
 {
-	DBusMessage *signal;
 	DBusConnection *conn = get_dbus_connection();
 
 	debug("Unregistering service object: %s", service->object_path);
@@ -753,25 +730,23 @@ static int unregister_service(struct service *service)
 	if (!conn)
 		goto cleanup;
 
-	if (!dbus_connection_unregister_object_path(conn, service->object_path))
-		return -ENOMEM;
-
 	if (service->bus_name)
 		name_listener_remove(conn, service->bus_name,
 					(name_cb_t) service_exit, service);
 
-	signal = dbus_message_new_signal(service->object_path,
-					SERVICE_INTERFACE, "Stopped");
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, service->object_path,
+					SERVICE_INTERFACE,
+					"Stopped", DBUS_TYPE_INVALID);
 
-	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-						"ServiceRemoved");
-	if (signal) {
-		dbus_message_append_args(signal,
+	if (!dbus_connection_destroy_object_path(conn, service->object_path)) {
+		error("D-Bus failed to unregister %s object", service->object_path);
+		return -1;
+	}
+
+	dbus_connection_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
+					"ServiceRemoved",
 					DBUS_TYPE_STRING, &service->object_path,
 					DBUS_TYPE_INVALID);
-		send_message_and_unref(conn, signal);
-	}
 
 cleanup:
 	if (service->pid) {
@@ -1031,24 +1006,19 @@ static struct service *create_external_service(const char *ident,
 static void external_service_exit(const char *name, struct service *service)
 {
 	DBusConnection *conn = get_dbus_connection();
-	DBusMessage *signal;
 
 	service_exit(name, service);
 
 	if (!conn)
 		return;
 
-	if (!dbus_connection_unregister_object_path(conn, service->object_path))
+	if (!dbus_connection_destroy_object_path(conn, service->object_path))
 		return;
 
-	signal = dbus_message_new_signal(BASE_PATH, MANAGER_INTERFACE,
-							"ServiceRemoved");
-	if (signal) {
-		dbus_message_append_args(signal,
+	dbus_connection_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
+					"ServiceRemoved",
 					DBUS_TYPE_STRING, &service->object_path,
 					DBUS_TYPE_INVALID);
-		send_message_and_unref(conn, signal);
-	}
 
 	services = g_slist_remove(services, service);
 	service_free(service);
@@ -1058,7 +1028,6 @@ int service_register(const char *bus_name, const char *ident,
 				const char *name, const char *description)
 {
 	DBusConnection *conn = get_dbus_connection();
-	DBusMessage *msg;
 	struct service *service;
 
 	if (!conn)
@@ -1075,12 +1044,12 @@ int service_register(const char *bus_name, const char *ident,
 		return -1;
 	}
 
-	name_listener_add(conn, bus_name, (name_cb_t) external_service_exit, service);
+	name_listener_add(conn, bus_name, (name_cb_t) external_service_exit,
+				service);
 
-	msg = dbus_message_new_signal(service->object_path,
-						SERVICE_INTERFACE, "Started");
-	if (msg)
-		send_message_and_unref(conn, msg);
+	dbus_connection_emit_signal(conn, service->object_path,
+					SERVICE_INTERFACE, "Started",
+					DBUS_TYPE_INVALID);
 
 	return 0;
 }
