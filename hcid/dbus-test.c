@@ -115,21 +115,14 @@ static void audit_free(struct audit *audit)
 
 static void send_audit_status(struct audit *audit, const char *name)
 {
-	DBusMessage *signal;
 	char addr[18], *addr_ptr = addr;
-
-	signal = dbus_message_new_signal(audit->adapter_path, TEST_INTERFACE, name);
-	if (!signal) {
-		error("Failed to allocate new D-Bus message");
-		return;
-	}
 
 	ba2str(&audit->peer, addr);
 
-	dbus_message_append_args(signal, DBUS_TYPE_STRING, &addr_ptr,
+	dbus_connection_emit_signal(audit->conn, audit->adapter_path,
+					TEST_INTERFACE, name,
+					DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
-
-	send_message_and_unref(audit->conn, signal);
 }
 
 static void audit_requestor_exited(const char *name, struct audit *audit)

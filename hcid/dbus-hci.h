@@ -53,8 +53,6 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr);
 
 int unregister_adapter_path(const char *path);
 
-DBusMessage *dev_signal_factory(int devid, const char *prop_name, int first, ...);
-
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 
 int get_default_dev_id(void);

@@ -599,7 +599,7 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 							void *data)
 {
 	struct adapter *adapter = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	uint32_t timeout;
 	bdaddr_t bdaddr;
 
@@ -630,12 +630,13 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 	str2ba(adapter->address, &bdaddr);
 	write_discoverable_timeout(&bdaddr, timeout);
 
-	signal = dev_signal_factory(adapter->dev_id, "DiscoverableTimeoutChanged",
-						DBUS_TYPE_UINT32, &timeout,
-						DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+					ADAPTER_INTERFACE,
+					"DiscoverableTimeoutChanged",
+					DBUS_TYPE_UINT32, &timeout,
+					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult adapter_is_connectable(DBusConnection *conn,
@@ -921,7 +922,7 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	bdaddr_t bdaddr;
 	const char *minor;
 	uint8_t cls[3];
@@ -984,10 +985,10 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 		return error_failed(conn, msg, err);
 	}
 
-	signal = dev_signal_factory(adapter->dev_id, "MinorClassChanged",
-						DBUS_TYPE_STRING, &minor,
-						DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+					ADAPTER_INTERFACE, "MinorClassChanged",
+					DBUS_TYPE_STRING, &minor,
+					DBUS_TYPE_INVALID);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -1747,7 +1748,7 @@ static DBusHandlerResult adapter_set_remote_alias(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	char *alias, *addr;
 	bdaddr_t bdaddr;
 	int ecode;
@@ -1773,11 +1774,11 @@ static DBusHandlerResult adapter_set_remote_alias(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	signal = dev_signal_factory(adapter->dev_id, "RemoteAliasChanged",
-						DBUS_TYPE_STRING, &addr,
-						DBUS_TYPE_STRING, &alias,
-						DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+					ADAPTER_INTERFACE, "RemoteAliasChanged",
+					DBUS_TYPE_STRING, &addr,
+					DBUS_TYPE_STRING, &alias,
+					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -1786,7 +1787,7 @@ static DBusHandlerResult adapter_clear_remote_alias(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	char *addr_ptr;
 	bdaddr_t bdaddr;
 	int ecode, had_alias = 1;
@@ -1815,13 +1816,12 @@ static DBusHandlerResult adapter_clear_remote_alias(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (had_alias) {
-		signal = dev_signal_factory(adapter->dev_id,
+	if (had_alias)
+		dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+						ADAPTER_INTERFACE,
 						"RemoteAliasCleared",
 						DBUS_TYPE_STRING, &addr_ptr,
 						DBUS_TYPE_INVALID);
-		send_message_and_unref(conn, signal);
-	}
 
 	return send_message_and_unref(conn, reply);
 }
@@ -1951,10 +1951,8 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	GSList *l = adapter->active_conn;
-
 	const char *peer_addr;
 	bdaddr_t peer_bdaddr;
-	DBusMessage *signal;
 
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
@@ -1995,12 +1993,11 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 	adapter->pending_dc->conn_handle =
 		((struct active_conn_info *) l->data)->handle;
 
-	/* ...and send a signal */
-	signal = dev_signal_factory(adapter->dev_id, "RemoteDeviceDisconnectRequested",
-						DBUS_TYPE_STRING, &peer_addr,
-						DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
-
+	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+					ADAPTER_INTERFACE,
+					"RemoteDeviceDisconnectRequested",
+					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_INVALID);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -2290,7 +2287,6 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 	struct adapter *adapter = data;
 	GSList *l;
 	DBusMessage *reply;
-	DBusMessage *signal;
 	char filename[PATH_MAX + 1];
 	char *addr_ptr, *str;
 	bdaddr_t bdaddr;
@@ -2350,11 +2346,10 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 		}
 	}
 
-	/* FIXME: which condition must be verified before send the signal */
-	signal = dev_signal_factory(adapter->dev_id, "BondingRemoved",
+	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+					ADAPTER_INTERFACE, "BondingRemoved",
 					DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -2931,7 +2926,7 @@ static DBusHandlerResult adapter_set_trusted(DBusConnection *conn,
 						void *data)
 {
 	struct adapter *adapter = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	bdaddr_t local;
 	const char *address;
 
@@ -2951,10 +2946,10 @@ static DBusHandlerResult adapter_set_trusted(DBusConnection *conn,
 
 	write_trust(&local, address, GLOBAL_TRUST, TRUE);
 
-	signal = dev_signal_factory(adapter->dev_id, "TrustAdded",
-						DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+					ADAPTER_INTERFACE, "TrustAdded",
+					DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -2997,7 +2992,7 @@ static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
 						void *data)
 {
 	struct adapter *adapter = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	const char *address;
 	bdaddr_t local;
 
@@ -3017,10 +3012,10 @@ static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
 
 	write_trust(&local, address, GLOBAL_TRUST, FALSE);
 
-	signal = dev_signal_factory(adapter->dev_id, "TrustRemoved",
-						DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+					ADAPTER_INTERFACE, "TrustRemoved",
+					DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -3238,6 +3233,8 @@ static DBusSignalVTable adapter_signals[] = {
 	{ "NameChanged",			"s"	},
 	{ "DiscoveryStarted",			""	},
 	{ "DiscoveryCompleted",			""	},
+	{ "PeriodicDiscoveryStarted",		""	},
+	{ "PeriodicDiscoveryStopped",		""	},
 	{ "RemoteDeviceFound",			"sun"	},
 	{ "RemoteDeviceDisappeared",		"s"	},
 	{ "RemoteClassUpdated",			"su"	},
