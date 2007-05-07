@@ -325,7 +325,7 @@ static void configure_device(int dev_id)
 	if (dd < 0) {
 		error("Can't open device hci%d: %s (%d)",
 						dev_id, strerror(errno), errno);
-		return;
+		exit(1);
 	}
 
 	memset(&dr, 0, sizeof(dr));
