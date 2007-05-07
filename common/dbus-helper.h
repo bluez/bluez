@@ -20,6 +20,7 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#include <stdarg.h>
 
 #define DBUS_TYPE_STRING_ARRAY_AS_STRING (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING)
 #define DBUS_TYPE_BYTE_ARRAY_AS_STRING   (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING)
@@ -71,3 +72,13 @@ dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
 void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 					const char *key, int type, void *val);
 
+dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
+					const char *interface, const char *name,
+					int first, ...);
+
+dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
+						const char *path,
+						const char *interface,
+						const char *name,
+						int first,
+						va_list var_args);

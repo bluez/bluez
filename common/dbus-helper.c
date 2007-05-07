@@ -449,3 +449,93 @@ void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 
 	dbus_message_iter_close_container(dict, &entry);
 }
+
+dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
+						const char *path,
+						const char *interface,
+						const char *name,
+						int first,
+						va_list var_args)
+{
+	struct generic_data *data;
+	struct interface_data *iface;
+	DBusMessageIter iter;
+	DBusSignalVTable *sig_data;
+	DBusMessage *signal;
+	int type;
+	const char *args = NULL;
+
+	if (dbus_connection_get_object_path_data(conn, path,
+						(void *) &data) == FALSE) {
+		error("dbus_connection_emit_signal: path %s isn't registered", path);
+		return FALSE;
+	}
+
+	iface = find_interface(data->interfaces, interface);
+
+	if (!iface) {
+		error("dbus_connection_emit_signal: %s does not implement %s",
+				path, interface);
+		return FALSE;
+	}
+
+	for (sig_data = iface->signals; sig_data && sig_data->name; sig_data++) {
+		if (!strcmp(sig_data->name, name)) {
+			args = sig_data->signature;
+			break;
+		}
+	}
+
+	if (!args) {
+		error("No signal named %s on interface %s", name, interface);
+		return FALSE;
+	}
+
+	signal = dbus_message_new_signal(path, interface, name);
+	if (!signal) {
+		error("Unable to allocate new %s.%s signal", interface,  name);
+		return FALSE;
+	}
+
+	dbus_message_iter_init_append(signal, &iter);
+
+	for (type = first; type != DBUS_TYPE_INVALID;
+			type = va_arg(var_args, int), args++) {
+		void *value;
+
+		if (type != *args) {
+			error("Expected arg type '%c' but got '%c'", *args, type);
+			dbus_message_unref(signal);
+			return FALSE;
+		}
+		
+		value = va_arg(var_args, void *);
+
+		if (!dbus_message_iter_append_basic(&iter, type, value)) {
+			error("Append property argument error (type %d)", type);
+			dbus_message_unref(signal);
+			return FALSE;
+		}
+	}
+
+	dbus_connection_send(conn, signal, NULL);
+	dbus_message_unref(signal);
+
+	return TRUE;
+}
+
+dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
+					const char *interface, const char *name,
+					int first, ...)
+{
+	dbus_bool_t ret;
+	va_list var_args;
+
+	va_start(var_args, first);
+	ret = dbus_connection_emit_signal_valist(conn, path, interface, name,
+							first, var_args);
+	va_end(var_args);
+
+	return ret;
+}
+
