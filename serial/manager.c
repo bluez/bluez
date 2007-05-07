@@ -32,6 +32,10 @@
 #include <string.h>
 #include <glib.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+
 #include "dbus.h"
 #include "logging.h"
 
@@ -54,13 +58,23 @@ static DBusHandlerResult err_invalid_args(DBusConnection *conn,
 				SERIAL_ERROR_INTERFACE ".InvalidArguments", str));
 }
 
+static DBusHandlerResult err_failed(DBusConnection *conn,
+				DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				SERIAL_ERROR_INTERFACE ".Failed", str));
+}
+
 static DBusHandlerResult connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusError derr;
+	bdaddr_t src;
 	const char *addr, *pattern;
 	char *endptr;
 	long val;
+	int dev_id;
 
 	/* FIXME: Check if it already exist or if there is pending connect */
 
@@ -73,6 +87,10 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
+
+	dev_id = hci_get_route(NULL);
+	if ((dev_id < 0) ||  (hci_devba(dev_id, &src) < 0))
+		return err_failed(conn, msg, "Adapter not available");
 
 	/* UUID 128*/
 	if (strlen(pattern) == 36) {
