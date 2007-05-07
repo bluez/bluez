@@ -198,8 +198,7 @@ static DBusHandlerResult introspect(DBusConnection *connection,
 {
 	DBusMessage *reply;
 
-	if (dbus_message_has_signature(message,
-				DBUS_TYPE_INVALID_AS_STRING) == FALSE) {
+	if (!dbus_message_has_signature(message, DBUS_TYPE_INVALID_AS_STRING)) {
 		error("Unexpected signature to introspect call");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
@@ -251,8 +250,9 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 	DBusMethodVTable *current;
 	const char *interface;
 
-	if (dbus_message_is_method_call(message, DBUS_INTERFACE_INTROSPECTABLE,
-							"Introspect") == TRUE)
+	if (dbus_message_is_method_call(message,
+					DBUS_INTERFACE_INTROSPECTABLE,
+					"Introspect"))
 		return introspect(connection, message, data);
 
 	interface = dbus_message_get_interface(message);
@@ -263,12 +263,11 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 
 	for (current = iface->methods;
 			current->name && current->message_function; current++) {
-		if (dbus_message_is_method_call(message,
-				iface->name, current->name) == FALSE)
+		if (!dbus_message_is_method_call(message, iface->name,
+							current->name))
 			continue;
 
-		if (dbus_message_has_signature(message,
-				current->signature) == TRUE)
+		if (dbus_message_has_signature(message, current->signature))
 			return current->message_function(connection,
 						message, data->user_data);
 	}
@@ -296,7 +295,7 @@ static void update_parent_data(DBusConnection *conn, const char *child_path)
 		goto done;
 
 	if (!dbus_connection_get_object_path_data(conn, parent_path,
-						(void *) &data))
+							(void *) &data))
 		goto done;
 
 	if (!data)
@@ -322,8 +321,8 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 
 	data->introspect = g_strdup(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>");
 
-	if (dbus_connection_register_object_path(connection, path,
-					&generic_table, data) == FALSE) {
+	if (!dbus_connection_register_object_path(connection, path,
+						&generic_table, data)) {
 		g_free(data);
 		return FALSE;
 	}
@@ -350,8 +349,8 @@ dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
 {
 	struct generic_data *data;
 
-	if (dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) == FALSE)
+	if (!dbus_connection_get_object_path_data(connection, path,
+							(void *) &data))
 		return FALSE;
 
 	*data_p = data->user_data;
@@ -368,8 +367,8 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 	struct generic_data *data;
 	struct interface_data *iface;
 
-	if (dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) == FALSE)
+	if (!dbus_connection_get_object_path_data(connection, path,
+							(void *) &data))
 		return FALSE;
 
 	if (find_interface(data->interfaces, name))
@@ -396,8 +395,8 @@ dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
 	struct generic_data *data;
 	struct interface_data *iface;
 
-	if (dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) == FALSE)
+	if (!dbus_connection_get_object_path_data(connection, path,
+							(void *) &data))
 		return FALSE;
 
 	iface = find_interface(data->interfaces, name);
@@ -465,9 +464,9 @@ dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
 	int type;
 	const char *args = NULL;
 
-	if (dbus_connection_get_object_path_data(conn, path,
-						(void *) &data) == FALSE) {
-		error("dbus_connection_emit_signal: path %s isn't registered", path);
+	if (!dbus_connection_get_object_path_data(conn, path, (void *) &data)) {
+		error("dbus_connection_emit_signal: path %s isn't registered",
+				path);
 		return FALSE;
 	}
 
@@ -504,7 +503,8 @@ dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
 		void *value;
 
 		if (type != *args) {
-			error("Expected arg type '%c' but got '%c'", *args, type);
+			error("%s.%s: expected arg type '%c' but got '%c'",
+					interface, name, *args, type);
 			dbus_message_unref(signal);
 			return FALSE;
 		}
@@ -512,7 +512,8 @@ dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
 		value = va_arg(var_args, void *);
 
 		if (!dbus_message_iter_append_basic(&iter, type, value)) {
-			error("Append property argument error (type %d)", type);
+			error("%s.%s: appending argument of type '%c' failed",
+					interface, name, type);
 			dbus_message_unref(signal);
 			return FALSE;
 		}
