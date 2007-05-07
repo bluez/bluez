@@ -98,17 +98,22 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 			(errno != 0 && val == 0) || (pattern == endptr))
 		return err_invalid_args(conn, msg, "Invalid pattern");
 
-	if (val < 0x100) {
-		/* RFCOMM Channel range: 0x00 - 0xff */
-		info("Connecting to channel: 0x%x", val);
-		/* FIXME: Connect */
-	} else {
-		/* Service record handle must be > 0x0000ffff */
+	/* Record handle: starts at 0x10000 */
+	if (strncasecmp("0x", pattern, 2) == 0) {
 		if (val < 0x10000)
 			return err_invalid_args(conn, msg,
 					"invalid record handle");
 		/* FIXME: retrieve the record */
+		return DBUS_HANDLER_RESULT_HANDLED;
 	}
+
+	/* RFCOMM Channel range: 1 - 30 */
+	if (val < 1 || val > 30)
+		return err_invalid_args(conn, msg,
+				"invalid RFCOMM channel");
+
+	/* FIXME: Connect */
+	info("Connecting to channel: %d", val);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
