@@ -61,6 +61,7 @@
 
 struct rfcomm_node {
 	int16_t         id;	/* RFCOMM device id */
+	char		*name;	/* RFCOMM device name */
 	DBusConnection  *conn;	/* for name listener handling */
 	char		*owner; /* Bus name */
 	GIOChannel	*io;	/* Connected node IO Channel */
@@ -96,6 +97,8 @@ static void pending_connection_free(struct pending_connection *pc)
 
 static void rfcomm_node_free(struct rfcomm_node *node)
 {
+	if (node->name)
+		g_free(node->name);
 	if (node->conn)
 		dbus_connection_unref(node->conn);
 	if (node->owner)
@@ -140,10 +143,26 @@ static DBusHandlerResult err_not_supported(DBusConnection *conn,
 			"The service is not supported by the remote device"));
 }
 
+static void send_signal(DBusConnection *conn,
+		const char *sname, const char *node_name)
+{
+	DBusMessage *signal;
+
+	signal = dbus_message_new_signal(SERIAL_MANAGER_PATH,
+				SERIAL_MANAGER_INTERFACE, sname);
+	dbus_message_append_args(signal,
+			DBUS_TYPE_STRING, &node_name,
+			DBUS_TYPE_INVALID);
+	send_message_and_unref(conn, signal);
+}
+
 static void connect_service_exited(const char *name, struct rfcomm_node *node)
-{                                       
-	debug("Connect requestor %s exited. Releasing /dev/rfcomm%d node",
-								name, node->id);
+{
+	debug("Connect requestor %s exited. Releasing %s node",
+						name, node->name);
+
+	send_signal(node->conn, "ServiceDisconnected", node->name);
+
 	connected_nodes = g_slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
 } 
@@ -151,32 +170,37 @@ static void connect_service_exited(const char *name, struct rfcomm_node *node)
 static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 		GIOCondition cond, struct rfcomm_node *node) 
 {
-	debug("RFCOMM node /dev/rfcomm%d was disconnected", node->id);
+	debug("RFCOMM node %s was disconnected", node->name);
+
 	name_listener_remove(node->conn, node->owner,
 			(name_cb_t) connect_service_exited, node);
-	/* FIXME: send the Disconnected signal */
+
+	send_signal(node->conn, "ServiceDisconnected", node->name);
+
 	connected_nodes = g_slist_remove(connected_nodes, node);
-	rfcomm_node_free(node); 
+	rfcomm_node_free(node);
+
 	return FALSE;
 }
 
-static int add_rfcomm_node(GIOChannel *io, int id, DBusConnection *conn, const char *owner)
+static int add_rfcomm_node(GIOChannel *io, int id, const char *name,
+				DBusConnection *conn, const char *owner)
 {
 	struct rfcomm_node *node;
 
 	node = g_new0(struct rfcomm_node, 1);
 	node->id	= id;
+	node->name	= g_strdup(name);
 	node->conn	= dbus_connection_ref(conn);
 	node->owner	= g_strdup(owner);
 	node->io	= io;
-
-	/* FIXME: send the Connected signal */
 
 	g_io_channel_set_close_on_unref(io, TRUE);
 	node->io_id = g_io_add_watch(io, G_IO_ERR | G_IO_HUP,
 			(GIOFunc) rfcomm_disconnect_cb, node);
 
-	return name_listener_add(node->conn, owner, (name_cb_t) connect_service_exited, node);
+	return name_listener_add(node->conn, owner,
+			(name_cb_t) connect_service_exited, node);
 }
 
 static gboolean rfcomm_connect_cb_continue(struct pending_connection *pc)
@@ -210,12 +234,19 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connection *pc)
 		return TRUE;
 	}
 
-	add_rfcomm_node(g_io_channel_unix_new(fd), pc->id, pc->conn, owner);
+	add_rfcomm_node(g_io_channel_unix_new(fd),
+			pc->id, node_name, pc->conn, owner);
+
+	/* Reply to the requestor */
 	reply = dbus_message_new_method_return(pc->msg);
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &pname,
 			DBUS_TYPE_INVALID);
 	send_message_and_unref(pc->conn, reply);
+
+	/* Send the D-Bus signal */
+	send_signal(pc->conn, "ServiceConnected", node_name);
+
 	pending_connection_free(pc);
 
 	return FALSE;
@@ -274,14 +305,18 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 		return FALSE;
 	}
 
-	add_rfcomm_node(g_io_channel_unix_new(fd), pc->id,
+	add_rfcomm_node(g_io_channel_unix_new(fd), pc->id, node_name,
 			pc->conn, dbus_message_get_sender(pc->msg));
 
+	/* Reply to the requestor */
 	reply = dbus_message_new_method_return(pc->msg);
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &pname,
 			DBUS_TYPE_INVALID);
 	send_message_and_unref(pc->conn, reply);
+
+	/* Send the D-Bus signal */
+	send_signal(pc->conn, "ServiceConnected", node_name);
 fail:
 	pending_connection_free(pc);
 	/* FIXME: Remote from the pending connects list */
