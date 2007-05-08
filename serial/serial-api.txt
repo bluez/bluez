@@ -28,11 +28,30 @@ Methods		string CreatePort(string address, string pattern)
 
 			Returns an array of available serial port paths.
 
+		string ConnectService(string address, string pattern)
+
+			Connects to a specific RFCOMM based service on a
+			remote device and then creates a RFCOMM TTY
+			device for it. The RFCOMM TTY device is returned.
+
+		void CancelConnectService(string address, string pattern)
+
+			Cancel a previous ConnectService method call.
+
+		void DisconnectService(string device)
+
+			Disconnect a RFCOMM TTY device that has been
+			created via the ConnectService method.
+
 Signals
 
 		void PortCreated(string path)
 
 		void PortRemoved(string path)
+
+		void ServiceConnected(string device, string adddress, string pattern)
+
+		void ServiceDisconnected(string device)
 
 Port hierarchy (experimental)
 =======================================
