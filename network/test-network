@@ -13,15 +13,13 @@ network = dbus.Interface(bus.get_object(conn, '/org/bluez/network'),
 						'org.bluez.network.Manager')
 
 try:
-	nap = dbus.Interface(bus.get_object('org.bluez.network',
-					network.FindAdapter('nap')),
+	nap = dbus.Interface(bus.get_object(conn, network.FindServer('nap')),
 						'org.bluez.network.Server')
 except:
 	pass
 
 try:
-	gn = dbus.Interface(bus.get_object('org.bluez.network',
-					network.FindAdapter('gn')),
+	gn = dbus.Interface(bus.get_object(conn, network.FindServer('gn')),
 						'org.bluez.network.Server')
 except:
 	pass
