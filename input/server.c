@@ -117,6 +117,11 @@ static void create_device(struct session_data *session)
 
 	info("New input device %s (%s)", addr, req.name);
 
+	if (req.vendor == 0x054c && req.product == 0x0268) {
+		unsigned char buf[] = { 0x53, 0xf4,  0x42, 0x03, 0x00, 0x00 };
+		err = write(session->ctrl_sk, buf, sizeof(buf));
+	}
+
 	err = ioctl(ctl, HIDPCONNADD, &req);
 
 	close(ctl);
