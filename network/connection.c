@@ -509,6 +509,8 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	const char *uuid;
+	char raddr[18];
+	const char *paddr = raddr;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -527,6 +529,10 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 	uuid = bnep_uuid(nc->id);
 	dbus_message_iter_append_dict_entry(&dict, "uuid",
 			DBUS_TYPE_STRING, &uuid);
+
+	ba2str(&nc->dst, raddr);
+	dbus_message_iter_append_dict_entry(&dict, "address",
+			DBUS_TYPE_STRING, &paddr);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
