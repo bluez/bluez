@@ -100,6 +100,7 @@ static struct {
 
 static DBusConnection *connection = NULL;
 static GSList *connected_nodes = NULL;
+static int rfcomm_ctl = -1;
 
 static void pending_connection_free(struct pending_connection *pc)
 {
@@ -129,6 +130,11 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 	g_free(node);
 }
 
+static int node_cmp_by_name(struct rfcomm_node *node, const char *name)
+{
+	return strcmp(node->name, name);
+}
+
 static uint16_t str2class(const char *pattern)
 {
 	int i;
@@ -149,6 +155,14 @@ static DBusHandlerResult err_connection_failed(DBusConnection *conn,
 			SERIAL_ERROR_INTERFACE".ConnectionAttemptFailed", str));
 }
 
+static DBusHandlerResult err_does_not_exist(DBusConnection *conn,
+					DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				SERIAL_ERROR_INTERFACE ".DoesNotExist", str));
+}
+
 static DBusHandlerResult err_failed(DBusConnection *conn,
 				DBusMessage *msg, const char *str)
 {
@@ -165,6 +179,15 @@ static DBusHandlerResult err_invalid_args(DBusConnection *conn,
 				SERIAL_ERROR_INTERFACE ".InvalidArguments", str));
 }
 
+static DBusHandlerResult err_not_authorized(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE ".NotAuthorized",
+			"Owner not allowed"));
+}
+
 static DBusHandlerResult err_not_supported(DBusConnection *conn,
 							DBusMessage *msg)
 {
@@ -172,6 +195,32 @@ static DBusHandlerResult err_not_supported(DBusConnection *conn,
 			dbus_message_new_error(msg,
 			SERIAL_ERROR_INTERFACE ".NotSupported",
 			"The service is not supported by the remote device"));
+}
+
+static int rfcomm_release(int16_t id)
+{
+	struct rfcomm_dev_req req;
+
+	memset(&req, 0, sizeof(req));
+	req.dev_id = id;
+
+#if 0
+	/*
+	 * We are hitting a kernel bug inside RFCOMM code when
+	 * RFCOMM_HANGUP_NOW bit is set on request's flags passed to
+	 * ioctl(RFCOMMRELEASEDEV)!
+	 */
+	req.flags = (1 << RFCOMM_HANGUP_NOW);
+#endif
+
+	if (ioctl(rfcomm_ctl, RFCOMMRELEASEDEV, &req) < 0) {
+		int err = errno;
+		error("Can't release device %d: %s (%d)",
+				id, strerror(err), err);
+		return -err;
+	}
+
+	return 0;
 }
 
 static void send_signal(DBusConnection *conn,
@@ -191,6 +240,8 @@ static void connect_service_exited(const char *name, struct rfcomm_node *node)
 {
 	debug("Connect requestor %s exited. Releasing %s node",
 						name, node->name);
+
+	rfcomm_release(node->id);
 
 	send_signal(node->conn, "ServiceDisconnected", node->name);
 
@@ -230,6 +281,8 @@ static int add_rfcomm_node(GIOChannel *io, int id, const char *name,
 	node->io_id = g_io_add_watch(io, G_IO_ERR | G_IO_HUP,
 			(GIOFunc) rfcomm_disconnect_cb, node);
 
+	connected_nodes = g_slist_append(connected_nodes, node);
+
 	return name_listener_add(node->conn, owner,
 			(name_cb_t) connect_service_exited, node);
 }
@@ -247,6 +300,7 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connection *pc)
 	/* Check if the caller is still present */
 	if (!dbus_bus_name_has_owner(pc->conn, owner, NULL)) {
 		error("Connect requestor %s exited", owner);
+		rfcomm_release(pc->id);
 		pending_connection_free(pc);
 		return FALSE;
 	}
@@ -258,6 +312,7 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connection *pc)
 		error("Could not open %s: %s (%d)",
 				node_name, strerror(err), err);
 		if (++pc->ntries >= MAX_OPEN_TRIES) {
+			rfcomm_release(pc->id);
 			err_connection_failed(pc->conn, pc->msg, strerror(err));
 			pending_connection_free(pc);
 			return FALSE;
@@ -704,7 +759,47 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 static DBusHandlerResult disconnect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	DBusError derr;
+	struct rfcomm_node *node;
+	const char *name;
+	GSList *l;
+	int err;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &name,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	l = g_slist_find_custom(connected_nodes, name, (GCompareFunc) node_cmp_by_name);
+	if (!l)
+		return err_does_not_exist(conn, msg, "Invalid node");
+
+	node = l->data;
+
+	if (strcmp(node->owner, dbus_message_get_sender(msg)) != 0)
+		return err_not_authorized(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	err = rfcomm_release(node->id);
+	if (err < 0) {
+		dbus_message_unref(reply);
+		return err_failed(conn, msg, strerror(err));
+	}
+
+	name_listener_remove(node->conn, node->owner,
+			(name_cb_t) connect_service_exited, node);
+	connected_nodes = g_slist_remove(connected_nodes, node);
+	rfcomm_node_free(node);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult cancel_connect_service(DBusConnection *conn,
@@ -755,6 +850,13 @@ static const DBusObjectPathVTable manager_table = {
 
 int serial_init(DBusConnection *conn)
 {
+
+	if (rfcomm_ctl < 0) {
+		rfcomm_ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
+		if (rfcomm_ctl < 0)
+			return -errno;
+	}
+
 	connection = dbus_connection_ref(conn);
 
 	if (dbus_connection_register_object_path(connection,
@@ -776,4 +878,7 @@ void serial_exit(void)
 
 	dbus_connection_unref(connection);
 	connection = NULL;
+
+	if (rfcomm_ctl >= 0)
+		close(rfcomm_ctl);
 }
