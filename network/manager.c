@@ -25,9 +25,9 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <ctype.h>
 #include <dirent.h>
-#include <errno.h>
 
 #include <sys/stat.h>
 
@@ -773,10 +773,8 @@ int network_init(DBusConnection *conn)
 		return -1;
 	}
 
-	if (bridge_create("pan0") < 0) {
+	if (bridge_create("pan0") < 0)
 		error("Can't create bridge");
-		return -1;
-	}
 
 	if (bnep_init()) {
 		error("Can't init bnep module");
