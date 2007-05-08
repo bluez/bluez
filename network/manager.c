@@ -431,6 +431,45 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	return create_path(conn, msg, path, "ServerCreated");
 }
 
+static DBusHandlerResult find_server(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusError derr;
+	const char *pattern;
+	const char *path;
+	GSList *list;
+	DBusMessage *reply;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &pattern,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	for (list = server_paths; list; list = list->next) {
+		path = (const char *) list->data;
+		if (server_find_data(conn, path, pattern) == 0)
+			break;
+	}
+
+	if (list == NULL) {
+		err_failed(conn, msg, "No such server");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult remove_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -560,6 +599,9 @@ static DBusHandlerResult manager_message(DBusConnection *conn,
 
 	if (strcmp(member, "CreateServer") == 0)
 		return create_server(conn, msg, data);
+
+	if (strcmp(member, "FindServer") == 0)
+		return find_server(conn, msg, data);
 
 	if (strcmp(member, "RemoveServer") == 0)
 		return remove_server(conn, msg, data);

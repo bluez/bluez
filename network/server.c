@@ -751,6 +751,24 @@ static DBusHandlerResult get_uuid(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static int record_and_listen(struct network_server *ns)
+{
+	int err;
+
+	/* Add the service record */
+	ns->record_id = add_server_record(ns);
+	if (!ns->record_id) {
+		error("Unable to register the server(0x%x) service record", ns->id);
+		return -EIO;
+	}
+
+	err = l2cap_listen(ns);
+	if (err < 0)
+		return -err;
+
+	return 0;
+}
+
 static DBusHandlerResult enable(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
@@ -776,15 +794,8 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	/* Add the service record */
-	ns->record_id = add_server_record(ns);
-	if (!ns->record_id) {
-		error("Unable to register the server(0x%x) service record", ns->id);
-		return err_failed(conn, msg, "Unable to register the service record");
-	}
-
-	err = l2cap_listen(ns);
-	if (err < 0) 
+	/* Add the service record and listen l2cap */
+	if ((err = record_and_listen(ns)) < 0)
 		return err_failed(conn, msg, strerror(-err));
 
 	store_property(&ns->src, ns->id, "enabled", "1");
@@ -1174,9 +1185,14 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 	ns->range = textfile_get(filename, "address_range");
 	ns->iface = textfile_get(filename, "routing");
 
-	/* FIXME: Missing enabled the server(if applied) */
-
 	info("Registered server path:%s", path);
+
+	str = textfile_get(filename, "enabled");
+	if (str) {
+		if (strcmp("1", str) == 0)
+			record_and_listen(ns);
+		g_free(str);
+	}
 
 	return 0;
 }
@@ -1227,4 +1243,27 @@ int server_remove_stored(DBusConnection *conn, const char *path)
 		create_name(filename, PATH_MAX, STORAGEDIR, addr, "gn");
 
 	return remove(filename);
+}
+
+int server_find_data(DBusConnection *conn,
+		const char *path, const char *pattern)
+{
+	struct network_server *ns;
+
+	if (!dbus_connection_get_object_path_data(conn, path, (void *) &ns))
+		return -1;
+
+	if (strcasecmp(pattern, ns->name) == 0)
+		return 0;
+
+	if (strcasecmp(pattern, ns->iface) == 0)
+		return 0;
+
+	if (strcasecmp(pattern, bnep_name(ns->id)) == 0)
+		return 0;
+
+	if (bnep_service_id(pattern) == ns->id)
+		return 0;
+
+	return -1;
 }
