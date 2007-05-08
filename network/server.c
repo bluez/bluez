@@ -1249,17 +1249,19 @@ int server_find_data(DBusConnection *conn,
 		const char *path, const char *pattern)
 {
 	struct network_server *ns;
+	const char *uuid;
 
 	if (!dbus_connection_get_object_path_data(conn, path, (void *) &ns))
 		return -1;
 
-	if (strcasecmp(pattern, ns->name) == 0)
+	if (ns->name && strcasecmp(pattern, ns->name) == 0)
 		return 0;
 
-	if (strcasecmp(pattern, ns->iface) == 0)
+	if (ns->iface && strcasecmp(pattern, ns->iface) == 0)
 		return 0;
 
-	if (strcasecmp(pattern, bnep_name(ns->id)) == 0)
+	uuid = bnep_name(ns->id);
+	if (uuid && strcasecmp(pattern, uuid) == 0)
 		return 0;
 
 	if (bnep_service_id(pattern) == ns->id)

@@ -28,3 +28,5 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 
 int server_store(DBusConnection *conn, const char *path);
 int server_remove_stored(DBusConnection *conn, const char *path);
+int server_find_data(DBusConnection *conn, const char *path,
+			const char *pattern);
