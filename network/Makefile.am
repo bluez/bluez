@@ -23,6 +23,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @HAL_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
-EXTRA_DIST = network.service network-api.txt
+EXTRA_DIST = network.service network-api.txt test-network
 
 MAINTAINERCLEANFILES = Makefile.in

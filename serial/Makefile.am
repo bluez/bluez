@@ -20,6 +20,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
-EXTRA_DIST = serial.service serial-api.txt
+EXTRA_DIST = serial.service serial-api.txt test-serial
 
 MAINTAINERCLEANFILES = Makefile.in
