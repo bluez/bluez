@@ -59,7 +59,6 @@
 #include "dbus-database.h"
 #include "dbus-security.h"
 #include "dbus-test.h"
-#include "dbus-rfcomm.h"
 #include "dbus-sdp.h"
 #include "dbus-common.h"
 

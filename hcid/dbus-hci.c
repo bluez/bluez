@@ -50,7 +50,6 @@
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-test.h"
-#include "dbus-rfcomm.h"
 #include "dbus-security.h"
 #include "dbus-service.h"
 #include "dbus-manager.h"
@@ -484,11 +483,6 @@ int hcid_dbus_register_device(uint16_t id)
 
 	if (!test_init(connection, path)) {
 		error("Test interface init failed");
-		goto failed;
-	}
-
-	if (!rfcomm_init(connection, path)) {
-		error("RFCOMM interface init failed");
 		goto failed;
 	}
 

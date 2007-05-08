@@ -18,7 +18,7 @@ libhciserver_a_SOURCES = hcid.h security.c device.c \
 	dbus-database.c dbus-database.h dbus-security.c dbus-security.h \
 	dbus-adapter.c dbus-adapter.h dbus-device.c dbus-device.h \
 	dbus-service.c dbus-service.h dbus-sdp.c dbus-sdp.h \
-	dbus-rfcomm.c dbus-rfcomm.h dbus-test.c dbus-test.h
+	dbus-test.c dbus-test.h
 
 if HCID
 sbin_PROGRAMS = hcid
