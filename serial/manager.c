@@ -68,7 +68,7 @@ struct rfcomm_node {
 	guint		io_id;	/* IO Channel ID  */
 };
 
-struct pending_connection {
+struct pending_connect {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
 	char		*addr;		/* Destination address */
@@ -102,7 +102,7 @@ static DBusConnection *connection = NULL;
 static GSList *connected_nodes = NULL;
 static int rfcomm_ctl = -1;
 
-static void pending_connection_free(struct pending_connection *pc)
+static void pending_connect_free(struct pending_connect *pc)
 {
 	if (pc->conn)
 		dbus_connection_unref(pc->conn);
@@ -287,7 +287,7 @@ static int add_rfcomm_node(GIOChannel *io, int id, const char *name,
 			(name_cb_t) connect_service_exited, node);
 }
 
-static gboolean rfcomm_connect_cb_continue(struct pending_connection *pc)
+static gboolean rfcomm_connect_cb_continue(struct pending_connect *pc)
 {
 	const char *owner = dbus_message_get_sender(pc->msg);
 	DBusMessage *reply;
@@ -301,7 +301,7 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connection *pc)
 	if (!dbus_bus_name_has_owner(pc->conn, owner, NULL)) {
 		error("Connect requestor %s exited", owner);
 		rfcomm_release(pc->id);
-		pending_connection_free(pc);
+		pending_connect_free(pc);
 		return FALSE;
 	}
 
@@ -314,7 +314,7 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connection *pc)
 		if (++pc->ntries >= MAX_OPEN_TRIES) {
 			rfcomm_release(pc->id);
 			err_connection_failed(pc->conn, pc->msg, strerror(err));
-			pending_connection_free(pc);
+			pending_connect_free(pc);
 			return FALSE;
 		}
 		return TRUE;
@@ -333,13 +333,13 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connection *pc)
 	/* Send the D-Bus signal */
 	send_signal(pc->conn, "ServiceConnected", node_name);
 
-	pending_connection_free(pc);
+	pending_connect_free(pc);
 
 	return FALSE;
 }
 
 static gboolean rfcomm_connect_cb(GIOChannel *chan,
-		GIOCondition cond, struct pending_connection *pc)
+		GIOCondition cond, struct pending_connect *pc)
 {
 	DBusMessage *reply;
 	char node_name[16];
@@ -406,12 +406,12 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	/* Send the D-Bus signal */
 	send_signal(pc->conn, "ServiceConnected", node_name);
 fail:
-	pending_connection_free(pc);
+	pending_connect_free(pc);
 	/* FIXME: Remote from the pending connects list */
 	return FALSE;
 }
 
-static int rfcomm_connect(struct pending_connection *pc)
+static int rfcomm_connect(struct pending_connect *pc)
 {
 	struct sockaddr_rc addr;
 	GIOChannel *io;
@@ -421,6 +421,7 @@ static int rfcomm_connect(struct pending_connection *pc)
 	if (sk < 0)
 		return -errno;
 
+	memset(&addr, 0, sizeof(addr));
 	addr.rc_family	= AF_BLUETOOTH;
 	bacpy(&addr.rc_bdaddr, &pc->src);
 	addr.rc_channel	= 0;
@@ -460,7 +461,7 @@ fail:
 
 static void record_reply(DBusPendingCall *call, void *data)
 {
-	struct pending_connection *pc = data;
+	struct pending_connect *pc = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	sdp_record_t *rec;
 	const uint8_t *rec_bin;
@@ -534,10 +535,10 @@ static void record_reply(DBusPendingCall *call, void *data)
 fail:
 	dbus_message_unref(reply);
 	dbus_error_free(&derr);
-	pending_connection_free(pc);
+	pending_connect_free(pc);
 }
 
-static int get_record(struct pending_connection *pc, uint32_t handle,
+static int get_record(struct pending_connect *pc, uint32_t handle,
 					DBusPendingCallNotifyFunction cb)
 {
 	DBusMessage *msg;
@@ -567,7 +568,7 @@ static int get_record(struct pending_connection *pc, uint32_t handle,
 
 static void handles_reply(DBusPendingCall *call, void *data)
 {
-	struct pending_connection *pc = data;
+	struct pending_connect *pc = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
 	uint32_t *phandle;
@@ -609,10 +610,10 @@ static void handles_reply(DBusPendingCall *call, void *data)
 fail:
 	dbus_message_unref(reply);
 	dbus_error_free(&derr);
-	pending_connection_free(pc);
+	pending_connect_free(pc);
 }
 
-static int get_handles(struct pending_connection *pc, const char *uuid,
+static int get_handles(struct pending_connect *pc, const char *uuid,
 					DBusPendingCallNotifyFunction cb)
 {
 	DBusMessage *msg;
@@ -645,7 +646,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 {
 	DBusError derr;
 	bdaddr_t src;
-	struct pending_connection *pc;
+	struct pending_connect *pc;
 	const char *addr, *pattern;
 	char *endptr;
 	long val;
@@ -669,10 +670,10 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	if ((dev_id < 0) ||  (hci_devba(dev_id, &src) < 0))
 		return err_failed(conn, msg, "Adapter not available");
 
-	pc = g_new0(struct pending_connection, 1);
+	pc = g_new0(struct pending_connect, 1);
+	bacpy(&pc->src, &src);
 	pc->conn = dbus_connection_ref(conn);
 	pc->msg = dbus_message_ref(msg);
-	bacpy(&pc->src, &src);
 	pc->addr = g_strdup(addr);
 	pc->adapter_path = g_malloc0(16);
 	snprintf(pc->adapter_path, 16, "/org/bluez/hci%d", dev_id);
@@ -689,7 +690,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 		sdp_uuid2strn(&uuid128, tmp, sizeof(tmp));
 
 		if (get_handles(pc, tmp, handles_reply) < 0) {
-			pending_connection_free(pc);
+			pending_connect_free(pc);
 			return err_not_supported(conn, msg);
 		}
 
@@ -705,12 +706,12 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 		tmp[7] = '0';
 
 		if (strcasecmp(BASE_UUID, tmp) != 0) {
-			pending_connection_free(pc);
+			pending_connect_free(pc);
 			return err_invalid_args(conn, msg, "invalid UUID");
 		}
 
 		if (get_handles(pc, pattern, handles_reply) < 0) {
-			pending_connection_free(pc);
+			pending_connect_free(pc);
 			return err_not_supported(conn, msg);
 		}
 		return DBUS_HANDLER_RESULT_HANDLED;
@@ -720,20 +721,20 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	val = strtol(pattern, &endptr, 0);
 	if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) ||
 			(errno != 0 && val == 0) || (pattern == endptr)) {
-		pending_connection_free(pc);
+		pending_connect_free(pc);
 		return err_invalid_args(conn, msg, "Invalid pattern");
 	}
 
 	/* Record handle: starts at 0x10000 */
 	if (strncasecmp("0x", pattern, 2) == 0) {
 		if (val < 0x10000) {
-			pending_connection_free(pc);
+			pending_connect_free(pc);
 			return err_invalid_args(conn, msg,
 					"invalid record handle");
 		}
 
 		if (get_record(pc, val, record_reply) < 0) {
-			pending_connection_free(pc);
+			pending_connect_free(pc);
 			return err_not_supported(conn, msg);
 		}
 		return DBUS_HANDLER_RESULT_HANDLED;
@@ -741,7 +742,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 
 	/* RFCOMM Channel range: 1 - 30 */
 	if (val < 1 || val > 30) {
-		pending_connection_free(pc);
+		pending_connect_free(pc);
 		return err_invalid_args(conn, msg,
 				"invalid RFCOMM channel");
 	}
@@ -775,7 +776,8 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	l = g_slist_find_custom(connected_nodes, name, (GCompareFunc) node_cmp_by_name);
+	l = g_slist_find_custom(connected_nodes, name,
+			(GCompareFunc) node_cmp_by_name);
 	if (!l)
 		return err_does_not_exist(conn, msg, "Invalid node");
 
