@@ -30,6 +30,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
@@ -37,6 +40,7 @@
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+#include <bluetooth/rfcomm.h>
 
 #include "dbus.h"
 #include "logging.h"
@@ -53,9 +57,10 @@
 struct pending_connection {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
-	bdaddr_t	src;		/* Source address */
 	char		*addr;		/* Destination address */
 	char		*adapter_path;	/* Adapter D-Bus path */
+	bdaddr_t	src;
+	uint8_t		channel;
 };
 
 static DBusConnection *connection = NULL;
@@ -105,6 +110,108 @@ static DBusHandlerResult err_not_supported(DBusConnection *conn,
 			"The service is not supported by the remote device"));
 }
 
+static gboolean rfcomm_connect_cb(GIOChannel *chan,
+		GIOCondition cond, struct pending_connection *pc)
+{
+	DBusMessage *reply;
+	char node_name[16];
+	const char *pname = node_name;
+	struct rfcomm_dev_req req;
+	int sk, ret, err, id;
+	socklen_t len;
+
+	/* FIXME: Check if it was canceled */
+
+	sk = g_io_channel_unix_get_fd(chan);
+
+	len = sizeof(ret);
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		goto fail;
+	}
+
+	if (ret != 0) {
+		error("connect(): %s (%d)", strerror(ret), ret);
+		goto fail;
+	}
+
+	debug("rfcomm_connect_cb: connected");
+
+	memset(&req, 0, sizeof(req));
+	req.dev_id = -1;
+	req.flags = (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP);
+	bacpy(&req.src, &pc->src);
+	str2ba(pc->addr, &req.dst);
+	req.channel = pc->channel;
+
+	id = ioctl(sk, RFCOMMCREATEDEV, &req);
+	if (id < 0) {
+		err = errno;
+		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
+		err_connection_failed(pc->conn, pc->msg, strerror(err));
+		goto fail;
+	}
+
+	snprintf(node_name, 16, "/dev/rfcomm%d", id);
+	reply = dbus_message_new_method_return(pc->msg);
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &pname,
+			DBUS_TYPE_INVALID);
+	send_message_and_unref(pc->conn, reply);
+fail:
+	pending_connection_free(pc);
+	/* FIXME: Remote from the pending connects list */
+	return FALSE;
+}
+
+static int rfcomm_connect(struct pending_connection *pc)
+{
+	struct sockaddr_rc addr;
+	GIOChannel *io;
+	int sk, err = 0;
+
+	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0)
+		return -errno;
+
+	addr.rc_family	= AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, &pc->src);
+	addr.rc_channel	= 0;
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
+		return -errno;
+
+	if (set_nonblocking(sk) < 0)
+		return -errno;
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	addr.rc_family	= AF_BLUETOOTH;
+	str2ba(pc->addr, &addr.rc_bdaddr);
+	addr.rc_channel	= pc->channel;
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		/* BlueZ returns EAGAIN eventhough it should return EINPROGRESS */
+		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
+			err = errno;
+			error("connect() failed: %s (%d)", strerror(err), err);
+			goto fail;
+		}
+
+		debug("Connect in progress");
+		g_io_add_watch(io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, pc);
+		/* FIXME: Control the pending connects */
+	} else {
+		debug("Connect succeeded with first try");
+		(void) rfcomm_connect_cb(io, G_IO_OUT, pc);
+	}
+fail:
+	g_io_channel_unref(io);
+	return -err;
+}
+
 static void record_reply(DBusPendingCall *call, void *data)
 {
 	struct pending_connection *pc = data;
@@ -113,7 +220,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 	const uint8_t *rec_bin;
 	sdp_list_t *protos;
 	DBusError derr;
-	int len, scanned, ch;
+	int len, scanned, ch, err;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -163,10 +270,21 @@ static void record_reply(DBusPendingCall *call, void *data)
 		error("Channel out of range: %d", ch);
 		sdp_record_free(rec);
 		err_not_supported(pc->conn, pc->msg);
+		goto fail;
 	}
 
-	/* FIXME: Check if there is a pending connection */
+	/* FIXME: Check if there is a pending connection or if it was canceled */
 
+	pc->channel = ch;
+	err = rfcomm_connect(pc);
+	if (err < 0) {
+		error("RFCOMM connection failed");
+		err_connection_failed(pc->conn, pc->msg, strerror(-err));
+		goto fail;
+	}
+
+	dbus_message_unref(reply);
+	return;
 fail:
 	dbus_message_unref(reply);
 	dbus_error_free(&derr);
@@ -285,7 +403,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	const char *addr, *pattern;
 	char *endptr;
 	long val;
-	int dev_id;
+	int dev_id, err;
 
 	/* FIXME: Check if it already exist or if there is pending connect */
 
@@ -330,7 +448,6 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 			pending_connection_free(pc);
 			return err_not_supported(conn, msg);
 		}
-
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -353,7 +470,6 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 		if (get_record(pc, val, record_reply) < 0) {
 			pending_connection_free(pc);
 			return err_not_supported(conn, msg);
-	
 		}
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -365,9 +481,13 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 				"invalid RFCOMM channel");
 	}
 
-	/* FIXME: Connect */
-	info("Connecting to channel: %d", val);
-
+	pc->channel = val;
+	err = rfcomm_connect(pc);
+	if (err < 0) {
+		const char *strerr = strerror(-err);
+		error("RFCOMM connect failed: %s(%d)", strerr, -err);
+		err_connection_failed(conn, msg, strerr);
+	}
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
