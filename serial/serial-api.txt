@@ -4,12 +4,13 @@ Bluetooth serial service API description
 Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
 
 
-Manager hierarchy (experimental)
+Manager hierarchy
 =================
+
 Interface	org.bluez.serial.Manager
 Object path	/org/bluez/serial
 
-Methods		string CreatePort(string address, string pattern)
+Methods		string CreatePort(string address, string pattern) [experimental]
 
 			Creates a serial port object.
 
@@ -18,13 +19,14 @@ Methods		string CreatePort(string address, string pattern)
 					org.bluez.serial.Error.ConnectionAttemptFailed
 					org.bluez.serial.Error.Failed
 
-		void RemovePort(string path)
+		void RemovePort(string path) [experimental]
+
 			Removes the serial port object for given path.
 
 			Possible errors:org.bluez.serial.Error.DoesNotExist
 					org.bluez.serial.Error.Failed
 
-		array{string} ListPorts()
+		array{string} ListPorts() [experimental]
 
 			Returns an array of available serial port paths.
 
@@ -43,18 +45,16 @@ Methods		string CreatePort(string address, string pattern)
 			Disconnect a RFCOMM TTY device that has been
 			created via the ConnectService method.
 
-Signals
+Signals		void PortCreated(string path) [experimental]
 
-		void PortCreated(string path)
-
-		void PortRemoved(string path)
+		void PortRemoved(string path) [experimental]
 
 		void ServiceConnected(string device, string adddress, string pattern)
 
 		void ServiceDisconnected(string device)
 
 Port hierarchy (experimental)
-=======================================
+=============================
 
 Interface	org.bluez.serial.Port
 Object path	/org/bluez/serial/port*
