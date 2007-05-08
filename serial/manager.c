@@ -79,6 +79,25 @@ struct pending_connection {
 	int		ntries;		/* Open attempts */
 };
 
+/* FIXME: Common file required */
+static struct {
+	const char	*name;
+	uint16_t	class;
+} serial_services[] = {
+	{ "vcp",	VIDEO_CONF_SVCLASS_ID		},
+	{ "pbap",	PBAP_SVCLASS_ID			},
+	{ "sap",	SAP_SVCLASS_ID			},
+	{ "ftp",	OBEX_FILETRANS_SVCLASS_ID	},
+	{ "bpp",	BASIC_PRINTING_SVCLASS_ID	},
+	{ "bip",	IMAGING_SVCLASS_ID		},
+	{ "synch",	IRMC_SYNC_SVCLASS_ID		},
+	{ "dun",	DIALUP_NET_SVCLASS_ID		},
+	{ "opp",	OBEX_OBJPUSH_SVCLASS_ID		},
+	{ "fax",	FAX_SVCLASS_ID			},
+	{ "spp",	SERIAL_PORT_SVCLASS_ID		},
+	{ NULL }
+};
+
 static DBusConnection *connection = NULL;
 static GSList *connected_nodes = NULL;
 
@@ -108,6 +127,18 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 		g_io_channel_unref(node->io);
 	}
 	g_free(node);
+}
+
+static uint16_t str2class(const char *pattern)
+{
+	int i;
+
+	for (i = 0; serial_services[i].name; i++) {
+		if (strcasecmp(serial_services[i].name, pattern) == 0)
+			return serial_services[i].class;
+	}
+
+	return 0;
 }
 
 static DBusHandlerResult err_connection_failed(DBusConnection *conn,
@@ -270,11 +301,13 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
 		err = errno;
 		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		err_connection_failed(pc->conn, pc->msg, strerror(err));
 		goto fail;
 	}
 
 	if (ret != 0) {
 		error("connect(): %s (%d)", strerror(ret), ret);
+		err_connection_failed(pc->conn, pc->msg, strerror(ret));
 		goto fail;
 	}
 
@@ -562,6 +595,8 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	char *endptr;
 	long val;
 	int dev_id, err;
+	uint16_t cls;
+	char tmp[37];
 
 	/* FIXME: Check if it already exist or if there is pending connect */
 
@@ -587,10 +622,27 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	pc->adapter_path = g_malloc0(16);
 	snprintf(pc->adapter_path, 16, "/org/bluez/hci%d", dev_id);
 
+	memset(tmp, 0, sizeof(tmp));
+
+	/* Friendly name */
+	cls = str2class(pattern);
+	if (cls) {
+		uuid_t uuid16, uuid128;
+
+		sdp_uuid16_create(&uuid16, cls);
+		sdp_uuid16_to_uuid128(&uuid128, &uuid16);
+		sdp_uuid2strn(&uuid128, tmp, sizeof(tmp));
+
+		if (get_handles(pc, tmp, handles_reply) < 0) {
+			pending_connection_free(pc);
+			return err_not_supported(conn, msg);
+		}
+
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
 	/* UUID 128*/
 	if (strlen(pattern) == 36) {
-		char tmp[37];
-
 		strcpy(tmp, pattern);
 		tmp[4] = '0';
 		tmp[5] = '0';
