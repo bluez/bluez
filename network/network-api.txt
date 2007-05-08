@@ -30,6 +30,13 @@ Methods		string CreateServer(string uuid)
 			Returns an array of available network devices paths.
 			Currently only NAP and GN are supported.
 
+		string FindServer(string pattern)
+
+			Returns server path.
+
+			Possible errors:org.bluez.network.Error.DoesNotExist
+					org.bluez.network.Error.Failed
+
 		string CreateConnection(string address, string uuid)
 
 			Creates a network connection object(NAP or GN).
@@ -52,7 +59,7 @@ Methods		string CreateServer(string uuid)
 
 		string FindConnection(string pattern)
 
-			Returns an array of available network connections paths.
+			Returns connection path.
 
 			Possible errors:org.bluez.network.Error.DoesNotExist
 					org.bluez.network.Error.Failed
