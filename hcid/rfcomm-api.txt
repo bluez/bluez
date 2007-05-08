@@ -1,0 +1,58 @@
+RFCOMM hierarchy (experimental)
+===============================
+
+Service		org.bluez
+Interface	org.bluez.RFCOMM
+Object path	/org/bluez/{hci0,hci1,...}
+
+Methods		string Connect(string address, string service)
+
+			This creates a connection to a remote RFCOMM based
+			service. The service string can either be a UUID-128,
+			a service abbreviation or a record handle.
+
+			The return value will be the path of the newly
+			created RFCOMM TTY device (for example /dev/rfcomm0).
+
+			If the application disconnects from the D-Bus this
+			connection will be terminated.
+
+			Valid service values: "vcp", "map", "pbap", "sap",
+			                      "ftp", "bpp", "bip", "synch",
+			                      "dun", "opp", "fax", "spp"
+
+		void CancelConnect(string address, string service)
+
+			This method cancels a previous Connect method call.
+
+		string ConnectByChannel(string address, byte channel)
+
+			This creates a connection to a remote RFCOMM based
+			service. In contrast to Connect a channel number is
+			needed.
+
+			The return value will be the path of the newly
+			creates RFCOMM TTY device (for example /dev/rfcomm0).
+
+			If the application disconnects from the D-Bus this
+			connection will be terminated.
+
+		void CancelConnectByChannel(string address, byte channel)
+
+			This method cancels a previous ConnectByChannel
+			method call.
+
+		void Disconnect(string device)
+
+			This will disconnect a previously connected RFCOMM
+			service. The device parameter must be the return value
+			from a previous Connect or ConnectByChannel method
+			call (for example /dev/rfcomm0).
+
+		string Bind(string address, string service)
+
+		string BindByChannel(string address, byte channel)
+
+		void Release(string device)
+
+		array{string} ListBindings()
