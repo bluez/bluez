@@ -1,0 +1,5 @@
+[Bluetooth Service]
+Identifier=serial
+Name=Serial service
+Description=Bluetooth Serial Port service
+Autostart=false

@@ -15,6 +15,7 @@ fi
 		--enable-all \
 		--enable-glib \
 		--enable-network \
+		--enable-serial \
 		--enable-input \
 		--enable-audio \
 		--enable-echo \

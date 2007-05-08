@@ -159,6 +159,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	obex_enable=${openobex_found}
 	alsa_enable=${alsa_found}
 	network_enable=no
+	serial_enable=no
 	input_enable=no
 	audio_enable=no
 	sync_enable=no
@@ -238,6 +239,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
 		network_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(serial, AC_HELP_STRING([--enable-serial], [enable serial service]), [
+		serial_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(input, AC_HELP_STRING([--enable-input], [enable input service]), [
@@ -349,6 +354,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
 	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
+	AM_CONDITIONAL(SERIALSERVICE, test "${serial_enable}" = "yes")
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(AUDIOSERVICE, test "${audio_enable}" = "yes")
 	AM_CONDITIONAL(SYNCSERVICE, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
