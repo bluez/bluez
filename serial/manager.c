@@ -26,6 +26,7 @@
 #endif
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,6 +55,18 @@
 #define PATH_LENGTH		32
 #define BASE_UUID			"00000000-0000-1000-8000-00805F9B34FB"
 
+/* Waiting for udev to create the device node */
+#define MAX_OPEN_TRIES  5
+#define OPEN_WAIT       300  /* ms */
+
+struct rfcomm_node {
+	int16_t         id;	/* RFCOMM device id */
+	DBusConnection  *conn;	/* for name listener handling */
+	char		*owner; /* Bus name */
+	GIOChannel	*io;	/* Connected node IO Channel */
+	guint		io_id;	/* IO Channel ID  */
+};
+
 struct pending_connection {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
@@ -61,9 +74,12 @@ struct pending_connection {
 	char		*adapter_path;	/* Adapter D-Bus path */
 	bdaddr_t	src;
 	uint8_t		channel;
+	int		id;		/* RFCOMM device id */
+	int		ntries;		/* Open attempts */
 };
 
 static DBusConnection *connection = NULL;
+static GSList *connected_nodes = NULL;
 
 static void pending_connection_free(struct pending_connection *pc)
 {
@@ -75,6 +91,20 @@ static void pending_connection_free(struct pending_connection *pc)
 		g_free(pc->addr);
 	if (pc->adapter_path)
 		g_free(pc->adapter_path);
+	g_free(pc);
+}
+
+static void rfcomm_node_free(struct rfcomm_node *node)
+{
+	if (node->conn)
+		dbus_connection_unref(node->conn);
+	if (node->owner)
+		g_free(node->owner);
+	if (node->io) {
+		g_source_remove(node->io_id);
+		g_io_channel_unref(node->io);
+	}
+	g_free(node);
 }
 
 static DBusHandlerResult err_connection_failed(DBusConnection *conn,
@@ -110,6 +140,87 @@ static DBusHandlerResult err_not_supported(DBusConnection *conn,
 			"The service is not supported by the remote device"));
 }
 
+static void connect_service_exited(const char *name, struct rfcomm_node *node)
+{                                       
+	debug("Connect requestor %s exited. Releasing /dev/rfcomm%d node",
+								name, node->id);
+	connected_nodes = g_slist_remove(connected_nodes, node);
+	rfcomm_node_free(node);
+} 
+
+static gboolean rfcomm_disconnect_cb(GIOChannel *io,
+		GIOCondition cond, struct rfcomm_node *node) 
+{
+	debug("RFCOMM node /dev/rfcomm%d was disconnected", node->id);
+	name_listener_remove(node->conn, node->owner,
+			(name_cb_t) connect_service_exited, node);
+	/* FIXME: send the Disconnected signal */
+	connected_nodes = g_slist_remove(connected_nodes, node);
+	rfcomm_node_free(node); 
+	return FALSE;
+}
+
+static int add_rfcomm_node(GIOChannel *io, int id, DBusConnection *conn, const char *owner)
+{
+	struct rfcomm_node *node;
+
+	node = g_new0(struct rfcomm_node, 1);
+	node->id	= id;
+	node->conn	= dbus_connection_ref(conn);
+	node->owner	= g_strdup(owner);
+	node->io	= io;
+
+	/* FIXME: send the Connected signal */
+
+	g_io_channel_set_close_on_unref(io, TRUE);
+	node->io_id = g_io_add_watch(io, G_IO_ERR | G_IO_HUP,
+			(GIOFunc) rfcomm_disconnect_cb, node);
+
+	return name_listener_add(node->conn, owner, (name_cb_t) connect_service_exited, node);
+}
+
+static gboolean rfcomm_connect_cb_continue(struct pending_connection *pc)
+{
+	const char *owner = dbus_message_get_sender(pc->msg);
+	DBusMessage *reply;
+	char node_name[16];
+	const char *pname = node_name;
+	int fd;
+
+	/* FIXME: Check if it was canceled */
+
+	/* Check if the caller is still present */
+	if (!dbus_bus_name_has_owner(pc->conn, owner, NULL)) {
+		error("Connect requestor %s exited", owner);
+		pending_connection_free(pc);
+		return FALSE;
+	}
+
+	snprintf(node_name, sizeof(node_name), "/dev/rfcomm%d", pc->id);
+	fd = open(node_name, O_RDONLY | O_NOCTTY);
+	if (fd < 0) {
+		int err = errno;
+		error("Could not open %s: %s (%d)",
+				node_name, strerror(err), err);
+		if (++pc->ntries >= MAX_OPEN_TRIES) {
+			err_connection_failed(pc->conn, pc->msg, strerror(err));
+			pending_connection_free(pc);
+			return FALSE;
+		}
+		return TRUE;
+	}
+
+	add_rfcomm_node(g_io_channel_unix_new(fd), pc->id, pc->conn, owner);
+	reply = dbus_message_new_method_return(pc->msg);
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &pname,
+			DBUS_TYPE_INVALID);
+	send_message_and_unref(pc->conn, reply);
+	pending_connection_free(pc);
+
+	return FALSE;
+}
+
 static gboolean rfcomm_connect_cb(GIOChannel *chan,
 		GIOCondition cond, struct pending_connection *pc)
 {
@@ -117,7 +228,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	char node_name[16];
 	const char *pname = node_name;
 	struct rfcomm_dev_req req;
-	int sk, ret, err, id;
+	int sk, ret, err, fd;
 	socklen_t len;
 
 	/* FIXME: Check if it was canceled */
@@ -145,15 +256,27 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	str2ba(pc->addr, &req.dst);
 	req.channel = pc->channel;
 
-	id = ioctl(sk, RFCOMMCREATEDEV, &req);
-	if (id < 0) {
+	pc->id = ioctl(sk, RFCOMMCREATEDEV, &req);
+	if (pc->id < 0) {
 		err = errno;
 		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
 		err_connection_failed(pc->conn, pc->msg, strerror(err));
 		goto fail;
 	}
 
-	snprintf(node_name, 16, "/dev/rfcomm%d", id);
+
+	snprintf(node_name, sizeof(node_name), "/dev/rfcomm%d", pc->id);
+
+	fd = open(node_name, O_RDONLY | O_NOCTTY);
+	if (fd < 0) {
+		g_timeout_add(OPEN_WAIT,
+			(GSourceFunc) rfcomm_connect_cb_continue, pc);
+		return FALSE;
+	}
+
+	add_rfcomm_node(g_io_channel_unix_new(fd), pc->id,
+			pc->conn, dbus_message_get_sender(pc->msg));
+
 	reply = dbus_message_new_method_return(pc->msg);
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &pname,
@@ -529,7 +652,12 @@ static DBusHandlerResult manager_message(DBusConnection *conn,
 
 static void manager_unregister(DBusConnection *conn, void *data)
 {
-
+	if (connected_nodes) {
+		g_slist_foreach(connected_nodes,
+				(GFunc) rfcomm_node_free, NULL);
+		g_slist_free(connected_nodes);
+		connected_nodes = NULL;
+	}
 }
 
 /* Virtual table to handle manager object path hierarchy */
