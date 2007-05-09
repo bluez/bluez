@@ -957,7 +957,7 @@ static int register_path(DBusConnection *conn, const char *path, struct device *
 	DBusMessage *msg;
 
 	if (!dbus_connection_create_object_path(conn, path,
-						NULL, device_unregister)) {
+						idev, device_unregister)) {
 		error("Input device path registration failed");
 		return -EINVAL;
 	}
