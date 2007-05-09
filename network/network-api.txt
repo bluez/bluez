@@ -46,7 +46,7 @@ Methods		string CreateServer(string uuid)
 					org.bluez.network.Error.ConnectionAttemptFailed
 					org.bluez.network.Error.Failed
 
-		string RemoveConnection(string path)
+		void RemoveConnection(string path)
 
 			Removes a network connection object for a given path.
 
