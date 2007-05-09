@@ -294,19 +294,6 @@ static int rfcomm_release(int16_t id)
 	return 0;
 }
 
-static void send_signal(DBusConnection *conn,
-		const char *sname, const char *node_name)
-{
-	DBusMessage *signal;
-
-	signal = dbus_message_new_signal(SERIAL_MANAGER_PATH,
-				SERIAL_MANAGER_INTERFACE, sname);
-	dbus_message_append_args(signal,
-			DBUS_TYPE_STRING, &node_name,
-			DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, signal);
-}
-
 static void connect_service_exited(const char *name, struct rfcomm_node *node)
 {
 	debug("Connect requestor %s exited. Releasing %s node",
@@ -314,7 +301,10 @@ static void connect_service_exited(const char *name, struct rfcomm_node *node)
 
 	rfcomm_release(node->id);
 
-	send_signal(node->conn, "ServiceDisconnected", node->name);
+	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
+			DBUS_TYPE_STRING, &node->name,
+			DBUS_TYPE_INVALID); 
 
 	connected_nodes = g_slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
@@ -328,7 +318,10 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 	name_listener_remove(node->conn, node->owner,
 			(name_cb_t) connect_service_exited, node);
 
-	send_signal(node->conn, "ServiceDisconnected", node->name);
+	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
+			DBUS_TYPE_STRING, &node->name,
+			DBUS_TYPE_INVALID); 
 
 	connected_nodes = g_slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);
@@ -404,7 +397,11 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connect *pc)
 	send_message_and_unref(pc->conn, reply);
 
 	/* Send the D-Bus signal */
-	send_signal(pc->conn, "ServiceConnected", node_name);
+	dbus_connection_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ServiceConnected" ,
+			DBUS_TYPE_STRING, &pname,
+			DBUS_TYPE_INVALID); 
+
 fail:
 	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
@@ -481,7 +478,11 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	send_message_and_unref(pc->conn, reply);
 
 	/* Send the D-Bus signal */
-	send_signal(pc->conn, "ServiceConnected", node_name);
+	dbus_connection_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ServiceConnected" ,
+			DBUS_TYPE_STRING, &pname,
+			DBUS_TYPE_INVALID); 
+
 fail:
 	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
@@ -894,6 +895,11 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 		dbus_message_unref(reply);
 		return err_failed(conn, msg, strerror(err));
 	}
+
+	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
+			DBUS_TYPE_STRING, &node->name,
+			DBUS_TYPE_INVALID); 
 
 	name_listener_remove(node->conn, node->owner,
 			(name_cb_t) connect_service_exited, node);
