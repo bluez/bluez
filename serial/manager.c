@@ -53,7 +53,6 @@
 #define SERIAL_MANAGER_INTERFACE	"org.bluez.serial.Manager"
 #define SERIAL_ERROR_INTERFACE		"org.bluez.serial.Error"
 
-#define PATH_LENGTH		32
 #define BASE_UUID			"00000000-0000-1000-8000-00805F9B34FB"
 
 /* Waiting for udev to create the device node */
@@ -528,7 +527,6 @@ static int rfcomm_connect(struct pending_connect *pc)
 
 		debug("Connect in progress");
 		g_io_add_watch(io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, pc);
-
 		pending_connects = g_slist_append(pending_connects, pc);
 	} else {
 		debug("Connect succeeded with first try");
@@ -564,6 +562,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 
 		error("GetRemoteServiceRecord: %s(%s)",
 					derr.name, derr.message);
+		dbus_error_free(&derr);
 		goto fail;
 	}
 
@@ -572,6 +571,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 				DBUS_TYPE_INVALID)) {
 		err_not_supported(pc->conn, pc->msg);
 		error("%s: %s", derr.name, derr.message);
+		dbus_error_free(&derr);
 		goto fail;
 	}
 
@@ -598,9 +598,10 @@ static void record_reply(DBusPendingCall *call, void *data)
 	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
 	sdp_list_free(protos, NULL);
 
+	sdp_record_free(rec);
+
 	if (ch < 1 || ch > 30) {
 		error("Channel out of range: %d", ch);
-		sdp_record_free(rec);
 		err_not_supported(pc->conn, pc->msg);
 		goto fail;
 	}
@@ -623,7 +624,6 @@ static void record_reply(DBusPendingCall *call, void *data)
 	return;
 fail:
 	dbus_message_unref(reply);
-	dbus_error_free(&derr);
 	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
 }
@@ -679,6 +679,7 @@ static void handles_reply(DBusPendingCall *call, void *data)
 
 		error("GetRemoteServiceHandles: %s(%s)",
 					derr.name, derr.message);
+		dbus_error_free(&derr);
 		goto fail;
 	}
 	
@@ -687,6 +688,7 @@ static void handles_reply(DBusPendingCall *call, void *data)
 				&len, DBUS_TYPE_INVALID)) {
 		err_not_supported(pc->conn, pc->msg);
 		error("%s: %s", derr.name, derr.message);
+		dbus_error_free(&derr);
 		goto fail;
 	}
 
@@ -704,7 +706,6 @@ static void handles_reply(DBusPendingCall *call, void *data)
 	return;
 fail:
 	dbus_message_unref(reply);
-	dbus_error_free(&derr);
 	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
 }
@@ -760,6 +761,10 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
+	pending = find_pending_connect_by_pattern(bda, pattern);
+	if (pending)
+		return err_connection_in_progress(conn, msg);
+
 	dev_id = hci_get_route(NULL);
 	if ((dev_id < 0) ||  (hci_devba(dev_id, &src) < 0))
 		return err_failed(conn, msg, "Adapter not available");
@@ -788,6 +793,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 			pending_connect_free(pc);
 			return err_not_supported(conn, msg);
 		}
+		pending_connects = g_slist_append(pending_connects, pc);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -808,6 +814,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 			pending_connect_free(pc);
 			return err_not_supported(conn, msg);
 		}
+		pending_connects = g_slist_append(pending_connects, pc);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -831,6 +838,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 			pending_connect_free(pc);
 			return err_not_supported(conn, msg);
 		}
+		pending_connects = g_slist_append(pending_connects, pc);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -841,19 +849,13 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 				"invalid RFCOMM channel");
 	}
 
-	pending = find_pending_connect_by_channel(bda, val);
-	if (pending) {
-		pending_connect_free(pc);
-		return err_connection_in_progress(conn, msg);
-	}
-
 	pc->channel = val;
 	err = rfcomm_connect(pc);
 	if (err < 0) {
 		const char *strerr = strerror(-err);
 		error("RFCOMM connect failed: %s(%d)", strerr, -err);
 		pending_connect_free(pc);
-		err_connection_failed(conn, msg, strerr);
+		return err_connection_failed(conn, msg, strerr);
 	}
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
