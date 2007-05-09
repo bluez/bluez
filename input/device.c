@@ -1003,7 +1003,7 @@ int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 
 	err = register_path(conn, path, idev);
 
-	if (*ppath)
+	if (!err && *ppath)
 		*ppath = path;
 
 	return err;
@@ -1014,6 +1014,7 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 {
 	struct device *idev;
 	const char *path;
+	int err;
 
 	idev = device_new(src, dst);
 	path = create_input_path(idev->major, idev->minor);
@@ -1021,13 +1022,12 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 	idev->fake = g_new0(struct fake_input, 1);
 	idev->fake->ch = ch;
 
-	if (register_path(conn, path, idev) < 0)
-		return -1;
+	err = register_path(conn, path, idev);
 
-	if (*ppath)
+	if (!err && *ppath)
 		*ppath = path;
 
-	return 0;
+	return err;
 }
 
 int input_device_unregister(DBusConnection *conn, const char *path)
