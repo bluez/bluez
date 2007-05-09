@@ -201,10 +201,7 @@ static struct cached_session *get_cached_session(bdaddr_t *src, bdaddr_t *dst)
 		if (get_bdaddrs(sock, &sba, &dba) < 0)
 			continue;
 
-		if (bacmp(src, BDADDR_ANY) && bacmp(&sba, src))
-			continue;
-
-		if (bacmp(&dba, dst))
+		if (bacmp(&sba, src) || bacmp(&dba, dst))
 			continue;
 
 		debug("found matching session, removing from list");
@@ -978,8 +975,9 @@ DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn,
 {
 	struct cached_session *s;
 	const char *address;
+	struct adapter *adapter = data;
 	DBusMessage *reply;
-	bdaddr_t dba;
+	bdaddr_t sba, dba;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
@@ -990,9 +988,10 @@ DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	str2ba(adapter->address, &sba);
 	str2ba(address, &dba);
 
-	while ((s = get_cached_session(BDADDR_ANY, &dba))) {
+	while ((s = get_cached_session(&sba, &dba))) {
 		sdp_close(s->session);
 		g_source_remove(s->timeout_id);
 		g_source_remove(s->io_id);
