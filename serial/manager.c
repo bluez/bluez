@@ -148,21 +148,6 @@ static struct rfcomm_node *find_node_by_name(const char *name)
 	return NULL;
 }
 
-static struct pending_connect *find_pending_connect_by_channel(const char *bda,
-								uint8_t ch)
-{
-	GSList *l;
-
-	for (l = pending_connects; l != NULL; l = l->next) {
-		struct pending_connect *pending = l->data;
-		if (!strcasecmp(bda, pending->bda) &&
-				pending->channel == ch)
-			return pending;
-	}
-
-	return NULL;
-}
-
 static struct pending_connect *find_pending_connect_by_pattern(const char *bda,
 							const char *pattern)
 {
@@ -540,7 +525,7 @@ fail:
 
 static void record_reply(DBusPendingCall *call, void *data)
 {
-	struct pending_connect *pending, *pc = data;
+	struct pending_connect *pc = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	sdp_record_t *rec;
 	const uint8_t *rec_bin;
@@ -604,12 +589,6 @@ static void record_reply(DBusPendingCall *call, void *data)
 	if (ch < 1 || ch > 30) {
 		error("Channel out of range: %d", ch);
 		err_not_supported(pc->conn, pc->msg);
-		goto fail;
-	}
-
-	pending = find_pending_connect_by_channel(pc->bda, ch);
-	if (pending) {
-		err_connection_in_progress(pc->conn, pc->msg);
 		goto fail;
 	}
 
