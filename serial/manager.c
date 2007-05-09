@@ -44,6 +44,7 @@
 #include <bluetooth/rfcomm.h>
 
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "logging.h"
 
 #include "manager.h"
@@ -931,30 +932,6 @@ static DBusHandlerResult cancel_connect_service(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult manager_message(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *iface, *member;
-
-	iface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
-
-	/* Accept messages from the manager interface only */
-	if (strcmp(SERIAL_MANAGER_INTERFACE, iface))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (strcmp(member, "ConnectService") == 0)
-		return connect_service(conn, msg, data);
-
-	if (strcmp(member, "DisconnectService") == 0)
-		return disconnect_service(conn, msg, data);
-
-	if (strcmp(member, "CancelConnectService") == 0)
-		return cancel_connect_service(conn, msg, data);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static void manager_unregister(DBusConnection *conn, void *data)
 {
 	if (connected_nodes) {
@@ -972,10 +949,17 @@ static void manager_unregister(DBusConnection *conn, void *data)
 	}
 }
 
-/* Virtual table to handle manager object path hierarchy */
-static const DBusObjectPathVTable manager_table = {
-	.message_function	= manager_message,
-	.unregister_function	= manager_unregister,
+static DBusMethodVTable manager_methods[] = {
+	{ "ConnectService",		connect_service,	"ss",	"s"	},
+	{ "DisconnectService",		disconnect_service,	"s",	""	},
+	{ "CancelConnectService",	cancel_connect_service,	"ss",	""	},
+	{ NULL, NULL, NULL, NULL },
+};
+
+static DBusSignalVTable manager_signals[] = {
+	{ "ServiceConnected",		"s"	},
+	{ "ServiceDisconnected",	"s"	},
+	{ NULL, NULL }
 };
 
 int serial_init(DBusConnection *conn)
@@ -987,15 +971,24 @@ int serial_init(DBusConnection *conn)
 			return -errno;
 	}
 
-	connection = dbus_connection_ref(conn);
-
-	if (dbus_connection_register_object_path(connection,
-			SERIAL_MANAGER_PATH, &manager_table, NULL) == FALSE) {
+	if (!dbus_connection_create_object_path(conn, SERIAL_MANAGER_PATH,
+						NULL, manager_unregister)) {
 		error("D-Bus failed to register %s path", SERIAL_MANAGER_PATH);
-		dbus_connection_unref(connection);
-
 		return -1;
 	}
+
+	if (!dbus_connection_register_interface(conn, SERIAL_MANAGER_PATH,
+						SERIAL_MANAGER_INTERFACE,
+						manager_methods,
+						manager_signals, NULL)) {
+		error("Failed to register %s interface to %s",
+				SERIAL_MANAGER_INTERFACE, SERIAL_MANAGER_PATH);
+		dbus_connection_destroy_object_path(connection,
+							SERIAL_MANAGER_PATH);
+		return -1;
+	}
+
+	connection = dbus_connection_ref(conn);
 
 	info("Registered manager path:%s", SERIAL_MANAGER_PATH);
 
@@ -1004,7 +997,7 @@ int serial_init(DBusConnection *conn)
 
 void serial_exit(void)
 {
-	dbus_connection_unregister_object_path(connection, SERIAL_MANAGER_PATH);
+	dbus_connection_destroy_object_path(connection, SERIAL_MANAGER_PATH);
 
 	dbus_connection_unref(connection);
 	connection = NULL;
