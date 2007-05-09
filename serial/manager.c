@@ -71,12 +71,14 @@ struct rfcomm_node {
 struct pending_connect {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
-	char		*bda;		/* Destination address */
-	char		*adapter_path;	/* Adapter D-Bus path */
+	char		*bda;		/* Destination address  */
+	char		*adapter_path;	/* Adapter D-Bus path   */
+	char		*pattern;	/* Connection request pattern */
 	bdaddr_t	src;
 	uint8_t		channel;
 	int		id;		/* RFCOMM device id */
 	int		ntries;		/* Open attempts */
+	int 		canceled;	/* Operation canceled */
 };
 
 /* FIXME: Common file required */
@@ -111,6 +113,8 @@ static void pending_connect_free(struct pending_connect *pc)
 		dbus_message_unref(pc->msg);
 	if (pc->bda)
 		g_free(pc->bda);
+	if (pc->pattern)
+		g_free(pc->pattern);
 	if (pc->adapter_path)
 		g_free(pc->adapter_path);
 	g_free(pc);
@@ -159,6 +163,22 @@ static struct pending_connect *find_pending_connect_by_channel(const char *bda,
 	return NULL;
 }
 
+static struct pending_connect *find_pending_connect_by_pattern(const char *bda,
+							const char *pattern)
+{
+	GSList *l;
+
+	/* Pattern can be friendly name, uuid128, record handle or channel */
+	for (l = pending_connects; l != NULL; l = l->next) {
+		struct pending_connect *pending = l->data;
+		if (!strcasecmp(pending->bda, bda) &&
+				!strcasecmp(pending->pattern, pattern))
+			return pending;
+	}
+
+	return NULL;
+}
+
 static uint16_t str2class(const char *pattern)
 {
 	int i;
@@ -179,6 +199,15 @@ static DBusHandlerResult err_connection_failed(DBusConnection *conn,
 			SERIAL_ERROR_INTERFACE".ConnectionAttemptFailed", str));
 }
 
+static DBusHandlerResult err_connection_canceled(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE".ConnectionCanceled",
+			"Connection creation canceled"));
+}
+
 static DBusHandlerResult err_connection_in_progress(DBusConnection *conn,
 							DBusMessage *msg)
 {
@@ -186,6 +215,15 @@ static DBusHandlerResult err_connection_in_progress(DBusConnection *conn,
 			dbus_message_new_error(msg,
 			SERIAL_ERROR_INTERFACE".ConnectionInProgress",
 			"Connection creation in progress"));
+}
+
+static DBusHandlerResult err_connection_not_in_progress(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE".ConnectionNotInProgress",
+			"Connection creation not in progress"));
 }
 
 static DBusHandlerResult err_does_not_exist(DBusConnection *conn,
@@ -328,7 +366,11 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connect *pc)
 	const char *pname = node_name;
 	int fd;
 
-	/* FIXME: Check if it was canceled */
+	if (pc->canceled) {
+		rfcomm_release(pc->id);
+		err_connection_canceled(pc->conn, pc->msg);
+		goto fail;
+	}
 
 	/* Check if the caller is still present */
 	if (!dbus_bus_name_has_owner(pc->conn, owner, NULL)) {
@@ -380,7 +422,10 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	int sk, ret, err, fd;
 	socklen_t len;
 
-	/* FIXME: Check if it was canceled */
+	if (pc->canceled) {
+		err_connection_canceled(pc->conn, pc->msg);
+		goto fail;
+	}
 
 	sk = g_io_channel_unix_get_fd(chan);
 
@@ -503,6 +548,11 @@ static void record_reply(DBusPendingCall *call, void *data)
 	DBusError derr;
 	int len, scanned, ch, err;
 
+	if (pc->canceled) {
+		err_connection_canceled(pc->conn, pc->msg);
+		goto fail;
+	}
+
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		if (dbus_error_has_name(&derr,
@@ -613,6 +663,11 @@ static void handles_reply(DBusPendingCall *call, void *data)
 	uint32_t *phandle;
 	int len;
 
+	if (pc->canceled) {
+		err_connection_canceled(pc->conn, pc->msg);
+		goto fail;
+	}
+
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		if (dbus_error_has_name(&derr,
@@ -713,6 +768,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	pc->conn = dbus_connection_ref(conn);
 	pc->msg = dbus_message_ref(msg);
 	pc->bda = g_strdup(bda);
+	pc->pattern = g_strdup(pattern);
 	pc->adapter_path = g_malloc0(16);
 	snprintf(pc->adapter_path, 16, "/org/bluez/hci%d", dev_id);
 
@@ -731,7 +787,6 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 			pending_connect_free(pc);
 			return err_not_supported(conn, msg);
 		}
-
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -848,7 +903,32 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 static DBusHandlerResult cancel_connect_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct pending_connect *pending;
+	DBusMessage *reply;
+	DBusError derr;
+	const char *bda, *pattern;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &bda,
+				DBUS_TYPE_STRING, &pattern,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	pending = find_pending_connect_by_pattern(bda, pattern);
+	if (!pending)
+		return err_connection_not_in_progress(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	pending->canceled = 1;
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult manager_message(DBusConnection *conn,
