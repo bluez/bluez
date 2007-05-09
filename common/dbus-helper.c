@@ -267,9 +267,12 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 							current->name))
 			continue;
 
-		if (dbus_message_has_signature(message, current->signature))
+		if (dbus_message_has_signature(message, current->signature)) {
+			debug("%s: %s.%s()", dbus_message_get_path(message),
+					iface->name, current->name);
 			return current->message_function(connection,
 						message, data->user_data);
+		}
 	}
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
