@@ -87,25 +87,6 @@ static DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg
 			descr ? descr : "Invalid arguments in method call");
 }
 
-static void manager_signal(DBusConnection *conn, const char *name,
-				const char *param)
-{
-	DBusMessage *signal;
-
-	signal = dbus_message_new_signal("/org/bluez/audio",
-						"org.bluez.audio.Manager",
-						name);
-	if (!signal) {
-		error("Unable to create new D-Bus signal");
-		return;
-	}
-
-	dbus_message_append_args(signal, DBUS_TYPE_STRING, &param,
-					DBUS_TYPE_INVALID);
-
-	send_message_and_unref(conn, signal);
-}
-
 static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct sockaddr_un addr;
@@ -141,11 +122,19 @@ void manager_add_headset(const char *path)
 
 	headsets = g_slist_append(headsets, my_path);
 
-	manager_signal(connection, "HeadsetCreated", my_path);
+	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+					AUDIO_MANAGER_INTERFACE,
+					"HeadsetCreated",
+					DBUS_TYPE_STRING, &my_path,
+					DBUS_TYPE_INVALID);
 
 	if (!default_hs) {
 		default_hs = my_path;
-		manager_signal(connection, "DefaultHeadsetChanged", my_path);
+		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE,
+						"DefaultHeadsetChanged",
+						DBUS_TYPE_STRING, &my_path,
+						DBUS_TYPE_INVALID);
 	}
 }
 
@@ -235,16 +224,27 @@ static DBusHandlerResult am_remove_headset(DBusConnection *conn, DBusMessage *ms
 	headsets = g_slist_remove(headsets, path);
 
 	if (default_hs == path) {
+		const char *param;
+
 		if (!headsets)
 			default_hs = NULL;
 		else
 			default_hs = headsets->data;
 
-		manager_signal(connection, "DefaultHeadsetChanged",
-				default_hs ? default_hs : "");
+		param = default_hs ? default_hs : "";
+
+		dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE,
+						"DefaultHeadsetChanged",
+						DBUS_TYPE_STRING, &param,
+						DBUS_TYPE_INVALID);
 	}
 
-	manager_signal(connection, "HeadsetRemoved", path);
+	dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+					AUDIO_MANAGER_INTERFACE,
+					"HeadsetRemoved",
+					DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
 
 	headset_remove(path);
 
@@ -332,7 +332,11 @@ static DBusHandlerResult am_change_default_headset(DBusConnection *conn, DBusMes
 
 	default_hs = match->data;
 
-	manager_signal(connection, "DefaultHeadsetChanged", default_hs);
+	dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+					AUDIO_MANAGER_INTERFACE,
+					"DefaultHeadsetChanged",
+					DBUS_TYPE_STRING, &default_hs,
+					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(connection, reply);
 }
