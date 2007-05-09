@@ -25,14 +25,6 @@ if (len(sys.argv) < 3):
 else:
 	service = sys.argv[2]
 
-uuidbase = "-0000-1000-8000-00805F9B34FB"
-
-if (service == "spp"):
-	service = "00001101" + uuidbase
-
-if (service == "dun"):
-	service = "00001103" + uuidbase
-
 device = serial.ConnectService(address, service)
 
 print "Connected %s to %s" % (device, address)
