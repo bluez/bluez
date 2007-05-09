@@ -94,18 +94,14 @@ static DBusHandlerResult create_path(DBusConnection *conn,
 					DBusMessage *msg, const char *path,
 					const char *sname)
 {
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 
 	/* emit signal when it is a new path */
 	if (sname) {
-		signal = dbus_message_new_signal(NETWORK_PATH,
-			NETWORK_MANAGER_INTERFACE, sname);
-
-		dbus_message_append_args(signal,
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
-		send_message_and_unref(conn, signal);
+		dbus_connection_emit_signal(conn, NETWORK_PATH,
+						NETWORK_MANAGER_INTERFACE,
+						sname, DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID);
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -148,7 +144,7 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 					const char *sname)
 {
 	const char *path;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	DBusError derr;
 	GSList *l;
 
@@ -180,14 +176,10 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 	if (!dbus_connection_destroy_object_path(conn, path))
 		error("Network path unregister failed");
 
-	signal = dbus_message_new_signal(NETWORK_PATH,
-			NETWORK_MANAGER_INTERFACE, sname);
-
-	dbus_message_append_args(signal,
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, NETWORK_PATH,
+					NETWORK_MANAGER_INTERFACE,
+					sname, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
 }

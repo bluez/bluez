@@ -773,7 +773,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	int err;
 
 	if (ns->io)
@@ -800,10 +800,8 @@ static DBusHandlerResult enable(DBusConnection *conn,
 
 	store_property(&ns->src, ns->id, "enabled", "1");
 
-	signal = dbus_message_new_signal(ns->path,
-			NETWORK_SERVER_INTERFACE, "Enabled");
-
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
+					"Enabled", DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -812,7 +810,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -823,7 +821,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 
 	/* Remove the service record */
 	if (ns->record_id) {
-		remove_server_record(conn, ns->record_id); 
+		remove_server_record(conn, ns->record_id);
 		ns->record_id = 0;
 	}
 
@@ -833,10 +831,8 @@ static DBusHandlerResult disable(DBusConnection *conn,
 
 	store_property(&ns->src, ns->id, "enabled", "0");
 
-	signal = dbus_message_new_signal(ns->path,
-			NETWORK_SERVER_INTERFACE, "Disabled");
-
-	send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
+					"Disabled", DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
 }
