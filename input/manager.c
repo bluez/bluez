@@ -383,6 +383,41 @@ failed:
 	return FALSE;
 }
 
+static void finish_sdp_transaction(bdaddr_t *dba) 
+{
+	char address[18], *addr_ptr = address;
+	DBusMessage *msg, *reply;
+	DBusError derr;
+
+	ba2str(dba, address);
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+						"org.bluez.Adapter",
+						"FinishRemoteServiceTransaction");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
+					DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(connection, msg,
+								-1, &derr);
+
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
+		error("FinishRemoteServiceTransaction(%s) failed: %s",
+				address, derr.message);
+		dbus_error_free(&derr);
+		return;
+	}
+
+	dbus_message_unref(reply);
+}
+
 static void hid_record_reply(DBusPendingCall *call, void *data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
@@ -403,6 +438,8 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 					derr.name, derr.message);
 		goto fail;
 	}
+
+	finish_sdp_transaction(&pr->dst);
 
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
