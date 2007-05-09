@@ -23,6 +23,10 @@ Methods		array{string} ListHeadsets()
 			Returns the object path for the default
 			headset device.
 
+		void ChangeDefaultHeadset(string path)
+
+			Changes the default headset.
+
 		string CreateHeadset(string address)
 
 			Create a new headset device and returns
@@ -30,11 +34,20 @@ Methods		array{string} ListHeadsets()
 
 		void RemoveHeadset(string path)
 
+			Removes a headset object and all information
+			related to it.
+
 Signals		void HeadsetCreated(string path)
+
+			Sent when a new headset object has been created.
 
 		void HeadsetRemoved(string path)
 
+			Sent when a headset object has been removed.
+
 		void DefaultHeadsetChanged(string path)
+
+			Sent when the default headset has changed.
 
 
 Audio Headset hierarchy
@@ -44,27 +57,11 @@ Service		org.bluez.audio
 Interface	org.bluez.audio.Headset
 Object path	/org/bluez/audio/headset*
 
-Methods		string GetAddress()
-
-		string GetName()
-
-		void Connect()
+Methods		void Connect()
 
 		void Disconnect()
 
 		boolean IsConnected()
-
-		uint16 GetSpeakerGain()
-
-		uint16 GetMicrophoneGain()
-
-		void SetSpeakerGain(uint16 gain)
-
-			Gain is 0..15
-
-		void SetMicrophoneGain(uint16 gain)
-
-			Gain is 0..15
 
 		void IndicateCall()
 
@@ -76,18 +73,45 @@ Methods		string GetAddress()
 
 			Cancel the incoming call indication.
 
-Signals		void SpeakerGainChanged(uint16 gain)
+		void Play()
+	
+			Open the audio connection to the headset.
 
+		void Stop()
+
+			Close the audio connection.
+
+		boolean IsPlaying()
+
+			Returns true if an audio connection to the headset
+			is active.
+
+
+Signals		void AnswerRequested()
+
+			Sent when the answer button is pressed on the headset
+
+		void Connected()
+
+			Sent when the device has been connected to.
+
+		void Disconnected()
+
+			Sent when the device has been disconnected from.
+
+		void Stopped()
+
+			Sent when the audio connection is closed
+
+		void Playing()
+
+			Sent when the audio connection is opened
+
+		void SpeakerGainChanged(uint16 gain)
+		
 			The speaker gain changed.
 
 		void MicrophoneGainChanged(uint16 gain)
 
 			The microphone gain changed.
 
-		void CallIndicated()
-
-			An incoming call was indicated.
-
-		void CallCanceled()
-
-			Incoming call was canceled.
