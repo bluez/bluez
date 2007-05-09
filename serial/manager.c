@@ -404,6 +404,12 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	int sk, ret, err, fd;
 	socklen_t len;
 
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		error("Hangup or error on rfcomm socket");
+		err_connection_canceled(pc->conn, pc->msg);
+		goto fail;
+	}
+
 	if (pc->canceled) {
 		err_connection_canceled(pc->conn, pc->msg);
 		goto fail;
@@ -512,7 +518,8 @@ static int rfcomm_connect(struct pending_connect *pc)
 		}
 
 		debug("Connect in progress");
-		g_io_add_watch(io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, pc);
+		g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP,
+					(GIOFunc) rfcomm_connect_cb, pc);
 	} else {
 		debug("Connect succeeded with first try");
 		(void) rfcomm_connect_cb(io, G_IO_OUT, pc);
