@@ -513,7 +513,6 @@ static int rfcomm_connect(struct pending_connect *pc)
 
 		debug("Connect in progress");
 		g_io_add_watch(io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, pc);
-		pending_connects = g_slist_append(pending_connects, pc);
 	} else {
 		debug("Connect succeeded with first try");
 		(void) rfcomm_connect_cb(io, G_IO_OUT, pc);
@@ -829,11 +828,15 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 				"invalid RFCOMM channel");
 	}
 
+	/* Add here since connect() in the first try can happen */
+	pending_connects = g_slist_append(pending_connects, pc);
+
 	pc->channel = val;
 	err = rfcomm_connect(pc);
 	if (err < 0) {
 		const char *strerr = strerror(-err);
 		error("RFCOMM connect failed: %s(%d)", strerr, -err);
+		pending_connects = g_slist_remove(pending_connects, pc);
 		pending_connect_free(pc);
 		return err_connection_failed(conn, msg, strerr);
 	}
