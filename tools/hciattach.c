@@ -51,8 +51,9 @@
 #define N_HCI	15
 #endif
 
-#define HCIUARTSETPROTO _IOW('U', 200, int)
-#define HCIUARTGETPROTO _IOR('U', 201, int)
+#define HCIUARTSETPROTO		_IOW('U', 200, int)
+#define HCIUARTGETPROTO		_IOR('U', 201, int)
+#define HCIUARTGETDEVICE	_IOR('U', 202, int)
 
 #define HCI_UART_H4	0
 #define HCI_UART_BCSP	1
