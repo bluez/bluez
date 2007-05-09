@@ -49,7 +49,7 @@ Signals		void PortCreated(string path) [experimental]
 
 		void PortRemoved(string path) [experimental]
 
-		void ServiceConnected(string device, string adddress, string pattern)
+		void ServiceConnected(string device)
 
 		void ServiceDisconnected(string device)
 
