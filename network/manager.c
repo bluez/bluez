@@ -177,7 +177,7 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 
 	/* Remove the nap or gn file from the file system */
 	server_remove_stored(conn, path);
-	if (!dbus_connection_unregister_object_path(conn, path))
+	if (!dbus_connection_destroy_object_path(conn, path))
 		error("Network path unregister failed");
 
 	signal = dbus_message_new_signal(NETWORK_PATH,
