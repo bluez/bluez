@@ -41,6 +41,7 @@
 #include <glib.h>
 
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"
 
@@ -577,50 +578,6 @@ static DBusHandlerResult remove_connection(DBusConnection *conn,
 	return remove_path(conn, msg, &connection_paths, "ConnectionRemoved");
 }
 
-static DBusHandlerResult manager_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *path, *iface, *member;
-
-	path = dbus_message_get_path(msg);
-	iface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
-
-	/* Catching fallback paths */
-	if (strcmp(NETWORK_PATH, path) != 0)
-		return err_unknown_connection(conn, msg);
-
-	/* Accept messages from the manager interface only */
-	if (strcmp(NETWORK_MANAGER_INTERFACE, iface))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (strcmp(member, "ListServers") == 0)
-		return list_servers(conn, msg, data);
-
-	if (strcmp(member, "CreateServer") == 0)
-		return create_server(conn, msg, data);
-
-	if (strcmp(member, "FindServer") == 0)
-		return find_server(conn, msg, data);
-
-	if (strcmp(member, "RemoveServer") == 0)
-		return remove_server(conn, msg, data);
-
-	if (strcmp(member, "ListConnections") == 0)
-		return list_connections(conn, msg, data);
-
-	if (strcmp(member, "FindConnection") == 0)
-		return find_connection(conn, msg, data);
-
-	if (strcmp(member, "CreateConnection") == 0)
-		return create_connection(conn, msg, data);
-
-	if (strcmp(member, "RemoveConnection") == 0)
-		return remove_connection(conn, msg, data);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static void manager_unregister(DBusConnection *conn, void *data)
 {
 	info("Unregistered manager path");
@@ -639,12 +596,6 @@ static void manager_unregister(DBusConnection *conn, void *data)
 
 	bnep_kill_all_connections();
 }
-
-/* Virtual table to handle manager object path hierarchy */
-static const DBusObjectPathVTable manager_table = {
-	.message_function = manager_message,
-	.unregister_function = manager_unregister,
-};
 
 static void parse_stored_connection(char *key, char *value, void *data)
 {
@@ -766,6 +717,26 @@ static void register_stored(void)
 	closedir(dir);
 }
 
+static DBusMethodVTable manager_methods[] = {
+	{ "ListServers",	list_servers,		"",	"as"	},
+	{ "CreateServer",	create_server,		"s",	"s"	},
+	{ "FindServer",		find_server,		"s",	"s"	},
+	{ "RemoveServer",	remove_server,		"s",	""	},
+	{ "ListConnections",	list_connections,	"",	"as"	},
+	{ "FindConnection",	find_connection,	"s",	"s"	},
+	{ "CreateConnection",	create_connection,	"ss",	"s"	},
+	{ "RemoveConnection",	remove_connection,	"s",	""	},
+	{ NULL, NULL, NULL, NULL }
+};
+
+static DBusSignalVTable manager_signals[] = {
+	{ "ServerCreated",	"s"	},
+	{ "ServerRemoved",	"s"	},
+	{ "ConnectionCreated",	"s"	},
+	{ "ConnectionRemoved",	"s"	},
+	{ NULL, NULL }
+};
+
 int network_init(DBusConnection *conn)
 {
 	if (bridge_init() < 0) {
@@ -781,16 +752,23 @@ int network_init(DBusConnection *conn)
 		return -1;
 	}
 
-	connection = dbus_connection_ref(conn);
-
-	/* Fallback to catch invalid network path */
-	if (dbus_connection_register_fallback(connection, NETWORK_PATH,
-						&manager_table, NULL) == FALSE) {
-		error("D-Bus failed to register %s path", NETWORK_PATH);
-		dbus_connection_unref(connection);
-
+	if (!dbus_connection_create_object_path(conn, NETWORK_PATH,
+						NULL, manager_unregister)) {
+		error("D-Bus failed to create %s path", NETWORK_PATH);
 		return -1;
 	}
+
+	if (!dbus_connection_register_interface(conn, NETWORK_PATH,
+						NETWORK_MANAGER_INTERFACE,
+						manager_methods,
+						manager_signals, NULL)) {
+		error("Failed to register %s interface to %s",
+				NETWORK_MANAGER_INTERFACE, NETWORK_PATH);
+		dbus_connection_destroy_object_path(connection, NETWORK_PATH);
+		return -1;
+	}
+
+	connection = dbus_connection_ref(conn);
 
 	info("Registered manager path:%s", NETWORK_PATH);
 
@@ -801,7 +779,7 @@ int network_init(DBusConnection *conn)
 
 void network_exit(void)
 {
-	dbus_connection_unregister_object_path(connection, NETWORK_PATH);
+	dbus_connection_destroy_object_path(connection, NETWORK_PATH);
 
 	dbus_connection_unref(connection);
 

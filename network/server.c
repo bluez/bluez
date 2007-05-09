@@ -1019,50 +1019,6 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult server_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *iface, *member;
-
-	iface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
-
-	if (strcmp(NETWORK_SERVER_INTERFACE, iface))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (strcmp(member, "GetUUID") == 0)
-		return get_uuid(conn, msg, data);
-
-	if (strcmp(member, "Enable") == 0)
-		return enable(conn, msg, data);
-
-	if (strcmp(member, "Disable") == 0)
-		return disable(conn, msg, data);
-
-	if (strcmp(member, "SetName") == 0)
-		return set_name(conn, msg, data);
-
-	if (strcmp(member, "GetName") == 0)
-		return get_name(conn, msg, data);
-
-	if (strcmp(member, "SetAddressRange") == 0)
-		return set_address_range(conn, msg, data);
-
-	if (strcmp(member, "SetRouting") == 0)
-		return set_routing(conn, msg, data);
-
-	if (strcmp(member, "SetSecurity") == 0)
-		return set_security(conn, msg, data);
-
-	if (strcmp(member, "GetSecurity") == 0)
-		return get_security(conn, msg, data);
-
-	if (strcmp(member, "GetInfo") == 0)
-		return get_info(conn, msg, data);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static void server_free(struct network_server *ns)
 {
 	if (!ns)
@@ -1104,10 +1060,24 @@ static void server_unregister(DBusConnection *conn, void *data)
 	server_free(ns);
 }
 
-/* Virtual table to handle server object path hierarchy */
-static const DBusObjectPathVTable server_table = {
-	.message_function = server_message,
-	.unregister_function = server_unregister,
+static DBusMethodVTable server_methods[] = {
+	{ "GetUUID",		get_uuid,		"",	"s"	},
+	{ "Enable",		enable,			"",	""	},
+	{ "Disable",		disable,		"",	""	},
+	{ "SetName",		set_name,		"s",	""	},
+	{ "GetName",		get_name,		"",	"s"	},
+	{ "SetAddressRange",	set_address_range,	"ss",	""	},
+	{ "SetRouting",		set_routing,		"s",	""	},
+	{ "SetSecurity",	set_security,		"b",	""	},
+	{ "GetSecurity",	get_security,		"",	"b"	},
+	{ "GetInfo",		get_info,		"",	"{sv}"	},
+	{ NULL, NULL, NULL, NULL }
+};
+
+static DBusSignalVTable server_signals[] = {
+	{ "Enabled",	""	},
+	{ "Disabled",	""	},
+	{ NULL, NULL }
 };
 
 int server_register(DBusConnection *conn, const char *path,
@@ -1123,11 +1093,20 @@ int server_register(DBusConnection *conn, const char *path,
 
 	ns = g_new0(struct network_server, 1);
 
-	/* Register path */
-	if (!dbus_connection_register_object_path(conn, path,
-						&server_table, ns)) {
+	if (!dbus_connection_create_object_path(conn, path, ns,
+						server_unregister)) {
 		error("D-Bus failed to register %s path", path);
 		server_free(ns);
+		return -1;
+	}
+
+	if (!dbus_connection_register_interface(conn, path,
+						NETWORK_SERVER_INTERFACE,
+						server_methods,
+						server_signals, NULL)) {
+		error("D-Bus failed to register %s interface",
+				NETWORK_SERVER_INTERFACE);
+		dbus_connection_destroy_object_path(conn, path);
 		return -1;
 	}
 
@@ -1155,11 +1134,20 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 
 	ns = g_new0(struct network_server, 1);
 
-	/* Register path */
-	if (!dbus_connection_register_object_path(conn, path,
-						&server_table, ns)) {
+	if (!dbus_connection_create_object_path(conn, path, ns,
+						server_unregister)) {
 		error("D-Bus failed to register %s path", path);
 		server_free(ns);
+		return -1;
+	}
+
+	if (!dbus_connection_register_interface(conn, path,
+						NETWORK_SERVER_INTERFACE,
+						server_methods,
+						server_signals, NULL)) {
+		error("D-Bus failed to register %s interface",
+				NETWORK_SERVER_INTERFACE);
+		dbus_connection_destroy_object_path(conn, path);
 		return -1;
 	}
 
@@ -1203,7 +1191,7 @@ int server_store(DBusConnection *conn, const char *path)
 	char filename[PATH_MAX + 1];
 	char addr[18];
 
-	if (!dbus_connection_get_object_path_data(conn, path, (void *) &ns))
+	if (!dbus_connection_get_object_user_data(conn, path, (void *) &ns))
 		return -ENOENT;
 
 	ba2str(&ns->src, addr);
@@ -1233,7 +1221,7 @@ int server_remove_stored(DBusConnection *conn, const char *path)
 	char filename[PATH_MAX + 1];
 	char addr[18];
 
-	if (!dbus_connection_get_object_path_data(conn, path, (void *) &ns))
+	if (!dbus_connection_get_object_user_data(conn, path, (void *) &ns))
 		return -ENOENT;
 
 	ba2str(&ns->src, addr);
@@ -1251,7 +1239,7 @@ int server_find_data(DBusConnection *conn,
 	struct network_server *ns;
 	const char *uuid;
 
-	if (!dbus_connection_get_object_path_data(conn, path, (void *) &ns))
+	if (!dbus_connection_get_object_user_data(conn, path, (void *) &ns))
 		return -1;
 
 	if (ns->name && strcasecmp(pattern, ns->name) == 0)

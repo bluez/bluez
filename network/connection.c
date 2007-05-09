@@ -539,47 +539,6 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult connection_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *iface, *member;
-
-	iface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
-
-	if (strcmp(NETWORK_CONNECTION_INTERFACE, iface))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (strcmp(member, "GetAddress") == 0)
-		return get_address(conn, msg, data);
-
-	if (strcmp(member, "GetUUID") == 0)
-		return get_uuid(conn, msg, data);
-
-	if (strcmp(member, "GetName") == 0)
-		return get_name(conn, msg, data);
-
-	if (strcmp(member, "GetDescription") == 0)
-		return get_description(conn, msg, data);
-
-	if (strcmp(member, "GetInterface") == 0)
-		return get_interface(conn, msg, data);
-
-	if (strcmp(member, "Connect") == 0)
-		return connection_connect(conn, msg, data);
-
-	if (strcmp(member, "Disconnect") == 0)
-		return connection_disconnect(conn, msg, data);
-
-	if (strcmp(member, "IsConnected") == 0)
-		return is_connected(conn, msg, data);
-
-	if (strcmp(member, "GetInfo") == 0)
-		return get_info(conn, msg, data);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static void connection_free(struct network_conn *nc)
 {
 	if (!nc)
@@ -612,10 +571,23 @@ static void connection_unregister(DBusConnection *conn, void *data)
 	connection_free(nc);
 }
 
-/* Virtual table to handle connection object path hierarchy */
-static const DBusObjectPathVTable connection_table = {
-	.message_function = connection_message,
-	.unregister_function = connection_unregister,
+static DBusMethodVTable connection_methods[] = {
+	{ "GetAddress",		get_address,		"",	"s"	},
+	{ "GetUUID",		get_uuid,		"",	"s"	},
+	{ "GetName",		get_name,		"",	"s"	},
+	{ "GetDescription",	get_description,	"",	"s"	},
+	{ "GetInterface",	get_interface,		"",	"s"	},
+	{ "Connect",		connection_connect,	"",	"s"	},
+	{ "Disconnect",		connection_disconnect,	"",	""	},
+	{ "IsConnected",	is_connected,		"",	"b"	},
+	{ "GetInfo",		get_info,		"",	"{sv}",	},
+	{ NULL, NULL, NULL, NULL }
+};
+
+static DBusSignalVTable connection_signals[] = {
+	{ "Connected",		""	},
+	{ "Disconnected",	""	},
+	{ NULL, NULL }
 };
 
 int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
@@ -629,9 +601,19 @@ int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 	nc = g_new0(struct network_conn, 1);
 
 	/* register path */
-	if (!dbus_connection_register_object_path(conn, path,
-						&connection_table, nc)) {
+	if (!dbus_connection_create_object_path(conn, path, nc,
+						connection_unregister)) {
 		connection_free(nc);
+		return -1;
+	}
+
+	if (!dbus_connection_register_interface(conn, path,
+						NETWORK_CONNECTION_INTERFACE,
+						connection_methods,
+						connection_signals, NULL)) {
+		error("D-Bus failed to register %s interface",
+				NETWORK_CONNECTION_INTERFACE);
+		dbus_connection_destroy_object_path(conn, path);
 		return -1;
 	}
 
@@ -660,7 +642,7 @@ int connection_store(DBusConnection *conn, const char *path)
 	char src_addr[18], dst_addr[18];
 	int len, err;
 
-	if (!dbus_connection_get_object_path_data(conn, path, (void *) &nc))
+	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
 		return -ENOENT;
 
 	if (!nc->name || !nc->desc)
@@ -692,7 +674,7 @@ int connection_find_data(DBusConnection *conn,
 	struct network_conn *nc;
 	char addr[18];
 
-	if (!dbus_connection_get_object_path_data(conn, path, (void *) &nc))
+	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
 		return -1;
 
 	if (strcasecmp(pattern, nc->dev) == 0)
@@ -713,7 +695,7 @@ gboolean connection_has_pending(DBusConnection *conn, const char *path)
 {
 	struct network_conn *nc;
 
-	if (!dbus_connection_get_object_path_data(conn, path, (void *) &nc))
+	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
 		return FALSE;
 
 	return (nc->state == CONNECTING);
