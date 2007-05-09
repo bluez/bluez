@@ -401,14 +401,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	char node_name[16];
 	const char *pname = node_name;
 	struct rfcomm_dev_req req;
-	int sk, ret, err, fd;
-	socklen_t len;
-
-	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		error("Hangup or error on rfcomm socket");
-		err_connection_canceled(pc->conn, pc->msg);
-		goto fail;
-	}
+	int sk, err, fd;
 
 	if (pc->canceled) {
 		err_connection_canceled(pc->conn, pc->msg);
@@ -417,17 +410,28 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	len = sizeof(ret);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
-		err_connection_failed(pc->conn, pc->msg, strerror(err));
-		goto fail;
-	}
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		socklen_t len;
+		int ret;
 
-	if (ret != 0) {
-		error("connect(): %s (%d)", strerror(ret), ret);
-		err_connection_failed(pc->conn, pc->msg, strerror(ret));
+		len = sizeof(ret);
+		if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+			err = errno;
+			error("getsockopt(SO_ERROR): %s (%d)",
+						strerror(err), err);
+			err_connection_failed(pc->conn,
+					pc->msg, strerror(err));
+			goto fail;
+		}
+
+		if (ret != 0) {
+			error("connect(): %s (%d)", strerror(ret), ret);
+			err_connection_failed(pc->conn, pc->msg, strerror(ret));
+			goto fail;
+		}
+
+		error("Hangup on rfcomm socket");
+		err_connection_canceled(pc->conn, pc->msg);
 		goto fail;
 	}
 
