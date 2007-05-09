@@ -28,6 +28,7 @@
 #include "headset.h"
 
 #define AUDIO_MANAGER_PATH "/org/bluez/audio"
+#define AUDIO_MANAGER_INTERFACE "org.bluez.audio.Manager"
 
 #define HEADSET_PATH_BASE AUDIO_MANAGER_PATH "/headset"
 

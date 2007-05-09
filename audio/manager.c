@@ -41,6 +41,7 @@
 #include <dbus/dbus.h>
 
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "logging.h"
 
 #include "ipc.h"
@@ -154,7 +155,8 @@ static void manager_remove_headset(char *path)
 	g_free(path);
 }
 
-static DBusHandlerResult am_create_headset(DBusMessage *msg)
+static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *msg,
+						void *data)
 {
 	const char *hs_path;
 	const char *address;
@@ -197,7 +199,8 @@ static DBusHandlerResult am_create_headset(DBusMessage *msg)
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_remove_headset(DBusMessage *msg)
+static DBusHandlerResult am_remove_headset(DBusConnection *conn, DBusMessage *msg,
+						void *data)
 {
 	DBusError derr;
 	DBusMessage *reply;
@@ -250,7 +253,8 @@ static DBusHandlerResult am_remove_headset(DBusMessage *msg)
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_list_headsets(DBusMessage *msg)
+static DBusHandlerResult am_list_headsets(DBusConnection *conn, DBusMessage *msg,
+						void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
@@ -275,7 +279,8 @@ static DBusHandlerResult am_list_headsets(DBusMessage *msg)
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_get_default_headset(DBusMessage *msg)
+static DBusHandlerResult am_get_default_headset(DBusConnection *conn, DBusMessage *msg,
+						void *data)
 {
 	DBusMessage *reply;
 
@@ -294,7 +299,8 @@ static DBusHandlerResult am_get_default_headset(DBusMessage *msg)
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_change_default_headset(DBusMessage *msg)
+static DBusHandlerResult am_change_default_headset(DBusConnection *conn, DBusMessage *msg,
+							void *data)
 {
 	DBusError derr;
 	DBusMessage *reply;
@@ -331,41 +337,25 @@ static DBusHandlerResult am_change_default_headset(DBusMessage *msg)
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_message(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *interface, *member;
+static DBusMethodVTable manager_methods[] = {
+	{ "CreateHeadset",		am_create_headset,
+		"s",	"s"	},
+	{ "RemoveHeadset",		am_remove_headset,
+		"s",	""	},
+	{ "ListHeadsets",		am_list_headsets,
+		"",	"as"	},
+	{ "DefaultHeadset",		am_get_default_headset,
+		"",	"s"	},
+	{ "ChangeDefaultHeadset",	am_change_default_headset,
+		"s",	""	},
+	{ NULL, NULL, NULL, NULL },
+};
 
-	interface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
-
-	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, interface) &&
-			!strcmp("Introspect", member))
-		return simple_introspect(conn, msg, data);
-
-	if (strcmp(interface, "org.bluez.audio.Manager") != 0)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (strcmp(member, "CreateHeadset") == 0)
-		return am_create_headset(msg);
-
-	if (strcmp(member, "RemoveHeadset") == 0)
-		return am_remove_headset(msg);
-
-	if (strcmp(member, "ListHeadsets") == 0)
-		return am_list_headsets(msg);
-
-	if (strcmp(member, "DefaultHeadset") == 0)
-		return am_get_default_headset(msg);
-
-	if (strcmp(member, "ChangeDefaultHeadset") == 0)
-		return am_change_default_headset(msg);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-static const DBusObjectPathVTable am_table = {
-	.message_function = am_message,
+static DBusSignalVTable manager_signals[] = {
+	{ "HeadsetCreated",		"s"	},
+	{ "HeadsetRemoved",		"s"	},
+	{ "DefaultHeadsetChanged",	"s"	},
+	{ NULL, NULL }
 };
 
 int audio_init(DBusConnection *conn)
@@ -401,9 +391,21 @@ int audio_init(DBusConnection *conn)
 
 	g_io_channel_unref(io);
 
-	if (!dbus_connection_register_object_path(conn, AUDIO_MANAGER_PATH,
-							&am_table, NULL)) {
+	if (!dbus_connection_create_object_path(conn, AUDIO_MANAGER_PATH,
+						NULL, NULL)) {
 		error("D-Bus failed to register %s path", AUDIO_MANAGER_PATH);
+		close(sk);
+		return -1;
+	}
+
+	if (!dbus_connection_register_interface(conn, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE,
+						manager_methods,
+						manager_signals, NULL)) {
+		error("Failed to register %s interface to %s",
+				AUDIO_MANAGER_INTERFACE, AUDIO_MANAGER_PATH);
+		dbus_connection_destroy_object_path(conn,
+							AUDIO_MANAGER_PATH);
 		close(sk);
 		return -1;
 	}

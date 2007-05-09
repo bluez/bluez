@@ -27,6 +27,8 @@
 
 #include <dbus/dbus.h>
 
+#define AUDIO_HEADSET_INTERFACE "org.bluez.audio.Headset"
+
 #define BUF_SIZE 1024
 
 const char *headset_get(const bdaddr_t *bda);

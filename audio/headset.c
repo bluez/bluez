@@ -50,6 +50,7 @@
 #include <dbus/dbus.h>
 
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "logging.h"
 #include "manager.h"
 #include "headset.h"
@@ -102,7 +103,8 @@ struct headset {
 	struct pending_connect *pending_connect;
 };
 
-static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg);
+static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
+					void *data);
 
 static GIOChannel *hs_server = NULL;
 
@@ -446,7 +448,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 failed:
 	if (hs->sco)
 		close_sco(hs);
-	hs_disconnect(hs, NULL);
+	hs_disconnect(NULL, NULL, hs);
 
 	return FALSE;
 }
@@ -1097,8 +1099,10 @@ failed:
 	finish_sdp_transaction(&hs->bda);
 }
 
-static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
+static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg,
+					void *data)
 {
+	struct headset *hs = data;
 	DBusMessage *reply = NULL;
 
 	if (!hs || !hs->sco)
@@ -1128,8 +1132,10 @@ static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult hs_is_playing(struct headset *hs, DBusMessage *msg)
+static DBusHandlerResult hs_is_playing(DBusConnection *conn, DBusMessage *msg,
+					void *data)
 {
+	struct headset *hs = data;
 	DBusMessage *reply;
 	dbus_bool_t playing;
 
@@ -1152,8 +1158,10 @@ static DBusHandlerResult hs_is_playing(struct headset *hs, DBusMessage *msg)
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
+static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
+					void *data)
 {
+	struct headset *hs = data;
 	DBusMessage *reply = NULL;
 	char hs_address[18];
 
@@ -1166,7 +1174,7 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 	}
 
 	if (hs->state > HEADSET_STATE_CONNECTED)
-		hs_stop(hs, NULL);
+		hs_stop(NULL, NULL, hs);
 
 	if (hs->rfcomm) {
 		g_io_channel_close(hs->rfcomm);
@@ -1200,8 +1208,10 @@ static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult hs_is_connected(struct headset *hs, DBusMessage *msg)
+static DBusHandlerResult hs_is_connected(DBusConnection *conn, DBusMessage *msg,
+						void *data)
 {
+	struct headset *hs = data;
 	DBusMessage *reply;
 	dbus_bool_t connected;
 
@@ -1317,12 +1327,14 @@ failed:
 	if (msg)
 		dbus_message_unref(msg);
 	dbus_message_unref(reply);
-	hs_disconnect(hs, NULL);
+	hs_disconnect(NULL, NULL, hs);
 }
 
-static DBusHandlerResult hs_connect(struct headset *hs, DBusMessage *msg)
+static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
+					void *data)
 {
 	DBusPendingCall *pending;
+	struct headset *hs = data;
 	const char *hs_svc = "hsp";
 	const char *addr_ptr;
 	char hs_address[18];
@@ -1413,8 +1425,10 @@ static gboolean ring_timer_cb(gpointer data)
 	return TRUE;
 }
 
-static DBusHandlerResult hs_ring(struct headset *hs, DBusMessage *msg)
+static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
+					void *data)
 {
+	struct headset *hs = data;
 	DBusMessage *reply = NULL;
 
 	assert(hs != NULL);
@@ -1447,8 +1461,10 @@ done:
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult hs_cancel_ringing(struct headset *hs, DBusMessage *msg)
+static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn, DBusMessage *msg,
+						void *data)
 {
+	struct headset *hs = data;
 	DBusMessage *reply = NULL;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
@@ -1475,8 +1491,10 @@ done:
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult hs_play(struct headset *hs, DBusMessage *msg)
+static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
+					void *data)
 {
+	struct headset *hs = data;
 	struct sockaddr_sco addr;
 	struct pending_connect *c;
 	int sk, err;
@@ -1560,53 +1578,27 @@ failed:
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult hs_message(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct headset *hs = data;
-	const char *interface, *member;
+static DBusMethodVTable headset_methods[] = {
+	{ "Connect",		hs_connect,		"",	""	},
+	{ "Disconnect",		hs_disconnect,		"",	""	},
+	{ "IsConnected",	hs_is_connected,	"",	"b"	},
+	{ "IndicateCall",	hs_ring,		"",	""	},
+	{ "CancelCall",		hs_cancel_ringing,	"",	""	},
+	{ "Play",		hs_play,		"",	""	},
+	{ "Stop",		hs_stop,		"",	""	},
+	{ "IsPlaying",		hs_is_playing,		"",	"b"	},
+	{ NULL, NULL, NULL, NULL }
+};
 
-	assert(hs != NULL);
-
-	interface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
-
-	if (!strcmp(DBUS_INTERFACE_INTROSPECTABLE, interface) &&
-			!strcmp("Introspect", member))
-		return simple_introspect(conn, msg, data);
-
-	if (strcmp(interface, "org.bluez.audio.Headset") != 0)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (strcmp(member, "Connect") == 0)
-		return hs_connect(hs, msg);
-
-	if (strcmp(member, "Disconnect") == 0)
-		return hs_disconnect(hs, msg);
-
-	if (strcmp(member, "IsConnected") == 0)
-		return hs_is_connected(hs, msg);
-
-	if (strcmp(member, "IndicateCall") == 0)
-		return hs_ring(hs, msg);
-
-	if (strcmp(member, "CancelCall") == 0)
-		return hs_cancel_ringing(hs, msg);
-
-	if (strcmp(member, "Play") == 0)
-		return hs_play(hs, msg);
-
-	if (strcmp(member, "Stop") == 0)
-		return hs_stop(hs, msg);
-
-	if (strcmp(member, "IsPlaying") == 0)
-		return hs_is_playing(hs, msg);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-static const DBusObjectPathVTable hs_table = {
-	.message_function = hs_message,
+static DBusSignalVTable headset_signals[] = {
+	{ "Connected",			""	},
+	{ "Disconnected",		""	},
+	{ "AnswerRequested",		""	},
+	{ "Stopped",			""	},
+	{ "Playing",			""	},
+	{ "SpeakerGainChanged",		"q"	},
+	{ "MicrophoneGainChanged",	"q"	},
+	{ NULL, NULL }
 };
 
 static struct headset *headset_add_internal(const bdaddr_t *bda)
@@ -1628,10 +1620,22 @@ static struct headset *headset_add_internal(const bdaddr_t *bda)
 	snprintf(hs->object_path, sizeof(hs->object_path),
 			HEADSET_PATH_BASE "%d", headset_uid++);
 
-	if (!dbus_connection_register_object_path(connection, hs->object_path,
-						&hs_table, hs)) {
+	if (!dbus_connection_create_object_path(connection, hs->object_path,
+						hs, NULL)) {
 		error("D-Bus failed to register %s path", hs->object_path);
-		free (hs);
+		g_free(hs);
+		return NULL;
+	}
+
+	if (!dbus_connection_register_interface(connection, hs->object_path,
+						AUDIO_HEADSET_INTERFACE,
+						headset_methods,
+						headset_signals, NULL)) {
+		error("Failed to register %s interface to %s",
+				AUDIO_HEADSET_INTERFACE, hs->object_path);
+		dbus_connection_destroy_object_path(connection,
+							hs->object_path);
+		g_free(hs);
 		return NULL;
 	}
 
@@ -1671,14 +1675,14 @@ void headset_remove(const char *path)
 {
 	struct headset *hs;
 
-	if (!dbus_connection_get_object_path_data(connection, path,
+	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &hs))
 		return;
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED)
-		hs_disconnect(hs, NULL);
+		hs_disconnect(NULL, NULL, hs);
 
-	if (!dbus_connection_unregister_object_path(connection, path))
+	if (!dbus_connection_destroy_object_path(connection, path))
 		error("D-Bus failed to unregister %s path", path);
 
 	headsets = g_slist_remove(headsets, hs);
