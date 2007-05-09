@@ -1128,6 +1128,30 @@ static DBusHandlerResult hs_stop(struct headset *hs, DBusMessage *msg)
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult hs_is_playing(struct headset *hs, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	dbus_bool_t playing;
+
+	assert(hs);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (hs->state == HEADSET_STATE_PLAYING)
+		playing = TRUE;
+	else
+		playing = FALSE;
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &playing,
+					DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, reply);
+	
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static DBusHandlerResult hs_disconnect(struct headset *hs, DBusMessage *msg)
 {
 	DBusMessage *reply = NULL;
@@ -1574,6 +1598,9 @@ static DBusHandlerResult hs_message(DBusConnection *conn,
 
 	if (strcmp(member, "Stop") == 0)
 		return hs_stop(hs, msg);
+
+	if (strcmp(member, "IsPlaying") == 0)
+		return hs_is_playing(hs, msg);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
