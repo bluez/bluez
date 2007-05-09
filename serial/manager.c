@@ -100,6 +100,7 @@ static struct {
 
 static DBusConnection *connection = NULL;
 static GSList *connected_nodes = NULL;
+static GSList *pending_connects = NULL;
 static int rfcomm_ctl = -1;
 
 static void pending_connect_free(struct pending_connect *pc)
@@ -130,9 +131,32 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 	g_free(node);
 }
 
-static int node_cmp_by_name(struct rfcomm_node *node, const char *name)
+static struct rfcomm_node *find_node_by_name(const char *name)
 {
-	return strcmp(node->name, name);
+	GSList *l;
+
+	for (l = connected_nodes; l != NULL; l = l->next) {
+		struct rfcomm_node *node = l->data;
+		if (!strcmp(node->name, name))
+			return node;
+	}
+
+	return NULL;
+}
+
+static struct pending_connect *find_pending_connect_by_channel(const char *bda,
+								uint8_t ch)
+{
+	GSList *l;
+
+	for (l = pending_connects; l != NULL; l = l->next) {
+		struct pending_connect *pending = l->data;
+		if (!strcasecmp(bda, pending->addr) &&
+				pending->channel == ch)
+			return pending;
+	}
+
+	return NULL;
 }
 
 static uint16_t str2class(const char *pattern)
@@ -153,6 +177,15 @@ static DBusHandlerResult err_connection_failed(DBusConnection *conn,
 	return send_message_and_unref(conn,
 			dbus_message_new_error(msg,
 			SERIAL_ERROR_INTERFACE".ConnectionAttemptFailed", str));
+}
+
+static DBusHandlerResult err_connection_in_progress(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE".ConnectionInProgress",
+			"Connection creation in progress"));
 }
 
 static DBusHandlerResult err_does_not_exist(DBusConnection *conn,
@@ -301,8 +334,7 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connect *pc)
 	if (!dbus_bus_name_has_owner(pc->conn, owner, NULL)) {
 		error("Connect requestor %s exited", owner);
 		rfcomm_release(pc->id);
-		pending_connect_free(pc);
-		return FALSE;
+		goto fail;
 	}
 
 	snprintf(node_name, sizeof(node_name), "/dev/rfcomm%d", pc->id);
@@ -314,8 +346,7 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connect *pc)
 		if (++pc->ntries >= MAX_OPEN_TRIES) {
 			rfcomm_release(pc->id);
 			err_connection_failed(pc->conn, pc->msg, strerror(err));
-			pending_connect_free(pc);
-			return FALSE;
+			goto fail;
 		}
 		return TRUE;
 	}
@@ -332,7 +363,8 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connect *pc)
 
 	/* Send the D-Bus signal */
 	send_signal(pc->conn, "ServiceConnected", node_name);
-
+fail:
+	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
 
 	return FALSE;
@@ -406,8 +438,9 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	/* Send the D-Bus signal */
 	send_signal(pc->conn, "ServiceConnected", node_name);
 fail:
+	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
-	/* FIXME: Remote from the pending connects list */
+
 	return FALSE;
 }
 
@@ -449,7 +482,8 @@ static int rfcomm_connect(struct pending_connect *pc)
 
 		debug("Connect in progress");
 		g_io_add_watch(io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, pc);
-		/* FIXME: Control the pending connects */
+
+		pending_connects = g_slist_append(pending_connects, pc);
 	} else {
 		debug("Connect succeeded with first try");
 		(void) rfcomm_connect_cb(io, G_IO_OUT, pc);
@@ -461,7 +495,7 @@ fail:
 
 static void record_reply(DBusPendingCall *call, void *data)
 {
-	struct pending_connect *pc = data;
+	struct pending_connect *pending, *pc = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	sdp_record_t *rec;
 	const uint8_t *rec_bin;
@@ -520,7 +554,11 @@ static void record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	/* FIXME: Check if there is a pending connection or if it was canceled */
+	pending = find_pending_connect_by_channel(pc->addr, ch);
+	if (pending) {
+		err_connection_in_progress(pc->conn, pc->msg);
+		goto fail;
+	}
 
 	pc->channel = ch;
 	err = rfcomm_connect(pc);
@@ -535,6 +573,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 fail:
 	dbus_message_unref(reply);
 	dbus_error_free(&derr);
+	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
 }
 
@@ -610,6 +649,7 @@ static void handles_reply(DBusPendingCall *call, void *data)
 fail:
 	dbus_message_unref(reply);
 	dbus_error_free(&derr);
+	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
 }
 
@@ -646,7 +686,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 {
 	DBusError derr;
 	bdaddr_t src;
-	struct pending_connect *pc;
+	struct pending_connect *pending, *pc;
 	const char *addr, *pattern;
 	char *endptr;
 	long val;
@@ -747,11 +787,20 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 				"invalid RFCOMM channel");
 	}
 
+	/* FIXME: Check if it is already connected */
+
+	pending = find_pending_connect_by_channel(addr, val);
+	if (pending) {
+		pending_connect_free(pc);
+		return err_connection_in_progress(conn, msg);
+	}
+
 	pc->channel = val;
 	err = rfcomm_connect(pc);
 	if (err < 0) {
 		const char *strerr = strerror(-err);
 		error("RFCOMM connect failed: %s(%d)", strerr, -err);
+		pending_connect_free(pc);
 		err_connection_failed(conn, msg, strerr);
 	}
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -764,7 +813,6 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 	DBusError derr;
 	struct rfcomm_node *node;
 	const char *name;
-	GSList *l;
 	int err;
 
 	dbus_error_init(&derr);
@@ -776,12 +824,9 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	l = g_slist_find_custom(connected_nodes, name,
-			(GCompareFunc) node_cmp_by_name);
-	if (!l)
+	node = find_node_by_name(name);
+	if (!node)
 		return err_does_not_exist(conn, msg, "Invalid node");
-
-	node = l->data;
 
 	if (strcmp(node->owner, dbus_message_get_sender(msg)) != 0)
 		return err_not_authorized(conn, msg);
