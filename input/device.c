@@ -371,7 +371,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 			GIOCondition cond, struct device *idev)
 {
 	struct fake_input *fake;
-	DBusMessage *reply, *signal;
+	DBusMessage *reply;
 	const char *path;
 	socklen_t len;
 	int ret, err;
@@ -421,9 +421,9 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 
 	/* Sending the Connected signal */
 	path = dbus_message_get_path(idev->pending_connect->msg);
-	signal = dbus_message_new_signal(path,
-			INPUT_DEVICE_INTERFACE, "Connected");
-	send_message_and_unref(idev->pending_connect->conn, signal);
+	dbus_connection_emit_signal(idev->pending_connect->conn, path,
+			INPUT_DEVICE_INTERFACE, "Connected",
+			DBUS_TYPE_INVALID); 
 
 	pending_connect_free(idev->pending_connect);
 	idev->pending_connect = NULL;
@@ -513,7 +513,6 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 			GIOCondition cond, struct device *idev)
 {
 	int ctl, isk, ret, err;
-	DBusMessage *signal;
 	const char *path;
 	socklen_t len;
 
@@ -577,9 +576,9 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 
 	/* Sending the Connected signal */
 	path = dbus_message_get_path(idev->pending_connect->msg);
-	signal = dbus_message_new_signal(path,
-			INPUT_DEVICE_INTERFACE, "Connected");
-	send_message_and_unref(idev->pending_connect->conn, signal);
+	dbus_connection_emit_signal(idev->pending_connect->conn, path,
+			INPUT_DEVICE_INTERFACE, "Connected" ,
+			DBUS_TYPE_INVALID); 
 
 	close (ctl);
 	goto cleanup;
@@ -814,7 +813,6 @@ static DBusHandlerResult device_disconnect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
-	DBusMessage *signal;
 	const char *path;
 
 	if (disconnect(idev, 0) < 0)
@@ -826,9 +824,11 @@ static DBusHandlerResult device_disconnect(DBusConnection *conn,
 
 	/* Sending the Disconnect signal */ 
 	path = dbus_message_get_path(msg);
-	signal = dbus_message_new_signal(path,
-			INPUT_DEVICE_INTERFACE, "Disconnected");
-	return send_message_and_unref(conn, signal);
+	dbus_connection_emit_signal(conn, path,
+			INPUT_DEVICE_INTERFACE, "Disconnected",
+			DBUS_TYPE_INVALID); 
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult device_is_connected(DBusConnection *conn,
@@ -954,8 +954,6 @@ static DBusSignalVTable device_signals[] = {
  */
 static int register_path(DBusConnection *conn, const char *path, struct device *idev)
 {
-	DBusMessage *msg;
-
 	if (!dbus_connection_create_object_path(conn, path,
 						idev, device_unregister)) {
 		error("Input device path registration failed");
@@ -972,16 +970,10 @@ static int register_path(DBusConnection *conn, const char *path, struct device *
 		return -1;
 	}
 
-	msg = dbus_message_new_signal(INPUT_PATH,
-			INPUT_MANAGER_INTERFACE, "DeviceCreated");
-	if (!msg)
-		return -ENOMEM;
-
-	dbus_message_append_args(msg,
+	dbus_connection_emit_signal(conn, INPUT_PATH,
+			INPUT_MANAGER_INTERFACE, "DeviceCreated",
 			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
-	send_message_and_unref(conn, msg);
+			DBUS_TYPE_INVALID); 
 
 	info("Created input device: %s", path);
 
@@ -1032,7 +1024,6 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 
 int input_device_unregister(DBusConnection *conn, const char *path)
 {
-	DBusMessage *msg;
 	struct device *idev;
 
 	if (!dbus_connection_get_object_user_data(conn,
@@ -1048,16 +1039,10 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 
 	dbus_connection_destroy_object_path(conn, path);
 
-	msg = dbus_message_new_signal(INPUT_PATH,
-			INPUT_MANAGER_INTERFACE, "DeviceRemoved");
-	if (!msg)
-		return -ENOMEM;
-
-	dbus_message_append_args(msg,
+	dbus_connection_emit_signal(conn, INPUT_PATH,
+			INPUT_MANAGER_INTERFACE, "DeviceRemoved" ,
 			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
-	send_message_and_unref(conn, msg);
+			DBUS_TYPE_INVALID); 
 
 	return 0;
 }
