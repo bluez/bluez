@@ -43,6 +43,7 @@
 #include <dbus/dbus.h>
 
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"
 #include "uinput.h"
@@ -922,42 +923,6 @@ static DBusHandlerResult device_get_vendor_id(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult device_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *iface, *member;
-
-	iface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
-
-	/* Accept messages from the input interface only */
-	if (strcmp(INPUT_DEVICE_INTERFACE, iface))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (strcmp(member, "Connect") == 0)
-		return device_connect(conn, msg, data);
-
-	if (strcmp(member, "Disconnect") == 0)
-		return device_disconnect(conn, msg, data);
-
-	if (strcmp(member, "IsConnected") == 0)
-		return device_is_connected(conn, msg, data);
-
-	if (strcmp(member, "GetAddress") == 0)
-		return device_get_address(conn, msg, data);
-
-	if (strcmp(member, "GetName") == 0)
-		return device_get_name(conn, msg, data);
-
-	if (strcmp(member, "GetProductId") == 0)
-		return device_get_product_id(conn, msg, data);
-
-	if (strcmp(member, "GetVendorId") == 0)
-		return device_get_vendor_id(conn, msg, data);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static void device_unregister(DBusConnection *conn, void *data)
 {
 	struct device *idev = data;
@@ -967,10 +932,21 @@ static void device_unregister(DBusConnection *conn, void *data)
 	device_free(idev);
 }
 
-/* Virtual table to handle device object path hierarchy */
-static const DBusObjectPathVTable device_table = {
-	.message_function = device_message,
-	.unregister_function = device_unregister,
+static DBusMethodVTable device_methods[] = {
+	{ "Connect",		device_connect,		"",	"" 	},
+	{ "Disconnect",		device_disconnect,	"",	"" 	},
+	{ "IsConnected",	device_is_connected,	"",	"b"	},
+	{ "GetAddress",		device_get_address,	"",	"s"	},
+	{ "GetName",		device_get_name,	"",	"s"	},
+	{ "GetProductId",	device_get_product_id,	"",	"q"	},
+	{ "GetVendorId",	device_get_vendor_id,	"",	"q"	},
+	{ NULL, NULL, NULL, NULL }
+};
+
+static DBusSignalVTable device_signals[] = {
+	{ "Connected",		""	},
+	{ "Disconnected",	""	},
+	{ NULL, NULL }
 };
 
 /*
@@ -980,10 +956,20 @@ static int register_path(DBusConnection *conn, const char *path, struct device *
 {
 	DBusMessage *msg;
 
-	if (!dbus_connection_register_object_path(conn, path,
-							&device_table, idev)) {
+	if (!dbus_connection_create_object_path(conn, path,
+						NULL, device_unregister)) {
 		error("Input device path registration failed");
 		return -EINVAL;
+	}
+
+	if (!dbus_connection_register_interface(conn, path,
+						INPUT_DEVICE_INTERFACE,
+						device_methods,
+						device_signals, NULL)) {
+		error("Failed to register %s interface to %s",
+				INPUT_DEVICE_INTERFACE, path);
+		dbus_connection_destroy_object_path(conn, path);
+		return -1;
 	}
 
 	msg = dbus_message_new_signal(INPUT_PATH,
@@ -1049,7 +1035,7 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 	DBusMessage *msg;
 	struct device *idev;
 
-	if (!dbus_connection_get_object_path_data(conn,
+	if (!dbus_connection_get_object_user_data(conn,
 				path, (void *) &idev) || !idev)
 		return -EINVAL;
 
@@ -1060,7 +1046,7 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 
 	del_stored_device_info(&idev->src, &idev->dst);
 
-	dbus_connection_unregister_object_path(conn, path);
+	dbus_connection_destroy_object_path(conn, path);
 
 	msg = dbus_message_new_signal(INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceRemoved");
@@ -1081,7 +1067,7 @@ int input_device_get_bdaddr(DBusConnection *conn, const char *path,
 {
 	struct device *idev;
 
-	if (!dbus_connection_get_object_path_data(conn, path,
+	if (!dbus_connection_get_object_user_data(conn, path,
 							(void *) &idev))
 		return -1;
 

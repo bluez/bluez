@@ -43,6 +43,7 @@
 #include <dbus/dbus.h>
 
 #include "dbus.h"
+#include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"
 
@@ -922,35 +923,6 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult manager_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *path, *iface, *member;
-
-	path = dbus_message_get_path(msg);
-	iface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
-
-	/* Catching fallback paths */
-	if (strcmp(INPUT_PATH, path) != 0)
-		return err_unknown_device(conn, msg);
-
-	/* Accept messages from the input manager interface only */
-	if (strcmp(INPUT_MANAGER_INTERFACE, iface))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (strcmp(member, "ListDevices") == 0)
-		return list_devices(conn, msg, data);
-
-	if (strcmp(member, "CreateDevice") == 0)
-		return create_device(conn, msg, data);
-
-	if (strcmp(member, "RemoveDevice") == 0)
-		return remove_device(conn, msg, data);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static void manager_unregister(DBusConnection *conn, void *data)
 {
 	info("Unregistered manager path");
@@ -959,12 +931,6 @@ static void manager_unregister(DBusConnection *conn, void *data)
 
 	g_slist_free(device_paths);
 }
-
-/* Virtual table to handle manager object path hierarchy */
-static const DBusObjectPathVTable manager_table = {
-	.message_function = manager_message,
-	.unregister_function = manager_unregister,
-};
 
 /*
  * Stored inputs registration functions
@@ -1022,18 +988,40 @@ static void register_stored_inputs(void)
 	closedir(dir);
 }
 
+static DBusMethodVTable manager_methods[] = {
+	{ "ListDevices",	list_devices,	"",	"as"	},
+	{ "CreateDevice",	create_device,	"s",	"s"	},
+	{ "RemoveDevice",	remove_device,	"s",	""	},
+	{ NULL, NULL, NULL, NULL },
+};
+
+static DBusSignalVTable manager_signals[] = {
+	{ "DeviceCreated",	"s"	},
+	{ "DeviceRemoved",	"s"	},
+	{ NULL, NULL }
+};
+
 int input_init(DBusConnection *conn)
 {
-	connection = dbus_connection_ref(conn);
+	dbus_connection_set_exit_on_disconnect(conn, TRUE);
 
-	dbus_connection_set_exit_on_disconnect(connection, TRUE);
-
-	/* Fallback to catch invalid device path */
-	if (!dbus_connection_register_fallback(connection, INPUT_PATH,
-						&manager_table, NULL)) {
+	if (!dbus_connection_create_object_path(conn, INPUT_PATH,
+						NULL, manager_unregister)) {
 		error("D-Bus failed to register %s path", INPUT_PATH);
 		return -1;
 	}
+
+	if (!dbus_connection_register_interface(conn, INPUT_PATH,
+						INPUT_MANAGER_INTERFACE,
+						manager_methods,
+						manager_signals, NULL)) {
+		error("Failed to register %s interface to %s",
+				INPUT_MANAGER_INTERFACE, INPUT_PATH);
+		dbus_connection_destroy_object_path(connection, INPUT_PATH);
+		return -1;
+	}
+
+	connection = dbus_connection_ref(conn);
 
 	info("Registered input manager path:%s", INPUT_PATH);
 
@@ -1047,7 +1035,7 @@ int input_init(DBusConnection *conn)
 
 void input_exit(void)
 {
-	dbus_connection_unregister_object_path(connection, INPUT_PATH);
+	dbus_connection_destroy_object_path(connection, INPUT_PATH);
 
 	server_stop();
 
