@@ -71,7 +71,7 @@ struct rfcomm_node {
 struct pending_connect {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
-	char		*addr;		/* Destination address */
+	char		*bda;		/* Destination address */
 	char		*adapter_path;	/* Adapter D-Bus path */
 	bdaddr_t	src;
 	uint8_t		channel;
@@ -109,8 +109,8 @@ static void pending_connect_free(struct pending_connect *pc)
 		dbus_connection_unref(pc->conn);
 	if (pc->msg)
 		dbus_message_unref(pc->msg);
-	if (pc->addr)
-		g_free(pc->addr);
+	if (pc->bda)
+		g_free(pc->bda);
 	if (pc->adapter_path)
 		g_free(pc->adapter_path);
 	g_free(pc);
@@ -151,7 +151,7 @@ static struct pending_connect *find_pending_connect_by_channel(const char *bda,
 
 	for (l = pending_connects; l != NULL; l = l->next) {
 		struct pending_connect *pending = l->data;
-		if (!strcasecmp(bda, pending->addr) &&
+		if (!strcasecmp(bda, pending->bda) &&
 				pending->channel == ch)
 			return pending;
 	}
@@ -351,8 +351,8 @@ static gboolean rfcomm_connect_cb_continue(struct pending_connect *pc)
 		return TRUE;
 	}
 
-	add_rfcomm_node(g_io_channel_unix_new(fd),
-			pc->id, node_name, pc->conn, owner);
+	add_rfcomm_node(g_io_channel_unix_new(fd), pc->id,
+				node_name, pc->conn, owner);
 
 	/* Reply to the requestor */
 	reply = dbus_message_new_method_return(pc->msg);
@@ -404,7 +404,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	req.dev_id = -1;
 	req.flags = (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP);
 	bacpy(&req.src, &pc->src);
-	str2ba(pc->addr, &req.dst);
+	str2ba(pc->bda, &req.dst);
 	req.channel = pc->channel;
 
 	pc->id = ioctl(sk, RFCOMMCREATEDEV, &req);
@@ -426,7 +426,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	}
 
 	add_rfcomm_node(g_io_channel_unix_new(fd), pc->id, node_name,
-			pc->conn, dbus_message_get_sender(pc->msg));
+				pc->conn, dbus_message_get_sender(pc->msg));
 
 	/* Reply to the requestor */
 	reply = dbus_message_new_method_return(pc->msg);
@@ -469,7 +469,7 @@ static int rfcomm_connect(struct pending_connect *pc)
 	g_io_channel_set_close_on_unref(io, TRUE);
 
 	addr.rc_family	= AF_BLUETOOTH;
-	str2ba(pc->addr, &addr.rc_bdaddr);
+	str2ba(pc->bda, &addr.rc_bdaddr);
 	addr.rc_channel	= pc->channel;
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
@@ -554,7 +554,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	pending = find_pending_connect_by_channel(pc->addr, ch);
+	pending = find_pending_connect_by_channel(pc->bda, ch);
 	if (pending) {
 		err_connection_in_progress(pc->conn, pc->msg);
 		goto fail;
@@ -589,7 +589,7 @@ static int get_record(struct pending_connect *pc, uint32_t handle,
 		return -1;
 
 	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &pc->addr,
+			DBUS_TYPE_STRING, &pc->bda,
 			DBUS_TYPE_UINT32, &handle,
 			DBUS_TYPE_INVALID);
 
@@ -665,7 +665,7 @@ static int get_handles(struct pending_connect *pc, const char *uuid,
 		return -1;
 
 	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &pc->addr,
+			DBUS_TYPE_STRING, &pc->bda,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
@@ -684,21 +684,19 @@ static int get_handles(struct pending_connect *pc, const char *uuid,
 static DBusHandlerResult connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct pending_connect *pending, *pc;
 	DBusError derr;
 	bdaddr_t src;
-	struct pending_connect *pending, *pc;
-	const char *addr, *pattern;
+	const char *bda, *pattern;
 	char *endptr;
 	long val;
 	int dev_id, err;
 	uint16_t cls;
 	char tmp[37];
 
-	/* FIXME: Check if it already exist or if there is pending connect */
-
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_STRING, &addr,
+				DBUS_TYPE_STRING, &bda,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID)) {
 		err_invalid_args(conn, msg, derr.message);
@@ -714,7 +712,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	bacpy(&pc->src, &src);
 	pc->conn = dbus_connection_ref(conn);
 	pc->msg = dbus_message_ref(msg);
-	pc->addr = g_strdup(addr);
+	pc->bda = g_strdup(bda);
 	pc->adapter_path = g_malloc0(16);
 	snprintf(pc->adapter_path, 16, "/org/bluez/hci%d", dev_id);
 
@@ -787,9 +785,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 				"invalid RFCOMM channel");
 	}
 
-	/* FIXME: Check if it is already connected */
-
-	pending = find_pending_connect_by_channel(addr, val);
+	pending = find_pending_connect_by_channel(bda, val);
 	if (pending) {
 		pending_connect_free(pc);
 		return err_connection_in_progress(conn, msg);
@@ -886,6 +882,13 @@ static void manager_unregister(DBusConnection *conn, void *data)
 				(GFunc) rfcomm_node_free, NULL);
 		g_slist_free(connected_nodes);
 		connected_nodes = NULL;
+	}
+
+	if (pending_connects) {
+		g_slist_foreach(pending_connects,
+				(GFunc) pending_connect_free, NULL);
+		g_slist_free(pending_connects);
+		pending_connects = NULL;
 	}
 }
 
