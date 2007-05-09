@@ -37,6 +37,8 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 
 DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data, sdp_format_t format);
 
+DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn, DBusMessage *msg, void *data);
+
 uint16_t sdp_str2svclass(const char *str);
 
 typedef void get_record_cb_t(sdp_record_t *rec, void *data, int err);

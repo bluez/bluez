@@ -189,36 +189,52 @@ static int get_bdaddrs(int sock, bdaddr_t *sba, bdaddr_t *dba)
 	return 0;
 }
 
-static sdp_session_t *get_sdp_session(bdaddr_t *src, bdaddr_t *dst)
+static struct cached_session *get_cached_session(bdaddr_t *src, bdaddr_t *dst)
 {
 	GSList *l;
 
 	for (l = cached_sessions; l != NULL; l = l->next) {
 		struct cached_session *s = l->data;
-		sdp_session_t *session = s->session;
-		int sock = sdp_get_socket(session);
+		int sock = sdp_get_socket(s->session);
 		bdaddr_t sba, dba;
 
 		if (get_bdaddrs(sock, &sba, &dba) < 0)
 			continue;
 
-		if (bacmp(&sba, src) || bacmp(&dba, dst))
+		if (bacmp(src, BDADDR_ANY) && bacmp(&sba, src))
+			continue;
+
+		if (bacmp(&dba, dst))
 			continue;
 
 		debug("found matching session, removing from list");
 
 		cached_sessions = g_slist_remove(cached_sessions, s);
 
-		g_source_remove(s->timeout_id);
-		g_source_remove(s->io_id);
-		g_free(s);
-
-		return session;
+		return s;
 	}
 
-	debug("no matching session found. creating a new one");
+	return NULL;
+}
 
-	return sdp_connect(src, dst, SDP_NON_BLOCKING);
+static sdp_session_t *get_sdp_session(bdaddr_t *src, bdaddr_t *dst)
+{
+	struct cached_session *s;
+	sdp_session_t *session;
+
+	s = get_cached_session(src, dst);
+	if (!s) {
+		debug("no matching session found. creating a new one");
+		return sdp_connect(src, dst, SDP_NON_BLOCKING);
+	}
+
+	session = s->session;
+
+	g_source_remove(s->timeout_id);
+	g_source_remove(s->io_id);
+	g_free(s);
+
+	return session;
 }
 
 static void append_and_grow_string(void *data, const char *str)
@@ -955,6 +971,35 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct cached_session *s;
+	const char *address;
+	DBusMessage *reply;
+	bdaddr_t dba;
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	str2ba(address, &dba);
+
+	while ((s = get_cached_session(BDADDR_ANY, &dba))) {
+		sdp_close(s->session);
+		g_source_remove(s->timeout_id);
+		g_source_remove(s->io_id);
+		g_free(s);
+	}
+
+	return send_message_and_unref(conn, reply);
 }
 
 /*
