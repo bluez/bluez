@@ -961,6 +961,14 @@ Methods		dict GetInfo()
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.Failed
 
+		void FinishRemoteServiceTransaction(string address)
+
+			This method will finish all SDP transaction for that
+			given address. In general this call is not needed,
+			but in cases of resources restricted devices it
+			is useful to call this to finish the SDP transaction
+			before proceeded with profile specific connections.
+
 		array{string} ListRemoteDevices()
 
 			List addresses of all known remote devices (seen, used or bonded).
