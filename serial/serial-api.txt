@@ -72,11 +72,11 @@ Port hierarchy (experimental)
 Interface	org.bluez.serial.Port
 Object path	/org/bluez/serial/port*
 
-Methods		string GetAddress()
+Methods		string GetAddress() [experimental]
 
 			Returns the Bluetooth address of the ending point.
 
-		string Connect()
+		string Connect() [experimental]
 
 			Connects to remote device associated to the port
 			object.
@@ -84,7 +84,7 @@ Methods		string GetAddress()
 			Possible errors:org.bluez.serial.Error.ConnectionAttemptFailed
 					org.bluez.serial.Error.Failed
 
-		void Disconnect()
+		void Disconnect() [experimental]
 
 			Disconnects from remote device.
 
