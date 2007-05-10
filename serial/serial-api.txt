@@ -36,14 +36,26 @@ Methods		string CreatePort(string address, string pattern) [experimental]
 			remote device and then creates a RFCOMM TTY
 			device for it. The RFCOMM TTY device is returned.
 
+			Possible errors:org.bluez.serial.Error.InvalidArguments
+					org.bluez.serial.Error.ConnectionInProgress
+					org.bluez.serial.Error.NotSupported
+					org.bluez.serial.Error.ConnectionAttemptFailed
+
 		void CancelConnectService(string address, string pattern)
 
 			Cancel a previous ConnectService method call.
+
+			Possible errors:org.bluez.serial.Error.InvalidArguments
+					org.bluez.serial.Error.ConnectionNotInProgress
 
 		void DisconnectService(string device)
 
 			Disconnect a RFCOMM TTY device that has been
 			created via the ConnectService method.
+
+			Possible errors:org.bluez.serial.Error.InvalidArguments
+					org.bluez.serial.Error.NotAuthorized
+					org.bluez.serial.Error.Failed
 
 Signals		void PortCreated(string path) [experimental]
 
