@@ -53,6 +53,7 @@ Signals		void PortCreated(string path) [experimental]
 
 		void ServiceDisconnected(string device)
 
+
 Port hierarchy (experimental)
 =============================
 
@@ -60,11 +61,13 @@ Interface	org.bluez.serial.Port
 Object path	/org/bluez/serial/port*
 
 Methods		string GetAddress()
+
 			Returns the Bluetooth address of the ending point.
 
 		string Connect()
 
-			Connects to remote device associated to the port object.
+			Connects to remote device associated to the port
+			object.
 
 			Possible errors:org.bluez.serial.Error.ConnectionAttemptFailed
 					org.bluez.serial.Error.Failed

@@ -12,7 +12,7 @@ Object path	/org/bluez/network
 
 Methods		string CreateServer(string uuid)
 
-			Creates a network server object(GN or NAP).
+			Creates a network server object (GN or NAP).
 
 			Possible errors:org.bluez.network.Error.AlreadyExists
 					org.bluez.network.Error.NotSupported
@@ -74,6 +74,7 @@ Signals
 
 		void ConnectionRemoved(string path)
 
+
 Network Server hierarchy (experimental)
 =======================================
 
@@ -82,7 +83,8 @@ Object path	/org/bluez/network/server*
 
 Methods		string GetUUID()
 
-			Returns the uuid 128 string representation of the server.
+			Returns the UUID-128 string representation of
+			the server.
 
 		void Enable()
 
@@ -126,11 +128,10 @@ Methods		string GetUUID()
 			Returns the server properties.
 
 
-Signals
-
-		void Enabled()
+Signals		void Enabled()
 
 		void Disabled()
+
 
 Network Connection hierarchy (experimental)
 ===========================================
@@ -167,7 +168,8 @@ Methods		string GetAddress()
 
 		string Connect()
 
-			Connects to host and return the network interface created.
+			Connects to host and return the network interface
+			created.
 
 			Possible errors:org.bluez.network.Error.ConnectionAttemptFailed
 					org.bluez.network.Error.Failed
@@ -186,8 +188,6 @@ Methods		string GetAddress()
 
 			Returns the connection properties.
 
-Signals
-
-		void Connected()
+Signals		void Connected()
 
 		void Disconnected()
