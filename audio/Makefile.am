@@ -14,7 +14,6 @@ bluetoothd_service_audio_SOURCES = main.c manager.h manager.c headset.h headset.
 
 bluetoothd_service_audio_LDADD = $(top_builddir)/common/libhelper.a \
 				@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
-endif
 
 if ALSA
 alsadir = $(libdir)/alsa-lib
@@ -28,6 +27,7 @@ libasound_module_pcm_bluetooth_la_LIBADD = @SBC_LIBS@ @ALSA_LIBS@
 libasound_module_ctl_bluetooth_la_SOURCES = ctl_bluetooth.c ipc.h
 libasound_module_ctl_bluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic
 libasound_module_ctl_bluetooth_la_LIBADD = @ALSA_LIBS@ 
+endif
 endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @ALSA_CFLAGS@ @SBC_CFLAGS@
