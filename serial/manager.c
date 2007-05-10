@@ -886,7 +886,7 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 	err = rfcomm_release(node->id);
 	if (err < 0) {
 		dbus_message_unref(reply);
-		return err_failed(conn, msg, strerror(err));
+		return err_failed(conn, msg, strerror(-err));
 	}
 
 	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
