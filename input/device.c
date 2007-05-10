@@ -995,7 +995,7 @@ int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 
 	err = register_path(conn, path, idev);
 
-	if (!err && *ppath)
+	if (!err && ppath)
 		*ppath = path;
 
 	return err;
@@ -1016,7 +1016,7 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 
 	err = register_path(conn, path, idev);
 
-	if (!err && *ppath)
+	if (!err && ppath)
 		*ppath = path;
 
 	return err;
