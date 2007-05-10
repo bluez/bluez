@@ -1,3 +1,8 @@
+ver 3.10:
+	Add version code for Bluetooth 2.1 specification.
+	Add ESCO_LINK connection type constant.
+	Export sdp_uuid32_to_uuid128() function.
+
 ver 3.9:
 	Update copyright information.
 
