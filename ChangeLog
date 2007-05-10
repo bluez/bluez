@@ -1,3 +1,14 @@
+ver 3.10:
+	Add initial version of network service.
+	Add initial version of serial service.
+	Add initial version of input service.
+	Add initial version of audio service.
+	Add authorization framework.
+	Add integer based SBC library.
+
+	Note:
+	This version needs at least bluez-libs-3.10
+
 ver 3.9:
 	Add RemoteDeviceDisconnectRequested signal.
 	Add updated service framework.
