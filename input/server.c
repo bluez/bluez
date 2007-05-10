@@ -108,7 +108,8 @@ static void create_device(struct session_data *session)
 	}
 
 	if (req.subclass & 0x40) {
-		if (encrypt_link(&session->src, &session->dst) < 0) {
+		err = encrypt_link(&session->src, &session->dst);
+		if (err < 0 && err != -ENOKEY) {
 			if (req.rd_data)
 				free(req.rd_data);
 			goto cleanup;

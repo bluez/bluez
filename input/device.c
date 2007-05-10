@@ -557,7 +557,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 	if (idev->hidp.subclass & 0x40) {
 		int ret;
 		ret = encrypt_link(&idev->src, &idev->dst);
-		if (ret < 0) {
+		if (ret < 0 && ret != -ENOKEY) {
 			err = -ret;
 			close(ctl);
 			goto failed;
