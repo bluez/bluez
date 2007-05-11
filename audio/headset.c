@@ -588,6 +588,7 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 {
 	int ret, sk, err, flags;
 	socklen_t len;
+	DBusMessage *reply;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -621,13 +622,9 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	g_io_add_watch(hs->sco, flags, sco_input_to_audio_output_cb, hs);
 
-	if (hs->pending_connect->msg) {
-		DBusMessage *reply;
-
-		reply = dbus_message_new_method_return(hs->pending_connect->msg);
-		if (reply)
-			send_message_and_unref(connection, reply);
-	}
+	reply = dbus_message_new_method_return(hs->pending_connect->msg);
+	if (reply)
+		send_message_and_unref(connection, reply);
 
 	/* FIXME: do we allow both? pull & push model at the same time on sco && audio_input? */
 	if (hs->audio_input)
@@ -645,13 +642,11 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 
 failed:
-	if (hs->pending_connect) {
-		err_connect_failed(connection, hs->pending_connect->msg, err);
-		if (hs->pending_connect->io)
-			g_io_channel_close(hs->pending_connect->io);
-		pending_connect_free(hs->pending_connect);
-		hs->pending_connect = NULL;
-	}
+	err_connect_failed(connection, hs->pending_connect->msg, err);
+	if (hs->pending_connect->io)
+		g_io_channel_close(hs->pending_connect->io);
+	pending_connect_free(hs->pending_connect);
+	hs->pending_connect = NULL;
 
 	assert(hs->rfcomm);
 	hs->state = HEADSET_STATE_CONNECTED;
@@ -701,29 +696,25 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond, struct he
 	g_io_add_watch(chan, G_IO_IN | G_IO_ERR | G_IO_HUP| G_IO_NVAL,
 			(GIOFunc) rfcomm_io_cb, hs);
 
-	if (hs->pending_connect) {
-		if (hs->pending_connect->msg) {
-			DBusMessage *reply;
+	if (hs->pending_connect->msg) {
+		DBusMessage *reply;
 
-			reply = dbus_message_new_method_return(hs->pending_connect->msg);
-			if (reply)
-				send_message_and_unref(connection, reply);
-		}
-
-		pending_connect_free(hs->pending_connect);
-		hs->pending_connect = NULL;
+		reply = dbus_message_new_method_return(hs->pending_connect->msg);
+		if (reply)
+			send_message_and_unref(connection, reply);
 	}
+
+	pending_connect_free(hs->pending_connect);
+	hs->pending_connect = NULL;
 
 	return FALSE;
 
 failed:
-	if (hs->pending_connect) {
-		err_connect_failed(connection, hs->pending_connect->msg, err);
-		if (hs->pending_connect->io)
-			g_io_channel_close(hs->pending_connect->io);
-		pending_connect_free(hs->pending_connect);
-		hs->pending_connect = NULL;
-	}
+	err_connect_failed(connection, hs->pending_connect->msg, err);
+	if (hs->pending_connect->io)
+		g_io_channel_close(hs->pending_connect->io);
+	pending_connect_free(hs->pending_connect);
+	hs->pending_connect = NULL;
 
 	hs->state = HEADSET_STATE_DISCONNECTED;
 
