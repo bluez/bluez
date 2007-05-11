@@ -631,7 +631,8 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	/* FIXME: do we allow both? pull & push model at the same time on sco && audio_input? */
 	if (hs->audio_input)
-		g_io_add_watch(hs->audio_input, G_IO_IN, audio_input_to_sco_cb, hs);
+		g_io_add_watch(hs->audio_input, G_IO_IN | G_IO_NVAL,
+				audio_input_to_sco_cb, hs);
 
 	pending_connect_free(hs->pending_connect);
 	hs->pending_connect = NULL;
@@ -788,7 +789,8 @@ static int rfcomm_connect(struct headset *hs, int *err)
 
 		debug("Connect in progress");
 
-		g_io_add_watch(hs->pending_connect->io, G_IO_OUT, (GIOFunc) rfcomm_connect_cb, hs);
+		g_io_add_watch(hs->pending_connect->io, G_IO_OUT | G_IO_NVAL,
+				(GIOFunc) rfcomm_connect_cb, hs);
 	} else {
 		debug("Connect succeeded with first try");
 		rfcomm_connect_cb(hs->pending_connect->io, G_IO_OUT, hs);
@@ -1555,7 +1557,8 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 
 		debug("Connect in progress");
 
-		g_io_add_watch(c->io, G_IO_OUT, (GIOFunc) sco_connect_cb, hs);
+		g_io_add_watch(c->io, G_IO_OUT | G_IO_NVAL,
+				(GIOFunc) sco_connect_cb, hs);
 	} else {
 		debug("Connect succeeded with first try");
 		sco_connect_cb(c->io, G_IO_OUT, hs);
