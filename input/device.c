@@ -850,6 +850,27 @@ static DBusHandlerResult device_is_connected(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult device_get_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct device *idev = data;
+	DBusMessage *reply;
+	char addr[18];
+	const char *paddr = addr;
+
+	ba2str(&idev->src, addr);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &paddr,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult device_get_address(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -936,6 +957,7 @@ static DBusMethodVTable device_methods[] = {
 	{ "Connect",		device_connect,		"",	"" 	},
 	{ "Disconnect",		device_disconnect,	"",	"" 	},
 	{ "IsConnected",	device_is_connected,	"",	"b"	},
+	{ "GetAdapter",		device_get_adapter,	"",	"s"	},
 	{ "GetAddress",		device_get_address,	"",	"s"	},
 	{ "GetName",		device_get_name,	"",	"s"	},
 	{ "GetProductId",	device_get_product_id,	"",	"q"	},
