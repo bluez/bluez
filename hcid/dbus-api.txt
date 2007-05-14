@@ -215,14 +215,14 @@ Service		org.bluez
 Interface	org.bluez.Database
 Object path	/org/bluez or /org/bluez/{hci0,hci1,...}
 
-Methods		void RegisterService(string identifier, string name, string description) [experimental]
+Methods		void RegisterService(string identifier, string name, string description)
 
 			This method registers a new service specified by
 			its unique identifier. This is only needed for
 			services that are not started through the
 			Bluetooth daemon.
 
-		void UnregisterService(string identifier) [experimental]
+		void UnregisterService(string identifier)
 
 			This method unregisters a service specified by
 			its unique identifier.
@@ -263,7 +263,7 @@ Methods		void RegisterService(string identifier, string name, string description
 					 org.bluez.Error.DoesNotExist
 					 org.bluez.Error.Failed
 
-		void RequestAuthorization(string address, string uuid) [experimental]
+		void RequestAuthorization(string address, string uuid)
 
 			This method gets called when a service wants to check
 			if a remote device is authorized to perform some
@@ -275,7 +275,7 @@ Methods		void RegisterService(string identifier, string name, string description
 			profile requesting the authorization. This parameter
 			can also be left blank.
 
-		void CancelAuthorizationRequest(string address, string uuid) [experimental]
+		void CancelAuthorizationRequest(string address, string uuid)
 
 			This method cancels an authorization process requested
 			by a previous call to RequestAuthorization(). The
@@ -818,24 +818,25 @@ Methods		dict GetInfo()
 			Possible errors: org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.Failed
 
-		void SetTrusted(string address) [experimental]
+		void SetTrusted(string address)
 
-			Marks the user as trusted.
+			Marks the remote device as trusted. Authorization
+			request will automatically succeed.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.AlreadyExists
 
-		boolean IsTrusted(string address) [experimental]
+		boolean IsTrusted(string address)
 
 			Returns true if the user is trusted or false otherwise.
-			The address parameter must match one of the
-			current users of the service.
+			The address parameter must match one of the remote
+			devices of the service.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 
-		void RemoveTrust(string address) [experimental]
+		void RemoveTrust(string address)
 
-			Marks the user as not trusted.
+			Marks the remote device as not trusted.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.DoesNotExist
@@ -1145,7 +1146,8 @@ Methods		dict GetInfo()
 			Returns true if the service has been started and
 			is currently active. Otherwise, it returns false.
 
-		boolean IsExternal() [experimental]
+		boolean IsExternal()
+
 			Returns true if the service was registered using the
 			Database.RegisterService method instead of a .service
 			file. The Start and Stop methods are not applicable to
@@ -1266,7 +1268,7 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 
 			Possible errors: org.bluez.Error.DoesNotExist
 
-		void RegisterDefaultAuthorizationAgent(string path) [experimental]
+		void RegisterDefaultAuthorizationAgent(string path)
 
 			This registers the default authorization agent. It can
 			register an authorization agent for all adapters or
@@ -1277,7 +1279,7 @@ Methods		void RegisterDefaultPasskeyAgent(string path)
 			authorization agent that will be called when an
 			authorization request needs to be answered.
 
-		void UnregisterDefaultAuthorizationAgent(string path) [experimental]
+		void UnregisterDefaultAuthorizationAgent(string path)
 
 			This unregisters a default authorization agent that has
 			been previously registered. The path parameter must

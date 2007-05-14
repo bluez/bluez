@@ -561,9 +561,6 @@ static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *path;
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
 	if (default_auth_agent)
 		return error_auth_agent_already_exists(conn, msg);
 
@@ -604,9 +601,6 @@ static DBusHandlerResult unregister_default_auth_agent(DBusConnection *conn,
 {
 	const char *path, *name;
 	DBusMessage *reply;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (!default_auth_agent)
 		return error_auth_agent_does_not_exist(conn, msg);

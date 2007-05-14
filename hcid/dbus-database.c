@@ -329,9 +329,6 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *sender, *ident, *name, *desc;
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &ident,
 			DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &desc,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -355,9 +352,6 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *sender, *ident;
 	struct service *service;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &ident,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -392,9 +386,6 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 	int adapter_id;
 
 	debug("RequestAuthorization");
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID) == FALSE)
@@ -435,9 +426,6 @@ static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 {
 	const char *sender, *address, *path;
 	struct service *service;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID) == FALSE)

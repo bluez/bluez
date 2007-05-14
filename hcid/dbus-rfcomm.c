@@ -1044,9 +1044,6 @@ static DBusMethodVTable rfcomm_methods[] = {
 
 dbus_bool_t rfcomm_init(DBusConnection *conn, const char *path)
 {
-	if (!hcid_dbus_use_experimental())
-		return TRUE;
-
 	if (rfcomm_ctl < 0) {
 		rfcomm_ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
 		if (rfcomm_ctl < 0)
