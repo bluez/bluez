@@ -14,16 +14,16 @@ Methods		string CreateServer(string uuid)
 
 			Creates a network server object (GN or NAP).
 
-			Possible errors:org.bluez.network.Error.AlreadyExists
-					org.bluez.network.Error.NotSupported
-					org.bluez.network.Error.ConnectionAttemptFailed
-					org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.AlreadyExists
+			                 org.bluez.network.Error.NotSupported
+			                 org.bluez.network.Error.ConnectionAttemptFailed
+			                 org.bluez.network.Error.Failed
 
 		void RemoveServer(string path)
 			Removes the network server object for given path.
 
-			Possible errors:org.bluez.network.Error.DoesNotExist
-					org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.DoesNotExist
+			                 org.bluez.network.Error.Failed
 
 		array{string} ListServers()
 
@@ -34,17 +34,17 @@ Methods		string CreateServer(string uuid)
 
 			Returns server path.
 
-			Possible errors:org.bluez.network.Error.DoesNotExist
-					org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.DoesNotExist
+			                 org.bluez.network.Error.Failed
 
 		string CreateConnection(string address, string uuid)
 
 			Creates a network connection object(NAP or GN).
 
-			Possible errors:org.bluez.network.Error.AlreadyExists
-					org.bluez.network.Error.NotSupported
-					org.bluez.network.Error.ConnectionAttemptFailed
-					org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.AlreadyExists
+			                 org.bluez.network.Error.NotSupported
+			                 org.bluez.network.Error.ConnectionAttemptFailed
+			                 org.bluez.network.Error.Failed
 
 		void RemoveConnection(string path)
 
@@ -90,14 +90,14 @@ Methods		string GetUUID()
 
 			Enable server and updates service record.
 
-			Possible errors:org.bluez.network.Error.AlreadyExists
-					org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.AlreadyExists
+			                 org.bluez.network.Error.Failed
 
 		void Disable()
 
 			Disable server and remove service record.
 
-			Possible errors:org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.Failed
 
 		void SetName(string name)
 
@@ -139,7 +139,11 @@ Network Connection hierarchy (experimental)
 Interface	org.bluez.network.Connection
 Object path	/org/bluez/network/connection*
 
-Methods		string GetAddress()
+Methods		string GetAdapter()
+
+			Returns the Bluetooth address of the adapter.
+
+		string GetAddress()
 
 			Returns the Bluetooth address of the ending point.
 
@@ -152,33 +156,33 @@ Methods		string GetAddress()
 
 			Returns the string representation of connected host.
 
-			Possible errors:org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.Failed
 
 		string GetDescription()
 
 			Returns the string description of connected host.
 
-			Possible errors:org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.Failed
 
 		string GetInterface()
 
 			Returns the string network interface.
 
-			Possible errors:org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.Failed
 
 		string Connect()
 
 			Connects to host and return the network interface
 			created.
 
-			Possible errors:org.bluez.network.Error.ConnectionAttemptFailed
-					org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.ConnectionAttemptFailed
+			                 org.bluez.network.Error.Failed
 
 		void Disconnect()
 
 			Disconnects to host.
 
-			Possible errors:org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.Failed
 
 		bool IsConnected()
 

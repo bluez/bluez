@@ -313,15 +313,36 @@ static int l2cap_connect(struct network_conn *nc)
 	return 0;
 }
 
+static DBusHandlerResult get_adapter(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	struct network_conn *nc = data;
+	DBusMessage *reply;
+	char addr[18];
+	const char *paddr = addr;
+
+	ba2str(&nc->src, addr);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &paddr,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult get_address(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
 	struct network_conn *nc = data;
 	DBusMessage *reply;
-	char raddr[18];
-	const char *paddr = raddr;
+	char addr[18];
+	const char *paddr = addr;
 
-	ba2str(&nc->dst, raddr);
+	ba2str(&nc->dst, addr);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -570,6 +591,7 @@ static void connection_unregister(DBusConnection *conn, void *data)
 }
 
 static DBusMethodVTable connection_methods[] = {
+	{ "GetAdapter",		get_adapter,		"",	"s"	},
 	{ "GetAddress",		get_address,		"",	"s"	},
 	{ "GetUUID",		get_uuid,		"",	"s"	},
 	{ "GetName",		get_name,		"",	"s"	},
@@ -698,4 +720,3 @@ gboolean connection_has_pending(DBusConnection *conn, const char *path)
 
 	return (nc->state == CONNECTING);
 }
-
