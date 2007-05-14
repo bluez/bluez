@@ -19,6 +19,7 @@ fi
 		--enable-input \
 		--enable-audio \
 		--enable-echo \
+		--disable-manpages \
 		--disable-configfiles \
 		--disable-initscripts \
 		--disable-pcmciarules \

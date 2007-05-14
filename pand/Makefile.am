@@ -12,7 +12,9 @@ AM_CFLAGS = @BLUEZ_CFLAGS@
 INCLUDES = -I$(top_srcdir)/common
 
 if PAND
+if MANPAGES
 man_MANS = pand.1
+endif
 endif
 
 EXTRA_DIST = pand.1

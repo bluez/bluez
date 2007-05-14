@@ -170,6 +170,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	pand_enable=yes
 	test_enable=no
 	cups_enable=no
+	manpages_enable=yes
 	configfiles_enable=yes
 	initscripts_enable=no
 	pcmciarules_enable=no
@@ -200,6 +201,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		pand_enalbe=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
+		manpages_enable=${enableval}
 		configfiles_enable=${enableval}
 		initscripts_enable=${enableval}
 		pcmciarules_enable=${enableval}
@@ -285,6 +287,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		cups_enable=${enableval}
 	])
 
+	AC_ARG_ENABLE(manpages, AC_HELP_STRING([--enable-manpages], [install Bluetooth manual pages]), [
+		manpages_enable=${enableval}
+	])
+
 	AC_ARG_ENABLE(configfiles, AC_HELP_STRING([--enable-configfiles], [install Bluetooth config files]), [
 		configfiles_enable=${enableval}
 	])
@@ -365,6 +371,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
+	AM_CONDITIONAL(MANPAGES, test "${manpages_enable}" = "yes")
 	AM_CONDITIONAL(CONFIGFILES, test "${configfiles_enable}" = "yes")
 	AM_CONDITIONAL(INITSCRIPTS, test "${initscripts_enable}" = "yes")
 	AM_CONDITIONAL(PCMCIARULES, test "${pcmciarules_enable}" = "yes")

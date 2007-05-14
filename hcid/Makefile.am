@@ -1,4 +1,5 @@
 
+if HCID
 if CONFIGFILES
 confdir = $(sysconfdir)/bluetooth
 
@@ -7,6 +8,7 @@ conf_DATA = hcid.conf
 statedir = $(localstatedir)/lib/bluetooth
 
 state_DATA =
+endif
 endif
 
 noinst_LIBRARIES = libhciserver.a
@@ -42,7 +44,9 @@ INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 BUILT_SOURCES = parser.h
 
 if HCID
+if MANPAGES
 man_MANS = hcid.8 hcid.conf.5
+endif
 endif
 
 AM_YFLAGS = -d

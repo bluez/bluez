@@ -12,7 +12,9 @@ AM_CFLAGS = @BLUEZ_CFLAGS@
 INCLUDES = -I$(top_srcdir)/common
 
 if HIDD
+if MANPAGES
 man_MANS = hidd.1
+endif
 endif
 
 EXTRA_DIST = hidd.1 fakehid.txt

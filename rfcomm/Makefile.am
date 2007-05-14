@@ -16,12 +16,14 @@ INCLUDES = -I$(top_srcdir)/common
 
 BUILT_SOURCES = parser.h
 
+if MANPAGES
 man_MANS = rfcomm.1
+endif
 
 AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = $(man_MANS) rfcomm.conf
+EXTRA_DIST = rfcomm.1 rfcomm.conf
 
 MAINTAINERCLEANFILES = Makefile.in
