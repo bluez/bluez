@@ -176,9 +176,11 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 			(GIOFunc) bnep_watchdog_cb, nc);
 	return FALSE;
 failed:
-	nc->state = DISCONNECTED;
-	err_connection_failed(nc->conn, nc->msg, "bnep failed");
-	g_io_channel_close(chan);
+	if (nc->state != DISCONNECTED) {
+		nc->state = DISCONNECTED;
+		err_connection_failed(nc->conn, nc->msg, "bnep failed");
+		g_io_channel_close(chan);
+	}
 	return FALSE;
 }
 
@@ -465,7 +467,7 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 	}
 
 	nc->msg = dbus_message_ref(msg);
-	if(l2cap_connect(nc)) {
+	if (l2cap_connect(nc) < 0) {
 		error("Connect failed. %s(%d)", strerror(errno), errno);
 		goto fail;
 	}
@@ -479,6 +481,25 @@ fail:
 	nc->state = DISCONNECTED;
 	err_connection_failed(conn, msg, strerror(errno));
 	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult connection_cancel(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct network_conn *nc = data;
+	DBusMessage *reply;
+
+	if (nc->state != CONNECTING) {
+		err_failed(conn, msg, "Device has no pending connect");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	close(nc->sk);
+	nc->state = DISCONNECTED;
+
+	reply = dbus_message_new_method_return(msg);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult connection_disconnect(DBusConnection *conn,
@@ -598,6 +619,7 @@ static DBusMethodVTable connection_methods[] = {
 	{ "GetDescription",	get_description,	"",	"s"	},
 	{ "GetInterface",	get_interface,		"",	"s"	},
 	{ "Connect",		connection_connect,	"",	"s"	},
+	{ "CancelConnect",	connection_cancel,	"",	""	},
 	{ "Disconnect",		connection_disconnect,	"",	""	},
 	{ "IsConnected",	is_connected,		"",	"b"	},
 	{ "GetInfo",		get_info,		"",	"{sv}",	},
