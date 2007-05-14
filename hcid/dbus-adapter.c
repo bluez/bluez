@@ -636,7 +636,7 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 					DBUS_TYPE_UINT32, &timeout,
 					DBUS_TYPE_INVALID);
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult adapter_is_connectable(DBusConnection *conn,
