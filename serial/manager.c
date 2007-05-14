@@ -300,6 +300,9 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 {
 	debug("RFCOMM node %s was disconnected", node->name);
 
+	if (cond & (G_IO_ERR | G_IO_HUP))
+		g_io_channel_close(io);
+
 	name_listener_remove(node->conn, node->owner,
 			(name_cb_t) connect_service_exited, node);
 
@@ -326,9 +329,8 @@ static int add_rfcomm_node(GIOChannel *io, int id, const char *name,
 	node->owner	= g_strdup(owner);
 	node->io	= io;
 
-	g_io_channel_set_close_on_unref(io, TRUE);
-	node->io_id = g_io_add_watch(io, G_IO_ERR | G_IO_HUP,
-			(GIOFunc) rfcomm_disconnect_cb, node);
+	node->io_id = g_io_add_watch(io, G_IO_ERR | G_IO_NVAL | G_IO_HUP,
+					(GIOFunc) rfcomm_disconnect_cb, node);
 
 	connected_nodes = g_slist_append(connected_nodes, node);
 
@@ -401,7 +403,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	char node_name[16];
 	const char *pname = node_name;
 	struct rfcomm_dev_req req;
-	int sk, err, fd;
+	int sk, err, fd, close_chan = 1;
 
 	if (pc->canceled) {
 		err_connection_canceled(pc->conn, pc->msg);
@@ -409,6 +411,13 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	}
 
 	sk = g_io_channel_unix_get_fd(chan);
+
+	if (cond & G_IO_NVAL) {
+		close_chan = 0;
+		err_connection_failed(pc->conn, pc->msg,
+				"File descriptor is not open");
+		goto fail;
+	}
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		socklen_t len;
@@ -459,6 +468,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	if (fd < 0) {
 		g_timeout_add(OPEN_WAIT,
 			(GSourceFunc) rfcomm_connect_cb_continue, pc);
+		g_io_channel_close(chan);
 		return FALSE;
 	}
 
@@ -481,6 +491,9 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 fail:
 	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
+
+	if (close_chan)
+		g_io_channel_close(chan);
 
 	return FALSE;
 }
@@ -507,7 +520,6 @@ static int rfcomm_connect(struct pending_connect *pc)
 		return -errno;
 
 	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
 
 	addr.rc_family	= AF_BLUETOOTH;
 	str2ba(pc->bda, &addr.rc_bdaddr);
@@ -522,8 +534,8 @@ static int rfcomm_connect(struct pending_connect *pc)
 		}
 
 		debug("Connect in progress");
-		g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP,
-					(GIOFunc) rfcomm_connect_cb, pc);
+		g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_NVAL | G_IO_HUP,
+						(GIOFunc) rfcomm_connect_cb, pc);
 	} else {
 		debug("Connect succeeded with first try");
 		(void) rfcomm_connect_cb(io, G_IO_OUT, pc);
