@@ -1,3 +1,10 @@
+ver 3.10.1:
+	Add option to disable installation of manual pages.
+	Fix input service encryption setup.
+	Fix serial service methods.
+	Fix network service connection handling.
+	Provide a simple init script.
+
 ver 3.10:
 	Add initial version of network service.
 	Add initial version of serial service.
