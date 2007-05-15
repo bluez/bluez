@@ -59,6 +59,8 @@
 
 #define RING_INTERVAL 3000
 
+#define BUF_SIZE 1024
+
 typedef enum {
 	HEADSET_EVENT_KEYPRESS,
 	HEADSET_EVENT_GAIN,
