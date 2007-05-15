@@ -178,10 +178,12 @@ Methods		string GetAdapter()
 			Possible errors: org.bluez.network.Error.ConnectionAttemptFailed
 			                 org.bluez.network.Error.Failed
 
-		string CancelConnect()
+		void CancelConnect()
 
 			Abort connection attempt in case of errors or
 			timeouts in the client.
+
+			Possible errors: org.bluez.network.Error.Failed
 
 		void Disconnect()
 
