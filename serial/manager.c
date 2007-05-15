@@ -47,11 +47,11 @@
 #include "dbus-helper.h"
 #include "logging.h"
 
+#include "error.h"
 #include "manager.h"
 
 #define SERIAL_MANAGER_PATH		"/org/bluez/serial"
 #define SERIAL_MANAGER_INTERFACE	"org.bluez.serial.Manager"
-#define SERIAL_ERROR_INTERFACE		"org.bluez.serial.Error"
 
 #define BASE_UUID			"00000000-0000-1000-8000-00805F9B34FB"
 
@@ -174,83 +174,6 @@ static uint16_t str2class(const char *pattern)
 	}
 
 	return 0;
-}
-
-static DBusHandlerResult err_connection_failed(DBusConnection *conn,
-					DBusMessage *msg, const char *str)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-			SERIAL_ERROR_INTERFACE".ConnectionAttemptFailed", str));
-}
-
-static DBusHandlerResult err_connection_canceled(DBusConnection *conn,
-							DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-			SERIAL_ERROR_INTERFACE".ConnectionCanceled",
-			"Connection creation canceled"));
-}
-
-static DBusHandlerResult err_connection_in_progress(DBusConnection *conn,
-							DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-			SERIAL_ERROR_INTERFACE".ConnectionInProgress",
-			"Connection creation in progress"));
-}
-
-static DBusHandlerResult err_connection_not_in_progress(DBusConnection *conn,
-							DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-			SERIAL_ERROR_INTERFACE".ConnectionNotInProgress",
-			"Connection creation not in progress"));
-}
-
-static DBusHandlerResult err_does_not_exist(DBusConnection *conn,
-					DBusMessage *msg, const char *str)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-				SERIAL_ERROR_INTERFACE ".DoesNotExist", str));
-}
-
-static DBusHandlerResult err_failed(DBusConnection *conn,
-				DBusMessage *msg, const char *str)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-				SERIAL_ERROR_INTERFACE ".Failed", str));
-}
-
-static DBusHandlerResult err_invalid_args(DBusConnection *conn,
-					DBusMessage *msg, const char *str)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-				SERIAL_ERROR_INTERFACE ".InvalidArguments", str));
-}
-
-static DBusHandlerResult err_not_authorized(DBusConnection *conn,
-							DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-			SERIAL_ERROR_INTERFACE ".NotAuthorized",
-			"Owner not allowed"));
-}
-
-static DBusHandlerResult err_not_supported(DBusConnection *conn,
-							DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-			SERIAL_ERROR_INTERFACE ".NotSupported",
-			"The service is not supported by the remote device"));
 }
 
 static int rfcomm_release(int16_t id)

@@ -26,3 +26,82 @@
 #endif
 
 #include "error.h"
+
+#define SERIAL_ERROR_INTERFACE		"org.bluez.serial.Error"
+
+DBusHandlerResult err_connection_canceled(DBusConnection *conn,
+						DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE".ConnectionCanceled",
+			"Connection creation canceled"));
+}
+
+DBusHandlerResult err_connection_failed(DBusConnection *conn,
+				DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE".ConnectionAttemptFailed", str));
+}
+
+DBusHandlerResult err_connection_in_progress(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE".ConnectionInProgress",
+			"Connection creation in progress"));
+}
+
+DBusHandlerResult err_connection_not_in_progress(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE".ConnectionNotInProgress",
+			"Connection creation not in progress"));
+}
+
+DBusHandlerResult err_does_not_exist(DBusConnection *conn,
+				DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				SERIAL_ERROR_INTERFACE ".DoesNotExist", str));
+}
+
+DBusHandlerResult err_failed(DBusConnection *conn,
+			DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				SERIAL_ERROR_INTERFACE ".Failed", str));
+}
+
+DBusHandlerResult err_invalid_args(DBusConnection *conn,
+				DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				SERIAL_ERROR_INTERFACE ".InvalidArguments", str));
+}
+
+DBusHandlerResult err_not_authorized(DBusConnection *conn,
+						DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE ".NotAuthorized",
+			"Owner not allowed"));
+}
+
+DBusHandlerResult err_not_supported(DBusConnection *conn,
+						DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+			SERIAL_ERROR_INTERFACE ".NotSupported",
+			"The service is not supported by the remote device"));
+}

@@ -20,3 +20,24 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+#include <dbus.h>
+
+DBusHandlerResult err_connection_canceled(DBusConnection *conn,
+						DBusMessage *msg);
+DBusHandlerResult err_connection_failed(DBusConnection *conn,
+				DBusMessage *msg, const char *str);
+DBusHandlerResult err_connection_in_progress(DBusConnection *conn,
+							DBusMessage *msg);
+DBusHandlerResult err_connection_not_in_progress(DBusConnection *conn,
+							DBusMessage *msg);
+DBusHandlerResult err_does_not_exist(DBusConnection *conn,
+				DBusMessage *msg, const char *str);
+DBusHandlerResult err_failed(DBusConnection *conn,
+			DBusMessage *msg, const char *str);
+DBusHandlerResult err_invalid_args(DBusConnection *conn,
+				DBusMessage *msg, const char *str);
+DBusHandlerResult err_not_authorized(DBusConnection *conn,
+						DBusMessage *msg);
+DBusHandlerResult err_not_supported(DBusConnection *conn,
+						DBusMessage *msg);
