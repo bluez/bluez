@@ -10,7 +10,9 @@ servicedir = $(libdir)/bluetooth
 
 service_PROGRAMS = bluetoothd-service-serial
 
-bluetoothd_service_serial_SOURCES = main.c manager.h manager.c
+bluetoothd_service_serial_SOURCES = main.c \
+		manager.h manager.c port.h port.c \
+		error.h error.c storage.h storage.c
 
 LDADD = $(top_builddir)/common/libhelper.a \
                 @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
