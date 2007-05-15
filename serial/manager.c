@@ -663,6 +663,24 @@ static int get_handles(struct pending_connect *pc, const char *uuid,
 	return 0;
 }
 
+static DBusHandlerResult create_port(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult list_ports(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult remove_port(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -886,6 +904,9 @@ static void manager_unregister(DBusConnection *conn, void *data)
 }
 
 static DBusMethodVTable manager_methods[] = {
+	{ "CreatePort",			create_port,		"ss",	"s"	},
+	{ "ListPorts",			list_ports,		"",	"as"	},
+	{ "RemovePort",			remove_port,		"s",	""	},
 	{ "ConnectService",		connect_service,	"ss",	"s"	},
 	{ "DisconnectService",		disconnect_service,	"s",	""	},
 	{ "CancelConnectService",	cancel_connect_service,	"ss",	""	},
