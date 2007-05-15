@@ -178,6 +178,11 @@ Methods		string GetAdapter()
 			Possible errors: org.bluez.network.Error.ConnectionAttemptFailed
 			                 org.bluez.network.Error.Failed
 
+		string CancelConnect()
+
+			Abort connection attempt in case of errors or
+			timeouts in the client.
+
 		void Disconnect()
 
 			Disconnects to host.
