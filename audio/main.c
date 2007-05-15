@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (headset_init(conn) < 0) {
+	if (headset_server_init(conn) < 0) {
 		error("Headset initialization failed!");
 		exit(1);
 	}

@@ -31,13 +31,15 @@
 
 #define BUF_SIZE 1024
 
+typedef struct headset headset_t;
+
 const char *headset_get(const bdaddr_t *bda);
 
 const char *headset_add(const bdaddr_t *bda);
 
-void headset_remove(const char *path);
+headset_t *headset_init(const char *path);
 
-int headset_init(DBusConnection *conn);
+int headset_server_init(DBusConnection *conn);
 
 void headset_exit(void);
 

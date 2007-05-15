@@ -2,14 +2,13 @@ Bluetooth audio service API description
 ***************************************
 
 Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
-Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
+Copyright (C) 2005-2007  Johan Hedberg <johan.hedberg@nokia.com>
 Copyright (C) 2005-2006  Brad Midgley <bmidgley@xmission.com>
 
 
-Audio Manager hierarchy
-=======================
+org.bluez.audio.Manager interface
+=================================
 
-Interface	org.bluez.audio.Manager
 Object path	/org/bluez/audio
 
 Methods		array{string} ListHeadsets()
@@ -49,11 +48,20 @@ Signals		void HeadsetCreated(string path)
 			Sent when the default headset has changed.
 
 
-Audio Headset hierarchy
-=======================
+org.bluez.audio.Device interface
+================================
 
-Interface	org.bluez.audio.Headset
-Object path	/org/bluez/audio/headset*
+Object path(s)	/org/bluez/audio/device*
+
+Methods		string GetAddress()
+
+			Returns the Bluetooth address of the remote device.
+
+
+org.bluez.audio.Headset interface
+=================================
+
+Object path(s)	/org/bluez/audio/device*
 
 Methods		void Connect()
 
@@ -111,3 +119,15 @@ Signals		void AnswerRequested()
 		void MicrophoneGainChanged(uint16 gain)
 
 			The microphone gain changed.
+
+
+org.bluez.audio.Source interface
+================================
+
+Object path(s)	/org/bluez/audio/device*
+
+
+org.bluez.audio.Sink interface
+==============================
+
+Object path(s)	/org/bluez/audio/device*

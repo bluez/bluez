@@ -30,9 +30,37 @@
 #define AUDIO_MANAGER_PATH "/org/bluez/audio"
 #define AUDIO_MANAGER_INTERFACE "org.bluez.audio.Manager"
 
-#define HEADSET_PATH_BASE AUDIO_MANAGER_PATH "/headset"
+#define AUDIO_DEVICE_INTERFACE "org.bluez.audio.Device"
 
-void manager_add_headset(const char *path);
+#define GENERIC_AUDIO_UUID	"00001203-0000-1000-8000-00805F9B34FB"
+
+#define HSP_HS_UUID		"00001108-0000-1000-8000-00805F9B34FB"
+#define HSP_AG_UUID		"00001112-0000-1000-8000-00805F9B34FB"
+
+#define HFP_HS_UUID		"0000111E-0000-1000-8000-00805F9B34FB"
+#define HFP_AG_UUID		"0000111F-0000-1000-8000-00805F9B34FB"
+
+#define ADVANCED_AUDIO_UUID	"0000110D-0000-1000-8000-00805F9B34FB"
+
+#define A2DP_SOURCE_UUID	"0000110A-0000-1000-8000-00805F9B34FB"
+#define A2DP_SINK_UUID		"0000110B-0000-1000-8000-00805F9B34FB"
+
+#define AVRCP_REMOTE_UUID	"0000110E-0000-1000-8000-00805F9B34FB"
+#define AVRCP_TARGET_UUID	"0000110C-0000-1000-8000-00805F9B34FB"
+
+typedef struct audio_device {
+	char object_path[128];
+	bdaddr_t bda;
+
+	headset_t *headset;
+/*
+	sink_t *sink;
+	source_t *source;
+	control_t *control;
+*/
+} audio_device_t;
+
+audio_device_t *manager_headset_connected(bdaddr_t *bda);
 
 int audio_init(DBusConnection *conn);
 
