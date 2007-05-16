@@ -21,5 +21,11 @@
  *
  */
 
+#define SERIAL_MANAGER_PATH		"/org/bluez/serial"
+#define SERIAL_MANAGER_INTERFACE	"org.bluez.serial.Manager"
+
+#define MAX_PATH_LENGTH			32
+
 int serial_init(DBusConnection *conn);
 void serial_exit(void);
+int rfcomm_release(int16_t id);

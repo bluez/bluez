@@ -20,3 +20,14 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+typedef void (*open_notify_t) (int fd, int err, void *data);
+typedef void (*udata_free_t) (void *data);
+
+int port_register(DBusConnection *conn, int id, int fd,
+		const char *name, const char *owner, char *path);
+
+const char *port_get_owner(DBusConnection *conn, int16_t id);
+
+int port_open(const char *dev, open_notify_t notify,
+			void *data, udata_free_t ufree);
