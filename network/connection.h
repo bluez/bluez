@@ -24,6 +24,7 @@
 int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 		bdaddr_t *dst, uint16_t id, const char *name, const char *desc);
 int connection_store(DBusConnection *conn, const char *path);
+int connection_remove_stored(DBusConnection *conn, const char *path);
 int connection_find_data(DBusConnection *conn, const char *path,
 			const char *pattern);
 gboolean connection_has_pending(DBusConnection *conn, const char *path);

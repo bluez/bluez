@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-
+#include <sys/stat.h>
 #include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
@@ -702,19 +702,21 @@ int connection_store(DBusConnection *conn, const char *path)
 
 	ba2str(&nc->src, src_addr);
 	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "network");
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	err = textfile_put(filename, key, value);
 
 	g_free(value);
 
-	return err; 
+	return err;
 }
 
 int connection_find_data(DBusConnection *conn,
 		const char *path, const char *pattern)
 {
 	struct network_conn *nc;
-	char addr[18];
+	char addr[18], key[32];
+	const char *role;
 
 	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
 		return -1;
@@ -730,6 +732,12 @@ int connection_find_data(DBusConnection *conn,
 	if (strcasecmp(pattern, addr) == 0)
 		return 0;
 
+	role = bnep_name(nc->id);
+	snprintf(key, 32, "%s#%s", addr, role);
+
+	if (strcasecmp(pattern, key) == 0)
+		return 0;
+
 	return -1;
 }
 
@@ -741,4 +749,28 @@ gboolean connection_has_pending(DBusConnection *conn, const char *path)
 		return FALSE;
 
 	return (nc->state == CONNECTING);
+}
+
+int connection_remove_stored(DBusConnection *conn, const char *path)
+{
+	struct network_conn *nc;
+	const char *role;
+	char key[32];
+	char filename[PATH_MAX + 1];
+	char src_addr[18], dst_addr[18];
+	int err;
+
+	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
+		return -ENOENT;
+
+	ba2str(&nc->dst, dst_addr);
+	role = bnep_name(nc->id);
+	snprintf(key, 32, "%s#%s", dst_addr, role);
+
+	ba2str(&nc->src, src_addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "network");
+
+	err = textfile_del(filename, key);
+
+	return err;
 }

@@ -161,8 +161,15 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 	if (!l)
 		return err_does_not_exist(conn, msg, "Path doesn't exist");
 
-	if (*list == connection_paths && connection_has_pending (conn, path))
-		return err_failed(conn, msg, "Connection is Busy");
+	/* Remove references from the storage */
+	if (*list == connection_paths) {
+		if (connection_has_pending (conn, path))
+			return err_failed(conn, msg, "Connection is Busy");
+
+		connection_remove_stored(conn, path);
+	}
+	else
+		server_remove_stored(conn, path);
 
 	g_free(l->data);
 	*list = g_slist_remove(*list, l->data);
@@ -171,8 +178,6 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	/* Remove the nap or gn file from the file system */
-	server_remove_stored(conn, path);
 	if (!dbus_connection_destroy_object_path(conn, path))
 		error("Network path unregister failed");
 
@@ -524,6 +529,8 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	bdaddr_t src;
 	uint16_t id;
 	int dev_id;
+	char key[32];
+	GSList *l;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -538,6 +545,17 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	id = bnep_service_id(str);
 	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
 		return err_invalid_args(conn, msg, "Not supported");
+
+	snprintf(key, 32, "%s#%s", addr, bnep_name(id));
+
+	/* Checks if the connection was already been made */
+	for (l = connection_paths; l; l = l->next) {
+		if (connection_find_data(conn, l->data, key) == 0) {
+			err_already_exists(conn, msg,
+						"Connection Already exists");
+			return DBUS_HANDLER_RESULT_HANDLED;
+		}
+	}
 
 	bacpy(&src, BDADDR_ANY);
 	dev_id = hci_get_route(NULL);
@@ -644,8 +662,13 @@ static void parse_stored_connection(char *key, char *value, void *data)
 
 	if (connection_register(connection, path, src,
 				&dst, id, name, ptr) == 0) {
-		connection_paths = g_slist_append(connection_paths,
-							g_strdup(path));
+		char *rpath = g_strdup(path);
+		connection_paths = g_slist_append(connection_paths, rpath);
+		dbus_connection_emit_signal(connection, NETWORK_PATH,
+						NETWORK_MANAGER_INTERFACE,
+						"ConnectionCreated",
+						DBUS_TYPE_STRING, &rpath,
+						DBUS_TYPE_INVALID);
 	}
 
 	g_free(name);
@@ -688,9 +711,18 @@ static void register_stored(void)
 					NETWORK_PATH"/server/nap%d", net_uid++);
 
 			if (server_register_from_file(connection, path,
-					&src, BNEP_SVC_NAP, filename) == 0)
+					&src, BNEP_SVC_NAP, filename) == 0) {
 				server_paths = g_slist_append(server_paths,
 								g_strdup(path));
+
+				dbus_connection_emit_signal(connection,
+							NETWORK_PATH,
+							NETWORK_MANAGER_INTERFACE,
+							"ServerCreated",
+							DBUS_TYPE_STRING,
+							&path,
+							DBUS_TYPE_INVALID);
+			}
 		}
 
 		/* GN objects */
@@ -700,9 +732,18 @@ static void register_stored(void)
 					NETWORK_PATH"/server/gn%d", net_uid++);
 
 			if (server_register_from_file(connection, path,
-					&src, BNEP_SVC_GN, filename) == 0)
+					&src, BNEP_SVC_GN, filename) == 0) {
 				server_paths = g_slist_append(server_paths,
 								g_strdup(path));
+
+				dbus_connection_emit_signal(connection,
+							NETWORK_PATH,
+							NETWORK_MANAGER_INTERFACE,
+							"ServerCreated",
+							DBUS_TYPE_STRING,
+							&path,
+							DBUS_TYPE_INVALID);
+			}
 		}
 	}
 
