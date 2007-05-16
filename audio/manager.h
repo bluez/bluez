@@ -54,9 +54,11 @@ typedef struct audio_device {
 
 	headset_t *headset;
 /*
+	audio_gw_t *audio_gw;
 	sink_t *sink;
 	source_t *source;
 	control_t *control;
+	target_t *target;
 */
 } audio_device_t;
 
