@@ -11,7 +11,21 @@ org.bluez.audio.Manager interface
 
 Object path	/org/bluez/audio
 
-Methods		array{string} ListHeadsets()
+Methods
+		array{string, array{string}} ListDevices()
+
+			Retuns an array of elements that consist of a string
+			indicating the object path of a device as well as a
+			string list that corresponds to the set of interfaces
+			that the object implements.
+
+		array{string, array{string}} GetConnectedDevices()
+
+			Returns an array of elements of the same format as
+			ListDevices() for each device and interface which
+			is in a connected state.
+
+		array{string} ListHeadsets()
 
 			Returns list of headset objects that
 			are configured.
