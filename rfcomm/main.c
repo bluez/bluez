@@ -395,14 +395,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	while ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
 		if (errno == EACCES) {
 			perror("Can't open RFCOMM device");
-
-			memset(&req, 0, sizeof(req));
-			req.dev_id = dev;
-			req.flags = (1 << RFCOMM_HANGUP_NOW);
-			ioctl(ctl, RFCOMMRELEASEDEV, &req);
-
-			close(sk);
-			return;
+			goto release;
 		}
 
 		snprintf(devname, MAXPATHLEN - 1, "/dev/bluetooth/rfcomm/%d", dev);
@@ -413,14 +406,7 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 				continue;
 			}
 			perror("Can't open RFCOMM device");
-
-			memset(&req, 0, sizeof(req));
-			req.dev_id = dev;
-			req.flags = (1 << RFCOMM_HANGUP_NOW);
-			ioctl(ctl, RFCOMMRELEASEDEV, &req);
-
-			close(sk);
-			return;
+			goto release;
 		}
 	}
 
@@ -469,6 +455,15 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 	printf("Disconnected\n");
 
 	close(fd);
+	return;
+
+release:
+	memset(&req, 0, sizeof(req));
+	req.dev_id = dev;
+	req.flags = (1 << RFCOMM_HANGUP_NOW);
+	ioctl(ctl, RFCOMMRELEASEDEV, &req);
+
+	close(sk);
 }
 
 static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv)
@@ -546,6 +541,11 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 
 	snprintf(devname, MAXPATHLEN - 1, "/dev/rfcomm%d", dev);
 	while ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
+		if (errno == EACCES) {
+			perror("Can't open RFCOMM device");
+			goto release;
+		}
+
 		snprintf(devname, MAXPATHLEN - 1, "/dev/bluetooth/rfcomm/%d", dev);
 		if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
 			if (try--) {
@@ -554,14 +554,7 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 				continue;
 			}
 			perror("Can't open RFCOMM device");
-
-			memset(&req, 0, sizeof(req));
-			req.dev_id = dev;
-			req.flags = (1 << RFCOMM_HANGUP_NOW);
-			ioctl(ctl, RFCOMMRELEASEDEV, &req);
-
-			close(sk);
-			return;
+			goto release;
 		}
 	}
 
@@ -618,6 +611,15 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	printf("Disconnected\n");
 
 	close(fd);
+	return;
+
+release:
+	memset(&req, 0, sizeof(req));
+	req.dev_id = dev;
+	req.flags = (1 << RFCOMM_HANGUP_NOW);
+	ioctl(ctl, RFCOMMRELEASEDEV, &req);
+
+	close(sk);
 }
 
 static void cmd_watch(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv)
