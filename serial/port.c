@@ -112,6 +112,8 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 		dbus_connection_unref(node->conn);
 	if (node->owner)
 		g_free(node->owner);
+	if (node->id)
+		rfcomm_release(node->id);
 	if (node->io) {
 		g_source_remove(node->io_id);
 		g_io_channel_unref(node->io);
@@ -121,19 +123,16 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 
 static void connection_owner_exited(const char *name, struct rfcomm_node *node)
 {
-	char path[MAX_PATH_LENGTH];
-
 	debug("Connect requestor %s exited. Releasing %s node",
 						name, node->name);
 
-	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%d", SERIAL_MANAGER_PATH, node->id);
-	rfcomm_release(node->id);
 	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
 			DBUS_TYPE_STRING, &node->name,
 			DBUS_TYPE_INVALID);
 
 	connected_nodes = g_slist_remove(connected_nodes, node);
+	rfcomm_node_free(node);
 }
 
 static gboolean rfcomm_disconnect_cb(GIOChannel *io,
@@ -183,10 +182,9 @@ int port_add_listener(DBusConnection *conn, int id, int fd,
 
 	connected_nodes = g_slist_append(connected_nodes, node);
 
-	/* Serial port connection listener */
+	/* Service connection listener */
 	return name_listener_add(conn, owner,
 			(name_cb_t) connection_owner_exited, node);
-
 }
 
 int port_register(DBusConnection *conn, int id, const char *name, char *ppath)
@@ -233,6 +231,7 @@ const char *port_get_owner(DBusConnection *conn, int16_t id)
 
 	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%d", SERIAL_MANAGER_PATH, id);
 
+	/* FIXME: Ports related to services connection doesn't have a path/object */
 	if (!dbus_connection_get_object_user_data(conn, path, (void *) &node)
 			|| !node) {
 		errno = ENOENT;
