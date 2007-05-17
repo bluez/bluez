@@ -741,7 +741,37 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 static DBusHandlerResult list_ports(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessage *reply;
+	DBusMessageIter iter, iter_array;
+	char **dev;
+	int i;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING_AS_STRING, &iter_array);
+
+	if (!dbus_connection_list_registered(conn, SERIAL_MANAGER_PATH, &dev))
+		goto done;
+
+	for (i = 0; dev[i]; i++) {
+		char dev_path[MAX_PATH_LENGTH];
+		const char *ppath = dev_path;
+
+		snprintf(dev_path, sizeof(dev_path), "%s/%s",
+				SERIAL_MANAGER_PATH, dev[i]);
+		dbus_message_iter_append_basic(&iter_array,
+					DBUS_TYPE_STRING, &ppath);
+	}
+
+	dbus_free_string_array(dev);
+done:
+	dbus_message_iter_close_container(&iter, &iter_array);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult remove_port(DBusConnection *conn,
@@ -865,6 +895,7 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 	if (sscanf(name, "/dev/rfcomm%d", &id) != 1)
 		return err_invalid_args(conn, msg, "invalid RFCOMM node");
 
+	/* FIXME: Remove the listener */
 	owner = port_get_owner(conn, id);
 	if (!owner)
 		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
@@ -875,6 +906,8 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 	err = rfcomm_release(id);
 	if (err < 0)
 		return err_failed(conn, msg, strerror(-err));
+
+	/* FIXME: Remove the node from the list */
 
 	return send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
