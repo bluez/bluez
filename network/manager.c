@@ -146,15 +146,22 @@ static const char * last_connection_used(DBusConnection *conn)
 	GSList *l;
 	int i;
 
+	l = connection_paths;
 	for (i = g_slist_length (connection_paths) -1; i > -1; i--) {
-		path = g_slist_nth_data (connection_paths, i);
+		int n = i;
+		while (n-- > 0 && l)
+		    l = l->next;
+
+		path = l ? l->data : NULL;
 		if (connection_is_connected (conn, path))
 			break;
 	}
 
 	/* No connection connected fallback to last connection */
 	if (i == -1) {
-		l = g_slist_last(connection_paths);
+		l = connection_paths;
+		while (l->next)
+			l = l->next;
 		path = l->data;
 	}
 
@@ -185,12 +192,20 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 
 	/* Remove references from the storage */
 	if (*list == connection_paths) {
+		GSList *l_default;
+		int n;
+
 		if (connection_has_pending(conn, path))
 			return err_failed(conn, msg, "Connection is Busy");
 
 		connection_remove_stored(conn, path);
+
 		/* Reset default connection */
-		if (l == g_slist_nth(*list, default_index)) {
+		n = default_index;
+		l_default = connection_paths;
+		while (n-- > 0 && l_default)
+		    l_default = l_default->next;
+		if (l == l_default) {
 			const char *dpath;
 
 			dpath = last_connection_used(conn);
@@ -662,6 +677,8 @@ static DBusHandlerResult default_connection(DBusConnection *conn,
 {
 	const char *path;
 	DBusMessage *reply;
+	GSList *link;
+	int n;
 
 	if (connection_paths == NULL ||
 		g_slist_length (connection_paths) == 0) {
@@ -669,7 +686,12 @@ static DBusHandlerResult default_connection(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	path = g_slist_nth_data (connection_paths, default_index);
+	link = connection_paths;
+	n = default_index;
+	while (n-- > 0 && link)
+	    link = link->next;
+
+	path = link ? link->data : NULL;
 
 	if (path == NULL) {
 		path = last_connection_used(conn);
@@ -686,6 +708,22 @@ static DBusHandlerResult default_connection(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void default_position(GSList *link)
+{
+	GSList *list;
+	int i = 0;
+
+	list = connection_paths;
+	while (list) {
+		if (list == link) {
+			default_index = i;
+			break;
+		}
+		i++;
+		list = list->next;
+	}
+}
+
 static DBusHandlerResult change_default_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -693,7 +731,7 @@ static DBusHandlerResult change_default_connection(DBusConnection *conn,
 	const char *pattern;
 	DBusMessage *reply;
 	DBusError derr;
-	GSList *list;
+	GSList *link;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -710,24 +748,23 @@ static DBusHandlerResult change_default_connection(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	list = g_slist_find_custom(connection_paths, pattern, (GCompareFunc) strcmp);
+	link = g_slist_find_custom(connection_paths, pattern, (GCompareFunc) strcmp);
 
 	/* Find object path via pattern */
-	if (list == NULL) {
-		list = find_connection_pattern(conn, pattern);
+	if (link == NULL) {
+		link = find_connection_pattern(conn, pattern);
 
-		if (list == NULL) {
+		if (link == NULL) {
 			err_failed(conn, msg, "No such connection");
 			return DBUS_HANDLER_RESULT_HANDLED;
 		}
 		else
-			path = list->data;
+			path = link->data;
 	}
 	else
-		path = list->data;
+		path = link->data;
 
-	default_index = g_slist_position (connection_paths, list);
-	connection_store(connection, path, TRUE);
+	default_position(link);
 
 	dbus_connection_emit_signal(connection, NETWORK_PATH,
 					NETWORK_MANAGER_INTERFACE,
@@ -836,7 +873,7 @@ static void register_connections_stored(const char *adapter)
 	char filename[PATH_MAX + 1];
 	char *pattern;
 	struct stat s;
-	GSList *list;
+	GSList *link;
 	bdaddr_t src;
 	bdaddr_t default_src;
 	int dev_id;
@@ -854,15 +891,17 @@ static void register_connections_stored(const char *adapter)
 		textfile_foreach(filename, parse_stored_connection, &src);
 		pattern = textfile_get(filename, "default");
 
-		list = find_connection_pattern(connection, pattern);
-		if (list != NULL)
-			default_index = g_slist_position(connection_paths, list);
+		link = find_connection_pattern(connection, pattern);
+		if (link != NULL)
+			default_position(link);
 		else if (bacmp(&src, &default_src) == 0) {
-			list = g_slist_last(connection_paths);
-			if (list == NULL)
+			link = connection_paths;
+			while (link->next)
+				link = link->next;
+			if (link == NULL)
 				return;
-			default_index = g_slist_position(connection_paths, list);
-			connection_store(connection, list->data, TRUE);
+			default_position(link);
+			connection_store(connection, link->data, TRUE);
 		}
 	}
 }
@@ -871,7 +910,6 @@ static void register_servers_stored(const char *adapter, const char *profile)
 {
 	char filename[PATH_MAX + 1];
 	char path[MAX_PATH_LENGTH];
-	const char *ppath = path;
 	uint16_t id;
 	struct stat s;
 	bdaddr_t src;
