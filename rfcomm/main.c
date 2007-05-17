@@ -393,6 +393,18 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 
 	snprintf(devname, MAXPATHLEN - 1, "/dev/rfcomm%d", dev);
 	while ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
+		if (errno == EACCES) {
+			perror("Can't open RFCOMM device");
+
+			memset(&req, 0, sizeof(req));
+			req.dev_id = dev;
+			req.flags = (1 << RFCOMM_HANGUP_NOW);
+			ioctl(ctl, RFCOMMRELEASEDEV, &req);
+
+			close(sk);
+			return;
+		}
+
 		snprintf(devname, MAXPATHLEN - 1, "/dev/bluetooth/rfcomm/%d", dev);
 		if ((fd = open(devname, O_RDONLY | O_NOCTTY)) < 0) {
 			if (try--) {
