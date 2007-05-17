@@ -134,7 +134,6 @@ static void connection_owner_exited(const char *name, struct rfcomm_node *node)
 			DBUS_TYPE_INVALID);
 
 	connected_nodes = g_slist_remove(connected_nodes, node);
-	dbus_connection_destroy_object_path(node->conn, path);
 }
 
 static gboolean rfcomm_disconnect_cb(GIOChannel *io,
@@ -168,8 +167,29 @@ static void port_unregister(DBusConnection *conn, void *data)
 	rfcomm_node_free(node);
 }
 
-int port_register(DBusConnection *conn, int id, int fd,
-		const char *name, const char *owner, char *ppath)
+int port_add_listener(DBusConnection *conn, int id, int fd,
+			const char *name, const char *owner)
+{
+	struct rfcomm_node *node;
+
+	node = g_new0(struct rfcomm_node, 1);
+	node->id	= id;
+	node->name	= g_strdup(name);
+	node->conn	= dbus_connection_ref(conn);
+	node->owner	= g_strdup(owner);
+	node->io 	= g_io_channel_unix_new(fd);
+	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_NVAL | G_IO_HUP,
+					(GIOFunc) rfcomm_disconnect_cb, node);
+
+	connected_nodes = g_slist_append(connected_nodes, node);
+
+	/* Serial port connection listener */
+	return name_listener_add(conn, owner,
+			(name_cb_t) connection_owner_exited, node);
+
+}
+
+int port_register(DBusConnection *conn, int id, const char *name, char *ppath)
 {
 	char path[MAX_PATH_LENGTH];
 	struct rfcomm_node *node;
@@ -198,24 +218,12 @@ int port_register(DBusConnection *conn, int id, int fd,
 		return -1;
 	}
 
-	info("Registered RFCOMM:%s, path:%s owner:%s", name, path, owner);
+	info("Registered RFCOMM:%s, path:%s", name, path);
 
 	if (ppath)
 		strcpy(ppath, path);
 
-	if (fd < 0)
-		return 0;
-
-	node->owner	= g_strdup(owner);
-	node->io 	= g_io_channel_unix_new(fd);
-	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_NVAL | G_IO_HUP,
-					(GIOFunc) rfcomm_disconnect_cb, node);
-
-	connected_nodes = g_slist_append(connected_nodes, node);
-
-	/* Serial port connection listener */
-	return name_listener_add(node->conn, owner,
-			(name_cb_t) connection_owner_exited, node);
+	return 0;
 }
 
 const char *port_get_owner(DBusConnection *conn, int16_t id)

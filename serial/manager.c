@@ -189,9 +189,7 @@ static int rfcomm_bind(bdaddr_t *src, bdaddr_t *dst, uint8_t ch)
 static void open_notify(int fd, int err, void *data)
 {
 	char port_name[16];
-	char path[MAX_PATH_LENGTH];
 	const char *pname = port_name;
-	const char *ppath = path;
 	const char *owner;
 	DBusMessage *reply;
 	struct pending_connect *pc = data;
@@ -208,7 +206,7 @@ static void open_notify(int fd, int err, void *data)
 		return;
 	}
 
-	/* Check if the caller is still present */
+	/* FIXME: it must be a per request listener */
 	owner = dbus_message_get_sender(pc->msg);
 	if (!dbus_bus_name_has_owner(pc->conn, owner, NULL)) {
 		error("Connect requestor %s exited", owner);
@@ -226,17 +224,12 @@ static void open_notify(int fd, int err, void *data)
 	send_message_and_unref(pc->conn, reply);
 
 	/* Send the D-Bus signal */
-	port_register(pc->conn, pc->id, fd, pname, owner, path);
-	dbus_connection_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "PortCreated" ,
-			DBUS_TYPE_STRING, &ppath,
-			DBUS_TYPE_INVALID);
-
 	dbus_connection_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceConnected" ,
 			DBUS_TYPE_STRING, &pname,
 			DBUS_TYPE_INVALID);
 
+	port_add_listener(pc->conn, pc->id, fd, port_name, owner);
 }
 
 static gboolean rfcomm_connect_cb(GIOChannel *chan,
@@ -453,7 +446,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 		}
 
 		snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
-		port_register(pc->conn, err, -1, port_name, NULL, path);
+		port_register(pc->conn, err, port_name, path);
 
 		reply = dbus_message_new_method_return(pc->msg);
 		dbus_message_append_args(reply,
@@ -728,7 +721,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 		return err_failed(conn, msg, strerror(-err));
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
-	port_register(conn, err, -1, port_name, NULL, path);
+	port_register(conn, err, port_name, path);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -920,12 +913,30 @@ static DBusHandlerResult cancel_connect_service(DBusConnection *conn,
 
 static void manager_unregister(DBusConnection *conn, void *data)
 {
+	char **dev;
+	int i;
+
 	if (pending_connects) {
 		g_slist_foreach(pending_connects,
 				(GFunc) pending_connect_free, NULL);
 		g_slist_free(pending_connects);
 		pending_connects = NULL;
 	}
+
+	/* Unregister all paths in serial hierarchy */
+	if (!dbus_connection_list_registered(conn, SERIAL_MANAGER_PATH, &dev))
+		return;
+
+	for (i = 0; dev[i]; i++) {
+		char dev_path[MAX_PATH_LENGTH];
+
+		snprintf(dev_path, sizeof(dev_path), "%s/%s", SERIAL_MANAGER_PATH,
+				dev[i]);
+
+		dbus_connection_destroy_object_path(conn, dev_path);
+	}
+
+	dbus_free_string_array(dev);
 }
 
 static DBusMethodVTable manager_methods[] = {
