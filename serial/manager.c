@@ -193,6 +193,7 @@ static void open_notify(int fd, int err, void *data)
 	const char *owner;
 	DBusMessage *reply;
 	struct pending_connect *pc = data;
+	bdaddr_t dst;
 
 	if (err) {
 		/* Max tries exceeded */
@@ -229,7 +230,8 @@ static void open_notify(int fd, int err, void *data)
 			DBUS_TYPE_STRING, &pname,
 			DBUS_TYPE_INVALID);
 
-	port_add_listener(pc->conn, pc->id, fd, port_name, owner);
+	str2ba(pc->bda, &dst);
+	port_add_listener(pc->conn, pc->id, &dst, fd, port_name, owner);
 }
 
 static gboolean rfcomm_connect_cb(GIOChannel *chan,
@@ -446,7 +448,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 		}
 
 		snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
-		port_register(pc->conn, err, port_name, path);
+		port_register(pc->conn, err, &dst, port_name, path);
 
 		reply = dbus_message_new_method_return(pc->msg);
 		dbus_message_append_args(reply,
@@ -721,7 +723,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 		return err_failed(conn, msg, strerror(-err));
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
-	port_register(conn, err, port_name, path);
+	port_register(conn, err, &dst, port_name, path);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

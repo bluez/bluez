@@ -52,15 +52,16 @@
 
 /* Waiting for udev to create the device node */
 #define MAX_OPEN_TRIES 		5
-#define OPEN_WAIT		300  /* ms */
+#define OPEN_WAIT		300	/* ms */
 
 struct rfcomm_node {
 	int16_t		id;	/* RFCOMM device id */
+	bdaddr_t	dst;	/* Destination address */
 	char		*name;	/* RFCOMM device name */
-	DBusConnection  *conn;	/* for name listener handling */
+	DBusConnection	*conn;	/* for name listener handling */
 	char		*owner; /* Bus name */
 	GIOChannel	*io;	/* Connected node IO Channel */
-	guint		io_id;	/* IO Channel ID  */
+	guint		io_id;	/* IO Channel ID */
 };
 
 struct open_context {
@@ -104,7 +105,21 @@ static DBusHandlerResult port_disconnect(DBusConnection *conn,
 static DBusHandlerResult port_get_address(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct rfcomm_node *node = data;
+	DBusMessage *reply;
+	char bda[18];
+	const char *pbda = bda;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	ba2str(&node->dst, bda);
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &pbda,
+			DBUS_TYPE_INVALID);
+	return send_message_and_unref(conn, reply);
+
 }
 
 static DBusMethodVTable port_methods[] = {
@@ -181,12 +196,13 @@ static void port_handler_unregister(DBusConnection *conn, void *data)
 	rfcomm_node_free(node);
 }
 
-int port_add_listener(DBusConnection *conn, int id, int fd,
-			const char *name, const char *owner)
+int port_add_listener(DBusConnection *conn, int id, bdaddr_t *dst,
+			int fd, const char *name, const char *owner)
 {
 	struct rfcomm_node *node;
 
 	node = g_new0(struct rfcomm_node, 1);
+	bacpy(&node->dst, dst);
 	node->id	= id;
 	node->name	= g_strdup(name);
 	node->conn	= dbus_connection_ref(conn);
@@ -221,12 +237,14 @@ int port_remove_listener(const char *owner, const char *name)
 	return 0;
 }
 
-int port_register(DBusConnection *conn, int id, const char *name, char *ppath)
+int port_register(DBusConnection *conn, int id, bdaddr_t *dst,
+					const char *name, char *ppath)
 {
 	char path[MAX_PATH_LENGTH];
 	struct rfcomm_node *node;
 
 	node = g_new0(struct rfcomm_node, 1);
+	bacpy(&node->dst, dst);
 	node->id	= id;
 	node->name	= g_strdup(name);
 	node->conn	= dbus_connection_ref(conn);
