@@ -27,6 +27,8 @@ typedef void (*udata_free_t) (void *data);
 int port_add_listener(DBusConnection *conn, int id, int fd,
 			const char *name, const char *owner);
 
+int port_remove_listener(const char *owner, const char *name);
+
 int port_register(DBusConnection *conn, int id, const char *name, char *ppath);
 
 const char *port_get_owner(DBusConnection *conn, int16_t id);

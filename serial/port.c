@@ -73,6 +73,19 @@ struct open_context {
 
 static GSList *connected_nodes = NULL;
 
+static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *name)
+{
+	GSList *l;
+
+	for (l = nodes; l != NULL; l = l->next) {
+		struct rfcomm_node *node = l->data;
+		if (!strcmp(node->name, name))
+			return node;
+	}
+
+	return NULL;
+}
+
 static DBusHandlerResult port_connect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -185,6 +198,25 @@ int port_add_listener(DBusConnection *conn, int id, int fd,
 	/* Service connection listener */
 	return name_listener_add(conn, owner,
 			(name_cb_t) connection_owner_exited, node);
+}
+
+int port_remove_listener(const char *owner, const char *name)
+{
+	struct rfcomm_node *node;
+
+	node = find_node_by_name(connected_nodes, name);
+	if (!node)
+		return -ENOENT;
+	if (strcmp(node->owner, owner) != 0)
+		return -EPERM;
+
+	name_listener_remove(node->conn, owner,
+			(name_cb_t) connection_owner_exited, node);
+
+	connected_nodes = g_slist_remove(connected_nodes, node);
+	rfcomm_node_free(node);
+
+	return 0;
 }
 
 int port_register(DBusConnection *conn, int id, const char *name, char *ppath)

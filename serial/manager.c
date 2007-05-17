@@ -879,9 +879,8 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusError derr;
-	const char *name, *owner;
-	int err;
-	int id;
+	const char *name;
+	int err, id;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -895,22 +894,23 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 	if (sscanf(name, "/dev/rfcomm%d", &id) != 1)
 		return err_invalid_args(conn, msg, "invalid RFCOMM node");
 
-	/* FIXME: Remove the listener */
-	owner = port_get_owner(conn, id);
-	if (!owner)
+	err = port_remove_listener(dbus_message_get_sender(msg), name);
+	if (err < 0)
 		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
-
-	if (strcmp(owner, dbus_message_get_sender(msg)) != 0)
-		return err_not_authorized(conn, msg);
 
 	err = rfcomm_release(id);
 	if (err < 0)
 		return err_failed(conn, msg, strerror(-err));
 
-	/* FIXME: Remove the node from the list */
-
-	return send_message_and_unref(conn,
+	send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
+
+	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
+			DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_INVALID);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult cancel_connect_service(DBusConnection *conn,
