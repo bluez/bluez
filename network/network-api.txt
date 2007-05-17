@@ -64,6 +64,25 @@ Methods		string CreateServer(string uuid)
 			Possible errors:org.bluez.network.Error.DoesNotExist
 					org.bluez.network.Error.Failed
 
+		string LastConnection()
+
+			Returns last connected connection path, if none is connected
+			fallback to last created connection.
+
+			Possible errors:org.bluez.network.Error.DoesNotExist
+
+		string DefaultConnection()
+
+			Returns default connection path.
+
+			Possible errors:org.bluez.network.Error.DoesNotExist
+
+		string ChangeDefaultConnection(string pattern)
+
+			Changes default connection path.
+
+			Possible errors:org.bluez.network.Error.DoesNotExist
+
 Signals
 
 		void ServerCreated(string path)
@@ -73,6 +92,8 @@ Signals
 		void ConnectionCreated(string path)
 
 		void ConnectionRemoved(string path)
+
+		void DefaultConnectionChanged(string path)
 
 
 Network Server hierarchy (experimental)

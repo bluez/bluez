@@ -675,7 +675,8 @@ int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 	return 0;
 }
 
-int connection_store(DBusConnection *conn, const char *path)
+int connection_store(DBusConnection *conn, const char *path,
+			gboolean default_path)
 {
 	struct network_conn *nc;
 	const char *role;
@@ -696,17 +697,19 @@ int connection_store(DBusConnection *conn, const char *path)
 	role = bnep_name(nc->id);
 	snprintf(key, 32, "%s#%s", dst_addr, role);
 
-	len = strlen(nc->name) + strlen(nc->desc)  + 2;
-	value = g_malloc0(len);
-	snprintf(value, len, "%s:%s", nc->name, nc->desc);
-
 	ba2str(&nc->src, src_addr);
 	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "network");
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	err = textfile_put(filename, key, value);
-
-	g_free(value);
+	if (default_path)
+		err = textfile_put(filename, "default", key);
+	else {
+		len = strlen(nc->name) + strlen(nc->desc)  + 2;
+		value = g_malloc0(len);
+		snprintf(value, len, "%s:%s", nc->name, nc->desc);
+		err = textfile_put(filename, key, value);
+		g_free(value);
+	}
 
 	return err;
 }
@@ -773,4 +776,14 @@ int connection_remove_stored(DBusConnection *conn, const char *path)
 	err = textfile_del(filename, key);
 
 	return err;
+}
+
+gboolean connection_is_connected(DBusConnection *conn, const char *path)
+{
+	struct network_conn *nc;
+
+	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
+		return FALSE;
+
+	return (nc->state == CONNECTED);
 }

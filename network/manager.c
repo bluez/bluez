@@ -70,6 +70,7 @@ struct pending_reply {
 
 static GSList *server_paths	= NULL;	/* Network registered servers paths */
 static GSList *connection_paths	= NULL;	/* Network registered connections paths */
+static int default_index = -1;		/* Network default connection path index */
 
 static DBusConnection *connection = NULL;
 
@@ -139,6 +140,27 @@ static DBusHandlerResult list_paths(DBusConnection *conn, DBusMessage *msg,
 	return send_message_and_unref(conn, reply);
 }
 
+static const char * last_connection_used(DBusConnection *conn)
+{
+	const char *path = NULL;
+	GSList *l;
+	int i;
+
+	for (i = g_slist_length (connection_paths) -1; i > -1; i--) {
+		path = g_slist_nth_data (connection_paths, i);
+		if (connection_is_connected (conn, path))
+			break;
+	}
+
+	/* No connection connected fallback to last connection */
+	if (i == -1) {
+		l = g_slist_last(connection_paths);
+		path = l->data;
+	}
+
+	return path;
+}
+
 static DBusHandlerResult remove_path(DBusConnection *conn,
 					DBusMessage *msg, GSList **list,
 					const char *sname)
@@ -163,10 +185,17 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 
 	/* Remove references from the storage */
 	if (*list == connection_paths) {
-		if (connection_has_pending (conn, path))
+		if (connection_has_pending(conn, path))
 			return err_failed(conn, msg, "Connection is Busy");
 
 		connection_remove_stored(conn, path);
+		/* Reset default connection */
+		if (l == g_slist_nth(*list, default_index)) {
+			const char *dpath;
+
+			dpath = last_connection_used(conn);
+			connection_store(conn, dpath, TRUE);
+		}
 	}
 	else
 		server_remove_stored(conn, path);
@@ -251,7 +280,7 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
-	connection_store(pr->conn, pr->path);
+	connection_store(pr->conn, pr->path, FALSE);
 	connection_paths = g_slist_append(connection_paths, g_strdup(pr->path));
 
 	create_path(pr->conn, pr->msg, pr->path, "ConnectionCreated");
@@ -401,7 +430,7 @@ static DBusHandlerResult create_server(DBusConnection *conn,
 	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
 		return err_invalid_args(conn, msg, "Not supported");
 
-	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/server/%s%d",
+	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s%d",
 							bnep_name(id), net_uid++);
 
 	if (g_slist_find_custom(server_paths, path,
@@ -480,6 +509,24 @@ static DBusHandlerResult list_connections(DBusConnection *conn,
 	return list_paths(conn, msg, connection_paths);
 }
 
+static GSList * find_connection_pattern(DBusConnection *conn,
+					const char *pattern)
+{
+	const char *path;
+	GSList *list;
+
+	if (pattern == NULL)
+		return NULL;
+
+	for (list = connection_paths; list; list = list->next) {
+		path = (const char *) list->data;
+		if (connection_find_data(conn, path, pattern) == 0)
+			break;
+	}
+
+	return list;
+}
+
 static DBusHandlerResult find_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -498,16 +545,14 @@ static DBusHandlerResult find_connection(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	for (list = connection_paths; list; list = list->next) {
-		path = (const char *) list->data;
-		if (connection_find_data(conn, path, pattern) == 0)
-			break;
-	}
+	list = find_connection_pattern(conn, pattern);
 
 	if (list == NULL) {
 		err_failed(conn, msg, "No such connection");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
+
+	path = list->data;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -586,6 +631,118 @@ static DBusHandlerResult remove_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	return remove_path(conn, msg, &connection_paths, "ConnectionRemoved");
+}
+
+static DBusHandlerResult last_connection(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *path;
+	DBusMessage *reply;
+
+	if (connection_paths == NULL ||
+		g_slist_length (connection_paths) == 0) {
+		err_does_not_exist(conn, msg, "No such connection");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	path = last_connection_used(conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult default_connection(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *path;
+	DBusMessage *reply;
+
+	if (connection_paths == NULL ||
+		g_slist_length (connection_paths) == 0) {
+		err_does_not_exist(conn, msg, "No such connection");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	path = g_slist_nth_data (connection_paths, default_index);
+
+	if (path == NULL) {
+		path = last_connection_used(conn);
+		connection_store(conn, path, TRUE);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult change_default_connection(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *path;
+	const char *pattern;
+	DBusMessage *reply;
+	DBusError derr;
+	GSList *list;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &pattern,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	if (connection_paths == NULL ||
+		g_slist_length (connection_paths) == 0) {
+		err_does_not_exist(conn, msg, "No such connection");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	list = g_slist_find_custom(connection_paths, pattern, (GCompareFunc) strcmp);
+
+	/* Find object path via pattern */
+	if (list == NULL) {
+		list = find_connection_pattern(conn, pattern);
+
+		if (list == NULL) {
+			err_failed(conn, msg, "No such connection");
+			return DBUS_HANDLER_RESULT_HANDLED;
+		}
+		else
+			path = list->data;
+	}
+	else
+		path = list->data;
+
+	default_index = g_slist_position (connection_paths, list);
+	connection_store(connection, path, TRUE);
+
+	dbus_connection_emit_signal(connection, NETWORK_PATH,
+					NETWORK_MANAGER_INTERFACE,
+					"DefaultConnectionChanged",
+					DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static void manager_unregister(DBusConnection *conn, void *data)
@@ -674,15 +831,76 @@ static void parse_stored_connection(char *key, char *value, void *data)
 	g_free(name);
 }
 
+static void register_connections_stored(const char *adapter)
+{
+	char filename[PATH_MAX + 1];
+	char *pattern;
+	struct stat s;
+	GSList *list;
+	bdaddr_t src;
+	bdaddr_t default_src;
+	int dev_id;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter, "network");
+
+	str2ba(adapter, &src);
+
+	bacpy(&default_src, BDADDR_ANY);
+	dev_id = hci_get_route(NULL);
+	if (dev_id < 0)
+		hci_devba(dev_id, &default_src);
+
+	if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
+		textfile_foreach(filename, parse_stored_connection, &src);
+		pattern = textfile_get(filename, "default");
+
+		list = find_connection_pattern(connection, pattern);
+		if (list != NULL)
+			default_index = g_slist_position(connection_paths, list);
+		else if (bacmp(&src, &default_src) == 0) {
+			list = g_slist_last(connection_paths);
+			if (list == NULL)
+				return;
+			default_index = g_slist_position(connection_paths, list);
+			connection_store(connection, list->data, TRUE);
+		}
+	}
+}
+
+static void register_servers_stored(const char *adapter, const char *profile)
+{
+	char filename[PATH_MAX + 1];
+	char path[MAX_PATH_LENGTH];
+	const char *ppath = path;
+	uint16_t id;
+	struct stat s;
+	bdaddr_t src;
+
+	if (strcmp(profile, "nap") == 0)
+		id = BNEP_SVC_NAP;
+	else
+		id = BNEP_SVC_GN;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter, profile);
+
+	str2ba(adapter, &src);
+
+	if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
+		snprintf(path, MAX_PATH_LENGTH,
+			NETWORK_PATH"/%s%d", profile, net_uid++);
+		if (server_register_from_file(connection, path,
+			&src, id, filename) == 0) {
+			server_paths = g_slist_append(server_paths,
+						g_strdup(path));
+		}
+	}
+}
+
 static void register_stored(void)
 {
 	char dirname[PATH_MAX + 1];
-	char filename[PATH_MAX + 1];
-	char path[MAX_PATH_LENGTH];
 	struct dirent *de;
 	DIR *dir;
-	struct stat s;
-	bdaddr_t src;
 
 	snprintf(dirname, PATH_MAX, "%s", STORAGEDIR);
 
@@ -695,56 +913,13 @@ static void register_stored(void)
 			continue;
 
 		/* Connection objects */
-		create_name(filename, PATH_MAX, STORAGEDIR,
-						de->d_name, "network");
-
-		str2ba(de->d_name, &src);
-
-
-		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG))
-			textfile_foreach(filename, parse_stored_connection, &src);
+		register_connections_stored(de->d_name);
 
 		/* NAP objects */
-		create_name(filename, PATH_MAX, STORAGEDIR, de->d_name, "nap");
-		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
-			snprintf(path, MAX_PATH_LENGTH,
-					NETWORK_PATH"/server/nap%d", net_uid++);
-
-			if (server_register_from_file(connection, path,
-					&src, BNEP_SVC_NAP, filename) == 0) {
-				server_paths = g_slist_append(server_paths,
-								g_strdup(path));
-
-				dbus_connection_emit_signal(connection,
-							NETWORK_PATH,
-							NETWORK_MANAGER_INTERFACE,
-							"ServerCreated",
-							DBUS_TYPE_STRING,
-							&path,
-							DBUS_TYPE_INVALID);
-			}
-		}
+		register_servers_stored(de->d_name, "nap");
 
 		/* GN objects */
-		create_name(filename, PATH_MAX, STORAGEDIR, de->d_name, "gn");
-		if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
-			snprintf(path, MAX_PATH_LENGTH,
-					NETWORK_PATH"/server/gn%d", net_uid++);
-
-			if (server_register_from_file(connection, path,
-					&src, BNEP_SVC_GN, filename) == 0) {
-				server_paths = g_slist_append(server_paths,
-								g_strdup(path));
-
-				dbus_connection_emit_signal(connection,
-							NETWORK_PATH,
-							NETWORK_MANAGER_INTERFACE,
-							"ServerCreated",
-							DBUS_TYPE_STRING,
-							&path,
-							DBUS_TYPE_INVALID);
-			}
-		}
+		register_servers_stored(de->d_name, "gn");
 	}
 
 	closedir(dir);
@@ -759,6 +934,9 @@ static DBusMethodVTable manager_methods[] = {
 	{ "FindConnection",	find_connection,	"s",	"s"	},
 	{ "CreateConnection",	create_connection,	"ss",	"s"	},
 	{ "RemoveConnection",	remove_connection,	"s",	""	},
+	{ "LastConnection",	last_connection,	"",	"s"	},
+	{ "DefaultConnection",	default_connection,	"",	"s"	},
+	{ "ChangeDefaultConnection", change_default_connection, "s", "s"},
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -767,6 +945,7 @@ static DBusSignalVTable manager_signals[] = {
 	{ "ServerRemoved",	"s"	},
 	{ "ConnectionCreated",	"s"	},
 	{ "ConnectionRemoved",	"s"	},
+	{ "DefaultConnectionChanged", "s" },
 	{ NULL, NULL }
 };
 
