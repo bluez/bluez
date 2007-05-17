@@ -145,14 +145,12 @@ int rfcomm_release(int16_t id)
 	memset(&req, 0, sizeof(req));
 	req.dev_id = id;
 
-#if 0
 	/*
 	 * We are hitting a kernel bug inside RFCOMM code when
 	 * RFCOMM_HANGUP_NOW bit is set on request's flags passed to
 	 * ioctl(RFCOMMRELEASEDEV)!
 	 */
 	req.flags = (1 << RFCOMM_HANGUP_NOW);
-#endif
 
 	if (ioctl(rfcomm_ctl, RFCOMMRELEASEDEV, &req) < 0) {
 		int err = errno;
