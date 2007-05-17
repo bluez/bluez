@@ -777,7 +777,23 @@ done:
 static DBusHandlerResult remove_port(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusError derr;
+	const char *path;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	if (port_unregister(path) < 0)
+		return err_does_not_exist(conn, msg, "path doesn't exist");
+
+	return send_message_and_unref(conn,
+			dbus_message_new_method_return(msg)); 
 }
 
 static DBusHandlerResult connect_service(DBusConnection *conn,

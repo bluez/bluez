@@ -31,6 +31,8 @@ int port_remove_listener(const char *owner, const char *name);
 
 int port_register(DBusConnection *conn, int id, const char *name, char *ppath);
 
+int port_unregister(const char *path);
+
 const char *port_get_owner(DBusConnection *conn, int16_t id);
 
 int port_open(const char *dev, open_notify_t notify,

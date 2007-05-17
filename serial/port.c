@@ -72,6 +72,7 @@ struct open_context {
 };
 
 static GSList *connected_nodes = NULL;
+static GSList *bound_nodes = NULL;
 
 static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *name)
 {
@@ -170,12 +171,13 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 	return FALSE;
 }
 
-static void port_unregister(DBusConnection *conn, void *data)
+static void port_handler_unregister(DBusConnection *conn, void *data)
 {
 	struct rfcomm_node *node = data;
 
 	debug("Unregistered serial port: %s", node->name);
 
+	bound_nodes = g_slist_remove(bound_nodes, node);
 	rfcomm_node_free(node);
 }
 
@@ -232,7 +234,7 @@ int port_register(DBusConnection *conn, int id, const char *name, char *ppath)
 	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%d", SERIAL_MANAGER_PATH, id);
 
 	if (!dbus_connection_create_object_path(conn, path, node,
-						port_unregister)) {
+						port_handler_unregister)) {
 		error("D-Bus failed to register %s path", path);
 		rfcomm_node_free(node);
 		return -1;
@@ -252,6 +254,27 @@ int port_register(DBusConnection *conn, int id, const char *name, char *ppath)
 
 	if (ppath)
 		strcpy(ppath, path);
+
+	bound_nodes = g_slist_append(bound_nodes, node);
+
+	return 0;
+}
+
+int port_unregister(const char *path)
+{
+	struct rfcomm_node *node;
+	char name[16];
+	int id;
+
+	if (sscanf(path, SERIAL_MANAGER_PATH"/rfcomm%d", &id) != 1)
+		return -ENOENT;
+
+	snprintf(name, sizeof(name), "/dev/rfcomm%d", id);
+	node = find_node_by_name(bound_nodes, name);
+	if (!node)
+		return -ENOENT;
+
+	dbus_connection_destroy_object_path(node->conn, path);
 
 	return 0;
 }
