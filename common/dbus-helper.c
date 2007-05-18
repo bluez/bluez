@@ -432,6 +432,9 @@ void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 	case DBUS_TYPE_STRING:
 		sig = DBUS_TYPE_STRING_AS_STRING;
 		break;
+	case DBUS_TYPE_INT16:
+		sig = DBUS_TYPE_INT16_AS_STRING;
+		break;
 	case DBUS_TYPE_UINT32:
 		sig = DBUS_TYPE_UINT32_AS_STRING;
 		break;
