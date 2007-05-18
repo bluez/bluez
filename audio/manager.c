@@ -393,6 +393,11 @@ static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *ms
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+					AUDIO_MANAGER_INTERFACE,
+					"HeadsetCreated",
+					DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID);
