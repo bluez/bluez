@@ -1202,20 +1202,14 @@ static DBusHandlerResult hs_is_connected(DBusConnection *conn, DBusMessage *msg,
 						void *data)
 {
 	audio_device_t *device = data;
-	struct headset *hs = device->headset;
 	DBusMessage *reply;
 	dbus_bool_t connected;
-
-	assert(hs);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (hs->state >= HEADSET_STATE_CONNECTED)
-		connected = TRUE;
-	else
-		connected = FALSE;
+	connected = headset_is_connected(device->headset);
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
@@ -1744,6 +1738,14 @@ static GIOChannel *server_socket(uint8_t *channel)
 	}
 
 	return io;
+}
+
+gboolean headset_is_connected(headset_t *headset)
+{
+	if (headset->state >= HEADSET_STATE_CONNECTED)
+		return TRUE;
+	else
+		return FALSE;
 }
 
 int headset_server_init(DBusConnection *conn)

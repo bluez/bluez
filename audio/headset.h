@@ -33,6 +33,8 @@ typedef struct headset headset_t;
 
 headset_t *headset_init(const char *path);
 
+gboolean headset_is_connected(headset_t *headset);
+
 int headset_server_init(DBusConnection *conn);
 
 void headset_exit(void);

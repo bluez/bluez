@@ -148,8 +148,40 @@ static DBusHandlerResult device_get_address(DBusConnection *conn, DBusMessage *m
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult device_get_connected(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	DBusMessageIter iter, array_iter;
+	audio_device_t *device = data;
+	DBusMessage *reply;
+	const char *iface;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	if (device->headset && headset_is_connected(device->headset)) {
+		iface = AUDIO_HEADSET_INTERFACE;
+		dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING, &iface);
+	}
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusMethodVTable device_methods[] = {
-	{ "GetAddress",	device_get_address,	"",	"s"	},
+	{ "GetAddress",			device_get_address,
+		"",	"s"	},
+	{ "GetConnectedInterfaces",	device_get_connected,
+		"",	"s"	},
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -295,13 +327,6 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 }
 
 static DBusHandlerResult am_list_devices(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-static DBusHandlerResult am_connected_devices(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
@@ -536,13 +561,11 @@ static DBusHandlerResult am_change_default_headset(DBusConnection *conn, DBusMes
 
 static DBusMethodVTable manager_methods[] = {
 	{ "CreateDevice",		am_create_device,
-		"s",	"sas"		},
+		"s",	"s"		},
 	{ "RemoveDevice",		am_remove_device,
 		"s",	""		},
 	{ "ListDevices",		am_list_devices,
-		"",	"a(sas)"	},
-	{ "GetConnectedDevices",	am_connected_devices,
-		"",	"a(sas)"	},	
+		"",	"as"	},
 	{ "CreateHeadset",		am_create_headset,
 		"s",	"s"		},
 	{ "RemoveHeadset",		am_remove_headset,
@@ -557,7 +580,7 @@ static DBusMethodVTable manager_methods[] = {
 };
 
 static DBusSignalVTable manager_signals[] = {
-	{ "DeviceCreated",		"sas"	},
+	{ "DeviceCreated",		"s"	},
 	{ "DeviceRemoved",		"s"	},
 	{ "HeadsetCreated",		"s"	},
 	{ "HeadsetRemoved",		"s"	},
