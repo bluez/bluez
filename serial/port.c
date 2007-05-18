@@ -141,8 +141,7 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 		dbus_connection_unref(node->conn);
 	if (node->owner)
 		g_free(node->owner);
-	if (node->id)
-		rfcomm_release(node->id);
+	rfcomm_release(node->id);
 	if (node->io) {
 		g_source_remove(node->io_id);
 		g_io_channel_unref(node->io);
