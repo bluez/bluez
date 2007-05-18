@@ -1104,8 +1104,7 @@ static DBusSignalVTable manager_signals[] = {
 
 static void parse_port(char *key, char *value, void *data)
 {
-	char path[MAX_PATH_LENGTH], port_name[16], dst_addr[18];
-	const char *ppath = path;
+	char port_name[16], dst_addr[18];
 	char *src_addr = data;
 	bdaddr_t dst, src;
 	int ch, id;
@@ -1125,15 +1124,10 @@ static void parse_port(char *key, char *value, void *data)
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", id);
 
-	if (port_register(connection, id, &dst, port_name, path) < 0) {
+	if (port_register(connection, id, &dst, port_name, NULL) < 0) {
 		rfcomm_release(id);
 		return;
 	}
-
-	dbus_connection_emit_signal(connection, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "PortCreated" ,
-			DBUS_TYPE_STRING, &ppath,
-			DBUS_TYPE_INVALID);
 }
 
 static void register_stored_ports(void)
