@@ -201,7 +201,8 @@ static void port_handler_unregister(DBusConnection *conn, void *data)
 
 	debug("Unregistered serial port: %s", node->name);
 
-	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%d", SERIAL_MANAGER_PATH, node->id);
+	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%hd", SERIAL_MANAGER_PATH, node->id);
+
 	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "PortRemoved" ,
 			DBUS_TYPE_STRING, &ppath,
@@ -211,7 +212,7 @@ static void port_handler_unregister(DBusConnection *conn, void *data)
 	rfcomm_node_free(node);
 }
 
-int port_add_listener(DBusConnection *conn, int id, bdaddr_t *dst,
+int port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 			int fd, const char *name, const char *owner)
 {
 	struct rfcomm_node *node;
@@ -252,7 +253,7 @@ int port_remove_listener(const char *owner, const char *name)
 	return 0;
 }
 
-int port_register(DBusConnection *conn, int id, bdaddr_t *dst,
+int port_register(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 					const char *name, char *ppath)
 {
 	char path[MAX_PATH_LENGTH];
@@ -264,7 +265,7 @@ int port_register(DBusConnection *conn, int id, bdaddr_t *dst,
 	node->name	= g_strdup(name);
 	node->conn	= dbus_connection_ref(conn);
 
-	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%d", SERIAL_MANAGER_PATH, id);
+	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%hd", SERIAL_MANAGER_PATH, id);
 
 	if (!dbus_connection_create_object_path(conn, path, node,
 						port_handler_unregister)) {

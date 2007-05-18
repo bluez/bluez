@@ -21,12 +21,12 @@
  *
  */
 
-int port_add_listener(DBusConnection *conn, int id, bdaddr_t *dst,
+int port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 			int fd, const char *name, const char *owner);
 
 int port_remove_listener(const char *owner, const char *name);
 
-int port_register(DBusConnection *conn, int id, bdaddr_t *dst,
+int port_register(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 					const char *name, char *ppath);
 
 int port_unregister(const char *path);
