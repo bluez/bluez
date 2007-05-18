@@ -123,9 +123,6 @@ static DBusHandlerResult port_get_info(DBusConnection *conn,
 	dbus_message_iter_append_dict_entry(&dict, "address",
 			DBUS_TYPE_STRING, &pbda);
 
-	dbus_message_iter_append_dict_entry(&dict, "dev_id",
-			DBUS_TYPE_INT16, &node->id);
-
 	dbus_message_iter_close_container(&iter, &dict);
 
 	return send_message_and_unref(conn, reply);
