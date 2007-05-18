@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
@@ -46,6 +48,7 @@
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "logging.h"
+#include "textfile.h"
 
 #include "error.h"
 #include "port.h"
@@ -163,13 +166,13 @@ int rfcomm_release(int16_t id)
 	return 0;
 }
 
-static int rfcomm_bind(bdaddr_t *src, bdaddr_t *dst, uint8_t ch)
+static int rfcomm_bind(bdaddr_t *src, bdaddr_t *dst, int16_t dev_id, uint8_t ch)
 {
 	struct rfcomm_dev_req req;
 	int id;
 
 	memset(&req, 0, sizeof(req));
-	req.dev_id = -1;
+	req.dev_id = dev_id;
 	req.flags = 0;
 	bacpy(&req.src, src);
 	bacpy(&req.dst, dst);
@@ -438,7 +441,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 		bdaddr_t dst;
 
 		str2ba(pc->bda, &dst);
-		err = rfcomm_bind(&pc->src, &dst, ch);
+		err = rfcomm_bind(&pc->src, &dst, -1, ch);
 		if (err < 0) {
 			err_failed(pc->conn, pc->msg, strerror(-err));
 			goto fail;
@@ -728,7 +731,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 				"invalid RFCOMM channel");
 
 	str2ba(bda, &dst);
-	err = rfcomm_bind(&src, &dst, val);
+	err = rfcomm_bind(&src, &dst, -1, val);
 	if (err < 0)
 		return err_failed(conn, msg, strerror(-err));
 
@@ -1019,6 +1022,61 @@ static DBusSignalVTable manager_signals[] = {
 	{ NULL, NULL }
 };
 
+static void parse_port(char *key, char *value, void *data)
+{
+	char path[MAX_PATH_LENGTH], port_name[16], dst_addr[18];
+	const char *ppath = path;
+	char *src_addr = data;
+	bdaddr_t dst, src;
+	int ch, id;
+
+	memset(dst_addr, 0, sizeof(dst_addr));
+	if (sscanf(key,"%17s#%d", dst_addr, &id) != 2)
+		return;
+
+	if (sscanf(value,"%d:", &ch) != 1)
+		return;
+
+	str2ba(dst_addr, &dst);
+	str2ba(src_addr, &src);
+
+	if (rfcomm_bind(&src, &dst, id, ch) < 0)
+		return;
+
+	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", id);
+
+	port_register(connection, id, &dst, port_name, path);
+
+	dbus_connection_emit_signal(connection, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "PortCreated" ,
+			DBUS_TYPE_STRING, &ppath,
+			DBUS_TYPE_INVALID);
+
+}
+
+static void register_stored_ports(void)
+{
+	char filename[PATH_MAX + 1];
+	struct dirent *de;
+	DIR *dir;
+
+	snprintf(filename, PATH_MAX, "%s", STORAGEDIR);
+
+	dir = opendir(filename);
+	if (!dir)
+		return;
+
+	while ((de = readdir(dir)) != NULL) {
+		if (!isdigit(de->d_name[0]))
+			continue;
+		snprintf(filename, PATH_MAX, "%s/%s/serial", STORAGEDIR, de->d_name);
+
+		textfile_foreach(filename, parse_port, de->d_name);
+	}
+
+	closedir(dir);
+}
+
 int serial_init(DBusConnection *conn)
 {
 
@@ -1048,6 +1106,8 @@ int serial_init(DBusConnection *conn)
 	connection = dbus_connection_ref(conn);
 
 	info("Registered manager path:%s", SERIAL_MANAGER_PATH);
+
+	register_stored_ports();
 
 	return 0;
 }
