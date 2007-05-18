@@ -319,18 +319,36 @@ static DBusHandlerResult am_create_device(DBusConnection *conn, DBusMessage *msg
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult am_remove_device(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static DBusHandlerResult am_list_devices(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessageIter iter, array_iter;
+	DBusMessage *reply;
+	GSList *l;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	for (l = devices; l != NULL; l = l->next) {
+		audio_device_t *device = l->data;
+		const char *path;
+
+		path = device->object_path;
+
+		dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING, &path);
+	}
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return send_message_and_unref(connection, reply);
 }
 
 static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *msg,
@@ -390,7 +408,8 @@ static gint device_path_cmp(gconstpointer a, gconstpointer b)
 	return strcmp(device->object_path, path);
 }
 
-static DBusHandlerResult am_remove_headset(DBusConnection *conn, DBusMessage *msg,
+static DBusHandlerResult am_remove_device(DBusConnection *conn,
+						DBusMessage *msg,
 						void *data)
 {
 	DBusError derr;
@@ -455,6 +474,13 @@ static DBusHandlerResult am_remove_headset(DBusConnection *conn, DBusMessage *ms
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(connection, reply);
+}
+
+static DBusHandlerResult am_remove_headset(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	return am_remove_device(conn, msg, data);
 }
 
 static DBusHandlerResult am_list_headsets(DBusConnection *conn, DBusMessage *msg,
