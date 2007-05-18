@@ -885,8 +885,15 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 	if (port_unregister(path) < 0)
 		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
 
-	return send_message_and_unref(conn,
+	send_message_and_unref(conn,
 			dbus_message_new_method_return(msg)); 
+
+	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "PortRemoved" ,
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult connect_service(DBusConnection *conn,

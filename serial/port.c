@@ -196,17 +196,8 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 static void port_handler_unregister(DBusConnection *conn, void *data)
 {
 	struct rfcomm_node *node = data;
-	char path[MAX_PATH_LENGTH];
-	const char *ppath = path;
 
 	debug("Unregistered serial port: %s", node->name);
-
-	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%hd", SERIAL_MANAGER_PATH, node->id);
-
-	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "PortRemoved" ,
-			DBUS_TYPE_STRING, &ppath,
-			DBUS_TYPE_INVALID);
 
 	bound_nodes = g_slist_remove(bound_nodes, node);
 	rfcomm_node_free(node);
