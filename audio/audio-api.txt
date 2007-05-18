@@ -12,35 +12,25 @@ org.bluez.audio.Manager interface
 Object path	/org/bluez/audio
 
 Methods
-		string, array{string} CreateDevice(string address)
+		string CreateDevice(string address)
 
 			Creates a new audio device object. If not yet done,
 			this method will perform a SDP query on the remote
 			device and return first when the query is complete,
 			so be sure to call this method asynchronously.
 
-			The first return parameter is the object path of the
-			newly created object. The second one is a list of
-			available interfaces (i.e. the set of audio profiles
-			which it implements).
+			The return parameter is the object path of the newly
+			created object.
 
-		void	RemoveDevice(string path)
+		void RemoveDevice(string path)
 
 			Removes a device from the device tree. If there are
 			any connections open to the device they will be closed.			
 
-		array{string, array{string}} ListDevices()
+		array{string} ListDevices()
 
-			Retuns an array of elements that consist of a string
-			indicating the object path of a device as well as a
-			string list that corresponds to the set of interfaces
-			that the object implements.
-
-		array{string, array{string}} GetConnectedDevices()
-
-			Returns an array of elements of the same format as
-			ListDevices() for each device and interface which
-			is in a connected state.
+			Retuns an array of strings indicating the object paths
+			of available devices
 
 		array{string} ListHeadsets()
 
@@ -67,7 +57,7 @@ Methods
 			related to it.
 
 Signals
-		void DeviceCreated(string path, array{string} interfaces)
+		void DeviceCreated(string path)
 
 			Sent when a new device object has been created.
 
@@ -96,6 +86,11 @@ Object path(s)	/org/bluez/audio/device*
 Methods		string GetAddress()
 
 			Returns the Bluetooth address of the remote device.
+
+		array{string} GetConnectedInterfaces()
+
+			Returns a string list of interfaces that are in a
+			connected state.
 
 
 org.bluez.audio.Headset interface
