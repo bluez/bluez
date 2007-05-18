@@ -316,23 +316,6 @@ int port_unregister(const char *path)
 	return 0;
 }
 
-const char *port_get_owner(DBusConnection *conn, int16_t id)
-{
-	struct rfcomm_node *node;
-	static char path[MAX_PATH_LENGTH];
-
-	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%d", SERIAL_MANAGER_PATH, id);
-
-	/* FIXME: Ports related to services connection doesn't have a path/object */
-	if (!dbus_connection_get_object_user_data(conn, path, (void *) &node)
-			|| !node) {
-		errno = ENOENT;
-		return NULL;
-	}
-
-	return node->owner;
-}
-
 static gboolean open_continue(struct open_context *oc)
 {
 	int fd;

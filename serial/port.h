@@ -34,7 +34,5 @@ int port_register(DBusConnection *conn, int id, bdaddr_t *dst,
 
 int port_unregister(const char *path);
 
-const char *port_get_owner(DBusConnection *conn, int16_t id);
-
 int port_open(const char *dev, open_notify_t notify,
 			void *data, udata_free_t ufree);
