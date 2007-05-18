@@ -144,6 +144,16 @@ static struct pending_connect *find_pending_connect_by_pattern(const char *bda,
 	return NULL;
 }
 
+static void open_context_free(void *data)
+{
+	struct open_context *oc = data;
+
+	if (oc->ufree)
+		oc->ufree(oc->udata);
+	g_free(oc->dev);
+	g_free(oc);
+}
+
 static gboolean open_continue(struct open_context *oc)
 {
 	int fd;
@@ -156,23 +166,15 @@ static gboolean open_continue(struct open_context *oc)
 		if (++oc->ntries >= MAX_OPEN_TRIES) {
 			/* Reporting error */
 			oc->notify(fd, err, oc->udata);
+			open_context_free(oc);
 			return FALSE;
 		}
 		return TRUE;
 	}
 	/* Connection succeeded */
 	oc->notify(fd, 0, oc->udata);
+	open_context_free(oc);
 	return FALSE;
-}
-
-static void open_context_free(void *data)
-{
-	struct open_context *oc = data;
-
-	if (oc->ufree)
-		oc->ufree(oc->udata);
-	g_free(oc->dev);
-	g_free(oc);
 }
 
 int port_open(const char *dev, open_notify_t notify,
@@ -188,8 +190,7 @@ int port_open(const char *dev, open_notify_t notify,
 		oc->notify	= notify;
 		oc->ufree	= ufree;
 		oc->udata	= udata;
-		g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, OPEN_WAIT,
-			(GSourceFunc) open_continue, oc, open_context_free);
+		g_timeout_add(OPEN_WAIT, (GSourceFunc) open_continue, oc);
 		return -EINPROGRESS;
 	}
 

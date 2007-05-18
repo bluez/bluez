@@ -27,6 +27,7 @@
 
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/param.h>
 
 #include <bluetooth/bluetooth.h>
 
