@@ -258,10 +258,9 @@ static int rfcomm_bind(bdaddr_t *src, bdaddr_t *dst, int16_t dev_id, uint8_t ch)
 static void open_notify(int fd, int err, void *data)
 {
 	char port_name[16];
-	const char *pname = port_name;
-	const char *owner;
-	DBusMessage *reply;
+	const char *owner, *pname = port_name;
 	struct pending_connect *pc = data;
+	DBusMessage *reply;
 	bdaddr_t dst;
 
 	if (err) {
@@ -499,8 +498,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 	if (dbus_message_has_member(pc->msg, "CreatePort")) {
-		char path[MAX_PATH_LENGTH];
-		char port_name[16];
+		char path[MAX_PATH_LENGTH], port_name[16];
 		const char *ppath = path;
 		sdp_data_t *d;
 		char *svcname = NULL;
@@ -722,12 +720,10 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusError derr;
 	bdaddr_t src, dst;
-	char path[MAX_PATH_LENGTH];
+	char path[MAX_PATH_LENGTH], port_name[16], uuid[37];
 	const char *bda, *pattern, *ppath = path;
 	long val;
 	int dev_id, err;
-	char port_name[16];
-	char uuid[37];
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -1129,13 +1125,15 @@ static void parse_port(char *key, char *value, void *data)
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", id);
 
-	port_register(connection, id, &dst, port_name, path);
+	if (port_register(connection, id, &dst, port_name, path) < 0) {
+		rfcomm_release(id);
+		return;
+	}
 
 	dbus_connection_emit_signal(connection, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "PortCreated" ,
 			DBUS_TYPE_STRING, &ppath,
 			DBUS_TYPE_INVALID);
-
 }
 
 static void register_stored_ports(void)
