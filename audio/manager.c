@@ -473,6 +473,12 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 					DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID);
 
+	dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+					AUDIO_MANAGER_INTERFACE,
+					"DeviceRemoved",
+					DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
 	return send_message_and_unref(connection, reply);
 }
 
