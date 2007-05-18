@@ -287,6 +287,27 @@ static DBusHandlerResult am_create_device(DBusConnection *conn, DBusMessage *msg
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult am_remove_device(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult am_list_devices(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult am_connected_devices(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *msg,
 						void *data)
 {
@@ -515,21 +536,29 @@ static DBusHandlerResult am_change_default_headset(DBusConnection *conn, DBusMes
 
 static DBusMethodVTable manager_methods[] = {
 	{ "CreateDevice",		am_create_device,
-		"s",	"sas"	},
+		"s",	"sas"		},
+	{ "RemoveDevice",		am_remove_device,
+		"s",	""		},
+	{ "ListDevices",		am_list_devices,
+		"",	"a(sas)"	},
+	{ "GetConnectedDevices",	am_connected_devices,
+		"",	"a(sas)"	},	
 	{ "CreateHeadset",		am_create_headset,
-		"s",	"s"	},
+		"s",	"s"		},
 	{ "RemoveHeadset",		am_remove_headset,
-		"s",	""	},
+		"s",	""		},
 	{ "ListHeadsets",		am_list_headsets,
-		"",	"as"	},
+		"",	"as"		},
 	{ "DefaultHeadset",		am_get_default_headset,
-		"",	"s"	},
+		"",	"s"		},
 	{ "ChangeDefaultHeadset",	am_change_default_headset,
 		"s",	""	},
 	{ NULL, NULL, NULL, NULL },
 };
 
 static DBusSignalVTable manager_signals[] = {
+	{ "DeviceCreated",		"sas"	},
+	{ "DeviceRemoved",		"s"	},
 	{ "HeadsetCreated",		"s"	},
 	{ "HeadsetRemoved",		"s"	},
 	{ "DefaultHeadsetChanged",	"s"	},
