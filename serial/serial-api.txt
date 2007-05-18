@@ -76,16 +76,6 @@ Methods		string GetAddress() [experimental]
 
 			Returns the Bluetooth address of the ending point.
 
-		string Connect() [experimental]
+		string GetInfo() [experimental]
 
-			Connects to remote device associated to the port
-			object.
-
-			Possible errors:org.bluez.serial.Error.ConnectionAttemptFailed
-					org.bluez.serial.Error.Failed
-
-		void Disconnect() [experimental]
-
-			Disconnects from remote device.
-
-			Possible errors:org.bluez.serial.Error.Failed
+			Returns the port properties.
