@@ -88,20 +88,6 @@ static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *name)
 	return NULL;
 }
 
-static DBusHandlerResult port_connect(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	/* FIXME: call port_open() */
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-static DBusHandlerResult port_disconnect(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static DBusHandlerResult port_get_address(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -122,10 +108,44 @@ static DBusHandlerResult port_get_address(DBusConnection *conn,
 
 }
 
+static DBusHandlerResult port_get_info(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct rfcomm_node *node = data;
+	DBusMessage *reply;
+	DBusMessageIter iter, dict;
+	char bda[18];
+	const char *pbda = bda;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	dbus_message_iter_append_dict_entry(&dict, "name",
+			DBUS_TYPE_STRING, &node->name);
+
+	ba2str(&node->dst, bda);
+	dbus_message_iter_append_dict_entry(&dict, "address",
+			DBUS_TYPE_STRING, &pbda);
+
+	dbus_message_iter_append_dict_entry(&dict, "dev_id",
+			DBUS_TYPE_INT16, &node->id);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusMethodVTable port_methods[] = {
-	{ "Connect",	port_connect,		"",	""	},
-	{ "Disconnect",	port_disconnect,	"",	""	},
 	{ "GetAddress",	port_get_address,	"",	"s"	},
+	{ "GetInfo",	port_get_info,		"",	"{sv}"	},
 	{ NULL, NULL, NULL, NULL },
 };
 
