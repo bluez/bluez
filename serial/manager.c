@@ -49,6 +49,7 @@
 
 #include "error.h"
 #include "port.h"
+#include "storage.h"
 #include "manager.h"
 
 #define BASE_UUID			"00000000-0000-1000-8000-00805F9B34FB"
@@ -366,7 +367,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 {
 	struct pending_connect *pc = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	sdp_record_t *rec;
+	sdp_record_t *rec = NULL;
 	const uint8_t *rec_bin;
 	sdp_list_t *protos;
 	DBusError derr;
@@ -414,7 +415,6 @@ static void record_reply(DBusPendingCall *call, void *data)
 	}
 
 	if (len != scanned || (sdp_get_access_protos(rec, &protos) < 0)) {
-		sdp_record_free(rec);
 		err_not_supported(pc->conn, pc->msg);
 		goto fail;
 	}
@@ -423,18 +423,17 @@ static void record_reply(DBusPendingCall *call, void *data)
 	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
 	sdp_list_free(protos, NULL);
 
-	sdp_record_free(rec);
-
 	if (ch < 1 || ch > 30) {
 		error("Channel out of range: %d", ch);
 		err_not_supported(pc->conn, pc->msg);
 		goto fail;
 	}
-
 	if (dbus_message_has_member(pc->msg, "CreatePort")) {
 		char path[MAX_PATH_LENGTH];
 		char port_name[16];
 		const char *ppath = path;
+		sdp_data_t *d;
+		char *svcname = NULL;
 		DBusMessage *reply;
 		bdaddr_t dst;
 
@@ -444,8 +443,19 @@ static void record_reply(DBusPendingCall *call, void *data)
 			err_failed(pc->conn, pc->msg, strerror(-err));
 			goto fail;
 		}
-
 		snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
+
+		d = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
+		if (d) {
+			svcname = g_new0(char, d->unitSize);
+			snprintf(svcname, d->unitSize, "%.*s",
+					d->unitSize, d->val.str);
+		}
+
+		port_store(&pc->src, &dst, err, ch, svcname);
+		if (svcname)
+			g_free(svcname);
+
 		port_register(pc->conn, err, &dst, port_name, path);
 
 		reply = dbus_message_new_method_return(pc->msg);
@@ -469,14 +479,16 @@ static void record_reply(DBusPendingCall *call, void *data)
 		}
 
 		/* Wait the connect callback */
-		dbus_message_unref(reply);
-		return;
+		goto done;
 	}
 
 fail:
-	dbus_message_unref(reply);
 	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
+done:
+	if (rec)
+		sdp_record_free(rec);
+	dbus_message_unref(reply);
 }
 
 static int get_record(struct pending_connect *pc, uint32_t handle,
@@ -721,6 +733,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 		return err_failed(conn, msg, strerror(-err));
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
+	port_store(&src, &dst, err, val, NULL);
 	port_register(conn, err, &dst, port_name, path);
 
 	reply = dbus_message_new_method_return(msg);

@@ -20,3 +20,6 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+int port_store(bdaddr_t *src, bdaddr_t *dst, int id,
+			uint8_t ch, const char *svcname);

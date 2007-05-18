@@ -25,4 +25,44 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
+#include <sys/stat.h>
+
+#include <bluetooth/bluetooth.h>
+
+#include <glib.h>
+
+#include "logging.h"
+#include "textfile.h"
+
 #include "storage.h"
+
+int port_store(bdaddr_t *src, bdaddr_t *dst, int id,
+			uint8_t ch, const char *svcname)
+{
+	char filename[PATH_MAX + 1];
+	char src_addr[18], dst_addr[18];
+	char key[32];
+	char *value;
+	int size, err;
+
+	if (!svcname)
+		svcname = "Bluetooth RFCOMM port";
+
+	ba2str(src, src_addr);
+	ba2str(dst, dst_addr);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "serial");
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	size = strlen(svcname) + 3;
+	value = g_malloc0(size);
+
+	snprintf(key, 32, "%s#%d", dst_addr, id);
+	snprintf(value, size, "%d:%s", ch, svcname);
+
+	err = textfile_put(filename, key, value);
+	g_free(value);
+
+	return err;
+}
