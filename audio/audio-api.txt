@@ -87,7 +87,7 @@ Methods		string GetAddress()
 
 			Returns the Bluetooth address of the remote device.
 
-		array{string} GetConnectedInterfaces()
+		array{string} GetConnectedInterfaces()	[experimental]
 
 			Returns a string list of interfaces that are in a
 			connected state.
