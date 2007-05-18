@@ -38,6 +38,21 @@
 
 #include "storage.h"
 
+int port_delete(bdaddr_t *src, bdaddr_t *dst, int id)
+{
+	char filename[PATH_MAX + 1];
+	char src_addr[18], dst_addr[18];
+	char key[32];
+
+	ba2str(src, src_addr);
+	ba2str(dst, dst_addr);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "serial");
+	snprintf(key, sizeof(key), "%s#%d", dst_addr, id);
+
+	return textfile_del(filename, key);
+}
+
 int port_store(bdaddr_t *src, bdaddr_t *dst, int id,
 			uint8_t ch, const char *svcname)
 {

@@ -21,5 +21,6 @@
  *
  */
 
+int port_delete(bdaddr_t *src, bdaddr_t *dst, int id);
 int port_store(bdaddr_t *src, bdaddr_t *dst, int id,
 			uint8_t ch, const char *svcname);

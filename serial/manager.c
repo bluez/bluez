@@ -860,8 +860,10 @@ done:
 static DBusHandlerResult remove_port(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
+	struct rfcomm_dev_info di;
 	DBusError derr;
 	const char *path;
+	int16_t id;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -872,8 +874,16 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
+	if (sscanf(path, SERIAL_MANAGER_PATH"/rfcomm%hd", &id) != 1)
+		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
+
+	di.id = id;
+	if (ioctl(rfcomm_ctl, RFCOMMGETDEVINFO, &di) < 0)
+		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
+	port_delete(&di.src, &di.dst, id);
+
 	if (port_unregister(path) < 0)
-		return err_does_not_exist(conn, msg, "path doesn't exist");
+		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
 
 	return send_message_and_unref(conn,
 			dbus_message_new_method_return(msg)); 
