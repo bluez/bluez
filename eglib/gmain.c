@@ -1127,6 +1127,43 @@ void g_slist_free(GSList *list)
 	}
 }
 
+GSList *g_slist_nth(GSList *list, guint n)
+{
+	while (n-- > 0 && list)
+		list = list->next;
+
+	return list;
+}
+
+gpointer g_slist_nth_data(GSList *list, guint n)
+{
+	while (n-- > 0 && list)
+		list = list->next;
+
+	return list ? list->data : NULL;
+}
+
+gint g_slist_position(GSList *list, GSList *link)
+{
+	gint i;
+
+	for (i = 0; list; list = list->next, i++) {
+		if (list == link)
+			return i;
+	}
+
+	return -1;
+}
+
+GSList* g_slist_last(GSList *list)
+{
+	if (list)
+		while (list->next)
+			list = list->next;
+
+	return list;
+}
+
 /* Memory allocation functions */
 
 gpointer g_malloc(gulong n_bytes)

@@ -192,6 +192,11 @@ int g_slist_length(GSList *list);
 void g_slist_foreach(GSList *list, GFunc func, void *user_data);
 void g_slist_free(GSList *list);
 
+GSList *g_slist_nth(GSList *list, guint n);
+gpointer g_slist_nth_data(GSList *list, guint n);
+int g_slist_position(GSList *list, GSList *link);
+GSList* g_slist_last(GSList *list);
+
 /* End GSList declarations */
 
 /* Memory allocation related */
