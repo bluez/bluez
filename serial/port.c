@@ -50,10 +50,6 @@
 
 #define SERIAL_PORT_INTERFACE	"org.bluez.serial.Port"
 
-/* Waiting for udev to create the device node */
-#define MAX_OPEN_TRIES 		5
-#define OPEN_WAIT		300	/* ms */
-
 struct rfcomm_node {
 	int16_t		id;	/* RFCOMM device id */
 	bdaddr_t	dst;	/* Destination address */
@@ -62,14 +58,6 @@ struct rfcomm_node {
 	char		*owner; /* Bus name */
 	GIOChannel	*io;	/* Connected node IO Channel */
 	guint		io_id;	/* IO Channel ID */
-};
-
-struct open_context {
-	char		*dev;
-	open_notify_t	notify;
-	udata_free_t	ufree;
-	void		*udata;
-	int		ntries;
 };
 
 static GSList *connected_nodes = NULL;
@@ -314,55 +302,4 @@ int port_unregister(const char *path)
 	dbus_connection_destroy_object_path(node->conn, path);
 
 	return 0;
-}
-
-static gboolean open_continue(struct open_context *oc)
-{
-	int fd;
-
-	fd = open(oc->dev, O_RDONLY | O_NOCTTY);
-	if (fd < 0) {
-		int err = errno;
-		error("Could not open %s: %s (%d)",
-				oc->dev, strerror(err), err);
-		if (++oc->ntries >= MAX_OPEN_TRIES) {
-			/* Reporting error */
-			oc->notify(fd, err, oc->udata);
-			return FALSE;
-		}
-		return TRUE;
-	}
-	/* Connection succeeded */
-	oc->notify(fd, 0, oc->udata);
-	return FALSE;
-}
-
-static void open_context_free(void *data)
-{
-	struct open_context *oc = data;
-
-	if (oc->ufree)
-		oc->ufree(oc->udata);
-	g_free(oc->dev);
-	g_free(oc);
-}
-
-int port_open(const char *dev, open_notify_t notify, void *udata, udata_free_t ufree)
-{
-	int fd;
-
-	fd = open(dev, O_RDONLY | O_NOCTTY);
-	if (fd < 0) {
-		struct open_context *oc;
-		oc	= g_new0(struct open_context, 1);
-		oc->dev	= g_strdup(dev);
-		oc->notify	= notify;
-		oc->ufree	= ufree;
-		oc->udata	= udata;
-		g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, OPEN_WAIT,
-			(GSourceFunc) open_continue, oc, open_context_free);
-		return -EINPROGRESS;
-	}
-
-	return fd;
 }

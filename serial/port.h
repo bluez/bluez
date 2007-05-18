@@ -21,9 +21,6 @@
  *
  */
 
-typedef void (*open_notify_t) (int fd, int err, void *data);
-typedef void (*udata_free_t) (void *data);
-
 int port_add_listener(DBusConnection *conn, int id, bdaddr_t *dst,
 			int fd, const char *name, const char *owner);
 
@@ -33,6 +30,3 @@ int port_register(DBusConnection *conn, int id, bdaddr_t *dst,
 					const char *name, char *ppath);
 
 int port_unregister(const char *path);
-
-int port_open(const char *dev, open_notify_t notify,
-			void *data, udata_free_t ufree);
