@@ -88,15 +88,6 @@ DBusHandlerResult err_invalid_args(DBusConnection *conn,
 				SERIAL_ERROR_INTERFACE ".InvalidArguments", str));
 }
 
-DBusHandlerResult err_not_authorized(DBusConnection *conn,
-						DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-			SERIAL_ERROR_INTERFACE ".NotAuthorized",
-			"Owner not allowed"));
-}
-
 DBusHandlerResult err_not_supported(DBusConnection *conn,
 						DBusMessage *msg)
 {

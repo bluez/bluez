@@ -37,7 +37,5 @@ DBusHandlerResult err_failed(DBusConnection *conn,
 			DBusMessage *msg, const char *str);
 DBusHandlerResult err_invalid_args(DBusConnection *conn,
 				DBusMessage *msg, const char *str);
-DBusHandlerResult err_not_authorized(DBusConnection *conn,
-						DBusMessage *msg);
 DBusHandlerResult err_not_supported(DBusConnection *conn,
 						DBusMessage *msg);
