@@ -435,6 +435,7 @@ done:
 		free_device(data->device);
 	dbus_connection_unref(data->conn);
 	dbus_message_unref(data->msg);
+	g_slist_foreach(data->handles, (GFunc) g_free, NULL);
 	g_slist_free(data->handles);
 	g_slist_foreach(data->records, (GFunc) sdp_record_free, NULL);
 	g_slist_free(data->records);
@@ -505,7 +506,7 @@ static void get_next_record(struct audio_sdp_data *data)
 	DBusMessage *msg;
 	DBusPendingCall *pending;
 	char address[18], *ptr = address;
-	dbus_uint32_t handle;
+	dbus_uint32_t *handle;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
 						"org.bluez.Adapter",
@@ -517,15 +518,17 @@ static void get_next_record(struct audio_sdp_data *data)
 		return;
 	}
 
-	handle = (dbus_uint32_t) data->handles->data;
+	handle = data->handles->data;
 
 	data->handles = g_slist_remove(data->handles, data->handles->data);
 
 	ba2str(&data->device->bda, address);
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &ptr,
-					DBUS_TYPE_UINT32, &handle,
+					DBUS_TYPE_UINT32, handle,
 					DBUS_TYPE_INVALID);
+
+	g_free(handle);
 
 	if (!dbus_connection_send_with_reply(data->conn, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceRecord failed");
@@ -544,7 +547,7 @@ static void get_next_record(struct audio_sdp_data *data)
 static GSList *find_handle(GSList *handles, dbus_uint32_t handle)
 {
 	while (handles) {
-		if ((dbus_uint32_t) handles->data == handle)
+		if (*(dbus_uint32_t *) handles->data == handle)
 			return handles;
 		handles = handles->next;
 	}
@@ -584,9 +587,11 @@ static void get_handles_reply(DBusPendingCall *call,
 	}
 
 	for (i = 0; i < array_len; i++) {
-		if (!find_handle(data->handles, array[i]))
-			data->handles = g_slist_append(data->handles,
-							(gpointer) array[i]);
+		if (!find_handle(data->handles, array[i])) {
+			dbus_uint32_t *handle = g_new(dbus_uint32_t, 1);
+			*handle = array[i];
+			data->handles = g_slist_append(data->handles, handle);
+		}
 	}
 
 	data->state++;
