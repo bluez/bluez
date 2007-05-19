@@ -681,6 +681,7 @@ audio_device_t *manager_headset_connected(bdaddr_t *bda)
 {
 	audio_device_t *device;
 	const char *path;
+	gboolean created = FALSE;
 
 	device = find_device(bda);
 	if (device && device->headset)
@@ -692,6 +693,7 @@ audio_device_t *manager_headset_connected(bdaddr_t *bda)
 			free_device(device);
 			return NULL;
 		}
+		created = TRUE;
 	}
 
 	if (!device->headset)
@@ -701,6 +703,13 @@ audio_device_t *manager_headset_connected(bdaddr_t *bda)
 		return NULL;
 
 	path = device->object_path;
+
+	if (created)
+		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE,
+						"DeviceCreated",
+						DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID);
 
 	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
 					AUDIO_MANAGER_INTERFACE,
