@@ -24,6 +24,8 @@
 #define __AUDIO_HEADSET_H
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <dbus/dbus.h>
 
@@ -31,7 +33,7 @@
 
 typedef struct headset headset_t;
 
-headset_t *headset_init(const char *path);
+headset_t *headset_init(const char *object_path, sdp_record_t *record);
 
 gboolean headset_is_connected(headset_t *headset);
 

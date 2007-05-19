@@ -67,3 +67,17 @@ audio_device_t *manager_headset_connected(bdaddr_t *bda);
 int audio_init(DBusConnection *conn);
 
 void audio_exit(void);
+
+void finish_sdp_transaction(DBusConnection *conn, bdaddr_t *dba);
+
+
+DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg,
+						const char *descr);
+DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult err_not_connected(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult err_connect_failed(DBusConnection *conn,
+					DBusMessage *msg, int err);
+DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
+				const char *dsc);
+

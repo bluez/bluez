@@ -26,6 +26,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -35,6 +36,8 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -54,6 +57,25 @@
 
 #define SOCKET_NAME "/org/bluez/audio"
 
+typedef enum {
+		GENERIC_AUDIO = 0,
+		ADVANCED_AUDIO,
+		AV_REMOTE,
+		GET_RECORDS
+} audio_sdp_state_t;
+
+struct audio_sdp_data {
+	audio_device_t *device;
+
+	DBusConnection *conn;
+	DBusMessage *msg;
+
+	GSList *handles;
+	GSList *records;
+
+	audio_sdp_state_t state;
+};
+
 static DBusConnection *connection = NULL;
 
 static audio_device_t *default_hs = NULL;
@@ -61,6 +83,10 @@ static audio_device_t *default_hs = NULL;
 static GSList *devices = NULL;
 
 static int unix_sock = -1;
+
+static void get_next_record(struct audio_sdp_data *data);
+static DBusHandlerResult get_handles(const char *uuid,
+					struct audio_sdp_data *data);
 
 /* FIXME: Remove these once global error functions exist */
 static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
@@ -80,11 +106,42 @@ static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
 	return send_message_and_unref(conn, derr);
 }
 
-static DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg,
+DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg,
 						const char *descr)
 {
 	return error_reply(conn, msg, "org.bluez.audio.Error.InvalidArguments",
 			descr ? descr : "Invalid arguments in method call");
+}
+
+DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_reply(conn, msg, "org.bluez.audio.Error.AlreadyConnected",
+				"Already connected to a device");
+}
+
+DBusHandlerResult err_not_connected(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_reply(conn, msg, "org.bluez.audio.Error.NotConnected",
+				"Not connected to any device");
+}
+
+DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_reply(conn, msg, "org.bluez.audio.Error.NotSupported",
+			"The service is not supported by the remote device");
+}
+
+DBusHandlerResult err_connect_failed(DBusConnection *conn,
+					DBusMessage *msg, int err)
+{
+	return error_reply(conn, msg, "org.bluez.audio.Error.ConnectFailed",
+				strerror(err));
+}
+
+DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
+				const char *dsc)
+{
+	return error_reply(conn, msg, "org.bluez.audio.Error.Failed", dsc);
 }
 
 static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -185,7 +242,12 @@ static DBusMethodVTable device_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-static audio_device_t *add_device(bdaddr_t *bda)
+static void free_device(audio_device_t *device)
+{
+	g_free(device);
+}
+
+static audio_device_t *create_device(bdaddr_t *bda)
 {
 	static int device_id = 0;
 	audio_device_t *device;
@@ -196,26 +258,6 @@ static audio_device_t *add_device(bdaddr_t *bda)
 
 	snprintf(device->object_path, sizeof(device->object_path) - 1,
 			"%s/device%d", AUDIO_MANAGER_PATH, device_id++);
-
-	if (!dbus_connection_create_object_path(connection, device->object_path,
-						device, NULL)) {
-		error("D-Bus failed to register %s path", device->object_path);
-		g_free(device);
-		return NULL;
-	}
-
-	if (!dbus_connection_register_interface(connection, device->object_path,
-						AUDIO_DEVICE_INTERFACE,
-						device_methods, NULL, NULL)) {
-		error("Failed to register %s interface to %s",
-				AUDIO_DEVICE_INTERFACE, device->object_path);
-		dbus_connection_destroy_object_path(connection,
-							device->object_path);
-		g_free(device);
-		return NULL;
-	}
-
-	devices = g_slist_append(devices, device);
 
 	return device;
 }
@@ -228,6 +270,408 @@ static void remove_device(audio_device_t *device)
 	g_free(device);
 }
 
+
+static gboolean add_device(audio_device_t *device)
+{
+	if (!dbus_connection_create_object_path(connection, device->object_path,
+						device, NULL)) {
+		error("D-Bus failed to register %s path", device->object_path);
+		return FALSE;
+	}
+
+	if (!dbus_connection_register_interface(connection, device->object_path,
+						AUDIO_DEVICE_INTERFACE,
+						device_methods, NULL, NULL)) {
+		error("Failed to register %s interface to %s",
+				AUDIO_DEVICE_INTERFACE, device->object_path);
+		dbus_connection_destroy_object_path(connection,
+							device->object_path);
+		return FALSE;
+	}
+
+	devices = g_slist_append(devices, device);
+
+	return TRUE;
+}
+
+void finish_sdp_transaction(DBusConnection *conn, bdaddr_t *dba) 
+{
+	char address[18], *addr_ptr = address;
+	DBusMessage *msg, *reply;
+	DBusError derr;
+
+	ba2str(dba, address);
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+						"org.bluez.Adapter",
+						"FinishRemoteServiceTransaction");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
+					DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1,
+								&derr);
+
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
+		error("FinishRemoteServiceTransaction(%s) failed: %s",
+				address, derr.message);
+		dbus_error_free(&derr);
+		return;
+	}
+
+	dbus_message_unref(reply);
+}
+
+static void handle_record(sdp_record_t *record, audio_device_t *device)
+{
+	sdp_list_t *classes;
+	uuid_t uuid;
+	uint16_t uuid16;
+
+	if (sdp_get_service_classes(record, &classes) < 0) {
+		error("Unable to get service classes from record");
+		return;
+	}
+
+	memcpy(&uuid, classes->data, sizeof(uuid));
+
+	if (!sdp_uuid128_to_uuid(&uuid)) {
+		error("Not a 16 bit UUID");
+		goto done;
+	}
+
+	if (uuid.type == SDP_UUID32) {
+	       	if (uuid.value.uuid32 > 0xFFFF) {
+			error("Not a 16 bit UUID");
+			goto done;
+		}
+		uuid16 = (uint16_t) uuid.value.uuid32;
+	} else
+		uuid16 = uuid.value.uuid16;
+
+	switch (uuid16) {
+	case HEADSET_SVCLASS_ID:
+		debug("Found Headset record");
+		if (device->headset)
+			debug("Multiple Headset records found");
+		else
+			device->headset = headset_init(device->object_path,
+							record);
+		break;
+	case HEADSET_AGW_SVCLASS_ID:
+		debug("Found Headset AG record");
+		break;
+	case HANDSFREE_SVCLASS_ID:
+		debug("Found Hansfree record");
+		break;
+	case HANDSFREE_AGW_SVCLASS_ID:
+		debug("Found Handsfree AG record");
+		break;
+	case AUDIO_SINK_SVCLASS_ID:
+		debug("Found Audio Sink");
+		break;
+	case AUDIO_SOURCE_SVCLASS_ID:
+		debug("Found Audio Source");
+		break;
+	case AV_REMOTE_SVCLASS_ID:
+		debug("Found AV Remote");
+		break;
+	case AV_REMOTE_TARGET_SVCLASS_ID:
+		debug("Found AV Target");
+		break;
+	default:
+		debug("Unrecognized UUID: 0x%04X", uuid16);
+		break;
+	}
+
+done:
+	sdp_list_free(classes, free);
+}
+
+static void finish_sdp(struct audio_sdp_data *data, gboolean success)
+{
+	const char *path;
+	DBusMessage *reply;
+
+	debug("Audio service discovery completed with %s",
+			success ? "success" : "failure");
+
+	finish_sdp_transaction(data->conn, &data->device->bda);
+
+	if (!success)
+		goto done;
+
+	reply = dbus_message_new_method_return(data->msg);
+	if (!reply) {
+		success = FALSE;
+		err_failed(data->conn, data->msg, "Out of memory");
+		goto done;
+	}
+
+	path = data->device->object_path;
+
+	add_device(data->device);
+	g_slist_foreach(data->records, (GFunc) handle_record, data->device);
+
+	dbus_connection_emit_signal(data->conn, AUDIO_MANAGER_PATH,
+					AUDIO_MANAGER_INTERFACE,
+					"DeviceCreated",
+					DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+	send_message_and_unref(data->conn, reply);
+
+done:
+	if (!success)
+		free_device(data->device);
+	dbus_connection_unref(data->conn);
+	dbus_message_unref(data->msg);
+	g_slist_free(data->handles);
+	g_slist_foreach(data->records, (GFunc) sdp_record_free, NULL);
+	g_slist_free(data->records);
+	g_free(data);
+}
+
+static void get_record_reply(DBusPendingCall *call,
+				struct audio_sdp_data *data)
+{
+	DBusMessage *reply;
+	DBusError derr;
+	uint8_t *array;
+	int array_len, record_len;
+	sdp_record_t *record;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("GetRemoteServiceRecord failed: %s", derr.message);
+		if (dbus_error_has_name(&derr,
+					"org.bluez.Error.ConnectionAttemptFailed"))
+			err_connect_failed(data->conn, data->msg, EHOSTDOWN);
+		else
+			err_failed(data->conn, data->msg, derr.message);
+		dbus_error_free(&derr);
+		goto failed;
+	}
+
+	if (!dbus_message_get_args(reply, NULL,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &array, &array_len,
+				DBUS_TYPE_INVALID)) {
+		err_failed(data->conn, data->msg,
+				"Unable to get args from GetRecordReply");
+		goto failed;
+	}
+
+	record = sdp_extract_pdu(array, &record_len);
+	if (!record) {
+		error("Unable to extract service record from reply");
+		goto done;
+	}
+
+	if (record_len != array_len)
+		debug("warning: array len (%d) != record len (%d)",
+				array_len, record_len);
+
+	data->records = g_slist_append(data->records, record);
+
+done:
+	dbus_message_unref(reply);
+
+	if (data->handles)
+		get_next_record(data);
+	else
+		finish_sdp(data, TRUE);
+
+	return;
+
+failed:
+	if (reply)
+		dbus_message_unref(reply);
+	finish_sdp(data, FALSE);
+}
+
+static void get_next_record(struct audio_sdp_data *data)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pending;
+	char address[18], *ptr = address;
+	dbus_uint32_t handle;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+						"org.bluez.Adapter",
+						"GetRemoteServiceRecord");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		err_connect_failed(data->conn, data->msg, ENOMEM);
+		finish_sdp(data, FALSE);
+		return;
+	}
+
+	handle = (dbus_uint32_t) data->handles->data;
+
+	data->handles = g_slist_remove(data->handles, data->handles->data);
+
+	ba2str(&data->device->bda, address);
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_UINT32, &handle,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(data->conn, msg, &pending, -1)) {
+		error("Sending GetRemoteServiceRecord failed");
+		err_connect_failed(data->conn, data->msg, EIO);
+		finish_sdp(data, FALSE);
+		return;
+	}
+
+	dbus_pending_call_set_notify(pending,
+			(DBusPendingCallNotifyFunction) get_record_reply,
+			data, NULL);
+	dbus_pending_call_unref(pending);
+	dbus_message_unref(msg);
+}
+
+static GSList *find_handle(GSList *handles, dbus_uint32_t handle)
+{
+	while (handles) {
+		if ((dbus_uint32_t) handles->data == handle)
+			return handles;
+		handles = handles->next;
+	}
+
+	return NULL;
+}
+
+static void get_handles_reply(DBusPendingCall *call,
+				struct audio_sdp_data *data)
+{
+	DBusMessage *reply;
+	DBusError derr;
+	dbus_uint32_t *array = NULL;
+	int array_len, i;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("GetRemoteServiceHandles failed: %s", derr.message);
+		if (dbus_error_has_name(&derr,
+					"org.bluez.Error.ConnectionAttemptFailed"))
+			err_connect_failed(data->conn, data->msg, EHOSTDOWN);
+		else
+			err_failed(data->conn, data->msg, derr.message);
+		dbus_error_free(&derr);
+		goto failed;
+	}
+
+	if (!dbus_message_get_args(reply, NULL,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &array, &array_len,
+				DBUS_TYPE_INVALID)) {
+	  
+		err_failed(data->conn, data->msg,
+				"Unable to get args from reply");
+		goto failed;
+	}
+
+	for (i = 0; i < array_len; i++) {
+		if (!find_handle(data->handles, array[i]))
+			data->handles = g_slist_append(data->handles,
+							(gpointer) array[i]);
+	}
+
+	data->state++;
+
+	switch (data->state) {
+	case ADVANCED_AUDIO:
+		get_handles(ADVANCED_AUDIO_UUID, data);
+		break;
+	case AV_REMOTE:
+		get_handles(AVRCP_REMOTE_UUID, data);
+		break;
+	default:
+		if (data->handles)
+			get_next_record(data);
+		else
+			finish_sdp(data, TRUE);
+	}	
+
+	dbus_message_unref(reply);
+
+	return;
+
+failed:
+	dbus_message_unref(reply);
+	finish_sdp(data, FALSE);
+}
+
+static DBusHandlerResult get_handles(const char *uuid,
+					struct audio_sdp_data *data)
+{
+	DBusPendingCall *pending;
+	char address[18];
+	const char *ptr = address;
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+						"org.bluez.Adapter",
+						"GetRemoteServiceHandles");
+	if (!msg) {
+		err_failed(data->conn, data->msg,
+				"Could not create a new dbus message");
+		goto failed;
+	}
+
+	ba2str(&data->device->bda, address);
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &ptr,
+					DBUS_TYPE_STRING, &uuid,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
+		err_failed(data->conn, data->msg,
+				"Sending GetRemoteServiceHandles failed");
+		goto failed;
+	}
+
+	dbus_pending_call_set_notify(pending,
+			(DBusPendingCallNotifyFunction) get_handles_reply,
+			data, NULL);
+	dbus_pending_call_unref(pending);
+	dbus_message_unref(msg);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+
+failed:
+	if (msg)
+		dbus_message_unref(msg);
+	finish_sdp(data, FALSE);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult resolve_services(DBusConnection *conn,
+						DBusMessage *msg,
+						audio_device_t *device)
+{
+	struct audio_sdp_data *sdp_data;
+
+	sdp_data = g_new0(struct audio_sdp_data, 1);
+	sdp_data->msg = dbus_message_ref(msg);
+	sdp_data->conn = dbus_connection_ref(conn);
+	sdp_data->device = device;
+
+	return get_handles(GENERIC_AUDIO_UUID, sdp_data);
+}
+
 audio_device_t *manager_headset_connected(bdaddr_t *bda)
 {
 	audio_device_t *device;
@@ -237,14 +681,16 @@ audio_device_t *manager_headset_connected(bdaddr_t *bda)
 	if (device && device->headset)
 		return device;
 
-	if (!device)
-		device = add_device(bda);
-
-	if (!device)
-		return NULL;
+	if (!device) {
+		device = create_device(bda);
+		if (!add_device(device)) {
+			free_device(device);
+			return NULL;
+		}
+	}
 
 	if (!device->headset)
-		device->headset = headset_init(device->object_path);
+		device->headset = headset_init(device->object_path, NULL);
 
 	if (!device->headset)
 		return NULL;
@@ -276,7 +722,6 @@ static DBusHandlerResult am_create_device(DBusConnection *conn, DBusMessage *msg
 	bdaddr_t bda;
 	audio_device_t *device;
 	DBusError derr;
-	DBusMessageIter iter, array_iter;
 
 	dbus_error_init(&derr);
 	dbus_message_get_args(msg, &derr,
@@ -292,31 +737,18 @@ static DBusHandlerResult am_create_device(DBusConnection *conn, DBusMessage *msg
 
 	device = find_device(&bda);
 	if (device) {
-		const char *iface, *path = device->object_path;
+		const char *path = device->object_path;
 		DBusMessage *reply = dbus_message_new_method_return(msg);
 		if (!reply)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		dbus_message_iter_init_append(reply, &iter);
-		dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &path);
-		dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-							"s", &array_iter);
-		if (device->headset) {
-			iface = AUDIO_HEADSET_INTERFACE;
-			dbus_message_iter_append_basic(&array_iter,
-							DBUS_TYPE_STRING, &iface);
-		}
-
-		dbus_message_iter_close_container(&iter, &array_iter);
-
+		dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID);
 		return send_message_and_unref(conn, reply);
 	}
 
-	device = add_device(&bda);
-	/*
-	resolve_services(conn, device, msg);
-	*/
+	device = create_device(&bda);
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return resolve_services(conn, msg, device);
 }
 
 static DBusHandlerResult am_list_devices(DBusConnection *conn,
@@ -373,19 +805,23 @@ static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *ms
 	str2ba(address, &bda);
 
 	device = find_device(&bda);
-	if (!device)
-		device = add_device(&bda);
-
-	if (!device)
-		return error_reply(connection, msg,
+	if (!device) {
+		device = create_device(&bda);
+		if (!add_device(device)) {
+			free_device(device);
+			return error_reply(connection, msg,
 					"org.bluez.audio.Error.Failed",
 					"Unable to create new audio device");
+		}
+	}
 
-	device->headset = headset_init(device->object_path);
-	if (!device->headset)
+	device->headset = headset_init(device->object_path, NULL);
+	if (!device->headset) {
+		remove_device(device);
 		return error_reply(connection, msg,
 					"org.bluez.audio.Error.Failed",
 					"Unable to init Headset interface");
+	}
 
 	path = device->object_path;
 
