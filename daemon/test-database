@@ -48,6 +48,15 @@ xml = ' \
     </sequence>					\
   </attribute>					\
 						\
+  <attribute id="0x0009">			\
+    <sequence>					\
+      <sequence>				\
+        <uuid value="0x1101"/>			\
+        <uint16 value="0x0100"/>		\
+      </sequence>				\
+    </sequence>					\
+  </attribute>					\
+						\
   <attribute id="0x000a">			\
     <url value="http://www.bluez.org/"/>	\
   </attribute>					\
@@ -70,6 +79,16 @@ xml = ' \
 						\
   <attribute id="0x0102">			\
      <text value="BlueZ"/>			\
+  </attribute>					\
+						\
+  <attribute id="0x0200">			\
+    <sequence>					\
+      <uint16 value="0x0100"/>			\
+    </sequence>					\
+  </attribute>					\
+						\
+  <attribute id="0x0201">			\
+     <uint32 value="0"/>			\
   </attribute>					\
 </record>					\
 '
