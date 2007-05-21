@@ -675,7 +675,7 @@ static void usage(void)
 {
 	printf("hcid - HCI daemon ver %s\n", VERSION);
 	printf("Usage: \n");
-	printf("\thcid [-n] [-d] [-s] [-f config file]\n");
+	printf("\thcid [-n] [-d] [-s] [-m mtu] [-f config file]\n");
 }
 
 int main(int argc, char *argv[])
@@ -684,6 +684,7 @@ int main(int argc, char *argv[])
 	struct hci_filter flt;
 	struct sigaction sa;
 	GIOChannel *ctl_io, *child_io;
+	uint16_t mtu = 0;
 	int opt, daemonize = 1, debug = 0, sdp = 0, experimental = 0;
 
 	/* Default HCId settings */
@@ -702,7 +703,7 @@ int main(int argc, char *argv[])
 
 	init_defaults();
 
-	while ((opt = getopt(argc, argv, "ndsxf:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ndsm:xf:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
@@ -714,6 +715,10 @@ int main(int argc, char *argv[])
 
 		case 's':
 			sdp = 1;
+			break;
+
+		case 'm':
+			mtu = atoi(optarg);
 			break;
 
 		case 'x':
@@ -825,7 +830,7 @@ int main(int argc, char *argv[])
 
 	if (sdp) {
 		set_sdp_server_enable();
-		start_sdp_server(0, hcid.deviceid, SDP_SERVER_COMPAT);
+		start_sdp_server(mtu, hcid.deviceid, SDP_SERVER_COMPAT);
 	}
 
 	notify_init();
