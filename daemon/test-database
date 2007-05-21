@@ -13,6 +13,11 @@ xml = ' \
       <uuid value="0x1101"/>			\
     </sequence>					\
   </attribute>					\
+						\
+  <attribute id="0x0003">			\
+    <uuid value="00001101-0000-1000-8000-00805f9b34fb"/> \
+  </attribute>					\
+						\
   <attribute id="0x0004">			\
     <sequence>					\
       <sequence>				\
@@ -20,12 +25,41 @@ xml = ' \
       </sequence>				\
       <sequence>				\
         <uuid value="0x0003"/>			\
-        <uint8 value="23" name="channel"/>	\
+        <uint8 value="23"/>			\
       </sequence>				\
     </sequence>					\
   </attribute>					\
+						\
+  <attribute id="0x0006">			\
+    <sequence>					\
+      <uint16 value="0x656e"/>			\
+      <uint16 value="0x006a"/>			\
+      <uint16 value="0x0100"/>			\
+    </sequence>					\
+  </attribute>					\
+						\
+  <attribute id="0x000a">			\
+    <url value="http://www.bluez.org/"/>	\
+  </attribute>					\
+						\
+  <attribute id="0x000b">			\
+    <url value="http://www.bluez.org/"/>	\
+  </attribute>					\
+						\
+  <attribute id="0x000c">			\
+    <url value="http://www.bluez.org/"/>	\
+  </attribute>					\
+						\
   <attribute id="0x0100">			\
-    <text value="COM5" name="name"/>		\
+    <text value="Serial Port"/>			\
+  </attribute>					\
+						\
+  <attribute id="0x0101">			\
+    <text value="Serial Port Service"/>		\
+  </attribute>					\
+						\
+  <attribute id="0x0102">			\
+     <text value="BlueZ"/>			\
   </attribute>					\
 </record>					\
 '
