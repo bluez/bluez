@@ -48,6 +48,14 @@ xml = ' \
     </sequence>					\
   </attribute>					\
 						\
+  <attribute id="0x0007">			\
+     <uint32 value="0"/>			\
+  </attribute>					\
+						\
+  <attribute id="0x0008">			\
+     <uint8 value="0xff"/>			\
+  </attribute>					\
+						\
   <attribute id="0x0009">			\
     <sequence>					\
       <sequence>				\
