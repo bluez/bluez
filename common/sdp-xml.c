@@ -440,17 +440,20 @@ static sdp_data_t *sdp_xml_parse_uuid128(const char *data)
 	return sdp_data_alloc(SDP_UUID128, &val);
 }
 
-sdp_data_t *sdp_xml_parse_uuid(const char *data)
+sdp_data_t *sdp_xml_parse_uuid(const char *data, sdp_record_t *record)
 {
-	int len;
+	sdp_data_t *uuid;
 	char *endptr;
 	uint32_t val;
 	uint16_t val2;
+	int len;
 
 	len = strlen(data);
 
-	if (len == 36)
-		return sdp_xml_parse_uuid128(data);
+	if (len == 36) {
+		uuid = sdp_xml_parse_uuid128(data);
+		goto result;
+	}
 
 	val = strtoll(data, &endptr, 16);
 
@@ -458,15 +461,20 @@ sdp_data_t *sdp_xml_parse_uuid(const char *data)
 	if (*endptr != '\0')
 		return NULL;
 
-	if (val > USHRT_MAX)
-		return sdp_data_alloc(SDP_UUID32, &val);
+	if (val > USHRT_MAX) {
+		uuid = sdp_data_alloc(SDP_UUID32, &val);
+		goto result;
+	}
 
 	val2 = val;
 
-	return sdp_data_alloc(SDP_UUID16, &val2);
+	uuid = sdp_data_alloc(SDP_UUID16, &val2);
 
-	/* Should never get here */
-	return NULL;
+result:
+	if (record && uuid)
+		sdp_pattern_add_uuid(record, &uuid->val.uuid);
+
+	return uuid;
 }
 
 sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
@@ -759,7 +767,8 @@ struct sdp_xml_data *sdp_xml_data_expand(struct sdp_xml_data *elem)
 	return elem;
 }
 
-sdp_data_t *sdp_xml_parse_datatype(const char *el, struct sdp_xml_data *elem)
+sdp_data_t *sdp_xml_parse_datatype(const char *el, struct sdp_xml_data *elem,
+							sdp_record_t *record)
 {
 	const char *data = elem->text;
 
@@ -786,7 +795,7 @@ sdp_data_t *sdp_xml_parse_datatype(const char *el, struct sdp_xml_data *elem)
 	else if (!strcmp(el, "int128"))
 		return sdp_xml_parse_int(data, SDP_INT128);
 	else if (!strcmp(el, "uuid"))
-		return sdp_xml_parse_uuid(data);
+		return sdp_xml_parse_uuid(data, record);
 	else if (!strcmp(el, "url"))
 		return sdp_xml_parse_url(data);
 	else if (!strcmp(el, "text"))

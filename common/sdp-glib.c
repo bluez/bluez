@@ -115,8 +115,8 @@ static void element_start(GMarkupParseContext *context,
 			}
 		}
 
-		ctx_data->stack_head->data =
-			sdp_xml_parse_datatype(element_name, ctx_data->stack_head);
+		ctx_data->stack_head->data = sdp_xml_parse_datatype(element_name,
+				ctx_data->stack_head, ctx_data->record);
 
 		if (ctx_data->stack_head->data == NULL)
 			error("Can't parse element %s", element_name);
@@ -213,7 +213,7 @@ sdp_record_t *sdp_xml_parse_record(const char *data, int size)
 
 	record = sdp_record_alloc();
 	if (!record) {
-		sdp_record_free(record);
+		free(ctx_data);
 		return NULL;
 	}
 

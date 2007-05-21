@@ -116,7 +116,8 @@ static void convert_xml_to_sdp_start(void *data, const char *el, const char **at
 			}
 		}
 
-		context->stack_head->data = sdp_xml_parse_datatype(el, context->stack_head);
+		context->stack_head->data = sdp_xml_parse_datatype(el,
+					context->stack_head, context->sdprec);
 
 		/* Could not parse an entry */
 		if (context->stack_head->data == NULL)

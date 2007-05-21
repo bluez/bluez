@@ -37,7 +37,7 @@ sdp_data_t *sdp_xml_parse_nil(const char *data);
 sdp_data_t *sdp_xml_parse_text(const char *data, char encoding);
 sdp_data_t *sdp_xml_parse_url(const char *data);
 sdp_data_t *sdp_xml_parse_int(const char *data, uint8_t dtd);
-sdp_data_t *sdp_xml_parse_uuid(const char *data);
+sdp_data_t *sdp_xml_parse_uuid(const char *data, sdp_record_t *record);
 
 struct sdp_xml_data {
 	char *text;			/* Pointer to the current buffer */
@@ -53,7 +53,8 @@ struct sdp_xml_data *sdp_xml_data_alloc();
 void sdp_xml_data_free(struct sdp_xml_data *elem);
 struct sdp_xml_data *sdp_xml_data_expand(struct sdp_xml_data *elem);
 
-sdp_data_t *sdp_xml_parse_datatype(const char *el, struct sdp_xml_data *elem);
+sdp_data_t *sdp_xml_parse_datatype(const char *el, struct sdp_xml_data *elem,
+							sdp_record_t *record);
 
 sdp_record_t *sdp_xml_parse_record(const char *data, int size);
 
