@@ -14,6 +14,10 @@ xml = ' \
     </sequence>					\
   </attribute>					\
 						\
+  <attribute id="0x0002">			\
+     <uint32 value="0"/>			\
+  </attribute>					\
+						\
   <attribute id="0x0003">			\
     <uuid value="00001101-0000-1000-8000-00805f9b34fb"/> \
   </attribute>					\
@@ -27,6 +31,12 @@ xml = ' \
         <uuid value="0x0003"/>			\
         <uint8 value="23"/>			\
       </sequence>				\
+    </sequence>					\
+  </attribute>					\
+						\
+  <attribute id="0x0005">			\
+    <sequence>					\
+      <uuid value="0x1002"/>			\
     </sequence>					\
   </attribute>					\
 						\
