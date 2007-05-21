@@ -3257,6 +3257,8 @@ static DBusSignalVTable adapter_signals[] = {
 	{ "RemoteDeviceDisconnected",		"s"	},
 	{ "BondingCreated",			"s"	},
 	{ "BondingRemoved",			"s"	},
+	{ "TrustAdded",				"s"	},
+	{ "TrustRemoved",			"s"	},
 	{ NULL, NULL }
 };
 
