@@ -79,4 +79,4 @@ try:
 except:
 	pass
 
-database.RemoveServiceRecord(handle)
+database.RemoveServiceRecord(dbus.UInt32(handle))
