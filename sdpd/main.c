@@ -68,7 +68,6 @@ static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "nodaemon",	0, 0, 'n' },
 	{ "mtu",	1, 0, 'm' },
-	{ "public",	0, 0, 'p' },
 	{ "master",	0, 0, 'M' },
 	{ 0, 0, 0, 0}
 };
@@ -80,7 +79,7 @@ int main(int argc, char *argv[])
 	uint32_t flags = SDP_SERVER_COMPAT;
 	int opt, daemonize = 1, debug = 0;
 
-	while ((opt = getopt_long(argc, argv, "ndm:pM", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ndm:M", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
@@ -92,10 +91,6 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			mtu = atoi(optarg);
-			break;
-
-		case 'p':
-			flags |= SDP_SERVER_PUBLIC;
 			break;
 
 		case 'M':

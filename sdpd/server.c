@@ -57,7 +57,7 @@ static int l2cap_sock, unix_sock;
  * l2cap and unix sockets over which discovery and registration clients
  * access us respectively
  */
-static int init_server(uint16_t mtu, int master, int public, int compat)
+static int init_server(uint16_t mtu, int master, int compat)
 {
 	struct l2cap_options opts;
 	struct sockaddr_l2 l2addr;
@@ -65,10 +65,10 @@ static int init_server(uint16_t mtu, int master, int public, int compat)
 	socklen_t optlen;
 
 	/* Register the public browse group root */
-	register_public_browse_group(public);
+	register_public_browse_group();
 
 	/* Register the SDP server's service record */
-	register_server_service(public);
+	register_server_service();
 
 	/* Create L2CAP socket */
 	l2cap_sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
@@ -220,11 +220,10 @@ int start_sdp_server(uint16_t mtu, const char *did, uint32_t flags)
 {
 	int compat = flags & SDP_SERVER_COMPAT;
 	int master = flags & SDP_SERVER_MASTER;
-	int public = flags & SDP_SERVER_PUBLIC;
 
 	info("Starting SDP server");
 
-	if (init_server(mtu, master, public, compat) < 0) {
+	if (init_server(mtu, master, compat) < 0) {
 		error("Server initialization failed");
 		return -1;
 	}

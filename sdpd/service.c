@@ -69,53 +69,27 @@ static void update_db_timestamp(void)
 	sdp_attr_replace(server, SDP_ATTR_SVCDB_STATE, d);
 }
 
-static void add_lang_attr(sdp_record_t *r)
-{
-	sdp_lang_attr_t base_lang;
-	sdp_list_t *langs = 0;
-
-	base_lang.code_ISO639 = (0x65 << 8) | 0x6e;
-	// UTF-8 MIBenum (http://www.iana.org/assignments/character-sets)
-	base_lang.encoding = 106;
-	base_lang.base_offset = SDP_PRIMARY_LANG_BASE;
-	langs = sdp_list_append(0, &base_lang);
-	sdp_set_lang_attr(r, langs);
-	sdp_list_free(langs, 0);
-}
-
-void register_public_browse_group(int public)
+void register_public_browse_group(void)
 {
 	sdp_list_t *browselist;
 	uuid_t bgscid, pbgid;
 	sdp_data_t *sdpdata;
 	sdp_record_t *browse = sdp_record_alloc();
 
-	if (public) {
-		browse->handle = sdp_next_handle();
-		if (browse->handle < 0x10000)
-			return;
-	} else
-		browse->handle = SDP_SERVER_RECORD_HANDLE + 1;
+	browse->handle = SDP_SERVER_RECORD_HANDLE + 1;
 
 	sdp_record_add(BDADDR_ANY, browse);
 	sdpdata = sdp_data_alloc(SDP_UINT32, &browse->handle);
 	sdp_attr_add(browse, SDP_ATTR_RECORD_HANDLE, sdpdata);
-
-	add_lang_attr(browse);
-	sdp_set_info_attr(browse, "Public Browse Group Root", "BlueZ",
-					"Root of public browse hierarchy");
 
 	sdp_uuid16_create(&bgscid, BROWSE_GRP_DESC_SVCLASS_ID);
 	browselist = sdp_list_append(0, &bgscid);
 	sdp_set_service_classes(browse, browselist);
 	sdp_list_free(browselist, 0);
 
-	if (public)
-		sdp_uuid16_create(&pbgid, PUBLIC_BROWSE_GROUP);
-	else
-		sdp_uuid16_create(&pbgid, BROWSE_GRP_DESC_SVCLASS_ID);
-
-	sdp_set_group_id(browse, pbgid);
+	sdp_uuid16_create(&pbgid, PUBLIC_BROWSE_GROUP);
+	sdp_attr_add_new(browse, SDP_ATTR_GROUP_ID,
+				SDP_UUID16, &pbgid.value.uuid16);
 }
 
 /*
@@ -124,17 +98,14 @@ void register_public_browse_group(int public)
  * discovery clients. This method constructs a service record
  * and stores it in the repository
  */
-void register_server_service(int public)
+void register_server_service(void)
 {
-	int i;
-	sdp_list_t *classIDList, *browseList;
-	sdp_list_t *access_proto = 0;
-	uuid_t l2cap, classID, browseGroupId, sdpSrvUUID;
+	sdp_list_t *classIDList;
+	uuid_t classID;
 	void **versions, **versionDTDs;
 	uint8_t dtd;
-	uint16_t version, port;
-	sdp_data_t *pData, *port_data, *version_data;
-	sdp_list_t *pd, *seq;
+	sdp_data_t *pData;
+	int i;
 
 	server = sdp_record_alloc();
 	server->pattern = NULL;
@@ -145,13 +116,6 @@ void register_server_service(int public)
 	sdp_record_add(BDADDR_ANY, server);
 	sdp_attr_add(server, SDP_ATTR_RECORD_HANDLE,
 				sdp_data_alloc(SDP_UINT32, &server->handle));
-
-	/*
-	 * Add all attributes to service record. (No need to commit since we 
-	 * are the server and this record is already in the database.)
-	 */
-	add_lang_attr(server);
-	sdp_set_info_attr(server, "SDP Server", "BlueZ", "Bluetooth service discovery server");
 
 	sdp_uuid16_create(&classID, SDP_SERVER_SVCLASS_ID);
 	classIDList = sdp_list_append(0, &classID);
@@ -180,33 +144,6 @@ void register_server_service(int public)
 	free(versions);
 	free(versionDTDs);
 	sdp_attr_add(server, SDP_ATTR_VERSION_NUM_LIST, pData);
-
-	sdp_uuid16_create(&sdpSrvUUID, SDP_UUID);
-	sdp_set_service_id(server, sdpSrvUUID);
-
-	sdp_uuid16_create(&l2cap, L2CAP_UUID);
-	pd = sdp_list_append(0, &l2cap);
-	port = SDP_PSM;
-	port_data = sdp_data_alloc(SDP_UINT16, &port);
-	pd = sdp_list_append(pd, port_data);
-	version = 1;
-	version_data = sdp_data_alloc(SDP_UINT16, &version);
-	pd = sdp_list_append(pd, version_data);
-	seq = sdp_list_append(0, pd);
-
-	access_proto = sdp_list_append(0, seq);
-	sdp_set_access_protos(server, access_proto);
-	sdp_list_free(access_proto, free);
-	sdp_data_free(port_data);
-	sdp_data_free(version_data);
-	sdp_list_free(pd, 0);
-
-	if (public) {
-		sdp_uuid16_create(&browseGroupId, PUBLIC_BROWSE_GROUP);
-		browseList = sdp_list_append(0, &browseGroupId);
-		sdp_set_browse_groups(server, browseList);
-		sdp_list_free(browseList, 0);
-	}
 
 	update_db_timestamp();
 }
