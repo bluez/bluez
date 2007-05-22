@@ -442,7 +442,7 @@ static sdp_data_t *sdp_xml_parse_uuid128(const char *data)
 
 sdp_data_t *sdp_xml_parse_uuid(const char *data, sdp_record_t *record)
 {
-	sdp_data_t *uuid;
+	sdp_data_t *ret;
 	char *endptr;
 	uint32_t val;
 	uint16_t val2;
@@ -451,7 +451,7 @@ sdp_data_t *sdp_xml_parse_uuid(const char *data, sdp_record_t *record)
 	len = strlen(data);
 
 	if (len == 36) {
-		uuid = sdp_xml_parse_uuid128(data);
+		ret = sdp_xml_parse_uuid128(data);
 		goto result;
 	}
 
@@ -462,19 +462,19 @@ sdp_data_t *sdp_xml_parse_uuid(const char *data, sdp_record_t *record)
 		return NULL;
 
 	if (val > USHRT_MAX) {
-		uuid = sdp_data_alloc(SDP_UUID32, &val);
+		ret = sdp_data_alloc(SDP_UUID32, &val);
 		goto result;
 	}
 
 	val2 = val;
 
-	uuid = sdp_data_alloc(SDP_UUID16, &val2);
+	ret = sdp_data_alloc(SDP_UUID16, &val2);
 
 result:
-	if (record && uuid)
-		sdp_pattern_add_uuid(record, &uuid->val.uuid);
+	if (record && ret)
+		sdp_pattern_add_uuid(record, &ret->val.uuid);
 
-	return uuid;
+	return ret;
 }
 
 sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
@@ -490,14 +490,14 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 		if (!strcmp("true", data)) {
 			val = 1;
 		}
-		
+
 		else if (!strcmp("false", data)) {
 			val = 0;
 		}
 		else {
 			return NULL;
 		}
-		
+
 		ret = sdp_data_alloc(dtd, &val);
 		break;
 	}
@@ -506,9 +506,9 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 	{
 		int8_t val = strtoul(data, &endptr, 0);
 
-       		/* Failed to parse */
+		/* Failed to parse */
 		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;		
+			return NULL;
 
 		ret = sdp_data_alloc(dtd, &val);
 		break;
@@ -521,7 +521,7 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 		/* Failed to parse */
 		if ((endptr != data) && (*endptr != '\0'))
 			return NULL;
-		
+
 		ret = sdp_data_alloc(dtd, &val);
 		break;
 	}
@@ -533,7 +533,7 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 		/* Failed to parse */
 		if ((endptr != data) && (*endptr != '\0'))
 			return NULL;
-	
+
 		ret = sdp_data_alloc(dtd, &val);
 		break;
 	}
@@ -542,9 +542,9 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 	{
 		uint16_t val = strtoul(data, &endptr, 0);
 
-       		/* Failed to parse */
+		/* Failed to parse */
 		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;		
+			return NULL;
 
 		ret = sdp_data_alloc(dtd, &val);
 		break;
@@ -554,10 +554,10 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 	{
 		int32_t val = strtoul(data, &endptr, 0);
 
-       		/* Failed to parse */
+		/* Failed to parse */
 		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;		
-		
+			return NULL;
+
 		ret = sdp_data_alloc(dtd, &val);
 		break;
 	}
@@ -566,9 +566,9 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 	{
 		uint32_t val = strtoul(data, &endptr, 0);
 
-       		/* Failed to parse */
+		/* Failed to parse */
 		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;		
+			return NULL;
 
 		ret = sdp_data_alloc(dtd, &val);
 		break;
@@ -578,10 +578,10 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 	{
 		int64_t val = strtoull(data, &endptr, 0);
 		
-       		/* Failed to parse */
+		/* Failed to parse */
 		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;		
-		
+			return NULL;
+
 		ret = sdp_data_alloc(dtd, &val);
 		break;
 	}
@@ -590,9 +590,9 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 	{
 		uint64_t val = strtoull(data, &endptr, 0);
 
-       		/* Failed to parse */
+		/* Failed to parse */
 		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;		
+			return NULL;
 
 		ret = sdp_data_alloc(dtd, &val);
 		break;
@@ -623,22 +623,7 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 	return ret;
 }
 
-static sdp_data_t *sdp_xml_parse_url_with_size(const char *data, uint8_t dtd)
-{
-	return sdp_data_alloc(dtd, data);
-}
-
-sdp_data_t *sdp_xml_parse_url(const char *data)
-{
-	uint8_t dtd = SDP_URL_STR8;
-
-	if (strlen(data) > UCHAR_MAX)
-		dtd = SDP_URL_STR16;
-
-	return sdp_xml_parse_url_with_size(data, dtd);
-}
-
-static char *sdp_xml_parse_text_decode(const char *data, char encoding, uint32_t *length)
+static char *sdp_xml_parse_string_decode(const char *data, char encoding, uint32_t *length)
 {
 	int len = strlen(data);
 	char *text;
@@ -672,23 +657,27 @@ static char *sdp_xml_parse_text_decode(const char *data, char encoding, uint32_t
 	return text;
 }
 
-#if 0
-static sdp_data_t *sdp_xml_parse_text_with_size(const char *data, char encoding, uint8_t dtd)
+sdp_data_t *sdp_xml_parse_url(const char *data)
 {
-	char *text;
+	uint8_t dtd = SDP_URL_STR8;
+	char *url;
 	uint32_t length;
 	sdp_data_t *ret;
 
-	text = sdp_xml_parse_text_decode(data, encoding, &length);
-	ret = sdp_data_alloc_with_length(dtd, text, length);
+	url = sdp_xml_parse_string_decode(data,
+				SDP_XML_ENCODING_NORMAL, &length);
 
-	debug("Unit size %d length %d: -->%s<--\n", ret->unitSize, length, text);
+	if (length > UCHAR_MAX)
+		dtd = SDP_URL_STR16;
 
-	free(text);
+	ret = sdp_data_alloc_with_length(dtd, url, length);
+
+	debug("URL size %d length %d: -->%s<--", ret->unitSize, length, url);
+
+	free(url);
 
 	return ret;
 }
-#endif
 
 sdp_data_t *sdp_xml_parse_text(const char *data, char encoding)
 {
@@ -697,14 +686,14 @@ sdp_data_t *sdp_xml_parse_text(const char *data, char encoding)
 	uint32_t length;
 	sdp_data_t *ret;
 
-	text = sdp_xml_parse_text_decode(data, encoding, &length);
+	text = sdp_xml_parse_string_decode(data, encoding, &length);
 
 	if (length > UCHAR_MAX)
 		dtd = SDP_TEXT_STR16;
 
 	ret = sdp_data_alloc_with_length(dtd, text, length);
 
-	debug("Unit size %d length %d: -->%s<--\n", ret->unitSize, length, text);
+	debug("Text size %d length %d: -->%s<--", ret->unitSize, length, text);
 
 	free(text);
 
