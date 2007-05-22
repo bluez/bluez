@@ -20,6 +20,7 @@ Methods		string CreateServer(string uuid)
 			                 org.bluez.network.Error.Failed
 
 		void RemoveServer(string path)
+
 			Removes the network server object for given path.
 
 			Possible errors: org.bluez.network.Error.DoesNotExist
@@ -83,9 +84,7 @@ Methods		string CreateServer(string uuid)
 
 			Possible errors: org.bluez.network.Error.DoesNotExist
 
-Signals
-
-		void ServerCreated(string path)
+Signals		void ServerCreated(string path)
 
 		void ServerRemoved(string path)
 
@@ -147,7 +146,6 @@ Methods		string GetUUID()
 		dict GetInfo()
 
 			Returns the server properties.
-
 
 Signals		void Enabled()
 
