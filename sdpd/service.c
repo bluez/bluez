@@ -113,7 +113,7 @@ void register_public_browse_group(int public)
 	if (public)
 		sdp_uuid16_create(&pbgid, PUBLIC_BROWSE_GROUP);
 	else
-		sdp_uuid16_create(&pbgid, SDP_SERVER_SVCLASS_ID);
+		sdp_uuid16_create(&pbgid, BROWSE_GRP_DESC_SVCLASS_ID);
 
 	sdp_set_group_id(browse, pbgid);
 }
