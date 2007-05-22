@@ -695,61 +695,57 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 		break;
 	case SDP_UINT16:
 		u16 = htons(d->val.uint16);
-		src = (unsigned char *)&u16;
+		src = (unsigned char *) &u16;
 		data_size = sizeof(uint16_t);
 		break;
 	case SDP_UINT32:
 		u32 = htonl(d->val.uint32);
-		src = (unsigned char *)&u32;
+		src = (unsigned char *) &u32;
 		data_size = sizeof(uint32_t);
 		break;
 	case SDP_UINT64:
 		u64 = hton64(d->val.uint64);
-		src = (unsigned char *)&u64;
+		src = (unsigned char *) &u64;
 		data_size = sizeof(uint64_t);
 		break;
 	case SDP_UINT128:
 		hton128(&d->val.uint128, &u128);
-		src = (unsigned char *)&u128;
+		src = (unsigned char *) &u128;
 		data_size = sizeof(uint128_t);
 		break;
 	case SDP_INT8:
 	case SDP_BOOL:
-		src = (unsigned char *)&d->val.int8;
+		src = (unsigned char *) &d->val.int8;
 		data_size = sizeof(int8_t);
 		break;
 	case SDP_INT16:
 		u16 = htons(d->val.int16);
-		src = (unsigned char *)&u16;
+		src = (unsigned char *) &u16;
 		data_size = sizeof(int16_t);
 		break;
 	case SDP_INT32:
 		u32 = htonl(d->val.int32);
-		src = (unsigned char *)&u32;
+		src = (unsigned char *) &u32;
 		data_size = sizeof(int32_t);
 		break;
 	case SDP_INT64:
 		u64 = hton64(d->val.int64);
-		src = (unsigned char *)&u64;
+		src = (unsigned char *) &u64;
 		data_size = sizeof(int64_t);
 		break;
 	case SDP_INT128:
 		hton128(&d->val.int128, &u128);
-		src = (unsigned char *)&u128;
+		src = (unsigned char *) &u128;
 		data_size = sizeof(uint128_t);
 		break;
 	case SDP_TEXT_STR8:
 	case SDP_TEXT_STR16:
 	case SDP_TEXT_STR32:
-		src = (unsigned char *)d->val.str;
-		data_size = d->unitSize - sizeof(uint8_t);
-		sdp_set_seq_len(seqp, data_size);
-		break;
 	case SDP_URL_STR8:
 	case SDP_URL_STR16:
 	case SDP_URL_STR32:
-		src = (unsigned char *)d->val.str;
-		data_size = strlen(d->val.str);
+		src = (unsigned char *) d->val.str;
+		data_size = d->unitSize - sizeof(uint8_t);
 		sdp_set_seq_len(seqp, data_size);
 		break;
 	case SDP_SEQ8:
@@ -768,16 +764,16 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 		break;
 	case SDP_UUID16:
 		u16 = htons(d->val.uuid.value.uuid16);
-		src = (unsigned char *)&u16;
+		src = (unsigned char *) &u16;
 		data_size = sizeof(uint16_t);
 		break;
 	case SDP_UUID32:
 		u32 = htonl(d->val.uuid.value.uuid32);
-		src = (unsigned char *)&u32;
+		src = (unsigned char *) &u32;
 		data_size = sizeof(uint32_t);
 		break;
 	case SDP_UUID128:
-		src = (unsigned char *)&d->val.uuid.value.uuid128;
+		src = (unsigned char *) &d->val.uuid.value.uuid128;
 		data_size = sizeof(uint128_t);
 		break;
 	default:
