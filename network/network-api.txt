@@ -50,8 +50,8 @@ Methods		string CreateServer(string uuid)
 
 			Removes a network connection object for a given path.
 
-			Possible errors:org.bluez.network.Error.DoesNotExist
-					org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.DoesNotExist
+			                 org.bluez.network.Error.Failed
 
 		array{string} ListConnections()
 
@@ -61,27 +61,27 @@ Methods		string CreateServer(string uuid)
 
 			Returns connection path.
 
-			Possible errors:org.bluez.network.Error.DoesNotExist
-					org.bluez.network.Error.Failed
+			Possible errors: org.bluez.network.Error.DoesNotExist
+			                 org.bluez.network.Error.Failed
 
 		string LastConnection()
 
 			Returns last connected connection path, if none is connected
 			fallback to last created connection.
 
-			Possible errors:org.bluez.network.Error.DoesNotExist
+			Possible errors: org.bluez.network.Error.DoesNotExist
 
 		string DefaultConnection()
 
 			Returns default connection path.
 
-			Possible errors:org.bluez.network.Error.DoesNotExist
+			Possible errors: org.bluez.network.Error.DoesNotExist
 
 		string ChangeDefaultConnection(string pattern)
 
 			Changes default connection path.
 
-			Possible errors:org.bluez.network.Error.DoesNotExist
+			Possible errors: org.bluez.network.Error.DoesNotExist
 
 Signals
 

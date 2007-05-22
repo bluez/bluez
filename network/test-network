@@ -23,3 +23,9 @@ try:
 						'org.bluez.network.Server')
 except:
 	pass
+
+try:
+	panu = dbus.Interface(bus.get_object(conn, network.LastConnection()),
+						'org.bluez.network.Connection')
+except:
+	pass
