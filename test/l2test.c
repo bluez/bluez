@@ -348,6 +348,7 @@ static void do_listen(void (*handler)(int sk))
 	}
 
 	/* Set new options */
+	opts.omtu = omtu;
 	opts.imtu = imtu;
 	if (flowctl)
 		opts.mode = 2;
