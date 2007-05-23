@@ -768,8 +768,6 @@ static DBusHandlerResult adapter_get_major_class(DBusConnection *conn,
 	const struct adapter *adapter = data;
 	DBusMessage *reply;
 	const char *str_ptr = "computer";
-	uint8_t cls[3];
-	int dd;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
@@ -778,22 +776,8 @@ static DBusHandlerResult adapter_get_major_class(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
-	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		int err = errno;
-		error("Can't read class of device on hci%d: %s(%d)",
-				adapter->dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
-	}
-
-	hci_close_dev(dd);
-
 	/* FIXME: Currently, only computer major class is supported */
-	if ((cls[1] & 0x1f) != 1)
+	if ((adapter->class[1] & 0x1f) != 1)
 		return error_unsupported_major_class(conn, msg);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &str_ptr,
@@ -810,31 +794,13 @@ static DBusHandlerResult adapter_list_minor_classes(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 	const char **minor_ptr;
-	uint8_t cls[3];
 	uint8_t major_class;
-	int dd, size, i;
-
-	if (!adapter->up)
-		return error_not_ready(conn, msg);
+	int size, i;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
-	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		int err = errno;
-		error("Can't read class of device on hci%d: %s(%d)",
-				adapter->dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
-	}
-
-	hci_close_dev(dd);
-
-	major_class = cls[1] & 0x1F;
+	major_class = adapter->class[1] & 0x1F;
 
 	switch (major_class) {
 	case 1: /* computer */
@@ -871,39 +837,20 @@ static DBusHandlerResult adapter_get_minor_class(DBusConnection *conn,
 	struct adapter *adapter = data;
 	DBusMessage *reply;
 	const char *str_ptr = "";
-	uint8_t cls[3];
 	uint8_t minor_class;
-	int dd;
-
-	if (!adapter->up)
-		return error_not_ready(conn, msg);
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
-	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		int err = errno;
-		error("Can't read class of device on hci%d: %s(%d)",
-				adapter->dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
-	}
-
-	hci_close_dev(dd);
-
 	/* FIXME: Currently, only computer major class is supported */
-	if ((cls[1] & 0x1f) != 1)
+	if ((adapter->class[1] & 0x1f) != 1)
 		return error_unsupported_major_class(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	minor_class = cls[0] >> 2;
+	minor_class = adapter->class[0] >> 2;
 
 	/* Validate computer minor class */
 	if (minor_class > (sizeof(computer_minor_cls) / sizeof(*computer_minor_cls)))
@@ -923,9 +870,7 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	bdaddr_t bdaddr;
 	const char *minor;
-	uint8_t cls[3];
 	uint32_t dev_class = 0xFFFFFFFF;
 	int i, dd;
 
@@ -944,18 +889,11 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 	if (dd < 0)
 		return error_no_such_adapter(conn, msg);
 
-	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		int err = errno;
-		error("Can't read class of device on hci%d: %s(%d)",
-				adapter->dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
-	}
-
 	/* Currently, only computer major class is supported */
-	if ((cls[1] & 0x1f) != 1)
+	if ((adapter->class[1] & 0x1f) != 1) {
+		hci_close_dev(dd);
 		return error_unsupported_major_class(conn, msg);
-
+	}
 	for (i = 0; i < sizeof(computer_minor_cls) / sizeof(*computer_minor_cls); i++)
 		if (!strcasecmp(minor, computer_minor_cls[i])) {
 			/* Remove the format type */
@@ -964,18 +902,13 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 		}
 
 	/* Check if it's a valid minor class */
-	if (dev_class == 0xFFFFFFFF)
+	if (dev_class == 0xFFFFFFFF) {
+		hci_close_dev(dd);
 		return error_invalid_arguments(conn, msg);
-
-	/* update the minor class before store */
-	cls[0] = (dev_class & 0xff);
+	}
 
 	/* set the service class and major class  */
-	dev_class |= (cls[2] << 16) | (cls[1] << 8);
-
-	hci_devba(adapter->dev_id, &bdaddr);
-
-	write_local_class(&bdaddr, cls);
+	dev_class |= (adapter->class[2] << 16) | (adapter->class[1] << 8);
 
 	if (hci_write_class_of_dev(dd, dev_class, 2000) < 0) {
 		int err = errno;
@@ -1006,8 +939,7 @@ static DBusHandlerResult adapter_get_service_classes(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 	const char *str_ptr;
-	uint8_t cls[3];
-	int dd, i;
+	int i;
 
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
@@ -1015,19 +947,9 @@ static DBusHandlerResult adapter_get_service_classes(DBusConnection *conn,
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
-	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		int err = errno;
-		error("Can't read class of device on hci%d: %s(%d)",
-				adapter->dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
-	}
-
 	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -1035,7 +957,7 @@ static DBusHandlerResult adapter_get_service_classes(DBusConnection *conn,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
 	for (i = 0; i < (sizeof(service_cls) / sizeof(*service_cls)); i++) {
-		if (cls[2] & (1 << i)) {
+		if (adapter->class[2] & (1 << i)) {
 			str_ptr = service_cls[i];
 			dbus_message_iter_append_basic(&array_iter,
 						DBUS_TYPE_STRING, &str_ptr);
@@ -1043,8 +965,6 @@ static DBusHandlerResult adapter_get_service_classes(DBusConnection *conn,
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
-
-	hci_close_dev(dd);
 
 	return send_message_and_unref(conn, reply);
 }

@@ -586,8 +586,11 @@ int hcid_dbus_start_device(uint16_t id)
 	if (err < 0)
 		goto failed;
 
-	adapter_mode_changed(adapter, path, mode);
+	err = get_device_class(adapter->dev_id, adapter->class);
+	if (err < 0)
+		goto failed;
 
+	adapter_mode_changed(adapter, path, mode);
 	/* 
 	 * retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started
@@ -1831,6 +1834,50 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	if (adapter->mode != rp.enable)
 		adapter_mode_changed(adapter, path, rp.enable);
 
+failed:
+	if (dd >= 0)
+		hci_close_dev(dd);
+
+	bt_free(local_addr);
+}
+
+void hcid_dbus_write_class_complete(bdaddr_t *local)
+{
+	struct adapter *adapter;
+	char path[MAX_PATH_LENGTH];
+	char *local_addr;
+	bdaddr_t tmp;
+	int id, dd = -1;
+	uint8_t cls[3];
+
+	baswap(&tmp, local); local_addr = batostr(&tmp);
+	id = hci_devid(local_addr);
+	if (id < 0) {
+		error("No matching device id for %s", local_addr);
+		goto failed;
+	}
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+	if (!dbus_connection_get_object_user_data(connection, path,
+							(void *) &adapter)) {
+		error("Getting %s path data failed!", path);
+		goto failed;
+	}
+
+	dd = hci_open_dev(id);
+	if (dd < 0) {
+		error("HCI device open failed: hci%d", id);
+		goto failed;
+	}
+
+	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		error("Can't read class of device on hci%d: %s(%d)",
+					id, strerror(errno), errno);
+		goto failed;
+	}
+
+	write_local_class(local, cls);
+	memcpy(adapter->class, cls, 3);
 failed:
 	if (dd >= 0)
 		hci_close_dev(dd);

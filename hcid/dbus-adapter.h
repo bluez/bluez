@@ -91,6 +91,7 @@ struct adapter {
 	guint timeout_id;		/* discoverable timeout id */
 	uint32_t discov_timeout;	/* discoverable time(msec) */
 	uint8_t mode;			/* scan mode */
+	uint8_t class[3];		/* device class */
 	int discov_active;		/* standard discovery active: includes name resolution step */
 	int pdiscov_active;		/* periodic discovery active */
 	int pinq_idle;			/* tracks the idle time for periodic inquiry */

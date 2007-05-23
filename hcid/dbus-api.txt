@@ -434,9 +434,8 @@ Methods		dict GetInfo()
 			For the other values, unsupported major class
 			error is returned.
 
-			Possible errors: org.bluez.Error.NoSuchAdapter
+			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.UnsupportedMajorClass
-					 org.bluez.Error.Failed
 
 		array{string} ListAvailableMinorClasses()
 
@@ -448,9 +447,7 @@ Methods		dict GetInfo()
 			If the major class is not "computer" an error should
 			be returned.
 
-			Possible errors: org.bluez.Error.NotReady
-					 org.bluez.Error.NoSuchAdapter
-					 org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.UnsupportedMajorClass
 
 		string GetMinorClass()
@@ -466,10 +463,8 @@ Methods		dict GetInfo()
 
 			The default value is "uncategorized".
 
-			Possible errors: org.bluez.Error.NotReady
-					 org.bluez.Error.NoSuchAdapter
-					 org.bluez.Error.Failed
-					 org.bluez.Error.UnsupportedMajorClass
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.UnsupportedMajorClass
 
 		void SetMinorClass(string minor)
 

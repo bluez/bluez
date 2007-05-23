@@ -157,6 +157,7 @@ int start_device(uint16_t dev_id);
 int stop_device(uint16_t dev_id);
 
 int get_device_address(uint16_t dev_id, char *address, size_t size);
+int get_device_class(uint16_t dev_id, uint8_t *class);
 int get_device_version(uint16_t dev_id, char *version, size_t size);
 int get_device_revision(uint16_t dev_id, char *revision, size_t size);
 int get_device_manufacturer(uint16_t dev_id, char *manufacturer, size_t size);

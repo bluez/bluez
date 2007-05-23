@@ -81,6 +81,7 @@ struct hci_dev {
 	uint16_t manufacturer;
 
 	uint8_t  name[248];
+	uint8_t  class[3];
 
 	struct hci_peer *peers;
 	struct hci_conn *conns;
@@ -203,7 +204,7 @@ int start_device(uint16_t dev_id)
 	struct hci_dev *dev;
 	struct hci_version ver;
 	uint8_t features[8], inqmode;
-	int dd;
+	int dd, err;
 
 	ASSERT_DEV_ID;
 
@@ -233,14 +234,22 @@ int start_device(uint16_t dev_id)
 	dev->manufacturer = ver.manufacturer;
 
 	if (hci_read_local_features(dd, features, 1000) < 0) {
-		int err = errno;
+		err = errno;
 		error("Can't read features for hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					dev_id, strerror(err), err);
 		hci_close_dev(dd);
 		return -err;
 	}
 
 	memcpy(dev->features, features, 8);
+
+	if (hci_read_class_of_dev(dd, dev->class, 1000) < 0) {
+		err = errno;
+		error("Can't read class of device on hci%d: %s(%d)",
+				dev_id, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
 
 	inqmode = get_inquiry_mode(dev);
 	if (inqmode < 1)
@@ -283,6 +292,18 @@ int get_device_address(uint16_t dev_id, char *address, size_t size)
 	dev = &devices[dev_id];
 
 	return ba2str(&dev->bdaddr, address);
+}
+
+int get_device_class(uint16_t dev_id, uint8_t *cls)
+{
+	struct hci_dev *dev;
+
+	ASSERT_DEV_ID;
+
+	dev = &devices[dev_id];
+	memcpy(cls, dev->class, 3);
+
+	return 0;
 }
 
 int get_device_version(uint16_t dev_id, char *version, size_t size)

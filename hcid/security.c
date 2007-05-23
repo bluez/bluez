@@ -436,6 +436,9 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE):
 		hcid_dbus_setscan_enable_complete(sba);
 		break;
+	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV):
+		hcid_dbus_write_class_complete(sba);
+		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PIN_CODE_REPLY):
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY):
 		hcid_dbus_pin_code_reply(sba, ptr);
