@@ -104,6 +104,7 @@ static int init_server(uint16_t mtu, int master, int compat)
 			return -1;
 		}
 
+		opts.omtu = mtu;
 		opts.imtu = mtu;
 
 		if (setsockopt(l2cap_sock, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
