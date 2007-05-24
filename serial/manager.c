@@ -71,6 +71,8 @@ struct pending_connect {
 	bdaddr_t	src;
 	uint8_t		channel;
 	guint		io_id;		/* GIOChannel watch id */
+	GIOChannel	*io;		/* GIOChannel for RFCOMM connect */
+	char		*dev;		/* tty device name */
 	int		id;		/* RFCOMM device id */
 	int		ntries;		/* Open attempts */
 	int 		canceled;	/* Operation canceled */
@@ -95,16 +97,6 @@ static struct {
 	{ NULL }
 };
 
-typedef void (*open_notify_t) (int fd, int err, void *data);
-typedef void (*udata_free_t) (void *data);
-struct open_context {
-	char		*dev;
-	open_notify_t	notify;
-	udata_free_t	ufree;
-	void		*udata;
-	int		ntries;
-};
-
 static DBusConnection *connection = NULL;
 static GSList *pending_connects = NULL;
 static int rfcomm_ctl = -1;
@@ -123,6 +115,14 @@ static void pending_connect_free(struct pending_connect *pc)
 		g_free(pc->adapter_path);
 	if (pc->pcall)
 		dbus_pending_call_unref(pc->pcall);
+	if (pc->dev)
+		g_free(pc->dev);
+	if (pc->io_id > 0)
+		g_source_remove(pc->io_id);
+	if (pc->io) {
+		g_io_channel_close(pc->io);
+		g_io_channel_unref(pc->io);
+	}
 	g_free(pc);
 }
 
@@ -142,53 +142,113 @@ static struct pending_connect *find_pending_connect_by_pattern(const char *bda,
 	return NULL;
 }
 
-static void open_context_free(void *data)
+static void transaction_owner_exited(const char *name, void *data)
 {
-	struct open_context *oc = data;
+	GSList *l, *tmp = NULL;
+	debug("transaction owner %s exited", name);
 
-	if (oc->ufree)
-		oc->ufree(oc->udata);
-	g_free(oc->dev);
-	g_free(oc);
+	/* Clean all pending calls that belongs to this owner */
+	for (l = pending_connects; l != NULL; l = l->next) {
+		struct pending_connect *pc = l->data;
+		if (strcmp(name, dbus_message_get_sender(pc->msg)) != 0) {
+			tmp = g_slist_append(tmp, pc);
+			continue;
+		}
+
+		if (pc->pcall)
+			dbus_pending_call_cancel(pc->pcall);
+
+		if (pc->id >= 0)
+			rfcomm_release(pc->id);
+
+		pending_connect_free(pc);
+	}
+
+	g_slist_free(pending_connects);
+	pending_connects = tmp;
 }
 
-static gboolean open_continue(struct open_context *oc)
+static void pending_connect_remove(struct pending_connect *pc)
+{
+	/* Remove the connection request owner */
+	name_listener_remove(pc->conn, dbus_message_get_sender(pc->msg),
+				(name_cb_t) transaction_owner_exited, NULL);
+
+	pending_connects = g_slist_remove(pending_connects, pc);
+	pending_connect_free(pc);
+}
+
+static void open_notify(int fd, int err, struct pending_connect *pc)
+{
+	DBusMessage *reply;
+	bdaddr_t dst;
+
+	if (err) {
+		/* Max tries exceeded */
+		rfcomm_release(pc->id);
+		err_connection_failed(pc->conn, pc->msg, strerror(err));
+		return;
+	}
+
+	if (pc->canceled) {
+		rfcomm_release(pc->id);
+		err_connection_canceled(pc->conn, pc->msg);
+		return;
+	}
+
+	/* Reply to the requestor */
+	reply = dbus_message_new_method_return(pc->msg);
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &pc->dev,
+			DBUS_TYPE_INVALID);
+	send_message_and_unref(pc->conn, reply);
+
+	/* Send the D-Bus signal */
+	dbus_connection_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ServiceConnected" ,
+			DBUS_TYPE_STRING, &pc->dev,
+			DBUS_TYPE_INVALID);
+
+	str2ba(pc->bda, &dst);
+
+	/* Add the RFCOMM connection listener */
+	port_add_listener(pc->conn, pc->id, &dst, fd,
+			pc->dev, dbus_message_get_sender(pc->msg));
+}
+
+static gboolean open_continue(struct pending_connect *pc)
 {
 	int fd;
 
-	fd = open(oc->dev, O_RDONLY | O_NOCTTY);
+	if (!g_slist_find(pending_connects, pc))
+		return FALSE; /* Owner exited */
+
+	fd = open(pc->dev, O_RDONLY | O_NOCTTY);
 	if (fd < 0) {
 		int err = errno;
 		error("Could not open %s: %s (%d)",
-				oc->dev, strerror(err), err);
-		if (++oc->ntries >= MAX_OPEN_TRIES) {
+				pc->dev, strerror(err), err);
+		if (++pc->ntries >= MAX_OPEN_TRIES) {
 			/* Reporting error */
-			oc->notify(fd, err, oc->udata);
-			open_context_free(oc);
+			open_notify(fd, err, pc);
+			pending_connect_remove(pc);
 			return FALSE;
 		}
 		return TRUE;
 	}
 	/* Connection succeeded */
-	oc->notify(fd, 0, oc->udata);
-	open_context_free(oc);
+	open_notify(fd, 0, pc);
+	pending_connect_remove(pc);
 	return FALSE;
 }
 
-int port_open(const char *dev, open_notify_t notify,
-			void *udata, udata_free_t ufree)
+int port_open(struct pending_connect *pc)
 {
 	int fd;
 
-	fd = open(dev, O_RDONLY | O_NOCTTY);
+	fd = open(pc->dev, O_RDONLY | O_NOCTTY);
 	if (fd < 0) {
-		struct open_context *oc;
-		oc	= g_new0(struct open_context, 1);
-		oc->dev	= g_strdup(dev);
-		oc->notify	= notify;
-		oc->ufree	= ufree;
-		oc->udata	= udata;
-		g_timeout_add(OPEN_WAIT, (GSourceFunc) open_continue, oc);
+		g_timeout_add(OPEN_WAIT, (GSourceFunc) open_continue, pc);
 		return -EINPROGRESS;
 	}
 
@@ -253,131 +313,40 @@ static int rfcomm_bind(bdaddr_t *src, bdaddr_t *dst, int16_t dev_id, uint8_t ch)
 	return id;
 }
 
-static void open_notify(int fd, int err, void *data)
-{
-	char port_name[16];
-	const char *pname = port_name;
-	struct pending_connect *pc = data;
-	DBusMessage *reply;
-	bdaddr_t dst;
-
-	if (err) {
-		/* Max tries exceeded */
-		rfcomm_release(pc->id);
-		err_connection_failed(pc->conn, pc->msg, strerror(err));
-		return;
-	}
-
-	if (pc->canceled) {
-		rfcomm_release(pc->id);
-		err_connection_canceled(pc->conn, pc->msg);
-		return;
-	}
-
-	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", pc->id);
-
-	/* Reply to the requestor */
-	reply = dbus_message_new_method_return(pc->msg);
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &pname,
-			DBUS_TYPE_INVALID);
-	send_message_and_unref(pc->conn, reply);
-
-	/* Send the D-Bus signal */
-	dbus_connection_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "ServiceConnected" ,
-			DBUS_TYPE_STRING, &pname,
-			DBUS_TYPE_INVALID);
-
-	str2ba(pc->bda, &dst);
-
-	/* Add the RFCOMM connection listener */
-	port_add_listener(pc->conn, pc->id, &dst, fd,
-			port_name, dbus_message_get_sender(pc->msg));
-}
-
-static void transaction_owner_exited(const char *name, void *data)
-{
-	GSList *l, *tmp = NULL;
-	debug("transaction owner %s exited", name);
-
-	/* Clean all pending calls that belongs to this owner */
-	for (l = pending_connects; l != NULL; l = l->next) {
-		struct pending_connect *pc = l->data;
-		if (strcmp(name, dbus_message_get_sender(pc->msg)) != 0) {
-			tmp = g_slist_append(tmp, pc);
-			continue;
-		}
-
-		if (pc->pcall)
-			dbus_pending_call_cancel(pc->pcall);
-
-		if (pc->io_id > 0)
-			g_source_remove(pc->io_id);
-
-		if (pc->id >= 0)
-			rfcomm_release(pc->id);
-
-		pending_connect_free(pc);
-	}
-
-	g_slist_free(pending_connects);
-	pending_connects = tmp;
-}
-
-static void pending_connect_remove(struct pending_connect *pc)
-{
-	/* Remove the connection request owner */
-	name_listener_remove(pc->conn, dbus_message_get_sender(pc->msg),
-				(name_cb_t) transaction_owner_exited, NULL);
-
-	pending_connects = g_slist_remove(pending_connects, pc);
-	pending_connect_free(pc);
-}
-
 static gboolean rfcomm_connect_cb(GIOChannel *chan,
 		GIOCondition cond, struct pending_connect *pc)
 {
-	char port_name[16];
 	struct rfcomm_dev_req req;
-	int sk, err, fd, close_chan = 1;
+	int sk, err, fd, ret;
+	socklen_t len;
 
 	if (pc->canceled) {
+		err_connection_canceled(pc->conn, pc->msg);
+		goto fail;
+	}
+
+	if (cond & G_IO_NVAL) {
+		/* Avoid close invalid file descriptor */
+		g_io_channel_unref(pc->io);
+		pc->io = NULL;
 		err_connection_canceled(pc->conn, pc->msg);
 		goto fail;
 	}
 
 	sk = g_io_channel_unix_get_fd(chan);
-
-	if (cond & G_IO_NVAL) {
-		close_chan = 0;
-		err_connection_failed(pc->conn, pc->msg,
-				"File descriptor is not open");
+	len = sizeof(ret);
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)",
+				strerror(err), err);
+		err_connection_failed(pc->conn,
+				pc->msg, strerror(err));
 		goto fail;
 	}
 
-	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		socklen_t len;
-		int ret;
-
-		len = sizeof(ret);
-		if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-			err = errno;
-			error("getsockopt(SO_ERROR): %s (%d)",
-						strerror(err), err);
-			err_connection_failed(pc->conn,
-					pc->msg, strerror(err));
-			goto fail;
-		}
-
-		if (ret != 0) {
-			error("connect(): %s (%d)", strerror(ret), ret);
-			err_connection_failed(pc->conn, pc->msg, strerror(ret));
-			goto fail;
-		}
-
-		error("Hangup on rfcomm socket");
-		err_connection_canceled(pc->conn, pc->msg);
+	if (ret != 0) {
+		error("connect(): %s (%d)", strerror(ret), ret);
+		err_connection_failed(pc->conn, pc->msg, strerror(ret));
 		goto fail;
 	}
 
@@ -397,30 +366,24 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 		err_connection_failed(pc->conn, pc->msg, strerror(err));
 		goto fail;
 	}
+	pc->dev	= g_new0(char, 16);
+	snprintf(pc->dev, 16, "/dev/rfcomm%d", pc->id);
 
-	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", pc->id);
 	/* Addressing connect port */
-	fd = port_open(port_name, open_notify, pc,
-			(udata_free_t) pending_connect_remove);
-	if (fd < 0) {
-		g_io_channel_close(chan);
+	fd = port_open(pc);
+	if (fd < 0)
 		/* Open in progress: Wait the callback */
 		return FALSE;
-	}
 
 	open_notify(fd, 0, pc);
 fail:
 	pending_connect_remove(pc);
-	if (close_chan)
-		g_io_channel_close(chan);
-
 	return FALSE;
 }
 
 static int rfcomm_connect(struct pending_connect *pc)
 {
 	struct sockaddr_rc addr;
-	GIOChannel *io;
 	int sk, err = 0;
 
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
@@ -438,8 +401,7 @@ static int rfcomm_connect(struct pending_connect *pc)
 	if (set_nonblocking(sk) < 0)
 		return -errno;
 
-	io = g_io_channel_unix_new(sk);
-
+	pc->io = g_io_channel_unix_new(sk);
 	addr.rc_family	= AF_BLUETOOTH;
 	str2ba(pc->bda, &addr.rc_bdaddr);
 	addr.rc_channel	= pc->channel;
@@ -453,14 +415,14 @@ static int rfcomm_connect(struct pending_connect *pc)
 		}
 
 		debug("Connect in progress");
-		pc->io_id = g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_NVAL | G_IO_HUP,
-							(GIOFunc) rfcomm_connect_cb, pc);
+		pc->io_id = g_io_add_watch(pc->io,
+				G_IO_OUT | G_IO_ERR | G_IO_NVAL | G_IO_HUP,
+				(GIOFunc) rfcomm_connect_cb, pc);
 	} else {
 		debug("Connect succeeded with first try");
-		(void) rfcomm_connect_cb(io, G_IO_OUT, pc);
+		(void) rfcomm_connect_cb(pc->io, G_IO_OUT, pc);
 	}
 fail:
-	g_io_channel_unref(io);
 	return -err;
 }
 
