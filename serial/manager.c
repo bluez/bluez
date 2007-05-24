@@ -1045,10 +1045,6 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 	if (err < 0)
 		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
 
-	err = rfcomm_release(id);
-	if (err < 0)
-		return err_failed(conn, msg, strerror(-err));
-
 	send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
 
