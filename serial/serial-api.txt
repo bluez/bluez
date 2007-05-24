@@ -15,6 +15,7 @@ Methods		string CreatePort(string address, string pattern) [experimental]
 			Creates a serial port object.
 
 			Possible errors:org.bluez.serial.Error.InvalidArguments
+					org.bluez.serial.Error.ConnectionCanceled
 					org.bluez.serial.Error.ConnectionInProgress
 					org.bluez.serial.Error.ConnectionAttemptFailed
 					org.bluez.serial.Error.NotSupported
@@ -37,6 +38,7 @@ Methods		string CreatePort(string address, string pattern) [experimental]
 			device for it. The RFCOMM TTY device is returned.
 
 			Possible errors:org.bluez.serial.Error.InvalidArguments
+					org.bluez.serial.Error.ConnectionCanceled
 					org.bluez.serial.Error.ConnectionInProgress
 					org.bluez.serial.Error.ConnectionAttemptFailed
 					org.bluez.serial.Error.NotSupported
