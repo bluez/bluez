@@ -263,6 +263,7 @@ static void open_notify(int fd, int err, void *data)
 
 	if (err) {
 		/* Max tries exceeded */
+		rfcomm_release(pc->id);
 		err_connection_failed(pc->conn, pc->msg, strerror(err));
 		return;
 	}
