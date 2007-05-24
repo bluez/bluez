@@ -146,11 +146,12 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 		dbus_connection_unref(node->conn);
 	if (node->owner)
 		g_free(node->owner);
-	rfcomm_release(node->id);
 	if (node->io) {
 		g_source_remove(node->io_id);
+		g_io_channel_close(node->io);
 		g_io_channel_unref(node->io);
 	}
+	rfcomm_release(node->id);
 	g_free(node);
 }
 
@@ -172,9 +173,6 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 		GIOCondition cond, struct rfcomm_node *node)
 {
 	debug("RFCOMM node %s was disconnected", node->name);
-
-	if (cond & (G_IO_ERR | G_IO_HUP))
-		g_io_channel_close(io);
 
 	name_listener_remove(node->conn, node->owner,
 			(name_cb_t) connection_owner_exited, node);
