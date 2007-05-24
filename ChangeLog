@@ -1,3 +1,6 @@
+ver 3.11:
+	Fix URL data size handling.
+
 ver 3.10:
 	Add version code for Bluetooth 2.1 specification.
 	Add ESCO_LINK connection type constant.
