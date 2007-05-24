@@ -64,11 +64,13 @@
 struct pending_connect {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
+	DBusPendingCall *pcall;		/* Pending get handles/records */
 	char		*bda;		/* Destination address  */
 	char		*adapter_path;	/* Adapter D-Bus path   */
 	char		*pattern;	/* Connection request pattern */
 	bdaddr_t	src;
 	uint8_t		channel;
+	guint		io_id;		/* GIOChannel watch id */
 	int		id;		/* RFCOMM device id */
 	int		ntries;		/* Open attempts */
 	int 		canceled;	/* Operation canceled */
@@ -119,13 +121,9 @@ static void pending_connect_free(struct pending_connect *pc)
 		g_free(pc->pattern);
 	if (pc->adapter_path)
 		g_free(pc->adapter_path);
+	if (pc->pcall)
+		dbus_pending_call_unref(pc->pcall);
 	g_free(pc);
-}
-
-static void pending_connect_remove(struct pending_connect *pc)
-{
-	pending_connects = g_slist_remove(pending_connects, pc);
-	pending_connect_free(pc);
 }
 
 static struct pending_connect *find_pending_connect_by_pattern(const char *bda,
@@ -258,7 +256,7 @@ static int rfcomm_bind(bdaddr_t *src, bdaddr_t *dst, int16_t dev_id, uint8_t ch)
 static void open_notify(int fd, int err, void *data)
 {
 	char port_name[16];
-	const char *owner, *pname = port_name;
+	const char *pname = port_name;
 	struct pending_connect *pc = data;
 	DBusMessage *reply;
 	bdaddr_t dst;
@@ -272,14 +270,6 @@ static void open_notify(int fd, int err, void *data)
 	if (pc->canceled) {
 		rfcomm_release(pc->id);
 		err_connection_canceled(pc->conn, pc->msg);
-		return;
-	}
-
-	/* FIXME: it must be a per request listener */
-	owner = dbus_message_get_sender(pc->msg);
-	if (!dbus_bus_name_has_owner(pc->conn, owner, NULL)) {
-		error("Connect requestor %s exited", owner);
-		rfcomm_release(pc->id);
 		return;
 	}
 
@@ -299,7 +289,49 @@ static void open_notify(int fd, int err, void *data)
 			DBUS_TYPE_INVALID);
 
 	str2ba(pc->bda, &dst);
-	port_add_listener(pc->conn, pc->id, &dst, fd, port_name, owner);
+
+	/* Add the RFCOMM connection listener */
+	port_add_listener(pc->conn, pc->id, &dst, fd,
+			port_name, dbus_message_get_sender(pc->msg));
+}
+
+static void transaction_owner_exited(const char *name, void *data)
+{
+	GSList *l, *tmp = NULL;
+	debug("transaction owner %s exited", name);
+
+	/* Clean all pending calls that belongs to this owner */
+	for (l = pending_connects; l != NULL; l = l->next) {
+		struct pending_connect *pc = l->data;
+		if (strcmp(name, dbus_message_get_sender(pc->msg)) != 0) {
+			tmp = g_slist_append(tmp, pc);
+			continue;
+		}
+
+		if (pc->pcall)
+			dbus_pending_call_cancel(pc->pcall);
+
+		if (pc->io_id > 0)
+			g_source_remove(pc->io_id);
+
+		if (pc->id >= 0)
+			rfcomm_release(pc->id);
+
+		pending_connect_free(pc);
+	}
+
+	g_slist_free(pending_connects);
+	pending_connects = tmp;
+}
+
+static void pending_connect_remove(struct pending_connect *pc)
+{
+	/* Remove the connection request owner */
+	name_listener_remove(pc->conn, dbus_message_get_sender(pc->msg),
+				(name_cb_t) transaction_owner_exited, NULL);
+
+	pending_connects = g_slist_remove(pending_connects, pc);
+	pending_connect_free(pc);
 }
 
 static gboolean rfcomm_connect_cb(GIOChannel *chan,
@@ -377,8 +409,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 
 	open_notify(fd, 0, pc);
 fail:
-	pending_connects = g_slist_remove(pending_connects, pc);
-	pending_connect_free(pc);
+	pending_connect_remove(pc);
 	if (close_chan)
 		g_io_channel_close(chan);
 
@@ -421,8 +452,8 @@ static int rfcomm_connect(struct pending_connect *pc)
 		}
 
 		debug("Connect in progress");
-		g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_NVAL | G_IO_HUP,
-						(GIOFunc) rfcomm_connect_cb, pc);
+		pc->io_id = g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_NVAL | G_IO_HUP,
+							(GIOFunc) rfcomm_connect_cb, pc);
 	} else {
 		debug("Connect succeeded with first try");
 		(void) rfcomm_connect_cb(io, G_IO_OUT, pc);
@@ -551,8 +582,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 	}
 
 fail:
-	pending_connects = g_slist_remove(pending_connects, pc);
-	pending_connect_free(pc);
+	pending_connect_remove(pc);
 done:
 	if (rec)
 		sdp_record_free(rec);
@@ -563,7 +593,6 @@ static int get_record(struct pending_connect *pc, uint32_t handle,
 					DBusPendingCallNotifyFunction cb)
 {
 	DBusMessage *msg;
-	DBusPendingCall *pending;
 
 	msg = dbus_message_new_method_call("org.bluez", pc->adapter_path,
 			"org.bluez.Adapter", "GetRemoteServiceRecord");
@@ -575,14 +604,13 @@ static int get_record(struct pending_connect *pc, uint32_t handle,
 			DBUS_TYPE_UINT32, &handle,
 			DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(pc->conn, msg, &pending, -1) == FALSE) {
+	if (dbus_connection_send_with_reply(pc->conn, msg, &pc->pcall, -1) == FALSE) {
 		error("Can't send D-Bus message.");
 		return -1;
 	}
 
-	dbus_pending_call_set_notify(pending, cb, pc, NULL);
+	dbus_pending_call_set_notify(pc->pcall, cb, pc, NULL);
 	dbus_message_unref(msg);
-	dbus_pending_call_unref(pending);
 
 	return 0;
 }
@@ -637,15 +665,13 @@ static void handles_reply(DBusPendingCall *call, void *data)
 	return;
 fail:
 	dbus_message_unref(reply);
-	pending_connects = g_slist_remove(pending_connects, pc);
-	pending_connect_free(pc);
+	pending_connect_remove(pc);
 }
 
 static int get_handles(struct pending_connect *pc, const char *uuid,
 					DBusPendingCallNotifyFunction cb)
 {
 	DBusMessage *msg;
-	DBusPendingCall *pending;
 
 	msg = dbus_message_new_method_call("org.bluez", pc->adapter_path,
 				"org.bluez.Adapter", "GetRemoteServiceHandles");
@@ -657,14 +683,13 @@ static int get_handles(struct pending_connect *pc, const char *uuid,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(pc->conn, msg, &pending, -1) == FALSE) {
+	if (dbus_connection_send_with_reply(pc->conn, msg, &pc->pcall, -1) == FALSE) {
 		error("Can't send D-Bus message.");
 		return -1;
 	}
 
-	dbus_pending_call_set_notify(pending, cb, pc, NULL);
+	dbus_pending_call_set_notify(pc->pcall, cb, pc, NULL);
 	dbus_message_unref(msg);
-	dbus_pending_call_unref(pending);
 
 	return 0;
 }
@@ -748,6 +773,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 	pc->conn = dbus_connection_ref(conn);
 	pc->msg = dbus_message_ref(msg);
 	pc->bda = g_strdup(bda);
+	pc->id = -1;
 	pc->pattern = g_strdup(pattern);
 	pc->adapter_path = g_malloc0(16);
 	snprintf(pc->adapter_path, 16, "/org/bluez/hci%d", dev_id);
@@ -761,6 +787,8 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 			return err_not_supported(conn, msg);
 		}
 		pending_connects = g_slist_append(pending_connects, pc);
+		name_listener_add(conn, dbus_message_get_sender(msg),
+				(name_cb_t) transaction_owner_exited, NULL);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -784,6 +812,8 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 			return err_not_supported(conn, msg);
 		}
 		pending_connects = g_slist_append(pending_connects, pc);
+		name_listener_add(conn, dbus_message_get_sender(msg),
+				(name_cb_t) transaction_owner_exited, NULL);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -926,6 +956,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	pc->conn = dbus_connection_ref(conn);
 	pc->msg = dbus_message_ref(msg);
 	pc->bda = g_strdup(bda);
+	pc->id = -1;
 	pc->pattern = g_strdup(pattern);
 	pc->adapter_path = g_malloc0(16);
 	snprintf(pc->adapter_path, 16, "/org/bluez/hci%d", dev_id);
@@ -939,7 +970,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 			return err_not_supported(conn, msg);
 		}
 		pending_connects = g_slist_append(pending_connects, pc);
-		return DBUS_HANDLER_RESULT_HANDLED;
+		goto done;
 	}
 
 	/* Record handle or channel */
@@ -962,7 +993,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 			return err_not_supported(conn, msg);
 		}
 		pending_connects = g_slist_append(pending_connects, pc);
-		return DBUS_HANDLER_RESULT_HANDLED;
+		goto done;
 	}
 
 	/* RFCOMM Channel range: 1 - 30 */
@@ -984,6 +1015,10 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 		pending_connect_free(pc);
 		return err_connection_failed(conn, msg, strerr);
 	}
+done:
+	name_listener_add(conn, dbus_message_get_sender(msg),
+			(name_cb_t) transaction_owner_exited, NULL);
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
