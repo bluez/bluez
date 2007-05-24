@@ -87,11 +87,6 @@ struct headset {
 	GIOChannel *rfcomm;
 	GIOChannel *sco;
 
-	char *input;
-	GIOChannel *audio_input;
-	char *output;
-	GIOChannel *audio_output;
-
 	guint ring_timer;
 
 	char buf[BUF_SIZE];
@@ -119,99 +114,6 @@ static void pending_connect_free(struct pending_connect *c)
 		dbus_message_unref(c->msg);
 	g_free(c);
 }
-
-static gboolean headset_close_output(struct headset *hs)
-{
-	assert(hs != NULL);
-
-	if (hs->audio_output == NULL) 
-		return FALSE;
-
-	g_io_channel_close(hs->audio_output);
-	g_io_channel_unref(hs->audio_output);
-	hs->audio_output = NULL;
-
-	return TRUE;
-}
-
-/* FIXME: in the furture, that would be great to provide user space alsa driver (not plugin) */
-static gboolean headset_open_output(struct headset *hs, const char *output)
-{
-	int out;
-
-	assert(hs != NULL && output != NULL);
-
-	headset_close_output(hs);
-	if (output && hs->output) {
-		g_free(hs->output);
-		hs->output = g_strdup(output);
-	}
-
-	assert(hs->output);
-
-	out = open(hs->output, O_WRONLY | O_SYNC | O_CREAT);
-
-	if (out < 0) {
-		error("open(%s): %s %d", hs->output, strerror(errno), errno);
-		return FALSE;
-	}
-
-	hs->audio_output = g_io_channel_unix_new(out);
-	if (!hs->audio_output) {
-		error("Allocating new channel for audio output!");
-		return FALSE;
-	}
-
-	g_io_channel_set_close_on_unref(hs->audio_output, TRUE);
-
-	return TRUE;
-}
-
-static gboolean headset_close_input(struct headset *hs)
-{
-	assert(hs != NULL);
-
-	if (hs->audio_input == NULL) 
-		return FALSE;
-
-	g_io_channel_close(hs->audio_input);
-	g_io_channel_unref(hs->audio_input);
-	hs->audio_input = NULL;
-
-	return TRUE;
-}
-
-#if 0
-static gboolean headset_open_input(struct headset *hs, const char *input)
-{
-	int in;
-
-	assert(hs != NULL);
-	
-	/* we keep the input name, and NULL can be use to reopen */
-	if (input && hs->input) {
-		g_free(hs->input);
-		hs->input = g_strdup(input);
-	}
-
-	assert(hs->input);
-
-	in = open(hs->input, O_RDONLY | O_NOCTTY);
-
-	if (in < 0) {
-		error("open(%s): %s %d", hs->input, strerror(errno), errno);
-		return FALSE;
-	}
-
-	hs->audio_input = g_io_channel_unix_new(in);
-	if (!hs->audio_input) {
-		error("Allocating new channel for audio input!");
-		return FALSE;
-	}
-
-	return TRUE;
-}
-#endif
 
 static void hs_signal_gain_setting(audio_device_t *device, const char *buf)
 {
@@ -272,12 +174,6 @@ static void close_sco(audio_device_t *device)
 	g_io_channel_close(hs->sco);
 	g_io_channel_unref(hs->sco);
 	hs->sco = NULL;
-	if (hs->audio_output) {
-		g_io_channel_unref(hs->audio_output);
-		hs->audio_output = NULL;
-	}
-	if (hs->audio_input)
-		headset_close_input(hs);
 	assert(hs->rfcomm);
 	hs->state = HEADSET_STATE_CONNECTED;
 	dbus_connection_emit_signal(connection, device->object_path,
@@ -445,91 +341,18 @@ static void auth_callback(DBusPendingCall *call, void *data)
 	dbus_message_unref(reply);
 }
 
-static gboolean audio_input_to_sco_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean sco_cb(GIOChannel *chan, GIOCondition cond, audio_device_t *device)
 {
-	audio_device_t *device = data;
 	struct headset *hs = device->headset;
-	char buf[1024];
-	gsize bytes_read;
-	gsize bytes_written, total_bytes_written;
-	GIOError err;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	if (cond & (G_IO_HUP | G_IO_ERR))
-		goto failed;
-
-	err = g_io_channel_read(chan, buf, sizeof(buf), &bytes_read);
-	if (err != G_IO_ERROR_NONE)
-		goto failed;
-	
-	total_bytes_written = bytes_written = 0;
-	err = G_IO_ERROR_NONE;
-
-	while (err == G_IO_ERROR_NONE && total_bytes_written < bytes_read) {
-		/* FIXME: make it async */
-		err = g_io_channel_write(hs->sco, buf + total_bytes_written, 
-					bytes_read - total_bytes_written, &bytes_written);
-		if (err != G_IO_ERROR_NONE)
-			error("Error while writting to the audio output channel");
-		total_bytes_written += bytes_written;
-	};
-
-	return TRUE;
-
-failed:
-	headset_close_input(hs);
-	return FALSE;
-}
-
-static gboolean sco_input_to_audio_output_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
-{
-	audio_device_t *device = data;
-	struct headset *hs = device->headset;
-	char buf[1024];
-	gsize bytes_read;
-	gsize bytes_written, total_bytes_written;
-	GIOError err;
-
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_HUP | G_IO_ERR))
-		goto disconn;
-
-	if (!hs->audio_output && hs->output)
-		headset_open_output(hs, hs->output);
-
-	err = g_io_channel_read(chan, buf, sizeof(buf), &bytes_read);
-
-	if (err != G_IO_ERROR_NONE)
-		goto disconn;
-	
-	if (!hs->audio_output) {
-		error("got %d bytes audio but have nowhere to write it", bytes_read);
-		return TRUE;
-	}
-
-	total_bytes_written = bytes_written = 0;
-	err = G_IO_ERROR_NONE;
-
-	while (err == G_IO_ERROR_NONE && total_bytes_written < bytes_read) {
-		/* FIXME: make it async */
-		err = g_io_channel_write(hs->audio_output, buf + total_bytes_written, 
-					bytes_read - total_bytes_written, &bytes_written);
-		if (err != G_IO_ERROR_NONE) {
-			error("Error while writting to the audio output channel");
-		}
-		total_bytes_written += bytes_written;
-	};
-
-	return TRUE;
-
-disconn:
 	error("Audio connection got disconnected");
+
 	if (hs->sco)
 		close_sco(device);
+
 	return FALSE;
 }
 
@@ -568,19 +391,12 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	hs->pending_connect->io = NULL;
 
 	flags = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-	if (hs->audio_output)
-		flags |= G_IO_IN;
 
-	g_io_add_watch(hs->sco, flags, sco_input_to_audio_output_cb, hs);
+	g_io_add_watch(hs->sco, flags, (GIOFunc) sco_cb, device);
 
 	reply = dbus_message_new_method_return(hs->pending_connect->msg);
 	if (reply)
 		send_message_and_unref(connection, reply);
-
-	/* FIXME: do we allow both? pull & push model at the same time on sco && audio_input? */
-	if (hs->audio_input)
-		g_io_add_watch(hs->audio_input, G_IO_IN | G_IO_NVAL,
-				audio_input_to_sco_cb, device);
 
 	pending_connect_free(hs->pending_connect);
 	hs->pending_connect = NULL;
