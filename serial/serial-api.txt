@@ -56,7 +56,6 @@ Methods		string CreatePort(string address, string pattern) [experimental]
 
 			Possible errors:org.bluez.serial.Error.InvalidArguments
 					org.bluez.serial.Error.DoesNotExist
-					org.bluez.serial.Error.Failed
 
 Signals		void PortCreated(string path) [experimental]
 
