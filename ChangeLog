@@ -1,3 +1,16 @@
+ver 3.11:
+	Update API documentation.
+	Minimize SDP root records and browse groups.
+	Use same decoder for text and URL strings.
+	Fix SDP pattern extraction for XML.
+	Fix network connection persistent state.
+	Add network connection helper methods.
+	Add initial version of serial port support.
+	Add class of device tracking.
+
+	Note:
+	This version needs at least bluez-libs-3.11
+
 ver 3.10.1:
 	Add option to disable installation of manual pages.
 	Fix input service encryption setup.
