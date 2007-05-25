@@ -384,7 +384,7 @@ fail:
 static int rfcomm_connect(struct pending_connect *pc)
 {
 	struct sockaddr_rc addr;
-	int sk, err = 0;
+	int sk, err;
 
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sk < 0)
@@ -396,10 +396,10 @@ static int rfcomm_connect(struct pending_connect *pc)
 	addr.rc_channel	= 0;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
-		return -errno;
+		goto fail;
 
 	if (set_nonblocking(sk) < 0)
-		return -errno;
+		goto fail;
 
 	pc->io = g_io_channel_unix_new(sk);
 	addr.rc_family	= AF_BLUETOOTH;
@@ -409,8 +409,8 @@ static int rfcomm_connect(struct pending_connect *pc)
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		/* BlueZ returns EAGAIN eventhough it should return EINPROGRESS */
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			err = errno;
-			error("connect() failed: %s (%d)", strerror(err), err);
+			error("connect() failed: %s (%d)",
+					strerror(errno), errno);
 			goto fail;
 		}
 
@@ -422,7 +422,13 @@ static int rfcomm_connect(struct pending_connect *pc)
 		debug("Connect succeeded with first try");
 		(void) rfcomm_connect_cb(pc->io, G_IO_OUT, pc);
 	}
+
+	return 0;
 fail:
+	err = errno;
+	close(sk);
+	errno = err;
+
 	return -err;
 }
 
