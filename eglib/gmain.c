@@ -1164,6 +1164,40 @@ GSList* g_slist_last(GSList *list)
 	return list;
 }
 
+static inline GSList* _g_slist_remove_link(GSList *list, GSList *link)
+{
+	GSList *tmp;
+	GSList *prev;
+
+	prev = NULL;
+	tmp = list;
+
+	while (tmp) {
+		if (tmp == link) {
+			if (prev)
+				prev->next = tmp->next;
+			if (list == tmp)
+				list = list->next;
+
+			tmp->next = NULL;
+			break;
+		}
+
+		prev = tmp;
+		tmp = tmp->next;
+	}
+
+	return list;
+}
+
+GSList* g_slist_delete_link(GSList *list, GSList *link)
+{
+	list = _g_slist_remove_link(list, link);
+	g_free(link);
+
+	return list;
+}
+
 /* Memory allocation functions */
 
 gpointer g_malloc(gulong n_bytes)

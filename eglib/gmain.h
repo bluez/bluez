@@ -183,7 +183,7 @@ GSList *g_slist_remove(GSList *list, void *data);
 GSList *g_slist_find(GSList *list, gconstpointer data);
 
 GSList *g_slist_find_custom(GSList *list, const void *data,
-			GCompareFunc cmp_func);
+							GCompareFunc cmp_func);
 
 GSList *g_slist_sort(GSList *list, GCompareFunc cmp_func);
 
@@ -191,6 +191,7 @@ int g_slist_length(GSList *list);
 
 void g_slist_foreach(GSList *list, GFunc func, void *user_data);
 void g_slist_free(GSList *list);
+GSList *g_slist_delete_link(GSList *list, GSList *link);
 
 GSList *g_slist_nth(GSList *list, guint n);
 gpointer g_slist_nth_data(GSList *list, guint n);
