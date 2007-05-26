@@ -33,13 +33,7 @@
 
 #include "ipc.h"
 
-#ifndef UNIX_PATH_MAX
-#define UNIX_PATH_MAX 108
-#endif
-
 #define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
-
-#define SOCKET_NAME "/org/bluez/audio"
 
 struct bluetooth_data {
 	snd_pcm_ioplug_t io;
@@ -198,7 +192,8 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s/%d", SOCKET_NAME, id);
+	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s/%d",
+			IPC_SOCKET_NAME, id);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		SNDERR("Can't bind socket");
@@ -208,7 +203,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s", SOCKET_NAME);
+	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s", IPC_SOCKET_NAME);
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		SNDERR("Can't connect socket");

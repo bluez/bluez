@@ -42,10 +42,6 @@
 #include "ipc.h"
 #include "unix.h"
 
-#ifndef UNIX_PATH_MAX
-#define UNIX_PATH_MAX 108
-#endif
-
 static int unix_sock = -1;
 
 static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
