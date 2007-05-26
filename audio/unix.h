@@ -20,3 +20,7 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+int unix_init(void);
+
+void unix_exit(void);

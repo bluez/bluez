@@ -36,6 +36,7 @@
 #include "dbus.h"
 #include "logging.h"
 
+#include "unix.h"
 #include "manager.h"
 #include "headset.h"
 
@@ -73,6 +74,11 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (unix_init() < 0) {
+		error("Unable to setup unix socket");
+		exit(1);
+	}
+
 	if (audio_init(conn) < 0) {
 		error("Audio init failed!");
 		exit(1);
@@ -91,6 +97,8 @@ int main(int argc, char *argv[])
 	audio_exit();
 
 	headset_exit();
+
+	unix_exit();
 
 	dbus_connection_unref(conn);
 

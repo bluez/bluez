@@ -31,8 +31,6 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <assert.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
@@ -47,15 +45,8 @@
 #include "dbus-helper.h"
 #include "logging.h"
 
-#include "ipc.h"
 #include "headset.h"
 #include "manager.h"
-
-#ifndef UNIX_PATH_MAX
-#define UNIX_PATH_MAX 108
-#endif
-
-#define SOCKET_NAME "/org/bluez/audio"
 
 typedef enum {
 		GENERIC_AUDIO = 0,
@@ -81,8 +72,6 @@ static DBusConnection *connection = NULL;
 static audio_device_t *default_hs = NULL;
 
 static GSList *devices = NULL;
-
-static int unix_sock = -1;
 
 static void get_next_record(struct audio_sdp_data *data);
 static DBusHandlerResult get_handles(const char *uuid,
@@ -142,35 +131,6 @@ DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 				const char *dsc)
 {
 	return error_reply(conn, msg, "org.bluez.audio.Error.Failed", dsc);
-}
-
-static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
-{
-	struct sockaddr_un addr;
-	socklen_t addrlen;
-	unsigned char buf[128];
-	int sk, len;
-
-	debug("chan %p cond %td data %p", chan, cond, data);
-
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		g_io_channel_close(chan);
-		return FALSE;
-	}
-
-	sk = g_io_channel_unix_get_fd(chan);
-
-	memset(&addr, 0, sizeof(addr));
-	addrlen = sizeof(addr);
-
-	len = recvfrom(sk, buf, sizeof(buf), 0, (struct sockaddr *) &addr, &addrlen);
-
-	debug("path %s len %d", addr.sun_path + 1, len);
-
-	return TRUE;
 }
 
 static audio_device_t *find_device(bdaddr_t *bda)
@@ -1077,41 +1037,9 @@ static DBusSignalVTable manager_signals[] = {
 
 int audio_init(DBusConnection *conn)
 {
-	GIOChannel *io;
-	struct sockaddr_un addr;
-	int sk;
-
-	sk = socket(PF_LOCAL, SOCK_DGRAM, 0);
-	if (sk < 0) {
-		error("Can't create unix socket: %s (%d)", strerror(errno), errno);
-		return -1;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s", SOCKET_NAME);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("Can't bind unix socket: %s (%d)", strerror(errno), errno);
-		close(sk);
-		return -1;
-	}
-
-	set_nonblocking(sk);
-
-	unix_sock = sk;
-
-	io = g_io_channel_unix_new(sk);
-
-	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-							unix_event, NULL);
-
-	g_io_channel_unref(io);
-
 	if (!dbus_connection_create_object_path(conn, AUDIO_MANAGER_PATH,
 						NULL, NULL)) {
 		error("D-Bus failed to register %s path", AUDIO_MANAGER_PATH);
-		close(sk);
 		return -1;
 	}
 
@@ -1123,7 +1051,6 @@ int audio_init(DBusConnection *conn)
 				AUDIO_MANAGER_INTERFACE, AUDIO_MANAGER_PATH);
 		dbus_connection_destroy_object_path(conn,
 							AUDIO_MANAGER_PATH);
-		close(sk);
 		return -1;
 	}
 
@@ -1134,10 +1061,6 @@ int audio_init(DBusConnection *conn)
 
 void audio_exit(void)
 {
-	close(unix_sock);
-
-	unix_sock = -1;
-
 	g_slist_foreach(devices, (GFunc) remove_device, NULL);
 	g_slist_free(devices);
 	devices = NULL;

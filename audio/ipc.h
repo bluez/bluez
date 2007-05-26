@@ -25,6 +25,8 @@
 
 #define IPC_TYPE_CONNECT  0x0001
 
+#define IPC_SOCKET_NAME "/org/bluez/audio"
+
 struct ipc_hdr {
 	uint16_t id;
 	uint16_t type;
