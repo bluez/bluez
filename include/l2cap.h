@@ -175,7 +175,6 @@ typedef struct {
 
 typedef struct {
 	uint16_t	type;
-	uint8_t		data[0];
 } __attribute__ ((packed)) l2cap_info_req;
 #define L2CAP_INFO_REQ_SIZE 2
 
