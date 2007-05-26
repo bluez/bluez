@@ -25,7 +25,7 @@
 
 #define IPC_TYPE_CONNECT  0x0001
 
-#define IPC_SOCKET_NAME "\0/org/bluez/audio"
+#define IPC_SOCKET_NAME "/org/bluez/audio"
 
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108
