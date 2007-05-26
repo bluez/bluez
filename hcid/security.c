@@ -585,9 +585,8 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 	evt_conn_complete *evt = ptr;
 	char filename[PATH_MAX];
 	remote_name_req_cp cp_name;
-	bdaddr_t tmp;
 	struct hci_req_data *data;
-	char *str, *local_addr, *peer_addr;
+	char local_addr[18], peer_addr[18], *str;
 
 	hcid_dbus_conn_complete(sba, evt->status, evt->handle, &evt->bdaddr);
 
@@ -608,8 +607,8 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 	hci_req_queue_append(data);
 
 	/* check if the remote version needs be requested */
-	baswap(&tmp, sba); local_addr = batostr(&tmp);
-	baswap(&tmp, &evt->bdaddr); peer_addr = batostr(&tmp);
+	ba2str(sba, local_addr);
+	ba2str(&evt->bdaddr, peer_addr);
 
 	create_name(filename, sizeof(filename), STORAGEDIR, local_addr, "manufacturers");
 
@@ -626,9 +625,6 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 		hci_req_queue_append(data);
 	} else
 		free(str);
-
-	free(local_addr);
-	free(peer_addr);
 }
 
 static inline void disconn_complete(int dev, bdaddr_t *sba, void *ptr)

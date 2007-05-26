@@ -744,15 +744,14 @@ static DBusHandlerResult adapter_list_connections(DBusConnection *conn,
 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
 	while (l) {
-		char *peer_addr;
-		bdaddr_t tmp;
+		char peer_addr[18];
+		const char *paddr = peer_addr;
 		struct active_conn_info *dev = l->data;
 
-		baswap(&tmp, &dev->bdaddr); peer_addr = batostr(&tmp);
+		ba2str(&dev->bdaddr, peer_addr);
 
 		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING,
-						&peer_addr);
-		bt_free(peer_addr);
+						&paddr);
 
 		l = l->next;
 	}

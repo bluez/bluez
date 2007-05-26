@@ -428,7 +428,7 @@ int unregister_adapter_path(const char *path)
 		dc_pending_timeout_cleanup(adapter);
 	}
 
-	g_free (adapter);
+	g_free(adapter);
 
 unreg:
 	if (!dbus_connection_destroy_object_path(connection, path)) {
@@ -797,19 +797,18 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 					uint8_t status)
 {
 	struct adapter *adapter;
-	char *local_addr, *peer_addr;
+	char path[MAX_PATH_LENGTH], local_addr[18], peer_addr[18];
+	const char *paddr = peer_addr;
 	GSList *l;
-	bdaddr_t tmp;
-	char path[MAX_PATH_LENGTH];
 	int id;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
-	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+	ba2str(local, local_addr);
+	ba2str(peer, peer_addr);
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -818,7 +817,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto failed;
+		return;
 	}
 
 	if (status)
@@ -834,14 +833,14 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		if (!status)
 			send_adapter_signal(connection, adapter->dev_id,
 						"BondingCreated",
-						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_INVALID);
 	}
 
 	release_passkey_agents(adapter, peer);
 
 	if (!adapter->bonding || bacmp(&adapter->bonding->bdaddr, peer))
-		goto failed; /* skip: no bonding req pending */
+		return; /* skip: no bonding req pending */
 
 	if (adapter->bonding->cancel) {
 		/* reply authentication canceled */
@@ -863,26 +862,20 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	g_io_channel_close(adapter->bonding->io);
 	bonding_request_free(adapter->bonding);
 	adapter->bonding = NULL;
-
-failed:
-	bt_free(local_addr);
-	bt_free(peer_addr);
 }
 
 void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	struct adapter *adapter;
-	char path[MAX_PATH_LENGTH];
-	char *local_addr;
-	bdaddr_t tmp;
+	char path[MAX_PATH_LENGTH], local_addr[18];
 	int id;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
+	ba2str(local, local_addr);
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -904,9 +897,6 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 
 	send_adapter_signal(connection, adapter->dev_id, "DiscoveryStarted",
 				DBUS_TYPE_INVALID);
-
-failed:
-	bt_free(local_addr);
 }
 
 int found_device_req_name(struct adapter *adapter)
@@ -946,10 +936,9 @@ int found_device_req_name(struct adapter *adapter)
 
 	/* send at least one request or return failed if the list is empty */
 	do {
-		const char *signal = NULL;
 		struct remote_dev_info *dev = l->data;
-		char *peer_addr;
-		bdaddr_t tmp;
+		char peer_addr[18];
+		const char *signal = NULL, *paddr = peer_addr;
 
 		 /* flag to indicate the current remote name requested */ 
 		dev->name_status = NAME_REQUESTED;
@@ -959,7 +948,7 @@ int found_device_req_name(struct adapter *adapter)
 		bacpy(&cp.bdaddr, &dev->bdaddr);
 		cp.pscan_rep_mode = 0x02;
 
-		baswap(&tmp, &dev->bdaddr); peer_addr = batostr(&tmp);
+		ba2str(&dev->bdaddr, peer_addr);
 
 		if (hci_send_req(dd, &rq, 500) < 0) {
 			error("Unable to send the HCI remote name request: %s (%d)",
@@ -982,10 +971,8 @@ int found_device_req_name(struct adapter *adapter)
 
 		if (signal)
 			send_adapter_signal(connection, adapter->dev_id, signal,
-						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_INVALID);
-
-		free(peer_addr);
 
 		if (req_sent)
 			break;
@@ -1027,18 +1014,16 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
 	struct adapter *adapter;
 	GSList *l;
-	char path[MAX_PATH_LENGTH];
-	char *local_addr;
+	char path[MAX_PATH_LENGTH], local_addr[18];
 	struct remote_dev_info *dev;
 	bdaddr_t tmp;
 	int id;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
+	ba2str(local, local_addr);
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		bt_free(local_addr);
 		return;
 	}
 
@@ -1127,28 +1112,23 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 done:
 	/* Proceed with any queued up audits */
 	process_audits_list(path);
-
-	bt_free(local_addr);
 }
 
 void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 {
 	struct adapter *adapter;
-	char path[MAX_PATH_LENGTH];
-	char *local_addr;
-	bdaddr_t tmp;
+	char path[MAX_PATH_LENGTH], local_addr[18];
 	int id;
 
 	/* Don't send the signal if the cmd failed */
 	if (status)
 		return;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
-
+	ba2str(local, local_addr);
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1165,29 +1145,24 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 	dbus_connection_emit_signal(connection, path, ADAPTER_INTERFACE,
 					"PeriodicDiscoveryStarted",
 					DBUS_TYPE_INVALID);
-
-failed:
-	bt_free(local_addr);
 }
 
 void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 {
 	struct adapter *adapter;
-	char path[MAX_PATH_LENGTH];
-	char *local_addr;
-	bdaddr_t tmp;
+	char path[MAX_PATH_LENGTH], local_addr[18];
 	int id;
 
 	/* Don't send the signal if the cmd failed */
 	if (status)
 		return;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
+	ba2str(local, local_addr);
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto done;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1195,7 +1170,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto done;
+		return;
 	}
 
 	/* reset the discover type to be able to handle D-Bus and non D-Bus
@@ -1235,8 +1210,6 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	dbus_connection_emit_signal(connection, path, ADAPTER_INTERFACE,
 					"PeriodicDiscoveryStopped",
 					DBUS_TYPE_INVALID);
-done:
-	bt_free(local_addr);
 }
 
 static char *extract_eir_name(uint8_t *data, uint8_t *type)
@@ -1261,25 +1234,24 @@ static char *extract_eir_name(uint8_t *data, uint8_t *type)
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				int8_t rssi, uint8_t *data)
 {
-	char filename[PATH_MAX + 1];
-	char path[MAX_PATH_LENGTH];
+	char filename[PATH_MAX + 1], path[MAX_PATH_LENGTH];
 	struct adapter *adapter;
 	GSList *l;
+	char local_addr[18], peer_addr[18], *name, *tmp_name;
+	const char *paddr = peer_addr;
 	struct remote_dev_info match;
-	char *local_addr, *peer_addr, *name, *tmp_name;
 	dbus_int16_t tmp_rssi = rssi;
-	bdaddr_t tmp;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
 	int id;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
-	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+	ba2str(local, local_addr);
+	ba2str(peer, peer_addr);
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto done;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1287,7 +1259,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto done;
+		return;
 	}
 
 	write_remote_class(local, peer, class);
@@ -1317,7 +1289,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	/* send the device found signal */
 	dbus_connection_emit_signal(connection, path, ADAPTER_INTERFACE,
 					"RemoteDeviceFound",
-					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_STRING, &paddr,
 					DBUS_TYPE_UINT32, &class,
 					DBUS_TYPE_INT16, &tmp_rssi,
 					DBUS_TYPE_INVALID);
@@ -1329,7 +1301,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	l = g_slist_find_custom(adapter->found_devices, &match,
 			(GCompareFunc) found_device_cmp);
 	if (l)
-		goto done;
+		return;
 
 	/* the inquiry result can be triggered by NON D-Bus client */
 	if (adapter->discov_type & RESOLVE_NAME)
@@ -1362,7 +1334,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		dbus_connection_emit_signal(connection, path,
 						ADAPTER_INTERFACE,
 						"RemoteNameUpdated",
-						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_STRING, &name,
 						DBUS_TYPE_INVALID);
 		g_free(name);
@@ -1373,16 +1345,12 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 	/* add in the list to track name sent/pending */
 	found_device_add(&adapter->found_devices, peer, rssi, name_status);
-
-done:
-	bt_free(local_addr);
-	bt_free(peer_addr);
 }
 
 void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 {
-	char *local_addr, *peer_addr;
-	bdaddr_t tmp;
+	char local_addr[18], peer_addr[18];
+	const char *paddr = peer_addr;
 	uint32_t old_class = 0;
 	int id;
 
@@ -1391,40 +1359,36 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	if (old_class == class)
 		return;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
-	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+	ba2str(local, local_addr);
+	ba2str(peer, peer_addr);
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		return;
 	}
 
 	send_adapter_signal(connection, id, "RemoteClassUpdated",
-				DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_STRING, &paddr,
 				DBUS_TYPE_UINT32, &class,
 				DBUS_TYPE_INVALID);
 
-failed:
-	bt_free(local_addr);
-	bt_free(peer_addr);
 }
 
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 				char *name)
 {
 	struct adapter *adapter;
-	char path[MAX_PATH_LENGTH];
-	char *local_addr, *peer_addr;
-	bdaddr_t tmp;
+	char path[MAX_PATH_LENGTH], local_addr[18], peer_addr[18];
+	const char *paddr = peer_addr;
 	int id;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
-	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+	ba2str(local, local_addr);
+	ba2str(peer, peer_addr);
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto done;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1432,20 +1396,20 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto done;
+		return;
 	}
 
 	if (status)
 		dbus_connection_emit_signal(connection, path,
 						ADAPTER_INTERFACE,
 						"RemoteNameFailed",
-						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_INVALID);
 	else 
 		dbus_connection_emit_signal(connection, path,
 						ADAPTER_INTERFACE,
 						"RemoteNameUpdated",
-						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_STRING, &name,
 						DBUS_TYPE_INVALID);
 
@@ -1454,7 +1418,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 
 	/* check if there is more devices to request names */
 	if (!found_device_req_name(adapter))
-		goto done; /* skip if a new request has been sent */
+		return; /* skip if a new request has been sent */
 
 	/* free discovered devices list */
 	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
@@ -1492,28 +1456,23 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 						DBUS_TYPE_INVALID);
 		adapter->discov_active = 0;
 	}
-
-done:
-	bt_free(local_addr);
-	bt_free(peer_addr);
 }
 
 void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 				bdaddr_t *peer)
 {
-	char path[MAX_PATH_LENGTH];
+	char path[MAX_PATH_LENGTH], local_addr[18], peer_addr[18];
+	const char *paddr = peer_addr;
 	struct adapter *adapter;
-	char *local_addr, *peer_addr;
-	bdaddr_t tmp;
 	int id;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
-	baswap(&tmp, peer); peer_addr = batostr(&tmp);
+	ba2str(local, local_addr);
+	ba2str(peer, peer_addr);
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto done;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1521,7 +1480,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto done;
+		return;
 	}
 
 	if (status) {
@@ -1545,28 +1504,23 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		dbus_connection_emit_signal(connection, path,
 						ADAPTER_INTERFACE,
 						"RemoteDeviceConnected",
-						DBUS_TYPE_STRING, &peer_addr,
+						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_INVALID);
 
 		/* add in the active connetions list */
 		active_conn_append(&adapter->active_conn, peer, handle);
 	}
-
-done:
-	bt_free(local_addr);
-	bt_free(peer_addr);
 }
 
 void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 				uint16_t handle, uint8_t reason)
 {
 	DBusMessage *reply;
-	char path[MAX_PATH_LENGTH];
+	char path[MAX_PATH_LENGTH], local_addr[18], peer_addr[18];
+	const char *paddr = peer_addr;
 	struct adapter *adapter;
 	struct active_conn_info *dev;
 	GSList *l;
-	char *local_addr, *peer_addr = NULL;
-	bdaddr_t tmp;
 	int id;
 
 	if (status) {
@@ -1574,12 +1528,12 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		return;
 	}
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
+	ba2str(local, local_addr);
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1587,18 +1541,18 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto failed;
+		return;
 	}
 
 	l = g_slist_find_custom(adapter->active_conn, &handle,
 			active_conn_find_by_handle);
 
 	if (!l)
-		goto failed;
+		return;
 
 	dev = l->data;
 
-	baswap(&tmp, &dev->bdaddr); peer_addr = batostr(&tmp);
+	ba2str(&dev->bdaddr, peer_addr);
 
 	/* clean pending HCI cmds */
 	hci_req_queue_remove(adapter->dev_id, &dev->bdaddr);
@@ -1653,17 +1607,12 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	/* Send the remote device disconnected signal */
 	dbus_connection_emit_signal(connection, path, ADAPTER_INTERFACE,
 					"RemoteDeviceDisconnected",
-					DBUS_TYPE_STRING, &peer_addr,
+					DBUS_TYPE_STRING, &paddr,
 					DBUS_TYPE_INVALID);
 
 	adapter->active_conn = g_slist_remove(adapter->active_conn, dev);
 	g_free(dev);
 
-failed:
-	if (peer_addr)
-		free(peer_addr);
-
-	free(local_addr);
 }
 
 gboolean discov_timeout_handler(void *data)
@@ -1719,21 +1668,18 @@ failed:
  *****************************************************************/
 void hcid_dbus_setname_complete(bdaddr_t *local)
 {
-	char *local_addr;
-	bdaddr_t tmp;
-	int id;
-	int dd = -1;
+	int id, dd = -1;
 	read_local_name_rp rp;
 	struct hci_request rq;
 	const char *pname = (char *) rp.name;
-	char name[249];
+	char local_addr[18], name[249];
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
+	ba2str(local, local_addr);
 
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		return;
 	}
 
 	dd = hci_open_dev(id);
@@ -1759,6 +1705,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 					rp.status);
 			rp.name[0] = '\0';
 		}
+		hci_close_dev(dd);
 	}
 
 	strncpy(name, pname, sizeof(name) - 1);
@@ -1767,30 +1714,21 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 
 	send_adapter_signal(connection, id, "NameChanged",
 				DBUS_TYPE_STRING, &pname, DBUS_TYPE_INVALID);
-
-failed:
-	if (dd >= 0)
-		hci_close_dev(dd);
-
-	bt_free(local_addr);
 }
 
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
 	struct adapter *adapter;
-	char *local_addr;
-	char path[MAX_PATH_LENGTH];
-	bdaddr_t tmp;
+	char path[MAX_PATH_LENGTH], local_addr[18];
 	read_scan_enable_rp rp;
 	struct hci_request rq;
-	int id;
-	int dd = -1;
+	int id, dd = -1;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
+	ba2str(local, local_addr);
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1798,7 +1736,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	dd = hci_open_dev(id);
 	if (dd < 0) {
 		error("HCI device open failed: hci%d", id);
-		goto failed;
+		return;
 	}
 
 	memset(&rq, 0, sizeof(rq));
@@ -1837,31 +1775,27 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 failed:
 	if (dd >= 0)
 		hci_close_dev(dd);
-
-	bt_free(local_addr);
 }
 
 void hcid_dbus_write_class_complete(bdaddr_t *local)
 {
 	struct adapter *adapter;
-	char path[MAX_PATH_LENGTH];
-	char *local_addr;
-	bdaddr_t tmp;
+	char path[MAX_PATH_LENGTH], local_addr[18];
 	int id, dd = -1;
 	uint8_t cls[3];
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
+	ba2str(local, local_addr);
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto failed;
+		return;
 	}
 
 	dd = hci_open_dev(id);
@@ -1881,8 +1815,6 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 failed:
 	if (dd >= 0)
 		hci_close_dev(dd);
-
-	bt_free(local_addr);
 }
 
 void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
@@ -1894,18 +1826,16 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	} __attribute__ ((packed)) ret_pin_code_req_reply;
 
 	struct adapter *adapter;
-	char *local_addr;
 	ret_pin_code_req_reply *ret = ptr + EVT_CMD_COMPLETE_SIZE;
 	GSList *l;
-	char path[MAX_PATH_LENGTH];
-	bdaddr_t tmp;
+	char path[MAX_PATH_LENGTH], local_addr[18];
 	int id;
 
-	baswap(&tmp, local); local_addr = batostr(&tmp);
+	ba2str(local, local_addr);
 	id = hci_devid(local_addr);
 	if (id < 0) {
 		error("No matching device id for %s", local_addr);
-		goto failed;
+		return;
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -1913,7 +1843,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto failed;
+		return;
 	}
 
 	l = g_slist_find_custom(adapter->pin_reqs, &ret->bdaddr, pin_req_cmp);
@@ -1921,9 +1851,6 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 		struct pending_pin_info *p = l->data;
 		p->replied = 1;
 	}
-
-failed:
-	bt_free(local_addr);
 }
 
 void create_bond_req_exit(const char *name, struct adapter *adapter)
