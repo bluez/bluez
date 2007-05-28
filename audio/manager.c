@@ -58,7 +58,6 @@ typedef enum {
 struct audio_sdp_data {
 	audio_device_t *device;
 
-	DBusConnection *conn;
 	DBusMessage *msg;
 
 	GSList *handles;
@@ -363,7 +362,7 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 	debug("Audio service discovery completed with %s",
 			success ? "success" : "failure");
 
-	finish_sdp_transaction(data->conn, &data->device->bda);
+	finish_sdp_transaction(connection, &data->device->bda);
 
 	if (!success)
 		goto done;
@@ -371,7 +370,7 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 	reply = dbus_message_new_method_return(data->msg);
 	if (!reply) {
 		success = FALSE;
-		err_failed(data->conn, data->msg, "Out of memory");
+		err_failed(connection, data->msg, "Out of memory");
 		goto done;
 	}
 
@@ -380,7 +379,7 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 	add_device(data->device);
 	g_slist_foreach(data->records, (GFunc) handle_record, data->device);
 
-	dbus_connection_emit_signal(data->conn, AUDIO_MANAGER_PATH,
+	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
 					AUDIO_MANAGER_INTERFACE,
 					"DeviceCreated",
 					DBUS_TYPE_STRING, &path,
@@ -388,12 +387,11 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID);
-	send_message_and_unref(data->conn, reply);
+	send_message_and_unref(connection, reply);
 
 done:
 	if (!success)
 		free_device(data->device);
-	dbus_connection_unref(data->conn);
 	dbus_message_unref(data->msg);
 	g_slist_foreach(data->handles, (GFunc) g_free, NULL);
 	g_slist_free(data->handles);
@@ -418,9 +416,9 @@ static void get_record_reply(DBusPendingCall *call,
 		error("GetRemoteServiceRecord failed: %s", derr.message);
 		if (dbus_error_has_name(&derr,
 					"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connect_failed(data->conn, data->msg, EHOSTDOWN);
+			err_connect_failed(connection, data->msg, EHOSTDOWN);
 		else
-			err_failed(data->conn, data->msg, derr.message);
+			err_failed(connection, data->msg, derr.message);
 		dbus_error_free(&derr);
 		goto failed;
 	}
@@ -428,7 +426,7 @@ static void get_record_reply(DBusPendingCall *call,
 	if (!dbus_message_get_args(reply, NULL,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &array, &array_len,
 				DBUS_TYPE_INVALID)) {
-		err_failed(data->conn, data->msg,
+		err_failed(connection, data->msg,
 				"Unable to get args from GetRecordReply");
 		goto failed;
 	}
@@ -473,7 +471,7 @@ static void get_next_record(struct audio_sdp_data *data)
 						"GetRemoteServiceRecord");
 	if (!msg) {
 		error("Unable to allocate new method call");
-		err_connect_failed(data->conn, data->msg, ENOMEM);
+		err_connect_failed(connection, data->msg, ENOMEM);
 		finish_sdp(data, FALSE);
 		return;
 	}
@@ -490,9 +488,9 @@ static void get_next_record(struct audio_sdp_data *data)
 
 	g_free(handle);
 
-	if (!dbus_connection_send_with_reply(data->conn, msg, &pending, -1)) {
+	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceRecord failed");
-		err_connect_failed(data->conn, data->msg, EIO);
+		err_connect_failed(connection, data->msg, EIO);
 		finish_sdp(data, FALSE);
 		return;
 	}
@@ -530,9 +528,9 @@ static void get_handles_reply(DBusPendingCall *call,
 		error("GetRemoteServiceHandles failed: %s", derr.message);
 		if (dbus_error_has_name(&derr,
 					"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connect_failed(data->conn, data->msg, EHOSTDOWN);
+			err_connect_failed(connection, data->msg, EHOSTDOWN);
 		else
-			err_failed(data->conn, data->msg, derr.message);
+			err_failed(connection, data->msg, derr.message);
 		dbus_error_free(&derr);
 		goto failed;
 	}
@@ -541,7 +539,7 @@ static void get_handles_reply(DBusPendingCall *call,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &array, &array_len,
 				DBUS_TYPE_INVALID)) {
 	  
-		err_failed(data->conn, data->msg,
+		err_failed(connection, data->msg,
 				"Unable to get args from reply");
 		goto failed;
 	}
@@ -591,7 +589,7 @@ static DBusHandlerResult get_handles(const char *uuid,
 						"org.bluez.Adapter",
 						"GetRemoteServiceHandles");
 	if (!msg) {
-		err_failed(data->conn, data->msg,
+		err_failed(connection, data->msg,
 				"Could not create a new dbus message");
 		goto failed;
 	}
@@ -603,7 +601,7 @@ static DBusHandlerResult get_handles(const char *uuid,
 					DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
-		err_failed(data->conn, data->msg,
+		err_failed(connection, data->msg,
 				"Sending GetRemoteServiceHandles failed");
 		goto failed;
 	}
@@ -623,15 +621,14 @@ failed:
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult resolve_services(DBusConnection *conn,
-						DBusMessage *msg,
+static DBusHandlerResult resolve_services(DBusMessage *msg,
 						audio_device_t *device)
 {
 	struct audio_sdp_data *sdp_data;
 
 	sdp_data = g_new0(struct audio_sdp_data, 1);
-	sdp_data->msg = dbus_message_ref(msg);
-	sdp_data->conn = dbus_connection_ref(conn);
+	if (msg)
+		sdp_data->msg = dbus_message_ref(msg);
 	sdp_data->device = device;
 
 	return get_handles(GENERIC_AUDIO_UUID, sdp_data);
@@ -722,7 +719,7 @@ static DBusHandlerResult am_create_device(DBusConnection *conn, DBusMessage *msg
 
 	device = create_device(&bda);
 
-	return resolve_services(conn, msg, device);
+	return resolve_services(msg, device);
 }
 
 static DBusHandlerResult am_list_devices(DBusConnection *conn,
