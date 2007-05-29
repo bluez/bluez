@@ -797,7 +797,6 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	/* HID devices */
 	if (l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL,
 				(GIOFunc) control_connect_cb, idev) < 0) {
-
 		int err = errno;
 
 		error("L2CAP connect failed: %s(%d)", strerror(err), err);
@@ -1087,14 +1086,16 @@ int input_device_get_bdaddr(DBusConnection *conn, const char *path,
 	return 0;
 }
 
-int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm, GIOFunc cb, void *data)
+int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm,
+						GIOFunc cb, void *data)
 {
 	GIOChannel *io;
 	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
 	int sk, err;
 
-	if ((sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0)
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+	if (sk < 0)
 		return -1;
 
 	memset(&addr, 0, sizeof(addr));
@@ -1108,12 +1109,14 @@ int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm, GIOFunc cb, 
 		goto failed;
 
 	memset(&opts, 0, sizeof(opts));
+#if 0
 	opts.imtu = HIDP_DEFAULT_MTU;
 	opts.omtu = HIDP_DEFAULT_MTU;
 	opts.flush_to = 0xffff;
 
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0)
 		goto failed;
+#endif
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family  = AF_BLUETOOTH;
@@ -1131,9 +1134,8 @@ int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm, GIOFunc cb, 
 
 		g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) cb, data);
-	} else {
+	} else
 		cb(io, G_IO_OUT, data);
-	}
 
 	g_io_channel_unref(io);
 

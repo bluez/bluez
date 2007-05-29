@@ -20,11 +20,12 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-#define L2CAP_PSM_HIDP_CTRL		0x11
-#define L2CAP_PSM_HIDP_INTR		0x13
+
+#define L2CAP_PSM_HIDP_CTRL	0x11
+#define L2CAP_PSM_HIDP_INTR	0x13
 
 int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
-				struct hidp_connadd_req *hidp, const char **ppath);
+			struct hidp_connadd_req *hidp, const char **ppath);
 int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 			bdaddr_t *dst, uint8_t ch, const char **ppath);
 int input_device_unregister(DBusConnection *conn, const char *path);
@@ -32,4 +33,4 @@ int input_device_unregister(DBusConnection *conn, const char *path);
 int input_device_get_bdaddr(DBusConnection *conn, const char *path,
 						bdaddr_t *src, bdaddr_t *dst);
 int l2cap_connect(bdaddr_t *src, bdaddr_t *dst,
-		unsigned short psm, GIOFunc cb, void *data);
+				unsigned short psm, GIOFunc cb, void *data);
