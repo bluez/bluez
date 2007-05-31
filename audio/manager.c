@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -49,6 +50,16 @@
 #include "manager.h"
 
 typedef enum {
+	HEADSET	= 1 << 0,
+	GATEWAY	= 1 << 1,
+	SINK	= 1 << 2,
+	SOURCE	= 1 << 3,
+	CONTROL	= 1 << 4,
+	TARGET	= 1 << 5,
+	INVALID	= 1 << 6
+} audio_service_type;
+
+typedef enum {
 		GENERIC_AUDIO = 0,
 		ADVANCED_AUDIO,
 		AV_REMOTE,
@@ -58,10 +69,10 @@ typedef enum {
 struct audio_sdp_data {
 	audio_device_t *device;
 
-	DBusMessage *msg;
+	DBusMessage *msg;	/* Method call or NULL */
 
-	GSList *handles;
-	GSList *records;
+	GSList *handles;	/* uint32_t * */
+	GSList *records;	/* sdp_record_t * */
 
 	audio_sdp_state_t state;
 };
@@ -224,8 +235,8 @@ static audio_device_t *create_device(bdaddr_t *bda)
 static void remove_device(audio_device_t *device)
 {
 	devices = g_slist_remove(devices, device);
+	headset_free(device->object_path);
 	dbus_connection_destroy_object_path(connection, device->object_path);
-	g_free(device->headset);
 	g_free(device);
 }
 
@@ -251,6 +262,40 @@ static gboolean add_device(audio_device_t *device)
 	devices = g_slist_append(devices, device);
 
 	return TRUE;
+}
+
+static uint16_t get_service_uuid(const sdp_record_t *record)
+{
+	sdp_list_t *classes;
+	uuid_t uuid;
+	uint16_t uuid16 = 0;
+
+	if (sdp_get_service_classes(record, &classes) < 0) {
+		error("Unable to get service classes from record");
+		return 0;
+	}
+
+	memcpy(&uuid, classes->data, sizeof(uuid));
+	
+	if (!sdp_uuid128_to_uuid(&uuid)) {
+		error("Not a 16 bit UUID");
+		sdp_list_free(classes, free);
+		return 0;
+	}
+
+	if (uuid.type == SDP_UUID32) {
+	       	if (uuid.value.uuid32 > 0xFFFF) {
+			error("Not a 16 bit UUID");
+			goto done;
+		}
+		uuid16 = (uint16_t) uuid.value.uuid32;
+	} else
+		uuid16 = uuid.value.uuid16;
+
+done:
+	sdp_list_free(classes, free);
+
+	return uuid16;
 }
 
 void finish_sdp_transaction(DBusConnection *conn, bdaddr_t *dba) 
@@ -290,39 +335,18 @@ void finish_sdp_transaction(DBusConnection *conn, bdaddr_t *dba)
 
 static void handle_record(sdp_record_t *record, audio_device_t *device)
 {
-	sdp_list_t *classes;
-	uuid_t uuid;
 	uint16_t uuid16;
 
-	if (sdp_get_service_classes(record, &classes) < 0) {
-		error("Unable to get service classes from record");
-		return;
-	}
-
-	memcpy(&uuid, classes->data, sizeof(uuid));
-
-	if (!sdp_uuid128_to_uuid(&uuid)) {
-		error("Not a 16 bit UUID");
-		goto done;
-	}
-
-	if (uuid.type == SDP_UUID32) {
-	       	if (uuid.value.uuid32 > 0xFFFF) {
-			error("Not a 16 bit UUID");
-			goto done;
-		}
-		uuid16 = (uint16_t) uuid.value.uuid32;
-	} else
-		uuid16 = uuid.value.uuid16;
+	uuid16 = get_service_uuid(record);
 
 	switch (uuid16) {
 	case HEADSET_SVCLASS_ID:
 		debug("Found Headset record");
 		if (device->headset)
-			debug("Multiple Headset records found");
+			headset_update(device->headset, record, uuid16);
 		else
 			device->headset = headset_init(device->object_path,
-							record);
+							record, uuid16);
 		break;
 	case HEADSET_AGW_SVCLASS_ID:
 		debug("Found Headset AG record");
@@ -349,15 +373,45 @@ static void handle_record(sdp_record_t *record, audio_device_t *device)
 		debug("Unrecognized UUID: 0x%04X", uuid16);
 		break;
 	}
+}
 
-done:
-	sdp_list_free(classes, free);
+static gint record_iface_cmp(gconstpointer a, gconstpointer b)
+{
+	const sdp_record_t *record = a;
+	const char *interface = b;
+
+	switch (get_service_uuid(record)) {
+	case HEADSET_SVCLASS_ID:
+	case HANDSFREE_SVCLASS_ID:
+		return strcmp(interface, AUDIO_HEADSET_INTERFACE);
+
+	case HEADSET_AGW_SVCLASS_ID:
+	case HANDSFREE_AGW_SVCLASS_ID:
+		return strcmp(interface, AUDIO_GATEWAY_INTERFACE);
+
+	case AUDIO_SINK_SVCLASS_ID:
+		return strcmp(interface, AUDIO_SINK_INTERFACE);
+
+	case AUDIO_SOURCE_SVCLASS_ID:
+		return strcmp(interface, AUDIO_SOURCE_INTERFACE);
+
+	case AV_REMOTE_SVCLASS_ID:
+		return strcmp(interface, AUDIO_CONTROL_INTERFACE);
+
+	case AV_REMOTE_TARGET_SVCLASS_ID:
+		return strcmp(interface, AUDIO_TARGET_INTERFACE);
+
+	default:
+		return -1;
+	}
 }
 
 static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 {
-	const char *path;
-	DBusMessage *reply;
+	const char *path, *addr;
+	char **required;
+	int required_len, i;
+	DBusMessage *reply = NULL;
 
 	debug("Audio service discovery completed with %s",
 			success ? "success" : "failure");
@@ -367,6 +421,36 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 	if (!success)
 		goto done;
 
+	if (!data->msg)
+		goto update;
+
+	if (!dbus_message_get_args(data->msg, NULL,
+					DBUS_TYPE_STRING, &addr,
+					DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+					&required, &required_len,
+					DBUS_TYPE_INVALID)) {
+		error("Unable to get message args");
+		success = FALSE;
+		goto done;
+	}
+
+	for (i = 0; i < required_len; i++) {
+		const char *iface = required[i];
+
+		if (g_slist_find_custom(data->records, iface, record_iface_cmp))
+			continue;
+
+		debug("Required interface %s not supported", iface);
+		success = FALSE;
+		err_not_supported(connection, data->msg);
+		dbus_free_string_array(required);
+		goto done;
+	}
+
+	dbus_free_string_array(required);
+
+	path = data->device->object_path;
+
 	reply = dbus_message_new_method_return(data->msg);
 	if (!reply) {
 		success = FALSE;
@@ -374,25 +458,28 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 		goto done;
 	}
 
-	path = data->device->object_path;
-
 	add_device(data->device);
+
+update:
 	g_slist_foreach(data->records, (GFunc) handle_record, data->device);
 
-	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
-					AUDIO_MANAGER_INTERFACE,
-					"DeviceCreated",
-					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID);
+	if (reply) {
+		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE,
+						"DeviceCreated",
+						DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID);
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID);
-	send_message_and_unref(connection, reply);
+		dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID);
+		send_message_and_unref(connection, reply);
+	}
 
 done:
 	if (!success)
 		free_device(data->device);
-	dbus_message_unref(data->msg);
+	if (data->msg)
+		dbus_message_unref(data->msg);
 	g_slist_foreach(data->handles, (GFunc) g_free, NULL);
 	g_slist_free(data->handles);
 	g_slist_foreach(data->records, (GFunc) sdp_record_free, NULL);
@@ -654,19 +741,21 @@ audio_device_t *manager_headset_connected(bdaddr_t *bda)
 	}
 
 	if (!device->headset)
-		device->headset = headset_init(device->object_path, NULL);
+		device->headset = headset_init(device->object_path, NULL, 0);
 
 	if (!device->headset)
 		return NULL;
 
 	path = device->object_path;
 
-	if (created)
+	if (created) {
 		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
 						"DeviceCreated",
 						DBUS_TYPE_STRING, &path,
 						DBUS_TYPE_INVALID);
+		resolve_services(NULL, device);
+	}
 
 	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
 					AUDIO_MANAGER_INTERFACE,
@@ -686,17 +775,62 @@ audio_device_t *manager_headset_connected(bdaddr_t *bda)
 	return device;
 }
 
+static gboolean device_supports_interface(audio_device_t *device,
+						const char *iface)
+{
+		if (strcmp(iface, AUDIO_HEADSET_INTERFACE) == 0)
+		       	return device->headset ? TRUE : FALSE;
+
+		if (strcmp(iface, AUDIO_GATEWAY_INTERFACE) == 0)
+			return device->gateway ? TRUE : FALSE;
+
+		if (strcmp(iface, AUDIO_SOURCE_INTERFACE) == 0)
+			return device->gateway ? TRUE : FALSE;
+
+		if (strcmp(iface, AUDIO_SINK_INTERFACE) == 0)
+			return device->sink ? TRUE : FALSE;
+
+		if (strcmp(iface, AUDIO_CONTROL_INTERFACE) == 0)
+			return device->control ? TRUE : FALSE;
+
+		if (strcmp(iface, AUDIO_TARGET_INTERFACE) == 0)
+			return device->target ? TRUE : FALSE;
+
+		debug("Unknown interface %s", iface);
+
+		return FALSE;
+}
+
+static gboolean device_matches(audio_device_t *device, char **interfaces)
+{
+	int i;
+
+	for (i = 0; interfaces[i]; i++) {
+		if (device_supports_interface(device, interfaces[i]))
+			continue;
+		debug("Device does not support interface %s", interfaces[i]);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static DBusHandlerResult am_create_device(DBusConnection *conn, DBusMessage *msg,
 						void *data)
 {
-	const char *address;
+	const char *address, *path;
+	char **required;
+	int required_len;
 	bdaddr_t bda;
 	audio_device_t *device;
+	DBusMessage *reply;
 	DBusError derr;
 
 	dbus_error_init(&derr);
 	dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+				&required, &required_len,
 				DBUS_TYPE_INVALID);
 	if (dbus_error_is_set(&derr)) {
 		err_invalid_args(connection, msg, derr.message);
@@ -707,19 +841,29 @@ static DBusHandlerResult am_create_device(DBusConnection *conn, DBusMessage *msg
 	str2ba(address, &bda);
 
 	device = find_device(&bda);
-	if (device) {
-		const char *path = device->object_path;
-		DBusMessage *reply = dbus_message_new_method_return(msg);
-		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
-						DBUS_TYPE_INVALID);
-		return send_message_and_unref(conn, reply);
+	if (!device) {
+		device = create_device(&bda);
+		dbus_free_string_array(required);
+		return resolve_services(msg, device);
 	}
 
-	device = create_device(&bda);
+	if (!device_matches(device, required)) {
+		dbus_free_string_array(required);
+		return err_not_supported(conn, msg);
+	}
 
-	return resolve_services(msg, device);
+	dbus_free_string_array(required);
+
+	path = device->object_path;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult am_list_devices(DBusConnection *conn,
@@ -728,7 +872,21 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 {
 	DBusMessageIter iter, array_iter;
 	DBusMessage *reply;
+	DBusError derr;
 	GSList *l;
+	char **required;
+	int required_len;
+
+	dbus_error_init(&derr);
+	dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+				&required, &required_len,
+				DBUS_TYPE_INVALID);
+	if (dbus_error_is_set(&derr)) {
+		err_invalid_args(connection, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -743,6 +901,9 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 		audio_device_t *device = l->data;
 		const char *path;
 
+		if (!device_matches(device, required))
+			continue;
+
 		path = device->object_path;
 
 		dbus_message_iter_append_basic(&array_iter,
@@ -750,6 +911,8 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
+
+	dbus_free_string_array(required);
 
 	return send_message_and_unref(connection, reply);
 }
@@ -786,12 +949,14 @@ static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *ms
 		}
 	}
 
-	device->headset = headset_init(device->object_path, NULL);
 	if (!device->headset) {
-		remove_device(device);
-		return error_reply(connection, msg,
-					"org.bluez.audio.Error.Failed",
-					"Unable to init Headset interface");
+		device->headset = headset_init(device->object_path, NULL, 0);
+		if (!device->headset) {
+			remove_device(device);
+			return error_reply(connection, msg,
+						"org.bluez.audio.Error.Failed",
+						"Unable to init Headset interface");
+		}
 	}
 
 	path = device->object_path;
@@ -1005,11 +1170,11 @@ static DBusHandlerResult am_change_default_headset(DBusConnection *conn, DBusMes
 
 static DBusMethodVTable manager_methods[] = {
 	{ "CreateDevice",		am_create_device,
-		"s",	"s"		},
+		"sas",	"s"		},
 	{ "RemoveDevice",		am_remove_device,
 		"s",	""		},
 	{ "ListDevices",		am_list_devices,
-		"",	"as"	},
+		"as",	"as"	},
 	{ "CreateHeadset",		am_create_headset,
 		"s",	"s"		},
 	{ "RemoveHeadset",		am_remove_headset,

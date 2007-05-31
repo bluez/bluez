@@ -48,18 +48,30 @@
 #define AVRCP_REMOTE_UUID	"0000110E-0000-1000-8000-00805F9B34FB"
 #define AVRCP_TARGET_UUID	"0000110C-0000-1000-8000-00805F9B34FB"
 
+/* Move these to respective .h files once they exist */
+#define AUDIO_GATEWAY_INTERFACE	"org.bluez.audio.Gateway"
+#define AUDIO_SINK_INTERFACE	"org.bluez.audio.Sink"
+#define AUDIO_SOURCE_INTERFACE	"org.bluez.audio.Source"
+#define AUDIO_CONTROL_INTERFACE	"org.bluez.audio.Control"
+#define AUDIO_TARGET_INTERFACE	"org.bluez.audio.Target"
+typedef struct gateway gateway_t;
+typedef struct sink sink_t;
+typedef struct source source_t;
+typedef struct control control_t;
+typedef struct target target_t;
+
 typedef struct audio_device {
 	char object_path[128];
 	bdaddr_t bda;
 
 	headset_t *headset;
-/*
-	audio_gw_t *audio_gw;
+
+	gateway_t *gateway;
 	sink_t *sink;
 	source_t *source;
 	control_t *control;
 	target_t *target;
-*/
+
 } audio_device_t;
 
 audio_device_t *manager_headset_connected(bdaddr_t *bda);

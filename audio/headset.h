@@ -33,11 +33,16 @@
 
 typedef struct headset headset_t;
 
-headset_t *headset_init(const char *object_path, sdp_record_t *record);
+headset_t *headset_init(const char *object_path, sdp_record_t *record,
+			uint16_t svc);
+
+void headset_free(const char *object_path);
+
+void headset_update(headset_t *headset, sdp_record_t *record, uint16_t svc);
 
 gboolean headset_is_connected(headset_t *headset);
 
-int headset_server_init(DBusConnection *conn);
+int headset_server_init(DBusConnection *conn, gboolean disable_hfp);
 
 void headset_exit(void);
 
