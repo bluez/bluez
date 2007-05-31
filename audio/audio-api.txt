@@ -21,8 +21,8 @@ Methods
 
 			The return parameter is the object path of the newly
 			created object. The method will fail if the remote
-			device does not as a minimum implement the interfaces
-			indicated by the interfaces parameter.
+			device does not support all of the interfaces listed
+			in the interfaces parameter.
 
 		void RemoveDevice(string path)
 
