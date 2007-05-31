@@ -588,6 +588,9 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 	struct hci_req_data *data;
 	char local_addr[18], peer_addr[18], *str;
 
+	if (evt->link_type != ACL_LINK)
+		return;
+
 	hcid_dbus_conn_complete(sba, evt->status, evt->handle, &evt->bdaddr);
 
 	if (evt->status)
