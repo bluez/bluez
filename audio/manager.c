@@ -235,7 +235,8 @@ static audio_device_t *create_device(bdaddr_t *bda)
 static void remove_device(audio_device_t *device)
 {
 	devices = g_slist_remove(devices, device);
-	headset_free(device->object_path);
+	if (device->headset)
+		headset_free(device->object_path);
 	dbus_connection_destroy_object_path(connection, device->object_path);
 	g_free(device);
 }
