@@ -434,6 +434,14 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 		goto done;
 	}
 
+	/* Return error if no audio related service records were found */
+	if (!data->records) {
+		debug("No audio audio related service records were found");
+		success = FALSE;
+		err_not_supported(connection, data->msg);
+		success = FALSE;
+	}
+
 	for (i = 0; i < required_len; i++) {
 		const char *iface = required[i];
 
