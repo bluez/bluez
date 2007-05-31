@@ -3,7 +3,7 @@ if AUDIOSERVICE
 if CONFIGFILES
 confdir = $(sysconfdir)/bluetooth
 
-conf_DATA = audio.service
+conf_DATA = audio.service audio.conf
 endif
 
 servicedir = $(libdir)/bluetooth
@@ -35,6 +35,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @ALSA_CFLAGS@ @SBC_CFLAGS
 
 INCLUDES = -I$(top_srcdir)/common
 
-EXTRA_DIST = audio.service audio-api.txt asound.conf
+EXTRA_DIST = audio.service audio.conf audio-api.txt asound.conf
 
 MAINTAINERCLEANFILES = Makefile.in

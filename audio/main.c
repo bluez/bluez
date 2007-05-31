@@ -40,11 +40,64 @@
 #include "manager.h"
 #include "headset.h"
 
+/* Configuration settings */
+static gboolean disable_hfp = FALSE;
+static gboolean sco_hci = TRUE;
+
 static GMainLoop *main_loop = NULL;
 
 static void sig_term(int sig)
 {
 	g_main_loop_quit(main_loop);
+}
+
+void read_config(const char *file)
+{
+	GKeyFile *keyfile;
+	GError *err = NULL;
+	gboolean no_hfp;
+	char *sco_routing;
+
+	keyfile = g_key_file_new();
+
+	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
+		error("Parsing %s failed: %s", file, err->message);
+		g_error_free(err);
+		g_key_file_free(keyfile);
+		return;
+	}
+
+	sco_routing = g_key_file_get_string(keyfile, "General",
+						"SCORouting", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		if (strcmp(sco_routing, "PCM") == 0)
+			sco_hci = FALSE;
+		else if (strcmp(sco_routing, "HCI") == 0)
+			sco_hci = TRUE;
+		else
+			error("Invalid Headset Routing value: %s",
+					sco_routing);
+		g_free(sco_routing);
+	}
+
+	no_hfp = g_key_file_get_boolean(keyfile, "Headset",
+						"DisableHFP", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	} else
+		disable_hfp = no_hfp;
+
+	debug("Config options: DisableHFP=%s, SCORouting=%s",
+			disable_hfp ? "true" : "false",
+			sco_hci ? "HCI" : "PCM");
+
+	g_key_file_free(keyfile);
 }
 
 int main(int argc, char *argv[])
@@ -66,6 +119,8 @@ int main(int argc, char *argv[])
 
 	enable_debug();
 
+	read_config(CONFIGDIR "/audio.conf");
+
 	main_loop = g_main_loop_new(NULL, FALSE);
 
 	conn = dbus_bus_system_setup_with_main_loop(NULL, NULL, NULL);
@@ -84,7 +139,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (headset_server_init(conn, TRUE) < 0) {
+	if (headset_server_init(conn, disable_hfp, sco_hci) < 0) {
 		error("Headset initialization failed!");
 		exit(1);
 	}

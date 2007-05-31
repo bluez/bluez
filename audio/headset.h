@@ -42,7 +42,8 @@ void headset_update(headset_t *headset, sdp_record_t *record, uint16_t svc);
 
 gboolean headset_is_connected(headset_t *headset);
 
-int headset_server_init(DBusConnection *conn, gboolean disable_hfp);
+int headset_server_init(DBusConnection *conn, gboolean disable_hfp,
+			gboolean sco_hci);
 
 void headset_exit(void);
 

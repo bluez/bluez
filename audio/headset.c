@@ -1702,7 +1702,8 @@ gboolean headset_is_connected(headset_t *headset)
 		return FALSE;
 }
 
-int headset_server_init(DBusConnection *conn, gboolean no_hfp)
+int headset_server_init(DBusConnection *conn, gboolean no_hfp,
+			gboolean sco_hci)
 {
 	uint8_t chan = DEFAULT_HS_AG_CHANNEL;
 	sdp_buf_t buf;
