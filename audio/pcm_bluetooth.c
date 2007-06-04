@@ -182,6 +182,15 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 		return -EINVAL;
 	}
 
+	if((stream == SND_PCM_STREAM_PLAYBACK) && (opened_for & OPENED_PLAYBACK)) {
+		SNDERR("Cannot open Bluetooth Headset PCM plugin twice for playback.");
+		return -EINVAL;
+	}
+	if((stream == SND_PCM_STREAM_CAPTURE) && (opened_for & OPENED_CAPTURE)) {
+		SNDERR("Cannot open Bluetooth Headset PCM plugin twice for capture.");
+		return -EINVAL;
+	}
+
 	id = abs(getpid() * rand());
 
 	sk = socket(PF_LOCAL, SOCK_DGRAM, 0);
