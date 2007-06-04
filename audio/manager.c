@@ -137,6 +137,12 @@ DBusHandlerResult err_connect_failed(DBusConnection *conn,
 				strerror(err));
 }
 
+DBusHandlerResult err_does_not_exist(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_reply(conn, msg, "org.bluez.audio.Error.DoesNotExist",
+				"Does not exist");
+}
+
 DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 				const char *dsc)
 {
@@ -1110,6 +1116,44 @@ static DBusHandlerResult am_list_headsets(DBusConnection *conn, DBusMessage *msg
 	return send_message_and_unref(connection, reply);
 }
 
+static DBusHandlerResult am_find_by_addr(DBusConnection *conn, DBusMessage *msg,
+						void *data)
+{
+	const char *path, *address;
+	DBusMessage *reply;
+	DBusError derr;
+	audio_device_t *device;
+	bdaddr_t bda;
+
+	dbus_error_init(&derr);
+	dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_INVALID);
+	if (dbus_error_is_set(&derr)) {
+		err_invalid_args(connection, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	str2ba(address, &bda);
+
+	device = find_device(&bda);
+
+	if (!device)
+		return err_does_not_exist(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	path = device->object_path;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult am_get_default_headset(DBusConnection *conn, DBusMessage *msg,
 						void *data)
 {
@@ -1190,6 +1234,8 @@ static DBusMethodVTable manager_methods[] = {
 		"s",	""		},
 	{ "ListHeadsets",		am_list_headsets,
 		"",	"as"		},
+	{ "FindDeviceByAddress",	am_find_by_addr,
+		"s",	"s"		},
 	{ "DefaultHeadset",		am_get_default_headset,
 		"",	"s"		},
 	{ "ChangeDefaultHeadset",	am_change_default_headset,

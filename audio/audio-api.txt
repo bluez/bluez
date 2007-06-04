@@ -39,6 +39,12 @@ Methods
 
 			Returns list of headset objects that are configured.
 
+		array{string} FindDeviceByAddress(string address)
+
+			Searches the list of available devices and returns the
+			first device which matchess address. If no device is
+			found returns a DoesNotExist error.
+
 		string DefaultHeadset()
 
 			Returns the object path for the default headset device.
