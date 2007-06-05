@@ -48,7 +48,7 @@ Prints information about all configured RFCOMM devices.
 .BI -r
 Switch TTY into raw mode (doesn't work with "bind").
 .TP
-.BI -f " [file]"
+.BI -f " <file>"
 Specify alternate config file.
 .TP
 .BI -i " <hciX> | <bdaddr>"
@@ -78,6 +78,9 @@ Secure connection
 .TP
 .BI -M
 Become the master of a piconet
+.TP
+.BI -L " <seconds>"
+Set linger timeout
 .SH COMMANDS
 .TP
 .BI show " <dev>"

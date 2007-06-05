@@ -59,6 +59,7 @@ static int auth = 0;
 static int encryption = 0;
 static int secure = 0;
 static int master = 0;
+static int linger = 0;
 
 static char *rfcomm_state[] = {
 	"unknown",
@@ -100,7 +101,7 @@ static char *rfcomm_flagstostr(uint32_t flags)
 
 	if (flags & (1 << RFCOMM_TTY_ATTACHED))
 		strcat(str, "tty-attached");
-	
+
 	strcat(str, "]");
 	return str;
 }
@@ -170,7 +171,6 @@ static int create_dev(int ctl, int dev, uint32_t flags, bdaddr_t *bdaddr, int ar
 			fprintf(stderr, "Can't find a config entry for rfcomm%d\n", dev);
 			return -EFAULT;
 		}
-		
 	} else {
 		str2ba(argv[1], &req.dst);
 
@@ -265,7 +265,7 @@ static void run_cmdline(struct pollfd *p, sigset_t* sigs, char *devname,
 	int i;
 	pid_t pid;
 	char **cmdargv;
-       
+
 	cmdargv = malloc((argc + 1) * sizeof(char*));
 	if (!cmdargv)
 		return;
@@ -357,13 +357,22 @@ static void cmd_connect(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **arg
 		return;
 	}
 
-	if (bind(sk, (struct sockaddr *)&laddr, sizeof(laddr)) < 0) {
+	if (linger) {
+		struct linger l = { .l_onoff = 1, .l_linger = linger };
+
+		if (setsockopt(sk, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+			perror("Can't set linger option");
+			return;
+		}
+	}
+
+	if (bind(sk, (struct sockaddr *) &laddr, sizeof(laddr)) < 0) {
 		perror("Can't bind RFCOMM socket");
 		close(sk);
 		return;
 	}
 
-	if (connect(sk, (struct sockaddr *)&raddr, sizeof(raddr)) < 0) {
+	if (connect(sk, (struct sockaddr *) &raddr, sizeof(raddr)) < 0) {
 		perror("Can't connect RFCOMM socket");
 		close(sk);
 		return;
@@ -522,6 +531,16 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 		perror("Can't get RFCOMM socket name");
 		close(nsk);
 		return;
+	}
+
+	if (linger) {
+		struct linger l = { .l_onoff = 1, .l_linger = linger };
+
+		if (setsockopt(nsk, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+			perror("Can't set linger option");
+			close(nsk);
+			return;
+		}
 	}
 
 	memset(&req, 0, sizeof(req));
@@ -708,7 +727,6 @@ static void usage(void)
 	printf("\n");
 }
 
-
 static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "device",	1, 0, 'i' },
@@ -718,6 +736,7 @@ static struct option main_options[] = {
 	{ "encrypt",	0, 0, 'E' },
 	{ "secure",	0, 0, 'S' },
 	{ "master",	0, 0, 'M' },
+	{ "linger",	1, 0, 'L' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -728,7 +747,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:f:rahAESM", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:f:rahAESML:", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strncmp(optarg, "hci", 3) == 0)
@@ -740,6 +759,7 @@ int main(int argc, char *argv[])
 		case 'f':
 			rfcomm_config_file = strdup(optarg);
 			break;
+
 		case 'r':
 			rfcomm_raw_tty = 1;
 			break;
@@ -766,6 +786,10 @@ int main(int argc, char *argv[])
 
 		case 'M':
 			master = 1;
+			break;
+
+		case 'L':
+			linger = atoi(optarg);
 			break;
 
 		default:
