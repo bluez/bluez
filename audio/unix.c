@@ -48,7 +48,8 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct sockaddr_un addr;
 	socklen_t addrlen;
-	unsigned char buf[128];
+	struct ipc_packet pkt;
+	struct ipc_data_cfg cfg;
 	int sk, len;
 
 	debug("chan %p cond %td data %p", chan, cond, data);
@@ -66,10 +67,37 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	memset(&addr, 0, sizeof(addr));
 	addrlen = sizeof(addr);
 
-	len = recvfrom(sk, buf, sizeof(buf), 0, (struct sockaddr *) &addr, &addrlen);
+	len = recvfrom(sk, &pkt, sizeof(pkt), 0, (struct sockaddr *) &addr, &addrlen);
 
 	debug("path %s len %d", addr.sun_path + 1, len);
 
+	switch (pkt.type) {
+	case PKT_TYPE_CFG_REQ:
+		info("Package PKT_TYPE_CFG_REQ:%u", pkt.role);
+		struct ipc_data_cfg *cfg_ptr;
+
+		cfg.fd = -1;
+		cfg.fd_opt = CFG_FD_OPT_READWRITE;
+		cfg.encoding = 0;
+		cfg.bitpool = 0;
+		cfg.channels = 1;
+		cfg.pkt_len = 48;
+		cfg.sample_size = 2;
+		cfg.rate = 8000;
+
+		cfg_ptr = (struct ipc_data_cfg *) &pkt.data;
+		pkt.type = PKT_TYPE_CFG_RSP;
+		cfg_ptr[0] = cfg;
+		pkt.length = sizeof(struct ipc_data_cfg);
+		len = send(sk, &pkt, sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg), 0);
+		break;
+	case PKT_TYPE_STATUS_REQ:
+		info("Package PKT_TYPE_STATUS_REQ");
+		break;
+	case PKT_TYPE_CTL_REQ:
+		info("Package PKT_TYPE_CTL_REQ");
+		break;
+	}
 	return TRUE;
 }
 
@@ -105,6 +133,8 @@ int unix_init(void)
 							unix_event, NULL);
 
 	g_io_channel_unref(io);
+
+	info("Unix socket created: %d", sk);
 
 	return 0;
 }

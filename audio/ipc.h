@@ -40,10 +40,10 @@
 /* Packet types */
 #define PKT_TYPE_CFG_REQ	0
 #define PKT_TYPE_CFG_RSP	1
-#define PKT_TYPE_STATUS_REQ	3
-#define PKT_TYPE_STATUS_RSP	4
-#define PKT_TYPE_CTL_REQ	5
-#define PKT_TYPE_CTL_RSP	6
+#define PKT_TYPE_STATUS_REQ	2
+#define PKT_TYPE_STATUS_RSP	3
+#define PKT_TYPE_CTL_REQ	4
+#define PKT_TYPE_CTL_RSP	5
 
 /* Errors codes */
 #define PKT_ERROR_NONE		0
@@ -68,6 +68,8 @@ struct ipc_data_cfg {
 	uint8_t encoding;	/* Stream encoding */
 	uint8_t bitpool;	/* Encoding bitpool */
 	uint8_t channels;	/* Number of audio channel */
+	uint8_t pkt_len;	/* Stream packet length */
+	uint8_t sample_size;	/* Sample size in bytes */
 	uint16_t rate;		/* Stream sample rate */
 } __attribute__ ((packed));
 
