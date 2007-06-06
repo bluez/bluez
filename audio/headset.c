@@ -301,7 +301,12 @@ static void send_cancel_auth(audio_device_t *device)
 {
 	DBusMessage *cancel;
 	char addr[18], *address = addr;
-	const char *uuid = HSP_AG_UUID;
+	const char *uuid;
+       
+	if (device->headset->type == SVC_HEADSET)
+		uuid = HSP_AG_UUID;
+	else
+		uuid = HFP_AG_UUID;
 
 	cancel = dbus_message_new_method_call("org.bluez", "/org/bluez",
 						"org.bluez.Database",
@@ -526,8 +531,6 @@ static int rfcomm_connect(audio_device_t *device, int *err)
 	assert(hs != NULL);
 	assert(hs->pending_connect != NULL);
 	assert(hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS);
-
-	hs->type = hs->hfp_handle ? SVC_HANDSFREE : SVC_HEADSET;
 
 	ba2str(&device->bda, address);
 
@@ -1158,7 +1161,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 	DBusPendingCall *pending;
 	audio_device_t *device = data;
 	struct headset *hs = device->headset;
-	const char *hs_svc = "hsp";
+	const char *hs_svc;
 	const char *addr_ptr;
 	char hs_address[18];
 	int err;
@@ -1177,6 +1180,8 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 	hs->state = HEADSET_STATE_CONNECT_IN_PROGRESS;
 
 	hs->pending_connect->msg = msg ? dbus_message_ref(msg) : NULL;
+
+	hs->type = hs->hfp_handle ? SVC_HANDSFREE : SVC_HEADSET;
 
 	if (hs->rfcomm_ch > 0) {
 	       	if (rfcomm_connect(device, &err) < 0) {
@@ -1199,6 +1204,11 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 		hs->state = HEADSET_STATE_DISCONNECTED;
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
+
+	if (hs->type == SVC_HEADSET)
+		hs_svc = "hsp";
+	else
+		hs_svc = "hfp";
 
 	ba2str(&device->bda, hs_address);
 	addr_ptr = hs_address;
@@ -1576,7 +1586,7 @@ static gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *
 	struct sockaddr_rc addr;
 	socklen_t size;
 	char hs_address[18], *address = hs_address;
-	const char *uuid = HSP_AG_UUID;
+	const char *uuid;
 	audio_device_t *device;
 	struct headset *hs;
 	DBusMessage *auth;
@@ -1622,10 +1632,13 @@ static gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *
 		return TRUE;
 	}
 
-	if (chan == hs_server)
+	if (chan == hs_server) {
 		hs->type = SVC_HEADSET;
-	else
+		uuid = HSP_AG_UUID;
+	} else {
 		hs->type = SVC_HANDSFREE;
+		uuid = HFP_AG_UUID;
+	}
 
 	auth = dbus_message_new_method_call("org.bluez", "/org/bluez", "org.bluez.Database",
 						"RequestAuthorization");
