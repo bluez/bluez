@@ -1817,3 +1817,20 @@ void headset_exit(void)
 	dbus_connection_unref(connection);
 	connection = NULL;
 }
+
+int headset_get_config(headset_t *headset, struct ipc_data_cfg *cfg)
+{
+	if (headset->sco == NULL)
+		return -1;
+
+	cfg->fd = g_io_channel_unix_get_fd(headset->sco);
+	cfg->fd_opt = CFG_FD_OPT_READWRITE;
+	cfg->encoding = 0;
+	cfg->bitpool = 0;
+	cfg->channels = 1;
+	cfg->pkt_len = 48;
+	cfg->sample_size = 2;
+	cfg->rate = 8000;
+
+	return 0;
+}

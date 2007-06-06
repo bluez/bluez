@@ -29,6 +29,8 @@
 
 #include <dbus/dbus.h>
 
+#include "ipc.h"
+
 #define AUDIO_HEADSET_INTERFACE "org.bluez.audio.Headset"
 
 typedef struct headset headset_t;
@@ -46,5 +48,7 @@ int headset_server_init(DBusConnection *conn, gboolean disable_hfp,
 			gboolean sco_hci);
 
 void headset_exit(void);
+
+int headset_get_config(headset_t *headset, struct ipc_data_cfg *cfg);
 
 #endif /* __AUDIO_HEADSET_H_ */

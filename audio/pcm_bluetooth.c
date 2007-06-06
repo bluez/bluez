@@ -115,7 +115,7 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 	struct ipc_data_cfg cfg = data->cfg;
 	uint32_t period_count = io->buffer_size / io->period_size;
 
-	DBG("period_count = %d", period_count);
+	DBG("fd = %d, period_count = %d", cfg.fd, period_count);
 
 	if(setsockopt(cfg.fd, SOL_SCO,
 			io->stream == SND_PCM_STREAM_PLAYBACK ? SCO_TXBUFS : SCO_RXBUFS,
@@ -315,56 +315,59 @@ static int bluetooth_hw_constraint(snd_pcm_ioplug_t *io)
 
 static int bluetooth_cfg(struct bluetooth_data *data)
 {
-	struct ipc_packet pkt;
 	int res;
+	int len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg);
+	struct ipc_packet *pkt;
 
 	DBG("Sending PKT_TYPE_CFG_REQ...");
-	pkt.type = PKT_TYPE_CFG_REQ;
-	pkt.role = PKT_ROLE_NONE;
-	res = send(data->sock, &pkt, sizeof(struct ipc_packet), 0);
+	pkt = malloc(len);
+	memset(pkt, 0, len);
+	pkt->type = PKT_TYPE_CFG_REQ;
+	pkt->role = PKT_ROLE_NONE;
+	pkt->error = PKT_ERROR_NONE;
+	res = send(data->sock, pkt, len, 0);
 	if (res < 0)
 		return errno;
 	DBG("OK - %d bytes sent", res);
 
 	DBG("Waiting for response...");
-	do {
-		int len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg);
-		struct ipc_packet *pkt_ptr;
 
-		pkt_ptr = malloc(sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg));
-		res = recv(data->sock, pkt_ptr, len, MSG_WAITALL | (data->io.nonblock ? MSG_DONTWAIT : 0 ));
-	} while ((res < 0) && (errno == EINTR));
+	memset(pkt, 0, len);
+	res = recv(data->sock, pkt, len, 0);
+
 	if (res < 0)
 		return -errno;
 	DBG("OK - %d bytes received", res);
 
-	if (pkt.type != PKT_TYPE_CFG_RSP) {
-		SNDERR("Unexpected packet type received: type = %d", pkt.type);
+	if (pkt->type != PKT_TYPE_CFG_RSP) {
+		SNDERR("Unexpected packet type received: type = %d", pkt->type);
 		return -EINVAL;
 	}
 
-	if (pkt.error != PKT_ERROR_NONE) {
-		SNDERR("Error while configuring device: error = %d", pkt.error);
-		return pkt.error;
+	if (pkt->error != PKT_ERROR_NONE) {
+		SNDERR("Error while configuring device: error = %d", pkt->error);
+		return pkt->error;
 	}
 
-	if (pkt.length != sizeof(struct ipc_data_cfg)) {
+	if (pkt->length != sizeof(struct ipc_data_cfg)) {
 		SNDERR("Error while configuring device: packet size doesn't match");
 		return -EINVAL;
 	}
 
-	memcpy(&data->cfg, &pkt.data, pkt.length);
+	memcpy(&data->cfg, pkt->data, sizeof(struct ipc_data_cfg));
+
+	DBG("Device configuration:");
+
+	DBG("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u, sample_size=%u, rate=%u",
+		data->cfg.fd, data->cfg.fd_opt, data->cfg.channels,
+		data->cfg.pkt_len, data->cfg.sample_size, data->cfg.rate);
 
 	if (data->cfg.fd == -1) {
 		SNDERR("Error while configuring device: could not acquire audio socket");
 		return -EINVAL;
 	}
 
-	DBG("Device configuration:");
-	DBG("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u, sample_size=%u, rate=%u",
-		data->cfg.fd, data->cfg.fd_opt, data->cfg.channels,
-		data->cfg.pkt_len, data->cfg.sample_size, data->cfg.rate);
-
+	free(pkt);
 	return 0;
 }
 
@@ -372,6 +375,9 @@ static int bluetooth_init(struct bluetooth_data *data)
 {
 	int sk, err, id;
 	struct sockaddr_un addr;
+
+	if (!data)
+		return -EINVAL;
 
 	id = abs(getpid() * rand());
 
@@ -404,18 +410,12 @@ static int bluetooth_init(struct bluetooth_data *data)
 		return -errno;
 	}
 
-	data = malloc(sizeof(*data));
-	if (!data) {
-		close(sk);
-		return -ENOMEM;
-	}
-
-	memset(data, 0, sizeof(*data));
-
 	data->sock = sk;
 
-	if ((err = bluetooth_cfg(data)) < 0)
+	if ((err = bluetooth_cfg(data)) < 0) {
+		free(data);
 		return err;
+	}
 
 	data->buffer = malloc(data->cfg.pkt_len);
 
@@ -427,7 +427,7 @@ static int bluetooth_init(struct bluetooth_data *data)
 SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 {
 //	snd_config_iterator_t iter, next;
-	struct bluetooth_data data;
+	struct bluetooth_data *data;
 	int err;
 
 	DBG("Bluetooth PCM plugin blablabla (%s)",
@@ -437,39 +437,41 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 //	}
 
 	DBG("Initing Bluetooth...");
-	err = bluetooth_init(&data);
+	data = malloc(sizeof(struct bluetooth_data));
+	memset(data, 0, sizeof(struct bluetooth_data));
+	err = bluetooth_init(data);
 	if (err < 0)
 		goto error;
 	DBG("Done");
 
-	data.io.version = SND_PCM_IOPLUG_VERSION;
-	data.io.name = "Bluetooth Audio Device";
-	data.io.mmap_rw =  0; /* No direct mmap communication */
+	data->io.version = SND_PCM_IOPLUG_VERSION;
+	data->io.name = "Bluetooth Audio Device";
+	data->io.mmap_rw =  0; /* No direct mmap communication */
 
-	data.io.callback = stream == SND_PCM_STREAM_PLAYBACK ?
+	data->io.callback = stream == SND_PCM_STREAM_PLAYBACK ?
 		&bluetooth_playback_callback : &bluetooth_capture_callback;
-	data.io.poll_fd = data.cfg.fd;
-	data.io.poll_events = POLLIN;
-	data.io.private_data = &data;
+	data->io.poll_fd = data->cfg.fd;
+	data->io.poll_events = stream == SND_PCM_STREAM_PLAYBACK ?
+		POLLOUT : POLLIN;
+	data->io.private_data = data;
 
-	err = snd_pcm_ioplug_create(&data.io, name, stream, mode);
+	err = snd_pcm_ioplug_create(&data->io, name, stream, mode);
 	if (err < 0)
 		goto error;
 
-	err = bluetooth_hw_constraint(&data.io);
+	err = bluetooth_hw_constraint(&data->io);
 	if (err < 0) {
-		snd_pcm_ioplug_delete(&data.io);
+		snd_pcm_ioplug_delete(&data->io);
 		goto error;
 	}
 
-	*pcmp = data.io.pcm;
+	*pcmp = data->io.pcm;
 
 	return 0;
 
 error:
-	close(data.sock);
-
-	free(&data);
+	close(data->sock);
+	free(data);
 
 	return err;
 }

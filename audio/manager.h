@@ -94,3 +94,4 @@ DBusHandlerResult err_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 				const char *dsc);
 
+int manager_get_device(uint8_t role, struct ipc_data_cfg *cfg);

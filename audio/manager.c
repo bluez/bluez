@@ -1286,3 +1286,14 @@ void audio_exit(void)
 
 	connection = NULL;
 }
+
+int manager_get_device(uint8_t role, struct ipc_data_cfg *cfg)
+{
+	if (default_hs == NULL || default_hs->headset == NULL)
+		return -1;
+
+	if (!headset_is_connected(default_hs->headset))
+		return -1;
+
+	return headset_get_config(default_hs->headset, cfg);
+}
