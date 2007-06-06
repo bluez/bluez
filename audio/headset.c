@@ -378,7 +378,7 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond, audio_device_t *devi
 static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 				audio_device_t *device)
 {
-	struct headset *hs = device->headset;
+	struct headset *hs;
 	int ret, sk, err, flags;
 	socklen_t len;
 	DBusMessage *reply;
@@ -386,8 +386,12 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	assert(hs != NULL && hs->pending_connect != NULL && 
-		hs->sco == NULL && hs->state == HEADSET_STATE_PLAY_IN_PROGRESS);
+	hs = device->headset;
+
+	assert(hs != NULL);
+	assert(hs->pending_connect != NULL);
+	assert(hs->sco == NULL);
+	assert(hs->state == HEADSET_STATE_PLAY_IN_PROGRESS);
 
 	sk = g_io_channel_unix_get_fd(chan);
 
@@ -1336,8 +1340,6 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 	if (!c)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
-
 	c->msg = msg ? dbus_message_ref(msg) : NULL;
 
 	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
@@ -1383,12 +1385,15 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 			goto failed;
 		}
 
-		debug("Connect in progress");
+		debug("SCO connect in progress");
+
+		hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
 
 		g_io_add_watch(c->io, G_IO_OUT | G_IO_NVAL,
 				(GIOFunc) sco_connect_cb, device);
 	} else {
-		debug("Connect succeeded with first try");
+		debug("SCO connect succeeded with first try");
+		hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
 		sco_connect_cb(c->io, G_IO_OUT, device);
 	}
 
