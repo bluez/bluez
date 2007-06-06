@@ -284,6 +284,7 @@ sdp_service_t sdp_service[] = {
 	{ "fax",	FAX_SVCLASS_ID,			"Fax"			},
 	{ "spp",	SERIAL_PORT_SVCLASS_ID,		"Serial Port"		},
 	{ "hsp",	HEADSET_SVCLASS_ID,		"Headset"		},
+	{ "hfp",	HANDSFREE_SVCLASS_ID,		"Handsfree"		},
 	{ NULL }
 };
 
