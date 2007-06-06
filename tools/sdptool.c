@@ -755,10 +755,12 @@ static int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, cha
 	sdp_list_t *attrid_list;
 	uint32_t range = 0x0000ffff;
 	sdp_record_t *rec;
+	int ret;
 
 	/* Get the old SDP record */
 	attrid_list = sdp_list_append(NULL, &range);
 	rec = sdp_service_attr_req(sess, handle, SDP_ATTR_REQ_RANGE, attrid_list);
+	sdp_list_free(attrid_list, NULL);
 
 	if (!rec) {
 		printf("Service get request failed.\n");
@@ -794,11 +796,11 @@ static int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, cha
 	}
 
 	/* Update on the server */
-	if (sdp_device_record_update(sess, &interface, rec)) {
+	ret = sdp_device_record_update(sess, &interface, rec);
+	if (ret < 0)
 		printf("Service Record update failed (%d).\n", errno);
-		return -1;
-	}
-	return 0;
+	sdp_record_free(rec);
+	return ret;
 }
 
 static struct option set_options[] = {
@@ -867,11 +869,12 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 	uint8_t uuid16 = SDP_UUID16;
 	uint8_t uint32 = SDP_UINT32;
 	uint8_t str8 = SDP_TEXT_STR8;
-	int i;
+	int i, ret = 0;
 
 	/* Get the old SDP record */
 	attrid_list = sdp_list_append(NULL, &range);
 	rec = sdp_service_attr_req(session, handle, SDP_ATTR_REQ_RANGE, attrid_list);
+	sdp_list_free(attrid_list, NULL);
 
 	if (!rec) {
 		printf("Service get request failed.\n");
@@ -919,10 +922,9 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 		sdp_attr_replace(rec, attrib, pSequenceHolder);
 
 		/* Update on the server */
-		if (sdp_device_record_update(session, &interface, rec)) {
+		ret = sdp_device_record_update(session, &interface, rec);
+		if (ret < 0)
 			printf("Service Record update failed (%d).\n", errno);
-			return -1;
-		}
 	} else
 		printf("Failed to create pSequenceHolder\n");
 
@@ -932,8 +934,11 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 
 	free(dtdArray);
 	free(valueArray);
+	free(allocArray);
 
-	return 0;
+	sdp_record_free(rec);
+
+	return ret;
 }
 
 static struct option seq_options[] = {
