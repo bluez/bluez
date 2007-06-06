@@ -447,13 +447,15 @@ failed:
 static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 					audio_device_t *device)
 {
-	struct headset *hs = device->headset;
+	struct headset *hs;
 	char hs_address[18];
 	int sk, ret, err;
 	socklen_t len;
 	
 	if (cond & G_IO_NVAL)
 		return FALSE;
+
+	hs = device->headset;
 
 	assert(hs != NULL);
        	assert(hs->pending_connect != NULL);
