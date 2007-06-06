@@ -1325,6 +1325,7 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 	struct headset *hs = device->headset;
 	struct sockaddr_sco addr;
 	struct pending_connect *c;
+	gboolean do_callback = FALSE;
 	int sk, err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
@@ -1386,18 +1387,18 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 		}
 
 		debug("SCO connect in progress");
-
-		hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
-
 		g_io_add_watch(c->io, G_IO_OUT | G_IO_NVAL,
 				(GIOFunc) sco_connect_cb, device);
 	} else {
 		debug("SCO connect succeeded with first try");
-		hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
-		sco_connect_cb(c->io, G_IO_OUT, device);
+		do_callback = TRUE;
 	}
 
+	hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
 	hs->pending_connect = c;
+
+	if (do_callback)
+		sco_connect_cb(c->io, G_IO_OUT, device);
 
 	return 0;
 
