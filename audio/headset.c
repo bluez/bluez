@@ -1152,7 +1152,7 @@ failed:
 	if (msg)
 		dbus_message_unref(msg);
 	dbus_message_unref(reply);
-	hs_disconnect(NULL, NULL, hs);
+	hs_disconnect(NULL, NULL, device);
 }
 
 static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
