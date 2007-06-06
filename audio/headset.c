@@ -521,8 +521,9 @@ static int rfcomm_connect(audio_device_t *device, int *err)
 	char address[18];
 	int sk;
 
-	assert(hs != NULL && hs->pending_connect != NULL && 
-			hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS);
+	assert(hs != NULL);
+	assert(hs->pending_connect != NULL);
+	assert(hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS);
 
 	hs->type = hs->hfp_handle ? SVC_HANDSFREE : SVC_HEADSET;
 
@@ -551,7 +552,8 @@ static int rfcomm_connect(audio_device_t *device, int *err)
 	}
 
 	if (set_nonblocking(sk) < 0) {
-		*err = errno;
+		if (err)
+			*err = errno;
 		goto failed;
 	}
 
@@ -562,6 +564,8 @@ static int rfcomm_connect(audio_device_t *device, int *err)
 
 	hs->pending_connect->io = g_io_channel_unix_new(sk);
 	if (!hs->pending_connect->io) {
+		if (err)
+			*err = ENOMEM;
 		error("channel_unix_new failed in rfcomm connect");
 		goto failed;
 	}
@@ -812,7 +816,10 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	struct headset *hs = device->headset;
 	struct pending_connect *c;
 
-	assert(hs != NULL && hs->pending_connect && !hs->rfcomm);
+	assert(hs != NULL);
+	assert(hs->pending_connect);
+	assert(!hs->rfcomm);
+
 	c = hs->pending_connect;
 
 	reply = dbus_pending_call_steal_reply(call);
@@ -1057,7 +1064,9 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	dbus_uint32_t handle;
 	int array_len;
 
-	assert(hs != NULL && hs->pending_connect);
+	assert(hs != NULL);
+	assert(hs->pending_connect);
+
 	c = hs->pending_connect;
 
 	reply = dbus_pending_call_steal_reply(call);
