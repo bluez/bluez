@@ -354,6 +354,11 @@ Methods		dict GetInfo()
 
 			Possible errors: org.bluez.Error.Failed
 
+		array{string} ListAvailableModes()
+
+			Returns a list of available modes the adapter can
+			be switched into.
+
 		string GetMode()
 
 			Returns the current mode of a adapter.
