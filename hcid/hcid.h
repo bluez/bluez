@@ -40,19 +40,6 @@
 /* When all services should trust a remote device */
 #define GLOBAL_TRUST "[all]"
 
-/*
- * Scanning modes, used by DEV_SET_MODE
- * off: remote devices are not allowed to find or connect to this device
- * connectable: remote devices are allowed to connect, but they are not
- *              allowed to find it.
- * discoverable: remote devices are allowed to connect and find this device
- * unknown: reserved to not allowed/future modes
- */
-#define MODE_OFF		"off"
-#define MODE_CONNECTABLE	"connectable"
-#define MODE_DISCOVERABLE	"discoverable"
-#define MODE_UNKNOWN		"unknown"
-
 enum {
 	HCID_SET_NAME,
 	HCID_SET_CLASS,
@@ -65,6 +52,22 @@ enum {
 	HCID_SET_LP,
 };
 
+/*
+ * Scanning modes, used by DEV_SET_MODE
+ * off: remote devices are not allowed to find or connect to this device
+ * connectable: remote devices are allowed to connect, but they are not
+ *              allowed to find it.
+ * discoverable: remote devices are allowed to connect and find this device
+ * limited: limited discoverable - GIAC + IAC enabled and set limited
+ *          bit on device class.
+ */
+
+#define MODE_OFF		0x00
+#define MODE_CONNECTABLE	0x01
+#define MODE_DISCOVERABLE	0x02
+#define MODE_LIMITED		0x03
+#define MODE_UNKNOWN		0xff
+
 struct device_opts {
 	unsigned long flags;
 	char    *name;
@@ -76,6 +79,7 @@ struct device_opts {
 	uint16_t link_mode;
 	uint16_t link_policy;
 	uint8_t  scan;
+	uint8_t  mode;
 	uint32_t discovto;
 };
 
@@ -140,6 +144,7 @@ int read_config(char *file);
 
 struct device_opts *alloc_device_opts(char *ref);
 
+uint8_t get_startup_scan(int hdev);
 uint8_t get_startup_mode(int hdev);
 int get_discoverable_timeout(int dev_id);
 

@@ -90,7 +90,8 @@ struct adapter {
 	char address[18];		/* adapter Bluetooth Address */
 	guint timeout_id;		/* discoverable timeout id */
 	uint32_t discov_timeout;	/* discoverable time(msec) */
-	uint8_t mode;			/* scan mode */
+	uint8_t scan_enable;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
+	uint8_t mode;			/* off, connectable, discoverable, limited */
 	uint8_t class[3];		/* device class */
 	int discov_active;		/* standard discovery active: includes name resolution step */
 	int pdiscov_active;		/* periodic discovery active */
@@ -116,6 +117,8 @@ dbus_bool_t adapter_init(DBusConnection *conn, const char *path);
 const char *major_class_str(uint32_t class);
 
 const char *minor_class_str(uint32_t class);
+
+const char *mode2str(uint8_t mode);
 
 GSList *service_classes_str(uint32_t class);
 

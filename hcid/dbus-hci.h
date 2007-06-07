@@ -73,6 +73,8 @@ int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,
 			name_status_t name_status);
 int found_device_req_name(struct adapter *dbus_data);
 
+int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited);
+
 int discov_timeout_handler(void *data);
 
 void set_dbus_connection(DBusConnection *conn);

@@ -262,24 +262,34 @@ static dbus_bool_t send_adapter_signal(DBusConnection *conn, int devid,
 	return ret;
 }
 
-static void adapter_mode_changed(struct adapter *adapter, const char *path, uint8_t mode)
+static void adapter_mode_changed(struct adapter *adapter,
+			const char *path, uint8_t scan_enable)
 {
-	const char *scan_mode;
+	const char *mode;
 
-	adapter->mode = mode;
+	adapter->scan_enable = scan_enable;
 
-	switch (mode) {
+	switch (scan_enable) {
 	case SCAN_DISABLED:
-		scan_mode = MODE_OFF;
-		break; 
+		mode = "off";
+		adapter->mode = MODE_OFF;
+		break;
 	case SCAN_PAGE:
-		scan_mode = MODE_CONNECTABLE;
+		mode = "connectable";
+		adapter->mode = MODE_CONNECTABLE;
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
-		scan_mode = MODE_DISCOVERABLE;
+
 		if (adapter->discov_timeout != 0)
 			adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
 					discov_timeout_handler, adapter);
+
+		if (adapter->mode == MODE_LIMITED) {
+			mode = "limited";
+		} else {
+			adapter->mode = MODE_DISCOVERABLE;
+			mode = "discoverable";
+		}
 		break;
 	case SCAN_INQUIRY:
 		/* Address the scenario where another app changed the scan mode */
@@ -294,7 +304,7 @@ static void adapter_mode_changed(struct adapter *adapter, const char *path, uint
 
 	dbus_connection_emit_signal(connection, path, ADAPTER_INTERFACE,
 					"ModeChanged",
-					DBUS_TYPE_STRING, &scan_mode,
+					DBUS_TYPE_STRING, &mode,
 					DBUS_TYPE_INVALID);
 }
 
@@ -542,7 +552,7 @@ int hcid_dbus_start_device(uint16_t id)
 	struct adapter* adapter;
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci;
-	uint8_t mode;
+	const char *mode;
 	int i, err, dd = -1, ret = -1;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -570,14 +580,13 @@ int hcid_dbus_start_device(uint16_t id)
 	adapter->discov_timeout = get_discoverable_timeout(id);
 	adapter->discov_type = DISCOVER_TYPE_NONE;
 
-	mode = get_startup_mode(id);
-
 	dd = hci_open_dev(id);
 	if (dd < 0)
 		goto failed;
 
-	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE, 1, &mode);
-
+	adapter->scan_enable = get_startup_scan(id);
+	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+					1, &adapter->scan_enable);
 	/*
 	 * Get the adapter Bluetooth address
 	 */
@@ -590,7 +599,10 @@ int hcid_dbus_start_device(uint16_t id)
 	if (err < 0)
 		goto failed;
 
-	adapter_mode_changed(adapter, path, mode);
+	adapter->mode = get_startup_mode(id);
+	if (adapter->mode == MODE_LIMITED)
+		set_limited_discoverable(dd, adapter->class, TRUE);
+
 	/* 
 	 * retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started
@@ -610,6 +622,12 @@ int hcid_dbus_start_device(uint16_t id)
 					&ci->bdaddr, ci->handle);
 
 	ret = 0;
+
+	mode = mode2str(adapter->mode);
+	dbus_connection_emit_signal(connection, path, ADAPTER_INTERFACE,
+					"ModeChanged",
+					DBUS_TYPE_STRING, &mode,
+					DBUS_TYPE_INVALID);
 
 failed:
 	if (ret == 0 && get_default_adapter() < 0)
@@ -640,7 +658,7 @@ int hcid_dbus_stop_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
 	struct adapter *adapter;
-	const char *scan_mode = MODE_OFF;
+	const char *mode = "off";
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
@@ -704,11 +722,12 @@ int hcid_dbus_stop_device(uint16_t id)
 	}
 
 	send_adapter_signal(connection, adapter->dev_id, "ModeChanged",
-				DBUS_TYPE_STRING, &scan_mode,
+				DBUS_TYPE_STRING, &mode,
 				DBUS_TYPE_INVALID);
 
 	adapter->up = 0;
-	adapter->mode = SCAN_DISABLED;
+	adapter->scan_enable = SCAN_DISABLED;
+	adapter->mode = MODE_OFF;
 	adapter->discov_active = 0;
 	adapter->pdiscov_active = 0;
 	adapter->pinq_idle = 0;
@@ -1615,16 +1634,55 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 }
 
+int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
+{
+	uint32_t dev_class;
+	int err;
+	int num = (limited ? 2 : 1);
+	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
+	/*
+	 * 1: giac
+	 * 2: giac + liac
+	 */
+	if (hci_write_current_iac_lap(dd, num, lap, 1000) < 0) {
+		err = errno;
+		error("Can't write current IAC LAP: %s(%d)",
+				strerror(err), err);
+		return -err;
+	}
+
+	if (limited) {
+		if (cls[1] & 0x20)
+			return 0; /* Already limited */
+
+		dev_class = (cls[2] << 16) | ((cls[1] | 0x20) << 8) | cls[0];
+	} else {
+		if (!(cls[1] & 0x20))
+			return 0; /* Already clear */
+
+		dev_class = (cls[2] << 16) | ((cls[1] & 0xdf) << 8) | cls[0];
+	}
+
+	if (hci_write_class_of_dev(dd, dev_class, 1000) < 0) {
+		err = errno;
+		error("Can't write class of device: %s(%d)",
+				strerror(err), err);
+		return -err;
+	}
+
+	return 0;
+}
+
 gboolean discov_timeout_handler(void *data)
 {
 	struct adapter *adapter = data;
 	struct hci_request rq;
 	int dd;
-	uint8_t hci_mode = adapter->mode;
+	uint8_t scan_enable = adapter->scan_enable;
 	uint8_t status = 0;
 	gboolean retval = TRUE;
 
-	hci_mode &= ~SCAN_INQUIRY;
+	scan_enable &= ~SCAN_INQUIRY;
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
@@ -1635,8 +1693,8 @@ gboolean discov_timeout_handler(void *data)
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
 	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
-	rq.cparam = &hci_mode;
-	rq.clen   = sizeof(hci_mode);
+	rq.cparam = &scan_enable;
+	rq.clen   = sizeof(scan_enable);
 	rq.rparam = &status;
 	rq.rlen   = sizeof(status);
 	rq.event  = EVT_CMD_COMPLETE;
@@ -1650,6 +1708,8 @@ gboolean discov_timeout_handler(void *data)
 		error("Setting scan enable failed with status 0x%02x", status);
 		goto failed;
 	}
+
+	set_limited_discoverable(dd, adapter->class, FALSE);
 
 	adapter->timeout_id = 0;
 	retval = FALSE;
@@ -1769,7 +1829,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		adapter->timeout_id = 0;
 	}
 
-	if (adapter->mode != rp.enable)
+	if (adapter->scan_enable != rp.enable)
 		adapter_mode_changed(adapter, path, rp.enable);
 
 failed:
@@ -1812,6 +1872,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 
 	write_local_class(local, cls);
 	memcpy(adapter->class, cls, 3);
+
 failed:
 	if (dd >= 0)
 		hci_close_dev(dd);

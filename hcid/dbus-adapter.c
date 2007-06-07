@@ -228,27 +228,34 @@ static struct bonding_request_info *bonding_request_new(bdaddr_t *peer,
 	return bonding;
 }
 
-static const char *hcimode2str(uint8_t mode)
+const char *mode2str(uint8_t mode)
 {
-	const char *scan_mode;
-
-	switch (mode) {
-	case SCAN_DISABLED:
-		scan_mode = MODE_OFF;
-		break;
-	case SCAN_PAGE:
-		scan_mode = MODE_CONNECTABLE;
-		break;
-	case (SCAN_PAGE | SCAN_INQUIRY):
-		scan_mode = MODE_DISCOVERABLE;
-		break;
-	case SCAN_INQUIRY:
-		/* inquiry scan mode is not handled, return unknown */
+	switch(mode) {
+	case MODE_OFF:
+		return "off";
+	case MODE_CONNECTABLE:
+		return "connectable";
+	case MODE_DISCOVERABLE:
+		return "discoverable";
+	case MODE_LIMITED:
+		return "limited";
 	default:
-		/* reserved */
-		scan_mode = MODE_UNKNOWN;
+		return "unknown";
 	}
-	return scan_mode;
+}
+
+uint8_t str2mode(const char *mode)
+{
+	if (strcasecmp("off", mode) == 0)
+		return MODE_OFF;
+	else if (strcasecmp("connectable", mode) == 0)
+		return MODE_CONNECTABLE;
+	else if (strcasecmp("discoverable", mode) == 0)
+		return MODE_DISCOVERABLE;
+	else if (strcasecmp("limited", mode) == 0)
+		return MODE_LIMITED;
+	else
+		return MODE_UNKNOWN;
 }
 
 static DBusHandlerResult adapter_get_info(DBusConnection *conn,
@@ -301,8 +308,9 @@ static DBusHandlerResult adapter_get_info(DBusConnection *conn,
 	dbus_message_iter_append_dict_entry(&dict, "company",
 			DBUS_TYPE_STRING, &property);
 
-	property = hcimode2str(adapter->mode);
-	dbus_message_iter_append_dict_entry(&dict, "mode", 
+	property = mode2str(adapter->mode);
+
+	dbus_message_iter_append_dict_entry(&dict, "mode",
 			DBUS_TYPE_STRING, &property);
 
 	dbus_message_iter_append_dict_entry(&dict, "discoverable_timeout",
@@ -454,7 +462,7 @@ static DBusHandlerResult adapter_get_mode(DBusConnection *conn,
 {
 	const struct adapter *adapter = data;
 	DBusMessage *reply = NULL;
-	const char *scan_mode;
+	const char *mode;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
@@ -463,8 +471,9 @@ static DBusHandlerResult adapter_get_mode(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	scan_mode = hcimode2str(adapter->mode);
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &scan_mode,
+	mode = mode2str(adapter->mode);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &mode,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
@@ -473,32 +482,38 @@ static DBusHandlerResult adapter_get_mode(DBusConnection *conn,
 static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	const struct adapter *adapter = data;
+	struct adapter *adapter = data;
 	DBusMessage *reply;
-	const char* scan_mode;
-	uint8_t hci_mode;
-	const uint8_t current_mode = adapter->mode;
+	const char *mode;
+	uint8_t scan_enable;
+	uint8_t new_mode, current_scan = adapter->scan_enable;
 	bdaddr_t local;
-	int dd;
+	gboolean limited;
+	int err, dd;
 
 	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &scan_mode,
+				DBUS_TYPE_STRING, &mode,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	if (!scan_mode)
+	if (!mode)
 		return error_invalid_arguments(conn, msg);
 
-	if (strcasecmp(MODE_OFF, scan_mode) == 0)
-		hci_mode = SCAN_DISABLED;
-	else if (strcasecmp(MODE_CONNECTABLE, scan_mode) == 0)
-		hci_mode = SCAN_PAGE;
-	else if (strcasecmp(MODE_DISCOVERABLE, scan_mode) == 0)
-		hci_mode = (SCAN_PAGE | SCAN_INQUIRY);
-	else
+	new_mode = str2mode(mode);
+	switch(new_mode) {
+	case MODE_OFF:
+		scan_enable = SCAN_DISABLED;
+		break;
+	case MODE_CONNECTABLE:
+		scan_enable = SCAN_PAGE;
+		break;
+	case MODE_DISCOVERABLE:
+	case MODE_LIMITED:
+		scan_enable = (SCAN_PAGE | SCAN_INQUIRY);
+		break;
+	default:
 		return error_invalid_arguments(conn, msg);
-
-	str2ba(adapter->address, &local);
+	}
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)
@@ -507,13 +522,13 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	if (!adapter->up &&
 			(hcid.offmode == HCID_OFFMODE_NOSCAN ||
 			 (hcid.offmode == HCID_OFFMODE_DEVDOWN &&
-			  hci_mode != SCAN_DISABLED))) {
+			  scan_enable != SCAN_DISABLED))) {
 		/* Start HCI device */
 		if (ioctl(dd, HCIDEVUP, adapter->dev_id) == 0)
 			goto done; /* on success */
 
 		if (errno != EALREADY) {
-			int err = errno;
+			err = errno;
 			error("Can't init device hci%d: %s (%d)\n",
 				adapter->dev_id, strerror(errno), errno);
 
@@ -522,7 +537,7 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 		}
 	}
 
-	if (adapter->up && hci_mode == SCAN_DISABLED &&
+	if (adapter->up && scan_enable == SCAN_DISABLED &&
 			hcid.offmode == HCID_OFFMODE_DEVDOWN) {
 		if (ioctl(dd, HCIDEVDOWN, adapter->dev_id) < 0) {
 			hci_close_dev(dd);
@@ -532,22 +547,28 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 		goto done;
 	}
 
-	/* Check if the new requested mode is different from the current */
-	if (current_mode != hci_mode) {
+	limited = (new_mode == MODE_LIMITED ? TRUE : FALSE);
+	err = set_limited_discoverable(dd, adapter->class, limited);
+	if (err < 0) {
+		hci_close_dev(dd);
+		return error_failed(conn, msg, -err);
+	}
+
+	if (current_scan != scan_enable) {
 		struct hci_request rq;
 		uint8_t status = 0;
 
 		memset(&rq, 0, sizeof(rq));
 		rq.ogf    = OGF_HOST_CTL;
 		rq.ocf    = OCF_WRITE_SCAN_ENABLE;
-		rq.cparam = &hci_mode;
-		rq.clen   = sizeof(hci_mode);
+		rq.cparam = &scan_enable;
+		rq.clen   = sizeof(scan_enable);
 		rq.rparam = &status;
 		rq.rlen   = sizeof(status);
 		rq.event = EVT_CMD_COMPLETE;
 
 		if (hci_send_req(dd, &rq, 1000) < 0) {
-			int err = errno;
+			err = errno;
 			error("Sending write scan enable command failed: %s (%d)",
 					strerror(errno), errno);
 			hci_close_dev(dd);
@@ -560,16 +581,35 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			hci_close_dev(dd);
 			return error_failed(conn, msg, bt_error(status));
 		}
-	}
+	} else {
+		/* discoverable or limited */
+		if ((scan_enable & SCAN_INQUIRY) && (new_mode != adapter->mode)) {
+			dbus_connection_emit_signal(conn,
+					dbus_message_get_path(msg),
+					ADAPTER_INTERFACE,
+					"ModeChanged",
+					DBUS_TYPE_STRING, &mode,
+					DBUS_TYPE_INVALID);
 
+			if (adapter->timeout_id)
+				g_source_remove(adapter->timeout_id);
+
+			if (adapter->discov_timeout != 0)
+				adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
+						discov_timeout_handler, adapter);
+		}
+	}
 done:
-	write_device_mode(&local, scan_mode);
+	str2ba(adapter->address, &local);
+	write_device_mode(&local, mode);
 
 	hci_close_dev(dd);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	adapter->mode = new_mode;
 
 	return send_message_and_unref(conn, reply);
 }
@@ -620,7 +660,7 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 		adapter->timeout_id = 0;
 	}
 
-	if ((timeout != 0) && (adapter->mode & SCAN_INQUIRY))
+	if ((timeout != 0) && (adapter->scan_enable & SCAN_INQUIRY))
 		adapter->timeout_id = g_timeout_add(timeout * 1000,
 						discov_timeout_handler,
 						adapter);
@@ -644,13 +684,13 @@ static DBusHandlerResult adapter_is_connectable(DBusConnection *conn,
 {
 	const struct adapter *adapter = data;
 	DBusMessage *reply;
-	const uint8_t hci_mode = adapter->mode;
+	const uint8_t scan_enable = adapter->scan_enable;
 	dbus_bool_t connectable = FALSE;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	if (hci_mode & SCAN_PAGE)
+	if (scan_enable & SCAN_PAGE)
 		connectable = TRUE;
 
 	reply = dbus_message_new_method_return(msg);
@@ -668,13 +708,13 @@ static DBusHandlerResult adapter_is_discoverable(DBusConnection *conn,
 {
 	const struct adapter *adapter = data;
 	DBusMessage *reply;
-	const uint8_t hci_mode = adapter->mode;
+	const uint8_t scan_enable = adapter->scan_enable;
 	dbus_bool_t discoverable = FALSE;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
 
-	if (hci_mode & SCAN_INQUIRY)
+	if (scan_enable & SCAN_INQUIRY)
 		discoverable = TRUE;
 
 	reply = dbus_message_new_method_return(msg);
@@ -1897,7 +1937,7 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 	if (!l)
 		return error_not_connected(conn, msg);
 
-	if(adapter->pending_dc)
+	if (adapter->pending_dc)
 		return error_disconnect_in_progress(conn, msg);
 
 	adapter->pending_dc = g_new0(struct pending_dc_info, 1);
@@ -1908,7 +1948,7 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 			      dc_pending_timeout_handler,
 			      adapter);
 
-	if(!adapter->pending_dc->timeout_id) {
+	if (!adapter->pending_dc->timeout_id) {
 		g_free(adapter->pending_dc);
 		adapter->pending_dc = NULL;
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;

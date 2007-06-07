@@ -65,6 +65,7 @@ static inline void init_device_defaults(struct device_opts *device_opts)
 {
 	memset(device_opts, 0, sizeof(*device_opts));
 	device_opts->scan = SCAN_PAGE;
+	device_opts->mode = MODE_CONNECTABLE;
 	device_opts->name = g_strdup("BlueZ");
 	device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
 }
@@ -143,7 +144,7 @@ static struct device_opts *get_device_opts(int hdev)
 	return device_opts;
 }
 
-uint8_t get_startup_mode(int hdev)
+static struct device_opts *get_opts(int hdev)
 {
 	struct device_opts *device_opts = NULL;
 	struct hci_dev_info di;
@@ -151,7 +152,7 @@ uint8_t get_startup_mode(int hdev)
 	int sock;
 
 	if (hdev < 0)
-		return SCAN_DISABLED;
+		return NULL;
 
 	sock = hci_open_dev(hdev);
 	if (sock < 0)
@@ -177,7 +178,25 @@ no_address:
 	if (!device_opts)
 		device_opts = &default_device;
 
+	return device_opts;
+}
+
+uint8_t get_startup_scan(int hdev)
+{
+	struct device_opts *device_opts = get_opts(hdev);
+	if (!device_opts)
+		return SCAN_DISABLED;
+
 	return device_opts->scan;
+}
+
+uint8_t get_startup_mode(int hdev)
+{
+	struct device_opts *device_opts = get_opts(hdev);
+	if (!device_opts)
+		return MODE_OFF;
+
+	return device_opts->mode;
 }
 
 int get_discoverable_timeout(int hdev)
@@ -326,16 +345,30 @@ static void configure_device(int dev_id)
 
 	/* Set scan mode */
 	if (read_device_mode(&di.bdaddr, mode, sizeof(mode)) == 0) {
-		if (!strcmp(mode, MODE_OFF) && hcid.offmode == HCID_OFFMODE_NOSCAN)
+		if (!strcmp(mode, "off") && hcid.offmode == HCID_OFFMODE_NOSCAN) {
+			device_opts->mode = MODE_OFF;
 			device_opts->scan = SCAN_DISABLED;
-		else if (!strcmp(mode, MODE_CONNECTABLE))
+		} else if (!strcmp(mode, "connectable")) {
+			device_opts->mode = MODE_CONNECTABLE;
 			device_opts->scan = SCAN_PAGE;
-		else if (!strcmp(mode, MODE_DISCOVERABLE)) {
+		} else if (!strcmp(mode, "discoverable")) {
 			/* Set discoverable only if timeout is 0 */
-			if (!get_discoverable_timeout(dev_id))
+			if (!get_discoverable_timeout(dev_id)) {
 				device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
-			else
+				device_opts->mode = MODE_DISCOVERABLE;
+			} else {
 				device_opts->scan = SCAN_PAGE;
+				device_opts->mode = MODE_CONNECTABLE;
+			}
+		} else if (!strcmp(mode, "limited")) {
+			/* Set discoverable only if timeout is 0 */
+			if (!get_discoverable_timeout(dev_id)) {
+				device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
+				device_opts->mode = MODE_LIMITED;
+			} else {
+				device_opts->scan = SCAN_PAGE;
+				device_opts->mode = MODE_CONNECTABLE;
+			}
 		}
 	}
 
@@ -431,9 +464,11 @@ static void configure_device(int dev_id)
 		if (read_local_class(&di.bdaddr, cls) < 0) {
 			class = htobl(device_opts->class);
 			memcpy(cp.dev_class, &class, 3);
-		} else
+		} else {
+			if (!(device_opts->scan & SCAN_INQUIRY))
+				cls[1] &= 0xdf; /* Clear discoverable bit */
 			memcpy(cp.dev_class, cls, 3);
-
+		}
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
 					WRITE_CLASS_OF_DEV_CP_SIZE, &cp);
 	}
@@ -500,7 +535,7 @@ static void init_device(int dev_id)
 		char mode[16];
 
 		if (read_device_mode(&di.bdaddr, mode, sizeof(mode)) == 0 &&
-						strcmp(mode, MODE_OFF) == 0) {
+						strcmp(mode, "off") == 0) {
 			ioctl(dd, HCIDEVDOWN, dev_id);
 			exit(0);
 		}
