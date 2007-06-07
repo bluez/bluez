@@ -883,6 +883,9 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
 	int err;
 	connect_cb_t *cb;
 
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
+
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_UINT32, &handle,
@@ -944,6 +947,9 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 	const char *dst, *svc;
 	int err;
 	uuid_t uuid;
+
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &dst,
