@@ -955,18 +955,18 @@ static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *ms
 	str2ba(address, &bda);
 
 	device = find_device(&bda);
-        if (device)
-            goto done;
+	if (device)
+		goto done;
 
-        device = create_device(&bda);
-        if (!add_device(device)) {
-            free_device(device);
-            return error_reply(connection, msg,
-                    "org.bluez.audio.Error.Failed",
-                    "Unable to create new audio device");
-        }
+	device = create_device(&bda);
+	if (!add_device(device)) {
+		free_device(device);
+		return error_reply(connection, msg,
+				"org.bluez.audio.Error.Failed",
+				"Unable to create new audio device");
+	}
 
-        created = TRUE;
+	created = TRUE;
 
 	if (!device->headset) {
 		device->headset = headset_init(device->object_path, NULL, 0);
