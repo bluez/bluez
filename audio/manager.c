@@ -940,6 +940,7 @@ static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *ms
 	DBusMessage *reply;
 	DBusError derr;
 	audio_device_t *device;
+	gboolean created = FALSE;
 
 	dbus_error_init(&derr);
 	dbus_message_get_args(msg, &derr,
@@ -954,15 +955,18 @@ static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *ms
 	str2ba(address, &bda);
 
 	device = find_device(&bda);
-	if (!device) {
-		device = create_device(&bda);
-		if (!add_device(device)) {
-			free_device(device);
-			return error_reply(connection, msg,
-					"org.bluez.audio.Error.Failed",
-					"Unable to create new audio device");
-		}
-	}
+        if (device)
+            goto done;
+
+        device = create_device(&bda);
+        if (!add_device(device)) {
+            free_device(device);
+            return error_reply(connection, msg,
+                    "org.bluez.audio.Error.Failed",
+                    "Unable to create new audio device");
+        }
+
+        created = TRUE;
 
 	if (!device->headset) {
 		device->headset = headset_init(device->object_path, NULL, 0);
@@ -974,17 +978,19 @@ static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *ms
 		}
 	}
 
+done:
 	path = device->object_path;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
-					AUDIO_MANAGER_INTERFACE,
-					"HeadsetCreated",
-					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID);
+	if (created)
+		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE,
+						"HeadsetCreated",
+						DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID);
