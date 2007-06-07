@@ -96,14 +96,17 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
 
-	DBG("Preparing with io->period_size = %lu, io->buffer_size = %lu", io->period_size, io->buffer_size);
+	DBG("Preparing with io->period_size = %lu, io->buffer_size = %lu",
+			io->period_size, io->buffer_size);
 
 	if (io->stream == SND_PCM_STREAM_PLAYBACK) {
-		/* If not null for playback, xmms doesn't display time correctly */
+		/* If not null for playback, xmms doesn't display time
+		 * correctly */
 		data->hw_ptr = 0;
 	}
 	else {
-		/* ALSA library is really picky on the fact hw_ptr is not null. If it is, capture won't start */
+		/* ALSA library is really picky on the fact hw_ptr is not null.
+		 * If it is, capture won't start */
 		data->hw_ptr = io->period_size;
 	}
 	return 0;
@@ -114,23 +117,28 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 	struct bluetooth_data *data = io->private_data;
 	struct ipc_data_cfg cfg = data->cfg;
 	uint32_t period_count = io->buffer_size / io->period_size;
+	int opt_name;
+      
+	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
+			SCO_TXBUFS : SCO_RXBUFS;
 
 	DBG("fd = %d, period_count = %d", cfg.fd, period_count);
 
-	if(setsockopt(cfg.fd, SOL_SCO,
-			io->stream == SND_PCM_STREAM_PLAYBACK ? SCO_TXBUFS : SCO_RXBUFS,
-			&period_count,
-			sizeof(period_count)) == 0) {
+	if (setsockopt(cfg.fd, SOL_SCO, opt_name, &period_count,
+				sizeof(period_count)) == 0)
 		return 0;
-	} else if(setsockopt(cfg.fd, SOL_SCO,
-			io->stream == SND_PCM_STREAM_PLAYBACK ? SO_SNDBUF : SO_RCVBUF,
-			&period_count,
-			sizeof(period_count)) == 0) {
+	
+	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
+			SO_SNDBUF : SO_RCVBUF;
+
+	if (setsockopt(cfg.fd, SOL_SCO, opt_name, &period_count,
+			sizeof(period_count)) == 0)
                 return 0;
-        } else {
-		SNDERR("Unable to set number of SCO buffers : please upgrade your Kernel !");
-		return -EINVAL;
-	}
+
+	SNDERR("Unable to set number of SCO buffers: please upgrade your"
+			"kernel!");
+
+	return -EINVAL;
 }
 
 static snd_pcm_sframes_t bluetooth_read(snd_pcm_ioplug_t *io,
@@ -140,56 +148,50 @@ static snd_pcm_sframes_t bluetooth_read(snd_pcm_ioplug_t *io,
 {
 	struct bluetooth_data *data = io->private_data;
 	struct ipc_data_cfg cfg = data->cfg;
-
-	snd_pcm_sframes_t ret = 0;
+	snd_pcm_uframes_t frames_to_write, ret;
+	unsigned char *buff;
+	int nrecv;
 
 	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu, io->nonblock=%u",
 		areas->step, areas->first, offset, size, io->nonblock);
 
-	if (data->count == 0) {
-		int nrecv;
+	if (data->count > 0)
+		goto proceed;
 
-		nrecv = recv(cfg.fd, data->buffer, cfg.pkt_len,
-			MSG_WAITALL | (io->nonblock ? MSG_DONTWAIT : 0 ));
+	nrecv = recv(cfg.fd, data->buffer, cfg.pkt_len,
+			MSG_WAITALL | (io->nonblock ? MSG_DONTWAIT : 0));
 
-		if (nrecv == cfg.pkt_len) {
-			ret = 0;
-			/* Increment hardware transmition pointer */
-			data->hw_ptr = (data->hw_ptr + cfg.pkt_len / cfg.sample_size) % io->buffer_size;
-		}
-		else if (nrecv > 0) {
-			ret = -EIO;
-			SNDERR(strerror(-ret));
-		}
-		else if (nrecv == -1 && errno == EAGAIN) {
-			ret = -EAGAIN;
-		}
-		else { /* nrecv < 0 */
-			/* EPIPE means device underrun in ALSA world. But we mean we lost contact
-			with server, so we have to find another error code */
-			ret = (errno == EPIPE ? -EIO : -errno);
-			SYSERR("Lost contact with headsetd");
-		}
-	}
-	if(ret == 0) { /* Still ok, proceed */
-		snd_pcm_uframes_t frames_to_write;
-		unsigned char *buff;
-
-		buff = (unsigned char *) areas->addr + (areas->first + areas->step * offset) / 8;
-
-		if((data->count + cfg.sample_size * size) <= cfg.pkt_len)
-			frames_to_write = size;
-		else
-			frames_to_write = (cfg.pkt_len - data->count) / cfg.sample_size;
-
-		memcpy(buff, data->buffer + data->count, areas->step / 8 * frames_to_write);
-		data->count += (areas->step / 8 * frames_to_write);
-		data->count %= cfg.pkt_len;
-		/* Return written frames count */
-		ret = frames_to_write;
+	if (nrecv < 0) {
+		ret = (errno == EPIPE) ? -EIO : -errno;
+		goto done;
 	}
 
-	DBG("returning %d", (int)ret);
+	if (nrecv != cfg.pkt_len) {
+		ret = -EIO;
+		SNDERR(strerror(-ret));
+		goto done;
+	}
+
+	/* Increment hardware transmition pointer */
+	data->hw_ptr = (data->hw_ptr + cfg.pkt_len / cfg.sample_size) % io->buffer_size;
+
+proceed:
+	buff = (unsigned char *) areas->addr + (areas->first + areas->step * offset) / 8;
+
+	if ((data->count + cfg.sample_size * size) <= cfg.pkt_len)
+		frames_to_write = size;
+	else
+		frames_to_write = (cfg.pkt_len - data->count) / cfg.sample_size;
+
+	memcpy(buff, data->buffer + data->count, areas->step / 8 * frames_to_write);
+	data->count += (areas->step / 8 * frames_to_write);
+	data->count %= cfg.pkt_len;
+
+	/* Return written frames count */
+	ret = frames_to_write;
+
+done:
+	DBG("returning %lu", ret);
 	return ret;
 }
 
@@ -203,9 +205,11 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 	snd_pcm_sframes_t ret = 0;
 	snd_pcm_uframes_t frames_to_read;
 	unsigned char *buff;
+	int rsend;
 
-	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu, io->nonblock=%u",
-		areas->step, areas->first, offset, size, io->nonblock);
+	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu,"
+			"io->nonblock=%u", areas->step, areas->first,
+			offset, size, io->nonblock);
 
 	if ((data->count + cfg.sample_size * size) <= cfg.pkt_len)
 		frames_to_read = size;
@@ -216,34 +220,28 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 	buff = (unsigned char *) areas->addr + (areas->first + areas->step * offset) / 8;
 	memcpy(data->buffer + data->count, buff, areas->step / 8 * frames_to_read);
 
-	if ((data->count + areas->step / 8 * frames_to_read) == cfg.pkt_len) {
-		int rsend;
-		/* Actually send packet */
-		rsend = send(cfg.fd, data->buffer, cfg.pkt_len, io->nonblock ? MSG_DONTWAIT : 0);
-		if (rsend > 0) {
-			/* Reset count pointer */
-			data->count = 0;
-
-			/* Increment hardware transmition pointer */
-			data->hw_ptr = (data->hw_ptr + cfg.pkt_len / cfg.sample_size) % io->buffer_size;
-
-			ret = frames_to_read;
-		}
-		else {
-			/* EPIPE means device underrun in ALSA world. But we mean we lost contact
-                           with server, so we have to find another error code */
-			ret = (errno == EPIPE ? -EIO : -errno);
-			if(errno == EPIPE)
-				SYSERR("Lost contact with headsetd");
-		}
-	}
-	else {
+	if ((data->count + areas->step / 8 * frames_to_read) != cfg.pkt_len) {
 		/* Remember we have some frame in the pipe now */
 		data->count += areas->step / 8 * frames_to_read;
-		/* Ask for more */
 		ret = frames_to_read;
+		goto done;
 	}
 
+	rsend = send(cfg.fd, data->buffer, cfg.pkt_len, io->nonblock ? MSG_DONTWAIT : 0);
+	if (rsend > 0) {
+		/* Reset count pointer */
+		data->count = 0;
+
+		/* Increment hardware transmition pointer */
+		data->hw_ptr = (data->hw_ptr + cfg.pkt_len / cfg.sample_size) % io->buffer_size;
+
+		ret = frames_to_read;
+	} else if (rsend < 0)
+		ret = (errno == EPIPE) ? -EIO : -errno;
+	else
+		ret = -EIO;
+
+done:
 	DBG("returning %d", (int)ret);
 	return ret;
 }
@@ -320,37 +318,46 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 	struct ipc_packet *pkt;
 
 	DBG("Sending PKT_TYPE_CFG_REQ...");
+
 	pkt = malloc(len);
+	if (!pkt)
+		return -ENOMEM;
+
 	memset(pkt, 0, len);
 	pkt->type = PKT_TYPE_CFG_REQ;
 	pkt->role = PKT_ROLE_NONE;
 	pkt->error = PKT_ERROR_NONE;
+
 	res = send(data->sock, pkt, len, 0);
 	if (res < 0)
-		return errno;
+		return -errno;
+
 	DBG("OK - %d bytes sent", res);
 
 	DBG("Waiting for response...");
 
 	memset(pkt, 0, len);
 	res = recv(data->sock, pkt, len, 0);
-
 	if (res < 0)
 		return -errno;
+
 	DBG("OK - %d bytes received", res);
 
 	if (pkt->type != PKT_TYPE_CFG_RSP) {
-		SNDERR("Unexpected packet type received: type = %d", pkt->type);
+		SNDERR("Unexpected packet type received: type = %d",
+				pkt->type);
 		return -EINVAL;
 	}
 
 	if (pkt->error != PKT_ERROR_NONE) {
-		SNDERR("Error while configuring device: error = %d", pkt->error);
+		SNDERR("Error while configuring device: error = %d",
+				pkt->error);
 		return pkt->error;
 	}
 
 	if (pkt->length != sizeof(struct ipc_data_cfg)) {
-		SNDERR("Error while configuring device: packet size doesn't match");
+		SNDERR("Error while configuring device: packet size doesn't"
+				"match");
 		return -EINVAL;
 	}
 
@@ -358,16 +365,19 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 
 	DBG("Device configuration:");
 
-	DBG("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u, sample_size=%u, rate=%u",
-		data->cfg.fd, data->cfg.fd_opt, data->cfg.channels,
-		data->cfg.pkt_len, data->cfg.sample_size, data->cfg.rate);
+	DBG("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u, sample_size=%u,"
+			"rate=%u", data->cfg.fd, data->cfg.fd_opt,
+			data->cfg.channels, data->cfg.pkt_len,
+			data->cfg.sample_size, data->cfg.rate);
 
 	if (data->cfg.fd == -1) {
-		SNDERR("Error while configuring device: could not acquire audio socket");
+		SNDERR("Error while configuring device: could not acquire"
+				"audio socket");
 		return -EINVAL;
 	}
 
 	free(pkt);
+
 	return 0;
 }
 
@@ -379,10 +389,15 @@ static int bluetooth_init(struct bluetooth_data *data)
 	if (!data)
 		return -EINVAL;
 
+	memset(data, 0, sizeof(struct bluetooth_data));
+
+	data->sock = -1;
+
 	id = abs(getpid() * rand());
 
 	sk = socket(PF_LOCAL, SOCK_DGRAM, 0);
 	if (sk < 0) {
+		err = -errno;
 		SNDERR("Can't open socket");
 		return -errno;
 	}
@@ -394,9 +409,10 @@ static int bluetooth_init(struct bluetooth_data *data)
 
 	DBG("Binding address: %s", addr.sun_path + 1);
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = -errno;
 		SNDERR("Can't bind socket");
 		close(sk);
-		return -errno;
+		return err;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -405,19 +421,21 @@ static int bluetooth_init(struct bluetooth_data *data)
 
 	DBG("Connecting to address: %s", addr.sun_path + 1);
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = -errno;
 		SNDERR("Can't connect socket");
 		close(sk);
-		return -errno;
+		return err;
 	}
 
 	data->sock = sk;
 
-	if ((err = bluetooth_cfg(data)) < 0) {
-		free(data);
+	err = bluetooth_cfg(data);
+	if (err < 0)
 		return err;
-	}
 
 	data->buffer = malloc(data->cfg.pkt_len);
+	if (!data->buffer)
+		return -ENOMEM;
 
 	memset(data->buffer, 0, data->cfg.pkt_len);
 
@@ -426,33 +444,31 @@ static int bluetooth_init(struct bluetooth_data *data)
 
 SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 {
-//	snd_config_iterator_t iter, next;
 	struct bluetooth_data *data;
 	int err;
 
-	DBG("Bluetooth PCM plugin blablabla (%s)",
+	DBG("Bluetooth PCM plugin (%s)",
 		stream == SND_PCM_STREAM_PLAYBACK ? "Playback" : "Capture");
 
-//	snd_config_for_each(iter, next, conf) {
-//	}
-
-	DBG("Initing Bluetooth...");
 	data = malloc(sizeof(struct bluetooth_data));
-	memset(data, 0, sizeof(struct bluetooth_data));
+	if (!data) {
+		err = -ENOMEM;
+		goto error;
+	}
+
 	err = bluetooth_init(data);
 	if (err < 0)
 		goto error;
-	DBG("Done");
 
 	data->io.version = SND_PCM_IOPLUG_VERSION;
 	data->io.name = "Bluetooth Audio Device";
-	data->io.mmap_rw =  0; /* No direct mmap communication */
+	data->io.mmap_rw = 0; /* No direct mmap communication */
 
 	data->io.callback = stream == SND_PCM_STREAM_PLAYBACK ?
 		&bluetooth_playback_callback : &bluetooth_capture_callback;
 	data->io.poll_fd = data->cfg.fd;
 	data->io.poll_events = stream == SND_PCM_STREAM_PLAYBACK ?
-		POLLOUT : POLLIN;
+					POLLOUT : POLLIN;
 	data->io.private_data = data;
 
 	err = snd_pcm_ioplug_create(&data->io, name, stream, mode);
@@ -470,8 +486,11 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 	return 0;
 
 error:
-	close(data->sock);
-	free(data);
+	if (data) {
+		if (data->sock >= 0)
+			close(data->sock);
+		free(data);
+	}
 
 	return err;
 }
