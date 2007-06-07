@@ -457,6 +457,34 @@ static DBusHandlerResult adapter_get_company(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult adapter_list_modes(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	const char *mode_ptr[] = { "off", "connectable", "discoverable", "limited" };
+	int i;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+						DBUS_TYPE_STRING_AS_STRING, &array_iter);
+	for (i = 0; i < 4; i++)
+		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING,
+								&mode_ptr[i]);
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult adapter_get_mode(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -3069,6 +3097,8 @@ static DBusMethodVTable adapter_methods[] = {
 		"",	"s"	},
 	{ "GetCompany",				adapter_get_company,
 		"",	"s"	},
+	{ "ListAvailableModes",			adapter_list_modes,
+		"",	"as"	},
 	{ "GetMode",				adapter_get_mode,
 		"",	"s"	},
 	{ "SetMode",				adapter_set_mode,
@@ -3099,7 +3129,7 @@ static DBusMethodVTable adapter_methods[] = {
 		"",	"s"	},
 	{ "SetName",				adapter_set_name,
 		"s",	""	},
-	
+
 	{ "GetRemoteInfo",			adapter_get_remote_info,
 		"s",	"{sv}"	},
 	{ "GetRemoteServiceRecord",		adapter_get_remote_svc,
@@ -3227,4 +3257,3 @@ dbus_bool_t adapter_init(DBusConnection *conn, const char *path)
 							adapter_methods,
 							adapter_signals, NULL);
 }
-
