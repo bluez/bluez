@@ -313,8 +313,7 @@ static int bluetooth_hw_constraint(snd_pcm_ioplug_t *io)
 
 static int bluetooth_cfg(struct bluetooth_data *data)
 {
-	int res;
-	int len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg);
+	int ret, len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg);
 	struct ipc_packet *pkt;
 
 	DBG("Sending PKT_TYPE_CFG_REQ...");
@@ -328,37 +327,50 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 	pkt->role = PKT_ROLE_NONE;
 	pkt->error = PKT_ERROR_NONE;
 
-	res = send(data->sock, pkt, len, 0);
-	if (res < 0)
-		return -errno;
+	ret = send(data->sock, pkt, len, 0);
+	if (ret < 0) {
+		ret = -errno;
+		goto done;
+	} else if (ret == 0) {
+		ret = -EIO;
+		goto done;
+	}
 
-	DBG("OK - %d bytes sent", res);
+	DBG("OK - %d bytes sent", ret);
 
 	DBG("Waiting for response...");
 
 	memset(pkt, 0, len);
-	res = recv(data->sock, pkt, len, 0);
-	if (res < 0)
-		return -errno;
+	ret = recv(data->sock, pkt, len, 0);
+	if (ret < 0) {
+		ret = -errno;
+		goto done;
+	} else if (ret == 0) {
+		ret = -EIO;
+		goto done;
+	}
 
-	DBG("OK - %d bytes received", res);
+	DBG("OK - %d bytes received", ret);
 
 	if (pkt->type != PKT_TYPE_CFG_RSP) {
 		SNDERR("Unexpected packet type received: type = %d",
 				pkt->type);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto done;
 	}
 
 	if (pkt->error != PKT_ERROR_NONE) {
 		SNDERR("Error while configuring device: error = %d",
 				pkt->error);
-		return pkt->error;
+		ret = pkt->error;
+		goto done;
 	}
 
 	if (pkt->length != sizeof(struct ipc_data_cfg)) {
 		SNDERR("Error while configuring device: packet size doesn't"
 				"match");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto done;
 	}
 
 	memcpy(&data->cfg, pkt->data, sizeof(struct ipc_data_cfg));
@@ -373,12 +385,15 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 	if (data->cfg.fd == -1) {
 		SNDERR("Error while configuring device: could not acquire"
 				"audio socket");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto done;
 	}
 
-	free(pkt);
+	ret = 0;
 
-	return 0;
+done:
+	free(pkt);
+	return ret;
 }
 
 static int bluetooth_init(struct bluetooth_data *data)
