@@ -363,7 +363,8 @@ Methods		dict GetInfo()
 
 			Returns the current mode of a adapter.
 
-			Valid modes: "off", "connectable", "discoverable"
+			Valid modes: "off", "connectable", "discoverable",
+					"limited".
 
 			Possible errors: none
 
@@ -379,7 +380,7 @@ Methods		dict GetInfo()
 
 			Returns the discoverable timeout in seconds. A value
 			of zero means that the timeout is disabled and it will
-			stay in discoverable mode forever.
+			stay in discoverable/limited mode forever.
 
 			The default value for the discoverable timeout should
 			be 180 seconds (3 minutes).
@@ -390,10 +391,10 @@ Methods		dict GetInfo()
 
 			Sets the discoverable timeout in seconds. A value of
 			zero disables the timeout and the adapter would be
-			always discoverable.
+			always discoverable/limited.
 
 			Changing this value doesn't set the adapter into
-			discoverable mode. The SetMode method must be used.
+			discoverable/limited mode. The SetMode method must be used.
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.InvalidArguments
@@ -410,8 +411,8 @@ Methods		dict GetInfo()
 
 		boolean IsDiscoverable()
 
-			Returns true if the local adapter is discoverable and
-			false if it is only connectable or switched off.
+			Returns true if the local adapter is discoverable/limited
+			and false if it is only connectable or switched off.
 
 			It is also possible to use GetMode to retrieve this
 			information.
