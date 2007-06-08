@@ -135,7 +135,16 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 			sizeof(period_count)) == 0)
                 return 0;
 
-	SNDERR("Unable to set number of SCO buffers: please upgrade your"
+	/* backward compatible to the old patch */
+
+	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
+			SCO_TXBUFS : SCO_RXBUFS;
+
+	if (setsockopt(cfg.fd, SOL_SCO, opt_name, &period_count,
+			sizeof(period_count)) == 0)
+		return 0;
+
+	SNDERR("Unable to set number of SCO buffers: please upgrade your "
 			"kernel!");
 
 	return -EINVAL;
@@ -367,7 +376,7 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 	}
 
 	if (pkt->length != sizeof(struct ipc_data_cfg)) {
-		SNDERR("Error while configuring device: packet size doesn't"
+		SNDERR("Error while configuring device: packet size doesn't "
 				"match");
 		ret = -EINVAL;
 		goto done;
@@ -383,7 +392,7 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 			data->cfg.sample_size, data->cfg.rate);
 
 	if (data->cfg.fd == -1) {
-		SNDERR("Error while configuring device: could not acquire"
+		SNDERR("Error while configuring device: could not acquire "
 				"audio socket");
 		ret = -EINVAL;
 		goto done;
