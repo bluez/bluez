@@ -162,7 +162,8 @@ static audio_device_t *find_device(bdaddr_t *bda)
 	return NULL;
 }
 
-static DBusHandlerResult device_get_address(DBusConnection *conn, DBusMessage *msg,
+static DBusHandlerResult device_get_address(DBusConnection *conn,
+						DBusMessage *msg,
 						void *data)
 {
 	audio_device_t *device = data;
@@ -250,13 +251,15 @@ static void remove_device(audio_device_t *device)
 
 static gboolean add_device(audio_device_t *device)
 {
-	if (!dbus_connection_create_object_path(connection, device->object_path,
+	if (!dbus_connection_create_object_path(connection,
+						device->object_path,
 						device, NULL)) {
 		error("D-Bus failed to register %s path", device->object_path);
 		return FALSE;
 	}
 
-	if (!dbus_connection_register_interface(connection, device->object_path,
+	if (!dbus_connection_register_interface(connection,
+						device->object_path,
 						AUDIO_DEVICE_INTERFACE,
 						device_methods, NULL, NULL)) {
 		error("Failed to register %s interface to %s",
@@ -330,7 +333,8 @@ void finish_sdp_transaction(DBusConnection *conn, bdaddr_t *dba)
 
 	dbus_message_unref(msg);
 
-	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
+	if (dbus_error_is_set(&derr) ||
+			dbus_set_error_from_message(&derr, reply)) {
 		error("FinishRemoteServiceTransaction(%s) failed: %s",
 				address, derr.message);
 		dbus_error_free(&derr);
@@ -638,7 +642,8 @@ static void get_handles_reply(DBusPendingCall *call,
 	}
 
 	if (!dbus_message_get_args(reply, NULL,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &array, &array_len,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+				&array, &array_len,
 				DBUS_TYPE_INVALID)) {
 	  
 		err_failed(connection, data->msg,
@@ -830,7 +835,8 @@ static gboolean device_matches(audio_device_t *device, char **interfaces)
 	return TRUE;
 }
 
-static DBusHandlerResult am_create_device(DBusConnection *conn, DBusMessage *msg,
+static DBusHandlerResult am_create_device(DBusConnection *conn,
+						DBusMessage *msg,
 						void *data)
 {
 	const char *address, *path;
@@ -966,16 +972,16 @@ static DBusHandlerResult am_create_headset(DBusConnection *conn, DBusMessage *ms
 				"Unable to create new audio device");
 	}
 
-	created = TRUE;
-
 	if (!device->headset) {
 		device->headset = headset_init(device->object_path, NULL, 0);
-		if (!device->headset) {
-			remove_device(device);
-			return error_reply(connection, msg,
-						"org.bluez.audio.Error.Failed",
-						"Unable to init Headset interface");
-		}
+		created = TRUE;
+	}
+
+	if (!device->headset) {
+		remove_device(device);
+		return error_reply(connection, msg,
+				"org.bluez.audio.Error.Failed",
+				"Unable to init Headset interface");
 	}
 
 done:
@@ -1087,7 +1093,8 @@ static DBusHandlerResult am_remove_headset(DBusConnection *conn,
 	return am_remove_device(conn, msg, data);
 }
 
-static DBusHandlerResult am_list_headsets(DBusConnection *conn, DBusMessage *msg,
+static DBusHandlerResult am_list_headsets(DBusConnection *conn,
+						DBusMessage *msg,
 						void *data)
 {
 	DBusMessageIter iter;
@@ -1122,7 +1129,8 @@ static DBusHandlerResult am_list_headsets(DBusConnection *conn, DBusMessage *msg
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_find_by_addr(DBusConnection *conn, DBusMessage *msg,
+static DBusHandlerResult am_find_by_addr(DBusConnection *conn,
+						DBusMessage *msg,
 						void *data)
 {
 	const char *path, *address;
@@ -1160,7 +1168,8 @@ static DBusHandlerResult am_find_by_addr(DBusConnection *conn, DBusMessage *msg,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult am_get_default_headset(DBusConnection *conn, DBusMessage *msg,
+static DBusHandlerResult am_get_default_headset(DBusConnection *conn,
+						DBusMessage *msg,
 						void *data)
 {
 	DBusMessage *reply;
@@ -1183,7 +1192,8 @@ static DBusHandlerResult am_get_default_headset(DBusConnection *conn, DBusMessag
 	return send_message_and_unref(connection, reply);
 }
 
-static DBusHandlerResult am_change_default_headset(DBusConnection *conn, DBusMessage *msg,
+static DBusHandlerResult am_change_default_headset(DBusConnection *conn,
+							DBusMessage *msg,
 							void *data)
 {
 	DBusError derr;
@@ -1295,11 +1305,18 @@ void audio_exit(void)
 
 int manager_get_device(uint8_t role, struct ipc_data_cfg *cfg)
 {
-	if (default_hs == NULL || default_hs->headset == NULL)
-		return -1;
+	GSList *l;
 
-	if (!headset_is_connected(default_hs->headset))
-		return -1;
+	if (default_hs && default_hs->headset &&
+			headset_is_connected(default_hs->headset))
+		return headset_get_config(default_hs->headset, cfg);
 
-	return headset_get_config(default_hs->headset, cfg);
+	for (l = devices; l != NULL; l = l->next) {
+		audio_device_t *dev = l->data;
+
+		if (dev->headset && headset_is_connected(dev->headset))
+			return headset_get_config(dev->headset, cfg);
+	}
+
+	return -1;
 }

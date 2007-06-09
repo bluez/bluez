@@ -85,9 +85,11 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		pkt->type = PKT_TYPE_CFG_RSP;
 		pkt->length = sizeof(struct ipc_data_cfg);
 		pkt->error = PKT_ERROR_NONE;
+
 		len = sendto(sk, pkt, len, 0, (struct sockaddr *) &addr, addrlen);
 		if (len < 0)
 			info("Error %s(%d)", strerror(errno), errno);
+		
 		info("%d bytes sent", len);
 		break;
 	case PKT_TYPE_STATUS_REQ:

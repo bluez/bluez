@@ -57,14 +57,14 @@ struct bluetooth_data {
 
 static int bluetooth_start(snd_pcm_ioplug_t *io)
 {
-	DBG("io %p", io);
+	DBG("bluetooth_start %p", io);
 
 	return 0;
 }
 
 static int bluetooth_stop(snd_pcm_ioplug_t *io)
 {
-	DBG("io %p", io);
+	DBG("bluetooth_stop %p", io);
 
 	return 0;
 }
@@ -73,7 +73,7 @@ static snd_pcm_sframes_t bluetooth_pointer(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
 
-	DBG("io %p", io);
+	DBG("bluetooth_pointer %p", io);
 
 	DBG("hw_ptr=%lu", data->hw_ptr);
 
@@ -84,13 +84,12 @@ static int bluetooth_close(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
 
-	DBG("io %p", io);
+	DBG("bluetooth_close %p", io);
 
 	free(data);
 
 	return 0;
 }
-
 
 static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 {
@@ -99,16 +98,15 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 	DBG("Preparing with io->period_size = %lu, io->buffer_size = %lu",
 			io->period_size, io->buffer_size);
 
-	if (io->stream == SND_PCM_STREAM_PLAYBACK) {
+	if (io->stream == SND_PCM_STREAM_PLAYBACK)
 		/* If not null for playback, xmms doesn't display time
 		 * correctly */
 		data->hw_ptr = 0;
-	}
-	else {
+	else
 		/* ALSA library is really picky on the fact hw_ptr is not null.
 		 * If it is, capture won't start */
 		data->hw_ptr = io->period_size;
-	}
+
 	return 0;
 }
 
@@ -118,22 +116,22 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 	struct ipc_data_cfg cfg = data->cfg;
 	uint32_t period_count = io->buffer_size / io->period_size;
 	int opt_name;
+
+	DBG("fd = %d, period_count = %d", cfg.fd, period_count);
       
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
 			SCO_TXBUFS : SCO_RXBUFS;
 
-	DBG("fd = %d, period_count = %d", cfg.fd, period_count);
-
 	if (setsockopt(cfg.fd, SOL_SCO, opt_name, &period_count,
-				sizeof(period_count)) == 0)
+			sizeof(period_count)) == 0)
 		return 0;
-	
+
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
-			SO_SNDBUF : SO_RCVBUF;
+		SO_SNDBUF : SO_RCVBUF;
 
 	if (setsockopt(cfg.fd, SOL_SCO, opt_name, &period_count,
 			sizeof(period_count)) == 0)
-                return 0;
+		return 0;
 
 	/* backward compatible to the old patch */
 

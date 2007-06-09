@@ -160,7 +160,8 @@ static void hs_signal_gain_setting(audio_device_t *device, const char *buf)
 					DBUS_TYPE_INVALID);
 }
 
-static headset_event_t parse_headset_event(const char *buf, char *rsp, int rsp_len)
+static headset_event_t parse_headset_event(const char *buf, char *rsp,
+						int rsp_len)
 {
 	printf("Received: %s\n", buf);
 
@@ -215,7 +216,8 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	if (cond & (G_IO_ERR | G_IO_HUP))
 		goto failed;
 
-	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1, &bytes_read);
+	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1,
+				&bytes_read);
 	if (err != G_IO_ERROR_NONE)
 		goto failed;
 
@@ -244,7 +246,8 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 
 	memset(rsp, 0, sizeof(rsp));
 
-	switch (parse_headset_event(&hs->buf[hs->data_start], rsp, sizeof(rsp))) {
+	switch (parse_headset_event(&hs->buf[hs->data_start], rsp,
+					sizeof(rsp))) {
 	case HEADSET_EVENT_GAIN:
 		hs_signal_gain_setting(device, &hs->buf[hs->data_start] + 2);
 		break;
@@ -273,9 +276,10 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	err = G_IO_ERROR_NONE;
 
 	while (err == G_IO_ERROR_NONE && total_bytes_written < count) {
-		/* FIXME: make it async */
-		err = g_io_channel_write(hs->rfcomm, rsp + total_bytes_written, 
-				count - total_bytes_written, &bytes_written);
+		err = g_io_channel_write(hs->rfcomm,
+						rsp + total_bytes_written, 
+						count - total_bytes_written,
+						&bytes_written);
 		if (err != G_IO_ERROR_NONE)
 			error("Error while writting to the audio output channel");
 		total_bytes_written += bytes_written;
@@ -345,7 +349,8 @@ static void auth_callback(DBusPendingCall *call, void *data)
 	} else {
 		char hs_address[18];
 
-		g_io_add_watch(hs->rfcomm, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+		g_io_add_watch(hs->rfcomm,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				(GIOFunc) rfcomm_io_cb, device);
 
 		ba2str(&device->bda, hs_address);
@@ -363,7 +368,8 @@ static void auth_callback(DBusPendingCall *call, void *data)
 	dbus_message_unref(reply);
 }
 
-static gboolean sco_cb(GIOChannel *chan, GIOCondition cond, audio_device_t *device)
+static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
+			audio_device_t *device)
 {
 	struct headset *hs;
 
@@ -579,7 +585,8 @@ static int rfcomm_connect(audio_device_t *device, int *err)
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
 			if (err)
 				*err = errno;
-			error("connect() failed: %s (%d)", strerror(errno), errno);
+			error("connect() failed: %s (%d)", strerror(errno),
+					errno);
 			goto failed;
 		}
 
@@ -604,7 +611,8 @@ failed:
 static int create_hsp_ag_record(sdp_buf_t *buf, uint8_t ch)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
-	uuid_t root_uuid, svclass_uuid, ga_svclass_uuid, l2cap_uuid, rfcomm_uuid;
+	uuid_t root_uuid, svclass_uuid, ga_svclass_uuid;
+	uuid_t l2cap_uuid, rfcomm_uuid;
 	sdp_profile_desc_t profile;
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
@@ -665,7 +673,8 @@ static int create_hsp_ag_record(sdp_buf_t *buf, uint8_t ch)
 static int create_hfp_ag_record(sdp_buf_t *buf, uint8_t ch)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
-	uuid_t root_uuid, svclass_uuid, ga_svclass_uuid, l2cap_uuid, rfcomm_uuid;
+	uuid_t root_uuid, svclass_uuid, ga_svclass_uuid;
+	uuid_t l2cap_uuid, rfcomm_uuid;
 	sdp_profile_desc_t profile;
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
@@ -753,7 +762,8 @@ static uint32_t headset_add_ag_record(uint8_t channel, sdp_buf_t *buf)
 
 	dbus_message_unref(msg);
 
-	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
+	if (dbus_error_is_set(&derr) ||
+			dbus_set_error_from_message(&derr, reply)) {
 		error("Adding service record failed: %s", derr.message);
 		dbus_error_free(&derr);
 		return 0;
@@ -763,7 +773,8 @@ static uint32_t headset_add_ag_record(uint8_t channel, sdp_buf_t *buf)
 				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&derr)) {
-		error("Invalid arguments to AddServiceRecord reply: %s", derr.message);
+		error("Invalid arguments to AddServiceRecord reply: %s",
+				derr.message);
 		dbus_message_unref(reply);
 		dbus_error_free(&derr);
 		return 0;
@@ -782,7 +793,8 @@ int headset_remove_ag_record(uint32_t rec_id)
 	DBusError derr;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "RemoveServiceRecord");
+						"org.bluez.Database",
+						"RemoveServiceRecord");
 	if (!msg) {
 		error("Can't allocate new method call");
 		return 0;
@@ -798,7 +810,8 @@ int headset_remove_ag_record(uint32_t rec_id)
 	dbus_message_unref(msg);
 
 	if (dbus_error_is_set(&derr)) {
-		error("Removing service record 0x%x failed: %s", rec_id, derr.message);
+		error("Removing service record 0x%x failed: %s",
+				rec_id, derr.message);
 		dbus_error_free(&derr);
 		return 0;
 	}
@@ -837,7 +850,8 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	}
 
 	if (!dbus_message_get_args(reply, NULL,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &array, &array_len,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+				&array, &array_len,
 				DBUS_TYPE_INVALID)) {
 		error("Unable to get args from GetRecordReply");
 		goto failed_not_supported;
@@ -870,15 +884,18 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 		goto failed_not_supported;
 	}
 
-	if ((uuid.type == SDP_UUID32 && uuid.value.uuid32 != HEADSET_SVCLASS_ID) ||
-			(uuid.type == SDP_UUID16 && uuid.value.uuid16 != HEADSET_SVCLASS_ID)) {
+	if ((uuid.type == SDP_UUID32 &&
+			uuid.value.uuid32 != HEADSET_SVCLASS_ID) ||
+			(uuid.type == SDP_UUID16 &&
+			 uuid.value.uuid16 != HEADSET_SVCLASS_ID)) {
 		error("Service classes did not contain the expected UUID");
 		goto failed_not_supported;
 	}
 
 	if (!sdp_get_access_protos(record, &protos)) {
 		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
+		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
+					NULL);
 		sdp_list_free(protos, NULL);
 		protos = NULL;
 	}
@@ -937,7 +954,8 @@ static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg,
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
-	if (hs->state == HEADSET_STATE_PLAY_IN_PROGRESS && hs->pending_connect) {
+	if (hs->state == HEADSET_STATE_PLAY_IN_PROGRESS &&
+			hs->pending_connect) {
 		g_io_channel_close(hs->pending_connect->io);
 		if (hs->pending_connect->msg)
 			err_connect_failed(connection, hs->pending_connect->msg,
@@ -1011,7 +1029,8 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 		if (hs->pending_connect->io)
 			g_io_channel_close(hs->pending_connect->io);
 		if (hs->pending_connect->msg)
-			err_connect_failed(connection, hs->pending_connect->msg,
+			err_connect_failed(connection,
+						hs->pending_connect->msg,
 						EINTR);
 		pending_connect_free(hs->pending_connect);
 		hs->pending_connect = NULL;
@@ -1035,7 +1054,8 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult hs_is_connected(DBusConnection *conn, DBusMessage *msg,
+static DBusHandlerResult hs_is_connected(DBusConnection *conn,
+						DBusMessage *msg,
 						void *data)
 {
 	audio_device_t *device = data;
@@ -1080,7 +1100,8 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("GetRemoteServiceHandles failed: %s", derr.message);
 		if (c->msg) {
-			if (dbus_error_has_name(&derr, "org.bluez.Error.ConnectionAttemptFailed"))
+			if (dbus_error_has_name(&derr,
+						"org.bluez.Error.ConnectionAttemptFailed"))
 				err_connect_failed(connection, c->msg, EHOSTDOWN);
 			else
 				err_not_supported(connection, c->msg);
@@ -1090,7 +1111,8 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	}
 
 	if (!dbus_message_get_args(reply, NULL,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &array, &array_len,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+				&array, &array_len,
 				DBUS_TYPE_INVALID)) {
 	  
 		error("Unable to get args from reply");
@@ -1173,7 +1195,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 
 	hs->pending_connect = g_try_new0(struct pending_connect, 1);
 	if (!hs->pending_connect) {
-		error("Out of memory when allocating new struct pending_connect");
+		error("Out of memory when allocating struct pending_connect");
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
@@ -1290,7 +1312,7 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	if (hs->ring_timer) {
-		debug("Got Ring method call while ringing already in progress");
+		debug("IndicateCall received when already indicating");
 		goto done;
 	}
 
@@ -1308,7 +1330,8 @@ done:
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn, DBusMessage *msg,
+static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn,
+						DBusMessage *msg,
 						void *data)
 {
 	audio_device_t *device = data;
@@ -1350,7 +1373,7 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 	int sk, err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return err_not_connected(connection, msg); /* FIXME: in progress error? */
+		return err_not_connected(connection, msg);
 
 	if (hs->state >= HEADSET_STATE_PLAY_IN_PROGRESS || hs->pending_connect)
 		return err_already_connected(connection, msg);
@@ -1580,7 +1603,8 @@ void headset_free(const char *object_path)
 	device->headset = NULL;
 }
 
-static gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
+static gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond,
+					void *data)
 {
 	int srv_sk, cli_sk;
 	struct sockaddr_rc addr;
@@ -1640,10 +1664,11 @@ static gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *
 		uuid = HFP_AG_UUID;
 	}
 
-	auth = dbus_message_new_method_call("org.bluez", "/org/bluez", "org.bluez.Database",
+	auth = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.Database",
 						"RequestAuthorization");
 	if (!auth) {
-		error("Unable to allocat new RequestAuthorization method call");
+		error("Unable to allocate RequestAuthorization method call");
 		goto failed;
 	}
 
@@ -1652,7 +1677,7 @@ static gboolean headset_server_io_cb(GIOChannel *chan, GIOCondition cond, void *
 	dbus_message_append_args(auth, DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, auth, &pending, -1) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, auth, &pending, -1)) {
 		error("Sending of authorization request failed");
 		goto failed;
 	}
