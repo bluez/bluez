@@ -384,6 +384,16 @@ char *bt_compidtostr(int compid)
 		return "PARROT SA";
 	case 68:
 		return "Socket Communications";
+	case 69:
+		return "Atheros Communications, Inc.";
+	case 70:
+		return "MediaTek, Inc.";
+	case 71:
+		return "Bluegiga";	/* (tentative) */
+	case 72:
+		return "Marvell Technology Group Ltd.";
+	case 73:
+		return "3DSP Corporation";
 	case 65535:
 		return "internal use";
 	default:
