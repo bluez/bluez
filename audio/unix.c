@@ -26,13 +26,13 @@
 #endif
 
 #include <stdio.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <assert.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 
 #include <glib.h>
 
@@ -44,13 +44,46 @@
 
 static int unix_sock = -1;
 
+/* Pass file descriptor through local domain sockets (AF_LOCAL, formerly AF_UNIX)
+and the sendmsg() system call with the cmsg_type field of a "struct cmsghdr" set
+to SCM_RIGHTS and the data being an integer value equal to the handle of the 
+file descriptor to be passed.*/
+static int unix_sendmsg_fd(int sock, int fd, struct ipc_packet *pkt)
+{
+	char cmsg_b[CMSG_SPACE(sizeof(int))];
+	struct cmsghdr *cmsg;
+	struct iovec iov =  {
+		.iov_base = pkt,
+		.iov_len  = sizeof(struct ipc_packet)
+        };
+
+	struct msghdr msgh = {
+		.msg_name       = 0,
+		.msg_namelen    = 0,
+		.msg_iov        = &iov,
+		.msg_iovlen     = 1,
+		.msg_control    = &cmsg_b,
+		.msg_controllen = CMSG_LEN(sizeof(int)),
+		.msg_flags      = 0
+	};
+
+	cmsg = CMSG_FIRSTHDR(&msgh);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+	/* Initialize the payload */
+	(*(int *)CMSG_DATA(cmsg)) = fd;
+
+	return sendmsg(sock, &msgh, MSG_NOSIGNAL);
+}
+
 static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct sockaddr_un addr;
 	socklen_t addrlen;
 	struct ipc_packet *pkt;
 	struct ipc_data_cfg *cfg;
-	int sk, len;
+	int sk, clisk, len;
 
 	debug("chan %p cond %td data %p", chan, cond, data);
 
@@ -69,7 +102,8 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg);
 	pkt = g_malloc0(len);
-	len = recvfrom(sk, pkt, len, 0, (struct sockaddr *) &addr, &addrlen);
+	clisk = accept(sk, (struct sockaddr *) &addr, &addrlen);
+	len = recv(clisk, pkt, len, 0);
 
 	debug("path %s len %d", addr.sun_path + 1, len);
 
@@ -79,18 +113,30 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 		cfg = (struct ipc_data_cfg *) pkt->data;
 
+		memset(cfg, 0, sizeof(struct ipc_data_cfg));
 		if (manager_get_device(pkt->role, cfg) < 0)
 			cfg->fd = -1;
+
+		info("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u, sample_size=%u,"
+			"rate=%u", cfg->fd, cfg->fd_opt, cfg->channels,
+			cfg->pkt_len, cfg->sample_size, cfg->rate);
 
 		pkt->type = PKT_TYPE_CFG_RSP;
 		pkt->length = sizeof(struct ipc_data_cfg);
 		pkt->error = PKT_ERROR_NONE;
 
-		len = sendto(sk, pkt, len, 0, (struct sockaddr *) &addr, addrlen);
+		len = send(clisk, pkt, len, 0);
 		if (len < 0)
 			info("Error %s(%d)", strerror(errno), errno);
-		
 		info("%d bytes sent", len);
+
+		if (cfg->fd != -1) {
+			len = unix_sendmsg_fd(clisk, cfg->fd, pkt);
+			if (len < 0)
+				info("Error %s(%d)", strerror(errno), errno);
+			info("%d bytes sent", len);
+		}
+
 		break;
 	case PKT_TYPE_STATUS_REQ:
 		info("Package PKT_TYPE_STATUS_REQ");
@@ -101,24 +147,25 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	}
 
 	g_free(pkt);
+	close(clisk);
 	return TRUE;
 }
 
 int unix_init(void)
 {
 	GIOChannel *io;
-	struct sockaddr_un addr;
-	int sk;
+	struct sockaddr_un addr = {
+		AF_UNIX, IPC_SOCKET_NAME
+	};
 
-	sk = socket(PF_LOCAL, SOCK_DGRAM, 0);
+	int sk, err;
+
+	sk = socket(PF_LOCAL, SOCK_STREAM, 0);
 	if (sk < 0) {
-		error("Can't create unix socket: %s (%d)", strerror(errno), errno);
-		return -1;
+		err = errno;
+		error("Can't create unix socket: %s (%d)", strerror(err), err);
+		return -err;
 	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s", IPC_SOCKET_NAME);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		error("Can't bind unix socket: %s (%d)", strerror(errno), errno);
@@ -129,6 +176,8 @@ int unix_init(void)
 	set_nonblocking(sk);
 
 	unix_sock = sk;
+
+	listen(sk, 1);
 
 	io = g_io_channel_unix_new(sk);
 

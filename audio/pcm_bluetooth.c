@@ -118,7 +118,7 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 	int opt_name;
 
 	DBG("fd = %d, period_count = %d", cfg.fd, period_count);
-      
+
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
 			SCO_TXBUFS : SCO_RXBUFS;
 
@@ -142,6 +142,7 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 			sizeof(period_count)) == 0)
 		return 0;
 
+	SNDERR("%s (%d)", strerror(errno), errno);
 	SNDERR("Unable to set number of SCO buffers: please upgrade your "
 			"kernel!");
 
@@ -318,6 +319,51 @@ static int bluetooth_hw_constraint(snd_pcm_ioplug_t *io)
 	return 0;
 }
 
+static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
+{
+	char cmsg_b[CMSG_SPACE(sizeof(int))];
+	struct ipc_packet pkt;
+	int err, ret;
+	struct iovec iov = {
+		.iov_base = &pkt,
+		.iov_len  = sizeof(pkt)
+        };
+	struct msghdr msgh = {
+		.msg_name       = 0,
+		.msg_namelen    = 0,
+		.msg_iov        = &iov,
+		.msg_iovlen     = 1,
+		.msg_control    = &cmsg_b,
+		.msg_controllen = CMSG_LEN(sizeof(int)),
+		.msg_flags      = 0
+	};
+
+	ret = recvmsg(data->sock, &msgh, 0);
+
+	if (ret < 0) {
+		err = errno;
+		SNDERR("Unable to receive fd: %s (%d)", strerror(err), err);
+		return -err;
+	}
+
+	if(pkt.type == PKT_TYPE_CFG_RSP) {
+		struct cmsghdr *cmsg;
+		/* Receive auxiliary data in msgh */
+		for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
+			cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
+			if (cmsg->cmsg_level == SOL_SOCKET
+				&& cmsg->cmsg_type == SCM_RIGHTS)
+				data->cfg.fd = (*(int *) CMSG_DATA(cmsg));
+				DBG("fd = %d", data->cfg.fd);
+				return 0;
+		}
+	}
+	else
+		SNDERR("Unexpected packet type received: type = %d", pkt.type);
+
+	return -EINVAL;
+}
+
 static int bluetooth_cfg(struct bluetooth_data *data)
 {
 	int ret, len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg);
@@ -396,7 +442,13 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 		goto done;
 	}
 
-	ret = 0;
+	if ((ret = bluetooth_recvmsg_fd(data)) < 0)
+		goto done;
+
+	/* It is possible there is some outstanding
+	data in the pipe - we have to empty it */
+	while(recv(data->cfg.fd, data->buffer, data->cfg.pkt_len,
+		MSG_DONTWAIT) > 0);
 
 done:
 	free(pkt);
@@ -406,7 +458,9 @@ done:
 static int bluetooth_init(struct bluetooth_data *data)
 {
 	int sk, err, id;
-	struct sockaddr_un addr;
+	struct sockaddr_un addr = {
+		AF_UNIX, IPC_SOCKET_NAME
+	};
 
 	if (!data)
 		return -EINVAL;
@@ -417,29 +471,12 @@ static int bluetooth_init(struct bluetooth_data *data)
 
 	id = abs(getpid() * rand());
 
-	sk = socket(PF_LOCAL, SOCK_DGRAM, 0);
+	sk = socket(PF_LOCAL, SOCK_STREAM, 0);
 	if (sk < 0) {
 		err = -errno;
 		SNDERR("Can't open socket");
 		return -errno;
 	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s/%d",
-			IPC_SOCKET_NAME, id);
-
-	DBG("Binding address: %s", addr.sun_path + 1);
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = -errno;
-		SNDERR("Can't bind socket");
-		close(sk);
-		return err;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s", IPC_SOCKET_NAME);
 
 	DBG("Connecting to address: %s", addr.sun_path + 1);
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {

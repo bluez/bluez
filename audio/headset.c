@@ -421,6 +421,7 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	debug("SCO socket opened for headset %s", device->object_path);
 
+	info("SCO fd=%d", sk);
 	hs->sco = chan;
 	hs->pending_connect->io = NULL;
 
@@ -434,6 +435,8 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	pending_connect_free(hs->pending_connect);
 	hs->pending_connect = NULL;
+
+	fcntl(sk, F_SETFL, 0);
 
 	hs->state = HEADSET_STATE_PLAYING;
 	dbus_connection_emit_signal(connection, device->object_path,
@@ -1436,7 +1439,7 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 		}
 
 		debug("SCO connect in progress");
-		g_io_add_watch(c->io, G_IO_OUT | G_IO_NVAL,
+		g_io_add_watch(c->io, G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
 				(GIOFunc) sco_connect_cb, device);
 	} else {
 		debug("SCO connect succeeded with first try");
