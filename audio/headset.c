@@ -1019,6 +1019,11 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 	if (hs->state > HEADSET_STATE_CONNECTED)
 		hs_stop(NULL, NULL, device);
 
+	if (hs->ring_timer) {
+		g_source_remove(hs->ring_timer);
+		hs->ring_timer = 0;
+	}
+
 	if (hs->rfcomm) {
 		g_io_channel_close(hs->rfcomm);
 		g_io_channel_unref(hs->rfcomm);
