@@ -204,26 +204,27 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 	snd_pcm_sframes_t ret = 0;
 	snd_pcm_uframes_t frames_to_read;
 	uint8_t *buff;
-	int rsend;
+	int rsend, block_size;
 
 	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu,"
 			"io->nonblock=%u", areas->step, areas->first,
 			offset, size, io->nonblock);
 
-	if ((data->count + cfg.sample_size * size) <= cfg.pkt_len)
+	block_size = areas->step / 8;
+	if ((data->count + block_size * size) <= cfg.pkt_len)
 		frames_to_read = size;
 	else
-		frames_to_read = (cfg.pkt_len - data->count) / cfg.sample_size;
+		frames_to_read = (cfg.pkt_len - data->count) / block_size;
 
 	DBG("count = %d, frames_to_read = %lu", data->count, frames_to_read);
 
 	/* Ready for more data */
 	buff = (uint8_t *) areas->addr + (areas->first + areas->step * offset) / 8;
-	memcpy(data->buffer + data->count, buff, areas->step / 8 * frames_to_read);
+	memcpy(data->buffer + data->count, buff, block_size * frames_to_read);
 
-	if ((data->count + areas->step / 8 * frames_to_read) != cfg.pkt_len) {
+	if ((data->count + block_size * frames_to_read) != cfg.pkt_len) {
 		/* Remember we have some frame in the pipe now */
-		data->count += areas->step / 8 * frames_to_read;
+		data->count += block_size * frames_to_read;
 		ret = frames_to_read;
 		goto done;
 	}
@@ -235,7 +236,7 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 		data->count = 0;
 
 		/* Increment hardware transmition pointer */
-		data->hw_ptr = (data->hw_ptr + frames_to_read / cfg.sample_size)
+		data->hw_ptr = (data->hw_ptr + cfg.pkt_len / block_size)
 				% io->buffer_size;
 
 		ret = frames_to_read;
@@ -305,11 +306,13 @@ static int bluetooth_hw_constraint(snd_pcm_ioplug_t *io)
 	if (err < 0)
 		return err;
 
+	/* supported rate */
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_RATE,
 					cfg.rate, cfg.rate);
 	if (err < 0)
 		return err;
 
+	/* supported block size */
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
 					cfg.pkt_len, cfg.pkt_len);
 	if (err < 0)
