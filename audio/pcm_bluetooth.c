@@ -346,11 +346,11 @@ static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 		return -err;
 	}
 
-	if(pkt.type == PKT_TYPE_CFG_RSP) {
+	if (pkt.type == PKT_TYPE_CFG_RSP) {
 		struct cmsghdr *cmsg;
 		/* Receive auxiliary data in msgh */
 		for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
-			cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
+				cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
 			if (cmsg->cmsg_level == SOL_SOCKET
 				&& cmsg->cmsg_type == SCM_RIGHTS)
 				data->cfg.fd = (*(int *) CMSG_DATA(cmsg));
@@ -442,7 +442,8 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 		goto done;
 	}
 
-	if ((ret = bluetooth_recvmsg_fd(data)) < 0)
+	ret = bluetooth_recvmsg_fd(data);
+	if (ret < 0)
 		goto done;
 
 	/* It is possible there is some outstanding

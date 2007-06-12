@@ -72,7 +72,7 @@ static int unix_sendmsg_fd(int sock, int fd, struct ipc_packet *pkt)
 	cmsg->cmsg_type = SCM_RIGHTS;
 	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
 	/* Initialize the payload */
-	(*(int *)CMSG_DATA(cmsg)) = fd;
+	(*(int *) CMSG_DATA(cmsg)) = fd;
 
 	return sendmsg(sock, &msgh, MSG_NOSIGNAL);
 }
@@ -100,9 +100,14 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	memset(&addr, 0, sizeof(addr));
 	addrlen = sizeof(addr);
 
+	clisk = accept(sk, (struct sockaddr *) &addr, &addrlen);
+	if (clisk < 0) {
+		error("accept: %s (%d)", strerror(errno), errno);
+		return TRUE;
+	}
+
 	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg);
 	pkt = g_malloc0(len);
-	clisk = accept(sk, (struct sockaddr *) &addr, &addrlen);
 	len = recv(clisk, pkt, len, 0);
 
 	debug("path %s len %d", addr.sun_path + 1, len);
@@ -128,6 +133,7 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		len = send(clisk, pkt, len, 0);
 		if (len < 0)
 			info("Error %s(%d)", strerror(errno), errno);
+
 		info("%d bytes sent", len);
 
 		if (cfg->fd != -1) {
