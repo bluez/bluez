@@ -86,6 +86,7 @@ static int bluetooth_close(snd_pcm_ioplug_t *io)
 
 	DBG("bluetooth_close %p", io);
 
+	free(data->buffer);
 	free(data);
 
 	return 0;
@@ -115,7 +116,7 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 	struct bluetooth_data *data = io->private_data;
 	struct ipc_data_cfg cfg = data->cfg;
 	uint32_t period_count = io->buffer_size / io->period_size;
-	int opt_name;
+	int opt_name, err;
 
 	DBG("fd = %d, period_count = %d", cfg.fd, period_count);
 
@@ -133,11 +134,10 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 			sizeof(period_count)) == 0)
 		return 0;
 
-	SNDERR("%s (%d)", strerror(errno), errno);
-	SNDERR("Unable to set number of SCO buffers: please upgrade your "
-			"kernel!");
+	err = errno;
+	SNDERR("%s (%d)", strerror(err), err);
 
-	return -EINVAL;
+	return -err;
 }
 
 static snd_pcm_sframes_t bluetooth_read(snd_pcm_ioplug_t *io,
@@ -203,7 +203,7 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 	struct ipc_data_cfg cfg = data->cfg;
 	snd_pcm_sframes_t ret = 0;
 	snd_pcm_uframes_t frames_to_read;
-	unsigned char *buff;
+	uint8_t *buff;
 	int rsend;
 
 	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu,"
@@ -215,8 +215,10 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 	else
 		frames_to_read = (cfg.pkt_len - data->count) / cfg.sample_size;
 
+	DBG("count = %d, frames_to_read = %lu", data->count, frames_to_read);
+
 	/* Ready for more data */
-	buff = (unsigned char *) areas->addr + (areas->first + areas->step * offset) / 8;
+	buff = (uint8_t *) areas->addr + (areas->first + areas->step * offset) / 8;
 	memcpy(data->buffer + data->count, buff, areas->step / 8 * frames_to_read);
 
 	if ((data->count + areas->step / 8 * frames_to_read) != cfg.pkt_len) {
@@ -226,13 +228,15 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 		goto done;
 	}
 
-	rsend = send(cfg.fd, data->buffer, cfg.pkt_len, io->nonblock ? MSG_DONTWAIT : 0);
+	rsend = send(cfg.fd, data->buffer, cfg.pkt_len,
+			io->nonblock ? MSG_DONTWAIT : 0);
 	if (rsend > 0) {
 		/* Reset count pointer */
 		data->count = 0;
 
 		/* Increment hardware transmition pointer */
-		data->hw_ptr = (data->hw_ptr + cfg.pkt_len / cfg.sample_size) % io->buffer_size;
+		data->hw_ptr = (data->hw_ptr + frames_to_read / cfg.sample_size)
+				% io->buffer_size;
 
 		ret = frames_to_read;
 	} else if (rsend < 0)
@@ -269,6 +273,8 @@ static snd_pcm_ioplug_callback_t bluetooth_capture_callback = {
 
 static int bluetooth_hw_constraint(snd_pcm_ioplug_t *io)
 {
+	struct bluetooth_data *data = io->private_data;
+	struct ipc_data_cfg cfg = data->cfg;
 	snd_pcm_access_t access_list[] = {
 		SND_PCM_ACCESS_RW_INTERLEAVED,
 		/* Mmap access is really useless fo this driver, but we
@@ -281,29 +287,36 @@ static int bluetooth_hw_constraint(snd_pcm_ioplug_t *io)
 	};
 	int err;
 
+	/* access type */
 	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_ACCESS,
 					ARRAY_NELEMS(access_list), access_list);
 	if (err < 0)
 		return err;
 
+	/* supported formats */
 	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_FORMAT,
 					ARRAY_NELEMS(format_list), format_list);
 	if (err < 0)
 		return err;
 
-	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_CHANNELS, 1, 1);
+	/* supported channels */
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_CHANNELS,
+					cfg.channels, cfg.channels);
 	if (err < 0)
 		return err;
 
-	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_RATE, 8000, 8000);
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_RATE,
+					cfg.rate, cfg.rate);
 	if (err < 0)
 		return err;
 
-	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES, 48, 48);
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
+					cfg.pkt_len, cfg.pkt_len);
 	if (err < 0)
 		return err;
 
-	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS, 2, 200);
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS,
+					2, 200);
 	if (err < 0)
 		return err;
 
@@ -362,8 +375,7 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 
 	DBG("Sending PKT_TYPE_CFG_REQ...");
 
-	pkt = malloc(len);
-	if (!pkt)
+	if ((pkt = malloc(len)) == 0)
 		return -ENOMEM;
 
 	memset(pkt, 0, len);
@@ -371,8 +383,7 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 	pkt->role = PKT_ROLE_NONE;
 	pkt->error = PKT_ERROR_NONE;
 
-	ret = send(data->sock, pkt, len, 0);
-	if (ret < 0) {
+	if ((ret = send(data->sock, pkt, len, 0)) < 0) {
 		ret = -errno;
 		goto done;
 	} else if (ret == 0) {
@@ -385,8 +396,7 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 	DBG("Waiting for response...");
 
 	memset(pkt, 0, len);
-	ret = recv(data->sock, pkt, len, 0);
-	if (ret < 0) {
+	if ((ret = recv(data->sock, pkt, len, 0)) < 0) {
 		ret = -errno;
 		goto done;
 	} else if (ret == 0) {
@@ -433,14 +443,18 @@ static int bluetooth_cfg(struct bluetooth_data *data)
 		goto done;
 	}
 
-	ret = bluetooth_recvmsg_fd(data);
-	if (ret < 0)
+	if ((ret = bluetooth_recvmsg_fd(data)) < 0)
 		goto done;
+
+	if ((data->buffer = malloc(data->cfg.pkt_len)) == 0)
+		return -ENOMEM;
 
 	/* It is possible there is some outstanding
 	data in the pipe - we have to empty it */
 	while(recv(data->cfg.fd, data->buffer, data->cfg.pkt_len,
 		MSG_DONTWAIT) > 0);
+
+	memset(data->buffer, 0, data->cfg.pkt_len);
 
 done:
 	free(pkt);
@@ -463,8 +477,7 @@ static int bluetooth_init(struct bluetooth_data *data)
 
 	id = abs(getpid() * rand());
 
-	sk = socket(PF_LOCAL, SOCK_STREAM, 0);
-	if (sk < 0) {
+	if ((sk = socket(PF_LOCAL, SOCK_STREAM, 0)) < 0) {
 		err = -errno;
 		SNDERR("Can't open socket");
 		return -errno;
@@ -480,15 +493,8 @@ static int bluetooth_init(struct bluetooth_data *data)
 
 	data->sock = sk;
 
-	err = bluetooth_cfg(data);
-	if (err < 0)
+	if ((err = bluetooth_cfg(data)) < 0)
 		return err;
-
-	data->buffer = malloc(data->cfg.pkt_len);
-	if (!data->buffer)
-		return -ENOMEM;
-
-	memset(data->buffer, 0, data->cfg.pkt_len);
 
 	return 0;
 }
