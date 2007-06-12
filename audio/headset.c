@@ -85,6 +85,7 @@ typedef enum {
 struct pending_connect {
 	DBusMessage *msg;
 	GIOChannel *io;
+	guint io_id;
 };
 
 struct headset {
@@ -1036,6 +1037,8 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 	if (hs->pending_connect) {
 		if (hs->pending_connect->io)
 			g_io_channel_close(hs->pending_connect->io);
+		if (hs->pending_connect->io_id)
+			g_source_remove(hs->pending_connect->io_id);
 		if (hs->pending_connect->msg)
 			err_connect_failed(connection,
 						hs->pending_connect->msg,
@@ -1439,8 +1442,9 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 		}
 
 		debug("SCO connect in progress");
-		g_io_add_watch(c->io, G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
-				(GIOFunc) sco_connect_cb, device);
+		c->io_id = g_io_add_watch(c->io,
+					G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
+					(GIOFunc) sco_connect_cb, device);
 	} else {
 		debug("SCO connect succeeded with first try");
 		do_callback = TRUE;
