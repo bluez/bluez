@@ -270,6 +270,9 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 			return error_failed(conn, msg, EIO);
 		}
 	} else {
+		sdp_data_t *d = sdp_data_alloc(SDP_UINT32, &handle);
+		sdp_attr_replace(sdp_record, SDP_ATTR_RECORD_HANDLE, d);
+
 		err = update_sdp_record(handle, sdp_record);
 		sdp_record_free(sdp_record);
 		if (err < 0) {
