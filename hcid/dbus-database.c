@@ -227,7 +227,6 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct record_data *user_record;
-	DBusMessage *reply;
 	DBusMessageIter iter, array;
 	sdp_record_t *sdp_record;
 	dbus_uint32_t handle;
@@ -247,20 +246,14 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 	if (!user_record)
 		return error_not_available(conn, msg);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
 	sdp_record = sdp_extract_pdu(bin_record, &scanned);
 	if (!sdp_record) {
 		error("Parsing of service record failed");
-		dbus_message_unref(reply);
 		return error_invalid_arguments(conn, msg);
 	}
 
 	if (scanned != size) {
 		error("Size mismatch of service record");
-		dbus_message_unref(reply);
 		sdp_record_free(sdp_record);
 		return error_invalid_arguments(conn, msg);
 	}
@@ -271,17 +264,22 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 
 		sdp_record->handle = handle;
 		err = add_record_to_server(sdp_record);
-	} else
+		if (err < 0) {
+			sdp_record_free(sdp_record);
+			error("Failed to update the service record");
+			return error_failed(conn, msg, EIO);
+		}
+	} else {
 		err = update_sdp_record(handle, sdp_record);
-
-	if (err < 0) {
-		error("Failed to update the service record");
-		dbus_message_unref(reply);
 		sdp_record_free(sdp_record);
-		return error_failed(conn, msg, EIO);
+		if (err < 0) {
+			error("Failed to update the service record");
+			return error_failed(conn, msg, EIO);
+		}
 	}
 
-	return send_message_and_unref(conn, reply);
+	return send_message_and_unref(conn,
+			dbus_message_new_method_return(msg));
 }
 
 static DBusHandlerResult remove_service_record(DBusConnection *conn,
