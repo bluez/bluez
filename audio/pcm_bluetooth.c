@@ -133,15 +133,6 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 			sizeof(period_count)) == 0)
 		return 0;
 
-	/* backward compatible to the old patch */
-
-	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
-			SCO_TXBUFS : SCO_RXBUFS;
-
-	if (setsockopt(cfg.fd, SOL_SCO, opt_name, &period_count,
-			sizeof(period_count)) == 0)
-		return 0;
-
 	SNDERR("%s (%d)", strerror(errno), errno);
 	SNDERR("Unable to set number of SCO buffers: please upgrade your "
 			"kernel!");
