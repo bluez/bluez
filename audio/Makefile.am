@@ -3,7 +3,7 @@ if AUDIOSERVICE
 if CONFIGFILES
 confdir = $(sysconfdir)/bluetooth
 
-conf_DATA = audio.service audio.conf
+conf_DATA = audio.service
 endif
 
 servicedir = $(libdir)/bluetooth
