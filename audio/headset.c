@@ -113,6 +113,7 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 					void *data);
 
 static gboolean disable_hfp = FALSE;
+static gboolean sco_over_hci = TRUE;
 
 static GIOChannel *hs_server = NULL;
 static GIOChannel *hf_server = NULL;
@@ -1800,6 +1801,8 @@ int headset_server_init(DBusConnection *conn, gboolean no_hfp,
 
 	disable_hfp = no_hfp;
 
+	sco_over_hci = sco_hci;
+
 	if (disable_hfp)
 		return 0;
 
@@ -1857,6 +1860,9 @@ void headset_exit(void)
 
 int headset_get_config(headset_t *headset, struct ipc_data_cfg *cfg)
 {
+	if (!sco_over_hci)
+		return -1;
+
 	if (headset->sco == NULL)
 		return -1;
 
