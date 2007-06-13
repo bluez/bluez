@@ -36,7 +36,11 @@
 
 #include "ipc.h"
 
+#ifdef ENABLE_DEBUG
 #define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
+#else
+#define DBG(fmt, arg...)
+#endif
 
 #ifndef SCO_TXBUFS
 #define SCO_TXBUFS 0x03
@@ -149,13 +153,15 @@ static snd_pcm_sframes_t bluetooth_read(snd_pcm_ioplug_t *io,
 	struct ipc_data_cfg cfg = data->cfg;
 	snd_pcm_uframes_t frames_to_write, ret;
 	unsigned char *buff;
-	int nrecv;
+	int nrecv, frame_size = 0;
 
 	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu, io->nonblock=%u",
 		areas->step, areas->first, offset, size, io->nonblock);
 
 	if (data->count > 0)
 		goto proceed;
+
+	frame_size = areas->step / 8;
 
 	nrecv = recv(cfg.fd, data->buffer, cfg.pkt_len,
 			MSG_WAITALL | (io->nonblock ? MSG_DONTWAIT : 0));
@@ -180,10 +186,10 @@ proceed:
 	if ((data->count + cfg.sample_size * size) <= cfg.pkt_len)
 		frames_to_write = size;
 	else
-		frames_to_write = (cfg.pkt_len - data->count) / cfg.sample_size;
+		frames_to_write = (cfg.pkt_len - data->count) / frame_size;
 
-	memcpy(buff, data->buffer + data->count, areas->step / 8 * frames_to_write);
-	data->count += (areas->step / 8 * frames_to_write);
+	memcpy(buff, data->buffer + data->count, frame_size * frames_to_write);
+	data->count += (frame_size * frames_to_write);
 	data->count %= cfg.pkt_len;
 
 	/* Return written frames count */
@@ -204,27 +210,27 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 	snd_pcm_sframes_t ret = 0;
 	snd_pcm_uframes_t frames_to_read;
 	uint8_t *buff;
-	int rsend, block_size;
+	int rsend, frame_size;
 
 	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu,"
 			"io->nonblock=%u", areas->step, areas->first,
 			offset, size, io->nonblock);
 
-	block_size = areas->step / 8;
-	if ((data->count + block_size * size) <= cfg.pkt_len)
+	frame_size = areas->step / 8;
+	if ((data->count + size * frame_size) <= cfg.pkt_len)
 		frames_to_read = size;
 	else
-		frames_to_read = (cfg.pkt_len - data->count) / block_size;
+		frames_to_read = (cfg.pkt_len - data->count) / frame_size;
 
 	DBG("count = %d, frames_to_read = %lu", data->count, frames_to_read);
 
 	/* Ready for more data */
 	buff = (uint8_t *) areas->addr + (areas->first + areas->step * offset) / 8;
-	memcpy(data->buffer + data->count, buff, block_size * frames_to_read);
+	memcpy(data->buffer + data->count, buff, frame_size * frames_to_read);
 
-	if ((data->count + block_size * frames_to_read) != cfg.pkt_len) {
+	if ((data->count + frames_to_read * frame_size) != cfg.pkt_len) {
 		/* Remember we have some frame in the pipe now */
-		data->count += block_size * frames_to_read;
+		data->count += frames_to_read * frame_size;
 		ret = frames_to_read;
 		goto done;
 	}
@@ -236,7 +242,7 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 		data->count = 0;
 
 		/* Increment hardware transmition pointer */
-		data->hw_ptr = (data->hw_ptr + cfg.pkt_len / block_size)
+		data->hw_ptr = (data->hw_ptr + cfg.pkt_len / frame_size)
 				% io->buffer_size;
 
 		ret = frames_to_read;
