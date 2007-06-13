@@ -41,8 +41,8 @@
 #include "headset.h"
 
 /* Configuration settings */
-static gboolean disable_hfp = FALSE;
-static gboolean sco_hci = TRUE;
+static gboolean disable_hfp = TRUE;
+static gboolean sco_hci = FALSE;
 
 static GMainLoop *main_loop = NULL;
 
