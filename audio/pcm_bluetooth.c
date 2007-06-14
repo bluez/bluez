@@ -84,14 +84,27 @@ static snd_pcm_sframes_t bluetooth_pointer(snd_pcm_ioplug_t *io)
 	return data->hw_ptr;
 }
 
+static void bluetooth_exit(struct bluetooth_data *data)
+{
+	if (data == NULL)
+		return;
+
+	if (data->sock >= 0)
+		close(data->sock);
+
+	if (data->buffer)
+		free(data->buffer);
+
+	free(data);
+}
+
 static int bluetooth_close(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
 
 	DBG("bluetooth_close %p", io);
 
-	free(data->buffer);
-	free(data);
+	bluetooth_exit(data);
 
 	return 0;
 }
@@ -517,6 +530,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 		stream == SND_PCM_STREAM_PLAYBACK ? "Playback" : "Capture");
 
 	data = malloc(sizeof(struct bluetooth_data));
+	memset(data, 0, sizeof(struct bluetooth_data));
 	if (!data) {
 		err = -ENOMEM;
 		goto error;
@@ -552,11 +566,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 	return 0;
 
 error:
-	if (data) {
-		if (data->sock >= 0)
-			close(data->sock);
-		free(data);
-	}
+	bluetooth_exit(data);
 
 	return err;
 }

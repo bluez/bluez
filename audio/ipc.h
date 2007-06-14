@@ -44,6 +44,7 @@
 #define PKT_TYPE_STATUS_RSP	3
 #define PKT_TYPE_CTL_REQ	4
 #define PKT_TYPE_CTL_RSP	5
+#define PKT_TYPE_CTL_NTFY	6
 
 /* Errors codes */
 #define PKT_ERROR_NONE		0
@@ -83,21 +84,26 @@ struct ipc_data_status {
 	uint8_t status;		/* Stream status */
 } __attribute__ ((packed));
 
+#define CTL_MODE_PLAYBACK	0
+#define CTL_MODE_CAPTURE	1
+#define CTL_MODE_GENERAL	2
+
 /* Supported control operations */
-#define DATA_CTL_POWER		0x40
-#define DATA_CTL_VOL_UP		0x41
-#define DATA_CTL_VOL_DOWN	0x42
-#define DATA_CTL_MUTE		0x43
-#define DATA_CTL_PLAY		0x44
-#define DATA_CTL_STOP		0x45
-#define DATA_CTL_PAUSE		0x46
-#define DATA_CTL_RECORD		0x47
-#define DATA_CTL_REWIND		0x48
-#define DATA_CTL_FAST_FORWARD	0x49
-#define DATA_CTL_EJECT		0x4A
-#define DATA_CTL_FORWARD	0x4B
-#define DATA_CTL_BACKWARD	0x4C
+#define CTL_KEY_POWER		0x40
+#define CTL_KEY_VOL_UP		0x41
+#define CTL_KEY_VOL_DOWN	0x42
+#define CTL_KEY_MUTE		0x43
+#define CTL_KEY_PLAY		0x44
+#define CTL_KEY_STOP		0x45
+#define CTL_KEY_PAUSE		0x46
+#define CTL_KEY_RECORD		0x47
+#define CTL_KEY_REWIND		0x48
+#define CTL_KEY_FAST_FORWARD	0x49
+#define CTL_KEY_EJECT		0x4A
+#define CTL_KEY_FORWARD		0x4B
+#define CTL_KEY_BACKWARD	0x4C
 
 struct ipc_data_ctl {
-	uint8_t operation;	/* Operation ID */
+	uint8_t mode;		/* Control Mode */
+	uint8_t key;		/* Control Key */
 }  __attribute__ ((packed));

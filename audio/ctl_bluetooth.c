@@ -33,7 +33,11 @@
 
 #include "ipc.h"
 
+#ifdef ENABLE_DEBUG
 #define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
+#else
+#define DBG(fmt, arg...)
+#endif
 
 #define BLUETOOTH_MINVOL 0
 #define BLUETOOTH_MAXVOL 15
@@ -53,15 +57,24 @@ static const char *vol_devices[2] = {
 	[BLUETOOTH_CAPTURE]	= "Capture volume",
 };
 
+static void bluetooth_exit(struct bluetooth_data *data)
+{
+	if (data == NULL)
+		return;
+
+	if (data->sock >= 0)
+		close(data->sock);
+
+	free(data);
+}
+
 static void bluetooth_close(snd_ctl_ext_t *ext)
 {
 	struct bluetooth_data *data = ext->private_data;
 
 	DBG("ext %p", ext);
 
-	close(data->sock);
-
-	free(data);
+	bluetooth_exit(data);
 }
 
 static int bluetooth_elem_count(snd_ctl_ext_t *ext)
@@ -125,48 +138,140 @@ static int bluetooth_get_integer_info(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 	return 0;
 }
 
+static int bluetooth_send_ctl(struct bluetooth_data *data,
+				struct ipc_packet *pkt, int len)
+{
+	int ret;
+
+	ret = send(data->sock, pkt, len, MSG_NOSIGNAL);
+	if (ret <= 0) {
+		SYSERR("Unable to request new volume value to server");
+		return  -errno;
+	}
+
+	ret = recv(data->sock, pkt, len, 0);
+	if (ret <= 0) {
+		SYSERR("Unable to receive new volume value from server");
+		return  -errno;
+	}
+
+	if(pkt->type != PKT_TYPE_CTL_RSP) {
+		SNDERR("Unexpected packet type %d received", pkt->type);
+		return -EINVAL;
+	}
+
+	if(pkt->length != sizeof(struct ipc_data_ctl)) {
+		SNDERR("Unexpected packet length %d received", pkt->length);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int bluetooth_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 								long *value)
 {
 	struct bluetooth_data *data = ext->private_data;
-	unsigned char buf[] = { 0x00, 0x00 };
-	int len;
+	struct ipc_packet *pkt;
+	struct ipc_data_ctl *ctl;
+	int len, ret;
 
 	DBG("ext %p key %ld", ext, key);
 
-	len = write(data->sock, buf, sizeof(buf));
-
+	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_ctl);
+	pkt = malloc(len);
+	memset(pkt, 0, len);
 	*value = 0;
 
-	return 0;
+	pkt->type = PKT_TYPE_CTL_REQ;
+	pkt->length = sizeof(struct ipc_data_ctl);
+	ctl = (struct ipc_data_ctl *) pkt->data;
+	ctl->mode = key;
+
+	if ((ret = bluetooth_send_ctl(data, pkt, len)) < 0)
+		goto done;
+
+	*value = ctl->key;
+done:
+	free(pkt);
+	return ret;
 }
 
 static int bluetooth_write_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 								long *value)
 {
 	struct bluetooth_data *data = ext->private_data;
-	unsigned char buf[] = { 0xff, 0xff };
-	int len;
+	struct ipc_packet *pkt;
+	struct ipc_data_ctl *ctl;
+	long current;
+	int len, ret;
 
 	DBG("ext %p key %ld", ext, key);
 
-	len = write(data->sock, buf, sizeof(buf));
+	if ((ret = bluetooth_read_integer(ext, key, &current)) < 0)
+		return ret;
 
-	return 0;
+	if (*value == current)
+		return 0;
+
+	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_ctl);
+	pkt = malloc(len);
+	memset(pkt, 0, len);
+
+	pkt->length = sizeof(struct ipc_data_ctl);
+	ctl = (struct ipc_data_ctl *) pkt->data;
+	ctl->mode = key;
+
+	while (*value != current) {
+		pkt->type = PKT_TYPE_CTL_REQ;
+		ctl->key = (*value > current) ? CTL_KEY_VOL_UP : CTL_KEY_VOL_DOWN;
+
+		if ((ret = bluetooth_send_ctl(data, pkt, len)) < 0)
+			break;
+
+		current = ctl->key;
+	}
+
+	free(pkt);
+	return ret;
 }
 
 static int bluetooth_read_event(snd_ctl_ext_t *ext, snd_ctl_elem_id_t *id,
 						unsigned int *event_mask)
 {
 	struct bluetooth_data *data = ext->private_data;
-	unsigned char buf[128];
-	int len;
+	struct ipc_packet *pkt;
+	struct ipc_data_ctl *ctl;
+	int len, ret;
 
-	//DBG("ext %p id %p", ext, id);
+	DBG("ext %p id %p", ext, id);
 
-	len = recv(data->sock, buf, sizeof(buf), MSG_DONTWAIT);
+	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_ctl);
+	pkt = malloc(len);
+	memset(pkt, 0, len);
 
-	return 0;
+	ret = recv(data->sock, pkt, len, MSG_DONTWAIT);
+	if (ret <= 0)
+		return  -errno;
+
+	if(pkt->type != PKT_TYPE_CTL_NTFY) {
+		SNDERR("Unexpected packet type %d received!", pkt->type);
+		return -EAGAIN;
+	}
+
+	if(pkt->length != sizeof(struct ipc_data_ctl)) {
+		SNDERR("Unexpected packet length %d received", pkt->length);
+		return -EAGAIN;
+	}
+
+	ctl = (struct ipc_data_ctl *) pkt->data;
+	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
+	snd_ctl_elem_id_set_name(id, ctl->mode == BLUETOOTH_PLAYBACK ?
+				vol_devices[BLUETOOTH_PLAYBACK] :
+				vol_devices[BLUETOOTH_CAPTURE]);
+	*event_mask = SND_CTL_EVENT_MASK_VALUE;
+
+	return 1;
 }
 
 static snd_ctl_ext_callback_t bluetooth_callback = {
@@ -181,69 +286,60 @@ static snd_ctl_ext_callback_t bluetooth_callback = {
 	.read_event		= bluetooth_read_event,
 };
 
-SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
+static int bluetooth_init(struct bluetooth_data *data)
 {
-	snd_config_iterator_t iter, next;
-	struct bluetooth_data *data;
-	struct sockaddr_un addr;
-	unsigned int id;
-	int sk, err;
+	int sk, err, id;
+	struct sockaddr_un addr = {
+		AF_UNIX, IPC_SOCKET_NAME
+	};
 
-	DBG("Bluetooth Control plugin");
-
-	snd_config_for_each(iter, next, conf) {
-		snd_config_t *n = snd_config_iterator_entry(iter);
-		const char *id;
-
-		if (snd_config_get_id(n, &id) < 0)
-			continue;
-
-		if (strcmp(id, "comment") == 0 || strcmp(id, "type") == 0)
-			continue;
-
-		SNDERR("Unknown field %s", id);
-
+	if (!data)
 		return -EINVAL;
-	}
+
+	memset(data, 0, sizeof(struct bluetooth_data));
+
+	data->sock = -1;
 
 	id = abs(getpid() * rand());
 
-	sk = socket(PF_LOCAL, SOCK_DGRAM, 0);
-	if (sk < 0) {
+	if ((sk = socket(PF_LOCAL, SOCK_STREAM, 0)) < 0) {
+		err = -errno;
 		SNDERR("Can't open socket");
 		return -errno;
 	}
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s/%d",
-			IPC_SOCKET_NAME, id);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		SNDERR("Can't bind socket");
-		close(sk);
-		return -errno;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path + 1, UNIX_PATH_MAX - 2, "%s", IPC_SOCKET_NAME);
-
+	DBG("Connecting to address: %s", addr.sun_path + 1);
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = -errno;
 		SNDERR("Can't connect socket");
 		close(sk);
-		return -errno;
+		return err;
 	}
-
-	data = malloc(sizeof(*data));
-	if (!data) {
-		close(sk);
-		return -ENOMEM;
-	}
-
-	memset(data, 0, sizeof(*data));
 
 	data->sock = sk;
+
+	return 0;
+}
+
+SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
+{
+	struct bluetooth_data *data;
+	int err;
+
+	DBG("Bluetooth Control plugin");
+
+	data = malloc(sizeof(struct bluetooth_data));
+	memset(data, 0, sizeof(struct bluetooth_data));
+	if (!data) {
+		err = -ENOMEM;
+		goto error;
+	}
+
+	err = bluetooth_init(data);
+	if (err < 0)
+		goto error;
+
+	memset(data, 0, sizeof(*data));
 
 	data->ext.version = SND_CTL_EXT_VERSION;
 	data->ext.card_idx = -1;
@@ -255,7 +351,7 @@ SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
 	strncpy(data->ext.mixername, "Bluetooth Audio", sizeof(data->ext.mixername) - 1);
 
 	data->ext.callback = &bluetooth_callback;
-	data->ext.poll_fd = sk;
+	data->ext.poll_fd = data->sock;
 	data->ext.private_data = data;
 
 	err = snd_ctl_ext_create(&data->ext, name, mode);
@@ -267,9 +363,7 @@ SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
 	return 0;
 
 error:
-	close(sk);
-
-	free(data);
+	bluetooth_exit(data);
 
 	return err;
 }
