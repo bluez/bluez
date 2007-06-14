@@ -963,6 +963,11 @@ Methods		dict GetInfo()
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.Failed
 
+		array{string} GetRemoteServiceIdentifiers(string address)
+
+			Possible errors: org.bluez.Error.InProgress
+					 org.bluez.Error.Failed
+
 		void FinishRemoteServiceTransaction(string address)
 
 			This method will finish all SDP transaction for that
