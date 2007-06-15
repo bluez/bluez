@@ -740,6 +740,7 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 			uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
+	const char *src, *dst;
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
 	int scanned, extracted = 0, len = 0;
@@ -774,6 +775,11 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 		goto failed;
 	}
 
+	src = get_address_from_message(ctxt->conn, ctxt->rq);
+	dbus_message_get_args(ctxt->rq, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_INVALID);
+
 	reply = dbus_message_new_method_return(ctxt->rq);
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -793,9 +799,6 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 		if (!rec)
 			break;
 
-		rsp += recsize;
-		extracted += recsize;
-
 		d = sdp_data_get(rec, SDP_ATTR_SVCLASS_ID_LIST);
 		if (d) {
 			const char *puuid;
@@ -804,7 +807,12 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 				dbus_message_iter_append_basic(&array_iter,
 						DBUS_TYPE_STRING, &puuid);
 		}
+
+		sdp_store_record(src, dst, rec->handle, rsp, recsize);
 		sdp_record_free(rec);
+
+		rsp += recsize;
+		extracted += recsize;
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
