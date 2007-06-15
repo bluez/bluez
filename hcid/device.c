@@ -204,6 +204,7 @@ int start_device(uint16_t dev_id)
 	struct hci_dev *dev;
 	struct hci_version ver;
 	uint8_t features[8], inqmode;
+	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x01, 0x00, 0x00 };
 	int dd, err;
 
 	ASSERT_DEV_ID;
@@ -261,6 +262,20 @@ int start_device(uint16_t dev_id)
 					dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
 		return -err;
+	}
+
+	if (ver.hci_rev > 1) {
+		if (features[5] & LMP_SNIFF_SUBR)
+			events[5] |= 0x20;
+
+		if (features[6] & LMP_EXT_INQ)
+			events[5] |= 0x40;
+
+		if (features[7] & LMP_LSTO)
+			events[6] |= 0x80;
+
+		hci_send_cmd(dd, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
+						sizeof(events), events);
 	}
 
 done:
