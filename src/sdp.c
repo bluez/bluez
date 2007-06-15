@@ -922,7 +922,8 @@ static sdp_data_t *extract_uuid(const uint8_t *p, int *len, sdp_record_t *rec)
 		return NULL;
 	}
 	d->dtd = *(uint8_t *) p;
-	sdp_pattern_add_uuid(rec, &d->val.uuid);
+	if (rec)
+		sdp_pattern_add_uuid(rec, &d->val.uuid);
 	return d;
 }
 
