@@ -742,7 +742,7 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 	struct transaction_context *ctxt = udata;
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
-	int scanned, n, attrlen, extracted = 0, len = 0;
+	int scanned, extracted = 0, len = 0;
 	uint8_t dtd = 0;
 
 	if (!ctxt)
@@ -781,44 +781,32 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 
 	/* Expected sequence of service class id list */
 	scanned = sdp_extract_seqtype(rsp, &dtd, &len);
-	if (!scanned || !len)
-		goto done;
 
 	rsp += scanned;
 	while (extracted < len) {
-		const char *puuid;
+		sdp_record_t *rec;
 		sdp_data_t *d;
-		int seqlen;
-		uint16_t attr;
+		int recsize;
 
-		seqlen = 0;
-		scanned = sdp_extract_seqtype(rsp, &dtd, &seqlen);
-		if (!scanned || !seqlen)
-			goto done;
-
-		extracted += (seqlen + scanned);
-
-		n = sizeof(uint8_t);
-		attrlen = 0;
-
-		rsp += scanned;
-		attr = ntohs(bt_get_unaligned((uint16_t *) (rsp + n)));
-		n += sizeof(uint16_t);
-		d = sdp_extract_attr(rsp + n, &attrlen, NULL);
-		if (!d)
+		recsize = 0;
+		rec = sdp_extract_pdu(rsp, &recsize);
+		if (!rec)
 			break;
 
-		d->attrId = attr;
-		puuid = extract_service_class(d);
-		if (puuid)
-			dbus_message_iter_append_basic(&array_iter,
-						DBUS_TYPE_STRING, &puuid);
-		sdp_data_free(d);
+		rsp += recsize;
+		extracted += recsize;
 
-		n += attrlen;
-		rsp += n;
+		d = sdp_data_get(rec, SDP_ATTR_SVCLASS_ID_LIST);
+		if (d) {
+			const char *puuid;
+			puuid = extract_service_class(d);
+			if (puuid)
+				dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING, &puuid);
+		}
+		sdp_record_free(rec);
 	}
-done:
+
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_message_and_unref(ctxt->conn, reply);
 
@@ -1062,7 +1050,7 @@ static int remote_svc_identifiers_conn_cb(struct transaction_context *ctxt)
 {
 	sdp_list_t *attrids, *search;
 	uuid_t uuid;
-	uint16_t attr;
+	uint32_t range = 0x0000ffff;
 
 	if (sdp_set_notify(ctxt->session,
 			remote_svc_identifiers_completed_cb, ctxt) < 0)
@@ -1071,15 +1059,14 @@ static int remote_svc_identifiers_conn_cb(struct transaction_context *ctxt)
 	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
 	search = sdp_list_append(0, &uuid);
 
-	attr = SDP_ATTR_SVCLASS_ID_LIST;
-	attrids = sdp_list_append(NULL, &attr);
+	attrids = sdp_list_append(NULL, &range);
 
 	/*
 	 * Create/send the search request and set the
 	 * callback to indicate the request completion
 	 */
 	if (sdp_service_search_attr_async(ctxt->session, search,
-				SDP_ATTR_REQ_INDIVIDUAL, attrids) < 0) {
+				SDP_ATTR_REQ_RANGE, attrids) < 0) {
 		sdp_list_free(search, NULL);
 		sdp_list_free(attrids, NULL);
 		return -sdp_get_error(ctxt->session);
