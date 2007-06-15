@@ -743,8 +743,9 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 	struct transaction_context *ctxt = udata;
 	const char *src, *dst;
 	DBusMessage *reply;
+	GSList *l = NULL;
 	DBusMessageIter iter, array_iter;
-	int scanned, extracted = 0, len = 0;
+	int scanned, extracted = 0, len = 0, recsize = 0;
 	uint8_t dtd = 0;
 
 	if (!ctxt)
@@ -823,35 +824,45 @@ done:
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
 	rsp += scanned;
-	while (extracted < len) {
+	for (; extracted < len; rsp += recsize, extracted += recsize) {
 		sdp_record_t *rec;
+		const char *puuid;
 		sdp_data_t *d;
-		int recsize;
 
 		recsize = 0;
 		rec = sdp_extract_pdu(rsp, &recsize);
 		if (!rec)
 			break;
 
+		sdp_store_record(src, dst, rec->handle, rsp, recsize);
+
 		d = sdp_data_get(rec, SDP_ATTR_SVCLASS_ID_LIST);
-		if (d) {
-			const char *puuid;
-			puuid = extract_service_class(d);
-			if (puuid)
-				dbus_message_iter_append_basic(&array_iter,
-						DBUS_TYPE_STRING, &puuid);
+		if (!d) {
+			sdp_record_free(rec);
+			continue;
 		}
 
-		sdp_store_record(src, dst, rec->handle, rsp, recsize);
+		puuid = extract_service_class(d);
 		sdp_record_free(rec);
+		if (!puuid)
+			continue;
 
-		rsp += recsize;
-		extracted += recsize;
+		l = g_slist_find_custom(l, puuid, (GCompareFunc) strcmp);
+		if (l)
+			continue;
+
+		dbus_message_iter_append_basic(&array_iter,
+				DBUS_TYPE_STRING, &puuid);
+		l = g_slist_append(l, g_strdup(puuid));
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_message_and_unref(ctxt->conn, reply);
 
+	if (l) {
+		g_slist_foreach(l, (GFunc) g_free, NULL);
+		g_slist_free(l);
+	}
 failed:
 	transaction_context_free(ctxt, TRUE);
 }
