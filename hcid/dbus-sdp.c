@@ -787,9 +787,9 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 		case PUBLIC_BROWSE_GROUP:
 			sdp_uuid16_create(&ctxt->uuid, L2CAP_UUID);
 			break;
-
-		/* FIXME: Try DeviceID(PNP_INFO_PROFILE_ID) */
-
+		case L2CAP_UUID:
+			sdp_uuid16_create(&ctxt->uuid, PNP_INFO_SVCLASS_ID);
+			break;
 		default: /* Reply an empty array */
 			goto done;
 		}
