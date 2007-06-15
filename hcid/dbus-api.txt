@@ -965,6 +965,10 @@ Methods		dict GetInfo()
 
 		array{string} GetRemoteServiceIdentifiers(string address)
 
+			This method will request the SDP database of a remote
+			device for all supported services. The identifiers are
+			returned in UUID 128 string format.
+
 			Possible errors: org.bluez.Error.InProgress
 					 org.bluez.Error.Failed
 
