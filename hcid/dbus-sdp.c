@@ -676,7 +676,7 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err,
 	reply = dbus_message_new_method_return(ctxt->rq);
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_TYPE_UINT32_AS_STRING, &array_iter);
+				DBUS_TYPE_UINT32_AS_STRING, &array_iter);
 
 	pdata = rsp;
 
@@ -697,10 +697,127 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err,
 		pdata += sizeof(uint32_t);
 
 		dbus_message_iter_append_basic(&array_iter,
-				DBUS_TYPE_UINT32, &handle);
+						DBUS_TYPE_UINT32, &handle);
 	} while (--tsrc);
 
 
+done:
+	dbus_message_iter_close_container(&iter, &array_iter);
+	send_message_and_unref(ctxt->conn, reply);
+
+failed:
+	transaction_context_free(ctxt, TRUE);
+}
+
+static const char *extract_service_class(sdp_data_t *d)
+{
+	sdp_data_t *seq;
+	uuid_t *uuid;
+	static char uuid_str[37];
+
+	/* Expected sequence of UUID16 */
+	if (d->attrId != SDP_ATTR_SVCLASS_ID_LIST || d->dtd != SDP_SEQ8)
+		return NULL;
+
+	if (!d->val.dataseq)
+		return NULL;
+
+	seq = d->val.dataseq;
+	if (!SDP_IS_UUID(seq->dtd))
+		return NULL;
+
+	uuid = &seq->val.uuid;
+	if (uuid->type != SDP_UUID16)
+		return NULL;
+
+	sprintf(uuid_str, "0000%04X-0000-1000-8000-00805F9B34FB",
+							uuid->value.uuid16);
+
+	return uuid_str;
+}
+
+static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
+			uint8_t *rsp, size_t size, void *udata)
+{
+	struct transaction_context *ctxt = udata;
+	DBusMessage *reply;
+	DBusMessageIter iter, array_iter;
+	int scanned, n, attrlen, extracted = 0, len = 0;
+	uint8_t dtd = 0;
+
+	if (!ctxt)
+		return;
+
+	if (err == 0xffff) {
+		/* Check for protocol error or I/O error */
+		int sdp_err = sdp_get_error(ctxt->session);
+		if (sdp_err < 0) {
+			error("search failed: Invalid session!");
+			error_failed(ctxt->conn, ctxt->rq, EINVAL);
+			goto failed;
+		}
+
+		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
+		error_failed(ctxt->conn, ctxt->rq, sdp_err);
+		goto failed;
+	}
+
+	if (type == SDP_ERROR_RSP) {
+		error_sdp_failed(ctxt->conn, ctxt->rq, err);
+		goto failed;
+	}
+
+	/* Check response PDU ID */
+	if (type != SDP_SVC_SEARCH_ATTR_RSP) {
+		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
+		error_failed(ctxt->conn, ctxt->rq, EPROTO);
+		goto failed;
+	}
+
+	reply = dbus_message_new_method_return(ctxt->rq);
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	/* Expected sequence of service class id list */
+	scanned = sdp_extract_seqtype(rsp, &dtd, &len);
+	if (!scanned || !len)
+		goto done;
+
+	rsp += scanned;
+	while (extracted < len) {
+		const char *puuid;
+		sdp_data_t *d;
+		int seqlen;
+		uint16_t attr;
+
+		seqlen = 0;
+		scanned = sdp_extract_seqtype(rsp, &dtd, &seqlen);
+		if (!scanned || !seqlen)
+			goto done;
+
+		extracted += (seqlen + scanned);
+
+		n = sizeof(uint8_t);
+		attrlen = 0;
+
+		rsp += scanned;
+		attr = ntohs(bt_get_unaligned((uint16_t *) (rsp + n)));
+		n += sizeof(uint16_t);
+		d = sdp_extract_attr(rsp + n, &attrlen, NULL);
+		if (!d)
+			break;
+
+		d->attrId = attr;
+		puuid = extract_service_class(d);
+		if (puuid)
+			dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING, &puuid);
+		sdp_data_free(d);
+
+		n += attrlen;
+		rsp += n;
+	}
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_message_and_unref(ctxt->conn, reply);
@@ -941,6 +1058,39 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 	return 0;
 }
 
+static int remote_svc_identifiers_conn_cb(struct transaction_context *ctxt)
+{
+	sdp_list_t *attrids, *search;
+	uuid_t uuid;
+	uint16_t attr;
+
+	if (sdp_set_notify(ctxt->session,
+			remote_svc_identifiers_completed_cb, ctxt) < 0)
+		return -EINVAL;
+
+	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
+	search = sdp_list_append(0, &uuid);
+
+	attr = SDP_ATTR_SVCLASS_ID_LIST;
+	attrids = sdp_list_append(NULL, &attr);
+
+	/*
+	 * Create/send the search request and set the
+	 * callback to indicate the request completion
+	 */
+	if (sdp_service_search_attr_async(ctxt->session, search,
+				SDP_ATTR_REQ_INDIVIDUAL, attrids) < 0) {
+		sdp_list_free(search, NULL);
+		sdp_list_free(attrids, NULL);
+		return -sdp_get_error(ctxt->session);
+	}
+
+	sdp_list_free(search, NULL);
+	sdp_list_free(attrids, NULL);
+
+	return 0;
+}
+
 DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
@@ -970,6 +1120,32 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 
 	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, remote_svc_handles_conn_cb, &err)) {
+		error("Search request failed: %s (%d)", strerror(err), err);
+		return error_failed(conn, msg, err);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+DBusHandlerResult get_remote_svc_identifiers(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	struct adapter *adapter = data;
+	const char *dst;
+	int err;
+
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
+
+	if (!dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &dst,
+			DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg);
+
+	if (find_pending_connect(dst))
+		return error_service_search_in_progress(conn, msg);
+
+	if (!connect_request(conn, msg, adapter->dev_id,
+				dst, remote_svc_identifiers_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return error_failed(conn, msg, err);
 	}

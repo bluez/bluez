@@ -1265,6 +1265,13 @@ static DBusHandlerResult adapter_get_remote_svc_handles(DBusConnection *conn,
 	return get_remote_svc_handles(conn, msg, data);
 }
 
+static DBusHandlerResult adapter_get_remote_svc_identifiers(DBusConnection *conn,
+								DBusMessage *msg,
+								void *data)
+{
+	return get_remote_svc_identifiers(conn, msg, data);
+}
+
 static DBusHandlerResult adapter_finish_sdp_transact(DBusConnection *conn,
 							DBusMessage *msg,
 							void *data)
@@ -3138,6 +3145,8 @@ static DBusMethodVTable adapter_methods[] = {
 		"su",	"s"	},
 	{ "GetRemoteServiceHandles",		adapter_get_remote_svc_handles,
 		"ss",	"au"	},
+	{ "GetRemoteServiceIdentifiers",	adapter_get_remote_svc_identifiers,
+		"s",	"as"	},
 	{ "FinishRemoteServiceTransaction",	adapter_finish_sdp_transact,
 		"s",	""	},
 

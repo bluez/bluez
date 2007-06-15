@@ -35,6 +35,8 @@ typedef enum {
 
 DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data);
 
+DBusHandlerResult get_remote_svc_identifiers(DBusConnection *conn, DBusMessage *msg, void *data);
+
 DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg, void *data, sdp_format_t format);
 
 DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn, DBusMessage *msg, void *data);
