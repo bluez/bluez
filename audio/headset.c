@@ -62,6 +62,9 @@
 
 #define BUF_SIZE 1024
 
+#define HEADSET_GAIN_SPEAKER 'S'
+#define HEADSET_GAIN_MICROPHONE 'M'
+
 typedef enum {
 	HEADSET_EVENT_KEYPRESS,
 	HEADSET_EVENT_GAIN,
@@ -107,6 +110,9 @@ struct headset {
 
 	headset_state_t state;
 	struct pending_connect *pending_connect;
+
+	int sp_gain;
+	int mic_gain;
 };
 
 static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
@@ -142,19 +148,30 @@ static void hs_signal_gain_setting(audio_device_t *device, const char *buf)
 		return;
 	}
 
+	gain = (dbus_uint16_t) strtol(&buf[5], NULL, 10);
+
+	if (gain > 15) {
+		error("Invalid gain value received: %u", gain);
+		return;
+	}
+
 	switch (buf[3]) {
-	case 'S':
+	case HEADSET_GAIN_SPEAKER:
+		if (device->headset->sp_gain == gain)
+			return;
 		name = "SpeakerGainChanged";
+		device->headset->sp_gain = gain;
 		break;
-	case 'M':
+	case HEADSET_GAIN_MICROPHONE:
+		if (device->headset->mic_gain == gain)
+			return;
 		name = "MicrophoneGainChanged";
+		device->headset->mic_gain = gain;
 		break;
 	default:
 		error("Unknown gain setting");
 		return;
 	}
-
-	gain = (dbus_uint16_t) strtol(&buf[5], NULL, 10);
 
 	dbus_connection_emit_signal(connection, device->object_path,
 					AUDIO_HEADSET_INTERFACE, name,
@@ -388,6 +405,32 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
+static GIOError headset_send(headset_t *hs, const char *str)
+{
+	GIOError err;
+	gsize total_written, written, count;
+
+	assert(hs != NULL);
+
+	if (hs->state < HEADSET_STATE_CONNECTED || !hs->rfcomm) {
+		error("headset_send: the headset is not connected");
+		return G_IO_ERROR_UNKNOWN;
+	}
+
+	count = strlen(str);
+	written = total_written = 0;
+
+	while (total_written < count) {
+		err = g_io_channel_write(hs->rfcomm, str + total_written,
+					count - total_written, &written);
+		if (err != G_IO_ERROR_NONE)
+			return err;
+		total_written += written;
+	}
+
+	return G_IO_ERROR_NONE;
+}
+
 static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 				audio_device_t *device)
 {
@@ -395,6 +438,7 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	int ret, sk, err, flags;
 	socklen_t len;
 	DBusMessage *reply;
+	char str[13];
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -444,6 +488,16 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	dbus_connection_emit_signal(connection, device->object_path,
 					AUDIO_HEADSET_INTERFACE,
 					"Playing", DBUS_TYPE_INVALID);
+
+	if (hs->sp_gain >= 0) {
+		snprintf(str, sizeof(str) - 1, "\r\n+VGS=%u\r\n", hs->sp_gain);
+		headset_send(device->headset, str);
+	}
+
+	if (hs->mic_gain >= 0) {
+		snprintf(str, sizeof(str) - 1, "\r\n+VGM=%u\r\n", hs->sp_gain);
+		headset_send(device->headset, str);
+	}
 
 	return FALSE;
 
@@ -1266,40 +1320,13 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_HANDLED;;
 }
 
-static GIOError headset_send_ring(audio_device_t *device)
-{
-	struct headset *hs = device->headset;
-	const char *ring_str = "\r\nRING\r\n";
-	GIOError err;
-	gsize total_written, written, count;
-
-	assert(hs != NULL);
-	if (hs->state < HEADSET_STATE_CONNECTED || !hs->rfcomm) {
-		error("the headset %s is not connected", device->object_path);
-		return G_IO_ERROR_UNKNOWN;
-	}
-
-	count = strlen(ring_str);
-	written = total_written = 0;
-
-	while (total_written < count) {
-		err = g_io_channel_write(hs->rfcomm, ring_str + total_written,
-					count - total_written, &written);
-		if (err != G_IO_ERROR_NONE)
-			return err;
-		total_written += written;
-	}
-
-	return G_IO_ERROR_NONE;
-}
-
 static gboolean ring_timer_cb(gpointer data)
 {
 	audio_device_t *device = data;
 
 	assert(device != NULL);
 
-	if (headset_send_ring(device) != G_IO_ERROR_NONE)
+	if (headset_send(device->headset, "\r\nRING\r\n") != G_IO_ERROR_NONE)
 		error("Sending RING failed");
 
 	return TRUE;
@@ -1328,7 +1355,7 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 		goto done;
 	}
 
-	if (headset_send_ring(device) != G_IO_ERROR_NONE) {
+	if (headset_send(device->headset, "\r\nRING\r\n") != G_IO_ERROR_NONE) {
 		dbus_message_unref(reply);
 		return err_failed(connection, msg, "Failed");
 	}
@@ -1466,6 +1493,143 @@ failed:
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult hs_get_speaker_gain(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	audio_device_t *device = data;
+	struct headset *hs = device->headset;
+	DBusMessage *reply;
+	dbus_uint16_t gain;
+
+	assert(hs);
+
+	if (hs->state < HEADSET_STATE_CONNECTED || hs->sp_gain < 0)
+		return err_not_available(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	gain = (dbus_uint16_t) hs->sp_gain;
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT16, &gain,
+					DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, reply);
+	
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult hs_get_mic_gain(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	audio_device_t *device = data;
+	struct headset *hs = device->headset;
+	DBusMessage *reply;
+	dbus_uint16_t gain;
+
+	assert(hs);
+
+	if (hs->state < HEADSET_STATE_CONNECTED || hs->mic_gain < 0)
+		return err_not_available(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	gain = (dbus_uint16_t) hs->mic_gain;
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT16, &gain,
+					DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, reply);
+	
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult hs_set_gain(DBusConnection *conn,
+					DBusMessage *msg,
+					void *data, char type)
+{
+	audio_device_t *device = data;
+	struct headset *hs = device->headset;
+	DBusMessage *reply;
+	DBusError derr;
+	dbus_uint16_t gain;
+	char str[13];
+
+	assert(hs);
+
+	if (hs->state < HEADSET_STATE_CONNECTED)
+		return err_not_connected(conn, msg);
+
+	dbus_error_init(&derr);
+	dbus_message_get_args(msg, &derr, DBUS_TYPE_UINT16, &gain,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	if (gain > 15)
+		return err_invalid_args(conn, msg,
+					"Must be less than or equal to 15");
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (hs->state != HEADSET_STATE_PLAYING)
+		goto done;
+
+	snprintf(str, sizeof(str) - 1, "\r\n+VG%c=%u\r\n", type, gain);
+
+	if (headset_send(device->headset, str) != G_IO_ERROR_NONE) {
+		dbus_message_unref(reply);
+		return err_failed(conn, msg, "Unable to send to headset");
+	}
+
+done:
+	if (type == HEADSET_GAIN_SPEAKER) {
+		hs->sp_gain = gain;
+		dbus_connection_emit_signal(conn, device->object_path,
+						AUDIO_HEADSET_INTERFACE,
+						"SpeakerGainChanged",
+						DBUS_TYPE_UINT16, &gain,
+						DBUS_TYPE_INVALID);
+	}
+	else {
+		hs->mic_gain = gain;
+		dbus_connection_emit_signal(conn, device->object_path,
+						AUDIO_HEADSET_INTERFACE,
+						"MicrophoneGainChanged",
+						DBUS_TYPE_UINT16, &gain,
+						DBUS_TYPE_INVALID);
+	}
+
+	send_message_and_unref(conn, reply);
+	
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult hs_set_speaker_gain(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	return hs_set_gain(conn, msg, data, HEADSET_GAIN_SPEAKER);
+}
+
+static DBusHandlerResult hs_set_mic_gain(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	return hs_set_gain(conn, msg, data, HEADSET_GAIN_MICROPHONE);
+}
+
 static DBusMethodVTable headset_methods[] = {
 	{ "Connect",		hs_connect,		"",	""	},
 	{ "Disconnect",		hs_disconnect,		"",	""	},
@@ -1475,6 +1639,10 @@ static DBusMethodVTable headset_methods[] = {
 	{ "Play",		hs_play,		"",	""	},
 	{ "Stop",		hs_stop,		"",	""	},
 	{ "IsPlaying",		hs_is_playing,		"",	"b"	},
+	{ "GetSpeakerGain",	hs_get_speaker_gain,	"",	"q"	},
+	{ "GetMicrophoneGain",	hs_get_mic_gain,	"",	"q"	},
+	{ "SetSpeakerGain",	hs_set_speaker_gain,	"q",	""	},
+	{ "SetMicrophoneGain",	hs_set_mic_gain,	"q",	""	},
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -1560,6 +1728,8 @@ headset_t *headset_init(const char *object_path, sdp_record_t *record,
 
 	headset = g_new0(headset_t, 1);
 	headset->rfcomm_ch = -1;
+	headset->sp_gain = -1;
+	headset->mic_gain = -1;
 
 	if (!record)
 		goto register_iface;

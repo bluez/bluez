@@ -134,6 +134,24 @@ Methods		void Connect()
 			Returns true if an audio connection to the headset
 			is active.
 
+		uint16 GetSpeakerGain()
+
+			Returns the current speaker gain if available,
+			otherwise returns the error NotAvailable.
+
+		uint16 GetMicrophoneGain()
+
+			Returns the current microphone gain if available,
+			otherwise returns the error NotAvailable.
+
+		void SetSpeakerGain(uint16 gain)
+
+			Changes the current speaker gain if possible.
+
+		void SetMicrophoneGain(uint16 gain)
+
+			Changes the current speaker gain if possible.
+
 Signals		void AnswerRequested()
 
 			Sent when the answer button is pressed on the headset

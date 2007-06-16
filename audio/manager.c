@@ -143,6 +143,12 @@ DBusHandlerResult err_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 				"Does not exist");
 }
 
+DBusHandlerResult err_not_available(DBusConnection *conn, DBusMessage *msg)
+{
+	return error_reply(conn, msg, "org.bluez.audio.Error.NotAvailable",
+				"Not available");
+}
+
 DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
 				const char *dsc)
 {
