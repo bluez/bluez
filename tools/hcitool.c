@@ -905,9 +905,11 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	}
 
 	if ((di.features[7] & LMP_EXT_FEAT) && (features[7] & LMP_EXT_FEAT)) {
-		if (hci_read_remote_ext_features(dd, handle, 0, &max_page, features, 20000) == 0)
+		if (hci_read_remote_ext_features(dd, handle, 0,
+					&max_page, features, 20000) == 0)
 			if (max_page > 0)
-				printf("\tExtended features: %d pages\n", max_page);
+				printf("\tExtended features: %d page%s\n",
+					max_page, max_page > 1 ? "s" : "");
 	}
 
 	if (cc) {
