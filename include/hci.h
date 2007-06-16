@@ -249,8 +249,11 @@ enum {
 #define LMP_EDR_3S_ESCO	0x80
 
 #define LMP_EXT_INQ	0x01
+#define LMP_ERR_DAT_REP	0x20
+#define LMP_NFLUSH_PKTS	0x40
 
 #define LMP_LSTO	0x01
+#define LMP_INQ_TX_PWR	0x02
 #define LMP_EXT_FEAT	0x80
 
 /* Link policies */

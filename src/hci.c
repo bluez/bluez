@@ -600,14 +600,14 @@ static hci_map lmp_features_map[8][9] = {
 		{ "<no. 50>",		0x04		},	/* Bit 2 */
 		{ "<no. 51>",		0x08		},	/* Bit 3 */
 		{ "<no. 52>",		0x10		},	/* Bit 4 */
-		{ "<no. 53>",		0x20		},	/* Bit 5 */
-		{ "<no. 54>",		0x40		},	/* Bit 6 */
+		{ "<err. data report>",	LMP_ERR_DAT_REP	},	/* Bit 5 */
+		{ "<non-flush flag>",	LMP_NFLUSH_PKTS	},	/* Bit 6 */
 		{ "<no. 55>",		0x80		},	/* Bit 7 */
 		{ NULL }
 	},
 	{	/* Byte 7 */
 		{ "<LSTO>",		LMP_LSTO	},	/* Bit 1 */
-		{ "<no. 57>",		0x02		},	/* Bit 1 */
+		{ "<inquiry TX power>",	LMP_INQ_TX_PWR	},	/* Bit 1 */
 		{ "<no. 58>",		0x04		},	/* Bit 2 */
 		{ "<no. 59>",		0x08		},	/* Bit 3 */
 		{ "<no. 60>",		0x10		},	/* Bit 4 */
