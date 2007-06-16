@@ -50,7 +50,7 @@ static inline uint16_t get_manufacturer(void)
 	return (manufacturer == DEFAULT_COMPID ? parser.defcompid : manufacturer);
 }
 
-#define EVENT_NUM 55
+#define EVENT_NUM 61
 static char *event_str[EVENT_NUM + 1] = {
 	"Unknown",
 	"Inquiry Complete",
@@ -100,6 +100,7 @@ static char *event_str[EVENT_NUM + 1] = {
 	"Synchronous Connect Changed",
 	"Sniff Subrate",
 	"Extended Inquiry Result",
+	"Encryption Key Refresh Complete",
 	"Unknown",
 	"Unknown",
 	"Unknown",
@@ -108,6 +109,11 @@ static char *event_str[EVENT_NUM + 1] = {
 	"Unknown",
 	"Unknown",
 	"Link Supervision Timeout Change",
+	"Enhanced Flush Complete",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Remote Host Supported Features Notification",
 };
 
 #define CMD_LINKCTL_NUM 42
