@@ -373,6 +373,7 @@ int main(int argc, char *argv[])
 	DBusConnection *system_bus;
 	GIOChannel *server_io;
 	struct sigaction sa;
+	char *addr;
 
 	start_logging("echo", "Bluetooth echo service ver %s", VERSION);
 
@@ -387,6 +388,12 @@ int main(int argc, char *argv[])
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
+
+	enable_debug();
+
+	addr = getenv("BLUETOOTHD_ADDRESS");
+
+	debug("Bluetooth daemon at %s", addr);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 

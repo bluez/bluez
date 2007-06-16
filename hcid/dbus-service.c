@@ -43,6 +43,7 @@
 #include "dbus-helper.h"
 #include "hcid.h"
 #include "notify.h"
+#include "server.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-manager.h"
@@ -408,7 +409,7 @@ static gboolean service_startup_timeout(gpointer data)
 int service_start(struct service *service, DBusConnection *conn)
 {
 	DBusError derr;
-	char *argv[2], command[PATH_MAX];
+	char *addr, *argv[2], *envp[2], command[PATH_MAX], address[256];
 
 	if (!dbus_connection_add_filter(conn, service_filter, service, NULL)) {
 		error("Unable to add signal filter");
@@ -425,11 +426,19 @@ int service_start(struct service *service, DBusConnection *conn)
 	}
 
 	snprintf(command, sizeof(command) - 1, "%s/bluetoothd-service-%s",
-			SERVICEDIR, service->ident);
+						SERVICEDIR, service->ident);
 	argv[0] = command;
 	argv[1] = NULL;
 
-	if (!g_spawn_async(SERVICEDIR, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
+	addr = get_local_server_address();
+
+	snprintf(address, sizeof(address) - 1, "BLUETOOTHD_ADDRESS=%s", addr);
+	envp[0] = address;
+	envp[1] = NULL;
+
+	dbus_free(addr);
+
+	if (!g_spawn_async(SERVICEDIR, argv, envp, G_SPAWN_DO_NOT_REAP_CHILD,
 				service_setup, service, &service->pid, NULL)) {
 		error("Unable to execute %s", argv[0]);
 		dbus_connection_remove_filter(conn, service_filter, service);

@@ -59,6 +59,11 @@ static void handle_connection(DBusServer *server, DBusConnection *conn, void *da
 
 static DBusServer *server = NULL;
 
+char *get_local_server_address(void)
+{
+	return dbus_server_get_address(server);
+}
+
 void init_local_server(void)
 {
 	DBusError err;
