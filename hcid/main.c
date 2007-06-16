@@ -50,6 +50,7 @@
 
 #include "hcid.h"
 #include "sdpd.h"
+#include "server.h"
 #include "dbus-common.h"
 #include "dbus-service.h"
 #include "dbus-database.h"
@@ -870,6 +871,8 @@ int main(int argc, char *argv[])
 
 	notify_init();
 
+	init_local_server();
+
 	init_services(CONFIGDIR);
 
 	/* Start event processor */
@@ -883,6 +886,8 @@ int main(int argc, char *argv[])
 	hcid_dbus_exit();
 
 	notify_close();
+
+	shutdown_local_server();
 
 	cleanup_sdp_session();
 
