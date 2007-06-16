@@ -328,7 +328,7 @@ static char *cmd_testing_str[CMD_TESTING_NUM + 1] = {
 	"Unknown",
 };
 
-#define ERROR_CODE_NUM 53
+#define ERROR_CODE_NUM 56
 static char *error_code_str[ERROR_CODE_NUM + 1] = {
 	"Success",
 	"Unknown HCI Command",
@@ -384,6 +384,9 @@ static char *error_code_str[ERROR_CODE_NUM + 1] = {
 	"Reserved",
 	"Reserved Slot Violation",
 	"Role Switch Failed",
+	"Extended Inquiry Response Too Large",
+	"Unknown",
+	"Unknown",
 };
 
 static char *status2str(uint8_t status)
