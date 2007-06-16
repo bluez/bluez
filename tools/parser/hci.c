@@ -116,7 +116,7 @@ static char *event_str[EVENT_NUM + 1] = {
 	"Remote Host Supported Features Notification",
 };
 
-#define CMD_LINKCTL_NUM 42
+#define CMD_LINKCTL_NUM 49
 static char *cmd_linkctl_str[CMD_LINKCTL_NUM + 1] = {
 	"Unknown",
 	"Inquiry",
@@ -161,6 +161,13 @@ static char *cmd_linkctl_str[CMD_LINKCTL_NUM + 1] = {
 	"Setup Synchronous Connection",
 	"Accept Synchronous Connection",
 	"Reject Synchronous Connection",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
 };
 
 #define CMD_LINKPOL_NUM 17
@@ -182,10 +189,10 @@ static char *cmd_linkpol_str[CMD_LINKPOL_NUM + 1] = {
 	"Read Default Link Policy Settings",
 	"Write Default Link Policy Settings",
 	"Flow Specification",
-	"Sniff Subrate",
+	"Sniff Subrating",
 };
 
-#define CMD_HOSTCTL_NUM 82
+#define CMD_HOSTCTL_NUM 95
 static char *cmd_hostctl_str[CMD_HOSTCTL_NUM + 1] = {
 	"Unknown",
 	"Set Event Mask",
@@ -270,6 +277,20 @@ static char *cmd_hostctl_str[CMD_HOSTCTL_NUM + 1] = {
 	"Unknown",
 	"Read Extended Inquiry Response",
 	"Write Extended Inquiry Response",
+	"Refresh Encryption Key",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Read Inquiry Response Transmit Power Level",
+	"Write Inquiry Response Transmit Power Level",
+	"Read Default Erroneous Data Reporting",
+	"Write Default Erroneous Data Reporting",
+	"Unknown",
+	"Unknown",
+	"Unknown",
+	"Enhanced Flush"
+	"Unknown",
 };
 
 #define CMD_INFO_NUM 9
@@ -296,6 +317,15 @@ static char *cmd_status_str[CMD_STATUS_NUM + 1] = {
 	"Read RSSI",
 	"Read AFH Channel Map",
 	"Read Clock",
+};
+
+#define CMD_TESTING_NUM 4
+static char *cmd_testing_str[CMD_TESTING_NUM + 1] = {
+	"Unknown",
+	"Read Loopback Mode",
+	"Write Loopback Mode",
+	"Enable Device Under Test mode",
+	"Unknown",
 };
 
 #define ERROR_CODE_NUM 53
@@ -411,7 +441,10 @@ static char *opcode2str(uint16_t opcode)
 		break;
 
 	case OGF_TESTING_CMD:
-		cmd = "Testing";
+		if (ocf <= CMD_TESTING_NUM)
+			cmd = cmd_testing_str[ocf];
+		else
+			cmd = "Unknown";
 		break;
 
 	case OGF_VENDOR_CMD:
