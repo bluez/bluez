@@ -917,7 +917,7 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	}
 
 	if (!array) {
-		error("Unable to get handle array from reply");
+		error("get_record_reply: Unable to get handle array from reply");
 		goto failed_not_supported;
 	}
 
@@ -1188,7 +1188,7 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	}
 
 	if (!array) {
-		error("Unable to get handle array from reply");
+		error("get_handles_reply: Unable to get handle array from reply");
 		if (c->msg) 
 			err_not_supported(connection, c->msg);
 		goto failed;
