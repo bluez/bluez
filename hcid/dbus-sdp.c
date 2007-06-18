@@ -79,6 +79,7 @@ struct transaction_context {
 	GIOChannel	*io;
 	guint		io_id;
 	uuid_t		uuid;
+	GSList		*identifiers;
 
 	/* Used for internal async get remote service record implementation */
 	get_record_data_t *call;
@@ -421,6 +422,11 @@ static void transaction_context_free(void *udata, gboolean cache)
 		g_io_channel_unref(ctxt->io);
 	}
 
+	if (ctxt->identifiers) {
+		g_slist_foreach(ctxt->identifiers, (GFunc) g_free, NULL);
+		g_slist_free(ctxt->identifiers);
+	}
+
 	g_free(ctxt);
 }
 
@@ -731,17 +737,43 @@ static const char *extract_service_class(sdp_data_t *d)
 	if (uuid->type != SDP_UUID16)
 		return NULL;
 
-	sprintf(uuid_str, "0000%04X-0000-1000-8000-00805F9B34FB",
+	sprintf(uuid_str, "0000%04x-0000-1000-8000-00805f9b34fb",
 							uuid->value.uuid16);
 
 	return uuid_str;
+}
+
+static int service_search_attr(struct transaction_context *ctxt, uint16_t uuid)
+{
+	sdp_list_t *attrids, *search;
+	uint32_t range = 0x0000ffff;
+	int ret = 0;
+
+	sdp_uuid16_create(&ctxt->uuid, uuid);
+
+	search = sdp_list_append(0, &ctxt->uuid);
+	attrids = sdp_list_append(NULL, &range);
+
+	/*
+	 * Create/send the search request and set the
+	 * callback to indicate the request completion
+	 */
+	if (sdp_service_search_attr_async(ctxt->session, search,
+				SDP_ATTR_REQ_RANGE, attrids) < 0)
+		ret = -sdp_get_error(ctxt->session);
+
+	sdp_list_free(search, NULL);
+	sdp_list_free(attrids, NULL);
+
+	return ret;
 }
 
 static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 			uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
-	const char *src, *dst;
+	const char *src, *dst, *puuid;
+	const char *devid_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 	DBusMessage *reply;
 	GSList *l = NULL;
 	DBusMessageIter iter, array_iter;
@@ -777,56 +809,15 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 		goto failed;
 	}
 
-	scanned = sdp_extract_seqtype(rsp, &dtd, &len);
-
-	 /* When the sequence is empty: check for L2CAP/DeviceID */
-	if (!len && ctxt->uuid.type == SDP_UUID16) {
-		uint32_t range = 0x0000ffff;
-		sdp_list_t *attrids, *search;
-
-		switch(ctxt->uuid.value.uuid16) {
-		case PUBLIC_BROWSE_GROUP:
-			sdp_uuid16_create(&ctxt->uuid, L2CAP_UUID);
-			break;
-		case L2CAP_UUID:
-			sdp_uuid16_create(&ctxt->uuid, PNP_INFO_SVCLASS_ID);
-			break;
-		default: /* Reply an empty array */
-			goto done;
-		}
-
-		search = sdp_list_append(0, &ctxt->uuid);
-		attrids = sdp_list_append(NULL, &range);
-
-		if (sdp_service_search_attr_async(ctxt->session, search,
-					SDP_ATTR_REQ_RANGE, attrids) < 0) {
-			sdp_list_free(search, NULL);
-			sdp_list_free(attrids, NULL);
-			goto done;
-		}
-
-		sdp_list_free(search, NULL);
-		sdp_list_free(attrids, NULL);
-
-		/* Wait the L2CAP/DeviceID query */
-		return;
-	}
-
-done:
 	src = get_address_from_message(ctxt->conn, ctxt->rq);
 	dbus_message_get_args(ctxt->rq, NULL,
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_INVALID);
 
-	reply = dbus_message_new_method_return(ctxt->rq);
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_STRING_AS_STRING, &array_iter);
-
+	scanned = sdp_extract_seqtype(rsp, &dtd, &len);
 	rsp += scanned;
 	for (; extracted < len; rsp += recsize, extracted += recsize) {
 		sdp_record_t *rec;
-		const char *puuid;
 		sdp_data_t *d;
 
 		recsize = 0;
@@ -847,22 +838,41 @@ done:
 		if (!puuid)
 			continue;
 
-		l = g_slist_find_custom(l, puuid, (GCompareFunc) strcmp);
+		/* Ignore repeated identifiers */
+		l = g_slist_find_custom(ctxt->identifiers,
+				puuid, (GCompareFunc) strcmp);
 		if (l)
 			continue;
 
+		ctxt->identifiers = g_slist_append(ctxt->identifiers,
+							g_strdup(puuid));
+	}
+
+	/* If public browse response is empty: search for L2CAP */
+	if (!ctxt->identifiers && ctxt->uuid.value.uuid16 == PUBLIC_BROWSE_GROUP)
+		if (service_search_attr(ctxt, L2CAP_UUID) == 0)
+			return; /* Wait the response */
+
+	/* Request DeviceID if it was not returned previously */
+	l = g_slist_find_custom(ctxt->identifiers,
+			devid_uuid, (GCompareFunc) strcmp);
+	if (!l && ctxt->uuid.value.uuid16 != PNP_INFO_SVCLASS_ID)
+		if (service_search_attr(ctxt, PNP_INFO_SVCLASS_ID) == 0)
+			return; /* Wait the response */
+
+	reply = dbus_message_new_method_return(ctxt->rq);
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	for (l = ctxt->identifiers; l; l = l->next) { 
+		puuid = l->data;
 		dbus_message_iter_append_basic(&array_iter,
 				DBUS_TYPE_STRING, &puuid);
-		l = g_slist_append(l, g_strdup(puuid));
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 	send_message_and_unref(ctxt->conn, reply);
-
-	if (l) {
-		g_slist_foreach(l, (GFunc) g_free, NULL);
-		g_slist_free(l);
-	}
 failed:
 	transaction_context_free(ctxt, TRUE);
 }
@@ -1100,33 +1110,11 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 
 static int remote_svc_identifiers_conn_cb(struct transaction_context *ctxt)
 {
-	sdp_list_t *attrids, *search;
-	uint32_t range = 0x0000ffff;
-
 	if (sdp_set_notify(ctxt->session,
 			remote_svc_identifiers_completed_cb, ctxt) < 0)
 		return -EINVAL;
 
-	sdp_uuid16_create(&ctxt->uuid, PUBLIC_BROWSE_GROUP);
-	search = sdp_list_append(0, &ctxt->uuid);
-
-	attrids = sdp_list_append(NULL, &range);
-
-	/*
-	 * Create/send the search request and set the
-	 * callback to indicate the request completion
-	 */
-	if (sdp_service_search_attr_async(ctxt->session, search,
-				SDP_ATTR_REQ_RANGE, attrids) < 0) {
-		sdp_list_free(search, NULL);
-		sdp_list_free(attrids, NULL);
-		return -sdp_get_error(ctxt->session);
-	}
-
-	sdp_list_free(search, NULL);
-	sdp_list_free(attrids, NULL);
-
-	return 0;
+	return service_search_attr(ctxt, PUBLIC_BROWSE_GROUP);
 }
 
 DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data)
