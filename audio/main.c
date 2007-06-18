@@ -36,9 +36,7 @@
 #include "dbus.h"
 #include "logging.h"
 
-#include "unix.h"
 #include "manager.h"
-#include "headset.h"
 
 /* Configuration settings */
 static gboolean disable_hfp = TRUE;

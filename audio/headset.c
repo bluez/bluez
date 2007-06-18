@@ -89,6 +89,8 @@ struct pending_connect {
 	DBusMessage *msg;
 	GIOChannel *io;
 	guint io_id;
+	int sock;
+	struct ipc_data_cfg *cfg;
 };
 
 struct headset {
@@ -325,7 +327,7 @@ static void send_cancel_auth(audio_device_t *device)
 	DBusMessage *cancel;
 	char addr[18], *address = addr;
 	const char *uuid;
-       
+
 	if (device->headset->type == SVC_HEADSET)
 		uuid = HSP_AG_UUID;
 	else
@@ -475,9 +477,11 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	g_io_add_watch(hs->sco, flags, (GIOFunc) sco_cb, device);
 
-	reply = dbus_message_new_method_return(hs->pending_connect->msg);
-	if (reply)
-		send_message_and_unref(connection, reply);
+	if (hs->pending_connect->msg) {
+		reply = dbus_message_new_method_return(hs->pending_connect->msg);
+		if (reply)
+			send_message_and_unref(connection, reply);
+	}
 
 	pending_connect_free(hs->pending_connect);
 	hs->pending_connect = NULL;
@@ -514,6 +518,70 @@ failed:
 	return FALSE;
 }
 
+static int sco_connect(audio_device_t *device, struct pending_connect *c)
+{
+	struct headset *hs = device->headset;
+	struct sockaddr_sco addr;
+	gboolean do_callback = FALSE;
+	int sk, err;
+
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+	if (sk < 0) {
+		err = errno;
+		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
+		return -err;
+	}
+
+	c->io = g_io_channel_unix_new(sk);
+	if (!c->io) {
+		close(sk);
+		return -EINVAL;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sco_family = AF_BLUETOOTH;
+	bacpy(&addr.sco_bdaddr, BDADDR_ANY);
+
+	if (bind(sk, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		err = errno;
+		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
+		return -err;
+	}
+
+	if (set_nonblocking(sk) < 0) {
+		err = errno;
+		return -err;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sco_family = AF_BLUETOOTH;
+	bacpy(&addr.sco_bdaddr, &device->bda);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
+			err = errno;
+			error("connect: %s (%d)", strerror(errno), errno);
+			return -err;
+		}
+
+		debug("SCO connect in progress");
+		c->io_id = g_io_add_watch(c->io,
+					G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
+					(GIOFunc) sco_connect_cb, device);
+	} else {
+		debug("SCO connect succeeded with first try");
+		do_callback = TRUE;
+	}
+
+	hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
+	hs->pending_connect = c;
+
+	if (do_callback)
+		sco_connect_cb(c->io, G_IO_OUT, device);
+
+	return 0;
+}
+
 static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 					audio_device_t *device)
 {
@@ -521,14 +589,14 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 	char hs_address[18];
 	int sk, ret, err;
 	socklen_t len;
-	
+
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
 	hs = device->headset;
 
 	assert(hs != NULL);
-       	assert(hs->pending_connect != NULL);
+	assert(hs->pending_connect != NULL);
 	assert(hs->rfcomm == NULL);
 	assert(hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS);
 
@@ -1406,10 +1474,7 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 {
 	audio_device_t *device = data;
 	struct headset *hs = device->headset;
-	struct sockaddr_sco addr;
 	struct pending_connect *c;
-	gboolean do_callback = FALSE;
-	int sk, err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
 		return err_not_connected(connection, msg);
@@ -1426,66 +1491,10 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 
 	c->msg = msg ? dbus_message_ref(msg) : NULL;
 
-	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
-	if (sk < 0) {
-		err = errno;
-		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
-		err_connect_failed(connection, msg, err);
+	if (sco_connect(device, c) < 0)
 		goto failed;
-	}
-
-	c->io = g_io_channel_unix_new(sk);
-	if (!c->io) {
-		close(sk);
-		pending_connect_free(c);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sco_family = AF_BLUETOOTH;
-	bacpy(&addr.sco_bdaddr, BDADDR_ANY);
-
-	if (bind(sk, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		err = errno;
-		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
-		err_connect_failed(connection, msg, err);
-		goto failed;
-	}
-
-	if (set_nonblocking(sk) < 0) {
-		err = errno;
-		err_connect_failed(connection, msg, err);
-		goto failed;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sco_family = AF_BLUETOOTH;
-	bacpy(&addr.sco_bdaddr, &device->bda);
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			err = errno;
-			error("connect: %s (%d)", strerror(errno), errno);
-			goto failed;
-		}
-
-		debug("SCO connect in progress");
-		c->io_id = g_io_add_watch(c->io,
-					G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
-					(GIOFunc) sco_connect_cb, device);
-	} else {
-		debug("SCO connect succeeded with first try");
-		do_callback = TRUE;
-	}
-
-	hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
-	hs->pending_connect = c;
-
-	if (do_callback)
-		sco_connect_cb(c->io, G_IO_OUT, device);
 
 	return 0;
-
 failed:
 	if (c)
 		pending_connect_free(c);
@@ -1772,7 +1781,7 @@ register_iface:
 }
 
 void headset_free(const char *object_path)
-{ 
+{
 	audio_device_t *device;
 
 	if (!dbus_connection_get_object_user_data(connection, object_path,
@@ -2028,7 +2037,7 @@ void headset_exit(void)
 	connection = NULL;
 }
 
-int headset_get_config(headset_t *headset, struct ipc_data_cfg *cfg)
+int headset_get_config(headset_t *headset, int sock, struct ipc_data_cfg *cfg)
 {
 	if (!sco_over_hci)
 		return -1;

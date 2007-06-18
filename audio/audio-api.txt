@@ -35,6 +35,14 @@ Methods
 			of available devices which implement as a minimum the
 			interfaces given through the parameter.
 
+		string DefaultDevice()
+
+			Returns the object path for the default device.
+
+		void ChangeDefaultDevice(string path)
+
+			Changes the default device.
+
 		array{string} ListHeadsets()
 
 			Returns list of headset objects that are configured.

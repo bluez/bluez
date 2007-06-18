@@ -39,7 +39,6 @@
 #include "logging.h"
 #include "dbus.h"
 
-#include "unix.h"
 #include "manager.h"
 
 static int unix_sock = -1;
@@ -119,29 +118,8 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		cfg = (struct ipc_data_cfg *) pkt->data;
 
 		memset(cfg, 0, sizeof(struct ipc_data_cfg));
-		if (manager_get_device(pkt->role, cfg) < 0)
-			cfg->fd = -1;
-
-		info("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u, sample_size=%u,"
-			"rate=%u", cfg->fd, cfg->fd_opt, cfg->channels,
-			cfg->pkt_len, cfg->sample_size, cfg->rate);
-
-		pkt->type = PKT_TYPE_CFG_RSP;
-		pkt->length = sizeof(struct ipc_data_cfg);
-		pkt->error = PKT_ERROR_NONE;
-
-		len = send(clisk, pkt, len, 0);
-		if (len < 0)
-			info("Error %s(%d)", strerror(errno), errno);
-
-		info("%d bytes sent", len);
-
-		if (cfg->fd != -1) {
-			len = unix_sendmsg_fd(clisk, cfg->fd, pkt);
-			if (len < 0)
-				info("Error %s(%d)", strerror(errno), errno);
-			info("%d bytes sent", len);
-		}
+		if (manager_get_device(clisk, pkt->role, cfg) == 0)
+			unix_send_cfg(clisk, pkt);
 
 		break;
 	case PKT_TYPE_STATUS_REQ:
@@ -152,8 +130,6 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		break;
 	}
 
-	g_free(pkt);
-	close(clisk);
 	return TRUE;
 }
 
@@ -201,4 +177,36 @@ void unix_exit(void)
 {
 	close(unix_sock);
 	unix_sock = -1;
+}
+
+int unix_send_cfg(int sock, struct ipc_packet *pkt)
+{
+	struct ipc_data_cfg *cfg = (struct ipc_data_cfg *) pkt->data;
+	int len;
+
+	info("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u, sample_size=%u,"
+		"rate=%u", cfg->fd, cfg->fd_opt, cfg->channels,
+		cfg->pkt_len, cfg->sample_size, cfg->rate);
+
+	pkt->type = PKT_TYPE_CFG_RSP;
+	pkt->length = sizeof(struct ipc_data_cfg);
+	pkt->error = PKT_ERROR_NONE;
+
+	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_cfg);
+	len = send(sock, pkt, len, 0);
+	if (len < 0)
+		info("Error %s(%d)", strerror(errno), errno);
+
+	info("%d bytes sent", len);
+
+	if (cfg->fd != -1) {
+		len = unix_sendmsg_fd(sock, cfg->fd, pkt);
+		if (len < 0)
+			info("Error %s(%d)", strerror(errno), errno);
+		info("%d bytes sent", len);
+	}
+
+	g_free(pkt);
+	close(sock);
+	return 0;
 }
