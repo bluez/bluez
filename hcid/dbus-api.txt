@@ -1065,6 +1065,13 @@ Signals		void ModeChanged(string mode)
 			This signal will be send every time the service daemon
 			detect a new name for a remote device.
 
+		void RemoteIdentifiersUpdated(string address, array{string identifiers})
+
+			This signal is sent to indicate the provided services of a given
+			remote device. It will be sent after GetRemoteServiceIdentifiers
+			calls. This signal has at least one identifier and it does not
+			contain repeated entries.
+
 		void RemoteNameFailed(string address)
 
 			This signal will be sent every time the service daemon
