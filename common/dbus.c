@@ -61,6 +61,12 @@ struct watch_info {
 	GIOChannel *io;
 	DBusConnection *conn;
 };
+
+struct server_info {
+	guint watch_id;
+	GIOChannel *io;
+	DBusServer *server;
+};
 #endif
 
 struct disconnect_data {
@@ -371,6 +377,75 @@ static DBusHandlerResult disconnect_filter(DBusConnection *conn,
 }
 
 #ifndef HAVE_DBUS_GLIB
+static dbus_int32_t server_slot = -1;
+
+static gboolean server_func(GIOChannel *chan, GIOCondition cond, gpointer data)
+{
+	DBusWatch *watch = data;
+	int flags = 0;
+
+	if (cond & G_IO_IN)  flags |= DBUS_WATCH_READABLE;
+	if (cond & G_IO_OUT) flags |= DBUS_WATCH_WRITABLE;
+	if (cond & G_IO_HUP) flags |= DBUS_WATCH_HANGUP;
+	if (cond & G_IO_ERR) flags |= DBUS_WATCH_ERROR;
+
+	dbus_watch_handle(watch, flags);
+
+	return TRUE;
+}
+
+static dbus_bool_t add_server(DBusWatch *watch, void *data)
+{
+	GIOCondition cond = G_IO_HUP | G_IO_ERR;
+	DBusServer *server = data;
+	struct server_info *info;
+	int fd, flags;
+
+	if (!dbus_watch_get_enabled(watch))
+		return TRUE;
+
+	info = g_new(struct server_info, 1);
+
+	fd = dbus_watch_get_fd(watch);
+	info->io = g_io_channel_unix_new(fd);
+	info->server = dbus_server_ref(server);
+
+	dbus_watch_set_data(watch, info, NULL);
+
+	flags = dbus_watch_get_flags(watch);
+
+	if (flags & DBUS_WATCH_READABLE) cond |= G_IO_IN;
+	if (flags & DBUS_WATCH_WRITABLE) cond |= G_IO_OUT;
+
+	info->watch_id = g_io_add_watch(info->io, cond, server_func, watch);
+
+	return TRUE;
+}
+
+static void remove_server(DBusWatch *watch, void *data)
+{
+	struct server_info *info = dbus_watch_get_data(watch);
+
+	dbus_watch_set_data(watch, NULL, NULL);
+
+	if (info) {
+		g_source_remove(info->watch_id);
+		g_io_channel_unref(info->io);
+		dbus_server_unref(info->server);
+		g_free(info);
+	}
+}
+
+static void server_toggled(DBusWatch *watch, void *data)
+{
+	/* Because we just exit on OOM, enable/disable is
+	 * no different from add/remove */
+	if (dbus_watch_get_enabled(watch))
+		add_server(watch, data);
+	else
+		remove_server(watch, data);
+}
+
 static gboolean message_dispatch_cb(void *data)
 {
 	DBusConnection *connection = data;
@@ -520,6 +595,41 @@ static void dispatch_status_cb(DBusConnection *conn,
 }
 #endif
 
+void setup_dbus_server_with_main_loop(DBusServer *server)
+{
+#ifdef HAVE_DBUS_GLIB
+	dbus_server_setup_with_g_main(server, NULL);
+#else
+	dbus_server_allocate_data_slot(&server_slot);
+	if (server_slot < 0)
+		return;
+
+	dbus_server_set_data(server, server_slot, server, NULL);
+
+	dbus_server_set_watch_functions(server, add_server, remove_server,
+						server_toggled, server, NULL);
+
+	dbus_server_set_timeout_functions(server, add_timeout, remove_timeout,
+						timeout_toggled, server, NULL);
+#endif
+}
+
+void setup_dbus_with_main_loop(DBusConnection *conn)
+{
+#ifdef HAVE_DBUS_GLIB
+	dbus_connection_setup_with_g_main(conn, NULL);
+#else
+	dbus_connection_set_watch_functions(conn, add_watch, remove_watch,
+						watch_toggled, conn, NULL);
+
+	dbus_connection_set_timeout_functions(conn, add_timeout, remove_timeout,
+						timeout_toggled, conn, NULL);
+
+	dbus_connection_set_dispatch_status_function(conn, dispatch_status_cb,
+								conn, NULL);
+#endif
+}
+
 DBusConnection *init_dbus(const char *name,
 				void (*disconnect_cb)(void *), void *user_data)
 {
@@ -537,18 +647,7 @@ DBusConnection *init_dbus(const char *name,
 		return NULL;
 	}
 
-#ifdef HAVE_DBUS_GLIB
-	dbus_connection_setup_with_g_main(conn, NULL);
-#else
-	dbus_connection_set_watch_functions(conn, add_watch, remove_watch,
-						watch_toggled, conn, NULL);
-
-	dbus_connection_set_timeout_functions(conn, add_timeout, remove_timeout,
-						timeout_toggled, conn, NULL);
-
-	dbus_connection_set_dispatch_status_function(conn, dispatch_status_cb,
-								conn, NULL);
-#endif
+	setup_dbus_with_main_loop(conn);
 
 	if (name) {
 		dbus_error_init(&err);
@@ -585,6 +684,28 @@ DBusConnection *init_dbus(const char *name,
 		dbus_connection_unref(conn);
 		return NULL;
 	}
+
+	return conn;
+}
+
+DBusConnection *init_dbus_direct(const char *address)
+{
+	DBusConnection *conn;
+	DBusError err;
+
+	dbus_error_init(&err);
+
+	conn = dbus_connection_open(address, &err);
+
+	if (dbus_error_is_set(&err)) {
+		error("Can't connect to message server: %s", err.message);
+		dbus_error_free(&err);
+		return NULL;
+	}
+
+	setup_dbus_with_main_loop(conn);
+
+	dbus_connection_set_exit_on_disconnect(conn, FALSE);
 
 	return conn;
 }

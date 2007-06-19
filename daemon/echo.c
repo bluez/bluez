@@ -49,7 +49,8 @@ struct auth_data {
 	char *address;
 };
 
-static gboolean session_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean session_event(GIOChannel *chan,
+					GIOCondition cond, gpointer data)
 {
 	unsigned char buf[672];
 	gsize len, written;
@@ -75,7 +76,7 @@ static void cancel_authorization(DBusConnection *conn, const char *address)
 	info("Canceling authorization for %s", address);
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "CancelAuthorizationRequest");
+			"org.bluez.Database", "CancelAuthorizationRequest");
 	if (!msg) {
 		error("Allocation of method message failed");
 		return;
@@ -104,8 +105,9 @@ static void authorization_callback(DBusPendingCall *call, void *data)
 		dbus_error_free(&err);
 	} else {
 		info("Accepting incoming connection");
-		g_io_add_watch(auth->io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-						session_event, NULL);
+		g_io_add_watch(auth->io,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+							session_event, NULL);
 	}
 
 	g_io_channel_unref(auth->io);
@@ -169,7 +171,8 @@ static int request_authorization(DBusConnection *conn,
 	return 0;
 }
 
-static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean connect_event(GIOChannel *chan,
+					GIOCondition cond, gpointer data)
 {
 	DBusConnection *conn = data;
 	GIOChannel *io;
@@ -364,14 +367,10 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static void sig_hup(int sig)
-{
-}
-
 int main(int argc, char *argv[])
 {
-	DBusConnection *system_bus;
-	GIOChannel *server_io;
+	DBusConnection *conn;
+	GIOChannel *io;
 	struct sigaction sa;
 	char *addr;
 
@@ -382,8 +381,6 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_term;
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT,  &sa, NULL);
-	sa.sa_handler = sig_hup;
-	sigaction(SIGHUP, &sa, NULL);
 
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL);
@@ -397,31 +394,31 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	system_bus = init_dbus(NULL, NULL, NULL);
-	if (!system_bus) {
+	conn = init_dbus_direct(addr);
+	if (!conn) {
 		error("Connection to system bus failed");
 		g_main_loop_unref(main_loop);
 		exit(1);
 	}
 
-	server_io = setup_rfcomm(system_bus, 23);
-	if (!server_io) {
+	io = setup_rfcomm(conn, 23);
+	if (!io) {
 		error("Creation of server channel failed");
-		dbus_connection_unref(system_bus);
+		dbus_connection_unref(conn);
 		g_main_loop_unref(main_loop);
 		exit(1);
 	}
 
-	setup_sdp(system_bus, 23);
+	setup_sdp(conn, 23);
 
 	if (argc > 1 && !strcmp(argv[1], "-s"))
-		register_standalone(system_bus);
+		register_standalone(conn);
 
 	g_main_loop_run(main_loop);
 
-	g_io_channel_unref(server_io);
+	g_io_channel_unref(io);
 
-	dbus_connection_unref(system_bus);
+	dbus_connection_unref(conn);
 
 	g_main_loop_unref(main_loop);
 

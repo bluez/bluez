@@ -33,6 +33,8 @@
 static DBusHandlerResult message_handler(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	debug("Incoming message %p", conn);
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
@@ -55,6 +57,7 @@ static void handle_connection(DBusServer *server, DBusConnection *conn, void *da
 	dbus_connection_ref(conn);
 
 	//dbus_connection_setup_with_g_main(conn, NULL);
+	setup_dbus_with_main_loop(conn);
 }
 
 static DBusServer *server = NULL;
@@ -85,6 +88,7 @@ void init_local_server(void)
 	dbus_free(address);
 
 	//dbus_server_setup_with_g_main(server, NULL);
+	setup_dbus_server_with_main_loop(server);
 
 	dbus_server_set_new_connection_function(server, handle_connection,
 								NULL, NULL);
