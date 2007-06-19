@@ -464,11 +464,10 @@ dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
 {
 	struct generic_data *data;
 	struct interface_data *iface;
-	DBusMessageIter iter;
 	DBusSignalVTable *sig_data;
 	DBusMessage *signal;
-	int type;
-	const char *args = NULL;
+	dbus_bool_t ret;
+	const char *signature, *args = NULL;
 
 	if (!dbus_connection_get_object_path_data(conn, path, (void *) &data)) {
 		error("dbus_connection_emit_signal: path %s isn't registered",
@@ -502,33 +501,23 @@ dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
 		return FALSE;
 	}
 
-	dbus_message_iter_init_append(signal, &iter);
+	ret = dbus_message_append_args_valist(signal, first, var_args);
+	if (!ret)
+		goto fail;
 
-	for (type = first; type != DBUS_TYPE_INVALID;
-			type = va_arg(var_args, int), args++) {
-		void *value;
-
-		if (type != *args) {
-			error("%s.%s: expected arg type '%c' but got '%c'",
-					interface, name, *args, type);
-			dbus_message_unref(signal);
-			return FALSE;
-		}
-		
-		value = va_arg(var_args, void *);
-
-		if (!dbus_message_iter_append_basic(&iter, type, value)) {
-			error("%s.%s: appending argument of type '%c' failed",
-					interface, name, type);
-			dbus_message_unref(signal);
-			return FALSE;
-		}
+	signature = dbus_message_get_signature(signal);
+	if (strcmp(args, signature) != 0) {
+		error("%s.%s: expected signature'%s' but got '%s'",
+				interface, name, args, signature);
+		ret = FALSE;
+		goto fail;
 	}
 
-	dbus_connection_send(conn, signal, NULL);
+	ret = dbus_connection_send(conn, signal, NULL);
+fail:
 	dbus_message_unref(signal);
 
-	return TRUE;
+	return ret;
 }
 
 dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
