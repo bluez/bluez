@@ -774,9 +774,9 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 	struct transaction_context *ctxt = udata;
 	const char *src, *dst, *puuid;
 	const char *devid_uuid = "00001200-0000-1000-8000-00805f9b34fb";
+	char **identifiers;
 	DBusMessage *reply;
 	GSList *l = NULL;
-	DBusMessageIter iter, array_iter;
 	int scanned, extracted = 0, len = 0, recsize = 0;
 	uint8_t dtd = 0;
 
@@ -861,18 +861,31 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 			return; /* Wait the response */
 
 	reply = dbus_message_new_method_return(ctxt->rq);
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	for (l = ctxt->identifiers; l; l = l->next) { 
-		puuid = l->data;
-		dbus_message_iter_append_basic(&array_iter,
-				DBUS_TYPE_STRING, &puuid);
-	}
+	identifiers = g_new(char *, g_slist_length(ctxt->identifiers));
 
-	dbus_message_iter_close_container(&iter, &array_iter);
+	for (l = ctxt->identifiers, len = 0; l; l = l->next, len++)
+		identifiers[len] = l->data;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+			&identifiers, len,
+			DBUS_TYPE_INVALID);
 	send_message_and_unref(ctxt->conn, reply);
+
+	if (len)
+		dbus_connection_emit_signal(ctxt->conn,
+				dbus_message_get_path(ctxt->rq),
+				ADAPTER_INTERFACE,
+				"RemoteIdentifiersUpdated",
+				DBUS_TYPE_STRING, &dst,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+				&identifiers, len,
+				DBUS_TYPE_INVALID);
+
+	if (identifiers)
+		g_free(identifiers);
+
 failed:
 	transaction_context_free(ctxt, TRUE);
 }

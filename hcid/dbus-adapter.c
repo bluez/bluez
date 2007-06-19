@@ -3253,6 +3253,7 @@ static DBusSignalVTable adapter_signals[] = {
 	{ "RemoteDeviceConnected",		"s"	},
 	{ "RemoteDeviceDisconnectRequested",	"s"	},
 	{ "RemoteDeviceDisconnected",		"s"	},
+	{ "RemoteIdentifiersUpdated",		"sas"	},
 	{ "BondingCreated",			"s"	},
 	{ "BondingRemoved",			"s"	},
 	{ "TrustAdded",				"s"	},
