@@ -45,7 +45,6 @@
 #include "logging.h"
 #include "textfile.h"
 
-#define NETWORK_PATH "/org/bluez/network"
 #define NETWORK_MANAGER_INTERFACE "org.bluez.network.Manager"
 
 #include "error.h"
@@ -54,8 +53,6 @@
 #include "server.h"
 #include "connection.h"
 #include "common.h"
-
-#define MAX_PATH_LENGTH		64 /* D-Bus path */
 
 struct pending_reply {
 	DBusConnection	*conn;
@@ -197,8 +194,6 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 			connection_store(conn, dpath, TRUE);
 		}
 	}
-	else
-		server_remove_stored(conn, path);
 
 	g_free(l->data);
 	*list = g_slist_remove(*list, l->data);
@@ -407,57 +402,6 @@ static DBusHandlerResult list_servers(DBusConnection *conn, DBusMessage *msg,
 	return list_paths(conn, msg, server_paths);
 }
 
-static DBusHandlerResult create_server(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	char path[MAX_PATH_LENGTH];
-	DBusError derr;
-	const char *str;
-	bdaddr_t src;
-	uint16_t id;
-	int dev_id;
-
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_STRING, &str,
-				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-
-	id = bnep_service_id(str);
-	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
-		return err_invalid_args(conn, msg, "Not supported");
-
-	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s%d",
-							bnep_name(id), net_uid++);
-
-	if (g_slist_find_custom(server_paths, path,
-				(GCompareFunc) strcmp)) {
-		err_already_exists(conn, msg, "Server Already exists");
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-
-	bacpy(&src, BDADDR_ANY);
-
-	dev_id = hci_get_route(NULL);
-
-	if (dev_id >= 0)
-		hci_devba(dev_id, &src);
-
-	if (server_register(conn, path, &src, id) < 0)
-		return err_failed(conn, msg,
-				"D-Bus path registration failed");
-
-	if (bacmp(&src, BDADDR_ANY) != 0)
-		server_store(conn, path);
-
-	server_paths = g_slist_append(server_paths, g_strdup(path));
-
-	return create_path(conn, msg, path, "ServerCreated");
-}
-
 static DBusHandlerResult find_server(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -495,12 +439,6 @@ static DBusHandlerResult find_server(DBusConnection *conn,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
-}
-
-static DBusHandlerResult remove_server(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	return remove_path(conn, msg, &server_paths, "ServerRemoved");
 }
 
 static DBusHandlerResult list_connections(DBusConnection *conn,
@@ -867,6 +805,34 @@ static void register_connections_stored(const char *adapter)
 	}
 }
 
+static void register_server(uint16_t id)
+{
+	char path[MAX_PATH_LENGTH];
+	bdaddr_t src;
+	int dev_id;
+
+	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(id));
+
+	if (g_slist_find_custom(server_paths, path,
+				(GCompareFunc) strcmp))
+		return;
+
+	bacpy(&src, BDADDR_ANY);
+
+	dev_id = hci_get_route(NULL);
+
+	if (dev_id >= 0)
+		hci_devba(dev_id, &src);
+
+	if (server_register(connection, path, &src, id) < 0)
+		return;
+
+	if (bacmp(&src, BDADDR_ANY) != 0)
+		server_store(connection, path);
+
+	server_paths = g_slist_append(server_paths, g_strdup(path));
+}
+
 static void register_servers_stored(const char *adapter, const char *profile)
 {
 	char filename[PATH_MAX + 1];
@@ -877,8 +843,10 @@ static void register_servers_stored(const char *adapter, const char *profile)
 
 	if (strcmp(profile, "nap") == 0)
 		id = BNEP_SVC_NAP;
-	else
+	else if (strcmp(profile, "gn") == 0)
 		id = BNEP_SVC_GN;
+	else
+		id = BNEP_SVC_PANU;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter, profile);
 
@@ -886,7 +854,7 @@ static void register_servers_stored(const char *adapter, const char *profile)
 
 	if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
 		snprintf(path, MAX_PATH_LENGTH,
-			NETWORK_PATH"/%s%d", profile, net_uid++);
+			NETWORK_PATH"/%s", profile);
 		if (server_register_from_file(connection, path,
 			&src, id, filename) == 0) {
 			server_paths = g_slist_append(server_paths,
@@ -919,6 +887,9 @@ static void register_stored(void)
 
 		/* GN objects */
 		register_servers_stored(de->d_name, "gn");
+
+		/* PANU objects */
+		register_servers_stored(de->d_name, "panu");
 	}
 
 	closedir(dir);
@@ -926,9 +897,7 @@ static void register_stored(void)
 
 static DBusMethodVTable manager_methods[] = {
 	{ "ListServers",	list_servers,		"",	"as"	},
-	{ "CreateServer",	create_server,		"s",	"s"	},
 	{ "FindServer",		find_server,		"s",	"s"	},
-	{ "RemoveServer",	remove_server,		"s",	""	},
 	{ "ListConnections",	list_connections,	"",	"as"	},
 	{ "FindConnection",	find_connection,	"s",	"s"	},
 	{ "CreateConnection",	create_connection,	"ss",	"s"	},
@@ -984,6 +953,15 @@ int network_init(DBusConnection *conn)
 	info("Registered manager path:%s", NETWORK_PATH);
 
 	register_stored();
+
+	/* PAN user server */
+	register_server(BNEP_SVC_PANU);
+
+	/* Group Network server */
+	register_server(BNEP_SVC_GN);
+
+	/* Network Access Point server */
+	register_server(BNEP_SVC_NAP);
 
 	return 0;
 }

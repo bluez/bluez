@@ -21,6 +21,9 @@
  *
  */
 
+#define MAX_PATH_LENGTH 64 /* D-Bus path */
+#define NETWORK_PATH "/org/bluez/network"
+
 int network_init(DBusConnection *conn);
 void network_exit(void);
 

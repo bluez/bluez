@@ -59,11 +59,13 @@
 #include "manager.h"
 #include "server.h"
 
+static GIOChannel *bnep_io;
+
 /* Pending Authorization */
 struct pending_auth {
-	char				*addr;	/* Bluetooth Address */
-	GIOChannel			*io;	/* BNEP connection setup io channel */
-	int 				attempts; /* BNEP setup conn requests counter */
+	char			*addr;		/* Bluetooth Address */
+	GIOChannel		*io;		/* BNEP connection setup io channel */
+	int			attempts;	/* BNEP setup conn requests counter */
 };
 
 /* Main server structure */
@@ -72,12 +74,12 @@ struct network_server {
 	char			*iface;		/* Routing interface */
 	char			*name;		/* Server service name */
 	char			*range;		/* IP Address range */
-	char			*path; 		/* D-Bus path */
-	dbus_bool_t		secure;
+	char			*path;		/* D-Bus path */
+	gboolean		enable;		/* Enable flag*/
+	gboolean		secure;		/* Security flag*/
 	uint32_t		record_id;	/* Service record id */
 	uint16_t		id;		/* Service class identifier */
-	GIOChannel		*io;		/* GIOChannel when listening */
-	DBusConnection 		*conn;		/* D-Bus connection */
+	DBusConnection		*conn;		/* D-Bus connection */
 	struct pending_auth	*pauth;		/* Pending incomming connection/authorization */
 };
 
@@ -92,8 +94,10 @@ static int store_property(bdaddr_t *src, uint16_t id,
 	ba2str(src, addr);
 	if (id == BNEP_SVC_NAP)
 		create_name(filename, PATH_MAX, STORAGEDIR, addr, "nap");
-	else
+	else if (id == BNEP_SVC_GN)
 		create_name(filename, PATH_MAX, STORAGEDIR, addr, "gn");
+	else if (id == BNEP_SVC_PANU)
+		create_name(filename, PATH_MAX, STORAGEDIR, addr, "panu");
 
 	return textfile_put(filename, key, value);
 }
@@ -380,7 +384,9 @@ static int authorize_connection(struct network_server *ns)
 static gboolean connect_setup_event(GIOChannel *chan,
 					GIOCondition cond, gpointer data)
 {
-	struct network_server *ns = data;
+	DBusConnection *conn = data;
+	struct network_server *ns;
+	char path[MAX_PATH_LENGTH];
 	struct bnep_setup_conn_req *req;
 	unsigned char pkt[BNEP_MTU];
 	gsize n;
@@ -437,7 +443,10 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	/* Getting source service: considering 2 bytes size */
 	role = ntohs(bt_get_unaligned((uint16_t *) pservice));
 
-	if (role != BNEP_SVC_PANU) {
+	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(role));
+	dbus_connection_get_object_user_data(conn, path, (void *) &ns);
+
+	if (ns == NULL || ns->enable == FALSE) {
 		response = BNEP_CONN_INVALID_SRC;
 		goto reply;
 	}
@@ -532,7 +541,7 @@ static gboolean connect_event(GIOChannel *chan,
 	return TRUE;
 }
 
-static int l2cap_listen(struct network_server *ns)
+int server_init(DBusConnection *conn, gboolean secure)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
@@ -578,7 +587,7 @@ static int l2cap_listen(struct network_server *ns)
 	}
 
 	/* Set link mode */
-	lm = (ns->secure ? L2CAP_LM_SECURE : 0);
+	lm = (secure ? L2CAP_LM_SECURE : 0);
 	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
 		err = errno;
 		error("Failed to set link mode. %s(%d)",
@@ -592,11 +601,11 @@ static int l2cap_listen(struct network_server *ns)
 		goto fail;
 	}
 
-	ns->io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(ns->io, FALSE);
+	bnep_io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(bnep_io, FALSE);
 
-	g_io_add_watch(ns->io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-							connect_event, ns);
+	g_io_add_watch(bnep_io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+							connect_event, conn);
 
 	return 0;
 fail:
@@ -762,8 +771,7 @@ static int record_and_listen(struct network_server *ns)
 		return -EIO;
 	}
 
-	err = l2cap_listen(ns);
-	if (err < 0)
+	if (bnep_io == NULL && (err = server_init(ns->conn, ns->secure)) < 0)
 		return -err;
 
 	return 0;
@@ -776,7 +784,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	DBusMessage *reply;
 	int err;
 
-	if (ns->io)
+	if (ns->enable)
 		return err_already_exists(conn, msg, "Server already enabled");
 
 	if (bacmp(&ns->src, BDADDR_ANY) == 0) {
@@ -816,7 +824,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (!ns->io)
+	if (!ns->enable)
 		return err_failed(conn, msg, "Not enabled");
 
 	/* Remove the service record */
@@ -825,9 +833,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 		ns->record_id = 0;
 	}
 
-	g_io_channel_close(ns->io);
-	g_io_channel_unref(ns->io);
-	ns->io = NULL;
+	ns->enable = FALSE;
 
 	store_property(&ns->src, ns->id, "enabled", "0");
 
@@ -865,13 +871,15 @@ static DBusHandlerResult set_name(DBusConnection *conn,
 		g_free(ns->name);
 	ns->name = g_strdup(name);
 
-	if (ns->io) {
+	if (ns->enable) {
 		if (update_server_record(ns) < 0) {
 			dbus_message_unref(reply);
 			return err_failed(conn, msg,
 				"Service record attribute update failed");
 		}
 	}
+
+	store_property(&ns->src, ns->id, "name", ns->name);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -955,13 +963,15 @@ static DBusHandlerResult set_security(DBusConnection *conn,
 	}
 
 	ns->secure = secure;
-	if (ns->io) {
+	if (ns->enable) {
 		if (update_server_record(ns) < 0) {
 			dbus_message_unref(reply);
 			return err_failed(conn, msg,
 				"Service record attribute update failed");
 		}
 	}
+
+	store_property(&ns->src, ns->id, "secure", "1");
 
 	return send_message_and_unref(conn, reply);
 }
@@ -1039,11 +1049,6 @@ static void server_free(struct network_server *ns)
 	if (ns->conn)
 		dbus_connection_unref(ns->conn);
 
-	if (ns->io) {
-		g_io_channel_close(ns->io);
-		g_io_channel_unref(ns->io);
-	}
-
 	g_free(ns);
 }
 
@@ -1054,6 +1059,12 @@ static void server_unregister(DBusConnection *conn, void *data)
 	info("Unregistered server path:%s", ns->path);
 
 	server_free(ns);
+
+	if (bnep_io != NULL) {
+		g_io_channel_close(bnep_io);
+		g_io_channel_unref(bnep_io);
+		bnep_io = NULL;
+	}
 }
 
 static DBusMethodVTable server_methods[] = {
@@ -1081,10 +1092,7 @@ int server_register(DBusConnection *conn, const char *path,
 {
 	struct network_server *ns;
 
-	if (!conn)
-		return -EINVAL;
-
-	if (!path)
+	if (!conn || !path)
 		return -EINVAL;
 
 	ns = g_new0(struct network_server, 1);
@@ -1109,8 +1117,10 @@ int server_register(DBusConnection *conn, const char *path,
 	/* Setting a default name */
 	if (id == BNEP_SVC_NAP)
 		ns->name = g_strdup("BlueZ NAP service");
-	else
+	else if (id == BNEP_SVC_GN)
 		ns->name = g_strdup("BlueZ GN service");
+	else
+		ns->name = g_strdup("BlueZ PANU service");
 
 	ns->path = g_strdup(path);
 	ns->id = id;
@@ -1193,8 +1203,10 @@ int server_store(DBusConnection *conn, const char *path)
 	ba2str(&ns->src, addr);
 	if (ns->id == BNEP_SVC_NAP)
 		create_name(filename, PATH_MAX, STORAGEDIR, addr, "nap");
-	else
+	else if (ns->id == BNEP_SVC_GN)
 		create_name(filename, PATH_MAX, STORAGEDIR, addr, "gn");
+	else
+		create_name(filename, PATH_MAX, STORAGEDIR, addr, "panu");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -1208,25 +1220,9 @@ int server_store(DBusConnection *conn, const char *path)
 
 	textfile_put(filename, "secure", ns->secure ? "1": "0");
 
+	textfile_put(filename, "enabled", ns->enable ? "1": "0");
+
 	return 0;
-}
-
-int server_remove_stored(DBusConnection *conn, const char *path)
-{
-	struct network_server *ns;
-	char filename[PATH_MAX + 1];
-	char addr[18];
-
-	if (!dbus_connection_get_object_user_data(conn, path, (void *) &ns))
-		return -ENOENT;
-
-	ba2str(&ns->src, addr);
-	if (ns->id == BNEP_SVC_NAP)
-		create_name(filename, PATH_MAX, STORAGEDIR, addr, "nap");
-	else
-		create_name(filename, PATH_MAX, STORAGEDIR, addr, "gn");
-
-	return remove(filename);
 }
 
 int server_find_data(DBusConnection *conn,
