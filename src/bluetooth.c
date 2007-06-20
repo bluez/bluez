@@ -394,6 +394,8 @@ char *bt_compidtostr(int compid)
 		return "Marvell Technology Group Ltd.";
 	case 73:
 		return "3DSP Corporation";
+	case 74:
+		return "Accel Semiconductor Ltd.";
 	case 65535:
 		return "internal use";
 	default:
