@@ -951,6 +951,29 @@ static int bcm2035(int fd, struct uart_t *u, struct termios *ti)
 		return -1;
 	}
 
+	if (u->bdaddr != NULL) {
+		/* Set BD_ADDR */
+		memset(cmd, 0, sizeof(cmd));
+		memset(resp, 0, sizeof(resp));
+		cmd[0] = HCI_COMMAND_PKT;
+		cmd[1] = 0x01;
+		cmd[2] = 0xfc;
+		cmd[3] = 0x06;
+		str2ba(u->bdaddr, (bdaddr_t *) (cmd + 4));
+
+		/* Send command */
+		if (write(fd, cmd, 10) != 10) {
+			fprintf(stderr, "Failed to write BD_ADDR command\n");
+			return -1;
+		}
+
+		/* Read reply */
+		if ((n = read_hci_event(fd, resp, 10)) < 0) {
+			fprintf(stderr, "Failed to set BD_ADDR\n");
+			return -1;
+		}
+	}
+
 	/* Read the local version info */
 	memset(cmd, 0, sizeof(cmd));
 	memset(resp, 0, sizeof(resp));
@@ -983,7 +1006,7 @@ static int bcm2035(int fd, struct uart_t *u, struct termios *ti)
 	/* Send command */
 	if (write(fd, cmd, 4) != 4) {
 		fprintf(stderr, "Failed to write \"read local supported "
-			"commands\" command\n");
+						"commands\" command\n");
 		return -1;
 	}
 
@@ -1010,11 +1033,11 @@ static int bcm2035(int fd, struct uart_t *u, struct termios *ti)
 		cmd[5] = 0xfa;
 		break;
 	case 460800:
-		cmd[4] = 0x11;
+		cmd[4] = 0x22;
 		cmd[5] = 0xfd;
 		break;
 	case 921600:
-		cmd[4] = 0x65;
+		cmd[4] = 0x55;
 		cmd[5] = 0xff;
 		break;
 	default:
@@ -1103,7 +1126,7 @@ struct uart_t uart[] = {
 	{ "billionton", 0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        NULL, bcsp     },
 
 	/* Broadcom BCM2035 */
-	{ "bcm2035",    0x0A5C, 0x2035, HCI_UART_H4,   115200, 115200, 0,        NULL, bcm2035  },
+	{ "bcm2035",    0x0A5C, 0x2035, HCI_UART_H4,   115200, 460800, FLOW_CTL, NULL, bcm2035  },
 
 	{ NULL, 0 }
 };
