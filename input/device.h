@@ -32,5 +32,12 @@ int input_device_unregister(DBusConnection *conn, const char *path);
 
 int input_device_get_bdaddr(DBusConnection *conn, const char *path,
 						bdaddr_t *src, bdaddr_t *dst);
+
+int input_device_set_channel(bdaddr_t *src, bdaddr_t *dst, int psm, int nsk);
+
+int input_device_close_channels(bdaddr_t *src, bdaddr_t *dst);
+
+int input_device_connadd(bdaddr_t *src, bdaddr_t *dst);
+
 int l2cap_connect(bdaddr_t *src, bdaddr_t *dst,
 				unsigned short psm, GIOFunc cb, void *data);

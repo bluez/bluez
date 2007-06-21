@@ -954,9 +954,12 @@ static void stored_input(char *key, char *value, void *data)
 	 * acceptable since the source is different.
 	 */
 	if (input_device_register(connection, src, &dst, &hidp, &path) < 0)
-		return;
+		goto cleanup;
 
 	device_paths = g_slist_append(device_paths, g_strdup(path));
+cleanup:
+	if (hidp.rd_data)
+		g_free(hidp.rd_data);
 }
 
 static void register_stored_inputs(void)
