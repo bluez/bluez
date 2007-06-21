@@ -521,19 +521,44 @@ static inline void ext_inquiry_response_dump(int level, struct frame *frm)
 		length--;
 
 		switch (type) {
+		case 0x01:
+			p_indent(level, frm);
+			printf("Flags:");
+			for (i = 0; i < length; i++)
+				printf(" 0x%2.2x", *((uint8_t *) (frm->ptr + i)));
+			printf("\n");
+			break;
+
+		case 0x02:
+		case 0x03:
+			p_indent(level, frm);
+			printf("%s service classes:",
+					type == 0x02 ? "Shortened" : "Complete");
+			for (i = 0; i < length / 2; i++) {
+				uint16_t val = btohs(bt_get_unaligned((uint16_t *) (frm->ptr + (i * 2))));
+				printf(" 0x%4.4x", val);
+			}
+			printf("\n");
+			break;
+
 		case 0x08:
 		case 0x09:
 			str = malloc(length + 1);
 			if (str) {
 				snprintf(str, length + 1, "%s", (char *) frm->ptr);
 				for (i = 0; i < length; i++)
-				if (!isprint(str[i]))
-					str[i] = '.';
+					if (!isprint(str[i]))
+						str[i] = '.';
 				p_indent(level, frm);
 				printf("%s local name: \'%s\'\n",
 					type == 0x08 ? "Shortened" : "Complete", str);
 				free(str);
 			}
+			break;
+
+		case 0x0a:
+			p_indent(level, frm);
+			printf("TX power level: %d\n", *((uint8_t *) frm->ptr));
 			break;
 
 		default:
