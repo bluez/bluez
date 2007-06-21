@@ -29,6 +29,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <malloc.h>
@@ -108,6 +109,40 @@ int ba2oui(const bdaddr_t *ba, char *str)
 
 	baswap((bdaddr_t *) b, ba);
 	return sprintf(str, "%2.2X-%2.2X-%2.2X", b[0], b[1], b[2]);
+}
+
+int bachk(const char *str)
+{
+	char tmp[18], *ptr = tmp;
+
+	if (!str)
+		return -1;
+
+	if (strlen(str) != 17)
+		return -1;
+
+	memcpy(tmp, str, 18);
+
+	while (*ptr) {
+		*ptr = toupper(*ptr);
+		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
+			return -1;
+		ptr++;
+
+		*ptr = toupper(*ptr);
+		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
+			return -1;
+		ptr++;
+
+		*ptr = toupper(*ptr);
+		if (*ptr == 0)
+			break;
+		if (*ptr != ':')
+			return -1;
+		ptr++;
+	}
+
+	return 0;
 }
 
 int baprintf(const char *format, ...)
