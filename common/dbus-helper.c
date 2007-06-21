@@ -285,7 +285,7 @@ static DBusObjectPathVTable generic_table = {
 
 static void update_parent_data(DBusConnection *conn, const char *child_path)
 {
-	struct generic_data *data;
+	struct generic_data *data = NULL;
 	char *parent_path, *slash;
 
 	parent_path = g_strdup(child_path);
@@ -350,10 +350,10 @@ dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
 							const char *path,
 							void **data_p)
 {
-	struct generic_data *data;
+	struct generic_data *data = NULL;
 
 	if (!dbus_connection_get_object_path_data(connection, path,
-							(void *) &data))
+						(void *) &data) || !data)
 		return FALSE;
 
 	*data_p = data->user_data;
@@ -367,11 +367,11 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 					DBusSignalVTable *signals,
 					DBusPropertyVTable *properties)
 {
-	struct generic_data *data;
+	struct generic_data *data = NULL;
 	struct interface_data *iface;
 
 	if (!dbus_connection_get_object_path_data(connection, path,
-							(void *) &data))
+						(void *) &data) || !data)
 		return FALSE;
 
 	if (find_interface(data->interfaces, name))
@@ -395,11 +395,11 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
 					const char *path, const char *name)
 {
-	struct generic_data *data;
+	struct generic_data *data = NULL;
 	struct interface_data *iface;
 
 	if (!dbus_connection_get_object_path_data(connection, path,
-							(void *) &data))
+						(void *) &data) || !data)
 		return FALSE;
 
 	iface = find_interface(data->interfaces, name);
@@ -462,14 +462,15 @@ dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
 						int first,
 						va_list var_args)
 {
-	struct generic_data *data;
+	struct generic_data *data = NULL;
 	struct interface_data *iface;
 	DBusSignalVTable *sig_data;
 	DBusMessage *signal;
 	dbus_bool_t ret;
 	const char *signature, *args = NULL;
 
-	if (!dbus_connection_get_object_path_data(conn, path, (void *) &data)) {
+	if (!dbus_connection_get_object_path_data(conn, path,
+					(void *) &data) || !data) {
 		error("dbus_connection_emit_signal: path %s isn't registered",
 				path);
 		return FALSE;
