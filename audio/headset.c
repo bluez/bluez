@@ -460,7 +460,7 @@ static int sco_connect(struct device *device, struct pending_connect *c)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
-	bacpy(&addr.sco_bdaddr, &device->bda);
+	bacpy(&addr.sco_bdaddr, &device->dst);
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
@@ -520,7 +520,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	ba2str(&device->bda, hs_address);
+	ba2str(&device->dst, hs_address);
 	hs->rfcomm = chan;
 	hs->pending_connect->io = NULL;
 
@@ -570,7 +570,7 @@ static int rfcomm_connect(struct device *device, int *err)
 	assert(hs->pending_connect != NULL);
 	assert(hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS);
 
-	ba2str(&device->bda, address);
+	ba2str(&device->dst, address);
 
 	debug("Connecting to %s channel %d", address, hs->rfcomm_ch);
 
@@ -602,7 +602,7 @@ static int rfcomm_connect(struct device *device, int *err)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, &device->bda);
+	bacpy(&addr.rc_bdaddr, &device->dst);
 	addr.rc_channel = hs->rfcomm_ch;
 
 	hs->pending_connect->io = g_io_channel_unix_new(sk);
@@ -864,7 +864,7 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 
 	hs->state = HEADSET_STATE_DISCONNECTED;
 
-	ba2str(&device->bda, hs_address);
+	ba2str(&device->dst, hs_address);
 	info("Disconnected from %s, %s", hs_address, device->path);
 
 	dbus_connection_emit_signal(device->conn, device->path,
@@ -974,7 +974,7 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 		goto failed;
 	}
 
-	ba2str(&device->bda, address);
+	ba2str(&device->dst, address);
 
 	handle = array[0];
 
@@ -1058,7 +1058,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 	else
 		hs_svc = "hfp";
 
-	ba2str(&device->bda, hs_address);
+	ba2str(&device->dst, hs_address);
 	addr_ptr = hs_address;
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_STRING, &hs_svc,
@@ -1556,7 +1556,7 @@ void headset_set_state(void *device, headset_state_t state)
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				(GIOFunc) rfcomm_io_cb, device);
 
-			ba2str(&((struct device *) device)->bda, hs_address);
+			ba2str(&((struct device *) device)->dst, hs_address);
 
 			dbus_connection_emit_signal(((struct device *) device)->conn,
 						((struct device *) device)->path,

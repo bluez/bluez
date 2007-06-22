@@ -23,14 +23,14 @@
 
 #include "dbus.h"
 
-DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg,
-                                          const char *descr);
+DBusHandlerResult err_invalid_args(DBusConnection *conn,
+					DBusMessage *msg, const char *descr);
 DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult err_not_connected(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult err_not_connected(DBusConnection *conn, DBusMessage * msg);
 DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult err_connect_failed(DBusConnection *conn,
-                                   DBusMessage *msg, const char *err);
+					DBusMessage *msg, const char *err);
 DBusHandlerResult err_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult err_not_available(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
-                            const char *dsc);
+DBusHandlerResult err_failed(DBusConnection *conn,
+					DBusMessage *msg, const char *dsc);

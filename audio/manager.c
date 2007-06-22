@@ -32,8 +32,13 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <assert.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <ctype.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
@@ -44,7 +49,7 @@
 
 #include "dbus-helper.h"
 #include "logging.h"
-
+#include "textfile.h"
 #include "manager.h"
 #include "error.h"
 
@@ -92,7 +97,7 @@ static struct device *find_device(bdaddr_t *bda)
 
 	for (l = devices; l != NULL; l = l->next) {
 		struct device *device = l->data;
-		if (bacmp(&device->bda, bda) == 0)
+		if (bacmp(&device->dst, bda) == 0)
 			return device;
 	}
 
@@ -118,11 +123,17 @@ static void remove_device(struct device *device)
 
 static gboolean add_device(struct device *device)
 {
+	gboolean is_default;
+
 	/* First device became default */
 	if (g_slist_length(devices) == 0)
 		default_dev = device;
 
 	devices = g_slist_append(devices, device);
+
+	is_default = default_dev == device ? TRUE : FALSE;
+
+	device_store(device, is_default);
 
 	return TRUE;
 }
@@ -446,7 +457,7 @@ static void get_next_record(struct audio_sdp_data *data)
 
 	data->handles = g_slist_remove(data->handles, data->handles->data);
 
-	ba2str(&data->device->bda, address);
+	ba2str(&data->device->dst, address);
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &ptr,
 					DBUS_TYPE_UINT32, handle,
@@ -561,7 +572,7 @@ static DBusHandlerResult get_handles(const char *uuid,
 		goto failed;
 	}
 
-	ba2str(&data->device->bda, address);
+	ba2str(&data->device->dst, address);
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &ptr,
 					DBUS_TYPE_STRING, &uuid,
@@ -658,27 +669,27 @@ struct device *manager_device_connected(bdaddr_t *bda)
 static gboolean device_supports_interface(struct device *device,
 						const char *iface)
 {
-		if (strcmp(iface, AUDIO_HEADSET_INTERFACE) == 0)
-			return device->headset ? TRUE : FALSE;
+	if (strcmp(iface, AUDIO_HEADSET_INTERFACE) == 0)
+		return device->headset ? TRUE : FALSE;
 
-		if (strcmp(iface, AUDIO_GATEWAY_INTERFACE) == 0)
-			return device->gateway ? TRUE : FALSE;
+	if (strcmp(iface, AUDIO_GATEWAY_INTERFACE) == 0)
+		return device->gateway ? TRUE : FALSE;
 
-		if (strcmp(iface, AUDIO_SOURCE_INTERFACE) == 0)
-			return device->source ? TRUE : FALSE;
+	if (strcmp(iface, AUDIO_SOURCE_INTERFACE) == 0)
+		return device->source ? TRUE : FALSE;
 
-		if (strcmp(iface, AUDIO_SINK_INTERFACE) == 0)
+	if (strcmp(iface, AUDIO_SINK_INTERFACE) == 0)
 			return device->sink ? TRUE : FALSE;
 
-		if (strcmp(iface, AUDIO_CONTROL_INTERFACE) == 0)
-			return device->control ? TRUE : FALSE;
+	if (strcmp(iface, AUDIO_CONTROL_INTERFACE) == 0)
+		return device->control ? TRUE : FALSE;
 
-		if (strcmp(iface, AUDIO_TARGET_INTERFACE) == 0)
-			return device->target ? TRUE : FALSE;
+	if (strcmp(iface, AUDIO_TARGET_INTERFACE) == 0)
+		return device->target ? TRUE : FALSE;
 
-		debug("Unknown interface %s", iface);
+	debug("Unknown interface %s", iface);
 
-		return FALSE;
+	return FALSE;
 }
 
 static gboolean device_matches(struct device *device, char **interfaces)
@@ -1069,6 +1080,97 @@ static DBusSignalVTable manager_signals[] = {
 	{ NULL, NULL }
 };
 
+static void parse_stored_devices(char *key, char *value, void *data)
+{
+	struct device *device;
+	bdaddr_t dst;
+	char addr[18];
+	char *ptr;
+	char ifaces[6][8];
+	int len, i;
+
+	if (!key || !value)
+		return;
+
+	/* Format: XX:XX:XX:XX:XX:XX interface0:interface1:... */
+	memset(addr, 0, 18);
+	strncpy(addr, key, 17);
+	str2ba(addr, &dst);
+
+	if ((device = create_device(&dst)) == NULL)
+		return;
+
+	/* Parsing the interface */
+	ptr = strchr(value, ':');
+
+	if (!ptr) {
+		strncpy(ifaces[0], value, 8);
+		if (strcmp(ifaces[0], "headset") == 0)
+			device->headset = headset_init(device, NULL, 0);
+	}
+
+	/* FIXME: has more than 1 interface */
+	for (i = 0; ptr && i < 6; i++) {
+		len = ptr-value;
+		strncpy(ifaces[i], value, len);
+		value = ptr;
+		ptr = strchr(ptr, ':');
+	}
+
+	add_device(device);
+}
+
+static void register_devices_stored(const char *adapter)
+{
+	char filename[PATH_MAX + 1];
+	char *addr;
+	struct stat s;
+	bdaddr_t src;
+	bdaddr_t dst;
+	bdaddr_t default_src;
+	int dev_id;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter, "audio");
+
+	str2ba(adapter, &src);
+
+	bacpy(&default_src, BDADDR_ANY);
+	dev_id = hci_get_route(NULL);
+	if (dev_id < 0)
+		hci_devba(dev_id, &default_src);
+
+	if (stat(filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
+		textfile_foreach(filename, parse_stored_devices, &src);
+		addr = textfile_get(filename, "default");
+
+		str2ba(addr, &dst);
+		default_dev = find_device(&dst);
+	}
+}
+
+static void register_stored(void)
+{
+	char dirname[PATH_MAX + 1];
+	struct dirent *de;
+	DIR *dir;
+
+	snprintf(dirname, PATH_MAX, "%s", STORAGEDIR);
+
+	dir = opendir(dirname);
+	if (!dir)
+		return;
+
+	while ((de = readdir(dir)) != NULL) {
+		if (!isdigit(de->d_name[0]))
+			continue;
+
+		/* Device objects */
+		register_devices_stored(de->d_name);
+	}
+
+	closedir(dir);
+}
+
 int audio_init(DBusConnection *conn)
 {
 	if (!dbus_connection_create_object_path(conn, AUDIO_MANAGER_PATH,
@@ -1089,6 +1191,10 @@ int audio_init(DBusConnection *conn)
 	}
 
 	connection = dbus_connection_ref(conn);
+
+	info("Registered manager path:%s", AUDIO_MANAGER_PATH);
+
+	register_stored();
 
 	return 0;
 }

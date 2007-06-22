@@ -32,68 +32,72 @@
 
 /* FIXME: Remove these once global error functions exist */
 static DBusHandlerResult error_reply(DBusConnection *conn, DBusMessage *msg,
-                                   const char *name, const char *descr)
+					const char *name, const char *descr)
 {
-       DBusMessage *derr;
+	DBusMessage *derr;
 
-       if (!conn || !msg)
-              return DBUS_HANDLER_RESULT_HANDLED;
+	if (!conn || !msg)
+		return DBUS_HANDLER_RESULT_HANDLED;
 
-       derr = dbus_message_new_error(msg, name, descr);
-       if (!derr) {
-              error("Unable to allocate new error return");
-              return DBUS_HANDLER_RESULT_NEED_MEMORY;
-       }
+	derr = dbus_message_new_error(msg, name, descr);
+	if (!derr) {
+		error("Unable to allocate new error return");
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
 
-       return send_message_and_unref(conn, derr);
+	return send_message_and_unref(conn, derr);
 }
 
-DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg,
-                                          const char *descr)
+DBusHandlerResult err_invalid_args(DBusConnection *conn,
+					DBusMessage *msg, const char *descr)
 {
-       return error_reply(conn, msg, AUDIO_ERROR_INTERFACE ".InvalidArguments",
-                     descr ? descr : "Invalid arguments in method call");
+	return error_reply(conn, msg,
+				AUDIO_ERROR_INTERFACE ".InvalidArguments",
+				descr ? descr : "Invalid arguments in method call");
 }
 
 DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg)
 {
-       return error_reply(conn, msg, AUDIO_ERROR_INTERFACE ".AlreadyConnected",
-                            "Already connected to a device");
+	return error_reply(conn, msg,
+				AUDIO_ERROR_INTERFACE ".AlreadyConnected",
+					"Already connected to a device");
 }
 
 DBusHandlerResult err_not_connected(DBusConnection *conn, DBusMessage *msg)
 {
-       return error_reply(conn, msg, AUDIO_ERROR_INTERFACE ".NotConnected",
-                            "Not connected to any device");
+	return error_reply(conn, msg,
+				AUDIO_ERROR_INTERFACE ".NotConnected",
+					"Not connected to any device");
 }
 
 DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg)
 {
-       return error_reply(conn, msg, AUDIO_ERROR_INTERFACE ".NotSupported",
-                     "The service is not supported by the remote device");
+	return error_reply(conn, msg,
+				AUDIO_ERROR_INTERFACE ".NotSupported",
+				"The service is not supported by the remote device");
 }
 
 DBusHandlerResult err_connect_failed(DBusConnection *conn,
-                                   DBusMessage *msg, const char *err)
+					DBusMessage *msg, const char *err)
 {
-       return error_reply(conn, msg, AUDIO_ERROR_INTERFACE ".ConnectFailed",
-                            err);
+	return error_reply(conn, msg,
+				AUDIO_ERROR_INTERFACE ".ConnectFailed", err);
 }
 
 DBusHandlerResult err_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 {
-       return error_reply(conn, msg, AUDIO_ERROR_INTERFACE ".DoesNotExist",
-                            "Does not exist");
+	return error_reply(conn, msg,
+				AUDIO_ERROR_INTERFACE ".DoesNotExist",
+							"Does not exist");
 }
 
 DBusHandlerResult err_not_available(DBusConnection *conn, DBusMessage *msg)
 {
-       return error_reply(conn, msg, ".NotAvailable",
-                            "Not available");
+	return error_reply(conn, msg, ".NotAvailable", "Not available");
 }
 
-DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
-                            const char *dsc)
+DBusHandlerResult err_failed(DBusConnection *conn,
+					DBusMessage *msg, const char *dsc)
 {
-       return error_reply(conn, msg, AUDIO_ERROR_INTERFACE ".Failed", dsc);
+	return error_reply(conn, msg, AUDIO_ERROR_INTERFACE ".Failed", dsc);
 }

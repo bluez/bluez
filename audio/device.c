@@ -25,6 +25,12 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <netinet/in.h>
+
 #include <glib.h>
 #include <dbus/dbus.h>
 
@@ -35,167 +41,202 @@
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "logging.h"
+#include "textfile.h"
 
 #include "device.h"
 
-void device_finish_sdp_transaction(struct device *device)
-{
-       char address[18], *addr_ptr = address;
-       DBusMessage *msg, *reply;
-       DBusError derr;
-
-       ba2str(&device->bda, address);
-
-       msg = dbus_message_new_method_call("org.bluez", device->adapter_path,
-                                          "org.bluez.Adapter",
-                                          "FinishRemoteServiceTransaction");
-       if (!msg) {
-              error("Unable to allocate new method call");
-              return;
-       }
-
-       dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
-                                   DBUS_TYPE_INVALID);
-
-       dbus_error_init(&derr);
-       reply = dbus_connection_send_with_reply_and_block(device->conn, msg, -1,
-                                                        &derr);
-
-       dbus_message_unref(msg);
-
-       if (dbus_error_is_set(&derr) ||
-                     dbus_set_error_from_message(&derr, reply)) {
-              error("FinishRemoteServiceTransaction(%s) failed: %s",
-                            address, derr.message);
-              dbus_error_free(&derr);
-              return;
-       }
-
-       dbus_message_unref(reply);
-}
-
 static DBusHandlerResult device_get_address(DBusConnection *conn,
-                                          DBusMessage *msg,
-                                          void *data)
+						DBusMessage *msg, void *data)
 {
-       struct device *device = data;
-       DBusMessage *reply;
-       char address[18], *ptr = address;
+	struct device *device = data;
+	DBusMessage *reply;
+	char address[18], *ptr = address;
 
-       reply = dbus_message_new_method_return(msg);
-       if (!reply)
-              return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-       ba2str(&device->bda, address);
+	ba2str(&device->dst, address);
 
-       dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
-                                   DBUS_TYPE_INVALID);
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
+							DBUS_TYPE_INVALID);
 
-       return send_message_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult device_get_connected(DBusConnection *conn,
-                                          DBusMessage *msg,
-                                          void *data)
+						DBusMessage *msg, void *data)
 {
-       DBusMessageIter iter, array_iter;
-       struct device *device = data;
-       DBusMessage *reply;
-       const char *iface;
+	DBusMessageIter iter, array_iter;
+	struct device *device = data;
+	DBusMessage *reply;
+	const char *iface;
 
-       reply = dbus_message_new_method_return(msg);
-       if (!reply)
-              return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-       dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_init_append(reply, &iter);
 
-       dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-                            DBUS_TYPE_STRING_AS_STRING, &array_iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+						DBUS_TYPE_STRING_AS_STRING,
+						&array_iter);
 
-       if (device->headset &&
-              headset_get_state(device->headset) >= HEADSET_STATE_CONNECTED) {
-              iface = AUDIO_HEADSET_INTERFACE;
-              dbus_message_iter_append_basic(&array_iter,
-                                          DBUS_TYPE_STRING, &iface);
-       }
+	if (device->headset &&
+			headset_get_state(device->headset) >= HEADSET_STATE_CONNECTED) {
+		iface = AUDIO_HEADSET_INTERFACE;
+		dbus_message_iter_append_basic(&array_iter,
+						DBUS_TYPE_STRING, &iface);
+	}
 
-       dbus_message_iter_close_container(&iter, &array_iter);
+	dbus_message_iter_close_container(&iter, &array_iter);
 
-       return send_message_and_unref(conn, reply);
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusMethodVTable device_methods[] = {
-       { "GetAddress",                        device_get_address,
-              "",    "s" },
-       { "GetConnectedInterfaces",    device_get_connected,
-              "",    "s" },
-       { NULL, NULL, NULL, NULL }
+	{ "GetAddress",			device_get_address,	"",	"s" },
+	{ "GetConnectedInterfaces",	device_get_connected,	"",	"s" },
+	{ NULL, NULL, NULL, NULL }
 };
 
 static void device_free(struct device *device)
 {
-       if (device->headset)
-              headset_free(device);
+	if (device->headset)
+		headset_free(device);
 
-       if (device->conn)
-              dbus_connection_unref(device->conn);
+	if (device->conn)
+		dbus_connection_unref(device->conn);
 
-       if (device->adapter_path)
-              g_free(device->adapter_path);
+	if (device->adapter_path)
+		g_free(device->adapter_path);
 
-       if (device->path)
-              g_free(device->path);
+	if (device->path)
+		g_free(device->path);
 
-       g_free(device);
+	g_free(device);
 }
 
 static void device_unregister(DBusConnection *conn, void *data)
 {
-       struct device *device = data;
+	struct device *device = data;
 
-       info("Unregistered device path:%s", device->path);
+	info("Unregistered device path:%s", device->path);
 
-       device_free(device);
+	device_free(device);
 }
 
-struct device * device_register(DBusConnection *conn, const char *path, bdaddr_t *bda)
+struct device *device_register(DBusConnection *conn,
+					const char *path, bdaddr_t *bda)
 {
-       struct device *device;
-       bdaddr_t src;
-       int dev_id;
+	struct device *device;
+	bdaddr_t src;
+	int dev_id;
 
-       if (!conn || !path)
-              return NULL;
+	if (!conn || !path)
+		return NULL;
 
-       bacpy(&src, BDADDR_ANY);
-       dev_id = hci_get_route(NULL);
-       if ((dev_id < 0) ||  (hci_devba(dev_id, &src) < 0))
-              return NULL;
+	bacpy(&src, BDADDR_ANY);
+	dev_id = hci_get_route(NULL);
+	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
+		return NULL;
 
-       device = g_new0(struct device, 1);
+	device = g_new0(struct device, 1);
 
-       if (!dbus_connection_create_object_path(conn, path, device,
-              device_unregister)) {
-              error("D-Bus failed to register %s path", path);
-              device_free(device);
-              return NULL;
-       }
+	if (!dbus_connection_create_object_path(conn, path, device,
+							device_unregister)) {
+		error("D-Bus failed to register %s path", path);
+		device_free(device);
+		return NULL;
+	}
 
-       if (!dbus_connection_register_interface(conn,
-                                          path,
-                                          AUDIO_DEVICE_INTERFACE,
-                                          device_methods, NULL, NULL)) {
-              error("Failed to register %s interface to %s",
-                            AUDIO_DEVICE_INTERFACE, path);
-              dbus_connection_destroy_object_path(conn, path);
-              return NULL;
-       }
+	if (!dbus_connection_register_interface(conn, path,
+			AUDIO_DEVICE_INTERFACE, device_methods, NULL, NULL)) {
+		error("Failed to register %s interface to %s",
+					AUDIO_DEVICE_INTERFACE, path);
+		dbus_connection_destroy_object_path(conn, path);
+		return NULL;
+	}
 
-       device->path = g_strdup(path);
-       bacpy(&device->bda, bda);
-       device->conn = dbus_connection_ref(conn);
-       device->adapter_path = g_malloc0(16);
-       snprintf(device->adapter_path, 16, "/org/bluez/hci%d", dev_id);
+	device->path = g_strdup(path);
+	bacpy(&device->dst, bda);
+	bacpy(&device->src, &src);
+	device->conn = dbus_connection_ref(conn);
+	device->adapter_path = g_malloc0(16);
+	snprintf(device->adapter_path, 16, "/org/bluez/hci%d", dev_id);
 
-       return device;
+	return device;
+}
+
+int device_store(struct device *device, gboolean is_default)
+{
+	char value[64];
+	char filename[PATH_MAX + 1];
+	char src_addr[18], dst_addr[18];
+	int err;
+
+	if (!device->path)
+		return -EINVAL;
+
+	ba2str(&device->dst, dst_addr);
+	ba2str(&device->src, src_addr);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "audio");
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	if (is_default)
+		err = textfile_put(filename, "default", dst_addr);
+	else {
+		if (device->headset)
+			snprintf(value, 64, "headset");
+		if (device->gateway)
+			snprintf(value, 64, "%s:gateway", value);
+		if (device->sink)
+			snprintf(value, 64, "%s:sink", value);
+		if (device->source)
+			snprintf(value, 64, "%s:source", value);
+		if (device->control)
+			snprintf(value, 64, "%s:control", value);
+		if (device->target)
+			snprintf(value, 64, "%s:target", value);
+		err = textfile_put(filename, dst_addr, value);
+	}
+
+	return err;
+}
+
+void device_finish_sdp_transaction(struct device *device)
+{
+	char address[18], *addr_ptr = address;
+	DBusMessage *msg, *reply;
+	DBusError derr;
+
+	ba2str(&device->dst, address);
+
+	msg = dbus_message_new_method_call("org.bluez", device->adapter_path,
+						"org.bluez.Adapter",
+						"FinishRemoteServiceTransaction");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
+				 DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(device->conn,
+							msg, -1, &derr);
+
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr) ||
+				dbus_set_error_from_message(&derr, reply)) {
+		error("FinishRemoteServiceTransaction(%s) failed: %s",
+						address, derr.message);
+		dbus_error_free(&derr);
+		return;
+	}
+
+	dbus_message_unref(reply);
 }
