@@ -840,9 +840,9 @@ static inline void write_link_policy_dump(int level, struct frame *frm)
 	}
 }
 
-static inline void sniff_subrate_dump(int level, struct frame *frm)
+static inline void sniff_subrating_dump(int level, struct frame *frm)
 {
-	sniff_subrate_cp *cp = frm->ptr;
+	sniff_subrating_cp *cp = frm->ptr;
 
 	p_indent(level, frm);
 	printf("handle %d\n", btohs(cp->handle));
@@ -1093,6 +1093,30 @@ static inline void write_ext_inquiry_response_dump(int level, struct frame *frm)
 	ext_inquiry_response_dump(level, frm);
 }
 
+static inline void write_inquiry_transmit_power_level_dump(int level, struct frame *frm)
+{
+	write_inquiry_transmit_power_level_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("level %d\n", cp->level);
+}
+
+static inline void write_default_error_data_reporting_dump(int level, struct frame *frm)
+{
+	write_default_error_data_reporting_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("reporting %d\n", cp->reporting);
+}
+
+static inline void enhanced_flush_dump(int level, struct frame *frm)
+{
+	enhanced_flush_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle %d type %d\n", btohs(cp->handle), cp->type);
+}
+
 static inline void request_transmit_power_level_dump(int level, struct frame *frm)
 {
 	read_transmit_power_level_cp *cp = frm->ptr;
@@ -1167,7 +1191,7 @@ static inline void command_dump(int level, struct frame *frm)
 	frm->len -= HCI_COMMAND_HDR_SIZE;
 
 	if (ogf == OGF_VENDOR_CMD) {
-	       	if (ocf == 0 && get_manufacturer() == 10) {
+		if (ocf == 0 && get_manufacturer() == 10) {
 			csr_dump(level + 1, frm);
 			return;
 		}
@@ -1272,8 +1296,8 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_WRITE_LINK_POLICY:
 			write_link_policy_dump(level + 1, frm);
 			return;
-		case OCF_SNIFF_SUBRATE:
-			sniff_subrate_dump(level + 1, frm);
+		case OCF_SNIFF_SUBRATING:
+			sniff_subrating_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -1346,6 +1370,7 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_FLUSH:
 		case OCF_READ_LINK_SUPERVISION_TIMEOUT:
+		case OCF_REFRESH_ENCRYPTION_KEY:
 			generic_command_dump(level + 1, frm);
 			return;
 		case OCF_WRITE_LINK_SUPERVISION_TIMEOUT:
@@ -1353,6 +1378,15 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_WRITE_EXT_INQUIRY_RESPONSE:
 			write_ext_inquiry_response_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_INQUIRY_TRANSMIT_POWER_LEVEL:
+			write_inquiry_transmit_power_level_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_DEFAULT_ERROR_DATA_REPORTING:
+			write_default_error_data_reporting_dump(level + 1, frm);
+			return;
+		case OCF_ENHANCED_FLUSH:
+			enhanced_flush_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -1682,6 +1716,32 @@ static inline void read_ext_inquiry_response_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void read_inquiry_transmit_power_level_dump(int level, struct frame *frm)
+{
+	read_inquiry_transmit_power_level_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x level %d\n", rp->status, rp->level);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
+static inline void read_default_error_data_reporting_dump(int level, struct frame *frm)
+{
+	read_default_error_data_reporting_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x reporting %d\n", rp->status, rp->reporting);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	}
+}
+
 static inline void read_local_version_dump(int level, struct frame *frm)
 {
 	read_local_version_rp *rp = frm->ptr;
@@ -1906,7 +1966,7 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 	case OGF_LINK_POLICY:
 		switch (ocf) {
 		case OCF_WRITE_LINK_POLICY:
-		case OCF_SNIFF_SUBRATE:
+		case OCF_SNIFF_SUBRATING:
 			generic_response_dump(level, frm);
 			return;
 		}
@@ -1967,6 +2027,12 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_EXT_INQUIRY_RESPONSE:
 			read_ext_inquiry_response_dump(level, frm);
 			return;
+		case OCF_READ_INQUIRY_TRANSMIT_POWER_LEVEL:
+			read_inquiry_transmit_power_level_dump(level, frm);
+			return;
+		case OCF_READ_DEFAULT_ERROR_DATA_REPORTING:
+			read_default_error_data_reporting_dump(level, frm);
+			return;
 		case OCF_FLUSH:
 		case OCF_WRITE_LINK_SUPERVISION_TIMEOUT:
 			generic_response_dump(level, frm);
@@ -1992,6 +2058,8 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_AFH_MODE:
 		case OCF_SET_AFH_CLASSIFICATION:
 		case OCF_WRITE_EXT_INQUIRY_RESPONSE:
+		case OCF_WRITE_INQUIRY_TRANSMIT_POWER_LEVEL:
+		case OCF_WRITE_DEFAULT_ERROR_DATA_REPORTING:
 		case OCF_SET_CONTROLLER_TO_HOST_FC:
 		case OCF_HOST_BUFFER_SIZE:
 			status_response_dump(level, frm);
@@ -2511,9 +2579,9 @@ static inline void sync_conn_changed_dump(int level, struct frame *frm)
 	}
 }
 
-static inline void sniff_subrate_event_dump(int level, struct frame *frm)
+static inline void sniff_subrating_event_dump(int level, struct frame *frm)
 {
-	evt_sniff_subrate *evt = frm->ptr;
+	evt_sniff_subrating *evt = frm->ptr;
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d\n", evt->status, btohs(evt->handle));
@@ -2557,13 +2625,30 @@ static inline void extended_inq_result_dump(int level, struct frame *frm)
 	}
 }
 
-static inline void link_supervision_timeout_change_dump(int level, struct frame *frm)
+static inline void link_supervision_timeout_changed_dump(int level, struct frame *frm)
 {
-	evt_link_supervision_timeout_change *evt = frm->ptr;
+	evt_link_supervision_timeout_changed *evt = frm->ptr;
 
 	p_indent(level, frm);
 	printf("handle %d timeout %d\n",
 				btohs(evt->handle), btohs(evt->timeout));
+}
+
+static inline void remote_host_features_notify_dump(int level, struct frame *frm)
+{
+	evt_remote_host_features_notify *evt = frm->ptr;
+	char addr[18];
+	int i;
+
+	p_indent(level, frm);
+	p_ba2str(&evt->bdaddr, addr);
+	printf("bdaddr %s\n", addr);
+
+	p_indent(level, frm);
+	printf("Features:");
+	for (i = 0; i < 8; i++)
+		printf(" 0x%2.2x", evt->features[i]);
+	printf("\n");
 }
 
 static inline void event_dump(int level, struct frame *frm)
@@ -2735,14 +2820,23 @@ static inline void event_dump(int level, struct frame *frm)
 	case EVT_SYNC_CONN_CHANGED:
 		sync_conn_changed_dump(level + 1, frm);
 		break;
-	case EVT_SNIFF_SUBRATE:
-		sniff_subrate_event_dump(level + 1, frm);
+	case EVT_SNIFF_SUBRATING:
+		sniff_subrating_event_dump(level + 1, frm);
 		break;
 	case EVT_EXTENDED_INQUIRY_RESULT:
 		extended_inq_result_dump(level + 1, frm);
 		break;
-	case EVT_LINK_SUPERVISION_TIMEOUT_CHANGE:
-		link_supervision_timeout_change_dump(level + 1, frm);
+	case EVT_ENCRYPTION_KEY_REFRESH_COMPLETE:
+		generic_response_dump(level + 1, frm);
+		break;
+	case EVT_LINK_SUPERVISION_TIMEOUT_CHANGED:
+		link_supervision_timeout_changed_dump(level + 1, frm);
+		break;
+	case EVT_ENHANCED_FLUSH_COMPLETE:
+		generic_command_dump(level + 1, frm);
+		break;
+	case EVT_REMOTE_HOST_FEATURES_NOTIFY:
+		remote_host_features_notify_dump(level + 1, frm);
 		break;
 	default:
 		raw_dump(level, frm);
