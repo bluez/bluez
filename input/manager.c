@@ -778,23 +778,12 @@ done:
 	dbus_message_unref(reply);
 }
 
-static int path_bdaddr_cmp(const char *path, const bdaddr_t *bdaddr)
-{
-	bdaddr_t src, dst;
-
-	if (input_device_get_bdaddr(connection, path, &src, &dst) < 0)
-		return -1;
-
-	return bacmp(&dst, bdaddr);
-}
-
 static DBusHandlerResult create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct pending_req *pr;
 	DBusError derr;
 	const char *addr;
-	GSList *l;
 	bdaddr_t src, dst;
 	uint32_t cls = 0;
 	int dev_id;
@@ -821,10 +810,7 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	}
 
 	str2ba(addr, &dst);
-
-	l = g_slist_find_custom(device_paths, &dst,
-					(GCompareFunc) path_bdaddr_cmp);
-	if (l)
+	if (input_device_is_registered(&src, &dst))
 		return err_already_exists(conn, msg, "Input Already exists");
 
 	if (read_device_class(&src, &dst, &cls) < 0) {

@@ -1140,24 +1140,6 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 	return 0;
 }
 
-int input_device_get_bdaddr(DBusConnection *conn, const char *path,
-						bdaddr_t *src, bdaddr_t *dst)
-{
-	struct device *idev;
-
-	if (!dbus_connection_get_object_user_data(conn, path,
-							(void *) &idev))
-		return -1;
-
-	if (!idev)
-		return -1;
-
-	bacpy(src, &idev->src);
-	bacpy(dst, &idev->dst);
-
-	return 0;
-}
-
 int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm,
 						GIOFunc cb, void *data)
 {
@@ -1234,6 +1216,15 @@ static struct device *find_device(bdaddr_t *src, bdaddr_t *dst)
 	}
 
 	return NULL;
+}
+
+gboolean input_device_is_registered(bdaddr_t *src, bdaddr_t *dst)
+{
+	struct device *idev = find_device(src, dst);
+	if (!idev)
+		return FALSE;
+	else
+		return TRUE;
 }
 
 int input_device_set_channel(bdaddr_t *src, bdaddr_t *dst, int psm, int nsk)
