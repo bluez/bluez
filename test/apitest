@@ -179,7 +179,7 @@ class Tester:
         for cmd in dev_cmds:
             print '\t%s' % cmd
 
-    @dbus.decorators.explicitly_pass_message
+    #@dbus.decorators.explicitly_pass_message
     def dev_signal_handler(*args, **keywords):
         dbus_message = keywords["dbus_message"]
         print '%s - %s: ' % (dbus_message.get_member(), dbus_message.get_path()),
@@ -187,7 +187,7 @@ class Tester:
             print '%s   ' % arg,
         print
 
-    @dbus.decorators.explicitly_pass_message
+    #@dbus.decorators.explicitly_pass_message
     def mgr_signal_handler(*args, **keywords):
         dbus_message = keywords["dbus_message"]
         print '%s: ' % dbus_message.get_member()
