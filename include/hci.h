@@ -577,14 +577,14 @@ typedef struct {
 
 #define OCF_WRITE_DEFAULT_LINK_POLICY	0x000F
 
-#define OCF_SNIFF_SUBRATE		0x0011
+#define OCF_SNIFF_SUBRATING		0x0011
 typedef struct {
 	uint16_t	handle;
 	uint16_t	max_latency;
 	uint16_t	min_remote_timeout;
 	uint16_t	min_local_timeout;
-} __attribute__ ((packed)) sniff_subrate_cp;
-#define SNIFF_SUBRATE_CP_SIZE 8
+} __attribute__ ((packed)) sniff_subrating_cp;
+#define SNIFF_SUBRATING_CP_SIZE 8
 
 /* Host Controller and Baseband */
 #define OGF_HOST_CTL		0x03
@@ -967,6 +967,57 @@ typedef struct {
 	uint8_t		status;
 } __attribute__ ((packed)) write_ext_inquiry_response_rp;
 #define WRITE_EXT_INQUIRY_RESPONSE_RP_SIZE 1
+
+#define OCF_REFRESH_ENCRYPTION_KEY	0x0053
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) refresh_encryption_key_cp;
+#define REFRESH_ENCRYPTION_KEY_CP_SIZE 2
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) refresh_encryption_key_rp;
+#define REFRESH_ENCRYPTION_KEY_RP_SIZE 1
+
+#define OCF_READ_INQUIRY_TRANSMIT_POWER_LEVEL	0x0058
+typedef struct {
+	uint8_t		status;
+	int8_t		level;
+} __attribute__ ((packed)) read_inquiry_transmit_power_level_rp;
+#define READ_INQUIRY_TRANSMIT_POWER_LEVEL_RP_SIZE 2
+
+#define OCF_WRITE_INQUIRY_TRANSMIT_POWER_LEVEL	0x0059
+typedef struct {
+	int8_t		level;
+} __attribute__ ((packed)) write_inquiry_transmit_power_level_cp;
+#define WRITE_INQUIRY_TRANSMIT_POWER_LEVEL_CP_SIZE 1
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) write_inquiry_transmit_power_level_rp;
+#define WRITE_INQUIRY_TRANSMIT_POWER_LEVEL_RP_SIZE 1
+
+#define OCF_READ_DEFAULT_ERROR_DATA_REPORTING	0x005A
+typedef struct {
+	uint8_t		status;
+	uint8_t		reporting;
+} __attribute__ ((packed)) read_default_error_data_reporting_rp;
+#define READ_DEFAULT_ERROR_DATA_REPORTING_RP_SIZE 2
+
+#define OCF_WRITE_DEFAULT_ERROR_DATA_REPORTING	0x005B
+typedef struct {
+	uint8_t		reporting;
+} __attribute__ ((packed)) write_default_error_data_reporting_cp;
+#define WRITE_DEFAULT_ERROR_DATA_REPORTING_CP_SIZE 1
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) write_default_error_data_reporting_rp;
+#define WRITE_DEFAULT_ERROR_DATA_REPORTING_RP_SIZE 1
+
+#define OCF_ENHANCED_FLUSH		0x005F
+typedef struct {
+	uint16_t	handle;
+	uint8_t		type;
+} __attribute__ ((packed)) enhanced_flush_cp;
+#define ENHANCED_FLUSH_CP_SIZE 3
 
 /* Informational Parameters */
 #define OGF_INFO_PARAM		0x04
