@@ -268,9 +268,15 @@ int start_device(uint16_t dev_id)
 		if (features[5] & LMP_SNIFF_SUBR)
 			events[5] |= 0x20;
 
+		if (features[5] & LMP_PAUSE_ENC)
+			events[5] |= 0x80;
+
 		if (features[6] & LMP_EXT_INQ)
 			events[5] |= 0x40;
 
+		if (features[6] & LMP_NFLUSH_PKTS)
+			events[7] |= 0x01;
+			
 		if (features[7] & LMP_LSTO)
 			events[6] |= 0x80;
 
