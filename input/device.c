@@ -80,6 +80,7 @@ struct device {
 	char			*path;
 	int			ctrl_sk;
 	int			intr_sk;
+	guint			watch;
 };
 
 GSList *devices = NULL;
@@ -512,24 +513,29 @@ static gboolean connection_event(GIOChannel *chan, GIOCondition cond, gpointer d
 		ret = FALSE;
 	}
 
-	if (ret == FALSE)
+	if (ret == FALSE) {
 		dbus_connection_emit_signal(idev->conn,
 				idev->path,
 				INPUT_DEVICE_INTERFACE,
 				"Disconnected",
 				DBUS_TYPE_INVALID);
+		idev->watch = 0;
+	}
 
 	return ret;
 }
 
-static void create_watch(int sk, struct device *idev)
+static guint create_watch(int sk, struct device *idev)
 {
+	guint id;
 	GIOChannel *io;
 
 	io = g_io_channel_unix_new(sk);
-	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-					connection_event, idev);
+	id = g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			connection_event, idev);
 	g_io_channel_unref(io);
+
+	return id;
 }
 
 static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst, int ctrl_sk, int intr_sk, const char *name)
@@ -623,7 +629,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 	if (err < 0)
 		goto failed;
 
-	create_watch(idev->ctrl_sk, idev);
+	idev->watch = create_watch(idev->ctrl_sk, idev);
 	dbus_connection_emit_signal(idev->conn,
 			idev->path,
 			INPUT_DEVICE_INTERFACE,
@@ -1109,6 +1115,21 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 
 	devices = g_slist_remove(devices, idev);
 
+	/*
+	 * Workaround: if connected, the watch will not be able
+	 * to access the D-Bus data assigned to this path
+	 * because the object path data was destroyed.
+	 */
+	if (idev->watch) {
+		g_source_remove(idev->watch);
+		idev->watch  = 0;
+		dbus_connection_emit_signal(conn,
+				path,
+				INPUT_DEVICE_INTERFACE,
+				"Disconnected",
+				DBUS_TYPE_INVALID);
+	}
+
 	dbus_connection_destroy_object_path(conn, path);
 
 	dbus_connection_emit_signal(conn, INPUT_PATH,
@@ -1271,7 +1292,7 @@ int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
 		return err;
 	}
 
-	create_watch(idev->ctrl_sk, idev);
+	idev->watch = create_watch(idev->ctrl_sk, idev);
 	dbus_connection_emit_signal(idev->conn,
 			idev->path,
 			INPUT_DEVICE_INTERFACE,
