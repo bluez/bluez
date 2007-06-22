@@ -19,11 +19,9 @@ if __name__ == "__main__":
 	manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
 							'org.bluez.Manager')
 
-	manager.connect_to_signal("AdapterAdded", adapter_added,
-					dbus_interface="org.bluez.Manager")
+	manager.connect_to_signal("AdapterAdded", adapter_added)
 
-	manager.connect_to_signal("AdapterRemoved", adapter_removed,
-					dbus_interface="org.bluez.Manager")
+	manager.connect_to_signal("AdapterRemoved", adapter_removed)
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
