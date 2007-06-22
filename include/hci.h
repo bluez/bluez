@@ -1385,7 +1385,7 @@ typedef struct {
 } __attribute__ ((packed)) evt_sync_conn_changed;
 #define EVT_SYNC_CONN_CHANGED_SIZE 9
 
-#define EVT_SNIFF_SUBRATE		0x2E
+#define EVT_SNIFF_SUBRATING		0x2E
 typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
@@ -1393,8 +1393,8 @@ typedef struct {
 	uint16_t	max_rx_latency;
 	uint16_t	min_remote_timeout;
 	uint16_t	min_local_timeout;
-} __attribute__ ((packed)) evt_sniff_subrate;
-#define EVT_SNIFF_SUBRATE_SIZE 11
+} __attribute__ ((packed)) evt_sniff_subrating;
+#define EVT_SNIFF_SUBRATING_SIZE 11
 
 #define EVT_EXTENDED_INQUIRY_RESULT	0x2F
 typedef struct {
@@ -1408,12 +1408,32 @@ typedef struct {
 } __attribute__ ((packed)) extended_inquiry_info;
 #define EXTENDED_INQUIRY_INFO_SIZE 254
 
-#define EVT_LINK_SUPERVISION_TIMEOUT_CHANGE	0x38
+#define EVT_ENCRYPTION_KEY_REFRESH_COMPLETE	0x30
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+} __attribute__ ((packed)) evt_encryption_key_refresh_complete;
+#define EVT_ENCRYPTION_KEY_REFRESH_COMPLETE_SIZE 3
+
+#define EVT_LINK_SUPERVISION_TIMEOUT_CHANGED	0x38
 typedef struct {
 	uint16_t	handle;
 	uint16_t	timeout;
-} __attribute__ ((packed)) evt_link_supervision_timeout_change;
-#define EVT_LINK_SUPERVISION_TIMEOUT_SIZE 4
+} __attribute__ ((packed)) evt_link_supervision_timeout_changed;
+#define EVT_LINK_SUPERVISION_TIMEOUT_CHANGED_SIZE 4
+
+#define EVT_ENHANCED_FLUSH_COMPLETE	0x39
+typedef struct {
+	uint16_t	handle;
+} __attribute__ ((packed)) evt_enhanced_flush_complete;
+#define EVT_ENHANCED_FLUSH_COMPLETE_SIZE 2
+
+#define EVT_REMOTE_HOST_FEATURES_NOTIFY	0x3D
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		features[8];
+} __attribute__ ((packed)) evt_remote_host_features_notify;
+#define EVT_REMOTE_HOST_FEATURES_NOTIFY_SIZE 14
 
 #define EVT_TESTING			0xFE
 
