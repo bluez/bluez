@@ -410,7 +410,7 @@ int main(int argc, char *argv[])
 
 	conn = init_dbus_direct(addr);
 	if (!conn) {
-		error("Connection to system bus failed");
+		error("Connection to bus failed");
 		g_main_loop_unref(main_loop);
 		exit(1);
 	}
