@@ -239,6 +239,7 @@ static GIOChannel *setup_rfcomm(DBusConnection *conn, uint8_t channel)
 static int setup_sdp(DBusConnection *conn, uint8_t channel)
 {
 	DBusMessage *msg, *reply;
+	DBusError err;
 	sdp_record_t *record;
 	sdp_buf_t buf;
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
@@ -308,7 +309,9 @@ static int setup_sdp(DBusConnection *conn, uint8_t channel)
 	dbus_message_append_args(msg, DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
 				&buf.data, buf.data_size, DBUS_TYPE_INVALID);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+	dbus_error_init(&err);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
 
 	dbus_message_unref(msg);
 
@@ -316,6 +319,8 @@ static int setup_sdp(DBusConnection *conn, uint8_t channel)
 
 	if (!reply) {
 		error("Registration of service record failed");
+		error("%s", err.message);
+		dbus_error_free(&err);
 		return -1;
 	}
 
@@ -329,6 +334,7 @@ static int setup_sdp(DBusConnection *conn, uint8_t channel)
 static int register_standalone(DBusConnection *conn)
 {
 	DBusMessage *msg, *reply;
+	DBusError err;
 	const char *ident = "echo", *name = "Echo service", *desc = "";
 
 	info("Registering service");
@@ -344,12 +350,16 @@ static int register_standalone(DBusConnection *conn)
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_STRING, &desc, DBUS_TYPE_INVALID);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+	dbus_error_init(&err);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
 
 	dbus_message_unref(msg);
 
 	if (!reply) {
 		error("Registration of service failed");
+		error("%s", err.message);
+		dbus_error_free(&err);
 		return -1;
 	}
 
@@ -389,6 +399,10 @@ int main(int argc, char *argv[])
 	enable_debug();
 
 	addr = getenv("BLUETOOTHD_ADDRESS");
+	if (!addr) {
+		error("No D-Bus server address available");
+		exit(1);
+	}
 
 	debug("Bluetooth daemon at %s", addr);
 

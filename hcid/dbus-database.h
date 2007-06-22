@@ -21,13 +21,11 @@
  *
  */
 
-#ifndef __BLUEZ_DBUS_DATABASE_H
-#define __BLUEZ_DBUS_DATABASE_H
-
 #define DATABASE_INTERFACE "org.bluez.Database"
 
 dbus_bool_t database_init(DBusConnection *conn, const char *path);
 
-void set_sdp_server_enable(void);
+DBusHandlerResult database_message(DBusConnection *conn,
+						DBusMessage *msg, void *data);
 
-#endif /* __BLUEZ_DBUS_DATABSE_H */
+void set_sdp_server_enable(void);

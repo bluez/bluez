@@ -25,17 +25,38 @@
 #include <config.h>
 #endif
 
+#include <string.h>
 #include <dbus.h>
+
+#include "dbus-database.h"
 
 #include "logging.h"
 #include "server.h"
 
+static DBusHandlerResult filter_function(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	if (dbus_message_is_signal(msg, DBUS_INTERFACE_LOCAL, "Disconnected") &&
+			strcmp(dbus_message_get_path(msg), DBUS_PATH_LOCAL) == 0) {
+		debug("Received disconnected signal");
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	name_listener_indicate_disconnect(conn);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult message_handler(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	debug("Incoming message %p", conn);
+	if (strcmp(dbus_message_get_interface(msg), DATABASE_INTERFACE) == 0)
+		return database_message(conn, msg, data);
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	debug("%s -> %s.%s", dbus_message_get_path(msg),
+		dbus_message_get_interface(msg), dbus_message_get_member(msg));
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static void unregister_handler(DBusConnection *conn, void *data)
@@ -50,9 +71,13 @@ static void handle_connection(DBusServer *server, DBusConnection *conn, void *da
 
 	debug("New local connection %p", conn);
 
-	//dbus_connection_add_filter(conn, filter_function, NULL, NULL);
+	dbus_connection_add_filter(conn, filter_function, NULL, NULL);
 
-	dbus_connection_register_fallback(conn, "/org/bluez", &vtable, NULL);
+	if (dbus_connection_register_object_path(conn, "/org/bluez",
+						&vtable, NULL) == FALSE) {
+		error("Can't register local object path");
+		return;
+	}
 
 	dbus_connection_ref(conn);
 
@@ -69,8 +94,9 @@ char *get_local_server_address(void)
 
 void init_local_server(void)
 {
-	DBusError err;
+	const char *ext_only[] = { "EXTERNAL", NULL };
 	char *address;
+	DBusError err;
 
 	dbus_error_init(&err);
 
@@ -92,6 +118,8 @@ void init_local_server(void)
 
 	dbus_server_set_new_connection_function(server, handle_connection,
 								NULL, NULL);
+
+	dbus_server_set_auth_mechanisms(server, ext_only);
 }
 
 void shutdown_local_server(void)

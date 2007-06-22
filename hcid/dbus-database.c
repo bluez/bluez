@@ -461,6 +461,27 @@ dbus_bool_t database_init(DBusConnection *conn, const char *path)
 							NULL, NULL);
 }
 
+DBusHandlerResult database_message(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMethodVTable *current;
+
+	for (current = database_methods;
+			current->name && current->message_function; current++) {
+		if (!dbus_message_is_method_call(msg, DATABASE_INTERFACE,
+								current->name))
+			continue;
+
+		if (dbus_message_has_signature(msg, current->signature)) {
+			debug("%s: %s.%s()", dbus_message_get_path(msg),
+					DATABASE_INTERFACE, current->name);
+			return current->message_function(conn, msg, data);
+		}
+	}
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 void set_sdp_server_enable(void)
 {
 	sdp_server_enable = 1;
