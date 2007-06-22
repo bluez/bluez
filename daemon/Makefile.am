@@ -50,6 +50,7 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 
-EXTRA_DIST = bluetooth.conf echo.service test-database hal-namespace.txt
+EXTRA_DIST = bluetooth.conf echo.service \
+		test-manager test-database hal-namespace.txt
 
 MAINTAINERCLEANFILES = Makefile.in
