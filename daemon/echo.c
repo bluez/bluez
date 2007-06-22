@@ -408,7 +408,11 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	conn = init_dbus_direct(addr);
+	if (argc > 1 && !strcmp(argv[1], "-s"))
+		conn = init_dbus_direct(addr);
+	else
+		conn = init_dbus(NULL, NULL, NULL);
+
 	if (!conn) {
 		error("Connection to bus failed");
 		g_main_loop_unref(main_loop);
