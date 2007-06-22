@@ -2873,6 +2873,7 @@ static inline void sco_dump(int level, struct frame *frm)
 {
 	hci_sco_hdr *hdr = (void *) frm->ptr;
 	uint16_t handle = btohs(hdr->handle);
+	uint8_t flags = acl_flags(handle);
 	int len;
 
 	if (frm->audio_fd > fileno(stderr))
@@ -2880,8 +2881,8 @@ static inline void sco_dump(int level, struct frame *frm)
 
 	if (!p_filter(FILT_SCO)) {
 		p_indent(level, frm);
-		printf("SCO data: handle %d dlen %d\n",
-					acl_handle(handle), hdr->dlen);
+		printf("SCO data: handle %d flags 0x%2.2x dlen %d\n",
+				acl_handle(handle), flags, hdr->dlen);
 		level++;
 
 		frm->ptr += HCI_SCO_HDR_SIZE;
