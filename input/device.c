@@ -59,11 +59,6 @@
 
 #define UPDOWN_ENABLED		1
 
-struct pending_connect {
-	DBusConnection *conn;
-	DBusMessage *msg;
-};
-
 struct fake_input {
 	GIOChannel	*io;
 	int		rfcomm; /* RFCOMM socket */
@@ -80,7 +75,7 @@ struct device {
 	uint16_t		product;
 	uint16_t		vendor;
 	struct fake_input	*fake;
-	struct pending_connect *pending_connect; /* FIXME: use only the msg */
+	DBusMessage		*pending_connect;
 	DBusConnection		*conn;
 	char			*path;
 	int			ctrl_sk;
@@ -110,17 +105,6 @@ static struct device *device_new(bdaddr_t *src, bdaddr_t *dst)
 	return idev;
 }
 
-static void pending_connect_free(struct pending_connect *pc)
-{
-	if (!pc)
-		return;
-	if (pc->conn)
-		dbus_connection_unref(pc->conn);
-	if (pc->msg)
-		dbus_message_unref(pc->msg);
-	g_free(pc);
-}
-
 static void device_free(struct device *idev)
 {
 	if (!idev)
@@ -129,12 +113,11 @@ static void device_free(struct device *idev)
 		g_free(idev->name);
 	if (idev->fake)
 		g_free(idev->fake);
-	if (idev->pending_connect)
-		pending_connect_free(idev->pending_connect);
 	if (idev->path)
 		g_free(idev->path);
+	if (idev->pending_connect)
+		dbus_message_unref(idev->pending_connect);
 	dbus_connection_unref(idev->conn);
-
 	g_free(idev);
 }
 
@@ -423,24 +406,24 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 						(GIOFunc) rfcomm_io_cb, fake);
 
 	/* Replying to the requestor */
-	reply = dbus_message_new_method_return(idev->pending_connect->msg);
-	send_message_and_unref(idev->pending_connect->conn, reply);
+	reply = dbus_message_new_method_return(idev->pending_connect);
+	send_message_and_unref(idev->conn, reply);
 
 	/* Sending the Connected signal */
-	path = dbus_message_get_path(idev->pending_connect->msg);
-	dbus_connection_emit_signal(idev->pending_connect->conn, path,
+	path = dbus_message_get_path(idev->pending_connect);
+	dbus_connection_emit_signal(idev->conn, path,
 			INPUT_DEVICE_INTERFACE, "Connected",
 			DBUS_TYPE_INVALID); 
 
-	pending_connect_free(idev->pending_connect);
+	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
 
 	return FALSE;
 
 failed:
-	err_connection_failed(idev->pending_connect->conn,
-			idev->pending_connect->msg, strerror(err));
-	pending_connect_free(idev->pending_connect);
+	err_connection_failed(idev->conn,
+			idev->pending_connect, strerror(err));
+	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
 
 	g_io_channel_close(chan);
@@ -648,13 +631,13 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 			DBUS_TYPE_INVALID);
 
 	/* Replying to the requestor */
-	send_message_and_unref(idev->pending_connect->conn,
-		dbus_message_new_method_return(idev->pending_connect->msg));
+	send_message_and_unref(idev->conn,
+		dbus_message_new_method_return(idev->pending_connect));
 
 	goto cleanup;
 failed:
-	err_connection_failed(idev->pending_connect->conn,
-				idev->pending_connect->msg, strerror(err));
+	err_connection_failed(idev->conn,
+		idev->pending_connect, strerror(err));
 	if (isk > 0)
 		close(isk);
 	close(idev->ctrl_sk);
@@ -662,7 +645,7 @@ failed:
 	idev->ctrl_sk = -1;
 
 cleanup:
-	pending_connect_free(idev->pending_connect);
+	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
 
 	return FALSE;
@@ -720,9 +703,9 @@ failed:
 		close(csk);
 
 	idev->ctrl_sk = -1;
-	err_connection_failed(idev->pending_connect->conn,
-			idev->pending_connect->msg, strerror(err));
-	pending_connect_free(idev->pending_connect);
+	err_connection_failed(idev->conn,
+			idev->pending_connect, strerror(err));
+	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
 
 	return FALSE;
@@ -848,21 +831,14 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	if (is_connected(idev))
 		return err_already_connected(conn, msg);
 
-	idev->pending_connect = g_try_new0(struct pending_connect, 1);
-	if (!idev->pending_connect) {
-		error("Out of memory when allocating new struct pending_connect");
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	idev->pending_connect->conn = dbus_connection_ref(conn);
-	idev->pending_connect->msg = dbus_message_ref(msg);
+	idev->pending_connect = dbus_message_ref(msg);
 
 	/* Fake input device */
 	if (idev->fake) {
 		if (rfcomm_connect(idev) < 0) {
 			const char *str = strerror(errno);
 			error("RFCOMM connect failed: %s(%d)", str, errno);
-			pending_connect_free(idev->pending_connect);
+			dbus_message_unref(idev->pending_connect);
 			idev->pending_connect = NULL;
 			return err_connection_failed(conn, msg, str);
 		}
@@ -875,7 +851,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 		int err = errno;
 
 		error("L2CAP connect failed: %s(%d)", strerror(err), err);
-		pending_connect_free(idev->pending_connect);
+		dbus_message_unref(idev->pending_connect);
 		idev->pending_connect = NULL;
 		return err_connection_failed(conn, msg, strerror(err));
 	}
