@@ -166,10 +166,12 @@ int del_stored_device_info(bdaddr_t *src, bdaddr_t *dst)
 	char filename[PATH_MAX + 1];
 	char addr[18];
 
-	create_filename(filename, PATH_MAX, src, "input");
-
 	ba2str(dst, addr);
 
+	create_filename(filename, PATH_MAX, src, "hidd");
+	textfile_del(filename, addr);
+
+	create_filename(filename, PATH_MAX, src, "input");
 	return textfile_del(filename, addr);
 }
 
