@@ -49,7 +49,7 @@ int l2raw_connect(const char *local, const bdaddr_t *remote);
 
 int find_conn(int s, int dev_id, long arg);
 
-int check_address(const char *addr);
+#define check_address(address) bachk(address)
 
 DBusHandlerResult handle_method_call(DBusConnection *conn, DBusMessage *msg, void *data);
 

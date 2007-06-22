@@ -207,45 +207,6 @@ failed:
 	return 0;
 }
 
-
-int check_address(const char *addr)
-{
-	char tmp[18];
-	char *ptr = tmp;
-
-	if (!addr)
-		return -1;
-
-	if (strlen(addr) != 17)
-		return -1;
-
-	memcpy(tmp, addr, 18);
-
-	while (*ptr) {
-
-		*ptr = toupper(*ptr);
-		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
-			return -1;
-
-		ptr++;
-		*ptr = toupper(*ptr);
-		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
-			return -1;
-
-		ptr++;
-		*ptr = toupper(*ptr);
-		if (*ptr == 0)
-			break;
-
-		if (*ptr != ':')
-			return -1;
-
-		ptr++;
-	}
-
-	return 0;
-}
-
 void hcid_dbus_set_experimental(void)
 {
 	experimental = 1;
