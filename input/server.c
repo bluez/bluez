@@ -95,6 +95,8 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 		cancel_authorization(addr);
 	}
 
+	input_device_close_channels(&auth->src, &auth->dst);
+
 	dbus_error_free(&derr);
 	dbus_message_unref(reply);
 }
