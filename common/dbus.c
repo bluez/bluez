@@ -88,7 +88,8 @@ static struct name_data *name_data_find(const char *name)
 {
 	GSList *current;
 
-	for (current = name_listeners; current != NULL; current = current->next) {
+	for (current = name_listeners;
+			current != NULL; current = current->next) {
 		struct name_data *data = current->data;
 		if (strcmp(name, data->name) == 0)
 			return data;
@@ -98,7 +99,7 @@ static struct name_data *name_data_find(const char *name)
 }
 
 static struct name_callback *name_callback_find(GSList *callbacks,
-						name_cb_t func, void *user_data)
+					name_cb_t func, void *user_data)
 {
 	GSList *current;
 
@@ -228,6 +229,9 @@ int name_listener_add(DBusConnection *connection, const char *name,
 		name_listener_initialized = 1;
 	}
 
+	if (!name)
+		return -1;
+
 	first = name_data_add(name, func, user_data);
 	/* The filter is already added if this is not the first callback
 	 * registration for the name */
@@ -261,6 +265,9 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 	struct name_callback *cb;
 	DBusError err;
 	char match_string[128];
+
+	if (!name)
+		return -1;
 
 	debug("name_listener_remove(%s)", name);
 
@@ -299,6 +306,11 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 
 	name_data_remove(name, func, user_data);
 
+	return 0;
+}
+
+int name_listener_indicate_disconnect(DBusConnection *connection)
+{
 	return 0;
 }
 
@@ -598,6 +610,8 @@ static void dispatch_status_cb(DBusConnection *conn,
 void setup_dbus_server_with_main_loop(DBusServer *server)
 {
 #ifdef HAVE_DBUS_GLIB
+	debug("Using D-Bus GLib server setup");
+
 	dbus_server_setup_with_g_main(server, NULL);
 #else
 	dbus_server_allocate_data_slot(&server_slot);
@@ -617,6 +631,8 @@ void setup_dbus_server_with_main_loop(DBusServer *server)
 void setup_dbus_with_main_loop(DBusConnection *conn)
 {
 #ifdef HAVE_DBUS_GLIB
+	debug("Using D-Bus GLib connection setup");
+
 	dbus_connection_setup_with_g_main(conn, NULL);
 #else
 	dbus_connection_set_watch_functions(conn, add_watch, remove_watch,
