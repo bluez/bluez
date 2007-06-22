@@ -962,6 +962,34 @@ cleanup:
 		g_free(hidp.rd_data);
 }
 
+/* hidd to input transition function */
+static void stored_hidd(char *key, char *value, void *data)
+{
+	struct hidp_connadd_req hidp; 
+	char *str, filename[PATH_MAX + 1], addr[18];
+	bdaddr_t dst, *src = data;
+
+	ba2str(src, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "input");
+
+	str = textfile_get(filename, key);
+	if (str) {
+		/* Skip: entry found in input file */
+		free(str);
+		return;
+	}
+
+	memset(&hidp, 0, sizeof(struct hidp_connadd_req));
+
+	if (parse_stored_hidd(value, &hidp) < 0)
+		return;
+
+	str2ba(key, &dst);
+	store_device_info(src, &dst, &hidp);
+	if (hidp.rd_data)
+		g_free(hidp.rd_data);
+}
+
 static void register_stored_inputs(void)
 {
 	char dirname[PATH_MAX + 1];
@@ -980,10 +1008,16 @@ static void register_stored_inputs(void)
 		if (!isdigit(de->d_name[0]))
 			continue;
 
+		str2ba(de->d_name, &src);
+
+		/* move the hidd entries to the input storage */
+		create_name(filename, PATH_MAX, STORAGEDIR,
+						de->d_name, "hidd");
+		textfile_foreach(filename, stored_hidd, &src);
+
+		/* load the input stored devices */
 		create_name(filename, PATH_MAX, STORAGEDIR,
 						de->d_name, "input");
-
-		str2ba(de->d_name, &src);
 
 		textfile_foreach(filename, stored_input, &src);
 	}

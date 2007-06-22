@@ -59,6 +59,48 @@ static inline int create_filename(char *buf, size_t size,
 	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
+int parse_stored_hidd(const char *str, struct hidp_connadd_req *req)
+{
+	char tmp[3];
+	char *desc;
+	unsigned int vendor, product, version, subclass, country, parser, pos;
+	int i;
+
+	desc = malloc(4096);
+	if (!desc)
+		return -ENOMEM;
+
+	memset(desc, 0, 4096);
+
+	sscanf(str, "%04X:%04X:%04X %02X %02X %04X %4095s %08X %n",
+			&vendor, &product, &version, &subclass, &country,
+			&parser, desc, &req->flags, &pos);
+
+	req->vendor   = vendor;
+	req->product  = product;
+	req->version  = version;
+	req->subclass = subclass;
+	req->country  = country;
+	req->parser   = parser;
+
+	req->rd_size = strlen(desc) / 2;
+	req->rd_data = g_try_malloc0(req->rd_size);
+	if (!req->rd_data) {
+		g_free(desc);
+		return -ENOMEM;
+	}
+
+	memset(tmp, 0, sizeof(tmp));
+	for (i = 0; i < req->rd_size; i++) {
+		memcpy(tmp, desc + (i * 2), 2);
+		req->rd_data[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	g_free(desc);
+
+	return 0;
+}
+
 int parse_stored_device_info(const char *str, struct hidp_connadd_req *req)
 {
 	char tmp[3];
