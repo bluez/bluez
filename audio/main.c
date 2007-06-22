@@ -40,7 +40,7 @@
 
 /* Configuration settings */
 static gboolean disable_hfp = TRUE;
-static gboolean sco_hci = FALSE;
+static gboolean sco_hci = TRUE;
 
 static GMainLoop *main_loop = NULL;
 
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (headset_server_init(conn, disable_hfp, sco_hci) < 0) {
+	if (gateway_init(conn, disable_hfp, sco_hci) < 0) {
 		error("Headset initialization failed!");
 		exit(1);
 	}
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 
 	audio_exit();
 
-	headset_exit();
+	gateway_exit();
 
 	unix_exit();
 

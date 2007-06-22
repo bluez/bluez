@@ -78,6 +78,7 @@ static int unix_sendmsg_fd(int sock, int fd, struct ipc_packet *pkt)
 
 static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
+	struct device *device;
 	struct sockaddr_un addr;
 	socklen_t addrlen;
 	struct ipc_packet *pkt;
@@ -118,9 +119,13 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		cfg = (struct ipc_data_cfg *) pkt->data;
 
 		memset(cfg, 0, sizeof(struct ipc_data_cfg));
-		if (manager_get_device(clisk, pkt->role, cfg) == 0)
-			unix_send_cfg(clisk, pkt);
+		if ((device = manager_default_device())) {
+			if (device->headset)
+				headset_get_config(device, clisk, pkt);
+		}
 
+		if (cfg->fd != 0)
+			unix_send_cfg(clisk, pkt);
 		break;
 	case PKT_TYPE_STATUS_REQ:
 		info("Package PKT_TYPE_STATUS_REQ");

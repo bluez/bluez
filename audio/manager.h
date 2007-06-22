@@ -21,78 +21,17 @@
  *
  */
 
-#include <bluetooth/bluetooth.h>
-
 #include <dbus/dbus.h>
 
-#include "headset.h"
+#include "device.h"
 
 #define AUDIO_MANAGER_PATH "/org/bluez/audio"
 #define AUDIO_MANAGER_INTERFACE "org.bluez.audio.Manager"
-
-#define AUDIO_DEVICE_INTERFACE "org.bluez.audio.Device"
-
-#define GENERIC_AUDIO_UUID	"00001203-0000-1000-8000-00805F9B34FB"
-
-#define HSP_HS_UUID		"00001108-0000-1000-8000-00805F9B34FB"
-#define HSP_AG_UUID		"00001112-0000-1000-8000-00805F9B34FB"
-
-#define HFP_HS_UUID		"0000111E-0000-1000-8000-00805F9B34FB"
-#define HFP_AG_UUID		"0000111F-0000-1000-8000-00805F9B34FB"
-
-#define ADVANCED_AUDIO_UUID	"0000110D-0000-1000-8000-00805F9B34FB"
-
-#define A2DP_SOURCE_UUID	"0000110A-0000-1000-8000-00805F9B34FB"
-#define A2DP_SINK_UUID		"0000110B-0000-1000-8000-00805F9B34FB"
-
-#define AVRCP_REMOTE_UUID	"0000110E-0000-1000-8000-00805F9B34FB"
-#define AVRCP_TARGET_UUID	"0000110C-0000-1000-8000-00805F9B34FB"
-
-/* Move these to respective .h files once they exist */
-#define AUDIO_GATEWAY_INTERFACE	"org.bluez.audio.Gateway"
-#define AUDIO_SINK_INTERFACE	"org.bluez.audio.Sink"
-#define AUDIO_SOURCE_INTERFACE	"org.bluez.audio.Source"
-#define AUDIO_CONTROL_INTERFACE	"org.bluez.audio.Control"
-#define AUDIO_TARGET_INTERFACE	"org.bluez.audio.Target"
-typedef struct gateway gateway_t;
-typedef struct sink sink_t;
-typedef struct source source_t;
-typedef struct control control_t;
-typedef struct target target_t;
-
-typedef struct audio_device {
-	char object_path[128];
-	bdaddr_t bda;
-
-	headset_t *headset;
-
-	gateway_t *gateway;
-	sink_t *sink;
-	source_t *source;
-	control_t *control;
-	target_t *target;
-
-} audio_device_t;
-
-audio_device_t *manager_headset_connected(bdaddr_t *bda);
 
 int audio_init(DBusConnection *conn);
 
 void audio_exit(void);
 
-void finish_sdp_transaction(DBusConnection *conn, bdaddr_t *dba);
+struct device *manager_device_connected(bdaddr_t *bda);
 
-
-DBusHandlerResult err_invalid_args(DBusConnection *conn, DBusMessage *msg,
-						const char *descr);
-DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult err_not_connected(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult err_connect_failed(DBusConnection *conn,
-					DBusMessage *msg, int err);
-DBusHandlerResult err_does_not_exist(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult err_not_available(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult err_failed(DBusConnection *conn, DBusMessage *msg,
-				const char *dsc);
-
-int manager_get_device(int sock, uint8_t role, struct ipc_data_cfg *cfg);
+struct device *manager_default_device();

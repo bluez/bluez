@@ -20,10 +20,6 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-#ifndef __AUDIO_HEADSET_H
-#define __AUDIO_HEADSET_H
-
-#include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -33,22 +29,45 @@
 
 #define AUDIO_HEADSET_INTERFACE "org.bluez.audio.Headset"
 
-typedef struct headset headset_t;
+#define DEFAULT_HS_AG_CHANNEL 12
+#define DEFAULT_HF_AG_CHANNEL 13
 
-headset_t *headset_init(const char *object_path, sdp_record_t *record,
+typedef enum {
+	HEADSET_EVENT_KEYPRESS,
+	HEADSET_EVENT_GAIN,
+	HEADSET_EVENT_UNKNOWN,
+	HEADSET_EVENT_INVALID
+} headset_event_t;
+
+typedef enum {
+	HEADSET_STATE_DISCONNECTED = 0,
+	HEADSET_STATE_CONNECT_IN_PROGRESS,
+	HEADSET_STATE_CONNECTED,
+	HEADSET_STATE_PLAY_IN_PROGRESS,
+	HEADSET_STATE_PLAYING,
+} headset_state_t;
+
+typedef enum {
+	SVC_HEADSET,
+	SVC_HANDSFREE
+} headset_type_t;
+
+struct headset;
+
+struct headset *headset_init(void *device, sdp_record_t *record,
 			uint16_t svc);
 
-void headset_free(const char *object_path);
+void headset_free(void *device);
 
-void headset_update(headset_t *headset, sdp_record_t *record, uint16_t svc);
+void headset_update(void *device, sdp_record_t *record, uint16_t svc);
 
-gboolean headset_is_connected(headset_t *headset);
+int headset_get_config(void *device, int sock, struct ipc_packet *pkt);
 
-int headset_server_init(DBusConnection *conn, gboolean disable_hfp,
-			gboolean sco_hci);
+headset_type_t headset_get_type(void *device);
+void headset_set_type(void *device, headset_type_t type);
 
-void headset_exit(void);
+int headset_connect_rfcomm(void *device, int sock);
+int headset_close_rfcomm(void *device);
 
-int headset_get_config(headset_t *headset, int sock, struct ipc_data_cfg *cfg);
-
-#endif /* __AUDIO_HEADSET_H_ */
+headset_state_t headset_get_state(void *device);
+void headset_set_state(void *device, headset_state_t state);
