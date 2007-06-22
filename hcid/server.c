@@ -38,11 +38,10 @@ static DBusHandlerResult filter_function(DBusConnection *conn,
 {
 	if (dbus_message_is_signal(msg, DBUS_INTERFACE_LOCAL, "Disconnected") &&
 			strcmp(dbus_message_get_path(msg), DBUS_PATH_LOCAL) == 0) {
-		debug("Received disconnected signal");
+		debug("Received local disconnected signal");
+		name_listener_indicate_disconnect(conn);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
-
-	name_listener_indicate_disconnect(conn);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }

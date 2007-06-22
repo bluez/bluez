@@ -727,7 +727,8 @@ static int register_service(struct service *service)
 	return 0;
 }
 
-static int unregister_service(struct service *service)
+static int unregister_service_for_connection(DBusConnection *connection,
+						struct service *service)
 {
 	DBusConnection *conn = get_dbus_connection();
 
@@ -737,7 +738,7 @@ static int unregister_service(struct service *service)
 		goto cleanup;
 
 	if (service->bus_name)
-		name_listener_remove(conn, service->bus_name,
+		name_listener_remove(connection, service->bus_name,
 					(name_cb_t) service_exit, service);
 
 	dbus_connection_emit_signal(conn, service->object_path,
@@ -768,6 +769,11 @@ cleanup:
 	}
 	
 	return 0;
+}
+
+static int unregister_service(struct service *service)
+{
+	return unregister_service_for_connection(get_dbus_connection(), service);
 }
 
 void release_services(DBusConnection *conn)
@@ -1030,10 +1036,9 @@ static void external_service_exit(const char *name, struct service *service)
 	service_free(service);
 }
 
-int service_register(const char *bus_name, const char *ident,
+int service_register(DBusConnection *conn, const char *bus_name, const char *ident,
 				const char *name, const char *description)
 {
-	DBusConnection *conn = get_dbus_connection();
 	struct service *service;
 
 	if (!conn)
@@ -1053,14 +1058,14 @@ int service_register(const char *bus_name, const char *ident,
 	name_listener_add(conn, bus_name, (name_cb_t) external_service_exit,
 				service);
 
-	dbus_connection_emit_signal(conn, service->object_path,
+	dbus_connection_emit_signal(get_dbus_connection(), service->object_path,
 					SERVICE_INTERFACE, "Started",
 					DBUS_TYPE_INVALID);
 
 	return 0;
 }
 
-int service_unregister(struct service *service)
+int service_unregister(DBusConnection *conn, struct service *service)
 {
-	return unregister_service(service);
+	return unregister_service_for_connection(conn, service);
 }

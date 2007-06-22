@@ -337,7 +337,7 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	if (service_register(sender, ident, name, desc) < 0)
+	if (service_register(conn, sender, ident, name, desc) < 0)
 		return error_failed(conn, msg, EIO);
 
 	reply = dbus_message_new_method_return(msg);
@@ -367,7 +367,7 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 	if (!service->external || strcmp(sender, service->bus_name))
 		return error_not_authorized(conn, msg);
 
-	if (service_unregister(service) < 0)
+	if (service_unregister(conn, service) < 0)
 		return error_failed(conn, msg, EIO);
 
 	reply = dbus_message_new_method_return(msg);
