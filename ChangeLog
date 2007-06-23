@@ -1,3 +1,9 @@
+ver 3.12:
+	Add missing HCI command text descriptions
+	Add missing HCI commands structures.
+	Add missing HCI event structures.
+	Add common bachk() function.
+
 ver 3.11:
 	Fix URL data size handling.
 
