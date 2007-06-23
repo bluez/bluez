@@ -117,18 +117,24 @@ static struct device *create_device(bdaddr_t *bda)
 
 static void remove_device(struct device *device)
 {
+	if (device == default_dev) {
+		debug("Removing default device");
+		default_dev = NULL;
+	}
+
 	devices = g_slist_remove(devices, device);
+
 	dbus_connection_destroy_object_path(connection, device->path);
 }
 
 static gboolean add_device(struct device *device)
 {
-	/* First device became default */
-	if (g_slist_length(devices) == 0)
+	if (default_dev == NULL && g_slist_length(devices) == 0) {
+		debug("Selecting default device");
 		default_dev = device;
+	}
 
 	devices = g_slist_append(devices, device);
-
 
 	return TRUE;
 }
@@ -978,7 +984,7 @@ static DBusHandlerResult am_default_device(DBusConnection *conn,
 
 	if (default_dev->headset == NULL &&
 		dbus_message_is_method_call(msg, AUDIO_MANAGER_INTERFACE,
-		"DefaultHeadset"))
+							"DefaultHeadset"))
 		return err_does_not_exist(connection, msg);
 
 	reply = dbus_message_new_method_return(msg);
@@ -1085,18 +1091,15 @@ static void parse_stored_devices(char *key, char *value, void *data)
 {
 	struct device *device;
 	bdaddr_t dst;
-	char addr[18];
 
 	if (!key || !value || strcmp(key, "default") == 0)
 		return;
 
-	/* Format: XX:XX:XX:XX:XX:XX interface0:interface1:... */
-	info("Loading device %s", key);
-	memset(addr, 0, 18);
-	strncpy(addr, key, 17);
-	str2ba(addr, &dst);
+	info("Loading device %s (%s)", key, value);
+	str2ba(key, &dst);
 
-	if ((device = create_device(&dst)) == NULL)
+	device = create_device(&dst);
+	if (!device)
 		return;
 
 	if (strcmp(value, "headset") == 0)
@@ -1108,33 +1111,37 @@ static void parse_stored_devices(char *key, char *value, void *data)
 static void register_devices_stored(const char *adapter)
 {
 	char filename[PATH_MAX + 1];
-	struct stat s;
+	struct stat st;
+	struct device *device;
 	bdaddr_t src;
 	bdaddr_t dst;
 	char *addr;
-	bdaddr_t default_src;
-	int dev_id;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter, "audio");
 
 	str2ba(adapter, &src);
 
-	bacpy(&default_src, BDADDR_ANY);
-	dev_id = hci_get_route(NULL);
-	if (dev_id < 0)
-		hci_devba(dev_id, &default_src);
+	if (stat(filename, &st) < 0)
+		return;
 
-	if (stat(filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
-		textfile_foreach(filename, parse_stored_devices, &src);
+	if (!(st.st_mode & __S_IFREG))
+		return;
 
-		addr = textfile_get(filename, "default");
-		if (!addr)
-			return;
+	textfile_foreach(filename, parse_stored_devices, &src);
 
-		str2ba(addr, &dst);
-		default_dev = find_device(&dst);
-		free(addr);
+	addr = textfile_get(filename, "default");
+	if (!addr)
+		return;
+
+	str2ba(addr, &dst);
+	device = find_device(&dst);
+
+	if (device) {
+		info("Setting %s as default device", addr);
+		default_dev = device;
 	}
+
+	free(addr);
 }
 
 static void register_stored(void)
