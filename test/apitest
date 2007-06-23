@@ -145,7 +145,8 @@ class Tester:
                 for path in dev_signals_filter:
                     self.bus.add_signal_receiver(self.dev_signal_handler,
                                              signal, 'org.bluez.Adapter',
-                                             'org.bluez', path)
+                                             'org.bluez', path,
+                                             message_keyword='dbus_message')
         except dbus.DBusException, e:
             print 'Failed to setup signal handler for device path: %s' % e
             sys.exit(1)
@@ -414,7 +415,7 @@ class Tester:
             self.dbus_dev_sig_setup()
             print 'Listening for events...'
 
-        if self.cmd in mgr_cmds:
+        elif self.cmd in mgr_cmds:
             try:
                 self.dbus_mgr_setup()
             except dbus.DBusException, e:
