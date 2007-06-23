@@ -83,7 +83,7 @@ static DBusHandlerResult device_get_connected(DBusConnection *conn,
 						&array_iter);
 
 	if (device->headset &&
-			headset_get_state(device->headset) >= HEADSET_STATE_CONNECTED) {
+			headset_get_state(device) >= HEADSET_STATE_CONNECTED) {
 		iface = AUDIO_HEADSET_INTERFACE;
 		dbus_message_iter_append_basic(&array_iter,
 						DBUS_TYPE_STRING, &iface);
@@ -173,7 +173,6 @@ int device_store(struct device *device, gboolean is_default)
 	char value[64];
 	char filename[PATH_MAX + 1];
 	char src_addr[18], dst_addr[18];
-	int err;
 
 	if (!device->path)
 		return -EINVAL;
@@ -185,24 +184,21 @@ int device_store(struct device *device, gboolean is_default)
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	if (is_default)
-		err = textfile_put(filename, "default", dst_addr);
-	else {
-		if (device->headset)
-			snprintf(value, 64, "headset");
-		if (device->gateway)
-			snprintf(value, 64, "%s:gateway", value);
-		if (device->sink)
-			snprintf(value, 64, "%s:sink", value);
-		if (device->source)
-			snprintf(value, 64, "%s:source", value);
-		if (device->control)
-			snprintf(value, 64, "%s:control", value);
-		if (device->target)
-			snprintf(value, 64, "%s:target", value);
-		err = textfile_put(filename, dst_addr, value);
-	}
+		textfile_put(filename, "default", dst_addr);
+	if (device->headset)
+		snprintf(value, 64, "headset");
+	else if (device->gateway)
+		snprintf(value, 64, "gateway");
+	else if (device->sink)
+		snprintf(value, 64, "sink");
+	else if (device->source)
+		snprintf(value, 64, "source");
+	else if (device->control)
+		snprintf(value, 64, "control");
+	else
+		snprintf(value, 64, "target");
 
-	return err;
+	return textfile_put(filename, dst_addr, value);
 }
 
 void device_finish_sdp_transaction(struct device *device)

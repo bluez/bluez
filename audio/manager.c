@@ -123,17 +123,12 @@ static void remove_device(struct device *device)
 
 static gboolean add_device(struct device *device)
 {
-	gboolean is_default;
-
 	/* First device became default */
 	if (g_slist_length(devices) == 0)
 		default_dev = device;
 
 	devices = g_slist_append(devices, device);
 
-	is_default = default_dev == device ? TRUE : FALSE;
-
-	device_store(device, is_default);
 
 	return TRUE;
 }
@@ -174,6 +169,7 @@ done:
 
 static void handle_record(sdp_record_t *record, struct device *device)
 {
+	gboolean is_default;
 	uint16_t uuid16;
 
 	uuid16 = get_service_uuid(record);
@@ -217,6 +213,10 @@ static void handle_record(sdp_record_t *record, struct device *device)
 		debug("Unrecognized UUID: 0x%04X", uuid16);
 		break;
 	}
+
+	is_default = (default_dev == device) ? TRUE : FALSE;
+
+	device_store(device, is_default);
 }
 
 static gint record_iface_cmp(gconstpointer a, gconstpointer b)
@@ -1041,6 +1041,7 @@ static DBusHandlerResult am_change_default_device(DBusConnection *conn,
 		return err_does_not_exist(connection, msg);
 
 	default_dev = device;
+	device_store(device, TRUE);
 	return send_message_and_unref(connection, reply);
 }
 
@@ -1080,20 +1081,17 @@ static DBusSignalVTable manager_signals[] = {
 	{ NULL, NULL }
 };
 
-#if 0
 static void parse_stored_devices(char *key, char *value, void *data)
 {
 	struct device *device;
 	bdaddr_t dst;
 	char addr[18];
-	char *ptr;
-	char ifaces[6][8];
-	int len, i;
 
-	if (!key || !value)
+	if (!key || !value || strcmp(key, "default") == 0)
 		return;
 
 	/* Format: XX:XX:XX:XX:XX:XX interface0:interface1:... */
+	info("Loading device %s", key);
 	memset(addr, 0, 18);
 	strncpy(addr, key, 17);
 	str2ba(addr, &dst);
@@ -1101,36 +1099,19 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	if ((device = create_device(&dst)) == NULL)
 		return;
 
-	/* Parsing the interface */
-	ptr = strchr(value, ':');
-
-	if (!ptr) {
-		strncpy(ifaces[0], value, 8);
-		if (strcmp(ifaces[0], "headset") == 0)
-			device->headset = headset_init(device, NULL, 0);
-	}
-
-	/* FIXME: has more than 1 interface */
-	for (i = 0; ptr && i < 6; i++) {
-		len = ptr-value;
-		strncpy(ifaces[i], value, len);
-		value = ptr;
-		ptr = strchr(ptr, ':');
-	}
+	if (strcmp(value, "headset") == 0)
+		device->headset = headset_init(device, NULL, 0);
 
 	add_device(device);
 }
-#endif
 
 static void register_devices_stored(const char *adapter)
 {
 	char filename[PATH_MAX + 1];
 	struct stat s;
 	bdaddr_t src;
-#if 0
 	bdaddr_t dst;
 	char *addr;
-#endif
 	bdaddr_t default_src;
 	int dev_id;
 
@@ -1144,13 +1125,12 @@ static void register_devices_stored(const char *adapter)
 		hci_devba(dev_id, &default_src);
 
 	if (stat(filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
-#if 0
 		textfile_foreach(filename, parse_stored_devices, &src);
 		addr = textfile_get(filename, "default");
 
 		str2ba(addr, &dst);
 		default_dev = find_device(&dst);
-#endif
+		free(addr);
 	}
 }
 
