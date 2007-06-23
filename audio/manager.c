@@ -1126,7 +1126,10 @@ static void register_devices_stored(const char *adapter)
 
 	if (stat(filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
 		textfile_foreach(filename, parse_stored_devices, &src);
+
 		addr = textfile_get(filename, "default");
+		if (!addr)
+			return;
 
 		str2ba(addr, &dst);
 		default_dev = find_device(&dst);
