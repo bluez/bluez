@@ -1,3 +1,19 @@
+ver 3.12:
+	Add support for limited discovery mode.
+	Add support for setting of event mask.
+	Add GetRemoteServiceIdentifiers method.
+	Add skeleton for local D-Bus server.
+	Add headset gain control methods.
+	Fix various headset implementation issues.
+	Fix various serial port service issues.
+	Fix various input service issues.
+	Let CUPS plugin discover printers in range.
+	Improve the BCM2035 UART init routine.
+	Ignore connection events for non-ACL links.
+
+	Note:
+	This version needs at least bluez-libs-3.12
+
 ver 3.11:
 	Update API documentation.
 	Minimize SDP root records and browse groups.
