@@ -783,9 +783,6 @@ fail:
 	close(ctl);
 	errno = err;
 
-	idev->intr_sk = -1;
-	idev->ctrl_sk = -1;
-
 	return -err;
 }
 
