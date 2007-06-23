@@ -38,9 +38,8 @@
 
 #include "manager.h"
 
-/* Configuration settings */
 static gboolean disable_hfp = TRUE;
-static gboolean sco_hci = TRUE;
+static gboolean sco_hci = FALSE;
 
 static GMainLoop *main_loop = NULL;
 
@@ -49,7 +48,7 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-void read_config(const char *file)
+static void read_config(const char *file)
 {
 	GKeyFile *keyfile;
 	GError *err = NULL;

@@ -49,9 +49,6 @@
 #include "manager.h"
 #include "error.h"
 
-static gboolean disable_hfp = FALSE;
-static gboolean sco_over_hci = TRUE;
-
 static uint32_t hs_record_id = 0;
 static uint32_t hf_record_id = 0;
 
@@ -498,11 +495,7 @@ int gateway_init(DBusConnection *conn, gboolean no_hfp, gboolean sco_hci)
 	g_io_add_watch(hs_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 						(GIOFunc) gateway_io_cb, NULL);
 
-	disable_hfp = no_hfp;
-
-	sco_over_hci = sco_hci;
-
-	if (disable_hfp)
+	if (no_hfp)
 		return 0;
 
 	chan = DEFAULT_HF_AG_CHANNEL;
