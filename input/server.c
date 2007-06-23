@@ -171,7 +171,7 @@ static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	debug("Incoming connection on PSM %d", psm);
 
 	if (input_device_set_channel(&src, &dst, psm, nsk) < 0) {
-		input_device_close_channels(&src, &dst);
+		close(nsk);
 		return TRUE;
 	}
 
