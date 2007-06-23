@@ -173,9 +173,9 @@ static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (input_device_set_channel(&src, &dst, psm, nsk) < 0) {
 		/* Send unplug virtual cable to unknown devices */
 		if (psm == L2CAP_PSM_HIDP_CTRL) {
+			unsigned char unplug[] = { 0x15 };
 			int err;
-			unsigned char unplug = 0x15;
-			err = write(nsk, &unplug, sizeof(unplug));
+			err = write(nsk, unplug, sizeof(unplug));
 		}
 		close(nsk);
 		return TRUE;
