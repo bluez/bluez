@@ -1080,6 +1080,7 @@ static DBusSignalVTable manager_signals[] = {
 	{ NULL, NULL }
 };
 
+#if 0
 static void parse_stored_devices(char *key, char *value, void *data)
 {
 	struct device *device;
@@ -1119,14 +1120,17 @@ static void parse_stored_devices(char *key, char *value, void *data)
 
 	add_device(device);
 }
+#endif
 
 static void register_devices_stored(const char *adapter)
 {
 	char filename[PATH_MAX + 1];
-	char *addr;
 	struct stat s;
 	bdaddr_t src;
+#if 0
 	bdaddr_t dst;
+	char *addr;
+#endif
 	bdaddr_t default_src;
 	int dev_id;
 
@@ -1140,11 +1144,13 @@ static void register_devices_stored(const char *adapter)
 		hci_devba(dev_id, &default_src);
 
 	if (stat(filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
+#if 0
 		textfile_foreach(filename, parse_stored_devices, &src);
 		addr = textfile_get(filename, "default");
 
 		str2ba(addr, &dst);
 		default_dev = find_device(&dst);
+#endif
 	}
 }
 
@@ -1210,7 +1216,7 @@ void audio_exit(void)
 	connection = NULL;
 }
 
-struct device * manager_default_device()
+struct device *manager_default_device()
 {
 	return default_dev;
 }
