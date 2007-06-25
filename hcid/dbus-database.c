@@ -259,8 +259,10 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 	}
 
 	if (sdp_server_enable) {
-		if (remove_record_from_server(handle) < 0)
+		if (remove_record_from_server(handle) < 0) {
+			sdp_record_free(sdp_record);
 			return error_not_available(conn, msg);
+		}
 
 		sdp_record->handle = handle;
 		err = add_record_to_server(sdp_record);
