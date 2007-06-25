@@ -223,40 +223,11 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult update_service_record(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+
+static DBusHandlerResult update_record(DBusConnection *conn, DBusMessage *msg,
+				dbus_uint32_t handle, sdp_record_t *sdp_record)
 {
-	struct record_data *user_record;
-	DBusMessageIter iter, array;
-	sdp_record_t *sdp_record;
-	dbus_uint32_t handle;
-	const uint8_t *bin_record;
-	int err, scanned, size = -1;
-
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_get_basic(&iter, &handle);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &array);
-
-	dbus_message_iter_get_fixed_array(&array, &bin_record, &size);
-	if (size <= 0)
-		return error_invalid_arguments(conn, msg);
-
-	user_record = find_record(handle, dbus_message_get_sender(msg));
-	if (!user_record)
-		return error_not_available(conn, msg);
-
-	sdp_record = sdp_extract_pdu(bin_record, &scanned);
-	if (!sdp_record) {
-		error("Parsing of service record failed");
-		return error_invalid_arguments(conn, msg);
-	}
-
-	if (scanned != size) {
-		error("Size mismatch of service record");
-		sdp_record_free(sdp_record);
-		return error_invalid_arguments(conn, msg);
-	}
+	int err;
 
 	if (sdp_server_enable) {
 		if (remove_record_from_server(handle) < 0) {
@@ -285,6 +256,77 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 
 	return send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
+}
+
+static DBusHandlerResult update_service_record(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct record_data *user_record;
+	DBusMessageIter iter, array;
+	sdp_record_t *sdp_record;
+	dbus_uint32_t handle;
+	const uint8_t *bin_record;
+	int scanned, size = -1;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_get_basic(&iter, &handle);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	dbus_message_iter_get_fixed_array(&array, &bin_record, &size);
+	if (size <= 0)
+		return error_invalid_arguments(conn, msg);
+
+	user_record = find_record(handle, dbus_message_get_sender(msg));
+	if (!user_record)
+		return error_not_available(conn, msg);
+
+	sdp_record = sdp_extract_pdu(bin_record, &scanned);
+	if (!sdp_record) {
+		error("Parsing of service record failed");
+		return error_invalid_arguments(conn, msg);
+	}
+
+	if (scanned != size) {
+		error("Size mismatch of service record");
+		sdp_record_free(sdp_record);
+		return error_invalid_arguments(conn, msg);
+	}
+
+	return update_record(conn, msg, handle, sdp_record);
+}
+
+static DBusHandlerResult update_service_record_from_xml(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *record;
+	struct record_data *user_record;
+	sdp_record_t *sdp_record;
+	dbus_uint32_t handle;
+	int len;
+
+	if (dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_STRING, &record,
+			DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg);
+
+	len = (record ? strlen(record) : 0);
+	if (len == 0)
+		return error_invalid_arguments(conn, msg);
+
+	user_record = find_record(handle, dbus_message_get_sender(msg));
+	if (!user_record)
+		return error_not_available(conn, msg);
+
+	sdp_record = sdp_xml_parse_record(record, len);
+	if (!sdp_record) {
+		error("Parsing of XML service record failed");
+		sdp_record_free(sdp_record);
+		return error_failed(conn, msg, EIO);
+	}
+
+	return update_record(conn, msg, handle, sdp_record);
 }
 
 static DBusHandlerResult remove_service_record(DBusConnection *conn,
@@ -444,14 +486,15 @@ static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 }
 
 static DBusMethodVTable database_methods[] = {
-	{ "AddServiceRecord",		add_service_record,		"ay",	"u"	},	
-	{ "AddServiceRecordFromXML",	add_service_record_from_xml,	"s",	"u"	},
-	{ "UpdateServiceRecord",	update_service_record,		"uay",	""	},
-	{ "RemoveServiceRecord",	remove_service_record,		"u",	""	},
-	{ "RegisterService",		register_service,		"sss",	""	},
-	{ "UnregisterService",		unregister_service,		"s",	""	},
-	{ "RequestAuthorization",	request_authorization,		"ss",	""	},
-	{ "CancelAuthorizationRequest",	cancel_authorization_request,	"ss",	""	},
+	{ "AddServiceRecord",			add_service_record,		"ay",	"u"	},	
+	{ "AddServiceRecordFromXML",		add_service_record_from_xml,	"s",	"u"	},
+	{ "UpdateServiceRecord",		update_service_record,		"uay",	""	},
+	{ "UpdateServiceRecordFromXML",		update_service_record_from_xml,	"us",	""	},
+	{ "RemoveServiceRecord",		remove_service_record,		"u",	""	},
+	{ "RegisterService",			register_service,		"sss",	""	},
+	{ "UnregisterService",			unregister_service,		"s",	""	},
+	{ "RequestAuthorization",		request_authorization,		"ss",	""	},
+	{ "CancelAuthorizationRequest",		cancel_authorization_request,	"ss",	""	},
 	{ NULL, NULL, NULL, NULL }
 };
 

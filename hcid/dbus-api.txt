@@ -251,6 +251,15 @@ Methods		void RegisterService(string identifier, string name, string description
 					 org.bluez.Error.NotAvailable
 					 org.bluez.Error.Failed
 
+		void UpdateServiceRecordFromXML(uint32 handle, string record)
+
+			Updates a given service record provided in the
+			XML format.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+					 org.bluez.Error.Failed
+
 		void RemoveServiceRecord(uint32 handle)
 
 			Remove a service record identified by its handle.
