@@ -31,7 +31,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
-#include <assert.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <ctype.h>
@@ -187,7 +186,7 @@ static void handle_record(sdp_record_t *record, struct device *device)
 			headset_update(device, record, uuid16);
 		else
 			device->headset = headset_init(device,
-							record, uuid16);
+							record, uuid16, -1);
 		break;
 	case HEADSET_AGW_SVCLASS_ID:
 		debug("Found Headset AG record");
@@ -198,7 +197,7 @@ static void handle_record(sdp_record_t *record, struct device *device)
 			headset_update(device, record, uuid16);
 		else
 			device->headset = headset_init(device,
-							record, uuid16);
+							record, uuid16, -1);
 		break;
 	case HANDSFREE_AGW_SVCLASS_ID:
 		debug("Found Handsfree AG record");
@@ -638,7 +637,7 @@ struct device *manager_device_connected(bdaddr_t *bda)
 	}
 
 	if (!device->headset)
-		device->headset = headset_init(device, NULL, 0);
+		device->headset = headset_init(device, NULL, 0, -1);
 
 	if (!device->headset)
 		return NULL;
@@ -1102,8 +1101,15 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	if (!device)
 		return;
 
-	if (strcmp(value, "headset") == 0)
-		device->headset = headset_init(device, NULL, 0);
+	if (strncmp(value, "headset", strlen("headset")) == 0) {
+		int channel = -1;
+		char *ptr;
+
+		if ((ptr = strchr(value, '#')))
+			channel = strtol(ptr+1, NULL, 10);
+
+		device->headset = headset_init(device, NULL, 0, channel);
+	}
 
 	add_device(device);
 }
@@ -1167,10 +1173,21 @@ static void register_stored(void)
 	closedir(dir);
 }
 
+static void manager_unregister(DBusConnection *conn, void *data)
+{
+	info("Unregistered manager path");
+
+	if (devices) {
+		g_slist_foreach(devices, (GFunc)remove_device, NULL);
+		g_slist_free(devices);
+		devices = NULL;
+	}
+}
+
 int audio_init(DBusConnection *conn)
 {
 	if (!dbus_connection_create_object_path(conn, AUDIO_MANAGER_PATH,
-						NULL, NULL)) {
+						NULL, manager_unregister)) {
 		error("D-Bus failed to register %s path", AUDIO_MANAGER_PATH);
 		return -1;
 	}
@@ -1197,9 +1214,7 @@ int audio_init(DBusConnection *conn)
 
 void audio_exit(void)
 {
-	g_slist_foreach(devices, (GFunc) remove_device, NULL);
-	g_slist_free(devices);
-	devices = NULL;
+	dbus_connection_destroy_object_path(connection, AUDIO_MANAGER_PATH);
 
 	dbus_connection_unref(connection);
 

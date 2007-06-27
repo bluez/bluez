@@ -92,6 +92,9 @@ static void bluetooth_exit(struct bluetooth_data *data)
 	if (data->sock >= 0)
 		close(data->sock);
 
+	if (data->cfg.fd >= 0)
+		close(data->cfg.fd);
+
 	if (data->buffer)
 		free(data->buffer);
 
@@ -196,7 +199,7 @@ static snd_pcm_sframes_t bluetooth_read(snd_pcm_ioplug_t *io,
 proceed:
 	buff = (unsigned char *) areas->addr + (areas->first + areas->step * offset) / 8;
 
-	if ((data->count + cfg.sample_size * size) <= cfg.pkt_len)
+	if ((data->count + size * frame_size) <= cfg.pkt_len)
 		frames_to_write = size;
 	else
 		frames_to_write = (cfg.pkt_len - data->count) / frame_size;
@@ -241,9 +244,9 @@ static snd_pcm_sframes_t bluetooth_write(snd_pcm_ioplug_t *io,
 	buff = (uint8_t *) areas->addr + (areas->first + areas->step * offset) / 8;
 	memcpy(data->buffer + data->count, buff, frame_size * frames_to_read);
 
-	if ((data->count + frames_to_read * frame_size) != cfg.pkt_len) {
-		/* Remember we have some frame in the pipe now */
-		data->count += frames_to_read * frame_size;
+	/* Remember we have some frame in the pipe now */
+	data->count += frames_to_read * frame_size;
+	if (data->count != cfg.pkt_len) {
 		ret = frames_to_read;
 		goto done;
 	}
