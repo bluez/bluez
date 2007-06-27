@@ -1396,12 +1396,12 @@ void headset_update(void *device, sdp_record_t *record, uint16_t svc)
 }
 
 struct headset *headset_init(void *device, sdp_record_t *record,
-			uint16_t svc, int channel)
+			uint16_t svc)
 {
 	struct headset *headset;
 
 	headset = g_new0(struct headset, 1);
-	headset->rfcomm_ch = channel;
+	headset->rfcomm_ch = -1;
 	headset->sp_gain = -1;
 	headset->mic_gain = -1;
 

@@ -55,7 +55,7 @@ typedef enum {
 struct headset;
 
 struct headset *headset_init(void *device, sdp_record_t *record,
-			uint16_t svc, int channel);
+			uint16_t svc);
 
 void headset_free(void *device);
 

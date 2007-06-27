@@ -186,7 +186,7 @@ int device_store(struct device *device, gboolean is_default)
 	if (is_default)
 		textfile_put(filename, "default", dst_addr);
 	if (device->headset)
-		snprintf(value, 64, "headset#%d", headset_get_channel(device));
+		snprintf(value, 64, "headset");
 	else if (device->gateway)
 		snprintf(value, 64, "gateway");
 	else if (device->sink)

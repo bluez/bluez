@@ -186,7 +186,7 @@ static void handle_record(sdp_record_t *record, struct device *device)
 			headset_update(device, record, uuid16);
 		else
 			device->headset = headset_init(device,
-							record, uuid16, -1);
+							record, uuid16);
 		break;
 	case HEADSET_AGW_SVCLASS_ID:
 		debug("Found Headset AG record");
@@ -197,7 +197,7 @@ static void handle_record(sdp_record_t *record, struct device *device)
 			headset_update(device, record, uuid16);
 		else
 			device->headset = headset_init(device,
-							record, uuid16, -1);
+							record, uuid16);
 		break;
 	case HANDSFREE_AGW_SVCLASS_ID:
 		debug("Found Handsfree AG record");
@@ -637,7 +637,7 @@ struct device *manager_device_connected(bdaddr_t *bda)
 	}
 
 	if (!device->headset)
-		device->headset = headset_init(device, NULL, 0, -1);
+		device->headset = headset_init(device, NULL, 0);
 
 	if (!device->headset)
 		return NULL;
@@ -1101,15 +1101,8 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	if (!device)
 		return;
 
-	if (strncmp(value, "headset", strlen("headset")) == 0) {
-		int channel = -1;
-		char *ptr;
-
-		if ((ptr = strchr(value, '#')))
-			channel = strtol(ptr+1, NULL, 10);
-
-		device->headset = headset_init(device, NULL, 0, channel);
-	}
+	if (strncmp(value, "headset", strlen("headset")) == 0)
+		device->headset = headset_init(device, NULL, 0);
 
 	add_device(device);
 }
