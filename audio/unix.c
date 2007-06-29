@@ -75,13 +75,49 @@ static int unix_sendmsg_fd(int sock, int fd, struct ipc_packet *pkt)
 	return sendmsg(sock, &msgh, MSG_NOSIGNAL);
 }
 
+static void cfg_event(int clisk, struct ipc_packet *pkt)
+{
+	struct ipc_data_cfg *cfg = (struct ipc_data_cfg *) pkt->data;
+	struct device *device;
+
+	memset(cfg, 0, sizeof(struct ipc_data_cfg));
+
+	if ((device = manager_default_device())) {
+		if (device->headset)
+			headset_get_config(device, clisk, pkt);
+	}
+	else
+		cfg->fd = -1;
+
+	if (cfg->fd != 0)
+		unix_send_cfg(clisk, pkt);
+}
+
+static void ctl_event(int clisk, struct ipc_packet *pkt)
+{
+}
+
+static void status_event(int clisk, struct ipc_packet *pkt)
+{
+	struct ipc_data_status *status = (struct ipc_data_status *) pkt->data;
+	struct device *device;
+
+	if (status->status == STATUS_DISCONNECTED) {
+		if (!(device = manager_default_device()))
+			return;
+
+		if (device->headset)
+			headset_set_state(device, HEADSET_STATE_DISCONNECTED);
+	}
+
+	g_free(pkt);
+}
+
 static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	struct device *device;
 	struct sockaddr_un addr;
 	socklen_t addrlen;
 	struct ipc_packet *pkt;
-	struct ipc_data_cfg *cfg;
 	int sk, clisk, len;
 
 	debug("chan %p cond %td data %p", chan, cond, data);
@@ -114,23 +150,15 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	switch (pkt->type) {
 	case PKT_TYPE_CFG_REQ:
 		info("Package PKT_TYPE_CFG_REQ:%u", pkt->role);
-
-		cfg = (struct ipc_data_cfg *) pkt->data;
-
-		memset(cfg, 0, sizeof(struct ipc_data_cfg));
-		if ((device = manager_default_device())) {
-			if (device->headset)
-				headset_get_config(device, clisk, pkt);
-		}
-
-		if (cfg->fd != 0)
-			unix_send_cfg(clisk, pkt);
+		cfg_event(clisk, pkt);
 		break;
 	case PKT_TYPE_STATUS_REQ:
 		info("Package PKT_TYPE_STATUS_REQ");
+		status_event(clisk, pkt);
 		break;
 	case PKT_TYPE_CTL_REQ:
 		info("Package PKT_TYPE_CTL_REQ");
+		ctl_event(clisk, pkt);
 		break;
 	}
 

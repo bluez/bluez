@@ -181,11 +181,6 @@ static void close_sco(struct device *device)
 		g_io_channel_close(hs->sco);
 		g_io_channel_unref(hs->sco);
 		hs->sco = NULL;
-		hs->state = HEADSET_STATE_CONNECTED;
-		dbus_connection_emit_signal(device->conn, device->path,
-						AUDIO_HEADSET_INTERFACE,
-						"Stopped",
-						DBUS_TYPE_INVALID);
 	}
 }
 
@@ -286,8 +281,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 
 failed:
-	close_sco(device);
-	headset_close_rfcomm(device);
+	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 
 	return FALSE;
 }
@@ -304,7 +298,7 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 
 	error("Audio connection got disconnected");
 
-	close_sco(device);
+	headset_set_state(device, HEADSET_STATE_CONNECTED);
 
 	return FALSE;
 }
@@ -359,9 +353,8 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct headset *hs;
 	struct pending_connect *c;
-	int ret, sk, err, flags;
+	int ret, sk, err;
 	socklen_t len;
-	char str[13];
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -390,29 +383,12 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	hs->sco = chan;
 	c->io = NULL;
 
-	flags = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-
-	g_io_add_watch(hs->sco, flags, (GIOFunc) sco_cb, device);
-
 	g_slist_foreach(hs->pending, (GFunc)pending_connect_ok, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
 	fcntl(sk, F_SETFL, 0);
 
-	hs->state = HEADSET_STATE_PLAYING;
-	dbus_connection_emit_signal(device->conn, device->path,
-					AUDIO_HEADSET_INTERFACE,
-					"Playing", DBUS_TYPE_INVALID);
-
-	if (hs->sp_gain >= 0) {
-		snprintf(str, sizeof(str) - 1, "\r\n+VGS=%u\r\n", hs->sp_gain);
-		headset_send(device->headset, str);
-	}
-
-	if (hs->mic_gain >= 0) {
-		snprintf(str, sizeof(str) - 1, "\r\n+VGM=%u\r\n", hs->sp_gain);
-		headset_send(device->headset, str);
-	}
+	headset_set_state(device, HEADSET_STATE_PLAYING);
 
 	return FALSE;
 
@@ -420,7 +396,7 @@ failed:
 	g_slist_foreach(hs->pending, (GFunc)pending_connect_failed, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
-	hs->state = HEADSET_STATE_CONNECTED;
+	headset_set_state(device, HEADSET_STATE_CONNECTED);
 
 	return FALSE;
 }
@@ -486,7 +462,7 @@ static int sco_connect(struct device *device, struct pending_connect *c)
 		do_callback = TRUE;
 	}
 
-	hs->state = HEADSET_STATE_PLAY_IN_PROGRESS;
+	headset_set_state(device, HEADSET_STATE_PLAY_IN_PROGRESS);
 	if (!g_slist_find(hs->pending, c))
 		hs->pending = g_slist_append(hs->pending, c);
 
@@ -530,12 +506,8 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 	hs->rfcomm = chan;
 	c->io = NULL;
 
-	hs->state = HEADSET_STATE_CONNECTED;
-	dbus_connection_emit_signal(device->conn, device->path,
-					AUDIO_HEADSET_INTERFACE,
-					"Connected", DBUS_TYPE_INVALID);
+	headset_set_state(device, HEADSET_STATE_CONNECTED);
 
-	device_store(device, FALSE);
 	debug("Connected to %s", hs_address);
 
 	g_io_add_watch(chan, G_IO_IN | G_IO_ERR | G_IO_HUP| G_IO_NVAL,
@@ -558,9 +530,9 @@ failed:
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
 	if (hs->rfcomm)
-		hs->state = HEADSET_STATE_CONNECTED;
+		headset_set_state(device, HEADSET_STATE_CONNECTED);
 	else
-		hs->state = HEADSET_STATE_DISCONNECTED;
+		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 
 	return FALSE;
 }
@@ -676,7 +648,7 @@ failed:
 	g_slist_foreach(hs->pending, (GFunc)pending_connect_failed, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
-	hs->state = HEADSET_STATE_DISCONNECTED;
+	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 	device_finish_sdp_transaction(device);
 }
 
@@ -778,7 +750,7 @@ failed:
 	g_slist_foreach(hs->pending, (GFunc)pending_connect_failed, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
-	hs->state = HEADSET_STATE_DISCONNECTED;
+	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 }
 
 static int get_handles(struct device *device)
@@ -809,7 +781,7 @@ static int get_handles(struct device *device)
 					DBUS_TYPE_STRING, &hs_svc,
 					DBUS_TYPE_INVALID);
 
-	hs->state = HEADSET_STATE_CONNECT_IN_PROGRESS;
+	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 	if (!dbus_connection_send_with_reply(device->conn, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceHandles failed");
 		dbus_message_unref(msg);
@@ -919,18 +891,10 @@ static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	switch(hs->state) {
-	case HEADSET_STATE_PLAYING:
-	case HEADSET_STATE_PLAY_IN_PROGRESS:
-		close_sco(device);
-		break;
-	case HEADSET_STATE_CONNECTED:
-	case HEADSET_STATE_CONNECT_IN_PROGRESS:
-	case HEADSET_STATE_DISCONNECTED:
+	if (hs->state < HEADSET_STATE_PLAY_IN_PROGRESS)
 		return err_not_connected(conn, msg);
-		break;
-	}
 
+	headset_set_state(device, HEADSET_STATE_CONNECTED);
 	send_message_and_unref(conn, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -970,19 +934,10 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	switch(hs->state) {
-	case HEADSET_STATE_PLAYING:
-	case HEADSET_STATE_PLAY_IN_PROGRESS:
-		close_sco(device);
-	case HEADSET_STATE_CONNECTED:
-	case HEADSET_STATE_CONNECT_IN_PROGRESS:
-		headset_close_rfcomm(device);
-		break;
-	case HEADSET_STATE_DISCONNECTED:
+	if (hs->state == HEADSET_STATE_DISCONNECTED)
 		return err_not_connected(conn, msg);
-		break;
-	}
 
+	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 	ba2str(&device->dst, hs_address);
 	info("Disconnected from %s, %s", hs_address, device->path);
 
@@ -1500,11 +1455,6 @@ int headset_close_rfcomm(void *device)
 		g_io_channel_close(hs->rfcomm);
 		g_io_channel_unref(hs->rfcomm);
 		hs->rfcomm = NULL;
-		hs->state = HEADSET_STATE_DISCONNECTED;
-		dbus_connection_emit_signal(dev->conn, dev->path,
-						AUDIO_HEADSET_INTERFACE,
-						"Disconnected",
-						DBUS_TYPE_INVALID);
 	}
 
 	hs->data_start = 0;
@@ -1517,32 +1467,64 @@ void headset_set_state(void *device, headset_state_t state)
 {
 	struct device *dev = (struct device *) device;
 	struct headset *hs = dev->headset;
+	char str[13];
+
+	if (hs->state == state)
+		return;
 
 	switch(state) {
 	case HEADSET_STATE_DISCONNECTED:
+		close_sco(device);
+		headset_close_rfcomm(device);
+		dbus_connection_emit_signal(dev->conn, dev->path,
+						AUDIO_HEADSET_INTERFACE,
+						"Disconnected",
+						DBUS_TYPE_INVALID);
+		break;
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
 		break;
 	case HEADSET_STATE_CONNECTED:
-		if (hs->rfcomm) {
-			char hs_address[18];
-
+		if (hs->state < state) {
 			g_io_add_watch(hs->rfcomm,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				(GIOFunc) rfcomm_io_cb, device);
-
-			ba2str(&((struct device *) device)->dst, hs_address);
 
 			dbus_connection_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Connected",
 						DBUS_TYPE_INVALID);
 		}
+		else {
+			close_sco(device);
+			dbus_connection_emit_signal(dev->conn, dev->path,
+						AUDIO_HEADSET_INTERFACE,
+						"Stopped",
+						DBUS_TYPE_INVALID);
+		}
 		break;
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
+		break;
 	case HEADSET_STATE_PLAYING:
+		g_io_add_watch(hs->sco, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+				(GIOFunc) sco_cb, device);
+
+		dbus_connection_emit_signal(dev->conn, dev->path,
+						AUDIO_HEADSET_INTERFACE,
+						"Playing", DBUS_TYPE_INVALID);
+
+		if (hs->sp_gain >= 0) {
+			snprintf(str, sizeof(str) - 1, "\r\n+VGS=%u\r\n", hs->sp_gain);
+			headset_send(hs, str);
+		}
+
+		if (hs->mic_gain >= 0) {
+			snprintf(str, sizeof(str) - 1, "\r\n+VGM=%u\r\n", hs->sp_gain);
+			headset_send(hs, str);
+		}
 		break;
 	}
 
+	debug("State changed %s: %d -> %d", dev->path, hs->state, state);
 	hs->state = state;
 }
 
