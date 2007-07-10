@@ -97,18 +97,18 @@ static void ctl_event(int clisk, struct ipc_packet *pkt)
 {
 }
 
-static void status_event(int clisk, struct ipc_packet *pkt)
+static void state_event(int clisk, struct ipc_packet *pkt)
 {
-	struct ipc_data_status *status = (struct ipc_data_status *) pkt->data;
+	struct ipc_data_state *state = (struct ipc_data_state *) pkt->data;
 	struct device *device;
 
-	if (status->status == STATUS_DISCONNECTED) {
-		if (!(device = manager_default_device()))
-			return;
+	if (!(device = manager_default_device()))
+		return;
 
-		if (device->headset)
-			headset_set_state(device, HEADSET_STATE_DISCONNECTED);
-	}
+	if (device->headset)
+		headset_set_state(device, state->state);
+
+	unix_send_status(clisk, pkt);
 
 	g_free(pkt);
 }
@@ -152,9 +152,9 @@ static gboolean unix_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 		info("Package PKT_TYPE_CFG_REQ:%u", pkt->role);
 		cfg_event(clisk, pkt);
 		break;
-	case PKT_TYPE_STATUS_REQ:
-		info("Package PKT_TYPE_STATUS_REQ");
-		status_event(clisk, pkt);
+	case PKT_TYPE_STATE_REQ:
+		info("Package PKT_TYPE_STATE_REQ");
+		state_event(clisk, pkt);
 		break;
 	case PKT_TYPE_CTL_REQ:
 		info("Package PKT_TYPE_CTL_REQ");
@@ -239,6 +239,27 @@ int unix_send_cfg(int sock, struct ipc_packet *pkt)
 	}
 
 	g_free(pkt);
-	close(sock);
+	return 0;
+}
+
+int unix_send_status(int sock, struct ipc_packet *pkt)
+{
+	struct ipc_data_state *state = (struct ipc_data_state *) pkt->data;
+	int len;
+
+	info("status=%u", state->state);
+
+	pkt->type = PKT_TYPE_CFG_RSP;
+	pkt->length = sizeof(struct ipc_data_state);
+	pkt->error = PKT_ERROR_NONE;
+
+	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_state);
+	len = send(sock, pkt, len, 0);
+	if (len < 0)
+		info("Error %s(%d)", strerror(errno), errno);
+
+	info("%d bytes sent", len);
+
+	g_free(pkt);
 	return 0;
 }

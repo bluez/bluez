@@ -27,3 +27,4 @@ int unix_init(void);
 
 void unix_exit(void);
 int unix_send_cfg(int sock, struct ipc_packet *pkt);
+int unix_send_status(int sock, struct ipc_packet *pkt);

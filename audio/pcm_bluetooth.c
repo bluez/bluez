@@ -86,25 +86,27 @@ static snd_pcm_sframes_t bluetooth_pointer(snd_pcm_ioplug_t *io)
 
 static void bluetooth_exit(struct bluetooth_data *data)
 {
-	int ret, len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_status);
+	int ret, len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_state);
 	struct ipc_packet *pkt;
-	struct ipc_data_status *status;
+	struct ipc_data_state *state;
 
 	DBG("Sending PKT_TYPE_STATUS_REQ...");
 
-	if ((pkt = malloc(len)) == 0)
+	if ((pkt = malloc(len)) == NULL)
 		goto done;
 
 	memset(pkt, 0, len);
-	pkt->type = PKT_TYPE_STATUS_REQ;
+	pkt->type = PKT_TYPE_STATE_REQ;
 	pkt->role = PKT_ROLE_NONE;
 	pkt->error = PKT_ERROR_NONE;
 
-	status = (struct ipc_data_status *) pkt->data;
-	status->status = STATUS_DISCONNECTED;
+	state = (struct ipc_data_state *) pkt->data;
+	state->state = STATE_DISCONNECTED;
 
 	if ((ret = send(data->sock, pkt, len, 0)) < 0)
-		DBG("OK");
+		DBG("Error %s (%d)", strerror(errno), errno);
+
+	free(pkt);
 done:
 	if (data == NULL)
 		return;

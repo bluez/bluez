@@ -40,8 +40,8 @@
 /* Packet types */
 #define PKT_TYPE_CFG_REQ	0
 #define PKT_TYPE_CFG_RSP	1
-#define PKT_TYPE_STATUS_REQ	2
-#define PKT_TYPE_STATUS_RSP	3
+#define PKT_TYPE_STATE_REQ	2
+#define PKT_TYPE_STATE_RSP	3
 #define PKT_TYPE_CTL_REQ	4
 #define PKT_TYPE_CTL_RSP	5
 #define PKT_TYPE_CTL_NTFY	6
@@ -75,13 +75,14 @@ struct ipc_data_cfg {
 } __attribute__ ((packed));
 
 /* Device status */
-#define STATUS_DISCONNECTED	0
-#define STATUS_CONNECTING	1
-#define STATUS_CONNECTED	2
-#define STATUS_STREAMING	3
+#define STATE_DISCONNECTED	0
+#define STATE_CONNECTING	1
+#define STATE_CONNECTED		2
+#define STATE_STREAM_STARTING	3
+#define STATE_STREAMING		4
 
-struct ipc_data_status {
-	uint8_t status;		/* Stream status */
+struct ipc_data_state {
+	uint8_t state;		/* Stream state */
 } __attribute__ ((packed));
 
 #define CTL_MODE_PLAYBACK	0

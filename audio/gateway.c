@@ -314,7 +314,8 @@ static void auth_cb(DBusPendingCall *call, void *data)
 			send_cancel_auth(device);
 		}
 		dbus_error_free(&err);
-		headset_close_rfcomm(device);
+
+		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 	} else {
 		char hs_address[18];
 
@@ -407,6 +408,7 @@ static gboolean gateway_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	dbus_pending_call_set_notify(pending, auth_cb, device, NULL);
 	dbus_pending_call_unref(pending);
 	dbus_message_unref(auth);
+	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
 	return TRUE;
 

@@ -206,7 +206,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1,
 				&bytes_read);
 	if (err != G_IO_ERROR_NONE)
-		goto failed;
+		error("Ignoring error %d", err);
 
 	free_space = sizeof(hs->buf) - hs->data_start - hs->data_length - 1;
 
