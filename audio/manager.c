@@ -1094,8 +1094,13 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	if (!key || !value || strcmp(key, "default") == 0)
 		return;
 
-	info("Loading device %s (%s)", key, value);
 	str2ba(key, &dst);
+	device = find_device(&dst);
+
+	if (device)
+		return;
+
+	info("Loading device %s (%s)", key, value);
 
 	device = create_device(&dst);
 	if (!device)
@@ -1112,9 +1117,11 @@ static void register_devices_stored(const char *adapter)
 	char filename[PATH_MAX + 1];
 	struct stat st;
 	struct device *device;
+	bdaddr_t default_src;
 	bdaddr_t src;
 	bdaddr_t dst;
 	char *addr;
+	int dev_id;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter, "audio");
 
@@ -1127,6 +1134,14 @@ static void register_devices_stored(const char *adapter)
 		return;
 
 	textfile_foreach(filename, parse_stored_devices, &src);
+
+	bacpy(&default_src, BDADDR_ANY);
+	dev_id = hci_get_route(NULL);
+	if (dev_id < 0)
+		hci_devba(dev_id, &default_src);
+
+	if (bacmp(&default_src, &src) != 0)
+		return;
 
 	addr = textfile_get(filename, "default");
 	if (!addr)
