@@ -345,6 +345,66 @@ static int cmd_rand(int transport, int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_chiprev(int transport, int argc, char *argv[])
+{
+	uint8_t array[8];
+	uint16_t rev;
+	char *str;
+	int err;
+
+	OPT_HELP(0, NULL);
+
+	memset(array, 0, sizeof(array));
+
+	err = transport_read(transport, CSR_VARID_CHIPREV, array, 8);
+	if (err < 0) {
+		errno = -err;
+		return -1;
+	}
+
+	rev = array[0] | (array[1] << 8);
+
+	switch (rev) {
+	case 0x64:
+		str = "BC1 ES";
+		break;
+	case 0x65:
+		str = "BC1";
+		break;
+	case 0x89:
+		str = "BC2-External A";
+		break;
+	case 0x8a:
+		str = "BC2-External B";
+		break;
+	case 0x28:
+		str = "BC2-ROM";
+		break;
+	case 0x43:
+		str = "BC3-Multimedia";
+		break;
+	case 0x15:
+		str = "BC3-ROM";
+		break;
+	case 0xe2:
+		str = "BC3-Flash";
+		break;
+	case 0x26:
+		str = "BC4-External";
+		break;
+	case 0x30:
+		str = "BC4-ROM";
+		break;
+	default:
+		str = "NA";
+		break;
+	}
+
+	printf("Chip revision: 0x%04x (%s)\n", rev, str);
+
+	return 0;
+}
+
 static int cmd_buildname(int transport, int argc, char *argv[])
 {
 	uint8_t array[130];
@@ -987,6 +1047,7 @@ static struct {
 	{ "keylen",    cmd_keylen,    "<handle>",      "Get current crypt key length"   },
 	{ "clock",     cmd_clock,     "",              "Get local Bluetooth clock"      },
 	{ "rand",      cmd_rand,      "",              "Get random number"              },
+	{ "chiprev",   cmd_chiprev,   "",              "Get chip revision"              },
 	{ "buildname", cmd_buildname, "",              "Get the full build name"        },
 	{ "panicarg",  cmd_panicarg,  "",              "Get panic code argument"        },
 	{ "faultarg",  cmd_faultarg,  "",              "Get fault code argument"        },
