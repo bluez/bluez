@@ -272,8 +272,8 @@ static int do_listen(void)
 
 			ba2str(&l2a.l2_bdaddr, str);
 
-			syslog(LOG_INFO, "New connection from %s %s",
-								str, netdev);
+			syslog(LOG_INFO, "New connection from %s at %s",
+								str, devname);
 
 			run_script(devupcmd, devname, str, sk, nsk);
 
