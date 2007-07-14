@@ -551,6 +551,33 @@ static int cmd_rttxdata1(int transport, int argc, char *argv[])
 	return transport_write(transport, CSR_VARID_RADIOTEST, array, 8);
 }
 
+static int cmd_radiotest(int transport, int argc, char *argv[])
+{
+	uint8_t array[8];
+	uint16_t freq, level, test;
+
+	OPT_HELP(3, NULL);
+
+	freq = atoi(argv[0]);
+
+	if (!strncasecmp(argv[1], "0x", 2))
+		level = strtol(argv[1], NULL, 16);
+	else
+		level = atoi(argv[1]);
+
+	test = atoi(argv[2]);
+
+	memset(array, 0, sizeof(array));
+	array[0] = test & 0xff;
+	array[1] = test >> 8;
+	array[2] = freq & 0xff;
+	array[3] = freq >> 8;
+	array[4] = level & 0xff;
+	array[5] = level >> 8;
+
+	return transport_write(transport, CSR_VARID_RADIOTEST, array, 8);
+}
+
 static int cmd_memtypes(int transport, int argc, char *argv[])
 {
 	uint8_t array[8];
@@ -1043,29 +1070,30 @@ static struct {
 	char *arg;
 	char *doc;
 } commands[] = {
-	{ "builddef",  cmd_builddef,  "",              "Get build definitions"          },
-	{ "keylen",    cmd_keylen,    "<handle>",      "Get current crypt key length"   },
-	{ "clock",     cmd_clock,     "",              "Get local Bluetooth clock"      },
-	{ "rand",      cmd_rand,      "",              "Get random number"              },
-	{ "chiprev",   cmd_chiprev,   "",              "Get chip revision"              },
-	{ "buildname", cmd_buildname, "",              "Get the full build name"        },
-	{ "panicarg",  cmd_panicarg,  "",              "Get panic code argument"        },
-	{ "faultarg",  cmd_faultarg,  "",              "Get fault code argument"        },
-	{ "coldreset", cmd_coldreset, "",              "Perform cold reset"             },
-	{ "warmreset", cmd_warmreset, "",              "Perform warm reset"             },
-	{ "disabletx", cmd_disabletx, "",              "Disable TX on the device"       },
-	{ "enabletx",  cmd_enabletx,  "",              "Enable TX on the device"        },
-	{ "singlechan",cmd_singlechan,"<channel>",     "Lock radio on specific channel" },
-	{ "hoppingon", cmd_hoppingon, "",              "Revert to channel hopping"      },
-	{ "rttxdata1", cmd_rttxdata1, "<freq> <level>","TXData1 radio test"             },
-	{ "memtypes",  cmd_memtypes,  NULL,            "Get memory types"               },
-	{ "psget",     cmd_psget,     "<key>",         "Get value for PS key"           },
-	{ "psset",     cmd_psset,     "<key> <value>", "Set value for PS key"           },
-	{ "psclr",     cmd_psclr,     "<key>",         "Clear value for PS key"         },
-	{ "pslist",    cmd_pslist,    NULL,            "List all PS keys"               },
-	{ "psread",    cmd_psread,    NULL,            "Read all PS keys"               },
-	{ "psload",    cmd_psload,    "<file>",        "Load all PS keys from PSR file" },
-	{ "pscheck",   cmd_pscheck,   "<file>",        "Check PSR file"                 },
+	{ "builddef",  cmd_builddef,  "",                    "Get build definitions"          },
+	{ "keylen",    cmd_keylen,    "<handle>",            "Get current crypt key length"   },
+	{ "clock",     cmd_clock,     "",                    "Get local Bluetooth clock"      },
+	{ "rand",      cmd_rand,      "",                    "Get random number"              },
+	{ "chiprev",   cmd_chiprev,   "",                    "Get chip revision"              },
+	{ "buildname", cmd_buildname, "",                    "Get the full build name"        },
+	{ "panicarg",  cmd_panicarg,  "",                    "Get panic code argument"        },
+	{ "faultarg",  cmd_faultarg,  "",                    "Get fault code argument"        },
+	{ "coldreset", cmd_coldreset, "",                    "Perform cold reset"             },
+	{ "warmreset", cmd_warmreset, "",                    "Perform warm reset"             },
+	{ "disabletx", cmd_disabletx, "",                    "Disable TX on the device"       },
+	{ "enabletx",  cmd_enabletx,  "",                    "Enable TX on the device"        },
+	{ "singlechan",cmd_singlechan,"<channel>",           "Lock radio on specific channel" },
+	{ "hoppingon", cmd_hoppingon, "",                    "Revert to channel hopping"      },
+	{ "rttxdata1", cmd_rttxdata1, "<freq> <level>",      "TXData1 radio test"             },
+	{ "radiotest", cmd_radiotest, "<freq> <level> <id>", "Run radio tests"                },
+	{ "memtypes",  cmd_memtypes,  NULL,                  "Get memory types"               },
+	{ "psget",     cmd_psget,     "<key>",               "Get value for PS key"           },
+	{ "psset",     cmd_psset,     "<key> <value>",       "Set value for PS key"           },
+	{ "psclr",     cmd_psclr,     "<key>",               "Clear value for PS key"         },
+	{ "pslist",    cmd_pslist,    NULL,                  "List all PS keys"               },
+	{ "psread",    cmd_psread,    NULL,                  "Read all PS keys"               },
+	{ "psload",    cmd_psload,    "<file>",              "Load all PS keys from PSR file" },
+	{ "pscheck",   cmd_pscheck,   "<file>",              "Check PSR file"                 },
 	{ NULL }
 };
 
@@ -1088,7 +1116,7 @@ static void usage(void)
 
 	printf("Commands:\n");
 	for (i = 0; commands[i].str; i++)
-		printf("\t%-10s %-14s\t%s\n", commands[i].str,
+		printf("\t%-10s %-20s\t%s\n", commands[i].str,
 		commands[i].arg ? commands[i].arg : " ",
 		commands[i].doc);
 	printf("\n");
