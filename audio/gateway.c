@@ -551,3 +551,22 @@ void gateway_exit(void)
 	dbus_connection_unref(connection);
 	connection = NULL;
 }
+
+gboolean gateway_is_enabled(uint16_t svc)
+{
+	gboolean ret;
+
+	switch (svc) {
+	case HEADSET_SVCLASS_ID:
+		ret = (hs_server != NULL);
+		break;
+	case HANDSFREE_SVCLASS_ID:
+		ret = (hf_server != NULL);
+		break;
+	default:
+		ret = FALSE;
+		break;
+	}
+
+	return ret;
+}

@@ -28,3 +28,5 @@ struct gateway;
 int gateway_init(DBusConnection *conn, gboolean disable_hfp, gboolean sco_hci);
 
 void gateway_exit(void);
+
+gboolean gateway_is_enabled(uint16_t svc);

@@ -61,6 +61,9 @@
 #define HEADSET_GAIN_SPEAKER 'S'
 #define HEADSET_GAIN_MICROPHONE 'M'
 
+static char *str_state[] = {"DISCONNECTED", "CONNECTING", "CONNECTED",
+				"STREAM_STARTING", "STREAMING"};
+
 struct pending_connect {
 	DBusMessage *msg;
 	GIOChannel *io;
@@ -453,14 +456,11 @@ static int sco_connect(struct device *device, struct pending_connect *c)
 			return -err;
 		}
 
-		debug("SCO connect in progress");
 		c->io_id = g_io_add_watch(c->io,
 					G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
 					(GIOFunc) sco_connect_cb, device);
-	} else {
-		debug("SCO connect succeeded with first try");
+	} else
 		do_callback = TRUE;
-	}
 
 	headset_set_state(device, HEADSET_STATE_PLAY_IN_PROGRESS);
 	if (!g_slist_find(hs->pending, c))
@@ -508,7 +508,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	headset_set_state(device, HEADSET_STATE_CONNECTED);
 
-	debug("Connected to %s", hs_address);
+	debug("%s: Connected to %s", device->path, hs_address);
 
 	g_io_add_watch(chan, G_IO_IN | G_IO_ERR | G_IO_HUP| G_IO_NVAL,
 			(GIOFunc) rfcomm_io_cb, device);
@@ -818,7 +818,8 @@ static int rfcomm_connect(struct device *device, struct pending_connect *c)
 
 	ba2str(&device->dst, address);
 
-	debug("Connecting to %s channel %d", address, hs->rfcomm_ch);
+	debug("%s: Connecting to %s channel %d", device->path, address,
+		hs->rfcomm_ch);
 
 	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sk < 0) {
@@ -862,14 +863,10 @@ static int rfcomm_connect(struct device *device, struct pending_connect *c)
 			goto failed;
 		}
 
-		debug("Connect in progress");
-
 		g_io_add_watch(c->io, G_IO_OUT | G_IO_NVAL,
 				(GIOFunc) rfcomm_connect_cb, device);
-	} else {
-		debug("Connect succeeded with first try");
+	} else
 		rfcomm_connect_cb(c->io, G_IO_OUT, device);
-	}
 
 	return 0;
 
@@ -1280,6 +1277,9 @@ void headset_update(void *device, sdp_record_t *record, uint16_t svc)
 {
 	struct headset *headset = ((struct device *) device)->headset;
 
+	if (!gateway_is_enabled(svc))
+		return;
+
 	switch (svc) {
 	case HANDSFREE_SVCLASS_ID:
 		if (headset->hfp_handle &&
@@ -1327,6 +1327,11 @@ struct headset *headset_init(void *device, sdp_record_t *record,
 
 	if (!record)
 		goto register_iface;
+
+	if (!gateway_is_enabled(svc)) {
+		g_free(hs);
+		return NULL;
+	}
 
 	switch (svc) {
 	case HANDSFREE_SVCLASS_ID:
@@ -1513,18 +1518,21 @@ void headset_set_state(void *device, headset_state_t state)
 						"Playing", DBUS_TYPE_INVALID);
 
 		if (hs->sp_gain >= 0) {
-			snprintf(str, sizeof(str) - 1, "\r\n+VGS=%u\r\n", hs->sp_gain);
+			snprintf(str, sizeof(str) - 1, "\r\n+VGS=%u\r\n",
+				hs->sp_gain);
 			headset_send(hs, str);
 		}
 
 		if (hs->mic_gain >= 0) {
-			snprintf(str, sizeof(str) - 1, "\r\n+VGM=%u\r\n", hs->sp_gain);
+			snprintf(str, sizeof(str) - 1, "\r\n+VGM=%u\r\n",
+				hs->sp_gain);
 			headset_send(hs, str);
 		}
 		break;
 	}
 
-	debug("State changed %s: %d -> %d", dev->path, hs->state, state);
+	debug("State changed %s: %s -> %s", dev->path, str_state[hs->state],
+		str_state[state]);
 	hs->state = state;
 }
 
