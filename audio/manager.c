@@ -1186,7 +1186,7 @@ static void manager_unregister(DBusConnection *conn, void *data)
 	info("Unregistered manager path");
 
 	if (devices) {
-		g_slist_foreach(devices, (GFunc)remove_device, NULL);
+		g_slist_foreach(devices, (GFunc) remove_device, NULL);
 		g_slist_free(devices);
 		devices = NULL;
 	}

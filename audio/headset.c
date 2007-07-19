@@ -386,7 +386,7 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	hs->sco = chan;
 	c->io = NULL;
 
-	g_slist_foreach(hs->pending, (GFunc)pending_connect_ok, device);
+	g_slist_foreach(hs->pending, (GFunc) pending_connect_ok, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
 	fcntl(sk, F_SETFL, 0);
@@ -396,7 +396,7 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 
 failed:
-	g_slist_foreach(hs->pending, (GFunc)pending_connect_failed, device);
+	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
 	headset_set_state(device, HEADSET_STATE_CONNECTED);
@@ -519,14 +519,14 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 		return FALSE;
 	}
 
-	g_slist_foreach(hs->pending, (GFunc)pending_connect_ok, device);
+	g_slist_foreach(hs->pending, (GFunc) pending_connect_ok, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
 
 	return FALSE;
 
 failed:
-	g_slist_foreach(hs->pending, (GFunc)pending_connect_failed, device);
+	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
 	if (hs->rfcomm)
@@ -645,7 +645,7 @@ failed:
 		sdp_record_free(record);
 	if (reply)
 		dbus_message_unref(reply);
-	g_slist_foreach(hs->pending, (GFunc)pending_connect_failed, device);
+	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
 	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
@@ -747,7 +747,7 @@ failed:
 	if (msg)
 		dbus_message_unref(msg);
 	dbus_message_unref(reply);
-	g_slist_foreach(hs->pending, (GFunc)pending_connect_failed, device);
+	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
 	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
