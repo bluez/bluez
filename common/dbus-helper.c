@@ -283,7 +283,7 @@ static DBusObjectPathVTable generic_table = {
 	.message_function	= generic_message,
 };
 
-static void update_parent_data(DBusConnection *conn, const char *child_path)
+static void invalidate_parent_data(DBusConnection *conn, const char *child_path)
 {
 	struct generic_data *data = NULL;
 	char *parent_path, *slash;
@@ -330,7 +330,7 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 		return FALSE;
 	}
 
-	update_parent_data(connection, path);
+	invalidate_parent_data(connection, path);
 
 	return TRUE;
 }
@@ -338,12 +338,9 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
 							const char *path)
 {
-	if (!dbus_connection_unregister_object_path(connection, path))
-		return FALSE;
+	invalidate_parent_data(connection, path);
 
-	update_parent_data(connection, path);
-
-	return TRUE;
+	return dbus_connection_unregister_object_path(connection, path);
 }
 
 dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
