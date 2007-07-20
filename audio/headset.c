@@ -1279,9 +1279,6 @@ void headset_update(void *device, sdp_record_t *record, uint16_t svc)
 {
 	struct headset *headset = ((struct device *) device)->headset;
 
-	if (!gateway_is_enabled(svc))
-		return;
-
 	switch (svc) {
 	case HANDSFREE_SVCLASS_ID:
 		if (headset->hfp_handle &&
@@ -1329,11 +1326,6 @@ struct headset *headset_init(void *device, sdp_record_t *record,
 
 	if (!record)
 		goto register_iface;
-
-	if (!gateway_is_enabled(svc)) {
-		g_free(hs);
-		return NULL;
-	}
 
 	switch (svc) {
 	case HANDSFREE_SVCLASS_ID:

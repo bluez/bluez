@@ -29,7 +29,7 @@
 #define AUDIO_MANAGER_PATH "/org/bluez/audio"
 #define AUDIO_MANAGER_INTERFACE "org.bluez.audio.Manager"
 
-int audio_init(DBusConnection *conn);
+int audio_init(DBusConnection *conn, gboolean no_hfp, gboolean sco_hci);
 
 void audio_exit(void);
 

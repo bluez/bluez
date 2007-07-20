@@ -131,13 +131,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (audio_init(conn) < 0) {
+	if (audio_init(conn, disable_hfp, sco_hci) < 0) {
 		error("Audio init failed!");
-		exit(1);
-	}
-
-	if (gateway_init(conn, disable_hfp, sco_hci) < 0) {
-		error("Headset initialization failed!");
 		exit(1);
 	}
 
@@ -147,8 +142,6 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	audio_exit();
-
-	gateway_exit();
 
 	unix_exit();
 
