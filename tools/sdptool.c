@@ -2896,7 +2896,10 @@ static int add_sr1(sdp_session_t *session, svc_info_t *si)
 	return 0;
 }
 
-static unsigned char syncml_uuid[] = {	0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x10, 0x00,
+static unsigned char syncmls_uuid[] = {	0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x10, 0x00,
+					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x02 };
+
+static unsigned char syncmlc_uuid[] = {	0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x10, 0x00,
 					0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x02 };
 
 static int add_syncml(sdp_session_t *session, svc_info_t *si)
@@ -2913,7 +2916,7 @@ static int add_syncml(sdp_session_t *session, svc_info_t *si)
 	root = sdp_list_append(NULL, &root_uuid);
 	sdp_set_browse_groups(&record, root);
 
-	sdp_uuid128_create(&svclass_uuid, (void *) syncml_uuid);
+	sdp_uuid128_create(&svclass_uuid, (void *) syncmlc_uuid);
 	svclass = sdp_list_append(NULL, &svclass_uuid);
 	sdp_set_service_classes(&record, svclass);
 
@@ -3314,7 +3317,8 @@ struct {
 	{ "SEMCHLA",	0x8e771301,			add_semchla	},
 
 	{ "SR1",	0,				add_sr1,	sr1_uuid	},
-	{ "SYNCML",	0,				add_syncml,	syncml_uuid	},
+	{ "SYNCML",	0,				add_syncml,	syncmlc_uuid	},
+	{ "SYNCMLSERV",	0,				NULL,		syncmls_uuid	},
 	{ "ACTIVESYNC",	0,				add_activesync,	async_uuid	},
 	{ "HOTSYNC",	0,				add_hotsync,	hotsync_uuid	},
 	{ "PALMOS",	0,				add_palmos,	palmos_uuid	},
