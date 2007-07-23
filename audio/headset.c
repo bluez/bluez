@@ -341,6 +341,7 @@ static void pending_connect_ok(struct pending_connect *c, struct device *dev)
 	}
 	else if (c->pkt)
 		headset_get_config(dev, c->sock, c->pkt);
+
 	pending_connect_free(c);
 }
 
@@ -984,10 +985,12 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 
 	c->msg = dbus_message_ref(msg);
 
-	if ((err = rfcomm_connect(device, c)) < 0)
+	err = rfcomm_connect(device, c);
+	if (err < 0)
 		goto error;
 
 	return DBUS_HANDLER_RESULT_HANDLED;
+
 error:
 	pending_connect_free(c);
 	return err_connect_failed(conn, msg, strerror(-err));
@@ -1384,7 +1387,8 @@ int headset_get_config(void *device, int sock, struct ipc_packet *pkt)
 			goto error;
 		c->sock = sock;
 		c->pkt = pkt;
-		if ((err = rfcomm_connect(device, c)) < 0)
+		err = rfcomm_connect(device, c);
+		if (err = < 0)
 			goto error;
 		return 0;
 	}
@@ -1394,7 +1398,8 @@ int headset_get_config(void *device, int sock, struct ipc_packet *pkt)
 			goto error;
 		c->sock = sock;
 		c->pkt = pkt;
-		if ((err = sco_connect(device, c)) < 0)
+		err = sco_connect(device, c);
+		if (err < 0)
 			goto error;
 		return 0;
 	}
@@ -1409,6 +1414,7 @@ int headset_get_config(void *device, int sock, struct ipc_packet *pkt)
 	cfg->rate = 8000;
 
 	return 0;
+
 error:
 	if (c)
 		pending_connect_free(c);
