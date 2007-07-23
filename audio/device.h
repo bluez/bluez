@@ -25,6 +25,7 @@
 
 #include "headset.h"
 #include "gateway.h"
+#include "sink.h"
 
 #define AUDIO_DEVICE_INTERFACE	"org.bluez.audio.Device"
 
@@ -45,12 +46,10 @@
 #define AVRCP_TARGET_UUID	"0000110C-0000-1000-8000-00805F9B34FB"
 
 /* Move these to respective .h files once they exist */
-#define AUDIO_SINK_INTERFACE		"org.bluez.audio.Sink"
 #define AUDIO_SOURCE_INTERFACE		"org.bluez.audio.Source"
 #define AUDIO_CONTROL_INTERFACE		"org.bluez.audio.Control"
 #define AUDIO_TARGET_INTERFACE		"org.bluez.audio.Target"
 
-struct sink;
 struct source;
 struct control;
 struct target;
