@@ -1388,7 +1388,7 @@ int headset_get_config(void *device, int sock, struct ipc_packet *pkt)
 		c->sock = sock;
 		c->pkt = pkt;
 		err = rfcomm_connect(device, c);
-		if (err = < 0)
+		if (err < 0)
 			goto error;
 		return 0;
 	}
