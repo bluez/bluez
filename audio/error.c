@@ -93,7 +93,8 @@ DBusHandlerResult err_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 
 DBusHandlerResult err_not_available(DBusConnection *conn, DBusMessage *msg)
 {
-	return error_reply(conn, msg, ".NotAvailable", "Not available");
+	return error_reply(conn, msg, AUDIO_ERROR_INTERFACE ".NotAvailable",
+				"Not available");
 }
 
 DBusHandlerResult err_failed(DBusConnection *conn,
