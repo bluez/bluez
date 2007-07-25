@@ -75,20 +75,16 @@ enum {
 	WRITE,
 	RECEIVE,
 	SEND,
+	SERVER,
 	PPPDUMP,
 	AUDIO
 };
 
 /* Default options */
-static int  device;
 static int  snap_len = SNAP_LEN;
-static int  defpsm = 0;
-static int  defcompid = DEFAULT_COMPID;
 static int  mode = PARSE;
 static int  permcheck = 1;
 static int  noappend = 0;
-static long flags;
-static long filter;
 static char *dump_file = NULL;
 static char *pppdump_file = NULL;
 static char *audio_file = NULL;
@@ -136,7 +132,7 @@ struct pktlog_hdr {
 
 static inline int read_n(int fd, char *buf, int len)
 {
-	register int t = 0, w;
+	int t = 0, w;
 
 	while (len > 0) {
 		if ((w = read(fd, buf, len)) < 0) {
@@ -153,7 +149,7 @@ static inline int read_n(int fd, char *buf, int len)
 
 static inline int write_n(int fd, char *buf, int len)
 {
-	register int t = 0, w;
+	int t = 0, w;
 
 	while (len > 0) {
 		if ((w = write(fd, buf, len)) < 0) {
@@ -206,7 +202,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 	else
 		printf("device: hci%d ", dev);
 
-	printf("snap_len: %d filter: 0x%lx\n", snap_len, filter);
+	printf("snap_len: %d filter: 0x%lx\n", snap_len, parser.filter);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -222,7 +218,10 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		len = recvmsg(sock, &msg, 0);
 		if (len < 0) {
 			perror("Receive failed");
-			exit(1);
+			if (mode == SERVER)
+				return;
+			else
+				exit(1);
 		}
 
 		/* Process control message */
@@ -251,6 +250,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		switch (mode) {
 		case WRITE:
 		case SEND:
+		case SERVER:
 			/* Save or send dump */
 			if (flags & DUMP_BTSNOOP) {
 				uint64_t ts;
@@ -273,7 +273,10 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 
 			if (write_n(fd, buf, frm.data_len + hdr_size) < 0) {
 				perror("Write error");
-				exit(1);
+				if (mode == SERVER)
+					return;
+				else
+					exit(1);
 			}
 			break;
 
@@ -660,8 +663,8 @@ static int wait_connection(char *addr, char *port)
 
 		getnameinfo(res->ai_addr, res->ai_addrlen, hname, sizeof(hname),
 					hport, sizeof(hport), NI_NUMERICSERV);
-		printf("device: %s:%s snap_len: %d filter: 0x%lx\n", 
-					hname, hport, snap_len, filter);
+		printf("device: %s:%s snap_len: %d filter: 0x%lx\n",
+					hname, port, snap_len, parser.filter);
 		if (listen(sk, 1) < 0) {
 			if (res->ai_next) {
 				close(sk);
@@ -690,11 +693,43 @@ static int wait_connection(char *addr, char *port)
 					hname, sizeof(hname), NULL, 0, 0);
 
 	printf("device: %s snap_len: %d filter: 0x%lx\n",
-						hname, snap_len, filter);
+					hname, snap_len, parser.filter);
 
 	close(sk);
 
 	return nsk;
+}
+
+static int run_server(int dev, char *addr, char *port, unsigned long flags)
+{
+	int dd, sk;
+
+	dd = open_socket(dev, flags);
+	if (dd < 0)
+		return dd;
+
+	close(dd);
+
+	flags &= ~DUMP_BTSNOOP;
+
+	while (1) {
+		sk = wait_connection(addr, port);
+		if (sk < 0)
+			continue;
+
+		dd = open_socket(dev, flags);
+		if (dd < 0) {
+			close(sk);
+			continue;
+		}
+
+		process_frames(dev, dd, sk, flags);
+
+		close(dd);
+		close(sk);
+	}
+
+	return 0;
 }
 
 static struct {
@@ -721,8 +756,9 @@ static struct {
 	{ 0 }
 };
 
-static void parse_filter(int argc, char **argv)
+static unsigned long parse_filter(int argc, char **argv)
 {
+	unsigned long filter = 0;
 	int i,n;
 
 	for (i = 0; i < argc; i++) {
@@ -733,6 +769,8 @@ static void parse_filter(int argc, char **argv)
 			}
 		}
 	}
+
+	return filter;
 }
 
 static void usage(void)
@@ -747,6 +785,7 @@ static void usage(void)
 	"  -r, --read-dump=file       Read dump from a file\n"
 	"  -s, --send-dump=host       Send dump to a host\n"
 	"  -n, --recv-dump=host       Receive dump on a host\n"
+	"  -d, --wait-dump=host       Wait on a host and send\n"
 	"  -t, --ts                   Display time stamps\n"
 	"  -a, --ascii                Dump data in ascii\n"
 	"  -x, --hex                  Dump data in hex\n"
@@ -778,6 +817,7 @@ static struct option main_options[] = {
 	{ "read-dump",		1, 0, 'r' },
 	{ "send-dump",		1, 0, 's' },
 	{ "recv-dump",		1, 0, 'n' },
+	{ "wait-dump",		1, 0, 'd' },
 	{ "timestamp",		0, 0, 't' },
 	{ "ascii",		0, 0, 'a' },
 	{ "hex",		0, 0, 'x' },
@@ -802,11 +842,16 @@ static struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
+	unsigned long flags = 0;
+	unsigned long filter = 0;
+	int device = 0;
+	int defpsm = 0;
+	int defcompid = DEFAULT_COMPID;
 	int opt, pppdump_fd = -1, audio_fd = -1;
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:taxXRC:H:O:P:D:A:BVYZN46h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:d:taxXRC:H:O:P:D:A:BVYZN46h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -844,6 +889,11 @@ int main(int argc, char *argv[])
 
 		case 'n':
 			mode = RECEIVE;
+			dump_addr = optarg;
+			break;
+
+		case 'd':
+			mode = SERVER;
 			dump_addr = optarg;
 			break;
 
@@ -931,7 +981,7 @@ int main(int argc, char *argv[])
 	optind = 0;
 
 	if (argc > 0)
-		parse_filter(argc, argv);
+		filter = parse_filter(argc, argv);
 
 	/* Default settings */
 	if (!filter)
@@ -967,6 +1017,11 @@ int main(int argc, char *argv[])
 	case SEND:
 		process_frames(device, open_socket(device, flags),
 				open_connection(dump_addr, dump_port), flags);
+		break;
+
+	case SERVER:
+		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
+		run_server(device, dump_addr, dump_port, flags);
 		break;
 	}
 

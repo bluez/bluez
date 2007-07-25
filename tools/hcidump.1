@@ -64,6 +64,11 @@ Parse output is not printed to screen, instead data read from device is sent to 
 Data is not read from a Bluetooth device, but from host
 .IR host .
 .TP
+.BI -d " <host>" "\fR,\fP \-\^\-wait-dump=" "<host>"
+Data is read from a Bluetooth device, but then send to
+.IR host
+for processing. No data is read if no host is connected.
+.TP
 .BR -t ", " "\-\^\-timestamp"
 Prepend a time stamp to every packet.
 .TP
