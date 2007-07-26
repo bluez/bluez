@@ -1,3 +1,6 @@
+ver 3.13:
+	Update HCI command table.
+
 ver 3.12:
 	Add missing HCI command text descriptions
 	Add missing HCI commands structures.
