@@ -577,6 +577,8 @@ typedef struct {
 
 #define OCF_WRITE_DEFAULT_LINK_POLICY	0x000F
 
+#define OCF_FLOW_SPECIFICATION		0x0010
+
 #define OCF_SNIFF_SUBRATING		0x0011
 typedef struct {
 	uint16_t	handle;

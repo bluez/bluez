@@ -317,6 +317,7 @@ static hci_map commands_map[] = {
 	{ "Disconnect",					5   },
 	{ "Add SCO Connection",				6   },
 	{ "Cancel Create Connection",			7   },
+
 	{ "Accept Connection Request",			8   },
 	{ "Reject Connection Request",			9   },
 	{ "Link Key Request Reply",			10  },
@@ -325,6 +326,7 @@ static hci_map commands_map[] = {
 	{ "PIN Code Request Negative Reply",		13  },
 	{ "Change Connection Packet Type",		14  },
 	{ "Authentication Requested",			15  },
+
 	{ "Set Connection Encryption",			16  },
 	{ "Change Connection Link Key",			17  },
 	{ "Master Link Key",				18  },
@@ -333,6 +335,7 @@ static hci_map commands_map[] = {
 	{ "Read Remote Supported Features",		21  },
 	{ "Read Remote Extended Features",		22  },
 	{ "Read Remote Version Information",		23  },
+
 	{ "Read Clock Offset",				24  },
 	{ "Read LMP Handle",				25  },
 	{ "Reserved",					26  },
@@ -341,6 +344,7 @@ static hci_map commands_map[] = {
 	{ "Reserved",					29  },
 	{ "Reserved",					30  },
 	{ "Reserved",					31  },
+
 	{ "Reserved",					32  },
 	{ "Hold Mode",					33  },
 	{ "Sniff Mode",					34  },
@@ -349,6 +353,7 @@ static hci_map commands_map[] = {
 	{ "Exit Park State",				37  },
 	{ "QoS Setup",					38  },
 	{ "Role Discovery",				39  },
+
 	{ "Switch Role",				40  },
 	{ "Read Link Policy Settings",			41  },
 	{ "Write Link Policy Settings",			42  },
@@ -357,6 +362,7 @@ static hci_map commands_map[] = {
 	{ "Flow Specification",				45  },
 	{ "Set Event Mask",				46  },
 	{ "Reset",					47  },
+
 	{ "Set Event Filter",				48  },
 	{ "Flush",					49  },
 	{ "Read PIN Type",				50  },
@@ -365,6 +371,7 @@ static hci_map commands_map[] = {
 	{ "Read Stored Link Key",			53  },
 	{ "Write Stored Link Key",			54  },
 	{ "Delete Stored Link Key",			55  },
+
 	{ "Write Local Name",				56  },
 	{ "Read Local Name",				57  },
 	{ "Read Connection Accept Timeout",		58  },
@@ -373,6 +380,7 @@ static hci_map commands_map[] = {
 	{ "Write Page Timeout",				61  },
 	{ "Read Scan Enable",				62  },
 	{ "Write Scan Enable",				63  },
+
 	{ "Read Page Scan Activity",			64  },
 	{ "Write Page Scan Activity",			65  },
 	{ "Read Inquiry Scan Activity",			66  },
@@ -381,6 +389,7 @@ static hci_map commands_map[] = {
 	{ "Write Authentication Enable",		69  },
 	{ "Read Encryption Mode",			70  },
 	{ "Write Encryption Mode",			71  },
+
 	{ "Read Class Of Device",			72  },
 	{ "Write Class Of Device",			73  },
 	{ "Read Voice Setting",				74  },
@@ -389,6 +398,7 @@ static hci_map commands_map[] = {
 	{ "Write Automatic Flush Timeout",		77  },
 	{ "Read Num Broadcast Retransmissions",		78  },
 	{ "Write Num Broadcast Retransmissions",	79  },
+
 	{ "Read Hold Mode Activity",			80  },
 	{ "Write Hold Mode Activity",			81  },
 	{ "Read Transmit Power Level",			82  },
@@ -397,6 +407,7 @@ static hci_map commands_map[] = {
 	{ "Set Host Controller To Host Flow Control",	85  },
 	{ "Host Buffer Size",				86  },
 	{ "Host Number Of Completed Packets",		87  },
+
 	{ "Read Link Supervision Timeout",		88  },
 	{ "Write Link Supervision Timeout",		89  },
 	{ "Read Number of Supported IAC",		90  },
@@ -405,14 +416,16 @@ static hci_map commands_map[] = {
 	{ "Read Page Scan Period Mode",			93  },
 	{ "Write Page Scan Period Mode",		94  },
 	{ "Read Page Scan Mode",			95  },
+
 	{ "Write Page Scan Mode",			96  },
 	{ "Set AFH Channel Classification",		97  },
-	{ "reserved",					98  },
-	{ "reserved",					99  },
+	{ "Reserved",					98  },
+	{ "Reserved",					99  },
 	{ "Read Inquiry Scan Type",			100 },
 	{ "Write Inquiry Scan Type",			101 },
 	{ "Read Inquiry Mode",				102 },
 	{ "Write Inquiry Mode",				103 },
+
 	{ "Read Page Scan Type",			104 },
 	{ "Write Page Scan Type",			105 },
 	{ "Read AFH Channel Assessment Mode",		106 },
@@ -421,6 +434,7 @@ static hci_map commands_map[] = {
 	{ "Reserved",					109 },
 	{ "Reserved",					110 },
 	{ "Reserved",					111 },
+
 	{ "Reserved",					112 },
 	{ "Reserved",					113 },
 	{ "Reserved",					114 },
@@ -429,6 +443,7 @@ static hci_map commands_map[] = {
 	{ "Read Local Supported Features",		117 },
 	{ "Read Local Extended Features",		118 },
 	{ "Read Buffer Size",				119 },
+
 	{ "Read Country Code",				120 },
 	{ "Read BD ADDR",				121 },
 	{ "Read Failed Contact Counter",		122 },
@@ -437,6 +452,7 @@ static hci_map commands_map[] = {
 	{ "Read RSSI",					125 },
 	{ "Read AFH Channel Map",			126 },
 	{ "Read BD Clock",				127 },
+
 	{ "Read Loopback Mode",				128 },
 	{ "Write Loopback Mode",			129 },
 	{ "Enable Device Under Test Mode",		130 },
@@ -445,6 +461,7 @@ static hci_map commands_map[] = {
 	{ "Reject Synchronous Connection",		133 },
 	{ "Reserved",					134 },
 	{ "Reserved",					135 },
+
 	{ "Read Extended Inquiry Response",		136 },
 	{ "Write Extended Inquiry Response",		137 },
 	{ "Refresh Encryption Key",			138 },
@@ -453,6 +470,7 @@ static hci_map commands_map[] = {
 	{ "Unknown",					141 },
 	{ "Unknown",					142 },
 	{ "Unknown",					143 },
+
 	{ "Read Inquiry Transmit Power Level",		144 },
 	{ "Write Inquiry Transmit Power Level",		145 },
 	{ "Read Default Erroneous Data Reporting",	146 },
@@ -461,21 +479,25 @@ static hci_map commands_map[] = {
 	{ "Reserved",					149 },
 	{ "Reserved",					150 },
 	{ "Unknown",					151 },
+
 	{ "Unknown",					152 },
 	{ "Unknown",					153 },
 	{ "Unknown",					154 },
 	{ "Unknown",					155 },
 	{ "Unknown",					156 },
-	{ "Enhanced Flush",				157 },
-	{ "Unknown",					158 },
-	{ "Reserved",					159 },
+	{ "Unknown",					157 },
+	{ "Enhanced Flush",				158 },
+	{ "Unknown",					159 },
+
 	{ "Reserved",					160 },
-	{ "Unknown",					161 },
+	{ "Reserved",					161 },
 	{ "Unknown",					162 },
-	{ "Reserved",					163 },
+	{ "Unknown",					163 },
 	{ "Reserved",					164 },
 	{ "Reserved",					165 },
 	{ "Reserved",					166 },
+	{ "Reserved",					167 },
+
 	{ NULL }
 };
 
