@@ -178,6 +178,9 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 	char *buf, *ctrl;
 	int len, hdr_size = HCIDUMP_HDR_SIZE;
 
+	if (mode == SERVER)
+		flags |= DUMP_BTSNOOP;
+
 	if (snap_len < SNAP_LEN)
 		snap_len = SNAP_LEN;
 
@@ -212,8 +215,6 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 
 	if (mode == SERVER) {
 		struct btsnoop_hdr *hdr = (void *) buf;
-
-		flags |= DUMP_BTSNOOP;
 
 		btsnoop_version = 1;
 		btsnoop_type = 1002;
