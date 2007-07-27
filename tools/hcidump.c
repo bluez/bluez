@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <sys/poll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -172,6 +173,8 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 	struct hcidump_hdr *dh;
 	struct btsnoop_pkt *dp;
 	struct frame frm;
+	struct pollfd fds[2];
+	int nfds = 0;
 	char *buf, *ctrl;
 	int len, hdr_size = HCIDUMP_HDR_SIZE;
 
@@ -193,6 +196,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 
 	ctrl = malloc(100);
 	if (!ctrl) {
+		free(buf);
 		perror("Can't allocate control buffer");
 		exit(1);
 	}
@@ -206,7 +210,65 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 
 	memset(&msg, 0, sizeof(msg));
 
+	if (mode == SERVER) {
+		struct btsnoop_hdr *hdr = (void *) buf;
+
+		flags |= DUMP_BTSNOOP;
+
+		btsnoop_version = 1;
+		btsnoop_type = 1002;
+
+		memcpy(hdr->id, btsnoop_id, sizeof(btsnoop_id));
+		hdr->version = htonl(btsnoop_version);
+		hdr->type = htonl(btsnoop_type);
+
+		printf("btsnoop version: %d datalink type: %d\n",
+						btsnoop_version, btsnoop_type);
+
+		len = write(fd, buf, BTSNOOP_HDR_SIZE);
+		if (len < 0) {
+			perror("Can't create dump header");
+			exit(1);
+		}
+
+		if (len != BTSNOOP_HDR_SIZE) {
+			fprintf(stderr, "Header size mismatch\n");
+			exit(1);
+		}
+
+		fds[nfds].fd = fd;
+		fds[nfds].events = POLLIN;
+		fds[nfds].revents = 0;
+		nfds++;
+	}
+
+	fds[nfds].fd = sock;
+	fds[nfds].events = POLLIN;
+	fds[nfds].revents = 0;
+	nfds++;
+
 	while (1) {
+		int i, n = poll(fds, nfds, -1);
+		if (n <= 0)
+			continue;
+
+		for (i = 0; i < nfds; i++) {
+			if (fds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+				if (fds[i].fd == sock)
+					printf("Device disconnected\n");
+				else
+					printf("Client disconnect\n");
+				return;
+			}
+		}
+
+		if (mode == SERVER) {
+			if (read_n(fd, buf, snap_len) < 0) {
+				perror("Connection read failure");
+				return;
+			}
+		}
+
 		iv.iov_base = frm.data;
 		iv.iov_len  = snap_len;
 
@@ -215,13 +277,12 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		msg.msg_control = ctrl;
 		msg.msg_controllen = 100;
 
-		len = recvmsg(sock, &msg, 0);
+		len = recvmsg(sock, &msg, MSG_DONTWAIT);
 		if (len < 0) {
+			if (errno == EAGAIN || errno == EINPROGRESS)
+				continue;
 			perror("Receive failed");
-			if (mode == SERVER)
-				return;
-			else
-				exit(1);
+			return;
 		}
 
 		/* Process control message */
@@ -559,12 +620,12 @@ static int open_connection(char *addr, char *port)
 	struct sockaddr_storage ss;
 	struct addrinfo hints, *res0, *res;
 	int sk = -1, opt = 1;
-	
+
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = af;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
-	
+
 	if (getaddrinfo(addr, port, &hints, &res0))
 		if(getaddrinfo(NULL, port, &hints, &res0)) {
 			perror("getaddrinfo");
@@ -583,7 +644,7 @@ static int open_connection(char *addr, char *port)
 		}
 
 		setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-		
+
 		memcpy(&ss, res->ai_addr, res->ai_addrlen);
 
 		switch(ss.ss_family) {
@@ -620,84 +681,99 @@ static int open_connection(char *addr, char *port)
 static int wait_connection(char *addr, char *port)
 {
 	char hname[100], hport[10];
-	struct sockaddr_storage ss;
-	struct addrinfo hints, *res0, *res;
-	socklen_t len;
-	int sk = -1, nsk, opt = 1;
+	struct addrinfo *ai, *runp;
+	struct addrinfo hints;
+	struct pollfd fds[2];
+	int err, opt, nfds = 0;
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = af;
+	memset(&hints, 0, sizeof (hints));
+	hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
 
-	if (getaddrinfo(addr, port, &hints, &res0))
-		if (getaddrinfo(NULL, port, &hints, &res0)) {
-			perror("getaddrinfo");
-			exit(1);
-		}
- 	
-	for (res = res0; res; res = res->ai_next) {
-		sk = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-		if (sk < 0) {
-			if (res->ai_next)
-				continue;
-
-			perror("Can't create socket");
- 			freeaddrinfo(res0);
-			exit(1);
-		}
-
-		setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-		if (bind(sk, res->ai_addr, res->ai_addrlen) < 0) {
-			if(res->ai_next) {
-				close(sk);
-				continue;
-			}
-
-			perror("Can't bind socket");
-			close(sk);
-			freeaddrinfo(res0);
-			exit(1);
- 		}
-
-		getnameinfo(res->ai_addr, res->ai_addrlen, hname, sizeof(hname),
-					hport, sizeof(hport), NI_NUMERICSERV);
-		printf("device: %s:%s snap_len: %d filter: 0x%lx\n",
-					hname, port, snap_len, parser.filter);
-		if (listen(sk, 1) < 0) {
-			if (res->ai_next) {
-				close(sk);
-				continue;
-			}
-
-			perror("Can't listen on socket");
-			close(sk);
-			freeaddrinfo(res0);
-			exit(1);
-		}
-	}
-
-	freeaddrinfo(res0);
-
-	len = sizeof(ss);
-	nsk = accept(sk, (struct sockaddr *) &ss, &len);
-	if (nsk < 0) {
-		perror("Can't accept new socket");
-		close(sk);
-		freeaddrinfo(res0);
+	err = getaddrinfo(dump_addr, dump_port, &hints, &ai);
+	if (err < 0) {
+		printf("Can't get address info: %s\n", gai_strerror(err));
 		exit(1);
 	}
 
-	getnameinfo((struct sockaddr *) &ss, sizeof(ss),
-					hname, sizeof(hname), NULL, 0, 0);
+	runp = ai;
 
-	printf("device: %s snap_len: %d filter: 0x%lx\n",
-					hname, snap_len, parser.filter);
+	while (runp != NULL && nfds < sizeof(fds) / sizeof(fds[0])) {
+		fds[nfds].fd = socket(runp->ai_family, runp->ai_socktype,
+							runp->ai_protocol);
+		if (fds[nfds].fd < 0) {
+			perror("Can't create socket");
+			exit(1);
+		}
 
-	close(sk);
+		fds[nfds].events = POLLIN;
 
-	return nsk;
+		opt = 1;
+		setsockopt(fds[nfds].fd, SOL_SOCKET, SO_REUSEADDR,
+							&opt, sizeof(opt));
+
+		if (bind(fds[nfds].fd, runp->ai_addr, runp->ai_addrlen) < 0) {
+			if (errno != EADDRINUSE) {
+				perror("Can't bind socket");
+				exit(1);
+			}
+
+			close(fds[nfds].fd);
+		} else {
+			if (listen(fds[nfds].fd, SOMAXCONN) < 0) {
+				perror("Can't listen on socket");
+				exit(1);
+			}
+
+			getnameinfo(runp->ai_addr, runp->ai_addrlen,
+							hname, sizeof(hname),
+							hport, sizeof(hport),
+							NI_NUMERICSERV);
+
+			printf("server: %s:%s snap_len: %d filter: 0x%lx\n",
+					hname, hport, snap_len, parser.filter);
+
+			nfds++;
+		}
+
+		runp = runp->ai_next;
+	}
+
+	freeaddrinfo(ai);
+
+	while (1) {
+		int i, n = poll(fds, nfds, -1);
+		if (n <= 0)
+			continue;
+
+		for (i = 0; i < nfds; i++) {
+			struct sockaddr_storage rem;
+			socklen_t remlen = sizeof(rem);
+			int sk;
+
+			if (!(fds[i].revents & POLLIN))
+				continue;
+
+			sk = accept(fds[i].fd, (struct sockaddr *) &rem, &remlen);
+			if (sk < 0)
+				continue;
+
+			getnameinfo((struct sockaddr *) &rem, remlen,
+							hname, sizeof(hname),
+							hport, sizeof(hport),
+							NI_NUMERICSERV);
+
+			printf("client: %s:%s snap_len: %d filter: 0x%lx\n",
+					hname, hport, snap_len, parser.filter);
+
+			for (n = 0; n < nfds; n++)
+				close(fds[n].fd);
+
+			return sk;
+		}
+	}
+
+	return -1;
 }
 
 static int run_server(int dev, char *addr, char *port, unsigned long flags)
@@ -708,14 +784,14 @@ static int run_server(int dev, char *addr, char *port, unsigned long flags)
 	if (dd < 0)
 		return dd;
 
-	close(dd);
-
-	flags &= ~DUMP_BTSNOOP;
+	hci_close_dev(dd);
 
 	while (1) {
 		sk = wait_connection(addr, port);
 		if (sk < 0)
 			continue;
+
+		//fcntl(sk, F_SETFL, O_NONBLOCK);
 
 		dd = open_socket(dev, flags);
 		if (dd < 0) {
