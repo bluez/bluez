@@ -263,7 +263,12 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		}
 
 		if (mode == SERVER) {
-			if (read_n(fd, buf, snap_len) < 0) {
+			len = recv(fd, buf, snap_len, MSG_DONTWAIT);
+			if (len == 0) {
+				printf("Client disconnect\n");
+				return;
+			}
+			if (len < 0 && errno != EAGAIN && errno != EINTR) {
 				perror("Connection read failure");
 				return;
 			}
@@ -279,7 +284,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 
 		len = recvmsg(sock, &msg, MSG_DONTWAIT);
 		if (len < 0) {
-			if (errno == EAGAIN || errno == EINPROGRESS)
+			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			perror("Receive failed");
 			return;
@@ -653,7 +658,8 @@ static int open_connection(char *addr, char *port)
 			((struct sockaddr_in *) &ss)->sin_port = 0;
 			break;
 		case AF_INET6:
-			memcpy(&((struct sockaddr_in6 *) &ss)->sin6_addr, &in6addr_any, sizeof(in6addr_any));
+			memcpy(&((struct sockaddr_in6 *) &ss)->sin6_addr,
+						&in6addr_any, sizeof(in6addr_any));
 			((struct sockaddr_in6 *) &ss)->sin6_port = 0;
 			break;
 		}
@@ -710,6 +716,10 @@ static int wait_connection(char *addr, char *port)
 
 		opt = 1;
 		setsockopt(fds[nfds].fd, SOL_SOCKET, SO_REUSEADDR,
+							&opt, sizeof(opt));
+
+		opt = 0;
+		setsockopt(fds[nfds].fd, SOL_SOCKET, SO_KEEPALIVE,
 							&opt, sizeof(opt));
 
 		if (bind(fds[nfds].fd, runp->ai_addr, runp->ai_addrlen) < 0) {
