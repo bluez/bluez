@@ -685,13 +685,68 @@ static int open_connection(char *addr, char *port)
 	return sk;
 }
 
+static int create_datagram(unsigned short port)
+{
+	struct sockaddr_in addr;
+	int sk, opt = 1;
+
+	sk = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (sk < 0)
+		return -1;
+
+	if (setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	if (setsockopt(sk, SOL_SOCKET, SO_BROADCAST, &opt, sizeof(opt)) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	addr.sin_addr.s_addr = INADDR_ANY;
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	return sk;
+}
+
+static unsigned char ping_data[] = { 'p', 'i', 'n', 'g' };
+static unsigned char pong_data[] = { 'p', 'o', 'n', 'g' };
+
+static void handle_datagram(int sk)
+{
+	struct sockaddr_in addr;
+	socklen_t addr_len = sizeof(addr);
+	unsigned char buf[64];
+	ssize_t len;
+
+	len = recvfrom(sk, buf, sizeof(buf), MSG_DONTWAIT,
+				(struct sockaddr *) &addr, &addr_len);
+
+	if (len != sizeof(ping_data))
+		return;
+
+	if (memcmp(buf, ping_data, sizeof(ping_data)) != 0)
+		return;
+
+	len = sendto(sk, pong_data, sizeof(pong_data), 0,
+				(struct sockaddr *) &addr, sizeof(addr));
+}
+
 static int wait_connection(char *addr, char *port)
 {
 	char hname[100], hport[10];
 	struct addrinfo *ai, *runp;
 	struct addrinfo hints;
-	struct pollfd fds[2];
-	int err, opt, nfds = 0;
+	struct pollfd fds[3];
+	int err, opt, datagram, nfds = 0;
 
 	memset(&hints, 0, sizeof (hints));
 	hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG;
@@ -704,6 +759,15 @@ static int wait_connection(char *addr, char *port)
 	}
 
 	runp = ai;
+
+	datagram = create_datagram(atoi(dump_port));
+	if (datagram < 0) {
+		printf("server: no discover protocol\n");
+	} else {
+		fds[nfds].fd = datagram;
+		fds[nfds].events = POLLIN;
+		nfds++;
+	}
 
 	while (runp != NULL && nfds < sizeof(fds) / sizeof(fds[0])) {
 		fds[nfds].fd = socket(runp->ai_family, runp->ai_socktype,
@@ -764,6 +828,11 @@ static int wait_connection(char *addr, char *port)
 
 			if (!(fds[i].revents & POLLIN))
 				continue;
+
+			if (fds[i].fd == datagram) {
+				handle_datagram(datagram);
+				continue;
+			}
 
 			sk = accept(fds[i].fd, (struct sockaddr *) &rem, &remlen);
 			if (sk < 0)
