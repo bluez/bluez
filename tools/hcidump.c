@@ -751,6 +751,7 @@ static int wait_connection(char *addr, char *port)
 	memset(&hints, 0, sizeof (hints));
 	hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG;
 	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
 
 	err = getaddrinfo(dump_addr, dump_port, &hints, &ai);
 	if (err < 0) {
