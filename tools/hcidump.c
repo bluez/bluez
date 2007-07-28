@@ -165,7 +165,7 @@ static inline int write_n(int fd, char *buf, int len)
 	return t;
 }
 
-static void process_frames(int dev, int sock, int fd, unsigned long flags)
+static int process_frames(int dev, int sock, int fd, unsigned long flags)
 {
 	struct cmsghdr *cmsg;
 	struct msghdr msg;
@@ -177,6 +177,9 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 	int nfds = 0;
 	char *buf, *ctrl;
 	int len, hdr_size = HCIDUMP_HDR_SIZE;
+
+	if (sock < 0)
+		return -1;
 
 	if (mode == SERVER)
 		flags |= DUMP_BTSNOOP;
@@ -190,7 +193,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 	buf = malloc(snap_len + hdr_size);
 	if (!buf) {
 		perror("Can't allocate data buffer");
-		exit(1);
+		return -1;
 	}
 
 	dh = (void *) buf;
@@ -201,7 +204,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 	if (!ctrl) {
 		free(buf);
 		perror("Can't allocate control buffer");
-		exit(1);
+		return -1;
 	}
 
 	if (dev == HCI_DEV_NONE)
@@ -229,12 +232,12 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		len = write(fd, buf, BTSNOOP_HDR_SIZE);
 		if (len < 0) {
 			perror("Can't create dump header");
-			exit(1);
+			return -1;
 		}
 
 		if (len != BTSNOOP_HDR_SIZE) {
 			fprintf(stderr, "Header size mismatch\n");
-			exit(1);
+			return -1;
 		}
 
 		fds[nfds].fd = fd;
@@ -256,22 +259,22 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 		for (i = 0; i < nfds; i++) {
 			if (fds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
 				if (fds[i].fd == sock)
-					printf("Device disconnected\n");
+					printf("device: disconnected\n");
 				else
-					printf("Client disconnect\n");
-				return;
+					printf("client: disconnect\n");
+				return 0;
 			}
 		}
 
 		if (mode == SERVER) {
 			len = recv(fd, buf, snap_len, MSG_DONTWAIT);
 			if (len == 0) {
-				printf("Client disconnect\n");
-				return;
+				printf("client: disconnect\n");
+				return 0;
 			}
 			if (len < 0 && errno != EAGAIN && errno != EINTR) {
 				perror("Connection read failure");
-				return;
+				return -1;
 			}
 		}
 
@@ -288,7 +291,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			perror("Receive failed");
-			return;
+			return -1;
 		}
 
 		/* Process control message */
@@ -340,10 +343,7 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 
 			if (write_n(fd, buf, frm.data_len + hdr_size) < 0) {
 				perror("Write error");
-				if (mode == SERVER)
-					return;
-				else
-					exit(1);
+				return -1;
 			}
 			break;
 
@@ -353,6 +353,8 @@ static void process_frames(int dev, int sock, int fd, unsigned long flags)
 			break;
 		}
 	}
+
+	return 0;
 }
 
 static void read_dump(int fd)
@@ -562,19 +564,19 @@ static int open_socket(int dev, unsigned long flags)
 		dd = hci_open_dev(dev);
 		if (dd < 0) {
 			perror("Can't open device");
-			exit(1);
+			return -1;
 		}
 
 		if (hci_devinfo(dev, &di) < 0) {
 			perror("Can't get device info");
-			exit(1);
+			return -1;
 		}
 
 		opt = hci_test_bit(HCI_RAW, &di.flags);
 		if (ioctl(dd, HCISETRAW, opt) < 0) {
 			if (errno == EACCES) {
 				perror("Can't access device");
-				exit(1);
+				return -1;
 			}
 		}
 
@@ -585,19 +587,19 @@ static int open_socket(int dev, unsigned long flags)
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0) {
 		perror("Can't create raw socket");
-		exit(1);
+		return -1;
 	}
 
 	opt = 1;
 	if (setsockopt(sk, SOL_HCI, HCI_DATA_DIR, &opt, sizeof(opt)) < 0) {
 		perror("Can't enable data direction info");
-		exit(1);
+		return -1;
 	}
 
 	opt = 1;
 	if (setsockopt(sk, SOL_HCI, HCI_TIME_STAMP, &opt, sizeof(opt)) < 0) {
 		perror("Can't enable time stamp");
-		exit(1);
+		return -1;
 	}
 
 	/* Setup filter */
@@ -606,7 +608,7 @@ static int open_socket(int dev, unsigned long flags)
 	hci_filter_all_events(&flt);
 	if (setsockopt(sk, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		perror("Can't set filter");
-		exit(1);
+		return -1;
 	}
 
 	/* Bind socket to the HCI device */
@@ -615,7 +617,7 @@ static int open_socket(int dev, unsigned long flags)
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		printf("Can't attach to device hci%d. %s(%d)\n", 
 					dev, strerror(errno), errno);
-		exit(1);
+		return -1;
 	}
 
 	return sk;
@@ -751,7 +753,7 @@ static int wait_connection(char *addr, char *port)
 	err = getaddrinfo(dump_addr, dump_port, &hints, &ai);
 	if (err < 0) {
 		printf("Can't get address info: %s\n", gai_strerror(err));
-		exit(1);
+		return -1;
 	}
 
 	runp = ai;
@@ -770,7 +772,7 @@ static int wait_connection(char *addr, char *port)
 							runp->ai_protocol);
 		if (fds[nfds].fd < 0) {
 			perror("Can't create socket");
-			exit(1);
+			return -1;
 		}
 
 		fds[nfds].events = POLLIN;
@@ -786,14 +788,14 @@ static int wait_connection(char *addr, char *port)
 		if (bind(fds[nfds].fd, runp->ai_addr, runp->ai_addrlen) < 0) {
 			if (errno != EADDRINUSE) {
 				perror("Can't bind socket");
-				exit(1);
+				return -1;
 			}
 
 			close(fds[nfds].fd);
 		} else {
 			if (listen(fds[nfds].fd, SOMAXCONN) < 0) {
 				perror("Can't listen on socket");
-				exit(1);
+				return -1;
 			}
 
 			getnameinfo(runp->ai_addr, runp->ai_addrlen,
@@ -854,15 +856,9 @@ static int wait_connection(char *addr, char *port)
 
 static int run_server(int dev, char *addr, char *port, unsigned long flags)
 {
-	int dd, sk;
-
-	dd = open_socket(dev, flags);
-	if (dd < 0)
-		return dd;
-
-	hci_close_dev(dd);
-
 	while (1) {
+		int dd, sk;
+
 		sk = wait_connection(addr, port);
 		if (sk < 0)
 			continue;
