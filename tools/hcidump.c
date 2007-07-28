@@ -699,15 +699,10 @@ static int create_datagram(unsigned short port)
 		return -1;
 	}
 
-	if (setsockopt(sk, SOL_SOCKET, SO_BROADCAST, &opt, sizeof(opt)) < 0) {
-		close(sk);
-		return -1;
-	}
-
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = INADDR_ANY;
+	addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);
