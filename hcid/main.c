@@ -159,7 +159,7 @@ static struct device_opts *get_opts(int hdev)
 	if (sock < 0)
 		goto no_address;
 
-	if (!hci_devinfo(hdev, &di) < 0) {
+	if (hci_devinfo(hdev, &di) < 0) {
 		close(sock);
 		goto no_address;
 	}
@@ -214,7 +214,7 @@ int get_discoverable_timeout(int hdev)
 	if (sock < 0)
 		goto no_address;
 
-	if (!hci_devinfo(hdev, &di) < 0) {
+	if (hci_devinfo(hdev, &di) < 0) {
 		close(sock);
 		goto no_address;
 	}
