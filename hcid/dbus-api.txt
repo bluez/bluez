@@ -1126,6 +1126,13 @@ Signals		void ModeChanged(string mode)
 
 			Signals that a bonding was removed.
 
+		void TrustAdded(string address)
+			
+			Sent when SetTrusted() is called.
+
+		void TrustRemoved(string address)
+
+			Sent when RemoveTrust() is called.
 
 Service hierarchy
 =================
