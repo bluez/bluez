@@ -523,14 +523,14 @@ static void init_device(int dev_id)
 	if (ioctl(dd, HCIDEVUP, dev_id) < 0 && errno != EALREADY) {
 		error("Can't init device hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
-		exit(1);
+		goto fail;
 	}
 
 	if (hci_devinfo(dev_id, &di) < 0)
-		exit(1);
+		goto fail;
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
-		exit(0);
+		goto done;
 
 	if (hcid.offmode == HCID_OFFMODE_DEVDOWN) {
 		char mode[16];
@@ -538,20 +538,31 @@ static void init_device(int dev_id)
 		if (read_device_mode(&di.bdaddr, mode, sizeof(mode)) == 0 &&
 						strcmp(mode, "off") == 0) {
 			ioctl(dd, HCIDEVDOWN, dev_id);
-			exit(0);
+			goto done;
 		}
 	}
 
+done:
 	hci_close_dev(dd);
-
 	exit(0);
+
+fail:
+	hci_close_dev(dd);
+	exit(1);
 }
 
 static void device_devreg_setup(int dev_id)
 {
+	struct hci_dev_info di;
+
 	if (hcid.auto_init)
 		init_device(dev_id);
-	hcid_dbus_register_device(dev_id);
+
+	if (hci_devinfo(dev_id, &di) < 0)
+		return;
+
+	if (!hci_test_bit(HCI_RAW, &di.flags))
+		hcid_dbus_register_device(dev_id);
 }
 
 static void device_devup_setup(int dev_id)

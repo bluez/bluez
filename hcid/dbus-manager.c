@@ -103,6 +103,7 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
+	struct hci_dev_info di;
 	const char *pattern;
 	int dev_id;
 
@@ -113,6 +114,12 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 
 	dev_id = hci_devid(pattern);
 	if (dev_id < 0)
+		return error_no_such_adapter(conn, msg);
+
+	if (hci_devinfo(dev_id, &di) < 0)
+		return error_no_such_adapter(conn, msg);
+
+	if (hci_test_bit(HCI_RAW, &di.flags))
 		return error_no_such_adapter(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
@@ -175,6 +182,9 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 		struct hci_dev_info di;
 
 		if (hci_devinfo(dr->dev_id, &di) < 0)
+			continue;
+
+		if (hci_test_bit(HCI_RAW, &di.flags))
 			continue;
 
 		snprintf(path, sizeof(path), "%s/%s", BASE_PATH, di.name);
