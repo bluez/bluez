@@ -13,7 +13,7 @@ service_PROGRAMS = bluetoothd-service-audio
 bluetoothd_service_audio_SOURCES = main.c \
 	manager.h manager.c headset.h headset.c ipc.h unix.h unix.c \
 	error.h error.c device.h device.c gateway.h gateway.c \
-	sink.c sink.h avdtp.c avdtp.h
+	sink.c sink.h avdtp.c avdtp.h a2dp.c a2dp.h
 
 bluetoothd_service_audio_LDADD = $(top_builddir)/common/libhelper.a \
 				@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
