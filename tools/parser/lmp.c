@@ -290,6 +290,16 @@ static char *opcode2str(uint16_t opcode)
 		return "encryption_key_size_mask_res";
 	case 60:
 		return "set_AFH";
+	case 61:
+		return "encapsulated_header";
+	case 62:
+		return "encapsulated_payload";
+	case 63:
+		return "simple_pairing_confirm";
+	case 64:
+		return "simple_pairing_number";
+	case 65:
+		return "DHkey_check";
 	case 127 + (1 << 7):
 		return "accepted_ext";
 	case 127 + (2 << 7):
@@ -309,13 +319,25 @@ static char *opcode2str(uint16_t opcode)
 	case 127 + (17 << 7):
 		return "channel_classification";
 	case 127 + (21 << 7):
-		return "sniff_subrate_req";
+		return "sniff_subrating_req";
 	case 127 + (22 << 7):
-		return "sniff_subrate_res";
+		return "sniff_subrating_res";
 	case 127 + (23 << 7):
 		return "pause_encryption_req";
 	case 127 + (24 << 7):
 		return "resume_encryption_req";
+	case 127 + (25 << 7):
+		return "IO_capability_req";
+	case 127 + (26 << 7):
+		return "IO_capability_res";
+	case 127 + (27 << 7):
+		return "numeric_comparison_failed";
+	case 127 + (28 << 7):
+		return "passkey_failed";
+	case 127 + (29 << 7):
+		return "oob_failed";
+	case 127 + (30 << 7):
+		return "keypress_notification";
 	default:
 		return "unknown";
 	}
@@ -697,6 +719,82 @@ static inline void set_afh_dump(int level, struct frame *frm)
 	printf("\n");
 }
 
+static inline void encapsulated_header_dump(int level, struct frame *frm)
+{
+	uint8_t major = LMP_U8(frm);
+	uint8_t minor = LMP_U8(frm);
+	uint8_t length = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("major type %d minor type %d payload length %d\n",
+						major, minor, length);
+
+	if (major == 1 && minor == 1) {
+		p_indent(level, frm);
+		printf("P-192 Public Key\n");
+	}
+}
+
+static inline void encapsulated_payload_dump(int level, struct frame *frm)
+{
+	uint8_t *value = frm->ptr;
+	int i;
+
+	frm->ptr += 16;
+	frm->len -= 16;
+
+	p_indent(level, frm);
+	printf("data ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", value[i]);
+	printf("\n");
+}
+
+static inline void simple_pairing_confirm_dump(int level, struct frame *frm)
+{
+	uint8_t *value = frm->ptr;
+	int i;
+
+	frm->ptr += 16;
+	frm->len -= 16;
+
+	p_indent(level, frm);
+	printf("commitment value ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", value[i]);
+	printf("\n");
+}
+
+static inline void simple_pairing_number_dump(int level, struct frame *frm)
+{
+	uint8_t *value = frm->ptr;
+	int i;
+
+	frm->ptr += 16;
+	frm->len -= 16;
+
+	p_indent(level, frm);
+	printf("nounce value ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", value[i]);
+	printf("\n");
+}
+
+static inline void dhkey_check_dump(int level, struct frame *frm)
+{
+	uint8_t *value = frm->ptr;
+	int i;
+
+	frm->ptr += 16;
+	frm->len -= 16;
+
+	p_indent(level, frm);
+	printf("confirmation value ");
+	for (i = 0; i < 16; i++)
+		printf("%2.2x", value[i]);
+	printf("\n");
+}
+
 static inline void accepted_ext_dump(int level, struct frame *frm)
 {
 	uint16_t opcode = LMP_U8(frm) + (LMP_U8(frm) << 7);
@@ -992,7 +1090,7 @@ static inline void channel_classification_dump(int level, struct frame *frm)
 	printf("\n");
 }
 
-static inline void sniff_subrate_dump(int level, struct frame *frm)
+static inline void sniff_subrating_dump(int level, struct frame *frm)
 {
 	uint8_t subrate = LMP_U8(frm);
 	uint16_t timeout = LMP_U16(frm);
@@ -1006,6 +1104,25 @@ static inline void sniff_subrate_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("subrate instant 0x%4.4x\n", instant);
+}
+
+static inline void io_capability_dump(int level, struct frame *frm)
+{
+	uint8_t capability = LMP_U8(frm);
+	uint8_t oob_data = LMP_U8(frm);
+	uint8_t authentication = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("capability 0x%2.2x oob 0x%2.2x auth 0x%2.2x\n",
+				capability, oob_data, authentication);
+}
+
+static inline void keypress_notification_dump(int level, struct frame *frm)
+{
+	uint8_t value = LMP_U8(frm);
+
+	p_indent(level, frm);
+	printf("notification value %d\n", value);
 }
 
 void lmp_dump(int level, struct frame *frm)
@@ -1157,6 +1274,21 @@ void lmp_dump(int level, struct frame *frm)
 	case 60:
 		set_afh_dump(level + 1, frm);
 		return;
+	case 61:
+		encapsulated_header_dump(level + 1, frm);
+		return;
+	case 62:
+		encapsulated_payload_dump(level + 1, frm);
+		return;
+	case 63:
+		simple_pairing_confirm_dump(level + 1, frm);
+		return;
+	case 64:
+		simple_pairing_number_dump(level + 1, frm);
+		return;
+	case 65:
+		dhkey_check_dump(level + 1, frm);
+		return;
 	case 5:
 	case 18:
 	case 24:
@@ -1171,6 +1303,9 @@ void lmp_dump(int level, struct frame *frm)
 	case 58:
 	case 127 + (23 << 7):
 	case 127 + (24 << 7):
+	case 127 + (27 << 7):
+	case 127 + (28 << 7):
+	case 127 + (29 << 7):
 		return;
 	case 127 + (1 << 7):
 		accepted_ext_dump(level + 1, frm);
@@ -1199,7 +1334,14 @@ void lmp_dump(int level, struct frame *frm)
 		return;
 	case 127 + (21 << 7):
 	case 127 + (22 << 7):
-		sniff_subrate_dump(level + 1, frm);
+		sniff_subrating_dump(level + 1, frm);
+		return;
+	case 127 + (25 << 7):
+	case 127 + (26 << 7):
+		io_capability_dump(level + 1, frm);
+		return;
+	case 127 + (30 << 7):
+		keypress_notification_dump(level + 1, frm);
 		return;
 	}
 

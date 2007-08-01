@@ -101,22 +101,22 @@ static char *event_str[EVENT_NUM + 1] = {
 	"Sniff Subrate",
 	"Extended Inquiry Result",
 	"Encryption Key Refresh Complete",
-	"Unknown",
-	"Unknown",
-	"Unknown",
-	"Unknown",
-	"Unknown",
-	"Unknown",
+	"IO Capability Request",
+	"IO Capability Response",
+	"User Confirmation Request",
+	"User Passkey Request",
+	"Remote OOB Data Request",
+	"Simple Pairing Complete",
 	"Unknown",
 	"Link Supervision Timeout Change",
 	"Enhanced Flush Complete",
 	"Unknown",
-	"Unknown",
-	"Unknown",
+	"User Passkey Notification",
+	"Keypress Notification",
 	"Remote Host Supported Features Notification",
 };
 
-#define CMD_LINKCTL_NUM 49
+#define CMD_LINKCTL_NUM 52
 static char *cmd_linkctl_str[CMD_LINKCTL_NUM + 1] = {
 	"Unknown",
 	"Inquiry",
@@ -161,13 +161,16 @@ static char *cmd_linkctl_str[CMD_LINKCTL_NUM + 1] = {
 	"Setup Synchronous Connection",
 	"Accept Synchronous Connection",
 	"Reject Synchronous Connection",
+	"IO Capability Request Reply",
+	"User Confirmation Request Reply",
+	"User Confirmation Request Negative Reply",
+	"User Passkey Request Reply",
+	"User Passkey Request Negative Reply",
+	"Remote OOB Data Request Reply",
 	"Unknown",
 	"Unknown",
-	"Unknown",
-	"Unknown",
-	"Unknown",
-	"Unknown",
-	"Unknown",
+	"Remote OOB Data Request Negative Reply",
+	"IO Capability Request Negative Reply",
 };
 
 #define CMD_LINKPOL_NUM 17
@@ -279,9 +282,9 @@ static char *cmd_hostctl_str[CMD_HOSTCTL_NUM + 1] = {
 	"Write Extended Inquiry Response",
 	"Refresh Encryption Key",
 	"Unknown",
-	"Unknown",
-	"Unknown",
-	"Unknown",
+	"Read Simple Pairing Mode",
+	"Write Simple Pairing Mode",
+	"Read Local OOB Data",
 	"Read Inquiry Response Transmit Power Level",
 	"Write Inquiry Response Transmit Power Level",
 	"Read Default Erroneous Data Reporting",
@@ -385,8 +388,8 @@ static char *error_code_str[ERROR_CODE_NUM + 1] = {
 	"Reserved Slot Violation",
 	"Role Switch Failed",
 	"Extended Inquiry Response Too Large",
-	"Unknown",
-	"Unknown",
+	"Simple Pairing Not Supported by Host",
+	"Host Busy - Pairing",
 };
 
 static char *status2str(uint8_t status)
@@ -506,6 +509,64 @@ static char *airmode2str(uint8_t mode)
 	}
 }
 
+static char *keytype2str(uint8_t type)
+{
+	switch (type) {
+	case 0x00:
+		return "Combination Key";
+	case 0x01:
+		return "Local Unit Key";
+	case 0x02:
+		return "Remote Unit Key";
+	case 0x03:
+		return "Debug Combination Key";
+	case 0x04:
+		return "Unauthenticated Combination Key";
+	case 0x05:
+		return "Authenticated Combination Key";
+	case 0x06:
+		return "Changed Combination Key";
+	default:
+		return "Reserved";
+	}
+}
+
+static char *capability2str(uint8_t capability)
+{
+	switch (capability) {
+	case 0x00:
+		return "DisplayOnly";
+	case 0x01:
+		return "DisplayYesNo";
+	case 0x02:
+		return "KeyboardOnly";
+	case 0x03:
+		return "NoInputNoOutput";
+	default:
+		return "Reserved";
+	}
+}
+
+static char *authentication2str(uint8_t authentication)
+{
+	switch (authentication) {
+	case 0x00:
+		return "No Bonding (No MITM Protection)";
+	case 0x01:
+		return "No Bonding (MITM Protection)";
+	case 0x02:
+		return "Dedicated Bonding (No MITM Protection)";
+	case 0x03:
+		return "Dedicated Bonding (MITM Protection)";
+	case 0x04:
+		return "General Bonding (No MITM Protection)";
+	case 0x05:
+		return "General Bonding (MITM Protection)";
+	default:
+		return "Reserved";
+	}
+}
+
 static inline void ext_inquiry_response_dump(int level, struct frame *frm)
 {
 	void *ptr = frm->ptr;
@@ -578,16 +639,6 @@ static inline void ext_inquiry_response_dump(int level, struct frame *frm)
 	frm->len = len + (EXTENDED_INQUIRY_INFO_SIZE - INQUIRY_INFO_WITH_RSSI_SIZE);
 }
 
-static inline void generic_command_dump(int level, struct frame *frm)
-{
-	uint16_t handle = btohs(htons(get_u16(frm)));
-
-	p_indent(level, frm);
-	printf("handle %d\n", handle);
-
-	raw_dump(level, frm);
-}
-
 static inline void bdaddr_command_dump(int level, struct frame *frm)
 {
 	bdaddr_t *bdaddr = frm->ptr;
@@ -601,6 +652,24 @@ static inline void bdaddr_command_dump(int level, struct frame *frm)
 	printf("bdaddr %s\n", addr);
 
 	raw_dump(level, frm);
+}
+
+static inline void generic_command_dump(int level, struct frame *frm)
+{
+	uint16_t handle = btohs(htons(get_u16(frm)));
+
+	p_indent(level, frm);
+	printf("handle %d\n", handle);
+
+	raw_dump(level, frm);
+}
+
+static inline void generic_write_mode_dump(int level, struct frame *frm)
+{
+	uint8_t mode = get_u8(frm);
+
+	p_indent(level, frm);
+	printf("mode 0x%2.2x\n", mode);
 }
 
 static inline void inquiry_dump(int level, struct frame *frm)
@@ -737,6 +806,59 @@ static inline void pin_code_neg_reply_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	p_ba2str(bdaddr, addr);
 	printf("bdaddr %s\n", addr);
+}
+
+static inline void user_passkey_reply_dump(int level, struct frame *frm)
+{
+	user_passkey_reply_cp *cp = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	p_ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s passkey %d\n", addr, btohl(cp->passkey));
+}
+
+static inline void remote_oob_data_reply_dump(int level, struct frame *frm)
+{
+	remote_oob_data_reply_cp *cp = frm->ptr;
+	char addr[18];
+	int i;
+
+	p_indent(level, frm);
+	p_ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s\n", addr);
+
+	p_indent(level, frm);
+	printf("hash 0x");
+	for (i = 0; i < 16; i++)
+		printf("%02x", cp->hash[i]);
+	printf("\n");
+
+	p_indent(level, frm);
+	printf("randomizer 0x");
+	for (i = 0; i < 16; i++)
+			printf("%02x", cp->randomizer[i]);
+	printf("\n");
+}
+
+static inline void io_capability_reply_dump(int level, struct frame *frm)
+{
+	io_capability_reply_cp *cp = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	p_ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s capability 0x%2.2x oob 0x%2.2x auth 0x%2.2x\n",
+					addr, cp->capability, cp->oob_data,
+							cp->authentication);
+
+	p_indent(level, frm);
+	printf("Capability: %s (OOB data %s)\n",
+			capability2str(cp->capability),
+			cp->oob_data == 0x00 ? "not present" : "available");
+
+	p_indent(level, frm);
+	printf("Authentication: %s\n", authentication2str(cp->authentication));
 }
 
 static inline void set_conn_encrypt_dump(int level, struct frame *frm)
@@ -1117,6 +1239,16 @@ static inline void enhanced_flush_dump(int level, struct frame *frm)
 	printf("handle %d type %d\n", btohs(cp->handle), cp->type);
 }
 
+static inline void send_keypress_notify_dump(int level, struct frame *frm)
+{
+	send_keypress_notify_cp *cp = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	p_ba2str(&cp->bdaddr, addr);
+	printf("bdaddr %s type %d\n", addr, cp->type);
+}
+
 static inline void request_transmit_power_level_dump(int level, struct frame *frm)
 {
 	read_transmit_power_level_cp *cp = frm->ptr;
@@ -1234,6 +1366,7 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_REJECT_CONN_REQ:
 		case OCF_REJECT_SYNC_CONN_REQ:
+		case OCF_IO_CAPABILITY_NEG_REPLY:
 			reject_conn_req_dump(level + 1, frm);
 			return;
 		case OCF_PIN_CODE_REPLY:
@@ -1244,7 +1377,20 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_PIN_CODE_NEG_REPLY:
 		case OCF_LINK_KEY_NEG_REPLY:
+		case OCF_USER_CONFIRM_REPLY:
+		case OCF_USER_CONFIRM_NEG_REPLY:
+		case OCF_USER_PASSKEY_NEG_REPLY:
+		case OCF_REMOTE_OOB_DATA_NEG_REPLY:
 			pin_code_neg_reply_dump(level + 1, frm);
+			return;
+		case OCF_USER_PASSKEY_REPLY:
+			user_passkey_reply_dump(level + 1, frm);
+			return;
+		case OCF_REMOTE_OOB_DATA_REPLY:
+			remote_oob_data_reply_dump(level + 1, frm);
+			return;
+		case OCF_IO_CAPABILITY_REPLY:
+			io_capability_reply_dump(level + 1, frm);
 			return;
 		case OCF_SET_CONN_ENCRYPT:
 			set_conn_encrypt_dump(level + 1, frm);
@@ -1379,6 +1525,9 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_WRITE_EXT_INQUIRY_RESPONSE:
 			write_ext_inquiry_response_dump(level + 1, frm);
 			return;
+		case OCF_WRITE_SIMPLE_PAIRING_MODE:
+			generic_write_mode_dump(level + 1, frm);
+			return;
 		case OCF_WRITE_INQUIRY_TRANSMIT_POWER_LEVEL:
 			write_inquiry_transmit_power_level_dump(level + 1, frm);
 			return;
@@ -1387,6 +1536,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_ENHANCED_FLUSH:
 			enhanced_flush_dump(level + 1, frm);
+			return;
+		case OCF_SEND_KEYPRESS_NOTIFY:
+			send_keypress_notify_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -1408,6 +1560,15 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_READ_CLOCK:
 			request_clock_dump(level + 1, frm);
+			return;
+		}
+		break;
+
+	case OGF_TESTING_CMD:
+		switch (ocf) {
+		case OCF_WRITE_LOOPBACK_MODE:
+		case OCF_WRITE_SIMPLE_PAIRING_DEBUG_MODE:
+			generic_write_mode_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -1476,6 +1637,20 @@ static inline void generic_response_dump(int level, struct frame *frm)
 	}
 
 	raw_dump(level, frm);
+}
+
+static inline void status_mode_dump(int level, struct frame *frm)
+{
+	uint8_t status = get_u8(frm);
+	uint8_t mode = get_u8(frm);
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x mode 0x%2.2x\n", status, mode);
+
+	if (status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(status));
+	}
 }
 
 static inline void read_pin_type_dump(int level, struct frame *frm)
@@ -1742,6 +1917,32 @@ static inline void read_default_error_data_reporting_dump(int level, struct fram
 	}
 }
 
+static inline void read_local_oob_data_dump(int level, struct frame *frm)
+{
+	read_local_oob_data_rp *rp = frm->ptr;
+	int i;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x\n", rp->status);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		p_indent(level, frm);
+		printf("hash 0x");
+		for (i = 0; i < 16; i++)
+			printf("%02x", rp->hash[i]);
+		printf("\n");
+
+		p_indent(level, frm);
+		printf("randomizer 0x");
+		for (i = 0; i < 16; i++)
+			printf("%02x", rp->randomizer[i]);
+		printf("\n");
+	}
+}
+
 static inline void read_local_version_dump(int level, struct frame *frm)
 {
 	read_local_version_rp *rp = frm->ptr;
@@ -1958,6 +2159,14 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_LINK_KEY_REPLY:
 		case OCF_PIN_CODE_NEG_REPLY:
 		case OCF_LINK_KEY_NEG_REPLY:
+		case OCF_USER_CONFIRM_REPLY:
+		case OCF_USER_CONFIRM_NEG_REPLY:
+		case OCF_USER_PASSKEY_REPLY:
+		case OCF_USER_PASSKEY_NEG_REPLY:
+		case OCF_REMOTE_OOB_DATA_REPLY:
+		case OCF_REMOTE_OOB_DATA_NEG_REPLY:
+		case OCF_IO_CAPABILITY_REPLY:
+		case OCF_IO_CAPABILITY_NEG_REPLY:
 			bdaddr_response_dump(level, frm);
 			return;
 		}
@@ -2033,6 +2242,12 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_READ_DEFAULT_ERROR_DATA_REPORTING:
 			read_default_error_data_reporting_dump(level, frm);
 			return;
+		case OCF_READ_LOCAL_OOB_DATA:
+			read_local_oob_data_dump(level, frm);
+			return;
+		case OCF_READ_SIMPLE_PAIRING_MODE:
+			status_mode_dump(level, frm);
+			return;
 		case OCF_FLUSH:
 		case OCF_WRITE_LINK_SUPERVISION_TIMEOUT:
 			generic_response_dump(level, frm);
@@ -2058,10 +2273,13 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_AFH_MODE:
 		case OCF_SET_AFH_CLASSIFICATION:
 		case OCF_WRITE_EXT_INQUIRY_RESPONSE:
+		case OCF_WRITE_SIMPLE_PAIRING_MODE:
 		case OCF_WRITE_INQUIRY_TRANSMIT_POWER_LEVEL:
 		case OCF_WRITE_DEFAULT_ERROR_DATA_REPORTING:
 		case OCF_SET_CONTROLLER_TO_HOST_FC:
 		case OCF_HOST_BUFFER_SIZE:
+		case OCF_REFRESH_ENCRYPTION_KEY:
+		case OCF_SEND_KEYPRESS_NOTIFY:
 			status_response_dump(level, frm);
 			return;
 		}
@@ -2107,6 +2325,19 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 			return;
 		case OCF_READ_CLOCK:
 			read_clock_dump(level, frm);
+			return;
+		}
+		break;
+
+	case OGF_TESTING_CMD:
+		switch (ocf) {
+		case OCF_READ_LOOPBACK_MODE:
+			status_mode_dump(level, frm);
+			return;
+		case OCF_WRITE_LOOPBACK_MODE:
+		case OCF_ENABLE_DEVICE_UNDER_TEST_MODE:
+		case OCF_WRITE_SIMPLE_PAIRING_DEBUG_MODE:
+			status_response_dump(level, frm);
 			return;
 		}
 		break;
@@ -2392,6 +2623,9 @@ static inline void link_key_notify_dump(int level, struct frame *frm)
 		else
 			printf("%2.2X", evt->link_key[i]);
 	printf(" type %d\n", evt->key_type);
+
+	p_indent(level, frm);
+	printf("Type: %s\n", keytype2str(evt->key_type));
 }
 
 static inline void max_slots_change_dump(int level, struct frame *frm)
@@ -2634,6 +2868,26 @@ static inline void link_supervision_timeout_changed_dump(int level, struct frame
 				btohs(evt->handle), btohs(evt->timeout));
 }
 
+static inline void user_passkey_notify_dump(int level, struct frame *frm)
+{
+	evt_user_passkey_notify *evt = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	p_ba2str(&evt->bdaddr, addr);
+	printf("bdaddr %s passkey %d\n", addr, btohl(evt->passkey));
+}
+
+static inline void keypress_notify_dump(int level, struct frame *frm)
+{
+	evt_keypress_notify *evt = frm->ptr;
+	char addr[18];
+
+	p_indent(level, frm);
+	p_ba2str(&evt->bdaddr, addr);
+	printf("bdaddr %s type %d\n", addr, evt->type);
+}
+
 static inline void remote_host_features_notify_dump(int level, struct frame *frm)
 {
 	evt_remote_host_features_notify *evt = frm->ptr;
@@ -2785,6 +3039,9 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_PIN_CODE_REQ:
 	case EVT_LINK_KEY_REQ:
+	case EVT_IO_CAPABILITY_REQUEST:
+	case EVT_USER_PASSKEY_REQUEST:
+	case EVT_REMOTE_OOB_DATA_REQUEST:
 		pin_code_req_dump(level + 1, frm);
 		break;
 	case EVT_LINK_KEY_NOTIFY:
@@ -2829,11 +3086,24 @@ static inline void event_dump(int level, struct frame *frm)
 	case EVT_ENCRYPTION_KEY_REFRESH_COMPLETE:
 		generic_response_dump(level + 1, frm);
 		break;
+	case EVT_SIMPLE_PAIRING_COMPLETE:
+		bdaddr_response_dump(level + 1, frm);
+		break;
 	case EVT_LINK_SUPERVISION_TIMEOUT_CHANGED:
 		link_supervision_timeout_changed_dump(level + 1, frm);
 		break;
 	case EVT_ENHANCED_FLUSH_COMPLETE:
 		generic_command_dump(level + 1, frm);
+		break;
+	case EVT_IO_CAPABILITY_RESPONSE:
+		io_capability_reply_dump(level + 1, frm);
+		break;
+	case EVT_USER_CONFIRM_REQUEST:
+	case EVT_USER_PASSKEY_NOTIFY:
+		user_passkey_notify_dump(level + 1, frm);
+		break;
+	case EVT_KEYPRESS_NOTIFY:
+		keypress_notify_dump(level + 1, frm);
 		break;
 	case EVT_REMOTE_HOST_FEATURES_NOTIFY:
 		remote_host_features_notify_dump(level + 1, frm);
