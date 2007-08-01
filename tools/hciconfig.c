@@ -885,6 +885,36 @@ static void cmd_delkey(int ctl, int hdev, char *opt)
 	hci_close_dev(dd);
 }
 
+static void cmd_oob_data(int ctl, int hdev, char *opt)
+{
+	uint8_t hash[16], randomizer[16];
+	int i, dd;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (hci_read_local_oob_data(dd, hash, randomizer, 1000) < 0) {
+		fprintf(stderr, "Can't read local OOB data on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	print_dev_hdr(&di);
+	printf("\tOOB Hash:  ");
+	for (i = 0; i < 16; i++)
+		printf(" %02x", hash[i]);
+	printf("\n\tRandomizer:");
+	for (i = 0; i < 16; i++)
+		printf(" %02x", randomizer[i]);
+	printf("\n");
+
+	hci_close_dev(dd);
+}
+
 static void cmd_commands(int ctl, int hdev, char *opt)
 {
 	uint8_t cmds[64];
@@ -1365,6 +1395,39 @@ static void cmd_afh_mode(int ctl, int hdev, char *opt)
 	}
 }
 
+static void cmd_ssp_mode(int ctl, int hdev, char *opt)
+{
+	int dd;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (opt) {
+		uint8_t mode = atoi(opt);
+
+		if (hci_write_simple_pairing_mode(dd, mode, 2000) < 0) {
+			fprintf(stderr, "Can't set Simple Pairing mode on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		uint8_t mode;
+
+		if (hci_read_simple_pairing_mode(dd, &mode, 1000) < 0) {
+			fprintf(stderr, "Can't read Simple Pairing mode on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+
+		print_dev_hdr(&di);
+		printf("\tSimple Pairing mode: %s\n", mode == 1 ? "Enabled" : "Disabled");
+	}
+}
+
 static void print_rev_ericsson(int dd)
 {
 	struct hci_request rq;
@@ -1571,10 +1634,12 @@ static struct {
 	{ "pageparms",	cmd_page_parms,	"[win:int]",	"Get/Set page scan window and interval" },
 	{ "pageto",	cmd_page_to,	"[to]",		"Get/Set page timeout" },
 	{ "afhmode",	cmd_afh_mode,	"[mode]",	"Get/Set AFH mode" },
+	{ "sspmode",	cmd_ssp_mode,	"[mode]",	"Get/Set Simple Pairing Mode" },
 	{ "aclmtu",	cmd_aclmtu,	"<mtu:pkt>",	"Set ACL MTU and number of packets" },
 	{ "scomtu",	cmd_scomtu,	"<mtu:pkt>",	"Set SCO MTU and number of packets" },
 	{ "putkey",	cmd_putkey,	"<bdaddr>",	"Store link key on the device" },
 	{ "delkey",	cmd_delkey,	"<bdaddr>",	"Delete link key from the device" },
+	{ "oobdata",	cmd_oob_data,	0,		"Display local OOB data" },
 	{ "commands",	cmd_commands,	0,		"Display supported commands" },
 	{ "features",	cmd_features,	0,		"Display device features" },
 	{ "version",	cmd_version,	0,		"Display version information" },

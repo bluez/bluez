@@ -183,6 +183,12 @@ With no
 prints out the current AFH mode. Otherwise, sets AFH mode to
 .IR mode .
 .TP
+.BI sspmode " [mode]"
+With no
+.IR mode ,
+prints out the current Simple Pairing mode. Otherwise, sets Simple Pairing mode to
+.IR mode .
+.TP
 \fBaclmtu\fP \fImtu\fP:\fIpkt\fP
 Sets ACL MTU to
 to
@@ -207,6 +213,9 @@ on the device.
 This command deletes the stored link key for
 .I bdaddr
 from the device.
+.TP
+.BI oobdata
+Display local OOB data.
 .TP
 .BI commands
 Display supported commands.
