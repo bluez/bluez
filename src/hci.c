@@ -467,9 +467,9 @@ static hci_map commands_map[] = {
 	{ "Refresh Encryption Key",			138 },
 	{ "Reserved",					139 },
 	{ "Sniff Subrating",				140 },
-	{ "Unknown",					141 },
-	{ "Unknown",					142 },
-	{ "Unknown",					143 },
+	{ "Read Simple Pairing Mode",			141 },
+	{ "Write Simple Pairing Mode",			142 },
+	{ "Read Local OOB Data",			143 },
 
 	{ "Read Inquiry Transmit Power Level",		144 },
 	{ "Write Inquiry Transmit Power Level",		145 },
@@ -478,21 +478,21 @@ static hci_map commands_map[] = {
 	{ "Reserved",					148 },
 	{ "Reserved",					149 },
 	{ "Reserved",					150 },
-	{ "Unknown",					151 },
+	{ "IO Capability Request Reply",		151 },
 
-	{ "Unknown",					152 },
-	{ "Unknown",					153 },
-	{ "Unknown",					154 },
-	{ "Unknown",					155 },
-	{ "Unknown",					156 },
-	{ "Unknown",					157 },
+	{ "User Confirmation Request Reply",		152 },
+	{ "User Confirmation Request Negative Reply",	153 },
+	{ "User Passkey Request Reply",			154 },
+	{ "User Passkey Request Negative Reply",	155 },
+	{ "Remote OOB Data Request Reply",		156 },
+	{ "Write Simple Pairing Debug Mode",		157 },
 	{ "Enhanced Flush",				158 },
-	{ "Unknown",					159 },
+	{ "Remote OOB Data Request Negative Reply",	159 },
 
 	{ "Reserved",					160 },
 	{ "Reserved",					161 },
-	{ "Unknown",					162 },
-	{ "Unknown",					163 },
+	{ "Send Keypress Notification",			162 },
+	{ "IO Capabilities Response Negative Reply",	163 },
 	{ "Reserved",					164 },
 	{ "Reserved",					165 },
 	{ "Reserved",					166 },
@@ -646,8 +646,8 @@ static hci_map lmp_features_map[8][9] = {
 		{ "<extended inquiry>",	LMP_EXT_INQ	},	/* Bit 0 */
 		{ "<no. 49>",		0x02		},	/* Bit 1 */
 		{ "<no. 50>",		0x04		},	/* Bit 2 */
-		{ "<no. 51>",		0x08		},	/* Bit 3 */
-		{ "<no. 52>",		0x10		},	/* Bit 4 */
+		{ "<simple pairing>",	LMP_SIMPLE_PAIR	},	/* Bit 3 */
+		{ "<encapsulated PDU>",	LMP_ENCAPS_PDU	},	/* Bit 4 */
 		{ "<err. data report>",	LMP_ERR_DAT_REP	},	/* Bit 5 */
 		{ "<non-flush flag>",	LMP_NFLUSH_PKTS	},	/* Bit 6 */
 		{ "<no. 55>",		0x80		},	/* Bit 7 */
@@ -2057,6 +2057,81 @@ int hci_write_ext_inquiry_response(int dd, uint8_t fec, uint8_t *data, int to)
 		return -1;
 	}
 
+	return 0;
+}
+
+int hci_read_simple_pairing_mode(int dd, uint8_t *mode, int to)
+{
+	read_simple_pairing_mode_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_SIMPLE_PAIRING_MODE;
+	rq.rparam = &rp;
+	rq.rlen   = READ_SIMPLE_PAIRING_MODE_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*mode = rp.mode;
+	return 0;
+}
+
+int hci_write_simple_pairing_mode(int dd, uint8_t mode, int to)
+{
+	write_simple_pairing_mode_cp cp;
+	write_simple_pairing_mode_rp rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.mode = mode;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_SIMPLE_PAIRING_MODE;
+	rq.cparam = &cp;
+	rq.clen   = WRITE_SIMPLE_PAIRING_MODE_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = WRITE_SIMPLE_PAIRING_MODE_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_read_local_oob_data(int dd, uint8_t *hash, uint8_t *randomizer, int to)
+{
+	read_local_oob_data_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_READ_LOCAL_OOB_DATA;
+	rq.rparam = &rp;
+	rq.rlen   = READ_LOCAL_OOB_DATA_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	memcpy(hash, rp.hash, 16);
+	memcpy(randomizer, rp.randomizer, 16);
 	return 0;
 }
 

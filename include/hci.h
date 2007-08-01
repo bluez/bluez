@@ -188,6 +188,8 @@ enum {
 #define HCI_SLOT_VIOLATION			0x34
 #define HCI_ROLE_SWITCH_FAILED			0x35
 #define HCI_EIR_TOO_LARGE			0x36
+#define HCI_SIMPLE_PAIRING_NOT_SUPPORTED	0x37
+#define HCI_HOST_BUSY_PAIRING			0x38
 
 /* ACL flags */
 #define ACL_CONT		0x01
@@ -249,6 +251,8 @@ enum {
 #define LMP_EDR_3S_ESCO	0x80
 
 #define LMP_EXT_INQ	0x01
+#define LMP_SIMPLE_PAIR	0x08
+#define LMP_ENCAPS_PDU	0x10
 #define LMP_ERR_DAT_REP	0x20
 #define LMP_NFLUSH_PKTS	0x40
 
@@ -472,6 +476,49 @@ typedef struct {
 	uint8_t		reason;
 } __attribute__ ((packed)) reject_sync_conn_req_cp;
 #define REJECT_SYNC_CONN_REQ_CP_SIZE 7
+
+#define OCF_IO_CAPABILITY_REPLY		0x002B
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		capability;
+	uint8_t		oob_data;
+	uint8_t		authentication;
+} __attribute__ ((packed)) io_capability_reply_cp;
+#define IO_CAPABILITY_REPLY_CP_SIZE 9
+
+#define OCF_USER_CONFIRM_REPLY		0x002C
+typedef struct {
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) user_confirm_reply_cp;
+#define USER_CONFIRM_REPLY_CP_SIZE 6
+
+#define OCF_USER_CONFIRM_NEG_REPLY	0x002D
+
+#define OCF_USER_PASSKEY_REPLY		0x002E
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint32_t	passkey;
+} __attribute__ ((packed)) user_passkey_reply_cp;
+#define USER_PASSKEY_REPLY_CP_SIZE 10
+
+#define OCF_USER_PASSKEY_NEG_REPLY	0x002F
+
+#define OCF_REMOTE_OOB_DATA_REPLY	0x0030
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		hash[16];
+	uint8_t		randomizer[16];
+} __attribute__ ((packed)) remote_oob_data_reply_cp;
+#define REMOTE_OOB_DATA_REPLY_CP_SIZE 38
+
+#define OCF_REMOTE_OOB_DATA_NEG_REPLY	0x0033
+
+#define OCF_IO_CAPABILITY_NEG_REPLY	0x0034
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		reason;
+} __attribute__ ((packed)) io_capability_neg_reply_cp;
+#define IO_CAPABILITY_NEG_REPLY_CP_SIZE 7
 
 /* Link Policy */
 #define OGF_LINK_POLICY		0x02
@@ -980,6 +1027,31 @@ typedef struct {
 } __attribute__ ((packed)) refresh_encryption_key_rp;
 #define REFRESH_ENCRYPTION_KEY_RP_SIZE 1
 
+#define OCF_READ_SIMPLE_PAIRING_MODE	0x0055
+typedef struct {
+	uint8_t		status;
+	uint8_t		mode;
+} __attribute__ ((packed)) read_simple_pairing_mode_rp;
+#define READ_SIMPLE_PAIRING_MODE_RP_SIZE 2
+
+#define OCF_WRITE_SIMPLE_PAIRING_MODE	0x0056
+typedef struct {
+	uint8_t		mode;
+} __attribute__ ((packed)) write_simple_pairing_mode_cp;
+#define WRITE_SIMPLE_PAIRING_MODE_CP_SIZE 1
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) write_simple_pairing_mode_rp;
+#define WRITE_SIMPLE_PAIRING_MODE_RP_SIZE 1
+
+#define OCF_READ_LOCAL_OOB_DATA		0x0057
+typedef struct {
+	uint8_t		status;
+	uint8_t		hash[16];
+	uint8_t		randomizer[16];
+} __attribute__ ((packed)) read_local_oob_data_rp;
+#define READ_LOCAL_OOB_DATA_RP_SIZE 33
+
 #define OCF_READ_INQUIRY_TRANSMIT_POWER_LEVEL	0x0058
 typedef struct {
 	uint8_t		status;
@@ -1020,6 +1092,17 @@ typedef struct {
 	uint8_t		type;
 } __attribute__ ((packed)) enhanced_flush_cp;
 #define ENHANCED_FLUSH_CP_SIZE 3
+
+#define OCF_SEND_KEYPRESS_NOTIFY	0x0060
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		type;
+} __attribute__ ((packed)) send_keypress_notify_cp;
+#define SEND_KEYPRESS_NOTIFY_CP_SIZE 7
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) send_keypress_notify_rp;
+#define SEND_KEYPRESS_NOTIFY_RP_SIZE 1
 
 /* Informational Parameters */
 #define OGF_INFO_PARAM		0x04
@@ -1140,6 +1223,22 @@ typedef struct {
 
 /* Testing commands */
 #define OGF_TESTING_CMD		0x3e
+
+#define OCF_READ_LOOPBACK_MODE			0x0001
+
+#define OCF_WRITE_LOOPBACK_MODE			0x0002
+
+#define OCF_ENABLE_DEVICE_UNDER_TEST_MODE	0x0003
+
+#define OCF_WRITE_SIMPLE_PAIRING_DEBUG_MODE	0x0004
+typedef struct {
+	uint8_t		mode;
+} __attribute__ ((packed)) write_simple_pairing_debug_mode_cp;
+#define WRITE_SIMPLE_PAIRING_DEBUG_MODE_CP_SIZE 1
+typedef struct {
+	uint8_t		status;
+} __attribute__ ((packed)) write_simple_pairing_debug_mode_rp;
+#define WRITE_SIMPLE_PAIRING_DEBUG_MODE_RP_SIZE 1
 
 /* Vendor specific commands */
 #define OGF_VENDOR_CMD		0x3f
@@ -1468,6 +1567,47 @@ typedef struct {
 } __attribute__ ((packed)) evt_encryption_key_refresh_complete;
 #define EVT_ENCRYPTION_KEY_REFRESH_COMPLETE_SIZE 3
 
+#define EVT_IO_CAPABILITY_REQUEST	0x31
+typedef struct {
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) evt_io_capability_request;
+#define EVT_IO_CAPABILITY_REQUEST_SIZE 6
+
+#define EVT_IO_CAPABILITY_RESPONSE	0x32
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		capability;
+	uint8_t		oob_data;
+	uint8_t		authentication;
+} __attribute__ ((packed)) evt_io_capability_response;
+#define EVT_IO_CAPABILITY_RESPONSE_SIZE 9
+
+#define EVT_USER_CONFIRM_REQUEST	0x33
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint32_t	passkey;
+} __attribute__ ((packed)) evt_user_confirm_request;
+#define EVT_USER_CONFIRM_REQUEST_SIZE 10
+
+#define EVT_USER_PASSKEY_REQUEST	0x34
+typedef struct {
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) evt_user_passkey_request;
+#define EVT_USER_PASSKEY_REQUEST_SIZE 6
+
+#define EVT_REMOTE_OOB_DATA_REQUEST	0x35
+typedef struct {
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) evt_remote_oob_data_request;
+#define EVT_REMOTE_OOB_DATA_REQUEST_SIZE 6
+
+#define EVT_SIMPLE_PAIRING_COMPLETE	0x36
+typedef struct {
+	uint8_t		status;
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) evt_simple_pairing_complete;
+#define EVT_SIMPLE_PAIRING_COMPLETE_SIZE 7
+
 #define EVT_LINK_SUPERVISION_TIMEOUT_CHANGED	0x38
 typedef struct {
 	uint16_t	handle;
@@ -1480,6 +1620,20 @@ typedef struct {
 	uint16_t	handle;
 } __attribute__ ((packed)) evt_enhanced_flush_complete;
 #define EVT_ENHANCED_FLUSH_COMPLETE_SIZE 2
+
+#define EVT_USER_PASSKEY_NOTIFY		0x3B
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint32_t	passkey;
+} __attribute__ ((packed)) evt_user_passkey_notify;
+#define EVT_USER_PASSKEY_NOTIFY_SIZE 10
+
+#define EVT_KEYPRESS_NOTIFY		0x3C
+typedef struct {
+	bdaddr_t	bdaddr;
+	uint8_t		type;
+} __attribute__ ((packed)) evt_keypress_notify;
+#define EVT_KEYPRESS_NOTIFY_SIZE 7
 
 #define EVT_REMOTE_HOST_FEATURES_NOTIFY	0x3D
 typedef struct {
