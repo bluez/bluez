@@ -58,6 +58,8 @@
 #include "dbus-error.h"
 #include "dbus-adapter.h"
 
+#define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
+
 static const char *service_cls[] = {
 	"positioning",
 	"networking",
@@ -3039,19 +3041,33 @@ const char *minor_class_str(uint32_t class)
 	switch (major_index) {
 	case 1: /* computer */
 		minor_index = (class >> 2) & 0x3F;
-		return computer_minor_cls[minor_index];
+		if (minor_index < NUM_ELEMENTS(computer_minor_cls))
+			return computer_minor_cls[minor_index];
+		else
+			return "";
 	case 2: /* phone */
 		minor_index = (class >> 2) & 0x3F;
-		return phone_minor_cls[minor_index];
+		if (minor_index < NUM_ELEMENTS(phone_minor_cls))
+			return phone_minor_cls[minor_index];
+		return "";
 	case 3: /* access point */
 		minor_index = (class >> 5) & 0x07;
-		return access_point_minor_cls[minor_index];
+		if (minor_index < NUM_ELEMENTS(access_point_minor_cls))
+			return access_point_minor_cls[minor_index];
+		else
+			return "";
 	case 4: /* audio/video */
 		minor_index = (class >> 2) & 0x3F;
-		return audio_video_minor_cls[minor_index];
+		if (minor_index < NUM_ELEMENTS(audio_video_minor_cls))
+			return audio_video_minor_cls[minor_index];
+		else
+			return "";
 	case 5: /* peripheral */
 		minor_index = (class >> 6) & 0x03;
-		return peripheral_minor_cls[minor_index];
+		if (minor_index < NUM_ELEMENTS(peripheral_minor_cls))
+			return peripheral_minor_cls[minor_index];
+		else
+			return "";
 	case 6: /* imaging */
 		{
 			uint8_t shift_minor = 0;
@@ -3066,10 +3082,16 @@ const char *minor_class_str(uint32_t class)
 		break;
 	case 7: /* wearable */
 		minor_index = (class >> 2) & 0x3F;
-		return wearable_minor_cls[minor_index];
+		if (minor_index < NUM_ELEMENTS(wearable_minor_cls))
+			return wearable_minor_cls[minor_index];
+		else
+			return "";
 	case 8: /* toy */
 		minor_index = (class >> 2) & 0x3F;
-		return toy_minor_cls[minor_index];
+		if (minor_index < NUM_ELEMENTS(toy_minor_cls))
+			return toy_minor_cls[minor_index];
+		else
+			return "";
 	}
 
 	return "";
