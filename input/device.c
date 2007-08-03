@@ -952,8 +952,8 @@ static DBusHandlerResult device_get_name(DBusConnection *conn,
 {
 	struct device *idev = data;
 	DBusMessage *reply;
-	const char *pname = idev->name;
-
+	const char *pname = (idev->name ? idev->name : "");
+	
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
