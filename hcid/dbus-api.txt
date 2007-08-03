@@ -851,7 +851,7 @@ Methods		dict GetInfo()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.DoesNotExist
 
-		array{string} ListTrusted()
+		array{string} ListTrusts()
 
 			Returns a list of remote devices that are trusted.
 
