@@ -2891,24 +2891,23 @@ static DBusHandlerResult adapter_list_recent_remote_devices(DBusConnection *conn
 								void *data)
 {
 	struct adapter *adapter = data;
+	struct tm date;
 	const char *string;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 	DBusMessage *reply;
 	char filename[PATH_MAX + 1];
 	struct remote_device_list_t param = { NULL, 0 };
+	int len;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &string,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	if (strlen(string)) {
-		struct tm date;
-		if (strptime(string, "%Y-%m-%d %H:%M:%S", &date) == NULL)
-			return error_invalid_arguments(conn, msg);
-		param.time = mktime(&date);
-	}
+	len = strlen(string);
+	if (len && (strptime(string, "%Y-%m-%d %H:%M:%S", &date) == NULL))
+		return error_invalid_arguments(conn, msg);
 
 	/* Add Bonded devices to the list */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "linkkeys");
@@ -2917,6 +2916,9 @@ static DBusHandlerResult adapter_list_recent_remote_devices(DBusConnection *conn
 	/* Add Trusted devices to the list */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "trusts");
 	textfile_foreach(filename, list_remote_devices_do_append, &param);
+
+	if (len)
+		param.time = mktime(&date);
 
 	/* Add Last seen devices to the list */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "lastseen");
