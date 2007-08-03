@@ -2836,6 +2836,19 @@ static void list_remote_devices_do_append(char *key, char *value, void *data)
 	param->list = g_slist_append(param->list, address);
 }
 
+static void active_conn_append(void *value, void *data)
+{
+	struct active_conn_info *con = value;
+	GSList *l = data;
+	char address[18];
+
+	ba2str(&con->bdaddr, address);
+	if (g_slist_find_custom(l, address, (GCompareFunc) strcasecmp))
+		return;
+
+	l = g_slist_append(l, g_strdup(address));
+}
+
 static void remote_devices_do_append(void *data, void *user_data)
 {
 	DBusMessageIter *iter = user_data;
@@ -2861,13 +2874,15 @@ static DBusHandlerResult adapter_list_remote_devices(DBusConnection *conn,
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "linkkeys");
 	textfile_foreach(filename, list_remote_devices_do_append, &param);
 
+	/* Add Trusted devices to the list */
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "trusts");
+	textfile_foreach(filename, list_remote_devices_do_append, &param);
+
 	/* Add Last Used devices to the list */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "lastused");
 	textfile_foreach(filename, list_remote_devices_do_append, &param);
 
-	/* Add Last Seen devices to the list */
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "lastseen");
-	textfile_foreach(filename, list_remote_devices_do_append, &param);
+	g_slist_foreach(adapter->active_conn, active_conn_append, param.list);
 
 	reply = dbus_message_new_method_return(msg);
 
