@@ -183,7 +183,7 @@ int store_device_info(bdaddr_t *src, bdaddr_t *dst, struct hidp_connadd_req *req
 
 	create_filename(filename, PATH_MAX, src, "input");
 
-	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 1 + 9;
+	size = 15 + 3 + 3 + 5 + (req->rd_size * 2) + 2 + 9;
 	str = g_try_malloc0(size);
 	if (!str)
 		return -ENOMEM;
