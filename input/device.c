@@ -85,10 +85,22 @@ struct device {
 
 GSList *devices = NULL;
 
-static struct device *device_new(bdaddr_t *src, bdaddr_t *dst)
+static struct device *device_new(bdaddr_t *src, bdaddr_t *dst, uint8_t subclass)
 {
 	struct device *idev;
 	uint32_t cls;
+	uint8_t major, minor;
+
+	if (!subclass) {
+		if (read_device_class(src, dst, &cls) < 0)
+			return NULL;
+
+		major 	= (cls >> 8) & 0x1f;
+		minor	= (cls >> 2) & 0x3f;
+	} else {
+		major	= 0x05; /* Peripheral */
+		minor	= (subclass >> 2) & 0x3f;
+	}
 
 	idev = g_new0(struct device, 1);
 
@@ -96,10 +108,9 @@ static struct device *device_new(bdaddr_t *src, bdaddr_t *dst)
 	bacpy(&idev->dst, dst);
 
 	read_device_name(src, dst, &idev->name);
-	read_device_class(src, dst, &cls);
 
-	idev->major 	= (cls >> 8) & 0x1f;
-	idev->minor	= (cls >> 2) & 0x3f;
+	idev->major	= major;
+	idev->minor	= minor;
 	idev->ctrl_sk	= -1;
 	idev->intr_sk	= -1;
 
@@ -1055,8 +1066,16 @@ int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 	const char *path;
 	int err;
 
-	idev = device_new(src, dst);
+	idev = device_new(src, dst, hid->subclass);
+	if (!idev)
+		return -EINVAL;
+
 	path = create_input_path(idev->major, idev->minor);
+	if (!path) {
+		device_free(idev);
+		return -EINVAL;
+	}
+
 	idev->path	= g_strdup(path);
 	idev->product	= hid->product;
 	idev->vendor	= hid->vendor;
@@ -1077,8 +1096,16 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 	const char *path;
 	int err;
 
-	idev = device_new(src, dst);
+	idev = device_new(src, dst, 0);
+	if (!idev)
+		return -EINVAL;
+
 	path = create_input_path(idev->major, idev->minor);
+	if (!path) {
+		device_free(idev);
+		return -EINVAL;
+	}
+
 	idev->path = g_strdup(path);
 	idev->conn = dbus_connection_ref(conn);
 
