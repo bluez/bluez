@@ -3023,6 +3023,42 @@ static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult adapter_list_trusts(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	struct adapter *adapter = data;
+	DBusMessage *reply;
+	GSList *trusts, *l;
+	char **addrs;
+	bdaddr_t local;
+	int len;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	str2ba(adapter->address, &local);
+
+	trusts = list_trusts(&local, GLOBAL_TRUST);
+
+	addrs = g_new(char *, g_slist_length(trusts));
+
+	for (l = trusts, len = 0; l; l = l->next, len++)
+		addrs[len] = l->data;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+			&addrs, len,
+			DBUS_TYPE_INVALID);
+
+	g_free(addrs);
+	g_slist_foreach(trusts, (GFunc) g_free, NULL);
+	g_slist_free(trusts);
+
+	return send_message_and_unref(conn, reply);
+}
+
 const char *major_class_str(uint32_t class)
 {
 	uint8_t index = (class >> 8) & 0x1F;
@@ -3251,6 +3287,8 @@ static DBusMethodVTable adapter_methods[] = {
 		"s",	"b"	},
 	{ "RemoveTrust",			adapter_remove_trust,
 		"s",	""	},
+	{ "ListTrusts",				adapter_list_trusts,
+		"",	"as"	},
 
 	{ NULL, NULL, NULL, NULL }
 };

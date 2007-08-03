@@ -203,3 +203,4 @@ int read_pin_length(bdaddr_t *local, bdaddr_t *peer);
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
 gboolean read_trust(bdaddr_t *local, const char *addr, const char *service);
 int write_trust(bdaddr_t *local, const char *addr, const char *service, gboolean trust);
+GSList *list_trusts(bdaddr_t *local, const char *service);

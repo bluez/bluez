@@ -608,3 +608,32 @@ gboolean read_trust(bdaddr_t *local, const char *addr, const char *service)
 
 	return ret;
 }
+
+struct trust_list {
+	GSList *trusts;
+	const char *service;
+};
+
+static void append_trust(char *key, char *value, void *data)
+{
+	struct trust_list *list = data;
+
+	if (strstr(value, list->service))
+		list->trusts = g_slist_append(list->trusts, g_strdup(key));
+}
+
+GSList *list_trusts(bdaddr_t *local, const char *service)
+{
+	char filename[PATH_MAX + 1];
+	struct trust_list list;
+
+	create_filename(filename, PATH_MAX, local, "trusts");
+
+	list.trusts = NULL;
+	list.service = service;
+
+	if (textfile_foreach(filename, append_trust, &list) < 0)
+		return NULL;
+
+	return list.trusts;
+}

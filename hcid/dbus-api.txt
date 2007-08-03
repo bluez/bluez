@@ -851,6 +851,10 @@ Methods		dict GetInfo()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.DoesNotExist
 
+		array{string} ListTrusted()
+
+			Returns a list of remote devices that are trusted.
+
 		void DiscoverDevices()
 
 			This method starts the device discovery procedure. This
