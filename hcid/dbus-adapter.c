@@ -1124,7 +1124,7 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 	char *str;
 	dbus_bool_t boolean;
 	uint32_t class;
-	int compid, ver, subver;
+	int compid, ver, subver, dev_id;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
@@ -1157,8 +1157,12 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 	str2ba(adapter->address, &src);
 	str2ba(addr_ptr, &dst);
 
-	/* Major/Minor Class */
+	/* Remote device class */
 	if (read_remote_class(&src, &dst, &class) == 0) {
+
+		dbus_message_iter_append_dict_entry(&dict, "class",
+				DBUS_TYPE_UINT32, &class);
+
 		ptr = major_class_str(class);
 		dbus_message_iter_append_dict_entry(&dict, "major_class",
 				DBUS_TYPE_STRING, &ptr);
@@ -1192,6 +1196,12 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 	/* Trusted */
 	boolean = read_trust(&src, addr_ptr, GLOBAL_TRUST);
 	dbus_message_iter_append_dict_entry(&dict, "trusted",
+			DBUS_TYPE_BOOLEAN, &boolean);
+
+	/* Connected */
+	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &dst);
+	boolean = (dev_id != adapter->dev_id ? FALSE : TRUE);
+	dbus_message_iter_append_dict_entry(&dict, "connected",
 			DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* HCI Revision/Manufacturer/Version */
