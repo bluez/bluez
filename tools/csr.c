@@ -353,6 +353,8 @@ static struct {
 	{ 4363, "Unified 22c"	},
 	{ 4373, "Unified 22c"	},
 	{ 4374, "Unified 22c"	},
+	{ 4532, "Unified 22d"	},
+	{ 4533, "Unified 22d"	},
 	{ 2526, "Marcel 1 (2005-09-26)"	},
 	{ 2543, "Marcel 2 (2005-09-28)"	},
 	{ 2622, "Marcel 3 (2005-10-27)"	},
