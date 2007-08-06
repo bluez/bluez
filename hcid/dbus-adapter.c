@@ -2886,6 +2886,19 @@ static DBusHandlerResult adapter_list_remote_devices(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void append_connected(struct active_conn_info *dev, GSList *list)
+{
+	GSList *l;
+	char address[18];
+
+	ba2str(&dev->bdaddr, address);
+	l = g_slist_find_custom(list, address, (GCompareFunc) strcasecmp);
+	if (l)
+		return;
+
+	list = g_slist_append(list, g_strdup(address));
+}
+
 static DBusHandlerResult adapter_list_recent_remote_devices(DBusConnection *conn,
 								DBusMessage *msg,
 								void *data)
@@ -2926,6 +2939,9 @@ static DBusHandlerResult adapter_list_recent_remote_devices(DBusConnection *conn
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "lastused");
 	textfile_foreach(filename, list_remote_devices_do_append, &param);
+
+	/* connected: force appending connected devices, lastused might not match */
+	g_slist_foreach(adapter->active_conn, (GFunc) append_connected, param.list);
 
 	reply = dbus_message_new_method_return(msg);
 
