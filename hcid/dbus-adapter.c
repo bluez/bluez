@@ -1124,7 +1124,7 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 	char *str;
 	dbus_bool_t boolean;
 	uint32_t class;
-	int compid, ver, subver, dev_id;
+	int compid, ver, subver;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
@@ -1199,8 +1199,12 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 			DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Connected */
-	dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &dst);
-	boolean = (dev_id != adapter->dev_id ? FALSE : TRUE);
+	if (g_slist_find_custom(adapter->active_conn, &dst,
+				active_conn_find_by_bdaddr))
+		boolean = TRUE;
+	else
+		boolean = FALSE;
+
 	dbus_message_iter_append_dict_entry(&dict, "connected",
 			DBUS_TYPE_BOOLEAN, &boolean);
 
