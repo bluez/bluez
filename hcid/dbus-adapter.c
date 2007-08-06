@@ -2905,26 +2905,25 @@ static DBusHandlerResult adapter_list_recent_remote_devices(DBusConnection *conn
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
+	/* Date format is "YYYY-MM-DD HH:MM:SS GMT" */
 	len = strlen(string);
 	if (len && (strptime(string, "%Y-%m-%d %H:%M:%S", &date) == NULL))
 		return error_invalid_arguments(conn, msg);
 
-	/* Add Bonded devices to the list */
+	/* Bonded and trusted: mandatory entries(no matter the date/time) */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "linkkeys");
 	textfile_foreach(filename, list_remote_devices_do_append, &param);
 
-	/* Add Trusted devices to the list */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "trusts");
 	textfile_foreach(filename, list_remote_devices_do_append, &param);
 
+	/* Last seen/used: append devices since the date informed */
 	if (len)
 		param.time = mktime(&date);
 
-	/* Add Last seen devices to the list */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "lastseen");
 	textfile_foreach(filename, list_remote_devices_do_append, &param);
 
-	/* Add Last Used devices to the list */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "lastused");
 	textfile_foreach(filename, list_remote_devices_do_append, &param);
 
