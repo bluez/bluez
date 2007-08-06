@@ -2892,12 +2892,10 @@ static DBusHandlerResult adapter_list_remote_devices(DBusConnection *conn,
 
 static void append_connected(struct active_conn_info *dev, GSList *list)
 {
-	GSList *l;
 	char address[18];
 
 	ba2str(&dev->bdaddr, address);
-	l = g_slist_find_custom(list, address, (GCompareFunc) strcasecmp);
-	if (l)
+	if (g_slist_find_custom(list, address, (GCompareFunc) strcasecmp))
 		return;
 
 	list = g_slist_append(list, g_strdup(address));
