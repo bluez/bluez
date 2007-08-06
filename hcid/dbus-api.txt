@@ -995,13 +995,16 @@ Methods		dict GetInfo()
 
 		array{string} ListRemoteDevices()
 
-			List addresses of all known remote devices (seen, used or bonded).
+			List addresses of all known remote devices (bonded,
+			trusted and used).
 
 			Possible errors: none
 
 		array{string} ListRecentRemoteDevices(string date)
 
-			List addresses of all used or bonded remote devices since date.
+			List addresses of all bonded, trusted, seen or used remote
+			devices since date. Bonded and trusted devices are always
+			included(the date informed is not applied).
 
 			date format is "YYYY-MM-DD HH:MM:SS GMT"
 
