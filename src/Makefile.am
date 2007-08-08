@@ -2,7 +2,7 @@
 lib_LTLIBRARIES = libbluetooth.la
 
 libbluetooth_la_SOURCES = bluetooth.c hci.c sdp.c
-libbluetooth_la_LDFLAGS = -version-info 9:1:7
+libbluetooth_la_LDFLAGS = -version-info 10:0:8
 
 INCLUDES = -I$(top_builddir)/include
 
