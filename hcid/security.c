@@ -304,6 +304,39 @@ static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
 	}
 }
 
+/* Simple Pairing handling */
+
+static void user_confirm_request(int dev, bdaddr_t *sba, void *ptr)
+{
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY, 6, ptr);
+}
+
+static void user_passkey_request(int dev, bdaddr_t *sba, void *ptr)
+{
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_USER_PASSKEY_NEG_REPLY, 6, ptr);
+}
+
+static void remote_oob_data_request(int dev, bdaddr_t *sba, void *ptr)
+{
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_REMOTE_OOB_DATA_NEG_REPLY, 6, ptr);
+}
+
+static void io_capa_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
+{
+	io_capability_neg_reply_cp cp;
+	char sa[18], da[18];
+
+	ba2str(sba, sa); ba2str(dba, da);
+	info("io_capa_request (sba=%s, dba=%s)", sa, da);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, dba);
+	cp.reason = HCI_PAIRING_NOT_ALLOWED;
+
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_IO_CAPABILITY_NEG_REPLY,
+					IO_CAPABILITY_NEG_REPLY_CP_SIZE, &cp);
+}
+
 /* PIN code handling */
 
 void set_pin_length(bdaddr_t *sba, int length)
@@ -774,6 +807,22 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 
 	case EVT_RETURN_LINK_KEYS:
 		return_link_keys(dev, &di->bdaddr, ptr);
+		break;
+
+	case EVT_IO_CAPABILITY_REQUEST:
+		io_capa_request(dev, &di->bdaddr, (bdaddr_t *) ptr);
+		break;
+
+	case EVT_USER_CONFIRM_REQUEST:
+		user_confirm_request(dev, &di->bdaddr, ptr);
+		break;
+
+	case EVT_USER_PASSKEY_REQUEST:
+		user_passkey_request(dev, &di->bdaddr, ptr);
+		break;
+
+	case EVT_REMOTE_OOB_DATA_REQUEST:
+		remote_oob_data_request(dev, &di->bdaddr, ptr);
 		break;
 	}
 
