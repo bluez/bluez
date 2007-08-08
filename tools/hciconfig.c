@@ -433,35 +433,10 @@ static void cmd_name(int ctl, int hdev, char *opt)
 	}
 
 	if (opt) {
-		uint8_t fec = 0, data[240];
-		int len, eir = 0;
-
-		if (di.features[6] & LMP_EXT_INQ) {
-			if (hci_read_ext_inquiry_response(dd, &fec, data, 1000) == 0)
-				eir = 1;
-		}
-
-		memset(data, 0, sizeof(data));
-		len = strlen(opt);
-		if (len > 48) {
-			len = 48;
-			data[1] = 0x08;
-		} else
-			data[1] = 0x09;
-		data[0] = len + 1;
-		memcpy(data + 2, opt, len);
-
 		if (hci_write_local_name(dd, opt, 2000) < 0) {
 			fprintf(stderr, "Can't change local name on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);
-		}
-
-		if (eir) {
-			if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0) {
-				fprintf(stderr, "Can't set extended inquiry response on hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
-			}
 		}
 	} else {
 		char name[249];
