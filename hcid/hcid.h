@@ -168,6 +168,7 @@ int get_device_revision(uint16_t dev_id, char *revision, size_t size);
 int get_device_manufacturer(uint16_t dev_id, char *manufacturer, size_t size);
 int get_device_company(uint16_t dev_id, char *company, size_t size);
 
+int set_simple_pairing_mode(uint16_t dev_id, uint8_t mode);
 int get_device_name(uint16_t dev_id, char *name, size_t size);
 int set_device_name(uint16_t dev_id, const char *name);
 int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_t size);

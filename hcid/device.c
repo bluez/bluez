@@ -80,6 +80,7 @@ struct hci_dev {
 	uint16_t hci_rev;
 	uint16_t manufacturer;
 
+	uint8_t  ssp_mode;
 	uint8_t  name[248];
 	uint8_t  class[3];
 
@@ -106,14 +107,14 @@ static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		error("Can't open device hci%d",
-		      dev_id, strerror(errno), errno);
+					dev_id, strerror(errno), errno);
 		return -errno;
 	}
 
 	if (hci_read_bd_addr(dd, bdaddr, 2000) < 0) {
 		int err = errno;
 		error("Can't read address for hci%d: %s (%d)",
-		      dev_id, strerror(errno), errno);
+					dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
 		return -err;
 	}
@@ -145,9 +146,9 @@ int add_device(uint16_t dev_id)
 	if (bacmp(&di.bdaddr, BDADDR_ANY))
 		bacpy(&dev->bdaddr, &di.bdaddr);
 	else {
-		int ret = device_read_bdaddr(dev_id, &dev->bdaddr);
-		if (ret < 0)
-			return ret;
+		int err = device_read_bdaddr(dev_id, &dev->bdaddr);
+		if (err < 0)
+			return err;
 	}
 	memcpy(dev->features, di.features, 8);
 
@@ -199,12 +200,40 @@ static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
 	return 0;
 }
 
+static void update_ext_inquiry_response(int dd, struct hci_dev *dev)
+{
+	uint8_t fec = 0, data[240];
+
+	if (!(dev->features[6] & LMP_EXT_INQ))
+		return;
+
+	memset(data, 0, sizeof(data));
+
+	if (dev->ssp_mode > 0) {
+		int len;
+
+		len = strlen((char *) dev->name);
+		if (len > 48) {
+			len = 48;
+			data[1] = 0x08;
+		} else
+			data[1] = 0x09;
+		data[0] = len + 1;
+		memcpy(data + 2, dev->name, len);
+	}
+
+	if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0)
+		error("Can't write extended inquiry response: %s (%d)",
+						strerror(errno), errno);
+}
+
 int start_device(uint16_t dev_id)
 {
 	struct hci_dev *dev;
 	struct hci_version ver;
 	uint8_t features[8], inqmode;
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x01, 0x00, 0x00 };
+	char name[249];
 	int dd, err;
 
 	ASSERT_DEV_ID;
@@ -246,24 +275,34 @@ int start_device(uint16_t dev_id)
 
 	if (hci_read_class_of_dev(dd, dev->class, 1000) < 0) {
 		err = errno;
-		error("Can't read class of device on hci%d: %s(%d)",
-				dev_id, strerror(err), err);
+		error("Can't read class of device on hci%d: %s (%d)",
+						dev_id, strerror(err), err);
 		hci_close_dev(dd);
 		return -err;
 	}
 
-	inqmode = get_inquiry_mode(dev);
-	if (inqmode < 1)
-		goto done;
-
-	if (hci_write_inquiry_mode(dd, inqmode, 1000) < 0) {
-		int err = errno;
-		error("Can't write inquiry mode for hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+	if (hci_read_local_name(dd, sizeof(name), name, 2000) < 0) {
+		err = errno;
+		error("Can't read local name on hci%d: %s (%d)",
+						dev_id, strerror(err), err);
 		hci_close_dev(dd);
 		return -err;
 	}
 
+	memcpy(dev->name, name, 248);
+
+	if (!(features[6] & LMP_SIMPLE_PAIR))
+		goto setup;
+
+	if (hci_read_simple_pairing_mode(dd, &dev->ssp_mode, 1000) < 0) {
+		err = errno;
+		error("Can't read simple pairing mode on hci%d: %s (%d)",
+						dev_id, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+setup:
 	if (ver.hci_rev > 1) {
 		if (features[5] & LMP_SNIFF_SUBR)
 			events[5] |= 0x20;
@@ -280,8 +319,34 @@ int start_device(uint16_t dev_id)
 		if (features[7] & LMP_LSTO)
 			events[6] |= 0x80;
 
+		if (features[6] & LMP_SIMPLE_PAIR) {
+			events[6] |= 0x01;	/* IO Capability Request */
+			events[6] |= 0x02;	/* IO Capability Response */
+			events[6] |= 0x04;	/* User Confirmation Request */
+			events[6] |= 0x08;	/* User Passkey Request */
+			events[6] |= 0x10;	/* Remote OOB Data Request */
+			events[6] |= 0x20;	/* Simple Pairing Complete */
+			events[7] |= 0x04;	/* User Passkey Notification */
+			events[7] |= 0x08;	/* Keypress Notification */
+			events[7] |= 0x10;	/* Remote Host Supported Features Notification */
+		}
+
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
 						sizeof(events), events);
+	}
+
+	update_ext_inquiry_response(dd, dev);
+
+	inqmode = get_inquiry_mode(dev);
+	if (inqmode < 1)
+		goto done;
+
+	if (hci_write_inquiry_mode(dd, inqmode, 1000) < 0) {
+		int err = errno;
+		error("Can't write inquiry mode for hci%d: %s (%d)",
+						dev_id, strerror(errno), err);
+		hci_close_dev(dd);
+		return -err;
 	}
 
 done:
@@ -450,6 +515,31 @@ int get_device_company(uint16_t dev_id, char *company, size_t size)
 	return err;
 }
 
+int set_simple_pairing_mode(uint16_t dev_id, uint8_t mode)
+{
+	struct hci_dev *dev;
+	int dd;
+
+	ASSERT_DEV_ID;
+
+	dev = &devices[dev_id];
+
+	dev->ssp_mode = mode;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("Can't open device hci%d",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	update_ext_inquiry_response(dd, dev);
+
+	hci_close_dev(dd);
+
+	return 0;
+}
+
 int get_device_name(uint16_t dev_id, char *name, size_t size)
 {
 	char tmp[249];
@@ -505,28 +595,9 @@ int set_device_name(uint16_t dev_id, const char *name)
 		return -err;
 	}
 
-	if (dev->features[6] & LMP_EXT_INQ) {
-		uint8_t fec = 0, data[240];
-		int len;
+	memcpy(dev->name, name, 248);
 
-		memset(data, 0, sizeof(data));
-		len = strlen(name);
-		if (len > 48) {
-			len = 48;
-			data[1] = 0x08;
-		} else
-			data[1] = 0x09;
-		data[0] = len + 1;
-		memcpy(data + 2, name, len);
-
-		if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0) {
-			int err = errno;
-			error("Can't write extended inquiry response for hci%d: %s (%d)",
-							dev_id, strerror(errno), errno);
-			hci_close_dev(dd);
-			return -err;
-		}
-	}
+	update_ext_inquiry_response(dd, dev);
 
 	hci_close_dev(dd);
 

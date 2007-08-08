@@ -1841,7 +1841,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 {
 	struct adapter *adapter;
 	char path[MAX_PATH_LENGTH], local_addr[18];
-	int id, dd = -1;
+	int id, dd;
 	uint8_t cls[3];
 
 	ba2str(local, local_addr);
@@ -1861,21 +1861,52 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 	dd = hci_open_dev(id);
 	if (dd < 0) {
 		error("HCI device open failed: hci%d", id);
-		goto failed;
+		return;
 	}
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		error("Can't read class of device on hci%d: %s(%d)",
-					id, strerror(errno), errno);
-		goto failed;
+		error("Can't read class of device on hci%d: %s (%d)",
+						id, strerror(errno), errno);
+		hci_close_dev(dd);
+		return;
 	}
 
 	write_local_class(local, cls);
 	memcpy(adapter->class, cls, 3);
 
-failed:
-	if (dd >= 0)
+	hci_close_dev(dd);
+}
+
+void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
+{
+	char addr[18];
+	int dev_id, dd;
+	uint8_t mode;
+
+	ba2str(local, addr);
+
+	dev_id = hci_devid(addr);
+	if (dev_id < 0) {
+		error("No matching device id for %s", addr);
+		return;
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("HCI device open failed: hci%d", dev_id);
+		return;
+	}
+
+	if (hci_read_simple_pairing_mode(dd, &mode, 1000) < 0) {
+		error("Can't read class of device on hci%d: %s(%d)",
+					dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
+		return;
+	}
+
+	set_simple_pairing_mode(dev_id, mode);
+
+	hci_close_dev(dd);
 }
 
 void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)

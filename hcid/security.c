@@ -439,6 +439,9 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV):
 		hcid_dbus_write_class_complete(sba);
 		break;
+	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE):
+		hcid_dbus_write_simple_pairing_mode_complete(sba);
+		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PIN_CODE_REPLY):
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY):
 		hcid_dbus_pin_code_reply(sba, ptr);
@@ -805,17 +808,26 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_LINK_KEY_REQ, &flt);
 	hci_filter_set_event(EVT_LINK_KEY_NOTIFY, &flt);
 	hci_filter_set_event(EVT_RETURN_LINK_KEYS, &flt);
+	hci_filter_set_event(EVT_IO_CAPABILITY_REQUEST, &flt);
+	hci_filter_set_event(EVT_IO_CAPABILITY_RESPONSE, &flt);
+	hci_filter_set_event(EVT_USER_CONFIRM_REQUEST, &flt);
+	hci_filter_set_event(EVT_USER_PASSKEY_REQUEST, &flt);
+	hci_filter_set_event(EVT_REMOTE_OOB_DATA_REQUEST, &flt);
+	hci_filter_set_event(EVT_USER_PASSKEY_NOTIFY, &flt);
+	hci_filter_set_event(EVT_KEYPRESS_NOTIFY, &flt);
+	hci_filter_set_event(EVT_SIMPLE_PAIRING_COMPLETE, &flt);
+	hci_filter_set_event(EVT_AUTH_COMPLETE, &flt);
 	hci_filter_set_event(EVT_REMOTE_NAME_REQ_COMPLETE, &flt);
 	hci_filter_set_event(EVT_READ_REMOTE_VERSION_COMPLETE, &flt);
 	hci_filter_set_event(EVT_READ_REMOTE_FEATURES_COMPLETE, &flt);
+	hci_filter_set_event(EVT_REMOTE_HOST_FEATURES_NOTIFY, &flt);
 	hci_filter_set_event(EVT_INQUIRY_COMPLETE, &flt);
 	hci_filter_set_event(EVT_INQUIRY_RESULT, &flt);
 	hci_filter_set_event(EVT_INQUIRY_RESULT_WITH_RSSI, &flt);
 	hci_filter_set_event(EVT_EXTENDED_INQUIRY_RESULT, &flt);
+	hci_filter_set_event(EVT_CONN_REQUEST, &flt);
 	hci_filter_set_event(EVT_CONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_DISCONN_COMPLETE, &flt);
-	hci_filter_set_event(EVT_AUTH_COMPLETE, &flt);
-	hci_filter_set_event(EVT_CONN_REQUEST, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		error("Can't set filter on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);

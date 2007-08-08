@@ -50,6 +50,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t
 void hcid_dbus_setname_complete(bdaddr_t *local);
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local);
 void hcid_dbus_write_class_complete(bdaddr_t *local);
+void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local);
 void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr);
 
 int unregister_adapter_path(const char *path);
