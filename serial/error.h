@@ -31,6 +31,8 @@ DBusHandlerResult err_connection_in_progress(DBusConnection *conn,
 							DBusMessage *msg);
 DBusHandlerResult err_connection_not_in_progress(DBusConnection *conn,
 							DBusMessage *msg);
+DBusHandlerResult err_already_exists(DBusConnection *conn,
+				DBusMessage *msg, const char *str);
 DBusHandlerResult err_does_not_exist(DBusConnection *conn,
 				DBusMessage *msg, const char *str);
 DBusHandlerResult err_failed(DBusConnection *conn,

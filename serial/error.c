@@ -64,6 +64,14 @@ DBusHandlerResult err_connection_not_in_progress(DBusConnection *conn,
 			"Connection creation not in progress"));
 }
 
+DBusHandlerResult err_already_exists(DBusConnection *conn,
+				DBusMessage *msg, const char *str)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				SERIAL_ERROR_INTERFACE ".AlreadyExists", str));
+}
+
 DBusHandlerResult err_does_not_exist(DBusConnection *conn,
 				DBusMessage *msg, const char *str)
 {
