@@ -891,6 +891,24 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult create_proxy(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult list_proxies(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult remove_proxy(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -1088,6 +1106,9 @@ static DBusMethodVTable manager_methods[] = {
 	{ "CreatePort",			create_port,		"ss",	"s"	},
 	{ "ListPorts",			list_ports,		"",	"as"	},
 	{ "RemovePort",			remove_port,		"s",	""	},
+	{ "CreateProxy",		create_proxy,		"ss",	"s"	},
+	{ "ListProxies",		list_proxies,		"",	"as"	},
+	{ "RemoveProxy",		remove_proxy,		"s",	""	},
 	{ "ConnectService",		connect_service,	"ss",	"s"	},
 	{ "DisconnectService",		disconnect_service,	"s",	""	},
 	{ "CancelConnectService",	cancel_connect_service,	"ss",	""	},
@@ -1095,10 +1116,12 @@ static DBusMethodVTable manager_methods[] = {
 };
 
 static DBusSignalVTable manager_signals[] = {
-	{ "ServiceConnected",		"s"	},
-	{ "ServiceDisconnected",	"s"	},
 	{ "PortCreated",		"s"	},
 	{ "PortRemoved",		"s"	},
+	{ "ProxyCreated",		"s"	},
+	{ "ProxyRemoved",		"s"	},
+	{ "ServiceConnected",		"s"	},
+	{ "ServiceDisconnected",	"s"	},
 	{ NULL, NULL }
 };
 
