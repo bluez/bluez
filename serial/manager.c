@@ -106,6 +106,9 @@ struct proxy {
 	bdaddr_t	dst;
 	uuid_t		uuid;
 	char		*tty;
+	uint8_t		channel;
+	uint32_t	record_id;
+	guint		listen_watch;
 };
 
 static DBusConnection *connection = NULL;
@@ -910,10 +913,63 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static int rfcomm_listen(bdaddr_t *src, uint8_t *channel)
+{
+	return 0;
+}
+
+static int create_proxy_record(sdp_buf_t *buf, uuid_t *uuid, uint8_t channel)
+{
+	return 0;
+}
+
+static uint32_t add_proxy_record(DBusConnection *conn, sdp_buf_t *buf)
+{
+	return 0;
+}
+
+static gboolean connect_event(GIOChannel *chan,
+			GIOCondition cond, gpointer data)
+{
+	return FALSE;
+}
+
 static DBusHandlerResult proxy_enable(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct proxy *prx = data;
+	GIOChannel *io;
+	sdp_buf_t buf;
+	int sk;
+
+	/* Listen */
+	sk = rfcomm_listen(&prx->src, &prx->channel);
+	if (sk < 0) {
+		const char *strerr = strerror(errno);
+		error("RFCOMM listen socket failed: %s(%d)", strerr, errno);
+		return err_failed(conn, msg, strerr);
+	}
+
+	/* Create the record */
+	create_proxy_record(&buf, &prx->uuid, prx->channel);
+
+	/* Register the record */
+	prx->record_id = add_proxy_record(conn, &buf);
+	if (!prx->record_id) {
+		close(sk);
+		return err_failed(conn, msg, "Service registration failed");
+	}
+
+	/* Add incomming connection watch */
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+	prx->listen_watch = g_io_add_watch(io,
+			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			connect_event, prx);
+	g_io_channel_unref(io);
+
+	return send_message_and_unref(conn,
+			dbus_message_new_method_return(msg));
 }
 
 static DBusHandlerResult proxy_disable(DBusConnection *conn,
