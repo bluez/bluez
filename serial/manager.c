@@ -1099,7 +1099,35 @@ static DBusHandlerResult list_proxies(DBusConnection *conn,
 static DBusHandlerResult remove_proxy(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	const char *path;
+	GSList *l;
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	l = g_slist_find_custom(proxies_paths, path, (GCompareFunc) strcmp);
+	if (!l)
+		return err_does_not_exist(conn, msg, "Invalid proxy path");
+
+	g_free(l->data);
+	proxies_paths = g_slist_remove(proxies_paths, l->data);
+
+	dbus_connection_destroy_object_path(conn, path);
+
+	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ProxyRemoved",
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn,
+			dbus_message_new_method_return(msg));
 }
 
 static DBusHandlerResult connect_service(DBusConnection *conn,
