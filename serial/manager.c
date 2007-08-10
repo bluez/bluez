@@ -34,7 +34,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <glib.h>
 
@@ -99,6 +102,7 @@ static struct {
 
 static DBusConnection *connection = NULL;
 static GSList *pending_connects = NULL;
+static GSList *proxies_paths = NULL;
 static int rfcomm_ctl = -1;
 
 static void pending_connect_free(struct pending_connect *pc)
@@ -891,10 +895,97 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static int str2uuid(uuid_t *uuid, const char *string)
+{
+	uint16_t data1, data2, data3, data5;
+	uint32_t data0, data4;
+
+	if (strlen(string) == 36 &&
+			string[8] == '-' &&
+			string[13] == '-' &&
+			string[18] == '-' &&
+			string[23] == '-' &&
+			sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
+				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
+		uint8_t val[16];
+
+		data0 = htonl(data0);
+		data1 = htons(data1);
+		data2 = htons(data2);
+		data3 = htons(data3);
+		data4 = htonl(data4);
+		data5 = htons(data5);
+
+		memcpy(&val[0], &data0, 4);
+		memcpy(&val[4], &data1, 2);
+		memcpy(&val[6], &data2, 2);
+		memcpy(&val[8], &data3, 2);
+		memcpy(&val[10], &data4, 4);
+		memcpy(&val[14], &data5, 2);
+
+		sdp_uuid128_create(uuid, val);
+
+		return 0;
+	}
+
+	return -1;
+}
+
 static DBusHandlerResult create_proxy(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	char path[MAX_PATH_LENGTH];
+	const char *uuidstr, *tty, *ppath = path;
+	DBusMessage *reply;
+	GSList *l;
+	DBusError derr;
+	struct stat st;
+	uuid_t uuid;
+	int pos = 0;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &uuidstr,
+				DBUS_TYPE_STRING, &tty,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	if (str2uuid(&uuid, uuidstr) < 0)
+		return err_invalid_args(conn, msg, "Invalid UUID");
+
+	sscanf(tty, "/dev/%n", &pos);
+	if (!pos || stat(tty, &st) < 0)
+		return err_invalid_args(conn, msg, "Invalid TTY");
+
+	snprintf(path, MAX_PATH_LENGTH - 1,
+			"/org/bluez/serial/proxy%s", tty + pos);
+
+	l = g_slist_find_custom(proxies_paths, path, (GCompareFunc) strcmp);
+	if (l)
+		return err_already_exists(conn, msg, "Proxy already exists");
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	/* FIXME: Register the proxy object */
+	/* FIXME: persistent storage */
+
+	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
+
+	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
+			DBUS_TYPE_STRING, &ppath,
+			DBUS_TYPE_INVALID);
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &ppath,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult list_proxies(DBusConnection *conn,
@@ -1084,6 +1175,13 @@ static void manager_unregister(DBusConnection *conn, void *data)
 				(GFunc) pending_connect_free, NULL);
 		g_slist_free(pending_connects);
 		pending_connects = NULL;
+	}
+
+	if (proxies_paths) {
+		g_slist_foreach(proxies_paths,
+				(GFunc) g_free, NULL);
+		g_slist_free(proxies_paths);
+		proxies_paths = NULL;
 	}
 
 	/* Unregister all paths in serial hierarchy */
