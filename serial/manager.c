@@ -1072,7 +1072,28 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 static DBusHandlerResult list_proxies(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessageIter iter, iter_array;
+	DBusMessage *reply;
+	GSList *l;
+	const char *path;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING_AS_STRING, &iter_array);
+
+	for (l = proxies_paths; l; l = l->next) {
+		path = l->data;
+		dbus_message_iter_append_basic(&iter_array,
+				DBUS_TYPE_STRING, &path);
+	}
+
+	dbus_message_iter_close_container(&iter, &iter_array);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult remove_proxy(DBusConnection *conn,
