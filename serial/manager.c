@@ -59,6 +59,7 @@
 #include "manager.h"
 
 #define BASE_UUID			"00000000-0000-1000-8000-00805F9B34FB"
+#define SERIAL_PROXY_INTERFACE		"org.bluez.serial.Proxy"
 
 /* Waiting for udev to create the device node */
 #define MAX_OPEN_TRIES 		5
@@ -100,10 +101,24 @@ static struct {
 	{ NULL }
 };
 
+struct proxy {
+	bdaddr_t	src;
+	bdaddr_t	dst;
+	uuid_t		uuid;
+	char		*tty;
+};
+
 static DBusConnection *connection = NULL;
 static GSList *pending_connects = NULL;
 static GSList *proxies_paths = NULL;
 static int rfcomm_ctl = -1;
+
+static void proxy_free(struct proxy *prx)
+{
+	if (prx->tty)
+		g_free(prx->tty);
+	g_free(prx);
+}
 
 static void pending_connect_free(struct pending_connect *pc)
 {
@@ -895,6 +910,69 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult proxy_enable(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult proxy_disable(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult proxy_get_info(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusMethodVTable proxy_methods[] = {
+	{ "Enable",			proxy_enable,		"",	""	},
+	{ "Disable",			proxy_disable,		"",	""	},
+	{ "GetInfo",			proxy_get_info,		"",	"{sv}"	},
+	{ NULL, NULL, NULL, NULL },
+};
+
+static void proxy_handler_unregister(DBusConnection *conn, void *data)
+{
+	struct proxy *prx = data;
+
+	info("Unregistered proxy: %s", prx->tty);
+
+	/* FIXME: Unregister the service record */
+
+	proxy_free(prx);
+}
+
+static int proxy_register(DBusConnection *conn,
+		const char *path, uuid_t *uuid, const char *tty)
+{
+	struct proxy *prx;
+
+	prx = g_new0(struct proxy, 1);
+	prx->tty = g_strdup(tty);
+	memcpy(&prx->uuid, uuid, sizeof(uuid_t));
+	bacpy(&prx->src, BDADDR_ANY);
+
+	if (!dbus_connection_create_object_path(conn, path, prx,
+				proxy_handler_unregister)) {
+		proxy_free(prx);
+		return -1;
+	}
+
+	if (!dbus_connection_register_interface(conn, path,
+				SERIAL_PROXY_INTERFACE,
+				proxy_methods,
+				NULL, NULL)) {
+		dbus_connection_destroy_object_path(conn, path);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int str2uuid(uuid_t *uuid, const char *string)
 {
 	uint16_t data1, data2, data3, data5;
@@ -971,7 +1049,10 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	/* FIXME: Register the proxy object */
+	if (proxy_register(conn, path, &uuid, tty) < 0) {
+		dbus_message_unref(reply);
+		return err_failed(conn, msg, "Create object path failed");
+	}
 	/* FIXME: persistent storage */
 
 	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
