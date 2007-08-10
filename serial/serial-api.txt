@@ -10,7 +10,21 @@ Manager hierarchy
 Interface	org.bluez.serial.Manager
 Object path	/org/bluez/serial
 
-Methods		string CreatePort(string address, string pattern) [experimental]
+Methods		string CreateProxy(string uuid, string tty)
+
+			Creates a serial port proxy object.
+
+			Possible errors:org.bluez.serial.Error.InvalidArguments
+					org.bluez.serial.NotAvailable
+					org.bluez.serial.Failed
+
+		void RemoveProxy(string path) [experimental]
+
+			Removes the serial port proxy object for given path.
+
+			Possible errors:org.bluez.serial.Error.DoesNotExist
+
+		string CreatePort(string address, string pattern) [experimental]
 
 			Creates a serial port object.
 
@@ -30,6 +44,10 @@ Methods		string CreatePort(string address, string pattern) [experimental]
 		array{string} ListPorts() [experimental]
 
 			Returns an array of available serial port paths.
+
+		array{string} ListProxies() [experimental]
+
+			Returns an array of available serial port proxy paths.
 
 		string ConnectService(string address, string pattern)
 
@@ -63,6 +81,10 @@ Signals		void PortCreated(string path) [experimental]
 
 		void PortRemoved(string path) [experimental]
 
+		void ProxyCreated(string path) [experimental]
+
+		void ProxyRemoved(string path) [experimental]
+
 		void ServiceConnected(string device)
 
 		void ServiceDisconnected(string device)
@@ -81,3 +103,20 @@ Methods		string GetAddress() [experimental]
 		string GetInfo() [experimental]
 
 			Returns the port properties.
+
+Proxy hierarchy (experimental)
+=============================
+Interface	org.bluez.serial.Proxy
+Object path	/org/bluez/serial/rfcomm*
+
+Methods:	string Enable() [experimental]
+
+			Register the serial proxy service record and start
+			listenning on the specified adapter/channel.
+
+		string Disable() [experimental]
+
+			Unregister the service record and stop listenning.
+
+		String GetInfo() [experimental]
+			Returns the proxy properties
