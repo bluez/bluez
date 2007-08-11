@@ -171,6 +171,10 @@ struct abort_resp {
 	struct avdtp_header header;
 } __attribute__ ((packed));
 
+struct close_resp {
+	struct avdtp_header header;
+} __attribute__ ((packed));
+
 struct stream_pause_resp {
 	struct avdtp_header header;
 	uint8_t rfa0:2;
@@ -309,6 +313,9 @@ static gboolean avdtp_send(struct avdtp *session, void *data, int len)
 {
 	int ret;
 
+	if (session->sock < 0)
+		return FALSE;
+
 	ret = send(session->sock, data, len, 0);
 
 	if (ret < 0)
@@ -332,7 +339,6 @@ static void pending_req_free(struct pending_req *req)
 	g_free(req);
 }
 
-#if 0
 static gboolean stream_close_timeout(gpointer user_data)
 {
 	struct avdtp_stream *stream = user_data;
@@ -341,7 +347,6 @@ static gboolean stream_close_timeout(gpointer user_data)
 
 	return FALSE;
 }
-#endif
 
 static gboolean disconnect_timeout(gpointer user_data)
 {
@@ -389,6 +394,8 @@ static void stream_free(struct avdtp_stream *stream)
 	stream->lsep->info.inuse = 0;
 	stream->lsep->stream = NULL;
 	stream->rsep->stream = NULL;
+	if (stream->close_timer)
+		g_source_remove(stream->close_timer);
 	if (stream->caps) {
 		g_slist_foreach(stream->caps, (GFunc) g_free, NULL);
 		g_slist_free(stream->caps);
@@ -717,7 +724,54 @@ static gboolean avdtp_start_cmd(struct avdtp *session, struct seid_req *req,
 static gboolean avdtp_close_cmd(struct avdtp *session, struct seid_req *req,
 				int size)
 {
-	return avdtp_unknown_cmd(session, (void *) req, size);
+	struct avdtp_local_sep *sep;
+	struct avdtp_stream *stream;
+	struct close_resp *rsp = (struct close_resp *) session->buf;
+	struct seid_rej rej;
+	uint8_t err;
+	gboolean ret;
+
+	if (size < sizeof(struct seid_req)) {
+		error("Too short abort request");
+		return FALSE;
+	}
+
+	sep = find_local_sep_by_seid(req->acp_seid);
+	if (!sep || !sep->stream) {
+		err = AVDTP_BAD_ACP_SEID;
+		goto failed;
+	}
+
+	if (sep->state != AVDTP_STATE_OPEN &&
+			sep->state != AVDTP_STATE_STREAMING) {
+		err = AVDTP_BAD_STATE;
+		goto failed;
+	}
+
+	stream = sep->stream;
+
+	if (sep->ind && sep->ind->close) {
+		if (!sep->ind->close(sep, stream, &err))
+			goto failed;
+	}
+
+	avdtp_sep_set_state(session, sep, AVDTP_STATE_CLOSING);
+
+	init_response(&rsp->header, &req->header, TRUE);
+
+	ret = avdtp_send(session, rsp, sizeof(struct close_resp));
+	if (ret == TRUE) {
+		stream->close_timer = g_timeout_add(REQ_TIMEOUT,
+							stream_close_timeout,
+							stream);
+	}
+
+	return ret;
+
+failed:
+	init_response(&rej.header, &req->header, FALSE);
+	rej.error = err;
+	return avdtp_send(session, &rej, sizeof(rej));
 }
 
 static gboolean avdtp_suspend_cmd(struct avdtp *session, struct seid_req *req,
