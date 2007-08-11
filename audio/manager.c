@@ -1174,7 +1174,7 @@ static void register_devices_stored(const char *adapter)
 	textfile_foreach(filename, parse_stored_devices, &src);
 
 	bacpy(&default_src, BDADDR_ANY);
-	dev_id = hci_get_route(NULL);
+	dev_id = hci_get_route(&default_src);
 	if (dev_id < 0)
 		hci_devba(dev_id, &default_src);
 

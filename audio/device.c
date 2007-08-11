@@ -140,7 +140,7 @@ struct device *device_register(DBusConnection *conn,
 		return NULL;
 
 	bacpy(&src, BDADDR_ANY);
-	dev_id = hci_get_route(NULL);
+	dev_id = hci_get_route(&src);
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
 		return NULL;
 
