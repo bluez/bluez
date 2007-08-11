@@ -17,3 +17,11 @@ try:
 						'org.bluez.audio.Headset')
 except:
 	pass
+
+try:
+	device = dbus.Interface(bus.get_object(conn, audio.DefaultDevice()),
+						'org.bluez.audio.Device')
+	sink = dbus.Interface(bus.get_object(conn, audio.DefaultDevice()),
+						'org.bluez.audio.Sink')
+except:
+	pass
