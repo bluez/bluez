@@ -1673,7 +1673,7 @@ static struct avdtp *avdtp_get_internal(bdaddr_t *src, bdaddr_t *dst)
 
 	session = find_session(src, dst);
 	if (session)
-		return avdtp_ref(session);
+		return session;
 
 	session = g_new0(struct avdtp, 1);
 
