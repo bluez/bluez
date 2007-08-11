@@ -100,21 +100,24 @@ static DBusMethodVTable device_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-static void device_free(struct device *device)
+static void device_free(struct device *dev)
 {
-	if (device->headset)
-		headset_free(device);
+	if (dev->headset)
+		headset_free(dev);
 
-	if (device->conn)
-		dbus_connection_unref(device->conn);
+	if (dev->sink)
+		sink_free(dev);
 
-	if (device->adapter_path)
-		g_free(device->adapter_path);
+	if (dev->conn)
+		dbus_connection_unref(dev->conn);
 
-	if (device->path)
-		g_free(device->path);
+	if (dev->adapter_path)
+		g_free(dev->adapter_path);
 
-	g_free(device);
+	if (dev->path)
+		g_free(dev->path);
+
+	g_free(dev);
 }
 
 static void device_unregister(DBusConnection *conn, void *data)
@@ -129,7 +132,7 @@ static void device_unregister(DBusConnection *conn, void *data)
 struct device *device_register(DBusConnection *conn,
 					const char *path, bdaddr_t *bda)
 {
-	struct device *device;
+	struct device *dev;
 	bdaddr_t src;
 	int dev_id;
 
@@ -141,12 +144,12 @@ struct device *device_register(DBusConnection *conn,
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
 		return NULL;
 
-	device = g_new0(struct device, 1);
+	dev = g_new0(struct device, 1);
 
-	if (!dbus_connection_create_object_path(conn, path, device,
+	if (!dbus_connection_create_object_path(conn, path, dev,
 							device_unregister)) {
 		error("D-Bus failed to register %s path", path);
-		device_free(device);
+		device_free(dev);
 		return NULL;
 	}
 
@@ -158,58 +161,69 @@ struct device *device_register(DBusConnection *conn,
 		return NULL;
 	}
 
-	device->path = g_strdup(path);
-	bacpy(&device->dst, bda);
-	bacpy(&device->src, &src);
-	device->conn = dbus_connection_ref(conn);
-	device->adapter_path = g_malloc0(16);
-	snprintf(device->adapter_path, 16, "/org/bluez/hci%d", dev_id);
+	dev->path = g_strdup(path);
+	bacpy(&dev->dst, bda);
+	bacpy(&dev->src, &src);
+	dev->conn = dbus_connection_ref(conn);
+	dev->adapter_path = g_malloc0(16);
+	snprintf(dev->adapter_path, 16, "/org/bluez/hci%d", dev_id);
 
-	return device;
+	return dev;
 }
 
-int device_store(struct device *device, gboolean is_default)
+int device_store(struct device *dev, gboolean is_default)
 {
 	char value[64];
 	char filename[PATH_MAX + 1];
 	char src_addr[18], dst_addr[18];
+	int offset = 0;
 
-	if (!device->path)
+	if (!dev->path)
 		return -EINVAL;
 
-	ba2str(&device->dst, dst_addr);
-	ba2str(&device->src, src_addr);
+	ba2str(&dev->dst, dst_addr);
+	ba2str(&dev->src, src_addr);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "audio");
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	if (is_default)
 		textfile_put(filename, "default", dst_addr);
-	if (device->headset)
-		snprintf(value, 64, "headset");
-	else if (device->gateway)
-		snprintf(value, 64, "gateway");
-	else if (device->sink)
-		snprintf(value, 64, "sink");
-	else if (device->source)
-		snprintf(value, 64, "source");
-	else if (device->control)
-		snprintf(value, 64, "control");
-	else
-		snprintf(value, 64, "target");
+	if (dev->headset) {
+		snprintf(value, 64, "headset ");
+		offset += strlen("headset ");
+	}
+	if (dev->gateway) {
+		snprintf(value + offset, 64 - offset, "gateway ");
+		offset += strlen("gateway ");
+	}
+	if (dev->sink) {
+		snprintf(value + offset, 64 - offset, "sink ");
+		offset += strlen("sink ");
+	}
+	if (dev->source) {
+		snprintf(value + offset, 64 - offset, "source ");
+		offset += strlen("source ");
+	}
+	if (dev->control) {
+		snprintf(value + offset, 64 - offset, "control ");
+		offset += strlen("control ");
+	}
+	if (dev->target)
+		snprintf(value + offset, 64 - offset, "target");
 
 	return textfile_put(filename, dst_addr, value);
 }
 
-void device_finish_sdp_transaction(struct device *device)
+void device_finish_sdp_transaction(struct device *dev)
 {
 	char address[18], *addr_ptr = address;
 	DBusMessage *msg, *reply;
 	DBusError derr;
 
-	ba2str(&device->dst, address);
+	ba2str(&dev->dst, address);
 
-	msg = dbus_message_new_method_call("org.bluez", device->adapter_path,
+	msg = dbus_message_new_method_call("org.bluez", dev->adapter_path,
 						"org.bluez.Adapter",
 						"FinishRemoteServiceTransaction");
 	if (!msg) {
@@ -221,7 +235,7 @@ void device_finish_sdp_transaction(struct device *device)
 				 DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(device->conn,
+	reply = dbus_connection_send_with_reply_and_block(dev->conn,
 							msg, -1, &derr);
 
 	dbus_message_unref(msg);
@@ -235,4 +249,115 @@ void device_finish_sdp_transaction(struct device *device)
 	}
 
 	dbus_message_unref(reply);
+}
+
+int device_get_config(struct device *dev, int sock, struct ipc_packet *req,
+			int pkt_len, struct ipc_data_cfg **rsp)
+{
+	if (dev->sink && sink_is_active(dev))
+		return sink_get_config(dev, sock, req, pkt_len, rsp);
+	else if (dev->headset && headset_is_active(dev))
+		return headset_get_config(dev, sock, req, pkt_len, rsp);
+	else if (dev->sink)
+		return sink_get_config(dev, sock, req, pkt_len, rsp);
+	else if (dev->headset)
+		return headset_get_config(dev, sock, req, pkt_len, rsp);
+
+	return -EINVAL;
+}
+
+static avdtp_state_t ipc_to_avdtp_state(uint8_t ipc_state)
+{
+	switch (ipc_state) {
+	case STATE_DISCONNECTED:
+		return AVDTP_STATE_IDLE;
+	case STATE_CONNECTING:
+		return AVDTP_STATE_CONFIGURED;
+	case STATE_CONNECTED:
+		return AVDTP_STATE_OPEN;
+	case STATE_STREAM_STARTING:
+	case STATE_STREAMING:
+		return AVDTP_STATE_STREAMING;
+	default:
+		error("Unknown ipc state");
+		return AVDTP_STATE_IDLE;
+	}
+}
+
+static headset_state_t ipc_to_hs_state(uint8_t ipc_state)
+{
+	switch (ipc_state) {
+	case STATE_DISCONNECTED:
+		return HEADSET_STATE_DISCONNECTED;
+	case STATE_CONNECTING:
+		return HEADSET_STATE_CONNECT_IN_PROGRESS;
+	case STATE_CONNECTED:
+		return HEADSET_STATE_CONNECTED;
+	case STATE_STREAM_STARTING:
+		return HEADSET_STATE_PLAY_IN_PROGRESS;
+	case STATE_STREAMING:
+		return HEADSET_STATE_PLAYING;
+	default:
+		error("Unknown ipc state");
+		return HEADSET_STATE_DISCONNECTED;
+	}
+}
+
+void device_set_state(struct device *dev, uint8_t state)
+{
+	if (dev->sink && sink_is_active(dev))
+		sink_set_state(dev, ipc_to_avdtp_state(state));
+	else if (dev->headset && headset_is_active(dev))
+		headset_set_state(dev, ipc_to_hs_state(state));
+}
+
+static uint8_t avdtp_to_ipc_state(avdtp_state_t state)
+{
+	switch (state) {
+	case AVDTP_STATE_IDLE:
+		return STATE_DISCONNECTED;
+	case AVDTP_STATE_CONFIGURED:
+		return STATE_CONNECTING;
+	case AVDTP_STATE_OPEN:
+		return STATE_CONNECTED;
+	case AVDTP_STATE_STREAMING:
+		return STATE_STREAMING;
+	default:
+		error("Unknown avdt state");
+		return AVDTP_STATE_IDLE;
+	}
+}
+
+static uint8_t hs_to_ipc_state(headset_state_t state)
+{
+	switch (state) {
+	case HEADSET_STATE_DISCONNECTED:
+		return STATE_DISCONNECTED;
+	case HEADSET_STATE_CONNECT_IN_PROGRESS:
+		return STATE_CONNECTING;
+	case HEADSET_STATE_CONNECTED:
+		return STATE_CONNECTED;
+	case HEADSET_STATE_PLAY_IN_PROGRESS:
+		return STATE_STREAMING;
+	default:
+		error("Unknown headset state");
+		return AVDTP_STATE_IDLE;
+	}
+}
+
+uint8_t device_get_state(struct device *dev)
+{
+	avdtp_state_t sink_state;
+	headset_state_t hs_state;
+
+	if (dev->sink && sink_is_active(dev)) {
+		sink_state = sink_get_state(dev);
+		return avdtp_to_ipc_state(sink_state);
+	}
+	else if (dev->headset && headset_is_active(dev)) {
+		hs_state = headset_get_state(dev);
+		return hs_to_ipc_state(hs_state);
+	}
+
+	return STATE_DISCONNECTED;
 }

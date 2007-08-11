@@ -52,6 +52,8 @@
 #include "textfile.h"
 #include "manager.h"
 #include "error.h"
+#include "a2dp.h"
+#include "avdtp.h"
 
 typedef enum {
 	HEADSET	= 1 << 0,
@@ -92,6 +94,8 @@ static uint32_t hf_record_id = 0;
 
 static GIOChannel *hs_server = NULL;
 static GIOChannel *hf_server = NULL;
+
+static const struct enabled_interfaces *enabled;
 
 static void get_next_record(struct audio_sdp_data *data);
 static DBusHandlerResult get_handles(const char *uuid,
@@ -190,6 +194,8 @@ static gboolean server_is_enabled(uint16_t svc)
 	case HANDSFREE_SVCLASS_ID:
 		ret = (hf_server != NULL);
 		break;
+	case AUDIO_SINK_SVCLASS_ID:
+		return enabled->sink;
 	default:
 		ret = FALSE;
 		break;
@@ -233,6 +239,8 @@ static void handle_record(sdp_record_t *record, struct device *device)
 		break;
 	case AUDIO_SINK_SVCLASS_ID:
 		debug("Found Audio Sink");
+		if (device->sink == NULL)
+			device->sink = sink_init(device);
 		break;
 	case AUDIO_SOURCE_SVCLASS_ID:
 		debug("Found Audio Source");
@@ -713,7 +721,7 @@ static gboolean device_supports_interface(struct device *device,
 		return device->source ? TRUE : FALSE;
 
 	if (strcmp(iface, AUDIO_SINK_INTERFACE) == 0)
-			return device->sink ? TRUE : FALSE;
+		return device->sink ? TRUE : FALSE;
 
 	if (strcmp(iface, AUDIO_CONTROL_INTERFACE) == 0)
 		return device->control ? TRUE : FALSE;
@@ -1135,9 +1143,10 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	if (!device)
 		return;
 
-	if (strncmp(value, "headset", strlen("headset")) == 0)
+	if (strstr(value, "headset"))
 		device->headset = headset_init(device, NULL, 0);
-
+	if (strstr(value, "sink"))
+		device->sink = sink_init(device);
 	add_device(device);
 }
 
@@ -1353,7 +1362,7 @@ static int hfp_ag_record(sdp_buf_t *buf, uint8_t ch)
 	return ret;
 }
 
-static uint32_t add_record(uint8_t channel, sdp_buf_t *buf)
+uint32_t add_service_record(DBusConnection *conn, sdp_buf_t *buf)
 {
 	DBusMessage *msg, *reply;
 	DBusError derr;
@@ -1397,12 +1406,12 @@ static uint32_t add_record(uint8_t channel, sdp_buf_t *buf)
 
 	dbus_message_unref(reply);
 
-	debug("add_record: got record id 0x%x", rec_id);
+	debug("add_service_record: got record id 0x%x", rec_id);
 
 	return rec_id;
 }
 
-static int remove_record(uint32_t rec_id)
+int remove_service_record(DBusConnection *conn, uint32_t rec_id)
 {
 	DBusMessage *msg, *reply;
 	DBusError derr;
@@ -1633,10 +1642,13 @@ static GIOChannel *server_socket(uint8_t *channel)
 	return io;
 }
 
-static int server_init(DBusConnection *conn, gboolean no_hfp)
+static int headset_server_init(DBusConnection *conn, gboolean no_hfp)
 {
 	uint8_t chan = DEFAULT_HS_AG_CHANNEL;
 	sdp_buf_t buf;
+
+	if (!(enabled->headset || enabled->gateway))
+		return 0;
 
 	hs_server = server_socket(&chan);
 	if (!hs_server)
@@ -1647,7 +1659,7 @@ static int server_init(DBusConnection *conn, gboolean no_hfp)
 		return -1;
 	}
 
-	hs_record_id = add_record(chan, &buf);
+	hs_record_id = add_service_record(conn, &buf);
 	free(buf.data);
 	if (!hs_record_id) {
 		error("Unable to register HS AG service record");
@@ -1673,7 +1685,7 @@ static int server_init(DBusConnection *conn, gboolean no_hfp)
 		return -1;
 	}
 
-	hf_record_id = add_record(chan, &buf);
+	hf_record_id = add_service_record(conn, &buf);
 	free(buf.data);
 	if (!hf_record_id) {
 		error("Unable to register HS AG service record");
@@ -1691,7 +1703,7 @@ static int server_init(DBusConnection *conn, gboolean no_hfp)
 static void server_exit(void)
 {
 	if (hs_record_id) {
-		remove_record(hs_record_id);
+		remove_service_record(connection, hs_record_id);
 		hs_record_id = 0;
 	}
 
@@ -1701,7 +1713,7 @@ static void server_exit(void)
 	}
 
 	if (hf_record_id) {
-		remove_record(hf_record_id);
+		remove_service_record(connection, hf_record_id);
 		hf_record_id = 0;
 	}
 
@@ -1711,11 +1723,17 @@ static void server_exit(void)
 	}
 }
 
-int audio_init(DBusConnection *conn, gboolean no_hfp, gboolean sco_hci)
+int audio_init(DBusConnection *conn, struct enabled_interfaces *enable,
+		gboolean no_hfp, gboolean sco_hci)
 {
 	connection = dbus_connection_ref(conn);
 
-	if (server_init(conn, no_hfp) < 0)
+	enabled = enable;
+
+	if (headset_server_init(conn, no_hfp) < 0)
+		goto failed;
+
+	if (a2dp_init(conn, enable->sink, enable->source) < 0)
 		goto failed;
 
 	if (!dbus_connection_create_object_path(conn, AUDIO_MANAGER_PATH,
@@ -1754,7 +1772,24 @@ void audio_exit(void)
 	connection = NULL;
 }
 
-struct device *manager_default_device()
+struct device *manager_default_device(void)
 {
 	return default_dev;
+}
+
+struct device *manager_get_connected_device(void)
+{
+	GSList *l;
+
+	for (l = devices; l != NULL; l = g_slist_next(l)) {
+		struct device *device = l->data;
+
+		if (device->sink && sink_is_active(device))
+			return device;
+
+		if (device->headset && headset_is_active(device))
+			return device;
+	}
+
+	return NULL;
 }

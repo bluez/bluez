@@ -35,13 +35,22 @@
 
 #include "dbus.h"
 #include "logging.h"
-
+#include "unix.h"
 #include "manager.h"
 
 static gboolean disable_hfp = TRUE;
 static gboolean sco_hci = FALSE;
 
 static GMainLoop *main_loop = NULL;
+
+static struct enabled_interfaces enabled = {
+	.headset	= TRUE,
+	.gateway	= FALSE,
+	.sink		= TRUE,
+	.source		= FALSE,
+	.control	= FALSE,
+	.target		= FALSE,
+};
 
 static void sig_term(int sig)
 {
@@ -53,7 +62,7 @@ static void read_config(const char *file)
 	GKeyFile *keyfile;
 	GError *err = NULL;
 	gboolean no_hfp;
-	char *sco_routing;
+	char *str;
 
 	keyfile = g_key_file_new();
 
@@ -64,21 +73,42 @@ static void read_config(const char *file)
 		return;
 	}
 
-	sco_routing = g_key_file_get_string(keyfile, "General",
+	str = g_key_file_get_string(keyfile, "General",
 						"SCORouting", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);
 		err = NULL;
 	} else {
-		if (strcmp(sco_routing, "PCM") == 0)
+		if (strcmp(str, "PCM") == 0)
 			sco_hci = FALSE;
-		else if (strcmp(sco_routing, "HCI") == 0)
+		else if (strcmp(str, "HCI") == 0)
 			sco_hci = TRUE;
 		else
-			error("Invalid Headset Routing value: %s",
-					sco_routing);
-		g_free(sco_routing);
+			error("Invalid Headset Routing value: %s", str);
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(keyfile, "General",
+						"Disabled", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		if (strstr(str, "Headset"))
+			enabled.headset = FALSE;
+		if (strstr(str, "Gateway"))
+			enabled.gateway = FALSE;
+		if (strstr(str, "Sink"))
+			enabled.sink = FALSE;
+		if (strstr(str, "Source"))
+			enabled.source = FALSE;
+		if (strstr(str, "Control"))
+			enabled.control = FALSE;
+		if (strstr(str, "Target"))
+			enabled.target = FALSE;
+		g_free(str);
 	}
 
 	no_hfp = g_key_file_get_boolean(keyfile, "Headset",
@@ -131,7 +161,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (audio_init(conn, disable_hfp, sco_hci) < 0) {
+	if (audio_init(conn, &enabled, disable_hfp, sco_hci) < 0) {
 		error("Audio init failed!");
 		exit(1);
 	}

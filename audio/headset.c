@@ -53,6 +53,7 @@
 #include "logging.h"
 #include "manager.h"
 #include "error.h"
+#include "unix.h"
 
 #define RING_INTERVAL 3000
 
@@ -68,6 +69,7 @@ struct pending_connect {
 	DBusMessage *msg;
 	GIOChannel *io;
 	struct ipc_packet *pkt;
+	int pkt_len;
 	guint io_id;
 	int sock;
 	int err;
@@ -102,7 +104,7 @@ static int rfcomm_connect(struct device *device, struct pending_connect *c);
 static void pending_connect_free(struct pending_connect *c)
 {
 	if (c->pkt)
-		unix_send_cfg(c->sock, c->pkt);
+		g_free(c->pkt);
 	if (c->io) {
 		g_io_channel_close(c->io);
 		g_io_channel_unref(c->io);
@@ -339,8 +341,19 @@ static void pending_connect_ok(struct pending_connect *c, struct device *dev)
 		if (reply)
 			send_message_and_unref(dev->conn, reply);
 	}
-	else if (c->pkt)
-		headset_get_config(dev, c->sock, c->pkt);
+	else if (c->pkt) {
+		struct ipc_data_cfg *rsp;
+		int ret;
+
+		ret = headset_get_config(dev, c->sock, c->pkt,
+						c->pkt_len, &rsp);
+		if (ret == 0) {
+			unix_send_cfg(c->sock, rsp);
+			g_free(rsp);
+		}
+		else
+			unix_send_cfg(c->sock, NULL);
+	}
 
 	pending_connect_free(c);
 }
@@ -349,6 +362,8 @@ static void pending_connect_failed(struct pending_connect *c, struct device *dev
 {
 	if (c->msg)
 		err_connect_failed(dev->conn, c->msg, strerror(c->err));
+	if (c->pkt)
+		unix_send_cfg(c->sock, NULL);
 	pending_connect_free(c);
 }
 
@@ -1358,7 +1373,8 @@ register_iface:
 
 void headset_free(void *device)
 {
-	struct headset *hs = ((struct device *) device)->headset;
+	struct device *dev = device;
+	struct headset *hs = dev->headset;
 
 	if (hs->sco) {
 		g_io_channel_close(hs->sco);
@@ -1371,54 +1387,54 @@ void headset_free(void *device)
 	}
 
 	g_free(hs);
-	hs = NULL;
+	dev->headset = NULL;
 }
 
-int headset_get_config(void *device, int sock, struct ipc_packet *pkt)
+int headset_get_config(void *device, int sock, struct ipc_packet *pkt,
+			int pkt_len, struct ipc_data_cfg **cfg)
 {
 	struct headset *hs = ((struct device *) device)->headset;
-	struct ipc_data_cfg *cfg = (struct ipc_data_cfg *) pkt->data;
 	int err = EINVAL;
 	struct pending_connect *c;
+	struct ipc_data_cfg *rsp;
 
-	if (hs->rfcomm == NULL) {
-		c = g_try_new0(struct pending_connect, 1);
-		if (c == NULL)
-			goto error;
-		c->sock = sock;
-		c->pkt = pkt;
+	if (hs->rfcomm && hs->sco)
+		goto proceed;
+
+	c = g_new0(struct pending_connect, 1);
+	c->sock = sock;
+	c->pkt = g_malloc(pkt_len);
+	memcpy(c->pkt, pkt, pkt_len);
+
+	if (hs->rfcomm == NULL)
 		err = rfcomm_connect(device, c);
-		if (err < 0)
-			goto error;
-		return 0;
-	}
-	else if (hs->sco == NULL) {
-		c = g_try_new0(struct pending_connect, 1);
-		if (c == NULL)
-			goto error;
-		c->sock = sock;
-		c->pkt = pkt;
+	else if (hs->sco == NULL)
 		err = sco_connect(device, c);
-		if (err < 0)
-			goto error;
-		return 0;
-	}
+	else
+		goto error;
 
-	cfg->fd = g_io_channel_unix_get_fd(hs->sco);
-	cfg->fd_opt = CFG_FD_OPT_READWRITE;
-	cfg->encoding = 0;
-	cfg->bitpool = 0;
-	cfg->channels = 1;
-	cfg->pkt_len = 48;
-	cfg->sample_size = 2;
-	cfg->rate = 8000;
+	if (err < 0)
+		goto error;
+
+	return 1;
+
+proceed:
+	*cfg = g_new0(struct ipc_data_cfg, 1);
+	rsp = *cfg;
+	rsp->fd = g_io_channel_unix_get_fd(hs->sco);
+	rsp->fd_opt = CFG_FD_OPT_READWRITE;
+	rsp->codec = CFG_CODEC_NONE;
+	rsp->channels = 1;
+	rsp->channel_mode = CFG_CHANNEL_MODE_MONO;
+	rsp->pkt_len = 48;
+	rsp->sample_size = 2;
+	rsp->rate = 8000;
 
 	return 0;
 
 error:
 	if (c)
 		pending_connect_free(c);
-	cfg->fd = -1;
 	return -err;
 }
 
@@ -1546,4 +1562,15 @@ int headset_get_channel(void *device)
 	struct headset *hs = ((struct device *) device)->headset;
 
 	return hs->rfcomm_ch;
+}
+
+gboolean headset_is_active(void *device)
+{
+	struct device *dev = device;
+	struct headset *hs = dev->headset;
+
+	if (hs->state != HEADSET_STATE_DISCONNECTED)
+		return TRUE;
+
+	return FALSE;
 }

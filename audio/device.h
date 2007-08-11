@@ -75,3 +75,10 @@ struct device *device_register(DBusConnection *conn,
 int device_store(struct device *device, gboolean is_default);
 
 void device_finish_sdp_transaction(struct device *device);
+
+int device_get_config(struct device *dev, int sock, struct ipc_packet *req,
+			int pkt_len, struct ipc_data_cfg **rsp);
+
+void device_set_state(struct device *dev, uint8_t state);
+
+uint8_t device_get_state(struct device *dev);

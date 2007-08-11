@@ -29,10 +29,25 @@
 #define AUDIO_MANAGER_PATH "/org/bluez/audio"
 #define AUDIO_MANAGER_INTERFACE "org.bluez.audio.Manager"
 
-int audio_init(DBusConnection *conn, gboolean no_hfp, gboolean sco_hci);
+struct enabled_interfaces {
+	gboolean headset;
+	gboolean gateway;
+	gboolean sink;
+	gboolean source;
+	gboolean control;
+	gboolean target;
+};
+
+int audio_init(DBusConnection *conn, struct enabled_interfaces *enabled,
+		gboolean no_hfp, gboolean sco_hci);
 
 void audio_exit(void);
+
+uint32_t add_service_record(DBusConnection *conn, sdp_buf_t *buf);
+int remove_service_record(DBusConnection *conn, uint32_t rec_id);
 
 struct device *manager_device_connected(bdaddr_t *bda);
 
 struct device *manager_default_device();
+
+struct device *manager_get_connected_device(void);

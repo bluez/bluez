@@ -20,12 +20,15 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#ifndef __AUDIO_HEADSET_H__
+#define __AUDIO_HEADSET_H__
+
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
 #include <dbus/dbus.h>
 
-#include "unix.h"
+#include "ipc.h"
 
 #define AUDIO_HEADSET_INTERFACE "org.bluez.audio.Headset"
 
@@ -40,11 +43,11 @@ typedef enum {
 } headset_event_t;
 
 typedef enum {
-	HEADSET_STATE_DISCONNECTED = STATE_DISCONNECTED,
-	HEADSET_STATE_CONNECT_IN_PROGRESS = STATE_CONNECTING,
-	HEADSET_STATE_CONNECTED = STATE_CONNECTED,
-	HEADSET_STATE_PLAY_IN_PROGRESS = STATE_STREAM_STARTING,
-	HEADSET_STATE_PLAYING = STATE_STREAMING,
+	HEADSET_STATE_DISCONNECTED,
+	HEADSET_STATE_CONNECT_IN_PROGRESS,
+	HEADSET_STATE_CONNECTED,
+	HEADSET_STATE_PLAY_IN_PROGRESS,
+	HEADSET_STATE_PLAYING
 } headset_state_t;
 
 typedef enum {
@@ -55,13 +58,14 @@ typedef enum {
 struct headset;
 
 struct headset *headset_init(void *device, sdp_record_t *record,
-			uint16_t svc);
+				uint16_t svc);
 
 void headset_free(void *device);
 
 void headset_update(void *device, sdp_record_t *record, uint16_t svc);
 
-int headset_get_config(void *device, int sock, struct ipc_packet *pkt);
+int headset_get_config(void *device, int sock, struct ipc_packet *pkt,
+			int pkt_len, struct ipc_data_cfg **rsp);
 
 headset_type_t headset_get_type(void *device);
 void headset_set_type(void *device, headset_type_t type);
@@ -73,3 +77,7 @@ headset_state_t headset_get_state(void *device);
 void headset_set_state(void *device, headset_state_t state);
 
 int headset_get_channel(void *device);
+
+gboolean headset_is_active(void *device);
+
+#endif
