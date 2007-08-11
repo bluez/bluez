@@ -2097,7 +2097,7 @@ static gboolean avdtp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	debug("AVDTP: incoming connect from %s", address);
 
 	size = sizeof(struct sockaddr_l2);
-	if (getsockname(srv_sk, (struct sockaddr *) &addr, &size) < 0) {
+	if (getsockname(cli_sk, (struct sockaddr *) &addr, &size) < 0) {
 		error("getsockname: %s (%d)", strerror(errno), errno);
 		close(cli_sk);
 		return TRUE;
