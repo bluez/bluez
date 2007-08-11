@@ -1374,7 +1374,7 @@ int sbc_encode(sbc_t *sbc, void *data, int count)
 		} else
 			priv->frame.channel_mode = MONO;
 
-		priv->frame.allocation_method = SNR;
+		priv->frame.allocation_method = sbc->allocation;
 		priv->frame.subbands = sbc->subbands;
 		priv->frame.blocks = sbc->blocks;
 		priv->frame.bitpool = sbc->bitpool;

@@ -36,6 +36,7 @@ struct sbc_struct {
 	int rate;
 	int channels;
 	int joint;
+	int allocation;
 	int blocks;
 	int subbands;
 	int bitpool;
