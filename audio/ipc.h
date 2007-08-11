@@ -78,7 +78,6 @@ struct ipc_packet {
 #define CFG_CODEC_SBC			1
 
 struct ipc_data_cfg {
-	int fd;			/* Stream file descriptor */
 	uint8_t fd_opt;		/* Stream file descriptor options: read, write or readwrite*/
 	uint8_t channels;	/* Number of audio channel */
 	uint8_t channel_mode;	/* Audio channel mode*/

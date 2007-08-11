@@ -101,6 +101,7 @@ struct bluetooth_data {
 	snd_pcm_ioplug_t io;
 	snd_pcm_sframes_t hw_ptr;
 	struct ipc_data_cfg cfg;	/* Bluetooth device config */
+	int stream_fd;			/* Audio stream filedescriptor */
 	int sock;			/* Daemon unix socket */
 	uint8_t buffer[BUFFER_SIZE];	/* Encoded transfer buffer */
 	int count;			/* Transfer buffer counter */
@@ -147,8 +148,8 @@ static void bluetooth_exit(struct bluetooth_data *data)
 	if (data->sock >= 0)
 		close(data->sock);
 
-	if (data->cfg.fd >= 0)
-		close(data->cfg.fd);
+	if (data->stream_fd >= 0)
+		close(data->stream_fd);
 
 	free(data);
 }
@@ -186,7 +187,6 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params)
 {
 	struct bluetooth_data *data = io->private_data;
-	struct ipc_data_cfg cfg = data->cfg;
 	uint32_t period_count = io->buffer_size / io->period_size;
 	int opt_name, err;
 
@@ -195,14 +195,14 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
 			SCO_TXBUFS : SCO_RXBUFS;
 
-	if (setsockopt(cfg.fd, SOL_SCO, opt_name, &period_count,
+	if (setsockopt(data->stream_fd, SOL_SCO, opt_name, &period_count,
 			sizeof(period_count)) == 0)
 		return 0;
 
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
 			SO_SNDBUF : SO_RCVBUF;
 
-	if (setsockopt(cfg.fd, SOL_SCO, opt_name, &period_count,
+	if (setsockopt(data->stream_fd, SOL_SCO, opt_name, &period_count,
 			sizeof(period_count)) == 0)
 		return 0;
 
@@ -233,7 +233,7 @@ static snd_pcm_sframes_t bluetooth_hsp_read(snd_pcm_ioplug_t *io,
 
 	frame_size = areas->step / 8;
 
-	nrecv = recv(cfg.fd, data->buffer, cfg.pkt_len,
+	nrecv = recv(data->stream_fd, data->buffer, cfg.pkt_len,
 			MSG_WAITALL | (io->nonblock ? MSG_DONTWAIT : 0));
 
 	if (nrecv < 0) {
@@ -308,7 +308,7 @@ static snd_pcm_sframes_t bluetooth_hsp_write(snd_pcm_ioplug_t *io,
 		goto done;
 	}
 
-	rsend = send(cfg.fd, data->buffer, cfg.pkt_len,
+	rsend = send(data->stream_fd, data->buffer, cfg.pkt_len,
 			io->nonblock ? MSG_DONTWAIT : 0);
 	if (rsend > 0) {
 		/* Reset count pointer */
@@ -338,13 +338,13 @@ static snd_pcm_sframes_t bluetooth_a2dp_read(snd_pcm_ioplug_t *io,
 	return ret;
 }
 
-static int avdtp_write(struct bluetooth_a2dp *a2dp, struct ipc_data_cfg *cfg,
-			unsigned int nonblock)
+static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 {
 	int count = 0;
 	int written;
 	struct rtp_header *header;
 	struct rtp_payload *payload;
+	struct bluetooth_a2dp *a2dp = &data->a2dp;
 #ifdef ENABLE_DEBUG
 	static struct timeval send_date = { 0, 0 };
 	static struct timeval prev_date = { 0, 0 };
@@ -368,7 +368,7 @@ static int avdtp_write(struct bluetooth_a2dp *a2dp, struct ipc_data_cfg *cfg,
 #ifdef ENABLE_DEBUG
 		gettimeofday(&send_date, NULL);
 #endif
-		written = send(cfg->fd, a2dp->buffer, a2dp->count,
+		written = send(data->stream_fd, a2dp->buffer, a2dp->count,
 				nonblock ? MSG_DONTWAIT : 0);
 
 #ifdef ENABLE_DEBUG
@@ -508,7 +508,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	DBG("encoded = %d  a2dp.sbc.len= %d", encoded, a2dp->sbc.len);
 
 	if (a2dp->count + a2dp->sbc.len >= data->cfg.pkt_len)
-		avdtp_write(a2dp, &data->cfg, io->nonblock);
+		avdtp_write(data, io->nonblock);
 
 	memcpy(a2dp->buffer + a2dp->count, a2dp->sbc.data, a2dp->sbc.len);
 	a2dp->count += a2dp->sbc.len;
@@ -655,8 +655,8 @@ static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 				cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
 			if (cmsg->cmsg_level == SOL_SOCKET
 				&& cmsg->cmsg_type == SCM_RIGHTS)
-				data->cfg.fd = (*(int *) CMSG_DATA(cmsg));
-				DBG("fd = %d", data->cfg.fd);
+				data->stream_fd = (*(int *) CMSG_DATA(cmsg));
+				DBG("stream_fd = %d", data->stream_fd);
 				return 0;
 		}
 	}
@@ -780,7 +780,7 @@ done:
 				a2dp->sbc.bitpool);
 	}
 
-	if (data->cfg.fd == -1) {
+	if (data->stream_fd == -1) {
 		SNDERR("Error while configuring device: could not acquire "
 				"audio socket");
 		return -EINVAL;
@@ -792,7 +792,7 @@ done:
 
 	/* It is possible there is some outstanding
 	data in the pipe - we have to empty it */
-	while (recv(data->cfg.fd, data->buffer, data->cfg.pkt_len,
+	while (recv(data->stream_fd, data->buffer, data->cfg.pkt_len,
 				MSG_DONTWAIT) > 0);
 
 	memset(data->buffer, 0, data->cfg.pkt_len);
@@ -855,7 +855,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 	data->io.version = SND_PCM_IOPLUG_VERSION;
 	data->io.name = "Bluetooth Audio Device";
 	data->io.mmap_rw = 0; /* No direct mmap communication */
-	data->io.poll_fd = data->cfg.fd;
+	data->io.poll_fd = data->stream_fd;
 	data->io.poll_events = stream == SND_PCM_STREAM_PLAYBACK ?
 					POLLOUT : POLLIN;
 	data->io.private_data = data;

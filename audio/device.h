@@ -77,7 +77,7 @@ int device_store(struct device *device, gboolean is_default);
 void device_finish_sdp_transaction(struct device *device);
 
 int device_get_config(struct device *dev, int sock, struct ipc_packet *req,
-			int pkt_len, struct ipc_data_cfg **rsp);
+			int pkt_len, struct ipc_data_cfg **rsp, int *fd);
 
 void device_set_state(struct device *dev, uint8_t state);
 

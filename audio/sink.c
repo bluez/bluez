@@ -132,16 +132,16 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 		}
 		if (c->pkt) {
 			struct ipc_data_cfg *rsp;
-			int ret;
+			int ret, fd;
 
 			ret = sink_get_config(dev, c->sock, c->pkt,
-						c->pkt_len, &rsp);
+						c->pkt_len, &rsp, &fd);
 			if (ret == 0) {
-				unix_send_cfg(c->sock, rsp);
+				unix_send_cfg(c->sock, rsp, fd);
 				g_free(rsp);
 			}
 			else
-				unix_send_cfg(c->sock, NULL);
+				unix_send_cfg(c->sock, NULL, -1);
 		}
 
 		pending_connect_free(c);
@@ -350,7 +350,7 @@ void sink_free(void *device)
 }
 
 int sink_get_config(void *device, int sock, struct ipc_packet *req,
-			int pkt_len, struct ipc_data_cfg **rsp)
+			int pkt_len, struct ipc_data_cfg **rsp, int *fd)
 {
 	struct device *dev = device;
 	struct sink *sink = dev->sink;
@@ -382,7 +382,7 @@ int sink_get_config(void *device, int sock, struct ipc_packet *req,
 	return 1;
 
 proceed:
-	if (!a2dp_get_config(sink->stream, rsp))
+	if (!a2dp_get_config(sink->stream, rsp, fd))
 		goto error;
 
 	return 0;

@@ -26,4 +26,4 @@
 int unix_init(void);
 void unix_exit(void);
 
-int unix_send_cfg(int sock, struct ipc_data_cfg *cfg);
+int unix_send_cfg(int sock, struct ipc_data_cfg *cfg, int fd);

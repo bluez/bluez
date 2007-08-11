@@ -65,7 +65,7 @@ void headset_free(void *device);
 void headset_update(void *device, sdp_record_t *record, uint16_t svc);
 
 int headset_get_config(void *device, int sock, struct ipc_packet *pkt,
-			int pkt_len, struct ipc_data_cfg **rsp);
+			int pkt_len, struct ipc_data_cfg **rsp, int *fd);
 
 headset_type_t headset_get_type(void *device);
 void headset_set_type(void *device, headset_type_t type);

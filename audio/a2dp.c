@@ -552,7 +552,8 @@ gboolean a2dp_select_capabilities(struct avdtp_remote_sep *rsep, GSList **caps)
 	return TRUE;
 }
 
-gboolean a2dp_get_config(struct avdtp_stream *stream, struct ipc_data_cfg **cfg)
+gboolean a2dp_get_config(struct avdtp_stream *stream,
+				struct ipc_data_cfg **cfg, int *fd)
 {
 	struct avdtp_service_capability *cap;
 	struct avdtp_media_codec_capability *codec_cap = NULL;
@@ -563,10 +564,10 @@ gboolean a2dp_get_config(struct avdtp_stream *stream, struct ipc_data_cfg **cfg)
 
 	rsp = g_malloc0(sizeof(struct ipc_data_cfg) +
 				sizeof(struct ipc_codec_sbc));
-	rsp->fd = -1;
+	*fd = -1;
 	sbc = (void *) rsp->data;
 
-	if (!avdtp_stream_get_transport(stream, &rsp->fd, &rsp->pkt_len,
+	if (!avdtp_stream_get_transport(stream, fd, &rsp->pkt_len,
 					&caps)) {
 		g_free(rsp);
 		return FALSE;

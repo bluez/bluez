@@ -252,16 +252,16 @@ void device_finish_sdp_transaction(struct device *dev)
 }
 
 int device_get_config(struct device *dev, int sock, struct ipc_packet *req,
-			int pkt_len, struct ipc_data_cfg **rsp)
+			int pkt_len, struct ipc_data_cfg **rsp, int *fd)
 {
 	if (dev->sink && sink_is_active(dev))
-		return sink_get_config(dev, sock, req, pkt_len, rsp);
+		return sink_get_config(dev, sock, req, pkt_len, rsp, fd);
 	else if (dev->headset && headset_is_active(dev))
-		return headset_get_config(dev, sock, req, pkt_len, rsp);
+		return headset_get_config(dev, sock, req, pkt_len, rsp, fd);
 	else if (dev->sink)
-		return sink_get_config(dev, sock, req, pkt_len, rsp);
+		return sink_get_config(dev, sock, req, pkt_len, rsp, fd);
 	else if (dev->headset)
-		return headset_get_config(dev, sock, req, pkt_len, rsp);
+		return headset_get_config(dev, sock, req, pkt_len, rsp, fd);
 
 	return -EINVAL;
 }

@@ -97,7 +97,7 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 {
 	struct ipc_data_cfg *rsp;
 	struct device *dev;
-	int ret;
+	int ret, fd;
 
 	dev = manager_get_connected_device();
 	if (dev)
@@ -108,7 +108,7 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 		goto failed;
 
 proceed:
-	ret = device_get_config(dev, client->sock, pkt, len, &rsp);
+	ret = device_get_config(dev, client->sock, pkt, len, &rsp, &fd);
 	if (ret < 0)
 		goto failed;
 
@@ -118,13 +118,13 @@ proceed:
 	if (ret == 1)
 		return;
 
-	unix_send_cfg(client->sock, rsp);
+	unix_send_cfg(client->sock, rsp, fd);
 	g_free(rsp);
 
 	return;
 
 failed:
-	unix_send_cfg(client->sock, NULL);
+	unix_send_cfg(client->sock, NULL, -1);
 }
 
 static void ctl_event(struct unix_client *client, struct ipc_packet *pkt,
@@ -286,7 +286,7 @@ void unix_exit(void)
 	unix_sock = -1;
 }
 
-int unix_send_cfg(int sock, struct ipc_data_cfg *cfg)
+int unix_send_cfg(int sock, struct ipc_data_cfg *cfg, int fd)
 {
 	char buf[IPC_MTU];
 	struct ipc_packet *pkt = (void *) buf;
@@ -305,8 +305,8 @@ int unix_send_cfg(int sock, struct ipc_data_cfg *cfg)
 	}
 
 	debug("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u,"
-		"sample_size=%u, rate=%u", cfg->fd, cfg->fd_opt,
-		cfg->channels, cfg->pkt_len, cfg->sample_size, cfg->rate);
+		"sample_size=%u, rate=%u", fd, cfg->fd_opt, cfg->channels,
+		cfg->pkt_len, cfg->sample_size, cfg->rate);
 
 	if (cfg->codec == CFG_CODEC_SBC)
 		codec_len = sizeof(struct ipc_codec_sbc);
@@ -324,8 +324,8 @@ int unix_send_cfg(int sock, struct ipc_data_cfg *cfg)
 
 	debug("%d bytes sent", len);
 
-	if (cfg->fd != -1) {
-		len = unix_sendmsg_fd(sock, cfg->fd, pkt);
+	if (fd != -1) {
+		len = unix_sendmsg_fd(sock, fd, pkt);
 		if (len < 0)
 			error("Error %s(%d)", strerror(errno), errno);
 		debug("%d bytes sent", len);
