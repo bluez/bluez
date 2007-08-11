@@ -349,8 +349,6 @@ static gboolean disconnect_timeout(gpointer user_data)
 
 	assert(session->ref == 1);
 
-	sessions = g_slist_remove(sessions, session);
-
 	session->dc_timer = 0;
 
 	avdtp_unref(session);
@@ -1612,7 +1610,7 @@ static struct avdtp *find_session(bdaddr_t *src, bdaddr_t *dst)
 	return NULL;
 }
 
-struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
+static struct avdtp *avdtp_get_internal(bdaddr_t *src, bdaddr_t *dst)
 {
 	struct avdtp *session;
 
@@ -1632,6 +1630,15 @@ struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
 	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
 
 	sessions = g_slist_append(sessions, session);
+
+	return session;
+}
+
+struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
+{
+	struct avdtp *session;
+
+	session = avdtp_get_internal(src, dst);
 
 	return avdtp_ref(session);
 }
@@ -2053,7 +2060,7 @@ static gboolean avdtp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	session = avdtp_get(&src, &dst);
+	session = avdtp_get_internal(&src, &dst);
 
 	if (session->pending_open && session->pending_open->open_acp) {
 		handle_transport_connect(session, cli_sk, l2o.imtu);
