@@ -12,7 +12,7 @@ org.bluez.audio.Manager interface
 Object path	/org/bluez/audio
 
 Methods
-		string CreateDevice(string address, array{string} interfaces) [experimental]
+		string CreateDevice(string address) [experimental]
 
 			Creates a new audio device object. If not yet done,
 			this method will perform a SDP query on the remote
@@ -20,9 +20,7 @@ Methods
 			so be sure to call this method asynchronously.
 
 			The return parameter is the object path of the newly
-			created object. The method will fail if the remote
-			device does not support all of the interfaces listed
-			in the interfaces parameter.
+			created object.
 
 		void RemoveDevice(string path) [experimental]
 

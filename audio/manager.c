@@ -261,42 +261,9 @@ static void handle_record(sdp_record_t *record, struct device *device)
 	device_store(device, is_default);
 }
 
-static gint record_iface_cmp(gconstpointer a, gconstpointer b)
-{
-	const sdp_record_t *record = a;
-	const char *interface = b;
-
-	switch (get_service_uuid(record)) {
-	case HEADSET_SVCLASS_ID:
-	case HANDSFREE_SVCLASS_ID:
-		return strcmp(interface, AUDIO_HEADSET_INTERFACE);
-
-	case HEADSET_AGW_SVCLASS_ID:
-	case HANDSFREE_AGW_SVCLASS_ID:
-		return strcmp(interface, AUDIO_GATEWAY_INTERFACE);
-
-	case AUDIO_SINK_SVCLASS_ID:
-		return strcmp(interface, AUDIO_SINK_INTERFACE);
-
-	case AUDIO_SOURCE_SVCLASS_ID:
-		return strcmp(interface, AUDIO_SOURCE_INTERFACE);
-
-	case AV_REMOTE_SVCLASS_ID:
-		return strcmp(interface, AUDIO_CONTROL_INTERFACE);
-
-	case AV_REMOTE_TARGET_SVCLASS_ID:
-		return strcmp(interface, AUDIO_TARGET_INTERFACE);
-
-	default:
-		return -1;
-	}
-}
-
 static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 {
 	const char *addr;
-	char **required = NULL;
-	int required_len, i;
 	DBusMessage *reply = NULL;
 	DBusError derr;
 
@@ -312,37 +279,9 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 		goto update;
 
 	dbus_error_init(&derr);
-	if (dbus_message_is_method_call(data->msg, AUDIO_MANAGER_INTERFACE,
-		"CreateHeadset")) {
-		dbus_message_get_args(data->msg, &derr,
-					DBUS_TYPE_STRING, &addr,
-					DBUS_TYPE_INVALID);
-		required = dbus_new0(char *, 2);
-		if (required == NULL) {
-			success = FALSE;
-			err_failed(connection, data->msg, "Out of memory");
-			goto done;
-		}
-
-		required[0] = dbus_new0(char,
-			strlen(AUDIO_HEADSET_INTERFACE) + 1);
-		if (required[0] == NULL) {
-			success = FALSE;
-			err_failed(connection, data->msg, "Out of memory");
-			goto done;
-		}
-
-		memcpy(required[0], AUDIO_HEADSET_INTERFACE,
-			strlen(AUDIO_HEADSET_INTERFACE) + 1);
-		required[1] = NULL;
-		required_len = 1;
-	}
-	else
-		dbus_message_get_args(data->msg, &derr,
-					DBUS_TYPE_STRING, &addr,
-					DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
-					&required, &required_len,
-					DBUS_TYPE_INVALID);
+	dbus_message_get_args(data->msg, &derr,
+				DBUS_TYPE_STRING, &addr,
+				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&derr)) {
 		error("Unable to get message args");
@@ -354,18 +293,6 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 	/* Return error if no audio related service records were found */
 	if (!data->records) {
 		debug("No audio audio related service records were found");
-		success = FALSE;
-		err_not_supported(connection, data->msg);
-		goto done;
-	}
-
-	for (i = 0; i < required_len; i++) {
-		const char *iface = required[i];
-
-		if (g_slist_find_custom(data->records, iface, record_iface_cmp))
-			continue;
-
-		debug("Required interface %s not supported", iface);
 		success = FALSE;
 		err_not_supported(connection, data->msg);
 		goto done;
@@ -405,7 +332,6 @@ update:
 	}
 
 done:
-	dbus_free_string_array(required);
 	if (!success)
 		remove_device(data->device);
 	if (data->msg)
@@ -753,41 +679,15 @@ static DBusHandlerResult am_create_device(DBusConnection *conn,
 						void *data)
 {
 	const char *address, *path;
-	char **required;
-	int required_len;
 	bdaddr_t bda;
 	struct device *device;
 	DBusMessage *reply;
 	DBusError derr;
 
 	dbus_error_init(&derr);
-	if (dbus_message_is_method_call(msg, AUDIO_MANAGER_INTERFACE,
-		"CreateHeadset")) {
-		dbus_message_get_args(msg, &derr,
-					DBUS_TYPE_STRING, &address,
-					DBUS_TYPE_INVALID);
-		required = dbus_new0(char *, 2);
-		if (required == NULL)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-		required[0] = dbus_new0(char,
-			strlen(AUDIO_HEADSET_INTERFACE) + 1);
-		if (required[0] == NULL) {
-			dbus_free(required);
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		}
-
-		memcpy(required[0], AUDIO_HEADSET_INTERFACE,
-			strlen(AUDIO_HEADSET_INTERFACE) + 1);
-		required[1] = NULL;
-		required_len = 1;
-	}
-	else
-		dbus_message_get_args(msg, &derr,
-					DBUS_TYPE_STRING, &address,
-					DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
-					&required, &required_len,
-					DBUS_TYPE_INVALID);
+	dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&derr)) {
 		err_invalid_args(connection, msg, derr.message);
@@ -800,16 +700,8 @@ static DBusHandlerResult am_create_device(DBusConnection *conn,
 	device = find_device(&bda);
 	if (!device) {
 		device = create_device(&bda);
-		dbus_free_string_array(required);
 		return resolve_services(msg, device);
 	}
-
-	if (!device_matches(device, required)) {
-		dbus_free_string_array(required);
-		return err_not_supported(conn, msg);
-	}
-
-	dbus_free_string_array(required);
 
 	path = device->path;
 
@@ -1089,7 +981,7 @@ static DBusHandlerResult am_change_default_device(DBusConnection *conn,
 
 static DBusMethodVTable manager_methods[] = {
 	{ "CreateDevice",		am_create_device,
-		"sas",	"s"		},
+		"s",	"s"		},
 	{ "RemoveDevice",		am_remove_device,
 		"s",	""		},
 	{ "ListDevices",		am_list_devices,
