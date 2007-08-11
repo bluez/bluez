@@ -462,6 +462,9 @@ static void connection_lost(struct avdtp *session)
 	if (session->discov_cb)
 		finalize_discovery(session, -ECONNABORTED);
 
+	g_slist_foreach(session->streams, (GFunc) release_stream, session);
+	session->streams = NULL;
+
 	if (session->sock >= 0) {
 		close(session->sock);
 		session->sock = -1;
@@ -473,9 +476,6 @@ static void connection_lost(struct avdtp *session)
 		g_source_remove(session->io);
 		session->io = 0;
 	}
-
-	g_slist_foreach(session->streams, (GFunc) release_stream, session);
-	session->streams = NULL;
 }
 
 void avdtp_unref(struct avdtp *session)
