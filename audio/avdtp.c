@@ -694,6 +694,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 	if (!lsep || !lsep->stream) {
 		init_response(&rej.header, &req->header, FALSE);
 		rej.error = AVDTP_BAD_ACP_SEID;
+		rej.category = 0x00; /* 0x00 means "not applicable" */
 		return avdtp_send(session, &rej, sizeof(rej));
 	}
 
