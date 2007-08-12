@@ -246,7 +246,6 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 
 	err = avdtp_discover(sink->session, discovery_complete, data);
 	if (err < 0) {
-		dbus_message_unref(c->msg);
 		pending_connect_free(c);
 		sink->c = NULL;
 		return err_connect_failed(conn, msg, strerror(err));
