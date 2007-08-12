@@ -1132,7 +1132,6 @@ static int l2cap_connect(struct avdtp *session)
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
 			error("Connect failed. %s(%d)", strerror(errno),
 					errno);
-			finalize_discovery(session, errno);
 			g_io_channel_close(io);
 			g_io_channel_unref(io);
 			return -errno;
