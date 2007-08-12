@@ -35,6 +35,7 @@
 
 #include "logging.h"
 #include "manager.h"
+#include "device.h"
 #include "avdtp.h"
 #include "sink.h"
 #include "a2dp.h"
@@ -72,7 +73,7 @@ static gboolean setconf_ind(struct avdtp *session,
 		return FALSE;
 	}
 
-	sink_new_stream(session, stream, dev);
+	sink_new_stream(dev, session, stream);
 
 	return TRUE;
 }

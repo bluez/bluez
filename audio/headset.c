@@ -51,9 +51,11 @@
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "logging.h"
+#include "device.h"
 #include "manager.h"
 #include "error.h"
 #include "unix.h"
+#include "headset.h"
 
 #define RING_INTERVAL 3000
 
@@ -1291,9 +1293,9 @@ static void headset_set_channel(struct headset *headset, sdp_record_t *record)
 		error("Unable to get RFCOMM channel from Headset record");
 }
 
-void headset_update(void *device, sdp_record_t *record, uint16_t svc)
+void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc)
 {
-	struct headset *headset = ((struct device *) device)->headset;
+	struct headset *headset = dev->headset;
 
 	switch (svc) {
 	case HANDSFREE_SVCLASS_ID:
@@ -1329,10 +1331,9 @@ void headset_update(void *device, sdp_record_t *record, uint16_t svc)
 	headset_set_channel(headset, record);
 }
 
-struct headset *headset_init(void *device, sdp_record_t *record,
-			uint16_t svc)
+struct headset *headset_init(struct device *dev, sdp_record_t *record,
+				uint16_t svc)
 {
-	struct device *dev = (struct device *) device;
 	struct headset *hs;
 
 	hs = g_new0(struct headset, 1);
@@ -1371,9 +1372,8 @@ register_iface:
 	return hs;
 }
 
-void headset_free(void *device)
+void headset_free(struct device *dev)
 {
-	struct device *dev = device;
 	struct headset *hs = dev->headset;
 
 	if (hs->sco) {
@@ -1390,10 +1390,10 @@ void headset_free(void *device)
 	dev->headset = NULL;
 }
 
-int headset_get_config(void *device, int sock, struct ipc_packet *pkt,
+int headset_get_config(struct device *dev, int sock, struct ipc_packet *pkt,
 			int pkt_len, struct ipc_data_cfg **cfg, int *fd)
 {
-	struct headset *hs = ((struct device *) device)->headset;
+	struct headset *hs = dev->headset;
 	int err = EINVAL;
 	struct pending_connect *c;
 
@@ -1406,9 +1406,9 @@ int headset_get_config(void *device, int sock, struct ipc_packet *pkt,
 	memcpy(c->pkt, pkt, pkt_len);
 
 	if (hs->rfcomm == NULL)
-		err = rfcomm_connect(device, c);
+		err = rfcomm_connect(dev, c);
 	else if (hs->sco == NULL)
-		err = sco_connect(device, c);
+		err = sco_connect(dev, c);
 	else
 		goto error;
 
@@ -1436,32 +1436,31 @@ error:
 	return -err;
 }
 
-headset_type_t headset_get_type(void *device)
+headset_type_t headset_get_type(struct device *dev)
 {
-	struct headset *hs = ((struct device *) device)->headset;
+	struct headset *hs = dev->headset;
 
 	return hs->type;
 }
 
-void headset_set_type(void *device, headset_type_t type)
+void headset_set_type(struct device *dev, headset_type_t type)
 {
-	struct headset *hs = ((struct device *) device)->headset;
+	struct headset *hs = dev->headset;
 
 	hs->type = type;
 }
 
-int headset_connect_rfcomm(void *device, int sock)
+int headset_connect_rfcomm(struct device *dev, int sock)
 {
-	struct headset *hs = ((struct device *) device)->headset;
+	struct headset *hs = dev->headset;
 
 	hs->rfcomm = g_io_channel_unix_new(sock);
 
 	return hs->rfcomm ? 0 : -EINVAL;
 }
 
-int headset_close_rfcomm(void *device)
+int headset_close_rfcomm(struct device *dev)
 {
-	struct device *dev = (struct device *) device;
 	struct headset *hs = dev->headset;
 
 	if (hs->ring_timer) {
@@ -1480,9 +1479,8 @@ int headset_close_rfcomm(void *device)
 	return 0;
 }
 
-void headset_set_state(void *device, headset_state_t state)
+void headset_set_state(struct device *dev, headset_state_t state)
 {
-	struct device *dev = (struct device *) device;
 	struct headset *hs = dev->headset;
 	char str[13];
 
@@ -1491,8 +1489,8 @@ void headset_set_state(void *device, headset_state_t state)
 
 	switch(state) {
 	case HEADSET_STATE_DISCONNECTED:
-		close_sco(device);
-		headset_close_rfcomm(device);
+		close_sco(dev);
+		headset_close_rfcomm(dev);
 		dbus_connection_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Disconnected",
@@ -1504,7 +1502,7 @@ void headset_set_state(void *device, headset_state_t state)
 		if (hs->state < state) {
 			g_io_add_watch(hs->rfcomm,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				(GIOFunc) rfcomm_io_cb, device);
+				(GIOFunc) rfcomm_io_cb, dev);
 
 			dbus_connection_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
@@ -1512,7 +1510,7 @@ void headset_set_state(void *device, headset_state_t state)
 						DBUS_TYPE_INVALID);
 		}
 		else {
-			close_sco(device);
+			close_sco(dev);
 			dbus_connection_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Stopped",
@@ -1523,7 +1521,7 @@ void headset_set_state(void *device, headset_state_t state)
 		break;
 	case HEADSET_STATE_PLAYING:
 		g_io_add_watch(hs->sco, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				(GIOFunc) sco_cb, device);
+				(GIOFunc) sco_cb, dev);
 
 		dbus_connection_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
@@ -1548,23 +1546,22 @@ void headset_set_state(void *device, headset_state_t state)
 	hs->state = state;
 }
 
-headset_state_t headset_get_state(void *device)
+headset_state_t headset_get_state(struct device *dev)
 {
-	struct headset *hs = ((struct device *) device)->headset;
+	struct headset *hs = dev->headset;
 
 	return hs->state;
 }
 
-int headset_get_channel(void *device)
+int headset_get_channel(struct device *dev)
 {
-	struct headset *hs = ((struct device *) device)->headset;
+	struct headset *hs = dev->headset;
 
 	return hs->rfcomm_ch;
 }
 
-gboolean headset_is_active(void *device)
+gboolean headset_is_active(struct device *dev)
 {
-	struct device *dev = device;
 	struct headset *hs = dev->headset;
 
 	if (hs->state != HEADSET_STATE_DISCONNECTED)

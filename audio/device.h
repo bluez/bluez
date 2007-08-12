@@ -20,12 +20,14 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#ifndef __AUDIO_DEVICE_H__
+#define __AUDIO_DEVICE_H__
 
 #include <bluetooth/bluetooth.h>
+#include <dbus/dbus.h>
+#include <glib.h>
 
-#include "headset.h"
-#include "gateway.h"
-#include "sink.h"
+#include "ipc.h"
 
 #define AUDIO_DEVICE_INTERFACE	"org.bluez.audio.Device"
 
@@ -53,6 +55,9 @@
 struct source;
 struct control;
 struct target;
+struct sink;
+struct headset;
+struct gateway;
 
 struct device {
 	DBusConnection *conn;
@@ -82,3 +87,5 @@ int device_get_config(struct device *dev, int sock, struct ipc_packet *req,
 void device_set_state(struct device *dev, uint8_t state);
 
 uint8_t device_get_state(struct device *dev);
+
+#endif

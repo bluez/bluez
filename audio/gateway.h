@@ -21,9 +21,9 @@
  *
  */
 
-#define AUDIO_GATEWAY_INTERFACE "org.bluez.audio.Gateway"
+#include "device.h"
 
-struct gateway;
+#define AUDIO_GATEWAY_INTERFACE "org.bluez.audio.Gateway"
 
 int gateway_init(DBusConnection *conn, gboolean disable_hfp, gboolean sco_hci);
 

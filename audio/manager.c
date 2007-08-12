@@ -50,10 +50,14 @@
 #include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"
-#include "manager.h"
+#include "device.h"
 #include "error.h"
 #include "a2dp.h"
 #include "avdtp.h"
+#include "headset.h"
+#include "gateway.h"
+#include "sink.h"
+#include "manager.h"
 
 typedef enum {
 	HEADSET	= 1 << 0,

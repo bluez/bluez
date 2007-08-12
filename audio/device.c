@@ -43,6 +43,8 @@
 #include "logging.h"
 #include "textfile.h"
 
+#include "headset.h"
+#include "sink.h"
 #include "device.h"
 
 static DBusHandlerResult device_get_address(DBusConnection *conn,

@@ -21,6 +21,7 @@
  *
  */
 
+#include <bluetooth/sdp.h>
 #include <dbus/dbus.h>
 
 #include "device.h"

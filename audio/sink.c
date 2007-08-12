@@ -39,6 +39,7 @@
 #include "a2dp.h"
 #include "error.h"
 #include "unix.h"
+#include "sink.h"
 
 struct pending_connect {
 	DBusMessage *msg;
@@ -328,10 +329,8 @@ static DBusSignalVTable sink_signals[] = {
 	{ NULL, NULL }
 };
 
-struct sink *sink_init(void *device)
+struct sink *sink_init(struct device *dev)
 {
-	struct device *dev = device;
-
 	if (!dbus_connection_register_interface(dev->conn, dev->path,
 						AUDIO_SINK_INTERFACE,
 						sink_methods,
@@ -341,9 +340,8 @@ struct sink *sink_init(void *device)
 	return g_new0(struct sink, 1);
 }
 
-void sink_free(void *device)
+void sink_free(struct device *dev)
 {
-	struct device *dev = device;
 	struct sink *sink = dev->sink;
 
 	if (sink->session)
@@ -356,10 +354,9 @@ void sink_free(void *device)
 	dev->sink = NULL;
 }
 
-int sink_get_config(void *device, int sock, struct ipc_packet *req,
+int sink_get_config(struct device *dev, int sock, struct ipc_packet *req,
 			int pkt_len, struct ipc_data_cfg **rsp, int *fd)
 {
-	struct device *dev = device;
 	struct sink *sink = dev->sink;
 	int err = EINVAL;
 	struct pending_connect *c = NULL;
@@ -377,7 +374,7 @@ int sink_get_config(void *device, int sock, struct ipc_packet *req,
 	sink->c = c;
 
 	if (sink->state == AVDTP_STATE_IDLE)
-		err = avdtp_discover(sink->session, discovery_complete, device);
+		err = avdtp_discover(sink->session, discovery_complete, dev);
 	else if (sink->state < AVDTP_STATE_STREAMING)
 		err = avdtp_start(sink->session, sink->stream);
 	else
@@ -400,9 +397,8 @@ error:
 	return -err;
 }
 
-gboolean sink_is_active(void *device)
+gboolean sink_is_active(struct device *dev)
 {
-	struct device *dev = device;
 	struct sink *sink = dev->sink;
 
 	if (sink->session)
@@ -411,9 +407,8 @@ gboolean sink_is_active(void *device)
 	return FALSE;
 }
 
-void sink_set_state(void *device, avdtp_state_t state)
+void sink_set_state(struct device *dev, avdtp_state_t state)
 {
-	struct device *dev = device;
 	struct sink *sink = dev->sink;
 	int err = 0;
 
@@ -455,18 +450,17 @@ failed:
 	error("%s: Error changing states", dev->path);
 }
 
-avdtp_state_t sink_get_state(void *device)
+avdtp_state_t sink_get_state(struct device *dev)
 {
-	struct device *dev = device;
 	struct sink *sink = dev->sink;
 
 	return sink->state;
 }
 
-gboolean sink_new_stream(struct avdtp *session, struct avdtp_stream *stream,
-				void *dev)
+gboolean sink_new_stream(struct device *dev, struct avdtp *session,
+				struct avdtp_stream *stream)
 {
-	struct sink *sink = ((struct device *) (dev))->sink;
+	struct sink *sink = dev->sink;
 
 	if (sink->stream)
 		return FALSE;
