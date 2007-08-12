@@ -479,8 +479,8 @@ static void connection_lost(struct avdtp *session, int err)
 
 	if (session->ref != 1)
 		error("connection_lost: ref count not 1 after all callbacks");
-
-	avdtp_unref(session);
+	else
+		avdtp_unref(session);
 }
 
 void avdtp_unref(struct avdtp *session)
@@ -495,18 +495,25 @@ void avdtp_unref(struct avdtp *session)
 
 	session->ref--;
 
-	debug("avdtp_unref: ref=%d", session->ref);
+	debug("avdtp_unref(%p): ref=%d", session, session->ref);
 
 	if (session->ref == 1) {
-		if (session->dc_timer)
-			remove_disconnect_timer(session);
-		if (session->sock >= 0)
+		if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
+			close(session->sock);
+			session->sock = -1;
+		}
+
+	       	if (session->sock >= 0)
 			set_disconnect_timer(session);
-		return;
+		else /* Drop the local ref if we aren't connected */
+			session->ref--;
 	}
 
 	if (session->ref > 0)
 		return;
+
+	debug("avdtp_unref(%p): freeing session and removing from list",
+			session);
 
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
@@ -527,7 +534,7 @@ void avdtp_unref(struct avdtp *session)
 struct avdtp *avdtp_ref(struct avdtp *session)
 {
 	session->ref++;
-	debug("avdtp_ref: ref=%d", session->ref);
+	debug("avdtp_ref(%p): ref=%d", session, session->ref);
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
 	return session;
@@ -1066,7 +1073,6 @@ static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
-		session->sock = sk;
 		session->mtu = l2o.imtu;
 		session->buf = g_malloc0(session->mtu);
 		session->state = AVDTP_SESSION_STATE_CONNECTED;
@@ -1136,11 +1142,16 @@ static int l2cap_connect(struct avdtp *session)
 			g_io_channel_unref(io);
 			return -errno;
 		}
+
 		g_io_add_watch(io, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				(GIOFunc) l2cap_connect_cb, session);
 
-		if (session->state == AVDTP_SESSION_STATE_DISCONNECTED)
+		if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
+			session->sock = sk;
 			session->state = AVDTP_SESSION_STATE_CONNECTING;
+		}
+
+
 	} else
 		l2cap_connect_cb(io, G_IO_OUT, session);
 

@@ -248,6 +248,8 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 	if (err < 0) {
 		pending_connect_free(c);
 		sink->c = NULL;
+		avdtp_unref(sink->session);
+		sink->session = NULL;
 		return err_connect_failed(conn, msg, strerror(err));
 	}
 
