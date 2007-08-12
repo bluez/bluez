@@ -288,6 +288,7 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 				struct avdtp_stream *stream,
 				struct avdtp_header *header, int size);
 static int process_queue(struct avdtp *session);
+static void connection_lost(struct avdtp *session, int err);
 
 static const char *avdtp_statestr(avdtp_state_t state)
 {
@@ -356,7 +357,7 @@ static gboolean disconnect_timeout(gpointer user_data)
 
 	session->dc_timer = 0;
 
-	avdtp_unref(session);
+	connection_lost(session, -ETIMEDOUT);
 
 	return FALSE;
 }
@@ -450,7 +451,7 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 	avdtp_sep_set_state(session, stream->lsep, AVDTP_STATE_IDLE);
 }
 
-static void connection_lost(struct avdtp *session)
+static void connection_lost(struct avdtp *session, int err)
 {
 	if (session->state == AVDTP_SESSION_STATE_CONNECTED) {
 		char address[18];
@@ -459,8 +460,7 @@ static void connection_lost(struct avdtp *session)
 		debug("Disconnected from %s", address);
 	}
 
-	if (session->discov_cb)
-		finalize_discovery(session, -ECONNABORTED);
+	finalize_discovery(session, err);
 
 	g_slist_foreach(session->streams, (GFunc) release_stream, session);
 	session->streams = NULL;
@@ -476,6 +476,11 @@ static void connection_lost(struct avdtp *session)
 		g_source_remove(session->io);
 		session->io = 0;
 	}
+
+	if (session->ref != 1)
+		error("connection_lost: ref count not 1 after all callbacks");
+
+	avdtp_unref(session);
 }
 
 void avdtp_unref(struct avdtp *session)
@@ -505,8 +510,6 @@ void avdtp_unref(struct avdtp *session)
 
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
-
-	connection_lost(session);
 
 	sessions = g_slist_remove(sessions, session);
 
@@ -1007,8 +1010,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 
 failed:
-	connection_lost(session);
-	avdtp_unref(session);
+	connection_lost(session, -EIO);
 	return FALSE;
 }
 
@@ -1085,11 +1087,8 @@ failed:
 		avdtp_sep_set_state(session, session->pending_open->lsep,
 					AVDTP_STATE_IDLE);
 		session->pending_open = NULL;
-	} else {
-		finalize_discovery(session, -err);
-		connection_lost(session);
-		avdtp_unref(session);
-	}
+	} else
+		connection_lost(session, -err);
 
 	return FALSE;
 }
@@ -1218,8 +1217,7 @@ static gboolean request_timeout(gpointer user_data)
 	goto done;
 
 failed:
-	connection_lost(session);
-	avdtp_unref(session);
+	connection_lost(session, -ETIMEDOUT);
 done:
 	pending_req_free(req);
 	return FALSE;
