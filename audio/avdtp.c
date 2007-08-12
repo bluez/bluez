@@ -617,7 +617,7 @@ static gboolean avdtp_discover_cmd(struct avdtp *session,
 		if (rsp_size + sizeof(struct seid_info) > session->mtu)
 			break;
 
-		memcpy(&info, &sep->info, sizeof(struct seid_info));
+		memcpy(info, &sep->info, sizeof(struct seid_info));
 		rsp_size += sizeof(struct seid_info);
 		info++;
 	}
