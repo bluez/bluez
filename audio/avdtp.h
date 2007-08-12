@@ -99,49 +99,57 @@ typedef void (*avdtp_stream_state_cb) (struct avdtp_stream *stream,
 
 /* Callbacks for when a reply is received to a command that we sent */
 struct avdtp_sep_cfm {
-	void (*set_configuration) (struct avdtp_local_sep *lsep,
+	void (*set_configuration) (struct avdtp *session,
+					struct avdtp_local_sep *lsep,
 					struct avdtp_stream *stream);
-	void (*get_configuration) (struct avdtp_local_sep *lsep,
+	void (*get_configuration) (struct avdtp *session,
+					struct avdtp_local_sep *lsep,
 					struct avdtp_stream *stream);
-	void (*open) (struct avdtp_local_sep *lsep,
+	void (*open) (struct avdtp *session, struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream);
-	void (*start) (struct avdtp_local_sep *lsep,
+	void (*start) (struct avdtp *session, struct avdtp_local_sep *lsep,
 			struct avdtp_stream *stream);
-	void (*suspend) (struct avdtp_local_sep *lsep,
+	void (*suspend) (struct avdtp *session, struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream);
-	void (*close) (struct avdtp_local_sep *lsep,
+	void (*close) (struct avdtp *session, struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream);
-	void (*abort) (struct avdtp_local_sep *lsep,
+	void (*abort) (struct avdtp *session, struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream);
-	void (*reconfigure) (struct avdtp_local_sep *lsep);
+	void (*reconfigure) (struct avdtp *session,
+				struct avdtp_local_sep *lsep);
 };
 
 /* Callbacks for indicating when we received a new command. The return value
  * indicates whether the command should be rejected or accepted */
 struct avdtp_sep_ind {
-	gboolean (*get_capability) (struct avdtp_local_sep *sep,
+	gboolean (*get_capability) (struct avdtp *session,
+					struct avdtp_local_sep *sep,
 					GSList **caps, uint8_t *err);
 	gboolean (*set_configuration) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
 					struct avdtp_stream *stream,
 					GSList *caps, uint8_t *err,
 					uint8_t *category);
-	gboolean (*get_configuration) (struct avdtp_local_sep *lsep,
+	gboolean (*get_configuration) (struct avdtp *session,
+					struct avdtp_local_sep *lsep,
 					uint8_t *err);
-	gboolean (*open) (struct avdtp_local_sep *lsep,
+	gboolean (*open) (struct avdtp *session, struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream, uint8_t *err);
-	gboolean (*start) (struct avdtp_local_sep *lsep,
+	gboolean (*start) (struct avdtp *session, struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream,
 				uint8_t *err);
-	gboolean (*suspend) (struct avdtp_local_sep *sep,
+	gboolean (*suspend) (struct avdtp *session,
+				struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream,
 				uint8_t *err);
-	gboolean (*close) (struct avdtp_local_sep *sep,
+	gboolean (*close) (struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream,
 				uint8_t *err);
-	gboolean (*abort) (struct avdtp_local_sep *sep,
+	gboolean (*abort) (struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err);
-	gboolean (*reconfigure) (struct avdtp_local_sep *lsep, uint8_t *err);
+	gboolean (*reconfigure) (struct avdtp *session,
+					struct avdtp_local_sep *lsep,
+					uint8_t *err);
 };
 
 typedef void (*avdtp_discover_cb_t) (struct avdtp *session, GSList *seps,

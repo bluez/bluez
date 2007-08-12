@@ -728,7 +728,7 @@ static gboolean avdtp_getcap_cmd(struct avdtp *session,
 		goto failed;
 	}
 
-	if (!sep->ind->get_capability(sep, &caps, &err))
+	if (!sep->ind->get_capability(session, sep, &caps, &err))
 		goto failed;
 
 	init_response(&rsp->header, &req->header, TRUE);
@@ -862,7 +862,7 @@ static gboolean avdtp_open_cmd(struct avdtp *session, struct seid_req *req,
 	stream = sep->stream;
 
 	if (sep->ind && sep->ind->open) {
-		if (!sep->ind->open(sep, stream, &err))
+		if (!sep->ind->open(session, sep, stream, &err))
 			goto failed;
 	}
 
@@ -920,7 +920,7 @@ static gboolean avdtp_close_cmd(struct avdtp *session, struct seid_req *req,
 	stream = sep->stream;
 
 	if (sep->ind && sep->ind->close) {
-		if (!sep->ind->close(sep, stream, &err))
+		if (!sep->ind->close(session, sep, stream, &err))
 			goto failed;
 	}
 
@@ -969,7 +969,7 @@ static gboolean avdtp_abort_cmd(struct avdtp *session, struct seid_req *req,
 	}
 
 	if (sep->ind && sep->ind->abort) {
-		if (!sep->ind->abort(sep, sep->stream, &err))
+		if (!sep->ind->abort(session, sep, sep->stream, &err))
 			goto failed;
 	}
 
@@ -1043,7 +1043,7 @@ static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (stream->close_int && sep->cfm && sep->cfm->close)
-		sep->cfm->close(sep, stream);
+		sep->cfm->close(stream->session, sep, stream);
 
 	avdtp_sep_set_state(stream->session, sep, AVDTP_STATE_IDLE);
 
@@ -1068,7 +1068,7 @@ static void handle_transport_connect(struct avdtp *session, int sock,
 	stream->mtu = mtu;
 
 	if (!stream->open_acp && sep->cfm && sep->cfm->open)
-		sep->cfm->open(sep, stream);
+		sep->cfm->open(session, sep, stream);
 
 	channel = g_io_channel_unix_new(stream->sock);
 
@@ -1520,7 +1520,7 @@ static gboolean avdtp_set_configuration_resp(struct avdtp *session,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (sep->cfm && sep->cfm->set_configuration)
-		sep->cfm->set_configuration(sep, stream);
+		sep->cfm->set_configuration(session, sep, stream);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_CONFIGURED);
 
@@ -1554,7 +1554,7 @@ static gboolean avdtp_start_resp(struct avdtp *session,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (sep->cfm && sep->cfm->start)
-		sep->cfm->start(sep, stream);
+		sep->cfm->start(session, sep, stream);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_STREAMING);
 
@@ -1583,7 +1583,7 @@ static gboolean avdtp_suspend_resp(struct avdtp *session,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (sep->cfm && sep->cfm->suspend)
-		sep->cfm->suspend(sep, stream);
+		sep->cfm->suspend(session, sep, stream);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
 
@@ -1597,7 +1597,7 @@ static gboolean avdtp_abort_resp(struct avdtp *session,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (sep->cfm && sep->cfm->suspend)
-		sep->cfm->suspend(sep, stream);
+		sep->cfm->suspend(session, sep, stream);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
 

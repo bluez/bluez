@@ -77,7 +77,7 @@ static gboolean setconf_ind(struct avdtp *session,
 	return TRUE;
 }
 
-static gboolean getcap_ind(struct avdtp_local_sep *sep,
+static gboolean getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				GSList **caps, uint8_t *err)
 {
 	struct avdtp_service_capability *media_transport, *media_codec;
@@ -131,7 +131,7 @@ static gboolean getcap_ind(struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
-static void setconf_cfm(struct avdtp_local_sep *sep,
+static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream)
 {
 	if (sep == sink_sep)
@@ -140,7 +140,8 @@ static void setconf_cfm(struct avdtp_local_sep *sep,
 		debug("SBC Source: Set_Configuration_Cfm");
 }
 
-static gboolean getconf_ind(struct avdtp_local_sep *sep, uint8_t *err)
+static gboolean getconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
+				uint8_t *err)
 {
 	if (sep == sink_sep)
 		debug("SBC Sink: Get_Configuration_Ind");
@@ -149,7 +150,7 @@ static gboolean getconf_ind(struct avdtp_local_sep *sep, uint8_t *err)
 	return TRUE;
 }
 
-static void getconf_cfm(struct avdtp_local_sep *sep,
+static void getconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream)
 {
 	if (sep == sink_sep)
@@ -158,7 +159,7 @@ static void getconf_cfm(struct avdtp_local_sep *sep,
 		debug("SBC Source: Set_Configuration_Cfm");
 }
 
-static gboolean open_ind(struct avdtp_local_sep *sep,
+static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
 	if (sep == sink_sep)
@@ -168,7 +169,8 @@ static gboolean open_ind(struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
-static void open_cfm(struct avdtp_local_sep *sep, struct avdtp_stream *stream)
+static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+			struct avdtp_stream *stream)
 {
 	if (sep == sink_sep)
 		debug("SBC Sink: Open_Cfm");
@@ -176,7 +178,7 @@ static void open_cfm(struct avdtp_local_sep *sep, struct avdtp_stream *stream)
 		debug("SBC Source: Open_Cfm");
 }
 
-static gboolean start_ind(struct avdtp_local_sep *sep,
+static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
 	if (sep == sink_sep)
@@ -186,7 +188,8 @@ static gboolean start_ind(struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
-static void start_cfm(struct avdtp_local_sep *sep, struct avdtp_stream *stream)
+static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+			struct avdtp_stream *stream)
 {
 	if (sep == sink_sep)
 		debug("SBC Sink: Start_Cfm");
@@ -194,7 +197,7 @@ static void start_cfm(struct avdtp_local_sep *sep, struct avdtp_stream *stream)
 		debug("SBC Source: Start_Cfm");
 }
 
-static gboolean suspend_ind(struct avdtp_local_sep *sep,
+static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
 	if (sep == sink_sep)
@@ -204,7 +207,7 @@ static gboolean suspend_ind(struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
-static void suspend_cfm(struct avdtp_local_sep *sep,
+static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream)
 {
 	if (sep == sink_sep)
@@ -213,7 +216,7 @@ static void suspend_cfm(struct avdtp_local_sep *sep,
 		debug("SBC Source: Suspend_Cfm");
 }
 
-static gboolean close_ind(struct avdtp_local_sep *sep,
+static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
 	if (sep == sink_sep)
@@ -223,7 +226,8 @@ static gboolean close_ind(struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
-static void close_cfm(struct avdtp_local_sep *sep, struct avdtp_stream *stream)
+static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+			struct avdtp_stream *stream)
 {
 	if (sep == sink_sep)
 		debug("SBC Sink: Close_Cfm");
@@ -231,7 +235,7 @@ static void close_cfm(struct avdtp_local_sep *sep, struct avdtp_stream *stream)
 		debug("SBC Source: Close_Cfm");
 }
 
-static gboolean abort_ind(struct avdtp_local_sep *sep,
+static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
 	if (sep == sink_sep)
@@ -241,7 +245,8 @@ static gboolean abort_ind(struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
-static void abort_cfm(struct avdtp_local_sep *sep, struct avdtp_stream *stream)
+static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+			struct avdtp_stream *stream)
 {
 	if (sep == sink_sep)
 		debug("SBC Sink: Abort_Cfm");
@@ -249,7 +254,8 @@ static void abort_cfm(struct avdtp_local_sep *sep, struct avdtp_stream *stream)
 		debug("SBC Source: Abort_Cfm");
 }
 
-static gboolean reconf_ind(struct avdtp_local_sep *sep, uint8_t *err)
+static gboolean reconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
+				uint8_t *err)
 {
 	if (sep == sink_sep)
 		debug("SBC Sink: ReConfigure_Ind");
@@ -258,7 +264,7 @@ static gboolean reconf_ind(struct avdtp_local_sep *sep, uint8_t *err)
 	return TRUE;
 }
 
-static void reconf_cfm(struct avdtp_local_sep *sep)
+static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep)
 {
 	if (sep == sink_sep)
 		debug("SBC Sink: ReConfigure_Cfm");
