@@ -175,6 +175,10 @@ struct close_resp {
 	struct avdtp_header header;
 } __attribute__ ((packed));
 
+struct open_resp {
+	struct avdtp_header header;
+} __attribute__ ((packed));
+
 struct stream_pause_resp {
 	struct avdtp_header header;
 	uint8_t rfa0:2;
@@ -221,12 +225,14 @@ struct avdtp_stream {
 	uint16_t mtu;
 	struct avdtp *session;
 	struct avdtp_local_sep *lsep;
-	struct avdtp_remote_sep *rsep;
+	uint8_t rseid;
 	GSList *caps;
+	struct avdtp_service_capability *codec;
 	avdtp_stream_state_cb cb;
 	void *user_data;
 	guint io;		/* Transport GSource ID */
-	guint close_timer;	/* Waiting for other side to close transport */
+	guint timer;		/* Waiting for other side to close or open
+				   the transport channel */
 	gboolean open_acp;	/* If we are in ACT role for Open */
 	gboolean close_int;	/* If we are in INT role for Close */
 };
@@ -234,6 +240,7 @@ struct avdtp_stream {
 /* Structure describing an AVDTP connection between two devices */
 struct avdtp {
 	int ref;
+	int free_lock;
 
 	bdaddr_t src;
 	bdaddr_t dst;
@@ -344,7 +351,26 @@ static gboolean stream_close_timeout(gpointer user_data)
 {
 	struct avdtp_stream *stream = user_data;
 
+	debug("Timed out waiting for peer to close the transport channel");
+
+	stream->timer = 0;
+
 	close(stream->sock);
+
+	return FALSE;
+}
+
+static gboolean stream_open_timeout(gpointer user_data)
+{
+	struct avdtp_stream *stream = user_data;
+
+	debug("Timed out waiting for peer to open the transport channel");
+
+	stream->timer = 0;
+
+	stream->session->pending_open = NULL;
+
+	avdtp_abort(stream->session, stream);
 
 	return FALSE;
 }
@@ -390,13 +416,48 @@ static void avdtp_error_init(struct avdtp_error *err, uint8_t type, int id)
 	}
 }
 
+static struct avdtp_stream *find_stream_by_rseid(struct avdtp *session,
+							uint8_t rseid)
+{
+	GSList *l;
+
+	for (l = session->streams; l != NULL; l = g_slist_next(l)) {
+		struct avdtp_stream *stream = l->data;
+
+		if (stream->rseid == rseid)
+			return stream;
+	}
+
+	return NULL;
+}
+
+static struct avdtp_remote_sep *find_remote_sep(GSList *seps, uint8_t seid)
+{
+	GSList *l;
+
+	for (l = seps; l != NULL; l = g_slist_next(l)) {
+		struct avdtp_remote_sep *sep = l->data;
+
+		if (sep->seid == seid)
+			return sep;
+	}
+
+	return NULL;
+}
+
 static void stream_free(struct avdtp_stream *stream)
 {
+	struct avdtp_remote_sep *rsep;
+
 	stream->lsep->info.inuse = 0;
 	stream->lsep->stream = NULL;
-	stream->rsep->stream = NULL;
-	if (stream->close_timer)
-		g_source_remove(stream->close_timer);
+
+	rsep = find_remote_sep(stream->session->seps, stream->rseid);
+	if (rsep)
+		rsep->stream = NULL;
+
+	if (stream->timer)
+		g_source_remove(stream->timer);
 	if (stream->caps) {
 		g_slist_foreach(stream->caps, (GFunc) g_free, NULL);
 		g_slist_free(stream->caps);
@@ -427,6 +488,8 @@ static void avdtp_sep_set_state(struct avdtp *session,
 	if (state == AVDTP_STATE_IDLE) {
 		session->streams = g_slist_remove(session->streams, stream);
 		stream_free(stream);
+		if (session->ref == 1 && !session->streams)
+			set_disconnect_timer(session);
 	}
 }
 
@@ -460,10 +523,14 @@ static void connection_lost(struct avdtp *session, int err)
 		debug("Disconnected from %s", address);
 	}
 
+	session->free_lock = 1;
+
 	finalize_discovery(session, err);
 
 	g_slist_foreach(session->streams, (GFunc) release_stream, session);
 	session->streams = NULL;
+
+	session->free_lock = 0;
 
 	if (session->sock >= 0) {
 		close(session->sock);
@@ -505,7 +572,8 @@ void avdtp_unref(struct avdtp *session)
 
 	       	if (session->sock >= 0)
 			set_disconnect_timer(session);
-		else /* Drop the local ref if we aren't connected */
+		else if (!session->free_lock) /* Drop the local ref if we
+						 aren't connected */
 			session->ref--;
 	}
 
@@ -572,6 +640,42 @@ static struct avdtp_local_sep *find_local_sep(uint8_t type, uint8_t media_type,
 	}
 
 	return NULL;
+}
+
+static GSList *caps_to_list(uint8_t *data, int size,
+				struct avdtp_service_capability **codec)
+{
+	GSList *caps;
+	int processed;
+
+	for (processed = 0, caps = NULL; processed + 2 < size;) {
+		struct avdtp_service_capability *cap;
+		uint8_t length, category;
+
+		category = data[0];
+		length = data[1];
+
+		if (processed + 2 + length > size) {
+			error("Invalid capability data in getcap resp");
+			break;
+		}
+
+		cap = g_malloc(sizeof(struct avdtp_service_capability) +
+					length);
+		memcpy(cap, data, 2 + length);
+
+		processed += 2 + length;
+		data += 2 + length;
+
+		caps = g_slist_append(caps, cap);
+
+		if (category == AVDTP_MEDIA_CODEC &&
+				length >=
+				sizeof(struct avdtp_media_codec_capability))
+			*codec = cap;
+	}
+
+	return caps;
 }
 
 static void init_response(struct avdtp_header *rsp, struct avdtp_header *req,
@@ -682,39 +786,62 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 {
 	struct conf_rej rej;
 	struct setconf_resp *rsp = (struct setconf_resp *) session->buf;
-	struct avdtp_local_sep *lsep;
-	gboolean ret;
-	uint8_t err;
+	struct avdtp_local_sep *sep;
+	struct avdtp_stream *stream;
+	uint8_t err, category = 0x00;
 
 	if (size < sizeof(struct setconf_req)) {
 		error("Too short getcap request");
 		return FALSE;
 	}
 
-	lsep = find_local_sep_by_seid(req->acp_seid);
-	if (!lsep) {
+	sep = find_local_sep_by_seid(req->acp_seid);
+	if (!sep) {
 		err = AVDTP_BAD_ACP_SEID;
 		goto failed;
 	}
 
-	if (lsep->stream) {
+	if (sep->stream) {
 		err = AVDTP_SEP_IN_USE;
 		goto failed;
+	}
+	
+	stream = g_new0(struct avdtp_stream, 1);
+	stream->session = session;
+	stream->lsep = sep;
+	stream->rseid = req->int_seid;
+	stream->caps = caps_to_list(req->caps,
+					size - sizeof(struct setconf_req),
+					&stream->codec);
+	stream->sock = -1;
+
+	if (sep->ind && sep->ind->set_configuration) {
+		if (!sep->ind->set_configuration(session, sep, stream,
+							stream->caps, &err,
+							&category)) {
+			stream_free(stream);
+			goto failed;
+		}
 	}
 
 	init_response(&rsp->header, &req->header, TRUE);
 
-	ret = avdtp_send(session, rsp, sizeof(struct setconf_req));
+	if (!avdtp_send(session, rsp, sizeof(struct setconf_req))) {
+		stream_free(stream);
+		return FALSE;
+	}
 
-	if (ret)
-		avdtp_sep_set_state(session, lsep, AVDTP_STATE_CONFIGURED);
+	sep->stream = stream;
+	session->streams = g_slist_append(session->streams, stream);
 
-	return ret;
+	avdtp_sep_set_state(session, sep, AVDTP_STATE_CONFIGURED);
+
+	return TRUE;
 
 failed:
 	init_response(&rej.header, &req->header, FALSE);
 	rej.error = err;
-	rej.category = 0x00; /* 0x00 means "not applicable" */
+	rej.category = category;
 	return avdtp_send(session, &rej, sizeof(rej));
 }
 
@@ -733,7 +860,52 @@ static gboolean avdtp_reconf_cmd(struct avdtp *session, struct seid_req *req,
 static gboolean avdtp_open_cmd(struct avdtp *session, struct seid_req *req,
 				int size)
 {
-	return avdtp_unknown_cmd(session, (void *) req, size);
+	struct avdtp_local_sep *sep;
+	struct avdtp_stream *stream;
+	struct open_resp *rsp = (struct open_resp *) session->buf;
+	struct seid_rej rej;
+	uint8_t err;
+
+	if (size < sizeof(struct seid_req)) {
+		error("Too short abort request");
+		return FALSE;
+	}
+
+	sep = find_local_sep_by_seid(req->acp_seid);
+	if (!sep) {
+		err = AVDTP_BAD_ACP_SEID;
+		goto failed;
+	}
+
+	if (sep->state != AVDTP_STATE_CONFIGURED) {
+		err = AVDTP_BAD_STATE;
+		goto failed;
+	}
+
+	stream = sep->stream;
+
+	if (sep->ind && sep->ind->open) {
+		if (!sep->ind->open(sep, stream, &err))
+			goto failed;
+	}
+
+	init_response(&rsp->header, &req->header, TRUE);
+
+	if (!avdtp_send(session, rsp, sizeof(struct open_resp)))
+		return FALSE;
+
+	stream->open_acp = TRUE;
+	session->pending_open = stream;
+	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
+	stream->timer = g_timeout_add(REQ_TIMEOUT, stream_open_timeout,
+						stream);
+
+	return TRUE;
+
+failed:
+	init_response(&rej.header, &req->header, FALSE);
+	rej.error = err;
+	return avdtp_send(session, &rej, sizeof(rej));
 }
 
 static gboolean avdtp_start_cmd(struct avdtp *session, struct seid_req *req,
@@ -750,7 +922,6 @@ static gboolean avdtp_close_cmd(struct avdtp *session, struct seid_req *req,
 	struct close_resp *rsp = (struct close_resp *) session->buf;
 	struct seid_rej rej;
 	uint8_t err;
-	gboolean ret;
 
 	if (size < sizeof(struct seid_req)) {
 		error("Too short abort request");
@@ -780,14 +951,13 @@ static gboolean avdtp_close_cmd(struct avdtp *session, struct seid_req *req,
 
 	init_response(&rsp->header, &req->header, TRUE);
 
-	ret = avdtp_send(session, rsp, sizeof(struct close_resp));
-	if (ret == TRUE) {
-		stream->close_timer = g_timeout_add(REQ_TIMEOUT,
-							stream_close_timeout,
-							stream);
-	}
+	if (!avdtp_send(session, rsp, sizeof(struct close_resp)))
+		return FALSE;
 
-	return ret;
+	stream->timer = g_timeout_add(REQ_TIMEOUT, stream_close_timeout,
+					stream);
+
+	return TRUE;
 
 failed:
 	init_response(&rej.header, &req->header, FALSE);
@@ -912,10 +1082,15 @@ static void handle_transport_connect(struct avdtp *session, int sock,
 
 	session->pending_open = NULL;
 
+	if (stream->timer) {
+		g_source_remove(stream->timer);
+		stream->timer = 0;
+	}
+
 	stream->sock = sock;
 	stream->mtu = mtu;
 
-	if (sep->cfm && sep->cfm->open)
+	if (!stream->open_acp && sep->cfm && sep->cfm->open)
 		sep->cfm->open(sep, stream);
 
 	channel = g_io_channel_unix_new(stream->sock);
@@ -978,6 +1153,9 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 
 		if (session->ref == 1 && !session->streams)
 			set_disconnect_timer(session);
+
+		if (session->streams && session->dc_timer)
+			remove_disconnect_timer(session);
 
 		return TRUE;
 	}
@@ -1180,20 +1358,6 @@ static void queue_request(struct avdtp *session, struct pending_req *req,
 		session->req_queue = g_slist_append(session->req_queue, req);
 }
 
-static struct avdtp_remote_sep *find_remote_sep(GSList *seps, uint8_t seid)
-{
-	GSList *l;
-
-	for (l = seps; l != NULL; l = g_slist_next(l)) {
-		struct avdtp_remote_sep *sep = l->data;
-
-		if (sep->seid == seid)
-			return sep;
-	}
-
-	return NULL;
-}
-
 static gboolean request_timeout(gpointer user_data)
 {
 	struct avdtp *session = user_data;
@@ -1224,7 +1388,7 @@ static gboolean request_timeout(gpointer user_data)
 		goto failed;
 	}
 
-	stream = sep->stream;
+	stream = find_stream_by_rseid(session, seid);
 
 	memset(&sreq, 0, sizeof(sreq));
 	init_request(&sreq.header, AVDTP_ABORT);
@@ -1339,9 +1503,7 @@ static gboolean avdtp_get_capabilities_resp(struct avdtp *session,
 						struct getcap_resp *resp,
 						int size)
 {
-	int processed;
 	struct avdtp_remote_sep *sep;
-	unsigned char *ptr;
 	uint8_t seid;
 
 	/* Check for minimum required packet size includes:
@@ -1367,36 +1529,8 @@ static gboolean avdtp_get_capabilities_resp(struct avdtp *session,
 		sep->codec = NULL;
 	}
 
-	ptr = resp->caps;
-	processed = sizeof(struct getcap_resp);
-
-	while (processed + 2 < size) {
-		struct avdtp_service_capability *cap;
-		uint8_t length, category;
-
-		category = ptr[0];
-		length = ptr[1];
-
-		if (processed + 2 + length > size) {
-			error("Invalid capability data in getcap resp");
-			return FALSE;
-		}
-
-		cap = g_malloc(sizeof(struct avdtp_service_capability) +
-					length);
-		memcpy(cap, ptr, 2 + length);
-
-		processed += 2 + length;
-		ptr += 2 + length;
-
-		sep->caps = g_slist_append(sep->caps, cap);
-
-		if (category == AVDTP_MEDIA_CODEC &&
-				length >=
-				sizeof(struct avdtp_media_codec_capability))
-			sep->codec = cap;
-
-	}
+	sep->caps = caps_to_list(resp->caps, size - sizeof(struct getcap_resp),
+					&sep->codec);
 
 	return TRUE;
 }
@@ -1855,7 +1989,7 @@ int avdtp_get_configuration(struct avdtp *session, struct avdtp_stream *stream)
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req.header, AVDTP_GET_CONFIGURATION);
-	req.acp_seid = stream->rsep->seid;
+	req.acp_seid = stream->rseid;
 
 	return send_request(session, FALSE, stream, &req, sizeof(req));
 }
@@ -1883,7 +2017,7 @@ int avdtp_set_configuration(struct avdtp *session,
 
 	new_stream->session = session;
 	new_stream->lsep = lsep;
-	new_stream->rsep = rsep;
+	new_stream->rseid = rsep->seid;
 	new_stream->caps = caps;
 
 	/* Calculate total size of request */
@@ -1935,7 +2069,7 @@ int avdtp_reconfigure(struct avdtp *session, struct avdtp_stream *stream)
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req.header, AVDTP_GET_CONFIGURATION);
-	req.acp_seid = stream->rsep->seid;
+	req.acp_seid = stream->rseid;
 
 	return send_request(session, FALSE, NULL, &req, sizeof(req));
 }
@@ -1952,7 +2086,7 @@ int avdtp_open(struct avdtp *session, struct avdtp_stream *stream)
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req.header, AVDTP_OPEN);
-	req.acp_seid = stream->rsep->seid;
+	req.acp_seid = stream->rseid;
 
 	return send_request(session, FALSE, stream, &req, sizeof(req));
 }
@@ -1969,7 +2103,7 @@ int avdtp_start(struct avdtp *session, struct avdtp_stream *stream)
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req.header, AVDTP_START);
-	req.acp_seid = stream->rsep->seid;
+	req.acp_seid = stream->rseid;
 
 	return send_request(session, FALSE, stream, &req, sizeof(req));
 }
@@ -1987,7 +2121,7 @@ int avdtp_close(struct avdtp *session, struct avdtp_stream *stream)
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req.header, AVDTP_CLOSE);
-	req.acp_seid = stream->rsep->seid;
+	req.acp_seid = stream->rseid;
 
 	ret = send_request(session, FALSE, stream, &req, sizeof(req));
 	if (ret == 0)
@@ -2009,7 +2143,7 @@ int avdtp_suspend(struct avdtp *session, struct avdtp_stream *stream)
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req.header, AVDTP_SUSPEND);
-	req.acp_seid = stream->rsep->seid;
+	req.acp_seid = stream->rseid;
 
 	ret = send_request(session, FALSE, stream, &req, sizeof(req));
 	if (ret == 0)
@@ -2032,7 +2166,7 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req.header, AVDTP_ABORT);
-	req.acp_seid = stream->rsep->seid;
+	req.acp_seid = stream->rseid;
 
 	ret = send_request(session, FALSE, stream, &req, sizeof(req));
 	if (ret == 0)
@@ -2252,6 +2386,14 @@ const char *avdtp_strerror(struct avdtp_error *err)
 	default:
 		return "Unknow error";
 	}
+}
+
+void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst)
+{
+	if (src)
+		bacpy(src, &session->src);
+	if (dst)
+		bacpy(dst, &session->dst);
 }
 
 int avdtp_init(void)

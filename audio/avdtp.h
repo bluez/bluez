@@ -121,10 +121,11 @@ struct avdtp_sep_cfm {
 struct avdtp_sep_ind {
 	gboolean (*get_capability) (struct avdtp_local_sep *sep,
 					GSList **caps, uint8_t *err);
-	gboolean (*set_configuration) (struct avdtp_local_sep *lsep,
+	gboolean (*set_configuration) (struct avdtp *session,
+					struct avdtp_local_sep *lsep,
 					struct avdtp_stream *stream,
-					uint8_t int_seid, GSList *caps,
-					uint8_t *err);
+					GSList *caps, uint8_t *err,
+					uint8_t *category);
 	gboolean (*get_configuration) (struct avdtp_local_sep *lsep,
 					uint8_t *err);
 	gboolean (*open) (struct avdtp_local_sep *lsep,
@@ -193,6 +194,8 @@ int avdtp_get_seps(struct avdtp *session, uint8_t type, uint8_t media,
 int avdtp_unregister_sep(struct avdtp_local_sep *sep);
 
 const char *avdtp_strerror(struct avdtp_error *err);
+
+void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 
 int avdtp_init(void);
 void avdtp_exit(void);

@@ -46,7 +46,7 @@ void audio_exit(void);
 uint32_t add_service_record(DBusConnection *conn, sdp_buf_t *buf);
 int remove_service_record(DBusConnection *conn, uint32_t rec_id);
 
-struct device *manager_device_connected(bdaddr_t *bda);
+struct device *manager_device_connected(bdaddr_t *bda, const char *uuid);
 
 struct device *manager_default_device();
 

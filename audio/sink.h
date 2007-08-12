@@ -29,10 +29,11 @@
 struct sink;
 
 struct sink *sink_init(void *device);
-void sink_new_stream(void *device, void *lsep);
 void sink_free(void *device);
 int sink_get_config(void *device, int sock, struct ipc_packet *req,
 			int pkt_len, struct ipc_data_cfg **rsp, int *fd);
 gboolean sink_is_active(void *device);
 void sink_set_state(void *device, avdtp_state_t state);
 avdtp_state_t sink_get_state(void *device);
+gboolean sink_new_stream(struct avdtp *session, struct avdtp_stream *stream,
+				void *dev);

@@ -36,6 +36,7 @@
 #include "logging.h"
 #include "manager.h"
 #include "avdtp.h"
+#include "sink.h"
 #include "a2dp.h"
 
 static DBusConnection *connection = NULL;
@@ -46,15 +47,32 @@ static uint32_t source_record_id = 0;
 static struct avdtp_local_sep *sink_sep = NULL;
 static struct avdtp_local_sep *source_sep = NULL;
 
-static gboolean setconf_ind(struct avdtp_local_sep *sep,
+static gboolean setconf_ind(struct avdtp *session,
+				struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream,
-				uint8_t int_seid, GSList *caps,
-				uint8_t *err)
+				GSList *caps, uint8_t *err,
+				uint8_t *category)
 {
-	if (sep == sink_sep)
+	struct device *dev;
+	bdaddr_t addr;
+
+	if (sep == sink_sep) {
 		debug("SBC Sink: Set_Configuration_Ind");
-	else
-		debug("SBC Source: Set_Configuration_Ind");
+		return TRUE;
+	}
+
+	debug("SBC Source: Set_Configuration_Ind");
+
+	avdtp_get_peers(session, NULL, &addr);
+
+	dev = manager_device_connected(&addr, A2DP_SOURCE_UUID);
+	if (!dev) {
+		*err = AVDTP_UNSUPPORTED_CONFIGURATION;
+		*category = 0x00;
+		return FALSE;
+	}
+
+	sink_new_stream(session, stream, dev);
 
 	return TRUE;
 }

@@ -85,6 +85,7 @@ struct audio_sdp_data {
 
 static DBusConnection *connection = NULL;
 
+static struct device *default_hs = NULL;
 static struct device *default_dev = NULL;
 
 static GSList *devices = NULL;
@@ -132,6 +133,11 @@ static void remove_device(struct device *device)
 		default_dev = NULL;
 	}
 
+	if (device == default_hs) {
+		debug("Removing default headset");
+		default_hs = NULL;
+	}
+
 	devices = g_slist_remove(devices, device);
 
 	dbus_connection_destroy_object_path(connection, device->path);
@@ -143,6 +149,9 @@ static gboolean add_device(struct device *device)
 		debug("Selecting default device");
 		default_dev = device;
 	}
+
+	if (!default_hs && device->headset && !devices)
+		default_hs = device;
 
 	devices = g_slist_append(devices, device);
 
@@ -580,16 +589,13 @@ static DBusHandlerResult resolve_services(DBusMessage *msg,
 	return get_handles(GENERIC_AUDIO_UUID, sdp_data);
 }
 
-struct device *manager_device_connected(bdaddr_t *bda)
+struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 {
 	struct device *device;
 	const char *path;
-	gboolean created = FALSE;
+	gboolean headset = FALSE, created = FALSE;
 
 	device = find_device(bda);
-	if (device && device->headset)
-		return device;
-
 	if (!device) {
 		device = create_device(bda);
 		if (!add_device(device)) {
@@ -599,10 +605,26 @@ struct device *manager_device_connected(bdaddr_t *bda)
 		created = TRUE;
 	}
 
-	if (!device->headset)
+	if (!strcmp(uuid, HSP_AG_UUID) || !strcmp(uuid, HSP_AG_UUID)) {
+		if (device->headset)
+			return device;
+
 		device->headset = headset_init(device, NULL, 0);
 
-	if (!device->headset)
+		if (!device->headset)
+			return NULL;
+
+		headset = TRUE;
+	}
+	else if (!strcmp(uuid, A2DP_SOURCE_UUID)) {
+		if (device->sink)
+			return device;
+
+		device->sink = sink_init(device);
+
+		if (!device->sink)
+			return NULL;
+	} else
 		return NULL;
 
 	path = device->path;
@@ -616,17 +638,27 @@ struct device *manager_device_connected(bdaddr_t *bda)
 		resolve_services(NULL, device);
 	}
 
-	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
-					AUDIO_MANAGER_INTERFACE,
-					"HeadsetCreated",
-					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID);
+	if (headset)
+		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE,
+						"HeadsetCreated",
+						DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID);
+
+	if (headset && !default_hs) {
+		default_hs = device;
+		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE,
+						"DefaultHeadsetChanged",
+						DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID);
+	}
 
 	if (!default_dev) {
 		default_dev = device;
 		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
-						"DefaultHeadsetChanged",
+						"DefaultDeviceChanged",
 						DBUS_TYPE_STRING, &path,
 						DBUS_TYPE_INVALID);
 	}
@@ -1405,6 +1437,7 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	struct device *device;
 	DBusMessage *auth;
 	DBusPendingCall *pending;
+	headset_type_t type;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -1425,7 +1458,15 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	device = manager_device_connected(&addr.rc_bdaddr);
+	if (chan == hs_server) {
+		type = SVC_HEADSET;
+		uuid = HSP_AG_UUID;
+	} else {
+		type = SVC_HANDSFREE;
+		uuid = HFP_AG_UUID;
+	}
+
+	device = manager_device_connected(&addr.rc_bdaddr, uuid);
 	if (!device) {
 		close(cli_sk);
 		return TRUE;
@@ -1443,13 +1484,7 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	if (chan == hs_server) {
-		headset_set_type(device, SVC_HEADSET);
-		uuid = HSP_AG_UUID;
-	} else {
-		headset_set_type(device, SVC_HANDSFREE);
-		uuid = HFP_AG_UUID;
-	}
+	headset_set_type(device, type);
 
 	auth = dbus_message_new_method_call("org.bluez", "/org/bluez",
 						"org.bluez.Database",

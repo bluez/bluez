@@ -53,6 +53,7 @@ struct sink {
 	uint8_t state;
 	struct pending_connect *c;
 	DBusConnection *conn;
+	gboolean initiator;
 };
 
 static void pending_connect_free(struct pending_connect *c)
@@ -87,9 +88,13 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 			avdtp_unref(sink->session);
 			sink->session = NULL;
 		}
+		sink->stream = NULL;
 		c = sink->c;
 		break;
 	case AVDTP_STATE_CONFIGURED:
+		if (!sink->initiator)
+			break;
+
 		cmd_err = avdtp_open(sink->session, stream);
 		if (cmd_err < 0) {
 			error("Error on avdtp_open %s (%d)", strerror(-cmd_err),
@@ -163,10 +168,9 @@ failed:
 	if (new_state == AVDTP_STATE_IDLE) {
 		avdtp_unref(sink->session);
 		sink->session = NULL;
+		sink->stream = NULL;
 	}
 }
-
-
 
 static void discovery_complete(struct avdtp *session, GSList *seps, int err,
 				void *user_data)
@@ -204,6 +208,8 @@ static void discovery_complete(struct avdtp *session, GSList *seps, int err,
 		err_str = "Unable to set configuration";
 		goto failed;
 	}
+
+	sink->initiator = TRUE;
 
 	avdtp_stream_set_cb(session, sink->stream, stream_state_changed, dev);
 
@@ -299,7 +305,7 @@ static DBusHandlerResult sink_is_connected(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	connected = (sink->state != AVDTP_STATE_IDLE);
+	connected = (sink->state >= AVDTP_STATE_CONFIGURED);
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
@@ -456,3 +462,23 @@ avdtp_state_t sink_get_state(void *device)
 
 	return sink->state;
 }
+
+gboolean sink_new_stream(struct avdtp *session, struct avdtp_stream *stream,
+				void *dev)
+{
+	struct sink *sink = ((struct device *) (dev))->sink;
+
+	if (sink->stream)
+		return FALSE;
+
+	if (!sink->session)
+		sink->session = avdtp_ref(session);
+
+	sink->stream = stream;
+	sink->initiator = FALSE;
+
+	avdtp_stream_set_cb(session, stream, stream_state_changed, dev);
+
+	return TRUE;
+}
+
