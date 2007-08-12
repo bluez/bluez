@@ -98,7 +98,11 @@ typedef struct seid_info {
 
 /* packets */
 
-struct discover_req {
+struct gen_req {
+	struct avdtp_header header;
+} __attribute__ ((packed));
+
+struct gen_resp {
 	struct avdtp_header header;
 } __attribute__ ((packed));
 
@@ -134,10 +138,6 @@ struct setconf_req {
 	uint8_t caps[0];
 } __attribute__ ((packed));
 
-struct setconf_resp {
-	struct avdtp_header header;
-} __attribute__ ((packed));
-
 struct conf_rej {
 	struct avdtp_header header;
 	uint8_t category;
@@ -161,29 +161,6 @@ struct reconf_req {
 	uint8_t serv_cap_len;
 
 	uint8_t caps[0];
-} __attribute__ ((packed));
-
-struct reconf_resp {
-	struct avdtp_header header;
-} __attribute__ ((packed));
-
-struct abort_resp {
-	struct avdtp_header header;
-} __attribute__ ((packed));
-
-struct close_resp {
-	struct avdtp_header header;
-} __attribute__ ((packed));
-
-struct open_resp {
-	struct avdtp_header header;
-} __attribute__ ((packed));
-
-struct stream_pause_resp {
-	struct avdtp_header header;
-	uint8_t rfa0:2;
-	uint8_t acp_seid:6;
-	uint8_t error;
 } __attribute__ ((packed));
 
 struct avdtp_general_rej {
@@ -704,7 +681,7 @@ static gboolean avdtp_unknown_cmd(struct avdtp *session,
 }
 
 static gboolean avdtp_discover_cmd(struct avdtp *session,
-					struct discover_req *req, int size)
+					struct gen_req *req, int size)
 {
 	GSList *l;
 	struct discover_resp *rsp = (struct discover_resp *) session->buf;
@@ -785,7 +762,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 					struct setconf_req *req, int size)
 {
 	struct conf_rej rej;
-	struct setconf_resp *rsp = (struct setconf_resp *) session->buf;
+	struct gen_resp *rsp = (struct gen_resp *) session->buf;
 	struct avdtp_local_sep *sep;
 	struct avdtp_stream *stream;
 	uint8_t err, category = 0x00;
@@ -862,7 +839,7 @@ static gboolean avdtp_open_cmd(struct avdtp *session, struct seid_req *req,
 {
 	struct avdtp_local_sep *sep;
 	struct avdtp_stream *stream;
-	struct open_resp *rsp = (struct open_resp *) session->buf;
+	struct gen_resp *rsp = (struct gen_resp *) session->buf;
 	struct seid_rej rej;
 	uint8_t err;
 
@@ -891,7 +868,7 @@ static gboolean avdtp_open_cmd(struct avdtp *session, struct seid_req *req,
 
 	init_response(&rsp->header, &req->header, TRUE);
 
-	if (!avdtp_send(session, rsp, sizeof(struct open_resp)))
+	if (!avdtp_send(session, rsp, sizeof(struct gen_resp)))
 		return FALSE;
 
 	stream->open_acp = TRUE;
@@ -919,7 +896,7 @@ static gboolean avdtp_close_cmd(struct avdtp *session, struct seid_req *req,
 {
 	struct avdtp_local_sep *sep;
 	struct avdtp_stream *stream;
-	struct close_resp *rsp = (struct close_resp *) session->buf;
+	struct gen_resp *rsp = (struct gen_resp *) session->buf;
 	struct seid_rej rej;
 	uint8_t err;
 
@@ -951,7 +928,7 @@ static gboolean avdtp_close_cmd(struct avdtp *session, struct seid_req *req,
 
 	init_response(&rsp->header, &req->header, TRUE);
 
-	if (!avdtp_send(session, rsp, sizeof(struct close_resp)))
+	if (!avdtp_send(session, rsp, sizeof(struct gen_resp)))
 		return FALSE;
 
 	stream->timer = g_timeout_add(REQ_TIMEOUT, stream_close_timeout,
@@ -975,7 +952,7 @@ static gboolean avdtp_abort_cmd(struct avdtp *session, struct seid_req *req,
 				int size)
 {
 	struct avdtp_local_sep *sep;
-	struct abort_resp *rsp = (struct abort_resp *) session->buf;
+	struct gen_resp *rsp = (struct gen_resp *) session->buf;
 	struct seid_rej rej;
 	uint8_t err;
 	gboolean ret;
@@ -997,7 +974,7 @@ static gboolean avdtp_abort_cmd(struct avdtp *session, struct seid_req *req,
 	}
 
 	init_response(&rsp->header, &req->header, TRUE);
-	ret = avdtp_send(session, rsp, sizeof(struct abort_resp));
+	ret = avdtp_send(session, rsp, sizeof(struct gen_resp));
 
 	if (ret)
 		avdtp_sep_set_state(session, sep, AVDTP_STATE_ABORTING);
@@ -1600,7 +1577,7 @@ static gboolean avdtp_close_resp(struct avdtp *session,
 
 static gboolean avdtp_suspend_resp(struct avdtp *session,
 					struct avdtp_stream *stream,
-					struct stream_pause_resp *resp,
+					struct gen_resp *resp,
 					int size)
 {
 	struct avdtp_local_sep *sep = stream->lsep;
@@ -1912,7 +1889,7 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 
 int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb, void *user_data)
 {
-	struct discover_req req;
+	struct gen_req req;
 	int ret;
 
 	if (session->discov_cb)
