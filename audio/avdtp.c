@@ -684,6 +684,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 	struct setconf_resp *rsp = (struct setconf_resp *) session->buf;
 	struct avdtp_local_sep *lsep;
 	gboolean ret;
+	uint8_t err;
 
 	if (size < sizeof(struct setconf_req)) {
 		error("Too short getcap request");
@@ -691,11 +692,14 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 	}
 
 	lsep = find_local_sep_by_seid(req->acp_seid);
-	if (!lsep || lsep->stream) {
-		init_response(&rej.header, &req->header, FALSE);
-		rej.error = AVDTP_BAD_ACP_SEID;
-		rej.category = 0x00; /* 0x00 means "not applicable" */
-		return avdtp_send(session, &rej, sizeof(rej));
+	if (!lsep) {
+		err = AVDTP_BAD_ACP_SEID;
+		goto failed;
+	}
+
+	if (lsep->stream) {
+		err = AVDTP_SEP_IN_USE;
+		goto failed;
 	}
 
 	init_response(&rsp->header, &req->header, TRUE);
@@ -706,6 +710,12 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 		avdtp_sep_set_state(session, lsep, AVDTP_STATE_CONFIGURED);
 
 	return ret;
+
+failed:
+	init_response(&rej.header, &req->header, FALSE);
+	rej.error = err;
+	rej.category = 0x00; /* 0x00 means "not applicable" */
+	return avdtp_send(session, &rej, sizeof(rej));
 }
 
 static gboolean avdtp_getconf_cmd(struct avdtp *session, struct seid_req *req,
