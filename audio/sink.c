@@ -45,7 +45,7 @@
 #include "unix.h"
 #include "sink.h"
 
-struct pending_connect {
+struct pending_request {
 	DBusMessage *msg;
 	struct ipc_packet *pkt;
 	int pkt_len;
@@ -56,12 +56,12 @@ struct sink {
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	uint8_t state;
-	struct pending_connect *c;
+	struct pending_request *c;
 	DBusConnection *conn;
 	gboolean initiator;
 };
 
-static void pending_connect_free(struct pending_connect *c)
+static void pending_connect_free(struct pending_request *c)
 {
 	if (c->pkt)
 		g_free(c->pkt);
@@ -76,7 +76,7 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 {
 	struct device *dev = user_data;
 	struct sink *sink = dev->sink;
-	struct pending_connect *c = NULL;
+	struct pending_request *c = NULL;
 	DBusMessage *reply;
 	int cmd_err;
 
@@ -243,7 +243,7 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 {
 	struct device *dev = data;
 	struct sink *sink = dev->sink;
-	struct pending_connect *c;
+	struct pending_request *c;
 	int err;
 
 	if (!sink->session)
@@ -255,7 +255,7 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 	if (sink->state >= AVDTP_STATE_OPEN)
 		return err_already_connected(conn, msg);
 
-	c = g_new0(struct pending_connect, 1);
+	c = g_new0(struct pending_request, 1);
 	c->msg = dbus_message_ref(msg);
 	sink->c = c;
 
@@ -276,7 +276,7 @@ static DBusHandlerResult sink_disconnect(DBusConnection *conn,
 {
 	struct device *device = data;
 	struct sink *sink = device->sink;
-	struct pending_connect *c;
+	struct pending_request *c;
 	int err;
 
 	if (!sink->session)
@@ -294,7 +294,7 @@ static DBusHandlerResult sink_disconnect(DBusConnection *conn,
 			return err_failed(conn, msg, strerror(-err));
 	}
 
-	c = g_new0(struct pending_connect, 1);
+	c = g_new0(struct pending_request, 1);
 	c->msg = dbus_message_ref(msg);
 	sink->c = c;
 
@@ -367,7 +367,7 @@ int sink_get_config(struct device *dev, int sock, struct ipc_packet *req,
 {
 	struct sink *sink = dev->sink;
 	int err;
-	struct pending_connect *c = NULL;
+	struct pending_request *c = NULL;
 
 	if (sink->state == AVDTP_STATE_STREAMING)
 		goto proceed;
@@ -380,7 +380,7 @@ int sink_get_config(struct device *dev, int sock, struct ipc_packet *req,
 	if (!sink->session)
 		sink->session = avdtp_get(&dev->src, &dev->dst);
 
-	c = g_new0(struct pending_connect, 1);
+	c = g_new0(struct pending_request, 1);
 	c->sock = sock;
 	c->pkt = g_malloc(pkt_len);
 	memcpy(c->pkt, req, pkt_len);
@@ -462,6 +462,7 @@ void sink_set_state(struct device *dev, avdtp_state_t state)
 	default:
 		goto failed;
 	}
+
 failed:
 	error("%s: Error changing states", dev->path);
 }
