@@ -9,6 +9,10 @@ Copyright (C) 2005-2006  Brad Midgley <bmidgley@xmission.com>
 org.bluez.audio.Manager interface
 =================================
 
+This interface is for managing remote audio devices. It provides methods for
+creating and removing D-Bus objects representing remote audio devices. These
+objects implement one or more of the other interfaces listed in this document.
+
 Object path	/org/bluez/audio
 
 Methods
@@ -94,6 +98,8 @@ Signals
 org.bluez.audio.Device interface
 ================================
 
+This interface is implemented by all remote device objects.
+
 Object path(s)	/org/bluez/audio/device*
 
 Methods		string GetAddress() [experimental]
@@ -109,13 +115,24 @@ Methods		string GetAddress() [experimental]
 org.bluez.audio.Headset interface
 =================================
 
+This interface provides access to headsets that implement the HSP and/or HFP
+profiles.
+
 Object path(s)	/org/bluez/audio/device*
 
 Methods		void Connect()
 
+			Connect to the HSP/HFP service on the remote device.
+
 		void Disconnect()
 
+			Disconnect from the HSP/HFP service on the remote
+			device.
+
 		boolean IsConnected()
+
+			Returns TRUE if there is a active connection to the
+			HSP/HFP connection on the remote device.
 
 		void IndicateCall()
 
@@ -187,13 +204,75 @@ Signals		void AnswerRequested()
 			The microphone gain changed.
 
 
-org.bluez.audio.Source interface
-================================
+org.bluez.audio.Gateway interface
+=================================
+
+[not yet implemented]
+
+This interface is available for remote devices which can function in the Audio
+Gateway role of the HSP and/or HFP profiles.
 
 Object path(s)	/org/bluez/audio/device*
 
 
 org.bluez.audio.Sink interface
 ==============================
+
+This interface is available for remote devices which contain a A2DP Sink.
+
+Object path(s)	/org/bluez/audio/device*
+
+Methods		void Connect()
+
+			Connect and setup a stream to a A2DP sink on the
+			remote device.
+
+		void Disconnect()
+
+			Disconnect from the remote device.
+
+		boolean IsConnected()
+
+			Returns TRUE if a stream is setup to a A2DP sink on
+			the remote device.
+
+Signals		void Connected()
+
+			Sent when a successful connection has been made to the
+			remote A2DP Sink
+
+		void Disconnected()
+
+			Sent when the device has been disconnected from.
+
+
+org.bluez.audio.Source interface
+================================
+
+[not yet implemented]
+
+This interface is available for remote devices which implement a A2DP source.
+
+Object path(s)	/org/bluez/audio/device*
+
+
+org.bluez.audio.Control interface
+=================================
+
+[not yet implemented]
+
+This interface is available for remote devices which implement support for a
+AVRCP controller.
+
+Object path(s)	/org/bluez/audio/device*
+
+
+org.bluez.audio.Target interface
+================================
+
+[not yet implemented]
+
+This interface is available for remote devices which implement support for a
+AVRCP target.
 
 Object path(s)	/org/bluez/audio/device*
