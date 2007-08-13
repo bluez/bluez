@@ -954,9 +954,74 @@ fail:
 	return -err;
 }
 
+static void add_lang_attr(sdp_record_t *r)
+{
+	sdp_lang_attr_t base_lang;
+	sdp_list_t *langs = 0;
+
+	/* UTF-8 MIBenum (http://www.iana.org/assignments/character-sets) */
+	base_lang.code_ISO639 = (0x65 << 8) | 0x6e;
+	base_lang.encoding = 106;
+	base_lang.base_offset = SDP_PRIMARY_LANG_BASE;
+	langs = sdp_list_append(0, &base_lang);
+	sdp_set_lang_attr(r, langs);
+	sdp_list_free(langs, 0);
+}
+
 static int create_proxy_record(sdp_buf_t *buf, uuid_t *uuid, uint8_t channel)
 {
-	return 0;
+	sdp_list_t *apseq, *aproto, *profiles, *proto[2], *root, *svclass_id;
+	uuid_t root_uuid, l2cap, rfcomm;
+	sdp_profile_desc_t profile;
+	sdp_record_t record;
+	sdp_data_t *ch;
+	int ret;
+
+	memset(&record, 0, sizeof(sdp_record_t));
+	record.handle = 0xffffffff;
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(&record, root);
+	sdp_list_free(root, NULL);
+
+	svclass_id = sdp_list_append(NULL, uuid);
+	sdp_set_service_classes(&record, svclass_id);
+	sdp_list_free(svclass_id, NULL);
+
+	sdp_uuid16_create(&profile.uuid, SERIAL_PORT_PROFILE_ID);
+	profile.version = 0x0100;
+	profiles = sdp_list_append(NULL, &profile);
+	sdp_set_profile_descs(&record, profiles);
+	sdp_list_free(profiles, NULL);
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(NULL, &l2cap);
+	apseq = sdp_list_append(NULL, proto[0]);
+
+	sdp_uuid16_create(&rfcomm, RFCOMM_UUID);
+	proto[1] = sdp_list_append(NULL, &rfcomm);
+	ch = sdp_data_alloc(SDP_UINT8, &channel);
+	proto[1] = sdp_list_append(proto[1], ch);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(NULL, apseq);
+	sdp_set_access_protos(&record, aproto);
+
+	add_lang_attr(&record);
+
+	sdp_set_info_attr(&record, "Port Proxy Entity",
+				NULL, "Port Proxy Entity");
+
+	ret = sdp_gen_record_pdu(&record, buf);
+
+	sdp_data_free(ch);
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+
+	return ret;
+
 }
 
 static uint32_t add_proxy_record(DBusConnection *conn, sdp_buf_t *buf)
