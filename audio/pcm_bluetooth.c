@@ -40,7 +40,7 @@
 #include "ipc.h"
 #include "sbc.h"
 
-/*#define ENABLE_DEBUG */
+//#define ENABLE_DEBUG
 
 #define BUFFER_SIZE 1024
 
@@ -190,7 +190,7 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 	uint32_t period_count = io->buffer_size / io->period_size;
 	int opt_name, err;
 
-	DBG("fd = %d, period_count = %d", cfg.fd, period_count);
+	DBG("fd = %d, period_count = %d", data->stream_fd, period_count);
 
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
 			SCO_TXBUFS : SCO_RXBUFS;
@@ -380,11 +380,11 @@ static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 			real = (long) (sendz_delay.tv_sec * 1000 +
 						sendz_delay.tv_usec / 1000);
 			theo = (long) (((float) a2dp->nsamples) /
-						cfg->rate * 1000.0);
+						data->cfg.rate * 1000.0);
 			delta = (long) (sendz_delay.tv_sec * 1000 +
 						sendz_delay.tv_usec / 1000) -
 					(long) (((float) a2dp->nsamples) /
-							cfg->rate * 1000.0);
+							data->cfg.rate * 1000.0);
 
 			timersub(&send_date, &prev_date, &send_delay);
 			timersub(&send_date, &a2dp->ntimestamp, &sendz_delay);
@@ -765,7 +765,7 @@ done:
 	DBG("Device configuration:");
 
 	DBG("\n\tfd=%d\n\tfd_opt=%u\n\tchannels=%u\n\tpkt_len=%u\n"
-		"\tsample_size=%u\n\trate=%u", data->cfg.fd,
+		"\tsample_size=%u\n\trate=%u", data->stream_fd,
 		data->cfg.fd_opt, data->cfg.channels, data->cfg.pkt_len,
 		data->cfg.sample_size, data->cfg.rate);
 
