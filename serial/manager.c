@@ -1026,7 +1026,50 @@ static int create_proxy_record(sdp_buf_t *buf, uuid_t *uuid, uint8_t channel)
 
 static uint32_t add_proxy_record(DBusConnection *conn, sdp_buf_t *buf)
 {
-	return 0;
+	DBusMessage *msg, *reply;
+	DBusError derr;
+	dbus_uint32_t rec_id;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+			"org.bluez.Database", "AddServiceRecord");
+	if (!msg) {
+		error("Can't allocate new method call");
+		return 0;
+	}
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+			&buf->data, buf->data_size,
+			DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
+
+	free(buf->data);
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr) ||
+			dbus_set_error_from_message(&derr, reply)) {
+		error("Adding service record failed: %s", derr.message);
+		dbus_error_free(&derr);
+		return 0;
+	}
+
+	dbus_message_get_args(reply, &derr,
+			DBUS_TYPE_UINT32, &rec_id,
+			DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		error("Invalid arguments to AddServiceRecord reply: %s",
+				derr.message);
+		dbus_message_unref(reply);
+		dbus_error_free(&derr);
+		return 0;
+	}
+
+	dbus_message_unref(reply);
+
+	return rec_id;
 }
 
 static gboolean connect_event(GIOChannel *chan,
