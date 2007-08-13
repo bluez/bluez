@@ -913,9 +913,45 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static int rfcomm_listen(bdaddr_t *src, uint8_t *channel)
+static int rfcomm_listen(bdaddr_t *src, uint8_t *channel, int opts)
 {
-	return 0;
+	struct sockaddr_rc laddr;
+	socklen_t alen;
+	int err, sk;
+
+	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0)
+		return -errno;
+
+	if (setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &opts, sizeof(opts)) < 0)
+		goto fail;
+
+	memset(&laddr, 0, sizeof(laddr));
+	laddr.rc_family = AF_BLUETOOTH;
+	bacpy(&laddr.rc_bdaddr, src);
+	laddr.rc_channel = 0;
+
+	alen = sizeof(laddr);
+	if (bind(sk, (struct sockaddr *) &laddr, alen) < 0)
+		goto fail;
+
+	if (listen(sk, 1) < 0)
+		goto fail;
+
+	memset(&laddr, 0, sizeof(laddr));
+	if (getsockname(sk, (struct sockaddr *)&laddr, &alen) < 0)
+		goto fail;
+
+	*channel = laddr.rc_channel;
+
+	return sk;
+
+fail:
+	err = errno;
+	close(sk);
+	errno = err;
+
+	return -err;
 }
 
 static int create_proxy_record(sdp_buf_t *buf, uuid_t *uuid, uint8_t channel)
@@ -943,7 +979,8 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 	int sk;
 
 	/* Listen */
-	sk = rfcomm_listen(&prx->src, &prx->channel);
+	/* FIXME: missing options */
+	sk = rfcomm_listen(&prx->src, &prx->channel, 0);
 	if (sk < 0) {
 		const char *strerr = strerror(errno);
 		error("RFCOMM listen socket failed: %s(%d)", strerr, errno);
