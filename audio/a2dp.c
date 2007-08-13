@@ -188,7 +188,11 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		debug("SBC Sink: Start_Ind");
 	else
 		debug("SBC Source: Start_Ind");
-	return TRUE;
+
+	/* Refuse to go into streaming state since this action should only be
+	 * initiated by alsa */
+	*err = AVDTP_NOT_SUPPORTED_COMMAND;
+	return FALSE;
 }
 
 static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
