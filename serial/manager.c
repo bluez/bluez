@@ -1273,7 +1273,56 @@ static DBusHandlerResult proxy_disable(DBusConnection *conn,
 static DBusHandlerResult proxy_get_info(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct proxy *prx = data;
+	DBusMessage *reply;
+	DBusMessageIter iter, dict;
+	dbus_bool_t boolean;
+	char uuid_str[MAX_LEN_UUID_STR];
+	char bda[18];
+	const char *pstr;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	sdp_uuid2strn(&prx->uuid, uuid_str, MAX_LEN_UUID_STR);
+	pstr = uuid_str;
+	dbus_message_iter_append_dict_entry(&dict, "uuid",
+			DBUS_TYPE_STRING, &pstr);
+
+	dbus_message_iter_append_dict_entry(&dict, "tty",
+			DBUS_TYPE_STRING, &prx->tty);
+
+	if (prx->channel)
+		dbus_message_iter_append_dict_entry(&dict, "channel",
+				DBUS_TYPE_BYTE, &prx->channel);
+
+	boolean = (prx->listen_watch ? TRUE : FALSE);
+	dbus_message_iter_append_dict_entry(&dict, "enabled",
+			DBUS_TYPE_BOOLEAN, &boolean);
+
+	boolean = (prx->rfcomm_watch ? TRUE : FALSE);
+	dbus_message_iter_append_dict_entry(&dict, "connected",
+			DBUS_TYPE_BOOLEAN, &boolean);
+
+	/* If connected: append the remote address */
+	if (boolean) {
+		ba2str(&prx->dst, bda);
+		pstr = bda;
+		dbus_message_iter_append_dict_entry(&dict, "address",
+				DBUS_TYPE_STRING, &pstr);
+	}
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusMethodVTable proxy_methods[] = {
