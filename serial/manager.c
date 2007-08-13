@@ -1173,6 +1173,9 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 	sdp_buf_t buf;
 	int sk;
 
+	if (prx->listen_watch)
+		return err_failed(conn, msg, "Already enabled");
+
 	/* Listen */
 	/* FIXME: missing options */
 	sk = rfcomm_listen(&prx->src, &prx->channel, 0);
@@ -1242,19 +1245,13 @@ static DBusHandlerResult proxy_disable(DBusConnection *conn,
 {
 	struct proxy *prx = data;
 
-	/* Unregister the record */
-	if (prx->record_id) {
-		remove_proxy_record(conn, prx->record_id);
-		prx->record_id = 0;
-	}
-
-	/* Stop listen */
-	if (prx->listen_watch) {
-		g_source_remove(prx->listen_watch);
-		prx->listen_watch = 0;
-	}
+	if (!prx->listen_watch)
+		return err_failed(conn, msg, "Not enabled");
 
 	/* Remove watches */
+	g_source_remove(prx->listen_watch);
+	prx->listen_watch = 0;
+
 	if (prx->rfcomm_watch) {
 		g_source_remove(prx->rfcomm_watch);
 		prx->rfcomm_watch = 0;
@@ -1264,6 +1261,10 @@ static DBusHandlerResult proxy_disable(DBusConnection *conn,
 		g_source_remove(prx->tty_watch);
 		prx->tty_watch = 0;
 	}
+
+	/* Unregister the record */
+	remove_proxy_record(conn, prx->record_id);
+	prx->record_id = 0;
 
 	return send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
