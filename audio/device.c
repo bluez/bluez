@@ -221,6 +221,19 @@ int device_store(struct device *dev, gboolean is_default)
 	return textfile_put(filename, dst_addr, value);
 }
 
+int device_remove_stored(struct device *dev)
+{
+	char filename[PATH_MAX + 1];
+	char src_addr[18], dst_addr[18];
+
+	ba2str(&dev->dst, dst_addr);
+	ba2str(&dev->src, src_addr);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "audio");
+
+	return textfile_del(filename, dst_addr);
+}
+
 void device_finish_sdp_transaction(struct device *dev)
 {
 	char address[18], *addr_ptr = address;

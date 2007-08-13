@@ -862,20 +862,19 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	device = match->data;
-
 	remove_device(device);
+	device_remove_stored(device);
 
-	if (default_dev == device) {
+	/* Fallback to a valid default */
+	if (default_dev == NULL) {
 		const char *param;
 		GSList *l;
 
-		default_dev = NULL;
+		default_dev = manager_get_connected_device();
 
-		for (l = devices; l != NULL; l = l->next) {
-			device = l->data;
-
-			if (device->headset)
-				default_dev = device;
+		if (!default_dev) {
+			l = devices;
+			default_dev = (g_slist_last(l))->data;
 		}
 
 		param = default_dev ? default_dev->path : "";
@@ -885,6 +884,14 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 						"DefaultHeadsetChanged",
 						DBUS_TYPE_STRING, &param,
 						DBUS_TYPE_INVALID);
+
+		dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE,
+						"DefaultDeviceChanged",
+						DBUS_TYPE_STRING, &param,
+						DBUS_TYPE_INVALID);
+
+		device_store(default_dev, TRUE);
 	}
 
 	dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
