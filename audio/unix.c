@@ -162,7 +162,8 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		debug("Unix client disconnected");
-		device_set_state(client->dev, STATE_CONNECTED);
+		if (client->dev)
+			device_set_state(client->dev, STATE_CONNECTED);
 		goto failed;
 	}
 
@@ -232,7 +233,7 @@ static gboolean server_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	debug("Accepted new client connection on unix socket");
 
-	client = g_new(struct unix_client, 1);
+	client = g_new0(struct unix_client, 1);
 	client->sock = cli_sk;
 	clients = g_slist_append(clients, client);
 
