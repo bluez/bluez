@@ -25,6 +25,10 @@
 #include <config.h>
 #endif
 
+#include <dbus/dbus.h>
+
+#include "dbus.h"
+
 #include "error.h"
 #include "logging.h"
 

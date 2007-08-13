@@ -21,8 +21,6 @@
  *
  */
 
-#include "ipc.h"
-
 int unix_init(void);
 void unix_exit(void);
 

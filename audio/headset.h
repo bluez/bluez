@@ -20,13 +20,6 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
-
-#include <dbus/dbus.h>
-
-#include "ipc.h"
-#include "device.h"
 
 #define AUDIO_HEADSET_INTERFACE "org.bluez.audio.Headset"
 

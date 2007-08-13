@@ -21,10 +21,6 @@
  *
  */
 
-#include <dbus.h>
-#include <glib.h>
-#include "avdtp.h"
-
 #define A2DP_CODEC_SBC			0x00
 #define A2DP_CODEC_MPEG12		0x01
 #define A2DP_CODEC_MPEG24		0x02

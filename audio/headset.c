@@ -51,6 +51,7 @@
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "logging.h"
+#include "ipc.h"
 #include "device.h"
 #include "manager.h"
 #include "error.h"

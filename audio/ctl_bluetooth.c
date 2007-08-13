@@ -31,6 +31,8 @@
 #include <alsa/asoundlib.h>
 #include <alsa/control_external.h>
 
+#include <bluetooth/bluetooth.h>
+
 #include "ipc.h"
 
 #ifdef ENABLE_DEBUG

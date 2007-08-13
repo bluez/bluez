@@ -25,4 +25,9 @@
 #include <config.h>
 #endif
 
+#include <stdint.h>
+
+#include <glib.h>
+#include <dbus/dbus.h>
+
 #include "gateway.h"

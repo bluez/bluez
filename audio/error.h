@@ -21,8 +21,6 @@
  *
  */
 
-#include "dbus.h"
-
 DBusHandlerResult err_invalid_args(DBusConnection *conn,
 					DBusMessage *msg, const char *descr);
 DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg);

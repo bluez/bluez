@@ -26,6 +26,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdint.h>
 #include <errno.h>
 #include <unistd.h>
 #include <assert.h>
@@ -34,9 +35,12 @@
 
 #include <glib.h>
 
-#include "avdtp.h"
-#include "logging.h"
+#include <bluetooth/bluetooth.h>
+
 #include "dbus.h"
+#include "logging.h"
+
+#include "avdtp.h"
 
 #include <bluetooth/l2cap.h>
 

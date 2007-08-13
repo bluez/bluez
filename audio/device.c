@@ -37,15 +37,19 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"
 
+#include "ipc.h"
+#include "device.h"
+#include "avdtp.h"
 #include "headset.h"
 #include "sink.h"
-#include "device.h"
 
 static DBusHandlerResult device_get_address(DBusConnection *conn,
 						DBusMessage *msg, void *data)

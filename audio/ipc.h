@@ -20,10 +20,6 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-#ifndef __AUDIO_IPC_H__
-#define __AUDIO_IPC_H__
-
-#include <stdint.h>
 
 #define IPC_TYPE_CONNECT  0x0001
 
@@ -78,7 +74,8 @@ struct ipc_packet {
 #define CFG_CODEC_SBC			1
 
 struct ipc_data_cfg {
-	uint8_t fd_opt;		/* Stream file descriptor options: read, write or readwrite*/
+	uint8_t fd_opt;		/* Stream file descriptor options: read,
+				   write or readwrite */
 	uint8_t channels;	/* Number of audio channel */
 	uint8_t channel_mode;	/* Audio channel mode*/
 	uint16_t pkt_len;	/* Stream packet length */
@@ -133,5 +130,3 @@ struct ipc_data_ctl {
 	uint8_t mode;		/* Control Mode */
 	uint8_t key;		/* Control Key */
 }  __attribute__ ((packed));
-
-#endif

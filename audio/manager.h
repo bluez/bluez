@@ -21,11 +21,6 @@
  *
  */
 
-#include <bluetooth/sdp.h>
-#include <dbus/dbus.h>
-
-#include "device.h"
-
 #define MAX_PATH_LENGTH 64 /* D-Bus path */
 #define AUDIO_MANAGER_PATH "/org/bluez/audio"
 #define AUDIO_MANAGER_INTERFACE "org.bluez.audio.Manager"

@@ -48,12 +48,14 @@
 #include <dbus/dbus.h>
 
 #include "dbus-helper.h"
+#include "dbus.h"
 #include "logging.h"
 #include "textfile.h"
+#include "ipc.h"
 #include "device.h"
 #include "error.h"
-#include "a2dp.h"
 #include "avdtp.h"
+#include "a2dp.h"
 #include "headset.h"
 #include "gateway.h"
 #include "sink.h"

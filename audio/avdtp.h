@@ -20,11 +20,6 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-#ifndef __AVDTP_H__
-#define __AVDTP_H__
-
-#include <stdint.h>
-#include <bluetooth/bluetooth.h>
 
 struct avdtp;
 struct avdtp_stream;
@@ -208,4 +203,3 @@ void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 int avdtp_init(void);
 void avdtp_exit(void);
 
-#endif

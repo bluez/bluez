@@ -26,15 +26,18 @@
 #endif
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <signal.h>
 
 #include <glib.h>
-
 #include <dbus/dbus.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
 
 #include "dbus.h"
 #include "logging.h"
+#include "ipc.h"
 #include "unix.h"
 #include "manager.h"
 

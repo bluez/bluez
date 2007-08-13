@@ -25,16 +25,20 @@
 #include <config.h>
 #endif
 
+#include <stdint.h>
 #include <errno.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
+
+#include <bluetooth/bluetooth.h>
 
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "logging.h"
 
 #include "avdtp.h"
+#include "ipc.h"
 #include "device.h"
 #include "a2dp.h"
 #include "error.h"

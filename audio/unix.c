@@ -33,13 +33,16 @@
 #include <unistd.h>
 #include <stdint.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <dbus/dbus.h>
 #include <glib.h>
 
 #include "logging.h"
 #include "dbus.h"
+#include "ipc.h"
 #include "device.h"
 #include "manager.h"
-#include "ipc.h"
 #include "unix.h"
 
 struct unix_client {

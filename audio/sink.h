@@ -21,10 +21,6 @@
  *
  */
 
-#include "ipc.h"
-#include "avdtp.h"
-#include "device.h"
-
 #define AUDIO_SINK_INTERFACE "org.bluez.audio.Sink"
 
 struct sink *sink_init(struct device *dev);

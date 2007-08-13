@@ -30,11 +30,13 @@
 #include <dbus/dbus.h>
 #include <glib.h>
 
+#include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
 #include "logging.h"
 #include "manager.h"
+#include "ipc.h"
 #include "device.h"
 #include "avdtp.h"
 #include "sink.h"
