@@ -113,6 +113,10 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 							AUDIO_SINK_INTERFACE,
 							"Connected",
 							DBUS_TYPE_INVALID);
+
+		if (!sink->initiator)
+			break;
+
 		if (sink->c && sink->c->pkt) {
 			cmd_err = avdtp_start(sink->session, stream);
 			if (cmd_err < 0) {
