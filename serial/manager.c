@@ -1204,10 +1204,69 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 			dbus_message_new_method_return(msg));
 }
 
+static int remove_proxy_record(DBusConnection *conn, uint32_t rec_id)
+{
+	DBusMessage *msg, *reply;
+	DBusError derr;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+				"org.bluez.Database", "RemoveServiceRecord");
+	if (!msg) {
+		error("Can't allocate new method call");
+		return -ENOMEM;
+	}
+
+	dbus_message_append_args(msg,
+			DBUS_TYPE_UINT32, &rec_id,
+			DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
+
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr)) {
+		error("Removing service record 0x%x failed: %s",
+						rec_id, derr.message);
+		dbus_error_free(&derr);
+		return -1;
+	}
+
+	dbus_message_unref(reply);
+
+	return 0;
+}
+
 static DBusHandlerResult proxy_disable(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct proxy *prx = data;
+
+	/* Unregister the record */
+	if (prx->record_id) {
+		remove_proxy_record(conn, prx->record_id);
+		prx->record_id = 0;
+	}
+
+	/* Stop listen */
+	if (prx->listen_watch) {
+		g_source_remove(prx->listen_watch);
+		prx->listen_watch = 0;
+	}
+
+	/* Remove watches */
+	if (prx->rfcomm_watch) {
+		g_source_remove(prx->rfcomm_watch);
+		prx->rfcomm_watch = 0;
+	}
+
+	if (prx->tty_watch) {
+		g_source_remove(prx->tty_watch);
+		prx->tty_watch = 0;
+	}
+
+	return send_message_and_unref(conn,
+			dbus_message_new_method_return(msg));
 }
 
 static DBusHandlerResult proxy_get_info(DBusConnection *conn,
