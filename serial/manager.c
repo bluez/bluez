@@ -60,6 +60,7 @@
 
 #define BASE_UUID			"00000000-0000-1000-8000-00805F9B34FB"
 #define SERIAL_PROXY_INTERFACE		"org.bluez.serial.Proxy"
+#define BUF_SIZE			1024
 
 /* Waiting for udev to create the device node */
 #define MAX_OPEN_TRIES 		5
@@ -109,6 +110,8 @@ struct proxy {
 	uint8_t		channel;
 	uint32_t	record_id;
 	guint		listen_watch;
+	guint		rfcomm_watch;
+	guint		tty_watch;
 };
 
 static DBusConnection *connection = NULL;
@@ -1024,6 +1027,41 @@ static int create_proxy_record(sdp_buf_t *buf, uuid_t *uuid, uint8_t channel)
 
 }
 
+static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
+{
+	char buf[BUF_SIZE];
+	GIOChannel *dest = data;
+	GIOError err;
+	gsize rbytes, wbytes, written;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		g_io_channel_close(dest);
+		return FALSE;
+	}
+
+	memset(buf, 0, sizeof(buf));
+	rbytes = wbytes = written = 0;
+
+	err = g_io_channel_read(chan, buf, sizeof(buf) - 1, &rbytes);
+	if (err != G_IO_ERROR_NONE)
+		return TRUE;
+
+	while (wbytes < rbytes) {
+		err = g_io_channel_write(dest,
+				buf + wbytes,
+				rbytes - wbytes,
+				&written);
+		if (err != G_IO_ERROR_NONE)
+			break;
+		wbytes += written;
+	}
+
+	return TRUE;
+}
+
 static uint32_t add_proxy_record(DBusConnection *conn, sdp_buf_t *buf)
 {
 	DBusMessage *msg, *reply;
@@ -1075,7 +1113,56 @@ static uint32_t add_proxy_record(DBusConnection *conn, sdp_buf_t *buf)
 static gboolean connect_event(GIOChannel *chan,
 			GIOCondition cond, gpointer data)
 {
-	return FALSE;
+	struct proxy *prx = data;
+	struct sockaddr_rc raddr;
+	GIOChannel *node_io, *tty_io;
+	socklen_t alen;
+	int sk, nsk, tty_sk;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		g_io_channel_close(chan);
+		return FALSE;
+	}
+
+	sk = g_io_channel_unix_get_fd(chan);
+
+	memset(&raddr, 0, sizeof(raddr));
+	alen = sizeof(raddr);
+	nsk = accept(sk, (struct sockaddr *) &raddr, &alen);
+	if (nsk < 0)
+		return TRUE;
+
+	bacpy(&prx->dst, &raddr.rc_bdaddr);
+
+	/* TTY copen */
+	tty_sk = open(prx->tty, O_RDWR | O_NOCTTY);
+	if (tty_sk < 0) {
+		error("Unable to open %s: %s(%d)",
+				prx->tty, strerror(errno), errno);
+		close(nsk);
+		return TRUE;
+	}
+
+	node_io = g_io_channel_unix_new(nsk);
+	g_io_channel_set_close_on_unref(node_io, TRUE);
+	tty_io = g_io_channel_unix_new(tty_sk);
+	g_io_channel_set_close_on_unref(tty_io, TRUE);
+
+	prx->rfcomm_watch = g_io_add_watch(node_io,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				forward_data, tty_io);
+
+	prx->tty_watch = g_io_add_watch(tty_io,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				forward_data, node_io);
+
+	g_io_channel_unref(node_io);
+	g_io_channel_unref(tty_io);
+
+	return TRUE;
 }
 
 static DBusHandlerResult proxy_enable(DBusConnection *conn,
