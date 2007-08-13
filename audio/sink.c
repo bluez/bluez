@@ -365,8 +365,10 @@ int sink_get_config(struct device *dev, int sock, struct ipc_packet *req,
 	int err;
 	struct pending_connect *c = NULL;
 
-	if (sink->c)
+	if (sink->c) {
+		error("sink_get_config: another request already in progress");
 		return -EBUSY;
+	}
 
 	if (sink->state == AVDTP_STATE_STREAMING)
 		goto proceed;
