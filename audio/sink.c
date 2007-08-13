@@ -362,8 +362,11 @@ int sink_get_config(struct device *dev, int sock, struct ipc_packet *req,
 			int pkt_len, struct ipc_data_cfg **rsp, int *fd)
 {
 	struct sink *sink = dev->sink;
-	int err = EINVAL;
+	int err;
 	struct pending_connect *c = NULL;
+
+	if (sink->c)
+		return -EBUSY;
 
 	if (sink->state == AVDTP_STATE_STREAMING)
 		goto proceed;
@@ -375,27 +378,30 @@ int sink_get_config(struct device *dev, int sock, struct ipc_packet *req,
 	c->sock = sock;
 	c->pkt = g_malloc(pkt_len);
 	memcpy(c->pkt, req, pkt_len);
-	sink->c = c;
 
 	if (sink->state == AVDTP_STATE_IDLE)
 		err = avdtp_discover(sink->session, discovery_complete, dev);
 	else if (sink->state < AVDTP_STATE_STREAMING)
 		err = avdtp_start(sink->session, sink->stream);
 	else
-		goto error;
+		err = -EINVAL;
 
 	if (err < 0)
-		goto error;
+		goto failed;
+
+	sink->c = c;
 
 	return 1;
 
 proceed:
-	if (!a2dp_get_config(sink->stream, rsp, fd))
-		goto error;
+	if (!a2dp_get_config(sink->stream, rsp, fd)) {
+		err = -EINVAL;
+		goto failed;
+	}
 
 	return 0;
 
-error:
+failed:
 	if (c)
 		pending_connect_free(c);
 	return -err;
