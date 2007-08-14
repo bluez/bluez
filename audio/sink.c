@@ -140,6 +140,8 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 	sink->state = new_state;
 
 	if (c) {
+		sink->c = NULL;
+
 		if (c->msg) {
 			reply = dbus_message_new_method_return(c->msg);
 			send_message_and_unref(dev->conn, reply);
@@ -159,7 +161,6 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 		}
 
 		pending_connect_free(c);
-		sink->c = NULL;
 	}
 
 	return;
