@@ -42,7 +42,7 @@
 
 //#define ENABLE_DEBUG
 
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 2048
 
 #ifdef ENABLE_DEBUG
 #define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
@@ -151,6 +151,9 @@ static void bluetooth_exit(struct bluetooth_data *data)
 	if (data->stream_fd >= 0)
 		close(data->stream_fd);
 
+	if (data->cfg.codec == CFG_CODEC_SBC)
+		sbc_finish(&data->a2dp.sbc);
+
 	free(data);
 }
 
@@ -241,7 +244,6 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 
 	err = errno;
 	SNDERR("%s (%d)", strerror(err), err);
-	bluetooth_close(io);
 
 	return -err;
 }
@@ -548,7 +550,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	a2dp->samples += encoded / frame_size;
 	a2dp->nsamples += encoded / frame_size;
 	/* Increment hardware transmition pointer */
-	data->hw_ptr = (data->hw_ptr + codesize / frame_size)
+	data->hw_ptr = (data->hw_ptr + encoded / frame_size)
 			% io->buffer_size;
 
 	ret = frames_to_read;
