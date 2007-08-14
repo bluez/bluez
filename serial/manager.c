@@ -116,6 +116,7 @@ struct proxy {
 
 static DBusConnection *connection = NULL;
 static GSList *pending_connects = NULL;
+static GSList *ports_paths = NULL;
 static GSList *proxies_paths = NULL;
 static int rfcomm_ctl = -1;
 
@@ -550,6 +551,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 			g_free(svcname);
 
 		port_register(pc->conn, err, &dst, port_name, path);
+		ports_paths = g_slist_append(ports_paths, g_strdup(path));
 
 		reply = dbus_message_new_method_return(pc->msg);
 		dbus_message_append_args(reply,
@@ -825,6 +827,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
 	port_store(&src, &dst, err, val, NULL);
 	port_register(conn, err, &dst, port_name, path);
+	ports_paths = g_slist_append(ports_paths, g_strdup(path));
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -841,38 +844,35 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static void message_append_paths(DBusMessage *msg, const GSList *list)
+{
+	const GSList *l;
+	const char *path;
+	DBusMessageIter iter, iter_array;
+
+	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING_AS_STRING, &iter_array);
+
+	for (l = list; l; l = l->next) {
+		path = l->data;
+		dbus_message_iter_append_basic(&iter_array,
+				DBUS_TYPE_STRING, &path);
+	}
+
+	dbus_message_iter_close_container(&iter, &iter_array);
+}
+
 static DBusHandlerResult list_ports(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	DBusMessageIter iter, iter_array;
-	char **dev;
-	int i;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_TYPE_STRING_AS_STRING, &iter_array);
-
-	if (!dbus_connection_list_registered(conn, SERIAL_MANAGER_PATH, &dev))
-		goto done;
-
-	for (i = 0; dev[i]; i++) {
-		char dev_path[MAX_PATH_LENGTH];
-		const char *ppath = dev_path;
-
-		snprintf(dev_path, sizeof(dev_path), "%s/%s",
-				SERIAL_MANAGER_PATH, dev[i]);
-		dbus_message_iter_append_basic(&iter_array,
-					DBUS_TYPE_STRING, &ppath);
-	}
-
-	dbus_free_string_array(dev);
-done:
-	dbus_message_iter_close_container(&iter, &iter_array);
+	message_append_paths(reply, ports_paths);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -906,7 +906,7 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
 
 	send_message_and_unref(conn,
-			dbus_message_new_method_return(msg)); 
+			dbus_message_new_method_return(msg));
 
 	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "PortRemoved" ,
@@ -1137,7 +1137,7 @@ static gboolean connect_event(GIOChannel *chan,
 
 	bacpy(&prx->dst, &raddr.rc_bdaddr);
 
-	/* TTY copen */
+	/* TTY open */
 	tty_sk = open(prx->tty, O_RDWR | O_NOCTTY);
 	if (tty_sk < 0) {
 		error("Unable to open %s: %s(%d)",
@@ -1469,26 +1469,13 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 static DBusHandlerResult list_proxies(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	DBusMessageIter iter, iter_array;
 	DBusMessage *reply;
-	GSList *l;
-	const char *path;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_TYPE_STRING_AS_STRING, &iter_array);
-
-	for (l = proxies_paths; l; l = l->next) {
-		path = l->data;
-		dbus_message_iter_append_basic(&iter_array,
-				DBUS_TYPE_STRING, &path);
-	}
-
-	dbus_message_iter_close_container(&iter, &iter_array);
+	message_append_paths(reply, proxies_paths);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -1711,6 +1698,13 @@ static void manager_unregister(DBusConnection *conn, void *data)
 		proxies_paths = NULL;
 	}
 
+	if (ports_paths) {
+		g_slist_foreach(ports_paths,
+				(GFunc) g_free, NULL);
+		g_slist_free(ports_paths);
+		ports_paths = NULL;
+	}
+
 	/* Unregister all paths in serial hierarchy */
 	if (!dbus_connection_list_registered(conn, SERIAL_MANAGER_PATH, &dev))
 		return;
@@ -1752,7 +1746,7 @@ static DBusSignalVTable manager_signals[] = {
 
 static void parse_port(char *key, char *value, void *data)
 {
-	char port_name[16], dst_addr[18];
+	char path[MAX_PATH_LENGTH], port_name[16], dst_addr[18];
 	char *src_addr = data;
 	bdaddr_t dst, src;
 	int ch, id;
@@ -1772,10 +1766,12 @@ static void parse_port(char *key, char *value, void *data)
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", id);
 
-	if (port_register(connection, id, &dst, port_name, NULL) < 0) {
+	if (port_register(connection, id, &dst, port_name, path) < 0) {
 		rfcomm_release(id);
 		return;
 	}
+
+	ports_paths = g_slist_append(ports_paths, g_strdup(path));
 }
 
 static void register_stored_ports(void)
