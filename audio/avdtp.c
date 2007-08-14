@@ -463,18 +463,24 @@ static void avdtp_sep_set_state(struct avdtp *session,
 {
 	struct avdtp_stream *stream = sep->stream;
 	avdtp_state_t old_state;
+	struct avdtp_error err, *err_ptr = NULL;
 
-	if (sep->state == state)
-		return;
-
-	debug("stream state changed: %s -> %s", avdtp_statestr(sep->state),
-			avdtp_statestr(state));
+	if (sep->state == state) {
+		avdtp_error_init(&err, AVDTP_ERROR_ERRNO, EIO);
+		debug("stream state change failed: %s", avdtp_strerror(&err));
+		err_ptr = &err;
+	} else {
+		err_ptr = NULL;
+		debug("stream state changed: %s -> %s",
+				avdtp_statestr(sep->state),
+				avdtp_statestr(state));
+	}
 
 	old_state = sep->state;
 	sep->state = state;
 
 	if (stream && stream->cb)
-		stream->cb(stream, old_state, state, NULL,
+		stream->cb(stream, old_state, state, err_ptr,
 				stream->user_data);
 
 	if (state == AVDTP_STATE_IDLE) {
