@@ -184,7 +184,8 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 	return 0;
 }
 
-static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params)
+static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
+					snd_pcm_hw_params_t *params)
 {
 	struct bluetooth_data *data = io->private_data;
 	uint32_t period_count = io->buffer_size / io->period_size;
@@ -204,6 +205,30 @@ static int bluetooth_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params
 
 	if (setsockopt(data->stream_fd, SOL_SCO, opt_name, &period_count,
 			sizeof(period_count)) == 0)
+		return 0;
+
+	err = errno;
+	SNDERR("%s (%d)", strerror(err), err);
+	bluetooth_close(io);
+
+	return -err;
+}
+
+static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
+					snd_pcm_hw_params_t *params)
+{
+	struct bluetooth_data *data = io->private_data;
+	uint32_t period_count = io->buffer_size / io->period_size;
+	int opt_name, err;
+	struct timeval t = { 0, period_count };
+
+	DBG("fd = %d, period_count = %d", data->stream_fd, period_count);
+
+	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
+			SO_SNDTIMEO : SO_RCVTIMEO;
+
+	if (setsockopt(data->stream_fd, SOL_SOCKET, opt_name, &t,
+			sizeof(t)) == 0)
 		return 0;
 
 	err = errno;
@@ -364,7 +389,7 @@ static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 	header->timestamp = htonl(a2dp->nsamples);
 	header->ssrc = htonl(1);
 
-	while (count++ < 50) {
+	while (count++ < 10) {
 #ifdef ENABLE_DEBUG
 		gettimeofday(&send_date, NULL);
 #endif
@@ -389,18 +414,17 @@ static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 			timersub(&send_date, &prev_date, &send_delay);
 			timersub(&send_date, &a2dp->ntimestamp, &sendz_delay);
 
-			DBG("send %d (cumul=%d) samples (delay=%ld ms,"
+			printf("send %d (cumul=%d) samples (delay=%ld ms,"
 					" real=%ld ms, theo=%ld ms,"
-					" delta=%ld ms).", a2dp->samples,
+					" delta=%ld ms).\n", a2dp->samples,
 					a2dp->nsamples, delay, real, theo,
 					delta);
 		}
 #endif
-		if (written >= 0)
+		if (written == a2dp->count)
 			break;
 
-		if (errno != EAGAIN)
-			break;
+		a2dp->count -= written;
 
 		DBG("send (retry).");
 		usleep(150000);
@@ -412,8 +436,8 @@ static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 
 	/* Send our data */
 	if (written != a2dp->count)
-		DBG("Wrote %d not %d bytes", written, a2dp->count);
-#if 0
+		printf("Wrote %d not %d bytes\n", written, a2dp->count);
+#ifdef ENABLE_DEBUG
 	else {
 		/* Measure bandwith usage */
 		struct timeval now = { 0, 0 };
@@ -426,8 +450,8 @@ static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 		gettimeofday(&now, NULL);
 		timersub(&now, &a2dp->bandwithtimestamp, &interval);
 		if(interval.tv_sec > 0)
-			DBG("Bandwith: %d (%d kbps)", a2dp->bandwithcount,
-				a2dp->bandwithcount/128);
+			printf("Bandwith: %d (%d kbps)\n", a2dp->bandwithcount,
+				a2dp->bandwithcount / 128);
 		a2dp->bandwithtimestamp = now;
 		a2dp->bandwithcount = 0;
 	}
@@ -531,7 +555,7 @@ static snd_pcm_ioplug_callback_t bluetooth_hsp_playback = {
 	.stop		= bluetooth_stop,
 	.pointer	= bluetooth_pointer,
 	.close		= bluetooth_close,
-	.hw_params	= bluetooth_hw_params,
+	.hw_params	= bluetooth_hsp_hw_params,
 	.prepare	= bluetooth_prepare,
 	.transfer	= bluetooth_hsp_write,
 };
@@ -541,7 +565,7 @@ static snd_pcm_ioplug_callback_t bluetooth_hsp_capture = {
 	.stop		= bluetooth_stop,
 	.pointer	= bluetooth_pointer,
 	.close		= bluetooth_close,
-	.hw_params	= bluetooth_hw_params,
+	.hw_params	= bluetooth_hsp_hw_params,
 	.prepare	= bluetooth_prepare,
 	.transfer	= bluetooth_hsp_read,
 };
@@ -551,7 +575,7 @@ static snd_pcm_ioplug_callback_t bluetooth_a2dp_playback = {
 	.stop		= bluetooth_stop,
 	.pointer	= bluetooth_pointer,
 	.close		= bluetooth_close,
-	.hw_params	= bluetooth_hw_params,
+	.hw_params	= bluetooth_a2dp_hw_params,
 	.prepare	= bluetooth_prepare,
 	.transfer	= bluetooth_a2dp_write,
 };
@@ -561,7 +585,7 @@ static snd_pcm_ioplug_callback_t bluetooth_a2dp_capture = {
 	.stop		= bluetooth_stop,
 	.pointer	= bluetooth_pointer,
 	.close		= bluetooth_close,
-	.hw_params	= bluetooth_hw_params,
+	.hw_params	= bluetooth_a2dp_hw_params,
 	.prepare	= bluetooth_prepare,
 	.transfer	= bluetooth_a2dp_read,
 };
