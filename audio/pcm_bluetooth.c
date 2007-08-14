@@ -218,7 +218,6 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 
 	err = errno;
 	SNDERR("%s (%d)", strerror(err), err);
-	bluetooth_close(io);
 
 	return -err;
 }
