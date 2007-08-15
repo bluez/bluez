@@ -366,8 +366,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_read(snd_pcm_ioplug_t *io,
 
 static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 {
-	int count = 0;
-	int written;
+	int count = 0, written = 0, ret = 0;
 	struct rtp_header *header;
 	struct rtp_payload *payload;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
@@ -394,8 +393,18 @@ static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 #ifdef ENABLE_DEBUG
 		gettimeofday(&send_date, NULL);
 #endif
-		written = send(data->stream_fd, a2dp->buffer, a2dp->count,
+		ret = send(data->stream_fd, a2dp->buffer, a2dp->count,
 				nonblock ? MSG_DONTWAIT : 0);
+		if (ret < 0) {
+			ret = -errno;
+			if (errno == EAGAIN)
+				goto retry;
+			fprintf(stderr, "send: %s (%d)\n", strerror(errno),
+					errno);
+			goto done;
+		}
+
+		written += ret;
 
 #ifdef ENABLE_DEBUG
 		if ((written >= 0 || errno == EAGAIN) && prev_date.tv_sec != 0) {
@@ -427,6 +436,7 @@ static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 
 		a2dp->count -= written;
 
+retry:
 		DBG("send (retry).");
 		usleep(150000);
 	}
@@ -435,9 +445,9 @@ static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 	prev_date = send_date;
 #endif
 
-	/* Send our data */
 	if (written != a2dp->count)
 		printf("Wrote %d not %d bytes\n", written, a2dp->count);
+
 #ifdef ENABLE_DEBUG
 	else {
 		/* Measure bandwith usage */
@@ -460,13 +470,18 @@ static int avdtp_write(struct bluetooth_data *data, unsigned int nonblock)
 	a2dp->bandwithcount += written;
 
 #endif
+
+done:
 	/* Reset buffer of data to send */
 	a2dp->count = sizeof(struct rtp_header) + sizeof(struct rtp_payload);
 	a2dp->frame_count = 0;
 	a2dp->samples = 0;
 	a2dp->seq_num++;
 
-	return written;
+	if (written > 0)
+		return written;
+
+	return ret;
 }
 
 static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
@@ -532,8 +547,14 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 
 	DBG("encoded = %d  a2dp.sbc.len= %d", encoded, a2dp->sbc.len);
 
-	if (a2dp->count + a2dp->sbc.len >= data->cfg.pkt_len)
-		avdtp_write(data, io->nonblock);
+	if (a2dp->count + a2dp->sbc.len >= data->cfg.pkt_len) {
+		ret = avdtp_write(data, io->nonblock);
+		if (ret < 0) {
+			if (-ret == EPIPE)
+				ret = -EIO;
+			goto done;
+		}
+	}
 
 	memcpy(a2dp->buffer + a2dp->count, a2dp->sbc.data, a2dp->sbc.len);
 	a2dp->count += a2dp->sbc.len;
