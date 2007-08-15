@@ -108,7 +108,7 @@ int proxy_store(bdaddr_t *src, const char *uuid, const char *tty,
 	snprintf(key, 32, "%s", tty);
 
 	/* tty uuid 00 0x0000 name:termios */
-	pos = snprintf(value, size, "%s %d 0x%04X %s:", tty, ch, opts, name);
+	pos = snprintf(value, size, "%s %d 0x%04X %s:", uuid, ch, opts, name);
 
 	for (i = 0, pti = (uint8_t *) ti; i < sizeof(struct termios); i++, pti++)
 		sprintf(value + pos + (i * 2), "%2.2X", *pti);
