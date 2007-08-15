@@ -1440,7 +1440,7 @@ static gboolean request_timeout(gpointer user_data)
 	init_request(&sreq.header, AVDTP_ABORT);
 	sreq.acp_seid = seid;
 
-	if (!send_request(session, TRUE, stream, &sreq, sizeof(sreq))) {
+	if (send_request(session, TRUE, stream, &sreq, sizeof(sreq)) < 0) {
 		error("Unable to send abort request");
 		goto failed;
 	}
