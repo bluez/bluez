@@ -1146,8 +1146,6 @@ static void handle_transport_connect(struct avdtp *session, int sock,
 	stream->io = g_io_add_watch(channel, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) transport_cb, stream);
 	g_io_channel_unref(channel);
-
-	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
 }
 
 static void init_request(struct avdtp_header *header, int request_id)
