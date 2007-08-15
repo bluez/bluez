@@ -1386,6 +1386,8 @@ static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
 		return -1;
 	}
 
+	info("Registered proxy:%s path:%s", tty, path);
+
 	return 0;
 }
 
@@ -1810,7 +1812,61 @@ static void parse_port(char *key, char *value, void *data)
 	ports_paths = g_slist_append(ports_paths, g_strdup(path));
 }
 
-static void register_stored_ports(void)
+static void parse_proxy(char *key, char *value, void *data)
+{
+	char path[MAX_PATH_LENGTH], uuid_str[MAX_LEN_UUID_STR], tmp[3], *pvalue;
+	struct termios ti;
+	int ch, opts, pos = 0;
+	bdaddr_t *src = data;
+	uuid_t uuid;
+	uint8_t *pti;
+
+	memset(uuid_str, 0, sizeof(uuid_str));
+	if (sscanf(value,"%s %d 0x%04X %n", uuid_str, &ch, &opts, &pos) != 3)
+		return;
+
+	/* UUID format valid? */
+	if (str2uuid(&uuid, uuid_str) < 0)
+		return;
+
+	/* Extracting name */
+	value += pos;
+	pvalue = strchr(value, ':');
+	if (!pvalue)
+		return;
+
+	/* FIXME: currently name is not used */
+	*pvalue = '\0';
+
+	/* Extracting termios */
+	pvalue++;
+	if (strlen(pvalue) != (2 * sizeof(ti)))
+		return;
+
+	memset(&ti, 0, sizeof(ti));
+	memset(tmp, 0, sizeof(tmp));
+
+	/* Converting to termios struct */
+	pti = (uint8_t *) &ti;
+	for (pos = 0; pos < sizeof(ti); pos++, pvalue += 2, pti++) {
+		memcpy(tmp, pvalue, 2);
+		*pti = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	pos = 0;
+	sscanf(key, "/dev/%n", &pos);
+	if (!pos)
+		return;
+
+	snprintf(path, MAX_PATH_LENGTH - 1,
+			"/org/bluez/serial/proxy%s", key + pos);
+
+	proxy_register(connection, src, path, &uuid, key, &ti);
+
+	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
+}
+
+static void register_stored(void)
 {
 	char filename[PATH_MAX + 1];
 	struct dirent *de;
@@ -1825,9 +1881,12 @@ static void register_stored_ports(void)
 	while ((de = readdir(dir)) != NULL) {
 		if (!isdigit(de->d_name[0]))
 			continue;
-		snprintf(filename, PATH_MAX, "%s/%s/serial", STORAGEDIR, de->d_name);
 
+		snprintf(filename, PATH_MAX, "%s/%s/serial", STORAGEDIR, de->d_name);
 		textfile_foreach(filename, parse_port, de->d_name);
+
+		snprintf(filename, PATH_MAX, "%s/%s/proxy", STORAGEDIR, de->d_name);
+		textfile_foreach(filename, parse_proxy, de->d_name);
 	}
 
 	closedir(dir);
@@ -1863,7 +1922,7 @@ int serial_init(DBusConnection *conn)
 
 	info("Registered manager path:%s", SERIAL_MANAGER_PATH);
 
-	register_stored_ports();
+	register_stored();
 
 	return 0;
 }
