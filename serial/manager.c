@@ -1343,8 +1343,16 @@ static DBusMethodVTable proxy_methods[] = {
 static void proxy_handler_unregister(DBusConnection *conn, void *data)
 {
 	struct proxy *prx = data;
+	int sk;
 
 	info("Unregistered proxy: %s", prx->tty);
+
+	/* Restore the initial TTY configuration */
+	sk =  open(prx->tty, O_RDWR | O_NOCTTY);
+	if (sk) {
+		tcsetattr(sk, TCSAFLUSH, &prx->sys_ti);
+		close(sk);
+	}
 
 	if (prx->listen_watch)
 		g_source_remove(prx->listen_watch);
