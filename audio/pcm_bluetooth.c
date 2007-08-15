@@ -168,15 +168,6 @@ static int bluetooth_close(snd_pcm_ioplug_t *io)
 	return 0;
 }
 
-static int bluetooth_a2dp_close(snd_pcm_ioplug_t *io)
-{
-	struct bluetooth_data *data = io->private_data;
-
-	sbc_finish(&data->a2dp.sbc);
-
-	return bluetooth_close(io);
-}
-
 static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
@@ -584,7 +575,7 @@ static snd_pcm_ioplug_callback_t bluetooth_a2dp_playback = {
 	.start		= bluetooth_start,
 	.stop		= bluetooth_stop,
 	.pointer	= bluetooth_pointer,
-	.close		= bluetooth_a2dp_close,
+	.close		= bluetooth_close,
 	.hw_params	= bluetooth_a2dp_hw_params,
 	.prepare	= bluetooth_prepare,
 	.transfer	= bluetooth_a2dp_write,
@@ -594,7 +585,7 @@ static snd_pcm_ioplug_callback_t bluetooth_a2dp_capture = {
 	.start		= bluetooth_start,
 	.stop		= bluetooth_stop,
 	.pointer	= bluetooth_pointer,
-	.close		= bluetooth_a2dp_close,
+	.close		= bluetooth_close,
 	.hw_params	= bluetooth_a2dp_hw_params,
 	.prepare	= bluetooth_prepare,
 	.transfer	= bluetooth_a2dp_read,
