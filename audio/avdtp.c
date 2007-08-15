@@ -131,6 +131,12 @@ struct start_req {
 	struct seid other_seids[0];
 } __attribute__ ((packed));
 
+struct suspend_req {
+	struct avdtp_header header;
+	struct seid first_seid;
+	struct seid other_seids[0];
+} __attribute__ ((packed));
+
 struct seid_req {
 	struct avdtp_header header;
 	uint8_t rfa0:2;
@@ -1013,10 +1019,60 @@ failed:
 	return avdtp_send(session, &rej, sizeof(rej));
 }
 
-static gboolean avdtp_suspend_cmd(struct avdtp *session, struct seid_req *req,
-				int size)
+static gboolean avdtp_suspend_cmd(struct avdtp *session,
+					struct suspend_req *req, int size)
 {
-	return avdtp_unknown_cmd(session, (void *) req, size);
+	struct avdtp_local_sep *sep;
+	struct avdtp_stream *stream;
+	struct gen_resp *rsp = (struct gen_resp *) session->buf;
+	struct stream_rej rej;
+	struct seid *seid;
+	uint8_t err, failed_seid;
+	int seid_count, i;
+
+	if (size < sizeof(struct suspend_req)) {
+		error("Too short suspend request");
+		return FALSE;
+	}
+	
+	seid_count = 1 + (sizeof(struct suspend_req) - size);
+
+	seid = &req->first_seid;
+
+	for (i = 0; i < seid_count; i++, seid++) {
+		failed_seid = seid->seid;
+
+		sep = find_local_sep_by_seid(req->first_seid.seid);
+		if (!sep || !sep->stream) {
+			err = AVDTP_BAD_ACP_SEID;
+			goto failed;
+		}
+
+		stream = sep->stream;
+
+		if (sep->state != AVDTP_STATE_STREAMING) {
+			err = AVDTP_BAD_STATE;
+			goto failed;
+		}
+
+		if (sep->ind && sep->ind->suspend) {
+			if (!sep->ind->suspend(session, sep, stream, &err))
+				goto failed;
+		}
+
+		avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
+	}
+
+	init_response(&rsp->header, &req->header, TRUE);
+
+	return avdtp_send(session, rsp, sizeof(struct gen_resp));
+
+failed:
+	memset(&rej, 0, sizeof(rej));
+	init_response(&rej.header, &req->header, FALSE);
+	rej.acp_seid = failed_seid;
+	rej.error = err;
+	return avdtp_send(session, &rej, sizeof(rej));
 }
 
 static gboolean avdtp_abort_cmd(struct avdtp *session, struct seid_req *req,
