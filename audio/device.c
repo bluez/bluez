@@ -195,7 +195,6 @@ struct device *device_register(DBusConnection *conn,
 	struct device *dev;
 	bdaddr_t src;
 	int dev_id;
-	char *adapter_path;
 
 	if (!conn || !path)
 		return NULL;
@@ -205,11 +204,13 @@ struct device *device_register(DBusConnection *conn,
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
 		return NULL;
 
-	adapter_path = find_adapter(conn, &src);
-	if (!adapter_path)
-		return NULL;
-
 	dev = g_new0(struct device, 1);
+
+	dev->adapter_path = find_adapter(conn, &src);
+	if (!dev->adapter_path) {
+		device_free(dev);
+		return NULL;
+	}
 
 	if (!dbus_connection_create_object_path(conn, path, dev,
 							device_unregister)) {
@@ -230,7 +231,6 @@ struct device *device_register(DBusConnection *conn,
 	bacpy(&dev->dst, bda);
 	bacpy(&dev->src, &src);
 	dev->conn = dbus_connection_ref(conn);
-	dev->adapter_path = adapter_path;
 
 	return dev;
 }
