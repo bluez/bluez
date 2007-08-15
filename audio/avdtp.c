@@ -1608,10 +1608,14 @@ static gboolean avdtp_open_resp(struct avdtp *session, struct avdtp_stream *stre
 {
 	struct avdtp_local_sep *sep = stream->lsep;
 
-	if (l2cap_connect(session) < 0)
+	if (l2cap_connect(session) < 0) {
 		avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
+		return FALSE;
+	}
 
 	session->pending_open = stream;
+
+	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
 
 	return TRUE;
 }
