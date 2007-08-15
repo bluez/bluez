@@ -47,6 +47,7 @@
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "manager.h"
+#include "adapter.h"
 #include "dbus-service.h"
 #include "dbus-hci.h"
 

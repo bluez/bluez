@@ -21,9 +21,6 @@
  *
  */
 
-#ifndef __ADAPTER_H
-#define __ADAPTER_H
-
 #include <dbus/dbus.h>
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter"
@@ -125,5 +122,3 @@ GSList *service_classes_str(uint32_t class);
 int pending_remote_name_cancel(struct adapter *adapter);
 
 void dc_pending_timeout_cleanup(struct adapter *adapter);
-
-#endif /* __ADAPTER_H */

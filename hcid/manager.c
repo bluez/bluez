@@ -42,14 +42,15 @@
 #include <dbus/dbus.h>
 
 #include "hcid.h"
+#include "adapter.h"
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
+#include "dbus-hci.h"
+#include "dbus-service.h"
 #include "dbus-database.h"
 #include "dbus-security.h"
-#include "dbus-service.h"
-#include "dbus-hci.h"
 #include "sdp-xml.h"
 
 #include "manager.h"

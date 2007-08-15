@@ -49,6 +49,7 @@
 
 #include "hcid.h"
 #include "textfile.h"
+#include "adapter.h"
 #include "dbus-hci.h"
 
 struct g_io_info {

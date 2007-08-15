@@ -46,14 +46,14 @@
 #include "hcid.h"
 #include "dbus.h"
 #include "textfile.h"
+#include "manager.h"
+#include "adapter.h"
 #include "dbus-helper.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-test.h"
-#include "dbus-security.h"
 #include "dbus-service.h"
-#include "manager.h"
-#include "dbus-adapter.h"
+#include "dbus-security.h"
 #include "dbus-hci.h"
 
 static DBusConnection *connection = NULL;

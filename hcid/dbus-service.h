@@ -21,9 +21,6 @@
  *
  */
 
-#ifndef __BLUEZ_DBUS_SERVICE_H
-#define __BLUEZ_DBUS_SERVICE_H
-
 #define START_REPLY_TIMEOUT	5000
 
 struct service {
@@ -63,5 +60,3 @@ int service_register(DBusConnection *conn, const char *bus_name, const char *ide
 				const char *name, const char *description);
 
 int service_unregister(DBusConnection *conn, struct service *service);
-
-#endif /* __BLUEZ_DBUS_SERVICE_H */

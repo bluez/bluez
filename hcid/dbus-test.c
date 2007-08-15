@@ -40,8 +40,8 @@
 #include "dbus-helper.h"
 #include "hcid.h"
 #include "dbus-common.h"
+#include "adapter.h"
 #include "dbus-hci.h"
-#include "dbus-adapter.h"
 #include "dbus-error.h"
 #include "dbus-test.h"
 

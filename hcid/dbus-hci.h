@@ -21,12 +21,6 @@
  *
  */
 
-#ifndef __H_BLUEZ_DBUS_HCI_H__
-#define __H_BLUEZ_DBUS_HCI_H__
-
-#include <dbus/dbus.h>
-#include "dbus-adapter.h"
-
 void hcid_dbus_set_experimental();
 int hcid_dbus_use_experimental();
 int hcid_dbus_register_device(uint16_t id);
@@ -81,5 +75,3 @@ int discov_timeout_handler(void *data);
 void set_dbus_connection(DBusConnection *conn);
 
 DBusConnection *get_dbus_connection(void);
-
-#endif /* __H_BLUEZ_DBUS_HCI_H__ */

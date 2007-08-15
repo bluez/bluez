@@ -21,12 +21,6 @@
  *
  */
 
-#ifndef __BLUEZ_DBUS_SECURITY_H
-#define __BLUEZ_DBUS_SECURITY_H
-
-#include "dbus-adapter.h"
-#include "dbus-service.h"
-
 #define SECURITY_INTERFACE "org.bluez.Security"
 
 dbus_bool_t security_init(DBusConnection *conn, const char *path);
@@ -56,5 +50,3 @@ DBusHandlerResult cancel_authorize_request(DBusConnection *conn,
 						struct service *service,
 						const char *address,
 						const char *path);
-
-#endif /* __BLUEZ_DBUS_SECURITY_H */

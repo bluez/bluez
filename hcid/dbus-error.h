@@ -21,9 +21,6 @@
  *
  */
 
-#ifndef __BLUEZ_DBUS_ERROR_H
-#define __BLUEZ_DBUS_ERROR_H
-
 #define ERROR_INTERFACE "org.bluez.Error"
 
 DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err);
@@ -67,5 +64,3 @@ DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *
 DBusHandlerResult error_trusted_device_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_trusted_device_does_not_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage *msg);
-
-#endif /* __BLUEZ_DBUS_ERROR_H */

@@ -21,13 +21,8 @@
  *
  */
 
-#ifndef __BLUEZ_DBUS_TEST_H
-#define __BLUEZ_DBUS_TEST_H
-
 #define TEST_INTERFACE "org.bluez.Test"
 
 dbus_bool_t test_init(DBusConnection *conn, const char *path);
 
 void process_audits_list(const char *adapter_path);
-
-#endif /* __BLUEZ_DBUS_TEST_H */

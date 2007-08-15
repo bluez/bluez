@@ -47,16 +47,15 @@
 
 #include "hcid.h"
 #include "dbus.h"
-#include "dbus-adapter.h"
 
 #include "textfile.h"
 #include "oui.h"
+#include "adapter.h"
 #include "dbus-common.h"
 #include "dbus-helper.h"
 #include "dbus-hci.h"
 #include "dbus-sdp.h"
 #include "dbus-error.h"
-#include "dbus-adapter.h"
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 

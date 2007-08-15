@@ -21,9 +21,6 @@
  *
  */
 
-#ifndef __BLUEZ_DBUS_SDP_H
-#define __BLUEZ_DBUS_SDP_H
-
 #include <stdint.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
@@ -52,6 +49,3 @@ int get_record_with_uuid(DBusConnection *conn, DBusMessage *msg,
 int get_record_with_handle(DBusConnection *conn, DBusMessage *msg,
 			uint16_t dev_id, const char *dst,
 			uint32_t handle, get_record_cb_t *cb, void *data);
-
-
-#endif /* __BLUEZ_DBUS_SDP_H */

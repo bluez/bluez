@@ -21,9 +21,6 @@
  *
  */
 
-#ifndef __BLUEZ_DBUS_COMMON_H
-#define __BLUEZ_DBUS_COMMON_H
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <dbus/dbus.h>
@@ -61,5 +58,3 @@ int register_sdp_record(sdp_record_t *rec);
 int unregister_sdp_record(uint32_t handle);
 int update_sdp_record(uint32_t handle, sdp_record_t *rec);
 void cleanup_sdp_session(void);
-
-#endif /* __BLUEZ_DBUS_COMMON_H */
