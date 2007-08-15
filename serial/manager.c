@@ -1386,6 +1386,11 @@ static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
 		return -1;
 	}
 
+	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
 	info("Registered proxy:%s path:%s", tty, path);
 
 	return 0;
@@ -1491,11 +1496,6 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
 
 	proxy_store(&src, uuidstr, tty, NULL, 0, 0, &ti);
-
-	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
-			DBUS_TYPE_STRING, &ppath,
-			DBUS_TYPE_INVALID);
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &ppath,
