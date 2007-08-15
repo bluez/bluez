@@ -107,6 +107,9 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 				cmd_err);
 			goto failed;
 		}
+
+		if (sink->c && sink->c->pkt)
+			a2dp_start_stream_when_opened(sink->session, stream);
 		break;
 	case AVDTP_STATE_OPEN:
 		sink->suspending = FALSE;
@@ -120,16 +123,9 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 		if (!sink->initiator)
 			break;
 
-		if (sink->c && sink->c->pkt) {
-			cmd_err = avdtp_start(sink->session, stream);
-			if (cmd_err < 0) {
-				error("Error on avdtp_start %s (%d)",
-					strerror(-cmd_err), cmd_err);
-				goto failed;
-			}
-		}
-		else
+		if (!(sink->c && sink->c->pkt))
 			c = sink->c;
+
 		break;
 	case AVDTP_STATE_STREAMING:
 		c = sink->c;

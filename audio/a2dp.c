@@ -50,6 +50,9 @@ static uint32_t source_record_id = 0;
 static struct avdtp_local_sep *sink_sep = NULL;
 static struct avdtp_local_sep *source_sep = NULL;
 
+static struct avdtp *start_session = NULL;
+static struct avdtp_stream *start_stream = NULL;
+
 static gboolean setconf_ind(struct avdtp *session,
 				struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream,
@@ -175,10 +178,22 @@ static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream)
 {
+	int err;
+
 	if (sep == sink_sep)
 		debug("SBC Sink: Open_Cfm");
 	else
 		debug("SBC Source: Open_Cfm");
+
+	if (session != start_session || stream != start_stream)
+		return;
+
+	start_session = NULL;
+	start_stream = NULL;
+
+	err = avdtp_start(session, stream);
+	if (err < 0)
+		error("Error on avdtp_start %s (%d)", strerror(-err), err);
 }
 
 static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -668,4 +683,12 @@ gboolean a2dp_get_config(struct avdtp_stream *stream,
 	sbc->bitpool = sbc_cap->max_bitpool;
 
 	return TRUE;
+}
+
+void a2dp_start_stream_when_opened(struct avdtp *session,
+					struct avdtp_stream *stream)
+{
+	start_session = session;
+	start_stream = stream;
+
 }

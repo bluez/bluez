@@ -66,3 +66,6 @@ gboolean a2dp_select_capabilities(struct avdtp_remote_sep *rsep, GSList **caps);
 
 gboolean a2dp_get_config(struct avdtp_stream *stream,
 				struct ipc_data_cfg **cfg, int *fd);
+
+void a2dp_start_stream_when_opened(struct avdtp *session,
+					struct avdtp_stream *stream);
