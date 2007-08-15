@@ -935,7 +935,7 @@ static int rfcomm_listen(bdaddr_t *src, uint8_t *channel, int opts)
 	memset(&laddr, 0, sizeof(laddr));
 	laddr.rc_family = AF_BLUETOOTH;
 	bacpy(&laddr.rc_bdaddr, src);
-	laddr.rc_channel = 0;
+	laddr.rc_channel = (channel ? *channel : 0);
 
 	alen = sizeof(laddr);
 	if (bind(sk, (struct sockaddr *) &laddr, alen) < 0)
@@ -943,6 +943,9 @@ static int rfcomm_listen(bdaddr_t *src, uint8_t *channel, int opts)
 
 	if (listen(sk, 1) < 0)
 		goto fail;
+
+	if (!channel)
+		return sk;
 
 	memset(&laddr, 0, sizeof(laddr));
 	if (getsockname(sk, (struct sockaddr *)&laddr, &alen) < 0)
@@ -1233,7 +1236,7 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 		return err_failed(conn, msg, "Already enabled");
 
 	/* Listen */
-	/* FIXME: missing options */
+	/* FIXME: missing options, update the stored channel */
 	sk = rfcomm_listen(&prx->src, &prx->channel, 0);
 	if (sk < 0) {
 		const char *strerr = strerror(errno);
