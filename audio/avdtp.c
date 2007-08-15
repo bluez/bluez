@@ -2181,7 +2181,6 @@ int avdtp_close(struct avdtp *session, struct avdtp_stream *stream)
 int avdtp_suspend(struct avdtp *session, struct avdtp_stream *stream)
 {
 	struct seid_req req;
-	int ret;
 
 	if (!g_slist_find(session->streams, stream))
 		return -EINVAL;
@@ -2193,12 +2192,7 @@ int avdtp_suspend(struct avdtp *session, struct avdtp_stream *stream)
 	init_request(&req.header, AVDTP_SUSPEND);
 	req.acp_seid = stream->rseid;
 
-	ret = send_request(session, FALSE, stream, &req, sizeof(req));
-	if (ret == 0)
-		avdtp_sep_set_state(session, stream->lsep,
-					AVDTP_STATE_OPEN);
-
-	return ret;
+	return send_request(session, FALSE, stream, &req, sizeof(req));
 }
 
 int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
