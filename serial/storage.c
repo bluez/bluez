@@ -25,11 +25,15 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
+#include <termios.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -76,6 +80,38 @@ int port_store(bdaddr_t *src, bdaddr_t *dst, int16_t id,
 
 	snprintf(key, 32, "%s#%hd", dst_addr, id);
 	snprintf(value, size, "%d:%s", ch, svcname);
+
+	err = textfile_put(filename, key, value);
+	g_free(value);
+
+	return err;
+}
+
+int proxy_store(bdaddr_t *src, const char *uuid, const char *tty,
+		const char *name, uint8_t ch, int opts, struct termios *ti)
+{
+	char filename[PATH_MAX + 1], key[32], src_addr[18], *value;
+	int i, pos, size, err;
+	uint8_t *pti;
+
+	ba2str(src, src_addr);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "proxy");
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	if (!name)
+		name = "Port Proxy Entity";
+
+	size = MAX_LEN_UUID_STR + 16 + strlen(name) + sizeof(struct termios) * 2;
+	value = g_malloc0(size);
+
+	snprintf(key, 32, "%s", tty);
+
+	/* tty uuid 00 0x0000 name:termios */
+	pos = snprintf(value, size, "%s %d 0x%04X %s:", tty, ch, opts, name);
+
+	for (i = 0, pti = (uint8_t *) ti; i < sizeof(struct termios); i++, pti++)
+		sprintf(value + pos + (i * 2), "%2.2X", *pti);
 
 	err = textfile_put(filename, key, value);
 	g_free(value);

@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
@@ -105,13 +106,15 @@ static struct {
 struct proxy {
 	bdaddr_t	src;
 	bdaddr_t	dst;
-	uuid_t		uuid;
-	char		*tty;
-	uint8_t		channel;
-	uint32_t	record_id;
-	guint		listen_watch;
-	guint		rfcomm_watch;
-	guint		tty_watch;
+	uuid_t		uuid;		/* UUID 128 */
+	char		*tty;		/* TTY name */
+	struct termios  sys_ti;		/* Default TTY setting */
+	struct termios  proxy_ti;	/* Proxy TTY settings */
+	uint8_t		channel;	/* RFCOMM channel */
+	uint32_t	record_id;	/* Service record id */
+	guint		listen_watch;	/* Server listen watch */
+	guint		rfcomm_watch;	/* RFCOMM connection watch */
+	guint		tty_watch;	/* Openned TTY watch */
 };
 
 static DBusConnection *connection = NULL;
@@ -1349,15 +1352,17 @@ static void proxy_handler_unregister(DBusConnection *conn, void *data)
 	proxy_free(prx);
 }
 
-static int proxy_register(DBusConnection *conn,
-		const char *path, uuid_t *uuid, const char *tty)
+static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
+			uuid_t *uuid, const char *tty, struct termios *ti)
 {
 	struct proxy *prx;
 
 	prx = g_new0(struct proxy, 1);
 	prx->tty = g_strdup(tty);
 	memcpy(&prx->uuid, uuid, sizeof(uuid_t));
-	bacpy(&prx->src, BDADDR_ANY);
+	bacpy(&prx->src, src);
+	memcpy(&prx->sys_ti, ti, sizeof(*ti));
+	memcpy(&prx->proxy_ti, ti, sizeof(*ti));
 
 	if (!dbus_connection_create_object_path(conn, path, prx,
 				proxy_handler_unregister)) {
@@ -1417,12 +1422,14 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 {
 	char path[MAX_PATH_LENGTH];
 	const char *uuidstr, *tty, *ppath = path;
+	struct termios ti;
 	DBusMessage *reply;
 	GSList *l;
 	DBusError derr;
 	struct stat st;
+	bdaddr_t src;
 	uuid_t uuid;
-	int pos = 0;
+	int sk, dev_id, pos = 0;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -1441,6 +1448,14 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	if (!pos || stat(tty, &st) < 0)
 		return err_invalid_args(conn, msg, "Invalid TTY");
 
+	/* Get the current setting to restore later */
+	sk = open(tty, O_RDWR | O_NOCTTY);
+	if (sk < 0)
+		return err_invalid_args(conn, msg, "Can't open TTY");
+
+	tcgetattr(sk, &ti);
+	close(sk);
+
 	snprintf(path, MAX_PATH_LENGTH - 1,
 			"/org/bluez/serial/proxy%s", tty + pos);
 
@@ -1448,17 +1463,24 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	if (l)
 		return err_already_exists(conn, msg, "Proxy already exists");
 
+	dev_id = hci_get_route(NULL);
+	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0)) {
+		error("Adapter not available");
+		return err_failed(conn, msg, "Adapter not available");
+	}
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (proxy_register(conn, path, &uuid, tty) < 0) {
+	if (proxy_register(conn, &src, path, &uuid, tty, &ti) < 0) {
 		dbus_message_unref(reply);
 		return err_failed(conn, msg, "Create object path failed");
 	}
-	/* FIXME: persistent storage */
 
 	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
+
+	proxy_store(&src, uuidstr, tty, NULL, 0, 0, &ti);
 
 	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
@@ -1546,7 +1568,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 		return err_connection_in_progress(conn, msg);
 
 	dev_id = hci_get_route(NULL);
-	if ((dev_id < 0) ||  (hci_devba(dev_id, &src) < 0))
+	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
 		return err_failed(conn, msg, "Adapter not available");
 
 	pc = g_new0(struct pending_connect, 1);

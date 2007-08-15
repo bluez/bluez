@@ -24,3 +24,5 @@
 int port_delete(bdaddr_t *src, bdaddr_t *dst, int16_t id);
 int port_store(bdaddr_t *src, bdaddr_t *dst, int16_t id,
 			uint8_t ch, const char *svcname);
+int proxy_store(bdaddr_t *src, const char *uuid, const char *tty,
+		const char *name, uint8_t ch, int opts, struct termios *ti);
