@@ -1712,10 +1712,10 @@ static gboolean avdtp_suspend_resp(struct avdtp *session,
 {
 	struct avdtp_local_sep *sep = stream->lsep;
 
+	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
+
 	if (sep->cfm && sep->cfm->suspend)
 		sep->cfm->suspend(session, sep, stream);
-
-	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
 
 	return TRUE;
 }
