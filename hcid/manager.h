@@ -21,15 +21,10 @@
  *
  */
 
-#ifndef __MANAGER_H
-#define __MANAGER_H
-
-#define MANAGER_INTERFACE	"org.bluez.Manager"
+#define MANAGER_INTERFACE "org.bluez.Manager"
 
 dbus_bool_t manager_init(DBusConnection *conn, const char *path);
 
 int get_default_adapter(void);
 
 void set_default_adapter(int new_default);
-
-#endif /* __MANAGER_H */

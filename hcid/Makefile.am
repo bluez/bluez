@@ -15,13 +15,12 @@ noinst_LIBRARIES = libhciserver.a
 
 libhciserver_a_SOURCES = hcid.h security.c device.c \
 	storage.c parser.h parser.y lexer.l kword.c kword.h \
-	server.h server.c \
-	dbus-hci.h dbus-hci.c dbus-common.c dbus-common.h \
-	dbus-error.c dbus-error.h dbus-manager.c dbus-manager.h \
+	manager.h manager.c server.h server.c \
+	dbus-common.c dbus-common.h dbus-error.c dbus-error.h \
 	dbus-database.c dbus-database.h dbus-security.c dbus-security.h \
 	dbus-adapter.c dbus-adapter.h dbus-device.c dbus-device.h \
-	dbus-service.c dbus-service.h dbus-sdp.c dbus-sdp.h \
-	dbus-test.c dbus-test.h
+	dbus-service.c dbus-service.h dbus-test.c dbus-test.h \
+	dbus-hci.h dbus-hci.c dbus-sdp.c dbus-sdp.h
 
 if HCID
 sbin_PROGRAMS = hcid

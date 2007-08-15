@@ -49,9 +49,10 @@
 #include "dbus-database.h"
 #include "dbus-security.h"
 #include "dbus-service.h"
-#include "dbus-manager.h"
 #include "dbus-hci.h"
 #include "sdp-xml.h"
+
+#include "manager.h"
 
 static int default_adapter_id = -1;
 

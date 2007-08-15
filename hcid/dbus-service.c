@@ -46,7 +46,7 @@
 #include "server.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
-#include "dbus-manager.h"
+#include "manager.h"
 #include "dbus-service.h"
 #include "dbus-hci.h"
 

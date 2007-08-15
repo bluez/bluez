@@ -53,7 +53,7 @@
 #include "dbus-helper.h"
 #include "dbus-error.h"
 #include "dbus-hci.h"
-#include "dbus-manager.h"
+#include "manager.h"
 #include "dbus-adapter.h"
 #include "dbus-service.h"
 #include "dbus-database.h"

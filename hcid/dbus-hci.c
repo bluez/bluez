@@ -52,7 +52,7 @@
 #include "dbus-test.h"
 #include "dbus-security.h"
 #include "dbus-service.h"
-#include "dbus-manager.h"
+#include "manager.h"
 #include "dbus-adapter.h"
 #include "dbus-hci.h"
 
