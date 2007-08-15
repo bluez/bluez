@@ -206,6 +206,8 @@ struct device *device_register(DBusConnection *conn,
 		return NULL;
 
 	adapter_path = find_adapter(conn, &src);
+	if (!adapter_path)
+		return NULL;
 
 	dev = g_new0(struct device, 1);
 
