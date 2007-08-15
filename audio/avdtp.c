@@ -1473,9 +1473,10 @@ static int send_req(struct avdtp *session, gboolean priority,
 
 	/* FIXME: Should we retry to send if the buffer
 	was not totally sent or in case of EINTR? */
-	err = avdtp_send(session, req->msg, req->msg_size);
-	if (err < 0)
+	if (!avdtp_send(session, req->msg, req->msg_size)) {
+		err = -EIO;
 		goto failed;
+	}
 
 	session->req = req;
 
