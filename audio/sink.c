@@ -60,7 +60,6 @@ struct sink {
 	DBusConnection *conn;
 	gboolean initiator;
 	gboolean suspending;
-	gboolean resume;
 };
 
 static void pending_connect_free(struct pending_request *c)
@@ -121,14 +120,13 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 		if (!sink->initiator)
 			break;
 
-		if (sink->resume || (sink->c && sink->c->pkt)) {
+		if (sink->c && sink->c->pkt) {
 			cmd_err = avdtp_start(sink->session, stream);
 			if (cmd_err < 0) {
 				error("Error on avdtp_start %s (%d)",
 					strerror(-cmd_err), cmd_err);
 				goto failed;
 			}
-			sink->resume = FALSE;
 		}
 		else
 			c = sink->c;
@@ -395,10 +393,9 @@ int sink_get_config(struct device *dev, int sock, struct ipc_packet *req,
 		err = avdtp_discover(sink->session, discovery_complete, dev);
 	else if (sink->state < AVDTP_STATE_STREAMING)
 		err = avdtp_start(sink->session, sink->stream);
-	else if (sink->suspending) {
-		sink->resume = TRUE;
+	else if (sink->suspending)
 		err = 0;
-	} else
+	else
 		err = -EINVAL;
 
 	if (err < 0)
