@@ -135,12 +135,67 @@ static void device_unregister(DBusConnection *conn, void *data)
 	device_free(device);
 }
 
+char *find_adapter(DBusConnection *conn, bdaddr_t *src)
+{
+	DBusMessage *msg, *reply;
+	DBusError derr;
+	char address[18], *addr_ptr = address;
+	char *path, *ret;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.Manager",
+						"FindAdapter");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		return NULL;
+	}
+
+	ba2str(src, address);
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
+				 DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1,
+								&derr);
+
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr) ||
+				dbus_set_error_from_message(&derr, reply)) {
+		error("FindAdapter(%s) failed: %s", address, derr.message);
+		dbus_error_free(&derr);
+		return NULL;
+	}
+
+	dbus_error_init(&derr);
+	dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		error("Unable to get message args");
+		dbus_message_unref(reply);
+		dbus_error_free(&derr);
+		return FALSE;
+	}
+
+	ret = g_strdup(path);
+
+	dbus_message_unref(reply);
+
+	debug("Got path %s for adapter with address %s", ret, address);
+
+	return ret;
+}
+
 struct device *device_register(DBusConnection *conn,
 					const char *path, bdaddr_t *bda)
 {
 	struct device *dev;
 	bdaddr_t src;
 	int dev_id;
+	char *adapter_path;
 
 	if (!conn || !path)
 		return NULL;
@@ -149,6 +204,8 @@ struct device *device_register(DBusConnection *conn,
 	dev_id = hci_get_route(&src);
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
 		return NULL;
+
+	adapter_path = find_adapter(conn, &src);
 
 	dev = g_new0(struct device, 1);
 
@@ -171,8 +228,7 @@ struct device *device_register(DBusConnection *conn,
 	bacpy(&dev->dst, bda);
 	bacpy(&dev->src, &src);
 	dev->conn = dbus_connection_ref(conn);
-	dev->adapter_path = g_malloc0(16);
-	snprintf(dev->adapter_path, 16, "/org/bluez/hci%d", dev_id);
+	dev->adapter_path = adapter_path;
 
 	return dev;
 }
