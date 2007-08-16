@@ -21,8 +21,6 @@
  *
  */
 
-#include <dbus/dbus.h>
-
 #define ADAPTER_INTERFACE	"org.bluez.Adapter"
 
 #define INVALID_DEV_ID		0xFFFF

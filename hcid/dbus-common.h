@@ -21,10 +21,6 @@
  *
  */
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
-#include <dbus/dbus.h>
-
 #define BASE_PATH		"/org/bluez"
 
 #define MAX_PATH_LENGTH 64

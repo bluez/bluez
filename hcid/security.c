@@ -47,6 +47,8 @@
 
 #include <glib.h>
 
+#include <dbus/dbus.h>
+
 #include "hcid.h"
 #include "textfile.h"
 #include "adapter.h"

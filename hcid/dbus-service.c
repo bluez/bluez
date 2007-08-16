@@ -35,6 +35,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <bluetooth/sdp.h>
+
 #include <glib.h>
 
 #include <dbus/dbus.h>

@@ -30,6 +30,8 @@
 
 #include <dbus/dbus.h>
 
+#include <bluetooth/sdp.h>
+
 #include "hcid.h"
 #include "dbus.h"
 #include "dbus-common.h"

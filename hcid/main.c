@@ -46,6 +46,8 @@
 
 #include <glib.h>
 
+#include <dbus/dbus.h>
+
 #include "notify.h"
 
 #include "hcid.h"
