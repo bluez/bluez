@@ -96,22 +96,29 @@ typedef void (*avdtp_stream_state_cb) (struct avdtp_stream *stream,
 struct avdtp_sep_cfm {
 	void (*set_configuration) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
-					struct avdtp_stream *stream);
+					struct avdtp_stream *stream,
+					struct avdtp_error *err);
 	void (*get_configuration) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
-					struct avdtp_stream *stream);
+					struct avdtp_stream *stream,
+					struct avdtp_error *err);
 	void (*open) (struct avdtp *session, struct avdtp_local_sep *lsep,
-				struct avdtp_stream *stream);
+			struct avdtp_stream *stream, struct avdtp_error *err);
 	void (*start) (struct avdtp *session, struct avdtp_local_sep *lsep,
-			struct avdtp_stream *stream);
+			struct avdtp_stream *stream, struct avdtp_error *err);
 	void (*suspend) (struct avdtp *session, struct avdtp_local_sep *lsep,
-				struct avdtp_stream *stream);
+				struct avdtp_stream *stream,
+				struct avdtp_error *err);
 	void (*close) (struct avdtp *session, struct avdtp_local_sep *lsep,
-				struct avdtp_stream *stream);
+				struct avdtp_stream *stream,
+				struct avdtp_error *err);
 	void (*abort) (struct avdtp *session, struct avdtp_local_sep *lsep,
-				struct avdtp_stream *stream);
+				struct avdtp_stream *stream,
+				struct avdtp_error *err);
 	void (*reconfigure) (struct avdtp *session,
-				struct avdtp_local_sep *lsep);
+				struct avdtp_local_sep *lsep,
+				struct avdtp_stream *stream,
+				struct avdtp_error *err);
 };
 
 /* Callbacks for indicating when we received a new command. The return value
@@ -165,8 +172,12 @@ struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep);
 int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 			void *user_data);
 
-void avdtp_stream_set_cb(struct avdtp *session, struct avdtp_stream *stream,
-				avdtp_stream_state_cb cb, void *data);
+unsigned int avdtp_stream_add_cb(struct avdtp *session,
+					struct avdtp_stream *stream,
+					avdtp_stream_state_cb cb, void *data);
+gboolean avdtp_stream_remove_cb(struct avdtp *session,
+				struct avdtp_stream *stream,
+				unsigned int id);
 
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 					uint16_t *mtu, GSList **caps);

@@ -48,7 +48,7 @@
 struct pending_request {
 	DBusConnection *conn;
 	DBusMessage *msg;
-	int id;
+	unsigned int id;
 };
 
 struct sink {
@@ -71,9 +71,11 @@ static void pending_request_free(struct pending_request *pending)
 	g_free(pending);
 }
 
-void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
-				avdtp_state_t new_state,
-				struct avdtp_error *err, void *user_data)
+static void stream_state_changed(struct avdtp_stream *stream,
+					avdtp_state_t old_state,
+					avdtp_state_t new_state,
+					struct avdtp_error *err,
+					void *user_data)
 {
 	struct device *dev = user_data;
 	struct sink *sink = dev->sink;
@@ -153,7 +155,7 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 	struct device *dev = data;
 	struct sink *sink = dev->sink;
 	struct pending_request *pending;
-	int id;
+	unsigned int id;
 
 	if (!sink->session)
 		sink->session = avdtp_get(&dev->src, &dev->dst);
@@ -171,7 +173,7 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 
 	id = a2dp_source_request_stream(sink->session, dev, FALSE,
 					stream_setup_complete, pending);
-	if (id < 0) {
+	if (id == 0) {
 		pending_request_free(pending);
 		sink->connect = NULL;
 		avdtp_unref(sink->session);
@@ -315,7 +317,7 @@ gboolean sink_new_stream(struct device *dev, struct avdtp *session,
 	sink->stream = stream;
 	sink->initiator = FALSE;
 
-	avdtp_stream_set_cb(session, stream, stream_state_changed, dev);
+	avdtp_stream_add_cb(session, stream, stream_state_changed, dev);
 
 	return TRUE;
 }

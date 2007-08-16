@@ -190,9 +190,10 @@ static gboolean getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 }
 
 static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
-				struct avdtp_stream *stream)
+				struct avdtp_stream *stream,
+				struct avdtp_error *err)
 {
-	int err;
+	int ret;
 
 	if (sep == sink.sep) {
 		debug("SBC Sink: Set_Configuration_Cfm");
@@ -201,15 +202,22 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	debug("SBC Source: Set_Configuration_Cfm");
 
+	if (err) {
+		source.stream = NULL;
+		if (setup)
+			finalize_stream_setup(setup);
+		return;
+	}
+
 	source.stream = stream;
 
 	if (!setup)
 		return;
 
-	err = avdtp_open(session, stream);
-	if (err < 0) {
-		error("Error on avdtp_open %s (%d)", strerror(-err),
-				-err);
+	ret = avdtp_open(session, stream);
+	if (ret < 0) {
+		error("Error on avdtp_open %s (%d)", strerror(-ret),
+				-ret);
 		setup->stream = FALSE;
 		finalize_stream_setup(setup);
 	}
@@ -226,7 +234,7 @@ static gboolean getconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 }
 
 static void getconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
-			struct avdtp_stream *stream)
+			struct avdtp_stream *stream, struct avdtp_error *err)
 {
 	if (sep == sink.sep)
 		debug("SBC Sink: Set_Configuration_Cfm");
@@ -245,7 +253,7 @@ static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 }
 
 static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
-			struct avdtp_stream *stream)
+			struct avdtp_stream *stream, struct avdtp_error *err)
 {
 	if (sep == sink.sep)
 		debug("SBC Sink: Open_Cfm");
@@ -256,9 +264,15 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		return;
 
 	if (setup->canceled) {
-		avdtp_close(session, stream);
+		if (!err)
+			avdtp_close(session, stream);
 		stream_setup_free(setup);
 		return;
+	}
+
+	if (err) {
+		setup->stream = NULL;
+		goto finalize;
 	}
 
 	if (setup->start) {
@@ -269,6 +283,7 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		setup->stream = NULL;
 	} 
 
+finalize:
 	finalize_stream_setup(setup);
 }
 
@@ -287,7 +302,7 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 }
 
 static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
-			struct avdtp_stream *stream)
+			struct avdtp_stream *stream, struct avdtp_error *err)
 {
 	if (sep == sink.sep)
 		debug("SBC Sink: Start_Cfm");
@@ -298,10 +313,14 @@ static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		return;
 
 	if (setup->canceled) {
-		avdtp_close(session, stream);
+		if (!err)
+			avdtp_close(session, stream);
 		stream_setup_free(setup);
 		return;
 	}
+
+	if (err)
+		setup->stream = NULL;
 
 	finalize_stream_setup(setup);
 }
@@ -317,7 +336,7 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 }
 
 static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
-				struct avdtp_stream *stream)
+			struct avdtp_stream *stream, struct avdtp_error *err)
 {
 	if (sep == sink.sep) {
 		debug("SBC Sink: Suspend_Cfm");
@@ -327,6 +346,13 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	debug("SBC Source: Suspend_Cfm");
 
 	source.suspending = FALSE;
+
+	if (err) {
+		source.start_requested = FALSE;
+		if (setup)
+			finalize_stream_setup(setup);
+		return;
+	}
 
 	if (source.start_requested) {
 		avdtp_start(session, stream);
@@ -350,7 +376,7 @@ static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 }
 
 static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
-			struct avdtp_stream *stream)
+			struct avdtp_stream *stream, struct avdtp_error *err)
 {
 	if (sep == sink.sep) {
 		debug("SBC Sink: Close_Cfm");
@@ -378,7 +404,7 @@ static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 }
 
 static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
-			struct avdtp_stream *stream)
+			struct avdtp_stream *stream, struct avdtp_error *err)
 {
 	if (sep == sink.sep)
 		debug("SBC Sink: Abort_Cfm");
@@ -396,7 +422,8 @@ static gboolean reconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
-static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep)
+static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+			struct avdtp_stream *stream, struct avdtp_error *err)
 {
 	if (sep == sink.sep)
 		debug("SBC Sink: ReConfigure_Cfm");
@@ -781,7 +808,8 @@ gboolean a2dp_source_cancel_stream(int id)
 	return TRUE;
 }
 
-int a2dp_source_request_stream(struct avdtp *session, struct device *dev,
+unsigned int a2dp_source_request_stream(struct avdtp *session,
+					struct device *dev,
 					gboolean start, a2dp_stream_cb_t cb,
 					void *user_data)
 {
@@ -791,7 +819,7 @@ int a2dp_source_request_stream(struct avdtp *session, struct device *dev,
 	cb_data = g_new(struct a2dp_stream_cb, 1);
 	cb_data->cb = cb;
 	cb_data->user_data = user_data;
-	cb_data->id = cb_id++;
+	cb_data->id = ++cb_id;
 
 	if (setup) {
 		setup->canceled = FALSE;
@@ -839,7 +867,7 @@ int a2dp_source_request_stream(struct avdtp *session, struct device *dev,
 failed:
 	stream_setup_free(setup);
 	cb_id--;
-	return -1;
+	return 0;
 }
 
 gboolean a2dp_source_lock(struct device *dev, struct avdtp *session)

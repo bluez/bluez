@@ -58,15 +58,21 @@ typedef enum {
 
 typedef void (*notify_cb_t) (struct device *dev, void *data);
 
+struct a2dp_data {
+	struct avdtp *session;
+	struct avdtp_stream *stream;
+};
+
 struct unix_client {
 	struct device *dev;
 	service_type_t type;
 	union {
-		struct avdtp *session;
+		struct a2dp_data a2dp;
 		void *data;
-	} data;
+	} d;
 	int sock;
-	int req_id;
+	unsigned int req_id;
+	unsigned int cb_id;
 	notify_cb_t disconnect;
 	notify_cb_t suspend;
 	notify_cb_t play;
@@ -78,11 +84,17 @@ static int unix_sock = -1;
 
 static void client_free(struct unix_client *client)
 {
+	struct a2dp_data *a2dp;
+
 	switch (client->type) {
 	case TYPE_SINK:
 	case TYPE_SOURCE:
-		if (client->data.session)
-			avdtp_unref(client->data.session);
+		a2dp = &client->d.a2dp;
+		if (client->cb_id > 0)
+			avdtp_stream_remove_cb(a2dp->session, a2dp->stream,
+						client->cb_id);
+		if (a2dp->session);
+			avdtp_unref(a2dp->session);
 		break;
 	default:
 		break;
@@ -140,6 +152,30 @@ static service_type_t select_service(struct device *dev)
 		return TYPE_NONE;
 }
 
+
+static void stream_state_changed(struct avdtp_stream *stream,
+					avdtp_state_t old_state,
+					avdtp_state_t new_state,
+					struct avdtp_error *err,
+					void *user_data)
+{
+	struct unix_client *client = user_data;
+	struct a2dp_data *a2dp = &client->d.a2dp;
+
+	switch (new_state) {
+	case AVDTP_STATE_IDLE:
+		if (a2dp->session) {
+			avdtp_unref(a2dp->session);
+			a2dp->session = NULL;
+		}
+		a2dp->stream = NULL;
+		client->cb_id = 0;
+		break;
+	default:
+		break;
+	}
+}
+
 static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 					struct avdtp_stream *stream,
 					void *user_data)
@@ -151,11 +187,16 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 	struct avdtp_media_codec_capability *codec_cap;
 	struct sbc_codec_cap *sbc_cap;
 	struct ipc_codec_sbc *sbc = (void *) cfg->data;
+	struct a2dp_data *a2dp = &client->d.a2dp;
 	int fd;
 	GSList *caps;
 
+	client->req_id = 0;
+
 	if (!stream)
 		goto failed;
+
+	a2dp->stream = stream;
 
 	if (!avdtp_stream_get_transport(stream, &fd, &cfg->pkt_len, &caps)) {
 		error("Unable to get stream transport");
@@ -223,11 +264,18 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 
 	unix_send_cfg(client->sock, cfg, fd);
 
+	client->cb_id = avdtp_stream_add_cb(session, stream,
+						stream_state_changed, client);
+
 	return;
 
 failed:
+	error("stream setup failed");
 	unix_send_cfg(client->sock, NULL, -1);
 	a2dp_source_unlock(dev, session);
+	avdtp_unref(a2dp->session);
+	a2dp->session = NULL;
+	a2dp->stream = NULL;
 }
 
 static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
@@ -235,7 +283,9 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 {
 	struct ipc_data_cfg *rsp;
 	struct device *dev;
-	int ret, fd, id;
+	int ret, fd;
+	unsigned int id;
+	struct a2dp_data *a2dp;
 
 	dev = manager_get_connected_device();
 	if (dev)
@@ -250,18 +300,20 @@ proceed:
 
 	switch (client->type) {
 	case TYPE_SINK:
-		if (!client->data.session)
-			client->data.session = avdtp_get(&dev->src, &dev->dst);
+		a2dp = &client->d.a2dp;
 
-		if (!a2dp_source_lock(dev, client->data.session)) {
+		if (!a2dp->session)
+			a2dp->session = avdtp_get(&dev->src, &dev->dst);
+
+		if (!a2dp_source_lock(dev, a2dp->session)) {
 			error("Unable to lock A2DP source SEP");
 			goto failed;
 		}
 
-		id = a2dp_source_request_stream(client->data.session, dev,
+		id = a2dp_source_request_stream(a2dp->session, dev,
 						TRUE, a2dp_setup_complete,
 						client);
-		if (id < 0) {
+		if (id == 0) {
 			error("request_stream failed");
 			goto failed;
 		}
@@ -273,7 +325,7 @@ proceed:
 
 		break;
 	case TYPE_HEADSET:
-		if (!headset_lock(dev, client->data.data)) {
+		if (!headset_lock(dev, client->d.data)) {
 			error("Unable to lock headset");
 			goto failed;
 		}
@@ -330,11 +382,11 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	switch (client->type) {
 	case TYPE_HEADSET:
-		cb_data = client->data.data;
+		cb_data = client->d.data;
 		break;
 	case TYPE_SINK:
 	case TYPE_SOURCE:
-		cb_data = client->data.session;
+		cb_data = client->d.a2dp.session;
 		break;
 	default:
 		cb_data = NULL;
@@ -345,7 +397,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		debug("Unix client disconnected");
 		if (client->disconnect)
 			client->disconnect(client->dev, cb_data);
-		if (client->type == TYPE_SINK && client->req_id >= 0)
+		if (client->type == TYPE_SINK && client->req_id > 0)
 			a2dp_source_cancel_stream(client->req_id);
 		goto failed;
 	}
