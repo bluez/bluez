@@ -1226,6 +1226,10 @@ static gboolean connect_event(GIOChannel *chan,
 		return TRUE;
 	}
 
+	if (tcsetattr(tty_sk, TCSANOW, &prx->proxy_ti) < 0)
+		error("Can't change serial settings: %s(%d)",
+				strerror(errno), errno);
+
 	node_io = g_io_channel_unix_new(nsk);
 	g_io_channel_set_close_on_unref(node_io, TRUE);
 	tty_io = g_io_channel_unix_new(tty_sk);
@@ -1374,10 +1378,153 @@ static DBusHandlerResult proxy_get_info(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static struct {
+	const char	*str;
+	speed_t		speed;
+} supported_speed[]  = {
+	{"50",		B50	},
+	{"300",		B300	},
+	{"600",		B600	},
+	{"1200",	B1200	},
+	{"1800",	B1800	},
+	{"2400",	B2400	},
+	{"4800",	B4800	},
+	{"9600",	B9600	},
+	{"19200",	B19200	},
+	{"38400",	B38400	},
+	{"57600",	B57600	},
+	{"115200",	B115200	},
+	{ NULL,		B0	}
+};
+
+static speed_t str2speed(const char *str, speed_t *speed)
+{
+	int i;
+
+	for (i = 0; supported_speed[i].str; i++) {
+		if (strcmp(supported_speed[i].str, str) != 0)
+			continue;
+
+		if (speed)
+			*speed = supported_speed[i].speed;
+
+		return supported_speed[i].speed;
+	}
+
+	return B0;
+}
+
+static int set_parity(const char *str, tcflag_t *ctrl)
+{
+	if (strcasecmp("even", str) == 0) {
+		*ctrl |= PARENB;
+		*ctrl &= ~PARODD;
+	} else if (strcasecmp("odd", str) == 0) {
+		*ctrl |= PARENB;
+		*ctrl |= PARODD;
+	} else if (strcasecmp("mark", str) == 0)
+		*ctrl |= PARENB;
+	else if ((strcasecmp("none", str) == 0) ||
+			(strcasecmp("space", str) == 0))
+		*ctrl &= ~PARENB;
+	else
+		return -1;
+
+	return 0;
+}
+
+static int set_databits(uint8_t databits, tcflag_t *ctrl)
+{
+	if (databits < 5 || databits > 8)
+		return -EINVAL;
+
+	*ctrl &= ~CSIZE;
+	switch (databits) {
+	case 5:
+		*ctrl |= CS5;
+		break;
+	case 6:
+		*ctrl |= CS6;
+		break;
+	case 7:
+		*ctrl |= CS7;
+		break;
+	case 8:
+		*ctrl |= CS8;
+		break;
+	}
+
+	return 0;
+}
+
+static int set_stopbits(uint8_t stopbits, tcflag_t *ctrl)
+{
+	/* 1.5 will not be allowed */
+	switch (stopbits) {
+	case 1:
+		*ctrl &= ~CSTOPB;
+		return 0;
+	case 2:
+		*ctrl |= CSTOPB;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static DBusHandlerResult proxy_set_serial_params(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusError derr;
+	struct proxy *prx = data;
+	const char *ratestr, *paritystr;
+	uint8_t databits, stopbits;
+	tcflag_t ctrl; 		/* Control mode flags */
+	speed_t speed = B0;	/* In/Out speed */
+
+	/* Don't allow change TTY settings if it is open */
+	if (prx->tty_watch)
+		return err_failed(conn, msg, "Not allowed");
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &ratestr,
+				DBUS_TYPE_BYTE, &databits,
+				DBUS_TYPE_BYTE, &stopbits,
+				DBUS_TYPE_STRING, &paritystr,
+				DBUS_TYPE_INVALID)) {
+		err_invalid_args(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	if (str2speed(ratestr, &speed)  == B0)
+		return err_invalid_args(conn, msg, "Invalid baud rate");
+
+	ctrl = prx->proxy_ti.c_cflag;
+	if (set_databits(databits, &ctrl) < 0)
+		return err_invalid_args(conn, msg, "Invalid data bits");
+
+	if (set_stopbits(stopbits, &ctrl) < 0)
+		return err_invalid_args(conn, msg, "Invalid stop bits");
+
+	if (set_parity(paritystr, &ctrl) < 0)
+		return err_invalid_args(conn, msg, "Invalid parity");
+
+	prx->proxy_ti.c_cflag = ctrl;
+	prx->proxy_ti.c_cflag |= (CLOCAL | CREAD);
+	cfsetispeed(&prx->proxy_ti, speed);
+	cfsetospeed(&prx->proxy_ti, speed);
+
+	return send_message_and_unref(conn,
+			dbus_message_new_method_return(msg));
+}
+
 static DBusMethodVTable proxy_methods[] = {
-	{ "Enable",			proxy_enable,		"",	""	},
-	{ "Disable",			proxy_disable,		"",	""	},
-	{ "GetInfo",			proxy_get_info,		"",	"{sv}"	},
+	{ "Enable",			proxy_enable,			"",	""	},
+	{ "Disable",			proxy_disable,			"",	""	},
+	{ "GetInfo",			proxy_get_info,			"",	"{sv}"	},
+	{ "SetSerialParams",		proxy_set_serial_params, 	"syys",	""	},
 	{ NULL, NULL, NULL, NULL },
 };
 
