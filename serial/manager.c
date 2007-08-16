@@ -1063,10 +1063,12 @@ static int create_proxy_record(sdp_buf_t *buf, const char *uuid128, uint8_t chan
 	ret = sdp_gen_record_pdu(&record, buf);
 
 	sdp_data_free(ch);
-	sdp_list_free(proto[0], 0);
-	sdp_list_free(proto[1], 0);
-	sdp_list_free(apseq, 0);
-	sdp_list_free(aproto, 0);
+	sdp_list_free(proto[0], NULL);
+	sdp_list_free(proto[1], NULL);
+	sdp_list_free(apseq, NULL);
+	sdp_list_free(aproto, NULL);
+	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
+	sdp_list_free(record.pattern, free);
 
 	return ret;
 
