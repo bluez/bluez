@@ -21,8 +21,6 @@
  *
  */
 
-#include "dbus.h"
-
 DBusHandlerResult err_unknown_connection(DBusConnection *conn,
 						DBusMessage *msg);
 DBusHandlerResult err_does_not_exist(DBusConnection *conn,
@@ -37,4 +35,3 @@ DBusHandlerResult err_invalid_args(DBusConnection *conn,
 DBusHandlerResult err_not_supported(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult err_already_exists(DBusConnection *conn,
 					DBusMessage *msg, const char *str);
-

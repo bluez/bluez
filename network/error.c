@@ -25,6 +25,9 @@
 #include <config.h>
 #endif
 
+#include <dbus/dbus.h>
+
+#include "dbus.h"
 #include "error.h"
 
 #define NETWORK_ERROR_INTERFACE "org.bluez.network.Error"
