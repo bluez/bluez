@@ -140,30 +140,6 @@ static service_type_t select_service(struct device *dev)
 		return TYPE_NONE;
 }
 
-
-static void stream_state_changed(struct avdtp_stream *stream,
-					avdtp_state_t old_state,
-					avdtp_state_t new_state,
-					struct avdtp_error *err,
-					void *user_data)
-{
-	struct unix_client *client = user_data;
-
-	if (err)
-		return;
-	
-	switch (new_state) {
-	case AVDTP_STATE_IDLE:
-		if (client->data.session) {
-			avdtp_unref(client->data.session);
-			client->data.session = NULL;
-		}
-		break;
-	default:
-		break;
-	}
-}
-
 static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 					struct avdtp_stream *stream,
 					void *user_data)
@@ -247,15 +223,11 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 
 	unix_send_cfg(client->sock, cfg, fd);
 
-	avdtp_stream_add_cb(session, stream, stream_state_changed, dev);
-
 	return;
 
 failed:
 	unix_send_cfg(client->sock, NULL, -1);
 	a2dp_source_unlock(dev, session);
-	avdtp_unref(client->data.session);
-	client->data.session = NULL;
 }
 
 static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,

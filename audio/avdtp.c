@@ -218,11 +218,6 @@ struct avdtp_local_sep {
 	void *data;
 };
 
-struct stream_callback {
-	avdtp_stream_state_cb cb;
-	void *user_data;
-};
-
 struct avdtp_stream {
 	int sock;
 	uint16_t mtu;
@@ -230,8 +225,9 @@ struct avdtp_stream {
 	struct avdtp_local_sep *lsep;
 	uint8_t rseid;
 	GSList *caps;
-	GSList *callbacks;
 	struct avdtp_service_capability *codec;
+	avdtp_stream_state_cb cb;
+	void *user_data;
 	guint io;		/* Transport GSource ID */
 	guint timer;		/* Waiting for other side to close or open
 				   the transport channel */
@@ -460,13 +456,10 @@ static void stream_free(struct avdtp_stream *stream)
 
 	if (stream->timer)
 		g_source_remove(stream->timer);
-
-	g_slist_foreach(stream->callbacks, (GFunc) g_free, NULL);
-	g_slist_free(stream->callbacks);
-
-	g_slist_foreach(stream->caps, (GFunc) g_free, NULL);
-	g_slist_free(stream->caps);
-
+	if (stream->caps) {
+		g_slist_foreach(stream->caps, (GFunc) g_free, NULL);
+		g_slist_free(stream->caps);
+	}
 	g_free(stream);
 }
 
@@ -492,14 +485,9 @@ static void avdtp_sep_set_state(struct avdtp *session,
 	old_state = sep->state;
 	sep->state = state;
 
-	if (stream) {
-		GSList *l;
-		for (l = stream->callbacks; l != NULL; l = g_slist_next(l)) {
-			struct stream_callback *cb = l->data;
-			cb->cb(stream, old_state, state, err_ptr,
-					cb->user_data);
-		}
-	}
+	if (stream && stream->cb)
+		stream->cb(stream, old_state, state, err_ptr,
+				stream->user_data);
 
 	if (state == AVDTP_STATE_IDLE) {
 		session->streams = g_slist_remove(session->streams, stream);
@@ -2097,16 +2085,11 @@ int avdtp_get_seps(struct avdtp *session, uint8_t acp_type, uint8_t media_type,
 	return -EINVAL;
 }
 
-void avdtp_stream_add_cb(struct avdtp *session, struct avdtp_stream *stream,
+void avdtp_stream_set_cb(struct avdtp *session, struct avdtp_stream *stream,
 				avdtp_stream_state_cb cb, void *data)
 {
-	struct stream_callback *stream_cb;
-
-	stream_cb = g_new(struct stream_callback, 1);
-	stream_cb->cb = cb;
-	stream_cb->user_data = data;
-
-	stream->callbacks = g_slist_append(stream->callbacks, stream_cb);;
+	stream->cb = cb;
+	stream->user_data = data;
 }
 
 int avdtp_get_configuration(struct avdtp *session, struct avdtp_stream *stream)
