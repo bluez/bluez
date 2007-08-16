@@ -774,6 +774,7 @@ gboolean a2dp_source_cancel_stream(int id)
 		return FALSE;
 
 	setup->cb = g_slist_remove(setup->cb, cb_data);
+	g_free(cb_data);
 
 	if (!setup->cb)
 		setup->canceled = TRUE;
