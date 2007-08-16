@@ -25,7 +25,11 @@
 #include <config.h>
 #endif
 
+#include <fcntl.h>
+#include <unistd.h>
 #include <string.h>
+#include <sys/stat.h>
+
 #include <dbus.h>
 
 #include "dbus-database.h"
@@ -96,6 +100,7 @@ void init_local_server(void)
 	const char *ext_only[] = { "EXTERNAL", NULL };
 	char *address;
 	DBusError err;
+	int fd, len;
 
 	dbus_error_init(&err);
 
@@ -109,6 +114,15 @@ void init_local_server(void)
 	address = dbus_server_get_address(server);
 
 	info("Created local server at %s", address);
+
+	fd = open("/var/run/bluetoothd_address",
+				O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR);
+	if (fd < 0) {
+		error("Can't create server address file");
+	} else {
+		len = write(fd, address, strlen(address));
+		close(fd);
+	}
 
 	dbus_free(address);
 
@@ -127,6 +141,9 @@ void shutdown_local_server(void)
 		return;
 
 	info("Shutting down local server");
+
+	if (unlink("/var/run/bluetoothd_address") < 0)
+		error("Can't remove server address file");
 
 	dbus_server_disconnect(server);
 
