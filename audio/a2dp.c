@@ -675,8 +675,7 @@ static gboolean select_sbc_params(struct sbc_codec_cap *cap,
 	else if (supported->allocation_method & A2DP_ALLOCATION_SNR)
 		cap->allocation_method = A2DP_ALLOCATION_SNR;
 
-	min_bitpool = MAX(default_bitpool(cap->frequency, cap->channel_mode),
-				supported->min_bitpool);
+	min_bitpool = MAX(2, supported->min_bitpool);
 	max_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),
 				supported->max_bitpool);
 

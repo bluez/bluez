@@ -71,9 +71,11 @@ static void pending_request_free(struct pending_request *pending)
 	g_free(pending);
 }
 
-void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
-				avdtp_state_t new_state,
-				struct avdtp_error *err, void *user_data)
+static void stream_state_changed(struct avdtp_stream *stream,
+					avdtp_state_t old_state,
+					avdtp_state_t new_state,
+					struct avdtp_error *err,
+					void *user_data)
 {
 	struct device *dev = user_data;
 	struct sink *sink = dev->sink;
@@ -315,7 +317,7 @@ gboolean sink_new_stream(struct device *dev, struct avdtp *session,
 	sink->stream = stream;
 	sink->initiator = FALSE;
 
-	avdtp_stream_set_cb(session, stream, stream_state_changed, dev);
+	avdtp_stream_add_cb(session, stream, stream_state_changed, dev);
 
 	return TRUE;
 }
