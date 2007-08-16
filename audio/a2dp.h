@@ -66,8 +66,6 @@ int a2dp_init(DBusConnection *conn, gboolean enable_sink,
 			gboolean enable_source);
 void a2dp_exit(void);
 
-gboolean a2dp_select_capabilities(struct avdtp_remote_sep *rsep, GSList **caps);
-
 int a2dp_source_request_stream(struct avdtp *session, struct device *dev,
 					gboolean start, a2dp_stream_cb_t cb,
 					void *user_data);

@@ -686,7 +686,7 @@ static gboolean select_sbc_params(struct sbc_codec_cap *cap,
 	return TRUE;
 }
 
-gboolean a2dp_select_capabilities(struct avdtp_remote_sep *rsep, GSList **caps)
+static gboolean a2dp_select_capabilities(struct avdtp_remote_sep *rsep, GSList **caps)
 {
 	struct avdtp_service_capability *media_transport, *media_codec;
 	struct sbc_codec_cap sbc_cap, *acp_sbc;
