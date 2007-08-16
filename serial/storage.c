@@ -87,6 +87,17 @@ int port_store(bdaddr_t *src, bdaddr_t *dst, int16_t id,
 	return err;
 }
 
+int proxy_delete(bdaddr_t *src, const char *tty)
+{
+	char filename[PATH_MAX + 1], src_addr[18];
+
+	ba2str(src, src_addr);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "proxy");
+
+	return textfile_del(filename, tty);
+}
+
 int proxy_store(bdaddr_t *src, const char *uuid, const char *tty,
 		const char *name, uint8_t ch, int opts, struct termios *ti)
 {

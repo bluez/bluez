@@ -1524,6 +1524,7 @@ static DBusHandlerResult list_proxies(DBusConnection *conn,
 static DBusHandlerResult remove_proxy(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
+	struct proxy *prx = NULL;
 	const char *path;
 	GSList *l;
 	DBusError derr;
@@ -1540,6 +1541,11 @@ static DBusHandlerResult remove_proxy(DBusConnection *conn,
 	l = g_slist_find_custom(proxies_paths, path, (GCompareFunc) strcmp);
 	if (!l)
 		return err_does_not_exist(conn, msg, "Invalid proxy path");
+
+	/* Remove from storage */
+	if (dbus_connection_get_object_user_data(conn,
+				path, (void *) &prx) && prx)
+		proxy_delete(&prx->src, prx->tty);
 
 	g_free(l->data);
 	proxies_paths = g_slist_remove(proxies_paths, l->data);
