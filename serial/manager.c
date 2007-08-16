@@ -1818,9 +1818,10 @@ static void parse_port(char *key, char *value, void *data)
 static void parse_proxy(char *key, char *value, void *data)
 {
 	char path[MAX_PATH_LENGTH], uuid_str[MAX_LEN_UUID_STR], tmp[3], *pvalue;
+	char *src_addr = data;
 	struct termios ti;
 	int ch, opts, pos = 0;
-	bdaddr_t *src = data;
+	bdaddr_t src;
 	uuid_t uuid;
 	uint8_t *pti;
 
@@ -1864,7 +1865,8 @@ static void parse_proxy(char *key, char *value, void *data)
 	snprintf(path, MAX_PATH_LENGTH - 1,
 			"/org/bluez/serial/proxy%s", key + pos);
 
-	proxy_register(connection, src, path, &uuid, key, &ti);
+	str2ba(src_addr, &src);
+	proxy_register(connection, &src, path, &uuid, key, &ti);
 
 	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
 }
