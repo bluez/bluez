@@ -36,7 +36,6 @@
 
 #include "logging.h"
 #include "manager.h"
-#include "ipc.h"
 #include "device.h"
 #include "avdtp.h"
 #include "sink.h"
