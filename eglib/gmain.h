@@ -108,6 +108,7 @@ void g_main_loop_run(GMainLoop *loop);
 void g_main_loop_quit(GMainLoop *loop);
 void g_main_loop_unref(GMainLoop *loop);
 guint g_timeout_add(guint interval, GSourceFunc function, gpointer data);
+guint g_idle_add(GSourceFunc function, gpointer data);
 gboolean g_source_remove(guint tag);
 
 /* GError */
@@ -197,6 +198,8 @@ GSList *g_slist_nth(GSList *list, guint n);
 gpointer g_slist_nth_data(GSList *list, guint n);
 int g_slist_position(GSList *list, GSList *link);
 GSList* g_slist_last(GSList *list);
+
+#define g_slist_next(l) ((l)->next)
 
 /* End GSList declarations */
 

@@ -561,6 +561,11 @@ guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)
 	return t->id;
 }
 
+guint g_idle_add(GSourceFunc function, gpointer data)
+{
+	return g_timeout_add(1, function, data);
+}
+
 /* GError */
 
 GError* g_error_new_literal(GQuark domain, gint code, const gchar *message)
