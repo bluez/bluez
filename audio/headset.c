@@ -100,6 +100,8 @@ struct headset {
 
 	int sp_gain;
 	int mic_gain;
+
+	gboolean locked;
 };
 
 static int rfcomm_connect(struct device *device, struct pending_connect *c);
@@ -1569,4 +1571,35 @@ gboolean headset_is_active(struct device *dev)
 		return TRUE;
 
 	return FALSE;
+}
+
+gboolean headset_lock(struct device *dev, void *data)
+{
+	struct headset *hs = dev->headset;
+
+	if (hs->locked)
+		return FALSE;
+
+	hs->locked = TRUE;
+
+	return TRUE;
+}
+
+gboolean headset_unlock(struct device *dev, void *data)
+{
+	struct headset *hs = dev->headset;
+
+	hs->locked = FALSE;
+
+	return TRUE;
+}
+
+gboolean headset_suspend(struct device *dev, void *data)
+{
+	return TRUE;
+}
+
+gboolean headset_play(struct device *dev, void *data)
+{
+	return TRUE;
 }

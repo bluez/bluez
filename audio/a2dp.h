@@ -58,6 +58,10 @@ struct sbc_codec_cap {
 	uint8_t max_bitpool;
 } __attribute__ ((packed));
 
+typedef void (*a2dp_stream_cb_t) (struct avdtp *session, struct device *dev,
+					struct avdtp_stream *stream,
+					void *user_data);
+
 int a2dp_init(DBusConnection *conn, gboolean enable_sink,
 			gboolean enable_source);
 void a2dp_exit(void);
@@ -67,5 +71,13 @@ gboolean a2dp_select_capabilities(struct avdtp_remote_sep *rsep, GSList **caps);
 gboolean a2dp_get_config(struct avdtp_stream *stream,
 				struct ipc_data_cfg **cfg, int *fd);
 
-void a2dp_start_stream_when_opened(struct avdtp *session,
-					struct avdtp_stream *stream);
+int a2dp_source_request_stream(struct avdtp *session, struct device *dev,
+					gboolean start, a2dp_stream_cb_t cb,
+					void *user_data);
+gboolean a2dp_source_cancel_stream(int id);
+
+gboolean a2dp_source_lock(struct device *dev, struct avdtp *session);
+gboolean a2dp_source_unlock(struct device *dev, struct avdtp *session);
+gboolean a2dp_source_suspend(struct device *dev, struct avdtp *session);
+gboolean a2dp_source_start_stream(struct device *dev, struct avdtp *session);
+

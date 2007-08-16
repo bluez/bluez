@@ -46,29 +46,29 @@
 #include "sink.h"
 
 struct pending_request {
+	DBusConnection *conn;
 	DBusMessage *msg;
-	struct ipc_packet *pkt;
-	int pkt_len;
-	int sock;
+	int id;
 };
 
 struct sink {
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	uint8_t state;
-	struct pending_request *c;
+	struct pending_request *connect;
+	struct pending_request *disconnect;
 	DBusConnection *conn;
 	gboolean initiator;
 	gboolean suspending;
 };
 
-static void pending_connect_free(struct pending_request *c)
+static void pending_request_free(struct pending_request *pending)
 {
-	if (c->pkt)
-		g_free(c->pkt);
-	if (c->msg)
-		dbus_message_unref(c->msg);
-	g_free(c);
+	if (pending->conn)
+		dbus_connection_unref(pending->conn);
+	if (pending->msg)
+		dbus_message_unref(pending->msg);
+	g_free(pending);
 }
 
 void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
@@ -77,12 +77,9 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 {
 	struct device *dev = user_data;
 	struct sink *sink = dev->sink;
-	struct pending_request *c = NULL;
-	DBusMessage *reply;
-	int cmd_err;
 
 	if (err)
-		goto failed;
+		return;
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
@@ -90,152 +87,64 @@ void stream_state_changed(struct avdtp_stream *stream, avdtp_state_t old_state,
 						AUDIO_SINK_INTERFACE,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
+		if (sink->disconnect) {
+			DBusMessage *reply;
+			struct pending_request *p;
+
+			p = sink->disconnect;
+			sink->disconnect = NULL;
+
+			reply = dbus_message_new_method_return(p->msg);
+			send_message_and_unref(p->conn, reply);
+			pending_request_free(p);
+		}
+
 		if (sink->session) {
 			avdtp_unref(sink->session);
 			sink->session = NULL;
 		}
 		sink->stream = NULL;
-		c = sink->c;
-		break;
-	case AVDTP_STATE_CONFIGURED:
-		if (!sink->initiator)
-			break;
-
-		cmd_err = avdtp_open(sink->session, stream);
-		if (cmd_err < 0) {
-			error("Error on avdtp_open %s (%d)", strerror(-cmd_err),
-				cmd_err);
-			goto failed;
-		}
-
-		if (sink->c && sink->c->pkt)
-			a2dp_start_stream_when_opened(sink->session, stream);
 		break;
 	case AVDTP_STATE_OPEN:
-		sink->suspending = FALSE;
-
 		if (old_state == AVDTP_STATE_CONFIGURED)
 			dbus_connection_emit_signal(dev->conn, dev->path,
 							AUDIO_SINK_INTERFACE,
 							"Connected",
 							DBUS_TYPE_INVALID);
-
-		if (!sink->initiator)
-			break;
-
-		if (!(sink->c && sink->c->pkt))
-			c = sink->c;
-
 		break;
+	case AVDTP_STATE_CONFIGURED:
 	case AVDTP_STATE_STREAMING:
-		c = sink->c;
-		break;
 	case AVDTP_STATE_CLOSING:
-		break;
 	case AVDTP_STATE_ABORTING:
+	default:
 		break;
 	}
 
 	sink->state = new_state;
-
-	if (c) {
-		sink->c = NULL;
-
-		if (c->msg) {
-			reply = dbus_message_new_method_return(c->msg);
-			send_message_and_unref(dev->conn, reply);
-		}
-		if (c->pkt) {
-			struct ipc_data_cfg *rsp;
-			int ret, fd;
-
-			ret = sink_get_config(dev, c->sock, c->pkt,
-						c->pkt_len, &rsp, &fd);
-			if (ret == 0) {
-				unix_send_cfg(c->sock, rsp, fd);
-				g_free(rsp);
-			}
-			else
-				unix_send_cfg(c->sock, NULL, -1);
-		}
-
-		pending_connect_free(c);
-	}
-
-	return;
-
-failed:
-	if (sink->c) {
-		if (sink->c->msg && err)
-			err_failed(dev->conn, sink->c->msg,
-					avdtp_strerror(err));
-
-		pending_connect_free(sink->c);
-		sink->c = NULL;
-	}
-
-	if (new_state == AVDTP_STATE_IDLE) {
-		avdtp_unref(sink->session);
-		sink->session = NULL;
-		sink->stream = NULL;
-	}
 }
 
-static void discovery_complete(struct avdtp *session, GSList *seps, int err,
-				void *user_data)
+static void stream_setup_complete(struct avdtp *session, struct device *dev,
+					struct avdtp_stream *stream,
+					void *user_data)
 {
-	struct device *dev = user_data;
 	struct sink *sink = dev->sink;
-	struct avdtp_local_sep *lsep;
-	struct avdtp_remote_sep *rsep;
-	GSList *caps = NULL;
-	const char *err_str = NULL;
+	struct pending_request *pending;
 
-	if (err < 0) {
-		error("Discovery failed");
-		err_str = strerror(-err);
-		goto failed;
+	pending = sink->connect;
+	sink->connect = NULL;
+
+	if (stream) {
+		DBusMessage *reply;
+		reply = dbus_message_new_method_return(pending->msg);
+		send_message_and_unref(pending->conn, reply);
 	}
-
-	debug("Discovery complete");
-
-	if (avdtp_get_seps(session, AVDTP_SEP_TYPE_SINK, AVDTP_MEDIA_TYPE_AUDIO,
-				A2DP_CODEC_SBC, &lsep, &rsep) < 0) {
-		err_str = "No matching ACP and INT SEPs found";
-		goto failed;
-	}
-
-	if (!a2dp_select_capabilities(rsep, &caps)) {
-		err_str = "Unable to select remote SEP capabilities";
-		goto failed;
-	}
-
-	err = avdtp_set_configuration(session, rsep, lsep, caps,
-					&sink->stream);
-	if (err < 0) {
-		error("avdtp_set_configuration: %s", strerror(-err));
-		err_str = "Unable to set configuration";
-		goto failed;
-	}
-
-	sink->initiator = TRUE;
-
-	avdtp_stream_set_cb(session, sink->stream, stream_state_changed, dev);
-
-	return;
-
-failed:
-	error("%s", err_str);
-	if (sink->c) {
-		if (sink->c->msg)
-			err_failed(dev->conn, sink->c->msg, err_str);
-		pending_connect_free(sink->c);
-		sink->c = NULL;
-	}
-	if (sink->session) {
+	else {
+		err_failed(pending->conn, pending->msg, "Stream setup failed");
 		avdtp_unref(sink->session);
 		sink->session = NULL;
 	}
+
+	pending_request_free(pending);
 }
 
 static DBusHandlerResult sink_connect(DBusConnection *conn,
@@ -243,30 +152,35 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 {
 	struct device *dev = data;
 	struct sink *sink = dev->sink;
-	struct pending_request *c;
-	int err;
+	struct pending_request *pending;
+	int id;
 
 	if (!sink->session)
 		sink->session = avdtp_get(&dev->src, &dev->dst);
 
-	if (sink->c)
+	if (sink->connect || sink->disconnect)
 		return err_connect_failed(conn, msg, "Connect in progress");
 
 	if (sink->state >= AVDTP_STATE_OPEN)
 		return err_already_connected(conn, msg);
 
-	c = g_new0(struct pending_request, 1);
-	c->msg = dbus_message_ref(msg);
-	sink->c = c;
+	pending = g_new0(struct pending_request, 1);
+	pending->conn = dbus_connection_ref(conn);
+	pending->msg = dbus_message_ref(msg);
+	sink->connect = pending;
 
-	err = avdtp_discover(sink->session, discovery_complete, data);
-	if (err < 0) {
-		pending_connect_free(c);
-		sink->c = NULL;
+	id = a2dp_source_request_stream(sink->session, dev, FALSE,
+					stream_setup_complete, pending);
+	if (id < 0) {
+		pending_request_free(pending);
+		sink->connect = NULL;
 		avdtp_unref(sink->session);
 		sink->session = NULL;
-		return err_connect_failed(conn, msg, strerror(err));
+		return err_connect_failed(conn, msg,
+						"Failed to request a stream");
 	}
+
+	pending->id = id;
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -276,27 +190,32 @@ static DBusHandlerResult sink_disconnect(DBusConnection *conn,
 {
 	struct device *device = data;
 	struct sink *sink = device->sink;
-	struct pending_request *c;
+	struct pending_request *pending;
 	int err;
 
 	if (!sink->session)
 		return err_not_connected(conn, msg);
 
-	if (sink->c)
+	if (sink->connect || sink->disconnect)
 		return err_failed(conn, msg, strerror(EBUSY));
 
 	if (sink->state < AVDTP_STATE_OPEN) {
+		DBusMessage *reply = dbus_message_new_method_return(msg);
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 		avdtp_unref(sink->session);
 		sink->session = NULL;
-	} else {
-		err = avdtp_close(sink->session, sink->stream);
-		if (err < 0)
-			return err_failed(conn, msg, strerror(-err));
+		return send_message_and_unref(conn, reply);
 	}
 
-	c = g_new0(struct pending_request, 1);
-	c->msg = dbus_message_ref(msg);
-	sink->c = c;
+	err = avdtp_close(sink->session, sink->stream);
+	if (err < 0)
+		return err_failed(conn, msg, strerror(-err));
+
+	pending = g_new0(struct pending_request, 1);
+	pending->conn = dbus_connection_ref(conn);
+	pending->msg = dbus_message_ref(msg);
+	sink->disconnect = pending;
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -355,64 +274,14 @@ void sink_free(struct device *dev)
 	if (sink->session)
 		avdtp_unref(sink->session);
 
-	if (sink->c)
-		pending_connect_free(sink->c);
+	if (sink->connect)
+		pending_request_free(sink->connect);
+
+	if (sink->disconnect)
+		pending_request_free(sink->disconnect);
 
 	g_free(sink);
 	dev->sink = NULL;
-}
-
-int sink_get_config(struct device *dev, int sock, struct ipc_packet *req,
-			int pkt_len, struct ipc_data_cfg **rsp, int *fd)
-{
-	struct sink *sink = dev->sink;
-	int err;
-	struct pending_request *c = NULL;
-
-	if (!sink->suspending && sink->state == AVDTP_STATE_STREAMING)
-		goto proceed;
-
-	if (sink->c) {
-		error("sink_get_config: another request already in progress");
-		return -EBUSY;
-	}
-
-	if (!sink->session)
-		sink->session = avdtp_get(&dev->src, &dev->dst);
-
-	c = g_new0(struct pending_request, 1);
-	c->sock = sock;
-	c->pkt = g_malloc(pkt_len);
-	memcpy(c->pkt, req, pkt_len);
-
-	if (sink->state == AVDTP_STATE_IDLE)
-		err = avdtp_discover(sink->session, discovery_complete, dev);
-	else if (sink->state < AVDTP_STATE_STREAMING)
-		err = avdtp_start(sink->session, sink->stream);
-	else if (sink->suspending)
-		err = 0;
-	else
-		err = -EINVAL;
-
-	if (err < 0)
-		goto failed;
-
-	sink->c = c;
-
-	return 1;
-
-proceed:
-	if (!a2dp_get_config(sink->stream, rsp, fd)) {
-		err = -EINVAL;
-		goto failed;
-	}
-
-	return 0;
-
-failed:
-	if (c)
-		pending_connect_free(c);
-	return -err;
 }
 
 gboolean sink_is_active(struct device *dev)
@@ -423,52 +292,6 @@ gboolean sink_is_active(struct device *dev)
 		return TRUE;
 
 	return FALSE;
-}
-
-void sink_set_state(struct device *dev, avdtp_state_t state)
-{
-	struct sink *sink = dev->sink;
-	int err = 0;
-
-	if (sink->state == state)
-		return;
-
-	if (!sink->session || !sink->stream)
-		goto failed;
-
-	switch (sink->state) {
-	case AVDTP_STATE_OPEN:
-		if (state == AVDTP_STATE_STREAMING) {
-			err = avdtp_start(sink->session, sink->stream);
-			if (err == 0)
-				return;
-		}
-		else if (state == AVDTP_STATE_IDLE) {
-			err = avdtp_close(sink->session, sink->stream);
-			if (err == 0)
-				return;
-		}
-		break;
-	case AVDTP_STATE_STREAMING:
-		if (state == AVDTP_STATE_OPEN) {
-			err = avdtp_suspend(sink->session, sink->stream);
-			if (err == 0) {
-				sink->suspending = TRUE;
-				return;
-			}
-		}
-		else if (state == AVDTP_STATE_IDLE) {
-			err = avdtp_close(sink->session, sink->stream);
-			if (err == 0)
-				return;
-		}
-		break;
-	default:
-		goto failed;
-	}
-
-failed:
-	error("%s: Error changing states", dev->path);
 }
 
 avdtp_state_t sink_get_state(struct device *dev)

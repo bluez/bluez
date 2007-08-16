@@ -68,3 +68,8 @@ void headset_set_state(struct device *dev, headset_state_t state);
 int headset_get_channel(struct device *dev);
 
 gboolean headset_is_active(struct device *dev);
+
+gboolean headset_lock(struct device *dev, void *data);
+gboolean headset_unlock(struct device *dev, void *data);
+gboolean headset_suspend(struct device *dev, void *data);
+gboolean headset_play(struct device *dev, void *data);

@@ -25,10 +25,7 @@
 
 struct sink *sink_init(struct device *dev);
 void sink_free(struct device *dev);
-int sink_get_config(struct device *dev, int sock, struct ipc_packet *req,
-			int pkt_len, struct ipc_data_cfg **rsp, int *fd);
 gboolean sink_is_active(struct device *dev);
-void sink_set_state(struct device *dev, avdtp_state_t state);
 avdtp_state_t sink_get_state(struct device *dev);
 gboolean sink_new_stream(struct device *dev, struct avdtp *session,
 				struct avdtp_stream *stream);

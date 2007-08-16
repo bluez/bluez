@@ -42,16 +42,67 @@
 #include "sink.h"
 #include "a2dp.h"
 
+#ifndef MIN
+# define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+
+#ifndef MAX
+# define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
+
+struct a2dp_sep {
+	struct avdtp_local_sep *sep;
+	struct avdtp_stream *stream;
+	struct device *used_by;
+	uint32_t record_id;
+	gboolean start_requested;
+	gboolean suspending;
+	gboolean starting;
+};
+
+struct a2dp_stream_cb {
+	a2dp_stream_cb_t cb;
+	void *user_data;
+	int id;
+};
+
+struct a2dp_stream_setup {
+	struct avdtp *session;
+	struct device *dev;
+	struct avdtp_stream *stream;
+	gboolean start;
+	gboolean canceled;
+	GSList *cb;
+};
+
 static DBusConnection *connection = NULL;
 
-static uint32_t sink_record_id = 0;
-static uint32_t source_record_id = 0;
+static struct a2dp_sep sink = { NULL, NULL, 0 };
+static struct a2dp_sep source = { NULL, NULL, 0 };
 
-static struct avdtp_local_sep *sink_sep = NULL;
-static struct avdtp_local_sep *source_sep = NULL;
+static struct a2dp_stream_setup *setup = NULL;
 
-static struct avdtp *start_session = NULL;
-static struct avdtp_stream *start_stream = NULL;
+static void stream_setup_free(struct a2dp_stream_setup *s)
+{
+	if (s->session)
+		avdtp_unref(s->session);
+	g_slist_foreach(s->cb, (GFunc) g_free, NULL);
+	g_slist_free(s->cb);
+	g_free(s);
+	setup = NULL;
+}
+
+static void setup_callback(struct a2dp_stream_cb *cb,
+				struct a2dp_stream_setup *s)
+{
+	cb->cb(s->session, s->dev, s->stream, cb->user_data);
+}
+
+static void finalize_stream_setup(struct a2dp_stream_setup *s)
+{
+	g_slist_foreach(setup->cb, (GFunc) setup_callback, setup);
+	stream_setup_free(setup);
+}
 
 static gboolean setconf_ind(struct avdtp *session,
 				struct avdtp_local_sep *sep,
@@ -62,7 +113,7 @@ static gboolean setconf_ind(struct avdtp *session,
 	struct device *dev;
 	bdaddr_t addr;
 
-	if (sep == sink_sep) {
+	if (sep == sink.sep) {
 		debug("SBC Sink: Set_Configuration_Ind");
 		return TRUE;
 	}
@@ -78,6 +129,8 @@ static gboolean setconf_ind(struct avdtp *session,
 		return FALSE;
 	}
 
+	source.stream = stream;
+
 	sink_new_stream(dev, session, stream);
 
 	return TRUE;
@@ -89,7 +142,7 @@ static gboolean getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct avdtp_service_capability *media_transport, *media_codec;
 	struct sbc_codec_cap sbc_cap;
 
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: Get_Capability_Ind");
 	else
 		debug("SBC Source: Get_Capability_Ind");
@@ -140,16 +193,33 @@ static gboolean getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream)
 {
-	if (sep == sink_sep)
+	int err;
+
+	if (sep == sink.sep) {
 		debug("SBC Sink: Set_Configuration_Cfm");
-	else
-		debug("SBC Source: Set_Configuration_Cfm");
+		return;
+	}
+
+	debug("SBC Source: Set_Configuration_Cfm");
+
+	source.stream = stream;
+
+	if (!setup)
+		return;
+
+	err = avdtp_open(session, stream);
+	if (err < 0) {
+		error("Error on avdtp_open %s (%d)", strerror(-err),
+				-err);
+		setup->stream = FALSE;
+		finalize_stream_setup(setup);
+	}
 }
 
 static gboolean getconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				uint8_t *err)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: Get_Configuration_Ind");
 	else
 		debug("SBC Source: Get_Configuration_Ind");
@@ -159,7 +229,7 @@ static gboolean getconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 static void getconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: Set_Configuration_Cfm");
 	else
 		debug("SBC Source: Set_Configuration_Cfm");
@@ -168,7 +238,7 @@ static void getconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: Open_Ind");
 	else
 		debug("SBC Source: Open_Ind");
@@ -178,28 +248,35 @@ static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream)
 {
-	int err;
-
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: Open_Cfm");
 	else
 		debug("SBC Source: Open_Cfm");
 
-	if (session != start_session || stream != start_stream)
+	if (!setup)
 		return;
 
-	start_session = NULL;
-	start_stream = NULL;
+	if (setup->canceled) {
+		avdtp_close(session, stream);
+		stream_setup_free(setup);
+		return;
+	}
 
-	err = avdtp_start(session, stream);
-	if (err < 0)
-		error("Error on avdtp_start %s (%d)", strerror(-err), err);
+	if (setup->start) {
+		if (avdtp_start(session, stream) == 0)
+			return;
+
+		error("avdtp_start failed");
+		setup->stream = NULL;
+	} 
+
+	finalize_stream_setup(setup);
 }
 
 static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: Start_Ind");
 	else
 		debug("SBC Source: Start_Ind");
@@ -213,16 +290,27 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: Start_Cfm");
 	else
 		debug("SBC Source: Start_Cfm");
+
+	if (!setup)
+		return;
+
+	if (setup->canceled) {
+		avdtp_close(session, stream);
+		stream_setup_free(setup);
+		return;
+	}
+
+	finalize_stream_setup(setup);
 }
 
 static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: Suspend_Ind");
 	else
 		debug("SBC Source: Suspend_Ind");
@@ -232,45 +320,68 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep) {
 		debug("SBC Sink: Suspend_Cfm");
-	else
-		debug("SBC Source: Suspend_Cfm");
+		return;
+	}
+
+	debug("SBC Source: Suspend_Cfm");
+
+	source.suspending = FALSE;
+
+	if (source.start_requested) {
+		avdtp_start(session, stream);
+		source.start_requested = FALSE;
+	}
 }
 
 static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep) {
 		debug("SBC Sink: Close_Ind");
-	else
-		debug("SBC Source: Close_Ind");
+		return TRUE;
+	}
+
+	debug("SBC Source: Close_Ind");
+
+	source.stream = NULL;
+
 	return TRUE;
 }
 
 static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep) {
 		debug("SBC Sink: Close_Cfm");
-	else
-		debug("SBC Source: Close_Cfm");
+		return;
+	}
+
+	debug("SBC Source: Close_Cfm");
+
+	source.stream = NULL;
 }
 
 static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep) {
 		debug("SBC Sink: Abort_Ind");
-	else
-		debug("SBC Source: Abort_Ind");
+		return TRUE;
+	}
+
+	debug("SBC Source: Abort_Ind");
+
+	source.stream = NULL;
+
 	return TRUE;
 }
 
 static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: Abort_Cfm");
 	else
 		debug("SBC Source: Abort_Cfm");
@@ -279,7 +390,7 @@ static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 static gboolean reconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				uint8_t *err)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: ReConfigure_Ind");
 	else
 		debug("SBC Source: ReConfigure_Ind");
@@ -288,7 +399,7 @@ static gboolean reconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 
 static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep)
 {
-	if (sep == sink_sep)
+	if (sep == sink.sep)
 		debug("SBC Sink: ReConfigure_Cfm");
 	else
 		debug("SBC Source: ReConfigure_Cfm");
@@ -400,10 +511,10 @@ int a2dp_init(DBusConnection *conn, gboolean enable_sink, gboolean enable_source
 	avdtp_init();
 
 	if (enable_sink) {
-		source_sep = avdtp_register_sep(AVDTP_SEP_TYPE_SOURCE,
-						AVDTP_MEDIA_TYPE_AUDIO,
-						&ind, &cfm);
-		if (source_sep == NULL)
+		source.sep = avdtp_register_sep(AVDTP_SEP_TYPE_SOURCE,
+							AVDTP_MEDIA_TYPE_AUDIO,
+							&ind, &cfm);
+		if (source.sep == NULL)
 			return -1;
 
 		if (a2dp_source_record(&buf) < 0) {
@@ -411,19 +522,19 @@ int a2dp_init(DBusConnection *conn, gboolean enable_sink, gboolean enable_source
 			return -1;
 		}
 
-		source_record_id = add_service_record(conn, &buf);
+		source.record_id = add_service_record(conn, &buf);
 		free(buf.data);
-		if (!source_record_id) {
+		if (!source.record_id) {
 			error("Unable to register A2DP Source service record");
 			return -1;
 		}
 	}
 
 	if (enable_source) {
-		sink_sep = avdtp_register_sep(AVDTP_SEP_TYPE_SINK,
+		sink.sep = avdtp_register_sep(AVDTP_SEP_TYPE_SINK,
 						AVDTP_MEDIA_TYPE_AUDIO,
 						&ind, &cfm);
-		if (sink_sep == NULL)
+		if (sink.sep == NULL)
 			return -1;
 
 		if (a2dp_sink_record(&buf) < 0) {
@@ -431,9 +542,9 @@ int a2dp_init(DBusConnection *conn, gboolean enable_sink, gboolean enable_source
 			return -1;
 		}
 
-		sink_record_id = add_service_record(conn, &buf);
+		sink.record_id = add_service_record(conn, &buf);
 		free(buf.data);
-		if (!sink_record_id) {
+		if (!sink.record_id) {
 			error("Unable to register A2DP Sink service record");
 			return -1;
 		}
@@ -444,20 +555,24 @@ int a2dp_init(DBusConnection *conn, gboolean enable_sink, gboolean enable_source
 
 void a2dp_exit()
 {
-	if (sink_sep)
-		avdtp_unregister_sep(sink_sep);
-
-	if (source_sep)
-		avdtp_unregister_sep(source_sep);
-
-	if (source_record_id) {
-		remove_service_record(connection, source_record_id);
-		source_record_id = 0;
+	if (sink.sep) {
+		avdtp_unregister_sep(sink.sep);
+		sink.sep = NULL;
 	}
 
-	if (sink_record_id) {
-		remove_service_record(connection, sink_record_id);
-		sink_record_id = 0;
+	if (source.sep) {
+		avdtp_unregister_sep(source.sep);
+		source.sep = NULL;
+	}
+
+	if (source.record_id) {
+		remove_service_record(connection, source.record_id);
+		source.record_id = 0;
+	}
+
+	if (sink.record_id) {
+		remove_service_record(connection, sink.record_id);
+		sink.record_id = 0;
 	}
 
 	dbus_connection_unref(connection);
@@ -561,7 +676,7 @@ static gboolean select_sbc_params(struct sbc_codec_cap *cap,
 	else if (supported->allocation_method & A2DP_ALLOCATION_SNR)
 		cap->allocation_method = A2DP_ALLOCATION_SNR;
 
-	min_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),
+	min_bitpool = MAX(default_bitpool(cap->frequency, cap->channel_mode),
 				supported->min_bitpool);
 	max_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),
 				supported->max_bitpool);
@@ -685,10 +800,223 @@ gboolean a2dp_get_config(struct avdtp_stream *stream,
 	return TRUE;
 }
 
-void a2dp_start_stream_when_opened(struct avdtp *session,
-					struct avdtp_stream *stream)
+static void discovery_complete(struct avdtp *session, GSList *seps, int err,
+				void *user_data)
 {
-	start_session = session;
-	start_stream = stream;
+	struct avdtp_local_sep *lsep;
+	struct avdtp_remote_sep *rsep;
+	GSList *caps = NULL;
 
+	if (err < 0) {
+		error("Discovery failed: %s (%d)", strerror(-err), -err);
+		setup->stream = NULL;
+		finalize_stream_setup(setup);
+		return;
+	}
+
+	debug("Discovery complete");
+
+	if (avdtp_get_seps(session, AVDTP_SEP_TYPE_SINK, AVDTP_MEDIA_TYPE_AUDIO,
+				A2DP_CODEC_SBC, &lsep, &rsep) < 0) {
+		error("No matching ACP and INT SEPs found");
+		finalize_stream_setup(setup);
+		return;
+	}
+
+	if (!a2dp_select_capabilities(rsep, &caps)) {
+		error("Unable to select remote SEP capabilities");
+		finalize_stream_setup(setup);
+		return;
+	}                       
+
+	err = avdtp_set_configuration(session, rsep, lsep, caps,
+					&setup->stream);
+	if (err < 0) {
+		error("avdtp_set_configuration: %s", strerror(-err));
+		finalize_stream_setup(setup);
+		return;
+	}
+
+	/* Notify sink.c of the new stream */
+	sink_new_stream(setup->dev, session, setup->stream);
+}
+
+gboolean a2dp_source_cancel_stream(int id)
+{
+	struct a2dp_stream_cb *cb_data;
+	GSList *l;
+
+	if (!setup)
+		return FALSE;
+
+	for (cb_data = NULL, l = setup->cb; l != NULL; l = g_slist_next(l)) {
+		struct a2dp_stream_cb *cb = l->data;
+
+		if (cb->id == id) {
+			cb_data = cb;
+			break;
+		}
+	}
+
+	if (!cb_data)
+		return FALSE;
+
+	setup->cb = g_slist_remove(setup->cb, cb_data);
+
+	if (!setup->cb)
+		setup->canceled = TRUE;
+
+	return TRUE;
+}
+
+int a2dp_source_request_stream(struct avdtp *session, struct device *dev,
+					gboolean start, a2dp_stream_cb_t cb,
+					void *user_data)
+{
+	struct a2dp_stream_cb *cb_data;
+	static unsigned int cb_id = 0;
+
+	cb_data = g_new(struct a2dp_stream_cb, 1);
+	cb_data->cb = cb;
+	cb_data->user_data = user_data;
+	cb_data->id = cb_id++;
+
+	if (setup) {
+		setup->canceled = FALSE;
+		setup->cb = g_slist_append(setup->cb, cb_data);
+		if (start)
+			setup->start = TRUE;
+		return cb_data->id;
+	}
+
+	setup = g_new0(struct a2dp_stream_setup, 1);
+	setup->session = avdtp_ref(session);
+	setup->dev = dev;
+	setup->cb = g_slist_append(setup->cb, cb_data);
+	setup->start = start;
+	setup->stream = source.stream;
+
+	switch (avdtp_sep_get_state(source.sep)) {
+	case AVDTP_STATE_IDLE:
+		if (avdtp_discover(session, discovery_complete, setup) < 0)
+			goto failed;
+		break;
+	case AVDTP_STATE_OPEN:
+		if (!start) {
+			g_idle_add((GSourceFunc) finalize_stream_setup, setup);
+			break;
+		}
+		if (source.starting)
+			break;
+		if (avdtp_start(session, source.stream) < 0)
+			goto failed;
+		break;
+	case AVDTP_STATE_STREAMING:
+		if (!start || !source.suspending) {
+			g_idle_add((GSourceFunc) finalize_stream_setup, setup);
+			return cb_data->id;
+		}
+		source.start_requested = TRUE;
+		break;
+	default:
+		goto failed;
+	}
+
+	return cb_data->id;
+
+failed:
+	stream_setup_free(setup);
+	cb_id--;
+	return -1;
+}
+
+gboolean a2dp_source_lock(struct device *dev, struct avdtp *session)
+{
+	if (source.used_by)
+		return FALSE;
+
+	source.used_by = dev;
+
+	return TRUE;
+}
+
+gboolean a2dp_source_unlock(struct device *dev, struct avdtp *session)
+{
+	avdtp_state_t state;
+
+	if (!source.sep)
+		return FALSE;
+
+	if (source.used_by != dev)
+		return FALSE;
+
+	state = avdtp_sep_get_state(source.sep);
+
+	source.used_by = NULL;
+
+	if (!source.stream || state == AVDTP_STATE_IDLE)
+		return TRUE;
+
+	switch (state) {
+	case AVDTP_STATE_OPEN:
+		/* Set timer here */
+		break;
+	case AVDTP_STATE_STREAMING:
+		if (avdtp_suspend(session, source.stream) == 0)
+			source.suspending = TRUE;
+		break;
+	default:
+		break;
+	}
+
+	return TRUE;
+}
+
+gboolean a2dp_source_suspend(struct device *dev, struct avdtp *session)
+{
+	avdtp_state_t state;
+
+	if (!source.sep)
+		return FALSE;
+
+	if (source.used_by != dev)
+		return FALSE;
+
+	state = avdtp_sep_get_state(source.sep);
+
+	if (!source.stream || state != AVDTP_STATE_STREAMING)
+		return TRUE;
+
+	if (avdtp_suspend(session, source.stream) == 0) {
+		source.suspending = TRUE;
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+gboolean a2dp_source_start_stream(struct device *dev, struct avdtp *session)
+{
+	avdtp_state_t state;
+
+	if (!source.sep)
+		return FALSE;
+
+	if (source.used_by != dev)
+		return FALSE;
+
+	state = avdtp_sep_get_state(source.sep);
+
+	if (state < AVDTP_STATE_OPEN) {
+		error("a2dp_source_start_stream: no stream open");
+		return FALSE;
+	}
+
+	if (state == AVDTP_STATE_STREAMING)
+		return TRUE;
+
+	if (avdtp_start(session, source.stream) < 0)
+		return FALSE;
+
+	return TRUE;
 }

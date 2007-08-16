@@ -43,21 +43,51 @@
 #include "ipc.h"
 #include "device.h"
 #include "manager.h"
+#include "avdtp.h"
+#include "a2dp.h"
+#include "headset.h"
+#include "sink.h"
 #include "unix.h"
+
+typedef enum {
+	TYPE_NONE,
+	TYPE_HEADSET,
+	TYPE_SINK,
+	TYPE_SOURCE
+} service_type_t;
+
+typedef void (*notify_cb_t) (struct device *dev, void *data);
 
 struct unix_client {
 	struct device *dev;
+	service_type_t type;
+	union {
+		struct avdtp *session;
+		void *data;
+	} data;
 	int sock;
+	int req_id;
+	notify_cb_t disconnect;
+	notify_cb_t suspend;
+	notify_cb_t play;
 };
 
 static GSList *clients = NULL;
 
 static int unix_sock = -1;
 
-static int unix_send_state(int sock, struct ipc_packet *pkt);
-
 static void client_free(struct unix_client *client)
 {
+	switch (client->type) {
+	case TYPE_SINK:
+	case TYPE_SOURCE:
+		if (client->data.session)
+			avdtp_unref(client->data.session);
+		break;
+	default:
+		break;
+	}
+
 	if (client->sock >= 0)
 		close(client->sock);
 	g_free(client);
@@ -96,12 +126,116 @@ static int unix_sendmsg_fd(int sock, int fd, struct ipc_packet *pkt)
 	return sendmsg(sock, &msgh, MSG_NOSIGNAL);
 }
 
+static service_type_t select_service(struct device *dev)
+{
+	if (dev->sink && avdtp_is_connected(&dev->src, &dev->dst))
+		return TYPE_SINK;
+	else if (dev->headset && headset_is_active(dev))
+		return TYPE_HEADSET;
+	else if (dev->sink)
+		return TYPE_SINK;
+	else if (dev->headset)
+		return TYPE_HEADSET;
+	else
+		return TYPE_NONE;
+}
+
+static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
+					struct avdtp_stream *stream,
+					void *user_data)
+{
+	struct unix_client *client = user_data;
+	char buf[sizeof(struct ipc_data_cfg) + sizeof(struct ipc_codec_sbc)];
+	struct ipc_data_cfg *cfg = (void *) buf;
+	struct avdtp_service_capability *cap;
+	struct avdtp_media_codec_capability *codec_cap;
+	struct sbc_codec_cap *sbc_cap;
+	struct ipc_codec_sbc *sbc = (void *) cfg->data;
+	int fd;
+	GSList *caps;
+
+	if (!stream)
+		goto failed;
+
+	if (!avdtp_stream_get_transport(stream, &fd, &cfg->pkt_len, &caps)) {
+		error("Unable to get stream transport");
+		goto failed;
+	}
+
+	for (codec_cap = NULL; caps; caps = g_slist_next(caps)) {
+		cap = caps->data; 
+		if (cap->category == AVDTP_MEDIA_CODEC) {
+			codec_cap = (void *) cap->data;
+			break;
+		}
+	}
+
+	if (codec_cap == NULL ||
+			codec_cap->media_codec_type != A2DP_CODEC_SBC) {
+		error("Unable to find matching codec capability");
+		goto failed;
+	}
+
+	cfg->fd_opt = CFG_FD_OPT_WRITE;
+
+	sbc_cap = (void *) codec_cap;
+	cfg->channels = sbc_cap->channel_mode == A2DP_CHANNEL_MODE_MONO ?
+				1 : 2;
+	cfg->channel_mode = sbc_cap->channel_mode;
+	cfg->sample_size = 2;
+
+	switch (sbc_cap->frequency) {
+		case A2DP_SAMPLING_FREQ_16000:
+			cfg->rate = 16000;
+			break;
+		case A2DP_SAMPLING_FREQ_32000:
+			cfg->rate = 32000;
+			break;
+		case A2DP_SAMPLING_FREQ_44100:
+			cfg->rate = 44100;
+			break;
+		case A2DP_SAMPLING_FREQ_48000:
+			cfg->rate = 48000;
+			break;
+	}
+
+	cfg->codec = CFG_CODEC_SBC;
+	sbc->allocation = sbc_cap->allocation_method == A2DP_ALLOCATION_SNR ?
+				0x01 : 0x00; 
+	sbc->subbands = sbc_cap->subbands == A2DP_SUBBANDS_4 ? 4 : 8;
+
+	switch (sbc_cap->block_length) {
+		case A2DP_BLOCK_LENGTH_4:
+			sbc->blocks = 4;
+			break;
+		case A2DP_BLOCK_LENGTH_8:
+			sbc->blocks = 8;
+			break;
+		case A2DP_BLOCK_LENGTH_12:
+			sbc->blocks = 12;
+			break;
+		case A2DP_BLOCK_LENGTH_16:
+			sbc->blocks = 16;
+			break;
+	}
+
+	sbc->bitpool = sbc_cap->max_bitpool;
+
+	unix_send_cfg(client->sock, cfg, fd);
+
+	return;
+
+failed:
+	unix_send_cfg(client->sock, NULL, -1);
+	a2dp_source_unlock(dev, session);
+}
+
 static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 			int len)
 {
 	struct ipc_data_cfg *rsp;
 	struct device *dev;
-	int ret, fd;
+	int ret, fd, id;
 
 	dev = manager_get_connected_device();
 	if (dev)
@@ -112,19 +246,50 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 		goto failed;
 
 proceed:
-	ret = device_get_config(dev, client->sock, pkt, len, &rsp, &fd);
-	if (ret < 0)
+	client->type = select_service(dev);
+
+	switch (client->type) {
+	case TYPE_SINK:
+		if (!client->data.session)
+			client->data.session = avdtp_get(&dev->src, &dev->dst);
+
+		if (!a2dp_source_lock(dev, client->data.session)) {
+			error("Unable to lock A2DP source SEP");
+			goto failed;
+		}
+
+		id = a2dp_source_request_stream(client->data.session, dev,
+						TRUE, a2dp_setup_complete,
+						client);
+		if (id < 0) {
+			error("request_stream failed");
+			goto failed;
+		}
+
+		client->req_id = id;
+		client->disconnect = (notify_cb_t) a2dp_source_unlock;
+		client->suspend = (notify_cb_t) a2dp_source_suspend;
+		client->play = (notify_cb_t) a2dp_source_start_stream;
+
+		break;
+	case TYPE_HEADSET:
+		if (!headset_lock(dev, client->data.data)) {
+			error("Unable to lock headset");
+			goto failed;
+		}
+
+		ret = headset_get_config(dev, client->sock, pkt, len, &rsp,
+						&fd);
+		client->disconnect = (notify_cb_t) headset_unlock;
+		client->suspend = (notify_cb_t) headset_suspend;
+		client->play = (notify_cb_t) headset_play;
+		break;
+	default:
+		error("No known services for device");
 		goto failed;
+	}
 
 	client->dev = dev;
-
-	/* Connecting in progress */
-	if (ret == 1)
-		return;
-
-	unix_send_cfg(client->sock, rsp, fd);
-	g_free(rsp);
-
 	return;
 
 failed:
@@ -139,6 +304,7 @@ static void ctl_event(struct unix_client *client, struct ipc_packet *pkt,
 static void state_event(struct unix_client *client, struct ipc_packet *pkt,
 				int len)
 {
+#if 0
 	struct ipc_data_state *state = (struct ipc_data_state *) pkt->data;
 	struct device *dev = client->dev;
 
@@ -148,6 +314,7 @@ static void state_event(struct unix_client *client, struct ipc_packet *pkt,
 		state->state = device_get_state(dev);
 
 	unix_send_state(client->sock, pkt);
+#endif
 }
 
 static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -156,14 +323,30 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	struct ipc_packet *pkt = (void *) buf;
 	struct unix_client *client = data;
 	int len, len_check;
+	void *cb_data;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
+	switch (client->type) {
+	case TYPE_HEADSET:
+		cb_data = client->data.data;
+		break;
+	case TYPE_SINK:
+	case TYPE_SOURCE:
+		cb_data = client->data.session;
+		break;
+	default:
+		cb_data = NULL;
+		break;
+	}
+
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		debug("Unix client disconnected");
-		if (client->dev)
-			device_set_state(client->dev, STATE_CONNECTED);
+		if (client->disconnect)
+			client->disconnect(client->dev, cb_data);
+		if (client->type == TYPE_SINK && client->req_id >= 0)
+			a2dp_source_cancel_stream(client->req_id);
 		goto failed;
 	}
 
@@ -339,6 +522,7 @@ int unix_send_cfg(int sock, struct ipc_data_cfg *cfg, int fd)
 	return 0;
 }
 
+#if 0
 static int unix_send_state(int sock, struct ipc_packet *pkt)
 {
 	struct ipc_data_state *state = (struct ipc_data_state *) pkt->data;
@@ -359,3 +543,4 @@ static int unix_send_state(int sock, struct ipc_packet *pkt)
 
 	return 0;
 }
+#endif

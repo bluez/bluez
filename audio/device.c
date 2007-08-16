@@ -328,21 +328,7 @@ void device_finish_sdp_transaction(struct device *dev)
 	dbus_message_unref(reply);
 }
 
-int device_get_config(struct device *dev, int sock, struct ipc_packet *req,
-			int pkt_len, struct ipc_data_cfg **rsp, int *fd)
-{
-	if (dev->sink && sink_is_active(dev))
-		return sink_get_config(dev, sock, req, pkt_len, rsp, fd);
-	else if (dev->headset && headset_is_active(dev))
-		return headset_get_config(dev, sock, req, pkt_len, rsp, fd);
-	else if (dev->sink)
-		return sink_get_config(dev, sock, req, pkt_len, rsp, fd);
-	else if (dev->headset)
-		return headset_get_config(dev, sock, req, pkt_len, rsp, fd);
-
-	return -EINVAL;
-}
-
+#if 0
 static avdtp_state_t ipc_to_avdtp_state(uint8_t ipc_state)
 {
 	switch (ipc_state) {
@@ -379,14 +365,7 @@ static headset_state_t ipc_to_hs_state(uint8_t ipc_state)
 		return HEADSET_STATE_DISCONNECTED;
 	}
 }
-
-void device_set_state(struct device *dev, uint8_t state)
-{
-	if (dev->sink && sink_is_active(dev))
-		sink_set_state(dev, ipc_to_avdtp_state(state));
-	else if (dev->headset && headset_is_active(dev))
-		headset_set_state(dev, ipc_to_hs_state(state));
-}
+#endif
 
 static uint8_t avdtp_to_ipc_state(avdtp_state_t state)
 {

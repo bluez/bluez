@@ -155,6 +155,8 @@ struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst);
 void avdtp_unref(struct avdtp *session);
 struct avdtp *avdtp_ref(struct avdtp *session);
 
+gboolean avdtp_is_connected(bdaddr_t *src, bdaddr_t *dst);
+
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 							void *data, int size);
 
@@ -195,6 +197,8 @@ int avdtp_get_seps(struct avdtp *session, uint8_t type, uint8_t media,
 			struct avdtp_remote_sep **rsep);
 
 int avdtp_unregister_sep(struct avdtp_local_sep *sep);
+
+avdtp_state_t avdtp_sep_get_state(struct avdtp_local_sep *sep);
 
 const char *avdtp_strerror(struct avdtp_error *err);
 

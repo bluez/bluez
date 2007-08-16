@@ -1957,6 +1957,11 @@ struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
 	return avdtp_ref(session);
 }
 
+gboolean avdtp_is_connected(bdaddr_t *src, bdaddr_t *dst)
+{
+	return find_session(src, dst) == NULL ? FALSE : TRUE;
+}
+
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 					uint16_t *mtu, GSList **caps)
 {
@@ -2487,6 +2492,11 @@ const char *avdtp_strerror(struct avdtp_error *err)
 	default:
 		return "Unknow error";
 	}
+}
+
+avdtp_state_t avdtp_sep_get_state(struct avdtp_local_sep *sep)
+{
+	return sep->state;
 }
 
 void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst)
