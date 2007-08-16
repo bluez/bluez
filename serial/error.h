@@ -21,8 +21,6 @@
  *
  */
 
-#include <dbus.h>
-
 DBusHandlerResult err_connection_canceled(DBusConnection *conn,
 						DBusMessage *msg);
 DBusHandlerResult err_connection_failed(DBusConnection *conn,
