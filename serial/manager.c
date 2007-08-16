@@ -106,7 +106,7 @@ static struct {
 struct proxy {
 	bdaddr_t	src;
 	bdaddr_t	dst;
-	uuid_t		uuid;		/* UUID 128 */
+	char		*uuid128;	/* UUID 128 */
 	char		*tty;		/* TTY name */
 	struct termios  sys_ti;		/* Default TTY setting */
 	struct termios  proxy_ti;	/* Proxy TTY settings */
@@ -127,6 +127,8 @@ static void proxy_free(struct proxy *prx)
 {
 	if (prx->tty)
 		g_free(prx->tty);
+	if (prx->uuid128)
+		g_free(prx->uuid128);
 	g_free(prx);
 }
 
@@ -744,7 +746,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusError derr;
 	bdaddr_t src, dst;
-	char path[MAX_PATH_LENGTH], port_name[16], uuid[37];
+	char path[MAX_PATH_LENGTH], port_name[16], uuid[MAX_LEN_UUID_STR];
 	const char *bda, *pattern, *ppath = path;
 	long val;
 	int dev_id, err;
@@ -977,10 +979,46 @@ static void add_lang_attr(sdp_record_t *r)
 	sdp_list_free(langs, 0);
 }
 
-static int create_proxy_record(sdp_buf_t *buf, uuid_t *uuid, uint8_t channel)
+static int str2uuid(uuid_t *uuid, const char *string)
+{
+	uint16_t data1, data2, data3, data5;
+	uint32_t data0, data4;
+
+	if (strlen(string) == 36 &&
+			string[8] == '-' &&
+			string[13] == '-' &&
+			string[18] == '-' &&
+			string[23] == '-' &&
+			sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
+				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
+		uint8_t val[16];
+
+		data0 = htonl(data0);
+		data1 = htons(data1);
+		data2 = htons(data2);
+		data3 = htons(data3);
+		data4 = htonl(data4);
+		data5 = htons(data5);
+
+		memcpy(&val[0], &data0, 4);
+		memcpy(&val[4], &data1, 2);
+		memcpy(&val[6], &data2, 2);
+		memcpy(&val[8], &data3, 2);
+		memcpy(&val[10], &data4, 4);
+		memcpy(&val[14], &data5, 2);
+
+		sdp_uuid128_create(uuid, val);
+
+		return 0;
+	}
+
+	return -1;
+}
+
+static int create_proxy_record(sdp_buf_t *buf, const char *uuid128, uint8_t channel)
 {
 	sdp_list_t *apseq, *aproto, *profiles, *proto[2], *root, *svclass_id;
-	uuid_t root_uuid, l2cap, rfcomm;
+	uuid_t uuid, root_uuid, l2cap, rfcomm;
 	sdp_profile_desc_t profile;
 	sdp_record_t record;
 	sdp_data_t *ch;
@@ -993,7 +1031,8 @@ static int create_proxy_record(sdp_buf_t *buf, uuid_t *uuid, uint8_t channel)
 	sdp_set_browse_groups(&record, root);
 	sdp_list_free(root, NULL);
 
-	svclass_id = sdp_list_append(NULL, uuid);
+	str2uuid(&uuid, uuid128);
+	svclass_id = sdp_list_append(NULL, &uuid);
 	sdp_set_service_classes(&record, svclass_id);
 	sdp_list_free(svclass_id, NULL);
 
@@ -1236,7 +1275,7 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 		return err_failed(conn, msg, "Already enabled");
 
 	/* Listen */
-	/* FIXME: missing options, update the stored channel */
+	/* FIXME: missing options */
 	sk = rfcomm_listen(&prx->src, &prx->channel, 0);
 	if (sk < 0) {
 		const char *strerr = strerror(errno);
@@ -1245,7 +1284,7 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 	}
 
 	/* Create the record */
-	create_proxy_record(&buf, &prx->uuid, prx->channel);
+	create_proxy_record(&buf, prx->uuid128, prx->channel);
 
 	/* Register the record */
 	prx->record_id = add_proxy_record(conn, &buf);
@@ -1288,9 +1327,6 @@ static DBusHandlerResult proxy_get_info(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter, dict;
 	dbus_bool_t boolean;
-	char uuid_str[MAX_LEN_UUID_STR];
-	char bda[18];
-	const char *pstr;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1303,10 +1339,8 @@ static DBusHandlerResult proxy_get_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	sdp_uuid2strn(&prx->uuid, uuid_str, MAX_LEN_UUID_STR);
-	pstr = uuid_str;
 	dbus_message_iter_append_dict_entry(&dict, "uuid",
-			DBUS_TYPE_STRING, &pstr);
+			DBUS_TYPE_STRING, &prx->uuid128);
 
 	dbus_message_iter_append_dict_entry(&dict, "tty",
 			DBUS_TYPE_STRING, &prx->tty);
@@ -1325,8 +1359,10 @@ static DBusHandlerResult proxy_get_info(DBusConnection *conn,
 
 	/* If connected: append the remote address */
 	if (boolean) {
+		char bda[18];
+		const char *pstr = bda;
+
 		ba2str(&prx->dst, bda);
-		pstr = bda;
 		dbus_message_iter_append_dict_entry(&dict, "address",
 				DBUS_TYPE_STRING, &pstr);
 	}
@@ -1364,7 +1400,7 @@ static void proxy_handler_unregister(DBusConnection *conn, void *data)
 }
 
 static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
-			uuid_t *uuid, const char *tty, struct termios *ti)
+			const char *uuid128, const char *tty, struct termios *ti)
 {
 	struct termios sys_ti;
 	struct proxy *prx;
@@ -1378,7 +1414,7 @@ static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
 
 	prx = g_new0(struct proxy, 1);
 	prx->tty = g_strdup(tty);
-	memcpy(&prx->uuid, uuid, sizeof(uuid_t));
+	prx->uuid128 = g_strdup(uuid128);
 	bacpy(&prx->src, src);
 
 	if (!dbus_connection_create_object_path(conn, path, prx,
@@ -1421,47 +1457,11 @@ static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
 	return 0;
 }
 
-static int str2uuid(uuid_t *uuid, const char *string)
-{
-	uint16_t data1, data2, data3, data5;
-	uint32_t data0, data4;
-
-	if (strlen(string) == 36 &&
-			string[8] == '-' &&
-			string[13] == '-' &&
-			string[18] == '-' &&
-			string[23] == '-' &&
-			sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
-				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
-		uint8_t val[16];
-
-		data0 = htonl(data0);
-		data1 = htons(data1);
-		data2 = htons(data2);
-		data3 = htons(data3);
-		data4 = htonl(data4);
-		data5 = htons(data5);
-
-		memcpy(&val[0], &data0, 4);
-		memcpy(&val[4], &data1, 2);
-		memcpy(&val[6], &data2, 2);
-		memcpy(&val[8], &data3, 2);
-		memcpy(&val[10], &data4, 4);
-		memcpy(&val[14], &data5, 2);
-
-		sdp_uuid128_create(uuid, val);
-
-		return 0;
-	}
-
-	return -1;
-}
-
 static DBusHandlerResult create_proxy(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	char path[MAX_PATH_LENGTH];
-	const char *uuidstr, *tty, *ppath = path;
+	const char *uuid128, *tty, *ppath = path;
 	DBusMessage *reply;
 	GSList *l;
 	DBusError derr;
@@ -1472,7 +1472,7 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_STRING, &uuidstr,
+				DBUS_TYPE_STRING, &uuid128,
 				DBUS_TYPE_STRING, &tty,
 				DBUS_TYPE_INVALID)) {
 		err_invalid_args(conn, msg, derr.message);
@@ -1480,7 +1480,7 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	if (str2uuid(&uuid, uuidstr) < 0)
+	if (str2uuid(&uuid, uuid128) < 0)
 		return err_invalid_args(conn, msg, "Invalid UUID");
 
 	sscanf(tty, "/dev/%n", &pos);
@@ -1504,7 +1504,7 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (proxy_register(conn, &src, path, &uuid, tty, NULL) < 0) {
+	if (proxy_register(conn, &src, path, uuid128, tty, NULL) < 0) {
 		dbus_message_unref(reply);
 		return err_failed(conn, msg, "Create object path failed");
 	}
@@ -1581,7 +1581,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	const char *bda, *pattern;
 	long val;
 	int dev_id, err;
-	char uuid[37];
+	char uuid[MAX_LEN_UUID_STR];
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -1745,13 +1745,9 @@ static void proxy_path_free(gpointer data, gpointer udata)
 
 	/* Store/Update the proxy entries before exit */
 	if (dbus_connection_get_object_user_data(conn,
-				path, (void *) &prx) && prx) {
-		char uuid_str[MAX_LEN_UUID_STR];
-
-		sdp_uuid2strn(&prx->uuid, uuid_str, MAX_LEN_UUID_STR);
-		proxy_store(&prx->src, uuid_str, prx->tty, NULL,
+				path, (void *) &prx) && prx)
+		proxy_store(&prx->src, prx->uuid128, prx->tty, NULL,
 				prx->channel, 0, &prx->proxy_ti);
-	}
 
 	g_free(data);
 }
@@ -1853,20 +1849,15 @@ static void parse_port(char *key, char *value, void *data)
 
 static void parse_proxy(char *key, char *value, void *data)
 {
-	char path[MAX_PATH_LENGTH], uuid_str[MAX_LEN_UUID_STR], tmp[3], *pvalue;
-	char *src_addr = data;
+	char path[MAX_PATH_LENGTH], uuid128[MAX_LEN_UUID_STR], tmp[3];
+	char *pvalue, *src_addr = data;
 	struct termios ti;
 	int ch, opts, pos = 0;
 	bdaddr_t src;
-	uuid_t uuid;
 	uint8_t *pti;
 
-	memset(uuid_str, 0, sizeof(uuid_str));
-	if (sscanf(value,"%s %d 0x%04X %n", uuid_str, &ch, &opts, &pos) != 3)
-		return;
-
-	/* UUID format valid? */
-	if (str2uuid(&uuid, uuid_str) < 0)
+	memset(uuid128, 0, sizeof(uuid128));
+	if (sscanf(value,"%s %d 0x%04X %n", uuid128, &ch, &opts, &pos) != 3)
 		return;
 
 	/* Extracting name */
@@ -1902,7 +1893,7 @@ static void parse_proxy(char *key, char *value, void *data)
 			"/org/bluez/serial/proxy%s", key + pos);
 
 	str2ba(src_addr, &src);
-	proxy_register(connection, &src, path, &uuid, key, &ti);
+	proxy_register(connection, &src, path, uuid128, key, &ti);
 
 	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
 }
