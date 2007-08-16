@@ -1670,17 +1670,17 @@ int audio_init(DBusConnection *conn, struct enabled_interfaces *enable,
 
 	enabled = enable;
 
-	if (headset_server_init(conn, no_hfp) < 0)
-		goto failed;
-
-	if (a2dp_init(conn, enable->sink, enable->source) < 0)
-		goto failed;
-
 	if (!dbus_connection_create_object_path(conn, AUDIO_MANAGER_PATH,
 						NULL, manager_unregister)) {
 		error("D-Bus failed to register %s path", AUDIO_MANAGER_PATH);
 		goto failed;
 	}
+
+	if (headset_server_init(conn, no_hfp) < 0)
+		goto failed;
+
+	if (a2dp_init(conn, enable->sink, enable->source) < 0)
+		goto failed;
 
 	if (!dbus_connection_register_interface(conn, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
