@@ -92,7 +92,7 @@ static struct hci_dev devices[MAX_DEVICES];
 
 #define ASSERT_DEV_ID { if (dev_id >= MAX_DEVICES) return -ERANGE; }
 
-void init_devices(void)
+void init_adapters(void)
 {
 	int i;
 
@@ -124,7 +124,7 @@ static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 	return 0;
 }
 
-int add_device(uint16_t dev_id)
+int add_adapter(uint16_t dev_id)
 {
 	struct hci_dev *dev;
 	struct hci_dev_info di;
@@ -157,7 +157,7 @@ int add_device(uint16_t dev_id)
 	return 0;
 }
 
-int remove_device(uint16_t dev_id)
+int remove_adapter(uint16_t dev_id)
 {
 	struct hci_dev *dev;
 
@@ -227,7 +227,7 @@ static void update_ext_inquiry_response(int dd, struct hci_dev *dev)
 						strerror(errno), errno);
 }
 
-int start_device(uint16_t dev_id)
+int start_adapter(uint16_t dev_id)
 {
 	struct hci_dev *dev;
 	struct hci_version ver;
@@ -357,7 +357,7 @@ done:
 	return 0;
 }
 
-int stop_device(uint16_t dev_id)
+int stop_adapter(uint16_t dev_id)
 {
 	ASSERT_DEV_ID;
 

@@ -570,12 +570,12 @@ static void device_devreg_setup(int dev_id)
 
 static void device_devup_setup(int dev_id)
 {
-	add_device(dev_id);
+	add_adapter(dev_id);
 	if (hcid.auto_init)
 		configure_device(dev_id);
 	if (hcid.security)
 		start_security_manager(dev_id);
-	start_device(dev_id);
+	start_adapter(dev_id);
 	hcid_dbus_start_device(dev_id);
 }
 
@@ -634,7 +634,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", sd->dev_id);
 		hcid_dbus_unregister_device(sd->dev_id);
-		remove_device(sd->dev_id);
+		remove_adapter(sd->dev_id);
 		break;
 
 	case HCI_DEV_UP:
@@ -647,7 +647,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		hcid_dbus_stop_device(sd->dev_id);
 		if (hcid.security)
 			stop_security_manager(sd->dev_id);
-		stop_device(sd->dev_id);
+		stop_adapter(sd->dev_id);
 		break;
 	}
 }
@@ -853,7 +853,7 @@ int main(int argc, char *argv[])
 			child_exit, NULL);
 	g_io_channel_unref(child_io);
 
-	init_devices();
+	init_adapters();
 
 	if (hcid_dbus_init() < 0) {
 		error("Unable to get on D-Bus");
