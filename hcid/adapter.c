@@ -3105,6 +3105,7 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
+	//const char *path = "/org/bluez/device";
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
@@ -3117,7 +3118,49 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
+	//dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &path);
+
 	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult create_device(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *address, *path = "/org/bluez/device";
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
+						DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg);
+
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult remove_device(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *path;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &path,
+						DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	return send_message_and_unref(conn, reply);
 }
@@ -3354,6 +3397,8 @@ static DBusMethodVTable adapter_methods[] = {
 		"",	"as"	},
 
 	{ "ListDevices",	list_devices,	"",	"as"	},
+	{ "CreateDevice",	create_device,	"s",	"s"	},
+	{ "RemoveDevice",	remove_device,	"s",	""	},
 
 	{ NULL, NULL, NULL, NULL }
 };
@@ -3389,6 +3434,5 @@ static DBusSignalVTable adapter_signals[] = {
 dbus_bool_t adapter_init(DBusConnection *conn, const char *path)
 {
 	return dbus_connection_register_interface(conn, path, ADAPTER_INTERFACE,
-							adapter_methods,
-							adapter_signals, NULL);
+					adapter_methods, adapter_signals, NULL);
 }
