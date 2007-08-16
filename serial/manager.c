@@ -1366,20 +1366,42 @@ static void proxy_handler_unregister(DBusConnection *conn, void *data)
 static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
 			uuid_t *uuid, const char *tty, struct termios *ti)
 {
+	struct termios sys_ti;
 	struct proxy *prx;
+	int sk;
+
+	sk = open(tty, O_RDWR | O_NOCTTY);
+	if (sk < 0) {
+		error("Cant open TTY: %s(%d)", strerror(errno), errno);
+		return -EINVAL;
+	}
 
 	prx = g_new0(struct proxy, 1);
 	prx->tty = g_strdup(tty);
 	memcpy(&prx->uuid, uuid, sizeof(uuid_t));
 	bacpy(&prx->src, src);
-	memcpy(&prx->sys_ti, ti, sizeof(*ti));
-	memcpy(&prx->proxy_ti, ti, sizeof(*ti));
 
 	if (!dbus_connection_create_object_path(conn, path, prx,
 				proxy_handler_unregister)) {
 		proxy_free(prx);
+		close(sk);
 		return -1;
 	}
+
+	/* Current TTY settings */
+	memset(&sys_ti, 0, sizeof(sys_ti));
+	tcgetattr(sk, &sys_ti);
+	memcpy(&prx->sys_ti, &sys_ti, sizeof(sys_ti));
+	if (!ti) {
+		/* Keep the current settings */
+		memcpy(&prx->proxy_ti, &sys_ti, sizeof(sys_ti));
+	} else {
+		/* New TTY settings: user provided */
+		memcpy(&prx->proxy_ti, ti, sizeof(*ti));
+		tcsetattr(sk, TCSANOW, ti);
+	}
+
+	close(sk);
 
 	if (!dbus_connection_register_interface(conn, path,
 				SERIAL_PROXY_INTERFACE,
@@ -1440,14 +1462,13 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 {
 	char path[MAX_PATH_LENGTH];
 	const char *uuidstr, *tty, *ppath = path;
-	struct termios ti;
 	DBusMessage *reply;
 	GSList *l;
 	DBusError derr;
 	struct stat st;
 	bdaddr_t src;
 	uuid_t uuid;
-	int sk, dev_id, pos = 0;
+	int dev_id, pos = 0;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -1466,14 +1487,6 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	if (!pos || stat(tty, &st) < 0)
 		return err_invalid_args(conn, msg, "Invalid TTY");
 
-	/* Get the current setting to restore later */
-	sk = open(tty, O_RDWR | O_NOCTTY);
-	if (sk < 0)
-		return err_invalid_args(conn, msg, "Can't open TTY");
-
-	tcgetattr(sk, &ti);
-	close(sk);
-
 	snprintf(path, MAX_PATH_LENGTH - 1,
 			"/org/bluez/serial/proxy%s", tty + pos);
 
@@ -1491,14 +1504,12 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (proxy_register(conn, &src, path, &uuid, tty, &ti) < 0) {
+	if (proxy_register(conn, &src, path, &uuid, tty, NULL) < 0) {
 		dbus_message_unref(reply);
 		return err_failed(conn, msg, "Create object path failed");
 	}
 
 	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
-
-	proxy_store(&src, uuidstr, tty, NULL, 0, 0, &ti);
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &ppath,
@@ -1726,6 +1737,25 @@ static DBusHandlerResult cancel_connect_service(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void proxy_path_free(gpointer data, gpointer udata)
+{
+	DBusConnection *conn = udata;
+	const char *path = data;
+	struct proxy *prx = NULL;
+
+	/* Store/Update the proxy entries before exit */
+	if (dbus_connection_get_object_user_data(conn,
+				path, (void *) &prx) && prx) {
+		char uuid_str[MAX_LEN_UUID_STR];
+
+		sdp_uuid2strn(&prx->uuid, uuid_str, MAX_LEN_UUID_STR);
+		proxy_store(&prx->src, uuid_str, prx->tty, NULL,
+				prx->channel, 0, &prx->proxy_ti);
+	}
+
+	g_free(data);
+}
+
 static void manager_unregister(DBusConnection *conn, void *data)
 {
 	char **dev;
@@ -1740,7 +1770,7 @@ static void manager_unregister(DBusConnection *conn, void *data)
 
 	if (proxies_paths) {
 		g_slist_foreach(proxies_paths,
-				(GFunc) g_free, NULL);
+				proxy_path_free, conn);
 		g_slist_free(proxies_paths);
 		proxies_paths = NULL;
 	}
