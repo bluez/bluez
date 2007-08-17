@@ -1295,15 +1295,15 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 
 	switch(header->message_type) {
 	case AVDTP_MSG_TYPE_ACCEPT:
-		if (!avdtp_parse_resp(session, session->req->stream, header,
-					size)) {
+		if (!avdtp_parse_resp(session, session->req->stream,
+							header, size)) {
 			error("Unable to parse accept response");
 			goto failed;
 		}
 		break;
 	case AVDTP_MSG_TYPE_REJECT:
-		if (!avdtp_parse_rej(session, session->req->stream, header,
-					size)) {
+		if (!avdtp_parse_rej(session, session->req->stream,
+							header, size)) {
 			error("Unable to parse reject response");
 			goto failed;
 		}
@@ -1627,6 +1627,10 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 		struct seid_req req;
 		int ret;
 
+		debug("seid %d type %d media %d in use %d",
+				resp->seps[i].seid, resp->seps[i].type,
+				resp->seps[i].media_type, resp->seps[i].inuse);
+
 		/* Skip SEP's which are in use */
 		if (resp->seps[i].inuse)
 			continue;
@@ -1679,6 +1683,9 @@ static gboolean avdtp_get_capabilities_resp(struct avdtp *session,
 	seid = ((struct seid_req *) session->req->msg)->acp_seid;
 
 	sep = find_remote_sep(session->seps, seid);
+
+	debug("seid %d type %d media %d", sep->seid,
+					sep->type, sep->media_type);
 
 	if (sep->caps) {
 		g_slist_foreach(sep->caps, (GFunc) g_free, NULL);
@@ -1810,8 +1817,8 @@ static gboolean avdtp_parse_resp(struct avdtp *session,
 		return avdtp_discover_resp(session, (void *) header, size);
 	case AVDTP_GET_CAPABILITIES:
 		debug("GET_CAPABILITIES request succeeded");
-		if (!avdtp_get_capabilities_resp(session, (void *) header,
-							size))
+		if (!avdtp_get_capabilities_resp(session,
+						(void *) header, size))
 			return FALSE;
 		if (!(next && next->signal_id == AVDTP_GET_CAPABILITIES))
 			finalize_discovery(session, 0);
@@ -1822,27 +1829,24 @@ static gboolean avdtp_parse_resp(struct avdtp *session,
 							(void *) header, size);
 	case AVDTP_RECONFIGURE:
 		debug("RECONFIGURE request succeeded");
-		return avdtp_reconfigure_resp(session, stream, (void *) header,
-						size);
+		return avdtp_reconfigure_resp(session, stream,
+							(void *) header, size);
 	case AVDTP_OPEN:
 		debug("OPEN request succeeded");
 		return avdtp_open_resp(session, stream, (void *) header, size);
 	case AVDTP_SUSPEND:
 		debug("SUSPEND request succeeded");
-		return avdtp_suspend_resp(session, stream, (void *) header,
-						size);
+		return avdtp_suspend_resp(session, stream,
+							(void *) header, size);
 	case AVDTP_START:
 		debug("START request succeeded");
-		return avdtp_start_resp(session, stream, (void *) header,
-					size);
+		return avdtp_start_resp(session, stream, (void *) header, size);
 	case AVDTP_CLOSE:
 		debug("CLOSE request succeeded");
-		return avdtp_close_resp(session, stream, (void *) header,
-					size);
+		return avdtp_close_resp(session, stream, (void *) header, size);
 	case AVDTP_ABORT:
 		debug("ABORT request succeeded");
-		return avdtp_abort_resp(session, stream, (void *) header,
-					size);
+		return avdtp_abort_resp(session, stream, (void *) header, size);
 	}
 
 	error("Unknown signal id in accept response: %u", header->signal_id);
@@ -1896,7 +1900,7 @@ static gboolean stream_rej_to_err(struct stream_rej *rej, int size,
 }
 
 static gboolean avdtp_parse_rej(struct avdtp *session, struct avdtp_stream *stream,
-				struct avdtp_header *header, int size)
+					struct avdtp_header *header, int size)
 {
 	struct avdtp_error err;
 	uint8_t acp_seid, category;
