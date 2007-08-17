@@ -941,7 +941,7 @@ static gboolean avdtp_start_cmd(struct avdtp *session, struct start_req *req,
 		return FALSE;
 	}
 	
-	seid_count = 1 + (sizeof(struct start_req) - size);
+	seid_count = 1 + size - sizeof(struct start_req);
 
 	seid = &req->first_seid;
 
@@ -1048,7 +1048,7 @@ static gboolean avdtp_suspend_cmd(struct avdtp *session,
 		return FALSE;
 	}
 	
-	seid_count = 1 + (sizeof(struct suspend_req) - size);
+	seid_count = 1 + size - sizeof(struct suspend_req);
 
 	seid = &req->first_seid;
 
