@@ -1577,16 +1577,14 @@ static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
 	memset(&sys_ti, 0, sizeof(sys_ti));
 	tcgetattr(sk, &sys_ti);
 	memcpy(&prx->sys_ti, &sys_ti, sizeof(sys_ti));
-	if (!ti) {
-		/* Keep the current settings */
+	close(sk);
+
+	if (!ti)
+		/* Use current settings */
 		memcpy(&prx->proxy_ti, &sys_ti, sizeof(sys_ti));
-	} else {
+	else
 		/* New TTY settings: user provided */
 		memcpy(&prx->proxy_ti, ti, sizeof(*ti));
-		tcsetattr(sk, TCSANOW, ti);
-	}
-
-	close(sk);
 
 	if (!dbus_connection_register_interface(conn, path,
 				SERIAL_PROXY_INTERFACE,
