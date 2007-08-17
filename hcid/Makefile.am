@@ -13,10 +13,10 @@ endif
 
 noinst_LIBRARIES = libhciserver.a
 
-libhciserver_a_SOURCES = hcid.h security.c device.c \
-	storage.c parser.h parser.y lexer.l kword.c kword.h \
+libhciserver_a_SOURCES = hcid.h security.c storage.c \
+	parser.h parser.y lexer.l kword.c kword.h \
 	server.h server.c manager.h manager.c \
-	adapter.h adapter.c \
+	adapter.h adapter.c device.h device.c \
 	dbus-common.c dbus-common.h dbus-error.c dbus-error.h \
 	dbus-database.c dbus-database.h dbus-security.c dbus-security.h \
 	dbus-service.c dbus-service.h dbus-test.c dbus-test.h \

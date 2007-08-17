@@ -49,6 +49,7 @@
 
 #include "hcid.h"
 #include "dbus.h"
+#include "device.h"
 
 #include "textfile.h"
 #include "oui.h"
@@ -3099,13 +3100,19 @@ static DBusHandlerResult adapter_list_trusts(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void do_append_device(struct device_data *device, DBusMessageIter *iter)
+{
+	const char *path = device->path;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &path);
+}
+
 static DBusHandlerResult list_devices(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
-	//const char *path = "/org/bluez/device";
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg);
@@ -3118,7 +3125,7 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
-	//dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &path);
+	device_foreach((GFunc) do_append_device, &array_iter);
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
@@ -3128,8 +3135,10 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 static DBusHandlerResult create_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct adapter *adapter = data;
+	struct device_data *device;
 	DBusMessage *reply;
-	const char *address, *path = "/org/bluez/device";
+	const char *address, *path;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -3142,8 +3151,12 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	device = device_create(adapter->address, address);
+
+	path = device->path;
+
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
-						DBUS_TYPE_INVALID);
+							DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -3161,6 +3174,8 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	device_remove(path);
 
 	return send_message_and_unref(conn, reply);
 }

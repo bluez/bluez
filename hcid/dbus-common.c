@@ -54,6 +54,7 @@
 #include "dbus-error.h"
 #include "manager.h"
 #include "adapter.h"
+#include "device.h"
 #include "dbus-hci.h"
 #include "dbus-service.h"
 #include "dbus-database.h"
@@ -294,6 +295,8 @@ void hcid_dbus_exit(void)
 	release_default_auth_agent();
 	release_services(conn);
 
+	device_cleanup();
+
 	/* Unregister all paths in Adapter path hierarchy */
 	if (!dbus_connection_list_registered(conn, BASE_PATH, &children))
 		goto done;
@@ -335,6 +338,9 @@ int hcid_dbus_init(void)
 		return -1;
 
 	if (!security_init(conn, BASE_PATH))
+		return -1;
+
+	if (device_init(conn) == FALSE)
 		return -1;
 
 	set_dbus_connection(conn);

@@ -38,10 +38,19 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include <glib.h>
+
+#include <dbus/dbus.h>
+
+#include "dbus-helper.h"
+
 #include "hcid.h"
 
+#include "logging.h"
 #include "textfile.h"
 #include "oui.h"
+
+#include "device.h"
 
 #define MAX_DEVICES 16
 
@@ -659,4 +668,83 @@ int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr)
 	}
 
 	return size;
+}
+
+static DBusConnection *connection = NULL;
+
+static GSList *device_list = NULL;
+
+gboolean device_init(DBusConnection *conn)
+{
+	connection = dbus_connection_ref(conn);
+	if (connection == NULL)
+		return FALSE;
+
+	return TRUE;
+}
+
+static void device_destroy(struct device_data *device)
+{
+	debug("Removing device %s", device->path);
+
+	dbus_connection_destroy_object_path(connection, device->path);
+}
+
+void device_cleanup(void)
+{
+	g_slist_foreach(device_list, (GFunc) device_destroy, NULL);
+	g_slist_free(device_list);
+
+	if (connection == NULL)
+		return;
+
+	dbus_connection_unref(connection);
+}
+
+void device_foreach(GFunc func, gpointer user_data)
+{
+	g_slist_foreach(device_list, func, user_data);
+}
+
+static void device_free(struct device_data *device)
+{
+	g_free(device->path);
+	g_free(device);
+}
+
+static void device_unregister(DBusConnection *conn, void *user_data)
+{
+	struct device_data *device = user_data;
+
+	device_list = g_slist_remove(device_list, device);
+
+	device_free(device);
+}
+
+struct device_data *device_create(const char *adapter, const char *address)
+{
+	struct device_data *device;
+
+	device = g_try_malloc0(sizeof(struct device_data));
+	if (device == NULL)
+		return NULL;
+
+	device->path = g_strdup_printf("/device/%s_%s", adapter, address);
+	g_strdelimit(device->path, ":", '_');
+
+	debug("Creating device %s", device->path);
+
+	if (dbus_connection_create_object_path(connection, device->path,
+					device, device_unregister) == FALSE) {
+		device_free(device);
+		return NULL;
+	}
+
+	device_list = g_slist_append(device_list, device);
+
+	return device;
+}
+
+void device_remove(const char *path)
+{
 }
