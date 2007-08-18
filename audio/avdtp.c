@@ -71,6 +71,7 @@
 
 #define REQ_TIMEOUT 2000
 #define DISCONNECT_TIMEOUT 5000
+#define STREAM_TIMEOUT 30000
 
 typedef enum {
 	AVDTP_ERROR_ERRNO,
@@ -238,6 +239,7 @@ struct avdtp_stream {
 				   the transport channel */
 	gboolean open_acp;	/* If we are in ACT role for Open */
 	gboolean close_int;	/* If we are in INT role for Close */
+	guint idle_timer;
 };
 
 /* Structure describing an AVDTP connection between two devices */
@@ -471,6 +473,17 @@ static void stream_free(struct avdtp_stream *stream)
 	g_free(stream);
 }
 
+static gboolean stream_timeout(struct avdtp_stream *stream)
+{
+	struct avdtp *session = stream->session;
+
+	avdtp_close(session, stream);
+
+	stream->idle_timer = 0;
+
+	return FALSE;
+}
+
 static void avdtp_sep_set_state(struct avdtp *session,
 				struct avdtp_local_sep *sep,
 				avdtp_state_t state)
@@ -502,11 +515,32 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		}
 	}
 
-	if (state == AVDTP_STATE_IDLE) {
+	switch (state) {
+	case AVDTP_STATE_OPEN:
+		stream->idle_timer = g_timeout_add(STREAM_TIMEOUT,
+						(GSourceFunc) stream_timeout,
+						stream);
+		break;
+	case AVDTP_STATE_STREAMING:
+	case AVDTP_STATE_CLOSING:
+	case AVDTP_STATE_ABORTING:
+		if (stream->idle_timer) {
+			g_source_remove(stream->idle_timer);
+			stream->idle_timer = 0;
+		}
+		break;
+	case AVDTP_STATE_IDLE:
+		if (stream->idle_timer) {
+			g_source_remove(stream->idle_timer);
+			stream->idle_timer = 0;
+		}
 		session->streams = g_slist_remove(session->streams, stream);
 		stream_free(stream);
 		if (session->ref == 1 && !session->streams)
 			set_disconnect_timer(session);
+		break;
+	default:
+		break;
 	}
 }
 
