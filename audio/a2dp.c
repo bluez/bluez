@@ -920,8 +920,10 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 		break;
 	case AVDTP_STATE_STREAMING:
 		if (!start || !source.suspending) {
-			if (source.suspend_timer)
+			if (source.suspend_timer) {
 				g_source_remove(source.suspend_timer);
+				source.suspend_timer = 0;
+			}
 			g_idle_add((GSourceFunc) finalize_stream_setup, setup);
 			return cb_data->id;
 		}
