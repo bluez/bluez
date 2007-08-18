@@ -524,11 +524,17 @@ static void finalize_discovery(struct avdtp *session, int err)
 
 static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 {
+	struct avdtp_local_sep *sep = stream->lsep;
+
 	if (stream->sock >= 0)
 		close(stream->sock);
 	if (stream->io)
 		g_source_remove(stream->io);
-	avdtp_sep_set_state(session, stream->lsep, AVDTP_STATE_IDLE);
+
+	if (sep->cfm && sep->cfm->abort)
+		sep->cfm->abort(session, sep, stream, NULL);
+
+	avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
 }
 
 static void connection_lost(struct avdtp *session, int err)

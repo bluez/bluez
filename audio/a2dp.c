@@ -41,6 +41,10 @@
 #include "sink.h"
 #include "a2dp.h"
 
+/* The duration that streams without users are allowed to stay in
+ * STREAMING state. */
+#define SUSPEND_TIMEOUT 5000
+
 #ifndef MIN
 # define MIN(x, y) ((x) < (y) ? (x) : (y))
 #endif
@@ -51,9 +55,11 @@
 
 struct a2dp_sep {
 	struct avdtp_local_sep *sep;
+	struct avdtp *session;
 	struct avdtp_stream *stream;
 	struct device *used_by;
 	uint32_t record_id;
+	guint suspend_timer;
 	gboolean start_requested;
 	gboolean suspending;
 	gboolean starting;
@@ -76,10 +82,25 @@ struct a2dp_stream_setup {
 
 static DBusConnection *connection = NULL;
 
-static struct a2dp_sep sink = { NULL, NULL, 0 };
-static struct a2dp_sep source = { NULL, NULL, 0 };
+static struct a2dp_sep sink = { NULL };
+static struct a2dp_sep source = { NULL };
 
 static struct a2dp_stream_setup *setup = NULL;
+
+static void stream_cleanup(struct a2dp_sep *sep)
+{
+	if (sep->suspend_timer) {
+		g_source_remove(sep->suspend_timer);
+		sep->suspend_timer = 0;
+	}
+
+	if (sep->session) {
+		avdtp_unref(sep->session);
+		sep->session = NULL;
+	}
+
+	sep->stream = NULL;
+}
 
 static void stream_setup_free(struct a2dp_stream_setup *s)
 {
@@ -109,15 +130,17 @@ static gboolean setconf_ind(struct avdtp *session,
 				GSList *caps, uint8_t *err,
 				uint8_t *category)
 {
+	struct a2dp_sep *a2dp_sep;
 	struct device *dev;
 	bdaddr_t addr;
 
 	if (sep == sink.sep) {
 		debug("SBC Sink: Set_Configuration_Ind");
-		return TRUE;
+		a2dp_sep = &sink;
+	} else {
+		debug("SBC Source: Set_Configuration_Ind");
+		a2dp_sep = &source;
 	}
-
-	debug("SBC Source: Set_Configuration_Ind");
 
 	avdtp_get_peers(session, NULL, &addr);
 
@@ -128,9 +151,10 @@ static gboolean setconf_ind(struct avdtp *session,
 		return FALSE;
 	}
 
-	source.stream = stream;
+	a2dp_sep->stream = stream;
 
-	sink_new_stream(dev, session, stream);
+	if (a2dp_sep == &source)
+		sink_new_stream(dev, session, stream);
 
 	return TRUE;
 }
@@ -193,23 +217,25 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream,
 				struct avdtp_error *err)
 {
+	struct a2dp_sep *a2dp_sep;
 	int ret;
 
 	if (sep == sink.sep) {
 		debug("SBC Sink: Set_Configuration_Cfm");
-		return;
+		a2dp_sep = &sink;
+	} else {
+		debug("SBC Source: Set_Configuration_Cfm");
+		a2dp_sep = &source;
 	}
 
-	debug("SBC Source: Set_Configuration_Cfm");
-
 	if (err) {
-		source.stream = NULL;
+		a2dp_sep->stream = NULL;
 		if (setup)
 			finalize_stream_setup(setup);
 		return;
 	}
 
-	source.stream = stream;
+	a2dp_sep->stream = stream;
 
 	if (!setup)
 		return;
@@ -287,18 +313,40 @@ finalize:
 	finalize_stream_setup(setup);
 }
 
+static gboolean suspend_timeout(struct a2dp_sep *sep)
+{
+	if (avdtp_suspend(sep->session, sep->stream) == 0)
+		sep->suspending = TRUE;
+
+	sep->suspend_timer = FALSE;
+
+	avdtp_unref(sep->session);
+	sep->session = NULL;
+
+	return FALSE;
+}
+
 static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
-	if (sep == sink.sep)
-		debug("SBC Sink: Start_Ind");
-	else
-		debug("SBC Source: Start_Ind");
+	struct a2dp_sep *a2dp_sep;
 
-	/* Refuse to go into streaming state since this action should only be
-	 * initiated by alsa */
-	*err = AVDTP_NOT_SUPPORTED_COMMAND;
-	return FALSE;
+	if (sep == sink.sep) {
+		debug("SBC Sink: Start_Ind");
+		a2dp_sep = &sink;
+	}
+	else {
+		debug("SBC Source: Start_Ind");
+		a2dp_sep = &source;
+	}
+
+	a2dp_sep->session = avdtp_ref(session);
+
+	a2dp_sep->suspend_timer = g_timeout_add(SUSPEND_TIMEOUT,
+						(GSourceFunc) suspend_timeout,
+						a2dp_sep);
+
+	return TRUE;
 }
 
 static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -338,39 +386,45 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream, struct avdtp_error *err)
 {
+	struct a2dp_sep *a2dp_sep;
+
 	if (sep == sink.sep) {
 		debug("SBC Sink: Suspend_Cfm");
-		return;
+		a2dp_sep = &sink;
+	} else {
+		debug("SBC Source: Suspend_Cfm");
+		a2dp_sep = &source;
 	}
 
-	debug("SBC Source: Suspend_Cfm");
-
-	source.suspending = FALSE;
+	a2dp_sep->suspending = FALSE;
 
 	if (err) {
-		source.start_requested = FALSE;
+		a2dp_sep->start_requested = FALSE;
 		if (setup)
 			finalize_stream_setup(setup);
 		return;
 	}
 
-	if (source.start_requested) {
+	if (a2dp_sep->start_requested) {
 		avdtp_start(session, stream);
-		source.start_requested = FALSE;
+		a2dp_sep->start_requested = FALSE;
 	}
 }
 
 static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
+	struct a2dp_sep *a2dp_sep;
+
 	if (sep == sink.sep) {
 		debug("SBC Sink: Close_Ind");
-		return TRUE;
+		a2dp_sep = &sink;
+	} else {
+		debug("SBC Source: Close_Ind");
+		a2dp_sep = &source;
 	}
 
-	debug("SBC Source: Close_Ind");
-
-	source.stream = NULL;
+	stream_cleanup(a2dp_sep);
 
 	return TRUE;
 }
@@ -378,27 +432,33 @@ static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream, struct avdtp_error *err)
 {
+	struct a2dp_sep *a2dp_sep;
+
 	if (sep == sink.sep) {
 		debug("SBC Sink: Close_Cfm");
-		return;
+		a2dp_sep = &sink;
+	} else {
+		debug("SBC Source: Close_Cfm");
+		a2dp_sep = &source;
 	}
 
-	debug("SBC Source: Close_Cfm");
-
-	source.stream = NULL;
+	stream_cleanup(a2dp_sep);
 }
 
 static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err)
 {
+	struct a2dp_sep *a2dp_sep;
+
 	if (sep == sink.sep) {
 		debug("SBC Sink: Abort_Ind");
-		return TRUE;
+		a2dp_sep = &sink;
+	} else {
+		debug("SBC Source: Abort_Ind");
+		a2dp_sep = &source;
 	}
 
-	debug("SBC Source: Abort_Ind");
-
-	source.stream = NULL;
+	stream_cleanup(a2dp_sep);
 
 	return TRUE;
 }
@@ -406,10 +466,17 @@ static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream, struct avdtp_error *err)
 {
-	if (sep == sink.sep)
+	struct a2dp_sep *a2dp_sep;
+
+	if (sep == sink.sep) {
 		debug("SBC Sink: Abort_Cfm");
-	else
+		a2dp_sep = &sink;
+	} else {
 		debug("SBC Source: Abort_Cfm");
+		a2dp_sep = &source;
+	}
+
+	stream_cleanup(a2dp_sep);
 }
 
 static gboolean reconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -853,6 +920,8 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 		break;
 	case AVDTP_STATE_STREAMING:
 		if (!start || !source.suspending) {
+			if (source.suspend_timer)
+				g_source_remove(source.suspend_timer);
 			g_idle_add((GSourceFunc) finalize_stream_setup, setup);
 			return cb_data->id;
 		}
