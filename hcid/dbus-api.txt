@@ -1193,15 +1193,10 @@ Methods		dict GetInfo()
 			file. The Start and Stop methods are not applicable to
 			external services and will return an error.
 
-		array{string} ListUsers() [experimental]
+		array{string} ListTrusts() [experimental]
 
-			Returns list of current users (device addresses)
-			of the service.
-
-		void RemoveUser(string address) [experimental]
-
-			Removes a user of the service. The address parameter
-			must match one of the current users of the service.
+			Returns a list of remote devices that are trusted
+			for the service.
 
 		void SetTrusted(string address) [experimental]
 

@@ -528,18 +528,6 @@ static DBusHandlerResult is_external(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult list_users(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-static DBusHandlerResult remove_user(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static DBusHandlerResult set_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -567,6 +555,37 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult list_trusted(DBusConnection *conn,
+                                        DBusMessage *msg, void *data)
+{
+        struct service *service = data;
+        DBusMessage *reply;
+        GSList *trusts, *l;
+        char **addrs;
+        int len;
+
+        reply = dbus_message_new_method_return(msg);
+        if (!reply)
+                return DBUS_HANDLER_RESULT_NEED_MEMORY;
+        trusts = list_trusts(BDADDR_ANY, service->ident);
+
+        addrs = g_new(char *, g_slist_length(trusts));
+
+        for (l = trusts, len = 0; l; l = l->next, len++)
+                addrs[len] = l->data;
+
+        dbus_message_append_args(reply,
+                        DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+                        &addrs, len,
+                        DBUS_TYPE_INVALID);
+
+        g_free(addrs);
+        g_slist_foreach(trusts, (GFunc) g_free, NULL);
+        g_slist_free(trusts);
+
+        return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult is_trusted(DBusConnection *conn,
@@ -637,11 +656,10 @@ static DBusMethodVTable service_methods[] = {
 	{ "Stop",		stop,			"",	""	},
 	{ "IsRunning",		is_running,		"",	"b"	},
 	{ "IsExternal",		is_external,		"",	"b"	},
-	{ "ListUsers",		list_users,		"",	"as"	},
-	{ "RemoveUser",		remove_user,		"s",	""	},
 	{ "SetTrusted",		set_trusted,		"s",	""	},
 	{ "IsTrusted",		is_trusted,		"s",	"b"	},
 	{ "RemoveTrust",	remove_trust,		"s",	""	},
+	{ "ListTrusts",		list_trusted,		"",	"as"	},
 	{ NULL, NULL, NULL, NULL }
 };
 
