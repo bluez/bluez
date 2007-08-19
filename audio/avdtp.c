@@ -1518,7 +1518,6 @@ static gboolean request_timeout(gpointer user_data)
 	struct avdtp *session = user_data;
 	struct pending_req *req;
 	struct seid_req sreq;
-	struct avdtp_remote_sep *rsep;
 	struct avdtp_local_sep *lsep;
 	struct avdtp_stream *stream;
 	uint8_t seid;
@@ -1530,12 +1529,6 @@ static gboolean request_timeout(gpointer user_data)
 	avdtp_error_init(&err, AVDTP_ERROR_ERRNO, ETIMEDOUT);
 
 	seid = ((struct seid_req *) (req->msg))->acp_seid;
-
-	rsep = find_remote_sep(session->seps, seid);
-	if (!rsep) {
-		error("Unable to find matching remote SEID %u", seid);
-		goto failed;
-	}
 
 	stream = find_stream_by_rseid(session, seid);
 

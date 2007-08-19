@@ -164,6 +164,8 @@ static void stream_state_changed(struct avdtp_stream *stream,
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
+		a2dp_source_unlock(client->dev, a2dp->session);
+		client->dev = NULL;
 		if (a2dp->session) {
 			avdtp_unref(a2dp->session);
 			a2dp->session = NULL;
@@ -315,6 +317,7 @@ proceed:
 						client);
 		if (id == 0) {
 			error("request_stream failed");
+			a2dp_source_unlock(dev, a2dp->session);
 			goto failed;
 		}
 
@@ -395,6 +398,8 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		debug("Unix client disconnected");
+		if (!client->dev)
+			goto failed;
 		if (client->disconnect)
 			client->disconnect(client->dev, cb_data);
 		if (client->type == TYPE_SINK && client->req_id > 0)

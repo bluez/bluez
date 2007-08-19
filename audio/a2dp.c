@@ -118,10 +118,11 @@ static void setup_callback(struct a2dp_stream_cb *cb,
 	cb->cb(s->session, s->dev, s->stream, cb->user_data);
 }
 
-static void finalize_stream_setup(struct a2dp_stream_setup *s)
+static gboolean finalize_stream_setup(struct a2dp_stream_setup *s)
 {
 	g_slist_foreach(setup->cb, (GFunc) setup_callback, setup);
 	stream_setup_free(setup);
+	return FALSE;
 }
 
 static gboolean setconf_ind(struct avdtp *session,
