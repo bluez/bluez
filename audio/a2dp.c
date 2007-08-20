@@ -87,21 +87,6 @@ static struct a2dp_sep source = { NULL };
 
 static struct a2dp_stream_setup *setup = NULL;
 
-static void stream_cleanup(struct a2dp_sep *sep)
-{
-	if (sep->suspend_timer) {
-		g_source_remove(sep->suspend_timer);
-		sep->suspend_timer = 0;
-	}
-
-	if (sep->session) {
-		avdtp_unref(sep->session);
-		sep->session = NULL;
-	}
-
-	sep->stream = NULL;
-}
-
 static void stream_setup_free(struct a2dp_stream_setup *s)
 {
 	if (s->session)
@@ -123,6 +108,30 @@ static gboolean finalize_stream_setup(struct a2dp_stream_setup *s)
 	g_slist_foreach(setup->cb, (GFunc) setup_callback, setup);
 	stream_setup_free(setup);
 	return FALSE;
+}
+
+static void stream_state_changed(struct avdtp_stream *stream,
+					avdtp_state_t old_state,
+					avdtp_state_t new_state,
+					struct avdtp_error *err,
+					void *user_data)
+{
+	struct a2dp_sep *sep = user_data;
+
+	if (new_state != AVDTP_STATE_IDLE)
+		return;
+
+	if (sep->suspend_timer) {
+		g_source_remove(sep->suspend_timer);
+		sep->suspend_timer = 0;
+	}
+
+	if (sep->session) {
+		avdtp_unref(sep->session);
+		sep->session = NULL;
+	}
+
+	sep->stream = NULL;
 }
 
 static gboolean setconf_ind(struct avdtp *session,
@@ -152,6 +161,7 @@ static gboolean setconf_ind(struct avdtp *session,
 		return FALSE;
 	}
 
+	avdtp_stream_add_cb(session, stream, stream_state_changed, a2dp_sep);
 	a2dp_sep->stream = stream;
 
 	if (a2dp_sep == &source)
@@ -230,12 +240,12 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	}
 
 	if (err) {
-		a2dp_sep->stream = NULL;
 		if (setup)
 			finalize_stream_setup(setup);
 		return;
 	}
 
+	avdtp_stream_add_cb(session, stream, stream_state_changed, a2dp_sep);
 	a2dp_sep->stream = stream;
 
 	if (!setup)
@@ -245,7 +255,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (ret < 0) {
 		error("Error on avdtp_open %s (%d)", strerror(-ret),
 				-ret);
-		setup->stream = FALSE;
+		setup->stream = NULL;
 		finalize_stream_setup(setup);
 	}
 }
@@ -319,7 +329,7 @@ static gboolean suspend_timeout(struct a2dp_sep *sep)
 	if (avdtp_suspend(sep->session, sep->stream) == 0)
 		sep->suspending = TRUE;
 
-	sep->suspend_timer = FALSE;
+	sep->suspend_timer = 0;
 
 	avdtp_unref(sep->session);
 	sep->session = NULL;
@@ -346,7 +356,6 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	a2dp_sep->suspend_timer = g_timeout_add(SUSPEND_TIMEOUT,
 						(GSourceFunc) suspend_timeout,
 						a2dp_sep);
-
 	return TRUE;
 }
 
@@ -425,8 +434,6 @@ static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		a2dp_sep = &source;
 	}
 
-	stream_cleanup(a2dp_sep);
-
 	return TRUE;
 }
 
@@ -442,8 +449,6 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		debug("SBC Source: Close_Cfm");
 		a2dp_sep = &source;
 	}
-
-	stream_cleanup(a2dp_sep);
 }
 
 static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -458,8 +463,6 @@ static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		debug("SBC Source: Abort_Ind");
 		a2dp_sep = &source;
 	}
-
-	stream_cleanup(a2dp_sep);
 
 	return TRUE;
 }
@@ -476,8 +479,6 @@ static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		debug("SBC Source: Abort_Cfm");
 		a2dp_sep = &source;
 	}
-
-	stream_cleanup(a2dp_sep);
 }
 
 static gboolean reconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -939,6 +940,10 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 			if (source.suspend_timer) {
 				g_source_remove(source.suspend_timer);
 				source.suspend_timer = 0;
+			}
+			if (source.session) {
+				avdtp_unref(source.session);
+				source.session = NULL;
 			}
 			g_idle_add((GSourceFunc) finalize_stream_setup, setup);
 			return cb_data->id;

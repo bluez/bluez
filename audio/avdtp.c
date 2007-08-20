@@ -326,8 +326,10 @@ static gboolean avdtp_send(struct avdtp *session, void *data, int len)
 {
 	int ret;
 
-	if (session->sock < 0)
+	if (session->sock < 0) {
+		error("avdtp_send: session is closed");
 		return FALSE;
+	}
 
 	ret = send(session->sock, data, len, 0);
 
