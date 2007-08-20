@@ -198,6 +198,11 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 	if (!stream)
 		goto failed;
 
+	if (!a2dp_source_lock(dev, session)) {
+		error("Unable to lock A2DP source SEP");
+		goto failed;
+	}
+
 	a2dp->stream = stream;
 
 	if (!avdtp_stream_get_transport(stream, &fd, &cfg->pkt_len, &caps)) {
@@ -273,8 +278,9 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 
 failed:
 	error("stream setup failed");
+	if (a2dp->stream)
+		a2dp_source_unlock(dev, session);
 	unix_send_cfg(client->sock, NULL, -1);
-	a2dp_source_unlock(dev, session);
 	avdtp_unref(a2dp->session);
 	a2dp->session = NULL;
 	a2dp->stream = NULL;
@@ -307,17 +313,11 @@ proceed:
 		if (!a2dp->session)
 			a2dp->session = avdtp_get(&dev->src, &dev->dst);
 
-		if (!a2dp_source_lock(dev, a2dp->session)) {
-			error("Unable to lock A2DP source SEP");
-			goto failed;
-		}
-
 		id = a2dp_source_request_stream(a2dp->session, dev,
 						TRUE, a2dp_setup_complete,
 						client);
 		if (id == 0) {
 			error("request_stream failed");
-			a2dp_source_unlock(dev, a2dp->session);
 			goto failed;
 		}
 

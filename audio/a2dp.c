@@ -884,6 +884,17 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 	struct a2dp_stream_cb *cb_data;
 	static unsigned int cb_id = 0;
 
+	if (source.used_by != NULL && source.used_by != dev) {
+		error("a2dp_source_request_stream: SEP is locked");
+		return 0;
+	}
+
+	if (setup && setup->dev != dev) {
+		error("a2dp_source_request_stream: stream setup in progress "
+				"already for another device");
+		return 0;
+	}
+
 	cb_data = g_new(struct a2dp_stream_cb, 1);
 	cb_data->cb = cb;
 	cb_data->user_data = user_data;
@@ -906,8 +917,10 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 
 	switch (avdtp_sep_get_state(source.sep)) {
 	case AVDTP_STATE_IDLE:
-		if (avdtp_discover(session, discovery_complete, setup) < 0)
+		if (avdtp_discover(session, discovery_complete, setup) < 0) {
+			error("avdtp_discover failed");
 			goto failed;
+		}
 		break;
 	case AVDTP_STATE_OPEN:
 		if (!start) {
@@ -916,8 +929,10 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 		}
 		if (source.starting)
 			break;
-		if (avdtp_start(session, source.stream) < 0)
+		if (avdtp_start(session, source.stream) < 0) {
+			error("avdtp_start failed");
 			goto failed;
+		}
 		break;
 	case AVDTP_STATE_STREAMING:
 		if (!start || !source.suspending) {
@@ -931,6 +946,7 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 		source.start_requested = TRUE;
 		break;
 	default:
+		error("SEP in bad state for requesting a new stream");
 		goto failed;
 	}
 
@@ -946,6 +962,8 @@ gboolean a2dp_source_lock(struct device *dev, struct avdtp *session)
 {
 	if (source.used_by)
 		return FALSE;
+
+	debug("SBC Source locked");
 
 	source.used_by = dev;
 
@@ -965,6 +983,8 @@ gboolean a2dp_source_unlock(struct device *dev, struct avdtp *session)
 	state = avdtp_sep_get_state(source.sep);
 
 	source.used_by = NULL;
+
+	debug("SBC Source unlocked");
 
 	if (!source.stream || state == AVDTP_STATE_IDLE)
 		return TRUE;
