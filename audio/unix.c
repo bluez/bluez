@@ -203,6 +203,10 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 		goto failed;
 	}
 
+	client->disconnect = (notify_cb_t) a2dp_source_unlock;
+	client->suspend = (notify_cb_t) a2dp_source_suspend;
+	client->play = (notify_cb_t) a2dp_source_start_stream;
+
 	a2dp->stream = stream;
 
 	if (!avdtp_stream_get_transport(stream, &fd, &cfg->pkt_len, &caps)) {
@@ -322,9 +326,6 @@ proceed:
 		}
 
 		client->req_id = id;
-		client->disconnect = (notify_cb_t) a2dp_source_unlock;
-		client->suspend = (notify_cb_t) a2dp_source_suspend;
-		client->play = (notify_cb_t) a2dp_source_start_stream;
 
 		break;
 	case TYPE_HEADSET:
