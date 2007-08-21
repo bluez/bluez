@@ -2597,6 +2597,7 @@ static gboolean avdtp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	if (!manager_authorize(&dst, ADVANCED_AUDIO_UUID, auth_cb, session,
 				&session->pending_auth)) {
 		close(cli_sk);
+		avdtp_unref(session);
 		return TRUE;
 	}
 
