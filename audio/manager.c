@@ -1383,10 +1383,11 @@ int remove_service_record(DBusConnection *conn, uint32_t rec_id)
 	return 0;
 }
 
-static void send_cancel_auth(struct device *device)
+static void auth_cb(DBusPendingCall *call, void *data)
 {
-	DBusMessage *cancel;
-	char addr[18], *address = addr;
+	struct device *device = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
 	const char *uuid;
 
 	if (headset_get_type(device) == SVC_HEADSET)
@@ -1394,35 +1395,12 @@ static void send_cancel_auth(struct device *device)
 	else
 		uuid = HFP_AG_UUID;
 
-	cancel = dbus_message_new_method_call("org.bluez", "/org/bluez",
-						"org.bluez.Database",
-						"CancelAuthorizationRequest");
-	if (!cancel) {
-		error("Unable to allocate new method call");
-		return;
-	}
-
-	ba2str(&device->dst, addr);
-
-	dbus_message_append_args(cancel, DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_STRING, &uuid,
-							DBUS_TYPE_INVALID);
-
-	send_message_and_unref(connection, cancel);
-}
-
-static void auth_cb(DBusPendingCall *call, void *data)
-{
-	struct device *device = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError err;
-
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, reply)) {
 		error("Access denied: %s", err.message);
 		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			send_cancel_auth(device);
+			manager_cancel_authorize(&device->dst, uuid, NULL);
 		}
 		dbus_error_free(&err);
 
@@ -1446,11 +1424,8 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	int srv_sk, cli_sk;
 	struct sockaddr_rc addr;
 	socklen_t size;
-	char hs_address[18], *address = hs_address;
 	const char *uuid;
 	struct device *device;
-	DBusMessage *auth;
-	DBusPendingCall *pending;
 	headset_type_t type;
 
 	if (cond & G_IO_NVAL)
@@ -1500,28 +1475,9 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 
 	headset_set_type(device, type);
 
-	auth = dbus_message_new_method_call("org.bluez", "/org/bluez",
-						"org.bluez.Database",
-						"RequestAuthorization");
-	if (!auth) {
-		error("Unable to allocate RequestAuthorization method call");
+	if (!manager_authorize(&device->dst, uuid, auth_cb, device, NULL))
 		goto failed;
-	}
 
-	ba2str(&device->dst, hs_address);
-
-	dbus_message_append_args(auth, DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_STRING, &uuid,
-							DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(connection, auth, &pending, -1)) {
-		error("Sending of authorization request failed");
-		goto failed;
-	}
-
-	dbus_pending_call_set_notify(pending, auth_cb, device, NULL);
-	dbus_pending_call_unref(pending);
-	dbus_message_unref(auth);
 	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
 	return TRUE;
@@ -1733,4 +1689,73 @@ struct device *manager_get_connected_device(void)
 	}
 
 	return NULL;
+}
+
+void manager_cancel_authorize(bdaddr_t *dba, const char *uuid,
+				DBusPendingCall *pending)
+{
+	DBusMessage *cancel;
+	char addr[18], *address = addr;
+
+	if (pending)
+		dbus_pending_call_cancel(pending);
+
+	cancel = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.Database",
+						"CancelAuthorizationRequest");
+	if (!cancel) {
+		error("Unable to allocate new method call");
+		return;
+	}
+
+	ba2str(dba, addr);
+
+	dbus_message_append_args(cancel, DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_STRING, &uuid,
+					DBUS_TYPE_INVALID);
+
+	send_message_and_unref(connection, cancel);
+}
+
+gboolean manager_authorize(bdaddr_t *dba, const char *uuid,
+				DBusPendingCallNotifyFunction cb,
+				void *user_data,
+				DBusPendingCall **pending)
+{
+	DBusMessage *auth;
+	char address[18], *addr_ptr = address;
+	DBusPendingCall *p;
+
+	ba2str(dba, address);
+
+	debug("Requesting authorization for device %s, UUID %s",
+			address, uuid);
+
+	auth = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.Database",
+						"RequestAuthorization");
+	if (!auth) {
+		error("Unable to allocate RequestAuthorization method call");
+		return FALSE;
+	}
+
+	dbus_message_append_args(auth, DBUS_TYPE_STRING, &addr_ptr,
+					DBUS_TYPE_STRING, &uuid,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(connection, auth, &p, -1)) {
+		error("Sending of authorization request failed");
+		dbus_message_unref(auth);
+		return FALSE;
+	}
+
+	dbus_pending_call_set_notify(p, cb, user_data, NULL);
+	if (pending)
+		*pending = p;
+	else
+		dbus_pending_call_unref(p);
+
+	dbus_message_unref(auth);
+
+	return TRUE;
 }

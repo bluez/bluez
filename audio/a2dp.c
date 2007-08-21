@@ -607,8 +607,8 @@ int a2dp_init(DBusConnection *conn, gboolean enable_sink, gboolean enable_source
 
 	if (enable_sink) {
 		source.sep = avdtp_register_sep(AVDTP_SEP_TYPE_SOURCE,
-							AVDTP_MEDIA_TYPE_AUDIO,
-							&ind, &cfm);
+						AVDTP_MEDIA_TYPE_AUDIO,
+						&ind, &cfm);
 		if (source.sep == NULL)
 			return -1;
 

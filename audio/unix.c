@@ -317,6 +317,11 @@ proceed:
 		if (!a2dp->session)
 			a2dp->session = avdtp_get(&dev->src, &dev->dst);
 
+		if (!a2dp->session) {
+			error("Unable to get a session");
+			goto failed;
+		}	
+
 		id = a2dp_source_request_stream(a2dp->session, dev,
 						TRUE, a2dp_setup_complete,
 						client);

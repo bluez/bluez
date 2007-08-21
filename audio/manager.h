@@ -47,3 +47,10 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid);
 struct device *manager_default_device();
 
 struct device *manager_get_connected_device(void);
+
+gboolean manager_authorize(bdaddr_t *dba, const char *uuid,
+				DBusPendingCallNotifyFunction cb,
+				void *user_data,
+				DBusPendingCall **pending);
+void manager_cancel_authorize(bdaddr_t *dba, const char *uuid,
+				DBusPendingCall *pending);

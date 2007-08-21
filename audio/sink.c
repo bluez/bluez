@@ -160,6 +160,10 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 	if (!sink->session)
 		sink->session = avdtp_get(&dev->src, &dev->dst);
 
+	if (!sink->session)
+		return err_connect_failed(conn, msg,
+						"Unable to get a session");
+
 	if (sink->connect || sink->disconnect)
 		return err_connect_failed(conn, msg, "Connect in progress");
 
