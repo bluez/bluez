@@ -863,13 +863,14 @@ static int bluetooth_a2dp_init(struct bluetooth_data *data,
 	a2dp->sbc.subbands = sbc->subbands;
 	a2dp->sbc.blocks = sbc->blocks;
 	a2dp->sbc.bitpool = sbc->bitpool;
+	a2dp->pipefd[0] = -1;
+	a2dp->pipefd[1] = -1;
 
-
-	if (pipe(a2dp->pipefd) != 0)
+	if (pipe(a2dp->pipefd) < 0)
 		return -errno;
-	if (fcntl(a2dp->pipefd[0], F_SETFL, O_NONBLOCK) != 0)
+	if (fcntl(a2dp->pipefd[0], F_SETFL, O_NONBLOCK) < 0)
 		return -errno;	
-	if (fcntl(a2dp->pipefd[1], F_SETFL, O_NONBLOCK) != 0)
+	if (fcntl(a2dp->pipefd[1], F_SETFL, O_NONBLOCK) < 0)
 		return -errno;
 
 	return 0;
@@ -1022,7 +1023,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 	DBG("Bluetooth PCM plugin (%s)",
 		stream == SND_PCM_STREAM_PLAYBACK ? "Playback" : "Capture");
 
-	data = calloc(1, sizeof(struct bluetooth_data));
+	data = malloc(sizeof(struct bluetooth_data));
 	if (!data) {
 		err = -ENOMEM;
 		goto error;
