@@ -2088,7 +2088,17 @@ struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
 
 gboolean avdtp_is_connected(bdaddr_t *src, bdaddr_t *dst)
 {
-	return find_session(src, dst) == NULL ? FALSE : TRUE;
+	struct avdtp *session;
+	
+	session = find_session(src, dst);
+
+	if (!session)
+		return FALSE;
+
+	if (session->state != AVDTP_SESSION_STATE_DISCONNECTED)
+		return TRUE;
+
+	return FALSE;
 }
 
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,

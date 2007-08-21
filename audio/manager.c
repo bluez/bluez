@@ -1681,7 +1681,8 @@ struct device *manager_get_connected_device(void)
 	for (l = devices; l != NULL; l = g_slist_next(l)) {
 		struct device *device = l->data;
 
-		if (device->sink && sink_is_active(device))
+		if ((device->sink || device->source) &&
+				avdtp_is_connected(&device->src, &device->dst))
 			return device;
 
 		if (device->headset && headset_is_active(device))
