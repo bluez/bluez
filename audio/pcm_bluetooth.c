@@ -41,7 +41,7 @@
 #include "ipc.h"
 #include "sbc.h"
 
-// #define ENABLE_DEBUG
+//#define ENABLE_DEBUG
 
 #define BUFFER_SIZE 2048
 
@@ -106,7 +106,7 @@ struct bluetooth_data {
 	int sock;			/* Daemon unix socket */
 	uint8_t buffer[BUFFER_SIZE];	/* Encoded transfer buffer */
 	int count;			/* Transfer buffer counter */
-	struct bluetooth_a2dp a2dp;	/* a2dp data */
+	struct bluetooth_a2dp a2dp;	/* A2DP data */
 };
 
 static void memcpy_changeendian(void *dst, const void *src, int size)
@@ -161,10 +161,10 @@ static void *a2dp_playback_hw_thread(void *param)
 			char c = 'w';
 
 			data->hw_ptr += (periods - prev_periods) *
-						data->io.period_size;
+							data->io.period_size;
 			data->hw_ptr %= data->io.buffer_size;
 
-			DBG("pointer = %ld", data->hw_ptr);
+			DBG("pointer=%ld", data->hw_ptr);
 
 			/* Notify user that hardware pointer has moved */
 			if (write(data->a2dp.pipefd[1], &c, 1) < 0)
@@ -190,9 +190,7 @@ static int bluetooth_a2dp_playback_start(snd_pcm_ioplug_t *io)
 	assert(a2dp_data->hw_thread == 0);
 
 	err = pthread_create(&a2dp_data->hw_thread, 0,
-				a2dp_playback_hw_thread, data);
-
-	DBG(" - return %d", -err);
+					a2dp_playback_hw_thread, data);
 
 	return -err;
 }
@@ -225,10 +223,6 @@ static int bluetooth_a2dp_playback_stop(snd_pcm_ioplug_t *io)
 static snd_pcm_sframes_t bluetooth_pointer(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
-
-#if 0
-	DBG("bluetooth_pointer %p, hw_ptr=%lu", io, data->hw_ptr);
-#endif
 
 	return data->hw_ptr;
 }
@@ -269,8 +263,8 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 	struct bluetooth_data *data = io->private_data;
 	char c = 'w';
 
-	DBG("Preparing with io->period_size = %lu, io->buffer_size = %lu",
-			io->period_size, io->buffer_size);
+	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
+					io->period_size, io->buffer_size);
 
 	if (io->stream == SND_PCM_STREAM_PLAYBACK)
 		/* If not null for playback, xmms doesn't display time
@@ -292,20 +286,20 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 	uint32_t period_count = io->buffer_size / io->period_size;
 	int opt_name, err;
 
-	DBG("fd = %d, period_count = %d", data->stream_fd, period_count);
+	DBG("fd=%d period_count=%d", data->stream_fd, period_count);
 
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
-			SCO_TXBUFS : SCO_RXBUFS;
+						SCO_TXBUFS : SCO_RXBUFS;
 
 	if (setsockopt(data->stream_fd, SOL_SCO, opt_name, &period_count,
-			sizeof(period_count)) == 0)
+						sizeof(period_count)) == 0)
 		return 0;
 
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
-			SO_SNDBUF : SO_RCVBUF;
+						SO_SNDBUF : SO_RCVBUF;
 
 	if (setsockopt(data->stream_fd, SOL_SCO, opt_name, &period_count,
-			sizeof(period_count)) == 0)
+						sizeof(period_count)) == 0)
 		return 0;
 
 	err = errno;
@@ -323,13 +317,13 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	int opt_name, err;
 	struct timeval t = { 0, period_count };
 
-	DBG("fd = %d, period_count = %d", data->stream_fd, period_count);
+	DBG("fd=%d period_count=%d", data->stream_fd, period_count);
 
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
-			SO_SNDTIMEO : SO_RCVTIMEO;
+						SO_SNDTIMEO : SO_RCVTIMEO;
 
 	if (setsockopt(data->stream_fd, SOL_SOCKET, opt_name, &t,
-			sizeof(t)) == 0)
+							sizeof(t)) == 0)
 		return 0;
 
 	err = errno;
@@ -359,7 +353,7 @@ static int bluetooth_poll_descriptors(snd_pcm_ioplug_t *io,
 
 static int bluetooth_poll_revents(snd_pcm_ioplug_t *io ATTRIBUTE_UNUSED,
 					struct pollfd *pfds, unsigned int nfds,
-					unsigned short *revents)
+							unsigned short *revents)
 {
 	assert(pfds && nfds == 1 && revents);
 
@@ -369,8 +363,7 @@ static int bluetooth_poll_revents(snd_pcm_ioplug_t *io ATTRIBUTE_UNUSED,
 }
 
 static int bluetooth_a2dp_playback_poll_descriptors(snd_pcm_ioplug_t *io,
-							struct pollfd *pfd,
-							unsigned int space)
+					struct pollfd *pfd, unsigned int space)
 {
 	struct bluetooth_data *data = io->private_data;
 
@@ -389,9 +382,8 @@ static int bluetooth_a2dp_playback_poll_descriptors(snd_pcm_ioplug_t *io,
 }
 
 static int bluetooth_a2dp_playback_poll_revents(snd_pcm_ioplug_t *io,
-						struct pollfd *pfds,
-						unsigned int nfds,
-						unsigned short *revents)
+					struct pollfd *pfds, unsigned int nfds,
+							unsigned short *revents)
 {
 	static char buf[1];
 	int ret;
@@ -413,9 +405,8 @@ static int bluetooth_a2dp_playback_poll_revents(snd_pcm_ioplug_t *io,
 
 
 static snd_pcm_sframes_t bluetooth_hsp_read(snd_pcm_ioplug_t *io,
-						const snd_pcm_channel_area_t *areas,
-						snd_pcm_uframes_t offset,
-						snd_pcm_uframes_t size)
+				const snd_pcm_channel_area_t *areas,
+				snd_pcm_uframes_t offset, snd_pcm_uframes_t size)
 {
 	struct bluetooth_data *data = io->private_data;
 	struct ipc_data_cfg cfg = data->cfg;
@@ -423,9 +414,8 @@ static snd_pcm_sframes_t bluetooth_hsp_read(snd_pcm_ioplug_t *io,
 	unsigned char *buff;
 	int nrecv, frame_size = 0;
 
-	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu,"
-		"io->nonblock=%u", areas->step, areas->first, offset, size,
-		io->nonblock);
+	DBG("areas->step=%u areas->first=%u offset=%lu size=%lu io->nonblock=%u",
+			areas->step, areas->first, offset, size, io->nonblock);
 
 	if (data->count > 0)
 		goto proceed;
@@ -448,7 +438,7 @@ static snd_pcm_sframes_t bluetooth_hsp_read(snd_pcm_ioplug_t *io,
 
 	/* Increment hardware transmition pointer */
 	data->hw_ptr = (data->hw_ptr + cfg.pkt_len / cfg.sample_size) %
-			io->buffer_size;
+								io->buffer_size;
 
 proceed:
 	buff = (unsigned char *) areas->addr +
@@ -472,9 +462,8 @@ done:
 }
 
 static snd_pcm_sframes_t bluetooth_hsp_write(snd_pcm_ioplug_t *io,
-						const snd_pcm_channel_area_t *areas,
-						snd_pcm_uframes_t offset,
-						snd_pcm_uframes_t size)
+				const snd_pcm_channel_area_t *areas,
+				snd_pcm_uframes_t offset, snd_pcm_uframes_t size)
 {
 	struct bluetooth_data *data = io->private_data;
 	struct ipc_data_cfg cfg = data->cfg;
@@ -483,9 +472,8 @@ static snd_pcm_sframes_t bluetooth_hsp_write(snd_pcm_ioplug_t *io,
 	uint8_t *buff;
 	int rsend, frame_size;
 
-	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu,"
-			"io->nonblock=%u", areas->step, areas->first,
-			offset, size, io->nonblock);
+	DBG("areas->step=%u areas->first=%u offset=%lu, size=%lu io->nonblock=%u",
+			areas->step, areas->first, offset, size, io->nonblock);
 
 	frame_size = areas->step / 8;
 	if ((data->count + size * frame_size) <= cfg.pkt_len)
@@ -493,7 +481,7 @@ static snd_pcm_sframes_t bluetooth_hsp_write(snd_pcm_ioplug_t *io,
 	else
 		frames_to_read = (cfg.pkt_len - data->count) / frame_size;
 
-	DBG("count = %d, frames_to_read = %lu", data->count, frames_to_read);
+	DBG("count=%d frames_to_read=%lu", data->count, frames_to_read);
 
 	/* Ready for more data */
 	buff = (uint8_t *) areas->addr +
@@ -529,9 +517,8 @@ done:
 }
 
 static snd_pcm_sframes_t bluetooth_a2dp_read(snd_pcm_ioplug_t *io,
-						const snd_pcm_channel_area_t *areas,
-						snd_pcm_uframes_t offset,
-						snd_pcm_uframes_t size)
+				const snd_pcm_channel_area_t *areas,
+				snd_pcm_uframes_t offset, snd_pcm_uframes_t size)
 {
 	snd_pcm_uframes_t ret = 0;
 	return ret;
@@ -545,6 +532,7 @@ static int avdtp_write(struct bluetooth_data *data)
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 
 	DBG("");
+
 	header = (void *) a2dp->buffer;
 	payload = (void *) (a2dp->buffer + sizeof(*header));
 
@@ -557,8 +545,7 @@ static int avdtp_write(struct bluetooth_data *data)
 	header->timestamp = htonl(a2dp->nsamples);
 	header->ssrc = htonl(1);
 
-	ret = send(data->stream_fd, a2dp->buffer, a2dp->count,
-				MSG_DONTWAIT);
+	ret = send(data->stream_fd, a2dp->buffer, a2dp->count, MSG_DONTWAIT);
 	if (ret == -1)
 		ret = -errno;
 
@@ -572,9 +559,8 @@ static int avdtp_write(struct bluetooth_data *data)
 }
 
 static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
-						const snd_pcm_channel_area_t *areas,
-						snd_pcm_uframes_t offset,
-						snd_pcm_uframes_t size)
+				const snd_pcm_channel_area_t *areas,
+				snd_pcm_uframes_t offset, snd_pcm_uframes_t size)
 {
 	struct bluetooth_data *data = io->private_data;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
@@ -584,10 +570,9 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	uint8_t *buff;
 	static int codesize = 0;
 
-	DBG("areas->step=%u, areas->first=%u, offset=%lu, size=%lu"
-			, areas->step, areas->first, offset, size);
-	DBG("hw_ptr = %lu, appl_ptr = %lu"
-			, io->hw_ptr, io->appl_ptr);
+	DBG("areas->step=%u areas->first=%u offset=%lu size=%lu",
+				areas->step, areas->first, offset, size);
+	DBG("hw_ptr=%lu appl_ptr=%lu", io->hw_ptr, io->appl_ptr);
 
 	if (io->hw_ptr > io->appl_ptr) {
 		ret = bluetooth_a2dp_playback_stop(io);
@@ -602,9 +587,8 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 		snd_pcm_uframes_t threshold;
 
 		snd_pcm_sw_params_malloc(&swparams);
-		if (!snd_pcm_sw_params_current(io->pcm, swparams)
-		   && !snd_pcm_sw_params_get_start_threshold(swparams,
-		       &threshold) ) {
+		if (!snd_pcm_sw_params_current(io->pcm, swparams) &&
+				!snd_pcm_sw_params_get_start_threshold(swparams, &threshold)) {
 			if (io->appl_ptr >= threshold) {
 				ret = snd_pcm_start(io->pcm);
 				if (ret != 0)
@@ -617,7 +601,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	if (codesize == 0) {
 		/* How much data can be encoded by sbc at a time? */
 		codesize = a2dp->sbc.subbands * a2dp->sbc.blocks *
-				a2dp->sbc.channels * 2;
+							a2dp->sbc.channels * 2;
 		/* Reserv header space in outgoing buffer */
 		a2dp->count = sizeof(struct rtp_header) +
 				sizeof(struct rtp_payload);
@@ -630,17 +614,16 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	else
 		frames_to_read = (codesize - data->count) / frame_size;
 
-	DBG("count = %d, frames_to_read = %lu", data->count, frames_to_read);
-	DBG("a2dp.count = %d cfg.pkt_len = %d", a2dp->count,
-			data->cfg.pkt_len);
+	DBG("count=%d frames_to_read=%lu", data->count, frames_to_read);
+	DBG("a2dp.count=%d cfg.pkt_len=%d", a2dp->count, data->cfg.pkt_len);
 
 	/* FIXME: If state is not streaming then return */
 
 	/* Ready for more data */
 	buff = (uint8_t *) areas->addr +
-		(areas->first + areas->step * offset) / 8;
+				(areas->first + areas->step * offset) / 8;
 	memcpy_changeendian(data->buffer + data->count, buff,
-				frame_size * frames_to_read);
+						frame_size * frames_to_read);
 
 	/* Remember we have some frames in the pipe now */
 	data->count += frames_to_read * frame_size;
@@ -658,7 +641,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 
 	data->count -= encoded;
 
-	DBG("encoded = %d  a2dp.sbc.len= %d", encoded, a2dp->sbc.len);
+	DBG("encoded=%d  a2dp.sbc.len=%d", encoded, a2dp->sbc.len);
 
 	if (a2dp->count + a2dp->sbc.len >= data->cfg.pkt_len) {
 		ret = avdtp_write(data);
@@ -762,24 +745,24 @@ static int bluetooth_hw_constraint(snd_pcm_ioplug_t *io)
 
 	/* supported channels */
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_CHANNELS,
-					cfg.channels, cfg.channels);
+						cfg.channels, cfg.channels);
 	if (err < 0)
 		return err;
 
 	/* supported rate */
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_RATE,
-					cfg.rate, cfg.rate);
+						cfg.rate, cfg.rate);
 	if (err < 0)
 		return err;
 
 	/* supported block size */
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
-					cfg.pkt_len, cfg.pkt_len);
+						cfg.pkt_len, cfg.pkt_len);
 	if (err < 0)
 		return err;
 
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS,
-					2, 50);
+						2, 50);
 	if (err < 0)
 		return err;
 
@@ -794,7 +777,7 @@ static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 	struct iovec iov = {
 		.iov_base = &pkt,
 		.iov_len  = sizeof(pkt)
-        };
+	};
 	struct msghdr msgh = {
 		.msg_name	= 0,
 		.msg_namelen	= 0,
@@ -816,16 +799,15 @@ static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 		struct cmsghdr *cmsg;
 		/* Receive auxiliary data in msgh */
 		for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
-				cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
+					cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
 			if (cmsg->cmsg_level == SOL_SOCKET
 				&& cmsg->cmsg_type == SCM_RIGHTS)
 				data->stream_fd = (*(int *) CMSG_DATA(cmsg));
-				DBG("stream_fd = %d", data->stream_fd);
+				DBG("stream_fd=%d", data->stream_fd);
 				return 0;
 		}
-	}
-	else
-		SNDERR("Unexpected packet type received: type = %d", pkt.type);
+	} else
+		SNDERR("Unexpected packet type %d received", pkt.type);
 
 	return -EINVAL;
 }
@@ -902,14 +884,12 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
 	total = ret;
 
 	if (pkt->type != PKT_TYPE_CFG_RSP) {
-		SNDERR("Unexpected packet type received: type = %d",
-				pkt->type);
+		SNDERR("Unexpected packet type %d received", pkt->type);
 		return -EINVAL;
 	}
 
 	if (pkt->error != PKT_ERROR_NONE) {
-		SNDERR("Error while configuring device: error = %d",
-				pkt->error);
+		SNDERR("Error %d while configuring device", pkt->error);
 		return pkt->error;
 	}
 
@@ -928,8 +908,7 @@ done:
 	DBG("OK - %d bytes received", total);
 
 	if (pkt->length != (total - sizeof(struct ipc_packet))) {
-		SNDERR("Error while configuring device: packet size doesn't "
-				"match");
+		SNDERR("Error while configuring device: packet size doesn't match");
 		return -EINVAL;
 	}
 
@@ -937,25 +916,22 @@ done:
 
 	DBG("Device configuration:");
 
-	DBG("\n\tfd=%d\n\tfd_opt=%u\n\tchannels=%u\n\tpkt_len=%u\n"
-		"\tsample_size=%u\n\trate=%u", data->stream_fd,
-		data->cfg.fd_opt, data->cfg.channels, data->cfg.pkt_len,
-		data->cfg.sample_size, data->cfg.rate);
+	DBG("\n\tfd=%d\n\tfd_opt=%u\n\tchannels=%u\n\tpkt_len=%u\n\tsample_size=%u\n\trate=%u",
+		data->stream_fd, data->cfg.fd_opt, data->cfg.channels,
+		data->cfg.pkt_len, data->cfg.sample_size, data->cfg.rate);
 
 	if (data->cfg.codec == CFG_CODEC_SBC) {
 		struct bluetooth_a2dp *a2dp = &data->a2dp;
 		ret = bluetooth_a2dp_init(data, sbc);
 		if (ret < 0)
 			return ret;
-		printf("\tallocation=%u\n\tsubbands=%u\n\tblocks=%u\n\t"
-				"bitpool=%u\n", a2dp->sbc.allocation,
-				a2dp->sbc.subbands, a2dp->sbc.blocks,
-				a2dp->sbc.bitpool);
+		printf("\tallocation=%u\n\tsubbands=%u\n\tblocks=%u\n\tbitpool=%u\n",
+				a2dp->sbc.allocation, a2dp->sbc.subbands,
+				a2dp->sbc.blocks, a2dp->sbc.bitpool);
 	}
 
 	if (data->stream_fd == -1) {
-		SNDERR("Error while configuring device: could not acquire "
-				"audio socket");
+		SNDERR("Error while configuring device: could not acquire audio socket");
 		return -EINVAL;
 	}
 
