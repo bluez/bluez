@@ -562,13 +562,6 @@ static int avdtp_write(struct bluetooth_data *data)
 	if (ret == -1)
 		ret = -errno;
 
-	/* Kernel side l2cap socket layer makes sure either everything 
-	   is buffered for sending, or nothing is buffered.
-	   This assertion is to remind people of this fact (and be noticed
-	   the day that changes)
- 	   */
-	assert(ret < 0 || ret == a2dp->count);
-
 	/* Reset buffer of data to send */
 	a2dp->count = sizeof(struct rtp_header) + sizeof(struct rtp_payload);
 	a2dp->frame_count = 0;
