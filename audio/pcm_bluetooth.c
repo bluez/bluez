@@ -109,16 +109,6 @@ struct bluetooth_data {
 	struct bluetooth_a2dp a2dp;	/* A2DP data */
 };
 
-static void memcpy_changeendian(void *dst, const void *src, int size)
-{
-	int i;
-	const uint16_t *ptrsrc = src;
-	uint16_t *ptrdst = dst;
-
-	for (i = 0; i < size / 2; i++)
-		*ptrdst++ = htons(*ptrsrc++);
-}
-
 static int bluetooth_start(snd_pcm_ioplug_t *io)
 {
 	DBG("bluetooth_start %p", io);
@@ -622,8 +612,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	/* Ready for more data */
 	buff = (uint8_t *) areas->addr +
 				(areas->first + areas->step * offset) / 8;
-	memcpy_changeendian(data->buffer + data->count, buff,
-						frame_size * frames_to_read);
+	memcpy(data->buffer + data->count, buff, frame_size * frames_to_read);
 
 	/* Remember we have some frames in the pipe now */
 	data->count += frames_to_read * frame_size;

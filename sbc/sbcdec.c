@@ -90,6 +90,7 @@ static void decode(char *filename, char *audiodevice, int tofile)
 	}
 
 	sbc_init(&sbc, 0L);
+	sbc.swap = 1;
 
 	framelen = sbc_decode(&sbc, stream, streamlen);
 	printf("%d Hz, %d channels\n", sbc.rate, sbc.channels);

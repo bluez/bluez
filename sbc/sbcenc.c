@@ -144,6 +144,7 @@ static void encode(char *filename, int subbands, int joint)
 	sbc.channels = BE_INT(au_hdr->channels);
 	sbc.subbands = subbands;
 	sbc.joint = joint;
+	sbc.swap = 1;
 	count = BE_INT(au_hdr->data_size);
 	size = len - BE_INT(au_hdr->hdr_size);
 	memmove(buf, buf + BE_INT(au_hdr->hdr_size), size);

@@ -1289,6 +1289,7 @@ int sbc_init(sbc_t *sbc, unsigned long flags)
 	sbc->subbands = 8;
 	sbc->blocks = 16;
 	sbc->bitpool = 32;
+	sbc->swap = 0;
 
 	return 0;
 }
@@ -1341,8 +1342,14 @@ int sbc_decode(sbc_t *sbc, void *data, int count)
 		for (ch = 0; ch < priv->frame.channels; ch++) {
 			int16_t s;
 			s = priv->frame.pcm_sample[ch][i];
-			*ptr++ = (s & 0xff00) >> 8;
-			*ptr++ = (s & 0x00ff);
+
+			if (sbc->swap) {
+				*ptr++ = (s & 0xff00) >> 8;
+				*ptr++ = (s & 0x00ff);
+			} else {
+				*ptr++ = (s & 0x00ff);
+				*ptr++ = (s & 0xff00) >> 8;
+			}
 		}
 	}
 
@@ -1387,7 +1394,12 @@ int sbc_encode(sbc_t *sbc, void *data, int count)
 
 	for (i = 0; i < priv->frame.subbands * priv->frame.blocks; i++) {
 		for (ch = 0; ch < sbc->channels; ch++) {
-			int16_t s = (ptr[0] & 0xff) << 8 | (ptr[1] & 0xff);
+			int16_t s;
+
+			if (sbc->swap)
+				s = (ptr[0] & 0xff) << 8 | (ptr[1] & 0xff);
+			else
+				s = (ptr[0] & 0xff) | (ptr[1] & 0xff) << 8;
 			ptr += 2;
 			priv->frame.pcm_sample[ch][i] = s;
 		}

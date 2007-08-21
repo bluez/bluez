@@ -40,6 +40,7 @@ struct sbc_struct {
 	int blocks;
 	int subbands;
 	int bitpool;
+	int swap;
 
 	void *data;
 	int size;
