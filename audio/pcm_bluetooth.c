@@ -109,7 +109,7 @@ struct bluetooth_data {
 	struct bluetooth_a2dp a2dp;	/* a2dp data */
 };
 
-void memcpy_changeendian(void *dst, const void *src, int size)
+static void memcpy_changeendian(void *dst, const void *src, int size)
 {
 	int i;
 	const uint16_t *ptrsrc = src;
