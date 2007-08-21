@@ -41,7 +41,7 @@
 #include "ipc.h"
 #include "sbc.h"
 
-/*#define ENABLE_DEBUG*/
+// #define ENABLE_DEBUG
 
 #define BUFFER_SIZE 2048
 
@@ -246,10 +246,10 @@ static void bluetooth_exit(struct bluetooth_data *data)
 	if (data->cfg.codec == CFG_CODEC_SBC)
 		sbc_finish(&data->a2dp.sbc);
 
-	if(data->a2dp.pipefd[0] > 0)
+	if (data->a2dp.pipefd[0] > 0)
 		close(data->a2dp.pipefd[0]);
 	
-	if(data->a2dp.pipefd[1] > 0)
+	if (data->a2dp.pipefd[1] > 0)
 		close(data->a2dp.pipefd[1]);
 	
 	free(data);
@@ -560,7 +560,7 @@ static int avdtp_write(struct bluetooth_data *data)
 
 	ret = send(data->stream_fd, a2dp->buffer, a2dp->count,
 				MSG_DONTWAIT);
-	if(ret == -1)
+	if (ret == -1)
 		ret = -errno;
 
 	/* Kernel side l2cap socket layer makes sure either everything 
@@ -597,25 +597,25 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	DBG("hw_ptr = %lu, appl_ptr = %lu"
 			, io->hw_ptr, io->appl_ptr);
 
-	if(io->hw_ptr > io->appl_ptr) {
+	if (io->hw_ptr > io->appl_ptr) {
 		ret = bluetooth_a2dp_playback_stop(io);
-		if(ret == 0)		
+		if (ret == 0)		
 			ret = -EPIPE;
 		goto done;	
 	}		
 
 	/* Check if we should autostart */
-	if(io->state == SND_PCM_STATE_PREPARED) {
+	if (io->state == SND_PCM_STATE_PREPARED) {
 		snd_pcm_sw_params_t *swparams;
 		snd_pcm_uframes_t threshold;
 	
 		snd_pcm_sw_params_malloc(&swparams);
-		if(!snd_pcm_sw_params_current(io->pcm, swparams)
+		if (!snd_pcm_sw_params_current(io->pcm, swparams)
 		   && !snd_pcm_sw_params_get_start_threshold(swparams,
 		       &threshold) ) {
-			if(io->appl_ptr >= threshold) {
+			if (io->appl_ptr >= threshold) {
 				ret = snd_pcm_start(io->pcm);
-				if(ret != 0)
+				if (ret != 0)
 					goto done;			
 			}
 		}
@@ -865,11 +865,11 @@ static int bluetooth_a2dp_init(struct bluetooth_data *data,
 	a2dp->sbc.bitpool = sbc->bitpool;
 
 
-	if(pipe(a2dp->pipefd) != 0)
+	if (pipe(a2dp->pipefd) != 0)
 		return -errno;
-	if(fcntl(a2dp->pipefd[0], F_SETFL, O_NONBLOCK) != 0)
+	if (fcntl(a2dp->pipefd[0], F_SETFL, O_NONBLOCK) != 0)
 		return -errno;	
-	if(fcntl(a2dp->pipefd[1], F_SETFL, O_NONBLOCK) != 0)
+	if (fcntl(a2dp->pipefd[1], F_SETFL, O_NONBLOCK) != 0)
 		return -errno;
 
 	return 0;
