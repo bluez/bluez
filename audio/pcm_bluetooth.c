@@ -94,7 +94,7 @@ struct bluetooth_a2dp {
 	uint16_t seq_num;		/* */
 	int frame_count;		/* */
 
-	pthread_t hw_thread;		/* Makes virtual hw pointer move */	
+	pthread_t hw_thread;		/* Makes virtual hw pointer move */
 	int pipefd[2];			/* Inter thread communication */
 };
 
@@ -171,12 +171,12 @@ static void *a2dp_playback_hw_thread(void *param)
 				pthread_testcancel();
 
 			prev_periods = periods;
-		}		
+		}
 
 		usleep(period_time);
 
 		/* Offer opportunity to be canceled by main thread */
-		pthread_testcancel();	
+		pthread_testcancel();
 	}
 }
 static int bluetooth_a2dp_playback_start(snd_pcm_ioplug_t *io)
@@ -200,7 +200,7 @@ static int bluetooth_a2dp_playback_start(snd_pcm_ioplug_t *io)
 static int bluetooth_a2dp_playback_stop(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
-	struct bluetooth_a2dp *a2dp_data = &data->a2dp;	
+	struct bluetooth_a2dp *a2dp_data = &data->a2dp;
 	int err;
 
 	DBG("%p", io);
@@ -246,10 +246,10 @@ static void bluetooth_exit(struct bluetooth_data *data)
 
 	if (data->a2dp.pipefd[0] > 0)
 		close(data->a2dp.pipefd[0]);
-	
+
 	if (data->a2dp.pipefd[1] > 0)
 		close(data->a2dp.pipefd[1]);
-	
+
 	free(data);
 }
 
@@ -281,7 +281,7 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 		 * If it is, capture won't start */
 		data->hw_ptr = io->period_size;
 
-	/* a2dp : wake up any client polling at us */	
+	/* a2dp : wake up any client polling at us */
 	return write(data->a2dp.pipefd[1], &c, 1);
 }
 
@@ -368,7 +368,7 @@ static int bluetooth_poll_revents(snd_pcm_ioplug_t *io ATTRIBUTE_UNUSED,
 	return 0;
 }
 
-static int bluetooth_a2dp_playback_poll_descriptors(snd_pcm_ioplug_t *io, 
+static int bluetooth_a2dp_playback_poll_descriptors(snd_pcm_ioplug_t *io,
 							struct pollfd *pfd,
 							unsigned int space)
 {
@@ -591,16 +591,16 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 
 	if (io->hw_ptr > io->appl_ptr) {
 		ret = bluetooth_a2dp_playback_stop(io);
-		if (ret == 0)		
+		if (ret == 0)
 			ret = -EPIPE;
-		goto done;	
-	}		
+		goto done;
+	}
 
 	/* Check if we should autostart */
 	if (io->state == SND_PCM_STATE_PREPARED) {
 		snd_pcm_sw_params_t *swparams;
 		snd_pcm_uframes_t threshold;
-	
+
 		snd_pcm_sw_params_malloc(&swparams);
 		if (!snd_pcm_sw_params_current(io->pcm, swparams)
 		   && !snd_pcm_sw_params_get_start_threshold(swparams,
@@ -608,10 +608,10 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 			if (io->appl_ptr >= threshold) {
 				ret = snd_pcm_start(io->pcm);
 				if (ret != 0)
-					goto done;			
+					goto done;
 			}
 		}
-		snd_pcm_sw_params_free(swparams);	
+		snd_pcm_sw_params_free(swparams);
 	}
 
 	if (codesize == 0) {
@@ -861,7 +861,7 @@ static int bluetooth_a2dp_init(struct bluetooth_data *data,
 	if (pipe(a2dp->pipefd) < 0)
 		return -errno;
 	if (fcntl(a2dp->pipefd[0], F_SETFL, O_NONBLOCK) < 0)
-		return -errno;	
+		return -errno;
 	if (fcntl(a2dp->pipefd[1], F_SETFL, O_NONBLOCK) < 0)
 		return -errno;
 
