@@ -210,11 +210,11 @@ static int bluetooth_a2dp_playback_stop(snd_pcm_ioplug_t *io)
 		return 0;
 
 	err = pthread_cancel(a2dp_data->hw_thread);
-	if (err != 0)
+	if (err > 0)
 		return -err;
 
 	err = pthread_join(a2dp_data->hw_thread, 0);
-	if (err != 0)
+	if (err > 0)
 		return -err;
 
 	a2dp_data->hw_thread = 0;
