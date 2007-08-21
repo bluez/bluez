@@ -211,17 +211,15 @@ static int bluetooth_a2dp_playback_stop(snd_pcm_ioplug_t *io)
 
 	err = pthread_cancel(a2dp_data->hw_thread);
 	if (err != 0)
-		goto failed;
+		return -err;
 
 	err = pthread_join(a2dp_data->hw_thread, 0);
 	if (err != 0)
-		goto failed;
+		return -err;
 
 	a2dp_data->hw_thread = 0;
 
-failed:
-	DBG(" - return %d", -err);
-	return -err;
+	return 0;
 }
 
 static snd_pcm_sframes_t bluetooth_pointer(snd_pcm_ioplug_t *io)
@@ -311,6 +309,7 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 		return 0;
 
 	err = errno;
+
 	SNDERR("%s (%d)", strerror(err), err);
 
 	return -err;
