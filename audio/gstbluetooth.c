@@ -30,6 +30,7 @@
 #include <gst/gst.h>
 
 #include "ipc.h"
+#include "sbc.h"
 
 static gboolean plugin_init(GstPlugin *plugin)
 {
