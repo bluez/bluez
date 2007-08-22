@@ -89,15 +89,14 @@ struct rtp_payload {
 
 struct bluetooth_a2dp {
 	sbc_t sbc;			/* Codec data */
+	int codesize;			/* SBC codesize */
 	int samples;			/* Number of encoded samples */
-	time_t timestamp;		/* Codec samples timestamp */
 	uint8_t buffer[BUFFER_SIZE];	/* Codec transfer buffer */
 	int count;			/* Codec transfer buffer counter */
 
 	int nsamples;			/* Cumulative number of codec samples */
-	struct timeval ntimestamp;	/* Cumulative timeval */
-	uint16_t seq_num;		/* */
-	int frame_count;		/* */
+	uint16_t seq_num;		/* Cumulative packet sequence */
+	int frame_count;		/* Current frames in buffer*/
 
 	pthread_t hw_thread;		/* Makes virtual hw pointer move */
 	int pipefd[2];			/* Inter thread communication */
@@ -184,6 +183,7 @@ iter_sleep:
 		pthread_testcancel();
 	}
 }
+
 static int bluetooth_a2dp_playback_start(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
@@ -534,8 +534,6 @@ static int avdtp_write(struct bluetooth_data *data)
 	struct rtp_payload *payload;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 
-	DBG("");
-
 	header = (void *) a2dp->buffer;
 	payload = (void *) (a2dp->buffer + sizeof(*header));
 
@@ -571,7 +569,6 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	snd_pcm_uframes_t frames_to_read;
 	int frame_size, encoded;
 	uint8_t *buff;
-	static int codesize = 0;
 
 	DBG("areas->step=%u areas->first=%u offset=%lu size=%lu",
 				areas->step, areas->first, offset, size);
@@ -601,21 +598,11 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 		snd_pcm_sw_params_free(swparams);
 	}
 
-	if (codesize == 0) {
-		/* How much data can be encoded by sbc at a time? */
-		codesize = a2dp->sbc.subbands * a2dp->sbc.blocks *
-							a2dp->sbc.channels * 2;
-		/* Reserv header space in outgoing buffer */
-		a2dp->count = sizeof(struct rtp_header) +
-				sizeof(struct rtp_payload);
-		gettimeofday(&a2dp->ntimestamp, NULL);
-	}
-
 	frame_size = areas->step / 8;
-	if ((data->count + size * frame_size) <= codesize)
+	if ((data->count + size * frame_size) <= a2dp->codesize)
 		frames_to_read = size;
 	else
-		frames_to_read = (codesize - data->count) / frame_size;
+		frames_to_read = (a2dp->codesize - data->count) / frame_size;
 
 	DBG("count=%d frames_to_read=%lu", data->count, frames_to_read);
 	DBG("a2dp.count=%d cfg.pkt_len=%d", a2dp->count, data->cfg.pkt_len);
@@ -629,13 +616,13 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 
 	/* Remember we have some frames in the pipe now */
 	data->count += frames_to_read * frame_size;
-	if (data->count != codesize) {
+	if (data->count != a2dp->codesize) {
 		ret = frames_to_read;
 		goto done;
 	}
 
 	/* Enough data to encode (sbc wants 1k blocks) */
-	encoded = sbc_encode(&(a2dp->sbc), data->buffer, codesize);
+	encoded = sbc_encode(&(a2dp->sbc), data->buffer, a2dp->codesize);
 	if (encoded <= 0) {
 		DBG("Encoding error %d", encoded);
 		goto done;
@@ -717,7 +704,7 @@ static snd_pcm_ioplug_callback_t bluetooth_a2dp_capture = {
 
 #define ARRAY_NELEMS(a) (sizeof((a)) / sizeof((a)[0]))
 
-static int bluetooth_hw_constraint(snd_pcm_ioplug_t *io)
+static int bluetooth_hsp_hw_constraint(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
 	struct ipc_data_cfg cfg = data->cfg;
@@ -764,12 +751,68 @@ static int bluetooth_hw_constraint(snd_pcm_ioplug_t *io)
 		return err;
 
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS,
+						2, 200);
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+
+static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
+{
+	struct bluetooth_data *data = io->private_data;
+	struct bluetooth_a2dp *a2dp = &data->a2dp;
+	struct ipc_data_cfg cfg = data->cfg;
+	snd_pcm_access_t access_list[] = {
+		SND_PCM_ACCESS_RW_INTERLEAVED,
+		/* Mmap access is really useless fo this driver, but we
+		 * support it because some pieces of software out there
+		 * insist on using it */
+		SND_PCM_ACCESS_MMAP_INTERLEAVED
+	};
+	unsigned int format_list[] = {
+		SND_PCM_FORMAT_S16_LE
+	};
+	int err;
+
+	/* access type */
+	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_ACCESS,
+					ARRAY_NELEMS(access_list), access_list);
+	if (err < 0)
+		return err;
+
+	/* supported formats */
+	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_FORMAT,
+					ARRAY_NELEMS(format_list), format_list);
+	if (err < 0)
+		return err;
+
+	/* supported channels */
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_CHANNELS,
+						cfg.channels, cfg.channels);
+	if (err < 0)
+		return err;
+
+	/* supported rate */
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_RATE,
+						cfg.rate, cfg.rate);
+	if (err < 0)
+		return err;
+
+	/* supported block size */
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
+						a2dp->codesize, a2dp->codesize);
+	if (err < 0)
+		return err;
+
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS,
 						2, 50);
 	if (err < 0)
 		return err;
 
 	return 0;
 }
+
 
 static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 {
@@ -839,6 +882,9 @@ static int bluetooth_a2dp_init(struct bluetooth_data *data,
 	a2dp->sbc.subbands = sbc->subbands;
 	a2dp->sbc.blocks = sbc->blocks;
 	a2dp->sbc.bitpool = sbc->bitpool;
+	a2dp->codesize = a2dp->sbc.subbands * a2dp->sbc.blocks *
+				a2dp->sbc.channels * 2;
+	a2dp->count = sizeof(struct rtp_header) + sizeof(struct rtp_payload);
 	a2dp->pipefd[0] = -1;
 	a2dp->pipefd[1] = -1;
 
@@ -1021,7 +1067,11 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 	if (err < 0)
 		goto error;
 
-	err = bluetooth_hw_constraint(&data->io);
+	if (data->cfg.codec == CFG_CODEC_SBC)
+		err = bluetooth_a2dp_hw_constraint(&data->io);
+	else
+		err = bluetooth_hsp_hw_constraint(&data->io);
+
 	if (err < 0) {
 		snd_pcm_ioplug_delete(&data->io);
 		goto error;
