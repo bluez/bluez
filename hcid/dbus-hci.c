@@ -1666,8 +1666,28 @@ int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
 
 	if (hci_write_class_of_dev(dd, dev_class, 1000) < 0) {
 		err = errno;
-		error("Can't write class of device: %s(%d)",
-				strerror(err), err);
+		error("Can't write class of device: %s (%d)",
+							strerror(err), err);
+		return -err;
+	}
+
+	return 0;
+}
+
+int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
+{
+	uint32_t dev_class;
+	int err;
+
+	if (cls[2] == value)
+		return 0; /* Already set */
+
+	dev_class = (value << 16) | (cls[1] << 8) | cls[0];
+
+	if (hci_write_class_of_dev(dd, dev_class, 1000) < 0) {
+		err = errno;
+		error("Can't write class of device: %s (%d)",
+							strerror(err), err);
 		return -err;
 	}
 

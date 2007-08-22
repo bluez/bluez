@@ -42,7 +42,9 @@
 #include "sdpd.h"
 #include "logging.h"
 
-static sdp_record_t *server;
+static sdp_record_t *server = NULL;
+
+static uint8_t service_classes = 0x00;
 
 /*
  * List of version numbers supported by the SDP server.
@@ -117,6 +119,13 @@ static void update_svclass_list(void)
 	}
 
 	debug("Service classes 0x%02x", val);
+
+	service_classes = val;
+}
+
+uint8_t get_service_classes(void)
+{
+	return service_classes;
 }
 
 void register_public_browse_group(void)

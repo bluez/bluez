@@ -42,6 +42,7 @@
 #include <dbus/dbus.h>
 
 #include "hcid.h"
+#include "sdpd.h"
 #include "adapter.h"
 #include "dbus.h"
 #include "dbus-helper.h"
@@ -327,4 +328,29 @@ int get_default_adapter(void)
 void set_default_adapter(int new_default)
 {
 	default_adapter_id = new_default;
+}
+
+void update_class_of_device(void)
+{
+	uint8_t value = get_service_classes();
+	uint8_t cls[3];
+	int dd, dev_id = default_adapter_id;
+
+	if (dev_id < 0)
+		return;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0)
+		return;
+
+	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+		error("Can't read class of device on hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+		hci_close_dev(dd);
+		return;
+	}
+
+	set_service_classes(dd, cls, value);
+
+	hci_close_dev(dd);
 }
