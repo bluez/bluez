@@ -112,6 +112,7 @@ struct bluetooth_data {
 	uint8_t buffer[BUFFER_SIZE];	/* Encoded transfer buffer */
 	int count;			/* Transfer buffer counter */
 	struct bluetooth_a2dp a2dp;	/* A2DP data */
+	int stopped;
 };
 
 static int bluetooth_start(snd_pcm_ioplug_t *io)
@@ -144,6 +145,9 @@ static void *a2dp_playback_hw_thread(void *param)
 		unsigned int dtime, periods;
 		struct timeval cur, delta;
 
+		if (data->stopped)
+			goto iter_sleep;
+
 		gettimeofday(&cur, 0);
 
 		timersub(&cur, &start, &delta);
@@ -173,6 +177,7 @@ static void *a2dp_playback_hw_thread(void *param)
 				prev_periods = periods;
 		}
 
+iter_sleep:
 		usleep(MIN_PERIOD_TIME);
 
 		/* Offer opportunity to be canceled by main thread */
@@ -187,7 +192,10 @@ static int bluetooth_a2dp_playback_start(snd_pcm_ioplug_t *io)
 
 	DBG("%p", io);
 
-	assert(a2dp_data->hw_thread == 0);
+	data->stopped = 0;
+
+	if (a2dp_data->hw_thread)
+		return 0;
 
 	err = pthread_create(&a2dp_data->hw_thread, 0,
 					a2dp_playback_hw_thread, data);
@@ -198,24 +206,10 @@ static int bluetooth_a2dp_playback_start(snd_pcm_ioplug_t *io)
 static int bluetooth_a2dp_playback_stop(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
-	struct bluetooth_a2dp *a2dp_data = &data->a2dp;
-	int err;
 
 	DBG("%p", io);
 
-	/* Beware - We can be called more than once */
-	if (a2dp_data->hw_thread == 0)
-		return 0;
-
-	err = pthread_cancel(a2dp_data->hw_thread);
-	if (err > 0)
-		return -err;
-
-	err = pthread_join(a2dp_data->hw_thread, 0);
-	if (err > 0)
-		return -err;
-
-	a2dp_data->hw_thread = 0;
+	data->stopped = 1;
 
 	return 0;
 }
@@ -235,8 +229,16 @@ static void bluetooth_exit(struct bluetooth_data *data)
 	if (data->stream_fd >= 0)
 		close(data->stream_fd);
 
-	if (data->cfg.codec == CFG_CODEC_SBC)
-		sbc_finish(&data->a2dp.sbc);
+	if (data->cfg.codec == CFG_CODEC_SBC) {
+		struct bluetooth_a2dp *a2dp = &data->a2dp;
+
+		if (a2dp->hw_thread) {
+			pthread_cancel(a2dp->hw_thread);
+			pthread_join(a2dp->hw_thread, 0);
+		}
+
+		sbc_finish(&a2dp->sbc);
+	}
 
 	if (data->a2dp.pipefd[0] > 0)
 		close(data->a2dp.pipefd[0]);
