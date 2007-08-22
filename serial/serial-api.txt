@@ -10,9 +10,15 @@ Manager hierarchy
 Interface	org.bluez.serial.Manager
 Object path	/org/bluez/serial
 
-Methods		string CreateProxy(string uuid, string tty)
+Methods		string CreateProxy(string uuid, string address)
 
 			Creates a serial port proxy object.
+
+			Service identifier must be provided in the uuid 128
+			format. Addresses can be TTY char devices or unix
+			socket address. Abstract namespace can be informed
+			replacing the null byte by 'x00'.  eg: "/dev/ttyS0",
+			"/tmp/gps-data", "x00/org/bluez/echo".
 
 			Possible errors:org.bluez.serial.Error.InvalidArguments
 					org.bluez.serial.NotAvailable

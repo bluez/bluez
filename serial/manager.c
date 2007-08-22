@@ -39,6 +39,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/un.h>
 
 #include <glib.h>
 
@@ -103,18 +104,25 @@ static struct {
 	{ NULL }
 };
 
+typedef enum {
+	TTY_PROXY,
+	UNIX_SOCKET_PROXY,
+	UNKNOWN_PROXY_TYPE = 0xFF
+} proxy_type_t;
+
 struct proxy {
 	bdaddr_t	src;
 	bdaddr_t	dst;
 	char		*uuid128;	/* UUID 128 */
-	char		*tty;		/* TTY name */
+	char		*address;	/* TTY or Unix socket name */
+	proxy_type_t	type;		/* TTY or Unix socket */
 	struct termios  sys_ti;		/* Default TTY setting */
 	struct termios  proxy_ti;	/* Proxy TTY settings */
 	uint8_t		channel;	/* RFCOMM channel */
 	uint32_t	record_id;	/* Service record id */
 	guint		listen_watch;	/* Server listen watch */
-	guint		rfcomm_watch;	/* RFCOMM connection watch */
-	guint		tty_watch;	/* Openned TTY watch */
+	guint		rfcomm_watch;	/* RFCOMM watch: Remote */
+	guint		local_watch;	/* Local watch: TTY or Unix socket */
 };
 
 static DBusConnection *connection = NULL;
@@ -122,13 +130,12 @@ static GSList *pending_connects = NULL;
 static GSList *ports_paths = NULL;
 static GSList *proxies_paths = NULL;
 static int rfcomm_ctl = -1;
+static int sk_counter = 0;
 
 static void proxy_free(struct proxy *prx)
 {
-	if (prx->tty)
-		g_free(prx->tty);
-	if (prx->uuid128)
-		g_free(prx->uuid128);
+	g_free(prx->address);
+	g_free(prx->uuid128);
 	g_free(prx);
 }
 
@@ -1190,14 +1197,76 @@ static int remove_proxy_record(DBusConnection *conn, uint32_t rec_id)
 	return 0;
 }
 
+static inline int unix_socket_connect(const char *address)
+{
+	struct sockaddr_un addr;
+	int err, sk;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = PF_UNIX;
+
+	if (strncmp("x00", address, 3) == 0) {
+		/*
+		 * Abstract namespace: first byte NULL, x00
+		 * must be removed from the original address.
+		 */
+		strcpy(addr.sun_path + 1, address + 3);
+	} else {
+		/* Filesystem address */
+		strcpy(addr.sun_path, address);
+	}
+
+	/* Unix socket */
+	sk = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sk < 0) {
+		err = errno;
+		error("Can't create socket %s: %s(%d)",
+				address, strerror(err), err);
+		return -err;
+	}
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = errno;
+		error("Unable to connect %s(%d)", strerror(err), err);
+		close(sk);
+		errno = err;
+		return -err;
+	}
+
+	return sk;
+}
+
+static inline int tty_open(const char *tty, struct termios *ti)
+{
+	int err, sk;
+
+	sk = open(tty, O_RDWR | O_NOCTTY);
+	if (sk < 0) {
+		err = errno;
+		error("Can't open TTY %s: %s(%d)", tty, strerror(err), err);
+		return -err;
+	}
+
+	if (ti && tcsetattr(sk, TCSANOW, ti) < 0) {
+		err = errno;
+		error("Can't change serial settings: %s(%d)",
+				strerror(err), err);
+		close(sk);
+		errno = err;
+		return -err;
+	}
+
+	return sk;
+}
+
 static gboolean connect_event(GIOChannel *chan,
 			GIOCondition cond, gpointer data)
 {
 	struct proxy *prx = data;
 	struct sockaddr_rc raddr;
-	GIOChannel *node_io, *tty_io;
+	GIOChannel *rio, *lio;
 	socklen_t alen;
-	int sk, nsk, tty_sk;
+	int sk, rsk, lsk;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -1211,40 +1280,37 @@ static gboolean connect_event(GIOChannel *chan,
 
 	memset(&raddr, 0, sizeof(raddr));
 	alen = sizeof(raddr);
-	nsk = accept(sk, (struct sockaddr *) &raddr, &alen);
-	if (nsk < 0)
+	rsk = accept(sk, (struct sockaddr *) &raddr, &alen);
+	if (rsk < 0)
 		return TRUE;
 
 	bacpy(&prx->dst, &raddr.rc_bdaddr);
 
-	/* TTY open */
-	tty_sk = open(prx->tty, O_RDWR | O_NOCTTY);
-	if (tty_sk < 0) {
-		error("Unable to open %s: %s(%d)",
-				prx->tty, strerror(errno), errno);
-		close(nsk);
+	if (prx->type == UNIX_SOCKET_PROXY)
+		lsk = unix_socket_connect(prx->address);
+	else
+		lsk = tty_open(prx->address, &prx->proxy_ti);
+
+	if (lsk < 0) {
+		close(rsk);
 		return TRUE;
 	}
 
-	if (tcsetattr(tty_sk, TCSANOW, &prx->proxy_ti) < 0)
-		error("Can't change serial settings: %s(%d)",
-				strerror(errno), errno);
+	rio = g_io_channel_unix_new(rsk);
+	g_io_channel_set_close_on_unref(rio, TRUE);
+	lio = g_io_channel_unix_new(lsk);
+	g_io_channel_set_close_on_unref(lio, TRUE);
 
-	node_io = g_io_channel_unix_new(nsk);
-	g_io_channel_set_close_on_unref(node_io, TRUE);
-	tty_io = g_io_channel_unix_new(tty_sk);
-	g_io_channel_set_close_on_unref(tty_io, TRUE);
-
-	prx->rfcomm_watch = g_io_add_watch(node_io,
+	prx->rfcomm_watch = g_io_add_watch(rio,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				forward_data, tty_io);
+				forward_data, lio);
 
-	prx->tty_watch = g_io_add_watch(tty_io,
+	prx->local_watch = g_io_add_watch(lio,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				forward_data, node_io);
+				forward_data, rio);
 
-	g_io_channel_unref(node_io);
-	g_io_channel_unref(tty_io);
+	g_io_channel_unref(rio);
+	g_io_channel_unref(lio);
 
 	return TRUE;
 }
@@ -1260,9 +1326,9 @@ static void listen_watch_notify(gpointer data)
 		prx->rfcomm_watch = 0;
 	}
 
-	if (prx->tty_watch) {
-		g_source_remove(prx->tty_watch);
-		prx->tty_watch = 0;
+	if (prx->local_watch) {
+		g_source_remove(prx->local_watch);
+		prx->local_watch = 0;
 	}
 
 	remove_proxy_record(connection, prx->record_id);
@@ -1348,8 +1414,8 @@ static DBusHandlerResult proxy_get_info(DBusConnection *conn,
 	dbus_message_iter_append_dict_entry(&dict, "uuid",
 			DBUS_TYPE_STRING, &prx->uuid128);
 
-	dbus_message_iter_append_dict_entry(&dict, "tty",
-			DBUS_TYPE_STRING, &prx->tty);
+	dbus_message_iter_append_dict_entry(&dict, "address",
+			DBUS_TYPE_STRING, &prx->address);
 
 	if (prx->channel)
 		dbus_message_iter_append_dict_entry(&dict, "channel",
@@ -1483,7 +1549,7 @@ static DBusHandlerResult proxy_set_serial_params(DBusConnection *conn,
 	speed_t speed = B0;	/* In/Out speed */
 
 	/* Don't allow change TTY settings if it is open */
-	if (prx->tty_watch)
+	if (prx->local_watch)
 		return err_failed(conn, msg, "Not allowed");
 
 	dbus_error_init(&derr);
@@ -1533,45 +1599,75 @@ static void proxy_handler_unregister(DBusConnection *conn, void *data)
 	struct proxy *prx = data;
 	int sk;
 
-	info("Unregistered proxy: %s", prx->tty);
+	info("Unregistered proxy: %s", prx->address);
+
+	if (prx->type != TTY_PROXY)
+		goto done;
 
 	/* Restore the initial TTY configuration */
-	sk =  open(prx->tty, O_RDWR | O_NOCTTY);
+	sk =  open(prx->address, O_RDWR | O_NOCTTY);
 	if (sk) {
 		tcsetattr(sk, TCSAFLUSH, &prx->sys_ti);
 		close(sk);
 	}
 
+done:
 	if (prx->listen_watch)
 		g_source_remove(prx->listen_watch);
 
 	proxy_free(prx);
 }
 
-static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
-			const char *uuid128, const char *tty, struct termios *ti)
+static int register_proxy_object(struct proxy *prx, char *outpath, size_t size)
+{
+	char path[MAX_PATH_LENGTH + 1];
+	const char *ppath = path;
+
+	snprintf(path, MAX_PATH_LENGTH, "/org/bluez/serial/proxy%d",
+			sk_counter++);
+
+	if (!dbus_connection_create_object_path(connection, path, prx,
+				proxy_handler_unregister)) {
+		error("D-Bus failed to register %s path", path);
+		return -1;
+	}
+
+	dbus_connection_register_interface(connection, path,
+			SERIAL_PROXY_INTERFACE, proxy_methods, NULL, NULL);
+
+	dbus_connection_emit_signal(connection, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
+			DBUS_TYPE_STRING, &ppath,
+			DBUS_TYPE_INVALID);
+
+	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
+
+	if (outpath)
+		strncpy(outpath, path, size);
+
+	info("Registered proxy:%s", path);
+
+	return 0;
+}
+
+static int proxy_tty_register(bdaddr_t *src, const char *uuid128,
+		const char *address, struct termios *ti, char *outpath, size_t size)
 {
 	struct termios sys_ti;
 	struct proxy *prx;
-	int sk;
+	int sk, ret;
 
-	sk = open(tty, O_RDWR | O_NOCTTY);
+	sk = open(address, O_RDONLY | O_NOCTTY);
 	if (sk < 0) {
 		error("Cant open TTY: %s(%d)", strerror(errno), errno);
 		return -EINVAL;
 	}
 
 	prx = g_new0(struct proxy, 1);
-	prx->tty = g_strdup(tty);
+	prx->address = g_strdup(address);
 	prx->uuid128 = g_strdup(uuid128);
+	prx->type = TTY_PROXY;
 	bacpy(&prx->src, src);
-
-	if (!dbus_connection_create_object_path(conn, path, prx,
-				proxy_handler_unregister)) {
-		proxy_free(prx);
-		close(sk);
-		return -1;
-	}
 
 	/* Current TTY settings */
 	memset(&sys_ti, 0, sizeof(sys_ti));
@@ -1579,48 +1675,93 @@ static int proxy_register(DBusConnection *conn, bdaddr_t *src, const char *path,
 	memcpy(&prx->sys_ti, &sys_ti, sizeof(sys_ti));
 	close(sk);
 
-	if (!ti)
+	if (!ti) {
 		/* Use current settings */
 		memcpy(&prx->proxy_ti, &sys_ti, sizeof(sys_ti));
-	else
+	} else {
 		/* New TTY settings: user provided */
 		memcpy(&prx->proxy_ti, ti, sizeof(*ti));
-
-	if (!dbus_connection_register_interface(conn, path,
-				SERIAL_PROXY_INTERFACE,
-				proxy_methods,
-				NULL, NULL)) {
-		dbus_connection_destroy_object_path(conn, path);
-		return -1;
 	}
 
-	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
+	ret = register_proxy_object(prx, outpath, size);
+	if (ret < 0)
+		proxy_free(prx);
 
-	info("Registered proxy:%s path:%s", tty, path);
+	return ret;
+}
 
-	return 0;
+static int proxy_socket_register(bdaddr_t *src, const char *uuid128,
+		const char *address, char *outpath, size_t size)
+{
+	struct proxy *prx;
+	int ret;
+
+	prx = g_new0(struct proxy, 1);
+	prx->address = g_strdup(address);
+	prx->uuid128 = g_strdup(uuid128);
+	prx->type = UNIX_SOCKET_PROXY;
+	bacpy(&prx->src, src);
+
+	ret = register_proxy_object(prx, outpath, size);
+	if (ret < 0)
+		proxy_free(prx);
+
+	return ret;
+}
+
+static proxy_type_t addr2type(const char *address)
+{
+	struct stat st;
+
+	if (stat(address, &st) < 0) {
+		/*
+		 * Unix socket: if the sun_path starts with null byte
+		 * it refers to abstract namespace. 'x00' will be used
+		 * to represent the null byte.
+		 */
+		if (strncmp("x00", address, 3) != 0)
+			return UNKNOWN_PROXY_TYPE;
+		else
+			return UNIX_SOCKET_PROXY;
+	} else {
+		/* Filesystem: char device or unix socket */
+		if (S_ISCHR(st.st_mode) && strncmp("/dev/", address, 4) == 0)
+			return TTY_PROXY;
+		else if (S_ISSOCK(st.st_mode))
+			return UNIX_SOCKET_PROXY;
+		else
+			return UNKNOWN_PROXY_TYPE;
+	}
+}
+
+static int proxycmp(const char *path, const char *address)
+{
+	struct proxy *prx = NULL;
+
+	if (!dbus_connection_get_object_user_data(connection,
+				path, (void *) &prx) || !prx)
+		return -1;
+
+	return strcmp(prx->address, address);
 }
 
 static DBusHandlerResult create_proxy(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	char path[MAX_PATH_LENGTH];
-	const char *uuid128, *tty, *ppath = path;
+	char path[MAX_PATH_LENGTH + 1];
+	const char *uuid128, *address, *ppath = path;
 	DBusMessage *reply;
+	proxy_type_t type;
 	GSList *l;
 	DBusError derr;
-	struct stat st;
 	bdaddr_t src;
 	uuid_t uuid;
-	int dev_id, pos = 0;
+	int dev_id, ret;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &uuid128,
-				DBUS_TYPE_STRING, &tty,
+				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_INVALID)) {
 		err_invalid_args(conn, msg, derr.message);
 		dbus_error_free(&derr);
@@ -1630,14 +1771,12 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	if (str2uuid(&uuid, uuid128) < 0)
 		return err_invalid_args(conn, msg, "Invalid UUID");
 
-	sscanf(tty, "/dev/%n", &pos);
-	if (!pos || stat(tty, &st) < 0)
-		return err_invalid_args(conn, msg, "Invalid TTY");
+	type = addr2type(address);
+	if (type == UNKNOWN_PROXY_TYPE)
+		return err_invalid_args(conn, msg, "Invalid address");
 
-	snprintf(path, MAX_PATH_LENGTH - 1,
-			"/org/bluez/serial/proxy%s", tty + pos);
-
-	l = g_slist_find_custom(proxies_paths, path, (GCompareFunc) strcmp);
+	/* Only one proxy per address(TTY or unix socket) is allowed */
+	l = g_slist_find_custom(proxies_paths, address, (GCompareFunc) proxycmp);
 	if (l)
 		return err_already_exists(conn, msg, "Proxy already exists");
 
@@ -1651,12 +1790,17 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (proxy_register(conn, &src, path, uuid128, tty, NULL) < 0) {
+	if (type != TTY_PROXY)
+		ret = proxy_socket_register(&src, uuid128,
+				address, path, sizeof(path));
+	else
+		ret = proxy_tty_register(&src, uuid128,
+				address, NULL, path, sizeof(path));
+
+	if (ret < 0) {
 		dbus_message_unref(reply);
 		return err_failed(conn, msg, "Create object path failed");
 	}
-
-	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &ppath,
@@ -1703,7 +1847,7 @@ static DBusHandlerResult remove_proxy(DBusConnection *conn,
 	/* Remove from storage */
 	if (dbus_connection_get_object_user_data(conn,
 				path, (void *) &prx) && prx)
-		proxy_delete(&prx->src, prx->tty);
+		proxy_delete(&prx->src, prx->address);
 
 	g_free(l->data);
 	proxies_paths = g_slist_remove(proxies_paths, l->data);
@@ -1892,9 +2036,13 @@ static void proxy_path_free(gpointer data, gpointer udata)
 
 	/* Store/Update the proxy entries before exit */
 	if (dbus_connection_get_object_user_data(conn,
-				path, (void *) &prx) && prx)
-		proxy_store(&prx->src, prx->uuid128, prx->tty, NULL,
-				prx->channel, 0, &prx->proxy_ti);
+				path, (void *) &prx) && prx) {
+		struct termios *ti;
+		
+		ti = (prx->type == TTY_PROXY ? &prx->proxy_ti : NULL);
+		proxy_store(&prx->src, prx->uuid128, prx->address, NULL,
+				prx->channel, 0, ti);
+	}
 
 	g_free(data);
 }
@@ -1996,14 +2144,16 @@ static void parse_port(char *key, char *value, void *data)
 
 static void parse_proxy(char *key, char *value, void *data)
 {
-	char path[MAX_PATH_LENGTH], uuid128[MAX_LEN_UUID_STR], tmp[3];
+	char uuid128[MAX_LEN_UUID_STR], tmp[3];
 	char *pvalue, *src_addr = data;
-	struct termios ti;
-	int ch, opts, pos = 0;
+	proxy_type_t type;
+	int ch, opts, pos;
 	bdaddr_t src;
+	struct termios ti;
 	uint8_t *pti;
 
 	memset(uuid128, 0, sizeof(uuid128));
+	ch = opts = pos = 0;
 	if (sscanf(value,"%s %d 0x%04X %n", uuid128, &ch, &opts, &pos) != 3)
 		return;
 
@@ -2016,33 +2166,33 @@ static void parse_proxy(char *key, char *value, void *data)
 	/* FIXME: currently name is not used */
 	*pvalue = '\0';
 
-	/* Extracting termios */
-	pvalue++;
-	if (strlen(pvalue) != (2 * sizeof(ti)))
-		return;
-
-	memset(&ti, 0, sizeof(ti));
-	memset(tmp, 0, sizeof(tmp));
-
-	/* Converting to termios struct */
-	pti = (uint8_t *) &ti;
-	for (pos = 0; pos < sizeof(ti); pos++, pvalue += 2, pti++) {
-		memcpy(tmp, pvalue, 2);
-		*pti = (uint8_t) strtol(tmp, NULL, 16);
-	}
-
-	pos = 0;
-	sscanf(key, "/dev/%n", &pos);
-	if (!pos)
-		return;
-
-	snprintf(path, MAX_PATH_LENGTH - 1,
-			"/org/bluez/serial/proxy%s", key + pos);
-
 	str2ba(src_addr, &src);
-	proxy_register(connection, &src, path, uuid128, key, &ti);
+	type = addr2type(key);
+	switch (type) {
+	case TTY_PROXY:
+		/* Extracting termios */
+		pvalue++;
+		if (!pvalue || strlen(pvalue) != (2 * sizeof(ti)))
+			return;
 
-	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
+		memset(&ti, 0, sizeof(ti));
+		memset(tmp, 0, sizeof(tmp));
+
+		/* Converting to termios struct */
+		pti = (uint8_t *) &ti;
+		for (pos = 0; pos < sizeof(ti); pos++, pvalue += 2, pti++) {
+			memcpy(tmp, pvalue, 2);
+			*pti = (uint8_t) strtol(tmp, NULL, 16);
+		}
+
+		proxy_tty_register(&src, uuid128, key, &ti, NULL, 0);
+		break;
+	case UNIX_SOCKET_PROXY:
+		proxy_socket_register(&src, uuid128, key, NULL, 0);
+		break;
+	default:
+		return;
+	}
 }
 
 static void register_stored(void)

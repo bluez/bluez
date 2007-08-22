@@ -121,9 +121,13 @@ int proxy_store(bdaddr_t *src, const char *uuid, const char *tty,
 	/* tty uuid 00 0x0000 name:termios */
 	pos = snprintf(value, size, "%s %d 0x%04X %s:", uuid, ch, opts, name);
 
+	if (!ti)
+		goto done;
+
 	for (i = 0, pti = (uint8_t *) ti; i < sizeof(struct termios); i++, pti++)
 		sprintf(value + pos + (i * 2), "%2.2X", *pti);
 
+done:
 	err = textfile_put(filename, key, value);
 	g_free(value);
 
