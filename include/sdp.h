@@ -457,11 +457,12 @@ typedef struct {
 typedef struct {
 	uint32_t handle;
 
-	/*
-	 * Search pattern: a sequence of all UUIDs seen in this record
-	 */
+	/* Search pattern: a sequence of all UUIDs seen in this record */
 	sdp_list_t *pattern;
 	sdp_list_t *attrlist;
+
+	/* Main service class for Extended Inquiry Response */
+	uuid_t svclass;
 } sdp_record_t;
 
 typedef struct sdp_data_struct sdp_data_t;

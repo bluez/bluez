@@ -574,22 +574,48 @@ sdp_data_t *sdp_seq_alloc(void **dtds, void **values, int len)
 	return sdp_data_alloc(SDP_SEQ8, seq);
 }
 
+static void extract_svclass_uuid(sdp_data_t *data, uuid_t *uuid)
+{
+	sdp_data_t *d;
+
+	if (!data || data->dtd < SDP_SEQ8 || data->dtd > SDP_SEQ32)
+		return;
+
+	d = data->val.dataseq;
+	if (!d)
+		return;
+
+	if (d->dtd < SDP_UUID16 || d->dtd > SDP_UUID128)
+		return;
+
+	*uuid = d->val.uuid;
+}
+
 int sdp_attr_add(sdp_record_t *rec, uint16_t attr, sdp_data_t *d)
 {
 	sdp_data_t *p = sdp_data_get(rec, attr);
 
 	if (p)
 		return -1;
+
 	d->attrId = attr;
 	rec->attrlist = sdp_list_insert_sorted(rec->attrlist, d, sdp_attrid_comp_func);
+
+	if (attr == SDP_ATTR_SVCLASS_ID_LIST)
+		extract_svclass_uuid(d, &rec->svclass);
+
 	return 0;
 }
 
 void sdp_attr_remove(sdp_record_t *rec, uint16_t attr)
 {
 	sdp_data_t *d = sdp_data_get(rec, attr);
+
 	if (d)
 		rec->attrlist = sdp_list_remove(rec->attrlist, d);
+
+	if (attr == SDP_ATTR_SVCLASS_ID_LIST)
+		memset(&rec->svclass, 0, sizeof(rec->svclass));
 }
 
 void sdp_set_seq_len(uint8_t *ptr, uint32_t length)
@@ -820,8 +846,12 @@ void sdp_attr_replace(sdp_record_t *rec, uint16_t attr, sdp_data_t *d)
 		rec->attrlist = sdp_list_remove(rec->attrlist, p);
 		sdp_data_free(p);
 	}
+
 	d->attrId = attr;
-	rec->attrlist = sdp_list_insert_sorted(rec->attrlist, (void *)d, sdp_attrid_comp_func);
+	rec->attrlist = sdp_list_insert_sorted(rec->attrlist, d, sdp_attrid_comp_func);
+
+	if (attr == SDP_ATTR_SVCLASS_ID_LIST)
+		extract_svclass_uuid(d, &rec->svclass);
 }
 
 int sdp_attrid_comp_func(const void *key1, const void *key2)
@@ -1114,8 +1144,13 @@ sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int *scanned)
 			SDPDBG("Terminating extraction of attributes");
 			break;
 		}
+
 		if (attr == SDP_ATTR_RECORD_HANDLE)
 			rec->handle = data->val.uint32;
+
+		if (attr == SDP_ATTR_SVCLASS_ID_LIST)
+			extract_svclass_uuid(data, &rec->svclass);
+
 		extracted += n;
 		p += n;
 		sdp_attr_replace(rec, attr, data);
@@ -1215,7 +1250,7 @@ sdp_data_t *sdp_data_get(const sdp_record_t *rec, uint16_t attrId)
 		if (p)
 			return (sdp_data_t *)p->data;
 	}
-	return 0;
+	return NULL;
 }
 
 /*
