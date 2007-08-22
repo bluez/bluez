@@ -69,6 +69,56 @@ static void update_db_timestamp(void)
 	sdp_attr_replace(server, SDP_ATTR_SVCDB_STATE, d);
 }
 
+static void update_svclass_list(void)
+{
+	sdp_list_t *list = sdp_get_record_list();
+	uint8_t val = 0;
+
+	for (; list; list = list->next) {
+		sdp_record_t *rec = (sdp_record_t *) list->data;
+
+		if (rec->svclass.type != SDP_UUID16)
+			continue;
+
+		switch (rec->svclass.value.uuid16) {
+		case DIALUP_NET_SVCLASS_ID:
+			val |= 0x42;	/* Telephony & Networking */
+			break;
+		case IRMC_SYNC_SVCLASS_ID:
+		case OBEX_OBJPUSH_SVCLASS_ID:
+		case OBEX_FILETRANS_SVCLASS_ID:
+		case IRMC_SYNC_CMD_SVCLASS_ID:
+			val |= 0x10;	/* Object Transfer */
+			break;
+		case HEADSET_SVCLASS_ID:
+		case HANDSFREE_SVCLASS_ID:
+			val |= 0x20;	/* Audio */
+			break;
+		case CORDLESS_TELEPHONY_SVCLASS_ID:
+		case INTERCOM_SVCLASS_ID:
+		case FAX_SVCLASS_ID:
+		case SAP_SVCLASS_ID:
+			val |= 0x40;	/* Telephony */
+			break;
+		case AUDIO_SOURCE_SVCLASS_ID:
+		case VIDEO_SOURCE_SVCLASS_ID:
+			val |= 0x08;	/* Capturing */
+			break;
+		case AUDIO_SINK_SVCLASS_ID:
+		case VIDEO_SINK_SVCLASS_ID:
+			val |= 0x04;	/* Rendering */
+			break;
+		case PANU_SVCLASS_ID:
+		case NAP_SVCLASS_ID:
+		case GN_SVCLASS_ID:
+			val |= 0x02;	/* Networking */
+			break;
+		}
+	}
+
+	debug("Service classes 0x%02x", val);
+}
+
 void register_public_browse_group(void)
 {
 	sdp_list_t *browselist;
@@ -146,6 +196,7 @@ void register_server_service(void)
 	sdp_attr_add(server, SDP_ATTR_VERSION_NUM_LIST, pData);
 
 	update_db_timestamp();
+	update_svclass_list();
 }
 
 void register_device_id(const uint16_t vendor, const uint16_t product,
@@ -203,6 +254,7 @@ void register_device_id(const uint16_t vendor, const uint16_t product,
 	sdp_attr_add(record, 0x0205, source_data);
 
 	update_db_timestamp();
+	update_svclass_list();
 }
 
 int add_record_to_server(sdp_record_t *rec)
@@ -232,6 +284,7 @@ int add_record_to_server(sdp_record_t *rec)
 	}
 
 	update_db_timestamp();
+	update_svclass_list();
 
 	return 0;
 }
@@ -246,8 +299,10 @@ int remove_record_from_server(uint32_t handle)
 	if (!rec)
 		return -ENOENT;
 
-	if (sdp_record_remove(handle) == 0)
+	if (sdp_record_remove(handle) == 0) {
 		update_db_timestamp();
+		update_svclass_list();
+	}
 
 	sdp_record_free(rec);
 
@@ -386,6 +441,7 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 	}
 
 	update_db_timestamp();
+	update_svclass_list();
 
 	/* Build a rsp buffer */
 	bt_put_unaligned(htonl(rec->handle), (uint32_t *) rsp->data);
@@ -420,9 +476,10 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 
 	if (orec) {
 		sdp_record_t *nrec = extract_pdu_server(BDADDR_ANY, p, handle, &scanned);
-		if (nrec && handle == nrec->handle)
+		if (nrec && handle == nrec->handle) {
 			update_db_timestamp();
-		else {
+			update_svclass_list();
+		} else {
 			debug("SvcRecHandle : 0x%x", handle);
 			debug("SvcRecHandleNew : 0x%x", nrec->handle);
 			debug("SvcRecNew : %p", nrec);
@@ -460,8 +517,10 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 		sdp_svcdb_collect(rec);
 		status = sdp_record_remove(handle);
 		sdp_record_free(rec);
-		if (status == 0)
+		if (status == 0) {
 			update_db_timestamp();
+			update_svclass_list();
+		}
 	} else {
 		status = SDP_INVALID_RECORD_HANDLE;
 		debug("Could not find record : 0x%x", handle);
