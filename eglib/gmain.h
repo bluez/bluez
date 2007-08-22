@@ -214,6 +214,10 @@ gpointer g_realloc(gpointer mem, gulong n_bytes);
 void g_free(gpointer mem);
 
 gchar *g_strdup(const gchar *str);
+gchar* g_strdup_printf(const gchar *format, ...);
+gchar* g_strdelimit(gchar *string, const gchar *delimiters,
+                                                gchar new_delimiter);
+
 
 #define g_new(struct_type, n_structs) \
 	((struct_type *) g_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))

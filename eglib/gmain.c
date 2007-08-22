@@ -1289,6 +1289,19 @@ gchar *g_strdup(const gchar *str)
 	return s;
 }
 
+gchar* g_strdup_printf(const gchar *format, ...)
+{
+	/* FIXME: Implement this */
+	return g_strdup(format);
+}
+
+gchar* g_strdelimit(gchar *string, const gchar *delimiters,
+						gchar new_delimiter)
+{
+	/* FIXME: Implement this */
+	return string;
+}
+
 /* GKeyFile */
 
 struct _GKeyFile {
