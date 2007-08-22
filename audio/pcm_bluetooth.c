@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdint.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/time.h>
@@ -42,6 +43,10 @@
 #include "sbc.h"
 
 //#define ENABLE_DEBUG
+
+#define UINT_SECS_MAX (UINT_MAX / 1000000 - 1)
+
+#define MIN_PERIOD_TIME 1000
 
 #define BUFFER_SIZE 2048
 
@@ -136,8 +141,7 @@ static void *a2dp_playback_hw_thread(void *param)
 	gettimeofday(&start, 0);
 
 	while (1) {
-		unsigned long long dtime;
-		unsigned int periods;
+		unsigned int dtime, periods;
 		struct timeval cur, delta;
 
 		gettimeofday(&cur, 0);
@@ -160,10 +164,16 @@ static void *a2dp_playback_hw_thread(void *param)
 			if (write(data->a2dp.pipefd[1], &c, 1) < 0)
 				pthread_testcancel();
 
-			prev_periods = periods;
+			/* Reset point of reference to avoid too big values
+			 * that wont fit an unsigned int */
+			if (delta.tv_sec > UINT_SECS_MAX) {
+				prev_periods = 0;
+				gettimeofday(&start, 0);
+			} else
+				prev_periods = periods;
 		}
 
-		usleep(period_time);
+		usleep(MIN_PERIOD_TIME);
 
 		/* Offer opportunity to be canceled by main thread */
 		pthread_testcancel();
