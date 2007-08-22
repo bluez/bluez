@@ -155,9 +155,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	expat_enable=${expat_found}
 	hal_enable=${hal_found}
 	usb_enable=${usb_found}
-	glib_enable=no
-	obex_enable=${openobex_found}
 	alsa_enable=${alsa_found}
+	obex_enable=${openobex_found}
+	glib_enable=no
+	gstreamer_enable=${gstreamer_found}
 	network_enable=no
 	serial_enable=no
 	input_enable=no
@@ -227,16 +228,20 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		usb_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(glib, AC_HELP_STRING([--enable-glib], [enable GLib support]), [
-		glib_enable=${enableval}
+	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
+		alsa_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
 		obex_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
-		alsa_enable=${enableval}
+	AC_ARG_ENABLE(glib, AC_HELP_STRING([--enable-glib], [enable GLib support]), [
+		glib_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(gstreamer, AC_HELP_STRING([--enable-gstreamer], [enable GStreamer support]), [
+		gstreamer_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
@@ -357,8 +362,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
 	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes" && test "${hal_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
-	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
+	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
+	AM_CONDITIONAL(GSTREAMER, test "${gstreamer_enable}" = "yes" && test "${gstreamer_found}" = "yes")
 	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(SERIALSERVICE, test "${serial_enable}" = "yes")
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
