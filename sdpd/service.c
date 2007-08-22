@@ -91,6 +91,7 @@ static void update_svclass_list(void)
 		case OBEX_OBJPUSH_SVCLASS_ID:
 		case OBEX_FILETRANS_SVCLASS_ID:
 		case IRMC_SYNC_CMD_SVCLASS_ID:
+		case PBAP_PSE_SVCLASS_ID:
 			val |= 0x10;	/* Object Transfer */
 			break;
 		case HEADSET_SVCLASS_ID:
