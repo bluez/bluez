@@ -84,6 +84,7 @@ static void update_svclass_list(void)
 
 		switch (rec->svclass.value.uuid16) {
 		case DIALUP_NET_SVCLASS_ID:
+		case CIP_SVCLASS_ID:
 			val |= 0x42;	/* Telephony & Networking */
 			break;
 		case IRMC_SYNC_SVCLASS_ID:
