@@ -26,14 +26,28 @@ alsa_LTLIBRARIES = libasound_module_pcm_bluetooth.la libasound_module_ctl_blueto
 libasound_module_pcm_bluetooth_la_SOURCES = pcm_bluetooth.c ipc.h
 libasound_module_pcm_bluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic
 libasound_module_pcm_bluetooth_la_LIBADD = @SBC_LIBS@ @ALSA_LIBS@
+libasound_module_pcm_bluetooth_la_CFLAGS = @ALSA_CFLAGS@ @SBC_CFLAGS@
 
 libasound_module_ctl_bluetooth_la_SOURCES = ctl_bluetooth.c ipc.h
 libasound_module_ctl_bluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic
 libasound_module_ctl_bluetooth_la_LIBADD = @ALSA_LIBS@ 
-endif
+libasound_module_ctl_bluetooth_la_CFLAGS = @ALSA_CFLAGS@
 endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @ALSA_CFLAGS@ @SBC_CFLAGS@
+if GSTREAMER
+gstreamerdir = $(libdir)/gstreamer-0.10
+
+gstreamer_LTLIBRARIES = libgstbluetooth.la
+
+libgstbluetooth_la_SOURCES = gstbluetooth.c ipc.h
+libgstbluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic -no-undefined
+libgstbluetooth_la_LIBADD = @SBC_LIBS@ @GSTREAMER_LIBS@
+libgstbluetooth_la_CFLAGS = @GSTREAMER_CFLAGS@ @SBC_CFLAGS@
+endif
+
+endif
+
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
