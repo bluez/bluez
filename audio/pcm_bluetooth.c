@@ -162,19 +162,18 @@ static void *a2dp_playback_hw_thread(void *param)
 							data->io.period_size;
 			data->hw_ptr %= data->io.buffer_size;
 
-			DBG("pointer=%ld", data->hw_ptr);
-
 			/* Notify user that hardware pointer has moved */
 			if (write(data->a2dp.pipefd[1], &c, 1) < 0)
 				pthread_testcancel();
 
 			/* Reset point of reference to avoid too big values
 			 * that wont fit an unsigned int */
-			if (delta.tv_sec > UINT_SECS_MAX) {
+			if (delta.tv_sec < UINT_SECS_MAX)
+				prev_periods = periods;
+			else {
 				prev_periods = 0;
 				gettimeofday(&start, 0);
-			} else
-				prev_periods = periods;
+			}
 		}
 
 iter_sleep:
