@@ -101,6 +101,7 @@ struct bluetooth_a2dp {
 
 	pthread_t hw_thread;		/* Makes virtual hw pointer move */
 	int pipefd[2];			/* Inter thread communication */
+	int stopped;
 };
 
 struct bluetooth_data {
@@ -112,7 +113,6 @@ struct bluetooth_data {
 	uint8_t buffer[BUFFER_SIZE];	/* Encoded transfer buffer */
 	int count;			/* Transfer buffer counter */
 	struct bluetooth_a2dp a2dp;	/* A2DP data */
-	int stopped;
 };
 
 static int bluetooth_start(snd_pcm_ioplug_t *io)
@@ -132,6 +132,7 @@ static int bluetooth_stop(snd_pcm_ioplug_t *io)
 static void *a2dp_playback_hw_thread(void *param)
 {
 	struct bluetooth_data *data = param;
+	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	unsigned int prev_periods;
 	double period_time;
 	struct timeval start;
@@ -145,7 +146,7 @@ static void *a2dp_playback_hw_thread(void *param)
 		unsigned int dtime, periods;
 		struct timeval cur, delta;
 
-		if (data->stopped)
+		if (a2dp->stopped)
 			goto iter_sleep;
 
 		gettimeofday(&cur, 0);
@@ -163,7 +164,7 @@ static void *a2dp_playback_hw_thread(void *param)
 			data->hw_ptr %= data->io.buffer_size;
 
 			/* Notify user that hardware pointer has moved */
-			if (write(data->a2dp.pipefd[1], &c, 1) < 0)
+			if (write(a2dp->pipefd[1], &c, 1) < 0)
 				pthread_testcancel();
 
 			/* Reset point of reference to avoid too big values
@@ -186,17 +187,17 @@ iter_sleep:
 static int bluetooth_a2dp_playback_start(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
-	struct bluetooth_a2dp *a2dp_data = &data->a2dp;
+	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	int err;
 
 	DBG("%p", io);
 
-	data->stopped = 0;
+	a2dp->stopped = 0;
 
-	if (a2dp_data->hw_thread)
+	if (a2dp->hw_thread)
 		return 0;
 
-	err = pthread_create(&a2dp_data->hw_thread, 0,
+	err = pthread_create(&a2dp->hw_thread, 0,
 					a2dp_playback_hw_thread, data);
 
 	return -err;
@@ -205,10 +206,11 @@ static int bluetooth_a2dp_playback_start(snd_pcm_ioplug_t *io)
 static int bluetooth_a2dp_playback_stop(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
+	struct bluetooth_a2dp *a2dp = &data->a2dp;
 
 	DBG("%p", io);
 
-	data->stopped = 1;
+	a2dp->stopped = 1;
 
 	return 0;
 }
