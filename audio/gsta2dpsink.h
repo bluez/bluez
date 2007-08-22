@@ -21,28 +21,33 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include <gst/gst.h>
+#include <gst/audio/gstaudiosink.h>
 
-#include "gsta2dpsink.h"
+G_BEGIN_DECLS
 
-GST_DEBUG_CATEGORY(bluetooth_debug);
+#define GST_TYPE_A2DP_SINK \
+	(gst_a2dpsink_get_type())
+#define GST_A2DP_SINK(obj) \
+	(G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_A2DP_SINK,GstA2dpSink))
+#define GST_A2DP_SINK_CLASS(klass) \
+	(G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_A2DP_SINK,GstA2dpSinkClass))
+#define GST_IS_A2DP_SINK(obj) \
+	(G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_A2DP_SINK))
+#define GST_IS_A2DP_SINK_CLASS(obj) \
+	(G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_A2DP_SINK))
 
-static gboolean plugin_init(GstPlugin *plugin)
-{
-	GST_INFO("Bluetooth plugin %s", VERSION);
+typedef struct _GstA2dpSink GstA2dpSink;
+typedef struct _GstA2dpSinkClass GstA2dpSinkClass;
 
-	if (gst_element_register(plugin, "a2dpsink",
-			GST_RANK_PRIMARY, GST_TYPE_A2DP_SINK) == FALSE)
-		return FALSE;
+struct _GstA2dpSink {
+	GstAudioSink sink;
+};
 
-	GST_DEBUG_CATEGORY_INIT(bluetooth_debug, "bluetooth", 0,
-							"Bluetooth plugin");
+struct _GstA2dpSinkClass {
+	GstAudioSinkClass parent_class;
+};
 
-	return TRUE;
-}
+GType gst_a2dpsink_get_type(void);
 
-GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR,
-	"bluetooth", "Bluetooth plugin library",
-	plugin_init, VERSION, "LGPL", "BlueZ", "http://www.bluez.org/")
+G_END_DECLS

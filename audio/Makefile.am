@@ -39,9 +39,9 @@ gstreamerdir = $(libdir)/gstreamer-0.10
 
 gstreamer_LTLIBRARIES = libgstbluetooth.la
 
-libgstbluetooth_la_SOURCES = gstbluetooth.c ipc.h
-libgstbluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic -no-undefined
-libgstbluetooth_la_LIBADD = @SBC_LIBS@ @GSTREAMER_LIBS@
+libgstbluetooth_la_SOURCES = gstbluetooth.c gsta2dpsink.h gsta2dpsink.c ipc.h
+libgstbluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic
+libgstbluetooth_la_LIBADD = @SBC_LIBS@ @GSTREAMER_LIBS@ -lgstaudio-0.10
 libgstbluetooth_la_CFLAGS = @GSTREAMER_CFLAGS@ @SBC_CFLAGS@
 endif
 endif

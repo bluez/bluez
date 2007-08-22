@@ -21,6 +21,8 @@
  *
  */
 
+#include <stdint.h>
+
 #define IPC_TYPE_CONNECT  0x0001
 
 #define IPC_MTU 32
