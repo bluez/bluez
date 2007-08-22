@@ -245,6 +245,14 @@ Signals		void Connected()
 
 			Sent when the device has been disconnected from.
 
+		void Playing()
+
+			Sent when a stream with remote device is started.
+
+		void Stopped()
+
+			Sent when a stream with remote device is suspended.
+
 
 org.bluez.audio.Source interface
 ================================

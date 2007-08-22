@@ -113,9 +113,19 @@ static void stream_state_changed(struct avdtp_stream *stream,
 							AUDIO_SINK_INTERFACE,
 							"Connected",
 							DBUS_TYPE_INVALID);
+		else if (old_state == AVDTP_STATE_STREAMING)
+			dbus_connection_emit_signal(dev->conn, dev->path,
+							AUDIO_SINK_INTERFACE,
+							"Stopped",
+							DBUS_TYPE_INVALID);
+		break;
+	case AVDTP_STATE_STREAMING:
+		dbus_connection_emit_signal(dev->conn, dev->path,
+						AUDIO_SINK_INTERFACE,
+						"Playing",
+						DBUS_TYPE_INVALID);
 		break;
 	case AVDTP_STATE_CONFIGURED:
-	case AVDTP_STATE_STREAMING:
 	case AVDTP_STATE_CLOSING:
 	case AVDTP_STATE_ABORTING:
 	default:
@@ -259,6 +269,8 @@ static DBusMethodVTable sink_methods[] = {
 static DBusSignalVTable sink_signals[] = {
 	{ "Connected",			""	},
 	{ "Disconnected",		""	},
+	{ "Playing",			""	},
+	{ "Stopped",			""	},
 	{ NULL, NULL }
 };
 
