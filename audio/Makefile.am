@@ -44,7 +44,6 @@ libgstbluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic -no-undefine
 libgstbluetooth_la_LIBADD = @SBC_LIBS@ @GSTREAMER_LIBS@
 libgstbluetooth_la_CFLAGS = @GSTREAMER_CFLAGS@ @SBC_CFLAGS@
 endif
-
 endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
