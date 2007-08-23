@@ -83,12 +83,12 @@ typedef enum {
 
 typedef void (*GDestroyNotify) (gpointer data);
 typedef gboolean (*GIOFunc) (GIOChannel *source, GIOCondition condition,
-				gpointer data);
+								gpointer data);
 
 GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count,
-				gsize *bytes_read);
+							gsize *bytes_read);
 GIOError g_io_channel_write(GIOChannel *channel, const gchar *buf, gsize count,
-				gsize *bytes_written);
+							gsize *bytes_written);
 
 void g_io_channel_close(GIOChannel *channel);
 
@@ -163,7 +163,7 @@ gboolean g_utf8_validate(const gchar *str, gssize max_len, const gchar **end);
 #define g_main_quit(loop)	g_main_loop_quit(loop)
 #define g_main_unref(loop)	g_main_loop_unref(loop)
 
-/* Begin GSList declarations */
+/* GSList declarations */
 
 typedef struct _GSList {
 	void *data;
@@ -201,8 +201,6 @@ GSList* g_slist_last(GSList *list);
 
 #define g_slist_next(l) ((l)->next)
 
-/* End GSList declarations */
-
 /* Memory allocation related */
 
 gpointer g_malloc(gulong n_bytes);
@@ -215,17 +213,15 @@ void g_free(gpointer mem);
 
 gchar *g_strdup(const gchar *str);
 gchar* g_strdup_printf(const gchar *format, ...);
-gchar* g_strdelimit(gchar *string, const gchar *delimiters,
-                                                gchar new_delimiter);
-
+gchar* g_strdelimit(gchar *string, const gchar *delimiters, gchar new_delim);
 
 #define g_new(struct_type, n_structs) \
 	((struct_type *) g_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
 #define g_new0(struct_type, n_structs) \
 	((struct_type *) g_malloc0 (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
-#define g_try_new(struct_type, n_structs)               \
+#define g_try_new(struct_type, n_structs) \
 	((struct_type *) g_try_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
-#define g_try_new0(struct_type, n_structs)              \
+#define g_try_new0(struct_type, n_structs) \
 	((struct_type *) g_try_malloc0 (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
 
 /* GKeyFile */
@@ -257,12 +253,11 @@ gboolean g_key_file_get_boolean(GKeyFile *key_file,
 				const gchar *key,
 				GError **error);
 
-
 /* GString */
 
 typedef struct {
 	gchar *str;
-	gsize len;    
+	gsize len;
 	gsize allocated_len;
 } GString;
 

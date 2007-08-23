@@ -1289,16 +1289,30 @@ gchar *g_strdup(const gchar *str)
 	return s;
 }
 
-gchar* g_strdup_printf(const gchar *format, ...)
+gchar *g_strdup_printf(const gchar *format, ...)
 {
-	/* FIXME: Implement this */
-	return g_strdup(format);
+	va_list args;
+	gchar buffer[1024];
+	gint length;
+
+	va_start(args, format);
+	length = vsnprintf(buffer, sizeof(buffer) - 1, format, args);
+	va_end(args);
+
+	return strdup(buffer);
 }
 
-gchar* g_strdelimit(gchar *string, const gchar *delimiters,
-						gchar new_delimiter)
+gchar *g_strdelimit(gchar *string, const gchar *delimiters, gchar new_delim)
 {
-	/* FIXME: Implement this */
+	register gchar *c;
+
+	if (!string)
+		return NULL;
+
+	for (c = string; *c; c++)
+		if (strchr(delimiters, *c))
+			*c = new_delim;
+
 	return string;
 }
 
