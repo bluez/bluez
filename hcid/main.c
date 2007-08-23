@@ -467,12 +467,12 @@ static void configure_device(int dev_id)
 
 		if (read_local_class(&di.bdaddr, cls) < 0) {
 			class = htobl(device_opts->class);
-			cls[2] = get_service_classes();
+			cls[2] = get_service_classes(&di.bdaddr);
 			memcpy(cp.dev_class, &class, 3);
 		} else {
 			if (!(device_opts->scan & SCAN_INQUIRY))
 				cls[1] &= 0xdf; /* Clear discoverable bit */
-			cls[2] = get_service_classes();
+			cls[2] = get_service_classes(&di.bdaddr);
 			memcpy(cp.dev_class, cls, 3);
 		}
 

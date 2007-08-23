@@ -332,25 +332,53 @@ void set_default_adapter(int new_default)
 
 void update_class_of_device(void)
 {
-	uint8_t value = get_service_classes();
-	uint8_t cls[3];
-	int dd, dev_id = default_adapter_id;
+	struct hci_dev_list_req *dl;
+	struct hci_dev_req *dr;
+	int i, sk;
 
-	if (dev_id < 0)
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0)
 		return;
 
-	dd = hci_open_dev(dev_id);
-	if (dd < 0)
-		return;
+	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 
-	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
-		error("Can't read class of device on hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
+	dl->dev_num = HCI_MAX_DEV;
+	dr = dl->dev_req;
+
+	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
+		close(sk);
+		g_free(dl);
 		return;
 	}
 
-	set_service_classes(dd, cls, value);
+	dr = dl->dev_req;
 
-	hci_close_dev(dd);
+	for (i = 0; i < dl->dev_num; i++, dr++) {
+		struct hci_dev_info di;
+		uint8_t value, cls[3];
+		int dd;
+
+		if (hci_devinfo(dr->dev_id, &di) < 0)
+			continue;
+
+		if (hci_test_bit(HCI_RAW, &di.flags))
+			continue;
+
+		if (get_device_class(di.dev_id, cls) < 0)
+			continue;
+
+		dd = hci_open_dev(di.dev_id);
+		if (dd < 0)
+			continue;
+
+		value = get_service_classes(&di.bdaddr);
+
+		set_service_classes(dd, cls, value);
+
+		hci_close_dev(dd);
+	}
+
+	g_free(dl);
+
+	close(sk);
 }

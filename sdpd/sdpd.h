@@ -87,4 +87,4 @@ void stop_sdp_server(void);
 int add_record_to_server(sdp_record_t *rec);
 int remove_record_from_server(uint32_t handle);
 
-uint8_t get_service_classes(void);
+uint8_t get_service_classes(const bdaddr_t *bdaddr);

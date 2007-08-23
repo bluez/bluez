@@ -401,6 +401,17 @@ int get_device_class(uint16_t dev_id, uint8_t *cls)
 	return 0;
 }
 
+int set_device_class(uint16_t dev_id, uint8_t *cls)
+{
+	struct hci_dev *dev;
+
+	ASSERT_DEV_ID;
+	dev = &devices[dev_id];
+	memcpy(dev->class, cls, 3);
+
+	return 0;
+}
+
 int get_device_version(uint16_t dev_id, char *version, size_t size)
 {
 	struct hci_dev *dev;

@@ -1893,6 +1893,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 	}
 
 	write_local_class(local, cls);
+	set_device_class(adapter->dev_id, cls);
 	memcpy(adapter->class, cls, 3);
 
 	hci_close_dev(dd);

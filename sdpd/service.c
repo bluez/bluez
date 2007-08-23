@@ -125,7 +125,7 @@ static void update_svclass_list(void)
 	service_classes = val;
 }
 
-uint8_t get_service_classes(void)
+uint8_t get_service_classes(const bdaddr_t *bdaddr)
 {
 	return service_classes;
 }
