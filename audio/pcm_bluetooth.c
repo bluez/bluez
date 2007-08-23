@@ -919,29 +919,32 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
 		if (snd_config_get_id(n, &id) < 0)
 			continue;
 
-		printf("id = %s\n", id);
 		if (strcmp(id, "comment") == 0 || strcmp(id, "type") == 0)
 			continue;
 
-		if (strcmp(id, "device") == 0) {
+		if (strcmp(id, "device") == 0 || strcmp(id, "bdaddr") == 0) {
 			if (snd_config_get_string(n, &addr) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
+
 			str2ba(addr, &pkt->bdaddr);
 			continue;
 		}
 
-		if (strcmp(id, "preference") == 0) {
+		if (strcmp(id, "profile") == 0) {
 			if (snd_config_get_string(n, &pref) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
-			else if (!strcmp(pref, "voice") ||
-						!strcmp(pref, "sco"))
+
+			if (strcmp(pref, "auto") == 0)
+				pkt->role = PKT_ROLE_AUTO;
+			else if (strcmp(pref, "voice") == 0 ||
+						strcmp(pref, "hfp") == 0)
 				pkt->role = PKT_ROLE_VOICE;
-			else if (!strcmp(pref, "hifi") ||
-						!strcmp(pref, "a2dp"))
+			else if (strcmp(pref, "hifi") == 0 ||
+						strcmp(pref, "a2dp") == 0)
 				pkt->role = PKT_ROLE_HIFI;
 			continue;
 		}
