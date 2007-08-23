@@ -612,7 +612,7 @@ static int get_record(struct pending_connect *pc, uint32_t handle,
 			DBUS_TYPE_UINT32, &handle,
 			DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(pc->conn, msg, &pc->pcall, -1) == FALSE) {
+	if (!dbus_connection_send_with_reply(pc->conn, msg, &pc->pcall, -1)) {
 		error("Can't send D-Bus message.");
 		return -1;
 	}
@@ -693,6 +693,7 @@ static int get_handles(struct pending_connect *pc, const char *uuid,
 
 	if (dbus_connection_send_with_reply(pc->conn, msg, &pc->pcall, -1) == FALSE) {
 		error("Can't send D-Bus message.");
+		dbus_message_unref(msg);
 		return -1;
 	}
 
