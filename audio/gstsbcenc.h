@@ -21,33 +21,35 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include <gst/gst.h>
 
-#include "gstsbcenc.h"
-#include "gstsbcdec.h"
-#include "gsta2dpsink.h"
+G_BEGIN_DECLS
 
-static gboolean plugin_init(GstPlugin *plugin)
-{
-	GST_INFO("Bluetooth plugin %s", VERSION);
+#define GST_TYPE_SBC_ENC \
+	(gst_sbc_enc_get_type())
+#define GST_SBC_ENC(obj) \
+	(G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_SBC_ENC,GstSbcEnc))
+#define GST_SBC_ENC_CLASS(klass) \
+	(G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_SBC_ENC,GstSbcEncClass))
+#define GST_IS_SBC_ENC(obj) \
+	(G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_SBC_ENC))
+#define GST_IS_SBC_ENC_CLASS(obj) \
+	(G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_SBC_ENC))
 
-	if (gst_element_register(plugin, "sbcenc",
-			GST_RANK_NONE, GST_TYPE_SBC_ENC) == FALSE)
-		return FALSE;
+typedef struct _GstSbcEnc GstSbcEnc;
+typedef struct _GstSbcEncClass GstSbcEncClass;
 
-	if (gst_element_register(plugin, "sbcdec",
-			GST_RANK_PRIMARY, GST_TYPE_SBC_DEC) == FALSE)
-		return FALSE;
+struct _GstSbcEnc {
+	GstElement element;
 
-	if (gst_element_register(plugin, "a2dpsink",
-			GST_RANK_PRIMARY, GST_TYPE_A2DP_SINK) == FALSE)
-		return FALSE;
+	GstPad *sinkpad;
+	GstPad *srcpad;
+};
 
-	return TRUE;
-}
+struct _GstSbcEncClass {
+	GstElementClass parent_class;
+};
 
-GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR,
-	"bluetooth", "Bluetooth plugin library",
-	plugin_init, VERSION, "LGPL", "BlueZ", "http://www.bluez.org/")
+GType gst_sbc_enc_get_type(void);
+
+G_END_DECLS

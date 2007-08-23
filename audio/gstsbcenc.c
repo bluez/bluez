@@ -25,29 +25,36 @@
 #include <config.h>
 #endif
 
+#include "sbc.h"
+
 #include "gstsbcenc.h"
-#include "gstsbcdec.h"
-#include "gsta2dpsink.h"
 
-static gboolean plugin_init(GstPlugin *plugin)
+GST_DEBUG_CATEGORY_STATIC(sbc_enc_debug);
+#define GST_CAT_DEFAULT sbc_enc_debug
+
+GST_BOILERPLATE(GstSbcEnc, gst_sbc_enc, GstElement, GST_TYPE_ELEMENT);
+
+static const GstElementDetails sbc_enc_details =
+	GST_ELEMENT_DETAILS("Bluetooth SBC encoder",
+				"Codec/Encoder/Audio",
+				"Encode a SBC audio stream",
+				"Marcel Holtmann <marcel@holtmann.org>");
+
+static void gst_sbc_enc_base_init(gpointer g_class)
 {
-	GST_INFO("Bluetooth plugin %s", VERSION);
+	GstElementClass *element_class = GST_ELEMENT_CLASS(g_class);
 
-	if (gst_element_register(plugin, "sbcenc",
-			GST_RANK_NONE, GST_TYPE_SBC_ENC) == FALSE)
-		return FALSE;
-
-	if (gst_element_register(plugin, "sbcdec",
-			GST_RANK_PRIMARY, GST_TYPE_SBC_DEC) == FALSE)
-		return FALSE;
-
-	if (gst_element_register(plugin, "a2dpsink",
-			GST_RANK_PRIMARY, GST_TYPE_A2DP_SINK) == FALSE)
-		return FALSE;
-
-	return TRUE;
+	gst_element_class_set_details(element_class, &sbc_enc_details);
 }
 
-GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR,
-	"bluetooth", "Bluetooth plugin library",
-	plugin_init, VERSION, "LGPL", "BlueZ", "http://www.bluez.org/")
+static void gst_sbc_enc_class_init(GstSbcEncClass *klass)
+{
+	parent_class = g_type_class_peek_parent(klass);
+
+	GST_DEBUG_CATEGORY_INIT(sbc_enc_debug, "sbcenc", 0,
+						"SBC encoding element");
+}
+
+static void gst_sbc_enc_init(GstSbcEnc *sbcenc, GstSbcEncClass *klass)
+{
+}
