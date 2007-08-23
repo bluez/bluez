@@ -106,6 +106,10 @@ Methods		string GetAddress() [experimental]
 
 			Returns the Bluetooth address of the ending point.
 
+		string GetDevice() [experimental]
+
+			Returns the TTY device node name
+
 		string GetInfo() [experimental]
 
 			Returns the port properties.

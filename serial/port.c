@@ -51,25 +51,25 @@
 #define SERIAL_PORT_INTERFACE	"org.bluez.serial.Port"
 
 struct rfcomm_node {
-	int16_t		id;	/* RFCOMM device id */
-	bdaddr_t	dst;	/* Destination address */
-	char		*name;	/* RFCOMM device name */
-	DBusConnection	*conn;	/* for name listener handling */
-	char		*owner; /* Bus name */
-	GIOChannel	*io;	/* Connected node IO Channel */
-	guint		io_id;	/* IO Channel ID */
+	int16_t		id;		/* RFCOMM device id */
+	bdaddr_t	dst;		/* Destination address */
+	char		*device;	/* RFCOMM device name */
+	DBusConnection	*conn;		/* for name listener handling */
+	char		*owner;		/* Bus name */
+	GIOChannel	*io;		/* Connected node IO Channel */
+	guint		io_id;		/* IO Channel ID */
 };
 
 static GSList *connected_nodes = NULL;
 static GSList *bound_nodes = NULL;
 
-static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *name)
+static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *dev)
 {
 	GSList *l;
 
 	for (l = nodes; l != NULL; l = l->next) {
 		struct rfcomm_node *node = l->data;
-		if (!strcmp(node->name, name))
+		if (!strcmp(node->device, dev))
 			return node;
 	}
 
@@ -77,7 +77,7 @@ static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *name)
 }
 
 static DBusHandlerResult port_get_address(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+						DBusMessage *msg, void *data)
 {
 	struct rfcomm_node *node = data;
 	DBusMessage *reply;
@@ -91,6 +91,23 @@ static DBusHandlerResult port_get_address(DBusConnection *conn,
 	ba2str(&node->dst, bda);
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &pbda,
+			DBUS_TYPE_INVALID);
+	return send_message_and_unref(conn, reply);
+
+}
+
+static DBusHandlerResult port_get_device(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct rfcomm_node *node = data;
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &node->device,
 			DBUS_TYPE_INVALID);
 	return send_message_and_unref(conn, reply);
 
@@ -116,8 +133,8 @@ static DBusHandlerResult port_get_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	dbus_message_iter_append_dict_entry(&dict, "name",
-			DBUS_TYPE_STRING, &node->name);
+	dbus_message_iter_append_dict_entry(&dict, "device",
+			DBUS_TYPE_STRING, &node->device);
 
 	ba2str(&node->dst, bda);
 	dbus_message_iter_append_dict_entry(&dict, "address",
@@ -130,6 +147,7 @@ static DBusHandlerResult port_get_info(DBusConnection *conn,
 
 static DBusMethodVTable port_methods[] = {
 	{ "GetAddress",	port_get_address,	"",	"s"	},
+	{ "GetDevice",	port_get_device,	"",	"s"	},
 	{ "GetInfo",	port_get_info,		"",	"{sv}"	},
 	{ NULL, NULL, NULL, NULL },
 };
@@ -140,8 +158,8 @@ static DBusSignalVTable port_signals[] = {
 
 static void rfcomm_node_free(struct rfcomm_node *node)
 {
-	if (node->name)
-		g_free(node->name);
+	if (node->device)
+		g_free(node->device);
 	if (node->conn)
 		dbus_connection_unref(node->conn);
 	if (node->owner)
@@ -158,11 +176,11 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 static void connection_owner_exited(const char *name, struct rfcomm_node *node)
 {
 	debug("Connect requestor %s exited. Releasing %s node",
-						name, node->name);
+						name, node->device);
 
 	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
-			DBUS_TYPE_STRING, &node->name,
+			DBUS_TYPE_STRING, &node->device,
 			DBUS_TYPE_INVALID);
 
 	connected_nodes = g_slist_remove(connected_nodes, node);
@@ -172,14 +190,14 @@ static void connection_owner_exited(const char *name, struct rfcomm_node *node)
 static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 		GIOCondition cond, struct rfcomm_node *node)
 {
-	debug("RFCOMM node %s was disconnected", node->name);
+	debug("RFCOMM node %s was disconnected", node->device);
 
 	name_listener_remove(node->conn, node->owner,
 			(name_cb_t) connection_owner_exited, node);
 
 	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
-			DBUS_TYPE_STRING, &node->name,
+			DBUS_TYPE_STRING, &node->device,
 			DBUS_TYPE_INVALID);
 
 	connected_nodes = g_slist_remove(connected_nodes, node);
@@ -192,21 +210,21 @@ static void port_handler_unregister(DBusConnection *conn, void *data)
 {
 	struct rfcomm_node *node = data;
 
-	debug("Unregistered serial port: %s", node->name);
+	debug("Unregistered serial port: %s", node->device);
 
 	bound_nodes = g_slist_remove(bound_nodes, node);
 	rfcomm_node_free(node);
 }
 
 int port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
-			int fd, const char *name, const char *owner)
+			int fd, const char *dev, const char *owner)
 {
 	struct rfcomm_node *node;
 
 	node = g_new0(struct rfcomm_node, 1);
 	bacpy(&node->dst, dst);
 	node->id	= id;
-	node->name	= g_strdup(name);
+	node->device	= g_strdup(dev);
 	node->conn	= dbus_connection_ref(conn);
 	node->owner	= g_strdup(owner);
 	node->io 	= g_io_channel_unix_new(fd);
@@ -220,11 +238,11 @@ int port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 			(name_cb_t) connection_owner_exited, node);
 }
 
-int port_remove_listener(const char *owner, const char *name)
+int port_remove_listener(const char *owner, const char *dev)
 {
 	struct rfcomm_node *node;
 
-	node = find_node_by_name(connected_nodes, name);
+	node = find_node_by_name(connected_nodes, dev);
 	if (!node)
 		return -ENOENT;
 	if (strcmp(node->owner, owner) != 0)
@@ -240,7 +258,7 @@ int port_remove_listener(const char *owner, const char *name)
 }
 
 int port_register(DBusConnection *conn, int16_t id, bdaddr_t *dst,
-					const char *name, char *ppath)
+					const char *dev, char *ppath)
 {
 	char path[MAX_PATH_LENGTH];
 	struct rfcomm_node *node;
@@ -248,7 +266,7 @@ int port_register(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 	node = g_new0(struct rfcomm_node, 1);
 	bacpy(&node->dst, dst);
 	node->id	= id;
-	node->name	= g_strdup(name);
+	node->device	= g_strdup(dev);
 	node->conn	= dbus_connection_ref(conn);
 
 	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%hd", SERIAL_MANAGER_PATH, id);
@@ -270,7 +288,7 @@ int port_register(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 		return -1;
 	}
 
-	info("Registered RFCOMM:%s, path:%s", name, path);
+	info("Registered RFCOMM:%s, path:%s", dev, path);
 
 	if (ppath)
 		strcpy(ppath, path);
@@ -283,14 +301,14 @@ int port_register(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 int port_unregister(const char *path)
 {
 	struct rfcomm_node *node;
-	char name[16];
+	char dev[16];
 	int16_t id;
 
 	if (sscanf(path, SERIAL_MANAGER_PATH"/rfcomm%hd", &id) != 1)
 		return -ENOENT;
 
-	snprintf(name, sizeof(name), "/dev/rfcomm%hd", id);
-	node = find_node_by_name(bound_nodes, name);
+	snprintf(dev, sizeof(dev), "/dev/rfcomm%hd", id);
+	node = find_node_by_name(bound_nodes, dev);
 	if (!node)
 		return -ENOENT;
 
