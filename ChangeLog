@@ -1,3 +1,6 @@
+ver 3.15:
+	Extract main service class for later use.
+
 ver 3.14:
 	Add definitions and functions for Simple Pairing.
 
