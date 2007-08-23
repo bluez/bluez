@@ -131,7 +131,7 @@ Methods:	string Enable() [experimental]
 		string GetInfo() [experimental]
 			Returns the proxy properties
 
-		void SetSerialParams(string rate, byte databits,
+		void SetSerialParameters(string rate, byte databits,
 				byte stopbits, string parity) [experimental]
 
 			Change the TTY settings. Available rates: "50", "300",

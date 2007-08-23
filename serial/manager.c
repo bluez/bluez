@@ -1590,7 +1590,7 @@ static DBusMethodVTable proxy_methods[] = {
 	{ "Enable",			proxy_enable,			"",	""	},
 	{ "Disable",			proxy_disable,			"",	""	},
 	{ "GetInfo",			proxy_get_info,			"",	"{sv}"	},
-	{ "SetSerialParams",		proxy_set_serial_params, 	"syys",	""	},
+	{ "SetSerialParameters",	proxy_set_serial_params, 	"syys",	""	},
 	{ NULL, NULL, NULL, NULL },
 };
 
