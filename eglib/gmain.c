@@ -1299,7 +1299,7 @@ gchar *g_strdup_printf(const gchar *format, ...)
 	length = vsnprintf(buffer, sizeof(buffer) - 1, format, args);
 	va_end(args);
 
-	return strdup(buffer);
+	return g_strdup(buffer);
 }
 
 gchar *g_strdelimit(gchar *string, const gchar *delimiters, gchar new_delim)
