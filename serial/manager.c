@@ -1080,7 +1080,29 @@ static int create_proxy_record(sdp_buf_t *buf, const char *uuid128, uint8_t chan
 	sdp_list_free(record.pattern, free);
 
 	return ret;
+}
 
+static GIOError channel_write(GIOChannel *chan, char *buf, size_t size)
+{
+	GIOError err = G_IO_ERROR_NONE;
+	gsize wbytes, written;
+
+	wbytes = written = 0;
+	while (wbytes < size) {
+		err = g_io_channel_write(chan,
+				buf + wbytes,
+				size - wbytes,
+				&written);
+
+		if (err != G_IO_ERROR_NONE)
+			return err;
+
+		wbytes += written;
+	}
+
+	g_io_channel_flush(chan, NULL);
+
+	return err;
 }
 
 static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -1088,32 +1110,34 @@ static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 	char buf[BUF_SIZE];
 	GIOChannel *dest = data;
 	GIOError err;
-	gsize rbytes, wbytes, written;
+	size_t rbytes;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		/* Try forward remaining data */
+		do {
+			rbytes = 0;
+			err = g_io_channel_read(chan, buf, sizeof(buf), &rbytes);
+			if (err != G_IO_ERROR_NONE || rbytes == 0)
+				break;
+
+			err = channel_write(dest, buf, rbytes);
+		} while (err == G_IO_ERROR_NONE);
+
 		g_io_channel_close(dest);
 		return FALSE;
 	}
 
-	memset(buf, 0, sizeof(buf));
-	rbytes = wbytes = written = 0;
-
-	err = g_io_channel_read(chan, buf, sizeof(buf) - 1, &rbytes);
+	rbytes = 0;
+	err = g_io_channel_read(chan, buf, sizeof(buf), &rbytes);
 	if (err != G_IO_ERROR_NONE)
-		return TRUE;
+		return FALSE;
 
-	while (wbytes < rbytes) {
-		err = g_io_channel_write(dest,
-				buf + wbytes,
-				rbytes - wbytes,
-				&written);
-		if (err != G_IO_ERROR_NONE)
-			break;
-		wbytes += written;
-	}
+	err = channel_write(dest, buf, rbytes);
+	if (err != G_IO_ERROR_NONE)
+		return FALSE;
 
 	return TRUE;
 }
@@ -1222,14 +1246,15 @@ static inline int unix_socket_connect(const char *address)
 	sk = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sk < 0) {
 		err = errno;
-		error("Can't create socket %s: %s(%d)",
+		error("Unix socket(%s) create failed: %s(%d)",
 				address, strerror(err), err);
 		return -err;
 	}
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		err = errno;
-		error("Unable to connect %s(%d)", strerror(err), err);
+		error("Unix socket(%s) connect failed: %s(%d)",
+				address, strerror(err), err);
 		close(sk);
 		errno = err;
 		return -err;
