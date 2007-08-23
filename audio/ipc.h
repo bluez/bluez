@@ -22,6 +22,7 @@
  */
 
 #include <stdint.h>
+#include <bluetooth/bluetooth.h>
 
 #define IPC_TYPE_CONNECT  0x0001
 
@@ -34,10 +35,9 @@
 #endif
 
 /* Supported roles */
-#define PKT_ROLE_NONE			0
-#define PKT_ROLE_AUTO			1
-#define PKT_ROLE_VOICE			2
-#define PKT_ROLE_HIFI			3
+#define PKT_ROLE_AUTO			0
+#define PKT_ROLE_VOICE			1
+#define PKT_ROLE_HIFI			2
 
 /* Packet types */
 #define PKT_TYPE_CFG_REQ		0
@@ -52,7 +52,7 @@
 #define PKT_ERROR_NONE			0
 
 struct ipc_packet {
-	uint8_t id;		/* Device id */
+	bdaddr_t bdaddr;	/* Address of the remote Device */
 	uint8_t role;		/* Audio role eg: voice, wifi, auto... */
 	uint8_t type;		/* Packet type */
 	uint8_t error;		/* Packet error code */

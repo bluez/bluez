@@ -883,7 +883,7 @@ static int bluetooth_a2dp_init(struct bluetooth_data *data,
 	a2dp->sbc.blocks = sbc->blocks;
 	a2dp->sbc.bitpool = sbc->bitpool;
 	a2dp->codesize = a2dp->sbc.subbands * a2dp->sbc.blocks *
-				a2dp->sbc.channels * 2;
+						a2dp->sbc.channels * 2;
 	a2dp->count = sizeof(struct rtp_header) + sizeof(struct rtp_payload);
 	a2dp->pipefd[0] = -1;
 	a2dp->pipefd[1] = -1;
@@ -905,12 +905,52 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
 	struct ipc_packet *pkt = (void *) buf;
 	struct ipc_data_cfg *cfg = (void *) pkt->data;
 	struct ipc_codec_sbc *sbc = (void *) cfg->data;
+	snd_config_iterator_t i, next;
+	const char *addr, *pref;
 
 	DBG("Sending PKT_TYPE_CFG_REQ...");
 
 	memset(buf, 0, sizeof(buf));
+
+	snd_config_for_each(i, next, conf) {
+		snd_config_t *n = snd_config_iterator_entry(i);
+		const char *id;
+
+		if (snd_config_get_id(n, &id) < 0)
+			continue;
+
+		printf("id = %s\n", id);
+		if (strcmp(id, "comment") == 0 || strcmp(id, "type") == 0)
+			continue;
+
+		if (strcmp(id, "device") == 0) {
+			if (snd_config_get_string(n, &addr) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+			str2ba(addr, &pkt->bdaddr);
+			continue;
+		}
+
+		if (strcmp(id, "preference") == 0) {
+			if (snd_config_get_string(n, &pref) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+			else if (!strcmp(pref, "voice") ||
+						!strcmp(pref, "sco"))
+				pkt->role = PKT_ROLE_VOICE;
+			else if (!strcmp(pref, "hifi") ||
+						!strcmp(pref, "a2dp"))
+				pkt->role = PKT_ROLE_HIFI;
+			continue;
+		}
+
+		SNDERR("Unknown field %s", id);
+		return -EINVAL;
+	}
+
 	pkt->type = PKT_TYPE_CFG_REQ;
-	pkt->role = PKT_ROLE_NONE;
 	pkt->error = PKT_ERROR_NONE;
 
 	ret = send(data->sock, pkt, sizeof(struct ipc_packet), 0);
@@ -969,11 +1009,10 @@ done:
 		data->cfg.pkt_len, data->cfg.sample_size, data->cfg.rate);
 
 	if (data->cfg.codec == CFG_CODEC_SBC) {
-		struct bluetooth_a2dp *a2dp = &data->a2dp;
 		ret = bluetooth_a2dp_init(data, sbc);
 		if (ret < 0)
 			return ret;
-		printf("\tallocation=%u\n\tsubbands=%u\n\tblocks=%u\n\tbitpool=%u\n",
+		DBG("\tallocation=%u\n\tsubbands=%u\n\tblocks=%u\n\tbitpool=%u\n",
 				a2dp->sbc.allocation, a2dp->sbc.subbands,
 				a2dp->sbc.blocks, a2dp->sbc.bitpool);
 	}

@@ -417,3 +417,26 @@ uint8_t device_get_state(struct device *dev)
 
 	return STATE_DISCONNECTED;
 }
+
+gboolean device_is_connected(struct device *dev, const char *interface)
+{
+	if (!interface) {
+		if ((dev->sink || dev->source) &&
+			avdtp_is_connected(&dev->src, &dev->dst))
+			return TRUE;
+
+		if (dev->headset && headset_is_active(dev))
+			return TRUE;
+	}
+	else if (!strcmp(interface, AUDIO_SINK_INTERFACE) && dev->sink &&
+			avdtp_is_connected(&dev->src, &dev->dst))
+		return TRUE;
+	else if (!strcmp(interface, AUDIO_SOURCE_INTERFACE) && dev->source &&
+			avdtp_is_connected(&dev->src, &dev->dst))
+		return TRUE;
+	else if (!strcmp(interface, AUDIO_HEADSET_INTERFACE) && dev->headset &&
+			headset_is_active(dev))
+		return TRUE;
+
+	return FALSE;
+}

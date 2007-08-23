@@ -116,7 +116,7 @@ static int unix_sendmsg_fd(int sock, int fd, struct ipc_packet *pkt)
 	struct iovec iov =  {
 		.iov_base = pkt,
 		.iov_len  = sizeof(struct ipc_packet)
-        };
+	};
 
 	struct msghdr msgh = {
 		.msg_name       = 0,
@@ -138,18 +138,23 @@ static int unix_sendmsg_fd(int sock, int fd, struct ipc_packet *pkt)
 	return sendmsg(sock, &msgh, MSG_NOSIGNAL);
 }
 
-static service_type_t select_service(struct device *dev)
+static service_type_t select_service(struct device *dev, const char *interface)
 {
-	if (dev->sink && avdtp_is_connected(&dev->src, &dev->dst))
+	if (!interface) {
+		if (dev->sink && avdtp_is_connected(&dev->src, &dev->dst))
+			return TYPE_SINK;
+		else if (dev->headset && headset_is_active(dev))
+			return TYPE_HEADSET;
+		else if (dev->sink)
+			return TYPE_SINK;
+		else if (dev->headset)
+			return TYPE_HEADSET;
+	} else if (!strcmp(interface, AUDIO_SINK_INTERFACE) && dev->sink)
 		return TYPE_SINK;
-	else if (dev->headset && headset_is_active(dev))
+	else if (!strcmp(interface, AUDIO_HEADSET_INTERFACE) && dev->headset)
 		return TYPE_HEADSET;
-	else if (dev->sink)
-		return TYPE_SINK;
-	else if (dev->headset)
-		return TYPE_HEADSET;
-	else
-		return TYPE_NONE;
+
+	return TYPE_NONE;
 }
 
 
@@ -215,7 +220,7 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 	}
 
 	for (codec_cap = NULL; caps; caps = g_slist_next(caps)) {
-		cap = caps->data; 
+		cap = caps->data;
 		if (cap->category == AVDTP_MEDIA_CODEC) {
 			codec_cap = (void *) cap->data;
 			break;
@@ -253,7 +258,7 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 
 	cfg->codec = CFG_CODEC_SBC;
 	sbc->allocation = sbc_cap->allocation_method == A2DP_ALLOCATION_SNR ?
-				0x01 : 0x00; 
+				0x01 : 0x00;
 	sbc->subbands = sbc_cap->subbands == A2DP_SUBBANDS_4 ? 4 : 8;
 
 	switch (sbc_cap->block_length) {
@@ -298,17 +303,23 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 	int ret, fd;
 	unsigned int id;
 	struct a2dp_data *a2dp;
+	const char *interface = NULL;
 
-	dev = manager_get_connected_device();
+	if (pkt->role == PKT_ROLE_VOICE)
+		interface = AUDIO_HEADSET_INTERFACE;
+	else if (pkt->role == PKT_ROLE_HIFI)
+		interface = AUDIO_SINK_INTERFACE;
+
+	dev = manager_find_device(&pkt->bdaddr, interface, TRUE);
 	if (dev)
 		goto proceed;
 
-	dev = manager_default_device();
+	dev = manager_find_device(&pkt->bdaddr, interface, FALSE);
 	if (!dev)
 		goto failed;
 
 proceed:
-	client->type = select_service(dev);
+	client->type = select_service(dev, interface);
 
 	switch (client->type) {
 	case TYPE_SINK:
@@ -320,7 +331,7 @@ proceed:
 		if (!a2dp->session) {
 			error("Unable to get a session");
 			goto failed;
-		}	
+		}
 
 		id = a2dp_source_request_stream(a2dp->session, dev,
 						TRUE, a2dp_setup_complete,

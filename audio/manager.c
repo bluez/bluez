@@ -108,19 +108,6 @@ static void get_next_record(struct audio_sdp_data *data);
 static DBusHandlerResult get_handles(const char *uuid,
 					struct audio_sdp_data *data);
 
-static struct device *find_device(bdaddr_t *bda)
-{
-	GSList *l;
-
-	for (l = devices; l != NULL; l = l->next) {
-		struct device *device = l->data;
-		if (bacmp(&device->dst, bda) == 0)
-			return device;
-	}
-
-	return NULL;
-}
-
 static struct device *create_device(bdaddr_t *bda)
 {
 	static int device_id = 0;
@@ -601,7 +588,7 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 	const char *path;
 	gboolean headset = FALSE, created = FALSE;
 
-	device = find_device(bda);
+	device = manager_find_device(bda, NULL, FALSE);
 	if (!device) {
 		device = create_device(bda);
 		if (!add_device(device)) {
@@ -735,7 +722,7 @@ static DBusHandlerResult am_create_device(DBusConnection *conn,
 
 	str2ba(address, &bda);
 
-	device = find_device(&bda);
+	device = manager_find_device(&bda, NULL, FALSE);
 	if (!device) {
 		device = create_device(&bda);
 		return resolve_services(msg, device);
@@ -870,7 +857,7 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 		const char *param;
 		GSList *l;
 
-		default_dev = manager_get_connected_device();
+		default_dev = manager_find_device(BDADDR_ANY, NULL, TRUE);
 
 		if (!default_dev) {
 			l = devices;
@@ -930,8 +917,7 @@ static DBusHandlerResult am_find_by_addr(DBusConnection *conn,
 	}
 
 	str2ba(address, &bda);
-
-	device = find_device(&bda);
+	device = manager_find_device(&bda, NULL, FALSE);
 
 	if (!device)
 		return err_does_not_exist(conn, msg);
@@ -1069,7 +1055,7 @@ static void parse_stored_devices(char *key, char *value, void *data)
 		return;
 
 	str2ba(key, &dst);
-	device = find_device(&dst);
+	device = manager_find_device(&dst, PKT_ROLE_AUTO, FALSE);
 
 	if (device)
 		return;
@@ -1093,8 +1079,8 @@ static void register_devices_stored(const char *adapter)
 	struct stat st;
 	struct device *device;
 	bdaddr_t default_src;
-	bdaddr_t src;
 	bdaddr_t dst;
+	bdaddr_t src;
 	char *addr;
 	int dev_id;
 
@@ -1114,7 +1100,7 @@ static void register_devices_stored(const char *adapter)
 	dev_id = hci_get_route(&default_src);
 	if (dev_id < 0)
 		return;
-		
+
 	hci_devba(dev_id, &default_src);
 	if (bacmp(&default_src, &src) != 0)
 		return;
@@ -1124,7 +1110,7 @@ static void register_devices_stored(const char *adapter)
 		return;
 
 	str2ba(addr, &dst);
-	device = find_device(&dst);
+	device = manager_find_device(&dst, PKT_ROLE_AUTO, FALSE);
 
 	if (device) {
 		info("Setting %s as default device", addr);
@@ -1759,4 +1745,39 @@ gboolean manager_authorize(bdaddr_t *dba, const char *uuid,
 	dbus_message_unref(auth);
 
 	return TRUE;
+}
+
+struct device *manager_find_device(bdaddr_t *bda, const char *interface,
+					gboolean connected)
+{
+	GSList *l;
+
+	if (!bacmp(bda, BDADDR_ANY) && !interface && !connected)
+		return default_dev;
+
+	for (l = devices; l != NULL; l = l->next) {
+		struct device *dev = l->data;
+
+		if (bacmp(bda, BDADDR_ANY) && bacmp(&dev->dst, bda))
+			continue;
+
+		if (interface && !strcmp(AUDIO_HEADSET_INTERFACE, interface)
+			&& !dev->headset)
+			continue;
+
+		if (interface && !strcmp(AUDIO_SINK_INTERFACE, interface)
+			&& !dev->sink)
+			continue;
+
+		if (interface && !strcmp(AUDIO_SOURCE_INTERFACE, interface)
+			&& !dev->source)
+			continue;
+
+		if (connected && !device_is_connected(dev, interface))
+			continue;
+
+		return dev;
+	}
+
+	return NULL;
 }

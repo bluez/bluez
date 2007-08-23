@@ -76,3 +76,5 @@ int device_remove_stored(struct device *dev);
 void device_finish_sdp_transaction(struct device *device);
 
 uint8_t device_get_state(struct device *dev);
+
+gboolean device_is_connected(struct device *dev, const char *interface);

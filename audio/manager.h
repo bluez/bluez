@@ -42,11 +42,10 @@ void audio_exit(void);
 uint32_t add_service_record(DBusConnection *conn, sdp_buf_t *buf);
 int remove_service_record(DBusConnection *conn, uint32_t rec_id);
 
+struct device *manager_find_device(bdaddr_t *bda, const char *interface,
+					gboolean connected);
+
 struct device *manager_device_connected(bdaddr_t *bda, const char *uuid);
-
-struct device *manager_default_device();
-
-struct device *manager_get_connected_device(void);
 
 gboolean manager_authorize(bdaddr_t *dba, const char *uuid,
 				DBusPendingCallNotifyFunction cb,
