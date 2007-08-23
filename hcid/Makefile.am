@@ -53,7 +53,7 @@ AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = hcid.8 hcid.conf.5 hcid.conf dbus-api.txt \
+EXTRA_DIST = hcid.8 hcid.conf.5 hcid.conf dbus-api.txt test-device \
 	service-record.dtd service-did.xml service-spp.xml \
 	service-opp.xml service-ftp.xml
 
