@@ -37,7 +37,7 @@ endif
 if GSTREAMER
 gstreamerdir = $(libdir)/gstreamer-0.10
 
-gstreamer_LTLIBRARIES = libgstbluetooth.la
+noinst_LTLIBRARIES = libgstbluetooth.la
 
 libgstbluetooth_la_SOURCES = gstbluetooth.c gsta2dpsink.h gsta2dpsink.c ipc.h
 libgstbluetooth_la_LDFLAGS = -module -avoid-version -export-dynamic
