@@ -28,5 +28,3 @@ dbus_bool_t manager_init(DBusConnection *conn, const char *path);
 int get_default_adapter(void);
 
 void set_default_adapter(int new_default);
-
-void update_class_of_device(void);

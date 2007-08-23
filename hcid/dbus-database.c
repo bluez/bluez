@@ -86,8 +86,6 @@ static void exit_callback(const char *name, void *user_data)
 	else
 		unregister_sdp_record(user_record->handle);
 
-	update_class_of_device();
-
 	if (user_record->sender)
 		g_free(user_record->sender);
 
@@ -147,8 +145,6 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 			return error_failed(conn, msg, errno);
 		}
 	}
-
-	update_class_of_device();
 
 	sender = dbus_message_get_sender(msg);
 
@@ -211,8 +207,6 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 		sdp_record_free(sdp_record);
 	}
 
-	update_class_of_device();
-
 	sender = dbus_message_get_sender(msg);
 
 	user_record->sender = g_strdup(sender);
@@ -261,8 +255,6 @@ static DBusHandlerResult update_record(DBusConnection *conn, DBusMessage *msg,
 			return error_failed(conn, msg, EIO);
 		}
 	}
-
-	update_class_of_device();
 
 	return send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
@@ -365,8 +357,6 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 		remove_record_from_server(handle);
 	else
 		unregister_sdp_record(handle);
-
-	update_class_of_device();
 
 	if (user_record->sender)
 		g_free(user_record->sender);

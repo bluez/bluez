@@ -243,6 +243,57 @@ no_address:
 	return device_opts->discovto;
 }
 
+void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
+{
+	struct hci_dev_list_req *dl;
+	struct hci_dev_req *dr;
+	int i, sk;
+
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0)
+		return;
+
+	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
+
+	dl->dev_num = HCI_MAX_DEV;
+	dr = dl->dev_req;
+
+	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
+		close(sk);
+		g_free(dl);
+		return;
+	}
+
+	dr = dl->dev_req;
+
+	for (i = 0; i < dl->dev_num; i++, dr++) {
+		struct hci_dev_info di;
+		uint8_t cls[3];
+		int dd;
+
+		if (hci_devinfo(dr->dev_id, &di) < 0)
+			continue;
+
+		if (hci_test_bit(HCI_RAW, &di.flags))
+			continue;
+
+		if (get_device_class(di.dev_id, cls) < 0)
+			continue;
+
+		dd = hci_open_dev(di.dev_id);
+		if (dd < 0)
+			continue;
+
+		set_service_classes(dd, cls, value);
+
+		hci_close_dev(dd);
+	}
+
+	g_free(dl);
+
+	close(sk);
+}
+
 /* 
  * Device name expansion 
  *   %d - device id
@@ -884,6 +935,7 @@ int main(int argc, char *argv[])
 	if (sdp) {
 		set_sdp_server_enable();
 		start_sdp_server(mtu, hcid.deviceid, SDP_SERVER_COMPAT);
+		set_service_classes_callback(update_service_classes);
 	}
 
 	notify_init();

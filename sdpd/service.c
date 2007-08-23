@@ -45,6 +45,7 @@
 static sdp_record_t *server = NULL;
 
 static uint8_t service_classes = 0x00;
+static service_classes_callback_t service_classes_callback = NULL;
 
 /*
  * List of version numbers supported by the SDP server.
@@ -123,11 +124,19 @@ static void update_svclass_list(void)
 	debug("Service classes 0x%02x", val);
 
 	service_classes = val;
+
+	if (service_classes_callback)
+		service_classes_callback(BDADDR_ANY, val);
 }
 
 uint8_t get_service_classes(const bdaddr_t *bdaddr)
 {
 	return service_classes;
+}
+
+void set_service_classes_callback(service_classes_callback_t callback)
+{
+	service_classes_callback = callback;
 }
 
 void register_public_browse_group(void)
