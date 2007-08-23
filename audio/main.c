@@ -93,7 +93,7 @@ static void read_config(const char *file)
 	}
 
 	str = g_key_file_get_string(keyfile, "General",
-						"Disabled", &err);
+						"Disable", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);
