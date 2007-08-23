@@ -1,3 +1,11 @@
+ver 3.15:
+	Add A2DP support to the audio service.
+	Add proxy support to the serial service.
+	Set service classes value from SDP database.
+
+	Note:
+	This version needs at least bluez-libs-3.15
+
 ver 3.14:
 	Add missing signals for the adapter interface.
 	Add basic commands for Simple Pairing.
