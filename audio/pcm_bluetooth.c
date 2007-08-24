@@ -981,7 +981,7 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
 
 	if (pkt->error != PKT_ERROR_NONE) {
 		SNDERR("Error %d while configuring device", pkt->error);
-		return pkt->error;
+		return -pkt->error;
 	}
 
 	if (cfg->codec != CFG_CODEC_SBC)
