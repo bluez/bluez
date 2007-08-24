@@ -384,9 +384,7 @@ static int authorize_connection(struct network_server *ns)
 static gboolean connect_setup_event(GIOChannel *chan,
 					GIOCondition cond, gpointer data)
 {
-	DBusConnection *conn = data;
-	struct network_server *ns;
-	char path[MAX_PATH_LENGTH];
+	struct network_server *ns = data;
 	struct bnep_setup_conn_req *req;
 	unsigned char pkt[BNEP_MTU];
 	gsize n;
@@ -442,14 +440,6 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	pservice += req->uuid_size;
 	/* Getting source service: considering 2 bytes size */
 	role = ntohs(bt_get_unaligned((uint16_t *) pservice));
-
-	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(role));
-	dbus_connection_get_object_user_data(conn, path, (void *) &ns);
-
-	if (ns == NULL || ns->enable == FALSE) {
-		response = BNEP_CONN_INVALID_SRC;
-		goto reply;
-	}
 
 	/*
 	 * FIXME: Check if the connection already exists. Check if the
