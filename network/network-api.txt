@@ -10,23 +10,7 @@ Network Manager hierarchy
 Interface	org.bluez.network.Manager
 Object path	/org/bluez/network
 
-Methods		string CreateServer(string uuid)
-
-			Creates a network server object (GN or NAP).
-
-			Possible errors: org.bluez.network.Error.AlreadyExists
-			                 org.bluez.network.Error.NotSupported
-			                 org.bluez.network.Error.ConnectionAttemptFailed
-			                 org.bluez.network.Error.Failed
-
-		void RemoveServer(string path)
-
-			Removes the network server object for given path.
-
-			Possible errors: org.bluez.network.Error.DoesNotExist
-			                 org.bluez.network.Error.Failed
-
-		array{string} ListServers()
+Methods		array{string} ListServers()
 
 			Returns an array of available network devices paths.
 			Currently only NAP and GN are supported.
