@@ -141,18 +141,61 @@ void set_service_classes_callback(service_classes_callback_t callback)
 
 void create_ext_inquiry_response(const char *name, uint8_t *data)
 {
+	sdp_list_t *list = sdp_get_record_list();
+	uint8_t *ptr = data;
+	uint16_t uuid[24];
+	int i, index = 0;
+
 	if (name) {
 		int len = strlen(name);
 
 		if (len > 48) {
 			len = 48;
-			data[1] = 0x08;
+			ptr[1] = 0x08;
 		} else
-			data[1] = 0x09;
+			ptr[1] = 0x09;
 
-		data[0] = len + 1;
+		ptr[0] = len + 1;
 
-		memcpy(data + 2, name, len);
+		memcpy(ptr + 2, name, len);
+
+		ptr += len + 2;
+	}
+
+	ptr[1] = 0x03;
+
+	for (; list; list = list->next) {
+		sdp_record_t *rec = (sdp_record_t *) list->data;
+
+		if (rec->svclass.type != SDP_UUID16)
+			continue;
+
+		if (rec->svclass.value.uuid16 < 0x1100)
+			continue;
+
+		if (index > 23) {
+			ptr[1] = 0x02;
+			break;
+		}
+
+		for (i = 0; i < index; i++)
+			if (uuid[i] == rec->svclass.value.uuid16)
+				break;
+
+		if (i == index - 1)
+			continue;
+
+		uuid[index++] = rec->svclass.value.uuid16;
+	}
+
+	if (index > 0) {
+		ptr[0] = (index * 2) + 1;
+		ptr += 2;
+
+		for (i = 0; i < index; i++) {
+			*ptr++ = (uuid[i] & 0x00ff);
+			*ptr++ = (uuid[i] & 0xff00) >> 8;
+		}
 	}
 }
 
