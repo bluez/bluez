@@ -84,11 +84,7 @@ Methods		string CreateServer(string uuid)
 
 			Possible errors: org.bluez.network.Error.DoesNotExist
 
-Signals		void ServerCreated(string path)
-
-		void ServerRemoved(string path)
-
-		void ConnectionCreated(string path)
+Signals		void ConnectionCreated(string path)
 
 		void ConnectionRemoved(string path)
 

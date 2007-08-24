@@ -909,8 +909,6 @@ static DBusMethodVTable manager_methods[] = {
 };
 
 static DBusSignalVTable manager_signals[] = {
-	{ "ServerCreated",	"s"	},
-	{ "ServerRemoved",	"s"	},
 	{ "ConnectionCreated",	"s"	},
 	{ "ConnectionRemoved",	"s"	},
 	{ "DefaultConnectionChanged", "s" },
