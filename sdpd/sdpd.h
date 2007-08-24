@@ -91,3 +91,4 @@ typedef void (*service_classes_callback_t) (const bdaddr_t *bdaddr, uint8_t valu
 
 uint8_t get_service_classes(const bdaddr_t *bdaddr);
 void set_service_classes_callback(service_classes_callback_t callback);
+void create_ext_inquiry_response(const char *name, uint8_t *data);

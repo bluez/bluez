@@ -45,6 +45,7 @@
 #include "dbus-helper.h"
 
 #include "hcid.h"
+#include "sdpd.h"
 
 #include "logging.h"
 #include "textfile.h"
@@ -218,18 +219,8 @@ static void update_ext_inquiry_response(int dd, struct hci_dev *dev)
 
 	memset(data, 0, sizeof(data));
 
-	if (dev->ssp_mode > 0) {
-		int len;
-
-		len = strlen((char *) dev->name);
-		if (len > 48) {
-			len = 48;
-			data[1] = 0x08;
-		} else
-			data[1] = 0x09;
-		data[0] = len + 1;
-		memcpy(data + 2, dev->name, len);
-	}
+	if (dev->ssp_mode > 0)
+		create_ext_inquiry_response((char *) dev->name, data);
 
 	if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0)
 		error("Can't write extended inquiry response: %s (%d)",

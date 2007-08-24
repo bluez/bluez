@@ -139,6 +139,23 @@ void set_service_classes_callback(service_classes_callback_t callback)
 	service_classes_callback = callback;
 }
 
+void create_ext_inquiry_response(const char *name, uint8_t *data)
+{
+	if (name) {
+		int len = strlen(name);
+
+		if (len > 48) {
+			len = 48;
+			data[1] = 0x08;
+		} else
+			data[1] = 0x09;
+
+		data[0] = len + 1;
+
+		memcpy(data + 2, name, len);
+	}
+}
+
 void register_public_browse_group(void)
 {
 	sdp_list_t *browselist;
