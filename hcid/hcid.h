@@ -160,6 +160,7 @@ int add_adapter(uint16_t dev_id);
 int remove_adapter(uint16_t dev_id);
 int start_adapter(uint16_t dev_id);
 int stop_adapter(uint16_t dev_id);
+int update_adapter(uint16_t dev_id);
 
 int get_device_address(uint16_t dev_id, char *address, size_t size);
 int get_device_class(uint16_t dev_id, uint8_t *class);

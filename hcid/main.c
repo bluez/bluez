@@ -287,6 +287,8 @@ void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 		set_service_classes(dd, cls, value);
 
 		hci_close_dev(dd);
+
+		update_adapter(di.dev_id);
 	}
 
 	g_free(dl);

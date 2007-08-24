@@ -366,6 +366,32 @@ int stop_adapter(uint16_t dev_id)
 	return 0;
 }
 
+int update_adapter(uint16_t dev_id)
+{
+	struct hci_dev *dev;
+	int dd;
+
+	ASSERT_DEV_ID;
+
+	dev = &devices[dev_id];
+
+	if (dev->ignore)
+		return 0;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("Can't open device hci%d",
+					dev_id, strerror(errno), errno);
+		return -errno;
+	}
+
+	update_ext_inquiry_response(dd, dev);
+
+	hci_close_dev(dd);
+
+	return 0;
+}
+
 int get_device_address(uint16_t dev_id, char *address, size_t size)
 {
 	struct hci_dev *dev;
