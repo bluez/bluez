@@ -97,28 +97,32 @@ struct avdtp_sep_cfm {
 	void (*set_configuration) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
 					struct avdtp_stream *stream,
-					struct avdtp_error *err);
+					struct avdtp_error *err,
+					void *user_data);
 	void (*get_configuration) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
 					struct avdtp_stream *stream,
-					struct avdtp_error *err);
+					struct avdtp_error *err,
+					void *user_data);
 	void (*open) (struct avdtp *session, struct avdtp_local_sep *lsep,
-			struct avdtp_stream *stream, struct avdtp_error *err);
+			struct avdtp_stream *stream, struct avdtp_error *err,
+			void *user_data);
 	void (*start) (struct avdtp *session, struct avdtp_local_sep *lsep,
-			struct avdtp_stream *stream, struct avdtp_error *err);
+			struct avdtp_stream *stream, struct avdtp_error *err,
+			void *user_data);
 	void (*suspend) (struct avdtp *session, struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream,
-				struct avdtp_error *err);
+				struct avdtp_error *err, void *user_data);
 	void (*close) (struct avdtp *session, struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream,
-				struct avdtp_error *err);
+				struct avdtp_error *err, void *user_data);
 	void (*abort) (struct avdtp *session, struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream,
-				struct avdtp_error *err);
+				struct avdtp_error *err, void *user_data);
 	void (*reconfigure) (struct avdtp *session,
 				struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream,
-				struct avdtp_error *err);
+				struct avdtp_error *err, void *user_data);
 };
 
 /* Callbacks for indicating when we received a new command. The return value
@@ -126,32 +130,35 @@ struct avdtp_sep_cfm {
 struct avdtp_sep_ind {
 	gboolean (*get_capability) (struct avdtp *session,
 					struct avdtp_local_sep *sep,
-					GSList **caps, uint8_t *err);
+					GSList **caps, uint8_t *err,
+					void *user_data);
 	gboolean (*set_configuration) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
 					struct avdtp_stream *stream,
 					GSList *caps, uint8_t *err,
-					uint8_t *category);
+					uint8_t *category, void *user_data);
 	gboolean (*get_configuration) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
-					uint8_t *err);
+					uint8_t *err, void *user_data);
 	gboolean (*open) (struct avdtp *session, struct avdtp_local_sep *lsep,
-				struct avdtp_stream *stream, uint8_t *err);
+				struct avdtp_stream *stream, uint8_t *err,
+				void *user_data);
 	gboolean (*start) (struct avdtp *session, struct avdtp_local_sep *lsep,
-				struct avdtp_stream *stream,
-				uint8_t *err);
+				struct avdtp_stream *stream, uint8_t *err,
+				void *user_data);
 	gboolean (*suspend) (struct avdtp *session,
 				struct avdtp_local_sep *sep,
-				struct avdtp_stream *stream,
-				uint8_t *err);
+				struct avdtp_stream *stream, uint8_t *err,
+				void *user_data);
 	gboolean (*close) (struct avdtp *session, struct avdtp_local_sep *sep,
-				struct avdtp_stream *stream,
-				uint8_t *err);
+				struct avdtp_stream *stream, uint8_t *err,
+				void *user_data);
 	gboolean (*abort) (struct avdtp *session, struct avdtp_local_sep *sep,
-				struct avdtp_stream *stream, uint8_t *err);
+				struct avdtp_stream *stream, uint8_t *err,
+				void *user_data);
 	gboolean (*reconfigure) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
-					uint8_t *err);
+					uint8_t *err, void *user_data);
 };
 
 typedef void (*avdtp_discover_cb_t) (struct avdtp *session, GSList *seps,
@@ -200,7 +207,8 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream);
 
 struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 						struct avdtp_sep_ind *ind,
-						struct avdtp_sep_cfm *cfm);
+						struct avdtp_sep_cfm *cfm,
+						void *user_data);
 
 /* Find a matching pair of local and remote SEP ID's */
 int avdtp_get_seps(struct avdtp *session, uint8_t type, uint8_t media,

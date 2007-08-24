@@ -219,7 +219,7 @@ struct avdtp_local_sep {
 	GSList *caps;
 	struct avdtp_sep_ind *ind;
 	struct avdtp_sep_cfm *cfm;
-	void *data;
+	void *user_data;
 };
 
 struct stream_callback {
@@ -573,7 +573,7 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 		g_source_remove(stream->io);
 
 	if (sep->cfm && sep->cfm->abort)
-		sep->cfm->abort(session, sep, stream, NULL);
+		sep->cfm->abort(session, sep, stream, NULL, sep->user_data);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
 }
@@ -815,7 +815,8 @@ static gboolean avdtp_getcap_cmd(struct avdtp *session,
 		goto failed;
 	}
 
-	if (!sep->ind->get_capability(session, sep, &caps, &err))
+	if (!sep->ind->get_capability(session, sep, &caps, &err,
+					sep->user_data))
 		goto failed;
 
 	init_response(&rsp->header, &req->header, TRUE);
@@ -882,7 +883,8 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 	if (sep->ind && sep->ind->set_configuration) {
 		if (!sep->ind->set_configuration(session, sep, stream,
 							stream->caps, &err,
-							&category)) {
+							&category,
+							sep->user_data)) {
 			stream_free(stream);
 			goto failed;
 		}
@@ -949,7 +951,8 @@ static gboolean avdtp_open_cmd(struct avdtp *session, struct seid_req *req,
 	stream = sep->stream;
 
 	if (sep->ind && sep->ind->open) {
-		if (!sep->ind->open(session, sep, stream, &err))
+		if (!sep->ind->open(session, sep, stream, &err,
+					sep->user_data))
 			goto failed;
 	}
 
@@ -1009,7 +1012,8 @@ static gboolean avdtp_start_cmd(struct avdtp *session, struct start_req *req,
 		}
 
 		if (sep->ind && sep->ind->start) {
-			if (!sep->ind->start(session, sep, stream, &err))
+			if (!sep->ind->start(session, sep, stream, &err,
+						sep->user_data))
 				goto failed;
 		}
 
@@ -1057,7 +1061,8 @@ static gboolean avdtp_close_cmd(struct avdtp *session, struct seid_req *req,
 	stream = sep->stream;
 
 	if (sep->ind && sep->ind->close) {
-		if (!sep->ind->close(session, sep, stream, &err))
+		if (!sep->ind->close(session, sep, stream, &err,
+					sep->user_data))
 			goto failed;
 	}
 
@@ -1116,7 +1121,8 @@ static gboolean avdtp_suspend_cmd(struct avdtp *session,
 		}
 
 		if (sep->ind && sep->ind->suspend) {
-			if (!sep->ind->suspend(session, sep, stream, &err))
+			if (!sep->ind->suspend(session, sep, stream, &err,
+						sep->user_data))
 				goto failed;
 		}
 
@@ -1156,7 +1162,8 @@ static gboolean avdtp_abort_cmd(struct avdtp *session, struct seid_req *req,
 	}
 
 	if (sep->ind && sep->ind->abort) {
-		if (!sep->ind->abort(session, sep, sep->stream, &err))
+		if (!sep->ind->abort(session, sep, sep->stream, &err,
+					sep->user_data))
 			goto failed;
 	}
 
@@ -1230,7 +1237,8 @@ static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (stream->close_int && sep->cfm && sep->cfm->close)
-		sep->cfm->close(stream->session, sep, stream, NULL);
+		sep->cfm->close(stream->session, sep, stream, NULL,
+				sep->user_data);
 
 	avdtp_sep_set_state(stream->session, sep, AVDTP_STATE_IDLE);
 
@@ -1255,7 +1263,7 @@ static void handle_transport_connect(struct avdtp *session, int sock,
 	stream->mtu = mtu;
 
 	if (!stream->open_acp && sep->cfm && sep->cfm->open)
-		sep->cfm->open(session, sep, stream, NULL);
+		sep->cfm->open(session, sep, stream, NULL, sep->user_data);
 
 	channel = g_io_channel_unix_new(stream->sock);
 
@@ -1556,36 +1564,41 @@ static gboolean request_timeout(gpointer user_data)
 	case AVDTP_RECONFIGURE:
 		error("Reconfigure request timed out");
 		if (lsep && lsep->cfm && lsep->cfm->reconfigure)
-			lsep->cfm->reconfigure(session, lsep, stream, &err);
+			lsep->cfm->reconfigure(session, lsep, stream, &err,
+						lsep->user_data);
 		break;
 	case AVDTP_OPEN:
 		error("Open request timed out");
 		if (lsep && lsep->cfm && lsep->cfm->open)
-			lsep->cfm->open(session, lsep, stream, &err);
+			lsep->cfm->open(session, lsep, stream, &err,
+					lsep->user_data);
 		break;
 	case AVDTP_START:
 		error("Start request timed out");
 		if (lsep && lsep->cfm && lsep->cfm->start)
-			lsep->cfm->start(session, lsep, stream, &err);
+			lsep->cfm->start(session, lsep, stream, &err,
+						lsep->user_data);
 		break;
 	case AVDTP_SUSPEND:
 		error("Suspend request timed out");
 		if (lsep && lsep->cfm && lsep->cfm->suspend)
-			lsep->cfm->suspend(session, lsep, stream, &err);
+			lsep->cfm->suspend(session, lsep, stream, &err,
+						lsep->user_data);
 		break;
 	case AVDTP_CLOSE:
 		error("Close request timed out");
 		if (lsep && lsep->cfm && lsep->cfm->close)
-			lsep->cfm->close(session, lsep, stream, &err);
+			lsep->cfm->close(session, lsep, stream, &err,
+						lsep->user_data);
 		break;
 	case AVDTP_SET_CONFIGURATION:
 		error("SetConfiguration request timed out");
 		if (lsep && lsep->cfm && lsep->cfm->set_configuration)
-			lsep->cfm->set_configuration(session, lsep, stream, &err);
-		/* fallthrough on purpose */
+			lsep->cfm->set_configuration(session, lsep, stream,
+							&err, lsep->user_data);
+		goto failed;
 	case AVDTP_DISCOVER:
 		error("Discover request timed out");
-		if (lsep && lsep->cfm && lsep->cfm->set_configuration)
 		goto failed;
 	case AVDTP_GET_CAPABILITIES:
 		error("GetCapabilities request timed out");
@@ -1756,7 +1769,8 @@ static gboolean avdtp_set_configuration_resp(struct avdtp *session,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (sep->cfm && sep->cfm->set_configuration)
-		sep->cfm->set_configuration(session, sep, stream, NULL);
+		sep->cfm->set_configuration(session, sep, stream, NULL,
+						sep->user_data);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_CONFIGURED);
 
@@ -1794,7 +1808,7 @@ static gboolean avdtp_start_resp(struct avdtp *session,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (sep->cfm && sep->cfm->start)
-		sep->cfm->start(session, sep, stream, NULL);
+		sep->cfm->start(session, sep, stream, NULL, sep->user_data);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_STREAMING);
 
@@ -1825,7 +1839,7 @@ static gboolean avdtp_suspend_resp(struct avdtp *session,
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
 
 	if (sep->cfm && sep->cfm->suspend)
-		sep->cfm->suspend(session, sep, stream, NULL);
+		sep->cfm->suspend(session, sep, stream, NULL, sep->user_data);
 
 	return TRUE;
 }
@@ -1837,7 +1851,7 @@ static gboolean avdtp_abort_resp(struct avdtp *session,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (sep->cfm && sep->cfm->suspend)
-		sep->cfm->suspend(session, sep, stream, NULL);
+		sep->cfm->suspend(session, sep, stream, NULL, sep->user_data);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
 
@@ -1973,7 +1987,8 @@ static gboolean avdtp_parse_rej(struct avdtp *session, struct avdtp_stream *stre
 		error("OPEN request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
 		if (sep && sep->cfm && sep->cfm->open)
-			sep->cfm->open(session, sep, stream, &err);
+			sep->cfm->open(session, sep, stream, &err,
+					sep->user_data);
 		return TRUE;
 	case AVDTP_SET_CONFIGURATION:
 		if (!conf_rej_to_err((void *) header, size, &err, &category))
@@ -1981,7 +1996,8 @@ static gboolean avdtp_parse_rej(struct avdtp *session, struct avdtp_stream *stre
 		error("SET_CONFIGURATION request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
 		if (sep && sep->cfm && sep->cfm->set_configuration)
-			sep->cfm->set_configuration(session, sep, stream, &err);
+			sep->cfm->set_configuration(session, sep, stream,
+							&err, sep->user_data);
 		return TRUE;
 	case AVDTP_RECONFIGURE:
 		if (!conf_rej_to_err((void *) header, size, &err, &category))
@@ -1989,7 +2005,8 @@ static gboolean avdtp_parse_rej(struct avdtp *session, struct avdtp_stream *stre
 		error("RECONFIGURE request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
 		if (sep && sep->cfm && sep->cfm->reconfigure)
-			sep->cfm->reconfigure(session, sep, stream, &err);
+			sep->cfm->reconfigure(session, sep, stream, &err,
+						sep->user_data);
 		return TRUE;
 	case AVDTP_START:
 		if (!stream_rej_to_err((void *) header, size, &err, &acp_seid))
@@ -1997,7 +2014,8 @@ static gboolean avdtp_parse_rej(struct avdtp *session, struct avdtp_stream *stre
 		error("START request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
 		if (sep && sep->cfm && sep->cfm->start)
-			sep->cfm->start(session, sep, stream, &err);
+			sep->cfm->start(session, sep, stream, &err,
+					sep->user_data);
 		return TRUE;
 	case AVDTP_SUSPEND:
 		if (!stream_rej_to_err((void *) header, size, &err, &acp_seid))
@@ -2005,7 +2023,8 @@ static gboolean avdtp_parse_rej(struct avdtp *session, struct avdtp_stream *stre
 		error("SUSPEND request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
 		if (sep && sep->cfm && sep->cfm->suspend)
-			sep->cfm->suspend(session, sep, stream, &err);
+			sep->cfm->suspend(session, sep, stream, &err,
+						sep->user_data);
 		return TRUE;
 	case AVDTP_CLOSE:
 		if (!stream_rej_to_err((void *) header, size, &err, &acp_seid))
@@ -2013,7 +2032,8 @@ static gboolean avdtp_parse_rej(struct avdtp *session, struct avdtp_stream *stre
 		error("CLOSE request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
 		if (sep && sep->cfm && sep->cfm->close)
-			sep->cfm->close(session, sep, stream, &err);
+			sep->cfm->close(session, sep, stream, &err,
+					sep->user_data);
 		return TRUE;
 	case AVDTP_ABORT:
 		if (!stream_rej_to_err((void *) header, size, &err, &acp_seid))
@@ -2021,7 +2041,8 @@ static gboolean avdtp_parse_rej(struct avdtp *session, struct avdtp_stream *stre
 		error("ABORT request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
 		if (sep && sep->cfm && sep->cfm->abort)
-			sep->cfm->abort(session, sep, stream, &err);
+			sep->cfm->abort(session, sep, stream, &err,
+					sep->user_data);
 		return TRUE;
 	default:
 		error("Unknown reject response signal id: %u",
@@ -2298,6 +2319,9 @@ int avdtp_set_configuration(struct avdtp *session,
 	if (!(lsep && rsep))
 		return -EINVAL;
 
+	debug("avdtp_set_configuration(%p): int_seid=%u, acp_seid=%u",
+			session, lsep->info.seid, rsep->seid);
+
 	new_stream = g_new0(struct avdtp_stream, 1);
 
 	new_stream->session = session;
@@ -2314,8 +2338,8 @@ int avdtp_set_configuration(struct avdtp *session,
 	req = g_malloc0(sizeof(struct setconf_req) + caps_len);
 
 	init_request(&req->header, AVDTP_SET_CONFIGURATION);
-	req->acp_seid = lsep->info.seid;
-	req->int_seid = rsep->seid;
+	req->int_seid = lsep->info.seid;
+	req->acp_seid = rsep->seid;
 
 	/* Copy the capabilities into the request */
 	for (l = caps, ptr = req->caps; l != NULL; l = g_slist_next(l)) {
@@ -2457,7 +2481,8 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 
 struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 						struct avdtp_sep_ind *ind,
-						struct avdtp_sep_cfm *cfm)
+						struct avdtp_sep_cfm *cfm,
+						void *user_data)
 {
 	struct avdtp_local_sep *sep;
 
@@ -2472,6 +2497,7 @@ struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 	sep->info.media_type = media_type;
 	sep->ind = ind;
 	sep->cfm = cfm;
+	sep->user_data = user_data;
 
 	local_seps = g_slist_append(local_seps, sep);
 

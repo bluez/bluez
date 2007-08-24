@@ -149,11 +149,13 @@ static void stream_setup_complete(struct avdtp *session, struct device *dev,
 		DBusMessage *reply;
 		reply = dbus_message_new_method_return(pending->msg);
 		send_message_and_unref(pending->conn, reply);
+		debug("Stream successfully created");
 	}
 	else {
 		err_failed(pending->conn, pending->msg, "Stream setup failed");
 		avdtp_unref(sink->session);
 		sink->session = NULL;
+		debug("Stream setup failed");
 	}
 
 	pending_request_free(pending);
@@ -186,7 +188,7 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 	sink->connect = pending;
 
 	id = a2dp_source_request_stream(sink->session, dev, FALSE,
-					stream_setup_complete, pending);
+					stream_setup_complete, pending, NULL);
 	if (id == 0) {
 		pending_request_free(pending);
 		sink->connect = NULL;
@@ -195,6 +197,8 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 		return err_connect_failed(conn, msg,
 						"Failed to request a stream");
 	}
+
+	debug("stream creation in progress");
 
 	pending->id = id;
 

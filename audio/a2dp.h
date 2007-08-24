@@ -58,6 +58,8 @@ struct sbc_codec_cap {
 	uint8_t max_bitpool;
 } __attribute__ ((packed));
 
+struct a2dp_sep;
+
 typedef void (*a2dp_stream_cb_t) (struct avdtp *session, struct device *dev,
 					struct avdtp_stream *stream,
 					void *user_data);
@@ -69,7 +71,8 @@ void a2dp_exit(void);
 unsigned int a2dp_source_request_stream(struct avdtp *session,
 					struct device *dev,
 					gboolean start, a2dp_stream_cb_t cb,
-					void *user_data);
+					void *user_data,
+					struct a2dp_sep **sep);
 gboolean a2dp_source_cancel_stream(int id);
 
 gboolean a2dp_source_lock(struct device *dev, struct avdtp *session);

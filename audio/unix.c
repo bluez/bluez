@@ -61,10 +61,12 @@ typedef void (*notify_cb_t) (struct device *dev, void *data);
 struct a2dp_data {
 	struct avdtp *session;
 	struct avdtp_stream *stream;
+	struct a2dp_sep *sep;
 };
 
 struct unix_client {
 	struct device *dev;
+	struct avdtp_local_sep *sep;
 	service_type_t type;
 	union {
 		struct a2dp_data a2dp;
@@ -335,7 +337,7 @@ proceed:
 
 		id = a2dp_source_request_stream(a2dp->session, dev,
 						TRUE, a2dp_setup_complete,
-						client);
+						client, &a2dp->sep);
 		if (id == 0) {
 			error("request_stream failed");
 			goto failed;
@@ -414,7 +416,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	}
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		debug("Unix client disconnected");
+		debug("Unix client disconnected (fd=%d)", client->sock);
 		if (!client->dev)
 			goto failed;
 		if (client->disconnect)
@@ -488,7 +490,7 @@ static gboolean server_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		return TRUE;
 	}
 
-	debug("Accepted new client connection on unix socket");
+	debug("Accepted new client connection on unix socket (fd=%d)", cli_sk);
 
 	client = g_new0(struct unix_client, 1);
 	client->sock = cli_sk;
