@@ -479,35 +479,13 @@ static void configure_device(int dev_id)
 	/* Set device name */
 	if ((device_opts->flags & (1 << HCID_SET_NAME)) && device_opts->name) {
 		change_local_name_cp cp;
-		write_ext_inquiry_response_cp ip;
-		char name[249];
-		uint8_t len;
 
-		memset(name, 0, sizeof(name));
-		if (read_local_name(&di.bdaddr, name) < 0) {
-			memset(cp.name, 0, sizeof(cp.name));
-			expand_name((char *) cp.name, sizeof(cp.name),
+		memset(cp.name, 0, sizeof(cp.name));
+		expand_name((char *) cp.name, sizeof(cp.name),
 						device_opts->name, dev_id);
-		} else
-			memcpy(cp.name, name, sizeof(cp.name));
-
-		ip.fec = 0x00;
-		memset(ip.data, 0, sizeof(ip.data));
-		len = strlen((char *) cp.name);
-		if (len > 48) {
-			len = 48;
-			ip.data[1] = 0x08;
-		} else
-			ip.data[1] = 0x09;
-		ip.data[0] = len + 1;
-		memcpy(ip.data + 2, cp.name, len);
 
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
 					CHANGE_LOCAL_NAME_CP_SIZE, &cp);
-
-		if (di.features[6] & LMP_EXT_INQ)
-			hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_EXT_INQUIRY_RESPONSE,
-					WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &ip);
 	}
 
 	/* Set device class */
