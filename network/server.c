@@ -59,7 +59,7 @@
 #include "manager.h"
 #include "server.h"
 
-static GIOChannel *bnep_io;
+static GIOChannel *bnep_io = NULL;
 
 /* Pending Authorization */
 struct pending_auth {
@@ -531,7 +531,7 @@ static gboolean connect_event(GIOChannel *chan,
 	return TRUE;
 }
 
-int server_init(DBusConnection *conn, gboolean secure)
+int server_init(struct network_server *ns)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
@@ -577,7 +577,7 @@ int server_init(DBusConnection *conn, gboolean secure)
 	}
 
 	/* Set link mode */
-	lm = (secure ? L2CAP_LM_SECURE : 0);
+	lm = (ns->secure ? L2CAP_LM_SECURE : 0);
 	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
 		err = errno;
 		error("Failed to set link mode. %s(%d)",
@@ -595,7 +595,7 @@ int server_init(DBusConnection *conn, gboolean secure)
 	g_io_channel_set_close_on_unref(bnep_io, FALSE);
 
 	g_io_add_watch(bnep_io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-							connect_event, conn);
+							connect_event, ns);
 
 	return 0;
 fail:
@@ -761,7 +761,7 @@ static int record_and_listen(struct network_server *ns)
 		return -EIO;
 	}
 
-	if (bnep_io == NULL && (err = server_init(ns->conn, ns->secure)) < 0)
+	if (bnep_io == NULL && (err = server_init(ns)) < 0)
 		return -err;
 
 	return 0;
