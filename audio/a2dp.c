@@ -1028,6 +1028,9 @@ gboolean a2dp_source_lock(struct device *dev, struct avdtp *session)
 		if (sep->locked)
 			continue;
 
+		if (sep->used_by != dev)
+			continue;
+
 		debug("SBC Source SEP %p locked", sep);
 		sep->locked = TRUE;
 		return TRUE;
@@ -1045,7 +1048,7 @@ gboolean a2dp_source_unlock(struct device *dev, struct avdtp *session)
 	for (l = sources; l != NULL; l = l->next) {
 		struct a2dp_sep *tmp = l->data;
 
-		if (!sep->locked)
+		if (!tmp->locked)
 			continue;
 
 		if (tmp->sep && tmp->used_by == dev) {
