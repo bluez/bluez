@@ -471,6 +471,9 @@ static void stream_free(struct avdtp_stream *stream)
 	if (stream->timer)
 		g_source_remove(stream->timer);
 
+	if (stream->io)
+		g_source_remove(stream->io);
+
 	g_slist_foreach(stream->callbacks, (GFunc) g_free, NULL);
 	g_slist_free(stream->callbacks);
 
@@ -1239,6 +1242,8 @@ static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 	if (stream->close_int && sep->cfm && sep->cfm->close)
 		sep->cfm->close(stream->session, sep, stream, NULL,
 				sep->user_data);
+
+	stream->io = 0;
 
 	avdtp_sep_set_state(stream->session, sep, AVDTP_STATE_IDLE);
 
