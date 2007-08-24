@@ -117,6 +117,12 @@ AC_DEFUN([AC_PATH_GSTREAMER], [
 	AC_SUBST(GSTREAMER_PLUGINSDIR)
 ])
 
+AC_DEFUN([AC_PATH_PULSE], [
+        PKG_CHECK_MODULES(PULSE, libpulse, pulse_found=yes, pulse_found=no)
+        AC_SUBST(PULSE_CFLAGS)
+        AC_SUBST(PULSE_LIBS)
+])
+
 AC_DEFUN([AC_PATH_ALSA], [
 	PKG_CHECK_MODULES(ALSA, alsa, alsa_found=yes, alsa_found=no)
 	AC_SUBST(ALSA_CFLAGS)
@@ -161,10 +167,11 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	obex_enable=${openobex_found}
 	glib_enable=no
 	gstreamer_enable=${gstreamer_found}
-	network_enable=no
-	serial_enable=no
-	input_enable=no
+	pulse_enable=${pulse_found}
 	audio_enable=no
+	input_enable=no
+	serial_enable=no
+	network_enable=no
 	sync_enable=no
 	echo_enable=no
 	hcid_enable=yes
@@ -246,20 +253,24 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		gstreamer_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
-		network_enable=${enableval}
+	AC_ARG_ENABLE(pulse, AC_HELP_STRING([--enable-pulse], [enable PulseAudio support]), [
+		pulse_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(serial, AC_HELP_STRING([--enable-serial], [enable serial service]), [
-		serial_enable=${enableval}
+	AC_ARG_ENABLE(audio, AC_HELP_STRING([--enable-audio], [enable audio service]), [
+		audio_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(input, AC_HELP_STRING([--enable-input], [enable input service]), [
 		input_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(audio, AC_HELP_STRING([--enable-audio], [enable audio service]), [
-		audio_enable=${enableval}
+	AC_ARG_ENABLE(serial, AC_HELP_STRING([--enable-serial], [enable serial service]), [
+		serial_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
+		network_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(sync, AC_HELP_STRING([--enable-sync], [enable synchronization service]), [
@@ -368,10 +379,11 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(GSTREAMER, test "${gstreamer_enable}" = "yes" && test "${gstreamer_found}" = "yes")
-	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
-	AM_CONDITIONAL(SERIALSERVICE, test "${serial_enable}" = "yes")
-	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
+	AM_CONDITIONAL(PULSE, test "${pulse_enable}" = "yes" && test "${pulse_found}" = "yes")
 	AM_CONDITIONAL(AUDIOSERVICE, test "${audio_enable}" = "yes")
+	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
+	AM_CONDITIONAL(SERIALSERVICE, test "${serial_enable}" = "yes")
+	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(SYNCSERVICE, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
 	AM_CONDITIONAL(ECHOSERVICE, test "${echo_enable}" = "yes")
 	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")
