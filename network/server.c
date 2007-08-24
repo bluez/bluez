@@ -372,6 +372,7 @@ static int authorize_connection(struct network_server *ns)
 
 	if (dbus_connection_send_with_reply(ns->conn, msg, &pending, -1) == FALSE) {
 		error("Sending of authorization request failed");
+		dbus_message_unref(msg);
 		return -EACCES;
 	}
 
@@ -1130,23 +1131,6 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 
 	ns = g_new0(struct network_server, 1);
 
-	if (!dbus_connection_create_object_path(conn, path, ns,
-						server_unregister)) {
-		error("D-Bus failed to register %s path", path);
-		server_free(ns);
-		return -1;
-	}
-
-	if (!dbus_connection_register_interface(conn, path,
-						NETWORK_SERVER_INTERFACE,
-						server_methods,
-						server_signals, NULL)) {
-		error("D-Bus failed to register %s interface",
-				NETWORK_SERVER_INTERFACE);
-		dbus_connection_destroy_object_path(conn, path);
-		return -1;
-	}
-
 	bacpy(&ns->src, src);
 	ns->path = g_strdup(path);
 	ns->id = id;
@@ -1169,14 +1153,31 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 	ns->range = textfile_get(filename, "address_range");
 	ns->iface = textfile_get(filename, "routing");
 
-	info("Registered server path:%s", path);
-
 	str = textfile_get(filename, "enabled");
 	if (str) {
 		if (strcmp("1", str) == 0)
 			record_and_listen(ns);
 		g_free(str);
 	}
+
+	if (!dbus_connection_create_object_path(conn, path, ns,
+						server_unregister)) {
+		error("D-Bus failed to register %s path", path);
+		server_free(ns);
+		return -1;
+	}
+
+	if (!dbus_connection_register_interface(conn, path,
+						NETWORK_SERVER_INTERFACE,
+						server_methods,
+						server_signals, NULL)) {
+		error("D-Bus failed to register %s interface",
+				NETWORK_SERVER_INTERFACE);
+		dbus_connection_destroy_object_path(conn, path);
+		return -1;
+	}
+
+	info("Registered server path:%s", path);
 
 	return 0;
 }

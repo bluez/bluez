@@ -310,6 +310,7 @@ static int get_record(struct pending_reply *pr, uint32_t handle,
 
 	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
 		error("Can't send D-Bus message.");
+		dbus_message_unref(msg);
 		return -1;
 	}
 
@@ -386,6 +387,7 @@ static int get_handles(struct pending_reply *pr,
 
 	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
 		error("Can't send D-Bus message.");
+		dbus_message_unref(msg);
 		return -1;
 	}
 
