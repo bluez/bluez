@@ -335,6 +335,11 @@ setup:
 						sizeof(events), events);
 	}
 
+	if (read_local_name(&dev->bdaddr, name) == 0) {
+		memcpy(dev->name, name, 248);
+		hci_write_local_name(dd, name, 5000);
+        }
+
 	update_ext_inquiry_response(dd, dev);
 
 	inqmode = get_inquiry_mode(dev);
