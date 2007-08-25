@@ -189,7 +189,7 @@ done:
 static void usage(void)
 {
 	printf("SBC encoder utility ver %s\n", VERSION);
-	printf("Copyright (c) 2004  Marcel Holtmann\n\n");
+	printf("Copyright (c) 2004-2007  Marcel Holtmann\n\n");
 
 	printf("Usage:\n"
 		"\tsbcenc [options] file(s)\n"
@@ -198,8 +198,8 @@ static void usage(void)
 	printf("Options:\n"
 		"\t-h, --help           Display help\n"
 		"\t-v, --verbose        Verbose mode\n"
-	        "\t-s, --subbands       Number of subbands to use (4 or 8)\n"
-	        "\t-j, --joint          Joint stereo\n"
+		"\t-s, --subbands       Number of subbands to use (4 or 8)\n"
+		"\t-j, --joint          Joint stereo\n"
 		"\n");
 }
 
@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
 {
 	int i, opt, verbose = 0, subbands = 8, joint = 0;
 
-	while ((opt = getopt_long(argc, argv, "+hv", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+hvs:j", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'h':
 			usage();
@@ -224,13 +224,15 @@ int main(int argc, char *argv[])
 		case 'v':
 			verbose = 1;
 			break;
+
 		case 's':
 			subbands = atoi(strdup(optarg));
 			if (subbands != 8 && subbands != 4) {
-				fprintf(stderr, "Invalid number of sunnabds %d!\n", subbands);
+				fprintf(stderr, "Invalid subbands %d!\n", subbands);
 				exit(1);
 			}
 			break;
+
 		case 'j':
 			joint = 1;
 			break;
