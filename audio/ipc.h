@@ -25,7 +25,7 @@
 
 #define IPC_TYPE_CONNECT  0x0001
 
-#define IPC_MTU 32
+#define IPC_MTU 128
 
 #define IPC_SOCKET_NAME "\0/org/bluez/audio"
 
