@@ -40,7 +40,7 @@
 
 #define BUF_SIZE 8192
 
-static void decode(char *filename, char *audiodevice, int tofile)
+static void decode(char *filename, char *output, int tofile)
 {
 	unsigned char buf[BUF_SIZE], *stream;
 	struct stat st;
@@ -82,10 +82,14 @@ static void decode(char *filename, char *audiodevice, int tofile)
 	pos = 0;
 	streamlen = st.st_size;
 
-	ad = open(audiodevice, O_WRONLY | (tofile ? (O_CREAT | O_TRUNC) : 0), tofile ? 0644 : 0);
+	if (tofile)
+		ad = open(output, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	else
+		ad = open(output, O_WRONLY, 0);
+
 	if (ad < 0) {
-		fprintf(stderr, "Can't open audio device %s: %s\n",
-						audiodevice, strerror(errno));
+		fprintf(stderr, "Can't open output %s: %s\n",
+						output, strerror(errno));
 		goto free;
 	}
 
@@ -97,18 +101,18 @@ static void decode(char *filename, char *audiodevice, int tofile)
 	if (!tofile) {
 		if (ioctl(ad, SNDCTL_DSP_SETFMT, &format) < 0) {
 			fprintf(stderr, "Can't set audio format on %s: %s\n",
-							audiodevice, strerror(errno));
+							output, strerror(errno));
 			goto close;
 		}
 		if (ioctl(ad, SNDCTL_DSP_CHANNELS, &sbc.channels) < 0) {
 			fprintf(stderr, "Can't set number of channels on %s: %s\n",
-							audiodevice, strerror(errno));
+							output, strerror(errno));
 			goto close;
 		}
 
 		if (ioctl(ad, SNDCTL_DSP_SPEED, &sbc.rate) < 0) {
 			fprintf(stderr, "Can't set audio rate on %s: %s\n",
-							audiodevice, strerror(errno));
+							output, strerror(errno));
 			goto close;
 		}
 	}
@@ -161,7 +165,7 @@ free:
 static void usage(void)
 {
 	printf("SBC decoder utility ver %s\n", VERSION);
-	printf("Copyright (c) 2004  Marcel Holtmann\n\n");
+	printf("Copyright (c) 2004-2007  Marcel Holtmann\n\n");
 
 	printf("Usage:\n"
 		"\tsbcdec [options] file(s)\n"
@@ -169,9 +173,9 @@ static void usage(void)
 
 	printf("Options:\n"
 		"\t-h, --help           Display help\n"
-		"\t-d, --device <dsp>   Sound device\n"
 		"\t-v, --verbose        Verbose mode\n"
-		"\t-f, --file           Decode to a file\n"
+		"\t-d, --device <dsp>   Sound device\n"
+		"\t-f, --file <file>    Decode to a file\n"
 		"\n");
 }
 
@@ -185,25 +189,30 @@ static struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	char *device = NULL;
-	char *file = NULL;
+	char *output = NULL;
 	int i, opt, verbose = 0, tofile = 0;
 
-	while ((opt = getopt_long(argc, argv, "+hd:vf:", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+hvd:f:", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'h':
 			usage();
 			exit(0);
 
-		case 'd':
-			device = strdup(optarg);
-			break;
-
 		case 'v':
 			verbose = 1;
 			break;
+
+		case 'd':
+			if (output)
+				free(output);
+			output = strdup(optarg);
+			tofile = 0;
+			break;
+
 		case 'f' :
-			file = strdup(optarg);
+			if (output)
+				free(output);
+			output = strdup(optarg);
 			tofile = 1;
 			break;
 
@@ -222,10 +231,10 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 0; i < argc; i++)
-		decode(argv[i], device ? device : file ? file : "/dev/dsp", tofile);
+		decode(argv[i], output ? output : "/dev/dsp", tofile);
 
-	if (device)
-		free(device);
+	if (output)
+		free(output);
 
 	return 0;
 }
