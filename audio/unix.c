@@ -305,18 +305,21 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 	int ret, fd;
 	unsigned int id;
 	struct a2dp_data *a2dp;
+	bdaddr_t bdaddr;
 	const char *interface = NULL;
+
+	str2ba(pkt->device, &bdaddr);
 
 	if (pkt->role == PKT_ROLE_VOICE)
 		interface = AUDIO_HEADSET_INTERFACE;
 	else if (pkt->role == PKT_ROLE_HIFI)
 		interface = AUDIO_SINK_INTERFACE;
 
-	dev = manager_find_device(&pkt->bdaddr, interface, TRUE);
+	dev = manager_find_device(&bdaddr, interface, TRUE);
 	if (dev)
 		goto proceed;
 
-	dev = manager_find_device(&pkt->bdaddr, interface, FALSE);
+	dev = manager_find_device(&bdaddr, interface, FALSE);
 	if (!dev)
 		goto failed;
 

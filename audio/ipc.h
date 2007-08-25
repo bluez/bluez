@@ -22,7 +22,6 @@
  */
 
 #include <stdint.h>
-#include <bluetooth/bluetooth.h>
 
 #define IPC_TYPE_CONNECT  0x0001
 
@@ -52,7 +51,7 @@
 #define PKT_ERROR_NONE			0
 
 struct ipc_packet {
-	bdaddr_t bdaddr;	/* Address of the remote Device */
+	char device[18];	/* Address of the remote Device */
 	uint8_t role;		/* Audio role eg: voice, wifi, auto... */
 	uint8_t type;		/* Packet type */
 	uint8_t error;		/* Packet error code */

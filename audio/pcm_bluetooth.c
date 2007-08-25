@@ -36,9 +36,6 @@
 #include <alsa/asoundlib.h>
 #include <alsa/pcm_external.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/sco.h>
-
 #include "ipc.h"
 #include "sbc.h"
 
@@ -54,6 +51,10 @@
 #define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
 #else
 #define DBG(fmt, arg...)
+#endif
+
+#ifndef SOL_SCO
+#define SOL_SCO 17
 #endif
 
 #ifndef SCO_TXBUFS
@@ -928,7 +929,7 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
 				return -EINVAL;
 			}
 
-			str2ba(addr, &pkt->bdaddr);
+			strncpy(pkt->device, addr, 18);
 			continue;
 		}
 
