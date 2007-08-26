@@ -28,7 +28,6 @@
   use a log2 table for byte integer scale factors calculation (sum log2 results for high and low bytes)
   fill bitpool by 16 bits instead of one at a time in bits allocation/bitpool generation
   port to the dsp 
-  don't consume more bytes than passed into the encoder
 
 */
 
@@ -1389,6 +1388,10 @@ int sbc_encode(sbc_t *sbc, void *data, int count)
 		sbc_encoder_init(&priv->enc_state, &priv->frame);
 		priv->init = 1;
 	}
+
+	/* input must be large enough to encode a complete frame */
+	if (count < priv->frame.subbands * priv->frame.blocks * sbc->channels * 2)
+		return 0;
 
 	ptr = data;
 
