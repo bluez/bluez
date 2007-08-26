@@ -27,6 +27,7 @@
 
 #include "gstsbcenc.h"
 #include "gstsbcdec.h"
+#include "gstsbcparse.h"
 #include "gsta2dpsink.h"
 
 static GstStaticCaps sbc_caps = GST_STATIC_CAPS("audio/x-sbc");
@@ -60,6 +61,10 @@ static gboolean plugin_init(GstPlugin *plugin)
 
 	if (gst_element_register(plugin, "sbcdec",
 			GST_RANK_PRIMARY, GST_TYPE_SBC_DEC) == FALSE)
+		return FALSE;
+
+	if (gst_element_register(plugin, "sbcparse",
+			GST_RANK_PRIMARY, GST_TYPE_SBC_PARSE) == FALSE)
 		return FALSE;
 
 	if (gst_element_register(plugin, "a2dpsink",
