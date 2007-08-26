@@ -1293,6 +1293,11 @@ int sbc_init(sbc_t *sbc, unsigned long flags)
 	return 0;
 }
 
+int sbc_parse(sbc_t *sbc, void *data, int count)
+{
+	return sbc_decode(sbc, data, count);
+}
+
 int sbc_decode(sbc_t *sbc, void *data, int count)
 {
 	struct sbc_priv *priv;
