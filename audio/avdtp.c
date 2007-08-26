@@ -87,6 +87,8 @@ typedef enum {
 	AVDTP_SESSION_STATE_CONNECTED
 } avdtp_session_state_t;
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
 struct avdtp_header {
 	uint8_t message_type:2;
 	uint8_t packet_type:2;
@@ -108,6 +110,34 @@ struct seid {
 	uint8_t rfa0:2;
 	uint8_t seid:6;
 } __attribute__ ((packed));
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+struct avdtp_header {
+	uint8_t transaction:4;
+	uint8_t packet_type:2;
+	uint8_t message_type:2;
+	uint8_t rfa0:2;
+	uint8_t signal_id:6;
+} __attribute__ ((packed));
+
+struct seid_info {
+	uint8_t seid:6;
+	uint8_t inuse:1;
+	uint8_t rfa0:1;
+	uint8_t media_type:4;
+	uint8_t type:1;
+	uint8_t rfa2:3;
+} __attribute__ ((packed));
+
+struct seid {
+	uint8_t seid:6;
+	uint8_t rfa0:2;
+} __attribute__ ((packed));
+
+#else
+#error "Unknown byte order"
+#endif
 
 /* packets */
 
@@ -141,15 +171,23 @@ struct suspend_req {
 	struct seid other_seids[0];
 } __attribute__ ((packed));
 
+struct seid_rej {
+	struct avdtp_header header;
+	uint8_t error;
+} __attribute__ ((packed));
+
+struct conf_rej {
+	struct avdtp_header header;
+	uint8_t category;
+	uint8_t error;
+} __attribute__ ((packed));
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
 struct seid_req {
 	struct avdtp_header header;
 	uint8_t rfa0:2;
 	uint8_t acp_seid:6;
-} __attribute__ ((packed));
-
-struct seid_rej {
-	struct avdtp_header header;
-	uint8_t error;
 } __attribute__ ((packed));
 
 struct setconf_req {
@@ -161,12 +199,6 @@ struct setconf_req {
 	uint8_t int_seid:6;
 
 	uint8_t caps[0];
-} __attribute__ ((packed));
-
-struct conf_rej {
-	struct avdtp_header header;
-	uint8_t category;
-	uint8_t error;
 } __attribute__ ((packed));
 
 struct stream_rej {
@@ -194,6 +226,55 @@ struct avdtp_general_rej {
 	uint8_t transaction:4;
 	uint8_t rfa0;
 } __attribute__ ((packed));
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+struct seid_req {
+	struct avdtp_header header;
+	uint8_t acp_seid:6;
+	uint8_t rfa0:2;
+} __attribute__ ((packed));
+
+struct setconf_req {
+	struct avdtp_header header;
+
+	uint8_t int_seid:6;
+	uint8_t rfa1:2;
+	uint8_t acp_seid:6;
+	uint8_t rfa0:2;
+
+	uint8_t caps[0];
+} __attribute__ ((packed));
+
+struct stream_rej {
+	struct avdtp_header header;
+	uint8_t acp_seid:6;
+	uint8_t rfa0:2;
+	uint8_t error;
+} __attribute__ ((packed));
+
+struct reconf_req {
+	struct avdtp_header header;
+
+	uint8_t acp_seid:6;
+	uint8_t rfa0:2;
+
+	uint8_t serv_cap;
+	uint8_t serv_cap_len;
+
+	uint8_t caps[0];
+} __attribute__ ((packed));
+
+struct avdtp_general_rej {
+	uint8_t transaction:4;
+	uint8_t packet_type:2;
+	uint8_t message_type:2;
+	uint8_t rfa0;
+} __attribute__ ((packed));
+
+#else
+#error "Unknown byte order"
+#endif
 
 struct pending_req {
 	struct avdtp_header *msg;
