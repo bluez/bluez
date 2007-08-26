@@ -917,7 +917,7 @@ static void cmd_commands(int ctl, int hdev, char *opt)
 		printf("%s Octet %-2d = 0x%02x (Bit",
 			i ? "\t\t ": "\tCommands:", i, cmds[i]);
 		for (n = 0; n < 8; n++)
-			if (hci_test_bit(n, &cmds[i]))
+			if (cmds[i] & (1 << n))
 				printf(" %d", n);
 		printf(")\n");
 	}
