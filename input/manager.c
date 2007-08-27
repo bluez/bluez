@@ -327,6 +327,11 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 		goto cleanup;
 	}
 
+	dbus_connection_emit_signal(pr->conn, INPUT_PATH,
+			INPUT_MANAGER_INTERFACE, "DeviceCreated",
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
 	device_paths = g_slist_append(device_paths, g_strdup(path));
 
 	/* Replying to the requestor */
@@ -735,6 +740,11 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 		err_failed(pr->conn, pr->msg, "Path registration failed");
 		goto fail;
 	}
+
+	dbus_connection_emit_signal(pr->conn, INPUT_PATH,
+			INPUT_MANAGER_INTERFACE, "DeviceCreated",
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
 
 	device_paths = g_slist_append(device_paths, g_strdup(path));
 

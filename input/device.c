@@ -1047,11 +1047,6 @@ static int register_path(DBusConnection *conn, const char *path, struct device *
 		return -1;
 	}
 
-	dbus_connection_emit_signal(conn, INPUT_PATH,
-			INPUT_MANAGER_INTERFACE, "DeviceCreated",
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
 	devices = g_slist_append(devices, idev);
 
 	info("Created input device: %s", path);
