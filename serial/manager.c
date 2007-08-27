@@ -1100,8 +1100,6 @@ static GIOError channel_write(GIOChannel *chan, char *buf, size_t size)
 		wbytes += written;
 	}
 
-	g_io_channel_flush(chan, NULL);
-
 	return err;
 }
 
