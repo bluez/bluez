@@ -431,6 +431,8 @@ char *bt_compidtostr(int compid)
 		return "3DSP Corporation";
 	case 74:
 		return "Accel Semiconductor Ltd.";
+	case 75:
+		return "Continental Automotive Systems";
 	case 65535:
 		return "internal use";
 	default:
