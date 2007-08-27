@@ -98,10 +98,6 @@ struct bluetooth_a2dp {
 	int nsamples;			/* Cumulative number of codec samples */
 	uint16_t seq_num;		/* Cumulative packet sequence */
 	int frame_count;		/* Current frames in buffer*/
-
-	pthread_t hw_thread;		/* Makes virtual hw pointer move */
-	int pipefd[2];			/* Inter thread communication */
-	int stopped;
 };
 
 struct bluetooth_data {
@@ -113,6 +109,10 @@ struct bluetooth_data {
 	uint8_t buffer[BUFFER_SIZE];	/* Encoded transfer buffer */
 	int count;			/* Transfer buffer counter */
 	struct bluetooth_a2dp a2dp;	/* A2DP data */
+
+	pthread_t hw_thread;		/* Makes virtual hw pointer move */
+	int pipefd[2];			/* Inter thread communication */
+	int stopped;
 };
 
 static int bluetooth_start(snd_pcm_ioplug_t *io)
@@ -129,10 +129,9 @@ static int bluetooth_stop(snd_pcm_ioplug_t *io)
 	return 0;
 }
 
-static void *a2dp_playback_hw_thread(void *param)
+static void *playback_hw_thread(void *param)
 {
 	struct bluetooth_data *data = param;
-	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	unsigned int prev_periods;
 	double period_time;
 	struct timeval start;
@@ -146,7 +145,7 @@ static void *a2dp_playback_hw_thread(void *param)
 		unsigned int dtime, periods;
 		struct timeval cur, delta;
 
-		if (a2dp->stopped)
+		if (data->stopped)
 			goto iter_sleep;
 
 		gettimeofday(&cur, 0);
@@ -164,7 +163,7 @@ static void *a2dp_playback_hw_thread(void *param)
 			data->hw_ptr %= data->io.buffer_size;
 
 			/* Notify user that hardware pointer has moved */
-			if (write(a2dp->pipefd[1], &c, 1) < 0)
+			if (write(data->pipefd[1], &c, 1) < 0)
 				pthread_testcancel();
 
 			/* Reset point of reference to avoid too big values
@@ -185,33 +184,30 @@ iter_sleep:
 	}
 }
 
-static int bluetooth_a2dp_playback_start(snd_pcm_ioplug_t *io)
+static int bluetooth_playback_start(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
-	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	int err;
 
 	DBG("%p", io);
 
-	a2dp->stopped = 0;
+	data->stopped = 0;
 
-	if (a2dp->hw_thread)
+	if (data->hw_thread)
 		return 0;
 
-	err = pthread_create(&a2dp->hw_thread, 0,
-					a2dp_playback_hw_thread, data);
+	err = pthread_create(&data->hw_thread, 0, playback_hw_thread, data);
 
 	return -err;
 }
 
-static int bluetooth_a2dp_playback_stop(snd_pcm_ioplug_t *io)
+static int bluetooth_playback_stop(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
-	struct bluetooth_a2dp *a2dp = &data->a2dp;
 
 	DBG("%p", io);
 
-	a2dp->stopped = 1;
+	data->stopped = 1;
 
 	return 0;
 }
@@ -225,28 +221,27 @@ static snd_pcm_sframes_t bluetooth_pointer(snd_pcm_ioplug_t *io)
 
 static void bluetooth_exit(struct bluetooth_data *data)
 {
+	struct bluetooth_a2dp *a2dp = &data->a2dp;
+
 	if (data->sock >= 0)
 		close(data->sock);
 
 	if (data->stream_fd >= 0)
 		close(data->stream_fd);
 
-	if (data->cfg.codec == CFG_CODEC_SBC) {
-		struct bluetooth_a2dp *a2dp = &data->a2dp;
-
-		if (a2dp->hw_thread) {
-			pthread_cancel(a2dp->hw_thread);
-			pthread_join(a2dp->hw_thread, 0);
-		}
-
-		sbc_finish(&a2dp->sbc);
+	if (data->hw_thread) {
+		pthread_cancel(data->hw_thread);
+		pthread_join(data->hw_thread, 0);
 	}
 
-	if (data->a2dp.pipefd[0] > 0)
-		close(data->a2dp.pipefd[0]);
+	if (data->cfg.codec == CFG_CODEC_SBC)
+		sbc_finish(&a2dp->sbc);
 
-	if (data->a2dp.pipefd[1] > 0)
-		close(data->a2dp.pipefd[1]);
+	if (data->pipefd[0] > 0)
+		close(data->pipefd[0]);
+
+	if (data->pipefd[1] > 0)
+		close(data->pipefd[1]);
 
 	free(data);
 }
@@ -279,8 +274,8 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 		 * If it is, capture won't start */
 		data->hw_ptr = io->period_size;
 
-	/* a2dp : wake up any client polling at us */
-	return write(data->a2dp.pipefd[1], &c, 1);
+	/* wake up any client polling at us */
+	return write(data->pipefd[1], &c, 1);
 }
 
 static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
@@ -366,26 +361,26 @@ static int bluetooth_poll_revents(snd_pcm_ioplug_t *io ATTRIBUTE_UNUSED,
 	return 0;
 }
 
-static int bluetooth_a2dp_playback_poll_descriptors(snd_pcm_ioplug_t *io,
+static int bluetooth_playback_poll_descriptors(snd_pcm_ioplug_t *io,
 					struct pollfd *pfd, unsigned int space)
 {
 	struct bluetooth_data *data = io->private_data;
 
 	DBG("");
 
-	assert(data->a2dp.pipefd[0] >= 0);
+	assert(data->pipefd[0] >= 0);
 
 	if (space < 1)
 		return 0;
 
-	pfd[0].fd = data->a2dp.pipefd[0];
+	pfd[0].fd = data->pipefd[0];
 	pfd[0].events = POLLIN;
 	pfd[0].revents = 0;
 
 	return 1;
 }
 
-static int bluetooth_a2dp_playback_poll_revents(snd_pcm_ioplug_t *io,
+static int bluetooth_playback_poll_revents(snd_pcm_ioplug_t *io,
 					struct pollfd *pfds, unsigned int nfds,
 							unsigned short *revents)
 {
@@ -479,6 +474,13 @@ static snd_pcm_sframes_t bluetooth_hsp_write(snd_pcm_ioplug_t *io,
 	DBG("areas->step=%u areas->first=%u offset=%lu, size=%lu io->nonblock=%u",
 			areas->step, areas->first, offset, size, io->nonblock);
 
+	if (io->hw_ptr > io->appl_ptr) {
+		ret = bluetooth_playback_stop(io);
+		if (ret == 0)
+			ret = -EPIPE;
+		goto done;
+	}
+
 	frame_size = areas->step / 8;
 	if ((data->count + size * frame_size) <= cfg.pkt_len)
 		frames_to_read = size;
@@ -505,10 +507,6 @@ static snd_pcm_sframes_t bluetooth_hsp_write(snd_pcm_ioplug_t *io,
 		/* Reset count pointer */
 		data->count = 0;
 
-		/* Increment hardware transmition pointer */
-		data->hw_ptr = (data->hw_ptr + cfg.pkt_len / frame_size)
-				% io->buffer_size;
-
 		ret = frames_to_read;
 	} else if (rsend < 0)
 		ret = (errno == EPIPE) ? -EIO : -errno;
@@ -516,7 +514,7 @@ static snd_pcm_sframes_t bluetooth_hsp_write(snd_pcm_ioplug_t *io,
 		ret = -EIO;
 
 done:
-	DBG("returning %lu", ret);
+	DBG("returning %ld", ret);
 	return ret;
 }
 
@@ -576,7 +574,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	DBG("hw_ptr=%lu appl_ptr=%lu", io->hw_ptr, io->appl_ptr);
 
 	if (io->hw_ptr > io->appl_ptr) {
-		ret = bluetooth_a2dp_playback_stop(io);
+		ret = bluetooth_playback_stop(io);
 		if (ret == 0)
 			ret = -EPIPE;
 		goto done;
@@ -656,15 +654,15 @@ done:
 }
 
 static snd_pcm_ioplug_callback_t bluetooth_hsp_playback = {
-	.start			= bluetooth_start,
-	.stop			= bluetooth_stop,
+	.start			= bluetooth_playback_start,
+	.stop			= bluetooth_playback_stop,
 	.pointer		= bluetooth_pointer,
 	.close			= bluetooth_close,
 	.hw_params		= bluetooth_hsp_hw_params,
 	.prepare		= bluetooth_prepare,
 	.transfer		= bluetooth_hsp_write,
-	.poll_descriptors	= bluetooth_poll_descriptors,
-	.poll_revents		= bluetooth_poll_revents,
+	.poll_descriptors	= bluetooth_playback_poll_descriptors,
+	.poll_revents		= bluetooth_playback_poll_revents,
 };
 
 static snd_pcm_ioplug_callback_t bluetooth_hsp_capture = {
@@ -680,15 +678,15 @@ static snd_pcm_ioplug_callback_t bluetooth_hsp_capture = {
 };
 
 static snd_pcm_ioplug_callback_t bluetooth_a2dp_playback = {
-	.start			= bluetooth_a2dp_playback_start,
-	.stop			= bluetooth_a2dp_playback_stop,
+	.start			= bluetooth_playback_start,
+	.stop			= bluetooth_playback_stop,
 	.pointer		= bluetooth_pointer,
 	.close			= bluetooth_close,
 	.hw_params		= bluetooth_a2dp_hw_params,
 	.prepare		= bluetooth_prepare,
 	.transfer		= bluetooth_a2dp_write,
-	.poll_descriptors	= bluetooth_a2dp_playback_poll_descriptors,
-	.poll_revents		= bluetooth_a2dp_playback_poll_revents,
+	.poll_descriptors	= bluetooth_playback_poll_descriptors,
+	.poll_revents		= bluetooth_playback_poll_revents,
 };
 
 static snd_pcm_ioplug_callback_t bluetooth_a2dp_capture = {
@@ -886,15 +884,10 @@ static int bluetooth_a2dp_init(struct bluetooth_data *data,
 	a2dp->codesize = a2dp->sbc.subbands * a2dp->sbc.blocks *
 						a2dp->sbc.channels * 2;
 	a2dp->count = sizeof(struct rtp_header) + sizeof(struct rtp_payload);
-	a2dp->pipefd[0] = -1;
-	a2dp->pipefd[1] = -1;
 
-	if (pipe(a2dp->pipefd) < 0)
-		return -errno;
-	if (fcntl(a2dp->pipefd[0], F_SETFL, O_NONBLOCK) < 0)
-		return -errno;
-	if (fcntl(a2dp->pipefd[1], F_SETFL, O_NONBLOCK) < 0)
-		return -errno;
+	DBG("\tallocation=%u\n\tsubbands=%u\n\tblocks=%u\n\tbitpool=%u\n",
+		a2dp->sbc.allocation, a2dp->sbc.subbands, a2dp->sbc.blocks,
+		a2dp->sbc.bitpool);
 
 	return 0;
 }
@@ -1016,9 +1009,6 @@ done:
 		ret = bluetooth_a2dp_init(data, sbc);
 		if (ret < 0)
 			return ret;
-		DBG("\tallocation=%u\n\tsubbands=%u\n\tblocks=%u\n\tbitpool=%u\n",
-				a2dp->sbc.allocation, a2dp->sbc.subbands,
-				a2dp->sbc.blocks, a2dp->sbc.bitpool);
 	}
 
 	if (data->stream_fd == -1) {
@@ -1070,6 +1060,16 @@ static int bluetooth_init(struct bluetooth_data *data, snd_config_t *conf)
 	}
 
 	data->sock = sk;
+
+	data->pipefd[0] = -1;
+	data->pipefd[1] = -1;
+
+	if (pipe(data->pipefd) < 0)
+		return -errno;
+	if (fcntl(data->pipefd[0], F_SETFL, O_NONBLOCK) < 0)
+		return -errno;
+	if (fcntl(data->pipefd[1], F_SETFL, O_NONBLOCK) < 0)
+		return -errno;
 
 	return bluetooth_cfg(data, conf);
 }
