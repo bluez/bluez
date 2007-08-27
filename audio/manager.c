@@ -814,7 +814,7 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 
 		default_dev = manager_find_device(BDADDR_ANY, NULL, TRUE);
 
-		if (!default_dev) {
+		if (!default_dev && devices) {
 			l = devices;
 			default_dev = (g_slist_last(l))->data;
 		}
