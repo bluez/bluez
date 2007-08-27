@@ -70,7 +70,7 @@ static GstStaticPadTemplate sbc_enc_sink_factory =
 		GST_STATIC_CAPS("audio/x-raw-int, "
 				"rate = (int) { 16000, 32000, 44100, 48000 }, "
 				"channels = (int) [ 1, 2 ], "
-				"endianness = (int) BYTE_ORDER, "
+				"endianness = (int) LITTLE_ENDIAN, "
 				"signed = (boolean) true, "
 				"width = (int) 16, "
 				"depth = (int) 16"));
