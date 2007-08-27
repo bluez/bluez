@@ -755,15 +755,20 @@ static int record_and_listen(struct network_server *ns)
 {
 	int err;
 
+	if (bnep_io == NULL && (err = server_init(ns)) < 0)
+		return -err;
+
 	/* Add the service record */
 	ns->record_id = add_server_record(ns);
 	if (!ns->record_id) {
 		error("Unable to register the server(0x%x) service record", ns->id);
+		g_io_channel_close(bnep_io);
+		g_io_channel_unref(bnep_io);
+		bnep_io = NULL;
 		return -EIO;
 	}
 
-	if (bnep_io == NULL && (err = server_init(ns)) < 0)
-		return -err;
+	ns->enable = TRUE;
 
 	return 0;
 }
