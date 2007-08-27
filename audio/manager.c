@@ -671,46 +671,6 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 	return device;
 }
 
-static gboolean device_supports_interface(struct device *device,
-						const char *iface)
-{
-	if (strcmp(iface, AUDIO_HEADSET_INTERFACE) == 0)
-		return device->headset ? TRUE : FALSE;
-
-	if (strcmp(iface, AUDIO_GATEWAY_INTERFACE) == 0)
-		return device->gateway ? TRUE : FALSE;
-
-	if (strcmp(iface, AUDIO_SOURCE_INTERFACE) == 0)
-		return device->source ? TRUE : FALSE;
-
-	if (strcmp(iface, AUDIO_SINK_INTERFACE) == 0)
-		return device->sink ? TRUE : FALSE;
-
-	if (strcmp(iface, AUDIO_CONTROL_INTERFACE) == 0)
-		return device->control ? TRUE : FALSE;
-
-	if (strcmp(iface, AUDIO_TARGET_INTERFACE) == 0)
-		return device->target ? TRUE : FALSE;
-
-	debug("Unknown interface %s", iface);
-
-	return FALSE;
-}
-
-static gboolean device_matches(struct device *device, char **interfaces)
-{
-	int i;
-
-	for (i = 0; interfaces[i]; i++) {
-		if (device_supports_interface(device, interfaces[i]))
-			continue;
-		debug("Device does not support interface %s", interfaces[i]);
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
 void manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
 				void *user_data)
 {
@@ -769,40 +729,16 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusError derr;
 	GSList *l;
-	char **required;
-	int required_len;
+	gboolean hs_only = FALSE;
+
 
 	dbus_error_init(&derr);
 
 	if (dbus_message_is_method_call(msg, AUDIO_MANAGER_INTERFACE,
-		"ListHeadsets")) {
-		required = dbus_new0(char *, 2);
-		if (required == NULL)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-		required[0] = dbus_new0(char,
-			strlen(AUDIO_HEADSET_INTERFACE) + 1);
-		if (required[0] == NULL) {
-			dbus_free(required);
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-		}
-
-		memcpy(required[0], AUDIO_HEADSET_INTERFACE,
-			strlen(AUDIO_HEADSET_INTERFACE) + 1);
-		required[1] = NULL;
-		required_len = 1;
-	}
+					"ListHeadsets"))
+		hs_only = TRUE;
 	else
-		dbus_message_get_args(msg, &derr,
-					DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
-					&required, &required_len,
-					DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&derr)) {
-		err_invalid_args(connection, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+		hs_only = FALSE;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -816,7 +752,7 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 	for (l = devices; l != NULL; l = l->next) {
 		struct device *device = l->data;
 
-		if (!device_matches(device, required))
+		if (hs_only && !device->headset)
 			continue;
 
 		dbus_message_iter_append_basic(&array_iter,
@@ -824,8 +760,6 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
-
-	dbus_free_string_array(required);
 
 	return send_message_and_unref(connection, reply);
 }
@@ -1037,7 +971,7 @@ static DBusMethodVTable manager_methods[] = {
 	{ "RemoveDevice",		am_remove_device,
 		"s",	""		},
 	{ "ListDevices",		am_list_devices,
-		"as",	"as"		},
+		"",	"as"		},
 	{ "DefaultDevice",		am_default_device,
 		"",	"s"		},
 	{ "ChangeDefaultDevice",	am_change_default_device,

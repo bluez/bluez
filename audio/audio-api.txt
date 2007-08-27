@@ -31,11 +31,10 @@ Methods
 			Removes a device from the device tree. If there are
 			any connections open to the device they will be closed.			
 
-		array{string} ListDevices(array{string} interfaces) [experimental]
+		array{string} ListDevices() [experimental]
 
 			Retuns an array of strings indicating the object paths
-			of available devices which implement as a minimum the
-			interfaces given through the parameter.
+			of available devices.
 
 		string DefaultDevice()
 
