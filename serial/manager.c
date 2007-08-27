@@ -1648,7 +1648,6 @@ done:
 static int register_proxy_object(struct proxy *prx, char *outpath, size_t size)
 {
 	char path[MAX_PATH_LENGTH + 1];
-	const char *ppath = path;
 
 	snprintf(path, MAX_PATH_LENGTH, "/org/bluez/serial/proxy%d",
 			sk_counter++);
@@ -1661,12 +1660,6 @@ static int register_proxy_object(struct proxy *prx, char *outpath, size_t size)
 
 	dbus_connection_register_interface(connection, path,
 			SERIAL_PROXY_INTERFACE, proxy_methods, NULL, NULL);
-
-	dbus_connection_emit_signal(connection, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
-			DBUS_TYPE_STRING, &ppath,
-			DBUS_TYPE_INVALID);
-
 	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
 
 	if (outpath)
@@ -1828,6 +1821,11 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 		dbus_message_unref(reply);
 		return err_failed(conn, msg, "Create object path failed");
 	}
+
+	dbus_connection_emit_signal(connection, SERIAL_MANAGER_PATH,
+			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
+			DBUS_TYPE_STRING, &ppath,
+			DBUS_TYPE_INVALID);
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &ppath,
