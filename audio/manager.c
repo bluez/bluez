@@ -139,8 +139,11 @@ static void remove_device(struct device *device)
 	dbus_connection_destroy_object_path(connection, device->path);
 }
 
-static gboolean add_device(struct device *device)
+static gboolean add_device(struct device *device, gboolean send_signals)
 {
+	if (!send_signals)
+		goto add;
+
 	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
 					AUDIO_MANAGER_INTERFACE,
 					"DeviceCreated",
@@ -154,6 +157,7 @@ static gboolean add_device(struct device *device)
 				"HeadsetCreated",
 				DBUS_TYPE_STRING, &device->path,
 				DBUS_TYPE_INVALID);
+add:
 
 	if (default_dev == NULL && g_slist_length(devices) == 0) {
 		debug("Selecting default device");
@@ -328,7 +332,7 @@ update:
 	g_slist_foreach(data->records, (GFunc) handle_record, data->device);
 
 	if (!g_slist_find(devices, data->device))
-		add_device(data->device);
+		add_device(data->device, TRUE);
 
 	if (reply) {
 		dbus_message_append_args(reply, DBUS_TYPE_STRING,
@@ -604,7 +608,7 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 	device = manager_find_device(bda, NULL, FALSE);
 	if (!device) {
 		device = create_device(bda);
-		if (!add_device(device)) {
+		if (!add_device(device, TRUE)) {
 			remove_device(device);
 			return NULL;
 		}
@@ -1026,7 +1030,7 @@ static void parse_stored_devices(char *key, char *value, void *data)
 		device->headset = headset_init(device, NULL, 0);
 	if (strstr(value, "sink"))
 		device->sink = sink_init(device);
-	add_device(device);
+	add_device(device, FALSE);
 }
 
 static void register_devices_stored(const char *adapter)
