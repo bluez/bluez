@@ -37,7 +37,6 @@
 
 #include "dbus.h"
 #include "logging.h"
-#include "ipc.h"
 #include "unix.h"
 #include "manager.h"
 

@@ -46,6 +46,8 @@ typedef enum {
 	SVC_HANDSFREE
 } headset_type_t;
 
+typedef void (*headset_stream_cb_t) (struct device *dev, void *user_data);
+
 struct headset *headset_init(struct device *dev, sdp_record_t *record,
 				uint16_t svc);
 
@@ -53,8 +55,8 @@ void headset_free(struct device *dev);
 
 void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc);
 
-int headset_get_config(struct device *dev, int sock, struct ipc_packet *pkt,
-			int pkt_len, struct ipc_data_cfg **rsp, int *fd);
+unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
+					void *user_data);
 
 headset_type_t headset_get_type(struct device *dev);
 void headset_set_type(struct device *dev, headset_type_t type);
@@ -66,6 +68,8 @@ headset_state_t headset_get_state(struct device *dev);
 void headset_set_state(struct device *dev, headset_state_t state);
 
 int headset_get_channel(struct device *dev);
+
+int headset_get_sco_fd(struct device *dev);
 
 gboolean headset_is_active(struct device *dev);
 

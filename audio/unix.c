@@ -185,6 +185,86 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	}
 }
 
+static int unix_send_cfg(int sock, struct ipc_data_cfg *cfg, int fd)
+{
+	char buf[IPC_MTU];
+	struct ipc_packet *pkt = (void *) buf;
+	int len, codec_len;
+
+	memset(buf, 0, sizeof(buf));
+
+	pkt->type = PKT_TYPE_CFG_RSP;
+
+	if (!cfg) {
+		pkt->error = EINVAL;
+		len = send(sock, pkt, sizeof(struct ipc_packet), 0);
+		if (len < 0)
+			error("send: %s (%d)", strerror(errno), errno);
+		return len;
+	}
+
+	debug("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u,"
+		"sample_size=%u, rate=%u", fd, cfg->fd_opt, cfg->channels,
+		cfg->pkt_len, cfg->sample_size, cfg->rate);
+
+	if (cfg->codec == CFG_CODEC_SBC)
+		codec_len = sizeof(struct ipc_codec_sbc);
+	else
+		codec_len = 0;
+
+	pkt->error = PKT_ERROR_NONE;
+	pkt->length = sizeof(struct ipc_data_cfg) + codec_len;
+	memcpy(pkt->data, cfg, pkt->length);
+
+	len = sizeof(struct ipc_packet) + pkt->length;
+	len = send(sock, pkt, len, 0);
+	if (len < 0)
+		error("Error %s(%d)", strerror(errno), errno);
+
+	debug("%d bytes sent", len);
+
+	if (fd != -1) {
+		len = unix_sendmsg_fd(sock, fd, pkt);
+		if (len < 0)
+			error("Error %s(%d)", strerror(errno), errno);
+		debug("%d bytes sent", len);
+	}
+
+	return 0;
+}
+
+
+static void headset_setup_complete(struct device *dev, void *user_data)
+{
+	struct unix_client *client = user_data;
+	struct ipc_data_cfg cfg;
+	int fd;
+
+	if (!dev) {
+		unix_send_cfg(client->sock, NULL, -1);
+		client->dev = NULL;
+		return;
+	}
+
+	memset(&cfg, 0, sizeof(cfg));
+
+	cfg.fd_opt = CFG_FD_OPT_READWRITE;
+	cfg.codec = CFG_CODEC_NONE;
+	cfg.channels = 1;
+	cfg.channel_mode = CFG_CHANNEL_MODE_MONO;
+	cfg.pkt_len = 48;
+	cfg.sample_size = 2;
+	cfg.rate = 8000;
+
+	fd = headset_get_sco_fd(dev);
+
+	unix_send_cfg(client->sock, &cfg, fd);
+
+	client->disconnect = (notify_cb_t) headset_unlock;
+	client->suspend = (notify_cb_t) headset_suspend;
+	client->play = (notify_cb_t) headset_play;
+}
+
 static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 					struct avdtp_stream *stream,
 					void *user_data)
@@ -300,9 +380,7 @@ failed:
 static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 			int len)
 {
-	struct ipc_data_cfg *rsp;
 	struct device *dev;
-	int ret, fd;
 	unsigned int id;
 	struct a2dp_data *a2dp;
 	bdaddr_t bdaddr;
@@ -341,32 +419,24 @@ proceed:
 		id = a2dp_source_request_stream(a2dp->session, dev,
 						TRUE, a2dp_setup_complete,
 						client, &a2dp->sep);
-		if (id == 0) {
-			error("request_stream failed");
-			goto failed;
-		}
-
-		client->req_id = id;
-
 		break;
 	case TYPE_HEADSET:
-		if (!headset_lock(dev, client->d.data)) {
-			error("Unable to lock headset");
-			goto failed;
-		}
-
-		ret = headset_get_config(dev, client->sock, pkt, len, &rsp,
-						&fd);
-		client->disconnect = (notify_cb_t) headset_unlock;
-		client->suspend = (notify_cb_t) headset_suspend;
-		client->play = (notify_cb_t) headset_play;
+		id = headset_request_stream(dev, headset_setup_complete,
+						client);
 		break;
 	default:
 		error("No known services for device");
 		goto failed;
 	}
 
+	if (id == 0) {
+		error("request_stream failed");
+		goto failed;
+	}
+
+	client->req_id = id;
 	client->dev = dev;
+
 	return;
 
 failed:
@@ -551,54 +621,6 @@ void unix_exit(void)
 	g_slist_free(clients);
 	close(unix_sock);
 	unix_sock = -1;
-}
-
-int unix_send_cfg(int sock, struct ipc_data_cfg *cfg, int fd)
-{
-	char buf[IPC_MTU];
-	struct ipc_packet *pkt = (void *) buf;
-	int len, codec_len;
-
-	memset(buf, 0, sizeof(buf));
-
-	pkt->type = PKT_TYPE_CFG_RSP;
-
-	if (!cfg) {
-		pkt->error = EINVAL;
-		len = send(sock, pkt, sizeof(struct ipc_packet), 0);
-		if (len < 0)
-			error("send: %s (%d)", strerror(errno), errno);
-		return len;
-	}
-
-	debug("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u,"
-		"sample_size=%u, rate=%u", fd, cfg->fd_opt, cfg->channels,
-		cfg->pkt_len, cfg->sample_size, cfg->rate);
-
-	if (cfg->codec == CFG_CODEC_SBC)
-		codec_len = sizeof(struct ipc_codec_sbc);
-	else
-		codec_len = 0;
-
-	pkt->error = PKT_ERROR_NONE;
-	pkt->length = sizeof(struct ipc_data_cfg) + codec_len;
-	memcpy(pkt->data, cfg, pkt->length);
-
-	len = sizeof(struct ipc_packet) + pkt->length;
-	len = send(sock, pkt, len, 0);
-	if (len < 0)
-		error("Error %s(%d)", strerror(errno), errno);
-
-	debug("%d bytes sent", len);
-
-	if (fd != -1) {
-		len = unix_sendmsg_fd(sock, fd, pkt);
-		if (len < 0)
-			error("Error %s(%d)", strerror(errno), errno);
-		debug("%d bytes sent", len);
-	}
-
-	return 0;
 }
 
 #if 0

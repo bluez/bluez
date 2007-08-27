@@ -38,11 +38,9 @@
 #include "logging.h"
 
 #include "avdtp.h"
-#include "ipc.h"
 #include "device.h"
 #include "a2dp.h"
 #include "error.h"
-#include "unix.h"
 #include "sink.h"
 
 struct pending_request {
