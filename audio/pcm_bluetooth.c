@@ -305,7 +305,7 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 
 	SNDERR("%s (%d)", strerror(err), err);
 
-	/* FIXME: We should not ignores errors on future. */
+	/* FIXME: We should not ignores errors in the future. */
 	return 0;
 }
 
