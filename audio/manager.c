@@ -141,6 +141,20 @@ static void remove_device(struct device *device)
 
 static gboolean add_device(struct device *device)
 {
+	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+					AUDIO_MANAGER_INTERFACE,
+					"DeviceCreated",
+					DBUS_TYPE_STRING, &device->path,
+					DBUS_TYPE_INVALID);
+
+	if (device->headset)
+		dbus_connection_emit_signal(connection,
+				AUDIO_MANAGER_PATH,
+				AUDIO_MANAGER_INTERFACE,
+				"HeadsetCreated",
+				DBUS_TYPE_STRING, &device->path,
+				DBUS_TYPE_INVALID);
+
 	if (default_dev == NULL && g_slist_length(devices) == 0) {
 		debug("Selecting default device");
 		default_dev = device;
@@ -310,26 +324,13 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 		goto done;
 	}
 
-	add_device(data->device);
-
 update:
 	g_slist_foreach(data->records, (GFunc) handle_record, data->device);
 
+	if (!g_slist_find(devices, data->device))
+		add_device(data->device);
+
 	if (reply) {
-		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						"DeviceCreated",
-						DBUS_TYPE_STRING,
-						&data->device->path,
-						DBUS_TYPE_INVALID);
-		if (data->device->headset)
-			dbus_connection_emit_signal(connection,
-							AUDIO_MANAGER_PATH,
-							AUDIO_MANAGER_INTERFACE,
-							"HeadsetCreated",
-							DBUS_TYPE_STRING,
-							&data->device->path,
-							DBUS_TYPE_INVALID);
 		dbus_message_append_args(reply, DBUS_TYPE_STRING,
 					&data->device->path,
 					DBUS_TYPE_INVALID);
