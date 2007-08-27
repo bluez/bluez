@@ -68,6 +68,7 @@ struct unix_client {
 	struct device *dev;
 	struct avdtp_local_sep *sep;
 	service_type_t type;
+	char *interface;
 	union {
 		struct a2dp_data a2dp;
 		void *data;
@@ -104,6 +105,7 @@ static void client_free(struct unix_client *client)
 
 	if (client->sock >= 0)
 		close(client->sock);
+	g_free(client->interface);
 	g_free(client);
 }
 
@@ -377,32 +379,12 @@ failed:
 	a2dp->stream = NULL;
 }
 
-static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
-			int len)
+static void create_stream(struct device *dev, struct unix_client *client)
 {
-	struct device *dev;
-	unsigned int id;
 	struct a2dp_data *a2dp;
-	bdaddr_t bdaddr;
-	const char *interface = NULL;
+	unsigned int id;
 
-	str2ba(pkt->device, &bdaddr);
-
-	if (pkt->role == PKT_ROLE_VOICE)
-		interface = AUDIO_HEADSET_INTERFACE;
-	else if (pkt->role == PKT_ROLE_HIFI)
-		interface = AUDIO_SINK_INTERFACE;
-
-	dev = manager_find_device(&bdaddr, interface, TRUE);
-	if (dev)
-		goto proceed;
-
-	dev = manager_find_device(&bdaddr, interface, FALSE);
-	if (!dev)
-		goto failed;
-
-proceed:
-	client->type = select_service(dev, interface);
+	client->type = select_service(dev, client->interface);
 
 	switch (client->type) {
 	case TYPE_SINK:
@@ -437,6 +419,55 @@ proceed:
 	client->req_id = id;
 	client->dev = dev;
 
+	return;
+
+failed:
+	unix_send_cfg(client->sock, NULL, -1);
+}
+
+static void create_cb(struct device *dev, void *user_data)
+{
+	struct unix_client *client = user_data;
+
+	if (!dev)
+		unix_send_cfg(client->sock, NULL, -1);
+	else
+		create_stream(dev, client);
+}
+
+static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
+			int len)
+{
+	struct device *dev;
+	bdaddr_t bdaddr;
+
+	str2ba(pkt->device, &bdaddr);
+
+	if (client->interface) {
+		g_free(client->interface);
+		client->interface = NULL;
+	}
+
+	if (pkt->role == PKT_ROLE_VOICE)
+		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
+	else if (pkt->role == PKT_ROLE_HIFI)
+		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
+
+	if (!manager_find_device(&bdaddr, NULL, FALSE)) {
+		if (!bacmp(&bdaddr, BDADDR_ANY))
+			goto failed;
+		manager_create_device(&bdaddr, create_cb, client);
+		return;
+	}
+
+	dev = manager_find_device(&bdaddr, client->interface, TRUE);
+	if (!dev)
+		dev = manager_find_device(&bdaddr, client->interface, FALSE);
+
+	if (!dev)
+		goto failed;
+
+	create_stream(dev, client);
 	return;
 
 failed:

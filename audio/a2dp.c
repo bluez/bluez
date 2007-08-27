@@ -35,8 +35,8 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "logging.h"
-#include "manager.h"
 #include "device.h"
+#include "manager.h"
 #include "avdtp.h"
 #include "sink.h"
 #include "a2dp.h"

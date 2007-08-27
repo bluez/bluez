@@ -38,6 +38,7 @@
 #include "dbus.h"
 #include "logging.h"
 #include "unix.h"
+#include "device.h"
 #include "manager.h"
 
 static gboolean disable_hfp = TRUE;

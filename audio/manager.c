@@ -87,6 +87,9 @@ struct audio_sdp_data {
 	GSList *records;	/* sdp_record_t * */
 
 	audio_sdp_state_t state;
+
+	create_dev_cb_t cb;
+	void *cb_data;
 };
 
 static DBusConnection *connection = NULL;
@@ -334,8 +337,13 @@ update:
 	}
 
 done:
-	if (!success)
+	if (success) {
+		if (data->cb)
+			data->cb(data->device, data->cb_data);
+	} else {
 		remove_device(data->device);
+		data->cb(NULL, data->cb_data);
+	}
 	if (data->msg)
 		dbus_message_unref(data->msg);
 	g_slist_foreach(data->handles, (GFunc) g_free, NULL);
@@ -570,7 +578,9 @@ failed:
 }
 
 static DBusHandlerResult resolve_services(DBusMessage *msg,
-						struct device *device)
+						struct device *device,
+						create_dev_cb_t cb,
+						void *user_data)
 {
 	struct audio_sdp_data *sdp_data;
 
@@ -578,6 +588,8 @@ static DBusHandlerResult resolve_services(DBusMessage *msg,
 	if (msg)
 		sdp_data->msg = dbus_message_ref(msg);
 	sdp_data->device = device;
+	sdp_data->cb = cb;
+	sdp_data->cb_data = user_data;
 
 	return get_handles(GENERIC_AUDIO_UUID, sdp_data);
 }
@@ -628,7 +640,7 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 						"DeviceCreated",
 						DBUS_TYPE_STRING, &path,
 						DBUS_TYPE_INVALID);
-		resolve_services(NULL, device);
+		resolve_services(NULL, device, NULL, NULL);
 	}
 
 	if (headset)
@@ -699,6 +711,15 @@ static gboolean device_matches(struct device *device, char **interfaces)
 	return TRUE;
 }
 
+void manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
+				void *user_data)
+{
+	struct device *dev;
+
+	dev = create_device(bda);
+	resolve_services(NULL, dev, cb, user_data);
+}
+
 static DBusHandlerResult am_create_device(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
@@ -725,7 +746,7 @@ static DBusHandlerResult am_create_device(DBusConnection *conn,
 	device = manager_find_device(&bda, NULL, FALSE);
 	if (!device) {
 		device = create_device(&bda);
-		return resolve_services(msg, device);
+		return resolve_services(msg, device, NULL, NULL);
 	}
 
 	path = device->path;
@@ -849,8 +870,8 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	device = match->data;
-	remove_device(device);
 	device_remove_stored(device);
+	remove_device(device);
 
 	/* Fallback to a valid default */
 	if (default_dev == NULL) {
