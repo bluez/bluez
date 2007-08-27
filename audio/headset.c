@@ -86,6 +86,7 @@ struct headset {
 
 	GIOChannel *rfcomm;
 	GIOChannel *sco;
+	guint sco_id;
 
 	guint ring_timer;
 
@@ -188,6 +189,8 @@ static void close_sco(struct device *device)
 	struct headset *hs = device->headset;
 
 	if (hs->sco) {
+		g_source_remove(hs->sco_id);
+		hs->sco_id = 0;
 		g_io_channel_close(hs->sco);
 		g_io_channel_unref(hs->sco);
 		hs->sco = NULL;
@@ -1523,8 +1526,9 @@ void headset_set_state(struct device *dev, headset_state_t state)
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
 		break;
 	case HEADSET_STATE_PLAYING:
-		g_io_add_watch(hs->sco, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				(GIOFunc) sco_cb, dev);
+		hs->sco_id = g_io_add_watch(hs->sco,
+					G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					(GIOFunc) sco_cb, dev);
 
 		dbus_connection_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
