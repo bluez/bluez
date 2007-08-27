@@ -34,6 +34,7 @@
 #include <string.h>
 #include <libgen.h>
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 struct sbc_frame_hdr {
 	uint8_t syncword:8;		/* Sync word */
 	uint8_t subbands:1;		/* Subbands */
@@ -44,6 +45,20 @@ struct sbc_frame_hdr {
 	uint8_t bitpool:8;		/* Bitpool */
 	uint8_t crc_check:8;		/* CRC check */
 } __attribute__ ((packed));
+#elif __BYTE_ORDER == __BIG_ENDIAN
+struct sbc_frame_hdr {
+	uint8_t syncword:8;		/* Sync word */
+	uint8_t sampling_frequency:2;	/* Sampling frequency */
+	uint8_t blocks:2;		/* Blocks */
+	uint8_t channel_mode:2;		/* Channel mode */
+	uint8_t allocation_method:1;	/* Allocation method */
+	uint8_t subbands:1;		/* Subbands */
+	uint8_t bitpool:8;		/* Bitpool */
+	uint8_t crc_check:8;		/* CRC check */
+} __attribute__ ((packed));
+#else
+#error "Unknown byte order"
+#endif
 
 static int calc_frame_len(struct sbc_frame_hdr *hdr)
 {
