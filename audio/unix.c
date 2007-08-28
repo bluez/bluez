@@ -243,6 +243,8 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 	struct ipc_data_cfg cfg;
 	int fd;
 
+	client->req_id = 0;
+
 	if (!dev) {
 		unix_send_cfg(client->sock, NULL, -1);
 		client->dev = NULL;
