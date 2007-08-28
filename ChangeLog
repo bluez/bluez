@@ -1,3 +1,14 @@
+ver 3.16:
+	Add support for headsets with SCO audio over HCI.
+	Add support for auto-create through ALSA plugin.
+	Add support for ALSA plugin parameters.
+	Add GStreamer plugin with SBC decoder and encoder.
+	Fix network service NAP, GN and PANU servers.
+	Set EIR information from SDP database.
+
+	Note:
+	This version needs at least bluez-libs-3.16
+
 ver 3.15:
 	Add A2DP support to the audio service.
 	Add proxy support to the serial service.
