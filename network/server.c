@@ -378,6 +378,22 @@ static int authorize_connection(DBusConnection *conn,
 	return 0;
 }
 
+static int inline chk_role(uint16_t dst_role, uint16_t src_role)
+{
+	/* Allowed PAN Profile scenarios */
+	switch (dst_role) {
+	case BNEP_SVC_NAP:
+	case BNEP_SVC_GN:
+		if (src_role == BNEP_SVC_PANU)
+			return 0;
+		break;
+	case BNEP_SVC_PANU:
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static gboolean connect_setup_event(GIOChannel *chan,
 					GIOCondition cond, gpointer data)
 {
@@ -388,7 +404,7 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	gsize n;
 	GIOError gerr;
 	uint8_t *pservice;
-	uint16_t role, response;
+	uint16_t dst_role, src_role, response;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -425,9 +441,17 @@ static gboolean connect_setup_event(GIOChannel *chan,
 
 	pservice = req->service;
 	/* Getting destination service: considering 2 bytes size */
-	role = ntohs(bt_get_unaligned((uint16_t *) pservice));
+	dst_role = ntohs(bt_get_unaligned((uint16_t *) pservice));
+	pservice += req->uuid_size;
+	/* Getting source service: considering 2 bytes size */
+	src_role = ntohs(bt_get_unaligned((uint16_t *) pservice));
 
-	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(role));
+	if (chk_role(src_role, dst_role) < 0) {
+		response = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+	}
+
+	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(dst_role));
 	dbus_connection_get_object_user_data(pending_auth->conn, path, (void *) &ns);
 
 	if (ns == NULL || ns->enable == FALSE) {
@@ -435,9 +459,6 @@ static gboolean connect_setup_event(GIOChannel *chan,
 		goto reply;
 	}
 
-	pservice += req->uuid_size;
-	/* Getting source service: considering 2 bytes size */
-	role = ntohs(bt_get_unaligned((uint16_t *) pservice));
 
 	/*
 	 * FIXME: Check if the connection already exists. Check if the
