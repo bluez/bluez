@@ -79,6 +79,7 @@ struct unix_client {
 	notify_cb_t disconnect;
 	notify_cb_t suspend;
 	notify_cb_t play;
+	gboolean (*cancel_stream) (struct device *dev, unsigned int id);
 };
 
 static GSList *clients = NULL;
@@ -248,6 +249,8 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 		return;
 	}
 
+	headset_lock(dev, NULL);
+
 	memset(&cfg, 0, sizeof(cfg));
 
 	cfg.fd_opt = CFG_FD_OPT_READWRITE;
@@ -401,10 +404,12 @@ static void create_stream(struct device *dev, struct unix_client *client)
 		id = a2dp_source_request_stream(a2dp->session, dev,
 						TRUE, a2dp_setup_complete,
 						client, &a2dp->sep);
+		client->cancel_stream = a2dp_source_cancel_stream;
 		break;
 	case TYPE_HEADSET:
 		id = headset_request_stream(dev, headset_setup_complete,
 						client);
+		client->cancel_stream = headset_cancel_stream;
 		break;
 	default:
 		error("No known services for device");
@@ -525,8 +530,8 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 			goto failed;
 		if (client->disconnect)
 			client->disconnect(client->dev, cb_data);
-		if (client->type == TYPE_SINK && client->req_id > 0)
-			a2dp_source_cancel_stream(client->req_id);
+		if (client->cancel_stream && client->req_id > 0)
+			client->cancel_stream(client->dev, client->req_id);
 		goto failed;
 	}
 

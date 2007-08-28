@@ -68,6 +68,7 @@ static char *str_state[] = {"DISCONNECTED", "CONNECTING", "CONNECTED",
 
 struct pending_connect {
 	DBusMessage *msg;
+	DBusPendingCall *call;
 	GIOChannel *io;
 	guint io_id;
 	int sock;
@@ -114,6 +115,11 @@ static void pending_connect_free(struct pending_connect *c)
 	}
 	if (c->msg)
 		dbus_message_unref(c->msg);
+	if (c->call) {
+		dbus_pending_call_cancel(c->call);
+		dbus_pending_call_unref(c->call);
+	}
+
 	g_free(c);
 }
 
@@ -780,7 +786,7 @@ failed:
 	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 }
 
-static int get_handles(struct device *device)
+static int get_handles(struct device *device, struct pending_connect *c)
 {
 	DBusPendingCall *pending;
 	struct headset *hs = device->headset;
@@ -816,7 +822,10 @@ static int get_handles(struct device *device)
 	}
 
 	dbus_pending_call_set_notify(pending, get_handles_reply, device, NULL);
-	dbus_pending_call_unref(pending);
+	if (c)
+		c->call = pending;
+	else
+		dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 
 	return 0;
@@ -836,7 +845,7 @@ static int rfcomm_connect(struct device *device, struct pending_connect *c)
 		hs->type = hs->hfp_handle ? SVC_HANDSFREE : SVC_HEADSET;
 
 		if (hs->state == HEADSET_STATE_DISCONNECTED)
-			return get_handles(device);
+			return get_handles(device, c);
 		else
 			return 0;
 	}
@@ -1397,6 +1406,33 @@ void headset_free(struct device *dev)
 
 	g_free(hs);
 	dev->headset = NULL;
+}
+
+gboolean headset_cancel_stream(struct device *dev, unsigned int id)
+{
+	struct headset *hs = dev->headset;
+	GSList *l;
+	struct pending_connect *pending = NULL;
+
+	for (l = hs->pending; l != NULL; l = l->next) {
+		struct pending_connect *tmp = l->data;
+
+		if (tmp->id == id) {
+			pending = tmp;
+			break;
+		}
+	}
+
+	if (!pending)
+		return FALSE;
+
+	hs->pending = g_slist_remove(hs->pending, pending);
+	pending_connect_free(pending);
+
+	if (!hs->pending)
+		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+
+	return TRUE;
 }
 
 unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,

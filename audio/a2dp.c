@@ -880,7 +880,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, int err,
 	sink_new_stream(setup->dev, session, setup->stream);
 }
 
-gboolean a2dp_source_cancel_stream(int id)
+gboolean a2dp_source_cancel_stream(struct device *dev, unsigned int id)
 {
 	struct a2dp_stream_cb *cb_data;
 	GSList *l;

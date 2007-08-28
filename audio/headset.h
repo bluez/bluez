@@ -57,6 +57,7 @@ void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc);
 
 unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
 					void *user_data);
+gboolean headset_cancel_stream(struct device *dev, unsigned int id);
 
 headset_type_t headset_get_type(struct device *dev);
 void headset_set_type(struct device *dev, headset_type_t type);
