@@ -37,7 +37,7 @@ struct enabled_interfaces {
 typedef void (*create_dev_cb_t) (struct device *dev, void *user_data);
 
 int audio_init(DBusConnection *conn, struct enabled_interfaces *enabled,
-		gboolean no_hfp, gboolean sco_hci);
+		gboolean no_hfp, gboolean sco_hci, int source_count);
 
 void audio_exit(void);
 

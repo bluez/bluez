@@ -656,21 +656,21 @@ add:
 	return sep;
 }
 
-int a2dp_init(DBusConnection *conn, gboolean enable_sink, gboolean enable_source)
+int a2dp_init(DBusConnection *conn, int sources, int sinks)
 {
-	if (!enable_sink && !enable_source)
+	int i;
+
+	if (!sources && !sinks)
 		return 0;
 
 	connection = dbus_connection_ref(conn);
 
 	avdtp_init();
 
-	if (enable_sink) {
+	for (i = 0; i < sources; i++)
 		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE);
-		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE);
-	}
 
-	if (enable_source)
+	for (i = 0; i < sinks; i++)
 		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK);
 
 	return 0;

@@ -64,8 +64,7 @@ typedef void (*a2dp_stream_cb_t) (struct avdtp *session, struct device *dev,
 					struct avdtp_stream *stream,
 					void *user_data);
 
-int a2dp_init(DBusConnection *conn, gboolean enable_sink,
-			gboolean enable_source);
+int a2dp_init(DBusConnection *conn, int sources, int sinks);
 void a2dp_exit(void);
 
 unsigned int a2dp_source_request_stream(struct avdtp *session,

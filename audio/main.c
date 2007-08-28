@@ -43,6 +43,7 @@
 
 static gboolean disable_hfp = TRUE;
 static gboolean sco_hci = FALSE;
+static int source_count = 1;
 
 static GMainLoop *main_loop = NULL;
 
@@ -123,9 +124,20 @@ static void read_config(const char *file)
 	} else
 		disable_hfp = no_hfp;
 
-	debug("Config options: DisableHFP=%s, SCORouting=%s",
+	str = g_key_file_get_string(keyfile, "A2DP",
+						"SourceCount", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		source_count = atoi(str);
+		g_free(str);
+	}
+
+	debug("Config options: DisableHFP=%s, SCORouting=%s, SourceCount=%d",
 			disable_hfp ? "true" : "false",
-			sco_hci ? "HCI" : "PCM");
+			sco_hci ? "HCI" : "PCM", source_count);
 
 	g_key_file_free(keyfile);
 }
@@ -164,7 +176,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (audio_init(conn, &enabled, disable_hfp, sco_hci) < 0) {
+	if (audio_init(conn, &enabled, disable_hfp, sco_hci,
+				source_count) < 0) {
 		error("Audio init failed!");
 		exit(1);
 	}

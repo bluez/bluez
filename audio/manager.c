@@ -1567,8 +1567,10 @@ static void server_exit(void)
 }
 
 int audio_init(DBusConnection *conn, struct enabled_interfaces *enable,
-		gboolean no_hfp, gboolean sco_hci)
+		gboolean no_hfp, gboolean sco_hci, int source_count)
 {
+	int sinks, sources;
+
 	connection = dbus_connection_ref(conn);
 
 	enabled = enable;
@@ -1582,7 +1584,17 @@ int audio_init(DBusConnection *conn, struct enabled_interfaces *enable,
 	if (headset_server_init(conn, no_hfp) < 0)
 		goto failed;
 
-	if (a2dp_init(conn, enable->sink, enable->source) < 0)
+	if (enable->sink)
+		sources = source_count;
+	else
+		sources = 0;
+
+	if (enable->source)
+		sinks = 1;
+	else
+		sinks = 0;
+
+	if (a2dp_init(conn, sources, sinks) < 0)
 		goto failed;
 
 	if (!dbus_connection_register_interface(conn, AUDIO_MANAGER_PATH,
