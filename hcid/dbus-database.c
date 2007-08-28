@@ -432,8 +432,6 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 	gboolean trusted;
 	int adapter_id;
 
-	debug("RequestAuthorization");
-
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg);
@@ -441,8 +439,11 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 	sender = dbus_message_get_sender(msg);
 
 	service = search_service(conn, sender);
-	if (!service)
+	if (!service) {
+		debug("Got RequestAuthorization from non-service owner %s",
+				sender);
 		return error_not_authorized(conn, msg);
+	}
 
 	str2ba(address, &bdaddr);
 	adapter_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
