@@ -1589,7 +1589,8 @@ gboolean headset_unlock(struct device *dev, void *data)
 
 	hs->locked = FALSE;
 
-	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	if (hs->state > HEADSET_STATE_DISCONNECTED)
+		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 
 	return TRUE;
 }
