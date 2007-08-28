@@ -78,6 +78,7 @@ struct network_server {
 	uint32_t		record_id;	/* Service record id */
 	uint16_t		id;		/* Service class identifier */
 	DBusConnection		*conn;		/* D-Bus connection */
+	GSList			*clients;	/* Active connections */
 };
 
 static char netdev[16] = "bnep%d";
@@ -329,6 +330,8 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	bnep_if_up(devname, TRUE);
 	bnep_if_up("pan0", TRUE);
 
+	ns->clients = g_slist_append(ns->clients, g_strdup(pending_auth->addr));
+
 	/* FIXME: Enable routing if applied */
 
 	/* FIXME: send the D-Bus message to notify the new bnep iface */
@@ -458,7 +461,6 @@ static gboolean connect_setup_event(GIOChannel *chan,
 		response = BNEP_CONN_NOT_ALLOWED;
 		goto reply;
 	}
-
 
 	/*
 	 * FIXME: Check if the connection already exists. Check if the
@@ -828,6 +830,15 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void kill_connection(void *data, void *udata)
+{
+	const char *address = data;
+	bdaddr_t dst;
+
+	str2ba(address, &dst);
+	bnep_kill_connection(&dst);
+}
+
 static DBusHandlerResult disable(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -848,6 +859,8 @@ static DBusHandlerResult disable(DBusConnection *conn,
 	}
 
 	ns->enable = FALSE;
+
+	g_slist_foreach(ns->clients, (GFunc) kill_connection, NULL);
 
 	store_property(&ns->src, ns->id, "enabled", "0");
 
@@ -1062,6 +1075,11 @@ static void server_free(struct network_server *ns)
 
 	if (ns->conn)
 		dbus_connection_unref(ns->conn);
+
+	if (ns->clients) {
+		g_slist_foreach(ns->clients, (GFunc) g_free, NULL);
+		g_slist_free(ns->clients);
+	}
 
 	g_free(ns);
 }
