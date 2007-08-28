@@ -59,13 +59,11 @@
 #include "manager.h"
 #include "server.h"
 
-static GIOChannel *bnep_io = NULL;
-
 /* Pending Authorization */
 struct pending_auth {
 	char			*addr;		/* Bluetooth Address */
 	GIOChannel		*io;		/* BNEP connection setup io channel */
-	int			attempts;	/* BNEP setup conn requests counter */
+	DBusConnection		*conn;
 };
 
 /* Main server structure */
@@ -80,10 +78,11 @@ struct network_server {
 	uint32_t		record_id;	/* Service record id */
 	uint16_t		id;		/* Service class identifier */
 	DBusConnection		*conn;		/* D-Bus connection */
-	struct pending_auth	*pauth;		/* Pending incomming connection/authorization */
 };
 
 static char netdev[16] = "bnep%d";
+static GIOChannel *bnep_io = NULL;
+static struct pending_auth *pending_auth = NULL;
 
 static int store_property(bdaddr_t *src, uint16_t id,
 			const char *key, const char *value)
@@ -106,12 +105,14 @@ static void pending_auth_free(struct pending_auth *pauth)
 {
 	if (!pauth)
 		return;
+
 	if (pauth->addr)
 		g_free(pauth->addr);
 	if (pauth->io) {
 		g_io_channel_close(pauth->io);
 		g_io_channel_unref(pauth->io);
 	}
+	dbus_connection_unref(pauth->conn);
 	g_free(pauth);
 }
 
@@ -257,16 +258,10 @@ static int send_bnep_ctrl_rsp(GIOChannel *chan, uint16_t response)
 	return -gerr;
 }
 
-static void cancel_authorization(struct network_server *ns)
+static void cancel_authorization(DBusConnection *conn, const char *address)
 {
 	DBusMessage *msg;
-	const char *paddress;
 	const char *uuid = "";
-
-	if (!ns->pauth)
-		return;
-
-	paddress = ns->pauth->addr;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 						"org.bluez.Database",
@@ -277,11 +272,11 @@ static void cancel_authorization(struct network_server *ns)
 	}
 
 	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &paddress,
+			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
-	send_message_and_unref(ns->conn, msg);
+	send_message_and_unref(conn, msg);
 }
 
 static void authorization_callback(DBusPendingCall *pcall, void *data)
@@ -293,20 +288,20 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	uint16_t response;
 	int sk;
 
-	if (!ns->pauth) {
+	if (!pending_auth) {
 		dbus_message_unref(reply);
 		dbus_pending_call_unref(pcall);
 		return;
 	}
 
-	sk = g_io_channel_unix_get_fd(ns->pauth->io);
+	sk = g_io_channel_unix_get_fd(pending_auth->io);
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Access denied: %s", derr.message);
 		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			cancel_authorization(ns);
+			cancel_authorization(pending_auth->conn, pending_auth->addr);
 		}
 		response = BNEP_CONN_NOT_ALLOWED;
 		dbus_error_free(&derr);
@@ -339,10 +334,10 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	/* FIXME: send the D-Bus message to notify the new bnep iface */
 
 failed:
-	send_bnep_ctrl_rsp(ns->pauth->io, response);
+	send_bnep_ctrl_rsp(pending_auth->io, response);
 
-	pending_auth_free(ns->pauth);
-	ns->pauth = NULL;
+	pending_auth_free(pending_auth);
+	pending_auth = NULL;
 
 	close(sk);
 
@@ -350,7 +345,8 @@ failed:
 	dbus_pending_call_unref(pcall);
 }
 
-static int authorize_connection(struct network_server *ns)
+static int authorize_connection(DBusConnection *conn,
+		const char *address, struct network_server *ns)
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
@@ -363,14 +359,14 @@ static int authorize_connection(struct network_server *ns)
 		return -ENOMEM;
 	}
 
-	debug("Requesting authorization for %s UUID:%s", ns->pauth->addr, uuid);
+	debug("Requesting authorization for %s UUID:%s", address, uuid);
 
 	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &ns->pauth->addr,
+			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(ns->conn, msg, &pending, -1) == FALSE) {
+	if (dbus_connection_send_with_reply(conn, msg, &pending, -1) == FALSE) {
 		error("Sending of authorization request failed");
 		dbus_message_unref(msg);
 		return -EACCES;
@@ -385,9 +381,10 @@ static int authorize_connection(struct network_server *ns)
 static gboolean connect_setup_event(GIOChannel *chan,
 					GIOCondition cond, gpointer data)
 {
-	struct network_server *ns = data;
+	struct network_server *ns = NULL;
 	struct bnep_setup_conn_req *req;
 	unsigned char pkt[BNEP_MTU];
+	char path[MAX_PATH_LENGTH];
 	gsize n;
 	GIOError gerr;
 	uint8_t *pservice;
@@ -398,7 +395,7 @@ static gboolean connect_setup_event(GIOChannel *chan,
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		error("Hangup or error on BNEP socket");
-		cancel_authorization(ns);
+		cancel_authorization(pending_auth->conn, pending_auth->addr);
 		return FALSE;
 	}
 
@@ -417,14 +414,6 @@ static gboolean connect_setup_event(GIOChannel *chan,
 		return FALSE;
 	}
 
-	if (++ns->pauth->attempts > 1) {
-		/*
-		 * Ignore repeated BNEP setup connection request: there
-		 * is a pending authorization request for this device.
-		 */
-		return TRUE;
-	}
-
 	/* 
 	 * FIXME: According to BNEP SPEC the UUID size can be
 	 * 2-16 bytes. Currently only 2 bytes size is supported
@@ -438,6 +427,14 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	/* Getting destination service: considering 2 bytes size */
 	role = ntohs(bt_get_unaligned((uint16_t *) pservice));
 
+	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(role));
+	dbus_connection_get_object_user_data(pending_auth->conn, path, (void *) &ns);
+
+	if (ns == NULL || ns->enable == FALSE) {
+		response = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+	}
+
 	pservice += req->uuid_size;
 	/* Getting source service: considering 2 bytes size */
 	role = ntohs(bt_get_unaligned((uint16_t *) pservice));
@@ -448,10 +445,10 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	 */
 
 	/* Wait authorization before reply success */
-	if (authorize_connection(ns) < 0) {
+	if (authorize_connection(pending_auth->conn,
+				pending_auth->addr, ns) < 0) {
 		response = BNEP_CONN_NOT_ALLOWED;
 		goto reply;
-
 	}
 
 	return TRUE;
@@ -462,18 +459,16 @@ reply:
 
 static void connect_setup_destroy(gpointer data)
 {
-	struct network_server *ns = data;
-
-	if (ns->pauth) {
-		pending_auth_free(ns->pauth);
-		ns->pauth = NULL;
+	if (pending_auth) {
+		pending_auth_free(pending_auth);
+		pending_auth = NULL;
 	}
 }
 
 static gboolean connect_event(GIOChannel *chan,
 				GIOCondition cond, gpointer data)
 {
-	struct network_server *ns = data;
+	DBusConnection *conn = data;
 	struct sockaddr_l2 addr;
 	socklen_t addrlen;
 	char peer[18];
@@ -501,11 +496,12 @@ static gboolean connect_event(GIOChannel *chan,
 
 	bacpy(&dst, &addr.l2_bdaddr);
 	psm = btohs(addr.l2_psm);
-
-	/* FIXME: Maybe keep a list of connected devices */
-
 	ba2str(&dst, peer);
-	if (ns->pauth) {
+
+	info("Connection from: %s on PSM %d", peer, psm);
+
+	/* Only one authorization at same time */
+	if (pending_auth) {
 		GIOChannel *io;
 		error("Rejecting %s(pending authorization)", peer);
 		io = g_io_channel_unix_new(nsk);
@@ -515,24 +511,21 @@ static gboolean connect_event(GIOChannel *chan,
 		return TRUE;
 	}
 
-	info("Connection from:%s on PSM %d", peer, psm);
-
-	/* Setting the pending incomming connection setup */
-	ns->pauth = g_new0(struct pending_auth, 1);
-	ns->pauth->addr = g_strdup(peer);
-	ns->pauth->io = g_io_channel_unix_new(nsk);
-
-	g_io_channel_set_close_on_unref(ns->pauth->io, FALSE);
+	pending_auth = g_new0(struct pending_auth, 1);
+	pending_auth->addr = g_strdup(peer);
+	pending_auth->io = g_io_channel_unix_new(nsk);
+	pending_auth->conn = dbus_connection_ref(conn);
+	g_io_channel_set_close_on_unref(pending_auth->io, FALSE);
 
 	/* New watch for BNEP setup */
-	g_io_add_watch_full(ns->pauth->io, G_PRIORITY_DEFAULT,
-		G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-		connect_setup_event, ns, &connect_setup_destroy);
+	g_io_add_watch_full(pending_auth->io, G_PRIORITY_DEFAULT,
+			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			connect_setup_event, pending_auth, &connect_setup_destroy);
 
 	return TRUE;
 }
 
-int server_init(struct network_server *ns)
+static int server_init(DBusConnection *conn)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
@@ -577,8 +570,8 @@ int server_init(struct network_server *ns)
 		goto fail;
 	}
 
-	/* Set link mode */
-	lm = (ns->secure ? L2CAP_LM_SECURE : 0);
+	/* FIXME: Set link mode - it is applied to all servers */
+	lm = 0;
 	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
 		err = errno;
 		error("Failed to set link mode. %s(%d)",
@@ -594,10 +587,8 @@ int server_init(struct network_server *ns)
 
 	bnep_io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(bnep_io, FALSE);
-
 	g_io_add_watch(bnep_io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-							connect_event, ns);
-
+							connect_event, conn);
 	return 0;
 fail:
 
@@ -755,7 +746,13 @@ static int record_and_listen(struct network_server *ns)
 {
 	int err;
 
-	if (bnep_io == NULL && (err = server_init(ns)) < 0)
+	/*
+	 * There is one socket to handle the incomming connections. NAP,
+	 * GN and PANU servers share the same PSM. The initial BNEP message
+	 * (setup connection request) contains the destination service
+	 * field that defines which service the source is connecting to.
+	 */
+	if (bnep_io == NULL && (err = server_init(ns->conn)) < 0)
 		return -err;
 
 	/* Add the service record */
