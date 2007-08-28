@@ -67,9 +67,11 @@ static gboolean plugin_init(GstPlugin *plugin)
 			GST_RANK_PRIMARY, GST_TYPE_SBC_PARSE) == FALSE)
 		return FALSE;
 
+#if 0
 	if (gst_element_register(plugin, "a2dpsink",
 			GST_RANK_PRIMARY, GST_TYPE_A2DP_SINK) == FALSE)
 		return FALSE;
+#endif
 
 	return TRUE;
 }
