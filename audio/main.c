@@ -77,8 +77,7 @@ static void read_config(const char *file)
 		return;
 	}
 
-	str = g_key_file_get_string(keyfile, "General",
-						"SCORouting", &err);
+	str = g_key_file_get_string(keyfile, "General", "SCORouting", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);
@@ -93,8 +92,7 @@ static void read_config(const char *file)
 		g_free(str);
 	}
 
-	str = g_key_file_get_string(keyfile, "General",
-						"Disable", &err);
+	str = g_key_file_get_string(keyfile, "General", "Disable", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);
@@ -115,8 +113,8 @@ static void read_config(const char *file)
 		g_free(str);
 	}
 
-	no_hfp = g_key_file_get_boolean(keyfile, "Headset",
-						"DisableHFP", &err);
+	no_hfp = g_key_file_get_boolean(keyfile, "Headset", "DisableHFP",
+					&err);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);
@@ -124,8 +122,7 @@ static void read_config(const char *file)
 	} else
 		disable_hfp = no_hfp;
 
-	str = g_key_file_get_string(keyfile, "A2DP",
-						"SourceCount", &err);
+	str = g_key_file_get_string(keyfile, "A2DP", "SourceCount", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);
