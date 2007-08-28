@@ -42,7 +42,7 @@
 #include "manager.h"
 
 static gboolean disable_hfp = TRUE;
-static gboolean sco_hci = FALSE;
+static gboolean sco_hci = TRUE;
 static int source_count = 1;
 
 static GMainLoop *main_loop = NULL;
