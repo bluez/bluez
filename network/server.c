@@ -149,6 +149,52 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 
 	memset(&record, 0, sizeof(sdp_record_t));
 
+	switch (id) {
+	case BNEP_SVC_NAP:
+		sdp_uuid16_create(&pan, NAP_SVCLASS_ID);
+		svclass = sdp_list_append(NULL, &pan);
+		sdp_set_service_classes(&record, svclass);
+
+		sdp_uuid16_create(&profile[0].uuid, NAP_PROFILE_ID);
+		profile[0].version = 0x0100;
+		pfseq = sdp_list_append(NULL, &profile[0]);
+		sdp_set_profile_descs(&record, pfseq);
+
+		sdp_set_info_attr(&record, name, NULL, desc);
+
+		sdp_attr_add_new(&record, SDP_ATTR_NET_ACCESS_TYPE,
+					SDP_UINT16, &net_access_type);
+		sdp_attr_add_new(&record, SDP_ATTR_MAX_NET_ACCESSRATE,
+					SDP_UINT32, &max_net_access_rate);
+		break;
+	case BNEP_SVC_GN:
+		sdp_uuid16_create(&pan, GN_SVCLASS_ID);
+		svclass = sdp_list_append(NULL, &pan);
+		sdp_set_service_classes(&record, svclass);
+
+		sdp_uuid16_create(&profile[0].uuid, GN_PROFILE_ID);
+		profile[0].version = 0x0100;
+		pfseq = sdp_list_append(NULL, &profile[0]);
+		sdp_set_profile_descs(&record, pfseq);
+		
+		sdp_set_info_attr(&record, name, NULL, desc);
+		break;
+	case BNEP_SVC_PANU:
+		sdp_uuid16_create(&pan, PANU_SVCLASS_ID);
+		svclass = sdp_list_append(NULL, &pan);
+		sdp_set_service_classes(&record, svclass);
+
+		sdp_uuid16_create(&profile[0].uuid, PANU_PROFILE_ID);
+		profile[0].version = 0x0100;
+		pfseq = sdp_list_append(NULL, &profile[0]);
+		sdp_set_profile_descs(&record, pfseq);
+
+		sdp_set_info_attr(&record, name, NULL, desc);
+		break;
+	default:
+		return -1;
+	}
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
 	sdp_set_browse_groups(&record, root);
@@ -193,36 +239,6 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 
 	sdp_attr_add_new(&record, SDP_ATTR_SECURITY_DESC,
 				SDP_UINT16, &security_desc);
-
-	if (id == BNEP_SVC_NAP) {
-		sdp_uuid16_create(&pan, NAP_SVCLASS_ID);
-		svclass = sdp_list_append(NULL, &pan);
-		sdp_set_service_classes(&record, svclass);
-
-		sdp_uuid16_create(&profile[0].uuid, NAP_PROFILE_ID);
-		profile[0].version = 0x0100;
-		pfseq = sdp_list_append(NULL, &profile[0]);
-		sdp_set_profile_descs(&record, pfseq);
-
-		sdp_set_info_attr(&record, name, NULL, desc);
-
-		sdp_attr_add_new(&record, SDP_ATTR_NET_ACCESS_TYPE,
-					SDP_UINT16, &net_access_type);
-		sdp_attr_add_new(&record, SDP_ATTR_MAX_NET_ACCESSRATE,
-					SDP_UINT32, &max_net_access_rate);
-	} else {
-		/* BNEP_SVC_GN */
-		sdp_uuid16_create(&pan, GN_SVCLASS_ID);
-		svclass = sdp_list_append(NULL, &pan);
-		sdp_set_service_classes(&record, svclass);
-
-		sdp_uuid16_create(&profile[0].uuid, GN_PROFILE_ID);
-		profile[0].version = 0x0100;
-		pfseq = sdp_list_append(NULL, &profile[0]);
-		sdp_set_profile_descs(&record, pfseq);
-		
-		sdp_set_info_attr(&record, name, NULL, desc);
-	}
 
 	if (sdp_gen_record_pdu(&record, buf) < 0)
 		ret = -1;
