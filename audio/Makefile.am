@@ -34,17 +34,6 @@ libasound_module_ctl_bluetooth_la_LIBADD = @ALSA_LIBS@
 libasound_module_ctl_bluetooth_la_CFLAGS = @ALSA_CFLAGS@
 endif
 
-if PULSE
-pulsedir = $(libdir)/pulse-0.9/modules
-
-noinst_LTLIBRARIES = module-bluetooth-sink.la
-
-module_bluetooth_sink_la_SOURCES = module-bluetooth-sink.c ipc.h
-module_bluetooth_sink_la_LDFLAGS = -module -avoid-version
-module_bluetooth_sink_la_LIBADD = @SBC_LIBS@ @PULSE_LIBS@
-module_bluetooth_sink_la_CFLAGS = @PULSE_CFLAGS@ @SBC_CFLAGS@
-endif
-
 if GSTREAMER
 gstreamerdir = $(libdir)/gstreamer-0.10
 

@@ -167,7 +167,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	obex_enable=${openobex_found}
 	glib_enable=no
 	gstreamer_enable=${gstreamer_found}
-	pulse_enable=${pulse_found}
 	audio_enable=no
 	input_enable=no
 	serial_enable=no
@@ -251,10 +250,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(gstreamer, AC_HELP_STRING([--enable-gstreamer], [enable GStreamer support]), [
 		gstreamer_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(pulse, AC_HELP_STRING([--enable-pulse], [enable PulseAudio support]), [
-		pulse_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(audio, AC_HELP_STRING([--enable-audio], [enable audio service]), [
@@ -379,7 +374,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
 	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(GSTREAMER, test "${gstreamer_enable}" = "yes" && test "${gstreamer_found}" = "yes")
-	AM_CONDITIONAL(PULSE, test "${pulse_enable}" = "yes" && test "${pulse_found}" = "yes")
 	AM_CONDITIONAL(AUDIOSERVICE, test "${audio_enable}" = "yes")
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(SERIALSERVICE, test "${serial_enable}" = "yes")
