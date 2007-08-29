@@ -32,15 +32,6 @@
 
 #define NETWORK_ERROR_INTERFACE "org.bluez.network.Error"
 
-DBusHandlerResult err_unknown_connection(DBusConnection *conn,
-						DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-			dbus_message_new_error(msg,
-				NETWORK_ERROR_INTERFACE ".UnknownConnection",
-				"Unknown connection path"));
-}
-
 DBusHandlerResult err_does_not_exist(DBusConnection *conn, DBusMessage *msg,
 					const char *str)
 {
