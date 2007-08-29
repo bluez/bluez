@@ -54,6 +54,8 @@
 #include "connection.h"
 #include "common.h"
 
+#define MAX_NAME_SIZE	256
+
 struct pending_reply {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
@@ -222,7 +224,7 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 	uint8_t *rec_bin;
 	sdp_data_t *d;
 	sdp_record_t *rec = NULL;
-	char *name = NULL, *desc = NULL;
+	char name[MAX_NAME_SIZE], *desc = NULL;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -253,11 +255,16 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 
 	rec = sdp_extract_pdu(rec_bin, &scanned);
 
-	/* Extract service name from record */
+	/* Concat remote name and service name */
+	memset(name, 0, MAX_NAME_SIZE);
+	if (read_remote_name(&pr->src, &pr->dst, name, MAX_NAME_SIZE) < 0)
+		len = 0;
+	else
+		len = strlen(name);
+
 	d = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
 	if (d) {
-		name = g_new0(char, d->unitSize);
-		snprintf(name, d->unitSize, "%.*s",
+		snprintf(name + len, MAX_NAME_SIZE - len, "(%.*s)",
 				d->unitSize, d->val.str);
 	}
 
@@ -281,8 +288,6 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 	create_path(pr->conn, pr->msg, pr->path, "ConnectionCreated");
 fail:
 
-	if (name)
-		g_free(name);
 	if (desc)
 		g_free(desc);
 
