@@ -79,7 +79,7 @@ Network Server hierarchy (experimental)
 =======================================
 
 Interface	org.bluez.network.Server
-Object path	/org/bluez/network/server*
+Object path	/org/bluez/network/{gn, nap, panu}
 
 Methods		string GetUUID()
 
@@ -117,7 +117,7 @@ Methods		string GetUUID()
 
 		void SetSecurity(bool enable)
 
-			Enable or disable encryption.
+			TBD
 
 		bool GetSecurity()
 
