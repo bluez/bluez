@@ -63,7 +63,6 @@
 struct pending_auth {
 	char			*addr;		/* Bluetooth Address */
 	GIOChannel		*io;		/* BNEP connection setup io channel */
-	DBusConnection		*conn;
 };
 
 /* Main server structure */
@@ -77,12 +76,12 @@ struct network_server {
 	gboolean		secure;		/* Security flag*/
 	uint32_t		record_id;	/* Service record id */
 	uint16_t		id;		/* Service class identifier */
-	DBusConnection		*conn;		/* D-Bus connection */
 	GSList			*clients;	/* Active connections */
 };
 
 static char netdev[16] = "bnep%d";
 static GIOChannel *bnep_io = NULL;
+static DBusConnection *connection = NULL;
 static struct pending_auth *pending_auth = NULL;
 
 static int store_property(bdaddr_t *src, uint16_t id,
@@ -113,7 +112,6 @@ static void pending_auth_free(struct pending_auth *pauth)
 		g_io_channel_close(pauth->io);
 		g_io_channel_unref(pauth->io);
 	}
-	dbus_connection_unref(pauth->conn);
 	g_free(pauth);
 }
 
@@ -275,7 +273,7 @@ static int send_bnep_ctrl_rsp(GIOChannel *chan, uint16_t response)
 	return -gerr;
 }
 
-static void cancel_authorization(DBusConnection *conn, const char *address)
+static void cancel_authorization(const char *address)
 {
 	DBusMessage *msg;
 	const char *uuid = "";
@@ -293,7 +291,7 @@ static void cancel_authorization(DBusConnection *conn, const char *address)
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
-	send_message_and_unref(conn, msg);
+	send_message_and_unref(connection, msg);
 }
 
 static void authorization_callback(DBusPendingCall *pcall, void *data)
@@ -318,7 +316,7 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 		error("Access denied: %s", derr.message);
 		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			cancel_authorization(pending_auth->conn, pending_auth->addr);
+			cancel_authorization(pending_auth->addr);
 		}
 		response = BNEP_CONN_NOT_ALLOWED;
 		dbus_error_free(&derr);
@@ -364,8 +362,7 @@ failed:
 	dbus_pending_call_unref(pcall);
 }
 
-static int authorize_connection(DBusConnection *conn,
-		const char *address, struct network_server *ns)
+static int authorize_connection(const char *address, struct network_server *ns)
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
@@ -385,7 +382,8 @@ static int authorize_connection(DBusConnection *conn,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(conn, msg, &pending, -1) == FALSE) {
+	if (dbus_connection_send_with_reply(connection,
+				msg, &pending, -1) == FALSE) {
 		error("Sending of authorization request failed");
 		dbus_message_unref(msg);
 		return -EACCES;
@@ -430,7 +428,7 @@ static gboolean connect_setup_event(GIOChannel *chan,
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		error("Hangup or error on BNEP socket");
-		cancel_authorization(pending_auth->conn, pending_auth->addr);
+		cancel_authorization(pending_auth->addr);
 		return FALSE;
 	}
 
@@ -471,7 +469,7 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	}
 
 	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(dst_role));
-	dbus_connection_get_object_user_data(pending_auth->conn, path, (void *) &ns);
+	dbus_connection_get_object_user_data(connection, path, (void *) &ns);
 
 	if (ns == NULL || ns->enable == FALSE) {
 		response = BNEP_CONN_NOT_ALLOWED;
@@ -484,8 +482,7 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	 */
 
 	/* Wait authorization before reply success */
-	if (authorize_connection(pending_auth->conn,
-				pending_auth->addr, ns) < 0) {
+	if (authorize_connection(pending_auth->addr, ns) < 0) {
 		response = BNEP_CONN_NOT_ALLOWED;
 		goto reply;
 	}
@@ -507,7 +504,6 @@ static void connect_setup_destroy(gpointer data)
 static gboolean connect_event(GIOChannel *chan,
 				GIOCondition cond, gpointer data)
 {
-	DBusConnection *conn = data;
 	struct sockaddr_l2 addr;
 	socklen_t addrlen;
 	char peer[18];
@@ -553,7 +549,6 @@ static gboolean connect_event(GIOChannel *chan,
 	pending_auth = g_new0(struct pending_auth, 1);
 	pending_auth->addr = g_strdup(peer);
 	pending_auth->io = g_io_channel_unix_new(nsk);
-	pending_auth->conn = dbus_connection_ref(conn);
 	g_io_channel_set_close_on_unref(pending_auth->io, FALSE);
 
 	/* New watch for BNEP setup */
@@ -564,7 +559,7 @@ static gboolean connect_event(GIOChannel *chan,
 	return TRUE;
 }
 
-static int server_init(DBusConnection *conn)
+int server_init(DBusConnection *conn)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
@@ -624,16 +619,30 @@ static int server_init(DBusConnection *conn)
 		goto fail;
 	}
 
+	connection = dbus_connection_ref(conn);
+
 	bnep_io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(bnep_io, FALSE);
 	g_io_add_watch(bnep_io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-							connect_event, conn);
+							connect_event, NULL);
 	return 0;
 fail:
 
 	close(sk);
 	errno = err;
 	return -err;
+}
+
+void server_exit()
+{
+	if (bnep_io != NULL) {
+		g_io_channel_close(bnep_io);
+		g_io_channel_unref(bnep_io);
+		bnep_io = NULL;
+	}
+
+	dbus_connection_unref(connection);
+	connection = NULL;
 }
 
 static uint32_t add_server_record(struct network_server *ns)
@@ -660,7 +669,8 @@ static uint32_t add_server_record(struct network_server *ns)
 				&buf.data, buf.data_size, DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(ns->conn, msg, -1, &derr);
+	reply = dbus_connection_send_with_reply_and_block(connection,
+			msg, -1, &derr);
 
 	free(buf.data);
 	dbus_message_unref(msg);
@@ -713,7 +723,8 @@ static int update_server_record(struct network_server *ns)
 			&buf.data, buf.data_size, DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(ns->conn, msg, -1, &derr);
+	reply = dbus_connection_send_with_reply_and_block(connection,
+			msg, -1, &derr);
 
 	free(buf.data);
 	dbus_message_unref(msg);
@@ -729,7 +740,7 @@ static int update_server_record(struct network_server *ns)
 	return 0;
 }
 
-static int remove_server_record(DBusConnection *conn, uint32_t rec_id)
+static int remove_server_record(uint32_t rec_id)
 {
 	DBusMessage *msg, *reply;
 	DBusError derr;
@@ -746,7 +757,8 @@ static int remove_server_record(DBusConnection *conn, uint32_t rec_id)
 			DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
+	reply = dbus_connection_send_with_reply_and_block(connection,
+			msg, -1, &derr);
 
 	dbus_message_unref(msg);
 
@@ -781,37 +793,11 @@ static DBusHandlerResult get_uuid(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static int record_and_listen(struct network_server *ns)
-{
-	int err;
-
-	/*
-	 * There is one socket to handle the incomming connections. NAP,
-	 * GN and PANU servers share the same PSM. The initial BNEP message
-	 * (setup connection request) contains the destination service
-	 * field that defines which service the source is connecting to.
-	 */
-	if (bnep_io == NULL && (err = server_init(ns->conn)) < 0)
-		return -err;
-
-	/* Add the service record */
-	ns->record_id = add_server_record(ns);
-	if (!ns->record_id) {
-		error("Unable to register the server(0x%x) service record", ns->id);
-		return -EIO;
-	}
-
-	ns->enable = TRUE;
-
-	return 0;
-}
-
 static DBusHandlerResult enable(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
-	int err;
 
 	if (ns->enable)
 		return err_already_exists(conn, msg, "Server already enabled");
@@ -824,16 +810,22 @@ static DBusHandlerResult enable(DBusConnection *conn,
 			return err_failed(conn, msg, "Adapter not available");
 
 		/* Store the server info */
-		server_store(conn, ns->path);
+		server_store(ns->path);
 	}
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	/* Add the service record and listen l2cap */
-	if ((err = record_and_listen(ns)) < 0)
-		return err_failed(conn, msg, strerror(-err));
+	/* Add the service record */
+	ns->record_id = add_server_record(ns);
+	if (!ns->record_id) {
+		dbus_message_unref(reply);
+		return err_failed(conn, msg,
+				"service record registration failed");
+	}
+
+	ns->enable = TRUE;
 
 	store_property(&ns->src, ns->id, "enabled", "1");
 
@@ -867,7 +859,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 
 	/* Remove the service record */
 	if (ns->record_id) {
-		remove_server_record(conn, ns->record_id);
+		remove_server_record(ns->record_id);
 		ns->record_id = 0;
 	}
 
@@ -1072,7 +1064,7 @@ static void server_free(struct network_server *ns)
 
 	/* FIXME: Missing release/free all bnepX interfaces */
 	if (ns->record_id)
-		remove_server_record(ns->conn, ns->record_id);
+		remove_server_record(ns->record_id);
 
 	if (ns->iface)
 		g_free(ns->iface);
@@ -1085,9 +1077,6 @@ static void server_free(struct network_server *ns)
 
 	if (ns->path)
 		g_free(ns->path);
-
-	if (ns->conn)
-		dbus_connection_unref(ns->conn);
 
 	if (ns->clients) {
 		g_slist_foreach(ns->clients, (GFunc) g_free, NULL);
@@ -1104,12 +1093,6 @@ static void server_unregister(DBusConnection *conn, void *data)
 	info("Unregistered server path:%s", ns->path);
 
 	server_free(ns);
-
-	if (bnep_io != NULL) {
-		g_io_channel_close(bnep_io);
-		g_io_channel_unref(bnep_io);
-		bnep_io = NULL;
-	}
 }
 
 static DBusMethodVTable server_methods[] = {
@@ -1132,30 +1115,29 @@ static DBusSignalVTable server_signals[] = {
 	{ NULL, NULL }
 };
 
-int server_register(DBusConnection *conn, const char *path,
-					bdaddr_t *src, uint16_t id)
+int server_register(const char *path, bdaddr_t *src, uint16_t id)
 {
 	struct network_server *ns;
 
-	if (!conn || !path)
+	if (!path)
 		return -EINVAL;
 
 	ns = g_new0(struct network_server, 1);
 
-	if (!dbus_connection_create_object_path(conn, path, ns,
+	if (!dbus_connection_create_object_path(connection, path, ns,
 						server_unregister)) {
 		error("D-Bus failed to register %s path", path);
 		server_free(ns);
 		return -1;
 	}
 
-	if (!dbus_connection_register_interface(conn, path,
+	if (!dbus_connection_register_interface(connection, path,
 						NETWORK_SERVER_INTERFACE,
 						server_methods,
 						server_signals, NULL)) {
 		error("D-Bus failed to register %s interface",
 				NETWORK_SERVER_INTERFACE);
-		dbus_connection_destroy_object_path(conn, path);
+		dbus_connection_destroy_object_path(connection, path);
 		return -1;
 	}
 
@@ -1169,7 +1151,6 @@ int server_register(DBusConnection *conn, const char *path,
 
 	ns->path = g_strdup(path);
 	ns->id = id;
-	ns->conn = dbus_connection_ref(conn);
 	bacpy(&ns->src, src);
 
 	info("Registered server path:%s", path);
@@ -1177,8 +1158,8 @@ int server_register(DBusConnection *conn, const char *path,
 	return 0;
 }
 
-int server_register_from_file(DBusConnection *conn, const char *path,
-		const bdaddr_t *src, uint16_t id, const char *filename)
+int server_register_from_file(const char *path, const bdaddr_t *src,
+		uint16_t id, const char *filename)
 {
 	struct network_server *ns;
 	char *str;
@@ -1188,7 +1169,6 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 	bacpy(&ns->src, src);
 	ns->path = g_strdup(path);
 	ns->id = id;
-	ns->conn = dbus_connection_ref(conn);
 	ns->name = textfile_get(filename, "name");
 	if (!ns->name) {
 		/* Name is mandatory */
@@ -1209,25 +1189,27 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 
 	str = textfile_get(filename, "enabled");
 	if (str) {
-		if (strcmp("1", str) == 0)
-			record_and_listen(ns);
+		if (strcmp("1", str) == 0) {
+			ns->record_id = add_server_record(ns);
+			ns->enable = TRUE;
+		}
 		g_free(str);
 	}
 
-	if (!dbus_connection_create_object_path(conn, path, ns,
+	if (!dbus_connection_create_object_path(connection, path, ns,
 						server_unregister)) {
 		error("D-Bus failed to register %s path", path);
 		server_free(ns);
 		return -1;
 	}
 
-	if (!dbus_connection_register_interface(conn, path,
+	if (!dbus_connection_register_interface(connection, path,
 						NETWORK_SERVER_INTERFACE,
 						server_methods,
 						server_signals, NULL)) {
 		error("D-Bus failed to register %s interface",
 				NETWORK_SERVER_INTERFACE);
-		dbus_connection_destroy_object_path(conn, path);
+		dbus_connection_destroy_object_path(connection, path);
 		return -1;
 	}
 
@@ -1236,13 +1218,14 @@ int server_register_from_file(DBusConnection *conn, const char *path,
 	return 0;
 }
 
-int server_store(DBusConnection *conn, const char *path)
+int server_store(const char *path)
 {
 	struct network_server *ns;
 	char filename[PATH_MAX + 1];
 	char addr[18];
 
-	if (!dbus_connection_get_object_user_data(conn, path, (void *) &ns))
+	if (!dbus_connection_get_object_user_data(connection,
+				path, (void *) &ns))
 		return -ENOENT;
 
 	ba2str(&ns->src, addr);
@@ -1270,13 +1253,12 @@ int server_store(DBusConnection *conn, const char *path)
 	return 0;
 }
 
-int server_find_data(DBusConnection *conn,
-		const char *path, const char *pattern)
+int server_find_data(const char *path, const char *pattern)
 {
 	struct network_server *ns;
 	const char *uuid;
 
-	if (!dbus_connection_get_object_user_data(conn, path, (void *) &ns))
+	if (!dbus_connection_get_object_user_data(connection, path, (void *) &ns))
 		return -1;
 
 	if (ns->name && strcasecmp(pattern, ns->name) == 0)

@@ -429,7 +429,7 @@ static DBusHandlerResult find_server(DBusConnection *conn,
 
 	for (list = server_paths; list; list = list->next) {
 		path = (const char *) list->data;
-		if (server_find_data(conn, path, pattern) == 0)
+		if (server_find_data(path, pattern) == 0)
 			break;
 	}
 
@@ -831,11 +831,11 @@ static void register_server(uint16_t id)
 	if (dev_id >= 0)
 		hci_devba(dev_id, &src);
 
-	if (server_register(connection, path, &src, id) < 0)
+	if (server_register(path, &src, id) < 0)
 		return;
 
 	if (bacmp(&src, BDADDR_ANY) != 0)
-		server_store(connection, path);
+		server_store(path);
 
 	server_paths = g_slist_append(server_paths, g_strdup(path));
 }
@@ -862,8 +862,7 @@ static void register_servers_stored(const char *adapter, const char *profile)
 	if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
 		snprintf(path, MAX_PATH_LENGTH,
 			NETWORK_PATH"/%s", profile);
-		if (server_register_from_file(connection, path,
-			&src, id, filename) == 0) {
+		if (server_register_from_file(path, &src, id, filename) == 0) {
 			server_paths = g_slist_append(server_paths,
 						g_strdup(path));
 		}
@@ -937,6 +936,16 @@ int network_init(DBusConnection *conn)
 		return -1;
 	}
 
+	/*
+	 * There is one socket to handle the incomming connections. NAP,
+	 * GN and PANU servers share the same PSM. The initial BNEP message
+	 * (setup connection request) contains the destination service
+	 * field that defines which service the source is connecting to.
+	 */
+	if (server_init(conn) < 0) {
+		return -1;
+	}
+
 	if (!dbus_connection_create_object_path(conn, NETWORK_PATH,
 						NULL, manager_unregister)) {
 		error("D-Bus failed to create %s path", NETWORK_PATH);
@@ -959,13 +968,9 @@ int network_init(DBusConnection *conn)
 
 	register_stored();
 
-	/* PAN user server */
+	/* Register PANU, GN and NAP servers if they don't exist */
 	register_server(BNEP_SVC_PANU);
-
-	/* Group Network server */
 	register_server(BNEP_SVC_GN);
-
-	/* Network Access Point server */
 	register_server(BNEP_SVC_NAP);
 
 	return 0;
@@ -973,6 +978,7 @@ int network_init(DBusConnection *conn)
 
 void network_exit(void)
 {
+	server_exit();
 	dbus_connection_destroy_object_path(connection, NETWORK_PATH);
 
 	dbus_connection_unref(connection);

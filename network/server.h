@@ -20,13 +20,12 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+int server_init(DBusConnection *conn);
+void server_exit();
+int server_register(const char *path, bdaddr_t *src, uint16_t id);
+int server_register_from_file(const char *path, const bdaddr_t *src,
+		uint16_t id, const char *filename);
 
-int server_register(DBusConnection *conn, const char *path,
-					bdaddr_t *src, uint16_t id);
-int server_register_from_file(DBusConnection *conn, const char *path,
-			const bdaddr_t *src, uint16_t id, const char *filename);
+int server_store(const char *path);
 
-int server_store(DBusConnection *conn, const char *path);
-
-int server_find_data(DBusConnection *conn, const char *path,
-			const char *pattern);
+int server_find_data(const char *path, const char *pattern);
