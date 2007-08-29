@@ -469,12 +469,8 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 		default:
 			return -EINVAL;
 		}
-	} else {
-		sbc_cap->frequency = ( A2DP_SAMPLING_FREQ_48000 |
-					A2DP_SAMPLING_FREQ_44100 |
-					A2DP_SAMPLING_FREQ_32000 |
-					A2DP_SAMPLING_FREQ_16000 );
-	}
+	} else
+		sbc_cap->frequency = A2DP_SAMPLING_FREQ_44100;
 
 	if (cfg->channel_mode > 0) {
 		switch (cfg->channel_mode) {
@@ -487,12 +483,8 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 		default:
 			return -EINVAL;
 		}
-	} else {
-		sbc_cap->channel_mode = ( A2DP_CHANNEL_MODE_JOINT_STEREO |
-					A2DP_CHANNEL_MODE_STEREO |
-					A2DP_CHANNEL_MODE_DUAL_CHANNEL |
-					A2DP_CHANNEL_MODE_MONO );
-	}
+	} else
+		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_JOINT_STEREO;
 
 	if (sbc->allocation > 0) {
 		switch (sbc->allocation) {
@@ -504,8 +496,7 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 			return -EINVAL;
 		}
 	} else
-		sbc_cap->allocation_method = ( A2DP_ALLOCATION_LOUDNESS |
-						A2DP_ALLOCATION_SNR );
+		sbc_cap->allocation_method = A2DP_ALLOCATION_LOUDNESS;
 
 	if (sbc->subbands > 0) {
 		switch (sbc->subbands) {
@@ -519,7 +510,7 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 			return -EINVAL;
 		}
 	} else
-		sbc_cap->subbands = ( A2DP_SUBBANDS_8 | A2DP_SUBBANDS_4 );
+		sbc_cap->subbands = A2DP_SUBBANDS_8;
 
 	if (sbc->blocks > 0) {
 		switch (sbc->blocks) {
@@ -538,21 +529,15 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 		default:
 			return -EINVAL;
 		}
-	} else {
-		sbc_cap->block_length = ( A2DP_BLOCK_LENGTH_16 |
-					A2DP_BLOCK_LENGTH_12 |
-					A2DP_BLOCK_LENGTH_8 |
-					A2DP_BLOCK_LENGTH_4 );
-	}
+	} else
+		sbc_cap->block_length = A2DP_BLOCK_LENGTH_16;
 
 	if (sbc->bitpool > 250)
 		return -EINVAL;
 	else if (sbc->bitpool > 0)
 		sbc_cap->min_bitpool = sbc_cap->max_bitpool = sbc->bitpool;
-	else {
-		sbc_cap->min_bitpool = 2;
-		sbc_cap->max_bitpool = 250;
-	}
+	else
+		sbc_cap->min_bitpool = 53;
 
 	return 0;
 }

@@ -252,20 +252,20 @@ static gboolean a2dp_select_capabilities(struct avdtp_remote_sep *rsep,
 						GSList **caps)
 {
 	struct avdtp_service_capability *media_transport, *media_codec;
-	struct sbc_codec_cap sbc_cap;
+	struct sbc_codec_cap sbc_cap, *acp_sbc;
 
 	if (!setup)
 		return FALSE;
 
 	if (setup->media_codec)
-		memcpy(&sbc_cap, setup->media_codec->data, sizeof(sbc_cap));
+		memcpy(&sbc_cap, setup->media_codec->data, sizeof(*acp_sbc));
 	else {
 		media_codec = avdtp_get_codec(rsep);
 		if (!media_codec)
 			return FALSE;
 
 		select_sbc_params(&sbc_cap,
-				(struct sbc_codec_cap *) media_codec->data);
+			(struct sbc_codec_cap *) media_codec->data);
 	}
 
 	media_transport = avdtp_service_cap_new(AVDTP_MEDIA_TRANSPORT,

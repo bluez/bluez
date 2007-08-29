@@ -898,8 +898,10 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 	struct ipc_data_cfg *cfg = (void *) pkt->data;
 	struct ipc_codec_sbc *sbc = (void *) cfg->data;
 	snd_config_iterator_t i, next;
-	const char *addr, *pref, *mode, *allocation, *rate, *channels,
-		*subbands, *blocks, *bitpool;
+	const char *addr, *pref, *mode, *allocation, *rate, *subbands,
+		*blocks, *bitpool;
+
+	cfg->channels = 2;
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
@@ -930,8 +932,10 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 			if (strcmp(pref, "auto") == 0)
 				pkt->role = PKT_ROLE_AUTO;
 			else if (strcmp(pref, "voice") == 0 ||
-						strcmp(pref, "hfp") == 0)
+						strcmp(pref, "hfp") == 0) {
 				pkt->role = PKT_ROLE_VOICE;
+				cfg->channels = 1;
+			}
 			else if (strcmp(pref, "hifi") == 0 ||
 						strcmp(pref, "a2dp") == 0)
 				pkt->role = PKT_ROLE_HIFI;
@@ -948,30 +952,23 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 			continue;
 		}
 
-		if (strcmp(id, "channels") == 0) {
-			if (snd_config_get_string(n, &channels) < 0) {
-				SNDERR("Invalid type for %s", id);
-				return -EINVAL;
-			}
-
-			cfg->channels = strtod(channels, NULL);
-			continue;
-		}
-
-		if (strcmp(id, "channel_mode") == 0) {
+		if (strcmp(id, "mode") == 0) {
 			if (snd_config_get_string(n, &mode) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			if (strcmp(pref, "mono") == 0)
+			if (strcmp(pref, "mono") == 0) {
+				cfg->channels = 1;
 				cfg->channel_mode = CFG_CHANNEL_MODE_MONO;
+			}
 			else if (strcmp(pref, "dual") == 0)
 				cfg->channel_mode = CFG_CHANNEL_MODE_DUAL_CHANNEL;
 			else if (strcmp(pref, "stereo") == 0)
 				cfg->channel_mode = CFG_CHANNEL_MODE_STEREO;
 			else if (strcmp(pref, "joint") == 0)
 				cfg->channel_mode = CFG_CHANNEL_MODE_JOINT_STEREO;
+
 			continue;
 		}
 
