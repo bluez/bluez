@@ -44,7 +44,7 @@ libgstbluetooth_la_SOURCES = gstbluetooth.c ipc.h \
 				gstsbcdec.h gstsbcdec.c \
 				gstsbcparse.h gstsbcparse.c \
 				gsta2dpsink.h gsta2dpsink.c
-libgstbluetooth_la_LDFLAGS = -module -avoid-version -export-symbols-regex [_]*\(gst_\|Gst\|GST_\).*
+libgstbluetooth_la_LDFLAGS = -module -avoid-version -export-symbols-regex gst_plugin_desc
 libgstbluetooth_la_LIBADD = @SBC_LIBS@ @GSTREAMER_LIBS@ -lgstaudio-0.10
 libgstbluetooth_la_CFLAGS = @GSTREAMER_CFLAGS@ @SBC_CFLAGS@
 endif
