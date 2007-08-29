@@ -395,7 +395,7 @@ static int authorize_connection(const char *address, struct network_server *ns)
 	return 0;
 }
 
-static int inline chk_role(uint16_t dst_role, uint16_t src_role)
+static uint16_t inline chk_role(uint16_t dst_role, uint16_t src_role)
 {
 	/* Allowed PAN Profile scenarios */
 	switch (dst_role) {
@@ -403,12 +403,17 @@ static int inline chk_role(uint16_t dst_role, uint16_t src_role)
 	case BNEP_SVC_GN:
 		if (src_role == BNEP_SVC_PANU)
 			return 0;
-		break;
+		return BNEP_CONN_INVALID_SRC;
 	case BNEP_SVC_PANU:
-		return 0;
+		if (src_role == BNEP_SVC_PANU ||
+			src_role == BNEP_SVC_GN ||
+			src_role == BNEP_SVC_NAP)
+			return 0;
+
+		return BNEP_CONN_INVALID_SRC;
 	}
 
-	return -EINVAL;
+	return BNEP_CONN_INVALID_DST;
 }
 
 static gboolean connect_setup_event(GIOChannel *chan,
@@ -463,10 +468,9 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	/* Getting source service: considering 2 bytes size */
 	src_role = ntohs(bt_get_unaligned((uint16_t *) pservice));
 
-	if (chk_role(src_role, dst_role) < 0) {
-		response = BNEP_CONN_NOT_ALLOWED;
+	response = chk_role(src_role, dst_role);
+	if (response)
 		goto reply;
-	}
 
 	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(dst_role));
 	dbus_connection_get_object_user_data(connection, path, (void *) &ns);
