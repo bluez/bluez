@@ -533,8 +533,11 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 		return -EINVAL;
 	else if (sbc->bitpool > 0)
 		sbc_cap->min_bitpool = sbc_cap->max_bitpool = sbc->bitpool;
-	else
-		sbc_cap->min_bitpool = sbc_cap->max_bitpool = 53;
+	else {
+		sbc->bitpool = 53;
+		sbc_cap->min_bitpool = 2;
+		sbc_cap->max_bitpool = sbc->bitpool;
+	}
 
 	return 0;
 }
