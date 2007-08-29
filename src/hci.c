@@ -515,7 +515,7 @@ char *hci_commandstostr(uint8_t *commands, char *pref, int width)
 	m = commands_map;
 
 	while (m->str) {
-		if (hci_test_bit(m->val, commands))
+		if (commands[m->val / 8] & (1 << (m->val % 8)))
 			size += strlen(m->str) + (pref ? strlen(pref) : 0) + 3;
 		m++;
 	}
@@ -534,7 +534,7 @@ char *hci_commandstostr(uint8_t *commands, char *pref, int width)
 	m = commands_map;
 
 	while (m->str) {
-		if (hci_test_bit(m->val, commands)) {
+		if (commands[m->val / 8] & (1 << (m->val % 8))) {
 			if (strlen(off) + strlen(m->str) > width - 3) {
 				ptr += sprintf(ptr, "\n%s", pref ? pref : "");
 				off = ptr;
