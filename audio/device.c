@@ -45,6 +45,7 @@
 #include "logging.h"
 #include "textfile.h"
 
+#include "error.h"
 #include "ipc.h"
 #include "device.h"
 #include "avdtp.h"
@@ -66,6 +67,54 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
 							DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult device_get_name(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct device *device = data;
+	DBusMessage *reply, *reply2, *msg2;
+	DBusError derr;
+	const char *name;
+	char address[18], *addr_ptr = address;
+
+	msg2 = dbus_message_new_method_call("org.bluez", device->adapter_path,
+					"org.bluez.Adapter", "GetRemoteName");
+	if (!msg2)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	ba2str(&device->dst, address);
+	dbus_message_append_args(msg2, DBUS_TYPE_STRING, &addr_ptr,
+					DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply2 = dbus_connection_send_with_reply_and_block(conn, msg2, -1,
+								&derr);
+
+	dbus_message_unref(msg2);
+
+	if (dbus_error_is_set(&derr)) {
+		error("%s GetRemoteName(): %s", device->adapter_path,
+				derr.message);
+		dbus_error_free(&derr);
+		return err_failed(conn, msg, "Unable to get remote name");
+	}
+
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_get_args(reply2, NULL,
+		       		DBUS_TYPE_STRING, &name,
+				DBUS_TYPE_INVALID);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_INVALID);
+
+	dbus_message_unref(reply2);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -102,7 +151,8 @@ static DBusHandlerResult device_get_connected(DBusConnection *conn,
 
 static DBusMethodVTable device_methods[] = {
 	{ "GetAddress",			device_get_address,	"",	"s" },
-	{ "GetConnectedInterfaces",	device_get_connected,	"",	"s" },
+	{ "GetName",			device_get_name,	"",	"s" },
+	{ "GetConnectedInterfaces",	device_get_connected,	"",	"as" },
 	{ NULL, NULL, NULL, NULL }
 };
 
