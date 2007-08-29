@@ -533,7 +533,7 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	}
 
 	id = bnep_service_id(str);
-	if ((id != BNEP_SVC_GN) && (id != BNEP_SVC_NAP))
+	if (id != BNEP_SVC_GN && id != BNEP_SVC_NAP && id != BNEP_SVC_PANU)
 		return err_invalid_args(conn, msg, "Not supported");
 
 	snprintf(key, 32, "%s#%s", addr, bnep_name(id));
