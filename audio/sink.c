@@ -52,6 +52,7 @@ struct pending_request {
 struct sink {
 	struct avdtp *session;
 	struct avdtp_stream *stream;
+	unsigned int cb_id;
 	uint8_t state;
 	struct pending_request *connect;
 	struct pending_request *disconnect;
@@ -104,6 +105,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 			sink->session = NULL;
 		}
 		sink->stream = NULL;
+		sink->cb_id = 0;
 		break;
 	case AVDTP_STATE_OPEN:
 		if (old_state == AVDTP_STATE_CONFIGURED)
@@ -291,6 +293,10 @@ void sink_free(struct device *dev)
 {
 	struct sink *sink = dev->sink;
 
+	if (sink->cb_id)
+		avdtp_stream_remove_cb(sink->session, sink->stream,
+					sink->cb_id);
+
 	if (sink->session)
 		avdtp_unref(sink->session);
 
@@ -335,7 +341,8 @@ gboolean sink_new_stream(struct device *dev, struct avdtp *session,
 	sink->stream = stream;
 	sink->initiator = FALSE;
 
-	avdtp_stream_add_cb(session, stream, stream_state_changed, dev);
+	sink->cb_id = avdtp_stream_add_cb(session, stream,
+						stream_state_changed, dev);
 
 	return TRUE;
 }
