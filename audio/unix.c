@@ -209,9 +209,9 @@ static int unix_send_cfg(int sock, struct ipc_data_cfg *cfg, int fd)
 		return len;
 	}
 
-	debug("fd=%d, fd_opt=%u, channels=%u, pkt_len=%u,"
-		"sample_size=%u, rate=%u", fd, cfg->fd_opt, cfg->channels,
-		cfg->pkt_len, cfg->sample_size, cfg->rate);
+	debug("fd=%d, fd_opt=%u, pkt_len=%u, sample_size=%u, rate=%u",
+						fd, cfg->fd_opt, cfg->pkt_len,
+						cfg->sample_size, cfg->rate);
 
 	if (cfg->codec == CFG_CODEC_SBC)
 		codec_len = sizeof(struct ipc_codec_sbc);
@@ -258,9 +258,8 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 	memset(&cfg, 0, sizeof(cfg));
 
 	cfg.fd_opt = CFG_FD_OPT_READWRITE;
-	cfg.codec = CFG_CODEC_NONE;
-	cfg.channels = 1;
-	cfg.channel_mode = CFG_CHANNEL_MODE_MONO;
+	cfg.codec = CFG_CODEC_SCO;
+	cfg.mode = CFG_MODE_MONO;
 	cfg.pkt_len = 48;
 	cfg.sample_size = 2;
 	cfg.rate = 8000;
@@ -327,24 +326,22 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 	cfg->fd_opt = CFG_FD_OPT_WRITE;
 
 	sbc_cap = (void *) codec_cap;
-	cfg->channels = sbc_cap->channel_mode == A2DP_CHANNEL_MODE_MONO ?
-				1 : 2;
-	cfg->channel_mode = sbc_cap->channel_mode;
+	cfg->mode = sbc_cap->channel_mode;
 	cfg->sample_size = 2;
 
 	switch (sbc_cap->frequency) {
-		case A2DP_SAMPLING_FREQ_16000:
-			cfg->rate = 16000;
-			break;
-		case A2DP_SAMPLING_FREQ_32000:
-			cfg->rate = 32000;
-			break;
-		case A2DP_SAMPLING_FREQ_44100:
-			cfg->rate = 44100;
-			break;
-		case A2DP_SAMPLING_FREQ_48000:
-			cfg->rate = 48000;
-			break;
+	case A2DP_SAMPLING_FREQ_16000:
+		cfg->rate = 16000;
+		break;
+	case A2DP_SAMPLING_FREQ_32000:
+		cfg->rate = 32000;
+		break;
+	case A2DP_SAMPLING_FREQ_44100:
+		cfg->rate = 44100;
+		break;
+	case A2DP_SAMPLING_FREQ_48000:
+		cfg->rate = 48000;
+		break;
 	}
 
 	cfg->codec = CFG_CODEC_SBC;
@@ -353,18 +350,18 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 	sbc->subbands = sbc_cap->subbands == A2DP_SUBBANDS_4 ? 4 : 8;
 
 	switch (sbc_cap->block_length) {
-		case A2DP_BLOCK_LENGTH_4:
-			sbc->blocks = 4;
-			break;
-		case A2DP_BLOCK_LENGTH_8:
-			sbc->blocks = 8;
-			break;
-		case A2DP_BLOCK_LENGTH_12:
-			sbc->blocks = 12;
-			break;
-		case A2DP_BLOCK_LENGTH_16:
-			sbc->blocks = 16;
-			break;
+	case A2DP_BLOCK_LENGTH_4:
+		sbc->blocks = 4;
+		break;
+	case A2DP_BLOCK_LENGTH_8:
+		sbc->blocks = 8;
+		break;
+	case A2DP_BLOCK_LENGTH_12:
+		sbc->blocks = 12;
+		break;
+	case A2DP_BLOCK_LENGTH_16:
+		sbc->blocks = 16;
+		break;
 	}
 
 	sbc->bitpool = sbc_cap->max_bitpool;
@@ -454,92 +451,90 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 	sbc_cap->cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
 	sbc_cap->cap.media_codec_type = A2DP_CODEC_SBC;
 
-	if (cfg->rate > 0) {
-		switch (cfg->rate) {
-		case 48000:
-			sbc_cap->frequency = A2DP_SAMPLING_FREQ_48000;
-			break;
-		case 44100:
-			sbc_cap->frequency = A2DP_SAMPLING_FREQ_44100;
-			break;
-		case 32000:
-			sbc_cap->frequency = A2DP_SAMPLING_FREQ_32000;
-			break;
-		case 16000:
-			sbc_cap->frequency = A2DP_SAMPLING_FREQ_16000;
-			break;
-		default:
-			return -EINVAL;
-		}
-	} else
+	switch (cfg->rate) {
+	case 48000:
+		sbc_cap->frequency = A2DP_SAMPLING_FREQ_48000;
+		break;
+	case 44100:
 		sbc_cap->frequency = A2DP_SAMPLING_FREQ_44100;
+		break;
+	case 32000:
+		sbc_cap->frequency = A2DP_SAMPLING_FREQ_32000;
+		break;
+	case 16000:
+		sbc_cap->frequency = A2DP_SAMPLING_FREQ_16000;
+		break;
+	default:
+		sbc_cap->frequency = A2DP_SAMPLING_FREQ_44100;
+		break;
+	}
 
-	if (cfg->channel_mode > 0) {
-		switch (cfg->channel_mode) {
-		case A2DP_CHANNEL_MODE_JOINT_STEREO:
-		case A2DP_CHANNEL_MODE_STEREO:
-		case A2DP_CHANNEL_MODE_DUAL_CHANNEL:
-		case A2DP_CHANNEL_MODE_MONO:
-			sbc_cap->channel_mode = cfg->channel_mode;
-			break;
-		default:
-			return -EINVAL;
-		}
-	} else
+	switch (cfg->mode) {
+	case CFG_MODE_MONO:
+		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_MONO;
+		break;
+	case CFG_MODE_DUAL_CHANNEL:
+		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_DUAL_CHANNEL;
+		break;
+	case CFG_MODE_STEREO:
+		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_STEREO;
+		break;
+	case CFG_MODE_JOINT_STEREO:
 		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_JOINT_STEREO;
+		break;
+	default:
+		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_JOINT_STEREO;
+		break;
+	}
 
-	if (sbc->allocation > 0) {
-		switch (sbc->allocation) {
-		case A2DP_ALLOCATION_LOUDNESS:
-		case A2DP_ALLOCATION_SNR:
-			sbc_cap->allocation_method = sbc->allocation;
-			break;
-		default:
-			return -EINVAL;
-		}
-	} else
+	switch (sbc->allocation) {
+	case CFG_ALLOCATION_LOUDNESS:
 		sbc_cap->allocation_method = A2DP_ALLOCATION_LOUDNESS;
+		break;
+	case CFG_ALLOCATION_SNR:
+		sbc_cap->allocation_method = A2DP_ALLOCATION_LOUDNESS;
+		break;
+	default:
+		sbc_cap->allocation_method = A2DP_ALLOCATION_LOUDNESS;
+		break;
+	}
 
-	if (sbc->subbands > 0) {
-		switch (sbc->subbands) {
-		case 8:
-			sbc_cap->subbands = A2DP_SUBBANDS_8;
-			break;
-		case 4:
-			sbc_cap->subbands = A2DP_SUBBANDS_4;
-			break;
-		default:
-			return -EINVAL;
-		}
-	} else
+	switch (sbc->subbands) {
+	case 8:
 		sbc_cap->subbands = A2DP_SUBBANDS_8;
+		break;
+	case 4:
+		sbc_cap->subbands = A2DP_SUBBANDS_4;
+		break;
+	default:
+		sbc_cap->subbands = A2DP_SUBBANDS_8;
+		break;
+	}
 
-	if (sbc->blocks > 0) {
-		switch (sbc->blocks) {
-		case 16:
-			sbc_cap->block_length = A2DP_BLOCK_LENGTH_16;
-			break;
-		case 12:
-			sbc_cap->block_length = A2DP_BLOCK_LENGTH_12;
-			break;
-		case 8:
-			sbc_cap->block_length = A2DP_BLOCK_LENGTH_8;
-			break;
-		case 4:
-			sbc_cap->block_length = A2DP_BLOCK_LENGTH_4;
-			break;
-		default:
-			return -EINVAL;
-		}
-	} else
+	switch (sbc->blocks) {
+	case 16:
 		sbc_cap->block_length = A2DP_BLOCK_LENGTH_16;
+		break;
+	case 12:
+		sbc_cap->block_length = A2DP_BLOCK_LENGTH_12;
+		break;
+	case 8:
+		sbc_cap->block_length = A2DP_BLOCK_LENGTH_8;
+		break;
+	case 4:
+		sbc_cap->block_length = A2DP_BLOCK_LENGTH_4;
+		break;
+	default:
+		sbc_cap->block_length = A2DP_BLOCK_LENGTH_16;
+		break;
+	}
 
 	if (sbc->bitpool > 250)
 		return -EINVAL;
 	else if (sbc->bitpool > 0)
 		sbc_cap->min_bitpool = sbc_cap->max_bitpool = sbc->bitpool;
 	else
-		sbc_cap->min_bitpool = 53;
+		sbc_cap->min_bitpool = sbc_cap->max_bitpool = 53;
 
 	return 0;
 }

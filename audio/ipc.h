@@ -60,35 +60,37 @@ struct ipc_packet {
 } __attribute__ ((packed));
 
 /* File descriptor options */
-#define CFG_FD_OPT_READ			0
-#define CFG_FD_OPT_WRITE		1
-#define CFG_FD_OPT_READWRITE		2
+#define CFG_FD_OPT_READ		0
+#define CFG_FD_OPT_WRITE	1
+#define CFG_FD_OPT_READWRITE	2
 
 /* Audio channel mode */
-#define CFG_CHANNEL_MODE_MONO		(1 << 3)
-#define CFG_CHANNEL_MODE_DUAL_CHANNEL	(1 << 2)
-#define CFG_CHANNEL_MODE_STEREO		(1 << 1)
-#define CFG_CHANNEL_MODE_JOINT_STEREO	1
+#define CFG_MODE_AUTO		0
+#define CFG_MODE_MONO		1
+#define CFG_MODE_DUAL_CHANNEL	2
+#define CFG_MODE_STEREO		3
+#define CFG_MODE_JOINT_STEREO	4
+
+/* Allocation method */
+#define CFG_ALLOCATION_AUTO	0
+#define CFG_ALLOCATION_LOUDNESS	1
+#define CFG_ALLOCATION_SNR	2
 
 /* Codec options */
-#define CFG_CODEC_NONE			0
-#define CFG_CODEC_SBC			1
+#define CFG_CODEC_NONE		0
+#define CFG_CODEC_SCO		1
+#define CFG_CODEC_SBC		2
 
 struct ipc_data_cfg {
-	uint8_t fd_opt;		/* Stream file descriptor options: read,
+	uint8_t  fd_opt;	/* Stream file descriptor options: read,
 				   write or readwrite */
-	uint8_t channels;	/* Number of audio channel */
-	uint8_t channel_mode;	/* Audio channel mode*/
 	uint16_t pkt_len;	/* Stream packet length */
-	uint8_t sample_size;	/* Sample size in bytes */
+	uint8_t  sample_size;	/* Sample size in bytes */
+	uint8_t  mode;		/* Audio channel mode */
 	uint16_t rate;		/* Stream sample rate */
-	uint8_t codec;		/* Stream codec */
-	uint8_t data[0];	/* Codec payload */
+	uint8_t  codec;		/* Stream codec */
+	uint8_t  data[0];	/* Codec payload */
 } __attribute__ ((packed));
-
-/* SBC codec options */
-#define CODEC_SBC_ALLOCATION_SNR	(1 << 1)
-#define CODEC_SBC_ALLOCATION_LOUDNESS	1
 
 struct ipc_codec_sbc {
 	uint8_t allocation;

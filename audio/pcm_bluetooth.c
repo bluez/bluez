@@ -718,7 +718,7 @@ static int bluetooth_hsp_hw_constraint(snd_pcm_ioplug_t *io)
 	unsigned int format_list[] = {
 		SND_PCM_FORMAT_S16_LE
 	};
-	int err;
+	int err, channels;
 
 	/* access type */
 	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_ACCESS,
@@ -733,14 +733,15 @@ static int bluetooth_hsp_hw_constraint(snd_pcm_ioplug_t *io)
 		return err;
 
 	/* supported channels */
+	channels = cfg.mode == CFG_MODE_MONO ? 1 : 2;
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_CHANNELS,
-						cfg.channels, cfg.channels);
+							channels, channels);
 	if (err < 0)
 		return err;
 
 	/* supported rate */
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_RATE,
-						cfg.rate, cfg.rate);
+							cfg.rate, cfg.rate);
 	if (err < 0)
 		return err;
 
@@ -751,7 +752,7 @@ static int bluetooth_hsp_hw_constraint(snd_pcm_ioplug_t *io)
 		return err;
 
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS,
-						2, 200);
+									2, 200);
 	if (err < 0)
 		return err;
 
@@ -773,7 +774,7 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 	unsigned int format_list[] = {
 		SND_PCM_FORMAT_S16_LE
 	};
-	int err;
+	int err, channels;
 
 	/* access type */
 	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_ACCESS,
@@ -788,14 +789,15 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 		return err;
 
 	/* supported channels */
+	channels = cfg.mode = CFG_MODE_MONO ? 1 : 2;
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_CHANNELS,
-						cfg.channels, cfg.channels);
+							channels, channels);
 	if (err < 0)
 		return err;
 
 	/* supported rate */
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_RATE,
-						cfg.rate, cfg.rate);
+							cfg.rate, cfg.rate);
 	if (err < 0)
 		return err;
 
@@ -806,7 +808,7 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 		return err;
 
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS,
-						2, 50);
+									2, 50);
 	if (err < 0)
 		return err;
 
@@ -874,9 +876,8 @@ static int bluetooth_a2dp_init(struct bluetooth_data *data,
 	/* FIXME: init using flags? */
 	sbc_init(&a2dp->sbc, 0);
 	a2dp->sbc.rate = cfg->rate;
-	a2dp->sbc.channels = cfg->channels;
-	if (cfg->channel_mode == CFG_CHANNEL_MODE_MONO ||
-			cfg->channel_mode == CFG_CHANNEL_MODE_JOINT_STEREO)
+	a2dp->sbc.channels = cfg->mode == CFG_MODE_MONO ? 1 : 2;
+	if (cfg->mode == CFG_MODE_MONO || cfg->mode == CFG_MODE_JOINT_STEREO)
 		a2dp->sbc.joint = 1;
 	a2dp->sbc.allocation = sbc->allocation;
 	a2dp->sbc.subbands = sbc->subbands;
@@ -898,10 +899,8 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 	struct ipc_data_cfg *cfg = (void *) pkt->data;
 	struct ipc_codec_sbc *sbc = (void *) cfg->data;
 	snd_config_iterator_t i, next;
-	const char *addr, *pref, *mode, *allocation, *rate, *subbands,
-		*blocks, *bitpool;
-
-	cfg->channels = 2;
+	const char *addr, *pref;
+	const char *mode, *allocation, *rate, *subbands, *blocks, *bitpool;
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
@@ -934,9 +933,7 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 			else if (strcmp(pref, "voice") == 0 ||
 						strcmp(pref, "hfp") == 0) {
 				pkt->role = PKT_ROLE_VOICE;
-				cfg->channels = 1;
-			}
-			else if (strcmp(pref, "hifi") == 0 ||
+			} else if (strcmp(pref, "hifi") == 0 ||
 						strcmp(pref, "a2dp") == 0)
 				pkt->role = PKT_ROLE_HIFI;
 			continue;
@@ -958,17 +955,16 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 				return -EINVAL;
 			}
 
-			if (strcmp(pref, "mono") == 0) {
-				cfg->channels = 1;
-				cfg->channel_mode = CFG_CHANNEL_MODE_MONO;
-			}
+			if (strcmp(pref, "auto") == 0)
+				cfg->mode = CFG_MODE_AUTO;
+			else if (strcmp(pref, "mono") == 0)
+				cfg->mode = CFG_MODE_MONO;
 			else if (strcmp(pref, "dual") == 0)
-				cfg->channel_mode = CFG_CHANNEL_MODE_DUAL_CHANNEL;
+				cfg->mode = CFG_MODE_DUAL_CHANNEL;
 			else if (strcmp(pref, "stereo") == 0)
-				cfg->channel_mode = CFG_CHANNEL_MODE_STEREO;
+				cfg->mode = CFG_MODE_STEREO;
 			else if (strcmp(pref, "joint") == 0)
-				cfg->channel_mode = CFG_CHANNEL_MODE_JOINT_STEREO;
-
+				cfg->mode = CFG_MODE_JOINT_STEREO;
 			continue;
 		}
 
@@ -978,10 +974,12 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 				return -EINVAL;
 			}
 
-			if (strcmp(pref, "snr") == 0)
-				sbc->allocation = CODEC_SBC_ALLOCATION_SNR;
+			if (strcmp(pref, "auto") == 0)
+				sbc->allocation = CFG_ALLOCATION_AUTO;
 			else if (strcmp(pref, "loudness") == 0)
-				sbc->allocation = CODEC_SBC_ALLOCATION_LOUDNESS;
+				sbc->allocation = CFG_ALLOCATION_LOUDNESS;
+			else if (strcmp(pref, "snr") == 0)
+				sbc->allocation = CFG_ALLOCATION_SNR;
 			continue;
 		}
 
@@ -1093,9 +1091,9 @@ done:
 
 	DBG("Device configuration:");
 
-	DBG("\n\tfd=%d\n\tfd_opt=%u\n\tchannels=%u\n\tpkt_len=%u\n\tsample_size=%u\n\trate=%u",
-		data->stream_fd, data->cfg.fd_opt, data->cfg.channels,
-		data->cfg.pkt_len, data->cfg.sample_size, data->cfg.rate);
+	DBG("\n\tfd=%d\n\tfd_opt=%u\n\tpkt_len=%u\n\tsample_size=%u\n\trate=%u",
+			data->stream_fd, data->cfg.fd_opt, data->cfg.pkt_len,
+					data->cfg.sample_size, data->cfg.rate);
 
 	if (data->cfg.codec == CFG_CODEC_SBC) {
 		ret = bluetooth_a2dp_init(data, sbc);
