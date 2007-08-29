@@ -189,6 +189,9 @@ gboolean avdtp_stream_remove_cb(struct avdtp *session,
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 					uint16_t *mtu, GSList **caps);
 
+gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
+				struct avdtp_service_capability *cap);
+
 int avdtp_set_configuration(struct avdtp *session,
 				struct avdtp_remote_sep *rsep,
 				struct avdtp_local_sep *lsep,
@@ -199,7 +202,8 @@ int avdtp_get_configuration(struct avdtp *session,
 				struct avdtp_stream *stream);
 
 int avdtp_open(struct avdtp *session, struct avdtp_stream *stream);
-int avdtp_reconfigure(struct avdtp *session, struct avdtp_stream *stream);
+int avdtp_reconfigure(struct avdtp *session, GSList *caps,
+			struct avdtp_stream *stream);
 int avdtp_start(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_suspend(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_close(struct avdtp *session, struct avdtp_stream *stream);

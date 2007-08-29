@@ -552,9 +552,6 @@ static void stream_free(struct avdtp_stream *stream)
 	if (stream->timer)
 		g_source_remove(stream->timer);
 
-	if (stream->io)
-		g_source_remove(stream->io);
-
 	g_slist_foreach(stream->callbacks, (GFunc) g_free, NULL);
 	g_slist_free(stream->callbacks);
 
@@ -718,7 +715,7 @@ void avdtp_unref(struct avdtp *session)
 			session->sock = -1;
 		}
 
-	       	if (session->sock >= 0)
+		if (session->sock >= 0)
 			set_disconnect_timer(session);
 		else if (!session->free_lock) /* Drop the local ref if we
 						 aren't connected */
@@ -954,7 +951,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 		err = AVDTP_SEP_IN_USE;
 		goto failed;
 	}
-	
+
 	stream = g_new0(struct avdtp_stream, 1);
 	stream->session = session;
 	stream->lsep = sep;
@@ -1074,7 +1071,7 @@ static gboolean avdtp_start_cmd(struct avdtp *session, struct start_req *req,
 		error("Too short start request");
 		return FALSE;
 	}
-	
+
 	seid_count = 1 + size - sizeof(struct start_req);
 
 	seid = &req->first_seid;
@@ -1936,8 +1933,8 @@ static gboolean avdtp_abort_resp(struct avdtp *session,
 {
 	struct avdtp_local_sep *sep = stream->lsep;
 
-	if (sep->cfm && sep->cfm->suspend)
-		sep->cfm->suspend(session, sep, stream, NULL, sep->user_data);
+	if (sep->cfm && sep->cfm->abort)
+		sep->cfm->abort(session, sep, stream, NULL, sep->user_data);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
 
@@ -2196,7 +2193,7 @@ struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
 gboolean avdtp_is_connected(bdaddr_t *src, bdaddr_t *dst)
 {
 	struct avdtp *session;
-	
+
 	session = find_session(src, dst);
 
 	if (!session)
@@ -2204,6 +2201,24 @@ gboolean avdtp_is_connected(bdaddr_t *src, bdaddr_t *dst)
 
 	if (session->state != AVDTP_SESSION_STATE_DISCONNECTED)
 		return TRUE;
+
+	return FALSE;
+}
+
+gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
+				struct avdtp_service_capability *cap)
+{
+	GSList *l;
+	struct avdtp_service_capability *stream_cap;
+
+	for (l = stream->caps; l; l = g_slist_next(l)) {
+		stream_cap = l->data;
+		if (stream_cap->category == cap->category &&
+			stream_cap->length == cap->length) {
+			if (!memcmp(stream_cap->data, cap->data, cap->length))
+				return TRUE;
+		}
+	}
 
 	return FALSE;
 }
@@ -2219,7 +2234,7 @@ gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 
 	if (mtu)
 		*mtu = stream->mtu;
-	
+
 	if (caps)
 		*caps = stream->caps;
 
@@ -2452,9 +2467,14 @@ int avdtp_set_configuration(struct avdtp *session,
 	return ret;
 }
 
-int avdtp_reconfigure(struct avdtp *session, struct avdtp_stream *stream)
+int avdtp_reconfigure(struct avdtp *session, GSList *caps,
+			struct avdtp_stream *stream)
 {
-	struct seid_req req;
+	struct reconf_req *req;
+	unsigned char *ptr;
+	int caps_len;
+	GSList *l;
+	struct avdtp_service_capability *cap;
 
 	if (!g_slist_find(session->streams, stream))
 		return -EINVAL;
@@ -2462,11 +2482,26 @@ int avdtp_reconfigure(struct avdtp *session, struct avdtp_stream *stream)
 	if (stream->lsep->state != AVDTP_STATE_OPEN)
 		return -EINVAL;
 
-	memset(&req, 0, sizeof(req));
-	init_request(&req.header, AVDTP_GET_CONFIGURATION);
-	req.acp_seid = stream->rseid;
+	/* Calculate total size of request */
+	for (l = caps, caps_len = 0; l != NULL; l = g_slist_next(l)) {
+		cap = l->data;
+		caps_len += cap->length + 2;
+	}
 
-	return send_request(session, FALSE, NULL, &req, sizeof(req));
+	req = g_malloc0(sizeof(struct reconf_req) + caps_len);
+
+	init_request(&req->header, AVDTP_RECONFIGURE);
+	req->acp_seid = stream->rseid;
+
+	/* Copy the capabilities into the request */
+	for (l = caps, ptr = req->caps; l != NULL; l = g_slist_next(l)) {
+		cap = l->data;
+		memcpy(ptr, cap, cap->length + 2);
+		ptr += cap->length + 2;
+	}
+
+	return send_request(session, FALSE, stream, req, sizeof(*req)
+				+ caps_len);
 }
 
 int avdtp_open(struct avdtp *session, struct avdtp_stream *stream)

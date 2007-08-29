@@ -893,19 +893,13 @@ static int bluetooth_a2dp_init(struct bluetooth_data *data,
 	return 0;
 }
 
-static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
+static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 {
-	int ret, total;
-	char buf[IPC_MTU];
-	struct ipc_packet *pkt = (void *) buf;
 	struct ipc_data_cfg *cfg = (void *) pkt->data;
 	struct ipc_codec_sbc *sbc = (void *) cfg->data;
 	snd_config_iterator_t i, next;
-	const char *addr, *pref;
-
-	DBG("Sending PKT_TYPE_CFG_REQ...");
-
-	memset(buf, 0, sizeof(buf));
+	const char *addr, *pref, *mode, *allocation, *rate, *channels,
+		*subbands, *blocks, *bitpool;
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
@@ -944,14 +938,114 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
 			continue;
 		}
 
+		if (strcmp(id, "rate") == 0) {
+			if (snd_config_get_string(n, &rate) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+
+			cfg->rate = strtod(rate, NULL);
+			continue;
+		}
+
+		if (strcmp(id, "channels") == 0) {
+			if (snd_config_get_string(n, &channels) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+
+			cfg->channels = strtod(channels, NULL);
+			continue;
+		}
+
+		if (strcmp(id, "channel_mode") == 0) {
+			if (snd_config_get_string(n, &mode) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+
+			if (strcmp(pref, "mono") == 0)
+				cfg->channel_mode = CFG_CHANNEL_MODE_MONO;
+			else if (strcmp(pref, "dual") == 0)
+				cfg->channel_mode = CFG_CHANNEL_MODE_DUAL_CHANNEL;
+			else if (strcmp(pref, "stereo") == 0)
+				cfg->channel_mode = CFG_CHANNEL_MODE_STEREO;
+			else if (strcmp(pref, "joint") == 0)
+				cfg->channel_mode = CFG_CHANNEL_MODE_JOINT_STEREO;
+			continue;
+		}
+
+		if (strcmp(id, "allocation") == 0) {
+			if (snd_config_get_string(n, &allocation) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+
+			if (strcmp(pref, "snr") == 0)
+				sbc->allocation = CODEC_SBC_ALLOCATION_SNR;
+			else if (strcmp(pref, "loudness") == 0)
+				sbc->allocation = CODEC_SBC_ALLOCATION_LOUDNESS;
+			continue;
+		}
+
+		if (strcmp(id, "subbands") == 0) {
+			if (snd_config_get_string(n, &subbands) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+
+			sbc->subbands = strtod(subbands, NULL);
+			continue;
+		}
+
+		if (strcmp(id, "blocks") == 0) {
+			if (snd_config_get_string(n, &blocks) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+
+			sbc->blocks = strtod(blocks, NULL);
+			continue;
+		}
+
+		if (strcmp(id, "bitpool") == 0) {
+			if (snd_config_get_string(n, &bitpool) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+
+			sbc->bitpool = strtod(bitpool, NULL);
+			continue;
+		}
+
 		SNDERR("Unknown field %s", id);
 		return -EINVAL;
 	}
 
+	pkt->length = sizeof(*cfg) + sizeof(*sbc);
 	pkt->type = PKT_TYPE_CFG_REQ;
 	pkt->error = PKT_ERROR_NONE;
 
-	ret = send(data->sock, pkt, sizeof(struct ipc_packet), 0);
+	return 0;
+}
+
+static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
+{
+	int ret, total;
+	char buf[IPC_MTU];
+	struct ipc_packet *pkt = (void *) buf;
+	struct ipc_data_cfg *cfg = (void *) pkt->data;
+	struct ipc_codec_sbc *sbc = (void *) cfg->data;
+
+	DBG("Sending PKT_TYPE_CFG_REQ...");
+
+	memset(buf, 0, sizeof(buf));
+
+	ret = bluetooth_cfg_init(pkt, conf);
+	if (ret < 0)
+		return -ret;
+
+	ret = send(data->sock, pkt, sizeof(*pkt) + pkt->length, 0);
 	if (ret < 0)
 		return -errno;
 	else if (ret == 0)
@@ -1026,7 +1120,7 @@ done:
 	while (recv(data->stream_fd, data->buffer, data->cfg.pkt_len,
 				MSG_DONTWAIT) > 0);
 
-	memset(data->buffer, 0, data->cfg.pkt_len);
+	memset(data->buffer, 0, sizeof(data->buffer));
 
 	return 0;
 }

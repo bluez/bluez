@@ -67,6 +67,7 @@ struct a2dp_data {
 struct unix_client {
 	struct device *dev;
 	struct avdtp_local_sep *sep;
+	struct avdtp_service_capability *media_codec;
 	service_type_t type;
 	char *interface;
 	union {
@@ -106,6 +107,8 @@ static void client_free(struct unix_client *client)
 
 	if (client->sock >= 0)
 		close(client->sock);
+	if (client->media_codec)
+		g_free(client->media_codec);
 	g_free(client->interface);
 	g_free(client);
 }
@@ -235,7 +238,6 @@ static int unix_send_cfg(int sock, struct ipc_data_cfg *cfg, int fd)
 
 	return 0;
 }
-
 
 static void headset_setup_complete(struct device *dev, void *user_data)
 {
@@ -405,7 +407,8 @@ static void create_stream(struct device *dev, struct unix_client *client)
 
 		id = a2dp_source_request_stream(a2dp->session, dev,
 						TRUE, a2dp_setup_complete,
-						client, &a2dp->sep);
+						client, &a2dp->sep,
+						client->media_codec);
 		client->cancel_stream = a2dp_source_cancel_stream;
 		break;
 	case TYPE_HEADSET:
@@ -442,11 +445,126 @@ static void create_cb(struct device *dev, void *user_data)
 		create_stream(dev, client);
 }
 
+static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
+{
+	struct ipc_codec_sbc *sbc = (void *) cfg->data;
+
+	sbc_cap->cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
+	sbc_cap->cap.media_codec_type = A2DP_CODEC_SBC;
+
+	if (cfg->rate > 0) {
+		switch (cfg->rate) {
+		case 48000:
+			sbc_cap->frequency = A2DP_SAMPLING_FREQ_48000;
+			break;
+		case 44100:
+			sbc_cap->frequency = A2DP_SAMPLING_FREQ_44100;
+			break;
+		case 32000:
+			sbc_cap->frequency = A2DP_SAMPLING_FREQ_32000;
+			break;
+		case 16000:
+			sbc_cap->frequency = A2DP_SAMPLING_FREQ_16000;
+			break;
+		default:
+			return -EINVAL;
+		}
+	} else {
+		sbc_cap->frequency = ( A2DP_SAMPLING_FREQ_48000 |
+					A2DP_SAMPLING_FREQ_44100 |
+					A2DP_SAMPLING_FREQ_32000 |
+					A2DP_SAMPLING_FREQ_16000 );
+	}
+
+	if (cfg->channel_mode > 0) {
+		switch (cfg->channel_mode) {
+		case A2DP_CHANNEL_MODE_JOINT_STEREO:
+		case A2DP_CHANNEL_MODE_STEREO:
+		case A2DP_CHANNEL_MODE_DUAL_CHANNEL:
+		case A2DP_CHANNEL_MODE_MONO:
+			sbc_cap->channel_mode = cfg->channel_mode;
+			break;
+		default:
+			return -EINVAL;
+		}
+	} else {
+		sbc_cap->channel_mode = ( A2DP_CHANNEL_MODE_JOINT_STEREO |
+					A2DP_CHANNEL_MODE_STEREO |
+					A2DP_CHANNEL_MODE_DUAL_CHANNEL |
+					A2DP_CHANNEL_MODE_MONO );
+	}
+
+	if (sbc->allocation > 0) {
+		switch (sbc->allocation) {
+		case A2DP_ALLOCATION_LOUDNESS:
+		case A2DP_ALLOCATION_SNR:
+			sbc_cap->allocation_method = sbc->allocation;
+			break;
+		default:
+			return -EINVAL;
+		}
+	} else
+		sbc_cap->allocation_method = ( A2DP_ALLOCATION_LOUDNESS |
+						A2DP_ALLOCATION_SNR );
+
+	if (sbc->subbands > 0) {
+		switch (sbc->subbands) {
+		case 8:
+			sbc_cap->subbands = A2DP_SUBBANDS_8;
+			break;
+		case 4:
+			sbc_cap->subbands = A2DP_SUBBANDS_4;
+			break;
+		default:
+			return -EINVAL;
+		}
+	} else
+		sbc_cap->subbands = ( A2DP_SUBBANDS_8 | A2DP_SUBBANDS_4 );
+
+	if (sbc->blocks > 0) {
+		switch (sbc->blocks) {
+		case 16:
+			sbc_cap->block_length = A2DP_BLOCK_LENGTH_16;
+			break;
+		case 12:
+			sbc_cap->block_length = A2DP_BLOCK_LENGTH_12;
+			break;
+		case 8:
+			sbc_cap->block_length = A2DP_BLOCK_LENGTH_8;
+			break;
+		case 4:
+			sbc_cap->block_length = A2DP_BLOCK_LENGTH_4;
+			break;
+		default:
+			return -EINVAL;
+		}
+	} else {
+		sbc_cap->block_length = ( A2DP_BLOCK_LENGTH_16 |
+					A2DP_BLOCK_LENGTH_12 |
+					A2DP_BLOCK_LENGTH_8 |
+					A2DP_BLOCK_LENGTH_4 );
+	}
+
+	if (sbc->bitpool > 250)
+		return -EINVAL;
+	else if (sbc->bitpool > 0)
+		sbc_cap->min_bitpool = sbc_cap->max_bitpool = sbc->bitpool;
+	else {
+		sbc_cap->min_bitpool = 2;
+		sbc_cap->max_bitpool = 250;
+	}
+
+	return 0;
+}
+
+
 static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 			int len)
 {
 	struct device *dev;
 	bdaddr_t bdaddr;
+	struct ipc_data_cfg *cfg = (void *) pkt->data;
+	struct sbc_codec_cap sbc_cap;
 
 	str2ba(pkt->device, &bdaddr);
 
@@ -459,6 +577,12 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
 	else if (pkt->role == PKT_ROLE_HIFI)
 		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
+
+	if (cfg_to_caps(cfg, &sbc_cap) < 0)
+		goto failed;
+
+	client->media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
+							sizeof(sbc_cap));
 
 	if (!manager_find_device(&bdaddr, NULL, FALSE)) {
 		if (!bacmp(&bdaddr, BDADDR_ANY))
@@ -475,6 +599,7 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 		goto failed;
 
 	create_stream(dev, client);
+
 	return;
 
 failed:

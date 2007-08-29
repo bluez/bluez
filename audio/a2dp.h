@@ -71,11 +71,11 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 					struct device *dev,
 					gboolean start, a2dp_stream_cb_t cb,
 					void *user_data,
-					struct a2dp_sep **sep);
+					struct a2dp_sep **sep,
+					struct avdtp_service_capability *media_codec);
 gboolean a2dp_source_cancel_stream(struct device *dev, unsigned int id);
 
 gboolean a2dp_source_lock(struct device *dev, struct avdtp *session);
 gboolean a2dp_source_unlock(struct device *dev, struct avdtp *session);
 gboolean a2dp_source_suspend(struct device *dev, struct avdtp *session);
 gboolean a2dp_source_start_stream(struct device *dev, struct avdtp *session);
-

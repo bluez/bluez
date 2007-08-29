@@ -188,7 +188,8 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 	sink->connect = pending;
 
 	id = a2dp_source_request_stream(sink->session, dev, FALSE,
-					stream_setup_complete, pending, NULL);
+					stream_setup_complete, pending, NULL,
+					NULL);
 	if (id == 0) {
 		pending_request_free(pending);
 		sink->connect = NULL;
