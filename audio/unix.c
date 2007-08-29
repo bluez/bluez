@@ -449,6 +449,8 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 {
 	struct ipc_codec_sbc *sbc = (void *) cfg->data;
 
+	memset(sbc_cap, 0, sizeof(struct sbc_codec_cap));
+
 	sbc_cap->cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
 	sbc_cap->cap.media_codec_type = A2DP_CODEC_SBC;
 

@@ -948,7 +948,7 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 				return -EINVAL;
 			}
 
-			cfg->rate = strtod(rate, NULL);
+			cfg->rate = atoi(rate);
 			continue;
 		}
 
@@ -991,7 +991,7 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 				return -EINVAL;
 			}
 
-			sbc->subbands = strtod(subbands, NULL);
+			sbc->subbands = atoi(subbands);
 			continue;
 		}
 
@@ -1001,7 +1001,7 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 				return -EINVAL;
 			}
 
-			sbc->blocks = strtod(blocks, NULL);
+			sbc->blocks = atoi(blocks);
 			continue;
 		}
 
@@ -1011,7 +1011,7 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 				return -EINVAL;
 			}
 
-			sbc->bitpool = strtod(bitpool, NULL);
+			sbc->bitpool = atoi(bitpool);
 			continue;
 		}
 
