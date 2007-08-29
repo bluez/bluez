@@ -97,8 +97,8 @@ static void client_free(struct unix_client *client)
 		a2dp = &client->d.a2dp;
 		if (client->cb_id > 0)
 			avdtp_stream_remove_cb(a2dp->session, a2dp->stream,
-						client->cb_id);
-		if (a2dp->session);
+								client->cb_id);
+		if (a2dp->session)
 			avdtp_unref(a2dp->session);
 		break;
 	default:
@@ -107,8 +107,10 @@ static void client_free(struct unix_client *client)
 
 	if (client->sock >= 0)
 		close(client->sock);
+
 	if (client->media_codec)
 		g_free(client->media_codec);
+
 	g_free(client->interface);
 	g_free(client);
 }
@@ -164,7 +166,6 @@ static service_type_t select_service(struct device *dev, const char *interface)
 
 	return TYPE_NONE;
 }
-
 
 static void stream_state_changed(struct avdtp_stream *stream,
 					avdtp_state_t old_state,
@@ -346,7 +347,7 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 
 	cfg->codec = CFG_CODEC_SBC;
 	sbc->allocation = sbc_cap->allocation_method == A2DP_ALLOCATION_SNR ?
-				0x01 : 0x00;
+								0x01 : 0x00;
 	sbc->subbands = sbc_cap->subbands == A2DP_SUBBANDS_4 ? 4 : 8;
 
 	switch (sbc_cap->block_length) {
@@ -378,7 +379,9 @@ failed:
 	if (a2dp->stream)
 		a2dp_source_unlock(dev, session);
 	unix_send_cfg(client->sock, NULL, -1);
+
 	avdtp_unref(a2dp->session);
+
 	a2dp->session = NULL;
 	a2dp->stream = NULL;
 }
@@ -408,11 +411,12 @@ static void create_stream(struct device *dev, struct unix_client *client)
 						client->media_codec);
 		client->cancel_stream = a2dp_source_cancel_stream;
 		break;
+
 	case TYPE_HEADSET:
-		id = headset_request_stream(dev, headset_setup_complete,
-						client);
+		id = headset_request_stream(dev, headset_setup_complete, client);
 		client->cancel_stream = headset_cancel_stream;
 		break;
+
 	default:
 		error("No known services for device");
 		goto failed;
@@ -542,7 +546,6 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 	return 0;
 }
 
-
 static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 			int len)
 {
@@ -566,8 +569,8 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
 	if (cfg_to_caps(cfg, &sbc_cap) < 0)
 		goto failed;
 
-	client->media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
-							sizeof(sbc_cap));
+	client->media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC,
+						&sbc_cap, sizeof(sbc_cap));
 
 	if (!manager_find_device(&bdaddr, NULL, FALSE)) {
 		if (!bacmp(&bdaddr, BDADDR_ANY))
@@ -591,13 +594,13 @@ failed:
 	unix_send_cfg(client->sock, NULL, -1);
 }
 
-static void ctl_event(struct unix_client *client, struct ipc_packet *pkt,
-			int len)
+static void ctl_event(struct unix_client *client,
+					struct ipc_packet *pkt, int len)
 {
 }
 
-static void state_event(struct unix_client *client, struct ipc_packet *pkt,
-				int len)
+static void state_event(struct unix_client *client,
+					struct ipc_packet *pkt, int len)
 {
 #if 0
 	struct ipc_data_state *state = (struct ipc_data_state *) pkt->data;
@@ -719,7 +722,7 @@ static gboolean server_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	io = g_io_channel_unix_new(cli_sk);
 	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			client_cb, client);
+							client_cb, client);
 	g_io_channel_unref(io);
 
 	return TRUE;
@@ -755,7 +758,7 @@ int unix_init(void)
 
 	io = g_io_channel_unix_new(sk);
 	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			server_cb, NULL);
+							server_cb, NULL);
 	g_io_channel_unref(io);
 
 	info("Unix socket created: %d", sk);

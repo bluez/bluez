@@ -334,8 +334,7 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 }
 
 static int bluetooth_poll_descriptors(snd_pcm_ioplug_t *io,
-					struct pollfd *pfd,
-					unsigned int space)
+					struct pollfd *pfd, unsigned int space)
 {
 	struct bluetooth_data *data = io->private_data;
 
@@ -814,7 +813,6 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 
 	return 0;
 }
-
 
 static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 {
