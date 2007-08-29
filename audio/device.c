@@ -119,6 +119,26 @@ static DBusHandlerResult device_get_name(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult device_get_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct device *device = data;
+	DBusMessage *reply;
+	char address[18], *ptr = address;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	ba2str(&device->src, address);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
+							DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+
 static DBusHandlerResult device_get_connected(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -152,6 +172,7 @@ static DBusHandlerResult device_get_connected(DBusConnection *conn,
 static DBusMethodVTable device_methods[] = {
 	{ "GetAddress",			device_get_address,	"",	"s" },
 	{ "GetName",			device_get_name,	"",	"s" },
+	{ "GetAdapter",			device_get_adapter,	"",	"s" },
 	{ "GetConnectedInterfaces",	device_get_connected,	"",	"as" },
 	{ NULL, NULL, NULL, NULL }
 };

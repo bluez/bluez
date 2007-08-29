@@ -105,7 +105,16 @@ Methods		string GetAddress() [experimental]
 
 			Returns the Bluetooth address of the remote device.
 
-		array{string} GetConnectedInterfaces()	[experimental]
+		string GetAdapter() [experimental]
+
+			Returns the address of the local adapter that the
+			device is associated with.
+
+		string GetName() [experimental]
+
+			Returns a friendly name for the device.
+
+		array{string} GetConnectedInterfaces() [experimental]
 
 			Returns a string list of interfaces that are in a
 			connected state.
