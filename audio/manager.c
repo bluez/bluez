@@ -838,7 +838,8 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 						DBUS_TYPE_STRING, &param,
 						DBUS_TYPE_INVALID);
 
-		device_store(default_dev, TRUE);
+		if (default_dev)
+			device_store(default_dev, TRUE);
 	}
 
 	dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
