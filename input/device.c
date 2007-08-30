@@ -542,7 +542,7 @@ static guint create_watch(int sk, struct device *idev)
 	GIOChannel *io;
 
 	io = g_io_channel_unix_new(sk);
-	id = g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+	id = g_io_add_watch(G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			connection_event, idev);
 	g_io_channel_unref(io);
 
