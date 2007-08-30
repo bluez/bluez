@@ -315,11 +315,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, int err,
 	if (err < 0) {
 		error("avdtp_set_configuration: %s", strerror(-err));
 		finalize_stream_setup(setup);
-		return;
 	}
-
-	/* Notify sink.c of the new stream */
-	sink_new_stream(setup->dev, session, setup->stream);
 }
 
 static gboolean setconf_ind(struct avdtp *session,
@@ -433,6 +429,9 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	if (!setup)
 		return;
+
+	/* Notify sink.c of the new stream */
+	sink_new_stream(setup->dev, session, setup->stream);
 
 	ret = avdtp_open(session, stream);
 	if (ret < 0) {
