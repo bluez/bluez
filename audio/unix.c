@@ -405,10 +405,12 @@ static void create_stream(struct device *dev, struct unix_client *client)
 			goto failed;
 		}
 
+		/* FIXME: The provided media_codec breaks bitpool
+                   selection. So disable it. This needs fixing */
 		id = a2dp_source_request_stream(a2dp->session, dev,
 						TRUE, a2dp_setup_complete,
 						client, &a2dp->sep,
-						client->media_codec);
+						NULL/*client->media_codec*/);
 		client->cancel_stream = a2dp_source_cancel_stream;
 		break;
 
@@ -533,21 +535,18 @@ static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
 		break;
 	}
 
-	if (sbc->bitpool > 250)
-		return -EINVAL;
-	else if (sbc->bitpool > 0)
-		sbc_cap->min_bitpool = sbc_cap->max_bitpool = sbc->bitpool;
-	else {
-		sbc->bitpool = 32;
-		sbc_cap->min_bitpool = 2;
+	if (sbc->bitpool != 0) {
+		if (sbc->bitpool > 250)
+			return -EINVAL;
+
+		sbc_cap->min_bitpool = sbc->bitpool;
 		sbc_cap->max_bitpool = sbc->bitpool;
 	}
 
 	return 0;
 }
 
-static void cfg_event(struct unix_client *client, struct ipc_packet *pkt,
-			int len)
+static void cfg_event(struct unix_client *client, struct ipc_packet *pkt, int len)
 {
 	struct device *dev;
 	bdaddr_t bdaddr;

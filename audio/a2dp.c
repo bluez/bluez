@@ -240,7 +240,7 @@ static gboolean select_sbc_params(struct sbc_codec_cap *cap,
 
 	min_bitpool = MAX(2, supported->min_bitpool);
 	max_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),
-				supported->max_bitpool);
+							supported->max_bitpool);
 
 	cap->min_bitpool = min_bitpool;
 	cap->max_bitpool = max_bitpool;
@@ -257,9 +257,9 @@ static gboolean a2dp_select_capabilities(struct avdtp_remote_sep *rsep,
 	if (!setup)
 		return FALSE;
 
-	if (setup->media_codec)
+	if (setup->media_codec) {
 		memcpy(&sbc_cap, setup->media_codec->data, sizeof(sbc_cap));
-	else {
+	} else {
 		media_codec = avdtp_get_codec(rsep);
 		if (!media_codec)
 			return FALSE;
@@ -311,7 +311,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, int err,
 	}
 
 	err = avdtp_set_configuration(session, rsep, lsep, caps,
-					&setup->stream);
+							&setup->stream);
 	if (err < 0) {
 		error("avdtp_set_configuration: %s", strerror(-err));
 		finalize_stream_setup(setup);
@@ -1045,7 +1045,7 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 			break;
 		if (setup->media_codec) {
 			if (avdtp_stream_has_capability(setup->stream,
-				setup->media_codec)) {
+							setup->media_codec)) {
 				if (avdtp_start(session, sep->stream) < 0) {
 					error("avdtp_start failed");
 					goto failed;
