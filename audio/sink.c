@@ -57,8 +57,6 @@ struct sink {
 	struct pending_request *connect;
 	struct pending_request *disconnect;
 	DBusConnection *conn;
-	gboolean initiator;
-	gboolean suspending;
 };
 
 static void pending_request_free(struct pending_request *pending)
@@ -340,7 +338,6 @@ gboolean sink_new_stream(struct device *dev, struct avdtp *session,
 		sink->session = avdtp_ref(session);
 
 	sink->stream = stream;
-	sink->initiator = FALSE;
 
 	sink->cb_id = avdtp_stream_add_cb(session, stream,
 						stream_state_changed, dev);
