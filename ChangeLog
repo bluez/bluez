@@ -1,3 +1,6 @@
+ver 3.17:
+	Fix supported commands bit calculation.
+
 ver 3.16:
 	Update company identifier list.
 
