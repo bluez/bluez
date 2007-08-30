@@ -144,7 +144,6 @@ static void stream_setup_complete(struct avdtp *session, struct device *dev,
 
 	pending = sink->connect;
 	sink->connect = NULL;
-	sink->cb_id = 0;
 
 	if (stream) {
 		DBusMessage *reply;
