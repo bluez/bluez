@@ -788,7 +788,7 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 		return err;
 
 	/* supported channels */
-	channels = cfg.mode = CFG_MODE_MONO ? 1 : 2;
+	channels = cfg.mode == CFG_MODE_MONO ? 1 : 2;
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_CHANNELS,
 							channels, channels);
 	if (err < 0)
