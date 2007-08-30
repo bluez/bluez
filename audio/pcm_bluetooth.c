@@ -846,10 +846,11 @@ static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 		for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
 					cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
 			if (cmsg->cmsg_level == SOL_SOCKET
-				&& cmsg->cmsg_type == SCM_RIGHTS)
+				&& cmsg->cmsg_type == SCM_RIGHTS) {
 				data->stream_fd = (*(int *) CMSG_DATA(cmsg));
 				DBG("stream_fd=%d", data->stream_fd);
 				return 0;
+			}
 		}
 	} else
 		SNDERR("Unexpected packet type %d received", pkt.type);
