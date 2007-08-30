@@ -1,3 +1,11 @@
+ver 3.17:
+	Fix crashes in audio and network services.
+	Check PAN source and destination roles.
+	Only export the needed symbols for the plugins.
+
+	Note:
+	This version needs at least bluez-libs-3.17
+
 ver 3.16:
 	Add support for headsets with SCO audio over HCI.
 	Add support for auto-create through ALSA plugin.
