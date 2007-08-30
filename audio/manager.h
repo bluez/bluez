@@ -49,7 +49,7 @@ struct device *manager_find_device(bdaddr_t *bda, const char *interface,
 
 struct device *manager_device_connected(bdaddr_t *bda, const char *uuid);
 
-void manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
+gboolean manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
 				void *user_data);
 
 gboolean manager_authorize(bdaddr_t *dba, const char *uuid,

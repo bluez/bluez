@@ -608,6 +608,8 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 	device = manager_find_device(bda, NULL, FALSE);
 	if (!device) {
 		device = create_device(bda);
+		if (!device)
+			return NULL;
 		if (!add_device(device, TRUE)) {
 			remove_device(device);
 			return NULL;
@@ -676,13 +678,18 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 	return device;
 }
 
-void manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
+gboolean manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
 				void *user_data)
 {
 	struct device *dev;
 
 	dev = create_device(bda);
+	if (!dev)
+		return FALSE;
+
 	resolve_services(NULL, dev, cb, user_data);
+
+	return TRUE;
 }
 
 static DBusHandlerResult am_create_device(DBusConnection *conn,

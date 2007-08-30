@@ -574,7 +574,8 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt, int le
 	if (!manager_find_device(&bdaddr, NULL, FALSE)) {
 		if (!bacmp(&bdaddr, BDADDR_ANY))
 			goto failed;
-		manager_create_device(&bdaddr, create_cb, client);
+		if (!manager_create_device(&bdaddr, create_cb, client))
+			goto failed;
 		return;
 	}
 
