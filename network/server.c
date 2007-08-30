@@ -423,10 +423,10 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	struct bnep_setup_conn_req *req;
 	unsigned char pkt[BNEP_MTU];
 	char path[MAX_PATH_LENGTH];
-	gsize n;
-	GIOError gerr;
-	uint8_t *pservice;
 	uint16_t dst_role, src_role, response;
+	uint8_t *pservice;
+	GIOError gerr;
+	gsize n;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -437,28 +437,26 @@ static gboolean connect_setup_event(GIOChannel *chan,
 		return FALSE;
 	}
 
+	memset(pkt, 0, sizeof(pkt));
+	n = 0;
 	gerr = g_io_channel_read(chan, (gchar *)pkt, sizeof(pkt) - 1, &n);
 	if (gerr != G_IO_ERROR_NONE)
 		return FALSE;
 
-	if (n < sizeof(*req)) {
-		error("Invalid BNEP packet size");
-		return FALSE;
-	}
-
-	req = (void *)pkt;
-	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ) {
-		error("Invalid BNEP control packet content");
-		return FALSE;
-	}
-
+	req = (struct bnep_setup_conn_req *) pkt;
 	/* 
 	 * FIXME: According to BNEP SPEC the UUID size can be
 	 * 2-16 bytes. Currently only 2 bytes size is supported
 	 */
-	if (req->uuid_size != 2) {
+	if (req->uuid_size != 2 || n != (sizeof(*req) + req->uuid_size * 2)) {
+		error("Invalid BNEP packet size");
 		response = BNEP_CONN_INVALID_SVC; 
 		goto reply;
+	}
+
+	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ) {
+		error("Invalid BNEP control packet content");
+		return FALSE;
 	}
 
 	pservice = req->service;
