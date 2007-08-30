@@ -348,7 +348,7 @@ failed:
 	err_connection_failed(pr->conn, pr->msg, strerror(err));
 
 cleanup:
-	if (isk > 0)
+	if (isk >= 0)
 		close(isk);
 
 	close(pr->ctrl_sock);
@@ -406,7 +406,7 @@ static gboolean control_connect_cb(GIOChannel *chan,
 	return FALSE;
 
 failed:
-	if (csk > 0)
+	if (csk >= 0)
 		close(csk);
 
 	err_connection_failed(pr->conn, pr->msg, strerror(err));
