@@ -1069,6 +1069,22 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 			len = *ptr++;
 			type = *ptr++;
 			switch (type) {
+			case 0x01:
+				printf("\tFlags:");
+				for (i = 0; i < len - 1; i++)
+					printf(" 0x%2.2x", *((uint8_t *) (ptr + i)));
+				printf("\n");
+				break;
+			case 0x02:
+			case 0x03:
+				printf("\t%s service classes:",
+					type == 0x02 ? "Shortened" : "Complete");
+				for (i = 0; i < (len - 1) / 2; i++) {
+					uint16_t val = btohs(bt_get_unaligned((uint16_t *) (ptr + (i * 2))));
+					printf(" 0x%4.4x", val);
+				}
+				printf("\n");
+				break;
 			case 0x08:
 			case 0x09:
 				str = malloc(len);
@@ -1078,11 +1094,13 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 						if ((unsigned char) str[i] < 32 || str[i] == 127)
 							str[i] = '.';
 					}
-
 					printf("\t%s local name: \'%s\'\n",
 						type == 0x08 ? "Shortened" : "Complete", str);
 					free(str);
 				}
+				break;
+			case 0x0a:
+				printf("\tTX power level: %d\n", *((uint8_t *) ptr));
 				break;
 			default:
 				printf("\tUnknown type 0x%02x with %d bytes data\n",
