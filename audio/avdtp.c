@@ -555,6 +555,9 @@ static void stream_free(struct avdtp_stream *stream)
 	if (stream->timer)
 		g_source_remove(stream->timer);
 
+	if (stream->io)
+		g_source_remove(stream->io);
+
 	g_slist_foreach(stream->callbacks, (GFunc) g_free, NULL);
 	g_slist_free(stream->callbacks);
 
