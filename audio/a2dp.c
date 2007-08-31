@@ -75,6 +75,7 @@ struct a2dp_stream_cb {
 struct a2dp_stream_setup {
 	struct avdtp *session;
 	struct device *dev;
+	struct a2dp_sep *sep;
 	struct avdtp_stream *stream;
 	struct avdtp_service_capability *media_codec;
 	gboolean start;
@@ -110,6 +111,8 @@ static void setup_callback(struct a2dp_stream_cb *cb,
 
 static gboolean finalize_stream_setup(struct a2dp_stream_setup *s)
 {
+	if (!s->stream)
+		s->sep->used_by = NULL;
 	g_slist_foreach(setup->cb, (GFunc) setup_callback, setup);
 	stream_setup_free(setup);
 	return FALSE;
@@ -289,7 +292,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, int err,
 	struct avdtp_remote_sep *rsep;
 	GSList *caps = NULL;
 
-	if (err < 0) {
+	if (err < 0 || setup->canceled) {
 		setup->stream = NULL;
 		finalize_stream_setup(setup);
 		return;
@@ -961,8 +964,10 @@ gboolean a2dp_source_cancel_stream(struct device *dev, unsigned int id)
 	setup->cb = g_slist_remove(setup->cb, cb_data);
 	g_free(cb_data);
 
-	if (!setup->cb)
+	if (!setup->cb) {
 		setup->canceled = TRUE;
+		setup->sep->used_by = NULL;
+	}
 
 	return TRUE;
 }
@@ -1022,6 +1027,7 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 
 	setup = g_new0(struct a2dp_stream_setup, 1);
 	setup->session = avdtp_ref(session);
+	setup->sep = sep;
 	setup->dev = dev;
 	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->start = start;
