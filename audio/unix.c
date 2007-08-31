@@ -64,6 +64,10 @@ struct a2dp_data {
 	struct a2dp_sep *sep;
 };
 
+struct headset_data {
+	headset_lock_t lock;
+};
+
 struct unix_client {
 	struct device *dev;
 	struct avdtp_service_capability *media_codec;
@@ -71,9 +75,10 @@ struct unix_client {
 	char *interface;
 	union {
 		struct a2dp_data a2dp;
-		void *data;
+		struct headset_data hs;
 	} d;
 	int sock;
+	int fd_opt;
 	unsigned int req_id;
 	unsigned int cb_id;
 	gboolean (*cancel_stream) (struct device *dev, unsigned int id);
@@ -245,6 +250,7 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 {
 	struct unix_client *client = user_data;
 	struct ipc_data_cfg cfg;
+	struct headset_data *hs = &client->d.hs;
 	int fd;
 
 	client->req_id = 0;
@@ -255,11 +261,31 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 		return;
 	}
 
-	headset_lock(dev);
+	switch (client->fd_opt) {
+	case CFG_FD_OPT_READ:
+		hs->lock = HEADSET_LOCK_READ;
+		break;
+	case CFG_FD_OPT_WRITE:
+		hs->lock = HEADSET_LOCK_WRITE;
+		break;
+	case CFG_FD_OPT_READWRITE:
+		hs->lock = HEADSET_LOCK_READ | HEADSET_LOCK_WRITE;
+		break;
+	default:
+		hs->lock = 0;
+		break;
+	}
+
+	if (!headset_lock(dev, hs->lock)) {
+		error("Unable to lock headset");
+		unix_send_cfg(client->sock, NULL, -1);
+		client->dev = NULL;
+		return;
+	}
 
 	memset(&cfg, 0, sizeof(cfg));
 
-	cfg.fd_opt = CFG_FD_OPT_READWRITE;
+	cfg.fd_opt = client->fd_opt;
 	cfg.codec = CFG_CODEC_SCO;
 	cfg.mode = CFG_MODE_MONO;
 	cfg.pkt_len = 48;
@@ -551,6 +577,8 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt, int le
 
 	str2ba(pkt->device, &bdaddr);
 
+	client->fd_opt = cfg->fd_opt;
+
 	if (client->interface) {
 		g_free(client->interface);
 		client->interface = NULL;
@@ -618,6 +646,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	struct unix_client *client = data;
 	int len, len_check;
 	struct a2dp_data *a2dp = &client->d.a2dp;
+	struct headset_data *hs = &client->d.hs;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -627,7 +656,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		switch (client->type) {
 		case TYPE_HEADSET:
 			if (client->dev)
-				headset_unlock(client->dev);
+				headset_unlock(client->dev, hs->lock);
 			break;
 		case TYPE_SOURCE:
 		case TYPE_SINK:

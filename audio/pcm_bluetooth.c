@@ -893,13 +893,23 @@ static int bluetooth_a2dp_init(struct bluetooth_data *data,
 	return 0;
 }
 
-static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
+static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_pcm_stream_t stream,
+				snd_config_t *conf)
 {
 	struct ipc_data_cfg *cfg = (void *) pkt->data;
 	struct ipc_codec_sbc *sbc = (void *) cfg->data;
 	snd_config_iterator_t i, next;
 	const char *addr, *pref;
 	const char *mode, *allocation, *rate, *subbands, *blocks, *bitpool;
+
+	switch (stream) {
+	case SND_PCM_STREAM_PLAYBACK:
+		cfg->fd_opt = CFG_FD_OPT_WRITE;
+		break;
+	case SND_PCM_STREAM_CAPTURE:
+		cfg->fd_opt = CFG_FD_OPT_READ;
+		break;
+	}
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
@@ -1023,7 +1033,8 @@ static int bluetooth_cfg_init(struct ipc_packet *pkt, snd_config_t *conf)
 	return 0;
 }
 
-static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
+static int bluetooth_cfg(struct bluetooth_data *data, snd_pcm_stream_t stream,
+				snd_config_t *conf)
 {
 	int ret, total;
 	char buf[IPC_MTU];
@@ -1035,7 +1046,7 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_config_t *conf)
 
 	memset(buf, 0, sizeof(buf));
 
-	ret = bluetooth_cfg_init(pkt, conf);
+	ret = bluetooth_cfg_init(pkt, stream, conf);
 	if (ret < 0)
 		return -ret;
 
@@ -1119,7 +1130,8 @@ done:
 	return 0;
 }
 
-static int bluetooth_init(struct bluetooth_data *data, snd_config_t *conf)
+static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
+				snd_config_t *conf)
 {
 	int sk, err;
 	struct sockaddr_un addr = {
@@ -1160,7 +1172,7 @@ static int bluetooth_init(struct bluetooth_data *data, snd_config_t *conf)
 	if (fcntl(data->pipefd[1], F_SETFL, O_NONBLOCK) < 0)
 		return -errno;
 
-	return bluetooth_cfg(data, conf);
+	return bluetooth_cfg(data, stream, conf);
 }
 
 SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
@@ -1177,7 +1189,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 		goto error;
 	}
 
-	err = bluetooth_init(data, conf);
+	err = bluetooth_init(data, stream, conf);
 	if (err < 0)
 		goto error;
 

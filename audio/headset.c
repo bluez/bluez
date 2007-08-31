@@ -102,7 +102,7 @@ struct headset {
 	int sp_gain;
 	int mic_gain;
 
-	gboolean locked;
+	headset_lock_t lock;
 };
 
 static int rfcomm_connect(struct device *device, struct pending_connect *c);
@@ -1450,7 +1450,7 @@ unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
 
 	if (hs->rfcomm && hs->sco) {
 		hs->pending = g_slist_append(hs->pending, c);
-		g_idle_add((GSourceFunc) finalize_stream_setup, hs);
+		g_idle_add((GSourceFunc) finalize_stream_setup, dev);
 		return c->id;
 	}
 
@@ -1604,28 +1604,28 @@ gboolean headset_is_active(struct device *dev)
 	return FALSE;
 }
 
-gboolean headset_lock(struct device *dev)
+gboolean headset_lock(struct device *dev, headset_lock_t lock)
 {
 	struct headset *hs = dev->headset;
 
-	if (hs->locked)
+	if (hs->lock & lock)
 		return FALSE;
 
-	hs->locked = TRUE;
+	hs->lock |= lock;
 
 	return TRUE;
 }
 
-gboolean headset_unlock(struct device *dev)
+gboolean headset_unlock(struct device *dev, headset_lock_t lock)
 {
 	struct headset *hs = dev->headset;
 
-	if (!hs->locked)
+	if (!(hs->lock & lock))
 		return FALSE;
 
-	hs->locked = FALSE;
+	hs->lock &= ~lock;
 
-	if (hs->state > HEADSET_STATE_DISCONNECTED)
+	if (!hs->lock && hs->state > HEADSET_STATE_DISCONNECTED)
 		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 
 	return TRUE;
