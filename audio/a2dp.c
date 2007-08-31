@@ -61,7 +61,6 @@ struct a2dp_sep {
 	struct device *used_by;
 	guint suspend_timer;
 	gboolean locked;
-	gboolean start_requested;
 	gboolean suspending;
 	gboolean starting;
 };
@@ -91,16 +90,16 @@ static GSList *sources = NULL;
 static uint32_t source_record_id = 0;
 static uint32_t sink_record_id = 0;
 
-static struct a2dp_stream_setup *setup = NULL;
+static GSList *setups = NULL;
 
 static void stream_setup_free(struct a2dp_stream_setup *s)
 {
+	setups = g_slist_remove(setups, s);
 	if (s->session)
 		avdtp_unref(s->session);
 	g_slist_foreach(s->cb, (GFunc) g_free, NULL);
 	g_slist_free(s->cb);
 	g_free(s);
-	setup = NULL;
 }
 
 static void setup_callback(struct a2dp_stream_cb *cb,
@@ -111,11 +110,39 @@ static void setup_callback(struct a2dp_stream_cb *cb,
 
 static gboolean finalize_stream_setup(struct a2dp_stream_setup *s)
 {
-	if (!s->stream)
+	if (!s->stream && s->sep)
 		s->sep->used_by = NULL;
-	g_slist_foreach(setup->cb, (GFunc) setup_callback, setup);
-	stream_setup_free(setup);
+	g_slist_foreach(s->cb, (GFunc) setup_callback, s);
+	stream_setup_free(s);
 	return FALSE;
+}
+
+static struct a2dp_stream_setup *find_setup_by_session(struct avdtp *session)
+{
+	GSList *l;
+
+	for (l = setups; l != NULL; l = l->next) {
+		struct a2dp_stream_setup *setup = l->data;
+
+		if (setup->session == session)
+			return setup;
+	}
+
+	return NULL;
+}
+
+static struct a2dp_stream_setup *find_setup_by_dev(struct device *dev)
+{
+	GSList *l;
+
+	for (l = setups; l != NULL; l = l->next) {
+		struct a2dp_stream_setup *setup = l->data;
+
+		if (setup->dev == dev)
+			return setup;
+	}
+
+	return NULL;
 }
 
 static void stream_state_changed(struct avdtp_stream *stream,
@@ -251,12 +278,15 @@ static gboolean select_sbc_params(struct sbc_codec_cap *cap,
 	return TRUE;
 }
 
-static gboolean a2dp_select_capabilities(struct avdtp_remote_sep *rsep,
+static gboolean a2dp_select_capabilities(struct avdtp *session,
+						struct avdtp_remote_sep *rsep,
 						GSList **caps)
 {
 	struct avdtp_service_capability *media_transport, *media_codec;
 	struct sbc_codec_cap sbc_cap;
+	struct a2dp_stream_setup *setup;
 
+	setup = find_setup_by_session(session);
 	if (!setup)
 		return FALSE;
 
@@ -290,7 +320,13 @@ static void discovery_complete(struct avdtp *session, GSList *seps, int err,
 {
 	struct avdtp_local_sep *lsep;
 	struct avdtp_remote_sep *rsep;
+	struct a2dp_stream_setup *setup;
 	GSList *caps = NULL;
+
+	setup = find_setup_by_session(session);
+
+	if (!setup)
+		return;
 
 	if (err < 0 || setup->canceled) {
 		setup->stream = NULL;
@@ -307,7 +343,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, int err,
 		return;
 	}
 
-	if (!a2dp_select_capabilities(rsep, &caps)) {
+	if (!a2dp_select_capabilities(session, rsep, &caps)) {
 		error("Unable to select remote SEP capabilities");
 		finalize_stream_setup(setup);
 		return;
@@ -347,6 +383,7 @@ static gboolean setconf_ind(struct avdtp *session,
 
 	avdtp_stream_add_cb(session, stream, stream_state_changed, a2dp_sep);
 	a2dp_sep->stream = stream;
+	a2dp_sep->used_by = dev;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE)
 		sink_new_stream(dev, session, stream);
@@ -414,12 +451,15 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_error *err, void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_stream_setup *setup;
 	int ret;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Set_Configuration_Cfm");
 	else
 		debug("SBC Source: Set_Configuration_Cfm");
+
+	setup = find_setup_by_session(session);
 
 	if (err) {
 		if (setup)
@@ -487,12 +527,14 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_stream_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Open_Cfm");
 	else
 		debug("SBC Source: Open_Cfm");
 
+	setup = find_setup_by_session(session);
 	if (!setup)
 		return;
 
@@ -557,12 +599,14 @@ static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_stream_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Start_Cfm");
 	else
 		debug("SBC Source: Start_Cfm");
 
+	setup = find_setup_by_session(session);
 	if (!setup)
 		return;
 
@@ -597,6 +641,7 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_stream_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Suspend_Cfm");
@@ -605,16 +650,18 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	a2dp_sep->suspending = FALSE;
 
+	setup = find_setup_by_session(session);
+	if (!setup)
+		return;
+
 	if (err) {
-		a2dp_sep->start_requested = FALSE;
-		if (setup)
-			finalize_stream_setup(setup);
+		finalize_stream_setup(setup);
 		return;
 	}
 
-	if (a2dp_sep->start_requested) {
-		avdtp_start(session, stream);
-		a2dp_sep->start_requested = FALSE;
+	if (setup->start) {
+		if (avdtp_start(session, stream) < 0)
+			finalize_stream_setup(setup);
 	}
 }
 
@@ -637,12 +684,14 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_stream_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Close_Cfm");
 	else
 		debug("SBC Source: Close_Cfm");
 
+	setup = find_setup_by_session(session);
 	if (!setup)
 		return;
 
@@ -679,6 +728,8 @@ static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	else
 		debug("SBC Source: Abort_Ind");
 
+	a2dp_sep->used_by = NULL;
+
 	return TRUE;
 }
 
@@ -711,12 +762,14 @@ static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_stream_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: ReConfigure_Cfm");
 	else
 		debug("SBC Source: ReConfigure_Cfm");
 
+	setup = find_setup_by_session(session);
 	if (!setup)
 		return;
 
@@ -944,8 +997,10 @@ void a2dp_exit()
 gboolean a2dp_source_cancel_stream(struct device *dev, unsigned int id)
 {
 	struct a2dp_stream_cb *cb_data;
+	struct a2dp_stream_setup *setup;
 	GSList *l;
 
+	setup = find_setup_by_dev(dev);
 	if (!setup)
 		return FALSE;
 
@@ -967,6 +1022,7 @@ gboolean a2dp_source_cancel_stream(struct device *dev, unsigned int id)
 	if (!setup->cb) {
 		setup->canceled = TRUE;
 		setup->sep->used_by = NULL;
+		setup->sep = NULL;
 	}
 
 	return TRUE;
@@ -983,6 +1039,7 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 	struct a2dp_stream_cb *cb_data;
 	static unsigned int cb_id = 0;
 	GSList *l;
+	struct a2dp_stream_setup *setup;
 	struct a2dp_sep *sep = NULL;
 
 	for (l = sources; l != NULL; l = l->next) {
@@ -1002,11 +1059,7 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 		return 0;
 	}
 
-	if (setup && setup->dev != dev) {
-		error("a2dp_source_request_stream: stream setup in progress "
-				"already for another device");
-		return 0;
-	}
+	setup = find_setup_by_session(session);
 
 	sep->used_by = dev;
 
@@ -1019,6 +1072,7 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 
 	if (setup) {
 		setup->canceled = FALSE;
+		setup->sep = sep;
 		setup->cb = g_slist_append(setup->cb, cb_data);
 		if (start)
 			setup->start = TRUE;
@@ -1073,14 +1127,8 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 				g_source_remove(sep->suspend_timer);
 				sep->suspend_timer = 0;
 			}
-			if (sep->session) {
-				avdtp_unref(sep->session);
-				sep->session = NULL;
-			}
-			g_idle_add((GSourceFunc) finalize_stream_setup, setup);
-			return cb_data->id;
 		}
-		sep->start_requested = TRUE;
+		g_idle_add((GSourceFunc) finalize_stream_setup, setup);
 		break;
 	default:
 		error("SEP in bad state for requesting a new stream");
@@ -1089,6 +1137,8 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 
 	if (ret)
 		*ret = sep;
+
+	setups = g_slist_append(setups, setup);
 
 	return cb_data->id;
 
