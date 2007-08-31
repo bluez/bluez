@@ -29,6 +29,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <net/if.h>
 #include <linux/sockios.h>
@@ -39,6 +41,11 @@ static int bridge_socket = -1;
 
 int bridge_init(void)
 {
+	struct stat st;
+
+	if (stat("/sys/module/bridge", &st) < 0)
+		return -EOPNOTSUPP;
+
 	bridge_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (bridge_socket < 0)
 		return -errno;
