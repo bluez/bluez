@@ -594,11 +594,13 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 		goto failed_not_supported;
 	}
 
-	if (!dbus_message_get_args(reply, NULL,
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
 				&array, &array_len,
 				DBUS_TYPE_INVALID)) {
-		error("Unable to get args from GetRecordReply");
+		error("Unable to get args from GetRecordReply: %s", derr.message);
+		dbus_error_free(&derr);
 		goto failed_not_supported;
 	}
 
@@ -717,11 +719,13 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 		goto failed;
 	}
 
-	if (!dbus_message_get_args(reply, NULL,
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
 				&array, &array_len,
 				DBUS_TYPE_INVALID)) {
-		error("Unable to get args from reply");
+		error("Unable to get args from reply: %s", derr.message);
+		dbus_error_free(&derr);
 		if (c->msg)
 			err_not_supported(device->conn, c->msg);
 		goto failed;
