@@ -1126,8 +1126,8 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 				g_source_remove(sep->suspend_timer);
 				sep->suspend_timer = 0;
 			}
+			g_idle_add((GSourceFunc) finalize_stream_setup, setup);
 		}
-		g_idle_add((GSourceFunc) finalize_stream_setup, setup);
 		break;
 	default:
 		error("SEP in bad state for requesting a new stream");
