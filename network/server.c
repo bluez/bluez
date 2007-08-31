@@ -53,6 +53,8 @@
 #include "dbus-helper.h"
 
 #define NETWORK_SERVER_INTERFACE "org.bluez.network.Server"
+#define SETUP_TIMEOUT		1000
+#define MAX_SETUP_ATTEMPTS	3
 
 #include "bridge.h"
 #include "common.h"
@@ -60,9 +62,14 @@
 #include "server.h"
 
 /* Pending Authorization */
-struct pending_auth {
-	char			*addr;		/* Bluetooth Address */
-	GIOChannel		*io;		/* BNEP connection setup io channel */
+struct setup_session {
+	char		*address;	/* Remote Bluetooth Address */
+	uint16_t	dst_role;	/* Destination role */
+	uint16_t	src_role;	/* Source role */
+	int		nsk;		/* L2CAP socket */
+	int		attempts;	/* Setup msg received */
+	guint		watch;		/* BNEP setup watch */
+	guint		timeout;	/* Max setup time */
 };
 
 /* Main server structure */
@@ -82,7 +89,7 @@ struct network_server {
 static char netdev[16] = "bnep%d";
 static GIOChannel *bnep_io = NULL;
 static DBusConnection *connection = NULL;
-static struct pending_auth *pending_auth = NULL;
+static GSList *setup_sessions = NULL;
 
 static int store_property(bdaddr_t *src, uint16_t id,
 			const char *key, const char *value)
@@ -101,18 +108,15 @@ static int store_property(bdaddr_t *src, uint16_t id,
 	return textfile_put(filename, key, value);
 }
 
-static void pending_auth_free(struct pending_auth *pauth)
+static void setup_free(struct setup_session *s)
 {
-	if (!pauth)
-		return;
+	g_free(s->address);
+	g_free(s);
+}
 
-	if (pauth->addr)
-		g_free(pauth->addr);
-	if (pauth->io) {
-		g_io_channel_close(pauth->io);
-		g_io_channel_unref(pauth->io);
-	}
-	g_free(pauth);
+static int setup_cmp(const struct setup_session *s, const char *addr)
+{
+	return strcmp(s->address, addr);
 }
 
 static void add_lang_attr(sdp_record_t *r)
@@ -210,7 +214,7 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 
 	/* Supported protocols */
 	{
-		uint16_t ptype[] = { 
+		uint16_t ptype[] = {
 			0x0800,  /* IPv4 */
 			0x0806,  /* ARP */
 		};
@@ -258,25 +262,21 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 	return ret;
 }
 
-static int send_bnep_ctrl_rsp(GIOChannel *chan, uint16_t response)
+static ssize_t send_bnep_ctrl_rsp(int sk, uint16_t response)
 {
 	struct bnep_control_rsp rsp;
-	GIOError gerr;
-	gsize n;
 
 	rsp.type = BNEP_CONTROL;
 	rsp.ctrl = BNEP_SETUP_CONN_RSP;
 	rsp.resp = htons(response);
 
-	gerr = g_io_channel_write(chan, (gchar *)&rsp, sizeof(rsp), &n);
-
-	return -gerr;
+	return send(sk, &rsp, sizeof(rsp), 0);
 }
 
-static void cancel_authorization(const char *address)
+static void cancel_authorization(struct setup_session *s)
 {
 	DBusMessage *msg;
-	const char *uuid = "";
+	const char *uuid;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 						"org.bluez.Database",
@@ -286,8 +286,9 @@ static void cancel_authorization(const char *address)
 		return;
 	}
 
+	uuid = bnep_uuid(s->dst_role);
 	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_STRING, &s->address,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
@@ -296,29 +297,32 @@ static void cancel_authorization(const char *address)
 
 static void authorization_callback(DBusPendingCall *pcall, void *data)
 {
-	struct network_server *ns = data;
+	struct setup_session *s = data;
+	struct network_server *ns = NULL;
 	DBusMessage *reply = dbus_pending_call_steal_reply(pcall);
-	char devname[16];
+	char path[MAX_PATH_LENGTH], devname[16];
+	uint16_t response = BNEP_CONN_NOT_ALLOWED;
 	DBusError derr;
-	uint16_t response;
-	int sk;
 
-	if (!pending_auth) {
+	if (!g_slist_find(setup_sessions, s)) {
 		dbus_message_unref(reply);
-		dbus_pending_call_unref(pcall);
 		return;
 	}
 
-	sk = g_io_channel_unix_get_fd(pending_auth->io);
+	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(s->dst_role));
+	dbus_connection_get_object_user_data(connection, path, (void *) &ns);
+
+	/* Server can be disabled in the meantime */
+	if (ns == NULL || ns->enable == FALSE)
+		goto failed;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Access denied: %s", derr.message);
 		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			cancel_authorization(pending_auth->addr);
+			cancel_authorization(s);
 		}
-		response = BNEP_CONN_NOT_ALLOWED;
 		dbus_error_free(&derr);
 		goto failed;
 	}
@@ -326,10 +330,8 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	memset(devname, 0, 16);
 	strncpy(devname, netdev, 16);
 
-	if (bnep_connadd(sk, ns->id, devname) < 0) {
-		response = BNEP_CONN_NOT_ALLOWED;
+	if (bnep_connadd(s->nsk, s->dst_role, devname) < 0)
 		goto failed;
-	}
 
 	info("Authorization succedded. New connection: %s", devname);
 	response = BNEP_SUCCESS;
@@ -337,36 +339,53 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	if (bridge_add_interface("pan0", devname) < 0) {
 		error("Can't add %s to the bridge: %s(%d)",
 				devname, strerror(errno), errno);
-		response = BNEP_CONN_NOT_ALLOWED;
 		goto failed;
 	}
 
 	bnep_if_up(devname, TRUE);
 	bnep_if_up("pan0", TRUE);
 
-	ns->clients = g_slist_append(ns->clients, g_strdup(pending_auth->addr));
+	ns->clients = g_slist_append(ns->clients, g_strdup(s->address));
 
 	/* FIXME: Enable routing if applied */
 
 	/* FIXME: send the D-Bus message to notify the new bnep iface */
 
 failed:
-	send_bnep_ctrl_rsp(pending_auth->io, response);
-
-	pending_auth_free(pending_auth);
-	pending_auth = NULL;
-
-	close(sk);
-
+	send_bnep_ctrl_rsp(s->nsk, response);
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(pcall);
 }
 
-static int authorize_connection(const char *address, struct network_server *ns)
+static void setup_watch_destroy(void *data)
+{
+	struct setup_session *s;
+	GSList *l;
+
+	/*
+	 * Remote initiated: socket HUP
+	 * Authorization: denied/accepted
+	 */
+	l = g_slist_find(setup_sessions, data);
+	if (!l)
+		return;
+
+	s = l->data;
+
+	setup_sessions = g_slist_remove(setup_sessions, s);
+
+	/* Remove active watches */
+	if (s->watch)
+		g_source_remove(s->watch);
+	if (s->timeout)
+		g_source_remove(s->timeout);
+	setup_free(s);
+}
+
+static int authorize_connection(struct setup_session *s)
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
-	const char *uuid = ""; /* FIXME: */
+	const char *uuid;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 				"org.bluez.Database", "RequestAuthorization");
@@ -375,10 +394,11 @@ static int authorize_connection(const char *address, struct network_server *ns)
 		return -ENOMEM;
 	}
 
-	debug("Requesting authorization for %s UUID:%s", address, uuid);
+	uuid = bnep_uuid(s->dst_role);
+	debug("Requesting authorization for %s UUID:%s", s->address, uuid);
 
 	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &address,
+			DBUS_TYPE_STRING, &s->address,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
@@ -389,7 +409,9 @@ static int authorize_connection(const char *address, struct network_server *ns)
 		return -EACCES;
 	}
 
-	dbus_pending_call_set_notify(pending, authorization_callback, ns, NULL);
+	dbus_pending_call_set_notify(pending,
+			authorization_callback, s, setup_watch_destroy);
+	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 
 	return 0;
@@ -419,38 +441,39 @@ static uint16_t inline chk_role(uint16_t dst_role, uint16_t src_role)
 static gboolean connect_setup_event(GIOChannel *chan,
 					GIOCondition cond, gpointer data)
 {
+	struct setup_session *s = data;
 	struct network_server *ns = NULL;
 	struct bnep_setup_conn_req *req;
 	unsigned char pkt[BNEP_MTU];
 	char path[MAX_PATH_LENGTH];
-	uint16_t dst_role, src_role, response;
+	uint16_t response;
 	uint8_t *pservice;
-	GIOError gerr;
-	gsize n;
+	ssize_t r;
+	int sk;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		error("Hangup or error on BNEP socket");
-		cancel_authorization(pending_auth->addr);
+		/* If there is a pending authorization */
+		if (s->attempts)
+			cancel_authorization(s);
 		return FALSE;
 	}
 
+	sk = g_io_channel_unix_get_fd(chan);
 	memset(pkt, 0, sizeof(pkt));
-	n = 0;
-	gerr = g_io_channel_read(chan, (gchar *)pkt, sizeof(pkt) - 1, &n);
-	if (gerr != G_IO_ERROR_NONE)
-		return FALSE;
+	r = recv(sk, pkt, sizeof(pkt) - 1, 0);
 
 	req = (struct bnep_setup_conn_req *) pkt;
-	/* 
+	/*
 	 * FIXME: According to BNEP SPEC the UUID size can be
 	 * 2-16 bytes. Currently only 2 bytes size is supported
 	 */
-	if (req->uuid_size != 2 || n != (sizeof(*req) + req->uuid_size * 2)) {
+	if (req->uuid_size != 2 || r != (sizeof(*req) + req->uuid_size * 2)) {
 		error("Invalid BNEP packet size");
-		response = BNEP_CONN_INVALID_SVC; 
+		response = BNEP_CONN_INVALID_SVC;
 		goto reply;
 	}
 
@@ -461,16 +484,16 @@ static gboolean connect_setup_event(GIOChannel *chan,
 
 	pservice = req->service;
 	/* Getting destination service: considering 2 bytes size */
-	dst_role = ntohs(bt_get_unaligned((uint16_t *) pservice));
+	s->dst_role = ntohs(bt_get_unaligned((uint16_t *) pservice));
 	pservice += req->uuid_size;
 	/* Getting source service: considering 2 bytes size */
-	src_role = ntohs(bt_get_unaligned((uint16_t *) pservice));
+	s->src_role = ntohs(bt_get_unaligned((uint16_t *) pservice));
 
-	response = chk_role(src_role, dst_role);
+	response = chk_role(s->src_role, s->dst_role);
 	if (response)
 		goto reply;
 
-	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(dst_role));
+	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(s->dst_role));
 	dbus_connection_get_object_user_data(connection, path, (void *) &ns);
 
 	if (ns == NULL || ns->enable == FALSE) {
@@ -478,35 +501,41 @@ static gboolean connect_setup_event(GIOChannel *chan,
 		goto reply;
 	}
 
-	/*
-	 * FIXME: Check if the connection already exists. Check if the
-	 * BNEP SPEC allows return "connection not allowed" for this case
-	 */
+	if (s->timeout) {
+		g_source_remove(s->timeout);
+		s->timeout = 0;
+	}
+
+	if (++s->attempts > MAX_SETUP_ATTEMPTS) {
+		/* Retransmission */
+		response = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+	}
 
 	/* Wait authorization before reply success */
-	if (authorize_connection(pending_auth->addr, ns) < 0) {
+	if (authorize_connection(s) < 0) {
 		response = BNEP_CONN_NOT_ALLOWED;
 		goto reply;
 	}
 
 	return TRUE;
 reply:
-	send_bnep_ctrl_rsp(chan, response);
+	send_bnep_ctrl_rsp(sk, response);
 	return FALSE;
 }
 
-static void connect_setup_destroy(gpointer data)
+static gboolean setup_timeout(void *data)
 {
-	if (pending_auth) {
-		pending_auth_free(pending_auth);
-		pending_auth = NULL;
-	}
+	setup_watch_destroy(data);
+	return FALSE;
 }
 
 static gboolean connect_event(GIOChannel *chan,
 				GIOCondition cond, gpointer data)
 {
 	struct sockaddr_l2 addr;
+	struct setup_session *s;
+	GIOChannel *io;
 	socklen_t addrlen;
 	char peer[18];
 	bdaddr_t dst;
@@ -537,26 +566,29 @@ static gboolean connect_event(GIOChannel *chan,
 
 	info("Connection from: %s on PSM %d", peer, psm);
 
-	/* Only one authorization at same time */
-	if (pending_auth) {
-		GIOChannel *io;
-		error("Rejecting %s(pending authorization)", peer);
-		io = g_io_channel_unix_new(nsk);
-		send_bnep_ctrl_rsp(io, BNEP_CONN_NOT_ALLOWED);
-		g_io_channel_close(io);
-		g_io_channel_unref(io);
+	if (g_slist_find_custom(setup_sessions, peer,
+				(GCompareFunc) setup_cmp)) {
+		error("Pending connection setup session");
+		close(nsk);
 		return TRUE;
 	}
 
-	pending_auth = g_new0(struct pending_auth, 1);
-	pending_auth->addr = g_strdup(peer);
-	pending_auth->io = g_io_channel_unix_new(nsk);
-	g_io_channel_set_close_on_unref(pending_auth->io, FALSE);
+	s = g_new0(struct setup_session, 1);
+	s->address = g_strdup(peer);
+	s->nsk = nsk;
 
+	io = g_io_channel_unix_new(nsk);
+	g_io_channel_set_close_on_unref(io, TRUE);
 	/* New watch for BNEP setup */
-	g_io_add_watch_full(pending_auth->io, G_PRIORITY_DEFAULT,
+	s->watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			connect_setup_event, pending_auth, &connect_setup_destroy);
+			connect_setup_event, s, &setup_watch_destroy);
+	g_io_channel_unref(io);
+
+	/* Remove the timeout at the first valid msg */
+	s->timeout = g_timeout_add(SETUP_TIMEOUT, setup_timeout, s);
+
+	setup_sessions = g_slist_append(setup_sessions, s);
 
 	return TRUE;
 }
@@ -637,6 +669,12 @@ fail:
 
 void server_exit()
 {
+	if (setup_sessions) {
+		g_slist_foreach(setup_sessions, (GFunc) setup_free, NULL);
+		g_slist_free(setup_sessions);
+		setup_sessions = NULL;
+	}
+
 	if (bnep_io != NULL) {
 		g_io_channel_close(bnep_io);
 		g_io_channel_unref(bnep_io);
