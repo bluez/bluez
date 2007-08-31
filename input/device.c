@@ -32,7 +32,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
- 
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hidp.h>
 #include <bluetooth/l2cap.h>
@@ -80,7 +80,8 @@ struct device {
 	char			*path;
 	int			ctrl_sk;
 	int			intr_sk;
-	guint			watch;
+	guint			ctrl_watch;
+	guint			intr_watch;
 };
 
 GSList *devices = NULL;
@@ -402,7 +403,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 		goto failed;
 	}
 
-	/* 
+	/*
 	 * FIXME: Some headsets required a sco connection
 	 * first to report volume gain key events
 	 */
@@ -425,7 +426,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	path = dbus_message_get_path(idev->pending_connect);
 	dbus_connection_emit_signal(idev->conn, path,
 			INPUT_DEVICE_INTERFACE, "Connected",
-			DBUS_TYPE_INVALID); 
+			DBUS_TYPE_INVALID);
 
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
@@ -511,45 +512,73 @@ failed:
 	return -err;
 }
 
-static gboolean connection_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct device *idev = data;
-	gboolean ret = TRUE;
 
-	if (cond & G_IO_NVAL)
-		ret = FALSE;
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
+	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
-		ret = FALSE;
+
+	dbus_connection_emit_signal(idev->conn,
+			idev->path,
+			INPUT_DEVICE_INTERFACE,
+			"Disconnected",
+			DBUS_TYPE_INVALID);
+
+	g_source_remove(idev->ctrl_watch);
+	idev->ctrl_watch = 0;
+	idev->intr_watch = 0;
+
+	/* Close control channel */
+	if (idev->ctrl_sk > 0) {
+		close(idev->ctrl_sk);
+		idev->ctrl_sk = -1;
 	}
 
-	if (ret == FALSE) {
-		dbus_connection_emit_signal(idev->conn,
-				idev->path,
-				INPUT_DEVICE_INTERFACE,
-				"Disconnected",
-				DBUS_TYPE_INVALID);
-		idev->watch = 0;
-	}
+	return FALSE;
 
-	return ret;
 }
 
-static guint create_watch(int sk, struct device *idev)
+static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
+{
+	struct device *idev = data;
+
+	if (cond & (G_IO_HUP | G_IO_ERR))
+		g_io_channel_close(chan);
+
+	dbus_connection_emit_signal(idev->conn,
+			idev->path,
+			INPUT_DEVICE_INTERFACE,
+			"Disconnected",
+			DBUS_TYPE_INVALID);
+
+	g_source_remove(idev->intr_watch);
+	idev->intr_watch = 0;
+	idev->ctrl_watch = 0;
+
+	/* Close interrupt channel */
+	if (idev->intr_sk > 0) {
+		close(idev->intr_sk);
+		idev->intr_sk = -1;
+	}
+
+	return FALSE;
+}
+
+static guint create_watch(int sk, GIOFunc cb, struct device *idev)
 {
 	guint id;
 	GIOChannel *io;
 
 	io = g_io_channel_unix_new(sk);
-	id = g_io_add_watch(io, G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			connection_event, idev);
+	id = g_io_add_watch(io, G_IO_HUP | G_IO_ERR | G_IO_NVAL, cb, idev);
 	g_io_channel_unref(io);
 
 	return id;
 }
 
-static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst, int ctrl_sk, int intr_sk, const char *name)
+static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
+		int ctrl_sk, int intr_sk, const char *name)
 {
 	struct hidp_connadd_req req;
 	char addr[18];
@@ -640,7 +669,8 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 	if (err < 0)
 		goto failed;
 
-	idev->watch = create_watch(idev->ctrl_sk, idev);
+	idev->intr_watch = create_watch(idev->intr_sk, intr_watch_cb, idev);
+	idev->ctrl_watch = create_watch(idev->ctrl_sk, ctrl_watch_cb, idev);
 	dbus_connection_emit_signal(idev->conn,
 			idev->path,
 			INPUT_DEVICE_INTERFACE,
@@ -1139,9 +1169,11 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 	 * to access the D-Bus data assigned to this path
 	 * because the object path data was destroyed.
 	 */
-	if (idev->watch) {
-		g_source_remove(idev->watch);
-		idev->watch  = 0;
+	if (idev->ctrl_watch)
+		g_source_remove(idev->ctrl_watch);
+
+	if (idev->intr_watch) {
+		g_source_remove(idev->intr_watch);
 		dbus_connection_emit_signal(conn,
 				path,
 				INPUT_DEVICE_INTERFACE,
@@ -1154,7 +1186,7 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 	dbus_connection_emit_signal(conn, INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceRemoved" ,
 			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID); 
+			DBUS_TYPE_INVALID);
 
 	return 0;
 }
@@ -1302,7 +1334,8 @@ int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
 		return err;
 	}
 
-	idev->watch = create_watch(idev->ctrl_sk, idev);
+	idev->intr_watch = create_watch(idev->intr_sk, intr_watch_cb, idev);
+	idev->ctrl_watch = create_watch(idev->ctrl_sk, ctrl_watch_cb, idev);
 	dbus_connection_emit_signal(idev->conn,
 			idev->path,
 			INPUT_DEVICE_INTERFACE,
