@@ -79,12 +79,27 @@ struct avdtp_service_capability {
 	uint8_t data[0];
 } __attribute__ ((packed));
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
 struct avdtp_media_codec_capability {
 	uint8_t rfa0:4;
 	uint8_t media_type:4;
 	uint8_t media_codec_type;
 	uint8_t data[0];
 } __attribute__ ((packed));
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+struct avdtp_media_codec_capability {
+	uint8_t media_type:4;
+	uint8_t rfa0:4;
+	uint8_t media_codec_type;
+	uint8_t data[0];
+} __attribute__ ((packed));
+
+#else
+#error "Unknown byte order"
+#endif
 
 typedef void (*avdtp_stream_state_cb) (struct avdtp_stream *stream,
 					avdtp_state_t old_state,

@@ -238,10 +238,10 @@ struct seid_req {
 struct setconf_req {
 	struct avdtp_header header;
 
-	uint8_t int_seid:6;
-	uint8_t rfa1:2;
 	uint8_t acp_seid:6;
 	uint8_t rfa0:2;
+	uint8_t int_seid:6;
+	uint8_t rfa1:2;
 
 	uint8_t caps[0];
 } __attribute__ ((packed));

@@ -47,6 +47,8 @@
 #define A2DP_ALLOCATION_SNR		(1 << 1)
 #define A2DP_ALLOCATION_LOUDNESS	1
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
 struct sbc_codec_cap {
 	struct avdtp_media_codec_capability cap;
 	uint8_t channel_mode:4;
@@ -57,6 +59,23 @@ struct sbc_codec_cap {
 	uint8_t min_bitpool;
 	uint8_t max_bitpool;
 } __attribute__ ((packed));
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+struct sbc_codec_cap {
+	struct avdtp_media_codec_capability cap;
+	uint8_t frequency:4;
+	uint8_t channel_mode:4;
+	uint8_t block_length:4;
+	uint8_t subbands:2;
+	uint8_t allocation_method:2;
+	uint8_t min_bitpool;
+	uint8_t max_bitpool;
+} __attribute__ ((packed));
+
+#else
+#error "Unknown byte order"
+#endif
 
 struct a2dp_sep;
 
