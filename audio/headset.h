@@ -74,7 +74,7 @@ int headset_get_sco_fd(struct device *dev);
 
 gboolean headset_is_active(struct device *dev);
 
-gboolean headset_lock(struct device *dev, void *data);
-gboolean headset_unlock(struct device *dev, void *data);
+gboolean headset_lock(struct device *dev);
+gboolean headset_unlock(struct device *dev);
 gboolean headset_suspend(struct device *dev, void *data);
 gboolean headset_play(struct device *dev, void *data);

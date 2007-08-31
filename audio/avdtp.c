@@ -387,6 +387,9 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 				struct avdtp_header *header, int size);
 static int process_queue(struct avdtp *session);
 static void connection_lost(struct avdtp *session, int err);
+static void avdtp_sep_set_state(struct avdtp *session,
+				struct avdtp_local_sep *sep,
+				avdtp_state_t state);
 
 static const char *avdtp_statestr(avdtp_state_t state)
 {
@@ -572,6 +575,60 @@ static gboolean stream_timeout(struct avdtp_stream *stream)
 	return FALSE;
 }
 
+static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
+				gpointer data)
+{
+	struct avdtp_stream *stream = data;
+	struct avdtp_local_sep *sep = stream->lsep;
+
+	if (stream->close_int && sep->cfm && sep->cfm->close)
+		sep->cfm->close(stream->session, sep, stream, NULL,
+				sep->user_data);
+
+	stream->io = 0;
+
+	avdtp_sep_set_state(stream->session, sep, AVDTP_STATE_IDLE);
+
+	return FALSE;
+}
+
+static void handle_transport_connect(struct avdtp *session, int sock,
+					uint16_t mtu)
+{
+	struct avdtp_stream *stream = session->pending_open;
+	struct avdtp_local_sep *sep = stream->lsep;
+	GIOChannel *channel;
+
+	session->pending_open = NULL;
+
+	if (stream->timer) {
+		g_source_remove(stream->timer);
+		stream->timer = 0;
+	}
+
+	if (sock < 0) {
+		if (!stream->open_acp && sep->cfm && sep->cfm->open) {
+			struct avdtp_error err;
+			avdtp_error_init(&err, AVDTP_ERROR_ERRNO, EIO);
+			sep->cfm->open(session, sep, NULL, &err,
+					sep->user_data);
+		}
+		return;
+	}
+
+	stream->sock = sock;
+	stream->mtu = mtu;
+
+	if (!stream->open_acp && sep->cfm && sep->cfm->open)
+		sep->cfm->open(session, sep, stream, NULL, sep->user_data);
+
+	channel = g_io_channel_unix_new(stream->sock);
+
+	stream->io = g_io_add_watch(channel, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					(GIOFunc) transport_cb, stream);
+	g_io_channel_unref(channel);
+}
+
 static void avdtp_sep_set_state(struct avdtp *session,
 				struct avdtp_local_sep *sep,
 				avdtp_state_t state)
@@ -623,6 +680,8 @@ static void avdtp_sep_set_state(struct avdtp *session,
 			stream->idle_timer = 0;
 		}
 		session->streams = g_slist_remove(session->streams, stream);
+		if (session->pending_open == stream)
+			handle_transport_connect(session, -1, 0);
 		stream_free(stream);
 		if (session->ref == 1 && !session->streams)
 			set_disconnect_timer(session);
@@ -1311,50 +1370,6 @@ static gboolean avdtp_parse_cmd(struct avdtp *session,
 	}
 }
 
-static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
-				gpointer data)
-{
-	struct avdtp_stream *stream = data;
-	struct avdtp_local_sep *sep = stream->lsep;
-
-	if (stream->close_int && sep->cfm && sep->cfm->close)
-		sep->cfm->close(stream->session, sep, stream, NULL,
-				sep->user_data);
-
-	stream->io = 0;
-
-	avdtp_sep_set_state(stream->session, sep, AVDTP_STATE_IDLE);
-
-	return FALSE;
-}
-
-static void handle_transport_connect(struct avdtp *session, int sock,
-					uint16_t mtu)
-{
-	struct avdtp_stream *stream = session->pending_open;
-	struct avdtp_local_sep *sep = stream->lsep;
-	GIOChannel *channel;
-
-	session->pending_open = NULL;
-
-	if (stream->timer) {
-		g_source_remove(stream->timer);
-		stream->timer = 0;
-	}
-
-	stream->sock = sock;
-	stream->mtu = mtu;
-
-	if (!stream->open_acp && sep->cfm && sep->cfm->open)
-		sep->cfm->open(session, sep, stream, NULL, sep->user_data);
-
-	channel = g_io_channel_unix_new(stream->sock);
-
-	stream->io = g_io_add_watch(channel, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-					(GIOFunc) transport_cb, stream);
-	g_io_channel_unref(channel);
-}
-
 static void init_request(struct avdtp_header *header, int request_id)
 {
 	static int transaction = 0;
@@ -1488,12 +1503,13 @@ static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
 		return FALSE;
 	}
 
+	sk = g_io_channel_unix_get_fd(chan);
+
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		err = EIO;
 		goto failed;
 	}
 
-	sk = g_io_channel_unix_get_fd(chan);
 	len = sizeof(ret);
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
 		err = errno;
@@ -1533,12 +1549,18 @@ static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 	else if (session->pending_open)
 		handle_transport_connect(session, sk, l2o.imtu);
+	else {
+		err = -EIO;
+		goto failed;
+	}
 
 	process_queue(session);
 
 	return FALSE;
 
 failed:
+	close(sk);
+
 	if (session->pending_open) {
 		avdtp_sep_set_state(session, session->pending_open->lsep,
 					AVDTP_STATE_IDLE);
@@ -2896,4 +2918,9 @@ void avdtp_exit(void)
 	g_io_channel_close(avdtp_server);
 	g_io_channel_unref(avdtp_server);
 	avdtp_server = NULL;
+}
+
+gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream)
+{
+	return g_slist_find(session->streams, stream) ? TRUE : FALSE;
 }

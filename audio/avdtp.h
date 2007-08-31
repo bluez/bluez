@@ -179,6 +179,8 @@ struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep);
 int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 			void *user_data);
 
+gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream);
+
 unsigned int avdtp_stream_add_cb(struct avdtp *session,
 					struct avdtp_stream *stream,
 					avdtp_stream_state_cb cb, void *data);

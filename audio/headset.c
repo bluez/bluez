@@ -1604,7 +1604,7 @@ gboolean headset_is_active(struct device *dev)
 	return FALSE;
 }
 
-gboolean headset_lock(struct device *dev, void *data)
+gboolean headset_lock(struct device *dev)
 {
 	struct headset *hs = dev->headset;
 
@@ -1616,7 +1616,7 @@ gboolean headset_lock(struct device *dev, void *data)
 	return TRUE;
 }
 
-gboolean headset_unlock(struct device *dev, void *data)
+gboolean headset_unlock(struct device *dev)
 {
 	struct headset *hs = dev->headset;
 

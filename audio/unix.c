@@ -66,7 +66,6 @@ struct a2dp_data {
 
 struct unix_client {
 	struct device *dev;
-	struct avdtp_local_sep *sep;
 	struct avdtp_service_capability *media_codec;
 	service_type_t type;
 	char *interface;
@@ -77,9 +76,6 @@ struct unix_client {
 	int sock;
 	unsigned int req_id;
 	unsigned int cb_id;
-	notify_cb_t disconnect;
-	notify_cb_t suspend;
-	notify_cb_t play;
 	gboolean (*cancel_stream) (struct device *dev, unsigned int id);
 };
 
@@ -98,6 +94,8 @@ static void client_free(struct unix_client *client)
 		if (client->cb_id > 0)
 			avdtp_stream_remove_cb(a2dp->session, a2dp->stream,
 								client->cb_id);
+		if (a2dp->sep)
+			a2dp_sep_unlock(a2dp->sep, a2dp->session);
 		if (a2dp->session)
 			avdtp_unref(a2dp->session);
 		break;
@@ -178,7 +176,10 @@ static void stream_state_changed(struct avdtp_stream *stream,
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
-		a2dp_source_unlock(client->dev, a2dp->session);
+		if (a2dp->sep) {
+			a2dp_sep_unlock(a2dp->sep, a2dp->session);
+			a2dp->sep = NULL;
+		}
 		client->dev = NULL;
 		if (a2dp->session) {
 			avdtp_unref(a2dp->session);
@@ -254,7 +255,7 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 		return;
 	}
 
-	headset_lock(dev, NULL);
+	headset_lock(dev);
 
 	memset(&cfg, 0, sizeof(cfg));
 
@@ -268,13 +269,9 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 	fd = headset_get_sco_fd(dev);
 
 	unix_send_cfg(client->sock, &cfg, fd);
-
-	client->disconnect = (notify_cb_t) headset_unlock;
-	client->suspend = (notify_cb_t) headset_suspend;
-	client->play = (notify_cb_t) headset_play;
 }
 
-static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
+static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
 					void *user_data)
 {
@@ -294,15 +291,12 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 	if (!stream)
 		goto failed;
 
-	if (!a2dp_source_lock(dev, session)) {
+	if (!a2dp_sep_lock(sep, session)) {
 		error("Unable to lock A2DP source SEP");
 		goto failed;
 	}
 
-	client->disconnect = (notify_cb_t) a2dp_source_unlock;
-	client->suspend = (notify_cb_t) a2dp_source_suspend;
-	client->play = (notify_cb_t) a2dp_source_start_stream;
-
+	a2dp->sep = sep;
 	a2dp->stream = stream;
 
 	if (!avdtp_stream_get_transport(stream, &fd, &cfg->pkt_len, &caps)) {
@@ -376,8 +370,10 @@ static void a2dp_setup_complete(struct avdtp *session, struct device *dev,
 
 failed:
 	error("stream setup failed");
-	if (a2dp->stream)
-		a2dp_source_unlock(dev, session);
+	if (a2dp->sep) {
+		a2dp_sep_unlock(a2dp->sep, a2dp->session);
+		a2dp->sep = NULL;
+	}
 	unix_send_cfg(client->sock, NULL, -1);
 
 	avdtp_unref(a2dp->session);
@@ -407,9 +403,9 @@ static void create_stream(struct device *dev, struct unix_client *client)
 
 		/* FIXME: The provided media_codec breaks bitpool
                    selection. So disable it. This needs fixing */
-		id = a2dp_source_request_stream(a2dp->session, dev,
+		id = a2dp_source_request_stream(a2dp->session,
 						TRUE, a2dp_setup_complete,
-						client, &a2dp->sep,
+						client,
 						NULL/*client->media_codec*/);
 		client->cancel_stream = a2dp_source_cancel_stream;
 		break;
@@ -621,30 +617,29 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	struct ipc_packet *pkt = (void *) buf;
 	struct unix_client *client = data;
 	int len, len_check;
-	void *cb_data;
+	struct a2dp_data *a2dp = &client->d.a2dp;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	switch (client->type) {
-	case TYPE_HEADSET:
-		cb_data = client->d.data;
-		break;
-	case TYPE_SINK:
-	case TYPE_SOURCE:
-		cb_data = client->d.a2dp.session;
-		break;
-	default:
-		cb_data = NULL;
-		break;
-	}
-
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		debug("Unix client disconnected (fd=%d)", client->sock);
-		if (!client->dev)
-			goto failed;
-		if (client->disconnect)
-			client->disconnect(client->dev, cb_data);
+		switch (client->type) {
+		case TYPE_HEADSET:
+			if (client->dev)
+				headset_unlock(client->dev);
+			break;
+		case TYPE_SOURCE:
+		case TYPE_SINK:
+			if (a2dp->sep) {
+				a2dp_sep_unlock(a2dp->sep, a2dp->session);
+				a2dp->sep = NULL;
+			}
+			break;
+		default:
+			break;
+		}
+
 		if (client->cancel_stream && client->req_id > 0)
 			client->cancel_stream(client->dev, client->req_id);
 		goto failed;

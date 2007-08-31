@@ -133,11 +133,11 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	sink->state = new_state;
 }
 
-static void stream_setup_complete(struct avdtp *session, struct device *dev,
+static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
 					void *user_data)
 {
-	struct sink *sink = dev->sink;
+	struct sink *sink = user_data;
 	struct pending_request *pending;
 
 	pending = sink->connect;
@@ -185,8 +185,8 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 	pending->msg = dbus_message_ref(msg);
 	sink->connect = pending;
 
-	id = a2dp_source_request_stream(sink->session, dev, FALSE,
-					stream_setup_complete, pending, NULL,
+	id = a2dp_source_request_stream(sink->session, FALSE,
+					stream_setup_complete, sink,
 					NULL);
 	if (id == 0) {
 		pending_request_free(pending);

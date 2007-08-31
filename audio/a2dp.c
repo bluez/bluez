@@ -58,7 +58,6 @@ struct a2dp_sep {
 	struct avdtp_local_sep *sep;
 	struct avdtp *session;
 	struct avdtp_stream *stream;
-	struct device *used_by;
 	guint suspend_timer;
 	gboolean locked;
 	gboolean suspending;
@@ -73,7 +72,6 @@ struct a2dp_stream_cb {
 
 struct a2dp_stream_setup {
 	struct avdtp *session;
-	struct device *dev;
 	struct a2dp_sep *sep;
 	struct avdtp_stream *stream;
 	struct avdtp_service_capability *media_codec;
@@ -102,16 +100,23 @@ static void stream_setup_free(struct a2dp_stream_setup *s)
 	g_free(s);
 }
 
+static struct device *a2dp_get_dev(struct avdtp *session)
+{
+	bdaddr_t addr;
+
+	avdtp_get_peers(session, NULL, &addr);
+
+	return manager_device_connected(&addr, A2DP_SOURCE_UUID);
+}
+
 static void setup_callback(struct a2dp_stream_cb *cb,
 				struct a2dp_stream_setup *s)
 {
-	cb->cb(s->session, s->dev, s->stream, cb->user_data);
+	cb->cb(s->session, s->sep, s->stream, cb->user_data);
 }
 
 static gboolean finalize_stream_setup(struct a2dp_stream_setup *s)
 {
-	if (!s->stream && s->sep)
-		s->sep->used_by = NULL;
 	g_slist_foreach(s->cb, (GFunc) setup_callback, s);
 	stream_setup_free(s);
 	return FALSE;
@@ -137,8 +142,9 @@ static struct a2dp_stream_setup *find_setup_by_dev(struct device *dev)
 
 	for (l = setups; l != NULL; l = l->next) {
 		struct a2dp_stream_setup *setup = l->data;
+		struct device *setup_dev = a2dp_get_dev(setup->session);
 
-		if (setup->dev == dev)
+		if (setup_dev == dev)
 			return setup;
 	}
 
@@ -365,16 +371,13 @@ static gboolean setconf_ind(struct avdtp *session,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct device *dev;
-	bdaddr_t addr;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Set_Configuration_Ind");
 	else
 		debug("SBC Source: Set_Configuration_Ind");
 
-	avdtp_get_peers(session, NULL, &addr);
-
-	dev = manager_device_connected(&addr, A2DP_SOURCE_UUID);
+	dev = a2dp_get_dev(session);
 	if (!dev) {
 		*err = AVDTP_UNSUPPORTED_CONFIGURATION;
 		*category = 0x00;
@@ -383,7 +386,6 @@ static gboolean setconf_ind(struct avdtp *session,
 
 	avdtp_stream_add_cb(session, stream, stream_state_changed, a2dp_sep);
 	a2dp_sep->stream = stream;
-	a2dp_sep->used_by = dev;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE)
 		sink_new_stream(dev, session, stream);
@@ -452,6 +454,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct a2dp_stream_setup *setup;
+	struct device *dev;
 	int ret;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
@@ -473,8 +476,10 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!setup)
 		return;
 
+	dev = a2dp_get_dev(session);
+
 	/* Notify sink.c of the new stream */
-	sink_new_stream(setup->dev, session, setup->stream);
+	sink_new_stream(dev, session, setup->stream);
 
 	ret = avdtp_open(session, stream);
 	if (ret < 0) {
@@ -728,7 +733,7 @@ static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	else
 		debug("SBC Source: Abort_Ind");
 
-	a2dp_sep->used_by = NULL;
+	a2dp_sep->stream = NULL;
 
 	return TRUE;
 }
@@ -1021,7 +1026,6 @@ gboolean a2dp_source_cancel_stream(struct device *dev, unsigned int id)
 
 	if (!setup->cb) {
 		setup->canceled = TRUE;
-		setup->sep->used_by = NULL;
 		setup->sep = NULL;
 	}
 
@@ -1029,11 +1033,9 @@ gboolean a2dp_source_cancel_stream(struct device *dev, unsigned int id)
 }
 
 unsigned int a2dp_source_request_stream(struct avdtp *session,
-						struct device *dev,
 						gboolean start,
 						a2dp_stream_cb_t cb,
 						void *user_data,
-						struct a2dp_sep **ret,
 						struct avdtp_service_capability *media_codec)
 {
 	struct a2dp_stream_cb *cb_data;
@@ -1048,7 +1050,7 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 		if (tmp->locked)
 			continue;
 
-		if (tmp->used_by == NULL || tmp->used_by == dev) {
+		if (!tmp->stream || avdtp_has_stream(session, tmp->stream)) {
 			sep = tmp;
 			break;
 		}
@@ -1060,8 +1062,6 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 	}
 
 	setup = find_setup_by_session(session);
-
-	sep->used_by = dev;
 
 	debug("a2dp_source_request_stream: selected SEP %p", sep);
 
@@ -1082,7 +1082,6 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 	setup = g_new0(struct a2dp_stream_setup, 1);
 	setup->session = avdtp_ref(session);
 	setup->sep = sep;
-	setup->dev = dev;
 	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->start = start;
 	setup->stream = sep->stream;
@@ -1135,9 +1134,6 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 		goto failed;
 	}
 
-	if (ret)
-		*ret = sep;
-
 	setups = g_slist_append(setups, setup);
 
 	return cb_data->id;
@@ -1148,52 +1144,24 @@ failed:
 	return 0;
 }
 
-gboolean a2dp_source_lock(struct device *dev, struct avdtp *session)
+gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session)
 {
-	GSList *l;
+	if (sep->locked)
+		return FALSE;
 
-	for (l = sources; l != NULL; l = l->next) {
-		struct a2dp_sep *sep = l->data;
+	debug("SBC Source SEP %p locked", sep);
+	sep->locked = TRUE;
 
-		if (sep->locked)
-			continue;
-
-		if (sep->used_by != dev)
-			continue;
-
-		debug("SBC Source SEP %p locked", sep);
-		sep->locked = TRUE;
-		return TRUE;
-	}
-
-	return FALSE;
+	return TRUE;
 }
 
-gboolean a2dp_source_unlock(struct device *dev, struct avdtp *session)
+gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session)
 {
 	avdtp_state_t state;
-	GSList *l;
-	struct a2dp_sep *sep = NULL;
-
-	for (l = sources; l != NULL; l = l->next) {
-		struct a2dp_sep *tmp = l->data;
-
-		if (!tmp->locked)
-			continue;
-
-		if (tmp->sep && tmp->used_by == dev) {
-			sep = tmp;
-			break;
-		}
-	}
-
-	if (!sep)
-		return FALSE;
 
 	state = avdtp_sep_get_state(sep->sep);
 
 	sep->locked = FALSE;
-	sep->used_by = NULL;
 
 	debug("SBC Source SEP %p unlocked", sep);
 
@@ -1224,7 +1192,7 @@ gboolean a2dp_source_suspend(struct device *dev, struct avdtp *session)
 	for (l = sources; l != NULL; l = l->next) {
 		struct a2dp_sep *tmp = l->data;
 
-		if (tmp->sep && tmp->used_by == dev) {
+		if (tmp->session && tmp->session == session) {
 			sep = tmp;
 			break;
 		}
@@ -1255,7 +1223,7 @@ gboolean a2dp_source_start_stream(struct device *dev, struct avdtp *session)
 	for (l = sources; l != NULL; l = l->next) {
 		struct a2dp_sep *tmp = l->data;
 
-		if (tmp->sep && tmp->used_by == dev) {
+		if (tmp->session && tmp->session == session) {
 			sep = tmp;
 			break;
 		}
