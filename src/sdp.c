@@ -88,7 +88,10 @@ static inline void ntoh128(uint128_t *src, uint128_t *dst)
 
 #define BASE_UUID "00000000-0000-1000-8000-00805F9B34FB"
 
-static uint128_t *bluetooth_base_uuid = NULL;
+static uint128_t bluetooth_base_uuid = {
+	.data = {	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
+			0x80, 0x00, 0x00, 0x80, 0x5F, 0xF9, 0xB3, 0xFB }
+};
 
 #define SDP_MAX_ATTR_LEN 65535
 
@@ -2078,6 +2081,7 @@ void sdp_set_url_attr(sdp_record_t *rec, const char *client, const char *doc, co
  */
 uint128_t *sdp_create_base_uuid(void)
 {
+	uint128_t *base_uuid;
 	char baseStr[128];
 	int delim = '-';
 	unsigned long dataLongValue;
@@ -2087,69 +2091,75 @@ uint128_t *sdp_create_base_uuid(void)
 	int toBeCopied;
 	uint8_t *data;
 
-	if (bluetooth_base_uuid == NULL) {
-		strcpy(baseStr, BASE_UUID);
-		bluetooth_base_uuid = malloc(sizeof(uint128_t));
-		data = bluetooth_base_uuid->data;
-		memset(data, '\0', sizeof(uint128_t));
-		memset(temp, '\0', 10);
-		dataPtr = baseStr;
-		delimPtr = NULL;
-		delimPtr = strchr(dataPtr, delim);
-		toBeCopied = delimPtr - dataPtr;
-		if (toBeCopied != 8) {
-			SDPDBG("To be copied(1) : %d\n", toBeCopied);
-			return NULL;
-		}
-		strncpy(temp, dataPtr, toBeCopied);
-		dataLongValue = htonl(strtoul(temp, NULL, 16));
-		memcpy(&data[0], &dataLongValue, 4);
+	strcpy(baseStr, BASE_UUID);
+	base_uuid = malloc(sizeof(uint128_t));
+	if (!base_uuid)
+		return NULL;
 
-		/*
-		 * Get the next 4 bytes (note that there is a "-"
-		 * between them now)
-		 */
-		memset(temp, '\0', 10);
-		dataPtr = delimPtr + 1;
-		delimPtr = strchr(dataPtr, delim);
-		toBeCopied = delimPtr - dataPtr;
-		if (toBeCopied != 4) {
-			SDPDBG("To be copied(2) : %d\n", toBeCopied);
-			return NULL;
-		}
-		strncpy(temp, dataPtr, toBeCopied);
-		dataPtr = delimPtr + 1;
-		delimPtr = strchr(dataPtr, delim);
-		toBeCopied = delimPtr - dataPtr;
-		if (toBeCopied != 4) {
-			SDPDBG("To be copied(3) : %d\n", toBeCopied);
-			return NULL;
-		}
-		strncat(temp, dataPtr, toBeCopied);
-		dataLongValue = htonl(strtoul(temp, NULL, 16));
-		memcpy(&data[4], &dataLongValue, 4);
-
-		/*
-		 * Get the last 4 bytes (note that there are 6 bytes
-		 * after the last separator, which is truncated (2+4)
-		 */
-		memset(temp, '\0', 10);
-		dataPtr = delimPtr + 1;
-		dataPtr = delimPtr + 1;
-		delimPtr = strchr(dataPtr, delim);
-		toBeCopied = delimPtr - dataPtr;
-		if (toBeCopied != 4) {
-			SDPDBG("To be copied(4) : %d\n", toBeCopied);
-			return NULL;
-		}
-		strncpy(temp, dataPtr, toBeCopied);
-		strncat(temp, (delimPtr + 1), 4);
-		dataLongValue = htonl(strtoul(temp, NULL, 16));
-		memcpy(&data[8], &dataLongValue, 4);
-		dataLongValue = htonl(strtoul(delimPtr + 5, NULL, 16));
-		memcpy(&data[12], &dataLongValue, 4);
+	data = base_uuid->data;
+	memset(data, '\0', sizeof(uint128_t));
+	memset(temp, '\0', 10);
+	dataPtr = baseStr;
+	delimPtr = NULL;
+	delimPtr = strchr(dataPtr, delim);
+	toBeCopied = delimPtr - dataPtr;
+	if (toBeCopied != 8) {
+		SDPDBG("To be copied(1) : %d\n", toBeCopied);
+		free(base_uuid);
+		return NULL;
 	}
-	return bluetooth_base_uuid;
+	strncpy(temp, dataPtr, toBeCopied);
+	dataLongValue = htonl(strtoul(temp, NULL, 16));
+	memcpy(&data[0], &dataLongValue, 4);
+
+	/*
+	 * Get the next 4 bytes (note that there is a "-"
+	 * between them now)
+	 */
+	memset(temp, '\0', 10);
+	dataPtr = delimPtr + 1;
+	delimPtr = strchr(dataPtr, delim);
+	toBeCopied = delimPtr - dataPtr;
+	if (toBeCopied != 4) {
+		SDPDBG("To be copied(2) : %d\n", toBeCopied);
+		free(base_uuid);
+		return NULL;
+	}
+	strncpy(temp, dataPtr, toBeCopied);
+	dataPtr = delimPtr + 1;
+	delimPtr = strchr(dataPtr, delim);
+	toBeCopied = delimPtr - dataPtr;
+	if (toBeCopied != 4) {
+		SDPDBG("To be copied(3) : %d\n", toBeCopied);
+		free(base_uuid);
+		return NULL;
+	}
+	strncat(temp, dataPtr, toBeCopied);
+	dataLongValue = htonl(strtoul(temp, NULL, 16));
+	memcpy(&data[4], &dataLongValue, 4);
+
+	/*
+	 * Get the last 4 bytes (note that there are 6 bytes
+	 * after the last separator, which is truncated (2+4)
+	 */
+	memset(temp, '\0', 10);
+	dataPtr = delimPtr + 1;
+	dataPtr = delimPtr + 1;
+	delimPtr = strchr(dataPtr, delim);
+	toBeCopied = delimPtr - dataPtr;
+	if (toBeCopied != 4) {
+		SDPDBG("To be copied(4) : %d\n", toBeCopied);
+		free(base_uuid);
+		return NULL;
+	}
+	strncpy(temp, dataPtr, toBeCopied);
+	strncat(temp, (delimPtr + 1), 4);
+	dataLongValue = htonl(strtoul(temp, NULL, 16));
+	memcpy(&data[8], &dataLongValue, 4);
+	dataLongValue = htonl(strtoul(delimPtr + 5, NULL, 16));
+	memcpy(&data[12], &dataLongValue, 4);
+
+	return base_uuid;
 }
 
 uuid_t *sdp_uuid16_create(uuid_t *u, uint16_t val)
@@ -2212,12 +2222,11 @@ void sdp_uuid16_to_uuid128(uuid_t *uuid128, uuid_t *uuid16)
 	unsigned short data1;
 
 	// allocate a 128bit UUID and init to the Bluetooth base UUID
-	uint128_t *pBTBase128Bit = sdp_create_base_uuid();
-	uuid128->value.uuid128 = *pBTBase128Bit;
+	uuid128->value.uuid128 = bluetooth_base_uuid;
 	uuid128->type = SDP_UUID128;
 
 	// extract bytes 2 and 3 of 128bit BT base UUID
-	memcpy(&data1, &pBTBase128Bit->data[2], 2);
+	memcpy(&data1, &bluetooth_base_uuid.data[2], 2);
 
 	// add the given UUID (16 bits)
 	data1 += htons(uuid16->value.uuid16);
@@ -2235,12 +2244,11 @@ void sdp_uuid32_to_uuid128(uuid_t *uuid128, uuid_t *uuid32)
 	unsigned int data0;
 
 	// allocate a 128bit UUID and init to the Bluetooth base UUID
-	uint128_t *pBTBase128Bit = sdp_create_base_uuid();
-	uuid128->value.uuid128 = *pBTBase128Bit;
+	uuid128->value.uuid128 = bluetooth_base_uuid;
 	uuid128->type = SDP_UUID128;
 
 	// extract first 4 bytes
-	memcpy(&data0, &pBTBase128Bit->data[0], 4);
+	memcpy(&data0, &bluetooth_base_uuid.data[0], 4);
 
 	// add the given UUID (32bits)
 	data0 += htonl(uuid32->value.uuid32);
@@ -2273,11 +2281,10 @@ uuid_t *sdp_uuid_to_uuid128(uuid_t *uuid)
  */
 int sdp_uuid128_to_uuid(uuid_t *uuid)
 {
-	extern uint128_t *sdp_create_base_uuid();
-	int i;
-	uint128_t *b = sdp_create_base_uuid();
+	uint128_t *b = &bluetooth_base_uuid;
 	uint128_t *u = &uuid->value.uuid128;
 	uint32_t data;
+	int i;
 
 	if (uuid->type != SDP_UUID128)
 		return 1;
@@ -2290,7 +2297,7 @@ int sdp_uuid128_to_uuid(uuid_t *uuid)
 	data = htonl(data);
 	if (data <= 0xffff) {
 		uuid->type = SDP_UUID16;
-		uuid->value.uuid16 = (uint16_t)data;
+		uuid->value.uuid16 = (uint16_t) data;
 	} else {
 		uuid->type = SDP_UUID32;
 		uuid->value.uuid32 = data;
