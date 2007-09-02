@@ -1,3 +1,15 @@
+ver 3.18:
+	Implement proper locking for headsets.
+	Fix various A2DP SEP locking issues.
+	Fix and cleanup audio stream handling.
+	Fix stream starting if suspend request is pending.
+	Fix A2DP and AVDTP endianess problems.
+	Add network timeout and retransmission support.
+	Add more detailed decoding of EIR elements.
+
+	Note:
+	This version needs at least bluez-libs-3.18
+
 ver 3.17:
 	Fix crashes in audio and network services.
 	Check PAN source and destination roles.
