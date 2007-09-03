@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 
@@ -122,11 +123,14 @@ int hal_create_device(struct hal_device *device)
 				"    </method>\n",
 			&err) == FALSE) {
 		error("Failed to claim to interface: ", err.message);
+		dbus_error_free(&err);
 	}
 
 	if (libhal_device_commit_to_gdl(hal_ctx, dev, udi, NULL) == FALSE) {
 		error("Failed to create HAL device");
 	}
+
+	free(dev);
 
 	return 0;
 }
