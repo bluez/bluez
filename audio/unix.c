@@ -347,8 +347,22 @@ static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	cfg->fd_opt = CFG_FD_OPT_WRITE;
 
 	sbc_cap = (void *) codec_cap;
-	cfg->mode = sbc_cap->channel_mode;
 	cfg->sample_size = 2;
+
+	switch (sbc_cap->channel_mode) {
+	case A2DP_CHANNEL_MODE_MONO:
+		cfg->mode = CFG_MODE_MONO;
+		break;
+	case A2DP_CHANNEL_MODE_DUAL_CHANNEL:
+		cfg->mode = CFG_MODE_DUAL_CHANNEL;
+		break;
+	case A2DP_CHANNEL_MODE_STEREO:
+		cfg->mode = CFG_MODE_STEREO;
+		break;
+	case A2DP_CHANNEL_MODE_JOINT_STEREO:
+		cfg->mode = CFG_MODE_JOINT_STEREO;
+		break;
+	}
 
 	switch (sbc_cap->frequency) {
 	case A2DP_SAMPLING_FREQ_16000:
