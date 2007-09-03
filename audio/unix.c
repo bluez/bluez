@@ -637,6 +637,27 @@ static void ctl_event(struct unix_client *client,
 {
 }
 
+static int reply_state(int sock, struct ipc_packet *pkt)
+{
+	struct ipc_data_state *state = (struct ipc_data_state *) pkt->data;
+	int len;
+
+	info("status=%u", state->state);
+
+	pkt->type = PKT_TYPE_STATE_RSP;
+	pkt->length = sizeof(struct ipc_data_state);
+	pkt->error = PKT_ERROR_NONE;
+
+	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_state);
+	len = send(sock, pkt, len, 0);
+	if (len < 0)
+		error("Error %s(%d)", strerror(errno), errno);
+
+	debug("%d bytes sent", len);
+
+	return 0;
+}
+
 static void state_event(struct unix_client *client,
 					struct ipc_packet *pkt, int len)
 {
@@ -648,9 +669,9 @@ static void state_event(struct unix_client *client,
 		device_set_state(dev, state->state);
 	else
 		state->state = device_get_state(dev);
-
-	unix_send_state(client->sock, pkt);
 #endif
+
+	reply_state(client->sock, pkt);
 }
 
 static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -812,25 +833,3 @@ void unix_exit(void)
 	unix_sock = -1;
 }
 
-#if 0
-static int unix_send_state(int sock, struct ipc_packet *pkt)
-{
-	struct ipc_data_state *state = (struct ipc_data_state *) pkt->data;
-	int len;
-
-	info("status=%u", state->state);
-
-	pkt->type = PKT_TYPE_STATE_RSP;
-	pkt->length = sizeof(struct ipc_data_state);
-	pkt->error = PKT_ERROR_NONE;
-
-	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_state);
-	len = send(sock, pkt, len, 0);
-	if (len < 0)
-		error("Error %s(%d)", strerror(errno), errno);
-
-	debug("%d bytes sent", len);
-
-	return 0;
-}
-#endif

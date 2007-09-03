@@ -215,6 +215,62 @@ iter_sleep:
 	}
 }
 
+static int bluetooth_state_init(struct ipc_packet *pkt, int newstate)
+{
+	struct ipc_data_state *state = (void *) pkt->data;
+
+	pkt->length = sizeof(*state);
+	pkt->type = PKT_TYPE_STATE_REQ;
+	pkt->error = PKT_ERROR_NONE;
+	state->state = newstate;
+
+	return 0;
+}
+
+static int bluetooth_state(struct bluetooth_data *data, int newstate)
+{
+	char buf[IPC_MTU];
+	struct ipc_packet *pkt = (void *) buf;
+	struct ipc_data_state *state = (void *) pkt->data;
+	int ret, total;
+
+	memset(buf, 0, sizeof(buf));
+
+	ret = bluetooth_state_init(pkt, newstate);
+	if (ret < 0)
+		return -ret;
+
+	ret = send(data->sock, pkt, sizeof(*pkt) + pkt->length, 0);
+	if (ret < 0)
+		return -errno;
+	else if (ret == 0)
+		return -EIO;
+
+	DBG("OK - %d bytes sent. Waiting for response...", ret);
+
+	memset(buf, 0, sizeof(buf));
+
+	ret = recv(data->sock, buf, sizeof(*pkt) + sizeof(*state), 0);
+	if (ret < 0)
+		return -errno;
+	else if (ret == 0)
+		return -EIO;
+
+	total = ret;
+
+	if (pkt->type != PKT_TYPE_STATE_RSP) {
+		SNDERR("Unexpected packet type %d received", pkt->type);
+		return -EINVAL;
+	}
+
+	if (pkt->error != PKT_ERROR_NONE) {
+		SNDERR("Error %d while configuring device", pkt->error);
+		return -pkt->error;
+	}
+
+	return 0;
+}
+
 static int bluetooth_playback_start(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
@@ -222,6 +278,9 @@ static int bluetooth_playback_start(snd_pcm_ioplug_t *io)
 
 	DBG("%p", io);
 
+#if 0
+	bluetooth_state(data, STATE_STREAMING);
+#endif
 	data->stopped = 0;
 
 	if (data->hw_thread)
@@ -238,6 +297,9 @@ static int bluetooth_playback_stop(snd_pcm_ioplug_t *io)
 
 	DBG("%p", io);
 
+#if 0
+	bluetooth_state(data, STATE_CONNECTED);
+#endif
 	data->stopped = 1;
 
 	return 0;
