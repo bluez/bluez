@@ -41,6 +41,9 @@
 #include "sink.h"
 #include "a2dp.h"
 
+#define MAX_BITPOOL 64
+#define MIN_BITPOOL 2
+
 /* The duration that streams without users are allowed to stay in
  * STREAMING state. */
 #define SUSPEND_TIMEOUT 5000
@@ -274,7 +277,7 @@ static gboolean select_sbc_params(struct sbc_codec_cap *cap,
 	else if (supported->allocation_method & A2DP_ALLOCATION_SNR)
 		cap->allocation_method = A2DP_ALLOCATION_SNR;
 
-	min_bitpool = MAX(2, supported->min_bitpool);
+	min_bitpool = MAX(MIN_BITPOOL, supported->min_bitpool);
 	max_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),
 							supported->max_bitpool);
 
@@ -371,6 +374,9 @@ static gboolean setconf_ind(struct avdtp *session,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct device *dev;
+	struct avdtp_service_capability *cap;
+	struct avdtp_media_codec_capability *codec_cap;
+	struct sbc_codec_cap *sbc_cap;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Set_Configuration_Ind");
@@ -382,6 +388,24 @@ static gboolean setconf_ind(struct avdtp *session,
 		*err = AVDTP_UNSUPPORTED_CONFIGURATION;
 		*category = 0x00;
 		return FALSE;
+	}
+
+	/* Check bipool range */
+	for (codec_cap = NULL; caps; caps = g_slist_next(caps)) {
+		cap = caps->data;
+		if (cap->category == AVDTP_MEDIA_CODEC) {
+			codec_cap = (void *) cap->data;
+			if (codec_cap->media_codec_type == A2DP_CODEC_SBC) {
+				sbc_cap = (void *) codec_cap;
+				if (sbc_cap->min_bitpool < MIN_BITPOOL ||
+					sbc_cap->max_bitpool > MAX_BITPOOL) {
+					*err = AVDTP_UNSUPPORTED_CONFIGURATION;
+					*category = AVDTP_MEDIA_CODEC;
+					return FALSE;
+				}
+			}
+			break;
+		}
 	}
 
 	avdtp_stream_add_cb(session, stream, stream_state_changed, a2dp_sep);
@@ -437,8 +461,8 @@ static gboolean getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	sbc_cap.allocation_method = ( A2DP_ALLOCATION_LOUDNESS |
 					A2DP_ALLOCATION_SNR );
 
-	sbc_cap.min_bitpool = 2;
-	sbc_cap.max_bitpool = 250;
+	sbc_cap.min_bitpool = MIN_BITPOOL;
+	sbc_cap.max_bitpool = MAX_BITPOOL;
 
 	media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
 						sizeof(sbc_cap));
