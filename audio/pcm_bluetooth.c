@@ -232,7 +232,7 @@ static int bluetooth_state(struct bluetooth_data *data, int newstate)
 	char buf[IPC_MTU];
 	struct ipc_packet *pkt = (void *) buf;
 	struct ipc_data_state *state = (void *) pkt->data;
-	int ret, total;
+	int ret;
 
 	memset(buf, 0, sizeof(buf));
 
@@ -255,8 +255,6 @@ static int bluetooth_state(struct bluetooth_data *data, int newstate)
 		return -errno;
 	else if (ret == 0)
 		return -EIO;
-
-	total = ret;
 
 	if (pkt->type != PKT_TYPE_STATE_RSP) {
 		SNDERR("Unexpected packet type %d received", pkt->type);
