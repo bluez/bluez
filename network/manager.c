@@ -766,11 +766,6 @@ static void parse_stored_connection(char *key, char *value, void *data)
 				&dst, id, name, ptr) == 0) {
 		char *rpath = g_strdup(path);
 		connection_paths = g_slist_append(connection_paths, rpath);
-		dbus_connection_emit_signal(connection, NETWORK_PATH,
-						NETWORK_MANAGER_INTERFACE,
-						"ConnectionCreated",
-						DBUS_TYPE_STRING, &rpath,
-						DBUS_TYPE_INVALID);
 	}
 
 	g_free(name);
@@ -780,7 +775,7 @@ static void register_connections_stored(const char *adapter)
 {
 	char filename[PATH_MAX + 1];
 	char *pattern;
-	struct stat s;
+	struct stat st;
 	GSList *list;
 	bdaddr_t src;
 	bdaddr_t default_src;
@@ -790,26 +785,32 @@ static void register_connections_stored(const char *adapter)
 
 	str2ba(adapter, &src);
 
+	if (stat(filename, &st) < 0)
+		return;
+
+	if (!(st.st_mode & __S_IFREG))
+		return;
+
+	textfile_foreach(filename, parse_stored_connection, &src);
+
+	/* Check default connection for current default adapter */
 	bacpy(&default_src, BDADDR_ANY);
-	dev_id = hci_get_route(NULL);
+	dev_id = hci_get_route(&default_src);
 	if (dev_id < 0)
-		hci_devba(dev_id, &default_src);
+		return;
 
-	if (stat (filename, &s) == 0 && (s.st_mode & __S_IFREG)) {
-		textfile_foreach(filename, parse_stored_connection, &src);
-		pattern = textfile_get(filename, "default");
+	hci_devba(dev_id, &default_src);
+	if (bacmp(&default_src, &src) != 0)
+		return;
 
-		list = find_connection_pattern(connection, pattern);
-		if (list != NULL)
-			default_index = g_slist_position(connection_paths, list);
-		else if (bacmp(&src, &default_src) == 0) {
-			list = g_slist_last(connection_paths);
-			if (list == NULL)
-				return;
-			default_index = g_slist_position(connection_paths, list);
-			connection_store(connection, list->data, TRUE);
-		}
-	}
+	pattern = textfile_get(filename, "default");
+	if (!pattern)
+		return;
+
+	list = find_connection_pattern(connection, pattern);
+	if (!list)
+		return;
+	default_index = g_slist_position(connection_paths, list);
 }
 
 static void register_server(uint16_t id)
