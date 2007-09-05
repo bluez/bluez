@@ -122,24 +122,18 @@ static void client_free(struct unix_client *client)
 and the sendmsg() system call with the cmsg_type field of a "struct cmsghdr" set
 to SCM_RIGHTS and the data being an integer value equal to the handle of the 
 file descriptor to be passed.*/
-static int unix_sendmsg_fd(int sock, int fd, struct ipc_packet *pkt)
+static int unix_sendmsg_fd(int sock, int fd)
 {
-	char cmsg_b[CMSG_SPACE(sizeof(int))];
+	char cmsg_b[CMSG_SPACE(sizeof(int))], m = 'm';
 	struct cmsghdr *cmsg;
-	struct iovec iov =  {
-		.iov_base = pkt,
-		.iov_len  = sizeof(struct ipc_packet)
-	};
+	struct iovec iov = { &m, sizeof(m) };
+	struct msghdr msgh;
 
-	struct msghdr msgh = {
-		.msg_name       = 0,
-		.msg_namelen    = 0,
-		.msg_iov        = &iov,
-		.msg_iovlen     = 1,
-		.msg_control    = &cmsg_b,
-		.msg_controllen = CMSG_LEN(sizeof(int)),
-		.msg_flags      = 0
-	};
+	memset(&msgh, 0, sizeof(msgh));
+	msgh.msg_iov = &iov;
+	msgh.msg_iovlen = 1;
+	msgh.msg_control = &cmsg_b;
+	msgh.msg_controllen = CMSG_LEN(sizeof(int));
 
 	cmsg = CMSG_FIRSTHDR(&msgh);
 	cmsg->cmsg_level = SOL_SOCKET;
@@ -237,7 +231,7 @@ static int unix_send_cfg(int sock, struct ipc_data_cfg *cfg, int fd)
 	debug("%d bytes sent", len);
 
 	if (fd != -1) {
-		len = unix_sendmsg_fd(sock, fd, pkt);
+		len = unix_sendmsg_fd(sock, fd);
 		if (len < 0)
 			error("Error %s(%d)", strerror(errno), errno);
 		debug("%d bytes sent", len);

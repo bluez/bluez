@@ -907,22 +907,17 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 
 static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 {
-	char cmsg_b[CMSG_SPACE(sizeof(int))];
-	struct ipc_packet pkt;
+	char cmsg_b[CMSG_SPACE(sizeof(int))], m;
 	int err, ret;
-	struct iovec iov = {
-		.iov_base = &pkt,
-		.iov_len  = sizeof(pkt)
-	};
-	struct msghdr msgh = {
-		.msg_name	= 0,
-		.msg_namelen	= 0,
-		.msg_iov	= &iov,
-		.msg_iovlen	= 1,
-		.msg_control	= &cmsg_b,
-		.msg_controllen	= CMSG_LEN(sizeof(int)),
-		.msg_flags	= 0
-	};
+	struct iovec iov = { &m, sizeof(m) };
+	struct msghdr msgh;
+	struct cmsghdr *cmsg;
+
+	memset(&msgh, 0, sizeof(msgh));
+	msgh.msg_iov = &iov;
+	msgh.msg_iovlen = 1;
+	msgh.msg_control = &cmsg_b;
+	msgh.msg_controllen = CMSG_LEN(sizeof(int));
 
 	ret = recvmsg(data->sock, &msgh, 0);
 	if (ret < 0) {
@@ -931,20 +926,16 @@ static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 		return -err;
 	}
 
-	if (pkt.type == PKT_TYPE_CFG_RSP) {
-		struct cmsghdr *cmsg;
-		/* Receive auxiliary data in msgh */
-		for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
-					cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
-			if (cmsg->cmsg_level == SOL_SOCKET
+	/* Receive auxiliary data in msgh */
+	for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
+			cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
+		if (cmsg->cmsg_level == SOL_SOCKET
 				&& cmsg->cmsg_type == SCM_RIGHTS) {
-				data->stream_fd = (*(int *) CMSG_DATA(cmsg));
-				DBG("stream_fd=%d", data->stream_fd);
-				return 0;
-			}
+			data->stream_fd = (*(int *) CMSG_DATA(cmsg));
+			DBG("stream_fd=%d", data->stream_fd);
+			return 0;
 		}
-	} else
-		SNDERR("Unexpected packet type %d received", pkt.type);
+	}
 
 	return -EINVAL;
 }
