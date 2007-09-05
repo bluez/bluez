@@ -43,7 +43,7 @@
 
 #define UINT_SECS_MAX (UINT_MAX / 1000000 - 1)
 
-#define MIN_PERIOD_TIME 1000
+#define MIN_PERIOD_TIME 1
 
 #define BUFFER_SIZE 2048
 
@@ -135,8 +135,8 @@ struct bluetooth_data {
 	snd_pcm_ioplug_t io;
 	volatile snd_pcm_sframes_t hw_ptr;
 	struct ipc_data_cfg cfg;	/* Bluetooth device config */
-	int stream_fd;			/* Audio stream filedescriptor */
-	int sock;			/* Daemon unix socket */
+	struct pollfd stream;		/* Audio stream filedescriptor */
+	struct pollfd server;		/* Audio daemon filedescriptor */
 	uint8_t buffer[BUFFER_SIZE];	/* Encoded transfer buffer */
 	int count;			/* Transfer buffer counter */
 	struct bluetooth_a2dp a2dp;	/* A2DP data */
@@ -166,6 +166,10 @@ static void *playback_hw_thread(void *param)
 	unsigned int prev_periods;
 	double period_time;
 	struct timeval start;
+	struct pollfd fds[2];
+
+	fds[0] = data->server;
+	fds[1] = data->stream;
 
 	prev_periods = 0;
 	period_time = 1000000.0 * data->io.period_size / data->io.rate;
@@ -175,6 +179,7 @@ static void *playback_hw_thread(void *param)
 	while (1) {
 		unsigned int dtime, periods;
 		struct timeval cur, delta;
+		int ret;
 
 		if (data->stopped)
 			goto iter_sleep;
@@ -208,11 +213,26 @@ static void *playback_hw_thread(void *param)
 		}
 
 iter_sleep:
-		usleep(MIN_PERIOD_TIME);
+		ret = poll(fds, 2, MIN_PERIOD_TIME);
+		if (ret < 0) {
+			SNDERR("poll error: %s (%d)", strerror(errno), errno);
+			if (errno != EINTR)
+				break;
+		} else if (ret > 0) {
+			ret = (fds[0].revents) ? 0 : 1;
+			SNDERR("poll fd %d revents %d", ret, fds[ret].revents);
+			if (fds[ret].revents & POLLERR ||
+				fds[ret].revents & POLLHUP ||
+				fds[ret].revents & POLLNVAL)
+				break;
+		}
 
 		/* Offer opportunity to be canceled by main thread */
 		pthread_testcancel();
 	}
+
+	data->hw_thread = 0;
+	pthread_exit(NULL);
 }
 
 static int bluetooth_state_init(struct ipc_packet *pkt, int newstate)
@@ -240,7 +260,7 @@ static int bluetooth_state(struct bluetooth_data *data, int newstate)
 	if (ret < 0)
 		return -ret;
 
-	ret = send(data->sock, pkt, sizeof(*pkt) + pkt->length, 0);
+	ret = send(data->server.fd, pkt, sizeof(*pkt) + pkt->length, 0);
 	if (ret < 0)
 		return -errno;
 	else if (ret == 0)
@@ -250,7 +270,7 @@ static int bluetooth_state(struct bluetooth_data *data, int newstate)
 
 	memset(buf, 0, sizeof(buf));
 
-	ret = recv(data->sock, buf, sizeof(*pkt) + sizeof(*state), 0);
+	ret = recv(data->server.fd, buf, sizeof(*pkt) + sizeof(*state), 0);
 	if (ret < 0)
 		return -errno;
 	else if (ret == 0)
@@ -314,11 +334,11 @@ static void bluetooth_exit(struct bluetooth_data *data)
 {
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 
-	if (data->sock >= 0)
-		close(data->sock);
+	if (data->server.fd >= 0)
+		close(data->server.fd);
 
-	if (data->stream_fd >= 0)
-		close(data->stream_fd);
+	if (data->stream.fd >= 0)
+		close(data->stream.fd);
 
 	if (data->hw_thread) {
 		pthread_cancel(data->hw_thread);
@@ -376,19 +396,19 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 	uint32_t period_count = io->buffer_size / io->period_size;
 	int opt_name, err;
 
-	DBG("fd=%d period_count=%d", data->stream_fd, period_count);
+	DBG("fd=%d period_count=%d", data->stream.fd, period_count);
 
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
 						SCO_TXBUFS : SCO_RXBUFS;
 
-	if (setsockopt(data->stream_fd, SOL_SCO, opt_name, &period_count,
+	if (setsockopt(data->stream.fd, SOL_SCO, opt_name, &period_count,
 						sizeof(period_count)) == 0)
 		return 0;
 
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
 						SO_SNDBUF : SO_RCVBUF;
 
-	if (setsockopt(data->stream_fd, SOL_SCO, opt_name, &period_count,
+	if (setsockopt(data->stream.fd, SOL_SCO, opt_name, &period_count,
 						sizeof(period_count)) == 0)
 		return 0;
 
@@ -408,12 +428,12 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	int opt_name, err;
 	struct timeval t = { 0, period_count };
 
-	DBG("fd=%d period_count=%d", data->stream_fd, period_count);
+	DBG("fd=%d period_count=%d", data->stream.fd, period_count);
 
 	opt_name = (io->stream == SND_PCM_STREAM_PLAYBACK) ?
 						SO_SNDTIMEO : SO_RCVTIMEO;
 
-	if (setsockopt(data->stream_fd, SOL_SOCKET, opt_name, &t,
+	if (setsockopt(data->stream.fd, SOL_SOCKET, opt_name, &t,
 							sizeof(t)) == 0)
 		return 0;
 
@@ -434,7 +454,7 @@ static int bluetooth_poll_descriptors(snd_pcm_ioplug_t *io,
 	if (space < 1)
 		return 0;
 
-	pfd[0].fd = data->stream_fd;
+	pfd[0].fd = data->stream.fd;
 	pfd[0].events = POLLIN;
 	pfd[0].revents = 0;
 
@@ -512,7 +532,7 @@ static snd_pcm_sframes_t bluetooth_hsp_read(snd_pcm_ioplug_t *io,
 
 	frame_size = areas->step / 8;
 
-	nrecv = recv(data->stream_fd, data->buffer, cfg.pkt_len,
+	nrecv = recv(data->stream.fd, data->buffer, cfg.pkt_len,
 			MSG_WAITALL | (io->nonblock ? MSG_DONTWAIT : 0));
 
 	if (nrecv < 0) {
@@ -592,7 +612,7 @@ static snd_pcm_sframes_t bluetooth_hsp_write(snd_pcm_ioplug_t *io,
 		goto done;
 	}
 
-	rsend = send(data->stream_fd, data->buffer, cfg.pkt_len,
+	rsend = send(data->stream.fd, data->buffer, cfg.pkt_len,
 			io->nonblock ? MSG_DONTWAIT : 0);
 	if (rsend > 0) {
 		/* Reset count pointer */
@@ -636,7 +656,7 @@ static int avdtp_write(struct bluetooth_data *data)
 	header->timestamp = htonl(a2dp->nsamples);
 	header->ssrc = htonl(1);
 
-	ret = send(data->stream_fd, a2dp->buffer, a2dp->count, MSG_DONTWAIT);
+	ret = send(data->stream.fd, a2dp->buffer, a2dp->count, MSG_DONTWAIT);
 	if (ret == -1)
 		ret = -errno;
 
@@ -919,7 +939,7 @@ static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 	msgh.msg_control = &cmsg_b;
 	msgh.msg_controllen = CMSG_LEN(sizeof(int));
 
-	ret = recvmsg(data->sock, &msgh, 0);
+	ret = recvmsg(data->server.fd, &msgh, 0);
 	if (ret < 0) {
 		err = errno;
 		SNDERR("Unable to receive fd: %s (%d)", strerror(err), err);
@@ -931,8 +951,8 @@ static int bluetooth_recvmsg_fd(struct bluetooth_data *data)
 			cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
 		if (cmsg->cmsg_level == SOL_SOCKET
 				&& cmsg->cmsg_type == SCM_RIGHTS) {
-			data->stream_fd = (*(int *) CMSG_DATA(cmsg));
-			DBG("stream_fd=%d", data->stream_fd);
+			data->stream.fd = (*(int *) CMSG_DATA(cmsg));
+			DBG("stream_fd=%d", data->stream.fd);
 			return 0;
 		}
 	}
@@ -1132,7 +1152,7 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	if (ret < 0)
 		return -ret;
 
-	ret = send(data->sock, pkt, sizeof(*pkt) + pkt->length, 0);
+	ret = send(data->server.fd, pkt, sizeof(*pkt) + pkt->length, 0);
 	if (ret < 0)
 		return -errno;
 	else if (ret == 0)
@@ -1142,7 +1162,7 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_pcm_stream_t stream,
 
 	memset(buf, 0, sizeof(buf));
 
-	ret = recv(data->sock, buf, sizeof(*pkt) + sizeof(*cfg), 0);
+	ret = recv(data->server.fd, buf, sizeof(*pkt) + sizeof(*cfg), 0);
 	if (ret < 0)
 		return -errno;
 	else if (ret == 0)
@@ -1163,7 +1183,7 @@ static int bluetooth_cfg(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	if (cfg->codec != CFG_CODEC_SBC)
 		goto done;
 
-	ret = recv(data->sock, sbc, sizeof(*sbc), 0);
+	ret = recv(data->server.fd, sbc, sizeof(*sbc), 0);
 	if (ret < 0)
 		return -errno;
 	else if (ret == 0)
@@ -1184,7 +1204,7 @@ done:
 	DBG("Device configuration:");
 
 	DBG("\n\tfd=%d\n\tfd_opt=%u\n\tpkt_len=%u\n\tsample_size=%u\n\trate=%u",
-			data->stream_fd, data->cfg.fd_opt, data->cfg.pkt_len,
+			data->stream.fd, data->cfg.fd_opt, data->cfg.pkt_len,
 					data->cfg.sample_size, data->cfg.rate);
 
 	if (data->cfg.codec == CFG_CODEC_SBC) {
@@ -1193,7 +1213,7 @@ done:
 			return ret;
 	}
 
-	if (data->stream_fd == -1) {
+	if (data->stream.fd == -1) {
 		SNDERR("Error while configuring device: could not acquire audio socket");
 		return -EINVAL;
 	}
@@ -1204,7 +1224,7 @@ done:
 
 	/* It is possible there is some outstanding
 	data in the pipe - we have to empty it */
-	while (recv(data->stream_fd, data->buffer, data->cfg.pkt_len,
+	while (recv(data->stream.fd, data->buffer, data->cfg.pkt_len,
 				MSG_DONTWAIT) > 0);
 
 	memset(data->buffer, 0, sizeof(data->buffer));
@@ -1225,7 +1245,7 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 
 	memset(data, 0, sizeof(struct bluetooth_data));
 
-	data->sock = -1;
+	data->server.fd = -1;
 
 	sk = socket(PF_LOCAL, SOCK_STREAM, 0);
 	if (sk < 0) {
@@ -1242,7 +1262,8 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 		return -err;
 	}
 
-	data->sock = sk;
+	data->server.fd = sk;
+	data->server.events = POLLIN;
 
 	data->pipefd[0] = -1;
 	data->pipefd[1] = -1;
