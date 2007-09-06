@@ -207,7 +207,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		hcid_enable=${enableval}
 		sdpd_enable=${enableval}
 		hidd_enable=${enableval}
-		pand_enalbe=${enableval}
+		pand_enable=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
 		manpages_enable=${enableval}
