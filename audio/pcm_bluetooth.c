@@ -221,9 +221,7 @@ iter_sleep:
 		} else if (ret > 0) {
 			ret = (fds[0].revents) ? 0 : 1;
 			SNDERR("poll fd %d revents %d", ret, fds[ret].revents);
-			if (fds[ret].revents & POLLERR ||
-				fds[ret].revents & POLLHUP ||
-				fds[ret].revents & POLLNVAL)
+			if (fds[ret].revents & (POLLERR | POLLHUP | POLLNVAL))
 				break;
 		}
 
