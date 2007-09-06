@@ -1211,14 +1211,14 @@ done:
 			return ret;
 	}
 
+	ret = bluetooth_recvmsg_fd(data);
+	if (ret < 0)
+		return ret;
+
 	if (data->stream.fd == -1) {
 		SNDERR("Error while configuring device: could not acquire audio socket");
 		return -EINVAL;
 	}
-
-	ret = bluetooth_recvmsg_fd(data);
-	if (ret < 0)
-		return ret;
 
 	/* It is possible there is some outstanding
 	data in the pipe - we have to empty it */
@@ -1244,6 +1244,7 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	memset(data, 0, sizeof(struct bluetooth_data));
 
 	data->server.fd = -1;
+	data->stream.fd = -1;
 
 	sk = socket(PF_LOCAL, SOCK_STREAM, 0);
 	if (sk < 0) {
