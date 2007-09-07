@@ -187,6 +187,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	avctrl_enable=no
 	hid2hci_enable=${usb_found}
 	dfutool_enable=no
+	dfubabel_enable=no
 
 	AC_ARG_ENABLE(fortify, AC_HELP_STRING([--disable-fortify], [disable compile time buffer checks]), [
 		fortify_enable=${enableval}
@@ -218,6 +219,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		avctrl_enable=${enableval}
 		hid2hci_enable=${enableval}
 		dfutool_enable=${enableval}
+		dfubabel_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(inotify, AC_HELP_STRING([--enable-inotify], [enable inotify support]), [
@@ -332,6 +334,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		dfutool_enable=${enableval}
 	])
 
+	AC_ARG_ENABLE(dfubabel, AC_HELP_STRING([--enable-dfubabel], [install Babel DFU mode switching utility]), [
+		dfubabel_enable=${enableval}
+	])
+
 	if (test "${fortify_enable}" = "yes"); then
 		CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
 	fi
@@ -394,4 +400,5 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(AVCTRL, test "${avctrl_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
+	AM_CONDITIONAL(DFUBABEL, test "${dfubabel_enable}" = "yes" && test "${usb_found}" = "yes")
 ])

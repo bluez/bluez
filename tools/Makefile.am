@@ -31,9 +31,17 @@ dfutool_programs =
 dfutool_manfiles =
 endif
 
+if DFUBABEL
+dfubabel_programs = dfubabel
+dfubabel_manfiles = dfubabel.1
+else
+dfubabel_programs =
+dfubabel_manfiles =
+endif
+
 sbin_PROGRAMS = hciattach hciconfig $(bccmd_programs) $(avctrl_programs) $(hid2hci_programs)
 
-bin_PROGRAMS = hcitool l2ping sdptool ciptool $(dfutool_programs)
+bin_PROGRAMS = hcitool l2ping sdptool ciptool $(dfutool_programs) $(dfubabel_programs)
 
 noinst_PROGRAMS = hcisecfilter ppporc
 
@@ -76,16 +84,22 @@ dfutool_SOURCES = dfutool.c dfu.h dfu.c
 dfutool_LDADD = @USB_LIBS@
 endif
 
+if DFUBABEL
+dfubabel_SOURCES = dfubabel.c
+dfubabel_LDADD = @USB_LIBS@
+endif
+
 AM_CFLAGS = @BLUEZ_CFLAGS@ @USB_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
 if MANPAGES
 man_MANS = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 \
-		$(bccmd_manfiles) $(avctrl_manfiles) $(hid2hci_manfiles) $(dfutool_manfiles)
+		$(bccmd_manfiles) $(avctrl_manfiles) $(hid2hci_manfiles) \
+		$(dfutool_manfiles) $(dfubabel_manfiles)
 endif
 
 EXTRA_DIST = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 \
-		 bccmd.8 avctrl.8 hid2hci.8 dfutool.1 example.psr
+		 bccmd.8 avctrl.8 hid2hci.8 dfutool.1 dfubabel.1 example.psr
 
 MAINTAINERCLEANFILES = Makefile.in
