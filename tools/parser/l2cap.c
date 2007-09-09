@@ -420,6 +420,31 @@ static inline void conn_rsp(int level, struct frame *frm)
 		printf("\n");
 }
 
+static void conf_list(int level, void *ptr, int len)
+{
+	uint8_t *list = ptr;
+	int i;
+
+	p_indent(level, 0);
+	for (i = 0; i < len; i++) {
+		switch (list[i] & 0x7f) {
+		case L2CAP_CONF_MTU:
+			printf("MTU ");
+			break;
+		case L2CAP_CONF_FLUSH_TO:
+			printf("FlushTo ");
+			break;
+		case L2CAP_CONF_QOS:
+			printf("QoS ");
+			break;
+		case L2CAP_CONF_RFC:
+			printf("RFC ");
+			break;
+		}
+	}
+	printf("\n");
+}
+
 static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
 {
 	p_indent(level, 0);
@@ -504,11 +529,14 @@ static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 			scid, btohs(h->flags), result, clen);
 
 	if (clen > 0) {
-		if (!result) {
+		if (result) {
 			p_indent(level + 1, frm);
 			printf("%s\n", confresult2str(result));
 		}
-		conf_opt(level + 1, h->data, clen, frm->in, scid);
+		if (result == 0x0003)
+			conf_list(level + 1, h->data, clen);
+		else
+			conf_opt(level + 1, h->data, clen, frm->in, scid);
 	} else {
 		p_indent(level + 1, frm);
 		printf("%s\n", confresult2str(result));
