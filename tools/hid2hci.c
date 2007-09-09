@@ -227,6 +227,8 @@ static struct device_id device_list[] = {
 	{ HCI, 0x046d, 0xc70b, switch_logitech },	/* Logitech diNovo Laser keyboard */
 	{ HCI, 0x046d, 0xc70c, switch_logitech },	/* Logitech diNovo Laser mouse */
 	{ HCI, 0x046d, 0xc70e, switch_logitech },	/* Logitech diNovo keyboard */
+	{ HCI, 0x046d, 0xc713, switch_logitech },	/* Logitech diNovo Edge */
+	{ HCI, 0x046d, 0xc714, switch_logitech },	/* Logitech diNovo Edge */
 	{ -1 }
 };
 
