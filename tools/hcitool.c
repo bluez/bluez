@@ -63,6 +63,20 @@ static int dev_info(int s, int dev_id, long arg)
 	return 0;
 }
 
+static char *type2str(uint8_t type)
+{
+	switch (type) {
+	case SCO_LINK:
+		return "SCO";
+	case ACL_LINK:
+		return "ACL";
+	case ESCO_LINK:
+		return "eSCO";
+	default:
+		return "Unknown";
+	}
+}
+
 static int conn_list(int s, int dev_id, long arg)
 {
 	struct hci_conn_list_req *cl;
@@ -90,8 +104,7 @@ static int conn_list(int s, int dev_id, long arg)
 		char addr[18];
 		ba2str(&ci->bdaddr, addr);
 		printf("\t%s %s %s handle %d state %d lm %s\n",
-			ci->out ? "<" : ">",
-			ci->type == ACL_LINK ? "ACL" : "SCO",
+			ci->out ? "<" : ">", type2str(ci->type),
 			addr, ci->handle, ci->state,
 			hci_lmtostr(ci->link_mode));
 	}
