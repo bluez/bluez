@@ -465,6 +465,20 @@ static char *opcode2str(uint16_t opcode)
 	return cmd;
 }
 
+static char *linktype2str(uint8_t type)
+{
+	switch (type) {
+	case 0x00:
+		return "SCO";
+	case 0x01:
+		return "ACL";
+	case 0x02:
+		return "eSCO";
+	default:
+		return "Unknown";
+	}
+}
+
 static char *role2str(uint8_t role)
 {
 	switch (role) {
@@ -2405,7 +2419,7 @@ static inline void conn_complete_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d bdaddr %s type %s encrypt 0x%2.2x\n",
 			evt->status, btohs(evt->handle), addr,
-			evt->link_type == 1 ? "ACL" : "SCO", evt->encr_mode);
+			linktype2str(evt->link_type), evt->encr_mode);
 
 	if (evt->status > 0) {
 		p_indent(level, frm);
@@ -2423,7 +2437,7 @@ static inline void conn_request_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("bdaddr %s class 0x%2.2x%2.2x%2.2x type %s\n",
 			addr, evt->dev_class[2], evt->dev_class[1],
-			evt->dev_class[0], evt->link_type == 1 ? "ACL" : "SCO");
+			evt->dev_class[0], linktype2str(evt->link_type));
 }
 
 static inline void disconn_complete_dump(int level, struct frame *frm)
@@ -2641,7 +2655,7 @@ static inline void data_buffer_overflow_dump(int level, struct frame *frm)
 	evt_data_buffer_overflow *evt = frm->ptr;
 
 	p_indent(level, frm);
-	printf("type %s\n", evt->link_type == 1 ? "ACL" : "SCO");
+	printf("type %s\n", linktype2str(evt->link_type));
 }
 
 static inline void read_clock_offset_complete_dump(int level, struct frame *frm)
