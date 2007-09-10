@@ -420,14 +420,26 @@ static inline void conn_rsp(int level, struct frame *frm)
 		printf("\n");
 }
 
-static void conf_mode(void *ptr, int len, int in, uint16_t cid)
+static void conf_rfc(void *ptr, int len, int in, uint16_t cid)
 {
 	uint8_t mode;
 
 	mode = *((uint8_t *) ptr);
 	set_mode(in, cid, mode);
 
-	printf("RFC 0x%02x (%s)", mode, mode2str(mode));
+	printf("RFC 0x%02x (%s", mode, mode2str(mode));
+	if (mode == 0x01 || mode == 0x02) {
+		uint8_t txwin, maxtrans;
+		uint16_t rto, mto, mps;
+		txwin = *((uint8_t *) (ptr + 1));
+		maxtrans = *((uint8_t *) (ptr + 2));
+		rto = btohs(bt_get_unaligned((uint16_t *) (ptr + 3)));
+		mto = btohs(bt_get_unaligned((uint16_t *) (ptr + 5)));
+		mps = btohs(bt_get_unaligned((uint16_t *) (ptr + 7)));
+		printf(", TxWin %d, MaxTx %d, RTo %d, MTo %d, MPS %d",
+					txwin, maxtrans, rto, mto, mps);
+	}
+	printf(")");
 }
 
 static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
@@ -462,7 +474,7 @@ static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
 			break;
 
 		case L2CAP_CONF_RFC:
-			conf_mode(h->val, h->len, in, cid);
+			conf_rfc(h->val, h->len, in, cid);
 			break;
 
 		default:
