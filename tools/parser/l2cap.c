@@ -420,29 +420,14 @@ static inline void conn_rsp(int level, struct frame *frm)
 		printf("\n");
 }
 
-static void conf_list(int level, void *ptr, int len)
+static void conf_mode(void *ptr, int len, int in, uint16_t cid)
 {
-	uint8_t *list = ptr;
-	int i;
+	uint8_t mode;
 
-	p_indent(level, 0);
-	for (i = 0; i < len; i++) {
-		switch (list[i] & 0x7f) {
-		case L2CAP_CONF_MTU:
-			printf("MTU ");
-			break;
-		case L2CAP_CONF_FLUSH_TO:
-			printf("FlushTo ");
-			break;
-		case L2CAP_CONF_QOS:
-			printf("QoS ");
-			break;
-		case L2CAP_CONF_RFC:
-			printf("RFC ");
-			break;
-		}
-	}
-	printf("\n");
+	mode = *((uint8_t *) ptr);
+	set_mode(in, cid, mode);
+
+	printf("RFC 0x%02x (%s)", mode, mode2str(mode));
 }
 
 static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
@@ -450,7 +435,6 @@ static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
 	p_indent(level, 0);
 	while (len > 0) {
 		l2cap_conf_opt *h = ptr;
-		uint8_t mode;
 
 		ptr += L2CAP_CONF_OPT_SIZE + h->len;
 		len -= L2CAP_CONF_OPT_SIZE + h->len;
@@ -478,12 +462,7 @@ static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
 			break;
 
 		case L2CAP_CONF_RFC:
-			printf("Mode");
-			if (h->len > 0) {
-				mode = *h->val;
-				set_mode(in, cid, mode);
-				printf(" 0x%02x (%s)", mode, mode2str(mode));
-			}
+			conf_mode(h->val, h->len, in, cid);
 			break;
 
 		default:
@@ -495,6 +474,33 @@ static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
 			printf("] ");
 		else
 			printf(" ");
+	}
+	printf("\n");
+}
+
+static void conf_list(int level, uint8_t *list, int len)
+{
+	int i;
+
+	p_indent(level, 0);
+	for (i = 0; i < len; i++) {
+		switch (list[i] & 0x7f) {
+		case L2CAP_CONF_MTU:
+			printf("MTU ");
+			break;
+		case L2CAP_CONF_FLUSH_TO:
+			printf("FlushTo ");
+			break;
+		case L2CAP_CONF_QOS:
+			printf("QoS ");
+			break;
+		case L2CAP_CONF_RFC:
+			printf("RFC ");
+			break;
+		default:
+			printf("%2.2x ", list[i] & 0x7f);
+			break;
+		}
 	}
 	printf("\n");
 }
