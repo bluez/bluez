@@ -264,12 +264,8 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 
 	d = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
 	if (d) {
-		if (len)
-			snprintf(name + len, MAX_NAME_SIZE - len, " (%.*s)",
-					d->unitSize, d->val.str);
-		else
-			snprintf(name, MAX_NAME_SIZE, "%.*s",
-					d->unitSize, d->val.str);
+		snprintf(name + len, MAX_NAME_SIZE - len,
+			len ? " (%.*s)" : "%.*s", d->unitSize, d->val.str);
 	}
 
 	/* Extract service description from record */
