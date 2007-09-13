@@ -41,10 +41,12 @@ static int bridge_socket = -1;
 
 int bridge_init(void)
 {
+#if 0
 	struct stat st;
 
 	if (stat("/sys/module/bridge", &st) < 0)
 		return -EOPNOTSUPP;
+#endif
 
 	bridge_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (bridge_socket < 0)
