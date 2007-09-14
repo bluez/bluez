@@ -484,6 +484,7 @@ static struct option scan_options[] = {
 	{ "numrsp",	1, 0, 'n' },
 	{ "iac",	1, 0, 'i' },
 	{ "flush",	0, 0, 'f' },
+	{ "refresh",	0, 0, 'r' },
 	{ "class",	0, 0, 'C' },
 	{ "info",	0, 0, 'I' },
 	{ "oui",	0, 0, 'O' },
@@ -494,7 +495,7 @@ static struct option scan_options[] = {
 
 static char *scan_help =
 	"Usage:\n"
-	"\tscan [--length=N] [--numrsp=N] [--iac=lap] [--flush] [--class] [--info] [--oui]\n";
+	"\tscan [--length=N] [--numrsp=N] [--iac=lap] [--flush] [--class] [--info] [--oui] [--refresh]\n";
 
 static void cmd_scan(int dev_id, int argc, char **argv)
 {
@@ -507,7 +508,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	struct hci_version version;
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
-	int extcls = 0, extinf = 0, extoui = 0;
+	int refresh = 0, extcls = 0, extinf = 0, extoui = 0;
 	int i, n, l, opt, dd, cc, nc;
 
 	length  = 8;	/* ~10 seconds */
@@ -541,6 +542,10 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 
 		case 'f':
 			flags |= IREQ_CACHE_FLUSH;
+			break;
+
+		case 'r':
+			refresh = 1;
 			break;
 
 		case 'C':
@@ -598,12 +603,15 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		printf("\n");
 
 	for (i = 0; i < num_rsp; i++) {
-		memset(name, 0, sizeof(name));
-		tmp = get_device_name(&di.bdaddr, &(info+i)->bdaddr);
-		if (tmp) {
-			strncpy(name, tmp, 249);
-			free(tmp);
-			nc = 1;
+		if (!refresh) {
+			memset(name, 0, sizeof(name));
+			tmp = get_device_name(&di.bdaddr, &(info+i)->bdaddr);
+			if (tmp) {
+				strncpy(name, tmp, 249);
+				free(tmp);
+				nc = 1;
+			} else
+				nc = 0;
 		} else
 			nc = 0;
 
