@@ -233,6 +233,7 @@ iter_sleep:
 	pthread_exit(NULL);
 }
 
+#if 0
 static int bluetooth_state_init(struct ipc_packet *pkt, int newstate)
 {
 	struct ipc_data_state *state = (void *) pkt->data;
@@ -286,6 +287,7 @@ static int bluetooth_state(struct bluetooth_data *data, int newstate)
 
 	return 0;
 }
+#endif
 
 static int bluetooth_playback_start(snd_pcm_ioplug_t *io)
 {
