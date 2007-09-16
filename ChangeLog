@@ -1,3 +1,14 @@
+ver 3.19:
+	Limit range of bitpool announced while in ACP side.
+	Use poll instead of usleep to wait for worker thread.
+	Use default event mask from the specification.
+	Add HID proxy support for Logitech diNovo Edge dongle.
+	Add refresh option to re-request device names.
+	Show correct connection link type.
+
+	Note:
+	This version needs at least bluez-libs-3.19
+
 ver 3.18:
 	Implement proper locking for headsets.
 	Fix various A2DP SEP locking issues.
