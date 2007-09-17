@@ -685,6 +685,8 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		session->streams = g_slist_remove(session->streams, stream);
 		if (session->pending_open == stream)
 			handle_transport_connect(session, -1, 0);
+		if (session->req && session->req->stream == stream)
+			session->req->stream = NULL;
 		stream_free(stream);
 		if (session->ref == 1 && !session->streams)
 			set_disconnect_timer(session);
