@@ -456,6 +456,7 @@ static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
 
 		switch (h->type & 0x7f) {
 		case L2CAP_CONF_MTU:
+			set_mode(in, cid, 0x00);
 			printf("MTU");
 			if (h->len > 0)
 				printf(" %d", get_val(h->val, h->len));
