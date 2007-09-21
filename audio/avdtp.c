@@ -1510,11 +1510,6 @@ static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		err = EIO;
-		goto failed;
-	}
-
 	len = sizeof(ret);
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
 		err = errno;
@@ -1525,6 +1520,11 @@ static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
 	if (ret != 0) {
 		err = ret;
 		error("connect(): %s (%d)", strerror(err), err);
+		goto failed;
+	}
+
+	if (cond & G_IO_HUP) {
+		err = EIO;
 		goto failed;
 	}
 
