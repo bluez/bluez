@@ -75,7 +75,7 @@ int port_store(bdaddr_t *src, bdaddr_t *dst, int16_t id,
 	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "serial");
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	size = strlen(svcname) + 3;
+	size = strlen(svcname) + 5;
 	value = g_malloc0(size);
 
 	snprintf(key, 32, "%s#%hd", dst_addr, id);
