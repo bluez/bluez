@@ -897,6 +897,7 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 	struct rfcomm_dev_info di;
 	DBusError derr;
 	const char *path;
+	GSList *l;
 	int16_t id;
 
 	dbus_error_init(&derr);
@@ -926,6 +927,12 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 			SERIAL_MANAGER_INTERFACE, "PortRemoved" ,
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
+
+	l = g_slist_find_custom(ports_paths, path, (GCompareFunc) strcmp);
+	if (l) {
+		g_free(l->data);
+		ports_paths = g_slist_remove(ports_paths, l->data);
+	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
