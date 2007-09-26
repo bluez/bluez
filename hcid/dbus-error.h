@@ -64,3 +64,4 @@ DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *
 DBusHandlerResult error_trusted_device_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_trusted_device_does_not_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage *msg);
+DBusHandlerResult error_service_start_in_progress(DBusConnection *conn, DBusMessage *msg);

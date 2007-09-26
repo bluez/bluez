@@ -292,6 +292,11 @@ DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage
 	return error_in_progress(conn, msg, "Disconnection in progress");
 }
 
+DBusHandlerResult error_service_start_in_progress(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	return error_in_progress(conn, msg, "Service start in progress");
+}
 
 static const char *strsdperror(int err)
 {

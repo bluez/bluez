@@ -285,6 +285,9 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 		return send_message_and_unref(conn, reply);
 	}
 
+	if (service->pid)
+		return error_service_start_in_progress(conn, msg);
+
 	if (service_start(service, conn) < 0)
 		return error_failed(conn, msg, ENOEXEC);
 
