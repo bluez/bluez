@@ -122,6 +122,11 @@ Methods		string GetAdapter() [experimental]
 
 			Returns the name of the remote device.
 
+		string GetServiceName()
+
+			Returns the name of the remote service.
+			e.g.: "Dial-up networking Gateway"
+
 Proxy hierarchy (experimental)
 =============================
 Interface	org.bluez.serial.Proxy

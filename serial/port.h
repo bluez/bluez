@@ -27,6 +27,6 @@ int port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 int port_remove_listener(const char *owner, const char *dev);
 
 int port_register(DBusConnection *conn, int16_t id, bdaddr_t *src,
-		  bdaddr_t *dst, const char *dev, char *ppath);
+		  bdaddr_t *dst, const char *dev, char *ppath, const char *svc);
 
 int port_unregister(const char *path);

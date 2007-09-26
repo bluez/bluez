@@ -55,6 +55,7 @@ struct rfcomm_node {
 	int16_t		id;		/* RFCOMM device id */
 	bdaddr_t	src;		/* Source (local) address */
 	bdaddr_t	dst;		/* Destination address */
+	char		*svcname;	/* RFCOMM service name */
 	char		*device;	/* RFCOMM device name */
 	DBusConnection	*conn;		/* for name listener handling */
 	char		*owner;		/* Bus name */
@@ -162,6 +163,21 @@ static DBusHandlerResult port_get_name(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult port_get_service_name(DBusConnection *conn,
+					       DBusMessage *msg, void *data)
+{
+	struct rfcomm_node *node = data;
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &node->svcname,
+			DBUS_TYPE_INVALID);
+	return send_message_and_unref(conn, reply);
+}
 
 static DBusHandlerResult port_get_info(DBusConnection *conn,
 					DBusMessage *msg, void *data)
@@ -196,11 +212,12 @@ static DBusHandlerResult port_get_info(DBusConnection *conn,
 }
 
 static DBusMethodVTable port_methods[] = {
-	{ "GetAddress",	port_get_address,	"",	"s"	},
-	{ "GetDevice",	port_get_device,	"",	"s"	},
-	{ "GetAdapter",	port_get_adapter,	"",	"s"	},
-	{ "GetName",	port_get_name,		"",	"s"	},
-	{ "GetInfo",	port_get_info,		"",	"{sv}"	},
+	{ "GetAddress",		port_get_address,	"",	"s"	},
+	{ "GetDevice",		port_get_device,	"",	"s"	},
+	{ "GetAdapter",		port_get_adapter,	"",	"s"	},
+	{ "GetName",		port_get_name,		"",	"s"	},
+	{ "GetServiceName",	port_get_service_name,	"",	"s"	},
+	{ "GetInfo",		port_get_info,		"",	"{sv}"	},
 	{ NULL, NULL, NULL, NULL },
 };
 
@@ -216,6 +233,8 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 		dbus_connection_unref(node->conn);
 	if (node->owner)
 		g_free(node->owner);
+	if (node->svcname)
+		g_free(node->svcname);
 	if (node->io) {
 		g_source_remove(node->io_id);
 		g_io_channel_close(node->io);
@@ -310,7 +329,7 @@ int port_remove_listener(const char *owner, const char *dev)
 }
 
 int port_register(DBusConnection *conn, int16_t id, bdaddr_t *src,
-		  bdaddr_t *dst, const char *dev, char *ppath)
+		  bdaddr_t *dst, const char *dev, char *ppath, const char *svc)
 {
 	char path[MAX_PATH_LENGTH];
 	struct rfcomm_node *node;
@@ -321,6 +340,7 @@ int port_register(DBusConnection *conn, int16_t id, bdaddr_t *src,
 	node->id	= id;
 	node->device	= g_strdup(dev);
 	node->conn	= dbus_connection_ref(conn);
+	node->svcname	= g_strdup(svc?:"Bluetooth RFCOMM port");
 
 	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%hd", SERIAL_MANAGER_PATH, id);
 
