@@ -562,7 +562,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 		if (svcname)
 			g_free(svcname);
 
-		port_register(pc->conn, err, &dst, port_name, path);
+		port_register(pc->conn, err, &pc->src, &dst, port_name, path);
 		ports_paths = g_slist_append(ports_paths, g_strdup(path));
 
 		reply = dbus_message_new_method_return(pc->msg);
@@ -840,7 +840,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
 	port_store(&src, &dst, err, val, NULL);
-	port_register(conn, err, &dst, port_name, path);
+	port_register(conn, err, &src, &dst, port_name, path);
 	ports_paths = g_slist_append(ports_paths, g_strdup(path));
 
 	reply = dbus_message_new_method_return(msg);
@@ -2164,7 +2164,7 @@ static void parse_port(char *key, char *value, void *data)
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", id);
 
-	if (port_register(connection, id, &dst, port_name, path) < 0) {
+	if (port_register(connection, id, &src, &dst, port_name, path) < 0) {
 		rfcomm_release(id);
 		return;
 	}

@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -46,12 +47,13 @@
 
 #include "error.h"
 #include "manager.h"
-#include "port.h"
+#include "storage.h"
 
 #define SERIAL_PORT_INTERFACE	"org.bluez.serial.Port"
 
 struct rfcomm_node {
 	int16_t		id;		/* RFCOMM device id */
+	bdaddr_t	src;		/* Source (local) address */
 	bdaddr_t	dst;		/* Destination address */
 	char		*device;	/* RFCOMM device name */
 	DBusConnection	*conn;		/* for name listener handling */
@@ -113,6 +115,54 @@ static DBusHandlerResult port_get_device(DBusConnection *conn,
 
 }
 
+static DBusHandlerResult port_get_adapter(DBusConnection *conn,
+					  DBusMessage *msg, void *data)
+{
+	struct rfcomm_node *node = data;
+	DBusMessage *reply;
+	char addr[18];
+	const char *paddr = addr;
+
+	ba2str(&node->src, addr);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &paddr,
+			DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+
+static DBusHandlerResult port_get_name(DBusConnection *conn,
+				       DBusMessage *msg, void *data)
+{
+	struct rfcomm_node *node = data;
+	DBusMessage *reply;
+	const char *pname;
+	char *name = NULL;
+	
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	read_device_name(&node->src, &node->dst, &name);
+
+	pname = (name ? name : "");
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &pname,
+			DBUS_TYPE_INVALID);
+
+	if (name)
+		g_free(name);
+
+	return send_message_and_unref(conn, reply);
+}
+
+
 static DBusHandlerResult port_get_info(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -148,6 +198,8 @@ static DBusHandlerResult port_get_info(DBusConnection *conn,
 static DBusMethodVTable port_methods[] = {
 	{ "GetAddress",	port_get_address,	"",	"s"	},
 	{ "GetDevice",	port_get_device,	"",	"s"	},
+	{ "GetAdapter",	port_get_adapter,	"",	"s"	},
+	{ "GetName",	port_get_name,		"",	"s"	},
 	{ "GetInfo",	port_get_info,		"",	"{sv}"	},
 	{ NULL, NULL, NULL, NULL },
 };
@@ -257,14 +309,15 @@ int port_remove_listener(const char *owner, const char *dev)
 	return 0;
 }
 
-int port_register(DBusConnection *conn, int16_t id, bdaddr_t *dst,
-					const char *dev, char *ppath)
+int port_register(DBusConnection *conn, int16_t id, bdaddr_t *src,
+		  bdaddr_t *dst, const char *dev, char *ppath)
 {
 	char path[MAX_PATH_LENGTH];
 	struct rfcomm_node *node;
 
 	node = g_new0(struct rfcomm_node, 1);
 	bacpy(&node->dst, dst);
+	bacpy(&node->src, src);
 	node->id	= id;
 	node->device	= g_strdup(dev);
 	node->conn	= dbus_connection_ref(conn);
