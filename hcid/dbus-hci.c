@@ -122,7 +122,8 @@ int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,
 		/* device found, update the attributes */
 		dev = l->data;
 
-		dev->rssi = rssi;
+		if (rssi != 0)
+			dev->rssi = rssi;
 
 		 /* Get remote name can be received while inquiring.
 		  * Keep in mind that multiple inquiry result events can
