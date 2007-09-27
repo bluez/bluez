@@ -347,7 +347,8 @@ done:
 			data->cb(data->device, data->cb_data);
 	} else {
 		remove_device(data->device);
-		data->cb(NULL, data->cb_data);
+		if (data->cb)
+			data->cb(NULL, data->cb_data);
 	}
 	if (data->msg)
 		dbus_message_unref(data->msg);
