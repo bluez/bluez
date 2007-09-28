@@ -279,6 +279,18 @@ int bnep_if_down(const char *devname)
 	struct ifreq ifr;
 	GSList *l;
 
+	for(l = pids; l; l = g_slist_next(l)) {
+		struct bnep_data *bnep = l->data;
+
+		if (strcmp(devname, bnep->devname) == 0) {
+			if (kill(bnep->pid, SIGTERM) < 0)
+				error("kill(%d, SIGTERM): %s (%d)", bnep->pid,
+					strerror(errno), errno);
+			pids = g_slist_remove(pids, bnep);
+			break;
+		}
+	}
+
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
 	memset(&ifr, 0, sizeof(ifr));
 	strcpy(ifr.ifr_name, devname);
@@ -290,17 +302,6 @@ int bnep_if_down(const char *devname)
 		error("Could not bring down %d. %s(%d)", devname, strerror(err),
 			err);
 		return -err;
-	}
-
-	for(l = pids; l; l = g_slist_next(l)) {
-		struct bnep_data *bnep = l->data;
-
-		if (strcmp(devname, bnep->devname) == 0) {
-			if (kill(bnep->pid, SIGTERM) < 0)
-				error("kill(%d, SIGTERM): %s (%d)", bnep->pid,
-					strerror(errno), errno);
-			break;
-		}
 	}
 
 	return 0;
