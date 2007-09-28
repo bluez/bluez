@@ -825,17 +825,16 @@ static void register_server(uint16_t id)
 		return;
 
 	bacpy(&src, BDADDR_ANY);
+	dev_id = hci_get_route(&src);
+	if (dev_id < 0)
+		return;
 
-	dev_id = hci_get_route(NULL);
-
-	if (dev_id >= 0)
-		hci_devba(dev_id, &src);
+	hci_devba(dev_id, &src);
 
 	if (server_register(path, &src, id) < 0)
 		return;
 
-	if (bacmp(&src, BDADDR_ANY) != 0)
-		server_store(path);
+	server_store(path);
 
 	server_paths = g_slist_append(server_paths, g_strdup(path));
 }

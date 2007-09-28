@@ -1139,6 +1139,7 @@ int server_register(const char *path, bdaddr_t *src, uint16_t id)
 		ns->name = g_strdup("BlueZ PANU service");
 
 	ns->path = g_strdup(path);
+	ns->id = id;
 	bacpy(&ns->src, src);
 
 	info("Registered server path:%s", path);
@@ -1205,8 +1206,10 @@ int server_store(const char *path)
 	char addr[18];
 
 	if (!dbus_connection_get_object_user_data(connection,
-				path, (void *) &ns))
+				path, (void *) &ns)) {
+		error("Unable to salve %s on storage", path);
 		return -ENOENT;
+	}
 
 	ba2str(&ns->src, addr);
 	if (ns->id == BNEP_SVC_NAP)
