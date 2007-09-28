@@ -21,14 +21,7 @@
  *
  */
 
-struct connection_conf {
-	char *panu_script;
-	char *gn_script;
-	char *nap_script;
-};
-
-int connection_init(DBusConnection *conn, const char *iface_prefix,
-			struct connection_conf *conn_conf);
+int connection_init(DBusConnection *conn, const char *iface_prefix);
 void connection_exit();
 int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 			uint16_t id, const char *name, const char *desc);

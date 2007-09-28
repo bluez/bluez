@@ -30,9 +30,13 @@
 struct network_conf {
 	gboolean connection_enabled;
 	gboolean server_enabled;
+	gboolean security;
 	char *iface_prefix;
-	struct connection_conf conn;
-	struct server_conf server;
+	char *panu_script;
+	char *gn_script;
+	char *nap_script;
+	char *gn_iface;
+	char *nap_iface;
 };
 
 int network_init(DBusConnection *conn, struct network_conf *service_conf);

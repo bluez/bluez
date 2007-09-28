@@ -62,7 +62,6 @@ struct network_conn {
 	char		dev[16];	/* Interface name */
 	char		*name;		/* Service Name */
 	char		*desc;		/* Service Description*/
-	char		*script;	/* Interface up script*/
 	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
 	int		sk;
@@ -74,7 +73,6 @@ struct __service_16 {
 } __attribute__ ((packed));
 
 static DBusConnection *connection = NULL;
-static struct connection_conf *conf = NULL;
 static const char *prefix = NULL;
 
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
@@ -157,7 +155,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	bnep_if_up(nc->dev, nc->script);
+	bnep_if_up(nc->dev, nc->id);
 	dbus_connection_emit_signal(connection, nc->path,
 					NETWORK_CONNECTION_INTERFACE,
 					"Connected",
@@ -666,12 +664,6 @@ int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 	nc->desc = g_strdup(desc);
 	memset(nc->dev, 0, 16);
 	strncpy(nc->dev, prefix, strlen(prefix));
-	if (id == BNEP_SVC_PANU)
-		nc->script = conf->panu_script;
-	else if (id == BNEP_SVC_GN)
-		nc->script = conf->gn_script;
-	else
-		nc->script = conf->nap_script;
 	nc->state = DISCONNECTED;
 
 	info("Registered connection path:%s", path);
@@ -795,11 +787,9 @@ gboolean connection_is_connected(const char *path)
 	return (nc->state == CONNECTED);
 }
 
-int connection_init(DBusConnection *conn, const char *iface_prefix,
-			struct connection_conf *conn_conf)
+int connection_init(DBusConnection *conn, const char *iface_prefix)
 {
 	connection = dbus_connection_ref(conn);
-	conf = conn_conf;
 	prefix = iface_prefix;
 
 	return 0;
@@ -809,6 +799,5 @@ void connection_exit()
 {
 	dbus_connection_unref(connection);
 	connection = NULL;
-	conf = NULL;
 	prefix = NULL;
 }

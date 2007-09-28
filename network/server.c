@@ -74,7 +74,6 @@ struct setup_session {
 /* Main server structure */
 struct network_server {
 	bdaddr_t	src;		/* Bluetooth Local Address */
-	char		*bridge;	/* Bridge interface */
 	char		*iface;		/* Routing interface */
 	char		*name;		/* Server service name */
 	char		*range;		/* IP Address range */
@@ -86,7 +85,6 @@ struct network_server {
 	GSList		*clients;	/* Active connections */
 };
 
-static struct server_conf *conf = NULL;
 static GIOChannel *bnep_io = NULL;
 static DBusConnection *connection = NULL;
 static GSList *setup_sessions = NULL;
@@ -304,6 +302,7 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	char path[MAX_PATH_LENGTH], devname[16];
 	uint16_t response = BNEP_CONN_NOT_ALLOWED;
 	DBusError derr;
+	const char *bridge;
 
 	if (!g_slist_find(setup_sessions, s)) {
 		dbus_message_unref(reply);
@@ -337,14 +336,18 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	info("Authorization succedded. New connection: %s", devname);
 	response = BNEP_SUCCESS;
 
-	if (bridge_add_interface(ns->bridge, devname) < 0) {
+	if (bridge_add_interface(ns->id, devname) < 0) {
 		error("Can't add %s to the bridge: %s(%d)",
 				devname, strerror(errno), errno);
 		goto failed;
 	}
 
-	bnep_if_up(devname, NULL);
-	bnep_if_up(ns->bridge, NULL);
+	bridge = bridge_get_name(ns->id);
+	if (bridge) {
+		bnep_if_up(devname, 0);
+		bnep_if_up(bridge, ns->id);
+	} else
+		bnep_if_up(devname, ns->id);
 
 	ns->clients = g_slist_append(ns->clients, g_strdup(s->address));
 
@@ -594,8 +597,7 @@ static gboolean connect_event(GIOChannel *chan,
 	return TRUE;
 }
 
-int server_init(DBusConnection *conn, const char *iface_prefix,
-		struct server_conf *server_conf)
+int server_init(DBusConnection *conn, const char *iface_prefix)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
@@ -656,7 +658,6 @@ int server_init(DBusConnection *conn, const char *iface_prefix,
 	}
 
 	connection = dbus_connection_ref(conn);
-	conf = server_conf;
 	prefix = iface_prefix;
 
 	bnep_io = g_io_channel_unix_new(sk);
@@ -687,7 +688,6 @@ void server_exit()
 
 	dbus_connection_unref(connection);
 	connection = NULL;
-	conf = NULL;
 }
 
 static uint32_t add_server_record(struct network_server *ns)
@@ -1195,13 +1195,6 @@ int server_register(const char *path, bdaddr_t *src, uint16_t id)
 		ns->name = g_strdup("BlueZ PANU service");
 
 	ns->path = g_strdup(path);
-	ns->id = id;
-	if (id == BNEP_SVC_NAP)
-		ns->bridge = conf->nap_iface;
-	else if (id == BNEP_SVC_GN)
-		ns->bridge = conf->gn_iface;
-	else
-		ns->bridge = conf->panu_iface;
 	bacpy(&ns->src, src);
 
 	info("Registered server path:%s", path);
@@ -1220,12 +1213,6 @@ int server_register_from_file(const char *path, const bdaddr_t *src,
 	bacpy(&ns->src, src);
 	ns->path = g_strdup(path);
 	ns->id = id;
-	if (id == BNEP_SVC_NAP)
-		ns->bridge = conf->nap_iface;
-	else if (id == BNEP_SVC_GN)
-		ns->bridge = conf->gn_iface;
-	else
-		ns->bridge = conf->panu_iface;
 	ns->name = textfile_get(filename, "name");
 	if (!ns->name) {
 		/* Name is mandatory */

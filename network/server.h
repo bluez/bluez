@@ -21,15 +21,7 @@
  *
  */
 
-struct server_conf {
-	char *panu_iface;
-	char *gn_iface;
-	char *nap_iface;
-	gboolean disable_security;
-};
-
-int server_init(DBusConnection *conn, const char *iface_prefix,
-		struct server_conf *server_conf);
+int server_init(DBusConnection *conn, const char *iface_prefix);
 void server_exit();
 int server_register(const char *path, bdaddr_t *src, uint16_t id);
 int server_register_from_file(const char *path, const bdaddr_t *src,

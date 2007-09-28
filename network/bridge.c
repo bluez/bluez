@@ -31,15 +31,20 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
 #include <net/if.h>
 #include <linux/sockios.h>
+
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
+#include <bluetooth/bnep.h>
 
 #include "bridge.h"
 
 static int bridge_socket = -1;
+static const char *gn_bridge;
+static const char *nap_bridge;
 
-int bridge_init(void)
+int bridge_init(const char *gn_iface, const char *nap_iface)
 {
 #if 0
 	struct stat st;
@@ -52,6 +57,8 @@ int bridge_init(void)
 	if (bridge_socket < 0)
 		return -errno;
 
+	gn_bridge = gn_iface;
+	nap_bridge = nap_iface;
 	return 0;
 }
 
@@ -62,9 +69,10 @@ void bridge_cleanup(void)
 	bridge_socket = -1;
 }
 
-int bridge_create(const char *name)
+int bridge_create(int id)
 {
 	int err;
+	const char *name = bridge_get_name(id);
 
 	err = ioctl(bridge_socket, SIOCBRADDBR, name);
 	if (err < 0)
@@ -73,9 +81,10 @@ int bridge_create(const char *name)
 	return 0;
 }
 
-int bridge_remove(const char *name)
+int bridge_remove(int id)
 {
 	int err;
+	const char *name = bridge_get_name(id);
 
 	err = ioctl(bridge_socket, SIOCBRDELBR, name);
 	if (err < 0)
@@ -84,19 +93,31 @@ int bridge_remove(const char *name)
 	return 0;
 }
 
-int bridge_add_interface(const char *bridge, const char *dev)
+int bridge_add_interface(int id, const char *dev)
 {
 	struct ifreq ifr;
 	int ifindex = if_nametoindex(dev);
+	const char *name = bridge_get_name(id);
 
-	if (ifindex == 0) 
+	if (ifindex == 0)
 		return -ENODEV;
 
-	strncpy(ifr.ifr_name, bridge, IFNAMSIZ);
+	strncpy(ifr.ifr_name, name, IFNAMSIZ);
 	ifr.ifr_ifindex = ifindex;
 
 	if (ioctl(bridge_socket, SIOCBRADDIF, &ifr) < 0)
 		return -errno;
 
 	return 0;
+}
+
+const char *bridge_get_name(int id)
+{
+	if (id == BNEP_SVC_GN)
+		return gn_bridge;
+
+	if (id == BNEP_SVC_NAP)
+		return nap_bridge;
+
+	return NULL;
 }

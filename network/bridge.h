@@ -21,9 +21,10 @@
  *
  */
 
-int bridge_init(void);
+int bridge_init(const char *gn_iface, const char *nap_iface);
 void bridge_cleanup(void);
 
-int bridge_create(const char *name);
-int bridge_remove(const char *name);
-int bridge_add_interface(const char *bridge, const char *dev);
+int bridge_create(int id);
+int bridge_remove(int id);
+int bridge_add_interface(int id, const char *dev);
+const char *bridge_get_name(int id);

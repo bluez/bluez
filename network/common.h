@@ -24,7 +24,8 @@
 #define MAX_PATH_LENGTH 64 /* D-Bus path */
 #define NETWORK_PATH "/org/bluez/network"
 
-int bnep_init(void);
+int bnep_init(const char *panu_script, const char *gn_script,
+		const char *nap_script);
 int bnep_cleanup(void);
 
 uint16_t bnep_service_id(const char *svc);
@@ -35,7 +36,7 @@ int bnep_kill_connection(bdaddr_t *dst);
 int bnep_kill_all_connections(void);
 
 int bnep_connadd(int sk, uint16_t role, char *dev);
-int bnep_if_up(const char *devname, const char *script);
+int bnep_if_up(const char *devname, uint16_t id);
 int bnep_if_down(const char *devname);
 
 int read_remote_name(bdaddr_t *src, bdaddr_t *dst, char *buf, size_t size);

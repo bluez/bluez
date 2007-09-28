@@ -63,6 +63,10 @@ static struct {
 	{ NULL }
 };
 
+static const char *panu = NULL;
+static const char *gn = NULL;
+static const char *nap = NULL;
+
 struct bnep_data {
 	char *devname;
 	int pid;
@@ -129,7 +133,8 @@ const char *bnep_name(uint16_t id)
 	return NULL;
 }
 
-int bnep_init(void)
+int bnep_init(const char *panu_script, const char *gn_script,
+		const char *nap_script)
 {
 	ctl = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_BNEP);
 
@@ -140,6 +145,9 @@ int bnep_init(void)
 		return -err;
 	}
 
+	panu = panu_script;
+	gn = gn_script;
+	nap = nap_script;
 	return 0;
 }
 
@@ -212,11 +220,11 @@ static void bnep_setup(gpointer data)
 {
 }
 
-int bnep_if_up(const char *devname, const char *script)
+int bnep_if_up(const char *devname, uint16_t id)
 {
 	int sd, err, pid;
 	struct ifreq ifr;
-	const char *argv[3];
+	const char *argv[3], *script;
 	struct bnep_data *bnep;
 
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
@@ -231,6 +239,16 @@ int bnep_if_up(const char *devname, const char *script)
 			err);
 		return -err;
 	}
+
+	if (!id)
+		return 0;
+
+	if (id == BNEP_SVC_PANU)
+		script = panu;
+	else if (id == BNEP_SVC_GN)
+		script = gn;
+	else
+		script = nap;
 
 	if (!script)
 		return 0;

@@ -923,21 +923,18 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 {
 	conf = service_conf;
 
-	if (bridge_init() < 0) {
+	if (bridge_init(conf->gn_iface, conf->nap_iface) < 0) {
 		error("Can't init bridge module");
 		return -1;
 	}
 
-	if (bridge_create(conf->server.panu_iface) < 0)
-		error("Can't create PANU bridge");
-
-	if (bridge_create(conf->server.gn_iface) < 0)
+	if (bridge_create(BNEP_SVC_GN) < 0)
 		error("Can't create GN bridge");
 
-	if (bridge_create(conf->server.nap_iface) < 0)
+	if (bridge_create(BNEP_SVC_NAP) < 0)
 		error("Can't create NAP bridge");
 
-	if (bnep_init()) {
+	if (bnep_init(conf->panu_script, conf->gn_script, conf->nap_script)) {
 		error("Can't init bnep module");
 		return -1;
 	}
@@ -948,10 +945,10 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 	 * (setup connection request) contains the destination service
 	 * field that defines which service the source is connecting to.
 	 */
-	if (server_init(conn, conf->iface_prefix, &conf->server) < 0)
+	if (server_init(conn, conf->iface_prefix) < 0)
 		return -1;
 
-	if (connection_init(conn, conf->iface_prefix, &conf->conn) < 0)
+	if (connection_init(conn, conf->iface_prefix) < 0)
  		return -1;
 
 	if (!dbus_connection_create_object_path(conn, NETWORK_PATH,
@@ -993,13 +990,10 @@ void network_exit(void)
 
 	connection = NULL;
 
-	if (bridge_remove(conf->server.panu_iface) < 0)
-		error("Can't remove PANU bridge");
-
-	if (bridge_remove(conf->server.gn_iface) < 0)
+	if (bridge_remove(BNEP_SVC_GN) < 0)
 		error("Can't remove GN bridge");
 
-	if (bridge_remove(conf->server.nap_iface) < 0)
+	if (bridge_remove(BNEP_SVC_NAP) < 0)
 		error("Can't remove NAP bridge");
 
 	bnep_cleanup();
