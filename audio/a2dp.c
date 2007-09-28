@@ -26,6 +26,7 @@
 #endif
 
 #include <stdlib.h>
+#include <errno.h>
 
 #include <dbus/dbus.h>
 #include <glib.h>
@@ -112,17 +113,27 @@ static struct device *a2dp_get_dev(struct avdtp *session)
 	return manager_device_connected(&addr, A2DP_SOURCE_UUID);
 }
 
-static void setup_callback(struct a2dp_stream_cb *cb,
-				struct a2dp_stream_setup *s)
+static gboolean finalize_stream_setup(struct a2dp_stream_setup *s, struct avdtp_error *err)
 {
-	cb->cb(s->session, s->sep, s->stream, cb->user_data);
-}
+	GSList *l;
 
-static gboolean finalize_stream_setup(struct a2dp_stream_setup *s)
-{
-	g_slist_foreach(s->cb, (GFunc) setup_callback, s);
+	for (l = s->cb; l != NULL; l = l->next) {
+		struct a2dp_stream_cb *cb = l->data;
+		
+		cb->cb(s->session, s->sep, s->stream, cb->user_data, err);
+	}
+
 	stream_setup_free(s);
 	return FALSE;
+}
+
+static gboolean finalize_stream_setup_errno(struct a2dp_stream_setup *s, int err)
+{
+	struct avdtp_error avdtp_err;
+
+	avdtp_error_init(&avdtp_err, AVDTP_ERROR_ERRNO, -err);
+
+	return finalize_stream_setup(s, err ? &avdtp_err : NULL);
 }
 
 static struct a2dp_stream_setup *find_setup_by_session(struct avdtp *session)
@@ -324,22 +335,23 @@ static gboolean a2dp_select_capabilities(struct avdtp *session,
 	return TRUE;
 }
 
-static void discovery_complete(struct avdtp *session, GSList *seps, int err,
+static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp_error *err,
 				void *user_data)
 {
 	struct avdtp_local_sep *lsep;
 	struct avdtp_remote_sep *rsep;
 	struct a2dp_stream_setup *setup;
 	GSList *caps = NULL;
+	int posix_err;
 
 	setup = find_setup_by_session(session);
 
 	if (!setup)
 		return;
 
-	if (err < 0 || setup->canceled) {
+	if (err || setup->canceled) {
 		setup->stream = NULL;
-		finalize_stream_setup(setup);
+		finalize_stream_setup(setup, err);
 		return;
 	}
 
@@ -348,21 +360,21 @@ static void discovery_complete(struct avdtp *session, GSList *seps, int err,
 	if (avdtp_get_seps(session, AVDTP_SEP_TYPE_SINK, AVDTP_MEDIA_TYPE_AUDIO,
 				A2DP_CODEC_SBC, &lsep, &rsep) < 0) {
 		error("No matching ACP and INT SEPs found");
-		finalize_stream_setup(setup);
+		finalize_stream_setup_errno(setup, -EINVAL);
 		return;
 	}
 
 	if (!a2dp_select_capabilities(session, rsep, &caps)) {
 		error("Unable to select remote SEP capabilities");
-		finalize_stream_setup(setup);
+		finalize_stream_setup_errno(setup, -EINVAL);
 		return;
 	}
 
-	err = avdtp_set_configuration(session, rsep, lsep, caps,
+	posix_err = avdtp_set_configuration(session, rsep, lsep, caps,
 							&setup->stream);
-	if (err < 0) {
-		error("avdtp_set_configuration: %s", strerror(-err));
-		finalize_stream_setup(setup);
+	if (posix_err < 0) {
+		error("avdtp_set_configuration: %s", strerror(-posix_err));
+		finalize_stream_setup_errno(setup, posix_err);
 	}
 }
 
@@ -490,7 +502,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	if (err) {
 		if (setup)
-			finalize_stream_setup(setup);
+			finalize_stream_setup(setup, err);
 		return;
 	}
 
@@ -510,7 +522,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		error("Error on avdtp_open %s (%d)", strerror(-ret),
 				-ret);
 		setup->stream = NULL;
-		finalize_stream_setup(setup);
+		finalize_stream_setup_errno(setup, ret);
 	}
 }
 
@@ -557,6 +569,7 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct a2dp_stream_setup *setup;
+	int posix_err;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Open_Cfm");
@@ -576,19 +589,22 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	if (err) {
 		setup->stream = NULL;
-		goto finalize;
+		finalize_stream_setup(setup, err);
+		return;
 	}
 
 	if (setup->start) {
-		if (avdtp_start(session, stream) == 0)
+		posix_err = avdtp_start(session, stream);		
+		if (posix_err == 0)
 			return;
 
 		error("avdtp_start failed");
-		setup->stream = NULL;
+		setup->stream = NULL;		
 	}
+	else
+		posix_err = 0;
 
-finalize:
-	finalize_stream_setup(setup);
+	finalize_stream_setup_errno(setup, -posix_err);
 }
 
 static gboolean suspend_timeout(struct a2dp_sep *sep)
@@ -646,10 +662,12 @@ static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		return;
 	}
 
-	if (err)
+	if (err) {
 		setup->stream = NULL;
-
-	finalize_stream_setup(setup);
+		finalize_stream_setup(setup, err);
+	}
+	else
+		finalize_stream_setup_errno(setup, 0);
 }
 
 static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -671,6 +689,7 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct a2dp_stream_setup *setup;
+	int posix_err;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Suspend_Cfm");
@@ -684,13 +703,14 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		return;
 
 	if (err) {
-		finalize_stream_setup(setup);
+		finalize_stream_setup(setup, err);
 		return;
 	}
 
 	if (setup->start) {
-		if (avdtp_start(session, stream) < 0)
-			finalize_stream_setup(setup);
+		posix_err = avdtp_start(session, stream);
+		if (posix_err < 0)
+			finalize_stream_setup_errno(setup, posix_err);
 	}
 }
 
@@ -714,6 +734,7 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct a2dp_stream_setup *setup;
+	int posix_err;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Close_Cfm");
@@ -731,19 +752,22 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	if (err) {
 		setup->stream = NULL;
-		goto finalize;
+		finalize_stream_setup(setup, err);
+		return;
 	}
 
 	if (setup->start) {
-		if (avdtp_discover(session, discovery_complete, setup) == 0)
+		posix_err = avdtp_discover(session, discovery_complete, setup);
+		if (posix_err == 0)
 			return;
 
 		error("avdtp_discover failed");
 		setup->stream = NULL;
 	}
+	else
+		posix_err = 0;
 
-finalize:
-	finalize_stream_setup(setup);
+	finalize_stream_setup_errno(setup, -posix_err);
 }
 
 static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -792,6 +816,7 @@ static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct a2dp_stream_setup *setup;
+	int posix_err;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: ReConfigure_Cfm");
@@ -811,19 +836,22 @@ static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	if (err) {
 		setup->stream = NULL;
-		goto finalize;
+		finalize_stream_setup(setup, err);
+		return;
 	}
 
 	if (setup->start) {
-		if (avdtp_start(session, stream) == 0)
+		posix_err = avdtp_start(session, stream);		
+		if (posix_err == 0)
 			return;
 
 		error("avdtp_start failed");
 		setup->stream = NULL;
 	}
+	else
+		posix_err = 0;
 
-finalize:
-	finalize_stream_setup(setup);
+	finalize_stream_setup_errno(setup, -posix_err);
 }
 
 static struct avdtp_sep_cfm cfm = {

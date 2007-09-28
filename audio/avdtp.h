@@ -21,11 +21,22 @@
  *
  */
 
+typedef enum {
+	AVDTP_ERROR_ERRNO,
+	AVDTP_ERROR_ERROR_CODE
+} avdtp_error_type_t;
+
 struct avdtp;
 struct avdtp_stream;
 struct avdtp_local_sep;
 struct avdtp_remote_sep;
-struct avdtp_error;
+struct avdtp_error {
+	avdtp_error_type_t type;
+	union {
+		uint8_t error_code;
+		int posix_errno;
+	} err;
+};
 
 /* SEP capability categories */
 #define AVDTP_MEDIA_TRANSPORT			0x01
@@ -177,7 +188,7 @@ struct avdtp_sep_ind {
 };
 
 typedef void (*avdtp_discover_cb_t) (struct avdtp *session, GSList *seps,
-					int err, void *user_data);
+					struct avdtp_error *err, void *user_data);
 
 struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst);
 
@@ -240,7 +251,9 @@ int avdtp_unregister_sep(struct avdtp_local_sep *sep);
 
 avdtp_state_t avdtp_sep_get_state(struct avdtp_local_sep *sep);
 
+void avdtp_error_init(struct avdtp_error *err, uint8_t type, int id);
 const char *avdtp_strerror(struct avdtp_error *err);
+int avdtp_error_code(struct avdtp_error *err);
 
 void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 

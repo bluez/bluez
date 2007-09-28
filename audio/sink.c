@@ -135,7 +135,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 
 static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
-					void *user_data)
+					void *user_data, struct avdtp_error *err)
 {
 	struct sink *sink = user_data;
 	struct pending_request *pending;
@@ -153,7 +153,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		err_failed(pending->conn, pending->msg, "Stream setup failed");
 		avdtp_unref(sink->session);
 		sink->session = NULL;
-		debug("Stream setup failed");
+		debug("Stream setup failed : %s", avdtp_strerror(err));
 	}
 
 	pending_request_free(pending);

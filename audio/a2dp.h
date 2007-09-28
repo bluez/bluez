@@ -81,7 +81,8 @@ struct a2dp_sep;
 
 typedef void (*a2dp_stream_cb_t) (struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
-					void *user_data);
+					void *user_data,
+					struct avdtp_error *err);
 
 int a2dp_init(DBusConnection *conn, int sources, int sinks);
 void a2dp_exit(void);

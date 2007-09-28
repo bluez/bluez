@@ -77,11 +77,6 @@
 #define STREAM_TIMEOUT 20000
 
 typedef enum {
-	AVDTP_ERROR_ERRNO,
-	AVDTP_ERROR_ERROR_CODE
-} avdtp_error_type_t;
-
-typedef enum {
 	AVDTP_SESSION_STATE_DISCONNECTED,
 	AVDTP_SESSION_STATE_CONNECTING,
 	AVDTP_SESSION_STATE_CONNECTED
@@ -362,14 +357,6 @@ struct avdtp {
 	DBusPendingCall *pending_auth;
 };
 
-struct avdtp_error {
-	avdtp_error_type_t type;
-	union {
-		uint8_t error_code;
-		int posix_errno;
-	} err;
-};
-
 static uint8_t free_seid = 1;
 static GSList *local_seps = NULL;
 
@@ -499,7 +486,7 @@ static void set_disconnect_timer(struct avdtp *session)
 						disconnect_timeout, session);
 }
 
-static void avdtp_error_init(struct avdtp_error *err, uint8_t type, int id)
+void avdtp_error_init(struct avdtp_error *err, uint8_t type, int id)
 {
 	err->type = type;
 	switch (type) {
@@ -698,10 +685,15 @@ static void avdtp_sep_set_state(struct avdtp *session,
 
 static void finalize_discovery(struct avdtp *session, int err)
 {
+	struct avdtp_error avdtp_err;
+
+	avdtp_error_init(&avdtp_err, AVDTP_ERROR_ERRNO, -err);
+
 	if (!session->discov_cb)
 		return;
 
-	session->discov_cb(session, session->seps, err,
+	session->discov_cb(session, session->seps,
+				err ? &avdtp_err : NULL,
 				session->user_data);
 
 	session->discov_cb = NULL;
