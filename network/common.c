@@ -89,11 +89,8 @@ static void script_exited(GPid pid, gint status, gpointer data)
 	else
 		debug("%d was killed by signal %d", pid, WTERMSIG(status));
 
-	g_spawn_close_pid(pid);
-	pid = 0;
-
-	g_free(bnep->devname);
-	pids = g_slist_remove(pids, bnep);
+	g_spawn_close_pid(bnep->pid);
+	bnep->pid = 0;
 }
 
 uint16_t bnep_service_id(const char *svc)
