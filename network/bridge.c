@@ -39,6 +39,7 @@
 #include <bluetooth/bnep.h>
 
 #include "bridge.h"
+#include "common.h"
 
 static int bridge_socket = -1;
 static const char *gn_bridge;
@@ -86,6 +87,10 @@ int bridge_remove(int id)
 	int err;
 	const char *name = bridge_get_name(id);
 
+	err = bnep_if_down(name);
+	if (err < 0)
+		return err;
+
 	err = ioctl(bridge_socket, SIOCBRDELBR, name);
 	if (err < 0)
 		return -errno;
@@ -98,6 +103,9 @@ int bridge_add_interface(int id, const char *dev)
 	struct ifreq ifr;
 	int ifindex = if_nametoindex(dev);
 	const char *name = bridge_get_name(id);
+
+	if (!name)
+		return -EINVAL;
 
 	if (ifindex == 0)
 		return -ENODEV;
