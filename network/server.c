@@ -178,7 +178,7 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 		profile[0].version = 0x0100;
 		pfseq = sdp_list_append(NULL, &profile[0]);
 		sdp_set_profile_descs(&record, pfseq);
-		
+
 		sdp_set_info_attr(&record, name, NULL, desc);
 		break;
 	case BNEP_SVC_PANU:
@@ -337,14 +337,14 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	info("Authorization succedded. New connection: %s", devname);
 	response = BNEP_SUCCESS;
 
-	if (bridge_add_interface(ns->id, devname) < 0) {
-		error("Can't add %s to the bridge: %s(%d)",
-				devname, strerror(errno), errno);
-		goto failed;
-	}
-
 	bridge = bridge_get_name(ns->id);
 	if (bridge) {
+		if (bridge_add_interface(ns->id, devname) < 0) {
+			error("Can't add %s to the bridge: %s(%d)",
+					devname, strerror(errno), errno);
+			goto failed;
+		}
+
 		bnep_if_up(devname, 0);
 		if (!ns->up) {
 			bnep_if_up(bridge, ns->id);
@@ -1139,9 +1139,6 @@ static void server_unregister(DBusConnection *conn, void *data)
 	struct network_server *ns = data;
 
 	info("Unregistered server path:%s", ns->path);
-
-	if (ns->up)
-		bnep_if_down(ns->iface);
 
 	server_free(ns);
 }
