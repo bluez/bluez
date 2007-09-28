@@ -82,15 +82,12 @@ static gint find_devname(gconstpointer a, gconstpointer b)
 
 static void script_exited(GPid pid, gint status, gpointer data)
 {
-	struct bnep_data *bnep = data;
-
 	if (WIFEXITED(status))
 		debug("%d exited with status %d", pid, WEXITSTATUS(status));
 	else
 		debug("%d was killed by signal %d", pid, WTERMSIG(status));
 
-	g_spawn_close_pid(bnep->pid);
-	bnep->pid = 0;
+	g_spawn_close_pid(pid);
 }
 
 uint16_t bnep_service_id(const char *svc)
@@ -288,21 +285,19 @@ int bnep_if_down(const char *devname)
 {
 	int sd, err;
 	struct ifreq ifr;
-	struct bnep_data *data;
+	struct bnep_data *bnep;
 	GSList *l;
 
 	l = g_slist_find_custom(pids, devname, find_devname);
 	if (!l)
 		return 0;
 
-	data = l->data;
-	if (data->pid) {
-		err = kill(data->pid, SIGTERM);
+	bnep = l->data;
+	if (bnep->pid) {
+		err = kill(bnep->pid, SIGTERM);
 		if (err < 0)
-			error("kill(%d, SIGTERM): %s (%d)", data->pid,
+			error("kill(%d, SIGTERM): %s (%d)", bnep->pid,
 				strerror(errno), errno);
-		else
-			data->pid = 0;
 	}
 
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
@@ -318,7 +313,9 @@ int bnep_if_down(const char *devname)
 		return -err;
 	}
 
-	pids = g_slist_remove(pids, data);
+	pids = g_slist_remove(pids, bnep);
+	g_free(bnep->devname);
+	g_free(bnep);
 
 	return 0;
 }
