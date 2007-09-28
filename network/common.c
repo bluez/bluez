@@ -72,6 +72,14 @@ struct bnep_data {
 	int pid;
 };
 
+static gint find_devname(gconstpointer a, gconstpointer b)
+{
+	struct bnep_data *data = (struct bnep_data *) a;
+	const char *devname = b;
+
+	return strcmp(data->devname, devname);
+}
+
 static void script_exited(GPid pid, gint status, gpointer data)
 {
 	struct bnep_data *bnep = data;
@@ -228,6 +236,9 @@ int bnep_if_up(const char *devname, uint16_t id)
 	struct bnep_data *bnep;
 	GSpawnFlags flags;
 
+	if (g_slist_find_custom(pids, devname, find_devname))
+		return 0;
+
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
 	memset(&ifr, 0, sizeof(ifr));
 	strcpy(ifr.ifr_name, devname);
@@ -241,8 +252,11 @@ int bnep_if_up(const char *devname, uint16_t id)
 		return -err;
 	}
 
+	bnep = g_new0(struct bnep_data, 1);
+	bnep->devname = g_strdup(devname);
+
 	if (!id)
-		return 0;
+		goto done;
 
 	if (id == BNEP_SVC_PANU)
 		script = panu;
@@ -252,7 +266,7 @@ int bnep_if_up(const char *devname, uint16_t id)
 		script = nap;
 
 	if (!script)
-		return 0;
+		goto done;
 
 	argv[0] = script;
 	argv[1] = devname;
@@ -261,34 +275,37 @@ int bnep_if_up(const char *devname, uint16_t id)
 	if (!g_spawn_async(NULL, (char **) argv, NULL, flags, bnep_setup,
 				(gpointer) devname, &pid, NULL)) {
 		error("Unable to execute %s", argv[0]);
-		return -1;
+		return -EINVAL;
 	}
 
-	bnep = g_new0(struct bnep_data, 1);
-	bnep->devname = g_strdup(devname);
 	bnep->pid = pid;
-	pids = g_slist_append(pids, bnep);
 	g_child_watch_add(pid, script_exited, bnep);
 
-	return pid;
+done:
+	pids = g_slist_append(pids, bnep);
+
+	return bnep->pid;
 }
 
 int bnep_if_down(const char *devname)
 {
 	int sd, err;
 	struct ifreq ifr;
+	struct bnep_data *data;
 	GSList *l;
 
-	for(l = pids; l; l = g_slist_next(l)) {
-		struct bnep_data *bnep = l->data;
+	l = g_slist_find_custom(pids, devname, find_devname);
+	if (!l)
+		return 0;
 
-		if (strcmp(devname, bnep->devname) == 0) {
-			if (kill(bnep->pid, SIGTERM) < 0)
-				error("kill(%d, SIGTERM): %s (%d)", bnep->pid,
-					strerror(errno), errno);
-			pids = g_slist_remove(pids, bnep);
-			break;
-		}
+	data = l->data;
+	if (data->pid) {
+		err = kill(data->pid, SIGTERM);
+		if (err < 0)
+			error("kill(%d, SIGTERM): %s (%d)", data->pid,
+				strerror(errno), errno);
+		else
+			data->pid = 0;
 	}
 
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
@@ -303,6 +320,8 @@ int bnep_if_down(const char *devname)
 			err);
 		return -err;
 	}
+
+	pids = g_slist_remove(pids, data);
 
 	return 0;
 }

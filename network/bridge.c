@@ -101,6 +101,7 @@ int bridge_remove(int id)
 int bridge_add_interface(int id, const char *dev)
 {
 	struct ifreq ifr;
+	int err;
 	int ifindex = if_nametoindex(dev);
 	const char *name = bridge_get_name(id);
 
@@ -113,8 +114,13 @@ int bridge_add_interface(int id, const char *dev)
 	strncpy(ifr.ifr_name, name, IFNAMSIZ);
 	ifr.ifr_ifindex = ifindex;
 
-	if (ioctl(bridge_socket, SIOCBRADDIF, &ifr) < 0)
-		return -errno;
+	err = ioctl(bridge_socket, SIOCBRADDIF, &ifr);
+	if (err < 0)
+		return err;
+
+	err = bnep_if_up(name, id);
+	if (err < 0)
+		return err;
 
 	return 0;
 }
