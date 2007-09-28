@@ -42,9 +42,8 @@
 #include "hal.h"
 
 #define IFACE_PREFIX "bnep%d"
-#define PANU_IFACE "pan0"
-#define GN_IFACE "pan1"
-#define NAP_IFACE "pan2"
+#define GN_IFACE "pan0"
+#define NAP_IFACE "pan1"
 
 static GMainLoop *main_loop;
 
@@ -76,8 +75,7 @@ static void read_config(const char *file)
 	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
 		error("Parsing %s failed: %s", file, err->message);
 		g_error_free(err);
-		g_key_file_free(keyfile);
-		return;
+		goto done;
 	}
 
 	disabled = g_key_file_get_string(keyfile, "General",
@@ -91,16 +89,6 @@ static void read_config(const char *file)
 			conf.connection_enabled = FALSE;
 		if (strstr(disabled, "Server"))
 			conf.server_enabled = FALSE;
-	}
-
-	conf.iface_prefix = g_key_file_get_string(keyfile, "General",
-						"InterfacePrefix", &err);
-	if (!conf.iface_prefix)
-		conf.iface_prefix = g_strdup(IFACE_PREFIX);
-	if (err) {
-		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
 	}
 
 	conf.security = !g_key_file_get_boolean(keyfile, "General",
@@ -135,10 +123,16 @@ static void read_config(const char *file)
 		err = NULL;
 	}
 
+	conf.iface_prefix = g_key_file_get_string(keyfile, "PANU Role",
+						"Interface", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
+
 	conf.gn_iface = g_key_file_get_string(keyfile, "GN Role",
 						"Interface", &err);
-	if (!conf.gn_iface)
-		conf.gn_iface = g_strdup(GN_IFACE);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);
@@ -147,13 +141,21 @@ static void read_config(const char *file)
 
 	conf.nap_iface = g_key_file_get_string(keyfile, "NAP Role",
 						"Interface", &err);
-	if (!conf.nap_iface)
-		conf.nap_iface = g_strdup(NAP_IFACE);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);
 		err = NULL;
 	}
+
+done:
+	g_key_file_free(keyfile);
+
+	if (!conf.iface_prefix)
+		conf.iface_prefix = g_strdup(IFACE_PREFIX);
+	if (!conf.gn_iface)
+		conf.gn_iface = g_strdup(GN_IFACE);
+	if (!conf.nap_iface)
+		conf.nap_iface = g_strdup(NAP_IFACE);
 
 	debug("Config options: InterfacePrefix=%s, PANU_Script=%s, "
 		"GN_Script=%s, NAP_Script=%s, GN_Interface=%s, "
@@ -161,8 +163,6 @@ static void read_config(const char *file)
 		conf.iface_prefix, conf.panu_script, conf.gn_script,
 		conf.nap_script, conf.gn_iface, conf.nap_iface,
 		conf.security ? "true" : "false");
-
-	g_key_file_free(keyfile);
 }
 
 int main(int argc, char *argv[])
