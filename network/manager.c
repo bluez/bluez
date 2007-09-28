@@ -737,6 +737,8 @@ static void parse_stored_connection(char *key, char *value, void *data)
 		id = BNEP_SVC_NAP;
 	else if (strcasecmp("gn", ptr) == 0)
 		id = BNEP_SVC_GN;
+	else if (strcasecmp("panu", ptr) == 0)
+		id = BNEP_SVC_PANU;
 	else
 		return;
 
