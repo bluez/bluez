@@ -346,11 +346,13 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	bridge = bridge_get_name(ns->id);
 	if (bridge) {
 		bnep_if_up(devname, 0);
-		if (!ns->up)
+		if (!ns->up) {
 			bnep_if_up(bridge, ns->id);
+			ns->iface = g_strdup(bridge);
+			ns->up = TRUE;
+		}
 	} else
 		bnep_if_up(devname, ns->id);
-	ns->up = TRUE;
 
 	ns->clients = g_slist_append(ns->clients, g_strdup(s->address));
 
@@ -1137,6 +1139,9 @@ static void server_unregister(DBusConnection *conn, void *data)
 	struct network_server *ns = data;
 
 	info("Unregistered server path:%s", ns->path);
+
+	if (ns->up)
+		bnep_if_down(ns->iface);
 
 	server_free(ns);
 }
