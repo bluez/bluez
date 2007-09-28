@@ -918,6 +918,22 @@ static DBusHandlerResult disable(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult is_enabled(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	struct network_server *ns = data;
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &ns->enable,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult set_name(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -1090,6 +1106,7 @@ static DBusMethodVTable server_methods[] = {
 	{ "GetUUID",		get_uuid,		"",	"s"	},
 	{ "Enable",		enable,			"",	""	},
 	{ "Disable",		disable,		"",	""	},
+	{ "IsEnabled",		is_enabled,		"",	"b"	},
 	{ "SetName",		set_name,		"s",	""	},
 	{ "GetName",		get_name,		"",	"s"	},
 	{ "SetAddressRange",	set_address_range,	"ss",	""	},

@@ -99,6 +99,10 @@ Methods		string GetUUID()
 
 			Possible errors: org.bluez.network.Error.Failed
 
+		bool IsEnabled()
+
+			Returns the server status.
+
 		void SetName(string name)
 
 			Sets the name attribute.
