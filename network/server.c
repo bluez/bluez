@@ -600,7 +600,8 @@ static gboolean connect_event(GIOChannel *chan,
 	return TRUE;
 }
 
-int server_init(DBusConnection *conn, const char *iface_prefix)
+int server_init(DBusConnection *conn, const char *iface_prefix,
+		gboolean secure)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
@@ -645,8 +646,7 @@ int server_init(DBusConnection *conn, const char *iface_prefix)
 		goto fail;
 	}
 
-	/* FIXME: Set link mode - it is applied to all servers */
-	lm = 0;
+	lm = secure? L2CAP_LM_SECURE : 0;
 	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
 		err = errno;
 		error("Failed to set link mode. %s(%d)",

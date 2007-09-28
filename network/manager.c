@@ -939,7 +939,7 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 	 * (setup connection request) contains the destination service
 	 * field that defines which service the source is connecting to.
 	 */
-	if (server_init(conn, conf->iface_prefix) < 0)
+	if (server_init(conn, conf->iface_prefix, conf->security) < 0)
 		return -1;
 
 	if (connection_init(conn, conf->iface_prefix) < 0)
