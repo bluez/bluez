@@ -115,14 +115,6 @@ Methods		string GetUUID()
 
 			TBD
 
-		void SetSecurity(bool enable)
-
-			TBD
-
-		bool GetSecurity()
-
-			Returns server encryption.
-
 		dict GetInfo()
 
 			Returns the server properties.

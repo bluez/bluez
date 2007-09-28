@@ -79,7 +79,6 @@ struct network_server {
 	char		*range;		/* IP Address range */
 	char		*path;		/* D-Bus path */
 	gboolean	enable;		/* Enable flag */
-	gboolean	secure;		/* Security flag */
 	uint32_t	record_id;	/* Service record id */
 	uint16_t	id;		/* Service class identifier */
 	GSList		*clients;	/* Active connections */
@@ -89,6 +88,7 @@ static GIOChannel *bnep_io = NULL;
 static DBusConnection *connection = NULL;
 static GSList *setup_sessions = NULL;
 static const char *prefix = NULL;
+static gboolean security = TRUE;
 
 static int store_property(bdaddr_t *src, uint16_t id,
 			const char *key, const char *value)
@@ -133,7 +133,7 @@ static void add_lang_attr(sdp_record_t *r)
 }
 
 static int create_server_record(sdp_buf_t *buf, const char *name,
-					uint16_t id, dbus_bool_t secure)
+					uint16_t id)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
 	uuid_t root_uuid, pan, l2cap, bnep;
@@ -141,7 +141,7 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 	sdp_list_t *proto[2];
 	sdp_data_t *v, *p;
 	uint16_t psm = BNEP_PSM, version = 0x0100;
-	uint16_t security_desc = (secure ? 0x0001 : 0x0000);
+	uint16_t security_desc = (security ? 0x0001 : 0x0000);
 	uint16_t net_access_type = 0xfffe;
 	uint32_t max_net_access_rate = 0;
 	const char *desc = "BlueZ PAN service";
@@ -647,6 +647,7 @@ int server_init(DBusConnection *conn, const char *iface_prefix,
 					strerror(err), err);
 		goto fail;
 	}
+	security = secure;
 
 	if (listen(sk, 1) < 0) {
 		err = errno;
@@ -701,7 +702,7 @@ static uint32_t add_server_record(struct network_server *ns)
 		return 0;
 	}
 
-	if (create_server_record(&buf, ns->name, ns->id, ns->secure) < 0) {
+	if (create_server_record(&buf, ns->name, ns->id) < 0) {
 		error("Unable to allocate new service record");
 		dbus_message_unref(msg);
 		return 0;
@@ -753,7 +754,7 @@ static int update_server_record(struct network_server *ns)
 		return -ENOMEM;
 	}
 
-	if (create_server_record(&buf, ns->name, ns->id, ns->secure) < 0) {
+	if (create_server_record(&buf, ns->name, ns->id) < 0) {
 		error("Unable to allocate new service record");
 		dbus_message_unref(msg);
 		return -1;
@@ -1015,58 +1016,6 @@ static DBusHandlerResult set_routing(DBusConnection *conn, DBusMessage *msg,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult set_security(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct network_server *ns = data;
-	DBusMessage *reply;
-	DBusError derr;
-	dbus_bool_t secure;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_BOOLEAN, &secure,
-				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-
-	ns->secure = secure;
-	if (ns->enable) {
-		if (update_server_record(ns) < 0) {
-			dbus_message_unref(reply);
-			return err_failed(conn, msg,
-				"Service record attribute update failed");
-		}
-	}
-
-	store_property(&ns->src, ns->id, "secure", "1");
-
-	return send_message_and_unref(conn, reply);
-}
-
-static DBusHandlerResult get_security(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct network_server *ns = data;
-	DBusMessage *reply;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_BOOLEAN, &ns->secure,
-			DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
-}
-
 static DBusHandlerResult get_info(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -1145,8 +1094,6 @@ static DBusMethodVTable server_methods[] = {
 	{ "GetName",		get_name,		"",	"s"	},
 	{ "SetAddressRange",	set_address_range,	"ss",	""	},
 	{ "SetRouting",		set_routing,		"s",	""	},
-	{ "SetSecurity",	set_security,		"b",	""	},
-	{ "GetSecurity",	get_security,		"",	"b"	},
 	{ "GetInfo",		get_info,		"",	"{sv}"	},
 	{ NULL, NULL, NULL, NULL }
 };
@@ -1217,14 +1164,6 @@ int server_register_from_file(const char *path, const bdaddr_t *src,
 		return -1;
 	}
 
-	ns->secure = FALSE;
-	str = textfile_get(filename, "secure");
-	if (str) {
-		if (strcmp("1", str) == 0)
-			ns->secure = TRUE;
-		g_free(str);
-	}
-
 	ns->range = textfile_get(filename, "address_range");
 	ns->iface = textfile_get(filename, "routing");
 
@@ -1286,8 +1225,6 @@ int server_store(const char *path)
 
 	if (ns->range)
 		textfile_put(filename, "range", ns->range);
-
-	textfile_put(filename, "secure", ns->secure ? "1": "0");
 
 	textfile_put(filename, "enabled", ns->enable ? "1": "0");
 
