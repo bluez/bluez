@@ -38,7 +38,7 @@ static void sbc_typefind(GstTypeFind *tf, gpointer ignore)
 {
 	guint8 *data = gst_type_find_peek(tf, 0, 1);
 
-	if (*data != 0x9c)	/* SBC syncword */
+	if (data == NULL || *data != 0x9c)	/* SBC syncword */
 		return;
 
 	gst_type_find_suggest(tf, GST_TYPE_FIND_POSSIBLE, SBC_CAPS);
