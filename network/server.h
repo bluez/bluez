@@ -20,6 +20,14 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+struct server_conf {
+	char *panu_iface;
+	char *gn_iface;
+	char *nap_iface;
+	gboolean disable_security;
+};
+
 int server_init(DBusConnection *conn);
 void server_exit();
 int server_register(const char *path, bdaddr_t *src, uint16_t id);

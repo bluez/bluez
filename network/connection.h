@@ -21,6 +21,12 @@
  *
  */
 
+struct connection_conf {
+	char *panu_script;
+	char *gn_script;
+	char *nap_script;
+};
+
 int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 		bdaddr_t *dst, uint16_t id, const char *name, const char *desc);
 int connection_store(DBusConnection *conn, const char *path,

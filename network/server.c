@@ -59,7 +59,6 @@
 #include "bridge.h"
 #include "common.h"
 #include "manager.h"
-#include "server.h"
 
 /* Pending Authorization */
 struct setup_session {

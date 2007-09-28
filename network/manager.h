@@ -21,8 +21,19 @@
  *
  */
 
+#include "connection.h"
+#include "server.h"
+
 #define MAX_PATH_LENGTH 64 /* D-Bus path */
 #define NETWORK_PATH "/org/bluez/network"
+
+struct network_conf {
+	gboolean connection_enabled;
+	gboolean server_enabled;
+	char *iface_prefix;
+	struct connection_conf conn;
+	struct server_conf server;
+};
 
 int network_init(DBusConnection *conn);
 void network_exit(void);

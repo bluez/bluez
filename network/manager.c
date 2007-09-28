@@ -50,8 +50,6 @@
 #include "error.h"
 #include "bridge.h"
 #include "manager.h"
-#include "server.h"
-#include "connection.h"
 #include "common.h"
 
 #define MAX_NAME_SIZE	256
