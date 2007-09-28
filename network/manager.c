@@ -993,8 +993,14 @@ void network_exit(void)
 
 	connection = NULL;
 
-	if (bridge_remove("pan0") < 0)
-		error("Can't remove bridge");
+	if (bridge_remove(conf->server.panu_iface) < 0)
+		error("Can't remove PANU bridge");
+
+	if (bridge_remove(conf->server.gn_iface) < 0)
+		error("Can't remove GN bridge");
+
+	if (bridge_remove(conf->server.nap_iface) < 0)
+		error("Can't remove NAP bridge");
 
 	bnep_cleanup();
 	bridge_cleanup();
