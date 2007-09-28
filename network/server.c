@@ -337,14 +337,14 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	info("Authorization succedded. New connection: %s", devname);
 	response = BNEP_SUCCESS;
 
-	if (bridge_add_interface("pan0", devname) < 0) {
+	if (bridge_add_interface(ns->bridge, devname) < 0) {
 		error("Can't add %s to the bridge: %s(%d)",
 				devname, strerror(errno), errno);
 		goto failed;
 	}
 
-	bnep_if_up(devname, TRUE);
-	bnep_if_up("pan0", TRUE);
+	bnep_if_up(devname, NULL);
+	bnep_if_up(ns->bridge, NULL);
 
 	ns->clients = g_slist_append(ns->clients, g_strdup(s->address));
 

@@ -32,17 +32,21 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <net/if.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
 
+#include <glib.h>
+
 #include "logging.h"
 #include "common.h"
 #include "textfile.h"
 
 static int ctl;
+static GSList *pids;
 
 #define PANU_UUID	"00001115-0000-1000-8000-00805f9b34fb"
 #define NAP_UUID	"00001116-0000-1000-8000-00805f9b34fb"
@@ -58,6 +62,27 @@ static struct {
 	{ "nap",	NAP_UUID,	BNEP_SVC_NAP	},
 	{ NULL }
 };
+
+struct bnep_data {
+	char *devname;
+	int pid;
+};
+
+static void script_exited(GPid pid, gint status, gpointer data)
+{
+	struct bnep_data *bnep = data;
+
+	if (WIFEXITED(status))
+		debug("%d exited with status %d", pid, WEXITSTATUS(status));
+	else
+		debug("%d was killed by signal %d", pid, WTERMSIG(status));
+
+	g_spawn_close_pid(pid);
+	pid = 0;
+
+	g_free(bnep->devname);
+	pids = g_slist_remove(pids, bnep);
+}
 
 uint16_t bnep_service_id(const char *svc)
 {
@@ -183,24 +208,80 @@ int bnep_connadd(int sk, uint16_t role, char *dev)
 	return 0;
 }
 
-int bnep_if_up(const char *devname, int up)
+static void bnep_setup(gpointer data)
 {
-	int sd, err;
+}
+
+int bnep_if_up(const char *devname, const char *script)
+{
+	int sd, err, pid;
 	struct ifreq ifr;
+	const char *argv[3];
+	struct bnep_data *bnep;
 
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
+	memset(&ifr, 0, sizeof(ifr));
 	strcpy(ifr.ifr_name, devname);
 
-	if (up)
-		ifr.ifr_flags |= IFF_UP;
-	else
-		ifr.ifr_flags &= ~IFF_UP;
+	ifr.ifr_flags |= IFF_UP;
 
-	if((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
+	if ((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
 		err = errno;
 		error("Could not bring up %d. %s(%d)", devname, strerror(err),
 			err);
 		return -err;
+	}
+
+	if (!script)
+		return 0;
+
+	argv[0] = script;
+	argv[1] = devname;
+	argv[2] = NULL;
+	if (!g_spawn_async(NULL, (char **) argv, NULL,
+				G_SPAWN_DO_NOT_REAP_CHILD, bnep_setup,
+				(gpointer) devname, &pid, NULL)) {
+		error("Unable to execute %s", argv[0]);
+		return -1;
+	}
+
+	bnep = g_new0(struct bnep_data, 1);
+	bnep->devname = g_strdup(devname);
+	bnep->pid = pid;
+	pids = g_slist_append(pids, bnep);
+	g_child_watch_add(pid, script_exited, bnep);
+
+	return pid;
+}
+
+int bnep_if_down(const char *devname)
+{
+	int sd, err;
+	struct ifreq ifr;
+	GSList *l;
+
+	sd = socket(AF_INET6, SOCK_DGRAM, 0);
+	memset(&ifr, 0, sizeof(ifr));
+	strcpy(ifr.ifr_name, devname);
+
+	ifr.ifr_flags &= ~IFF_UP;
+
+	if ((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
+		err = errno;
+		error("Could not bring down %d. %s(%d)", devname, strerror(err),
+			err);
+		return -err;
+	}
+
+	for(l = pids; l; l = g_slist_next(l)) {
+		struct bnep_data *bnep = l->data;
+
+		if (strcmp(devname, bnep->devname) == 0) {
+			if (kill(bnep->pid, SIGTERM) < 0)
+				error("kill(%d, SIGTERM): %s (%d)", bnep->pid,
+					strerror(errno), errno);
+			break;
+		}
 	}
 
 	return 0;

@@ -157,7 +157,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	bnep_if_up(nc->dev, TRUE);
+	bnep_if_up(nc->dev, nc->script);
 	dbus_connection_emit_signal(connection, nc->path,
 					NETWORK_CONNECTION_INTERFACE,
 					"Connected",
@@ -515,7 +515,7 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	bnep_if_up(nc->dev, FALSE);
+	bnep_if_down(nc->dev);
 	bnep_kill_connection(&nc->dst);
 
 	reply = dbus_message_new_method_return(msg);
@@ -590,7 +590,7 @@ static void connection_free(struct network_conn *nc)
 		g_free(nc->path);
 
 	if (nc->state == CONNECTED) {
-		bnep_if_up(nc->dev, FALSE);
+		bnep_if_down(nc->dev);
 		bnep_kill_connection(&nc->dst);
 	}
 
