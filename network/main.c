@@ -103,7 +103,7 @@ static void read_config(const char *file)
 		err = NULL;
 	}
 
-	conf.security = g_key_file_get_boolean(keyfile, "General",
+	conf.security = !g_key_file_get_boolean(keyfile, "General",
 						"DisableSecurity", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
@@ -155,8 +155,9 @@ static void read_config(const char *file)
 		err = NULL;
 	}
 
-	debug("Config options: InterfacePrefix=%s, PANUScript=%s, GNScript=%s, "
-		"NAPScript=%s, GNInterface=%s, NAPInterface=%s, Security=%s",
+	debug("Config options: InterfacePrefix=%s, PANU_Script=%s, "
+		"GN_Script=%s, NAP_Script=%s, GN_Interface=%s, "
+		"NAP_Interface=%s, Security=%s",
 		conf.iface_prefix, conf.panu_script, conf.gn_script,
 		conf.nap_script, conf.gn_iface, conf.nap_iface,
 		conf.security ? "true" : "false");

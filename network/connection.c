@@ -680,8 +680,8 @@ int connection_store(const char *path, gboolean default_path)
 	char src_addr[18], dst_addr[18];
 	int len, err;
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-		(void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection,
+				path, (void *) &nc))
 		return -ENOENT;
 
 	if (!nc->name || !nc->desc)
@@ -716,8 +716,8 @@ int connection_find_data(const char *path, const char *pattern)
 	char addr[18], key[32];
 	const char *role;
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-		(void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection,
+		path, (void *) &nc))
 		return -1;
 
 	if (strcasecmp(pattern, nc->dev) == 0)
@@ -744,8 +744,8 @@ gboolean connection_has_pending(const char *path)
 {
 	struct network_conn *nc;
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-		(void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection,
+				path, (void *) &nc))
 		return FALSE;
 
 	return (nc->state == CONNECTING);
@@ -760,8 +760,8 @@ int connection_remove_stored(const char *path)
 	char src_addr[18], dst_addr[18];
 	int err;
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-		(void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection,
+				path, (void *) &nc))
 		return -ENOENT;
 
 	ba2str(&nc->dst, dst_addr);
@@ -780,8 +780,8 @@ gboolean connection_is_connected(const char *path)
 {
 	struct network_conn *nc;
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-		(void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection,
+				path, (void *) &nc))
 		return FALSE;
 
 	return (nc->state == CONNECTED);

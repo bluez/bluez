@@ -80,6 +80,7 @@ struct network_server {
 	char		*path;		/* D-Bus path */
 	gboolean	enable;		/* Enable flag */
 	gboolean	secure;		/* Security flag */
+	gboolean	up;		/* Interface up flag */
 	uint32_t	record_id;	/* Service record id */
 	uint16_t	id;		/* Service class identifier */
 	GSList		*clients;	/* Active connections */
@@ -345,13 +346,13 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	bridge = bridge_get_name(ns->id);
 	if (bridge) {
 		bnep_if_up(devname, 0);
-		bnep_if_up(bridge, ns->id);
+		if (!ns->up)
+			bnep_if_up(bridge, ns->id);
 	} else
 		bnep_if_up(devname, ns->id);
+	ns->up = TRUE;
 
 	ns->clients = g_slist_append(ns->clients, g_strdup(s->address));
-
-	/* FIXME: Enable routing if applied */
 
 	/* FIXME: send the D-Bus message to notify the new bnep iface */
 

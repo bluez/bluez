@@ -928,12 +928,6 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 		return -1;
 	}
 
-	if (bridge_create(BNEP_SVC_GN) < 0)
-		error("Can't create GN bridge");
-
-	if (bridge_create(BNEP_SVC_NAP) < 0)
-		error("Can't create NAP bridge");
-
 	if (bnep_init(conf->panu_script, conf->gn_script, conf->nap_script)) {
 		error("Can't init bnep module");
 		return -1;
@@ -967,6 +961,12 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 		return -1;
 	}
 
+	if (bridge_create(BNEP_SVC_GN) < 0)
+		error("Can't create GN bridge");
+
+	if (bridge_create(BNEP_SVC_NAP) < 0)
+		error("Can't create NAP bridge");
+
 	connection = dbus_connection_ref(conn);
 
 	info("Registered manager path:%s", NETWORK_PATH);
@@ -984,10 +984,10 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 void network_exit(void)
 {
 	server_exit();
+	connection_exit();
 	dbus_connection_destroy_object_path(connection, NETWORK_PATH);
 
 	dbus_connection_unref(connection);
-
 	connection = NULL;
 
 	if (bridge_remove(BNEP_SVC_GN) < 0)

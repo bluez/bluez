@@ -226,6 +226,7 @@ int bnep_if_up(const char *devname, uint16_t id)
 	struct ifreq ifr;
 	const char *argv[3], *script;
 	struct bnep_data *bnep;
+	GSpawnFlags flags;
 
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
 	memset(&ifr, 0, sizeof(ifr));
@@ -256,8 +257,8 @@ int bnep_if_up(const char *devname, uint16_t id)
 	argv[0] = script;
 	argv[1] = devname;
 	argv[2] = NULL;
-	if (!g_spawn_async(NULL, (char **) argv, NULL,
-				G_SPAWN_DO_NOT_REAP_CHILD, bnep_setup,
+	flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
+	if (!g_spawn_async(NULL, (char **) argv, NULL, flags, bnep_setup,
 				(gpointer) devname, &pid, NULL)) {
 		error("Unable to execute %s", argv[0]);
 		return -1;
