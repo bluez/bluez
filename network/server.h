@@ -28,7 +28,8 @@ struct server_conf {
 	gboolean disable_security;
 };
 
-int server_init(DBusConnection *conn);
+int server_init(DBusConnection *conn, const char *iface_prefix,
+		struct server_conf *server_conf);
 void server_exit();
 int server_register(const char *path, bdaddr_t *src, uint16_t id);
 int server_register_from_file(const char *path, const bdaddr_t *src,

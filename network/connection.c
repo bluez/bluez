@@ -55,14 +55,14 @@ typedef enum {
 } conn_state;
 
 struct network_conn {
-	DBusConnection	*conn;
 	DBusMessage	*msg;
 	bdaddr_t	src;
 	bdaddr_t	dst;
 	char		*path;		/* D-Bus path */
-	char		dev[16];	/* BNEP interface name */
-	char		*name;
-	char		*desc;
+	char		dev[16];	/* Interface name */
+	char		*name;		/* Service Name */
+	char		*desc;		/* Service Description*/
+	char		*script;	/* Interface up script*/
 	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
 	int		sk;
@@ -73,15 +73,17 @@ struct __service_16 {
 	uint16_t src;
 } __attribute__ ((packed));
 
-static char netdev[16] = "bnep%d";
+static DBusConnection *connection = NULL;
+static struct connection_conf *conf = NULL;
+static const char *prefix = NULL;
 
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
 	struct network_conn *nc = data;
 
-	if (nc->conn != NULL) {
-		dbus_connection_emit_signal(nc->conn, nc->path,
+	if (connection != NULL) {
+		dbus_connection_emit_signal(connection, nc->path,
 						NETWORK_CONNECTION_INTERFACE,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
@@ -89,7 +91,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	info("%s disconnected", nc->dev);
 	nc->state = DISCONNECTED;
 	memset(nc->dev, 0, 16);
-	strncpy(nc->dev, netdev, 16);
+	strncpy(nc->dev, prefix, strlen(prefix));
 	g_io_channel_close(chan);
 	return FALSE;
 }
@@ -156,7 +158,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	bnep_if_up(nc->dev, TRUE);
-	dbus_connection_emit_signal(nc->conn, nc->path,
+	dbus_connection_emit_signal(connection, nc->path,
 					NETWORK_CONNECTION_INTERFACE,
 					"Connected",
 					DBUS_TYPE_INVALID);
@@ -166,7 +168,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	pdev = nc->dev;
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &pdev,
 					DBUS_TYPE_INVALID);
-	send_message_and_unref(nc->conn, reply);
+	send_message_and_unref(connection, reply);
 
 	nc->state = CONNECTED;
 
@@ -178,7 +180,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 failed:
 	if (nc->state != DISCONNECTED) {
 		nc->state = DISCONNECTED;
-		err_connection_failed(nc->conn, nc->msg, "bnep failed");
+		err_connection_failed(connection, nc->msg, "bnep failed");
 		g_io_channel_close(chan);
 	}
 	return FALSE;
@@ -251,7 +253,7 @@ static gboolean l2cap_connect_cb(GIOChannel *chan,
 	return FALSE;
 failed:
 	nc->state = DISCONNECTED;
-	err_connection_failed(nc->conn, nc->msg, strerror(errno));
+	err_connection_failed(connection, nc->msg, strerror(errno));
 	g_io_channel_close(chan);
 	return FALSE;
 }
@@ -597,7 +599,7 @@ static void connection_free(struct network_conn *nc)
 
 	if (nc->desc)
 		g_free(nc->desc);
-
+	
 	g_free(nc);
 	nc = NULL;
 }
@@ -632,30 +634,27 @@ static DBusSignalVTable connection_signals[] = {
 	{ NULL, NULL }
 };
 
-int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
-		bdaddr_t *dst, uint16_t id, const char *name, const char *desc)
+int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
+			uint16_t id, const char *name, const char *desc)
 {
 	struct network_conn *nc;
-
-	if (!conn)
-		return -1;
 
 	nc = g_new0(struct network_conn, 1);
 
 	/* register path */
-	if (!dbus_connection_create_object_path(conn, path, nc,
+	if (!dbus_connection_create_object_path(connection, path, nc,
 						connection_unregister)) {
 		connection_free(nc);
 		return -1;
 	}
 
-	if (!dbus_connection_register_interface(conn, path,
+	if (!dbus_connection_register_interface(connection, path,
 						NETWORK_CONNECTION_INTERFACE,
 						connection_methods,
 						connection_signals, NULL)) {
 		error("D-Bus failed to register %s interface",
 				NETWORK_CONNECTION_INTERFACE);
-		dbus_connection_destroy_object_path(conn, path);
+		dbus_connection_destroy_object_path(connection, path);
 		return -1;
 	}
 
@@ -666,17 +665,21 @@ int connection_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 	nc->name = g_strdup(name);
 	nc->desc = g_strdup(desc);
 	memset(nc->dev, 0, 16);
-	strncpy(nc->dev, netdev, 16);
+	strncpy(nc->dev, prefix, strlen(prefix));
+	if (id == BNEP_SVC_PANU)
+		nc->script = conf->panu_script;
+	else if (id == BNEP_SVC_GN)
+		nc->script = conf->gn_script;
+	else
+		nc->script = conf->nap_script;
 	nc->state = DISCONNECTED;
-	nc->conn = conn;
 
 	info("Registered connection path:%s", path);
 
 	return 0;
 }
 
-int connection_store(DBusConnection *conn, const char *path,
-			gboolean default_path)
+int connection_store(const char *path, gboolean default_path)
 {
 	struct network_conn *nc;
 	const char *role;
@@ -685,7 +688,8 @@ int connection_store(DBusConnection *conn, const char *path,
 	char src_addr[18], dst_addr[18];
 	int len, err;
 
-	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection, path,
+		(void *) &nc))
 		return -ENOENT;
 
 	if (!nc->name || !nc->desc)
@@ -714,14 +718,14 @@ int connection_store(DBusConnection *conn, const char *path,
 	return err;
 }
 
-int connection_find_data(DBusConnection *conn,
-		const char *path, const char *pattern)
+int connection_find_data(const char *path, const char *pattern)
 {
 	struct network_conn *nc;
 	char addr[18], key[32];
 	const char *role;
 
-	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection, path,
+		(void *) &nc))
 		return -1;
 
 	if (strcasecmp(pattern, nc->dev) == 0)
@@ -744,17 +748,18 @@ int connection_find_data(DBusConnection *conn,
 	return -1;
 }
 
-gboolean connection_has_pending(DBusConnection *conn, const char *path)
+gboolean connection_has_pending(const char *path)
 {
 	struct network_conn *nc;
 
-	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection, path,
+		(void *) &nc))
 		return FALSE;
 
 	return (nc->state == CONNECTING);
 }
 
-int connection_remove_stored(DBusConnection *conn, const char *path)
+int connection_remove_stored(const char *path)
 {
 	struct network_conn *nc;
 	const char *role;
@@ -763,7 +768,8 @@ int connection_remove_stored(DBusConnection *conn, const char *path)
 	char src_addr[18], dst_addr[18];
 	int err;
 
-	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection, path,
+		(void *) &nc))
 		return -ENOENT;
 
 	ba2str(&nc->dst, dst_addr);
@@ -778,12 +784,31 @@ int connection_remove_stored(DBusConnection *conn, const char *path)
 	return err;
 }
 
-gboolean connection_is_connected(DBusConnection *conn, const char *path)
+gboolean connection_is_connected(const char *path)
 {
 	struct network_conn *nc;
 
-	if (!dbus_connection_get_object_user_data(conn, path, (void *) &nc))
+	if (!dbus_connection_get_object_user_data(connection, path,
+		(void *) &nc))
 		return FALSE;
 
 	return (nc->state == CONNECTED);
+}
+
+int connection_init(DBusConnection *conn, const char *iface_prefix,
+			struct connection_conf *conn_conf)
+{
+	connection = dbus_connection_ref(conn);
+	conf = conn_conf;
+	prefix = iface_prefix;
+
+	return 0;
+}
+
+void connection_exit()
+{
+	dbus_connection_unref(connection);
+	connection = NULL;
+	conf = NULL;
+	prefix = NULL;
 }

@@ -65,13 +65,13 @@ struct pending_reply {
 	uint16_t	id;		/* Role */
 };
 
+static struct network_conf *conf = NULL;/* Network service configuration */
 static GSList *server_paths	= NULL;	/* Network registered servers paths */
 static GSList *connection_paths	= NULL;	/* Network registered connections paths */
 static int default_index = -1;		/* Network default connection path index */
+static int net_uid = 0;			/* Network objects identifier */
 
 static DBusConnection *connection = NULL;
-
-static int net_uid = 0;	/* Network objects identifier */
 
 static void pending_reply_free(struct pending_reply *pr)
 {
@@ -145,7 +145,7 @@ static const char * last_connection_used(DBusConnection *conn)
 
 	for (i = g_slist_length (connection_paths) -1; i > -1; i--) {
 		path = g_slist_nth_data (connection_paths, i);
-		if (connection_is_connected(conn, path))
+		if (connection_is_connected(path))
 			break;
 	}
 
@@ -182,16 +182,16 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 
 	/* Remove references from the storage */
 	if (*list == connection_paths) {
-		if (connection_has_pending(conn, path))
+		if (connection_has_pending(path))
 			return err_failed(conn, msg, "Connection is Busy");
 
-		connection_remove_stored(conn, path);
+		connection_remove_stored(path);
 		/* Reset default connection */
 		if (l == g_slist_nth(*list, default_index)) {
 			const char *dpath;
 
 			dpath = last_connection_used(conn);
-			connection_store(conn, dpath, TRUE);
+			connection_store(dpath, TRUE);
 		}
 	}
 
@@ -274,13 +274,13 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 				d->unitSize, d->val.str);
 	}
 
-	if (connection_register(pr->conn, pr->path, &pr->src,
-				&pr->dst, pr->id, name, desc) < 0) {
+	if (connection_register(pr->path, &pr->src, &pr->dst, pr->id, name,
+				desc) < 0) {
 		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
 		goto fail;
 	}
 
-	connection_store(pr->conn, pr->path, FALSE);
+	connection_store(pr->path, FALSE);
 	connection_paths = g_slist_append(connection_paths, g_strdup(pr->path));
 
 	create_path(pr->conn, pr->msg, pr->path, "ConnectionCreated");
@@ -463,7 +463,7 @@ static GSList * find_connection_pattern(DBusConnection *conn,
 
 	for (list = connection_paths; list; list = list->next) {
 		path = (const char *) list->data;
-		if (connection_find_data(conn, path, pattern) == 0)
+		if (connection_find_data(path, pattern) == 0)
 			break;
 	}
 
@@ -538,7 +538,7 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 
 	/* Checks if the connection was already been made */
 	for (l = connection_paths; l; l = l->next) {
-		if (connection_find_data(conn, l->data, key) == 0) {
+		if (connection_find_data(l->data, key) == 0) {
 			err_already_exists(conn, msg,
 						"Connection Already exists");
 			return DBUS_HANDLER_RESULT_HANDLED;
@@ -616,7 +616,7 @@ static DBusHandlerResult default_connection(DBusConnection *conn,
 
 	if (path == NULL) {
 		path = last_connection_used(conn);
-		connection_store(conn, path, TRUE);
+		connection_store(path, TRUE);
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -670,7 +670,7 @@ static DBusHandlerResult change_default_connection(DBusConnection *conn,
 		path = list->data;
 
 	default_index = g_slist_position (connection_paths, list);
-	connection_store(connection, path, TRUE);
+	connection_store(path, TRUE);
 
 	dbus_connection_emit_signal(connection, NETWORK_PATH,
 					NETWORK_MANAGER_INTERFACE,
@@ -760,8 +760,7 @@ static void parse_stored_connection(char *key, char *value, void *data)
 		return;
 	}
 
-	if (connection_register(connection, path, src,
-				&dst, id, name, ptr) == 0) {
+	if (connection_register(path, src, &dst, id, name, ptr) == 0) {
 		char *rpath = g_strdup(path);
 		connection_paths = g_slist_append(connection_paths, rpath);
 	}
@@ -920,15 +919,23 @@ static DBusSignalVTable manager_signals[] = {
 	{ NULL, NULL }
 };
 
-int network_init(DBusConnection *conn)
+int network_init(DBusConnection *conn, struct network_conf *service_conf)
 {
+	conf = service_conf;
+
 	if (bridge_init() < 0) {
 		error("Can't init bridge module");
 		return -1;
 	}
 
-	if (bridge_create("pan0") < 0)
-		error("Can't create bridge");
+	if (bridge_create(conf->server.panu_iface) < 0)
+		error("Can't create PANU bridge");
+
+	if (bridge_create(conf->server.gn_iface) < 0)
+		error("Can't create GN bridge");
+
+	if (bridge_create(conf->server.nap_iface) < 0)
+		error("Can't create NAP bridge");
 
 	if (bnep_init()) {
 		error("Can't init bnep module");
@@ -941,9 +948,11 @@ int network_init(DBusConnection *conn)
 	 * (setup connection request) contains the destination service
 	 * field that defines which service the source is connecting to.
 	 */
-	if (server_init(conn) < 0) {
+	if (server_init(conn, conf->iface_prefix, &conf->server) < 0)
 		return -1;
-	}
+
+	if (connection_init(conn, conf->iface_prefix, &conf->conn) < 0)
+ 		return -1;
 
 	if (!dbus_connection_create_object_path(conn, NETWORK_PATH,
 						NULL, manager_unregister)) {

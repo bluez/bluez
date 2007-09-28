@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 
 	hal_create_device(NULL);
 
-	if (network_init(conn) < 0) {
+	if (network_init(conn, &conf) < 0) {
 		dbus_connection_unref(conn);
 		g_main_loop_unref(main_loop);
 		exit(1);

@@ -73,22 +73,24 @@ struct setup_session {
 
 /* Main server structure */
 struct network_server {
-	bdaddr_t		src;		/* Bluetooth Local Address */
-	char			*iface;		/* Routing interface */
-	char			*name;		/* Server service name */
-	char			*range;		/* IP Address range */
-	char			*path;		/* D-Bus path */
-	gboolean		enable;		/* Enable flag*/
-	gboolean		secure;		/* Security flag*/
-	uint32_t		record_id;	/* Service record id */
-	uint16_t		id;		/* Service class identifier */
-	GSList			*clients;	/* Active connections */
+	bdaddr_t	src;		/* Bluetooth Local Address */
+	char		*bridge;	/* Bridge interface */
+	char		*iface;		/* Routing interface */
+	char		*name;		/* Server service name */
+	char		*range;		/* IP Address range */
+	char		*path;		/* D-Bus path */
+	gboolean	enable;		/* Enable flag */
+	gboolean	secure;		/* Security flag */
+	uint32_t	record_id;	/* Service record id */
+	uint16_t	id;		/* Service class identifier */
+	GSList		*clients;	/* Active connections */
 };
 
-static char netdev[16] = "bnep%d";
+static struct server_conf *conf = NULL;
 static GIOChannel *bnep_io = NULL;
 static DBusConnection *connection = NULL;
 static GSList *setup_sessions = NULL;
+static const char *prefix = NULL;
 
 static int store_property(bdaddr_t *src, uint16_t id,
 			const char *key, const char *value)
@@ -327,7 +329,7 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	}
 
 	memset(devname, 0, 16);
-	strncpy(devname, netdev, 16);
+	strncpy(devname, prefix, strlen(prefix));
 
 	if (bnep_connadd(s->nsk, s->dst_role, devname) < 0)
 		goto failed;
@@ -592,7 +594,8 @@ static gboolean connect_event(GIOChannel *chan,
 	return TRUE;
 }
 
-int server_init(DBusConnection *conn)
+int server_init(DBusConnection *conn, const char *iface_prefix,
+		struct server_conf *server_conf)
 {
 	struct l2cap_options l2o;
 	struct sockaddr_l2 l2a;
@@ -653,6 +656,8 @@ int server_init(DBusConnection *conn)
 	}
 
 	connection = dbus_connection_ref(conn);
+	conf = server_conf;
+	prefix = iface_prefix;
 
 	bnep_io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(bnep_io, FALSE);
@@ -682,6 +687,7 @@ void server_exit()
 
 	dbus_connection_unref(connection);
 	connection = NULL;
+	conf = NULL;
 }
 
 static uint32_t add_server_record(struct network_server *ns)
@@ -1190,6 +1196,12 @@ int server_register(const char *path, bdaddr_t *src, uint16_t id)
 
 	ns->path = g_strdup(path);
 	ns->id = id;
+	if (id == BNEP_SVC_NAP)
+		ns->bridge = conf->nap_iface;
+	else if (id == BNEP_SVC_GN)
+		ns->bridge = conf->gn_iface;
+	else
+		ns->bridge = conf->panu_iface;
 	bacpy(&ns->src, src);
 
 	info("Registered server path:%s", path);
@@ -1208,6 +1220,12 @@ int server_register_from_file(const char *path, const bdaddr_t *src,
 	bacpy(&ns->src, src);
 	ns->path = g_strdup(path);
 	ns->id = id;
+	if (id == BNEP_SVC_NAP)
+		ns->bridge = conf->nap_iface;
+	else if (id == BNEP_SVC_GN)
+		ns->bridge = conf->gn_iface;
+	else
+		ns->bridge = conf->panu_iface;
 	ns->name = textfile_get(filename, "name");
 	if (!ns->name) {
 		/* Name is mandatory */

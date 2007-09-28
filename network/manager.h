@@ -35,7 +35,7 @@ struct network_conf {
 	struct server_conf server;
 };
 
-int network_init(DBusConnection *conn);
+int network_init(DBusConnection *conn, struct network_conf *service_conf);
 void network_exit(void);
 
 int network_del_stored_info(bdaddr_t *src, uint16_t uuid);
