@@ -515,8 +515,7 @@ Methods		dict GetInfo()
 
 			Returns the local adapter name (friendly name) in UTF-8.
 
-			Possible errors: org.bluez.Error.NotReady
-					 org.bluez.Error.Failed
+			Possible errors: org.bluez.Error.Failed
 
 		void SetName(string name)
 
