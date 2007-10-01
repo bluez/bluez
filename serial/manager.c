@@ -614,6 +614,12 @@ static int get_record(struct pending_connect *pc, uint32_t handle,
 			DBUS_TYPE_UINT32, &handle,
 			DBUS_TYPE_INVALID);
 
+	/* Unref get_handles pending call */
+	if (pc->pcall) {
+		dbus_pending_call_unref(pc->pcall);
+		pc->pcall = NULL;
+	}
+
 	if (!dbus_connection_send_with_reply(pc->conn, msg, &pc->pcall, -1)) {
 		error("Can't send D-Bus message.");
 		dbus_message_unref(msg);
