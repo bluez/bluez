@@ -1083,9 +1083,6 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 	char *str_ptr;
 	int ecode;
 
-	if (!adapter->up)
-		return error_not_ready(conn, msg);
-
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &str_ptr,
 				DBUS_TYPE_INVALID))
@@ -1096,14 +1093,18 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg);
 	}
 
-	hci_devba(adapter->dev_id, &bdaddr);
+	str2ba(adapter->address, &bdaddr);
 
 	write_local_name(&bdaddr, str_ptr);
+
+	if (!adapter->up)
+		goto done;
 
 	ecode = set_device_name(adapter->dev_id, str_ptr);
 	if (ecode < 0)
 		return error_failed(conn, msg, -ecode);
 
+done:
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
