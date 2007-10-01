@@ -449,6 +449,8 @@ static int rfcomm_connect(struct pending_connect *pc)
 		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
 			error("connect() failed: %s (%d)",
 					strerror(errno), errno);
+			g_io_channel_unref(pc->io);
+			pc->io = NULL;
 			goto fail;
 		}
 
