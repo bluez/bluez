@@ -88,8 +88,6 @@ struct audio_sdp_data {
 
 	audio_sdp_state_t state;
 
-	gboolean remove_on_fail;
-
 	create_dev_cb_t cb;
 	void *cb_data;
 };
@@ -124,6 +122,11 @@ static struct device *create_device(bdaddr_t *bda)
 	return device_register(connection, path, bda);
 }
 
+static void destroy_device(struct device *device)
+{
+	dbus_connection_destroy_object_path(connection, device->path);
+}
+
 static void remove_device(struct device *device)
 {
 	if (device == default_dev) {
@@ -138,7 +141,7 @@ static void remove_device(struct device *device)
 
 	devices = g_slist_remove(devices, device);
 
-	dbus_connection_destroy_object_path(connection, device->path);
+	destroy_device(device);
 }
 
 static gboolean add_device(struct device *device, gboolean send_signals)
@@ -297,12 +300,8 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 
 	device_finish_sdp_transaction(data->device);
 
-	if (!success) {
-		error("finish_sdp: SDP failed");
-		if (data->msg)
-			err_failed(connection, data->msg, "Failed");
+	if (!success)
 		goto done;
-	}
 
 	if (!data->msg)
 		goto update;
@@ -353,10 +352,10 @@ done:
 		if (data->cb)
 			data->cb(data->device, data->cb_data);
 	} else {
-		if (data->remove_on_fail)
-			remove_device(data->device);
 		if (data->cb)
 			data->cb(NULL, data->cb_data);
+		if (!g_slist_find(devices, data->device))
+			destroy_device(data->device);
 	}
 	if (data->msg)
 		dbus_message_unref(data->msg);
@@ -593,7 +592,6 @@ failed:
 
 static DBusHandlerResult resolve_services(DBusMessage *msg,
 						struct device *device,
-						gboolean remove_on_fail,
 						create_dev_cb_t cb,
 						void *user_data)
 {
@@ -603,7 +601,6 @@ static DBusHandlerResult resolve_services(DBusMessage *msg,
 	if (msg)
 		sdp_data->msg = dbus_message_ref(msg);
 	sdp_data->device = device;
-	sdp_data->remove_on_fail = remove_on_fail;
 	sdp_data->cb = cb;
 	sdp_data->cb_data = user_data;
 
@@ -622,7 +619,7 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 		if (!device)
 			return NULL;
 		if (!add_device(device, TRUE)) {
-			remove_device(device);
+			destroy_device(device);
 			return NULL;
 		}
 		created = TRUE;
@@ -658,7 +655,7 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 						"DeviceCreated",
 						DBUS_TYPE_STRING, &path,
 						DBUS_TYPE_INVALID);
-		resolve_services(NULL, device, FALSE, NULL, NULL);
+		resolve_services(NULL, device, NULL, NULL);
 	}
 
 	if (headset)
@@ -698,7 +695,7 @@ gboolean manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
 	if (!dev)
 		return FALSE;
 
-	resolve_services(NULL, dev, TRUE, cb, user_data);
+	resolve_services(NULL, dev, cb, user_data);
 
 	return TRUE;
 }
@@ -729,7 +726,7 @@ static DBusHandlerResult am_create_device(DBusConnection *conn,
 	device = manager_find_device(&bda, NULL, FALSE);
 	if (!device) {
 		device = create_device(&bda);
-		return resolve_services(msg, device, TRUE, NULL, NULL);
+		return resolve_services(msg, device, NULL, NULL);
 	}
 
 	path = device->path;
