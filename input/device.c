@@ -665,7 +665,8 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 	}
 
 	idev->intr_sk = isk;
-	err = hidp_connadd(&idev->src, &idev->dst, idev->ctrl_sk, idev->intr_sk, idev->name);
+	err = hidp_connadd(&idev->src, &idev->dst,
+			idev->ctrl_sk, idev->intr_sk, idev->name);
 	if (err < 0)
 		goto failed;
 

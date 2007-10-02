@@ -140,6 +140,7 @@ static int get_record(struct pending_req *pr, uint32_t handle,
 
 	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
 		error("Can't send D-Bus message.");
+		dbus_message_unref(msg);
 		return -1;
 	}
 
@@ -158,7 +159,7 @@ static int get_handles(struct pending_req *pr, const char *uuid,
 	char addr[18];
 	const char *paddr = addr;
 
-	msg  = dbus_message_new_method_call("org.bluez", pr->adapter_path,
+	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
 			"org.bluez.Adapter", "GetRemoteServiceHandles");
 	if (!msg)
 		return -1;
@@ -171,6 +172,7 @@ static int get_handles(struct pending_req *pr, const char *uuid,
 	
 	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
 		error("Can't send D-Bus message.");
+		dbus_message_unref(msg);
 		return -1;
 	}
 
