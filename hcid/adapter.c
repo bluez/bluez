@@ -248,7 +248,20 @@ const char *mode2str(uint8_t mode)
 	}
 }
 
-uint8_t str2mode(const char *mode)
+static uint8_t on_mode(const char *addr)
+{
+	char mode[14];
+	bdaddr_t sba;
+
+	str2ba(addr, &sba);
+
+	if (read_on_mode(&sba, mode, sizeof(mode)) < 0)
+		return MODE_CONNECTABLE;
+
+	return str2mode(addr, mode);
+}
+
+uint8_t str2mode(const char *addr, const char *mode)
 {
 	if (strcasecmp("off", mode) == 0)
 		return MODE_OFF;
@@ -258,6 +271,8 @@ uint8_t str2mode(const char *mode)
 		return MODE_DISCOVERABLE;
 	else if (strcasecmp("limited", mode) == 0)
 		return MODE_LIMITED;
+	else if (strcasecmp("on", mode) == 0)
+		return on_mode(addr);
 	else
 		return MODE_UNKNOWN;
 }
@@ -531,7 +546,7 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	if (!mode)
 		return error_invalid_arguments(conn, msg);
 
-	new_mode = str2mode(mode);
+	new_mode = str2mode(adapter->address, mode);
 	switch(new_mode) {
 	case MODE_OFF:
 		scan_enable = SCAN_DISABLED;
@@ -546,6 +561,9 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	default:
 		return error_invalid_arguments(conn, msg);
 	}
+
+	/* Do reverse resolution in case of "on" mode */
+	mode = mode2str(new_mode);
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)

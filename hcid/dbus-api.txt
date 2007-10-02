@@ -380,7 +380,11 @@ Methods		dict GetInfo()
 		void SetMode(string mode)
 
 			Sets mode of the adapter. See GetMode for valid strings
-			for the mode parameter.
+			for the mode parameter. In addition to the valid strings
+			for GetMode, this method also supports a special
+			parameter value "on" which will change the mode to the
+			previous non-off mode (or do nothing if the current
+			mode isn't "off").
 
 			Possible errors: org.bluez.Error.NoSuchAdapter
 					 org.bluez.Error.Failed

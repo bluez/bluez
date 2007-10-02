@@ -115,6 +115,8 @@ const char *minor_class_str(uint32_t class);
 
 const char *mode2str(uint8_t mode);
 
+uint8_t str2mode(const char *addr, const char *mode);
+
 GSList *service_classes_str(uint32_t class);
 
 int pending_remote_name_cancel(struct adapter *adapter);
