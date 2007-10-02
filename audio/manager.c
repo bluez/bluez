@@ -88,6 +88,8 @@ struct audio_sdp_data {
 
 	audio_sdp_state_t state;
 
+	gboolean remove_on_fail;
+
 	create_dev_cb_t cb;
 	void *cb_data;
 };
@@ -295,8 +297,12 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 
 	device_finish_sdp_transaction(data->device);
 
-	if (!success)
+	if (!success) {
+		error("finish_sdp: SDP failed");
+		if (data->msg)
+			err_failed(connection, data->msg, "Failed");
 		goto done;
+	}
 
 	if (!data->msg)
 		goto update;
@@ -309,6 +315,7 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 	if (dbus_error_is_set(&derr)) {
 		error("Unable to get message args");
 		success = FALSE;
+		err_failed(connection, data->msg, derr.message);
 		dbus_error_free(&derr);
 		goto done;
 	}
@@ -346,7 +353,8 @@ done:
 		if (data->cb)
 			data->cb(data->device, data->cb_data);
 	} else {
-		remove_device(data->device);
+		if (data->remove_on_fail)
+			remove_device(data->device);
 		if (data->cb)
 			data->cb(NULL, data->cb_data);
 	}
@@ -585,6 +593,7 @@ failed:
 
 static DBusHandlerResult resolve_services(DBusMessage *msg,
 						struct device *device,
+						gboolean remove_on_fail,
 						create_dev_cb_t cb,
 						void *user_data)
 {
@@ -594,6 +603,7 @@ static DBusHandlerResult resolve_services(DBusMessage *msg,
 	if (msg)
 		sdp_data->msg = dbus_message_ref(msg);
 	sdp_data->device = device;
+	sdp_data->remove_on_fail = remove_on_fail;
 	sdp_data->cb = cb;
 	sdp_data->cb_data = user_data;
 
@@ -648,7 +658,7 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 						"DeviceCreated",
 						DBUS_TYPE_STRING, &path,
 						DBUS_TYPE_INVALID);
-		resolve_services(NULL, device, NULL, NULL);
+		resolve_services(NULL, device, FALSE, NULL, NULL);
 	}
 
 	if (headset)
@@ -688,7 +698,7 @@ gboolean manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
 	if (!dev)
 		return FALSE;
 
-	resolve_services(NULL, dev, cb, user_data);
+	resolve_services(NULL, dev, TRUE, cb, user_data);
 
 	return TRUE;
 }
@@ -719,7 +729,7 @@ static DBusHandlerResult am_create_device(DBusConnection *conn,
 	device = manager_find_device(&bda, NULL, FALSE);
 	if (!device) {
 		device = create_device(&bda);
-		return resolve_services(msg, device, NULL, NULL);
+		return resolve_services(msg, device, TRUE, NULL, NULL);
 	}
 
 	path = device->path;
