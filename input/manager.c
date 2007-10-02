@@ -356,6 +356,9 @@ cleanup:
 	close(pr->ctrl_sock);
 	pending_req_free(pr);
 
+	if (hidp.rd_data)
+		g_free(hidp.rd_data);
+
 	return FALSE;
 }
 
