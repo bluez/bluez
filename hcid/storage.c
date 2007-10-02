@@ -95,7 +95,7 @@ int write_device_mode(bdaddr_t *bdaddr, const char *mode)
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	if (strcmp(mode, "off") != 0)
-		textfile_put(filename, "on", mode);
+		textfile_put(filename, "onmode", mode);
 
 	return textfile_put(filename, "mode", mode);
 }
@@ -124,7 +124,7 @@ int read_on_mode(bdaddr_t *bdaddr, char *mode, int length)
 
 	create_filename(filename, PATH_MAX, bdaddr, "config");
 
-	str = textfile_get(filename, "on");
+	str = textfile_get(filename, "onmode");
 	if (!str)
 		return -ENOENT;
 
