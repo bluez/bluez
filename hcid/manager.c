@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -101,6 +102,50 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static int find_by_address(const char *str)
+{
+	struct hci_dev_list_req *dl;
+	struct hci_dev_req *dr;
+	bdaddr_t ba;
+	int i, sk;
+	int devid = -1;
+	
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0)
+		return -1;
+
+	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
+
+	dl->dev_num = HCI_MAX_DEV;
+	dr = dl->dev_req;
+
+	if (ioctl(sk, HCIGETDEVLIST, dl) < 0)
+		goto out;
+
+	dr = dl->dev_req;
+	str2ba(str, &ba);
+
+	for (i = 0; i < dl->dev_num; i++, dr++) {
+		struct hci_dev_info di;
+
+		if (hci_devinfo(dr->dev_id, &di) < 0)
+			continue;
+
+		if (hci_test_bit(HCI_RAW, &di.flags))
+			continue;
+
+		if (!bacmp(&ba, &di.bdaddr)) {
+			devid = dr->dev_id;
+			break;
+		}
+	}
+
+out:
+	g_free(dl);
+	close(sk);
+	return devid;
+}
+
 static DBusHandlerResult find_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -115,7 +160,13 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
-	dev_id = hci_devid(pattern);
+	/* hci_devid() would make sense to use here, except it
+	   is restricted to devices which are up */
+	if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4)
+		dev_id = atoi(pattern + 3);
+	else
+		dev_id = find_by_address(pattern);
+
 	if (dev_id < 0)
 		return error_no_such_adapter(conn, msg);
 
