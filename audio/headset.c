@@ -346,10 +346,9 @@ static GIOError headset_send(struct headset *hs, const char *str)
 static void pending_connect_ok(struct pending_connect *c, struct device *dev)
 {
 	struct headset *hs = dev->headset;
-	DBusMessage *reply;
 
 	if (c->msg) {
-		reply = dbus_message_new_method_return(c->msg);
+		DBusMessage *reply = dbus_message_new_method_return(c->msg);
 		if (reply)
 			send_message_and_unref(dev->conn, reply);
 	}
@@ -389,7 +388,7 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct headset *hs;
 	struct pending_connect *c;
-	int ret, sk, err;
+	int ret, sk;
 	socklen_t len;
 
 	if (cond & G_IO_NVAL)
@@ -402,13 +401,14 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	len = sizeof(ret);
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		c->err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(c->err),
+				c->err);
 		goto failed;
 	}
 
 	if (ret != 0) {
-		err = ret;
+		c->err = ret;
 		error("connect(): %s (%d)", strerror(ret), ret);
 		goto failed;
 	}
@@ -511,7 +511,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 	struct headset *hs;
 	struct pending_connect *c;
 	char hs_address[18];
-	int sk, ret, err = 0;
+	int sk, ret;
 	socklen_t len;
 
 	if (cond & G_IO_NVAL)
@@ -524,13 +524,13 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	len = sizeof(ret);
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
+		c->err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(c->err), c->err);
 		goto failed;
 	}
 
 	if (ret != 0) {
-		err = ret;
+		c->err = ret;
 		error("connect(): %s (%d)", strerror(ret), ret);
 		goto failed;
 	}
@@ -547,8 +547,10 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 			(GIOFunc) rfcomm_io_cb, device);
 
 	if (c->cb) {
-		if (sco_connect(device, c) < 0)
+		if (sco_connect(device, c) < 0) {
+			c->err = EIO;
 			goto failed;
+		}
 		return FALSE;
 	}
 
@@ -654,11 +656,10 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 
 	hs->rfcomm_ch = ch;
 
-	if ((err = rfcomm_connect(device, NULL)) < 0) {
-		error("Unable to connect");
-		if (c->msg)
-			err_connect_failed(device->conn, c->msg,
-						strerror(-err));
+	err = rfcomm_connect(device, NULL);
+	if (err < 0) {
+		error("Unable to connect: %s (%s)", strerror(-err), -err);
+		c->err = -err;
 		goto failed;
 	}
 
@@ -671,8 +672,11 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	return;
 
 failed_not_supported:
-	if (c->msg)
+	if (c->msg) {
 		err_not_supported(device->conn, c->msg);
+		dbus_message_unref(c->msg);
+		c->msg = NULL;
+	}
 failed:
 	if (classes)
 		sdp_list_free(classes, free);
@@ -783,6 +787,11 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 failed:
 	if (msg)
 		dbus_message_unref(msg);
+	/* The reply was already sent above */
+	if (c->msg) {
+		dbus_message_unref(c->msg);
+		c->msg = NULL;
+	}
 	dbus_message_unref(reply);
 	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
 	g_slist_free(hs->pending);
