@@ -217,7 +217,7 @@ static DBusMethodVTable port_methods[] = {
 	{ "GetAdapter",		port_get_adapter,	"",	"s"	},
 	{ "GetName",		port_get_name,		"",	"s"	},
 	{ "GetServiceName",	port_get_service_name,	"",	"s"	},
-	{ "GetInfo",		port_get_info,		"",	"{sv}"	},
+	{ "GetInfo",		port_get_info,		"",	"a{sv}"	},
 	{ NULL, NULL, NULL, NULL },
 };
 

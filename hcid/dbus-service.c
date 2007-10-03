@@ -647,7 +647,7 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 }
 
 static DBusMethodVTable service_methods[] = {
-	{ "GetInfo",		get_info,		"",	"{sv}"	},
+	{ "GetInfo",		get_info,		"",	"a{sv}"	},
 	{ "GetIdentifier",	get_identifier,		"",	"s"	},
 	{ "GetName",		get_name,		"",	"s"	},
 	{ "GetDescription",	get_description,	"",	"s"	},

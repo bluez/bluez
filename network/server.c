@@ -1111,7 +1111,7 @@ static DBusMethodVTable server_methods[] = {
 	{ "GetName",		get_name,		"",	"s"	},
 	{ "SetAddressRange",	set_address_range,	"ss",	""	},
 	{ "SetRouting",		set_routing,		"s",	""	},
-	{ "GetInfo",		get_info,		"",	"{sv}"	},
+	{ "GetInfo",		get_info,		"",	"a{sv}"	},
 	{ NULL, NULL, NULL, NULL }
 };
 

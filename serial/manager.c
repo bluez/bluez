@@ -1631,7 +1631,7 @@ static DBusHandlerResult proxy_set_serial_params(DBusConnection *conn,
 static DBusMethodVTable proxy_methods[] = {
 	{ "Enable",			proxy_enable,			"",	""	},
 	{ "Disable",			proxy_disable,			"",	""	},
-	{ "GetInfo",			proxy_get_info,			"",	"{sv}"	},
+	{ "GetInfo",			proxy_get_info,			"",	"a{sv}"	},
 	{ "SetSerialParameters",	proxy_set_serial_params, 	"syys",	""	},
 	{ NULL, NULL, NULL, NULL },
 };

@@ -622,7 +622,7 @@ static DBusMethodVTable connection_methods[] = {
 	{ "CancelConnect",	connection_cancel,	"",	""	},
 	{ "Disconnect",		connection_disconnect,	"",	""	},
 	{ "IsConnected",	is_connected,		"",	"b"	},
-	{ "GetInfo",		get_info,		"",	"{sv}",	},
+	{ "GetInfo",		get_info,		"",	"a{sv}" },
 	{ NULL, NULL, NULL, NULL }
 };
 
