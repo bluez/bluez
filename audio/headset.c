@@ -1246,8 +1246,7 @@ done:
 						"SpeakerGainChanged",
 						DBUS_TYPE_UINT16, &gain,
 						DBUS_TYPE_INVALID);
-	}
-	else {
+	} else {
 		hs->mic_gain = gain;
 		dbus_connection_emit_signal(conn, device->path,
 						AUDIO_HEADSET_INTERFACE,
@@ -1554,8 +1553,7 @@ void headset_set_state(struct device *dev, headset_state_t state)
 						AUDIO_HEADSET_INTERFACE,
 						"Connected",
 						DBUS_TYPE_INVALID);
-		}
-		else {
+		} else {
 			close_sco(dev);
 			dbus_connection_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,

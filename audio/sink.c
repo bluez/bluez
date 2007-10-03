@@ -148,8 +148,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		reply = dbus_message_new_method_return(pending->msg);
 		send_message_and_unref(pending->conn, reply);
 		debug("Stream successfully created");
-	}
-	else {
+	} else {
 		err_failed(pending->conn, pending->msg, "Stream setup failed");
 		avdtp_unref(sink->session);
 		sink->session = NULL;
