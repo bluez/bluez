@@ -60,23 +60,27 @@ static gboolean io_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	memset(buf, 0, sizeof(buf));
 
 	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1, &len);
-	if (err == G_IO_ERROR_AGAIN)
-		return TRUE;
+	if (err != G_IO_ERROR_NONE) {
+		if (err == G_IO_ERROR_AGAIN)
+			return TRUE;
+		error("Reading from inotify channel failed");
+		return FALSE;
+	}
+		
 
 	while (len >= sizeof(struct inotify_event)) {
 		struct inotify_event *evt = (struct inotify_event *) ptr;
 
-		if (evt->wd != wd || !callback)
-			continue;
+		if (evt->wd == wd && callback) {
+			if (evt->mask & (IN_CREATE | IN_MOVED_TO))
+				callback(NOTIFY_CREATE, evt->name, NULL);
 
-		if (evt->mask & (IN_CREATE | IN_MOVED_TO))
-			callback(NOTIFY_CREATE, evt->name, NULL);
+			if (evt->mask & (IN_DELETE | IN_MOVED_FROM))
+				callback(NOTIFY_DELETE, evt->name, NULL);
 
-		if (evt->mask & (IN_DELETE | IN_MOVED_FROM))
-			callback(NOTIFY_DELETE, evt->name, NULL);
-
-		if (evt->mask & IN_MODIFY)
-			callback(NOTIFY_MODIFY, evt->name, NULL);
+			if (evt->mask & IN_MODIFY)
+				callback(NOTIFY_MODIFY, evt->name, NULL);
+		}
 
 		len -= sizeof(struct inotify_event) + evt->len;
 		ptr += sizeof(struct inotify_event) + evt->len;
