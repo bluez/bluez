@@ -832,6 +832,10 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	sbc_extended_t res;
 	sbc_extended_t t[8];
 
+#if 0
+	/* temporary results */
+	sbc_extended_t s[8];
+#endif
 	out[0] = out[1] = out[2] = out[3] = out[4] = out[5] = out[6] = out[7] = 0;
 	
 	MUL(res,  _sbc_proto_8[0], (in[16] - in[64])); // Q18 = Q18 * Q0
@@ -920,6 +924,7 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	MULA(res, -_sbc_proto_8[21], in[75]);
 	t[7] = SCALE8_STAGE1(res);
 
+#if 1
 	MUL(res, _anamatrix8[0], t[0]); // = Q14 * Q10
 	MULA(res, _anamatrix8[7], t[1]);
 	MULA(res, _anamatrix8[2], t[2]);
@@ -999,6 +1004,38 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	MULA(res, _anamatrix8[1], t[6]);
 	MULA(res, -_anamatrix8[5], t[7]);
 	out[7] = SCALE8_STAGE2(res);
+#else
+	MUL(s[0], _anamatrix8[0], t[0]);
+	MULA(s[0], _anamatrix8[1], t[6]);
+	MUL(s[1], _anamatrix8[7], t[1]);
+	MUL(s[2], _anamatrix8[2], t[3]);
+	MULA(s[2], _anamatrix8[3], t[4]);
+	MULA(s[2], _anamatrix8[4], t[5]);
+	MULA(s[2], _anamatrix8[5], t[7]);
+	MUL(s[3], _anamatrix8[6], t[4]);
+	MUL(s[4], _anamatrix8[3], t[2]);
+	MULA(s[4], -_anamatrix8[5], t[3]);
+	MULA(s[4], -_anamatrix8[2], t[5]);
+	MULA(s[4], -_anamatrix8[4], t[7]);
+	MUL(s[5], _anamatrix8[4], t[2]);
+	MULA(s[5], -_anamatrix8[2], t[3]);
+	MULA(s[5], _anamatrix8[5], t[5]);
+	MULA(s[5], _anamatrix8[3], t[7]);
+	MUL(s[6], _anamatrix8[1], t[0]);
+	MULA(s[6], -_anamatrix8[0], t[6]);
+	MUL(s[7], _anamatrix8[5], t[2]);
+	MULA(s[7], -_anamatrix8[4], t[3]);
+	MULA(s[7], _anamatrix8[3], t[5]);
+	MULA(s[7], _anamatrix8[2], t[7]);
+	out[0] = SCALE8_STAGE2( s[0] + s[1] + s[2] + s[3]);
+	out[1] = SCALE8_STAGE2( s[1] - s[3] + s[4] + s[6]);
+	out[2] = SCALE8_STAGE2( s[1] - s[3] + s[5] - s[6]);
+	out[3] = SCALE8_STAGE2(-s[0] + s[1] + s[3] + s[7]);
+	out[4] = SCALE8_STAGE2(-s[0] + s[1] + s[3] - s[7]);
+	out[5] = SCALE8_STAGE2( s[1] - s[3] - s[5] + s[6]);
+	out[6] = SCALE8_STAGE2( s[1] - s[3] - s[4] + s[6]);
+	out[7] = SCALE8_STAGE2( s[0] + s[1] - s[2] + s[3]);
+#endif
 }
 
 static inline void sbc_analyze_eight(struct sbc_encoder_state *state,
