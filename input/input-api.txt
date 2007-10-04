@@ -16,9 +16,7 @@ Methods		array{string} ListDevices()
 
 		string CreateDevice(string address)
 
-			Create an input device object. The HID service
-			record will be retrieved and the pairing will
-			be initiated if needed.
+			Create an input device object.
 
 			On success it will return the path of the
 			newly created device object.
@@ -26,6 +24,20 @@ Methods		array{string} ListDevices()
 			Possible errors: org.bluez.input.AlreadyExists
 			                 org.bluez.input.NotSupported
 			                 org.bluez.input.ConnectionAttemptFailed
+			                 org.bluez.input.Failed
+
+		string CreateSecureDevice(string address)
+
+			Create an input device object. Pairing will
+			be initiated if needed(keyboard/combo devices).
+
+			On success it will return the path of the
+			newly created device object.
+
+			Possible errors: org.bluez.input.AlreadyExists
+			                 org.bluez.input.NotSupported
+			                 org.bluez.input.ConnectionAttemptFailed
+			                 org.bluez.input.AuthenticationFailed
 			                 org.bluez.input.Failed
 
 		void RemoveDevice(string path)

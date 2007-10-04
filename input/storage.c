@@ -344,3 +344,21 @@ fail:
 
 	return -err;
 }
+
+gboolean has_bonding(bdaddr_t *src, bdaddr_t *dst)
+{
+	char filename[PATH_MAX + 1];
+	char addr[18], *str;
+
+	create_filename(filename, PATH_MAX, src, "linkkeys");
+
+	ba2str(dst, addr);
+
+	str = textfile_get(filename, addr);
+	if (!str)
+		return FALSE;
+
+	free(str);
+
+	return TRUE;
+}

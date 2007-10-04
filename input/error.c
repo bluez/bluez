@@ -66,6 +66,15 @@ DBusHandlerResult err_already_connected(DBusConnection *conn, DBusMessage *msg)
 				"Already connected to this device"));
 }
 
+DBusHandlerResult err_authentication_failed(DBusConnection *conn,
+						DBusMessage *msg)
+{
+	return send_message_and_unref(conn,
+			dbus_message_new_error(msg,
+				INPUT_ERROR_INTERFACE".AuthenticationFailed",
+				"Authentication failed"));
+}
+
 DBusHandlerResult err_already_exists(DBusConnection *conn,
 					DBusMessage *msg, const char *str)
 {

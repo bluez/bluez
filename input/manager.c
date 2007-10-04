@@ -229,10 +229,10 @@ static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 		if (pdlist2)
 			strncpy(req->name, pdlist2->val.str, 127);
  	}
- 
+
 	pdlist = sdp_data_get(rec, SDP_ATTR_HID_PARSER_VERSION);
 	req->parser = pdlist ? pdlist->val.uint16 : 0x0100;
- 
+
 	pdlist = sdp_data_get(rec, SDP_ATTR_HID_DEVICE_SUBCLASS);
 	req->subclass = pdlist ? pdlist->val.uint8 : 0;
 
@@ -420,7 +420,35 @@ failed:
 	return FALSE;
 }
 
-static void finish_sdp_transaction(bdaddr_t *dba) 
+static void create_bonding_reply(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	struct pending_req *pr = data;
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("CreateBonding failed: %s(%s)",
+					derr.name, derr.message);
+		err_authentication_failed(pr->conn, pr->msg);
+		dbus_error_free(&derr);
+		dbus_message_unref(reply);
+		pending_req_free(pr);
+		return;
+	}
+
+	dbus_message_unref(reply);
+
+	if (l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_CTRL,
+				(GIOFunc) control_connect_cb, pr) < 0) {
+		int err = errno;
+		err_connection_failed(pr->conn, pr->msg, strerror(err));
+		error("L2CAP connect failed:%s (%d)", strerror(err), err);
+		pending_req_free(pr);
+	}
+}
+
+static void finish_sdp_transaction(bdaddr_t *dba)
 {
 	char address[18], *addr_ptr = address;
 	DBusMessage *msg, *reply;
@@ -453,6 +481,32 @@ static void finish_sdp_transaction(bdaddr_t *dba)
 	}
 
 	dbus_message_unref(reply);
+}
+
+static int create_bonding(struct pending_req *pr)
+{
+	DBusPendingCall *pending;
+	DBusMessage *msg;
+	char address[18], *addr_ptr = address;
+
+	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
+					   "org.bluez.Adapter", "CreateBonding");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		return -1;
+	}
+
+	ba2str(&pr->dst, address);
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr, DBUS_TYPE_INVALID);
+	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
+		error("Can't send D-Bus message.");
+		dbus_message_unref(msg);
+		return -1;
+	}
+	dbus_pending_call_set_notify(pending, create_bonding_reply, pr, NULL);
+	dbus_pending_call_unref(pending);
+	dbus_message_unref(msg);
+	return 0;
 }
 
 static void hid_record_reply(DBusPendingCall *call, void *data)
@@ -498,16 +552,36 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 		goto fail;
 	}
 
+	dbus_message_unref(reply);
+
+	if (strcmp("CreateSecureDevice", dbus_message_get_member(pr->msg)) == 0) {
+		sdp_data_t *d;
+
+		/* Pairing mandatory for keyboard and combo */
+		d = sdp_data_get(pr->hid_rec, SDP_ATTR_HID_DEVICE_SUBCLASS);
+		if (d && (d->val.uint8 & 0x40) &&
+				!has_bonding(&pr->src, &pr->dst)) {
+			if (create_bonding(pr) < 0) {
+				err_authentication_failed(pr->conn, pr->msg);
+				goto fail;
+			}
+			/* Wait bonding reply */
+			return;
+		}
+
+		/* Otherwise proceede L2CAP connection */
+	}
+
+	/* No encryption or link key already exists -- connect control channel */
 	if (l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_CTRL,
 				(GIOFunc) control_connect_cb, pr) < 0) {
 		int err = errno;
 		error("L2CAP connect failed:%s (%d)", strerror(err), err);
 		err_connection_failed(pr->conn, pr->msg, strerror(err));
 		goto fail;
-
 	}
-	dbus_message_unref(reply);
 
+	/* Wait L2CAP connect */
 	return;
 fail:
 	dbus_error_free(&derr);
@@ -966,7 +1040,7 @@ static void manager_unregister(DBusConnection *conn, void *data)
 static void stored_input(char *key, char *value, void *data)
 {
 	const char *path;
-	struct hidp_connadd_req hidp; 
+	struct hidp_connadd_req hidp;
 	bdaddr_t dst, *src = data;
 
 	str2ba(key, &dst);
@@ -992,7 +1066,7 @@ cleanup:
 /* hidd to input transition function */
 static void stored_hidd(char *key, char *value, void *data)
 {
-	struct hidp_connadd_req hidp; 
+	struct hidp_connadd_req hidp;
 	char *str, filename[PATH_MAX + 1], addr[18];
 	bdaddr_t dst, *src = data;
 
@@ -1053,9 +1127,10 @@ static void register_stored_inputs(void)
 }
 
 static DBusMethodVTable manager_methods[] = {
-	{ "ListDevices",	list_devices,	"",	"as"	},
-	{ "CreateDevice",	create_device,	"s",	"s"	},
-	{ "RemoveDevice",	remove_device,	"s",	""	},
+	{ "ListDevices",		list_devices,	"",	"as"	},
+	{ "CreateDevice",		create_device,	"s",	"s"	},
+	{ "CreateSecureDevice",		create_device,	"s",	"s"	},
+	{ "RemoveDevice",		remove_device,	"s",	""	},
 	{ NULL, NULL, NULL, NULL },
 };
 

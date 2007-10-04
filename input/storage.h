@@ -37,3 +37,5 @@ int read_device_name(bdaddr_t *src, bdaddr_t *dst, char **name);
 int read_device_class(bdaddr_t *src, bdaddr_t *dst, uint32_t *cls);
 
 int encrypt_link(bdaddr_t *src, bdaddr_t *dst);
+
+gboolean has_bonding(bdaddr_t *src, bdaddr_t *dst);
