@@ -39,13 +39,3 @@ DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn,
 						DBusMessage *msg, void *data);
 
 uint16_t sdp_str2svclass(const char *str);
-
-typedef void get_record_cb_t(sdp_record_t *rec, void *data, int err);
-
-int get_record_with_uuid(DBusConnection *conn, DBusMessage *msg,
-			uint16_t dev_id, const char *dst,
-			const uuid_t *uuid, get_record_cb_t *cb, void *data);
-
-int get_record_with_handle(DBusConnection *conn, DBusMessage *msg,
-			uint16_t dev_id, const char *dst,
-			uint32_t handle, get_record_cb_t *cb, void *data);

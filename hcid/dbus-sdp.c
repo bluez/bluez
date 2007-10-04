@@ -60,17 +60,7 @@
 #include "sdp-xml.h"
 
 #define SESSION_TIMEOUT 2000
-
-#define MAX_IDENTIFIER_LEN	29	/* "XX:XX:XX:XX:XX:XX/0xYYYYYYYY\0" */
 #define DEFAULT_XML_BUF_SIZE	1024
-
-typedef struct {
-	uint16_t	dev_id;
-	char		*dst;
-	void		*search_data;
-	get_record_cb_t *cb;
-	void 		*data;
-} get_record_data_t;
 
 struct transaction_context {
 	DBusConnection	*conn;
@@ -80,9 +70,6 @@ struct transaction_context {
 	guint		io_id;
 	uuid_t		uuid;
 	GSList		*identifiers;
-
-	/* Used for internal async get remote service record implementation */
-	get_record_data_t *call;
 };
 
 typedef int connect_cb_t(struct transaction_context *t);
@@ -94,9 +81,6 @@ struct pending_connect {
 	char *dst;
 	sdp_session_t *session;
 	connect_cb_t *conn_cb;
-
-	/* Used for internal async get remote service record implementation */
-	get_record_data_t *call;
 };
 
 /* FIXME:  move to a common file */
@@ -430,36 +414,6 @@ static void transaction_context_free(void *udata, gboolean cache)
 	g_free(ctxt);
 }
 
-static get_record_data_t *get_record_data_new(uint16_t dev_id, const char *dst,
-					void *search_data,
-					get_record_cb_t *cb, void *data)
-{
-	get_record_data_t *n;
-
-	n = g_new(get_record_data_t, 1);
-
-	n->dst = g_strdup(dst);
-	n->dev_id = dev_id;
-	n->search_data = search_data;
-	n->cb = cb;
-	n->data = data;
-
-	return n;
-}
-
-static void get_record_data_free(get_record_data_t *d)
-{
-	g_free(d->search_data);
-	g_free(d->dst);
-	g_free(d);
-}
-
-static inline void get_record_data_call_cb(get_record_data_t *d,
-						sdp_record_t *rec, int err)
-{
-	d->cb(rec, d->data, err);
-}
-
 static gboolean search_process_cb(GIOChannel *chan,
 				GIOCondition cond, void *udata)
 {
@@ -483,12 +437,7 @@ static gboolean search_process_cb(GIOChannel *chan,
 
 failed:
 	if (err) {
-		if (ctxt->call) {
-			get_record_data_call_cb(ctxt->call, NULL, err);
-			get_record_data_free(ctxt->call);
-		} else
-			error_failed(ctxt->conn, ctxt->rq, err);
-
+		error_failed(ctxt->conn, ctxt->rq, err);
 		transaction_context_free(ctxt, FALSE);
 	}
 
@@ -916,8 +865,6 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan,
 	ctxt->conn = dbus_connection_ref(c->conn);
 	ctxt->rq = dbus_message_ref(c->rq);
 	ctxt->session = c->session;
-	if (c->call)
-		ctxt->call = c->call;
 
 	/* set the complete transaction callback and send the search request */
 	sdp_err = c->conn_cb(ctxt);
@@ -936,13 +883,7 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan,
 	goto done;
 
 failed:
-	if (c->call)
-		get_record_data_call_cb(c->call, NULL, err);
-	else
-		error_connection_attempt_failed(c->conn, c->rq, err);
-
-	if (c->call)
-		get_record_data_free(c->call);
+	error_connection_attempt_failed(c->conn, c->rq, err);
 
 	if (ctxt)
 		transaction_context_free(ctxt, FALSE);
@@ -1221,229 +1162,4 @@ DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn,
 	}
 
 	return send_message_and_unref(conn, reply);
-}
-
-/*
- * Internal async get remote service record implementation
- */
-
-static void get_rec_with_handle_comp_cb(uint8_t type, uint16_t err,
-					uint8_t *rsp, size_t size, void *udata)
-{
-	struct transaction_context *ctxt = udata;
-	int scanned, cb_err = 0;
-	sdp_record_t *rec = NULL;
-
-	if (err == 0xffff) {
-		int sdp_err = sdp_get_error(ctxt->session);
-		if (sdp_err < 0) {
-			error("search failed: Invalid session!");
-			cb_err = EINVAL;
-			goto failed;
-		}
-		error("search failed :%s (%d)", strerror(sdp_err), sdp_err);
-		cb_err = sdp_err;
-		goto failed;
-	}
-
-	if (type == SDP_ERROR_RSP || type != SDP_SVC_ATTR_RSP) {
-		error("SDP error: %s(%d)", strerror(EPROTO), EPROTO);
-		cb_err = EPROTO;
-		goto failed;
-	}
-
-	rec = sdp_extract_pdu(rsp, &scanned);
-	if (!rec) {
-		error("Service record is NULL");
-		cb_err = EPROTO;
-		goto failed;
-	}
-
-failed:
-	get_record_data_call_cb(ctxt->call, rec, cb_err);
-
-	if (rec)
-		sdp_record_free(rec);
-
-	get_record_data_free(ctxt->call);
-
-	transaction_context_free(ctxt, TRUE);
-}
-
-static int get_rec_with_handle_conn_cb(struct transaction_context *ctxt)
-{
-	uint32_t range = 0x0000ffff;
-	sdp_list_t *attrids;
-	uint32_t handle;
-
-	if (sdp_set_notify(ctxt->session,
-				get_rec_with_handle_comp_cb, ctxt) < 0) {
-		error("Invalid session data!");
-		return -EINVAL;
-	}
-
-	handle = *((uint32_t *)ctxt->call->search_data);
-	attrids = sdp_list_append(NULL, &range);
-
-	if (sdp_service_attr_async(ctxt->session, handle,
-					SDP_ATTR_REQ_RANGE, attrids) < 0) {
-		error("send request failed: %s (%d)", strerror(errno), errno);
-		sdp_list_free(attrids, NULL);
-		return -errno;
-	}
-
-	sdp_list_free(attrids, NULL);
-
-	return 0;
-}
-
-int get_record_with_handle(DBusConnection *conn, DBusMessage *msg,
-			uint16_t dev_id, const char *dst,
-			uint32_t handle, get_record_cb_t *cb, void *data)
-{
-	struct pending_connect *c;
-	get_record_data_t *d;
-	uint32_t *rec_handle;
-	int err;
-
-	if (find_pending_connect(dst)) {
-		error("SDP search in progress!");
-		return -EINPROGRESS;
-	}
-
-	rec_handle = g_new(uint32_t, 1);
-
-	*rec_handle = handle;
-
-	d = get_record_data_new(dev_id, dst, rec_handle, cb, data);
-
-	if (!(c = connect_request(conn, msg, dev_id, dst,
-				get_rec_with_handle_conn_cb, &err))) {
-		error("Search request failed: %s (%d)", strerror(err), err);
-		get_record_data_free(d);
-		return -err;
-	}
-
-	c->call = d;
-
-	return 0;
-}
-
-static void get_rec_with_uuid_comp_cb(uint8_t type, uint16_t err,
-					uint8_t *rsp, size_t size, void *udata)
-{
-	struct transaction_context *ctxt = udata;
-	get_record_data_t *d = ctxt->call;
-	int csrc, tsrc, cb_err = 0;
-	uint32_t *handle;
-	uint8_t *pdata;
-
-	if (err == 0xffff) {
-		int sdp_err = sdp_get_error(ctxt->session);
-		if (sdp_err < 0) {
-			error("search failed: Invalid session!");
-			cb_err = EINVAL;
-			goto failed;
-		}
-		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
-		cb_err = sdp_err;
-		goto failed;
-	}
-
-	if (type == SDP_ERROR_RSP || type != SDP_SVC_SEARCH_RSP) {
-		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
-		cb_err = EPROTO;
-		goto failed;
-	}
-
-	pdata = rsp;
-	tsrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
-	if (tsrc <= 0)
-		goto failed;
-	pdata += sizeof(uint16_t);
-
-	csrc = ntohs(bt_get_unaligned((uint16_t *) pdata));
-	if (csrc <= 0)
-		goto failed;
-	pdata += sizeof(uint16_t);
-
-	handle = g_new(uint32_t, 1);
-	*handle = ntohl(bt_get_unaligned((uint32_t*) pdata));
-
-	g_free(d->search_data);
-	d->search_data = handle;
-
-	cb_err = get_rec_with_handle_conn_cb(ctxt);
-	if (cb_err)
-		goto failed;
-
-	return;
-
-failed:
-	get_record_data_call_cb(d, NULL, cb_err);
-
-	get_record_data_free(d);
-
-	transaction_context_free(ctxt, TRUE);
-}
-
-static int get_rec_with_uuid_conn_cb(struct transaction_context *ctxt)
-{
-	get_record_data_t *d = ctxt->call;
-	sdp_list_t *search = NULL;
-	uuid_t *uuid;
-	int err = 0;
-
-	if (sdp_set_notify(ctxt->session,
-			get_rec_with_uuid_comp_cb, ctxt) < 0) {
-		err = -EINVAL;
-		goto failed;
-	}
-
-	uuid = (uuid_t *)d->search_data;
-	search = sdp_list_append(NULL, uuid);
-
-	if (sdp_service_search_async(ctxt->session, search, 1) < 0) {
-		error("send request failed: %s (%d)", strerror(errno), errno);
-		err = -sdp_get_error(ctxt->session);
-		goto failed;
-	}
-
-failed:
-	if (search)
-		sdp_list_free(search, NULL);
-
-	return err;
-}
-
-int get_record_with_uuid(DBusConnection *conn, DBusMessage *msg,
-			uint16_t dev_id, const char *dst,
-			const uuid_t *uuid, get_record_cb_t *cb, void *data)
-{
-	struct pending_connect *c;
-	get_record_data_t *d;
-	int err;
-	uuid_t *sdp_uuid;
-
-	if (find_pending_connect(dst)) {
-		error("SDP search in progress!");
-		return -EINPROGRESS;
-	}
-
-	sdp_uuid = g_new(uuid_t, 1);
-
-	memcpy(sdp_uuid, uuid, sizeof(uuid_t));
-
-	d = get_record_data_new(dev_id, dst, sdp_uuid, cb, data);
-
-	if (!(c = connect_request(conn, msg, dev_id, dst,
-				get_rec_with_uuid_conn_cb, &err))) {
-		error("Search request failed: %s (%d)", strerror(err), err);
-		get_record_data_free(d);
-		return -err;
-	}
-
-	c->call = d;
-
-	return 0;
 }
