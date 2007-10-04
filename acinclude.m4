@@ -95,6 +95,8 @@ AC_DEFUN([AC_PATH_DBUS], [
 	])
 	AC_SUBST(DBUS_CFLAGS)
 	AC_SUBST(DBUS_LIBS)
+	AC_CHECK_LIB(dbus-1, dbus_watch_get_unix_fd, dummy=yes,
+		AC_DEFINE(NEED_DBUS_WATCH_GET_UNIX_FD, 1, [Define to 1 if you need the dbus_watch_get_unix_fd() function.]))
 ])
 
 AC_DEFUN([AC_PATH_OPENOBEX], [

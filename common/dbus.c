@@ -37,6 +37,10 @@
 
 #include <dbus/dbus.h>
 
+#ifdef NEED_DBUS_WATCH_GET_UNIX_FD
+#define dbus_watch_get_unix_fd dbus_watch_get_fd
+#endif
+
 #ifdef HAVE_DBUS_GLIB
 #include <dbus/dbus-glib-lowlevel.h>
 #endif
@@ -457,7 +461,7 @@ static dbus_bool_t add_server(DBusWatch *watch, void *data)
 
 	info = g_new(struct server_info, 1);
 
-	fd = dbus_watch_get_fd(watch);
+	fd = dbus_watch_get_unix_fd(watch);
 	info->io = g_io_channel_unix_new(fd);
 	info->server = dbus_server_ref(server);
 
@@ -542,7 +546,7 @@ static dbus_bool_t add_watch(DBusWatch *watch, void *data)
 
 	info = g_new(struct watch_info, 1);
 
-	fd = dbus_watch_get_fd(watch);
+	fd = dbus_watch_get_unix_fd(watch);
 	info->io = g_io_channel_unix_new(fd);
 	info->conn = dbus_connection_ref(conn);
 
