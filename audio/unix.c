@@ -293,7 +293,7 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 
 static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
-					void *user_data)
+					void *user_data, struct avdtp_error *err)
 {
 	struct unix_client *client = user_data;
 	char buf[sizeof(struct ipc_data_cfg) + sizeof(struct ipc_codec_sbc)];
