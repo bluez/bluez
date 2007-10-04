@@ -701,6 +701,10 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	sbc_extended_t res;
 	sbc_extended_t t[8];
 
+#if 0
+	/* temporary results */
+	sbc_extended_t s[2], p[6], d[4];
+#endif
 	out[0] = out[1] = out[2] = out[3] = 0;
 
 	MUL(res, _sbc_proto_4[0], (in[8] - in[32])); // Q18
@@ -755,6 +759,7 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	MULA(res, _sbc_proto_4[2], in[39]);
 	t[7] = SCALE4_STAGE1(res);
 
+#if 1
 	MUL(res, _anamatrix4[0], t[0]);
 	MULA(res, _anamatrix4[1], t[1]);
 	MULA(res, _anamatrix4[2], t[2]);
@@ -791,6 +796,24 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	MULA(res, -_anamatrix4[3], t[5]);
 	MULA(res, _anamatrix4[3], t[7]);
 	out[3] = SCALE4_STAGE2(res);
+#else
+	s[0] = t[1] + t[3];
+	s[1] = t[5] - t[6];
+	MUL(p[0], _anamatrix4[0], t[0] + t[4]);
+	MUL(p[1], _anamatrix4[1], s[0]);
+	MUL(p[2], _anamatrix4[2], t[2]);
+	MUL(p[3], _anamatrix4[3], s[0]);
+	MUL(p[4], _anamatrix4[3], s[1]);
+	MUL(p[5], _anamatrix4[1], s[1]);
+	d[0] = p[0] + p[2];
+	d[1] = p[2] - p[0];
+	d[2] = p[1] + p[4];
+	d[3] = p[3] - p[5];
+	out[0] = SCALE4_STAGE2(d[0] + d[2]);
+	out[1] = SCALE4_STAGE2(d[1] + d[3]);
+	out[2] = SCALE4_STAGE2(d[1] - d[3]);
+	out[3] = SCALE4_STAGE2(d[0] - d[2]);
+#endif
 }
 static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
