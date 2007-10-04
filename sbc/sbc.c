@@ -1008,8 +1008,8 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	MUL(s[0], _anamatrix8[0], t[0]);
 	MULA(s[0], _anamatrix8[1], t[6]);
 	MUL(s[1], _anamatrix8[7], t[1]);
-	MUL(s[2], _anamatrix8[2], t[3]);
-	MULA(s[2], _anamatrix8[3], t[4]);
+	MUL(s[2], _anamatrix8[2], t[2]);
+	MULA(s[2], _anamatrix8[3], t[3]);
 	MULA(s[2], _anamatrix8[4], t[5]);
 	MULA(s[2], _anamatrix8[5], t[7]);
 	MUL(s[3], _anamatrix8[6], t[4]);
