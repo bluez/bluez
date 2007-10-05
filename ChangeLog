@@ -1,3 +1,22 @@
+ver 3.20:
+	Fix GStreamer plugin file type detection.
+	Fix potential infinite loop in inotify support.
+	Fix D-Bus signatures for dict handling.
+	Fix issues with service activation.
+	Fix SDP failure handling of audio service.
+	Fix various memory leaks in input service.
+	Add secure device creation method to input service.
+	Add service information methods to serial service.
+	Add config file support to network service.
+	Add scripting capability to network service.
+	Add special on-mode handling.
+	Add optimization for SBC encoder.
+	Add tweaks for D-Bus 1.1.x libraries.
+	Add support for inquiry transmit power level.
+
+	Note:
+	This version needs at least bluez-libs-3.20
+
 ver 3.19:
 	Limit range of bitpool announced while in ACP side.
 	Use poll instead of usleep to wait for worker thread.
