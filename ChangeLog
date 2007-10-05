@@ -1,3 +1,6 @@
+ver 3.20:
+	Add support for inquiry transmit power level.
+
 ver 3.19:
 	Add L2CAP mode constants.
 
