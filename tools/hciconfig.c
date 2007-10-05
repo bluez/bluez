@@ -966,6 +966,41 @@ static void cmd_version(int ctl, int hdev, char *opt)
 	hci_close_dev(dd);
 }
 
+static void cmd_inq_tpl(int ctl, int hdev, char *opt)
+{
+	int dd;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (opt) {
+		int8_t level = atoi(opt);
+
+		if (hci_write_inquiry_transmit_power_level(dd, level, 2000) < 0) {
+			fprintf(stderr, "Can't set inquiry transmit power level on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+	} else {
+		int8_t level;
+
+		if (hci_read_inquiry_transmit_power_level(dd, &level, 1000) < 0) {
+			fprintf(stderr, "Can't read inquiry transmit power level on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+			exit(1);
+		}
+
+		print_dev_hdr(&di);
+		printf("\tInquiry transmit power level: %d\n", level);
+	}
+
+	hci_close_dev(dd);
+}
+
 static void cmd_inq_mode(int ctl, int hdev, char *opt)
 {
 	int dd;
@@ -1620,6 +1655,7 @@ static struct {
 	{ "class",	cmd_class,	"[class]",	"Get/Set class of device" },
 	{ "voice",	cmd_voice,	"[voice]",	"Get/Set voice setting" },
 	{ "iac",	cmd_iac,	"[iac]",	"Get/Set inquiry access code" },
+	{ "inqtpl", 	cmd_inq_tpl,	"[level]",	"Get/Set inquiry transmit power level" },
 	{ "inqmode",	cmd_inq_mode,	"[mode]",	"Get/Set inquiry mode" },
 	{ "inqdata",	cmd_inq_data,	"[data]",	"Get/Set inquiry data" },
 	{ "inqtype",	cmd_inq_type,	"[type]",	"Get/Set inquiry scan type" },
