@@ -739,15 +739,9 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	MULA(res, _sbc_proto_4[13], in[29]);
 	MULA(res, _sbc_proto_4[12], in[37]);
 	t[5] = SCALE4_STAGE1(res);
-#if 0
-	/* don't compute... this term always multiplies with cos(pi) = 0*/
-	MUL(res, _sbc_proto_4[11], in[6]);
-	MULA(res, _sbc_proto_4[10], in[14]);
-	MULA(res, _sbc_proto_4[9], in[22]);
-	MULA(res, _sbc_proto_4[8], in[30]);
-	MULA(res, _sbc_proto_4[7], in[38]);
-	t[6] = SCALE4_STAGE1(res);
-#endif
+
+	/* don't compute t[6]... this term always multiplies with cos(pi/2) = 0 */
+
 	MUL(res, _sbc_proto_4[6], in[7]);
 	MULA(res, _sbc_proto_4[5], in[15]);
 	MULA(res, _sbc_proto_4[4], in[23]);
@@ -755,55 +749,16 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	MULA(res, _sbc_proto_4[2], in[39]);
 	t[7] = SCALE4_STAGE1(res);
 
-#if 0
-	MUL(res, _anamatrix4[0], t[0]);
-	MULA(res, _anamatrix4[1], t[1]);
-	MULA(res, _anamatrix4[2], t[2]);
-	MULA(res, _anamatrix4[1], t[3]);
-	MULA(res, _anamatrix4[0], t[4]);
-	MULA(res, _anamatrix4[3], t[5]);
-	MULA(res, -_anamatrix4[3], t[7]);
-	out[0] = SCALE4_STAGE2(res); // Q0
-	
-	MUL(res, -_anamatrix4[0], t[0]);
-	MULA(res, _anamatrix4[3], t[1]);
-	MULA(res, _anamatrix4[2], t[2]);
-	MULA(res, _anamatrix4[3], t[3]);
-	MULA(res, -_anamatrix4[0], t[4]);
-	MULA(res, -_anamatrix4[1], t[5]);
-	MULA(res, _anamatrix4[1], t[7]);
-	out[1] = SCALE4_STAGE2(res);
-
-
-	MUL(res, -_anamatrix4[0], t[0]);
-	MULA(res, -_anamatrix4[3], t[1]);
-	MULA(res, _anamatrix4[2], t[2]);
-	MULA(res, -_anamatrix4[3], t[3]);
-	MULA(res, -_anamatrix4[0], t[4]);
-	MULA(res, _anamatrix4[1], t[5]);
-	MULA(res, -_anamatrix4[1], t[7]);
-	out[2] = SCALE4_STAGE2(res);
-
-	MUL(res, _anamatrix4[0], t[0]);
-	MULA(res, -_anamatrix4[1], t[1]);
-	MULA(res, _anamatrix4[2], t[2]);
-	MULA(res, -_anamatrix4[1], t[3]);
-	MULA(res, _anamatrix4[0], t[4]);
-	MULA(res, -_anamatrix4[3], t[5]);
-	MULA(res, _anamatrix4[3], t[7]);
-	out[3] = SCALE4_STAGE2(res);
-#else
 	MUL(s[0], _anamatrix4[0], t[0] + t[4]);
 	MUL(s[1], _anamatrix4[2], t[2]);
 	MUL(s[2], _anamatrix4[1], t[1] + t[3]);
 	MULA(s[2], _anamatrix4[3], t[5] + t[7]);
 	MUL(s[3], _anamatrix4[3], t[1] + t[3]);
 	MULA(s[3], _anamatrix4[1], - t[5] + t[7]);
-	out[0] = SCALE4_STAGE2( s[0] + s[1] + s[2]);
+	out[0] = SCALE4_STAGE2( s[0] + s[1] + s[2]); // Q0
 	out[1] = SCALE4_STAGE2(-s[0] + s[1] + s[3]);
 	out[2] = SCALE4_STAGE2(-s[0] + s[1] - s[3]);
 	out[3] = SCALE4_STAGE2( s[0] + s[1] - s[2]);
-#endif
 }
 static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
@@ -909,88 +864,7 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	MULA(res, -_sbc_proto_8[21], in[75]);
 	t[7] = SCALE8_STAGE1(res);
 
-#if 0
-	MUL(res, _anamatrix8[0], t[0]); // = Q14 * Q10
-	MULA(res, _anamatrix8[7], t[1]);
-	MULA(res, _anamatrix8[2], t[2]);
-	MULA(res, _anamatrix8[3], t[3]);
-	MULA(res, _anamatrix8[6], t[4]);
-	MULA(res, _anamatrix8[4], t[5]);
-	MULA(res, _anamatrix8[1], t[6]);
-	MULA(res, _anamatrix8[5], t[7]);
-	out[0] = SCALE8_STAGE2(res); // Q0
-
-	MUL(res, _anamatrix8[1], t[0]);
-	MULA(res, _anamatrix8[7], t[1]);
-	MULA(res, _anamatrix8[3], t[2]);
-	MULA(res, -_anamatrix8[5], t[3]);
-	MULA(res, -_anamatrix8[6], t[4]);
-	MULA(res, -_anamatrix8[2], t[5]);
-	MULA(res, -_anamatrix8[0], t[6]);
-	MULA(res, -_anamatrix8[4], t[7]);
-	out[1] = SCALE8_STAGE2(res);
-
-	MUL(res, -_anamatrix8[1], t[0]);
-	MULA(res, _anamatrix8[7], t[1]);
-	MULA(res, _anamatrix8[4], t[2]);
-	MULA(res, -_anamatrix8[2], t[3]);
-	MULA(res, -_anamatrix8[6], t[4]);
-	MULA(res, _anamatrix8[5], t[5]);
-	MULA(res, _anamatrix8[0], t[6]);
-	MULA(res, _anamatrix8[3], t[7]);
-	out[2] = SCALE8_STAGE2(res);
-
-	MUL(res, -_anamatrix8[0], t[0]);
-	MULA(res, _anamatrix8[7], t[1]);
-	MULA(res, _anamatrix8[5], t[2]);
-	MULA(res, -_anamatrix8[4], t[3]);
-	MULA(res, _anamatrix8[6], t[4]);
-	MULA(res, _anamatrix8[3], t[5]);
-	MULA(res, -_anamatrix8[1], t[6]);
-	MULA(res, -_anamatrix8[2], t[7]);
-	out[3] = SCALE8_STAGE2(res);
-
-	MUL(res, -_anamatrix8[0], t[0]);
-	MULA(res, _anamatrix8[7], t[1]);
-	MULA(res, -_anamatrix8[5], t[2]);
-	MULA(res, _anamatrix8[4], t[3]);
-	MULA(res, _anamatrix8[6], t[4]);
-	MULA(res, -_anamatrix8[3], t[5]);
-	MULA(res, -_anamatrix8[1], t[6]);
-	MULA(res, _anamatrix8[2], t[7]);
-	out[4] = SCALE8_STAGE2(res);
-
-	MUL(res, -_anamatrix8[1], t[0]);
-	MULA(res, _anamatrix8[7], t[1]);
-	MULA(res, -_anamatrix8[4], t[2]);
-	MULA(res, _anamatrix8[2], t[3]);
-	MULA(res, -_anamatrix8[6], t[4]);
-	MULA(res, -_anamatrix8[5], t[5]);
-	MULA(res, _anamatrix8[0], t[6]);
-	MULA(res, -_anamatrix8[3], t[7]);
-	out[5] = SCALE8_STAGE2(res);
-
-	MUL(res, _anamatrix8[1], t[0]);
-	MULA(res, _anamatrix8[7], t[1]);
-	MULA(res, -_anamatrix8[3], t[2]);
-	MULA(res, _anamatrix8[5], t[3]);
-	MULA(res, -_anamatrix8[6], t[4]);
-	MULA(res, _anamatrix8[2], t[5]);
-	MULA(res, -_anamatrix8[0], t[6]);
-	MULA(res, _anamatrix8[4], t[7]);
-	out[6] = SCALE8_STAGE2(res);
-
-	MUL(res, _anamatrix8[0], t[0]);
-	MULA(res, _anamatrix8[7], t[1]);
-	MULA(res, -_anamatrix8[2], t[2]);
-	MULA(res, -_anamatrix8[3], t[3]);
-	MULA(res, _anamatrix8[6], t[4]);
-	MULA(res, -_anamatrix8[4], t[5]);
-	MULA(res, _anamatrix8[1], t[6]);
-	MULA(res, -_anamatrix8[5], t[7]);
-	out[7] = SCALE8_STAGE2(res);
-#else
-	MUL(s[0], _anamatrix8[0], t[0]);
+	MUL(s[0], _anamatrix8[0], t[0]); // = Q14 * Q10
 	MULA(s[0], _anamatrix8[1], t[6]);
 	MUL(s[1], _anamatrix8[7], t[1]);
 	MUL(s[2], _anamatrix8[2], t[2]);
@@ -1020,7 +894,6 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	out[5] = SCALE8_STAGE2( s[1] - s[3] - s[5] + s[6]);
 	out[6] = SCALE8_STAGE2( s[1] - s[3] - s[4] + s[6]);
 	out[7] = SCALE8_STAGE2( s[0] + s[1] - s[2] + s[3]);
-#endif
 }
 
 static inline void sbc_analyze_eight(struct sbc_encoder_state *state,
