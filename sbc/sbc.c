@@ -616,7 +616,7 @@ static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 		k = (i + 4) & 0xf;
 		SBC_FIXED_0(res);
 		for(j = 0; j < 10; idx++) {
-		MULA(res, state->V[ch][state->offset[ch][i]+j++], sbc_proto_4_40m0[idx]);
+			MULA(res, state->V[ch][state->offset[ch][i]+j++], sbc_proto_4_40m0[idx]);
 			MULA(res, state->V[ch][state->offset[ch][k]+j++], sbc_proto_4_40m1[idx]);
 		}
 		/* Store in output */
@@ -727,10 +727,9 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	MULA(res, _sbc_proto_4[16], in[35]);
 	t[3] = SCALE4_STAGE1(res);
 
-	MUL(res, _sbc_proto_4[17], in[4]);
-	MULA(res, _sbc_proto_4[18], (in[12] + in[28]));
+	MUL(res, _sbc_proto_4[17], in[4] + in[36]);
+	MULA(res, _sbc_proto_4[18], in[12] + in[28]);
 	MULA(res, _sbc_proto_4[19], in[20]);
-	MULA(res, _sbc_proto_4[17], in[36]);
 	t[4] = SCALE4_STAGE1(res);
 
 	MUL(res, _sbc_proto_4[16], in[5]);
@@ -841,10 +840,9 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	MULA(res, -_sbc_proto_8[16], in[77]);
 	t[5] = SCALE8_STAGE1(res);
 
-	MUL(res,   _sbc_proto_8[36], (in[8] + in[72]));
-	MULA(res,  _sbc_proto_8[37], in[24]);
+	MUL(res,   _sbc_proto_8[36], in[8] + in[72]);
+	MULA(res,  _sbc_proto_8[37], in[24] + in[56]);
 	MULA(res,  _sbc_proto_8[38], in[40]);
-	MULA(res,  _sbc_proto_8[37], in[56]);
 	MULA(res, -_sbc_proto_8[39], in[12]);
 	MULA(res,  -_sbc_proto_8[5], in[28]);
 	MULA(res,  -_sbc_proto_8[4], in[44]);
