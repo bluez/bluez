@@ -2,3 +2,4 @@
 Identifier=audio
 Name=Audio service
 Description=Bluetooth Audio service
+Autostart=false
