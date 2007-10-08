@@ -19,4 +19,4 @@ if (len(sys.argv) < 1):
 
 address = sys.argv[1]
 
-device = input.CreateDevice(address)
+device = input.CreateSecureDevice(address)
