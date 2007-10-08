@@ -672,7 +672,10 @@ static const char *extract_service_class(sdp_data_t *d)
 	static char uuid_str[37];
 
 	/* Expected sequence of UUID16 */
-	if (d->attrId != SDP_ATTR_SVCLASS_ID_LIST || d->dtd != SDP_SEQ8)
+	if (d->attrId != SDP_ATTR_SVCLASS_ID_LIST)
+		return NULL;
+
+	if (d->dtd != SDP_SEQ8 && d->dtd != SDP_SEQ16 && d->dtd != SDP_SEQ32)
 		return NULL;
 
 	if (!d->val.dataseq)
