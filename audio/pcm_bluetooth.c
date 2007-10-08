@@ -764,6 +764,25 @@ done:
 	return ret;
 }
 
+static int bluetooth_playback_delay(snd_pcm_ioplug_t *io, 
+				snd_pcm_sframes_t *delayp)
+{
+	DBG("");
+
+	/* This updates io->hw_ptr value using pointer() function */
+	snd_pcm_hwsync(io->pcm);
+ 	
+	*delayp = io->appl_ptr - io->hw_ptr;
+	if ((io->state == SND_PCM_STATE_RUNNING) && (*delayp < 0)) {
+		io->callback->stop(io);
+		io->state = SND_PCM_STATE_XRUN;
+		*delayp = 0;
+	}
+	/* This should never fail, ALSA API is really not
+	prepared to handle a non zero return value */
+	return 0;
+}
+
 static snd_pcm_ioplug_callback_t bluetooth_hsp_playback = {
 	.start			= bluetooth_playback_start,
 	.stop			= bluetooth_playback_stop,
@@ -774,6 +793,7 @@ static snd_pcm_ioplug_callback_t bluetooth_hsp_playback = {
 	.transfer		= bluetooth_hsp_write,
 	.poll_descriptors	= bluetooth_playback_poll_descriptors,
 	.poll_revents		= bluetooth_playback_poll_revents,
+	.delay			= bluetooth_playback_delay,
 };
 
 static snd_pcm_ioplug_callback_t bluetooth_hsp_capture = {
@@ -798,6 +818,7 @@ static snd_pcm_ioplug_callback_t bluetooth_a2dp_playback = {
 	.transfer		= bluetooth_a2dp_write,
 	.poll_descriptors	= bluetooth_playback_poll_descriptors,
 	.poll_revents		= bluetooth_playback_poll_revents,
+	.delay			= bluetooth_playback_delay,
 };
 
 static snd_pcm_ioplug_callback_t bluetooth_a2dp_capture = {
