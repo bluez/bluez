@@ -25,7 +25,13 @@ except:
 	pass
 
 try:
-	panu = dbus.Interface(bus.get_object(conn, network.LastConnection()),
+	panu = dbus.Interface(bus.get_object(conn, network.FindServer('panu')),
+						'org.bluez.network.Server')
+except:
+	pass
+
+try:
+	client = dbus.Interface(bus.get_object(conn, network.LastConnection()),
 						'org.bluez.network.Connection')
 except:
 	pass
