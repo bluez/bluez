@@ -122,7 +122,7 @@ static int load_file(int dd, uint16_t version, const char *suffix)
 	unsigned char cmd[256];
 	unsigned char buf[256];
 	uint8_t seqnum = 0;
-	int fd, size, len;
+	int fd, size, len, found_fw_file;
 
 	memset(filename, 0, sizeof(filename));
 
@@ -138,6 +138,7 @@ static int load_file(int dd, uint16_t version, const char *suffix)
 			return -errno;
 	}
 
+	found_fw_file = 0;	
 	while (1) {
 		d = readdir(dir);
 		if (!d)
@@ -152,9 +153,13 @@ static int load_file(int dd, uint16_t version, const char *suffix)
 
 		snprintf(filename, sizeof(filename), "%s/%s",
 							pathname, d->d_name);
+		found_fw_file = 1;
 	}
 
 	closedir(dir);
+
+	if (!found_fw_file)
+		return -ENOENT;
 
 	printf("Loading file %s\n", filename);
 
@@ -194,6 +199,7 @@ int stlc2500_init(int dd, bdaddr_t *bdaddr)
 	unsigned char buf[254];
 	uint16_t version;
 	int len;
+	int err;
 
 	/* Hci_Cmd_Ericsson_Read_Revision_Information */	
 	len = do_command(dd, 0xff, 0x000f, NULL, 0, buf, sizeof(buf));
@@ -209,11 +215,21 @@ int stlc2500_init(int dd, bdaddr_t *bdaddr)
 
 	version = buf[2] << 8 | buf[1];
 
-	if (load_file(dd, version, ".ptc") < 0)
-		return -1;
+	err = load_file(dd, version, ".ptc");
+	if (err < 0) {
+		if (err == -ENOENT) 	
+			fprintf(stderr, "No ROM patch file loaded.\n");
+		else
+			return -1;
+	}
 
-	if (load_file(dd, buf[2] << 8 | buf[1], ".ssf") < 0)
-		return -1;
+	err = load_file(dd, buf[2] << 8 | buf[1], ".ssf");
+	if (err < 0) {
+		if (err == -ENOENT) 	
+			fprintf(stderr, "No static settings file loaded.\n");
+		else
+			return -1;
+	}
 
 	cmd[0] = 0xfe;
 	cmd[1] = 0x06;
