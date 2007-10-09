@@ -195,6 +195,14 @@ int stlc2500_init(int dd, bdaddr_t *bdaddr)
 	uint16_t version;
 	int len;
 
+	/* Hci_Cmd_Ericsson_Read_Revision_Information */	
+	len = do_command(dd, 0xff, 0x000f, NULL, 0, buf, sizeof(buf));
+	if (len < 0)
+		return -1;
+
+	printf("%s\n", buf);
+
+	/* HCI_Read_Local_Version_Information */	
 	len = do_command(dd, 0x04, 0x0001, NULL, 0, buf, sizeof(buf));
 	if (len < 0)
 		return -1;
@@ -204,31 +212,19 @@ int stlc2500_init(int dd, bdaddr_t *bdaddr)
 	if (load_file(dd, version, ".ptc") < 0)
 		return -1;
 
-	len = do_command(dd, 0x03, 0x0003, NULL, 0, buf, sizeof(buf));
-	if (len < 0)
-		return -1;
-
 	if (load_file(dd, buf[2] << 8 | buf[1], ".ssf") < 0)
 		return -1;
-
-	len = do_command(dd, 0x03, 0x0003, NULL, 0, buf, sizeof(buf));
-	if (len < 0)
-		return -1;
-
-	len = do_command(dd, 0xff, 0x000f, NULL, 0, buf, sizeof(buf));
-	if (len < 0)
-		return -1;
-
-	printf("%s\n", buf);
 
 	cmd[0] = 0xfe;
 	cmd[1] = 0x06;
 	bacpy((bdaddr_t *) (cmd + 2), bdaddr);
 
+	/* Hci_Cmd_ST_Store_In_NVDS */	
 	len = do_command(dd, 0xff, 0x0022, cmd, 8, buf, sizeof(buf));
 	if (len < 0)
 		return -1;
 
+	/* HCI_Reset : applies parameters*/
 	len = do_command(dd, 0x03, 0x0003, NULL, 0, buf, sizeof(buf));
 	if (len < 0)
 		return -1;
