@@ -301,6 +301,7 @@ struct device *device_register(DBusConnection *conn,
 	dev->path = g_strdup(path);
 	bacpy(&dev->dst, bda);
 	bacpy(&dev->src, &src);
+	bacpy(&dev->store, &src);
 	dev->conn = dbus_connection_ref(conn);
 
 	return dev;
@@ -317,7 +318,7 @@ int device_store(struct device *dev, gboolean is_default)
 		return -EINVAL;
 
 	ba2str(&dev->dst, dst_addr);
-	ba2str(&dev->src, src_addr);
+	ba2str(&dev->store, src_addr);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "audio");
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -356,7 +357,7 @@ int device_remove_stored(struct device *dev)
 	char src_addr[18], dst_addr[18];
 
 	ba2str(&dev->dst, dst_addr);
-	ba2str(&dev->src, src_addr);
+	ba2str(&dev->store, src_addr);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "audio");
 

@@ -55,6 +55,7 @@ struct device {
 	DBusConnection *conn;
 	char *adapter_path;
 	char *path;
+	bdaddr_t store;
 	bdaddr_t src;
 	bdaddr_t dst;
 

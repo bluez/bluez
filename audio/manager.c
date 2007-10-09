@@ -1024,6 +1024,7 @@ static DBusSignalVTable manager_signals[] = {
 
 static void parse_stored_devices(char *key, char *value, void *data)
 {
+	bdaddr_t *src = data;
 	struct device *device;
 	bdaddr_t dst;
 
@@ -1041,6 +1042,9 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	device = create_device(&dst);
 	if (!device)
 		return;
+
+	/* Change storage to source adapter */
+	bacpy(&device->store, src);
 
 	if (strstr(value, "headset"))
 		device->headset = headset_init(device, NULL, 0);
