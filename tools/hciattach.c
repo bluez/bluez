@@ -852,56 +852,14 @@ extern int stlc2500_init(int fd, bdaddr_t *bdaddr);
 static int stlc2500(int fd, struct uart_t *u, struct termios *ti)
 {
 	bdaddr_t bdaddr;
-	char cmd[5];
 	unsigned char resp[10];
 	int n;
+	int rvalue;
 
-	/* STLC2500 Set Baud Rate stuff */
-	/* We should set the baud rate first, so the firmware download */
-	/* goes much faster */
-
-	/* STLC2500 Seems to support the Ericsson set baud rate stuff */
-	/* It should also support the ST Set Baud Rate command */
-	/* (as in st() function above, but those commands never succeed */
-	cmd[0] = HCI_COMMAND_PKT;
-	cmd[1] = 0x09;
-	cmd[2] = 0xfc;
-	cmd[3] = 0x01;
-
-	switch (u->speed) {
-	case 57600:
-		cmd[4] = 0x03;
-		break;
-	case 115200:
-		cmd[4] = 0x02;
-		break;
-	case 230400:
-		cmd[4] = 0x01;
-		break;
-	case 460800:
-		cmd[4] = 0x00;
-		break;
-	case 921600:
-		cmd[4] = 0x20;
-		break;
-	default:
-		cmd[4] = 0x02;
-		u->speed = 115200;
-		break;
-	}
-
-#ifdef STLC2500_DEBUG
-	fprintf(stderr, "Sending Baud Rate %02x\n", cmd[4]);
-#endif
-	/* Send initialization command */
-	if (write(fd, cmd, 5) != 5) {
-		perror("Failed to write init command");
-		return -1;
-	}
-
-	/* Need to wait here to give a chance for the device to set baud */
-	/* But no more than 0.5 seconds */
-	usleep(200000);
+	/* STLC2500 has an ericsson core */
+	rvalue = ericsson(fd, u, ti);
+	if (rvalue != 0)
+		return rvalue;
 
 #ifdef STLC2500_DEBUG
 	fprintf(stderr, "Setting speed\n");
