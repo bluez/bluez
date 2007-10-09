@@ -120,6 +120,16 @@ static int uart_speed(int s)
 		return B1152000;
 	case 1500000:
 		return B1500000;
+	case 2000000:
+		return B2000000;
+	case 2500000:
+		return B2500000;
+	case 3000000:
+		return B3000000;
+	case 3500000:
+		return B3500000;
+	case 4000000:
+		return B4000000;
 	default:
 		return B57600;
 	}
@@ -206,9 +216,19 @@ static int ericsson(int fd, struct uart_t *u, struct termios *ti)
 	case 921600:
 		cmd[4] = 0x20;
 		break;
+	case 2000000:
+		cmd[4] = 0x25;
+		break;
+	case 3000000:
+		cmd[4] = 0x27;
+		break;
+	case 4000000:
+		cmd[4] = 0x2B;
+		break;
 	default:
 		cmd[4] = 0x03;
 		u->speed = 57600;
+		fprintf(stderr, "Invalid speed requested, using %d bps instead\n", u->speed);
 		break;
 	}
 
