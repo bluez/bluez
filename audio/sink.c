@@ -43,6 +43,8 @@
 #include "error.h"
 #include "sink.h"
 
+#define STREAM_SETUP_RETRY_TIMER 2000
+
 struct pending_request {
 	DBusConnection *conn;
 	DBusMessage *msg;
@@ -133,6 +135,27 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	sink->state = new_state;
 }
 
+static gboolean stream_setup_retry(gpointer user_data)
+{
+	struct sink *sink = user_data;
+	struct pending_request *pending = sink->connect;
+
+	if (sink->state >= AVDTP_STATE_OPEN) {
+		DBusMessage *reply;
+		debug("Stream successfully created, after XCASE connect:connect");
+		reply = dbus_message_new_method_return(pending->msg);
+		send_message_and_unref(pending->conn, reply);
+	} else {
+		debug("Stream setup failed, after XCASE connect:connect");
+		err_failed(pending->conn, pending->msg, "Stream setup failed");
+	}
+
+	sink->connect = NULL;
+	pending_request_free(pending);
+
+	return FALSE;
+}
+
 static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
 					void *user_data, struct avdtp_error *err)
@@ -141,21 +164,29 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	struct pending_request *pending;
 
 	pending = sink->connect;
-	sink->connect = NULL;
 
 	if (stream) {
 		DBusMessage *reply;
+		sink->connect = NULL;
 		reply = dbus_message_new_method_return(pending->msg);
 		send_message_and_unref(pending->conn, reply);
+		pending_request_free(pending);
 		debug("Stream successfully created");
 	} else {
-		err_failed(pending->conn, pending->msg, "Stream setup failed");
 		avdtp_unref(sink->session);
 		sink->session = NULL;
-		debug("Stream setup failed : %s", avdtp_strerror(err));
+		if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
+				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
+			debug("connect:connect XCASE detected");			
+			g_timeout_add(STREAM_SETUP_RETRY_TIMER,
+					stream_setup_retry, sink);
+		} else {
+			sink->connect = NULL;
+			err_failed(pending->conn, pending->msg, "Stream setup failed");
+			pending_request_free(pending);
+			debug("Stream setup failed : %s", avdtp_strerror(err));
+		}
 	}
-
-	pending_request_free(pending);
 }
 
 static DBusHandlerResult sink_connect(DBusConnection *conn,

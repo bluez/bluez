@@ -499,6 +499,23 @@ void avdtp_error_init(struct avdtp_error *err, uint8_t type, int id)
 	}
 }
 
+avdtp_error_type_t avdtp_error_type(struct avdtp_error *err)
+{
+	return err->type;
+}
+
+int avdtp_error_error_code(struct avdtp_error *err)
+{
+	assert(err->type == AVDTP_ERROR_ERROR_CODE);
+	return err->err.error_code;
+}
+
+int avdtp_error_posix_errno(struct avdtp_error *err)
+{
+	assert(err->type == AVDTP_ERROR_ERRNO);
+	return err->err.posix_errno;
+}
+
 static struct avdtp_stream *find_stream_by_rseid(struct avdtp *session,
 							uint8_t rseid)
 {

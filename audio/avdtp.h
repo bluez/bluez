@@ -253,7 +253,9 @@ avdtp_state_t avdtp_sep_get_state(struct avdtp_local_sep *sep);
 
 void avdtp_error_init(struct avdtp_error *err, uint8_t type, int id);
 const char *avdtp_strerror(struct avdtp_error *err);
-int avdtp_error_code(struct avdtp_error *err);
+avdtp_error_type_t avdtp_error_type(struct avdtp_error *err);
+int avdtp_error_error_code(struct avdtp_error *err);
+int avdtp_error_posix_errno(struct avdtp_error *err);
 
 void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 
