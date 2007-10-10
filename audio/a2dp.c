@@ -683,7 +683,7 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	if (a2dp_sep->suspend_timer) {
 		g_source_remove(a2dp_sep->suspend_timer);
-		a2dp_sep->suspend_timer = NULL;
+		a2dp_sep->suspend_timer = 0;
 	}
 
 	return TRUE;
