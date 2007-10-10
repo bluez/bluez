@@ -177,14 +177,16 @@ static headset_event_t parse_headset_event(const char *buf, char *rsp,
 
 	buf += 2;
 
-	snprintf(rsp, rsp_len, "\r\nOK\r\n");
-
-	if (!strncmp(buf, "+CKPD", 5))
+	if (!strncmp(buf, "+CKPD", 5)) {
+		snprintf(rsp, rsp_len, "\r\nOK\r\n");
 		return HEADSET_EVENT_KEYPRESS;
-	else if (!strncmp(buf, "+VG", 3))
+	} else if (!strncmp(buf, "+VG", 3)) {
+		snprintf(rsp, rsp_len, "\r\nOK\r\n");
 		return HEADSET_EVENT_GAIN;
-	else
+	} else {
+		snprintf(rsp, rsp_len, "\r\nERROR\r\n");
 		return HEADSET_EVENT_UNKNOWN;
+	}
 }
 
 static void close_sco(struct device *device)
