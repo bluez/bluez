@@ -680,6 +680,12 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		debug("SBC Sink: Suspend_Ind");
 	else
 		debug("SBC Source: Suspend_Ind");
+
+	if (a2dp_sep->suspend_timer) {
+		g_source_remove(a2dp_sep->suspend_timer);
+		a2dp_sep->suspend_timer = NULL;
+	}
+
 	return TRUE;
 }
 
