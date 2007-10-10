@@ -289,6 +289,23 @@ int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	return 0;
 }
 
+int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
+{
+	char filename[PATH_MAX + 1], addr[18], str[481];
+	int i;
+
+	memset(str, 0, sizeof(str));
+	for (i = 0; i < 240; i++)
+		sprintf(str + (i * 2), "%2.2X", data[i]);
+
+	create_filename(filename, PATH_MAX, local, "eir");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(peer, addr);
+	return textfile_put(filename, addr, str);
+}
+
 int write_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
 			uint16_t mtu_result, uint16_t mtu,
 			uint16_t mask_result, uint32_t mask)

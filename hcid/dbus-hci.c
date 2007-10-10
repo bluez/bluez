@@ -1285,6 +1285,9 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 	write_remote_class(local, peer, class);
 
+	if (data)
+		write_remote_eir(local, peer, data);
+
 	/*
 	 * workaround to identify situation when the daemon started and
 	 * a standard inquiry or periodic inquiry was already running
