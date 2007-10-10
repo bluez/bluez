@@ -47,6 +47,10 @@ static sdp_record_t *server = NULL;
 static uint8_t service_classes = 0x00;
 static service_classes_callback_t service_classes_callback = NULL;
 
+static uint16_t did_vendor = 0x0000;
+static uint16_t did_product = 0x0000;
+static uint16_t did_version = 0x0000;
+
 /*
  * List of version numbers supported by the SDP server.
  * Add to this list when newer versions are supported.
@@ -160,6 +164,20 @@ void create_ext_inquiry_response(const char *name, uint8_t *data)
 		memcpy(ptr + 2, name, len);
 
 		ptr += len + 2;
+	}
+
+	if (did_vendor != 0x0000) {
+		uint16_t source = 0x0002;
+		*ptr++ = 9;
+		*ptr++ = 0x10;
+		*ptr++ = (source & 0x00ff);
+		*ptr++ = (source & 0xff00) >> 8;
+		*ptr++ = (did_vendor & 0x00ff);
+		*ptr++ = (did_vendor & 0xff00) >> 8;
+		*ptr++ = (did_product & 0x00ff);
+		*ptr++ = (did_product & 0xff00) >> 8;
+		*ptr++ = (did_version & 0x00ff);
+		*ptr++ = (did_version & 0xff00) >> 8;
 	}
 
 	ptr[1] = 0x03;
@@ -292,6 +310,10 @@ void register_device_id(const uint16_t vendor, const uint16_t product,
 	sdp_record_t *record = sdp_record_alloc();
 
 	info("Adding device id record for %04x:%04x", vendor, product);
+
+	did_vendor = vendor;
+	did_product = product;
+	did_version = version;
 
 	record->handle = sdp_next_handle();
 
