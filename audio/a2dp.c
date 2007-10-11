@@ -633,7 +633,8 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	a2dp_sep->session = avdtp_ref(session);
 
-	a2dp_sep->suspend_timer = g_timeout_add(SUSPEND_TIMEOUT,
+	if (!a2dp_sep->locked)
+		a2dp_sep->suspend_timer = g_timeout_add(SUSPEND_TIMEOUT,
 						(GSourceFunc) suspend_timeout,
 						a2dp_sep);
 	return TRUE;
