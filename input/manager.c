@@ -288,6 +288,8 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 	int isk, ret, err;
 	socklen_t len;
 
+	memset(&hidp, 0, sizeof(hidp));
+
 	isk = g_io_channel_unix_get_fd(chan);
 
 	if (cond & G_IO_NVAL) {
@@ -316,7 +318,6 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 		goto failed;
 	}
 
-	memset(&hidp, 0, sizeof(struct hidp_connadd_req));
 	extract_hid_record(pr->hid_rec, &hidp);
 	if (pr->pnp_rec)
 		extract_pnp_record(pr->pnp_rec, &hidp);
@@ -1045,7 +1046,7 @@ static void stored_input(char *key, char *value, void *data)
 
 	str2ba(key, &dst);
 
-	memset(&hidp, 0, sizeof(struct hidp_connadd_req));
+	memset(&hidp, 0, sizeof(hidp));
 
 	if (parse_stored_device_info(value, &hidp) < 0)
 		return;
@@ -1080,7 +1081,7 @@ static void stored_hidd(char *key, char *value, void *data)
 		return;
 	}
 
-	memset(&hidp, 0, sizeof(struct hidp_connadd_req));
+	memset(&hidp, 0, sizeof(hidp));
 
 	if (parse_stored_hidd(value, &hidp) < 0)
 		return;

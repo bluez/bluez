@@ -800,7 +800,7 @@ static int disconnect(struct device *idev, uint32_t flags)
 		return -errno;
 	}
 
-	memset(&ci, 0, sizeof(struct hidp_conninfo));
+	memset(&ci, 0, sizeof(ci));
 	bacpy(&ci.bdaddr, &idev->dst);
 	if ((ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) ||
 				(ci.state != BT_CONNECTED)) {
@@ -808,7 +808,7 @@ static int disconnect(struct device *idev, uint32_t flags)
 		goto fail;
 	}
 
-	memset(&req, 0, sizeof(struct hidp_conndel_req));
+	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, &idev->dst);
 	req.flags = flags;
 	if (ioctl(ctl, HIDPCONNDEL, &req) < 0) {
@@ -847,7 +847,7 @@ static int is_connected(struct device *idev)
 	if (ctl < 0)
 		return 0;
 
-	memset(&ci, 0, sizeof(struct hidp_conninfo));
+	memset(&ci, 0, sizeof(ci));
 	bacpy(&ci.bdaddr, &idev->dst);
 	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
 		close(ctl);
