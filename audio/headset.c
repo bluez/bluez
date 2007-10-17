@@ -63,14 +63,18 @@
 #define HEADSET_GAIN_SPEAKER 'S'
 #define HEADSET_GAIN_MICROPHONE 'M'
 
-static char *str_state[] = {"DISCONNECTED", "CONNECTING", "CONNECTED",
-				"STREAM_STARTING", "STREAMING"};
+static char *str_state[] = {
+	"HEADSET_STATE_DISCONNECTED", 
+	"HEADSET_STATE_CONNECT_IN_PROGRESS",
+	"HEADSET_STATE_CONNECTED",
+	"HEADSET_STATE_PLAY_IN_PROGRESS",
+	"HEADSET_STATE_PLAYING",
+	};
 
 struct pending_connect {
 	DBusMessage *msg;
 	DBusPendingCall *call;
 	GIOChannel *io;
-	guint io_id;
 	int sock;
 	int err;
 	unsigned int id;
@@ -491,9 +495,9 @@ static int sco_connect(struct device *device, struct pending_connect *c)
 			return -err;
 		}
 
-		c->io_id = g_io_add_watch(c->io,
-					G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
-					(GIOFunc) sco_connect_cb, device);
+		g_io_add_watch(c->io,
+				G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
+				(GIOFunc) sco_connect_cb, device);
 	} else
 		do_callback = TRUE;
 
@@ -1546,6 +1550,7 @@ void headset_set_state(struct device *dev, headset_state_t state)
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
 		break;
 	case HEADSET_STATE_CONNECTED:
+		close_sco(dev);
 		if (hs->state < state) {
 			g_io_add_watch(hs->rfcomm,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
@@ -1555,8 +1560,7 @@ void headset_set_state(struct device *dev, headset_state_t state)
 						AUDIO_HEADSET_INTERFACE,
 						"Connected",
 						DBUS_TYPE_INVALID);
-		} else {
-			close_sco(dev);
+		} else if (hs->state == HEADSET_STATE_PLAYING) {
 			dbus_connection_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Stopped",
