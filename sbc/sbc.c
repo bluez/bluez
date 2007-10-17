@@ -889,7 +889,7 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	out[2] = SCALE8_STAGE2( s[1] - s[3] + s[5] - s[6]);
 	out[3] = SCALE8_STAGE2(-s[0] + s[1] + s[3] + s[7]);
 	out[4] = SCALE8_STAGE2(-s[0] + s[1] + s[3] - s[7]);
-	out[5] = SCALE8_STAGE2( s[1] - s[3] - s[5] + s[6]);
+	out[5] = SCALE8_STAGE2( s[1] - s[3] - s[5] - s[6]);
 	out[6] = SCALE8_STAGE2( s[1] - s[3] - s[4] + s[6]);
 	out[7] = SCALE8_STAGE2( s[0] + s[1] - s[2] + s[3]);
 }
