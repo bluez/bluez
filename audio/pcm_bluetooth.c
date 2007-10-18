@@ -167,12 +167,17 @@ static void *playback_hw_thread(void *param)
 	double period_time;
 	struct timeval start;
 	struct pollfd fds[2];
+	int poll_timeout;
 
 	fds[0] = data->server;
 	fds[1] = data->stream;
 
 	prev_periods = 0;
 	period_time = 1000000.0 * data->io.period_size / data->io.rate;
+	if (period_time > (int) (MIN_PERIOD_TIME * 1000))
+		poll_timeout = (int) (period_time / 1000.0f);
+	else
+		poll_timeout = MIN_PERIOD_TIME;
 
 	gettimeofday(&start, 0);
 
@@ -213,7 +218,8 @@ static void *playback_hw_thread(void *param)
 		}
 
 iter_sleep:
-		ret = poll(fds, 2, MIN_PERIOD_TIME);
+		/* sleep up to one period interval */
+		ret = poll(fds, 2, poll_timeout);
 		if (ret < 0) {
 			SNDERR("poll error: %s (%d)", strerror(errno), errno);
 			if (errno != EINTR)
