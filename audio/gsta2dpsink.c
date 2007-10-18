@@ -141,8 +141,8 @@ struct rtp_payload {
 #error "Unknown byte order"
 #endif
 
-#define IS_SBC(n) (strcmp(n, "audio/x-sbc") == 0)
-#define IS_MPEG(n) (strcmp(n, "audio/mpeg") == 0)
+#define IS_SBC(n) (strcmp((n), "audio/x-sbc") == 0)
+#define IS_MPEG(n) (strcmp((n), "audio/mpeg") == 0)
 
 enum {
 	PROP_0,
@@ -218,7 +218,7 @@ static void gst_a2dp_sink_finalize(GObject *object)
 	GstA2dpSink *self = GST_A2DP_SINK(object);
 
 	if (self->data)
-		gst_a2dp_sink_stop (GST_BASE_SINK (self));
+		gst_a2dp_sink_stop(GST_BASE_SINK(self));
 
 	if (self->device)
 		g_free(self->device);
@@ -285,7 +285,7 @@ static gint gst_a2dp_sink_bluetooth_recvmsg_fd(GstA2dpSink *sink)
 	ret = recvmsg(g_io_channel_unix_get_fd(sink->server), &msgh, 0);
 	if (ret < 0) {
 		err = errno;
-		GST_ERROR_OBJECT(sink, "Unable to receive fd: %s (%d)", 
+		GST_ERROR_OBJECT(sink, "Unable to receive fd: %s (%d)",
 				strerror(err), err);
 		return -err;
 	}
@@ -305,7 +305,7 @@ static gint gst_a2dp_sink_bluetooth_recvmsg_fd(GstA2dpSink *sink)
 	return -EINVAL;
 }
 
-static int gst_a2dp_sink_bluetooth_a2dp_init(GstA2dpSink *sink, 
+static int gst_a2dp_sink_bluetooth_a2dp_init(GstA2dpSink *sink,
 			struct ipc_codec_sbc *sbc)
 {
 	struct bluetooth_a2dp *a2dp = &sink->data->a2dp;
@@ -403,21 +403,6 @@ static gboolean gst_a2dp_sink_init_pkt_conf(GstA2dpSink *sink,
 
 	value = gst_structure_get_value(structure, "blocks");
 	sbc->blocks = g_value_get_int(value);
-/* FIXME how can I obtain the bitpool ?
-		if (strcmp(id, "bitpool") == 0) {
-			if (snd_config_get_string(n, &bitpool) < 0) {
-				SNDERR("Invalid type for %s", id);
-				return -EINVAL;
-			}
-
-			sbc->bitpool = atoi(bitpool);
-			continue;
-		}
-
-		SNDERR("Unknown field %s", id);
-		return -EINVAL;
-	}
-*/
 	sbc->bitpool = 32;
 
 	pkt->length = sizeof(*cfg) + sizeof(*sbc);
@@ -438,7 +423,7 @@ static gboolean gst_a2dp_sink_conf_resp(GstA2dpSink *sink)
 
 	memset(buf, 0, sizeof(buf));
 
-	io_error = g_io_channel_read(sink->server, (gchar*)buf, 
+	io_error = g_io_channel_read(sink->server, (gchar *) buf,
 			sizeof(*pkt) + sizeof(*cfg), &ret);
 	if (io_error != G_IO_ERROR_NONE && ret > 0) {
 		GST_ERROR_OBJECT(sink, "Error ocurred while receiving \
@@ -476,14 +461,14 @@ static gboolean gst_a2dp_sink_conf_recv_dev_conf(GstA2dpSink *sink)
 	struct ipc_data_cfg *cfg = (void *) pkt->data;
 	struct ipc_codec_sbc *sbc = (void *) cfg->data;
 
-	io_error = g_io_channel_read(sink->server, (gchar*) sbc,
+	io_error = g_io_channel_read(sink->server, (gchar *) sbc,
 					sizeof(*sbc), &ret);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(sink, "Error while reading data from socket \
-				%s (%d)", strerror(errno), errno); 
+				%s (%d)", strerror(errno), errno);
 		return FALSE;
 	} else if (ret == 0) {
-		GST_ERROR_OBJECT(sink, "Read 0 bytes from socket"); 
+		GST_ERROR_OBJECT(sink, "Read 0 bytes from socket");
 		return FALSE;
 	}
 
@@ -491,8 +476,8 @@ static gboolean gst_a2dp_sink_conf_recv_dev_conf(GstA2dpSink *sink)
 	GST_DEBUG_OBJECT(sink, "OK - %d bytes received", sink->total);
 
 	if (pkt->length != (sink->total - sizeof(struct ipc_packet))) {
-		GST_ERROR_OBJECT(sink, "Error while configuring device: \
-				packet size doesn't match");
+		GST_ERROR_OBJECT(sink, "Error while configuring device: "
+				"packet size doesn't match");
 		return FALSE;
 	}
 
@@ -524,14 +509,14 @@ static gboolean gst_a2dp_sink_conf_recv_stream_fd(GstA2dpSink *sink)
 		return FALSE;
 
 	if (!sink->stream) {
-		GST_ERROR_OBJECT(sink, "Error while configuring device: \
-				could not acquire audio socket");
+		GST_ERROR_OBJECT(sink, "Error while configuring device: "
+				"could not acquire audio socket");
 		return FALSE;
 	}
 
 	/* It is possible there is some outstanding
 	data in the pipe - we have to empty it */
-	while (TRUE) {
+	while (1) {
 		err = g_io_channel_read(sink->stream,
 					(gchar *) sink->data->buffer,
 					(gsize) sink->data->cfg.pkt_len,
@@ -589,7 +574,7 @@ static gboolean server_callback(GIOChannel *chan,
 			gst_a2dp_sink_conf_recv_data(sink);
 		else
 			GST_WARNING_OBJECT(sink, "Unexpected data received");
-			break;
+		break;
 	case G_IO_HUP:
 		return FALSE;
 		break;
@@ -661,7 +646,7 @@ static gboolean gst_a2dp_sink_send_conf_pkt(GstA2dpSink *sink, GstCaps *caps)
 
 	sink->con_state = CONFIGURING_INIT;
 
-	io_error = g_io_channel_write(sink->server, (gchar*)pkt,
+	io_error = g_io_channel_write(sink->server, (gchar *) pkt,
 			sizeof(*pkt) + pkt->length, &bytes_sent);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(sink, "Error ocurred while sending \
@@ -735,7 +720,7 @@ static int gst_a2dp_sink_avdtp_write(GstA2dpSink *sink)
 	header->timestamp = htonl(a2dp->nsamples);
 	header->ssrc = htonl(1);
 
-	while (TRUE) {
+	while (1) {
 		err = g_io_channel_write(sink->stream, (const char *) a2dp->buffer,
 					(gsize) a2dp->count, (gsize *) &ret);
 
