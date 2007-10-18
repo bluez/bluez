@@ -45,7 +45,8 @@
 
 #define MIN_PERIOD_TIME 1
 
-#define BUFFER_SIZE 2048
+#define MIN_BUFFER_SIZE 256    /* minimum size of buffer */
+#define MAX_BUFFER_SIZE 16384  /* allocated RAM for buffer */
 
 #ifdef ENABLE_DEBUG
 #define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
@@ -123,7 +124,7 @@ struct bluetooth_a2dp {
 	sbc_t sbc;			/* Codec data */
 	int codesize;			/* SBC codesize */
 	int samples;			/* Number of encoded samples */
-	uint8_t buffer[BUFFER_SIZE];	/* Codec transfer buffer */
+	uint8_t buffer[MAX_BUFFER_SIZE];/* Codec transfer buffer */
 	int count;			/* Codec transfer buffer counter */
 
 	int nsamples;			/* Cumulative number of codec samples */
@@ -137,7 +138,7 @@ struct bluetooth_data {
 	struct ipc_data_cfg cfg;	/* Bluetooth device config */
 	struct pollfd stream;		/* Audio stream filedescriptor */
 	struct pollfd server;		/* Audio daemon filedescriptor */
-	uint8_t buffer[BUFFER_SIZE];	/* Encoded transfer buffer */
+	uint8_t buffer[MAX_BUFFER_SIZE];/* Encoded transfer buffer */
 	int count;			/* Transfer buffer counter */
 	struct bluetooth_a2dp a2dp;	/* A2DP data */
 
@@ -938,14 +939,28 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 	if (err < 0)
 		return err;
 
-	/* supported block size */
-	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
-						a2dp->codesize, a2dp->codesize);
+	/* supported block sizes:
+	 *   - lower limit is A2DP codec size
+	 *   - total buffer size is the upper limit (with two periods) */
+	err = snd_pcm_ioplug_set_param_minmax(io,
+						SND_PCM_IOPLUG_HW_PERIOD_BYTES,
+						a2dp->codesize,
+						MAX_BUFFER_SIZE / 2);
 	if (err < 0)
 		return err;
 
+	/* supported buffer sizes */
+	err = snd_pcm_ioplug_set_param_minmax(io,
+						SND_PCM_IOPLUG_HW_BUFFER_BYTES,
+						MIN_BUFFER_SIZE,
+						MAX_BUFFER_SIZE);
+	if (err < 0)
+		return err;
+
+	/* supported period count: 
+	 *   - derived from max buffer size and minimum period size */
 	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS,
-									2, 50);
+					2, MAX_BUFFER_SIZE / a2dp->codesize);
 	if (err < 0)
 		return err;
 
