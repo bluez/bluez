@@ -177,7 +177,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		sink->session = NULL;
 		if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
 				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
-			debug("connect:connect XCASE detected");			
+			debug("connect:connect XCASE detected");
 			g_timeout_add(STREAM_SETUP_RETRY_TIMER,
 					stream_setup_retry, sink);
 		} else {
