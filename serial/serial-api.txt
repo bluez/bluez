@@ -114,7 +114,7 @@ Methods		string GetAdapter() [experimental]
 
 			Returns the TTY device node name
 
-		string GetInfo() [experimental]
+		dict GetInfo() [experimental]
 
 			Returns the port properties.
 
@@ -132,16 +132,20 @@ Proxy hierarchy (experimental)
 Interface	org.bluez.serial.Proxy
 Object path	/org/bluez/serial/rfcomm*
 
-Methods:	string Enable() [experimental]
+Methods:	void Enable() [experimental]
 
 			Register the serial proxy service record and start
 			listenning on the specified adapter/channel.
 
-		string Disable() [experimental]
+			Possible errors:org.bluez.serial.Error.Failed
+
+		void Disable() [experimental]
 
 			Unregister the service record and stop listenning.
+			
+			Possible errors:org.bluez.serial.Error.Failed
 
-		string GetInfo() [experimental]
+		dict GetInfo() [experimental]
 			Returns the proxy properties
 
 		void SetSerialParameters(string rate, byte databits,
@@ -152,3 +156,6 @@ Methods:	string Enable() [experimental]
 			"38400", "57600" and "115200". Available data bits: 5,
 			6, 7 and 8. Available stop bits: 1 and 2. Available
 			parity: "even", "odd", "mark", "space" and "none".
+
+			Possible errors:org.bluez.serial.Error.InvalidArguments
+					org.bluez.serial.Error.Failed
