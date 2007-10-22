@@ -386,9 +386,10 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	avrcp = (struct avrcp_header *) (buf + sizeof(struct avctp_header));
 
 	debug("AVRCP %s 0x%01X, subunit_type 0x%02X, subunit_id 0x%01X, "
-			"opcode 0x%02X", avctp->cr ? "response" : "command",
+			"opcode 0x%02X, %d operands",
+			avctp->cr ? "response" : "command",
 			avrcp->code, avrcp->subunit_type, avrcp->subunit_id,
-			avrcp->opcode);
+			avrcp->opcode, ret - sizeof(struct avctp_header));
 
 	return TRUE;
 
