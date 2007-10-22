@@ -647,7 +647,7 @@ int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 
 	bacpy(&default_src, BDADDR_ANY);
 	dev_id = hci_get_route(&default_src);
-	if ((dev_id < 0) || (hci_devba(dev_id, &default_src) < 0))
+	if (dev_id < 0 || hci_devba(dev_id, &default_src) < 0)
 		return -1;
 
 	nc = g_new0(struct network_conn, 1);
