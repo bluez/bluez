@@ -59,6 +59,7 @@
 #include "headset.h"
 #include "gateway.h"
 #include "sink.h"
+#include "control.h"
 #include "manager.h"
 
 typedef enum {
@@ -224,6 +225,9 @@ static gboolean server_is_enabled(uint16_t svc)
 		break;
 	case AUDIO_SINK_SVCLASS_ID:
 		return enabled->sink;
+	case AV_REMOTE_TARGET_SVCLASS_ID:
+	case AV_REMOTE_SVCLASS_ID:
+		return enabled->control;
 	default:
 		ret = FALSE;
 		break;
@@ -1615,6 +1619,9 @@ int audio_init(DBusConnection *conn, struct enabled_interfaces *enable,
 		sinks = 0;
 
 	if (a2dp_init(conn, sources, sinks) < 0)
+		goto failed;
+
+	if (enable->control && control_init(conn) < 0)
 		goto failed;
 
 	if (!dbus_connection_register_interface(conn, AUDIO_MANAGER_PATH,
