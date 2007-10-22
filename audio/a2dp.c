@@ -631,12 +631,13 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	else
 		debug("SBC Source: Start_Ind");
 
-	a2dp_sep->session = avdtp_ref(session);
-
-	if (!a2dp_sep->locked)
+	if (!a2dp_sep->locked) {
+		a2dp_sep->session = avdtp_ref(session);
 		a2dp_sep->suspend_timer = g_timeout_add(SUSPEND_TIMEOUT,
 						(GSourceFunc) suspend_timeout,
 						a2dp_sep);
+	}
+
 	return TRUE;
 }
 
@@ -685,6 +686,8 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (a2dp_sep->suspend_timer) {
 		g_source_remove(a2dp_sep->suspend_timer);
 		a2dp_sep->suspend_timer = 0;
+		avdtp_unref(a2dp_sep->session);
+		a2dp_sep->session = NULL;
 	}
 
 	return TRUE;
@@ -1184,6 +1187,8 @@ unsigned int a2dp_source_request_stream(struct avdtp *session,
 			if (sep->suspend_timer) {
 				g_source_remove(sep->suspend_timer);
 				sep->suspend_timer = 0;
+				avdtp_unref(sep->session);
+				sep->session = NULL;
 			}
 			g_idle_add((GSourceFunc) finalize_stream_setup, setup);
 		}
