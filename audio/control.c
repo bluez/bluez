@@ -415,7 +415,7 @@ static void auth_cb(DBusPendingCall *call, void *data)
 		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
 			manager_cancel_authorize(&session->dst,
-							ADVANCED_AUDIO_UUID,
+							AVRCP_TARGET_UUID,
 							NULL);
 		}
 
