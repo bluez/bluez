@@ -507,6 +507,60 @@ static DBusHandlerResult find_connection(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+char *find_adapter(DBusConnection *conn, bdaddr_t *src)
+{
+	DBusMessage *msg, *reply;
+	DBusError derr;
+	char address[18], *addr_ptr = address;
+	char *path, *ret;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.Manager",
+						"FindAdapter");
+	if (!msg) {
+		error("Unable to allocate new method call");
+		return NULL;
+	}
+
+	ba2str(src, address);
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
+				 DBUS_TYPE_INVALID);
+
+	dbus_error_init(&derr);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1,
+								&derr);
+
+	dbus_message_unref(msg);
+
+	if (dbus_error_is_set(&derr) ||
+				dbus_set_error_from_message(&derr, reply)) {
+		error("FindAdapter(%s) failed: %s", address, derr.message);
+		dbus_error_free(&derr);
+		return NULL;
+	}
+
+	dbus_error_init(&derr);
+	dbus_message_get_args(reply, &derr,
+				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		error("Unable to get message args");
+		dbus_message_unref(reply);
+		dbus_error_free(&derr);
+		return FALSE;
+	}
+
+	ret = g_strdup(path);
+
+	dbus_message_unref(reply);
+
+	debug("Got path %s for adapter with address %s", ret, address);
+
+	return ret;
+}
+
 static DBusHandlerResult create_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -546,11 +600,18 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	}
 
 	bacpy(&src, BDADDR_ANY);
-	dev_id = hci_get_route(NULL);
-	if ((dev_id < 0) ||  (hci_devba(dev_id, &src) < 0))
+	dev_id = hci_get_route(&src);
+	if (dev_id < 0 || hci_devba(dev_id, &src) < 0)
 		return err_failed(conn, msg, "Adapter not available");
 
 	pr = g_new0(struct pending_reply, 1);
+
+	pr->adapter_path = find_adapter(conn, &src);
+	if (!pr->adapter_path) {
+		pending_reply_free (pr);
+		return err_failed(conn, msg, "Adapter not available");
+	}
+
 	pr->conn = dbus_connection_ref(conn);
 	pr->msg = dbus_message_ref(msg);
 	bacpy(&pr->src, &src);
@@ -560,9 +621,6 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	pr->path = g_new0(char, MAX_PATH_LENGTH);
 	snprintf(pr->path, MAX_PATH_LENGTH,
 			NETWORK_PATH"/connection%d", net_uid++);
-
-	pr->adapter_path = g_malloc0(16);
-	snprintf(pr->adapter_path, 16, "/org/bluez/hci%d", dev_id);
 
 	if (get_handles(pr, pan_handle_reply) < 0)
 		return err_not_supported(conn, msg);
@@ -795,10 +853,9 @@ static void register_connections_stored(const char *adapter)
 	/* Check default connection for current default adapter */
 	bacpy(&default_src, BDADDR_ANY);
 	dev_id = hci_get_route(&default_src);
-	if (dev_id < 0)
+	if (dev_id < 0 || hci_devba(dev_id, &default_src) < 0)
 		return;
 
-	hci_devba(dev_id, &default_src);
 	if (bacmp(&default_src, &src) != 0)
 		return;
 
@@ -826,10 +883,8 @@ static void register_server(uint16_t id)
 
 	bacpy(&src, BDADDR_ANY);
 	dev_id = hci_get_route(&src);
-	if (dev_id < 0)
+	if (dev_id < 0 || hci_devba(dev_id, &src))
 		return;
-
-	hci_devba(dev_id, &src);
 
 	if (server_register(path, &src, id) < 0)
 		return;

@@ -32,6 +32,8 @@
 #include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
 
@@ -56,6 +58,7 @@ typedef enum {
 
 struct network_conn {
 	DBusMessage	*msg;
+	bdaddr_t	store;
 	bdaddr_t	src;
 	bdaddr_t	dst;
 	char		*path;		/* D-Bus path */
@@ -636,6 +639,16 @@ int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 			uint16_t id, const char *name, const char *desc)
 {
 	struct network_conn *nc;
+	bdaddr_t default_src;
+	int dev_id;
+
+	if (!path)
+		return -EINVAL;
+
+	bacpy(&default_src, BDADDR_ANY);
+	dev_id = hci_get_route(&default_src);
+	if ((dev_id < 0) || (hci_devba(dev_id, &default_src) < 0))
+		return -1;
 
 	nc = g_new0(struct network_conn, 1);
 
@@ -657,7 +670,8 @@ int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 	}
 
 	nc->path = g_strdup(path);
-	bacpy(&nc->src, src);
+	bacpy(&nc->store, src);
+	bacpy(&nc->src, &default_src);
 	bacpy(&nc->dst, dst);
 	nc->id = id;
 	nc->name = g_strdup(name);
@@ -693,7 +707,7 @@ int connection_store(const char *path, gboolean default_path)
 	role = bnep_name(nc->id);
 	snprintf(key, 32, "%s#%s", dst_addr, role);
 
-	ba2str(&nc->src, src_addr);
+	ba2str(&nc->store, src_addr);
 	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "network");
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -768,7 +782,7 @@ int connection_remove_stored(const char *path)
 	role = bnep_name(nc->id);
 	snprintf(key, 32, "%s#%s", dst_addr, role);
 
-	ba2str(&nc->src, src_addr);
+	ba2str(&nc->store, src_addr);
 	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "network");
 
 	err = textfile_del(filename, key);

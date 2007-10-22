@@ -848,7 +848,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	if (bacmp(&ns->src, BDADDR_ANY) == 0) {
 		int dev_id;
 
-		dev_id = hci_get_route(NULL);
+		dev_id = hci_get_route(&ns->src);
 		if ((dev_id < 0) || (hci_devba(dev_id, &ns->src) < 0))
 			return err_failed(conn, msg, "Adapter not available");
 
@@ -1169,6 +1169,9 @@ int server_register_from_file(const char *path, const bdaddr_t *src,
 {
 	struct network_server *ns;
 	char *str;
+
+	if (!path)
+		return -EINVAL;
 
 	ns = g_new0(struct network_server, 1);
 
