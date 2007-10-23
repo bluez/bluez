@@ -279,9 +279,17 @@ static void handle_record(sdp_record_t *record, struct device *device)
 		break;
 	case AV_REMOTE_SVCLASS_ID:
 		debug("Found AV Remote");
+		if (device->control == NULL)
+			device->control = control_init(device);
+		if (device->sink && sink_is_active(device))
+			avrcp_connect(device);
 		break;
 	case AV_REMOTE_TARGET_SVCLASS_ID:
 		debug("Found AV Target");
+		if (device->control == NULL)
+			device->control = control_init(device);
+		if (device->sink && sink_is_active(device))
+			avrcp_connect(device);
 		break;
 	default:
 		debug("Unrecognized UUID: 0x%04X", uuid16);
@@ -639,14 +647,21 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 			return NULL;
 
 		headset = TRUE;
-	}
-	else if (!strcmp(uuid, A2DP_SOURCE_UUID)) {
+	} else if (!strcmp(uuid, A2DP_SOURCE_UUID)) {
 		if (device->sink)
 			return device;
 
 		device->sink = sink_init(device);
 
 		if (!device->sink)
+			return NULL;
+	} else if (!strcmp(uuid, AVRCP_TARGET_UUID)) {
+		if (device->control)
+			return device;
+
+		device->control = control_init(device);
+
+		if (!device->control)
 			return NULL;
 	} else
 		return NULL;
@@ -1050,10 +1065,12 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	/* Change storage to source adapter */
 	bacpy(&device->store, src);
 
-	if (strstr(value, "headset"))
+	if (enabled->headset && strstr(value, "headset"))
 		device->headset = headset_init(device, NULL, 0);
-	if (strstr(value, "sink"))
+	if (enabled->sink && strstr(value, "sink"))
 		device->sink = sink_init(device);
+	if (enabled->control && strstr(value, "control"))
+		device->control = control_init(device);
 	add_device(device, FALSE);
 }
 
@@ -1621,7 +1638,7 @@ int audio_init(DBusConnection *conn, struct enabled_interfaces *enable,
 	if (a2dp_init(conn, sources, sinks) < 0)
 		goto failed;
 
-	if (enable->control && control_init(conn) < 0)
+	if (enable->control && avrcp_init(conn) < 0)
 		goto failed;
 
 	if (!dbus_connection_register_interface(conn, AUDIO_MANAGER_PATH,
@@ -1761,15 +1778,19 @@ struct device *manager_find_device(bdaddr_t *bda, const char *interface,
 			continue;
 
 		if (interface && !strcmp(AUDIO_HEADSET_INTERFACE, interface)
-			&& !dev->headset)
+				&& !dev->headset)
 			continue;
 
 		if (interface && !strcmp(AUDIO_SINK_INTERFACE, interface)
-			&& !dev->sink)
+				&& !dev->sink)
 			continue;
 
 		if (interface && !strcmp(AUDIO_SOURCE_INTERFACE, interface)
-			&& !dev->source)
+				&& !dev->source)
+			continue;
+
+		if (interface && !strcmp(AUDIO_CONTROL_INTERFACE, interface)
+				&& !dev->control)
 			continue;
 
 		if (connected && !device_is_connected(dev, interface))

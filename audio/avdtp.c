@@ -43,6 +43,7 @@
 
 #include "device.h"
 #include "manager.h"
+#include "control.h"
 #include "avdtp.h"
 
 #include <bluetooth/l2cap.h>
@@ -731,6 +732,13 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 
 static void connection_lost(struct avdtp *session, int err)
 {
+	struct device *dev;
+
+	dev = manager_find_device(&session->dst, AUDIO_CONTROL_INTERFACE,
+					FALSE);
+	if (dev)
+		avrcp_disconnect(dev);
+
 	if (session->state == AVDTP_SESSION_STATE_CONNECTED) {
 		char address[18];
 
@@ -1550,6 +1558,8 @@ static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
+		struct device *dev;
+
 		session->mtu = l2o.imtu;
 		session->buf = g_malloc0(session->mtu);
 		session->state = AVDTP_SESSION_STATE_CONNECTED;
@@ -1557,6 +1567,11 @@ static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
 						G_IO_IN | G_IO_ERR | G_IO_HUP
 						| G_IO_NVAL,
 						(GIOFunc) session_cb, session);
+
+		dev = manager_find_device(&session->dst,
+						AUDIO_CONTROL_INTERFACE, FALSE);
+		if (dev)
+			avrcp_connect(dev);
 	}
 	else if (session->pending_open)
 		handle_transport_connect(session, sk, l2o.imtu);
@@ -2682,6 +2697,7 @@ static void auth_cb(DBusPendingCall *call, void *data)
 	struct avdtp *session = data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError err;
+	struct device *dev;
 
 	dbus_pending_call_unref(session->pending_auth);
 	session->pending_auth = NULL;
@@ -2711,6 +2727,11 @@ static void auth_cb(DBusPendingCall *call, void *data)
 	set_disconnect_timer(session);
 
 	session->state = AVDTP_SESSION_STATE_CONNECTED;
+
+	dev = manager_find_device(&session->dst, AUDIO_CONTROL_INTERFACE,
+					FALSE);
+	if (dev)
+		avrcp_connect(dev);
 
 	g_source_remove(session->io);
 

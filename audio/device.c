@@ -49,6 +49,7 @@
 #include "ipc.h"
 #include "device.h"
 #include "avdtp.h"
+#include "control.h"
 #include "headset.h"
 #include "sink.h"
 
@@ -184,6 +185,9 @@ static void device_free(struct device *dev)
 
 	if (dev->sink)
 		sink_free(dev);
+
+	if (dev->control)
+		control_free(dev);
 
 	if (dev->conn)
 		dbus_connection_unref(dev->conn);
@@ -486,6 +490,8 @@ uint8_t device_get_state(struct device *dev)
 		hs_state = headset_get_state(dev);
 		return hs_to_ipc_state(hs_state);
 	}
+	else if (dev->control && control_is_active(dev))
+		return STATE_CONNECTED;
 
 	return STATE_DISCONNECTED;
 }
@@ -508,6 +514,9 @@ gboolean device_is_connected(struct device *dev, const char *interface)
 		return TRUE;
 	else if (!strcmp(interface, AUDIO_HEADSET_INTERFACE) && dev->headset &&
 			headset_is_active(dev))
+		return TRUE;
+	else if (!strcmp(interface, AUDIO_CONTROL_INTERFACE) && dev->headset &&
+			control_is_active(dev))
 		return TRUE;
 
 	return FALSE;
