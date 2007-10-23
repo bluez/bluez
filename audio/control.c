@@ -51,6 +51,41 @@
 
 #define AVCTP_PSM 23
 
+/* Message types */
+#define AVCTP_COMMAND		0
+#define AVCTP_RESPONSE		1
+
+/* Packet types */
+#define AVCTP_PACKET_SINGLE 	0
+#define AVCTP_PACKET_START 	1
+#define AVCTP_PACKET_CONTINUE 	2
+#define AVCTP_PACKET_END 	3
+
+/* ctype entries */
+#define CTYPE_CONTROL		0x0
+#define CTYPE_STATUS		0x1
+#define CTYPE_ACCEPTED		0x9
+#define CTYPE_STABLE		0xC
+
+/* opcodes */
+#define OP_UNITINFO		0x30
+#define OP_SUBUNITINFO		0x31
+#define OP_PASSTHROUGH		0x7c
+
+/* subunits of interest */
+#define SUBUNIT_PANEL		0x09
+
+/* operands in passthrough commands */
+#define VOLUP_OP		0x41
+#define VOLDOWN_OP		0x42
+#define MUTE_OP			0x43
+
+#define PLAY_OP			0x44
+#define STOP_OP			0x45
+#define PAUSE_OP		0x46
+#define NEXT_OP			0x4b
+#define PREV_OP			0x4c
+
 static DBusConnection *connection = NULL;
 
 static uint32_t tg_record_id = 0;
@@ -379,14 +414,41 @@ static struct avctp *avctp_get(bdaddr_t *src, bdaddr_t *dst)
 	return session;
 }
 
+static void handle_panel_passthrough(const unsigned char *operands, int operand_count)
+{
+	if (operand_count == 0)
+		return;
+
+	switch (operands[0]) {
+	case PLAY_OP:
+		debug("AVRCP: got PLAY");
+		break;
+	case STOP_OP:
+		debug("AVRCP: got STOP");
+		break;
+	case PAUSE_OP:
+		debug("AVRCP: got PAUSE");
+		break;
+	case NEXT_OP:
+		debug("AVRCP: got NEXT");
+		break;
+	case PREV_OP:
+		debug("AVRCP: got PREV");
+		break;
+	default:
+		debug("AVRCP: got unknown operand 0x%02X", operands[0]);
+		break;
+	}
+}
+
 static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
 	struct avctp *session = data;
-	char buf[1024];
+	unsigned char buf[1024], *operands;
 	struct avctp_header *avctp;
 	struct avrcp_header *avrcp;
-	int ret;
+	int ret, packet_size, operand_count;
 
 	if (!(cond | G_IO_IN))
 		goto failed;
@@ -401,6 +463,8 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 		error("Too small AVCTP packet");
 		goto failed;
 	}
+
+	packet_size = ret;
 
 	avctp = (struct avctp_header *) buf;
 
@@ -417,11 +481,28 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 
 	avrcp = (struct avrcp_header *) (buf + sizeof(struct avctp_header));
 
+	ret -= sizeof(struct avrcp_header);
+
+	operands = buf + sizeof(struct avctp_header) + sizeof(struct avrcp_header);
+	operand_count = ret;
+
 	debug("AVRCP %s 0x%01X, subunit_type 0x%02X, subunit_id 0x%01X, "
 			"opcode 0x%02X, %d operands",
 			avctp->cr ? "response" : "command",
 			avrcp->code, avrcp->subunit_type, avrcp->subunit_id,
-			avrcp->opcode, ret - sizeof(struct avctp_header));
+			avrcp->opcode, operand_count);
+
+	if (avctp->packet_type == AVCTP_PACKET_SINGLE &&
+			avctp->cr == AVCTP_COMMAND &&
+			avctp->pid == htons(AV_REMOTE_SVCLASS_ID) &&
+			avrcp->code == CTYPE_CONTROL &&
+			avrcp->subunit_type == SUBUNIT_PANEL &&
+			avrcp->opcode == OP_PASSTHROUGH) {
+		handle_panel_passthrough(operands, operand_count);
+		avctp->cr = AVCTP_RESPONSE;
+		avrcp->code = CTYPE_ACCEPTED;
+		ret = write(session->sock, buf, packet_size);
+	}
 
 	return TRUE;
 
