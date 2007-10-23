@@ -2,6 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
+ *  Copyright (C) 2006-2007  Nokia Corporation
  *  Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
  *
  *
@@ -261,4 +262,3 @@ void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 
 int avdtp_init(void);
 void avdtp_exit(void);
-
