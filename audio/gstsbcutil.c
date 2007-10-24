@@ -21,12 +21,8 @@
  *
  */
 
-
-/* common functions for gstreamer sbc related plugins */
-
-
-#include "gstsbcutil.h"
 #include "ipc.h"
+#include "gstsbcutil.h"
 
 /*
  * Selects one rate from a list of possible rates
@@ -108,7 +104,7 @@ gint gst_sbc_select_subbands_from_range(const GValue *value)
  * Selects one allocation mode from the ones on the list
  * TODO - use a better approach
  */
-const gchar* gst_sbc_get_allocation_from_list(const GValue *value)
+const gchar *gst_sbc_get_allocation_from_list(const GValue *value)
 {
 	guint size = gst_value_list_get_size(value);
 	return g_value_get_string(gst_value_list_get_value(value, size-1));
@@ -118,13 +114,13 @@ const gchar* gst_sbc_get_allocation_from_list(const GValue *value)
  * Selects one mode from the ones on the list
  * TODO - use a better aproach
  */
-const gchar* gst_sbc_get_mode_from_list(const GValue *value)
+const gchar *gst_sbc_get_mode_from_list(const GValue *value)
 {
 	guint size = gst_value_list_get_size(value);
 	return g_value_get_string(gst_value_list_get_value(value, size-1));
 }
 
-gint gst_sbc_get_allocation_mode_int(const gchar* allocation)
+gint gst_sbc_get_allocation_mode_int(const gchar *allocation)
 {
 	if (g_ascii_strcasecmp(allocation, "loudness") == 0)
 		return CFG_ALLOCATION_LOUDNESS;
@@ -136,7 +132,7 @@ gint gst_sbc_get_allocation_mode_int(const gchar* allocation)
 		return -1;
 }
 
-gint gst_sbc_get_mode_int(const gchar* mode)
+gint gst_sbc_get_mode_int(const gchar *mode)
 {
 	if (g_ascii_strcasecmp(mode, "joint") == 0)
 		return CFG_MODE_JOINT_STEREO;
@@ -152,7 +148,7 @@ gint gst_sbc_get_mode_int(const gchar* mode)
 		return -1;
 }
 
-const gchar* gst_sbc_get_mode_string(int joint)
+const gchar *gst_sbc_get_mode_string(int joint)
 {
 	switch (joint) {
 	case CFG_MODE_MONO:
@@ -170,7 +166,7 @@ const gchar* gst_sbc_get_mode_string(int joint)
 	}
 }
 
-const gchar* gst_sbc_get_allocation_string(int alloc)
+const gchar *gst_sbc_get_allocation_string(int alloc)
 {
 	switch (alloc) {
 	case CFG_ALLOCATION_LOUDNESS:
