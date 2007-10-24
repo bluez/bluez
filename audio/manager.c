@@ -1100,7 +1100,7 @@ static void register_devices_stored(const char *adapter)
 
 	bacpy(&default_src, BDADDR_ANY);
 	dev_id = hci_get_route(&default_src);
-	if (dev_id < 0 || hci_devba(dev_id, &default_src))
+	if (dev_id < 0 || hci_devba(dev_id, &default_src) < 0)
 		return;
 
 	if (bacmp(&default_src, &src) != 0)
