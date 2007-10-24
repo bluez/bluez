@@ -93,6 +93,27 @@ static void read_config(const char *file)
 		g_free(str);
 	}
 
+	str = g_key_file_get_string(keyfile, "General", "Enable", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		if (strstr(str, "Headset"))
+			enabled.headset = TRUE;
+		if (strstr(str, "Gateway"))
+			enabled.gateway = TRUE;
+		if (strstr(str, "Sink"))
+			enabled.sink = TRUE;
+		if (strstr(str, "Source"))
+			enabled.source = TRUE;
+		if (strstr(str, "Control"))
+			enabled.control = TRUE;
+		if (strstr(str, "Target"))
+			enabled.target = TRUE;
+		g_free(str);
+	}
+
 	str = g_key_file_get_string(keyfile, "General", "Disable", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
