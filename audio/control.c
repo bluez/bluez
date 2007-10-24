@@ -57,10 +57,10 @@
 #define AVCTP_RESPONSE		1
 
 /* Packet types */
-#define AVCTP_PACKET_SINGLE 	0
-#define AVCTP_PACKET_START 	1
-#define AVCTP_PACKET_CONTINUE 	2
-#define AVCTP_PACKET_END 	3
+#define AVCTP_PACKET_SINGLE	0
+#define AVCTP_PACKET_START	1
+#define AVCTP_PACKET_CONTINUE	2
+#define AVCTP_PACKET_END	3
 
 /* ctype entries */
 #define CTYPE_CONTROL		0x0
@@ -417,27 +417,34 @@ static struct avctp *avctp_get(bdaddr_t *src, bdaddr_t *dst)
 
 static void handle_panel_passthrough(const unsigned char *operands, int operand_count)
 {
+	const char *status;
+
 	if (operand_count == 0)
 		return;
 
-	switch (operands[0]) {
+	if (operands[0] & 0x80)
+		status = "released";
+	else
+		status = "pressed";
+
+	switch (operands[0] & 0x7F) {
 	case PLAY_OP:
-		debug("AVRCP: got PLAY");
+		debug("AVRCP: PLAY %s", status);
 		break;
 	case STOP_OP:
-		debug("AVRCP: got STOP");
+		debug("AVRCP: STOP %s", status);
 		break;
 	case PAUSE_OP:
-		debug("AVRCP: got PAUSE");
+		debug("AVRCP: PAUSE %s", status);
 		break;
 	case NEXT_OP:
-		debug("AVRCP: got NEXT");
+		debug("AVRCP: NEXT %s", status);
 		break;
 	case PREV_OP:
-		debug("AVRCP: got PREV");
+		debug("AVRCP: PREV %s", status);
 		break;
 	default:
-		debug("AVRCP: got unknown operand 0x%02X", operands[0]);
+		debug("AVRCP: unknown button 0x%02X %s", operands[0] & 0x7F, status);
 		break;
 	}
 }
