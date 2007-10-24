@@ -718,20 +718,21 @@ done:
 	return ret;
 }
 
-static int bluetooth_playback_delay(snd_pcm_ioplug_t *io, 
-				snd_pcm_sframes_t *delayp)
+static int bluetooth_playback_delay(snd_pcm_ioplug_t *io,
+					snd_pcm_sframes_t *delayp)
 {
 	DBG("");
 
 	/* This updates io->hw_ptr value using pointer() function */
 	snd_pcm_hwsync(io->pcm);
- 	
+
 	*delayp = io->appl_ptr - io->hw_ptr;
 	if ((io->state == SND_PCM_STATE_RUNNING) && (*delayp < 0)) {
 		io->callback->stop(io);
 		io->state = SND_PCM_STATE_XRUN;
 		*delayp = 0;
 	}
+
 	/* This should never fail, ALSA API is really not
 	prepared to handle a non zero return value */
 	return 0;
