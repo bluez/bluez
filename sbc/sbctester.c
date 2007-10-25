@@ -98,7 +98,6 @@ static int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref,
 	int i, j, err = 0, verdict = 0;
 	short refsample[MAXCHANNELS], tstsample[MAXCHANNELS];
 	double refbits, tstbits;
-	double rms;
 	double rms_accu[MAXCHANNELS];
 	double rms_level[MAXCHANNELS];
 	double rms_limit = 1.0 / (pow(2.0, accuracy - 1) * pow(12.0, 0.5));
@@ -183,16 +182,11 @@ error:
 	return (err < 0) ? err : verdict;
 }
 
-static int check_sample()
-{
-	return 0;
-}
-
 static int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref,
 				SNDFILE * sndtst, SF_INFO * infostst, int accuracy)
 {
 	int i, j, err = 0, verdict = 0;
-	short refsample[MAXCHANNELS], tstsample[MAXCHANNELS],
+	short refsample[MAXCHANNELS], tstsample[MAXCHANNELS];
 	short refmax[MAXCHANNELS], tstmax[MAXCHANNELS];
 	double refbits, tstbits;
 	double rms_absolute = 1.0 / (pow(2, accuracy - 2));
@@ -263,7 +257,7 @@ error:
 int main(int argc, char *argv[])
 {
 	int err = 0;
-	int rms_absolute, pass_rms, pass_absolute, pass, accuracy;
+	int pass_rms, pass_absolute, pass, accuracy;
 	char *ref;
 	char *tst;
 	SNDFILE *sndref = NULL;

@@ -157,10 +157,17 @@ AC_DEFUN([AC_PATH_INOTIFY], [
 	AC_CHECK_HEADERS(sys/inotify.h, dummy=yes, inotify_found=no)
 ])
 
+AC_DEFUN([AC_PATH_SNDFILE], [
+	PKG_CHECK_MODULES(SNDFILE, sndfile, sndfile_found=yes, sndfile_found=no)
+	AC_SUBST(SNDFILE_CFLAGS)
+	AC_SUBST(SNDFILE_LIBS)
+])
+
 AC_DEFUN([AC_ARG_BLUEZ], [
 	fortify_enable=yes
 	debug_enable=no
 	pie_enable=no
+	sndfile_enable=${sndfile_found}
 	inotify_enable=${inotify_found}
 	expat_enable=${expat_found}
 	hal_enable=${hal_found}
@@ -375,6 +382,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_SUBST([SBC_CFLAGS], ['-I$(top_srcdir)/sbc'])
 	AC_SUBST([SBC_LIBS], ['$(top_builddir)/sbc/libsbc.la'])
 
+	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
 	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes" && test "${hal_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
