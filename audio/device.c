@@ -73,50 +73,59 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult device_get_name(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static char *get_dev_name(DBusConnection *conn, const char *adapter_path,
+				bdaddr_t *bda)
 {
-	struct device *device = data;
-	DBusMessage *reply, *reply2, *msg2;
+	DBusMessage *msg, *reply;
 	DBusError derr;
 	const char *name;
-	char address[18], *addr_ptr = address;
+	char address[18], *addr_ptr = address, *ret;
 
-	msg2 = dbus_message_new_method_call("org.bluez", device->adapter_path,
+	msg = dbus_message_new_method_call("org.bluez", adapter_path,
 					"org.bluez.Adapter", "GetRemoteName");
-	if (!msg2)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	if (!msg)
+		return NULL;
 
-	ba2str(&device->dst, address);
-	dbus_message_append_args(msg2, DBUS_TYPE_STRING, &addr_ptr,
+	ba2str(bda, address);
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
 
 	dbus_error_init(&derr);
-	reply2 = dbus_connection_send_with_reply_and_block(conn, msg2, -1,
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1,
 								&derr);
-
-	dbus_message_unref(msg2);
+	dbus_message_unref(msg);
 
 	if (dbus_error_is_set(&derr)) {
-		error("%s GetRemoteName(): %s", device->adapter_path,
-				derr.message);
+		error("%s GetRemoteName(): %s", adapter_path, derr.message);
 		dbus_error_free(&derr);
-		return err_failed(conn, msg, "Unable to get remote name");
+		return NULL;
 	}
 
+	if (!dbus_message_get_args(reply, NULL,
+					DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_INVALID))
+		return NULL;
+
+	ret = g_strdup(name);
+
+	dbus_message_unref(reply);
+
+	return ret;
+}
+
+static DBusHandlerResult device_get_name(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct device *dev = data;
+	DBusMessage *reply;
+	const char *name = dev->name ? dev->name : "";
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_message_get_args(reply2, NULL,
-		       		DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_INVALID);
-
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &name,
 					DBUS_TYPE_INVALID);
-
-	dbus_message_unref(reply2);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -193,11 +202,9 @@ static void device_free(struct device *dev)
 	if (dev->conn)
 		dbus_connection_unref(dev->conn);
 
-	if (dev->adapter_path)
-		g_free(dev->adapter_path);
-
-	if (dev->path)
-		g_free(dev->path);
+	g_free(dev->adapter_path);
+	g_free(dev->path);
+	g_free(dev->name);
 
 	g_free(dev);
 }
@@ -303,6 +310,7 @@ struct device *device_register(DBusConnection *conn,
 		return NULL;
 	}
 
+	dev->name = get_dev_name(conn, dev->adapter_path, bda);
 	dev->path = g_strdup(path);
 	bacpy(&dev->dst, bda);
 	bacpy(&dev->src, &src);

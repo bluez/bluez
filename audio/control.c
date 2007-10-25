@@ -32,6 +32,9 @@
 #include <unistd.h>
 #include <assert.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 
 #include <glib.h>
@@ -45,6 +48,7 @@
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "logging.h"
+#include "uinput.h"
 #include "device.h"
 #include "manager.h"
 #include "avdtp.h"
@@ -84,6 +88,8 @@
 #define PLAY_OP			0x44
 #define STOP_OP			0x45
 #define PAUSE_OP		0x46
+#define REWIND_OP		0x48
+#define FAST_FORWARD_OP		0x49
 #define NEXT_OP			0x4b
 #define PREV_OP			0x4c
 
@@ -150,6 +156,8 @@ struct avctp {
 	bdaddr_t src;
 	bdaddr_t dst;
 
+	int uinput;
+
 	int sock;
 
 	guint io;
@@ -162,7 +170,6 @@ struct avctp {
 struct control {
 	struct avctp *session;
 };
-
 
 static int avrcp_ct_record(sdp_buf_t *buf)
 {
@@ -385,8 +392,75 @@ static void avctp_unref(struct avctp *session)
 		close(session->sock);
 	if (session->io)
 		g_source_remove(session->io);
+
 	session->dev->control->session = NULL;
+
+	if (session->uinput >= 0) {
+		ioctl(session->uinput, UI_DEV_DESTROY);
+		close(session->uinput);
+	}
+
 	g_free(session);
+}
+
+static int uinput_create(char *name)
+{
+	struct uinput_dev dev;
+	int fd, err;
+
+	fd = open("/dev/uinput", O_RDWR);
+	if (fd < 0) {
+		fd = open("/dev/input/uinput", O_RDWR);
+		if (fd < 0) {
+			fd = open("/dev/misc/uinput", O_RDWR);
+			if (fd < 0) {
+				err = errno;
+				error("Can't open input device: %s (%d)",
+							strerror(err), err);
+				return -err;
+			}
+		}
+	}
+
+	memset(&dev, 0, sizeof(dev));
+	if (name)
+		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE);
+
+	dev.id.bustype = BUS_BLUETOOTH;
+	dev.id.vendor  = 0x0000;
+	dev.id.product = 0x0000;
+	dev.id.version = 0x0000;
+
+	if (write(fd, &dev, sizeof(dev)) < 0) {
+		err = errno;
+		error("Can't write device information: %s (%d)",
+						strerror(err), err);
+		close(fd);
+		errno = err;
+		return -err;
+	}
+
+	ioctl(fd, UI_SET_EVBIT, EV_KEY);
+	ioctl(fd, UI_SET_EVBIT, EV_REL);
+	ioctl(fd, UI_SET_EVBIT, EV_REP);
+
+	ioctl(fd, UI_SET_KEYBIT, KEY_PLAYPAUSE);
+	ioctl(fd, UI_SET_KEYBIT, KEY_STOP);
+	ioctl(fd, UI_SET_KEYBIT, KEY_NEXT);
+	ioctl(fd, UI_SET_KEYBIT, KEY_PREVIOUS);
+	ioctl(fd, UI_SET_KEYBIT, KEY_REWIND);
+	ioctl(fd, UI_SET_KEYBIT, KEY_FORWARD);
+
+	if (ioctl(fd, UI_DEV_CREATE, NULL) < 0) {
+		err = errno;
+		error("Can't create uinput device: %s (%d)",
+						strerror(err), err);
+		close(fd);
+		errno = err;
+		return -err;
+	}
+
+	return fd;
 }
 
 static struct avctp *avctp_get(bdaddr_t *src, bdaddr_t *dst)
@@ -406,6 +480,7 @@ static struct avctp *avctp_get(bdaddr_t *src, bdaddr_t *dst)
 
 	session = g_new0(struct avctp, 1);
 
+	session->uinput = -1;
 	session->sock = -1;
 	bacpy(&session->src, src);
 	bacpy(&session->dst, dst);
@@ -415,33 +490,88 @@ static struct avctp *avctp_get(bdaddr_t *src, bdaddr_t *dst)
 	return session;
 }
 
-static void handle_panel_passthrough(const unsigned char *operands, int operand_count)
+static void init_uinput(struct avctp *session)
+{
+	char address[18], *name;
+
+	ba2str(&session->dst, address);
+
+	name = session->dev->name ? session->dev->name : address;
+
+	session->uinput = uinput_create(name);
+	if (session->uinput < 0)
+		error("AVRCP: failed to init uinput for %s", name);
+	else
+		debug("AVRCP: uinput initialized for %s", name);
+}
+
+static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
+{
+	struct uinput_event event;
+
+	memset(&event, 0, sizeof(event));
+	event.type	= type;
+	event.code	= code;
+	event.value	= value;
+
+	return write(fd, &event, sizeof(event));
+}
+
+static void send_key(int fd, uint16_t key, int pressed)
+{
+	if (fd < 0)
+		return;
+
+	send_event(fd, EV_KEY, key, pressed);
+	send_event(fd, EV_SYN, SYN_REPORT, 0);
+}
+
+static void handle_panel_passthrough(struct avctp *session,
+					const unsigned char *operands,
+					int operand_count)
 {
 	const char *status;
+	int pressed;
 
 	if (operand_count == 0)
 		return;
 
-	if (operands[0] & 0x80)
+	if (operands[0] & 0x80) {
 		status = "released";
-	else
+		pressed = 0;
+	} else {
 		status = "pressed";
+		pressed = 1;
+	}
 
 	switch (operands[0] & 0x7F) {
 	case PLAY_OP:
 		debug("AVRCP: PLAY %s", status);
+		send_key(session->uinput, KEY_PLAYPAUSE, pressed);
 		break;
 	case STOP_OP:
 		debug("AVRCP: STOP %s", status);
+		send_key(session->uinput, KEY_STOP, pressed);
 		break;
 	case PAUSE_OP:
 		debug("AVRCP: PAUSE %s", status);
+		send_key(session->uinput, KEY_PLAYPAUSE, pressed);
 		break;
 	case NEXT_OP:
 		debug("AVRCP: NEXT %s", status);
+		send_key(session->uinput, KEY_NEXT, pressed);
 		break;
 	case PREV_OP:
 		debug("AVRCP: PREV %s", status);
+		send_key(session->uinput, KEY_PREVIOUS, pressed);
+		break;
+	case REWIND_OP:
+		debug("AVRCP: REWIND %s", status);
+		send_key(session->uinput, KEY_REWIND, pressed);
+		break;
+	case FAST_FORWARD_OP:
+		debug("AVRCP: FAST FORWARD %s", status);
+		send_key(session->uinput, KEY_FORWARD, pressed);
 		break;
 	default:
 		debug("AVRCP: unknown button 0x%02X %s", operands[0] & 0x7F, status);
@@ -506,7 +636,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 			avrcp->code == CTYPE_CONTROL &&
 			avrcp->subunit_type == SUBUNIT_PANEL &&
 			avrcp->opcode == OP_PASSTHROUGH) {
-		handle_panel_passthrough(operands, operand_count);
+		handle_panel_passthrough(session, operands, operand_count);
 		avctp->cr = AVCTP_RESPONSE;
 		avrcp->code = CTYPE_ACCEPTED;
 		ret = write(session->sock, buf, packet_size);
@@ -553,6 +683,7 @@ static void auth_cb(DBusPendingCall *call, void *data)
 	session->dev = manager_device_connected(&session->dst,
 						AVRCP_TARGET_UUID);
 	session->dev->control->session = session;
+	init_uinput(session);
 
 	dbus_connection_emit_signal(session->dev->conn, session->dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
@@ -623,6 +754,12 @@ static gboolean avctp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 
 	session = avctp_get(&src, &dst);
 
+	if (!session) {
+		error("Unable to create new AVCTP session");
+		close(cli_sk);
+		return TRUE;
+	}
+
 	if (session->sock >= 0) {
 		error("Refusing unexpected connect from %s", address);
 		close(cli_sk);
@@ -651,6 +788,7 @@ proceed:
 		session->dev = manager_device_connected(&dst,
 							AVRCP_TARGET_UUID);
 		session->dev->control->session = session;
+		init_uinput(session);
 		flags |= G_IO_IN;
 		dbus_connection_emit_signal(session->dev->conn,
 						session->dev->path,
@@ -712,6 +850,8 @@ static gboolean avctp_connect_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
+	init_uinput(session);
+
 	dbus_connection_emit_signal(session->dev->conn, session->dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
 					DBUS_TYPE_INVALID);
@@ -744,6 +884,11 @@ gboolean avrcp_connect(struct device *dev)
 		return TRUE;
 
 	session = avctp_get(&dev->src, &dev->dst);
+	if (!session) {
+		error("Unable to create new AVCTP session");
+		return FALSE;
+	}
+
 	session->dev = dev;
 
 	memset(&l2a, 0, sizeof(l2a));
