@@ -35,26 +35,6 @@
 #define MAXCHANNELS 2
 #define DEFACCURACY 7
 
-static void usage()
-{
-	printf("SBC conformance test ver %s\n", VERSION);
-	printf("Copyright (c) 2007 Marcel Holtmann\n\n");
-	printf("Copyright (c) 2007 Frederic Dalleau\n\n");
-
-	printf("Usage:\n"
-		"\tsbctester reference.wav checkfile.wav\n"
-		"\tsbctester integer\n"
-		"\n");
-
-	printf("\tTo test the encoder:\n");
-	printf("\tUse a reference codec to encode original.wav to reference.sbc\n");
-	printf("\tUse sbcenc to encode original.wav to checkfile.sbc\n");
-	printf("\tDecode both file using the reference decoder\n");
-	printf("\trun sbctester with these two wav files to get the result\n");
-
-	printf("\n\tA file called out.csv is generated to use the data in a spreadsheet application or database.\n\n");
-}
-
 static double sampletobits(short sample16, int verbose)
 {
 	double bits = 0;
@@ -250,6 +230,27 @@ static int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref,
 	printf("%s return %d\n", __FUNCTION__, verdict);
 
 	return verdict;
+}
+
+static void usage()
+{
+	printf("SBC conformance test ver %s\n", VERSION);
+	printf("Copyright (c) 2007 Marcel Holtmann\n");
+	printf("Copyright (c) 2007 Frederic Dalleau\n\n");
+
+	printf("Usage:\n"
+		"\tsbctester reference.wav checkfile.wav\n"
+		"\tsbctester integer\n"
+		"\n");
+
+	printf("To test the encoder:\n");
+	printf("\tUse a reference codec to encode original.wav to reference.sbc\n");
+	printf("\tUse sbcenc to encode original.wav to checkfile.sbc\n");
+	printf("\tDecode both file using the reference decoder\n");
+	printf("\tRun sbctester with these two wav files to get the result\n\n");
+
+	printf("\tA file called out.csv is generated to use the data in a\n");
+	printf("\tspreadsheet application or database.\n\n");
 }
 
 int main(int argc, char *argv[])
