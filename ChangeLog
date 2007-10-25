@@ -1,3 +1,13 @@
+ver 3.22:
+	Add missing include file from audio service.
+	Add SBC conformance test utility.
+	Add basic uinput support for AVRCP.
+	Fix L2CAP socket leak in audio service.
+	Fix buffer usage in GStreamer plugin.
+
+	Note:
+	This version needs at least bluez-libs-3.22
+
 ver 3.21:
 	Add initial AVRCP support.
 	Add A2DP sink support to GStreamer plugin.
