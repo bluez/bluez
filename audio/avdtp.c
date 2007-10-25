@@ -561,6 +561,9 @@ static void stream_free(struct avdtp_stream *stream)
 	if (stream->timer)
 		g_source_remove(stream->timer);
 
+	if (stream->sock >= 0)
+		close(stream->sock);
+
 	if (stream->io)
 		g_source_remove(stream->io);
 
@@ -719,11 +722,6 @@ static void finalize_discovery(struct avdtp *session, int err)
 static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 {
 	struct avdtp_local_sep *sep = stream->lsep;
-
-	if (stream->sock >= 0)
-		close(stream->sock);
-	if (stream->io)
-		g_source_remove(stream->io);
 
 	if (sep->cfm && sep->cfm->abort)
 		sep->cfm->abort(session, sep, stream, NULL, sep->user_data);

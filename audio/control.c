@@ -443,6 +443,7 @@ static int uinput_create(char *name)
 	ioctl(fd, UI_SET_EVBIT, EV_KEY);
 	ioctl(fd, UI_SET_EVBIT, EV_REL);
 	ioctl(fd, UI_SET_EVBIT, EV_REP);
+	ioctl(fd, UI_SET_EVBIT, EV_SYN);
 
 	ioctl(fd, UI_SET_KEYBIT, KEY_PLAYPAUSE);
 	ioctl(fd, UI_SET_KEYBIT, KEY_STOP);
