@@ -1009,7 +1009,9 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 	try = 10;
 	while (try--) {
 		evt_cmd_complete *cc;
-		evt_cmd_status   *cs;
+		evt_cmd_status *cs;
+		evt_remote_name_req_complete *rn;
+		remote_name_req_cp *cp;
 
 		if (to) {
 			struct pollfd p;
@@ -1069,6 +1071,20 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 
 			ptr += EVT_CMD_COMPLETE_SIZE;
 			len -= EVT_CMD_COMPLETE_SIZE;
+
+			r->rlen = MIN(len, r->rlen);
+			memcpy(r->rparam, ptr, r->rlen);
+			goto done;
+
+		case EVT_REMOTE_NAME_REQ_COMPLETE:
+			if (hdr->evt != r->event)
+				break;
+
+			rn = r->rparam;
+			cp = r->cparam;
+
+			if (bacmp(&rn->bdaddr, &cp->bdaddr))
+				continue;
 
 			r->rlen = MIN(len, r->rlen);
 			memcpy(r->rparam, ptr, r->rlen);
