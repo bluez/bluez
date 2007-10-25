@@ -1,3 +1,6 @@
+ver 3.22:
+	Fix remote name request event handling.
+
 ver 3.21:
 	Add constant for Bluetooth socket options level.
 
