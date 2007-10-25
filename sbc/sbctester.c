@@ -1,30 +1,26 @@
-/*                                                                         *
- *   Copyright (C) 2007 by Frederic Dalleau                                *
- *   fdalleau@free.fr                                                      *
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   This program is distributed in the hope that it will be useful,       *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- *   GNU General Public License for more details.                          *
- *                                                                         *
- *   You should have received a copy of the GNU General Public License     *
- *   along with this program; if not, write to the                         *
- *   Free Software Foundation, Inc.,                                       *
- *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- ***************************************************************************/
-
 /*
-
-A2DP Test Specification Chapter 4.6 (p 25)
-namely SBC codec conformance test
-This is a test procedure for SBC
-
-*/
+ *
+ *  Bluetooth low-complexity, subband codec (SBC) library
+ *
+ *  Copyright (C) 2007  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2007  Frederic Dalleau <fdalleau@free.fr>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -41,17 +37,10 @@ This is a test procedure for SBC
 #define TSTSAMPLEFACTOR(x) (x)
 #define DEFACCURACY 7
 
-/* temporary */
-#ifndef VERSION
-#define VERSION "1"
-#endif
-
-void usage()
+static void usage()
 {
-	printf("SBC codec conformance test (see Chapter 4.6, p. 25) ver %s\n", VERSION);
+	printf("SBC conformance test ver %s\n", VERSION);
 	printf("Copyright (c) 2007 Frederic Dalleau\n\n");
-
-	//printf("This is a mandatory test case, but alternative methods exists.\n\n");
 
 	printf("Usage:\n"
 		"\tsbctester reference.wav checkfile.wav\n"
@@ -67,7 +56,7 @@ void usage()
 	printf("\n\tA file called out.csv is generated to use the data in a spreadsheet application or database.\n\n");
 }
 
-double sampletobits(short sample16, int verbose)
+static double sampletobits(short sample16, int verbose)
 {
 	double bits = 0;
 	int i;
@@ -98,10 +87,13 @@ double sampletobits(short sample16, int verbose)
 
 	if (verbose)
 		printf("\n");
+
 	return bits;
 }
 
-int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref, SNDFILE * sndtst, SF_INFO * infostst, int accuracy, char *csvname)
+static int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref,
+				SNDFILE * sndtst, SF_INFO * infostst,
+						int accuracy, char *csvname)
 {
 	int i, j, err = 0, verdict = 0;
 	short refsample[MAXCHANNELS], tstsample[MAXCHANNELS];
@@ -134,14 +126,16 @@ int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref, SNDFILE * sndtst, 
 
 		r1 = sf_read_short(sndref, refsample, infostst->channels);
 		if (r1 != infostst->channels) {
-			printf("Failed to read reference data:%s (r1=%d, channels=%d)", sf_strerror(sndref), r1, infostst->channels);
+			printf("Failed to read reference data: %s (r1=%d, channels=%d)",
+						sf_strerror(sndref), r1, infostst->channels);
 			err = -1;
 			goto error;
 		}
 
 		r2 = sf_read_short(sndtst, tstsample, infostst->channels);
 		if (r2 != infostst->channels) {
-			printf("Failed to read test data:%s (r2=%d, channels=%d)\n", sf_strerror(sndtst), r2, infostst->channels);
+			printf("Failed to read test data: %s (r2=%d, channels=%d)\n",
+						sf_strerror(sndtst), r2, infostst->channels);
 			err = -1;
 			goto error;
 		}
@@ -168,7 +162,8 @@ int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref, SNDFILE * sndtst, 
 		rms_accu[j] /= (double) infostst->frames;
 		printf("Accumulated / %f = %f\n", (double) infostst->frames, rms_accu[j]);
 		rms_level[j] = sqrt(rms_accu[j]);
-		printf("Level = %f (%f x %f = %f)\n", rms_level[j], rms_level[j], rms_level[j], rms_level[j] * rms_level[j]);
+		printf("Level = %f (%f x %f = %f)\n",
+			rms_level[j], rms_level[j], rms_level[j], rms_level[j] * rms_level[j]);
 	}
 
 	verdict = 1;
@@ -181,24 +176,24 @@ int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref, SNDFILE * sndtst, 
 
 	printf("%s return %d\n", __FUNCTION__, verdict);
 
-
-      error:
-
+error:
 	if (csv)
 		fclose(csv);
 
 	return (err < 0) ? err : verdict;
 }
 
-int check_sample()
+static int check_sample()
 {
 	return 0;
 }
 
-int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref, SNDFILE * sndtst, SF_INFO * infostst, int accuracy)
+static int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref,
+				SNDFILE * sndtst, SF_INFO * infostst, int accuracy)
 {
 	int i, j, err = 0, verdict = 0;
-	short refsample[MAXCHANNELS], tstsample[MAXCHANNELS], refmax[MAXCHANNELS], tstmax[MAXCHANNELS];
+	short refsample[MAXCHANNELS], tstsample[MAXCHANNELS],
+	short refmax[MAXCHANNELS], tstmax[MAXCHANNELS];
 	double refbits, tstbits;
 	double rms_absolute = 1.0 / (pow(2, accuracy - 2));
 	double calc_max[MAXCHANNELS];
@@ -221,14 +216,16 @@ int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref, SNDFILE * sndtst, 
 		r1 = sf_read_short(sndref, refsample, infostst->channels);
 
 		if (r1 != infostst->channels) {
-			printf("Failed to read reference data:%s (r1=%d, channels=%d)", sf_strerror(sndref), r1, infostst->channels);
+			printf("Failed to read reference data: %s (r1=%d, channels=%d)",
+						sf_strerror(sndref), r1, infostst->channels);
 			err = -1;
 			goto error;
 		}
 
 		r2 = sf_read_short(sndtst, tstsample, infostst->channels);
 		if (r2 != infostst->channels) {
-			printf("Failed to read test data:%s (r2=%d, channels=%d)\n", sf_strerror(sndtst), r2, infostst->channels);
+			printf("Failed to read test data: %s (r2=%d, channels=%d)\n",
+						sf_strerror(sndtst), r2, infostst->channels);
 			err = -1;
 			goto error;
 		}
@@ -253,13 +250,13 @@ int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref, SNDFILE * sndtst, 
 	}
 
 	for (j = 0; j < infostst->channels; j++) {
-		printf("Calculated max: %f (%hd-%hd=%hd)\n", calc_max[j], tstmax[j], refmax[j], tstmax[j] - refmax[j]);
+		printf("Calculated max: %f (%hd-%hd=%hd)\n",
+			calc_max[j], tstmax[j], refmax[j], tstmax[j] - refmax[j]);
 	}
 
 	printf("%s return %d\n", __FUNCTION__, verdict);
 
-      error:
-
+error:
 	return (err < 0) ? err : verdict;
 }
 
@@ -291,7 +288,6 @@ int main(int argc, char *argv[])
 	ref = argv[1];
 	tst = argv[2];
 
-	// open both files
 	printf("opening reference %s\n", ref);
 
 	sndref = sf_open(ref, SFM_READ, &infosref);
@@ -309,8 +305,10 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	printf("reference:\n\t%d frames,\n\t%d hz,\n\t%d channels\n", (int) infosref.frames, (int) infosref.samplerate, (int) infosref.channels);
-	printf("testfile:\n\t%d frames,\n\t%d hz,\n\t%d channels\n", (int) infostst.frames, (int) infostst.samplerate, (int) infostst.channels);
+	printf("reference:\n\t%d frames,\n\t%d hz,\n\t%d channels\n",
+		(int) infosref.frames, (int) infosref.samplerate, (int) infosref.channels);
+	printf("testfile:\n\t%d frames,\n\t%d hz,\n\t%d channels\n",
+		(int) infostst.frames, (int) infostst.samplerate, (int) infostst.channels);
 
 	// check number of channels
 	if (infosref.channels > 2 || infostst.channels > 2) {
@@ -319,7 +317,8 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 	// compare number of samples
-	if (infosref.samplerate != infostst.samplerate || infosref.channels != infostst.channels) {
+	if (infosref.samplerate != infostst.samplerate ||
+				infosref.channels != infostst.channels) {
 		printf("Cannot compare files with different charasteristics\n");
 		err = -1;
 		goto error;
@@ -346,8 +345,7 @@ int main(int argc, char *argv[])
 	pass = pass_rms && pass_absolute;
 	printf("Verdict: %s\n", pass ? "pass" : "fail");
 
-      error:
-
+error:
 	if (sndref)
 		sf_close(sndref);
 
