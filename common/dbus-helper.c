@@ -143,8 +143,8 @@ static void generate_introspection_xml(DBusConnection *conn,
 		g_string_append_printf(gstr, "\t<interface name=\"%s\">\n", iface->name);
 
 		for (method = iface->methods; method && method->name; method++) {
-			debug("%s: adding method %s.%s",
-					path, iface->name, method->name);
+			/* debug("%s: adding method %s.%s",
+					path, iface->name, method->name); */
 			if (!strlen(method->signature) && !strlen(method->reply))
 				g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
 							method->name);
@@ -158,8 +158,8 @@ static void generate_introspection_xml(DBusConnection *conn,
 		}
 
 		for (signal = iface->signals; signal && signal->name; signal++) {
-			debug("%s: adding signal %s.%s",
-					path, iface->name, signal->name);
+			/* debug("%s: adding signal %s.%s",
+					path, iface->name, signal->name); */
 			if (!strlen(signal->signature))
 				g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
 							signal->name);
