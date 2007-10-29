@@ -53,16 +53,17 @@ static GstStaticPadTemplate sbc_parse_src_factory =
 				"mode = (string) { mono, dual, stereo, joint }, "
 				"blocks = (int) { 4, 8, 12, 16 }, "
 				"subbands = (int) { 4, 8 }, "
-				"allocation = (string) { snr, loudness }"));
+				"allocation = (string) { snr, loudness },"
+				"bitpool = (int) [ 2, 64 ]"));
 
-/* reates a fixed caps from the caps given. */
+/* Creates a fixed caps from the caps given. */
 static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 {
 	GstCaps *result;
 	GstStructure *structure;
 	const GValue *value;
 	gboolean error = FALSE;
-	gint temp, rate, channels, blocks, subbands;
+	gint temp, rate, channels, blocks, subbands, bitpool;
 	const gchar* allocation = NULL;
 	const gchar* mode = NULL;
 	const gchar* error_message = NULL;
@@ -133,6 +134,20 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		subbands = temp;
 	}
 
+	if (!gst_structure_has_field(structure, "bitpool")) {
+		error = TRUE;
+		error_message = "no bitpool";
+		goto error;
+	} else {
+		value = gst_structure_get_value(structure, "bitpool");
+		if (GST_VALUE_HOLDS_INT_RANGE(value)) {
+			temp = gst_sbc_select_bitpool_from_range(value);
+		} else {
+			temp = g_value_get_int(value);
+		}
+		bitpool = temp;
+	}
+
 	if (!gst_structure_has_field(structure, "allocation")) {
 		error = TRUE;
 		error_message = "no allocation.";
@@ -173,11 +188,13 @@ error:
 					"blocks", G_TYPE_INT, blocks,
 					"subbands", G_TYPE_INT, subbands,
 					"allocation", G_TYPE_STRING, allocation,
+					"bitpool", G_TYPE_INT, bitpool,
 					NULL);
 	parse->sbc.rate = rate;
 	parse->sbc.channels = channels;
 	parse->sbc.blocks = blocks;
 	parse->sbc.subbands = subbands;
+	parse->sbc.bitpool = bitpool;
 	parse->sbc.joint = gst_sbc_get_mode_int(mode);
 	parse->sbc.allocation = gst_sbc_get_allocation_mode_int(allocation);
 
