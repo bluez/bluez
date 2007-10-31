@@ -246,9 +246,9 @@ int bnep_if_up(const char *devname, uint16_t id)
 			g_spawn_async(NULL, (char **) argv, NULL, flags,
 					bnep_setup, (gpointer) devname, &pid,
 					NULL);
-
-			return bnep->pid;
 		}
+
+		return bnep->pid;
 	}
 
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
@@ -256,6 +256,7 @@ int bnep_if_up(const char *devname, uint16_t id)
 	strcpy(ifr.ifr_name, devname);
 
 	ifr.ifr_flags |= IFF_UP;
+	ifr.ifr_flags |= IFF_MULTICAST;
 
 	if ((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
 		err = errno;
