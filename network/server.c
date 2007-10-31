@@ -640,7 +640,7 @@ int server_init(DBusConnection *conn, const char *iface_prefix,
 		goto fail;
 	}
 
-	lm = secure? L2CAP_LM_SECURE : 0;
+	lm = secure ? L2CAP_LM_SECURE : 0;
 	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
 		err = errno;
 		error("Failed to set link mode. %s(%d)",
@@ -662,6 +662,10 @@ int server_init(DBusConnection *conn, const char *iface_prefix,
 	g_io_channel_set_close_on_unref(bnep_io, FALSE);
 	g_io_add_watch(bnep_io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 							connect_event, NULL);
+
+	if (bridge_create(BNEP_SVC_GN) < 0)
+		error("Can't create GN bridge");
+
 	return 0;
 fail:
 
@@ -683,6 +687,9 @@ void server_exit()
 		g_io_channel_unref(bnep_io);
 		bnep_io = NULL;
 	}
+
+	if (bridge_remove(BNEP_SVC_GN) < 0)
+		error("Can't remove GN bridge");
 
 	dbus_connection_unref(connection);
 	connection = NULL;

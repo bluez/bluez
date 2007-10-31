@@ -69,6 +69,7 @@ static const char *nap = NULL;
 
 struct bnep_data {
 	char *devname;
+	char *script;
 	int pid;
 };
 
@@ -226,12 +227,29 @@ int bnep_if_up(const char *devname, uint16_t id)
 {
 	int sd, err, pid;
 	struct ifreq ifr;
-	const char *argv[3], *script;
+	const char *argv[5];
 	struct bnep_data *bnep;
 	GSpawnFlags flags;
+	GSList *l;
 
-	if (g_slist_find_custom(pids, devname, find_devname))
-		return 0;
+	/* Check if a script is running */
+	if ((l = g_slist_find_custom(pids, devname, find_devname))) {
+		bnep = l->data;
+
+		if (bnep->script && !strcmp(bnep->script, "avahi-autoipd")) {
+			argv[0] = bnep->script;
+			argv[1] = devname;
+			argv[2] = "--refresh";
+			argv[3] = NULL;
+
+			flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
+			g_spawn_async(NULL, (char **) argv, NULL, flags,
+					bnep_setup, (gpointer) devname, &pid,
+					NULL);
+
+			return bnep->pid;
+		}
+	}
 
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
 	memset(&ifr, 0, sizeof(ifr));
@@ -241,7 +259,7 @@ int bnep_if_up(const char *devname, uint16_t id)
 
 	if ((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
 		err = errno;
-		error("Could not bring up %d. %s(%d)", devname, strerror(err),
+		error("Could not bring up %s. %s(%d)", devname, strerror(err),
 			err);
 		return -err;
 	}
@@ -253,18 +271,25 @@ int bnep_if_up(const char *devname, uint16_t id)
 		goto done;
 
 	if (id == BNEP_SVC_PANU)
-		script = panu;
+		bnep->script = g_strdup(panu);
 	else if (id == BNEP_SVC_GN)
-		script = gn;
+		bnep->script = g_strdup(gn);
 	else
-		script = nap;
+		bnep->script = g_strdup(nap);
 
-	if (!script)
+	if (!bnep->script)
 		goto done;
 
-	argv[0] = script;
+	argv[0] = bnep->script;
 	argv[1] = devname;
-	argv[2] = NULL;
+
+	if (!strcmp(bnep->script, "avahi-autoipd")) {
+		argv[2] = "--no-drop-root";
+		argv[3] = "--no-chroot";
+		argv[4] = NULL;
+	} else
+		argv[2] = NULL;
+
 	flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
 	if (!g_spawn_async(NULL, (char **) argv, NULL, flags, bnep_setup,
 				(gpointer) devname, &pid, NULL)) {
@@ -283,29 +308,49 @@ done:
 
 int bnep_if_down(const char *devname)
 {
-	int sd, err;
+	int sd, err, pid;
 	struct ifreq ifr;
 	struct bnep_data *bnep;
 	GSList *l;
+	GSpawnFlags flags;
+	const char *argv[4];
 
 	l = g_slist_find_custom(pids, devname, find_devname);
 	if (!l)
 		return 0;
 
 	bnep = l->data;
-	if (bnep->pid) {
-		err = kill(bnep->pid, SIGTERM);
-		if (err < 0)
-			error("kill(%d, SIGTERM): %s (%d)", bnep->pid,
-				strerror(errno), errno);
+
+	if (!bnep->pid)
+		goto done;
+
+	if (bnep->script && !strcmp (bnep->script, "avahi-autoipd")) {
+		argv[0] = bnep->script;
+		argv[1] = devname;
+		argv[2] = "--kill";
+		argv[3] = NULL;
+
+		flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
+		g_spawn_async(NULL, (char **) argv, NULL, flags, bnep_setup,
+				(gpointer) devname, &pid, NULL);
+
+		goto done;
 	}
 
+	/* Kill script */
+	err = kill(bnep->pid, SIGTERM);
+	if (err < 0)
+		error("kill(%d, SIGTERM): %s (%d)", bnep->pid,
+			strerror(errno), errno);
+
+done:
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
 	memset(&ifr, 0, sizeof(ifr));
 	strcpy(ifr.ifr_name, devname);
 
 	ifr.ifr_flags &= ~IFF_UP;
 
+	/* Bring down the interface */
 	if ((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
 		err = errno;
 		error("Could not bring down %d. %s(%d)", devname, strerror(err),
@@ -314,7 +359,13 @@ int bnep_if_down(const char *devname)
 	}
 
 	pids = g_slist_remove(pids, bnep);
-	g_free(bnep->devname);
+
+	if (bnep->devname)
+		g_free(bnep->devname);
+
+	if (bnep->script)
+		g_free(bnep->script);
+
 	g_free(bnep);
 
 	return 0;
