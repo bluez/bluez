@@ -875,6 +875,9 @@ static void register_server(uint16_t id)
 	bdaddr_t src;
 	int dev_id;
 
+	if (!conf->server_enabled)
+		return;
+
 	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(id));
 
 	if (g_slist_find_custom(server_paths, path,
@@ -940,20 +943,48 @@ static void register_stored(void)
 			continue;
 
 		/* Connection objects */
-		register_connections_stored(de->d_name);
+		if (conf->connection_enabled)
+			register_connections_stored(de->d_name);
 
-		/* NAP objects */
-		register_servers_stored(de->d_name, "nap");
+		/* Server objects */
+		if (conf->server_enabled) {
+			/* NAP objects */
+			register_servers_stored(de->d_name, "nap");
 
-		/* GN objects */
-		register_servers_stored(de->d_name, "gn");
+			/* GN objects */
+			register_servers_stored(de->d_name, "gn");
 
-		/* PANU objects */
-		register_servers_stored(de->d_name, "panu");
+			/* PANU objects */
+			register_servers_stored(de->d_name, "panu");
+		}
 	}
 
 	closedir(dir);
 }
+
+static DBusMethodVTable connection_methods[] = {
+	{ "ListConnections",	list_connections,	"",	"as"	},
+	{ "FindConnection",	find_connection,	"s",	"s"	},
+	{ "CreateConnection",	create_connection,	"ss",	"s"	},
+	{ "RemoveConnection",	remove_connection,	"s",	""	},
+	{ "LastConnection",	last_connection,	"",	"s"	},
+	{ "DefaultConnection",	default_connection,	"",	"s"	},
+	{ "ChangeDefaultConnection", change_default_connection, "s", "s"},
+	{ NULL, NULL, NULL, NULL }
+};
+
+static DBusSignalVTable connection_signals[] = {
+	{ "ConnectionCreated",	"s"	},
+	{ "ConnectionRemoved",	"s"	},
+	{ "DefaultConnectionChanged", "s" },
+	{ NULL, NULL }
+};
+
+static DBusMethodVTable server_methods[] = {
+	{ "ListServers",	list_servers,		"",	"as"	},
+	{ "FindServer",		find_server,		"s",	"s"	},
+	{ NULL, NULL, NULL, NULL }
+};
 
 static DBusMethodVTable manager_methods[] = {
 	{ "ListServers",	list_servers,		"",	"as"	},
@@ -968,19 +999,23 @@ static DBusMethodVTable manager_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-static DBusSignalVTable manager_signals[] = {
-	{ "ConnectionCreated",	"s"	},
-	{ "ConnectionRemoved",	"s"	},
-	{ "DefaultConnectionChanged", "s" },
-	{ NULL, NULL }
-};
-
 int network_init(DBusConnection *conn, struct network_conf *service_conf)
 {
+	DBusMethodVTable *methods = NULL;
+	DBusSignalVTable *signals = NULL;
+
 	conf = service_conf;
 
-	if (bridge_init(conf->gn_iface, conf->nap_iface) < 0) {
-		error("Can't init bridge module");
+	if (conf->server_enabled && conf->connection_enabled) {
+		methods = manager_methods;
+		signals = connection_signals;
+	} else if (conf->connection_enabled) {
+		methods = connection_methods;
+		signals = connection_signals;
+	} else if (conf->server_enabled)
+		methods = server_methods;
+	else {
+		error ("All interfaces were disabled");
 		return -1;
 	}
 
@@ -995,11 +1030,20 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 	 * (setup connection request) contains the destination service
 	 * field that defines which service the source is connecting to.
 	 */
-	if (server_init(conn, conf->iface_prefix, conf->security) < 0)
-		return -1;
+	if (conf->server_enabled) {
+		if (bridge_init(conf->gn_iface, conf->nap_iface) < 0) {
+			error("Can't init bridge module");
+			return -1;
+		}
 
-	if (connection_init(conn, conf->iface_prefix) < 0)
- 		return -1;
+		if (server_init(conn, conf->iface_prefix, conf->security) < 0)
+			return -1;
+	}
+
+	if (conf->connection_enabled) {
+		if (connection_init(conn, conf->iface_prefix) < 0)
+			return -1;
+	}
 
 	if (!dbus_connection_create_object_path(conn, NETWORK_PATH,
 						NULL, manager_unregister)) {
@@ -1009,19 +1053,12 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 
 	if (!dbus_connection_register_interface(conn, NETWORK_PATH,
 						NETWORK_MANAGER_INTERFACE,
-						manager_methods,
-						manager_signals, NULL)) {
+						methods, signals, NULL)) {
 		error("Failed to register %s interface to %s",
 				NETWORK_MANAGER_INTERFACE, NETWORK_PATH);
 		dbus_connection_destroy_object_path(connection, NETWORK_PATH);
 		return -1;
 	}
-
-	if (bridge_create(BNEP_SVC_GN) < 0)
-		error("Can't create GN bridge");
-
-	if (bridge_create(BNEP_SVC_NAP) < 0)
-		error("Can't create NAP bridge");
 
 	connection = dbus_connection_ref(conn);
 
@@ -1039,18 +1076,16 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 
 void network_exit(void)
 {
-	server_exit();
-	connection_exit();
+	if (conf->server_enabled)
+		server_exit();
+
+	if (conf->connection_enabled)
+		connection_exit();
+
 	dbus_connection_destroy_object_path(connection, NETWORK_PATH);
 
 	dbus_connection_unref(connection);
 	connection = NULL;
-
-	if (bridge_remove(BNEP_SVC_GN) < 0)
-		error("Can't remove GN bridge");
-
-	if (bridge_remove(BNEP_SVC_NAP) < 0)
-		error("Can't remove NAP bridge");
 
 	bnep_cleanup();
 	bridge_cleanup();
