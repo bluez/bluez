@@ -334,7 +334,6 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 		goto failed;
 
 	info("Authorization succedded. New connection: %s", devname);
-	response = BNEP_SUCCESS;
 
 	bridge = bridge_get_name(ns->id);
 	if (bridge) {
@@ -348,9 +347,9 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	} else
 		bnep_if_up(devname, ns->id);
 
-	ns->clients = g_slist_append(ns->clients, g_strdup(s->address));
+	response = BNEP_SUCCESS;
 
-	/* FIXME: send the D-Bus message to notify the new bnep iface */
+	ns->clients = g_slist_append(ns->clients, g_strdup(s->address));
 
 failed:
 	send_bnep_ctrl_rsp(s->nsk, response);

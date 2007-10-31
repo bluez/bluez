@@ -42,8 +42,8 @@
 #include "common.h"
 
 static int bridge_socket = -1;
-static const char *gn_bridge;
-static const char *nap_bridge;
+static const char *gn_bridge = NULL;
+static const char *nap_bridge = NULL;
 
 int bridge_init(const char *gn_iface, const char *nap_iface)
 {
@@ -117,6 +117,10 @@ int bridge_add_interface(int id, const char *dev)
 	err = ioctl(bridge_socket, SIOCBRADDIF, &ifr);
 	if (err < 0)
 		return err;
+
+	/* Only run scripts in GN bridges */
+	if (id != BNEP_SVC_GN)
+		return 0;
 
 	err = bnep_if_up(name, id);
 	if (err < 0)
