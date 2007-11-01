@@ -228,7 +228,8 @@ int main(int argc, char *argv[])
 		case 's':
 			subbands = atoi(strdup(optarg));
 			if (subbands != 8 && subbands != 4) {
-				fprintf(stderr, "Invalid subbands %d!\n", subbands);
+				fprintf(stderr, "Invalid subbands %d!\n",
+						subbands);
 				exit(1);
 			}
 			break;

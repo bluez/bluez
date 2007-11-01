@@ -25,9 +25,9 @@
 
 /* todo items:
 
-  use a log2 table for byte integer scale factors calculation (sum log2 results for high and low bytes)
-  fill bitpool by 16 bits instead of one at a time in bits allocation/bitpool generation
-  port to the dsp 
+  use a log2 table for byte integer scale factors calculation (sum log2 results
+  for high and low bytes) fill bitpool by 16 bits instead of one at a time in
+  bits allocation/bitpool generation port to the dsp
 
 */
 
@@ -77,7 +77,7 @@
 #define SBC_SB_4	0x00
 #define SBC_SB_8	0x01
 
-/* This structure contains an unpacked SBC frame. 
+/* This structure contains an unpacked SBC frame.
    Yes, there is probably quite some unused space herein */
 struct sbc_frame {
 	uint16_t sampling_frequency;	/* in kHz */
@@ -95,13 +95,19 @@ struct sbc_frame {
 	} allocation_method;
 	uint8_t subbands;
 	uint8_t bitpool;
-	uint8_t join;				/* bit number x set means joint stereo has been used in subband x */
-	uint8_t scale_factor[2][8];		/* only the lower 4 bits of every element are to be used */
-	uint16_t audio_sample[16][2][8];	/* raw integer subband samples in the frame */
+
+	/* bit number x set means joint stereo has been used in subband x */
+	uint8_t join;
+
+	/* only the lower 4 bits of every element are to be used */
+	uint8_t scale_factor[2][8];
+
+	/* raw integer subband samples in the frame */
+	uint16_t audio_sample[16][2][8];
 
 	int32_t sb_sample_f[16][2][8];
-	int32_t sb_sample[16][2][8];		/* modified subband samples */
-	int16_t pcm_sample[2][16*8];		/* original pcm audio samples */
+	int32_t sb_sample[16][2][8];	/* modified subband samples */
+	int16_t pcm_sample[2][16*8];	/* original pcm audio samples */
 };
 
 struct sbc_decoder_state {
@@ -175,8 +181,9 @@ static uint8_t sbc_crc8(const uint8_t * data, size_t len)
 }
 
 /*
- * Code straight from the spec to calculate the bits array 
- * Takes a pointer to the frame in question, a pointer to the bits array and the sampling frequency (as 2 bit integer)
+ * Code straight from the spec to calculate the bits array
+ * Takes a pointer to the frame in question, a pointer to the bits array and
+ * the sampling frequency (as 2 bit integer)
  */
 static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], uint8_t sf)
 {
@@ -186,24 +193,21 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], ui
 
 		for (ch = 0; ch < frame->channels; ch++) {
 			if (frame->allocation_method == SNR) {
-				for (sb = 0; sb < frame->subbands; sb++) {
+				for (sb = 0; sb < frame->subbands; sb++)
 					bitneed[ch][sb] = frame->scale_factor[ch][sb];
-				}
 			} else {
 				for (sb = 0; sb < frame->subbands; sb++) {
-					if (frame->scale_factor[ch][sb] == 0) {
+					if (frame->scale_factor[ch][sb] == 0)
 						bitneed[ch][sb] = -5;
-					} else {
-						if (frame->subbands == 4) {
+					else {
+						if (frame->subbands == 4)
 							loudness = frame->scale_factor[ch][sb] - sbc_offset4[sf][sb];
-						} else {
+						else
 							loudness = frame->scale_factor[ch][sb] - sbc_offset8[sf][sb];
-						}
-						if (loudness > 0) {
+						if (loudness > 0)
 							bitneed[ch][sb] = loudness / 2;
-						} else {
+						else
 							bitneed[ch][sb] = loudness;
-						}
 					}
 				}
 			}
@@ -222,11 +226,10 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], ui
 				bitcount += slicecount;
 				slicecount = 0;
 				for (sb = 0; sb < frame->subbands; sb++) {
-					if ((bitneed[ch][sb] > bitslice + 1) && (bitneed[ch][sb] < bitslice + 16)) {
+					if ((bitneed[ch][sb] > bitslice + 1) && (bitneed[ch][sb] < bitslice + 16))
 						slicecount++;
-					} else if (bitneed[ch][sb] == bitslice + 1) {
+					else if (bitneed[ch][sb] == bitslice + 1)
 						slicecount += 2;
-					}
 				}
 			} while (bitcount + slicecount < frame->bitpool);
 
@@ -236,9 +239,9 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], ui
 			}
 
 			for (sb = 0; sb < frame->subbands; sb++) {
-				if (bitneed[ch][sb] < bitslice + 2) {
+				if (bitneed[ch][sb] < bitslice + 2)
 					bits[ch][sb] = 0;
-				} else {
+				else {
 					bits[ch][sb] = bitneed[ch][sb] - bitslice;
 					if (bits[ch][sb] > 16)
 						bits[ch][sb] = 16;
@@ -274,26 +277,23 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], ui
 
 		if (frame->allocation_method == SNR) {
 			for (ch = 0; ch < 2; ch++) {
-				for (sb = 0; sb < frame->subbands; sb++) {
+				for (sb = 0; sb < frame->subbands; sb++)
 					bitneed[ch][sb] = frame->scale_factor[ch][sb];
-				}
 			}
 		} else {
 			for (ch = 0; ch < 2; ch++) {
 				for (sb = 0; sb < frame->subbands; sb++) {
-					if (frame->scale_factor[ch][sb] == 0) {
+					if (frame->scale_factor[ch][sb] == 0)
 						bitneed[ch][sb] = -5;
-					} else {
-						if (frame->subbands == 4) {
+					else {
+						if (frame->subbands == 4)
 							loudness = frame->scale_factor[ch][sb] - sbc_offset4[sf][sb];
-						} else {
+						else
 							loudness = frame->scale_factor[ch][sb] - sbc_offset8[sf][sb];
-						}
-						if (loudness > 0) {
+						if (loudness > 0)
 							bitneed[ch][sb] = loudness / 2;
-						} else {
+						else
 							bitneed[ch][sb] = loudness;
-						}
 					}
 				}
 			}
@@ -316,11 +316,10 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], ui
 			slicecount = 0;
 			for (ch = 0; ch < 2; ch++) {
 				for (sb = 0; sb < frame->subbands; sb++) {
-					if ((bitneed[ch][sb] > bitslice + 1) && (bitneed[ch][sb] < bitslice + 16)) {
+					if ((bitneed[ch][sb] > bitslice + 1) && (bitneed[ch][sb] < bitslice + 16))
 						slicecount++;
-					} else if (bitneed[ch][sb] == bitslice + 1) {
+					else if (bitneed[ch][sb] == bitslice + 1)
 						slicecount += 2;
-					}
 				}
 			}
 		} while (bitcount + slicecount < frame->bitpool);
@@ -354,9 +353,8 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], ui
 			if (ch == 1) {
 				ch = 0;
 				sb++;
-			} else {
+			} else
 				ch = 1;
-			}
 		}
 
 		ch = 0;
@@ -369,16 +367,15 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], ui
 			if (ch == 1) {
 				ch = 0;
 				sb++;
-			} else {
+			} else
 				ch = 1;
-			}
 		}
 
 	}
 
 }
 
-/* 
+/*
  * Unpacks a SBC frame at the beginning of the stream in data,
  * which has at most len bytes into frame.
  * Returns the length in bytes of the packed frame, or a negative
@@ -389,17 +386,21 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], ui
  *  -3   CRC8 incorrect
  *  -4   Bitpool value out of bounds
  */
-static int sbc_unpack_frame(const uint8_t * data, struct sbc_frame *frame, size_t len)
+static int sbc_unpack_frame(const uint8_t * data, struct sbc_frame *frame,
+				size_t len)
 {
 	int consumed;
-	/* Will copy the parts of the header that are relevant to crc calculation here */
+	/* Will copy the parts of the header that are relevant to crc
+	 * calculation here */
 	uint8_t crc_header[11] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	int crc_pos = 0;
 	int32_t temp;
 
-	uint8_t sf;		/* sampling_frequency, temporarily needed as array index */
+	uint8_t sf;		/* sampling_frequency, temporarily needed as
+				   array index */
 
-	int ch, sb, blk, bit;	/* channel, subband, block and bit standard counters */
+	int ch, sb, blk, bit;	/* channel, subband, block and bit standard
+				   counters */
 	int bits[2][8];		/* bits distribution */
 	int levels[2][8];	/* levels derived from that */
 
@@ -458,10 +459,12 @@ static int sbc_unpack_frame(const uint8_t * data, struct sbc_frame *frame, size_
 
 	frame->bitpool = data[2];
 
-	if (((frame->channel_mode == MONO || frame->channel_mode == DUAL_CHANNEL)
-	     && frame->bitpool > 16 * frame->subbands)
-	    || ((frame->channel_mode == STEREO || frame->channel_mode == JOINT_STEREO)
-		&& frame->bitpool > 32 * frame->subbands))
+	if (((frame->channel_mode == MONO ||
+			frame->channel_mode == DUAL_CHANNEL) &&
+			frame->bitpool > 16 * frame->subbands) ||
+			((frame->channel_mode == STEREO ||
+			  frame->channel_mode == JOINT_STEREO) &&
+			 frame->bitpool > 32 * frame->subbands))
 		return -4;
 
 	/* data[3] is crc, we're checking it later */
@@ -477,14 +480,12 @@ static int sbc_unpack_frame(const uint8_t * data, struct sbc_frame *frame, size_
 			return -1;
 
 		frame->join = 0x00;
-		for (sb = 0; sb < frame->subbands - 1; sb++) {
+		for (sb = 0; sb < frame->subbands - 1; sb++)
 			frame->join |= ((data[4] >> (7 - sb)) & 0x01) << sb;
-		}
-		if (frame->subbands == 4) {
+		if (frame->subbands == 4)
 			crc_header[crc_pos / 8] = data[4] & 0xf0;
-		} else {
+		else
 			crc_header[crc_pos / 8] = data[4];
-		}
 
 		consumed += frame->subbands;
 		crc_pos += frame->subbands;
@@ -496,8 +497,10 @@ static int sbc_unpack_frame(const uint8_t * data, struct sbc_frame *frame, size_
 	for (ch = 0; ch < frame->channels; ch++) {
 		for (sb = 0; sb < frame->subbands; sb++) {
 			/* FIXME assert(consumed % 4 == 0); */
-			frame->scale_factor[ch][sb] = (data[consumed >> 3] >> (4 - (consumed & 0x7))) & 0x0F;
-			crc_header[crc_pos >> 3] |= frame->scale_factor[ch][sb] << (4 - (crc_pos & 0x7));
+			frame->scale_factor[ch][sb] =
+				(data[consumed >> 3] >> (4 - (consumed & 0x7))) & 0x0F;
+			crc_header[crc_pos >> 3] |=
+				frame->scale_factor[ch][sb] << (4 - (crc_pos & 0x7));
 
 			consumed += 4;
 			crc_pos += 4;
@@ -522,7 +525,8 @@ static int sbc_unpack_frame(const uint8_t * data, struct sbc_frame *frame, size_
 						return -1;
 
 					b = (data[consumed >> 3] >> (7 - (consumed & 0x7))) & 0x01;
-					frame->audio_sample[blk][ch][sb] |= b << (bits[ch][sb] - bit - 1);
+					frame->audio_sample[blk][ch][sb] |=
+							b << (bits[ch][sb] - bit - 1);
 
 					consumed++;
 				}
@@ -531,24 +535,27 @@ static int sbc_unpack_frame(const uint8_t * data, struct sbc_frame *frame, size_
 	}
 
 	for (ch = 0; ch < frame->channels; ch++) {
-		for (sb = 0; sb < frame->subbands; sb++) {
+		for (sb = 0; sb < frame->subbands; sb++)
 			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
-		}
 	}
 
 	for (blk = 0; blk < frame->blocks; blk++) {
 		for (ch = 0; ch < frame->channels; ch++) {
 			for (sb = 0; sb < frame->subbands; sb++) {
 				if (levels[ch][sb] > 0) {
-					frame->sb_sample[blk][ch][sb] = 
-						(((frame->audio_sample[blk][ch][sb] << 16) | 0x8000) / levels[ch][sb]) - 0x8000; 
+					frame->sb_sample[blk][ch][sb] =
+						(((frame->audio_sample[blk][ch][sb] << 16) | 0x8000) /
+							levels[ch][sb]) - 0x8000;
 
 					frame->sb_sample[blk][ch][sb] >>= 3;
-					frame->sb_sample[blk][ch][sb] = (frame->sb_sample[blk][ch][sb] << (frame->scale_factor[ch][sb] + 1)); // Q13 
 
-				} else {
+					/* Q13 */
+					frame->sb_sample[blk][ch][sb] =
+						(frame->sb_sample[blk][ch][sb] <<
+							(frame->scale_factor[ch][sb] + 1));
+
+				} else
 					frame->sb_sample[blk][ch][sb] = 0;
-				}
 			}
 		}
 	}
@@ -557,8 +564,11 @@ static int sbc_unpack_frame(const uint8_t * data, struct sbc_frame *frame, size_
 		for (blk = 0; blk < frame->blocks; blk++) {
 			for (sb = 0; sb < frame->subbands; sb++) {
 				if (frame->join & (0x01 << sb)) {
-					temp = frame->sb_sample[blk][0][sb] + frame->sb_sample[blk][1][sb];
-					frame->sb_sample[blk][1][sb] = frame->sb_sample[blk][0][sb] - frame->sb_sample[blk][1][sb];
+					temp = frame->sb_sample[blk][0][sb] +
+						frame->sb_sample[blk][1][sb];
+					frame->sb_sample[blk][1][sb] =
+						frame->sb_sample[blk][0][sb] -
+						frame->sb_sample[blk][1][sb];
 					frame->sb_sample[blk][0][sb] = temp;
 				}
 			}
@@ -568,11 +578,11 @@ static int sbc_unpack_frame(const uint8_t * data, struct sbc_frame *frame, size_
 	if ((consumed & 0x7) != 0)
 		consumed += 8 - (consumed & 0x7);
 
-	
 	return consumed >> 3;
 }
 
-static void sbc_decoder_init(struct sbc_decoder_state *state, const struct sbc_frame *frame)
+static void sbc_decoder_init(struct sbc_decoder_state *state,
+				const struct sbc_frame *frame)
 {
 	int i, ch;
 
@@ -595,19 +605,16 @@ static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 		state->offset[ch][i]--;
 		if (state->offset[ch][i] < 0) {
 			state->offset[ch][i] = 79;
-			for(j = 0; j < 9; j++) {
+			for(j = 0; j < 9; j++)
 				state->V[ch][j+80] = state->V[ch][j];
-			}
 		}
 	}
-	
 
 	for(i = 0; i < 8; i++) {
 		/* Distribute the new matrix value to the shifted position */
 		SBC_FIXED_0(res);
-		for (j = 0; j < 4; j++) {
+		for (j = 0; j < 4; j++)
 			MULA(res, synmatrix4[i][j], frame->sb_sample[blk][ch][j]);
-		}
 		state->V[ch][state->offset[ch][i]] = SCALE4_STAGED1(res);
 	}
 
@@ -616,11 +623,14 @@ static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 		k = (i + 4) & 0xf;
 		SBC_FIXED_0(res);
 		for(j = 0; j < 10; idx++) {
-			MULA(res, state->V[ch][state->offset[ch][i]+j++], sbc_proto_4_40m0[idx]);
-			MULA(res, state->V[ch][state->offset[ch][k]+j++], sbc_proto_4_40m1[idx]);
+			MULA(res, state->V[ch][state->offset[ch][i]+j++],
+					sbc_proto_4_40m0[idx]);
+			MULA(res, state->V[ch][state->offset[ch][k]+j++],
+					sbc_proto_4_40m1[idx]);
 		}
-		/* Store in output */
-		frame->pcm_sample[ch][blk * 4 + i] = SCALE4_STAGED2(res); // Q0
+
+		/* Store in output, Q0 */
+		frame->pcm_sample[ch][blk * 4 + i] = SCALE4_STAGED2(res);
 	}
 }
 
@@ -635,9 +645,8 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 		state->offset[ch][i]--;
 		if (state->offset[ch][i] < 0) {
 			state->offset[ch][i] = 159;
-			for(j = 0; j < 9; j++) {
-				state->V[ch][j+160] = state->V[ch][j]; 
-			}
+			for(j = 0; j < 9; j++)
+				state->V[ch][j+160] = state->V[ch][j];
 		}
 	}
 
@@ -645,11 +654,12 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 		/* Distribute the new matrix value to the shifted position */
 		SBC_FIXED_0(res);
 		for (j = 0; j < 8; j++) {
-			MULA(res, synmatrix8[i][j], frame->sb_sample[blk][ch][j]); // Q28 = Q15 * Q13
+			/* Q28 = Q15 * Q13 */
+			MULA(res, synmatrix8[i][j], frame->sb_sample[blk][ch][j]);
 		}
-		state->V[ch][state->offset[ch][i]] = SCALE8_STAGED1(res); // Q10
+		/* Q10 */
+		state->V[ch][state->offset[ch][i]] = SCALE8_STAGED1(res);
 	}
-	
 
 	/* Compute the samples */
 	for(idx = 0, i = 0; i < 8; i++) {
@@ -665,10 +675,11 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 	}
 }
 
-static int sbc_synthesize_audio(struct sbc_decoder_state *state, struct sbc_frame *frame)
+static int sbc_synthesize_audio(struct sbc_decoder_state *state,
+				struct sbc_frame *frame)
 {
 	int ch, blk;
-	
+
 	switch (frame->subbands) {
 	case 4:
 		for (ch = 0; ch < frame->channels; ch++) {
@@ -689,7 +700,8 @@ static int sbc_synthesize_audio(struct sbc_decoder_state *state, struct sbc_fram
 	}
 }
 
-static void sbc_encoder_init(struct sbc_encoder_state *state, const struct sbc_frame *frame)
+static void sbc_encoder_init(struct sbc_encoder_state *state,
+				const struct sbc_frame *frame)
 {
 	memset(&state->X, 0, sizeof(state->X));
 	state->subbands = frame->subbands;
@@ -702,9 +714,9 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	sbc_extended_t t[8];
 	sbc_extended_t s[4];
 
-	MUL(res, _sbc_proto_4[0], (in[8] - in[32])); // Q18
+	MUL(res, _sbc_proto_4[0], (in[8] - in[32])); /* Q18 */
 	MULA(res, _sbc_proto_4[1], (in[16] - in[24]));
-	t[0] = SCALE4_STAGE1(res); // Q8
+	t[0] = SCALE4_STAGE1(res); /* Q8 */
 
 	MUL(res, _sbc_proto_4[2], in[1]);
 	MULA(res, _sbc_proto_4[3], in[9]);
@@ -739,7 +751,8 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	MULA(res, _sbc_proto_4[12], in[37]);
 	t[5] = SCALE4_STAGE1(res);
 
-	/* don't compute t[6]... this term always multiplies with cos(pi/2) = 0 */
+	/* don't compute t[6]... this term always multiplies
+	 * with cos(pi/2) = 0 */
 
 	MUL(res, _sbc_proto_4[6], in[7]);
 	MULA(res, _sbc_proto_4[5], in[15]);
@@ -754,7 +767,7 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	MULA(s[2], _anamatrix4[3], t[5] + t[7]);
 	MUL(s[3], _anamatrix4[3], t[1] + t[3]);
 	MULA(s[3], _anamatrix4[1], - t[5] + t[7]);
-	out[0] = SCALE4_STAGE2( s[0] + s[1] + s[2]); // Q0
+	out[0] = SCALE4_STAGE2( s[0] + s[1] + s[2]); /* Q0 */
 	out[1] = SCALE4_STAGE2(-s[0] + s[1] + s[3]);
 	out[2] = SCALE4_STAGE2(-s[0] + s[1] - s[3]);
 	out[3] = SCALE4_STAGE2( s[0] + s[1] - s[2]);
@@ -776,14 +789,14 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	sbc_extended_t res;
 	sbc_extended_t t[8];
 	sbc_extended_t s[8];
-	
-	MUL(res,  _sbc_proto_8[0], (in[16] - in[64])); // Q18 = Q18 * Q0
+
+	MUL(res,  _sbc_proto_8[0], (in[16] - in[64])); /* Q18 = Q18 * Q0 */
 	MULA(res, _sbc_proto_8[1], (in[32] - in[48]));
 	MULA(res, _sbc_proto_8[2], in[4]);
 	MULA(res, _sbc_proto_8[3], in[20]);
 	MULA(res, _sbc_proto_8[4], in[36]);
 	MULA(res, _sbc_proto_8[5], in[52]);
-	t[0] = SCALE8_STAGE1(res); // Q10
+	t[0] = SCALE8_STAGE1(res); /* Q10 */
 
 	MUL(res,   _sbc_proto_8[6], in[2]);
 	MULA(res,  _sbc_proto_8[7], in[18]);
@@ -862,7 +875,7 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 	MULA(res, -_sbc_proto_8[21], in[75]);
 	t[7] = SCALE8_STAGE1(res);
 
-	MUL(s[0], _anamatrix8[0], t[0]); // = Q14 * Q10
+	MUL(s[0], _anamatrix8[0], t[0]); /* = Q14 * Q10 */
 	MULA(s[0], _anamatrix8[1], t[6]);
 	MUL(s[1], _anamatrix8[7], t[1]);
 	MUL(s[2], _anamatrix8[2], t[2]);
@@ -895,7 +908,8 @@ static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 }
 
 static inline void sbc_analyze_eight(struct sbc_encoder_state *state,
-				     struct sbc_frame *frame, int ch, int blk)
+					struct sbc_frame *frame, int ch,
+					int blk)
 {
 	int i;
 
@@ -907,23 +921,22 @@ static inline void sbc_analyze_eight(struct sbc_encoder_state *state,
 	_sbc_analyze_eight(state->X[ch], frame->sb_sample_f[blk][ch]);
 }
 
-static int sbc_analyze_audio(struct sbc_encoder_state *state, struct sbc_frame *frame)
+static int sbc_analyze_audio(struct sbc_encoder_state *state,
+				struct sbc_frame *frame)
 {
 	int ch, blk;
 
 	switch (frame->subbands) {
 	case 4:
 		for (ch = 0; ch < frame->channels; ch++)
-			for (blk = 0; blk < frame->blocks; blk++) {
+			for (blk = 0; blk < frame->blocks; blk++)
 				sbc_analyze_four(state, frame, ch, blk);
-			}
 		return frame->blocks * 4;
 
 	case 8:
 		for (ch = 0; ch < frame->channels; ch++)
-			for (blk = 0; blk < frame->blocks; blk++) {
+			for (blk = 0; blk < frame->blocks; blk++)
 				sbc_analyze_eight(state, frame, ch, blk);
-			}
 		return frame->blocks * 8;
 
 	default:
@@ -933,9 +946,9 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state, struct sbc_frame *
 
 /*
  * Packs the SBC frame from frame into the memory at data. At most len
- * bytes will be used, should more memory be needed an appropriate 
+ * bytes will be used, should more memory be needed an appropriate
  * error code will be returned. Returns the length of the packed frame
- * on success or a negative value on error. 
+ * on success or a negative value on error.
  *
  * The error codes are:
  * -1 Not enough memory reserved
@@ -953,7 +966,8 @@ static int sbc_pack_frame(uint8_t * data, struct sbc_frame *frame, size_t len)
 	uint8_t crc_header[11] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	int crc_pos = 0;
 
-	uint8_t sf;		/* Sampling frequency as temporary value for table lookup */
+	/* Sampling frequency as temporary value for table lookup */
+	uint8_t sf;
 
 	int ch, sb, blk, bit;	/* channel, subband, block and bit counters */
 	int bits[2][8];		/* bits distribution */
@@ -965,7 +979,8 @@ static int sbc_pack_frame(uint8_t * data, struct sbc_frame *frame, size_t len)
 		return -1;
 	}
 
-	/* Clear first 4 bytes of data (that's the constant length part of the SBC header) */
+	/* Clear first 4 bytes of data (that's the constant length part of the
+	 * SBC header) */
 	memset(data, 0, 4);
 
 	data[0] = SBC_SYNCWORD;
@@ -1021,12 +1036,13 @@ static int sbc_pack_frame(uint8_t * data, struct sbc_frame *frame, size_t len)
 	}
 
 	data[2] = frame->bitpool;
-	if (((frame->channel_mode == MONO || frame->channel_mode == DUAL_CHANNEL)
-	     && frame->bitpool > 16 * frame->subbands)
-	    || ((frame->channel_mode == STEREO || frame->channel_mode == JOINT_STEREO)
-		&& frame->bitpool > 32 * frame->subbands)) {
+	if ((frame->channel_mode == MONO || frame->channel_mode == DUAL_CHANNEL) &&
+			frame->bitpool > 16 * frame->subbands)
 		return -5;
-	}
+
+	if ((frame->channel_mode == STEREO || frame->channel_mode == JOINT_STEREO) &&
+			frame->bitpool > 32 * frame->subbands)
+		return -5;
 
 	/* Can't fill in crc yet */
 
@@ -1050,14 +1066,20 @@ static int sbc_pack_frame(uint8_t * data, struct sbc_frame *frame, size_t len)
 	}
 
 	if (frame->channel_mode == JOINT_STEREO) {
-		int32_t sb_sample_j[16][2][7]; /* like frame->sb_sample but joint stereo */
-		int scalefactor_j[2][7], scale_factor_j[2][7]; /* scalefactor and scale_factor in joint case */
+		/* like frame->sb_sample but joint stereo */
+		int32_t sb_sample_j[16][2][7];
+		/* scalefactor and scale_factor in joint case */
+		int scalefactor_j[2][7], scale_factor_j[2][7];
 
 		/* Calculate joint stereo signal */
 		for (sb = 0; sb < frame->subbands - 1; sb++) {
 			for (blk = 0; blk < frame->blocks; blk++) {
-				sb_sample_j[blk][0][sb] = (frame->sb_sample_f[blk][0][sb] +  frame->sb_sample_f[blk][1][sb]) >> 1;
-				sb_sample_j[blk][1][sb] = (frame->sb_sample_f[blk][0][sb] -  frame->sb_sample_f[blk][1][sb]) >> 1;
+				sb_sample_j[blk][0][sb] =
+					(frame->sb_sample_f[blk][0][sb] +
+						frame->sb_sample_f[blk][1][sb]) >> 1;
+				sb_sample_j[blk][1][sb] =
+					(frame->sb_sample_f[blk][0][sb] -
+						frame->sb_sample_f[blk][1][sb]) >> 1;
 			}
 		}
 
@@ -1087,8 +1109,10 @@ static int sbc_pack_frame(uint8_t * data, struct sbc_frame *frame, size_t len)
 				scalefactor[0][sb] = scalefactor_j[0][sb];
 				scalefactor[1][sb] = scalefactor_j[1][sb];
 				for (blk = 0; blk < frame->blocks; blk++) {
-					frame->sb_sample_f[blk][0][sb] = sb_sample_j[blk][0][sb];
-					frame->sb_sample_f[blk][1][sb] = sb_sample_j[blk][1][sb];
+					frame->sb_sample_f[blk][0][sb] =
+							sb_sample_j[blk][0][sb];
+					frame->sb_sample_f[blk][1][sb] =
+							sb_sample_j[blk][1][sb];
 				}
 			}
 		}
@@ -1097,15 +1121,13 @@ static int sbc_pack_frame(uint8_t * data, struct sbc_frame *frame, size_t len)
 			return -1;
 
 		data[4] = 0;
-		for (sb = 0; sb < frame->subbands - 1; sb++) {
+		for (sb = 0; sb < frame->subbands - 1; sb++)
 			data[4] |= ((frame->join >> sb) & 0x01) << (7 - sb);
-		}
-		if (frame->subbands == 4) {
+		if (frame->subbands == 4)
 			crc_header[crc_pos / 8] = data[4] & 0xf0;
-		} else {
+		else
 			crc_header[crc_pos / 8] = data[4];
-		}
- 
+
 		produced += frame->subbands;
 		crc_pos += frame->subbands;
 	}
@@ -1130,21 +1152,20 @@ static int sbc_pack_frame(uint8_t * data, struct sbc_frame *frame, size_t len)
 	sbc_calculate_bits(frame, bits, sf);
 
 	for (ch = 0; ch < frame->channels; ch++) {
-		for (sb = 0; sb < frame->subbands; sb++) {
+		for (sb = 0; sb < frame->subbands; sb++)
 			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
-		}
 	}
 
 	for (blk = 0; blk < frame->blocks; blk++) {
 		for (ch = 0; ch < frame->channels; ch++) {
 			for (sb = 0; sb < frame->subbands; sb++) {
-				if (levels[ch][sb] > 0) {
+				if (levels[ch][sb] > 0)
 					frame->audio_sample[blk][ch][sb] =
-						(uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >> (frame->scale_factor[ch][sb] + 1)) +
-						levels[ch][sb]) >> 1);
-				} else {
+						(uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >>
+									(frame->scale_factor[ch][sb] + 1)) +
+								levels[ch][sb]) >> 1);
+				else
 					frame->audio_sample[blk][ch][sb] = 0;
-				}
 			}
 		}
 	}
@@ -1155,14 +1176,12 @@ static int sbc_pack_frame(uint8_t * data, struct sbc_frame *frame, size_t len)
 				if (bits[ch][sb] != 0) {
 					for (bit = 0; bit < bits[ch][sb]; bit++) {
 						int b;	/* A bit */
-						if (produced > len * 8) {
+						if (produced > len * 8)
 							return -1;
-						}
-						if (produced % 8 == 0) {
+						if (produced % 8 == 0)
 							data[produced / 8] = 0;
-						}
-						b = ((frame->audio_sample[blk][ch][sb]) >> (bits[ch][sb] - bit -
-											    1)) & 0x01;
+						b = ((frame->audio_sample[blk][ch][sb]) >>
+								(bits[ch][sb] - bit - 1)) & 0x01;
 						data[produced / 8] |= b << (7 - (produced % 8));
 						produced++;
 					}
@@ -1171,9 +1190,8 @@ static int sbc_pack_frame(uint8_t * data, struct sbc_frame *frame, size_t len)
 		}
 	}
 
-	if (produced % 8 != 0) {
+	if (produced % 8 != 0)
 		produced += 8 - (produced % 8);
-	}
 
 	return produced / 8;
 }
@@ -1226,7 +1244,6 @@ int sbc_decode(sbc_t *sbc, void *data, int count)
 	priv = sbc->priv;
 
 	framelen = sbc_unpack_frame(data, &priv->frame, count);
-	
 
 	if (!priv->init) {
 		sbc_decoder_init(&priv->dec_state, &priv->frame);

@@ -44,14 +44,14 @@ static double sampletobits(short sample16, int verbose)
 	if (verbose)
 		printf("===> sampletobits(%hd, %04hX)\n", sample16, sample16);
 
-	// Bit 0 is MSB
+	/* Bit 0 is MSB */
 	if (sample16 < 0)
 		bits = -1;
 
 	if (verbose)
 		printf("%d", (sample16 < 0) ? 1 : 0);
 
-	// Bit 15 is LSB
+	/* Bit 15 is LSB */
 	for (i = 1; i < 16; i++) {
 		bit = (unsigned short) sample16;
 		bit >>= 15 - i;
@@ -104,8 +104,10 @@ static int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref,
 
 		r1 = sf_read_short(sndref, refsample, infostst->channels);
 		if (r1 != infostst->channels) {
-			printf("Failed to read reference data: %s (r1=%d, channels=%d)",
-						sf_strerror(sndref), r1, infostst->channels);
+			printf("Failed to read reference data: %s "
+					"(r1=%d, channels=%d)",
+					sf_strerror(sndref), r1,
+					infostst->channels);
 			if (csv)
 				fclose(csv);
 			return -1;
@@ -113,8 +115,10 @@ static int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref,
 
 		r2 = sf_read_short(sndtst, tstsample, infostst->channels);
 		if (r2 != infostst->channels) {
-			printf("Failed to read test data: %s (r2=%d, channels=%d)\n",
-						sf_strerror(sndtst), r2, infostst->channels);
+			printf("Failed to read test data: %s "
+					"(r2=%d, channels=%d)\n",
+					sf_strerror(sndtst), r2,
+					infostst->channels);
 			if (csv)
 				fclose(csv);
 			return -1;
@@ -122,7 +126,8 @@ static int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref,
 
 		for (j = 0; j < infostst->channels; j++) {
 			if (csv)
-				fprintf(csv, "%d;%d;", refsample[j], tstsample[j]);
+				fprintf(csv, "%d;%d;", refsample[j],
+						tstsample[j]);
 
 			refbits = sampletobits(refsample[j], 0);
 			tstbits = sampletobits(tstsample[j], 0);
@@ -140,7 +145,8 @@ static int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref,
 		printf("Channel %d\n", j);
 		printf("Accumulated %f\n", rms_accu[j]);
 		rms_accu[j] /= (double) infostst->frames;
-		printf("Accumulated / %f = %f\n", (double) infostst->frames, rms_accu[j]);
+		printf("Accumulated / %f = %f\n", (double) infostst->frames,
+				rms_accu[j]);
 		rms_level[j] = sqrt(rms_accu[j]);
 		printf("Level = %f (%f x %f = %f)\n",
 				rms_level[j], rms_level[j], rms_level[j],
@@ -162,7 +168,8 @@ static int calculate_rms_level(SNDFILE * sndref, SF_INFO * infosref,
 }
 
 static int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref,
-				SNDFILE * sndtst, SF_INFO * infostst, int accuracy)
+				SNDFILE * sndtst, SF_INFO * infostst,
+				int accuracy)
 {
 	short refsample[MAXCHANNELS], tstsample[MAXCHANNELS];
 	short refmax[MAXCHANNELS], tstmax[MAXCHANNELS];
@@ -190,15 +197,19 @@ static int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref,
 		r1 = sf_read_short(sndref, refsample, infostst->channels);
 
 		if (r1 != infostst->channels) {
-			printf("Failed to read reference data: %s (r1=%d, channels=%d)",
-						sf_strerror(sndref), r1, infostst->channels);
+			printf("Failed to read reference data: %s "
+					"(r1=%d, channels=%d)",
+					sf_strerror(sndref), r1,
+					infostst->channels);
 			return -1;
 		}
 
 		r2 = sf_read_short(sndtst, tstsample, infostst->channels);
 		if (r2 != infostst->channels) {
-			printf("Failed to read test data: %s (r2=%d, channels=%d)\n",
-						sf_strerror(sndtst), r2, infostst->channels);
+			printf("Failed to read test data: %s "
+					"(r2=%d, channels=%d)\n",
+					sf_strerror(sndtst), r2,
+					infostst->channels);
 			return -1;
 		}
 
@@ -210,7 +221,7 @@ static int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref,
 
 			if (cur_diff > rms_absolute) {
 				calc_count++;
-				//printf("Channel %d exceeded : fabs(%f - %f) = %f > %f\n", j, tstbits, refbits, cur_diff, rms_absolute);
+				/* printf("Channel %d exceeded : fabs(%f - %f) = %f > %f\n", j, tstbits, refbits, cur_diff, rms_absolute); */
 				verdict = 0;
 			}
 
@@ -224,7 +235,8 @@ static int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref,
 
 	for (j = 0; j < infostst->channels; j++) {
 		printf("Calculated max: %f (%hd-%hd=%hd)\n",
-			calc_max[j], tstmax[j], refmax[j], tstmax[j] - refmax[j]);
+			calc_max[j], tstmax[j], refmax[j],
+			tstmax[j] - refmax[j]);
 	}
 
 	printf("%s return %d\n", __FUNCTION__, verdict);
@@ -297,17 +309,19 @@ int main(int argc, char *argv[])
 	}
 
 	printf("reference:\n\t%d frames,\n\t%d hz,\n\t%d channels\n",
-		(int) infosref.frames, (int) infosref.samplerate, (int) infosref.channels);
+		(int) infosref.frames, (int) infosref.samplerate,
+		(int) infosref.channels);
 	printf("testfile:\n\t%d frames,\n\t%d hz,\n\t%d channels\n",
-		(int) infostst.frames, (int) infostst.samplerate, (int) infostst.channels);
+		(int) infostst.frames, (int) infostst.samplerate,
+		(int) infostst.channels);
 
-	// check number of channels
+	/* check number of channels */
 	if (infosref.channels > 2 || infostst.channels > 2) {
 		printf("Too many channels\n");
 		goto error;
 	}
 
-	// compare number of samples
+	/* compare number of samples */
 	if (infosref.samplerate != infostst.samplerate ||
 				infosref.channels != infostst.channels) {
 		printf("Cannot compare files with different charasteristics\n");
@@ -317,17 +331,19 @@ int main(int argc, char *argv[])
 	accuracy = DEFACCURACY;
 	printf("Accuracy: %d\n", accuracy);
 
-	// Condition 1 rms level
-	pass_rms = calculate_rms_level(sndref, &infosref, sndtst, &infostst, accuracy, "out.csv");
+	/* Condition 1 rms level */
+	pass_rms = calculate_rms_level(sndref, &infosref, sndtst, &infostst,
+					accuracy, "out.csv");
 	if (pass_rms < 0)
 		goto error;
 
-	// Condition 2 absolute difference
-	pass_absolute = check_absolute_diff(sndref, &infosref, sndtst, &infostst, accuracy);
+	/* Condition 2 absolute difference */
+	pass_absolute = check_absolute_diff(sndref, &infosref, sndtst,
+						&infostst, accuracy);
 	if (pass_absolute < 0)
 		goto error;
 
-	// Verdict
+	/* Verdict */
 	pass = pass_rms && pass_absolute;
 	printf("Verdict: %s\n", pass ? "pass" : "fail");
 

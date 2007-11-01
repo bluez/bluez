@@ -113,7 +113,8 @@ static double calc_bit_rate(struct sbc_frame_hdr *hdr)
 		return 0;
 	}
 
-	return ((8 * (calc_frame_len(hdr) + 4) * f) / (nrof_subbands * nrof_blocks));
+	return ((8 * (calc_frame_len(hdr) + 4) * f) /
+			(nrof_subbands * nrof_blocks));
 }
 
 static char *freq2str(uint8_t freq)
@@ -226,7 +227,8 @@ static int analyze_file(char *filename)
 	while (1) {
 		len = __read(fd, &hdr, sizeof(hdr));
 		if (len < 0) {
-			fprintf(stderr, "Unable to read frame header (error %d)\n", errno);
+			fprintf(stderr, "Unable to read frame header"
+					" (error %d)\n", errno);
 			break;
 		}
 
@@ -234,8 +236,9 @@ static int analyze_file(char *filename)
 			break;
 
 		if (len < sizeof(hdr) || hdr.syncword != 0x9c) {
-			fprintf(stderr, "Corrupted SBC stream (len %d syncword 0x%02x)\n",
-								len, hdr.syncword);
+			fprintf(stderr, "Corrupted SBC stream "
+					"(len %d syncword 0x%02x)\n",
+					len, hdr.syncword);
 			break;
 		}
 
@@ -260,7 +263,8 @@ static int analyze_file(char *filename)
 
 			len = __read(fd, buf, size);
 			if (len != size) {
-				fprintf(stderr, "Unable to read frame data (error %d)\n", errno);
+				fprintf(stderr, "Unable to read frame data "
+						"(error %d)\n", errno);
 				break;
 			}
 
