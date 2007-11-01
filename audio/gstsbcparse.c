@@ -78,8 +78,6 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		value = gst_structure_get_value(structure, "rate");
 		if (GST_VALUE_HOLDS_LIST(value)) {
 			temp = gst_sbc_select_rate_from_list(value);
-		} else if (GST_VALUE_HOLDS_INT_RANGE(value)) {
-			temp = gst_sbc_select_rate_from_range(value);
 		} else {
 			temp = g_value_get_int(value);
 		}
@@ -92,9 +90,7 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		goto error;
 	} else {
 		value = gst_structure_get_value(structure, "channels");
-		if (GST_VALUE_HOLDS_LIST(value)) {
-			temp = gst_sbc_select_channels_from_list(value);
-		} else if (GST_VALUE_HOLDS_INT_RANGE(value)) {
+		if (GST_VALUE_HOLDS_INT_RANGE(value)) {
 			temp = gst_sbc_select_channels_from_range(value);
 		} else {
 			temp = g_value_get_int(value);
@@ -110,8 +106,6 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		value = gst_structure_get_value(structure, "blocks");
 		if (GST_VALUE_HOLDS_LIST(value)) {
 			temp = gst_sbc_select_blocks_from_list(value);
-		} else if (GST_VALUE_HOLDS_INT_RANGE(value)) {
-			temp = gst_sbc_select_blocks_from_range(value);
 		} else {
 			temp = g_value_get_int(value);
 		}
@@ -126,8 +120,6 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		value = gst_structure_get_value(structure, "subbands");
 		if (GST_VALUE_HOLDS_LIST(value)) {
 			temp = gst_sbc_select_subbands_from_list(value);
-		} else if (GST_VALUE_HOLDS_INT_RANGE(value)) {
-			temp = gst_sbc_select_subbands_from_range(value);
 		} else {
 			temp = g_value_get_int(value);
 		}
