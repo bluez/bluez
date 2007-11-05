@@ -216,7 +216,8 @@ gboolean avdtp_stream_remove_cb(struct avdtp *session,
 				unsigned int id);
 
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
-					uint16_t *mtu, GSList **caps);
+					uint16_t *imtu, uint16_t *omtu,
+					GSList **caps);
 
 gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 				struct avdtp_service_capability *cap);

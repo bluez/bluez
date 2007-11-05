@@ -308,7 +308,8 @@ struct stream_callback {
 
 struct avdtp_stream {
 	int sock;
-	uint16_t mtu;
+	uint16_t imtu;
+	uint16_t omtu;
 	struct avdtp *session;
 	struct avdtp_local_sep *lsep;
 	uint8_t rseid;
@@ -605,7 +606,7 @@ static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 }
 
 static void handle_transport_connect(struct avdtp *session, int sock,
-					uint16_t mtu)
+					uint16_t imtu, uint16_t omtu)
 {
 	struct avdtp_stream *stream = session->pending_open;
 	struct avdtp_local_sep *sep = stream->lsep;
@@ -629,7 +630,8 @@ static void handle_transport_connect(struct avdtp *session, int sock,
 	}
 
 	stream->sock = sock;
-	stream->mtu = mtu;
+	stream->omtu = omtu;
+	stream->imtu = imtu;
 
 	if (!stream->open_acp && sep->cfm && sep->cfm->open)
 		sep->cfm->open(session, sep, stream, NULL, sep->user_data);
@@ -690,7 +692,7 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		}
 		session->streams = g_slist_remove(session->streams, stream);
 		if (session->pending_open == stream)
-			handle_transport_connect(session, -1, 0);
+			handle_transport_connect(session, -1, 0, 0);
 		if (session->req && session->req->stream == stream)
 			session->req->stream = NULL;
 		stream_free(stream);
@@ -1573,7 +1575,7 @@ static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
 			avrcp_connect(dev);
 	}
 	else if (session->pending_open)
-		handle_transport_connect(session, sk, l2o.imtu);
+		handle_transport_connect(session, sk, l2o.imtu, l2o.omtu);
 	else {
 		err = -EIO;
 		goto failed;
@@ -2274,7 +2276,8 @@ gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 }
 
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
-					uint16_t *mtu, GSList **caps)
+					uint16_t *imtu, uint16_t *omtu,
+					GSList **caps)
 {
 	if (stream->sock < 0)
 		return FALSE;
@@ -2282,8 +2285,11 @@ gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 	if (sock)
 		*sock = stream->sock;
 
-	if (mtu)
-		*mtu = stream->mtu;
+	if (omtu)
+		*omtu = stream->omtu;
+
+	if (imtu)
+		*imtu = stream->imtu;
 
 	if (caps)
 		*caps = stream->caps;
@@ -2797,7 +2803,7 @@ static gboolean avdtp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	session = avdtp_get_internal(&src, &dst);
 
 	if (session->pending_open && session->pending_open->open_acp) {
-		handle_transport_connect(session, cli_sk, l2o.imtu);
+		handle_transport_connect(session, cli_sk, l2o.imtu, l2o.omtu);
 		return TRUE;
 	}
 

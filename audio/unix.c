@@ -305,7 +305,7 @@ static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	struct ipc_codec_sbc *sbc = (void *) cfg->data;
 	struct a2dp_data *a2dp = &client->d.a2dp;
 	int fd;
-	uint16_t mtu;
+	uint16_t imtu, omtu;
 	GSList *caps;
 
 	client->req_id = 0;
@@ -321,12 +321,10 @@ static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	a2dp->sep = sep;
 	a2dp->stream = stream;
 
-	if (!avdtp_stream_get_transport(stream, &fd, &mtu, &caps)) {
+	if (!avdtp_stream_get_transport(stream, &fd, &imtu, &omtu, &caps)) {
 		error("Unable to get stream transport");
 		goto failed;
 	}
-
-	cfg->pkt_len = mtu;
 
 	for (codec_cap = NULL; caps; caps = g_slist_next(caps)) {
 		cap = caps->data;
@@ -342,6 +340,8 @@ static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		goto failed;
 	}
 
+	/* FIXME: Use imtu when fd_opt is CFG_FD_OPT_READ */
+	cfg->pkt_len = omtu;
 	cfg->fd_opt = CFG_FD_OPT_WRITE;
 
 	sbc_cap = (void *) codec_cap;
