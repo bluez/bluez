@@ -713,7 +713,7 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 
 	sbc_extended_t res;
 	sbc_extended_t t[8];
-	sbc_extended_t s[4];
+	sbc_extended_t s[5];
 
 	MUL(res, _sbc_proto_4[0], (in[8] - in[32])); /* Q18 */
 	MULA(res, _sbc_proto_4[1], (in[16] - in[24]));
@@ -765,13 +765,14 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 	MUL(s[0], _anamatrix4[0], t[0] + t[4]);
 	MUL(s[1], _anamatrix4[2], t[2]);
 	MUL(s[2], _anamatrix4[1], t[1] + t[3]);
-	MULA(s[2], _anamatrix4[3], t[5] + t[7]);
+	MULA(s[2], _anamatrix4[3], t[5]);
 	MUL(s[3], _anamatrix4[3], t[1] + t[3]);
 	MULA(s[3], _anamatrix4[1], - t[5] + t[7]);
-	out[0] = SCALE4_STAGE2( s[0] + s[1] + s[2]); /* Q0 */
+	MUL(s[4], _anamatrix4[3], t[7]);
+	out[0] = SCALE4_STAGE2( s[0] + s[1] + s[2] + s[4]); /* Q0 */
 	out[1] = SCALE4_STAGE2(-s[0] + s[1] + s[3]);
 	out[2] = SCALE4_STAGE2(-s[0] + s[1] - s[3]);
-	out[3] = SCALE4_STAGE2( s[0] + s[1] - s[2]);
+	out[3] = SCALE4_STAGE2( s[0] + s[1] - s[2] - s[4]);
 }
 
 static inline void sbc_analyze_four(struct sbc_encoder_state *state,
