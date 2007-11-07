@@ -1334,7 +1334,7 @@ void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda)
 	for (l = adapter->passkey_agents; l != NULL; l = next) {
 		struct passkey_agent *agent = l->data;
 		next = l->next;
-		
+
 		if (bda && agent->addr) {
 			bdaddr_t tmp;
 			str2ba(agent->addr, &tmp);

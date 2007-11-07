@@ -316,7 +316,7 @@ setup:
 
 		if (features[6] & LMP_NFLUSH_PKTS)
 			events[7] |= 0x01;
-			
+
 		if (features[7] & LMP_LSTO)
 			events[6] |= 0x80;
 

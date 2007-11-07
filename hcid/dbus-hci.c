@@ -435,7 +435,7 @@ int unregister_adapter_path(const char *path)
 
 	/* Check if there is a pending RemoteDeviceDisconnect request */
 	if (adapter->pending_dc) {
- 		error_no_such_adapter(adapter->pending_dc->conn,
+		error_no_such_adapter(adapter->pending_dc->conn,
 				      adapter->pending_dc->msg);
 		g_source_remove(adapter->pending_dc->timeout_id);
 		dc_pending_timeout_cleanup(adapter);
@@ -606,7 +606,7 @@ int hcid_dbus_start_device(uint16_t id)
 	if (adapter->mode == MODE_LIMITED)
 		set_limited_discoverable(dd, adapter->class, TRUE);
 
-	/* 
+	/*
 	 * retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started
 	 */
@@ -1077,8 +1077,8 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 	adapter->pinq_idle = 1;
 
-	/* 
-	 * Enable resolution again: standard inquiry can be 
+	/*
+	 * Enable resolution again: standard inquiry can be
 	 * received in the periodic inquiry idle state.
 	 */
 	if (adapter->pdiscov_requestor && adapter->pdiscov_resolve_names)
@@ -1088,10 +1088,10 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	 * The following scenarios can happen:
 	 * 1. standard inquiry: always send discovery completed signal
 	 * 2. standard inquiry + name resolving: send discovery completed
-	 *    after name resolving 
+	 *    after name resolving
 	 * 3. periodic inquiry: skip discovery completed signal
 	 * 4. periodic inquiry + standard inquiry: always send discovery
-	 *    completed signal 
+	 *    completed signal
 	 *
 	 * Keep in mind that non D-Bus requests can arrive.
 	 */
@@ -1112,7 +1112,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
-	if (adapter->discov_requestor) { 
+	if (adapter->discov_requestor) {
 		name_listener_remove(connection, adapter->discov_requestor,
 				(name_cb_t) discover_devices_req_exit, adapter);
 		g_free(adapter->discov_requestor);
@@ -1128,7 +1128,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		}
 
 		/* reset the discover type for standard inquiry only */
-		adapter->discov_type &= ~STD_INQUIRY; 
+		adapter->discov_type &= ~STD_INQUIRY;
 	}
 
 done:
@@ -1366,7 +1366,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 		if (name_type != 0x08)
 			name_status = NAME_SENT;
-	} 
+	}
 
 	/* add in the list to track name sent/pending */
 	found_device_add(&adapter->found_devices, peer, rssi, name_status);
@@ -1430,7 +1430,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 						"RemoteNameFailed",
 						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_INVALID);
-	else 
+	else
 		dbus_connection_emit_signal(connection, path,
 						ADAPTER_INTERFACE,
 						"RemoteNameUpdated",
@@ -1747,11 +1747,8 @@ failed:
 	return retval;
 }
 
-/*****************************************************************
- *  
- *  Section reserved to device HCI callbacks
- *  
- *****************************************************************/
+/* Section reserved to device HCI callbacks */
+
 void hcid_dbus_setname_complete(bdaddr_t *local)
 {
 	int id, dd = -1;
@@ -1830,7 +1827,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	rq.ocf    = OCF_READ_SCAN_ENABLE;
 	rq.rparam = &rp;
 	rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
-	rq.event  = EVT_CMD_COMPLETE; 
+	rq.event  = EVT_CMD_COMPLETE;
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
 		error("Sending read scan enable command failed: %s (%d)",
@@ -1849,7 +1846,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		error("Getting %s path data failed!", path);
 		goto failed;
 	}
-	
+
 	if (adapter->timeout_id) {
 		g_source_remove(adapter->timeout_id);
 		adapter->timeout_id = 0;
@@ -2094,7 +2091,7 @@ int cancel_discovery(struct adapter *adapter)
 		goto cleanup;
 	}
 
-	/* 
+	/*
 	 * If there is a pending read remote name request means
 	 * that the inquiry complete event was already received
 	 */
@@ -2178,7 +2175,7 @@ int cancel_periodic_discovery(struct adapter *adapter)
 	struct remote_dev_info *dev, match;
 	GSList *l;
 	int dd, err = 0;
-	
+
 	if (!adapter->pdiscov_active)
 		goto cleanup;
 

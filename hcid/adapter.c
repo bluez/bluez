@@ -911,7 +911,7 @@ static DBusHandlerResult adapter_list_minor_classes(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-					 	DBUS_TYPE_STRING_AS_STRING, &array_iter);
+						DBUS_TYPE_STRING_AS_STRING, &array_iter);
 	for (i = 0; i < size; i++)
 		dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING,
 						&minor_ptr[i]);
@@ -1611,7 +1611,7 @@ static DBusHandlerResult adapter_get_remote_service_cls(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-	 					DBUS_TYPE_STRING_AS_STRING, &array_iter);
+						DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
 	g_slist_foreach(service_classes, (GFunc) append_class_string,
 			&array_iter);
@@ -1950,7 +1950,7 @@ gboolean dc_pending_timeout_handler(void *data)
 	dd = hci_open_dev(adapter->dev_id);
 
 	if (dd < 0) {
- 		error_no_such_adapter(pending_dc->conn,
+		error_no_such_adapter(pending_dc->conn,
 				      pending_dc->msg);
 		dc_pending_timeout_cleanup(adapter);
 		return FALSE;
@@ -1959,7 +1959,7 @@ gboolean dc_pending_timeout_handler(void *data)
 	/* Send the HCI disconnect command */
 	if (hci_disconnect(dd, pending_dc->conn_handle,
 				HCI_OE_USER_ENDED_CONNECTION,
-			   	500) < 0) {
+				500) < 0) {
 		int err = errno;
 		error("Disconnect failed");
 		error_failed(pending_dc->conn, pending_dc->msg, err);
@@ -2306,7 +2306,7 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 					6, &peer_bdaddr);
 
 			hci_close_dev(dd);
-		} 
+		}
 
 		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, pin_req);
 		g_free(pin_req);
@@ -2632,7 +2632,7 @@ static DBusHandlerResult adapter_stop_periodic(DBusConnection *conn,
 	if (!adapter->pdiscov_active)
 		return error_not_authorized(conn, msg);
 
-	/* 
+	/*
 	 * Cleanup the discovered devices list and send the cmd to exit
 	 * from periodic inquiry mode or cancel remote name request.
 	 */

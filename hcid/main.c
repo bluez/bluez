@@ -296,8 +296,8 @@ void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 	close(sk);
 }
 
-/* 
- * Device name expansion 
+/*
+ * Device name expansion
  *   %d - device id
  */
 static char *expand_name(char *dst, int size, char *str, int dev_id)
@@ -358,7 +358,7 @@ static gboolean child_exit(GIOChannel *io, GIOCondition cond, void *user_data)
 {
 	int status, fd = g_io_channel_unix_get_fd(io);
 	pid_t child_pid;
-	
+
 	if (read(fd, &child_pid, sizeof(child_pid)) != sizeof(child_pid)) {
 		error("child_exit: unable to read child pid from pipe");
 		return TRUE;

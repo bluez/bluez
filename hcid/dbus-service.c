@@ -88,7 +88,7 @@ static void service_free(struct service *service)
 static void service_exit(const char *name, struct service *service)
 {
 	DBusConnection *conn = get_dbus_connection();
-	
+
 	debug("Service owner exited: %s", name);
 
 	dbus_connection_emit_signal(conn, service->object_path,
@@ -97,7 +97,7 @@ static void service_exit(const char *name, struct service *service)
 
 	if (service->action) {
 		DBusMessage *reply;
-	      	reply = dbus_message_new_method_return(service->action);
+		reply = dbus_message_new_method_return(service->action);
 		send_message_and_unref(conn, reply);
 		dbus_message_unref(service->action);
 		service->action = NULL;
@@ -160,7 +160,7 @@ static DBusHandlerResult get_identifier(DBusConnection *conn,
 
 	if (service->ident)
 		identifier = service->ident;
-	
+
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &identifier,
 			DBUS_TYPE_INVALID);
@@ -182,7 +182,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 
 	if (service->name)
 		name = service->name;
-	
+
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &name,
 			DBUS_TYPE_INVALID);
@@ -203,7 +203,7 @@ static DBusHandlerResult get_description(DBusConnection *conn,
 
 	if (service->descr)
 		description = service->descr;
-	
+
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &description,
 			DBUS_TYPE_INVALID);
@@ -666,7 +666,7 @@ static DBusMethodVTable service_methods[] = {
 
 static DBusSignalVTable service_signals[] = {
 	{ "Started",		""	},
-	{ "Stopped",		""	},	
+	{ "Stopped",		""	},
 	{ "TrustAdded",		"s"	},
 	{ "TrustRemoved",	"s"	},
 	{ NULL, NULL }
@@ -789,7 +789,7 @@ cleanup:
 		services = g_slist_remove(services, service);
 		service_free(service);
 	}
-	
+
 	return 0;
 }
 

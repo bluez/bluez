@@ -110,7 +110,7 @@ static int find_by_address(const char *str)
 	bdaddr_t ba;
 	int i, sk;
 	int devid = -1;
-	
+
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0)
 		return -1;
