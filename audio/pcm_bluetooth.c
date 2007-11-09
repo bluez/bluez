@@ -894,11 +894,7 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 		SND_PCM_FORMAT_S16_LE
 	};
 	unsigned int period_list[] = {
-		512,  /* 3/6ms (mono/stereo 16bit at 44.1kHz) */
-		1024, /* 6/12ms */
-		2048, /* 12/23ms */
-		4096, /* 23/46ms */
-		8192, /* 46/93ms */
+		4096, /* 23/46ms (stereo/mono 16bit at 44.1kHz) */
 	};
 	int err, channels;
 
