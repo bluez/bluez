@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <time.h>
 #include <sys/time.h>
 #include <pthread.h>
 #include <signal.h>
@@ -65,6 +66,13 @@
 
 #ifndef SCO_RXBUFS
 #define SCO_RXBUFS 0x04
+#endif
+
+#ifndef TIMESPEC_TO_TIMEVAL
+# define TIMESPEC_TO_TIMEVAL(tv, ts) {			\
+		(tv)->tv_sec = (ts)->tv_sec;		\
+		(tv)->tv_usec = (ts)->tv_nsec / 1000;	\
+}
 #endif
 
 struct bluetooth_a2dp {
@@ -115,6 +123,7 @@ static void *playback_hw_thread(void *param)
 	unsigned int prev_periods;
 	double period_time;
 	struct timeval start;
+	struct timespec start_monotonic;
 	struct pollfd fds[2];
 	int poll_timeout;
 
@@ -131,11 +140,13 @@ static void *playback_hw_thread(void *param)
 	else
 		poll_timeout = MIN_PERIOD_TIME;
 
-	gettimeofday(&start, 0);
+	clock_gettime(CLOCK_MONOTONIC, &start_monotonic);
+	TIMESPEC_TO_TIMEVAL(&start, &start_monotonic);
 
 	while (1) {
 		unsigned int dtime, periods;
 		struct timeval cur, delta;
+		struct timespec cur_monotonic;
 		int ret;
 
 		if (data->stopped)
@@ -144,11 +155,13 @@ static void *playback_hw_thread(void *param)
 		if (data->reset) {
 			DBG("Handle XRUN in hw-thread.");
 			data->reset = 0;
-			gettimeofday(&start, 0);
+			clock_gettime(CLOCK_MONOTONIC, &start_monotonic);
+			TIMESPEC_TO_TIMEVAL(&start, &start_monotonic);
 			prev_periods = 0;
 		}
 
-		gettimeofday(&cur, 0);
+		clock_gettime(CLOCK_MONOTONIC, &cur_monotonic);
+		TIMESPEC_TO_TIMEVAL(&cur, &cur_monotonic);
 
 		timersub(&cur, &start, &delta);
 
