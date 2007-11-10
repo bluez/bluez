@@ -364,11 +364,9 @@ static int sdp_store_record(const char *src, const char *dst, uint32_t handle, u
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	snprintf(key, sizeof(key), "%s#%08X", dst, handle);
+	snprintf(key, sizeof(key), "%17s#%08X", dst, handle);
 
-	value = g_malloc(size * 2 + 1);
-
-	value[0] = '\0';
+	value = g_malloc0(size * 2 + 1);
 
 	for (i = 0; i < size; i++)
 		sprintf(value + (i * 2), "%02X", buf[i]);
