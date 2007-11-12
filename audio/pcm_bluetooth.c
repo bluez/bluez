@@ -666,7 +666,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	snd_pcm_sframes_t ret = 0;
 	snd_pcm_uframes_t frames_to_read, frames_left = size;
-	int frame_size, encoded;
+	int frame_size, encoded, written;
 	uint8_t *buff;
 
 	DBG("areas->step=%u areas->first=%u offset=%lu size=%lu",
@@ -728,29 +728,29 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 		}
 
 		/* Enough data to encode (sbc wants 1k blocks) */
-		encoded = sbc_encode(&(a2dp->sbc), data->buffer, a2dp->codesize);
+		encoded = sbc_encode(&(a2dp->sbc), data->buffer, a2dp->codesize,
+					a2dp->buffer, sizeof(a2dp->buffer),
+					&written);
 		if (encoded <= 0) {
 			DBG("Encoding error %d", encoded);
 			goto done;
 		}
 
 		data->count -= encoded;
+		a2dp->count += written;
+		a2dp->frame_count++;
+		a2dp->samples += encoded / frame_size;
+		a2dp->nsamples += encoded / frame_size;
 
-		DBG("encoded=%d  a2dp.sbc.len=%d count=%d", encoded,
-				a2dp->sbc.len, a2dp->count);
+		DBG("encoded=%d  written=%d count=%d", encoded,
+				written, a2dp->count);
 
-		/* Send previously encoded buffer */
-		if (a2dp->count + a2dp->sbc.len >= data->cfg.pkt_len) {
+		/* No space left for another frame then send */
+		if (a2dp->count + written >= data->cfg.pkt_len) {
 			avdtp_write(data);
 			DBG("sending packet %d, count %d, pkt_len %u", c,
 					old_count, data->cfg.pkt_len);
 		}
-
-		memcpy(a2dp->buffer + a2dp->count, a2dp->sbc.data, a2dp->sbc.len);
-		a2dp->count += a2dp->sbc.len;
-		a2dp->frame_count++;
-		a2dp->samples += encoded / frame_size;
-		a2dp->nsamples += encoded / frame_size;
 
 		ret += frames_to_read;
 		frames_left -= frames_to_read;

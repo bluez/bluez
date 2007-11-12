@@ -46,7 +46,7 @@ static void decode(char *filename, char *output, int tofile)
 	struct stat st;
 	off_t filesize;
 	sbc_t sbc;
-	int fd, ad, pos, streamlen, framelen, count, written;
+	int fd, ad, pos, streamlen, framelen, count, written, len;
 	int format = AFMT_S16_BE;
 
 	if (stat(filename, &st) < 0) {
@@ -97,7 +97,7 @@ static void decode(char *filename, char *output, int tofile)
 	sbc_init(&sbc, 0L);
 	sbc.swap = 1;
 
-	framelen = sbc_decode(&sbc, stream, streamlen);
+	framelen = sbc_decode(&sbc, stream, streamlen, buf, sizeof(buf), &len);
 	printf("%d Hz, %d channels\n", sbc.rate, sbc.channels);
 	if (!tofile) {
 		if (ioctl(ad, SNDCTL_DSP_SETFMT, &format) < 0) {
@@ -125,7 +125,7 @@ static void decode(char *filename, char *output, int tofile)
 		 * length of the frame we just decoded count is the number of
 		 * decoded bytes yet to be written */
 
-		if (count + sbc.len > BUF_SIZE) {
+		if (count + len > BUF_SIZE) {
 			/* buffer is too full to stuff decoded audio in so it
 			 * must be written to the device */
 			written = write(ad, buf, count);
@@ -134,23 +134,23 @@ static void decode(char *filename, char *output, int tofile)
 		}
 
 		/* sanity check */
-		if (count + sbc.len > BUF_SIZE) {
+		if (count + len > BUF_SIZE) {
 			fprintf(stderr,
 				"buffer size of %d is too small for decoded"
-				" data (%d)\n", BUF_SIZE, sbc.len + count);
+				" data (%d)\n", BUF_SIZE, len + count);
 			exit(1);
 		}
 
-		/* move the latest decoded data into buf and increase
-		 * the count */
-		memcpy(buf + count, sbc.data, sbc.len);
-		count += sbc.len;
+		/* increase the count */
+		count += len;
 
 		/* push the pointer in the file forward to the next bit to be
 		 * decoded tell the decoder to decode up to the remaining
 		 * length of the file (!) */
 		pos += framelen;
-		framelen = sbc_decode(&sbc, stream + pos, streamlen - pos);
+		framelen = sbc_decode(&sbc, stream + pos, streamlen - pos,
+					buf + count, sizeof(buf) - count,
+					&len);
 	}
 
 	if (count > 0) {

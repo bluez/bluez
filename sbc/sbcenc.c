@@ -104,9 +104,9 @@ static ssize_t __write(int fd, const void *buf, size_t count)
 static void encode(char *filename, int subbands, int joint)
 {
 	struct au_header *au_hdr;
-	unsigned char buf[2048];
+	unsigned char input[2048], output[2048];
 	sbc_t sbc;
-	int fd, len, size, count;
+	int fd, len, size, count, encoded;
 
 	if (strcmp(filename, "-")) {
 		fd = open(filename, O_RDONLY);
@@ -118,7 +118,7 @@ static void encode(char *filename, int subbands, int joint)
 	} else
 		fd = fileno(stdin);
 
-	len = __read(fd, buf, sizeof(buf));
+	len = __read(fd, input, sizeof(input));
 	if (len < sizeof(*au_hdr)) {
 		if (fd > fileno(stderr))
 			fprintf(stderr, "Can't read header from file %s: %s\n",
@@ -128,7 +128,7 @@ static void encode(char *filename, int subbands, int joint)
 		goto done;
 	}
 
-	au_hdr = (struct au_header *) buf;
+	au_hdr = (struct au_header *) input;
 
 	if (au_hdr->magic != AU_MAGIC ||
 			BE_INT(au_hdr->hdr_size) > 128 ||
@@ -147,11 +147,11 @@ static void encode(char *filename, int subbands, int joint)
 	sbc.swap = 1;
 	count = BE_INT(au_hdr->data_size);
 	size = len - BE_INT(au_hdr->hdr_size);
-	memmove(buf, buf + BE_INT(au_hdr->hdr_size), size);
+	memmove(input, input + BE_INT(au_hdr->hdr_size), size);
 
 	while (1) {
-		if (size < sizeof(buf)) {
-			len = __read(fd, buf + size, sizeof(buf) - size);
+		if (size < sizeof(input)) {
+			len = __read(fd, input + size, sizeof(input) - size);
 			if (len == 0)
 				break;
 
@@ -163,17 +163,18 @@ static void encode(char *filename, int subbands, int joint)
 			size += len;
 		}
 
-		len = sbc_encode(&sbc, buf, size);
+		len = sbc_encode(&sbc, input, size, output, sizeof(output),
+					&encoded);
 		if (len < size)
-			memmove(buf, buf + len, size - len);
+			memmove(input, input + len, size - len);
 
 		size -= len;
 
-		len = __write(fileno(stdout), sbc.data, sbc.len);
+		len = __write(fileno(stdout), output, encoded);
 		if (len == 0)
 			break;
 
-		if (len < 0 || len != sbc.len) {
+		if (len < 0 || len != encoded) {
 			perror("Can't write SBC output");
 			break;
 		}

@@ -42,10 +42,6 @@ struct sbc_struct {
 	int bitpool;
 	int swap;
 
-	void *data;
-	int size;
-	int len;
-
 	unsigned long duration;
 
 	void *priv;
@@ -54,9 +50,13 @@ struct sbc_struct {
 typedef struct sbc_struct sbc_t;
 
 int sbc_init(sbc_t *sbc, unsigned long flags);
-int sbc_parse(sbc_t *sbc, void *data, int count);
-int sbc_decode(sbc_t *sbc, void *data, int count);
-int sbc_encode(sbc_t *sbc, void *data, int count);
+int sbc_parse(sbc_t *sbc, void *input, int input_len);
+int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
+		int output_len, int *len);
+int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
+		int output_len, int *written);
+int sbc_get_frame_length(sbc_t *sbc);
+int sbc_get_codesize(sbc_t *sbc);
 void sbc_finish(sbc_t *sbc);
 
 #ifdef __cplusplus

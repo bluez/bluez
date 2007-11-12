@@ -95,6 +95,8 @@ struct sbc_frame {
 	} allocation_method;
 	uint8_t subbands;
 	uint8_t bitpool;
+	uint8_t codesize;
+	uint8_t length;
 
 	/* bit number x set means joint stereo has been used in subband x */
 	uint8_t join;
@@ -1230,23 +1232,24 @@ int sbc_init(sbc_t *sbc, unsigned long flags)
 	return 0;
 }
 
-int sbc_parse(sbc_t *sbc, void *data, int count)
+int sbc_parse(sbc_t *sbc, void *input, int input_len)
 {
-	return sbc_decode(sbc, data, count);
+	return sbc_decode(sbc, input, input_len, NULL, 0, NULL);
 }
 
-int sbc_decode(sbc_t *sbc, void *data, int count)
+int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
+		int output_len, int *written)
 {
 	struct sbc_priv *priv;
 	char *ptr;
 	int i, ch, framelen, samples;
 
-	if (!sbc)
+	if (!sbc && !input)
 		return -EIO;
 
 	priv = sbc->priv;
 
-	framelen = sbc_unpack_frame(data, &priv->frame, count);
+	framelen = sbc_unpack_frame(input, &priv->frame, input_len);
 
 	if (!priv->init) {
 		sbc_decoder_init(&priv->dec_state, &priv->frame);
@@ -1257,26 +1260,23 @@ int sbc_decode(sbc_t *sbc, void *data, int count)
 		sbc->subbands = priv->frame.subbands;
 		sbc->blocks = priv->frame.blocks;
 		sbc->bitpool = priv->frame.bitpool;
+
+		priv->frame.codesize = sbc_get_codesize(sbc);
+		priv->frame.length = sbc_get_frame_length(sbc);
 	}
+
+	if (!output)
+		return framelen;
+
+	if (written)
+		*written = 0;
 
 	samples = sbc_synthesize_audio(&priv->dec_state, &priv->frame);
 
-	if (!sbc->data) {
-		sbc->size = samples * priv->frame.channels * 2;
-		sbc->data = malloc(sbc->size);
-	}
+	ptr = output;
 
-	if (sbc->size < samples * priv->frame.channels * 2) {
-		sbc->size = samples * priv->frame.channels * 2;
-		sbc->data = realloc(sbc->data, sbc->size);
-	}
-
-	if (!sbc->data) {
-		sbc->size = 0;
-		return -ENOMEM;
-	}
-
-	ptr = sbc->data;
+	if (output_len < samples * priv->frame.channels * 2)
+		samples = output_len / (priv->frame.channels * 2);
 
 	for (i = 0; i < samples; i++) {
 		for (ch = 0; ch < priv->frame.channels; ch++) {
@@ -1293,21 +1293,26 @@ int sbc_decode(sbc_t *sbc, void *data, int count)
 		}
 	}
 
-	sbc->len = samples * priv->frame.channels * 2;
+	if (written)
+		*written = samples * priv->frame.channels * 2;
 
 	return framelen;
 }
 
-int sbc_encode(sbc_t *sbc, void *data, int count)
+int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
+		int output_len, int *written)
 {
 	struct sbc_priv *priv;
 	char *ptr;
 	int i, ch, framelen, samples;
 
-	if (!sbc)
+	if (!sbc && !input)
 		return -EIO;
 
 	priv = sbc->priv;
+
+	if (written)
+		*written = 0;
 
 	if (!priv->init) {
 		priv->frame.sampling_frequency = sbc->rate;
@@ -1325,16 +1330,22 @@ int sbc_encode(sbc_t *sbc, void *data, int count)
 		priv->frame.subbands = sbc->subbands;
 		priv->frame.blocks = sbc->blocks;
 		priv->frame.bitpool = sbc->bitpool;
+		priv->frame.codesize = sbc_get_codesize(sbc);
+		priv->frame.length = sbc_get_frame_length(sbc);
 
 		sbc_encoder_init(&priv->enc_state, &priv->frame);
 		priv->init = 1;
 	}
 
 	/* input must be large enough to encode a complete frame */
-	if (count < priv->frame.subbands * priv->frame.blocks * sbc->channels * 2)
+	if (input_len < priv->frame.codesize)
 		return 0;
 
-	ptr = data;
+	/* output must be large enough to receive the encoded frame */
+	if (!output || output_len < priv->frame.length)
+		return -ENOSPC;
+
+	ptr = input;
 
 	for (i = 0; i < priv->frame.subbands * priv->frame.blocks; i++) {
 		for (ch = 0; ch < sbc->channels; ch++) {
@@ -1351,19 +1362,10 @@ int sbc_encode(sbc_t *sbc, void *data, int count)
 
 	samples = sbc_analyze_audio(&priv->enc_state, &priv->frame);
 
-	if (!sbc->data) {
-		sbc->size = 1024;
-		sbc->data = malloc(sbc->size);
-	}
+	framelen = sbc_pack_frame(output, &priv->frame, output_len);
 
-	if (!sbc->data) {
-		sbc->size = 0;
-		return -ENOMEM;
-	}
-
-	framelen = sbc_pack_frame(sbc->data, &priv->frame, sbc->size);
-
-	sbc->len = framelen;
+	if (written)
+		*written = framelen;
 
 	sbc->duration = (1000000 * priv->frame.subbands * priv->frame.blocks) / sbc->rate;
 
@@ -1375,11 +1377,29 @@ void sbc_finish(sbc_t *sbc)
 	if (!sbc)
 		return;
 
-	if (sbc->data)
-		free(sbc->data);
-
 	if (sbc->priv)
 		free(sbc->priv);
 
 	memset(sbc, 0, sizeof(sbc_t));
+}
+
+int sbc_get_frame_length(sbc_t *sbc)
+{
+	int ret;
+
+	ret = 4 + (4 * sbc->subbands * sbc->channels) / 8;
+
+	/* This term is not always evenly devide so we round it up */
+	if (sbc->channels == 1)
+		ret += ((sbc->blocks * sbc->channels * sbc->bitpool) + 7) / 8;
+	else
+		ret += ((sbc->joint * sbc->subbands + sbc->blocks * sbc->bitpool)
+			+ 7) / 8;
+
+	return ret;
+}
+
+int sbc_get_codesize(sbc_t *sbc)
+{
+	return sbc->subbands * sbc->blocks * sbc->channels * 2;
 }
