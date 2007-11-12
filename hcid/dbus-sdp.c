@@ -447,7 +447,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
 			uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
-	sdp_record_t *rec = NULL;
+	sdp_record_t *rec;
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
 	const char *src, *dst;
@@ -494,8 +494,8 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
 			DBUS_TYPE_BYTE_AS_STRING, &array_iter);
 
 	rec = sdp_extract_pdu(rsp, &scanned);
-	if (rec == NULL) {
-		error("SVC REC is null");
+	if (rec == NULL || size != scanned) {
+		error("Invalid service record!");
 		goto done;
 	}
 
@@ -519,7 +519,7 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 						void *udata)
 {
 	struct transaction_context *ctxt = udata;
-	sdp_record_t *rec = NULL;
+	sdp_record_t *rec;
 	DBusMessage *reply;
 	const char *src, *dst;
 	int scanned;
@@ -563,8 +563,8 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 	reply = dbus_message_new_method_return(ctxt->rq);
 	
 	rec = sdp_extract_pdu(rsp, &scanned);
-	if (rec == NULL) {
-		error("SVC REC is null");
+	if (rec == NULL || size != scanned) {
+		error("Invalid service record!");
 		goto done;
 	}
 
