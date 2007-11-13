@@ -638,7 +638,7 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 		created = TRUE;
 	}
 
-	if (!strcmp(uuid, HSP_AG_UUID) || !strcmp(uuid, HSP_AG_UUID)) {
+	if (!strcmp(uuid, HSP_AG_UUID) || !strcmp(uuid, HFP_AG_UUID)) {
 		if (device->headset)
 			return device;
 
