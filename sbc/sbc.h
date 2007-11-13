@@ -50,6 +50,7 @@ struct sbc_struct {
 typedef struct sbc_struct sbc_t;
 
 int sbc_init(sbc_t *sbc, unsigned long flags);
+int sbc_reinit(sbc_t *sbc, unsigned long flags);
 int sbc_parse(sbc_t *sbc, void *input, int input_len);
 int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
 		int output_len, int *len);

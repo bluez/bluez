@@ -1208,6 +1208,17 @@ struct sbc_priv {
 	struct sbc_encoder_state enc_state;
 };
 
+static void sbc_fill_defaults(sbc_t *sbc, unsigned long flags)
+{
+	sbc->rate = 44100;
+	sbc->channels = 2;
+	sbc->joint = 0;
+	sbc->subbands = 8;
+	sbc->blocks = 16;
+	sbc->bitpool = 32;
+	sbc->swap = 0;
+}
+
 int sbc_init(sbc_t *sbc, unsigned long flags)
 {
 	if (!sbc)
@@ -1221,13 +1232,7 @@ int sbc_init(sbc_t *sbc, unsigned long flags)
 
 	memset(sbc->priv, 0, sizeof(struct sbc_priv));
 
-	sbc->rate = 44100;
-	sbc->channels = 2;
-	sbc->joint = 0;
-	sbc->subbands = 8;
-	sbc->blocks = 16;
-	sbc->bitpool = 32;
-	sbc->swap = 0;
+	sbc_fill_defaults(sbc, flags);
 
 	return 0;
 }
@@ -1389,7 +1394,7 @@ int sbc_get_frame_length(sbc_t *sbc)
 
 	ret = 4 + (4 * sbc->subbands * sbc->channels) / 8;
 
-	/* This term is not always evenly devide so we round it up */
+	/* This term is not always evenly divide so we round it up */
 	if (sbc->channels == 1)
 		ret += ((sbc->blocks * sbc->channels * sbc->bitpool) + 7) / 8;
 	else
@@ -1402,4 +1407,21 @@ int sbc_get_frame_length(sbc_t *sbc)
 int sbc_get_codesize(sbc_t *sbc)
 {
 	return sbc->subbands * sbc->blocks * sbc->channels * 2;
+}
+
+int sbc_reinit(sbc_t *sbc, unsigned long flags)
+{
+	struct sbc_priv *priv;
+
+	if (!sbc || !sbc->priv)
+		return -EIO;
+
+	priv = sbc->priv;
+
+	if (priv->init == 1)
+		memset(sbc->priv, 0, sizeof(struct sbc_priv));
+
+	sbc_fill_defaults(sbc, flags);
+
+	return 0;
 }
