@@ -1208,7 +1208,7 @@ struct sbc_priv {
 	struct sbc_encoder_state enc_state;
 };
 
-static void sbc_fill_defaults(sbc_t *sbc, unsigned long flags)
+static void sbc_set_defaults(sbc_t *sbc, unsigned long flags)
 {
 	sbc->rate = 44100;
 	sbc->channels = 2;
@@ -1232,7 +1232,7 @@ int sbc_init(sbc_t *sbc, unsigned long flags)
 
 	memset(sbc->priv, 0, sizeof(struct sbc_priv));
 
-	sbc_fill_defaults(sbc, flags);
+	sbc_set_defaults(sbc, flags);
 
 	return 0;
 }
@@ -1421,7 +1421,7 @@ int sbc_reinit(sbc_t *sbc, unsigned long flags)
 	if (priv->init == 1)
 		memset(sbc->priv, 0, sizeof(struct sbc_priv));
 
-	sbc_fill_defaults(sbc, flags);
+	sbc_set_defaults(sbc, flags);
 
 	return 0;
 }
