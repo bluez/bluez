@@ -261,6 +261,9 @@ static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg);
 
+	if ((check_address(addr) < 0) || (path[0] != '/'))
+		return error_invalid_arguments(conn, msg);
+
 	memset(&ref, 0, sizeof(ref));
 
 	ref.name = (char *) dbus_message_get_sender(msg);
