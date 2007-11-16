@@ -204,6 +204,52 @@ static void name_data_remove(DBusConnection *connection,
 	}
 }
 
+static gboolean add_match(DBusConnection *connection, const char *name)
+{
+	DBusError err;
+	char match_string[128];
+
+	snprintf(match_string, sizeof(match_string),
+			"interface=%s,member=NameOwnerChanged,arg0=%s",
+			DBUS_INTERFACE_DBUS, name);
+
+	dbus_error_init(&err);
+
+	dbus_bus_add_match(connection, match_string, &err);
+
+	if (dbus_error_is_set(&err)) {
+		error("Adding match rule \"%s\" failed: %s", match_string,
+				err.message);
+		dbus_error_free(&err);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static gboolean remove_match(DBusConnection *connection, const char *name)
+{
+	DBusError err;
+	char match_string[128];
+
+	snprintf(match_string, sizeof(match_string),
+			"interface=%s,member=NameOwnerChanged,arg0=%s",
+			DBUS_INTERFACE_DBUS, name);
+
+	dbus_error_init(&err);
+
+	dbus_bus_remove_match(connection, match_string, &err);
+
+	if (dbus_error_is_set(&err)) {
+		error("Removing owner match rule for %s failed: %s",
+				name, err.message);
+		dbus_error_free(&err);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -242,14 +288,14 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 	name_listeners = g_slist_remove(name_listeners, data);
 	name_data_free(data);
 
+	remove_match(connection, name);
+
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 int name_listener_add(DBusConnection *connection, const char *name,
 					name_cb_t func, void *user_data)
 {
-	DBusError err;
-	char match_string[128];
 	int first;
 
 	if (!name_listener_initialized) {
@@ -270,17 +316,7 @@ int name_listener_add(DBusConnection *connection, const char *name,
 	if (name) {
 		debug("name_listener_add(%s)", name);
 
-		snprintf(match_string, sizeof(match_string),
-				"interface=%s,member=NameOwnerChanged,arg0=%s",
-						DBUS_INTERFACE_DBUS, name);
-
-		dbus_error_init(&err);
-		dbus_bus_add_match(connection, match_string, &err);
-
-		if (dbus_error_is_set(&err)) {
-			error("Adding match rule \"%s\" failed: %s",
-						match_string, err.message);
-			dbus_error_free(&err);
+		if (!add_match(connection, name)) {
 			name_data_remove(connection, name, func, user_data);
 			return -1;
 		}
@@ -294,8 +330,6 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 {
 	struct name_data *data;
 	struct name_callback *cb;
-	DBusError err;
-	char match_string[128];
 
 	data = name_data_find(connection, name);
 	if (!data) {
@@ -319,20 +353,8 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 	if (name) {
 		debug("name_listener_remove(%s)", name);
 
-		snprintf(match_string, sizeof(match_string),
-				"interface=%s,member=NameOwnerChanged,arg0=%s",
-						DBUS_INTERFACE_DBUS, name);
-
-		dbus_error_init(&err);
-
-		dbus_bus_remove_match(connection, match_string, &err);
-
-		if (dbus_error_is_set(&err)) {
-			error("Removing owner match rule for %s failed: %s",
-							name, err.message);
-			dbus_error_free(&err);
+		if (!remove_match(connection, name))
 			return -1;
-		}
 	}
 
 	name_data_remove(connection, name, func, user_data);
