@@ -729,7 +729,8 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 
 		/* Enough data to encode (sbc wants 1k blocks) */
 		encoded = sbc_encode(&(a2dp->sbc), data->buffer, a2dp->codesize,
-					a2dp->buffer, sizeof(a2dp->buffer),
+					a2dp->buffer + a2dp->count,
+					sizeof(a2dp->buffer) - a2dp->count,
 					&written);
 		if (encoded <= 0) {
 			DBG("Encoding error %d", encoded);
@@ -937,8 +938,11 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 		return err;
 
 	/* supported block sizes: */
-	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
-			ARRAY_NELEMS(period_list), period_list);
+//	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
+//			ARRAY_NELEMS(period_list), period_list);
+	/* supported block size */
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
+						512, 512);
 	if (err < 0)
 		return err;
 
