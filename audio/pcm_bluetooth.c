@@ -938,11 +938,8 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 		return err;
 
 	/* supported block sizes: */
-//	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
-//			ARRAY_NELEMS(period_list), period_list);
-	/* supported block size */
-	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
-						512, 512);
+	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
+			ARRAY_NELEMS(period_list), period_list);
 	if (err < 0)
 		return err;
 
