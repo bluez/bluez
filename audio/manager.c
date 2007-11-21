@@ -1052,7 +1052,7 @@ static void parse_stored_devices(char *key, char *value, void *data)
 		return;
 
 	str2ba(key, &dst);
-	device = manager_find_device(&dst, PKT_ROLE_AUTO, FALSE);
+	device = manager_find_device(&dst, NULL, FALSE);
 
 	if (device)
 		return;
@@ -1111,7 +1111,7 @@ static void register_devices_stored(const char *adapter)
 		return;
 
 	str2ba(addr, &dst);
-	device = manager_find_device(&dst, PKT_ROLE_AUTO, FALSE);
+	device = manager_find_device(&dst, NULL, FALSE);
 
 	if (device) {
 		info("Setting %s as default device", addr);

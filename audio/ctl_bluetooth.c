@@ -65,7 +65,7 @@ static void bluetooth_exit(struct bluetooth_data *data)
 		return;
 
 	if (data->sock >= 0)
-		close(data->sock);
+		bt_audio_service_close(data->sock);
 
 	free(data);
 }
@@ -141,30 +141,47 @@ static int bluetooth_get_integer_info(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 }
 
 static int bluetooth_send_ctl(struct bluetooth_data *data,
-				struct ipc_packet *pkt, int len)
+			uint8_t mode, uint8_t key, struct bt_control_rsp *ctl_rsp)
 {
 	int ret;
+	struct bt_control_req *ctl_req = (void *) ctl_rsp;
+	const char *type;
 
-	ret = send(data->sock, pkt, len, MSG_NOSIGNAL);
+	memset(ctl_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
+	ctl_req->h.msg_type = BT_CONTROL_REQ;
+	ctl_req->mode = mode;
+	ctl_req->key = key;
+
+	ret = send(data->sock, ctl_req, BT_AUDIO_IPC_PACKET_SIZE, MSG_NOSIGNAL);
 	if (ret <= 0) {
 		SYSERR("Unable to request new volume value to server");
 		return  -errno;
 	}
 
-	ret = recv(data->sock, pkt, len, 0);
+	ret = recv(data->sock, ctl_rsp, BT_AUDIO_IPC_PACKET_SIZE, 0);
 	if (ret <= 0) {
-		SYSERR("Unable to receive new volume value from server");
+		SNDERR("Unable to receive new volume value from server");
 		return  -errno;
 	}
 
-	if(pkt->type != PKT_TYPE_CTL_RSP) {
-		SNDERR("Unexpected packet type %d received", pkt->type);
+	type = bt_audio_strmsg(ctl_rsp->h.msg_type);
+	if (!type) {
+		SNDERR("Bogus message type %d "
+				"received from audio service",
+				ctl_rsp->h.msg_type);
 		return -EINVAL;
 	}
 
-	if(pkt->length != sizeof(struct ipc_data_ctl)) {
-		SNDERR("Unexpected packet length %d received", pkt->length);
+	if (ctl_rsp->h.msg_type != BT_CONTROL_RSP) {
+		SNDERR("Unexpected message %s received", type);
 		return -EINVAL;
+	}
+
+	if (ctl_rsp->posix_errno != 0) {
+		SNDERR("BT_CONTROL failed : %s (%d)",
+					strerror(ctl_rsp->posix_errno),
+					ctl_rsp->posix_errno);
+		return -ctl_rsp->posix_errno;
 	}
 
 	return 0;
@@ -174,28 +191,21 @@ static int bluetooth_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 								long *value)
 {
 	struct bluetooth_data *data = ext->private_data;
-	struct ipc_packet *pkt;
-	struct ipc_data_ctl *ctl;
-	int len, ret;
+	int ret;
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_control_rsp *rsp = (void *) buf;
 
 	DBG("ext %p key %ld", ext, key);
 
-	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_ctl);
-	pkt = malloc(len);
-	memset(pkt, 0, len);
+	memset(buf, 0, sizeof(buf));
 	*value = 0;
 
-	pkt->type = PKT_TYPE_CTL_REQ;
-	pkt->length = sizeof(struct ipc_data_ctl);
-	ctl = (struct ipc_data_ctl *) pkt->data;
-	ctl->mode = key;
-
-	if ((ret = bluetooth_send_ctl(data, pkt, len)) < 0)
+	ret = bluetooth_send_ctl(data, key, 0, rsp);
+	if (ret < 0)
 		goto done;
 
-	*value = ctl->key;
+	*value = rsp->key;
 done:
-	free(pkt);
 	return ret;
 }
 
@@ -203,38 +213,31 @@ static int bluetooth_write_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 								long *value)
 {
 	struct bluetooth_data *data = ext->private_data;
-	struct ipc_packet *pkt;
-	struct ipc_data_ctl *ctl;
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_control_rsp *rsp = (void *) buf;
 	long current;
-	int len, ret;
+	int ret, keyvalue;
 
 	DBG("ext %p key %ld", ext, key);
 
-	if ((ret = bluetooth_read_integer(ext, key, &current)) < 0)
+	ret = bluetooth_read_integer(ext, key, &current);
+	if (ret < 0)
 		return ret;
 
 	if (*value == current)
 		return 0;
 
-	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_ctl);
-	pkt = malloc(len);
-	memset(pkt, 0, len);
-
-	pkt->length = sizeof(struct ipc_data_ctl);
-	ctl = (struct ipc_data_ctl *) pkt->data;
-	ctl->mode = key;
-
 	while (*value != current) {
-		pkt->type = PKT_TYPE_CTL_REQ;
-		ctl->key = (*value > current) ? CTL_KEY_VOL_UP : CTL_KEY_VOL_DOWN;
+		keyvalue = (*value > current) ? BT_CONTROL_KEY_VOL_UP :
+				BT_CONTROL_KEY_VOL_DOWN;
 
-		if ((ret = bluetooth_send_ctl(data, pkt, len)) < 0)
+		ret = bluetooth_send_ctl(data, key, keyvalue, rsp);
+		if (ret < 0)
 			break;
 
-		current = ctl->key;
+		current = keyvalue;
 	}
 
-	free(pkt);
 	return ret;
 }
 
@@ -242,33 +245,31 @@ static int bluetooth_read_event(snd_ctl_ext_t *ext, snd_ctl_elem_id_t *id,
 						unsigned int *event_mask)
 {
 	struct bluetooth_data *data = ext->private_data;
-	struct ipc_packet *pkt;
-	struct ipc_data_ctl *ctl;
-	int len, ret;
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_control_ind *ind = (void *) buf;
+	int ret;
+	const char *type;
 
 	DBG("ext %p id %p", ext, id);
 
-	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_ctl);
-	pkt = malloc(len);
-	memset(pkt, 0, len);
+	memset(buf, 0, sizeof(buf));
 
-	ret = recv(data->sock, pkt, len, MSG_DONTWAIT);
-	if (ret <= 0)
-		return  -errno;
-
-	if(pkt->type != PKT_TYPE_CTL_NTFY) {
-		SNDERR("Unexpected packet type %d received!", pkt->type);
+	ret = recv(data->sock, ind, BT_AUDIO_IPC_PACKET_SIZE, MSG_DONTWAIT);
+	type = bt_audio_strmsg(ind->h.msg_type);
+	if (!type) {
+		SNDERR("Bogus message type %d "
+				"received from audio service",
+				ind->h.msg_type);
 		return -EAGAIN;
 	}
 
-	if(pkt->length != sizeof(struct ipc_data_ctl)) {
-		SNDERR("Unexpected packet length %d received", pkt->length);
+	if (ind->h.msg_type != BT_CONTROL_IND) {
+		SNDERR("Unexpected message %s received", type);
 		return -EAGAIN;
 	}
 
-	ctl = (struct ipc_data_ctl *) pkt->data;
 	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
-	snd_ctl_elem_id_set_name(id, ctl->mode == BLUETOOTH_PLAYBACK ?
+	snd_ctl_elem_id_set_name(id, ind->mode == BLUETOOTH_PLAYBACK ?
 				vol_devices[BLUETOOTH_PLAYBACK] :
 				vol_devices[BLUETOOTH_CAPTURE]);
 	*event_mask = SND_CTL_EVENT_MASK_VALUE;
@@ -290,10 +291,7 @@ static snd_ctl_ext_callback_t bluetooth_callback = {
 
 static int bluetooth_init(struct bluetooth_data *data)
 {
-	int sk, err, id;
-	struct sockaddr_un addr = {
-		AF_UNIX, IPC_SOCKET_NAME
-	};
+	int sk;
 
 	if (!data)
 		return -EINVAL;
@@ -302,21 +300,9 @@ static int bluetooth_init(struct bluetooth_data *data)
 
 	data->sock = -1;
 
-	id = abs(getpid() * rand());
-
-	if ((sk = socket(PF_LOCAL, SOCK_STREAM, 0)) < 0) {
-		err = -errno;
-		SNDERR("Can't open socket");
+	sk = bt_audio_service_open();
+	if (sk < 0)
 		return -errno;
-	}
-
-	DBG("Connecting to address: %s", addr.sun_path + 1);
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = -errno;
-		SNDERR("Can't connect socket");
-		close(sk);
-		return err;
-	}
 
 	data->sock = sk;
 

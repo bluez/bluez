@@ -57,6 +57,7 @@ static GstStaticPadTemplate sbc_parse_src_factory =
 				"bitpool = (int) [ 2, 64 ]"));
 
 /* Creates a fixed caps from the caps given. */
+/* FIXME use gstsbcutil caps fixating function */
 static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 {
 	GstCaps *result;
@@ -67,6 +68,11 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 	const gchar* allocation = NULL;
 	const gchar* mode = NULL;
 	const gchar* error_message = NULL;
+	gchar* str;
+
+	str = gst_caps_to_string(caps);
+	GST_DEBUG_OBJECT(parse, "Parsing caps: %s", str);
+	g_free(str);
 
 	structure = gst_caps_get_structure(caps, 0);
 
@@ -76,11 +82,10 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		goto error;
 	} else {
 		value = gst_structure_get_value(structure, "rate");
-		if (GST_VALUE_HOLDS_LIST(value)) {
+		if (GST_VALUE_HOLDS_LIST(value))
 			temp = gst_sbc_select_rate_from_list(value);
-		} else {
+		else
 			temp = g_value_get_int(value);
-		}
 		rate = temp;
 	}
 
@@ -90,11 +95,10 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		goto error;
 	} else {
 		value = gst_structure_get_value(structure, "channels");
-		if (GST_VALUE_HOLDS_INT_RANGE(value)) {
+		if (GST_VALUE_HOLDS_INT_RANGE(value))
 			temp = gst_sbc_select_channels_from_range(value);
-		} else {
+		else
 			temp = g_value_get_int(value);
-		}
 		channels = temp;
 	}
 
@@ -104,11 +108,10 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		goto error;
 	} else {
 		value = gst_structure_get_value(structure, "blocks");
-		if (GST_VALUE_HOLDS_LIST(value)) {
+		if (GST_VALUE_HOLDS_LIST(value))
 			temp = gst_sbc_select_blocks_from_list(value);
-		} else {
+		else
 			temp = g_value_get_int(value);
-		}
 		blocks = temp;
 	}
 
@@ -118,11 +121,10 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		goto error;
 	} else {
 		value = gst_structure_get_value(structure, "subbands");
-		if (GST_VALUE_HOLDS_LIST(value)) {
+		if (GST_VALUE_HOLDS_LIST(value))
 			temp = gst_sbc_select_subbands_from_list(value);
-		} else {
+		else
 			temp = g_value_get_int(value);
-		}
 		subbands = temp;
 	}
 
@@ -132,11 +134,10 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		goto error;
 	} else {
 		value = gst_structure_get_value(structure, "bitpool");
-		if (GST_VALUE_HOLDS_INT_RANGE(value)) {
+		if (GST_VALUE_HOLDS_INT_RANGE(value))
 			temp = gst_sbc_select_bitpool_from_range(value);
-		} else {
+		else
 			temp = g_value_get_int(value);
-		}
 		bitpool = temp;
 	}
 
@@ -146,11 +147,10 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		goto error;
 	} else {
 		value = gst_structure_get_value(structure, "allocation");
-		if (GST_VALUE_HOLDS_LIST(value)) {
+		if (GST_VALUE_HOLDS_LIST(value))
 			allocation = gst_sbc_get_allocation_from_list(value);
-		} else {
+		else
 			allocation = g_value_get_string(value);
-		}
 	}
 
 	if (!gst_structure_has_field(structure, "mode")) {
@@ -159,11 +159,10 @@ static GstCaps* sbc_parse_select_caps(GstSbcParse *parse, GstCaps *caps)
 		goto error;
 	} else {
 		value = gst_structure_get_value(structure, "mode");
-		if (GST_VALUE_HOLDS_LIST(value)) {
+		if (GST_VALUE_HOLDS_LIST(value))
 			mode = gst_sbc_get_mode_from_list(value);
-		} else {
+		else
 			mode = g_value_get_string(value);
-		}
 	}
 
 error:
@@ -205,9 +204,15 @@ static gboolean sbc_parse_sink_setcaps(GstPad * pad, GstCaps * caps)
 		other = gst_caps_new_any();
 
 	inter = gst_caps_intersect(caps, other);
-	srccaps = sbc_parse_select_caps(parse, inter);
-	if (srccaps == NULL)
+	if (gst_caps_is_empty(inter)) {
+		gst_caps_unref(inter);
 		return FALSE;
+	}
+	srccaps = sbc_parse_select_caps(parse, inter);
+	if (srccaps == NULL) {
+		gst_caps_unref(inter);
+		return FALSE;
+	}
 
 	gst_pad_set_caps(parse->srcpad, srccaps);
 

@@ -450,7 +450,6 @@ static headset_state_t ipc_to_hs_state(uint8_t ipc_state)
 		return HEADSET_STATE_DISCONNECTED;
 	}
 }
-#endif
 
 static uint8_t avdtp_to_ipc_state(avdtp_state_t state)
 {
@@ -504,6 +503,7 @@ uint8_t device_get_state(struct device *dev)
 
 	return STATE_DISCONNECTED;
 }
+#endif
 
 gboolean device_is_connected(struct device *dev, const char *interface)
 {

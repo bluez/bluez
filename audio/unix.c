@@ -79,7 +79,8 @@ struct unix_client {
 		struct headset_data hs;
 	} d;
 	int sock;
-	int fd_opt;
+	int access_mode;
+	int data_fd; /* To be deleted once two phase configuration is fully implemented */
 	unsigned int req_id;
 	unsigned int cb_id;
 	gboolean (*cancel_stream) (struct device *dev, unsigned int id);
@@ -88,6 +89,11 @@ struct unix_client {
 static GSList *clients = NULL;
 
 static int unix_sock = -1;
+
+static void unix_ipc_sendmsg(struct unix_client *client,
+					const bt_audio_msg_header_t *msg);
+
+static void send_getcapabilities_rsp_error(struct unix_client *client, int err);
 
 static void client_free(struct unix_client *client)
 {
@@ -121,7 +127,7 @@ static void client_free(struct unix_client *client)
 
 /* Pass file descriptor through local domain sockets (AF_LOCAL, formerly AF_UNIX)
 and the sendmsg() system call with the cmsg_type field of a "struct cmsghdr" set
-to SCM_RIGHTS and the data being an integer value equal to the handle of the 
+to SCM_RIGHTS and the data being an integer value equal to the handle of the
 file descriptor to be passed.*/
 static int unix_sendmsg_fd(int sock, int fd)
 {
@@ -193,77 +199,29 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	}
 }
 
-static int unix_send_cfg(int sock, struct ipc_data_cfg *cfg, int fd)
-{
-	char buf[IPC_MTU];
-	struct ipc_packet *pkt = (void *) buf;
-	int len, codec_len;
-
-	memset(buf, 0, sizeof(buf));
-
-	pkt->type = PKT_TYPE_CFG_RSP;
-
-	if (!cfg) {
-		pkt->error = EINVAL;
-		len = send(sock, pkt, sizeof(struct ipc_packet), 0);
-		if (len < 0)
-			error("send: %s (%d)", strerror(errno), errno);
-		return len;
-	}
-
-	debug("fd=%d, fd_opt=%u, pkt_len=%u, sample_size=%u, rate=%u",
-						fd, cfg->fd_opt, cfg->pkt_len,
-						cfg->sample_size, cfg->rate);
-
-	if (cfg->codec == CFG_CODEC_SBC)
-		codec_len = sizeof(struct ipc_codec_sbc);
-	else
-		codec_len = 0;
-
-	pkt->error = PKT_ERROR_NONE;
-	pkt->length = sizeof(struct ipc_data_cfg) + codec_len;
-	memcpy(pkt->data, cfg, pkt->length);
-
-	len = sizeof(struct ipc_packet) + pkt->length;
-	len = send(sock, pkt, len, 0);
-	if (len < 0)
-		error("Error %s(%d)", strerror(errno), errno);
-
-	debug("%d bytes sent", len);
-
-	if (fd != -1) {
-		len = unix_sendmsg_fd(sock, fd);
-		if (len < 0)
-			error("Error %s(%d)", strerror(errno), errno);
-		debug("%d bytes sent", len);
-	}
-
-	return 0;
-}
-
 static void headset_setup_complete(struct device *dev, void *user_data)
 {
 	struct unix_client *client = user_data;
-	struct ipc_data_cfg cfg;
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_getcapabilities_rsp *rsp = (void *) buf;
 	struct headset_data *hs = &client->d.hs;
-	int fd;
 
 	client->req_id = 0;
 
 	if (!dev) {
-		unix_send_cfg(client->sock, NULL, -1);
+		send_getcapabilities_rsp_error(client, EIO);
 		client->dev = NULL;
 		return;
 	}
 
-	switch (client->fd_opt) {
-	case CFG_FD_OPT_READ:
+	switch (client->access_mode) {
+	case BT_CAPABILITIES_ACCESS_MODE_READ:
 		hs->lock = HEADSET_LOCK_READ;
 		break;
-	case CFG_FD_OPT_WRITE:
+	case BT_CAPABILITIES_ACCESS_MODE_WRITE:
 		hs->lock = HEADSET_LOCK_WRITE;
 		break;
-	case CFG_FD_OPT_READWRITE:
+	case BT_CAPABILITIES_ACCESS_MODE_READWRITE:
 		hs->lock = HEADSET_LOCK_READ | HEADSET_LOCK_WRITE;
 		break;
 	default:
@@ -273,23 +231,22 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 
 	if (!headset_lock(dev, hs->lock)) {
 		error("Unable to lock headset");
-		unix_send_cfg(client->sock, NULL, -1);
+		send_getcapabilities_rsp_error(client, EIO);
 		client->dev = NULL;
 		return;
 	}
 
-	memset(&cfg, 0, sizeof(cfg));
+	memset(buf, 0, sizeof(buf));
 
-	cfg.fd_opt = client->fd_opt;
-	cfg.codec = CFG_CODEC_SCO;
-	cfg.mode = CFG_MODE_MONO;
-	cfg.pkt_len = 48;
-	cfg.sample_size = 2;
-	cfg.rate = 8000;
+	rsp->h.msg_type = BT_GETCAPABILITIES_RSP;
+	rsp->transport  = BT_CAPABILITIES_TRANSPORT_SCO;
+	rsp->access_mode = client->access_mode;
+	rsp->link_mtu = 48;
+	rsp->sampling_rate = 8000;
 
-	fd = headset_get_sco_fd(dev);
+	client->data_fd = headset_get_sco_fd(dev);
 
-	unix_send_cfg(client->sock, &cfg, fd);
+	unix_ipc_sendmsg(client, &rsp->h);
 }
 
 static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
@@ -297,17 +254,16 @@ static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					void *user_data, struct avdtp_error *err)
 {
 	struct unix_client *client = user_data;
-	char buf[sizeof(struct ipc_data_cfg) + sizeof(struct ipc_codec_sbc)];
-	struct ipc_data_cfg *cfg = (void *) buf;
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_getcapabilities_rsp *rsp = (void *) buf;
 	struct avdtp_service_capability *cap;
 	struct avdtp_media_codec_capability *codec_cap;
 	struct sbc_codec_cap *sbc_cap;
-	struct ipc_codec_sbc *sbc = (void *) cfg->data;
 	struct a2dp_data *a2dp = &client->d.a2dp;
-	int fd;
 	uint16_t imtu, omtu;
 	GSList *caps;
 
+	memset(buf, 0, sizeof(buf));
 	client->req_id = 0;
 
 	if (!stream)
@@ -321,7 +277,7 @@ static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	a2dp->sep = sep;
 	a2dp->stream = stream;
 
-	if (!avdtp_stream_get_transport(stream, &fd, &imtu, &omtu, &caps)) {
+	if (!avdtp_stream_get_transport(stream, &client->data_fd, &imtu, &omtu, &caps)) {
 		error("Unable to get stream transport");
 		goto failed;
 	}
@@ -340,66 +296,27 @@ static void a2dp_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		goto failed;
 	}
 
+	rsp->h.msg_type = BT_GETCAPABILITIES_RSP;
+	rsp->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
+	client->access_mode = BT_CAPABILITIES_ACCESS_MODE_WRITE;
+	rsp->access_mode = client->access_mode;
 	/* FIXME: Use imtu when fd_opt is CFG_FD_OPT_READ */
-	cfg->pkt_len = omtu;
-	cfg->fd_opt = CFG_FD_OPT_WRITE;
+	rsp->link_mtu = omtu;
 
 	sbc_cap = (void *) codec_cap;
-	cfg->sample_size = 2;
 
-	switch (sbc_cap->channel_mode) {
-	case A2DP_CHANNEL_MODE_MONO:
-		cfg->mode = CFG_MODE_MONO;
-		break;
-	case A2DP_CHANNEL_MODE_DUAL_CHANNEL:
-		cfg->mode = CFG_MODE_DUAL_CHANNEL;
-		break;
-	case A2DP_CHANNEL_MODE_STEREO:
-		cfg->mode = CFG_MODE_STEREO;
-		break;
-	case A2DP_CHANNEL_MODE_JOINT_STEREO:
-		cfg->mode = CFG_MODE_JOINT_STEREO;
-		break;
-	}
+	/* assignations below are ok as soon as newipc.h and a2dp.h are kept */
+	/* in sync. However it is not possible to cast a struct to another   */
+	/* dues to endianess issues */
+	rsp->sbc_capabilities.channel_mode = sbc_cap->channel_mode;
+	rsp->sbc_capabilities.frequency = sbc_cap->frequency;
+	rsp->sbc_capabilities.allocation_method = sbc_cap->allocation_method;
+	rsp->sbc_capabilities.subbands = sbc_cap->subbands;
+	rsp->sbc_capabilities.block_length = sbc_cap->block_length;
+	rsp->sbc_capabilities.min_bitpool = sbc_cap->min_bitpool;
+	rsp->sbc_capabilities.max_bitpool = sbc_cap->max_bitpool;
 
-	switch (sbc_cap->frequency) {
-	case A2DP_SAMPLING_FREQ_16000:
-		cfg->rate = 16000;
-		break;
-	case A2DP_SAMPLING_FREQ_32000:
-		cfg->rate = 32000;
-		break;
-	case A2DP_SAMPLING_FREQ_44100:
-		cfg->rate = 44100;
-		break;
-	case A2DP_SAMPLING_FREQ_48000:
-		cfg->rate = 48000;
-		break;
-	}
-
-	cfg->codec = CFG_CODEC_SBC;
-	sbc->allocation = sbc_cap->allocation_method == A2DP_ALLOCATION_SNR ?
-								0x01 : 0x00;
-	sbc->subbands = sbc_cap->subbands == A2DP_SUBBANDS_4 ? 4 : 8;
-
-	switch (sbc_cap->block_length) {
-	case A2DP_BLOCK_LENGTH_4:
-		sbc->blocks = 4;
-		break;
-	case A2DP_BLOCK_LENGTH_8:
-		sbc->blocks = 8;
-		break;
-	case A2DP_BLOCK_LENGTH_12:
-		sbc->blocks = 12;
-		break;
-	case A2DP_BLOCK_LENGTH_16:
-		sbc->blocks = 16;
-		break;
-	}
-
-	sbc->bitpool = sbc_cap->max_bitpool;
-
-	unix_send_cfg(client->sock, cfg, fd);
+	unix_ipc_sendmsg(client, &rsp->h);
 
 	client->cb_id = avdtp_stream_add_cb(session, stream,
 						stream_state_changed, client);
@@ -412,7 +329,7 @@ failed:
 		a2dp_sep_unlock(a2dp->sep, a2dp->session);
 		a2dp->sep = NULL;
 	}
-	unix_send_cfg(client->sock, NULL, -1);
+	send_getcapabilities_rsp_error(client, EIO);
 
 	avdtp_unref(a2dp->session);
 
@@ -469,7 +386,7 @@ static void create_stream(struct device *dev, struct unix_client *client)
 	return;
 
 failed:
-	unix_send_cfg(client->sock, NULL, -1);
+	send_getcapabilities_rsp_error(client, EIO);
 }
 
 static void create_cb(struct device *dev, void *user_data)
@@ -477,135 +394,57 @@ static void create_cb(struct device *dev, void *user_data)
 	struct unix_client *client = user_data;
 
 	if (!dev)
-		unix_send_cfg(client->sock, NULL, -1);
+		send_getcapabilities_rsp_error(client, EIO);
 	else
 		create_stream(dev, client);
 }
 
-static int cfg_to_caps(struct ipc_data_cfg *cfg, struct sbc_codec_cap *sbc_cap)
+static void unix_ipc_sendmsg(struct unix_client *client,
+					const bt_audio_msg_header_t *msg)
 {
-	struct ipc_codec_sbc *sbc = (void *) cfg->data;
-
-	memset(sbc_cap, 0, sizeof(struct sbc_codec_cap));
-
-	sbc_cap->cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
-	sbc_cap->cap.media_codec_type = A2DP_CODEC_SBC;
-
-	switch (cfg->rate) {
-	case 48000:
-		sbc_cap->frequency = A2DP_SAMPLING_FREQ_48000;
-		break;
-	case 44100:
-		sbc_cap->frequency = A2DP_SAMPLING_FREQ_44100;
-		break;
-	case 32000:
-		sbc_cap->frequency = A2DP_SAMPLING_FREQ_32000;
-		break;
-	case 16000:
-		sbc_cap->frequency = A2DP_SAMPLING_FREQ_16000;
-		break;
-	default:
-		sbc_cap->frequency = A2DP_SAMPLING_FREQ_44100;
-		break;
-	}
-
-	switch (cfg->mode) {
-	case CFG_MODE_MONO:
-		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_MONO;
-		break;
-	case CFG_MODE_DUAL_CHANNEL:
-		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_DUAL_CHANNEL;
-		break;
-	case CFG_MODE_STEREO:
-		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_STEREO;
-		break;
-	case CFG_MODE_JOINT_STEREO:
-		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_JOINT_STEREO;
-		break;
-	default:
-		sbc_cap->channel_mode = A2DP_CHANNEL_MODE_JOINT_STEREO;
-		break;
-	}
-
-	switch (sbc->allocation) {
-	case CFG_ALLOCATION_LOUDNESS:
-		sbc_cap->allocation_method = A2DP_ALLOCATION_LOUDNESS;
-		break;
-	case CFG_ALLOCATION_SNR:
-		sbc_cap->allocation_method = A2DP_ALLOCATION_LOUDNESS;
-		break;
-	default:
-		sbc_cap->allocation_method = A2DP_ALLOCATION_LOUDNESS;
-		break;
-	}
-
-	switch (sbc->subbands) {
-	case 8:
-		sbc_cap->subbands = A2DP_SUBBANDS_8;
-		break;
-	case 4:
-		sbc_cap->subbands = A2DP_SUBBANDS_4;
-		break;
-	default:
-		sbc_cap->subbands = A2DP_SUBBANDS_8;
-		break;
-	}
-
-	switch (sbc->blocks) {
-	case 16:
-		sbc_cap->block_length = A2DP_BLOCK_LENGTH_16;
-		break;
-	case 12:
-		sbc_cap->block_length = A2DP_BLOCK_LENGTH_12;
-		break;
-	case 8:
-		sbc_cap->block_length = A2DP_BLOCK_LENGTH_8;
-		break;
-	case 4:
-		sbc_cap->block_length = A2DP_BLOCK_LENGTH_4;
-		break;
-	default:
-		sbc_cap->block_length = A2DP_BLOCK_LENGTH_16;
-		break;
-	}
-
-	if (sbc->bitpool != 0) {
-		if (sbc->bitpool > 250)
-			return -EINVAL;
-
-		sbc_cap->min_bitpool = sbc->bitpool;
-		sbc_cap->max_bitpool = sbc->bitpool;
-	}
-
-	return 0;
+	info("Audio API: sending %s", bt_audio_strmsg(msg->msg_type));
+	if (send(client->sock, msg, BT_AUDIO_IPC_PACKET_SIZE, 0) < 0)
+		error("Error %s(%d)", strerror(errno), errno);
 }
 
-static void cfg_event(struct unix_client *client, struct ipc_packet *pkt, int len)
+static void send_getcapabilities_rsp_error(struct unix_client *client, int err)
+{
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_getcapabilities_rsp *rsp = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+	rsp->h.msg_type = BT_GETCAPABILITIES_RSP;
+	rsp->posix_errno = err;
+
+	unix_ipc_sendmsg(client, &rsp->h);
+}
+
+static void handle_getcapabilities_req(struct unix_client *client,
+					struct bt_getcapabilities_req *req)
 {
 	struct device *dev;
 	bdaddr_t bdaddr;
-	struct ipc_data_cfg *cfg = (void *) pkt->data;
-	struct sbc_codec_cap sbc_cap;
 
-	str2ba(pkt->device, &bdaddr);
+	str2ba(req->device, &bdaddr);
 
-	client->fd_opt = cfg->fd_opt;
+	if (!req->access_mode) {
+		send_getcapabilities_rsp_error(client, EINVAL);
+		return;
+	}
+
+	client->access_mode = req->access_mode;
 
 	if (client->interface) {
 		g_free(client->interface);
 		client->interface = NULL;
 	}
 
-	if (pkt->role == PKT_ROLE_VOICE)
+	if (req->transport == BT_CAPABILITIES_TRANSPORT_SCO)
 		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
-	else if (pkt->role == PKT_ROLE_HIFI)
+	else if (req->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
 		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
 
-	if (cfg_to_caps(cfg, &sbc_cap) < 0)
-		goto failed;
-
-	client->media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC,
-						&sbc_cap, sizeof(sbc_cap));
+	client->media_codec = 0;
 
 	if (!manager_find_device(&bdaddr, NULL, FALSE)) {
 		if (!bacmp(&bdaddr, BDADDR_ANY))
@@ -627,59 +466,83 @@ static void cfg_event(struct unix_client *client, struct ipc_packet *pkt, int le
 	return;
 
 failed:
-	unix_send_cfg(client->sock, NULL, -1);
+	send_getcapabilities_rsp_error(client, EIO);
 }
 
-static void ctl_event(struct unix_client *client,
-					struct ipc_packet *pkt, int len)
+static void handle_setconfiguration_req(struct unix_client *client,
+					struct bt_setconfiguration_req *req)
 {
+	/* FIXME: for now we just blindly assume that we receive is the
+	   only valid configuration sent.*/
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_setconfiguration_rsp *rsp = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+	rsp->h.msg_type = BT_SETCONFIGURATION_RSP;
+	rsp->posix_errno = 0;
+
+	unix_ipc_sendmsg(client, &rsp->h);
 }
 
-static int reply_state(int sock, struct ipc_packet *pkt)
+static void handle_streamstart_req(struct unix_client *client,
+					struct bt_streamstart_req *req)
 {
-	struct ipc_data_state *state = (struct ipc_data_state *) pkt->data;
-	int len;
+	/* FIXME : to be really implemented */
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_streamstart_rsp *rsp = (void *) buf;
+	struct bt_datafd_ind *ind = (void *) buf;
 
-	info("status=%u", state->state);
+	memset(buf, 0, sizeof(buf));
+	rsp->h.msg_type = BT_STREAMSTART_RSP;
+	rsp->posix_errno = 0;
+	unix_ipc_sendmsg(client, &rsp->h);
 
-	pkt->type = PKT_TYPE_STATE_RSP;
-	pkt->length = sizeof(struct ipc_data_state);
-	pkt->error = PKT_ERROR_NONE;
+	memset(buf, 0, sizeof(buf));
+	ind->h.msg_type = BT_STREAMFD_IND;
+	unix_ipc_sendmsg(client, &ind->h);
 
-	len = sizeof(struct ipc_packet) + sizeof(struct ipc_data_state);
-	len = send(sock, pkt, len, 0);
-	if (len < 0)
-		error("Error %s(%d)", strerror(errno), errno);
+	if (unix_sendmsg_fd(client->sock, client->data_fd) < 0)
+		error("unix_sendmsg_fd: %s(%d)", strerror(errno), errno);
 
-	debug("%d bytes sent", len);
-
-	return 0;
 }
 
-static void state_event(struct unix_client *client,
-					struct ipc_packet *pkt, int len)
+static void handle_streamstop_req(struct unix_client *client,
+					struct bt_streamstop_req *req)
 {
-#if 0
-	struct ipc_data_state *state = (struct ipc_data_state *) pkt->data;
-	struct device *dev = client->dev;
+	/* FIXME : to be implemented */
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_streamstop_rsp *rsp = (void *) buf;
 
-	if (len > sizeof(struct ipc_packet))
-		device_set_state(dev, state->state);
-	else
-		state->state = device_get_state(dev);
-#endif
+	memset(buf, 0, sizeof(buf));
+	rsp->h.msg_type = BT_STREAMSTOP_RSP;
+	rsp->posix_errno = 0;
 
-	reply_state(client->sock, pkt);
+	unix_ipc_sendmsg(client, &rsp->h);
+}
+
+static void handle_control_req(struct unix_client *client,
+					struct bt_control_req *req)
+{
+	/* FIXME: really implement that */
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_setconfiguration_rsp *rsp = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+	rsp->h.msg_type = BT_CONTROL_RSP;
+	rsp->posix_errno = 0;
+
+	unix_ipc_sendmsg(client, &rsp->h);
 }
 
 static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	char buf[IPC_MTU];
-	struct ipc_packet *pkt = (void *) buf;
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	bt_audio_msg_header_t *msghdr = (void *) buf;
 	struct unix_client *client = data;
-	int len, len_check;
+	int len;
 	struct a2dp_data *a2dp = &client->d.a2dp;
 	struct headset_data *hs = &client->d.hs;
+	const char *type;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -709,31 +572,39 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	memset(buf, 0, sizeof(buf));
 
-	len = recv(client->sock, buf, sizeof(buf), 0);
+	len = recv(client->sock, buf, sizeof(buf), MSG_WAITALL);
 	if (len < 0) {
 		error("recv: %s (%d)", strerror(errno), errno);
 		goto failed;
 	}
 
-	len_check = pkt->length + sizeof(struct ipc_packet);
-	if (len != len_check) {
-		error("Packet lenght doesn't match");
-		goto failed;
-	}
+	if ((type = bt_audio_strmsg(msghdr->msg_type)))
+		info("Audio API: received %s", type);
 
-	switch (pkt->type) {
-	case PKT_TYPE_CFG_REQ:
-		info("Package PKT_TYPE_CFG_REQ:%u", pkt->role);
-		cfg_event(client, pkt, len);
+	switch (msghdr->msg_type) {
+	case BT_GETCAPABILITIES_REQ:
+		handle_getcapabilities_req(client,
+				(struct bt_getcapabilities_req *) msghdr);
 		break;
-	case PKT_TYPE_STATE_REQ:
-		info("Package PKT_TYPE_STATE_REQ");
-		state_event(client, pkt, len);
+	case BT_SETCONFIGURATION_REQ:
+		handle_setconfiguration_req(client,
+				(struct bt_setconfiguration_req *) msghdr);
 		break;
-	case PKT_TYPE_CTL_REQ:
-		info("Package PKT_TYPE_CTL_REQ");
-		ctl_event(client, pkt, len);
+	case BT_STREAMSTART_REQ:
+		handle_streamstart_req(client,
+				(struct bt_streamstart_req *) msghdr);
 		break;
+	case BT_STREAMSTOP_REQ:
+		handle_streamstop_req(client,
+				(struct bt_streamstop_req *) msghdr);
+		break;
+	case BT_CONTROL_REQ:
+		handle_control_req(client,
+				(struct bt_control_req *) msghdr);
+		break;
+	default:
+		error("Audio API: received unexpected packet type %d",
+				msghdr->msg_type);
 	}
 
 	return TRUE;
@@ -789,7 +660,7 @@ int unix_init(void)
 {
 	GIOChannel *io;
 	struct sockaddr_un addr = {
-		AF_UNIX, IPC_SOCKET_NAME
+		AF_UNIX, BT_IPC_SOCKET_NAME
 	};
 
 	int sk, err;
