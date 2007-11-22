@@ -996,7 +996,9 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 	unsigned int rate_count;
 	int err, min_channels, max_channels;
 	unsigned int period_list[] = {
-		4096, /* 23/46ms (stereo/mono 16bit at 44.1kHz) */
+		2048,
+		4096, /* e.g. 23.2msec/period (stereo 16bit at 44.1kHz) */
+		8192
 	};
 
 	/* access type */
@@ -1027,15 +1029,16 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 	if (err < 0)
 		return err;
 
-	/* supported block sizes: */
-	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
-			ARRAY_NELEMS(period_list), period_list);
+	/* supported buffer sizes
+	 * (can be used as 3*8192, 6*4096, 12*2048, ...) */
+	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_BUFFER_BYTES,
+					      8192*3, 8192*3);
 	if (err < 0)
 		return err;
 
-	/* period count fixed to 3 as we don't support prefilling */
-	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_PERIODS,
-					      3, 3);
+	/* supported block sizes: */
+	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_PERIOD_BYTES,
+				ARRAY_NELEMS(period_list), period_list);
 	if (err < 0)
 		return err;
 
@@ -1062,7 +1065,7 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 	}
 
 	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_RATE,
-							rate_count, rate_list);
+						rate_count, rate_list);
 	if (err < 0)
 		return err;
 
