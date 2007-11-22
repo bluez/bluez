@@ -68,12 +68,16 @@
 #define SCO_RXBUFS 0x04
 #endif
 
-#ifndef TIMESPEC_TO_TIMEVAL
-# define TIMESPEC_TO_TIMEVAL(tv, ts) {			\
-		(tv)->tv_sec = (ts)->tv_sec;		\
-		(tv)->tv_usec = (ts)->tv_nsec / 1000;	\
-}
-#endif
+/* adapted from glibc sys/time.h timersub() macro */
+#define priv_timespecsub(a, b, result)					\
+	do {								\
+		(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;		\
+		(result)->tv_nsec = (a)->tv_nsec - (b)->tv_nsec;	\
+		if ((result)->tv_nsec < 0) {				\
+			--(result)->tv_sec;				\
+			(result)->tv_nsec += 1000000000;		\
+		}							\
+	} while (0)
 
 struct bluetooth_a2dp {
 	sbc_capabilities_t sbc_capabilities;
@@ -149,8 +153,7 @@ static void *playback_hw_thread(void *param)
 	struct bluetooth_data *data = param;
 	unsigned int prev_periods;
 	double period_time;
-	struct timeval start;
-	struct timespec start_monotonic;
+	struct timespec start;
 	struct pollfd fds[2];
 	int poll_timeout;
 
@@ -167,13 +170,11 @@ static void *playback_hw_thread(void *param)
 	else
 		poll_timeout = MIN_PERIOD_TIME;
 
-	clock_gettime(CLOCK_MONOTONIC, &start_monotonic);
-	TIMESPEC_TO_TIMEVAL(&start, &start_monotonic);
+	clock_gettime(CLOCK_MONOTONIC, &start);
 
 	while (1) {
 		unsigned int dtime, periods;
-		struct timeval cur, delta;
-		struct timespec cur_monotonic;
+		struct timespec cur, delta;
 		int ret;
 
 		if (data->stopped)
@@ -182,17 +183,15 @@ static void *playback_hw_thread(void *param)
 		if (data->reset) {
 			DBG("Handle XRUN in hw-thread.");
 			data->reset = 0;
-			clock_gettime(CLOCK_MONOTONIC, &start_monotonic);
-			TIMESPEC_TO_TIMEVAL(&start, &start_monotonic);
+			clock_gettime(CLOCK_MONOTONIC, &start);
 			prev_periods = 0;
 		}
 
-		clock_gettime(CLOCK_MONOTONIC, &cur_monotonic);
-		TIMESPEC_TO_TIMEVAL(&cur, &cur_monotonic);
+		clock_gettime(CLOCK_MONOTONIC, &cur);
 
-		timersub(&cur, &start, &delta);
+		priv_timespecsub(&cur, &start, &delta);
 
-		dtime = delta.tv_sec * 1000000 + delta.tv_usec;
+		dtime = delta.tv_sec * 1000000 + delta.tv_nsec / 1000;
 		periods = 1.0 * dtime / period_time;
 
 		if (periods > prev_periods) {
@@ -215,7 +214,7 @@ static void *playback_hw_thread(void *param)
 				prev_periods = periods;
 			else {
 				prev_periods = 0;
-				gettimeofday(&start, 0);
+				clock_gettime(CLOCK_MONOTONIC, &start);
 			}
 		}
 
