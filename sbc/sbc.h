@@ -42,8 +42,6 @@ struct sbc_struct {
 	int bitpool;
 	int swap;
 
-	unsigned long duration;
-
 	void *priv;
 };
 
@@ -57,6 +55,7 @@ int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
 int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 		int output_len, int *written);
 int sbc_get_frame_length(sbc_t *sbc);
+int sbc_get_frame_duration(sbc_t *sbc);
 int sbc_get_codesize(sbc_t *sbc);
 void sbc_finish(sbc_t *sbc);
 

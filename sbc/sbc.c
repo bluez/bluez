@@ -1372,8 +1372,6 @@ int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 	if (written)
 		*written = framelen;
 
-	sbc->duration = (1000000 * priv->frame.subbands * priv->frame.blocks) / sbc->rate;
-
 	return samples * sbc->channels * 2;
 }
 
@@ -1402,6 +1400,11 @@ int sbc_get_frame_length(sbc_t *sbc)
 			+ 7) / 8;
 
 	return ret;
+}
+
+int sbc_get_frame_duration(sbc_t *sbc)
+{
+	return (1000000 * sbc->blocks * sbc->subbands) / sbc->rate;
 }
 
 int sbc_get_codesize(sbc_t *sbc)
