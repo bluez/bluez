@@ -29,7 +29,6 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -767,12 +766,12 @@ static int pattern2long(const char *pattern, long *pval)
 static DBusHandlerResult create_port(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
+	char path[MAX_PATH_LENGTH], port_name[16], uuid[MAX_LEN_UUID_STR];
+	const char *bda, *pattern, *ppath = path;
 	struct pending_connect *pending, *pc;
 	DBusMessage *reply;
 	DBusError derr;
 	bdaddr_t src, dst;
-	char path[MAX_PATH_LENGTH], port_name[16], uuid[MAX_LEN_UUID_STR];
-	const char *bda, *pattern, *ppath = path;
 	long val;
 	int dev_id, err;
 
@@ -1793,7 +1792,6 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	const char *uuid128, *address, *ppath = path;
 	DBusMessage *reply;
 	proxy_type_t type;
-	GSList *l;
 	DBusError derr;
 	bdaddr_t src;
 	uuid_t uuid;
@@ -1817,8 +1815,8 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 		return err_invalid_args(conn, msg, "Invalid address");
 
 	/* Only one proxy per address(TTY or unix socket) is allowed */
-	l = g_slist_find_custom(proxies_paths, address, (GCompareFunc) proxycmp);
-	if (l)
+	if (g_slist_find_custom(proxies_paths,
+				address, (GCompareFunc) proxycmp))
 		return err_already_exists(conn, msg, "Proxy already exists");
 
 	dev_id = hci_get_route(NULL);
