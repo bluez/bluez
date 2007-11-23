@@ -71,7 +71,6 @@
 struct pending_connect {
 	DBusConnection	*conn;
 	DBusMessage	*msg;
-	DBusPendingCall *pcall;		/* Pending get handles/records */
 	char		*bda;		/* Destination address  */
 	char		*adapter_path;	/* Adapter D-Bus path   */
 	char		*pattern;	/* Connection request pattern */
@@ -151,8 +150,6 @@ static void pending_connect_free(struct pending_connect *pc)
 		g_free(pc->pattern);
 	if (pc->adapter_path)
 		g_free(pc->adapter_path);
-	if (pc->pcall)
-		dbus_pending_call_unref(pc->pcall);
 	if (pc->dev)
 		g_free(pc->dev);
 	if (pc->io_id > 0)
@@ -185,16 +182,13 @@ static void transaction_owner_exited(const char *name, void *data)
 	GSList *l, *tmp = NULL;
 	debug("transaction owner %s exited", name);
 
-	/* Clean all pending calls that belongs to this owner */
+	/* Remove all pending calls that belongs to this owner */
 	for (l = pending_connects; l != NULL; l = l->next) {
 		struct pending_connect *pc = l->data;
 		if (strcmp(name, dbus_message_get_sender(pc->msg)) != 0) {
 			tmp = g_slist_append(tmp, pc);
 			continue;
 		}
-
-		if (pc->pcall)
-			dbus_pending_call_cancel(pc->pcall);
 
 		if (pc->id >= 0)
 			rfcomm_release(pc->id);
@@ -474,7 +468,7 @@ fail:
 
 static void record_reply(DBusPendingCall *call, void *data)
 {
-	struct pending_connect *pc = data;
+	struct pending_connect *pc;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	sdp_record_t *rec = NULL;
 	const uint8_t *rec_bin;
@@ -482,6 +476,13 @@ static void record_reply(DBusPendingCall *call, void *data)
 	DBusError derr;
 	int len, scanned, ch, err;
 
+	/* Owner exited? */
+	if (!g_slist_find(pending_connects, data)) {
+		dbus_message_unref(reply);
+		return;
+	}
+
+	pc = data;
 	if (pc->canceled) {
 		err_connection_canceled(pc->conn, pc->msg);
 		goto fail;
@@ -605,6 +606,7 @@ static int get_record(struct pending_connect *pc, uint32_t handle,
 					DBusPendingCallNotifyFunction cb)
 {
 	DBusMessage *msg;
+	DBusPendingCall *call;
 
 	msg = dbus_message_new_method_call("org.bluez", pc->adapter_path,
 			"org.bluez.Adapter", "GetRemoteServiceRecord");
@@ -616,19 +618,14 @@ static int get_record(struct pending_connect *pc, uint32_t handle,
 			DBUS_TYPE_UINT32, &handle,
 			DBUS_TYPE_INVALID);
 
-	/* Unref get_handles pending call */
-	if (pc->pcall) {
-		dbus_pending_call_unref(pc->pcall);
-		pc->pcall = NULL;
-	}
-
-	if (!dbus_connection_send_with_reply(pc->conn, msg, &pc->pcall, -1)) {
+	if (!dbus_connection_send_with_reply(pc->conn, msg, &call, -1)) {
 		error("Can't send D-Bus message.");
 		dbus_message_unref(msg);
 		return -1;
 	}
 
-	dbus_pending_call_set_notify(pc->pcall, cb, pc, NULL);
+	dbus_pending_call_set_notify(call, cb, pc, NULL);
+	dbus_pending_call_unref(call);
 	dbus_message_unref(msg);
 
 	return 0;
@@ -636,12 +633,19 @@ static int get_record(struct pending_connect *pc, uint32_t handle,
 
 static void handles_reply(DBusPendingCall *call, void *data)
 {
-	struct pending_connect *pc = data;
+	struct pending_connect *pc;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
 	uint32_t *phandle;
 	int len;
 
+	/* Owner exited? */
+	if (!g_slist_find(pending_connects, data)) {
+		dbus_message_unref(reply);
+		return;
+	}
+
+	pc = data;
 	if (pc->canceled) {
 		err_connection_canceled(pc->conn, pc->msg);
 		goto fail;
@@ -691,6 +695,7 @@ static int get_handles(struct pending_connect *pc, const char *uuid,
 					DBusPendingCallNotifyFunction cb)
 {
 	DBusMessage *msg;
+	DBusPendingCall *call;
 
 	msg = dbus_message_new_method_call("org.bluez", pc->adapter_path,
 				"org.bluez.Adapter", "GetRemoteServiceHandles");
@@ -702,13 +707,14 @@ static int get_handles(struct pending_connect *pc, const char *uuid,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(pc->conn, msg, &pc->pcall, -1)) {
+	if (!dbus_connection_send_with_reply(pc->conn, msg, &call, -1)) {
 		error("Can't send D-Bus message.");
 		dbus_message_unref(msg);
 		return -1;
 	}
 
-	dbus_pending_call_set_notify(pc->pcall, cb, pc, NULL);
+	dbus_pending_call_set_notify(call, cb, pc, NULL);
+	dbus_pending_call_unref(call);
 	dbus_message_unref(msg);
 
 	return 0;
