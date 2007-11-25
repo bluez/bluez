@@ -1080,7 +1080,7 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 			if (hdr->evt != r->event)
 				break;
 
-			rn = r->rparam;
+			rn = (void *) ptr;
 			cp = r->cparam;
 
 			if (bacmp(&rn->bdaddr, &cp->bdaddr))
