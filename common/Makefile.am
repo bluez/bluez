@@ -26,6 +26,7 @@ noinst_LIBRARIES = libhelper.a
 libhelper_a_SOURCES = oui.h oui.c dbus.h dbus.c \
 	textfile.h textfile.c logging.h logging.c \
 	dbus-helper.h dbus-helper.c \
+	error.h error.c \
 	sdp-xml.h sdp-xml.c $(sdp_sources) \
 	hal.h $(hal_sources) notify.h $(notify_sources)
 
