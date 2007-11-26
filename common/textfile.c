@@ -28,6 +28,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <malloc.h>
@@ -78,7 +79,8 @@ int create_file(const char *filename, const mode_t mode)
 	int fd;
 
 	umask(S_IWGRP | S_IWOTH);
-	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR |
+					S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 
 	fd = open(filename, O_RDWR | O_CREAT, mode);
 	if (fd < 0)
@@ -94,19 +96,42 @@ int create_name(char *buf, size_t size, const char *path, const char *address, c
 	return snprintf(buf, size, "%s/%s/%s", path, address, name);
 }
 
-static inline char *find_key(char *map, const char *key, size_t len, int icase)
+static inline char *find_key(char *map, size_t size, const char *key, size_t len, int icase)
 {
-	char *off = (icase) ? strcasestr(map, key) : strstr(map, key);
+	char *ptr = map;
+	size_t ptrlen = size;
 
-	while (off && ((off > map && *(off - 1) != '\r' &&
-				*(off - 1) != '\n') || *(off + len) != ' ')) {
-		if (icase)
-			off = strcasestr(off + len, key);
-		else
-			off = strstr(off + len, key);
+	while (ptrlen > len + 1) {
+		int cmp = (icase) ? strncasecmp(ptr, key, len) : strncmp(ptr, key, len);
+		if (cmp == 0) {
+			if (ptr == map)
+				return ptr;
+
+			if ((*(ptr - 1) == '\r' || *(ptr - 1) == '\n') &&
+							*(ptr + len) == ' ')
+				return ptr;
+		}
+
+		if (icase) {
+			char *p1 = memchr(ptr + 1, tolower(*key), ptrlen - 1);
+			char *p2 = memchr(ptr + 1, toupper(*key), ptrlen - 1);
+
+			if (!p1)
+				ptr = p2;
+			else if (!p2)
+				ptr = p1;
+			else
+				ptr = (p1 < p2) ? p1 : p2;
+		} else
+			ptr = memchr(ptr + 1, *key, ptrlen - 1);
+
+		if (!ptr)
+			return NULL;
+
+		ptrlen = size - (ptr - map);
 	}
 
-	return off;
+	return NULL;
 }
 
 static inline int write_key_value(int fd, const char *key, const char *value)
@@ -162,14 +187,15 @@ static int write_key(const char *pathname, const char *key, const char *value, i
 		goto unlock;
 	}
 
-	map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_LOCKED, fd, 0);
+	map = mmap(NULL, size, PROT_READ | PROT_WRITE,
+					MAP_PRIVATE | MAP_LOCKED, fd, 0);
 	if (!map || map == MAP_FAILED) {
 		err = errno;
 		goto unlock;
 	}
 
 	len = strlen(key);
-	off = find_key(map, key, len, icase);
+	off = find_key(map, size, key, len, icase);
 	if (!off) {
 		if (value) {
 			munmap(map, size);
@@ -281,7 +307,7 @@ static char *read_key(const char *pathname, const char *key, int icase)
 	}
 
 	len = strlen(key);
-	off = find_key(map, key, len, icase);
+	off = find_key(map, size, key, len, icase);
 	if (!off) {
 		err = EILSEQ;
 		goto unmap;
