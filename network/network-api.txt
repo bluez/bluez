@@ -19,24 +19,24 @@ Methods		array{string} ListServers()
 
 			Returns server path.
 
-			Possible errors: org.bluez.network.Error.DoesNotExist
-			                 org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.DoesNotExist
+			                 org.bluez.Error.Failed
 
 		string CreateConnection(string address, string uuid)
 
 			Creates a network connection object(NAP or GN).
 
-			Possible errors: org.bluez.network.Error.AlreadyExists
-			                 org.bluez.network.Error.NotSupported
-			                 org.bluez.network.Error.ConnectionAttemptFailed
-			                 org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.AlreadyExists
+			                 org.bluez.Error.NotSupported
+			                 org.bluez.Error.ConnectionAttemptFailed
+			                 org.bluez.Error.Failed
 
 		void RemoveConnection(string path)
 
 			Removes a network connection object for a given path.
 
-			Possible errors: org.bluez.network.Error.DoesNotExist
-			                 org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.DoesNotExist
+			                 org.bluez.Error.Failed
 
 		array{string} ListConnections()
 
@@ -46,27 +46,27 @@ Methods		array{string} ListServers()
 
 			Returns connection path.
 
-			Possible errors: org.bluez.network.Error.DoesNotExist
-			                 org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.DoesNotExist
+			                 org.bluez.Error.Failed
 
 		string LastConnection()
 
 			Returns last connected connection path, if none is connected
 			fallback to last created connection.
 
-			Possible errors: org.bluez.network.Error.DoesNotExist
+			Possible errors: org.bluez.Error.DoesNotExist
 
 		string DefaultConnection()
 
 			Returns default connection path.
 
-			Possible errors: org.bluez.network.Error.DoesNotExist
+			Possible errors: org.bluez.Error.DoesNotExist
 
 		string ChangeDefaultConnection(string pattern)
 
 			Changes default connection path.
 
-			Possible errors: org.bluez.network.Error.DoesNotExist
+			Possible errors: org.bluez.Error.DoesNotExist
 
 Signals		void ConnectionCreated(string path)
 
@@ -90,14 +90,14 @@ Methods		string GetUUID()
 
 			Enable server and updates service record.
 
-			Possible errors: org.bluez.network.Error.AlreadyExists
-			                 org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.AlreadyExists
+			                 org.bluez.Error.Failed
 
 		void Disable()
 
 			Disable server and remove service record.
 
-			Possible errors: org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.Failed
 
 		bool IsEnabled()
 
@@ -151,40 +151,40 @@ Methods		string GetAdapter()
 
 			Returns the string representation of connected host.
 
-			Possible errors: org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.Failed
 
 		string GetDescription()
 
 			Returns the string description of connected host.
 
-			Possible errors: org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.Failed
 
 		string GetInterface()
 
 			Returns the string network interface.
 
-			Possible errors: org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.Failed
 
 		string Connect()
 
 			Connects to host and return the network interface
 			created.
 
-			Possible errors: org.bluez.network.Error.ConnectionAttemptFailed
-			                 org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.ConnectionAttemptFailed
+			                 org.bluez.Error.Failed
 
 		void CancelConnect()
 
 			Abort connection attempt in case of errors or
 			timeouts in the client.
 
-			Possible errors: org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.Failed
 
 		void Disconnect()
 
 			Disconnects to host.
 
-			Possible errors: org.bluez.network.Error.Failed
+			Possible errors: org.bluez.Error.Failed
 
 		bool IsConnected()
 

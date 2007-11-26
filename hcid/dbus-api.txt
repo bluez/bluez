@@ -51,62 +51,25 @@ Error hierarchy
 
 Interface	org.bluez.Error
 
-Errors		Failed
+Shared Errors (Can be thrown by hcid or any bluetooth service)
+		
+		DeviceUnreachable
+		
+			The remote device is either powered down or out of range.
 
-			An unknown error occured. The error messages is
-			taken from the strerror(errno) function.
-
-		InvalidArguments
-
-			Error returned when the argument list is invalid or
-			out of specification for the method.
-
-		NotAuthorized
-
-			Error returned when the caller of a method is not
-			authorized. This might happen if a caller tries to
-			terminate a connection that it hasn't created.
-
-		OutOfMemory
-
-			Error returned when a memory allocation via malloc()
-			fails. This error is similar to ENOMEM.
-
-		NoSuchAdapter
-
-			Error returned when the requested adapter doesn't
-			exists. This error is similar to ENODEV.
-
-		NotReady
-
-			Error returned when the adapter is DOWN.
-
-		NotAvailable
-
-			Error returned when a specified record is not
-			available.
-
-		NotConnected
-
-			Error returned when the remote device isn't connected
-			at the moment.
+		AlreadyConnected
+			A connection request has been received on an already
+			connected device.
 
 		ConnectionAttemptFailed
 
-		AlreadyExists
+			An unexpected error (other than DeviceUnreachable) error
+			has occured while attempting a connection to a device.
 
-			Error returned if a record for a specific procedure
-			already exists and it has been tried create a new
-			one. The error message however should indicate the
-			procedure that fails. For example "Bonding already
-			exists"
-
-		DoesNotExist
-
-			Error returned if a record for a specifc procedure
-			doesn't exist. The error message however should
-			indicate the procedure that fails. For example
-			"Bonding does not exist".
+		NotConnected
+			The remote device is not connected, while the method call
+			would expect it to be, or is not in the expected state to
+			perform the action.
 
 		InProgress
 
@@ -116,8 +79,75 @@ Errors		Failed
 			about what is in progress. For example "Bonding in
 			progress".
 
-		NotSupported
-			The feature is not supported by the remote device
+		InvalidArguments
+
+			The DBUS request does not contain the right number of
+			arguments with the right type, or the arguments are there 
+			but their value is wrong, or does not makes sense in the
+			current context.
+
+		OutOfMemory
+
+			Error returned when a memory allocation via malloc()
+			fails. This error is similar to ENOMEM.
+
+		NotAvailable
+
+			Error returned when a specified record is not
+			available.
+
+		NotSupported 
+			
+			The remote device does not support the expected
+			feature.
+
+		AlreadyExists
+			One of the requested elements already exists
+
+		DoesNotExist
+			One of the requested elements does not exist
+
+		Canceled
+			The operation was canceled.
+
+		Failed
+
+			This is a the most generic error.
+			It is thrown when something unexpected happens.
+
+
+Hcid specific Errors (Can be thrown by hcid only)
+
+		NotReady
+
+			Error returned when the adapter is DOWN.
+
+		UnknwownMethod
+		
+			This is an experimental method.
+
+		NotAuthorized
+
+			Error returned when the caller of a method is not
+			authorized. This might happen if a caller tries to
+			terminate a connection that it hasn't created.
+
+		Rejected
+
+		NoSuchAdapter
+
+			Error returned when the requested adapter doesn't
+			exists. This error is similar to ENODEV.
+
+		NoSuchService
+		
+		RequestDeferred
+		
+		NotInProgress
+
+		UnsupportedMajorClass
+
+		AuthenticationCanceled
 
 		AuthenticationFailed
 
@@ -125,10 +155,7 @@ Errors		Failed
 
 		AuthenticationRejected
 
-		AuthenticationCanceled
-
-		UnsupportedMajorClass
-
+		RepeatedAttempts
 
 Manager hierarchy
 =================

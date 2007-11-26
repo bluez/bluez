@@ -20,32 +20,32 @@ Methods		string CreateProxy(string uuid, string address)
 			replacing the null byte by 'x00'.  eg: "/dev/ttyS0",
 			"/tmp/gps-data", "x00/org/bluez/echo".
 
-			Possible errors:org.bluez.serial.Error.InvalidArguments
-					org.bluez.serial.NotAvailable
-					org.bluez.serial.Failed
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.NotAvailable
+					org.bluez.Error.Failed
 
 		void RemoveProxy(string path) [experimental]
 
 			Removes the serial port proxy object for given path.
 
-			Possible errors:org.bluez.serial.Error.DoesNotExist
+			Possible errors:org.bluez.Error.DoesNotExist
 
 		string CreatePort(string address, string pattern) [experimental]
 
 			Creates a serial port object.
 
-			Possible errors:org.bluez.serial.Error.InvalidArguments
-					org.bluez.serial.Error.ConnectionCanceled
-					org.bluez.serial.Error.ConnectionInProgress
-					org.bluez.serial.Error.ConnectionAttemptFailed
-					org.bluez.serial.Error.NotSupported
-					org.bluez.serial.Error.Failed
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.Canceled
+					org.bluez.Error.InProgress
+					org.bluez.Error.ConnectionAttemptFailed
+					org.bluez.Error.NotSupported
+					org.bluez.Error.Failed
 
 		void RemovePort(string path) [experimental]
 
 			Removes the serial port object for given path.
 
-			Possible errors:org.bluez.serial.Error.DoesNotExist
+			Possible errors:org.bluez.Error.DoesNotExist
 
 		array{string} ListPorts() [experimental]
 
@@ -61,27 +61,26 @@ Methods		string CreateProxy(string uuid, string address)
 			remote device and then creates a RFCOMM TTY
 			device for it. The RFCOMM TTY device is returned.
 
-			Possible errors:org.bluez.serial.Error.InvalidArguments
-					org.bluez.serial.Error.ConnectionCanceled
-					org.bluez.serial.Error.ConnectionInProgress
-					org.bluez.serial.Error.ConnectionAttemptFailed
-					org.bluez.serial.Error.NotSupported
-					org.bluez.serial.Error.Failed
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.Canceled
+					org.bluez.Error.InProgress
+					org.bluez.Error.ConnectionAttemptFailed
+					org.bluez.Error.NotSupported
+					org.bluez.Error.Failed
 
 		void CancelConnectService(string address, string pattern)
 
 			Cancel a previous ConnectService method call.
 
-			Possible errors:org.bluez.serial.Error.InvalidArguments
-					org.bluez.serial.Error.ConnectionNotInProgress
+			Possible errors:org.bluez.serial.InvalidArguments
 
 		void DisconnectService(string device)
 
 			Disconnect a RFCOMM TTY device that has been
 			created via the ConnectService method.
 
-			Possible errors:org.bluez.serial.Error.InvalidArguments
-					org.bluez.serial.Error.DoesNotExist
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.DoesNotExist
 
 Signals		void PortCreated(string path) [experimental]
 
@@ -137,13 +136,13 @@ Methods:	void Enable() [experimental]
 			Register the serial proxy service record and start
 			listenning on the specified adapter/channel.
 
-			Possible errors:org.bluez.serial.Error.Failed
+			Possible errors:org.bluez.Error.Failed
 
 		void Disable() [experimental]
 
 			Unregister the service record and stop listenning.
 			
-			Possible errors:org.bluez.serial.Error.Failed
+			Possible errors:org.bluez.Error.Failed
 
 		dict GetInfo() [experimental]
 			Returns the proxy properties
@@ -157,5 +156,5 @@ Methods:	void Enable() [experimental]
 			6, 7 and 8. Available stop bits: 1 and 2. Available
 			parity: "even", "odd", "mark", "space" and "none".
 
-			Possible errors:org.bluez.serial.Error.InvalidArguments
-					org.bluez.serial.Error.Failed
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.Failed

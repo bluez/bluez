@@ -21,10 +21,10 @@ Methods		array{string} ListDevices()
 			On success it will return the path of the
 			newly created device object.
 
-			Possible errors: org.bluez.input.AlreadyExists
-			                 org.bluez.input.NotSupported
-			                 org.bluez.input.ConnectionAttemptFailed
-			                 org.bluez.input.Failed
+			Possible errors: org.bluez.Error.AlreadyExists
+			                 org.bluez.Error.NotSupported
+			                 org.bluez.Error.ConnectionAttemptFailed
+			                 org.bluez.Error.Failed
 
 		string CreateSecureDevice(string address)
 
@@ -34,18 +34,17 @@ Methods		array{string} ListDevices()
 			On success it will return the path of the
 			newly created device object.
 
-			Possible errors: org.bluez.input.AlreadyExists
-			                 org.bluez.input.NotSupported
-			                 org.bluez.input.ConnectionAttemptFailed
-			                 org.bluez.input.AuthenticationFailed
-			                 org.bluez.input.Failed
+			Possible errors: org.bluez.Error.AlreadyExists
+			                 org.bluez.Error.NotSupported
+			                 org.bluez.Error.ConnectionAttemptFailed
+			                 org.bluez.Error.Failed
 
 		void RemoveDevice(string path)
 
 			Remove the input device object for a given path.
 
-			Possible errors:org.bluez.input.DoesNotExist
-					org.bluez.input.Failed
+			Possible errors:org.bluez.Error.DoesNotExist
+					org.bluez.Error.Failed
 
 Signals		void DeviceCreated(string path)
 
@@ -90,14 +89,14 @@ Methods		string GetAdapter()
 
 			Connect to the input device.
 
-			Possible errors: org.bluez.input.AlreadyConnected
-			                 org.bluez.input.ConnectionAttemptFailed
+			Possible errors: org.bluez.Error.AlreadyConnected
+			                 org.bluez.Error.ConnectionAttemptFailed
 
 		void Disconnect()
 
 			Disconnect from the input device.
 
-			Possible errors: org.bluez.input.Failed
+			Possible errors: org.bluez.Error.Failed
 
 Signals		void Connected()
 
