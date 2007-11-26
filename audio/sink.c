@@ -148,7 +148,7 @@ static gboolean stream_setup_retry(gpointer user_data)
 		send_message_and_unref(pending->conn, reply);
 	} else {
 		debug("Stream setup failed, after XCASE connect:connect");
-		err_failed(pending->conn, pending->msg, "Stream setup failed");
+		error_failed(pending->conn, pending->msg, "Stream setup failed");
 	}
 
 	sink->connect = NULL;
@@ -183,7 +183,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					stream_setup_retry, sink);
 		} else {
 			sink->connect = NULL;
-			err_failed(pending->conn, pending->msg, "Stream setup failed");
+			error_failed(pending->conn, pending->msg, "Stream setup failed");
 			pending_request_free(pending);
 			debug("Stream setup failed : %s", avdtp_strerror(err));
 		}
@@ -202,14 +202,14 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 		sink->session = avdtp_get(&dev->src, &dev->dst);
 
 	if (!sink->session)
-		return err_connect_failed(conn, msg,
+		return error_failed(conn, msg,
 						"Unable to get a session");
 
 	if (sink->connect || sink->disconnect)
-		return err_connect_failed(conn, msg, "Connect in progress");
+		return error_in_progress(conn, msg, "Device connection already in progress");
 
 	if (sink->state >= AVDTP_STATE_OPEN)
-		return err_already_connected(conn, msg);
+		return error_already_connected(conn, msg);
 
 	pending = g_new0(struct pending_request, 1);
 	pending->conn = dbus_connection_ref(conn);
@@ -224,8 +224,7 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 		sink->connect = NULL;
 		avdtp_unref(sink->session);
 		sink->session = NULL;
-		return err_connect_failed(conn, msg,
-						"Failed to request a stream");
+		return error_failed(conn, msg, "Failed to request a stream");
 	}
 
 	debug("stream creation in progress");
@@ -244,10 +243,10 @@ static DBusHandlerResult sink_disconnect(DBusConnection *conn,
 	int err;
 
 	if (!sink->session)
-		return err_not_connected(conn, msg);
+		return error_not_connected(conn, msg);
 
 	if (sink->connect || sink->disconnect)
-		return err_failed(conn, msg, strerror(EBUSY));
+		return error_failed(conn, msg, strerror(EBUSY));
 
 	if (sink->state < AVDTP_STATE_OPEN) {
 		DBusMessage *reply = dbus_message_new_method_return(msg);
@@ -260,7 +259,7 @@ static DBusHandlerResult sink_disconnect(DBusConnection *conn,
 
 	err = avdtp_close(sink->session, sink->stream);
 	if (err < 0)
-		return err_failed(conn, msg, strerror(-err));
+		return error_failed(conn, msg, strerror(-err));
 
 	pending = g_new0(struct pending_request, 1);
 	pending->conn = dbus_connection_ref(conn);

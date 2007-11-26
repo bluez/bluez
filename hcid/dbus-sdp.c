@@ -57,6 +57,7 @@
 #include "dbus-hci.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
+#include "error.h"
 #include "dbus-sdp.h"
 #include "sdp-xml.h"
 
@@ -436,7 +437,7 @@ static gboolean search_process_cb(GIOChannel *chan,
 
 failed:
 	if (err) {
-		error_failed(ctxt->conn, ctxt->rq, err);
+		error_failed_errno(ctxt->conn, ctxt->rq, err);
 		transaction_context_free(ctxt, FALSE);
 	}
 
@@ -461,12 +462,12 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
 		int sdp_err = sdp_get_error(ctxt->session);
 		if (sdp_err < 0) {
 			error("search failed: Invalid session!");
-			error_failed(ctxt->conn, ctxt->rq, EINVAL);
+			error_failed_errno(ctxt->conn, ctxt->rq, EINVAL);
 			goto failed;
 		}
 
 		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
-		error_failed(ctxt->conn, ctxt->rq, sdp_err);
+		error_failed_errno(ctxt->conn, ctxt->rq, sdp_err);
 		goto failed;
 	}
 
@@ -478,7 +479,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
 	/* check response PDU ID */
 	if (type != SDP_SVC_ATTR_RSP) {
 		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
-		error_failed(ctxt->conn, ctxt->rq, EPROTO);
+		error_failed_errno(ctxt->conn, ctxt->rq, EPROTO);
 		goto failed;
 	}
 
@@ -533,12 +534,12 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 		int sdp_err = sdp_get_error(ctxt->session);
 		if (sdp_err < 0) {
 			error("search failed: Invalid session!");
-			error_failed(ctxt->conn, ctxt->rq, EINVAL);
+			error_failed_errno(ctxt->conn, ctxt->rq, EINVAL);
 			goto failed;
 		}
 
 		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
-		error_failed(ctxt->conn, ctxt->rq, sdp_err);
+		error_failed_errno(ctxt->conn, ctxt->rq, sdp_err);
 		goto failed;
 	}
 
@@ -550,7 +551,7 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 	/* check response PDU ID */
 	if (type != SDP_SVC_ATTR_RSP) {
 		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
-		error_failed(ctxt->conn, ctxt->rq, EPROTO);
+		error_failed_errno(ctxt->conn, ctxt->rq, EPROTO);
 		goto failed;
 	}
 
@@ -607,12 +608,12 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err,
 		int sdp_err = sdp_get_error(ctxt->session);
 		if (sdp_err < 0) {
 			error("search failed: Invalid session!");
-			error_failed(ctxt->conn, ctxt->rq, EINVAL);
+			error_failed_errno(ctxt->conn, ctxt->rq, EINVAL);
 			goto failed;
 		}
 
 		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
-		error_failed(ctxt->conn, ctxt->rq, sdp_err);
+		error_failed_errno(ctxt->conn, ctxt->rq, sdp_err);
 		goto failed;
 	}
 
@@ -624,7 +625,7 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err,
 	/* check response PDU ID */
 	if (type != SDP_SVC_SEARCH_RSP) {
 		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
-		error_failed(ctxt->conn, ctxt->rq, EPROTO);
+		error_failed_errno(ctxt->conn, ctxt->rq, EPROTO);
 		goto failed;
 	}
 
@@ -739,12 +740,12 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 		int sdp_err = sdp_get_error(ctxt->session);
 		if (sdp_err < 0) {
 			error("search failed: Invalid session!");
-			error_failed(ctxt->conn, ctxt->rq, EINVAL);
+			error_failed_errno(ctxt->conn, ctxt->rq, EINVAL);
 			goto failed;
 		}
 
 		error("search failed: %s (%d)", strerror(sdp_err), sdp_err);
-		error_failed(ctxt->conn, ctxt->rq, sdp_err);
+		error_failed_errno(ctxt->conn, ctxt->rq, sdp_err);
 		goto failed;
 	}
 
@@ -756,7 +757,7 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 	/* Check response PDU ID */
 	if (type != SDP_SVC_SEARCH_ATTR_RSP) {
 		error("SDP error: %s (%d)", strerror(EPROTO), EPROTO);
-		error_failed(ctxt->conn, ctxt->rq, EPROTO);
+		error_failed_errno(ctxt->conn, ctxt->rq, EPROTO);
 		goto failed;
 	}
 
@@ -1014,7 +1015,7 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_UINT32, &handle,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
@@ -1026,7 +1027,7 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
 	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
-		return error_failed(conn, msg, err);
+		return error_failed_errno(conn, msg, err);
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -1087,13 +1088,13 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_STRING, &svc,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (strlen(svc) > 0) {
 		/* Check if it is a service name string */
 		if (str2uuid(&uuid, svc) < 0) {
 			error("Invalid service class name");
-			return error_invalid_arguments(conn, msg);
+			return error_invalid_arguments(conn, msg, NULL);
 		}
 	}
 
@@ -1103,7 +1104,7 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, remote_svc_handles_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
-		return error_failed(conn, msg, err);
+		return error_failed_errno(conn, msg, err);
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -1121,7 +1122,7 @@ DBusHandlerResult get_remote_svc_identifiers(DBusConnection *conn, DBusMessage *
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (find_pending_connect(dst))
 		return error_service_search_in_progress(conn, msg);
@@ -1129,7 +1130,7 @@ DBusHandlerResult get_remote_svc_identifiers(DBusConnection *conn, DBusMessage *
 	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, remote_svc_identifiers_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
-		return error_failed(conn, msg, err);
+		return error_failed_errno(conn, msg, err);
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -1147,7 +1148,7 @@ DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

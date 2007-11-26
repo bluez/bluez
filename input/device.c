@@ -434,8 +434,8 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	return FALSE;
 
 failed:
-	err_connection_failed(idev->conn,
-			idev->pending_connect, strerror(err));
+	error_connection_attempt_failed(idev->conn,
+			idev->pending_connect, err);
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
 
@@ -684,8 +684,8 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 
 	goto cleanup;
 failed:
-	err_connection_failed(idev->conn,
-		idev->pending_connect, strerror(err));
+	error_connection_attempt_failed(idev->conn,
+		idev->pending_connect, err);
 	if (isk > 0)
 		close(isk);
 	close(idev->ctrl_sk);
@@ -751,8 +751,8 @@ failed:
 		close(csk);
 
 	idev->ctrl_sk = -1;
-	err_connection_failed(idev->conn,
-			idev->pending_connect, strerror(err));
+	error_connection_attempt_failed(idev->conn,
+			idev->pending_connect, err);
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
 
@@ -871,21 +871,24 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	struct device *idev = data;
 
 	if (idev->pending_connect)
-		return err_connection_failed(conn, msg, "Connection in progress");
+		return error_in_progress(conn, msg, 
+				"Device connection already in progress");
 
 	if (is_connected(idev))
-		return err_already_connected(conn, msg);
+		return error_already_connected(conn, msg);
 
 	idev->pending_connect = dbus_message_ref(msg);
 
 	/* Fake input device */
 	if (idev->fake) {
 		if (rfcomm_connect(idev) < 0) {
-			const char *str = strerror(errno);
-			error("RFCOMM connect failed: %s(%d)", str, errno);
+			int err = errno;
+			const char *str = strerror(err);
+			error("RFCOMM connect failed: %s(%d)", str, err);
 			dbus_message_unref(idev->pending_connect);
 			idev->pending_connect = NULL;
-			return err_connection_failed(conn, msg, str);
+			return error_connection_attempt_failed(conn, 
+					msg, err);
 		}
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -898,7 +901,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 		error("L2CAP connect failed: %s(%d)", strerror(err), err);
 		dbus_message_unref(idev->pending_connect);
 		idev->pending_connect = NULL;
-		return err_connection_failed(conn, msg, strerror(err));
+		return error_connection_attempt_failed(conn, msg, err);
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -910,7 +913,7 @@ static DBusHandlerResult device_disconnect(DBusConnection *conn,
 	struct device *idev = data;
 
 	if (disconnect(idev, 0) < 0)
-		return err_failed(conn, msg, strerror(errno));
+		return error_failed_errno(conn, msg, errno);
 
 	/* Replying to the requestor */
 	return send_message_and_unref(conn,

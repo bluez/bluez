@@ -22,47 +22,34 @@
  *
  */
 
-#define ERROR_INTERFACE "org.bluez.Error"
+/*
+  Please update dbus-api.txt in hcid folder when changes are made to this file.
+ */
 
-DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err);
 DBusHandlerResult error_not_ready(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_service(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_not_supported(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_does_not_exist(DBusConnection *conn, DBusMessage *msg, const char *str);
-DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg, const char *str);
+/* Used only for hcid device audit feature */
 DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str);
 DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMessage *msg, int err);
 DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_not_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_connect_in_progress(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_connect_not_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_passkey_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_auth_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_auth_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_binding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_service_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_connect_canceled(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_sdp_failed(DBusConnection *conn, DBusMessage *msg, int err);
 DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_trusted_device_already_exists(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_trusted_device_does_not_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_service_start_in_progress(DBusConnection *conn, DBusMessage *msg);

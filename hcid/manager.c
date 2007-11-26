@@ -49,6 +49,7 @@
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "dbus-common.h"
+#include "error.h"
 #include "dbus-error.h"
 #include "dbus-hci.h"
 #include "dbus-service.h"
@@ -67,7 +68,7 @@ static DBusHandlerResult interface_version(DBusConnection *conn,
 	dbus_uint32_t version = 0;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -86,7 +87,7 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (default_adapter_id < 0)
 		return error_no_such_adapter(conn, msg);
@@ -159,7 +160,7 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	/* hci_devid() would make sense to use here, except it
 	   is restricted to devices which are up */
@@ -200,11 +201,11 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 	int i, sk;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0)
-		return error_failed(conn, msg, errno);
+		return error_failed_errno(conn, msg, errno);
 
 	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 
@@ -215,7 +216,7 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 		int err = errno;
 		close(sk);
 		g_free(dl);
-		return error_failed(conn, msg, err);
+		return error_failed_errno(conn, msg, err);
 	}
 
 	dr = dl->dev_req;
@@ -267,7 +268,7 @@ static DBusHandlerResult find_service(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	service = search_service(conn, pattern);
 	if (!service)
@@ -291,7 +292,7 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 	DBusMessageIter array_iter;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -317,7 +318,7 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	service = search_service(conn, pattern);
 	if (!service)
@@ -341,7 +342,7 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 		return error_service_start_in_progress(conn, msg);
 
 	if (service_start(service, conn) < 0)
-		return error_failed(conn, msg, ENOEXEC);
+		return error_failed_errno(conn, msg, ENOEXEC);
 
 	service->action = dbus_message_ref(msg);
 

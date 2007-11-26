@@ -849,14 +849,14 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	DBusMessage *reply;
 
 	if (ns->enable)
-		return err_already_exists(conn, msg, "Server already enabled");
+		return error_already_exists(conn, msg, "Server already enabled");
 
 	if (bacmp(&ns->src, BDADDR_ANY) == 0) {
 		int dev_id;
 
 		dev_id = hci_get_route(&ns->src);
 		if ((dev_id < 0) || (hci_devba(dev_id, &ns->src) < 0))
-			return err_failed(conn, msg, "Adapter not available");
+			return error_failed(conn, msg, "Adapter not available");
 
 		/* Store the server info */
 		server_store(ns->path);
@@ -870,7 +870,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	ns->record_id = add_server_record(ns);
 	if (!ns->record_id) {
 		dbus_message_unref(reply);
-		return err_failed(conn, msg,
+		return error_failed(conn, msg,
 				"service record registration failed");
 	}
 
@@ -904,7 +904,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	if (!ns->enable)
-		return err_failed(conn, msg, "Not enabled");
+		return error_failed(conn, msg, "Not enabled");
 
 	/* Remove the service record */
 	if (ns->record_id) {
@@ -956,13 +956,13 @@ static DBusHandlerResult set_name(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	if (!name || (strlen(name) == 0))
-		return err_invalid_args(conn, msg, "Invalid name");
+		return error_invalid_arguments(conn, msg, "Invalid name");
 
 	if (ns->name)
 		g_free(ns->name);
@@ -971,7 +971,7 @@ static DBusHandlerResult set_name(DBusConnection *conn,
 	if (ns->enable) {
 		if (update_server_record(ns) < 0) {
 			dbus_message_unref(reply);
-			return err_failed(conn, msg,
+			return error_failed(conn, msg,
 				"Service record attribute update failed");
 		}
 	}
@@ -1022,14 +1022,14 @@ static DBusHandlerResult set_routing(DBusConnection *conn, DBusMessage *msg,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &iface,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	/* FIXME: Check if the interface is valid/UP */
 	if (!iface || (strlen(iface) == 0))
-		return err_invalid_args(conn, msg, "Invalid interface");
+		return error_invalid_arguments(conn, msg, "Invalid interface");
 
 	if (ns->iface)
 		g_free(ns->iface);

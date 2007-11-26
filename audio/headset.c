@@ -384,7 +384,7 @@ static gboolean finalize_stream_setup(struct device *dev)
 static void pending_connect_failed(struct pending_connect *c, struct device *dev)
 {
 	if (c->msg)
-		err_connect_failed(dev->conn, c->msg, strerror(c->err));
+		error_connection_attempt_failed(dev->conn, c->msg, c->err);
 	if (c->cb)
 		c->cb(NULL, c->cb_data);
 	pending_connect_free(c);
@@ -680,7 +680,7 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 
 failed_not_supported:
 	if (c->msg) {
-		err_not_supported(device->conn, c->msg);
+		error_not_supported(device->conn, c->msg);
 		dbus_message_unref(c->msg);
 		c->msg = NULL;
 	}
@@ -721,10 +721,10 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 		if (c->msg) {
 			if (dbus_error_has_name(&derr,
 						"org.bluez.Error.ConnectionAttemptFailed"))
-				err_connect_failed(device->conn, c->msg,
-					strerror(EHOSTDOWN));
+				error_connection_attempt_failed(device->conn, c->msg,
+					EHOSTDOWN);
 			else
-				err_not_supported(device->conn, c->msg);
+				error_not_supported(device->conn, c->msg);
 		}
 		dbus_error_free(&derr);
 		goto failed;
@@ -738,21 +738,21 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 		error("Unable to get args from reply: %s", derr.message);
 		dbus_error_free(&derr);
 		if (c->msg)
-			err_not_supported(device->conn, c->msg);
+			error_not_supported(device->conn, c->msg);
 		goto failed;
 	}
 
 	if (!array) {
 		error("get_handles_reply: Unable to get handle array from reply");
 		if (c->msg)
-			err_not_supported(device->conn, c->msg);
+			error_not_supported(device->conn, c->msg);
 		goto failed;
 	}
 
 	if (array_len < 1) {
 		debug("No record handles found");
 		if (c->msg)
-			err_not_supported(device->conn, c->msg);
+			error_not_supported(device->conn, c->msg);
 		goto failed;
 	}
 
@@ -765,7 +765,7 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	if (!msg) {
 		error("Unable to allocate new method call");
 		if (c->msg)
-			err_connect_failed(device->conn, c->msg, strerror(ENOMEM));
+			error_out_of_memory(device->conn, c->msg);
 		goto failed;
 	}
 
@@ -780,7 +780,7 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	if (!dbus_connection_send_with_reply(device->conn, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceRecord failed");
 		if (c->msg)
-			err_connect_failed(device->conn, c->msg, strerror(EIO));
+			error_connection_attempt_failed(device->conn, c->msg, EIO);
 		goto failed;
 	}
 
@@ -945,7 +945,7 @@ static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	if (hs->state < HEADSET_STATE_PLAY_IN_PROGRESS)
-		return err_not_connected(conn, msg);
+		return error_not_connected(conn, msg);
 
 	headset_set_state(device, HEADSET_STATE_CONNECTED);
 	send_message_and_unref(conn, reply);
@@ -988,7 +988,7 @@ static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	if (hs->state == HEADSET_STATE_DISCONNECTED)
-		return err_not_connected(conn, msg);
+		return error_not_connected(conn, msg);
 
 	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 	ba2str(&device->dst, hs_address);
@@ -1030,7 +1030,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 	int err;
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED)
-		return err_already_connected(conn, msg);
+		return error_already_connected(conn, msg);
 
 	c = g_try_new0(struct pending_connect, 1);
 	if (!c) {
@@ -1048,7 +1048,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 
 error:
 	pending_connect_free(c);
-	return err_connect_failed(conn, msg, strerror(-err));
+	return error_connection_attempt_failed(conn, msg, -err);
 }
 
 static gboolean ring_timer_cb(gpointer data)
@@ -1069,7 +1069,7 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 	DBusMessage *reply = NULL;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return err_not_connected(conn, msg);
+		return error_not_connected(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1082,7 +1082,7 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 
 	if (headset_send(device->headset, "\r\nRING\r\n") != G_IO_ERROR_NONE) {
 		dbus_message_unref(reply);
-		return err_failed(conn, msg, "Failed");
+		return error_failed(conn, msg, "Failed");
 	}
 
 	hs->ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb, device);
@@ -1102,7 +1102,7 @@ static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn,
 	DBusMessage *reply = NULL;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return err_not_connected(conn, msg);
+		return error_not_connected(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1131,10 +1131,10 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 	int err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return err_not_connected(conn, msg);
+		return error_not_connected(conn, msg);
 
 	if (hs->state >= HEADSET_STATE_PLAY_IN_PROGRESS)
-		return err_already_connected(conn, msg);
+		return error_already_connected(conn, msg);
 
 	c = g_try_new0(struct pending_connect, 1);
 	if (!c)
@@ -1145,7 +1145,7 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 	err = sco_connect(device, c);
 	if (err < 0) {
 		pending_connect_free(c);
-		return err_failed(conn, msg, strerror(-err));
+		return error_failed(conn, msg, strerror(-err));
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -1161,7 +1161,7 @@ static DBusHandlerResult hs_get_speaker_gain(DBusConnection *conn,
 	dbus_uint16_t gain;
 
 	if (hs->state < HEADSET_STATE_CONNECTED || hs->sp_gain < 0)
-		return err_not_available(conn, msg);
+		return error_not_available(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1187,7 +1187,7 @@ static DBusHandlerResult hs_get_mic_gain(DBusConnection *conn,
 	dbus_uint16_t gain;
 
 	if (hs->state < HEADSET_STATE_CONNECTED || hs->mic_gain < 0)
-		return err_not_available(conn, msg);
+		return error_not_available(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1215,20 +1215,20 @@ static DBusHandlerResult hs_set_gain(DBusConnection *conn,
 	char str[13];
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return err_not_connected(conn, msg);
+		return error_not_connected(conn, msg);
 
 	dbus_error_init(&derr);
 	dbus_message_get_args(msg, &derr, DBUS_TYPE_UINT16, &gain,
 				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&derr)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	if (gain > 15)
-		return err_invalid_args(conn, msg,
+		return error_invalid_arguments(conn, msg,
 					"Must be less than or equal to 15");
 
 	reply = dbus_message_new_method_return(msg);
@@ -1242,7 +1242,7 @@ static DBusHandlerResult hs_set_gain(DBusConnection *conn,
 
 	if (headset_send(device->headset, str) != G_IO_ERROR_NONE) {
 		dbus_message_unref(reply);
-		return err_failed(conn, msg, "Unable to send to headset");
+		return error_failed(conn, msg, "Unable to send to headset");
 	}
 
 done:

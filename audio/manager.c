@@ -327,7 +327,7 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 	if (dbus_error_is_set(&derr)) {
 		error("Unable to get message args");
 		success = FALSE;
-		err_failed(connection, data->msg, derr.message);
+		error_failed(connection, data->msg, derr.message);
 		dbus_error_free(&derr);
 		goto done;
 	}
@@ -336,14 +336,14 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 	if (!data->records) {
 		debug("No audio audio related service records were found");
 		success = FALSE;
-		err_not_supported(connection, data->msg);
+		error_not_supported(connection, data->msg);
 		goto done;
 	}
 
 	reply = dbus_message_new_method_return(data->msg);
 	if (!reply) {
 		success = FALSE;
-		err_failed(connection, data->msg, "Out of memory");
+		error_failed(connection, data->msg, "Out of memory");
 		goto done;
 	}
 
@@ -392,13 +392,14 @@ static void get_record_reply(DBusPendingCall *call,
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : forward error message as is */
 		error("GetRemoteServiceRecord failed: %s", derr.message);
 		if (dbus_error_has_name(&derr,
 					"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connect_failed(connection, data->msg,
-				strerror(EHOSTDOWN));
+			error_connection_attempt_failed(connection, data->msg,
+				EHOSTDOWN);
 		else
-			err_failed(connection, data->msg, derr.message);
+			error_failed(connection, data->msg, derr.message);
 		dbus_error_free(&derr);
 		goto failed;
 	}
@@ -406,7 +407,7 @@ static void get_record_reply(DBusPendingCall *call,
 	if (!dbus_message_get_args(reply, NULL,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &array, &array_len,
 				DBUS_TYPE_INVALID)) {
-		err_failed(connection, data->msg,
+		error_failed(connection, data->msg,
 				"Unable to get args from GetRecordReply");
 		goto failed;
 	}
@@ -452,7 +453,7 @@ static void get_next_record(struct audio_sdp_data *data)
 						"GetRemoteServiceRecord");
 	if (!msg) {
 		error("Unable to allocate new method call");
-		err_connect_failed(connection, data->msg, strerror(ENOMEM));
+		error_out_of_memory(connection, data->msg);
 		finish_sdp(data, FALSE);
 		return;
 	}
@@ -471,7 +472,7 @@ static void get_next_record(struct audio_sdp_data *data)
 
 	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceRecord failed");
-		err_connect_failed(connection, data->msg, strerror(EIO));
+		error_connection_attempt_failed(connection, data->msg, EIO);
 		finish_sdp(data, FALSE);
 		return;
 	}
@@ -506,12 +507,14 @@ static void get_handles_reply(DBusPendingCall *call,
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : forward error message as is */
 		error("GetRemoteServiceHandles failed: %s", derr.message);
 		if (dbus_error_has_name(&derr,
 					"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connect_failed(connection, data->msg, strerror(EHOSTDOWN));
+			error_connection_attempt_failed(connection, data->msg, 
+						EHOSTDOWN);
 		else
-			err_failed(connection, data->msg, derr.message);
+			error_failed(connection, data->msg, derr.message);
 		dbus_error_free(&derr);
 		goto failed;
 	}
@@ -520,7 +523,7 @@ static void get_handles_reply(DBusPendingCall *call,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
 				&array, &array_len,
 				DBUS_TYPE_INVALID)) {
-		err_failed(connection, data->msg,
+		error_failed(connection, data->msg,
 				"Unable to get args from reply");
 		goto failed;
 	}
@@ -571,7 +574,7 @@ static DBusHandlerResult get_handles(const char *uuid,
 						"org.bluez.Adapter",
 						"GetRemoteServiceHandles");
 	if (!msg) {
-		err_failed(connection, data->msg,
+		error_failed(connection, data->msg,
 				"Could not create a new dbus message");
 		goto failed;
 	}
@@ -583,7 +586,7 @@ static DBusHandlerResult get_handles(const char *uuid,
 					DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
-		err_failed(connection, data->msg,
+		error_failed(connection, data->msg,
 				"Sending GetRemoteServiceHandles failed");
 		goto failed;
 	}
@@ -736,7 +739,7 @@ static DBusHandlerResult am_create_device(DBusConnection *conn,
 				DBUS_TYPE_INVALID);
 
 	if (dbus_error_is_set(&derr)) {
-		err_invalid_args(connection, msg, derr.message);
+		error_invalid_arguments(connection, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -826,18 +829,18 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 					DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID)) {
-		err_invalid_args(connection, msg, derr.message);
+		error_invalid_arguments(connection, msg, derr.message);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 	if (dbus_error_is_set(&derr)) {
-		err_invalid_args(connection, msg, derr.message);
+		error_invalid_arguments(connection, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	match = g_slist_find_custom(devices, path, device_path_cmp);
 	if (!match)
-		return err_does_not_exist(connection, msg);
+		return error_device_does_not_exist(connection, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -907,7 +910,7 @@ static DBusHandlerResult am_find_by_addr(DBusConnection *conn,
 				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_INVALID);
 	if (dbus_error_is_set(&derr)) {
-		err_invalid_args(connection, msg, derr.message);
+		error_invalid_arguments(connection, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -916,7 +919,7 @@ static DBusHandlerResult am_find_by_addr(DBusConnection *conn,
 	device = manager_find_device(&bda, NULL, FALSE);
 
 	if (!device)
-		return err_does_not_exist(conn, msg);
+		return error_device_does_not_exist(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -935,12 +938,12 @@ static DBusHandlerResult am_default_device(DBusConnection *conn,
 	DBusMessage *reply;
 
 	if (!default_dev)
-		return err_does_not_exist(connection, msg);
+		return error_device_does_not_exist(connection, msg);
 
 	if (default_dev->headset == NULL &&
 		dbus_message_is_method_call(msg, AUDIO_MANAGER_INTERFACE,
 							"DefaultHeadset"))
-		return err_does_not_exist(connection, msg);
+		return error_device_does_not_exist(connection, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -966,18 +969,18 @@ static DBusHandlerResult am_change_default_device(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 					DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID)) {
-		err_invalid_args(connection, msg, derr.message);
+		error_invalid_arguments(connection, msg, derr.message);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 	if (dbus_error_is_set(&derr)) {
-		err_invalid_args(connection, msg, derr.message);
+		error_invalid_arguments(connection, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	match = g_slist_find_custom(devices, path, device_path_cmp);
 	if (!match)
-		return err_does_not_exist(connection, msg);
+		return error_device_does_not_exist(connection, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -999,7 +1002,7 @@ static DBusHandlerResult am_change_default_device(DBusConnection *conn,
 						DBUS_TYPE_STRING, &device->path,
 						DBUS_TYPE_INVALID);
 	else
-		return err_does_not_exist(connection, msg);
+		return error_device_does_not_exist(connection, msg);
 
 	default_dev = device;
 	device_store(device, TRUE);

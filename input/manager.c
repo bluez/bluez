@@ -326,7 +326,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 
 	if (input_device_register(pr->conn, &pr->src,
 					&pr->dst, &hidp, &path) < 0) {
-		err_failed(pr->conn, pr->msg, "path registration failed");
+		error_failed(pr->conn, pr->msg, "path registration failed");
 		goto cleanup;
 	}
 
@@ -348,7 +348,7 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 
 	goto cleanup;
 failed:
-	err_connection_failed(pr->conn, pr->msg, strerror(err));
+	error_connection_attempt_failed(pr->conn, pr->msg, err);
 
 cleanup:
 	if (isk >= 0)
@@ -415,7 +415,7 @@ failed:
 	if (csk >= 0)
 		close(csk);
 
-	err_connection_failed(pr->conn, pr->msg, strerror(err));
+	error_connection_attempt_failed(pr->conn, pr->msg, err);
 	pending_req_free(pr);
 
 	return FALSE;
@@ -431,7 +431,7 @@ static void create_bonding_reply(DBusPendingCall *call, void *data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("CreateBonding failed: %s(%s)",
 					derr.name, derr.message);
-		err_authentication_failed(pr->conn, pr->msg);
+		error_failed(pr->conn, pr->msg, "Authentication failed (CreateBonding)");
 		dbus_error_free(&derr);
 		dbus_message_unref(reply);
 		pending_req_free(pr);
@@ -443,7 +443,7 @@ static void create_bonding_reply(DBusPendingCall *call, void *data)
 	if (l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_CTRL,
 				(GIOFunc) control_connect_cb, pr) < 0) {
 		int err = errno;
-		err_connection_failed(pr->conn, pr->msg, strerror(err));
+		error_connection_attempt_failed(pr->conn, pr->msg, err);
 		error("L2CAP connect failed:%s (%d)", strerror(err), err);
 		pending_req_free(pr);
 	}
@@ -520,11 +520,14 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : to not try to be clever about
+		   hcid error but forward as is to the user */
 		if (dbus_error_has_name(&derr,
 			"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pr->conn, pr->msg, derr.message);
+			error_connection_attempt_failed(pr->conn, 
+					pr->msg, EIO);
 		else
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 
 		error("GetRemoteServiceRecord failed: %s(%s)",
 					derr.name, derr.message);
@@ -536,20 +539,20 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
 				DBUS_TYPE_INVALID)) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
 	if (len == 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("Invalid HID service record length");
 		goto fail;
 	}
 
 	pr->hid_rec = sdp_extract_pdu(rec_bin, &scanned);
 	if (!pr->hid_rec) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		goto fail;
 	}
 
@@ -563,7 +566,8 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 		if (d && (d->val.uint8 & 0x40) &&
 				!has_bonding(&pr->src, &pr->dst)) {
 			if (create_bonding(pr) < 0) {
-				err_authentication_failed(pr->conn, pr->msg);
+				error_failed(pr->conn, pr->msg,
+					"Unable to initialize bonding process");
 				goto fail;
 			}
 			/* Wait bonding reply */
@@ -578,7 +582,7 @@ static void hid_record_reply(DBusPendingCall *call, void *data)
 				(GIOFunc) control_connect_cb, pr) < 0) {
 		int err = errno;
 		error("L2CAP connect failed:%s (%d)", strerror(err), err);
-		err_connection_failed(pr->conn, pr->msg, strerror(err));
+		error_connection_attempt_failed(pr->conn, pr->msg, err);
 		goto fail;
 	}
 
@@ -600,11 +604,14 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : to not try to be clever about
+		   hcid error but forward as is to the user */
 		if (dbus_error_has_name(&derr,
 			"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pr->conn, pr->msg, derr.message);
+			error_connection_attempt_failed(pr->conn,
+					pr->msg, EIO);
 		else
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 
 		error("GetRemoteServiceHandles: %s(%s)",
 					derr.name, derr.message);
@@ -614,19 +621,19 @@ static void hid_handle_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
 				DBUS_TYPE_INVALID)) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
 	if (len == 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("HID record handle not found");
 		goto fail;
 	}
 
 	if (get_record(pr, *phandle, hid_record_reply) < 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("HID service attribute request failed");
 		goto fail;
 	} else {
@@ -652,11 +659,14 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : to not try to be clever about
+		   hcid error but forward as is to the user */
 		if (dbus_error_has_name(&derr,
 			"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pr->conn, pr->msg, derr.message);
+			error_connection_attempt_failed(pr->conn, pr->msg,
+					EIO);
 		else
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 
 		error("GetRemoteServiceRecord: %s(%s)",
 				derr.name, derr.message);
@@ -666,20 +676,20 @@ static void pnp_record_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
 				DBUS_TYPE_INVALID)) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
 	if (len == 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("Invalid PnP service record length");
 		goto fail;
 	}
 
 	pr->pnp_rec = sdp_extract_pdu(rec_bin, &scanned);
 	if (get_handles(pr, hid_uuid, hid_handle_reply) < 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("HID service search request failed");
 		goto fail;
 	} else {
@@ -705,11 +715,14 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : to not try to be clever about
+		   hcid error but forward as is to the user */
 		if (dbus_error_has_name(&derr,
 			"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pr->conn, pr->msg, derr.message);
+			error_connection_attempt_failed(pr->conn, pr->msg,
+					 EIO);
 		else
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 
 		error("GetRemoteServiceHandles: %s(%s)",
 				derr.name, derr.message);
@@ -719,7 +732,7 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
 				DBUS_TYPE_INVALID)) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
@@ -727,14 +740,14 @@ static void pnp_handle_reply(DBusPendingCall *call, void *data)
 	if (len == 0) {
 		/* PnP is optional: Ignore it and request the HID handle  */
 		if (get_handles(pr, hid_uuid, hid_handle_reply) < 0) {
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 			error("HID service search request failed");
 			goto fail;
 		}
 	} else {
 		/* Request PnP record */
 		if (get_record(pr, *phandle, pnp_record_reply) < 0) {
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 			error("PnP service attribute request failed");
 			goto fail;
 		}
@@ -766,11 +779,14 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : to not try to be clever about
+		   hcid error but forward as is to the user */
 		if (dbus_error_has_name(&derr,
 			"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pr->conn, pr->msg, derr.message);
+			error_connection_attempt_failed(pr->conn, pr->msg,
+					EIO);
 		else
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 
 		error("GetRemoteServiceRecord: %s(%s)",
 				derr.name, derr.message);
@@ -780,25 +796,25 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
 				DBUS_TYPE_INVALID)) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
 	if (len == 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("Invalid headset service record length");
 		goto fail;
 	}
 
 	rec = sdp_extract_pdu(rec_bin, &scanned);
 	if (!rec) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		goto fail;
 	}
 
 	if (sdp_get_access_protos(rec, &protos) < 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		goto fail;
 	}
 
@@ -808,7 +824,7 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 	sdp_record_free(rec);
 
 	if (ch <= 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("Invalid RFCOMM channel");
 		goto fail;
 	}
@@ -817,7 +833,7 @@ static void headset_record_reply(DBusPendingCall *call, void *data)
 
 	if (fake_input_register(pr->conn, &pr->src, &pr->dst, ch, &path) < 0) {
 		error("D-Bus path registration failed:%s", path);
-		err_failed(pr->conn, pr->msg, "Path registration failed");
+		error_failed(pr->conn, pr->msg, "Path registration failed");
 		goto fail;
 	}
 
@@ -852,11 +868,14 @@ static void headset_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : to not try to be clever about
+		   hcid error but forward as is to the user */
 		if (dbus_error_has_name(&derr,
 			"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pr->conn, pr->msg, derr.message);
+			error_connection_attempt_failed(pr->conn, pr->msg, 
+					EIO);
 		else
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 
 		error("GetRemoteServiceHandles: %s(%s)",
 				derr.name, derr.message);
@@ -866,19 +885,19 @@ static void headset_handle_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle, &len,
 				DBUS_TYPE_INVALID)) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
 	if (len == 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("Headset record handle not found");
 		goto fail;
 	}
 
 	if (get_record(pr, *phandle, headset_record_reply) < 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("Headset service attribute request failed");
 		goto fail;
 	} else {
@@ -908,7 +927,7 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -917,21 +936,21 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	dev_id = hci_get_route(NULL);
 	if (dev_id < 0) {
 		error("Bluetooth adapter not available");
-		return err_failed(conn, msg, "Adapter not available");
+		return error_failed(conn, msg, "Adapter not available");
 	}
 
 	if (hci_devba(dev_id, &src) < 0) {
 		error("Can't get local adapter device info");
-		return err_failed(conn, msg, "Adapter not available");
+		return error_failed(conn, msg, "Adapter not available");
 	}
 
 	str2ba(addr, &dst);
 	if (input_device_is_registered(&src, &dst))
-		return err_already_exists(conn, msg, "Input Already exists");
+		return error_already_exists(conn, msg, "Input Already exists");
 
 	if (read_device_class(&src, &dst, &cls) < 0) {
 		error("Device class not available");
-		return err_not_supported(conn, msg);
+		return error_not_supported(conn, msg);
 	}
 
 	pr = pending_req_new(conn, msg, &src, &dst);
@@ -943,19 +962,19 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 		case 0x0200: /* Phone */
 			if (get_handles(pr, pnp_uuid, pnp_handle_reply) < 0) {
 				pending_req_free(pr);
-				return err_not_supported(conn, msg);
+				return error_not_supported(conn, msg);
 			}
 			break;
 		case 0x0400: /* Fake input */
 			if (get_handles(pr, headset_uuid,
 						headset_handle_reply) < 0) {
 				pending_req_free(pr);
-				return err_not_supported(conn, msg);
+				return error_not_supported(conn, msg);
 			}
 			break;
 		default:
 			pending_req_free(pr);
-			return err_not_supported(conn, msg);
+			return error_not_supported(conn, msg);
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -974,14 +993,14 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	l = g_slist_find_custom(device_paths, path, (GCompareFunc) strcmp);
 	if (!l)
-		return err_does_not_exist(conn, msg, "Input doesn't exist");
+		return error_does_not_exist(conn, msg, "Input doesn't exist");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -990,7 +1009,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	err = input_device_unregister(conn, path);
 	if (err < 0) {
 		dbus_message_unref(reply);
-		return err_failed(conn, msg, strerror(-err));
+		return error_failed_errno(conn, msg, -err);
 	}
 
 	g_free(l->data);

@@ -37,26 +37,12 @@
 #include "dbus.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
-
-DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg, int err)
-{
-	const char *str = strerror(err);
-
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".Failed", str));
-}
+#include "error.h"
 
 DBusHandlerResult error_not_ready(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotReady", "Adapter is not ready"));
-}
-
-DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".InvalidArguments",
-							"Invalid arguments"));
 }
 
 DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg)
@@ -88,13 +74,6 @@ DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg)
 							"Rejected"));
 }
 
-DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".OutOfMemory",
-							"Out of memory"));
-}
-
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,
@@ -109,32 +88,11 @@ DBusHandlerResult error_no_such_service(DBusConnection *conn, DBusMessage *msg)
 							"No such service"));
 }
 
-DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".NotAvailable",
-							"Not available"));
-}
-
-DBusHandlerResult error_not_supported(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".NotSupported",
-							"Not supported"));
-}
-
 DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".RequestDeferred",
 							"Request Deferred"));
-}
-
-DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".NotConnected",
-							"Not connected"));
 }
 
 DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg)
@@ -144,46 +102,10 @@ DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessag
 							"Unsupported Major Class"));
 }
 
-DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMessage *msg, int err)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
-					err ? strerror(err) : "Connection attempt failed"));
-}
-
-static DBusHandlerResult error_already_exists(DBusConnection *conn, DBusMessage *msg, const char *str)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".AlreadyExists", str));
-}
-
-DBusHandlerResult error_does_not_exist(DBusConnection *conn, DBusMessage *msg, const char *str)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".DoesNotExist", str));
-}
-
-static DBusHandlerResult error_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".InProgress", str));
-}
-
-DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg, const char *str)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".Canceled", str));
-}
-
 DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str)
 {
 	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotInProgress", str));
-}
-
-DBusHandlerResult error_connect_canceled(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_canceled(conn, msg, "Connection creation was canceled");
 }
 
 DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg)
@@ -218,16 +140,6 @@ DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *
 	return error_in_progress(conn, msg, "Discover in progress");
 }
 
-DBusHandlerResult error_connect_in_progress(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_in_progress(conn, msg, "Connection creation in progress");
-}
-
-DBusHandlerResult error_connect_not_in_progress(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_not_in_progress(conn, msg, "Connection creation not in progress");
-}
-
 DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_does_not_exist(conn, msg, "Record does not exist");
@@ -253,16 +165,6 @@ DBusHandlerResult error_auth_agent_does_not_exist(DBusConnection *conn, DBusMess
 	return error_does_not_exist(conn, msg, "Authorization agent does not exist");
 }
 
-DBusHandlerResult error_binding_does_not_exist(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_does_not_exist(conn, msg, "Binding does not exist");
-}
-
-DBusHandlerResult error_service_already_exists(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_already_exists(conn, msg, "Service already exists");
-}
-
 DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_does_not_exist(conn, msg, "Service does not exist");
@@ -276,16 +178,6 @@ DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMes
 DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_already_exists(conn, msg, "Audit already performed");
-}
-
-DBusHandlerResult error_trusted_device_already_exists(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_already_exists(conn, msg, "Trusted device already exists");
-}
-
-DBusHandlerResult error_trusted_device_does_not_exists(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_does_not_exist(conn, msg, "Trusted device does not exist");
 }
 
 DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage *msg)

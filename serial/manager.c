@@ -217,13 +217,13 @@ static void open_notify(int fd, int err, struct pending_connect *pc)
 	if (err) {
 		/* Max tries exceeded */
 		rfcomm_release(pc->id);
-		err_connection_failed(pc->conn, pc->msg, strerror(err));
+		error_connection_attempt_failed(pc->conn, pc->msg, err);
 		return;
 	}
 
 	if (pc->canceled) {
 		rfcomm_release(pc->id);
-		err_connection_canceled(pc->conn, pc->msg);
+		error_canceled(pc->conn, pc->msg, "Connection canceled");
 		return;
 	}
 
@@ -352,7 +352,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	socklen_t len;
 
 	if (pc->canceled) {
-		err_connection_canceled(pc->conn, pc->msg);
+		error_canceled(pc->conn, pc->msg, "Connection canceled");
 		goto fail;
 	}
 
@@ -360,7 +360,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 		/* Avoid close invalid file descriptor */
 		g_io_channel_unref(pc->io);
 		pc->io = NULL;
-		err_connection_canceled(pc->conn, pc->msg);
+		error_canceled(pc->conn, pc->msg, "Connection canceled");
 		goto fail;
 	}
 
@@ -370,14 +370,13 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 		err = errno;
 		error("getsockopt(SO_ERROR): %s (%d)",
 				strerror(err), err);
-		err_connection_failed(pc->conn,
-				pc->msg, strerror(err));
+		error_connection_attempt_failed(pc->conn, pc->msg, err);
 		goto fail;
 	}
 
 	if (ret != 0) {
 		error("connect(): %s (%d)", strerror(ret), ret);
-		err_connection_failed(pc->conn, pc->msg, strerror(ret));
+		error_connection_attempt_failed(pc->conn, pc->msg, ret);
 		goto fail;
 	}
 
@@ -394,7 +393,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	if (pc->id < 0) {
 		err = errno;
 		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
-		err_connection_failed(pc->conn, pc->msg, strerror(err));
+		error_connection_attempt_failed(pc->conn, pc->msg, err);
 		goto fail;
 	}
 	pc->dev	= g_new0(char, 16);
@@ -483,17 +482,19 @@ static void record_reply(DBusPendingCall *call, void *data)
 
 	pc = data;
 	if (pc->canceled) {
-		err_connection_canceled(pc->conn, pc->msg);
+		error_canceled(pc->conn, pc->msg, "Connection canceled");
 		goto fail;
 	}
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : forward error as is */
 		if (dbus_error_has_name(&derr,
 				"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pc->conn, pc->msg, derr.message);
+			error_connection_attempt_failed(pc->conn, pc->msg,
+					EIO);
 		else
-			err_not_supported(pc->conn, pc->msg);
+			error_not_supported(pc->conn, pc->msg);
 
 		error("GetRemoteServiceRecord: %s(%s)",
 					derr.name, derr.message);
@@ -504,14 +505,14 @@ static void record_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
 				DBUS_TYPE_INVALID)) {
-		err_not_supported(pc->conn, pc->msg);
+		error_not_supported(pc->conn, pc->msg);
 		error("%s: %s", derr.name, derr.message);
 		dbus_error_free(&derr);
 		goto fail;
 	}
 
 	if (len == 0) {
-		err_not_supported(pc->conn, pc->msg);
+		error_not_supported(pc->conn, pc->msg);
 		error("Invalid service record length");
 		goto fail;
 	}
@@ -519,12 +520,12 @@ static void record_reply(DBusPendingCall *call, void *data)
 	rec = sdp_extract_pdu(rec_bin, &scanned);
 	if (!rec) {
 		error("Can't extract SDP record.");
-		err_not_supported(pc->conn, pc->msg);
+		error_not_supported(pc->conn, pc->msg);
 		goto fail;
 	}
 
 	if (len != scanned || (sdp_get_access_protos(rec, &protos) < 0)) {
-		err_not_supported(pc->conn, pc->msg);
+		error_not_supported(pc->conn, pc->msg);
 		goto fail;
 	}
 
@@ -534,7 +535,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 
 	if (ch < 1 || ch > 30) {
 		error("Channel out of range: %d", ch);
-		err_not_supported(pc->conn, pc->msg);
+		error_not_supported(pc->conn, pc->msg);
 		goto fail;
 	}
 	if (dbus_message_has_member(pc->msg, "CreatePort")) {
@@ -548,7 +549,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 		str2ba(pc->bda, &dst);
 		err = rfcomm_bind(&pc->src, &dst, -1, ch);
 		if (err < 0) {
-			err_failed(pc->conn, pc->msg, strerror(-err));
+			error_failed_errno(pc->conn, pc->msg, -err);
 			goto fail;
 		}
 		snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
@@ -585,7 +586,8 @@ static void record_reply(DBusPendingCall *call, void *data)
 		err = rfcomm_connect(pc);
 		if (err < 0) {
 			error("RFCOMM connection failed");
-			err_connection_failed(pc->conn, pc->msg, strerror(-err));
+			error_connection_attempt_failed(pc->conn, 
+					pc->msg, -err);
 			goto fail;
 		}
 
@@ -646,17 +648,19 @@ static void handles_reply(DBusPendingCall *call, void *data)
 
 	pc = data;
 	if (pc->canceled) {
-		err_connection_canceled(pc->conn, pc->msg);
+		error_canceled(pc->conn, pc->msg, "Connection canceled");
 		goto fail;
 	}
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : forward error as is */
 		if (dbus_error_has_name(&derr,
 				"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pc->conn, pc->msg, derr.message);
+			error_connection_attempt_failed(pc->conn, 
+					pc->msg, EIO);
 		else
-			err_not_supported(pc->conn, pc->msg);
+			error_not_supported(pc->conn, pc->msg);
 
 		error("GetRemoteServiceHandles: %s(%s)",
 					derr.name, derr.message);
@@ -667,19 +671,19 @@ static void handles_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle,
 				&len, DBUS_TYPE_INVALID)) {
-		err_not_supported(pc->conn, pc->msg);
+		error_not_supported(pc->conn, pc->msg);
 		error("%s: %s", derr.name, derr.message);
 		dbus_error_free(&derr);
 		goto fail;
 	}
 
 	if (len == 0) {
-		err_not_supported(pc->conn, pc->msg);
+		error_not_supported(pc->conn, pc->msg);
 		goto fail;
 	}
 
 	if (get_record(pc, *phandle, record_reply) < 0) {
-		err_not_supported(pc->conn, pc->msg);
+		error_not_supported(pc->conn, pc->msg);
 		goto fail;
 	}
 
@@ -780,18 +784,18 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 				DBUS_TYPE_STRING, &bda,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	pending = find_pending_connect_by_pattern(bda, pattern);
 	if (pending)
-		return err_connection_in_progress(conn, msg);
+		return error_in_progress(conn, msg, "Connection in progress");
 
 	dev_id = hci_get_route(NULL);
 	if ((dev_id < 0) ||  (hci_devba(dev_id, &src) < 0))
-		return err_failed(conn, msg, "Adapter not available");
+		return error_failed(conn, msg, "Adapter not available");
 
 	pc = g_new0(struct pending_connect, 1);
 	bacpy(&pc->src, &src);
@@ -809,7 +813,7 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 	if (pattern2uuid128(pattern, uuid, sizeof(uuid)) == 0) {
 		if (get_handles(pc, uuid, handles_reply) < 0) {
 			pending_connect_free(pc);
-			return err_not_supported(conn, msg);
+			return error_not_supported(conn, msg);
 		}
 		pending_connects = g_slist_append(pending_connects, pc);
 		name_listener_add(conn, dbus_message_get_sender(msg),
@@ -821,20 +825,20 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 	err = pattern2long(pattern, &val);
 	if (err < 0) {
 		pending_connect_free(pc);
-		return err_invalid_args(conn, msg, "invalid pattern");
+		return error_invalid_arguments(conn, msg, "invalid pattern");
 	}
 
 	/* Record handle: starts at 0x10000 */
 	if (strncasecmp("0x", pattern, 2) == 0) {
 		if (val < 0x10000) {
 			pending_connect_free(pc);
-			return err_invalid_args(conn, msg,
+			return error_invalid_arguments(conn, msg,
 					"invalid record handle");
 		}
 
 		if (get_record(pc, val, record_reply) < 0) {
 			pending_connect_free(pc);
-			return err_not_supported(conn, msg);
+			return error_not_supported(conn, msg);
 		}
 		pending_connects = g_slist_append(pending_connects, pc);
 		name_listener_add(conn, dbus_message_get_sender(msg),
@@ -845,13 +849,13 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 	pending_connect_free(pc);
 	/* RFCOMM Channel range: 1 - 30 */
 	if (val < 1 || val > 30)
-		return err_invalid_args(conn, msg,
+		return error_invalid_arguments(conn, msg,
 				"invalid RFCOMM channel");
 
 	str2ba(bda, &dst);
 	err = rfcomm_bind(&src, &dst, -1, val);
 	if (err < 0)
-		return err_failed(conn, msg, strerror(-err));
+		return error_failed_errno(conn, msg, -err);
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
 	port_store(&src, &dst, err, val, NULL);
@@ -919,21 +923,21 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	if (sscanf(path, SERIAL_MANAGER_PATH"/rfcomm%hd", &id) != 1)
-		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
+		return error_does_not_exist(conn, msg, "Invalid RFCOMM node");
 
 	di.id = id;
 	if (ioctl(rfcomm_ctl, RFCOMMGETDEVINFO, &di) < 0)
-		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
+		return error_does_not_exist(conn, msg, "Invalid RFCOMM node");
 	port_delete(&di.src, &di.dst, id);
 
 	if (port_unregister(path) < 0)
-		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
+		return error_does_not_exist(conn, msg, "Invalid RFCOMM node");
 
 	send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
@@ -1391,7 +1395,7 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 	int sk;
 
 	if (prx->listen_watch)
-		return err_failed(conn, msg, "Already enabled");
+		return error_failed(conn, msg, "Already enabled");
 
 	/* Listen */
 	/* FIXME: missing options */
@@ -1399,7 +1403,7 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 	if (sk < 0) {
 		const char *strerr = strerror(errno);
 		error("RFCOMM listen socket failed: %s(%d)", strerr, errno);
-		return err_failed(conn, msg, strerr);
+		return error_failed(conn, msg, strerr);
 	}
 
 	/* Create the record */
@@ -1409,7 +1413,7 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 	prx->record_id = add_proxy_record(conn, &buf);
 	if (!prx->record_id) {
 		close(sk);
-		return err_failed(conn, msg, "Service registration failed");
+		return error_failed(conn, msg, "Service registration failed");
 	}
 
 	/* Add incomming connection watch */
@@ -1430,7 +1434,7 @@ static DBusHandlerResult proxy_disable(DBusConnection *conn,
 	struct proxy *prx = data;
 
 	if (!prx->listen_watch)
-		return err_failed(conn, msg, "Not enabled");
+		return error_failed(conn, msg, "Not enabled");
 
 	/* Remove the watches and unregister the record: see watch notify */
 	g_source_remove(prx->listen_watch);
@@ -1597,7 +1601,7 @@ static DBusHandlerResult proxy_set_serial_params(DBusConnection *conn,
 
 	/* Don't allow change TTY settings if it is open */
 	if (prx->local_watch)
-		return err_failed(conn, msg, "Not allowed");
+		return error_failed(conn, msg, "Not allowed");
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -1606,23 +1610,23 @@ static DBusHandlerResult proxy_set_serial_params(DBusConnection *conn,
 				DBUS_TYPE_BYTE, &stopbits,
 				DBUS_TYPE_STRING, &paritystr,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	if (str2speed(ratestr, &speed)  == B0)
-		return err_invalid_args(conn, msg, "Invalid baud rate");
+		return error_invalid_arguments(conn, msg, "Invalid baud rate");
 
 	ctrl = prx->proxy_ti.c_cflag;
 	if (set_databits(databits, &ctrl) < 0)
-		return err_invalid_args(conn, msg, "Invalid data bits");
+		return error_invalid_arguments(conn, msg, "Invalid data bits");
 
 	if (set_stopbits(stopbits, &ctrl) < 0)
-		return err_invalid_args(conn, msg, "Invalid stop bits");
+		return error_invalid_arguments(conn, msg, "Invalid stop bits");
 
 	if (set_parity(paritystr, &ctrl) < 0)
-		return err_invalid_args(conn, msg, "Invalid parity");
+		return error_invalid_arguments(conn, msg, "Invalid parity");
 
 	prx->proxy_ti.c_cflag = ctrl;
 	prx->proxy_ti.c_cflag |= (CLOCAL | CREAD);
@@ -1802,27 +1806,27 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 				DBUS_TYPE_STRING, &uuid128,
 				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	if (str2uuid(&uuid, uuid128) < 0)
-		return err_invalid_args(conn, msg, "Invalid UUID");
+		return error_invalid_arguments(conn, msg, "Invalid UUID");
 
 	type = addr2type(address);
 	if (type == UNKNOWN_PROXY_TYPE)
-		return err_invalid_args(conn, msg, "Invalid address");
+		return error_invalid_arguments(conn, msg, "Invalid address");
 
 	/* Only one proxy per address(TTY or unix socket) is allowed */
 	if (g_slist_find_custom(proxies_paths,
 				address, (GCompareFunc) proxycmp))
-		return err_already_exists(conn, msg, "Proxy already exists");
+		return error_already_exists(conn, msg, "Proxy already exists");
 
 	dev_id = hci_get_route(NULL);
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0)) {
 		error("Adapter not available");
-		return err_failed(conn, msg, "Adapter not available");
+		return error_failed(conn, msg, "Adapter not available");
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -1838,7 +1842,7 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 
 	if (ret < 0) {
 		dbus_message_unref(reply);
-		return err_failed(conn, msg, "Create object path failed");
+		return error_failed(conn, msg, "Create object path failed");
 	}
 
 	dbus_connection_emit_signal(connection, SERIAL_MANAGER_PATH,
@@ -1879,14 +1883,14 @@ static DBusHandlerResult remove_proxy(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	l = g_slist_find_custom(proxies_paths, path, (GCompareFunc) strcmp);
 	if (!l)
-		return err_does_not_exist(conn, msg, "Invalid proxy path");
+		return error_does_not_exist(conn, msg, "Invalid proxy path");
 
 	/* Remove from storage */
 	if (dbus_connection_get_object_user_data(conn,
@@ -1923,18 +1927,18 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 				DBUS_TYPE_STRING, &bda,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	pending = find_pending_connect_by_pattern(bda, pattern);
 	if (pending)
-		return err_connection_in_progress(conn, msg);
+		return error_in_progress(conn, msg, "Connection in progress");
 
 	dev_id = hci_get_route(NULL);
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
-		return err_failed(conn, msg, "Adapter not available");
+		return error_failed(conn, msg, "Adapter not available");
 
 	pc = g_new0(struct pending_connect, 1);
 	bacpy(&pc->src, &src);
@@ -1952,7 +1956,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	if (pattern2uuid128(pattern, uuid, sizeof(uuid)) == 0) {
 		if (get_handles(pc, uuid, handles_reply) < 0) {
 			pending_connect_free(pc);
-			return err_not_supported(conn, msg);
+			return error_not_supported(conn, msg);
 		}
 		pending_connects = g_slist_append(pending_connects, pc);
 		goto done;
@@ -1962,20 +1966,20 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	err = pattern2long(pattern, &val);
 	if (err < 0) {
 		pending_connect_free(pc);
-		return err_invalid_args(conn, msg, "invalid pattern");
+		return error_invalid_arguments(conn, msg, "invalid pattern");
 	}
 
 	/* Record handle: starts at 0x10000 */
 	if (strncasecmp("0x", pattern, 2) == 0) {
 		if (val < 0x10000) {
 			pending_connect_free(pc);
-			return err_invalid_args(conn, msg,
+			return error_invalid_arguments(conn, msg,
 					"invalid record handle");
 		}
 
 		if (get_record(pc, val, record_reply) < 0) {
 			pending_connect_free(pc);
-			return err_not_supported(conn, msg);
+			return error_not_supported(conn, msg);
 		}
 		pending_connects = g_slist_append(pending_connects, pc);
 		goto done;
@@ -1984,7 +1988,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 	/* RFCOMM Channel range: 1 - 30 */
 	if (val < 1 || val > 30) {
 		pending_connect_free(pc);
-		return err_invalid_args(conn, msg,
+		return error_invalid_arguments(conn, msg,
 				"invalid RFCOMM channel");
 	}
 
@@ -1998,7 +2002,7 @@ static DBusHandlerResult connect_service(DBusConnection *conn,
 		error("RFCOMM connect failed: %s(%d)", strerr, -err);
 		pending_connects = g_slist_remove(pending_connects, pc);
 		pending_connect_free(pc);
-		return err_connection_failed(conn, msg, strerr);
+		return error_connection_attempt_failed(conn, msg, -err);
 	}
 done:
 	name_listener_add(conn, dbus_message_get_sender(msg),
@@ -2018,17 +2022,17 @@ static DBusHandlerResult disconnect_service(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	if (sscanf(name, "/dev/rfcomm%d", &id) != 1)
-		return err_invalid_args(conn, msg, "invalid RFCOMM node");
+		return error_invalid_arguments(conn, msg, "invalid RFCOMM node");
 
 	err = port_remove_listener(dbus_message_get_sender(msg), name);
 	if (err < 0)
-		return err_does_not_exist(conn, msg, "Invalid RFCOMM node");
+		return error_does_not_exist(conn, msg, "Invalid RFCOMM node");
 
 	send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
@@ -2054,14 +2058,15 @@ static DBusHandlerResult cancel_connect_service(DBusConnection *conn,
 				DBUS_TYPE_STRING, &bda,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	pending = find_pending_connect_by_pattern(bda, pattern);
 	if (!pending)
-		return err_connection_not_in_progress(conn, msg);
+		return error_does_not_exist(conn, msg, 
+				"No such connection request");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

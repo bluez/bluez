@@ -181,7 +181,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 failed:
 	if (nc->state != DISCONNECTED) {
 		nc->state = DISCONNECTED;
-		err_connection_failed(connection, nc->msg, "bnep failed");
+		error_connection_attempt_failed(connection, nc->msg, EIO);
 		g_io_channel_close(chan);
 	}
 	return FALSE;
@@ -254,7 +254,7 @@ static gboolean l2cap_connect_cb(GIOChannel *chan,
 	return FALSE;
 failed:
 	nc->state = DISCONNECTED;
-	err_connection_failed(connection, nc->msg, strerror(errno));
+	error_connection_attempt_failed(connection, nc->msg, errno);
 	g_io_channel_close(chan);
 	return FALSE;
 }
@@ -383,7 +383,7 @@ static DBusHandlerResult get_name(DBusConnection *conn, DBusMessage *msg,
 	DBusMessage *reply;
 
 	if (!nc->name) {
-		err_failed(conn, msg, "Cannot find service name");
+		error_failed(conn, msg, "Cannot find service name");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -405,7 +405,7 @@ static DBusHandlerResult get_description(DBusConnection *conn,
 	DBusMessage *reply;
 
 	if (!nc->desc) {
-		err_failed(conn, msg, "Cannot find service description");
+		error_failed(conn, msg, "Cannot find service description");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -427,7 +427,7 @@ static DBusHandlerResult get_interface(DBusConnection *conn, DBusMessage *msg,
 	DBusMessage *reply;
 
 	if (nc->state != CONNECTED) {
-		err_failed(conn, msg, "Device not connected");
+		error_failed(conn, msg, "Device not connected");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -449,14 +449,14 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 	DBusError derr;
 
 	if (nc->state != DISCONNECTED) {
-		err_failed(conn, msg, "Device already connected");
+		error_failed(conn, msg, "Device already connected");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -482,7 +482,7 @@ fail:
 		nc->msg = NULL;
 	}
 	nc->state = DISCONNECTED;
-	err_connection_failed(conn, msg, strerror(errno));
+	error_connection_attempt_failed(conn, msg, errno);
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
@@ -493,7 +493,7 @@ static DBusHandlerResult connection_cancel(DBusConnection *conn,
 	DBusMessage *reply;
 
 	if (nc->state != CONNECTING) {
-		err_failed(conn, msg, "Device has no pending connect");
+		error_failed(conn, msg, "Device has no pending connect");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -512,7 +512,7 @@ static DBusHandlerResult connection_disconnect(DBusConnection *conn,
 	DBusMessage *reply;
 
 	if (nc->state != CONNECTED) {
-		err_failed(conn, msg, "Device not connected");
+		error_failed(conn, msg, "Device not connected");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 

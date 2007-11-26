@@ -171,19 +171,19 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	l = g_slist_find_custom(*list, path, (GCompareFunc) strcmp);
 	if (!l)
-		return err_does_not_exist(conn, msg, "Path doesn't exist");
+		return error_does_not_exist(conn, msg, "Path doesn't exist");
 
 	/* Remove references from the storage */
 	if (*list == connection_paths) {
 		if (connection_has_pending(path))
-			return err_failed(conn, msg, "Connection is Busy");
+			return error_failed(conn, msg, "Connection is Busy");
 
 		connection_remove_stored(path);
 		/* Reset default connection */
@@ -226,11 +226,13 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME: forward error as is */
 		if (dbus_error_has_name(&derr,
 				"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pr->conn, pr->msg, derr.message);
+			error_connection_attempt_failed(pr->conn, pr->msg, 
+					EINVAL);
 		else
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 
 		error("GetRemoteServiceRecord failed: %s(%s)", derr.name,
 			derr.message);
@@ -240,13 +242,13 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
 				DBUS_TYPE_INVALID)) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
 	if (len == 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("Invalid PAN service record length");
 		goto fail;
 	}
@@ -276,7 +278,7 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 
 	if (connection_register(pr->path, &pr->src, &pr->dst, pr->id, name,
 				desc) < 0) {
-		err_failed(pr->conn, pr->msg, "D-Bus path registration failed");
+		error_failed(pr->conn, pr->msg, "D-Bus path registration failed");
 		goto fail;
 	}
 
@@ -334,11 +336,13 @@ static void pan_handle_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		/* FIXME : forward error as is */
 		if (dbus_error_has_name(&derr,
 				"org.bluez.Error.ConnectionAttemptFailed"))
-			err_connection_failed(pr->conn, pr->msg, derr.message);
+			error_connection_attempt_failed(pr->conn, pr->msg,
+					EINVAL);
 		else
-			err_not_supported(pr->conn, pr->msg);
+			error_not_supported(pr->conn, pr->msg);
 
 		error("GetRemoteServiceHandles: %s(%s)", derr.name,
 				derr.message);
@@ -348,18 +352,18 @@ static void pan_handle_reply(DBusPendingCall *call, void *data)
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle,
 				&len, DBUS_TYPE_INVALID)) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		error("%s: %s", derr.name, derr.message);
 		goto fail;
 	}
 
 	if (!len) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		goto fail;
 	}
 
 	if (get_record(pr, *phandle, pan_record_reply) < 0) {
-		err_not_supported(pr->conn, pr->msg);
+		error_not_supported(pr->conn, pr->msg);
 		goto fail;
 	}
 
@@ -420,7 +424,7 @@ static DBusHandlerResult find_server(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -432,7 +436,7 @@ static DBusHandlerResult find_server(DBusConnection *conn,
 	}
 
 	if (list == NULL) {
-		err_failed(conn, msg, "No such server");
+		error_does_not_exist(conn, msg, "No such server");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -483,7 +487,7 @@ static DBusHandlerResult find_connection(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
@@ -491,7 +495,7 @@ static DBusHandlerResult find_connection(DBusConnection *conn,
 	list = find_connection_pattern(conn, pattern);
 
 	if (list == NULL) {
-		err_failed(conn, msg, "No such connection");
+		error_does_not_exist(conn, msg, "No such connection");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -579,21 +583,21 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_STRING, &str,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	id = bnep_service_id(str);
 	if (id != BNEP_SVC_GN && id != BNEP_SVC_NAP && id != BNEP_SVC_PANU)
-		return err_invalid_args(conn, msg, "Not supported");
+		return error_invalid_arguments(conn, msg, "Not supported");
 
 	snprintf(key, 32, "%s#%s", addr, bnep_name(id));
 
 	/* Checks if the connection was already been made */
 	for (l = connection_paths; l; l = l->next) {
 		if (connection_find_data(l->data, key) == 0) {
-			err_already_exists(conn, msg,
+			error_already_exists(conn, msg,
 						"Connection Already exists");
 			return DBUS_HANDLER_RESULT_HANDLED;
 		}
@@ -602,14 +606,14 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	bacpy(&src, BDADDR_ANY);
 	dev_id = hci_get_route(&src);
 	if (dev_id < 0 || hci_devba(dev_id, &src) < 0)
-		return err_failed(conn, msg, "Adapter not available");
+		return error_failed(conn, msg, "Adapter not available");
 
 	pr = g_new0(struct pending_reply, 1);
 
 	pr->adapter_path = find_adapter(conn, &src);
 	if (!pr->adapter_path) {
 		pending_reply_free (pr);
-		return err_failed(conn, msg, "Adapter not available");
+		return error_failed(conn, msg, "Adapter not available");
 	}
 
 	pr->conn = dbus_connection_ref(conn);
@@ -623,7 +627,7 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 			NETWORK_PATH"/connection%d", net_uid++);
 
 	if (get_handles(pr, pan_handle_reply) < 0)
-		return err_not_supported(conn, msg);
+		return error_not_supported(conn, msg);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -642,7 +646,7 @@ static DBusHandlerResult last_connection(DBusConnection *conn,
 
 	if (connection_paths == NULL ||
 		g_slist_length (connection_paths) == 0) {
-		err_does_not_exist(conn, msg, "No such connection");
+		error_does_not_exist(conn, msg, "No such connection");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -666,7 +670,7 @@ static DBusHandlerResult default_connection(DBusConnection *conn,
 
 	if (connection_paths == NULL ||
 		g_slist_length (connection_paths) == 0) {
-		err_does_not_exist(conn, msg, "No such connection");
+		error_does_not_exist(conn, msg, "No such connection");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -700,14 +704,14 @@ static DBusHandlerResult change_default_connection(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, &derr,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID)) {
-		err_invalid_args(conn, msg, derr.message);
+		error_invalid_arguments(conn, msg, derr.message);
 		dbus_error_free(&derr);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
 	if (connection_paths == NULL ||
 		g_slist_length (connection_paths) == 0) {
-		err_does_not_exist(conn, msg, "No such connection");
+		error_does_not_exist(conn, msg, "No such connection");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -718,7 +722,7 @@ static DBusHandlerResult change_default_connection(DBusConnection *conn,
 		list = find_connection_pattern(conn, pattern);
 
 		if (list == NULL) {
-			err_failed(conn, msg, "No such connection");
+			error_does_not_exist(conn, msg, "No such connection");
 			return DBUS_HANDLER_RESULT_HANDLED;
 		}
 		else

@@ -50,6 +50,7 @@
 #include "dbus-common.h"
 #include "dbus-service.h"
 #include "dbus-error.h"
+#include "error.h"
 #include "dbus-security.h"
 #include "dbus-hci.h"
 
@@ -259,10 +260,10 @@ static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if ((check_address(addr) < 0) || (path[0] != '/'))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	memset(&ref, 0, sizeof(ref));
 
@@ -317,7 +318,7 @@ static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	memset(&ref, 0, sizeof(ref));
 
@@ -357,7 +358,7 @@ static DBusHandlerResult register_default_passkey_agent(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	default_agent = passkey_agent_new(NULL, conn, dbus_message_get_sender(msg),
 						path, NULL);
@@ -398,7 +399,7 @@ static DBusHandlerResult unregister_default_passkey_agent(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	name = dbus_message_get_sender(msg);
 
@@ -573,7 +574,7 @@ static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	default_auth_agent = auth_agent_new(conn,
 					dbus_message_get_sender(msg), path);
@@ -614,7 +615,7 @@ static DBusHandlerResult unregister_default_auth_agent(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	name = dbus_message_get_sender(msg);
 

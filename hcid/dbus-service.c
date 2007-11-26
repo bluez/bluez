@@ -49,6 +49,7 @@
 #include "server.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
+#include "error.h"
 #include "manager.h"
 #include "adapter.h"
 #include "dbus-service.h"
@@ -326,7 +327,7 @@ static void abort_startup(struct service *service, DBusConnection *conn, int eco
 
 	if (service->action) {
 		if (conn)
-			error_failed(conn, service->action, ecode);
+			error_failed_errno(conn, service->action, ecode);
 		dbus_message_unref(service->action);
 		service->action = NULL;
 	}
@@ -467,10 +468,10 @@ static DBusHandlerResult start(DBusConnection *conn,
 	struct service *service = data;
 
 	if (service->external || service->pid)
-		return error_failed(conn, msg, EALREADY);
+		return error_failed_errno(conn, msg, EALREADY);
 
 	if (service_start(service, conn) < 0)
-		return error_failed(conn, msg, ENOEXEC);
+		return error_failed_errno(conn, msg, ENOEXEC);
 
 	service->action = dbus_message_ref(msg);
 
@@ -483,7 +484,7 @@ static DBusHandlerResult stop(DBusConnection *conn,
 	struct service *service  = data;
 
 	if (service->external || !service->bus_name)
-		return error_failed(conn, msg, EPERM);
+		return error_failed_errno(conn, msg, EPERM);
 
 	stop_service(service, FALSE);
 
@@ -539,10 +540,10 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -600,10 +601,10 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	trusted = read_trust(BDADDR_ANY, address, service->ident);
 
@@ -628,10 +629,10 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

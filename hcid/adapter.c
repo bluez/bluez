@@ -60,6 +60,7 @@
 #include "dbus-hci.h"
 #include "dbus-sdp.h"
 #include "dbus-error.h"
+#include "error.h"
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 
@@ -365,7 +366,7 @@ static DBusHandlerResult adapter_get_address(DBusConnection *conn,
 	DBusMessage *reply;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -386,11 +387,11 @@ static DBusHandlerResult adapter_get_version(DBusConnection *conn,
 	int err;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	err = get_device_version(adapter->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(conn, msg, -err);
+		return error_failed_errno(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -411,11 +412,11 @@ static DBusHandlerResult adapter_get_revision(DBusConnection *conn,
 	int err;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	err = get_device_revision(adapter->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(conn, msg, -err);
+		return error_failed_errno(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -436,11 +437,11 @@ static DBusHandlerResult adapter_get_manufacturer(DBusConnection *conn,
 	int err;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	err = get_device_manufacturer(adapter->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(conn, msg, -err);
+		return error_failed_errno(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -461,11 +462,11 @@ static DBusHandlerResult adapter_get_company(DBusConnection *conn,
 	int err;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	err = get_device_company(adapter->dev_id, str, sizeof(str));
 	if (err < 0)
-		return error_failed(conn, msg, -err);
+		return error_failed_errno(conn, msg, -err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -487,7 +488,7 @@ static DBusHandlerResult adapter_list_modes(DBusConnection *conn,
 	int i;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -513,7 +514,7 @@ static DBusHandlerResult adapter_get_mode(DBusConnection *conn,
 	const char *mode;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -542,10 +543,10 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &mode,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (!mode)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	new_mode = str2mode(adapter->address, mode);
 	switch(new_mode) {
@@ -560,7 +561,7 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 		scan_enable = (SCAN_PAGE | SCAN_INQUIRY);
 		break;
 	default:
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	/* Do reverse resolution in case of "on" mode */
@@ -584,7 +585,7 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 				adapter->dev_id, strerror(errno), errno);
 
 			hci_close_dev(dd);
-			return error_failed(conn, msg, err);
+			return error_failed_errno(conn, msg, err);
 		}
 	}
 
@@ -592,7 +593,7 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			hcid.offmode == HCID_OFFMODE_DEVDOWN) {
 		if (ioctl(dd, HCIDEVDOWN, adapter->dev_id) < 0) {
 			hci_close_dev(dd);
-			return error_failed(conn, msg, errno);
+			return error_failed_errno(conn, msg, errno);
 		}
 
 		goto done;
@@ -602,7 +603,7 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	err = set_limited_discoverable(dd, adapter->class, limited);
 	if (err < 0) {
 		hci_close_dev(dd);
-		return error_failed(conn, msg, -err);
+		return error_failed_errno(conn, msg, -err);
 	}
 
 	if (current_scan != scan_enable) {
@@ -623,14 +624,14 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 			error("Sending write scan enable command failed: %s (%d)",
 					strerror(errno), errno);
 			hci_close_dev(dd);
-			return error_failed(conn, msg, err);
+			return error_failed_errno(conn, msg, err);
 		}
 
 		if (status) {
 			error("Setting scan enable failed with status 0x%02x",
 					status);
 			hci_close_dev(dd);
-			return error_failed(conn, msg, bt_error(status));
+			return error_failed_errno(conn, msg, bt_error(status));
 		}
 	} else {
 		/* discoverable or limited */
@@ -673,7 +674,7 @@ static DBusHandlerResult adapter_get_discoverable_to(DBusConnection *conn,
 	DBusMessage *reply;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -700,7 +701,7 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_UINT32, &timeout,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -739,7 +740,7 @@ static DBusHandlerResult adapter_is_connectable(DBusConnection *conn,
 	dbus_bool_t connectable = FALSE;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (scan_enable & SCAN_PAGE)
 		connectable = TRUE;
@@ -763,7 +764,7 @@ static DBusHandlerResult adapter_is_discoverable(DBusConnection *conn,
 	dbus_bool_t discoverable = FALSE;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (scan_enable & SCAN_INQUIRY)
 		discoverable = TRUE;
@@ -793,10 +794,10 @@ static DBusHandlerResult adapter_is_connected(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(peer_addr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(peer_addr, &peer_bdaddr);
 
@@ -824,7 +825,7 @@ static DBusHandlerResult adapter_list_connections(DBusConnection *conn,
 	GSList *l = adapter->active_conn;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -860,7 +861,7 @@ static DBusHandlerResult adapter_get_major_class(DBusConnection *conn,
 	const char *str_ptr = "computer";
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -888,7 +889,7 @@ static DBusHandlerResult adapter_list_minor_classes(DBusConnection *conn,
 	int size, i;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	major_class = adapter->class[1] & 0x1F;
 
@@ -930,7 +931,7 @@ static DBusHandlerResult adapter_get_minor_class(DBusConnection *conn,
 	uint8_t minor_class;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	/* FIXME: Currently, only computer major class is supported */
 	if ((adapter->class[1] & 0x1f) != 1)
@@ -970,10 +971,10 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &minor,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (!minor)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)
@@ -994,7 +995,7 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 	/* Check if it's a valid minor class */
 	if (dev_class == 0xFFFFFFFF) {
 		hci_close_dev(dd);
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	/* set the service class and major class  */
@@ -1005,7 +1006,7 @@ static DBusHandlerResult adapter_set_minor_class(DBusConnection *conn,
 		error("Can't write class of device on hci%d: %s(%d)",
 				adapter->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
+		return error_failed_errno(conn, msg, err);
 	}
 
 	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
@@ -1035,7 +1036,7 @@ static DBusHandlerResult adapter_get_service_classes(DBusConnection *conn,
 		return error_not_ready(conn, msg);
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1069,7 +1070,7 @@ static DBusHandlerResult adapter_get_name(DBusConnection *conn,
 	bdaddr_t ba;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(adapter->address, &ba);
 
@@ -1080,7 +1081,7 @@ static DBusHandlerResult adapter_get_name(DBusConnection *conn,
 
 		err = get_device_name(adapter->dev_id, str, sizeof(str));
 		if (err < 0)
-			return error_failed(conn, msg, -err);
+			return error_failed_errno(conn, msg, -err);
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -1105,11 +1106,11 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &str_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (!g_utf8_validate(str_ptr, -1, NULL)) {
 		error("Name change failed: the supplied name isn't valid UTF-8");
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	str2ba(adapter->address, &bdaddr);
@@ -1121,7 +1122,7 @@ static DBusHandlerResult adapter_set_name(DBusConnection *conn,
 
 	ecode = set_device_name(adapter->dev_id, str_ptr);
 	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
+		return error_failed_errno(conn, msg, -ecode);
 
 done:
 	reply = dbus_message_new_method_return(msg);
@@ -1151,10 +1152,10 @@ static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1333,10 +1334,10 @@ static DBusHandlerResult adapter_get_remote_version(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
 			"manufacturers");
@@ -1405,10 +1406,10 @@ static DBusHandlerResult adapter_get_remote_revision(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1448,10 +1449,10 @@ static DBusHandlerResult adapter_get_remote_manufacturer(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
 			"manufacturers");
@@ -1485,7 +1486,7 @@ static DBusHandlerResult adapter_get_remote_company(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &str_bdaddr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(str_bdaddr, &bdaddr);
 	ba2oui(&bdaddr, oui);
@@ -1519,12 +1520,12 @@ static int get_remote_class(DBusConnection *conn, DBusMessage *msg, void *data,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_peer,
 				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg);
+		error_invalid_arguments(conn, msg, NULL);
 		return -1;
 	}
 
 	if (check_address(addr_peer) < 0) {
-		error_invalid_arguments(conn, msg);
+		error_invalid_arguments(conn, msg, NULL);
 		return -1;
 	}
 
@@ -1657,10 +1658,10 @@ static DBusHandlerResult adapter_get_remote_features(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "features");
 
@@ -1711,10 +1712,10 @@ static DBusHandlerResult adapter_get_remote_name(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(peer_addr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	/* check if it is in the cache */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "names");
@@ -1762,10 +1763,10 @@ static DBusHandlerResult adapter_get_remote_alias(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(addr_ptr, &bdaddr);
 
@@ -1796,18 +1797,18 @@ static DBusHandlerResult adapter_set_remote_alias(DBusConnection *conn,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_STRING, &alias,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if ((strlen(alias) == 0) || (check_address(addr) < 0)) {
 		error("Alias change failed: Invalid parameter");
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	str2ba(addr, &bdaddr);
 
 	ecode = set_device_alias(adapter->dev_id, &bdaddr, alias);
 	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
+		return error_failed_errno(conn, msg, -ecode);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1834,11 +1835,11 @@ static DBusHandlerResult adapter_clear_remote_alias(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0) {
 		error("Alias clear failed: Invalid parameter");
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	str2ba(addr_ptr, &bdaddr);
@@ -1849,7 +1850,7 @@ static DBusHandlerResult adapter_clear_remote_alias(DBusConnection *conn,
 
 	ecode = set_device_alias(adapter->dev_id, &bdaddr, NULL);
 	if (ecode < 0)
-		return error_failed(conn, msg, -ecode);
+		return error_failed_errno(conn, msg, -ecode);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1876,10 +1877,10 @@ static DBusHandlerResult adapter_last_seen(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
 			"lastseen");
@@ -1913,10 +1914,10 @@ static DBusHandlerResult adapter_last_used(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
 			"lastused");
@@ -1962,7 +1963,7 @@ gboolean dc_pending_timeout_handler(void *data)
 				500) < 0) {
 		int err = errno;
 		error("Disconnect failed");
-		error_failed(pending_dc->conn, pending_dc->msg, err);
+		error_failed_errno(pending_dc->conn, pending_dc->msg, err);
 	} else {
 		reply = dbus_message_new_method_return(pending_dc->msg);
 		if (!reply)
@@ -1999,10 +2000,10 @@ static DBusHandlerResult adapter_dc_remote_device(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(peer_addr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(peer_addr, &peer_bdaddr);
 
@@ -2097,7 +2098,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
 		error("Can't get socket error: %s (%d)",
 				strerror(errno), errno);
-		error_failed(adapter->bonding->conn, adapter->bonding->rq,
+		error_failed_errno(adapter->bonding->conn, adapter->bonding->rq,
 				errno);
 		goto failed;
 	}
@@ -2116,7 +2117,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &cinfo, &len) < 0) {
 		error("Can't get connection info: %s (%d)",
 				strerror(errno), errno);
-		error_failed(adapter->bonding->conn, adapter->bonding->rq,
+		error_failed_errno(adapter->bonding->conn, adapter->bonding->rq,
 				errno);
 		goto failed;
 	}
@@ -2145,7 +2146,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	if (hci_send_req(dd, &rq, 500) < 0) {
 		error("Unable to send HCI request: %s (%d)",
 					strerror(errno), errno);
-		error_failed(adapter->bonding->conn, adapter->bonding->rq,
+		error_failed_errno(adapter->bonding->conn, adapter->bonding->rq,
 				errno);
 		hci_close_dev(dd);
 		goto failed;
@@ -2154,7 +2155,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	if (rp.status) {
 		error("HCI_Authentication_Requested failed with status 0x%02x",
 				rp.status);
-		error_failed(adapter->bonding->conn, adapter->bonding->rq,
+		error_failed_errno(adapter->bonding->conn, adapter->bonding->rq,
 				bt_error(rp.status));
 		hci_close_dev(dd);
 		goto failed;
@@ -2200,10 +2201,10 @@ static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(peer_addr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(peer_addr, &peer_bdaddr);
 
@@ -2266,10 +2267,10 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &peer_addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(peer_addr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(peer_addr, &peer_bdaddr);
 
@@ -2337,10 +2338,10 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)
@@ -2362,7 +2363,7 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 	if (textfile_casedel(filename, addr_ptr) < 0) {
 		int err = errno;
 		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
+		return error_failed_errno(conn, msg, err);
 	}
 
 	str2ba(addr_ptr, &bdaddr);
@@ -2381,7 +2382,7 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 			int err = errno;
 			error("Disconnect failed");
 			hci_close_dev(dd);
-			return error_failed(conn, msg, err);
+			return error_failed_errno(conn, msg, err);
 		}
 	}
 
@@ -2409,10 +2410,10 @@ static DBusHandlerResult adapter_has_bonding(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
 			"linkkeys");
@@ -2448,7 +2449,7 @@ static DBusHandlerResult adapter_list_bondings(DBusConnection *conn,
 	char filename[PATH_MAX + 1];
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
 			"linkkeys");
@@ -2481,10 +2482,10 @@ static DBusHandlerResult adapter_get_pin_code_length(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(adapter->address, &local);
 
@@ -2518,16 +2519,16 @@ static DBusHandlerResult adapter_get_encryption_key_size(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &addr_ptr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(addr_ptr) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(addr_ptr, &bdaddr);
 
 	val = get_encryption_key_size(adapter->dev_id, &bdaddr);
 	if (val < 0)
-		return error_failed(conn, msg, -val);
+		return error_failed_errno(conn, msg, -val);
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -2554,7 +2555,7 @@ static DBusHandlerResult adapter_start_periodic(DBusConnection *conn,
 		return error_not_ready(conn, msg);
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (adapter->discov_active || adapter->pdiscov_active)
 		return error_discover_in_progress(conn, msg);
@@ -2586,14 +2587,14 @@ static DBusHandlerResult adapter_start_periodic(DBusConnection *conn,
 		error("Unable to start periodic inquiry: %s (%d)",
 				strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
+		return error_failed_errno(conn, msg, err);
 	}
 
 	if (status) {
 		error("HCI_Periodic_Inquiry_Mode failed with status 0x%02x",
 				status);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, bt_error(status));
+		return error_failed_errno(conn, msg, bt_error(status));
 	}
 
 	adapter->pdiscov_requestor = g_strdup(dbus_message_get_sender(msg));
@@ -2627,7 +2628,7 @@ static DBusHandlerResult adapter_stop_periodic(DBusConnection *conn,
 		return error_not_ready(conn, msg);
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (!adapter->pdiscov_active)
 		return error_not_authorized(conn, msg);
@@ -2641,7 +2642,7 @@ static DBusHandlerResult adapter_stop_periodic(DBusConnection *conn,
 		if (err == -ENODEV)
 			return error_no_such_adapter(conn, msg);
 		else
-			return error_failed(conn, msg, -err);
+			return error_failed_errno(conn, msg, -err);
 	}
 
 	reply = dbus_message_new_method_return(msg);
@@ -2676,7 +2677,7 @@ static DBusHandlerResult adapter_set_pdiscov_resolve(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_BOOLEAN, &resolve,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -2706,7 +2707,7 @@ static DBusHandlerResult adapter_get_pdiscov_resolve(DBusConnection *conn,
 	dbus_bool_t resolve = adapter->pdiscov_resolve_names;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -2734,7 +2735,7 @@ static DBusHandlerResult adapter_discover_devices(DBusConnection *conn,
 		return error_not_ready(conn, msg);
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (adapter->discov_active)
 		return error_discover_in_progress(conn, msg);
@@ -2767,14 +2768,14 @@ static DBusHandlerResult adapter_discover_devices(DBusConnection *conn,
 		error("Unable to start inquiry: %s (%d)",
 				strerror(errno), errno);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, err);
+		return error_failed_errno(conn, msg, err);
 	}
 
 	if (rp.status) {
 		error("HCI_Inquiry command failed with status 0x%02x",
 				rp.status);
 		hci_close_dev(dd);
-		return error_failed(conn, msg, bt_error(rp.status));
+		return error_failed_errno(conn, msg, bt_error(rp.status));
 	}
 
 	method = dbus_message_get_member(msg);
@@ -2807,7 +2808,7 @@ static DBusHandlerResult adapter_cancel_discovery(DBusConnection *conn,
 		return error_not_ready(conn, msg);
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	/* is there discover pending? or discovery cancel was requested
 	 * previously */
@@ -2828,7 +2829,7 @@ static DBusHandlerResult adapter_cancel_discovery(DBusConnection *conn,
 		if (err == -ENODEV)
 			return error_no_such_adapter(conn, msg);
 		else
-			return error_failed(conn, msg, -err);
+			return error_failed_errno(conn, msg, -err);
 	}
 
 	/* Reply before send DiscoveryCompleted */
@@ -2881,7 +2882,7 @@ static DBusHandlerResult adapter_list_remote_devices(DBusConnection *conn,
 	struct remote_device_list_t param = { NULL, 0 };
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	/* Add Bonded devices to the list */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "linkkeys");
@@ -2940,12 +2941,12 @@ static DBusHandlerResult adapter_list_recent_remote_devices(DBusConnection *conn
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &string,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	/* Date format is "YYYY-MM-DD HH:MM:SS GMT" */
 	len = strlen(string);
 	if (len && (strptime(string, "%Y-%m-%d %H:%M:%S", &date) == NULL))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	/* Bonded and trusted: mandatory entries(no matter the date/time) */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "linkkeys");
@@ -2997,10 +2998,10 @@ static DBusHandlerResult adapter_set_trusted(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -3031,10 +3032,10 @@ static DBusHandlerResult adapter_is_trusted(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(adapter->address, &local);
 
@@ -3063,10 +3064,10 @@ static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -3138,7 +3139,7 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -3168,10 +3169,10 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -3198,7 +3199,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &path,
 						DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

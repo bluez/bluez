@@ -45,6 +45,7 @@
 #include "adapter.h"
 #include "dbus-hci.h"
 #include "dbus-error.h"
+#include "error.h"
 #include "dbus-test.h"
 
 #define L2INFO_TIMEOUT (2 * 1000)
@@ -424,11 +425,11 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 	if (dbus_error_is_set(&err)) {
 		error("Can't extract message arguments:%s", err.message);
 		dbus_error_free(&err);
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(address, &peer);
 	str2ba(adapter->address, &local);
@@ -507,11 +508,11 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 	if (dbus_error_is_set(&err)) {
 		error("Can't extract message arguments:%s", err.message);
 		dbus_error_free(&err);
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(address, &peer);
 	str2ba(adapter->address, &local);
@@ -567,11 +568,11 @@ static DBusHandlerResult get_l2cap_feature_mask(DBusConnection *conn,
 	if (dbus_error_is_set(&err)) {
 		error("Can't extract message arguments:%s", err.message);
 		dbus_error_free(&err);
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(address, &peer);
 	str2ba(adapter->address, &local);
@@ -609,11 +610,11 @@ static DBusHandlerResult get_l2cap_mtu_size(DBusConnection *conn,
 	if (dbus_error_is_set(&err)) {
 		error("Can't extract message arguments:%s", err.message);
 		dbus_error_free(&err);
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	str2ba(address, &peer);
 	str2ba(adapter->address, &local);

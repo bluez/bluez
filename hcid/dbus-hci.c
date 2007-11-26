@@ -50,6 +50,7 @@
 #include "textfile.h"
 #include "manager.h"
 #include "adapter.h"
+#include "error.h"
 #include "dbus-helper.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
@@ -217,7 +218,7 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 					"Authentication Timeout");
 	case 0x17: /* too frequent pairing attempts */
 		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".RepeatedAttemps",
+					ERROR_INTERFACE ".RepeatedAttempts",
 					"Repeated Attempts");
 
 	case 0x06:

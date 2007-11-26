@@ -50,6 +50,7 @@
 #include "dbus-hci.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
+#include "error.h"
 #include "dbus-service.h"
 #include "dbus-security.h"
 #include "dbus-database.h"
@@ -109,7 +110,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 
 	dbus_message_iter_get_fixed_array(&array, &record, &len);
 	if (len <= 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	user_record = g_new0(struct record_data, 1);
 
@@ -118,21 +119,21 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 		if (!sdp_record) {
 			error("Parsing of service record failed");
 			g_free(user_record);
-			return error_failed(conn, msg, EIO);
+			return error_failed_errno(conn, msg, EIO);
 		}
 
 		if (scanned != len) {
 			error("Size mismatch of service record");
 			g_free(user_record);
 			sdp_record_free(sdp_record);
-			return error_failed(conn, msg, EIO);
+			return error_failed_errno(conn, msg, EIO);
 		}
 
 		if (add_record_to_server(sdp_record) < 0) {
 			error("Failed to register service record");
 			g_free(user_record);
 			sdp_record_free(sdp_record);
-			return error_failed(conn, msg, EIO);
+			return error_failed_errno(conn, msg, EIO);
 		}
 
 		user_record->handle = sdp_record->handle;
@@ -143,7 +144,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 						&user_record->handle) < 0) {
 			error("Failed to register service record");
 			g_free(user_record);
-			return error_failed(conn, msg, errno);
+			return error_failed_errno(conn, msg, errno);
 		}
 	}
 
@@ -175,7 +176,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	user_record = g_new0(struct record_data, 1);
 
@@ -183,7 +184,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 	if (!sdp_record) {
 		error("Parsing of XML service record failed");
 		g_free(user_record);
-		return error_failed(conn, msg, EIO);
+		return error_failed_errno(conn, msg, EIO);
 	}
 
 	if (sdp_server_enable) {
@@ -191,7 +192,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 			error("Failed to register service record");
 			g_free(user_record);
 			sdp_record_free(sdp_record);
-			return error_failed(conn, msg, EIO);
+			return error_failed_errno(conn, msg, EIO);
 		}
 
 		user_record->handle = sdp_record->handle;
@@ -200,7 +201,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 			error("Failed to register service record");
 			g_free(user_record);
 			sdp_record_free(sdp_record);
-			return error_failed(conn, msg, EIO);
+			return error_failed_errno(conn, msg, EIO);
 		}
 
 		user_record->handle = sdp_record->handle;
@@ -243,7 +244,7 @@ static DBusHandlerResult update_record(DBusConnection *conn, DBusMessage *msg,
 		if (err < 0) {
 			sdp_record_free(sdp_record);
 			error("Failed to update the service record");
-			return error_failed(conn, msg, EIO);
+			return error_failed_errno(conn, msg, EIO);
 		}
 	} else {
 		sdp_data_t *d = sdp_data_alloc(SDP_UINT32, &handle);
@@ -253,7 +254,7 @@ static DBusHandlerResult update_record(DBusConnection *conn, DBusMessage *msg,
 		sdp_record_free(sdp_record);
 		if (err < 0) {
 			error("Failed to update the service record");
-			return error_failed(conn, msg, EIO);
+			return error_failed_errno(conn, msg, EIO);
 		}
 	}
 
@@ -278,7 +279,7 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 
 	dbus_message_iter_get_fixed_array(&array, &bin_record, &size);
 	if (size <= 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	user_record = find_record(handle, dbus_message_get_sender(msg));
 	if (!user_record)
@@ -287,13 +288,13 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 	sdp_record = sdp_extract_pdu(bin_record, &scanned);
 	if (!sdp_record) {
 		error("Parsing of service record failed");
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	if (scanned != size) {
 		error("Size mismatch of service record");
 		sdp_record_free(sdp_record);
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	return update_record(conn, msg, handle, sdp_record);
@@ -312,11 +313,11 @@ static DBusHandlerResult update_service_record_from_xml(DBusConnection *conn,
 			DBUS_TYPE_UINT32, &handle,
 			DBUS_TYPE_STRING, &record,
 			DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	len = (record ? strlen(record) : 0);
 	if (len == 0)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	user_record = find_record(handle, dbus_message_get_sender(msg));
 	if (!user_record)
@@ -326,7 +327,7 @@ static DBusHandlerResult update_service_record_from_xml(DBusConnection *conn,
 	if (!sdp_record) {
 		error("Parsing of XML service record failed");
 		sdp_record_free(sdp_record);
-		return error_failed(conn, msg, EIO);
+		return error_failed_errno(conn, msg, EIO);
 	}
 
 	return update_record(conn, msg, handle, sdp_record);
@@ -342,7 +343,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_UINT32, &handle, DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	sender = dbus_message_get_sender(msg);
 
@@ -380,12 +381,12 @@ static DBusHandlerResult register_service(DBusConnection *conn,
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &ident,
 			DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &desc,
 						DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	sender = dbus_message_get_sender(msg);
 
 	if (service_register(conn, sender, ident, name, desc) < 0)
-		return error_failed(conn, msg, EIO);
+		return error_failed_errno(conn, msg, EIO);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -403,7 +404,7 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &ident,
 						DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	sender = dbus_message_get_sender(msg);
 
@@ -415,7 +416,7 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 		return error_not_authorized(conn, msg);
 
 	if (service_unregister(conn, service) < 0)
-		return error_failed(conn, msg, EIO);
+		return error_failed_errno(conn, msg, EIO);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -435,7 +436,7 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	sender = dbus_message_get_sender(msg);
 
@@ -478,7 +479,7 @@ static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg);
+		return error_invalid_arguments(conn, msg, NULL);
 
 	sender = dbus_message_get_sender(msg);
 
