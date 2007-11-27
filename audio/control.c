@@ -447,8 +447,8 @@ static int uinput_create(char *name)
 
 	ioctl(fd, UI_SET_KEYBIT, KEY_PLAYPAUSE);
 	ioctl(fd, UI_SET_KEYBIT, KEY_STOP);
-	ioctl(fd, UI_SET_KEYBIT, KEY_NEXT);
-	ioctl(fd, UI_SET_KEYBIT, KEY_PREVIOUS);
+	ioctl(fd, UI_SET_KEYBIT, KEY_NEXTSONG);
+	ioctl(fd, UI_SET_KEYBIT, KEY_PREVIOUSSONG);
 	ioctl(fd, UI_SET_KEYBIT, KEY_REWIND);
 	ioctl(fd, UI_SET_KEYBIT, KEY_FORWARD);
 
@@ -560,11 +560,11 @@ static void handle_panel_passthrough(struct avctp *session,
 		break;
 	case NEXT_OP:
 		debug("AVRCP: NEXT %s", status);
-		send_key(session->uinput, KEY_NEXT, pressed);
+		send_key(session->uinput, KEY_NEXTSONG, pressed);
 		break;
 	case PREV_OP:
 		debug("AVRCP: PREV %s", status);
-		send_key(session->uinput, KEY_PREVIOUS, pressed);
+		send_key(session->uinput, KEY_PREVIOUSSONG, pressed);
 		break;
 	case REWIND_OP:
 		debug("AVRCP: REWIND %s", status);
