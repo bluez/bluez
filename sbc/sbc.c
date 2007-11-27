@@ -1079,28 +1079,25 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 		frame->join = 0;
 
 		for (sb = 0; sb < frame->subbands - 1; sb++) {
-			/* Calculate joint stereo signal */
+			scale_factor_j[0] = 0;
+			scalefactor_j[0] = 2;
+			scale_factor_j[1] = 0;
+			scalefactor_j[1] = 2;
+
 			for (blk = 0; blk < frame->blocks; blk++) {
+				/* Calculate joint stereo signal */
 				sb_sample_j[blk][0] =
 					(frame->sb_sample_f[blk][0][sb] +
 						frame->sb_sample_f[blk][1][sb]) >> 1;
 				sb_sample_j[blk][1] =
 					(frame->sb_sample_f[blk][0][sb] -
 						frame->sb_sample_f[blk][1][sb]) >> 1;
-			}
 
-			/* calculate scale_factor_j and scalefactor_j for joint case */
-			scale_factor_j[0] = 0;
-			scalefactor_j[0] = 2;
-			for (blk = 0; blk < frame->blocks; blk++) {
+				/* calculate scale_factor_j and scalefactor_j for joint case */
 				while (scalefactor_j[0] < fabs(sb_sample_j[blk][0])) {
 					scale_factor_j[0]++;
 					scalefactor_j[0] *= 2;
 				}
-			}
-			scale_factor_j[1] = 0;
-			scalefactor_j[1] = 2;
-			for (blk = 0; blk < frame->blocks; blk++) {
 				while (scalefactor_j[1] < fabs(sb_sample_j[blk][1])) {
 					scale_factor_j[1]++;
 					scalefactor_j[1] *= 2;
