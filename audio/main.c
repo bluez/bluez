@@ -53,7 +53,7 @@ static struct enabled_interfaces enabled = {
 	.gateway	= FALSE,
 	.sink		= TRUE,
 	.source		= FALSE,
-	.control	= FALSE,
+	.control	= TRUE,
 	.target		= FALSE,
 };
 
