@@ -1071,52 +1071,56 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 	if (frame->channel_mode == JOINT_STEREO) {
 		/* like frame->sb_sample but joint stereo */
-		int32_t sb_sample_j[16][2][7];
+		int32_t sb_sample_j[16][2];
 		/* scalefactor and scale_factor in joint case */
-		int scalefactor_j[2][7], scale_factor_j[2][7];
+		u_int32_t scalefactor_j[2];
+		uint8_t scale_factor_j[2];
 
-		/* Calculate joint stereo signal */
+		frame->join = 0;
+
 		for (sb = 0; sb < frame->subbands - 1; sb++) {
+			/* Calculate joint stereo signal */
 			for (blk = 0; blk < frame->blocks; blk++) {
-				sb_sample_j[blk][0][sb] =
+				sb_sample_j[blk][0] =
 					(frame->sb_sample_f[blk][0][sb] +
 						frame->sb_sample_f[blk][1][sb]) >> 1;
-				sb_sample_j[blk][1][sb] =
+				sb_sample_j[blk][1] =
 					(frame->sb_sample_f[blk][0][sb] -
 						frame->sb_sample_f[blk][1][sb]) >> 1;
 			}
-		}
 
-		/* calculate scale_factor_j and scalefactor_j for joint case */
-		for (ch = 0; ch < 2; ch++) {
-			for (sb = 0; sb < frame->subbands - 1; sb++) {
-				scale_factor_j[ch][sb] = 0;
-				scalefactor_j[ch][sb] = 2;
-				for (blk = 0; blk < frame->blocks; blk++) {
-					while (scalefactor_j[ch][sb] < fabs(sb_sample_j[blk][ch][sb])) {
-						scale_factor_j[ch][sb]++;
-						scalefactor_j[ch][sb] *= 2;
-					}
+			/* calculate scale_factor_j and scalefactor_j for joint case */
+			scale_factor_j[0] = 0;
+			scalefactor_j[0] = 2;
+			for (blk = 0; blk < frame->blocks; blk++) {
+				while (scalefactor_j[0] < fabs(sb_sample_j[blk][0])) {
+					scale_factor_j[0]++;
+					scalefactor_j[0] *= 2;
 				}
 			}
-		}
+			scale_factor_j[1] = 0;
+			scalefactor_j[1] = 2;
+			for (blk = 0; blk < frame->blocks; blk++) {
+				while (scalefactor_j[1] < fabs(sb_sample_j[blk][1])) {
+					scale_factor_j[1]++;
+					scalefactor_j[1] *= 2;
+				}
+			}
 
-		/* decide which subbands to join */
-		frame->join = 0;
-		for (sb = 0; sb < frame->subbands - 1; sb++) {
+			/* decide whether to join this subband */
 			if ((scalefactor[0][sb] + scalefactor[1][sb]) >
-					(scalefactor_j[0][sb] + scalefactor_j[1][sb]) ) {
+					(scalefactor_j[0] + scalefactor_j[1]) ) {
 				/* use joint stereo for this subband */
 				frame->join |= 1 << sb;
-				frame->scale_factor[0][sb] = scale_factor_j[0][sb];
-				frame->scale_factor[1][sb] = scale_factor_j[1][sb];
-				scalefactor[0][sb] = scalefactor_j[0][sb];
-				scalefactor[1][sb] = scalefactor_j[1][sb];
+				frame->scale_factor[0][sb] = scale_factor_j[0];
+				frame->scale_factor[1][sb] = scale_factor_j[1];
+				scalefactor[0][sb] = scalefactor_j[0];
+				scalefactor[1][sb] = scalefactor_j[1];
 				for (blk = 0; blk < frame->blocks; blk++) {
 					frame->sb_sample_f[blk][0][sb] =
-							sb_sample_j[blk][0][sb];
+							sb_sample_j[blk][0];
 					frame->sb_sample_f[blk][1][sb] =
-							sb_sample_j[blk][1][sb];
+							sb_sample_j[blk][1];
 				}
 			}
 		}
