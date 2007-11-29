@@ -969,6 +969,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 	/* Sampling frequency as temporary value for table lookup */
 	uint8_t sf;
+	uint16_t audio_sample;
 
 	int ch, sb, blk, bit;	/* channel, subband, block and bit counters */
 	int bits[2][8];		/* bits distribution */
@@ -1153,19 +1154,19 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 		for (ch = 0; ch < frame->channels; ch++) {
 			for (sb = 0; sb < frame->subbands; sb++) {
 				if (levels[ch][sb] > 0)
-					frame->audio_sample[blk][ch][sb] =
+					audio_sample =
 						(uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >>
 									(frame->scale_factor[ch][sb] + 1)) +
 								levels[ch][sb]) >> 1);
 				else
-					frame->audio_sample[blk][ch][sb] = 0;
+					audio_sample = 0;
 
 				if (bits[ch][sb] != 0) {
 					for (bit = 0; bit < bits[ch][sb]; bit++) {
 						int b;	/* A bit */
 						if (produced % 8 == 0)
 							data[produced >> 3] = 0;
-						b = ((frame->audio_sample[blk][ch][sb]) >>
+						b = ((audio_sample) >>
 								(bits[ch][sb] - bit - 1)) & 0x01;
 						data[produced >> 3] |= b << (7 - (produced % 8));
 						produced++;
@@ -1175,10 +1176,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 		}
 	}
 
-	if (produced % 8 != 0)
-		produced += 8 - (produced % 8);
-
-	return produced >> 3;
+	return (produced + 7) >> 3;
 }
 
 struct sbc_priv {
