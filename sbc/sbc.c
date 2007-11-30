@@ -1153,15 +1153,11 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	for (blk = 0; blk < frame->blocks; blk++) {
 		for (ch = 0; ch < frame->channels; ch++) {
 			for (sb = 0; sb < frame->subbands; sb++) {
-				if (levels[ch][sb] > 0)
+				if (levels[ch][sb] > 0) {
 					audio_sample =
 						(uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >>
 									(frame->scale_factor[ch][sb] + 1)) +
 								levels[ch][sb]) >> 1);
-				else
-					audio_sample = 0;
-
-				if (bits[ch][sb] != 0) {
 					audio_sample <<= 16 - bits[ch][sb];
 					for (bit = 0; bit < bits[ch][sb]; bit++) {
 						data[produced >> 3] <<= 1;
