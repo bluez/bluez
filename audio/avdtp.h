@@ -221,6 +221,8 @@ gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 
 gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 				struct avdtp_service_capability *cap);
+gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
+					GSList *caps);
 
 int avdtp_set_configuration(struct avdtp *session,
 				struct avdtp_remote_sep *rsep,

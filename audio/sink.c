@@ -159,7 +159,7 @@ static gboolean stream_setup_retry(gpointer user_data)
 
 static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
-					void *user_data, struct avdtp_error *err)
+					struct avdtp_error *err, void *user_data)
 {
 	struct sink *sink = user_data;
 	struct pending_request *pending;
@@ -190,23 +190,212 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	}
 }
 
+static uint8_t default_bitpool(uint8_t freq, uint8_t mode)
+{
+	switch (freq) {
+	case A2DP_SAMPLING_FREQ_16000:
+	case A2DP_SAMPLING_FREQ_32000:
+		return 53;
+	case A2DP_SAMPLING_FREQ_44100:
+		switch (mode) {
+		case A2DP_CHANNEL_MODE_MONO:
+		case A2DP_CHANNEL_MODE_DUAL_CHANNEL:
+			return 31;
+		case A2DP_CHANNEL_MODE_STEREO:
+		case A2DP_CHANNEL_MODE_JOINT_STEREO:
+			return 53;
+		default:
+			error("Invalid channel mode %u", mode);
+			return 53;
+		}
+	case A2DP_SAMPLING_FREQ_48000:
+		switch (mode) {
+		case A2DP_CHANNEL_MODE_MONO:
+		case A2DP_CHANNEL_MODE_DUAL_CHANNEL:
+			return 29;
+		case A2DP_CHANNEL_MODE_STEREO:
+		case A2DP_CHANNEL_MODE_JOINT_STEREO:
+			return 51;
+		default:
+			error("Invalid channel mode %u", mode);
+			return 51;
+		}
+	default:
+		error("Invalid sampling freq %u", freq);
+		return 53;
+	}
+}
+
+static gboolean select_sbc_params(struct sbc_codec_cap *cap,
+					struct sbc_codec_cap *supported)
+{
+	unsigned int max_bitpool, min_bitpool;
+
+	memset(cap, 0, sizeof(struct sbc_codec_cap));
+
+	cap->cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
+	cap->cap.media_codec_type = A2DP_CODEC_SBC;
+
+	if (supported->frequency & A2DP_SAMPLING_FREQ_44100)
+		cap->frequency = A2DP_SAMPLING_FREQ_44100;
+	else if (supported->frequency & A2DP_SAMPLING_FREQ_48000)
+		cap->frequency = A2DP_SAMPLING_FREQ_48000;
+	else if (supported->frequency & A2DP_SAMPLING_FREQ_32000)
+		cap->frequency = A2DP_SAMPLING_FREQ_32000;
+	else if (supported->frequency & A2DP_SAMPLING_FREQ_16000)
+		cap->frequency = A2DP_SAMPLING_FREQ_16000;
+	else {
+		error("No supported frequencies");
+		return FALSE;
+	}
+
+	if (supported->channel_mode & A2DP_CHANNEL_MODE_JOINT_STEREO)
+		cap->channel_mode = A2DP_CHANNEL_MODE_JOINT_STEREO;
+	else if (supported->channel_mode & A2DP_CHANNEL_MODE_STEREO)
+		cap->channel_mode = A2DP_CHANNEL_MODE_STEREO;
+	else if (supported->channel_mode & A2DP_CHANNEL_MODE_DUAL_CHANNEL)
+		cap->channel_mode = A2DP_CHANNEL_MODE_DUAL_CHANNEL;
+	else if (supported->channel_mode & A2DP_CHANNEL_MODE_MONO)
+		cap->channel_mode = A2DP_CHANNEL_MODE_MONO;
+	else {
+		error("No supported channel modes");
+		return FALSE;
+	}
+
+	if (supported->block_length & A2DP_BLOCK_LENGTH_16)
+		cap->block_length = A2DP_BLOCK_LENGTH_16;
+	else if (supported->block_length & A2DP_BLOCK_LENGTH_12)
+		cap->block_length = A2DP_BLOCK_LENGTH_12;
+	else if (supported->block_length & A2DP_BLOCK_LENGTH_8)
+		cap->block_length = A2DP_BLOCK_LENGTH_8;
+	else if (supported->block_length & A2DP_BLOCK_LENGTH_4)
+		cap->block_length = A2DP_BLOCK_LENGTH_4;
+	else {
+		error("No supported block lengths");
+		return FALSE;
+	}
+
+	if (supported->subbands & A2DP_SUBBANDS_8)
+		cap->subbands = A2DP_SUBBANDS_8;
+	else if (supported->subbands & A2DP_SUBBANDS_4)
+		cap->subbands = A2DP_SUBBANDS_4;
+	else {
+		error("No supported subbands");
+		return FALSE;
+	}
+
+	if (supported->allocation_method & A2DP_ALLOCATION_LOUDNESS)
+		cap->allocation_method = A2DP_ALLOCATION_LOUDNESS;
+	else if (supported->allocation_method & A2DP_ALLOCATION_SNR)
+		cap->allocation_method = A2DP_ALLOCATION_SNR;
+
+	min_bitpool = MAX(MIN_BITPOOL, supported->min_bitpool);
+	max_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),
+							supported->max_bitpool);
+
+	cap->min_bitpool = min_bitpool;
+	cap->max_bitpool = max_bitpool;
+
+	return TRUE;
+}
+
+static gboolean select_capabilities(struct avdtp *session,
+					struct avdtp_remote_sep *rsep,
+					GSList **caps)
+{
+	struct avdtp_service_capability *media_transport, *media_codec;
+	struct sbc_codec_cap sbc_cap;
+
+	media_codec = avdtp_get_codec(rsep);
+	if (!media_codec)
+		return FALSE;
+
+	select_sbc_params(&sbc_cap, (struct sbc_codec_cap *) media_codec->data);
+
+	media_transport = avdtp_service_cap_new(AVDTP_MEDIA_TRANSPORT,
+						NULL, 0);
+
+	*caps = g_slist_append(*caps, media_transport);
+
+	media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
+						sizeof(sbc_cap));
+
+	*caps = g_slist_append(*caps, media_codec);
+
+
+	return TRUE;
+}
+
+static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp_error *err,
+				void *user_data)
+{
+	struct sink *sink = user_data;
+	struct pending_request *pending;
+	struct avdtp_local_sep *lsep;
+	struct avdtp_remote_sep *rsep;
+	GSList *caps = NULL;
+	int id;
+
+	pending = sink->connect;
+
+	if (err) {
+		avdtp_unref(sink->session);
+		sink->session = NULL;
+		if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
+				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
+			debug("connect:connect XCASE detected");
+			g_timeout_add(STREAM_SETUP_RETRY_TIMER,
+					stream_setup_retry, sink);
+		} else
+			goto failed;
+		return;
+	}
+
+	debug("Discovery complete");
+
+	if (avdtp_get_seps(session, AVDTP_SEP_TYPE_SINK, AVDTP_MEDIA_TYPE_AUDIO,
+				A2DP_CODEC_SBC, &lsep, &rsep) < 0) {
+		error("No matching ACP and INT SEPs found");
+		goto failed;
+	}
+
+	if (!select_capabilities(session, rsep, &caps)) {
+		error("Unable to select remote SEP capabilities");
+		goto failed;
+	}
+
+	id = a2dp_source_config(sink->session, stream_setup_complete,
+				caps, sink);
+	if (id == 0)
+		goto failed;
+
+	pending->id = id;
+	return;
+
+failed:
+	pending_request_free(pending);
+	sink->connect = NULL;
+	avdtp_unref(sink->session);
+	sink->session = NULL;
+	error_failed(pending->conn, pending->msg, "Stream setup failed");
+}
+
 static DBusHandlerResult sink_connect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct device *dev = data;
 	struct sink *sink = dev->sink;
 	struct pending_request *pending;
-	unsigned int id;
 
 	if (!sink->session)
 		sink->session = avdtp_get(&dev->src, &dev->dst);
 
 	if (!sink->session)
-		return error_failed(conn, msg,
-						"Unable to get a session");
+		return error_failed(conn, msg, "Unable to get a session");
 
 	if (sink->connect || sink->disconnect)
-		return error_in_progress(conn, msg, "Device connection already in progress");
+		return error_in_progress(conn, msg, "Device connection"
+					"already in progress");
 
 	if (sink->state >= AVDTP_STATE_OPEN)
 		return error_already_connected(conn, msg);
@@ -216,20 +405,9 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 	pending->msg = dbus_message_ref(msg);
 	sink->connect = pending;
 
-	id = a2dp_source_request_stream(sink->session, FALSE,
-					stream_setup_complete, sink,
-					NULL);
-	if (id == 0) {
-		pending_request_free(pending);
-		sink->connect = NULL;
-		avdtp_unref(sink->session);
-		sink->session = NULL;
-		return error_failed(conn, msg, "Failed to request a stream");
-	}
+	avdtp_discover(sink->session, discovery_complete, sink);
 
 	debug("stream creation in progress");
-
-	pending->id = id;
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }

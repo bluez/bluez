@@ -1825,16 +1825,20 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 				resp->seps[i].media_type, resp->seps[i].inuse);
 
 		/* Skip SEP's which are in use */
+/*
 		if (resp->seps[i].inuse)
 			continue;
+*/
 
 		sep = find_remote_sep(session->seps, resp->seps[i].seid);
 		if (!sep) {
 			sep = g_new0(struct avdtp_remote_sep, 1);
 			session->seps = g_slist_append(session->seps, sep);
 		}
+/*
 		else if (sep && sep->stream)
 			continue;
+*/
 
 		sep->seid = resp->seps[i].seid;
 		sep->type = resp->seps[i].type;
@@ -2275,6 +2279,21 @@ gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 	return FALSE;
 }
 
+gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
+					GSList *caps)
+{
+	GSList *l;
+
+	for (l = caps; l; l = g_slist_next(l)) {
+		struct avdtp_service_capability *cap = l->data;
+
+		if (!avdtp_stream_has_capability(stream, cap))
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 					uint16_t *imtu, uint16_t *omtu,
 					GSList **caps)
@@ -2330,6 +2349,9 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 							void *data, int length)
 {
 	struct avdtp_service_capability *cap;
+
+	if (category < AVDTP_MEDIA_TRANSPORT || category > AVDTP_MEDIA_CODEC)
+		return NULL;
 
 	cap = g_malloc(sizeof(struct avdtp_service_capability) + length);
 	cap->category = category;
@@ -2457,6 +2479,18 @@ int avdtp_get_configuration(struct avdtp *session, struct avdtp_stream *stream)
 	return send_request(session, FALSE, stream, &req, sizeof(req));
 }
 
+static void copy_capabilities(gpointer data, gpointer user_data)
+{
+	struct avdtp_service_capability *src_cap = data;
+	struct avdtp_service_capability *dst_cap;
+	GSList **l = user_data;
+
+	dst_cap = avdtp_service_cap_new(src_cap->category, src_cap->data,
+					src_cap->length);
+
+	*l = g_slist_append(*l, dst_cap);
+}
+
 int avdtp_set_configuration(struct avdtp *session,
 				struct avdtp_remote_sep *rsep,
 				struct avdtp_local_sep *lsep,
@@ -2484,7 +2518,8 @@ int avdtp_set_configuration(struct avdtp *session,
 	new_stream->session = session;
 	new_stream->lsep = lsep;
 	new_stream->rseid = rsep->seid;
-	new_stream->caps = caps;
+
+	g_slist_foreach(caps, copy_capabilities, &new_stream->caps);
 
 	/* Calculate total size of request */
 	for (l = caps, caps_len = 0; l != NULL; l = g_slist_next(l)) {

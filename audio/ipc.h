@@ -115,7 +115,6 @@ struct bt_getcapabilities_req {
 	bt_audio_msg_header_t	h;
 	char			device[18];	/* Address of the remote Device */
 	uint8_t			transport;	/* Requested transport */
-	uint8_t			access_mode;	/* Requested access mode */
 } __attribute__ ((packed));
 
 /* BT_GETCAPABILITIES_RSP */
@@ -165,8 +164,6 @@ struct bt_getcapabilities_rsp {
 	bt_audio_msg_header_t	h;
 	uint8_t			posix_errno;
 	uint8_t			transport;		/* Granted transport */
-	uint8_t			access_mode;		/* Granted access mode */
-	uint16_t		link_mtu;		/* Max length that transport supports */
 	sbc_capabilities_t	sbc_capabilities;	/* A2DP only */
 	mpeg_capabilities_t	mpeg_capabilities;	/* A2DP only */
 	uint16_t		sampling_rate;		/* SCO only */
@@ -176,6 +173,8 @@ struct bt_getcapabilities_rsp {
 struct bt_setconfiguration_req {
 	bt_audio_msg_header_t	h;
 	char			device[18];		/* Address of the remote Device */
+	uint8_t			transport;		/* Requested transport */
+	uint8_t			access_mode;		/* Requested access mode */
 	sbc_capabilities_t	sbc_capabilities;	/* A2DP only - only one of this field
 							and next one must be filled */
 	mpeg_capabilities_t	mpeg_capabilities;	/* A2DP only */
@@ -184,6 +183,9 @@ struct bt_setconfiguration_req {
 /* BT_SETCONFIGURATION_RSP */
 struct bt_setconfiguration_rsp {
 	bt_audio_msg_header_t	h;
+	uint8_t			transport;		/* Granted transport */
+	uint8_t			access_mode;		/* Granted access mode */
+	uint16_t		link_mtu;		/* Max length that transport supports */
 	uint8_t			posix_errno;
 } __attribute__ ((packed));
 

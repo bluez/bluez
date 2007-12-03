@@ -69,6 +69,17 @@
 #define SCO_RXBUFS 0x04
 #endif
 
+#ifndef MIN
+# define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+
+#ifndef MAX
+# define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
+
+#define MAX_BITPOOL 64
+#define MIN_BITPOOL 2
+
 /* adapted from glibc sys/time.h timersub() macro */
 #define priv_timespecsub(a, b, result)					\
 	do {								\
@@ -411,6 +422,120 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 	return write(data->pipefd[1], &c, 1);
 }
 
+static uint8_t default_bitpool(uint8_t freq, uint8_t mode)
+{
+	switch (freq) {
+	case BT_A2DP_SAMPLING_FREQ_16000:
+	case BT_A2DP_SAMPLING_FREQ_32000:
+		return 53;
+	case BT_A2DP_SAMPLING_FREQ_44100:
+		switch (mode) {
+		case BT_A2DP_CHANNEL_MODE_MONO:
+		case BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL:
+			return 31;
+		case BT_A2DP_CHANNEL_MODE_STEREO:
+		case BT_A2DP_CHANNEL_MODE_JOINT_STEREO:
+			return 53;
+		default:
+			DBG("Invalid channel mode %u", mode);
+			return 53;
+		}
+	case BT_A2DP_SAMPLING_FREQ_48000:
+		switch (mode) {
+		case BT_A2DP_CHANNEL_MODE_MONO:
+		case BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL:
+			return 29;
+		case BT_A2DP_CHANNEL_MODE_STEREO:
+		case BT_A2DP_CHANNEL_MODE_JOINT_STEREO:
+			return 51;
+		default:
+			DBG("Invalid channel mode %u", mode);
+			return 51;
+		}
+	default:
+		DBG("Invalid sampling freq %u", freq);
+		return 53;
+	}
+}
+
+static int select_sbc_params(sbc_capabilities_t *cap, unsigned int rate,
+				unsigned int channels)
+{
+	unsigned int max_bitpool, min_bitpool;
+
+	switch (rate) {
+	case 48000:
+		cap->frequency = BT_A2DP_SAMPLING_FREQ_48000;
+		break;
+	case 44100:
+		cap->frequency = BT_A2DP_SAMPLING_FREQ_44100;
+		break;
+	case 32000:
+		cap->frequency = BT_A2DP_SAMPLING_FREQ_32000;
+		break;
+	case 16000:
+		cap->frequency = BT_A2DP_SAMPLING_FREQ_16000;
+		break;
+	default:
+		DBG("Rate %d not supported", rate);
+		return -1;
+	}
+
+	if (channels == 2) {
+		if (cap->channel_mode & BT_A2DP_CHANNEL_MODE_JOINT_STEREO)
+			cap->channel_mode = BT_A2DP_CHANNEL_MODE_JOINT_STEREO;
+		else if (cap->channel_mode & BT_A2DP_CHANNEL_MODE_STEREO)
+			cap->channel_mode = BT_A2DP_CHANNEL_MODE_STEREO;
+		else if (cap->channel_mode & BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL)
+			cap->channel_mode = BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL;
+	} else {
+		if (cap->channel_mode & BT_A2DP_CHANNEL_MODE_MONO)
+			cap->channel_mode = BT_A2DP_CHANNEL_MODE_MONO;
+	}
+
+	if (!cap->channel_mode) {
+		DBG("No supported channel modes");
+		return -1;
+	}
+
+	if (cap->block_length & BT_A2DP_BLOCK_LENGTH_16)
+		cap->block_length = BT_A2DP_BLOCK_LENGTH_16;
+	else if (cap->block_length & BT_A2DP_BLOCK_LENGTH_12)
+		cap->block_length = BT_A2DP_BLOCK_LENGTH_12;
+	else if (cap->block_length & BT_A2DP_BLOCK_LENGTH_8)
+		cap->block_length = BT_A2DP_BLOCK_LENGTH_8;
+	else if (cap->block_length & BT_A2DP_BLOCK_LENGTH_4)
+		cap->block_length = BT_A2DP_BLOCK_LENGTH_4;
+	else {
+		DBG("No supported block lengths");
+		return -1;
+	}
+
+	if (cap->subbands & BT_A2DP_SUBBANDS_8)
+		cap->subbands = BT_A2DP_SUBBANDS_8;
+	else if (cap->subbands & BT_A2DP_SUBBANDS_4)
+		cap->subbands = BT_A2DP_SUBBANDS_4;
+	else {
+		DBG("No supported subbands");
+		return -1;
+	}
+
+	if (cap->allocation_method & BT_A2DP_ALLOCATION_LOUDNESS)
+		cap->allocation_method = BT_A2DP_ALLOCATION_LOUDNESS;
+	else if (cap->allocation_method & BT_A2DP_ALLOCATION_SNR)
+		cap->allocation_method = BT_A2DP_ALLOCATION_SNR;
+
+	min_bitpool = MAX(MIN_BITPOOL, cap->min_bitpool);
+	max_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),
+							cap->max_bitpool);
+
+	cap->min_bitpool = min_bitpool;
+	cap->max_bitpool = max_bitpool;
+
+	return 0;
+}
+
+
 static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 					snd_pcm_hw_params_t *params)
 {
@@ -419,7 +544,8 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
 	struct bt_setconfiguration_req *setconf_req = (void*) buf;
 	struct bt_setconfiguration_rsp *setconf_rsp = (void*) buf;
-	int err;
+	unsigned int rate, channels;
+	int err, dir;
 	sbc_capabilities_t active_capabilities;
 
 	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
@@ -428,11 +554,20 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	/* FIXME: this needs to be really implemented (take into account
 	real asoundrc settings + ALSA hw settings ) once server side sends us
 	more than one possible configuration */
+	snd_pcm_hw_params_get_rate(params, &rate, &dir);
+	snd_pcm_hw_params_get_channels(params, &channels);
+	err = select_sbc_params(&a2dp->sbc_capabilities, rate, channels);
+	if (err < 0)
+		return err;
+
 	active_capabilities = a2dp->sbc_capabilities;
 
 	memset(setconf_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
 	setconf_req->h.msg_type = BT_SETCONFIGURATION_REQ;
 	setconf_req->sbc_capabilities = active_capabilities;
+	setconf_req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
+			BT_CAPABILITIES_ACCESS_MODE_WRITE :
+			BT_CAPABILITIES_ACCESS_MODE_READ);
 
 	err = audioservice_send(data->server.fd, &setconf_req->h);
 	if (err < 0)
@@ -450,13 +585,16 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 		return -setconf_rsp->posix_errno;
 	}
 
+	data->transport = setconf_rsp->transport;
+	data->link_mtu = setconf_rsp->link_mtu;
+
 	/* Setup SBC encoder now we agree on parameters */
 	if (a2dp->sbc_initialized)
-		sbc_finish(&a2dp->sbc);
-
-	/* FIXME: init using flags? */
-	sbc_init(&a2dp->sbc, 0);
+		sbc_reinit(&a2dp->sbc, 0);
+	else
+		sbc_init(&a2dp->sbc, 0);
 	a2dp->sbc_initialized = 1;
+
 	if (active_capabilities.frequency & BT_A2DP_SAMPLING_FREQ_16000)
 		a2dp->sbc.rate = 16000;
 
@@ -1327,11 +1465,11 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 		getcaps_req->transport = alsa_conf->transport;
 	else
 		getcaps_req->transport = BT_CAPABILITIES_TRANSPORT_ANY;
-
+/*
 	getcaps_req->access_mode = (stream == SND_PCM_STREAM_PLAYBACK ?
 			BT_CAPABILITIES_ACCESS_MODE_WRITE :
 			BT_CAPABILITIES_ACCESS_MODE_READ);
-
+*/
 	err = audioservice_send(data->server.fd, &getcaps_req->h);
 	if (err < 0)
 		goto failed;
@@ -1348,7 +1486,9 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	}
 
 	data->transport = getcaps_rsp->transport;
+/*
 	data->link_mtu = getcaps_rsp->link_mtu;
+*/
 	if (getcaps_rsp->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
 		data->a2dp.sbc_capabilities = getcaps_rsp->sbc_capabilities;
 

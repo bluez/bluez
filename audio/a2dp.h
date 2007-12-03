@@ -48,6 +48,9 @@
 #define A2DP_ALLOCATION_SNR		(1 << 1)
 #define A2DP_ALLOCATION_LOUDNESS	1
 
+#define MAX_BITPOOL 64
+#define MIN_BITPOOL 2
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
 struct sbc_codec_cap {
@@ -80,21 +83,24 @@ struct sbc_codec_cap {
 
 struct a2dp_sep;
 
-typedef void (*a2dp_stream_cb_t) (struct avdtp *session, struct a2dp_sep *sep,
+typedef void (*a2dp_config_cb_t) (struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
-					void *user_data,
-					struct avdtp_error *err);
+					struct avdtp_error *err,
+					void *user_data);
+typedef void (*a2dp_stream_cb_t) (struct avdtp *session,
+					struct avdtp_error *err,
+					void *user_data);
 
 int a2dp_init(DBusConnection *conn, int sources, int sinks);
 void a2dp_exit(void);
 
-unsigned int a2dp_source_request_stream(struct avdtp *session,
-					gboolean start, a2dp_stream_cb_t cb,
-					void *user_data,
-					struct avdtp_service_capability *media_codec);
-gboolean a2dp_source_cancel_stream(struct device *dev, unsigned int id);
+unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
+				GSList *caps, void *user_data);
+unsigned int a2dp_source_resume(struct avdtp *session, struct a2dp_sep *sep,
+				a2dp_stream_cb_t cb, void *user_data);
+unsigned int a2dp_source_suspend(struct avdtp *session, struct a2dp_sep *sep,
+				a2dp_stream_cb_t cb, void *user_data);
+gboolean a2dp_source_cancel(struct device *dev, unsigned int id);
 
 gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session);
 gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session);
-gboolean a2dp_source_suspend(struct device *dev, struct avdtp *session);
-gboolean a2dp_source_start_stream(struct device *dev, struct avdtp *session);
