@@ -74,10 +74,16 @@ extern "C" {
 #define BT_AUDIO_IPC_PACKET_SIZE   128
 #define BT_IPC_SOCKET_NAME "\0/org/bluez/audio"
 
-/* Generic message header definition */
+/* Generic message header definition, except for RSP messages */
 typedef struct {
 	uint8_t msg_type;
 } __attribute__ ((packed)) bt_audio_msg_header_t;
+
+/* Generic message header definition, for all RSP messages */
+typedef struct {
+	bt_audio_msg_header_t	msg_h;
+	uint8_t			posix_errno;
+} __attribute__ ((packed)) bt_audio_rsp_msg_header_t;
 
 /* Messages list */
 #define BT_GETCAPABILITIES_REQ		0
@@ -161,12 +167,11 @@ typedef struct {
 } __attribute__ ((packed)) mpeg_capabilities_t;
 
 struct bt_getcapabilities_rsp {
-	bt_audio_msg_header_t	h;
-	uint8_t			posix_errno;
-	uint8_t			transport;		/* Granted transport */
-	sbc_capabilities_t	sbc_capabilities;	/* A2DP only */
-	mpeg_capabilities_t	mpeg_capabilities;	/* A2DP only */
-	uint16_t		sampling_rate;		/* SCO only */
+	bt_audio_rsp_msg_header_t	rsp_h;
+	uint8_t				transport;	   /* Granted transport */
+	sbc_capabilities_t		sbc_capabilities;  /* A2DP only */
+	mpeg_capabilities_t		mpeg_capabilities; /* A2DP only */
+	uint16_t			sampling_rate;	   /* SCO only */
 } __attribute__ ((packed));
 
 /* BT_SETCONFIGURATION_REQ */
@@ -182,11 +187,10 @@ struct bt_setconfiguration_req {
 
 /* BT_SETCONFIGURATION_RSP */
 struct bt_setconfiguration_rsp {
-	bt_audio_msg_header_t	h;
-	uint8_t			transport;		/* Granted transport */
-	uint8_t			access_mode;		/* Granted access mode */
-	uint16_t		link_mtu;		/* Max length that transport supports */
-	uint8_t			posix_errno;
+	bt_audio_rsp_msg_header_t	rsp_h;
+	uint8_t				transport;	/* Granted transport */
+	uint8_t				access_mode;	/* Granted access mode */
+	uint16_t			link_mtu;	/* Max length that transport supports */
 } __attribute__ ((packed));
 
 /* BT_STREAMSTART_REQ */
@@ -199,14 +203,13 @@ struct bt_streamstart_req {
 
 /* BT_STREAMSTART_RSP */
 struct bt_streamstart_rsp {
-	bt_audio_msg_header_t	h;
-	uint8_t			posix_errno;
+	bt_audio_rsp_msg_header_t	rsp_h;
 } __attribute__ ((packed));
 
 /* BT_STREAMFD_IND */
 /* This message is followed by one byte of data containing the stream data fd
    as ancilliary data */
-struct bt_datafd_ind {
+struct bt_streamfd_ind {
 	bt_audio_msg_header_t	h;
 } __attribute__ ((packed));
 
@@ -217,8 +220,7 @@ struct bt_streamstop_req {
 
 /* BT_STREAMSTOP_RSP */
 struct bt_streamstop_rsp {
-	bt_audio_msg_header_t	h;
-	uint8_t			posix_errno;
+	bt_audio_rsp_msg_header_t	rsp_h;
 } __attribute__ ((packed));
 
 /* BT_STREAMSUSPEND_IND */
@@ -255,10 +257,9 @@ struct bt_control_req {
 
 /* BT_CONTROL_RSP */
 struct bt_control_rsp {
-	bt_audio_msg_header_t	h;
-	uint8_t			posix_errno;
-	uint8_t			mode;		/* Control Mode */
-	uint8_t			key;		/* Control Key */
+	bt_audio_rsp_msg_header_t	rsp_h;
+	uint8_t				mode;	/* Control Mode */
+	uint8_t				key;	/* Control Key */
 } __attribute__ ((packed));
 
 /* BT_CONTROL_IND */

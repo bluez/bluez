@@ -161,13 +161,13 @@ static void unix_ipc_sendmsg(struct unix_client *client,
 static void unix_ipc_error(struct unix_client *client, int type, int err)
 {
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
-	struct bt_getcapabilities_rsp *rsp = (void *) buf;
+	bt_audio_rsp_msg_header_t *rsp_hdr = (void *) buf;
 
 	memset(buf, 0, sizeof(buf));
-	rsp->h.msg_type = type;
-	rsp->posix_errno = err;
+	rsp_hdr->msg_h.msg_type = type;
+	rsp_hdr->posix_errno = err;
 
-	unix_ipc_sendmsg(client, &rsp->h);
+	unix_ipc_sendmsg(client, &rsp_hdr->msg_h);
 }
 
 static service_type_t select_service(struct device *dev, const char *interface)
@@ -304,13 +304,13 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 
 	memset(buf, 0, sizeof(buf));
 
-	rsp->h.msg_type = BT_SETCONFIGURATION_RSP;
+	rsp->rsp_h.msg_h.msg_type = BT_SETCONFIGURATION_RSP;
 	rsp->transport  = BT_CAPABILITIES_TRANSPORT_SCO;
 	rsp->access_mode = client->access_mode;
 
 	client->data_fd = headset_get_sco_fd(dev);
 
-	unix_ipc_sendmsg(client, &rsp->h);
+	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
 }
 
 static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
@@ -330,7 +330,7 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 	memset(buf, 0, sizeof(buf));
 	client->req_id = 0;
 
-	rsp->h.msg_type = BT_GETCAPABILITIES_RSP;
+	rsp->rsp_h.msg_h.msg_type = BT_GETCAPABILITIES_RSP;
 	rsp->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
 
 	for (l = seps; l; l = g_slist_next(l)) {
@@ -361,7 +361,7 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 		rsp->sbc_capabilities.max_bitpool = sbc_cap->max_bitpool;
 	}
 
-	unix_ipc_sendmsg(client, &rsp->h);
+	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
 
 	return;
 
@@ -406,14 +406,14 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 		goto failed;
 	}
 
-	rsp->h.msg_type = BT_SETCONFIGURATION_RSP;
+	rsp->rsp_h.msg_h.msg_type = BT_SETCONFIGURATION_RSP;
 	rsp->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
 	client->access_mode = BT_CAPABILITIES_ACCESS_MODE_WRITE;
 	rsp->access_mode = client->access_mode;
 	/* FIXME: Use imtu when fd_opt is CFG_FD_OPT_READ */
 	rsp->link_mtu = omtu;
 
-	unix_ipc_sendmsg(client, &rsp->h);
+	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
 
 	client->cb_id = avdtp_stream_add_cb(session, stream,
 						stream_state_changed, client);
@@ -441,13 +441,13 @@ static void a2dp_resume_complete(struct avdtp *session,
 	struct unix_client *client = user_data;
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
 	struct bt_streamstart_rsp *rsp = (void *) buf;
-	struct bt_datafd_ind *ind = (void *) buf;
+	struct bt_streamfd_ind *ind = (void *) buf;
 	struct a2dp_data *a2dp = &client->d.a2dp;
 
 	memset(buf, 0, sizeof(buf));
-	rsp->h.msg_type = BT_STREAMSTART_RSP;
-	rsp->posix_errno = 0;
-	unix_ipc_sendmsg(client, &rsp->h);
+	rsp->rsp_h.msg_h.msg_type = BT_STREAMSTART_RSP;
+	rsp->rsp_h.posix_errno = 0;
+	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
 
 	memset(buf, 0, sizeof(buf));
 	ind->h.msg_type = BT_STREAMFD_IND;
@@ -487,9 +487,9 @@ static void a2dp_suspend_complete(struct avdtp *session,
 		goto failed;
 
 	memset(buf, 0, sizeof(buf));
-	rsp->h.msg_type = BT_STREAMSTOP_RSP;
-	rsp->posix_errno = 0;
-	unix_ipc_sendmsg(client, &rsp->h);
+	rsp->rsp_h.msg_h.msg_type = BT_STREAMSTOP_RSP;
+	rsp->rsp_h.posix_errno = 0;
+	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
 
 	return;
 
@@ -863,10 +863,10 @@ static void handle_control_req(struct unix_client *client,
 	struct bt_setconfiguration_rsp *rsp = (void *) buf;
 
 	memset(buf, 0, sizeof(buf));
-	rsp->h.msg_type = BT_CONTROL_RSP;
-	rsp->posix_errno = 0;
+	rsp->rsp_h.msg_h.msg_type = BT_CONTROL_RSP;
+	rsp->rsp_h.posix_errno = 0;
 
-	unix_ipc_sendmsg(client, &rsp->h);
+	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
 }
 
 static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)

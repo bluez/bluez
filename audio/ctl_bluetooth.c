@@ -164,24 +164,24 @@ static int bluetooth_send_ctl(struct bluetooth_data *data,
 		return  -errno;
 	}
 
-	type = bt_audio_strmsg(ctl_rsp->h.msg_type);
+	type = bt_audio_strmsg(ctl_rsp->rsp_h.msg_h.msg_type);
 	if (!type) {
 		SNDERR("Bogus message type %d "
 				"received from audio service",
-				ctl_rsp->h.msg_type);
+				ctl_rsp->rsp_h.msg_h.msg_type);
 		return -EINVAL;
 	}
 
-	if (ctl_rsp->h.msg_type != BT_CONTROL_RSP) {
+	if (ctl_rsp->rsp_h.msg_h.msg_type != BT_CONTROL_RSP) {
 		SNDERR("Unexpected message %s received", type);
 		return -EINVAL;
 	}
 
-	if (ctl_rsp->posix_errno != 0) {
+	if (ctl_rsp->rsp_h.posix_errno != 0) {
 		SNDERR("BT_CONTROL failed : %s (%d)",
-					strerror(ctl_rsp->posix_errno),
-					ctl_rsp->posix_errno);
-		return -ctl_rsp->posix_errno;
+					strerror(ctl_rsp->rsp_h.posix_errno),
+					ctl_rsp->rsp_h.posix_errno);
+		return -ctl_rsp->rsp_h.posix_errno;
 	}
 
 	return 0;

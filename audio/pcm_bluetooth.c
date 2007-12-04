@@ -332,8 +332,8 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 	char c = 'w';
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
 	struct bt_streamstart_req *start_req = (void*) buf;
-	struct bt_streamstart_rsp *start_rsp = (void*) buf;
-	struct bt_datafd_ind *datafd_ind = (void*) buf;
+	bt_audio_rsp_msg_header_t *rsp_hdr = (void*) buf;
+	struct bt_streamfd_ind *streamfd_ind = (void*) buf;
 	uint32_t period_count = io->buffer_size / io->period_size;
 	int opt_name, err;
 	struct timeval t = { 0, period_count };
@@ -368,19 +368,19 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 	if (err < 0)
 		return err;
 
-	err = audioservice_expect(data->server.fd, &start_rsp->h,
+	err = audioservice_expect(data->server.fd, &rsp_hdr->msg_h,
 					BT_STREAMSTART_RSP);
 	if (err < 0)
 		return err;
 
-	if (start_rsp->posix_errno != 0) {
+	if (rsp_hdr->posix_errno != 0) {
 		SNDERR("BT_START failed : %s(%d)",
-					strerror(start_rsp->posix_errno),
-					start_rsp->posix_errno);
-		return -start_rsp->posix_errno;
+					strerror(rsp_hdr->posix_errno),
+					rsp_hdr->posix_errno);
+		return -rsp_hdr->posix_errno;
 	}
 
-	err = audioservice_expect(data->server.fd, &datafd_ind->h,
+	err = audioservice_expect(data->server.fd, &streamfd_ind->h,
 					BT_STREAMFD_IND);
 	if (err < 0)
 		return err;
@@ -542,6 +542,7 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	struct bluetooth_data *data = io->private_data;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	bt_audio_rsp_msg_header_t *rsp_hdr = (void*) buf;
 	struct bt_setconfiguration_req *setconf_req = (void*) buf;
 	struct bt_setconfiguration_rsp *setconf_rsp = (void*) buf;
 	unsigned int rate, channels;
@@ -573,16 +574,16 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	if (err < 0)
 		return err;
 
-	err = audioservice_expect(data->server.fd, &setconf_rsp->h,
+	err = audioservice_expect(data->server.fd, &rsp_hdr->msg_h,
 					BT_SETCONFIGURATION_RSP);
 	if (err < 0)
 		return err;
 
-	if (setconf_rsp->posix_errno != 0) {
+	if (rsp_hdr->posix_errno != 0) {
 		SNDERR("BT_SETCONFIGURATION failed : %s(%d)",
-					strerror(setconf_rsp->posix_errno),
-					setconf_rsp->posix_errno);
-		return -setconf_rsp->posix_errno;
+					strerror(rsp_hdr->posix_errno),
+					rsp_hdr->posix_errno);
+		return -rsp_hdr->posix_errno;
 	}
 
 	data->transport = setconf_rsp->transport;
@@ -1399,16 +1400,16 @@ static int audioservice_recv(int sk, bt_audio_msg_header_t *inmsg)
 	return err;
 }
 
-static int audioservice_expect(int sk, bt_audio_msg_header_t *outmsg,
+static int audioservice_expect(int sk, bt_audio_msg_header_t *rsp_hdr,
 				int expected_type)
 {
-	int err = audioservice_recv(sk, outmsg);
+	int err = audioservice_recv(sk, rsp_hdr);
 	if (err == 0) {
-		if (outmsg->msg_type != expected_type) {
+		if (rsp_hdr->msg_type != expected_type) {
 			err = -EINVAL;
 			SNDERR("Bogus message %s received while "
 					"%s was expected",
-					bt_audio_strmsg(outmsg->msg_type),
+					bt_audio_strmsg(rsp_hdr->msg_type),
 					bt_audio_strmsg(expected_type));
 		}
 	}
@@ -1421,6 +1422,7 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	int sk, err;
 	struct bluetooth_alsa_config *alsa_conf = &data->alsa_config;
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	bt_audio_rsp_msg_header_t *rsp_hdr = (void*) buf;
 	struct bt_getcapabilities_req *getcaps_req = (void*) buf;
 	struct bt_getcapabilities_rsp *getcaps_rsp = (void*) buf;
 
@@ -1474,15 +1476,15 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	if (err < 0)
 		goto failed;
 
-	err = audioservice_expect(data->server.fd, &getcaps_rsp->h, BT_GETCAPABILITIES_RSP);
+	err = audioservice_expect(data->server.fd, &rsp_hdr->msg_h, BT_GETCAPABILITIES_RSP);
 	if (err < 0)
 		goto failed;
 
-	if (getcaps_rsp->posix_errno != 0) {
+	if (rsp_hdr->posix_errno != 0) {
 		SNDERR("BT_GETCAPABILITIES failed : %s(%d)",
-					strerror(getcaps_rsp->posix_errno),
-					getcaps_rsp->posix_errno);
-		return -getcaps_rsp->posix_errno;
+					strerror(rsp_hdr->posix_errno),
+					rsp_hdr->posix_errno);
+		return -rsp_hdr->posix_errno;
 	}
 
 	data->transport = getcaps_rsp->transport;
