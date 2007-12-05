@@ -1825,20 +1825,14 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 				resp->seps[i].media_type, resp->seps[i].inuse);
 
 		/* Skip SEP's which are in use */
-/*
 		if (resp->seps[i].inuse)
 			continue;
-*/
 
 		sep = find_remote_sep(session->seps, resp->seps[i].seid);
 		if (!sep) {
 			sep = g_new0(struct avdtp_remote_sep, 1);
 			session->seps = g_slist_append(session->seps, sep);
 		}
-/*
-		else if (sep && sep->stream)
-			continue;
-*/
 
 		sep->seid = resp->seps[i].seid;
 		sep->type = resp->seps[i].type;
@@ -2368,6 +2362,11 @@ int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb, void *user_dat
 
 	if (session->discov_cb)
 		return -EBUSY;
+
+	if (session->seps) {
+		cb(session, session->seps, NULL, user_data);
+		return 0;
+	}
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req.header, AVDTP_DISCOVER);
