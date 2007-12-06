@@ -216,55 +216,34 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		break;
 	}
 }
-/*
+
 static void headset_discovery_complete(struct device *dev, void *user_data)
 {
 	struct unix_client *client = user_data;
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
 	struct bt_getcapabilities_rsp *rsp = (void *) buf;
-	struct headset_data *hs = &client->d.hs;
 
 	client->req_id = 0;
 
-	if (!dev) {
-		unix_ipc_error(client, BT_GETCAPABILITIES_RSP, EIO);
-		client->dev = NULL;
-		return;
-	}
-
-	switch (client->access_mode) {
-	case BT_CAPABILITIES_ACCESS_MODE_READ:
-		hs->lock = HEADSET_LOCK_READ;
-		break;
-	case BT_CAPABILITIES_ACCESS_MODE_WRITE:
-		hs->lock = HEADSET_LOCK_WRITE;
-		break;
-	case BT_CAPABILITIES_ACCESS_MODE_READWRITE:
-		hs->lock = HEADSET_LOCK_READ | HEADSET_LOCK_WRITE;
-		break;
-	default:
-		hs->lock = 0;
-		break;
-	}
-
-	if (!headset_lock(dev, hs->lock)) {
-		error("Unable to lock headset");
-		unix_ipc_error(client, BT_GETCAPABILITIES_RSP, EIO);
-		client->dev = NULL;
-		return;
-	}
+	if (!dev)
+		goto failed;
 
 	memset(buf, 0, sizeof(buf));
 
-	rsp->h.msg_type = BT_GETCAPABILITIES_RSP;
+	rsp->rsp_h.msg_h.msg_type = BT_GETCAPABILITIES_RSP;
 	rsp->transport  = BT_CAPABILITIES_TRANSPORT_SCO;
 	rsp->sampling_rate = 8000;
 
-	client->data_fd = headset_get_sco_fd(dev);
+	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
 
-	unix_ipc_sendmsg(client, &rsp->h);
+	return;
+
+failed:
+	error("discovery failed");
+	unix_ipc_error(client, BT_SETCONFIGURATION_RSP, EIO);
+	client->dev = NULL;
 }
-*/
+
 static void headset_setup_complete(struct device *dev, void *user_data)
 {
 	struct unix_client *client = user_data;
@@ -274,11 +253,8 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 
 	client->req_id = 0;
 
-	if (!dev) {
-		unix_ipc_error(client, BT_GETCAPABILITIES_RSP, EIO);
-		client->dev = NULL;
-		return;
-	}
+	if (!dev)
+		goto failed;
 
 	switch (client->access_mode) {
 	case BT_CAPABILITIES_ACCESS_MODE_READ:
@@ -297,9 +273,7 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 
 	if (!headset_lock(dev, hs->lock)) {
 		error("Unable to lock headset");
-		unix_ipc_error(client, BT_GETCAPABILITIES_RSP, EIO);
-		client->dev = NULL;
-		return;
+		goto failed;
 	}
 
 	memset(buf, 0, sizeof(buf));
@@ -307,10 +281,55 @@ static void headset_setup_complete(struct device *dev, void *user_data)
 	rsp->rsp_h.msg_h.msg_type = BT_SETCONFIGURATION_RSP;
 	rsp->transport  = BT_CAPABILITIES_TRANSPORT_SCO;
 	rsp->access_mode = client->access_mode;
+	rsp->link_mtu = 48;
 
 	client->data_fd = headset_get_sco_fd(dev);
 
 	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
+
+	return;
+
+failed:
+	error("config failed");
+	unix_ipc_error(client, BT_SETCONFIGURATION_RSP, EIO);
+	client->dev = NULL;
+}
+
+static void headset_resume_complete(struct device *dev, void *user_data)
+{
+	struct unix_client *client = user_data;
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_streamstart_rsp *rsp = (void *) buf;
+	struct bt_streamfd_ind *ind = (void *) buf;
+
+	client->req_id = 0;
+
+	if (!dev)
+		goto failed;
+
+	memset(buf, 0, sizeof(buf));
+
+	rsp->rsp_h.msg_h.msg_type = BT_STREAMSTART_RSP;
+
+	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
+
+	memset(buf, 0, sizeof(buf));
+	ind->h.msg_type = BT_STREAMFD_IND;
+	unix_ipc_sendmsg(client, &ind->h);
+
+	client->data_fd = headset_get_sco_fd(dev);
+
+	if (unix_sendmsg_fd(client->sock, client->data_fd) < 0) {
+		error("unix_sendmsg_fd: %s(%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	return;
+
+failed:
+	error("resume failed");
+	unix_ipc_error(client, BT_STREAMSTART_RSP, EIO);
+	client->dev = NULL;
 }
 
 static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
@@ -421,7 +440,7 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 	return;
 
 failed:
-	error("setup failed");
+	error("config failed");
 
 	if (a2dp->sep) {
 		a2dp_sep_unlock(a2dp->sep, a2dp->session);
@@ -511,7 +530,6 @@ failed:
 static void start_discovery(struct device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
-	unsigned int id;
 	int err = 0;
 
 	client->type = select_service(dev, client->interface);
@@ -535,14 +553,15 @@ static void start_discovery(struct device *dev, struct unix_client *client)
 		break;
 
 	case TYPE_HEADSET:
-		id = headset_request_stream(dev, headset_setup_complete, client);
-		client->cancel = headset_cancel_stream;
+		headset_discovery_complete(dev, client);
 		break;
 
 	default:
 		error("No known services for device");
 		goto failed;
 	}
+
+	client->dev = dev;
 
 	return;
 
@@ -625,20 +644,20 @@ static void start_resume(struct device *dev, struct unix_client *client)
 		id = a2dp_source_resume(a2dp->session, a2dp->sep,
 					a2dp_resume_complete, client);
 		client->cancel = a2dp_source_cancel;
+
+		if (id == 0) {
+			error("resume failed");
+			goto failed;
+		}
+
 		break;
 
 	case TYPE_HEADSET:
-		id = headset_request_stream(dev, headset_setup_complete, client);
-		client->cancel = headset_cancel_stream;
+		headset_resume_complete(dev, client);
 		break;
 
 	default:
 		error("No known services for device");
-		goto failed;
-	}
-
-	if (id == 0) {
-		error("resume failed");
 		goto failed;
 	}
 
