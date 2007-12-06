@@ -326,6 +326,7 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 
 	if (!dbus_connection_register_object_path(connection, path,
 						&generic_table, data)) {
+		g_free(data->introspect);
 		g_free(data);
 		return FALSE;
 	}
