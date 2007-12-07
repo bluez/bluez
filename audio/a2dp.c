@@ -270,7 +270,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		avdtp_unref(sep->session);
 		sep->session = NULL;
 	}
-	
+
 	sep->stream = NULL;
 
 }

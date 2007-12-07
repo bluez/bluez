@@ -2079,7 +2079,8 @@ static gboolean conf_rej_to_err(struct conf_rej *rej, int size,
 }
 
 static gboolean stream_rej_to_err(struct stream_rej *rej, int size,
-					struct avdtp_error *err, uint8_t *acp_seid)
+					struct avdtp_error *err,
+					uint8_t *acp_seid)
 {
 	if (size < sizeof(struct conf_rej)) {
 		error("Too small packet for stream_rej");
@@ -2094,8 +2095,9 @@ static gboolean stream_rej_to_err(struct stream_rej *rej, int size,
 	return TRUE;
 }
 
-static gboolean avdtp_parse_rej(struct avdtp *session, struct avdtp_stream *stream,
-					struct avdtp_header *header, int size)
+static gboolean avdtp_parse_rej(struct avdtp *session,
+				struct avdtp_stream *stream,
+				struct avdtp_header *header, int size)
 {
 	struct avdtp_error err;
 	uint8_t acp_seid, category;
@@ -2355,7 +2357,8 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 	return cap;
 }
 
-int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb, void *user_data)
+int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
+			void *user_data)
 {
 	struct gen_req req;
 	int ret;
@@ -2879,7 +2882,8 @@ static GIOChannel *avdtp_server_socket(void)
 
 	lm = L2CAP_LM_SECURE;
 	if (setsockopt(sock, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
-		error("AVDTP server setsockopt: %s (%d)", strerror(errno), errno);
+		error("AVDTP server setsockopt: %s (%d)", strerror(errno),
+				errno);
 		close(sock);
 		return NULL;
 	}

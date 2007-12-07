@@ -122,10 +122,10 @@ static void client_free(struct unix_client *client)
 	g_free(client);
 }
 
-/* Pass file descriptor through local domain sockets (AF_LOCAL, formerly AF_UNIX)
-and the sendmsg() system call with the cmsg_type field of a "struct cmsghdr" set
-to SCM_RIGHTS and the data being an integer value equal to the handle of the
-file descriptor to be passed.*/
+/* Pass file descriptor through local domain sockets (AF_LOCAL, formerly
+ * AF_UNIX) and the sendmsg() system call with the cmsg_type field of a "struct
+ * cmsghdr" set to SCM_RIGHTS and the data being an integer value equal to the
+ * handle of the file descriptor to be passed. */
 static int unix_sendmsg_fd(int sock, int fd)
 {
 	char cmsg_b[CMSG_SPACE(sizeof(int))], m = 'm';
@@ -397,7 +397,7 @@ failed:
 static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
 					struct avdtp_error *err,
- 					void *user_data)
+					void *user_data)
 {
 	struct unix_client *client = user_data;
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
@@ -420,7 +420,8 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 	a2dp->sep = sep;
 	a2dp->stream = stream;
 
-	if (!avdtp_stream_get_transport(stream, &client->data_fd, &imtu, &omtu, &caps)) {
+	if (!avdtp_stream_get_transport(stream, &client->data_fd, &imtu, &omtu,
+					&caps)) {
 		error("Unable to get stream transport");
 		goto failed;
 	}
@@ -1027,7 +1028,8 @@ int unix_init(void)
 	}
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("Can't bind unix socket: %s (%d)", strerror(errno), errno);
+		error("Can't bind unix socket: %s (%d)", strerror(errno),
+				errno);
 		close(sk);
 		return -1;
 	}
