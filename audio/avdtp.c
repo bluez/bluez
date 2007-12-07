@@ -1812,6 +1812,7 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 					struct discover_resp *resp, int size)
 {
 	int sep_count, i, isize = sizeof(struct seid_info);
+	struct avdtp_stream *stream;
 
 	sep_count = (size - sizeof(struct avdtp_header)) / isize;
 
@@ -1824,16 +1825,17 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 				resp->seps[i].seid, resp->seps[i].type,
 				resp->seps[i].media_type, resp->seps[i].inuse);
 
+		stream = find_stream_by_rseid(session, resp->seps[i].seid);
+
 		sep = find_remote_sep(session->seps, resp->seps[i].seid);
 		if (!sep) {
-			if (resp->seps[i].inuse &&
-					!find_stream_by_rseid(session,
-							resp->seps[i].seid))
+			if (resp->seps[i].inuse && !stream)
 				continue;
 			sep = g_new0(struct avdtp_remote_sep, 1);
 			session->seps = g_slist_append(session->seps, sep);
 		}
 
+		sep->stream = stream;
 		sep->seid = resp->seps[i].seid;
 		sep->type = resp->seps[i].type;
 		sep->media_type = resp->seps[i].media_type;
