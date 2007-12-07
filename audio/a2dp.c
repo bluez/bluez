@@ -1082,7 +1082,7 @@ unsigned int a2dp_source_resume(struct avdtp *session, struct a2dp_sep *sep,
 	struct a2dp_setup_cb *cb_data;
 	struct a2dp_setup *setup;
 
-	cb_data = g_new(struct a2dp_setup_cb, 1);
+	cb_data = g_new0(struct a2dp_setup_cb, 1);
 	cb_data->resume_cb = cb;
 	cb_data->user_data = user_data;
 	cb_data->id = ++cb_id;
