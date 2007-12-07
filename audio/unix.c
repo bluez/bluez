@@ -407,6 +407,9 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 	uint16_t imtu, omtu;
 	GSList *caps;
 
+	if (err)
+		goto failed;
+
 	memset(buf, 0, sizeof(buf));
 	client->req_id = 0;
 
@@ -465,6 +468,9 @@ static void a2dp_resume_complete(struct avdtp *session,
 	struct bt_streamfd_ind *ind = (void *) buf;
 	struct a2dp_data *a2dp = &client->d.a2dp;
 
+	if (err)
+		goto failed;
+
 	memset(buf, 0, sizeof(buf));
 	rsp->rsp_h.msg_h.msg_type = BT_STREAMSTART_RSP;
 	rsp->rsp_h.posix_errno = 0;
@@ -488,7 +494,7 @@ failed:
 		a2dp_sep_unlock(a2dp->sep, a2dp->session);
 		a2dp->sep = NULL;
 	}
-	unix_ipc_error(client, BT_STREAMSTART_REQ, EIO);
+	unix_ipc_error(client, BT_STREAMSTART_RSP, EIO);
 
 	avdtp_unref(a2dp->session);
 
@@ -521,7 +527,7 @@ failed:
 		a2dp_sep_unlock(a2dp->sep, a2dp->session);
 		a2dp->sep = NULL;
 	}
-	unix_ipc_error(client, BT_STREAMSTOP_REQ, EIO);
+	unix_ipc_error(client, BT_STREAMSTOP_RSP, EIO);
 
 	avdtp_unref(a2dp->session);
 
