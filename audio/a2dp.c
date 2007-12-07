@@ -1163,8 +1163,8 @@ unsigned int a2dp_source_suspend(struct avdtp *session, struct a2dp_sep *sep,
 		g_idle_add((GSourceFunc) finalize_suspend, setup);
 		break;
 	case AVDTP_STATE_STREAMING:
-		if (avdtp_start(session, sep->stream) < 0) {
-			error("avdtp_start failed");
+		if (avdtp_suspend(session, sep->stream) < 0) {
+			error("avdtp_suspend failed");
 			goto failed;
 		}
 		break;
