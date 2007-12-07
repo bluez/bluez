@@ -1812,12 +1812,12 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 					struct discover_resp *resp, int size)
 {
 	int sep_count, i, isize = sizeof(struct seid_info);
-	struct avdtp_stream *stream;
 
 	sep_count = (size - sizeof(struct avdtp_header)) / isize;
 
 	for (i = 0; i < sep_count; i++) {
 		struct avdtp_remote_sep *sep;
+		struct avdtp_stream *stream;
 		struct seid_req req;
 		int ret;
 
