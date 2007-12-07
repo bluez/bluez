@@ -82,6 +82,7 @@ struct a2dp_setup {
 	GSList *client_caps;
 	gboolean reconfigure;
 	gboolean canceled;
+	gboolean start;
 	GSList *cb;
 	int ref;
 };
@@ -586,6 +587,7 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct a2dp_setup *setup;
+	gboolean start;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("SBC Sink: Suspend_Cfm");
@@ -598,12 +600,27 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!setup)
 		return;
 
+	start = setup->start;
+	setup->start = FALSE;
+
 	if (err) {
 		setup->stream = NULL;
 		finalize_suspend(setup, err);
 	}
 	else
 		finalize_suspend_errno(setup, 0);
+
+	if (!start)
+		return;
+
+	if (err)
+		finalize_resume(setup, err);
+	else if (avdtp_start(session, a2dp_sep->stream) < 0) {
+		struct avdtp_error start_err;
+		error("avdtp_start failed");
+		avdtp_error_init(&start_err, AVDTP_ERROR_ERRNO, EIO);
+		finalize_resume(setup, &start_err);
+	}
 }
 
 static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -1116,7 +1133,10 @@ unsigned int a2dp_source_resume(struct avdtp *session, struct a2dp_sep *sep,
 			avdtp_unref(sep->session);
 			sep->session = NULL;
 		}
-		g_idle_add((GSourceFunc) finalize_resume, setup);
+		if (sep->suspending)
+			setup->start = TRUE;
+		else
+			g_idle_add((GSourceFunc) finalize_resume, setup);
 		break;
 	default:
 		error("SEP in bad state");
