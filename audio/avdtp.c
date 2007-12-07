@@ -1824,12 +1824,12 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 				resp->seps[i].seid, resp->seps[i].type,
 				resp->seps[i].media_type, resp->seps[i].inuse);
 
-		/* Skip SEP's which are in use */
-		if (resp->seps[i].inuse)
-			continue;
-
 		sep = find_remote_sep(session->seps, resp->seps[i].seid);
 		if (!sep) {
+			if (resp->seps[i].inuse &&
+					!find_stream_by_rseid(session,
+							resp->seps[i].seid))
+				continue;
 			sep = g_new0(struct avdtp_remote_sep, 1);
 			session->seps = g_slist_append(session->seps, sep);
 		}

@@ -364,9 +364,10 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 
 		codec_cap = (void *) cap->data;
 
-		if (codec_cap->media_codec_type == A2DP_CODEC_SBC && !sbc_cap)
+		if (codec_cap->media_codec_type == A2DP_CODEC_SBC && !sbc_cap) {
 			sbc_cap = (void *) codec_cap;
-
+			break;
+		}
 	}
 
 	/* endianess prevent direct cast */
