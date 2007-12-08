@@ -6,6 +6,5 @@ includedir=@includedir@
 Name: BlueZ
 Description: Bluetooth protocol stack for Linux
 Version: @VERSION@
-Requires: 
 Libs: -L${libdir} -lbluetooth
 Cflags: -I${includedir}
