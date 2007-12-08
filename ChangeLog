@@ -1,3 +1,6 @@
+ver 3.23:
+	Fix remote name request handling bug.
+
 ver 3.22:
 	Fix remote name request event handling.
 
