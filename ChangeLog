@@ -1,3 +1,14 @@
+ver 3.23:
+	Fix key search function to honor the mmap area size.
+	Fix Avahi integration of network service.
+	Add new plugin communication for audio service.
+	Enable basic AVRCP support by default.
+	More optimizations to the SBC library.
+	Create common error definitions.
+
+	Note:
+	This version needs at least bluez-libs-3.23
+
 ver 3.22:
 	Add missing include file from audio service.
 	Add SBC conformance test utility.
