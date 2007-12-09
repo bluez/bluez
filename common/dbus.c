@@ -434,17 +434,10 @@ dbus_bool_t dbus_bus_get_unix_process_id(DBusConnection *conn, const char *name,
 static DBusHandlerResult disconnect_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	const char *iface,*method;
 	struct disconnect_data *dc_data = data;
 
-	if (dbus_message_get_type (msg) != DBUS_MESSAGE_TYPE_SIGNAL)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	iface = dbus_message_get_interface(msg);
-	method = dbus_message_get_member(msg);
-
-	if ((strcmp(iface, DBUS_INTERFACE_LOCAL) == 0) &&
-			(strcmp(method, "Disconnected") == 0)) {
+	if (dbus_message_is_signal(msg,
+			DBUS_INTERFACE_LOCAL, "Disconnected") == TRUE) {
 		error("Got disconnected from the system message bus");
 		dbus_connection_unref(conn);
 		dc_data->disconnect_cb(dc_data->user_data);
