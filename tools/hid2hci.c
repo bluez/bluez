@@ -138,7 +138,7 @@ static int send_report(int fd, const char *buf, size_t size)
 		uref.field_index = 0;
 		uref.usage_index = i;
 		uref.usage_code  = 0xff000001;
-		uref.value       = buf[i];
+		uref.value       = buf[i] & 0x000000ff;
 		err = ioctl(fd, HIDIOCSUSAGE, &uref);
 		if (err < 0)
 			return err;
