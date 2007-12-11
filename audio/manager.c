@@ -108,6 +108,7 @@ static GIOChannel *hs_server = NULL;
 static GIOChannel *hf_server = NULL;
 
 static const struct enabled_interfaces *enabled;
+static gboolean enable_hfp = FALSE;
 
 static void get_next_record(struct audio_sdp_data *data);
 static DBusHandlerResult get_handles(const char *uuid,
@@ -254,6 +255,7 @@ static void handle_record(sdp_record_t *record, struct device *device)
 			headset_update(device, record, uuid16);
 		else
 			device->headset = headset_init(device,
+							enable_hfp,
 							record, uuid16);
 		break;
 	case HEADSET_AGW_SVCLASS_ID:
@@ -265,6 +267,7 @@ static void handle_record(sdp_record_t *record, struct device *device)
 			headset_update(device, record, uuid16);
 		else
 			device->headset = headset_init(device,
+							enable_hfp,
 							record, uuid16);
 		break;
 	case HANDSFREE_AGW_SVCLASS_ID:
@@ -645,7 +648,7 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 		if (device->headset)
 			return device;
 
-		device->headset = headset_init(device, NULL, 0);
+		device->headset = headset_init(device, enable_hfp, NULL, 0);
 
 		if (!device->headset)
 			return NULL;
@@ -1070,7 +1073,7 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	bacpy(&device->store, src);
 
 	if (enabled->headset && strstr(value, "headset"))
-		device->headset = headset_init(device, NULL, 0);
+		device->headset = headset_init(device, enable_hfp, NULL, 0);
 	if (enabled->sink && strstr(value, "sink"))
 		device->sink = sink_init(device);
 	if (enabled->control && strstr(value, "control"))
@@ -1560,6 +1563,8 @@ static int headset_server_init(DBusConnection *conn, gboolean no_hfp)
 
 	if (no_hfp)
 		return 0;
+
+	enable_hfp = TRUE;
 
 	chan = DEFAULT_HF_AG_CHANNEL;
 

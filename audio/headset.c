@@ -99,6 +99,7 @@ struct headset {
 	int data_start;
 	int data_length;
 
+	int enable_hfp;
 	headset_type_t type;
 
 	headset_state_t state;
@@ -111,6 +112,7 @@ struct headset {
 };
 
 static int rfcomm_connect(struct device *device, struct pending_connect *c);
+static int get_handles(struct device *device, struct pending_connect *c);
 
 static void pending_connect_free(struct pending_connect *c)
 {
@@ -640,11 +642,21 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 		goto failed_not_supported;
 	}
 
-	if ((uuid.type == SDP_UUID32 &&
+	if (hs->type == SVC_HEADSET &&
+			((uuid.type == SDP_UUID32 &&
 			uuid.value.uuid32 != HEADSET_SVCLASS_ID) ||
 			(uuid.type == SDP_UUID16 &&
-			 uuid.value.uuid16 != HEADSET_SVCLASS_ID)) {
-		error("Service classes did not contain the expected UUID");
+			 uuid.value.uuid16 != HEADSET_SVCLASS_ID))) {
+		error("Service classes did not contain the expected UUID hsp");
+		goto failed_not_supported;
+	}
+
+	if (hs->type == SVC_HANDSFREE &&
+			((uuid.type == SDP_UUID32 &&
+			uuid.value.uuid32 != HANDSFREE_SVCLASS_ID) ||
+			(uuid.type == SDP_UUID16 &&
+			 uuid.value.uuid16 != HANDSFREE_SVCLASS_ID))) {
+		error("Service classes did not contain the expected UUID hfp");
 		goto failed_not_supported;
 	}
 
@@ -750,7 +762,17 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	}
 
 	if (array_len < 1) {
-		debug("No record handles found");
+
+		if(hs->type == SVC_HANDSFREE) {
+			debug("No record handles found for hfp");
+			hs->type = SVC_HEADSET;
+			get_handles(device, c);
+			dbus_message_unref(reply);
+			return;
+		}
+
+		debug("No record handles found for hsp");
+
 		if (c->msg)
 			error_not_supported(device->conn, c->msg);
 		goto failed;
@@ -862,7 +884,7 @@ static int rfcomm_connect(struct device *device, struct pending_connect *c)
 		if (!g_slist_find(hs->pending, c))
 			hs->pending = g_slist_append(hs->pending, c);
 
-		hs->type = hs->hfp_handle ? SVC_HANDSFREE : SVC_HEADSET;
+		hs->type = hs->enable_hfp ? SVC_HANDSFREE : SVC_HEADSET;
 
 		if (hs->state == HEADSET_STATE_DISCONNECTED)
 			return get_handles(device, c);
@@ -1368,8 +1390,8 @@ void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc)
 	headset_set_channel(headset, record);
 }
 
-struct headset *headset_init(struct device *dev, sdp_record_t *record,
-				uint16_t svc)
+struct headset *headset_init(struct device *dev, int enable_hfp,
+				sdp_record_t *record, uint16_t svc)
 {
 	struct headset *hs;
 
@@ -1377,6 +1399,7 @@ struct headset *headset_init(struct device *dev, sdp_record_t *record,
 	hs->rfcomm_ch = -1;
 	hs->sp_gain = -1;
 	hs->mic_gain = -1;
+	hs->enable_hfp = enable_hfp;
 
 	if (!record)
 		goto register_iface;

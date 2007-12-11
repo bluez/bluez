@@ -54,8 +54,8 @@ typedef enum {
 
 typedef void (*headset_stream_cb_t) (struct device *dev, void *user_data);
 
-struct headset *headset_init(struct device *dev, sdp_record_t *record,
-				uint16_t svc);
+struct headset *headset_init(struct device *dev, int enable_hfp,
+				sdp_record_t *record, uint16_t svc);
 
 void headset_free(struct device *dev);
 
