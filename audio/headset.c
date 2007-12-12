@@ -108,11 +108,173 @@ struct headset {
 	int sp_gain;
 	int mic_gain;
 
+	unsigned int hfp_features;
 	headset_lock_t lock;
+};
+
+struct event {
+	const char *cmd;
+	int (*callback) (struct device *device, const char *buf);
 };
 
 static int rfcomm_connect(struct device *device, struct pending_connect *c);
 static int get_handles(struct device *device, struct pending_connect *c);
+
+static int headset_send(struct headset *hs, const char *str)
+{
+	GIOError err;
+	gsize total_written, written, count;
+
+	if (hs->state < HEADSET_STATE_CONNECTED || !hs->rfcomm) {
+		error("headset_send: the headset is not connected");
+		return -EIO;
+	}
+
+	count = strlen(str);
+	written = total_written = 0;
+
+	while (total_written < count) {
+		err = g_io_channel_write(hs->rfcomm, str + total_written,
+					count - total_written, &written);
+		if (err != G_IO_ERROR_NONE)
+			return -errno;
+		total_written += written;
+	}
+
+	return 0;
+}
+
+static int supported_features(struct device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+	int err;
+
+	hs->hfp_features = strtoul(&buf[8], NULL, 10);
+
+	err = headset_send(hs, "\r\n+BRSF:0\r\n");
+	if (err < 0)
+		return err;
+
+	return headset_send(device->headset, "\r\nOK\r\n");
+}
+
+static int report_indicators(struct device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+	int err;
+
+	if (buf[7] == '=')
+		err = headset_send(hs, "\r\n+CIND:(\"service\",(0,1)),"
+				"(\"call\",(0,1)),(\"callsetup\",(0-3))\r\n");
+	else
+		err = headset_send(hs, "\r\n+CIND:1, 0, 0\r\n");
+
+	if (err < 0)
+		return err;
+
+	return headset_send(device->headset, "\r\nOK\r\n");
+}
+
+static int event_reporting(struct device *device, const char *buf)
+{
+	return headset_send(device->headset, "\r\nOK\r\n");
+}
+
+static int call_hold(struct device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+	int err;
+
+	err = headset_send(hs, "\r\n+CHLD:(0,1,1x,2,2x,3,4)\r\n");
+	if (err < 0)
+		return err;
+
+	return headset_send(device->headset, "\r\nOK\r\n");
+}
+
+static int answer_call(struct device *device, const char *buf)
+{
+	dbus_connection_emit_signal(device->conn, device->path,
+			AUDIO_HEADSET_INTERFACE, "AnswerRequested",
+			DBUS_TYPE_INVALID);
+
+	return headset_send(device->headset, "\r\nOK\r\n");
+}
+
+static int terminate_call(struct device *device, const char *buf)
+{
+	return headset_send(device->headset, "\r\nOK\r\n");
+}
+
+static int signal_gain_setting(struct device *device, const char *buf)
+{
+	const char *name;
+	dbus_uint16_t gain;
+
+	if (strlen(buf) < 8) {
+		error("Too short string for Gain setting");
+		return -1;
+	}
+
+	gain = (dbus_uint16_t) strtol(&buf[7], NULL, 10);
+
+	if (gain > 15) {
+		error("Invalid gain value received: %u", gain);
+		return -1;
+	}
+
+	switch (buf[5]) {
+	case HEADSET_GAIN_SPEAKER:
+		if (device->headset->sp_gain == gain)
+			goto ok;
+		name = "SpeakerGainChanged";
+		device->headset->sp_gain = gain;
+		break;
+	case HEADSET_GAIN_MICROPHONE:
+		if (device->headset->mic_gain == gain)
+			goto ok;
+		name = "MicrophoneGainChanged";
+		device->headset->mic_gain = gain;
+		break;
+	default:
+		error("Unknown gain setting");
+		return G_IO_ERROR_INVAL;
+	}
+
+	dbus_connection_emit_signal(device->conn, device->path,
+				    AUDIO_HEADSET_INTERFACE, name,
+				    DBUS_TYPE_UINT16, &gain,
+				    DBUS_TYPE_INVALID);
+
+ok:
+	return headset_send(device->headset, "\r\nOK\r\n");
+}
+
+static struct event event_callbacks[] = {
+	{"ATA", answer_call},
+	{"AT+VG", signal_gain_setting},
+	{"AT+BRSF", supported_features},
+	{"AT+CIND", report_indicators},
+	{"AT+CMER", event_reporting},
+	{"AT+CHLD", call_hold},
+	{"AT+CHUP", terminate_call},
+	{"AT+CKPD", answer_call},
+	{0}
+};
+
+static GIOError handle_event(struct device *device, const char *buf)
+{
+	struct event *pt;
+
+	debug("Received %s", buf);
+
+	for (pt = event_callbacks; pt->cmd; pt++) {
+		if (!strncmp(buf, pt->cmd, strlen(pt->cmd)))
+			return pt->callback(device, buf);
+	}
+
+	return -EINVAL;
+}
 
 static void pending_connect_free(struct pending_connect *c)
 {
@@ -128,72 +290,6 @@ static void pending_connect_free(struct pending_connect *c)
 	}
 
 	g_free(c);
-}
-
-static void hs_signal_gain_setting(struct device *device, const char *buf)
-{
-	const char *name;
-	dbus_uint16_t gain;
-
-	if (strlen(buf) < 6) {
-		error("Too short string for Gain setting");
-		return;
-	}
-
-	gain = (dbus_uint16_t) strtol(&buf[5], NULL, 10);
-
-	if (gain > 15) {
-		error("Invalid gain value received: %u", gain);
-		return;
-	}
-
-	switch (buf[3]) {
-	case HEADSET_GAIN_SPEAKER:
-		if (device->headset->sp_gain == gain)
-			return;
-		name = "SpeakerGainChanged";
-		device->headset->sp_gain = gain;
-		break;
-	case HEADSET_GAIN_MICROPHONE:
-		if (device->headset->mic_gain == gain)
-			return;
-		name = "MicrophoneGainChanged";
-		device->headset->mic_gain = gain;
-		break;
-	default:
-		error("Unknown gain setting");
-		return;
-	}
-
-	dbus_connection_emit_signal(device->conn, device->path,
-					AUDIO_HEADSET_INTERFACE, name,
-					DBUS_TYPE_UINT16, &gain,
-					DBUS_TYPE_INVALID);
-}
-
-static headset_event_t parse_headset_event(const char *buf, char *rsp,
-						int rsp_len)
-{
-	printf("Received: %s\n", buf);
-
-	/* Return an error if this is not a proper AT command */
-	if (strncmp(buf, "AT", 2)) {
-		snprintf(rsp, rsp_len, "\r\nERROR\r\n");
-		return HEADSET_EVENT_INVALID;
-	}
-
-	buf += 2;
-
-	if (!strncmp(buf, "+CKPD", 5)) {
-		snprintf(rsp, rsp_len, "\r\nOK\r\n");
-		return HEADSET_EVENT_KEYPRESS;
-	} else if (!strncmp(buf, "+VG", 3)) {
-		snprintf(rsp, rsp_len, "\r\nOK\r\n");
-		return HEADSET_EVENT_GAIN;
-	} else {
-		snprintf(rsp, rsp_len, "\r\nERROR\r\n");
-		return HEADSET_EVENT_UNKNOWN;
-	}
 }
 
 static void close_sco(struct device *device)
@@ -214,10 +310,10 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct headset *hs;
 	unsigned char buf[BUF_SIZE];
-	char *cr, rsp[BUF_SIZE];
+	char *cr;
 	gsize bytes_read = 0;
-	gsize free_space, count, bytes_written, total_bytes_written;
-	GIOError err;
+	gsize free_space;
+	int err;
 	off_t cmd_len;
 
 	if (cond & G_IO_NVAL)
@@ -253,49 +349,13 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	if (!cr)
 		return TRUE;
 
-	cmd_len	= 1 + (off_t) cr - (off_t) &hs->buf[hs->data_start];
+	cmd_len = 1 + (off_t) cr - (off_t) &hs->buf[hs->data_start];
 	*cr = '\0';
 
-	memset(rsp, 0, sizeof(rsp));
-
-	switch (parse_headset_event(&hs->buf[hs->data_start], rsp,
-					sizeof(rsp))) {
-	case HEADSET_EVENT_GAIN:
-		hs_signal_gain_setting(device, &hs->buf[hs->data_start] + 2);
-		break;
-
-	case HEADSET_EVENT_KEYPRESS:
-		if (hs->ring_timer) {
-			g_source_remove(hs->ring_timer);
-			hs->ring_timer = 0;
-		}
-
-		dbus_connection_emit_signal(device->conn, device->path,
-						AUDIO_HEADSET_INTERFACE,
-						"AnswerRequested",
-						DBUS_TYPE_INVALID);
-		break;
-
-	case HEADSET_EVENT_INVALID:
-	case HEADSET_EVENT_UNKNOWN:
-	default:
-		debug("Unknown headset event");
-		break;
-	}
-
-	count = strlen(rsp);
-	total_bytes_written = bytes_written = 0;
-	err = G_IO_ERROR_NONE;
-
-	while (err == G_IO_ERROR_NONE && total_bytes_written < count) {
-		err = g_io_channel_write(hs->rfcomm,
-						rsp + total_bytes_written, 
-						count - total_bytes_written,
-						&bytes_written);
-		if (err != G_IO_ERROR_NONE)
-			error("Error while writting to the audio output channel");
-		total_bytes_written += bytes_written;
-	};
+	err = handle_event(device, &hs->buf[hs->data_start]);
+	if (err < 0)
+		error("Error handling command %s: %s (%d)", &hs->buf[hs->data_start],
+				strerror(-err), -err);
 
 	hs->data_start += cmd_len;
 	hs->data_length -= cmd_len;
@@ -326,30 +386,6 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 	headset_set_state(device, HEADSET_STATE_CONNECTED);
 
 	return FALSE;
-}
-
-static GIOError headset_send(struct headset *hs, const char *str)
-{
-	GIOError err;
-	gsize total_written, written, count;
-
-	if (hs->state < HEADSET_STATE_CONNECTED || !hs->rfcomm) {
-		error("headset_send: the headset is not connected");
-		return G_IO_ERROR_UNKNOWN;
-	}
-
-	count = strlen(str);
-	written = total_written = 0;
-
-	while (total_written < count) {
-		err = g_io_channel_write(hs->rfcomm, str + total_written,
-					count - total_written, &written);
-		if (err != G_IO_ERROR_NONE)
-			return err;
-		total_written += written;
-	}
-
-	return G_IO_ERROR_NONE;
 }
 
 static void pending_connect_ok(struct pending_connect *c, struct device *dev)
@@ -593,6 +629,7 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	struct device *device = data;
 	struct headset *hs = device->headset;
 	struct pending_connect *c;
+	unsigned int id;
 
 	c = hs->pending->data;
 
@@ -642,21 +679,11 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 		goto failed_not_supported;
 	}
 
-	if (hs->type == SVC_HEADSET &&
-			((uuid.type == SDP_UUID32 &&
-			uuid.value.uuid32 != HEADSET_SVCLASS_ID) ||
-			(uuid.type == SDP_UUID16 &&
-			 uuid.value.uuid16 != HEADSET_SVCLASS_ID))) {
-		error("Service classes did not contain the expected UUID hsp");
-		goto failed_not_supported;
-	}
+	id = hs->enable_hfp ? HANDSFREE_SVCLASS_ID : HEADSET_SVCLASS_ID;
 
-	if (hs->type == SVC_HANDSFREE &&
-			((uuid.type == SDP_UUID32 &&
-			uuid.value.uuid32 != HANDSFREE_SVCLASS_ID) ||
-			(uuid.type == SDP_UUID16 &&
-			 uuid.value.uuid16 != HANDSFREE_SVCLASS_ID))) {
-		error("Service classes did not contain the expected UUID hfp");
+	if ((uuid.type == SDP_UUID32 && uuid.value.uuid32 != id)
+		|| (uuid.type == SDP_UUID16 && uuid.value.uuid16 != id)) {
+		error("Service classes did not contain the expected UUID");
 		goto failed_not_supported;
 	}
 

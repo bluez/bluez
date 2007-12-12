@@ -28,13 +28,6 @@
 #define DEFAULT_HF_AG_CHANNEL 13
 
 typedef enum {
-	HEADSET_EVENT_KEYPRESS,
-	HEADSET_EVENT_GAIN,
-	HEADSET_EVENT_UNKNOWN,
-	HEADSET_EVENT_INVALID
-} headset_event_t;
-
-typedef enum {
 	HEADSET_STATE_DISCONNECTED,
 	HEADSET_STATE_CONNECT_IN_PROGRESS,
 	HEADSET_STATE_CONNECTED,
@@ -84,3 +77,4 @@ gboolean headset_lock(struct device *dev, headset_lock_t lock);
 gboolean headset_unlock(struct device *dev, headset_lock_t lock);
 gboolean headset_suspend(struct device *dev, void *data);
 gboolean headset_play(struct device *dev, void *data);
+
