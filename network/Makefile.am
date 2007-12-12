@@ -3,7 +3,7 @@ if NETWORKSERVICE
 if CONFIGFILES
 confdir = $(sysconfdir)/bluetooth
 
-conf_DATA = network.service network.conf
+conf_DATA = network.service
 endif
 
 servicedir = $(libdir)/bluetooth
