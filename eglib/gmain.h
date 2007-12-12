@@ -66,6 +66,18 @@ typedef enum {
 #define TRUE (!FALSE)
 #endif
 
+#undef MAX
+#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+
+#undef MIN
+#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+
+#undef ABS
+#define ABS(a) (((a) < 0) ? -(a) : (a))
+
+#undef CLAMP
+#define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
 typedef enum {
 	G_IO_IN		= POLLIN,
 	G_IO_OUT	= POLLOUT,
