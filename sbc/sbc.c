@@ -977,23 +977,19 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 	u_int32_t scalefactor[2][8];	/* derived from frame->scale_factor */
 
-	/* Clear first 4 bytes of data (that's the constant length part of the
-	 * SBC header) */
-	memset(data, 0, 4);
-
 	data[0] = SBC_SYNCWORD;
 
 	if (frame->sampling_frequency == 16000) {
-		data[1] |= (SBC_FS_16 & 0x03) << 6;
+		data[1] = (SBC_FS_16 & 0x03) << 6;
 		sf = SBC_FS_16;
 	} else if (frame->sampling_frequency == 32000) {
-		data[1] |= (SBC_FS_32 & 0x03) << 6;
+		data[1] = (SBC_FS_32 & 0x03) << 6;
 		sf = SBC_FS_32;
 	} else if (frame->sampling_frequency == 44100) {
-		data[1] |= (SBC_FS_44 & 0x03) << 6;
+		data[1] = (SBC_FS_44 & 0x03) << 6;
 		sf = SBC_FS_44;
 	} else if (frame->sampling_frequency == 48000) {
-		data[1] |= (SBC_FS_48 & 0x03) << 6;
+		data[1] = (SBC_FS_48 & 0x03) << 6;
 		sf = SBC_FS_48;
 	} else
 		return -2;
