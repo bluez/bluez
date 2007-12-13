@@ -105,6 +105,7 @@ static struct {
 typedef enum {
 	TTY_PROXY,
 	UNIX_SOCKET_PROXY,
+	TCP_SOCKET_PROXY,
 	UNKNOWN_PROXY_TYPE = 0xFF
 } proxy_type_t;
 
@@ -113,6 +114,7 @@ struct proxy {
 	bdaddr_t	dst;
 	char		*uuid128;	/* UUID 128 */
 	char		*address;	/* TTY or Unix socket name */
+	short int	port;		/* TCP port */
 	proxy_type_t	type;		/* TTY or Unix socket */
 	struct termios  sys_ti;		/* Default TTY setting */
 	struct termios  proxy_ti;	/* Proxy TTY settings */
@@ -586,7 +588,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 		err = rfcomm_connect(pc);
 		if (err < 0) {
 			error("RFCOMM connection failed");
-			error_connection_attempt_failed(pc->conn, 
+			error_connection_attempt_failed(pc->conn,
 					pc->msg, -err);
 			goto fail;
 		}
@@ -657,7 +659,7 @@ static void handles_reply(DBusPendingCall *call, void *data)
 		/* FIXME : forward error as is */
 		if (dbus_error_has_name(&derr,
 				"org.bluez.Error.ConnectionAttemptFailed"))
-			error_connection_attempt_failed(pc->conn, 
+			error_connection_attempt_failed(pc->conn,
 					pc->msg, EIO);
 		else
 			error_not_supported(pc->conn, pc->msg);
@@ -667,7 +669,7 @@ static void handles_reply(DBusPendingCall *call, void *data)
 		dbus_error_free(&derr);
 		goto fail;
 	}
-	
+
 	if (!dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle,
 				&len, DBUS_TYPE_INVALID)) {
@@ -1287,6 +1289,45 @@ static inline int unix_socket_connect(const char *address)
 	return sk;
 }
 
+static int tcp_socket_connect(const char *address)
+{
+	struct sockaddr_in addr;
+	int err, sk;
+	unsigned short int port;
+
+	memset(&addr, 0, sizeof(addr));
+
+	if (strncmp(address, "localhost", 9) != 0) {
+		error("Address should have the form localhost:port.");
+		return -1;
+	}
+	port = atoi(strchr(address, ':') + 1);
+	if (port <= 0) {
+		error("Invalid port '%d'.", port);
+		return -1;
+	}
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addr.sin_port = htons(port);
+
+	sk = socket(PF_INET, SOCK_STREAM, 0);
+	if (sk < 0) {
+		err = errno;
+		error("TCP socket(%s) create failed %s(%d)", address,
+							strerror(err), err);
+		return -err;
+	}
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = errno;
+		error("TCP socket(%s) connect failed: %s(%d)",
+						address, strerror(err), err);
+		close(sk);
+		errno = err;
+		return -err;
+	}
+	return sk;
+}
+
 static inline int tty_open(const char *tty, struct termios *ti)
 {
 	int err, sk;
@@ -1337,10 +1378,19 @@ static gboolean connect_event(GIOChannel *chan,
 
 	bacpy(&prx->dst, &raddr.rc_bdaddr);
 
-	if (prx->type == UNIX_SOCKET_PROXY)
+	switch (prx->type) {
+	case UNIX_SOCKET_PROXY:
 		lsk = unix_socket_connect(prx->address);
-	else
+		break;
+	case TTY_PROXY:
 		lsk = tty_open(prx->address, &prx->proxy_ti);
+		break;
+	case TCP_SOCKET_PROXY:
+		lsk = tcp_socket_connect(prx->address);
+		break;
+	default:
+		lsk = -1;
+	}
 
 	if (lsk < 0) {
 		close(rsk);
@@ -1753,6 +1803,25 @@ static int proxy_socket_register(bdaddr_t *src, const char *uuid128,
 	return ret;
 }
 
+static int proxy_tcp_register(bdaddr_t *src, const char *uuid128,
+			const char *address, char *outpath, size_t size)
+{
+	struct proxy *prx;
+	int ret;
+
+	prx = g_new0(struct proxy, 1);
+	prx->address = g_strdup(address);
+	prx->uuid128 = g_strdup(uuid128);
+	prx->type = TCP_SOCKET_PROXY;
+	bacpy(&prx->src, src);
+
+	ret = register_proxy_object(prx, outpath, size);
+	if (ret < 0)
+		proxy_free(prx);
+
+	return ret;
+}
+
 static proxy_type_t addr2type(const char *address)
 {
 	struct stat st;
@@ -1763,6 +1832,8 @@ static proxy_type_t addr2type(const char *address)
 		 * it refers to abstract namespace. 'x00' will be used
 		 * to represent the null byte.
 		 */
+		if (strncmp("localhost:", address, 10) == 0)
+			return TCP_SOCKET_PROXY;
 		if (strncmp("x00", address, 3) != 0)
 			return UNKNOWN_PROXY_TYPE;
 		else
@@ -1833,13 +1904,22 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (type != TTY_PROXY)
+	switch (type) {
+	case UNIX_SOCKET_PROXY:
 		ret = proxy_socket_register(&src, uuid128,
-				address, path, sizeof(path));
-	else
+						address, path, sizeof(path));
+		break;
+	case TTY_PROXY:
 		ret = proxy_tty_register(&src, uuid128,
 				address, NULL, path, sizeof(path));
-
+		break;
+	case TCP_SOCKET_PROXY:
+		ret = proxy_tcp_register(&src, uuid128, address,
+						path, sizeof(path));
+		break;
+	default:
+		ret = -1;
+	}
 	if (ret < 0) {
 		dbus_message_unref(reply);
 		return error_failed(conn, msg, "Create object path failed");
@@ -2065,7 +2145,7 @@ static DBusHandlerResult cancel_connect_service(DBusConnection *conn,
 
 	pending = find_pending_connect_by_pattern(bda, pattern);
 	if (!pending)
-		return error_does_not_exist(conn, msg, 
+		return error_does_not_exist(conn, msg,
 				"No such connection request");
 
 	reply = dbus_message_new_method_return(msg);
@@ -2087,7 +2167,7 @@ static void proxy_path_free(gpointer data, gpointer udata)
 	if (dbus_connection_get_object_user_data(conn,
 				path, (void *) &prx) && prx) {
 		struct termios *ti;
-		
+
 		ti = (prx->type == TTY_PROXY ? &prx->proxy_ti : NULL);
 		proxy_store(&prx->src, prx->uuid128, prx->address, NULL,
 				prx->channel, 0, ti);
@@ -2243,6 +2323,9 @@ static void parse_proxy(char *key, char *value, void *data)
 		break;
 	case UNIX_SOCKET_PROXY:
 		proxy_socket_register(&src, uuid128, key, NULL, 0);
+		break;
+	case TCP_SOCKET_PROXY:
+		proxy_tcp_register(&src, uuid128, key, NULL, 0);
 		break;
 	default:
 		return;
