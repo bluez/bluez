@@ -1123,23 +1123,29 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 		produced += frame->subbands;
 		crc_pos += frame->subbands;
+
+		/* this is temporary until we use an in-place shift above */
+		if(produced % 8) {
+			data[produced >> 3] >>= 8 - (produced % 8);
+			crc_header[crc_pos >> 3] >>= 8 - (crc_pos % 8);
+		}
 	}
 
 	for (ch = 0; ch < frame->channels; ch++) {
 		for (sb = 0; sb < frame->subbands; sb++) {
-			if (produced % 8 == 0)
-				data[produced / 8] = 0;
-			data[produced >> 3] |= ((frame->scale_factor[ch][sb] & 0x0F) << (4 - (produced % 8)));
-			crc_header[crc_pos >> 3] |= ((frame->scale_factor[ch][sb] & 0x0F) << (4 - (crc_pos % 8)));
+			data[produced >> 3] <<= 4;
+			crc_header[crc_pos >> 3] <<= 4;
+			data[produced >> 3] |= frame->scale_factor[ch][sb] & 0x0F;
+			crc_header[crc_pos >> 3] |= frame->scale_factor[ch][sb] & 0x0F;
 
 			produced += 4;
 			crc_pos += 4;
 		}
 	}
 
-	/* this is temporary until we use an in-place shift above */
-	if(produced % 8)
-		data[produced >> 3] >>= 8 - (produced % 8);
+	/* align the last crc byte */
+	if(crc_pos % 8) 
+		crc_header[crc_pos >> 3] <<= 8 - (crc_pos % 8);
 
 	data[3] = sbc_crc8(crc_header, crc_pos);
 
