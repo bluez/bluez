@@ -1114,21 +1114,12 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 		data[4] = 0;
 		for (sb = 0; sb < frame->subbands - 1; sb++)
-			data[4] |= ((frame->join >> sb) & 0x01) << (7 - sb);
+			data[4] |= ((frame->join >> sb) & 0x01) << (frame->subbands - 1 - sb);
 
-		if (frame->subbands == 4)
-			crc_header[crc_pos >> 3] = data[4] & 0xf0;
-		else
-			crc_header[crc_pos >> 3] = data[4];
+		crc_header[crc_pos >> 3] = data[4];
 
 		produced += frame->subbands;
 		crc_pos += frame->subbands;
-
-		/* this is temporary until we use an in-place shift above */
-		if(produced % 8) {
-			data[produced >> 3] >>= 8 - (produced % 8);
-			crc_header[crc_pos >> 3] >>= 8 - (crc_pos % 8);
-		}
 	}
 
 	for (ch = 0; ch < frame->channels; ch++) {
