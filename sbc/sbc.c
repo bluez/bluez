@@ -1366,7 +1366,7 @@ int sbc_get_frame_length(sbc_t *sbc)
 	if (sbc->channels == 1)
 		ret += ((sbc->blocks * sbc->channels * sbc->bitpool) + 7) / 8;
 	else
-		ret += ((sbc->joint * sbc->subbands + sbc->blocks * sbc->bitpool)
+		ret += (((sbc->joint? sbc->subbands:0) + sbc->blocks * sbc->bitpool)
 			+ 7) / 8;
 
 	return ret;
