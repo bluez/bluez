@@ -1154,20 +1154,19 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 						(uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >>
 									(frame->scale_factor[ch][sb] + 1)) +
 								levels[ch][sb]) >> 1);
-					audio_sample <<= 16 - bits[ch][sb];
 					for (bit = 0; bit < bits[ch][sb]; bit++) {
-						data[produced >> 3] <<= 1;
-						if(audio_sample & 0x8000)
-							data[produced >> 3] |= 0x1;
-						audio_sample <<= 1;
+						int b;	/* A bit */
+						if (produced % 8 == 0)
+							data[produced >> 3] = 0;
+						b = ((audio_sample) >>
+								(bits[ch][sb] - bit - 1)) & 0x01;
+						data[produced >> 3] |= b << (7 - (produced % 8));
 						produced++;
 					}
 				}
 			}
 		}
 	}
-	/* align the last byte */
-	if(produced % 8) data[produced >> 3] <<= 8 - (produced % 8);
 	
 	return (produced + 7) >> 3;
 }
