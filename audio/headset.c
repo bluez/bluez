@@ -137,13 +137,12 @@ static int headset_send(struct headset *hs, char *format, ...)
 	char rsp[BUF_SIZE];
 	va_list ap;
 	gsize total_written, written, count;
-	int err;
 
 	va_start(ap, format);
-	err = vsnprintf(rsp, sizeof(rsp), format, ap);
+	count = vsnprintf(rsp, sizeof(rsp), format, ap);
 	va_end(ap);
 
-	if (err < 0)
+	if (count < 0)
 		return -EINVAL;
 
 	if (hs->state < HEADSET_STATE_CONNECTED || !hs->rfcomm) {
@@ -151,7 +150,6 @@ static int headset_send(struct headset *hs, char *format, ...)
 		return -EIO;
 	}
 
-	count = strlen(rsp);
 	written = total_written = 0;
 
 	while (total_written < count) {
