@@ -1637,7 +1637,7 @@ void headset_set_state(struct device *dev, headset_state_t state)
 
 		if (hs->mic_gain >= 0) {
 			snprintf(str, sizeof(str) - 1, "\r\n+VGM=%u\r\n",
-				hs->sp_gain);
+				hs->mic_gain);
 			headset_send(hs, str);
 		}
 		break;
