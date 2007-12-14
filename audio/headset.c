@@ -136,7 +136,8 @@ static int headset_send(struct headset *hs, char *format, ...)
 {
 	char rsp[BUF_SIZE];
 	va_list ap;
-	gsize total_written, written, count;
+	ssize_t total_written, written, count;
+	int fd;
 
 	va_start(ap, format);
 	count = vsnprintf(rsp, sizeof(rsp), format, ap);
@@ -151,14 +152,11 @@ static int headset_send(struct headset *hs, char *format, ...)
 	}
 
 	written = total_written = 0;
+	fd = g_io_channel_unix_get_fd(hs->rfcomm);
 
 	while (total_written < count) {
-		GIOError io_err;
-
-		io_err = g_io_channel_write(hs->rfcomm, rsp + total_written,
-						count - total_written,
-						&written);
-		if (io_err != G_IO_ERROR_NONE)
+		written = write(fd, rsp + total_written, count - total_written);
+		if (written < 0)
 			return -errno;
 
 		total_written += written;
