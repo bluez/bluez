@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <signal.h>
 #include <string.h>
 #include <getopt.h>
@@ -63,6 +64,17 @@
 
 #define HEADSET_GAIN_SPEAKER 'S'
 #define HEADSET_GAIN_MICROPHONE 'M'
+
+#define AG_FEATURE_THREE_WAY_CALLING             0x0001
+#define AG_FEATURE_EC_ANDOR_NR                   0x0002
+#define AG_FEATURE_VOICE_RECOGNITION             0x0004
+#define AG_FEATURE_INBAND_RINGTONE               0x0008
+#define AG_FEATURE_ATTACH_NUMBER_TO_VOICETAG     0x0010
+#define AG_FEATURE_REJECT_A_CALL                 0x0020
+#define AG_FEATURE_ENHANCES_CALL_STATUS          0x0040
+#define AG_FEATURE_ENHANCES_CALL_CONTROL         0x0080
+/*Audio Gateway features.Default is In-band Ringtone*/
+static unsigned int ag_features = AG_FEATURE_INBAND_RINGTONE;
 
 static char *str_state[] = {
 	"HEADSET_STATE_DISCONNECTED",
@@ -120,24 +132,37 @@ struct event {
 static int rfcomm_connect(struct device *device, struct pending_connect *c);
 static int get_handles(struct device *device, struct pending_connect *c);
 
-static int headset_send(struct headset *hs, const char *str)
+static int headset_send(struct headset *hs, char *format, ...)
 {
-	GIOError err;
+	char rsp[BUF_SIZE];
+	va_list ap;
 	gsize total_written, written, count;
+	int err;
+
+	va_start(ap, format);
+	err = vsnprintf(rsp, sizeof(rsp), format, ap);
+	va_end(ap);
+
+	if (err < 0)
+		return -EINVAL;
 
 	if (hs->state < HEADSET_STATE_CONNECTED || !hs->rfcomm) {
 		error("headset_send: the headset is not connected");
 		return -EIO;
 	}
 
-	count = strlen(str);
+	count = strlen(rsp);
 	written = total_written = 0;
 
 	while (total_written < count) {
-		err = g_io_channel_write(hs->rfcomm, str + total_written,
-					count - total_written, &written);
-		if (err != G_IO_ERROR_NONE)
+		GIOError io_err;
+
+		io_err = g_io_channel_write(hs->rfcomm, rsp + total_written,
+						count - total_written,
+						&written);
+		if (io_err != G_IO_ERROR_NONE)
 			return -errno;
+
 		total_written += written;
 	}
 
@@ -150,8 +175,7 @@ static int supported_features(struct device *device, const char *buf)
 	int err;
 
 	hs->hfp_features = strtoul(&buf[8], NULL, 10);
-
-	err = headset_send(hs, "\r\n+BRSF:0\r\n");
+	err = headset_send(hs, "\r\n+BRSF=%u\r\n", ag_features);
 	if (err < 0)
 		return err;
 
@@ -355,7 +379,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	err = handle_event(device, &hs->buf[hs->data_start]);
 	if (err < 0)
 		error("Error handling command %s: %s (%d)", &hs->buf[hs->data_start],
-				strerror(-err), -err);
+		      strerror(-err), -err);
 
 	hs->data_start += cmd_len;
 	hs->data_length -= cmd_len;
@@ -1103,8 +1127,11 @@ error:
 static gboolean ring_timer_cb(gpointer data)
 {
 	struct device *device = data;
+	int err;
 
-	if (headset_send(device->headset, "\r\nRING\r\n") != G_IO_ERROR_NONE)
+	err = headset_send(device->headset, "\r\nRING\r\n");
+
+	if (err)
 		error("Sending RING failed");
 
 	return TRUE;
@@ -1116,6 +1143,7 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 	struct device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply = NULL;
+	int err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
 		return error_not_connected(conn, msg);
@@ -1129,7 +1157,8 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 		goto done;
 	}
 
-	if (headset_send(device->headset, "\r\nRING\r\n") != G_IO_ERROR_NONE) {
+	err = headset_send(device->headset, "\r\nRING\r\n");
+	if (err) {
 		dbus_message_unref(reply);
 		return error_failed(conn, msg, "Failed");
 	}
@@ -1261,7 +1290,7 @@ static DBusHandlerResult hs_set_gain(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusError derr;
 	dbus_uint16_t gain;
-	char str[13];
+	int err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
 		return error_not_connected(conn, msg);
@@ -1286,10 +1315,8 @@ static DBusHandlerResult hs_set_gain(DBusConnection *conn,
 
 	if (hs->state != HEADSET_STATE_PLAYING)
 		goto done;
-
-	snprintf(str, sizeof(str) - 1, "\r\n+VG%c=%u\r\n", type, gain);
-
-	if (headset_send(device->headset, str) != G_IO_ERROR_NONE) {
+	err = headset_send(device->headset, "\r\n+VG%c=%u\r\n", type, gain);
+	if (err) {
 		dbus_message_unref(reply);
 		return error_failed(conn, msg, "Unable to send to headset");
 	}
@@ -1584,7 +1611,6 @@ int headset_close_rfcomm(struct device *dev)
 void headset_set_state(struct device *dev, headset_state_t state)
 {
 	struct headset *hs = dev->headset;
-	char str[13];
 
 	if (hs->state == state)
 		return;
@@ -1629,17 +1655,10 @@ void headset_set_state(struct device *dev, headset_state_t state)
 						AUDIO_HEADSET_INTERFACE,
 						"Playing", DBUS_TYPE_INVALID);
 
-		if (hs->sp_gain >= 0) {
-			snprintf(str, sizeof(str) - 1, "\r\n+VGS=%u\r\n",
-				hs->sp_gain);
-			headset_send(hs, str);
-		}
-
-		if (hs->mic_gain >= 0) {
-			snprintf(str, sizeof(str) - 1, "\r\n+VGM=%u\r\n",
-				hs->mic_gain);
-			headset_send(hs, str);
-		}
+		if (hs->sp_gain >= 0)
+			headset_send(hs, "\r\n+VGS=%u\r\n", hs->sp_gain);
+		if (hs->mic_gain >= 0)
+			headset_send(hs, "\r\n+VGM=%u\r\n", hs->mic_gain);
 		break;
 	}
 
