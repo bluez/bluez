@@ -15,10 +15,11 @@ Methods		string CreateProxy(string uuid, string address)
 			Creates a serial port proxy object.
 
 			Service identifier must be provided in the uuid 128
-			format. Addresses can be TTY char devices or unix
-			socket address. Abstract namespace can be informed
-			replacing the null byte by 'x00'.  eg: "/dev/ttyS0",
-			"/tmp/gps-data", "x00/org/bluez/echo".
+			format. Addresses can be either TTY char devices,
+			unix socket address or a local TCP port. Abstract
+			namespace can be informed replacing the null byte
+			by 'x00'. eg: "/dev/ttyS0", "/tmp/gps-data",
+			"x00/org/bluez/echo", "localhost:2947".
 
 			Possible errors:org.bluez.Error.InvalidArguments
 					org.bluez.Error.NotAvailable
