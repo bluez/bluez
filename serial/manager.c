@@ -1991,32 +1991,20 @@ static DBusHandlerResult remove_proxy(DBusConnection *conn,
 			dbus_message_new_method_return(msg));
 }
 
-static DBusHandlerResult connect_service(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusHandlerResult connect_service_from_devid(DBusConnection *conn,
+				DBusMessage *msg, void *data, int dev_id,
+				const char *bda, const char *pattern)
 {
 	struct pending_connect *pending, *pc;
-	DBusError derr;
 	bdaddr_t src;
-	const char *bda, *pattern;
 	long val;
-	int dev_id, err;
+	int err;
 	char uuid[MAX_LEN_UUID_STR];
-
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_STRING, &bda,
-				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
 
 	pending = find_pending_connect_by_pattern(bda, pattern);
 	if (pending)
 		return error_in_progress(conn, msg, "Connection in progress");
 
-	dev_id = hci_get_route(NULL);
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
 		return error_failed(conn, msg, "Adapter not available");
 
@@ -2089,6 +2077,51 @@ done:
 			(name_cb_t) transaction_owner_exited, NULL);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult connect_service(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusError derr;
+	const char *bda, *pattern;
+	int devid;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &bda,
+				DBUS_TYPE_STRING, &pattern,
+				DBUS_TYPE_INVALID)) {
+		error_invalid_arguments(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	devid = hci_get_route(NULL);
+
+	return connect_service_from_devid(conn, msg, data, devid, bda, pattern);
+}
+
+static DBusHandlerResult connect_service_from_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusError derr;
+	const char *adapter, *bda, *pattern;
+	int devid;
+
+	dbus_error_init(&derr);
+	if (!dbus_message_get_args(msg, &derr,
+				DBUS_TYPE_STRING, &adapter,
+				DBUS_TYPE_STRING, &bda,
+				DBUS_TYPE_STRING, &pattern,
+				DBUS_TYPE_INVALID)) {
+		error_invalid_arguments(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	devid = hci_devid(adapter);
+
+	return connect_service_from_devid(conn, msg, data, devid, bda, pattern);
 }
 
 static DBusHandlerResult disconnect_service(DBusConnection *conn,
@@ -2219,15 +2252,16 @@ static void manager_unregister(DBusConnection *conn, void *data)
 }
 
 static DBusMethodVTable manager_methods[] = {
-	{ "CreatePort",			create_port,		"ss",	"s"	},
-	{ "ListPorts",			list_ports,		"",	"as"	},
-	{ "RemovePort",			remove_port,		"s",	""	},
-	{ "CreateProxy",		create_proxy,		"ss",	"s"	},
-	{ "ListProxies",		list_proxies,		"",	"as"	},
-	{ "RemoveProxy",		remove_proxy,		"s",	""	},
-	{ "ConnectService",		connect_service,	"ss",	"s"	},
-	{ "DisconnectService",		disconnect_service,	"s",	""	},
-	{ "CancelConnectService",	cancel_connect_service,	"ss",	""	},
+	{ "CreatePort",			create_port,			"ss",	"s"	},
+	{ "ListPorts",			list_ports,			"",	"as"	},
+	{ "RemovePort",			remove_port,			"s",	""	},
+	{ "CreateProxy",		create_proxy,			"ss",	"s"	},
+	{ "ListProxies",		list_proxies,			"",	"as"	},
+	{ "RemoveProxy",		remove_proxy,			"s",	""	},
+	{ "ConnectService",		connect_service,		"ss",	"s"	},
+	{ "ConnectServiceFromAdapter",	connect_service_from_adapter,	"sss",	"s"	},
+	{ "DisconnectService",		disconnect_service,		"s",	""	},
+	{ "CancelConnectService",	cancel_connect_service,		"ss",	""	},
 	{ NULL, NULL, NULL, NULL },
 };
 

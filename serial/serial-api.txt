@@ -69,6 +69,21 @@ Methods		string CreateProxy(string uuid, string address)
 					org.bluez.Error.NotSupported
 					org.bluez.Error.Failed
 
+		string ConnectServiceFromAdapter(string adapter,
+				string address, string pattern) [experimental]
+
+			Use the given adapter to connect to a specific RFCOMM
+			based service on a remote device and then creates a
+			RFCOMM TTY device for it. The RFCOMM TTY device is
+			returned.
+
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.Canceled
+					org.bluez.Error.InProgress
+					org.bluez.Error.ConnectionAttemptFailed
+					org.bluez.Error.NotSupported
+					org.bluez.Error.Failed
+
 		void CancelConnectService(string address, string pattern)
 
 			Cancel a previous ConnectService method call.
