@@ -1,3 +1,15 @@
+ver 3.24:
+	Add TCP connection support for serial proxy.
+	Add fix for Logitech HID proxy switching.
+	Add missing macros, MIN, MAX, ABS and CLAMP.
+	Add more SBC encoder optimizations.
+	Add initial mechanism to handle headset commands.
+	Fix connecting to handsfree profile headsets.
+	Use proper function for checking signal name.
+
+	Note:
+	This version needs at least bluez-libs-3.24
+
 ver 3.23:
 	Fix key search function to honor the mmap area size.
 	Fix Avahi integration of network service.
