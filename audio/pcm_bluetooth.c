@@ -1327,19 +1327,19 @@ static int bluetooth_parse_config(snd_config_t *conf,
 				return -EINVAL;
 			}
 
-			if (strcmp(pref, "auto") == 0) {
+			if (strcmp(mode, "auto") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_AUTO;
 				bt_config->has_channel_mode = 1;
-			} else if (strcmp(pref, "mono") == 0) {
+			} else if (strcmp(mode, "mono") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_MONO;
 				bt_config->has_channel_mode = 1;
-			} else if (strcmp(pref, "dual") == 0) {
+			} else if (strcmp(mode, "dual") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL;
 				bt_config->has_channel_mode = 1;
-			} else if (strcmp(pref, "stereo") == 0) {
+			} else if (strcmp(mode, "stereo") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_STEREO;
 				bt_config->has_channel_mode = 1;
-			} else if (strcmp(pref, "joint") == 0) {
+			} else if (strcmp(mode, "joint") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_JOINT_STEREO;
 				bt_config->has_channel_mode = 1;
 			}
@@ -1352,13 +1352,13 @@ static int bluetooth_parse_config(snd_config_t *conf,
 				return -EINVAL;
 			}
 
-			if (strcmp(pref, "auto") == 0) {
+			if (strcmp(allocation, "auto") == 0) {
 				bt_config->allocation_method = BT_A2DP_ALLOCATION_AUTO;
 				bt_config->has_allocation_method = 1;
-			} else if (strcmp(pref, "loudness") == 0) {
+			} else if (strcmp(allocation, "loudness") == 0) {
 				bt_config->allocation_method = BT_A2DP_ALLOCATION_LOUDNESS;
 				bt_config->has_allocation_method = 1;
-			} else if (strcmp(pref, "snr") == 0) {
+			} else if (strcmp(allocation, "snr") == 0) {
 				bt_config->allocation_method = BT_A2DP_ALLOCATION_SNR;
 				bt_config->has_allocation_method = 1;
 			}
