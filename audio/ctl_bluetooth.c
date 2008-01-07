@@ -317,7 +317,6 @@ SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
 	DBG("Bluetooth Control plugin");
 
 	data = malloc(sizeof(struct bluetooth_data));
-	memset(data, 0, sizeof(struct bluetooth_data));
 	if (!data) {
 		err = -ENOMEM;
 		goto error;
@@ -326,8 +325,6 @@ SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
 	err = bluetooth_init(data);
 	if (err < 0)
 		goto error;
-
-	memset(data, 0, sizeof(*data));
 
 	data->ext.version = SND_CTL_EXT_VERSION;
 	data->ext.card_idx = -1;
