@@ -175,7 +175,7 @@ static int supported_features(struct device *device, const char *buf)
 	if (err < 0)
 		return err;
 
-	return headset_send(device->headset, "\r\nOK\r\n");
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 static int report_indicators(struct device *device, const char *buf)
@@ -192,12 +192,13 @@ static int report_indicators(struct device *device, const char *buf)
 	if (err < 0)
 		return err;
 
-	return headset_send(device->headset, "\r\nOK\r\n");
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 static int event_reporting(struct device *device, const char *buf)
 {
-	return headset_send(device->headset, "\r\nOK\r\n");
+	struct headset *hs = device->headset;
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 static int call_hold(struct device *device, const char *buf)
@@ -209,25 +210,64 @@ static int call_hold(struct device *device, const char *buf)
 	if (err < 0)
 		return err;
 
-	return headset_send(device->headset, "\r\nOK\r\n");
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 static int answer_call(struct device *device, const char *buf)
 {
+	struct headset *hs = device->headset;
+	int err;
+
 	dbus_connection_emit_signal(device->conn, device->path,
 			AUDIO_HEADSET_INTERFACE, "AnswerRequested",
 			DBUS_TYPE_INVALID);
 
-	return headset_send(device->headset, "\r\nOK\r\n");
+	if (hs->ring_timer) {
+		g_source_remove(hs->ring_timer);
+		hs->ring_timer = 0;
+	}
+
+	if (!hs->hfp_active)
+		return headset_send(hs, "\r\nOK\r\n");
+
+	err = headset_send(hs, "\r\nOK\r\n");
+	if (err < 0)
+		return err;
+
+	/*+CIEV: (call = 1)*/
+	err = headset_send(hs, "\r\n+CIEV:2, 1\r\n");
+	if (err < 0)
+		return err;
+
+	/*+CIEV: (callsetup = 0)*/
+	return headset_send(hs, "\r\n+CIEV:3, 0\r\n");
 }
 
 static int terminate_call(struct device *device, const char *buf)
 {
-	return headset_send(device->headset, "\r\nOK\r\n");
+	struct headset *hs = device->headset;
+	int err;
+
+	dbus_connection_emit_signal(device->conn, device->path,
+			AUDIO_HEADSET_INTERFACE, "TerminateCall",
+			DBUS_TYPE_INVALID);
+
+	if (hs->ring_timer) {
+		g_source_remove(hs->ring_timer);
+		hs->ring_timer = 0;
+	}
+
+	err = headset_send(hs, "\r\nOK\r\n");
+	if (err < 0)
+		return err;
+
+	/*+CIEV: (call = 0)*/
+	return headset_send(hs, "\r\n+CIEV:2, 0\r\n");
 }
 
 static int signal_gain_setting(struct device *device, const char *buf)
 {
+	struct headset *hs = device->headset;
 	const char *name;
 	dbus_uint16_t gain;
 
@@ -245,16 +285,16 @@ static int signal_gain_setting(struct device *device, const char *buf)
 
 	switch (buf[5]) {
 	case HEADSET_GAIN_SPEAKER:
-		if (device->headset->sp_gain == gain)
+		if (hs->sp_gain == gain)
 			goto ok;
 		name = "SpeakerGainChanged";
-		device->headset->sp_gain = gain;
+		hs->sp_gain = gain;
 		break;
 	case HEADSET_GAIN_MICROPHONE:
-		if (device->headset->mic_gain == gain)
+		if (hs->mic_gain == gain)
 			goto ok;
 		name = "MicrophoneGainChanged";
-		device->headset->mic_gain = gain;
+		hs->mic_gain = gain;
 		break;
 	default:
 		error("Unknown gain setting");
@@ -267,7 +307,7 @@ static int signal_gain_setting(struct device *device, const char *buf)
 				    DBUS_TYPE_INVALID);
 
 ok:
-	return headset_send(device->headset, "\r\nOK\r\n");
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 static struct event event_callbacks[] = {
@@ -1125,11 +1165,12 @@ error:
 static gboolean ring_timer_cb(gpointer data)
 {
 	struct device *device = data;
+	struct headset *hs = device->headset;
 	int err;
 
-	err = headset_send(device->headset, "\r\nRING\r\n");
+	err = headset_send(hs, "\r\nRING\r\n");
 
-	if (err)
+	if (err < 0)
 		error("Sending RING failed");
 
 	return TRUE;
@@ -1155,8 +1196,8 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 		goto done;
 	}
 
-	err = headset_send(device->headset, "\r\nRING\r\n");
-	if (err) {
+	err = headset_send(hs, "\r\nRING\r\n");
+	if (err < 0) {
 		dbus_message_unref(reply);
 		return error_failed(conn, msg, "Failed");
 	}
@@ -1313,8 +1354,9 @@ static DBusHandlerResult hs_set_gain(DBusConnection *conn,
 
 	if (hs->state != HEADSET_STATE_PLAYING)
 		goto done;
-	err = headset_send(device->headset, "\r\n+VG%c=%u\r\n", type, gain);
-	if (err) {
+
+	err = headset_send(hs, "\r\n+VG%c=%u\r\n", type, gain);
+	if (err < 0) {
 		dbus_message_unref(reply);
 		return error_failed(conn, msg, "Unable to send to headset");
 	}
@@ -1379,6 +1421,7 @@ static DBusSignalVTable headset_signals[] = {
 	{ "Playing",			""	},
 	{ "SpeakerGainChanged",		"q"	},
 	{ "MicrophoneGainChanged",	"q"	},
+	{ "TerminateCall",		""	},
 	{ NULL, NULL }
 };
 
