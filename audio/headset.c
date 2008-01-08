@@ -1397,6 +1397,56 @@ static DBusHandlerResult hs_set_mic_gain(DBusConnection *conn,
 	return hs_set_gain(conn, msg, data, HEADSET_GAIN_MICROPHONE);
 }
 
+static DBusHandlerResult hf_setup_call(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	struct device *device = data;
+	struct headset *hs = device->headset;
+	DBusMessage *reply;
+	DBusError derr;
+	const char *value;
+	int err;
+
+	if (!hs->hfp_active)
+		return error_not_supported(device->conn, msg);
+
+	if (hs->state < HEADSET_STATE_CONNECTED)
+		return error_not_connected(conn, msg);
+
+	dbus_error_init(&derr);
+	dbus_message_get_args(msg, &derr, DBUS_TYPE_STRING, &value,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		error_invalid_arguments(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	if (!strncmp(value, "incoming", 8))
+		err = headset_send(hs, "\r\n+CIEV:3, 1\r\n");
+	else if (!strncmp(value, "outgoing", 8))
+		err = headset_send(hs, "\r\n+CIEV:3, 2\r\n");
+	else if (!strncmp(value, "remote", 6))
+		err = headset_send(hs, "\r\n+CIEV:3, 3\r\n");
+	else
+		err = -EINVAL;
+
+	if (err < 0) {
+		dbus_message_unref(reply);
+		return error_failed_errno(conn, msg, -err);
+	}
+
+	send_message_and_unref(conn, reply);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static DBusMethodVTable headset_methods[] = {
 	{ "Connect",		hs_connect,		"",	""	},
 	{ "Disconnect",		hs_disconnect,		"",	""	},
@@ -1410,6 +1460,7 @@ static DBusMethodVTable headset_methods[] = {
 	{ "GetMicrophoneGain",	hs_get_mic_gain,	"",	"q"	},
 	{ "SetSpeakerGain",	hs_set_speaker_gain,	"q",	""	},
 	{ "SetMicrophoneGain",	hs_set_mic_gain,	"q",	""	},
+	{ "SetupCall",		hf_setup_call,		"s",	""	},
 	{ NULL, NULL, NULL, NULL }
 };
 
