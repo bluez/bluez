@@ -776,12 +776,16 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
 {
-	int i;
-	/* Input 4 New Audio Samples */
-	for (i = 39; i >= 4; i--)
-		state->X[ch][i] = state->X[ch][i - 4];
-	for (i = 3; i >= 0; i--)
-		state->X[ch][i] = frame->pcm_sample[ch][blk * 4 + (3 - i)];
+	int32_t *x = state->X[ch];
+	int16_t *pcm = &frame->pcm_sample[ch][blk * 8];
+
+	/* Input 4 Audio Samples */
+	memmove(x + 4, x, 36 * sizeof(*x));
+	x[3] = pcm[0];
+	x[2] = pcm[1];
+	x[1] = pcm[2];
+	x[0] = pcm[3];
+
 	_sbc_analyze_four(state->X[ch], frame->sb_sample_f[blk][ch]);
 }
 
@@ -912,13 +916,20 @@ static inline void sbc_analyze_eight(struct sbc_encoder_state *state,
 					struct sbc_frame *frame, int ch,
 					int blk)
 {
-	int i;
+	int32_t *x = state->X[ch];
+	int16_t *pcm = &frame->pcm_sample[ch][blk * 8];
 
 	/* Input 8 Audio Samples */
-	for (i = 79; i >= 8; i--)
-		state->X[ch][i] = state->X[ch][i - 8];
-	for (i = 7; i >= 0; i--)
-		state->X[ch][i] = frame->pcm_sample[ch][blk * 8 + (7 - i)];
+	memmove(x + 8, x, 72 * sizeof(*x));
+	x[7] = pcm[0];
+	x[6] = pcm[1];
+	x[5] = pcm[2];
+	x[4] = pcm[3];
+	x[3] = pcm[4];
+	x[2] = pcm[5];
+	x[1] = pcm[6];
+	x[0] = pcm[7];
+
 	_sbc_analyze_eight(state->X[ch], frame->sb_sample_f[blk][ch]);
 }
 
