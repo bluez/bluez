@@ -29,7 +29,7 @@ Methods
 		void RemoveDevice(string path) [experimental]
 
 			Removes a device from the device tree. If there are
-			any connections open to the device they will be closed.			
+			any connections open to the device they will be closed.
 
 		array{string} ListDevices() [experimental]
 
@@ -183,6 +183,13 @@ Methods		void Connect()
 
 			Changes the current speaker gain if possible.
 
+                void SetupCall(string value)
+
+			Sets up an call with the connected HFP. The value can
+			be "incoming", "outgoing" or "remote" to indicate
+			incoming call, outgoing call and remote party alerted
+			respectively.
+
 Signals		void AnswerRequested()
 
 			Sent when the answer button is pressed on the headset
@@ -210,6 +217,10 @@ Signals		void AnswerRequested()
 		void MicrophoneGainChanged(uint16 gain)
 
 			The microphone gain changed.
+
+                void TerminateCall()
+
+                        Sent when an ongoing call is terminated.
 
 
 org.bluez.audio.Gateway interface
