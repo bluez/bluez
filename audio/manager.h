@@ -44,6 +44,7 @@ void audio_exit(void);
 
 uint32_t add_service_record(DBusConnection *conn, sdp_buf_t *buf);
 int remove_service_record(DBusConnection *conn, uint32_t rec_id);
+gboolean server_is_enabled(uint16_t svc);
 
 struct device *manager_find_device(bdaddr_t *bda, const char *interface,
 					gboolean connected);

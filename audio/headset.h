@@ -36,19 +36,14 @@ typedef enum {
 } headset_state_t;
 
 typedef enum {
-	SVC_HEADSET,
-	SVC_HANDSFREE
-} headset_type_t;
-
-typedef enum {
 	HEADSET_LOCK_READ = 1,
 	HEADSET_LOCK_WRITE = 1 << 1,
 } headset_lock_t;
 
 typedef void (*headset_stream_cb_t) (struct device *dev, void *user_data);
 
-struct headset *headset_init(struct device *dev, int enable_hfp,
-				sdp_record_t *record, uint16_t svc);
+struct headset *headset_init(struct device *dev, sdp_record_t *record,
+				uint16_t svc);
 
 void headset_free(struct device *dev);
 
@@ -58,8 +53,8 @@ unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
 					void *user_data);
 gboolean headset_cancel_stream(struct device *dev, unsigned int id);
 
-headset_type_t headset_get_type(struct device *dev);
-void headset_set_type(struct device *dev, headset_type_t type);
+gboolean get_hfp_active(struct device *dev);
+void set_hfp_active(struct device *dev, gboolean active);
 
 int headset_connect_rfcomm(struct device *dev, int sock);
 int headset_close_rfcomm(struct device *dev);
@@ -77,4 +72,3 @@ gboolean headset_lock(struct device *dev, headset_lock_t lock);
 gboolean headset_unlock(struct device *dev, headset_lock_t lock);
 gboolean headset_suspend(struct device *dev, void *data);
 gboolean headset_play(struct device *dev, void *data);
-

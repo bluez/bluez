@@ -111,8 +111,8 @@ struct headset {
 	int data_start;
 	int data_length;
 
-	int enable_hfp;
-	headset_type_t type;
+	gboolean hfp_active;
+	gboolean search_hfp;
 
 	headset_state_t state;
 	GSList *pending;
@@ -604,6 +604,11 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 	hs->rfcomm = chan;
 	c->io = NULL;
 
+	if (server_is_enabled(HANDSFREE_SVCLASS_ID) && hs->hfp_handle != 0)
+		hs->hfp_active = TRUE;
+	else
+		hs->hfp_active = FALSE;
+
 	headset_set_state(device, HEADSET_STATE_CONNECTED);
 
 	debug("%s: Connected to %s", device->path, hs_address);
@@ -699,7 +704,7 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 		goto failed_not_supported;
 	}
 
-	id = hs->enable_hfp ? HANDSFREE_SVCLASS_ID : HEADSET_SVCLASS_ID;
+	id = hs->search_hfp ? HANDSFREE_SVCLASS_ID : HEADSET_SVCLASS_ID;
 
 	if ((uuid.type == SDP_UUID32 && uuid.value.uuid32 != id)
 		|| (uuid.type == SDP_UUID16 && uuid.value.uuid16 != id)) {
@@ -809,10 +814,9 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	}
 
 	if (array_len < 1) {
-
-		if(hs->type == SVC_HANDSFREE) {
+		if (hs->search_hfp) {
 			debug("No record handles found for hfp");
-			hs->type = SVC_HEADSET;
+			hs->search_hfp = FALSE;
 			get_handles(device, c);
 			dbus_message_unref(reply);
 			return;
@@ -892,10 +896,10 @@ static int get_handles(struct device *device, struct pending_connect *c)
 		return -EINVAL;
 	}
 
-	if (hs->type == SVC_HEADSET)
-		hs_svc = "hsp";
-	else
+	if (hs->search_hfp)
 		hs_svc = "hfp";
+	else
+		hs_svc = "hsp";
 
 	ba2str(&device->dst, hs_address);
 	addr_ptr = hs_address;
@@ -930,8 +934,6 @@ static int rfcomm_connect(struct device *device, struct pending_connect *c)
 	if (c != NULL) {
 		if (!g_slist_find(hs->pending, c))
 			hs->pending = g_slist_append(hs->pending, c);
-
-		hs->type = hs->enable_hfp ? SVC_HANDSFREE : SVC_HEADSET;
 
 		if (hs->state == HEADSET_STATE_DISCONNECTED)
 			return get_handles(device, c);
@@ -1440,8 +1442,8 @@ void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc)
 	headset_set_channel(headset, record);
 }
 
-struct headset *headset_init(struct device *dev, int enable_hfp,
-				sdp_record_t *record, uint16_t svc)
+struct headset *headset_init(struct device *dev, sdp_record_t *record,
+				uint16_t svc)
 {
 	struct headset *hs;
 
@@ -1449,7 +1451,8 @@ struct headset *headset_init(struct device *dev, int enable_hfp,
 	hs->rfcomm_ch = -1;
 	hs->sp_gain = -1;
 	hs->mic_gain = -1;
-	hs->enable_hfp = enable_hfp;
+	hs->search_hfp = server_is_enabled(HANDSFREE_SVCLASS_ID);
+	hs->hfp_active = FALSE;
 
 	if (!record)
 		goto register_iface;
@@ -1561,18 +1564,18 @@ error:
 	return 0;
 }
 
-headset_type_t headset_get_type(struct device *dev)
+gboolean get_hfp_active(struct device *dev)
 {
 	struct headset *hs = dev->headset;
 
-	return hs->type;
+	return hs->hfp_active;
 }
 
-void headset_set_type(struct device *dev, headset_type_t type)
+void set_hfp_active(struct device *dev, gboolean active)
 {
 	struct headset *hs = dev->headset;
 
-	hs->type = type;
+	hs->hfp_active = active;
 }
 
 int headset_connect_rfcomm(struct device *dev, int sock)

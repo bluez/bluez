@@ -108,7 +108,6 @@ static GIOChannel *hs_server = NULL;
 static GIOChannel *hf_server = NULL;
 
 static const struct enabled_interfaces *enabled;
-static gboolean enable_hfp = FALSE;
 
 static void get_next_record(struct audio_sdp_data *data);
 static DBusHandlerResult get_handles(const char *uuid,
@@ -214,7 +213,7 @@ done:
 	return uuid16;
 }
 
-static gboolean server_is_enabled(uint16_t svc)
+gboolean server_is_enabled(uint16_t svc)
 {
 	gboolean ret;
 
@@ -255,7 +254,6 @@ static void handle_record(sdp_record_t *record, struct device *device)
 			headset_update(device, record, uuid16);
 		else
 			device->headset = headset_init(device,
-							enable_hfp,
 							record, uuid16);
 		break;
 	case HEADSET_AGW_SVCLASS_ID:
@@ -267,7 +265,6 @@ static void handle_record(sdp_record_t *record, struct device *device)
 			headset_update(device, record, uuid16);
 		else
 			device->headset = headset_init(device,
-							enable_hfp,
 							record, uuid16);
 		break;
 	case HANDSFREE_AGW_SVCLASS_ID:
@@ -514,8 +511,8 @@ static void get_handles_reply(DBusPendingCall *call,
 		error("GetRemoteServiceHandles failed: %s", derr.message);
 		if (dbus_error_has_name(&derr,
 					"org.bluez.Error.ConnectionAttemptFailed"))
-			error_connection_attempt_failed(connection, data->msg, 
-						EHOSTDOWN);
+			error_connection_attempt_failed(connection, data->msg,
+							EHOSTDOWN);
 		else
 			error_failed(connection, data->msg, derr.message);
 		dbus_error_free(&derr);
@@ -648,7 +645,7 @@ struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
 		if (device->headset)
 			return device;
 
-		device->headset = headset_init(device, enable_hfp, NULL, 0);
+		device->headset = headset_init(device, NULL, 0);
 
 		if (!device->headset)
 			return NULL;
@@ -1073,7 +1070,7 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	bacpy(&device->store, src);
 
 	if (enabled->headset && strstr(value, "headset"))
-		device->headset = headset_init(device, enable_hfp, NULL, 0);
+		device->headset = headset_init(device, NULL, 0);
 	if (enabled->sink && strstr(value, "sink"))
 		device->sink = sink_init(device);
 	if (enabled->control && strstr(value, "control"))
@@ -1383,10 +1380,10 @@ static void auth_cb(DBusPendingCall *call, void *data)
 	DBusError err;
 	const char *uuid;
 
-	if (headset_get_type(device) == SVC_HEADSET)
-		uuid = HSP_AG_UUID;
-	else
+	if (get_hfp_active(device))
 		uuid = HFP_AG_UUID;
+	else
+		uuid = HSP_AG_UUID;
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, reply)) {
@@ -1419,7 +1416,7 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	socklen_t size;
 	const char *uuid;
 	struct device *device;
-	headset_type_t type;
+	gboolean hfp_active;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -1441,10 +1438,10 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	}
 
 	if (chan == hs_server) {
-		type = SVC_HEADSET;
+		hfp_active = FALSE;
 		uuid = HSP_AG_UUID;
 	} else {
-		type = SVC_HANDSFREE;
+		hfp_active = TRUE;
 		uuid = HFP_AG_UUID;
 	}
 
@@ -1466,7 +1463,7 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	headset_set_type(device, type);
+	set_hfp_active(device, hfp_active);
 
 	if (!manager_authorize(&device->dst, uuid, auth_cb, device, NULL))
 		goto failed;
@@ -1563,8 +1560,6 @@ static int headset_server_init(DBusConnection *conn, gboolean no_hfp)
 
 	if (no_hfp)
 		return 0;
-
-	enable_hfp = TRUE;
 
 	chan = DEFAULT_HF_AG_CHANNEL;
 
