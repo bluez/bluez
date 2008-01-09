@@ -249,7 +249,7 @@ static int terminate_call(struct device *device, const char *buf)
 	int err;
 
 	dbus_connection_emit_signal(device->conn, device->path,
-			AUDIO_HEADSET_INTERFACE, "TerminateCall",
+			AUDIO_HEADSET_INTERFACE, "CallTerminated",
 			DBUS_TYPE_INVALID);
 
 	if (hs->ring_timer) {
@@ -1472,7 +1472,7 @@ static DBusSignalVTable headset_signals[] = {
 	{ "Playing",			""	},
 	{ "SpeakerGainChanged",		"q"	},
 	{ "MicrophoneGainChanged",	"q"	},
-	{ "TerminateCall",		""	},
+	{ "CallTerminated",		""	},
 	{ NULL, NULL }
 };
 
