@@ -786,10 +786,10 @@ static snd_pcm_sframes_t bluetooth_hsp_read(snd_pcm_ioplug_t *io,
 	DBG("areas->step=%u areas->first=%u offset=%lu size=%lu io->nonblock=%u",
 			areas->step, areas->first, offset, size, io->nonblock);
 
+	frame_size = areas->step / 8;
+
 	if (data->count > 0)
 		goto proceed;
-
-	frame_size = areas->step / 8;
 
 	nrecv = recv(data->stream.fd, data->buffer, data->link_mtu,
 			MSG_WAITALL | (io->nonblock ? MSG_DONTWAIT : 0));
