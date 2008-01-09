@@ -252,14 +252,16 @@ static int terminate_call(struct device *device, const char *buf)
 			AUDIO_HEADSET_INTERFACE, "CallTerminated",
 			DBUS_TYPE_INVALID);
 
-	if (hs->ring_timer) {
-		g_source_remove(hs->ring_timer);
-		hs->ring_timer = 0;
-	}
-
 	err = headset_send(hs, "\r\nOK\r\n");
 	if (err < 0)
 		return err;
+
+	if (hs->ring_timer) {
+		g_source_remove(hs->ring_timer);
+		hs->ring_timer = 0;
+		/*+CIEV: (callsetup = 0)*/
+		return headset_send(hs, "\r\n+CIEV:3, 0\r\n");
+	}
 
 	/*+CIEV: (call = 0)*/
 	return headset_send(hs, "\r\n+CIEV:2, 0\r\n");
