@@ -696,7 +696,6 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	struct device *device = data;
 	struct headset *hs = device->headset;
 	struct pending_connect *c;
-	unsigned int id;
 
 	c = hs->pending->data;
 
@@ -741,17 +740,23 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 
 	memcpy(&uuid, classes->data, sizeof(uuid));
 
-	if (!sdp_uuid128_to_uuid(&uuid)) {
+	if (!sdp_uuid128_to_uuid(&uuid) || uuid.type != SDP_UUID16) {
 		error("Not a 16 bit UUID");
 		goto failed_not_supported;
 	}
 
-	id = hs->search_hfp ? HANDSFREE_SVCLASS_ID : HEADSET_SVCLASS_ID;
-
-	if ((uuid.type == SDP_UUID32 && uuid.value.uuid32 != id)
-		|| (uuid.type == SDP_UUID16 && uuid.value.uuid16 != id)) {
-		error("Service classes did not contain the expected UUID");
-		goto failed_not_supported;
+	if (hs->search_hfp) {
+		if (uuid.value.uuid16 != HANDSFREE_SVCLASS_ID) {
+			error("Service record didn't contain the HFP UUID");
+			goto failed_not_supported;
+		}
+		hs->hfp_handle = record->handle;
+	} else {
+		if (uuid.value.uuid16 != HEADSET_SVCLASS_ID) {
+			error("Service record didn't contain the HSP UUID");
+			goto failed_not_supported;
+		}
+		hs->hsp_handle = record->handle;
 	}
 
 	if (!sdp_get_access_protos(record, &protos)) {
