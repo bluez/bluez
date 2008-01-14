@@ -1483,7 +1483,7 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	data->stream.fd = -1;
 
 	sk = bt_audio_service_open();
-	if(sk <= 0) {
+	if (sk <= 0) {
 		err = -errno;
 		goto failed;
 	}
