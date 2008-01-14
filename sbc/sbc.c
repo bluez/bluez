@@ -120,7 +120,8 @@ struct sbc_decoder_state {
 
 struct sbc_encoder_state {
 	int subbands;
-	int32_t X[2][80];
+	int position[2];
+	int32_t X[2][160];
 };
 
 /*
@@ -704,6 +705,7 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 {
 	memset(&state->X, 0, sizeof(state->X));
 	state->subbands = frame->subbands;
+	state->position[0] = state->position[1] = 80;
 }
 
 static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
@@ -776,17 +778,20 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
 {
-	int32_t *x = state->X[ch];
+	int32_t *x = &state->X[ch][state->position[ch]];
 	int16_t *pcm = &frame->pcm_sample[ch][blk * 4];
 
-	/* Input 4 Audio Samples */
-	memmove(x + 4, x, 36 * sizeof(*x));
-	x[3] = pcm[0];
-	x[2] = pcm[1];
-	x[1] = pcm[2];
-	x[0] = pcm[3];
+	/* Input 8 Audio Samples */
+	x[40] = x[0] = pcm[3];
+	x[41] = x[1] = pcm[2];
+	x[42] = x[2] = pcm[1];
+	x[43] = x[3] = pcm[0];
 
-	_sbc_analyze_four(state->X[ch], frame->sb_sample_f[blk][ch]);
+	_sbc_analyze_four(x, frame->sb_sample_f[blk][ch]);
+
+	state->position[ch] -= 4;
+	if (state->position[ch] < 0)
+		state->position[ch] = 36;
 }
 
 static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
@@ -916,21 +921,24 @@ static inline void sbc_analyze_eight(struct sbc_encoder_state *state,
 					struct sbc_frame *frame, int ch,
 					int blk)
 {
-	int32_t *x = state->X[ch];
+	int32_t *x = &state->X[ch][state->position[ch]];
 	int16_t *pcm = &frame->pcm_sample[ch][blk * 8];
 
 	/* Input 8 Audio Samples */
-	memmove(x + 8, x, 72 * sizeof(*x));
-	x[7] = pcm[0];
-	x[6] = pcm[1];
-	x[5] = pcm[2];
-	x[4] = pcm[3];
-	x[3] = pcm[4];
-	x[2] = pcm[5];
-	x[1] = pcm[6];
-	x[0] = pcm[7];
+	x[80] = x[0] = pcm[7];
+	x[81] = x[1] = pcm[6];
+	x[82] = x[2] = pcm[5];
+	x[83] = x[3] = pcm[4];
+	x[84] = x[4] = pcm[3];
+	x[85] = x[5] = pcm[2];
+	x[86] = x[6] = pcm[1];
+	x[87] = x[7] = pcm[0];
 
-	_sbc_analyze_eight(state->X[ch], frame->sb_sample_f[blk][ch]);
+	_sbc_analyze_eight(x, frame->sb_sample_f[blk][ch]);
+
+	state->position[ch] -= 8;
+	if (state->position[ch] < 0)
+		state->position[ch] = 72;
 }
 
 static int sbc_analyze_audio(struct sbc_encoder_state *state,
