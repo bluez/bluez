@@ -705,7 +705,10 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 {
 	memset(&state->X, 0, sizeof(state->X));
 	state->subbands = frame->subbands;
-	state->position[0] = state->position[1] = 80;
+	if(frame->subbands == 8)
+		state->position[0] = state->position[1] = 72;
+	else
+		state->position[0] = state->position[1] = 36;
 }
 
 static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
