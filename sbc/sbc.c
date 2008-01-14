@@ -705,10 +705,7 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 {
 	memset(&state->X, 0, sizeof(state->X));
 	state->subbands = frame->subbands;
-	if(frame->subbands == 8)
-		state->position[0] = state->position[1] = 72;
-	else
-		state->position[0] = state->position[1] = 36;
+	state->position[0] = state->position[1] = 9 * frame->subbands;
 }
 
 static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
@@ -1157,7 +1154,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	}
 
 	/* align the last crc byte */
-	if(crc_pos % 8) 
+	if (crc_pos % 8) 
 		crc_header[crc_pos >> 3] <<= 8 - (crc_pos % 8);
 
 	data[3] = sbc_crc8(crc_header, crc_pos);
@@ -1180,7 +1177,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 					audio_sample <<= 16 - bits[ch][sb];
 					for (bit = 0; bit < bits[ch][sb]; bit++) {
 						data[produced >> 3] <<= 1;
-						if(audio_sample & 0x8000)
+						if (audio_sample & 0x8000)
 							data[produced >> 3] |= 0x1;
 						audio_sample <<= 1;
 						produced++;
@@ -1191,7 +1188,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	}
 
 	/* align the last byte */
-	if(produced % 8) {
+	if (produced % 8) {
 		data[produced >> 3] <<= 8 - (produced % 8);
 	}
 
