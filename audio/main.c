@@ -42,32 +42,17 @@
 #include "device.h"
 #include "manager.h"
 
-static gboolean disable_hfp = TRUE;
-static gboolean sco_hci = TRUE;
-static int source_count = 1;
-
 static GMainLoop *main_loop = NULL;
-
-static struct enabled_interfaces enabled = {
-	.headset	= TRUE,
-	.gateway	= FALSE,
-	.sink		= TRUE,
-	.source		= FALSE,
-	.control	= TRUE,
-	.target		= FALSE,
-};
 
 static void sig_term(int sig)
 {
 	g_main_loop_quit(main_loop);
 }
 
-static void read_config(const char *file)
+static GKeyFile *load_config_file(const char *file)
 {
-	GKeyFile *keyfile;
 	GError *err = NULL;
-	gboolean no_hfp;
-	char *str;
+	GKeyFile *keyfile;
 
 	keyfile = g_key_file_new();
 
@@ -75,96 +60,17 @@ static void read_config(const char *file)
 		error("Parsing %s failed: %s", file, err->message);
 		g_error_free(err);
 		g_key_file_free(keyfile);
-		return;
+		return NULL;
 	}
 
-	str = g_key_file_get_string(keyfile, "General", "SCORouting", &err);
-	if (err) {
-		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
-	} else {
-		if (strcmp(str, "PCM") == 0)
-			sco_hci = FALSE;
-		else if (strcmp(str, "HCI") == 0)
-			sco_hci = TRUE;
-		else
-			error("Invalid Headset Routing value: %s", str);
-		g_free(str);
-	}
-
-	str = g_key_file_get_string(keyfile, "General", "Enable", &err);
-	if (err) {
-		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
-	} else {
-		if (strstr(str, "Headset"))
-			enabled.headset = TRUE;
-		if (strstr(str, "Gateway"))
-			enabled.gateway = TRUE;
-		if (strstr(str, "Sink"))
-			enabled.sink = TRUE;
-		if (strstr(str, "Source"))
-			enabled.source = TRUE;
-		if (strstr(str, "Control"))
-			enabled.control = TRUE;
-		if (strstr(str, "Target"))
-			enabled.target = TRUE;
-		g_free(str);
-	}
-
-	str = g_key_file_get_string(keyfile, "General", "Disable", &err);
-	if (err) {
-		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
-	} else {
-		if (strstr(str, "Headset"))
-			enabled.headset = FALSE;
-		if (strstr(str, "Gateway"))
-			enabled.gateway = FALSE;
-		if (strstr(str, "Sink"))
-			enabled.sink = FALSE;
-		if (strstr(str, "Source"))
-			enabled.source = FALSE;
-		if (strstr(str, "Control"))
-			enabled.control = FALSE;
-		if (strstr(str, "Target"))
-			enabled.target = FALSE;
-		g_free(str);
-	}
-
-	no_hfp = g_key_file_get_boolean(keyfile, "Headset", "DisableHFP",
-					&err);
-	if (err) {
-		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
-	} else
-		disable_hfp = no_hfp;
-
-	str = g_key_file_get_string(keyfile, "A2DP", "SourceCount", &err);
-	if (err) {
-		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
-	} else {
-		source_count = atoi(str);
-		g_free(str);
-	}
-
-	debug("Config options: DisableHFP=%s, SCORouting=%s, SourceCount=%d",
-			disable_hfp ? "true" : "false",
-			sco_hci ? "HCI" : "PCM", source_count);
-
-	g_key_file_free(keyfile);
+	return keyfile;
 }
 
 int main(int argc, char *argv[])
 {
 	DBusConnection *conn;
 	struct sigaction sa;
+	GKeyFile *config;
 
 	start_logging("audio", "Bluetooth Audio daemon");
 
@@ -180,7 +86,7 @@ int main(int argc, char *argv[])
 
 	enable_debug();
 
-	read_config(CONFIGDIR "/audio.conf");
+	config = load_config_file(CONFIGDIR "/audio.conf");
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
@@ -195,14 +101,15 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (audio_init(conn, &enabled, disable_hfp, sco_hci,
-				source_count) < 0) {
+	if (audio_init(conn, config) < 0) {
 		error("Audio init failed!");
 		exit(1);
 	}
 
 	if (argc > 1 && !strcmp(argv[1], "-s"))
 		register_external_service(conn, "audio", "Audio service", "");
+	if (config)
+		g_key_file_free(config);
 
 	g_main_loop_run(main_loop);
 

@@ -32,14 +32,11 @@ struct enabled_interfaces {
 	gboolean sink;
 	gboolean source;
 	gboolean control;
-	gboolean target;
 };
 
 typedef void (*create_dev_cb_t) (struct device *dev, void *user_data);
 
-int audio_init(DBusConnection *conn, struct enabled_interfaces *enabled,
-		gboolean no_hfp, gboolean sco_hci, int source_count);
-
+int audio_init(DBusConnection *conn, GKeyFile *config);
 void audio_exit(void);
 
 uint32_t add_service_record(DBusConnection *conn, sdp_buf_t *buf);

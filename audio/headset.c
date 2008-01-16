@@ -73,8 +73,10 @@
 #define AG_FEATURE_REJECT_A_CALL                 0x0020
 #define AG_FEATURE_ENHANCES_CALL_STATUS          0x0040
 #define AG_FEATURE_ENHANCES_CALL_CONTROL         0x0080
+#define AG_FEATURE_EXTENDED_ERROR_RESULT_CODES   0x0100
 /*Audio Gateway features.Default is In-band Ringtone*/
-static unsigned int ag_features = AG_FEATURE_INBAND_RINGTONE;
+static unsigned int ag_features;
+static gboolean sco_hci = TRUE;
 
 static char *str_state[] = {
 	"HEADSET_STATE_DISCONNECTED",
@@ -1584,6 +1586,116 @@ register_iface:
 	}
 
 	return hs;
+}
+
+int headset_config_init(GKeyFile *config)
+{
+	GError *err = NULL;
+	gboolean value;
+	char *str;
+
+	/* Use the default values if there is no config file */
+	if (config == NULL)
+		return 0;
+
+	str = g_key_file_get_string(config, "General", "SCORouting",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		if (strcmp(str, "PCM") == 0)
+			sco_hci = FALSE;
+		else if (strcmp(str, "HCI") == 0)
+			sco_hci = TRUE;
+		else
+			error("Invalid Headset Routing value: %s", str);
+		g_free(str);
+	}
+
+	value = g_key_file_get_boolean(config, "Headset", "3WayCalling",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else if (value)
+		ag_features |= AG_FEATURE_THREE_WAY_CALLING;
+
+	value = g_key_file_get_boolean(config, "Headset", "EchoCancelNoiseCancel",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else if (value)
+		ag_features |= AG_FEATURE_EC_ANDOR_NR;
+
+	value = g_key_file_get_boolean(config, "Headset", "VoiceRecognition",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else if (value)
+		ag_features |= AG_FEATURE_VOICE_RECOGNITION;
+
+	value = g_key_file_get_boolean(config, "Headset", "InBandRingtone",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else if (value)
+		ag_features |= AG_FEATURE_INBAND_RINGTONE;
+
+	value = g_key_file_get_boolean(config, "Headset", "VoiceTags",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else if (value)
+		ag_features |= AG_FEATURE_ATTACH_NUMBER_TO_VOICETAG;
+
+	value = g_key_file_get_boolean(config, "Headset", "RejectingCalls",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else if (value)
+		ag_features |= AG_FEATURE_REJECT_A_CALL;
+
+	value = g_key_file_get_boolean(config, "Headset", "EnhancedCallStatus",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else if (value)
+		ag_features |= AG_FEATURE_ENHANCES_CALL_STATUS;
+
+	value = g_key_file_get_boolean(config, "Headset", "EnhancedCallControl",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else if (value)
+		ag_features |= AG_FEATURE_ENHANCES_CALL_CONTROL;
+
+	value = g_key_file_get_boolean(config, "Headset",
+					"ExtendedErrorResultCodes", &err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else if (value)
+		ag_features |= AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
+
+	return 0;
 }
 
 void headset_free(struct device *dev)

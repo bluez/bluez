@@ -107,7 +107,13 @@ static uint32_t hf_record_id = 0;
 static GIOChannel *hs_server = NULL;
 static GIOChannel *hf_server = NULL;
 
-static const struct enabled_interfaces *enabled;
+static struct enabled_interfaces enabled = {
+	.headset	= TRUE,
+	.gateway	= FALSE,
+	.sink		= TRUE,
+	.source		= FALSE,
+	.control	= TRUE,
+};
 
 static void get_next_record(struct audio_sdp_data *data);
 static DBusHandlerResult get_handles(const char *uuid,
@@ -225,10 +231,10 @@ gboolean server_is_enabled(uint16_t svc)
 		ret = (hf_server != NULL);
 		break;
 	case AUDIO_SINK_SVCLASS_ID:
-		return enabled->sink;
+		return enabled.sink;
 	case AV_REMOTE_TARGET_SVCLASS_ID:
 	case AV_REMOTE_SVCLASS_ID:
-		return enabled->control;
+		return enabled.control;
 	default:
 		ret = FALSE;
 		break;
@@ -1069,11 +1075,11 @@ static void parse_stored_devices(char *key, char *value, void *data)
 	/* Change storage to source adapter */
 	bacpy(&device->store, src);
 
-	if (enabled->headset && strstr(value, "headset"))
+	if (enabled.headset && strstr(value, "headset"))
 		device->headset = headset_init(device, NULL, 0);
-	if (enabled->sink && strstr(value, "sink"))
+	if (enabled.sink && strstr(value, "sink"))
 		device->sink = sink_init(device);
-	if (enabled->control && strstr(value, "control"))
+	if (enabled.control && strstr(value, "control"))
 		device->control = control_init(device);
 	add_device(device, FALSE);
 }
@@ -1529,12 +1535,14 @@ static GIOChannel *server_socket(uint8_t *channel)
 	return io;
 }
 
-static int headset_server_init(DBusConnection *conn, gboolean no_hfp)
+static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 {
 	uint8_t chan = DEFAULT_HS_AG_CHANNEL;
 	sdp_buf_t buf;
+	gboolean no_hfp = FALSE;
+	GError *err = NULL;
 
-	if (!(enabled->headset || enabled->gateway))
+	if (!(enabled.headset || enabled.gateway))
 		return 0;
 
 	hs_server = server_socket(&chan);
@@ -1556,7 +1564,17 @@ static int headset_server_init(DBusConnection *conn, gboolean no_hfp)
 	}
 
 	g_io_add_watch(hs_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-						(GIOFunc) ag_io_cb, NULL);
+				(GIOFunc) ag_io_cb, NULL);
+
+	if (config) {
+		no_hfp = g_key_file_get_boolean(config, "Headset", "DisableHFP",
+						&err);
+		if (err) {
+			debug("audio.conf: %s", err->message);
+			g_error_free(err);
+			err = NULL;
+		}
+	}
 
 	if (no_hfp)
 		return 0;
@@ -1582,7 +1600,7 @@ static int headset_server_init(DBusConnection *conn, gboolean no_hfp)
 	}
 
 	g_io_add_watch(hf_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-						(GIOFunc) ag_io_cb, NULL);
+			(GIOFunc) ag_io_cb, NULL);
 
 	return 0;
 }
@@ -1610,14 +1628,55 @@ static void server_exit(void)
 	}
 }
 
-int audio_init(DBusConnection *conn, struct enabled_interfaces *enable,
-		gboolean no_hfp, gboolean sco_hci, int source_count)
+int audio_init(DBusConnection *conn, GKeyFile *config)
 {
 	int sinks, sources;
+	char *str;
+	GError *err = NULL;
 
 	connection = dbus_connection_ref(conn);
 
-	enabled = enable;
+	if (config) {
+		str = g_key_file_get_string(config, "General", "Enable", &err);
+
+		if (err) {
+			debug("audio.conf: %s", err->message);
+			g_error_free(err);
+			err = NULL;
+		} else {
+			if (strstr(str, "Headset"))
+				enabled.headset = TRUE;
+			if (strstr(str, "Gateway"))
+				enabled.gateway = TRUE;
+			if (strstr(str, "Sink"))
+				enabled.sink = TRUE;
+			if (strstr(str, "Source"))
+				enabled.source = TRUE;
+			if (strstr(str, "Control"))
+				enabled.control = TRUE;
+			g_free(str);
+		}
+
+		str = g_key_file_get_string(config, "General", "Disable", &err);
+
+		if (err) {
+			debug("audio.conf: %s", err->message);
+			g_error_free(err);
+			err = NULL;
+		} else {
+			if (strstr(str, "Headset"))
+				enabled.headset = FALSE;
+			if (strstr(str, "Gateway"))
+				enabled.gateway = FALSE;
+			if (strstr(str, "Sink"))
+				enabled.sink = FALSE;
+			if (strstr(str, "Source"))
+				enabled.source = FALSE;
+			if (strstr(str, "Control"))
+				enabled.control = FALSE;
+			g_free(str);
+		}
+	}
 
 	if (!dbus_connection_create_object_path(conn, AUDIO_MANAGER_PATH,
 						NULL, manager_unregister)) {
@@ -1625,15 +1684,31 @@ int audio_init(DBusConnection *conn, struct enabled_interfaces *enable,
 		goto failed;
 	}
 
-	if (headset_server_init(conn, no_hfp) < 0)
-		goto failed;
+	if (enabled.headset) {
+		if (headset_config_init(config) < 0)
+			goto failed;
 
-	if (enable->sink)
-		sources = source_count;
-	else
+		if (headset_server_init(conn, config) < 0)
+			goto failed;
+	}
+
+	if (enabled.sink) {
+		if (config) {
+			str = g_key_file_get_string(config, "A2DP",
+							"SourceCount", &err);
+			if (err) {
+				debug("audio.conf: %s", err->message);
+				g_error_free(err);
+				err = NULL;
+			} else {
+				sources = atoi(str);
+				g_free(str);
+			}
+		}
+	} else
 		sources = 0;
 
-	if (enable->source)
+	if (enabled.source)
 		sinks = 1;
 	else
 		sinks = 0;
@@ -1641,7 +1716,7 @@ int audio_init(DBusConnection *conn, struct enabled_interfaces *enable,
 	if (a2dp_init(conn, sources, sinks) < 0)
 		goto failed;
 
-	if (enable->control && avrcp_init(conn) < 0)
+	if (enabled.control && avrcp_init(conn) < 0)
 		goto failed;
 
 	if (!dbus_connection_register_interface(conn, AUDIO_MANAGER_PATH,
