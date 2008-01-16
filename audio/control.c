@@ -643,6 +643,19 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 		ret = write(session->sock, buf, packet_size);
 	}
 
+	if (avctp->packet_type == AVCTP_PACKET_SINGLE &&
+			avctp->cr == AVCTP_COMMAND &&
+			avctp->pid == htons(AV_REMOTE_SVCLASS_ID) &&
+			avrcp->code == CTYPE_STATUS &&
+			(avrcp->opcode == OP_UNITINFO
+			|| avrcp->opcode == OP_SUBUNITINFO)) {
+		avctp->cr = AVCTP_RESPONSE;
+		avrcp->code = CTYPE_STABLE;
+		debug("reply to %s", avrcp->opcode == OP_UNITINFO ?
+				"OP_UNITINFO" : "OP_SUBUNITINFO");
+		ret = write(session->sock, buf, packet_size);
+	}
+
 	return TRUE;
 
 failed:
