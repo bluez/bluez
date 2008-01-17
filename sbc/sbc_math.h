@@ -64,6 +64,8 @@ typedef long long sbc_extended_t;
 #define SBC_FIXED_0(val) { val = 0; }
 #define ADD(dst, src)    { dst += src; }
 #define SUB(dst, src)    { dst -= src; }
-#define MUL(dst, a, b)   { dst = (sbc_fixed_t) (a) * (b); }
+#define MUL32(dst, a, b)   { dst = (sbc_fixed_t) (a) * (b); }
+#define MULA32(dst, a, b)  { dst += (sbc_fixed_t) (a) * (b); }
+#define MUL(dst, a, b)   { dst = (sbc_extended_t) (a) * (b); }
 #define MULA(dst, a, b)  { dst += (sbc_extended_t) (a) * (b); }
 #define DIV2(dst, src)   { dst = ASR(src, 1); }
