@@ -115,6 +115,9 @@ struct headset {
 
 	gboolean hfp_active;
 	gboolean search_hfp;
+	gboolean cli_active;
+	char *ph_number;
+	int type;
 
 	headset_state_t state;
 	GSList *pending;
@@ -232,6 +235,11 @@ static int answer_call(struct device *device, const char *buf)
 	if (!hs->hfp_active)
 		return headset_send(hs, "\r\nOK\r\n");
 
+	if (hs->ph_number) {
+		g_free(hs->ph_number);
+		hs->ph_number = NULL;
+	}
+
 	err = headset_send(hs, "\r\nOK\r\n");
 	if (err < 0)
 		return err;
@@ -258,6 +266,11 @@ static int terminate_call(struct device *device, const char *buf)
 	if (err < 0)
 		return err;
 
+	if (hs->ph_number) {
+		g_free(hs->ph_number);
+		hs->ph_number = NULL;
+	}
+
 	if (hs->ring_timer) {
 		g_source_remove(hs->ring_timer);
 		hs->ring_timer = 0;
@@ -267,6 +280,18 @@ static int terminate_call(struct device *device, const char *buf)
 
 	/*+CIEV: (call = 0)*/
 	return headset_send(hs, "\r\n+CIEV:2, 0\r\n");
+}
+
+static int cli_notification(struct device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	if (buf[8] == '1')
+		hs->cli_active = TRUE;
+	else
+		hs->cli_active = FALSE;
+
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 static int signal_gain_setting(struct device *device, const char *buf)
@@ -323,6 +348,7 @@ static struct event event_callbacks[] = {
 	{"AT+CHLD", call_hold},
 	{"AT+CHUP", terminate_call},
 	{"AT+CKPD", answer_call},
+	{"AT+CLIP", cli_notification},
 	{0}
 };
 
@@ -1180,7 +1206,17 @@ static gboolean ring_timer_cb(gpointer data)
 	err = headset_send(hs, "\r\nRING\r\n");
 
 	if (err < 0)
-		error("Sending RING failed");
+		error("Error while sending RING: %s (%d)",
+				strerror(-err), -err);
+
+	if (hs->cli_active && hs->ph_number) {
+		err = headset_send(hs, "\r\n+CLIP:\"%s\", %d\r\n",
+					hs->ph_number, hs->type);
+
+		if (err < 0)
+			error("Error while sending CLIP: %s (%d)",
+					strerror(-err), -err);
+	}
 
 	return TRUE;
 }
@@ -1208,7 +1244,16 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 	err = headset_send(hs, "\r\nRING\r\n");
 	if (err < 0) {
 		dbus_message_unref(reply);
-		return error_failed(conn, msg, "Failed");
+		return error_failed_errno(conn, msg, -err);
+	}
+
+	if (hs->cli_active && hs->ph_number) {
+		err = headset_send(hs, "\r\n+CLIP:\"%s\", %d\r\n",
+					hs->ph_number, hs->type);
+		if (err < 0) {
+			dbus_message_unref(reply);
+			return error_failed_errno(conn, msg, -err);
+		}
 	}
 
 	hs->ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb, device);
@@ -1456,6 +1501,47 @@ static DBusHandlerResult hf_setup_call(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult hf_identify_call(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	struct device *device = data;
+	struct headset *hs = device->headset;
+	DBusMessage *reply;
+	DBusError derr;
+	const char *number;
+	dbus_int32_t type;
+
+	if (!hs->hfp_active && !hs->cli_active)
+		return error_not_supported(device->conn, msg);
+
+	if (hs->state < HEADSET_STATE_CONNECTED)
+		return error_not_connected(conn, msg);
+
+	dbus_error_init(&derr);
+	dbus_message_get_args(msg, &derr, DBUS_TYPE_STRING, &number,
+			      DBUS_TYPE_INT32, &type, DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		error_invalid_arguments(conn, msg, derr.message);
+		dbus_error_free(&derr);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	g_free(hs->ph_number);
+
+	hs->ph_number = g_strdup(number);
+	hs->type = type;
+
+	send_message_and_unref(conn, reply);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static DBusMethodVTable headset_methods[] = {
 	{ "Connect",		hs_connect,		"",	""	},
 	{ "Disconnect",		hs_disconnect,		"",	""	},
@@ -1470,6 +1556,7 @@ static DBusMethodVTable headset_methods[] = {
 	{ "SetSpeakerGain",	hs_set_speaker_gain,	"q",	""	},
 	{ "SetMicrophoneGain",	hs_set_mic_gain,	"q",	""	},
 	{ "SetupCall",		hf_setup_call,		"s",	""	},
+	{ "IdentifyCall",	hf_identify_call,	"si",	""	},
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -1556,6 +1643,8 @@ struct headset *headset_init(struct device *dev, sdp_record_t *record,
 	hs->mic_gain = -1;
 	hs->search_hfp = server_is_enabled(HANDSFREE_SVCLASS_ID);
 	hs->hfp_active = FALSE;
+	hs->cli_active = FALSE;
+	hs->ph_number = NULL;
 
 	if (!record)
 		goto register_iface;
