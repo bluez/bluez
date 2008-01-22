@@ -286,10 +286,7 @@ static int cli_notification(struct device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
 
-	if (buf[8] == '1')
-		hs->cli_active = TRUE;
-	else
-		hs->cli_active = FALSE;
+	hs->cli_active = buf[8] == '1' ? TRUE : FALSE;
 
 	return headset_send(hs, "\r\nOK\r\n");
 }
@@ -340,16 +337,16 @@ ok:
 }
 
 static struct event event_callbacks[] = {
-	{"ATA", answer_call},
-	{"AT+VG", signal_gain_setting},
-	{"AT+BRSF", supported_features},
-	{"AT+CIND", report_indicators},
-	{"AT+CMER", event_reporting},
-	{"AT+CHLD", call_hold},
-	{"AT+CHUP", terminate_call},
-	{"AT+CKPD", answer_call},
-	{"AT+CLIP", cli_notification},
-	{0}
+	{ "ATA", answer_call },
+	{ "AT+VG", signal_gain_setting },
+	{ "AT+BRSF", supported_features },
+	{ "AT+CIND", report_indicators },
+	{ "AT+CMER", event_reporting },
+	{ "AT+CHLD", call_hold },
+	{ "AT+CHUP", terminate_call },
+	{ "AT+CKPD", answer_call },
+	{ "AT+CLIP", cli_notification },
+	{ 0 }
 };
 
 static GIOError handle_event(struct device *device, const char *buf)
