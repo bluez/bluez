@@ -74,8 +74,9 @@
 #define AG_FEATURE_ENHANCES_CALL_STATUS          0x0040
 #define AG_FEATURE_ENHANCES_CALL_CONTROL         0x0080
 #define AG_FEATURE_EXTENDED_ERROR_RESULT_CODES   0x0100
-/*Audio Gateway features.Default is In-band Ringtone*/
-static unsigned int ag_features;
+
+static uint32_t ag_features = 0;
+
 static gboolean sco_hci = TRUE;
 
 static char *str_state[] = {
@@ -84,7 +85,7 @@ static char *str_state[] = {
 	"HEADSET_STATE_CONNECTED",
 	"HEADSET_STATE_PLAY_IN_PROGRESS",
 	"HEADSET_STATE_PLAYING",
-	};
+};
 
 struct pending_connect {
 	DBusMessage *msg;
@@ -1674,7 +1675,7 @@ register_iface:
 	return hs;
 }
 
-int headset_config_init(GKeyFile *config)
+uint32_t headset_config_init(GKeyFile *config)
 {
 	GError *err = NULL;
 	gboolean value;
@@ -1682,7 +1683,7 @@ int headset_config_init(GKeyFile *config)
 
 	/* Use the default values if there is no config file */
 	if (config == NULL)
-		return 0;
+		return ag_features;
 
 	str = g_key_file_get_string(config, "General", "SCORouting",
 					&err);
@@ -1781,7 +1782,7 @@ int headset_config_init(GKeyFile *config)
 	} else if (value)
 		ag_features |= AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
 
-	return 0;
+	return ag_features;
 }
 
 void headset_free(struct device *dev)

@@ -47,7 +47,7 @@ struct headset *headset_init(struct device *dev, sdp_record_t *record,
 
 void headset_free(struct device *dev);
 
-int headset_config_init(GKeyFile *config);
+uint32_t headset_config_init(GKeyFile *config);
 
 void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc);
 

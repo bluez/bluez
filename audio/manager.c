@@ -1226,7 +1226,7 @@ static int hsp_ag_record(sdp_buf_t *buf, uint8_t ch)
 	return ret;
 }
 
-static int hfp_ag_record(sdp_buf_t *buf, uint8_t ch)
+static int hfp_ag_record(sdp_buf_t *buf, uint8_t ch, uint32_t feat)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, svclass_uuid, ga_svclass_uuid;
@@ -1234,9 +1234,9 @@ static int hfp_ag_record(sdp_buf_t *buf, uint8_t ch)
 	sdp_profile_desc_t profile;
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
-	uint16_t u16 = 0x0009;
 	sdp_data_t *channel, *features;
 	uint8_t netid = 0x01;
+	uint16_t sdpfeat;
 	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
 	int ret;
 
@@ -1267,7 +1267,8 @@ static int hfp_ag_record(sdp_buf_t *buf, uint8_t ch)
 	proto[1] = sdp_list_append(proto[1], channel);
 	apseq = sdp_list_append(apseq, proto[1]);
 
-	features = sdp_data_alloc(SDP_UINT16, &u16);
+	sdpfeat = (uint16_t) feat & 0xF;
+	features = sdp_data_alloc(SDP_UINT16, &sdpfeat);
 	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
 	aproto = sdp_list_append(0, apseq);
@@ -1541,6 +1542,7 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	sdp_buf_t buf;
 	gboolean no_hfp = FALSE;
 	GError *err = NULL;
+	uint32_t features;
 
 	if (!(enabled.headset || enabled.gateway))
 		return 0;
@@ -1585,7 +1587,9 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	if (!hf_server)
 		return -1;
 
-	if (hfp_ag_record(&buf, chan) < 0) {
+	features = headset_config_init(config);
+
+	if (hfp_ag_record(&buf, chan, features) < 0) {
 		error("Unable to allocate new service record");
 		return -1;
 	}
@@ -1685,9 +1689,6 @@ int audio_init(DBusConnection *conn, GKeyFile *config)
 	}
 
 	if (enabled.headset) {
-		if (headset_config_init(config) < 0)
-			goto failed;
-
 		if (headset_server_init(conn, config) < 0)
 			goto failed;
 	}
