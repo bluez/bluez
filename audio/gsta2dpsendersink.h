@@ -56,6 +56,11 @@ struct _GstA2dpSenderSink {
 	struct bluetooth_data *data;
 	GIOChannel *server;
 
+	/* mp3 stream data (outside caps data)*/
+	gboolean mpeg_stream_changed;
+	gint mp3_using_crc;
+	gint channel_mode;
+
 	/* stream connection data */
 	GstCaps *stream_caps;
 
@@ -84,6 +89,12 @@ void gst_a2dp_sender_sink_set_device(GstA2dpSenderSink *sink,
 gchar *gst_a2dp_sender_sink_get_device(GstA2dpSenderSink *sink);
 
 gboolean gst_a2dp_sender_sink_plugin_init(GstPlugin *plugin);
+
+void gst_a2dp_sender_sink_set_crc(GstA2dpSenderSink *self, gboolean crc);
+
+void gst_a2dp_sender_sink_set_channel_mode(GstA2dpSenderSink *self,
+			const gchar *mode);
+
 
 G_END_DECLS
 

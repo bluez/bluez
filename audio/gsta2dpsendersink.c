@@ -35,6 +35,8 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include <gst/rtp/gstrtpbuffer.h>
+
 #include "ipc.h"
 #include "rtp.h"
 #include "gstsbcutil.h"
@@ -46,6 +48,8 @@ GST_DEBUG_CATEGORY_STATIC(a2dp_sender_sink_debug);
 
 #define BUFFER_SIZE 2048
 #define TEMPLATE_MAX_BITPOOL 64
+#define CRC_PROTECTED 1
+#define CRC_UNPROTECTED 0
 
 #define GST_A2DP_SENDER_SINK_MUTEX_LOCK(s) G_STMT_START {	\
 		g_mutex_lock (s->sink_lock);		\
@@ -84,7 +88,18 @@ static GstStaticPadTemplate a2dp_sender_sink_factory =
 	GST_STATIC_PAD_TEMPLATE("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
 		GST_STATIC_CAPS("application/x-rtp, "
 				"media = (string) \"audio\", "
-				"encoding-name = (string) \"SBC\""
+				"encoding-name = (string) \"SBC\";"
+				"application/x-rtp, "
+				"media = (string) \"audio\", "
+				"payload = (int) "
+				GST_RTP_PAYLOAD_MPA_STRING ", "
+				"clock-rate = (int) 90000; "
+				"application/x-rtp, "
+				"media = (string) \"audio\", "
+				"payload = (int) "
+				GST_RTP_PAYLOAD_DYNAMIC_STRING ", "
+				"clock-rate = (int) 90000, "
+				"encoding-name = (string) \"MPA\""
 				));
 
 static GIOError gst_a2dp_sender_sink_audioservice_send(GstA2dpSenderSink *self,
@@ -584,20 +599,145 @@ static GstStructure *gst_a2dp_sender_sink_parse_sbc_caps(
 	return structure;
 }
 
+static GstStructure *gst_a2dp_sender_sink_parse_mpeg_caps(
+			GstA2dpSenderSink *self, mpeg_capabilities_t *mpeg)
+{
+	GstStructure *structure;
+	GValue *value;
+	GValue *list;
+	gboolean valid_layer = FALSE;
+	gboolean mono, stereo;
+
+	GST_LOG_OBJECT(self, "parsing mpeg caps");
+
+	structure = gst_structure_empty_new("audio/mpeg");
+	value = g_new0(GValue, 1);
+	g_value_init(value, G_TYPE_INT);
+
+	list = g_value_init(g_new0(GValue, 1), GST_TYPE_LIST);
+	g_value_set_int(value, 1);
+	gst_value_list_prepend_value(list, value);
+	g_value_set_int(value, 2);
+	gst_value_list_prepend_value(list, value);
+	gst_structure_set_value(structure, "mpegversion", list);
+	g_free(list);
+
+	/* layer */
+	GST_LOG_OBJECT(self, "setting mpeg layer");
+	list = g_value_init(g_new0(GValue, 1), GST_TYPE_LIST);
+	if (mpeg->layer & BT_MPEG_LAYER_1) {
+		g_value_set_int(value, 1);
+		gst_value_list_prepend_value(list, value);
+		valid_layer = TRUE;
+	}
+	if (mpeg->layer & BT_MPEG_LAYER_2) {
+		g_value_set_int(value, 2);
+		gst_value_list_prepend_value(list, value);
+		valid_layer = TRUE;
+	}
+	if (mpeg->layer & BT_MPEG_LAYER_3) {
+		g_value_set_int(value, 3);
+		gst_value_list_prepend_value(list, value);
+		valid_layer = TRUE;
+	}
+	if (list) {
+		gst_structure_set_value(structure, "layer", list);
+		g_free(list);
+		list = NULL;
+	}
+
+	if (!valid_layer) {
+		gst_structure_free(structure);
+		g_free(value);
+		return NULL;
+	}
+
+	/* rate */
+	GST_LOG_OBJECT(self, "setting mpeg rate");
+	list = g_value_init(g_new0(GValue, 1), GST_TYPE_LIST);
+	if (mpeg->frequency & BT_MPEG_SAMPLING_FREQ_48000) {
+		g_value_set_int(value, 48000);
+		gst_value_list_prepend_value(list, value);
+	}
+	if (mpeg->frequency & BT_MPEG_SAMPLING_FREQ_44100) {
+		g_value_set_int(value, 44100);
+		gst_value_list_prepend_value(list, value);
+	}
+	if (mpeg->frequency & BT_MPEG_SAMPLING_FREQ_32000) {
+		g_value_set_int(value, 32000);
+		gst_value_list_prepend_value(list, value);
+	}
+	if (mpeg->frequency & BT_MPEG_SAMPLING_FREQ_24000) {
+		g_value_set_int(value, 24000);
+		gst_value_list_prepend_value(list, value);
+	}
+	if (mpeg->frequency & BT_MPEG_SAMPLING_FREQ_22050) {
+		g_value_set_int(value, 22050);
+		gst_value_list_prepend_value(list, value);
+	}
+	if (mpeg->frequency & BT_MPEG_SAMPLING_FREQ_16000) {
+		g_value_set_int(value, 16000);
+		gst_value_list_prepend_value(list, value);
+	}
+	g_value_unset(value);
+	if (list) {
+		gst_structure_set_value(structure, "rate", list);
+		g_free(list);
+		list = NULL;
+	}
+
+	/* channels */
+	GST_LOG_OBJECT(self, "setting mpeg channels");
+	mono = FALSE;
+	stereo = FALSE;
+	if (mpeg->channel_mode & BT_A2DP_CHANNEL_MODE_MONO)
+		mono = TRUE;
+	if ((mpeg->channel_mode & BT_A2DP_CHANNEL_MODE_STEREO) ||
+			(mpeg->channel_mode &
+			BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL) ||
+			(mpeg->channel_mode &
+			BT_A2DP_CHANNEL_MODE_JOINT_STEREO))
+		stereo = TRUE;
+
+	if (mono && stereo) {
+		g_value_init(value, GST_TYPE_INT_RANGE);
+		gst_value_set_int_range(value, 1, 2);
+	} else {
+		g_value_init(value, G_TYPE_INT);
+		if (mono)
+			g_value_set_int(value, 1);
+		else if (stereo)
+			g_value_set_int(value, 2);
+		else {
+			GST_ERROR_OBJECT(self,
+				"Unexpected number of channels");
+			g_value_set_int(value, 0);
+		}
+	}
+	gst_structure_set_value(structure, "channels", value);
+	g_free(value);
+
+	return structure;
+}
+
 static gboolean gst_a2dp_sender_sink_update_caps(GstA2dpSenderSink *self)
 {
 	sbc_capabilities_t *sbc = &self->data->caps.sbc_capabilities;
 	mpeg_capabilities_t *mpeg = &self->data->caps.mpeg_capabilities;
-	GstStructure *structure;
+	GstStructure *sbc_structure;
+	GstStructure *mpeg_structure;
 	gchar *tmp;
 
 	GST_LOG_OBJECT(self, "updating device caps");
 
-	structure = gst_a2dp_sender_sink_parse_sbc_caps(self, sbc);
+	sbc_structure = gst_a2dp_sender_sink_parse_sbc_caps(self, sbc);
+	mpeg_structure = gst_a2dp_sender_sink_parse_mpeg_caps(self, mpeg);
 
 	if (self->dev_caps != NULL)
 		gst_caps_unref(self->dev_caps);
-	self->dev_caps = gst_caps_new_full(structure, NULL);
+	self->dev_caps = gst_caps_new_full(sbc_structure, NULL);
+	if (mpeg_structure != NULL)
+		gst_caps_append_structure(self->dev_caps, mpeg_structure);
 
 	tmp = gst_caps_to_string(self->dev_caps);
 	GST_DEBUG_OBJECT(self, "Device capabilities: %s", tmp);
@@ -623,6 +763,7 @@ static gboolean gst_a2dp_sender_sink_get_capabilities(GstA2dpSenderSink *self)
 	io_error = gst_a2dp_sender_sink_audioservice_send(self, &req->h);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while asking device caps");
+		return FALSE;
 	}
 
 	io_error = gst_a2dp_sender_sink_audioservice_expect(self,
@@ -643,6 +784,71 @@ static gboolean gst_a2dp_sender_sink_get_capabilities(GstA2dpSenderSink *self)
 	if (!gst_a2dp_sender_sink_update_caps(self)) {
 		GST_WARNING_OBJECT(self, "failed to update capabilities");
 		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static gint gst_a2dp_sender_sink_get_channel_mode(const gchar *mode)
+{
+	if (strcmp(mode, "stereo") == 0)
+		return BT_A2DP_CHANNEL_MODE_STEREO;
+	else if (strcmp(mode, "joint") == 0)
+		return BT_A2DP_CHANNEL_MODE_JOINT_STEREO;
+	else if (strcmp(mode, "dual") == 0)
+		return BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL;
+	else if (strcmp(mode, "mono") == 0)
+		return BT_A2DP_CHANNEL_MODE_MONO;
+	else
+		return -1;
+}
+
+static void gst_a2dp_sender_sink_tag(const GstTagList *taglist,
+			const gchar* tag, gpointer user_data)
+{
+	gboolean crc;
+	gchar *channel_mode = NULL;
+	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(user_data);
+
+	if (strcmp(tag, "has-crc") == 0) {
+
+		if (!gst_tag_list_get_boolean(taglist, tag, &crc)) {
+			GST_WARNING_OBJECT(self, "failed to get crc tag");
+			self->mpeg_stream_changed = TRUE;
+		}
+
+		gst_a2dp_sender_sink_set_crc(self, crc);
+
+	} else if (strcmp(tag, "channel-mode") == 0) {
+
+		if (!gst_tag_list_get_string(taglist, tag, &channel_mode)) {
+			GST_WARNING_OBJECT(self,
+				"failed to get channel-mode tag");
+			self->mpeg_stream_changed = TRUE;
+		}
+
+		self->channel_mode = gst_a2dp_sender_sink_get_channel_mode(
+					channel_mode);
+		if (self->channel_mode == -1)
+			GST_WARNING_OBJECT(self, "Received invalid channel "
+					"mode: %s", channel_mode);
+		g_free(channel_mode);
+
+	} else
+		GST_DEBUG_OBJECT(self, "received unused tag: %s", tag);
+}
+
+static gboolean gst_a2dp_sender_sink_event(GstBaseSink *basesink,
+			GstEvent *event)
+{
+	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(basesink);
+	GstTagList *taglist = NULL;
+
+	if (GST_EVENT_TYPE(event) == GST_EVENT_TAG) {
+		/* we check the tags, mp3 has tags that are importants and
+		 * are outside caps */
+		gst_event_parse_tag(event, &taglist);
+		gst_tag_list_foreach(taglist, gst_a2dp_sender_sink_tag, self);
 	}
 
 	return TRUE;
@@ -675,9 +881,15 @@ static gboolean gst_a2dp_sender_sink_start(GstBaseSink *basesink)
 
 	self->stream = NULL;
 	self->stream_caps = NULL;
+	self->mp3_using_crc = -1;
+	self->channel_mode = -1;
+	self->mpeg_stream_changed = FALSE;
 
-	if (!gst_a2dp_sender_sink_get_capabilities(self))
+	if (!gst_a2dp_sender_sink_get_capabilities(self)) {
+		GST_ERROR_OBJECT(self, "failed to get capabilities "
+				"from device");
 		goto failed;
+	}
 
 	return TRUE;
 
@@ -739,6 +951,77 @@ static gboolean gst_a2dp_sender_sink_stream_start(GstA2dpSenderSink *self)
 	return TRUE;
 }
 
+static gboolean gst_a2dp_sender_sink_init_mp3_pkt_conf(
+		GstA2dpSenderSink *self, GstCaps *caps,
+		mpeg_capabilities_t *pkt)
+{
+	const GValue *value = NULL;
+	gint rate, layer;
+	GstStructure *structure = gst_caps_get_structure(caps, 0);
+
+	/* layer */
+	value = gst_structure_get_value(structure, "layer");
+	layer = g_value_get_int(value);
+	if (layer == 1)
+		pkt->layer = BT_MPEG_LAYER_1;
+	else if (layer == 2)
+		pkt->layer = BT_MPEG_LAYER_2;
+	else if (layer == 3)
+		pkt->layer = BT_MPEG_LAYER_3;
+	else {
+		GST_ERROR_OBJECT(self, "Unexpected layer: %d", layer);
+		return FALSE;
+	}
+
+	/* crc */
+	if (self->mp3_using_crc != -1)
+		pkt->crc = self->mp3_using_crc;
+	else {
+		GST_ERROR_OBJECT(self, "No info about crc was received, "
+				" can't proceed");
+		return FALSE;
+	}
+
+	/* channel mode */
+	if (self->channel_mode != -1)
+		pkt->channel_mode = self->channel_mode;
+	else {
+		GST_ERROR_OBJECT(self, "No info about channel mode "
+				"received, can't proceed");
+		return FALSE;
+	}
+
+	/* mpf - we will only use the mandatory one */
+	pkt->mpf = 0;
+
+	value = gst_structure_get_value(structure, "rate");
+	rate = g_value_get_int(value);
+	if (rate == 44100)
+		pkt->frequency = BT_MPEG_SAMPLING_FREQ_44100;
+	else if (rate == 48000)
+		pkt->frequency = BT_MPEG_SAMPLING_FREQ_48000;
+	else if (rate == 32000)
+		pkt->frequency = BT_MPEG_SAMPLING_FREQ_32000;
+	else if (rate == 24000)
+		pkt->frequency = BT_MPEG_SAMPLING_FREQ_24000;
+	else if (rate == 22050)
+		pkt->frequency = BT_MPEG_SAMPLING_FREQ_22050;
+	else if (rate == 16000)
+		pkt->frequency = BT_MPEG_SAMPLING_FREQ_16000;
+	else {
+		GST_ERROR_OBJECT(self, "Invalid rate while setting caps");
+		return FALSE;
+	}
+
+	/* vbr - we always say its vbr, we don't have how to know it */
+	pkt->bitrate = 0x8000;
+
+	/* bitrate - we don't set anything, its vbr */
+	/* FIXME - is this right? */
+
+	return TRUE;
+}
+
 static gboolean gst_a2dp_sender_sink_configure(GstA2dpSenderSink *self,
 			GstCaps *caps)
 {
@@ -748,6 +1031,7 @@ static gboolean gst_a2dp_sender_sink_configure(GstA2dpSenderSink *self,
 	gboolean ret;
 	GIOError io_error;
 	gchar *temp;
+	GstStructure *structure;
 
 	temp = gst_caps_to_string(caps);
 	GST_DEBUG_OBJECT(self, "configuring device with caps: %s", temp);
@@ -757,8 +1041,17 @@ static gboolean gst_a2dp_sender_sink_configure(GstA2dpSenderSink *self,
 	req->h.msg_type = BT_SETCONFIGURATION_REQ;
 	req->access_mode = BT_CAPABILITIES_ACCESS_MODE_WRITE;
 	strncpy(req->device, self->device, 18);
-	ret = gst_a2dp_sender_sink_init_pkt_conf(self, caps,
-			&req->sbc_capabilities);
+	structure = gst_caps_get_structure(caps, 0);
+
+	if (gst_structure_has_name(structure, "audio/x-sbc"))
+		ret = gst_a2dp_sender_sink_init_pkt_conf(self, caps,
+				&req->sbc_capabilities);
+	else if (gst_structure_has_name(structure, "audio/mpeg"))
+		ret = gst_a2dp_sender_sink_init_mp3_pkt_conf(self, caps,
+				&req->mpeg_capabilities);
+	else
+		ret = FALSE;
+
 	if (!ret) {
 		GST_ERROR_OBJECT(self, "Couldn't parse caps "
 				"to packet configuration");
@@ -884,6 +1177,8 @@ static void gst_a2dp_sender_sink_class_init(GstA2dpSenderSinkClass *klass)
 					gst_a2dp_sender_sink_preroll);
 	basesink_class->unlock = GST_DEBUG_FUNCPTR(
 					gst_a2dp_sender_sink_unlock);
+	basesink_class->event = GST_DEBUG_FUNCPTR(
+					gst_a2dp_sender_sink_event);
 
 	basesink_class->buffer_alloc =
 		GST_DEBUG_FUNCPTR(gst_a2dp_sender_sink_buffer_alloc);
@@ -1021,4 +1316,40 @@ gchar *gst_a2dp_sender_sink_get_device(GstA2dpSenderSink *self)
 {
 	return g_strdup(self->device);
 }
+
+void gst_a2dp_sender_sink_set_crc(GstA2dpSenderSink *self, gboolean crc)
+{
+	gint new_crc;
+
+	new_crc = crc ? CRC_PROTECTED : CRC_UNPROTECTED;
+
+	/* test if we already received a different crc */
+	if (self->mp3_using_crc != -1 && new_crc != self->mp3_using_crc) {
+		GST_ERROR_OBJECT(self, "crc changed during stream");
+		/* FIXME test this, its not being used anywhere */
+		self->mpeg_stream_changed = TRUE;
+		return;
+	}
+	self->mp3_using_crc = new_crc;
+
+}
+
+void gst_a2dp_sender_sink_set_channel_mode(GstA2dpSenderSink *self,
+			const gchar *mode)
+{
+	gint new_mode;
+
+	new_mode = gst_a2dp_sender_sink_get_channel_mode(mode);
+
+	if (self->channel_mode != -1 && new_mode != self->channel_mode) {
+		GST_ERROR_OBJECT(self, "channel mode changed during stream");
+		self->mpeg_stream_changed = TRUE;
+	}
+
+	self->channel_mode = new_mode;
+	if (self->channel_mode == -1)
+		GST_WARNING_OBJECT(self, "Received invalid channel "
+				"mode: %s", mode);
+}
+
 
