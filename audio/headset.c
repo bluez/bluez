@@ -441,7 +441,10 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	*cr = '\0';
 
 	err = handle_event(device, &hs->buf[hs->data_start]);
-	if (err < 0)
+	if (err = -EINVAL) {
+		error("Received unknown command: %s", &hs->buf[hs->data_start]);
+		err = headset_send(hs, "\r\nERROR\r\n");
+	} else if (err < 0)
 		error("Error handling command %s: %s (%d)", &hs->buf[hs->data_start],
 		      strerror(-err), -err);
 
