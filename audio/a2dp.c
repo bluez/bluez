@@ -294,9 +294,9 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 	struct sbc_codec_cap *sbc_cap;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Set_Configuration_Ind");
+		debug("Sink %p: Set_Configuration_Ind", sep);
 	else
-		debug("SBC Source: Set_Configuration_Ind");
+		debug("Source %p: Set_Configuration_Ind", sep);
 
 	dev = a2dp_get_dev(session);
 	if (!dev) {
@@ -340,9 +340,9 @@ static gboolean sbc_getcap_ind(struct avdtp *session, struct avdtp_local_sep *se
 	struct sbc_codec_cap sbc_cap;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Get_Capability_Ind");
+		debug("Sink %p: Get_Capability_Ind", sep);
 	else
-		debug("SBC Source: Get_Capability_Ind");
+		debug("Source %p: Get_Capability_Ind", sep);
 
 	*caps = NULL;
 
@@ -397,9 +397,9 @@ static gboolean mpeg_setconf_ind(struct avdtp *session,
 	struct device *dev;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Set_Configuration_Ind");
+		debug("Sink %p: Set_Configuration_Ind", sep);
 	else
-		debug("SBC Source: Set_Configuration_Ind");
+		debug("Source %p: Set_Configuration_Ind", sep);
 
 	dev = a2dp_get_dev(session);
 	if (!dev) {
@@ -417,7 +417,8 @@ static gboolean mpeg_setconf_ind(struct avdtp *session,
 	return TRUE;
 }
 
-static gboolean mpeg_getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
+static gboolean mpeg_getcap_ind(struct avdtp *session,
+				struct avdtp_local_sep *sep,
 				GSList **caps, uint8_t *err, void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
@@ -425,9 +426,9 @@ static gboolean mpeg_getcap_ind(struct avdtp *session, struct avdtp_local_sep *s
 	struct mpeg_codec_cap mpeg_cap;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Get_Capability_Ind");
+		debug("Sink %p: Get_Capability_Ind", sep);
 	else
-		debug("SBC Source: Get_Capability_Ind");
+		debug("Source %p: Get_Capability_Ind", sep);
 
 	*caps = NULL;
 
@@ -475,9 +476,9 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	int ret;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Set_Configuration_Cfm");
+		debug("Sink %p: Set_Configuration_Cfm", sep);
 	else
-		debug("SBC Source: Set_Configuration_Cfm");
+		debug("Source %p: Set_Configuration_Cfm", sep);
 
 	setup = find_setup_by_session(session);
 
@@ -515,9 +516,9 @@ static gboolean getconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Get_Configuration_Ind");
+		debug("Sink %p: Get_Configuration_Ind");
 	else
-		debug("SBC Source: Get_Configuration_Ind");
+		debug("Source %p: Get_Configuration_Ind");
 	return TRUE;
 }
 
@@ -528,9 +529,9 @@ static void getconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Set_Configuration_Cfm");
+		debug("Sink %p: Set_Configuration_Cfm", sep);
 	else
-		debug("SBC Source: Set_Configuration_Cfm");
+		debug("Source %p: Set_Configuration_Cfm", sep);
 }
 
 static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -540,9 +541,9 @@ static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Open_Ind");
+		debug("Sink %p: Open_Ind", sep);
 	else
-		debug("SBC Source: Open_Ind");
+		debug("Source %p: Open_Ind", sep);
 	return TRUE;
 }
 
@@ -554,9 +555,9 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Open_Cfm");
+		debug("Sink %p: Open_Cfm", sep);
 	else
-		debug("SBC Source: Open_Cfm");
+		debug("Source %p: Open_Cfm", sep);
 
 	setup = find_setup_by_session(session);
 	if (!setup)
@@ -601,9 +602,9 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Start_Ind");
+		debug("Sink %p: Start_Ind", sep);
 	else
-		debug("SBC Source: Start_Ind");
+		debug("Source %p: Start_Ind", sep);
 
 	if (!a2dp_sep->locked) {
 		a2dp_sep->session = avdtp_ref(session);
@@ -623,9 +624,9 @@ static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Start_Cfm");
+		debug("Sink %p: Start_Cfm", sep);
 	else
-		debug("SBC Source: Start_Cfm");
+		debug("Source %p: Start_Cfm", sep);
 
 	setup = find_setup_by_session(session);
 	if (!setup)
@@ -654,9 +655,9 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Suspend_Ind");
+		debug("Sink %p: Suspend_Ind", sep);
 	else
-		debug("SBC Source: Suspend_Ind");
+		debug("Source %p: Suspend_Ind", sep);
 
 	if (a2dp_sep->suspend_timer) {
 		g_source_remove(a2dp_sep->suspend_timer);
@@ -677,9 +678,9 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	gboolean start;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Suspend_Cfm");
+		debug("Sink %p: Suspend_Cfm", sep);
 	else
-		debug("SBC Source: Suspend_Cfm");
+		debug("Source %p: Suspend_Cfm", sep);
 
 	a2dp_sep->suspending = FALSE;
 
@@ -720,9 +721,9 @@ static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Close_Ind");
+		debug("Sink %p: Close_Ind", sep);
 	else
-		debug("SBC Source: Close_Ind");
+		debug("Source %p: Close_Ind", sep);
 
 	return TRUE;
 }
@@ -762,9 +763,9 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Close_Cfm");
+		debug("Sink %p: Close_Cfm", sep);
 	else
-		debug("SBC Source: Close_Cfm");
+		debug("Source %p: Close_Cfm", sep);
 
 	setup = find_setup_by_session(session);
 	if (!setup)
@@ -793,9 +794,9 @@ static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Abort_Ind");
+		debug("Sink %p: Abort_Ind", sep);
 	else
-		debug("SBC Source: Abort_Ind");
+		debug("Source %p: Abort_Ind", sep);
 
 	a2dp_sep->stream = NULL;
 
@@ -810,9 +811,9 @@ static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: Abort_Cfm");
+		debug("Sink %p: Abort_Cfm", sep);
 	else
-		debug("SBC Source: Abort_Cfm");
+		debug("Source %p: Abort_Cfm", sep);
 
 	setup = find_setup_by_session(session);
 	if (!setup)
@@ -827,9 +828,9 @@ static gboolean reconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: ReConfigure_Ind");
+		debug("Sink %p: ReConfigure_Ind", sep);
 	else
-		debug("SBC Source: ReConfigure_Ind");
+		debug("Source %p: ReConfigure_Ind", sep);
 	return TRUE;
 }
 
@@ -841,9 +842,9 @@ static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("SBC Sink: ReConfigure_Cfm");
+		debug("Sink %p: ReConfigure_Cfm", sep);
 	else
-		debug("SBC Source: ReConfigure_Cfm");
+		debug("Source %p: ReConfigure_Cfm", sep);
 
 	setup = find_setup_by_session(session);
 	if (!setup)
@@ -1161,7 +1162,7 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 		return 0;
 	}
 
-	debug("a2dp_source_config: selected SEP %p", sep);
+	debug("a2dp_source_config: selected SEP %p", sep->sep);
 
 	cb_data = g_new0(struct a2dp_setup_cb, 1);
 	cb_data->config_cb = cb;
@@ -1337,7 +1338,7 @@ gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session)
 	if (sep->locked)
 		return FALSE;
 
-	debug("SBC Source SEP %p locked", sep);
+	debug("SEP %p locked", sep->sep);
 	sep->locked = TRUE;
 
 	return TRUE;
@@ -1351,7 +1352,7 @@ gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session)
 
 	sep->locked = FALSE;
 
-	debug("SBC Source SEP %p unlocked", sep);
+	debug("SEP %p unlocked", sep->sep);
 
 	if (!sep->stream || state == AVDTP_STATE_IDLE)
 		return TRUE;
