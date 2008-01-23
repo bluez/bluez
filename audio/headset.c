@@ -300,14 +300,14 @@ static int signal_gain_setting(struct device *device, const char *buf)
 
 	if (strlen(buf) < 8) {
 		error("Too short string for Gain setting");
-		return -1;
+		return -EINVAL;
 	}
 
 	gain = (dbus_uint16_t) strtol(&buf[7], NULL, 10);
 
 	if (gain > 15) {
 		error("Invalid gain value received: %u", gain);
-		return -1;
+		return -EINVAL;
 	}
 
 	switch (buf[5]) {
@@ -325,7 +325,7 @@ static int signal_gain_setting(struct device *device, const char *buf)
 		break;
 	default:
 		error("Unknown gain setting");
-		return G_IO_ERROR_INVAL;
+		return -EINVAL;
 	}
 
 	dbus_connection_emit_signal(device->conn, device->path,
@@ -350,15 +350,15 @@ static struct event event_callbacks[] = {
 	{ 0 }
 };
 
-static GIOError handle_event(struct device *device, const char *buf)
+static int handle_event(struct device *device, const char *buf)
 {
-	struct event *pt;
+	struct event *ev;
 
 	debug("Received %s", buf);
 
-	for (pt = event_callbacks; pt->cmd; pt++) {
-		if (!strncmp(buf, pt->cmd, strlen(pt->cmd)))
-			return pt->callback(device, buf);
+	for (ev = event_callbacks; ev->cmd; ev++) {
+		if (!strncmp(buf, ev->cmd, strlen(ev->cmd)))
+			return ev->callback(device, buf);
 	}
 
 	return -EINVAL;
@@ -412,9 +412,8 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	if (cond & (G_IO_ERR | G_IO_HUP))
 		goto failed;
 
-	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1,
-				&bytes_read);
-	if (err != G_IO_ERROR_NONE)
+	if (g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1,
+				&bytes_read) != G_IO_ERROR_NONE)
 		return TRUE;
 
 	free_space = sizeof(hs->buf) - hs->data_start - hs->data_length - 1;
@@ -442,11 +441,12 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 
 	err = handle_event(device, &hs->buf[hs->data_start]);
 	if (err == -EINVAL) {
-		error("Received unknown command: %s", &hs->buf[hs->data_start]);
+		error("Badly formated or unrecognized command: %s",
+				&hs->buf[hs->data_start]);
 		err = headset_send(hs, "\r\nERROR\r\n");
 	} else if (err < 0)
-		error("Error handling command %s: %s (%d)", &hs->buf[hs->data_start],
-		      strerror(-err), -err);
+		error("Error handling command %s: %s (%d)",
+			&hs->buf[hs->data_start], strerror(-err), -err);
 
 	hs->data_start += cmd_len;
 	hs->data_length -= cmd_len;
