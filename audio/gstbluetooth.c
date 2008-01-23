@@ -33,7 +33,7 @@
 #include "gstsbcenc.h"
 #include "gstsbcdec.h"
 #include "gstsbcparse.h"
-#include "gsta2dpsendersink.h"
+#include "gstavdtpsink.h"
 #include "gsta2dpsink.h"
 #include "gstrtpsbcpay.h"
 
@@ -85,7 +85,7 @@ static gboolean plugin_init(GstPlugin *plugin)
 	if (!gst_sbc_parse_plugin_init(plugin))
 		return FALSE;
 
-	if (!gst_a2dp_sender_sink_plugin_init(plugin))
+	if (!gst_avdtp_sink_plugin_init(plugin))
 		return FALSE;
 
 	if (!gst_a2dp_sink_plugin_init(plugin))

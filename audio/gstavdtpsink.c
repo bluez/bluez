@@ -41,21 +41,21 @@
 #include "rtp.h"
 #include "gstsbcutil.h"
 
-#include "gsta2dpsendersink.h"
+#include "gstavdtpsink.h"
 
-GST_DEBUG_CATEGORY_STATIC(a2dp_sender_sink_debug);
-#define GST_CAT_DEFAULT a2dp_sender_sink_debug
+GST_DEBUG_CATEGORY_STATIC(avdtp_sink_debug);
+#define GST_CAT_DEFAULT avdtp_sink_debug
 
 #define BUFFER_SIZE 2048
 #define TEMPLATE_MAX_BITPOOL 64
 #define CRC_PROTECTED 1
 #define CRC_UNPROTECTED 0
 
-#define GST_A2DP_SENDER_SINK_MUTEX_LOCK(s) G_STMT_START {	\
+#define GST_AVDTP_SINK_MUTEX_LOCK(s) G_STMT_START {	\
 		g_mutex_lock (s->sink_lock);		\
 	} G_STMT_END
 
-#define GST_A2DP_SENDER_SINK_MUTEX_UNLOCK(s) G_STMT_START {	\
+#define GST_AVDTP_SINK_MUTEX_UNLOCK(s) G_STMT_START {	\
 		g_mutex_unlock (s->sink_lock);		\
 	} G_STMT_END
 
@@ -75,16 +75,16 @@ enum {
 	PROP_DEVICE,
 };
 
-GST_BOILERPLATE(GstA2dpSenderSink, gst_a2dp_sender_sink, GstBaseSink,
+GST_BOILERPLATE(GstAvdtpSink, gst_avdtp_sink, GstBaseSink,
 			GST_TYPE_BASE_SINK);
 
-static const GstElementDetails a2dp_sender_sink_details =
-	GST_ELEMENT_DETAILS("Bluetooth A2DP sink",
+static const GstElementDetails avdtp_sink_details =
+	GST_ELEMENT_DETAILS("Bluetooth AVDTP sink",
 				"Sink/Audio",
 				"Plays audio to an A2DP device",
 				"Marcel Holtmann <marcel@holtmann.org>");
 
-static GstStaticPadTemplate a2dp_sender_sink_factory =
+static GstStaticPadTemplate avdtp_sink_factory =
 	GST_STATIC_PAD_TEMPLATE("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
 		GST_STATIC_CAPS("application/x-rtp, "
 				"media = (string) \"audio\", "
@@ -102,27 +102,27 @@ static GstStaticPadTemplate a2dp_sender_sink_factory =
 				"encoding-name = (string) \"MPA\""
 				));
 
-static GIOError gst_a2dp_sender_sink_audioservice_send(GstA2dpSenderSink *self,
+static GIOError gst_avdtp_sink_audioservice_send(GstAvdtpSink *self,
 					const bt_audio_msg_header_t *msg);
-static GIOError gst_a2dp_sender_sink_audioservice_expect(
-				GstA2dpSenderSink *self,
+static GIOError gst_avdtp_sink_audioservice_expect(
+				GstAvdtpSink *self,
 				bt_audio_msg_header_t *outmsg,
 				int expected_type);
 
 
-static void gst_a2dp_sender_sink_base_init(gpointer g_class)
+static void gst_avdtp_sink_base_init(gpointer g_class)
 {
 	GstElementClass *element_class = GST_ELEMENT_CLASS(g_class);
 
 	gst_element_class_add_pad_template(element_class,
-		gst_static_pad_template_get(&a2dp_sender_sink_factory));
+		gst_static_pad_template_get(&avdtp_sink_factory));
 
-	gst_element_class_set_details(element_class, &a2dp_sender_sink_details);
+	gst_element_class_set_details(element_class, &avdtp_sink_details);
 }
 
-static gboolean gst_a2dp_sender_sink_stop(GstBaseSink *basesink)
+static gboolean gst_avdtp_sink_stop(GstBaseSink *basesink)
 {
-	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(basesink);
+	GstAvdtpSink *self = GST_AVDTP_SINK(basesink);
 
 	GST_INFO_OBJECT(self, "stop");
 
@@ -162,12 +162,12 @@ static gboolean gst_a2dp_sender_sink_stop(GstBaseSink *basesink)
 	return TRUE;
 }
 
-static void gst_a2dp_sender_sink_finalize(GObject *object)
+static void gst_avdtp_sink_finalize(GObject *object)
 {
-	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(object);
+	GstAvdtpSink *self = GST_AVDTP_SINK(object);
 
 	if (self->data)
-		gst_a2dp_sender_sink_stop(GST_BASE_SINK(self));
+		gst_avdtp_sink_stop(GST_BASE_SINK(self));
 
 	if (self->device)
 		g_free(self->device);
@@ -177,10 +177,10 @@ static void gst_a2dp_sender_sink_finalize(GObject *object)
 	G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
-static void gst_a2dp_sender_sink_set_property(GObject *object, guint prop_id,
+static void gst_avdtp_sink_set_property(GObject *object, guint prop_id,
 					const GValue *value, GParamSpec *pspec)
 {
-	GstA2dpSenderSink *sink = GST_A2DP_SENDER_SINK(object);
+	GstAvdtpSink *sink = GST_AVDTP_SINK(object);
 
 	switch (prop_id) {
 	case PROP_DEVICE:
@@ -195,10 +195,10 @@ static void gst_a2dp_sender_sink_set_property(GObject *object, guint prop_id,
 	}
 }
 
-static void gst_a2dp_sender_sink_get_property(GObject *object, guint prop_id,
+static void gst_avdtp_sink_get_property(GObject *object, guint prop_id,
 					GValue *value, GParamSpec *pspec)
 {
-	GstA2dpSenderSink *sink = GST_A2DP_SENDER_SINK(object);
+	GstAvdtpSink *sink = GST_AVDTP_SINK(object);
 
 	switch (prop_id) {
 	case PROP_DEVICE:
@@ -211,7 +211,7 @@ static void gst_a2dp_sender_sink_get_property(GObject *object, guint prop_id,
 	}
 }
 
-static gint gst_a2dp_sender_sink_bluetooth_recvmsg_fd(GstA2dpSenderSink *sink)
+static gint gst_avdtp_sink_bluetooth_recvmsg_fd(GstAvdtpSink *sink)
 {
 	int err, ret;
 
@@ -231,7 +231,7 @@ static gint gst_a2dp_sender_sink_bluetooth_recvmsg_fd(GstA2dpSenderSink *sink)
 	return 0;
 }
 
-static gboolean gst_a2dp_sender_sink_init_pkt_conf(GstA2dpSenderSink *sink,
+static gboolean gst_avdtp_sink_init_pkt_conf(GstAvdtpSink *sink,
 					GstCaps *caps,
 					sbc_capabilities_t *pkt)
 {
@@ -327,8 +327,8 @@ static gboolean gst_a2dp_sender_sink_init_pkt_conf(GstA2dpSenderSink *sink,
 	return TRUE;
 }
 
-static gboolean gst_a2dp_sender_sink_conf_recv_stream_fd(
-					GstA2dpSenderSink *self)
+static gboolean gst_avdtp_sink_conf_recv_stream_fd(
+					GstAvdtpSink *self)
 {
 	struct bluetooth_data *data = self->data;
 	gint ret;
@@ -338,7 +338,7 @@ static gboolean gst_a2dp_sender_sink_conf_recv_stream_fd(
 	GIOFlags flags;
 	gsize read;
 
-	ret = gst_a2dp_sender_sink_bluetooth_recvmsg_fd(self);
+	ret = gst_avdtp_sink_bluetooth_recvmsg_fd(self);
 	if (ret < 0)
 		return FALSE;
 
@@ -399,20 +399,20 @@ static gboolean gst_a2dp_sender_sink_conf_recv_stream_fd(
 static gboolean server_callback(GIOChannel *chan,
 					GIOCondition cond, gpointer data)
 {
-	GstA2dpSenderSink *sink;
+	GstAvdtpSink *sink;
 
 	if (cond & G_IO_HUP || cond & G_IO_NVAL)
 		return FALSE;
 	else if (cond & G_IO_ERR) {
-		sink = GST_A2DP_SENDER_SINK(data);
+		sink = GST_AVDTP_SINK(data);
 		GST_WARNING_OBJECT(sink, "Untreated callback G_IO_ERR");
 	}
 
 	return TRUE;
 }
 
-static GstStructure *gst_a2dp_sender_sink_parse_sbc_caps(
-			GstA2dpSenderSink *self, sbc_capabilities_t *sbc)
+static GstStructure *gst_avdtp_sink_parse_sbc_caps(
+			GstAvdtpSink *self, sbc_capabilities_t *sbc)
 {
 	GstStructure *structure;
 	GValue *value;
@@ -599,8 +599,8 @@ static GstStructure *gst_a2dp_sender_sink_parse_sbc_caps(
 	return structure;
 }
 
-static GstStructure *gst_a2dp_sender_sink_parse_mpeg_caps(
-			GstA2dpSenderSink *self, mpeg_capabilities_t *mpeg)
+static GstStructure *gst_avdtp_sink_parse_mpeg_caps(
+			GstAvdtpSink *self, mpeg_capabilities_t *mpeg)
 {
 	GstStructure *structure;
 	GValue *value;
@@ -720,7 +720,7 @@ static GstStructure *gst_a2dp_sender_sink_parse_mpeg_caps(
 	return structure;
 }
 
-static gboolean gst_a2dp_sender_sink_update_caps(GstA2dpSenderSink *self)
+static gboolean gst_avdtp_sink_update_caps(GstAvdtpSink *self)
 {
 	sbc_capabilities_t *sbc = &self->data->caps.sbc_capabilities;
 	mpeg_capabilities_t *mpeg = &self->data->caps.mpeg_capabilities;
@@ -730,8 +730,8 @@ static gboolean gst_a2dp_sender_sink_update_caps(GstA2dpSenderSink *self)
 
 	GST_LOG_OBJECT(self, "updating device caps");
 
-	sbc_structure = gst_a2dp_sender_sink_parse_sbc_caps(self, sbc);
-	mpeg_structure = gst_a2dp_sender_sink_parse_mpeg_caps(self, mpeg);
+	sbc_structure = gst_avdtp_sink_parse_sbc_caps(self, sbc);
+	mpeg_structure = gst_avdtp_sink_parse_mpeg_caps(self, mpeg);
 
 	if (self->dev_caps != NULL)
 		gst_caps_unref(self->dev_caps);
@@ -746,7 +746,7 @@ static gboolean gst_a2dp_sender_sink_update_caps(GstA2dpSenderSink *self)
 	return TRUE;
 }
 
-static gboolean gst_a2dp_sender_sink_get_capabilities(GstA2dpSenderSink *self)
+static gboolean gst_avdtp_sink_get_capabilities(GstAvdtpSink *self)
 {
 	gchar *buf[BT_AUDIO_IPC_PACKET_SIZE];
 	struct bt_getcapabilities_req *req = (void *) buf;
@@ -760,13 +760,13 @@ static gboolean gst_a2dp_sender_sink_get_capabilities(GstA2dpSenderSink *self)
 		return FALSE;
 	strncpy(req->device, self->device, 18);
 
-	io_error = gst_a2dp_sender_sink_audioservice_send(self, &req->h);
+	io_error = gst_avdtp_sink_audioservice_send(self, &req->h);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while asking device caps");
 		return FALSE;
 	}
 
-	io_error = gst_a2dp_sender_sink_audioservice_expect(self,
+	io_error = gst_avdtp_sink_audioservice_expect(self,
 			&rsp->rsp_h.msg_h, BT_GETCAPABILITIES_RSP);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while getting device caps");
@@ -781,7 +781,7 @@ static gboolean gst_a2dp_sender_sink_get_capabilities(GstA2dpSenderSink *self)
 	}
 
 	memcpy(&self->data->caps, rsp, sizeof(*rsp));
-	if (!gst_a2dp_sender_sink_update_caps(self)) {
+	if (!gst_avdtp_sink_update_caps(self)) {
 		GST_WARNING_OBJECT(self, "failed to update capabilities");
 		return FALSE;
 	}
@@ -789,7 +789,7 @@ static gboolean gst_a2dp_sender_sink_get_capabilities(GstA2dpSenderSink *self)
 	return TRUE;
 }
 
-static gint gst_a2dp_sender_sink_get_channel_mode(const gchar *mode)
+static gint gst_avdtp_sink_get_channel_mode(const gchar *mode)
 {
 	if (strcmp(mode, "stereo") == 0)
 		return BT_A2DP_CHANNEL_MODE_STEREO;
@@ -803,12 +803,12 @@ static gint gst_a2dp_sender_sink_get_channel_mode(const gchar *mode)
 		return -1;
 }
 
-static void gst_a2dp_sender_sink_tag(const GstTagList *taglist,
+static void gst_avdtp_sink_tag(const GstTagList *taglist,
 			const gchar* tag, gpointer user_data)
 {
 	gboolean crc;
 	gchar *channel_mode = NULL;
-	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(user_data);
+	GstAvdtpSink *self = GST_AVDTP_SINK(user_data);
 
 	if (strcmp(tag, "has-crc") == 0) {
 
@@ -817,7 +817,7 @@ static void gst_a2dp_sender_sink_tag(const GstTagList *taglist,
 			self->mpeg_stream_changed = TRUE;
 		}
 
-		gst_a2dp_sender_sink_set_crc(self, crc);
+		gst_avdtp_sink_set_crc(self, crc);
 
 	} else if (strcmp(tag, "channel-mode") == 0) {
 
@@ -827,7 +827,7 @@ static void gst_a2dp_sender_sink_tag(const GstTagList *taglist,
 			self->mpeg_stream_changed = TRUE;
 		}
 
-		self->channel_mode = gst_a2dp_sender_sink_get_channel_mode(
+		self->channel_mode = gst_avdtp_sink_get_channel_mode(
 					channel_mode);
 		if (self->channel_mode == -1)
 			GST_WARNING_OBJECT(self, "Received invalid channel "
@@ -838,25 +838,25 @@ static void gst_a2dp_sender_sink_tag(const GstTagList *taglist,
 		GST_DEBUG_OBJECT(self, "received unused tag: %s", tag);
 }
 
-static gboolean gst_a2dp_sender_sink_event(GstBaseSink *basesink,
+static gboolean gst_avdtp_sink_event(GstBaseSink *basesink,
 			GstEvent *event)
 {
-	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(basesink);
+	GstAvdtpSink *self = GST_AVDTP_SINK(basesink);
 	GstTagList *taglist = NULL;
 
 	if (GST_EVENT_TYPE(event) == GST_EVENT_TAG) {
 		/* we check the tags, mp3 has tags that are importants and
 		 * are outside caps */
 		gst_event_parse_tag(event, &taglist);
-		gst_tag_list_foreach(taglist, gst_a2dp_sender_sink_tag, self);
+		gst_tag_list_foreach(taglist, gst_avdtp_sink_tag, self);
 	}
 
 	return TRUE;
 }
 
-static gboolean gst_a2dp_sender_sink_start(GstBaseSink *basesink)
+static gboolean gst_avdtp_sink_start(GstBaseSink *basesink)
 {
-	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(basesink);
+	GstAvdtpSink *self = GST_AVDTP_SINK(basesink);
 	gint sk;
 	gint err;
 
@@ -885,7 +885,7 @@ static gboolean gst_a2dp_sender_sink_start(GstBaseSink *basesink)
 	self->channel_mode = -1;
 	self->mpeg_stream_changed = FALSE;
 
-	if (!gst_a2dp_sender_sink_get_capabilities(self)) {
+	if (!gst_avdtp_sink_get_capabilities(self)) {
 		GST_ERROR_OBJECT(self, "failed to get capabilities "
 				"from device");
 		goto failed;
@@ -898,7 +898,7 @@ failed:
 	return FALSE;
 }
 
-static gboolean gst_a2dp_sender_sink_stream_start(GstA2dpSenderSink *self)
+static gboolean gst_avdtp_sink_stream_start(GstAvdtpSink *self)
 {
 	gchar buf[BT_AUDIO_IPC_PACKET_SIZE];
 	struct bt_streamstart_req *req = (void *) buf;
@@ -911,7 +911,7 @@ static gboolean gst_a2dp_sender_sink_stream_start(GstA2dpSenderSink *self)
 	memset (req, 0, sizeof(buf));
 	req->h.msg_type = BT_STREAMSTART_REQ;
 
-	io_error = gst_a2dp_sender_sink_audioservice_send(self, &req->h);
+	io_error = gst_avdtp_sink_audioservice_send(self, &req->h);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error ocurred while sending "
 					"start packet");
@@ -920,7 +920,7 @@ static gboolean gst_a2dp_sender_sink_stream_start(GstA2dpSenderSink *self)
 
 	GST_DEBUG_OBJECT(self, "stream start packet sent");
 
-	io_error = gst_a2dp_sender_sink_audioservice_expect(self,
+	io_error = gst_avdtp_sink_audioservice_expect(self,
 			&rsp->rsp_h.msg_h, BT_STREAMSTART_RSP);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while stream "
@@ -937,7 +937,7 @@ static gboolean gst_a2dp_sender_sink_stream_start(GstA2dpSenderSink *self)
 
 	GST_DEBUG_OBJECT(self, "stream started");
 
-	io_error = gst_a2dp_sender_sink_audioservice_expect(self, &ind->h,
+	io_error = gst_avdtp_sink_audioservice_expect(self, &ind->h,
 			BT_STREAMFD_IND);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while receiving "
@@ -945,14 +945,14 @@ static gboolean gst_a2dp_sender_sink_stream_start(GstA2dpSenderSink *self)
 		return FALSE;
 	}
 
-	if (!gst_a2dp_sender_sink_conf_recv_stream_fd(self))
+	if (!gst_avdtp_sink_conf_recv_stream_fd(self))
 		return FALSE;
 
 	return TRUE;
 }
 
-static gboolean gst_a2dp_sender_sink_init_mp3_pkt_conf(
-		GstA2dpSenderSink *self, GstCaps *caps,
+static gboolean gst_avdtp_sink_init_mp3_pkt_conf(
+		GstAvdtpSink *self, GstCaps *caps,
 		mpeg_capabilities_t *pkt)
 {
 	const GValue *value = NULL;
@@ -1022,7 +1022,7 @@ static gboolean gst_a2dp_sender_sink_init_mp3_pkt_conf(
 	return TRUE;
 }
 
-static gboolean gst_a2dp_sender_sink_configure(GstA2dpSenderSink *self,
+static gboolean gst_avdtp_sink_configure(GstAvdtpSink *self,
 			GstCaps *caps)
 {
 	gchar buf[BT_AUDIO_IPC_PACKET_SIZE];
@@ -1044,10 +1044,10 @@ static gboolean gst_a2dp_sender_sink_configure(GstA2dpSenderSink *self,
 	structure = gst_caps_get_structure(caps, 0);
 
 	if (gst_structure_has_name(structure, "audio/x-sbc"))
-		ret = gst_a2dp_sender_sink_init_pkt_conf(self, caps,
+		ret = gst_avdtp_sink_init_pkt_conf(self, caps,
 				&req->sbc_capabilities);
 	else if (gst_structure_has_name(structure, "audio/mpeg"))
-		ret = gst_a2dp_sender_sink_init_mp3_pkt_conf(self, caps,
+		ret = gst_avdtp_sink_init_mp3_pkt_conf(self, caps,
 				&req->mpeg_capabilities);
 	else
 		ret = FALSE;
@@ -1058,7 +1058,7 @@ static gboolean gst_a2dp_sender_sink_configure(GstA2dpSenderSink *self,
 		return FALSE;
 	}
 
-	io_error = gst_a2dp_sender_sink_audioservice_send(self, &req->h);
+	io_error = gst_avdtp_sink_audioservice_send(self, &req->h);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error ocurred while sending "
 					"configurarion packet");
@@ -1067,7 +1067,7 @@ static gboolean gst_a2dp_sender_sink_configure(GstA2dpSenderSink *self,
 
 	GST_DEBUG_OBJECT(self, "configuration packet sent");
 
-	io_error = gst_a2dp_sender_sink_audioservice_expect(self,
+	io_error = gst_avdtp_sink_audioservice_expect(self,
 			&rsp->rsp_h.msg_h, BT_SETCONFIGURATION_RSP);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while receiving device "
@@ -1089,17 +1089,17 @@ static gboolean gst_a2dp_sender_sink_configure(GstA2dpSenderSink *self,
 	return TRUE;
 }
 
-static GstFlowReturn gst_a2dp_sender_sink_preroll(GstBaseSink *basesink,
+static GstFlowReturn gst_avdtp_sink_preroll(GstBaseSink *basesink,
 					GstBuffer *buffer)
 {
-	GstA2dpSenderSink *sink = GST_A2DP_SENDER_SINK(basesink);
+	GstAvdtpSink *sink = GST_AVDTP_SINK(basesink);
 	gboolean ret;
 
-	GST_A2DP_SENDER_SINK_MUTEX_LOCK(sink);
+	GST_AVDTP_SINK_MUTEX_LOCK(sink);
 
-	ret = gst_a2dp_sender_sink_stream_start(sink);
+	ret = gst_avdtp_sink_stream_start(sink);
 
-	GST_A2DP_SENDER_SINK_MUTEX_UNLOCK(sink);
+	GST_AVDTP_SINK_MUTEX_UNLOCK(sink);
 
 	if (!ret)
 		return GST_FLOW_ERROR;
@@ -1107,10 +1107,10 @@ static GstFlowReturn gst_a2dp_sender_sink_preroll(GstBaseSink *basesink,
 	return GST_FLOW_OK;
 }
 
-static GstFlowReturn gst_a2dp_sender_sink_render(GstBaseSink *basesink,
+static GstFlowReturn gst_avdtp_sink_render(GstBaseSink *basesink,
 					GstBuffer *buffer)
 {
-	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(basesink);
+	GstAvdtpSink *self = GST_AVDTP_SINK(basesink);
 	gsize ret;
 	GIOError err;
 
@@ -1126,9 +1126,9 @@ static GstFlowReturn gst_a2dp_sender_sink_render(GstBaseSink *basesink,
 	return GST_FLOW_OK;
 }
 
-static gboolean gst_a2dp_sender_sink_unlock(GstBaseSink *basesink)
+static gboolean gst_avdtp_sink_unlock(GstBaseSink *basesink)
 {
-	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(basesink);
+	GstAvdtpSink *self = GST_AVDTP_SINK(basesink);
 
 	if (self->stream != NULL)
 		g_io_channel_flush (self->stream, NULL);
@@ -1136,11 +1136,11 @@ static gboolean gst_a2dp_sender_sink_unlock(GstBaseSink *basesink)
 	return TRUE;
 }
 
-static GstFlowReturn gst_a2dp_sender_sink_buffer_alloc(GstBaseSink *basesink,
+static GstFlowReturn gst_avdtp_sink_buffer_alloc(GstBaseSink *basesink,
 				guint64 offset, guint size, GstCaps* caps,
 				GstBuffer **buf)
 {
-	GstA2dpSenderSink *self = GST_A2DP_SENDER_SINK(basesink);
+	GstAvdtpSink *self = GST_AVDTP_SINK(basesink);
 
 	*buf = gst_buffer_new_and_alloc(size);
 	if (!(*buf)) {
@@ -1155,7 +1155,7 @@ static GstFlowReturn gst_a2dp_sender_sink_buffer_alloc(GstBaseSink *basesink,
 	return GST_FLOW_OK;
 }
 
-static void gst_a2dp_sender_sink_class_init(GstA2dpSenderSinkClass *klass)
+static void gst_avdtp_sink_class_init(GstAvdtpSinkClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 	GstBaseSinkClass *basesink_class = GST_BASE_SINK_CLASS(klass);
@@ -1163,37 +1163,37 @@ static void gst_a2dp_sender_sink_class_init(GstA2dpSenderSinkClass *klass)
 	parent_class = g_type_class_peek_parent(klass);
 
 	object_class->finalize = GST_DEBUG_FUNCPTR(
-					gst_a2dp_sender_sink_finalize);
+					gst_avdtp_sink_finalize);
 	object_class->set_property = GST_DEBUG_FUNCPTR(
-					gst_a2dp_sender_sink_set_property);
+					gst_avdtp_sink_set_property);
 	object_class->get_property = GST_DEBUG_FUNCPTR(
-					gst_a2dp_sender_sink_get_property);
+					gst_avdtp_sink_get_property);
 
-	basesink_class->start = GST_DEBUG_FUNCPTR(gst_a2dp_sender_sink_start);
-	basesink_class->stop = GST_DEBUG_FUNCPTR(gst_a2dp_sender_sink_stop);
+	basesink_class->start = GST_DEBUG_FUNCPTR(gst_avdtp_sink_start);
+	basesink_class->stop = GST_DEBUG_FUNCPTR(gst_avdtp_sink_stop);
 	basesink_class->render = GST_DEBUG_FUNCPTR(
-					gst_a2dp_sender_sink_render);
+					gst_avdtp_sink_render);
 	basesink_class->preroll = GST_DEBUG_FUNCPTR(
-					gst_a2dp_sender_sink_preroll);
+					gst_avdtp_sink_preroll);
 	basesink_class->unlock = GST_DEBUG_FUNCPTR(
-					gst_a2dp_sender_sink_unlock);
+					gst_avdtp_sink_unlock);
 	basesink_class->event = GST_DEBUG_FUNCPTR(
-					gst_a2dp_sender_sink_event);
+					gst_avdtp_sink_event);
 
 	basesink_class->buffer_alloc =
-		GST_DEBUG_FUNCPTR(gst_a2dp_sender_sink_buffer_alloc);
+		GST_DEBUG_FUNCPTR(gst_avdtp_sink_buffer_alloc);
 
 	g_object_class_install_property(object_class, PROP_DEVICE,
 					g_param_spec_string("device", "Device",
 					"Bluetooth remote device address",
 					NULL, G_PARAM_READWRITE));
 
-	GST_DEBUG_CATEGORY_INIT(a2dp_sender_sink_debug, "a2dpsendersink", 0,
+	GST_DEBUG_CATEGORY_INIT(avdtp_sink_debug, "a2dpsendersink", 0,
 				"A2DP sink element");
 }
 
-static void gst_a2dp_sender_sink_init(GstA2dpSenderSink *self,
-			GstA2dpSenderSinkClass *klass)
+static void gst_avdtp_sink_init(GstAvdtpSink *self,
+			GstAvdtpSinkClass *klass)
 {
 	self->device = NULL;
 	self->data = NULL;
@@ -1205,8 +1205,8 @@ static void gst_a2dp_sender_sink_init(GstA2dpSenderSink *self,
 	self->sink_lock = g_mutex_new();
 }
 
-static GIOError gst_a2dp_sender_sink_audioservice_send(
-					GstA2dpSenderSink *self,
+static GIOError gst_avdtp_sink_audioservice_send(
+					GstAvdtpSink *self,
 					const bt_audio_msg_header_t *msg)
 {
 	GIOError error;
@@ -1221,8 +1221,8 @@ static GIOError gst_a2dp_sender_sink_audioservice_send(
 	return error;
 }
 
-static GIOError gst_a2dp_sender_sink_audioservice_recv(
-					GstA2dpSenderSink *self,
+static GIOError gst_avdtp_sink_audioservice_recv(
+					GstAvdtpSink *self,
 					bt_audio_msg_header_t *inmsg)
 {
 	GIOError status;
@@ -1248,13 +1248,13 @@ static GIOError gst_a2dp_sender_sink_audioservice_recv(
 	return status;
 }
 
-static GIOError gst_a2dp_sender_sink_audioservice_expect(
-			GstA2dpSenderSink *self, bt_audio_msg_header_t *outmsg,
+static GIOError gst_avdtp_sink_audioservice_expect(
+			GstAvdtpSink *self, bt_audio_msg_header_t *outmsg,
 			int expected_type)
 {
 	GIOError status;
 
-	status = gst_a2dp_sender_sink_audioservice_recv(self, outmsg);
+	status = gst_avdtp_sink_audioservice_recv(self, outmsg);
 	if (status != G_IO_ERROR_NONE)
 		return status;
 
@@ -1264,15 +1264,15 @@ static GIOError gst_a2dp_sender_sink_audioservice_expect(
 	return status;
 }
 
-gboolean gst_a2dp_sender_sink_plugin_init (GstPlugin * plugin)
+gboolean gst_avdtp_sink_plugin_init (GstPlugin * plugin)
 {
-	return gst_element_register (plugin, "a2dpsendersink",
-			GST_RANK_NONE, GST_TYPE_A2DP_SENDER_SINK);
+	return gst_element_register (plugin, "avdtpsink",
+			GST_RANK_NONE, GST_TYPE_AVDTP_SINK);
 }
 
 
 /* public functions */
-GstCaps *gst_a2dp_sender_sink_get_device_caps(GstA2dpSenderSink *sink)
+GstCaps *gst_avdtp_sink_get_device_caps(GstAvdtpSink *sink)
 {
 	if (sink->dev_caps == NULL)
 		return NULL;
@@ -1280,30 +1280,30 @@ GstCaps *gst_a2dp_sender_sink_get_device_caps(GstA2dpSenderSink *sink)
 	return gst_caps_copy(sink->dev_caps);
 }
 
-gboolean gst_a2dp_sender_sink_set_device_caps(GstA2dpSenderSink *self,
+gboolean gst_avdtp_sink_set_device_caps(GstAvdtpSink *self,
 			GstCaps *caps)
 {
 	gboolean ret;
 
 	GST_DEBUG_OBJECT(self, "setting device caps");
-	GST_A2DP_SENDER_SINK_MUTEX_LOCK(self);
-	ret = gst_a2dp_sender_sink_configure(self, caps);
+	GST_AVDTP_SINK_MUTEX_LOCK(self);
+	ret = gst_avdtp_sink_configure(self, caps);
 
 	if (self->stream_caps)
 		gst_caps_unref(self->stream_caps);
 	self->stream_caps = gst_caps_ref(caps);
 
-	GST_A2DP_SENDER_SINK_MUTEX_UNLOCK(self);
+	GST_AVDTP_SINK_MUTEX_UNLOCK(self);
 
 	return ret;
 }
 
-guint gst_a2dp_sender_sink_get_link_mtu(GstA2dpSenderSink *sink)
+guint gst_avdtp_sink_get_link_mtu(GstAvdtpSink *sink)
 {
 	return sink->data->link_mtu;
 }
 
-void gst_a2dp_sender_sink_set_device(GstA2dpSenderSink *self, const gchar* dev)
+void gst_avdtp_sink_set_device(GstAvdtpSink *self, const gchar* dev)
 {
 	if (self->device != NULL)
 		g_free(self->device);
@@ -1312,12 +1312,12 @@ void gst_a2dp_sender_sink_set_device(GstA2dpSenderSink *self, const gchar* dev)
 	self->device = g_strdup(dev);
 }
 
-gchar *gst_a2dp_sender_sink_get_device(GstA2dpSenderSink *self)
+gchar *gst_avdtp_sink_get_device(GstAvdtpSink *self)
 {
 	return g_strdup(self->device);
 }
 
-void gst_a2dp_sender_sink_set_crc(GstA2dpSenderSink *self, gboolean crc)
+void gst_avdtp_sink_set_crc(GstAvdtpSink *self, gboolean crc)
 {
 	gint new_crc;
 
@@ -1334,12 +1334,12 @@ void gst_a2dp_sender_sink_set_crc(GstA2dpSenderSink *self, gboolean crc)
 
 }
 
-void gst_a2dp_sender_sink_set_channel_mode(GstA2dpSenderSink *self,
+void gst_avdtp_sink_set_channel_mode(GstAvdtpSink *self,
 			const gchar *mode)
 {
 	gint new_mode;
 
-	new_mode = gst_a2dp_sender_sink_get_channel_mode(mode);
+	new_mode = gst_avdtp_sink_get_channel_mode(mode);
 
 	if (self->channel_mode != -1 && new_mode != self->channel_mode) {
 		GST_ERROR_OBJECT(self, "channel mode changed during stream");

@@ -43,7 +43,7 @@ libgstbluetooth_la_SOURCES = gstbluetooth.c \
 				gstsbcenc.h gstsbcenc.c \
 				gstsbcdec.h gstsbcdec.c \
 				gstsbcparse.h gstsbcparse.c \
-				gsta2dpsendersink.h gsta2dpsendersink.c \
+				gstavdtpsink.h gstavdtpsink.c \
 				gsta2dpsink.h gsta2dpsink.c \
 				gstsbcutil.h gstsbcutil.c \
 				gstrtpsbcpay.h gstrtpsbcpay.c \
