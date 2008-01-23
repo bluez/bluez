@@ -1289,6 +1289,16 @@ static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn,
 	hs->ring_timer = 0;
 
 done:
+	if (hs->hfp_active) {
+		int err;
+		/*+CIEV: (callsetup = 0)*/
+		err = headset_send(hs, "\r\n+CIEV:3, 0\r\n");
+		if (err < 0) {
+			dbus_message_unref(reply);
+			return error_failed_errno(conn, msg, -err);
+		}
+	}
+
 	send_message_and_unref(conn, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
