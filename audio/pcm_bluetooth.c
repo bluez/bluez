@@ -468,10 +468,10 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 static uint8_t default_bitpool(uint8_t freq, uint8_t mode)
 {
 	switch (freq) {
-	case BT_A2DP_SAMPLING_FREQ_16000:
-	case BT_A2DP_SAMPLING_FREQ_32000:
+	case BT_SBC_SAMPLING_FREQ_16000:
+	case BT_SBC_SAMPLING_FREQ_32000:
 		return 53;
-	case BT_A2DP_SAMPLING_FREQ_44100:
+	case BT_SBC_SAMPLING_FREQ_44100:
 		switch (mode) {
 		case BT_A2DP_CHANNEL_MODE_MONO:
 		case BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL:
@@ -483,7 +483,7 @@ static uint8_t default_bitpool(uint8_t freq, uint8_t mode)
 			DBG("Invalid channel mode %u", mode);
 			return 53;
 		}
-	case BT_A2DP_SAMPLING_FREQ_48000:
+	case BT_SBC_SAMPLING_FREQ_48000:
 		switch (mode) {
 		case BT_A2DP_CHANNEL_MODE_MONO:
 		case BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL:
@@ -508,16 +508,16 @@ static int select_sbc_params(sbc_capabilities_t *cap, unsigned int rate,
 
 	switch (rate) {
 	case 48000:
-		cap->frequency = BT_A2DP_SAMPLING_FREQ_48000;
+		cap->frequency = BT_SBC_SAMPLING_FREQ_48000;
 		break;
 	case 44100:
-		cap->frequency = BT_A2DP_SAMPLING_FREQ_44100;
+		cap->frequency = BT_SBC_SAMPLING_FREQ_44100;
 		break;
 	case 32000:
-		cap->frequency = BT_A2DP_SAMPLING_FREQ_32000;
+		cap->frequency = BT_SBC_SAMPLING_FREQ_32000;
 		break;
 	case 16000:
-		cap->frequency = BT_A2DP_SAMPLING_FREQ_16000;
+		cap->frequency = BT_SBC_SAMPLING_FREQ_16000;
 		break;
 	default:
 		DBG("Rate %d not supported", rate);
@@ -641,16 +641,16 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 		sbc_init(&a2dp->sbc, 0);
 	a2dp->sbc_initialized = 1;
 
-	if (active_capabilities.frequency & BT_A2DP_SAMPLING_FREQ_16000)
+	if (active_capabilities.frequency & BT_SBC_SAMPLING_FREQ_16000)
 		a2dp->sbc.rate = 16000;
 
-	if (active_capabilities.frequency & BT_A2DP_SAMPLING_FREQ_32000)
+	if (active_capabilities.frequency & BT_SBC_SAMPLING_FREQ_32000)
 		a2dp->sbc.rate = 32000;
 
-	if (active_capabilities.frequency & BT_A2DP_SAMPLING_FREQ_44100)
+	if (active_capabilities.frequency & BT_SBC_SAMPLING_FREQ_44100)
 		a2dp->sbc.rate = 44100;
 
-	if (active_capabilities.frequency & BT_A2DP_SAMPLING_FREQ_48000)
+	if (active_capabilities.frequency & BT_SBC_SAMPLING_FREQ_48000)
 		a2dp->sbc.rate = 48000;
 
 	if (active_capabilities.channel_mode & BT_A2DP_CHANNEL_MODE_MONO)
@@ -659,7 +659,8 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 		a2dp->sbc.channels = 2;
 
 	if (active_capabilities.channel_mode &
-			(BT_A2DP_CHANNEL_MODE_MONO || BT_A2DP_CHANNEL_MODE_JOINT_STEREO))
+			(BT_A2DP_CHANNEL_MODE_MONO ||
+			BT_A2DP_CHANNEL_MODE_JOINT_STEREO))
 		a2dp->sbc.joint = 1;
 	else
 		a2dp->sbc.joint = 0;
@@ -1231,22 +1232,26 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 
 	/* supported rates */
 	rate_count = 0;
-	if (a2dp->sbc_capabilities.frequency & BT_A2DP_SAMPLING_FREQ_16000) {
+	if (a2dp->sbc_capabilities.frequency &
+			BT_SBC_SAMPLING_FREQ_16000) {
 		rate_list[rate_count] = 16000;
 		rate_count++;
 	}
 
-	if (a2dp->sbc_capabilities.frequency & BT_A2DP_SAMPLING_FREQ_32000) {
+	if (a2dp->sbc_capabilities.frequency &
+			BT_SBC_SAMPLING_FREQ_32000) {
 		rate_list[rate_count] = 32000;
 		rate_count++;
 	}
 
-	if (a2dp->sbc_capabilities.frequency & BT_A2DP_SAMPLING_FREQ_44100) {
+	if (a2dp->sbc_capabilities.frequency &
+			BT_SBC_SAMPLING_FREQ_44100) {
 		rate_list[rate_count] = 44100;
 		rate_count++;
 	}
 
-	if (a2dp->sbc_capabilities.frequency & BT_A2DP_SAMPLING_FREQ_48000) {
+	if (a2dp->sbc_capabilities.frequency &
+			BT_SBC_SAMPLING_FREQ_48000) {
 		rate_list[rate_count] = 48000;
 		rate_count++;
 	}

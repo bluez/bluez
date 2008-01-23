@@ -236,13 +236,13 @@ static gboolean gst_a2dp_sender_sink_init_pkt_conf(GstA2dpSenderSink *sink,
 	value = gst_structure_get_value(structure, "rate");
 	rate = g_value_get_int(value);
 	if (rate == 44100)
-		cfg->frequency = BT_A2DP_SAMPLING_FREQ_44100;
+		cfg->frequency = BT_SBC_SAMPLING_FREQ_44100;
 	else if (rate == 48000)
-		cfg->frequency = BT_A2DP_SAMPLING_FREQ_48000;
+		cfg->frequency = BT_SBC_SAMPLING_FREQ_48000;
 	else if (rate == 32000)
-		cfg->frequency = BT_A2DP_SAMPLING_FREQ_32000;
+		cfg->frequency = BT_SBC_SAMPLING_FREQ_32000;
 	else if (rate == 16000)
-		cfg->frequency = BT_A2DP_SAMPLING_FREQ_16000;
+		cfg->frequency = BT_SBC_SAMPLING_FREQ_16000;
 	else {
 		GST_ERROR_OBJECT(sink, "Invalid rate while setting caps");
 		return FALSE;
@@ -396,16 +396,13 @@ static gboolean server_callback(GIOChannel *chan,
 	return TRUE;
 }
 
-static gboolean gst_a2dp_sender_sink_update_caps(GstA2dpSenderSink *self)
+static GstStructure *gst_a2dp_sender_sink_parse_sbc_caps(
+			GstA2dpSenderSink *self, sbc_capabilities_t *sbc)
 {
-	sbc_capabilities_t *sbc = &self->data->caps.sbc_capabilities;
 	GstStructure *structure;
 	GValue *value;
 	GValue *list;
-	gchar *tmp;
 	gboolean mono, stereo;
-
-	GST_LOG_OBJECT(self, "updating device caps");
 
 	structure = gst_structure_empty_new("audio/x-sbc");
 	value = g_value_init(g_new0(GValue, 1), G_TYPE_STRING);
@@ -518,19 +515,19 @@ static gboolean gst_a2dp_sender_sink_update_caps(GstA2dpSenderSink *self)
 	/* rate */
 	g_value_init(value, G_TYPE_INT);
 	list = g_value_init(g_new0(GValue, 1), GST_TYPE_LIST);
-	if (sbc->frequency & BT_A2DP_SAMPLING_FREQ_48000) {
+	if (sbc->frequency & BT_SBC_SAMPLING_FREQ_48000) {
 		g_value_set_int(value, 48000);
 		gst_value_list_prepend_value(list, value);
 	}
-	if (sbc->frequency & BT_A2DP_SAMPLING_FREQ_44100) {
+	if (sbc->frequency & BT_SBC_SAMPLING_FREQ_44100) {
 		g_value_set_int(value, 44100);
 		gst_value_list_prepend_value(list, value);
 	}
-	if (sbc->frequency & BT_A2DP_SAMPLING_FREQ_32000) {
+	if (sbc->frequency & BT_SBC_SAMPLING_FREQ_32000) {
 		g_value_set_int(value, 32000);
 		gst_value_list_prepend_value(list, value);
 	}
-	if (sbc->frequency & BT_A2DP_SAMPLING_FREQ_16000) {
+	if (sbc->frequency & BT_SBC_SAMPLING_FREQ_16000) {
 		g_value_set_int(value, 16000);
 		gst_value_list_prepend_value(list, value);
 	}
@@ -583,6 +580,20 @@ static gboolean gst_a2dp_sender_sink_update_caps(GstA2dpSenderSink *self)
 	}
 	gst_structure_set_value(structure, "channels", value);
 	g_free(value);
+
+	return structure;
+}
+
+static gboolean gst_a2dp_sender_sink_update_caps(GstA2dpSenderSink *self)
+{
+	sbc_capabilities_t *sbc = &self->data->caps.sbc_capabilities;
+	mpeg_capabilities_t *mpeg = &self->data->caps.mpeg_capabilities;
+	GstStructure *structure;
+	gchar *tmp;
+
+	GST_LOG_OBJECT(self, "updating device caps");
+
+	structure = gst_a2dp_sender_sink_parse_sbc_caps(self, sbc);
 
 	if (self->dev_caps != NULL)
 		gst_caps_unref(self->dev_caps);

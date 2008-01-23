@@ -2696,6 +2696,7 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 }
 
 struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
+						uint8_t codec_type,
 						struct avdtp_sep_ind *ind,
 						struct avdtp_sep_cfm *cfm,
 						void *user_data)
@@ -2711,6 +2712,7 @@ struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 	sep->info.seid = free_seid++;
 	sep->info.type = type;
 	sep->info.media_type = media_type;
+	sep->codec = codec_type;
 	sep->ind = ind;
 	sep->cfm = cfm;
 	sep->user_data = user_data;

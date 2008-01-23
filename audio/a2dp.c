@@ -58,6 +58,7 @@
 
 struct a2dp_sep {
 	uint8_t type;
+	uint8_t codec;
 	struct avdtp_local_sep *sep;
 	struct avdtp *session;
 	struct avdtp_stream *stream;
@@ -280,7 +281,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 
 }
 
-static gboolean setconf_ind(struct avdtp *session,
+static gboolean sbc_setconf_ind(struct avdtp *session,
 				struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream,
 				GSList *caps, uint8_t *err,
@@ -331,7 +332,7 @@ static gboolean setconf_ind(struct avdtp *session,
 	return TRUE;
 }
 
-static gboolean getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
+static gboolean sbc_getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				GSList **caps, uint8_t *err, void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
@@ -380,6 +381,84 @@ static gboolean getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
 						sizeof(sbc_cap));
+
+	*caps = g_slist_append(*caps, media_codec);
+
+	return TRUE;
+}
+
+static gboolean mpeg_setconf_ind(struct avdtp *session,
+				struct avdtp_local_sep *sep,
+				struct avdtp_stream *stream,
+				GSList *caps, uint8_t *err,
+				uint8_t *category, void *user_data)
+{
+	struct a2dp_sep *a2dp_sep = user_data;
+	struct device *dev;
+
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
+		debug("SBC Sink: Set_Configuration_Ind");
+	else
+		debug("SBC Source: Set_Configuration_Ind");
+
+	dev = a2dp_get_dev(session);
+	if (!dev) {
+		*err = AVDTP_UNSUPPORTED_CONFIGURATION;
+		*category = 0x00;
+		return FALSE;
+	}
+
+	avdtp_stream_add_cb(session, stream, stream_state_changed, a2dp_sep);
+	a2dp_sep->stream = stream;
+
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE)
+		sink_new_stream(dev, session, stream);
+
+	return TRUE;
+}
+
+static gboolean mpeg_getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
+				GSList **caps, uint8_t *err, void *user_data)
+{
+	struct a2dp_sep *a2dp_sep = user_data;
+	struct avdtp_service_capability *media_transport, *media_codec;
+	struct mpeg_codec_cap mpeg_cap;
+
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
+		debug("SBC Sink: Get_Capability_Ind");
+	else
+		debug("SBC Source: Get_Capability_Ind");
+
+	*caps = NULL;
+
+	media_transport = avdtp_service_cap_new(AVDTP_MEDIA_TRANSPORT,
+						NULL, 0);
+
+	*caps = g_slist_append(*caps, media_transport);
+
+	memset(&mpeg_cap, 0, sizeof(struct mpeg_codec_cap));
+
+	mpeg_cap.cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
+	mpeg_cap.cap.media_codec_type = A2DP_CODEC_MPEG12;
+
+	mpeg_cap.frequency = ( MPEG_SAMPLING_FREQ_48000 |
+				MPEG_SAMPLING_FREQ_44100 |
+				MPEG_SAMPLING_FREQ_32000 |
+				MPEG_SAMPLING_FREQ_24000 |
+				MPEG_SAMPLING_FREQ_22050 |
+				MPEG_SAMPLING_FREQ_16000 );
+
+	mpeg_cap.channel_mode = ( MPEG_CHANNEL_MODE_JOINT_STEREO |
+					MPEG_CHANNEL_MODE_STEREO |
+					MPEG_CHANNEL_MODE_DUAL_CHANNEL |
+					MPEG_CHANNEL_MODE_MONO );
+
+	mpeg_cap.layer = ( MPEG_LAYER_MP3 | MPEG_LAYER_MP2 | MPEG_LAYER_MP1 );
+
+	mpeg_cap.bitrate = 0xFFFF;
+
+	media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &mpeg_cap,
+						sizeof(mpeg_cap));
 
 	*caps = g_slist_append(*caps, media_codec);
 
@@ -797,9 +876,21 @@ static struct avdtp_sep_cfm cfm = {
 	.reconfigure		= reconf_cfm
 };
 
-static struct avdtp_sep_ind ind = {
-	.get_capability		= getcap_ind,
-	.set_configuration	= setconf_ind,
+static struct avdtp_sep_ind sbc_ind = {
+	.get_capability		= sbc_getcap_ind,
+	.set_configuration	= sbc_setconf_ind,
+	.get_configuration	= getconf_ind,
+	.open			= open_ind,
+	.start			= start_ind,
+	.suspend		= suspend_ind,
+	.close			= close_ind,
+	.abort			= abort_ind,
+	.reconfigure		= reconf_ind
+};
+
+static struct avdtp_sep_ind mpeg_ind = {
+	.get_capability		= mpeg_getcap_ind,
+	.set_configuration	= mpeg_setconf_ind,
 	.get_configuration	= getconf_ind,
 	.open			= open_ind,
 	.start			= start_ind,
@@ -880,23 +971,27 @@ static int a2dp_sink_record(sdp_buf_t *buf)
 	return 0;
 }
 
-static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type)
+static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
+					uint8_t codec)
 {
 	struct a2dp_sep *sep;
 	GSList **l;
 	int (*create_record)(sdp_buf_t *buf);
 	uint32_t *record_id;
 	sdp_buf_t buf;
+	struct avdtp_sep_ind *ind;
 
 	sep = g_new0(struct a2dp_sep, 1);
 
-	sep->sep = avdtp_register_sep(type, AVDTP_MEDIA_TYPE_AUDIO,
-					&ind, &cfm, sep);
+	ind = (codec == A2DP_CODEC_MPEG12) ? &mpeg_ind : &sbc_ind;
+	sep->sep = avdtp_register_sep(type, AVDTP_MEDIA_TYPE_AUDIO, codec,
+					ind, &cfm, sep);
 	if (sep->sep == NULL) {
 		g_free(sep);
 		return NULL;
 	}
 
+	sep->codec = codec;
 	sep->type = type;
 
 	if (type == AVDTP_SEP_TYPE_SOURCE) {
@@ -945,11 +1040,15 @@ int a2dp_init(DBusConnection *conn, int sources, int sinks)
 
 	avdtp_init();
 
-	for (i = 0; i < sources; i++)
-		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE);
+	for (i = 0; i < sources; i++) {
+		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE, A2DP_CODEC_SBC);
+		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE, A2DP_CODEC_MPEG12);
+	}
 
-	for (i = 0; i < sinks; i++)
-		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK);
+	for (i = 0; i < sinks; i++) {
+		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK, A2DP_CODEC_SBC);
+		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK, A2DP_CODEC_MPEG12);
+	}
 
 	return 0;
 }
@@ -1025,12 +1124,30 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 	struct a2dp_sep *sep = NULL;
 	struct avdtp_local_sep *lsep;
 	struct avdtp_remote_sep *rsep;
+	struct avdtp_service_capability *cap;
+	struct avdtp_media_codec_capability *codec_cap = NULL;
 	int posix_err;
+
+	for (l = caps; l != NULL; l = l->next) {
+		cap = l->data;
+
+		if (cap->category != AVDTP_MEDIA_CODEC)
+			continue;
+
+		codec_cap = (void *) cap->data;
+		break;
+	}
+
+	if (!codec_cap)
+		return 0;
 
 	for (l = sources; l != NULL; l = l->next) {
 		struct a2dp_sep *tmp = l->data;
 
 		if (tmp->locked)
+			continue;
+
+		if (tmp->codec != codec_cap->media_codec_type)
 			continue;
 
 		if (!tmp->stream || avdtp_has_stream(session, tmp->stream)) {
@@ -1067,7 +1184,8 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 	switch (avdtp_sep_get_state(sep->sep)) {
 	case AVDTP_STATE_IDLE:
 		if (avdtp_get_seps(session, AVDTP_SEP_TYPE_SINK,
-				AVDTP_MEDIA_TYPE_AUDIO, A2DP_CODEC_SBC,
+				codec_cap->media_type,
+				codec_cap->media_codec_type,
 				&lsep, &rsep) < 0) {
 			error("No matching ACP and INT SEPs found");
 			goto failed;

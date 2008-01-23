@@ -389,9 +389,7 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 		rsp->mpeg_capabilities.layer = mpeg_cap->layer;
 		rsp->mpeg_capabilities.frequency = mpeg_cap->frequency;
 		rsp->mpeg_capabilities.mpf = mpeg_cap->mpf;
-		rsp->mpeg_capabilities.vbr = mpeg_cap->vbr;
-		rsp->mpeg_capabilities.bitrate = mpeg_cap->bitrate1 &
-				mpeg_cap->bitrate0 << 8;
+		rsp->mpeg_capabilities.bitrate = mpeg_cap->bitrate;
 	}
 
 	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
@@ -794,6 +792,7 @@ static void handle_setconfiguration_req(struct unix_client *client,
 {
 	struct avdtp_service_capability *media_transport, *media_codec;
 	struct sbc_codec_cap sbc_cap;
+	struct mpeg_codec_cap mpeg_cap;
 	struct device *dev;
 	bdaddr_t bdaddr;
 	int err = 0;
@@ -842,20 +841,49 @@ static void handle_setconfiguration_req(struct unix_client *client,
 
 	client->caps = g_slist_append(client->caps, media_transport);
 
-	memset(&sbc_cap, 0, sizeof(sbc_cap));
+	if (req->mpeg_capabilities.frequency) {
+		memset(&mpeg_cap, 0, sizeof(mpeg_cap));
 
-	sbc_cap.cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
-	sbc_cap.cap.media_codec_type = A2DP_CODEC_SBC;
-	sbc_cap.channel_mode = req->sbc_capabilities.channel_mode;
-	sbc_cap.frequency = req->sbc_capabilities.frequency;
-	sbc_cap.allocation_method = req->sbc_capabilities.allocation_method;
-	sbc_cap.subbands = req->sbc_capabilities.subbands;
-	sbc_cap.block_length = req->sbc_capabilities.block_length ;
-	sbc_cap.min_bitpool = req->sbc_capabilities.min_bitpool;
-	sbc_cap.max_bitpool = req->sbc_capabilities.max_bitpool;
+		mpeg_cap.cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
+		mpeg_cap.cap.media_codec_type = A2DP_CODEC_MPEG12;
+		mpeg_cap.channel_mode = req->mpeg_capabilities.channel_mode;
+		mpeg_cap.crc = req->mpeg_capabilities.crc;
+		mpeg_cap.layer = req->mpeg_capabilities.layer;
+		mpeg_cap.frequency = req->mpeg_capabilities.frequency;
+		mpeg_cap.mpf = req->mpeg_capabilities.mpf;
+		mpeg_cap.bitrate = req->mpeg_capabilities.bitrate;
 
-	media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
-						sizeof(sbc_cap));
+		media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &mpeg_cap,
+							sizeof(mpeg_cap));
+
+		info("config mpeg - frequency = %u channel_mode = %u "
+			"layer = %u crc = %u mpf = %u bitrate = %u",
+			mpeg_cap.frequency, mpeg_cap.channel_mode,
+			mpeg_cap.layer, mpeg_cap.crc, mpeg_cap.mpf,
+			mpeg_cap.bitrate);
+	} else {
+		memset(&sbc_cap, 0, sizeof(sbc_cap));
+
+		sbc_cap.cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
+		sbc_cap.cap.media_codec_type = A2DP_CODEC_SBC;
+		sbc_cap.channel_mode = req->sbc_capabilities.channel_mode;
+		sbc_cap.frequency = req->sbc_capabilities.frequency;
+		sbc_cap.allocation_method = req->sbc_capabilities.allocation_method;
+		sbc_cap.subbands = req->sbc_capabilities.subbands;
+		sbc_cap.block_length = req->sbc_capabilities.block_length;
+		sbc_cap.min_bitpool = req->sbc_capabilities.min_bitpool;
+		sbc_cap.max_bitpool = req->sbc_capabilities.max_bitpool;
+
+		media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
+							sizeof(sbc_cap));
+
+		info("config sbc - frequency = %u channel_mode = %u "
+			"allocation = %u subbands = %u blocks = %u "
+			"bitpool = %u", sbc_cap.frequency,
+			sbc_cap.channel_mode, sbc_cap.allocation_method,
+			sbc_cap.subbands, sbc_cap.block_length,
+			sbc_cap.max_bitpool);
+	}
 
 	client->caps = g_slist_append(client->caps, media_codec);
 

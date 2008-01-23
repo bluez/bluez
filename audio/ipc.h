@@ -129,10 +129,10 @@ struct bt_getcapabilities_req {
  * SBC Codec parameters as per A2DP profile 1.0 § 4.3
  */
 
-#define BT_A2DP_SAMPLING_FREQ_16000		(1 << 3)
-#define BT_A2DP_SAMPLING_FREQ_32000		(1 << 2)
-#define BT_A2DP_SAMPLING_FREQ_44100		(1 << 1)
-#define BT_A2DP_SAMPLING_FREQ_48000		1
+#define BT_SBC_SAMPLING_FREQ_16000		(1 << 3)
+#define BT_SBC_SAMPLING_FREQ_32000		(1 << 2)
+#define BT_SBC_SAMPLING_FREQ_44100		(1 << 1)
+#define BT_SBC_SAMPLING_FREQ_48000		1
 
 #define BT_A2DP_CHANNEL_MODE_MONO		(1 << 3)
 #define BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL	(1 << 2)
@@ -152,6 +152,17 @@ struct bt_getcapabilities_req {
 #define BT_A2DP_ALLOCATION_LOUDNESS		1
 #define BT_A2DP_ALLOCATION_AUTO			0
 
+#define BT_MPEG_SAMPLING_FREQ_16000		(1 << 5)
+#define BT_MPEG_SAMPLING_FREQ_22050		(1 << 4)
+#define BT_MPEG_SAMPLING_FREQ_24000		(1 << 3)
+#define BT_MPEG_SAMPLING_FREQ_32000		(1 << 2)
+#define BT_MPEG_SAMPLING_FREQ_44100		(1 << 1)
+#define BT_MPEG_SAMPLING_FREQ_48000		1
+
+#define BT_MPEG_LAYER_1				(1 << 2)
+#define BT_MPEG_LAYER_2				(1 << 1)
+#define BT_MPEG_LAYER_3				1
+
 typedef struct {
 	uint8_t channel_mode;
 	uint8_t frequency;
@@ -168,7 +179,6 @@ typedef struct {
 	uint8_t layer;
 	uint8_t frequency;
 	uint8_t mpf;
-	uint8_t vbr;
 	uint16_t bitrate;
 } __attribute__ ((packed)) mpeg_capabilities_t;
 

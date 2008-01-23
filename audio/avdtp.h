@@ -242,6 +242,7 @@ int avdtp_close(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream);
 
 struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
+						uint8_t codec_type,
 						struct avdtp_sep_ind *ind,
 						struct avdtp_sep_cfm *cfm,
 						void *user_data);

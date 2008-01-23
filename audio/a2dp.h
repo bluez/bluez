@@ -48,6 +48,11 @@
 #define SBC_ALLOCATION_SNR		(1 << 1)
 #define SBC_ALLOCATION_LOUDNESS		1
 
+#define MPEG_CHANNEL_MODE_MONO		(1 << 3)
+#define MPEG_CHANNEL_MODE_DUAL_CHANNEL	(1 << 2)
+#define MPEG_CHANNEL_MODE_STEREO	(1 << 1)
+#define MPEG_CHANNEL_MODE_JOINT_STEREO	1
+
 #define MPEG_LAYER_MP1			(1 << 2)
 #define MPEG_LAYER_MP2			(1 << 1)
 #define MPEG_LAYER_MP3			1
@@ -83,9 +88,7 @@ struct mpeg_codec_cap {
 	uint8_t frequency:6;
 	uint8_t mpf:1;
 	uint8_t rfa:1;
-	uint8_t bitrate0:7;
-	uint8_t vbr:1;
-	uint8_t bitrate1;
+	uint16_t bitrate;
 } __attribute__ ((packed));
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
@@ -109,9 +112,7 @@ struct mpeg_codec_cap {
 	uint8_t rfa:1;
 	uint8_t mpf:1;
 	uint8_t frequency:6;
-	uint8_t vbr:1;
-	uint8_t bitrate0:7;
-	uint8_t bitrate1;
+	uint16_t bitrate;
 } __attribute__ ((packed));
 
 #else
