@@ -28,7 +28,9 @@
 #include "gstsbcenc.h"
 #include "gstsbcdec.h"
 #include "gstsbcparse.h"
+#include "gsta2dpsendersink.h"
 #include "gsta2dpsink.h"
+#include "gstrtpsbcpay.h"
 
 static GstStaticCaps sbc_caps = GST_STATIC_CAPS("audio/x-sbc");
 
@@ -55,20 +57,22 @@ static gboolean plugin_init(GstPlugin *plugin)
 					SBC_CAPS, NULL, NULL) == FALSE)
 		return FALSE;
 
-	if (gst_element_register(plugin, "sbcenc",
-			GST_RANK_NONE, GST_TYPE_SBC_ENC) == FALSE)
+	if (!gst_sbc_enc_plugin_init(plugin))
 		return FALSE;
 
-	if (gst_element_register(plugin, "sbcdec",
-			GST_RANK_PRIMARY, GST_TYPE_SBC_DEC) == FALSE)
+	if (!gst_sbc_dec_plugin_init(plugin))
 		return FALSE;
 
-	if (gst_element_register(plugin, "sbcparse",
-			GST_RANK_PRIMARY, GST_TYPE_SBC_PARSE) == FALSE)
+	if (!gst_sbc_parse_plugin_init(plugin))
 		return FALSE;
 
-	if (gst_element_register(plugin, "a2dpsink",
-			GST_RANK_PRIMARY, GST_TYPE_A2DP_SINK) == FALSE)
+	if (!gst_a2dp_sender_sink_plugin_init(plugin))
+		return FALSE;
+
+	if (!gst_a2dp_sink_plugin_init(plugin))
+		return FALSE;
+
+	if (!gst_rtp_sbc_pay_plugin_init(plugin))
 		return FALSE;
 
 	return TRUE;

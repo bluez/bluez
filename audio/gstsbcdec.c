@@ -188,10 +188,21 @@ static void gst_sbc_dec_class_init(GstSbcDecClass *klass)
 
 static void gst_sbc_dec_init(GstSbcDec *self, GstSbcDecClass *klass)
 {
-	self->sinkpad = gst_pad_new_from_static_template(&sbc_dec_sink_factory, "sink");
-	gst_pad_set_chain_function(self->sinkpad, GST_DEBUG_FUNCPTR(sbc_dec_chain));
+	self->sinkpad = gst_pad_new_from_static_template(
+			&sbc_dec_sink_factory, "sink");
+	gst_pad_set_chain_function(self->sinkpad, GST_DEBUG_FUNCPTR(
+			sbc_dec_chain));
 	gst_element_add_pad(GST_ELEMENT(self), self->sinkpad);
 
-	self->srcpad = gst_pad_new_from_static_template(&sbc_dec_src_factory, "src");
+	self->srcpad = gst_pad_new_from_static_template(
+			&sbc_dec_src_factory, "src");
 	gst_element_add_pad(GST_ELEMENT(self), self->srcpad);
 }
+
+gboolean gst_sbc_dec_plugin_init (GstPlugin * plugin)
+{
+	return gst_element_register (plugin, "sbcdec",
+			GST_RANK_PRIMARY, GST_TYPE_SBC_DEC);
+}
+
+
