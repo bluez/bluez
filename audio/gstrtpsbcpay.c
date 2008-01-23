@@ -193,10 +193,10 @@ static GstFlowReturn gst_rtp_sbc_pay_flush_buffers(GstRtpSBCPay *sbcpay)
 	memcpy(payload_data + RTP_SBC_PAYLOAD_HEADER_SIZE, data, max_payload);
 	g_free(data);
 
-	/* FIXME - timestamp it! */
+	GST_BUFFER_TIMESTAMP(outbuf) = sbcpay->timestamp;
 	GST_DEBUG_OBJECT (sbcpay, "Pushing %d bytes", max_payload);
 
-	return gst_basertppayload_push (GST_BASE_RTP_PAYLOAD(sbcpay), outbuf);
+	return gst_basertppayload_push(GST_BASE_RTP_PAYLOAD(sbcpay), outbuf);
 }
 
 static GstFlowReturn gst_rtp_sbc_pay_handle_buffer(GstBaseRTPPayload *payload,
@@ -208,6 +208,7 @@ static GstFlowReturn gst_rtp_sbc_pay_handle_buffer(GstBaseRTPPayload *payload,
 	sbcpay = GST_RTP_SBC_PAY(payload);
 	gst_adapter_push(sbcpay->adapter, gst_buffer_copy(buffer));
 
+	sbcpay->timestamp = GST_BUFFER_TIMESTAMP(buffer);
 	available = gst_adapter_available(sbcpay->adapter);
 	if (available + RTP_SBC_HEADER_TOTAL >=
 			GST_BASE_RTP_PAYLOAD_MTU(sbcpay) ||
@@ -325,6 +326,7 @@ static void gst_rtp_sbc_pay_init(GstRtpSBCPay *self, GstRtpSBCPayClass *klass)
 {
 	self->adapter = gst_adapter_new();
 	self->frame_length = 0;
+	self->timestamp = 0;
 
 	self->min_frames = DEFAULT_MIN_FRAMES;
 }
