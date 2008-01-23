@@ -193,28 +193,28 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 static uint8_t default_bitpool(uint8_t freq, uint8_t mode)
 {
 	switch (freq) {
-	case A2DP_SAMPLING_FREQ_16000:
-	case A2DP_SAMPLING_FREQ_32000:
+	case SBC_SAMPLING_FREQ_16000:
+	case SBC_SAMPLING_FREQ_32000:
 		return 53;
-	case A2DP_SAMPLING_FREQ_44100:
+	case SBC_SAMPLING_FREQ_44100:
 		switch (mode) {
-		case A2DP_CHANNEL_MODE_MONO:
-		case A2DP_CHANNEL_MODE_DUAL_CHANNEL:
+		case SBC_CHANNEL_MODE_MONO:
+		case SBC_CHANNEL_MODE_DUAL_CHANNEL:
 			return 31;
-		case A2DP_CHANNEL_MODE_STEREO:
-		case A2DP_CHANNEL_MODE_JOINT_STEREO:
+		case SBC_CHANNEL_MODE_STEREO:
+		case SBC_CHANNEL_MODE_JOINT_STEREO:
 			return 53;
 		default:
 			error("Invalid channel mode %u", mode);
 			return 53;
 		}
-	case A2DP_SAMPLING_FREQ_48000:
+	case SBC_SAMPLING_FREQ_48000:
 		switch (mode) {
-		case A2DP_CHANNEL_MODE_MONO:
-		case A2DP_CHANNEL_MODE_DUAL_CHANNEL:
+		case SBC_CHANNEL_MODE_MONO:
+		case SBC_CHANNEL_MODE_DUAL_CHANNEL:
 			return 29;
-		case A2DP_CHANNEL_MODE_STEREO:
-		case A2DP_CHANNEL_MODE_JOINT_STEREO:
+		case SBC_CHANNEL_MODE_STEREO:
+		case SBC_CHANNEL_MODE_JOINT_STEREO:
 			return 51;
 		default:
 			error("Invalid channel mode %u", mode);
@@ -236,58 +236,58 @@ static gboolean select_sbc_params(struct sbc_codec_cap *cap,
 	cap->cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
 	cap->cap.media_codec_type = A2DP_CODEC_SBC;
 
-	if (supported->frequency & A2DP_SAMPLING_FREQ_44100)
-		cap->frequency = A2DP_SAMPLING_FREQ_44100;
-	else if (supported->frequency & A2DP_SAMPLING_FREQ_48000)
-		cap->frequency = A2DP_SAMPLING_FREQ_48000;
-	else if (supported->frequency & A2DP_SAMPLING_FREQ_32000)
-		cap->frequency = A2DP_SAMPLING_FREQ_32000;
-	else if (supported->frequency & A2DP_SAMPLING_FREQ_16000)
-		cap->frequency = A2DP_SAMPLING_FREQ_16000;
+	if (supported->frequency & SBC_SAMPLING_FREQ_44100)
+		cap->frequency = SBC_SAMPLING_FREQ_44100;
+	else if (supported->frequency & SBC_SAMPLING_FREQ_48000)
+		cap->frequency = SBC_SAMPLING_FREQ_48000;
+	else if (supported->frequency & SBC_SAMPLING_FREQ_32000)
+		cap->frequency = SBC_SAMPLING_FREQ_32000;
+	else if (supported->frequency & SBC_SAMPLING_FREQ_16000)
+		cap->frequency = SBC_SAMPLING_FREQ_16000;
 	else {
 		error("No supported frequencies");
 		return FALSE;
 	}
 
-	if (supported->channel_mode & A2DP_CHANNEL_MODE_JOINT_STEREO)
-		cap->channel_mode = A2DP_CHANNEL_MODE_JOINT_STEREO;
-	else if (supported->channel_mode & A2DP_CHANNEL_MODE_STEREO)
-		cap->channel_mode = A2DP_CHANNEL_MODE_STEREO;
-	else if (supported->channel_mode & A2DP_CHANNEL_MODE_DUAL_CHANNEL)
-		cap->channel_mode = A2DP_CHANNEL_MODE_DUAL_CHANNEL;
-	else if (supported->channel_mode & A2DP_CHANNEL_MODE_MONO)
-		cap->channel_mode = A2DP_CHANNEL_MODE_MONO;
+	if (supported->channel_mode & SBC_CHANNEL_MODE_JOINT_STEREO)
+		cap->channel_mode = SBC_CHANNEL_MODE_JOINT_STEREO;
+	else if (supported->channel_mode & SBC_CHANNEL_MODE_STEREO)
+		cap->channel_mode = SBC_CHANNEL_MODE_STEREO;
+	else if (supported->channel_mode & SBC_CHANNEL_MODE_DUAL_CHANNEL)
+		cap->channel_mode = SBC_CHANNEL_MODE_DUAL_CHANNEL;
+	else if (supported->channel_mode & SBC_CHANNEL_MODE_MONO)
+		cap->channel_mode = SBC_CHANNEL_MODE_MONO;
 	else {
 		error("No supported channel modes");
 		return FALSE;
 	}
 
-	if (supported->block_length & A2DP_BLOCK_LENGTH_16)
-		cap->block_length = A2DP_BLOCK_LENGTH_16;
-	else if (supported->block_length & A2DP_BLOCK_LENGTH_12)
-		cap->block_length = A2DP_BLOCK_LENGTH_12;
-	else if (supported->block_length & A2DP_BLOCK_LENGTH_8)
-		cap->block_length = A2DP_BLOCK_LENGTH_8;
-	else if (supported->block_length & A2DP_BLOCK_LENGTH_4)
-		cap->block_length = A2DP_BLOCK_LENGTH_4;
+	if (supported->block_length & SBC_BLOCK_LENGTH_16)
+		cap->block_length = SBC_BLOCK_LENGTH_16;
+	else if (supported->block_length & SBC_BLOCK_LENGTH_12)
+		cap->block_length = SBC_BLOCK_LENGTH_12;
+	else if (supported->block_length & SBC_BLOCK_LENGTH_8)
+		cap->block_length = SBC_BLOCK_LENGTH_8;
+	else if (supported->block_length & SBC_BLOCK_LENGTH_4)
+		cap->block_length = SBC_BLOCK_LENGTH_4;
 	else {
 		error("No supported block lengths");
 		return FALSE;
 	}
 
-	if (supported->subbands & A2DP_SUBBANDS_8)
-		cap->subbands = A2DP_SUBBANDS_8;
-	else if (supported->subbands & A2DP_SUBBANDS_4)
-		cap->subbands = A2DP_SUBBANDS_4;
+	if (supported->subbands & SBC_SUBBANDS_8)
+		cap->subbands = SBC_SUBBANDS_8;
+	else if (supported->subbands & SBC_SUBBANDS_4)
+		cap->subbands = SBC_SUBBANDS_4;
 	else {
 		error("No supported subbands");
 		return FALSE;
 	}
 
-	if (supported->allocation_method & A2DP_ALLOCATION_LOUDNESS)
-		cap->allocation_method = A2DP_ALLOCATION_LOUDNESS;
-	else if (supported->allocation_method & A2DP_ALLOCATION_SNR)
-		cap->allocation_method = A2DP_ALLOCATION_SNR;
+	if (supported->allocation_method & SBC_ALLOCATION_LOUDNESS)
+		cap->allocation_method = SBC_ALLOCATION_LOUDNESS;
+	else if (supported->allocation_method & SBC_ALLOCATION_SNR)
+		cap->allocation_method = SBC_ALLOCATION_SNR;
 
 	min_bitpool = MAX(MIN_BITPOOL, supported->min_bitpool);
 	max_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),

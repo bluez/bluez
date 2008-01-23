@@ -355,25 +355,25 @@ static gboolean getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	sbc_cap.cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
 	sbc_cap.cap.media_codec_type = A2DP_CODEC_SBC;
 
-	sbc_cap.frequency = ( A2DP_SAMPLING_FREQ_48000 |
-				A2DP_SAMPLING_FREQ_44100 |
-				A2DP_SAMPLING_FREQ_32000 |
-				A2DP_SAMPLING_FREQ_16000 );
+	sbc_cap.frequency = ( SBC_SAMPLING_FREQ_48000 |
+				SBC_SAMPLING_FREQ_44100 |
+				SBC_SAMPLING_FREQ_32000 |
+				SBC_SAMPLING_FREQ_16000 );
 
-	sbc_cap.channel_mode = ( A2DP_CHANNEL_MODE_JOINT_STEREO |
-					A2DP_CHANNEL_MODE_STEREO |
-					A2DP_CHANNEL_MODE_DUAL_CHANNEL |
-					A2DP_CHANNEL_MODE_MONO );
+	sbc_cap.channel_mode = ( SBC_CHANNEL_MODE_JOINT_STEREO |
+					SBC_CHANNEL_MODE_STEREO |
+					SBC_CHANNEL_MODE_DUAL_CHANNEL |
+					SBC_CHANNEL_MODE_MONO );
 
-	sbc_cap.block_length = ( A2DP_BLOCK_LENGTH_16 |
-					A2DP_BLOCK_LENGTH_12 |
-					A2DP_BLOCK_LENGTH_8 |
-					A2DP_BLOCK_LENGTH_4 );
+	sbc_cap.block_length = ( SBC_BLOCK_LENGTH_16 |
+					SBC_BLOCK_LENGTH_12 |
+					SBC_BLOCK_LENGTH_8 |
+					SBC_BLOCK_LENGTH_4 );
 
-	sbc_cap.subbands = ( A2DP_SUBBANDS_8 | A2DP_SUBBANDS_4 );
+	sbc_cap.subbands = ( SBC_SUBBANDS_8 | SBC_SUBBANDS_4 );
 
-	sbc_cap.allocation_method = ( A2DP_ALLOCATION_LOUDNESS |
-					A2DP_ALLOCATION_SNR );
+	sbc_cap.allocation_method = ( SBC_ALLOCATION_LOUDNESS |
+					SBC_ALLOCATION_SNR );
 
 	sbc_cap.min_bitpool = MIN_BITPOOL;
 	sbc_cap.max_bitpool = MAX_BITPOOL;

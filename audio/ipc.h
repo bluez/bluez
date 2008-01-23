@@ -162,8 +162,14 @@ typedef struct {
 	uint8_t max_bitpool;
 } __attribute__ ((packed)) sbc_capabilities_t;
 
-/* To be defined */
 typedef struct {
+	uint8_t channel_mode;
+	uint8_t crc;
+	uint8_t layer;
+	uint8_t frequency;
+	uint8_t mpf;
+	uint8_t vbr;
+	uint16_t bitrate;
 } __attribute__ ((packed)) mpeg_capabilities_t;
 
 struct bt_getcapabilities_rsp {

@@ -341,6 +341,7 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 	struct bt_getcapabilities_rsp *rsp = (void *) buf;
 	struct a2dp_data *a2dp = &client->d.a2dp;
 	struct sbc_codec_cap *sbc_cap = NULL;
+	struct mpeg_codec_cap *mpeg_cap = NULL;
 	GSList *l;
 
 	if (err)
@@ -364,10 +365,11 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 
 		codec_cap = (void *) cap->data;
 
-		if (codec_cap->media_codec_type == A2DP_CODEC_SBC && !sbc_cap) {
+		if (codec_cap->media_codec_type == A2DP_CODEC_SBC && !sbc_cap)
 			sbc_cap = (void *) codec_cap;
-			break;
-		}
+
+		if (codec_cap->media_codec_type == A2DP_CODEC_MPEG12 && !mpeg_cap)
+			mpeg_cap = (void *) codec_cap;
 	}
 
 	/* endianess prevent direct cast */
@@ -379,6 +381,17 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 		rsp->sbc_capabilities.block_length = sbc_cap->block_length;
 		rsp->sbc_capabilities.min_bitpool = sbc_cap->min_bitpool;
 		rsp->sbc_capabilities.max_bitpool = sbc_cap->max_bitpool;
+	}
+
+	if (mpeg_cap) {
+		rsp->mpeg_capabilities.channel_mode = mpeg_cap->channel_mode;
+		rsp->mpeg_capabilities.crc = mpeg_cap->crc;
+		rsp->mpeg_capabilities.layer = mpeg_cap->layer;
+		rsp->mpeg_capabilities.frequency = mpeg_cap->frequency;
+		rsp->mpeg_capabilities.mpf = mpeg_cap->mpf;
+		rsp->mpeg_capabilities.vbr = mpeg_cap->vbr;
+		rsp->mpeg_capabilities.bitrate = mpeg_cap->bitrate1 &
+				mpeg_cap->bitrate0 << 8;
 	}
 
 	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
