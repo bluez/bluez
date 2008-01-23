@@ -129,7 +129,7 @@ typedef void (*a2dp_stream_cb_t) (struct avdtp *session,
 					struct avdtp_error *err,
 					void *user_data);
 
-int a2dp_init(DBusConnection *conn, int sources, int sinks);
+int a2dp_init(DBusConnection *conn, GKeyFile *config);
 void a2dp_exit(void);
 
 unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,

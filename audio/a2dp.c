@@ -969,7 +969,7 @@ static int a2dp_source_record(sdp_buf_t *buf)
 
 static int a2dp_sink_record(sdp_buf_t *buf)
 {
-	return 0;
+	return -1;
 }
 
 static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
@@ -1008,6 +1008,7 @@ static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
 	if (*record_id != 0)
 		goto add;
 
+	memset(&buf, 0, sizeof(buf));
 	if (create_record(&buf) < 0) {
 		error("Unable to allocate new service record");
 		avdtp_unregister_sep(sep->sep);
@@ -1030,25 +1031,95 @@ add:
 	return sep;
 }
 
-int a2dp_init(DBusConnection *conn, int sources, int sinks)
+int a2dp_init(DBusConnection *conn, GKeyFile *config)
 {
+	int sbc_srcs = 1, sbc_sinks = 0;
+	int mpeg12_srcs = 0, mpeg12_sinks = 0;
+	gboolean src = TRUE, sink = TRUE;
+	char *str;
+	GError *err = NULL;
 	int i;
 
-	if (!sources && !sinks)
-		return 0;
+	if (!config)
+		goto proceed;
 
+	str = g_key_file_get_string(config, "General", "Disable", &err);
+
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		if (strstr(str, "Sink"))
+			sink = FALSE;
+		if (strstr(str, "Source"))
+			src = FALSE;
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(config, "A2DP", "SBCSources", &err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		sbc_srcs = atoi(str);
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(config, "A2DP", "MPEG12Sources", &err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		mpeg12_srcs = atoi(str);
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(config, "A2DP", "SBCSinks", &err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		sbc_sinks = atoi(str);
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(config, "A2DP", "MPEG12Sinks", &err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		mpeg12_sinks = atoi(str);
+		g_free(str);
+	}
+
+proceed:
 	connection = dbus_connection_ref(conn);
 
 	avdtp_init();
 
-	for (i = 0; i < sources; i++) {
-		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE, A2DP_CODEC_SBC);
-		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE, A2DP_CODEC_MPEG12);
+	if (src) {
+		for (i = 0; i < sbc_srcs; i++)
+			a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE,
+					A2DP_CODEC_SBC);
+
+		for (i = 0; i < mpeg12_srcs; i++)
+			a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE,
+					A2DP_CODEC_MPEG12);
 	}
 
-	for (i = 0; i < sinks; i++) {
-		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK, A2DP_CODEC_SBC);
-		a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK, A2DP_CODEC_MPEG12);
+	if (sink) {
+		for (i = 0; i < sbc_sinks; i++)
+			a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK,
+					A2DP_CODEC_SBC);
+
+		for (i = 0; i < mpeg12_sinks; i++)
+			a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK,
+					A2DP_CODEC_MPEG12);
 	}
 
 	return 0;

@@ -1634,7 +1634,6 @@ static void server_exit(void)
 
 int audio_init(DBusConnection *conn, GKeyFile *config)
 {
-	int sinks, sources;
 	char *str;
 	GError *err = NULL;
 
@@ -1693,29 +1692,10 @@ int audio_init(DBusConnection *conn, GKeyFile *config)
 			goto failed;
 	}
 
-	if (enabled.sink) {
-		if (config) {
-			str = g_key_file_get_string(config, "A2DP",
-							"SourceCount", &err);
-			if (err) {
-				debug("audio.conf: %s", err->message);
-				g_error_free(err);
-				err = NULL;
-			} else {
-				sources = atoi(str);
-				g_free(str);
-			}
-		}
-	} else
-		sources = 0;
-
-	if (enabled.source)
-		sinks = 1;
-	else
-		sinks = 0;
-
-	if (a2dp_init(conn, sources, sinks) < 0)
-		goto failed;
+	if (enabled.source || enabled.sink) {
+		if (a2dp_init(conn, config) < 0)
+			goto failed;
+	}
 
 	if (enabled.control && avrcp_init(conn) < 0)
 		goto failed;
