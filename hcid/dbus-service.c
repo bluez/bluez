@@ -108,6 +108,27 @@ static void service_exit(const char *name, struct service *service)
 	service->bus_name = NULL;
 }
 
+static void external_service_exit(const char *name, struct service *service)
+{
+	DBusConnection *conn = get_dbus_connection();
+
+	if (!conn)
+		return;
+
+	service_exit(name, service);
+
+	dbus_connection_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
+					"ServiceRemoved",
+					DBUS_TYPE_STRING, &service->object_path,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_destroy_object_path(conn, service->object_path))
+		return;
+
+	services = g_slist_remove(services, service);
+	service_free(service);
+}
+
 static DBusHandlerResult get_info(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -760,23 +781,26 @@ static int unregister_service_for_connection(DBusConnection *connection,
 	if (!conn)
 		goto cleanup;
 
-	if (service->bus_name)
+	if (service->bus_name) {
+		name_cb_t cb = (name_cb_t) (service->external ?
+				external_service_exit : service_exit);
 		name_listener_remove(connection, service->bus_name,
-					(name_cb_t) service_exit, service);
+					cb, service);
+	}
 
 	dbus_connection_emit_signal(conn, service->object_path,
 					SERVICE_INTERFACE,
 					"Stopped", DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_destroy_object_path(conn, service->object_path)) {
-		error("D-Bus failed to unregister %s object", service->object_path);
-		return -1;
-	}
-
 	dbus_connection_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
 					"ServiceRemoved",
 					DBUS_TYPE_STRING, &service->object_path,
 					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_destroy_object_path(conn, service->object_path)) {
+		error("D-Bus failed to unregister %s object", service->object_path);
+		return -1;
+	}
 
 cleanup:
 	if (service->pid) {
@@ -1036,27 +1060,6 @@ static struct service *create_external_service(const char *ident,
 	service->external = TRUE;
 
 	return service;
-}
-
-static void external_service_exit(const char *name, struct service *service)
-{
-	DBusConnection *conn = get_dbus_connection();
-
-	service_exit(name, service);
-
-	if (!conn)
-		return;
-
-	if (!dbus_connection_destroy_object_path(conn, service->object_path))
-		return;
-
-	dbus_connection_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
-					"ServiceRemoved",
-					DBUS_TYPE_STRING, &service->object_path,
-					DBUS_TYPE_INVALID);
-
-	services = g_slist_remove(services, service);
-	service_free(service);
 }
 
 int service_register(DBusConnection *conn, const char *bus_name, const char *ident,
