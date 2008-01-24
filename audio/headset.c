@@ -176,6 +176,9 @@ static int supported_features(struct device *device, const char *buf)
 	struct headset *hs = device->headset;
 	int err;
 
+	if (strlen(buf) < 9)
+		return -EINVAL;
+
 	hs->hfp_features = strtoul(&buf[8], NULL, 10);
 	err = headset_send(hs, "\r\n+BRSF=%u\r\n", ag_features);
 	if (err < 0)
@@ -286,6 +289,9 @@ static int terminate_call(struct device *device, const char *buf)
 static int cli_notification(struct device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
+
+	if (strlen(buf) < 9)
+		return -EINVAL;
 
 	hs->cli_active = buf[8] == '1' ? TRUE : FALSE;
 
