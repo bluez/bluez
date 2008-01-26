@@ -121,7 +121,7 @@ struct sbc_decoder_state {
 struct sbc_encoder_state {
 	int subbands;
 	int position[2];
-	int32_t X[2][160];
+	int16_t X[2][160];
 };
 
 /*
@@ -708,11 +708,11 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 	state->position[0] = state->position[1] = 9 * frame->subbands;
 }
 
-static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
-{
 
+static inline void _sbc_analyze_four(const int16_t *in, int32_t *out)
+{
 	sbc_extended_t res;
-	sbc_extended_t t[8];
+	sbc_fixed_t t[8];
 	sbc_extended_t s[5];
 
 	MUL(res, _sbc_proto_4[0], (in[8] - in[32])); /* Q18 */
@@ -778,7 +778,7 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
 {
-	int32_t *x = &state->X[ch][state->position[ch]];
+	int16_t *x = &state->X[ch][state->position[ch]];
 	int16_t *pcm = &frame->pcm_sample[ch][blk * 4];
 
 	/* Input 4 Audio Samples */
@@ -794,95 +794,95 @@ static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 		state->position[ch] = 36;
 }
 
-static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
+static inline void _sbc_analyze_eight(const int16_t *in, int32_t *out)
 {
 	sbc_extended_t res;
-	sbc_extended_t t[8];
+	sbc_fixed_t t[8];
 	sbc_extended_t s[8];
 
-	MUL(res,  _sbc_proto_8[0], (in[16] - in[64])); /* Q18 = Q18 * Q0 */
-	MULA(res, _sbc_proto_8[1], (in[32] - in[48]));
-	MULA(res, _sbc_proto_8[2], in[4]);
-	MULA(res, _sbc_proto_8[3], in[20]);
-	MULA(res, _sbc_proto_8[4], in[36]);
-	MULA(res, _sbc_proto_8[5], in[52]);
+	MUL32(res,  _sbc_proto_8[0], (in[16] - in[64])); /* Q18 = Q18 * Q0 */
+	MULA32(res, _sbc_proto_8[1], (in[32] - in[48]));
+	MULA32(res, _sbc_proto_8[2], in[4]);
+	MULA32(res, _sbc_proto_8[3], in[20]);
+	MULA32(res, _sbc_proto_8[4], in[36]);
+	MULA32(res, _sbc_proto_8[5], in[52]);
 	t[0] = SCALE8_STAGE1(res); /* Q10 */
 
-	MUL(res,   _sbc_proto_8[6], in[2]);
-	MULA(res,  _sbc_proto_8[7], in[18]);
-	MULA(res,  _sbc_proto_8[8], in[34]);
-	MULA(res,  _sbc_proto_8[9], in[50]);
-	MULA(res, _sbc_proto_8[10], in[66]);
+	MUL32(res,   _sbc_proto_8[6], in[2]);
+	MULA32(res,  _sbc_proto_8[7], in[18]);
+	MULA32(res,  _sbc_proto_8[8], in[34]);
+	MULA32(res,  _sbc_proto_8[9], in[50]);
+	MULA32(res, _sbc_proto_8[10], in[66]);
 	t[1] = SCALE8_STAGE1(res);
 
-	MUL(res,  _sbc_proto_8[11], in[1]);
-	MULA(res, _sbc_proto_8[12], in[17]);
-	MULA(res, _sbc_proto_8[13], in[33]);
-	MULA(res, _sbc_proto_8[14], in[49]);
-	MULA(res, _sbc_proto_8[15], in[65]);
-	MULA(res, _sbc_proto_8[16], in[3]);
-	MULA(res, _sbc_proto_8[17], in[19]);
-	MULA(res, _sbc_proto_8[18], in[35]);
-	MULA(res, _sbc_proto_8[19], in[51]);
-	MULA(res, _sbc_proto_8[20], in[67]);
+	MUL32(res,  _sbc_proto_8[11], in[1]);
+	MULA32(res, _sbc_proto_8[12], in[17]);
+	MULA32(res, _sbc_proto_8[13], in[33]);
+	MULA32(res, _sbc_proto_8[14], in[49]);
+	MULA32(res, _sbc_proto_8[15], in[65]);
+	MULA32(res, _sbc_proto_8[16], in[3]);
+	MULA32(res, _sbc_proto_8[17], in[19]);
+	MULA32(res, _sbc_proto_8[18], in[35]);
+	MULA32(res, _sbc_proto_8[19], in[51]);
+	MULA32(res, _sbc_proto_8[20], in[67]);
 	t[2] = SCALE8_STAGE1(res);
 
-	MUL(res,   _sbc_proto_8[21], in[5]);
-	MULA(res,  _sbc_proto_8[22], in[21]);
-	MULA(res,  _sbc_proto_8[23], in[37]);
-	MULA(res,  _sbc_proto_8[24], in[53]);
-	MULA(res,  _sbc_proto_8[25], in[69]);
-	MULA(res, -_sbc_proto_8[15], in[15]);
-	MULA(res, -_sbc_proto_8[14], in[31]);
-	MULA(res, -_sbc_proto_8[13], in[47]);
-	MULA(res, -_sbc_proto_8[12], in[63]);
-	MULA(res, -_sbc_proto_8[11], in[79]);
+	MUL32(res,   _sbc_proto_8[21], in[5]);
+	MULA32(res,  _sbc_proto_8[22], in[21]);
+	MULA32(res,  _sbc_proto_8[23], in[37]);
+	MULA32(res,  _sbc_proto_8[24], in[53]);
+	MULA32(res,  _sbc_proto_8[25], in[69]);
+	MULA32(res, -_sbc_proto_8[15], in[15]);
+	MULA32(res, -_sbc_proto_8[14], in[31]);
+	MULA32(res, -_sbc_proto_8[13], in[47]);
+	MULA32(res, -_sbc_proto_8[12], in[63]);
+	MULA32(res, -_sbc_proto_8[11], in[79]);
 	t[3] = SCALE8_STAGE1(res);
 
-	MUL(res,   _sbc_proto_8[26], in[6]);
-	MULA(res,  _sbc_proto_8[27], in[22]);
-	MULA(res,  _sbc_proto_8[28], in[38]);
-	MULA(res,  _sbc_proto_8[29], in[54]);
-	MULA(res,  _sbc_proto_8[30], in[70]);
-	MULA(res, -_sbc_proto_8[10], in[14]);
-	MULA(res,  -_sbc_proto_8[9], in[30]);
-	MULA(res,  -_sbc_proto_8[8], in[46]);
-	MULA(res,  -_sbc_proto_8[7], in[62]);
-	MULA(res,  -_sbc_proto_8[6], in[78]);
+	MUL32(res,   _sbc_proto_8[26], in[6]);
+	MULA32(res,  _sbc_proto_8[27], in[22]);
+	MULA32(res,  _sbc_proto_8[28], in[38]);
+	MULA32(res,  _sbc_proto_8[29], in[54]);
+	MULA32(res,  _sbc_proto_8[30], in[70]);
+	MULA32(res, -_sbc_proto_8[10], in[14]);
+	MULA32(res,  -_sbc_proto_8[9], in[30]);
+	MULA32(res,  -_sbc_proto_8[8], in[46]);
+	MULA32(res,  -_sbc_proto_8[7], in[62]);
+	MULA32(res,  -_sbc_proto_8[6], in[78]);
 	t[4] = SCALE8_STAGE1(res);
 
-	MUL(res,   _sbc_proto_8[31], in[7]);
-	MULA(res,  _sbc_proto_8[32], in[23]);
-	MULA(res,  _sbc_proto_8[33], in[39]);
-	MULA(res,  _sbc_proto_8[34], in[55]);
-	MULA(res,  _sbc_proto_8[35], in[71]);
-	MULA(res, -_sbc_proto_8[20], in[13]);
-	MULA(res, -_sbc_proto_8[19], in[29]);
-	MULA(res, -_sbc_proto_8[18], in[45]);
-	MULA(res, -_sbc_proto_8[17], in[61]);
-	MULA(res, -_sbc_proto_8[16], in[77]);
+	MUL32(res,   _sbc_proto_8[31], in[7]);
+	MULA32(res,  _sbc_proto_8[32], in[23]);
+	MULA32(res,  _sbc_proto_8[33], in[39]);
+	MULA32(res,  _sbc_proto_8[34], in[55]);
+	MULA32(res,  _sbc_proto_8[35], in[71]);
+	MULA32(res, -_sbc_proto_8[20], in[13]);
+	MULA32(res, -_sbc_proto_8[19], in[29]);
+	MULA32(res, -_sbc_proto_8[18], in[45]);
+	MULA32(res, -_sbc_proto_8[17], in[61]);
+	MULA32(res, -_sbc_proto_8[16], in[77]);
 	t[5] = SCALE8_STAGE1(res);
 
 	MUL(res,   _sbc_proto_8[36], in[8] + in[72]);
 	MULA(res,  _sbc_proto_8[37], in[24] + in[56]);
-	MULA(res,  _sbc_proto_8[38], in[40]);
-	MULA(res, -_sbc_proto_8[39], in[12]);
-	MULA(res,  -_sbc_proto_8[5], in[28]);
-	MULA(res,  -_sbc_proto_8[4], in[44]);
-	MULA(res,  -_sbc_proto_8[3], in[60]);
-	MULA(res,  -_sbc_proto_8[2], in[76]);
+	MULA32(res,  _sbc_proto_8[38], in[40]);
+	MULA32(res, -_sbc_proto_8[39], in[12]);
+	MULA32(res,  -_sbc_proto_8[5], in[28]);
+	MULA32(res,  -_sbc_proto_8[4], in[44]);
+	MULA32(res,  -_sbc_proto_8[3], in[60]);
+	MULA32(res,  -_sbc_proto_8[2], in[76]);
 	t[6] = SCALE8_STAGE1(res);
 
-	MUL(res,   _sbc_proto_8[35], in[9]);
-	MULA(res,  _sbc_proto_8[34], in[25]);
-	MULA(res,  _sbc_proto_8[33], in[41]);
-	MULA(res,  _sbc_proto_8[32], in[57]);
-	MULA(res,  _sbc_proto_8[31], in[73]);
-	MULA(res, -_sbc_proto_8[25], in[11]);
-	MULA(res, -_sbc_proto_8[24], in[27]);
-	MULA(res, -_sbc_proto_8[23], in[43]);
-	MULA(res, -_sbc_proto_8[22], in[59]);
-	MULA(res, -_sbc_proto_8[21], in[75]);
+	MUL32(res,   _sbc_proto_8[35], in[9]);
+	MULA32(res,  _sbc_proto_8[34], in[25]);
+	MULA32(res,  _sbc_proto_8[33], in[41]);
+	MULA32(res,  _sbc_proto_8[32], in[57]);
+	MULA32(res,  _sbc_proto_8[31], in[73]);
+	MULA32(res, -_sbc_proto_8[25], in[11]);
+	MULA32(res, -_sbc_proto_8[24], in[27]);
+	MULA32(res, -_sbc_proto_8[23], in[43]);
+	MULA32(res, -_sbc_proto_8[22], in[59]);
+	MULA32(res, -_sbc_proto_8[21], in[75]);
 	t[7] = SCALE8_STAGE1(res);
 
 	MUL(s[0], _anamatrix8[0], t[0]); /* = Q14 * Q10 */
@@ -921,7 +921,7 @@ static inline void sbc_analyze_eight(struct sbc_encoder_state *state,
 					struct sbc_frame *frame, int ch,
 					int blk)
 {
-	int32_t *x = &state->X[ch][state->position[ch]];
+	int16_t *x = &state->X[ch][state->position[ch]];
 	int16_t *pcm = &frame->pcm_sample[ch][blk * 8];
 
 	/* Input 8 Audio Samples */
