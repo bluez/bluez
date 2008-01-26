@@ -48,7 +48,7 @@ static const int sbc_offset8[4][8] = {
 #define SN4(val) ASR(val, SCALE_NPROTO4_TBL)
 #define SN8(val) ASR(val, SCALE_NPROTO8_TBL)
 
-static const int32_t _sbc_proto_4[20] = {
+static const int16_t _sbc_proto_4[20] = {
 	SP4(0x02cb3e8c), SP4(0x22b63dc0), SP4(0x002329cc), SP4(0x053b7548),
 	SP4(0x31eab940), SP4(0xec1f5e60), SP4(0xff3773a8), SP4(0x0061c5a7),
 	SP4(0x07646680), SP4(0x3f239480), SP4(0xf89f23a8), SP4(0x007a4737),
@@ -56,11 +56,11 @@ static const int32_t _sbc_proto_4[20] = {
 	SP4(0x00ff11ca), SP4(0x00fb7991), SP4(0x069fdc58), SP4(0x4b584000)
 };
 
-static const int32_t _anamatrix4[4] = {
+static const int16_t _anamatrix4[4] = {
 	SA4(0x2d413cc0), SA4(0x3b20d780), SA4(0x40000000), SA4(0x187de2a0)
 };
 
-static const int32_t _sbc_proto_8[40] = {
+static const int16_t _sbc_proto_8[40] = {
 	SP8(0x02e5cd20), SP8(0x22d0c200), SP8(0x006bfe27), SP8(0x07808930),
 	SP8(0x3f1c8800), SP8(0xf8810d70), SP8(0x002cfdc6), SP8(0x055acf28),
 	SP8(0x31f566c0), SP8(0xebfe57e0), SP8(0xff27c437), SP8(0x001485cc),
@@ -115,7 +115,7 @@ static const int32_t sbc_proto_8_80m1[] = {
 	SS8(0x0d9daee0), SS8(0xeac182c0), SS8(0xfdf1c8d4), SS8(0xfff5bd1a)
 };
 
-static const int32_t _anamatrix8[8] = {
+static const int16_t _anamatrix8[8] = {
 	SA8(0x3b20d780), SA8(0x187de2a0), SA8(0x3ec52f80), SA8(0x3536cc40),
 	SA8(0x238e7680), SA8(0x0c7c5c20), SA8(0x2d413cc0), SA8(0x40000000)
 };
