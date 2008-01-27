@@ -715,8 +715,8 @@ static inline void _sbc_analyze_four(const int16_t *in, int32_t *out)
 	sbc_fixed_t t[8];
 	sbc_extended_t s[5];
 
-	MUL32(res, _sbc_proto_4[0], (in[8] - in[32])); /* Q18 */
-	MULA32(res, _sbc_proto_4[1], (in[16] - in[24]));
+	MUL(res, _sbc_proto_4[0], in[8] - in[32]); /* Q18 */
+	MULA(res, _sbc_proto_4[1], in[16] - in[24]);
 	t[0] = SCALE4_STAGE1(res); /* Q8 */
 
 	MUL32(res, _sbc_proto_4[2], in[1]);
