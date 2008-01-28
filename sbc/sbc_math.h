@@ -31,20 +31,20 @@
 #define ASR_64(val, bits) ((-2 >> 1 == -1) ? \
 		 ((long long)(val)) >> (bits) : ((long long) (val)) / (1 << (bits)))
 
-#define SCALE_PROTO4_TBL	16
+#define SCALE_PROTO4_TBL	15
 #define SCALE_ANA4_TBL		16
-#define SCALE_PROTO8_TBL	16
+#define SCALE_PROTO8_TBL	15
 #define SCALE_ANA8_TBL		16
 #define SCALE_SPROTO4_TBL	16
 #define SCALE_SPROTO8_TBL	16
 #define SCALE_NPROTO4_TBL	10
 #define SCALE_NPROTO8_TBL	12
 #define SCALE_SAMPLES		14
-#define SCALE4_STAGE1_BITS	9
+#define SCALE4_STAGE1_BITS	10
 #define SCALE4_STAGE2_BITS	21
 #define SCALE4_STAGED1_BITS	18
 #define SCALE4_STAGED2_BITS	23
-#define SCALE8_STAGE1_BITS	7
+#define SCALE8_STAGE1_BITS	8
 #define SCALE8_STAGE2_BITS	24
 #define SCALE8_STAGED1_BITS	18
 #define SCALE8_STAGED2_BITS	23
@@ -64,8 +64,6 @@ typedef long long sbc_extended_t;
 #define SBC_FIXED_0(val) { val = 0; }
 #define ADD(dst, src)    { dst += src; }
 #define SUB(dst, src)    { dst -= src; }
-#define MUL32(dst, a, b)   { dst = (sbc_fixed_t) (a) * (b); }
-#define MULA32(dst, a, b)  { dst += (sbc_fixed_t) (a) * (b); }
 #define MUL(dst, a, b)   { dst = (sbc_extended_t) (a) * (b); }
 #define MULA(dst, a, b)  { dst += (sbc_extended_t) (a) * (b); }
 #define DIV2(dst, src)   { dst = ASR(src, 1); }
