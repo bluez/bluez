@@ -65,5 +65,13 @@ typedef long long sbc_extended_t;
 #define ADD(dst, src)    { dst += src; }
 #define SUB(dst, src)    { dst -= src; }
 #define MUL(dst, a, b)   { dst = (sbc_extended_t) (a) * (b); }
-#define MULA(dst, a, b)  { dst += (sbc_extended_t) (a) * (b); }
 #define DIV2(dst, src)   { dst = ASR(src, 1); }
+
+#ifdef __arm__
+#define MULA(res, a, b) __asm__(               \
+               "smlal %Q0, %R0, %2, %3"        \
+               : "=&r" (res)                   \
+               : "0" (res), "r" (a), "r" (b));
+#else
+#define MULA(dst, a, b)  { dst += (sbc_extended_t) (a) * (b); }
+#endif
