@@ -96,11 +96,11 @@ static struct device *device_new(bdaddr_t *src, bdaddr_t *dst, uint8_t subclass)
 		if (read_device_class(src, dst, &cls) < 0)
 			return NULL;
 
-		major 	= (cls >> 8) & 0x1f;
-		minor	= (cls >> 2) & 0x3f;
+		major = (cls >> 8) & 0x1f;
+		minor = (cls >> 2) & 0x3f;
 	} else {
-		major	= 0x05; /* Peripheral */
-		minor	= (subclass >> 2) & 0x3f;
+		major = 0x05; /* Peripheral */
+		minor = (subclass >> 2) & 0x3f;
 	}
 
 	idev = g_new0(struct device, 1);
@@ -199,8 +199,8 @@ static const char *create_input_path(uint8_t major, uint8_t minor)
 	static int next_id = 0;
 
 	switch (major) {
-	case 0x02: /* Phone */	
-		strcpy(subpath, "phone");	
+	case 0x02: /* Phone */
+		strcpy(subpath, "phone");
 		break;
 	case 0x04: /* Audio */
 		switch (minor) {
@@ -274,7 +274,7 @@ static const char *create_input_path(uint8_t major, uint8_t minor)
 static int decode_key(const char *str)
 {
 	static int mode = UPDOWN_ENABLED, gain = 0;
-	
+
 	uint16_t key;
 	int new_gain;
 
@@ -335,7 +335,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
-	
+
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		error("Hangup or error on rfcomm server socket");
 		goto failed;
@@ -871,7 +871,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	struct device *idev = data;
 
 	if (idev->pending_connect)
-		return error_in_progress(conn, msg, 
+		return error_in_progress(conn, msg,
 				"Device connection already in progress");
 
 	if (is_connected(idev))
@@ -887,7 +887,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 			error("RFCOMM connect failed: %s(%d)", str, err);
 			dbus_message_unref(idev->pending_connect);
 			idev->pending_connect = NULL;
-			return error_connection_attempt_failed(conn, 
+			return error_connection_attempt_failed(conn,
 					msg, err);
 		}
 		return DBUS_HANDLER_RESULT_HANDLED;
@@ -987,7 +987,7 @@ static DBusHandlerResult device_get_name(DBusConnection *conn,
 	struct device *idev = data;
 	DBusMessage *reply;
 	const char *pname = (idev->name ? idev->name : "");
-	
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;

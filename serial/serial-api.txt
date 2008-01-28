@@ -157,7 +157,7 @@ Methods:	void Enable() [experimental]
 		void Disable() [experimental]
 
 			Unregister the service record and stop listenning.
-			
+
 			Possible errors:org.bluez.Error.Failed
 
 		dict GetInfo() [experimental]

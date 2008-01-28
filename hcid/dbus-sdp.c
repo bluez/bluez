@@ -163,7 +163,7 @@ static int get_bdaddrs(int sock, bdaddr_t *sba, bdaddr_t *dba)
 		error("getsockname: %s (%d)", strerror(errno), errno);
 		return -1;
 	}
-	
+
 	bacpy(sba, &a.l2_bdaddr);
 
 	len = sizeof(a);
@@ -562,7 +562,7 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 	src = get_address_from_message(ctxt->conn, ctxt->rq);
 
 	reply = dbus_message_new_method_return(ctxt->rq);
-	
+
 	rec = sdp_extract_pdu(rsp, &scanned);
 	if (rec == NULL || size != scanned) {
 		error("Invalid service record!");

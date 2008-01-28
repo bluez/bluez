@@ -145,7 +145,7 @@ static DBusHandlerResult port_get_name(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *pname;
 	char *name = NULL;
-	
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;

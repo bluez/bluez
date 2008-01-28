@@ -52,9 +52,9 @@ Error hierarchy
 Interface	org.bluez.Error
 
 Shared Errors (Can be thrown by hcid or any bluetooth service)
-		
+
 		DeviceUnreachable
-		
+
 			The remote device is either powered down or out of range.
 
 		AlreadyConnected
@@ -82,7 +82,7 @@ Shared Errors (Can be thrown by hcid or any bluetooth service)
 		InvalidArguments
 
 			The DBUS request does not contain the right number of
-			arguments with the right type, or the arguments are there 
+			arguments with the right type, or the arguments are there
 			but their value is wrong, or does not makes sense in the
 			current context.
 
@@ -96,8 +96,8 @@ Shared Errors (Can be thrown by hcid or any bluetooth service)
 			Error returned when a specified record is not
 			available.
 
-		NotSupported 
-			
+		NotSupported
+
 			The remote device does not support the expected
 			feature.
 
@@ -123,7 +123,7 @@ Hcid specific Errors (Can be thrown by hcid only)
 			Error returned when the adapter is DOWN.
 
 		UnknwownMethod
-		
+
 			This is an experimental method.
 
 		NotAuthorized
@@ -140,9 +140,9 @@ Hcid specific Errors (Can be thrown by hcid only)
 			exists. This error is similar to ENODEV.
 
 		NoSuchService
-		
+
 		RequestDeferred
-		
+
 		NotInProgress
 
 		UnsupportedMajorClass
@@ -1164,7 +1164,7 @@ Signals		void ModeChanged(string mode)
 			Signals that a bonding was removed.
 
 		void TrustAdded(string address)
-			
+
 			Sent when SetTrusted() is called.
 
 		void TrustRemoved(string address)
@@ -1261,7 +1261,7 @@ Signals		void Started()
 			was stopped.
 
 		void TrustAdded(string address)
-			
+
 			Sent when SetTrusted() is called.
 
 		void TrustRemoved(string address)

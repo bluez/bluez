@@ -491,7 +491,7 @@ static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 }
 
 static DBusMethodVTable database_methods[] = {
-	{ "AddServiceRecord",			add_service_record,		"ay",	"u"	},	
+	{ "AddServiceRecord",			add_service_record,		"ay",	"u"	},
 	{ "AddServiceRecordFromXML",		add_service_record_from_xml,	"s",	"u"	},
 	{ "UpdateServiceRecord",		update_service_record,		"uay",	""	},
 	{ "UpdateServiceRecordFromXML",		update_service_record_from_xml,	"us",	""	},

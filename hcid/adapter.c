@@ -1845,7 +1845,7 @@ static DBusHandlerResult adapter_clear_remote_alias(DBusConnection *conn,
 	str2ba(addr_ptr, &bdaddr);
 
 	ecode = get_device_alias(adapter->dev_id, &bdaddr, NULL, 0);
-	if (ecode == -ENXIO) 
+	if (ecode == -ENXIO)
 		had_alias = 0;
 
 	ecode = set_device_alias(adapter->dev_id, &bdaddr, NULL);
@@ -2820,10 +2820,8 @@ static DBusHandlerResult adapter_cancel_discovery(DBusConnection *conn,
 			strcmp(adapter->discov_requestor, dbus_message_get_sender(msg)))
 		return error_not_authorized(conn, msg);
 
-	/* 
-	 * Cleanup the discovered devices list and send the cmd
-	 * to cancel inquiry or cancel remote name request
-	 */
+	/* Cleanup the discovered devices list and send the cmd to cancel
+	 * inquiry or cancel remote name request */
 	err = cancel_discovery(adapter);
 	if (err < 0) {
 		if (err == -ENODEV)

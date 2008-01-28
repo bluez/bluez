@@ -1154,7 +1154,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	}
 
 	/* align the last crc byte */
-	if (crc_pos % 8) 
+	if (crc_pos % 8)
 		crc_header[crc_pos >> 3] <<= 8 - (crc_pos % 8);
 
 	data[3] = sbc_crc8(crc_header, crc_pos);

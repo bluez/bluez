@@ -54,7 +54,7 @@ DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg)
 
 	snprintf(error, 128, "Method \"%s\" with signature \"%s\" on interface \"%s\" doesn't exist",
 			method, signature, interface);
-	
+
 	return send_message_and_unref(conn,
 		dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownMethod",
 							error));

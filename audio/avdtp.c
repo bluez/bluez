@@ -1259,7 +1259,7 @@ static gboolean avdtp_suspend_cmd(struct avdtp *session,
 		error("Too short suspend request");
 		return FALSE;
 	}
-	
+
 	seid_count = 1 + size - sizeof(struct suspend_req);
 
 	seid = &req->first_seid;

@@ -64,7 +64,7 @@
 #define BUF_SIZE			1024
 
 /* Waiting for udev to create the device node */
-#define MAX_OPEN_TRIES 		5
+#define MAX_OPEN_TRIES		5
 #define OPEN_WAIT		300	/* ms */
 
 struct pending_connect {
@@ -80,7 +80,7 @@ struct pending_connect {
 	char		*dev;		/* tty device name */
 	int		id;		/* RFCOMM device id */
 	int		ntries;		/* Open attempts */
-	int 		canceled;	/* Operation canceled */
+	int		canceled;	/* Operation canceled */
 };
 
 /* FIXME: Common file required */
@@ -1646,7 +1646,7 @@ static DBusHandlerResult proxy_set_serial_params(DBusConnection *conn,
 	struct proxy *prx = data;
 	const char *ratestr, *paritystr;
 	uint8_t databits, stopbits;
-	tcflag_t ctrl; 		/* Control mode flags */
+	tcflag_t ctrl;		/* Control mode flags */
 	speed_t speed = B0;	/* In/Out speed */
 
 	/* Don't allow change TTY settings if it is open */
@@ -1691,7 +1691,7 @@ static DBusMethodVTable proxy_methods[] = {
 	{ "Enable",			proxy_enable,			"",	""	},
 	{ "Disable",			proxy_disable,			"",	""	},
 	{ "GetInfo",			proxy_get_info,			"",	"a{sv}"	},
-	{ "SetSerialParameters",	proxy_set_serial_params, 	"syys",	""	},
+	{ "SetSerialParameters",	proxy_set_serial_params,	"syys",	""	},
 	{ NULL, NULL, NULL, NULL },
 };
 

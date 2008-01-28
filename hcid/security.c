@@ -110,7 +110,7 @@ static void hci_req_queue_process(int dev_id)
 
 		data = l->data;
 		data->status = REQ_SENT;
-		
+
 		ret_val = hci_send_cmd(dd, data->ogf, data->ocf, data->clen, data->cparam);
 		if (ret_val < 0) {
 			hci_req_queue = g_slist_remove(hci_req_queue, data);

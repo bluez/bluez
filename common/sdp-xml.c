@@ -237,7 +237,7 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 		hex = 0;
 
 		int num_chars_to_escape = 0;
-		
+
 		for (i = 0; i < value->unitSize; i++) {
 			if (i == (value->unitSize - 1)
 			    && value->val.str[i] == '\0')
@@ -246,16 +246,15 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 				hex = 1;
 				break;
 			}
-			
+
 			/* XML is evil, must do this... */
 			if ((value->val.str[i] == '<') ||
-			    (value->val.str[i] == '>') ||
-			    (value->val.str[i] == '"') ||
-			    (value->val.str[i] == '&'))
-			    num_chars_to_escape++;
-			
+					(value->val.str[i] == '>') ||
+					(value->val.str[i] == '"') ||
+					(value->val.str[i] == '&'))
+				num_chars_to_escape++;
 		}
-		
+
 		appender(data, indent);
 
 		appender(data, "<text ");
@@ -340,10 +339,10 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 
 		convert_raw_data_to_xml(value->val.dataseq,
 					indent_level + 1, data, appender);
-					
+
 		appender(data, indent);
 		appender(data, "</sequence>\n");
-		
+
 		break;
 
 	case SDP_ALT8:
@@ -358,7 +357,7 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 		appender(data, indent);
 
 		appender(data, "</alternate>\n");
-	       
+
 		break;
 	}
 
@@ -577,7 +576,7 @@ sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
 	case SDP_INT64:
 	{
 		int64_t val = strtoull(data, &endptr, 0);
-		
+
 		/* Failed to parse */
 		if ((endptr != data) && (*endptr != '\0'))
 			return NULL;

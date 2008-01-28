@@ -1451,10 +1451,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
-	/*
-	 * The discovery completed signal must be sent only for discover 
-	 * devices request WITH name resolving
-	 */
+	/* The discovery completed signal must be sent only for discover
+	 * devices request WITH name resolving */
 	if (adapter->discov_requestor) {
 		name_listener_remove(connection, adapter->discov_requestor,
 				(name_cb_t) discover_devices_req_exit, adapter);
@@ -2016,11 +2014,8 @@ void discover_devices_req_exit(const char *name, struct adapter *adapter)
 {
 	debug("DiscoverDevices requestor (%s) exited", name);
 
-	/* 
-	 * Cleanup the discovered devices list and send the command to
-	 * cancel inquiry or cancel remote name request. The return
-	 * can be ignored.
-	 */
+	/* Cleanup the discovered devices list and send the command to cancel
+	 * inquiry or cancel remote name request. The return can be ignored. */
 	cancel_discovery(adapter);
 }
 
@@ -2139,11 +2134,9 @@ void periodic_discover_req_exit(const char *name, struct adapter *adapter)
 {
 	debug("PeriodicDiscovery requestor (%s) exited", name);
 
-	/* 
-	 * Cleanup the discovered devices list and send the cmd to exit from
+	/* Cleanup the discovered devices list and send the cmd to exit from
 	 * periodic inquiry or cancel remote name request. The return value can
-	 * be ignored.
-	 */
+	 * be ignored. */
 
 	cancel_periodic_discovery(adapter);
 }
