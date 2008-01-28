@@ -708,10 +708,15 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 	state->position[0] = state->position[1] = 9 * frame->subbands;
 }
 
-
+#ifdef __arm__
+void _sbc_analyze_four(const int16_t *in, int32_t *out)
+{
+	sbc_extended_t register res asm("r4");
+#else
 static inline void _sbc_analyze_four(const int16_t *in, int32_t *out)
 {
 	sbc_extended_t res;
+#endif
 	sbc_fixed_t t[8];
 	sbc_extended_t s[5];
 
@@ -794,9 +799,15 @@ static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 		state->position[ch] = 36;
 }
 
+#ifdef __arm__
+void _sbc_analyze_eight(const int16_t *in, int32_t *out)
+{
+	sbc_extended_t register res asm("r4");
+#else
 static inline void _sbc_analyze_eight(const int16_t *in, int32_t *out)
 {
 	sbc_extended_t res;
+#endif
 	sbc_fixed_t t[8];
 	sbc_extended_t s[8];
 
