@@ -121,7 +121,7 @@ struct sbc_decoder_state {
 struct sbc_encoder_state {
 	int subbands;
 	int position[2];
-	int16_t X[2][160];
+	int32_t X[2][160];
 };
 
 /*
@@ -709,7 +709,7 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 }
 
 
-static inline void _sbc_analyze_four(const int16_t *in, int32_t *out)
+static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 {
 	sbc_extended_t res;
 	sbc_fixed_t t[8];
@@ -794,7 +794,7 @@ static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 		state->position[ch] = 36;
 }
 
-static inline void _sbc_analyze_eight(const int16_t *in, int32_t *out)
+static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 {
 	sbc_extended_t res;
 	sbc_fixed_t t[8];
@@ -921,7 +921,7 @@ static inline void sbc_analyze_eight(struct sbc_encoder_state *state,
 					struct sbc_frame *frame, int ch,
 					int blk)
 {
-	int16_t *x = &state->X[ch][state->position[ch]];
+	int32_t *x = &state->X[ch][state->position[ch]];
 	int16_t *pcm = &frame->pcm_sample[ch][blk * 8];
 
 	/* Input 8 Audio Samples */
