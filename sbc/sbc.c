@@ -778,7 +778,7 @@ static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
 {
-	int16_t *x = &state->X[ch][state->position[ch]];
+	int32_t *x = &state->X[ch][state->position[ch]];
 	int16_t *pcm = &frame->pcm_sample[ch][blk * 4];
 
 	/* Input 4 Audio Samples */
