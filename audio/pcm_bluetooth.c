@@ -1286,13 +1286,15 @@ static int bluetooth_parse_config(snd_config_t *conf,
 			continue;
 
 		if (strcmp(id, "autoconnect") == 0) {
-			if (snd_config_get_string(n, &value) < 0) {
+			int b;
+
+			b = snd_config_get_bool(n);
+			if (b < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			if (strcmp(value, "no") == 0)
-				bt_config->autoconnect = 0;
+			bt_config->autoconnect = b;
 			continue;
 		}
 
