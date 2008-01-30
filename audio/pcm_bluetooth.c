@@ -1269,8 +1269,6 @@ static int bluetooth_parse_config(snd_config_t *conf,
 				struct bluetooth_alsa_config *bt_config)
 {
 	snd_config_iterator_t i, next;
-	const char *addr, *pref, *autoconnect;
-	const char *mode, *allocation, *rate, *subbands, *blocks, *bitpool;
 
 	memset(bt_config, 0, sizeof(struct bluetooth_alsa_config));
 
@@ -1279,7 +1277,7 @@ static int bluetooth_parse_config(snd_config_t *conf,
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
-		const char *id;
+		const char *id, *value;
 
 		if (snd_config_get_id(n, &id) < 0)
 			continue;
@@ -1288,42 +1286,42 @@ static int bluetooth_parse_config(snd_config_t *conf,
 			continue;
 
 		if (strcmp(id, "autoconnect") == 0) {
-			if (snd_config_get_string(n, &autoconnect) < 0) {
+			if (snd_config_get_string(n, &value) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			if (strcmp(autoconnect, "no") == 0)
+			if (strcmp(value, "no") == 0)
 				bt_config->autoconnect = 0;
 			continue;
 		}
 
 		if (strcmp(id, "device") == 0 || strcmp(id, "bdaddr") == 0) {
-			if (snd_config_get_string(n, &addr) < 0) {
+			if (snd_config_get_string(n, &value) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
 			bt_config->has_device = 1;
-			strncpy(bt_config->device, addr, 18);
+			strncpy(bt_config->device, value, 18);
 			continue;
 		}
 
 		if (strcmp(id, "profile") == 0) {
-			if (snd_config_get_string(n, &pref) < 0) {
+			if (snd_config_get_string(n, &value) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			if (strcmp(pref, "auto") == 0) {
+			if (strcmp(value, "auto") == 0) {
 				bt_config->transport = BT_CAPABILITIES_TRANSPORT_ANY;
 				bt_config->has_transport = 1;
-			} else if (strcmp(pref, "voice") == 0 ||
-						strcmp(pref, "hfp") == 0) {
+			} else if (strcmp(value, "voice") == 0 ||
+						strcmp(value, "hfp") == 0) {
 				bt_config->transport = BT_CAPABILITIES_TRANSPORT_SCO;
 				bt_config->has_transport = 1;
-			} else if (strcmp(pref, "hifi") == 0 ||
-						strcmp(pref, "a2dp") == 0) {
+			} else if (strcmp(value, "hifi") == 0 ||
+						strcmp(value, "a2dp") == 0) {
 				bt_config->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
 				bt_config->has_transport = 1;
 			}
@@ -1331,35 +1329,35 @@ static int bluetooth_parse_config(snd_config_t *conf,
 		}
 
 		if (strcmp(id, "rate") == 0) {
-			if (snd_config_get_string(n, &rate) < 0) {
+			if (snd_config_get_string(n, &value) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			bt_config->rate = atoi(rate);
+			bt_config->rate = atoi(value);
 			bt_config->has_rate = 1;
 			continue;
 		}
 
 		if (strcmp(id, "mode") == 0) {
-			if (snd_config_get_string(n, &mode) < 0) {
+			if (snd_config_get_string(n, &value) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			if (strcmp(mode, "auto") == 0) {
+			if (strcmp(value, "auto") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_AUTO;
 				bt_config->has_channel_mode = 1;
-			} else if (strcmp(mode, "mono") == 0) {
+			} else if (strcmp(value, "mono") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_MONO;
 				bt_config->has_channel_mode = 1;
-			} else if (strcmp(mode, "dual") == 0) {
+			} else if (strcmp(value, "dual") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL;
 				bt_config->has_channel_mode = 1;
-			} else if (strcmp(mode, "stereo") == 0) {
+			} else if (strcmp(value, "stereo") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_STEREO;
 				bt_config->has_channel_mode = 1;
-			} else if (strcmp(mode, "joint") == 0) {
+			} else if (strcmp(value, "joint") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_JOINT_STEREO;
 				bt_config->has_channel_mode = 1;
 			}
@@ -1367,18 +1365,18 @@ static int bluetooth_parse_config(snd_config_t *conf,
 		}
 
 		if (strcmp(id, "allocation") == 0) {
-			if (snd_config_get_string(n, &allocation) < 0) {
+			if (snd_config_get_string(n, &value) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			if (strcmp(allocation, "auto") == 0) {
+			if (strcmp(value, "auto") == 0) {
 				bt_config->allocation_method = BT_A2DP_ALLOCATION_AUTO;
 				bt_config->has_allocation_method = 1;
-			} else if (strcmp(allocation, "loudness") == 0) {
+			} else if (strcmp(value, "loudness") == 0) {
 				bt_config->allocation_method = BT_A2DP_ALLOCATION_LOUDNESS;
 				bt_config->has_allocation_method = 1;
-			} else if (strcmp(allocation, "snr") == 0) {
+			} else if (strcmp(value, "snr") == 0) {
 				bt_config->allocation_method = BT_A2DP_ALLOCATION_SNR;
 				bt_config->has_allocation_method = 1;
 			}
@@ -1386,34 +1384,34 @@ static int bluetooth_parse_config(snd_config_t *conf,
 		}
 
 		if (strcmp(id, "subbands") == 0) {
-			if (snd_config_get_string(n, &subbands) < 0) {
+			if (snd_config_get_string(n, &value) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			bt_config->subbands = atoi(subbands);
+			bt_config->subbands = atoi(value);
 			bt_config->has_subbands = 1;
 			continue;
 		}
 
 		if (strcmp(id, "blocks") == 0) {
-			if (snd_config_get_string(n, &blocks) < 0) {
+			if (snd_config_get_string(n, &value) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			bt_config->block_length = atoi(blocks);
+			bt_config->block_length = atoi(value);
 			bt_config->has_block_length = 1;
 			continue;
 		}
 
 		if (strcmp(id, "bitpool") == 0) {
-			if (snd_config_get_string(n, &bitpool) < 0) {
+			if (snd_config_get_string(n, &value) < 0) {
 				SNDERR("Invalid type for %s", id);
 				return -EINVAL;
 			}
 
-			bt_config->bitpool = atoi(bitpool);
+			bt_config->bitpool = atoi(value);
 			bt_config->has_bitpool = 1;
 			continue;
 		}
