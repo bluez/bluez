@@ -62,5 +62,5 @@ typedef long long sbc_extended_t;
 #define SCALE8_STAGED2(src) ASR_64(src, SCALE8_STAGED2_BITS)
 
 #define SBC_FIXED_0(val) { val = 0; }
-#define MUL(dst, a, b)   { dst = (sbc_extended_t) (a) * (b); }
-#define MULA(dst, a, b)  { dst += (sbc_extended_t) (a) * (b); }
+#define MUL(a, b)        ((sbc_extended_t)(a) * (b))
+#define MULA(a, b, res)  ((sbc_extended_t)(a) * (b) + (res))
