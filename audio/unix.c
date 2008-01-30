@@ -765,6 +765,8 @@ static void handle_getcapabilities_req(struct unix_client *client,
 		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
 
 	if (!manager_find_device(&bdaddr, NULL, FALSE)) {
+		if (!(req->flags & BT_FLAG_AUTOCONNECT))
+			goto failed;
 		if (!bacmp(&bdaddr, BDADDR_ANY))
 			goto failed;
 		if (!manager_create_device(&bdaddr, create_cb, client))
@@ -773,8 +775,12 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	}
 
 	dev = manager_find_device(&bdaddr, client->interface, TRUE);
-	if (!dev)
-		dev = manager_find_device(&bdaddr, client->interface, FALSE);
+	if (!dev) {
+		if (req->flags & BT_FLAG_AUTOCONNECT)
+			dev = manager_find_device(&bdaddr, client->interface, FALSE);
+		else
+			goto failed;
+	}
 
 	if (!dev)
 		goto failed;

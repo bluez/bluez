@@ -122,6 +122,7 @@ struct bluetooth_alsa_config {
 	int has_block_length;
 	uint8_t bitpool;		/* A2DP only */
 	int has_bitpool;
+	int autoconnect;
 };
 
 struct bluetooth_data {
@@ -1268,10 +1269,13 @@ static int bluetooth_parse_config(snd_config_t *conf,
 				struct bluetooth_alsa_config *bt_config)
 {
 	snd_config_iterator_t i, next;
-	const char *addr, *pref;
+	const char *addr, *pref, *autoconnect;
 	const char *mode, *allocation, *rate, *subbands, *blocks, *bitpool;
 
 	memset(bt_config, 0, sizeof(struct bluetooth_alsa_config));
+
+	/* Set defaults */
+	bt_config->autoconnect = 1;
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
@@ -1282,6 +1286,17 @@ static int bluetooth_parse_config(snd_config_t *conf,
 
 		if (strcmp(id, "comment") == 0 || strcmp(id, "type") == 0)
 			continue;
+
+		if (strcmp(id, "autoconnect") == 0) {
+			if (snd_config_get_string(n, &autoconnect) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+
+			if (strcmp(autoconnect, "no") == 0)
+				bt_config->autoconnect = 0;
+			continue;
+		}
 
 		if (strcmp(id, "device") == 0 || strcmp(id, "bdaddr") == 0) {
 			if (snd_config_get_string(n, &addr) < 0) {
@@ -1514,6 +1529,9 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 
 	memset(getcaps_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
 	getcaps_req->h.msg_type = BT_GETCAPABILITIES_REQ;
+	getcaps_req->flags = 0;
+	if (alsa_conf->autoconnect)
+		getcaps_req->flags |= BT_FLAG_AUTOCONNECT;
 	strncpy(getcaps_req->device, alsa_conf->device, 18);
 	if (alsa_conf->has_transport)
 		getcaps_req->transport = alsa_conf->transport;

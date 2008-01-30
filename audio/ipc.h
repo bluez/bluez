@@ -117,10 +117,13 @@ typedef struct {
 #define BT_CAPABILITIES_ACCESS_MODE_WRITE	2
 #define BT_CAPABILITIES_ACCESS_MODE_READWRITE	3
 
+#define BT_FLAG_AUTOCONNECT	1
+
 struct bt_getcapabilities_req {
 	bt_audio_msg_header_t	h;
 	char			device[18];	/* Address of the remote Device */
 	uint8_t			transport;	/* Requested transport */
+	uint8_t			flags;		/* Requested flags */
 } __attribute__ ((packed));
 
 /* BT_GETCAPABILITIES_RSP */
