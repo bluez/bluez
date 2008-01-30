@@ -63,4 +63,14 @@ typedef long long sbc_extended_t;
 
 #define SBC_FIXED_0(val) { val = 0; }
 #define MUL(a, b)        ((sbc_extended_t)(a) * (b))
+#ifdef __arm__
+#define MULA(a, b, res) ({				\
+		long long tmp = res;			\
+		__asm__(				\
+			"smlal %Q0, %R0, %2, %3"	\
+			: "=&r" (tmp)			\
+			: "0" (tmp), "r" (a), "r" (b));	\
+		tmp; })
+#else
 #define MULA(a, b, res)  ((sbc_extended_t)(a) * (b) + (res))
+#endif
