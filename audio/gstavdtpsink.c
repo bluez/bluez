@@ -51,6 +51,8 @@ GST_DEBUG_CATEGORY_STATIC(avdtp_sink_debug);
 #define CRC_PROTECTED 1
 #define CRC_UNPROTECTED 0
 
+#define DEFAULT_AUTOCONNECT TRUE
+
 #define GST_AVDTP_SINK_MUTEX_LOCK(s) G_STMT_START {	\
 		g_mutex_lock (s->sink_lock);		\
 	} G_STMT_END
@@ -73,6 +75,7 @@ struct bluetooth_data {
 enum {
 	PROP_0,
 	PROP_DEVICE,
+	PROP_AUTOCONNECT
 };
 
 GST_BOILERPLATE(GstAvdtpSink, gst_avdtp_sink, GstBaseSink,
@@ -193,6 +196,9 @@ static void gst_avdtp_sink_set_property(GObject *object, guint prop_id,
 		sink->device = g_value_dup_string(value);
 		break;
 
+	case PROP_AUTOCONNECT:
+		sink->autoconnect = g_value_get_boolean(value);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 		break;
@@ -209,6 +215,9 @@ static void gst_avdtp_sink_get_property(GObject *object, guint prop_id,
 		g_value_set_string(value, sink->device);
 		break;
 
+	case PROP_AUTOCONNECT:
+		g_value_set_boolean(value, sink->autoconnect);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 		break;
@@ -764,6 +773,8 @@ static gboolean gst_avdtp_sink_get_capabilities(GstAvdtpSink *self)
 	if (self->device == NULL)
 		return FALSE;
 	strncpy(req->device, self->device, 18);
+	if (self->autoconnect)
+		req->flags |= BT_FLAG_AUTOCONNECT;
 
 	io_error = gst_avdtp_sink_audioservice_send(self, &req->h);
 	if (io_error != G_IO_ERROR_NONE) {
@@ -1198,6 +1209,13 @@ static void gst_avdtp_sink_class_init(GstAvdtpSinkClass *klass)
 					"Bluetooth remote device address",
 					NULL, G_PARAM_READWRITE));
 
+	g_object_class_install_property(object_class, PROP_AUTOCONNECT,
+					g_param_spec_boolean("auto-connect",
+					"Auto-connect",
+					"Automatically attempt to connect "
+					"to device", DEFAULT_AUTOCONNECT,
+					G_PARAM_READWRITE));
+
 	GST_DEBUG_CATEGORY_INIT(avdtp_sink_debug, "avdtpsink", 0,
 				"A2DP headset sink element");
 }
@@ -1211,6 +1229,8 @@ static void gst_avdtp_sink_init(GstAvdtpSink *self,
 	self->stream = NULL;
 
 	self->dev_caps = NULL;
+
+	self->autoconnect = DEFAULT_AUTOCONNECT;
 
 	self->sink_lock = g_mutex_new();
 

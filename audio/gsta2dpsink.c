@@ -37,9 +37,12 @@ GST_DEBUG_CATEGORY_STATIC(gst_a2dp_sink_debug);
 #define A2DP_SBC_RTP_PAYLOAD_TYPE 1
 #define TEMPLATE_MAX_BITPOOL_STR "64"
 
+#define DEFAULT_AUTOCONNECT TRUE
+
 enum {
 	PROP_0,
-	PROP_DEVICE
+	PROP_DEVICE,
+	PROP_AUTOCONNECT
 };
 
 GST_BOILERPLATE(GstA2dpSink, gst_a2dp_sink, GstBin, GST_TYPE_BIN);
@@ -170,6 +173,14 @@ static void gst_a2dp_sink_set_property(GObject *object, guint prop_id,
 		self->device = g_value_dup_string(value);
 		break;
 
+	case PROP_AUTOCONNECT:
+		self->autoconnect = g_value_get_boolean(value);
+
+		if (self->sink != NULL)
+			g_object_set(G_OBJECT(self->sink), "auto-connect",
+					self->autoconnect, NULL);
+		break;
+
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 		break;
@@ -190,7 +201,13 @@ static void gst_a2dp_sink_get_property(GObject *object, guint prop_id,
 				g_value_take_string(value, device);
 		}
 		break;
+	case PROP_AUTOCONNECT:
+		if (self->sink != NULL)
+			g_object_get(G_OBJECT(self->sink), "auto-connect",
+				&self->autoconnect, NULL);
 
+		g_value_set_boolean(value, self->autoconnect);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 		break;
@@ -266,6 +283,9 @@ static GstStateChangeReturn gst_a2dp_sink_change_state(GstElement *element,
 			gst_avdtp_sink_set_device(self->sink,
 					self->device);
 
+		g_object_set(G_OBJECT(self->sink), "auto-connect",
+					self->autoconnect, NULL);
+
 		ret = gst_element_set_state(GST_ELEMENT(self->sink),
 			GST_STATE_READY);
 		break;
@@ -339,6 +359,11 @@ static void gst_a2dp_sink_class_init(GstA2dpSinkClass *klass)
 			g_param_spec_string("device", "Device",
 			"Bluetooth remote device address",
 			NULL, G_PARAM_READWRITE));
+
+	g_object_class_install_property(object_class, PROP_AUTOCONNECT,
+			g_param_spec_boolean("auto-connect", "Auto-connect",
+			"Automatically attempt to connect to device",
+			DEFAULT_AUTOCONNECT, G_PARAM_READWRITE));
 
 	GST_DEBUG_CATEGORY_INIT(gst_a2dp_sink_debug, "a2dpsink", 0,
 				"A2DP sink element");
@@ -649,6 +674,7 @@ static void gst_a2dp_sink_init(GstA2dpSink *self,
 	self->fakesink = NULL;
 	self->rtp = NULL;
 	self->device = NULL;
+	self->autoconnect = DEFAULT_AUTOCONNECT;
 	self->capsfilter = NULL;
 	self->newseg_event = NULL;
 	self->taglist = NULL;
