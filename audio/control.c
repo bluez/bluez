@@ -393,7 +393,8 @@ static void avctp_unref(struct avctp *session)
 	if (session->io)
 		g_source_remove(session->io);
 
-	session->dev->control->session = NULL;
+	if (session->dev)
+		session->dev->control->session = NULL;
 
 	if (session->uinput >= 0) {
 		ioctl(session->uinput, UI_DEV_DESTROY);
