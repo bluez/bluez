@@ -125,7 +125,7 @@ static void decode(char *filename, char *output, int tofile)
 		 * length of the frame we just decoded count is the number of
 		 * decoded bytes yet to be written */
 
-		if (count + len > BUF_SIZE) {
+		if (count + len >= BUF_SIZE) {
 			/* buffer is too full to stuff decoded audio in so it
 			 * must be written to the device */
 			written = write(ad, buf, count);
@@ -134,7 +134,7 @@ static void decode(char *filename, char *output, int tofile)
 		}
 
 		/* sanity check */
-		if (count + len > BUF_SIZE) {
+		if (count + len >= BUF_SIZE) {
 			fprintf(stderr,
 				"buffer size of %d is too small for decoded"
 				" data (%d)\n", BUF_SIZE, len + count);
