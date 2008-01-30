@@ -80,6 +80,17 @@ static void gst_a2dp_sink_finalize(GObject *obj)
 	G_OBJECT_CLASS (parent_class)->finalize (obj);
 }
 
+static GstState gst_a2dp_sink_get_state(GstA2dpSink *self)
+{
+	GstState current, pending;
+
+	gst_element_get_state(GST_ELEMENT(self), &current, &pending, 0);
+	if (pending == GST_STATE_VOID_PENDING)
+		return current;
+
+	return pending;
+}
+
 /*
  * Helper function to create elements, add to the bin and link it
  * to another element.
@@ -89,6 +100,7 @@ static GstElement* gst_a2dp_sink_init_element(GstA2dpSink *self,
 			GstElement *link_to)
 {
 	GstElement *element;
+	GstState state;
 
 	GST_LOG_OBJECT(self, "Initializing %s", elementname);
 
@@ -104,17 +116,19 @@ static GstElement* gst_a2dp_sink_init_element(GstA2dpSink *self,
 		goto cleanup_and_fail;
 	}
 
-	if (gst_element_set_state(element, GST_STATE_PLAYING) ==
+	state = gst_a2dp_sink_get_state(self);
+	if (gst_element_set_state(element, state) ==
 			GST_STATE_CHANGE_FAILURE) {
 		GST_ERROR_OBJECT(self, "%s failed to go to playing",
 						elementname);
 		goto remove_element_and_fail;
 	}
 
-	if (!gst_element_link(link_to, element)) {
-		GST_ERROR_OBJECT(self, "couldn't link %s", elementname);
-		goto remove_element_and_fail;
-	}
+	if (link_to != NULL)
+		if (!gst_element_link(link_to, element)) {
+			GST_ERROR_OBJECT(self, "couldn't link %s", elementname);
+			goto remove_element_and_fail;
+		}
 
 	return element;
 
@@ -241,7 +255,6 @@ static GstStateChangeReturn gst_a2dp_sink_change_state(GstElement *element,
 
 	case GST_STATE_CHANGE_NULL_TO_READY:
 		self->sink_is_in_bin = FALSE;
-
 		self->sink = GST_AVDTP_SINK(gst_element_factory_make(
 				"avdtpsink", "avdtpsink"));
 		if (self->sink == NULL) {
@@ -260,8 +273,10 @@ static GstStateChangeReturn gst_a2dp_sink_change_state(GstElement *element,
 		break;
 	}
 
-	if (ret == GST_STATE_CHANGE_FAILURE)
+	if (ret == GST_STATE_CHANGE_FAILURE) {
+		g_mutex_unlock(self->cb_mutex);
 		return ret;
+	}
 
 	ret = GST_ELEMENT_CLASS(parent_class)->change_state(element,
                         transition);
@@ -295,7 +310,6 @@ static GstStateChangeReturn gst_a2dp_sink_change_state(GstElement *element,
 
 		gst_a2dp_sink_remove_dynamic_elements(self);
 		break;
-
 	default:
 		break;
 	}
@@ -558,16 +572,16 @@ static gboolean gst_a2dp_sink_handle_event(GstPad *pad, GstEvent *event)
 		if (self->newseg_event != NULL)
 			gst_event_unref(self->newseg_event);
 		self->newseg_event = gst_event_ref(event);
+
 	} else if (GST_EVENT_TYPE(event) == GST_EVENT_TAG &&
 			parent != GST_OBJECT_CAST(self)) {
-		if (self->taglist == NULL) {
+		if (self->taglist == NULL)
 			gst_event_parse_tag(event, &self->taglist);
-		} else {
+		else {
 			gst_event_parse_tag(event, &taglist);
 			gst_tag_list_insert(self->taglist, taglist,
 					GST_TAG_MERGE_REPLACE);
 		}
-		/* FIXME handle tag events */
 	}
 
 	if (parent != NULL)
@@ -614,11 +628,15 @@ static gboolean gst_a2dp_sink_init_fakesink(GstA2dpSink *self)
 static gboolean gst_a2dp_sink_remove_fakesink(GstA2dpSink *self)
 {
 	g_mutex_lock(self->cb_mutex);
+
 	if (self->fakesink != NULL) {
+		gst_element_set_locked_state(self->fakesink, TRUE);
 		gst_element_set_state(self->fakesink, GST_STATE_NULL);
+
 		gst_bin_remove(GST_BIN(self), self->fakesink);
 		self->fakesink = NULL;
 	}
+
 	g_mutex_unlock(self->cb_mutex);
 
 	return TRUE;
