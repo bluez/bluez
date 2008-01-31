@@ -344,6 +344,11 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 	struct mpeg_codec_cap *mpeg_cap = NULL;
 	GSList *l;
 
+	if (!g_slist_find(clients, client)) {
+		debug("Client disconnected during discovery");
+		return;
+	}
+
 	if (err)
 		goto failed;
 
