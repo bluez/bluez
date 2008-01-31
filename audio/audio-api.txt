@@ -300,13 +300,3 @@ AVRCP controller.
 
 Object path(s)	/org/bluez/audio/device*
 
-
-org.bluez.audio.Target interface
-================================
-
-[not yet implemented]
-
-This interface is available for remote devices which implement support for a
-AVRCP target.
-
-Object path(s)	/org/bluez/audio/device*
