@@ -1035,7 +1035,7 @@ int a2dp_init(DBusConnection *conn, GKeyFile *config)
 {
 	int sbc_srcs = 1, sbc_sinks = 0;
 	int mpeg12_srcs = 0, mpeg12_sinks = 0;
-	gboolean src = TRUE, sink = TRUE;
+	gboolean source = TRUE, sink = TRUE;
 	char *str;
 	GError *err = NULL;
 	int i;
@@ -1051,9 +1051,9 @@ int a2dp_init(DBusConnection *conn, GKeyFile *config)
 		err = NULL;
 	} else {
 		if (strstr(str, "Sink"))
-			sink = FALSE;
+			source = FALSE;
 		if (strstr(str, "Source"))
-			src = FALSE;
+			sink = FALSE;
 		g_free(str);
 	}
 
@@ -1102,7 +1102,7 @@ proceed:
 
 	avdtp_init();
 
-	if (src) {
+	if (source) {
 		for (i = 0; i < sbc_srcs; i++)
 			a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE,
 					A2DP_CODEC_SBC);
