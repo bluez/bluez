@@ -279,4 +279,20 @@ void g_string_append_printf(GString *string, const gchar *format, ...);
 
 gchar *g_string_free(GString *string, gboolean free_segment);
 
+/* GModule */
+
+typedef struct _GModule GModule;
+
+typedef enum {
+	G_MODULE_BIND_LAZY	= 1 << 0,
+	G_MODULE_BIND_LOCAL	= 1 << 1,
+	G_MODULE_BIND_MASK	= 0x03
+} GModuleFlags;
+
+GModule *g_module_open(const gchar *file_name, GModuleFlags flags);
+gboolean g_module_symbol(GModule *module, const gchar *symbol_name,
+				gpointer *symbol);
+gboolean g_module_close(GModule *module);
+const gchar *g_module_error(void);
+
 #endif /* __GMAIN_H */
