@@ -224,7 +224,8 @@ Signals		void AdapterAdded(string path)
 
 		void DefaultAdapterChanged(string path)
 
-			Parameter is object path of the new default adapter.
+			Parameter is object path of the new default adapter,
+			or an empty string if there is no available adapters.
 
 		void ServiceAdded(string path)
 

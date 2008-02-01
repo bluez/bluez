@@ -532,12 +532,19 @@ int hcid_dbus_unregister_device(uint16_t id)
 
 	ret = unregister_adapter_path(path);
 
-	if (ret == 0 && get_default_adapter() == id) {
+	if (ret == 0 && (get_default_adapter() == id || get_default_adapter() < 0)) {
 		int new_default = hci_get_route(NULL);
 		set_default_adapter(new_default);
 		if (new_default >= 0) {
 			snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH,
 					new_default);
+			dbus_connection_emit_signal(connection, BASE_PATH,
+							MANAGER_INTERFACE,
+							"DefaultAdapterChanged",
+							DBUS_TYPE_STRING, &pptr,
+							DBUS_TYPE_INVALID);
+		} else {
+			*path = '\0';
 			dbus_connection_emit_signal(connection, BASE_PATH,
 							MANAGER_INTERFACE,
 							"DefaultAdapterChanged",
@@ -551,7 +558,7 @@ int hcid_dbus_unregister_device(uint16_t id)
 
 int hcid_dbus_start_device(uint16_t id)
 {
-	char path[MAX_PATH_LENGTH];
+	char path[MAX_PATH_LENGTH], *pptr;
 	struct hci_dev_info di;
 	struct adapter* adapter;
 	struct hci_conn_list_req *cl = NULL;
@@ -633,10 +640,17 @@ int hcid_dbus_start_device(uint16_t id)
 					DBUS_TYPE_STRING, &mode,
 					DBUS_TYPE_INVALID);
 
-failed:
-	if (ret == 0 && get_default_adapter() < 0)
+	if (get_default_adapter() < 0) {
 		set_default_adapter(id);
+		pptr = path;
+		dbus_connection_emit_signal(connection, BASE_PATH,
+					    MANAGER_INTERFACE,
+					    "DefaultAdapterChanged",
+					    DBUS_TYPE_STRING, &pptr,
+					    DBUS_TYPE_INVALID);
+	}
 
+failed:
 	if (dd >= 0)
 		hci_close_dev(dd);
 
