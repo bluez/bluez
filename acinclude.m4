@@ -382,9 +382,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AM_CONDITIONAL(EXPAT, false)
 	else
 		AC_SUBST([GLIB_CFLAGS], ['-I$(top_srcdir)/eglib'])
-		AC_SUBST([GLIB_LIBS], ['$(top_builddir)/eglib/libeglib.la'])
+		AC_SUBST([GLIB_LIBS], ['$(top_builddir)/eglib/libeglib.la -ldl'])
 		AC_SUBST([GMODULE_CFLAGS], [''])
-		AC_SUBST([GMODULE_LIBS], ['-ldl'])
+		AC_SUBST([GMODULE_LIBS], [''])
 		AM_CONDITIONAL(GLIB, false)
 		AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
 	fi
