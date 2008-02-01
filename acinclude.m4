@@ -101,7 +101,7 @@ AC_DEFUN([AC_PATH_GLIB], [
 
 AC_DEFUN([AC_PATH_GMODULE], [
 	PKG_CHECK_MODULES(GMODULE, gmodule-2.0, gmodule_found=yes, gmodule_found=no)
-	AC_CHECK_LIB(dl, dlopen)
+	AC_CHECK_LIB(dl, dlopen, dummy=yes, dummy=no)
 	AC_SUBST(GMODULE_CFLAGS)
 	AC_SUBST(GMODULE_LIBS)
 ])
