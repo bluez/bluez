@@ -74,12 +74,6 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 	AC_SUBST(BLUEZ_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_GLIB], [
-	PKG_CHECK_MODULES(GLIB, glib-2.0, glib_found=yes, glib_found=no)
-	AC_SUBST(GLIB_CFLAGS)
-	AC_SUBST(GLIB_LIBS)
-])
-
 AC_DEFUN([AC_PATH_DBUS], [
 	PKG_CHECK_MODULES(DBUS, dbus-1 > 0.35, dummy=yes, AC_MSG_ERROR(dbus > 0.35 is required))
 	m4_ifdef([PKG_CHECK_EXISTS], [
@@ -98,6 +92,20 @@ AC_DEFUN([AC_PATH_DBUS], [
 	AC_CHECK_LIB(dbus-1, dbus_watch_get_unix_fd, dummy=yes,
 		AC_DEFINE(NEED_DBUS_WATCH_GET_UNIX_FD, 1, [Define to 1 if you need the dbus_watch_get_unix_fd() function.]))
 ])
+
+AC_DEFUN([AC_PATH_GLIB], [
+	PKG_CHECK_MODULES(GLIB, glib-2.0, glib_found=yes, glib_found=no)
+	AC_SUBST(GLIB_CFLAGS)
+	AC_SUBST(GLIB_LIBS)
+])
+
+AC_DEFUN([AC_PATH_GMODULE], [
+	PKG_CHECK_MODULES(GMODULE, gmodule-2.0, gmodule_found=yes, gmodule_found=no)
+	AC_CHECK_LIB(dl, dlopen)
+	AC_SUBST(GMODULE_CFLAGS)
+	AC_SUBST(GMODULE_LIBS)
+])
+
 
 AC_DEFUN([AC_PATH_OPENOBEX], [
 	PKG_CHECK_MODULES(OPENOBEX, openobex > 1.1, openobex_found=yes, openobex_found=no)
@@ -376,6 +384,8 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	else
 		AC_SUBST([GLIB_CFLAGS], ['-I$(top_srcdir)/eglib'])
 		AC_SUBST([GLIB_LIBS], ['$(top_builddir)/eglib/libeglib.la'])
+		AC_SUBST([GMODULE_CFLAGS], [''])
+		AC_SUBST([GMODULE_LIBS], ['-ldl'])
 		AM_CONDITIONAL(GLIB, false)
 		AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
 	fi
