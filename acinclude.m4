@@ -106,7 +106,6 @@ AC_DEFUN([AC_PATH_GMODULE], [
 	AC_SUBST(GMODULE_LIBS)
 ])
 
-
 AC_DEFUN([AC_PATH_OPENOBEX], [
 	PKG_CHECK_MODULES(OPENOBEX, openobex > 1.1, openobex_found=yes, openobex_found=no)
 	AC_SUBST(OPENOBEX_CFLAGS)
