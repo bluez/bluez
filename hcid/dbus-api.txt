@@ -329,13 +329,15 @@ Methods		dict GetInfo()
 
 			Returns the properties of the local adapter.
 
+			Possible errors: org.bluez.Error.NotReady
+
 		string GetAddress()
 
 			Returns the device address for a given path.
 
 			Example: "00:11:22:33:44:55"
 
-			Possible errors: none
+			Possible errors: org.bluez.Error.NotReady
 
 		string GetVersion()
 

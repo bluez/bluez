@@ -283,13 +283,16 @@ static DBusHandlerResult adapter_get_info(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	const char *property = adapter->address;
+	const char *property;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	bdaddr_t ba;
 	char str[249];
 	uint8_t cls[3];
+
+	if (check_address(adapter->address) < 0)
+		return error_not_ready(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -302,6 +305,7 @@ static DBusHandlerResult adapter_get_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
+	property = adapter->address;
 	dbus_message_iter_append_dict_entry(&dict, "address",
 			DBUS_TYPE_STRING, &property);
 
@@ -367,6 +371,9 @@ static DBusHandlerResult adapter_get_address(DBusConnection *conn,
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg, NULL);
+
+	if (check_address(paddr) < 0)
+		return error_not_ready(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
