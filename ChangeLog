@@ -1,3 +1,14 @@
+ver 3.25:
+	Add limited support for Handsfree profile.
+	Add limited support for MPEG12/MP3 codec.
+	Add basic support for UNITINFO and SUBUNITINFO.
+	Add more SBC optimizations.
+	Fix external service (un)registration.
+	Allow GetInfo and GetAddress to fail.
+
+	Note:
+	This version needs at least bluez-libs-3.25
+
 ver 3.24:
 	Add TCP connection support for serial proxy.
 	Add fix for Logitech HID proxy switching.
