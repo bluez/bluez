@@ -2,7 +2,7 @@
  *
  *  Bluetooth low-complexity, subband codec (SBC) decoder
  *
- *  Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -171,7 +171,7 @@ free:
 static void usage(void)
 {
 	printf("SBC decoder utility ver %s\n", VERSION);
-	printf("Copyright (c) 2004-2007  Marcel Holtmann\n\n");
+	printf("Copyright (c) 2004-2008  Marcel Holtmann\n\n");
 
 	printf("Usage:\n"
 		"\tsbcdec [options] file(s)\n"

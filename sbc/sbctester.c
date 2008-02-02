@@ -2,8 +2,8 @@
  *
  *  Bluetooth low-complexity, subband codec (SBC) library
  *
- *  Copyright (C) 2007  Marcel Holtmann <marcel@holtmann.org>
- *  Copyright (C) 2007  Frederic Dalleau <fdalleau@free.fr>
+ *  Copyright (C) 2007-2008  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2007-2008  Frederic Dalleau <fdalleau@free.fr>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -247,8 +247,8 @@ static int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref,
 static void usage()
 {
 	printf("SBC conformance test ver %s\n", VERSION);
-	printf("Copyright (c) 2007 Marcel Holtmann\n");
-	printf("Copyright (c) 2007 Frederic Dalleau\n\n");
+	printf("Copyright (c) 2007-2008 Marcel Holtmann\n");
+	printf("Copyright (c) 2007-2008 Frederic Dalleau\n\n");
 
 	printf("Usage:\n"
 		"\tsbctester reference.wav checkfile.wav\n"

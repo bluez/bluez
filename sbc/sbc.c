@@ -2,7 +2,7 @@
  *
  *  Bluetooth low-complexity, subband codec (SBC) library
  *
- *  Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
  *  Copyright (C) 2004-2005  Henryk Ploetz <henryk@ploetzli.ch>
  *  Copyright (C) 2005-2008  Brad Midgley <bmidgley@xmission.com>
  *
@@ -42,7 +42,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
-
 
 #include "sbc_math.h"
 #include "sbc_tables.h"
