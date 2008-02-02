@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "logging.h"
 #include "sdp-xml.h"

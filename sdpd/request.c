@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include <limits.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>

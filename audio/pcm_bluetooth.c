@@ -33,6 +33,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 #include <signal.h>
+#include <limits.h>
 
 #include <netinet/in.h>
 

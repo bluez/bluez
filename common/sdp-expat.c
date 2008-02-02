@@ -26,6 +26,7 @@
 #endif
 
 #include <stdlib.h>
+#include <limits.h>
 
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
