@@ -30,9 +30,10 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <unistd.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <malloc.h>
 #include <syslog.h>
 #include <sys/un.h>
