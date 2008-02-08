@@ -338,8 +338,9 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	bridge = bridge_get_name(ns->id);
 	if (bridge) {
 		if (bridge_add_interface(ns->id, devname) < 0) {
-			error("Can't add %s to the bridge: %s(%d)",
-					devname, strerror(errno), errno);
+			error("Can't add %s to the bridge %s: %s(%d)",
+					devname, bridge, strerror(errno),
+					errno);
 			goto failed;
 		}
 
