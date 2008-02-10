@@ -1,4 +1,12 @@
 
+if TOOLS
+tools_programs = hcitool l2ping sdptool ciptool
+tools_manfiles = hcitool.1 l2ping.1 sdptool.1 ciptool.1
+else
+tools_programs =
+tools_manfiles =
+endif
+
 if BCCMD
 bccmd_programs = bccmd
 bccmd_manfiles = bccmd.8
@@ -41,7 +49,7 @@ endif
 
 sbin_PROGRAMS = hciattach hciconfig $(bccmd_programs) $(avctrl_programs) $(hid2hci_programs)
 
-bin_PROGRAMS = hcitool l2ping sdptool ciptool $(dfutool_programs) $(dfubabel_programs)
+bin_PROGRAMS = $(tools_programs) $(dfutool_programs) $(dfubabel_programs)
 
 noinst_PROGRAMS = hcisecfilter ppporc
 
@@ -51,6 +59,7 @@ hciattach_LDADD = @BLUEZ_LIBS@
 hciconfig_SOURCES = hciconfig.c csr.h csr.c
 hciconfig_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
+if TOOLS
 hcitool_SOURCES = hcitool.c
 hcitool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
@@ -59,6 +68,7 @@ l2ping_LDADD = @BLUEZ_LIBS@
 sdptool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 ciptool_LDADD = @BLUEZ_LIBS@
+endif
 
 ppporc_LDADD = @BLUEZ_LIBS@
 
@@ -94,7 +104,7 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @USB_CFLAGS@
 INCLUDES = -I$(top_srcdir)/common
 
 if MANPAGES
-man_MANS = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 \
+man_MANS = hciattach.8 hciconfig.8 $(tools_manfiles) \
 		$(bccmd_manfiles) $(avctrl_manfiles) $(hid2hci_manfiles) \
 		$(dfutool_manfiles) $(dfubabel_manfiles)
 endif
