@@ -184,16 +184,17 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	obex_enable=${openobex_found}
 	glib_enable=no
 	gstreamer_enable=${gstreamer_found}
-	audio_enable=no
-	input_enable=no
-	serial_enable=no
-	network_enable=no
+	audio_enable=yes
+	input_enable=yes
+	serial_enable=yes
+	network_enable=yes
 	sync_enable=no
 	echo_enable=no
 	hcid_enable=yes
-	sdpd_enable=yes
-	hidd_enable=yes
-	pand_enable=yes
+	sdpd_enable=no
+	hidd_enable=no
+	pand_enable=no
+	dund_enable=no
 	test_enable=no
 	cups_enable=no
 	manpages_enable=yes
@@ -226,6 +227,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		sdpd_enable=${enableval}
 		hidd_enable=${enableval}
 		pand_enable=${enableval}
+		dund_enable=${enableval}
 		test_enable=${enableval}
 		cups_enable=${enableval}
 		manpages_enable=${enableval}
@@ -309,6 +311,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(pand, AC_HELP_STRING([--enable-pand], [install PAN daemon]), [
 		pand_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(dund, AC_HELP_STRING([--enable-dund], [install DUN daemon]), [
+		dund_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
@@ -410,6 +416,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(SDPD, test "${sdpd_enable}" = "yes")
 	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")
 	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")
+	AM_CONDITIONAL(DUND, test "${dund_enable}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(MANPAGES, test "${manpages_enable}" = "yes")
