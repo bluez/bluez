@@ -1,3 +1,11 @@
+ver 3.26:
+	Fix compilation issues with UCHAR_MAX, USHRT_MAX and UINT_MAX.
+	Improve handling of different audio transports.
+	Enable services by default and keep old daemons disabled.
+
+	Note:
+	This version needs at least bluez-libs-3.26
+
 ver 3.25:
 	Add limited support for Handsfree profile.
 	Add limited support for MPEG12/MP3 codec.
