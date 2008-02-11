@@ -1,3 +1,6 @@
+ver 3.26:
+	Fix compilation problem with USHRT_MAX and UCHAR_MAX.
+
 ver 3.25:
 	Update copyright information.
 
