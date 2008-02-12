@@ -61,6 +61,8 @@
 
 #define FI_FLAG_CONNECTED	1
 
+struct device;
+
 struct fake_input {
 	int		flags;
 	GIOChannel	*io;
