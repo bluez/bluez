@@ -262,6 +262,7 @@ extern "C" {
 #define KEY_PROG4		203
 #define KEY_SUSPEND		205
 #define KEY_CLOSE		206
+#define KEY_PLAY		207
 
 #define KEY_UNKNOWN		220
 
@@ -405,6 +406,10 @@ extern "C" {
 #define KEY_DIGITS		0x19d
 #define KEY_TEEN		0x19e
 #define KEY_TWEN		0x19f
+
+#define KEY_FRAMEBACK		0x1b2
+#define KEY_FRAMEFORWARD	0x1b3
+#define KEY_CONTEXT_MENU	0x1fb
 
 #define KEY_MAX			0x1ff
 
