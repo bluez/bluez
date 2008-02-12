@@ -59,11 +59,16 @@
 
 #define UPDOWN_ENABLED		1
 
+#define FI_FLAG_CONNECTED	1
+
 struct fake_input {
+	int		flags;
 	GIOChannel	*io;
 	int		rfcomm; /* RFCOMM socket */
 	int		uinput;	/* uinput socket */
 	uint8_t		ch;	/* RFCOMM channel number */
+	gboolean	(*connect)(struct device *idev);
+	int		(*disconnect)(struct device *idev);
 };
 
 struct device {
@@ -759,6 +764,26 @@ failed:
 	return FALSE;
 }
 
+static int fake_disconnect(struct device *idev)
+{
+	struct fake_input *fake = idev->fake;
+
+	if (!fake->io)
+		return -ENOTCONN;
+
+	g_io_channel_close(fake->io);
+	g_io_channel_unref(fake->io);
+	fake->io = NULL;
+
+	if (fake->uinput >= 0) {
+		ioctl(fake->uinput, UI_DEV_DESTROY);
+		close(fake->uinput);
+		fake->uinput = -1;
+	}
+
+	return 0;
+}
+
 static int disconnect(struct device *idev, uint32_t flags)
 {
 	struct fake_input *fake = idev->fake;
@@ -768,20 +793,10 @@ static int disconnect(struct device *idev, uint32_t flags)
 
 	/* Fake input disconnect */
 	if (fake) {
-		if (!fake->io)
-			return -ENOTCONN;
-
-		g_io_channel_close(fake->io);
-		g_io_channel_unref(fake->io);
-		fake->io = NULL;
-
-		if (fake->uinput >= 0) {
-			ioctl(fake->uinput, UI_DEV_DESTROY);
-			close(fake->uinput);
-			fake->uinput = -1;
-		}
-
-		return 0;
+		err = fake->disconnect(idev);
+		if (err == 0)
+			fake->flags &= ~FI_FLAG_CONNECTED;
+		return err;
 	}
 
 	/* Standard HID disconnect */
@@ -835,12 +850,8 @@ static int is_connected(struct device *idev)
 	int ctl;
 
 	/* Fake input */
-	if (fake) {
-		if (fake->io)
-			return 1;
-		else
-			return 0;
-	}
+	if (fake)
+		return fake->flags & FI_FLAG_CONNECTED;
 
 	/* Standard HID */
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
@@ -869,6 +880,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
+	struct fake_input *fake = idev->fake;
 
 	if (idev->pending_connect)
 		return error_in_progress(conn, msg,
@@ -880,16 +892,17 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	idev->pending_connect = dbus_message_ref(msg);
 
 	/* Fake input device */
-	if (idev->fake) {
-		if (rfcomm_connect(idev) < 0) {
+	if (fake) {
+		if (fake->connect(idev) < 0) {
 			int err = errno;
 			const char *str = strerror(err);
-			error("RFCOMM connect failed: %s(%d)", str, err);
+			error("Connect failed: %s(%d)", str, err);
 			dbus_message_unref(idev->pending_connect);
 			idev->pending_connect = NULL;
 			return error_connection_attempt_failed(conn,
 					msg, err);
 		}
+		fake->flags |= FI_FLAG_CONNECTED;
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -1142,6 +1155,8 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 
 	idev->fake = g_new0(struct fake_input, 1);
 	idev->fake->ch = ch;
+	idev->fake->connect = rfcomm_connect;
+	idev->fake->disconnect = fake_disconnect;
 
 	err = register_path(conn, path, idev);
 
