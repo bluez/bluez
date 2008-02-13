@@ -122,14 +122,22 @@ static int uart_speed(int s)
 		return B1500000;
 	case 2000000:
 		return B2000000;
+#ifdef B2500000
 	case 2500000:
 		return B2500000;
+#endif
+#ifdef B3000000
 	case 3000000:
 		return B3000000;
+#endif
+#ifdef B3500000
 	case 3500000:
 		return B3500000;
+#endif
+#ifdef B4000000
 	case 4000000:
 		return B4000000;
+#endif
 	default:
 		return B57600;
 	}
