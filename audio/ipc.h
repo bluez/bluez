@@ -141,7 +141,6 @@ struct bt_getcapabilities_req {
 #define BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL	(1 << 2)
 #define BT_A2DP_CHANNEL_MODE_STEREO		(1 << 1)
 #define BT_A2DP_CHANNEL_MODE_JOINT_STEREO	1
-#define BT_A2DP_CHANNEL_MODE_AUTO		0
 
 #define BT_A2DP_BLOCK_LENGTH_4			(1 << 3)
 #define BT_A2DP_BLOCK_LENGTH_8			(1 << 2)
@@ -153,7 +152,6 @@ struct bt_getcapabilities_req {
 
 #define BT_A2DP_ALLOCATION_SNR			(1 << 1)
 #define BT_A2DP_ALLOCATION_LOUDNESS		1
-#define BT_A2DP_ALLOCATION_AUTO			0
 
 #define BT_MPEG_SAMPLING_FREQ_16000		(1 << 5)
 #define BT_MPEG_SAMPLING_FREQ_22050		(1 << 4)

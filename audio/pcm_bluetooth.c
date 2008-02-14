@@ -503,10 +503,16 @@ static uint8_t default_bitpool(uint8_t freq, uint8_t mode)
 	}
 }
 
-static int select_sbc_params(sbc_capabilities_t *cap, unsigned int rate,
-				unsigned int channels)
+static int bluetooth_a2dp_init(struct bluetooth_data *data,
+				snd_pcm_hw_params_t *params)
 {
-	unsigned int max_bitpool, min_bitpool;
+	struct bluetooth_alsa_config *cfg = &data->alsa_config;
+	sbc_capabilities_t *cap = &data->a2dp.sbc_capabilities;
+	unsigned int max_bitpool, min_bitpool, rate, channels;
+	int dir;
+
+	snd_pcm_hw_params_get_rate(params, &rate, &dir);
+	snd_pcm_hw_params_get_channels(params, &channels);
 
 	switch (rate) {
 	case 48000:
@@ -526,7 +532,9 @@ static int select_sbc_params(sbc_capabilities_t *cap, unsigned int rate,
 		return -1;
 	}
 
-	if (channels == 2) {
+	if (cfg->has_channel_mode)
+		cap->channel_mode = cfg->channel_mode;
+	else if (channels == 2) {
 		if (cap->channel_mode & BT_A2DP_CHANNEL_MODE_JOINT_STEREO)
 			cap->channel_mode = BT_A2DP_CHANNEL_MODE_JOINT_STEREO;
 		else if (cap->channel_mode & BT_A2DP_CHANNEL_MODE_STEREO)
@@ -543,7 +551,9 @@ static int select_sbc_params(sbc_capabilities_t *cap, unsigned int rate,
 		return -1;
 	}
 
-	if (cap->block_length & BT_A2DP_BLOCK_LENGTH_16)
+	if (cfg->has_block_length)
+		cap->block_length = cfg->block_length;
+	else if (cap->block_length & BT_A2DP_BLOCK_LENGTH_16)
 		cap->block_length = BT_A2DP_BLOCK_LENGTH_16;
 	else if (cap->block_length & BT_A2DP_BLOCK_LENGTH_12)
 		cap->block_length = BT_A2DP_BLOCK_LENGTH_12;
@@ -556,6 +566,8 @@ static int select_sbc_params(sbc_capabilities_t *cap, unsigned int rate,
 		return -1;
 	}
 
+	if (cfg->has_subbands)
+		cap->subbands = cfg->subbands;
 	if (cap->subbands & BT_A2DP_SUBBANDS_8)
 		cap->subbands = BT_A2DP_SUBBANDS_8;
 	else if (cap->subbands & BT_A2DP_SUBBANDS_4)
@@ -565,14 +577,21 @@ static int select_sbc_params(sbc_capabilities_t *cap, unsigned int rate,
 		return -1;
 	}
 
+	if (cfg->has_allocation_method)
+		cap->allocation_method = cfg->allocation_method;
 	if (cap->allocation_method & BT_A2DP_ALLOCATION_LOUDNESS)
 		cap->allocation_method = BT_A2DP_ALLOCATION_LOUDNESS;
 	else if (cap->allocation_method & BT_A2DP_ALLOCATION_SNR)
 		cap->allocation_method = BT_A2DP_ALLOCATION_SNR;
 
-	min_bitpool = MAX(MIN_BITPOOL, cap->min_bitpool);
-	max_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),
-							cap->max_bitpool);
+	if (cfg->has_bitpool)
+		min_bitpool = max_bitpool = cfg->bitpool;
+	else {
+		min_bitpool = MAX(MIN_BITPOOL, cap->min_bitpool);
+		max_bitpool = MIN(default_bitpool(cap->frequency,
+					cap->channel_mode),
+					cap->max_bitpool);
+	}
 
 	cap->min_bitpool = min_bitpool;
 	cap->max_bitpool = max_bitpool;
@@ -580,63 +599,10 @@ static int select_sbc_params(sbc_capabilities_t *cap, unsigned int rate,
 	return 0;
 }
 
-
-static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
-					snd_pcm_hw_params_t *params)
+static void bluetooth_a2dp_setup(struct bluetooth_a2dp *a2dp)
 {
-	struct bluetooth_data *data = io->private_data;
-	struct bluetooth_a2dp *a2dp = &data->a2dp;
-	char buf[BT_AUDIO_IPC_PACKET_SIZE];
-	bt_audio_rsp_msg_header_t *rsp_hdr = (void*) buf;
-	struct bt_setconfiguration_req *setconf_req = (void*) buf;
-	struct bt_setconfiguration_rsp *setconf_rsp = (void*) buf;
-	unsigned int rate, channels;
-	int err, dir;
-	sbc_capabilities_t active_capabilities;
+	sbc_capabilities_t active_capabilities = a2dp->sbc_capabilities;
 
-	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
-					io->period_size, io->buffer_size);
-
-	/* FIXME: this needs to be really implemented (take into account
-	real asoundrc settings + ALSA hw settings ) once server side sends us
-	more than one possible configuration */
-	snd_pcm_hw_params_get_rate(params, &rate, &dir);
-	snd_pcm_hw_params_get_channels(params, &channels);
-	err = select_sbc_params(&a2dp->sbc_capabilities, rate, channels);
-	if (err < 0)
-		return err;
-
-	active_capabilities = a2dp->sbc_capabilities;
-
-	memset(setconf_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
-	setconf_req->h.msg_type = BT_SETCONFIGURATION_REQ;
-	strncpy(setconf_req->device, data->alsa_config.device, 18);
-	setconf_req->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
-	setconf_req->sbc_capabilities = active_capabilities;
-	setconf_req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
-			BT_CAPABILITIES_ACCESS_MODE_WRITE :
-			BT_CAPABILITIES_ACCESS_MODE_READ);
-
-	err = audioservice_send(data->server.fd, &setconf_req->h);
-	if (err < 0)
-		return err;
-
-	err = audioservice_expect(data->server.fd, &rsp_hdr->msg_h,
-					BT_SETCONFIGURATION_RSP);
-	if (err < 0)
-		return err;
-
-	if (rsp_hdr->posix_errno != 0) {
-		SNDERR("BT_SETCONFIGURATION failed : %s(%d)",
-					strerror(rsp_hdr->posix_errno),
-					rsp_hdr->posix_errno);
-		return -rsp_hdr->posix_errno;
-	}
-
-	data->transport = setconf_rsp->transport;
-	data->link_mtu = setconf_rsp->link_mtu;
-
-	/* Setup SBC encoder now we agree on parameters */
 	if (a2dp->sbc_initialized)
 		sbc_reinit(&a2dp->sbc, 0);
 	else
@@ -695,9 +661,58 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	}
 
 	a2dp->sbc.bitpool = active_capabilities.max_bitpool;
-	a2dp->codesize = a2dp->sbc.subbands * a2dp->sbc.blocks *
-						a2dp->sbc.channels * 2;
+	a2dp->codesize = sbc_get_codesize(&a2dp->sbc);
 	a2dp->count = sizeof(struct rtp_header) + sizeof(struct rtp_payload);
+}
+
+static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
+					snd_pcm_hw_params_t *params)
+{
+	struct bluetooth_data *data = io->private_data;
+	struct bluetooth_a2dp *a2dp = &data->a2dp;
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	bt_audio_rsp_msg_header_t *rsp_hdr = (void*) buf;
+	struct bt_setconfiguration_req *setconf_req = (void*) buf;
+	struct bt_setconfiguration_rsp *setconf_rsp = (void*) buf;
+	int err;
+
+	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
+					io->period_size, io->buffer_size);
+
+	err = bluetooth_a2dp_init(data, params);
+	if (err < 0)
+		return err;
+
+	memset(setconf_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
+	setconf_req->h.msg_type = BT_SETCONFIGURATION_REQ;
+	strncpy(setconf_req->device, data->alsa_config.device, 18);
+	setconf_req->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
+	setconf_req->sbc_capabilities = a2dp->sbc_capabilities;
+	setconf_req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
+			BT_CAPABILITIES_ACCESS_MODE_WRITE :
+			BT_CAPABILITIES_ACCESS_MODE_READ);
+
+	err = audioservice_send(data->server.fd, &setconf_req->h);
+	if (err < 0)
+		return err;
+
+	err = audioservice_expect(data->server.fd, &rsp_hdr->msg_h,
+					BT_SETCONFIGURATION_RSP);
+	if (err < 0)
+		return err;
+
+	if (rsp_hdr->posix_errno != 0) {
+		SNDERR("BT_SETCONFIGURATION failed : %s(%d)",
+					strerror(rsp_hdr->posix_errno),
+					rsp_hdr->posix_errno);
+		return -rsp_hdr->posix_errno;
+	}
+
+	data->transport = setconf_rsp->transport;
+	data->link_mtu = setconf_rsp->link_mtu;
+
+	/* Setup SBC encoder now we agree on parameters */
+	bluetooth_a2dp_setup(a2dp);
 
 	DBG("\tallocation=%u\n\tsubbands=%u\n\tblocks=%u\n\tbitpool=%u\n",
 		a2dp->sbc.allocation, a2dp->sbc.subbands, a2dp->sbc.blocks,
@@ -1172,6 +1187,7 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
+	struct bluetooth_alsa_config *cfg = &data->alsa_config;
 	snd_pcm_access_t access_list[] = {
 		SND_PCM_ACCESS_RW_INTERLEAVED,
 		/* Mmap access is really useless fo this driver, but we
@@ -1204,12 +1220,17 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 		return err;
 
 	/* supported channels */
-	if (a2dp->sbc_capabilities.channel_mode & BT_A2DP_CHANNEL_MODE_MONO)
+	if (cfg->has_channel_mode)
+		a2dp->sbc_capabilities.channel_mode = cfg->channel_mode;
+
+	if (a2dp->sbc_capabilities.channel_mode &
+			BT_A2DP_CHANNEL_MODE_MONO)
 		min_channels = 1;
 	else
 		min_channels = 2;
 
-	if (a2dp->sbc_capabilities.channel_mode & (~BT_A2DP_CHANNEL_MODE_MONO))
+	if (a2dp->sbc_capabilities.channel_mode &
+			(~BT_A2DP_CHANNEL_MODE_MONO))
 		max_channels = 2;
 	else
 		max_channels = 1;
@@ -1234,28 +1255,33 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 
 	/* supported rates */
 	rate_count = 0;
-	if (a2dp->sbc_capabilities.frequency &
-			BT_SBC_SAMPLING_FREQ_16000) {
-		rate_list[rate_count] = 16000;
+	if (cfg->has_rate) {
+		rate_list[rate_count] = cfg->rate;
 		rate_count++;
-	}
+	} else {
+		if (a2dp->sbc_capabilities.frequency &
+				BT_SBC_SAMPLING_FREQ_16000) {
+			rate_list[rate_count] = 16000;
+			rate_count++;
+		}
 
-	if (a2dp->sbc_capabilities.frequency &
-			BT_SBC_SAMPLING_FREQ_32000) {
-		rate_list[rate_count] = 32000;
-		rate_count++;
-	}
+		if (a2dp->sbc_capabilities.frequency &
+				BT_SBC_SAMPLING_FREQ_32000) {
+			rate_list[rate_count] = 32000;
+			rate_count++;
+		}
 
-	if (a2dp->sbc_capabilities.frequency &
-			BT_SBC_SAMPLING_FREQ_44100) {
-		rate_list[rate_count] = 44100;
-		rate_count++;
-	}
+		if (a2dp->sbc_capabilities.frequency &
+				BT_SBC_SAMPLING_FREQ_44100) {
+			rate_list[rate_count] = 44100;
+			rate_count++;
+		}
 
-	if (a2dp->sbc_capabilities.frequency &
-			BT_SBC_SAMPLING_FREQ_48000) {
-		rate_list[rate_count] = 48000;
-		rate_count++;
+		if (a2dp->sbc_capabilities.frequency &
+				BT_SBC_SAMPLING_FREQ_48000) {
+			rate_list[rate_count] = 48000;
+			rate_count++;
+		}
 	}
 
 	err = snd_pcm_ioplug_set_param_list(io, SND_PCM_IOPLUG_HW_RATE,
@@ -1348,10 +1374,7 @@ static int bluetooth_parse_config(snd_config_t *conf,
 				return -EINVAL;
 			}
 
-			if (strcmp(value, "auto") == 0) {
-				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_AUTO;
-				bt_config->has_channel_mode = 1;
-			} else if (strcmp(value, "mono") == 0) {
+			if (strcmp(value, "mono") == 0) {
 				bt_config->channel_mode = BT_A2DP_CHANNEL_MODE_MONO;
 				bt_config->has_channel_mode = 1;
 			} else if (strcmp(value, "dual") == 0) {
@@ -1373,10 +1396,7 @@ static int bluetooth_parse_config(snd_config_t *conf,
 				return -EINVAL;
 			}
 
-			if (strcmp(value, "auto") == 0) {
-				bt_config->allocation_method = BT_A2DP_ALLOCATION_AUTO;
-				bt_config->has_allocation_method = 1;
-			} else if (strcmp(value, "loudness") == 0) {
+			if (strcmp(value, "loudness") == 0) {
 				bt_config->allocation_method = BT_A2DP_ALLOCATION_LOUDNESS;
 				bt_config->has_allocation_method = 1;
 			} else if (strcmp(value, "snr") == 0) {

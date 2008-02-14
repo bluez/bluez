@@ -131,8 +131,6 @@ gint gst_sbc_get_allocation_mode_int(const gchar *allocation)
 		return BT_A2DP_ALLOCATION_LOUDNESS;
 	else if (g_ascii_strcasecmp(allocation, "snr") == 0)
 		return BT_A2DP_ALLOCATION_SNR;
-	else if (g_ascii_strcasecmp(allocation, "auto") == 0)
-		return BT_A2DP_ALLOCATION_AUTO;
 	else
 		return -1;
 }
@@ -147,8 +145,6 @@ gint gst_sbc_get_mode_int(const gchar *mode)
 		return BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL;
 	else if (g_ascii_strcasecmp(mode, "mono") == 0)
 		return BT_A2DP_CHANNEL_MODE_MONO;
-	else if (g_ascii_strcasecmp(mode, "auto") == 0)
-		return BT_A2DP_CHANNEL_MODE_AUTO;
 	else
 		return -1;
 }
@@ -190,8 +186,6 @@ const gchar *gst_sbc_get_mode_string(gint joint)
 		return "stereo";
 	case BT_A2DP_CHANNEL_MODE_JOINT_STEREO:
 		return "joint";
-	case BT_A2DP_CHANNEL_MODE_AUTO:
-		return NULL; /* TODO what should be selected here? */
 	default:
 		return NULL;
 	}
@@ -204,8 +198,6 @@ const gchar *gst_sbc_get_allocation_string(gint alloc)
 		return "loudness";
 	case BT_A2DP_ALLOCATION_SNR:
 		return "snr";
-	case BT_A2DP_ALLOCATION_AUTO:
-		return "loudness"; /* TODO what should be selected here? */
 	default:
 		return NULL;
 	}
