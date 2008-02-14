@@ -196,7 +196,7 @@ static int report_indicators(struct device *device, const char *buf)
 		err = headset_send(hs, "\r\n+CIND:(\"service\",(0,1)),"
 				"(\"call\",(0,1)),(\"callsetup\",(0-3))\r\n");
 	else
-		err = headset_send(hs, "\r\n+CIND:1, 0, 0\r\n");
+		err = headset_send(hs, "\r\n+CIND:1,0,0\r\n");
 
 	if (err < 0)
 		return err;
@@ -249,12 +249,12 @@ static int answer_call(struct device *device, const char *buf)
 		return err;
 
 	/*+CIEV: (call = 1)*/
-	err = headset_send(hs, "\r\n+CIEV:2, 1\r\n");
+	err = headset_send(hs, "\r\n+CIEV:2,1\r\n");
 	if (err < 0)
 		return err;
 
 	/*+CIEV: (callsetup = 0)*/
-	return headset_send(hs, "\r\n+CIEV:3, 0\r\n");
+	return headset_send(hs, "\r\n+CIEV:3,0\r\n");
 }
 
 static int terminate_call(struct device *device, const char *buf)
@@ -279,11 +279,11 @@ static int terminate_call(struct device *device, const char *buf)
 		g_source_remove(hs->ring_timer);
 		hs->ring_timer = 0;
 		/*+CIEV: (callsetup = 0)*/
-		return headset_send(hs, "\r\n+CIEV:3, 0\r\n");
+		return headset_send(hs, "\r\n+CIEV:3,0\r\n");
 	}
 
 	/*+CIEV: (call = 0)*/
-	return headset_send(hs, "\r\n+CIEV:2, 0\r\n");
+	return headset_send(hs, "\r\n+CIEV:2,0\r\n");
 }
 
 static int cli_notification(struct device *device, const char *buf)
@@ -1220,7 +1220,7 @@ static gboolean ring_timer_cb(gpointer data)
 				strerror(-err), -err);
 
 	if (hs->cli_active && hs->ph_number) {
-		err = headset_send(hs, "\r\n+CLIP:\"%s\", %d\r\n",
+		err = headset_send(hs, "\r\n+CLIP:\"%s\",%d\r\n",
 					hs->ph_number, hs->type);
 
 		if (err < 0)
@@ -1258,7 +1258,7 @@ static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	if (hs->cli_active && hs->ph_number) {
-		err = headset_send(hs, "\r\n+CLIP:\"%s\", %d\r\n",
+		err = headset_send(hs, "\r\n+CLIP:\"%s\",%d\r\n",
 					hs->ph_number, hs->type);
 		if (err < 0) {
 			dbus_message_unref(reply);
@@ -1301,7 +1301,7 @@ done:
 	if (hs->hfp_active) {
 		int err;
 		/*+CIEV: (callsetup = 0)*/
-		err = headset_send(hs, "\r\n+CIEV:3, 0\r\n");
+		err = headset_send(hs, "\r\n+CIEV:3,0\r\n");
 		if (err < 0) {
 			dbus_message_unref(reply);
 			return error_failed_errno(conn, msg, -err);
@@ -1503,11 +1503,11 @@ static DBusHandlerResult hf_setup_call(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	if (!strncmp(value, "incoming", 8))
-		err = headset_send(hs, "\r\n+CIEV:3, 1\r\n");
+		err = headset_send(hs, "\r\n+CIEV:3,1\r\n");
 	else if (!strncmp(value, "outgoing", 8))
-		err = headset_send(hs, "\r\n+CIEV:3, 2\r\n");
+		err = headset_send(hs, "\r\n+CIEV:3,2\r\n");
 	else if (!strncmp(value, "remote", 6))
-		err = headset_send(hs, "\r\n+CIEV:3, 3\r\n");
+		err = headset_send(hs, "\r\n+CIEV:3,3\r\n");
 	else
 		err = -EINVAL;
 
