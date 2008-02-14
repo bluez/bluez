@@ -574,7 +574,10 @@ failed:
 	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
 	g_slist_free(hs->pending);
 	hs->pending = NULL;
-	headset_set_state(device, HEADSET_STATE_CONNECTED);
+	if (hs->rfcomm)
+		headset_set_state(device, HEADSET_STATE_CONNECTED);
+	else
+		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 
 	return FALSE;
 }
