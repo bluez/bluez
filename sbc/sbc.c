@@ -543,16 +543,8 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 			for (sb = 0; sb < frame->subbands; sb++) {
 				if (levels[ch][sb] > 0) {
 					frame->sb_sample[blk][ch][sb] =
-						(((frame->audio_sample[blk][ch][sb] << 16) | 0x8000) /
-							levels[ch][sb]) - 0x8000;
-
-					frame->sb_sample[blk][ch][sb] >>= 3;
-
-					/* Q13 */
-					frame->sb_sample[blk][ch][sb] =
-						(frame->sb_sample[blk][ch][sb] <<
-							(frame->scale_factor[ch][sb] + 1));
-
+						(((frame->audio_sample[blk][ch][sb] << 1) | 1) << frame->scale_factor[ch][sb])/
+						levels[ch][sb] - (1 << frame->scale_factor[ch][sb]);
 				} else
 					frame->sb_sample[blk][ch][sb] = 0;
 			}
