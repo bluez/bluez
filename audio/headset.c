@@ -87,15 +87,19 @@ static char *str_state[] = {
 	"HEADSET_STATE_PLAYING",
 };
 
+struct connect_cb {
+	int id;
+	headset_stream_cb_t cb;
+	void *cb_data;
+};
+
 struct pending_connect {
 	DBusMessage *msg;
 	DBusPendingCall *call;
 	GIOChannel *io;
-	int sock;
 	int err;
-	unsigned int id;
-	headset_stream_cb_t cb;
-	void *cb_data;
+	headset_state_t target_state;
+	GSList *callbacks;
 };
 
 struct headset {
@@ -121,7 +125,7 @@ struct headset {
 	int type;
 
 	headset_state_t state;
-	GSList *pending;
+	struct pending_connect *pending;
 
 	int sp_gain;
 	int mic_gain;
@@ -135,8 +139,10 @@ struct event {
 	int (*callback) (struct device *device, const char *buf);
 };
 
-static int rfcomm_connect(struct device *device, struct pending_connect *c);
-static int get_handles(struct device *device, struct pending_connect *c);
+static int rfcomm_connect(struct device *device, headset_stream_cb_t cb,
+				void *user_data, unsigned int *cb_id);
+static int get_handles(struct device *device, headset_stream_cb_t cb,
+			void *user_data, unsigned int *cb_id);
 
 static int headset_send(struct headset *hs, char *format, ...)
 {
@@ -152,7 +158,7 @@ static int headset_send(struct headset *hs, char *format, ...)
 	if (count < 0)
 		return -EINVAL;
 
-	if (hs->state < HEADSET_STATE_CONNECTED || !hs->rfcomm) {
+	if (!hs->rfcomm) {
 		error("headset_send: the headset is not connected");
 		return -EIO;
 	}
@@ -370,22 +376,6 @@ static int handle_event(struct device *device, const char *buf)
 	return -EINVAL;
 }
 
-static void pending_connect_free(struct pending_connect *c)
-{
-	if (c->io) {
-		g_io_channel_close(c->io);
-		g_io_channel_unref(c->io);
-	}
-	if (c->msg)
-		dbus_message_unref(c->msg);
-	if (c->call) {
-		dbus_pending_call_cancel(c->call);
-		dbus_pending_call_unref(c->call);
-	}
-
-	g_free(c);
-}
-
 static void close_sco(struct device *device)
 {
 	struct headset *hs = device->headset;
@@ -485,72 +475,104 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
-static void pending_connect_ok(struct pending_connect *c, struct device *dev)
+static void pending_connect_complete(struct connect_cb *cb, struct device *dev)
 {
 	struct headset *hs = dev->headset;
 
-	if (c->msg) {
-		DBusMessage *reply = dbus_message_new_method_return(c->msg);
-		if (reply)
-			send_message_and_unref(dev->conn, reply);
-	}
-
-	if (c->cb) {
-		if (hs->rfcomm && hs->sco)
-			c->cb(dev, c->cb_data);
-		else
-			c->cb(NULL, c->cb_data);
-	}
-
-	pending_connect_free(c);
+	if (hs->pending->err)
+		cb->cb(NULL, cb->cb_data);
+	else
+		cb->cb(dev, cb->cb_data);
 }
 
-static gboolean finalize_stream_setup(struct device *dev)
+static void pending_connect_finalize(struct device *dev)
 {
 	struct headset *hs = dev->headset;
+	struct pending_connect *p = hs->pending;
 
-	g_slist_foreach(hs->pending, (GFunc) pending_connect_ok, dev);
-	g_slist_free(hs->pending);
+	g_slist_foreach(p->callbacks, (GFunc) pending_connect_complete, dev);
+
+	g_slist_foreach(p->callbacks, (GFunc) g_free, NULL);
+	g_slist_free(p->callbacks);
+
+	if (p->io) {
+		g_io_channel_close(p->io);
+		g_io_channel_unref(p->io);
+	}
+
+	if (p->msg)
+		dbus_message_unref(p->msg);
+
+	if (p->call) {
+		dbus_pending_call_cancel(p->call);
+		dbus_pending_call_unref(p->call);
+	}
+
+	g_free(p);
+
 	hs->pending = NULL;
-
-	return FALSE;
 }
 
-static void pending_connect_failed(struct pending_connect *c, struct device *dev)
+static void pending_connect_init(struct headset *hs, headset_state_t target_state)
 {
-	if (c->msg)
-		error_connection_attempt_failed(dev->conn, c->msg, c->err);
-	if (c->cb)
-		c->cb(NULL, c->cb_data);
-	pending_connect_free(c);
+	if (hs->pending) {
+		if (hs->pending->target_state < target_state)
+			hs->pending->target_state = target_state;
+		return;
+	}
+
+	hs->pending = g_new0(struct pending_connect, 1);
+	hs->pending->target_state = target_state;
+}
+
+static unsigned int connect_cb_new(struct headset *hs,
+					headset_state_t target_state,
+					headset_stream_cb_t func,
+					void *user_data)
+{
+	struct connect_cb *cb;
+	unsigned int free_cb_id = 1;
+
+	pending_connect_init(hs, target_state);
+
+	cb = g_new(struct connect_cb, 1);
+
+	cb->cb = func;
+	cb->cb_data = user_data;
+	cb->id = free_cb_id++;
+
+	hs->pending->callbacks = g_slist_append(hs->pending->callbacks,
+						cb);
+
+	return cb->id;
 }
 
 static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 				struct device *device)
 {
 	struct headset *hs;
-	struct pending_connect *c;
 	int ret, sk;
 	socklen_t len;
+	struct pending_connect *p;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
 	hs = device->headset;
-	c = hs->pending->data;
+	p = hs->pending;
 
 	sk = g_io_channel_unix_get_fd(chan);
 
 	len = sizeof(ret);
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		c->err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(c->err),
-				c->err);
+		p->err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(p->err),
+				p->err);
 		goto failed;
 	}
 
 	if (ret != 0) {
-		c->err = ret;
+		p->err = ret;
 		error("connect(): %s (%d)", strerror(ret), ret);
 		goto failed;
 	}
@@ -559,11 +581,10 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	info("SCO fd=%d", sk);
 	hs->sco = chan;
-	c->io = NULL;
+	p->io = NULL;
 
-	g_slist_foreach(hs->pending, (GFunc) pending_connect_ok, device);
-	g_slist_free(hs->pending);
-	hs->pending = NULL;
+	pending_connect_finalize(device);
+
 	fcntl(sk, F_SETFL, 0);
 
 	headset_set_state(device, HEADSET_STATE_PLAYING);
@@ -571,9 +592,7 @@ static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 
 failed:
-	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
-	g_slist_free(hs->pending);
-	hs->pending = NULL;
+	pending_connect_finalize(device);
 	if (hs->rfcomm)
 		headset_set_state(device, HEADSET_STATE_CONNECTED);
 	else
@@ -582,18 +601,16 @@ failed:
 	return FALSE;
 }
 
-static int sco_connect(struct device *device, struct pending_connect *c)
+static int sco_connect(struct device *dev, headset_stream_cb_t cb,
+			void *user_data, unsigned int *cb_id)
 {
-	struct headset *hs = device->headset;
+	struct headset *hs = dev->headset;
 	struct sockaddr_sco addr;
-	gboolean do_callback = FALSE;
+	GIOChannel *io;
 	int sk, err;
 
-	if (!g_slist_find(hs->pending, c))
-		hs->pending = g_slist_append(hs->pending, c);
-
 	if (hs->state != HEADSET_STATE_CONNECTED)
-		return 0;
+		return -EINVAL;
 
 	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
 	if (sk < 0) {
@@ -602,10 +619,10 @@ static int sco_connect(struct device *device, struct pending_connect *c)
 		return -err;
 	}
 
-	c->io = g_io_channel_unix_new(sk);
-	if (!c->io) {
+	io = g_io_channel_unix_new(sk);
+	if (!io) {
 		close(sk);
-		return -EINVAL;
+		return -ENOMEM;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -615,46 +632,55 @@ static int sco_connect(struct device *device, struct pending_connect *c)
 	if (bind(sk, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		err = errno;
 		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
-		return -err;
+		goto failed;
 	}
 
 	if (set_nonblocking(sk) < 0) {
 		err = errno;
-		return -err;
+		goto failed;
 	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
-	bacpy(&addr.sco_bdaddr, &device->dst);
+	bacpy(&addr.sco_bdaddr, &dev->dst);
 
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			err = errno;
-			error("connect: %s (%d)", strerror(errno), errno);
-			return -err;
-		}
+	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
 
-		g_io_add_watch(c->io,
-				G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
-				(GIOFunc) sco_connect_cb, device);
-	} else
-		do_callback = TRUE;
+	if (err < 0 && !(errno == EAGAIN || errno == EINPROGRESS)) {
+		err = errno;
+		error("connect: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
 
-	headset_set_state(device, HEADSET_STATE_PLAY_IN_PROGRESS);
-	if (!g_slist_find(hs->pending, c))
-		hs->pending = g_slist_append(hs->pending, c);
+	headset_set_state(dev, HEADSET_STATE_PLAY_IN_PROGRESS);
 
-	if (do_callback)
-		sco_connect_cb(c->io, G_IO_OUT, device);
+	pending_connect_init(hs, HEADSET_STATE_PLAYING);
+
+	if (cb) {
+		unsigned int id = connect_cb_new(hs, HEADSET_STATE_PLAYING,
+							cb, user_data);
+		if (cb_id)
+			*cb_id = id;
+	}
+
+	g_io_add_watch(io, G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
+			(GIOFunc) sco_connect_cb, dev);
+
+	hs->pending->io = io;
 
 	return 0;
+
+failed:
+	g_io_channel_close(io);
+	g_io_channel_unref(io);
+	return -err;
 }
 
 static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
-					struct device *device)
+					struct device *dev)
 {
 	struct headset *hs;
-	struct pending_connect *c;
+	struct pending_connect *p;
 	char hs_address[18];
 	int sk, ret;
 	socklen_t len;
@@ -662,62 +688,59 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	hs = device->headset;
-	c = hs->pending->data;
+	hs = dev->headset;
+	p = hs->pending;
 
 	sk = g_io_channel_unix_get_fd(chan);
 
 	len = sizeof(ret);
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		c->err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(c->err), c->err);
+		p->err = errno;
+		error("getsockopt(SO_ERROR): %s (%d)", strerror(p->err), p->err);
 		goto failed;
 	}
 
 	if (ret != 0) {
-		c->err = ret;
+		p->err = ret;
 		error("connect(): %s (%d)", strerror(ret), ret);
 		goto failed;
 	}
 
-	ba2str(&device->dst, hs_address);
+	ba2str(&dev->dst, hs_address);
 	hs->rfcomm = chan;
-	c->io = NULL;
+	p->io = NULL;
 
 	if (server_is_enabled(HANDSFREE_SVCLASS_ID) && hs->hfp_handle != 0)
 		hs->hfp_active = TRUE;
 	else
 		hs->hfp_active = FALSE;
 
-	headset_set_state(device, HEADSET_STATE_CONNECTED);
+	headset_set_state(dev, HEADSET_STATE_CONNECTED);
 
-	debug("%s: Connected to %s", device->path, hs_address);
+	debug("%s: Connected to %s", dev->path, hs_address);
 
 	g_io_add_watch(chan, G_IO_IN | G_IO_ERR | G_IO_HUP| G_IO_NVAL,
-			(GIOFunc) rfcomm_io_cb, device);
+			(GIOFunc) rfcomm_io_cb, dev);
 
-	if (c->cb) {
-		if (sco_connect(device, c) < 0) {
-			c->err = EIO;
+	if (p->target_state == HEADSET_STATE_PLAYING) {
+		p->err = sco_connect(dev, NULL, NULL, NULL);
+		if (p->err < 0)
 			goto failed;
-		}
 		return FALSE;
 	}
 
-	g_slist_foreach(hs->pending, (GFunc) pending_connect_ok, device);
-	g_slist_free(hs->pending);
-	hs->pending = NULL;
+	pending_connect_finalize(dev);
 
 	return FALSE;
 
 failed:
-	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
-	g_slist_free(hs->pending);
-	hs->pending = NULL;
+	if (p->msg)
+		error_connection_attempt_failed(dev->conn, p->msg, p->err);
+	pending_connect_finalize(dev);
 	if (hs->rfcomm)
-		headset_set_state(device, HEADSET_STATE_CONNECTED);
+		headset_set_state(dev, HEADSET_STATE_CONNECTED);
 	else
-		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
+		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 
 	return FALSE;
 }
@@ -731,11 +754,9 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	sdp_record_t *record = NULL;
 	sdp_list_t *protos, *classes = NULL;
 	uuid_t uuid;
-	struct device *device = data;
-	struct headset *hs = device->headset;
-	struct pending_connect *c;
-
-	c = hs->pending->data;
+	struct device *dev = data;
+	struct headset *hs = dev->headset;
+	struct pending_connect *p = hs->pending;
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -812,10 +833,11 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 
 	hs->rfcomm_ch = ch;
 
-	err = rfcomm_connect(device, NULL);
+	err = rfcomm_connect(dev, NULL, NULL, NULL);
 	if (err < 0) {
 		error("Unable to connect: %s (%s)", strerror(-err), -err);
-		c->err = -err;
+		p->err = -err;
+		error_connection_attempt_failed(dev->conn, p->msg, p->err);
 		goto failed;
 	}
 
@@ -823,15 +845,15 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 	sdp_record_free(record);
 	dbus_message_unref(reply);
 
-	device_finish_sdp_transaction(device);
+	device_finish_sdp_transaction(dev);
 
 	return;
 
 failed_not_supported:
-	if (c->msg) {
-		error_not_supported(device->conn, c->msg);
-		dbus_message_unref(c->msg);
-		c->msg = NULL;
+	if (p->msg) {
+		error_not_supported(dev->conn, p->msg);
+		dbus_message_unref(p->msg);
+		p->msg = NULL;
 	}
 failed:
 	if (classes)
@@ -840,11 +862,9 @@ failed:
 		sdp_record_free(record);
 	if (reply)
 		dbus_message_unref(reply);
-	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
-	g_slist_free(hs->pending);
-	hs->pending = NULL;
-	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
-	device_finish_sdp_transaction(device);
+	pending_connect_finalize(dev);
+	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	device_finish_sdp_transaction(dev);
 }
 
 static void get_handles_reply(DBusPendingCall *call, void *data)
@@ -852,28 +872,26 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 	DBusMessage *msg = NULL, *reply;
 	DBusPendingCall *pending;
 	DBusError derr;
-	struct device *device = data;
-	struct headset *hs = device->headset;
-	struct pending_connect *c;
+	struct device *dev = data;
+	struct headset *hs = dev->headset;
+	struct pending_connect *p = hs->pending;
 	char address[18], *addr_ptr = address;
 	dbus_uint32_t *array = NULL;
 	dbus_uint32_t handle;
 	int array_len;
-
-	c = hs->pending->data;
 
 	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("GetRemoteServiceHandles failed: %s", derr.message);
-		if (c->msg) {
+		if (p->msg) {
 			if (dbus_error_has_name(&derr,
 						"org.bluez.Error.ConnectionAttemptFailed"))
-				error_connection_attempt_failed(device->conn, c->msg,
-					EHOSTDOWN);
+				error_connection_attempt_failed(dev->conn, p->msg,
+								EHOSTDOWN);
 			else
-				error_not_supported(device->conn, c->msg);
+				error_not_supported(dev->conn, p->msg);
 		}
 		dbus_error_free(&derr);
 		goto failed;
@@ -886,15 +904,15 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 				DBUS_TYPE_INVALID)) {
 		error("Unable to get args from reply: %s", derr.message);
 		dbus_error_free(&derr);
-		if (c->msg)
-			error_not_supported(device->conn, c->msg);
+		if (p->msg)
+			error_not_supported(dev->conn, p->msg);
 		goto failed;
 	}
 
 	if (!array) {
 		error("get_handles_reply: Unable to get handle array from reply");
-		if (c->msg)
-			error_not_supported(device->conn, c->msg);
+		if (p->msg)
+			error_not_supported(dev->conn, p->msg);
 		goto failed;
 	}
 
@@ -902,32 +920,32 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 		if (hs->search_hfp) {
 			debug("No record handles found for hfp");
 			hs->search_hfp = FALSE;
-			get_handles(device, c);
+			get_handles(dev, NULL, NULL, NULL);
 			dbus_message_unref(reply);
 			return;
 		}
 
 		debug("No record handles found for hsp");
 
-		if (c->msg)
-			error_not_supported(device->conn, c->msg);
+		if (p->msg)
+			error_not_supported(dev->conn, p->msg);
 		goto failed;
 	}
 
 	if (array_len > 1)
 		debug("Multiple records found. Using the first one.");
 
-	msg = dbus_message_new_method_call("org.bluez", device->adapter_path,
+	msg = dbus_message_new_method_call("org.bluez", dev->adapter_path,
 						"org.bluez.Adapter",
 						"GetRemoteServiceRecord");
 	if (!msg) {
 		error("Unable to allocate new method call");
-		if (c->msg)
-			error_out_of_memory(device->conn, c->msg);
+		if (p->msg)
+			error_out_of_memory(dev->conn, p->msg);
 		goto failed;
 	}
 
-	ba2str(&device->dst, address);
+	ba2str(&dev->dst, address);
 
 	handle = array[0];
 
@@ -935,14 +953,14 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 					DBUS_TYPE_UINT32, &handle,
 					DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(device->conn, msg, &pending, -1)) {
+	if (!dbus_connection_send_with_reply(dev->conn, msg, &pending, -1)) {
 		error("Sending GetRemoteServiceRecord failed");
-		if (c->msg)
-			error_connection_attempt_failed(device->conn, c->msg, EIO);
+		if (p->msg)
+			error_connection_attempt_failed(dev->conn, p->msg, EIO);
 		goto failed;
 	}
 
-	dbus_pending_call_set_notify(pending, get_record_reply, device, NULL);
+	dbus_pending_call_set_notify(pending, get_record_reply, dev, NULL);
 	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 	dbus_message_unref(reply);
@@ -952,19 +970,14 @@ static void get_handles_reply(DBusPendingCall *call, void *data)
 failed:
 	if (msg)
 		dbus_message_unref(msg);
-	/* The reply was already sent above */
-	if (c->msg) {
-		dbus_message_unref(c->msg);
-		c->msg = NULL;
-	}
 	dbus_message_unref(reply);
-	g_slist_foreach(hs->pending, (GFunc) pending_connect_failed, device);
-	g_slist_free(hs->pending);
-	hs->pending = NULL;
-	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
+	p->err = EIO;
+	pending_connect_finalize(dev);
+	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 }
 
-static int get_handles(struct device *device, struct pending_connect *c)
+static int get_handles(struct device *device, headset_stream_cb_t cb,
+			void *user_data, unsigned int *cb_id)
 {
 	DBusPendingCall *pending;
 	struct headset *hs = device->headset;
@@ -978,7 +991,7 @@ static int get_handles(struct device *device, struct pending_connect *c)
 						"GetRemoteServiceHandles");
 	if (!msg) {
 		error("Could not create a new dbus message");
-		return -EINVAL;
+		return -ENOMEM;
 	}
 
 	if (hs->search_hfp)
@@ -999,45 +1012,56 @@ static int get_handles(struct device *device, struct pending_connect *c)
 		return -EIO;
 	}
 
+	pending_connect_init(hs, HEADSET_STATE_CONNECTED);
+
+	if (cb) {
+		unsigned int id;
+		id = connect_cb_new(hs, HEADSET_STATE_CONNECTED,
+					cb, user_data);
+		if (cb_id)
+			*cb_id = id;
+	}
+
 	dbus_pending_call_set_notify(pending, get_handles_reply, device, NULL);
-	if (c)
-		c->call = pending;
+
+	if (hs->pending)
+		hs->pending->call = pending;
 	else
 		dbus_pending_call_unref(pending);
+
 	dbus_message_unref(msg);
 
 	return 0;
 }
 
-static int rfcomm_connect(struct device *device, struct pending_connect *c)
+static int rfcomm_connect(struct device *dev, headset_stream_cb_t cb,
+				void *user_data, unsigned int *cb_id)
 {
-	struct headset *hs = device->headset;
+	struct headset *hs = dev->headset;
 	struct sockaddr_rc addr;
+	GIOChannel *io;
 	char address[18];
 	int sk, err;
 
-	if (c != NULL) {
-		if (!g_slist_find(hs->pending, c))
-			hs->pending = g_slist_append(hs->pending, c);
+	if (hs->rfcomm_ch < 0)
+		return get_handles(dev, cb, user_data, cb_id);
 
-		if (hs->state == HEADSET_STATE_DISCONNECTED)
-			return get_handles(device, c);
-		else
-			return 0;
-	}
-	else
-		c = hs->pending->data;
+	ba2str(&dev->dst, address);
 
-	ba2str(&device->dst, address);
-
-	debug("%s: Connecting to %s channel %d", device->path, address,
+	debug("%s: Connecting to %s channel %d", dev->path, address,
 		hs->rfcomm_ch);
 
 	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sk < 0) {
 		err = errno;
-		error("socket: %s (%d)", strerror(err), err);
-		goto failed;
+		error("socket(BTPROTO_RFCOMM): %s (%d)", strerror(err), err);
+		return -err;
+	}
+
+	io = g_io_channel_unix_new(sk);
+	if (!io) {
+		close(sk);
+		return -ENOMEM;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -1058,34 +1082,38 @@ static int rfcomm_connect(struct device *device, struct pending_connect *c)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, &device->dst);
+	bacpy(&addr.rc_bdaddr, &dev->dst);
 	addr.rc_channel = hs->rfcomm_ch;
 
-	c->io = g_io_channel_unix_new(sk);
-	if (!c->io) {
-		err = ENOMEM;
-		error("channel_unix_new failed in rfcomm connect");
+	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
+
+	if (err < 0 && !(errno == EAGAIN || errno == EINPROGRESS)) {
+		err = errno;
+		error("connect() failed: %s (%d)", strerror(err), err);
 		goto failed;
 	}
 
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			err = errno;
-			error("connect() failed: %s (%d)", strerror(err), err);
-			goto failed;
-		}
+	headset_set_state(dev, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
-		g_io_add_watch(c->io, G_IO_OUT | G_IO_NVAL,
-				(GIOFunc) rfcomm_connect_cb, device);
-	} else
-		rfcomm_connect_cb(c->io, G_IO_OUT, device);
+	pending_connect_init(hs, HEADSET_STATE_CONNECTED);
+
+	if (cb) {
+		unsigned int id = connect_cb_new(hs, HEADSET_STATE_CONNECTED,
+							cb, user_data);
+		if (cb_id)
+			*cb_id = id;
+	}
+
+	g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+			(GIOFunc) rfcomm_connect_cb, dev);
+
+	hs->pending->io = io;
 
 	return 0;
 
 failed:
-	if (!c->io && sk >= 0)
-		close(sk);
-
+	g_io_channel_close(io);
+	g_io_channel_unref(io);
 	return -err;
 }
 
@@ -1182,29 +1210,20 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 {
 	struct device *device = data;
 	struct headset *hs = device->headset;
-	struct pending_connect *c;
 	int err;
 
-	if (hs->state > HEADSET_STATE_DISCONNECTED)
+	if (hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS)
+		return error_in_progress(conn, msg, "Connect in progress");
+	else if (hs->state > HEADSET_STATE_CONNECT_IN_PROGRESS)
 		return error_already_connected(conn, msg);
 
-	c = g_try_new0(struct pending_connect, 1);
-	if (!c) {
-		error("Out of memory when allocating struct pending_connect");
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	c->msg = dbus_message_ref(msg);
-
-	err = rfcomm_connect(device, c);
+	err = rfcomm_connect(device, NULL, NULL, NULL);
 	if (err < 0)
-		goto error;
+		return error_connection_attempt_failed(conn, msg, -err);
+
+	hs->pending->msg = dbus_message_ref(msg);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
-
-error:
-	pending_connect_free(c);
-	return error_connection_attempt_failed(conn, msg, -err);
 }
 
 static gboolean ring_timer_cb(gpointer data)
@@ -1318,26 +1337,26 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 {
 	struct device *device = data;
 	struct headset *hs = device->headset;
-	struct pending_connect *c;
 	int err;
 
-	if (hs->state < HEADSET_STATE_CONNECTED)
+	switch (hs->state) {
+	case HEADSET_STATE_DISCONNECTED:
+	case HEADSET_STATE_CONNECT_IN_PROGRESS:
 		return error_not_connected(conn, msg);
-
-	if (hs->state >= HEADSET_STATE_PLAY_IN_PROGRESS)
+	case HEADSET_STATE_PLAY_IN_PROGRESS:
+		return error_in_progress(conn, msg, "Play in progress");
+	case HEADSET_STATE_PLAYING:
 		return error_already_connected(conn, msg);
-
-	c = g_try_new0(struct pending_connect, 1);
-	if (!c)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	c->msg = msg ? dbus_message_ref(msg) : NULL;
-
-	err = sco_connect(device, c);
-	if (err < 0) {
-		pending_connect_free(c);
-		return error_failed(conn, msg, strerror(-err));
+	case HEADSET_STATE_CONNECTED:
+	default:
+		break;
 	}
+
+	err = sco_connect(device, NULL, NULL, NULL);
+	if (err < 0)
+		return error_failed(conn, msg, strerror(-err));
+
+	hs->pending->msg = dbus_message_ref(msg);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -1592,7 +1611,8 @@ static DBusSignalVTable headset_signals[] = {
 	{ NULL, NULL }
 };
 
-static void headset_set_channel(struct headset *headset, sdp_record_t *record)
+static void headset_set_channel(struct headset *headset, sdp_record_t *record,
+				uint16_t svc)
 {
 	int ch;
 	sdp_list_t *protos;
@@ -1609,7 +1629,9 @@ static void headset_set_channel(struct headset *headset, sdp_record_t *record)
 
 	if (ch > 0) {
 		headset->rfcomm_ch = ch;
-		debug("Discovered Headset service on RFCOMM channel %d", ch);
+		debug("Discovered %s service on RFCOMM channel %d",
+			svc == HEADSET_SVCLASS_ID ? "Headset" : "Handsfree",
+			ch);
 	} else
 		error("Unable to get RFCOMM channel from Headset record");
 }
@@ -1649,7 +1671,7 @@ void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc)
 		return;
 	}
 
-	headset_set_channel(headset, record);
+	headset_set_channel(headset, record, svc);
 }
 
 struct headset *headset_init(struct device *dev, sdp_record_t *record,
@@ -1684,7 +1706,7 @@ struct headset *headset_init(struct device *dev, sdp_record_t *record,
 		return NULL;
 	}
 
-	headset_set_channel(hs, record);
+	headset_set_channel(hs, record, svc);
 register_iface:
 	if (!dbus_connection_register_interface(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
@@ -1828,61 +1850,74 @@ void headset_free(struct device *dev)
 gboolean headset_cancel_stream(struct device *dev, unsigned int id)
 {
 	struct headset *hs = dev->headset;
+	struct pending_connect *p = hs->pending;
 	GSList *l;
-	struct pending_connect *pending = NULL;
+	struct connect_cb *cb = NULL;
 
-	for (l = hs->pending; l != NULL; l = l->next) {
-		struct pending_connect *tmp = l->data;
+	if (!p)
+		return FALSE;
+
+	for (l = p->callbacks; l != NULL; l = l->next) {
+		struct connect_cb *tmp = l->data;
 
 		if (tmp->id == id) {
-			pending = tmp;
+			cb = tmp;
 			break;
 		}
 	}
 
-	if (!pending)
+	if (!cb)
 		return FALSE;
 
-	hs->pending = g_slist_remove(hs->pending, pending);
-	pending_connect_free(pending);
+	p->callbacks = g_slist_remove(p->callbacks, cb);
+	g_free(cb);
 
-	if (!hs->pending)
-		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	if (p->callbacks || p->msg)
+		return TRUE;
+
+	pending_connect_finalize(dev);
+
+	/* FIXME: disconnecting is not correct for all scenarios, e.g.  if the
+	 * stream request came when we were already connected then we should
+	 * stay connected after canceling the request too */
+	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 
 	return TRUE;
+}
+
+static gboolean dummy_connect_complete(struct device *dev)
+{
+	pending_connect_finalize(dev);
+	return FALSE;
 }
 
 unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
 					void *user_data)
 {
 	struct headset *hs = dev->headset;
-	struct pending_connect *c;
-	static unsigned int cb_id = 0;
+	unsigned int id;
 	int err;
 
-	c = g_new0(struct pending_connect, 1);
-	c->cb = cb;
-	c->cb_data = user_data;
-	c->id = ++cb_id;
-
 	if (hs->rfcomm && hs->sco) {
-		hs->pending = g_slist_append(hs->pending, c);
-		g_idle_add((GSourceFunc) finalize_stream_setup, dev);
-		return c->id;
+		id = connect_cb_new(hs, HEADSET_STATE_PLAYING, cb, user_data);
+		g_idle_add((GSourceFunc) dummy_connect_complete, dev);
+		return id;
 	}
 
 	if (hs->rfcomm == NULL)
-		err = rfcomm_connect(dev, c);
+		err = rfcomm_connect(dev, cb, user_data, &id);
 	else if (hs->sco == NULL)
-		err = sco_connect(dev, c);
+		err = sco_connect(dev, cb, user_data, &id);
 
 	if (err < 0)
 		goto error;
 
-	return c->id;
+	hs->pending->target_state = HEADSET_STATE_PLAYING;
+
+	return id;
 
 error:
-	pending_connect_free(c);
+	pending_connect_finalize(dev);
 	return 0;
 }
 
@@ -1936,7 +1971,7 @@ void headset_set_state(struct device *dev, headset_state_t state)
 	if (hs->state == state)
 		return;
 
-	switch(state) {
+	switch (state) {
 	case HEADSET_STATE_DISCONNECTED:
 		close_sco(dev);
 		headset_close_rfcomm(dev);
