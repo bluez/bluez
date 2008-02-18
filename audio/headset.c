@@ -88,7 +88,7 @@ static char *str_state[] = {
 };
 
 struct connect_cb {
-	int id;
+	unsigned int id;
 	headset_stream_cb_t cb;
 	void *cb_data;
 };
