@@ -27,6 +27,8 @@
 
 #include <gst/gst.h>
 
+#include <string.h>
+
 #include "gstsbcutil.h"
 #include <sbc.h>
 

@@ -27,14 +27,13 @@
 
 #include <string.h>
 
-#include "ipc.h"
 #include "gstsbcenc.h"
 #include "gstsbcutil.h"
 
-#define SBC_ENC_DEFAULT_MODE BT_A2DP_CHANNEL_MODE_JOINT_STEREO
+#define SBC_ENC_DEFAULT_MODE SBC_MODE_AUTO
 #define SBC_ENC_DEFAULT_BLOCKS 0
 #define SBC_ENC_DEFAULT_SUB_BANDS 0
-#define SBC_ENC_DEFAULT_ALLOCATION BT_A2DP_ALLOCATION_LOUDNESS
+#define SBC_ENC_DEFAULT_ALLOCATION SBC_AM_AUTO
 #define SBC_ENC_DEFAULT_RATE 0
 #define SBC_ENC_DEFAULT_CHANNELS 0
 
@@ -53,11 +52,11 @@ static GType gst_sbc_mode_get_type(void)
 {
 	static GType sbc_mode_type = 0;
 	static GEnumValue sbc_modes[] = {
-		{  0, "Auto",		"auto"		},
-		{  1, "Mono",		"mono"		},
-		{  2, "Dual Channel",	"dual"		},
-		{  3, "Stereo",		"stereo"	},
-		{  4, "Joint Stereo",	"joint"		},
+		{  SBC_MODE_MONO,		"Mono",		"mono"	},
+		{  SBC_MODE_DUAL_CHANNEL,	"Dual Channel",	"dual"	},
+		{  SBC_MODE_STEREO,		"Stereo",	"stereo"},
+		{  SBC_MODE_JOINT_STEREO,	"Joint Stereo",	"joint"	},
+		{  SBC_MODE_AUTO,		"Auto",		"auto"	},
 		{ -1, NULL, NULL}
 	};
 
@@ -73,8 +72,9 @@ static GType gst_sbc_allocation_get_type(void)
 {
 	static GType sbc_allocation_type = 0;
 	static GEnumValue sbc_allocations[] = {
-		{ BT_A2DP_ALLOCATION_LOUDNESS,	"Loudness",	"loudness" },
-		{ BT_A2DP_ALLOCATION_SNR,	"SNR",		"snr" },
+		{ SBC_AM_LOUDNESS,	"Loudness",	"loudness" },
+		{ SBC_AM_SNR,		"SNR",		"snr" },
+		{ SBC_AM_AUTO,		"Auto",		"auto" },
 		{ -1, NULL, NULL}
 	};
 
@@ -172,7 +172,6 @@ static GstCaps* sbc_enc_generate_srcpad_caps(GstSbcEnc *enc)
 	GstStructure *structure;
 	GEnumValue *enum_value;
 	GEnumClass *enum_class;
-	gchar* temp;
 	GValue *value;
 
 	src_caps = gst_caps_copy(gst_pad_get_pad_template_caps(enc->srcpad));
@@ -208,7 +207,7 @@ static GstCaps* sbc_enc_generate_srcpad_caps(GstSbcEnc *enc)
 		g_type_class_unref(enum_class);
 	}
 
-	if (enc->allocation != SBC_ENC_DEFAULT_ALLOCATION) {
+	if (enc->allocation != SBC_AM_AUTO) {
 		enum_class = g_type_class_ref(GST_TYPE_SBC_ALLOCATION);
 		enum_value = g_enum_get_value(enum_class, enc->allocation);
 		gst_sbc_util_set_structure_string_param(structure, "allocation",
@@ -216,9 +215,6 @@ static GstCaps* sbc_enc_generate_srcpad_caps(GstSbcEnc *enc)
 		g_type_class_unref(enum_class);
 	}
 
-	temp = gst_caps_to_string(src_caps);
-	GST_DEBUG_OBJECT(enc, "Srcpad caps: %s", temp);
-	g_free(temp);
 	g_free(value);
 
 	return src_caps;
@@ -244,7 +240,6 @@ static gboolean sbc_enc_src_setcaps (GstPad *pad, GstCaps *caps)
 
 static GstCaps* sbc_enc_src_caps_fixate(GstSbcEnc *enc, GstCaps *caps)
 {
-
 	gchar *error_message = NULL;
 	GstCaps* result;
 
@@ -316,8 +311,6 @@ static gboolean sbc_enc_sink_setcaps (GstPad * pad, GstCaps * caps)
 
 gboolean gst_sbc_enc_fill_sbc_params(GstSbcEnc *enc, GstCaps *caps)
 {
-	gint mode;
-
 	if (!gst_caps_is_fixed(caps)) {
 		GST_DEBUG_OBJECT(enc, "didn't receive fixed caps, "
 				"returning false");
@@ -327,23 +320,26 @@ gboolean gst_sbc_enc_fill_sbc_params(GstSbcEnc *enc, GstCaps *caps)
 	if (!gst_sbc_util_fill_sbc_params(&enc->sbc, caps))
 		return FALSE;
 
-	if (enc->rate != 0 && enc->sbc.rate != enc->rate)
+	if (enc->rate != 0 && gst_sbc_parse_rate_from_sbc(enc->sbc.frequency)
+				 != enc->rate)
 		goto fail;
 
-	if (enc->channels != 0 && enc->sbc.channels != enc->channels)
+	if (enc->channels != 0 && gst_sbc_get_channel_number(enc->sbc.mode)
+				!= enc->channels)
 		goto fail;
 
-	if (enc->blocks != 0 && enc->sbc.blocks != enc->blocks)
+	if (enc->blocks != 0 && gst_sbc_parse_blocks_from_sbc(enc->sbc.blocks)
+				 != enc->blocks)
 		goto fail;
 
-	if (enc->subbands != 0 && enc->sbc.subbands != enc->subbands)
+	if (enc->subbands != 0 && gst_sbc_parse_subbands_from_sbc(
+				enc->sbc.subbands) != enc->subbands)
 		goto fail;
 
-	mode = gst_sbc_get_mode_int_from_sbc_t(&enc->sbc);
-	if (enc->mode != SBC_ENC_DEFAULT_MODE && mode != enc->mode)
+	if (enc->mode != SBC_ENC_DEFAULT_MODE && enc->sbc.mode != enc->mode)
 		goto fail;
 
-	if (enc->allocation != SBC_ENC_DEFAULT_ALLOCATION &&
+	if (enc->allocation != SBC_AM_AUTO &&
 				enc->sbc.allocation != enc->allocation)
 		goto fail;
 
@@ -355,8 +351,9 @@ gboolean gst_sbc_enc_fill_sbc_params(GstSbcEnc *enc, GstCaps *caps)
 	enc->frame_length = sbc_get_frame_length(&enc->sbc);
 	enc->frame_duration = sbc_get_frame_duration(&enc->sbc);
 
-	GST_DEBUG("codesize: %d, frame_length: %d, frame_duration: %d",
-			enc->codesize, enc->frame_length, enc->frame_duration);
+	GST_DEBUG_OBJECT(enc, "codesize: %d, frame_length: %d, frame_duration:"
+			" %d", enc->codesize, enc->frame_length,
+			enc->frame_duration);
 
 	return TRUE;
 
@@ -378,7 +375,7 @@ static GstFlowReturn sbc_enc_chain(GstPad *pad, GstBuffer *buffer)
 		GstBuffer *output;
 		GstCaps *caps;
 		const guint8 *data;
-		int consumed;
+		gint consumed;
 
 		caps = GST_PAD_CAPS(enc->srcpad);
 		res = gst_pad_alloc_buffer_and_set_caps(enc->srcpad,
@@ -389,12 +386,13 @@ static GstFlowReturn sbc_enc_chain(GstPad *pad, GstBuffer *buffer)
 			goto done;
 
 		data = gst_adapter_peek(adapter, enc->codesize);
+
 		consumed = sbc_encode(&enc->sbc, (gpointer) data,
 					enc->codesize,
 					GST_BUFFER_DATA(output),
 					GST_BUFFER_SIZE(output), NULL);
 		if (consumed <= 0) {
-			GST_ERROR ("comsumed < 0, codesize: %d",
+			GST_DEBUG_OBJECT (enc, "comsumed < 0, codesize: %d",
 					enc->codesize);
 			break;
 		}
@@ -405,6 +403,7 @@ static GstFlowReturn sbc_enc_chain(GstPad *pad, GstBuffer *buffer)
 		GST_BUFFER_DURATION(output) = enc->frame_duration;
 
 		res = gst_pad_push(enc->srcpad, output);
+
 		if (res != GST_FLOW_OK)
 			goto done;
 	}
