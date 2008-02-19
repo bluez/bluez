@@ -610,53 +610,54 @@ static void bluetooth_a2dp_setup(struct bluetooth_a2dp *a2dp)
 	a2dp->sbc_initialized = 1;
 
 	if (active_capabilities.frequency & BT_SBC_SAMPLING_FREQ_16000)
-		a2dp->sbc.rate = 16000;
+		a2dp->sbc.frequency = SBC_FREQ_16000;
 
 	if (active_capabilities.frequency & BT_SBC_SAMPLING_FREQ_32000)
-		a2dp->sbc.rate = 32000;
+		a2dp->sbc.frequency = SBC_FREQ_32000;
 
 	if (active_capabilities.frequency & BT_SBC_SAMPLING_FREQ_44100)
-		a2dp->sbc.rate = 44100;
+		a2dp->sbc.frequency = SBC_FREQ_44100;
 
 	if (active_capabilities.frequency & BT_SBC_SAMPLING_FREQ_48000)
-		a2dp->sbc.rate = 48000;
+		a2dp->sbc.frequency = SBC_FREQ_48000;
 
 	if (active_capabilities.channel_mode & BT_A2DP_CHANNEL_MODE_MONO)
-		a2dp->sbc.channels = 1;
-	else
-		a2dp->sbc.channels = 2;
+		a2dp->sbc.mode = SBC_MODE_MONO;
 
-	if (active_capabilities.channel_mode &
-			(BT_A2DP_CHANNEL_MODE_MONO ||
-			BT_A2DP_CHANNEL_MODE_JOINT_STEREO))
-		a2dp->sbc.joint = 1;
-	else
-		a2dp->sbc.joint = 0;
+	if (active_capabilities.channel_mode & BT_A2DP_CHANNEL_MODE_DUAL_CHANNEL)
+		a2dp->sbc.mode = SBC_MODE_DUAL_CHANNEL;
+
+	if (active_capabilities.channel_mode & BT_A2DP_CHANNEL_MODE_STEREO)
+		a2dp->sbc.mode = SBC_MODE_STEREO;
+
+	if (active_capabilities.channel_mode & BT_A2DP_CHANNEL_MODE_JOINT_STEREO)
+		a2dp->sbc.mode = SBC_MODE_JOINT_STEREO;
 
 	a2dp->sbc.allocation = active_capabilities.allocation_method
-					== BT_A2DP_ALLOCATION_SNR ? 0x01 : 0x00;
+				== BT_A2DP_ALLOCATION_SNR ? SBC_AM_SNR
+				: SBC_AM_LOUDNESS;
 
 	switch (active_capabilities.subbands) {
 	case BT_A2DP_SUBBANDS_4:
-		a2dp->sbc.subbands = 4;
+		a2dp->sbc.subbands = SBC_SB_4;
 		break;
 	case BT_A2DP_SUBBANDS_8:
-		a2dp->sbc.subbands = 8;
+		a2dp->sbc.subbands = SBC_SB_8;
 		break;
 	}
 
 	switch (active_capabilities.block_length) {
 	case BT_A2DP_BLOCK_LENGTH_4:
-		a2dp->sbc.blocks = 4;
+		a2dp->sbc.blocks = SBC_BLK_4;
 		break;
 	case BT_A2DP_BLOCK_LENGTH_8:
-		a2dp->sbc.blocks = 8;
+		a2dp->sbc.blocks = SBC_BLK_8;
 		break;
 	case BT_A2DP_BLOCK_LENGTH_12:
-		a2dp->sbc.blocks = 12;
+		a2dp->sbc.blocks = SBC_BLK_12;
 		break;
 	case BT_A2DP_BLOCK_LENGTH_16:
-		a2dp->sbc.blocks = 16;
+		a2dp->sbc.blocks = SBC_BLK_16;
 		break;
 	}
 
