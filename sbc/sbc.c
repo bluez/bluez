@@ -37,7 +37,6 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <stdint.h>
 #include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
@@ -50,55 +49,31 @@
 
 #define SBC_SYNCWORD	0x9C
 
-/* sampling frequency */
-#define SBC_FS_16	0x00
-#define SBC_FS_32	0x01
-#define SBC_FS_44	0x02
-#define SBC_FS_48	0x03
-
-/* nrof_blocks */
-#define SBC_NB_4	0x00
-#define SBC_NB_8	0x01
-#define SBC_NB_12	0x02
-#define SBC_NB_16	0x03
-
-/* channel mode */
-#define SBC_CM_MONO		0x00
-#define SBC_CM_DUAL_CHANNEL	0x01
-#define SBC_CM_STEREO		0x02
-#define SBC_CM_JOINT_STEREO	0x03
-
-/* allocation mode */
-#define SBC_AM_LOUDNESS		0x00
-#define SBC_AM_SNR		0x01
-
-/* subbands */
-#define SBC_SB_4	0x00
-#define SBC_SB_8	0x01
-
 /* This structure contains an unpacked SBC frame.
    Yes, there is probably quite some unused space herein */
 struct sbc_frame {
-	uint16_t sampling_frequency;	/* in kHz */
+	uint8_t frequency;
+	uint8_t block_mode;
 	uint8_t blocks;
 	enum {
-		MONO		= SBC_CM_MONO,
-		DUAL_CHANNEL	= SBC_CM_DUAL_CHANNEL,
-		STEREO		= SBC_CM_STEREO,
-		JOINT_STEREO	= SBC_CM_JOINT_STEREO
-	} channel_mode;
+		MONO		= SBC_MODE_MONO,
+		DUAL_CHANNEL	= SBC_MODE_DUAL_CHANNEL,
+		STEREO		= SBC_MODE_STEREO,
+		JOINT_STEREO	= SBC_MODE_JOINT_STEREO
+	} mode;
 	uint8_t channels;
 	enum {
 		LOUDNESS	= SBC_AM_LOUDNESS,
 		SNR		= SBC_AM_SNR
-	} allocation_method;
+	} allocation;
+	uint8_t subband_mode;
 	uint8_t subbands;
 	uint8_t bitpool;
 	uint8_t codesize;
 	uint8_t length;
 
 	/* bit number x set means joint stereo has been used in subband x */
-	uint8_t join;
+	uint8_t joint;
 
 	/* only the lower 4 bits of every element are to be used */
 	uint8_t scale_factor[2][8];
@@ -187,15 +162,17 @@ static uint8_t sbc_crc8(const uint8_t *data, size_t len)
  * Takes a pointer to the frame in question, a pointer to the bits array and
  * the sampling frequency (as 2 bit integer)
  */
-static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], uint8_t sf)
+static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 {
-	if (frame->channel_mode == MONO || frame->channel_mode == DUAL_CHANNEL) {
+	uint8_t sf = frame->frequency;
+
+	if (frame->mode == MONO || frame->mode == DUAL_CHANNEL) {
 		int bitneed[2][8], loudness, max_bitneed, bitcount, slicecount, bitslice;
 		int ch, sb;
 
 		for (ch = 0; ch < frame->channels; ch++) {
 			max_bitneed = 0;
-			if (frame->allocation_method == SNR) {
+			if (frame->allocation == SNR) {
 				for (sb = 0; sb < frame->subbands; sb++) {
 					bitneed[ch][sb] = frame->scale_factor[ch][sb];
 					if (bitneed[ch][sb] > max_bitneed)
@@ -269,12 +246,12 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8], ui
 
 		}
 
-	} else if (frame->channel_mode == STEREO || frame->channel_mode == JOINT_STEREO) {
+	} else if (frame->mode == STEREO || frame->mode == JOINT_STEREO) {
 		int bitneed[2][8], loudness, max_bitneed, bitcount, slicecount, bitslice;
 		int ch, sb;
 
 		max_bitneed = 0;
-		if (frame->allocation_method == SNR) {
+		if (frame->allocation == SNR) {
 			for (ch = 0; ch < 2; ch++) {
 				for (sb = 0; sb < frame->subbands; sb++) {
 					bitneed[ch][sb] = frame->scale_factor[ch][sb];
@@ -395,9 +372,6 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 	int crc_pos = 0;
 	int32_t temp;
 
-	uint8_t sf;		/* sampling_frequency, temporarily needed as
-				   array index */
-
 	int ch, sb, blk, bit;	/* channel, subband, block and bit standard
 				   counters */
 	int bits[2][8];		/* bits distribution */
@@ -409,39 +383,26 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 	if (data[0] != SBC_SYNCWORD)
 		return -2;
 
-	sf = (data[1] >> 6) & 0x03;
-	switch (sf) {
-	case SBC_FS_16:
-		frame->sampling_frequency = 16000;
-		break;
-	case SBC_FS_32:
-		frame->sampling_frequency = 32000;
-		break;
-	case SBC_FS_44:
-		frame->sampling_frequency = 44100;
-		break;
-	case SBC_FS_48:
-		frame->sampling_frequency = 48000;
-		break;
-	}
+	frame->frequency = (data[1] >> 6) & 0x03;
 
-	switch ((data[1] >> 4) & 0x03) {
-	case SBC_NB_4:
+	frame->block_mode = (data[1] >> 4) & 0x03;
+	switch (frame->block_mode) {
+	case SBC_BLK_4:
 		frame->blocks = 4;
 		break;
-	case SBC_NB_8:
+	case SBC_BLK_8:
 		frame->blocks = 8;
 		break;
-	case SBC_NB_12:
+	case SBC_BLK_12:
 		frame->blocks = 12;
 		break;
-	case SBC_NB_16:
+	case SBC_BLK_16:
 		frame->blocks = 16;
 		break;
 	}
 
-	frame->channel_mode = (data[1] >> 2) & 0x03;
-	switch (frame->channel_mode) {
+	frame->mode = (data[1] >> 2) & 0x03;
+	switch (frame->mode) {
 	case MONO:
 		frame->channels = 1;
 		break;
@@ -452,17 +413,18 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 		break;
 	}
 
-	frame->allocation_method = (data[1] >> 1) & 0x01;
+	frame->allocation = (data[1] >> 1) & 0x01;
 
-	frame->subbands = (data[1] & 0x01) ? 8 : 4;
+	frame->subband_mode = (data[1] & 0x01);
+	frame->subbands = frame->subband_mode ? 8 : 4;
 
 	frame->bitpool = data[2];
 
-	if ((frame->channel_mode == MONO || frame->channel_mode == DUAL_CHANNEL) &&
+	if ((frame->mode == MONO || frame->mode == DUAL_CHANNEL) &&
 			frame->bitpool > 16 * frame->subbands)
 		return -4;
 
-	if ((frame->channel_mode == STEREO || frame->channel_mode == JOINT_STEREO) &&
+	if ((frame->mode == STEREO || frame->mode == JOINT_STEREO) &&
 			frame->bitpool > 32 * frame->subbands)
 		return -4;
 
@@ -474,13 +436,13 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 	crc_header[1] = data[2];
 	crc_pos = 16;
 
-	if (frame->channel_mode == JOINT_STEREO) {
+	if (frame->mode == JOINT_STEREO) {
 		if (len * 8 < consumed + frame->subbands)
 			return -1;
 
-		frame->join = 0x00;
+		frame->joint = 0x00;
 		for (sb = 0; sb < frame->subbands - 1; sb++)
-			frame->join |= ((data[4] >> (7 - sb)) & 0x01) << sb;
+			frame->joint |= ((data[4] >> (7 - sb)) & 0x01) << sb;
 		if (frame->subbands == 4)
 			crc_header[crc_pos / 8] = data[4] & 0xf0;
 		else
@@ -509,7 +471,7 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 	if (data[3] != sbc_crc8(crc_header, crc_pos))
 		return -3;
 
-	sbc_calculate_bits(frame, bits, sf);
+	sbc_calculate_bits(frame, bits);
 
 	for (blk = 0; blk < frame->blocks; blk++) {
 		for (ch = 0; ch < frame->channels; ch++) {
@@ -551,10 +513,10 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 		}
 	}
 
-	if (frame->channel_mode == JOINT_STEREO) {
+	if (frame->mode == JOINT_STEREO) {
 		for (blk = 0; blk < frame->blocks; blk++) {
 			for (sb = 0; sb < frame->subbands; sb++) {
-				if (frame->join & (0x01 << sb)) {
+				if (frame->joint & (0x01 << sb)) {
 					temp = frame->sb_sample[blk][0][sb] +
 						frame->sb_sample[blk][1][sb];
 					frame->sb_sample[blk][1][sb] =
@@ -980,8 +942,6 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	uint8_t crc_header[11] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	int crc_pos = 0;
 
-	/* Sampling frequency as temporary value for table lookup */
-	uint8_t sf;
 	uint16_t audio_sample;
 
 	int ch, sb, blk, bit;	/* channel, subband, block and bit counters */
@@ -992,42 +952,13 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 	data[0] = SBC_SYNCWORD;
 
-	if (frame->sampling_frequency == 16000) {
-		data[1] = (SBC_FS_16 & 0x03) << 6;
-		sf = SBC_FS_16;
-	} else if (frame->sampling_frequency == 32000) {
-		data[1] = (SBC_FS_32 & 0x03) << 6;
-		sf = SBC_FS_32;
-	} else if (frame->sampling_frequency == 44100) {
-		data[1] = (SBC_FS_44 & 0x03) << 6;
-		sf = SBC_FS_44;
-	} else if (frame->sampling_frequency == 48000) {
-		data[1] = (SBC_FS_48 & 0x03) << 6;
-		sf = SBC_FS_48;
-	} else
-		return -2;
+	data[1] = (frame->frequency & 0x03) << 6;
 
-	switch (frame->blocks) {
-	case 4:
-		data[1] |= (SBC_NB_4 & 0x03) << 4;
-		break;
-	case 8:
-		data[1] |= (SBC_NB_8 & 0x03) << 4;
-		break;
-	case 12:
-		data[1] |= (SBC_NB_12 & 0x03) << 4;
-		break;
-	case 16:
-		data[1] |= (SBC_NB_16 & 0x03) << 4;
-		break;
-	default:
-		return -3;
-		break;
-	}
+	data[1] |= (frame->block_mode & 0x03) << 4;
 
-	data[1] |= (frame->channel_mode & 0x03) << 2;
+	data[1] |= (frame->mode & 0x03) << 2;
 
-	data[1] |= (frame->allocation_method & 0x01) << 1;
+	data[1] |= (frame->allocation & 0x01) << 1;
 
 	switch (frame->subbands) {
 	case 4:
@@ -1043,11 +974,11 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 	data[2] = frame->bitpool;
 
-	if ((frame->channel_mode == MONO || frame->channel_mode == DUAL_CHANNEL) &&
+	if ((frame->mode == MONO || frame->mode == DUAL_CHANNEL) &&
 			frame->bitpool > frame->subbands << 4)
 		return -5;
 
-	if ((frame->channel_mode == STEREO || frame->channel_mode == JOINT_STEREO) &&
+	if ((frame->mode == STEREO || frame->mode == JOINT_STEREO) &&
 			frame->bitpool > frame->subbands << 5)
 		return -5;
 
@@ -1072,14 +1003,14 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 		}
 	}
 
-	if (frame->channel_mode == JOINT_STEREO) {
+	if (frame->mode == JOINT_STEREO) {
 		/* like frame->sb_sample but joint stereo */
 		int32_t sb_sample_j[16][2];
 		/* scalefactor and scale_factor in joint case */
 		u_int32_t scalefactor_j[2];
 		uint8_t scale_factor_j[2];
 
-		frame->join = 0;
+		frame->joint = 0;
 
 		for (sb = 0; sb < frame->subbands - 1; sb++) {
 			scale_factor_j[0] = 0;
@@ -1111,7 +1042,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 			if ((scalefactor[0][sb] + scalefactor[1][sb]) >
 					(scalefactor_j[0] + scalefactor_j[1]) ) {
 				/* use joint stereo for this subband */
-				frame->join |= 1 << sb;
+				frame->joint |= 1 << sb;
 				frame->scale_factor[0][sb] = scale_factor_j[0];
 				frame->scale_factor[1][sb] = scale_factor_j[1];
 				scalefactor[0][sb] = scalefactor_j[0];
@@ -1127,7 +1058,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 		data[4] = 0;
 		for (sb = 0; sb < frame->subbands - 1; sb++)
-			data[4] |= ((frame->join >> sb) & 0x01) << (frame->subbands - 1 - sb);
+			data[4] |= ((frame->joint >> sb) & 0x01) << (frame->subbands - 1 - sb);
 
 		crc_header[crc_pos >> 3] = data[4];
 
@@ -1153,7 +1084,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 	data[3] = sbc_crc8(crc_header, crc_pos);
 
-	sbc_calculate_bits(frame, bits, sf);
+	sbc_calculate_bits(frame, bits);
 
 	for (ch = 0; ch < frame->channels; ch++) {
 		for (sb = 0; sb < frame->subbands; sb++)
@@ -1198,13 +1129,18 @@ struct sbc_priv {
 
 static void sbc_set_defaults(sbc_t *sbc, unsigned long flags)
 {
-	sbc->rate = 44100;
-	sbc->channels = 2;
-	sbc->joint = 0;
-	sbc->subbands = 8;
-	sbc->blocks = 16;
+	sbc->frequency = SBC_FREQ_44100;
+	sbc->mode = SBC_MODE_STEREO;
+	sbc->subbands = SBC_SB_8;
+	sbc->blocks = SBC_BLK_16;
 	sbc->bitpool = 32;
-	sbc->swap = 0;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	sbc->endian = SBC_LE;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	sbc->endian = SBC_BE;
+#else
+#error "Unknown byte order"
+#endif
 }
 
 int sbc_init(sbc_t *sbc, unsigned long flags)
@@ -1248,10 +1184,11 @@ int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
 		sbc_decoder_init(&priv->dec_state, &priv->frame);
 		priv->init = 1;
 
-		sbc->rate = priv->frame.sampling_frequency;
-		sbc->channels = priv->frame.channels;
-		sbc->subbands = priv->frame.subbands;
-		sbc->blocks = priv->frame.blocks;
+		sbc->frequency = priv->frame.frequency;
+		sbc->mode = priv->frame.mode;
+		sbc->subbands = priv->frame.subband_mode;
+		sbc->blocks = priv->frame.block_mode;
+		sbc->allocation = priv->frame.allocation;
 		sbc->bitpool = priv->frame.bitpool;
 
 		priv->frame.codesize = sbc_get_codesize(sbc);
@@ -1276,7 +1213,13 @@ int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
 			int16_t s;
 			s = priv->frame.pcm_sample[ch][i];
 
-			if (sbc->swap) {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			if (sbc->endian == SBC_BE) {
+#elif __BYTE_ORDER == __BIG_ENDIAN
+			if (sbc->endian == SBC_LE) {
+#else
+#error "Unknown byte order"
+#endif
 				*ptr++ = (s & 0xff00) >> 8;
 				*ptr++ = (s & 0x00ff);
 			} else {
@@ -1308,20 +1251,14 @@ int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 		*written = 0;
 
 	if (!priv->init) {
-		priv->frame.sampling_frequency = sbc->rate;
-		priv->frame.channels = sbc->channels;
-
-		if (sbc->channels > 1) {
-			if (sbc->joint)
-				priv->frame.channel_mode = JOINT_STEREO;
-			else
-				priv->frame.channel_mode = STEREO;
-		} else
-			priv->frame.channel_mode = MONO;
-
-		priv->frame.allocation_method = sbc->allocation;
-		priv->frame.subbands = sbc->subbands;
-		priv->frame.blocks = sbc->blocks;
+		priv->frame.frequency = sbc->frequency;
+		priv->frame.mode = sbc->mode;
+		priv->frame.channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
+		priv->frame.allocation = sbc->allocation;
+		priv->frame.subband_mode = sbc->subbands;
+		priv->frame.subbands = sbc->subbands ? 8 : 4;
+		priv->frame.block_mode = sbc->blocks;
+		priv->frame.blocks = 4 + (sbc->blocks * 4);
 		priv->frame.bitpool = sbc->bitpool;
 		priv->frame.codesize = sbc_get_codesize(sbc);
 		priv->frame.length = sbc_get_frame_length(sbc);
@@ -1341,10 +1278,15 @@ int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 	ptr = input;
 
 	for (i = 0; i < priv->frame.subbands * priv->frame.blocks; i++) {
-		for (ch = 0; ch < sbc->channels; ch++) {
+		for (ch = 0; ch < priv->frame.channels; ch++) {
 			int16_t s;
-
-			if (sbc->swap)
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			if (sbc->endian == SBC_BE)
+#elif __BYTE_ORDER == __BIG_ENDIAN
+			if (sbc->endian == SBC_LE)
+#else
+#error "Unknown byte order"
+#endif
 				s = (ptr[0] & 0xff) << 8 | (ptr[1] & 0xff);
 			else
 				s = (ptr[0] & 0xff) | (ptr[1] & 0xff) << 8;
@@ -1360,7 +1302,7 @@ int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 	if (written)
 		*written = framelen;
 
-	return samples * sbc->channels * 2;
+	return samples * priv->frame.channels * 2;
 }
 
 void sbc_finish(sbc_t *sbc)
@@ -1377,27 +1319,89 @@ void sbc_finish(sbc_t *sbc)
 int sbc_get_frame_length(sbc_t *sbc)
 {
 	int ret;
+	uint8_t subbands, channels, blocks, joint;
+	struct sbc_priv *priv;
 
-	ret = 4 + (4 * sbc->subbands * sbc->channels) / 8;
+	priv = sbc->priv;
+	if (!priv->init) {
+		subbands = sbc->subbands ? 8 : 4;
+		blocks = 4 + (sbc->blocks * 4);
+		channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
+		joint = sbc->mode == SBC_MODE_JOINT_STEREO ? 1 : 0;
+	} else {
+		subbands = priv->frame.subbands;
+		blocks = priv->frame.blocks;
+		channels = priv->frame.channels;
+		joint = priv->frame.joint;
+	}
+
+	ret = 4 + (4 * subbands * channels) / 8;
 
 	/* This term is not always evenly divide so we round it up */
-	if (sbc->channels == 1)
-		ret += ((sbc->blocks * sbc->channels * sbc->bitpool) + 7) / 8;
+	if (channels == 1)
+		ret += ((blocks * channels * sbc->bitpool) + 7) / 8;
 	else
-		ret += (((sbc->joint ? sbc->subbands : 0) + sbc->blocks * sbc->bitpool)
-			+ 7) / 8;
+		ret += (((joint ? subbands : 0) + blocks * sbc->bitpool) + 7)
+			/ 8;
 
 	return ret;
 }
 
 int sbc_get_frame_duration(sbc_t *sbc)
 {
-	return (1000000 * sbc->blocks * sbc->subbands) / sbc->rate;
+	uint8_t subbands, blocks;
+	uint16_t frequency;
+	struct sbc_priv *priv;
+
+	priv = sbc->priv;
+	if (!priv->init) {
+		subbands = sbc->subbands ? 8 : 4;
+		blocks = 4 + (sbc->blocks * 4);
+	} else {
+		subbands = priv->frame.subbands;
+		blocks = priv->frame.blocks;
+	}
+
+	switch (sbc->frequency) {
+	case SBC_FREQ_16000:
+		frequency = 16000;
+		break;
+
+	case SBC_FREQ_32000:
+		frequency = 32000;
+		break;
+
+	case SBC_FREQ_44100:
+		frequency = 44100;
+		break;
+
+	case SBC_FREQ_48000:
+		frequency = 48000;
+		break;
+	default:
+		return 0;
+	}
+
+	return (1000000 * blocks * subbands) / frequency;
 }
 
 int sbc_get_codesize(sbc_t *sbc)
 {
-	return sbc->subbands * sbc->blocks * sbc->channels * 2;
+	uint8_t subbands, channels, blocks;
+	struct sbc_priv *priv;
+
+	priv = sbc->priv;
+	if (!priv->init) {
+		subbands = sbc->subbands ? 8 : 4;
+		blocks = 4 + (sbc->blocks * 4);
+		channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
+	} else {
+		subbands = priv->frame.subbands;
+		blocks = priv->frame.blocks;
+		channels = priv->frame.channels;
+	}
+
+	return subbands * blocks * channels * 2;
 }
 
 int sbc_reinit(sbc_t *sbc, unsigned long flags)

@@ -30,17 +30,48 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
+/* sampling frequency */
+#define SBC_FREQ_16000		0x00
+#define SBC_FREQ_32000		0x01
+#define SBC_FREQ_44100		0x02
+#define SBC_FREQ_48000		0x03
+
+/* blocks */
+#define SBC_BLK_4		0x00
+#define SBC_BLK_8		0x01
+#define SBC_BLK_12		0x02
+#define SBC_BLK_16		0x03
+
+/* channel mode */
+#define SBC_MODE_MONO		0x00
+#define SBC_MODE_DUAL_CHANNEL	0x01
+#define SBC_MODE_STEREO		0x02
+#define SBC_MODE_JOINT_STEREO	0x03
+
+/* allocation method */
+#define SBC_AM_LOUDNESS		0x00
+#define SBC_AM_SNR		0x01
+
+/* subbands */
+#define SBC_SB_4		0x00
+#define SBC_SB_8		0x01
+
+/* Data endianess */
+#define SBC_LE			0x00
+#define SBC_BE			0x01
+
 struct sbc_struct {
 	unsigned long flags;
 
-	int rate;
-	int channels;
-	int joint;
-	int allocation;
-	int blocks;
-	int subbands;
-	int bitpool;
-	int swap;
+	uint8_t frequency;
+	uint8_t blocks;
+	uint8_t subbands;
+	uint8_t mode;
+	uint8_t allocation;
+	uint8_t bitpool;
+	uint8_t endian;
 
 	void *priv;
 };

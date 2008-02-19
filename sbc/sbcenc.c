@@ -140,11 +140,31 @@ static void encode(char *filename, int subbands, int joint)
 
 	sbc_init(&sbc, 0L);
 
-	sbc.rate = BE_INT(au_hdr->sample_rate);
-	sbc.channels = BE_INT(au_hdr->channels);
-	sbc.subbands = subbands;
-	sbc.joint = joint;
-	sbc.swap = 1;
+	switch (BE_INT(au_hdr->sample_rate)) {
+	case 16000:
+		sbc.frequency = SBC_FREQ_16000;
+		break;
+	case 32000:
+		sbc.frequency = SBC_FREQ_32000;
+		break;
+	case 44100:
+		sbc.frequency = SBC_FREQ_44100;
+		break;
+	case 48000:
+		sbc.frequency = SBC_FREQ_48000;
+		break;
+	}
+
+	sbc.subbands = subbands == 4 ? SBC_SB_4 : SBC_SB_8;
+
+	if (BE_INT(au_hdr->channels) == 1)
+		sbc.mode = SBC_MODE_MONO;
+	else if (joint)
+		sbc.mode = SBC_MODE_JOINT_STEREO;
+	else
+		sbc.mode = SBC_MODE_STEREO;
+
+	sbc.endian = SBC_BE;
 	count = BE_INT(au_hdr->data_size);
 	size = len - BE_INT(au_hdr->hdr_size);
 	memmove(input, input + BE_INT(au_hdr->hdr_size), size);

@@ -47,7 +47,7 @@ static void decode(char *filename, char *output, int tofile)
 	off_t filesize;
 	sbc_t sbc;
 	int fd, ad, pos, streamlen, framelen, count, written, len;
-	int format = AFMT_S16_BE;
+	int format = AFMT_S16_BE, frequency, channels;
 
 	if (stat(filename, &st) < 0) {
 		fprintf(stderr, "Can't get size of file %s: %s\n",
@@ -95,24 +95,45 @@ static void decode(char *filename, char *output, int tofile)
 	}
 
 	sbc_init(&sbc, 0L);
-	sbc.swap = 1;
+	sbc.endian = SBC_BE;
 
 	framelen = sbc_decode(&sbc, stream, streamlen, buf, sizeof(buf), &len);
-	printf("%d Hz, %d channels\n", sbc.rate, sbc.channels);
+	channels = sbc.mode == SBC_MODE_MONO ? 1 : 2;
+	switch (sbc.frequency) {
+	case SBC_FREQ_16000:
+		frequency = 16000;
+		break;
+
+	case SBC_FREQ_32000:
+		frequency = 32000;
+		break;
+
+	case SBC_FREQ_44100:
+		frequency = 44100;
+		break;
+
+	case SBC_FREQ_48000:
+		frequency = 48000;
+		break;
+	default:
+		frequency = 0;
+	}
+
+	printf("%d Hz, %d channels\n", frequency, channels);
 	if (!tofile) {
 		if (ioctl(ad, SNDCTL_DSP_SETFMT, &format) < 0) {
 			fprintf(stderr, "Can't set audio format on %s: %s\n",
 					output, strerror(errno));
 			goto close;
 		}
-		if (ioctl(ad, SNDCTL_DSP_CHANNELS, &sbc.channels) < 0) {
+		if (ioctl(ad, SNDCTL_DSP_CHANNELS, &channels) < 0) {
 			fprintf(stderr,
 				"Can't set number of channels on %s: %s\n",
 				output, strerror(errno));
 			goto close;
 		}
 
-		if (ioctl(ad, SNDCTL_DSP_SPEED, &sbc.rate) < 0) {
+		if (ioctl(ad, SNDCTL_DSP_SPEED, &frequency) < 0) {
 			fprintf(stderr, "Can't set audio rate on %s: %s\n",
 					output, strerror(errno));
 			goto close;
