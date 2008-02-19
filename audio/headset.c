@@ -1403,6 +1403,12 @@ static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 	struct headset *hs = device->headset;
 	int err;
 
+	if (sco_hci) {
+		error("Refusing Headset.Play() because SCO HCI routing "
+				"is enabled");
+		return error_not_available(conn, msg);
+	}
+
 	switch (hs->state) {
 	case HEADSET_STATE_DISCONNECTED:
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
