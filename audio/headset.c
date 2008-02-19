@@ -113,6 +113,8 @@ struct headset {
 	GIOChannel *sco;
 	guint sco_id;
 
+	gboolean auto_dc;
+
 	guint ring_timer;
 
 	char buf[BUF_SIZE];
@@ -1281,6 +1283,8 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 	if (err < 0)
 		return error_connection_attempt_failed(conn, msg, -err);
 
+	hs->auto_dc = FALSE;
+
 	hs->pending->msg = dbus_message_ref(msg);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -1937,10 +1941,8 @@ gboolean headset_cancel_stream(struct device *dev, unsigned int id)
 
 	pending_connect_finalize(dev);
 
-	/* FIXME: disconnecting is not correct for all scenarios, e.g.  if the
-	 * stream request came when we were already connected then we should
-	 * stay connected after canceling the request too */
-	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	if (hs->auto_dc)
+		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 
 	return TRUE;
 }
@@ -1956,7 +1958,6 @@ unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
 {
 	struct headset *hs = dev->headset;
 	unsigned int id;
-	int err;
 
 	if (hs->rfcomm && hs->sco) {
 		id = connect_cb_new(hs, HEADSET_STATE_PLAYING, cb, user_data);
@@ -1964,21 +1965,21 @@ unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
 		return id;
 	}
 
-	if (hs->rfcomm == NULL)
-		err = rfcomm_connect(dev, cb, user_data, &id);
-	else if (hs->sco == NULL)
-		err = sco_connect(dev, cb, user_data, &id);
+	if (hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS)
+		return connect_cb_new(hs, HEADSET_STATE_PLAYING, cb, user_data);
 
-	if (err < 0)
-		goto error;
+	if (hs->rfcomm == NULL) {
+		if (rfcomm_connect(dev, cb, user_data, &id) < 0)
+			return 0;
+		hs->auto_dc = TRUE;
+	} else {
+		if (sco_connect(dev, cb, user_data, &id) < 0)
+			return 0;
+	}
 
 	hs->pending->target_state = HEADSET_STATE_PLAYING;
 
 	return id;
-
-error:
-	pending_connect_finalize(dev);
-	return 0;
 }
 
 gboolean get_hfp_active(struct device *dev)
@@ -2037,6 +2038,8 @@ void headset_set_authorized(struct device *dev)
 	g_io_add_watch(hs->rfcomm,
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			(GIOFunc) rfcomm_io_cb, dev);
+
+	hs->auto_dc = FALSE;
 
 	if (!hs->hfp_active)
 		headset_set_state(dev, HEADSET_STATE_CONNECTED);
@@ -2142,8 +2145,13 @@ gboolean headset_unlock(struct device *dev, headset_lock_t lock)
 
 	hs->lock &= ~lock;
 
-	if (!hs->lock && hs->state > HEADSET_STATE_DISCONNECTED)
+	if (hs->lock)
+		return TRUE;
+
+	if (hs->auto_dc)
 		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	else if (hs->state == HEADSET_STATE_PLAYING)
+		headset_set_state(dev, HEADSET_STATE_CONNECTED);
 
 	return TRUE;
 }
