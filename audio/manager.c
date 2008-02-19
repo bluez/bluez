@@ -1405,7 +1405,7 @@ static void auth_cb(DBusPendingCall *call, void *data)
 	} else {
 		char hs_address[18];
 
-		headset_set_state(device, HEADSET_STATE_CONNECTED);
+		headset_set_authorized(device);
 
 		ba2str(&device->dst, hs_address);
 
@@ -1464,13 +1464,13 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
+	set_hfp_active(device, hfp_active);
+
 	if (headset_connect_rfcomm(device, cli_sk) < 0) {
 		error("Allocating new GIOChannel failed!");
 		close(cli_sk);
 		return TRUE;
 	}
-
-	set_hfp_active(device, hfp_active);
 
 	if (!manager_authorize(&device->dst, uuid, auth_cb, device, NULL))
 		goto failed;
