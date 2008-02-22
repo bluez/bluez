@@ -79,7 +79,8 @@ AC_DEFUN([AC_PATH_DBUS], [
 	m4_ifdef([PKG_CHECK_EXISTS], [
 		PKG_CHECK_EXISTS(dbus-1 < 0.95, DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE")
 		if (test "${glib_found}" = "yes"); then
-			PKG_CHECK_MODULES(DBUS_GLIB, dbus-glib-1 > 0.60, dbus_glib_found=yes, dbus_glib_found=no)
+			dnl PKG_CHECK_MODULES(DBUS_GLIB, dbus-glib-1 > 0.60, dbus_glib_found=yes, dbus_glib_found=no)
+			dbus_glib_found=no
 		else
 			dbus_glib_found=no
 		fi
