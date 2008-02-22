@@ -28,49 +28,45 @@
    always be correct and every compiler *should* generate optimal code */
 #define ASR(val, bits) ((-2 >> 1 == -1) ? \
 		 ((int32_t)(val)) >> (bits) : ((int32_t) (val)) / (1 << (bits)))
-#define ASR_64(val, bits) ((-2 >> 1 == -1) ? \
-		 ((long long)(val)) >> (bits) : ((long long) (val)) / (1 << (bits)))
 
 #define SCALE_PROTO4_TBL	15
 #define SCALE_ANA4_TBL		16
-#define SCALE_PROTO8_TBL	15
-#define SCALE_ANA8_TBL		16
-#define SCALE_SPROTO4_TBL	16
-#define SCALE_SPROTO8_TBL	16
-#define SCALE_NPROTO4_TBL	10
-#define SCALE_NPROTO8_TBL	12
-#define SCALE_SAMPLES		14
+#define SCALE_PROTO8_TBL	16
+#define SCALE_ANA8_TBL		17
+#define SCALE_SPROTO4_TBL	15
+#define SCALE_SPROTO8_TBL	14
+#define SCALE_NPROTO4_TBL	13
+#define SCALE_NPROTO8_TBL	11
 #define SCALE4_STAGE1_BITS	16
-#define SCALE4_STAGE2_BITS	16
-#define SCALE4_STAGED1_BITS	14
-#define SCALE4_STAGED2_BITS	14
-#define SCALE8_STAGE1_BITS	16
-#define SCALE8_STAGE2_BITS	16
-#define SCALE8_STAGED1_BITS	14
-#define SCALE8_STAGED2_BITS	14
+#define SCALE4_STAGE2_BITS	15
+#define SCALE4_STAGED1_BITS	12
+#define SCALE4_STAGED2_BITS	16
+#define SCALE8_STAGE1_BITS	15
+#define SCALE8_STAGE2_BITS	15
+#define SCALE8_STAGED1_BITS	15
+#define SCALE8_STAGED2_BITS	16
 
 typedef int32_t sbc_fixed_t;
-typedef long long sbc_extended_t;
 
-#define SCALE4_STAGE1(src)  ASR_64(src, SCALE4_STAGE1_BITS)
-#define SCALE4_STAGE2(src)  ASR_64(src, SCALE4_STAGE2_BITS)
-#define SCALE4_STAGED1(src) ASR_64(src, SCALE4_STAGED1_BITS)
-#define SCALE4_STAGED2(src) ASR_64(src, SCALE4_STAGED2_BITS)
-#define SCALE8_STAGE1(src)  ASR_64(src, SCALE8_STAGE1_BITS)
-#define SCALE8_STAGE2(src)  ASR_64(src, SCALE8_STAGE2_BITS)
-#define SCALE8_STAGED1(src) ASR_64(src, SCALE8_STAGED1_BITS)
-#define SCALE8_STAGED2(src) ASR_64(src, SCALE8_STAGED2_BITS)
+#define SCALE4_STAGE1(src)  ASR(src, SCALE4_STAGE1_BITS)
+#define SCALE4_STAGE2(src)  ASR(src, SCALE4_STAGE2_BITS)
+#define SCALE4_STAGED1(src) ASR(src, SCALE4_STAGED1_BITS)
+#define SCALE4_STAGED2(src) ASR(src, SCALE4_STAGED2_BITS)
+#define SCALE8_STAGE1(src)  ASR(src, SCALE8_STAGE1_BITS)
+#define SCALE8_STAGE2(src)  ASR(src, SCALE8_STAGE2_BITS)
+#define SCALE8_STAGED1(src) ASR(src, SCALE8_STAGED1_BITS)
+#define SCALE8_STAGED2(src) ASR(src, SCALE8_STAGED2_BITS)
 
 #define SBC_FIXED_0(val) { val = 0; }
-#define MUL(a, b)        ((sbc_extended_t)(a) * (b))
+#define MUL(a, b)        ((a) * (b))
 #ifdef __arm__
 #define MULA(a, b, res) ({				\
-		long long tmp = res;			\
+		int tmp = res;			\
 		__asm__(				\
-			"smlal %Q0, %R0, %2, %3"	\
+			"mla %0, %2, %3, %0"		\
 			: "=&r" (tmp)			\
 			: "0" (tmp), "r" (a), "r" (b));	\
 		tmp; })
 #else
-#define MULA(a, b, res)  ((sbc_extended_t)(a) * (b) + (res))
+#define MULA(a, b, res)  ((a) * (b) + (res))
 #endif

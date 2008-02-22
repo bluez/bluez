@@ -551,7 +551,7 @@ static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
 {
 	int i, j, k, idx;
-	sbc_extended_t res;
+	sbc_fixed_t res;
 
 	for (i = 0; i < 8; i++) {
 		/* Shifting */
@@ -592,7 +592,7 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
 {
 	int i, j, k, idx;
-	sbc_extended_t res;
+	sbc_fixed_t res;
 
 	for (i = 0; i < 16; i++) {
 		/* Shifting */
@@ -667,8 +667,7 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 
 static inline void _sbc_analyze_four(const int32_t *in, int32_t *out)
 {
-	sbc_fixed_t t[8];
-	sbc_extended_t s[5];
+	sbc_fixed_t t[8], s[5];
 
 	t[0] = SCALE4_STAGE1( /* Q8 */
 		MULA(_sbc_proto_4[0], in[8] - in[32], /* Q18 */
@@ -752,8 +751,7 @@ static inline void sbc_analyze_four(struct sbc_encoder_state *state,
 
 static inline void _sbc_analyze_eight(const int32_t *in, int32_t *out)
 {
-	sbc_fixed_t t[8];
-	sbc_extended_t s[8];
+	sbc_fixed_t t[8], s[8];
 
 	t[0] = SCALE8_STAGE1( /* Q10 */
 		MULA(_sbc_proto_8[0], (in[16] - in[64]), /* Q18 = Q18 * Q0 */
