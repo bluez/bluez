@@ -433,6 +433,8 @@ char *bt_compidtostr(int compid)
 		return "Accel Semiconductor Ltd.";
 	case 75:
 		return "Continental Automotive Systems";
+	case 76:
+		return "Apple, Inc.";
 	case 65535:
 		return "internal use";
 	default:
