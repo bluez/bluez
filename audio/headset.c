@@ -58,6 +58,8 @@
 #include "error.h"
 #include "headset.h"
 
+#define DC_TIMEOUT 3000
+
 #define RING_INTERVAL 3000
 
 #define BUF_SIZE 1024
@@ -116,6 +118,8 @@ struct headset {
 	gboolean auto_dc;
 
 	guint ring_timer;
+
+	guint dc_timer;
 
 	char buf[BUF_SIZE];
 	int data_start;
@@ -1903,6 +1907,11 @@ void headset_free(struct device *dev)
 {
 	struct headset *hs = dev->headset;
 
+	if (hs->dc_timer) {
+		g_source_remove(hs->dc_timer);
+		hs->dc_timer = 0;
+	}
+
 	if (hs->sco) {
 		g_io_channel_close(hs->sco);
 		g_io_channel_unref(hs->sco);
@@ -1915,6 +1924,12 @@ void headset_free(struct device *dev)
 
 	g_free(hs);
 	dev->headset = NULL;
+}
+
+static gboolean hs_dc_timeout(struct device *dev)
+{
+	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	return FALSE;
 }
 
 gboolean headset_cancel_stream(struct device *dev, unsigned int id)
@@ -1947,8 +1962,14 @@ gboolean headset_cancel_stream(struct device *dev, unsigned int id)
 
 	pending_connect_finalize(dev);
 
-	if (hs->auto_dc)
-		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	if (hs->auto_dc) {
+		if (hs->rfcomm)
+			hs->dc_timer = g_timeout_add(DC_TIMEOUT,
+						(GSourceFunc) hs_dc_timeout,
+						dev);
+		else
+			headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	}
 
 	return TRUE;
 }
@@ -1969,6 +1990,11 @@ unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
 		id = connect_cb_new(hs, HEADSET_STATE_PLAYING, cb, user_data);
 		g_idle_add((GSourceFunc) dummy_connect_complete, dev);
 		return id;
+	}
+
+	if (hs->dc_timer) {
+		g_source_remove(hs->dc_timer);
+		hs->dc_timer = 0;
 	}
 
 	if (hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS)
@@ -2154,10 +2180,17 @@ gboolean headset_unlock(struct device *dev, headset_lock_t lock)
 	if (hs->lock)
 		return TRUE;
 
-	if (hs->auto_dc)
-		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
-	else if (hs->state == HEADSET_STATE_PLAYING)
+	if (hs->state == HEADSET_STATE_PLAYING)
 		headset_set_state(dev, HEADSET_STATE_CONNECTED);
+
+	if (hs->auto_dc) {
+		if (hs->state == HEADSET_STATE_CONNECTED)
+			hs->dc_timer = g_timeout_add(DC_TIMEOUT,
+						(GSourceFunc) hs_dc_timeout,
+						dev);
+		else
+			headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	}
 
 	return TRUE;
 }
