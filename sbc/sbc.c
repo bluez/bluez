@@ -375,7 +375,7 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 	int ch, sb, blk, bit;	/* channel, subband, block and bit standard
 				   counters */
 	int bits[2][8];		/* bits distribution */
-	int levels[2][8];	/* levels derived from that */
+	uint32_t levels[2][8];	/* levels derived from that */
 
 	if (len < 4)
 		return -1;
