@@ -198,9 +198,9 @@ static GstFlowReturn gst_rtp_sbc_pay_flush_buffers(GstRtpSBCPay *sbcpay)
 	memset(payload, 0, sizeof(struct rtp_payload));
 	payload->frame_count = frame_count;
 
-        gst_adapter_copy(sbcpay->adapter, payload_data +
+	gst_adapter_copy(sbcpay->adapter, payload_data +
 			RTP_SBC_PAYLOAD_HEADER_SIZE, 0, payload_length);
-        gst_adapter_flush(sbcpay->adapter, payload_length);
+	gst_adapter_flush(sbcpay->adapter, payload_length);
 
 	GST_BUFFER_TIMESTAMP(outbuf) = sbcpay->timestamp;
 	GST_DEBUG_OBJECT (sbcpay, "Pushing %d bytes", payload_length);
