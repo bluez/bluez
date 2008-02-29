@@ -41,6 +41,3 @@ struct network_conf {
 
 int network_init(DBusConnection *conn, struct network_conf *service_conf);
 void network_exit(void);
-
-int network_del_stored_info(bdaddr_t *src, uint16_t uuid);
-int network_store_info(bdaddr_t *src, uint16_t uuid, gboolean enable);
