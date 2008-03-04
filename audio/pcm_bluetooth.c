@@ -750,6 +750,11 @@ static int bluetooth_poll_revents(snd_pcm_ioplug_t *io ATTRIBUTE_UNUSED,
 	return 0;
 }
 
+static int bluetooth_playback_poll_descriptors_count(snd_pcm_ioplug_t *io)
+{
+	return 2;
+}
+
 static int bluetooth_playback_poll_descriptors(snd_pcm_ioplug_t *io,
 					struct pollfd *pfd, unsigned int space)
 {
@@ -759,14 +764,17 @@ static int bluetooth_playback_poll_descriptors(snd_pcm_ioplug_t *io,
 
 	assert(data->pipefd[0] >= 0);
 
-	if (space < 1)
+	if (space < 2)
 		return 0;
 
 	pfd[0].fd = data->pipefd[0];
 	pfd[0].events = POLLIN;
 	pfd[0].revents = 0;
+	pfd[1].fd = data->stream.fd;
+	pfd[1].events = POLLERR | POLLHUP | POLLNVAL;
+	pfd[1].revents = 0;
 
-	return 1;
+	return 2;
 }
 
 static int bluetooth_playback_poll_revents(snd_pcm_ioplug_t *io,
@@ -779,14 +787,19 @@ static int bluetooth_playback_poll_revents(snd_pcm_ioplug_t *io,
 	DBG("");
 
 	assert(pfds);
-	assert(nfds == 1);
+	assert(nfds == 2);
 	assert(revents);
 	assert(pfds[0].fd >= 0);
+	assert(pfds[1].fd >= 0);
 
 	if (io->state != SND_PCM_STATE_PREPARED)
 		ret = read(pfds[0].fd, buf, 1);
 
-	*revents = (pfds[0].revents & ~POLLIN) | POLLOUT;
+	if (pfds[1].revents & (POLLERR | POLLHUP | POLLNVAL))
+		io->state = SND_PCM_STATE_DISCONNECTED;
+
+	revents[0] = (pfds[0].revents & ~POLLIN) | POLLOUT;
+	revents[1] = (pfds[1].revents & ~POLLIN);
 
 	return 0;
 }
@@ -1087,6 +1100,7 @@ static snd_pcm_ioplug_callback_t bluetooth_hsp_playback = {
 	.hw_params		= bluetooth_hsp_hw_params,
 	.prepare		= bluetooth_prepare,
 	.transfer		= bluetooth_hsp_write,
+	.poll_descriptors_count	= bluetooth_playback_poll_descriptors_count,
 	.poll_descriptors	= bluetooth_playback_poll_descriptors,
 	.poll_revents		= bluetooth_playback_poll_revents,
 	.delay			= bluetooth_playback_delay,
@@ -1112,6 +1126,7 @@ static snd_pcm_ioplug_callback_t bluetooth_a2dp_playback = {
 	.hw_params		= bluetooth_a2dp_hw_params,
 	.prepare		= bluetooth_prepare,
 	.transfer		= bluetooth_a2dp_write,
+	.poll_descriptors_count	= bluetooth_playback_poll_descriptors_count,
 	.poll_descriptors	= bluetooth_playback_poll_descriptors,
 	.poll_revents		= bluetooth_playback_poll_revents,
 	.delay			= bluetooth_playback_delay,
