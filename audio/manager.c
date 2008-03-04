@@ -1540,7 +1540,7 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 {
 	uint8_t chan = DEFAULT_HS_AG_CHANNEL;
 	sdp_buf_t buf;
-	gboolean no_hfp = FALSE;
+	gboolean hfp = TRUE;
 	GError *err = NULL;
 	uint32_t features;
 
@@ -1569,7 +1569,7 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 				(GIOFunc) ag_io_cb, NULL);
 
 	if (config) {
-		no_hfp = g_key_file_get_boolean(config, "Headset", "DisableHFP",
+		hfp = g_key_file_get_boolean(config, "Headset", "EnableHFP",
 						&err);
 		if (err) {
 			debug("audio.conf: %s", err->message);
@@ -1578,7 +1578,7 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 		}
 	}
 
-	if (no_hfp)
+	if (!hfp)
 		return 0;
 
 	chan = DEFAULT_HF_AG_CHANNEL;
