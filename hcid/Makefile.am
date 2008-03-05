@@ -31,10 +31,6 @@ hcid_LDADD = libhciserver.a \
 	$(top_builddir)/sdpd/libsdpserver.a \
 	$(top_builddir)/common/libhelper.a \
 	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
-
-if EXPAT
-hcid_LDADD += -lexpat
-endif
 endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@

@@ -34,10 +34,6 @@ bluetoothd_LDADD = \
 	$(top_builddir)/sdpd/libsdpserver.a \
 	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 
-if EXPAT
-bluetoothd_LDADD += -lexpat
-endif
-
 passkey_agent_SOURCES = passkey-agent.c
 
 passkey_agent_LDADD = @DBUS_LIBS@

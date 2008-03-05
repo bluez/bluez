@@ -156,11 +156,6 @@ AC_DEFUN([AC_PATH_USB], [
 		AC_DEFINE(NEED_USB_INTERRUPT_READ, 1, [Define to 1 if you need the usb_interrupt_read() function.]))
 ])
 
-AC_DEFUN([AC_PATH_EXPAT], [
-	AC_CHECK_LIB(expat, XML_ParserCreate_MM, expat_found=yes, expat_found=no)
-	AC_CHECK_HEADERS(expat.h, dummy=yes, expat_found=no)
-])
-
 AC_DEFUN([AC_PATH_INOTIFY], [
 	AC_CHECK_LIB(c ,inotify_init, inotify_found=yes, inotify_found=no)
 	AC_CHECK_HEADERS(sys/inotify.h, dummy=yes, inotify_found=no)
@@ -178,7 +173,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	pie_enable=no
 	sndfile_enable=${sndfile_found}
 	inotify_enable=${inotify_found}
-	expat_enable=${expat_found}
 	hal_enable=${hal_found}
 	usb_enable=${usb_found}
 	alsa_enable=${alsa_found}
@@ -246,10 +240,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(inotify, AC_HELP_STRING([--enable-inotify], [enable inotify support]), [
 		inotify_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(expat, AC_HELP_STRING([--enable-expat], [enable Expat support]), [
-		expat_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(hal, AC_HELP_STRING([--enable-hal], [enable HAL support]), [
@@ -393,14 +383,12 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 			DBUS_LIBS="$DBUS_GLIB_LIBS"
 		fi
 		AM_CONDITIONAL(GLIB, true)
-		AM_CONDITIONAL(EXPAT, false)
 	else
 		AC_SUBST([GLIB_CFLAGS], ['-I$(top_srcdir)/eglib'])
 		AC_SUBST([GLIB_LIBS], ['$(top_builddir)/eglib/libeglib.la -ldl'])
 		AC_SUBST([GMODULE_CFLAGS], [''])
 		AC_SUBST([GMODULE_LIBS], [''])
 		AM_CONDITIONAL(GLIB, false)
-		AM_CONDITIONAL(EXPAT, test "${expat_enable}" = "yes" && test "${expat_found}" = "yes")
 	fi
 
 	AC_SUBST([SBC_CFLAGS], ['-I$(top_srcdir)/sbc'])

@@ -2,11 +2,7 @@
 if GLIB
 sdp_sources = sdp-glib.c
 else
-if EXPAT
-sdp_sources = sdp-expat.c
-else
 sdp_sources = sdp-dummy.c
-endif
 endif
 
 if HAL
