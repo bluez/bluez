@@ -763,7 +763,7 @@ struct device_data *device_create(const char *adapter, const char *address)
 	if (device == NULL)
 		return NULL;
 
-	device->path = g_strdup_printf("/device/%s_%s", adapter, address);
+	device->path = g_strdup_printf("%s/dev_%s", adapter, address);
 	g_strdelimit(device->path, ":", '_');
 
 	debug("Creating device %s", device->path);
