@@ -37,7 +37,6 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "logging.h"
-
 #include "sdp-xml.h"
 
 #define STRBUFSIZE 1024
