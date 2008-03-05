@@ -1578,3 +1578,29 @@ gchar *g_string_free(GString *string, gboolean free_segment)
 
 	return segment;
 }
+
+/* GMarkup */
+
+struct _GMarkupParseContext {
+};
+
+GMarkupParseContext *g_markup_parse_context_new(const GMarkupParser *parser,
+					GMarkupParseFlags flags,
+					gpointer user_data,
+					GDestroyNotify user_data_dnotify)
+{
+	return g_new0(GMarkupParseContext, 1);
+}
+
+gboolean g_markup_parse_context_parse(GMarkupParseContext *context,
+					const gchar *text, gssize text_len,
+					GError **error)
+{
+	g_set_error(error, 0, 0, "Not implemented");
+	return FALSE;
+}
+
+void g_markup_parse_context_free(GMarkupParseContext *context)
+{
+	g_free(context);
+}

@@ -279,4 +279,67 @@ void g_string_append_printf(GString *string, const gchar *format, ...);
 
 gchar *g_string_free(GString *string, gboolean free_segment);
 
+/* GMarkup */
+
+typedef enum {
+	G_MARKUP_DO_NOT_USE_THIS_UNSUPPORTED_FLAG	= 1 << 0,
+	G_MARKUP_TREAT_CDATA_AS_TEXT			= 1 << 1  
+} GMarkupParseFlags;
+
+typedef struct _GMarkupParseContext GMarkupParseContext;
+typedef struct _GMarkupParser GMarkupParser;
+
+struct _GMarkupParser {
+	/* Called for open tags <foo bar="baz"> */
+	void (*start_element) (GMarkupParseContext *context,
+			const gchar *element_name,
+			const gchar **attribute_names,
+			const gchar **attribute_values,
+			gpointer user_data,
+			GError **error);
+
+	/* Called for close tags </foo> */
+	void (*end_element) (GMarkupParseContext *context,
+			const gchar         *element_name,
+			gpointer             user_data,
+			GError             **error);
+
+	/* Called for character data */
+	/* text is not nul-terminated */
+	void (*text) (GMarkupParseContext *context,
+			const gchar *text,
+			gsize text_len,  
+			gpointer user_data,
+			GError **error);
+
+	/* Called for strings that should be re-saved verbatim in this same
+	 * position, but are not otherwise interpretable.  At the moment
+	 * this includes comments and processing instructions.
+	 */
+	/* text is not nul-terminated. */
+	void (*passthrough) (GMarkupParseContext *context,
+			const gchar *passthrough_text,
+			gsize text_len,  
+			gpointer user_data,
+			GError **error);
+
+	/* Called on error, including one set by other
+	 * methods in the vtable. The GError should not be freed.
+	 */
+	void (*error) (GMarkupParseContext *context,
+			GError *error,
+			gpointer user_data);
+};
+
+GMarkupParseContext *g_markup_parse_context_new(const GMarkupParser *parser,
+					GMarkupParseFlags flags,
+					gpointer user_data,
+					GDestroyNotify user_data_dnotify);
+
+gboolean g_markup_parse_context_parse(GMarkupParseContext *context,
+					const gchar *text, gssize text_len,
+					GError **error);
+
+void g_markup_parse_context_free(GMarkupParseContext *context);
+
 #endif /* __GMAIN_H */
