@@ -3133,6 +3133,18 @@ static void do_append_device(struct device_data *device, DBusMessageIter *iter)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &path);
 }
 
+static DBusHandlerResult get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static DBusHandlerResult list_devices(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -3306,6 +3318,16 @@ GSList *service_classes_str(uint32_t class)
 }
 
 static DBusMethodVTable adapter_methods[] = {
+
+	/* BlueZ 4.0 API */
+	{ "GetProperties",	get_properties,		"",	"a{sv}" },
+	{ "SetProperty",	set_property,		"",	"sv"	},
+	{ "DiscoverDevices",	adapter_discover_devices, "",	""	},
+	{ "CancelDiscovery",	adapter_cancel_discovery, "",	""	},
+	{ "ListDevices",	list_devices,		"",	"ao"	},
+	{ "CreateDevice",	create_device,		"o",	"s"	},
+	{ "RemoveDevice",	remove_device,		"",	"o"	},
+	/* Deprecated */
 	{ "GetInfo",				adapter_get_info,
 		"",	"a{sv}"	},
 	{ "GetAddress",				adapter_get_address,
@@ -3424,14 +3446,8 @@ static DBusMethodVTable adapter_methods[] = {
 		"b",	""	},
 	{ "GetPeriodicDiscoveryNameResolving",	adapter_get_pdiscov_resolve,
 		"",	"b"	},
-
-	{ "DiscoverDevices",			adapter_discover_devices,
-		"",	""	},
 	{ "DiscoverDevicesWithoutNameResolving",	adapter_discover_devices,
 		"",	""	},
-	{ "CancelDiscovery",			adapter_cancel_discovery,
-		"",	""	},
-
 	{ "ListRemoteDevices",			adapter_list_remote_devices,
 		"",	"as"	},
 	{ "ListRecentRemoteDevices",		adapter_list_recent_remote_devices,
@@ -3445,10 +3461,6 @@ static DBusMethodVTable adapter_methods[] = {
 		"s",	""	},
 	{ "ListTrusts",				adapter_list_trusts,
 		"",	"as"	},
-
-	{ "ListDevices",	list_devices,	"",	"as"	},
-	{ "CreateDevice",	create_device,	"s",	"s"	},
-	{ "RemoveDevice",	remove_device,	"s",	""	},
 
 	{ NULL, NULL, NULL, NULL }
 };
