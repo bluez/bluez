@@ -1,0 +1,50 @@
+BlueZ D-Bus Device API description
+**********************************
+
+Copyright (C) 2008-2008  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2008-2008  Johan Hedberg <johan.hedberg@nokia.com>
+Copyright (C) 2008-2008  Claudio Takahasi <claudio.takahasi@indt.org.br>
+Copyright (C) 2008-2008  Luiz von Dentz <luiz.dentz@indt.org.br>
+
+Adapter hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Device
+Object path	/org/bluez/{hci0,hci1,...}/{dev_XX_XX_XX_XX_XX_XX...}
+
+Methods		dict GetProperties()
+
+			TBD
+
+		void SetProperty(string name, variant value)
+
+			TBD
+
+		void Disconnect()
+
+			TBD
+
+Signals		PropertyChanged(string name, variant value)
+
+			TBD
+
+		DisconnectRequested()
+
+			TBD
+
+Properties	string Name [readonly]
+
+		string Address [readonly]
+
+		string Class [readonly]
+
+		array{string} UUIDS [readwrite]
+
+		boolean Paired [readonly]
+
+		boolean Trusted [readwrite]
+
+		boolean Connected [readonly]
+
+		string Alias [readwrite]
