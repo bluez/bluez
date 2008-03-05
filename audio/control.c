@@ -989,7 +989,7 @@ int avrcp_init(DBusConnection *conn, GKeyFile *config)
 		return 0;
 
 
-	tmp = g_key_file_get_boolean(config, "General", "ForceMaster",
+	tmp = g_key_file_get_boolean(config, "General", "Master",
 			&err);
 	if (err) {
 		debug("audio.conf: %s", err->message);

@@ -1554,7 +1554,7 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	if (config) {
 		gboolean tmp;
 
-		tmp = g_key_file_get_boolean(config, "General", "ForceMaster",
+		tmp = g_key_file_get_boolean(config, "General", "Master",
 						&err);
 		if (err) {
 			debug("audio.conf: %s", err->message);
