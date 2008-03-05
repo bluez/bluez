@@ -52,9 +52,12 @@
 #include "textfile.h"
 #include "oui.h"
 
+#include "adapter.h"
 #include "device.h"
 
 #define MAX_DEVICES 16
+
+#define DEVICE_INTERFACE "org.bluez.Device"
 
 struct hci_peer {
 	struct timeval lastseen;
@@ -717,7 +720,7 @@ gboolean device_init(DBusConnection *conn)
 	return TRUE;
 }
 
-static void device_destroy(struct device_data *device)
+static void device_destroy(struct device *device)
 {
 	debug("Removing device %s", device->path);
 
@@ -740,7 +743,7 @@ void device_foreach(GFunc func, gpointer user_data)
 	g_slist_foreach(device_list, func, user_data);
 }
 
-static void device_free(struct device_data *device)
+static void device_free(struct device *device)
 {
 	g_free(device->path);
 	g_free(device);
@@ -748,22 +751,53 @@ static void device_free(struct device_data *device)
 
 static void device_unregister(DBusConnection *conn, void *user_data)
 {
-	struct device_data *device = user_data;
+	struct device *device = user_data;
 
 	device_list = g_slist_remove(device_list, device);
 
 	device_free(device);
 }
 
-struct device_data *device_create(const char *adapter, const char *address)
+static DBusHandlerResult disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
 {
-	struct device_data *device;
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
 
-	device = g_try_malloc0(sizeof(struct device_data));
+static DBusHandlerResult get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusHandlerResult set_property(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static DBusMethodVTable device_methods[] = {
+	{ "GetProperties",	get_properties,		"",	"a{sv}" },
+	{ "SetProperty",	set_property,		"sv",	""	},
+	{ "Disconnect",		disconnect,		"",	""	},
+	{ NULL, NULL, NULL, NULL }
+};
+
+static DBusSignalVTable device_signals[] = {
+	{ "PropertyChanged",			"sv"	},
+	{ "DisconnectRequested",		""	},
+	{ NULL, NULL }
+};
+
+struct device *device_create(struct adapter *adapter, const char *address)
+{
+	struct device *device;
+
+	device = g_try_malloc0(sizeof(struct device));
 	if (device == NULL)
 		return NULL;
 
-	device->path = g_strdup_printf("%s/dev_%s", adapter, address);
+	device->path = g_strdup_printf("%s/dev_%s", adapter->address, address);
 	g_strdelimit(device->path, ":", '_');
 
 	debug("Creating device %s", device->path);
@@ -773,6 +807,8 @@ struct device_data *device_create(const char *adapter, const char *address)
 		device_free(device);
 		return NULL;
 	}
+	dbus_connection_register_interface(connection, device->path,
+			DEVICE_INTERFACE, device_methods, device_signals, NULL);
 
 	device_list = g_slist_append(device_list, device);
 

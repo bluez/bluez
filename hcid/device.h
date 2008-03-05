@@ -22,12 +22,12 @@
  *
  */
 
-struct device_data {
+struct device {
 	char *path;
 };
 
 gboolean device_init(DBusConnection *conn);
 void device_cleanup(void);
 void device_foreach(GFunc func, gpointer user_data);
-struct device_data *device_create(const char *adapter, const char *address);
+struct device *device_create(struct adapter *adapter, const char *address);
 void device_remove(const char *path);

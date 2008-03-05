@@ -50,11 +50,12 @@
 
 #include "hcid.h"
 #include "dbus.h"
+
+#include "adapter.h"
 #include "device.h"
 
 #include "textfile.h"
 #include "oui.h"
-#include "adapter.h"
 #include "dbus-common.h"
 #include "dbus-helper.h"
 #include "dbus-hci.h"
@@ -3126,7 +3127,7 @@ static DBusHandlerResult adapter_list_trusts(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static void do_append_device(struct device_data *device, DBusMessageIter *iter)
+static void do_append_device(struct device *device, DBusMessageIter *iter)
 {
 	const char *path = device->path;
 
@@ -3177,7 +3178,7 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	struct device_data *device;
+	struct device *device;
 	DBusMessage *reply;
 	const char *address, *path;
 
@@ -3195,7 +3196,7 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	device = device_create(adapter->address, address);
+	device = device_create(adapter, address);
 
 	path = device->path;
 
@@ -3321,7 +3322,7 @@ static DBusMethodVTable adapter_methods[] = {
 
 	/* BlueZ 4.0 API */
 	{ "GetProperties",	get_properties,		"",	"a{sv}" },
-	{ "SetProperty",	set_property,		"",	"sv"	},
+	{ "SetProperty",	set_property,		"sv",	""	},
 	{ "DiscoverDevices",	adapter_discover_devices, "",	""	},
 	{ "CancelDiscovery",	adapter_cancel_discovery, "",	""	},
 	{ "ListDevices",	list_devices,		"",	"ao"	},
