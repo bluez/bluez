@@ -124,6 +124,8 @@ static struct tupla Protocol[] = {
 	{ AVDTP_UUID,		"AVDTP"		},
 	{ CMTP_UUID,		"CMTP"		},
 	{ UDI_UUID,		"UDI"		},
+	{ MCAP_CTRL_UUID,	"MCAP-Ctrl"	},
+	{ MCAP_DATA_UUID,	"MCAP-Data"	},
 	{ L2CAP_UUID,		"L2CAP"		},
 	{ 0 }
 };

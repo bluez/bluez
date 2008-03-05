@@ -69,6 +69,8 @@ extern "C" {
 #define AVDTP_UUID	0x0019
 #define CMTP_UUID	0x001b
 #define UDI_UUID	0x001d
+#define MCAP_CTRL_UUID	0x001e
+#define MCAP_DATA_UUID	0x001f
 #define L2CAP_UUID	0x0100
 
 /*
