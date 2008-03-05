@@ -1,3 +1,6 @@
+ver 3.28:
+	Add support for MCAP UUIDs.
+
 ver 3.27:
 	Add another company identifier.
 
