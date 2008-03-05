@@ -1582,6 +1582,7 @@ gchar *g_string_free(GString *string, gboolean free_segment)
 /* GMarkup */
 
 struct _GMarkupParseContext {
+	char dummy;
 };
 
 GMarkupParseContext *g_markup_parse_context_new(const GMarkupParser *parser,
