@@ -33,7 +33,6 @@ test_textfile_LDADD = libhelper.a
 AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 EXTRA_DIST = ppoll.h uinput.h hal-dummy.c hal-libhal.c \
-		notify-dummy.c notify-inotify.c \
-		sdp-dummy.c sdp-expat.c sdp-glib.c
+		notify-dummy.c notify-inotify.c sdp-dummy.c sdp-glib.c
 
 MAINTAINERCLEANFILES = Makefile.in
