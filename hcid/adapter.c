@@ -3466,12 +3466,19 @@ static DBusMethodVTable adapter_methods[] = {
 };
 
 static DBusSignalVTable adapter_signals[] = {
+	/* BlueZ 4.0 */
+	{ "DiscoveryStarted",			""	},
+	{ "DiscoveryCompleted",			""	},
+	{ "DeviceCreated",			"o"	},
+	{ "DeviceRemoved",			"o"	},
+	{ "DeviceFound",			"s"	},
+	{ "PropertyChanged",			"sv"	},
+	{ "DeviceDisappeared",			"s"	},
+	/* Deprecated */
 	{ "ModeChanged",			"s"	},
 	{ "DiscoverableTimeoutChanged",		"u"	},
 	{ "MinorClassChanged",			"s"	},
 	{ "NameChanged",			"s"	},
-	{ "DiscoveryStarted",			""	},
-	{ "DiscoveryCompleted",			""	},
 	{ "PeriodicDiscoveryStarted",		""	},
 	{ "PeriodicDiscoveryStopped",		""	},
 	{ "RemoteDeviceFound",			"sun"	},
