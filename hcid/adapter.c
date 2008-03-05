@@ -3326,8 +3326,8 @@ static DBusMethodVTable adapter_methods[] = {
 	{ "DiscoverDevices",	adapter_discover_devices, "",	""	},
 	{ "CancelDiscovery",	adapter_cancel_discovery, "",	""	},
 	{ "ListDevices",	list_devices,		"",	"ao"	},
-	{ "CreateDevice",	create_device,		"o",	"s"	},
-	{ "RemoveDevice",	remove_device,		"",	"o"	},
+	{ "CreateDevice",	create_device,		"s",	"o"	},
+	{ "RemoveDevice",	remove_device,		"o",	""	},
 	/* Deprecated */
 	{ "GetInfo",				adapter_get_info,
 		"",	"a{sv}"	},
