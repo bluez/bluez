@@ -264,5 +264,5 @@ int avdtp_error_posix_errno(struct avdtp_error *err);
 
 void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 
-int avdtp_init(void);
+int avdtp_init(GKeyFile *config);
 void avdtp_exit(void);

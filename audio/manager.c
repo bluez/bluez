@@ -1485,7 +1485,7 @@ failed:
 	return TRUE;
 }
 
-static GIOChannel *server_socket(uint8_t *channel)
+static GIOChannel *server_socket(uint8_t *channel, gboolean master)
 {
 	int sock, lm;
 	struct sockaddr_rc addr;
@@ -1499,6 +1499,10 @@ static GIOChannel *server_socket(uint8_t *channel)
 	}
 
 	lm = RFCOMM_LM_SECURE;
+
+	if (master)
+		lm |= RFCOMM_LM_MASTER;
+
 	if (setsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
 		error("server setsockopt: %s (%d)", strerror(errno), errno);
 		close(sock);
@@ -1540,14 +1544,36 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 {
 	uint8_t chan = DEFAULT_HS_AG_CHANNEL;
 	sdp_buf_t buf;
-	gboolean hfp = TRUE;
+	gboolean hfp = TRUE, master = TRUE;
 	GError *err = NULL;
 	uint32_t features;
 
 	if (!(enabled.headset || enabled.gateway))
 		return 0;
 
-	hs_server = server_socket(&chan);
+	if (config) {
+		gboolean tmp;
+
+		tmp = g_key_file_get_boolean(config, "General", "ForceMaster",
+						&err);
+		if (err) {
+			debug("audio.conf: %s", err->message);
+			g_error_free(err);
+			err = NULL;
+		} else
+			master = tmp;
+
+		tmp = g_key_file_get_boolean(config, "Headset", "DisableHFP",
+						&err);
+		if (err) {
+			debug("audio.conf: %s", err->message);
+			g_error_free(err);
+			err = NULL;
+		} else
+			hfp = tmp;
+	}
+
+	hs_server = server_socket(&chan, master);
 	if (!hs_server)
 		return -1;
 
@@ -1568,22 +1594,12 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	g_io_add_watch(hs_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				(GIOFunc) ag_io_cb, NULL);
 
-	if (config) {
-		hfp = g_key_file_get_boolean(config, "Headset", "EnableHFP",
-						&err);
-		if (err) {
-			debug("audio.conf: %s", err->message);
-			g_error_free(err);
-			err = NULL;
-		}
-	}
-
 	if (!hfp)
 		return 0;
 
 	chan = DEFAULT_HF_AG_CHANNEL;
 
-	hf_server = server_socket(&chan);
+	hf_server = server_socket(&chan, master);
 	if (!hf_server)
 		return -1;
 
@@ -1697,7 +1713,7 @@ int audio_init(DBusConnection *conn, GKeyFile *config)
 			goto failed;
 	}
 
-	if (enabled.control && avrcp_init(conn) < 0)
+	if (enabled.control && avrcp_init(conn, config) < 0)
 		goto failed;
 
 	if (!dbus_connection_register_interface(conn, AUDIO_MANAGER_PATH,

@@ -309,7 +309,7 @@ static int avrcp_tg_record(sdp_buf_t *buf)
 	return ret;
 }
 
-static GIOChannel *avctp_server_socket(void)
+static GIOChannel *avctp_server_socket(gboolean master)
 {
 	int sock, lm;
 	struct sockaddr_l2 addr;
@@ -322,6 +322,10 @@ static GIOChannel *avctp_server_socket(void)
 	}
 
 	lm = L2CAP_LM_SECURE;
+
+	if (master)
+		lm |= L2CAP_LM_MASTER;
+
 	if (setsockopt(sock, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
 		error("AVCTP server setsockopt: %s (%d)", strerror(errno), errno);
 		close(sock);
@@ -975,12 +979,24 @@ void avrcp_disconnect(struct device *dev)
 	control->session = NULL;
 }
 
-int avrcp_init(DBusConnection *conn)
+int avrcp_init(DBusConnection *conn, GKeyFile *config)
 {
 	sdp_buf_t buf;
+	gboolean tmp, master = TRUE;
+	GError *err = NULL;
 
 	if (avctp_server)
 		return 0;
+
+
+	tmp = g_key_file_get_boolean(config, "General", "ForceMaster",
+			&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else
+		master = tmp;
 
 	connection = dbus_connection_ref(conn);
 
@@ -1010,7 +1026,7 @@ int avrcp_init(DBusConnection *conn)
 		return -1;
 	}
 
-	avctp_server = avctp_server_socket();
+	avctp_server = avctp_server_socket(master);
 	if (!avctp_server)
 		return -1;
 

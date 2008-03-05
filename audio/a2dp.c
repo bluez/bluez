@@ -1100,7 +1100,7 @@ int a2dp_init(DBusConnection *conn, GKeyFile *config)
 proceed:
 	connection = dbus_connection_ref(conn);
 
-	avdtp_init();
+	avdtp_init(config);
 
 	if (source) {
 		for (i = 0; i < sbc_srcs; i++)

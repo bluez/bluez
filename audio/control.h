@@ -24,7 +24,7 @@
 
 #define AUDIO_CONTROL_INTERFACE "org.bluez.audio.Control"
 
-int avrcp_init(DBusConnection *conn);
+int avrcp_init(DBusConnection *conn, GKeyFile *config);
 void avrcp_exit(void);
 
 gboolean avrcp_connect(struct device *dev);

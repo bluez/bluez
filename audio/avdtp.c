@@ -2874,7 +2874,7 @@ static gboolean avdtp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	return TRUE;
 }
 
-static GIOChannel *avdtp_server_socket(void)
+static GIOChannel *avdtp_server_socket(gboolean master)
 {
 	int sock, lm;
 	struct sockaddr_l2 addr;
@@ -2887,6 +2887,10 @@ static GIOChannel *avdtp_server_socket(void)
 	}
 
 	lm = L2CAP_LM_SECURE;
+
+	if (master)
+		lm |= L2CAP_LM_MASTER;
+
 	if (setsockopt(sock, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
 		error("AVDTP server setsockopt: %s (%d)", strerror(errno),
 				errno);
@@ -2979,12 +2983,24 @@ void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst)
 		bacpy(dst, &session->dst);
 }
 
-int avdtp_init(void)
+int avdtp_init(GKeyFile *config)
 {
+	GError *err = NULL;
+	gboolean tmp, master = TRUE;
+
 	if (avdtp_server)
 		return 0;
 
-	avdtp_server = avdtp_server_socket();
+	tmp = g_key_file_get_boolean(config, "General", "ForceMaster",
+			&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else
+		master = tmp;
+
+	avdtp_server = avdtp_server_socket(master);
 	if (!avdtp_server)
 		return -1;
 
