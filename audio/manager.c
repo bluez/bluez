@@ -1563,7 +1563,7 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 		} else
 			master = tmp;
 
-		tmp = g_key_file_get_boolean(config, "Headset", "DisableHFP",
+		tmp = g_key_file_get_boolean(config, "Headset", "HFP",
 						&err);
 		if (err) {
 			debug("audio.conf: %s", err->message);
