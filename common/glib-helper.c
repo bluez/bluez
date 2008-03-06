@@ -168,7 +168,8 @@ int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
 	ctxt->user_data	= user_data;
 
 	chan = g_io_channel_unix_new(sdp_get_socket(s));
-	g_io_add_watch(chan, G_IO_OUT, connect_watch, ctxt);
+	g_io_add_watch(chan, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			connect_watch, ctxt);
 	g_io_channel_unref(chan);
 
 	return 0;
