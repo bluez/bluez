@@ -233,6 +233,8 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		return 1;
 	}
 
+	fputs("STATE: -connecting-to-device\n", stderr);
+
 	memset(&opts, 0, sizeof(opts));
 	size = sizeof(opts);
 
@@ -300,6 +302,13 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 				break;
 
 			len = write(data_sk, buf, count);
+			if (len < 0) {
+				perror("ERROR: Error writing to device");
+				close(data_sk);
+				close(ctrl_sk);
+				return 1;
+			}
+
 			if (len != count)
 				fprintf(stderr, "ERROR: Can't send complete data\n");
 

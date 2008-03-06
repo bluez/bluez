@@ -43,6 +43,15 @@
 #include "dbus.h"
 #include "sdp-xml.h"
 
+enum {					/**** Backend exit codes ****/
+	CUPS_BACKEND_OK = 0,		/* Job completed successfully */
+	CUPS_BACKEND_FAILED = 1,	/* Job failed, use error-policy */
+	CUPS_BACKEND_AUTH_REQUIRED = 2,	/* Job failed, authentication required */
+	CUPS_BACKEND_HOLD = 3,		/* Job failed, hold job */
+	CUPS_BACKEND_STOP = 4,		/* Job failed, stop queue */
+	CUPS_BACKEND_CANCEL = 5		/* Job failed, cancel job */
+};
+
 extern int sdp_search_spp(sdp_session_t *sdp, uint8_t *channel);
 extern int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short *data_psm);
 
@@ -439,7 +448,7 @@ static DBusHandlerResult filter_func(DBusConnection *connection, DBusMessage *me
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static void list_printers(void)
+static gboolean list_printers(void)
 {
 	/* 1. Connect to the bus
 	 * 2. Get the manager
@@ -457,15 +466,15 @@ static void list_printers(void)
 
 	conn = init_dbus(NULL, NULL, NULL);
 	if (conn == NULL)
-		return;
+		return FALSE;
 
 	dbus_error_init(&error);
 	hcid_exists = dbus_bus_name_has_owner(conn, "org.bluez", &error);
 	if (&error != NULL && dbus_error_is_set(&error))
-		return;
+		return FALSE;
 
 	if (!hcid_exists)
-		return;
+		return FALSE;
 
 	/* Get the default adapter */
 	message = dbus_message_new_method_call("org.bluez", "/org/bluez",
@@ -473,7 +482,7 @@ static void list_printers(void)
 						"DefaultAdapter");
 	if (message == NULL) {
 		dbus_connection_unref(conn);
-		return;
+		return FALSE;
 	}
 
 	reply = dbus_connection_send_with_reply_and_block(conn,
@@ -483,14 +492,14 @@ static void list_printers(void)
 
 	if (&error != NULL && dbus_error_is_set(&error)) {
 		dbus_connection_unref(conn);
-		return;
+		return FALSE;
 	}
 
 	dbus_message_iter_init(reply, &reply_iter);
 	if (dbus_message_iter_get_arg_type(&reply_iter) != DBUS_TYPE_STRING) {
 		dbus_message_unref(reply);
 		dbus_connection_unref(conn);
-		return;
+		return FALSE;
 	}
 
 	dbus_message_iter_get_basic(&reply_iter, &adapter);
@@ -500,7 +509,7 @@ static void list_printers(void)
 	if (!dbus_connection_add_filter(conn, filter_func, adapter, g_free)) {
 		g_free(adapter);
 		dbus_connection_unref(conn);
-		return;
+		return FALSE;
 	}
 
 #define MATCH_FORMAT				\
@@ -527,7 +536,7 @@ static void list_printers(void)
 		dbus_message_unref(message);
 		dbus_connection_unref(conn);
 		g_free(adapter);
-		return;
+		return FALSE;
 	}
 	dbus_message_unref(message);
 
@@ -538,6 +547,8 @@ static void list_printers(void)
 	g_main_loop_run(loop);
 
 	dbus_connection_unref(conn);
+
+	return TRUE;
 }
 
 /*
@@ -552,6 +563,7 @@ int main(int argc, char *argv[])
 	unsigned short ctrl_psm, data_psm;
 	uint8_t channel, b[6];
 	char *ptr, str[3], device[18], service[12];
+	const char *uri;
 	int i, err, fd, copies, proto;
 
 	/* Make sure status messages are not buffered */
@@ -569,13 +581,15 @@ int main(int argc, char *argv[])
 #endif /* HAVE_SIGSET */
 
 	if (argc == 1) {
-		list_printers();
-		return 0;
+		if (list_printers() == TRUE)
+			return CUPS_BACKEND_OK;
+		else
+			return CUPS_BACKEND_FAILED;
 	}
 
 	if (argc < 6 || argc > 7) {
 		fprintf(stderr, "Usage: bluetooth job-id user title copies options [file]\n");
-		return 1;
+		return CUPS_BACKEND_FAILED;
 	}
 
 	if (argc == 6) {
@@ -584,14 +598,18 @@ int main(int argc, char *argv[])
 	} else {
 		if ((fd = open(argv[6], O_RDONLY)) < 0) {
 			perror("ERROR: Unable to open print file");
-			return 1;
+			return CUPS_BACKEND_FAILED;
 		}
 		copies = atoi(argv[4]);
 	}
 
-	if (strncasecmp(argv[0], "bluetooth://", 12)) {
+	uri = getenv("DEVICE_URI");
+	if (!uri)
+		uri = argv[0];
+
+	if (strncasecmp(uri, "bluetooth://", 12)) {
 		fprintf(stderr, "ERROR: No device URI found\n");
-		return 1;
+		return CUPS_BACKEND_FAILED;
 	}
 
 	ptr = argv[0] + 12;
@@ -623,10 +641,12 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "DEBUG: %s device %s service %s fd %d copies %d\n",
 			argv[0], device, service, fd, copies);
 
+	fputs("STATE: +connecting-to-device\n", stderr);
+
 	sdp = sdp_connect(BDADDR_ANY, &bdaddr, SDP_RETRY_IF_BUSY);
 	if (!sdp) {
 		fprintf(stderr, "ERROR: Can't open Bluetooth connection\n");
-		return 1;
+		return CUPS_BACKEND_FAILED;
 	}
 
 	switch (proto) {
@@ -650,7 +670,7 @@ int main(int argc, char *argv[])
 
 	if (err) {
 		fprintf(stderr, "ERROR: Can't get service information\n");
-		return 1;
+		return CUPS_BACKEND_FAILED;
 	}
 
 	switch (proto) {
@@ -661,7 +681,7 @@ int main(int argc, char *argv[])
 		err = hcrp_print(BDADDR_ANY, &bdaddr, ctrl_psm, data_psm, fd, copies);
 		break;
 	default:
-		err = 1;
+		err = CUPS_BACKEND_FAILED;
 		fprintf(stderr, "ERROR: Unsupported protocol\n");
 		break;
 	}

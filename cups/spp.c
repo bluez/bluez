@@ -65,6 +65,8 @@ int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
 		return 1;
 	}
 
+	fputs("STATE: -connecting-to-device\n", stderr);
+
 	/* Ignore SIGTERM signals if printing from stdin */
 	if (fd == 0) {
 #ifdef HAVE_SIGSET
@@ -88,6 +90,11 @@ int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
 
 		while ((len = read(fd, buf, sizeof(buf))) > 0) {
 			err = write(sk, buf, len);
+			if (err < 0) {
+				perror("ERROR: Error writing to device");
+				close(sk);
+				return 1;
+			}
 		}
 
 	}
