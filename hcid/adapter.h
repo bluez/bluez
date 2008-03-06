@@ -80,6 +80,11 @@ struct pending_dc_info {
 	guint timeout_id;
 };
 
+struct create_device_req {
+	DBusConnection *conn;
+	DBusMessage *msg;
+};
+
 struct adapter {
 	uint16_t dev_id;
 	int up;
@@ -106,6 +111,7 @@ struct adapter {
 	struct bonding_request_info *bonding;
 	GSList *pin_reqs;
 	struct pending_dc_info *pending_dc;
+	struct create_device_req *create;
 };
 
 dbus_bool_t adapter_init(DBusConnection *conn, const char *path);

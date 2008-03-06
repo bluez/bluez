@@ -62,6 +62,8 @@
 #include "dbus-sdp.h"
 #include "dbus-error.h"
 #include "error.h"
+#include "glib-helper.h"
+#include "logging.h"
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 
@@ -3174,16 +3176,43 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
+{
+	struct adapter *adapter = user_data;
+	DBusMessage *reply;
+
+	if (err < 0) {
+		error_connection_attempt_failed(adapter->create->conn,
+						adapter->create->msg, -err);
+		goto failed;
+	}
+
+	/* FIXME: Register the device object path */
+
+	reply = dbus_message_new_method_return(adapter->create->msg);
+	send_message_and_unref(adapter->create->conn, reply);
+
+failed:
+	dbus_connection_unref(adapter->create->conn);
+	dbus_message_unref(adapter->create->msg);
+	g_free(adapter->create);
+	adapter->create = NULL;
+}
+
 static DBusHandlerResult create_device(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+					DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	struct device *device;
-	DBusMessage *reply;
-	const char *address, *path;
+	struct create_device_req *create;
+	const char *address;
+	bdaddr_t src, dst;
+	int err;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
+
+	if (adapter->create)
+		return error_in_progress(conn, msg, "CreateDevice in progress");
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -3192,18 +3221,21 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	str2ba(adapter->address, &src);
+	str2ba(address, &dst);
+	err = bt_discover_services(&src, &dst,
+			discover_services_cb, adapter, NULL);
+	if (err < 0) {
+		error("Discover services failed!");
+		return error_connection_attempt_failed(conn, msg, -err);
+	}
 
-	device = device_create(adapter, address);
+	create = g_malloc0(sizeof(struct create_device_req));
+	create->conn = dbus_connection_ref(conn);
+	create->msg = dbus_message_ref(msg);
+	adapter->create = create;
 
-	path = device->path;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
-							DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult remove_device(DBusConnection *conn,

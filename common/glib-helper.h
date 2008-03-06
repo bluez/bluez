@@ -20,3 +20,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+typedef void (*bt_callback_t) (gpointer user_data, sdp_list_t *recs, int err);
+typedef void (*bt_destroy_t) (gpointer user_data);
+
+int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
+		bt_callback_t cb, void *user_data, bt_destroy_t destroy);
