@@ -56,6 +56,10 @@ Methods		dict GetProperties()
 
 			TBD
 
+		object CreateDeviceWithAgent(string address, object path)
+
+			TBD
+
 		void RemoveDevice(object path)
 
 Signals		DeviceCreated(object path)
