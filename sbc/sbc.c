@@ -550,41 +550,42 @@ static void sbc_decoder_init(struct sbc_decoder_state *state,
 static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
 {
-	int i, j, k, idx;
-	sbc_fixed_t res;
+	int i, k, idx;
+	int32_t *v = state->V[ch];
+	int *offset = state->offset[ch];
 
 	for (i = 0; i < 8; i++) {
 		/* Shifting */
-		state->offset[ch][i]--;
-		if (state->offset[ch][i] < 0) {
-			state->offset[ch][i] = 79;
-			for (j = 0; j < 9; j++)
-				state->V[ch][j+80] = state->V[ch][j];
+		offset[i]--;
+		if (offset[i] < 0) {
+			offset[i] = 79;
+			memcpy(v + 80, v, 9 * sizeof(*v));
 		}
-	}
 
-	for (i = 0; i < 8; i++) {
 		/* Distribute the new matrix value to the shifted position */
-		SBC_FIXED_0(res);
-		for (j = 0; j < 4; j++)
-			res = MULA(synmatrix4[i][j],
-					frame->sb_sample[blk][ch][j], res);
-		state->V[ch][state->offset[ch][i]] = SCALE4_STAGED1(res);
+		v[offset[i]] = SCALE4_STAGED1(
+			MULA(synmatrix4[i][0], frame->sb_sample[blk][ch][0],
+			MULA(synmatrix4[i][1], frame->sb_sample[blk][ch][1],
+			MULA(synmatrix4[i][2], frame->sb_sample[blk][ch][2],
+			MUL (synmatrix4[i][3], frame->sb_sample[blk][ch][3])))));
 	}
 
 	/* Compute the samples */
-	for (idx = 0, i = 0; i < 4; i++) {
+	for (idx = 0, i = 0; i < 4; i++, idx += 5) {
 		k = (i + 4) & 0xf;
-		SBC_FIXED_0(res);
-		for (j = 0; j < 10; idx++) {
-			res = MULA(state->V[ch][state->offset[ch][i]+j++],
-					sbc_proto_4_40m0[idx], res);
-			res = MULA(state->V[ch][state->offset[ch][k]+j++],
-					sbc_proto_4_40m1[idx], res);
-		}
 
 		/* Store in output, Q0 */
-		frame->pcm_sample[ch][blk * 4 + i] = SCALE4_STAGED2(res);
+		frame->pcm_sample[ch][blk * 4 + i] = SCALE4_STAGED2(
+			MULA(v[offset[i] + 0], sbc_proto_4_40m0[idx + 0],
+			MULA(v[offset[k] + 1], sbc_proto_4_40m1[idx + 0],
+			MULA(v[offset[i] + 2], sbc_proto_4_40m0[idx + 1],
+			MULA(v[offset[k] + 3], sbc_proto_4_40m1[idx + 1],
+			MULA(v[offset[i] + 4], sbc_proto_4_40m0[idx + 2],
+			MULA(v[offset[k] + 5], sbc_proto_4_40m1[idx + 2],
+			MULA(v[offset[i] + 6], sbc_proto_4_40m0[idx + 3],
+			MULA(v[offset[k] + 7], sbc_proto_4_40m1[idx + 3],
+			MULA(v[offset[i] + 8], sbc_proto_4_40m0[idx + 4],
+			MUL( v[offset[k] + 9], sbc_proto_4_40m1[idx + 4])))))))))));
 	}
 }
 
@@ -592,43 +593,45 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
 {
 	int i, j, k, idx;
-	sbc_fixed_t res;
+	int *offset = state->offset[ch];
 
 	for (i = 0; i < 16; i++) {
 		/* Shifting */
-		state->offset[ch][i]--;
-		if (state->offset[ch][i] < 0) {
-			state->offset[ch][i] = 159;
+		offset[i]--;
+		if (offset[i] < 0) {
+			offset[i] = 159;
 			for (j = 0; j < 9; j++)
-				state->V[ch][j+160] = state->V[ch][j];
+				state->V[ch][j + 160] = state->V[ch][j];
 		}
-	}
 
-	for (i = 0; i < 16; i++) {
 		/* Distribute the new matrix value to the shifted position */
-		SBC_FIXED_0(res);
-		for (j = 0; j < 8; j++) {
-			/* Q28 = Q15 * Q13 */
-			res = MULA(synmatrix8[i][j],
-					frame->sb_sample[blk][ch][j], res);
-		}
-		/* Q10 */
-		state->V[ch][state->offset[ch][i]] = SCALE8_STAGED1(res);
+		state->V[ch][offset[i]] = SCALE8_STAGED1(
+			MULA(synmatrix8[i][0], frame->sb_sample[blk][ch][0],
+			MULA(synmatrix8[i][1], frame->sb_sample[blk][ch][1],
+			MULA(synmatrix8[i][2], frame->sb_sample[blk][ch][2],
+			MULA(synmatrix8[i][3], frame->sb_sample[blk][ch][3],
+			MULA(synmatrix8[i][4], frame->sb_sample[blk][ch][4],
+			MULA(synmatrix8[i][5], frame->sb_sample[blk][ch][5],
+			MULA(synmatrix8[i][6], frame->sb_sample[blk][ch][6],
+			MUL( synmatrix8[i][7], frame->sb_sample[blk][ch][7])))))))));
 	}
 
 	/* Compute the samples */
-	for (idx = 0, i = 0; i < 8; i++) {
+	for (idx = 0, i = 0; i < 8; i++, idx += 5) {
 		k = (i + 8) & 0xf;
-		SBC_FIXED_0(res);
-		for (j = 0; j < 10; idx++) {
-			res = MULA(state->V[ch][state->offset[ch][i]+j++],
-					sbc_proto_8_80m0[idx], res);
-			res = MULA(state->V[ch][state->offset[ch][k]+j++],
-					sbc_proto_8_80m1[idx], res);
-		}
-		/* Store in output */
-		frame->pcm_sample[ch][blk * 8 + i] = SCALE8_STAGED2(res); // Q0
 
+		/* Store in output */
+		frame->pcm_sample[ch][blk * 8 + i] = SCALE8_STAGED2( // Q0
+			MULA(state->V[ch][offset[i] + 0], sbc_proto_8_80m0[idx + 0],
+			MULA(state->V[ch][offset[k] + 1], sbc_proto_8_80m1[idx + 0],
+			MULA(state->V[ch][offset[i] + 2], sbc_proto_8_80m0[idx + 1],
+			MULA(state->V[ch][offset[k] + 3], sbc_proto_8_80m1[idx + 1],
+			MULA(state->V[ch][offset[i] + 4], sbc_proto_8_80m0[idx + 2],
+			MULA(state->V[ch][offset[k] + 5], sbc_proto_8_80m1[idx + 2],
+			MULA(state->V[ch][offset[i] + 6], sbc_proto_8_80m0[idx + 3],
+			MULA(state->V[ch][offset[k] + 7], sbc_proto_8_80m1[idx + 3],
+			MULA(state->V[ch][offset[i] + 8], sbc_proto_8_80m0[idx + 4],
+			MUL( state->V[ch][offset[k] + 9], sbc_proto_8_80m1[idx + 4])))))))))));
 	}
 }
 
