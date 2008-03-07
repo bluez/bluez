@@ -58,10 +58,41 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 {
 	struct search_context *ctxt = user_data;
 	sdp_list_t *recs = NULL;
+	int scanned, seqlen = 0;
+	uint8_t dataType;
+	int err = 0;
 
-	/* FIXME: Extract the records */
+	if (status || type != SDP_SVC_SEARCH_ATTR_RSP) {
+		err = -EPROTO;
+		goto done;
+	}
 
-	ctxt->cb(ctxt->user_data, recs, 0);
+	scanned = sdp_extract_seqtype(rsp, &dataType, &seqlen);
+	if (!scanned || !seqlen)
+		goto done;
+
+	rsp += scanned;
+	do {
+		sdp_record_t *rec;
+		int recsize;
+
+		recsize = 0;
+		rec = sdp_extract_pdu(rsp, &recsize);
+		if (!rec)
+			break;
+
+		if (!recsize) {
+			sdp_record_free(rec);
+			break;
+		}
+
+		scanned += recsize;
+		rsp += recsize;
+
+		recs = sdp_list_append(recs, rec);
+	} while (scanned < size);
+done:
+	ctxt->cb(ctxt->user_data, recs, err);
 
 	search_context_cleanup(ctxt);
 }
