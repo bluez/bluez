@@ -728,15 +728,29 @@ static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
-static gboolean reconfigure(gpointer data)
+static gboolean a2dp_reconfigure(gpointer data)
 {
 	struct a2dp_setup *setup = data;
 	struct avdtp_local_sep *lsep;
 	struct avdtp_remote_sep *rsep;
+	struct avdtp_service_capability *cap;
+	struct avdtp_media_codec_capability *codec_cap = NULL;
+	GSList *l;
 	int posix_err;
 
+	for (l = setup->client_caps; l != NULL; l = l->next) {
+		cap = l->data;
+
+		if (cap->category != AVDTP_MEDIA_CODEC)
+			continue;
+
+		codec_cap = (void *) cap->data;
+		break;
+	}
+
 	posix_err = avdtp_get_seps(setup->session, AVDTP_SEP_TYPE_SINK,
-					AVDTP_MEDIA_TYPE_AUDIO, A2DP_CODEC_SBC,
+					codec_cap->media_type,
+					codec_cap->media_codec_type,
 					&lsep, &rsep);
 	if (posix_err < 0) {
 		error("No matching ACP and INT SEPs found");
@@ -784,7 +798,7 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	}
 
 	if (setup->reconfigure)
-		g_timeout_add(RECONFIGURE_TIMEOUT, reconfigure, setup);
+		g_timeout_add(RECONFIGURE_TIMEOUT, a2dp_reconfigure, setup);
 }
 
 static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -1193,7 +1207,7 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 	struct a2dp_setup_cb *cb_data;
 	GSList *l;
 	struct a2dp_setup *setup;
-	struct a2dp_sep *sep = NULL;
+	struct a2dp_sep *sep = NULL, *tmp;
 	struct avdtp_local_sep *lsep;
 	struct avdtp_remote_sep *rsep;
 	struct avdtp_service_capability *cap;
@@ -1214,7 +1228,7 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 		return 0;
 
 	for (l = sources; l != NULL; l = l->next) {
-		struct a2dp_sep *tmp = l->data;
+		tmp = l->data;
 
 		if (tmp->locked)
 			continue;
@@ -1255,6 +1269,22 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 
 	switch (avdtp_sep_get_state(sep->sep)) {
 	case AVDTP_STATE_IDLE:
+		for (l = sources; l != NULL; l = l->next) {
+			tmp = l->data;
+
+			if (avdtp_has_stream(session, tmp->stream))
+				break;
+		}
+
+		if (l != NULL) {
+			setup->reconfigure = TRUE;
+			if (avdtp_close(session, tmp->stream) < 0) {
+				error("avdtp_close failed");
+				goto failed;
+			}
+			break;
+		}
+
 		if (avdtp_get_seps(session, AVDTP_SEP_TYPE_SINK,
 				codec_cap->media_type,
 				codec_cap->media_codec_type,
