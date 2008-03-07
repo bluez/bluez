@@ -38,6 +38,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -746,6 +748,7 @@ void device_foreach(GFunc func, gpointer user_data)
 
 static void device_free(struct device *device)
 {
+	sdp_list_free(device->uuids, (sdp_free_func_t) free);
 	g_free(device->path);
 	g_free(device);
 }
@@ -791,7 +794,7 @@ static DBusSignalVTable device_signals[] = {
 };
 
 const char *device_create(struct adapter *adapter,
-		const char *address, sdp_list_t *recs)
+		const char *address, sdp_list_t *uuids)
 {
 	struct device *device;
 
@@ -817,7 +820,7 @@ const char *device_create(struct adapter *adapter,
 	device_list = g_slist_append(device_list, device);
 
 	device->adapter = adapter;
-	device->records = recs;
+	device->uuids = uuids;
 
 	return device->path;
 }

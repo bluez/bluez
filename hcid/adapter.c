@@ -3178,6 +3178,7 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 
 static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 {
+	sdp_list_t *uuids, *seq, *next, *svcclass;
 	struct adapter *adapter = user_data;
 	DBusMessage *reply;
 	const char *path;
@@ -3188,7 +3189,28 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 		goto failed;
 	}
 
-	path = device_create(adapter, adapter->create->address, recs);
+	uuids = NULL;
+	for (seq = recs; seq; seq = next) {
+		sdp_record_t *rec = (sdp_record_t *) seq->data;
+
+		if (!rec)
+			break;
+
+		svcclass = NULL;
+		if (sdp_get_service_classes(rec, &svcclass) == 0) {
+			/* Extract the first element and skip the remainning */
+			uuid_t *u = malloc(sizeof(uuid_t));
+			memcpy(u, svcclass->data, sizeof(uuid_t));
+			uuids = sdp_list_append(uuids, u);
+			sdp_list_free(svcclass, free);
+		}
+
+		next = seq->next;
+	}
+
+	sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
+
+	path = device_create(adapter, adapter->create->address, uuids);
 	if (!path)
 		goto failed;
 
