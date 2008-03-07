@@ -154,11 +154,13 @@ int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
 
 	s = sdp_connect(src, dst, SDP_NON_BLOCKING);
 	if (!s)
-		return -EIO;
+		return -errno;
 
-	ctxt = g_malloc0(sizeof(struct search_context));
-	if (!ctxt)
+	ctxt = g_try_malloc0(sizeof(struct search_context));
+	if (!ctxt) {
+		sdp_close(s);
 		return -ENOMEM;
+	}
 
 	bacpy(&ctxt->src, src);
 	bacpy(&ctxt->dst, dst);
