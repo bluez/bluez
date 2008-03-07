@@ -725,7 +725,7 @@ static DBusPendingCall *auth_agent_call_authorize(struct authorization_agent *ag
 	return call;
 }
 
-DBusHandlerResult handle_authorize_request(DBusConnection *conn,
+DBusHandlerResult handle_authorize_request_old(DBusConnection *conn,
 					DBusMessage *msg,
 					struct service *service,
 					const char *address,
@@ -811,7 +811,7 @@ static DBusHandlerResult auth_agent_send_cancel(DBusMessage *msg,
 	return send_message_and_unref(agent->conn, message);
 }
 
-DBusHandlerResult cancel_authorize_request(DBusConnection *conn,
+DBusHandlerResult cancel_authorize_request_old(DBusConnection *conn,
 						DBusMessage *msg,
 						struct service *service,
 						const char *address,
@@ -1032,7 +1032,7 @@ send:
 	return -1;
 }
 
-int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
+int handle_passkey_request_old(DBusConnection *conn, int dev, const char *path,
 					bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct passkey_agent *agent = default_agent;
@@ -1211,7 +1211,7 @@ send:
 	return -1;
 }
 
-int handle_confirm_request(DBusConnection *conn, int dev, const char *path,
+int handle_confirm_request_old(DBusConnection *conn, int dev, const char *path,
 				bdaddr_t *sba, bdaddr_t *dba, const char *pin)
 {
 	struct passkey_agent *agent = default_agent;
@@ -1310,7 +1310,7 @@ static void release_agent(struct passkey_agent *agent)
 	}
 }
 
-void release_default_agent(void)
+void release_default_agent_old(void)
 {
 	if (!default_agent)
 		return;

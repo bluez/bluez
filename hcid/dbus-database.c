@@ -468,7 +468,7 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 		return send_message_and_unref(conn, reply);
 	}
 
-	return handle_authorize_request(conn, msg, service, address, path);
+	return handle_authorize_request_old(conn, msg, service, address, path);
 }
 
 static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
@@ -487,7 +487,7 @@ static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 	if (!service)
 		return error_not_authorized(conn, msg);
 
-	return cancel_authorize_request(conn, msg, service, address, path);
+	return cancel_authorize_request_old(conn, msg, service, address, path);
 }
 
 static DBusMethodVTable database_methods[] = {

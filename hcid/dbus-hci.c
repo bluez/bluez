@@ -814,7 +814,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	return handle_passkey_request(connection, dev, path, sba, &ci->bdaddr);
+	return handle_passkey_request_old(connection, dev, path, sba, &ci->bdaddr);
 }
 
 int hcid_dbus_confirm_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci, char *pin)
@@ -832,7 +832,8 @@ int hcid_dbus_confirm_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci, char
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	return handle_confirm_request(connection, dev, path, sba, &ci->bdaddr, pin);
+	return handle_confirm_request_old(connection, dev, path, sba,
+						&ci->bdaddr, pin);
 }
 
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,

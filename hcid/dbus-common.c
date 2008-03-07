@@ -302,7 +302,7 @@ void hcid_dbus_exit(void)
 	if (!conn || !dbus_connection_get_is_connected(conn))
 		return;
 
-	release_default_agent();
+	release_default_agent_old();
 	release_default_auth_agent();
 	release_services(conn);
 

@@ -26,13 +26,13 @@
 
 dbus_bool_t security_init(DBusConnection *conn, const char *path);
 
-int handle_passkey_request(DBusConnection *conn, int dev, const char *path,
+int handle_passkey_request_old(DBusConnection *conn, int dev, const char *path,
 				bdaddr_t *sba, bdaddr_t *dba);
 
-int handle_confirm_request(DBusConnection *conn, int dev, const char *path,
+int handle_confirm_request_old(DBusConnection *conn, int dev, const char *path,
 				bdaddr_t *sba, bdaddr_t *dba, const char *pin);
 
-void release_default_agent(void);
+void release_default_agent_old(void);
 
 void release_default_auth_agent(void);
 
@@ -40,13 +40,13 @@ void release_passkey_agents(struct adapter *adapter, bdaddr_t *bda);
 
 void cancel_passkey_agent_requests(GSList *agents, const char *path, bdaddr_t *dba);
 
-DBusHandlerResult handle_authorize_request(DBusConnection *conn,
+DBusHandlerResult handle_authorize_request_old(DBusConnection *conn,
 					DBusMessage *msg,
 					struct service *service,
 					const char *address,
 					const char *path);
 
-DBusHandlerResult cancel_authorize_request(DBusConnection *conn,
+DBusHandlerResult cancel_authorize_request_old(DBusConnection *conn,
 						DBusMessage *msg,
 						struct service *service,
 						const char *address,
