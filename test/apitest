@@ -415,7 +415,7 @@ class Tester:
             self.dbus_dev_sig_setup()
             print 'Listening for events...'
 
-        elif self.cmd in mgr_cmds:
+        if self.cmd in mgr_cmds:
             try:
                 self.dbus_mgr_setup()
             except dbus.DBusException, e:
