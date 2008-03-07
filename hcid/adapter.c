@@ -3180,6 +3180,7 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 {
 	struct adapter *adapter = user_data;
 	DBusMessage *reply;
+	const char *path;
 
 	if (err < 0) {
 		error_connection_attempt_failed(adapter->create->conn,
@@ -3187,10 +3188,19 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 		goto failed;
 	}
 
-	/* FIXME: Register the device object path */
+	path = device_create(adapter, adapter->create->address, recs);
+	if (!path)
+		goto failed;
 
 	reply = dbus_message_new_method_return(adapter->create->msg);
+	if (!reply)
+		goto failed;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+					DBUS_TYPE_INVALID);
 	send_message_and_unref(adapter->create->conn, reply);
+
+	adapter->devices = g_slist_append(adapter->devices, g_strdup(path));
 
 failed:
 	dbus_connection_unref(adapter->create->conn);
@@ -3233,6 +3243,7 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	create = g_malloc0(sizeof(struct create_device_req));
 	create->conn = dbus_connection_ref(conn);
 	create->msg = dbus_message_ref(msg);
+	strcpy(create->address, address);
 	adapter->create = create;
 
 	return DBUS_HANDLER_RESULT_HANDLED;

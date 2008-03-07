@@ -54,6 +54,7 @@
 
 #include "adapter.h"
 #include "device.h"
+#include "dbus-common.h"
 
 #define MAX_DEVICES 16
 
@@ -789,7 +790,8 @@ static DBusSignalVTable device_signals[] = {
 	{ NULL, NULL }
 };
 
-struct device *device_create(struct adapter *adapter, const char *address)
+const char *device_create(struct adapter *adapter,
+		const char *address, sdp_list_t *recs)
 {
 	struct device *device;
 
@@ -797,7 +799,8 @@ struct device *device_create(struct adapter *adapter, const char *address)
 	if (device == NULL)
 		return NULL;
 
-	device->path = g_strdup_printf("%s/dev_%s", adapter->address, address);
+	device->path = g_strdup_printf("%s/hci%d/dev_%s",
+				BASE_PATH, adapter->dev_id, address);
 	g_strdelimit(device->path, ":", '_');
 
 	debug("Creating device %s", device->path);
@@ -807,12 +810,16 @@ struct device *device_create(struct adapter *adapter, const char *address)
 		device_free(device);
 		return NULL;
 	}
+
 	dbus_connection_register_interface(connection, device->path,
 			DEVICE_INTERFACE, device_methods, device_signals, NULL);
 
 	device_list = g_slist_append(device_list, device);
 
-	return device;
+	device->adapter = adapter;
+	device->records = recs;
+
+	return device->path;
 }
 
 void device_remove(const char *path)

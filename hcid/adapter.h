@@ -81,8 +81,9 @@ struct pending_dc_info {
 };
 
 struct create_device_req {
-	DBusConnection *conn;
-	DBusMessage *msg;
+	char		address[18];	/* Destination address */
+	DBusConnection	*conn;		/* Connection reference */
+	DBusMessage	*msg;		/* Message reference */
 };
 
 struct adapter {
@@ -112,6 +113,7 @@ struct adapter {
 	GSList *pin_reqs;
 	struct pending_dc_info *pending_dc;
 	struct create_device_req *create;
+	GSList *devices;		/* Devices paths */
 };
 
 dbus_bool_t adapter_init(DBusConnection *conn, const char *path);

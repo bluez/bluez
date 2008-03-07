@@ -442,6 +442,11 @@ int unregister_adapter_path(const char *path)
 		dc_pending_timeout_cleanup(adapter);
 	}
 
+	if (adapter->devices) {
+		g_slist_foreach(adapter->devices, (GFunc) free, NULL);
+		g_slist_free(adapter->devices);
+	}
+
 	g_free(adapter);
 
 unreg:
