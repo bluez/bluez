@@ -38,6 +38,7 @@
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
 
+#include "logging.h"
 #include "bridge.h"
 #include "common.h"
 
@@ -55,8 +56,11 @@ int bridge_init(const char *gn_iface, const char *nap_iface)
 #endif
 
 	bridge_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (bridge_socket < 0)
+	if (bridge_socket < 0) {
+		error("Failed to open bridge socket: %s (%d)",
+				strerror(errno), errno);
 		return -errno;
+	}
 
 	gn_bridge = gn_iface;
 	nap_bridge = nap_iface;
