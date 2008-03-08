@@ -1,3 +1,4 @@
+
 if SNDFILE
 sndfile_programs = sbctester
 else
@@ -22,6 +23,6 @@ sbctester_LDADD = @SNDFILE_LIBS@
 endif
 endif
 
-AM_CFLAGS = @SNDFILE_CFLAGS@ -O3
+AM_CFLAGS = @SNDFILE_CFLAGS@
 
 MAINTAINERCLEANFILES = Makefile.in
