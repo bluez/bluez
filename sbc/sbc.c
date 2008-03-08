@@ -79,7 +79,6 @@ struct sbc_frame {
 	uint8_t scale_factor[2][8];
 
 	/* raw integer subband samples in the frame */
-	uint16_t audio_sample[16][2][8];
 
 	int32_t sb_sample_f[16][2][8];
 	int32_t sb_sample[16][2][8];	/* modified subband samples */
@@ -372,6 +371,7 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 	int crc_pos = 0;
 	int32_t temp;
 
+	int audio_sample;
 	int ch, sb, blk, bit;	/* channel, subband, block and bit standard
 				   counters */
 	int bits[2][8];		/* bits distribution */
@@ -473,28 +473,6 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 
 	sbc_calculate_bits(frame, bits);
 
-	for (blk = 0; blk < frame->blocks; blk++) {
-		for (ch = 0; ch < frame->channels; ch++) {
-			for (sb = 0; sb < frame->subbands; sb++) {
-				frame->audio_sample[blk][ch][sb] = 0;
-				if (bits[ch][sb] == 0)
-					continue;
-
-				for (bit = 0; bit < bits[ch][sb]; bit++) {
-					int b;	/* A bit */
-					if (consumed > len * 8)
-						return -1;
-
-					b = (data[consumed >> 3] >> (7 - (consumed & 0x7))) & 0x01;
-					frame->audio_sample[blk][ch][sb] |=
-							b << (bits[ch][sb] - bit - 1);
-
-					consumed++;
-				}
-			}
-		}
-	}
-
 	for (ch = 0; ch < frame->channels; ch++) {
 		for (sb = 0; sb < frame->subbands; sb++)
 			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
@@ -504,8 +482,19 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 		for (ch = 0; ch < frame->channels; ch++) {
 			for (sb = 0; sb < frame->subbands; sb++) {
 				if (levels[ch][sb] > 0) {
+					audio_sample = 0;
+					for (bit = 0; bit < bits[ch][sb]; bit++) {
+						if (consumed > len * 8)
+							return -1;
+
+						if ((data[consumed >> 3] >> (7 - (consumed & 0x7))) & 0x01)
+							audio_sample |= 1 << (bits[ch][sb] - bit - 1);
+
+						consumed++;
+					}
+
 					frame->sb_sample[blk][ch][sb] =
-						(((frame->audio_sample[blk][ch][sb] << 1) | 1) << frame->scale_factor[ch][sb])/
+						(((audio_sample << 1) | 1) << frame->scale_factor[ch][sb]) /
 						levels[ch][sb] - (1 << frame->scale_factor[ch][sb]);
 				} else
 					frame->sb_sample[blk][ch][sb] = 0;
