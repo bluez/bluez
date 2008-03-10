@@ -696,22 +696,14 @@ static DBusHandlerResult adapter_get_discoverable_to(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
+static DBusHandlerResult set_discoverable_timeout(DBusConnection *conn,
 							DBusMessage *msg,
+							uint32_t timeout,
 							void *data)
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	uint32_t timeout;
 	bdaddr_t bdaddr;
-
-	if (!adapter->up)
-		return error_not_ready(conn, msg);
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_UINT32, &timeout,
-				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -739,6 +731,24 @@ static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
 					DBUS_TYPE_INVALID);
 
 	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult adapter_set_discoverable_to(DBusConnection *conn,
+							DBusMessage *msg,
+							void *data)
+{
+	struct adapter *adapter = data;
+	uint32_t timeout;
+
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_UINT32, &timeout,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	return set_discoverable_timeout(conn, msg, timeout, data);
 }
 
 static DBusHandlerResult adapter_is_connectable(DBusConnection *conn,
@@ -1104,33 +1114,27 @@ static DBusHandlerResult adapter_get_name(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult adapter_set_name(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static int set_name(DBusConnection *conn, DBusMessage *msg, const char *name,
+			void *data)
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
 	bdaddr_t bdaddr;
-	char *str_ptr;
 	int ecode;
 
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &str_ptr,
-				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
-
-	if (!g_utf8_validate(str_ptr, -1, NULL)) {
+	if (!g_utf8_validate(name, -1, NULL)) {
 		error("Name change failed: the supplied name isn't valid UTF-8");
 		return error_invalid_arguments(conn, msg, NULL);
 	}
 
 	str2ba(adapter->address, &bdaddr);
 
-	write_local_name(&bdaddr, str_ptr);
+	write_local_name(&bdaddr, (char *) name);
 
 	if (!adapter->up)
 		goto done;
 
-	ecode = set_device_name(adapter->dev_id, str_ptr);
+	ecode = set_device_name(adapter->dev_id, name);
 	if (ecode < 0)
 		return error_failed_errno(conn, msg, -ecode);
 
@@ -1140,6 +1144,19 @@ done:
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult adapter_set_name(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	char *str_ptr;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &str_ptr,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	return set_name(conn, msg, str_ptr, data);
 }
 
 static DBusHandlerResult adapter_get_remote_info(DBusConnection *conn,
@@ -2564,8 +2581,12 @@ static DBusHandlerResult adapter_start_periodic(DBusConnection *conn,
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg, NULL);
+	if (dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
+				"StartPeriodicDiscovery")) {
+		if (!dbus_message_has_signature(msg,
+					DBUS_TYPE_INVALID_AS_STRING))
+			return error_invalid_arguments(conn, msg, NULL);
+	}
 
 	if (adapter->discov_active || adapter->pdiscov_active)
 		return error_discover_in_progress(conn, msg);
@@ -2637,8 +2658,12 @@ static DBusHandlerResult adapter_stop_periodic(DBusConnection *conn,
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
-	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg, NULL);
+	if (dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
+				"StopPeriodicDiscovery")) {
+		if (!dbus_message_has_signature(msg,
+					DBUS_TYPE_INVALID_AS_STRING))
+			return error_invalid_arguments(conn, msg, NULL);
+	}
 
 	if (!adapter->pdiscov_active)
 		return error_not_authorized(conn, msg);
@@ -3197,7 +3222,53 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 static DBusHandlerResult set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusMessageIter iter;
+	DBusMessageIter sub;
+	const char *property;
+
+	if (!dbus_message_iter_init(msg, &iter))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return error_invalid_arguments(conn, msg, NULL);
+
+	dbus_message_iter_get_basic(&iter, &property);
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
+		return error_invalid_arguments(conn, msg, NULL);
+	dbus_message_iter_recurse(&iter, &sub);
+
+	if (g_str_equal("Name", property)) {
+		const char *name;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
+			return error_invalid_arguments(conn, msg, NULL);
+		dbus_message_iter_get_basic(&sub, &name);
+
+		return set_name(conn, msg, name, data);
+	} else if (g_str_equal("DiscoverableTimeout", property)) {
+		uint32_t timeout;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT32)
+			return error_invalid_arguments(conn, msg, NULL);
+		dbus_message_iter_get_basic(&sub, &timeout);
+
+		return set_discoverable_timeout(conn, msg, timeout, data);
+	} else if (g_str_equal("PeriodicDiscovery", property)) {
+		dbus_bool_t value;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
+			return error_invalid_arguments(conn, msg, NULL);
+		dbus_message_iter_get_basic(&sub, &value);
+
+		if (value)
+			return adapter_start_periodic(conn, msg, data);
+		else
+			return adapter_stop_periodic(conn, msg, data);
+	}
+
+	return error_invalid_arguments(conn, msg, NULL);
 }
 
 static DBusHandlerResult list_devices(DBusConnection *conn,
