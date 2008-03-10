@@ -94,7 +94,7 @@ Signals		DeviceCreated(object path)
 
 Properties	string Address [readonly]
 
-		string Name [readonly]
+		string Name [readwrite]
 
 		string Mode [readwrite]
 

@@ -34,7 +34,9 @@ Signals		PropertyChanged(string name, variant value)
 
 			TBD
 
-Properties	string Address [readonly]
+Properties	object Adapter [readonly]
+
+		string Address [readonly]
 
 		string Name [readonly]
 
