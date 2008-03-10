@@ -751,6 +751,7 @@ static void device_free(struct device *device)
 {
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
 	g_slist_free(device->uuids);
+	g_free(device->address);
 	g_free(device->path);
 	g_free(device);
 }
