@@ -26,6 +26,7 @@
 #endif
 
 #include <errno.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -91,6 +92,7 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 
 		recs = sdp_list_append(recs, rec);
 	} while (scanned < size);
+
 done:
 	ctxt->cb(ctxt->user_data, recs, err);
 
@@ -206,4 +208,52 @@ int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
 	g_io_channel_unref(chan);
 
 	return 0;
+}
+
+char *bt_uuid2string(uuid_t *uuid)
+{
+	gchar *str;
+	uuid_t uuid128;
+	unsigned int data0;
+	unsigned short data1;
+	unsigned short data2;
+	unsigned short data3;
+	unsigned int data4;
+	unsigned short data5;
+
+	if (!uuid)
+		return NULL;
+
+	switch (uuid->type) {
+	case SDP_UUID16:
+		sdp_uuid16_to_uuid128(&uuid128, uuid);
+		break;
+	case SDP_UUID32:
+		sdp_uuid32_to_uuid128(&uuid128, uuid);
+		break;
+	case SDP_UUID128:
+		memcpy(&uuid128, uuid, sizeof(uuid_t));
+		break;
+	default:
+		/* Type of UUID unknown */
+		return NULL;
+	}
+
+	memcpy(&data0, &uuid128.value.uuid128.data[0], 4);
+	memcpy(&data1, &uuid128.value.uuid128.data[4], 2);
+	memcpy(&data2, &uuid128.value.uuid128.data[6], 2);
+	memcpy(&data3, &uuid128.value.uuid128.data[8], 2);
+	memcpy(&data4, &uuid128.value.uuid128.data[10], 4);
+	memcpy(&data5, &uuid128.value.uuid128.data[14], 2);
+
+	str = g_try_malloc0(MAX_LEN_UUID_STR);
+	if (!str)
+		return NULL;
+
+	sprintf(str, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x",
+			ntohl(data0), ntohs(data1),
+			ntohs(data2), ntohs(data3),
+			ntohl(data4), ntohs(data5));
+
+	return str;
 }

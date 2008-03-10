@@ -749,8 +749,8 @@ void device_foreach(GFunc func, gpointer user_data)
 
 static void device_free(struct device *device)
 {
-	sdp_list_free(device->uuids, (sdp_free_func_t) free);
-	g_free(device->address);
+	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
+	g_slist_free(device->uuids);
 	g_free(device->path);
 	g_free(device);
 }
@@ -885,7 +885,7 @@ static DBusSignalVTable device_signals[] = {
 };
 
 const char *device_create(struct adapter *adapter,
-		const char *address, sdp_list_t *uuids)
+		const char *address, GSList *uuids)
 {
 	struct device *device;
 

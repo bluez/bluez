@@ -3178,9 +3178,10 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 
 static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 {
-	sdp_list_t *uuids, *seq, *next, *svcclass;
+	sdp_list_t *seq, *next, *svcclass;
 	struct adapter *adapter = user_data;
 	DBusMessage *reply;
+	GSList *uuids;
 	const char *path;
 
 	if (err < 0) {
@@ -3199,9 +3200,9 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 		svcclass = NULL;
 		if (sdp_get_service_classes(rec, &svcclass) == 0) {
 			/* Extract the first element and skip the remainning */
-			uuid_t *u = malloc(sizeof(uuid_t));
-			memcpy(u, svcclass->data, sizeof(uuid_t));
-			uuids = sdp_list_append(uuids, u);
+			gchar *uuid_str = bt_uuid2string(svcclass->data);
+			if (uuid_str)
+				uuids = g_slist_append(uuids, uuid_str);
 			sdp_list_free(svcclass, free);
 		}
 

@@ -26,3 +26,5 @@ typedef void (*bt_destroy_t) (gpointer user_data);
 
 int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
 		bt_callback_t cb, void *user_data, bt_destroy_t destroy);
+
+gchar *bt_uuid2string(uuid_t *uuid);
