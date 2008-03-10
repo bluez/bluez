@@ -1530,13 +1530,14 @@ int sdp_get_uuidseq_attr(const sdp_record_t *rec, uint16_t attr, sdp_list_t **se
 	if (sdpdata && sdpdata->dtd >= SDP_SEQ8 && sdpdata->dtd <= SDP_SEQ32) {
 		sdp_data_t *d;
 		for (d = sdpdata->val.dataseq; d; d = d->next) {
-			uuid_t *u = malloc(sizeof(uuid_t));
-			memset((char *)u, 0, sizeof(uuid_t));
-			if (d->dtd >= SDP_UUID16 && d->dtd <= SDP_UUID128) {
-			  	*u = d->val.uuid;
-			  	*seqp = sdp_list_append(*seqp, u);
-			} else
+			uuid_t *u;
+			if (d->dtd < SDP_UUID16 || d->dtd > SDP_UUID128)
 				goto fail;
+
+			u = malloc(sizeof(uuid_t));
+			memset(u, 0, sizeof(uuid_t));
+			*u = d->val.uuid;
+			*seqp = sdp_list_append(*seqp, u);
 		}
 		return 0;
 	}
