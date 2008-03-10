@@ -257,3 +257,19 @@ char *bt_uuid2string(uuid_t *uuid)
 
 	return str;
 }
+
+gchar *bt_list2string(GSList *list)
+{
+	GSList *l;
+	gchar *str = NULL;
+
+	if (!list)
+		return NULL;
+
+	str = g_strdup((const gchar *) list->data);
+
+	for (l = list->next; l; l = l->next)
+		str = g_strconcat(str, ", " , (const gchar *) l->data, NULL);
+
+	return str;
+}
