@@ -3139,7 +3139,59 @@ static void do_append_device(struct device *device, DBusMessageIter *iter)
 static DBusHandlerResult get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct adapter *adapter = data;
+	const char *property;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	bdaddr_t ba;
+	char str[249];
+
+	if (check_address(adapter->address) < 0)
+		return error_not_ready(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* Address */
+	property = adapter->address;
+	dbus_message_iter_append_dict_entry(&dict, "Address",
+			DBUS_TYPE_STRING, &property);
+
+	/* Name */
+	memset(str, 0, sizeof(str));
+	property = str;
+	str2ba(adapter->address, &ba);
+
+	if (!read_local_name(&ba, str))
+		dbus_message_iter_append_dict_entry(&dict, "Name",
+			DBUS_TYPE_STRING, &property);
+
+	/* Mode */
+	property = mode2str(adapter->mode);
+
+	dbus_message_iter_append_dict_entry(&dict, "Mode",
+			DBUS_TYPE_STRING, &property);
+
+	/* DiscoverableTimeout */
+	dbus_message_iter_append_dict_entry(&dict, "DiscoverableTimeout",
+				DBUS_TYPE_UINT32, &adapter->discov_timeout);
+
+	/* PeriodicDiscovery */
+	dbus_message_iter_append_dict_entry(&dict, "PeriodicDiscovery",
+				DBUS_TYPE_BOOLEAN, &adapter->pdiscov_active);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult set_property(DBusConnection *conn,
