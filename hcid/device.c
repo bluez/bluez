@@ -858,8 +858,6 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 
 	/* TODO: UUIDs */
 
-	free(str);
-
 	dbus_message_iter_close_container(&iter, &dict);
 
 	return send_message_and_unref(conn, reply);
