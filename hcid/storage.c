@@ -676,3 +676,18 @@ GSList *list_trusts(bdaddr_t *local, const char *service)
 
 	return list.trusts;
 }
+
+int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles)
+{
+	char filename[PATH_MAX + 1], addr[18];
+
+	if (!profiles)
+		return -EINVAL;
+
+	create_filename(filename, PATH_MAX, src, "profiles");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(dst, addr);
+	return textfile_put(filename, addr, profiles);
+}

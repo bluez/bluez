@@ -3235,6 +3235,7 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	DBusMessage *reply;
 	GSList *uuids;
 	const char *path;
+	bdaddr_t src, dst;
 
 	if (err < 0) {
 		error_connection_attempt_failed(adapter->create->conn,
@@ -3267,6 +3268,7 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	if (!path)
 		goto failed;
 
+	/* Reply create device request */
 	reply = dbus_message_new_method_return(adapter->create->msg);
 	if (!reply)
 		goto failed;
@@ -3276,6 +3278,16 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	send_message_and_unref(adapter->create->conn, reply);
 
 	adapter->devices = g_slist_append(adapter->devices, g_strdup(path));
+
+	/* Store the device's profiles in the filesystem */
+	str2ba(adapter->address, &src);
+	str2ba(adapter->create->address, &dst);
+	if (uuids) {
+		char *str = bt_list2string(uuids);
+		write_device_profiles(&src, &dst, str);
+		g_free(str);
+	} else
+		write_device_profiles(&src, &dst, "");
 
 failed:
 	dbus_connection_unref(adapter->create->conn);
