@@ -23,6 +23,7 @@
  */
 
 struct device {
+	char		*address;
 	char		*path;
 	struct adapter	*adapter;
 	sdp_list_t	*uuids;

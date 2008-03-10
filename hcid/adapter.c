@@ -3262,7 +3262,7 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 		return error_connection_attempt_failed(conn, msg, -err);
 	}
 
-	create = g_malloc0(sizeof(struct create_device_req));
+	create = g_new0(struct create_device_req, 1);
 	create->conn = dbus_connection_ref(conn);
 	create->msg = dbus_message_ref(msg);
 	strcpy(create->address, address);

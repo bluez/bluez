@@ -57,6 +57,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "dbus-common.h"
+#include "dbus-hci.h"
 
 #define MAX_DEVICES 16
 
@@ -749,6 +750,7 @@ void device_foreach(GFunc func, gpointer user_data)
 static void device_free(struct device *device)
 {
 	sdp_list_free(device->uuids, (sdp_free_func_t) free);
+	g_free(device->address);
 	g_free(device->path);
 	g_free(device);
 }
@@ -771,7 +773,96 @@ static DBusHandlerResult disconnect(DBusConnection *conn,
 static DBusHandlerResult get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct device *device = user_data;
+	struct adapter *adapter = device->adapter;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	bdaddr_t src, dst;
+	char filename[PATH_MAX + 1];
+	char buf[64];
+	const char *ptr;
+	char *str;
+	dbus_bool_t boolean;
+	uint32_t class;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* Address */
+	dbus_message_iter_append_dict_entry(&dict, "Address", DBUS_TYPE_STRING,
+			&device->address);
+
+	/* Name */
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "names");
+	str = textfile_caseget(filename, device->address);
+	if (str) {
+		dbus_message_iter_append_dict_entry(&dict, "Name",
+				DBUS_TYPE_STRING, &str);
+		free(str);
+	}
+
+	str2ba(adapter->address, &src);
+	str2ba(device->address, &dst);
+
+	/* Class */
+	if (read_remote_class(&src, &dst, &class) == 0) {
+
+		dbus_message_iter_append_dict_entry(&dict, "Class",
+				DBUS_TYPE_UINT32, &class);
+	}
+
+	/* Alias */
+	if (get_device_alias(adapter->dev_id, &dst, buf, sizeof(buf)) > 0) {
+		ptr = buf;
+		dbus_message_iter_append_dict_entry(&dict, "Alias",
+				DBUS_TYPE_STRING, &ptr);
+	}
+
+	/* Paired */
+	create_name(filename, PATH_MAX, STORAGEDIR,
+			adapter->address, "linkkeys");
+	str = textfile_caseget(filename, device->address);
+	if (str) {
+		boolean = TRUE;
+		free(str);
+	} else {
+		boolean = FALSE;
+	}
+
+	dbus_message_iter_append_dict_entry(&dict, "Paired",
+			DBUS_TYPE_BOOLEAN, &boolean);
+
+	/* Trusted */
+	boolean = read_trust(&src, device->address, GLOBAL_TRUST);
+	dbus_message_iter_append_dict_entry(&dict, "Trusted",
+			DBUS_TYPE_BOOLEAN, &boolean);
+
+	/* Connected */
+	if (g_slist_find_custom(adapter->active_conn, &dst,
+				active_conn_find_by_bdaddr))
+		boolean = TRUE;
+	else
+		boolean = FALSE;
+
+	dbus_message_iter_append_dict_entry(&dict, "Connected",
+			DBUS_TYPE_BOOLEAN, &boolean);
+
+	/* TODO: UUIDs */
+
+	free(str);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult set_property(DBusConnection *conn,
@@ -819,6 +910,7 @@ const char *device_create(struct adapter *adapter,
 
 	device_list = g_slist_append(device_list, device);
 
+	device->address = g_strdup(address);
 	device->adapter = adapter;
 	device->uuids = uuids;
 
