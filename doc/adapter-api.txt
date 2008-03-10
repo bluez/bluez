@@ -100,4 +100,4 @@ Properties	string Address [readonly]
 
 		uint32 DiscoverableTimeout [readwrite]
 
-		boolean PeriodicInquiry [readwrite]
+		boolean PeriodicDiscovery [readwrite]
