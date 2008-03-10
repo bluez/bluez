@@ -3239,7 +3239,7 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg, NULL);
 	dbus_message_iter_recurse(&iter, &sub);
 
-	if (g_str_equal("Name", property)) {
+	if (!strcmp("Name", property)) {
 		const char *name;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
@@ -3247,7 +3247,7 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &name);
 
 		return set_name(conn, msg, name, data);
-	} else if (g_str_equal("DiscoverableTimeout", property)) {
+	} else if (!strcmp("DiscoverableTimeout", property)) {
 		uint32_t timeout;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT32)
@@ -3255,7 +3255,7 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &timeout);
 
 		return set_discoverable_timeout(conn, msg, timeout, data);
-	} else if (g_str_equal("PeriodicDiscovery", property)) {
+	} else if (!strcmp("PeriodicDiscovery", property)) {
 		dbus_bool_t value;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
