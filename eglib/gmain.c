@@ -235,7 +235,7 @@ static gboolean g_io_remove_watch(GMainContext *context, guint id)
 	struct io_watch *w;
 
 	for (l = context->io_watches; l != NULL; l = l->next) {
-		w = l->data;	
+		w = l->data;
 
 		if (w->id != id)
 			continue;
@@ -247,7 +247,7 @@ static gboolean g_io_remove_watch(GMainContext *context, guint id)
 	}
 
 	for (l = context->proc_io_watches; l != NULL; l = l->next) {
-		w = l->data;	
+		w = l->data;
 
 		if (w->id != id)
 			continue;
@@ -691,7 +691,7 @@ static gboolean child_watch(GIOChannel *io, GIOCondition cond, gpointer user_dat
 }
 
 static void init_child_pipe(void)
-{  
+{
 	struct sigaction action;
 	GIOChannel *io;
 
@@ -781,7 +781,7 @@ gboolean g_spawn_async(const gchar *working_directory,
 	case -1:
 		g_set_error(error, 0, 0, "fork failed: %s", strerror(errno));
 		return FALSE;
-	case 0:	
+	case 0:
 		exec_child(working_directory, argv, envp, flags,
 				child_setup, user_data);
 		break;
@@ -790,7 +790,7 @@ gboolean g_spawn_async(const gchar *working_directory,
 			*child_pid = pid;
 		return TRUE;
 	}
-		
+
 	/* Never reached */
 	return FALSE;
 }
@@ -863,7 +863,7 @@ gboolean g_source_remove(guint tag)
 		if ((p)[(i)] == '\0' || ((max_len) >= 0 && (i) >= (max_len)))	\
 			goto failed;						\
 	} while (0)
-				
+
 
 gboolean g_utf8_validate(const gchar *str, gssize max_len, const gchar **end)
 {
@@ -911,7 +911,7 @@ two_remaining:
 
 			if (val < min || !UNICODE_VALID(val))
 				goto failed;
-		} 
+		}
 	}
 
 	if (end)
@@ -1085,19 +1085,19 @@ GSList *g_slist_sort(GSList *list, GCompareFunc cmp_func)
 {
 	GSList *l1, *l2;
 
-	if (!list || !list->next) 
+	if (!list || !list->next)
 		return list;
 
-	l1 = list; 
+	l1 = list;
 	l2 = list->next;
 
 	while ((l2 = l2->next) != NULL) {
-		if ((l2 = l2->next) == NULL) 
+		if ((l2 = l2->next) == NULL)
 			break;
 		l1 = l1->next;
 	}
 
-	l2 = l1->next; 
+	l2 = l1->next;
 	l1->next = NULL;
 
 	return g_slist_sort_merge(g_slist_sort(list, cmp_func),
@@ -1360,7 +1360,7 @@ gchar **g_strsplit(const gchar *string, const gchar *delimiter, gint max_tokens)
 		return NULL;
 
 	if (max_tokens < 1)
-		max_tokens = SSIZE_MAX;
+		max_tokens = INT_MAX;
 
 	remainder = string;
 	s = strstr(remainder, delimiter);
@@ -1452,7 +1452,7 @@ gchar *g_key_file_get_string(GKeyFile *key_file,
 	struct stat st;
 	char *map, *line, *group = NULL, *value = NULL;
 	off_t size;
-	size_t key_len, group_len; 
+	size_t key_len, group_len;
 	int fd, err = 0;
 
 	fd = open(key_file->filename, O_RDONLY);
@@ -1599,7 +1599,7 @@ static GString *g_string_sized_new(gsize dfl_size)
 	GString *string;
 
 	string = g_new0(GString, 1);
-	
+
 	g_string_maybe_expand(string, dfl_size);
 	string->str[0] = '\0';
 
