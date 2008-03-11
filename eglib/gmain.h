@@ -354,4 +354,8 @@ GDir *g_dir_open(const gchar *path, guint flags, GError **error);
 const gchar *g_dir_read_name(GDir *dir);
 void g_dir_close(GDir *dir);
 
+/* Various */
+
+gchar *g_build_filename(const gchar *first_element, ...);
+
 #endif /* __GMAIN_H */

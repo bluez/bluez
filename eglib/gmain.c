@@ -1715,8 +1715,8 @@ void g_markup_parse_context_free(GMarkupParseContext *context)
 	g_free(context);
 }
 
-gchar *g_build_pathname_va(const gchar *first_element, va_list args,
-							gpointer *data)
+static gchar *g_build_pathname_va(const gchar *first_element,
+						va_list args, gpointer *data)
 {
 	return NULL;
 }
