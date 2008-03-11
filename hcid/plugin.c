@@ -27,6 +27,8 @@
 
 #include <glib.h>
 
+#include "plugin.h"
+
 gboolean plugin_init(void)
 {
 	return FALSE;

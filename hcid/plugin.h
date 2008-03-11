@@ -21,5 +21,13 @@
  *
  */
 
-gboolean plugin_init(void);
-void plugin_cleanup(void);
+struct bluetooth_plugin_desc {
+	const char *name;
+	int (*init) (void);
+	void (*exit) (void);
+};
+
+#define BLUETOOTH_PLUGIN_DEFINE(name,init,exit) \
+		struct bluetooth_plugin_desc bluetooth_plugin_desc = { \
+			name, init, exit \
+		};

@@ -210,3 +210,6 @@ gboolean read_trust(bdaddr_t *local, const char *addr, const char *service);
 int write_trust(bdaddr_t *local, const char *addr, const char *service, gboolean trust);
 GSList *list_trusts(bdaddr_t *local, const char *service);
 int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles);
+
+gboolean plugin_init(void);
+void plugin_cleanup(void);

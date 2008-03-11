@@ -53,7 +53,6 @@
 #include "hcid.h"
 #include "sdpd.h"
 #include "server.h"
-#include "plugin.h"
 #include "adapter.h"
 #include "dbus-common.h"
 #include "dbus-service.h"
