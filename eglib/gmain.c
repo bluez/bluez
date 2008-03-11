@@ -1317,6 +1317,93 @@ gchar *g_strdelimit(gchar *string, const gchar *delimiters, gchar new_delim)
 	return string;
 }
 
+gchar *g_strconcat(const gchar *string1, ...)
+{
+	gsize l;
+	va_list args;
+	gchar *s, *concat;
+
+	if (!string1)
+		return NULL;
+
+	l = 1 + strlen(string1);
+	va_start(args, string1);
+	s = va_arg(args, gchar *);
+	while (s) {
+		l += strlen(s);
+		s = va_arg(args, gchar *);
+	}
+	va_end (args);
+
+	concat = g_new(gchar, l);
+	concat[0] = '\0';
+
+	va_start(args, string1);
+	s = va_arg(args, gchar*);
+	while (s) {
+		strcat(concat, s);
+		s = va_arg(args, gchar *);
+	}
+	va_end (args);
+
+	return concat;
+}
+
+gchar **g_strsplit(const gchar *string, const gchar *delimiter, gint max_tokens)
+{
+	GSList *string_list = NULL, *slist;
+	gchar **str_array, *s;
+	guint n = 0;
+	const gchar *remainder;
+
+	if (string == NULL || delimiter == NULL || delimiter[0] == '\0')
+		return NULL;
+
+	if (max_tokens < 1)
+		max_tokens = SSIZE_MAX;
+
+	remainder = string;
+	s = strstr(remainder, delimiter);
+	if (s) {
+		gsize delimiter_len = strlen(delimiter);
+
+		while (--max_tokens && s) {
+			gsize len;
+			gchar *tmp;
+
+			len = s - remainder;
+			tmp = g_new(char, len);
+			memcpy(tmp, remainder, len);
+			string_list = g_slist_prepend(string_list, tmp);
+			n++;
+			remainder = s + delimiter_len;
+			s = strstr(remainder, delimiter);
+		}
+	}
+	if (*string) {
+		n++;
+		string_list = g_slist_prepend(string_list, g_strdup(remainder));
+	}
+
+	str_array = g_new(gchar *, n + 1);
+
+	str_array[n--] = NULL;
+	for (slist = string_list; slist; slist = slist->next)
+		str_array[n--] = slist->data;
+
+	g_slist_free(string_list);
+
+	return str_array;
+}
+
+gboolean g_str_equal(gconstpointer v1, gconstpointer v2)
+{
+	const gchar *string1 = v1;
+	const gchar *string2 = v2;
+
+	return strcmp(string1, string2) == 0;
+}
+
 /* GKeyFile */
 
 struct _GKeyFile {
