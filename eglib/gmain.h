@@ -226,6 +226,9 @@ void g_free(gpointer mem);
 gchar *g_strdup(const gchar *str);
 gchar* g_strdup_printf(const gchar *format, ...);
 gchar* g_strdelimit(gchar *string, const gchar *delimiters, gchar new_delim);
+gchar *g_strconcat(const gchar *string1, ...);
+gchar **g_strsplit(const gchar *string, const gchar *delimiter, gint max_tokens);
+gboolean g_str_equal(gconstpointer v1, gconstpointer v2);
 
 #define g_new(struct_type, n_structs) \
 	((struct_type *) g_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
