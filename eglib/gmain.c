@@ -857,10 +857,10 @@ gboolean g_source_remove(guint tag)
 
 #define CONTINUATION_CHAR(c, val)				\
 	do {							\
-  		if (((c) & 0xc0) != 0x80) /* 10xxxxxx */	\
-  			goto failed;				\
-  		(val) <<= 6;					\
-  		(val) |= (c) & 0x3f;				\
+		if (((c) & 0xc0) != 0x80) /* 10xxxxxx */	\
+			goto failed;				\
+		(val) <<= 6;					\
+		(val) |= (c) & 0x3f;				\
 	} while (0)
 
 #define INCREMENT_AND_CHECK_MAX(p, i, max_len)					\
@@ -1680,8 +1680,7 @@ gchar *g_string_free(GString *string, gboolean free_segment)
 	if (free_segment) {
 		g_free(string->str);
 		segment = NULL;
-	}
-	else
+	} else
 		segment = string->str;
 
 	g_free(string);
@@ -1716,17 +1715,25 @@ void g_markup_parse_context_free(GMarkupParseContext *context)
 	g_free(context);
 }
 
-gchar * g_build_filename (const gchar *first_element, ...)
+gchar *g_build_pathname_va(const gchar *first_element, va_list args,
+							gpointer *data)
+{
+	return NULL;
+}
+
+gchar *g_build_filename(const gchar *first_element, ...)
 {
 	gchar *str;
 	va_list args;
 
-	va_start (args, first_element);
-	str = g_build_pathname_va(first_element, &args, NULL);
-	va_end (args);
+	va_start(args, first_element);
+	str = g_build_pathname_va(first_element, args, NULL);
+	va_end(args);
 
 	return str;
 }
+
+/* GDir */
 
 GDir *g_dir_open(const gchar *path, guint flags, GError **error)
 {
@@ -1735,18 +1742,18 @@ GDir *g_dir_open(const gchar *path, guint flags, GError **error)
 	if (path == NULL)
 		return NULL;
 
-	dir = g_new (GDir, 1);
+	dir = g_new(GDir, 1);
 
-	dir->dirp = opendir (path);
+	dir->dirp = opendir(path);
 
 	if (dir->dirp)
 		return dir;
 
 	/* error case */
-	g_set_error(error, 0, 0, "Error opening directory '%s': %s", path,
-			strerror(errno));
+	g_set_error(error, 0, 0, "Error opening directory '%s': %s",
+						path, strerror(errno));
 
-	g_free (dir);
+	g_free(dir);
 
 	return NULL;
 }
@@ -1756,17 +1763,15 @@ const gchar *g_dir_read_name(GDir *dir)
 	struct dirent *entry;
 
 	if (dir == NULL)
-	  return NULL;
+		return NULL;
 
-	entry = readdir (dir->dirp);
-	while (entry && (0 == strcmp(entry->d_name, ".") ||
-			0 == strcmp(entry->d_name, "..")))
+	entry = readdir(dir->dirp);
+
+	while (entry && (strcmp(entry->d_name, ".") == 0 ||
+					strcmp(entry->d_name, "..") == 0))
 		entry = readdir(dir->dirp);
 
-	if (entry)
-		return entry->d_name;
-	else
-		return NULL;
+	return entry ? entry->d_name : NULL;
 }
 
 void g_dir_close(GDir *dir)
@@ -1774,6 +1779,6 @@ void g_dir_close(GDir *dir)
 	if (dir == NULL)
 		return;
 
-	closedir (dir->dirp);
-	g_free (dir);
+	closedir(dir->dirp);
+	g_free(dir);
 }

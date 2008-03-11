@@ -63,6 +63,7 @@ gboolean g_module_close(GModule *module)
 		return FALSE;
 	}
 
+	g_free(module->file_name);
 	g_free(module);
 
 	return TRUE;
