@@ -1,5 +1,5 @@
 
-SUBDIRS = doc sbc eglib common sdpd hcid daemon \
+SUBDIRS = doc sbc eglib common sdpd hcid daemon plugins \
 		transfer network serial input audio print sync \
 		tools rfcomm dund pand hidd \
 		cups test scripts

@@ -44,6 +44,7 @@ AC_OUTPUT([
 	eglib/Makefile
 	common/Makefile
 	daemon/Makefile
+	plugins/Makefile
 	transfer/Makefile
 	network/Makefile
 	serial/Makefile
