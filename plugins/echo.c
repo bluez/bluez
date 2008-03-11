@@ -28,14 +28,18 @@
 #include <errno.h>
 
 #include "plugin.h"
+#include "logging.h"
 
 static int echo_init(void)
 {
+	debug("Setup echo plugin");
+
 	return -EIO;
 }
 
 static void echo_exit(void)
 {
+	debug("Cleanup echo plugin");
 }
 
 BLUETOOTH_PLUGIN_DEFINE("echo", echo_init, echo_exit)
