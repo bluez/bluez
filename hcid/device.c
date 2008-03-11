@@ -733,11 +733,11 @@ static void device_destroy(struct device *device)
 
 void device_cleanup(void)
 {
-	g_slist_foreach(device_list, (GFunc) device_destroy, NULL);
-	g_slist_free(device_list);
-
 	if (connection == NULL)
 		return;
+
+	g_slist_foreach(device_list, (GFunc) device_destroy, NULL);
+	g_slist_free(device_list);
 
 	dbus_connection_unref(connection);
 }
