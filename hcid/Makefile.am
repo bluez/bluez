@@ -33,7 +33,14 @@ hcid_LDADD = libhciserver.a \
 	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
+if MAINTAINER_MODE
+plugindir = $(abs_top_srcdir)/plugins
+else
+plugindir = $(libdir)/bluetooth/plugins
+endif
+
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
+			-DPLUGINDIR=\""$(plugindir)"\"
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 
