@@ -30,7 +30,7 @@ hcid_SOURCES = main.c
 hcid_LDADD = libhciserver.a \
 	$(top_builddir)/sdpd/libsdpserver.a \
 	$(top_builddir)/common/libhelper.a \
-	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+	@GMODULE_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 endif
 
 if MAINTAINER_MODE
@@ -39,8 +39,8 @@ else
 plugindir = $(libdir)/bluetooth/plugins
 endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
-			-DPLUGINDIR=\""$(plugindir)"\"
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GMODULE_CFLAGS@ \
+					-DPLUGINDIR=\""$(plugindir)"\"
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 
