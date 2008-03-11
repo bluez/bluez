@@ -747,6 +747,22 @@ void device_foreach(GFunc func, gpointer user_data)
 	g_slist_foreach(device_list, func, user_data);
 }
 
+struct device *device_find(const gchar *address)
+{
+	GSList *l;
+
+	if (!device_list || !address)
+		return NULL;
+
+	for (l = device_list; l; l = l->next) {
+		struct device *device = l->data;
+		if (strcmp(device->address, address) == 0)
+			return device;
+	}
+
+	return NULL;
+}
+
 static void device_free(struct device *device)
 {
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);

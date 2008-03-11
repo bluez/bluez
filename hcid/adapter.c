@@ -3389,6 +3389,9 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg, NULL);
 
+	if (device_find(address))
+		return error_already_exists(conn, msg, "Device already exists");
+
 	str2ba(adapter->address, &src);
 	str2ba(address, &dst);
 	err = bt_discover_services(&src, &dst,
