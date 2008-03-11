@@ -3354,7 +3354,7 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	str2ba(adapter->address, &src);
 	str2ba(adapter->create->address, &dst);
 	if (uuids) {
-		char *str = bt_list2string(uuids);
+		gchar *str = bt_list2string(uuids);
 		write_device_profiles(&src, &dst, str);
 		g_free(str);
 	} else
@@ -3372,7 +3372,7 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	struct create_device_req *create;
-	const char *address;
+	const gchar *address;
 	bdaddr_t src, dst;
 	int err;
 

@@ -883,8 +883,8 @@ static DBusSignalVTable device_signals[] = {
 	{ NULL, NULL }
 };
 
-const char *device_create(struct adapter *adapter,
-		const char *address, GSList *uuids)
+const gchar *device_create(struct adapter *adapter,
+		const gchar *address, GSList *uuids)
 {
 	struct device *device;
 
@@ -916,6 +916,6 @@ const char *device_create(struct adapter *adapter,
 	return device->path;
 }
 
-void device_remove(const char *path)
+void device_remove(const gchar *path)
 {
 }

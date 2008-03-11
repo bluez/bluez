@@ -23,8 +23,8 @@
  */
 
 struct device {
-	char		*address;
-	char		*path;
+	gchar		*address;
+	gchar		*path;
 	struct adapter	*adapter;
 	GSList		*uuids;
 };
@@ -32,6 +32,6 @@ struct device {
 gboolean device_init(DBusConnection *conn);
 void device_cleanup(void);
 void device_foreach(GFunc func, gpointer user_data);
-const char *device_create(struct adapter *adapter,
-		const char *address, GSList *uuids);
-void device_remove(const char *path);
+const gchar *device_create(struct adapter *adapter,
+		const gchar *address, GSList *uuids);
+void device_remove(const gchar *path);
