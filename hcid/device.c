@@ -645,7 +645,7 @@ int set_device_name(uint16_t dev_id, const char *name)
 		return -err;
 	}
 
-	memcpy(dev->name, name, 248);
+	strncpy((char *) dev->name, name, 248);
 
 	update_ext_inquiry_response(dd, dev);
 
