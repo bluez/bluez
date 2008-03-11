@@ -3158,7 +3158,7 @@ static void do_append_device(struct device *device, DBusMessageIter *iter)
 {
 	const char *path = device->path;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &path);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 }
 
 static DBusHandlerResult get_properties(DBusConnection *conn,
@@ -3290,7 +3290,7 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_STRING_AS_STRING, &array_iter);
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array_iter);
 
 	device_foreach((GFunc) do_append_device, &array_iter);
 
