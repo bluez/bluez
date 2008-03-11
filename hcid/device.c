@@ -873,7 +873,9 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	dbus_message_iter_append_dict_entry(&dict, "Connected",
 			DBUS_TYPE_BOOLEAN, &boolean);
 
-	/* TODO: UUIDs */
+	/* UUIDs */
+	dbus_message_iter_append_dict_entry(&dict, "UUID",
+			DBUS_TYPE_ARRAY, device->uuids);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
