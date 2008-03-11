@@ -53,6 +53,7 @@
 #include "hcid.h"
 #include "sdpd.h"
 #include "server.h"
+#include "plugin.h"
 #include "adapter.h"
 #include "dbus-common.h"
 #include "dbus-service.h"
@@ -847,6 +848,8 @@ int main(int argc, char *argv[])
 		enable_debug();
 	}
 
+	plugin_init();
+
 	/* Create and bind HCI socket */
 	if ((hcid.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		error("Can't open HCI socket: %s (%d)",
@@ -939,6 +942,8 @@ int main(int argc, char *argv[])
 	shutdown_local_server();
 
 	cleanup_sdp_session();
+
+	plugin_cleanup();
 
 	g_main_loop_unref(event_loop);
 
