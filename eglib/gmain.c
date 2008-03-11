@@ -17,6 +17,7 @@
 #include <sys/file.h>
 #include <ctype.h>
 #include <dlfcn.h>
+#include <dirent.h>
 
 #include <gmain.h>
 
@@ -62,6 +63,11 @@ struct _GMainContext {
 struct _GMainLoop {
 	gboolean is_running;
 	GMainContext *context;
+};
+
+struct _GDir
+{
+	DIR *dirp;
 };
 
 GIOError g_io_channel_read(GIOChannel *channel, gchar *buf, gsize count,
@@ -1404,6 +1410,23 @@ gboolean g_str_equal(gconstpointer v1, gconstpointer v2)
 	return strcmp(string1, string2) == 0;
 }
 
+gboolean g_str_has_prefix(const gchar *str, const gchar *prefix)
+{
+	int str_len;
+	int prefix_len;
+
+	if (str == NULL || prefix == NULL)
+		return FALSE;
+
+	str_len = strlen (str);
+	prefix_len = strlen (prefix);
+
+	if (str_len < prefix_len)
+		return FALSE;
+
+	return strncmp(str, prefix, prefix_len) == 0;
+}
+
 /* GKeyFile */
 
 struct _GKeyFile {
@@ -1691,4 +1714,66 @@ gboolean g_markup_parse_context_parse(GMarkupParseContext *context,
 void g_markup_parse_context_free(GMarkupParseContext *context)
 {
 	g_free(context);
+}
+
+gchar * g_build_filename (const gchar *first_element, ...)
+{
+	gchar *str;
+	va_list args;
+
+	va_start (args, first_element);
+	str = g_build_pathname_va(first_element, &args, NULL);
+	va_end (args);
+
+	return str;
+}
+
+GDir *g_dir_open(const gchar *path, guint flags, GError **error)
+{
+	GDir *dir;
+
+	if (path == NULL)
+		return NULL;
+
+	dir = g_new (GDir, 1);
+
+	dir->dirp = opendir (path);
+
+	if (dir->dirp)
+		return dir;
+
+	/* error case */
+	g_set_error(error, 0, 0, "Error opening directory '%s': %s", path,
+			strerror(errno));
+
+	g_free (dir);
+
+	return NULL;
+}
+
+const gchar *g_dir_read_name(GDir *dir)
+{
+	struct dirent *entry;
+
+	if (dir == NULL)
+	  return NULL;
+
+	entry = readdir (dir->dirp);
+	while (entry && (0 == strcmp(entry->d_name, ".") ||
+			0 == strcmp(entry->d_name, "..")))
+		entry = readdir(dir->dirp);
+
+	if (entry)
+		return entry->d_name;
+	else
+		return NULL;
+}
+
+void g_dir_close(GDir *dir)
+{
+	if (dir == NULL)
+		return;
+
+	closedir (dir->dirp);
+	g_free (dir);
 }

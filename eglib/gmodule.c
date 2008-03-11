@@ -11,6 +11,7 @@
 
 struct _GModule {
 	void *handle;
+	gchar *file_name;
 };
 
 static const char *dl_error_string = NULL;
@@ -32,6 +33,8 @@ GModule *g_module_open(const gchar *file_name, GModuleFlags flags)
 		g_free(module);
 		return NULL;
 	}
+
+	module->file_name = g_strdup(file_name);
 
 	return module;
 }
@@ -73,4 +76,12 @@ const gchar *g_module_error(void)
 	dl_error_string = NULL;
 
 	return str;
+}
+
+const gchar *g_module_name(GModule *module)
+{
+	if (module == NULL)
+		return NULL;
+
+	return module->file_name;
 }

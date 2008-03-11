@@ -14,6 +14,7 @@ typedef enum {
 GModule *g_module_open(const gchar *file_name, GModuleFlags flags);
 gboolean g_module_symbol(GModule *module, const gchar *symbol_name,
 				gpointer *symbol);
+const gchar *g_module_name(GModule *module);
 gboolean g_module_close(GModule *module);
 const gchar *g_module_error(void);
 

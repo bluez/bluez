@@ -229,6 +229,7 @@ gchar* g_strdelimit(gchar *string, const gchar *delimiters, gchar new_delim);
 gchar *g_strconcat(const gchar *string1, ...);
 gchar **g_strsplit(const gchar *string, const gchar *delimiter, gint max_tokens);
 gboolean g_str_equal(gconstpointer v1, gconstpointer v2);
+gboolean g_str_has_prefix(const gchar *str, const gchar *prefix);
 
 #define g_new(struct_type, n_structs) \
 	((struct_type *) g_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
@@ -344,5 +345,13 @@ gboolean g_markup_parse_context_parse(GMarkupParseContext *context,
 					GError **error);
 
 void g_markup_parse_context_free(GMarkupParseContext *context);
+
+/* GDir */
+
+typedef struct _GDir GDir;
+
+GDir *g_dir_open(const gchar *path, guint flags, GError **error);
+const gchar *g_dir_read_name(GDir *dir);
+void g_dir_close(GDir *dir);
 
 #endif /* __GMAIN_H */
