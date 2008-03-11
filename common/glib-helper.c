@@ -277,3 +277,27 @@ gchar *bt_list2string(GSList *list)
 
 	return str;
 }
+
+GSList *bt_string2list(const gchar *str)
+{
+	GSList *l = NULL;
+	gchar **uuids;
+	int i = 0;
+
+	if (!str)
+		return NULL;
+
+	/* FIXME: eglib doesn't support g_strsplit */
+	uuids = g_strsplit(str, " ", 0);
+	if (!uuids)
+		return NULL;
+
+	while (uuids[i]) {
+		l = g_slist_append(l, uuids[i]);
+		i++;
+	}
+
+	g_free(uuids);
+
+	return l;
+}

@@ -29,3 +29,4 @@ int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
 
 gchar *bt_uuid2string(uuid_t *uuid);
 gchar *bt_list2string(GSList *list);
+GSList *bt_string2list(const gchar *str);
