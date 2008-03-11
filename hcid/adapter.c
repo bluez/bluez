@@ -3344,7 +3344,7 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	if (!reply)
 		goto failed;
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
 					DBUS_TYPE_INVALID);
 	send_message_and_unref(adapter->create->conn, reply);
 
