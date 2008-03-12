@@ -3170,13 +3170,6 @@ static DBusHandlerResult adapter_list_trusts(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static void do_append_device(struct device *device, DBusMessageIter *iter)
-{
-	const char *path = device->path;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
-}
-
 static DBusHandlerResult get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -3298,7 +3291,9 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 static DBusHandlerResult list_devices(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct adapter *adapter = data;
 	DBusMessage *reply;
+	GSList *l;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 
@@ -3316,7 +3311,11 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array_iter);
 
-	device_foreach((GFunc) do_append_device, &array_iter);
+	for (l = adapter->devices; l; l = l->next) {
+		struct device *device = l->data;
+		dbus_message_iter_append_basic(&array_iter,
+				DBUS_TYPE_OBJECT_PATH, &device->path);
+	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
@@ -3327,9 +3326,9 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 {
 	sdp_list_t *seq, *next, *svcclass;
 	struct adapter *adapter = user_data;
+	struct device *device;
 	DBusMessage *reply;
 	GSList *uuids;
-	const char *path;
 	bdaddr_t src, dst;
 
 	if (err < 0) {
@@ -3359,8 +3358,8 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 
 	sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
 
-	path = device_create(adapter, adapter->create->address, uuids);
-	if (!path)
+	device = device_create(adapter, adapter->create->address, uuids);
+	if (!device)
 		goto failed;
 
 	/* Reply create device request */
@@ -3368,7 +3367,7 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	if (!reply)
 		goto failed;
 
-	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
 					DBUS_TYPE_INVALID);
 	send_message_and_unref(adapter->create->conn, reply);
 
@@ -3376,10 +3375,10 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 				dbus_message_get_path(adapter->create->msg),
 				ADAPTER_INTERFACE,
 				"DeviceCreated",
-				DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_OBJECT_PATH, &device->path,
 				DBUS_TYPE_INVALID);
 
-	adapter->devices = g_slist_append(adapter->devices, g_strdup(path));
+	adapter->devices = g_slist_append(adapter->devices, device);
 
 	/* Store the device's profiles in the filesystem */
 	str2ba(adapter->address, &src);
@@ -3396,6 +3395,11 @@ failed:
 	dbus_message_unref(adapter->create->msg);
 	g_free(adapter->create);
 	adapter->create = NULL;
+}
+
+static gint device_address_cmp(struct device *device, const gchar *address)
+{
+	return strcasecmp(device->address, address);
 }
 
 static DBusHandlerResult create_device(DBusConnection *conn,
@@ -3420,7 +3424,8 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	if (device_find(address))
+	if (g_slist_find_custom(adapter->devices,
+				address, (GCompareFunc) device_address_cmp))
 		return error_already_exists(conn, msg, "Device already exists");
 
 	str2ba(adapter->address, &src);
@@ -3441,10 +3446,16 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static gint device_path_cmp(struct device *device, const gchar *path)
+{
+	return strcasecmp(device->path, path);
+}
+
 static DBusHandlerResult remove_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
+	struct device *device;
 	DBusMessage *reply;
 	const char *path;
 	GSList *l;
@@ -3456,9 +3467,12 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	l = g_slist_find_custom(adapter->devices, path, (GCompareFunc) strcmp);
+	l = g_slist_find_custom(adapter->devices,
+			path, (GCompareFunc) device_path_cmp);
 	if (!l)
 		return error_device_does_not_exist(conn, msg);
+
+	device = l->data;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -3467,9 +3481,8 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	/* FIXME: Remove from filesystem */
 	/* FIXME: Remove linkkeys */
 
-	device_remove(path);
-	g_free(l->data);
-	adapter->devices = g_slist_remove(adapter->devices, l->data);
+	device_destroy(device);
+	adapter->devices = g_slist_remove(adapter->devices, device);
 
 	return send_message_and_unref(conn, reply);
 }

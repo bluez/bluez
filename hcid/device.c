@@ -713,54 +713,14 @@ int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr)
 
 static DBusConnection *connection = NULL;
 
-static GSList *device_list = NULL;
-
 gboolean device_init(DBusConnection *conn)
 {
+	/* FIXME: It's not necessary keep a connection reference */
 	connection = dbus_connection_ref(conn);
 	if (connection == NULL)
 		return FALSE;
 
 	return TRUE;
-}
-
-static void device_destroy(struct device *device)
-{
-	debug("Removing device %s", device->path);
-
-	dbus_connection_destroy_object_path(connection, device->path);
-}
-
-void device_cleanup(void)
-{
-	if (connection == NULL)
-		return;
-
-	g_slist_foreach(device_list, (GFunc) device_destroy, NULL);
-	g_slist_free(device_list);
-
-	dbus_connection_unref(connection);
-}
-
-void device_foreach(GFunc func, gpointer user_data)
-{
-	g_slist_foreach(device_list, func, user_data);
-}
-
-struct device *device_find(const gchar *address)
-{
-	GSList *l;
-
-	if (!device_list || !address)
-		return NULL;
-
-	for (l = device_list; l; l = l->next) {
-		struct device *device = l->data;
-		if (strcmp(device->address, address) == 0)
-			return device;
-	}
-
-	return NULL;
 }
 
 static void device_free(struct device *device)
@@ -774,11 +734,7 @@ static void device_free(struct device *device)
 
 static void device_unregister(DBusConnection *conn, void *user_data)
 {
-	struct device *device = user_data;
-
-	device_list = g_slist_remove(device_list, device);
-
-	device_free(device);
+	device_free(user_data);
 }
 
 static DBusHandlerResult disconnect(DBusConnection *conn,
@@ -901,7 +857,7 @@ static DBusSignalVTable device_signals[] = {
 	{ NULL, NULL }
 };
 
-const gchar *device_create(struct adapter *adapter,
+struct device *device_create(struct adapter *adapter,
 		const gchar *address, GSList *uuids)
 {
 	struct device *device;
@@ -925,30 +881,16 @@ const gchar *device_create(struct adapter *adapter,
 	dbus_connection_register_interface(connection, device->path,
 			DEVICE_INTERFACE, device_methods, device_signals, NULL);
 
-	device_list = g_slist_append(device_list, device);
-
 	device->address = g_strdup(address);
 	device->adapter = adapter;
 	device->uuids = uuids;
 
-	return device->path;
+	return device;
 }
 
-static gint device_path_cmp(const struct device *device, const char *path)
+void device_destroy(struct device *device)
 {
-	return strcmp(device->path, path);
-}
+ 	debug("Removing device %s", device->path);
 
-void device_remove(const gchar *path)
-{
-	GSList *l;
-
- 	l = g_slist_find_custom(device_list, path,
- 				(GCompareFunc) device_path_cmp);
- 	if (!l)
- 		return;
- 
- 	dbus_connection_destroy_object_path(connection, path);
- 
- 	device_list = g_slist_remove(device_list, l->data);
+	dbus_connection_destroy_object_path(connection, device->path);
 }

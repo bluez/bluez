@@ -451,7 +451,7 @@ int unregister_adapter_path(const char *path)
 	}
 
 	if (adapter->devices) {
-		g_slist_foreach(adapter->devices, (GFunc) free, NULL);
+		g_slist_foreach(adapter->devices, (GFunc) device_destroy, NULL);
 		g_slist_free(adapter->devices);
 	}
 
@@ -575,11 +575,11 @@ static void create_stored_device(char *key, char *value, void *user_data)
 {
 	struct adapter *adapter = user_data;
 	GSList *uuids = bt_string2list(value);
-	const gchar *path;
+	struct device *device;
 
-	path = device_create(adapter, key, uuids);
-
-	adapter->devices = g_slist_append(adapter->devices, g_strdup(path));
+	device = device_create(adapter, key, uuids);
+	if (device)
+		adapter->devices = g_slist_append(adapter->devices, device);
 }
 
 static void register_devices(bdaddr_t *src, struct adapter *adapter)
@@ -781,13 +781,6 @@ int hcid_dbus_stop_device(uint16_t id)
 		g_slist_foreach(adapter->active_conn, (GFunc) g_free, NULL);
 		g_slist_free(adapter->active_conn);
 		adapter->active_conn = NULL;
-	}
-
-	if (adapter->devices) {
-		g_slist_foreach(adapter->devices, (GFunc) device_remove, NULL);
-		g_slist_foreach(adapter->devices, (GFunc) free, NULL);
-		g_slist_free(adapter->devices);
-		adapter->devices = NULL;
 	}
 
 	send_adapter_signal(connection, adapter->dev_id, "ModeChanged",

@@ -113,7 +113,7 @@ struct adapter {
 	GSList *pin_reqs;
 	struct pending_dc_info *pending_dc;
 	struct create_device_req *create;
-	GSList *devices;		/* Devices paths */
+	GSList *devices;		/* Devices structure pointers */
 };
 
 dbus_bool_t adapter_init(DBusConnection *conn, const char *path);

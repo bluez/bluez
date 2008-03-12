@@ -30,9 +30,6 @@ struct device {
 };
 
 gboolean device_init(DBusConnection *conn);
-void device_cleanup(void);
-void device_foreach(GFunc func, gpointer user_data);
-struct device *device_find(const gchar *address);
-const gchar *device_create(struct adapter *adapter,
+struct device *device_create(struct adapter *adapter,
 		const gchar *address, GSList *uuids);
-void device_remove(const gchar *path);
+void device_destroy(struct device *device);
