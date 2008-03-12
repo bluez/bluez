@@ -50,7 +50,6 @@ AC_OUTPUT([
 	input/Makefile
 	audio/Makefile
 	print/Makefile
-	sync/Makefile
 	tools/Makefile
 	rfcomm/Makefile
 	hcid/Makefile

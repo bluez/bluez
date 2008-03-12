@@ -107,12 +107,6 @@ AC_DEFUN([AC_PATH_GMODULE], [
 	AC_SUBST(GMODULE_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_OPENSYNC], [
-	PKG_CHECK_MODULES(OPENSYNC, glib-2.0 opensync-1.0 osengine-1.0, opensync_found=yes, opensync_found=no)
-	AC_SUBST(OPENSYNC_CFLAGS)
-	AC_SUBST(OPENSYNC_LIBS)
-])
-
 AC_DEFUN([AC_PATH_GSTREAMER], [
 	PKG_CHECK_MODULES(GSTREAMER, gstreamer-0.10 gstreamer-plugins-base-0.10, gstreamer_found=yes, gstreamer_found=no)
 	AC_SUBST(GSTREAMER_CFLAGS)
@@ -176,7 +170,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	input_enable=yes
 	serial_enable=yes
 	network_enable=yes
-	sync_enable=no
 	hcid_enable=yes
 	sdpd_enable=no
 	hidd_enable=no
@@ -267,10 +260,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
 		network_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(sync, AC_HELP_STRING([--enable-sync], [enable synchronization service]), [
-		sync_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(hcid, AC_HELP_STRING([--enable-hcid], [install HCI daemon]), [
@@ -388,7 +377,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(SERIALSERVICE, test "${serial_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
-	AM_CONDITIONAL(SYNCSERVICE, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
 	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")
 	AM_CONDITIONAL(SDPD, test "${sdpd_enable}" = "yes")
 	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")

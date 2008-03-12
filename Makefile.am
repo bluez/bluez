@@ -1,6 +1,6 @@
 
 SUBDIRS = doc sbc eglib common sdpd hcid daemon plugins \
-		network serial input audio print sync \
+		network serial input audio print \
 		tools rfcomm dund pand hidd \
 		cups test scripts
 
