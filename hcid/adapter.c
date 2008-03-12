@@ -730,6 +730,11 @@ static DBusHandlerResult set_discoverable_timeout(DBusConnection *conn,
 					DBUS_TYPE_UINT32, &timeout,
 					DBUS_TYPE_INVALID);
 
+	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
+					ADAPTER_INTERFACE,
+					"DiscoverableTimeout",
+					DBUS_TYPE_UINT32, &timeout);
+
 	return send_message_and_unref(conn, reply);
 }
 
@@ -1142,6 +1147,10 @@ done:
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
+						ADAPTER_INTERFACE, "Name",
+						DBUS_TYPE_STRING, &name);
 
 	return send_message_and_unref(conn, reply);
 }

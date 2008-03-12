@@ -312,6 +312,10 @@ static void adapter_mode_changed(struct adapter *adapter,
 					"ModeChanged",
 					DBUS_TYPE_STRING, &mode,
 					DBUS_TYPE_INVALID);
+
+	dbus_connection_emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "Mode",
+					DBUS_TYPE_STRING, &mode);
 }
 
 /*
@@ -673,6 +677,10 @@ int hcid_dbus_start_device(uint16_t id)
 					DBUS_TYPE_STRING, &mode,
 					DBUS_TYPE_INVALID);
 
+	dbus_connection_emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "Mode",
+					DBUS_TYPE_STRING, &mode);
+
 	if (get_default_adapter() < 0) {
 		set_default_adapter(id);
 		pptr = path;
@@ -785,6 +793,10 @@ int hcid_dbus_stop_device(uint16_t id)
 	send_adapter_signal(connection, adapter->dev_id, "ModeChanged",
 				DBUS_TYPE_STRING, &mode,
 				DBUS_TYPE_INVALID);
+
+	dbus_connection_emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "Mode",
+					DBUS_TYPE_STRING, &mode);
 
 	adapter->up = 0;
 	adapter->scan_enable = SCAN_DISABLED;
@@ -974,6 +986,11 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		/* Disable name resolution for non D-Bus clients */
 		if (!adapter->discov_requestor)
 			adapter->discov_type &= ~RESOLVE_NAME;
+
+		dbus_connection_emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "PeriodicDiscovery",
+					DBUS_TYPE_BOOLEAN,
+					&adapter->discov_active);
 	}
 
 	send_adapter_signal(connection, adapter->dev_id, "DiscoveryStarted",
@@ -1221,6 +1238,11 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 		/* Disable name resolution for non D-Bus clients */
 		if (!adapter->pdiscov_requestor)
 			adapter->discov_type &= ~RESOLVE_NAME;
+
+		dbus_connection_emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "PeriodicDiscovery",
+					DBUS_TYPE_BOOLEAN,
+					&adapter->discov_active);
 	}
 
 	dbus_connection_emit_signal(connection, path, ADAPTER_INTERFACE,
@@ -1291,6 +1313,11 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	dbus_connection_emit_signal(connection, path, ADAPTER_INTERFACE,
 					"PeriodicDiscoveryStopped",
 					DBUS_TYPE_INVALID);
+
+	dbus_connection_emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "PeriodicDiscovery",
+					DBUS_TYPE_BOOLEAN,
+					&adapter->discov_active);
 }
 
 static char *extract_eir_name(uint8_t *data, uint8_t *type)
