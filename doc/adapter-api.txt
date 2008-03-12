@@ -56,19 +56,19 @@ Methods		dict GetProperties()
 
 			TBD
 
-		object CreateDeviceWithAgent(string address, object path)
+		object CreateDeviceWithAgent(string address, object agent)
 
 			TBD
 
-		void RemoveDevice(object
+		void RemoveDevice(object device)
 
 			TBD
 
-Signals		DeviceCreated(object path)
+Signals		DeviceCreated(object device)
 
 			TBD
 
-		DeviceRemoved(object path)
+		DeviceRemoved(object device)
 
 			TBD
 
