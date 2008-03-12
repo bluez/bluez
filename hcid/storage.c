@@ -691,3 +691,12 @@ int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles)
 	ba2str(dst, addr);
 	return textfile_put(filename, addr, profiles);
 }
+
+int delete_entry(bdaddr_t *src, const char *storage, const char *key)
+{
+	char filename[PATH_MAX + 1];
+
+	create_filename(filename, PATH_MAX, src, storage);
+
+	return textfile_del(filename, key);
+}

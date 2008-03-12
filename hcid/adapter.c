@@ -3459,6 +3459,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *path;
 	GSList *l;
+	bdaddr_t src;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
@@ -3478,8 +3479,16 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	/* FIXME: Remove from filesystem */
-	/* FIXME: Remove linkkeys */
+	str2ba(adapter->address, &src);
+	delete_entry(&src, "profiles", device->address);
+	delete_entry(&src, "linkkey", device->address);
+
+	dbus_connection_emit_signal(conn,
+			dbus_message_get_path(msg),
+			ADAPTER_INTERFACE,
+			"DeviceRemoved",
+			DBUS_TYPE_OBJECT_PATH, &device->path,
+			DBUS_TYPE_INVALID);
 
 	device_destroy(device);
 	adapter->devices = g_slist_remove(adapter->devices, device);
