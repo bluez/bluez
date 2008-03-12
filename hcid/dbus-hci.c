@@ -50,8 +50,10 @@
 #include "textfile.h"
 #include "manager.h"
 #include "adapter.h"
+#include "device.h"
 #include "error.h"
 #include "dbus-helper.h"
+#include "glib-helper.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "dbus-test.h"
@@ -561,6 +563,28 @@ int hcid_dbus_unregister_device(uint16_t id)
 	return ret;
 }
 
+static void create_stored_device(char *key, char *value, void *user_data)
+{
+	struct adapter *adapter = user_data;
+	GSList *uuids = bt_string2list(value);
+	const gchar *path;
+
+	path = device_create(adapter, key, uuids);
+
+	adapter->devices = g_slist_append(adapter->devices, g_strdup(path));
+}
+
+static void register_devices(bdaddr_t *src, struct adapter *adapter)
+{
+	char filename[PATH_MAX + 1];
+	char addr[18];
+
+	ba2str(src, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "profiles");
+
+	textfile_foreach(filename, create_stored_device, adapter);
+}
+
 int hcid_dbus_start_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH], *pptr;
@@ -654,6 +678,9 @@ int hcid_dbus_start_device(uint16_t id)
 					    DBUS_TYPE_STRING, &pptr,
 					    DBUS_TYPE_INVALID);
 	}
+
+	/* Register persistent devices */
+	register_devices(&di.bdaddr, adapter);
 
 failed:
 	if (dd >= 0)
