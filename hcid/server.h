@@ -21,7 +21,6 @@
  *
  */
 
-void init_local_server(void);
-void shutdown_local_server(void);
-
-char *get_local_server_address(void);
+struct bt_server {
+	const char *uuid;
+};

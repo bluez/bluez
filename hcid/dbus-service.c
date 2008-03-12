@@ -435,7 +435,7 @@ static gboolean service_startup_timeout(gpointer data)
 int service_start(struct service *service, DBusConnection *conn)
 {
 	DBusError derr;
-	char *addr, *argv[2], *envp[2], command[PATH_MAX], address[256];
+	char *argv[2], *envp[1], command[PATH_MAX];
 
 	if (!dbus_connection_add_filter(conn, service_filter, service, NULL)) {
 		error("Unable to add signal filter");
@@ -456,13 +456,7 @@ int service_start(struct service *service, DBusConnection *conn)
 	argv[0] = command;
 	argv[1] = NULL;
 
-	addr = get_local_server_address();
-
-	snprintf(address, sizeof(address) - 1, "BLUETOOTHD_ADDRESS=%s", addr);
-	envp[0] = address;
-	envp[1] = NULL;
-
-	dbus_free(addr);
+	envp[0] = NULL;
 
 	if (!g_spawn_async(SERVICEDIR, argv, envp, G_SPAWN_DO_NOT_REAP_CHILD,
 				service_setup, service, &service->pid, NULL)) {
