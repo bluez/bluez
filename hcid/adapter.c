@@ -3348,6 +3348,13 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 					DBUS_TYPE_INVALID);
 	send_message_and_unref(adapter->create->conn, reply);
 
+	dbus_connection_emit_signal(adapter->create->conn,
+				dbus_message_get_path(adapter->create->msg),
+				ADAPTER_INTERFACE,
+				"DeviceCreated",
+				DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
+
 	adapter->devices = g_slist_append(adapter->devices, g_strdup(path));
 
 	/* Store the device's profiles in the filesystem */
