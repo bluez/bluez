@@ -538,25 +538,16 @@ static DBusHandlerResult adapter_get_mode(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusHandlerResult set_mode(DBusConnection *conn, DBusMessage *msg,
+				const char *mode, void *data)
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	const char *mode;
 	uint8_t scan_enable;
 	uint8_t new_mode, current_scan = adapter->scan_enable;
 	bdaddr_t local;
 	gboolean limited;
 	int err, dd;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &mode,
-				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
-
-	if (!mode)
-		return error_invalid_arguments(conn, msg, NULL);
 
 	new_mode = str2mode(adapter->address, mode);
 	switch(new_mode) {
@@ -674,6 +665,22 @@ done:
 	adapter->mode = new_mode;
 
 	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *mode;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &mode,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	if (!mode)
+		return error_invalid_arguments(conn, msg, NULL);
+
+	return set_mode(conn, msg, mode, data);
 }
 
 static DBusHandlerResult adapter_get_discoverable_to(DBusConnection *conn,
@@ -3248,7 +3255,7 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg, NULL);
 	dbus_message_iter_recurse(&iter, &sub);
 
-	if (!strcmp("Name", property)) {
+	if (g_str_equal("Name", property)) {
 		const char *name;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
@@ -3256,7 +3263,7 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &name);
 
 		return set_name(conn, msg, name, data);
-	} else if (!strcmp("DiscoverableTimeout", property)) {
+	} else if (g_str_equal("DiscoverableTimeout", property)) {
 		uint32_t timeout;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT32)
@@ -3264,7 +3271,7 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &timeout);
 
 		return set_discoverable_timeout(conn, msg, timeout, data);
-	} else if (!strcmp("PeriodicDiscovery", property)) {
+	} else if (g_str_equal("PeriodicDiscovery", property)) {
 		dbus_bool_t value;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
@@ -3275,6 +3282,14 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 			return adapter_start_periodic(conn, msg, data);
 		else
 			return adapter_stop_periodic(conn, msg, data);
+	} else if (g_str_equal("Mode", property)) {
+		const char *mode;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
+			return error_invalid_arguments(conn, msg, NULL);
+		dbus_message_iter_get_basic(&sub, &mode);
+
+		return set_mode(conn, msg, mode, data);
 	}
 
 	return error_invalid_arguments(conn, msg, NULL);
