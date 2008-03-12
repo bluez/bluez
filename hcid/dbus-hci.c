@@ -771,6 +771,13 @@ int hcid_dbus_stop_device(uint16_t id)
 		adapter->active_conn = NULL;
 	}
 
+	if (adapter->devices) {
+		g_slist_foreach(adapter->devices, (GFunc) device_remove, NULL);
+		g_slist_foreach(adapter->devices, (GFunc) free, NULL);
+		g_slist_free(adapter->devices);
+		adapter->devices = NULL;
+	}
+
 	send_adapter_signal(connection, adapter->dev_id, "ModeChanged",
 				DBUS_TYPE_STRING, &mode,
 				DBUS_TYPE_INVALID);
