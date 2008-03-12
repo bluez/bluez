@@ -24,3 +24,6 @@
 struct bt_server {
 	const char *uuid;
 };
+
+int bt_register_server(struct bt_server *server);
+void bt_unregister_server(struct bt_server *server);
