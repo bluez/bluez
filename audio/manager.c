@@ -1594,6 +1594,8 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	g_io_add_watch(hs_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				(GIOFunc) ag_io_cb, NULL);
 
+	features = headset_config_init(config);
+
 	if (!hfp)
 		return 0;
 
@@ -1602,8 +1604,6 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	hf_server = server_socket(&chan, master);
 	if (!hf_server)
 		return -1;
-
-	features = headset_config_init(config);
 
 	if (hfp_ag_record(&buf, chan, features) < 0) {
 		error("Unable to allocate new service record");
