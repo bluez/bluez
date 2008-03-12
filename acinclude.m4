@@ -107,12 +107,6 @@ AC_DEFUN([AC_PATH_GMODULE], [
 	AC_SUBST(GMODULE_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_OPENOBEX], [
-	PKG_CHECK_MODULES(OPENOBEX, openobex > 1.1, openobex_found=yes, openobex_found=no)
-	AC_SUBST(OPENOBEX_CFLAGS)
-	AC_SUBST(OPENOBEX_LIBS)
-])
-
 AC_DEFUN([AC_PATH_OPENSYNC], [
 	PKG_CHECK_MODULES(OPENSYNC, glib-2.0 opensync-1.0 osengine-1.0, opensync_found=yes, opensync_found=no)
 	AC_SUBST(OPENSYNC_CFLAGS)
@@ -176,7 +170,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	hal_enable=${hal_found}
 	usb_enable=${usb_found}
 	alsa_enable=${alsa_found}
-	obex_enable=${openobex_found}
 	glib_enable=no
 	gstreamer_enable=${gstreamer_found}
 	audio_enable=yes
@@ -216,7 +209,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		dbus_enable=${enableval}
-		obex_enable=${enableval}
 		alsa_enable=${enableval}
 		hcid_enable=${enableval}
 		sdpd_enable=${enableval}
@@ -251,10 +243,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
 		alsa_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(obex, AC_HELP_STRING([--enable-obex], [enable OBEX support]), [
-		obex_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(glib, AC_HELP_STRING([--enable-glib], [enable GLib support]), [
@@ -395,7 +383,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(SBC, test "${alsa_enable}" = "yes" || test "${gstreamer_enable}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
-	AM_CONDITIONAL(OBEX, test "${obex_enable}" = "yes" && test "${openobex_found}" = "yes")
 	AM_CONDITIONAL(GSTREAMER, test "${gstreamer_enable}" = "yes" && test "${gstreamer_found}" = "yes")
 	AM_CONDITIONAL(AUDIOSERVICE, test "${audio_enable}" = "yes")
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")

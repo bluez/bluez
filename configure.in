@@ -45,7 +45,6 @@ AC_OUTPUT([
 	common/Makefile
 	daemon/Makefile
 	plugins/Makefile
-	transfer/Makefile
 	network/Makefile
 	serial/Makefile
 	input/Makefile
