@@ -184,7 +184,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	serial_enable=yes
 	network_enable=yes
 	sync_enable=no
-	echo_enable=no
 	hcid_enable=yes
 	sdpd_enable=no
 	hidd_enable=no
@@ -284,10 +283,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(sync, AC_HELP_STRING([--enable-sync], [enable synchronization service]), [
 		sync_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(echo, AC_HELP_STRING([--enable-echo], [enable echo example service]), [
-		echo_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(hcid, AC_HELP_STRING([--enable-hcid], [install HCI daemon]), [
@@ -407,7 +402,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(SERIALSERVICE, test "${serial_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(SYNCSERVICE, test "${sync_enable}" = "yes" && test "${opensync_found}" = "yes")
-	AM_CONDITIONAL(ECHOSERVICE, test "${echo_enable}" = "yes")
 	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")
 	AM_CONDITIONAL(SDPD, test "${sdpd_enable}" = "yes")
 	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")

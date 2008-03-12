@@ -1,29 +1,18 @@
 
-if ECHOSERVICE
-if CONFIGFILES
-confdir = $(sysconfdir)/bluetooth
-
-conf_DATA = echo.service
-endif
-
-servicedir = $(libdir)/bluetooth
-
-service_PROGRAMS = bluetoothd-service-echo
+noinst_PROGRAMS = bluetoothd passkey-agent auth-agent \
+					bluetoothd-service-echo
 
 bluetoothd_service_echo_SOURCES = echo.c
 
 bluetoothd_service_echo_LDADD = \
 	$(top_builddir)/common/libhelper.a \
 	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
-endif
 
 if CONFIGFILES
 dbusdir = $(sysconfdir)/dbus-1/system.d
 
 dbus_DATA = bluetooth.conf
 endif
-
-noinst_PROGRAMS = bluetoothd passkey-agent auth-agent
 
 bluetoothd_SOURCES = main.c system.h \
 	manager.h manager.c database.h database.c \
