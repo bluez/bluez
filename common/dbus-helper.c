@@ -560,3 +560,31 @@ dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
 	return ret;
 }
 
+dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
+						const char *path,
+						const char *interface,
+						const char *name,
+						int type, void *value)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+	gboolean ret;
+
+	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
+
+	if (!signal) {
+		error("Unable to allocate new %s.PropertyChanged signal",
+				interface);
+		return FALSE;
+	}
+
+	dbus_message_iter_init_append(signal, &iter);
+
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
+	dbus_message_iter_append_variant(&iter, type, value);
+
+	ret = dbus_connection_send(conn, signal, NULL);
+
+	dbus_message_unref(signal);
+	return ret;
+}

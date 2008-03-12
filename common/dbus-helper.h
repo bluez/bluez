@@ -84,3 +84,8 @@ dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
 						const char *name,
 						int first,
 						va_list var_args);
+dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
+						const char *path,
+						const char *interface,
+						const char *name,
+						int type, void *value);
