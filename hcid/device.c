@@ -934,6 +934,21 @@ const gchar *device_create(struct adapter *adapter,
 	return device->path;
 }
 
+static gint device_path_cmp(const struct device *device, const char *path)
+{
+	return strcmp(device->path, path);
+}
+
 void device_remove(const gchar *path)
 {
+	GSList *l;
+
+ 	l = g_slist_find_custom(device_list, path,
+ 				(GCompareFunc) device_path_cmp);
+ 	if (!l)
+ 		return;
+ 
+ 	dbus_connection_destroy_object_path(connection, path);
+ 
+ 	device_list = g_slist_remove(device_list, l->data);
 }

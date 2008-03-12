@@ -3420,21 +3420,32 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 static DBusHandlerResult remove_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct adapter *adapter = data;
 	DBusMessage *reply;
 	const char *path;
+	GSList *l;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
 
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &path,
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
+
+	l = g_slist_find_custom(adapter->devices, path, (GCompareFunc) strcmp);
+	if (!l)
+		return error_device_does_not_exist(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	/* FIXME: Remove from filesystem */
+	/* FIXME: Remove linkkeys */
+
 	device_remove(path);
+	g_free(l->data);
+	adapter->devices = g_slist_remove(adapter->devices, l->data);
 
 	return send_message_and_unref(conn, reply);
 }
