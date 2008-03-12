@@ -378,6 +378,8 @@ int unregister_adapter_path(const char *path)
 
 	info("Unregister path: %s", path);
 
+	__remove_servers(path);
+
 	dbus_connection_get_object_user_data(connection, path,
 						(void *) &adapter);
 
@@ -514,6 +516,8 @@ int hcid_dbus_register_device(uint16_t id)
 					"AdapterAdded",
 					DBUS_TYPE_STRING, &pptr,
 					DBUS_TYPE_INVALID);
+
+	__probe_servers(path);
 
 	return 0;
 

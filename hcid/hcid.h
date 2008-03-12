@@ -213,3 +213,5 @@ int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles);
 
 gboolean plugin_init(void);
 void plugin_cleanup(void);
+void __probe_servers(const char *adapter);
+void __remove_servers(const char *adapter);

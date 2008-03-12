@@ -23,6 +23,8 @@
 
 struct bt_server {
 	const char *uuid;
+	int (*probe) (const char *adapter);
+	void (*remove) (const char *adapter);
 };
 
 int bt_register_server(struct bt_server *server);

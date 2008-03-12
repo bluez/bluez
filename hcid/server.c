@@ -42,3 +42,27 @@ void bt_unregister_server(struct bt_server *server)
 {
 	servers = g_slist_remove(servers, server);
 }
+
+void __probe_servers(const char *adapter)
+{
+	GSList *list;
+
+	for (list = servers; list; list = list->next) {
+		struct bt_server *server = list->data;
+
+		if (server->probe)
+			server->probe(adapter);
+	}
+}
+
+void __remove_servers(const char *adapter)
+{
+	GSList *list;
+
+	for (list = servers; list; list = list->next) {
+		struct bt_server *server = list->data;
+
+		if (server->remove)
+			server->remove(adapter);
+	}
+}
