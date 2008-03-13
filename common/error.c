@@ -27,6 +27,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <string.h>
 #include <errno.h>
 
@@ -239,4 +240,24 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	return dbus_connection_send_and_unref(conn, derr);
+}
+
+/**
+  org.bluez.Error.UnknownMethod:
+
+  Used in experimental code.
+*/
+DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg)
+{
+	char error[128];
+	const char *signature = dbus_message_get_signature(msg);
+	const char *method = dbus_message_get_member(msg);
+	const char *interface = dbus_message_get_interface(msg);
+
+	snprintf(error, 128, "Method \"%s\" with signature \"%s\" on interface \"%s\" doesn't exist",
+			method, signature, interface);
+
+	return send_message_and_unref(conn,
+		dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownMethod",
+							error));
 }

@@ -74,3 +74,4 @@ DBusHandlerResult error_failed_errno(DBusConnection *conn, DBusMessage *msg,
 DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 					const char *name, const char *descr);
 
+DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg);

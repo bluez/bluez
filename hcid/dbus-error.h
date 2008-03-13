@@ -27,7 +27,6 @@
  */
 
 DBusHandlerResult error_not_ready(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);

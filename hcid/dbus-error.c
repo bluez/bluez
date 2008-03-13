@@ -45,21 +45,6 @@ DBusHandlerResult error_not_ready(DBusConnection *conn, DBusMessage *msg)
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotReady", "Adapter is not ready"));
 }
 
-DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg)
-{
-	char error[128];
-	const char *signature = dbus_message_get_signature(msg);
-	const char *method = dbus_message_get_member(msg);
-	const char *interface = dbus_message_get_interface(msg);
-
-	snprintf(error, 128, "Method \"%s\" with signature \"%s\" on interface \"%s\" doesn't exist",
-			method, signature, interface);
-
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownMethod",
-							error));
-}
-
 DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,
