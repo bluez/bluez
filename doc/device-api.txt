@@ -12,42 +12,99 @@ Device hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Device
-Object path	/org/bluez/{hci0,hci1,...}/{dev_XX_XX_XX_XX_XX_XX...}
+Object path	/org/bluez/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods		dict GetProperties()
 
-			TBD
+			Returns all properties for the adapter. See the
+			properties section for available properties.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
 
 		void SetProperty(string name, variant value)
 
-			TBD
+			Changes the value of the specified property. Only
+			properties that are listed a read-write are changeable.
+			On success this will emit a PropertyChanged signal.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
 
 		void Disconnect()
 
-			TBD
+			This method disconnects a specific remote device by
+			terminating the low-level ACL connection. The use of
+			this method should be restricted to administrator
+			use.
+
+			A DisconnectRequested signal will be sent and the
+			actual disconnection will only happen 2 seconds later.
+			This enables upper-level applications to terminate
+			their connections gracefully before the ACL connection
+			is terminated.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotConnected
+					 org.bluez.Error.InProgress
 
 Signals		PropertyChanged(string name, variant value)
 
-			TBD
+			This signal indicates a changed value of the given
+			property.
 
 		DisconnectRequested()
 
-			TBD
+			This signal will be sent when a low level
+			disconnection to a remote device has been requested.
+			The actual disconnection will happen 2 seconds later.
 
-Properties	object Adapter [readonly]
+Properties	string Address [readonly]
 
-		string Address [readonly]
+			The Bluetooth device address of the remote device.
 
 		string Name [readonly]
 
-		string Class [readonly]
+			The Bluetooth remote name. This value can not be
+			changed. Use the Alias property instead.
 
-		array{string} UUIDS [readonly]
+		uint32 Class [readonly]
+
+			The Bluetooth class of device of the remote device.
+
+		array{string} UUIDs [readonly]
+
+			List of 128-bit UUIDs that represents the available
+			remote services.
 
 		boolean Paired [readonly]
 
+			Indicates if the remote device is paired.
+
 		boolean Connected [readonly]
+
+			Indicates if the remote device is currently connected.
+			A PropertyChanged signal indicate changes to this
+			status.
 
 		boolean Trusted [readwrite]
 
+			Indicates if the remote is seen as trusted. This
+			setting can be changed by the application.
+
 		string Alias [readwrite]
+
+			The name alias for the remote device. The alias can
+			be used to have a different friendly name for the
+			remote device.
+
+			In case no alias is set, it will return the remote
+			device name. Setting an empty string as alias will
+			convert it back to the remote device name.
+
+		object Adapter [readonly]
+
+			The object path of the adpater the device belongs to.
