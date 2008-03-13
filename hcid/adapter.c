@@ -3356,7 +3356,8 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 			gchar *uuid_str = bt_uuid2string(svcclass->data);
 			if (uuid_str && !g_slist_find_custom(uuids, uuid_str,
 							(GCompareFunc) strcmp))
-				uuids = g_slist_append(uuids, uuid_str);
+				uuids = g_slist_insert_sorted(uuids, uuid_str,
+							(GCompareFunc) strcmp);
 			sdp_list_free(svcclass, free);
 		}
 
