@@ -1,4 +1,4 @@
 
-EXTRA_DIST = adapter-api.txt device-api.txt agent-api.txt
+EXTRA_DIST = manager-api.txt adapter-api.txt device-api.txt agent-api.txt
 
 MAINTAINERCLEANFILES = Makefile.in
