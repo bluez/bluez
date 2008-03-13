@@ -12,7 +12,7 @@ Manager hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Manager
-Object path	/org/bluez
+Object path	/
 
 Methods		object DefaultAdapter()
 
