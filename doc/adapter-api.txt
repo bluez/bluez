@@ -16,19 +16,17 @@ Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		dict GetProperties()
 
-			TBD
+			Returns all properties for the adapter. See the
+			properties section for available properties.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
 
 		void SetProperty(string name, variant value)
 
-			TBD
-
-		array{object} ListDevices()
-
-			TBD
-
-		object FindDevice(string address)
-
-			Returns the object path of a device given an address.
+			Changes the value of the specified property. Only
+			properties that are listed a read-write are changeable.
+			On success this will emit a PropertyChanged signal.
 
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
@@ -59,52 +57,122 @@ Methods		dict GetProperties()
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NoSuchAdapter
 
+		object FindDevice(string address)
+
+			Returns the object path of device for given address.
+			The device object needs to be first created via
+			CreateDevice or CreatePairedDevice.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+
+		array{object} ListDevices()
+
+			Returns list of device object paths.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+					 org.bluez.Error.OutOfMemory
+
 		object CreateDevice(string address)
 
-			TBD
+			Creates a new object path for a remote device. This
+			method will connect to the remote device and retrieve
+			all SDP records.
 
-		object CreateDeviceWithAgent(string address, object agent)
+			If the object for the remote device already exists
+			this method will fail.
 
-			TBD
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		object CreatePairedDevice(string address, object agent)
+
+			Creates a new object path for a remote device. This
+			method will connect to the remote device and retrieve
+			all SDP records and then initiate the pairing.
+
+			If previously CreateDevice was used successfully,
+			this method will only initiate the pairing.
+
+			Compared to CreateDevice this method will fail if
+			the pairing already exists, but not if the object
+			path already has been created. This allows applications
+			to use CreateDevice first and the if needed use
+			CreatePairedDevice to initiate pairing.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
 
 		void RemoveDevice(object device)
 
-			TBD
+			This removes the remote device object at the given
+			path. It will remove also the pairing information.
 
-Signals		DeviceCreated(object device)
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
 
-			TBD
+Signals		PropertyChanged(string name, variant value)
 
-		DeviceRemoved(object device)
-
-			TBD
-
-		PropertyChanged(string name, variant value)
-
-			TBD
+			This signal indicates a changed value of the given
+			property.
 
 		DiscoveryStarted()
 
-			TBD
+			This signal indicates that a device discovery
+			procedure has been started.
 
 		DiscoveryCompleted()
 
-			TBD
+			This signal indicates that a device discovery
+			procedure has been completed.
 
 		DeviceFound(string address, dict values)
 
-			TBD
+			This signal will be send every time an inquiry result
+			has been found by the service daemon. In general they
+			only appear during a device discovery.
 
 		DeviceDisappeared(string address)
 
-			TBD
+			This signal will be send when an inquiry session for
+			a periodic discovery finishes and previously found
+			devices are no longer in range or visible.
+
+		DeviceCreated(object device)
+
+			Parameter is object path of created device.
+
+		DeviceRemoved(object device)
+
+			Parameter is object path of removed device.
 
 Properties	string Address [readonly]
 
+			The Bluetooth device address.
+
 		string Name [readwrite]
+
+			The Bluetooth friendly name. This value can be
+			changed and a PropertyChanged signal will be emitted.
 
 		string Mode [readwrite]
 
+			The Bluetooth operation mode.
+
+			Valid modes: "off", "connectable",
+						"discoverable", "limited"
+
 		uint32 DiscoverableTimeout [readwrite]
 
+			The discoverable timeout in seconds. A value of zero
+			means that the timeout is disabled and it will stay in
+			discoverable/limited mode forever.
+
+			The default value for the discoverable timeout should
+			be 180 seconds (3 minutes).
+
 		boolean PeriodicDiscovery [readwrite]
+
+			Is peridoic inquiry active or not. Changing this
+			property will either enable or disable it.
