@@ -58,6 +58,7 @@
 #include "device.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
+#include "error.h"
 
 #define MAX_DEVICES 16
 
@@ -747,6 +748,9 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	dbus_bool_t boolean;
 	uint32_t class;
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -826,10 +830,97 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult set_property(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static DBusHandlerResult set_alias(DBusConnection *conn, DBusMessage *msg,
+					const char *alias, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	struct device *device = data;
+	struct adapter *adapter = device->adapter;
+	DBusMessage *reply;
+	bdaddr_t bdaddr;
+	int ecode;
+
+	str2ba(device->address, &bdaddr);
+
+	ecode = set_device_alias(adapter->dev_id, &bdaddr, alias);
+	if (ecode < 0)
+		return error_failed_errno(conn, msg, -ecode);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
+					DEVICE_INTERFACE, "Alias",
+					DBUS_TYPE_STRING, &alias);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult set_trust(DBusConnection *conn, DBusMessage *msg,
+					dbus_bool_t value, void *data)
+{
+	struct device *device = data;
+	struct adapter *adapter = device->adapter;
+	DBusMessage *reply;
+	bdaddr_t local;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	str2ba(adapter->address, &local);
+
+	write_trust(&local, device->address, GLOBAL_TRUST, value);
+
+	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
+					DEVICE_INTERFACE, "Trusted",
+					DBUS_TYPE_BOOLEAN, &value);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter;
+	DBusMessageIter sub;
+	const char *property;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
+	if (!dbus_message_iter_init(msg, &iter))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return error_invalid_arguments(conn, msg, NULL);
+
+	dbus_message_iter_get_basic(&iter, &property);
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
+		return error_invalid_arguments(conn, msg, NULL);
+	dbus_message_iter_recurse(&iter, &sub);
+
+	if (g_str_equal("Trusted", property)) {
+		dbus_bool_t value;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
+			return error_invalid_arguments(conn, msg, NULL);
+		dbus_message_iter_get_basic(&sub, &value);
+
+		return set_trust(conn, msg, value, data);
+	} else if (g_str_equal("Alias", property)) {
+		char *alias;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
+			return error_invalid_arguments(conn, msg, NULL);
+		dbus_message_iter_get_basic(&sub, &alias);
+
+		return set_alias(conn, msg, alias, data);
+	}
+
+	return error_invalid_arguments(conn, msg, NULL);
 }
 
 static DBusMethodVTable device_methods[] = {

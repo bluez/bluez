@@ -22,6 +22,8 @@
  *
  */
 
+#define DEVICE_INTERFACE	"org.bluez.Device"
+
 struct device {
 	gchar		*address;
 	gchar		*path;
