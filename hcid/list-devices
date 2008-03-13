@@ -42,11 +42,13 @@ for i in adapter_list:
 
 		properties = device.GetProperties()
 		for key in properties.keys():
-			if (key == 'UUID'):
-				list = extract_uuids(properties[key])
+			value = properties[key]
+			if (key == 'UUID' or key == 'UUIDs'):
+				list = extract_uuids(value)
 				print '        %s = %s' % (key, list)
-				continue
-	
-			print '        %s = %s' % (key, properties[key])
+			elif (key == "Class"):
+				print '        %s = 0x%06x' % (key, value)
+			else:
+				print '        %s = %s' % (key, value)
 
 	print
