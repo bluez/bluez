@@ -37,15 +37,15 @@ Methods		string DefaultAdapter()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.OutOfMemory
 
-Signals		void AdapterAdded(string path)
+Signals		AdapterAdded(string path)
 
 			Parameter is object path of added adapter.
 
-		void AdapterRemoved(string path)
+		AdapterRemoved(string path)
 
 			Parameter is object path of removed adapter.
 
-		void DefaultAdapterChanged(string path)
+		DefaultAdapterChanged(string path)
 
 			Parameter is object path of the new default adapter,
 			or an empty string if there is no available adapters.
