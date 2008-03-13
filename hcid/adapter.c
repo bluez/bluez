@@ -3343,6 +3343,12 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	GSList *uuids;
 	bdaddr_t src, dst;
 
+	/* Onwer exitted? */
+	if  (!adapter->create) {
+		sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
+		return;
+	}
+
 	if (err < 0) {
 		error_connection_attempt_failed(adapter->create->conn,
 						adapter->create->msg, -err);
@@ -3410,6 +3416,15 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 		write_device_profiles(&src, &dst, "");
 
 failed:
+	name_listener_id_remove(adapter->create->id);
+	dbus_connection_unref(adapter->create->conn);
+	dbus_message_unref(adapter->create->msg);
+	g_free(adapter->create);
+	adapter->create = NULL;
+}
+
+static void create_device_exit(const char *name, struct adapter *adapter)
+{
 	dbus_connection_unref(adapter->create->conn);
 	dbus_message_unref(adapter->create->msg);
 	g_free(adapter->create);
@@ -3454,6 +3469,9 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	create = g_new0(struct create_device_req, 1);
 	create->conn = dbus_connection_ref(conn);
 	create->msg = dbus_message_ref(msg);
+	create->id = name_listener_add(conn,
+			dbus_message_get_sender(msg),
+			(name_cb_t) create_device_exit, adapter);
 	strcpy(create->address, address);
 	adapter->create = create;
 

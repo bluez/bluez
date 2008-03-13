@@ -50,8 +50,7 @@
 
 #define DISPATCH_TIMEOUT	0
 
-static int name_listener_initialized = 0;
-
+static guint listener_id = 0;
 static GSList *name_listeners = NULL;
 
 #ifndef HAVE_DBUS_GLIB
@@ -81,6 +80,7 @@ struct disconnect_data {
 struct name_callback {
 	name_cb_t func;
 	void *user_data;
+	guint id;
 };
 
 struct name_data {
@@ -152,8 +152,8 @@ static void name_data_free(struct name_data *data)
 	g_free(data);
 }
 
-static int name_data_add(DBusConnection *connection,
-			const char *name, name_cb_t func, void *user_data)
+static int name_data_add(DBusConnection *connection, const char *name,
+				name_cb_t func, void *user_data, guint id)
 {
 	int first = 1;
 	struct name_data *data = NULL;
@@ -163,6 +163,7 @@ static int name_data_add(DBusConnection *connection,
 
 	cb->func = func;
 	cb->user_data = user_data;
+	cb->id = id;
 
 	data = name_data_find(connection, name);
 	if (data) {
@@ -293,36 +294,36 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-int name_listener_add(DBusConnection *connection, const char *name,
+guint name_listener_add(DBusConnection *connection, const char *name,
 					name_cb_t func, void *user_data)
 {
 	int first;
 
-	if (!name_listener_initialized) {
+	if (!listener_id) {
 		if (!dbus_connection_add_filter(connection,
 					name_exit_filter, NULL, NULL)) {
 			error("dbus_connection_add_filter() failed");
-			return -1;
+			return 0;
 		}
-		name_listener_initialized = 1;
 	}
 
-	first = name_data_add(connection, name, func, user_data);
+	listener_id++;
+	first = name_data_add(connection, name, func, user_data, listener_id);
 	/* The filter is already added if this is not the first callback
 	 * registration for the name */
 	if (!first)
-		return 0;
+		return listener_id;
 
 	if (name) {
 		debug("name_listener_add(%s)", name);
 
 		if (!add_match(connection, name)) {
 			name_data_remove(connection, name, func, user_data);
-			return -1;
+			return 0;
 		}
 	}
 
-	return 0;
+	return listener_id;
 }
 
 int name_listener_remove(DBusConnection *connection, const char *name,
@@ -360,6 +361,42 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 	name_data_remove(connection, name, func, user_data);
 
 	return 0;
+}
+
+gboolean name_listener_id_remove(guint id)
+{
+	struct name_data *data;
+	struct name_callback *cb;
+	GSList *ldata, *lcb;
+
+	for (ldata = name_listeners; ldata; ldata = ldata->next) {
+		data = ldata->data;
+		for (lcb = data->callbacks; lcb; lcb = lcb->next) {
+			cb = lcb->data;
+			if (cb->id == id)
+				goto remove;
+		}
+	}
+
+	return FALSE;
+
+remove:
+	data->callbacks = g_slist_remove(data->callbacks, cb);
+	g_free(cb);
+
+	/* Don't remove the filter if other callbacks exist */
+	if (data->callbacks)
+		return TRUE;
+
+	if (data->name) {
+		if (!remove_match(data->connection, data->name))
+			return FALSE;
+	}
+
+	name_listeners = g_slist_remove(name_listeners, data);
+	name_data_free(data);
+
+	return TRUE;
 }
 
 int name_listener_indicate_disconnect(DBusConnection *connection)

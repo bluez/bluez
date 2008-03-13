@@ -25,6 +25,7 @@
 #define __H_BLUEZ_DBUS_H__
 
 #include <dbus/dbus.h>
+#include <glib.h>
 
 void setup_dbus_server_with_main_loop(DBusServer *server);
 void setup_dbus_with_main_loop(DBusConnection *conn);
@@ -42,10 +43,11 @@ DBusHandlerResult simple_introspect(DBusConnection *conn,
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
-int name_listener_add(DBusConnection *connection, const char *name,
+guint name_listener_add(DBusConnection *connection, const char *name,
 				name_cb_t func, void *user_data);
 int name_listener_remove(DBusConnection *connection, const char *name,
 				name_cb_t func, void *user_data);
+gboolean name_listener_id_remove(guint id);
 int name_listener_indicate_disconnect(DBusConnection *connection);
 
 dbus_bool_t dbus_bus_get_unix_process_id(DBusConnection *conn, const char *name,

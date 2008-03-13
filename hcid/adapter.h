@@ -84,6 +84,7 @@ struct create_device_req {
 	char		address[18];	/* Destination address */
 	DBusConnection	*conn;		/* Connection reference */
 	DBusMessage	*msg;		/* Message reference */
+	guint		id;		/* Listener id */
 };
 
 struct adapter {
