@@ -3360,10 +3360,14 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 		if (sdp_get_service_classes(rec, &svcclass) == 0) {
 			/* Extract the first element and skip the remainning */
 			gchar *uuid_str = bt_uuid2string(svcclass->data);
-			if (uuid_str && !g_slist_find_custom(uuids, uuid_str,
+			if (uuid_str) {
+				if (!g_slist_find_custom(uuids, uuid_str,
 							(GCompareFunc) strcmp))
-				uuids = g_slist_insert_sorted(uuids, uuid_str,
-							(GCompareFunc) strcmp);
+					uuids = g_slist_insert_sorted(uuids,
+						uuid_str, (GCompareFunc) strcmp);
+				else
+					g_free(uuid_str);
+			}
 			sdp_list_free(svcclass, free);
 		}
 
