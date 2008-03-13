@@ -14,14 +14,14 @@ Service		org.bluez
 Interface	org.bluez.Manager
 Object path	/org/bluez
 
-Methods		string DefaultAdapter()
+Methods		object DefaultAdapter()
 
 			Returns object path for the default adapter.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NoSuchAdapter
 
-		string FindAdapter(string pattern)
+		object FindAdapter(string pattern)
 
 			Returns object path for the specified adapter. Valid
 			patterns are "hci0" or "00:11:22:33:44:55".
@@ -29,7 +29,7 @@ Methods		string DefaultAdapter()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NoSuchAdapter
 
-		array{string} ListAdapters()
+		array{object} ListAdapters()
 
 			Returns list of adapter object paths under /org/bluez
 
@@ -37,15 +37,15 @@ Methods		string DefaultAdapter()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.OutOfMemory
 
-Signals		AdapterAdded(string path)
+Signals		AdapterAdded(object adapter)
 
 			Parameter is object path of added adapter.
 
-		AdapterRemoved(string path)
+		AdapterRemoved(object adapter)
 
 			Parameter is object path of removed adapter.
 
-		DefaultAdapterChanged(string path)
+		DefaultAdapterChanged(object adapter)
 
 			Parameter is object path of the new default adapter,
 			or an empty string if there is no available adapters.
