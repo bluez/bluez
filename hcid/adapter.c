@@ -3181,6 +3181,9 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	bdaddr_t ba;
 	char str[249];
 
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
 	if (check_address(adapter->address) < 0)
 		return error_not_ready(conn, msg);
 
@@ -3234,6 +3237,9 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter sub;
 	const char *property;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_iter_init(msg, &iter))
 		return error_invalid_arguments(conn, msg, NULL);
