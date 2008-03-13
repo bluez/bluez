@@ -313,9 +313,11 @@ static void adapter_mode_changed(struct adapter *adapter,
 					DBUS_TYPE_STRING, &mode,
 					DBUS_TYPE_INVALID);
 
-	dbus_connection_emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "Mode",
-					DBUS_TYPE_STRING, &mode);
+	if (hcid_dbus_use_experimental()) {
+		dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Mode",
+						DBUS_TYPE_STRING, &mode);
+	}
 }
 
 /*
@@ -697,9 +699,11 @@ int hcid_dbus_start_device(uint16_t id)
 					DBUS_TYPE_STRING, &mode,
 					DBUS_TYPE_INVALID);
 
-	dbus_connection_emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "Mode",
-					DBUS_TYPE_STRING, &mode);
+	if (hcid_dbus_use_experimental()) {
+		dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Mode",
+						DBUS_TYPE_STRING, &mode);
+	}
 
 	if (get_default_adapter() < 0) {
 		set_default_adapter(id);
@@ -807,9 +811,11 @@ int hcid_dbus_stop_device(uint16_t id)
 				DBUS_TYPE_STRING, &mode,
 				DBUS_TYPE_INVALID);
 
-	dbus_connection_emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "Mode",
-					DBUS_TYPE_STRING, &mode);
+	if (hcid_dbus_use_experimental()) {
+		dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Mode",
+						DBUS_TYPE_STRING, &mode);
+	}
 
 	adapter->up = 0;
 	adapter->scan_enable = SCAN_DISABLED;
@@ -1000,10 +1006,13 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		if (!adapter->discov_requestor)
 			adapter->discov_type &= ~RESOLVE_NAME;
 
-		dbus_connection_emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "PeriodicDiscovery",
-					DBUS_TYPE_BOOLEAN,
-					&adapter->discov_active);
+		if (hcid_dbus_use_experimental()) {
+			dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE,
+						"PeriodicDiscovery",
+						DBUS_TYPE_BOOLEAN,
+						&adapter->discov_active);
+		}
 	}
 
 	send_adapter_signal(connection, adapter->dev_id, "DiscoveryStarted",
@@ -1117,6 +1126,16 @@ static void send_out_of_range(const char *path, GSList *l)
 						"RemoteDeviceDisappeared",
 						DBUS_TYPE_STRING, &peer_addr,
 						DBUS_TYPE_INVALID);
+
+		if (hcid_dbus_use_experimental()) {
+			dbus_connection_emit_signal(connection, path,
+						ADAPTER_INTERFACE,
+						"DeviceDisappeared",
+						DBUS_TYPE_STRING,
+						&peer_addr,
+						DBUS_TYPE_INVALID);
+		}
+
 		l = l->next;
 	}
 }
@@ -1252,10 +1271,13 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 		if (!adapter->pdiscov_requestor)
 			adapter->discov_type &= ~RESOLVE_NAME;
 
-		dbus_connection_emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "PeriodicDiscovery",
-					DBUS_TYPE_BOOLEAN,
-					&adapter->discov_active);
+		if (hcid_dbus_use_experimental()) {
+			dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE,
+						"PeriodicDiscovery",
+						DBUS_TYPE_BOOLEAN,
+						&adapter->discov_active);
+		}
 	}
 
 	dbus_connection_emit_signal(connection, path, ADAPTER_INTERFACE,
@@ -1327,10 +1349,13 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 					"PeriodicDiscoveryStopped",
 					DBUS_TYPE_INVALID);
 
-	dbus_connection_emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "PeriodicDiscovery",
-					DBUS_TYPE_BOOLEAN,
-					&adapter->discov_active);
+	if (!hcid_dbus_use_experimental()) {
+		dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE,
+						"PeriodicDiscovery",
+						DBUS_TYPE_BOOLEAN,
+						&adapter->discov_active);
+	}
 }
 
 static char *extract_eir_name(uint8_t *data, uint8_t *type)
@@ -1350,6 +1375,32 @@ static char *extract_eir_name(uint8_t *data, uint8_t *type)
 	}
 
 	return NULL;
+}
+
+static void emit_device_found(const char *path, const char *address,
+				const char *first_key, ...)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+	va_list var_args;
+
+	signal = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+					"DeviceFound");
+	if (!signal) {
+		error("Unable to allocate new %s.DeviceFound signal",
+				ADAPTER_INTERFACE);
+		return;
+	}
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &address);
+
+	va_start(var_args, first_key);
+	dbus_message_iter_append_dict_valist(&iter, first_key, var_args);
+	va_end(var_args);
+
+	dbus_connection_send(connection, signal, NULL);
+
+	dbus_message_unref(signal);
 }
 
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
@@ -1417,6 +1468,12 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 					DBUS_TYPE_UINT32, &class,
 					DBUS_TYPE_INT16, &tmp_rssi,
 					DBUS_TYPE_INVALID);
+
+	if (hcid_dbus_use_experimental()) {
+		emit_device_found(path, paddr, "Address", DBUS_TYPE_STRING,
+				&paddr, "Class", DBUS_TYPE_UINT32, &class,
+				NULL);
+	}
 
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
