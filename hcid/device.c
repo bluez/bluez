@@ -711,18 +711,6 @@ int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr)
 	return size;
 }
 
-static DBusConnection *connection = NULL;
-
-gboolean device_init(DBusConnection *conn)
-{
-	/* FIXME: It's not necessary keep a connection reference */
-	connection = dbus_connection_ref(conn);
-	if (connection == NULL)
-		return FALSE;
-
-	return TRUE;
-}
-
 static void device_free(struct device *device)
 {
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
@@ -857,8 +845,8 @@ static DBusSignalVTable device_signals[] = {
 	{ NULL, NULL }
 };
 
-struct device *device_create(struct adapter *adapter,
-		const gchar *address, GSList *uuids)
+struct device *device_create(DBusConnection *conn, struct adapter *adapter,
+					const gchar *address, GSList *uuids)
 {
 	struct device *device;
 
@@ -872,13 +860,13 @@ struct device *device_create(struct adapter *adapter,
 
 	debug("Creating device %s", device->path);
 
-	if (dbus_connection_create_object_path(connection, device->path,
+	if (dbus_connection_create_object_path(conn, device->path,
 					device, device_unregister) == FALSE) {
 		device_free(device);
 		return NULL;
 	}
 
-	dbus_connection_register_interface(connection, device->path,
+	dbus_connection_register_interface(conn, device->path,
 			DEVICE_INTERFACE, device_methods, device_signals, NULL);
 
 	device->address = g_strdup(address);
@@ -888,9 +876,9 @@ struct device *device_create(struct adapter *adapter,
 	return device;
 }
 
-void device_destroy(struct device *device)
+void device_destroy(struct device *device, DBusConnection *conn)
 {
  	debug("Removing device %s", device->path);
 
-	dbus_connection_destroy_object_path(connection, device->path);
+	dbus_connection_destroy_object_path(conn, device->path);
 }

@@ -349,9 +349,6 @@ int hcid_dbus_init(void)
 	if (!security_init(conn, BASE_PATH))
 		return -1;
 
-	if (device_init(conn) == FALSE)
-		return -1;
-
 	set_dbus_connection(conn);
 
 	return 0;

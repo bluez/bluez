@@ -451,7 +451,8 @@ int unregister_adapter_path(const char *path)
 	}
 
 	if (adapter->devices) {
-		g_slist_foreach(adapter->devices, (GFunc) device_destroy, NULL);
+		g_slist_foreach(adapter->devices,
+				(GFunc) device_destroy, connection);
 		g_slist_free(adapter->devices);
 	}
 
@@ -577,7 +578,7 @@ static void create_stored_device(char *key, char *value, void *user_data)
 	GSList *uuids = bt_string2list(value);
 	struct device *device;
 
-	device = device_create(adapter, key, uuids);
+	device = device_create(connection, adapter, key, uuids);
 	if (device)
 		adapter->devices = g_slist_append(adapter->devices, device);
 }

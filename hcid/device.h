@@ -29,7 +29,6 @@ struct device {
 	GSList		*uuids;
 };
 
-gboolean device_init(DBusConnection *conn);
-struct device *device_create(struct adapter *adapter,
-		const gchar *address, GSList *uuids);
-void device_destroy(struct device *device);
+struct device *device_create(DBusConnection *conn, struct adapter *adapter,
+					const gchar *address, GSList *uuids);
+void device_destroy(struct device *device, DBusConnection *conn);

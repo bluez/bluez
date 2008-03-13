@@ -3358,7 +3358,8 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 
 	sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
 
-	device = device_create(adapter, adapter->create->address, uuids);
+	device = device_create(adapter->create->conn, adapter,
+				adapter->create->address, uuids);
 	if (!device)
 		goto failed;
 
@@ -3490,7 +3491,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 			DBUS_TYPE_OBJECT_PATH, &device->path,
 			DBUS_TYPE_INVALID);
 
-	device_destroy(device);
+	device_destroy(device, conn);
 	adapter->devices = g_slist_remove(adapter->devices, device);
 
 	return send_message_and_unref(conn, reply);
