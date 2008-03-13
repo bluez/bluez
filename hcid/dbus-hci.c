@@ -572,7 +572,8 @@ int hcid_dbus_unregister_device(uint16_t id)
 	return ret;
 }
 
-static void create_stored_device(char *key, char *value, void *user_data)
+static void create_stored_device_from_profiles(char *key, char *value,
+						void *user_data)
 {
 	struct adapter *adapter = user_data;
 	GSList *uuids = bt_string2list(value);
@@ -583,15 +584,33 @@ static void create_stored_device(char *key, char *value, void *user_data)
 		adapter->devices = g_slist_append(adapter->devices, device);
 }
 
+static void create_stored_device_from_linkkeys(char *key, char *value,
+						void *user_data)
+{
+	struct adapter *adapter = user_data;
+	struct device *device;
+
+	if (g_slist_find_custom(adapter->devices,
+				key, (GCompareFunc) device_address_cmp))
+		return;
+
+	device = device_create(connection, adapter, key, NULL);
+	if (device)
+		adapter->devices = g_slist_append(adapter->devices, device);
+}
+
 static void register_devices(bdaddr_t *src, struct adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
 	char addr[18];
 
 	ba2str(src, addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, addr, "profiles");
 
-	textfile_foreach(filename, create_stored_device, adapter);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "profiles");
+	textfile_foreach(filename, create_stored_device_from_profiles, adapter);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "linkkeys");
+	textfile_foreach(filename, create_stored_device_from_linkkeys, adapter);
 }
 
 int hcid_dbus_start_device(uint16_t id)

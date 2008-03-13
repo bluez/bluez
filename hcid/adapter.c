@@ -3412,11 +3412,6 @@ failed:
 	adapter->create = NULL;
 }
 
-static gint device_address_cmp(struct device *device, const gchar *address)
-{
-	return strcasecmp(device->address, address);
-}
-
 static DBusHandlerResult create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {

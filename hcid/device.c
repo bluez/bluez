@@ -1004,3 +1004,8 @@ void device_destroy(struct device *device, DBusConnection *conn)
 
 	dbus_connection_destroy_object_path(conn, device->path);
 }
+
+gint device_address_cmp(struct device *device, const gchar *address)
+{
+	return strcasecmp(device->address, address);
+}
