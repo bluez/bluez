@@ -42,7 +42,7 @@ Properties	object Adapter [readonly]
 
 		string Class [readonly]
 
-		array{string} UUIDS [readwrite]
+		array{string} UUIDS [readonly]
 
 		boolean Paired [readonly]
 
