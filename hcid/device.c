@@ -694,6 +694,22 @@ int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
 	return textfile_put(filename, addr, alias);
 }
 
+int remove_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr)
+{
+	char filename[PATH_MAX + 1], addr[18];
+
+	ASSERT_DEV_ID;
+
+	ba2str(&devices[dev_id].bdaddr, addr);
+	create_name(filename, PATH_MAX, STORAGEDIR, addr, "aliases");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(bdaddr, addr);
+
+	return textfile_del(filename, addr);
+}
+
 int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr)
 {
 	struct hci_dev *dev;
@@ -744,7 +760,7 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	char filename[PATH_MAX + 1];
 	char buf[64];
 	const char *ptr;
-	char *str;
+	char *str, *name;
 	dbus_bool_t boolean;
 	uint32_t class;
 
@@ -769,10 +785,9 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	/* Name */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "names");
 	str = textfile_caseget(filename, device->address);
-	if (str) {
+	if (name) {
 		dbus_message_iter_append_dict_entry(&dict, "Name",
-				DBUS_TYPE_STRING, &str);
-		free(str);
+				DBUS_TYPE_STRING, &name);
 	}
 
 	str2ba(adapter->address, &src);
@@ -780,7 +795,6 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 
 	/* Class */
 	if (read_remote_class(&src, &dst, &class) == 0) {
-
 		dbus_message_iter_append_dict_entry(&dict, "Class",
 				DBUS_TYPE_UINT32, &class);
 	}
@@ -790,6 +804,10 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 		ptr = buf;
 		dbus_message_iter_append_dict_entry(&dict, "Alias",
 				DBUS_TYPE_STRING, &ptr);
+	} else if (name) {
+		dbus_message_iter_append_dict_entry(&dict, "Alias",
+				DBUS_TYPE_STRING, &name);
+		free(name);
 	}
 
 	/* Paired */
@@ -822,7 +840,7 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 			DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* UUIDs */
-	dbus_message_iter_append_dict_entry(&dict, "UUID",
+	dbus_message_iter_append_dict_entry(&dict, "UUIDs",
 			DBUS_TYPE_ARRAY, device->uuids);
 
 	dbus_message_iter_close_container(&iter, &dict);
@@ -838,10 +856,21 @@ static DBusHandlerResult set_alias(DBusConnection *conn, DBusMessage *msg,
 	DBusMessage *reply;
 	bdaddr_t bdaddr;
 	int ecode;
+	char *str, filename[PATH_MAX + 1];
 
 	str2ba(device->address, &bdaddr);
 
-	ecode = set_device_alias(adapter->dev_id, &bdaddr, alias);
+	/* Remove alias if empty string */
+	if (g_str_equal(alias, "")) {
+		create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
+				"names");
+		str = textfile_caseget(filename, device->address);
+		ecode = remove_device_alias(adapter->dev_id, &bdaddr);
+	} else {
+		str = g_strdup(alias);
+		ecode = set_device_alias(adapter->dev_id, &bdaddr, alias);
+	}
+
 	if (ecode < 0)
 		return error_failed_errno(conn, msg, -ecode);
 
@@ -851,7 +880,9 @@ static DBusHandlerResult set_alias(DBusConnection *conn, DBusMessage *msg,
 
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Alias",
-					DBUS_TYPE_STRING, &alias);
+					DBUS_TYPE_STRING, &str);
+
+	free(str);
 
 	return send_message_and_unref(conn, reply);
 }
