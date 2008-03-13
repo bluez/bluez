@@ -73,7 +73,11 @@ dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
 void dbus_message_iter_append_variant(DBusMessageIter *iter, int type, void *val);
 void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 					const char *key, int type, void *val);
-
+void dbus_message_iter_append_dict_valist(DBusMessageIter *iter,
+					const char *first_key,
+					va_list var_args);
+void dbus_message_iter_append_dict(DBusMessageIter *iter,
+					const char *first_key, ...);
 dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
 					const char *interface, const char *name,
 					int first, ...);
