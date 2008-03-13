@@ -519,6 +519,14 @@ int hcid_dbus_register_device(uint16_t id)
 	/*
 	 * Send the adapter added signal
 	 */
+	if (hcid_dbus_use_experimental()) {
+		dbus_connection_emit_signal(connection, "/",
+						MANAGER_INTERFACE,
+						"AdapterAdded",
+						DBUS_TYPE_OBJECT_PATH, &pptr,
+						DBUS_TYPE_INVALID);
+	}
+
 	dbus_connection_emit_signal(connection, BASE_PATH, MANAGER_INTERFACE,
 					"AdapterAdded",
 					DBUS_TYPE_STRING, &pptr,
@@ -543,6 +551,14 @@ int hcid_dbus_unregister_device(uint16_t id)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
+	if (hcid_dbus_use_experimental()) {
+		dbus_connection_emit_signal(connection, "/",
+						MANAGER_INTERFACE,
+						"AdapterRemoved",
+						DBUS_TYPE_OBJECT_PATH, &pptr,
+						DBUS_TYPE_INVALID);
+	}
+
 	dbus_connection_emit_signal(connection, BASE_PATH, MANAGER_INTERFACE,
 					"AdapterRemoved",
 					DBUS_TYPE_STRING, &pptr,
@@ -556,6 +572,13 @@ int hcid_dbus_unregister_device(uint16_t id)
 		if (new_default >= 0) {
 			snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH,
 					new_default);
+			if (hcid_dbus_use_experimental()) {
+				dbus_connection_emit_signal(connection, "/",
+						MANAGER_INTERFACE,
+						"DefaultAdapterChanged",
+						DBUS_TYPE_OBJECT_PATH, &pptr,
+						DBUS_TYPE_INVALID);
+			}
 			dbus_connection_emit_signal(connection, BASE_PATH,
 							MANAGER_INTERFACE,
 							"DefaultAdapterChanged",
@@ -563,6 +586,13 @@ int hcid_dbus_unregister_device(uint16_t id)
 							DBUS_TYPE_INVALID);
 		} else {
 			*path = '\0';
+			if (hcid_dbus_use_experimental()) {
+				dbus_connection_emit_signal(connection, "/",
+						MANAGER_INTERFACE,
+						"DefaultAdapterChanged",
+						DBUS_TYPE_OBJECT_PATH, &pptr,
+						DBUS_TYPE_INVALID);
+			}
 			dbus_connection_emit_signal(connection, BASE_PATH,
 							MANAGER_INTERFACE,
 							"DefaultAdapterChanged",

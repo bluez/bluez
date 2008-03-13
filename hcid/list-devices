@@ -19,8 +19,7 @@ def extract_uuids(uuid_list):
 	return list
 
 
-manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
-							'org.bluez.Manager')
+manager = dbus.Interface(bus.get_object('org.bluez', '/'), 'org.bluez.Manager')
 
 adapter_list = manager.ListAdapters()
 

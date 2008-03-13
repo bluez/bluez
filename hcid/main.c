@@ -890,13 +890,13 @@ int main(int argc, char *argv[])
 
 	init_adapters();
 
+	if (experimental)
+		hcid_dbus_set_experimental();
+
 	if (hcid_dbus_init() < 0) {
 		error("Unable to get on D-Bus");
 		exit(1);
 	}
-
-	if (experimental)
-		hcid_dbus_set_experimental();
 
 	init_security_data();
 

@@ -337,6 +337,11 @@ int hcid_dbus_init(void)
 	if (!conn)
 		return -1;
 
+	if (hcid_dbus_use_experimental()) {
+		debug("Registering experimental manager path");
+		dbus_connection_create_object_path(conn, "/", NULL, NULL);
+	}
+
 	if (!dbus_connection_create_object_path(conn, BASE_PATH, NULL, NULL))
 		return -1;
 

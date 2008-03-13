@@ -80,7 +80,7 @@ static DBusHandlerResult interface_version(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult default_adapter(DBusConnection *conn,
+static DBusHandlerResult old_default_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
@@ -148,7 +148,7 @@ out:
 	return devid;
 }
 
-static DBusHandlerResult find_adapter(DBusConnection *conn,
+static DBusHandlerResult old_find_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
@@ -190,7 +190,7 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult list_adapters(DBusConnection *conn,
+static DBusHandlerResult old_list_adapters(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
@@ -349,18 +349,18 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusMethodVTable manager_methods[] = {
+static DBusMethodVTable old_manager_methods[] = {
 	{ "InterfaceVersion",	interface_version,	"",	"u"	},
-	{ "DefaultAdapter",	default_adapter,	"",	"s"	},
-	{ "FindAdapter",	find_adapter,		"s",	"s"	},
-	{ "ListAdapters",	list_adapters,		"",	"as"	},
+	{ "DefaultAdapter",	old_default_adapter,	"",	"s"	},
+	{ "FindAdapter",	old_find_adapter,	"s",	"s"	},
+	{ "ListAdapters",	old_list_adapters,	"",	"as"	},
 	{ "FindService",	find_service,		"s",	"s"	},
 	{ "ListServices",	list_services,		"",	"as"	},
 	{ "ActivateService",	activate_service,	"s",	"s"	},
 	{ NULL, NULL, NULL, NULL }
 };
 
-static DBusSignalVTable manager_signals[] = {
+static DBusSignalVTable old_manager_signals[] = {
 	{ "AdapterAdded",		"s"	},
 	{ "AdapterRemoved",		"s"	},
 	{ "DefaultAdapterChanged",	"s"	},
@@ -369,11 +369,168 @@ static DBusSignalVTable manager_signals[] = {
 	{ NULL, NULL }
 };
 
+static DBusHandlerResult default_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	char path[MAX_PATH_LENGTH], *path_ptr = path;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	if (default_adapter_id < 0)
+		return error_no_such_adapter(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, default_adapter_id);
+
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path_ptr,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult find_adapter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	char path[MAX_PATH_LENGTH], *path_ptr = path;
+	struct hci_dev_info di;
+	const char *pattern;
+	int dev_id;
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &pattern,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	/* hci_devid() would make sense to use here, except it
+	   is restricted to devices which are up */
+	if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4)
+		dev_id = atoi(pattern + 3);
+	else
+		dev_id = find_by_address(pattern);
+
+	if (dev_id < 0)
+		return error_no_such_adapter(conn, msg);
+
+	if (hci_devinfo(dev_id, &di) < 0)
+		return error_no_such_adapter(conn, msg);
+
+	if (hci_test_bit(HCI_RAW, &di.flags))
+		return error_no_such_adapter(conn, msg);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, dev_id);
+
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path_ptr,
+					DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult list_adapters(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter;
+	DBusMessageIter array_iter;
+	DBusMessage *reply;
+	struct hci_dev_list_req *dl;
+	struct hci_dev_req *dr;
+	int i, sk;
+
+	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (sk < 0)
+		return error_failed_errno(conn, msg, errno);
+
+	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
+
+	dl->dev_num = HCI_MAX_DEV;
+	dr = dl->dev_req;
+
+	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
+		int err = errno;
+		close(sk);
+		g_free(dl);
+		return error_failed_errno(conn, msg, err);
+	}
+
+	dr = dl->dev_req;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply) {
+		close(sk);
+		g_free(dl);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array_iter);
+
+	for (i = 0; i < dl->dev_num; i++, dr++) {
+		char path[MAX_PATH_LENGTH], *path_ptr = path;
+		struct hci_dev_info di;
+
+		if (hci_devinfo(dr->dev_id, &di) < 0)
+			continue;
+
+		if (hci_test_bit(HCI_RAW, &di.flags))
+			continue;
+
+		snprintf(path, sizeof(path), "%s/%s", BASE_PATH, di.name);
+
+		dbus_message_iter_append_basic(&array_iter,
+					DBUS_TYPE_OBJECT_PATH, &path_ptr);
+	}
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	g_free(dl);
+
+	close(sk);
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusMethodVTable manager_methods[] = {
+	{ "DefaultAdapter",	default_adapter,	"",	"o"	},
+	{ "FindAdapter",	find_adapter,		"s",	"o"	},
+	{ "ListAdapters",	list_adapters,		"",	"ao"	},
+	{ NULL, NULL, NULL, NULL }
+};
+
+static DBusSignalVTable manager_signals[] = {
+	{ "AdapterAdded",		"o"	},
+	{ "AdapterRemoved",		"o"	},
+	{ "DefaultAdapterChanged",	"o"	},
+	{ NULL, NULL }
+};
+
 dbus_bool_t manager_init(DBusConnection *conn, const char *path)
 {
-	return dbus_connection_register_interface(conn, path, MANAGER_INTERFACE,
+	if (hcid_dbus_use_experimental()) {
+		debug("Registering experimental manager interface");
+		dbus_connection_register_interface(conn, "/",
+							MANAGER_INTERFACE,
 							manager_methods,
 							manager_signals, NULL);
+	}
+
+	return dbus_connection_register_interface(conn, path,
+						MANAGER_INTERFACE,
+						old_manager_methods,
+						old_manager_signals, NULL);
 }
 
 int get_default_adapter(void)
