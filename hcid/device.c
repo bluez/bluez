@@ -784,7 +784,7 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 
 	/* Name */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "names");
-	str = textfile_caseget(filename, device->address);
+	name = textfile_caseget(filename, device->address);
 	if (name) {
 		dbus_message_iter_append_dict_entry(&dict, "Name",
 				DBUS_TYPE_STRING, &name);
