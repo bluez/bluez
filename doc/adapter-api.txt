@@ -112,6 +112,26 @@ Methods		dict GetProperties()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
 
+		void RegisterAgent(object agent)
+
+			This registers the adapter wide agent.
+
+			The object path defines the path the of the agent
+			that will be called when user input is needed.
+
+			If an application disconnects from the bus all
+			of its registered agents will be removed.
+
+			Possible errors: org.bluez.Error.AlreadyExists
+
+		void UnregisterAgent(object agent)
+
+			This unregisters the agent that has been previously
+			registered. The object path parameter must match the
+			same value that has been used on registration.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
