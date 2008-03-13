@@ -26,6 +26,13 @@ Methods		dict GetProperties()
 
 			TBD
 
+		object FindDevice(string address)
+
+			Returns the object path of a device given an address.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+
 		void DiscoverDevices()
 
 			This method starts the device discovery procedure. This

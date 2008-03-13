@@ -3503,6 +3503,40 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static DBusHandlerResult find_device(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct adapter *adapter = data;
+	struct device *device;
+	DBusMessage *reply;
+	const gchar *address;
+	GSList *l;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
+						DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	l = g_slist_find_custom(adapter->devices,
+			address, (GCompareFunc) device_address_cmp);
+	if (!l)
+		return error_device_does_not_exist(conn, msg);
+
+	device = l->data;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_message_append_args(reply,
+				DBUS_TYPE_OBJECT_PATH, &device->path,
+				DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
+}
+
 const char *major_class_str(uint32_t class)
 {
 	uint8_t index = (class >> 8) & 0x1F;
@@ -3603,6 +3637,7 @@ static DBusMethodVTable adapter_methods[] = {
 	{ "ListDevices",	list_devices,		"",	"ao"	},
 	{ "CreateDevice",	create_device,		"s",	"o"	},
 	{ "RemoveDevice",	remove_device,		"o",	""	},
+	{ "FindDevice",		find_device,		"s",	"o"	},
 	/* Deprecated */
 	{ "GetInfo",				adapter_get_info,
 		"",	"a{sv}"	},
