@@ -3707,6 +3707,74 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+void request_mode_cb(struct agent *agent, DBusError *err, void *data)
+{
+	struct mode_req *req = data;
+	DBusMessage *derr;
+
+	if (err && dbus_error_is_set(err)) {
+		derr = dbus_message_new_error(req->msg, err->name, err->message);
+		dbus_connection_send_and_unref(req->conn, derr);
+		goto cleanup;
+	}
+
+	set_mode(req->conn, req->msg, req->mode, req->adapter);
+
+cleanup:
+	dbus_connection_unref(req->conn);
+	dbus_message_unref(req->msg);
+	g_free(req->mode);
+	g_free(req);
+}
+
+static DBusHandlerResult request_mode(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *mode;
+	struct adapter *adapter = data;
+	DBusMessage *reply;
+	struct mode_req *req;
+	uint8_t new_mode;
+	int ret;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
+						DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	new_mode = str2mode(adapter->address, mode);
+	if (new_mode != MODE_CONNECTABLE && new_mode != MODE_DISCOVERABLE)
+		return error_invalid_arguments(conn, msg, NULL);
+
+	/* No need to change mode */
+	if (adapter->mode > new_mode) {
+		reply = dbus_message_new_method_return(msg);
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+		return send_message_and_unref(conn, reply);
+	}
+
+	req = g_new0(struct mode_req, 1);
+	req->adapter = adapter;
+	req->conn = dbus_connection_ref(conn);
+	req->msg = dbus_message_ref(msg);
+	req->mode = g_strdup(mode);
+	ret = agent_confirm_mode_change(adapter->agent, mode, request_mode_cb,
+					req);
+	if (ret < 0) {
+		dbus_connection_unref(req->conn);
+		dbus_message_unref(req->msg);
+		g_free(req->mode);
+		g_free(req);
+		return error_invalid_arguments(conn, msg, NULL);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 const char *major_class_str(uint32_t class)
 {
 	uint8_t index = (class >> 8) & 0x1F;
@@ -3810,6 +3878,7 @@ static DBusMethodVTable adapter_methods[] = {
 	{ "FindDevice",		find_device,		"s",	"o"	},
 	{ "RegisterAgent",	register_agent,		"o",	""	},
 	{ "UnregisterAgent",	unregister_agent,	"o",	""	},
+	{ "RequestMode",	request_mode,		"s",	""	},
 	{ NULL,			NULL,			NULL, NULL	}
 };
 

@@ -88,6 +88,13 @@ struct create_device_req {
 	char		*agent_path;	/* Agent object path */
 };
 
+struct mode_req {
+	struct adapter	*adapter;
+	DBusConnection	*conn;		/* Connection reference */
+	DBusMessage	*msg;		/* Message reference */
+	char		*mode;		/* Requested mode */
+};
+
 struct adapter {
 	uint16_t dev_id;
 	int up;
