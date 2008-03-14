@@ -57,6 +57,7 @@
 #include "dbus-service.h"
 #include "dbus-database.h"
 #include "dbus-hci.h"
+#include "agent.h"
 
 struct hcid_opts hcid;
 struct device_opts default_device;
@@ -890,6 +891,8 @@ int main(int argc, char *argv[])
 
 	init_adapters();
 
+	agent_init();
+
 	if (experimental)
 		hcid_dbus_set_experimental();
 
@@ -930,6 +933,8 @@ int main(int argc, char *argv[])
 		stop_sdp_server();
 
 	free_device_opts();
+
+	agent_exit();
 
 	hcid_dbus_exit();
 
