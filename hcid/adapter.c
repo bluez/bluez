@@ -68,6 +68,21 @@
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 
+struct create_device_req {
+	char		address[18];	/* Destination address */
+	DBusConnection	*conn;		/* Connection reference */
+	DBusMessage	*msg;		/* Message reference */
+	guint		id;		/* Listener id */
+	char		*agent_path;	/* Agent object path */
+};
+
+struct mode_req {
+	struct adapter	*adapter;
+	DBusConnection	*conn;		/* Connection reference */
+	DBusMessage	*msg;		/* Message reference */
+	char		*mode;		/* Requested mode */
+};
+
 static const char *service_cls[] = {
 	"positioning",
 	"networking",
