@@ -38,13 +38,13 @@ struct agent *agent_create(const char *name, const char *path,
 
 int agent_destroy(struct agent *agent, gboolean exited);
 
-int agent_authorize(struct agent *agent, const char *device, const char *uuid,
-			agent_cb cb, void *user_data);
+int agent_authorize(struct agent *agent, struct device *device,
+			const char *uuid, agent_cb cb, void *user_data);
 
-int agent_request_passkey(struct agent *agent, const char *device,
+int agent_request_passkey(struct agent *agent, struct device *device,
 				agent_passkey_cb cb, void *user_data);
 
-int agent_confirm(struct agent *agent, const char *device, const char *pin,
+int agent_confirm(struct agent *agent, struct device *device, const char *pin,
 			agent_cb cb, void *user_data);
 
 int agent_confirm_mode_change(struct agent *agent, const char *new_mode,

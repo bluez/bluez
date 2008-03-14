@@ -57,6 +57,7 @@
 #include "dbus-service.h"
 #include "dbus-database.h"
 #include "dbus-hci.h"
+#include "device.h"
 #include "agent.h"
 
 struct hcid_opts hcid;

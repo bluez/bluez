@@ -50,6 +50,7 @@
 #include "error.h"
 #include "adapter.h"
 #include "dbus-hci.h"
+#include "device.h"
 #include "agent.h"
 
 #define REQUEST_TIMEOUT (60 * 1000)		/* 60 seconds */
@@ -76,8 +77,6 @@ struct agent {
 struct agent_request {
 	agent_request_type_t type;
 	struct agent *agent;
-	char *device;
-	char *uuid;
 	char remote_address[18];
 	DBusPendingCall *call;
 	void *cb;
@@ -182,7 +181,6 @@ int agent_destroy(struct agent *agent, gboolean exited)
 }
 
 static struct agent_request *agent_request_new(struct agent *agent,
-						const char *device,
 						void *cb,
 						void *user_data)
 {
@@ -191,7 +189,6 @@ static struct agent_request *agent_request_new(struct agent *agent,
 	req = g_new0(struct agent_request, 1);
 
 	req->agent = agent;
-	req->device = g_strdup(device);
 	req->cb = cb;
 	req->user_data = user_data;
 
@@ -200,8 +197,6 @@ static struct agent_request *agent_request_new(struct agent *agent,
 
 static void agent_request_free(struct agent_request *req)
 {
-	g_free(req->device);
-	g_free(req->uuid);
 	if (req->call)
 		dbus_pending_call_unref(req->call);
 	g_free(req);
@@ -301,7 +296,7 @@ done:
 }
 
 int agent_authorize(struct agent *agent,
-			const char *device,
+			struct device *device,
 			const char *uuid,
 			agent_cb cb,
 			void *user_data)
@@ -311,9 +306,9 @@ int agent_authorize(struct agent *agent,
 	if (agent->request)
 		return -EBUSY;
 
-	req = agent_request_new(agent, device, cb, user_data);
+	req = agent_request_new(agent, cb, user_data);
 
-	req->call = agent_call_authorize(agent, device, uuid);
+	req->call = agent_call_authorize(agent, device->path, uuid);
 	if (!req->call) {
 		agent_request_free(req);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -322,13 +317,13 @@ int agent_authorize(struct agent *agent,
 	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
 	agent->request = req;
 
-	debug("authorize request was sent for %s", device);
+	debug("authorize request was sent for %s", device->path);
 
 	return 0;
 }
 
-static DBusPendingCall *passkey_request_new(const char *device,
-						struct agent *agent,
+static DBusPendingCall *passkey_request_new(struct agent *agent,
+						const char *device_path,
 						dbus_bool_t numeric)
 {
 	DBusMessage *message;
@@ -341,7 +336,7 @@ static DBusPendingCall *passkey_request_new(const char *device,
 		return NULL;
 	}
 
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &device,
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &device_path,
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(connection, message,
@@ -423,7 +418,7 @@ done:
 	}
 }
 
-int agent_request_passkey(struct agent *agent, const char *device,
+int agent_request_passkey(struct agent *agent, struct device *device,
 				agent_passkey_cb cb, void *user_data)
 {
 	struct agent_request *req;
@@ -431,9 +426,9 @@ int agent_request_passkey(struct agent *agent, const char *device,
 	if (agent->request)
 		return -EBUSY;
 
-	req = agent_request_new(agent, device, cb, user_data);
+	req = agent_request_new(agent, cb, user_data);
 
-	req->call = passkey_request_new(device, agent, FALSE);
+	req->call = passkey_request_new(agent, device->path, FALSE);
 	if (!req->call)
 		goto failed;
 
@@ -449,7 +444,7 @@ failed:
 }
 
 static DBusPendingCall *confirm_request_new(struct agent *agent,
-						const char *device,
+						const char *device_path,
 						const char *value)
 {
 	DBusMessage *message;
@@ -463,7 +458,7 @@ static DBusPendingCall *confirm_request_new(struct agent *agent,
 	}
 
 	dbus_message_append_args(message,
-				DBUS_TYPE_OBJECT_PATH, &device,
+				DBUS_TYPE_OBJECT_PATH, &device_path,
 				DBUS_TYPE_STRING, &value,
 				DBUS_TYPE_INVALID);
 
@@ -508,7 +503,7 @@ static DBusPendingCall *confirm_mode_change_request_new(struct agent *agent,
 	return call;
 }
 
-int agent_confirm(struct agent *agent, const char *device, const char *pin,
+int agent_confirm(struct agent *agent, struct device *device, const char *pin,
 			agent_cb cb, void *user_data)
 {
 	struct agent_request *req;
@@ -519,9 +514,9 @@ int agent_confirm(struct agent *agent, const char *device, const char *pin,
 	debug("Calling Agent.Confirm: name=%s, path=%s",
 						agent->name, agent->path);
 
-	req = agent_request_new(agent, device, cb, user_data);
+	req = agent_request_new(agent, cb, user_data);
 
-	req->call = confirm_request_new(agent, device, pin);
+	req->call = confirm_request_new(agent, device->path, pin);
 	if (!req->call)
 		goto failed;
 
@@ -547,7 +542,7 @@ int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 	debug("Calling Agent.ConfirmModeChange: name=%s, path=%s, mode=%s",
 			agent->name, agent->path, new_mode);
 
-	req = agent_request_new(agent, NULL, cb, user_data);
+	req = agent_request_new(agent, cb, user_data);
 
 	req->call = confirm_mode_change_request_new(agent, new_mode);
 	if (!req->call)
