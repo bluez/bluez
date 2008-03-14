@@ -86,7 +86,6 @@ struct agent_request {
 
 static DBusConnection *connection = NULL;
 
-static void release_agent(struct agent *agent);
 static void send_cancel_request(struct agent_request *req);
 
 static void agent_free(struct agent *agent)
@@ -112,7 +111,7 @@ static void agent_free(struct agent *agent)
 		g_source_remove(agent->timeout);
 
 	if (!agent->exited)
-		release_agent(agent);
+		agent_release(agent);
 
 	g_free(agent->name);
 	g_free(agent->path);
@@ -550,7 +549,7 @@ static void send_cancel_request(struct agent_request *req)
 	agent_request_free(req);
 }
 
-void release_agent(struct agent *agent)
+void agent_release(struct agent *agent)
 {
 	DBusMessage *message;
 
