@@ -24,6 +24,19 @@
 #define L2CAP_PSM_HIDP_CTRL	0x11
 #define L2CAP_PSM_HIDP_INTR	0x13
 
+struct device;
+
+struct fake_input {
+	int		flags;
+	GIOChannel	*io;
+	int		uinput;		/* uinput socket */
+	int		rfcomm;		/* RFCOMM socket */
+	uint8_t		ch;		/* RFCOMM channel number */
+	gboolean 	(*connect) (struct device *dev);
+	int		(*disconnect) (struct device *dev);
+	void		*priv;
+};
+
 int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 			struct hidp_connadd_req *hidp, const char **ppath);
 int fake_input_register(DBusConnection *conn, bdaddr_t *src,
@@ -33,9 +46,7 @@ int input_device_unregister(DBusConnection *conn, const char *path);
 gboolean input_device_is_registered(bdaddr_t *src, bdaddr_t *dst);
 
 int input_device_set_channel(bdaddr_t *src, bdaddr_t *dst, int psm, int nsk);
-
 int input_device_close_channels(bdaddr_t *src, bdaddr_t *dst);
-
 int input_device_connadd(bdaddr_t *src, bdaddr_t *dst);
 
 int l2cap_connect(bdaddr_t *src, bdaddr_t *dst,

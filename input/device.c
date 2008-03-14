@@ -52,6 +52,7 @@
 #include "error.h"
 #include "manager.h"
 #include "storage.h"
+#include "fakehid.h"
 
 #define INPUT_DEVICE_INTERFACE	"org.bluez.input.Device"
 
@@ -62,16 +63,6 @@
 #define FI_FLAG_CONNECTED	1
 
 struct device;
-
-struct fake_input {
-	int		flags;
-	GIOChannel	*io;
-	int		rfcomm; /* RFCOMM socket */
-	int		uinput;	/* uinput socket */
-	uint8_t		ch;	/* RFCOMM channel number */
-	gboolean	(*connect)(struct device *idev);
-	int		(*disconnect)(struct device *idev);
-};
 
 struct device {
 	bdaddr_t		src;
@@ -1336,24 +1327,47 @@ int input_device_close_channels(bdaddr_t *src, bdaddr_t *dst)
 	return 0;
 }
 
+static gboolean fake_hid_connect(struct device *dev)
+{
+	struct fake_hid *fhid = dev->fake->priv;
+
+	return fhid->connect(dev->fake);
+}
+
+static int fake_hid_disconnect(struct device *dev)
+{
+	struct fake_hid *fhid = dev->fake->priv;
+
+	return fhid->disconnect(dev->fake);
+}
+
 int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
 {
 	struct device *idev;
+	struct fake_hid *fake_hid;
+	struct fake_input *fake = NULL;
 	int err;
 
 	idev = find_device(src, dst);
 	if (!idev)
 		return -ENOENT;
 
-	err = hidp_connadd(src, dst, idev->ctrl_sk, idev->intr_sk, idev->name);
-	if (err < 0) {
-		close(idev->ctrl_sk);
-		close(idev->intr_sk);
-		idev->ctrl_sk = -1;
-		idev->intr_sk = -1;
+	fake_hid = get_fake_hid(idev->vendor, idev->product);
+	if (fake_hid) {
+		fake = g_try_new0(struct fake_input, 1);
+		if (!fake) {
+			err = -ENOMEM;
+			goto error;
+		}
 
-		return err;
-	}
+		fake->connect = fake_hid_connect;
+		fake->disconnect = fake_hid_disconnect;
+		fake->priv = fake_hid;
+		err = fake_hid_connadd(fake, idev->intr_sk, fake_hid);
+	} else
+		err = hidp_connadd(src, dst, idev->ctrl_sk, idev->intr_sk, idev->name);
+	if (err < 0)
+		goto error;
 
 	idev->intr_watch = create_watch(idev->intr_sk, intr_watch_cb, idev);
 	idev->ctrl_watch = create_watch(idev->ctrl_sk, ctrl_watch_cb, idev);
@@ -1363,4 +1377,12 @@ int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
 			"Connected",
 			DBUS_TYPE_INVALID);
 	return 0;
+
+error:
+	close(idev->ctrl_sk);
+	close(idev->intr_sk);
+	idev->ctrl_sk = -1;
+	idev->intr_sk = -1;
+	g_free(fake);
+	return err;
 }
