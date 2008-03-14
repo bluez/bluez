@@ -778,8 +778,8 @@ int hcid_dbus_start_device(uint16_t id)
 					    DBUS_TYPE_INVALID);
 	}
 
-	/* Register persistent devices */
-	register_devices(&di.bdaddr, adapter);
+	if (hcid_dbus_use_experimental())
+		register_devices(&di.bdaddr, adapter);
 
 failed:
 	if (dd >= 0)
