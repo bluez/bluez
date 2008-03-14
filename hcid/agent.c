@@ -516,9 +516,7 @@ done:
 
 	agent->request = NULL;
 	dbus_pending_call_cancel(req->call);
-	if (req->call)
-		dbus_pending_call_unref(req->call);
-	g_free(req);
+	agent_request_free(req);
 
 	if (agent->addr) {
 		if (agent->remove_cb)
