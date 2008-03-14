@@ -1,0 +1,47 @@
+#!/usr/bin/python
+
+import gobject
+
+import dbus
+import dbus.service
+import dbus.mainloop.glib
+
+class Agent(dbus.service.Object):
+	@dbus.service.method("org.bluez.Agent",
+					in_signature='', out_signature='')
+	def Release(self):
+		print("Release")
+		mainloop.quit()
+
+	@dbus.service.method("org.bluez.Agent",
+					in_signature='o', out_signature='s')
+	def RequestPasskey(self, device):
+		print("RequestPasskey (" + device + ")")
+		return "1234"
+
+	@dbus.service.method("org.bluez.Agent",
+					in_signature='', out_signature='')
+	def Cancel(self):
+		print("Cancel")
+
+if __name__ == '__main__':
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+	manager = dbus.Interface(bus.get_object('org.bluez', '/'),
+							'org.bluez.Manager')
+	path = manager.DefaultAdapter()
+	adapter = dbus.Interface(bus.get_object('org.bluez', path),
+							'org.bluez.Adapter')
+
+	path = "/test/agent"
+	object = Agent(bus, path)
+
+	adapter.RegisterAgent(path)
+	print("Agent registered")
+
+	mainloop = gobject.MainLoop()
+	mainloop.run()
+
+	#adapter.UnregisterAgent(path)
+	#print("Agent unregistered")
