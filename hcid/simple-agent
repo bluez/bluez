@@ -10,25 +10,26 @@ class Agent(dbus.service.Object):
 	@dbus.service.method("org.bluez.Agent",
 					in_signature='', out_signature='')
 	def Release(self):
-		print("Release")
+		print 'Release'
 		mainloop.quit()
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature='o', out_signature='s')
 	def RequestPasskey(self, device):
-		print("RequestPasskey (" + device + ")")
-		return "1234"
+		print 'RequestPasskey (' + device + ')'
+		return '1234'
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature='s', out_signature='')
 	def ConfirmModeChange(self, mode):
-		print("ConfirmModeChange (" + mode + ")")
+		print 'ConfirmModeChange (' + mode + ')'
 		return
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature='', out_signature='')
 	def Cancel(self):
-		print("Cancel")
+		print 'Cancel'
+		return
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -40,14 +41,14 @@ if __name__ == '__main__':
 	adapter = dbus.Interface(bus.get_object('org.bluez', path),
 							'org.bluez.Adapter')
 
-	path = "/test/agent"
+	path = '/test/agent'
 	object = Agent(bus, path)
 
 	adapter.RegisterAgent(path)
-	print("Agent registered")
+	print 'Agent registered'
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
 
 	#adapter.UnregisterAgent(path)
-	#print("Agent unregistered")
+	#print 'Agent unregistered'
