@@ -49,3 +49,8 @@ Signals		AdapterAdded(object adapter)
 
 			Parameter is object path of the new default adapter,
 			or an empty string if there is no available adapters.
+
+			In case all adapters are removed this signal will not
+			be emitted. The AdapterRemoved signal has to be used
+			to detect that no default adapter is selected or
+			available anymore.
