@@ -274,7 +274,7 @@ static void simple_agent_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&err);
 	if (!dbus_message_get_args(message, &err, DBUS_TYPE_INVALID)) {
-		error("Wrong confirm reply signature: %s", err.message);
+		error("Wrong reply signature: %s", err.message);
 		cb(agent, &err, req->user_data);
 		dbus_error_free(&err);
 		goto done;
@@ -443,37 +443,6 @@ failed:
 	return -1;
 }
 
-static DBusPendingCall *confirm_request_new(struct agent *agent,
-						const char *device_path,
-						const char *value)
-{
-	DBusMessage *message;
-	DBusPendingCall *call;
-
-	message = dbus_message_new_method_call(agent->name, agent->path,
-					"org.bluez.Agent", "Confirm");
-	if (message == NULL) {
-		error("Couldn't allocate D-Bus message");
-		return NULL;
-	}
-
-	dbus_message_append_args(message,
-				DBUS_TYPE_OBJECT_PATH, &device_path,
-				DBUS_TYPE_STRING, &value,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(connection, message,
-					&call, REQUEST_TIMEOUT) == FALSE) {
-		error("D-Bus send failed");
-		dbus_message_unref(message);
-		return NULL;
-	}
-
-	dbus_message_unref(message);
-
-	return call;
-}
-
 static DBusPendingCall *confirm_mode_change_request_new(struct agent *agent,
 							const char *mode)
 {
@@ -501,34 +470,6 @@ static DBusPendingCall *confirm_mode_change_request_new(struct agent *agent,
 	dbus_message_unref(message);
 
 	return call;
-}
-
-int agent_confirm(struct agent *agent, struct device *device, const char *pin,
-			agent_cb cb, void *user_data)
-{
-	struct agent_request *req;
-
-	if (agent->request)
-		return -EBUSY;
-
-	debug("Calling Agent.Confirm: name=%s, path=%s",
-						agent->name, agent->path);
-
-	req = agent_request_new(agent, cb, user_data);
-
-	req->call = confirm_request_new(agent, device->path, pin);
-	if (!req->call)
-		goto failed;
-
-	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
-
-	agent->request = req;
-
-	return 0;
-
-failed:
-	agent_request_free(req);
-	return -1;
 }
 
 int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
