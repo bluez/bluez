@@ -77,7 +77,6 @@ struct agent {
 struct agent_request {
 	agent_request_type_t type;
 	struct agent *agent;
-	char remote_address[18];
 	DBusPendingCall *call;
 	void *cb;
 	void *user_data;
@@ -181,6 +180,7 @@ int agent_destroy(struct agent *agent, gboolean exited)
 }
 
 static struct agent_request *agent_request_new(struct agent *agent,
+						agent_request_type_t type,
 						void *cb,
 						void *user_data)
 {
@@ -189,6 +189,7 @@ static struct agent_request *agent_request_new(struct agent *agent,
 	req = g_new0(struct agent_request, 1);
 
 	req->agent = agent;
+	req->type = type;
 	req->cb = cb;
 	req->user_data = user_data;
 
@@ -306,7 +307,7 @@ int agent_authorize(struct agent *agent,
 	if (agent->request)
 		return -EBUSY;
 
-	req = agent_request_new(agent, cb, user_data);
+	req = agent_request_new(agent, AGENT_REQUEST_AUTHORIZE, cb, user_data);
 
 	req->call = agent_call_authorize(agent, device->path, uuid);
 	if (!req->call) {
@@ -426,7 +427,7 @@ int agent_request_passkey(struct agent *agent, struct device *device,
 	if (agent->request)
 		return -EBUSY;
 
-	req = agent_request_new(agent, cb, user_data);
+	req = agent_request_new(agent, AGENT_REQUEST_PASSKEY, cb, user_data);
 
 	req->call = passkey_request_new(agent, device->path, FALSE);
 	if (!req->call)
@@ -483,7 +484,8 @@ int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 	debug("Calling Agent.ConfirmModeChange: name=%s, path=%s, mode=%s",
 			agent->name, agent->path, new_mode);
 
-	req = agent_request_new(agent, cb, user_data);
+	req = agent_request_new(agent, AGENT_REQUEST_CONFIRM_MODE,
+				cb, user_data);
 
 	req->call = confirm_mode_change_request_new(agent, new_mode);
 	if (!req->call)
