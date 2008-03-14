@@ -2108,8 +2108,7 @@ static void create_device_req_free(struct create_device_req *create)
 {
 	dbus_connection_unref(create->conn);
 	dbus_message_unref(create->msg);
-	if (create->agent)
-		g_free(create->agent);
+	g_free(create->agent_path);
 	g_free(create);
 	create = NULL;
 }
@@ -2251,7 +2250,7 @@ cleanup:
 }
 
 static DBusHandlerResult create_bonding(DBusConnection *conn, DBusMessage *msg,
-				const char *address, const char *agent,
+				const char *address, const char *agent_path,
 				void *data)
 {
 	char filename[PATH_MAX + 1];
@@ -3445,10 +3444,10 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	} else
 		write_device_profiles(&src, &dst, "");
 
-	if (adapter->create->agent)
+	if (adapter->create->agent_path)
 		create_bonding(adapter->create->conn, adapter->create->msg,
-				adapter->create->address, adapter->create->agent,
-				adapter);
+				adapter->create->address,
+				adapter->create->agent_path, adapter);
 
 failed:
 	name_listener_id_remove(adapter->create->id);
@@ -3457,7 +3456,7 @@ failed:
 
 static DBusHandlerResult discover_services(DBusConnection *conn,
 				DBusMessage *msg, const char *address,
-				const char *agent, void *data)
+				const char *agent_path, void *data)
 {
 	struct adapter *adapter = data;
 	struct create_device_req *create;
@@ -3467,16 +3466,16 @@ static DBusHandlerResult discover_services(DBusConnection *conn,
 
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg, NULL);
-	
+
 	l = g_slist_find_custom(adapter->devices, address,
 			(GCompareFunc) device_address_cmp);
-	if (l && agent)
-		return create_bonding(conn, msg, address, agent, data);
-	else if (l && !agent)
+	if (l && agent_path)
+		return create_bonding(conn, msg, address, agent_path, data);
+	else if (l && !agent_path)
 		return error_already_exists(conn, msg, "Device already exists");
 
 	if (adapter->create) {
-		adapter->create->agent = g_strdup(agent);
+		adapter->create->agent_path = g_strdup(agent_path);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
@@ -3496,7 +3495,7 @@ static DBusHandlerResult discover_services(DBusConnection *conn,
 			dbus_message_get_sender(msg),
 			(name_cb_t) create_device_exit, adapter);
 	strcpy(create->address, address);
-	create->agent = agent ? g_strdup(agent) : NULL;
+	create->agent_path = g_strdup(agent_path);
 	adapter->create = create;
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -3524,17 +3523,18 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 static DBusHandlerResult create_paired_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const gchar *address, *agent;
+	const gchar *address, *agent_path;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_OBJECT_PATH, &agent,
+						DBUS_TYPE_OBJECT_PATH,
+						&agent_path,
 						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	return discover_services(conn, msg, address, agent, data);
+	return discover_services(conn, msg, address, agent_path, data);
 }
 
 static gint device_path_cmp(struct device *device, const gchar *path)
@@ -3624,13 +3624,13 @@ static DBusHandlerResult find_device(DBusConnection *conn,
 static DBusHandlerResult register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	char *agent;
+	char *agent_path;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
 
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &agent,
-						DBUS_TYPE_INVALID))
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH,
+				&agent_path, DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -3639,13 +3639,13 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 static DBusHandlerResult unregister_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	char *agent;
+	char *agent_path;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
 
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &agent,
-						DBUS_TYPE_INVALID))
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH,
+				&agent_path, DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
