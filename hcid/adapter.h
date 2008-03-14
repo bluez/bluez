@@ -108,7 +108,8 @@ struct adapter {
 	char *discov_requestor;		/* discovery requestor unique name */
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
 	GSList *passkey_agents;
-	GSList *auth_agents;	/* Authorization agents */
+	GSList *auth_agents;		/* Authorization agents */
+	struct agent *agent;		/* For the new API */
 	bdaddr_t agents_disabled;	/* temporarely disable agents for bda */
 	GSList *active_conn;
 	struct bonding_request_info *bonding;

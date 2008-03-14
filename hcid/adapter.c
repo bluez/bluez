@@ -64,6 +64,7 @@
 #include "error.h"
 #include "glib-helper.h"
 #include "logging.h"
+#include "agent.h"
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 
@@ -3621,17 +3622,48 @@ static DBusHandlerResult find_device(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void agent_exited(const char *name, struct adapter *adapter)
+{
+	debug("Agent %s exited without calling Unregister", name);
+
+	agent_destroy(adapter->agent, TRUE);
+
+	adapter->agent = NULL;
+}
+
+static void agent_removed(struct agent *agent, struct adapter *adapter)
+{
+	if (adapter->agent == agent)
+		adapter->agent = NULL;
+}
+
 static DBusHandlerResult register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	char *agent_path;
+	const char *path, *name;
+	struct agent *agent;
+	struct adapter *adapter = data;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
 
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH,
-				&agent_path, DBUS_TYPE_INVALID))
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
+
+	if (adapter->agent)
+		return error_already_exists(conn, msg, "Agent already exists");
+
+	name = dbus_message_get_sender(msg);
+
+	agent = agent_create(name, path, NULL,
+				(agent_remove_cb) agent_removed, adapter);
+	if (!agent)
+		return error_failed(conn, msg, "Failed to create a new agent");
+
+	adapter->agent = agent;
+
+	name_listener_add(conn, name, (name_cb_t) agent_exited, adapter);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -3639,14 +3671,26 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 static DBusHandlerResult unregister_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	char *agent_path;
+	const char *path, *name;
+	struct adapter *adapter = data;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
 
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH,
-				&agent_path, DBUS_TYPE_INVALID))
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
+
+	name = dbus_message_get_sender(msg);
+
+	if (!adapter->agent || !agent_matches(adapter->agent, name, path))
+		return error_does_not_exist(conn, msg, "No such agent");
+
+	name_listener_remove(conn, name, (name_cb_t) agent_exited,
+				adapter);
+
+	agent_destroy(adapter->agent, FALSE);
+	adapter->agent = NULL;
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
