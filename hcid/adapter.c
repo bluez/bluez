@@ -2104,6 +2104,16 @@ static void reply_authentication_failure(struct bonding_request_info *bonding)
 		send_message_and_unref(bonding->conn, reply);
 }
 
+static void create_device_req_free(struct create_device_req *create)
+{
+	dbus_connection_unref(create->conn);
+	dbus_message_unref(create->msg);
+	if (create->agent)
+		g_free(create->agent);
+	g_free(create);
+	create = NULL;
+}
+
 static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 						struct adapter *adapter)
 {
@@ -2232,30 +2242,25 @@ cleanup:
 	bonding_request_free(adapter->bonding);
 	adapter->bonding = NULL;
 
+	if (adapter->create) {
+		name_listener_id_remove(adapter->create->id);
+		create_device_req_free(adapter->create);
+	}
+
 	return FALSE;
 }
 
-static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusHandlerResult create_bonding(DBusConnection *conn, DBusMessage *msg,
+				const char *address, const char *agent,
+				void *data)
 {
 	char filename[PATH_MAX + 1];
-	char *str, *peer_addr = NULL;
+	char *str;
 	struct adapter *adapter = data;
-	bdaddr_t peer_bdaddr;
+	bdaddr_t bdaddr;
 	int sk;
 
-	if (!adapter->up)
-		return error_not_ready(conn, msg);
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &peer_addr,
-				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
-
-	if (check_address(peer_addr) < 0)
-		return error_invalid_arguments(conn, msg, NULL);
-
-	str2ba(peer_addr, &peer_bdaddr);
+	str2ba(address, &bdaddr);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
 	if (adapter->discov_active || (adapter->pdiscov_active && !adapter->pinq_idle))
@@ -2266,24 +2271,24 @@ static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
 	if (adapter->bonding)
 		return error_bonding_in_progress(conn, msg);
 
-	if (g_slist_find_custom(adapter->pin_reqs, &peer_bdaddr, pin_req_cmp))
+	if (g_slist_find_custom(adapter->pin_reqs, &bdaddr, pin_req_cmp))
 		return error_bonding_in_progress(conn, msg);
 
 	/* check if a link key already exists */
 	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
 			"linkkeys");
 
-	str = textfile_caseget(filename, peer_addr);
+	str = textfile_caseget(filename, address);
 	if (str) {
 		free(str);
 		return error_bonding_already_exists(conn, msg);
 	}
 
-	sk = l2raw_connect(adapter->address, &peer_bdaddr);
+	sk = l2raw_connect(adapter->address, &bdaddr);
 	if (sk < 0)
 		return error_connection_attempt_failed(conn, msg, 0);
 
-	adapter->bonding = bonding_request_new(&peer_bdaddr, conn, msg);
+	adapter->bonding = bonding_request_new(&bdaddr, conn, msg);
 	if (!adapter->bonding) {
 		close(sk);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -2299,6 +2304,26 @@ static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
 			(name_cb_t) create_bond_req_exit, adapter);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct adapter *adapter = data;
+	char *address;
+
+	if (!adapter->up)
+		return error_not_ready(conn, msg);
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg, NULL);
+
+	return create_bonding(conn, msg, address, NULL, data);
 }
 
 static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
@@ -3334,6 +3359,11 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void create_device_exit(const char *name, struct adapter *adapter)
+{
+	create_device_req_free(adapter->create);
+}
+
 static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 {
 	sdp_list_t *seq, *next, *svcclass;
@@ -3415,47 +3445,40 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	} else
 		write_device_profiles(&src, &dst, "");
 
+	if (adapter->create->agent)
+		create_bonding(adapter->create->conn, adapter->create->msg,
+				adapter->create->address, adapter->create->agent,
+				adapter);
+
 failed:
 	name_listener_id_remove(adapter->create->id);
-	dbus_connection_unref(adapter->create->conn);
-	dbus_message_unref(adapter->create->msg);
-	g_free(adapter->create);
-	adapter->create = NULL;
+	create_device_req_free(adapter->create);
 }
 
-static void create_device_exit(const char *name, struct adapter *adapter)
-{
-	dbus_connection_unref(adapter->create->conn);
-	dbus_message_unref(adapter->create->msg);
-	g_free(adapter->create);
-	adapter->create = NULL;
-}
-
-static DBusHandlerResult create_device(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusHandlerResult discover_services(DBusConnection *conn,
+				DBusMessage *msg, const char *address,
+				const char *agent, void *data)
 {
 	struct adapter *adapter = data;
 	struct create_device_req *create;
-	const gchar *address;
 	bdaddr_t src, dst;
 	int err;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
-	if (adapter->create)
-		return error_in_progress(conn, msg, "CreateDevice in progress");
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
+	GSList *l;
 
 	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg, NULL);
-
-	if (g_slist_find_custom(adapter->devices,
-				address, (GCompareFunc) device_address_cmp))
+	
+	l = g_slist_find_custom(adapter->devices, address,
+			(GCompareFunc) device_address_cmp);
+	if (l && agent)
+		return create_bonding(conn, msg, address, agent, data);
+	else if (l && !agent)
 		return error_already_exists(conn, msg, "Device already exists");
+
+	if (adapter->create) {
+		adapter->create->agent = g_strdup(agent);
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
 
 	str2ba(adapter->address, &src);
 	str2ba(address, &dst);
@@ -3473,9 +3496,45 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 			dbus_message_get_sender(msg),
 			(name_cb_t) create_device_exit, adapter);
 	strcpy(create->address, address);
+	create->agent = agent ? g_strdup(agent) : NULL;
 	adapter->create = create;
 
 	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult create_device(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct adapter *adapter = data;
+	const gchar *address;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
+	if (adapter->create)
+		return error_in_progress(conn, msg, "CreateDevice in progress");
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
+						DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg, NULL);
+
+	return discover_services(conn, msg, address, NULL, data);
+}
+
+static DBusHandlerResult create_paired_device(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const gchar *address, *agent;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
+						DBUS_TYPE_OBJECT_PATH, &agent,
+						DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg, NULL);
+
+	return discover_services(conn, msg, address, agent, data);
 }
 
 static gint device_path_cmp(struct device *device, const gchar *path)
@@ -3691,6 +3750,7 @@ static DBusMethodVTable adapter_methods[] = {
 	{ "CancelDiscovery",	adapter_cancel_discovery, "",	""	},
 	{ "ListDevices",	list_devices,		"",	"ao"	},
 	{ "CreateDevice",	create_device,		"s",	"o"	},
+	{ "CreatePairedDevice",	create_paired_device,	"so",	"o"	},
 	{ "RemoveDevice",	remove_device,		"o",	""	},
 	{ "FindDevice",		find_device,		"s",	"o"	},
 	{ "RegisterAgent",	register_agent,		"o",	""	},
