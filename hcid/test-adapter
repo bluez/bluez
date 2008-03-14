@@ -5,23 +5,31 @@ import dbus
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object('org.bluez', '/'), 'org.bluez.Manager')
+manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
 
-adapter = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()),
-							'org.bluez.Adapter')
+adapter = dbus.Interface(bus.get_object("org.bluez", manager.DefaultAdapter()),
+							"org.bluez.Adapter")
 
 if (len(sys.argv) < 2):
 	print "Usage: %s <command>" % (sys.argv[0])
 	print ""
+	print "  address"
 	print "  name [name]"
 	print "  mode [mode]"
 	print "  requestmode <mode>"
+	print "  discoverabletimeout [timeout]"
+	print "  periodicdiscovery [on/off]"
 	sys.exit(1)
+
+if (sys.argv[1] == "address"):
+	properties = adapter.GetProperties()
+	print properties["Address"]
+	sys.exit(0)
 
 if (sys.argv[1] == "name"):
 	if (len(sys.argv) < 3):
 		properties = adapter.GetProperties()
-		print properties['Name']
+		print properties["Name"]
 	else:
 		adapter.SetProperty("Name", sys.argv[2])
 	sys.exit(0)
@@ -29,7 +37,7 @@ if (sys.argv[1] == "name"):
 if (sys.argv[1] == "mode"):
 	if (len(sys.argv) < 3):
 		properties = adapter.GetProperties()
-		print properties['Mode']
+		print properties["Mode"]
 	else:
 		adapter.SetProperty("Mode", sys.argv[2])
 	sys.exit(0)
@@ -39,4 +47,26 @@ if (sys.argv[1] == "requestmode"):
 		print "Need mode parameter"
 	else:
 		adapter.RequestMode(sys.argv[2])
+	sys.exit(0)
+
+if (sys.argv[1] == "discoverabletimeout"):
+	if (len(sys.argv) < 3):
+		properties = adapter.GetProperties()
+		print properties["DiscoverableTimeout"]
+	else:
+		adapter.SetProperty("DiscoverableTimeout", sys.argv[2])
+	sys.exit(0)
+
+if (sys.argv[1] == "periodicdiscovery"):
+	if (len(sys.argv) < 3):
+		properties = adapter.GetProperties()
+		print properties["PeriodicDiscovery"]
+	else:
+		if (sys.argv[2] == "on"):
+			value = dbus.Boolean(1)
+		elif (sys.argv[2] == "off"):
+			value = dbus.Boolean(0)
+		else:
+			value = dbus.Boolean(sys.argv[2])
+		adapter.SetProperty("PeriodicDiscovery", value)
 	sys.exit(0)
