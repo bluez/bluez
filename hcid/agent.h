@@ -49,8 +49,6 @@ int agent_confirm(struct agent *agent, const char *device, const char *pin,
 
 int agent_cancel(struct agent *agent);
 
-void agent_release(struct agent *agent);
-
 gboolean agent_matches(struct agent *agent, const char *name, const char *path);
 
 void agent_init(void);

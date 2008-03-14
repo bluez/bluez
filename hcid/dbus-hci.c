@@ -401,7 +401,6 @@ int unregister_adapter_path(const char *path)
 	release_passkey_agents(adapter, NULL);
 
 	if (adapter->agent) {
-		agent_release(adapter->agent);
 		agent_destroy(adapter->agent, FALSE);
 		adapter->agent = NULL;
 	}
@@ -804,7 +803,6 @@ int hcid_dbus_stop_device(uint16_t id)
 	release_passkey_agents(adapter, NULL);
 
 	if (adapter->agent) {
-		agent_release(adapter->agent);
 		agent_destroy(adapter->agent, FALSE);
 		adapter->agent = NULL;
 	}
@@ -995,7 +993,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	release_passkey_agents(adapter, peer);
 
 	if (adapter->agent) {
-		agent_release(adapter->agent);
 		agent_destroy(adapter->agent, FALSE);
 		adapter->agent = NULL;
 	}

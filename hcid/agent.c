@@ -88,6 +88,24 @@ static DBusConnection *connection = NULL;
 
 static void send_cancel_request(struct agent_request *req);
 
+static void agent_release(struct agent *agent)
+{
+	DBusMessage *message;
+
+	debug("Releasing agent %s, %s", agent->name, agent->path);
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+			"org.bluez.Agent", "Release");
+	if (message == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return;
+	}
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	send_message_and_unref(connection, message);
+}
+
 static void agent_free(struct agent *agent)
 {
 	if (!agent)
@@ -547,24 +565,6 @@ static void send_cancel_request(struct agent_request *req)
 
 	dbus_pending_call_cancel(req->call);
 	agent_request_free(req);
-}
-
-void agent_release(struct agent *agent)
-{
-	DBusMessage *message;
-
-	debug("Releasing agent %s, %s", agent->name, agent->path);
-
-	message = dbus_message_new_method_call(agent->name, agent->path,
-			"org.bluez.Agent", "Release");
-	if (message == NULL) {
-		error("Couldn't allocate D-Bus message");
-		return;
-	}
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	send_message_and_unref(connection, message);
 }
 
 gboolean agent_matches(struct agent *agent, const char *name, const char *path)
