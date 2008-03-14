@@ -3764,13 +3764,16 @@ static DBusHandlerResult request_mode(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg, NULL);
 
 	/* No need to change mode */
-	if (adapter->mode > new_mode) {
+	if (adapter->mode >= new_mode) {
 		reply = dbus_message_new_method_return(msg);
 		if (!reply)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 		return send_message_and_unref(conn, reply);
 	}
+
+	if (!adapter->agent)
+		return error_failed(conn, msg, "No agent registered");
 
 	req = g_new0(struct mode_req, 1);
 	req->adapter = adapter;
