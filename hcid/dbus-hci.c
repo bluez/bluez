@@ -1515,12 +1515,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 					DBUS_TYPE_INT16, &tmp_rssi,
 					DBUS_TYPE_INVALID);
 
-	if (hcid_dbus_use_experimental()) {
-		emit_device_found(path, paddr, "Address", DBUS_TYPE_STRING,
-				&paddr, "Class", DBUS_TYPE_UINT32, &class,
-				NULL);
-	}
-
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
@@ -1564,10 +1558,24 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_STRING, &name,
 						DBUS_TYPE_INVALID);
-		g_free(name);
 
 		if (name_type != 0x08)
 			name_status = NAME_SENT;
+
+		if (hcid_dbus_use_experimental()) {
+			emit_device_found(path, paddr, "Address",
+					DBUS_TYPE_STRING, &paddr, "Class",
+					DBUS_TYPE_UINT32, &class, "RSSI",
+					DBUS_TYPE_UINT16, &tmp_rssi, "Name",
+					DBUS_TYPE_STRING, &name, NULL);
+		}
+
+		g_free(name);
+	} else if (hcid_dbus_use_experimental()) {
+		emit_device_found(path, paddr, "Address", DBUS_TYPE_STRING,
+					&paddr, "Class", DBUS_TYPE_UINT32,
+					&class, "RSSI", DBUS_TYPE_INT16,
+					&tmp_rssi, NULL);
 	}
 
 	/* add in the list to track name sent/pending */
