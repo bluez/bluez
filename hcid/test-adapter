@@ -1,0 +1,27 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object('org.bluez', '/'),
+							'org.bluez.Manager')
+
+adapter = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()),
+							'org.bluez.Adapter')
+
+if (len(sys.argv) < 2):
+	print "Usage: %s <command>" % (sys.argv[0])
+	print ""
+	print "  requestmode <mode>"
+	sys.exit(1)
+
+if (len(sys.argv) < 3):
+	print "Need parameter"
+	sys.exit(1)
+
+if (sys.argv[1] == "requestmode"):
+	mode = sys.argv[2]
+	adapter.RequestMode(mode)
+	sys.exit(0)
