@@ -13,14 +13,30 @@ adapter = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()),
 if (len(sys.argv) < 2):
 	print "Usage: %s <command>" % (sys.argv[0])
 	print ""
+	print "  name [name]"
+	print "  mode [mode]"
 	print "  requestmode <mode>"
 	sys.exit(1)
 
-if (len(sys.argv) < 3):
-	print "Need parameter"
-	sys.exit(1)
+if (sys.argv[1] == "name"):
+	if (len(sys.argv) < 3):
+		properties = adapter.GetProperties()
+		print properties['Name']
+	else:
+		adapter.SetProperty("Name", sys.argv[2])
+	sys.exit(0)
+
+if (sys.argv[1] == "mode"):
+	if (len(sys.argv) < 3):
+		properties = adapter.GetProperties()
+		print properties['Mode']
+	else:
+		adapter.SetProperty("Mode", sys.argv[2])
+	sys.exit(0)
 
 if (sys.argv[1] == "requestmode"):
-	mode = sys.argv[2]
-	adapter.RequestMode(mode)
+	if (len(sys.argv) < 3):
+		print "Need mode parameter"
+	else:
+		adapter.RequestMode(sys.argv[2])
 	sys.exit(0)
