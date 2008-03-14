@@ -3643,6 +3643,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	const char *path, *name;
 	struct agent *agent;
 	struct adapter *adapter = data;
+	DBusMessage *reply;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
@@ -3654,18 +3655,24 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	if (adapter->agent)
 		return error_already_exists(conn, msg, "Agent already exists");
 
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
 	name = dbus_message_get_sender(msg);
 
 	agent = agent_create(name, path, NULL,
 				(agent_remove_cb) agent_removed, adapter);
-	if (!agent)
+	if (!agent) {
+		dbus_message_unref(reply);
 		return error_failed(conn, msg, "Failed to create a new agent");
+	}
 
 	adapter->agent = agent;
 
 	name_listener_add(conn, name, (name_cb_t) agent_exited, adapter);
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusHandlerResult unregister_agent(DBusConnection *conn,
@@ -3673,6 +3680,7 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 {
 	const char *path, *name;
 	struct adapter *adapter = data;
+	DBusMessage *reply;
 
 	if (!hcid_dbus_use_experimental())
 		return error_unknown_method(conn, msg);
@@ -3686,13 +3694,17 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	if (!adapter->agent || !agent_matches(adapter->agent, name, path))
 		return error_does_not_exist(conn, msg, "No such agent");
 
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
 	name_listener_remove(conn, name, (name_cb_t) agent_exited,
 				adapter);
 
 	agent_destroy(adapter->agent, FALSE);
 	adapter->agent = NULL;
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(conn, reply);
 }
 
 const char *major_class_str(uint32_t class)
