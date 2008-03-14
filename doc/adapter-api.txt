@@ -31,6 +31,23 @@ Methods		dict GetProperties()
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
 
+		void RequestMode(string mode)
+
+			This method will request a mode change. The mode
+			change must be confirmed by the user via the agent.
+
+			Possible modes for this call are "connectable" and
+			"discoverable". Any application that wants to use
+			Bluetooth functionality can use this method to
+			indicate which mode it needs to operate sucessfully.
+
+			In case the user doesn't confirm the mode change it
+			will return an error to indicate this rejection.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Rejected
+
 		void DiscoverDevices()
 
 			This method starts the device discovery procedure. This
