@@ -70,3 +70,6 @@ if (sys.argv[1] == "periodicdiscovery"):
 			value = dbus.Boolean(sys.argv[2])
 		adapter.SetProperty("PeriodicDiscovery", value)
 	sys.exit(0)
+
+print "Unknown command"
+sys.exit(1)
