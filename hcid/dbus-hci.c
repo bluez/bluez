@@ -59,6 +59,7 @@
 #include "dbus-test.h"
 #include "dbus-service.h"
 #include "dbus-security.h"
+#include "agent.h"
 #include "dbus-hci.h"
 
 static DBusConnection *connection = NULL;
@@ -398,6 +399,12 @@ int unregister_adapter_path(const char *path)
 	cancel_passkey_agent_requests(adapter->passkey_agents, path, NULL);
 
 	release_passkey_agents(adapter, NULL);
+
+	if (adapter->agent) {
+		agent_release(adapter->agent);
+		agent_destroy(adapter->agent, FALSE);
+		adapter->agent = NULL;
+	}
 
 	if (adapter->discov_requestor) {
 		name_listener_remove(connection,
@@ -796,6 +803,12 @@ int hcid_dbus_stop_device(uint16_t id)
 
 	release_passkey_agents(adapter, NULL);
 
+	if (adapter->agent) {
+		agent_release(adapter->agent);
+		agent_destroy(adapter->agent, FALSE);
+		adapter->agent = NULL;
+	}
+
 	if (adapter->discov_requestor) {
 		name_listener_remove(connection, adapter->discov_requestor,
 					(name_cb_t) discover_devices_req_exit,
@@ -980,6 +993,12 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	}
 
 	release_passkey_agents(adapter, peer);
+
+	if (adapter->agent) {
+		agent_release(adapter->agent);
+		agent_destroy(adapter->agent, FALSE);
+		adapter->agent = NULL;
+	}
 
 	if (!adapter->bonding || bacmp(&adapter->bonding->bdaddr, peer))
 		return; /* skip: no bonding req pending */
