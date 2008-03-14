@@ -153,6 +153,11 @@ Signals		PropertyChanged(string name, variant value)
 			has been found by the service daemon. In general they
 			only appear during a device discovery.
 
+			The dictionary can contain bascially the same values
+			that we be returned by the GetProperties method
+			from the org.bluez.Device interface. In addition there
+			can be values for the RSSI and the TX power level.
+
 		DeviceDisappeared(string address)
 
 			This signal will be send when an inquiry session for
