@@ -1620,7 +1620,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 			emit_device_found(path, paddr,
 					"Address", DBUS_TYPE_STRING, &paddr,
 					"Class", DBUS_TYPE_UINT32, &class,
-					"RSSI", DBUS_TYPE_UINT16, &tmp_rssi,
+					"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
 					"Name", DBUS_TYPE_STRING, &name,
 					NULL);
 		}
