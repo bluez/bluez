@@ -37,6 +37,8 @@
 
 #include <netinet/in.h>
 
+#include "cups.h"
+
 #define HCRP_PDU_CREDIT_GRANT		0x0001
 #define HCRP_PDU_CREDIT_REQUEST		0x0002
 #define HCRP_PDU_GET_LPT_STATUS		0x0005
@@ -167,7 +169,7 @@ static inline int hcrp_get_next_tid(int tid)
 		return tid + 1;
 }
 
-int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned short data_psm, int fd, int copies)
+int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned short data_psm, int fd, int copies, const char *cups_class)
 {
 	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
@@ -180,7 +182,10 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 
 	if ((ctrl_sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0) {
 		perror("ERROR: Can't create socket");
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -190,7 +195,10 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 	if (bind(ctrl_sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("ERROR: Can't bind socket");
 		close(ctrl_sk);
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -201,13 +209,19 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 	if (connect(ctrl_sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("ERROR: Can't connect to device");
 		close(ctrl_sk);
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	if ((data_sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP)) < 0) {
 		perror("ERROR: Can't create socket");
 		close(ctrl_sk);
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -218,7 +232,10 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		perror("ERROR: Can't bind socket");
 		close(data_sk);
 		close(ctrl_sk);
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -230,7 +247,10 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		perror("ERROR: Can't connect to device");
 		close(data_sk);
 		close(ctrl_sk);
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	fputs("STATE: -connecting-to-device\n", stderr);
@@ -242,7 +262,10 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		perror("ERROR: Can't get socket options");
 		close(data_sk);
 		close(ctrl_sk);
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	mtu = opts.omtu;
@@ -266,7 +289,10 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 		fprintf(stderr, "ERROR: Can't grant initial credits\n");
 		close(data_sk);
 		close(ctrl_sk);
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	for (i = 0; i < copies; i++) {
@@ -306,7 +332,7 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 				perror("ERROR: Error writing to device");
 				close(data_sk);
 				close(ctrl_sk);
-				return 1;
+				return CUPS_BACKEND_FAILED;
 			}
 
 			if (len != count)
@@ -320,5 +346,5 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 	close(data_sk);
 	close(ctrl_sk);
 
-	return 0;
+	return CUPS_BACKEND_OK;
 }

@@ -34,7 +34,9 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 
-int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
+#include "cups.h"
+
+int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies, const char *cups_class)
 {
 	struct sockaddr_rc addr;
 	unsigned char buf[2048];
@@ -42,7 +44,10 @@ int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
 
 	if ((sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) < 0) {
 		perror("ERROR: Can't create socket");
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	addr.rc_family = AF_BLUETOOTH;
@@ -52,7 +57,10 @@ int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("ERROR: Can't bind socket");
 		close(sk);
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	addr.rc_family = AF_BLUETOOTH;
@@ -62,7 +70,10 @@ int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("ERROR: Can't connect to device");
 		close(sk);
-		return 1;
+		if (cups_class)
+			return CUPS_BACKEND_FAILED;
+		else
+			return CUPS_BACKEND_RETRY;
 	}
 
 	fputs("STATE: -connecting-to-device\n", stderr);
@@ -93,7 +104,7 @@ int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
 			if (err < 0) {
 				perror("ERROR: Error writing to device");
 				close(sk);
-				return 1;
+				return CUPS_BACKEND_FAILED;
 			}
 		}
 
@@ -101,5 +112,5 @@ int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies)
 
 	close(sk);
 
-	return 0;
+	return CUPS_BACKEND_OK;
 }

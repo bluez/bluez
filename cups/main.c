@@ -40,23 +40,15 @@
 
 #include <glib.h>
 
+#include "cups.h"
 #include "dbus.h"
 #include "sdp-xml.h"
-
-enum {					/**** Backend exit codes ****/
-	CUPS_BACKEND_OK = 0,		/* Job completed successfully */
-	CUPS_BACKEND_FAILED = 1,	/* Job failed, use error-policy */
-	CUPS_BACKEND_AUTH_REQUIRED = 2,	/* Job failed, authentication required */
-	CUPS_BACKEND_HOLD = 3,		/* Job failed, hold job */
-	CUPS_BACKEND_STOP = 4,		/* Job failed, stop queue */
-	CUPS_BACKEND_CANCEL = 5		/* Job failed, cancel job */
-};
 
 extern int sdp_search_spp(sdp_session_t *sdp, uint8_t *channel);
 extern int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short *data_psm);
 
-extern int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies);
-extern int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned short data_psm, int fd, int copies);
+extern int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies, const char *cups_class);
+extern int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned short data_psm, int fd, int copies, const char *cups_class);
 
 #define PRINTER_SERVICE_CLASS_NAME "printer"
 
@@ -563,7 +555,7 @@ int main(int argc, char *argv[])
 	unsigned short ctrl_psm, data_psm;
 	uint8_t channel, b[6];
 	char *ptr, str[3], device[18], service[12];
-	const char *uri;
+	const char *uri, *cups_class;
 	int i, err, fd, copies, proto;
 
 	/* Make sure status messages are not buffered */
@@ -638,11 +630,15 @@ int main(int argc, char *argv[])
 		proto = 0;
 	}
 
-	fprintf(stderr, "DEBUG: %s device %s service %s fd %d copies %d\n",
-			argv[0], device, service, fd, copies);
+	cups_class = getenv("CLASS");
+
+	fprintf(stderr, "DEBUG: %s device %s service %s fd %d copies %d class %s\n",
+			argv[0], device, service, fd, copies,
+					cups_class ? cups_class : "(none)");
 
 	fputs("STATE: +connecting-to-device\n", stderr);
 
+service_search:
 	sdp = sdp_connect(BDADDR_ANY, &bdaddr, SDP_RETRY_IF_BUSY);
 	if (!sdp) {
 		fprintf(stderr, "ERROR: Can't open Bluetooth connection\n");
@@ -669,21 +665,41 @@ int main(int argc, char *argv[])
 	sdp_close(sdp);
 
 	if (err) {
+		if (cups_class) {
+			fputs("INFO: Unable to contact printer, queuing on "
+					"next printer in class...\n", stderr);
+			sleep(5);
+			return CUPS_BACKEND_FAILED;
+		}
+		sleep(20);
 		fprintf(stderr, "ERROR: Can't get service information\n");
-		return CUPS_BACKEND_FAILED;
+		goto service_search;
 	}
 
+connect:
 	switch (proto) {
 	case 1:
-		err = spp_print(BDADDR_ANY, &bdaddr, channel, fd, copies);
+		err = spp_print(BDADDR_ANY, &bdaddr, channel,
+						fd, copies, cups_class);
 		break;
 	case 2:
-		err = hcrp_print(BDADDR_ANY, &bdaddr, ctrl_psm, data_psm, fd, copies);
+		err = hcrp_print(BDADDR_ANY, &bdaddr, ctrl_psm, data_psm,
+						fd, copies, cups_class);
 		break;
 	default:
 		err = CUPS_BACKEND_FAILED;
 		fprintf(stderr, "ERROR: Unsupported protocol\n");
 		break;
+	}
+
+	if (err == CUPS_BACKEND_FAILED && cups_class) {
+		fputs("INFO: Unable to contact printer, queuing on "
+					"next printer in class...\n", stderr);
+		sleep(5);
+		return CUPS_BACKEND_FAILED;
+	} else if (err == CUPS_BACKEND_RETRY) {
+		sleep(20);
+		goto connect;
 	}
 
 	if (fd != 0)
