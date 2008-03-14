@@ -436,6 +436,12 @@ void dbus_message_iter_append_variant(DBusMessageIter *iter, int type, void *val
 	case DBUS_TYPE_INT16:
 		sig = DBUS_TYPE_INT16_AS_STRING;
 		break;
+	case DBUS_TYPE_UINT16:
+		sig = DBUS_TYPE_UINT16_AS_STRING;
+		break;
+	case DBUS_TYPE_INT32:
+		sig = DBUS_TYPE_INT32_AS_STRING;
+		break;
 	case DBUS_TYPE_UINT32:
 		sig = DBUS_TYPE_UINT32_AS_STRING;
 		break;
