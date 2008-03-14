@@ -207,63 +207,21 @@ static void agent_request_free(struct agent_request *req)
 	g_free(req);
 }
 
-static void agent_call_cancel(struct agent_request *req)
+int agent_cancel(struct agent *agent)
 {
-	struct agent *agent = req->agent;
 	DBusMessage *message;
 
 	message = dbus_message_new_method_call(agent->name, agent->path,
 						"org.bluez.Agent", "Cancel");
 	if (!message) {
 		error("Couldn't allocate D-Bus message");
-		return;
+		return -1;
 	}
 
 	dbus_message_set_no_reply(message, TRUE);
 	send_message_and_unref(connection, message);
-}
 
-static void authorize_reply(DBusPendingCall *call, void *data)
-{
-	struct agent_request *req = data;
-	struct agent *agent = req->agent;
-	agent_cb cb = req->cb;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError err;
-
-	debug("authorize reply");
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, reply)) {
-		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
-			agent_call_cancel(req);
-		error("Authorization agent replied with an error: %s, %s",
-				err.name, err.message);
-		cb(agent, &err, req->user_data);
-		dbus_error_free(&err);
-		goto done;
-	}
-
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(reply, &err,	DBUS_TYPE_INVALID)) {
-		error("Wrong authorization agent reply signature: %s",
-			err.message);
-		cb(agent, &err, req->user_data);
-		dbus_error_free(&err);
-		goto done;
-	}
-
-	debug("successfull reply was sent");
-
-	cb(agent, NULL, req->user_data);
-
-done:
-	dbus_message_unref(reply);
-
-	agent_request_free(req);
-	agent->request = NULL;
-
-	debug("auth_agent_reply: returning");
+	return 0;
 }
 
 static DBusPendingCall *agent_call_authorize(struct agent *agent,
@@ -296,6 +254,52 @@ static DBusPendingCall *agent_call_authorize(struct agent *agent,
 	return call;
 }
 
+static void simple_agent_reply(DBusPendingCall *call, void *user_data)
+{
+	struct agent_request *req = user_data;
+	struct agent *agent = req->agent;
+	DBusMessage *message;
+	DBusError err;
+	agent_cb cb = req->cb;
+
+	/* steal_reply will always return non-NULL since the callback
+	 * is only called after a reply has been received */
+	message = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, message)) {
+
+		error("Agent replied with an error: %s, %s",
+				err.name, err.message);
+
+		cb(agent, &err, req->user_data);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(message, &err, DBUS_TYPE_INVALID)) {
+		error("Wrong confirm reply signature: %s", err.message);
+		cb(agent, &err, req->user_data);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	cb(agent, NULL, req->user_data);
+done:
+	dbus_message_unref(message);
+
+	agent->request = NULL;
+	dbus_pending_call_cancel(req->call);
+	agent_request_free(req);
+
+	if (agent->addr) {
+		if (agent->remove_cb)
+			agent->remove_cb(agent, agent->remove_cb_data);
+		agent_free(agent);
+	}
+}
+
 int agent_authorize(struct agent *agent,
 			const char *device,
 			const char *uuid,
@@ -315,8 +319,7 @@ int agent_authorize(struct agent *agent,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 	}
 
-	dbus_pending_call_set_notify(req->call, authorize_reply, req,
-					NULL);
+	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
 	agent->request = req;
 
 	debug("authorize request was sent for %s", device);
@@ -476,51 +479,33 @@ static DBusPendingCall *confirm_request_new(struct agent *agent,
 	return call;
 }
 
-static void confirm_reply(DBusPendingCall *call, void *user_data)
+static DBusPendingCall *confirm_mode_change_request_new(struct agent *agent,
+							const char *mode)
 {
-	struct agent_request *req = user_data;
-	struct agent *agent = req->agent;
 	DBusMessage *message;
-	DBusError err;
-	agent_cb cb = req->cb;
+	DBusPendingCall *call;
 
-	/* steal_reply will always return non-NULL since the callback
-	 * is only called after a reply has been received */
-	message = dbus_pending_call_steal_reply(call);
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, message)) {
-
-		error("Agent replied with an error: %s, %s",
-				err.name, err.message);
-
-		cb(agent, &err, req->user_data);
-		dbus_error_free(&err);
-		goto done;
+	message = dbus_message_new_method_call(agent->name, agent->path,
+				"org.bluez.Agent", "ConfirmModeChange");
+	if (message == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return NULL;
 	}
 
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(message, &err, DBUS_TYPE_INVALID)) {
-		error("Wrong confirm reply signature: %s", err.message);
-		cb(agent, &err, req->user_data);
-		dbus_error_free(&err);
-		goto done;
-	}
+	dbus_message_append_args(message,
+				DBUS_TYPE_STRING, &mode,
+				DBUS_TYPE_INVALID);
 
-	cb(agent, NULL, req->user_data);
-done:
-	if (message)
+	if (dbus_connection_send_with_reply(connection, message,
+					&call, REQUEST_TIMEOUT) == FALSE) {
+		error("D-Bus send failed");
 		dbus_message_unref(message);
-
-	agent->request = NULL;
-	dbus_pending_call_cancel(req->call);
-	agent_request_free(req);
-
-	if (agent->addr) {
-		if (agent->remove_cb)
-			agent->remove_cb(agent, agent->remove_cb_data);
-		agent_free(agent);
+		return NULL;
 	}
+
+	dbus_message_unref(message);
+
+	return call;
 }
 
 int agent_confirm(struct agent *agent, const char *device, const char *pin,
@@ -540,7 +525,7 @@ int agent_confirm(struct agent *agent, const char *device, const char *pin,
 	if (!req->call)
 		goto failed;
 
-	dbus_pending_call_set_notify(req->call, confirm_reply, req, NULL);
+	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
 
 	agent->request = req;
 
@@ -554,7 +539,29 @@ failed:
 int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 				agent_cb cb, void *user_data)
 {
+	struct agent_request *req;
+
+	if (agent->request)
+		return -EBUSY;
+
+	debug("Calling Agent.ConfirmModeChange: name=%s, path=%s, mode=%s",
+			agent->name, agent->path, new_mode);
+
+	req = agent_request_new(agent, NULL, cb, user_data);
+
+	req->call = confirm_mode_change_request_new(agent, new_mode);
+	if (!req->call)
+		goto failed;
+
+	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
+
+	agent->request = req;
+
 	return 0;
+
+failed:
+	agent_request_free(req);
+	return -1;
 }
 
 static void send_cancel_request(struct agent_request *req)
