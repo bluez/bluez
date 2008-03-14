@@ -5,17 +5,23 @@ import dbus
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object('org.bluez', '/'), 'org.bluez.Manager')
+bus = dbus.SystemBus()
 
-adapter = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()),
-							'org.bluez.Adapter')
+manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
+
+adapter = dbus.Interface(bus.get_object("org.bluez", manager.DefaultAdapter()),
+							"org.bluez.Adapter")
 
 if (len(sys.argv) < 2):
 	print "Usage: %s <command>" % (sys.argv[0])
 	print ""
+	print "  list"
 	print "  create <address>"
 	print "  remove <path>"
-	print "  list"
+	print "  class <address>"
+	print "  name <address>"
+	print "  alias <address> [alias]"
+	print "  trusted <address> [yes/no]"
 	sys.exit(1)
 
 if (sys.argv[1] == "list"):
@@ -23,19 +29,75 @@ if (sys.argv[1] == "list"):
 	print list
 	sys.exit(0)
 
-if (len(sys.argv) < 3):
-	print "Need parameter"
-	sys.exit(1)
-
 if (sys.argv[1] == "create"):
-	address = sys.argv[2]
-	device = adapter.CreateDevice(address)
-	print device
+	if (len(sys.argv) < 3):
+		print "Need address parameter"
+	else:
+		device = adapter.CreateDevice(sys.argv[2])
+		print device
 	sys.exit(0)
 
 if (sys.argv[1] == "remove"):
-	path = sys.argv[2]
-	adapter.RemoveDevice(path)
+	if (len(sys.argv) < 3):
+		print "Need object path parameter"
+	else:
+		adapter.RemoveDevice(sys.argv[2])
+	sys.exit(0)
+
+if (sys.argv[1] == "class"):
+	if (len(sys.argv) < 3):
+		print "Need address parameter"
+	else:
+		path = adapter.FindDevice(sys.argv[2])
+		device = dbus.Interface(bus.get_object("org.bluez", path),
+							"org.bluez.Device")
+		properties = device.GetProperties()
+		print "0x%06x" % (properties["Class"])
+	sys.exit(0)
+
+if (sys.argv[1] == "name"):
+	if (len(sys.argv) < 3):
+		print "Need address parameter"
+	else:
+		path = adapter.FindDevice(sys.argv[2])
+		device = dbus.Interface(bus.get_object("org.bluez", path),
+							"org.bluez.Device")
+		properties = device.GetProperties()
+		print properties["Name"]
+	sys.exit(0)
+
+if (sys.argv[1] == "alias"):
+	if (len(sys.argv) < 3):
+		print "Need address parameter"
+	else:
+		path = adapter.FindDevice(sys.argv[2])
+		device = dbus.Interface(bus.get_object("org.bluez", path),
+							"org.bluez.Device")
+		if (len(sys.argv) < 4):
+			properties = device.GetProperties()
+			print properties["Alias"]
+		else:
+			device.SetProperty("Alias", sys.argv[3])
+	sys.exit(0)
+
+if (sys.argv[1] == "trusted"):
+	if (len(sys.argv) < 3):
+		print "Need address parameter"
+	else:
+		path = adapter.FindDevice(sys.argv[2])
+		device = dbus.Interface(bus.get_object("org.bluez", path),
+							"org.bluez.Device")
+		if (len(sys.argv) < 4):
+			properties = device.GetProperties()
+			print properties["Trusted"]
+		else:
+			if (sys.argv[2] == "yes"):
+				value = dbus.Boolean(1)
+			elif (sys.argv[2] == "no"):
+				value = dbus.Boolean(0)
+			else:
+				value = dbus.Boolean(sys.argv[2])
+			device.SetProperty("Trusted", value)
 	sys.exit(0)
 
 print "Unknown command"
