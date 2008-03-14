@@ -385,7 +385,7 @@ static DBusHandlerResult default_adapter(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, default_adapter_id);
+	snprintf(path, sizeof(path), "/hci%d", default_adapter_id);
 
 	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path_ptr,
 					DBUS_TYPE_INVALID);
@@ -427,7 +427,7 @@ static DBusHandlerResult find_adapter(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, dev_id);
+	snprintf(path, sizeof(path), "/hci%d", dev_id);
 
 	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path_ptr,
 					DBUS_TYPE_INVALID);
@@ -488,7 +488,7 @@ static DBusHandlerResult list_adapters(DBusConnection *conn,
 		if (hci_test_bit(HCI_RAW, &di.flags))
 			continue;
 
-		snprintf(path, sizeof(path), "%s/%s", BASE_PATH, di.name);
+		snprintf(path, sizeof(path), "/hci%d", di.dev_id);
 
 		dbus_message_iter_append_basic(&array_iter,
 					DBUS_TYPE_OBJECT_PATH, &path_ptr);

@@ -976,8 +976,8 @@ struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 	if (device == NULL)
 		return NULL;
 
-	device->path = g_strdup_printf("%s/hci%d/dev_%s",
-				BASE_PATH, adapter->dev_id, address);
+	device->path = g_strdup_printf("/hci%d/dev_%s",
+				adapter->dev_id, address);
 	g_strdelimit(device->path, ":", '_');
 
 	debug("Creating device %s", device->path);

@@ -23,6 +23,7 @@
  */
 
 #define BASE_PATH		"/org/bluez"
+#define ADAPTER_PATH_INDEX	10
 
 #define MAX_PATH_LENGTH 64
 

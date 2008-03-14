@@ -3797,9 +3797,8 @@ GSList *service_classes_str(uint32_t class)
 	return l;
 }
 
+/* BlueZ 4.0 API */
 static DBusMethodVTable adapter_methods[] = {
-
-	/* BlueZ 4.0 API */
 	{ "GetProperties",	get_properties,		"",	"a{sv}" },
 	{ "SetProperty",	set_property,		"sv",	""	},
 	{ "DiscoverDevices",	adapter_discover_devices, "",	""	},
@@ -3811,7 +3810,11 @@ static DBusMethodVTable adapter_methods[] = {
 	{ "FindDevice",		find_device,		"s",	"o"	},
 	{ "RegisterAgent",	register_agent,		"o",	""	},
 	{ "UnregisterAgent",	unregister_agent,	"o",	""	},
-	/* Deprecated */
+	{ NULL,			NULL,			NULL, NULL	}
+};
+
+/* Deprecated */
+static DBusMethodVTable old_adapter_methods[] = {
 	{ "GetInfo",				adapter_get_info,
 		"",	"a{sv}"	},
 	{ "GetAddress",				adapter_get_address,
@@ -3949,8 +3952,8 @@ static DBusMethodVTable adapter_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
+/* BlueZ 4.X */
 static DBusSignalVTable adapter_signals[] = {
-	/* BlueZ 4.0 */
 	{ "DiscoveryStarted",		""		},
 	{ "DiscoveryCompleted",		""		},
 	{ "DeviceCreated",		"o"		},
@@ -3958,7 +3961,13 @@ static DBusSignalVTable adapter_signals[] = {
 	{ "DeviceFound",		"sa{sv}"	},
 	{ "PropertyChanged",		"sv"		},
 	{ "DeviceDisappeared",		"s"		},
-	/* Deprecated */
+	{ NULL,				NULL		}
+};
+
+/* Deprecated */
+static DBusSignalVTable old_adapter_signals[] = {
+	{ "DiscoveryStarted",			""	},
+	{ "DiscoveryCompleted",			""	},
 	{ "ModeChanged",			"s"	},
 	{ "DiscoverableTimeoutChanged",		"u"	},
 	{ "MinorClassChanged",			"s"	},
@@ -3986,6 +3995,12 @@ static DBusSignalVTable adapter_signals[] = {
 
 dbus_bool_t adapter_init(DBusConnection *conn, const char *path)
 {
-	return dbus_connection_register_interface(conn, path, ADAPTER_INTERFACE,
+	if (hcid_dbus_use_experimental())
+		dbus_connection_register_interface(conn,
+					path + ADAPTER_PATH_INDEX, ADAPTER_INTERFACE,
 					adapter_methods, adapter_signals, NULL);
+
+	return dbus_connection_register_interface(conn,
+			path, ADAPTER_INTERFACE,
+			old_adapter_methods, old_adapter_signals, NULL);
 }
