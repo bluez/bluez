@@ -304,7 +304,8 @@ int agent_authorize(struct agent *agent,
 {
 	struct agent_request *req;
 
-	debug("agent_authorize");
+	if (agent->request)
+		return -EBUSY;
 
 	req = agent_request_new(agent, device, cb, user_data);
 
@@ -426,6 +427,9 @@ int agent_request_passkey(struct agent *agent, const char *device,
 {
 	struct agent_request *req;
 
+	if (agent->request)
+		return -EBUSY;
+
 	req = agent_request_new(agent, device, cb, user_data);
 
 	req->call = passkey_request_new(device, agent, FALSE);
@@ -527,6 +531,9 @@ int agent_confirm(struct agent *agent, const char *device, const char *pin,
 			agent_cb cb, void *user_data)
 {
 	struct agent_request *req;
+
+	if (agent->request)
+		return -EBUSY;
 
 	debug("Calling Agent.Confirm: name=%s, path=%s",
 						agent->name, agent->path);
