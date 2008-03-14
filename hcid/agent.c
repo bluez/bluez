@@ -551,6 +551,12 @@ failed:
 	return -1;
 }
 
+int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
+				agent_cb cb, void *user_data)
+{
+	return 0;
+}
+
 static void send_cancel_request(struct agent_request *req)
 {
 	DBusMessage *message;

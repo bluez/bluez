@@ -47,6 +47,9 @@ int agent_request_passkey(struct agent *agent, const char *device,
 int agent_confirm(struct agent *agent, const char *device, const char *pin,
 			agent_cb cb, void *user_data);
 
+int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
+				agent_cb cb, void *user_data);
+
 int agent_cancel(struct agent *agent);
 
 gboolean agent_matches(struct agent *agent, const char *name, const char *path);
