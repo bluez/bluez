@@ -149,6 +149,35 @@ Methods		dict GetProperties()
 
 			Possible errors: org.bluez.Error.DoesNotExist
 
+		uint32 AddServiceRecord(string record)
+
+			Adds a new service record from the XML description
+			and returns the assigned record handle.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		void UpdateServiceRecord(uint32 handle, string record)
+
+			Updates a given service record provided in the
+			XML format.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+					 org.bluez.Error.Failed
+
+		void RemoveServiceRecord(uint32 handle)
+
+			Remove a service record identified by its handle.
+
+			It is only possible to remove service records that
+			where added by the current connection.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
