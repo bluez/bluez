@@ -3340,6 +3340,77 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 	return error_invalid_arguments(conn, msg, NULL);
 }
 
+void request_mode_cb(struct agent *agent, DBusError *err, void *data)
+{
+	struct mode_req *req = data;
+	DBusMessage *derr;
+
+	if (err && dbus_error_is_set(err)) {
+		derr = dbus_message_new_error(req->msg, err->name, err->message);
+		dbus_connection_send_and_unref(req->conn, derr);
+		goto cleanup;
+	}
+
+	set_mode(req->conn, req->msg, req->mode, req->adapter);
+
+cleanup:
+	dbus_connection_unref(req->conn);
+	dbus_message_unref(req->msg);
+	g_free(req->mode);
+	g_free(req);
+}
+
+static DBusHandlerResult request_mode(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *mode;
+	struct adapter *adapter = data;
+	DBusMessage *reply;
+	struct mode_req *req;
+	uint8_t new_mode;
+	int ret;
+
+	if (!hcid_dbus_use_experimental())
+		return error_unknown_method(conn, msg);
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
+						DBUS_TYPE_INVALID))
+		return error_invalid_arguments(conn, msg, NULL);
+
+	new_mode = str2mode(adapter->address, mode);
+	if (new_mode != MODE_CONNECTABLE && new_mode != MODE_DISCOVERABLE)
+		return error_invalid_arguments(conn, msg, NULL);
+
+	/* No need to change mode */
+	if (adapter->mode >= new_mode) {
+		reply = dbus_message_new_method_return(msg);
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+		return send_message_and_unref(conn, reply);
+	}
+
+	if (!adapter->agent)
+		return error_failed(conn, msg, "No agent registered");
+
+	req = g_new0(struct mode_req, 1);
+	req->adapter = adapter;
+	req->conn = dbus_connection_ref(conn);
+	req->msg = dbus_message_ref(msg);
+	req->mode = g_strdup(mode);
+	ret = agent_confirm_mode_change(adapter->agent, mode, request_mode_cb,
+					req);
+	if (ret < 0) {
+		dbus_connection_unref(req->conn);
+		dbus_message_unref(req->msg);
+		g_free(req->mode);
+		g_free(req);
+		return error_invalid_arguments(conn, msg, NULL);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static DBusHandlerResult list_devices(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -3722,75 +3793,63 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-void request_mode_cb(struct agent *agent, DBusError *err, void *data)
+static DBusHandlerResult add_service_record(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
-	struct mode_req *req = data;
-	DBusMessage *derr;
+	DBusMessage *reply;
+	const char *record;
+	dbus_uint32_t handle;
 
-	if (err && dbus_error_is_set(err)) {
-		derr = dbus_message_new_error(req->msg, err->name, err->message);
-		dbus_connection_send_and_unref(req->conn, derr);
-		goto cleanup;
-	}
+	if (dbus_message_get_args(msg, NULL,
+			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg, NULL);
 
-	set_mode(req->conn, req->msg, req->mode, req->adapter);
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-cleanup:
-	dbus_connection_unref(req->conn);
-	dbus_message_unref(req->msg);
-	g_free(req->mode);
-	g_free(req);
+	handle = 0;
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &handle,
+							DBUS_TYPE_INVALID);
+
+	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult request_mode(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+
+static DBusHandlerResult update_service_record(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
-	const char *mode;
-	struct adapter *adapter = data;
 	DBusMessage *reply;
-	struct mode_req *req;
-	uint8_t new_mode;
-	int ret;
+	dbus_uint32_t handle;
+	const char *record;
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
-						DBUS_TYPE_INVALID))
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	new_mode = str2mode(adapter->address, mode);
-	if (new_mode != MODE_CONNECTABLE && new_mode != MODE_DISCOVERABLE)
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	return send_message_and_unref(conn, reply);
+}
+
+static DBusHandlerResult remove_service_record(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	dbus_uint32_t handle;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &handle,
+						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	/* No need to change mode */
-	if (adapter->mode >= new_mode) {
-		reply = dbus_message_new_method_return(msg);
-		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-		return send_message_and_unref(conn, reply);
-	}
-
-	if (!adapter->agent)
-		return error_failed(conn, msg, "No agent registered");
-
-	req = g_new0(struct mode_req, 1);
-	req->adapter = adapter;
-	req->conn = dbus_connection_ref(conn);
-	req->msg = dbus_message_ref(msg);
-	req->mode = g_strdup(mode);
-	ret = agent_confirm_mode_change(adapter->agent, mode, request_mode_cb,
-					req);
-	if (ret < 0) {
-		dbus_connection_unref(req->conn);
-		dbus_message_unref(req->msg);
-		g_free(req->mode);
-		g_free(req);
-		return error_invalid_arguments(conn, msg, NULL);
-	}
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(conn, reply);
 }
 
 const char *major_class_str(uint32_t class)
@@ -3887,6 +3946,7 @@ GSList *service_classes_str(uint32_t class)
 static DBusMethodVTable adapter_methods[] = {
 	{ "GetProperties",	get_properties,		"",	"a{sv}" },
 	{ "SetProperty",	set_property,		"sv",	""	},
+	{ "RequestMode",	request_mode,		"s",	""	},
 	{ "DiscoverDevices",	adapter_discover_devices, "",	""	},
 	{ "CancelDiscovery",	adapter_cancel_discovery, "",	""	},
 	{ "ListDevices",	list_devices,		"",	"ao"	},
@@ -3896,7 +3956,9 @@ static DBusMethodVTable adapter_methods[] = {
 	{ "FindDevice",		find_device,		"s",	"o"	},
 	{ "RegisterAgent",	register_agent,		"o",	""	},
 	{ "UnregisterAgent",	unregister_agent,	"o",	""	},
-	{ "RequestMode",	request_mode,		"s",	""	},
+	{ "AddServiceRecord",	add_service_record,	"s",	"u"	},
+	{ "UpdateServiceRecord",update_service_record,	"us",	""	},
+	{ "RemoveServiceRecord",remove_service_record,	"u",	""	},
 	{ NULL,			NULL,			NULL, NULL	}
 };
 
