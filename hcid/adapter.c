@@ -60,6 +60,7 @@
 #include "dbus-helper.h"
 #include "dbus-hci.h"
 #include "dbus-sdp.h"
+#include "dbus-database.h"
 #include "dbus-error.h"
 #include "error.h"
 #include "glib-helper.h"
@@ -3767,18 +3768,23 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	const char *record;
+	const char *sender, *record;
 	dbus_uint32_t handle;
+	int err;
 
 	if (dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
+	sender = dbus_message_get_sender(msg);
+
+	err = add_xml_record(conn, sender, record, &handle);
+	if (err < 0)
+		return error_failed_errno(conn, msg, err);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	handle = 0;
 
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &handle,
 							DBUS_TYPE_INVALID);
@@ -3786,17 +3792,23 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-
 static DBusHandlerResult update_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	dbus_uint32_t handle;
-	const char *record;
+	const char *sender, *record;
+	int err;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &handle,
 			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
+
+	sender = dbus_message_get_sender(msg);
+
+	err = update_xml_record(conn, sender, handle, record);
+	if (err < 0)
+		return error_failed_errno(conn, msg, err);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -3810,10 +3822,16 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	dbus_uint32_t handle;
+	const char *sender;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &handle,
 						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
+
+	sender = dbus_message_get_sender(msg);
+
+	if (remove_record(conn, sender, handle) < 0)
+		return error_not_available(conn, msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
