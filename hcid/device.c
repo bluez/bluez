@@ -764,9 +764,6 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	dbus_bool_t boolean;
 	uint32_t class;
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -916,9 +913,6 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter sub;
 	const char *property;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_iter_init(msg, &iter))
 		return error_invalid_arguments(conn, msg, NULL);

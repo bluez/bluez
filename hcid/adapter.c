@@ -3227,9 +3227,6 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	bdaddr_t ba;
 	char str[249];
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
 	if (check_address(adapter->address) < 0)
 		return error_not_ready(conn, msg);
 
@@ -3283,9 +3280,6 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter sub;
 	const char *property;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_iter_init(msg, &iter))
 		return error_invalid_arguments(conn, msg, NULL);
@@ -3370,9 +3364,6 @@ static DBusHandlerResult request_mode(DBusConnection *conn,
 	uint8_t new_mode;
 	int ret;
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
 						DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
@@ -3419,9 +3410,6 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	GSList *l;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return error_invalid_arguments(conn, msg, NULL);
@@ -3594,9 +3582,6 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	struct adapter *adapter = data;
 	const gchar *address;
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
 	if (adapter->create)
 		return error_in_progress(conn, msg, "CreateDevice in progress");
 
@@ -3611,9 +3596,6 @@ static DBusHandlerResult create_paired_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const gchar *address, *agent_path;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_OBJECT_PATH,
@@ -3638,9 +3620,6 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	const char *path;
 	GSList *l;
 	bdaddr_t src;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -3682,9 +3661,6 @@ static DBusHandlerResult find_device(DBusConnection *conn,
 	DBusMessage *reply;
 	const gchar *address;
 	GSList *l;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID))
@@ -3731,9 +3707,6 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 	struct adapter *adapter = data;
 	DBusMessage *reply;
 
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
-
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
@@ -3767,9 +3740,6 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	const char *path, *name;
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-
-	if (!hcid_dbus_use_experimental())
-		return error_unknown_method(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID))
