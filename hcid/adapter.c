@@ -2180,7 +2180,6 @@ static void create_device_req_free(struct create_device_req *create)
 	dbus_message_unref(create->msg);
 	g_free(create->agent_path);
 	g_free(create);
-	create = NULL;
 }
 
 struct device *adapter_get_device(struct adapter *adapter, const char *dest)
@@ -2332,6 +2331,7 @@ cleanup:
 	if (adapter->create) {
 		name_listener_id_remove(adapter->create->id);
 		create_device_req_free(adapter->create);
+		adapter->create = NULL;
 	}
 
 	return FALSE;
@@ -3552,6 +3552,7 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 static void create_device_exit(const char *name, struct adapter *adapter)
 {
 	create_device_req_free(adapter->create);
+	adapter->create = NULL;
 }
 
 static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
@@ -3643,6 +3644,7 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 failed:
 	name_listener_id_remove(adapter->create->id);
 	create_device_req_free(adapter->create);
+	adapter->create = NULL;
 }
 
 static DBusHandlerResult discover_services(DBusConnection *conn,
