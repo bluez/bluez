@@ -992,6 +992,12 @@ struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 	return device;
 }
 
+void device_remove(DBusConnection *conn, struct device *device)
+{
+	device_destroy(device, conn);
+	device_free(device);
+}
+
 void device_destroy(struct device *device, DBusConnection *conn)
 {
 	debug("Removing device %s", device->path);
