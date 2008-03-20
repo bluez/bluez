@@ -1107,11 +1107,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	release_passkey_agents(adapter, peer);
 
-	if (adapter->agent) {
-		agent_destroy(adapter->agent, FALSE);
-		adapter->agent = NULL;
-	}
-
 	if (!adapter->bonding || bacmp(&adapter->bonding->bdaddr, peer))
 		return; /* skip: no bonding req pending */
 
