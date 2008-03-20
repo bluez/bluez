@@ -286,7 +286,6 @@ done:
 	dbus_message_unref(message);
 
 	agent->request = NULL;
-	dbus_pending_call_cancel(req->call);
 	agent_request_free(req);
 
 	if (agent->addr) {
