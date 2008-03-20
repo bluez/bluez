@@ -745,7 +745,7 @@ static void resolve_paths(DBusMessage *msg, char **old_path, char **new_path)
 	}
 
 	if (old_path)
-		*old_path = g_strconcat(BASE_PATH, path);
+		*old_path = g_strconcat(BASE_PATH, path, NULL);
 
 	if (new_path)
 		*new_path = g_strdup(path);
