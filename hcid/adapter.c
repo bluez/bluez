@@ -3882,9 +3882,11 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 static DBusHandlerResult add_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct adapter *adapter = data;
 	DBusMessage *reply;
 	const char *sender, *record;
 	dbus_uint32_t handle;
+	bdaddr_t src;
 	int err;
 
 	if (dbus_message_get_args(msg, NULL,
@@ -3892,8 +3894,8 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg, NULL);
 
 	sender = dbus_message_get_sender(msg);
-
-	err = add_xml_record(conn, sender, record, &handle);
+	str2ba(adapter->address, &src);
+	err = add_xml_record(conn, sender, &src, record, &handle);
 	if (err < 0)
 		return error_failed_errno(conn, msg, err);
 

@@ -132,7 +132,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
-	if (add_record_to_server(sdp_record) < 0) {
+	if (add_record_to_server(BDADDR_ANY, sdp_record) < 0) {
 		error("Failed to register service record");
 		free(user_record);
 		sdp_record_free(sdp_record);

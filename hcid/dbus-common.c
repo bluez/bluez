@@ -398,14 +398,14 @@ int register_sdp_binary(uint8_t *data, uint32_t size, uint32_t *handle)
 	return err;
 }
 
-int register_sdp_record(sdp_record_t *rec)
+int register_sdp_record(bdaddr_t *src, sdp_record_t *rec)
 {
 	int err;
 
 	if (!get_sdp_session())
 		return -1;
 
-	err = sdp_device_record_register(sess, BDADDR_ANY, rec, 0);
+	err = sdp_device_record_register(sess, src, rec, 0);
 	if (err < 0)
 		cleanup_sdp_session();
 

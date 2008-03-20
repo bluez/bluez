@@ -29,7 +29,7 @@ dbus_bool_t database_init(DBusConnection *conn, const char *path);
 DBusHandlerResult database_message(DBusConnection *conn,
 						DBusMessage *msg, void *data);
 
-int add_xml_record(DBusConnection *conn, const char *sender,
+int add_xml_record(DBusConnection *conn, const char *sender, bdaddr_t *src,
 				const char *record, dbus_uint32_t *handle);
 DBusHandlerResult update_xml_record(DBusConnection *conn,
 				DBusMessage *msg, bdaddr_t *src);

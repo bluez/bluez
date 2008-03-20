@@ -52,7 +52,7 @@ void hcid_dbus_exit(void);
 int hcid_dbus_init(void);
 
 int register_sdp_binary(uint8_t *data, uint32_t size, uint32_t *handle);
-int register_sdp_record(sdp_record_t *rec);
+int register_sdp_record(bdaddr_t *src, sdp_record_t *rec);
 int unregister_sdp_record(uint32_t handle);
 int update_sdp_record(uint32_t handle, sdp_record_t *rec);
 void cleanup_sdp_session(void);

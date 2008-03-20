@@ -129,7 +129,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 			return error_failed_errno(conn, msg, EIO);
 		}
 
-		if (add_record_to_server(sdp_record) < 0) {
+		if (add_record_to_server(BDADDR_ANY, sdp_record) < 0) {
 			error("Failed to register service record");
 			g_free(user_record);
 			sdp_record_free(sdp_record);
@@ -166,7 +166,7 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-int add_xml_record(DBusConnection *conn, const char *sender,
+int add_xml_record(DBusConnection *conn, const char *sender, bdaddr_t *src,
 				const char *record, dbus_uint32_t *handle)
 {
 	struct record_data *user_record;
@@ -182,7 +182,7 @@ int add_xml_record(DBusConnection *conn, const char *sender,
 	}
 
 	if (sdp_server_enable) {
-		if (add_record_to_server(sdp_record) < 0) {
+		if (add_record_to_server(src, sdp_record) < 0) {
 			error("Failed to register service record");
 			g_free(user_record);
 			sdp_record_free(sdp_record);
@@ -191,7 +191,7 @@ int add_xml_record(DBusConnection *conn, const char *sender,
 
 		user_record->handle = sdp_record->handle;
 	} else {
-		if (register_sdp_record(sdp_record) < 0) {
+		if (register_sdp_record(src, sdp_record) < 0) {
 			error("Failed to register service record");
 			g_free(user_record);
 			sdp_record_free(sdp_record);
@@ -232,7 +232,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	err = add_xml_record(conn, sender, record, &handle);
+	err = add_xml_record(conn, sender, BDADDR_ANY, record, &handle);
 	if (err < 0)
 		return error_failed_errno(conn, msg, err);
 
@@ -243,7 +243,7 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 }
 
 static DBusHandlerResult update_record(DBusConnection *conn, DBusMessage *msg,
-				dbus_uint32_t handle, sdp_record_t *sdp_record)
+		bdaddr_t *src, dbus_uint32_t handle, sdp_record_t *sdp_record)
 {
 	int err;
 
@@ -254,7 +254,7 @@ static DBusHandlerResult update_record(DBusConnection *conn, DBusMessage *msg,
 		}
 
 		sdp_record->handle = handle;
-		err = add_record_to_server(sdp_record);
+		err = add_record_to_server(src, sdp_record);
 		if (err < 0) {
 			sdp_record_free(sdp_record);
 			error("Failed to update the service record");
@@ -311,7 +311,7 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg, NULL);
 	}
 
-	return update_record(conn, msg, handle, sdp_record);
+	return update_record(conn, msg, BDADDR_ANY, handle, sdp_record);
 }
 
 DBusHandlerResult update_xml_record(DBusConnection *conn,
@@ -344,7 +344,7 @@ DBusHandlerResult update_xml_record(DBusConnection *conn,
 		return error_failed_errno(conn, msg, EIO);
 	}
 
-	return update_record(conn, msg, handle, sdp_record);
+	return update_record(conn, msg, src, handle, sdp_record);
 }
 
 static DBusHandlerResult update_service_record_from_xml(DBusConnection *conn,

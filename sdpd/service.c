@@ -359,7 +359,7 @@ void register_device_id(const uint16_t vendor, const uint16_t product,
 	update_svclass_list();
 }
 
-int add_record_to_server(sdp_record_t *rec)
+int add_record_to_server(bdaddr_t *src, sdp_record_t *rec)
 {
 	sdp_data_t *data;
 
@@ -374,7 +374,7 @@ int add_record_to_server(sdp_record_t *rec)
 
 	debug("Adding record with handle 0x%05x", rec->handle);
 
-	sdp_record_add(BDADDR_ANY, rec);
+	sdp_record_add(src, rec);
 
 	data = sdp_data_alloc(SDP_UINT32, &rec->handle);
 	sdp_attr_replace(rec, SDP_ATTR_RECORD_HANDLE, data);
