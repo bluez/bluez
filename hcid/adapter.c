@@ -2130,7 +2130,7 @@ static void create_device_req_free(struct create_device_req *create)
 	create = NULL;
 }
 
-struct device *adapter_get_device(struct adapter *adapter, const char *src)
+struct device *adapter_get_device(struct adapter *adapter, const char *dest)
 {
 	struct device *device;
 	GSList *l;
@@ -2139,7 +2139,7 @@ struct device *adapter_get_device(struct adapter *adapter, const char *src)
 		return NULL;
 
 	l = g_slist_find_custom(adapter->devices,
-				src, (GCompareFunc) device_address_cmp);
+				dest, (GCompareFunc) device_address_cmp);
 	if (!l)
 		return NULL;
 

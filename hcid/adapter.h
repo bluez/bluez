@@ -113,7 +113,7 @@ struct adapter {
 
 dbus_bool_t adapter_init(DBusConnection *conn, const char *path);
 
-struct device *adapter_get_device(struct adapter *adapter, const char *src);
+struct device *adapter_get_device(struct adapter *adapter, const char *dest);
 
 const char *major_class_str(uint32_t class);
 
